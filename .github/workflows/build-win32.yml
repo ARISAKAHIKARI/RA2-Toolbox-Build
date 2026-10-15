@@ -1,4 +1,4 @@
-name: Build RA2 Toolbox v0.6.2 Win32 Fix3
+name: Build RA2 Toolbox v0.6.2 Win32 Fix4
 on:
   push:
     branches: [main]
@@ -19,8 +19,8 @@ jobs:
       - name: Verify source and extract
         shell: pwsh
         run: |
-          $zip="payload/ra2-v062-Fix3-source.zip"
-          $expected="7508d9502e8ffc664b2a4358ea3c34e449caf643af2063826497b2b4be340a00"
+          $zip="payload/ra2-v062-Fix4-source.zip"
+          $expected="9395a5ee52edc5f9c7f09e65526526512156371efd5dcaed79aa027937fda8a8"
           $actual=(Get-FileHash $zip -Algorithm SHA256).Hash.ToLowerInvariant()
           if($actual -ne $expected){ throw "Source SHA256 mismatch: $actual" }
           Expand-Archive -LiteralPath $zip -DestinationPath work -Force
@@ -59,7 +59,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: RA2-v062-Fix3-Win32-Outputs
+          name: RA2-v062-Fix4-Win32-Outputs
           retention-days: 7
           if-no-files-found: warn
           path: |

@@ -1,0 +1,232 @@
+{
+  "tag": "v0.6.2-buildfix4",
+  "asset_name": "RA2-Toolbox-v0.6.2-Full-Win32-BuildFix4.zip",
+  "bytes": 145886395,
+  "sha256": "dedfd78d6dddfc0cd8748a32c94e37f971a66b16d47ce4132d8a160e120929f2",
+  "parts": [
+    {
+      "path": "payload/v0.6.2-buildfix4-full/part-000.bin",
+      "bytes": 4194304,
+      "sha256": "a7fdae9ec0575a72ea10fe8c6ff2498f217a92304adf64821f07f2f88848d41a",
+      "git_blob_sha": "28ef9069588f7237166e30cc462d2b3e7c5f1633"
+    },
+    {
+      "path": "payload/v0.6.2-buildfix4-full/part-001.bin",
+      "bytes": 4194304,
+      "sha256": "8deaf4c466cd3d7dc723133663981cf4840e33fee82a6b17ca39071736034d83",
+      "git_blob_sha": "d5d4a6c84f903efe5da47a3c606e296c23989e85"
+    },
+    {
+      "path": "payload/v0.6.2-buildfix4-full/part-002.bin",
+      "bytes": 4194304,
+      "sha256": "cb162f539bd37ea73ebf82a29e8f975ef878a418e5d44db8506629f0bb0d6b6f",
+      "git_blob_sha": "fa25b40ff3d7463c7d40c0c0d14f2249b20b348a"
+    },
+    {
+      "path": "payload/v0.6.2-buildfix4-full/part-003.bin",
+      "bytes": 4194304,
+      "sha256": "d2fe9bf99a6588542ec77caebf152fdbf62a12e2ee6fa9cdbcebdc4914ef00d9",
+      "git_blob_sha": "2ad9103ecb5ba0e272a335abdf71095fefa54a8d"
+    },
+    {
+      "path": "payload/v0.6.2-buildfix4-full/part-004.bin",
+      "bytes": 4194304,
+      "sha256": "10ee25691e7d8c3936012155d45b36444d27b2ef0d1e0b94d21fa6ff3acdf0ab",
+      "git_blob_sha": "063244f081ad87474fce3a82272cb51b8f435df0"
+    },
+    {
+      "path": "payload/v0.6.2-buildfix4-full/part-005.bin",
+      "bytes": 4194304,
+      "sha256": "f7225bf7bfbe24d64878839612aa6eea3acea80d9322708a79135b022a818abf",
+      "git_blob_sha": "d9ea5100743e6d38f0c3f570627b44d04f590aa3"
+    },
+    {
+      "path": "payload/v0.6.2-buildfix4-full/part-006.bin",
+      "bytes": 4194304,
+      "sha256": "4131bee0b83ab69f439a0fafc3b02a30a56f999b33e6b5634436f5484b955914",
+      "git_blob_sha": "0e6ded6096e68b3f79c25e7a7a3ff6a06676befe"
+    },
+    {
+      "path": "payload/v0.6.2-buildfix4-full/part-007.bin",
+      "bytes": 4194304,
+      "sha256": "e1d11abb417bd759ace64c701827b42df12c7c89da029351cf55902be2507c00",
+      "git_blob_sha": "a87d581bf48a55cb0fd73ba35b3720ffe4547cbe"
+    },
+    {
+      "path": "payload/v0.6.2-buildfix4-full/part-008.bin",
+      "bytes": 4194304,
+      "sha256": "c6829f672b43982614ce131595d1f6cb59ddd161bf39d083e867dd40e995eaa4",
+      "git_blob_sha": "e048b3f3a99963394d8d941595cda9da538c84b1"
+    },
+    {
+      "path": "payload/v0.6.2-buildfix4-full/part-009.bin",
+      "bytes": 4194304,
+      "sha256": "4ac679df0507daa13425b04220b0bbb3867da7c6f1a4c94541331174ebd1ec0a",
+      "git_blob_sha": "13cc2c6de4b4d8a8329909de939b729726b9a752"
+    },
+    {
+      "path": "payload/v0.6.2-buildfix4-full/part-010.bin",
+      "bytes": 4194304,
+      "sha256": "a21869e4e43d7d36151ded3fa664557c0475de3256a908ec8a0f379fdd61cbec",
+      "git_blob_sha": "60d3af18c9c9a1c15271a25d1dccc4bf1c58d3a9"
+    },
+    {
+      "path": "payload/v0.6.2-buildfix4-full/part-011.bin",
+      "bytes": 4194304,
+      "sha256": "9a733313a4b8b177182341dedb1c93d7c1ab425c4e04e0b28745c0d643577bed",
+      "git_blob_sha": "d23a9913ef2fbe9479fc1f0ed0b52885fc18ad15"
+    },
+    {
+      "path": "payload/v0.6.2-buildfix4-full/part-012.bin",
+      "bytes": 4194304,
+      "sha256": "4f94e840be5479fbd780f725598bc6a3b26d3b681c32e246ce67ccee0caef6d0",
+      "git_blob_sha": "c450de45ac251ec71082acb63ca3190b70513a9f"
+    },
+    {
+      "path": "payload/v0.6.2-buildfix4-full/part-013.bin",
+      "bytes": 4194304,
+      "sha256": "571f701a8e1ca69013c9e491d5863c88d714d31643aa114c1f78d035cbab37ad",
+      "git_blob_sha": "b60ec324cc222a9a29050772dacce9186f3834c7"
+    },
+    {
+      "path": "payload/v0.6.2-buildfix4-full/part-014.bin",
+      "bytes": 4194304,
+      "sha256": "fa8b042eb61ac9a66bf6266a333be73fedbdc4e552945ec182c9ff160940f10f",
+      "git_blob_sha": "3875d1921c8b71c8ffd40d94d85978bd24e873ca"
+    },
+    {
+      "path": "payload/v0.6.2-buildfix4-full/part-015.bin",
+      "bytes": 4194304,
+      "sha256": "8bad326386603f1b8f4573adb4f967189a29b77ba504f4b1cf5d656b952ff478",
+      "git_blob_sha": "10566c7190b378a734ecc362936e63e4e9d61b34"
+    },
+    {
+      "path": "payload/v0.6.2-buildfix4-full/part-016.bin",
+      "bytes": 4194304,
+      "sha256": "018b3f64e18f2115b7fb95bb60f195f1dc28c46ea49911300c300999b5173e1e",
+      "git_blob_sha": "aeb0d801a42374877ce711e05321c05e2b3195cd"
+    },
+    {
+      "path": "payload/v0.6.2-buildfix4-full/part-017.bin",
+      "bytes": 4194304,
+      "sha256": "3a15704cf87e0d02ab85d9a9b38cf646ee598a22aa60974feb6a39ffd03b86bb",
+      "git_blob_sha": "facea01a49c61890c2b96bea2e4a996eb6e2630b"
+    },
+    {
+      "path": "payload/v0.6.2-buildfix4-full/part-018.bin",
+      "bytes": 4194304,
+      "sha256": "5ead30a95bd1059fef7094c6ce7b15ab7ae596b4c94d4963a09e07c0e76930ef",
+      "git_blob_sha": "6ce98ed5081352aa777f172d1912b2579e01125b"
+    },
+    {
+      "path": "payload/v0.6.2-buildfix4-full/part-019.bin",
+      "bytes": 4194304,
+      "sha256": "89be827de2a35da7ca6682756e3b72b818b5b05ccbf735fab68d026081fa0845",
+      "git_blob_sha": "365c4991661f825913b562dc14dcc5f2c5182896"
+    },
+    {
+      "path": "payload/v0.6.2-buildfix4-full/part-020.bin",
+      "bytes": 4194304,
+      "sha256": "8091052586edf605c65a35787641fc9b907820a3d90f8d41b08614a0ee863939",
+      "git_blob_sha": "e4217da076bc983f5433117a875d2ac61afcd9a5"
+    },
+    {
+      "path": "payload/v0.6.2-buildfix4-full/part-021.bin",
+      "bytes": 4194304,
+      "sha256": "933774a444f3da17196970b67abdfa457b798c581967a3f1fbbbc964bdd7505b",
+      "git_blob_sha": "bcb09ba4ed426faac816b3f26834a21828988a07"
+    },
+    {
+      "path": "payload/v0.6.2-buildfix4-full/part-022.bin",
+      "bytes": 4194304,
+      "sha256": "0a43af2175e1e2c2baf7d6b7040da9bf36fe70661948b9b5cb7a012b6413baeb",
+      "git_blob_sha": "ff70b7913a8ca33bd0bab89066b1da28bfe52bda"
+    },
+    {
+      "path": "payload/v0.6.2-buildfix4-full/part-023.bin",
+      "bytes": 4194304,
+      "sha256": "7dd835371f4d84641f6745b74a444fedcf46f456d692f203cb505f759c68981c",
+      "git_blob_sha": "14511b6ba909f17d8505fa08139fe78e8e6bcbca"
+    },
+    {
+      "path": "payload/v0.6.2-buildfix4-full/part-024.bin",
+      "bytes": 4194304,
+      "sha256": "4bf6bb9c56798b56ab5fbaaff09653b4e253730f4cbe6ff9cd221668f0af994e",
+      "git_blob_sha": "092ffe73cd409f01df410bb81f16dd2cb2208967"
+    },
+    {
+      "path": "payload/v0.6.2-buildfix4-full/part-025.bin",
+      "bytes": 4194304,
+      "sha256": "ef68dbeec9d3503c0a3c4fdad9762faf1213121edfbd2ec5d11928b045c3ad3a",
+      "git_blob_sha": "8fec5270f524f0aaddf54e3d716fc195d4cbacf8"
+    },
+    {
+      "path": "payload/v0.6.2-buildfix4-full/part-026.bin",
+      "bytes": 4194304,
+      "sha256": "351dbf27501f874b0fc46adc49d8ca9547e2523771afdf4842a8bb3508a2f3ed",
+      "git_blob_sha": "7e7ed34a59e4694e9614d3cddb09c8673e154f15"
+    },
+    {
+      "path": "payload/v0.6.2-buildfix4-full/part-027.bin",
+      "bytes": 4194304,
+      "sha256": "072c6ac26e38542dc17551a8df74f72051bfa0a101a6b37efda7d04fa5e71fbb",
+      "git_blob_sha": "bdfdf295e053b5265649c3a2affc3c00ceb23f9b"
+    },
+    {
+      "path": "payload/v0.6.2-buildfix4-full/part-028.bin",
+      "bytes": 4194304,
+      "sha256": "250a899edd55bc430d9b552158cfbb7fa8267e32f9bea849ec2cd6ecb797434b",
+      "git_blob_sha": "700e7de6967a5cf179bbbe03077abf47c6e7722f"
+    },
+    {
+      "path": "payload/v0.6.2-buildfix4-full/part-029.bin",
+      "bytes": 4194304,
+      "sha256": "f23345aaeede82c7fa762821c52ed76e9a4fc4677d54b78bf1a2f7d8e0ac041e",
+      "git_blob_sha": "8f03cc54b3814e3d436f466bb17376e469c63592"
+    },
+    {
+      "path": "payload/v0.6.2-buildfix4-full/part-030.bin",
+      "bytes": 4194304,
+      "sha256": "31fd1aad9b70c11a4e09df6284ae0d979a7e43b56cff0f8289dacd1353f6d5d7",
+      "git_blob_sha": "48b810864823ad4761186e84a58b8ef125793a5a"
+    },
+    {
+      "path": "payload/v0.6.2-buildfix4-full/part-031.bin",
+      "bytes": 4194304,
+      "sha256": "21215b8004df500cdc1eed4aa136f3e1b82904bc7c8ba71923f3a64f1d049893",
+      "git_blob_sha": "78f2d2e3217d700f85d2860e389ef92d9d757370"
+    },
+    {
+      "path": "payload/v0.6.2-buildfix4-full/part-032.bin",
+      "bytes": 4194304,
+      "sha256": "0371a432ef4984fdb2c06588637205951cbe91490097b8d4efdd4fa83062e178",
+      "git_blob_sha": "50ae3582ccad4bede4de2bb70893c9ec69e2c9f9"
+    },
+    {
+      "path": "payload/v0.6.2-buildfix4-full/part-033.bin",
+      "bytes": 4194304,
+      "sha256": "d4d1f972ac2ae96ff42c08a187ad90b01eaa649af9d8214c55222c904a551929",
+      "git_blob_sha": "8b5c7f2303e1a407429fd071dcf126817e1fe65f"
+    },
+    {
+      "path": "payload/v0.6.2-buildfix4-full/part-034.bin",
+      "bytes": 3280059,
+      "sha256": "b0276ebc50cf831b19e290964b3283a46903c2709f036fe9804dc051123596b9",
+      "git_blob_sha": "c7a9c5e19ebc100669a5db518534511d96837b04"
+    }
+  ],
+  "additional_assets": [
+    {
+      "path": "payload/ra2-v062-Fix4-source.zip",
+      "name": "ra2-v062-Fix4-source.zip",
+      "bytes": 403778,
+      "sha256": "9395a5ee52edc5f9c7f09e65526526512156371efd5dcaed79aa027937fda8a8"
+    },
+    {
+      "path": "release/v0.6.2-buildfix4/CHECK_REPORT_v0.6.2_BuildFix4.md",
+      "name": "CHECK_REPORT_v0.6.2_BuildFix4.md",
+      "bytes": 6228,
+      "sha256": "62f366384fa7cad3166f53d0374a1cf7deed9a367ab96737ec06493ecddfbbab"
+    }
+  ]
+}

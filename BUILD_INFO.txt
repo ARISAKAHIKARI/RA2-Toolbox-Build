@@ -1,1 +1,4 @@
-RA2 toolbox v0.6.2 Fix3 cloud build initialization.
+RA2 Toolbox v0.6.2 Full BuildFix4
+File version: 0.6.2.4
+Source SHA256: 9395a5ee52edc5f9c7f09e65526526512156371efd5dcaed79aa027937fda8a8
+Full SHA256: dedfd78d6dddfc0cd8748a32c94e37f971a66b16d47ce4132d8a160e120929f2

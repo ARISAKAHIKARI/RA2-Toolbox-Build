@@ -1,0 +1,55 @@
+name: Publish RA2 Toolbox v0.6.2 Full BuildFix4
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/publish-full.yml"
+      - "payload/v0.6.2-buildfix4-full/**"
+      - "release/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-v062-buildfix4
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Assemble and validate exact Full package
+        run: python3 release/assemble_full.py --manifest release/v0.6.2-buildfix4/manifest.json --output dist
+      - name: Upload, download-verify, and publish Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag='v0.6.2-buildfix4'
+          if gh release view "$tag" --json isDraft > release-state.json 2>/dev/null; then
+            draft=$(python3 -c 'import json; print(str(json.load(open("release-state.json"))["isDraft"]).lower())')
+          else
+            gh release create "$tag" --target "$GITHUB_SHA" --draft --prerelease --latest=false \
+              --title 'RA2 Toolbox v0.6.2 Full BuildFix4 (0.6.2.4)' \
+              --notes-file release/v0.6.2-buildfix4/RELEASE_NOTES.md
+            draft=true
+          fi
+          if [ "$draft" = true ]; then
+            gh release upload "$tag" dist/* --clobber
+          fi
+          mkdir -p remote-check
+          gh release download "$tag" --pattern '*' --dir remote-check
+          (cd remote-check && sha256sum --check ../dist/SHA256SUMS.txt)
+          if [ "$draft" = true ]; then
+            gh release edit "$tag" --draft=false --prerelease --latest=false
+          fi
+          gh release view "$tag" --json url,tagName,isDraft,isPrerelease,assets > published-release.json
+          cat published-release.json
+          cat published-release.json >> "$GITHUB_STEP_SUMMARY"
