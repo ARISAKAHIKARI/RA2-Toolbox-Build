@@ -1,0 +1,71 @@
+name: Build RA2 Toolbox v0.6.2 Win32 Fix3
+on:
+  push:
+    branches: [main]
+    paths:
+      - "payload/**"
+      - ".github/workflows/build-win32.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows-x86:
+    runs-on: windows-2022
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify source and extract
+        shell: pwsh
+        run: |
+          $zip="payload/ra2-v062-Fix3-source.zip"
+          $expected="7508d9502e8ffc664b2a4358ea3c34e449caf643af2063826497b2b4be340a00"
+          $actual=(Get-FileHash $zip -Algorithm SHA256).Hash.ToLowerInvariant()
+          if($actual -ne $expected){ throw "Source SHA256 mismatch: $actual" }
+          Expand-Archive -LiteralPath $zip -DestinationPath work -Force
+          if(!(Test-Path work/BUILD_ZIG.cmd)){ throw "Missing source BUILD_ZIG.cmd" }
+      - name: Install Zig 0.13.0 for Windows
+        shell: pwsh
+        run: |
+          $ProgressPreference='SilentlyContinue'
+          $url='https://ziglang.org/download/0.13.0/zig-windows-x86_64-0.13.0.zip'
+          Invoke-WebRequest -Uri $url -OutFile zig.zip
+          Expand-Archive zig.zip -DestinationPath zig -Force
+          $bin=(Resolve-Path 'zig/zig-windows-x86_64-0.13.0/zig.exe').Path
+          & $bin version
+          if($LASTEXITCODE -ne 0){ throw 'Zig did not execute' }
+          Add-Content -Path $env:GITHUB_ENV -Value "ZIG_EXE=$bin"
+      - name: Compile four new PE32 x86 files
+        shell: pwsh
+        working-directory: work
+        run: |
+          $env:RA2_NO_PAUSE='1'
+          cmd /d /c "call BUILD_ZIG.cmd > build.log 2>&1"
+          $status=$LASTEXITCODE
+          Write-Host "--- Tail of build.log ---"
+          Get-Content build.log -Tail 100
+          if($status -ne 0){ throw "BUILD_ZIG.cmd exited with code $status" }
+          foreach($p in 'RA2Toolbox.exe','AssistBridge.dll','UnitMonitorBridge.dll','CursorHideBridge.dll') {
+            if(!(Test-Path $p)){ throw "Missing compiled file: $p" }
+          }
+      - name: Verify PE32 artifacts
+        shell: pwsh
+        working-directory: work
+        run: |
+          python tools/verify_windows_outputs.py
+          if($LASTEXITCODE -ne 0){ throw "PE32 validation failed" }
+      - name: Upload PE32 builds and diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: RA2-v062-Fix3-Win32-Outputs
+          retention-days: 7
+          if-no-files-found: warn
+          path: |
+            work/RA2Toolbox.exe
+            work/AssistBridge.dll
+            work/UnitMonitorBridge.dll
+            work/CursorHideBridge.dll
+            work/build.log
+            work/WINDOWS_BUILD_ARTIFACTS.json
