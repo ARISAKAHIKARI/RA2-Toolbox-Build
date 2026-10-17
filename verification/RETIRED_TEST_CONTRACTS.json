@@ -1,0 +1,20 @@
+{
+  "version": "0.7.17",
+  "reason": "Architecture intentionally removes all feature detours; these historical tests require them. They are not claimed as passed for this release.",
+  "replacement": [
+    "no_interception_source_contract.py",
+    "no_interception_runtime.py",
+    "tools/audit_architecture.py"
+  ],
+  "contracts": {
+    "dual_scheduler_contract.py": "required removed frame detours",
+    "fourth_audit_source_contract.py": "required deleted trampoline pinning",
+    "fifth_audit_source_contract.py": "prior protocol/hook topology",
+    "sixth_audit_source_contract.py": "prior protocol/hook topology",
+    "hook_lifecycle_source_contract.py": "required engine patch installation",
+    "dispatch_router_contract.py": "required removed frame provider",
+    "shared_entry_source_contract.py": "required engine code write implementation",
+    "unified_entry_audit.py": "required removed eligibility/capture detours"
+  },
+  "legacy_cursor_capture": "cursor_capture_regression requires an allocated cursor trampoline and is replaced by zero-patch DLL tests"
+}

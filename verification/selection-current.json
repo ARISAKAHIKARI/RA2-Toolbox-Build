@@ -1,0 +1,56 @@
+{
+  "scope": "real DLL and manager; native selection methods stubbed; no game rendering",
+  "inputs": {
+    "GameRuntime.dll": "00d8517f5888e12cbf23ff73a7cd4a3485d5f76de631d63dcf29489942f4911d"
+  },
+  "results": [
+    {
+      "case": "selection_succeeds_while_gameplay_queue_is_full",
+      "status": "PASS"
+    },
+    {
+      "case": "cursor_owner_blocks_selection_mailbox_execution",
+      "status": "PASS"
+    },
+    {
+      "case": "selection_resumes_after_same_manager_releases_owner",
+      "status": "PASS"
+    },
+    {
+      "case": "wrong_thread_cannot_consume_selection_mailbox",
+      "status": "PASS"
+    },
+    {
+      "case": "stale_match_selection_rejected",
+      "status": "PASS"
+    },
+    {
+      "case": "group_union_visible_only",
+      "status": "PASS"
+    },
+    {
+      "case": "group_union_whole_map",
+      "status": "PASS"
+    },
+    {
+      "case": "group_reject_empty",
+      "status": "PASS"
+    },
+    {
+      "case": "group_reject_building",
+      "status": "PASS"
+    },
+    {
+      "case": "group_reject_out_of_range",
+      "status": "PASS"
+    },
+    {
+      "case": "group_reject_stale",
+      "status": "PASS"
+    },
+    {
+      "case": "group_reject_chat",
+      "status": "PASS"
+    }
+  ]
+}

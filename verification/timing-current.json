@@ -1,0 +1,70 @@
+{
+  "inputs": {
+    "GameRuntime.dll": "00d8517f5888e12cbf23ff73a7cd4a3485d5f76de631d63dcf29489942f4911d",
+    "game": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0"
+  },
+  "baseline_reproduction": null,
+  "results": [
+    {
+      "case": "session_0_command_1_zero",
+      "status": "PASS",
+      "queue_timing": 1220
+    },
+    {
+      "case": "session_0_command_1_poison",
+      "status": "PASS",
+      "queue_timing": 1220
+    },
+    {
+      "case": "session_0_command_1_legacy_nonvolatile",
+      "status": "PASS",
+      "queue_timing": 1220
+    },
+    {
+      "case": "session_0_command_15_zero",
+      "status": "PASS",
+      "queue_timing": 1220
+    },
+    {
+      "case": "session_0_command_15_poison",
+      "status": "PASS",
+      "queue_timing": 1220
+    },
+    {
+      "case": "session_0_command_15_legacy_nonvolatile",
+      "status": "PASS",
+      "queue_timing": 1220
+    },
+    {
+      "case": "session_3_command_1_zero",
+      "status": "PASS",
+      "queue_timing": 1220
+    },
+    {
+      "case": "session_3_command_1_poison",
+      "status": "PASS",
+      "queue_timing": 1220
+    },
+    {
+      "case": "session_3_command_1_legacy_nonvolatile",
+      "status": "PASS",
+      "queue_timing": 1220
+    },
+    {
+      "case": "session_3_command_15_zero",
+      "status": "PASS",
+      "queue_timing": 1220
+    },
+    {
+      "case": "session_3_command_15_poison",
+      "status": "PASS",
+      "queue_timing": 1220
+    },
+    {
+      "case": "session_3_command_15_legacy_nonvolatile",
+      "status": "PASS",
+      "queue_timing": 1220
+    }
+  ],
+  "scope": "Actual DLL/constructors, synthetic OS/game clock. Not onsite Windows run."
+}

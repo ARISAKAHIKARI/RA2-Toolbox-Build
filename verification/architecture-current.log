@@ -1,0 +1,2 @@
+PASS architecture boundaries: 129 source files; 84 host includes / 69 Runtime includes; read, input, injection, patch, event and frame-grant ownership
+NOTE: 3 business-planning migrations and cross-feature snapshot consolidation remain; no full-game/real-netplay proof

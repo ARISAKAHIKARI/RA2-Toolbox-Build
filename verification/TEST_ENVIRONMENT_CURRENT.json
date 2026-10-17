@@ -1,0 +1,10 @@
+{
+  "version": "0.7.20",
+  "host": "Linux-6.18.55-x86_64-with-glibc2.39",
+  "dll_sha256": "00d8517f5888e12cbf23ff73a7cd4a3485d5f76de631d63dcf29489942f4911d",
+  "runtime": "Unicorn x86 with Win32/world stubs",
+  "real_windows": false,
+  "real_game": false,
+  "real_netplay": false,
+  "game_exe_bundled": false
+}

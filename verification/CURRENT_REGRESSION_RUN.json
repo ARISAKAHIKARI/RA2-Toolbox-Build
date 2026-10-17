@@ -1,0 +1,70 @@
+{
+  "dll_sha256": "00d8517f5888e12cbf23ff73a7cd4a3485d5f76de631d63dcf29489942f4911d",
+  "runs": [
+    {
+      "script": "startup_runtime_regression",
+      "output": "startup-user.json",
+      "exit_code": 0
+    },
+    {
+      "script": "startup_runtime_regression",
+      "output": "startup-reference.json",
+      "exit_code": 0
+    },
+    {
+      "script": "no_interception_runtime",
+      "output": "no-interception-user.json",
+      "exit_code": 0
+    },
+    {
+      "script": "no_interception_runtime",
+      "output": "no-interception-reference.json",
+      "exit_code": 0
+    },
+    {
+      "script": "ore_priority_runtime",
+      "output": "ore-priority-user.json",
+      "exit_code": 0
+    },
+    {
+      "script": "ore_priority_runtime",
+      "output": "ore-priority-reference.json",
+      "exit_code": 0
+    },
+    {
+      "script": "entry_binding_regression",
+      "output": "binding-current.json",
+      "exit_code": 0
+    },
+    {
+      "script": "selection_gateway_regression",
+      "output": "selection-current.json",
+      "exit_code": 0
+    },
+    {
+      "script": "bridge_diagnostics_regression",
+      "output": "bridge-current.json",
+      "exit_code": 0
+    },
+    {
+      "script": "timing_runtime_regression",
+      "output": "timing-current.json",
+      "exit_code": 0
+    },
+    {
+      "script": "robustness_runtime_regression",
+      "output": "robustness-current.json",
+      "exit_code": 0
+    },
+    {
+      "script": "two_peer_sync",
+      "output": "two-peer-current.json",
+      "exit_code": 0
+    },
+    {
+      "script": "config_runtime_regression",
+      "output": "config-current.json",
+      "exit_code": 0
+    }
+  ]
+}

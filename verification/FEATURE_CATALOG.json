@@ -1,0 +1,542 @@
+{
+  "version": "0.7.20",
+  "architecture": "No feature detours; sole manager Windows message entry",
+  "features": [
+    {
+      "id": "F01",
+      "name": "公共游戏发现与窗口定位",
+      "implementation": "枚举兼容进程，先确定 PID，再读 YRpp 的 Game::hWnd 并核对窗口所属 PID 和线程。指定进程暂时没有窗口时保留只读连接，不能改绑另一场游戏。采用显式 read 字节读取，避免把 get 返回值误当输出参数。 光标模块也复用公共游戏名、窗口发现和 YRpp Game::hWnd 校验；保留同 PID 启动器子窗口路径。",
+      "source": "external_reader/source/process_discovery.h；message_query.h 位于 shared/source",
+      "route": "读取/外部展示/配置资源；无游戏函数拦截",
+      "review": "源码路径审查；局部行为测试见报告，未做全部功能游戏实机验收"
+    },
+    {
+      "id": "F02",
+      "name": "统一外部读取器",
+      "implementation": "战术、单位统计和光标统一使用 ReadSession。同一 PID 和访问能力共享受引用计数保护的只读连接，缓存、失败诊断和批次计数归各任务独立所有；仅连接登记加短锁，读取和整批采样不持全局锁。统计/战术使用批次页面缓存，光标使用 readFresh 即时读取。只查询连接与可读连接隔离，关闭一个模块不关闭其它模块的连接。进程退出后重新连接生成新代次并清空该会话缓存。",
+      "source": "external_reader/source/process_connection.h; process_reader.h; shared_reader.h",
+      "route": "读取/外部展示/配置资源；无游戏函数拦截",
+      "review": "源码路径审查；局部行为测试见报告，未做全部功能游戏实机验收"
+    },
+    {
+      "id": "F03",
+      "name": "布局检查与分层就绪",
+      "implementation": "布局探针检查关键对象与数组；readStatus、bridgeStatus、commandStatus、renderStatus 分别表示读取、桥接、命令和显示。能显示不代表能下单，命令桥异常也不应直接抹掉有效的只读显示。",
+      "source": "external_reader/source/layout_probe.h；assist/source/main.cpp 的 mergeExternal",
+      "route": "读取/外部展示/配置资源；无游戏函数拦截",
+      "review": "源码路径审查；局部行为测试见报告，未做全部功能游戏实机验收"
+    },
+    {
+      "id": "F04",
+      "name": "单一 GameRuntime 与游戏线程管理",
+      "implementation": "EXE 通过统一 host_game_input 订阅消息入口；只有 GameRuntime.dll 进入游戏。游戏线程租约与忙碌拒绝保留，忙碌不伪造回执。",
+      "source": "shared/source/host_game_input.h; shared/source/game_entry_manager.cpp",
+      "route": "统一管理器原版调用或事件入口；无功能级 Hook",
+      "review": "源码路径审查；局部行为测试见报告，未做全部功能游戏实机验收"
+    },
+    {
+      "id": "F05",
+      "name": "禁止游戏代码补丁",
+      "implementation": "管理器的 Patch 操作直接返回 PatchDenied；没有 VirtualProtect、跳板分配、原版函数入口或调用点改写。旧补丁登记地址仅作为历史资料。",
+      "source": "shared/source/game_entry_manager.cpp; assist/source/input_patch.h",
+      "route": "统一管理器原版调用或事件入口；无功能级 Hook",
+      "review": "源码路径审查；局部行为测试见报告，未做全部功能游戏实机验收"
+    },
+    {
+      "id": "F06",
+      "name": "统一消息与外部输入调度",
+      "implementation": "每个游戏仅有管理器 WH_GETMESSAGE / WH_CALLWNDPROCRET 两个 Windows 消息订阅。宿主按 4 ms 目标轮询增强鼠标输入并保存捕获时对局、边沿、按下时修饰键与取消代次；上下文超过 150 ms 未续期则停采并清除，切局/菜单/失焦重新播种按键状态；战术控制目标间隔 16 ms。实际延迟取决于系统调度和游戏消息泵。",
+      "source": "shared/source/host_game_input.h; assist/source/pointer_host.h",
+      "route": "统一管理器原版调用或事件入口；无功能级 Hook",
+      "review": "源码路径审查；局部行为测试见报告，未做全部功能游戏实机验收"
+    },
+    {
+      "id": "F07",
+      "name": "统一请求、接续和事件提交",
+      "implementation": "命令、选兵、外部规划、协同与增强输入使用同一 Shared 协议和同一游戏线程调度。观察到与点击目标格相符的原版 Move 状态后才追加 CS；不修改原版任务、事件字节或接收函数。请求没有独立 Hook。队列满保留未提交部分，已接收前缀不重发。",
+      "source": "assist/source/pointer_intent.h; assist/source/pointer_bridge.h; assist/source/bridge.cpp",
+      "route": "统一管理器原版调用或事件入口；无功能级 Hook",
+      "review": "源码路径审查；局部行为测试见报告，未做全部功能游戏实机验收"
+    },
+    {
+      "id": "F08",
+      "name": "对局身份与延迟恢复",
+      "implementation": "请求携带对局代次、时间和对象版本；真正换局会取消旧请求。短暂窗口丢失、暂停或回调延迟不直接等同退出。主程序不伪造 ACK；线程迁移必须确认旧线程对象已结束。",
+      "source": "assist/source/session_epoch.h；control_link.h；command_delivery.h；main.cpp",
+      "route": "统一管理器原版调用或事件入口；无功能级 Hook",
+      "review": "源码路径审查；局部行为测试见报告，未做全部功能游戏实机验收"
+    },
+    {
+      "id": "F09",
+      "name": "回执与手动优先",
+      "implementation": "计划、入队、观察、完成、取消和过期分别记录。每帧与跨帧仲裁避免多个自动任务争用同一单位；人工操作递增对象版本并接管任务。已入队只表示提交成功，不能冒充动作已完成。",
+      "source": "assist/source/command_gateway.h；unit_task_arbiter.h；business_effects.h",
+      "route": "统一管理器原版调用或事件入口；无功能级 Hook",
+      "review": "源码路径审查；局部行为测试见报告，未做全部功能游戏实机验收"
+    },
+    {
+      "id": "F10",
+      "name": "一键维修和自动维修",
+      "implementation": "仅维修己方受损且未处于维修/待确认状态的建筑。默认检查 YRpp ClickRepairable (+0x157A)；勾选“允许维修不可维修的建筑”后可放宽此类型限制。收集与提交前均检查，关掉许可会跳过未提交的非标准建筑请求；已入原版队列的事件不撤回。不改原版类型数据或归属，仍通过统一 Repair 事件入口。",
+      "source": "assist/source/bridge.cpp; assist/source/auto_settings_ui.h",
+      "route": "统一管理器原版调用或事件入口；无功能级 Hook",
+      "review": "源码路径审查；局部行为测试见报告，未做全部功能游戏实机验收"
+    },
+    {
+      "id": "F11",
+      "name": "战斗单位筛选",
+      "implementation": "从当前选区筛选符合战斗条件的己方单位，排除采矿或工程用途等不符合项。执行受管理器保护的本地选择 API，不向仿真队列发送攻击命令。",
+      "source": "assist/source/bridge.cpp 的 selectFilter",
+      "route": "统一管理器原版调用或事件入口；无功能级 Hook",
+      "review": "源码路径审查；局部行为测试见报告，未做全部功能游戏实机验收"
+    },
+    {
+      "id": "F12",
+      "name": "空载运输选择",
+      "implementation": "查找己方有运输容量且当前空载的载具，进行本地选择。它与自动装车分开：选择空车不意味着乘员已经得到进车任务。",
+      "source": "assist/source/bridge.cpp 的 selectFilter",
+      "route": "统一管理器原版调用或事件入口；无功能级 Hook",
+      "review": "源码路径审查；局部行为测试见报告，未做全部功能游戏实机验收"
+    },
+    {
+      "id": "F13",
+      "name": "受损单位选择",
+      "implementation": "从当前选区筛选生命值未满的己方单位，重新组成选区。它不自动修理单位，建筑维修仍走 Repair 指令。",
+      "source": "assist/source/bridge.cpp 的 selectFilter",
+      "route": "统一管理器原版调用或事件入口；无功能级 Hook",
+      "review": "源码路径审查；局部行为测试见报告，未做全部功能游戏实机验收"
+    },
+    {
+      "id": "F14",
+      "name": "空闲单位定位",
+      "implementation": "矿车、工程师、运输载具分别按类别检查任务和目标状态，循环定位符合条件的己方对象并移动视野。没有合法对象时返回零，不用旧指针凑结果。",
+      "source": "assist/source/bridge.cpp 的 findIdle；protocol.h 的 idleMission",
+      "route": "统一管理器原版调用或事件入口；无功能级 Hook",
+      "review": "源码路径审查；局部行为测试见报告，未做全部功能游戏实机验收"
+    },
+    {
+      "id": "F15",
+      "name": "组合选兵与双按范围",
+      "implementation": "多个兵种可配置同一个快捷键，注册时去重。单按合并选中屏幕内这些类型的己方单位，双按选全图；本局缺失类型跳过。宿主生成绑定本局的类型掩码，唯一 GameRuntime 在同一选兵请求里筛选全部对象，只清空一次再合并选区；无网络事件或新增 Hook。解绑某个兵种保留组内其他兵种。原有按普通武器选变体功能及其独立快捷键保留。普通功能快捷键仍拒绝冲突。",
+      "source": "assist/source/type_hotkey.h; assist/source/type_bindings_ui.h; assist/source/type_select_bridge.h; assist/source/main.cpp",
+      "route": "统一管理器原版调用或事件入口；无功能级 Hook",
+      "review": "源码路径审查；局部行为测试见报告，未做全部功能游戏实机验收"
+    },
+    {
+      "id": "F16",
+      "name": "信标清理与实验性地图揭示",
+      "implementation": "地图全开默认未许可，须勾选“启用地图全开（实验性）”；宿主与 Runtime 均检查许可，关闭清除待处理请求，不回退已揭示地图。经统一管理器调用原版本地 UI 接口。恢复单机及多人地图揭示，仅作用于当前玩家；仍检查有效对局与地图数组，菜单/加载/观战不执行。它是本地显示调用，不构造模拟事件。",
+      "source": "assist/source/bridge.cpp",
+      "route": "统一管理器原版调用或事件入口；无功能级 Hook",
+      "review": "源码路径审查；局部行为测试见报告，未做全部功能游戏实机验收"
+    },
+    {
+      "id": "F17",
+      "name": "自动装车分配",
+      "implementation": "选中乘员后触发装车；选区有运输载具时优先限定这些载具，仅选乘员时查找附近己方载具。检查空位、乘员占位大小、载具限制和原版可进入动作，支持就近优先或兵种均衡，半径 1 至 512 格。",
+      "source": "assist/source/autoload.h；autoload_bridge.h 的 autoLoad",
+      "route": "统一管理器原版调用或事件入口；无功能级 Hook",
+      "review": "源码路径审查；局部行为测试见报告，未做全部功能游戏实机验收"
+    },
+    {
+      "id": "F18",
+      "name": "装车预约与完成判断",
+      "implementation": "已分配乘员占用预约空位，向统一 nativeMission 提交 Enter，避免每次扫描重复分配。根据任务、目的载具和实际 Transporter 判断途中、完成或人工接管；超时和失效释放预约。已测试单机及双端模式 3/4 的实际 DLL 事件提交，尚未验证完整寻路和进车动画。",
+      "source": "assist/source/autoload.h 的 Ledger；autoload_bridge.h 的 finishLoadingReservation",
+      "route": "统一管理器原版调用或事件入口；无功能级 Hook",
+      "review": "源码路径审查；局部行为测试见报告，未做全部功能游戏实机验收"
+    },
+    {
+      "id": "F19",
+      "name": "智能卸载",
+      "implementation": "对选中、可卸载的己方载具发送原版卸载任务并追踪乘员。乘员离车后按稳定位置和类型决定后续行为，提交失败不会当作任务已经完成。",
+      "source": "assist/source/native_orders_bridge.h 的 smartUnload 与 smartUnloadTick；unload_policy.h",
+      "route": "统一管理器原版调用或事件入口；无功能级 Hook",
+      "review": "源码路径审查；局部行为测试见报告，未做全部功能游戏实机验收"
+    },
+    {
+      "id": "F20",
+      "name": "乘员下车后的行动",
+      "implementation": "根据乘员可部署、工程师、间谍、C4 等属性及原版目标合法性决定休眠、部署、进驻或攻击。目标失效、人工操作、时限或归属改变会结束跟进；不是无条件自动占领任意建筑。",
+      "source": "assist/source/native_orders.h；native_orders_bridge.h 的卸载状态机",
+      "route": "统一管理器原版调用或事件入口；无功能级 Hook",
+      "review": "源码路径审查；局部行为测试见报告，未做全部功能游戏实机验收"
+    },
+    {
+      "id": "F21",
+      "name": "逃生助手",
+      "implementation": "仅跟踪选中的己方载具，取消选中且载具仍存活时停止跟踪。载具被毁后，对已观察到的存活乘员继续跟进。可部署乘员保留原版散开移动，散开跟踪窗口为 180 帧；每名乘员只要原版 CanDeploy 允许就在当前调度提交 Deploy，不等待同格其他乘员，也没有固定停稳两帧延迟。条件不满足时不发 Sleep 阻止散开。显式停止、取消、正常下车、归属变化或超时结束跟进；不创造幸存者。仅保留一个逃生开关。",
+      "source": "assist/source/native_orders_bridge.h; assist/source/unload_policy.h",
+      "route": "统一管理器原版调用或事件入口；无功能级 Hook",
+      "review": "源码路径审查；局部行为测试见报告，未做全部功能游戏实机验收"
+    },
+    {
+      "id": "F22",
+      "name": "自动 CS：原版移动后接续",
+      "implementation": "保留右键原版移动。宿主捕获右键释放时的输入意图，Runtime 等待己方选中单位的 Move 与相同目的格可观察后，再经 nativeMission 追加一次 AttackMove。检查单位类型白名单、武器、对局、对象身份和新输入代次。没有改写原版 QueueMegaMission；不改鼠标谓词。",
+      "source": "assist/source/pointer_host.h; assist/source/pointer_bridge.h; assist/source/auto_cs_bridge.h",
+      "route": "宿主输入意图 → 原版 Move 观察（右键）/主动命令（中键）→ 统一事件入口",
+      "review": "源码路径审查；局部行为测试见报告，未做全部功能游戏实机验收"
+    },
+    {
+      "id": "F23",
+      "name": "按键 CS",
+      "implementation": "按住配置键配合独立配置的 CS 鼠标键（默认中键），留空则仅鼠标。配置为右键时接续原版 Move；直接攻击移动使用另一独立按钮（默认侧键 1）。Shift 右键规划不接续；聊天、菜单、失去前台或过期时拒绝。原版光标不再被强制改成 CS 光标。",
+      "source": "assist/source/pointer_host.h; assist/source/pointer_bridge.h",
+      "route": "宿主输入意图 → 原版 Move 观察（右键）/主动命令（中键）→ 统一事件入口",
+      "review": "源码路径审查；局部行为测试见报告，未做全部功能游戏实机验收"
+    },
+    {
+      "id": "F24",
+      "name": "高级移动攻击",
+      "implementation": "按住配置键配合本功能鼠标键（默认中键，均可配置）；右键模式确认原版 Move 后追加初始 AttackMove，再登记外部规划任务。后续目标选择仍在 EXE，回到统一管理器验证并提交。",
+      "source": "assist/source/native_orders_bridge.h; assist/source/external_planner.h; assist/source/pointer_bridge.h",
+      "route": "宿主输入意图 → 原版 Move 观察（右键）/主动命令（中键）→ 统一事件入口",
+      "review": "源码路径审查；局部行为测试见报告，未做全部功能游戏实机验收"
+    },
+    {
+      "id": "F25",
+      "name": "磁电轮换攻击",
+      "implementation": "配合独立磁电鼠标键（默认中键）；配置为右键时：确认原版 Move 后仅登记任务，不再替换原版移动。中键方式先发普通 Move 再登记。外部 Planner 读取出手/重装填证据轮换目标，每次攻击通过统一原版事件通道。没有武器选择或射击函数 Hook。",
+      "source": "assist/source/native_orders_bridge.h; assist/source/external_planner.h; assist/source/magnetron_cycle.h",
+      "route": "宿主输入意图 → 原版 Move 观察（右键）/主动命令（中键）→ 统一事件入口",
+      "review": "源码路径审查；局部行为测试见报告，未做全部功能游戏实机验收"
+    },
+    {
+      "id": "F26",
+      "name": "新输入取消与手动优先",
+      "implementation": "宿主观察右键按下以及 S/D/X 边沿，取消旧的未提交增强批次；有效取消请求按捕获的己方选区撤销工具任务。普通事件仍由游戏处理。状态观测继续识别原版任务变化。输入队列上限 16，超时不补发；短于轮询间隔的点击可能漏采，不会补造点击。",
+      "source": "shared/source/host_game_input.h; assist/source/pointer_bridge.h; assist/source/object_index.h",
+      "route": "统一管理器原版调用或事件入口；无功能级 Hook",
+      "review": "源码路径审查；局部行为测试见报告，未做全部功能游戏实机验收"
+    },
+    {
+      "id": "F27",
+      "name": "满载返矿与到场优先",
+      "implementation": "矿车/矿场支持独立自定义 ID 清单；不勾选自动识别，勾选后仅使用清单，空清单排除全部。矿车须有储矿容量，目标须在该矿车原有 Dock 清单内。设置即时生效与自动保存，提交前重新检查。满载己方矿车由外部 Planner 选择兼容矿场并排队。2格内已到场车可优先于4格外预约车：经统一 OreYield 原生 Move 让位，观察原版 Move 和预约释放后再 Enter。每矿场一轮一车、每载货任务最多被插一次，被插车保留下一轮优先。最多3次让位重试，未释放180帧退出；本轮360帧上限。不打断到场/卸货或手动接管，安全格不足时保留原排队。Runtime 复核原版状态后统一入单机 DoList / 联机 OutList，不直接写 radio。150ms/6帧及对局/手动版本检查保留。",
+      "source": "assist/source/external_planner.h; ore_queue.h; external_orders_bridge.h; main.cpp",
+      "route": "统一管理器原版调用或事件入口；无功能级 Hook",
+      "review": "源码路径审查；局部行为测试见报告，未做全部功能游戏实机验收"
+    },
+    {
+      "id": "F28",
+      "name": "矿场排队与等待格",
+      "implementation": "根据矿厂占用、无线电关联和周围格占用建立排队任务，先移动到等待格，再在条件允许时进入矿厂。预约会随对象失效、人工接管或对局切换清理，不直接修改矿厂生产或玩家资金。",
+      "source": "assist/source/ore_queue.h；external_planner.h 的 waitingCell 与 accepted",
+      "route": "统一管理器原版调用或事件入口；无功能级 Hook",
+      "review": "源码路径审查；局部行为测试见报告，未做全部功能游戏实机验收"
+    },
+    {
+      "id": "F29",
+      "name": "卸矿结果观察",
+      "implementation": "通过矿量和任务状态变化统计观察到的卸货与未确认次数；数字是只读观察证据，不是游戏真实收入流水。玩家给矿车新命令时自动规划让出控制。",
+      "source": "assist/source/business_effects.h；external_planner.h；native_input_hooks.h",
+      "route": "统一管理器原版调用或事件入口；无功能级 Hook",
+      "review": "源码路径审查；局部行为测试见报告，未做全部功能游戏实机验收"
+    },
+    {
+      "id": "F30",
+      "name": "高级进驻建筑与载具",
+      "implementation": "按住进驻配置键（默认 Alt）并按本功能鼠标键（默认中键）指向目标，捕获最多 512 个源对象，向现有外部协同分配器提交。按同类目标容量分配，Runtime 复核原版进入合法性后发送 Enter/Capture。超限拒绝增强请求，普通左右键仍原样运行。",
+      "source": "assist/source/pointer_bridge.h; assist/source/cooperative_bridge.h; assist/source/extra_settings_io.h",
+      "route": "中键/侧键意图 → GameRuntime 查询/复核 → 原有规划或统一事件入口",
+      "review": "源码路径审查；局部行为测试见报告，未做全部功能游戏实机验收"
+    },
+    {
+      "id": "F31",
+      "name": "飞机高级攻击",
+      "implementation": "按住对应攻击配置键并按本模式鼠标键（默认中键）指向敌方目标。目标分配、受击上限仍由外部协同规划器完成，GameRuntime 复核对象与武器兼容并构造 Attack 事件。不再拦截 FootClickedAction。",
+      "source": "assist/source/cooperative_bridge.h; assist/source/extra_settings_io.h",
+      "route": "中键/侧键意图 → GameRuntime 查询/复核 → 原有规划或统一事件入口",
+      "review": "源码路径审查；局部行为测试见报告，未做全部功能游戏实机验收"
+    },
+    {
+      "id": "F32",
+      "name": "目标类型配额",
+      "implementation": "按类型配置第一/第二次和最大分配数量；有效输入自动生效。取消类型覆盖时直接删除覆盖并恢复默认显示，不再先验证即将废弃的数字框。",
+      "source": "assist/source/additional_settings.h；extra_settings_io.h；auto_settings_ui.h",
+      "route": "中键/侧键意图 → GameRuntime 查询/复核 → 原有规划或统一事件入口",
+      "review": "源码路径审查；局部行为测试见报告，未做全部功能游戏实机验收"
+    },
+    {
+      "id": "F33",
+      "name": "飞碟主武器",
+      "implementation": "开启后 配置键（默认 Ctrl，可留空）+本功能鼠标键（默认中键）指向建筑，识别飞碟/吸取副武器类型并提交原版对地强制攻击事件。原版正常点击与武器选择保持原样；不直接修改武器、任务或目标。",
+      "source": "assist/source/cooperative_bridge.h",
+      "route": "中键/侧键意图 → GameRuntime 查询/复核 → 原有规划或统一事件入口",
+      "review": "源码路径审查；局部行为测试见报告，未做全部功能游戏实机验收"
+    },
+    {
+      "id": "F34",
+      "name": "变卖受吸取的己方建筑",
+      "implementation": "开启后 配置键（默认 Ctrl，可留空）+本功能鼠标键（默认侧键 2）指向己方受吸取建筑，经统一对象事件构造器提交 Sell。目标必须仍存活、归自己所有。无变卖模式/光标 Hook。",
+      "source": "assist/source/cooperative_bridge.h; assist/source/pointer_bridge.h",
+      "route": "中键/侧键意图 → GameRuntime 查询/复核 → 原有规划或统一事件入口",
+      "review": "源码路径审查；局部行为测试见报告，未做全部功能游戏实机验收"
+    },
+    {
+      "id": "F35",
+      "name": "变卖己方载具",
+      "implementation": "开启后 配置键（默认 Ctrl，可留空）+本功能鼠标键（默认侧键 2）指向载具。保留原版接收端条件：目标归发送玩家、载具格子中存在建筑。构造 Sell 对象事件，目标标签为 0x34。不会伪造其他玩家身份、改变格子链表或直接调用出售执行函数。模型执行了用户 EXE 的 Sell 接收分支，最终出售/经济效果仍待游戏实测。",
+      "source": "assist/source/cooperative_bridge.h; assist/source/pointer_bridge.h",
+      "route": "中键/侧键意图 → GameRuntime 查询/复核 → 原有规划或统一事件入口",
+      "review": "源码路径审查；局部行为测试见报告，未做全部功能游戏实机验收"
+    },
+    {
+      "id": "F36",
+      "name": "变卖敌方建筑：停用",
+      "implementation": "不再伪造敌方 House 发出 Sell。配置加载强制关闭、界面禁用、Runtime 再检查己方归属。",
+      "source": "assist/source/extra_settings_io.h; assist/source/extra_controls.h; assist/source/cooperative_bridge.h",
+      "route": "停用：不提供原版规则/身份绕过",
+      "review": "源码路径审查；局部行为测试见报告，未做全部功能游戏实机验收"
+    },
+    {
+      "id": "F37",
+      "name": "随处建造：停用",
+      "implementation": "该能力需要绕过原版放置合法性判断，普通移动/生产事件无法等价实现。删除 0x464AC0 拦截，旧配置不能恢复，Runtime 返回不支持。",
+      "source": "assist/source/placement_bridge.h",
+      "route": "停用：不提供原版规则/身份绕过",
+      "review": "源码路径审查；局部行为测试见报告，未做全部功能游戏实机验收"
+    },
+    {
+      "id": "F38",
+      "name": "科技清单与离线类型缓存",
+      "implementation": "缓存已见类型的 ID 和名称，支持搜索、手动添加 ID、预设和自定义启用清单。离线缓存用于配置，不代表当前对局存在该单位；执行时必须重新映射到当前索引。",
+      "source": "assist/source/type_catalog.h；tech_profile.h；main.cpp 的 fillTech",
+      "route": "读取/外部展示/配置资源；无游戏函数拦截",
+      "review": "源码路径审查；局部行为测试见报告，未做全部功能游戏实机验收"
+    },
+    {
+      "id": "F39",
+      "name": "科技全开：生产连续性待修复",
+      "implementation": "补图实验不能防止原版 Abandon/AbandonAll 取消生产，已撤出。删除两个原版侧栏 CanBuild 调用点改写，不补造无资格图标，不绕过前置科技。类型目录和条件解析保留。界面禁用科技全开，旧配置不能恢复。",
+      "source": "assist/source/sidebar.h; assist/source/main.cpp",
+      "route": "停用：不提供原版规则/身份绕过",
+      "review": "源码路径审查；局部行为测试见报告，未做全部功能游戏实机验收"
+    },
+    {
+      "id": "F40",
+      "name": "合法生产与生产观测",
+      "implementation": "外部生产仅限单机，提交前调用正常 CanBuild（limitOnly=false）并检查工厂；原生侧栏不被改写。生产完成/暂停观测以及本地图标闪烁保留。",
+      "source": "assist/source/bridge.cpp; assist/source/sidebar.h",
+      "route": "统一管理器原版调用或事件入口；无功能级 Hook",
+      "review": "源码路径审查；局部行为测试见报告，未做全部功能游戏实机验收"
+    },
+    {
+      "id": "F41",
+      "name": "超级武器快捷键",
+      "implementation": "超武绑定按对象 ID 持久化；列表刷新、换序和项目消失后按 ID 恢复选择并同步按键框，清空列表时清空按键显示。下拉展开期间使用可见列表的 ID，避免把旧行绑定到新快照的另一超武。原版选择超武操作仍由统一入口授权。",
+      "source": "assist/source/bridge.cpp 的 superSelect 与 namedSuper；main.cpp 的 bindSuper",
+      "route": "统一管理器原版调用或事件入口；无功能级 Hook",
+      "review": "源码路径审查；局部行为测试见报告，未做全部功能游戏实机验收"
+    },
+    {
+      "id": "F42",
+      "name": "规则前提分析工具",
+      "implementation": "tools 下的脚本读取规则文件，分析 Prerequisite、拥有方和科技条件并输出审查结果。它是离线只读工具，不是游戏内“解锁全部科技”的实现。",
+      "source": "tools/tech_prerequisite_audit.py",
+      "route": "读取/外部展示/配置资源；无游戏函数拦截",
+      "review": "源码路径审查；局部行为测试见报告，未做全部功能游戏实机验收"
+    },
+    {
+      "id": "F43",
+      "name": "载员与剩余容量",
+      "implementation": "按统一只读显示策略随菜单隐藏/恢复。可见载具同一逻辑帧内重读坐标与乘员链，并复核对象身份/类型/所有者及存活状态；插值采用外部采样帧，容量立即更新。前台目标跟随 5–500 Hz 配置，实际耗时见 Runtime.log，不承诺实测屏幕帧率。",
+      "source": "external_reader/source/display_state.h; tactical_sampler.h; assist/source/label_motion.h; main.cpp",
+      "route": "读取/外部展示/配置资源；无游戏函数拦截",
+      "review": "源码路径审查；局部行为测试见报告，未做全部功能游戏实机验收"
+    },
+    {
+      "id": "F44",
+      "name": "铁幕与力场倒计时",
+      "implementation": "读取防护相关计时，按模拟帧计算剩余时间，绘制在对象附近。暂停时剩余模拟时间不会按墙钟强行扣减；标签位置可以独立按显示时钟平滑。",
+      "source": "assist/source/protocol.h 的 remaining；label_motion.h；tactical_sampler.h",
+      "route": "读取/外部展示/配置资源；无游戏函数拦截",
+      "review": "源码路径审查；局部行为测试见报告，未做全部功能游戏实机验收"
+    },
+    {
+      "id": "F45",
+      "name": "冻结倒计时",
+      "implementation": "读取超时空相关冻结信息，启用后附加剩余帧提示。它反映当前采样状态，不修改对象解冻时间。",
+      "source": "external_reader/source/tactical_sampler.h；assist/source/label_motion.h",
+      "route": "读取/外部展示/配置资源；无游戏函数拦截",
+      "review": "源码路径审查；局部行为测试见报告，未做全部功能游戏实机验收"
+    },
+    {
+      "id": "F46",
+      "name": "心灵探测和攻击指向",
+      "implementation": "按采样到的目标关系显示指向线，读取失败或目标消失后不沿用无效对象。显示层不会因此发出攻击指令。",
+      "source": "external_reader/source/tactical_sampler.h；assist/source/main.cpp 的 paint",
+      "route": "读取/外部展示/配置资源；无游戏函数拦截",
+      "review": "源码路径审查；局部行为测试见报告，未做全部功能游戏实机验收"
+    },
+    {
+      "id": "F47",
+      "name": "箱子位置与预览",
+      "implementation": "显示箱子所在格；有预设结果时显示类别，随机箱显示为随机。当前没有启用可靠的开箱结果 hook，不能把预览当作已经获得的奖励；历史 CrateResults 协议字段保留兼容但不是当前启用功能。",
+      "source": "external_reader/source/tactical_sampler.h；assist/source/crate_names.h；main.cpp 的 save",
+      "route": "读取/外部展示/配置资源；无游戏函数拦截",
+      "review": "源码路径审查；局部行为测试见报告，未做全部功能游戏实机验收"
+    },
+    {
+      "id": "F48",
+      "name": "文字提示与刷新",
+      "implementation": "显示任务反馈、装车统计和生产变化，可设置提示时长、上边距、刷新率及耗时信息。文字和头顶标签共用战术浮层，但与单位统计浮层独立；显示由 renderStatus 决定，命令状态不再一票否决有效显示。",
+      "source": "assist/source/main.cpp 的 paint、mergeExternal 与 clockState；frame_clock.h",
+      "route": "读取/外部展示/配置资源；无游戏函数拦截",
+      "review": "源码路径审查；局部行为测试见报告，未做全部功能游戏实机验收"
+    },
+    {
+      "id": "F49",
+      "name": "玩家与单位数量",
+      "implementation": "读取有效玩家、常规类型及拥有数量，区分本机与其他玩家，可选是否显示建筑。过滤旁观者和退出等不适合展示的玩家，列顺序优先本机，退场后压缩空列。",
+      "source": "unit_monitor/source/sampler.h；owned_counter.h；main.cpp",
+      "route": "读取/外部展示/配置资源；无游戏函数拦截",
+      "review": "源码路径审查；局部行为测试见报告，未做全部功能游戏实机验收"
+    },
+    {
+      "id": "F50",
+      "name": "生产队列与进度",
+      "implementation": "按工厂对象读取排队数量、当前生产、进度和暂停状态，避免把多个建筑指向同一队列当作重复生产。显示拥有数量和新增生产，而非简单累加界面图标。",
+      "source": "unit_monitor/source/sampler.h 的 sample；unit_monitor/source/core.h",
+      "route": "读取/外部展示/配置资源；无游戏函数拦截",
+      "review": "源码路径审查；局部行为测试见报告，未做全部功能游戏实机验收"
+    },
+    {
+      "id": "F51",
+      "name": "图标持久缓存与绘制缓存",
+      "implementation": "外部后台线程将实际读取到的图标/色盘保存到 cache/unit-icons，按游戏路径和资源指纹隔离；小资源校验内容，大型 MIX 等资源以大小与更新时间识别。规则、地图、资源或程序变化时换用新的缓存。记录按类型 ID、图标文件名和类别匹配，校验版本、长度、条数与校验和，损坏缓存忽略；临时文件写完后原子替换。新对局可复用磁盘图标，实时图标可读后校正；首次从未读取过的图标仍需等游戏载入。GDI 位图保留，图标或色盘变化才重建。",
+      "source": "unit_monitor/source/icon_cache.h; sampler.h; main.cpp",
+      "route": "读取/外部展示/配置资源；无游戏函数拦截",
+      "review": "源码路径审查；局部行为测试见报告，未做全部功能游戏实机验收"
+    },
+    {
+      "id": "F52",
+      "name": "Tab 显示与快捷键",
+      "implementation": "删除单位统计自己的 WH_KEYBOARD_LL。改为现有 UI 时钟轮询 Tab，不吞原版 Tab，游戏原来的 Tab 行为会同时保留。Ctrl+Alt+H 和显示按钮可独立显隐；勾选常驻显示可完全不使用 Tab。失焦/菜单/读取无效仍隐藏，面板与日志说明原因。",
+      "source": "unit_monitor/source/main.cpp",
+      "route": "统一管理器原版调用或事件入口；无功能级 Hook",
+      "review": "源码路径审查；局部行为测试见报告，未做全部功能游戏实机验收"
+    },
+    {
+      "id": "F53",
+      "name": "演示和重新连接",
+      "implementation": "布局演示明确使用模拟玩家、数量和图标，用于查看排版；重新连接重建当前读取对象。统计暂停不会释放战术模块仍在使用的公共读取句柄。",
+      "source": "unit_monitor/source/main.cpp 的 demoData、attach 与 detach；shared_reader.h",
+      "route": "读取/外部展示/配置资源；无游戏函数拦截",
+      "review": "源码路径审查；局部行为测试见报告，未做全部功能游戏实机验收"
+    },
+    {
+      "id": "F54",
+      "name": "光标游戏识别与资源采集",
+      "implementation": "识别兼容 Yuri 进程并取得鼠标对象、原始帧和色盘，保留资源缓存。当前光标连接要求明确的单个游戏进程；资源不匹配时报告失败，不把不明 SHA 当作标准布局。",
+      "source": "cursor/source/main.cpp 的 attach 与 capture；recognition.h；resource_capture.h",
+      "route": "读取/外部展示/配置资源；无游戏函数拦截",
+      "review": "源码路径审查；局部行为测试见报告，未做全部功能游戏实机验收"
+    },
+    {
+      "id": "F55",
+      "name": "原版光标隐藏/恢复",
+      "implementation": "通过统一 GameRuntime 在绑定游戏线程调用原版鼠标对象 Hide/Show，跟踪配对引用次数，失败不写回陌生对象；Windows 光标也由同一管理器资源路径处理。这里改变本地显示，不改游戏代码或仿真任务。",
+      "source": "cursor/source/hide.cpp",
+      "route": "统一管理器原版调用或事件入口；无功能级 Hook",
+      "review": "源码路径审查；局部行为测试见报告，未做全部功能游戏实机验收"
+    },
+    {
+      "id": "F56",
+      "name": "外置高刷光标",
+      "implementation": "透明、点击穿透的覆盖窗口跟随系统坐标显示光标，目标刷新率可自动或设为 30 至 500。帧变化与位置变化分开处理，缓存减少重复创建；高刷新率不提高游戏模拟帧率。",
+      "source": "cursor/source/main.cpp 的运行循环；native_cache.h；perf_policy.h",
+      "route": "读取/外部展示/配置资源；无游戏函数拦截",
+      "review": "源码路径审查；局部行为测试见报告，未做全部功能游戏实机验收"
+    },
+    {
+      "id": "F57",
+      "name": "游戏内光标刷新",
+      "implementation": "外部宿主经唯一 host_game_input 校验窗口与前台后发送 WM_SETCURSOR；等待有界且不持调度锁。游戏线程上的光标资源发布仍由 GameRuntime 消费。",
+      "source": "shared/source/host_game_input.h; cursor/source/hide.cpp",
+      "route": "统一管理器原版调用或事件入口；无功能级 Hook",
+      "review": "源码路径审查；局部行为测试见报告，未做全部功能游戏实机验收"
+    },
+    {
+      "id": "F58",
+      "name": "缩放和热点修正",
+      "implementation": "支持缩放比例、自动缩放、保持纵横比、手动热点、游戏/系统分辨率和 DPI 模式。原生与超武热点有单独修正，显示坐标与点击位置应通过用户实际分辨率验证。",
+      "source": "cursor/source/scale.h；ui_dpi.h；native_hotspot.h；super_hotspot.h；live_settings_ui.h",
+      "route": "读取/外部展示/配置资源；无游戏函数拦截",
+      "review": "源码路径审查；局部行为测试见报告，未做全部功能游戏实机验收"
+    },
+    {
+      "id": "F59",
+      "name": "状态面板与诊断",
+      "implementation": "可打开刷新、缓存、资源采样和时序信息；使用深色浅字，并统一发布版本显示。此面板用于光标诊断，不是战术文字播报。",
+      "source": "cursor/source/main.cpp 的 hudProc 与 updateHUD",
+      "route": "读取/外部展示/配置资源；无游戏函数拦截",
+      "review": "源码路径审查；局部行为测试见报告，未做全部功能游戏实机验收"
+    },
+    {
+      "id": "F60",
+      "name": "平滑补帧与自适应时序",
+      "implementation": "在识别出的动画分组内做连续帧过渡，结合实际换帧节奏推断播放相位；跨组、非连续帧或不可靠采样会重置。不能对任意帧跳转盲目插值。",
+      "source": "cursor/source/motion.h；adaptive.h；playback.h；stream_inference.h",
+      "route": "读取/外部展示/配置资源；无游戏函数拦截",
+      "review": "源码路径审查；局部行为测试见报告，未做全部功能游戏实机验收"
+    },
+    {
+      "id": "F61",
+      "name": "离线预处理和缓存",
+      "implementation": "光标包可离线预处理每段 1000 等分的动画，运行时优先播放已经完成的分段。预处理进程低优先级运行，可取消并保留已完成段；损坏、尺寸或散列不匹配缓存被拒绝。",
+      "source": "engine/precompute.py；engine/dis_render.py；cursor/source/precomputed.h；persist.h",
+      "route": "读取/外部展示/配置资源；无游戏函数拦截",
+      "review": "源码路径审查；局部行为测试见报告，未做全部功能游戏实机验收"
+    },
+    {
+      "id": "F62",
+      "name": "图案导入和切换",
+      "implementation": "导入符合 450 帧、55×43 标准布局的 SHA/SHP 及配套色盘，保存为独立光标包；切换图案自动保存，动画分组和预览属于该包。图案切换不会覆盖游戏目录中的原资源。",
+      "source": "cursor/source/main.cpp 的 chooseStyle 与导入路径；engine/preview_builder.py",
+      "route": "读取/外部展示/配置资源；无游戏函数拦截",
+      "review": "源码路径审查；局部行为测试见报告，未做全部功能游戏实机验收"
+    },
+    {
+      "id": "F63",
+      "name": "Shift5",
+      "implementation": "删除光标模块自己的 WH_MOUSE_LL。通过现有宿主循环观察物理左键边沿，检查 Shift、区域及 Ares 原生支持；额外点击仍由唯一 host_game_input::clickPair 发送且配平抬起。轮询可能漏掉极短点击，不拦截原版点击。",
+      "source": "cursor/source/main.cpp; shared/source/host_game_input.h",
+      "route": "统一管理器原版调用或事件入口；无功能级 Hook",
+      "review": "源码路径审查；局部行为测试见报告，未做全部功能游戏实机验收"
+    },
+    {
+      "id": "F64",
+      "name": "透明 SHA 安装与恢复",
+      "implementation": "这是明确修改游戏文件的可选操作，必须退出游戏。安装记录原文件是否存在并备份，遇到既有备份不覆盖；恢复按记录还原原文件或移除工具创建的文件。手动放置的透明 SHA 不冒充工具拥有的备份。",
+      "source": "cursor/source/main.cpp 的 install 与 restoreFile",
+      "route": "读取/外部展示/配置资源；无游戏函数拦截",
+      "review": "源码路径审查；局部行为测试见报告，未做全部功能游戏实机验收"
+    },
+    {
+      "id": "F65",
+      "name": "自动检测和界面快捷键",
+      "implementation": "可自动等待游戏、暂停或恢复光标，切到高级设置不停止已运行功能。Ctrl+Alt+F10 控制面板，F11 开关，F12 退出；设置自动应用，输入尚未完整时保留最近有效值。",
+      "source": "cursor/source/main.cpp 的 autoTick、togglePrimary 和主消息循环；live_settings_ui.h",
+      "route": "读取/外部展示/配置资源；无游戏函数拦截",
+      "review": "源码路径审查；局部行为测试见报告，未做全部功能游戏实机验收"
+    },
+    {
+      "id": "F66",
+      "name": "自动保存与配置隔离",
+      "implementation": "有效设置自动应用和保存。光标设置逐字段校验，宽高作为关联对提交；一个无效数字不再阻塞其他开关。写盘失败后再次应用会重试写盘，不会因运行值未变而错误显示已保存。战术设置沿用磁盘防抖，退出前刷新；单位统计设置即改即存。 即时生效与自动保存逻辑保持；删除重复的静态自动保存标签，使用顶部统一说明。",
+      "source": "assist/source/auto_settings_ui.h；cursor/source/main.cpp；unit_monitor/source/main.cpp",
+      "route": "读取/外部展示/配置资源；无游戏函数拦截",
+      "review": "源码路径审查；局部行为测试见报告，未做全部功能游戏实机验收"
+    },
+    {
+      "id": "F67",
+      "name": "一页控制台与当前状态",
+      "implementation": "快捷键字段读取当前 HKM_GETHOTKEY 自绘，保留原生输入/通知；首绘和失焦也显示值。光标主页及高级设置改用公共按钮、开关与配色，固定展开宽度。沿用即时保存与一页滚动，旧帧入口只显示统一消息模式。",
+      "source": "assist/source/main.cpp; assist/source/extra_controls.h; shared/source/modern_ui.h",
+      "route": "读取/外部展示/配置资源；无游戏函数拦截",
+      "review": "源码路径审查；局部行为测试见报告，未做全部功能游戏实机验收"
+    }
+  ]
+}

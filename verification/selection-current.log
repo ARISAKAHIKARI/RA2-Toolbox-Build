@@ -1,0 +1,12 @@
+PASS selection_succeeds_while_gameplay_queue_is_full
+PASS cursor_owner_blocks_selection_mailbox_execution
+PASS selection_resumes_after_same_manager_releases_owner
+PASS wrong_thread_cannot_consume_selection_mailbox
+PASS stale_match_selection_rejected
+PASS group_union_visible_only
+PASS group_union_whole_map
+PASS group_reject_empty
+PASS group_reject_building
+PASS group_reject_out_of_range
+PASS group_reject_stale
+PASS group_reject_chat

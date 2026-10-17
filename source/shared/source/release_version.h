@@ -1,0 +1,4 @@
+#pragma once
+#define RA2_RELEASE_VERSION "0.7.20.0"
+#define RA2_RELEASE_VERSION_W L"0.7.20.0"
+#define RA2_RELEASE_VERSION_PARTS 0,7,20,0

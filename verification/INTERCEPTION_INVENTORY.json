@@ -1,0 +1,94 @@
+{
+  "version": "0.7.20",
+  "removed": [
+    [
+      "0x646E90",
+      "原版 QueueMegaMission",
+      "自动 CS / 高级移动 / 磁电移动的事件改写",
+      "删除；右键原版任务生效后再追加，或中键主动发令"
+    ],
+    [
+      "0x731BF0",
+      "原版 CS 按键/光标谓词",
+      "强制显示 CS 光标与转换判断",
+      "删除；原版光标保留"
+    ],
+    [
+      "0x6FFE00",
+      "原版 ClickedEvent",
+      "手动命令取消观察",
+      "删除；宿主轮询输入和只读状态观察"
+    ],
+    [
+      "0x4D74E0",
+      "原版 FootClickedAction",
+      "高级进驻 / 飞机 / 飞碟点击转换",
+      "删除；中键显式请求"
+    ],
+    [
+      "0x692610",
+      "原版 DecideAction",
+      "进驻/变卖光标覆盖",
+      "删除；不覆盖原版光标"
+    ],
+    [
+      "0x4AB9B0",
+      "原版 MouseUp",
+      "变卖事件插入与原版分支改写",
+      "删除；Ctrl+侧键 2提交合法己方 Sell"
+    ],
+    [
+      "0x464AC0",
+      "放置合法性",
+      "随处建造",
+      "删除；功能停用"
+    ],
+    [
+      "0x6A97D2、0x6AA781",
+      "侧栏 CanBuild 调用点",
+      "科技全开",
+      "删除；功能停用"
+    ],
+    [
+      "0x55D360；0x48CE8A、0x608206、0x60D407、0x62314E、0x623D72、0x624271",
+      "帧入口及六个候选调用点",
+      "实验帧调度",
+      "全部删除；只用管理器消息入口"
+    ],
+    [
+      "0x64CC61、0x64C5AF",
+      "CRC/过期事件诊断",
+      "0.7.12 的诊断拦截",
+      "0.7.13 已撤回；本版继续不安装"
+    ],
+    [
+      "WH_MOUSE_LL",
+      "宿主鼠标低级 Hook",
+      "Shift5 观察",
+      "删除；宿主轮询"
+    ],
+    [
+      "WH_KEYBOARD_LL",
+      "宿主键盘低级 Hook",
+      "Tab 显示并吞键",
+      "删除；轮询且不吞原版 Tab"
+    ]
+  ],
+  "remaining_hooks": [
+    {
+      "owner": "shared/source/host_game_input.h",
+      "type": "WH_GETMESSAGE / WH_CALLWNDPROCRET",
+      "purpose": "single GameRuntime delivery on the verified game GUI thread; CallNextHookEx preserves message chain"
+    }
+  ],
+  "remaining_non_hook_effects": [
+    "native EventClass construction and SP DoList / MP OutList enqueue",
+    "local selection/camera/superweapon targeting UI native calls",
+    "local sidebar redraw/flash presentation fields",
+    "paired native cursor Hide/Show, Windows cursor resources",
+    "host SendInput for optional Shift5",
+    "offline transparent SHA install/restore",
+    "Experimental opt-in RevealMap native local-house call in supported gameplay sessions; selected-order display timer native call"
+  ],
+  "no_real_netplay_certification": true
+}

@@ -1,0 +1,41 @@
+{
+  "name": "RA2 Toolbox 0.7.20 Full",
+  "version": "0.7.20",
+  "compiled_game_binary_included": false,
+  "source": "0.7.19 base; persistent icon cache and retained GDI bitmaps, configurable miner/refinery allowlists, default-off non-click-repairable permission; no new hooks",
+  "resources": "Complete assets/profiles/Python preprocessing runtime/engine included",
+  "resources_legacy_reuse": true,
+  "build_protocol": 40,
+  "validation": "Current 0.7.20 portable and actual DLL model evidence; real Windows/LBW/netplay not tested",
+  "build_requirement": "Zig 0.13.0, x86 Windows target; build EXE and GameRuntime.dll together",
+  "settings": {
+    "Orders.MegaMissionBackend": "0=constructor; 1=high-level MP; SP uses constructor/DoList centrally",
+    "Orders.ObjectEventBackend": "0=constructor; 1=ClickedEvent MP; SP uses constructor/DoList centrally"
+  },
+  "legacy_root_exe_or_dll_included": false,
+  "entry_manager_api": 3,
+  "package_type": "Full compiled Windows x86 tools and x64 preprocessing runtime",
+  "runtime_transport_protocol": 3,
+  "game_code_patching": "Forbidden, including manager Patch requests",
+  "input_entry": "Manager WH_GETMESSAGE / WH_CALLWNDPROCRET only; features have no independent hooks",
+  "disabled_features": [
+    "Technology unlock",
+    "Build anywhere",
+    "Enemy sale"
+  ],
+  "symbolic_original_interfaces": [
+    "DisplayClass::ProcessClickCoords (0x692300), normal query call",
+    "Networking::CreateClickedMissionEvent (0x646E90), optional normal call",
+    "TechnoClass::ClickedEvent, optional normal call",
+    "EventClass original constructors + SP DoList / MP OutList",
+    "HouseClass::CanBuild (0x4F7870), normal legality query"
+  ],
+  "legacy_binary_sha256": {
+    "AssistBridge.dll": "03c959f7b0d9541adb498ee595e93f82c98f7c2a12ad8b91056c42a874f101e7",
+    "CursorHideBridge.dll": "0406fd5252fe7a57a168c58ae199e2d66561666274e2d188d3f2133a3a1bbcbd",
+    "RA2Toolbox.exe": "16a91bc35a95b9a72635244786a5be1202c0bafc9d6cd323ceba585045eab9d5",
+    "UnitMonitorBridge.dll": "d5eda2861e724f4b6a38f18b2153f8ce14a8ff689ace35573ca469a5563590a1"
+  },
+  "release_status": "0.7.19 Full; experimental reveal opt-in and independent overlay visibility",
+  "technology_experiment": "Withdrawn, not shipped. Production continuity unresolved; technology remains disabled."
+}

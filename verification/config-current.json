@@ -1,0 +1,113 @@
+{
+  "inputs": {
+    "game": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+    "GameRuntime.dll": "00d8517f5888e12cbf23ff73a7cd4a3485d5f76de631d63dcf29489942f4911d"
+  },
+  "scope": "Actual x86 DLL ingress/constructors; synthetic world. No live network simulation.",
+  "results": [
+    {
+      "case": "repair_0_permission0_native0_own1",
+      "status": "PASS"
+    },
+    {
+      "case": "repair_0_permission0_native1_own1",
+      "status": "PASS"
+    },
+    {
+      "case": "repair_0_permission1_native0_own1",
+      "status": "PASS"
+    },
+    {
+      "case": "repair_0_permission1_native1_own1",
+      "status": "PASS"
+    },
+    {
+      "case": "repair_0_permission1_native0_own0",
+      "status": "PASS"
+    },
+    {
+      "case": "ore_config_0_default",
+      "status": "PASS"
+    },
+    {
+      "case": "ore_config_0_exclude_miner",
+      "status": "PASS"
+    },
+    {
+      "case": "ore_config_0_exclude_refinery",
+      "status": "PASS"
+    },
+    {
+      "case": "ore_config_0_custom_miner",
+      "status": "PASS"
+    },
+    {
+      "case": "ore_config_0_empty_custom",
+      "status": "PASS"
+    },
+    {
+      "case": "ore_config_0_no_dock",
+      "status": "PASS"
+    },
+    {
+      "case": "ore_config_0_revoke_pending",
+      "status": "PASS"
+    },
+    {
+      "case": "ore_config_0_config_incomplete",
+      "status": "PASS"
+    },
+    {
+      "case": "repair_3_permission0_native0_own1",
+      "status": "PASS"
+    },
+    {
+      "case": "repair_3_permission0_native1_own1",
+      "status": "PASS"
+    },
+    {
+      "case": "repair_3_permission1_native0_own1",
+      "status": "PASS"
+    },
+    {
+      "case": "repair_3_permission1_native1_own1",
+      "status": "PASS"
+    },
+    {
+      "case": "repair_3_permission1_native0_own0",
+      "status": "PASS"
+    },
+    {
+      "case": "ore_config_3_default",
+      "status": "PASS"
+    },
+    {
+      "case": "ore_config_3_exclude_miner",
+      "status": "PASS"
+    },
+    {
+      "case": "ore_config_3_exclude_refinery",
+      "status": "PASS"
+    },
+    {
+      "case": "ore_config_3_custom_miner",
+      "status": "PASS"
+    },
+    {
+      "case": "ore_config_3_empty_custom",
+      "status": "PASS"
+    },
+    {
+      "case": "ore_config_3_no_dock",
+      "status": "PASS"
+    },
+    {
+      "case": "ore_config_3_revoke_pending",
+      "status": "PASS"
+    },
+    {
+      "case": "ore_config_3_config_incomplete",
+      "status": "PASS"
+    }
+  ]
+}

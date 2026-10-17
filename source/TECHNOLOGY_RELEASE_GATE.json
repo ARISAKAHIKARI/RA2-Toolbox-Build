@@ -1,0 +1,13 @@
+{
+  "version": "0.7.17",
+  "release_allowed": true,
+  "release_scope": "Startup/input identity/commit-boundary fixes based on formal 0.7.14; Full testing release",
+  "technology_fix_released": false,
+  "technology_status": "Unreleased AddCameo experiment withdrawn: native cleanup emits Abandon/AbandonAll and breaks production continuity. Technology remains disabled as in formal 0.7.14.",
+  "required_guards": [
+    "UI does not restore Tech=1",
+    "No AddCameo reinsertion",
+    "No new game-code or input detours"
+  ],
+  "real_platform_netplay_verified": false
+}

@@ -1,0 +1,57 @@
+// Called on the Tactical UI control thread. Native input is never intercepted.
+static void servicePointer(){
+ const DWORD capturedNow=GetTickCount();
+ auto visible=external::display::inspect([](uint32_t at,void*p,size_t n){return externalReader.readFresh(at,p,n);});
+ const bool inputReady=shared&&commandFresh(capturedNow)&&foregroundGame()&&!incoming.chat&&visible.visible();
+ gameinput::setPointerContext(hook,commandMatch(),inputReady);
+ if(!shared)return;
+ auto&box=shared->pointer;box.cancelSerial=gameinput::pointerCancelSerial(hook);static uint32_t ack=0;
+ if(ack!=box.ack){ack=box.ack;MemoryBarrier();
+  if(box.intent.operation!=pointerinput::Cancel&&box.intent.operation!=pointerinput::FollowNative){
+   if(box.result<0)notify(L"增强输入未提交：已失效、目标不支持或队列繁忙，请重新操作。");
+   else notify(L"增强输入已接收 "+std::to_wstring(box.accepted)+L" 个；未接收 "+std::to_wstring(box.rejected)+L" 个。");
+  }
+ }
+ if(box.request!=box.ack)return;
+ gameinput::PointerPress e{};DWORD dropped=0;
+ if(!gameinput::takePointer(hook,e,dropped)){if(dropped)notify(L"输入过密，部分增强请求未接收。");return;}
+ if(!inputReady||e.serial!=box.cancelSerial||e.match!=commandMatch())return;
+ RECT client{};if(!GetClientRect(game,&client)||client.right!=e.width||client.bottom!=e.height)return;
+ DWORD now=GetTickCount();if(!commandFresh(now)||!foregroundGame()||DWORD(now-e.tick)>100||snap.chat)return;
+ static pointerinput::Intent in;in={};in.tick=e.tick;in.inputSerial=e.serial;in.match=e.match;
+ uint32_t allowed=0;const auto featureFlags=flags();
+ if(featureFlags&AdvancedInput)allowed|=pointerinput::Advanced;
+ if(featureFlags&MagnetronInput)allowed|=pointerinput::Magnetron;
+ if(featureFlags&CustomCS)allowed|=pointerinput::CS;
+ if(featureFlags&AdvancedEnter)allowed|=pointerinput::Enter;
+ if(featureFlags&AircraftSpread)allowed|=pointerinput::AirFirst|pointerinput::AirSecond;
+ if(featureFlags&DiskPrimary)allowed|=256;
+ if(featureFlags&(SellDrained|SellVehicles))allowed|=512;
+ uint32_t saleEnabled=0;
+ if(featureFlags&SellDrained)saleEnabled|=pointerinput::SellDrainedInput;
+ if(featureFlags&SellVehicles)saleEnabled|=pointerinput::SellVehicleInput;
+ auto route=pointerinput::resolveMouse(e.keys,e.operation,extra.mouseButtons,
+  {advancedKey,magnetronKey,csHoldKey,extra.enterKey,extra.airKey1,extra.airKey2,extra.diskKey,extra.sellKey,allowed},saleEnabled);
+ in.operation=route.operation;in.bindings=route.bindings;if(!in.operation)return;
+ if(in.operation==pointerinput::Sell&&!(in.bindings&pointerinput::Control))return;
+ if(in.operation==pointerinput::FollowNative&&!(shared->flags&AutoCS)&&!(in.bindings&(pointerinput::Advanced|pointerinput::Magnetron|pointerinput::CS)))return;
+ auto read=[](uint32_t at,void*p,size_t n){return externalReader.readFresh(at,p,n);};
+ uint32_t tactical=0,items=0;int count=0,frameAfter=0;uint32_t houseAfter=0;
+ if(!read(0xA83D4C,&in.house,4)||in.house<0x10000||!read(0xA8ED84,&in.frame,4)||
+    !read(0x887324,&tactical,4)||tactical<0x10000||!read(tactical+0xB0,&in.cameraX,4)||!read(tactical+0xB4,&in.cameraY,4)||
+    !read(0xA8EB84,&in.width,4)||!read(0xA8EB88,&in.height,4)||in.width<=0||in.height<=0||in.width>32768||in.height>32768)return;
+ in.x=int(int64_t(e.point.x)*in.width/e.width);in.y=int(int64_t(e.point.y)*in.height/e.height);
+ if(in.operation!=pointerinput::Sell){
+  if(!read(0xA8ECB8+16,&count,4)||count<0||count>pointerinput::MaxSources||!read(0xA8ECB8+4,&items,4))return;
+  for(int i=0;i<count;++i){auto&src=in.sources[in.count];uint32_t owner=0;
+   if(!read(items+i*4,&src.pointer,4)||src.pointer<0x10000||!read(src.pointer+0x10,&src.id,4)||!src.id||!read(src.pointer+0x21C,&owner,4))return;
+   if(owner==in.house)++in.count;
+  }
+  if(!in.count)return;
+ }
+ int cameraX=0,cameraY=0;
+ if(!read(0xA8ED84,&frameAfter,4)||frameAfter<in.frame||frameAfter-in.frame>2||
+    !read(0xA83D4C,&houseAfter,4)||houseAfter!=in.house||
+    !read(tactical+0xB0,&cameraX,4)||!read(tactical+0xB4,&cameraY,4)||cameraX!=in.cameraX||cameraY!=in.cameraY||DWORD(GetTickCount()-in.tick)>100)return;
+ box.intent=in;MemoryBarrier();InterlockedIncrement((volatile LONG*)&box.request);wakeGame();
+}

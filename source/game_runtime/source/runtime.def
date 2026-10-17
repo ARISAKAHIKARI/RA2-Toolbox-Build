@@ -1,0 +1,9 @@
+LIBRARY GameRuntime
+EXPORTS
+ GameRuntimeHook=GameRuntimeHook@12
+ GameRuntimePostHook=GameRuntimePostHook@12
+ GameRuntimeInfo DATA
+ AssistProtocolInfo DATA
+ AssistMappingPrefix DATA
+ ManageGameEntry
+ GameEntryManagerInfo DATA

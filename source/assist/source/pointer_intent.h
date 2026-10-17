@@ -1,0 +1,70 @@
+#pragma once
+#include <stdint.h>
+namespace assist { namespace pointerinput {
+constexpr int MaxSources=512;
+enum Operation { Enhanced=1, AttackMove=2, Sell=3, FollowNative=4, Cancel=5 };
+enum Binding { Advanced=1, Magnetron=2, CS=4, Enter=8, AirFirst=16, AirSecond=32, Control=64, Shift=128, RightClick=1024, SellDrainedInput=2048, SellVehicleInput=4096, PerFeatureMouse=8192 };
+// Physical mouse capture uses 1=middle, 2/3=side buttons, 4=right release.
+// Preserve native right-click handling; configured right orders execute later.
+// Zero is a mouse-only fallback, never an implicit right-click modifier.
+inline bool matchesHold(const uint8_t*keys,uint32_t key,int operation){
+ const unsigned vk=key&255,mods=key>>8;
+ if(!vk)return (operation==Enhanced||operation==AttackMove||operation==Sell)&&!keys[16]&&!keys[17]&&!keys[18];
+ if(!keys[vk])return false;
+ if(key==16||key==17||key==18)return true;
+ return bool(keys[16])==bool(mods&1)&&bool(keys[17])==bool(mods&2)&&bool(keys[18])==bool(mods&4);
+}
+struct Bindings {uint32_t advanced,magnetron,cs,enter,airFirst,airSecond,disk,sell,enabled;};
+inline uint32_t resolveBindings(const uint8_t*keys,int operation,const Bindings&c){
+ uint32_t out=0,explicitGround=0;
+ const uint32_t values[]={c.advanced,c.magnetron,c.cs},bits[]={Advanced,Magnetron,CS};
+ for(int i=0;i<3;++i)if((c.enabled&bits[i])&&matchesHold(keys,values[i],operation)){
+  out|=bits[i];if(values[i]&255)explicitGround|=bits[i];
+ }
+ // An explicitly held key wins over mouse-only fallbacks in the same family.
+ if(explicitGround)out=explicitGround;
+ if((c.enabled&Enter)&&matchesHold(keys,c.enter,operation))out|=Enter;
+ const bool first=(c.enabled&AirFirst)&&matchesHold(keys,c.airFirst,operation);
+ const bool second=(c.enabled&AirSecond)&&matchesHold(keys,c.airSecond,operation);
+ if(second&&(!first||(c.airSecond&&!c.airFirst)))out|=AirSecond;
+ else if(first)out|=AirFirst;
+ // Control is the existing protocol authorization bit for these two actions;
+ // the Runtime still validates its operation, feature switch and target.
+ if((operation==Enhanced&&(c.enabled&256)&&matchesHold(keys,c.disk,operation))||
+    (operation==Sell&&(c.enabled&512)&&matchesHold(keys,c.sell,operation)))out|=Control;
+ if(keys[16])out|=Shift;
+ return out;
+}
+// Per-feature physical buttons. Existing operation precedence is retained;
+// this does not introduce configurable priorities or a second input channel.
+enum MouseFeature { MouseAdvanced,MouseMagnetron,MouseCS,MouseEnter,MouseAirFirst,MouseAirSecond,MouseDisk,MouseAttack,MouseSellDrained,MouseSellVehicle,MouseCount };
+inline uint32_t mouseDefault(int slot){return slot<MouseAttack?1:slot==MouseAttack?2:3;}
+inline const wchar_t* mouseSetting(int slot){
+ const wchar_t*names[]={L"AdvancedButton",L"MagnetronButton",L"CSButton",L"EnterButton",L"AirFirstButton",L"AirSecondButton",L"DiskButton",L"AttackMoveButton",L"SellDrainedButton",L"SellVehicleButton"};return names[slot];
+}
+struct MouseRoute {int operation;uint32_t bindings;};
+inline MouseRoute resolveMouse(const uint8_t*keys,int physical,const uint32_t*buttons,Bindings config,uint32_t saleEnabled){
+ if(physical==Cancel)return {Cancel,0};
+ if(physical<1||physical>4)return {};
+ const uint32_t bits[]={Advanced,Magnetron,CS,Enter,AirFirst,AirSecond,256};
+ uint32_t enabled=0;for(int i=0;i<MouseAttack;++i)if(buttons[i]==uint32_t(physical))enabled|=bits[i];
+ const auto allEnabled=config.enabled;config.enabled&=enabled;
+ uint32_t bindings=resolveBindings(keys,Enhanced,config);
+ uint32_t follow=physical==FollowNative?RightClick:0;
+ if(bindings&~Shift)return {Enhanced,bindings|follow|PerFeatureMouse};
+ if(buttons[MouseAttack]==uint32_t(physical))return {AttackMove,(keys[16]?uint32_t(Shift):0)|follow|PerFeatureMouse};
+ uint32_t sale=0;
+ if(buttons[MouseSellDrained]==uint32_t(physical))sale|=SellDrainedInput;
+ if(buttons[MouseSellVehicle]==uint32_t(physical))sale|=SellVehicleInput;
+ sale&=saleEnabled;config.enabled=allEnabled;
+ if(sale&&(resolveBindings(keys,Sell,config)&Control))return {Sell,Control|sale|follow|PerFeatureMouse|(keys[16]?uint32_t(Shift):0)};
+ return {physical==FollowNative?FollowNative:0,PerFeatureMouse|(keys[16]?uint32_t(Shift):0)};
+}
+struct Source { uint32_t id,pointer; };
+struct Intent {
+ uint32_t tick,match,house,bindings,inputSerial;int frame,operation,x,y,width,height,cameraX,cameraY,count;
+ Source sources[MaxSources];
+};
+// One host writer / one Runtime reader. Acknowledgement never comes from EXE.
+struct Mailbox { volatile uint32_t request,ack,cancelSerial;Intent intent;int result,accepted,rejected; };
+}}

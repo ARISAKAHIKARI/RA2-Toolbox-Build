@@ -1,0 +1,175 @@
+assist/tests/advanced_regression.cpp: PASS
+PASS: stable equal-value targets, higher-value priority, rearm/burst gating, dead-target prompt recovery, per-order rejection, pending/attack timeouts, accepted-only movement progress, GuardArea fallback, weapon selection, special immunities and urgent large-selection intents
+assist/tests/autoload.cpp: PASS
+assist/tests/autonomy_policy.cpp: PASS
+PASS: magnet shot observation/ROF pacing and eject grace vs user takeover
+assist/tests/business_effects.cpp: PASS
+PASS: cargo unloading requires dock evidence; no false old-ROF magnet shot; aircraft target acquisition differs from shot evidence
+assist/tests/command_delivery.cpp: PASS
+assist/tests/command_gateway.cpp: PASS
+assist/tests/constructor_adapter.cpp: PASS
+assist/tests/control_link.cpp: PASS
+assist/tests/cooperative.cpp: PASS
+PASS: both aircraft priorities, per-target caps/unlimited, AA/AG scarcity, garrison size best-fit, malformed request/viewport guards and defaults
+assist/tests/dispatch_router.cpp: PASS
+assist/tests/dual_scheduler.cpp: PASS
+assist/tests/entry_policy.cpp: PASS
+assist/tests/event_delivery.cpp: PASS
+assist/tests/extended_robustness.cpp: PASS
+{"allocation_scenarios":30000,"orders_checked":739454,"shared_budget_frames":10000,"budget_wakes":100000,"owner_pairs":121,"seed":7602226,"status":"PASS"}
+assist/tests/external_planner.cpp: PASS
+PASS: nearest refinery, occupied dock, FIFO and manual pause persists across empty/full changes until mining resumes
+PASS: rank priority, neutral/cloaked exclusion, destination resume, stationary timeout and intent cancellation using snapshots only
+assist/tests/external_reader.cpp: PASS
+PASS: 1000 camera samples retain high-rate positions with at most 126 full world enumerations, including viewport exit
+PASS: menu enter/exit preserves epoch, paused battlefield visible, same-frame position/boarding/unloading, recycled/dead object and unreadable display state
+PASS: actual-layout external snapshot, owner colors, iron/frozen timers with cycle guard, unchanged-frame cache, camera shift and invalid coordinates
+assist/tests/hook_policy.cpp: PASS
+assist/tests/hook_registry_policy.cpp: PASS
+PASS: owned patch install/restore, sticky conflict, known original signatures and per-site isolation
+assist/tests/iteration_regression.cpp: PASS
+PASS: mixed fractional ore, incomplete load, invalid storage, release retries and acknowledgement-only release completion
+assist/tests/label_motion.cpp: PASS
+assist/tests/layout_probe.cpp: PASS
+assist/tests/lease_arbiter.cpp: PASS
+assist/tests/loading_equivalence.cpp: PASS
+PASS: 500 seeded mixed size/capacity/composition worlds match exhaustive assignment in both modes; each compatibility pair queried at most once
+assist/tests/magnetron.cpp: PASS
+PASS: independent magnetron intents, actual cooldown and lift, pending-shot preservation, ground/organic/armor filtering, distinct victims, movement resume, manual cancellation and basic weapon compatibility
+assist/tests/magnetron_rof.cpp: PASS
+PASS: observed rearm -> first-ready-frame target rotation without editing game weapons
+assist/tests/manual_ore.cpp: PASS
+PASS: manual Move/Attack/Stop priority, no empty/full or toggle resume, fresh mining hand-back, in-flight input lag and tool waiting Move distinction
+PASS: paused-miner dense list, swap removal, repeated pointer replacement, non-miner exclusion and live-ID compaction preserve tokens and hand-back stage
+assist/tests/mega_queue_backend.cpp: PASS
+assist/tests/mission_owner_cancel.cpp: PASS
+assist/tests/native_orders.cpp: PASS
+assist/tests/object_event_backend.cpp: PASS
+assist/tests/object_index.cpp: PASS
+assist/tests/order_policy.cpp: PASS
+assist/tests/ore_delivery_effect.cpp: PASS
+PASS: ore unload success requires observed unloading then empty hold; no docking evidence => unverified
+assist/tests/ore_priority.cpp: PASS
+PASS: 23 ore priority scenarios: observed release, one winner, bounded retries, protected next turn, cancellation, starvation and finite-load progress
+assist/tests/ore_regression.cpp: PASS
+PASS: unloading takes precedence over stale waiting moves and switch-off release; actual War Miner / Chrono Miner capacities and first-five-pip boundary
+PASS: blocked waiting-cell replacement, lost-refinery reassign, manual takeover, bounded movement retries, and 24 miners + 16 attacks all delivered under a 12-event prefix budget
+assist/tests/ore_type_config.cpp: PASS
+PASS: defaults, independent miner/refinery lists, empty whitelist, normalization, malformed/over-limit rejection
+assist/tests/outgoing_batch.cpp: PASS
+PASS: outgoing batch backpressure / masks / restart / 24-slot bound
+assist/tests/pacing.cpp: PASS
+PASS: 5/30/60/120/500 FPS keep independent 16ms controls, immediate rate changes, no catch-up burst and long-running monotonic time
+assist/tests/plan_freshness.cpp: PASS
+PASS source-age/frame/epoch/clock-wrap boundaries; 512-source retry excludes handled prefix; same-frame planner expiration
+assist/tests/planner_index.cpp: PASS
+PASS: actor collisions/clear; spatial lookup matches complete distance oracle including negative coordinates, bucket boundaries and long-range fallback
+assist/tests/policy.cpp: PASS
+assist/tests/receipt_events.cpp: PASS
+assist/tests/receipt_visibility.cpp: PASS
+assist/tests/repair_delivery.cpp: PASS
+PASS: repair delivery waits for evidence; no timeout retry/collision overwrite; identity, health, capacity, reset
+assist/tests/robust_cooperative.cpp: PASS
+PASS duplicate_source rejected
+PASS duplicate_target rejected
+PASS capacity accounting avoids signed overflow
+PASS 10000 seeded allocation cases plus 512x512 boundary: capacity, identity, compatibility, quotas, determinism and limits
+assist/tests/robust_cursor_sequence.cpp: PASS
+PASS sequence sign/full wrap, stale/odd/zero rejection, invalid frame, session reset and clock wrap
+assist/tests/session_epoch.cpp: PASS
+assist/tests/sidebar_policy.cpp: PASS
+PASS: canonical sidebar identities, distinct types, bounded full-table lookup, clear and membership
+assist/tests/tactical_decisions.cpp: PASS
+assist/tests/tech_profile.cpp: PASS
+assist/tests/type_catalog.cpp: PASS
+assist/tests/type_hotkey.cpp: PASS
+assist/tests/unit_task_arbiter.cpp: PASS
+unit_monitor/tests/icon_cache.cpp: PASS
+PASS: icon roundtrip, atomic replacement, scope isolation, corruption/bounds, resource invalidation
+unit_monitor/tests/owned_counter.cpp: PASS
+unit_monitor/tests/tab_control.cpp: PASS
+assist/tests/no_interception_source_contract.py: PASS
+PASS no feature hooks/code writes; message manager owns entry; bounded stamped input, native follow, sole event gateway, unsupported rule bypasses closed
+assist/tests/persistent_ui_source_test.py: PASS
+PASS catalogue populated from live game and written to disk
+PASS catalogue restored prior to UI creation
+PASS offline lists populated at UI creation
+PASS type binding list uses durable cached values
+PASS tech uses cached values
+PASS runtime select still uses match type indexes
+PASS game process detaching does not erase catalogue
+PASS manual offline type ID entry
+PASS old saved technology IDs survive first upgrade
+PASS bindings written as one multisz section
+PASS per-profile tech overrides retained
+PASS writes report failure
+PASS persistent catalogue deliberately separated from bridge hooks
+assist/tests/ui_geometry_test.py: PASS
+PASS: shipped UI construction/layout: {"controls": 189, "fully_reachable_checks": 2172, "viewport_sizes": 12, "pages": 1, "content_bottom": 4078}
+PASS: all controls accessible, no overlap, all interactive IDs retained, one continuous page, pinned header/footer, clipped body and scroll limits
+PASS: shipped mode status distinguishes custom CS, live/waiting/disconnected/paused/fault states and restores live status after re-entry
+assist/tests/modern_ui_test.py: PASS
+PASS production UI owner-draw routing: state/text/focus/print, checkbox notification ordering, default button, native specialized preview, field contrast, full static invalidation; no Windows raster claim
+PASS production display QPC independent of Shared and command clock, 2 ms progression and timer failure fallback
+PASS shared typography: suite and three panels use one font factory; embedded cursor does not scale alone
+assist/tests/autonomy_source_contract.py: PASS
+PASS: single message dispatcher, no frame detours, eject toggle connection, magnetic cycle and vanilla event ordering and SP/MP queue isolation
+assist/tests/tech_prerequisite_audit_test.py: PASS
+PASS: prerequisite rule parser, owner and missing type
+assist/tests/tech_runtime_source_contract.py: PASS
+PASS: runtime DirectProduce setting, read-only LBW error diagnostics
+assist/tests/unified_gateway_contract.py: PASS
+PASS: one engine order gateway, passive PID reader, hook isolation, version separation and observed/queued telemetry
+assist/tests/mega_queue_contract.py: PASS
+PASS: one MegaMission delivery choice, UI setting, no double enqueue, own input-hook bypass
+assist/tests/object_event_contract.py: PASS
+PASS: YRpp high-level click path is exclusive, game-thread gated, no double enqueue
+assist/tests/constructor_separation_contract.py: PASS
+PASS: Reader/Planner/constructor/entry ownership and 7 YRpp constructors
+assist/tests/outgoing_source_contract.py: PASS
+PASS: event copy / game callback / version lock / independent send / deferred ACK source contract
+PASS: MO input hook isolation / batch continuity / executable callback / ID validation
+assist/tests/host_link_timeline.py: PASS
+PASS shipped host: 1.6/2.9/6.9s callback delays do not change epoch, clear AutoBoard or disable hotkeys; real round change/fault still rejects
+assist/tests/snapshot_publication_test.py: PASS
+PASS unpublished seq=0, torn-copy isolation, fresh stable publish, sequence wrap, fault cancels unsent backlog
+assist/tests/architecture_boundaries_test.py: PASS
+PASS architecture boundaries: 129 source files; 84 host includes / 69 Runtime includes; read, input, injection, patch, event and frame-grant ownership
+NOTE: 3 business-planning migrations and cross-feature snapshot consolidation remain; no full-game/real-netplay proof
+assist/tests/freshness_source_contract.py: PASS
+PASS source stamps survive planning; per-order deadlines; uncached read guards; suffix-only fresh replan
+assist/tests/extended_boundary_contract.py: PASS
+PASS capture analyzer: negative desktop coordinates, clipping, empty samples, nearest-rank P50/P95/P99, lossless BGRA->PNG and dimensions
+PASS passive capture ACK prefix: current 37 and compatible 33/34/35/36; PID, torn, short and unknown-version rejection
+PASS shared planning allowance, same-frame ingress, end-of-round receipt ownership
+assist/tests/host_input_test.py: PASS
+PASS shared host: one hook pair; 200 concurrent subscriptions; independent release; cadence/coalescing; failed post/unhook recovery; dead-thread migration; stale tokens; balanced input
+PASS cursor refresh uses host input manager, validates target/focus, times out without holding scheduler mutex
+PASS window-addressed wake, post error diagnostics, stale HWND/thread rejected without losing ready bits
+PASS pointer capture: loading suppressed; capture epoch retained; cross-match/menu clicks discarded; held release disarmed; context timeout bounded
+assist/tests/automatic_log_test.py: PASS
+PASS automatic logger: UTF-8; 2MiB + 2 backups; unwritable path/rotation fallback; explicit total failure; Win32 error preservation; line limit; 200 concurrent records; critical sink independent of verbose setting
+assist/tests/manifest_loader_contract.py: PASS
+PASS final EXE imports GetWindowSubclass and its RT_MANIFEST/1 selects Common Controls 6
+PASS all four source manifests carry the same required dependency
+PASS missing dependency, wrong version, wrong architecture, wrong token and wrong XML namespace fail closed
+PASS valid XML in the wrong resource id cannot satisfy the loader gate
+assist/tests/auto_settings_ui_test.py: PASS
+PASS: shipped settings handler applies/flushes valid edits, preserves conflicting keys, ignores programmatic updates, saves quotas/custom keys; independent overlays and common read leases
+PASS: explicit feature/permission linkage, invalid-key isolation, shared cursor discovery and host ACK single-writer contract
+PASS shared menu visibility is consumed by both overlays; control tick hides even when render clock stops
+PASS experimental reveal default/roundtrip and all host gates; independent manual overlay controls retain battlefield gating
+assist/tests/cursor_settings_ui_test.py: PASS
+PASS: cursor settings: independent toggles, atomic dimension pairs, valid-field persistence and disk retry
+assist/tests/super_binding_ui_test.py: PASS
+PASS: superweapon UI retains identity, refreshes binding, clears removed entries and preserves dropdown identity
+tests/winmock_check.py: PASS
+PASS read robustness: cache lifetime, cross-page reads, partial failure/recovery, bounds; 2 threads / 4000 batches / 256000 reads / 4000 mocked RPM calls
+PASS: process snapshot/fallback, lazy Win32 region queries, permission-denial isolation
+tests/unified_reader_check.py: PASS
+PASS independent cache/diagnostics, cross-TU shared connection, immediate read bypass
+PASS three simultaneous RPM calls; connect/detach while other sessions read
+PASS retained handle lifetime; dead process/PID reuse creates new generation
+PASS query-only fallback isolated from readable sessions; upgrade, bounds, all handles released
+PASS all three host modules use unified read sessions; no direct RPM or batch mutex
+TOTAL: 56 native tests + 23 source/UI checks + 2 mocked Win32 read-path tests

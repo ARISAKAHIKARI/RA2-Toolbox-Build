@@ -1,0 +1,4 @@
+#include "../source/object_index.h"
+#include <cassert>
+#include <memory>
+int main(){auto index=std::make_unique<assist::ObjectIndex>();for(unsigned i=1;i<16000;++i)index->add(0x10000+i*16,i);for(unsigned i=1;i<16000;++i){assert(index->contains(0x10000+i*16));assert(index->byId(i)==0x10000+i*16);}assert(!index->contains(0x100));index->clear();assert(!index->byId(50));index->add(0x30000,77,3);assert(index->contains(0x30000)&&index->byId(77)==3);index->add(0x30000,77,9);assert(index->byId(77)==9);index->epoch=0xFFFFFFFFu;index->clear();assert(index->epoch==1&&!index->contains(0x30000)&&!index->byId(77));index->add(0x30000,77);assert(index->byId(77)==0x30000);assist::ManualVersions v;v.change(100);v.change(100+8192);assert(v.get(100)==1&&v.get(100+8192)==1);v.change(100);assert(v.get(100)==2&&v.get(100+8192)==1);}

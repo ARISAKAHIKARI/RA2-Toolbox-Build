@@ -1,0 +1,64 @@
+{
+  "retrieved": "2026-10-16",
+  "note": "Branch snapshots; commit IDs not obtained. Hashes identify reviewed bytes. Upstream code and game EXE are not bundled.",
+  "sources": [
+    {
+      "url": "https://raw.githubusercontent.com/MagicShiba/MO_ExperienceEnhancements/master/src/OrderUtil.cpp",
+      "sha256": "033c886a3662f05d9497fd4c9de13b5fdc97b3c9587cfa8771fa3a16f23ee207"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/MagicShiba/MO_ExperienceEnhancements/master/src/OrderUtil.h",
+      "sha256": "76c58a9bc8c24ef348616889d1a140b1e0f8ec51840f3d3b32277ade340396cd"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/MagicShiba/MO_AutoLoad/master/src/AutoLoad.c",
+      "sha256": "6d0c87ef1274782ca6766f7ce17f48885cac132787ac791f1b4ab2757e51f1b5"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/Phobos-developers/YRpp/phobos-dev/EventClass.h",
+      "sha256": "6e4a4f53f8bcb123335f56c9acdb88aa821fe1daf232b7cca129d6302dd54ec2"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/Phobos-developers/YRpp/phobos-dev/Unsorted.h",
+      "sha256": "5194b71f9baf857705b93cf9bfbace0729a70e5da1729512fa3b483257086565"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/Phobos-developers/YRpp/phobos-dev/SessionClass.h",
+      "sha256": "fbf688eb777f10b5c748baa2af915a61ddf49a427a5035546500a92b6a933387"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/Phobos-developers/YRpp/phobos-dev/GameOptionsClass.h",
+      "sha256": "095d5c05ac1b1808f9b91e582544aa5abccfdfe4b06c962298d623471a80c7ea"
+    },
+    {
+      "url": "https://github.com/Phobos-developers/YRpp/blob/master/HouseClass.h",
+      "sha256": "027c1ce01e90fbad7aa700def81015b46f544081ba3fba40ffc0b4465bab1dea",
+      "purpose": "0.7.10 sidebar API and raw ore field cross-check"
+    },
+    {
+      "url": "https://github.com/Phobos-developers/YRpp/blob/master/ObjectTypeClass.h",
+      "sha256": "954638e9e255332a02709974d2135f304850af5d9a5d7632fef30d576fd4d866",
+      "purpose": "0.7.10 sidebar API and raw ore field cross-check"
+    },
+    {
+      "url": "https://github.com/Phobos-developers/YRpp/blob/master/SidebarClass.h",
+      "sha256": "3dddb362207abbe801c5b7d6885d55f3d295e44be4d848df07304ae5d08bf492",
+      "purpose": "0.7.10 sidebar API and raw ore field cross-check"
+    },
+    {
+      "url": "https://github.com/Phobos-developers/YRpp/blob/master/TechnoClass.h",
+      "sha256": "0c1b4f7dd668862b912f69acb5d0a91b4e983658f44abac9d8d306a71a4b052e",
+      "purpose": "0.7.10 sidebar API and raw ore field cross-check"
+    },
+    {
+      "url": "https://github.com/Phobos-developers/YRpp/blob/master/TechnoTypeClass.h",
+      "sha256": "991ec1902dc729964433688541663ac7060709f8eae31a69fef279799456cee5",
+      "purpose": "0.7.10 sidebar API and raw ore field cross-check"
+    },
+    {
+      "url": "https://github.com/Phobos-developers/YRpp/blob/master/UnitTypeClass.h",
+      "sha256": "70dee01ad9bebb2277e0155313e6cc1d57b358085065e31b9f52cd9f0e495a30",
+      "purpose": "0.7.10 sidebar API and raw ore field cross-check"
+    }
+  ]
+}

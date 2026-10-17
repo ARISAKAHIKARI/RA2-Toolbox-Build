@@ -1,0 +1,605 @@
+{
+  "inputs": {
+    "game": "c287d62a4d6a25b547e9339d071dd6e03adcf545699062e478aaeee38c60e89a",
+    "GameRuntime.dll": "00d8517f5888e12cbf23ff73a7cd4a3485d5f76de631d63dcf29489942f4911d"
+  },
+  "scope": "actual DLL/constructors/Sell receiver branch; synthetic world and Win32, no real network",
+  "results": [
+    {
+      "name": "all_flags_no_engine_patch_session_0",
+      "status": "PASS"
+    },
+    {
+      "name": "explicit_attack_move_once_session_0",
+      "status": "PASS"
+    },
+    {
+      "name": "native_move_then_append_once_session_0",
+      "status": "PASS"
+    },
+    {
+      "name": "all_flags_no_engine_patch_session_5",
+      "status": "PASS"
+    },
+    {
+      "name": "explicit_attack_move_once_session_5",
+      "status": "PASS"
+    },
+    {
+      "name": "native_move_then_append_once_session_5",
+      "status": "PASS"
+    },
+    {
+      "name": "all_flags_no_engine_patch_session_3",
+      "status": "PASS"
+    },
+    {
+      "name": "explicit_attack_move_once_session_3",
+      "status": "PASS"
+    },
+    {
+      "name": "native_move_then_append_once_session_3",
+      "status": "PASS"
+    },
+    {
+      "name": "all_flags_no_engine_patch_session_4",
+      "status": "PASS"
+    },
+    {
+      "name": "explicit_attack_move_once_session_4",
+      "status": "PASS"
+    },
+    {
+      "name": "native_move_then_append_once_session_4",
+      "status": "PASS"
+    },
+    {
+      "name": "accepted_selected_order_display_timer_session_0",
+      "status": "PASS"
+    },
+    {
+      "name": "reveal_local_house_once_and_ready_gate_session_0",
+      "status": "PASS"
+    },
+    {
+      "name": "accepted_selected_order_display_timer_session_5",
+      "status": "PASS"
+    },
+    {
+      "name": "reveal_local_house_once_and_ready_gate_session_5",
+      "status": "PASS"
+    },
+    {
+      "name": "accepted_selected_order_display_timer_session_3",
+      "status": "PASS"
+    },
+    {
+      "name": "reveal_local_house_once_and_ready_gate_session_3",
+      "status": "PASS"
+    },
+    {
+      "name": "accepted_selected_order_display_timer_session_4",
+      "status": "PASS"
+    },
+    {
+      "name": "reveal_local_house_once_and_ready_gate_session_4",
+      "status": "PASS"
+    },
+    {
+      "name": "configured_right_ground_waits_native_move_0",
+      "status": "PASS"
+    },
+    {
+      "name": "configured_right_sell_later_once_0",
+      "status": "PASS"
+    },
+    {
+      "name": "ejection_unselected_0",
+      "status": "PASS"
+    },
+    {
+      "name": "ejection_deselect_0",
+      "status": "PASS"
+    },
+    {
+      "name": "ejection_selected_0",
+      "status": "PASS"
+    },
+    {
+      "name": "ejection_switch_off_0",
+      "status": "PASS"
+    },
+    {
+      "name": "ejection_normal_exit_0",
+      "status": "PASS"
+    },
+    {
+      "name": "ejection_manual_stop_0",
+      "status": "PASS"
+    },
+    {
+      "name": "ejection_deployer_0",
+      "status": "PASS"
+    },
+    {
+      "name": "configured_right_ground_waits_native_move_5",
+      "status": "PASS"
+    },
+    {
+      "name": "configured_right_sell_later_once_5",
+      "status": "PASS"
+    },
+    {
+      "name": "ejection_unselected_5",
+      "status": "PASS"
+    },
+    {
+      "name": "ejection_deselect_5",
+      "status": "PASS"
+    },
+    {
+      "name": "ejection_selected_5",
+      "status": "PASS"
+    },
+    {
+      "name": "ejection_switch_off_5",
+      "status": "PASS"
+    },
+    {
+      "name": "ejection_normal_exit_5",
+      "status": "PASS"
+    },
+    {
+      "name": "ejection_manual_stop_5",
+      "status": "PASS"
+    },
+    {
+      "name": "ejection_deployer_5",
+      "status": "PASS"
+    },
+    {
+      "name": "configured_right_ground_waits_native_move_3",
+      "status": "PASS"
+    },
+    {
+      "name": "configured_right_sell_later_once_3",
+      "status": "PASS"
+    },
+    {
+      "name": "ejection_unselected_3",
+      "status": "PASS"
+    },
+    {
+      "name": "ejection_deselect_3",
+      "status": "PASS"
+    },
+    {
+      "name": "ejection_selected_3",
+      "status": "PASS"
+    },
+    {
+      "name": "ejection_switch_off_3",
+      "status": "PASS"
+    },
+    {
+      "name": "ejection_normal_exit_3",
+      "status": "PASS"
+    },
+    {
+      "name": "ejection_manual_stop_3",
+      "status": "PASS"
+    },
+    {
+      "name": "ejection_deployer_3",
+      "status": "PASS"
+    },
+    {
+      "name": "configured_right_ground_waits_native_move_4",
+      "status": "PASS"
+    },
+    {
+      "name": "configured_right_sell_later_once_4",
+      "status": "PASS"
+    },
+    {
+      "name": "ejection_unselected_4",
+      "status": "PASS"
+    },
+    {
+      "name": "ejection_deselect_4",
+      "status": "PASS"
+    },
+    {
+      "name": "ejection_selected_4",
+      "status": "PASS"
+    },
+    {
+      "name": "ejection_switch_off_4",
+      "status": "PASS"
+    },
+    {
+      "name": "ejection_normal_exit_4",
+      "status": "PASS"
+    },
+    {
+      "name": "ejection_manual_stop_4",
+      "status": "PASS"
+    },
+    {
+      "name": "ejection_deployer_4",
+      "status": "PASS"
+    },
+    {
+      "name": "ejection_five_scatter_0",
+      "status": "PASS"
+    },
+    {
+      "name": "ejection_same_cell_pending_0",
+      "status": "PASS"
+    },
+    {
+      "name": "ejection_same_cell_mixed_0",
+      "status": "PASS"
+    },
+    {
+      "name": "ejection_moving_ready_0",
+      "status": "PASS"
+    },
+    {
+      "name": "ejection_blocked_0",
+      "status": "PASS"
+    },
+    {
+      "name": "ejection_manual_cancel_0",
+      "status": "PASS"
+    },
+    {
+      "name": "ejection_scatter_timeout_0",
+      "status": "PASS"
+    },
+    {
+      "name": "ejection_five_scatter_5",
+      "status": "PASS"
+    },
+    {
+      "name": "ejection_same_cell_pending_5",
+      "status": "PASS"
+    },
+    {
+      "name": "ejection_same_cell_mixed_5",
+      "status": "PASS"
+    },
+    {
+      "name": "ejection_moving_ready_5",
+      "status": "PASS"
+    },
+    {
+      "name": "ejection_blocked_5",
+      "status": "PASS"
+    },
+    {
+      "name": "ejection_manual_cancel_5",
+      "status": "PASS"
+    },
+    {
+      "name": "ejection_scatter_timeout_5",
+      "status": "PASS"
+    },
+    {
+      "name": "ejection_five_scatter_3",
+      "status": "PASS"
+    },
+    {
+      "name": "ejection_same_cell_pending_3",
+      "status": "PASS"
+    },
+    {
+      "name": "ejection_same_cell_mixed_3",
+      "status": "PASS"
+    },
+    {
+      "name": "ejection_moving_ready_3",
+      "status": "PASS"
+    },
+    {
+      "name": "ejection_blocked_3",
+      "status": "PASS"
+    },
+    {
+      "name": "ejection_manual_cancel_3",
+      "status": "PASS"
+    },
+    {
+      "name": "ejection_scatter_timeout_3",
+      "status": "PASS"
+    },
+    {
+      "name": "ejection_five_scatter_4",
+      "status": "PASS"
+    },
+    {
+      "name": "ejection_same_cell_pending_4",
+      "status": "PASS"
+    },
+    {
+      "name": "ejection_same_cell_mixed_4",
+      "status": "PASS"
+    },
+    {
+      "name": "ejection_moving_ready_4",
+      "status": "PASS"
+    },
+    {
+      "name": "ejection_blocked_4",
+      "status": "PASS"
+    },
+    {
+      "name": "ejection_manual_cancel_4",
+      "status": "PASS"
+    },
+    {
+      "name": "ejection_scatter_timeout_4",
+      "status": "PASS"
+    },
+    {
+      "name": "per_feature_mouse_enter_ground_0",
+      "status": "PASS"
+    },
+    {
+      "name": "per_feature_mouse_disk_ground_auto_cs_0",
+      "status": "PASS"
+    },
+    {
+      "name": "per_feature_mouse_vehicle_allow_0",
+      "status": "PASS"
+    },
+    {
+      "name": "per_feature_mouse_vehicle_wrong_button_0",
+      "status": "PASS"
+    },
+    {
+      "name": "per_feature_mouse_building_allow_0",
+      "status": "PASS"
+    },
+    {
+      "name": "per_feature_mouse_building_wrong_button_0",
+      "status": "PASS"
+    },
+    {
+      "name": "per_feature_mouse_enter_ground_5",
+      "status": "PASS"
+    },
+    {
+      "name": "per_feature_mouse_disk_ground_auto_cs_5",
+      "status": "PASS"
+    },
+    {
+      "name": "per_feature_mouse_vehicle_allow_5",
+      "status": "PASS"
+    },
+    {
+      "name": "per_feature_mouse_vehicle_wrong_button_5",
+      "status": "PASS"
+    },
+    {
+      "name": "per_feature_mouse_building_allow_5",
+      "status": "PASS"
+    },
+    {
+      "name": "per_feature_mouse_building_wrong_button_5",
+      "status": "PASS"
+    },
+    {
+      "name": "per_feature_mouse_enter_ground_3",
+      "status": "PASS"
+    },
+    {
+      "name": "per_feature_mouse_disk_ground_auto_cs_3",
+      "status": "PASS"
+    },
+    {
+      "name": "per_feature_mouse_vehicle_allow_3",
+      "status": "PASS"
+    },
+    {
+      "name": "per_feature_mouse_vehicle_wrong_button_3",
+      "status": "PASS"
+    },
+    {
+      "name": "per_feature_mouse_building_allow_3",
+      "status": "PASS"
+    },
+    {
+      "name": "per_feature_mouse_building_wrong_button_3",
+      "status": "PASS"
+    },
+    {
+      "name": "per_feature_mouse_enter_ground_4",
+      "status": "PASS"
+    },
+    {
+      "name": "per_feature_mouse_disk_ground_auto_cs_4",
+      "status": "PASS"
+    },
+    {
+      "name": "per_feature_mouse_vehicle_allow_4",
+      "status": "PASS"
+    },
+    {
+      "name": "per_feature_mouse_vehicle_wrong_button_4",
+      "status": "PASS"
+    },
+    {
+      "name": "per_feature_mouse_building_allow_4",
+      "status": "PASS"
+    },
+    {
+      "name": "per_feature_mouse_building_wrong_button_4",
+      "status": "PASS"
+    },
+    {
+      "name": "reject_chat",
+      "status": "PASS"
+    },
+    {
+      "name": "reject_menu",
+      "status": "PASS"
+    },
+    {
+      "name": "reject_dialog",
+      "status": "PASS"
+    },
+    {
+      "name": "reject_inactive_tactical",
+      "status": "PASS"
+    },
+    {
+      "name": "reject_foreign_actor",
+      "status": "PASS"
+    },
+    {
+      "name": "reject_pointer_reused",
+      "status": "PASS"
+    },
+    {
+      "name": "reject_stale_ms",
+      "status": "PASS"
+    },
+    {
+      "name": "reject_stale_frame",
+      "status": "PASS"
+    },
+    {
+      "name": "reject_wrong_match",
+      "status": "PASS"
+    },
+    {
+      "name": "reject_camera_changed",
+      "status": "PASS"
+    },
+    {
+      "name": "reject_sidebar",
+      "status": "PASS"
+    },
+    {
+      "name": "reject_shift",
+      "status": "PASS"
+    },
+    {
+      "name": "reject_cancelled_serial",
+      "status": "PASS"
+    },
+    {
+      "name": "reject_oversized_selection",
+      "status": "PASS"
+    },
+    {
+      "name": "pending_follow_new_input",
+      "status": "PASS"
+    },
+    {
+      "name": "pending_follow_expired",
+      "status": "PASS"
+    },
+    {
+      "name": "pending_follow_feature_disabled",
+      "status": "PASS"
+    },
+    {
+      "name": "pending_follow_wrong_destination",
+      "status": "PASS"
+    },
+    {
+      "name": "pending_follow_target_attack",
+      "status": "PASS"
+    },
+    {
+      "name": "queue_full_retry_without_replay",
+      "status": "PASS"
+    },
+    {
+      "name": "manager_rejects_engine_patch_even_with_lease",
+      "status": "PASS"
+    },
+    {
+      "name": "sell_event_0_own_vehicle_with_building",
+      "status": "PASS"
+    },
+    {
+      "name": "sell_event_0_own_vehicle_empty_cell",
+      "status": "PASS"
+    },
+    {
+      "name": "sell_event_0_enemy_vehicle",
+      "status": "PASS"
+    },
+    {
+      "name": "sell_event_0_drained_building",
+      "status": "PASS"
+    },
+    {
+      "name": "sell_event_3_own_vehicle_with_building",
+      "status": "PASS"
+    },
+    {
+      "name": "sell_event_3_own_vehicle_empty_cell",
+      "status": "PASS"
+    },
+    {
+      "name": "sell_event_3_enemy_vehicle",
+      "status": "PASS"
+    },
+    {
+      "name": "sell_event_3_drained_building",
+      "status": "PASS"
+    },
+    {
+      "name": "original_sell_receiver_owner_True_building_True",
+      "status": "PASS"
+    },
+    {
+      "name": "original_sell_receiver_owner_True_building_False",
+      "status": "PASS"
+    },
+    {
+      "name": "original_sell_receiver_owner_False_building_True",
+      "status": "PASS"
+    },
+    {
+      "name": "original_sell_receiver_owner_False_building_False",
+      "status": "PASS"
+    },
+    {
+      "name": "auto_cs_type_whitelist_False",
+      "status": "PASS"
+    },
+    {
+      "name": "auto_cs_type_whitelist_True",
+      "status": "PASS"
+    },
+    {
+      "name": "native_move_follow_advanced",
+      "status": "PASS"
+    },
+    {
+      "name": "native_move_follow_magnetron",
+      "status": "PASS"
+    },
+    {
+      "name": "explicit_middle_enter_captures_existing_external_plan",
+      "status": "PASS"
+    },
+    {
+      "name": "disk_primary_uses_original_force_ground_event",
+      "status": "PASS"
+    },
+    {
+      "name": "multi_frame_batch_accepted_prefix_never_replayed",
+      "status": "PASS"
+    },
+    {
+      "name": "reconnect_reused_request_serial_clears_pending_follow",
+      "status": "PASS"
+    }
+  ]
+}

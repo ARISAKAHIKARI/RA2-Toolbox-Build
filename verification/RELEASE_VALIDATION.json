@@ -1,0 +1,56 @@
+{
+  "version": "0.7.20",
+  "base_version": "0.7.19",
+  "base_user_netplay_feedback": "User reports no more disconnects with 0.7.15; 0.7.20 not yet field-tested",
+  "type": "Full",
+  "release_status": "persistent_icons_and_configurable_automation",
+  "assist_protocol": 40,
+  "runtime_protocol": 3,
+  "entry_api": 3,
+  "engine_code_patching": false,
+  "remaining_hooks": [
+    "manager WH_GETMESSAGE",
+    "manager WH_CALLWNDPROCRET"
+  ],
+  "retired_tests": "RETIRED_TEST_CONTRACTS.json",
+  "feature_review_count": 67,
+  "portable_native_cases": 56,
+  "source_ui_checks": 23,
+  "mock_read_checks": 2,
+  "dll_regression_suites": {
+    "config-current.json": 26,
+    "startup-user.json": 90,
+    "startup-reference.json": 90,
+    "no-interception-user.json": 149,
+    "no-interception-reference.json": 149,
+    "ore-priority-user.json": 28,
+    "ore-priority-reference.json": 28,
+    "binding-current.json": 3,
+    "selection-current.json": 12,
+    "bridge-current.json": 13,
+    "timing-current.json": 12,
+    "robustness-current.json": 15,
+    "two-peer-current.json": 55
+  },
+  "dll_regression_cases": 670,
+  "ui_controls": 189,
+  "ui_viewports": 12,
+  "ui_reachability_checks": 2172,
+  "project_binaries": [
+    "RA2Toolbox.exe",
+    "GameRuntime.dll"
+  ],
+  "injected_project_dlls": [
+    "GameRuntime.dll"
+  ],
+  "windows_ui_tested": false,
+  "windows_overlay_fps_measured": false,
+  "full_game_tested": false,
+  "real_netplay_tested": false,
+  "real_platform_disconnect_fixed_confirmed": false,
+  "real_latency_measured": false,
+  "model": "actual x86 DLL/constructors; synthetic world/Win32. Two-peer receiver/transport and frame barriers modeled; no movement/combat/economy simulation. Sell receiver branch actual with final sale mocked.",
+  "preserved_baseline_resource_files": 2985,
+  "bundled_resource_files": 2987,
+  "full_python_runtime": "Windows x64 offline preprocessing, not injected"
+}

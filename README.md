@@ -1,17 +1,20 @@
 # RA2 Toolbox
 
-当前版本：**v0.7.19**（文件版本 0.7.19.0）。
+当前版本：**v0.7.20**（文件版本 0.7.20.0，Assist 协议 40）。
 
-[下载 v0.7.19 Windows 运行包](https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/releases/tag/v0.7.19)
+- [下载 Windows 运行包](https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/releases/tag/v0.7.20)：完整解压后运行 `RA2Toolbox.exe` 或 `Start-Message.cmd`。
+- [当前完整源码](source/)：源码已展开，可直接浏览和比较提交。
+- [完整开发包](packages/v0.7.20/development.zip)：包含源码、构建脚本、文档、测试记录及第三方资源源码归档。
+- [架构和功能说明](docs/FULL-0.7-Architecture-and-Features.html)
+- [测试报告](docs/TEST-REPORT.html)与[验证记录](verification/)
+- [更新说明](packages/v0.7.20/RELEASE_NOTES.md)与[发布校验清单](packages/v0.7.20/manifest.json)
 
-完整解压后运行 `RA2Toolbox.exe` 或 `Start-Message.cmd`。包含 EXE、单个 `GameRuntime.dll`、完整资源和离线预处理运行依赖；Release 附件不含项目开发源码或测试报告。
+Release 上传附件只包含 EXE、单个 GameRuntime.dll、资源及运行依赖，不包含项目开发源码或测试报告。engine/runtime 下的 Python 文件属于运行依赖，请勿删除。GitHub 自动提供的 Source code 下载是仓库快照，并非额外上传的 Release 附件。
 
-- [更新说明与验证范围](packages/v0.7.19/RELEASE_NOTES.md)
-- [逐文件发布清单](packages/v0.7.19/manifest.json)
-- [仓库内开发材料](packages/v0.7.19/development.zip)：当前源码、构建脚本、架构说明、测试证据及第三方资源源码归档，不上传为 Release 附件。
+0.7.20 增加单位图标和调色板磁盘缓存、可配置矿车/矿场类型，以及默认关闭的“允许维修不可维修的建筑”开关。设置即时生效并自动保存，游戏指令继续统一经过 GameRuntime。
 
-本版将地图全开设为须主动许可的实验性功能，增加独立覆盖层显示方式与隐藏原因日志。使用单个 GameRuntime.dll 统一提交游戏指令。科技全开、随处建造、敌方建筑变卖保持停用。
+验证：670 项实际 x86 DLL 模型用例、56 个便携测试程序、23 项源代码/UI 检查、2 项模拟 Win32 读取测试通过。尚未完成本版 Windows 游戏实机、屏幕捕获、平台联机和真实延迟验证，因此标记为预发布版本。
 
-644 项 DLL 模型用例与便携测试通过，尚未完成 v0.7.19 的 Windows 实机及平台联机验证，发布为预发布版本。
+构建入口：`source/build-zig.sh` / `source/BUILD_ZIG.cmd`。开发包和运行包应解压到同一目录，以提供完整资源和运行依赖；所需编译工具请按脚本准备。仓库内历史 payload/release 目录用于资源重建，当前代码以 source/ 为准。
 
-`publish-v0719.yml` 以逐文件大小和 SHA256 校验后的资源及当前二进制组装运行包，上传后重新下载校验再发布。历史发布和构建工作流保留。
+发布工作流校验展开源码与开发包一致，逐文件核对资源与二进制 SHA256，上传后重新下载验证运行包，再公开该版本。仓库访问权限保持不变。
