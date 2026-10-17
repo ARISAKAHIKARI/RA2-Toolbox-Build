@@ -13,6 +13,7 @@ static void changedSetting(){
 static bool autoSettingChanged(int id,int notification){
  if(!ready||updatingControls)return false;
  const bool edit=notification==EN_CHANGE,select=notification==CBN_SELCHANGE;
+ if(id==785&&notification==BN_CLICKED){extra.enemyMarkers=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();return true;}
  if(id==790&&select){int next=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));if(next>=0&&next<featuretypes::Count){featureTypeIndex=next;featureTypeFields();}return true;}
  if(id==791&&notification==BN_CLICKED){featureTypes.filters[featureTypeIndex].custom=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();return true;}
  if(id==792&&edit){wchar_t text[13000]{};GetWindowTextW(GetDlgItem(ui,id),text,13000);auto&f=featureTypes.filters[featureTypeIndex];

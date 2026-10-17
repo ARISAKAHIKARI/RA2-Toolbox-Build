@@ -57,6 +57,11 @@ static Snapshot snap{},incoming{};static uint32_t ack,notice,oldMatch,snapshotSe
 struct DisplayCounters {DWORD since=0,samples=0,paints=0,uploads=0,maxGap=0;uint64_t readUs=0,maxReadUs=0;};
 static DisplayCounters displayCounters;
 static visual::Motion motion;static visual::LabelView labelViews[MaxLabels];
+static visual::Motion enemyMotion;static Snapshot enemySample{};static visual::LabelView enemyViews[MaxLabels];
+static_assert(external::enemies::Maximum<=MaxLabels,"Enemy markers reuse the existing display Motion capacity");
+struct EnemyRaster {std::wstring text;ARGB color{};std::unique_ptr<Bitmap> image;};
+static std::unordered_map<uint64_t,EnemyRaster> enemyRasters;static uint32_t enemyRasterMatch=0;
+static void clearEnemyDisplay(){enemyMotion.clear();enemyRasters.clear();enemyRasterMatch=0;}
 struct LabelRaster {std::wstring text;ARGB color{};float width{};int used{},capacity{},centis{},shield{},frozenCentis{};std::unique_ptr<Bitmap> image;};static std::unordered_map<uint32_t,LabelRaster> labelRasters;
 static bool techMode;static bool autoRevealNewMatch=false;
 static uint32_t schedulerMode=0,schedulerTarget=0,megaQueueMode=0,objectQueueMode=0;
@@ -540,7 +545,7 @@ static void detach(){
  critical(L"detach pid="+std::to_wstring(pid));commandQueue.clear();inFlightMatch=0;inFlightRetries=0;sentAt=0;lastStallLog=0;typeTap.clear();
  releaseBridge();externalData=nullptr;externalSampler.reset();externalReader.close();externalAt=0;
  bridgeAttempts=0;bridgeBlocked=false;bridgeRetryAt=0;bridgeFailure.clear();
- if(gameProcess)CloseHandle(gameProcess);gameProcess=nullptr;lastProcessCheck=0;game=nullptr;pid=0;gameThread=0;snap={};motion.clear();labelRasters.clear();ShowWindow(overlay,SW_HIDE);
+ if(gameProcess)CloseHandle(gameProcess);gameProcess=nullptr;lastProcessCheck=0;game=nullptr;pid=0;gameThread=0;snap={};motion.clear();labelRasters.clear();clearEnemyDisplay();ShowWindow(overlay,SW_HIDE);
 }
 static bool boundGameAlive(){
  if(!game||!IsWindow(game))return false;
@@ -632,6 +637,20 @@ static bool attach(){
  setStatus(L"已连接只读 PID "+std::to_wstring(pid)+
   (game?L"，正在校验内存布局…":L"，尚无可用窗口；控制功能保持关闭"));return true;
 }
+static uint64_t enemyRasterKey(const external::enemies::Marker&m){return (uint64_t(m.type)<<32)|m.owner;}
+static void updateEnemyDisplay(const Snapshot&source){
+ const auto&f=externalSampler.enemyMarkers();
+ if(!extra.enemyMarkers||snap.renderStatus!=1||!external::enemies::fresh(f,source.match,sampleRenderClock(nullptr))){clearEnemyDisplay();return;}
+ if(enemyRasterMatch!=f.match){clearEnemyDisplay();enemyRasterMatch=f.match;}
+ enemySample.labels=f.count;enemySample.match=f.match;enemySample.sampledTick=f.tick;enemySample.frame=f.frame;
+ enemySample.cameraX=source.cameraX;enemySample.cameraY=source.cameraY;
+ for(int i=0;i<f.count;++i){const auto&m=f.items[i];enemySample.label[i]={m.id,m.x,m.y,0,0,0,0,0,m.color,0};}
+ enemyMotion.update(enemySample,f.frame);
+ if(enemyRasters.size()>size_t(f.count+32)){
+  std::unordered_set<uint64_t> live;for(int i=0;i<f.count;++i)live.insert(enemyRasterKey(f.items[i]));
+  for(auto i=enemyRasters.begin();i!=enemyRasters.end();)if(!live.count(i->first))i=enemyRasters.erase(i);else ++i;
+ }
+}
 static void mergeExternal(){
  if(!externalData)return;const auto&d=*externalData;const DWORD displayNow=sampleRenderClock(nullptr);
  bool control=commandMatch()!=0; // preserve authoritative command identity/catalogue even when display data is delayed
@@ -644,7 +663,7 @@ static void mergeExternal(){
                            DWORD(displayNow-d.sampledTick)<2000;
  snap.renderStatus=externalValid&&d.renderStatus==1?1:0;
  snap.status=gateway::chooseVisibleStatus({snap.readStatus,snap.bridgeStatus,snap.commandStatus,snap.renderStatus});
- if(!externalValid){motion.clear();labelRasters.clear();return;}
+ if(!externalValid){motion.clear();labelRasters.clear();clearEnemyDisplay();return;}
  if(!control){snap.frame=d.frame;snap.session=d.session;snap.chat=d.chat;}
  snap.match=controllink::mergedIdentity(commandLink(),d.match);
  snap.width=d.width;snap.height=d.height;snap.sampledTick=d.sampledTick;snap.cameraX=d.cameraX;snap.cameraY=d.cameraY;
@@ -660,6 +679,7 @@ static void mergeExternal(){
  snap.threatCount=std::clamp(d.threatCount,0,MaxThreats);memcpy(snap.threats,d.threats,size_t(snap.threatCount)*sizeof(Threat));
  snap.crateCount=std::clamp(d.crateCount,0,MaxCrates);memcpy(snap.crates,d.crates,size_t(snap.crateCount)*sizeof(CrateMark));
  if(snap.readStatus==1){rememberLiveTypes();if(snap.renderStatus==1)motion.update(snap,d.frame);else motion.clear();if(labelRasters.size()>size_t(snap.labels+32)){std::unordered_set<uint32_t> live;for(int i=0;i<snap.labels;++i)live.insert(snap.label[i].id);for(auto i=labelRasters.begin();i!=labelRasters.end();)if(!live.count(i->first))i=labelRasters.erase(i);else ++i;}}else{motion.clear();labelRasters.clear();}
+ updateEnemyDisplay(d);
 }
 static void sampleExternal(DWORD now){
  
@@ -669,7 +689,7 @@ static void sampleExternal(DWORD now){
  if(!externalAt||DWORD(displayNow-externalAt)>=period){
   const DWORD gap=externalAt?DWORD(displayNow-externalAt):0;
   LARGE_INTEGER sampleStart{},sampleEnd{},sampleFrequency{};QueryPerformanceCounter(&sampleStart);
-  externalAt=displayNow;externalReader.begin();externalSampler.stopped(tacticalPlanner.stoppedUnits());externalData=&externalSampler.sample(displayNow,flags());
+  externalAt=displayNow;externalReader.begin();externalSampler.stopped(tacticalPlanner.stoppedUnits());externalData=&externalSampler.sample(displayNow,flags(),extra.enemyMarkers);
   QueryPerformanceCounter(&sampleEnd);QueryPerformanceFrequency(&sampleFrequency);
   const uint64_t cost=sampleFrequency.QuadPart>0?uint64_t(sampleEnd.QuadPart-sampleStart.QuadPart)*1000000/uint64_t(sampleFrequency.QuadPart):0;
   auto&dc=displayCounters;if(!dc.since)dc.since=displayNow;
@@ -800,16 +820,36 @@ static void drawLabel(Graphics&g,const visual::LabelView&l,float sx,float sy){
  }
  if(r.shield)g.DrawImage(r.image.get(),l.x*sx-r.width*.5f-4,l.y*sy-20-(r.shield-1)*14.f,float(r.image->GetWidth()),float(r.image->GetHeight()));
 }
+static void drawEnemyMarker(Graphics&g,const external::enemies::Marker&m,const visual::LabelView&v,float sx,float sy){
+ float x=v.x*sx,y=v.y*sy;Pen edge(Color(245,5,9,16),4.f),mark(Color(m.color),2.f);
+ if(m.kind==3){g.DrawRectangle(&edge,x-7,y-7,14.f,14.f);g.DrawRectangle(&mark,x-7,y-7,14.f,14.f);}
+ else{PointF points[]={{x,y-7},{x+7,y},{x,y+7},{x-7,y}};g.DrawPolygon(&edge,points,4);g.DrawPolygon(&mark,points,4);}
+ std::wstring text=L"P"+std::to_wstring(m.player+1)+L" ";size_t prefix=text.size();
+ for(int i=0;i<18&&m.name[i];++i)if(m.name[i]>=32&&m.name[i]!=127)text.push_back(wchar_t(m.name[i]));
+ if(text.size()>prefix&&text.back()>=0xD800&&text.back()<=0xDBFF)text.pop_back();
+ if(text.size()==prefix)text+=m.kind==3?L"建筑":L"单位";
+ auto&r=enemyRasters[enemyRasterKey(m)];
+ if(!r.image||r.text!=text){
+  const int width=std::clamp(int(text.size())*13+12,48,280);r.image=std::make_unique<Bitmap>(width,36,PixelFormat32bppPARGB);
+  Graphics raster(r.image.get());raster.Clear(Color(0,0,0,0));raster.SetSmoothingMode(SmoothingModeAntiAlias);
+  FontFamily family(L"Microsoft YaHei UI");GraphicsPath path;StringFormat fmt;fmt.SetFormatFlags(StringFormatFlagsNoWrap);
+  path.AddString(text.c_str(),-1,&family,FontStyleBold,12,PointF(4,4),&fmt);Pen outline(Color(245,5,9,16),3);outline.SetLineJoin(LineJoinRound);
+  raster.DrawPath(&outline,&path);SolidBrush brush(Color(255,255,235,235));raster.FillPath(&brush,&path);r.text=text;
+ }
+ g.DrawImage(r.image.get(),x+8,y+4,float(r.image->GetWidth()),float(r.image->GetHeight()));
+}
 struct Surface{HDC dc{};HBITMAP bitmap{},old{};BYTE*bits{};int w{},h{};~Surface(){clear();}void clear(){if(dc){SelectObject(dc,old);DeleteObject(bitmap);DeleteDC(dc);}dc=nullptr;bitmap=nullptr;bits=nullptr;w=h=0;}bool resize(int x,int y){if(x==w&&y==h&&dc)return true;clear();if(x<1||y<1||x>8192||y>8192)return false;BITMAPINFO bi{};bi.bmiHeader.biSize=sizeof(BITMAPINFOHEADER);bi.bmiHeader.biWidth=x;bi.bmiHeader.biHeight=-y;bi.bmiHeader.biPlanes=1;bi.bmiHeader.biBitCount=32;HDC screen=GetDC(nullptr);dc=CreateCompatibleDC(screen);bitmap=CreateDIBSection(screen,&bi,DIB_RGB_COLORS,(void**)&bits,nullptr,0);ReleaseDC(nullptr,screen);if(!bitmap||!dc){clear();return false;}old=(HBITMAP)SelectObject(dc,bitmap);w=x;h=y;return true;}};static Surface surface;
 static void paint(){
  ++displayCounters.paints;
  if(foregroundGame())sampleExternal(GetTickCount()); // Display cadence is independent of 16 ms command servicing.
  if(!foregroundGame()||snap.renderStatus!=1){ShowWindow(overlay,SW_HIDE);return;}
  DWORD now=sampleClock(shared),renderNow=sampleRenderClock(shared);int labelCount=motion.render(renderNow,labelViews);
+ const auto&enemyFrame=externalSampler.enemyMarkers();
+ int enemyCount=extra.enemyMarkers&&externalData&&external::enemies::fresh(enemyFrame,externalData->match,renderNow)?std::min(enemyFrame.count,enemyMotion.render(renderNow,enemyViews)):0;
  RECT r{};GetClientRect(game,&r);POINT origin{};ClientToScreen(game,&origin);
  bool panel=SendMessageW(check[6],BM_GETCHECK,0,0)==BST_CHECKED;
  bool hasToast=panel&&now<toastUntil;bool summary=panel&&snap.transports;
- if(!labelCount&&!hasToast&&!summary&&!snap.threatCount&&!snap.crateCount){ShowWindow(overlay,SW_HIDE);return;}
+ if(!labelCount&&!hasToast&&!summary&&!snap.threatCount&&!snap.crateCount&&!enemyCount){ShowWindow(overlay,SW_HIDE);return;}
  float sx=snap.width>0?float(r.right)/snap.width:1,sy=snap.height>0?float(r.bottom)/snap.height:1;
  float top=float(std::clamp(topMargin,0,std::max(0,int(r.bottom)-90)));
  float panelW=std::min(float(std::max(1,int(r.right)-16)),std::max(330.f,hasToast?float(toast.size()*12+24):330.f));
@@ -820,15 +860,21 @@ static void paint(){
  for(int i=0;i<labelCount;++i){auto&l=labelViews[i];include(l.x*sx-140,l.y*sy-70,280,110);}
  for(int i=0;i<snap.crateCount;++i){auto&c=snap.crates[i];include(c.x*sx-110,c.y*sy-33,220,46);}
  for(int i=0;i<snap.threatCount;++i){auto&t=snap.threats[i];include(std::min(t.x,t.tx)*sx-10,std::min(t.y,t.ty)*sy-10,std::abs(t.x-t.tx)*sx+20,std::abs(t.y-t.ty)*sy+20);}
+ for(int i=0;i<enemyCount;++i){const auto&v=enemyViews[i];if(external::enemies::onScreen(v.x,v.y,enemyFrame.width,enemyFrame.height))include(v.x*sx-10,v.y*sy-12,300,54);}
  if(right<=left||bottom<=up){ShowWindow(overlay,SW_HIDE);return;}
  static Snapshot drawn{};static visual::LabelView drawnViews[MaxLabels];static int drawnCount;static bool lastToast,lastPanel,lastSummary;static std::wstring oldToast;static int oldW,oldH,oldMargin;static uint32_t revision;
+ static external::enemies::Marker drawnEnemies[external::enemies::Maximum];static visual::LabelView drawnEnemyViews[MaxLabels];static int drawnEnemyCount,drawnEnemyWidth,drawnEnemyHeight;
  bool changed=oldW!=r.right||oldH!=r.bottom||oldMargin!=topMargin||revision!=paintRevision||lastPanel!=panel||lastSummary!=summary||lastToast!=hasToast||(hasToast&&oldToast!=toast)||drawnCount!=labelCount||drawn.transports!=snap.transports||drawn.used!=snap.used||drawn.capacity!=snap.capacity||memcmp(drawnViews,labelViews,sizeof(visual::LabelView)*labelCount)||drawn.threatCount!=snap.threatCount||drawn.crateCount!=snap.crateCount||memcmp(drawn.threats,snap.threats,sizeof(Threat)*snap.threatCount)||memcmp(drawn.crates,snap.crates,sizeof(CrateMark)*snap.crateCount);
+ changed=changed||drawnEnemyCount!=enemyCount||drawnEnemyWidth!=enemyFrame.width||drawnEnemyHeight!=enemyFrame.height||memcmp(drawnEnemyViews,enemyViews,sizeof(visual::LabelView)*enemyCount)||memcmp(drawnEnemies,enemyFrame.items,sizeof(external::enemies::Marker)*enemyCount);
  origin.x+=left;origin.y+=up;
  if(!changed){RECT shown{};GetWindowRect(overlay,&shown);if(shown.left!=origin.x||shown.top!=origin.y||!IsWindowVisible(overlay))SetWindowPos(overlay,HWND_TOPMOST,origin.x,origin.y,0,0,SWP_NOSIZE|SWP_NOACTIVATE|SWP_SHOWWINDOW);return;}
  int w=((right-left+63)/64)*64,h=((bottom-up+31)/32)*32;if(!surface.resize(w,h))return;
  drawn.transports=snap.transports;drawn.used=snap.used;drawn.capacity=snap.capacity;drawn.threatCount=snap.threatCount;drawn.crateCount=snap.crateCount;memcpy(drawn.threats,snap.threats,sizeof(Threat)*snap.threatCount);memcpy(drawn.crates,snap.crates,sizeof(CrateMark)*snap.crateCount);drawnCount=labelCount;memcpy(drawnViews,labelViews,sizeof(visual::LabelView)*labelCount);oldW=r.right;oldH=r.bottom;oldMargin=topMargin;revision=paintRevision;lastPanel=panel;lastSummary=summary;lastToast=hasToast;oldToast=toast;
+ drawnEnemyCount=enemyCount;drawnEnemyWidth=enemyFrame.width;drawnEnemyHeight=enemyFrame.height;memcpy(drawnEnemies,enemyFrame.items,sizeof(external::enemies::Marker)*enemyCount);memcpy(drawnEnemyViews,enemyViews,sizeof(visual::LabelView)*enemyCount);
  memset(surface.bits,0,size_t(surface.w)*surface.h*4);
  {Bitmap bm(surface.w,surface.h,surface.w*4,PixelFormat32bppPARGB,surface.bits);Graphics g(&bm);g.SetSmoothingMode(SmoothingModeAntiAlias);g.TranslateTransform(-float(left),-float(up));
+  auto enemyClip=g.Save();g.SetClip(RectF(0,0,enemyFrame.width*sx,enemyFrame.height*sy),CombineModeIntersect);
+  for(int i=0;i<enemyCount;++i){const auto&v=enemyViews[i];if(external::enemies::onScreen(v.x,v.y,enemyFrame.width,enemyFrame.height))drawEnemyMarker(g,enemyFrame.items[i],v,sx,sy);}g.Restore(enemyClip);
   Pen threatPen(Color(185,245,114,223),1.6f);threatPen.SetEndCap(LineCapArrowAnchor);
   for(int i=0;i<snap.threatCount;++i){auto&t=snap.threats[i];float x=t.x*sx,y=t.y*sy,tx=t.tx*sx,ty=t.ty*sy;g.DrawLine(&threatPen,x,y,tx,ty);g.DrawEllipse(&threatPen,tx-7,ty-7,14.f,14.f);}
   Pen cratePen(Color(245,255,205,82),2.f);

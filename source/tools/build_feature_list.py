@@ -4,11 +4,21 @@ import json
 R=Path(__file__).resolve().parents[1]
 features=json.loads((R/'FEATURE_CATALOG.json').read_text())['features']
 filters=[('Aircraft','飞机分配攻击','仍须属于原版飞机/空中载具并有兼容武器'),('Disk','飞碟主武器','保留飞碟/吸取副武器识别'),('Magnetron','磁电轮换','仍需磁力武器与 Locomotor 弹头'),('AdvancedAttack','高级移动攻击','仍需合法地面单位与武器'),('LoadPassenger','自动装车乘员','仍需原版进入许可与体积兼容'),('LoadTransport','自动装车载具','仍需原版载员容量与进入许可'),('EnterSource','高级进驻乘员','仍需目标允许进入/占领'),('EnterTarget','高级进驻建筑或载具','分配屏幕内同类目标，仍检查容量'),('UnloadTransport','智能卸载载具','发原版整车卸载任务'),('UnloadPassenger','卸载后乘员任务','筛选后续部署/占领/攻击，不改变整车卸载'),('EscapeTransport','逃生载具','仍只跟踪选中的己方载具'),('EscapePassenger','逃生乘员','不生成幸存者，原版允许部署才发送'),('SellVehicle','变卖战车','仍须己方且满足原版格子/建筑条件'),('RepairBuilding','维修建筑','与不可维修建筑许可分别校验')]
-text='''# RA2 Toolbox 1.0 · 完整特性与实现说明
+text='''# RA2 Toolbox 1.0.1 · 完整特性与实现说明
 
-版本：1.0；Windows 文件版本：1.0.0.0；Assist 协议：41；Runtime 协议/API：3。EXE 与 GameRuntime.dll 必须配套更新。
+版本：1.0.1；Windows 文件版本：1.0.1.0；Assist 协议：41；Runtime 协议/API：3。EXE 与 GameRuntime.dll 必须配套更新。
 
-## 1.0 新增配置
+## 1.0.1 敌方位置标记
+
+战术面板的显示设置勾选“敌方位置标记（包含未揭示区域）”即可使用。默认关闭，即时生效并自动保存到 `Assist.ini` 的 `[Display] EnemyMarkers`。
+
+按玩家颜色标出当前战场视口中的敌方单位和建筑，包含未揭示区域；建筑使用方框，其他单位使用菱形，并显示玩家编号和类型名称。排除己方、盟友、中立与已进入运输工具的乘员。仅显示游戏内存中已有且布局兼容的数据。
+
+刷新率与现有覆盖层一致：共用上方 FPS 设置（5–500）、同一采样时钟、同一 Motion 插值和绘制窗口；同一逻辑帧内也更新位置。名称与文字位图缓存，场景遍历按原有逻辑帧/镜头刷新规则进行。最多 2048 个标记；菜单、失焦、跨局、读取失效或数据过期时隐藏，不绘制到侧栏。
+
+仅使用统一外部读取器，不修改战争迷雾、不调用地图揭示、不写游戏状态、不提交事件或新增 Hook。详细说明和验证边界见 [敌方标记说明](ENEMY-MARKERS.md)。
+
+## 继承 1.0 的单位清单配置
 
 战术助手面板找到“功能单位清单”，选择功能，填写逗号分隔的单位 ID，再按需勾选“仅处理自定义清单中的类型”。未勾选时沿用原有自动识别；勾选且留空则不处理任何类型。设置可离线修改，即时生效并自动保存。
 
@@ -61,7 +71,7 @@ text+='''## 验证和已知边界
 
 模型使用本次编译的 x86 DLL 与实际原版事件构造器，世界、Win32、传输和接收周边有桩实现；双端模型按帧检查事件传输与状态摘要，不是两个完整游戏实例，也没有真实寻路、战斗和经济模拟。详见 [测试报告](TEST-REPORT.html) 及 verification 中与本 DLL SHA256 绑定的结果。
 
-本版尚未完成 Windows 游戏实机、LBW、平台双人联机、屏幕捕获和真实延迟/帧率测试。1.0 是版本编号，不作为所有平台已验证的承诺。科技全开、随处建造和敌方建筑变卖仍停用；地图揭示需主动勾选实验性许可。
+本版尚未完成 Windows 游戏实机、LBW、平台双人联机、屏幕捕获和真实延迟/帧率测试。1.0.1 是版本编号，不作为所有平台已验证的承诺。科技全开、随处建造和敌方建筑变卖仍停用；地图揭示需主动勾选实验性许可。
 '''
 (R/'docs/FEATURES.md').write_text(text)
-print('Generated complete 68-feature reference and 14-entry configuration table')
+print('Generated complete 69-feature reference and 14-entry configuration table')

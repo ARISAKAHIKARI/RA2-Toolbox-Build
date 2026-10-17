@@ -6,10 +6,10 @@ import argparse,ctypes as C,json,math,os,struct,time,zlib
 from pathlib import Path
 
 def assist_prefix(first,second,pid):
- # Protocols 33-36 have the same first 76 bytes; later additions are at the tail.
+ # This observer opens only Local\\RA2Assist_v041_; require its matching ABI.
  if len(first)!=76 or first!=second:return None
  values=struct.unpack('<19I',first)
- return values if values[0]==0x41533130 and values[1] in (33,34,35,36,37) and values[2]==pid else None
+ return values if values[0]==0x41533130 and values[1]==41 and values[2]==pid else None
 
 def intersection(a,b):
  l,t=max(a[0],b[0]),max(a[1],b[1]);r,d=min(a[2],b[2]),min(a[3],b[3])

@@ -89,6 +89,10 @@ int main(){
  autoSavePending=false;timers=saves=syncs=0;timerMs=0;settingsRevision=1;paintRevision=0;
 
  for(int i=0;i<ExtraControlCount;++i)extraControls[i]=700+i;
+ assert(!extra.enemyMarkers);fields[785]=1;autoSettingChanged(785,BN_CLICKED);assert(extra.enemyMarkers&&autoSavePending);
+ saveMouse();extra.enemyMarkers=false;loadMouse();assert(extra.enemyMarkers);
+ fields[785]=0;autoSettingChanged(785,BN_CLICKED);saveMouse();extra.enemyMarkers=true;loadMouse();assert(!extra.enemyMarkers);
+ autoSavePending=false;timers=saves=syncs=0;timerMs=0;settingsRevision=1;paintRevision=0;
  fields[310]=144;assert(autoSettingChanged(310,EN_CHANGE));assert(fps==144&&saves==0&&autoSavePending&&timerMs==300&&syncs==1);
  fields[311]=42;autoSettingChanged(311,EN_CHANGE);assert(topMargin==42&&saves==0);flushAutoSettings();assert(saves==1&&!autoSavePending);flushAutoSettings();assert(saves==1);
  fields[310]=0;autoSettingChanged(310,EN_CHANGE);assert(fps==144&&!autoSavePending);

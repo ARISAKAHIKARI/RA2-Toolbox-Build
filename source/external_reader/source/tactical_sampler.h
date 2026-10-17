@@ -9,6 +9,8 @@
 #include "game_view.h"
 #include "layout_probe.h"
 #include "display_state.h"
+#include "enemy_markers.h"
+#include <unordered_map>
 namespace external {
 struct Projection {int cameraX=0,cameraY=0,width=0,height=0;double zScale=0.0866025403784;};
 inline bool project(const Projection&p,int x,int y,int z,int&sx,int&sy){
@@ -21,6 +23,10 @@ template<class Read> class TacticalSampler {
  int sceneFrame_=-1,sceneX_=0,sceneY_=0,sceneWidth_=0,sceneHeight_=0;uint32_t sceneFlags_=0,selectionHash_=0,sceneAt_=0;
  struct LabelSource {uint32_t object=0,id=0,type=0,owner=0;int kind=-1;bool selected=false;};
  LabelSource labelSources_[assist::MaxLabels]{};display::State display_{};
+ enemies::Frame enemies_{};bool sceneEnemies_=false;int sceneEnemyWidth_=0,sceneEnemyHeight_=0;uint32_t enemyOwnerSignature_=0,sceneEnemyOwners_=0;
+ struct EnemyOwner {uint32_t pointer=0,color=0;int index=-1;};
+ EnemyOwner enemyOwners_[32]{};int enemyOwnerCount_=0;
+ struct EnemyTypeName {uint16_t text[40]{};};std::unordered_map<uint32_t,EnemyTypeName> enemyNames_;
  uint32_t typePointers_[assist::MaxTypes]{};std::unordered_set<uint32_t> stopped_;
  struct FactoryState {uint32_t pointer=0;int type=-1;bool busy=false,paused=false,complete=false,seen=false;};FactoryState factories_[4];uint32_t productionAt_=0;
  template<class T>T get(uint32_t a,T fallback={}){T v{};return read_(a,&v,sizeof v)?v:fallback;}
@@ -32,6 +38,52 @@ template<class Read> class TacticalSampler {
  int kind(uint32_t p){uint32_t v=get<uint32_t>(p);return v==0x7F5C70?2:v==0x7EB058?1:v==0x7E3EBC?3:v==0x7E22A4?0:-1;}
  uint32_t type(uint32_t p,int k){return get<uint32_t>(p+(k==3?0x520:k==1?0x6C0:0x6C4));}
  void name(uint32_t type,uint16_t*out){uint32_t p=get<uint32_t>(type+0x60);uint16_t s[40]{};if(p>=0x10000&&read_(p,s,sizeof s)){std::memcpy(out,s,sizeof s);out[39]=0;}else{char id[24]{};read_(type+0x24,id,23);for(int j=0;j<23;++j)out[j]=uint8_t(id[j]);}}
+ const EnemyOwner* enemyOwner(uint32_t owner)const{
+  for(int i=0;i<enemyOwnerCount_;++i)if(enemyOwners_[i].pointer==owner)return &enemyOwners_[i];return nullptr;
+ }
+ void enemyOwners(const std::vector<uint32_t>&houses,uint32_t local){
+  enemyOwnerCount_=0;enemyOwnerSignature_=2166136261u;uint32_t allies=get<uint32_t>(local+0x5788,0xffffffffu);
+  for(uint32_t owner:houses){if(owner<0x10000||owner==local||enemyOwnerCount_>=32)continue;
+   int index=get<int>(owner+0x30,-1);uint32_t country=get<uint32_t>(owner+0x34);
+   if(index<0||index>=32||(allies&(1u<<index))||country<0x10000||get<uint8_t>(country+0x1A6,1))continue;
+   uint8_t rgb[3]={255,90,90};read_(owner+22265,rgb,3);
+   enemyOwners_[enemyOwnerCount_++]={owner,0xff000000u|(uint32_t(rgb[0])<<16)|(uint32_t(rgb[1])<<8)|rgb[2],index};
+   enemyOwnerSignature_=(enemyOwnerSignature_^owner)*16777619u;
+  }
+ }
+ bool refreshEnemies(const Projection&proj){
+  for(int i=0;i<enemies_.count;++i){auto&m=enemies_.items[i];const auto*owner=enemyOwner(m.owner);
+   if(!owner||kind(m.object)!=m.kind||get<uint32_t>(m.object+0x10)!=m.id||type(m.object,m.kind)!=m.type||
+      get<uint32_t>(m.object+0x21C)!=m.owner||get<int>(m.object+0x6C)<=0||!get<uint8_t>(m.object+0x74)||
+      get<uint8_t>(m.object+0x81)||!get<uint8_t>(m.object+0x90)||(m.kind!=3&&get<uint32_t>(m.object+0x11C,0xffffffffu)))return false;
+   int x=INT32_MIN,y=INT32_MIN;
+   project(proj,get<int>(m.object+0x9C,INT32_MIN),get<int>(m.object+0xA0,INT32_MIN),get<int>(m.object+0xA4,INT32_MIN),x,y);
+   if(x==INT32_MIN||y==INT32_MIN)return false; // Offscreen coordinates remain valid.
+   m.x=x;m.y=y;m.color=owner->color;m.player=owner->index;
+  }return true;
+ }
+ void addEnemy(uint32_t p,uint32_t t,int k,uint32_t owner,const Projection&proj){
+  const auto*enemy=enemyOwner(owner);if(!enemy||t<0x10000||(k!=3&&get<uint32_t>(p+0x11C,0xffffffffu)))return;
+  uint32_t id=get<uint32_t>(p+0x10);if(!id)return;int x,y;
+  if(!project(proj,get<int>(p+0x9C,INT32_MIN),get<int>(p+0xA0,INT32_MIN),get<int>(p+0xA4,INT32_MIN),x,y))return;
+  if(enemies_.count>=enemies::Maximum){++enemies_.omitted;return;}
+  auto&mark=enemies_.items[enemies_.count++];mark={};mark.object=p;mark.id=id;mark.type=t;mark.owner=owner;
+  mark.color=enemy->color;mark.player=enemy->index;mark.kind=k;mark.x=x;mark.y=y;
+  auto found=enemyNames_.find(t);if(found==enemyNames_.end()){
+   if(enemyNames_.size()>=1024)enemyNames_.clear();EnemyTypeName value{};name(t,value.text);found=enemyNames_.emplace(t,value).first;
+  }std::memcpy(mark.name,found->second.text,sizeof mark.name);
+ }
+ void publishEnemies(uint32_t house,int frame,uint32_t now,bool enabled){
+  enemies_.match=state_.match;enemies_.house=house;enemies_.frame=frame;enemies_.tick=now;
+  if(!enabled){enemies_.count=0;return;}
+  auto latest=[&](uint32_t at,void*out,size_t n){return enemies::latest(read_,at,out,n,0);};
+  int after=-1;uint32_t currentHouse=0,tactical=0;int cameraX=INT32_MIN,cameraY=INT32_MIN;uint8_t started=0;
+  bool valid=latest(0xA8ED84,&after,4)&&latest(0xA83D4C,&currentHouse,4)&&latest(0xA8E9A0,&started,1)&&
+   latest(0x887324,&tactical,4)&&tactical>=0x10000&&latest(tactical+0xB0,&cameraX,4)&&latest(tactical+0xB4,&cameraY,4);
+  if(!valid||!started||currentHouse!=house||after<frame||after-frame>2||cameraX!=state_.cameraX||cameraY!=state_.cameraY||!display::inspect(latest).visible()){
+   enemies_.count=0;sceneFrame_=-1;
+  }
+ }
  int frozen(uint32_t object){
   uint32_t temporal=get<uint32_t>(object+0x278);if(temporal<0x10000||get<uint32_t>(temporal+0x28)!=object)return 0;
   int remaining=get<int>(temporal+0x48);if(remaining<=0)return 0;
@@ -79,7 +131,8 @@ public:
  explicit TacticalSampler(Read read):read_(read){}
  layout::Result probe()const{return probe_;}
  display::State displayState()const{return display_;}
- void reset(){probe_={};house_=serial_=0;lastFrame_=-1;state_={};sceneFrame_=-1;sceneFlags_=selectionHash_=sceneAt_=0;flashCount=0;productionAt_=0;for(auto&f:factories_)f={};stopped_.clear();}
+ const enemies::Frame& enemyMarkers()const{return enemies_;}
+ void reset(){probe_={};house_=serial_=0;lastFrame_=-1;state_={};sceneFrame_=-1;sceneFlags_=selectionHash_=sceneAt_=0;flashCount=0;productionAt_=0;for(auto&f:factories_)f={};stopped_.clear();enemies_={};sceneEnemies_=false;enemyNames_.clear();enemyOwnerCount_=0;}
  void stopped(const std::vector<uint32_t>&ids){stopped_.clear();stopped_.insert(ids.begin(),ids.end());}
  void refreshCamera(uint32_t now){
   if(state_.status!=1)return;uint32_t tactical=get<uint32_t>(0x887324);if(tactical<0x10000)return;
@@ -88,37 +141,45 @@ public:
   for(int i=0;i<state_.labels;++i){state_.label[i].x-=dx;state_.label[i].y-=dy;}
   for(int i=0;i<state_.crateCount;++i){state_.crates[i].x-=dx;state_.crates[i].y-=dy;}
   for(int i=0;i<state_.threatCount;++i){auto&t=state_.threats[i];t.x-=dx;t.y-=dy;t.tx-=dx;t.ty-=dy;}
+  for(int i=0;i<enemies_.count;++i){enemies_.items[i].x-=dx;enemies_.items[i].y-=dy;}
  }
- const assist::Snapshot&sample(uint32_t now,uint32_t flags){
+ const assist::Snapshot&sample(uint32_t now,uint32_t flags,bool enemyMarkers=false){
   state_.sampledTick=now;state_.renderStatus=0;display_=display::inspect(read_);
   probe_=layout::inspect(read_);
   if(probe_.stage!=layout::Stage::Ready){
+   enemies_.count=0;
    state_.status=0;state_.labels=state_.selected=state_.transports=state_.used=state_.capacity=0;
    state_.typeCount=state_.swCount=state_.threatCount=state_.crateCount=0;
    house_=0;return state_;
   }
   uint32_t house=get<uint32_t>(0xA83D4C);int frame=get<int>(0xA8ED84,-1);
   auto houses=vec(0xA80228,32);if(std::find(houses.begin(),houses.end(),house)==houses.end()){
+   enemies_.count=0;
    probe_={layout::Stage::MissingLocalHouseInList,0xA80228,house};
    state_.status=0;state_.labels=state_.typeCount=state_.swCount=0;
    state_.threatCount=state_.crateCount=0;house_=0;return state_;
   }
-  bool fresh=house!=house_||frame<lastFrame_;if(fresh){++serial_;house_=house;types();for(auto&f:factories_)f={};flashCount=0;productionAt_=now-100;}lastFrame_=frame;
+  bool fresh=house!=house_||frame<lastFrame_;if(fresh){++serial_;house_=house;types();for(auto&f:factories_)f={};flashCount=0;productionAt_=now-100;enemies_.count=0;enemyNames_.clear();}lastFrame_=frame;
   state_.status=1;state_.renderStatus=display_.visible()?1:0;state_.frame=frame;state_.match=serial_;state_.session=get<int>(0xA8B238);state_.chat=get<uint8_t>(0xA8BC60+25);state_.credits=get<int>(house+0x30C);
   uint32_t tactical=get<uint32_t>(0x887324);Projection proj;proj.width=state_.width=get<int>(0xA8EB84);proj.height=state_.height=get<int>(0xA8EB88);
   int priorX=state_.cameraX,priorY=state_.cameraY;
   proj.cameraX=state_.cameraX=get<int>(tactical+0xB0);proj.cameraY=state_.cameraY=get<int>(tactical+0xB4);proj.zScale=get<double>(0xB0CD48,0.0866025403784);
+  const bool showEnemies=enemyMarkers&&state_.renderStatus==1;Projection enemyProj=proj;
+  if(showEnemies){enemyOwners(houses,house);int w=get<int>(0xB0CE30),h=get<int>(0xB0CE34);
+   if(w>0&&w<=proj.width)enemyProj.width=w;if(h>0&&h<=proj.height)enemyProj.height=h;
+  }enemies_.width=enemyProj.width;enemies_.height=enemyProj.height;
   uint32_t selectedHash=2166136261u;for(uint32_t p:vec(0xA8ECB8,4096))selectedHash=(selectedHash^p)*16777619u;
   bool cameraChanged=proj.cameraX!=sceneX_||proj.cameraY!=sceneY_;
-  bool scene=fresh||frame!=sceneFrame_||flags!=sceneFlags_||selectedHash!=selectionHash_||proj.width!=sceneWidth_||proj.height!=sceneHeight_||(cameraChanged&&uint32_t(now-sceneAt_)>=16);
-  if(!scene&&refreshLabels(proj)){
+  bool scene=fresh||showEnemies!=sceneEnemies_||frame!=sceneFrame_||flags!=sceneFlags_||selectedHash!=selectionHash_||proj.width!=sceneWidth_||proj.height!=sceneHeight_||(showEnemies&&(enemyProj.width!=sceneEnemyWidth_||enemyProj.height!=sceneEnemyHeight_||enemyOwnerSignature_!=sceneEnemyOwners_))||(cameraChanged&&uint32_t(now-sceneAt_)>=16);
+  if(!scene&&refreshLabels(proj)&&(!showEnemies||refreshEnemies(enemyProj))){
    int dx=proj.cameraX-priorX,dy=proj.cameraY-priorY;
    for(int i=0;i<state_.crateCount;++i){state_.crates[i].x-=dx;state_.crates[i].y-=dy;}
    for(int i=0;i<state_.threatCount;++i){auto&t=state_.threats[i];t.x-=dx;t.y-=dy;t.tx-=dx;t.ty-=dy;}
-   return state_;
+   publishEnemies(house,frame,now,showEnemies);return state_;
   }
   sceneAt_=now;
   sceneFrame_=frame;sceneFlags_=flags;selectionHash_=selectedHash;sceneX_=proj.cameraX;sceneY_=proj.cameraY;sceneWidth_=proj.width;sceneHeight_=proj.height;
+  sceneEnemies_=showEnemies;sceneEnemyWidth_=enemyProj.width;sceneEnemyHeight_=enemyProj.height;sceneEnemyOwners_=enemyOwnerSignature_;enemies_.count=enemies_.omitted=0;
   state_.labels=state_.selected=state_.transports=state_.used=state_.capacity=state_.threatCount=state_.crateCount=0;
   GameView<Read> view(read_);auto objects=vec(0xA8EC78);uint32_t allies=get<uint32_t>(house+0x5788);
   // A valid process handle and match flag do not prove that the YR 1.001
@@ -127,11 +188,13 @@ public:
   if(objects.size()>=4){bool anyKnown=false;
    for(size_t i=0;i<objects.size()&&i<128;++i){if(objects[i]&&kind(objects[i])>=0){anyKnown=true;break;}}
    if(!anyKnown){probe_={layout::Stage::UnrecognizedUnitLayout,0xA8EC78,uint32_t(objects.size())};
+    enemies_.count=0;
     state_.status=0;state_.labels=state_.typeCount=state_.swCount=0;
     state_.threatCount=state_.crateCount=0;return state_;}
   }
   for(auto p:objects){int k=p?kind(p):-1;if(k<0||get<int>(p+0x6C)<=0||!get<uint8_t>(p+0x74)||get<uint8_t>(p+0x81)||!get<uint8_t>(p+0x90))continue;
    uint32_t owner=get<uint32_t>(p+0x21C),t=type(p,k);bool local=owner==house,selected=local&&get<uint8_t>(p+0x83);if(selected)++state_.selected;
+   if(showEnemies)addEnemy(p,t,k,owner,enemyProj);
    int cap=local&&t&&k!=3&&(flags&assist::Capacity)?get<int>(t+0x5E0):0;
    bool capacity=cap>0&&cap<=1024&&(selected||(flags&assist::AllTransports));int used=0;
    if(capacity){used=passengers(p,cap);if(selected){++state_.transports;state_.used+=used;state_.capacity+=cap;}}
@@ -162,7 +225,7 @@ public:
     int sx,sy;if(!project(proj,x*256+128,y*256+128,z,sx,sy))continue;int preview=get<uint8_t>(cell+0x11E);state_.crates[state_.crateCount++]={x,y,sx,sy,preview<19?preview:-1};
    }
   }
-  return state_;
+  publishEnemies(house,frame,now,showEnemies);return state_;
  }
 };
 }

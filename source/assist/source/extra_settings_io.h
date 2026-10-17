@@ -5,6 +5,7 @@ static void loadAdditionalSettings(){
  }
 
  extra.experimentalReveal=value(L"Experimental",L"RevealMap",0)!=0;
+ extra.enemyMarkers=value(L"Display",L"EnemyMarkers",0)!=0;
  // Missing per-feature values inherit the old category setting exactly once.
  for(int i=0;i<pointerinput::MouseCount;++i){
   const wchar_t*legacy=i<pointerinput::MouseAttack?L"EnhancedButton":i==pointerinput::MouseAttack?L"AttackMoveButton":L"SellButton";
@@ -32,6 +33,7 @@ static bool saveAdditionalSettings(){
  }
 
  write(L"Experimental",L"RevealMap",extra.experimentalReveal);
+ write(L"Display",L"EnemyMarkers",extra.enemyMarkers);
  for(int i=0;i<pointerinput::MouseCount;++i)write(L"Mouse",pointerinput::mouseSetting(i),extra.mouseButtons[i]);
 
  write(L"AutoLoad",L"Logic",extra.loadMode);write(L"AutoLoad",L"RangeCells",extra.loadRadius);

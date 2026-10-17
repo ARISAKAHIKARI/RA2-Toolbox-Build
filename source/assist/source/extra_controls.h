@@ -65,6 +65,9 @@
  pageControl(6,L"STATIC",L"每项独立设置并自动保存；沿用现有冲突规则，右键保留原版点击。",20,1020,605,24,0);
  for(int slot:{EnterCustom,AirCustom1,AirCustom2,DiskCustom,SellCustom})modernui::mouseOnly(extraControls[slot]);
  extraControls[FrozenEnabled]=pageControl(3,L"BUTTON",L"冻结倒计时",20,366,605,26,723,BS_AUTOCHECKBOX|WS_TABSTOP);SendMessageW(extraControls[FrozenEnabled],BM_SETCHECK,extra.frozen?BST_CHECKED:BST_UNCHECKED,0);
+ extraControls[EnemyMarkersEnabled]=pageControl(3,L"BUTTON",L"敌方位置标记（包含未揭示区域）",20,526,605,26,785,BS_AUTOCHECKBOX|WS_TABSTOP);
+ SendMessageW(extraControls[EnemyMarkersEnabled],BM_SETCHECK,extra.enemyMarkers?BST_CHECKED:BST_UNCHECKED,0);
+ pageControl(3,L"STATIC",L"显示画面内敌方单位 / 建筑，按玩家着色；共用上方刷新率。",20,564,605,24,0);
  pageControl(1,L"STATIC",L"按当前武器选同类变体",20,404,340,26,0);
  extraControls[VariantKey]=pageControl(1,HOTKEY_CLASSW,L"",374,404,153,26,724,WS_TABSTOP);SendMessageW(extraControls[VariantKey],HKM_SETHOTKEY,extra.variantKey,0);
  pageControl(1,L"STATIC",L"自动保存",541,404,84,27,755,0);

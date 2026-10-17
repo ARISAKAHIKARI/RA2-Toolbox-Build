@@ -1,12 +1,12 @@
 {
-  "name": "RA2 Toolbox 1.0 Full",
-  "version": "1.0",
+  "name": "RA2 Toolbox 1.0.1 Full",
+  "version": "1.0.1",
   "compiled_game_binary_included": false,
-  "source": "0.7.20 base; 14 configurable feature unit filters with capture/final-submit checks; no new hooks",
+  "source": "1.0 base; host-only read-only enemy position markers on the unified sampler and existing overlay/Motion cadence; no new hooks or Shared/Runtime protocol changes",
   "resources": "Complete assets/profiles/Python preprocessing runtime/engine included",
   "resources_legacy_reuse": true,
   "build_protocol": 41,
-  "validation": "Current 1.0 portable and actual x86 DLL model evidence; no real game/netplay certification",
+  "validation": "Current 1.0.1: 58 portable native tests, 24 source/UI checks, 2 mocked read tests and 800 actual x86 DLL model cases; no real Windows game/netplay/FPS certification",
   "build_requirement": "Zig 0.13.0, x86 Windows target; build EXE and GameRuntime.dll together",
   "settings": {
     "Orders.MegaMissionBackend": "0=constructor; 1=high-level MP; SP uses constructor/DoList centrally",
@@ -36,6 +36,6 @@
     "RA2Toolbox.exe": "16a91bc35a95b9a72635244786a5be1202c0bafc9d6cd323ceba585045eab9d5",
     "UnitMonitorBridge.dll": "d5eda2861e724f4b6a38f18b2153f8ce14a8ff689ace35573ca469a5563590a1"
   },
-  "release_status": "0.7.19 Full; experimental reveal opt-in and independent overlay visibility",
+  "release_status": "1.0.1 Full; default-off enemy markers, immediate apply/autosave, shared display refresh",
   "technology_experiment": "Withdrawn, not shipped. Production continuity unresolved; technology remains disabled."
 }

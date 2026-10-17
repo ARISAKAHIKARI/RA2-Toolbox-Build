@@ -1,9 +1,9 @@
 {
-  "version": "1.0",
-  "base_version": "0.7.20",
-  "base_user_netplay_feedback": "User reports no more disconnects with 0.7.15; 1.0 not yet field-tested",
+  "version": "1.0.1",
+  "base_version": "1.0",
+  "base_user_netplay_feedback": "User reports no more disconnects with 0.7.15; 1.0.1 not yet field-tested",
   "type": "Full",
-  "release_status": "configurable_feature_types",
+  "release_status": "enemy_position_markers",
   "assist_protocol": 41,
   "runtime_protocol": 3,
   "entry_api": 3,
@@ -13,9 +13,9 @@
     "manager WH_CALLWNDPROCRET"
   ],
   "retired_tests": "RETIRED_TEST_CONTRACTS.json",
-  "feature_review_count": 68,
-  "portable_native_cases": 57,
-  "source_ui_checks": 23,
+  "feature_review_count": 69,
+  "portable_native_cases": 58,
+  "source_ui_checks": 24,
   "mock_read_checks": 2,
   "dll_regression_suites": {
     "feature-types-current.json": 130,
@@ -34,9 +34,9 @@
     "two-peer-current.json": 55
   },
   "dll_regression_cases": 800,
-  "ui_controls": 195,
+  "ui_controls": 197,
   "ui_viewports": 12,
-  "ui_reachability_checks": 2244,
+  "ui_reachability_checks": 2268,
   "project_binaries": [
     "RA2Toolbox.exe",
     "GameRuntime.dll"

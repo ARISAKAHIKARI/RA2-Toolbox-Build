@@ -1,13 +1,13 @@
 {
-  "label": "1.0.0.0 SingleRuntime",
-  "file_version": "1.0.0.0",
+  "label": "1.0.1.0 SingleRuntime",
+  "file_version": "1.0.1.0",
   "verified": {
     "RA2Toolbox.exe": {
-      "bytes": 1643520,
-      "sha256": "8181b1c3f91311f263447d664c7616da9785eccd78f46fcaa715d2ce2390b4b9",
+      "bytes": 1901568,
+      "sha256": "2772a484bfc985c29bbd6bcdadf73d97d1bb9a45a35db60a4248d3a81ecbb2cd",
       "machine": "PE32 x86",
       "sections": 14,
-      "entry_rva": "0xa2c50",
+      "entry_rva": "0xa70a0",
       "exports": [
         "AssistHostProtocolInfo",
         "_Unwind_DeleteException",
@@ -82,6 +82,7 @@
           "GdipDrawImageRectRect",
           "GdipDrawLine",
           "GdipDrawPath",
+          "GdipDrawPolygon",
           "GdipDrawRectangle",
           "GdipFillPath",
           "GdipFillPolygon",
@@ -92,6 +93,9 @@
           "GdipGetImageWidth",
           "GdipGraphicsClear",
           "GdipResetWorldTransform",
+          "GdipRestoreGraphics",
+          "GdipSaveGraphics",
+          "GdipSetClipRect",
           "GdipSetCompositingMode",
           "GdipSetInterpolationMode",
           "GdipSetPenEndCap",
@@ -523,7 +527,7 @@
     },
     "GameRuntime.dll": {
       "bytes": 2463744,
-      "sha256": "25419821d5d4d42e4239bcfad177a9a451152178aa4fdcbd8e0c7912f2602d67",
+      "sha256": "8005f046b40846680cd088299624da8492ab2687630f80e5134012ca91863dd4",
       "machine": "PE32 x86",
       "sections": 9,
       "entry_rva": "0x27330",

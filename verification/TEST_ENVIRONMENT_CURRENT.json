@@ -1,7 +1,7 @@
 {
-  "version": "1.0",
+  "version": "1.0.1",
   "host": "Linux-6.18.55-x86_64-with-glibc2.39",
-  "dll_sha256": "25419821d5d4d42e4239bcfad177a9a451152178aa4fdcbd8e0c7912f2602d67",
+  "dll_sha256": "8005f046b40846680cd088299624da8492ab2687630f80e5134012ca91863dd4",
   "runtime": "Unicorn x86 with Win32/world stubs",
   "real_windows": false,
   "real_game": false,

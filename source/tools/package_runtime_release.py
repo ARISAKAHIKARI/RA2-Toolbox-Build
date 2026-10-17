@@ -20,7 +20,7 @@ def main():
     data=b'@echo off\r\nsetlocal\r\ncd /d "%~dp0"\r\nfor %%F in (RA2Toolbox.exe GameRuntime.dll) do if not exist "%%F" (echo Missing %%F & pause & exit /b 1)\r\nset "RA2_TOOLBOX_DRIVER=message"\r\nstart "" "%~dp0RA2Toolbox.exe"\r\n'
    if name=='README.txt':data=data.replace((VERSION+' Full').encode(),(VERSION+' Windows').encode())
    if name=='licenses/THIRD-PARTY-NOTICES.txt':
-    data=data.decode().replace('Complete upstream source archives: third-party/*.zip. Reproduction: source/convert_themes.py.','Complete upstream resource archives are in the separate Development package (third-party/*.zip), and the repository: https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/tree/v0.7.19/packages/v0.7.19').encode()
+    data=data.decode().replace('Complete upstream source archives: third-party/*.zip. Reproduction: source/convert_themes.py.','Complete upstream resource archives are in the separate Development package (third-party/*.zip), and the repository: https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/tree/v1.0.1/packages/v1.0.1').encode()
    dst.writestr(name,data);records[name]=sha(data)
  with zipfile.ZipFile(runtime) as z:
   assert z.testzip() is None

@@ -30,6 +30,9 @@ static Snapshot snap{},incoming{};static const Snapshot*externalData;
 static std::unordered_map<uint32_t,int> labelRasters;
 static struct {void clear(){}void update(const Snapshot&,int){}} motion;
 static void rememberLiveTypes(){}
+// Presentation is orthogonal to this command-identity/merge fixture.
+static void clearEnemyDisplay(){}
+static void updateEnemyDisplay(const Snapshot&){}
 '''+link+merge+r'''
 int main(){
  // Fresh local clock inside the production handshake timeout; caller's old

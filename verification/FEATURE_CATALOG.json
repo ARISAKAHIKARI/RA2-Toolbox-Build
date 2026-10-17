@@ -1,5 +1,5 @@
 {
-  "version": "1.0",
+  "version": "1.0.1",
   "architecture": "No feature detours; sole manager Windows message entry",
   "features": [
     {
@@ -545,6 +545,14 @@
       "source": "assist/source/feature_type_config.h; feature_type_bridge.h; auto_settings_ui.h; type_bindings_ui.h; extra_settings_io.h",
       "route": "EXE 配置 → Shared 版本化快照 → 唯一 GameRuntime 在捕获与提交前复核",
       "review": "便携解析/实际 UI 处理器及 x86 DLL 模型；未做游戏实机全功能验收"
+    },
+    {
+      "id": "F69",
+      "name": "敌方位置标记",
+      "implementation": "显示设置中的“敌方位置标记（包含未揭示区域）”默认关闭，修改即时生效并自动保存。复用统一读取器已有对象遍历，按当前玩家的敌我关系筛选存活单位和建筑，不检查地图是否揭示；排除己方、盟友、中立及已进入运输工具的乘员。当前战场视口内按玩家颜色绘制位置符号与 P编号/类型名称，建筑方框、其他单位菱形；不绘制到侧栏。跟随覆盖层现有 FPS 设置，使用同一采样时钟、Motion 插值和绘制窗口，同一逻辑帧内继续更新坐标。类型名称及文字位图缓存，最多 2048 个标记；菜单、失焦、跨局、读取失效或数据过期时隐藏，发布前复核当前帧、玩家、镜头和显示状态。仅显示游戏内存已有且布局可识别的对象，不创造未加载的数据。不改变战争迷雾、不调用地图揭示、不写游戏状态、不提交事件或新增 Hook。",
+      "source": "external_reader/source/enemy_markers.h; external_reader/source/tactical_sampler.h; assist/source/main.cpp; assist/source/extra_controls.h; assist/source/extra_settings_io.h",
+      "route": "统一 ReadSession → TacticalSampler → 现有 Motion 与覆盖层；宿主只读展示，不进入 GameRuntime 命令通道",
+      "review": "实际采样器与 Motion 的便携内存模型、生产绘制函数的 GDI 记录模型、设置/UI 检查；尚未验证 Windows 游戏画面与实际 FPS"
     }
   ]
 }

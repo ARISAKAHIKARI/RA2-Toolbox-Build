@@ -19,12 +19,13 @@ for args in [(0,1,b''),(1,1,b''),(20000,20000,b'')]:
  try:m.png(*args);raise AssertionError('invalid input accepted')
  except ValueError:pass
 print('PASS capture analyzer: negative desktop coordinates, clipping, empty samples, nearest-rank P50/P95/P99, lossless BGRA->PNG and dimensions')
-for version in (33,34,35,36,37):
+for version in (41,):
  prefix=struct.pack('<19I',0x41533130,version,123,*([0]*16))
  assert m.assist_prefix(prefix,prefix,123)[1]==version
  assert m.assist_prefix(prefix,prefix,124) is None
  assert m.assist_prefix(prefix,prefix[:-1],123) is None
-future=struct.pack('<19I',0x41533130,38,123,*([0]*16))
-assert m.assist_prefix(future,future,123) is None
+for unsupported in (33,34,35,36,37,38,39,40,42):
+ future=struct.pack('<19I',0x41533130,unsupported,123,*([0]*16))
+ assert m.assist_prefix(future,future,123) is None
 assert m.assist_prefix(b'',b'',123) is None
-print('PASS passive capture ACK prefix: current 37 and compatible 33/34/35/36; PID, torn, short and unknown-version rejection')
+print('PASS passive capture ACK prefix: current mapping protocol 41; PID, torn, short and unknown-version rejection')
