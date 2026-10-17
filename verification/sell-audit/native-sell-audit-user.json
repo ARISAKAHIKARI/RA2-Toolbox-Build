@@ -1,0 +1,461 @@
+{
+  "inputs": {
+    "game": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+    "GameRuntime.dll": "25419821d5d4d42e4239bcfad177a9a451152178aa4fdcbd8e0c7912f2602d67"
+  },
+  "scope": "Original static EXE Sell receiver/refund/cash credit. World, price multipliers, sound, final deletion, wall redraw/pathfinding modeled. No loaded Ares/Phobos, full game or real netplay.",
+  "stock_sell_entry": true,
+  "sell_entry_bytes_at_4d9f79": "746e8b8e1c020000",
+  "skipped_full_sell_cases": [],
+  "skip_reason": "",
+  "results": [
+    {
+      "name": "native_getrefund_mode_0_soylent_0",
+      "status": "PASS"
+    },
+    {
+      "name": "native_getrefund_mode_0_soylent_900",
+      "status": "PASS"
+    },
+    {
+      "name": "native_getrefund_mode_0_soylent_300",
+      "status": "PASS"
+    },
+    {
+      "name": "native_getrefund_mode_5_soylent_0",
+      "status": "PASS"
+    },
+    {
+      "name": "native_getrefund_mode_5_soylent_900",
+      "status": "PASS"
+    },
+    {
+      "name": "native_getrefund_mode_5_soylent_300",
+      "status": "PASS"
+    },
+    {
+      "name": "native_getrefund_mode_3_soylent_0",
+      "status": "PASS"
+    },
+    {
+      "name": "native_getrefund_mode_3_soylent_900",
+      "status": "PASS"
+    },
+    {
+      "name": "native_getrefund_mode_3_soylent_300",
+      "status": "PASS"
+    },
+    {
+      "name": "native_getrefund_mode_4_soylent_0",
+      "status": "PASS"
+    },
+    {
+      "name": "native_getrefund_mode_4_soylent_900",
+      "status": "PASS"
+    },
+    {
+      "name": "native_getrefund_mode_4_soylent_300",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_0_soylent_0_building_False_wall_False_owner_True",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_0_soylent_0_building_False_wall_False_owner_False",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_0_soylent_0_building_False_wall_True_owner_True",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_0_soylent_0_building_False_wall_True_owner_False",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_0_soylent_0_building_True_wall_False_owner_True",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_0_soylent_0_building_True_wall_False_owner_False",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_0_soylent_0_building_True_wall_True_owner_True",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_0_soylent_0_building_True_wall_True_owner_False",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_0_soylent_900_building_False_wall_False_owner_True",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_0_soylent_900_building_False_wall_False_owner_False",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_0_soylent_900_building_False_wall_True_owner_True",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_0_soylent_900_building_False_wall_True_owner_False",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_0_soylent_900_building_True_wall_False_owner_True",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_0_soylent_900_building_True_wall_False_owner_False",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_0_soylent_900_building_True_wall_True_owner_True",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_0_soylent_900_building_True_wall_True_owner_False",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_0_soylent_300_building_False_wall_False_owner_True",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_0_soylent_300_building_False_wall_False_owner_False",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_0_soylent_300_building_False_wall_True_owner_True",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_0_soylent_300_building_False_wall_True_owner_False",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_0_soylent_300_building_True_wall_False_owner_True",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_0_soylent_300_building_True_wall_False_owner_False",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_0_soylent_300_building_True_wall_True_owner_True",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_0_soylent_300_building_True_wall_True_owner_False",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_5_soylent_0_building_False_wall_False_owner_True",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_5_soylent_0_building_False_wall_False_owner_False",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_5_soylent_0_building_False_wall_True_owner_True",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_5_soylent_0_building_False_wall_True_owner_False",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_5_soylent_0_building_True_wall_False_owner_True",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_5_soylent_0_building_True_wall_False_owner_False",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_5_soylent_0_building_True_wall_True_owner_True",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_5_soylent_0_building_True_wall_True_owner_False",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_5_soylent_900_building_False_wall_False_owner_True",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_5_soylent_900_building_False_wall_False_owner_False",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_5_soylent_900_building_False_wall_True_owner_True",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_5_soylent_900_building_False_wall_True_owner_False",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_5_soylent_900_building_True_wall_False_owner_True",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_5_soylent_900_building_True_wall_False_owner_False",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_5_soylent_900_building_True_wall_True_owner_True",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_5_soylent_900_building_True_wall_True_owner_False",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_5_soylent_300_building_False_wall_False_owner_True",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_5_soylent_300_building_False_wall_False_owner_False",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_5_soylent_300_building_False_wall_True_owner_True",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_5_soylent_300_building_False_wall_True_owner_False",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_5_soylent_300_building_True_wall_False_owner_True",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_5_soylent_300_building_True_wall_False_owner_False",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_5_soylent_300_building_True_wall_True_owner_True",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_5_soylent_300_building_True_wall_True_owner_False",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_3_soylent_0_building_False_wall_False_owner_True",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_3_soylent_0_building_False_wall_False_owner_False",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_3_soylent_0_building_False_wall_True_owner_True",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_3_soylent_0_building_False_wall_True_owner_False",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_3_soylent_0_building_True_wall_False_owner_True",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_3_soylent_0_building_True_wall_False_owner_False",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_3_soylent_0_building_True_wall_True_owner_True",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_3_soylent_0_building_True_wall_True_owner_False",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_3_soylent_900_building_False_wall_False_owner_True",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_3_soylent_900_building_False_wall_False_owner_False",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_3_soylent_900_building_False_wall_True_owner_True",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_3_soylent_900_building_False_wall_True_owner_False",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_3_soylent_900_building_True_wall_False_owner_True",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_3_soylent_900_building_True_wall_False_owner_False",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_3_soylent_900_building_True_wall_True_owner_True",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_3_soylent_900_building_True_wall_True_owner_False",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_3_soylent_300_building_False_wall_False_owner_True",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_3_soylent_300_building_False_wall_False_owner_False",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_3_soylent_300_building_False_wall_True_owner_True",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_3_soylent_300_building_False_wall_True_owner_False",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_3_soylent_300_building_True_wall_False_owner_True",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_3_soylent_300_building_True_wall_False_owner_False",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_3_soylent_300_building_True_wall_True_owner_True",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_3_soylent_300_building_True_wall_True_owner_False",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_4_soylent_0_building_False_wall_False_owner_True",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_4_soylent_0_building_False_wall_False_owner_False",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_4_soylent_0_building_False_wall_True_owner_True",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_4_soylent_0_building_False_wall_True_owner_False",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_4_soylent_0_building_True_wall_False_owner_True",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_4_soylent_0_building_True_wall_False_owner_False",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_4_soylent_0_building_True_wall_True_owner_True",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_4_soylent_0_building_True_wall_True_owner_False",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_4_soylent_900_building_False_wall_False_owner_True",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_4_soylent_900_building_False_wall_False_owner_False",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_4_soylent_900_building_False_wall_True_owner_True",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_4_soylent_900_building_False_wall_True_owner_False",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_4_soylent_900_building_True_wall_False_owner_True",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_4_soylent_900_building_True_wall_False_owner_False",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_4_soylent_900_building_True_wall_True_owner_True",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_4_soylent_900_building_True_wall_True_owner_False",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_4_soylent_300_building_False_wall_False_owner_True",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_4_soylent_300_building_False_wall_False_owner_False",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_4_soylent_300_building_False_wall_True_owner_True",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_4_soylent_300_building_False_wall_True_owner_False",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_4_soylent_300_building_True_wall_False_owner_True",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_4_soylent_300_building_True_wall_False_owner_False",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_4_soylent_300_building_True_wall_True_owner_True",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sell_mode_4_soylent_300_building_True_wall_True_owner_False",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sellcell_removes_wall_without_selling_vehicle_mode_0",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sellcell_removes_wall_without_selling_vehicle_mode_5",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sellcell_removes_wall_without_selling_vehicle_mode_3",
+      "status": "PASS"
+    },
+    {
+      "name": "native_sellcell_removes_wall_without_selling_vehicle_mode_4",
+      "status": "PASS"
+    }
+  ]
+}
