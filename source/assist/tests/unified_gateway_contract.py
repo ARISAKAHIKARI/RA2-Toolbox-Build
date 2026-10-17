@@ -11,8 +11,8 @@ coop=(root/'cooperative_bridge.h').read_text(encoding='utf-8')
 ui=(root/'main.cpp').read_text(encoding='utf-8')
 protocol=(root/'protocol.h').read_text(encoding='utf-8')
 reader=(root/'../../external_reader/source/process_discovery.h').read_text(encoding='utf-8')
-assert 'Version=41' in protocol
-assert 'RA2Assist_v041_' in bridge and 'RA2Assist_v041_' in ui
+assert 'Version=42' in protocol
+assert 'RA2Assist_v042_' in bridge and 'RA2Assist_v042_' in ui
 assert bridge.count('static bool nativeMission(')==1
 assert 'static bool nativeObjectEvent(' in bridge
 assert 'static bool nativeProduceEvent(' in bridge

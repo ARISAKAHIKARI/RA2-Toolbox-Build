@@ -45,6 +45,8 @@ with tempfile.TemporaryDirectory(prefix='ra2-logic-') as temp:
         'cursor_settings_ui_test.py',
         'super_binding_ui_test.py',
         'enemy_overlay_test.py',
+        'hotkey_host_test.py',
+        'pointer_fanout_host_test.py',
     )
     for name in source_contracts:
         source_test = root / 'assist/tests' / name

@@ -39,6 +39,8 @@
 #include "label_motion.h"
 #include "crate_names.h"
 #include "type_hotkey.h"
+#include "hotkey_routes.h"
+#include "pointer_batch.h"
 #include "ui_layout.h"
 #include "additional_settings.h"
 #include "../../external_reader/source/cooperative_reader.h"
@@ -110,7 +112,10 @@ static uint8_t pendingSelectionTypes[MaxTypes];
 static delivery::Item pendingSelection;static bool hasSelection;static uint32_t selectionAck;
 static planner::Planner tacticalPlanner;static std::unique_ptr<planner::World> planningInput=std::make_unique<planner::World>();
 static long worldRevision=-1;static uint32_t plannerAck;static int submittedPlanFrame;static std::vector<planner::Order> submittedPlan;
-static typekeys::Tap typeTap;
+static typekeys::Tap typeTap,variantTap;
+static hotkeyroute::Registry hotkeyRegistry;static hotkeyroute::Pending hotkeyPending;
+static pointerinput::PendingMatches pointerMatches;
+static void serviceHotkeyBatch();
 static AdditionalSettings extra;static HWND extraControls[ExtraControlCount];
 static std::unordered_map<std::string,cooperative::Quota> targetQuotas;static std::vector<std::string> quotaTypeIDs;
 static uint32_t cooperativeDelivered=0,cooperativeReceipt=0;
@@ -272,8 +277,9 @@ static void wakeGame(){
  if(gameinput::wake(hook))lastPulse=GetTickCount();
 }
 static bool foregroundGame();
-static bool registerKey(int id,WORD key){if(!RegisterHotKey(ui,id,modifiers(key),LOBYTE(key)))return false;registeredKeyIDs.push_back(id);return true;}
-static void registerKeys(){for(int id:registeredKeyIDs)UnregisterHotKey(ui,id);registeredKeyIDs.clear();keysRegistered=enabled&&foregroundGame()&&snap.status==1&&!snap.chat;if(!keysRegistered)return;int failures=0;for(int i=0;i<12;++i)if(LOBYTE(hotkeys[i])&&!registerKey(1000+i,hotkeys[i]))++failures;
+static bool registerKey(int id,WORD key){return hotkeyRegistry.add(id,key,extra.allHotkeys,[](int slot,WORD chord){
+ if(!RegisterHotKey(ui,slot,modifiers(chord),LOBYTE(chord)))return false;registeredKeyIDs.push_back(slot);return true;});}
+static void registerKeys(){for(int id:registeredKeyIDs)UnregisterHotKey(ui,id);registeredKeyIDs.clear();hotkeyRegistry.clear();hotkeyPending.clear();keysRegistered=enabled&&foregroundGame()&&snap.status==1&&!snap.chat;if(!keysRegistered)return;int failures=0;for(int i=0;i<12;++i)if(LOBYTE(hotkeys[i])&&!registerKey(1000+i,hotkeys[i]))++failures;
  for(size_t i=0;i<swBindings.size()&&i<64;++i){auto&b=swBindings[i];if((b.id=="IronCurtainSpecial"&&b.key==hotkeys[9])||(b.id=="ChronoSphereSpecial"&&b.key==hotkeys[10]))continue;if(LOBYTE(b.key)&&!registerKey(int(1020+i),b.key))++failures;}
  for(size_t i=0;i<typeBindings.size()&&i<512;++i){auto&b=typeBindings[i];if(typekeys::firstForKey(typeBindings,unsigned(i))&&!registerKey(int(1100+i),b.key))++failures;}
  if(magnetronMode&&LOBYTE(magnetronKey)&&!registerKey(1695,magnetronKey))++failures;
@@ -540,7 +546,7 @@ static void releaseBridge(){
  else{if(hook)gameinput::release(gameentry::Client::Assist,hook);if(shared)UnmapViewOfFile(shared);if(mapping)CloseHandle(mapping);}
  hook=0;shared=nullptr;mapping=nullptr;module=nullptr;lastData=attachAt=lastPulse=0;incoming={};snapshotSeq=~0u;lastReceiptWrite=lastReceiptMatch=0;reapBridges();
 }
-static void detach(){
+static void detach(){hotkeyPending.clear();pointerMatches.clear();
  tacticalPlanner.reset();submittedPlan.clear();worldRevision=-1;plannerAck=0;hasSelection=false;selectionAck=0;
  critical(L"detach pid="+std::to_wstring(pid));commandQueue.clear();inFlightMatch=0;inFlightRetries=0;sentAt=0;lastStallLog=0;typeTap.clear();
  releaseBridge();externalData=nullptr;externalSampler.reset();externalReader.close();externalAt=0;
@@ -568,7 +574,7 @@ static bool ensureBridge(){
  if(!game||bridgeBlocked||(bridgeRetryAt&&int32_t(now-bridgeRetryAt)<0))return false;
  ++bridgeAttempts;bridgeRetryAt=now+(bridgeAttempts>=3?30000:2000);
  critical(L"bridge-connect-attempt="+std::to_wstring(bridgeAttempts)+L" pid="+std::to_wstring(pid)+L" thread="+std::to_wstring(gameThread));
- wchar_t n[100];swprintf(n,100,L"Local\\RA2Assist_v041_%lu",pid);
+ wchar_t n[100];swprintf(n,100,L"Local\\RA2Assist_v042_%lu",pid);
  mapping=CreateFileMappingW(INVALID_HANDLE_VALUE,nullptr,PAGE_READWRITE,0,sizeof(Shared),n);
  DWORD mappingError=GetLastError();if(!mapping)return bridgeFailed(L"创建命令共享内存失败",mappingError);
  if(mappingError==ERROR_ALREADY_EXISTS){
@@ -824,10 +830,10 @@ static void drawEnemyMarker(Graphics&g,const external::enemies::Marker&m,const v
  float x=v.x*sx,y=v.y*sy;Pen edge(Color(245,5,9,16),4.f),mark(Color(m.color),2.f);
  if(m.kind==3){g.DrawRectangle(&edge,x-7,y-7,14.f,14.f);g.DrawRectangle(&mark,x-7,y-7,14.f,14.f);}
  else{PointF points[]={{x,y-7},{x+7,y},{x,y+7},{x-7,y}};g.DrawPolygon(&edge,points,4);g.DrawPolygon(&mark,points,4);}
- std::wstring text=L"P"+std::to_wstring(m.player+1)+L" ";size_t prefix=text.size();
+ std::wstring text;
  for(int i=0;i<18&&m.name[i];++i)if(m.name[i]>=32&&m.name[i]!=127)text.push_back(wchar_t(m.name[i]));
- if(text.size()>prefix&&text.back()>=0xD800&&text.back()<=0xDBFF)text.pop_back();
- if(text.size()==prefix)text+=m.kind==3?L"建筑":L"单位";
+ if(!text.empty()&&text.back()>=0xD800&&text.back()<=0xDBFF)text.pop_back();
+ if(text.empty())text+=m.kind==3?L"建筑":L"单位";
  auto&r=enemyRasters[enemyRasterKey(m)];
  if(!r.image||r.text!=text){
   const int width=std::clamp(int(text.size())*13+12,48,280);r.image=std::make_unique<Bitmap>(width,36,PixelFormat32bppPARGB);
@@ -1080,7 +1086,7 @@ static void tick(){reapBridges();logBridgeHealth();DWORD now=GetTickCount();stat
   shared->heartbeat=now;shared->foreground=foregroundGame();shared->flags=configured;syncAdditional();shared->scanMs=8;shared->repairMs=repairMs;
   DWORD wakePeriod=shared->foreground?16:((configured|shared->plannerTracking)&(AdvancedInput|MagnetronInput|AutoOreReturn)?64:500);
   if(DWORD(now-lastPulse)>=wakePeriod)wakeGame();
-  readSnapshot();schedulerDiagnostic();serviceSelection();result();serviceCommandQueue(GetTickCount());servicePlanner();serviceCooperative();servicePointer();
+  readSnapshot();schedulerDiagnostic();serviceSelection();result();serviceCommandQueue(GetTickCount());servicePlanner();serviceCooperative();servicePointer();serviceHotkeyBatch();
   now=GetTickCount(); // snapshot/queue services may have advanced lastData/sentAt.
   if(uninitializedBridgeTimedOut()){
    critical(L"uninitialized command bridge timeout; retry before any match is authenticated");logBridgeHealth(true);releaseBridge();
@@ -1183,6 +1189,7 @@ static void bindSuper(){std::string id=selectedSuperID();if(id.empty()){notify(L
 #include "type_bindings_ui.h"
 #include "extra_settings_io.h"
 #include "pointer_host.h"
+#include "hotkey_host.h"
 #include "auto_settings_ui.h"
 static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
 #ifdef RA2_UNIFIED
@@ -1287,17 +1294,9 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
 
  case FrameMessage:{if(enabled)paint();InterlockedExchange(&framePending,0);return 0;}
  case ControlMessage:{tick();InterlockedExchange(&controlPending,0);return 0;}
- case DataMessage:{if(shared&&wp==pid){InterlockedExchange(&shared->hostNotifyPending,0);readSnapshot();serviceSelection();result();serviceCommandQueue(GetTickCount());servicePlanner();serviceCooperative();servicePointer();}return 0;}
+ case DataMessage:{if(shared&&wp==pid){InterlockedExchange(&shared->hostNotifyPending,0);readSnapshot();serviceSelection();result();serviceCommandQueue(GetTickCount());servicePlanner();serviceCooperative();servicePointer();serviceHotkeyBatch();}return 0;}
  case WM_TIMER:if(wp==AutoSaveTimer){flushAutoSettings();return 0;}tick();return 0;
- case WM_HOTKEY:if(!enabled||!foregroundGame()||snap.status!=1||snap.chat){typeTap.clear();return 0;}
- if(wp==1700){bool global=typeTap.press(1700,GetTickCount(),snap.match,doubleMs);sendSelection(-2,global);return 0;}
- if(wp>=1100&&wp<1100+typeBindings.size()){auto&binding=typeBindings[wp-1100];uint8_t mask[MaxTypes]{};
-  if(!typekeys::groupMask(typeBindings,binding.key,snap.types,snap.typeCount,mask,MaxTypes)){notify(L"本局没有此组合中的单位类型。");return 0;}
-  bool global=typeTap.press(int(wp),GetTickCount(),snap.match,doubleMs);
-  sendSelection(-3,global,mask);return 0;}
- typeTap.clear();if(wp==1696){ejectMode=!ejectMode;hookEject=ejectMode;if(ejectMode){hookEject=true;SendMessageW(hookChecks[2],BM_SETCHECK,BST_CHECKED,0);}SendMessageW(ejectCheck,BM_SETCHECK,ejectMode?BST_CHECKED:BST_UNCHECKED,0);save();notify(ejectMode?L"被毁载具乘员自动行动：开启。":L"被毁载具乘员自动行动：关闭。");return 0;}if(wp==1695||wp==1697)return 0;if(wp==1698){send(SmartUnload);return 0;}if(wp==1699){csMode=!csMode;if(csMode){hookAutoCS=true;SendMessageW(hookChecks[3],BM_SETCHECK,BST_CHECKED,0);}SendMessageW(csCheck,BM_SETCHECK,csMode?BST_CHECKED:BST_UNCHECKED,0);save();notify(csMode?L"自动 CS 已开启：原版右键移动生效后追加攻击移动。":L"自动 CS 已关闭。");return 0;}
- if(wp>=1000&&wp<1012){int i=int(wp-1000);if(i==0){SendMessageW(repairCheck,BM_SETCHECK,SendMessageW(repairCheck,BM_GETCHECK,0,0)==BST_CHECKED?BST_UNCHECKED:BST_CHECKED,0);save();notify(L"自动维修开关已保存。");}else send(actions[i]);}
- else if(wp>=1020&&wp<1020+swBindings.size()){auto&b=swBindings[wp-1020];bool found=false;for(int i=0;i<snap.swCount;++i)if(b.id==snap.supers[i].id){send(SelectSuper,snap.supers[i].index);found=true;break;}if(!found)notify(L"本局尚未拥有此超级武器。");}return 0;
+ case WM_HOTKEY:handleHotkey(wp,lp);return 0;
  case WM_COMMAND:{int id=LOWORD(wp);
  if(updatingControls)return 0;
  if(id==739&&HIWORD(wp)==BN_CLICKED){
@@ -1392,7 +1391,7 @@ if(id==991){wchar_t query[128]{};GetWindowTextW(featureSearch,query,128);std::ws
  else if(id==446){csMode=SendMessageW(csCheck,BM_GETCHECK,0,0)==BST_CHECKED;if(csMode){hookAutoCS=true;SendMessageW(hookChecks[3],BM_SETCHECK,BST_CHECKED,0);}save();registerKeys();notify(csMode?L"自动 CS 已开启：原版右键移动生效后追加攻击移动。":L"自动 CS 已关闭。");}
  else if(id==448){WORD next=(WORD)SendMessageW(csKeyEdit,HKM_GETHOTKEY,0,0);if(keyConflict(next,"",true)){notify(L"此快捷键已经被其他功能使用。");return 0;}csKey=next;save();registerKeys();notify(L"自动 CS 开关快捷键已保存。");}
  else if(id==452){WORD nextA=WORD(SendMessageW(advancedKeyEdit,HKM_GETHOTKEY,0,0)),nextU=WORD(SendMessageW(unloadKeyEdit,HKM_GETHOTKEY,0,0));WORD oldA=advancedKey,oldU=unloadKey;advancedKey=unloadKey=0;
- bool conflict=keyConflict(nextA,"",false)||keyConflict(nextU,"",false)||(LOBYTE(nextA)&&comparableKey(nextA)==comparableKey(nextU));advancedKey=oldA;unloadKey=oldU;
+ bool conflict=keyConflict(nextA,"",false)||keyConflict(nextU,"",false)||(!extra.allHotkeys&&LOBYTE(nextA)&&comparableKey(nextA)==comparableKey(nextU));advancedKey=oldA;unloadKey=oldU;
  if(conflict){notify(L"快捷键冲突，请使用不同组合。");return 0;}advancedKey=nextA;unloadKey=nextU;{hookAdvanced=true;SendMessageW(hookChecks[0],BM_SETCHECK,BST_CHECKED,0);}save();registerKeys();notify(L"原生联机指令快捷键已保存。");}
  else if(id==458||id==459||id==465||id==466){
   hookAdvanced=SendMessageW(hookChecks[0],BM_GETCHECK,0,0)==BST_CHECKED;

@@ -62,7 +62,7 @@
    SendMessageW(h,CB_SETCURSEL,extra.mouseButtons[i],0);
   }
  }
- pageControl(6,L"STATIC",L"每项独立设置并自动保存；沿用现有冲突规则，右键保留原版点击。",20,1020,605,24,0);
+ pageControl(6,L"STATIC",L"每项独立设置并自动保存；右键保留原版点击。",20,1020,605,24,0);
  for(int slot:{EnterCustom,AirCustom1,AirCustom2,DiskCustom,SellCustom})modernui::mouseOnly(extraControls[slot]);
  extraControls[FrozenEnabled]=pageControl(3,L"BUTTON",L"冻结倒计时",20,366,605,26,723,BS_AUTOCHECKBOX|WS_TABSTOP);SendMessageW(extraControls[FrozenEnabled],BM_SETCHECK,extra.frozen?BST_CHECKED:BST_UNCHECKED,0);
  extraControls[EnemyMarkersEnabled]=pageControl(3,L"BUTTON",L"敌方位置标记（包含未揭示区域）",20,526,605,26,785,BS_AUTOCHECKBOX|WS_TABSTOP);
@@ -77,3 +77,7 @@
 
  extraControls[RevealExperimental]=pageControl(6,L"BUTTON",L"启用地图全开（实验性）",20,1060,605,26,739,BS_AUTOCHECKBOX|WS_TABSTOP);
  SendMessageW(extraControls[RevealExperimental],BM_SETCHECK,extra.experimentalReveal?BST_CHECKED:BST_UNCHECKED,0);
+
+ {auto all=pageControl(6,L"BUTTON",L"热键冲突时全部执行",20,1100,605,26,786,BS_AUTOCHECKBOX|WS_TABSTOP);
+ SendMessageW(all,BM_SETCHECK,extra.allHotkeys?BST_CHECKED:BST_UNCHECKED,0);}
+ pageControl(6,L"STATIC",L"键盘及增强鼠标匹配项依次提交；同一单位的后续命令可能覆盖前项。",20,1138,605,24,0);

@@ -9,7 +9,7 @@ if [ "$version" != "0.13.0" ]; then
 fi
 # Use the normal DLL CRT startup: these links include the C/C++ runtime.
 # A direct DllMain entry bypasses its initialization and static constructors.
-rm -f BUILD-VERIFIED-v101.tag verification/BUILD-VERIFIED-v101.tag WINDOWS_BUILD_ARTIFACTS.json verification/WINDOWS_BUILD_ARTIFACTS.json
+rm -f BUILD-VERIFIED-v102.tag verification/BUILD-VERIFIED-v102.tag WINDOWS_BUILD_ARTIFACTS.json verification/WINDOWS_BUILD_ARTIFACTS.json
 "$ZIG" rc /fo shared/source/dll_version.res shared/source/dll_version.rc
 "$ZIG" c++ -target x86-windows-gnu -std=c++17 -O2 -fno-exceptions -fno-rtti -c shared/source/game_entry_manager.cpp -o shared/source/game_entry_manager.o
 "$ZIG" rc /fo suite/source/app.res suite/source/app.rc

@@ -1,0 +1,10 @@
+Traceback (most recent call last):
+  File "/workspace/scratch/bf135d053f66/release-102/source/assist/tests/hotkey_fanout_runtime.py", line 31, in <module>
+    check(f'same_frame_wait_then_submit_once_session_{mode}',throttle)
+  File "/workspace/scratch/bf135d053f66/release-102/source/assist/tests/no_interception_runtime.py", line 38, in check
+    fn();results.append({'name':name,'status':'PASS'});print('PASS',name,flush=True)
+    ^^^^
+  File "/workspace/scratch/bf135d053f66/release-102/source/assist/tests/hotkey_fanout_runtime.py", line 29, in throttle
+    assert s.data.advancedUnits==0 # the later direct CS replaces the earlier persistent planner
+           ^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError

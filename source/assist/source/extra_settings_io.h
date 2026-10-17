@@ -6,6 +6,7 @@ static void loadAdditionalSettings(){
 
  extra.experimentalReveal=value(L"Experimental",L"RevealMap",0)!=0;
  extra.enemyMarkers=value(L"Display",L"EnemyMarkers",0)!=0;
+ extra.allHotkeys=value(L"Hotkeys",L"ExecuteAllMatches",0)!=0;
  // Missing per-feature values inherit the old category setting exactly once.
  for(int i=0;i<pointerinput::MouseCount;++i){
   const wchar_t*legacy=i<pointerinput::MouseAttack?L"EnhancedButton":i==pointerinput::MouseAttack?L"AttackMoveButton":L"SellButton";
@@ -34,6 +35,7 @@ static bool saveAdditionalSettings(){
 
  write(L"Experimental",L"RevealMap",extra.experimentalReveal);
  write(L"Display",L"EnemyMarkers",extra.enemyMarkers);
+ write(L"Hotkeys",L"ExecuteAllMatches",extra.allHotkeys);
  for(int i=0;i<pointerinput::MouseCount;++i)write(L"Mouse",pointerinput::mouseSetting(i),extra.mouseButtons[i]);
 
  write(L"AutoLoad",L"Logic",extra.loadMode);write(L"AutoLoad",L"RangeCells",extra.loadRadius);
@@ -56,7 +58,7 @@ static bool readAdditionalControls(){
  if(!extraNumber(LoadRadius,1,512,next.loadRadius)||!extraNumber(DefaultFirst,0,512,next.defaults.first)||!extraNumber(DefaultSecond,0,512,next.defaults.second)||!extraNumber(DefaultMaximum,0,512,next.defaults.maximum)){notify(L"请输入有效的范围（1–512）和受击数（0–512）。");return false;}
  auto binding=[](int preset,int custom){return presetKey(int(SendMessageW(extraControls[preset],CB_GETCURSEL,0,0)),uint32_t(SendMessageW(extraControls[custom],HKM_GETHOTKEY,0,0)));};
  next.enterKey=binding(EnterPreset,EnterCustom);next.airKey1=binding(AirPreset1,AirCustom1);next.airKey2=binding(AirPreset2,AirCustom2);
- if(next.airKey1&&next.airKey1==next.airKey2){notify(L"飞机攻击的两个按键需要不同。");return false;}
+ if(!extra.allHotkeys&&next.airKey1&&next.airKey1==next.airKey2){notify(L"飞机攻击的两个按键需要不同。");return false;}
  next.enter=SendMessageW(extraControls[EnterEnabled],BM_GETCHECK,0,0)==BST_CHECKED;next.air=SendMessageW(extraControls[AirEnabled],BM_GETCHECK,0,0)==BST_CHECKED;
  extra=next;return true;
 }

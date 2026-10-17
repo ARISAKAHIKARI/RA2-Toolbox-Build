@@ -1,0 +1,7 @@
+{
+  "status": "PASS",
+  "case": "unreleased all-matches candidate retained an earlier advanced planner after a later direct CS; real NativeOrders flag enabled",
+  "baseline_dll_sha256": "30e03146801b316aa80129186a6f9f9f56a8234e98ffd9edbf4f32a9931f74ae",
+  "fixture_sha256": "e37cd899f39ec0dc20467be13fbd9530594109d24cb6b430e1abb2f62ec8e101",
+  "scope": "Expected actual-x86-DLL assertion failure in synthetic world; final candidate must pass the strengthened same-frame case."
+}

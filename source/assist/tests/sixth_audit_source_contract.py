@@ -1,8 +1,8 @@
 from pathlib import Path
 r=Path(__file__).resolve().parents[2];s=r/'assist/source'
 protocol=(s/'protocol.h').read_text();assert 'Version=34' in protocol
-assert 'RA2Assist_v041_' in (s/'main.cpp').read_text()
-assert 'RA2Assist_v041_' in (s/'bridge.cpp').read_text()
+assert 'RA2Assist_v042_' in (s/'main.cpp').read_text()
+assert 'RA2Assist_v042_' in (s/'bridge.cpp').read_text()
 load=(s/'autoload_bridge.h').read_text()
 assert 'finishLoadingReservation(r,match,frame,false);loadLedger.erase(i);continue;' in load
 assert 'finishLoadingReservation(r,match,frame,false);' in load

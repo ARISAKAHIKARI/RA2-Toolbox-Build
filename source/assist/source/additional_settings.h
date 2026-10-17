@@ -5,6 +5,7 @@ namespace assist {
 struct AdditionalSettings {
  bool experimentalReveal=false;
  bool enemyMarkers=false;
+ bool allHotkeys=false;
  int loadMode=0,loadRadius=30;
  uint32_t mouseButtons[pointerinput::MouseCount]={1,1,1,1,1,1,1,2,3,3}; // 0=off, 1=middle, 2/3=side, 4=right
  bool enter=false,air=false,disk=false,sellDrained=false,sellVehicles=false,sellEnemy=false,frozen=true;

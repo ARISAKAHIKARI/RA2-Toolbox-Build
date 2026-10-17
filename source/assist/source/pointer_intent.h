@@ -3,7 +3,7 @@
 namespace assist { namespace pointerinput {
 constexpr int MaxSources=512;
 enum Operation { Enhanced=1, AttackMove=2, Sell=3, FollowNative=4, Cancel=5 };
-enum Binding { Advanced=1, Magnetron=2, CS=4, Enter=8, AirFirst=16, AirSecond=32, Control=64, Shift=128, RightClick=1024, SellDrainedInput=2048, SellVehicleInput=4096, PerFeatureMouse=8192 };
+enum Binding { Advanced=1, Magnetron=2, CS=4, Enter=8, AirFirst=16, AirSecond=32, Control=64, Shift=128, RightClick=1024, SellDrainedInput=2048, SellVehicleInput=4096, PerFeatureMouse=8192, BatchStart=16384, BatchNext=32768 };
 // Physical mouse capture uses 1=middle, 2/3=side buttons, 4=right release.
 // Preserve native right-click handling; configured right orders execute later.
 // Zero is a mouse-only fallback, never an implicit right-click modifier.
@@ -59,6 +59,22 @@ inline MouseRoute resolveMouse(const uint8_t*keys,int physical,const uint32_t*bu
  sale&=saleEnabled;config.enabled=allEnabled;
  if(sale&&(resolveBindings(keys,Sell,config)&Control))return {Sell,Control|sale|follow|PerFeatureMouse|(keys[16]?uint32_t(Shift):0)};
  return {physical==FollowNative?FollowNative:0,PerFeatureMouse|(keys[16]?uint32_t(Shift):0)};
+}
+inline int resolveMouseMatches(const uint8_t*keys,int physical,const uint32_t*buttons,const Bindings&c,uint32_t saleEnabled,bool all,MouseRoute*out){
+ if(!all||physical==Cancel){auto one=resolveMouse(keys,physical,buttons,c,saleEnabled);if(one.operation){out[0]=one;return 1;}return 0;}
+ if(physical<1||physical>4)return 0;
+ const uint32_t bits[]={Advanced,Magnetron,CS,Enter,AirFirst,AirSecond,Control};
+ const uint32_t holds[]={c.advanced,c.magnetron,c.cs,c.enter,c.airFirst,c.airSecond,c.disk};
+ const uint32_t enables[]={Advanced,Magnetron,CS,Enter,AirFirst,AirSecond,256};
+ const uint32_t common=PerFeatureMouse|(physical==FollowNative?uint32_t(RightClick):0)|(keys[16]?uint32_t(Shift):0);
+ int count=0;
+ for(int j=0;j<MouseCount;++j){if(buttons[j]!=uint32_t(physical))continue;
+  if(j<MouseAttack){if((c.enabled&enables[j])&&matchesHold(keys,holds[j],Enhanced))out[count++]={Enhanced,bits[j]|common};}
+  else if(j==MouseAttack)out[count++]={AttackMove,common};
+  else {uint32_t sale=j==MouseSellDrained?SellDrainedInput:SellVehicleInput;
+   if((c.enabled&512)&&(saleEnabled&sale)&&matchesHold(keys,c.sell,Sell))out[count++]={Sell,Control|sale|common};}
+ }
+ if(!count&&physical==FollowNative)out[count++]={FollowNative,common};return count;
 }
 struct Source { uint32_t id,pointer; };
 struct Intent {

@@ -22,4 +22,10 @@ inline int64_t nextFrameTick(int64_t scheduled,int64_t completed,int64_t frequen
  int64_t next=scheduled+step;
  return next<=completed?completed+step:next;
 }
+// Physical button edges must not depend on a low configured drawing rate.
+// Reuse the same waitable timer; 500 Hz drawing still keeps its 2 ms deadline.
+inline int64_t inputDeadline(int64_t frame,int64_t now,int64_t frequency,bool enabled){
+ if(!enabled||frequency<=0)return frame;int64_t input=now+(frequency+249)/250;
+ return input<frame?input:frame;
+}
 }

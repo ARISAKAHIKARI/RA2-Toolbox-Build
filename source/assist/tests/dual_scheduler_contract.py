@@ -13,5 +13,5 @@ assert 'dispatchFromTrigger(' in b and 'dispatchrouter::accepts(trigger,state)' 
 assert 'static bool enqueue(Event&e)' in b and b.count('static bool enqueue(Event&e)')==1
 assert 'driverMode=schedulerMode' in u
 assert 'RA2_TOOLBOX_DRIVER' in u
-assert 'Version=34' in p and 'driverTarget' in p and 'RA2Assist_v041_' in u and 'RA2Assist_v041_' in b
+assert 'Version=34' in p and 'driverTarget' in p and 'RA2Assist_v042_' in u and 'RA2Assist_v042_' in b
 print('PASS: two entrypoints, single shared tick/vanilla event gateway, verified frame hook, safe fallback')

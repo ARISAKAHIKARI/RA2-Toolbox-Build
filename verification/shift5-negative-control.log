@@ -1,0 +1,7 @@
+ui: /tmp/tmpwjma_o7l/ui.cpp:58: int main(): Assertion `!smoothing&&scalePercent==100&&writes>0&&clickEnabled&&savedClick==1' failed.
+Traceback (most recent call last):
+  File "/workspace/scratch/bf135d053f66/release-102/source/assist/tests/cursor_settings_ui_test.py", line 47, in <module>
+    subprocess.run([str(binary)],check=True)
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/subprocess.py", line 571, in run
+    raise CalledProcessError(retcode, process.args,
+subprocess.CalledProcessError: Command '['/tmp/tmpwjma_o7l/ui']' died with <Signals.SIGABRT: 6>.

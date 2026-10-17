@@ -128,7 +128,7 @@ def on_code(uc,a,size,_):
         elif n in ('GetTickCount','timeGetTime'):ret(clock,0)
         elif n=='OpenFileMappingW':
             name=string_at(arg(2),True);mapping_names.append(name)
-            ret(2 if name=='Local\\RA2Runtime_v3_123_456_' else 1 if name=='Local\\RA2Assist_v041_123' else 3 if cursor_mapping_enabled and name=='Local\\RA2CursorBridge_v154_123' else 0,3)
+            ret(2 if name=='Local\\RA2Runtime_v3_123_456_' else 1 if name=='Local\\RA2Assist_v042_123' else 3 if cursor_mapping_enabled and name=='Local\\RA2CursorBridge_v154_123' else 0,3)
         elif n=='MapViewOfFile':ret(SH+0x3e0000 if arg(0)==2 else 0x22000000 if arg(0)==3 else SH,5)
         elif n=='SetTimer':watchdog_callback=arg(3);watchdog_threads.append(current_thread);ret(0 if fail_watchdog_timer else 1,4)
         elif n=='wsprintfW':

@@ -1,0 +1,9 @@
+{
+  "status": "PASS",
+  "case": "1.0.1 settings processor disables checked Shift5 when removed mouse hook is absent",
+  "baseline_exit_code": 1,
+  "baseline_handler_sha256": "b23e25ece206f83d9ad4ef1464c6515b32ba36189ce1bb61ef993362b1cfa732",
+  "current_handler_sha256": "5f045a69936eabd48c2dd661f35114b48a046fc42f4752d4daa0885208a7bf1e",
+  "fixture_sha256": "ab70ad092c07f5bb57f0e6e0339be276584863eeb5b33d14f37caaed38ddce51",
+  "scope": "Production settings function compiled with portable Win32 controls; expected baseline assertion failure, current function passes full portable suite. Not a Windows game run."
+}

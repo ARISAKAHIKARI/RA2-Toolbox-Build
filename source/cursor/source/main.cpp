@@ -87,7 +87,7 @@ static HDC memdc;static HBITMAP dib,oldbm;static void* dibbits;static int dibw,d
 static HWND gameWBox,gameHBox,screenWBox,screenHBox,dpiBox,dpiModeBox,readout;static int gameWOverride=0,gameHOverride=0,screenWOverride=0,screenHOverride=0,dpiOverride=0,dpiMode=0;static DWORD lastReadout=0;
 static HWND scaleBox,autoBox,fitBox,offsetXBox,offsetYBox;static int scalePercent=100,offsetX=0,offsetY=0;static bool autoScale=false,aspectFit=true;static int lastSystemVisible=-1;static DWORD lastCursorCheck=0;
 static AdaptiveTiming timing;static bool adaptive=true;static unsigned transitionMs=60;static HWND adaptiveBox,timingReadout;static DWORD lastTimingReadout=0;
-static Tween tween;static Burst burst;static bool smoothing=true,clickEnabled=true,nativeFive=false,aresKnown=false;static int smoothMs=60,clickMode=0,clickGap=0,sidebarWidth=160,sidebarTop=200;static HWND smoothBox,smoothMsBox,clickBox,clickModeBox,clickGapBox;static HHOOK clickHook;static RECT clickRegion={};static DWORD regionTime=0;static size_t lastPhase=size_t(-1);
+static Tween tween;static Burst burst;static bool smoothing=true,clickEnabled=true,nativeFive=false,aresKnown=false;static int smoothMs=60,clickMode=0,clickGap=0,sidebarWidth=160,sidebarTop=200;static HWND smoothBox,smoothMsBox,clickBox,clickModeBox,clickGapBox;static RECT clickRegion={};static DWORD regionTime=0;static size_t lastPhase=size_t(-1);
 static int clickGameWidth=0,clickGameHeight=0;static DWORD clickLoggedAt=0;static LONG clickDenyReason=0;static bool clickNeedsLog=false;static unsigned clickSendOk=0,clickSendFail=0;
 static bool physicalLeftDown=false;static bool autoStart=true,autoPaused=false,focusRefresh=true,wasInside=false;static HWND autoStartBox,observedForeground;static DWORD lastAutoCheck=0,lastWindowCheck=0;static int refreshTries=0;static DWORD refreshAt=0;
 static LARGE_INTEGER freq;static bool fallback=false;static int modeId=0;static std::wstring lastStatus;
@@ -1526,6 +1526,7 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR cmd,int){
   performanceSample();if(hudEnabled)diagnosticHud();
   QueryPerformanceCounter(&now);
   LONGLONG deadline=running?next.QuadPart:now.QuadPart+freq.QuadPart/20;
+  deadline=cursorperf::inputDeadline(deadline,now.QuadPart,freq.QuadPart,running&&clickEnabled&&clickMode!=2);
   if(burst.left>0){
    int32_t ms=int32_t(burst.due-inputNow());
    LONGLONG due=now.QuadPart+std::max<int32_t>(0,ms)*freq.QuadPart/1000;

@@ -13,6 +13,7 @@ static void changedSetting(){
 static bool autoSettingChanged(int id,int notification){
  if(!ready||updatingControls)return false;
  const bool edit=notification==EN_CHANGE,select=notification==CBN_SELCHANGE;
+ if(id==786&&notification==BN_CLICKED){extra.allHotkeys=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;typeTap.clear();registerKeys();changedSetting();return true;}
  if(id==785&&notification==BN_CLICKED){extra.enemyMarkers=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();return true;}
  if(id==790&&select){int next=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));if(next>=0&&next<featuretypes::Count){featureTypeIndex=next;featureTypeFields();}return true;}
  if(id==791&&notification==BN_CLICKED){featureTypes.filters[featureTypeIndex].custom=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();return true;}
@@ -59,7 +60,7 @@ static bool autoSettingChanged(int id,int notification){
   uint32_t key=presetKey(int(SendMessageW(extraControls[presets[slot]],CB_GETCURSEL,0,0)),uint32_t(SendMessageW(extraControls[customs[slot]],HKM_GETHOTKEY,0,0)));
   uint32_t* target=slot==0?&extra.enterKey:slot==1?&extra.airKey1:&extra.airKey2;
   uint32_t other=slot==1?extra.airKey2:slot==2?extra.airKey1:0;
-  if(key&&key==other){SendMessageW(extraControls[presets[slot]],CB_SETCURSEL,holdPreset(*target),0);SendMessageW(extraControls[customs[slot]],HKM_SETHOTKEY,*target,0);notify(L"飞机攻击的两个按键需要不同。");return true;}
+  if(!extra.allHotkeys&&key&&key==other){SendMessageW(extraControls[presets[slot]],CB_SETCURSEL,holdPreset(*target),0);SendMessageW(extraControls[customs[slot]],HKM_SETHOTKEY,*target,0);notify(L"飞机攻击的两个按键需要不同。");return true;}
   *target=key;SendMessageW(extraControls[customs[slot]],HKM_SETHOTKEY,key,0);changedSetting();return true;
  }
  if((id==725||id==727)&&select||(id==726||id==728)&&edit){

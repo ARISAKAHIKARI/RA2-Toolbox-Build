@@ -8,7 +8,7 @@ static int selectedTypeIndex(){
 static WORD typeBinding(const char* id){for(auto&b:typeBindings)if(b.id==id)return b.key;return 0;}
 static WORD comparableKey(WORD k){return MAKEWORD(LOBYTE(k),HIBYTE(k)&(HOTKEYF_CONTROL|HOTKEYF_ALT|HOTKEYF_SHIFT));}
 static bool keyConflict(WORD key,const std::string& ignore,bool toggle){
- if(!LOBYTE(key))return false;key=comparableKey(key);
+ if(extra.allHotkeys||!LOBYTE(key))return false;key=comparableKey(key);
  for(auto k:hotkeys)if(comparableKey(k)==key)return true;
  for(auto&b:swBindings)if(comparableKey(b.key)==key)return true;
  if(ignore.empty())for(auto&b:typeBindings)if(comparableKey(b.key)==key)return true;

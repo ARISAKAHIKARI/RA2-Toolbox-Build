@@ -51,7 +51,7 @@ static void clockState(bool,int){}
 static HWND GetDlgItem(int,int id){return id;}
 static int GetDlgItemInt(int,int id,BOOL*ok,int){*ok=fields.count(id);return *ok?fields[id]:0;}
 static int SendMessageW(int id,int msg,unsigned value,int){if(msg==HKM_SETHOTKEY||msg==CB_SETCURSEL||msg==BM_SETCHECK){fields[id]=value;return 0;}return fields[id];}
-static bool keyConflict(WORD next,const std::string&,bool){if(!next)return false;for(auto k:hotkeys)if(k==next)return true;for(auto k:{csKey,advancedKey,unloadKey,ejectKey,csHoldKey,magnetronKey})if(k==next)return true;return false;}
+static bool keyConflict(WORD next,const std::string&,bool){if(extra.allHotkeys||!next)return false;for(auto k:hotkeys)if(k==next)return true;for(auto k:{csKey,advancedKey,unloadKey,ejectKey,csHoldKey,magnetronKey})if(k==next)return true;return false;}
 static std::string quotaID(){return selectedID;}
 static void readTargetQuota(){ControlUpdate guard;}
 static bool extraNumber(int control,int lo,int hi,int&out){auto i=fields.find(700+control);if(i==fields.end()||i->second<lo||i->second>hi)return false;out=i->second;return true;}
@@ -89,6 +89,10 @@ int main(){
  autoSavePending=false;timers=saves=syncs=0;timerMs=0;settingsRevision=1;paintRevision=0;
 
  for(int i=0;i<ExtraControlCount;++i)extraControls[i]=700+i;
+ assert(!extra.allHotkeys);fields[786]=1;autoSettingChanged(786,BN_CLICKED);assert(extra.allHotkeys&&autoSavePending);saveMouse();extra.allHotkeys=false;loadMouse();assert(extra.allHotkeys);
+ fields[200]='X';fields[201]='X';autoSettingChanged(200,EN_CHANGE);autoSettingChanged(201,EN_CHANGE);assert(hotkeys[0]=='X'&&hotkeys[1]=='X');
+ fields[707]='K';fields[709]='K';autoSettingChanged(707,EN_CHANGE);autoSettingChanged(709,EN_CHANGE);assert(extra.airKey1=='K'&&extra.airKey2=='K');
+ fields[786]=0;autoSettingChanged(786,BN_CLICKED);saveMouse();extra.allHotkeys=true;loadMouse();assert(!extra.allHotkeys);hotkeys[0]=hotkeys[1]=0;extra.airKey1=17;extra.airKey2=0;
  assert(!extra.enemyMarkers);fields[785]=1;autoSettingChanged(785,BN_CLICKED);assert(extra.enemyMarkers&&autoSavePending);
  saveMouse();extra.enemyMarkers=false;loadMouse();assert(extra.enemyMarkers);
  fields[785]=0;autoSettingChanged(785,BN_CLICKED);saveMouse();extra.enemyMarkers=true;loadMouse();assert(!extra.enemyMarkers);
@@ -160,7 +164,7 @@ for module in ('assist','unit_monitor'):
 print('PASS: shipped settings handler applies/flushes valid edits, preserves conflicting keys, ignores programmatic updates, saves quotas/custom keys; independent overlays and common read leases')
 
 # Hook permissions are linked only after explicit, valid user activation.
-assert main.count('if(csMode){hookAutoCS=true;SendMessageW(hookChecks[3],BM_SETCHECK,BST_CHECKED,0);}')>=2
+assert (main+(root/'assist/source/hotkey_host.h').read_text()).count('if(csMode){hookAutoCS=true;SendMessageW(hookChecks[3],BM_SETCHECK,BST_CHECKED,0);}')>=2
 assert 'hookAutoCS=value(L"Hooks",L"AutoCS",1)' in main
 assert 'value(L"NativeOrders",L"EnableInputHooks",1)' in main
 import re

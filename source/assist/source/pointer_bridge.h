@@ -3,13 +3,15 @@
 static uint32_t pointerSeen,pointerCancelSeen,pointerTarget,pointerTargetID,pointerCell;
 static int pointerAt;static bool pointerActive;
 static uint32_t pointerTokens[pointerinput::MaxSources];
-static uint8_t pointerDone[pointerinput::MaxSources];
+static uint8_t pointerDone[pointerinput::MaxSources],pointerBatchFollow[pointerinput::MaxSources];
+static uint32_t pointerBatchTickets[pointerinput::MaxSources],pointerBatchRequest;static bool pointerBatchValid;
+static pointerinput::Intent pointerBatchCapture;
 static void resetPointerInput(){
- pointerActive=false;pointerSeen=pointerCancelSeen=pointerTarget=pointerTargetID=pointerCell=0;pointerAt=0;
+ pointerBatchValid=false;pointerBatchRequest=0;pointerActive=false;pointerSeen=pointerCancelSeen=pointerTarget=pointerTargetID=pointerCell=0;pointerAt=0;
  memset(pointerTokens,0,sizeof pointerTokens);memset(pointerDone,0,sizeof pointerDone);
 }
 static void pointerFinish(int result){
- auto&b=sh->pointer;pointerActive=false;b.result=result;b.rejected=b.intent.count-b.accepted;
+ auto&b=sh->pointer;pointerActive=false;if(result==-7)pointerBatchValid=false;b.result=result;b.rejected=b.intent.count-b.accepted;
  if(b.intent.operation==pointerinput::Sell)b.rejected=b.accepted?0:1;
  if(b.rejected<0)b.rejected=0;MemoryBarrier();b.ack=b.request;notifyHost();
 }
@@ -37,16 +39,24 @@ static void pointerTick(){
  if(request==b.ack)return;
  const auto&i=b.intent;DWORD now=sampleClock(sh);int frame=get<int>(0xA8ED84);
  if(!pointerActive||pointerSeen!=request){pointerActive=true;pointerSeen=request;pointerAt=0;b.accepted=b.rejected=0;memset(pointerDone,0,sizeof pointerDone);
-  if(!nativeReady()||i.inputSerial!=b.cancelSerial||i.match!=match||i.house!=lastHouse||DWORD(now-i.tick)>150||frame<i.frame||frame-i.frame>8||
+  const bool next=(i.bindings&pointerinput::BatchNext)!=0,start=(i.bindings&pointerinput::BatchStart)!=0;
+  const bool continuation=next&&!start&&pointerBatchValid&&request==pointerBatchRequest+1&&pointerinput::sameCapture(i,pointerBatchCapture);
+  if(!nativeReady()||i.inputSerial!=b.cancelSerial||i.match!=match||i.house!=lastHouse||
+     (next&&!continuation)||(next&&start)||DWORD(now-i.tick)>(continuation?1500u:150u)||frame<i.frame||frame-i.frame>(continuation?90:8)||
      i.count<0||i.count>pointerinput::MaxSources||i.operation<1||i.operation>5){pointerFinish(-7);return;}
+  if(!continuation)pointerBatchValid=false;
   if(i.operation!=pointerinput::Cancel){
    bool shiftUnsupported=(i.bindings&pointerinput::Shift)&&(i.operation==pointerinput::FollowNative||(i.bindings&pointerinput::RightClick)||!(i.bindings&(pointerinput::Advanced|pointerinput::Magnetron|pointerinput::CS|pointerinput::Enter|pointerinput::AirFirst|pointerinput::AirSecond)));
-   if(shiftUnsupported||get<bool>(0x87F7E8+0x11B3)||!pointerLocation(i)){pointerFinish(-4);return;}
+   uint32_t tactical=get<uint32_t>(0x887324);
+   bool location=continuation?(tactical>=0x10000&&i.width==get<int>(0xA8EB84)&&i.height==get<int>(0xA8EB88)&&i.cameraX==get<int>(tactical+0xB0)&&i.cameraY==get<int>(tactical+0xB4)):pointerLocation(i);
+   if(shiftUnsupported||get<bool>(0x87F7E8+0x11B3)||!location){pointerFinish(-4);return;}
    if(i.operation==pointerinput::FollowNative&&pointerTarget){pointerFinish(-4);return;}
   }
+  if(start){pointerBatchCapture=i;pointerBatchValid=true;memset(pointerBatchTickets,0,sizeof pointerBatchTickets);memset(pointerBatchFollow,0,sizeof pointerBatchFollow);}
+  if(start||continuation)pointerBatchRequest=request;
   for(int n=0;n<i.count;++n){uint32_t p=worldByID(i.sources[n].id);
-   if(p&&p==i.sources[n].pointer&&own(p,lastHouse))cancelNative(p);
-   pointerTokens[n]=manualVersions.get(i.sources[n].id);
+   if(!continuation){if(p&&p==i.sources[n].pointer&&own(p,lastHouse))cancelNative(p);pointerTokens[n]=manualVersions.get(i.sources[n].id);}
+   else if(pointerBatchTickets[n]){actorLeaseArbiter.release(match,i.sources[n].id,pointerBatchTickets[n]);pointerBatchTickets[n]=0;}
   }
   if(i.operation==pointerinput::Cancel){pointerFinish(1);return;}
  }
@@ -85,15 +95,22 @@ static void pointerTick(){
    if(!mag&&!advanced&&!cs){pointerDone[n]=1;continue;}
    uint32_t destination=get<uint32_t>(p+0x5A4);
    // Wait for the original move to become observable. Never edit its event.
-   if(get<int>(p+0xAC)!=2||get<uint32_t>(p+0x2B4)||destination!=readMapCell(int(pointerCell%1000),int(pointerCell/1000))){++remaining;continue;}
+   bool batch=(i.bindings&(pointerinput::BatchStart|pointerinput::BatchNext))!=0;
+   if(!(batch&&pointerBatchFollow[n])){
+    if(get<int>(p+0xAC)!=2||get<uint32_t>(p+0x2B4)||destination!=readMapCell(int(pointerCell%1000),int(pointerCell/1000))){++remaining;continue;}
+    if(batch)pointerBatchFollow[n]=1;
+   }
    if(mag){if(nativeOutgoing(p,2,pointerCell,0,0,i.bindings))++b.accepted;pointerDone[n]=1;continue;}
   }
   if(submitted>=limit||outgoingRoom()<=0){++remaining;continue;}
   int mission=mag?2:(advanced||cs)?29:2;
   auto owner=mag?taskarbiter::Owner::Magnetron:advanced?taskarbiter::Owner::Combat:taskarbiter::Owner::Generic;
-  if(nativeMission(lastHouse,i.sources[n].id,mission,0,pointerCell,11,0,0,owner)){
+  uint32_t ticket=0;
+  if(nativeMission(lastHouse,i.sources[n].id,mission,0,pointerCell,11,0,0,owner,&ticket)){
+   if(i.bindings&(pointerinput::BatchStart|pointerinput::BatchNext))pointerBatchTickets[n]=ticket;
    ++b.accepted;++submitted;pointerDone[n]=1;if(cs)++snap.csConverted;
    if(mag||advanced)nativeOutgoing(p,mission,pointerCell,0,0,i.bindings);
+   else if(i.bindings&pointerinput::BatchNext)cancelNative(p); // accepted later direct order replaces this capture's earlier persistent plan
   }else ++remaining;
  }
  if(!remaining)pointerFinish(1);

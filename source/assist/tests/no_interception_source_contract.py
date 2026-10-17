@@ -21,10 +21,10 @@ assert 'call<void>(0x692300,0x87F7E8,&point,&cell,&coord,&object,&a,&b)' in poin
 assert 'nativeMission(' in pointer and 'nativeObjectEvent(' in pointer and 'enqueue(' not in pointer
 assert 'i.x>=width||i.y>=height' in pointer
 assert 'GetAsyncKeyState' not in pointer
-assert 'box.ack=' not in host and 'box.result=' not in host
+assert not re.search(r'box\.(?:ack|result)\s*=(?!=)',host)
 assert 'e.serial!=box.cancelSerial' in host and 'externalReader.readFresh' in host
 assert 'in.tick=e.tick' in host and 'in.tick=GetTickCount' not in host
-assert 'Version=41' in (r/'assist/source/protocol.h').read_text()
+assert 'Version=42' in (r/'assist/source/protocol.h').read_text()
 ui=(r/'assist/source/main.cpp').read_text()
 assert 'techMode=false;' in ui and 'buildAnywhereMode=false;' in ui and 'schedulerMode=0;schedulerTarget=0' in ui
 assert 'extra.sellEnemy=false;' in (r/'assist/source/extra_settings_io.h').read_text()

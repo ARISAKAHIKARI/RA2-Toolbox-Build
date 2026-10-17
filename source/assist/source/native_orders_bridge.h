@@ -42,7 +42,8 @@ static bool nativeOutgoing(uint32_t p,int mission,uint32_t packedCell,uint32_t t
  int k=kind(p),cx=int(packedCell%1000),cy=int(packedCell/1000);
  bool mag=(bindings&pointerinput::Magnetron)&&(sh->flags&MagnetronInput);
  if(!manualVersions.trackable(get<uint32_t>(p+0x10))||(!(bindings&pointerinput::Advanced)||!(sh->flags&AdvancedInput))&&!mag||(mag?!rawMagnetron(p):!featureObjectAllowed(featuretypes::AdvancedAttack,p))||(k!=1&&k!=2)||!get<bool>(p+0x83)||get<bool>(p+0x1C8)||get<uint32_t>(p+0x11C)||target||
-  (mission!=2&&mission!=29)||cx<=0||cy<=0||cx>=512||cy>=512||!rawArmed(p)||nativeCount>=nativeorders::MaxOrders)return false;
+  (mission!=2&&mission!=29)||cx<=0||cy<=0||cx>=512||cy>=512||!rawArmed(p))return false;
+ int previous=orderIndex(p);if(previous>=0)removeOrder(previous);if(nativeCount>=nativeorders::MaxOrders)return false;
  auto&o=nativeOrders[nativeCount++];o={};o.p=p;o.id=get<uint32_t>(p+0x10);o.mode=mag?planner::MagnetronMove:planner::OrdinaryMove;o.token=manualVersions.get(o.id);o.cell=o.nearest=packedCell;o.gx=cx*256+128;o.gy=cy*256+128;
  advancedObjects.add(p,o.id,uint32_t(nativeCount));snap.advancedUnits=nativeCount;
  o.progress.begin(get<int>(p+0x9C),get<int>(p+0xA0),get<int>(0xA8ED84));o.sentFrame=get<int>(0xA8ED84);return true;

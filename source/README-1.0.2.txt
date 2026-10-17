@@ -1,8 +1,13 @@
-RA2 Toolbox 1.0.1 Full
-文件版本：1.0.1.0；Assist 协议：41。基于 1.0。
+RA2 Toolbox 1.0.2 Full
+文件版本：1.0.2.0；Assist 协议：42。基于 1.0.1。
 
-1.0.1 新增：
-显示设置增加“敌方位置标记（包含未揭示区域）”，默认关闭，勾选即生效并自动保存。当前画面内的敌方单位/建筑按玩家颜色显示位置符号、玩家编号和类型名称。
+1.0.2 更新：
+修复 Shift 五连点被已删除的鼠标 Hook 句柄误关的问题；低显示帧率下，按键观察仍以最多4ms的目标间隔运行。旧配置若已被误关，重新勾选“Shift 五连点”即可恢复。自动模式检测到 Ares 时使用原生五连点，需要时可选强制补点。
+战术面板新增“热键冲突时全部执行”，默认关闭，即时生效并自动保存。开启后键盘及增强鼠标的匹配功能依次提交；同一单位的后续命令可能覆盖前项。仍经统一入口，不覆盖待处理邮箱、不绕过每帧额度和原版合法性。
+敌方标记去掉名称前的 P1/P2 等编号，保留名称与玩家颜色标识。
+
+继承 1.0.1：
+显示设置增加“敌方位置标记（包含未揭示区域）”，默认关闭，勾选即生效并自动保存。当前画面内的敌方单位/建筑按玩家颜色显示位置符号和类型名称。
 与载员标签共用上方 FPS 设置、采样时钟、Motion 插值和绘制窗口。菜单、失焦、读取失效及过期时隐藏。仅外部读取已有对象，不修改迷雾，不调用地图揭示，不发游戏指令或新增 Hook。
 
 继承 1.0 的单位清单配置：
@@ -28,8 +33,8 @@ RA2 Toolbox 1.0.1 Full
 架构和限制：
 只注入一个 GameRuntime.dll；功能共用管理器的 Windows 消息入口和原版事件提交，无功能级 Hook 或游戏代码补丁。
 科技全开、随处建造、敌方建筑变卖继续停用。地图全开为默认关闭、需主动勾选许可的实验性功能。箱子结果功能已删除。
-1.0.1 完成便携和实际 x86 DLL 模型测试；尚未完成 Windows 游戏实机、LBW、平台联机、屏幕捕获及真实延迟/帧率验收，发布为预发布版本。
+1.0.2 完成便携和实际 x86 DLL 模型测试；尚未完成 Windows 游戏实机、LBW、平台联机、屏幕捕获及真实延迟/帧率验收，发布为预发布版本。
 
-完整 69 项特性、操作/实现和停用状态：GitHub 仓库 docs/FEATURES.md、docs/FULL-1.0.1-Architecture-and-Features.html；测试报告 docs/TEST-REPORT.html。
-源码和开发文档单独保存在仓库 source/ 与 packages/v1.0.1/development.zip，不作为上传的 Release 附件。engine/runtime 下 Python 文件是必要运行依赖，请勿删除。
+完整 70 项特性、操作/实现和停用状态：GitHub 仓库 docs/FEATURES.md、docs/FULL-1.0.2-Architecture-and-Features.html；测试报告 docs/TEST-REPORT.html。
+源码和开发文档单独保存在仓库 source/ 与 packages/v1.0.2/development.zip，不作为上传的 Release 附件。engine/runtime 下 Python 文件是必要运行依赖，请勿删除。
 https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build

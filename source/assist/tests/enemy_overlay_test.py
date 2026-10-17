@@ -43,12 +43,12 @@ int main(){
  visual::LabelView v{};v.id=1;v.x=100.25f;v.y=80.5f;Graphics g(nullptr);
  drawEnemyMarker(g,m,v,2.f,1.5f);assert(allocations==1&&g.calls.size()==3&&g.calls[0].kind==1&&g.calls[1].color==m.color);
  assert(g.calls[0].x==193.5f&&g.calls[0].y==113.75f&&g.calls[2].x==208.5f&&g.calls[2].y==124.75f);
- assert(enemyRasters.begin()->second.text==L"P2 犀牛坦克");
+ assert(enemyRasters.begin()->second.text==L"犀牛坦克");
  drawEnemyMarker(g,m,v,2.f,1.5f);m.id=2;v.id=2;drawEnemyMarker(g,m,v,1,1);assert(allocations==1); // shared type/owner raster, not one bitmap per unit
  m.kind=2;g.calls.clear();drawEnemyMarker(g,m,v,1,1);assert(g.calls[0].kind==2&&g.calls[1].color==m.color);
  m.owner+=0x10000;m.player=2;drawEnemyMarker(g,m,v,1,1);assert(allocations==2&&enemyRasters.size()==2);
- for(auto&ch:m.name)ch=u'长';drawEnemyMarker(g,m,v,1,1);auto&cached=enemyRasters[enemyRasterKey(m)];assert(cached.text.size()==21&&cached.image->GetWidth()<=280);
- for(auto&ch:m.name)ch=0;m.name[0]=10;drawEnemyMarker(g,m,v,1,1);assert(enemyRasters[enemyRasterKey(m)].text==L"P3 单位");
+ for(auto&ch:m.name)ch=u'长';drawEnemyMarker(g,m,v,1,1);auto&cached=enemyRasters[enemyRasterKey(m)];assert(cached.text.size()==18&&cached.image->GetWidth()<=280);
+ for(auto&ch:m.name)ch=0;m.name[0]=10;drawEnemyMarker(g,m,v,1,1);assert(enemyRasters[enemyRasterKey(m)].text==L"单位");
 }
 '''
 with tempfile.TemporaryDirectory(prefix='enemy-draw-') as temp:

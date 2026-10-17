@@ -34,6 +34,8 @@ assist/tests/feature_type_config.cpp: PASS
 assist/tests/hook_policy.cpp: PASS
 assist/tests/hook_registry_policy.cpp: PASS
 PASS: owned patch install/restore, sticky conflict, known original signatures and per-site isolation
+assist/tests/hotkey_routes.cpp: PASS
+PASS: one OS registration/all matched keyboard actions, bounded FIFO/identity/deadline; all ten mouse routes, default precedence, both aircraft modes and anchored batch capture
 assist/tests/iteration_regression.cpp: PASS
 PASS: mixed fractional ore, incomplete load, invalid storage, release retries and acknowledgement-only release completion
 assist/tests/label_motion.cpp: PASS
@@ -84,6 +86,8 @@ PASS 10000 seeded allocation cases plus 512x512 boundary: capacity, identity, co
 assist/tests/robust_cursor_sequence.cpp: PASS
 PASS sequence sign/full wrap, stale/odd/zero rejection, invalid frame, session reset and clock wrap
 assist/tests/session_epoch.cpp: PASS
+assist/tests/shift_click.cpp: PASS
+PASS: real Shift5 burst edges, release/drag/cancel, four extra clicks, intervals/wrap; physical polling independent of low display FPS without a second timer
 assist/tests/sidebar_policy.cpp: PASS
 PASS: canonical sidebar identities, distinct types, bounded full-table lookup, clear and membership
 assist/tests/tactical_decisions.cpp: PASS
@@ -112,7 +116,7 @@ PASS per-profile tech overrides retained
 PASS writes report failure
 PASS persistent catalogue deliberately separated from bridge hooks
 assist/tests/ui_geometry_test.py: PASS
-PASS: shipped UI construction/layout: {"controls": 197, "fully_reachable_checks": 2268, "viewport_sizes": 12, "pages": 1, "content_bottom": 4376}
+PASS: shipped UI construction/layout: {"controls": 199, "fully_reachable_checks": 2292, "viewport_sizes": 12, "pages": 1, "content_bottom": 4450}
 PASS: all controls accessible, no overlap, all interactive IDs retained, one continuous page, pinned header/footer, clipped body and scroll limits
 PASS: shipped mode status distinguishes custom CS, live/waiting/disconnected/paused/fault states and restores live status after re-entry
 assist/tests/modern_ui_test.py: PASS
@@ -141,13 +145,13 @@ PASS shipped host: 1.6/2.9/6.9s callback delays do not change epoch, clear AutoB
 assist/tests/snapshot_publication_test.py: PASS
 PASS unpublished seq=0, torn-copy isolation, fresh stable publish, sequence wrap, fault cancels unsent backlog
 assist/tests/architecture_boundaries_test.py: PASS
-PASS architecture boundaries: 132 source files; 86 host includes / 71 Runtime includes; read, input, injection, patch, event and frame-grant ownership
+PASS architecture boundaries: 135 source files; 89 host includes / 72 Runtime includes; read, input, injection, patch, event and frame-grant ownership
 NOTE: 3 business-planning migrations and cross-feature snapshot consolidation remain; no full-game/real-netplay proof
 assist/tests/freshness_source_contract.py: PASS
 PASS source stamps survive planning; per-order deadlines; uncached read guards; suffix-only fresh replan
 assist/tests/extended_boundary_contract.py: PASS
 PASS capture analyzer: negative desktop coordinates, clipping, empty samples, nearest-rank P50/P95/P99, lossless BGRA->PNG and dimensions
-PASS passive capture ACK prefix: current mapping protocol 41; PID, torn, short and unknown-version rejection
+PASS passive capture ACK prefix: current mapping protocol 42; PID, torn, short and unknown-version rejection
 PASS shared planning allowance, same-frame ingress, end-of-round receipt ownership
 assist/tests/host_input_test.py: PASS
 PASS shared host: one hook pair; 200 concurrent subscriptions; independent release; cadence/coalescing; failed post/unhook recovery; dead-thread migration; stale tokens; balanced input
@@ -167,11 +171,15 @@ PASS: explicit feature/permission linkage, invalid-key isolation, shared cursor 
 PASS shared menu visibility is consumed by both overlays; control tick hides even when render clock stops
 PASS experimental reveal default/roundtrip and all host gates; independent manual overlay controls retain battlefield gating
 assist/tests/cursor_settings_ui_test.py: PASS
-PASS: cursor settings: independent toggles, atomic dimension pairs, valid-field persistence and disk retry
+PASS: cursor settings: independent toggles, atomic dimension pairs, valid-field persistence and disk retry; Shift5 remains enabled without a mouse hook and can be restored from a disabled legacy INI
 assist/tests/super_binding_ui_test.py: PASS
 PASS: superweapon UI retains identity, refreshes binding, clears removed entries and preserves dropdown identity
 assist/tests/enemy_overlay_test.py: PASS
 PASS: production enemy drawing helper shapes/coordinates/owner colors/text/cache; common sample/Motion/paint clock; viewport clip and invalidation; default-off saved setting; read-only host data, no DLL protocol/command/reveal path
+assist/tests/hotkey_host_test.py: PASS
+PASS: production hotkey dispatcher executes every match once, waits for command/selection ACK, preserves both double-tap selections, rejects stale bindings/context/deadlines; default-off unchanged
+assist/tests/pointer_fanout_host_test.py: PASS
+PASS: production pointer host serializes all matches, waits for cooperative consumption/ACK/retries, preserves capture/deadline, cancels on context/config/manual change; default-off and no-selection sale
 tests/winmock_check.py: PASS
 PASS read robustness: cache lifetime, cross-page reads, partial failure/recovery, bounds; 2 threads / 4000 batches / 256000 reads / 4000 mocked RPM calls
 PASS: process snapshot/fallback, lazy Win32 region queries, permission-denial isolation
@@ -181,4 +189,4 @@ PASS three simultaneous RPM calls; connect/detach while other sessions read
 PASS retained handle lifetime; dead process/PID reuse creates new generation
 PASS query-only fallback isolated from readable sessions; upgrade, bounds, all handles released
 PASS all three host modules use unified read sessions; no direct RPM or batch mutex
-TOTAL: 58 native tests + 24 source/UI checks + 2 mocked Win32 read-path tests
+TOTAL: 60 native tests + 26 source/UI checks + 2 mocked Win32 read-path tests

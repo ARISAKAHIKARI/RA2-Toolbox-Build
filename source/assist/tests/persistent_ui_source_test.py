@@ -9,7 +9,7 @@ checks={
  'offline lists populated at UI creation':'ready=true;fillTech(true);fillTypeBindings(true);' in main,
  'type binding list uses durable cached values':'for(size_t i=0;i<savedTypes.types.size();++i)' in ui and 'CB_SETITEMDATA,pos,i' in ui,
  'tech uses cached values':'auto&t=savedTypes.types[i];' in main and 'static int liveTypeIndex(' in main,
- 'runtime select still uses match type indexes':'typekeys::groupMask(typeBindings,binding.key,snap.types,snap.typeCount,mask,MaxTypes)' in main,
+ 'runtime select still uses match type indexes':'typekeys::groupMask(typeBindings,binding.key,snap.types,snap.typeCount,mask,MaxTypes)' in (root/'hotkey_host.h').read_text(),
  'game process detaching does not erase catalogue':'savedTypes.types.clear()' not in main and 'savedTypes={}' not in main,
  'manual offline type ID entry':'else if(id==449)' in main,
  'old saved technology IDs survive first upgrade':'for(const auto& exceptions:profileExceptions)' in main,

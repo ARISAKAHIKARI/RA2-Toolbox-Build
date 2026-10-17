@@ -4,15 +4,30 @@ static void servicePointer(){
  auto visible=external::display::inspect([](uint32_t at,void*p,size_t n){return externalReader.readFresh(at,p,n);});
  const bool inputReady=shared&&commandFresh(capturedNow)&&foregroundGame()&&!incoming.chat&&visible.visible();
  gameinput::setPointerContext(hook,commandMatch(),inputReady);
+ if(pointerMatches.active()&&(!inputReady||!extra.allHotkeys||pointerMatches.revision!=settingsRevision||
+    pointerMatches.capture.match!=commandMatch()||pointerMatches.capture.inputSerial!=gameinput::pointerCancelSerial(hook)))pointerMatches.clear();
  if(!shared)return;
  auto&box=shared->pointer;box.cancelSerial=gameinput::pointerCancelSerial(hook);static uint32_t ack=0;
  if(ack!=box.ack){ack=box.ack;MemoryBarrier();
-  if(box.intent.operation!=pointerinput::Cancel&&box.intent.operation!=pointerinput::FollowNative){
+  if(pointerMatches.active()){
+   pointerMatches.accepted+=std::max(0,box.accepted);pointerMatches.rejected+=std::max(0,box.rejected);
+   if(box.result==-7){pointerMatches.clear();notify(L"匹配组合已失效，未提交的操作已取消。");}
+   else if(!pointerMatches.waiting()){notify(L"匹配组合已接收 "+std::to_wstring(pointerMatches.accepted)+L" 项；未接收 "+std::to_wstring(pointerMatches.rejected)+L" 项。");pointerMatches.clear();}
+  }else if(box.intent.operation!=pointerinput::Cancel&&box.intent.operation!=pointerinput::FollowNative){
    if(box.result<0)notify(L"增强输入未提交：已失效、目标不支持或队列繁忙，请重新操作。");
    else notify(L"增强输入已接收 "+std::to_wstring(box.accepted)+L" 个；未接收 "+std::to_wstring(box.rejected)+L" 个。");
   }
  }
  if(box.request!=box.ack)return;
+ if(pointerMatches.waiting()){
+  if(DWORD(GetTickCount()-pointerMatches.capture.tick)>1500){pointerMatches.clear();notify(L"匹配组合已超时，未提交的操作已取消。");return;}
+  // The previous cooperative request must be consumed, including retries,
+  // before another mode can reuse the sole cooperative mailbox.
+  if(shared->cooperativeRequest.serial!=pointerMatches.cooperativeBefore&&
+     (shared->cooperativeRequest.serial!=cooperativeDelivered||shared->cooperativePlan!=shared->cooperativeAck||retryCooperative))return;
+  pointerMatches.cooperativeBefore=shared->cooperativeRequest.serial;
+  box.intent=pointerMatches.next();MemoryBarrier();InterlockedIncrement((volatile LONG*)&box.request);wakeGame();return;
+ }
  gameinput::PointerPress e{};DWORD dropped=0;
  if(!gameinput::takePointer(hook,e,dropped)){if(dropped)notify(L"输入过密，部分增强请求未接收。");return;}
  if(!inputReady||e.serial!=box.cancelSerial||e.match!=commandMatch())return;
@@ -30,9 +45,10 @@ static void servicePointer(){
  uint32_t saleEnabled=0;
  if(featureFlags&SellDrained)saleEnabled|=pointerinput::SellDrainedInput;
  if(featureFlags&SellVehicles)saleEnabled|=pointerinput::SellVehicleInput;
- auto route=pointerinput::resolveMouse(e.keys,e.operation,extra.mouseButtons,
-  {advancedKey,magnetronKey,csHoldKey,extra.enterKey,extra.airKey1,extra.airKey2,extra.diskKey,extra.sellKey,allowed},saleEnabled);
- in.operation=route.operation;in.bindings=route.bindings;if(!in.operation)return;
+ pointerinput::MouseRoute routes[pointerinput::MouseCount]{};
+ int routeCount=pointerinput::resolveMouseMatches(e.keys,e.operation,extra.mouseButtons,
+  {advancedKey,magnetronKey,csHoldKey,extra.enterKey,extra.airKey1,extra.airKey2,extra.diskKey,extra.sellKey,allowed},saleEnabled,extra.allHotkeys,routes);
+ if(!routeCount)return;in.operation=routes[0].operation;in.bindings=routes[0].bindings;
  if(in.operation==pointerinput::Sell&&!(in.bindings&pointerinput::Control))return;
  if(in.operation==pointerinput::FollowNative&&!(shared->flags&AutoCS)&&!(in.bindings&(pointerinput::Advanced|pointerinput::Magnetron|pointerinput::CS)))return;
  auto read=[](uint32_t at,void*p,size_t n){return externalReader.readFresh(at,p,n);};
@@ -41,17 +57,19 @@ static void servicePointer(){
     !read(0x887324,&tactical,4)||tactical<0x10000||!read(tactical+0xB0,&in.cameraX,4)||!read(tactical+0xB4,&in.cameraY,4)||
     !read(0xA8EB84,&in.width,4)||!read(0xA8EB88,&in.height,4)||in.width<=0||in.height<=0||in.width>32768||in.height>32768)return;
  in.x=int(int64_t(e.point.x)*in.width/e.width);in.y=int(int64_t(e.point.y)*in.height/e.height);
- if(in.operation!=pointerinput::Sell){
+ bool selectionNeeded=false;for(int route=0;route<routeCount;++route)if(routes[route].operation!=pointerinput::Sell)selectionNeeded=true;
+ if(selectionNeeded){
   if(!read(0xA8ECB8+16,&count,4)||count<0||count>pointerinput::MaxSources||!read(0xA8ECB8+4,&items,4))return;
   for(int i=0;i<count;++i){auto&src=in.sources[in.count];uint32_t owner=0;
    if(!read(items+i*4,&src.pointer,4)||src.pointer<0x10000||!read(src.pointer+0x10,&src.id,4)||!src.id||!read(src.pointer+0x21C,&owner,4))return;
    if(owner==in.house)++in.count;
   }
-  if(!in.count)return;
+  if(!in.count){bool sale=false;for(int j=0;j<routeCount;++j)sale|=routes[j].operation==pointerinput::Sell;if(!sale)return;}
  }
  int cameraX=0,cameraY=0;
  if(!read(0xA8ED84,&frameAfter,4)||frameAfter<in.frame||frameAfter-in.frame>2||
     !read(0xA83D4C,&houseAfter,4)||houseAfter!=in.house||
     !read(tactical+0xB0,&cameraX,4)||!read(tactical+0xB4,&cameraY,4)||cameraX!=in.cameraX||cameraY!=in.cameraY||DWORD(GetTickCount()-in.tick)>100)return;
- box.intent=in;MemoryBarrier();InterlockedIncrement((volatile LONG*)&box.request);wakeGame();
+ pointerMatches.begin(in,routes,routeCount,settingsRevision);pointerMatches.cooperativeBefore=shared->cooperativeRequest.serial;
+ box.intent=pointerMatches.next();MemoryBarrier();InterlockedIncrement((volatile LONG*)&box.request);wakeGame();
 }

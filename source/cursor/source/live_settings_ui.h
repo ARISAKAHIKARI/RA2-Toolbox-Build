@@ -13,7 +13,7 @@ static void applyScale(){
  int ms=value(smoothMsBox,10,200,smoothMs),gap=value(clickGapBox,0,250,clickGap);
  auto check=[](HWND h){return SendMessageW(h,BM_GETCHECK,0,0)==BST_CHECKED;};
  int dm=std::clamp((int)SendMessageW(dpiModeBox,CB_GETCURSEL,0,0),0,2),cm=std::clamp((int)SendMessageW(clickModeBox,CB_GETCURSEL,0,0),0,2);
- bool sm=check(smoothBox),ad=check(adaptiveBox),ce=check(clickBox)&&clickHook,au=check(autoBox),fit=check(fitBox);
+ bool sm=check(smoothBox),ad=check(adaptiveBox),ce=check(clickBox),au=check(autoBox),fit=check(fitBox);
  bool geometry=p!=scalePercent||x!=offsetX||y!=offsetY||gw!=gameWOverride||gh!=gameHOverride||sw!=screenWOverride||sh!=screenHOverride||dp!=dpiOverride||dm!=dpiMode||au!=autoScale||fit!=aspectFit;
  bool animation=sm!=smoothing||ad!=adaptive||ms!=smoothMs;
  bool clicking=ce!=clickEnabled||cm!=clickMode||gap!=clickGap;
