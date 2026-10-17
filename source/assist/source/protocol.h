@@ -2,13 +2,14 @@
 #include <stdint.h>
 #include "planner_types.h"
 #include "ore_type_config.h"
+#include "feature_type_config.h"
 #include "plan_freshness.h"
 #include "command_gateway.h"
 #include "mega_queue_backend.h"
 #include "cooperative_types.h"
 #include "pointer_intent.h"
 namespace assist {
-constexpr uint32_t Magic=0x41533130, Version=40;
+constexpr uint32_t Magic=0x41533130, Version=41;
 constexpr uint32_t DataMessage=0x8002, WakeTag=0x41533230;
 constexpr int MaxLabels=2048, MaxSW=32, MaxTypes=512, MaxThreats=128, MaxCrates=256, MaxCrateResults=16;
 enum Command { None, Repair, CombatSelection, EmptyTransports, DamagedSelection, IdleHarvester, IdleEngineer, IdleTransport, ClearBeacons, RevealMap, OpenTech, SelectSuper, Produce, SelectIron, SelectChrono, AutoBoard, SelectType, SmartUnload, CancelAdvanced, SelectVariant };
@@ -98,6 +99,7 @@ struct Shared {
  // Immutable until selectAck; -3 selects the union of this match-bound mask.
  uint8_t selectTypes[MaxTypes];
  volatile long oreConfigSeq;oreconfig::Config oreConfig;
+ volatile long featureConfigSeq;featuretypes::Config featureConfig;
 
 };
 inline int remaining(int start,int duration,int frame){

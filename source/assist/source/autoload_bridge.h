@@ -67,12 +67,12 @@ static int autoLoad(uint32_t house){
  int nv=0,ns=0;Vec selected=vec(0xA8ECB8,4096);
  bool selectedCarrier=false;
  for(int i=0;i<selected.count;++i){uint32_t p=item(selected,i);
-  if(p&&own(p,house)&&kind(p)==2){uint32_t t=typeOf(p,2);if(t&&get<int>(t+0x5E0)>0){selectedCarrier=true;break;}}
+  if(p&&own(p,house)&&kind(p)==2&&featureObjectAllowed(featuretypes::LoadTransport,p)){uint32_t t=typeOf(p,2);if(t&&get<int>(t+0x5E0)>0){selectedCarrier=true;break;}}
  }
  // Match MO's explicitly selected-carrier assignment when carriers were
  // selected. A passenger-only hotkey finds nearby owned carriers as requested.
  Vec carriers=selectedCarrier?selected:all;
- for(int i=0;i<carriers.count&&nv<MaxVehicles;++i){uint32_t p=item(carriers,i);if(!p||!loadingObject(p,house,2)||incomingVehicle(p))continue;uint32_t t=typeOf(p,2);if(!t)continue;
+ for(int i=0;i<carriers.count&&nv<MaxVehicles;++i){uint32_t p=item(carriers,i);if(!p||!loadingObject(p,house,2)||incomingVehicle(p))continue;uint32_t t=typeOf(p,2);if(!t||!featureTypeAllowed(featuretypes::LoadTransport,t))continue;
   int capacity=get<int>(t+0x5E0),count=get<int>(p+0x114);double limit=get<double>(t+0x388);if(capacity<=0||capacity>1024||count<0||count>256||!(limit>0&&limit<=128))continue;
   for(auto&number:composition.numbers[nv])number=0;
   int used=0;uint32_t q=get<uint32_t>(p+0x118),seen[256]{};int n=0;
@@ -85,9 +85,9 @@ static int autoLoad(uint32_t house){
  }
  snap.loadVehicles=nv;
  bool accepts[MaxVehicles]{};
- for(int j=0;j<nv;++j)if(freeSlots(vehicles[j])>0)for(int i=0;i<selected.count;++i){uint32_t p=item(selected,i);int k=p?kind(p):-1;if((k!=1&&k!=2)||p==vehicles[j].object||!loadingObject(p,house,k))continue;uint32_t t=typeOf(p,k);int size=t?slots(get<double>(t+0x380)):0;if(size>0&&size<=freeSlots(vehicles[j])&&canEnter(p,vehicles[j].object)){accepts[j]=true;break;}}
+ for(int j=0;j<nv;++j)if(freeSlots(vehicles[j])>0)for(int i=0;i<selected.count;++i){uint32_t p=item(selected,i);int k=p?kind(p):-1;if((k!=1&&k!=2)||p==vehicles[j].object||!loadingObject(p,house,k))continue;uint32_t t=typeOf(p,k);int size=t?slots(get<double>(t+0x380)):0;if(featureTypeAllowed(featuretypes::LoadPassenger,t)&&size>0&&size<=freeSlots(vehicles[j])&&canEnter(p,vehicles[j].object)){accepts[j]=true;break;}}
 
- for(int i=0;i<selected.count;++i){uint32_t p=item(selected,i);if(!p||!own(p,house))continue;int k=kind(p);if((k!=1&&k!=2)||!loadingObject(p,house,k))continue;uint32_t t=typeOf(p,k);if(!t)continue;
+ for(int i=0;i<selected.count;++i){uint32_t p=item(selected,i);if(!p||!own(p,house))continue;int k=kind(p);if((k!=1&&k!=2)||!loadingObject(p,house,k))continue;uint32_t t=typeOf(p,k);if(!t||!featureTypeAllowed(featuretypes::LoadPassenger,t))continue;
   // Airborne/jumpjet passengers cannot receive native Enter. UI legality remains
   // authoritative for mods and NoManualEnter/NoManualUnload extensions.
   if(get<bool>(p+0x134)||get<int>(p+0x94)==3||get<bool>(p+0x84)||get<bool>(p+0x8D))continue;
@@ -135,7 +135,7 @@ static void autoLoadTick(uint32_t house,int frame){
  }
  auto present=[&](uint32_t p){return worldObjects.contains(p);};int budget=outgoingRoom()?recurringBudget(EventLane::Boarding):0;
  for(int i=0;i<loadLedger.count;){auto&r=loadLedger.records[i];bool remove=!present(r.object)||!present(r.vehicle);
-  if(!remove)remove=get<uint32_t>(r.object+0x10)!=r.id||get<uint32_t>(r.vehicle+0x10)!=r.vehicleID||get<uint32_t>(r.object+0x11C)!=0||!own(r.object,house)||!own(r.vehicle,house)||frame-r.frame>900;
+  if(!remove)remove=!featureObjectAllowed(featuretypes::LoadPassenger,r.object)||!featureObjectAllowed(featuretypes::LoadTransport,r.vehicle)||get<uint32_t>(r.object+0x10)!=r.id||get<uint32_t>(r.vehicle+0x10)!=r.vehicleID||get<uint32_t>(r.object+0x11C)!=0||!own(r.object,house)||!own(r.vehicle,house)||frame-r.frame>900;
   if(remove){
    bool boarded=present(r.object)&&get<uint32_t>(r.object+0x10)==r.id&&get<uint32_t>(r.object+0x11C)==r.vehicle;
    finishLoadingReservation(r,match,frame,boarded);loadLedger.erase(i);continue;

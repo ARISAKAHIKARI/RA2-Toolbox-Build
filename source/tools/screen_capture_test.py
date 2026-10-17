@@ -142,7 +142,7 @@ def main():
    if not candidates:raise RuntimeError('No visible window for requested PID')
    target=max(candidates,key=lambda x:(x['rect'][2]-x['rect'][0])*(x['rect'][3]-x['rect'][1]));hwnd=target['hwnd']
    report['target']={key:target[key] for key in ('hwnd','pid','class')};report['expected_overlays']=expected
-   mapping=k.OpenFileMappingW(4,False,'Local\\RA2Assist_v040_'+str(args.pid))
+   mapping=k.OpenFileMappingW(4,False,'Local\\RA2Assist_v041_'+str(args.pid))
    if mapping:view=k.MapViewOfFile(mapping,4,0,0,76)
    report['passive_ack_mapping']=bool(view);last_ack=None;ack_ages=[];costs=[];intervals=[];last_capture=None;last_crc=None;changes=0;captured=0;simultaneous=0;visible_counts={key:0 for key in classes};skipped=0;last_image=None;start=time.perf_counter();due=start;surface=None
    while time.perf_counter()-start<args.seconds:

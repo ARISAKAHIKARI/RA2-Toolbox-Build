@@ -55,7 +55,7 @@ static void supersedeCooperativeEffect(uint32_t actor,uint32_t session){
   }else ++i;
  }
 }
-static bool airUnit(uint32_t p){int k=kind(p);return k==0||(k==2&&(get<bool>(p+0x134)||get<int>(p+0x94)==3||get<bool>(p+0x84)||get<bool>(p+0x8D)));}
+static bool airUnit(uint32_t p){int k=kind(p);return featureObjectAllowed(featuretypes::Aircraft,p)&&(k==0||(k==2&&(get<bool>(p+0x134)||get<int>(p+0x94)==3||get<bool>(p+0x84)||get<bool>(p+0x8D))));}
 static bool vehicleSellCell(uint32_t p){
  uint32_t cell=readMapCell(get<int>(p+0x9C)/256,get<int>(p+0xA0)/256);if(!cell)return false;
  for(uint32_t q=get<uint32_t>(cell+0xE4),n=0;q>=0x10000&&n<256;++n){if(!worldObjects.contains(q))return false;if(kind(q)==3)return true;uint32_t next=get<uint32_t>(q+0x30);if(next==q)return false;q=next;}return false;
@@ -65,7 +65,7 @@ static bool sellAllowed(uint32_t p){
  int k=kind(p);uint32_t owner=get<uint32_t>(p+0x21C);bool drained=get<uint32_t>(p+0x1D0)!=0;
  if(owner!=lastHouse)return false;
  if(drained&&!(sh->flags&SellDrained))return false;
- if(k==2)return owner>=0x10000&&(sh->flags&SellVehicles)&&vehicleSellCell(p);
+ if(k==2)return featureObjectAllowed(featuretypes::SellVehicle,p)&&owner>=0x10000&&(sh->flags&SellVehicles)&&vehicleSellCell(p);
  if(k!=3)return false;
  if(owner!=lastHouse)return (sh->flags&SellEnemy)&&nativeEnemy(p,lastHouse);
  return drained&&(sh->flags&SellDrained);
@@ -91,11 +91,11 @@ static int cooperativeInput(uint32_t p,uint32_t target,uint32_t bindings){
  if(!nativeReady()||!p||!target||!own(p,lastHouse)||!get<bool>(p+0x83)||get<bool>(p+0x1C8)||get<uint32_t>(p+0x11C))return 0;
  if(((bindings&pointerinput::Shift)&&!(bindings&(pointerinput::Enter|pointerinput::AirFirst|pointerinput::AirSecond)))||get<bool>(0x87F7E8+0x11B3)||get<bool>(0x87F7E8+0x11B1))return 0;
  indexWorld(get<int>(0xA8ED84));if(!worldObjects.contains(p)||!worldObjects.contains(target)||!live(target))return 0;
- if((sh->flags&AdvancedEnter)&&(bindings&pointerinput::Enter)&&clickView.entryCompatible(p,target,lastHouse))return newCooperative(p,target,cooperative::Enter)?1:0;
+ if((sh->flags&AdvancedEnter)&&(bindings&pointerinput::Enter)&&featureObjectAllowed(featuretypes::EnterSource,p)&&featureObjectAllowed(featuretypes::EnterTarget,target)&&clickView.entryCompatible(p,target,lastHouse))return newCooperative(p,target,cooperative::Enter)?1:0;
 
  if((sh->flags&DiskPrimary)&&kind(p)==2&&kind(target)==3&&(bindings&pointerinput::Control)){
   uint32_t t=typeOf(p,2),secondary=t?get<uint32_t>(t+0x898+28):0;
-  if(t&&(sameid((const char*)(t+0x24),"DISK")||(secondary>=0x10000&&get<bool>(secondary+0x142)))){
+  if(t&&featureTypeAllowed(featuretypes::Disk,t)&&(sameid((const char*)(t+0x24),"DISK")||(secondary>=0x10000&&get<bool>(secondary+0x142)))){
    int x=get<int>(target+0x9C)/256,y=get<int>(target+0xA0)/256;if(!readMapCell(x,y)||!loadInterfaces())return 0;
    uint32_t diskID=get<uint32_t>(p+0x10);if(!diskID)return 0;
    // Explicit input cancellation already released previous tool ownership.
@@ -142,7 +142,7 @@ static void cooperativeTick(uint32_t house,int frame,DWORD now){
  if(cooperativeAt<sh->cooperativeCount&&!fresh())expire();
  while(cooperativeAt<sh->cooperativeCount&&planningRoom(1)>0&&outgoingRoom()>0){if(!fresh()){expire();break;}const auto&o=sh->cooperativeOrders[cooperativeAt];uint32_t p=worldByID(o.id),t=worldByID(o.target);bool valid=p&&t&&own(p,house)&&live(t)&&typeOf(t,kind(t))==o.type&&manualVersions.get(o.id)==o.token&&!get<bool>(p+0x1C8)&&!get<uint32_t>(p+0x11C);
   int slots=0,mission=enter?7:1;
-  if(valid&&enter){valid=clickView.entryCompatible(p,t,house);auto c=clickView.capacity(t);slots=clickView.entrySlots(p,t);int reserved=entryReserved(t,o.id,house);
+  if(valid&&enter){valid=featureObjectAllowed(featuretypes::EnterSource,p)&&featureObjectAllowed(featuretypes::EnterTarget,t)&&clickView.entryCompatible(p,t,house);auto c=clickView.capacity(t);slots=clickView.entrySlots(p,t);int reserved=entryReserved(t,o.id,house);
    valid=valid&&entryReservationCount<cooperative::MaxSources&&slots>0&&int64_t(c.used)+reserved+slots<=c.maximum;
    if(valid){int action=call<int>(get<uint32_t>(get<uint32_t>(p)+0x74),p,t,true);valid=action==3||action==11;if(action==11)mission=9;}
   }else if(valid){valid=airUnit(p)&&nativeEnemy(t,house);if(valid){planner::Actor source{},target{};rawCombatInfo(p,typeOf(p,kind(p)),kind(p),source,true);rawCombatInfo(t,o.type,kind(t),target,false);valid=planner::compatibleTarget(source,target,false);}}

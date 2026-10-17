@@ -21,6 +21,7 @@ status = 'static void updateModeStatus(DWORD now){' + main.split('static void up
 prefix = r'''
 #include "ui_layout.h"
 #include "ore_type_config.h"
+#include "feature_type_config.h"
 #include "additional_settings.h"
 #include "scheduler_policy.h"
 #include <cassert>
@@ -34,6 +35,7 @@ prefix = r'''
 #include <vector>
 using namespace assist;
 static bool repairUnrepairable=false;static oreconfig::Config oreTypes;static std::wstring oreMiners=L"HARV,CMIN",oreRefineries=L"GAREFN,NAREFN";
+static featuretypes::Config featureTypes;static std::wstring featureTypeText[featuretypes::Count];static int featureTypeIndex=0;
 using HWND=uintptr_t;using HFONT=uintptr_t;using HMENU=intptr_t;using HMODULE=uintptr_t;
 using INT_PTR=intptr_t;using WPARAM=uintptr_t;using LPARAM=intptr_t;using DWORD=uint32_t;using HRGN=uintptr_t;
 constexpr int FALSE=0,TRUE=1,WS_CHILD=1,WS_VISIBLE=2,WS_CLIPSIBLINGS=4,WS_EX_CLIENTEDGE=8,

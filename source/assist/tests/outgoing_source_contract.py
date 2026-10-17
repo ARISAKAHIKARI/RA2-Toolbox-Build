@@ -7,7 +7,7 @@ assert 'e.frame=' not in enqueue
 assert 'gameSendTiming(timing)' in enqueue and 'timeGetTime()' not in enqueue
 assert 'memcpy((void*)(p+12+tail*sizeof(Event)),&e,sizeof e)' in enqueue
 assert 'put<uint32_t>(p+12+128*sizeof(Event)+tail*4,timing)' in enqueue
-assert 'Version=40' in (s/'protocol.h').read_text()
+assert 'Version=41' in (s/'protocol.h').read_text()
 external=(s/'external_orders_bridge.h').read_text()
 check=external.split('static bool externalOrderValid(',1)[1].split('static outgoing::Batch',1)[0]
 assert 'snap.csHookStatus!=1' not in check and '!eventPatched' not in check

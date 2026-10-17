@@ -100,6 +100,7 @@ static HWND oreCheck,oreStatus,anywhereCheck,toastEdit,csHoldCheck,csHoldEdit,de
 static bool showDetails=false;
 static bool repairUnrepairable=false;
 static oreconfig::Config oreTypes{};static std::wstring oreMiners=L"HARV,CMIN",oreRefineries=L"GAREFN,NAREFN";
+static featuretypes::Config featureTypes{};static std::wstring featureTypeText[featuretypes::Count];static int featureTypeIndex=0;
 static uint8_t pendingSelectionTypes[MaxTypes];
 static delivery::Item pendingSelection;static bool hasSelection;static uint32_t selectionAck;
 static planner::Planner tacticalPlanner;static std::unique_ptr<planner::World> planningInput=std::make_unique<planner::World>();
@@ -562,7 +563,7 @@ static bool ensureBridge(){
  if(!game||bridgeBlocked||(bridgeRetryAt&&int32_t(now-bridgeRetryAt)<0))return false;
  ++bridgeAttempts;bridgeRetryAt=now+(bridgeAttempts>=3?30000:2000);
  critical(L"bridge-connect-attempt="+std::to_wstring(bridgeAttempts)+L" pid="+std::to_wstring(pid)+L" thread="+std::to_wstring(gameThread));
- wchar_t n[100];swprintf(n,100,L"Local\\RA2Assist_v040_%lu",pid);
+ wchar_t n[100];swprintf(n,100,L"Local\\RA2Assist_v041_%lu",pid);
  mapping=CreateFileMappingW(INVALID_HANDLE_VALUE,nullptr,PAGE_READWRITE,0,sizeof(Shared),n);
  DWORD mappingError=GetLastError();if(!mapping)return bridgeFailed(L"创建命令共享内存失败",mappingError);
  if(mappingError==ERROR_ALREADY_EXISTS){
@@ -1197,6 +1198,14 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
  HWND e=pageControl(0,L"EDIT",(miner?oreMiners:oreRefineries).c_str(),20,596+i*70,605,26,783+i,ES_AUTOHSCROLL|WS_TABSTOP);SendMessageW(e,EM_SETLIMITTEXT,12287,0);}
  pageControl(0,L"STATIC",L"填写单位 ID，以逗号分隔；未勾选时自动识别，勾选后仅用清单。",20,704,605,25,0);
  pageControl(0,L"STATIC",L"空清单表示不参与倒矿；仍须符合游戏原有储矿与卸矿关系。",20,734,605,25,0);
+ pageControl(0,L"STATIC",L"功能单位清单 · 飞机 / 飞碟 / 磁电 / 装车 / 进驻等",20,780,605,25,0);
+ HWND featureCombo=pageControl(0,L"COMBOBOX",L"",20,814,605,340,790,CBS_DROPDOWNLIST|WS_VSCROLL|WS_TABSTOP);
+ for(int i=0;i<featuretypes::Count;++i)SendMessageW(featureCombo,CB_ADDSTRING,0,(LPARAM)featuretypes::name(i));SendMessageW(featureCombo,CB_SETCURSEL,featureTypeIndex,0);
+ HWND featureCustom=pageControl(0,L"BUTTON",L"仅处理自定义清单中的类型",20,850,605,25,791,BS_AUTOCHECKBOX|WS_TABSTOP);SendMessageW(featureCustom,BM_SETCHECK,featureTypes.filters[featureTypeIndex].custom?BST_CHECKED:BST_UNCHECKED,0);
+ HWND featureEdit=pageControl(0,L"EDIT",featureTypeText[featureTypeIndex].c_str(),20,884,605,26,792,ES_AUTOHSCROLL|WS_TABSTOP);SendMessageW(featureEdit,EM_SETLIMITTEXT,12287,0);
+ pageControl(0,L"STATIC",L"单位 ID 逗号分隔；未勾选沿用原有识别，勾选且留空则不处理。",20,924,605,25,0);
+ pageControl(0,L"STATIC",L"每项独立、离线可改、自动保存；类型清单不会赋予单位新能力。",20,956,605,25,0);
+
  detailCheck=pageControl(3,L"BUTTON",L"显示详细耗时",20,324,306,25,481,BS_AUTOCHECKBOX|WS_TABSTOP);SendMessageW(detailCheck,BM_SETCHECK,showDetails?BST_CHECKED:BST_UNCHECKED,0);
  pageControl(3,L"STATIC",L"提示时长 ms",20,276,112,24,0);
  toastEdit=pageControl(3,L"EDIT",std::to_wstring(toastMs).c_str(),140,274,85,26,471,ES_NUMBER|WS_TABSTOP);

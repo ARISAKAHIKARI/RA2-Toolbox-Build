@@ -1,7 +1,7 @@
 {
   "scope": "Actual DLL entry/handshake diagnostics with synthetic Win32 transport; not native loader validation.",
   "inputs": {
-    "GameRuntime.dll": "00d8517f5888e12cbf23ff73a7cd4a3485d5f76de631d63dcf29489942f4911d"
+    "GameRuntime.dll": "25419821d5d4d42e4239bcfad177a9a451152178aa4fdcbd8e0c7912f2602d67"
   },
   "results": [
     {

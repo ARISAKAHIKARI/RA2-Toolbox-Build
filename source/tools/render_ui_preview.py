@@ -14,8 +14,8 @@ fonts={s:ImageFont.truetype(fontpath,s) for s in (13,14,16,20,22)}
 def render(scroll,name):
  im=Image.new('RGB',(1120,940),BG);d=ImageDraw.Draw(im)
  def text(x,y,s,size=14,fill=TEXT):d.text((x,y),s,font=fonts[size],fill=fill,anchor='lt')
- d.rectangle((0,0,1120,32),fill='#0c111a');text(16,8,'红警工具箱  ·  v0.7.8',13);text(1018,7,'—     □     ×',13,MUTED)
- text(22,54,'红警工具箱',20);text(24,91,'v0.7.8',14,MUTED)
+ d.rectangle((0,0,1120,32),fill='#0c111a');text(16,8,'红警工具箱  ·  v1.0',13);text(1018,7,'—     □     ×',13,MUTED)
+ text(22,54,'红警工具箱',20);text(24,91,'v1.0',14,MUTED)
  for i,label in enumerate(('高刷光标','单位统计','战术助手')):
   y=148+i*52
   d.rounded_rectangle((16,y,176,y+42),radius=9,fill='#24435b' if i==2 else SURFACE)

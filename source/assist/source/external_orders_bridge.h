@@ -121,7 +121,7 @@ static bool externalOrderValid(const planner::Order&o,uint32_t house){
  uint32_t unit=worldByID(o.unit);if(!unit||!own(unit,house)||manualVersions.get(o.unit)!=o.token)return false;
  if(get<bool>(unit+0x1C8)||get<uint32_t>(unit+0x11C))return false;
  bool combat=o.purpose==1||o.purpose==3,mag=o.purpose==3;
- if(combat){int index=orderIndex(unit);if(!(sh->flags&(mag?MagnetronInput:AdvancedInput))||snap.nativeHookStatus!=1||index<0||nativeOrders[index].token!=o.token||nativeOrders[index].mode!=(mag?planner::MagnetronMove:planner::OrdinaryMove))return false;}
+ if(combat){if(mag?!rawMagnetron(unit):!featureObjectAllowed(featuretypes::AdvancedAttack,unit))return false;int index=orderIndex(unit);if(!(sh->flags&(mag?MagnetronInput:AdvancedInput))||snap.nativeHookStatus!=1||index<0||nativeOrders[index].token!=o.token||nativeOrders[index].mode!=(mag?planner::MagnetronMove:planner::OrdinaryMove))return false;}
  else if(o.purpose==0||o.purpose==2||o.purpose==planner::OreYield){
   if(manualVersions.orePaused(o.unit))return false;
   if(((o.purpose==0||o.purpose==planner::OreYield)&&!(sh->flags&AutoOreReturn))||(o.purpose==2&&o.mission!=7))return false;

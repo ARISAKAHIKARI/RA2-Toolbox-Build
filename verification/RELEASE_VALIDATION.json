@@ -1,10 +1,10 @@
 {
-  "version": "0.7.20",
-  "base_version": "0.7.19",
-  "base_user_netplay_feedback": "User reports no more disconnects with 0.7.15; 0.7.20 not yet field-tested",
+  "version": "1.0",
+  "base_version": "0.7.20",
+  "base_user_netplay_feedback": "User reports no more disconnects with 0.7.15; 1.0 not yet field-tested",
   "type": "Full",
-  "release_status": "persistent_icons_and_configurable_automation",
-  "assist_protocol": 40,
+  "release_status": "configurable_feature_types",
+  "assist_protocol": 41,
   "runtime_protocol": 3,
   "entry_api": 3,
   "engine_code_patching": false,
@@ -13,11 +13,12 @@
     "manager WH_CALLWNDPROCRET"
   ],
   "retired_tests": "RETIRED_TEST_CONTRACTS.json",
-  "feature_review_count": 67,
-  "portable_native_cases": 56,
+  "feature_review_count": 68,
+  "portable_native_cases": 57,
   "source_ui_checks": 23,
   "mock_read_checks": 2,
   "dll_regression_suites": {
+    "feature-types-current.json": 130,
     "config-current.json": 26,
     "startup-user.json": 90,
     "startup-reference.json": 90,
@@ -32,10 +33,10 @@
     "robustness-current.json": 15,
     "two-peer-current.json": 55
   },
-  "dll_regression_cases": 670,
-  "ui_controls": 189,
+  "dll_regression_cases": 800,
+  "ui_controls": 195,
   "ui_viewports": 12,
-  "ui_reachability_checks": 2172,
+  "ui_reachability_checks": 2244,
   "project_binaries": [
     "RA2Toolbox.exe",
     "GameRuntime.dll"

@@ -42,7 +42,7 @@ using namespace assist;
 // string literal. The host validates both protocol and structure size before
 // installing a hook; the release verifier can inspect these exports offline.
 extern "C" __declspec(dllexport) const uint32_t AssistProtocolInfo[2]={Version,sizeof(Shared)};
-extern "C" __declspec(dllexport) const wchar_t AssistMappingPrefix[]=L"Local\\RA2Assist_v040_";
+extern "C" __declspec(dllexport) const wchar_t AssistMappingPrefix[]=L"Local\\RA2Assist_v041_";
 static Shared*sh;static HANDLE mapping;static bool checked,good,fault;static DWORD last,slow;static uint32_t lastHouse,match,pendingAck;static int lastFrame;
 static sessionepoch::Tracker sessionTracker;static Snapshot snap;
 static runtimefault::Context faultContext;
@@ -85,7 +85,7 @@ static bool bridgePinned,autoWas;static DWORD lastAuto,techRefresh;
 static repairdelivery::Pending<> pendingRepairs;
 static void resetPointerInput();static void restoreClickHooks();static void resetCooperativeState();static void clickHooksTick(uint32_t);static void cooperativeTick(uint32_t,int,DWORD);
 static void clearNativeOrders();static void restoreCSHook();static void restoreTech();static void clearFlashes();static void resetProduction();
-static void clearOreOrders();static void cancelOreJob(uint32_t p);static void restorePlacement();
+static void resetFeatureTypes();static void clearOreOrders();static void cancelOreJob(uint32_t p);static void restorePlacement();
 static uint32_t worldByID(uint32_t id);static bool rawOreCompatible(uint32_t unit,uint32_t refinery);
 static void cancelUnloadPassenger(uint32_t p);
 enum class EventLane {Repair,Boarding,Unload,Planning};
@@ -120,7 +120,7 @@ static void indexWorld(int frame){Vec all=vec(0xA8EC78);if(indexedFrame==frame&&
   static ManualVersions liveVersions;liveVersions.copyLive(manualVersions,[](uint32_t id){uint32_t p=worldObjects.byId(id);uint32_t found=0;return p&&read(p+0x10,&found,sizeof found)&&found==id;});manualVersions=liveVersions;prunedFrame=frame;
  }
 }
-static void reset(){resetPointerInput();if(sh&&sh->pointer.request!=sh->pointer.ack){sh->pointer.result=-7;sh->pointer.accepted=0;sh->pointer.rejected=sh->pointer.intent.count;MemoryBarrier();sh->pointer.ack=sh->pointer.request;}nativeMegaQueueCallDepth=nativeObjectQueueCallDepth=0;snap.lastSubmitError=0;missionObserver.clear();actorFrameArbiter.clear();actorLeaseArbiter.clear();snap.megaQueueStatus=0;snap.megaQueueAccepted=snap.megaQueueRejected=0;snap.objectQueueStatus=0;snap.objectQueueAccepted=snap.objectQueueRejected=0;
+static void reset(){resetFeatureTypes();resetPointerInput();if(sh&&sh->pointer.request!=sh->pointer.ack){sh->pointer.result=-7;sh->pointer.accepted=0;sh->pointer.rejected=sh->pointer.intent.count;MemoryBarrier();sh->pointer.ack=sh->pointer.request;}nativeMegaQueueCallDepth=nativeObjectQueueCallDepth=0;snap.lastSubmitError=0;missionObserver.clear();actorFrameArbiter.clear();actorLeaseArbiter.clear();snap.megaQueueStatus=0;snap.megaQueueAccepted=snap.megaQueueRejected=0;snap.objectQueueStatus=0;snap.objectQueueAccepted=snap.objectQueueRejected=0;
  snap.queueSent=snap.queueFull=snap.queueTimingFailure=snap.planDeferred=snap.queuedEvents=snap.observedEvents=snap.commandRejected=snap.receiptCancelled=snap.receiptExpired=snap.receiptDropped=0;snap.receiptWrite=snap.receiptCount=0;restoreClickHooks();resetCooperativeState();if(sh)sh->clickHookStatus=0;clearOreOrders();restorePlacement();indexedFrame=indexedCount=-1;outgoingFrame=-1;clearNativeOrders();snap.labels=snap.selected=snap.transports=snap.used=snap.capacity=snap.swCount=0;snap.nativeHookStatus=snap.unloadIssued=0;snap.techOpen=0;restoreTech();restoreCSHook();clearFlashes();resetProduction();snap.inputPatchMask=0;repairCount=repairAt=repairDone=0;repairAckRequest=0;repairAckPending=false;for(auto&v:lastIdle)v=0;productionBaseline=false;snap.typeCount=0;snap.threatCount=snap.crateCount=crateCount=0;cratesOn=false;autoWas=false;snap.autoRepair=0;snap.repairTotal=0;snap.techVisible=snap.techUnavailable=snap.techError=0;snap.crateHookStatus=snap.crateResultCount=0;snap.crateResultSerial=0;sceneResultSerial=0;snap.csHookStatus=snap.csConverted=0;loadLedger.clear();snap.loadUnits=snap.loadVehicles=snap.loadIssued=snap.loadWaiting=snap.loadUnassigned=0;memset(techAllowed,0,sizeof techAllowed);pendingRepairs.clear();}
 static void mapName(wchar_t*out,DWORD p){const wchar_t*s=AssistMappingPrefix;int i=0;while(*s)out[i++]=*s++;wchar_t d[16];int n=0;do{d[n++]=L'0'+p%10;p/=10;}while(p);while(n)out[i++]=d[--n];out[i]=0;}
 static HANDLE controllerProcess;static DWORD controllerPID,controllerCheckAt;
@@ -551,6 +551,7 @@ static bool nativeProduceEvent(uint32_t house,const Type&t){
  return true;
 }
 static bool repairEvent(uint32_t house,uint32_t id){return nativeObjectEvent(get<int>(house+0x30),0x15,id);}
+#include "feature_type_bridge.h"
 #include "autoload_bridge.h"
 static bool selection(uint32_t p){return call<bool>(0x6FBFA0,p);}
 static void unselect(){if(gameentry::active(gameentry::Client::Assist))((void(__cdecl*)())0x48DC90)();}
@@ -620,7 +621,7 @@ static DWORD clampedRepairInterval(uint32_t ms){
 static int collectRepairs(uint32_t house,DWORD now){Vec v=vec(0xA8EB40);repairCount=repairAt=repairDone=0;
  for(int i=0;i<v.count&&repairCount<2048;++i){uint32_t p=item(v,i);if(!own(p,house))continue;uint32_t t=typeOf(p,3),id=get<uint32_t>(p+0x10);
   const bool recent=pendingRepairs.contains(id,p);
-  if(t&&((sh->flags&RepairUnrepairable)||get<uint8_t>(t+0x157A))&&decisions::shouldRepair({get<int>(p+0x6C),get<int>(t+0xA0),true,
+  if(t&&featureTypeAllowed(featuretypes::RepairBuilding,t)&&((sh->flags&RepairUnrepairable)||get<uint8_t>(t+0x157A))&&decisions::shouldRepair({get<int>(p+0x6C),get<int>(t+0xA0),true,
       get<bool>(p+0x6E8),recent}))repairIDs[repairCount++]=id;
  }return repairCount;
 }
@@ -701,7 +702,7 @@ static void repairTick(uint32_t house,DWORD now){
   indexWorld(frame);
   while(repairAt<repairCount&&budget>0){uint32_t id=repairIDs[repairAt],p=worldByID(id);
   const bool recent=pendingRepairs.contains(id,p);
-  if(p&&kind(p)==3&&own(p,house)){uint32_t t=typeOf(p,3);if(t&&((sh->flags&RepairUnrepairable)||get<uint8_t>(t+0x157A))&&decisions::shouldRepair({get<int>(p+0x6c),get<int>(t+0xA0),true,
+  if(p&&kind(p)==3&&own(p,house)){uint32_t t=typeOf(p,3);if(t&&featureTypeAllowed(featuretypes::RepairBuilding,t)&&((sh->flags&RepairUnrepairable)||get<uint8_t>(t+0x157A))&&decisions::shouldRepair({get<int>(p+0x6c),get<int>(t+0xA0),true,
      get<bool>(p+0x6E8),recent})){if(!pendingRepairs.room(id)||!repairEvent(house,id))break;
      pendingRepairs.queued(id,p);--budget;++repairDone;++snap.repairTotal;}}
   ++repairAt;

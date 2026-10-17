@@ -1,4 +1,4 @@
-PASS: 2 current PE32 x86 outputs; hooks exported; ABI/Shared size match; version 0.7.20.0
+PASS: 2 current PE32 x86 outputs; hooks exported; ABI/Shared size match; version 1.0.0.0
 PASS: no unbundled third-party or compiler-runtime DLL dependencies
 PASS: actual EXE RT_MANIFEST/1 enables x86 Common Controls 6 for subclass helper imports
 NOTE: static validation does not execute the Windows loader or the game

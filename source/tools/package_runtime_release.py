@@ -18,7 +18,7 @@ def main():
    if group not in {'assets','profiles','engine','runtime','licenses'} and name not in {'RA2Toolbox.exe','GameRuntime.dll','README.txt','Start-Message.cmd'}:continue
    if name=='Start-Message.cmd':
     data=b'@echo off\r\nsetlocal\r\ncd /d "%~dp0"\r\nfor %%F in (RA2Toolbox.exe GameRuntime.dll) do if not exist "%%F" (echo Missing %%F & pause & exit /b 1)\r\nset "RA2_TOOLBOX_DRIVER=message"\r\nstart "" "%~dp0RA2Toolbox.exe"\r\n'
-   if name=='README.txt':data=data.replace(b'0.7.20 Full',b'0.7.20 Windows')
+   if name=='README.txt':data=data.replace((VERSION+' Full').encode(),(VERSION+' Windows').encode())
    if name=='licenses/THIRD-PARTY-NOTICES.txt':
     data=data.decode().replace('Complete upstream source archives: third-party/*.zip. Reproduction: source/convert_themes.py.','Complete upstream resource archives are in the separate Development package (third-party/*.zip), and the repository: https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/tree/v0.7.19/packages/v0.7.19').encode()
    dst.writestr(name,data);records[name]=sha(data)

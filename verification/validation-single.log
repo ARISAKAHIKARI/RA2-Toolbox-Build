@@ -24,6 +24,7 @@ assist/tests/external_reader.cpp: PASS
 PASS: 1000 camera samples retain high-rate positions with at most 126 full world enumerations, including viewport exit
 PASS: menu enter/exit preserves epoch, paused battlefield visible, same-frame position/boarding/unloading, recycled/dead object and unreadable display state
 PASS: actual-layout external snapshot, owner colors, iron/frozen timers with cycle guard, unchanged-frame cache, camera shift and invalid coordinates
+assist/tests/feature_type_config.cpp: PASS
 assist/tests/hook_policy.cpp: PASS
 assist/tests/hook_registry_policy.cpp: PASS
 PASS: owned patch install/restore, sticky conflict, known original signatures and per-site isolation
@@ -105,7 +106,7 @@ PASS per-profile tech overrides retained
 PASS writes report failure
 PASS persistent catalogue deliberately separated from bridge hooks
 assist/tests/ui_geometry_test.py: PASS
-PASS: shipped UI construction/layout: {"controls": 189, "fully_reachable_checks": 2172, "viewport_sizes": 12, "pages": 1, "content_bottom": 4078}
+PASS: shipped UI construction/layout: {"controls": 195, "fully_reachable_checks": 2244, "viewport_sizes": 12, "pages": 1, "content_bottom": 4302}
 PASS: all controls accessible, no overlap, all interactive IDs retained, one continuous page, pinned header/footer, clipped body and scroll limits
 PASS: shipped mode status distinguishes custom CS, live/waiting/disconnected/paused/fault states and restores live status after re-entry
 assist/tests/modern_ui_test.py: PASS
@@ -134,7 +135,7 @@ PASS shipped host: 1.6/2.9/6.9s callback delays do not change epoch, clear AutoB
 assist/tests/snapshot_publication_test.py: PASS
 PASS unpublished seq=0, torn-copy isolation, fresh stable publish, sequence wrap, fault cancels unsent backlog
 assist/tests/architecture_boundaries_test.py: PASS
-PASS architecture boundaries: 129 source files; 84 host includes / 69 Runtime includes; read, input, injection, patch, event and frame-grant ownership
+PASS architecture boundaries: 131 source files; 85 host includes / 71 Runtime includes; read, input, injection, patch, event and frame-grant ownership
 NOTE: 3 business-planning migrations and cross-feature snapshot consolidation remain; no full-game/real-netplay proof
 assist/tests/freshness_source_contract.py: PASS
 PASS source stamps survive planning; per-order deadlines; uncached read guards; suffix-only fresh replan
@@ -172,4 +173,4 @@ PASS three simultaneous RPM calls; connect/detach while other sessions read
 PASS retained handle lifetime; dead process/PID reuse creates new generation
 PASS query-only fallback isolated from readable sessions; upgrade, bounds, all handles released
 PASS all three host modules use unified read sessions; no direct RPM or batch mutex
-TOTAL: 56 native tests + 23 source/UI checks + 2 mocked Win32 read-path tests
+TOTAL: 57 native tests + 23 source/UI checks + 2 mocked Win32 read-path tests

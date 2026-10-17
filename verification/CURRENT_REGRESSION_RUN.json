@@ -1,6 +1,16 @@
 {
-  "dll_sha256": "00d8517f5888e12cbf23ff73a7cd4a3485d5f76de631d63dcf29489942f4911d",
+  "dll_sha256": "25419821d5d4d42e4239bcfad177a9a451152178aa4fdcbd8e0c7912f2602d67",
   "runs": [
+    {
+      "script": "feature_type_runtime",
+      "output": "feature-types-current.json",
+      "exit_code": 0
+    },
+    {
+      "script": "config_runtime_regression",
+      "output": "config-current.json",
+      "exit_code": 0
+    },
     {
       "script": "startup_runtime_regression",
       "output": "startup-user.json",
@@ -59,11 +69,6 @@
     {
       "script": "two_peer_sync",
       "output": "two-peer-current.json",
-      "exit_code": 0
-    },
-    {
-      "script": "config_runtime_regression",
-      "output": "config-current.json",
       "exit_code": 0
     }
   ]

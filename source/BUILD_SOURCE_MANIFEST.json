@@ -1,12 +1,12 @@
 {
-  "name": "RA2 Toolbox 0.7.20 Full",
-  "version": "0.7.20",
+  "name": "RA2 Toolbox 1.0 Full",
+  "version": "1.0",
   "compiled_game_binary_included": false,
-  "source": "0.7.19 base; persistent icon cache and retained GDI bitmaps, configurable miner/refinery allowlists, default-off non-click-repairable permission; no new hooks",
+  "source": "0.7.20 base; 14 configurable feature unit filters with capture/final-submit checks; no new hooks",
   "resources": "Complete assets/profiles/Python preprocessing runtime/engine included",
   "resources_legacy_reuse": true,
-  "build_protocol": 40,
-  "validation": "Current 0.7.20 portable and actual DLL model evidence; real Windows/LBW/netplay not tested",
+  "build_protocol": 41,
+  "validation": "Current 1.0 portable and actual x86 DLL model evidence; no real game/netplay certification",
   "build_requirement": "Zig 0.13.0, x86 Windows target; build EXE and GameRuntime.dll together",
   "settings": {
     "Orders.MegaMissionBackend": "0=constructor; 1=high-level MP; SP uses constructor/DoList centrally",

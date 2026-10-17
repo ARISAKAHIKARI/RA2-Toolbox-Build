@@ -1,0 +1,529 @@
+{
+  "inputs": {
+    "game": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+    "GameRuntime.dll": "25419821d5d4d42e4239bcfad177a9a451152178aa4fdcbd8e0c7912f2602d67"
+  },
+  "scope": "Actual x86 DLL and original event constructors; mocked Win32/world/query.\nThe Sell receiver branch is executed from the supplied EXE with resolved-object,\nmap lookup and final virtual sale mocked. This is not real network validation.\n",
+  "results": [
+    {
+      "case": "filter_0_0_default",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_0_0_include",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_0_0_exclude",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_0_0_empty",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_0_1_default",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_0_1_include",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_0_1_exclude",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_0_1_empty",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_0_2_default",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_0_2_include",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_0_2_exclude",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_0_2_empty",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_0_3_default",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_0_3_include",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_0_3_exclude",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_0_3_empty",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_0_4_default",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_0_4_include",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_0_4_exclude",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_0_4_empty",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_0_5_default",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_0_5_include",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_0_5_exclude",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_0_5_empty",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_0_6_default",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_0_6_include",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_0_6_exclude",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_0_6_empty",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_0_7_default",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_0_7_include",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_0_7_exclude",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_0_7_empty",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_0_8_default",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_0_8_include",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_0_8_exclude",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_0_8_empty",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_0_9_default",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_0_9_include",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_0_9_exclude",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_0_9_empty",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_0_10_default",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_0_10_include",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_0_10_exclude",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_0_10_empty",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_0_11_default",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_0_11_include",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_0_11_exclude",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_0_11_empty",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_0_12_default",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_0_12_include",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_0_12_exclude",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_0_12_empty",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_0_13_default",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_0_13_include",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_0_13_exclude",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_0_13_empty",
+      "status": "PASS"
+    },
+    {
+      "case": "pending_filter_0_plane_allowed",
+      "status": "PASS"
+    },
+    {
+      "case": "pending_filter_0_plane_revoke",
+      "status": "PASS"
+    },
+    {
+      "case": "pending_filter_0_magnet_allowed",
+      "status": "PASS"
+    },
+    {
+      "case": "pending_filter_0_magnet_revoke",
+      "status": "PASS"
+    },
+    {
+      "case": "pending_filter_0_advanced_revoke",
+      "status": "PASS"
+    },
+    {
+      "case": "pending_filter_0_half_written",
+      "status": "PASS"
+    },
+    {
+      "case": "pending_filter_0_invalid_count",
+      "status": "PASS"
+    },
+    {
+      "case": "pending_filter_0_repair_revoke",
+      "status": "PASS"
+    },
+    {
+      "case": "pending_filter_0_host_restart_same_seq",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_3_0_default",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_3_0_include",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_3_0_exclude",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_3_0_empty",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_3_1_default",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_3_1_include",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_3_1_exclude",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_3_1_empty",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_3_2_default",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_3_2_include",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_3_2_exclude",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_3_2_empty",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_3_3_default",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_3_3_include",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_3_3_exclude",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_3_3_empty",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_3_4_default",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_3_4_include",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_3_4_exclude",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_3_4_empty",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_3_5_default",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_3_5_include",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_3_5_exclude",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_3_5_empty",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_3_6_default",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_3_6_include",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_3_6_exclude",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_3_6_empty",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_3_7_default",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_3_7_include",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_3_7_exclude",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_3_7_empty",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_3_8_default",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_3_8_include",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_3_8_exclude",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_3_8_empty",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_3_9_default",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_3_9_include",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_3_9_exclude",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_3_9_empty",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_3_10_default",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_3_10_include",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_3_10_exclude",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_3_10_empty",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_3_11_default",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_3_11_include",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_3_11_exclude",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_3_11_empty",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_3_12_default",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_3_12_include",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_3_12_exclude",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_3_12_empty",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_3_13_default",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_3_13_include",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_3_13_exclude",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_3_13_empty",
+      "status": "PASS"
+    },
+    {
+      "case": "pending_filter_3_plane_allowed",
+      "status": "PASS"
+    },
+    {
+      "case": "pending_filter_3_plane_revoke",
+      "status": "PASS"
+    },
+    {
+      "case": "pending_filter_3_magnet_allowed",
+      "status": "PASS"
+    },
+    {
+      "case": "pending_filter_3_magnet_revoke",
+      "status": "PASS"
+    },
+    {
+      "case": "pending_filter_3_advanced_revoke",
+      "status": "PASS"
+    },
+    {
+      "case": "pending_filter_3_half_written",
+      "status": "PASS"
+    },
+    {
+      "case": "pending_filter_3_invalid_count",
+      "status": "PASS"
+    },
+    {
+      "case": "pending_filter_3_repair_revoke",
+      "status": "PASS"
+    },
+    {
+      "case": "pending_filter_3_host_restart_same_seq",
+      "status": "PASS"
+    }
+  ]
+}

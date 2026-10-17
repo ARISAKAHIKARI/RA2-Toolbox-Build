@@ -4,7 +4,7 @@ root=r.parents[1]
 code=(r/'bridge.cpp').read_text()
 lease=(r/'unit_task_arbiter.h').read_text()
 protocol=(r/'protocol.h').read_text()
-assert 'Version=34' in protocol and 'RA2Assist_v040_' in code
+assert 'Version=34' in protocol and 'RA2Assist_v041_' in code
 assert 'sessionTracker.update(true,house,sessionMode,frame)' in code
 assert 'actorLeaseArbiter.canIssue(' in code and 'actorLeaseArbiter.record(' in code
 assert 'releaseAutoOwner' in code and 'cancelReceiptTicket' in code

@@ -5,6 +5,7 @@ root=Path(sys.argv[1]).resolve() if len(sys.argv)>1 else Path(__file__).resolve(
 prefix=r'''
 #include "additional_settings.h"
 #include "ore_type_config.h"
+#include "feature_type_config.h"
 #include <cwchar>
 #include <cassert>
 #include <algorithm>
@@ -14,6 +15,8 @@ prefix=r'''
 #include <unordered_map>
 using namespace assist;
 static bool repairUnrepairable=false;static oreconfig::Config oreTypes;static std::wstring oreMiners,oreRefineries,editText;
+static featuretypes::Config featureTypes;static std::wstring featureTypeText[featuretypes::Count];static int featureTypeIndex=0;static unsigned featureRefreshes=0;
+static void featureTypeFields(){++featureRefreshes;}
 static void GetWindowTextW(int,wchar_t* p,int n){wcsncpy(p,editText.c_str(),n-1);p[n-1]=0;}
 using UINT_PTR=unsigned;using HWND=int;using WORD=unsigned short;using BOOL=int;
 constexpr int FALSE=0,EN_CHANGE=1,CBN_SELCHANGE=2,BN_CLICKED=3,HKM_GETHOTKEY=4,HKM_SETHOTKEY=5,CB_GETCURSEL=6,CB_SETCURSEL=7,BM_GETCHECK=8,BM_SETCHECK=9,BST_CHECKED=1;
@@ -56,15 +59,35 @@ static void bindSuper(){++binds;}
 static void bindType(bool){++binds;}
 '''
 io=(root/'assist/source/extra_settings_io.h').read_text()
-load_mouse=io.split('static void loadAdditionalSettings(){',1)[1].split(' extra.loadMode=',1)[0]
-save_mouse=io.split('static bool saveAdditionalSettings(){',1)[1].split(' write(L"AutoLoad"',1)[0]
+load_mouse=' extra.experimentalReveal='+io.split(' extra.experimentalReveal=',1)[1].split(' extra.loadMode=',1)[0]
+save_mouse=' write(L"Experimental"'+io.split(' write(L"Experimental"',1)[1].split(' write(L"AutoLoad"',1)[0]
 prefix+=r'''
 static std::map<std::wstring,int> profile;
+static std::map<std::wstring,std::wstring> profile_text;static bool saveWriteOK=true;
+static std::wstring path(const wchar_t*s){return s;}
+static void GetPrivateProfileStringW(const wchar_t*,const wchar_t*key,const wchar_t* fallback,wchar_t*out,int n,const wchar_t*){auto it=profile_text.find(key);auto text=it==profile_text.end()?std::wstring(fallback):it->second;wcsncpy(out,text.c_str(),n-1);out[n-1]=0;}
+static int WritePrivateProfileStringW(const wchar_t*,const wchar_t*key,const wchar_t* text,const wchar_t*){profile_text[key]=text;return 1;}
+
 static int value(const wchar_t*,const wchar_t* key,int fallback){auto it=profile.find(key);return it==profile.end()?fallback:it->second;}
 static void write(const wchar_t*,const wchar_t* key,int v){profile[key]=v;}
 '''+"\nstatic void loadMouse(){"+load_mouse+"}\nstatic void saveMouse(){"+save_mouse+"}\n"
-suffix=r'''
+feature_load=io.split('static void loadAdditionalSettings(){',1)[1].split(' extra.experimentalReveal=',1)[0]
+feature_save=io.split('static bool saveAdditionalSettings(){',1)[1].split(' write(L"Experimental"',1)[0]
+prefix+="\nstatic void loadFeatureTypes(){"+feature_load+"}\nstatic void saveFeatureTypes(){"+feature_save+"}\n"
+suffix=r''' 
 int main(){
+ loadFeatureTypes();for(int f=0;f<featuretypes::Count;++f)assert(!featureTypes.filters[f].custom);
+ for(int f=0;f<featuretypes::Count;++f){featureTypes.filters[f].custom=1;featureTypeText[f]=L"custom_a，CUSTOM_B";}
+ saveFeatureTypes();featureTypes={};for(auto&text:featureTypeText)text.clear();loadFeatureTypes();
+ for(int f=0;f<featuretypes::Count;++f)assert(featureTypes.filters[f].custom&&featureTypes.filters[f].count==2&&featuretypes::allowed(featureTypes,f,"CUSTOM_A"));
+ for(int f=0;f<featuretypes::Count;++f){fields[790]=f;assert(autoSettingChanged(790,CBN_SELCHANGE)&&featureTypeIndex==f&&featureRefreshes==unsigned(f+1));
+  fields[791]=1;autoSettingChanged(791,BN_CLICKED);editText=L"UNIT_A,unit_b";autoSettingChanged(792,EN_CHANGE);
+  assert(featureTypes.filters[f].custom&&featureTypes.filters[f].count==2&&featuretypes::allowed(featureTypes,f,"UNIT_B"));
+  editText=L"BAD/ID";autoSettingChanged(792,EN_CHANGE);assert(featureTypes.filters[f].count==2&&featureTypeText[f]==L"UNIT_A,unit_b");
+  editText=L"";autoSettingChanged(792,EN_CHANGE);assert(!featuretypes::allowed(featureTypes,f,"UNIT_A"));
+ }
+ autoSavePending=false;timers=saves=syncs=0;timerMs=0;settingsRevision=1;paintRevision=0;
+
  for(int i=0;i<ExtraControlCount;++i)extraControls[i]=700+i;
  fields[310]=144;assert(autoSettingChanged(310,EN_CHANGE));assert(fps==144&&saves==0&&autoSavePending&&timerMs==300&&syncs==1);
  fields[311]=42;autoSettingChanged(311,EN_CHANGE);assert(topMargin==42&&saves==0);flushAutoSettings();assert(saves==1&&!autoSavePending);flushAutoSettings();assert(saves==1);

@@ -1,46 +1,14 @@
-{"script": "config_runtime_regression", "output": "config-current.json", "exit_code": 1}
-most recent call last):
-  File "/workspace/scratch/bf135d053f66/release-0720/source/assist/tests/config_runtime_regression.py", line 12, in check
-    try:fn();rows.append({'case':name,'status':'PASS'});print('PASS',name,flush=True)
-        ^^^^
-  File "/workspace/scratch/bf135d053f66/release-0720/source/assist/tests/config_runtime_regression.py", line 30, in ore
-    s.oreConfigSeq=2;save(m,s);s=m.hook()
-                                 ^^^^^^^^
-  File "/workspace/scratch/bf135d053f66/release-0720/source/assist/tests/entry_runtime_regression.py", line 265, in hook
-    clock+=110;w(SH+Shared.heartbeat.offset,clock);run(entry,(0,1,0));return Shared.from_buffer_copy(u.mem_read(SH,C.sizeof(Shared)))
-                                                   ^^^^^^^^^^^^^^^^^^
-  File "/workspace/scratch/bf135d053f66/release-0720/source/assist/tests/entry_runtime_regression.py", line 195, in run
-    try:u.emu_start(address,STOP,count=2000000)
-        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/workspace/scratch/bf135d053f66/build-tools/unicorn/unicorn_py3/unicorn.py", line 769, in emu_start
-    raise self._hook_exception
-  File "/workspace/scratch/bf135d053f66/build-tools/unicorn/unicorn_py3/unicorn.py", line 363, in wrapper
-    return func(uc, *args, **kwargs)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/workspace/scratch/bf135d053f66/build-tools/unicorn/unicorn_py3/unicorn.py", line 1063, in __hook_code_cb
-    callback(uc, address, size, user_data)
-  File "/workspace/scratch/bf135d053f66/release-0720/source/assist/tests/entry_runtime_regression.py", line 158, in on_code
-    else:raise AssertionError('unexpected import '+n)
-         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-AssertionError: unexpected import memchr
-Emulation fetch/state: 0x32000320 0x10013e87
-Emulation fetch/state: 0x32000320 0x10013eb2
-Emulation fetch/state: 0x32000320 0x10013e87
-PASS ore_config_3_empty_custom
-PASS ore_config_3_no_dock
-PASS ore_config_3_revoke_pending
-PASS ore_config_3_config_incomplete
-
+{"script": "config_runtime_regression", "output": "config-current.json", "exit_code": 0}
 {"script": "startup_runtime_regression", "output": "startup-user.json", "exit_code": 0}
+{"script": "feature_type_runtime", "output": "feature-types-current.json", "exit_code": 0}
 {"script": "startup_runtime_regression", "output": "startup-reference.json", "exit_code": 0}
 {"script": "no_interception_runtime", "output": "no-interception-user.json", "exit_code": 0}
-{"script": "no_interception_runtime", "output": "no-interception-reference.json", "exit_code": 0}
 {"script": "ore_priority_runtime", "output": "ore-priority-user.json", "exit_code": 0}
+{"script": "ore_priority_runtime", "output": "ore-priority-reference.json", "exit_code": 0}
 {"script": "entry_binding_regression", "output": "binding-current.json", "exit_code": 0}
 {"script": "selection_gateway_regression", "output": "selection-current.json", "exit_code": 0}
-{"script": "ore_priority_runtime", "output": "ore-priority-reference.json", "exit_code": 0}
 {"script": "bridge_diagnostics_regression", "output": "bridge-current.json", "exit_code": 0}
-{"script": "robustness_runtime_regression", "output": "robustness-current.json", "exit_code": 0}
 {"script": "timing_runtime_regression", "output": "timing-current.json", "exit_code": 0}
+{"script": "robustness_runtime_regression", "output": "robustness-current.json", "exit_code": 0}
+{"script": "no_interception_runtime", "output": "no-interception-reference.json", "exit_code": 0}
 {"script": "two_peer_sync", "output": "two-peer-current.json", "exit_code": 0}
-{"script": "config_runtime_regression", "output": "config-current.json", "exit_code": 0}

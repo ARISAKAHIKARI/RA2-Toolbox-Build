@@ -17,6 +17,7 @@ static bool keyConflict(WORD key,const std::string& ignore,bool toggle){
 }
 static void syncTypeConfig(){
  if(!shared)return;
+ if(memcmp(&shared->featureConfig,&featureTypes,sizeof featureTypes)){InterlockedIncrement(&shared->featureConfigSeq);MemoryBarrier();memcpy(&shared->featureConfig,&featureTypes,sizeof featureTypes);MemoryBarrier();InterlockedIncrement(&shared->featureConfigSeq);}
  if(memcmp(&shared->oreConfig,&oreTypes,sizeof oreTypes)){InterlockedIncrement(&shared->oreConfigSeq);MemoryBarrier();memcpy(&shared->oreConfig,&oreTypes,sizeof oreTypes);MemoryBarrier();InterlockedIncrement(&shared->oreConfigSeq);}
  shared->flags=flags();shared->advancedKey=advancedKey;shared->magnetronKey=magnetronKey;shared->csHoldKey=csHoldKey;shared->pathTimeout=pathTimeout;shared->veteranPercent=veteranPercent;shared->elitePercent=elitePercent;uint8_t mask[MaxTypes]{};
  static uint32_t syncedRevision,syncedMatch;static int syncedCount=-1;
@@ -62,4 +63,9 @@ static void bindType(bool remove){
  typeTap.clear();bool persisted=save();registerKeys();fillTypeBindings(true);
  notify(!persisted?L"保存失败：请检查 Assist.ini 所在目录的写入权限。":
    LOBYTE(key)?L"组合已保存：同快捷键合并选中，单按屏幕内、双按全图。":L"已解除此单位快捷键。");
+}
+
+static void featureTypeFields(){ControlUpdate guard;const auto&f=featureTypes.filters[featureTypeIndex];
+ SendMessageW(GetDlgItem(ui,791),BM_SETCHECK,f.custom?BST_CHECKED:BST_UNCHECKED,0);
+ SetWindowTextW(GetDlgItem(ui,792),featureTypeText[featureTypeIndex].c_str());
 }

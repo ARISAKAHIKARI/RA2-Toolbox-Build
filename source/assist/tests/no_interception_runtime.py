@@ -64,7 +64,7 @@ for mode in (0,5,3,4):
   for _ in range(3):tick(m)
   assert count(m)==1 and not m.codeWrites
  check(f'native_move_then_append_once_session_{mode}',follow)
-# 0.7.20: actual original display timer, no gameplay writes or extra event.
+# 1.0: actual original display timer, no gameplay writes or extra event.
 for mode in (0,5,3,4):
  def lines(mode=mode):
   m=fixture(mode);m.b(m.unit+0x83,1);writes=[]

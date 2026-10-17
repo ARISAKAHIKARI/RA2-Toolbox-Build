@@ -1,5 +1,5 @@
 {
-  "version": "0.7.20",
+  "version": "1.0",
   "architecture": "No feature detours; sole manager Windows message entry",
   "features": [
     {
@@ -77,7 +77,7 @@
     {
       "id": "F10",
       "name": "一键维修和自动维修",
-      "implementation": "仅维修己方受损且未处于维修/待确认状态的建筑。默认检查 YRpp ClickRepairable (+0x157A)；勾选“允许维修不可维修的建筑”后可放宽此类型限制。收集与提交前均检查，关掉许可会跳过未提交的非标准建筑请求；已入原版队列的事件不撤回。不改原版类型数据或归属，仍通过统一 Repair 事件入口。",
+      "implementation": "仅维修己方受损且未处于维修/待确认状态的建筑。默认检查 YRpp ClickRepairable (+0x157A)；勾选“允许维修不可维修的建筑”后可放宽此类型限制。收集与提交前均检查，关掉许可会跳过未提交的非标准建筑请求；已入原版队列的事件不撤回。不改原版类型数据或归属，仍通过统一 Repair 事件入口。 可通过功能单位清单限制可维修建筑类型，原有不可维修建筑许可独立生效。",
       "source": "assist/source/bridge.cpp; assist/source/auto_settings_ui.h",
       "route": "统一管理器原版调用或事件入口；无功能级 Hook",
       "review": "源码路径审查；局部行为测试见报告，未做全部功能游戏实机验收"
@@ -133,7 +133,7 @@
     {
       "id": "F17",
       "name": "自动装车分配",
-      "implementation": "选中乘员后触发装车；选区有运输载具时优先限定这些载具，仅选乘员时查找附近己方载具。检查空位、乘员占位大小、载具限制和原版可进入动作，支持就近优先或兵种均衡，半径 1 至 512 格。",
+      "implementation": "选中乘员后触发装车；选区有运输载具时优先限定这些载具，仅选乘员时查找附近己方载具。检查空位、乘员占位大小、载具限制和原版可进入动作，支持就近优先或兵种均衡，半径 1 至 512 格。 装车乘员和载具可分别配置类型清单，仍要求原版进入合法性、容量与体积允许。",
       "source": "assist/source/autoload.h；autoload_bridge.h 的 autoLoad",
       "route": "统一管理器原版调用或事件入口；无功能级 Hook",
       "review": "源码路径审查；局部行为测试见报告，未做全部功能游戏实机验收"
@@ -141,7 +141,7 @@
     {
       "id": "F18",
       "name": "装车预约与完成判断",
-      "implementation": "已分配乘员占用预约空位，向统一 nativeMission 提交 Enter，避免每次扫描重复分配。根据任务、目的载具和实际 Transporter 判断途中、完成或人工接管；超时和失效释放预约。已测试单机及双端模式 3/4 的实际 DLL 事件提交，尚未验证完整寻路和进车动画。",
+      "implementation": "已分配乘员占用预约空位，向统一 nativeMission 提交 Enter，避免每次扫描重复分配。根据任务、目的载具和实际 Transporter 判断途中、完成或人工接管；超时和失效释放预约。已测试单机及双端模式 3/4 的实际 DLL 事件提交，尚未验证完整寻路和进车动画。 重试前复核当前类型清单；清单撤销不会撤回已经进入原版队列的 Enter。",
       "source": "assist/source/autoload.h 的 Ledger；autoload_bridge.h 的 finishLoadingReservation",
       "route": "统一管理器原版调用或事件入口；无功能级 Hook",
       "review": "源码路径审查；局部行为测试见报告，未做全部功能游戏实机验收"
@@ -149,7 +149,7 @@
     {
       "id": "F19",
       "name": "智能卸载",
-      "implementation": "对选中、可卸载的己方载具发送原版卸载任务并追踪乘员。乘员离车后按稳定位置和类型决定后续行为，提交失败不会当作任务已经完成。",
+      "implementation": "对选中、可卸载的己方载具发送原版卸载任务并追踪乘员。乘员离车后按稳定位置和类型决定后续行为，提交失败不会当作任务已经完成。 可配置允许卸载的载具类型；乘员清单控制后续自动任务，不改变原版整车卸载行为。",
       "source": "assist/source/native_orders_bridge.h 的 smartUnload 与 smartUnloadTick；unload_policy.h",
       "route": "统一管理器原版调用或事件入口；无功能级 Hook",
       "review": "源码路径审查；局部行为测试见报告，未做全部功能游戏实机验收"
@@ -157,7 +157,7 @@
     {
       "id": "F20",
       "name": "乘员下车后的行动",
-      "implementation": "根据乘员可部署、工程师、间谍、C4 等属性及原版目标合法性决定休眠、部署、进驻或攻击。目标失效、人工操作、时限或归属改变会结束跟进；不是无条件自动占领任意建筑。",
+      "implementation": "根据乘员可部署、工程师、间谍、C4 等属性及原版目标合法性决定休眠、部署、进驻或攻击。目标失效、人工操作、时限或归属改变会结束跟进；不是无条件自动占领任意建筑。 可配置允许执行下车后续任务的乘员类型。",
       "source": "assist/source/native_orders.h；native_orders_bridge.h 的卸载状态机",
       "route": "统一管理器原版调用或事件入口；无功能级 Hook",
       "review": "源码路径审查；局部行为测试见报告，未做全部功能游戏实机验收"
@@ -165,7 +165,7 @@
     {
       "id": "F21",
       "name": "逃生助手",
-      "implementation": "仅跟踪选中的己方载具，取消选中且载具仍存活时停止跟踪。载具被毁后，对已观察到的存活乘员继续跟进。可部署乘员保留原版散开移动，散开跟踪窗口为 180 帧；每名乘员只要原版 CanDeploy 允许就在当前调度提交 Deploy，不等待同格其他乘员，也没有固定停稳两帧延迟。条件不满足时不发 Sleep 阻止散开。显式停止、取消、正常下车、归属变化或超时结束跟进；不创造幸存者。仅保留一个逃生开关。",
+      "implementation": "仅跟踪选中的己方载具，取消选中且载具仍存活时停止跟踪。载具被毁后，对已观察到的存活乘员继续跟进。可部署乘员保留原版散开移动，散开跟踪窗口为 180 帧；每名乘员只要原版 CanDeploy 允许就在当前调度提交 Deploy，不等待同格其他乘员，也没有固定停稳两帧延迟。条件不满足时不发 Sleep 阻止散开。显式停止、取消、正常下车、归属变化或超时结束跟进；不创造幸存者。仅保留一个逃生开关。 载具与乘员类型分别可配置。仍然只登记当前选中的己方载具；撤销类型后停止后续跟踪。",
       "source": "assist/source/native_orders_bridge.h; assist/source/unload_policy.h",
       "route": "统一管理器原版调用或事件入口；无功能级 Hook",
       "review": "源码路径审查；局部行为测试见报告，未做全部功能游戏实机验收"
@@ -189,7 +189,7 @@
     {
       "id": "F24",
       "name": "高级移动攻击",
-      "implementation": "按住配置键配合本功能鼠标键（默认中键，均可配置）；右键模式确认原版 Move 后追加初始 AttackMove，再登记外部规划任务。后续目标选择仍在 EXE，回到统一管理器验证并提交。",
+      "implementation": "按住配置键配合本功能鼠标键（默认中键，均可配置）；右键模式确认原版 Move 后追加初始 AttackMove，再登记外部规划任务。后续目标选择仍在 EXE，回到统一管理器验证并提交。 高级移动攻击源单位类型可独立配置；捕获与提交旧计划前均复核清单。",
       "source": "assist/source/native_orders_bridge.h; assist/source/external_planner.h; assist/source/pointer_bridge.h",
       "route": "宿主输入意图 → 原版 Move 观察（右键）/主动命令（中键）→ 统一事件入口",
       "review": "源码路径审查；局部行为测试见报告，未做全部功能游戏实机验收"
@@ -197,7 +197,7 @@
     {
       "id": "F25",
       "name": "磁电轮换攻击",
-      "implementation": "配合独立磁电鼠标键（默认中键）；配置为右键时：确认原版 Move 后仅登记任务，不再替换原版移动。中键方式先发普通 Move 再登记。外部 Planner 读取出手/重装填证据轮换目标，每次攻击通过统一原版事件通道。没有武器选择或射击函数 Hook。",
+      "implementation": "配合独立磁电鼠标键（默认中键）；配置为右键时：确认原版 Move 后仅登记任务，不再替换原版移动。中键方式先发普通 Move 再登记。外部 Planner 读取出手/重装填证据轮换目标，每次攻击通过统一原版事件通道。没有武器选择或射击函数 Hook。 磁电源单位类型可配置；仍要求原版磁力武器和 Locomotor 弹头，清单不赋予新武器。",
       "source": "assist/source/native_orders_bridge.h; assist/source/external_planner.h; assist/source/magnetron_cycle.h",
       "route": "宿主输入意图 → 原版 Move 观察（右键）/主动命令（中键）→ 统一事件入口",
       "review": "源码路径审查；局部行为测试见报告，未做全部功能游戏实机验收"
@@ -237,7 +237,7 @@
     {
       "id": "F30",
       "name": "高级进驻建筑与载具",
-      "implementation": "按住进驻配置键（默认 Alt）并按本功能鼠标键（默认中键）指向目标，捕获最多 512 个源对象，向现有外部协同分配器提交。按同类目标容量分配，Runtime 复核原版进入合法性后发送 Enter/Capture。超限拒绝增强请求，普通左右键仍原样运行。",
+      "implementation": "按住进驻配置键（默认 Alt）并按本功能鼠标键（默认中键）指向目标，捕获最多 512 个源对象，向现有外部协同分配器提交。按同类目标容量分配，Runtime 复核原版进入合法性后发送 Enter/Capture。超限拒绝增强请求，普通左右键仍原样运行。 源乘员和目标建筑/载具均可配置类型；同类目标分配、容量和原版进入判断保留。",
       "source": "assist/source/pointer_bridge.h; assist/source/cooperative_bridge.h; assist/source/extra_settings_io.h",
       "route": "中键/侧键意图 → GameRuntime 查询/复核 → 原有规划或统一事件入口",
       "review": "源码路径审查；局部行为测试见报告，未做全部功能游戏实机验收"
@@ -245,7 +245,7 @@
     {
       "id": "F31",
       "name": "飞机高级攻击",
-      "implementation": "按住对应攻击配置键并按本模式鼠标键（默认中键）指向敌方目标。目标分配、受击上限仍由外部协同规划器完成，GameRuntime 复核对象与武器兼容并构造 Attack 事件。不再拦截 FootClickedAction。",
+      "implementation": "按住对应攻击配置键并按本模式鼠标键（默认中键）指向敌方目标。目标分配、受击上限仍由外部协同规划器完成，GameRuntime 复核对象与武器兼容并构造 Attack 事件。不再拦截 FootClickedAction。 飞机源单位类型可配置；仍须是原版飞机或符合原有空中状态的载具，并具备兼容武器。",
       "source": "assist/source/cooperative_bridge.h; assist/source/extra_settings_io.h",
       "route": "中键/侧键意图 → GameRuntime 查询/复核 → 原有规划或统一事件入口",
       "review": "源码路径审查；局部行为测试见报告，未做全部功能游戏实机验收"
@@ -261,7 +261,7 @@
     {
       "id": "F33",
       "name": "飞碟主武器",
-      "implementation": "开启后 配置键（默认 Ctrl，可留空）+本功能鼠标键（默认中键）指向建筑，识别飞碟/吸取副武器类型并提交原版对地强制攻击事件。原版正常点击与武器选择保持原样；不直接修改武器、任务或目标。",
+      "implementation": "开启后 配置键（默认 Ctrl，可留空）+本功能鼠标键（默认中键）指向建筑，识别飞碟/吸取副武器类型并提交原版对地强制攻击事件。原版正常点击与武器选择保持原样；不直接修改武器、任务或目标。 飞碟源单位类型可配置；保留飞碟 ID 或原版吸取副武器识别，不赋予普通载具新能力。",
       "source": "assist/source/cooperative_bridge.h",
       "route": "中键/侧键意图 → GameRuntime 查询/复核 → 原有规划或统一事件入口",
       "review": "源码路径审查；局部行为测试见报告，未做全部功能游戏实机验收"
@@ -277,7 +277,7 @@
     {
       "id": "F35",
       "name": "变卖己方载具",
-      "implementation": "开启后 配置键（默认 Ctrl，可留空）+本功能鼠标键（默认侧键 2）指向载具。保留原版接收端条件：目标归发送玩家、载具格子中存在建筑。构造 Sell 对象事件，目标标签为 0x34。不会伪造其他玩家身份、改变格子链表或直接调用出售执行函数。模型执行了用户 EXE 的 Sell 接收分支，最终出售/经济效果仍待游戏实测。",
+      "implementation": "开启后 配置键（默认 Ctrl，可留空）+本功能鼠标键（默认侧键 2）指向载具。保留原版接收端条件：目标归发送玩家、载具格子中存在建筑。构造 Sell 对象事件，目标标签为 0x34。不会伪造其他玩家身份、改变格子链表或直接调用出售执行函数。模型执行了用户 EXE 的 Sell 接收分支，最终出售/经济效果仍待游戏实测。 可配置允许出售的己方载具类型；仍须满足原版所在格有建筑等出售条件。",
       "source": "assist/source/cooperative_bridge.h; assist/source/pointer_bridge.h",
       "route": "中键/侧键意图 → GameRuntime 查询/复核 → 原有规划或统一事件入口",
       "review": "源码路径审查；局部行为测试见报告，未做全部功能游戏实机验收"
@@ -537,6 +537,14 @@
       "source": "assist/source/main.cpp; assist/source/extra_controls.h; shared/source/modern_ui.h",
       "route": "读取/外部展示/配置资源；无游戏函数拦截",
       "review": "源码路径审查；局部行为测试见报告，未做全部功能游戏实机验收"
+    },
+    {
+      "id": "F68",
+      "name": "各功能单位类型清单",
+      "implementation": "统一配置 14 项独立类型清单：飞机、飞碟、磁电、高级移动、装车乘员/载具、进驻乘员/目标、卸载载具/乘员后续任务、逃生载具/乘员、变卖战车、维修建筑。面板选择功能后编辑 ID 列表；每项自定义开关独立。未勾选保留原有识别；勾选且清单为空不处理任何类型。最多 512 项、每项 23 个 ASCII 字符，支持大小写归一、去重与中文分隔符。离线编辑、即时生效、自动保存；配置半写或损坏拒绝发令。只筛选类型，不写原版规则，不绕过所有权/武器/容量/进入合法性。矿车、矿场、自动 CS 与组合选兵沿用各自配置。",
+      "source": "assist/source/feature_type_config.h; feature_type_bridge.h; auto_settings_ui.h; type_bindings_ui.h; extra_settings_io.h",
+      "route": "EXE 配置 → Shared 版本化快照 → 唯一 GameRuntime 在捕获与提交前复核",
+      "review": "便携解析/实际 UI 处理器及 x86 DLL 模型；未做游戏实机全功能验收"
     }
   ]
 }

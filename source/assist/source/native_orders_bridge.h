@@ -3,7 +3,7 @@
 // All simulation commands go through EventClass constructors and the game's
 // outgoing queue. This file NEVER writes a unit's mission, target, or locomotor.
 struct NativeOrder {uint32_t p,id,cell,nearest,token,mode;int gx,gy;nativeorders::Progress progress;uint32_t target;int sentFrame;bool attacking,stopped;};
-struct UnloadPassenger {uint32_t p,id,carrier,carrierID,followTarget,followTargetPointer;int frame,mode,stage,sentFrame,seenUnload,retries,x,y,stableSince,landedFrame;uint32_t followTicket,followQueuedAt;bool sleepObserved,cancelled,followObserved;};
+struct UnloadPassenger {uint32_t p,id,carrier,carrierID,carrierType,followTarget,followTargetPointer;int frame,mode,stage,sentFrame,seenUnload,retries,x,y,stableSince,landedFrame;uint32_t followTicket,followQueuedAt;bool sleepObserved,cancelled,followObserved;};
 static NativeOrder nativeOrders[nativeorders::MaxOrders];static int nativeCount,nativeCursor,nativeFrame=-1;
 static UnloadPassenger unloadPassengers[nativeorders::MaxPassengers];static int unloadCount,unloadCursor;
 static ObjectIndex watchedPassengers;
@@ -41,7 +41,7 @@ static bool nativeOutgoing(uint32_t p,int mission,uint32_t packedCell,uint32_t t
  if(!nativeReady()||!own(p,lastHouse))return false;
  int k=kind(p),cx=int(packedCell%1000),cy=int(packedCell/1000);
  bool mag=(bindings&pointerinput::Magnetron)&&(sh->flags&MagnetronInput);
- if(!manualVersions.trackable(get<uint32_t>(p+0x10))||(!(bindings&pointerinput::Advanced)||!(sh->flags&AdvancedInput))&&!mag||(mag&&!rawMagnetron(p))||(k!=1&&k!=2)||!get<bool>(p+0x83)||get<bool>(p+0x1C8)||get<uint32_t>(p+0x11C)||target||
+ if(!manualVersions.trackable(get<uint32_t>(p+0x10))||(!(bindings&pointerinput::Advanced)||!(sh->flags&AdvancedInput))&&!mag||(mag?!rawMagnetron(p):!featureObjectAllowed(featuretypes::AdvancedAttack,p))||(k!=1&&k!=2)||!get<bool>(p+0x83)||get<bool>(p+0x1C8)||get<uint32_t>(p+0x11C)||target||
   (mission!=2&&mission!=29)||cx<=0||cy<=0||cx>=512||cy>=512||!rawArmed(p)||nativeCount>=nativeorders::MaxOrders)return false;
  auto&o=nativeOrders[nativeCount++];o={};o.p=p;o.id=get<uint32_t>(p+0x10);o.mode=mag?planner::MagnetronMove:planner::OrdinaryMove;o.token=manualVersions.get(o.id);o.cell=o.nearest=packedCell;o.gx=cx*256+128;o.gy=cy*256+128;
  advancedObjects.add(p,o.id,uint32_t(nativeCount));snap.advancedUnits=nativeCount;
@@ -60,24 +60,24 @@ static int smartUnload(uint32_t house){
  // from starting an otherwise valid unload in a restricted launcher.
  if(!(sh->flags&SmartUnloadOrders)||!loadInterfaces())return -12;
  Vec selected=vec(0xA8ECB8),inf=vec(0xA83DE8);int sent=0;
- for(int i=0;i<selected.count;++i){uint32_t p=item(selected,i);if(!p||!own(p,house)||kind(p)!=2||get<int>(p+0x114)<=0||get<bool>(p+0x1C8))continue;
+ for(int i=0;i<selected.count;++i){uint32_t p=item(selected,i);if(!p||!own(p,house)||kind(p)!=2||!featureObjectAllowed(featuretypes::UnloadTransport,p)||get<int>(p+0x114)<=0||get<bool>(p+0x1C8))continue;
   uint32_t roster[nativeorders::MaxPassengers];int count=0;
-  for(int j=0;j<inf.count&&count<nativeorders::MaxPassengers;++j){uint32_t q=item(inf,j);if(q&&kind(q)==1&&get<uint32_t>(q+0x21C)==house&&get<uint32_t>(q+0x11C)==p)roster[count++]=q;}
+  for(int j=0;j<inf.count&&count<nativeorders::MaxPassengers;++j){uint32_t q=item(inf,j);if(q&&kind(q)==1&&featureObjectAllowed(featuretypes::UnloadPassenger,q)&&get<uint32_t>(q+0x21C)==house&&get<uint32_t>(q+0x11C)==p)roster[count++]=q;}
   int replace=0;for(int j=0;j<unloadCount;++j)if(unloadPassengers[j].p==p||unloadPassengers[j].carrier==p)++replace;
   if(count>nativeorders::MaxPassengers-unloadCount+replace)return sent?sent:-6;
   if(!nativeMission(house,get<uint32_t>(p+0x10),16,0,0,0,0,0,taskarbiter::Owner::Unload))return sent?sent:-6;
   cancelNative(p);++sent;
-  for(int j=0;j<count;++j){uint32_t q=roster[j];auto&r=unloadPassengers[unloadCount++];r={};r.p=q;r.id=get<uint32_t>(q+0x10);r.carrier=p;r.carrierID=get<uint32_t>(p+0x10);r.frame=get<int>(0xA8ED84);}
+  for(int j=0;j<count;++j){uint32_t q=roster[j];auto&r=unloadPassengers[unloadCount++];r={};r.p=q;r.id=get<uint32_t>(q+0x10);r.carrier=p;r.carrierID=get<uint32_t>(p+0x10);r.carrierType=typeOf(p,2);r.frame=get<int>(0xA8ED84);}
  }return sent;
 }
 static void watchEjections(uint32_t house,int frame,Vec all){
  snap.ejectWatched=0;if(!(sh->flags&EjectAssist))return;
  watchedPassengers.clear();for(int i=0;i<unloadCount;++i)watchedPassengers.add(unloadPassengers[i].p,unloadPassengers[i].id);
  Vec inf=vec(0xA83DE8);
- for(int j=0;j<inf.count;++j){uint32_t p=item(inf,j);if(!p||get<uint32_t>(p+0x21C)!=house)continue;uint32_t carrier=get<uint32_t>(p+0x11C);
-  if(!carrier||!nativeMember(all,carrier)||!own(carrier,house)||kind(carrier)!=2||!get<bool>(carrier+0x83))continue;
+ for(int j=0;j<inf.count;++j){uint32_t p=item(inf,j);if(!p||get<uint32_t>(p+0x21C)!=house||!featureObjectAllowed(featuretypes::EscapePassenger,p))continue;uint32_t carrier=get<uint32_t>(p+0x11C);
+  if(!carrier||!nativeMember(all,carrier)||!own(carrier,house)||kind(carrier)!=2||!get<bool>(carrier+0x83)||!featureObjectAllowed(featuretypes::EscapeTransport,carrier))continue;
   ++snap.ejectWatched;
-  if(!watchedPassengers.contains(p)&&unloadCount<nativeorders::MaxPassengers){auto&r=unloadPassengers[unloadCount++];r={};r.p=p;r.id=get<uint32_t>(p+0x10);r.carrier=carrier;r.carrierID=get<uint32_t>(carrier+0x10);r.frame=frame;r.mode=1;watchedPassengers.add(p,r.id);}
+  if(!watchedPassengers.contains(p)&&unloadCount<nativeorders::MaxPassengers){auto&r=unloadPassengers[unloadCount++];r={};r.p=p;r.id=get<uint32_t>(p+0x10);r.carrier=carrier;r.carrierID=get<uint32_t>(carrier+0x10);r.carrierType=typeOf(carrier,2);r.frame=frame;r.mode=1;watchedPassengers.add(p,r.id);}
  }
 }
 struct UnloadTarget {uint32_t p,id;int x,y;};
@@ -106,6 +106,7 @@ static void smartUnloadTick(uint32_t house,int frame,int&budget){
   bool carrierValid=carrierMember&&get<uint32_t>(r.carrier+0x10)==r.carrierID;
   bool carrierAlive=carrierValid&&own(r.carrier,house);
   uint32_t passengerType=member&&kind(p)==1?typeOf(p,1):0;
+  if(member&&(!featureTypeAllowed(r.mode?featuretypes::EscapePassenger:featuretypes::UnloadPassenger,passengerType)||!featureTypeAllowed(r.mode?featuretypes::EscapeTransport:featuretypes::UnloadTransport,r.carrierType)))r.cancelled=true;
   bool ejectDeployer=r.mode!=0&&passengerType>=0x10000&&get<bool>(passengerType+0xEC8);
   bool done=!member||get<uint32_t>(p+0x10)!=r.id||kind(p)!=1||get<uint32_t>(p+0x21C)!=house||get<int>(p+0x6C)<=0;
   if(!done){uint32_t carrier=get<uint32_t>(p+0x11C);
@@ -215,7 +216,7 @@ static void nativeOrdersTick(uint32_t house,int frame){
  // hook error must not cancel an independently observed disembark/ejection:
  // those workers issue vanilla EventClass orders and need no code patch.
  if(snap.nativeHookStatus!=1&&nativeCount){nativeCount=0;advancedObjects.clear();}
- for(int i=0;i<nativeCount;)if(!(sh->flags&(nativeOrders[i].mode==planner::MagnetronMove?MagnetronInput:AdvancedInput)))removeOrder(i);else ++i;
+ for(int i=0;i<nativeCount;)if(!worldObjects.contains(nativeOrders[i].p)||get<uint32_t>(nativeOrders[i].p+0x10)!=nativeOrders[i].id||!(sh->flags&(nativeOrders[i].mode==planner::MagnetronMove?MagnetronInput:AdvancedInput))||!(nativeOrders[i].mode==planner::MagnetronMove?rawMagnetron(nativeOrders[i].p):featureObjectAllowed(featuretypes::AdvancedAttack,nativeOrders[i].p)))removeOrder(i);else ++i;
  int budget=recurringBudget(EventLane::Unload);if(unloadCount||(sh->flags&EjectAssist))smartUnloadTick(house,frame,budget);
  // Advanced tactical decisions are made in the EXE's external planner.
  // This DLL retains only local click intents and checks whether IDs remain live.

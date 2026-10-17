@@ -13,6 +13,13 @@ static void changedSetting(){
 static bool autoSettingChanged(int id,int notification){
  if(!ready||updatingControls)return false;
  const bool edit=notification==EN_CHANGE,select=notification==CBN_SELCHANGE;
+ if(id==790&&select){int next=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));if(next>=0&&next<featuretypes::Count){featureTypeIndex=next;featureTypeFields();}return true;}
+ if(id==791&&notification==BN_CLICKED){featureTypes.filters[featureTypeIndex].custom=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();return true;}
+ if(id==792&&edit){wchar_t text[13000]{};GetWindowTextW(GetDlgItem(ui,id),text,13000);auto&f=featureTypes.filters[featureTypeIndex];
+  if(!oreconfig::parse(std::wstring(text),f.ids,f.count)){setStatus(L"类型 ID 最多 512 项，每项 23 字符；请使用英文、数字、下划线或短横线。");return true;}
+  featureTypeText[featureTypeIndex]=text;changedSetting();return true;
+ }
+
  if(id==780&&notification==BN_CLICKED){repairUnrepairable=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();return true;}
  if((id==781||id==782)&&notification==BN_CLICKED){(id==781?oreTypes.customMiners:oreTypes.customRefineries)=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();return true;}
  if((id==783||id==784)&&edit){wchar_t text[13000]{};GetWindowTextW(GetDlgItem(ui,id),text,13000);auto next=oreTypes;bool miner=id==783;

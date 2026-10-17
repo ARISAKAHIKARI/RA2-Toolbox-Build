@@ -1,4 +1,9 @@
 static void loadAdditionalSettings(){
+ for(int i=0;i<featuretypes::Count;++i){auto&f=featureTypes.filters[i];std::wstring custom=std::wstring(featuretypes::key(i))+L"Custom";wchar_t text[13000]{};
+  GetPrivateProfileStringW(L"FeatureTypes",featuretypes::key(i),featuretypes::initial(i),text,13000,path(L"Assist.ini").c_str());featureTypeText[i]=text;
+  oreconfig::parse(featureTypeText[i],f.ids,f.count);f.custom=value(L"FeatureTypes",custom.c_str(),0)!=0;
+ }
+
  extra.experimentalReveal=value(L"Experimental",L"RevealMap",0)!=0;
  // Missing per-feature values inherit the old category setting exactly once.
  for(int i=0;i<pointerinput::MouseCount;++i){
@@ -21,6 +26,11 @@ static void loadAdditionalSettings(){
  }
 }
 static bool saveAdditionalSettings(){
+ for(int i=0;i<featuretypes::Count;++i){std::wstring custom=std::wstring(featuretypes::key(i))+L"Custom";
+  write(L"FeatureTypes",custom.c_str(),featureTypes.filters[i].custom);
+  saveWriteOK=(WritePrivateProfileStringW(L"FeatureTypes",featuretypes::key(i),featureTypeText[i].c_str(),path(L"Assist.ini").c_str())!=FALSE)&&saveWriteOK;
+ }
+
  write(L"Experimental",L"RevealMap",extra.experimentalReveal);
  for(int i=0;i<pointerinput::MouseCount;++i)write(L"Mouse",pointerinput::mouseSetting(i),extra.mouseButtons[i]);
 
@@ -95,6 +105,12 @@ static void serviceCooperative(){
  auto input=external::cooperativeInput(external::SharedReadView{&externalReader},request,[](uint32_t type){char id[24]{};externalReader.read(type+0x24,id,23);auto found=targetQuotas.find(id);return found==targetQuotas.end()?extra.defaults:found->second;});
  if(retry&&request.mode!=cooperative::Enter)for(auto&t:input.targets)
   for(const auto&o:acceptedCooperative)if(o.target==t.id&&o.type==t.type)++t.prior;
+ // Apply host filters before allocation so excluded sources never reserve capacity.
+ const auto sourceFeature=request.mode==cooperative::Enter?featuretypes::EnterSource:featuretypes::Aircraft;
+ auto permitted=[&](featuretypes::Feature f,uint32_t type){char id[24]{};return !featureTypes.filters[f].custom||(type>=0x10000&&externalReader.read(type+0x24,id,23)&&featuretypes::allowed(featureTypes,f,id));};
+ for(size_t i=0;i<input.units.size();++i){bool sourceAllowed=permitted(sourceFeature,input.units[i].type);
+  for(size_t j=0;j<input.targets.size();++j)if(!sourceAllowed||(request.mode==cooperative::Enter&&!permitted(featuretypes::EnterTarget,input.targets[j].type)))input.compatible[i*input.targets.size()+j]=0;
+ }
  auto assignments=cooperative::allocate(input);
  if(!externalReader.readFresh(0xA8ED84,&frameAfter,sizeof frameAfter)||
     !externalReader.readFresh(0xA83D4C,&houseAfter,sizeof houseAfter)||houseAfter!=houseBefore||frameAfter<frameBefore||

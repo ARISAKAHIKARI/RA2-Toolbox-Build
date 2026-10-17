@@ -76,7 +76,7 @@ static void pointerTick(){
   }
   int k=kind(p);if(k!=1&&k!=2){pointerDone[n]=1;continue;}
   bool mag=(i.bindings&pointerinput::Magnetron)&&(sh->flags&MagnetronInput)&&rawMagnetron(p);
-  bool advanced=(i.bindings&pointerinput::Advanced)&&(sh->flags&AdvancedInput);
+  bool advanced=(i.bindings&pointerinput::Advanced)&&(sh->flags&AdvancedInput)&&featureObjectAllowed(featuretypes::AdvancedAttack,p);
   bool cs=i.operation==pointerinput::AttackMove||
    ((!(i.bindings&pointerinput::PerFeatureMouse)||i.operation==pointerinput::FollowNative||(i.bindings&pointerinput::CS))&&csAllowedFor(p,(i.bindings&pointerinput::CS)!=0));
   if((i.bindings&pointerinput::PerFeatureMouse)&&!mag&&!advanced&&!cs){pointerDone[n]=1;continue;}

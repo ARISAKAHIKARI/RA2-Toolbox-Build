@@ -1,0 +1,65 @@
+name: Publish RA2 Toolbox v1.0 runtime
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/publish-v100.yml'
+      - 'packages/v1.0/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+concurrency:
+  group: publish-v100
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Assemble and verify runtime-only package
+        run: python3 packages/v1.0/assemble.py
+      - name: Upload and verify runtime asset before publishing
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag='v1.0'
+          asset='RA2-Toolbox-v1.0-Windows.zip'
+          if gh release view "$tag" --json isDraft > release-state.json 2>/dev/null; then
+            draft=$(python3 -c 'import json; print(str(json.load(open("release-state.json"))["isDraft"]).lower())')
+          else
+            gh release create "$tag" --target "$GITHUB_SHA" --draft --prerelease --latest=false \
+              --title 'RA2 Toolbox v1.0' --notes-file packages/v1.0/RELEASE_NOTES.md
+            draft=true
+          fi
+          if [ "$draft" = true ]; then
+            gh release upload "$tag" "dist/$asset" --clobber
+          fi
+          gh release view "$tag" --json assets > remote-assets.json
+          python3 - <<'PY'
+          import json
+          names = [a['name'] for a in json.load(open('remote-assets.json'))['assets']]
+          assert names == ['RA2-Toolbox-v1.0-Windows.zip'], names
+          PY
+          mkdir -p remote-check
+          gh release download "$tag" --pattern "$asset" --dir remote-check
+          python3 - <<'PY'
+          import hashlib,json,pathlib
+          m=json.load(open('packages/v1.0/manifest.json'))
+          p=pathlib.Path('remote-check')/m['asset_name']
+          assert p.stat().st_size==m['bytes']
+          assert hashlib.sha256(p.read_bytes()).hexdigest()==m['sha256']
+          print('PASS: uploaded runtime package downloaded and SHA256 verified')
+          PY
+          if [ "$draft" = true ]; then
+            gh release edit "$tag" --draft=false --prerelease --latest=false
+          fi
+          gh release view "$tag" --json url,tagName,isDraft,isPrerelease,assets > published-release.json
+          cat published-release.json
+          cat published-release.json >> "$GITHUB_STEP_SUMMARY"
