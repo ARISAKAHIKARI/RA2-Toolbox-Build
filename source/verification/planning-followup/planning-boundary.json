@@ -1,0 +1,86 @@
+{
+  "scope": "Bounded native instruction probes, not full gameplay or netplay tests.\n\n1. Given an already resolved action (no MouseOverObject emulation), run actual\n   FootClass::ClickedAction and record arguments at ClickedMission entry.\n2. Run ClickedMission up to the reference file's missing source-pack trampoline.\n   This is an observed blocker, not an emulated/reconstructed success.\n3. Execute only the final Sabotage/C4 gate, with positive and negative controls.\n   This does not emulate movement, other branches, or completed explosions.\n",
+  "reference_sha256": "c287d62a4d6a25b547e9339d071dd6e03adcf545699062e478aaeee38c60e89a",
+  "resolved_action_to_clicked_mission": [
+    {
+      "action": 16,
+      "mission": 17,
+      "attack_target": null,
+      "destination_id": 12,
+      "follow_target": null,
+      "status": "PASS"
+    },
+    {
+      "action": 9,
+      "mission": 8,
+      "attack_target": null,
+      "destination_id": 12,
+      "follow_target": null,
+      "status": "PASS"
+    },
+    {
+      "action": 3,
+      "mission": 7,
+      "attack_target": null,
+      "destination_id": 12,
+      "follow_target": null,
+      "status": "PASS"
+    }
+  ],
+  "full_clicked_mission": {
+    "status": "BLOCKED_MISSING_REFERENCE_TRAMPOLINE",
+    "observed": [
+      {
+        "address": "0xb7e614",
+        "bytes": "00000000000000000000000000000000",
+        "source_argument": 553943072,
+        "mission_argument": 17
+      }
+    ],
+    "note": "No replacement bytes or successful full UI event claimed."
+  },
+  "final_sabotage_gate": [
+    {
+      "C4": false,
+      "planning_token": "absent",
+      "passed_gate": false,
+      "status": "PASS",
+      "protected_writes": []
+    },
+    {
+      "C4": false,
+      "planning_token": "uncommitted",
+      "passed_gate": false,
+      "status": "PASS",
+      "protected_writes": []
+    },
+    {
+      "C4": false,
+      "planning_token": "committed",
+      "passed_gate": false,
+      "status": "PASS",
+      "protected_writes": []
+    },
+    {
+      "C4": true,
+      "planning_token": "absent",
+      "passed_gate": true,
+      "status": "PASS",
+      "protected_writes": []
+    },
+    {
+      "C4": true,
+      "planning_token": "uncommitted",
+      "passed_gate": true,
+      "status": "PASS",
+      "protected_writes": []
+    },
+    {
+      "C4": true,
+      "planning_token": "committed",
+      "passed_gate": true,
+      "status": "PASS",
+      "protected_writes": []
+    }
+  ]
+}

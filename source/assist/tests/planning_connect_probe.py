@@ -11,10 +11,11 @@ from unicorn.x86_const import *
 
 p=argparse.ArgumentParser()
 p.add_argument('game');p.add_argument('dll');p.add_argument('--output',required=True)
-args=p.parse_args();root=Path(__file__).resolve().parents[2]
+p.add_argument('--fixture',default=str(Path(__file__).with_name('entry_runtime_regression.py')))
+args=p.parse_args()
 
 def fixture():
- spec=importlib.util.spec_from_file_location('f',root/'assist/tests/entry_runtime_regression.py')
+ spec=importlib.util.spec_from_file_location('f',args.fixture)
  m=importlib.util.module_from_spec(spec);m.fixture_paths=[args.game,args.dll];spec.loader.exec_module(m)
  return m
 
@@ -48,7 +49,10 @@ for name,mission in [('tanya_sabotage',17),('engineer_capture',8),('spy_enter',7
  for ob in (donor,follower):m.w(ob+0x674,loco);m.w(ob+0x6c4,0xffffffff)
  dt=token(donor);ft=token(follower)
  event=m.alloc(0x70)
- m.run(0x4c6860,(0,21,0x34,mission,12,0x34,12,0x34,0,0),event)
+ # FootClass::ClickedAction passes the building as destination, not attack
+ # target. This seed follows that observed call boundary; the full initial
+ # mouse-over/ClickedMission route is tested separately and not implied here.
+ m.run(0x4c6860,(0,21,0x34,mission,0,0,12,0x34,0,0),event)
  m.b(event+0x1d,1)
  original=bytes(u.mem_read(event,111))
  # Existing user-created planning node containing the leader's native event.
