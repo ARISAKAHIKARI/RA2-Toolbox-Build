@@ -36,7 +36,7 @@ static void result(int status,int count,uint32_t id,uint32_t token){for(int tab=
  else if((status==-6||status==-7||status==-3)&&b.attempts<3){b.stage=0;b.retry=GetTickCount()+250;}
  else{queueLog(tab,L"submission-rejected");cancel(tab);notify(L"预定未提交，已取消后续预定；原版生产不受影响。");}break;
 }}
-static void refreshChoices(){
+static void collectChoices(){
  choices.clear();if(activeTab<0||activeTab>1||(!current[activeTab]&&books[activeTab].items.empty()))return;
  std::vector<int> future;uint32_t p=current[activeTab];if(p&&!placed(p))future.push_back(get<int>(get<uint32_t>(p+0x520)+0xDF8,-1));
  auto&b=books[activeTab];future.insert(future.end(),b.items.begin(),b.items.end());
@@ -49,7 +49,15 @@ static void refreshChoices(){
   bool queued=std::find(b.items.begin(),b.items.end(),t.index)!=b.items.end();
   if((native&&queued)||(!native&&(queued||(previewReady&&catalogue.preview(t.index)))))choices.push_back({slot,t.index,tab,type,!native});
  }
+}
+static void resizePanel(){
+ if(!window||!geometryReady)return;POINT origin{};
+ if(ClientToScreen(game,&origin))SetWindowPos(window,HWND_TOPMOST,origin.x+layout.left(),origin.y+layout.top(),layout.width(),layout.height(),SWP_NOACTIVATE|SWP_SHOWWINDOW);
+}
+static void refreshChoices(){
+ collectChoices();layout.content(activeTab>=0&&activeTab<2?int(books[activeTab].items.size()):0,int(choices.size()));
  int maximum=std::max(0,(int(choices.size())+1)/2-layout.rows)*2;scroll=std::clamp(scroll,0,maximum);
+ resizePanel();
 }
 static bool usable(){return extra.constructionQueue&&enabled&&commandFresh(GetTickCount())&&foregroundGame()&&!snap.chat&&snap.renderStatus==1;}
 static void reserveChoice(Choice c,bool fromNative=false){
@@ -60,6 +68,7 @@ static void reserveChoice(Choice c,bool fromNative=false){
  refreshChoices();bool valid=fromNative&&nativeCameo(c.index,c.tab)&&typeSlot(c.index)==c.slot;for(const auto&choice:choices)if(choice.index==c.index&&choice.type==c.type)valid=true;if(!valid)return;
  if(!b.add(c.index)){notify(L"本类预定已满（5 项）；右键叠放区取消最上层，Shift＋右键清空。");return;}
  if(b.items.size()==1){b.match=commandMatch();b.house=house;b.source=p;b.id=identity;}
+ if(!fromNative)requestReservationSound();
  queueLog(activeTab,fromNative?L"reserved-native-click":L"reserved-extra-panel");
  refreshChoices();if(window)InvalidateRect(window,nullptr,FALSE);notify(L"已加入预定 "+std::to_wstring(b.items.size())+L"："+nameOf(c.index)+L"；放下当前建筑后依次继续生产。");
 }
@@ -151,10 +160,10 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
   for(int i=0;i<int(b.items.size());++i){int y=construction::StackTop+i*construction::StackStep;RECT card=rect(5,y,139,y+48);HBRUSH bg=CreateSolidBrush(i%2?RGB(50,61,46):RGB(41,51,38));FillRect(dc,&card,bg);DeleteObject(bg);
    paintIcon(dc,b.items[i],42,y,false);RECT number=rect(8,y+2,40,y+23);SetTextColor(dc,RGB(255,231,145));std::wstring label=std::to_wstring(i+1);if(i==0&&b.stage)label+=L"…";DrawTextW(dc,label.c_str(),-1,&number,DT_SINGLELINE|DT_VCENTER);
   }
-  if(b.items.empty()){RECT idle=rect(8,36,136,120);SetTextColor(dc,RGB(166,176,157));DrawTextW(dc,L"尚无预定\n生产中左击原生图标\n或下方未来建筑以追加",-1,&idle,DT_CENTER|DT_WORDBREAK);}
-  RECT hint=rect(4,168,140,187);SetTextColor(dc,RGB(180,188,167));DrawTextW(dc,L"右键退顶层 · Shift 清空",-1,&hint,DT_CENTER|DT_SINGLELINE|DT_VCENTER);
+  if(b.items.empty()){RECT idle=rect(8,24,136,56);SetTextColor(dc,RGB(166,176,157));DrawTextW(dc,L"尚无预定\n点击建造图标追加",-1,&idle,DT_CENTER|DT_WORDBREAK);}
+  RECT hint=rect(4,layout.stackBottom(),140,layout.headerHeight()-1);SetTextColor(dc,RGB(180,188,167));DrawTextW(dc,L"右键退顶层 · Shift 清空",-1,&hint,DT_CENTER|DT_SINGLELINE|DT_VCENTER);
   for(int n=scroll;n<int(choices.size())&&n<scroll+layout.rows*2;++n){const auto&c=choices[n];if(c.slot<0||c.slot>=snap.typeCount||snap.types[c.slot].kind!=7||snap.types[c.slot].index!=c.index)continue;
-   const auto&t=snap.types[c.slot];int x=(n-scroll)%2*72+6,y=(n-scroll)/2*66+construction::HeaderHeight;
+   const auto&t=snap.types[c.slot];int x=(n-scroll)%2*72+6,y=(n-scroll)/2*66+layout.headerHeight();
    paintIcon(dc,c.index,x,y,c.future);
    RECT name=rect(x-3,y+48,x+63,y+64);SetTextColor(dc,c.future?RGB(151,157,147):RGB(231,226,194));DrawTextW(dc,(const wchar_t*)t.name,-1,&name,DT_CENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
    std::wstring numbers;for(int i=0;i<int(b.items.size());++i)if(b.items[i]==c.index){if(!numbers.empty())numbers+=L" ";numbers+=std::to_wstring(i+1);}
@@ -198,14 +207,14 @@ static void service(){
  activeTab=get<int>(0x87F7E8+0x539C,-1);if(activeTab<0||activeTab>1||(!current[activeTab]&&books[activeTab].items.empty())){hide();return;}
  RECT client{};POINT origin{};int width=get<int>(0xA8EB84),height=get<int>(0xA8EB88);
  if(!GetClientRect(game,&client)||!ClientToScreen(game,&origin)||!layout.set(width,height,int(client.right-client.left),int(client.bottom-client.top),constructionScalePercent)){hide();return;}
+ refreshChoices(); // Keep the panel while the last reserved product is still in production.
  static int oldW=0,oldH=0,oldCW=0,oldCH=0,oldScale=0;
  if(width!=oldW||height!=oldH||layout.clientWidth!=oldCW||layout.clientHeight!=oldCH||oldScale!=constructionScalePercent){oldW=width;oldH=height;oldCW=layout.clientWidth;oldCH=layout.clientHeight;oldScale=constructionScalePercent;
   critical(L"Construction geometry: game="+std::to_wstring(width)+L"x"+std::to_wstring(height)+L" client="+std::to_wstring(oldCW)+L"x"+std::to_wstring(oldCH)+L" panel="+std::to_wstring(layout.width())+L"x"+std::to_wstring(layout.height())+L" scale="+std::to_wstring(oldScale));
  }
- refreshChoices(); // Keep the panel while the last reserved product is still in production.
  int desired=std::max(8,layout.y(13));if(!panelFont||fontHeight!=desired){HFONT next=CreateFontW(-desired,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH,L"Microsoft YaHei UI");if(next){if(panelFont)DeleteObject(panelFont);panelFont=next;fontHeight=desired;}}
- if(!window){WNDCLASSW cls{};cls.hInstance=GetModuleHandleW(nullptr);cls.lpfnWndProc=proc;cls.lpszClassName=L"RA2ConstructionReserve110";cls.hCursor=LoadCursorW(nullptr,IDC_HAND);RegisterClassW(&cls);window=CreateWindowExW(WS_EX_TOOLWINDOW|WS_EX_NOACTIVATE|WS_EX_TOPMOST,cls.lpszClassName,L"建筑预定",WS_POPUP,0,0,layout.width(),layout.height(),nullptr,nullptr,cls.hInstance,nullptr);}
- if(window){geometryReady=true;SetWindowPos(window,HWND_TOPMOST,origin.x+layout.left(),origin.y+layout.top(),layout.width(),layout.height(),SWP_NOACTIVATE|SWP_SHOWWINDOW);InvalidateRect(window,nullptr,FALSE);}
+ if(!window){WNDCLASSW cls{};cls.hInstance=GetModuleHandleW(nullptr);cls.lpfnWndProc=proc;cls.lpszClassName=L"RA2ConstructionReserve110";cls.hCursor=LoadCursorW(nullptr,IDC_HAND);RegisterClassW(&cls);window=CreateWindowExW(WS_EX_TOOLWINDOW|WS_EX_NOACTIVATE|WS_EX_TOPMOST|WS_EX_LAYERED,cls.lpszClassName,L"建筑预定",WS_POPUP,0,0,layout.width(),layout.height(),nullptr,nullptr,cls.hInstance,nullptr);if(window)SetLayeredWindowAttributes(window,0,construction::PanelOpacity,LWA_ALPHA);}
+ if(window){geometryReady=true;resizePanel();InvalidateRect(window,nullptr,FALSE);}
 }
 static void destroy(){if(window)DestroyWindow(window);window=nullptr;if(panelFont)DeleteObject(panelFont);panelFont=nullptr;fontHeight=0;reset();}
 }

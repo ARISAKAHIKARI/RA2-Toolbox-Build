@@ -43,7 +43,7 @@ using namespace assist;
 // string literal. The host validates both protocol and structure size before
 // installing a hook; the release verifier can inspect these exports offline.
 extern "C" __declspec(dllexport) const uint32_t AssistProtocolInfo[2]={Version,sizeof(Shared)};
-extern "C" __declspec(dllexport) const wchar_t AssistMappingPrefix[]=L"Local\\RA2Assist_v047_";
+extern "C" __declspec(dllexport) const wchar_t AssistMappingPrefix[]=L"Local\\RA2Assist_v048_";
 static Shared*sh;static HANDLE mapping;static bool checked,good,fault;static DWORD last,slow;static uint32_t lastHouse,match,pendingAck;static int lastFrame;
 static sessionepoch::Tracker sessionTracker;static Snapshot snap;
 static runtimefault::Context faultContext;
@@ -623,6 +623,21 @@ static void selectionCommand(uint32_t house,DWORD now){
  else {count=sh->selectIndex==-4?selectIdleAircraft(house,sh->selectObjectID):sh->selectIndex==-2?selectVariant(house,sh->selectGlobal!=0):sh->selectIndex==-3?selectTypes(house,sh->selectTypes,sh->selectGlobal!=0):selectType(house,sh->selectIndex,sh->selectGlobal!=0);if(count<0){result=count;count=0;}else result=1;}
  sh->selectResult=result;sh->selectCount=count;MemoryBarrier();sh->selectAck=request;
 }
+// Native sidebar GUIBuildSound: RulesClass +0x18C, VocClass::PlayGlobal.
+// See YRpp VocClass.h and native StripClass click sites 0x6AAFE1..0x6AAFF8.
+static void uiSoundCommand(DWORD now){
+ uint32_t request=sh->uiSoundRequest;if(request==sh->uiSoundAck)return;MemoryBarrier();
+ const bool allowed=sh->uiSoundMatch==match&&DWORD(now-sh->uiSoundTick)<=300&&
+  sh->foreground&&(sh->flags&ReserveConstruction)&&!get<bool>(0xA8BC60+25);
+ // Ack before calling an optional device API: a fault must not replay feedback.
+ MemoryBarrier();sh->uiSoundAck=request;
+ if(!allowed)return;
+ uint32_t rules=0;int sound=-1;uint8_t code[10]{};
+ static const uint8_t expected[]={0x51,0xA0,0xAC,0x64,0x84,0x00,0x89,0x54,0x24,0x00};
+ if(!read(0x8871E0,&rules,4)||rules<0x10000||!read(rules+0x18C,&sound,4)||sound<0||
+    !read(0x750920,code,sizeof code)||memcmp(code,expected,sizeof code))return;
+ callFast<void>(0x750920,sound,0x2000,1.0f,(void*)nullptr);
+}
 static DWORD clampedRepairInterval(uint32_t ms){
  return ms<500?500:ms>30000?30000:ms;
 }
@@ -803,7 +818,7 @@ static void shiftScene(int dx,int dy){
 // the dispatcher. Producers write Shared requests / plans; they never choose
 // the callback provider or write EventClass data themselves.
 static void consumeSubmittedIntents(uint32_t house,int frame,DWORD now){
- selectionCommand(house,now);
+ selectionCommand(house,now);uiSoundCommand(now);
  // Preserve the ordering of the known-good path: input observers first,
  // then command / planner / cooperative requests.
  uint32_t inputFlags=sh->flags|(unloadCount?NativeOrders:0);
@@ -830,7 +845,8 @@ static void tick(){
    (nativeCount||unloadCount||(sh->flags&EjectAssist)||
     (sh->plannerTracking&&(sh->flags&(AdvancedInput|MagnetronInput|AutoOreReturn)))||
     sh->planRequest!=sh->planAck||sh->cooperativePlan!=sh->cooperativeAck);
- if(!cmd&&!frameDue&&DWORD(now-last)<period)return;last=now;
+ bool soundPending=sh->uiSoundRequest!=sh->uiSoundAck;
+ if(!cmd&&!soundPending&&!frameDue&&DWORD(now-last)<period)return;last=now;
  LARGE_INTEGER start,end,controlEnd,worldEnd;static LARGE_INTEGER frequency{};if(!frequency.QuadPart)QueryPerformanceFrequency(&frequency);QueryPerformanceCounter(&start);
  uint32_t house=get<uint32_t>(0xA83D4C);int frame=get<int>(0xA8ED84);bool running=get<bool>(0xA8E9A0);bool active=house>=0x10000&&house!=get<uint32_t>(0xAC1198)&&!get<bool>(house+0x1F5)&&!get<bool>(house+0x1F6)&&!get<bool>(house+0x1F8);
  if(active){Vec hv=vec(0xA80228,32);bool found=false;for(int i=0;i<hv.count;++i)if(item(hv,i)==house)found=true;active=found;}
@@ -849,7 +865,7 @@ static void tick(){
   snap.frame=frame;snap.chat=get<bool>(0xA8BC60+25);pointerTick();publishSnapshot(now);return;
  }
  active=active&&running;
- if(!active){cancelCooperativePlan(-3);if(lastHouse||snap.status!=0)reset();sessionTracker.update(false,0,-1,-1);lastHouse=0;lastFrame=-1;snap.status=0;snap.bridgeStatus=0;snap.commandStatus=0;snap.labels=0;snap.swCount=0;if(sh->request!=sh->ack){sh->result=-3;sh->count=0;pendingAck=sh->request;pendingAckReady=true;}if(selectionPending){sh->selectResult=-3;sh->selectCount=0;MemoryBarrier();sh->selectAck=sh->selectRequest;}if(planPending){sh->planResult=-3;sh->planAccepted=0;sh->planAcceptedMask=sh->planRejectedMask=0;MemoryBarrier();sh->planAck=sh->planRequest;}}
+ if(!active){if(soundPending){MemoryBarrier();sh->uiSoundAck=sh->uiSoundRequest;}cancelCooperativePlan(-3);if(lastHouse||snap.status!=0)reset();sessionTracker.update(false,0,-1,-1);lastHouse=0;lastFrame=-1;snap.status=0;snap.bridgeStatus=0;snap.commandStatus=0;snap.labels=0;snap.swCount=0;if(sh->request!=sh->ack){sh->result=-3;sh->count=0;pendingAck=sh->request;pendingAckReady=true;}if(selectionPending){sh->selectResult=-3;sh->selectCount=0;MemoryBarrier();sh->selectAck=sh->selectRequest;}if(planPending){sh->planResult=-3;sh->planAccepted=0;sh->planAcceptedMask=sh->planRejectedMask=0;MemoryBarrier();sh->planAck=sh->planRequest;}}
  else {int sessionMode=get<int>(0xA8B238);
  // A mode switch while the House address is reused invalidates outstanding
  // requests and all actor leases; do not allow previous-lane events to leak.

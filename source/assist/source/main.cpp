@@ -582,7 +582,7 @@ static bool ensureBridge(){
  if(!game||bridgeBlocked||(bridgeRetryAt&&int32_t(now-bridgeRetryAt)<0))return false;
  ++bridgeAttempts;bridgeRetryAt=now+(bridgeAttempts>=3?30000:2000);
  critical(L"bridge-connect-attempt="+std::to_wstring(bridgeAttempts)+L" pid="+std::to_wstring(pid)+L" thread="+std::to_wstring(gameThread));
- wchar_t n[100];swprintf(n,100,L"Local\\RA2Assist_v047_%lu",pid);
+ wchar_t n[100];swprintf(n,100,L"Local\\RA2Assist_v048_%lu",pid);
  mapping=CreateFileMappingW(INVALID_HANDLE_VALUE,nullptr,PAGE_READWRITE,0,sizeof(Shared),n);
  DWORD mappingError=GetLastError();if(!mapping)return bridgeFailed(L"创建命令共享内存失败",mappingError);
  if(mappingError==ERROR_ALREADY_EXISTS){
@@ -863,6 +863,12 @@ static void serviceAirPath(){airway::service();}
 static void resetAirPath(){airway::reset();}
 static void airPathResult(int r,int n,uint32_t id,uint32_t token){airway::result(r,n,id,token);}
 #include "aircraft_indicator.h"
+static void requestReservationSound(){
+ // Best-effort UI feedback must never occupy or delay a production order.
+ if(!shared||!commandFresh(GetTickCount())||shared->uiSoundRequest!=shared->uiSoundAck)return;
+ shared->uiSoundTick=GetTickCount();shared->uiSoundMatch=commandMatch();
+ MemoryBarrier();InterlockedIncrement((volatile LONG*)&shared->uiSoundRequest);wakeGame();
+}
 #include "construction_host.h"
 #include "../../external_reader/source/sidebar_shapes.h"
 static external::sidebar::Cache sidebarShapes;

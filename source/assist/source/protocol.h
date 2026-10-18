@@ -9,7 +9,7 @@
 #include "cooperative_types.h"
 #include "pointer_intent.h"
 namespace assist {
-constexpr uint32_t Magic=0x41533130, Version=47;
+constexpr uint32_t Magic=0x41533130, Version=48;
 constexpr uint32_t DataMessage=0x8002, WakeTag=0x41533230;
 constexpr int MaxLabels=2048, MaxSW=32, MaxTypes=512, MaxThreats=128, MaxCrates=256, MaxCrateResults=16;
 enum Command { None, Repair, CombatSelection, EmptyTransports, DamagedSelection, IdleHarvester, IdleEngineer, IdleTransport, ClearBeacons, RevealMap, OpenTech, SelectSuper, Produce, SelectIron, SelectChrono, AutoBoard, SelectType, SmartUnload, CancelAdvanced, SelectVariant, ProduceReserved, AirPathMove, CancelTechProduction };
@@ -106,6 +106,9 @@ struct Shared {
  volatile uint32_t c4Test;
  volatile uint32_t advancedRangeCells; // 0..30 extra acquisition cells, host-owned
  volatile uint32_t renderReveal; // independent default-off visual experiment; never RevealMap
+ // Local UI feedback, consumed by the existing Runtime game-thread dispatcher.
+ // Immutable until ack; short lived and never an EventClass / OutList command.
+ volatile uint32_t uiSoundRequest,uiSoundAck;uint32_t uiSoundTick,uiSoundMatch;
 
 };
 inline int remaining(int start,int duration,int frame){

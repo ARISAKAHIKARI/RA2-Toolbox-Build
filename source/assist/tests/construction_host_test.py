@@ -21,10 +21,12 @@ using DWORD=uint32_t;using HWND=void*;using HFONT=void*;using LRESULT=long;
 struct RECT{long left=0,top=0,right=0,bottom=0;};struct POINT{long x=0,y=0;};
 namespace gameinput{struct PointerPress {uint32_t tick=0,serial=0,match=0;int operation=0;POINT point{};int width=0,height=0;uint8_t keys[256]{};};}
 struct WNDCLASSW{void*hInstance;int lpfnWndProc;const wchar_t*lpszClassName;void*hCursor;};
-constexpr int VK_RBUTTON=2,VK_SHIFT=16,SW_HIDE=0,FALSE=0,FW_NORMAL=0,DEFAULT_CHARSET=0,OUT_DEFAULT_PRECIS=0,CLIP_DEFAULT_PRECIS=0,CLEARTYPE_QUALITY=0,DEFAULT_PITCH=0,IDC_HAND=0,WS_EX_TOOLWINDOW=0,WS_EX_NOACTIVATE=0,WS_EX_TOPMOST=0,WS_POPUP=0,SWP_NOACTIVATE=0,SWP_SHOWWINDOW=0;
+constexpr int VK_RBUTTON=2,VK_SHIFT=16,SW_HIDE=0,FALSE=0,FW_NORMAL=0,DEFAULT_CHARSET=0,OUT_DEFAULT_PRECIS=0,CLIP_DEFAULT_PRECIS=0,CLEARTYPE_QUALITY=0,DEFAULT_PITCH=0,IDC_HAND=0,WS_EX_TOOLWINDOW=0,WS_EX_NOACTIVATE=0,WS_EX_TOPMOST=0,WS_EX_LAYERED=0x80000,LWA_ALPHA=2,WS_POPUP=0,SWP_NOACTIVATE=0,SWP_SHOWWINDOW=0;
 static void*HWND_TOPMOST=nullptr;static HWND game=(void*)2;static uint32_t now=1000,pid=1,match=1;static int clientWidth=3840,clientHeight=2160;
 static bool enabled=true,focused=true,fresh=true,queueAccept=true;static std::wstring root=L"/tmp",message;
-static int constructionScalePercent=100;
+static int constructionScalePercent=100,soundRequests=0,panelAlpha=0;
+static void requestReservationSound(){++soundRequests;}
+static bool SetLayeredWindowAttributes(HWND,int,int alpha,int flags){assert(flags==LWA_ALPHA);panelAlpha=alpha;return true;}
 static struct{bool constructionQueue=true;}extra;
 static struct{int typeCount=3,chat=0,renderStatus=1;struct{int kind=7,index=0;char id[24]{};wchar_t name[40]{};}types[8];}snap;
 static delivery::Queue commandQueue;
@@ -47,7 +49,7 @@ static constexpr uint32_t H=0x500000,C=0x510000,R=0x520000,T=0x600000,P=0x700000
 static void w(uint32_t p,int v){externalReader.put(p,v);}static void byte(uint32_t p,uint8_t v){externalReader.put(p,v);}
 static void list(uint32_t p,std::initializer_list<int> v){static uint32_t items=0x900000;w(p+4,items);w(p+8,v.size());w(p+16,v.size());for(int i:v){w(items,i);items+=4;}items+=32;}
 static void setup(){
- buildreserve::reset();commandQueue.clear();externalReader.bytes.assign(0x1000000,0);externalReader.fail=0;extra.constructionQueue=true;focused=fresh=enabled=queueAccept=true;++match;++now;
+ buildreserve::reset();commandQueue.clear();soundRequests=0;externalReader.bytes.assign(0x1000000,0);externalReader.fail=0;extra.constructionQueue=true;focused=fresh=enabled=queueAccept=true;++match;++now;
  w(0xA8ED84,10);w(0xA83D4C,H);w(H+0x34,C);w(C+0xB4,0);w(C+0xB8,0);w(H+0x1D4,10);w(0x8871E0,R);
  list(0xA83C68,{T,T+0x2000,T+0x4000});list(R+0x358,{0});for(int g=1;g<6;++g)list(R+0x358+g*28,{});
  for(int i=0;i<3;++i){auto t=T+i*0x2000;snap.types[i].index=i;w(t+0x634,1);w(t+0x6CC,1);w(t+0xDA0,-1);w(t+0xDA4,-1);w(t+0xDF8,i);list(t+0x638,i==1?std::initializer_list<int>{-1}:i==2?std::initializer_list<int>{1}:std::initializer_list<int>{});list(t+0x654,{});}
@@ -81,7 +83,7 @@ int main(){
  setup();w(T+0x2000+0xDA4,1);refreshChoices();assert(choice(1)<0);w(T+0x2000+0xDA4,-1);w(C+0xB8,4);refreshChoices();assert(choice(1)>=0);
  byte(T+0x2000+0xD9B,1);refreshChoices();assert(choice(1)<0);byte(H+0x2BC,1);refreshChoices();assert(choice(1)>=0);
  memcpy(externalReader.bytes.data()+C+0x98,"Americans",10);memcpy(externalReader.bytes.data()+C+0x24,"Americans",10);list(0xA83C98,{C});refreshChoices();assert(choice(1)>=0);
- construction::Layout l;for(int pct:{50,75,100,125,150,200,250})for(auto sizes:std::vector<std::vector<int>>{{2560,1440,3840,2160},{2560,1440,2560,1440},{1920,1080,3840,2160},{1280,720,1920,1080},{1920,1080,2560,1440},{640,480,640,480}}){assert(l.set(sizes[0],sizes[1],sizes[2],sizes[3],pct));assert(l.left()+l.width()<=sizes[2]);assert(l.top()+l.height()<=sizes[3]);for(int i=0;i<5;++i)assert(l.queueAt(l.x(10),l.y(construction::StackTop+i*construction::StackStep+9))==i);for(int i=0;i<l.rows*2;++i)assert(l.choiceAt(l.x((i%2)*72+36),l.y(construction::HeaderHeight+(i/2)*66+33),0,50)==i);assert(l.choiceAt(l.width(),l.y(construction::HeaderHeight+4),0,50)==-1);}
+ construction::Layout l;for(int pct:{50,75,100,125,150,200,250})for(auto sizes:std::vector<std::vector<int>>{{2560,1440,3840,2160},{2560,1440,2560,1440},{1920,1080,3840,2160},{1280,720,1920,1080},{1920,1080,2560,1440},{640,480,640,480}}){assert(l.set(sizes[0],sizes[1],sizes[2],sizes[3],pct));l.content(5,50);assert(l.left()+l.width()<=sizes[2]);assert(l.top()+l.height()<=sizes[3]);for(int i=0;i<5;++i)assert(l.queueAt(l.x(10),l.y(construction::StackTop+i*construction::StackStep+9))==i);for(int i=0;i<l.rows*2;++i)assert(l.choiceAt(l.x((i%2)*72+36),l.y(l.headerHeight()+(i/2)*66+33),0,50)==i);assert(l.choiceAt(l.width(),l.y(l.headerHeight()+4),0,50)==-1);}
 
  // Regression: every reservation category, not only unavailable future types.
  for(int tab=0;tab<2;++tab)for(bool future:{false,true}){
@@ -132,6 +134,26 @@ int main(){
  std::cout<<"PASS: overlapping stack, native right cancel, Shift clear, paused frame gate, old-parent reuse, panel stays during final reserved production\n";
  std::cout<<"PASS: native sidebar capture/badges/scroll/duplicates/first click/placement/drag/round/object/focus/timeout/scroll animation/read failures\n";
 
+
+ // Content fitting: no padded rows, shrinking, scrolling and hit regions use
+ // the actual queue/candidates at every supported transform.
+ for(int pct:{50,75,100,125,150,200,250})for(auto sizes:std::vector<std::vector<int>>{{2560,1440,3840,2160},{2560,1440,2560,1440},{1920,1080,3840,2160},{1280,720,1920,1080},{1920,1080,2560,1440},{640,480,640,480}})
+ for(int q=0;q<=5;++q)for(int candidates:{0,1,2,3,5,12,13,50}){
+  assert(l.set(sizes[0],sizes[1],sizes[2],sizes[3],pct));l.content(q,candidates);
+  assert(l.top()+l.height()<=sizes[3]&&l.left()+l.width()<=sizes[2]);
+  assert(l.rows<=6&&l.rows<=(candidates+1)/2&&((l.rows==0)==(candidates==0)));
+  assert(l.height()==l.y(l.headerHeight()+l.rows*66));
+  for(int i=0;i<q;++i)assert(l.queueAt(l.x(10),l.y(24+i*24+9),q)==i);
+  for(int i=0;i<std::min(candidates,l.rows*2);++i)assert(l.choiceAt(l.x(i%2*72+36),l.y(l.headerHeight()+i/2*66+33),0,candidates)==i);
+  assert(l.choiceAt(l.x(36),l.height(),0,candidates)==-1);
+ }
+ setup();assert(panelAlpha==216&&layout.rows==1&&layout.queueCount==0&&layout.height()==layout.y(142));
+ int shortHeight=layout.height();reserve(choice(1));assert(soundRequests==1&&layout.queueCount==1&&layout.height()>shortHeight);
+ reserveChoice({0,0,0,T,false},true);assert(soundRequests==1); // original sidebar owns its sound
+ focused=false;reserve(choice(1));assert(soundRequests==1);focused=true;
+ while(books[0].items.size()<5)reserve(choice(1));int heard=soundRequests;reserve(choice(1));assert(soundRequests==heard); // rejected click stays quiet
+ removeTop(true);assert(layout.queueCount==0&&layout.height()==shortHeight);
+ std::cout<<"PASS: 2016 content/scale/viewport combinations, fitted growth/shrink, 216/255 alpha, successful overlay-only sound requests\n";
  assert(!l.set(0,0,3840,2160));
  std::cout<<"PASS: actual host service FIFO5/duplicates/future unlock/cancel parent/right cancel/round/token ACK/retry/busy/menu; catalogue sentinels/parent/stolen flags/read failure; six resolution transforms and hit regions\n";
 }

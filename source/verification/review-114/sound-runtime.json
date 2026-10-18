@@ -1,0 +1,118 @@
+{
+  "scope": "Actual x86 GameRuntime feedback dispatch; native audio device call is observed/stubbed.\nNot an audible Windows or real multiplayer test. Checks no added event/code writes.\n",
+  "dll_sha256": "586a1871bdb89d12dca8b359cf25c7139ebf2f5ae7c37292d4d55225b64ab704",
+  "results": [
+    {
+      "case": "0_fresh",
+      "status": "PASS"
+    },
+    {
+      "case": "0_deadline",
+      "status": "PASS"
+    },
+    {
+      "case": "0_expired",
+      "status": "PASS"
+    },
+    {
+      "case": "0_old_round",
+      "status": "PASS"
+    },
+    {
+      "case": "0_background",
+      "status": "PASS"
+    },
+    {
+      "case": "0_disabled",
+      "status": "PASS"
+    },
+    {
+      "case": "0_chat",
+      "status": "PASS"
+    },
+    {
+      "case": "0_menu",
+      "status": "PASS"
+    },
+    {
+      "case": "0_observer",
+      "status": "PASS"
+    },
+    {
+      "case": "0_no_rules",
+      "status": "PASS"
+    },
+    {
+      "case": "0_silent_rule",
+      "status": "PASS"
+    },
+    {
+      "case": "0_signature",
+      "status": "PASS"
+    },
+    {
+      "case": "0_with_produce",
+      "status": "PASS"
+    },
+    {
+      "case": "0_wrong_thread",
+      "status": "PASS"
+    },
+    {
+      "case": "3_fresh",
+      "status": "PASS"
+    },
+    {
+      "case": "3_deadline",
+      "status": "PASS"
+    },
+    {
+      "case": "3_expired",
+      "status": "PASS"
+    },
+    {
+      "case": "3_old_round",
+      "status": "PASS"
+    },
+    {
+      "case": "3_background",
+      "status": "PASS"
+    },
+    {
+      "case": "3_disabled",
+      "status": "PASS"
+    },
+    {
+      "case": "3_chat",
+      "status": "PASS"
+    },
+    {
+      "case": "3_menu",
+      "status": "PASS"
+    },
+    {
+      "case": "3_observer",
+      "status": "PASS"
+    },
+    {
+      "case": "3_no_rules",
+      "status": "PASS"
+    },
+    {
+      "case": "3_silent_rule",
+      "status": "PASS"
+    },
+    {
+      "case": "3_signature",
+      "status": "PASS"
+    },
+    {
+      "case": "3_with_produce",
+      "status": "PASS"
+    },
+    {
+      "case": "3_wrong_thread",
+      "status": "PASS"
+    }
+  ]
+}

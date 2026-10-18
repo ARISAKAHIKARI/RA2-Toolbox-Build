@@ -1,0 +1,27 @@
+{
+  "version": "1.0.14 Beta",
+  "file_version": "1.0.14.0",
+  "assist_protocol": 48,
+  "changes": [
+    "reservation height fitted to actual queue and candidate rows",
+    "layered panel alpha 216/255",
+    "successful overlay reservation uses native GUIBuildSound through the existing Runtime dispatcher"
+  ],
+  "runtime_cases": {
+    "sound-runtime": 28,
+    "construction-runtime": 36
+  },
+  "host_checks": [
+    "actual reservation host service lifecycle and native/overlay cancellation",
+    "2016 content/scale/viewport combinations",
+    "successful overlay-only feedback and alpha setup"
+  ],
+  "real_windows_game": false,
+  "real_audio": false,
+  "real_netplay": false,
+  "lbw": false,
+  "binary_sha256": {
+    "RA2Toolbox.exe": "271ea922339d983e2f599d1198b0b79dbb6015cf0714ccef6e74e35cb410252b",
+    "GameRuntime.dll": "586a1871bdb89d12dca8b359cf25c7139ebf2f5ae7c37292d4d55225b64ab704"
+  }
+}
