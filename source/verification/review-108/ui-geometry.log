@@ -1,0 +1,3 @@
+PASS: shipped UI construction/layout: {"controls": 212, "fully_reachable_checks": 2448, "viewport_sizes": 12, "pages": 1, "content_bottom": 4710}
+PASS: all controls accessible, no overlap, all interactive IDs retained, one continuous page, pinned header/footer, clipped body and scroll limits
+PASS: shipped mode status distinguishes custom CS, live/waiting/disconnected/paused/fault states and restores live status after re-entry

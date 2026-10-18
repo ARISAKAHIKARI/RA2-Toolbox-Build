@@ -85,7 +85,7 @@ for op in range(3):
     assert [u.reg_read(UC_X86_REG_XMM0+n) for n in range(8)]==xmm
     assert struct.unpack('<I',u.mem_read(frame+0xBC,4))[0]==(3 if op==2 and not result else 2)
     results.append({'op':op,'callback_result':result,'incoming_DF':bool(direction),'pass':True})
-report={'version':'1.0.7','dll_sha256':hashlib.sha256(path.read_bytes()).hexdigest(),
+report={'version':'1.0.8','dll_sha256':hashlib.sha256(path.read_bytes()).hexdigest(),
         'reference_sha256':hashlib.sha256(args.reference.read_bytes()).hexdigest(),
         'signature_addresses':[hex(a) for a in signatures],
         'stub_addresses':{str(op):hex(value[0]) for op,value in stubs.items()},'cases':results,

@@ -1,13 +1,13 @@
 {
-  "label": "1.0.7.0 SingleRuntime",
-  "file_version": "1.0.7.0",
+  "label": "1.0.8.0 SingleRuntime",
+  "file_version": "1.0.8.0",
   "verified": {
     "RA2Toolbox.exe": {
-      "bytes": 2001408,
-      "sha256": "c20697860f5f2d4332bf50bb8411487f8b9fedeb2876fd91fc54d46d77bb367a",
+      "bytes": 2023936,
+      "sha256": "dddee3d8e683f7a583cde0f26b9627b3eb134a10350f6a3c88fc2c6ca2c7eaab",
       "machine": "PE32 x86",
       "sections": 14,
-      "entry_rva": "0xb6270",
+      "entry_rva": "0xba3c0",
       "exports": [
         "AssistHostProtocolInfo",
         "_Unwind_DeleteException",
@@ -99,6 +99,7 @@
           "GdipSetInterpolationMode",
           "GdipSetPenEndCap",
           "GdipSetPenLineJoin",
+          "GdipSetPixelOffsetMode",
           "GdipSetSmoothingMode",
           "GdipSetStringFormatFlags",
           "GdipTranslateWorldTransform",
@@ -233,8 +234,9 @@
           "SetBkColor",
           "SetBkMode",
           "SetDCBrushColor",
-          "SetDIBitsToDevice",
+          "SetStretchBltMode",
           "SetTextColor",
+          "StretchDIBits",
           "TextOutW"
         ],
         "WINMM.DLL": [
@@ -529,7 +531,7 @@
     },
     "GameRuntime.dll": {
       "bytes": 2487296,
-      "sha256": "e72150ebe4ab8205dcafcf3feee89b36fe7e357eddd4d36c14ae200c7e7c7b0a",
+      "sha256": "5ab0ed1eacd0cadc1739d4f544e556f1957ae459262358f4f05d4474a4450fe7",
       "machine": "PE32 x86",
       "sections": 9,
       "entry_rva": "0x2bf00",

@@ -694,7 +694,7 @@ static void command(uint32_t house,DWORD now){uint32_t req=sh->request;if(req==s
   uint32_t origin=worldByID(uint32_t(sh->arg2));
   if(!(sh->flags&ReserveConstruction)||arg<0||arg>=snap.typeCount||snap.types[arg].kind!=7||!origin||!own(origin,house)||kind(origin)!=3||get<bool>(origin+0x81)||!get<bool>(origin+0x90))result=-4;
   else {const auto&t=snap.types[arg];int tab=typeTab(arg);uint32_t f=tab==0||tab==1?get<uint32_t>(house+(tab?0x53CC:0x53BC)):0;
-   if(tab<0||tab>1||!hasCameo(7,t.index))result=-9;
+   if(tab<0||tab>1||!hasCameo(7,t.index)||!typePointers[arg]||call<int>(0x4F7870,house,(void*)(uintptr_t)typePointers[arg],false,true)<=0)result=-9;
    else if(f>=0x10000&&(get<uint32_t>(f+0x58)||get<int>(f+0x50)>0))result=-9;
    else if(nativeProduceEvent(house,t,true))n=1;else result=-6;
   }

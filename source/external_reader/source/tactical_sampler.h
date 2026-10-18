@@ -218,7 +218,7 @@ public:
     ++state_.factories;bool busy=get<uint32_t>(f+0x58)||get<int>(f+0x50)>0;bool paused=busy&&(get<uint8_t>(f+0x5C)||get<uint8_t>(f+0x71)),complete=busy&&get<int>(f+0x24)>=54;
     state_.busyFactories+=busy;state_.pausedFactories+=paused;state_.completedFactories+=complete;exists[tab]=true;active[tab]|=busy&&!paused&&!complete;
    }
-   if(flags&assist::Production)for(int tab=0;tab<4;++tab)if(exists[tab]&&!active[tab])idleProductionMask|=1u<<tab;
+   if(flags&assist::Production)for(int tab=0;tab<4;++tab)if((tab==0||tab==3)&&exists[tab]&&!active[tab])idleProductionMask|=1u<<tab;
    productionTabsY=get<int>(0x87F7E8+0x1544+44,200)-32;if(productionTabsY<100||productionTabsY>state_.height-32)productionTabsY=168;
    idleAircraftCount=aircraftTotal=0;aircraft::Inspect<Read> planes{read_};
    for(uint32_t p:vec(0xA8E390,8192))if(planes.valid(p,house)){++aircraftTotal;if(idleAircraftCount<8192&&planes.idle(p,house))idleAircraftIDs[idleAircraftCount++]=get<uint32_t>(p+0x10);}

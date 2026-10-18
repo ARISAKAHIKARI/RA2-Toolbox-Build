@@ -1,96 +1,55 @@
 {
-  "version": "1.0.7",
-  "file_version": "1.0.7.0",
+  "version": "1.0.8",
+  "file_version": "1.0.8.0",
   "assist_protocol": 45,
-  "game_sha256": "c287d62a4d6a25b547e9339d071dd6e03adcf545699062e478aaeee38c60e89a",
-  "exe_sha256": "c20697860f5f2d4332bf50bb8411487f8b9fedeb2876fd91fc54d46d77bb367a",
-  "dll_sha256": "e72150ebe4ab8205dcafcf3feee89b36fe7e357eddd4d36c14ae200c7e7c7b0a",
-  "runtime_suites": [
-    {
-      "suite": "bridge_diagnostics_regression",
-      "cases": 13,
-      "status": "PASS"
-    },
-    {
-      "suite": "config_runtime_regression",
-      "cases": 26,
-      "status": "PASS"
-    },
-    {
-      "suite": "entry_binding_regression",
-      "cases": 3,
-      "status": "PASS"
-    },
-    {
-      "suite": "experimental_lifecycle_runtime",
-      "cases": 12,
-      "status": "PASS"
-    },
-    {
-      "suite": "feature_type_runtime",
-      "cases": 130,
-      "status": "PASS"
-    },
-    {
-      "suite": "hotkey_fanout_runtime",
-      "cases": 40,
-      "status": "PASS"
-    },
-    {
-      "suite": "no_interception_runtime",
-      "cases": 169,
-      "status": "PASS"
-    },
-    {
-      "suite": "ore_priority_runtime",
-      "cases": 28,
-      "status": "PASS"
-    },
-    {
-      "suite": "render_boundary_runtime",
-      "cases": 13,
-      "status": "PASS"
-    },
-    {
-      "suite": "render_reveal_runtime",
-      "cases": 7,
-      "status": "PASS"
-    },
-    {
-      "suite": "robustness_runtime_regression",
-      "cases": 15,
-      "status": "PASS"
-    },
-    {
-      "suite": "selection_gateway_regression",
-      "cases": 12,
-      "status": "PASS"
-    },
-    {
-      "suite": "startup_runtime_regression",
-      "cases": 90,
-      "status": "PASS"
-    },
-    {
-      "suite": "timing_runtime_regression",
-      "cases": 12,
-      "status": "PASS"
-    },
-    {
-      "suite": "two_peer_sync",
-      "cases": 54,
-      "status": "PASS"
-    }
+  "exe_sha256": "dddee3d8e683f7a583cde0f26b9627b3eb134a10350f6a3c88fc2c6ca2c7eaab",
+  "dll_sha256": "5ab0ed1eacd0cadc1739d4f544e556f1957ae459262358f4f05d4474a4450fe7",
+  "runtime_cases": 36,
+  "runtime_scope": "compiled x86 DLL + original Produce constructor; synthetic world; mocked CanBuild answers",
+  "host_test": "actual construction catalogue, reserve/result/service functions; Win32 presentation stubs; ASan+UBSan (leak detector disabled due container ptrace)",
+  "shape_test": "actual SHP sampler/cache; synthetic raw/row/RLE and reference frames, recolor/transparency; ASan+UBSan",
+  "resolution_cases": [
+    [
+      2560,
+      1440,
+      3840,
+      2160
+    ],
+    [
+      2560,
+      1440,
+      2560,
+      1440
+    ],
+    [
+      1920,
+      1080,
+      3840,
+      2160
+    ],
+    [
+      1280,
+      720,
+      1920,
+      1080
+    ],
+    [
+      1920,
+      1080,
+      2560,
+      1440
+    ],
+    [
+      640,
+      480,
+      640,
+      480
+    ]
   ],
-  "runtime_cases": 624,
-  "escape_cases": 76,
-  "portable_cpp_programs": 62,
-  "portable_harnesses": 8,
   "ui_controls": 212,
   "ui_viewports": 12,
   "ui_reachability_checks": 2448,
-  "compiled_stub_and_caller_cases": 38,
-  "asan_ubsan_orders": 739454,
-  "real_windows_game_or_netplay_or_capture": false,
-  "result": "PASS within explicitly modeled scope"
+  "architecture": "151 source files;102 host includes;77 Runtime includes; no added patch locations/ingress",
+  "real_windows_game_or_lbw_or_netplay": false,
+  "result": "PASS within modeled scope"
 }

@@ -104,7 +104,7 @@ for fog in (False,True):
     outcomes.append((bytes(u.mem_read(cell,0x200)),bytes(u.mem_read(house,0x200))))
    assert outcomes[0]==outcomes[1]
    results.append({'case':'original_cell_caller','fog':fog,'shroud':shroudValue,'fog_value':fogValue,'pass':True})
-report={'version':'1.0.7','dll_sha256':hashlib.sha256((root/'GameRuntime.dll').read_bytes()).hexdigest(),
+report={'version':'1.0.8','dll_sha256':hashlib.sha256((root/'GameRuntime.dll').read_bytes()).hexdigest(),
  'reference_sha256':hashlib.sha256(args.reference.read_bytes()).hexdigest(),'stubs':{hex(k):hex(v[0]) for k,v in stubs.items()},
  'cases':results,'occlusion_and_blitters_mocked':True,'real_rendering_tested':False,'real_netplay_tested':False}
 (root/'RENDER_REVEAL_VERIFICATION.json').write_text(json.dumps(report,indent=2)+'\n')
