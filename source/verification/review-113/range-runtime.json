@@ -1,0 +1,54 @@
+{
+  "scope": "Real Runtime validation of configured acquisition range; native constructor, synthetic world and weapon data.",
+  "dll_sha256": "08102b1ce8de5c8db155631c5148ee2da1eba618813b02c76c596fb9cceb31c7",
+  "results": [
+    {
+      "case": "0_0_0",
+      "status": "PASS"
+    },
+    {
+      "case": "0_0_1",
+      "status": "PASS"
+    },
+    {
+      "case": "0_2_0",
+      "status": "PASS"
+    },
+    {
+      "case": "0_2_1",
+      "status": "PASS"
+    },
+    {
+      "case": "0_5_0",
+      "status": "PASS"
+    },
+    {
+      "case": "0_5_1",
+      "status": "PASS"
+    },
+    {
+      "case": "3_0_0",
+      "status": "PASS"
+    },
+    {
+      "case": "3_0_1",
+      "status": "PASS"
+    },
+    {
+      "case": "3_2_0",
+      "status": "PASS"
+    },
+    {
+      "case": "3_2_1",
+      "status": "PASS"
+    },
+    {
+      "case": "3_5_0",
+      "status": "PASS"
+    },
+    {
+      "case": "3_5_1",
+      "status": "PASS"
+    }
+  ]
+}

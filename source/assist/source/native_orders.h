@@ -10,7 +10,7 @@ inline double value(int cost,float veterancy,int veteranPercent=200,int elitePer
 }
 inline bool fireEligible(int error){return error==0||error==2||error==3||error==4||error==7||error==9||error==10||error==11;}
 inline int specialMission(bool engineer,bool infiltrator,bool c4,int action){
- if(engineer&&action==9)return 8;
+ if(engineer&&(action==9||action==28))return 8;
  if(infiltrator&&action==3)return 7;
  if(c4&&action==16)return 17;
  if(c4&&action==5)return 1;

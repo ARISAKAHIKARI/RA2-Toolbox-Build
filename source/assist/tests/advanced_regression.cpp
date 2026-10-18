@@ -60,5 +60,16 @@ int main(){auto memory=std::make_unique<World>();auto&w=*memory;Planner p;setup(
  w.frame=3;w.intentCount=257;w.count=258;auto&fresh=w.actors[256];fresh=w.actors[0];fresh.id=999;fresh.x=fresh.y=90000;w.intents[256]={999,30030,0};
  auto&e=w.actors[257];e.id=9000;e.kind=2;e.flags=Enemy;e.x=e.y=90100;e.cost=500;
  v=p.step(w,AdvancedInput,200,300,90);assert(!v.empty()&&v[0].unit==999&&v[0].target==9000);
+
+ // Extra acquisition cells apply to every target check, including zero and
+ // the default +2 boundary. No weapon range or rule memory is modified.
+ for(int cells:{0,1,2,3,10,30})for(int delta:{0,1}){
+  p.reset();setup(w);w.count=2;w.actors[1].x=w.actors[0].x+2048+cells*256+delta;
+  auto orders=p.step(w,AdvancedInput,200,300,90,10,0,cells);
+  bool attack=false;for(auto&o:orders)if(o.mission==1&&o.target==21)attack=true;
+  assert(attack==(delta==0));
+ }
+ p.reset();setup(w);w.count=2;w.actors[1].x=w.actors[0].x+2048+2*256+1;
+ v=p.step(w,AdvancedInput,200,300,90);for(auto&o:v)assert(o.mission!=1);
  std::cout<<"PASS: stable equal-value targets, higher-value priority, rearm/burst gating, dead-target prompt recovery, per-order rejection, pending/attack timeouts, accepted-only movement progress, GuardArea fallback, weapon selection, special immunities and urgent large-selection intents\n";
 }

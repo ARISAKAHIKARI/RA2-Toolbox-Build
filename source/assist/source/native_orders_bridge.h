@@ -53,7 +53,15 @@ static bool nativeEnemy(uint32_t p,uint32_t house){
  int idx=get<int>(owner+0x30);return idx>=0&&idx<32&&!(get<uint32_t>(house+0x5788)&(1u<<idx));
 }
 static bool unloadBuildingCandidate(uint32_t p,uint32_t house,bool engineer){
- return nativeEnemy(p,house); // User scope: hostile players, including engineers.
+ if(!engineer)return nativeEnemy(p,house);
+ if(!live(p)||kind(p)!=3)return false;uint32_t owner=get<uint32_t>(p+0x21C);if(owner<0x10000||owner==house)return false;
+ int index=get<int>(owner+0x30);return index>=0&&index<32&&!(get<uint32_t>(house+0x5788)&(1u<<index));
+ // Neutral capturable tech structures are legal too; MouseOverObject remains
+ // authoritative. Do not attempt friendly repair or bypass Capturable.
+}
+static bool unloadExit(const UnloadPassenger&r,int mission,int frame){
+ if(mission!=7)return false;uint32_t destination=get<uint32_t>(r.p+0x5A4);
+ return destination==r.carrier||(r.mode==0&&!destination&&!get<uint32_t>(r.p+0x2B4)&&frame-r.landedFrame<=8);
 }
 static int smartUnload(uint32_t house){
  // Smart unload only creates native EventClass missions. The input-hook
@@ -113,13 +121,13 @@ static void smartUnloadTick(uint32_t house,int frame,int&budget){
   if(!done){uint32_t carrier=get<uint32_t>(p+0x11C);
    if(carrier&&(carrier!=r.carrier||!carrierValid||r.stage!=0||r.landedFrame))done=true;
    if(!carrier&&live(p)){if(!r.landedFrame)r.landedFrame=frame;
-    int m=get<int>(p+0xAC);if(r.stage==0&&!unloadpolicy::initialMayContinue(m,r.mode,frame-r.landedFrame,m==7&&get<uint32_t>(p+0x5A4)==r.carrier,ejectDeployer))done=true;
+    int m=get<int>(p+0xAC);if(r.stage==0&&!unloadpolicy::initialMayContinue(m,r.mode,frame-r.landedFrame,unloadExit(r,m,frame),ejectDeployer))done=true;
    }
   }
   if(!done&&(r.stage==1||r.stage==2)&&live(p)&&!get<uint32_t>(p+0x11C)){
    int mission=get<int>(p+0xAC);
    if(r.stage==1&&r.sleepObserved&&(mission==13||mission==7))done=true;
-   else if(mission!=0&&mission!=5&&mission!=11&&!(ejectDeployer&&mission==2&&frame-r.landedFrame<=unloadpolicy::ScatterFrames)&&!(r.stage==2&&mission==16)&&!(mission==7&&get<uint32_t>(p+0x5A4)==r.carrier))done=true;
+   else if(mission!=0&&mission!=5&&mission!=6&&mission!=11&&!(ejectDeployer&&mission==2&&frame-r.landedFrame<=unloadpolicy::ScatterFrames)&&!(r.stage==2&&mission==16)&&!(mission==7&&get<uint32_t>(p+0x5A4)==r.carrier))done=true;
    else if(r.stage==1&&mission==0)r.sleepObserved=true;
   }
   bool release=!done&&(r.cancelled||(r.mode==0&&!(sh->flags&SmartUnloadOrders))||(r.mode!=0&&!(sh->flags&EjectAssist))||(r.mode!=1&&frame-r.frame>900));
@@ -129,7 +137,7 @@ static void smartUnloadTick(uint32_t house,int frame,int&budget){
    if(target&&(get<uint32_t>(p+0x2B4)==target||get<uint32_t>(p+0x5A4)==target)){
     r.followObserved=true;done=true; // acquired destination; capture/kill is NOT proven
    }
-   else if(mission!=0&&mission!=5&&!(mission==7&&get<uint32_t>(p+0x5A4)==r.carrier))done=true;
+   else if(mission!=0&&mission!=5&&mission!=6&&!(mission==7&&get<uint32_t>(p+0x5A4)==r.carrier))done=true;
    else if(frame-r.sentFrame<30)continue;
    else if(++r.retries>=3){
     if(mission==0){if(budget<=0||!nativeMission(house,r.id,5,0,0,0,0,0,taskarbiter::Owner::Unload))continue;--budget;}
@@ -154,12 +162,13 @@ static void smartUnloadTick(uint32_t house,int frame,int&budget){
    // Normal unloading also scatters infantry away from the exit. Keep this
    // explicit unload job while they walk out; never append Sleep/Deploy to
    // their temporary Move. Manual orders cancel via the shared input manager.
-   if(r.mode==0&&currentMission==2&&frame-r.landedFrame<=unloadpolicy::ScatterFrames)continue;
+   if(r.mode==0&&currentMission==7&&unloadExit(r,currentMission,frame))continue;
+   if(r.mode==0&&(currentMission==2||get<int>(p+0xB4)==2)&&frame-r.landedFrame<=unloadpolicy::ScatterFrames){r.stableSince=0;continue;}
    // Observation must survive a full event queue or another passenger using
    // this frame's budget. Otherwise a short interrupted Deploy is never seen.
    const bool canSend=budget>0&&outgoingRoom()>0;
    if(!r.landedFrame)r.landedFrame=frame;
-   bool takenOver=!unloadpolicy::initialMayContinue(currentMission,r.mode,frame-r.landedFrame,currentMission==7&&get<uint32_t>(p+0x5A4)==r.carrier,ejectDeployer);
+   bool takenOver=!unloadpolicy::initialMayContinue(currentMission,r.mode,frame-r.landedFrame,unloadExit(r,currentMission,frame),ejectDeployer);
    if(!t){done=true;}else if(!r.stage&&takenOver){done=true;}else if(get<bool>(t+0xEC8)){
     // InfantryClass::IsDeployed also returns true for Sequence::Deploy (27).
     // That animation may be interrupted by native ejection scatter. Observe
@@ -189,21 +198,26 @@ static void smartUnloadTick(uint32_t house,int frame,int&budget){
       // An interrupted survivor keeps native scatter. Only THIS survivor waits
       // for two stationary frames before retrying; there is no cell-wide lock.
       if(ejectDeployer&&(mission==2||frame-r.stableSince<2))continue;
-      if(mission!=0&&mission!=5&&mission!=11)done=true;
+      if(mission!=0&&mission!=5&&mission!=6&&mission!=11)done=true;
       else if(++r.retries<(ejectDeployer?12:3)){r.stage=0;r.seenUnload=0;}
       else if(mission!=0)done=true;
       else if(nativeMission(house,r.id,5,0,0,0,0,0,taskarbiter::Owner::Unload)){--budget;done=true;}
      }
     }
    }else{
+    if(!r.stableSince)r.stableSince=frame;
     if(!canSend)continue;
     if(frame<r.sentFrame)continue;
-    bool engineer=get<bool>(t+0xEC3),spy=get<bool>(t+0xEBE),c4=get<bool>(t+0xEC2);uint32_t best=0,bestID=~0u;int mission=-1;int64_t distance=INT64_MAX;
+    bool engineer=get<bool>(t+0xEC3),spy=get<bool>(t+0xEBE),c4=get<bool>(t+0xEC2);uint32_t best=0,bestID=~0u;int mission=-1;int64_t distance=INT64_MAX;bool queryFailed=false;
     if(engineer||spy||c4)for(int j=0;j<buildings.count;++j){uint32_t q=item(buildings,j);if(!q||kind(q)!=3||!unloadBuildingCandidate(q,house,engineer))continue;
-     int action=call<int>(0x51E3B0,p,q,true),m=nativeorders::specialMission(engineer,spy,c4,action);if(m<0)continue;
+     unsigned action=0;uint32_t query=get<uint32_t>(get<uint32_t>(p)+0x74);
+     FaultPhase phase(runtimefault::LoadLegality,p,q);
+     if(query<0x10000||!GuardedEnterAction(query,p,q,&action)){r.sentFrame=frame+6;queryFailed=true;break;}
+     int m=nativeorders::specialMission(engineer,spy,c4,int(action));if(m<0)continue;
      int64_t dx=int64_t(get<int>(p+0x9C))-get<int>(q+0x9C),dy=int64_t(get<int>(p+0xA0))-get<int>(q+0xA0);if(dx< -1048576||dx>1048576||dy< -1048576||dy>1048576)continue;int64_t d=dx*dx+dy*dy;uint32_t id=get<uint32_t>(q+0x10);
      if(d<distance||(d==distance&&id<bestID)){best=q;bestID=id;distance=d;mission=m;}
     }
+    if(queryFailed)continue;
     if(!best&&!engineer&&!spy){bestID=unloadAttackTarget(p,t,house,frame);best=bestID;mission=1;}
     uint32_t ticket=0;
     if(best&&nativeMission(house,r.id,mission,mission==1?bestID:0,mission==1?0:bestID,mission==1?0:0x34,0,0,taskarbiter::Owner::Unload,&ticket)){
@@ -218,7 +232,7 @@ static void smartUnloadTick(uint32_t house,int frame,int&budget){
     }
     // Just-disembarked infantry may not yet pass native click validation.
     // Retry specialists briefly, at most once per six frames, then release.
-    if(!best&&(engineer||spy)&&frame-r.landedFrame<90){r.sentFrame=frame+6;continue;}
+    if(!best&&(engineer||spy)&&frame-r.stableSince<90){r.sentFrame=frame+6;continue;}
     // No compatible target: restore native Guard if necessary.
     if(!best){if(get<int>(p+0xAC)!=0)done=true;else if(nativeMission(house,r.id,5,0,0,0,0,0,taskarbiter::Owner::Unload)){--budget;done=true;}}
    }

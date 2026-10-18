@@ -81,7 +81,24 @@ inline void paintHotkey(HWND w,HDC dc){
  if(saved)RestoreDC(dc,saved);
 }
 inline LRESULT CALLBACK hotkeyProc(HWND w,UINT m,WPARAM wp,LPARAM lp,UINT_PTR id,DWORD_PTR){
- if(m==WM_NCDESTROY){RemovePropW(w,L"RA2.Modern.MouseOnly");RemoveWindowSubclass(w,hotkeyProc,id);return DefSubclassProc(w,m,wp,lp);}
+ if(m==WM_NCDESTROY){for(auto key:{L"RA2.Modern.MouseOnly",L"RA2.Modern.Hold",L"RA2.Modern.Modifier",L"RA2.Modern.PendingModifier"})RemovePropW(w,key);RemoveWindowSubclass(w,hotkeyProc,id);return DefSubclassProc(w,m,wp,lp);}
+ // HOTKEY_CLASS treats Ctrl/Shift/Alt as chord prefixes and drops them on
+ // release. Hold bindings also need a bare modifier, without a global hotkey.
+ if(GetPropW(w,L"RA2.Modern.Hold")){
+  auto modifier=[](WPARAM key){return key==VK_SHIFT||key==VK_CONTROL||key==VK_MENU;};
+  if(m==HKM_GETHOTKEY){auto held=GetPropW(w,L"RA2.Modern.Modifier");if(held)return (LRESULT)(UINT_PTR)held;}
+  if(m==HKM_SETHOTKEY){if(modifier(wp)){SetPropW(w,L"RA2.Modern.Modifier",(HANDLE)(UINT_PTR)wp);wp=0;}else RemovePropW(w,L"RA2.Modern.Modifier");}
+  if(m==WM_KEYDOWN||m==WM_SYSKEYDOWN){RemovePropW(w,L"RA2.Modern.Modifier");
+   if(modifier(wp)){if(!(lp&(1L<<30)))SetPropW(w,L"RA2.Modern.PendingModifier",(HANDLE)(UINT_PTR)wp);}
+   else RemovePropW(w,L"RA2.Modern.PendingModifier");
+  }
+  if((m==WM_KEYUP||m==WM_SYSKEYUP)&&modifier(wp)&&GetPropW(w,L"RA2.Modern.PendingModifier")== (HANDLE)(UINT_PTR)wp){
+   RemovePropW(w,L"RA2.Modern.PendingModifier");DefSubclassProc(w,m,wp,lp);DefSubclassProc(w,HKM_SETHOTKEY,0,0);
+   SetPropW(w,L"RA2.Modern.Modifier",(HANDLE)(UINT_PTR)wp);InvalidateRect(w,nullptr,FALSE);
+   SendMessageW(GetParent(w),WM_COMMAND,MAKEWPARAM(GetDlgCtrlID(w),EN_CHANGE),(LPARAM)w);return 0;
+  }
+  if(m==WM_KILLFOCUS)RemovePropW(w,L"RA2.Modern.PendingModifier");
+ }
  if(m==WM_ERASEBKGND)return TRUE;
  if(m==WM_PAINT){PAINTSTRUCT ps{};auto dc=BeginPaint(w,&ps);paintHotkey(w,dc);EndPaint(w,&ps);return 0;}
  if(m==WM_PRINTCLIENT){paintHotkey(w,(HDC)wp);return 0;}
@@ -118,6 +135,7 @@ inline LRESULT CALLBACK staticProc(HWND w,UINT m,WPARAM wp,LPARAM lp,UINT_PTR id
  return result;
 }
 inline void mouseOnly(HWND w){SetPropW(w,L"RA2.Modern.MouseOnly",(HANDLE)1);InvalidateRect(w,nullptr,FALSE);}
+inline void holdKey(HWND w){auto key=SendMessageW(w,HKM_GETHOTKEY,0,0);SetPropW(w,L"RA2.Modern.Hold",(HANDLE)1);SendMessageW(w,HKM_SETHOTKEY,key,0);}
 inline void heading(HWND w){static HFONT font=makeFont(HeadingPixels,96,FW_SEMIBOLD);SendMessageW(w,WM_SETFONT,(WPARAM)font,TRUE);}
 inline LRESULT CALLBACK focusProc(HWND w,UINT m,WPARAM wp,LPARAM lp,UINT_PTR id,DWORD_PTR){
  if(m==WM_NCDESTROY)RemoveWindowSubclass(w,focusProc,id);

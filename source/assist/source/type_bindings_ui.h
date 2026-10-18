@@ -19,7 +19,7 @@ static void syncTypeConfig(){
  if(!shared)return;
  if(memcmp(&shared->featureConfig,&featureTypes,sizeof featureTypes)){InterlockedIncrement(&shared->featureConfigSeq);MemoryBarrier();memcpy(&shared->featureConfig,&featureTypes,sizeof featureTypes);MemoryBarrier();InterlockedIncrement(&shared->featureConfigSeq);}
  if(memcmp(&shared->oreConfig,&oreTypes,sizeof oreTypes)){InterlockedIncrement(&shared->oreConfigSeq);MemoryBarrier();memcpy(&shared->oreConfig,&oreTypes,sizeof oreTypes);MemoryBarrier();InterlockedIncrement(&shared->oreConfigSeq);}
- shared->flags=flags();shared->advancedKey=advancedKey;shared->magnetronKey=magnetronKey;shared->csHoldKey=csHoldKey;shared->pathTimeout=pathTimeout;shared->veteranPercent=veteranPercent;shared->elitePercent=elitePercent;uint8_t mask[MaxTypes]{};
+ shared->flags=flags();shared->advancedRangeCells=advancedRangeCells;shared->advancedKey=advancedKey;shared->magnetronKey=magnetronKey;shared->csHoldKey=csHoldKey;shared->pathTimeout=pathTimeout;shared->veteranPercent=veteranPercent;shared->elitePercent=elitePercent;uint8_t mask[MaxTypes]{};
  static uint32_t syncedRevision,syncedMatch;static int syncedCount=-1;
  if(syncedRevision==settingsRevision&&syncedMatch==snap.match&&syncedCount==snap.typeCount&&shared->csMatch==snap.match)return;
  syncedRevision=settingsRevision;syncedMatch=snap.match;syncedCount=snap.typeCount;

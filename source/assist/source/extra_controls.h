@@ -105,6 +105,9 @@
 
  {auto h=pageControl(0,L"BUTTON",L"建筑 / 防御各预定 5 个（点图标，无需热键）",20,1076,605,26,799,BS_AUTOCHECKBOX|WS_TABSTOP);SendMessageW(h,BM_SETCHECK,extra.constructionQueue?BST_CHECKED:BST_UNCHECKED,0);}
 
+ pageControl(2,L"STATIC",L"高级 CS 索敌额外格数",20,556,270,26,0);
+ pageControl(2,L"EDIT",std::to_wstring(advancedRangeCells).c_str(),305,556,180,26,818,ES_NUMBER|WS_TABSTOP);
+ pageControl(2,L"STATIC",L"0–30 格 · 默认 2",497,556,128,26,0);
  pageControl(2,L"STATIC",L"高级移动索敌优先",20,520,270,26,0);
  {auto h=pageControl(2,L"COMBOBOX",L"",305,520,320,150,802,CBS_DROPDOWNLIST|WS_TABSTOP);for(auto text:{L"单位价值优先",L"弹头伤害比例优先"})SendMessageW(h,CB_ADDSTRING,0,(LPARAM)text);SendMessageW(h,CB_SETCURSEL,advancedTargetPriority,0);}
 

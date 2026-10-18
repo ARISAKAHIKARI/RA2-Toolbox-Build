@@ -1,0 +1,2 @@
+PASS: pending learn, process restart, case-normalized keys, cross-match pointers, plugin-independent scope, legacy consumer merge
+PASS: icon roundtrip, atomic replacement, scope isolation, corruption/bounds, resource invalidation

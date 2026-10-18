@@ -50,6 +50,7 @@ static bool autoSettingChanged(int id,int notification){
  case 816:numeric=&labelScalePercent;lo=50;hi=250;break;
  case 817:numeric=&constructionScalePercent;lo=50;hi=250;break;
  case 797:numeric=&shiftClickGap;lo=0;hi=250;break;
+ case 818:numeric=&advancedRangeCells;lo=0;hi=30;break;
  case 787:numeric=&advancedScanHz;lo=1;hi=60;break;
  case 312:numeric=&repairMs;lo=500;hi=30000;break;case 444:numeric=&doubleMs;lo=20;hi=5000;break;
  case 471:numeric=&toastMs;lo=500;hi=60000;break;case 701:numeric=&extra.loadRadius;lo=1;hi=512;break;

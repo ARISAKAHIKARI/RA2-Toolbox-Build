@@ -1,0 +1,34 @@
+{
+  "version": "1.0.13 Beta",
+  "file_version": "1.0.13.0",
+  "assist_protocol": 47,
+  "changes": [
+    "shared persistent cameo cache with startup learning and legacy migration",
+    "FIFO5 overlapping icon stack and native/overlay cancellation",
+    "accepted-product lifecycle and actual game-frame production gap",
+    "configurable acquisition padding, default 2 cells, host and Runtime agreement",
+    "bare modifier hold bindings",
+    "virtual specialist legality, post-exit retry window and nearest legal engineer target"
+  ],
+  "runtime_cases": {
+    "unload-runtime": 20,
+    "range-runtime": 12,
+    "construction-runtime": 36,
+    "ejection-runtime": 20
+  },
+  "host_checks": [
+    "cache restart/migration/pending learn",
+    "sampler 15 round transitions including cached icon restore",
+    "construction actual host service and scaled geometry",
+    "planner acquisition boundaries 0/1/2/3/10/30 cells",
+    "actual hotkey subclass with modeled Win32 control",
+    "architecture and PE version/ABI"
+  ],
+  "real_windows_game": false,
+  "real_netplay": false,
+  "lbw": false,
+  "binary_sha256": {
+    "RA2Toolbox.exe": "76e9c8bbe6f8fddddbf0626b1b8026a45418d8f878f05d282cf28200b162d88e",
+    "GameRuntime.dll": "08102b1ce8de5c8db155631c5148ee2da1eba618813b02c76c596fb9cceb31c7"
+  }
+}

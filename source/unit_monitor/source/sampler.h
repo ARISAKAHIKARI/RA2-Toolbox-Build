@@ -34,7 +34,8 @@ template<class Read,class Resolve> class Sampler {
  bool loadIcon(Type&t){return readCameo(read,resolve,t,iconBuffer,sizeof iconBuffer);}
  void palette(){state.paletteReady=0;readCameoPalette(read,state);}
  void types(bool buildings,bool newRound) {
-  if(cache&&newRound)cache->rescope();
+  // Artwork survives a match. Rebuilding Type pointers must not start a new
+  // disk scan or abandon the previous match's pending icon writes.
   uint32_t arrays[]={0xA8E348,0xA83CE0,0xA8B218,0xA83C68};
   state.typeCount=0;state.truncated=0;iconCursor=0;
   for(int c=0;c<(buildings?4:3);c++){
@@ -111,17 +112,19 @@ public:
    // in-factory product is not yet delivered, even if HouseClass counted it.
    if(get<uint8_t>(obj+972)&&cell.owned>0)cell.owned--;
   }
-  // Load up to four missing cameos per sample, prioritizing rows actually displayed.
+  // Load up to four cameos per sample, prioritizing displayed rows, then
+  // warming other already-loaded native cameos for the next match/panel.
   // Only consume budget when loadIcon succeeds so unloaded enemy-faction SHP pointers do not starve ready icons.
   int budget=4;state.missingIcons=0;
-  for(int step=0;step<state.typeCount;step++){
+  for(int pass=0;pass<2;++pass)for(int step=0;step<state.typeCount;step++){
    int i=(iconCursor+step)%state.typeCount;auto&t=state.types[i];
+   bool used=false;for(int j=0;j<state.playerCount;j++)if(state.players[j].cells[i].owned||state.players[j].cells[i].queued)used=true;
+   if(used!=(pass==0))continue;
    if(cache&&!state.paletteReady)cache->restorePalette(t,state);
    if(cache&&t.iconReady==1&&!t.iconCached)t.iconCached=cache->remember(t,state);
    if(t.iconReady==1)continue;
    if(cache&&(!t.iconReady||(t.iconReady==2&&!state.paletteReady)))cache->restore(t,state);
-   bool used=false;for(int j=0;j<state.playerCount;j++)if(state.players[j].cells[i].owned||state.players[j].cells[i].queued)used=true;
-   if(used){bool missing=!t.iconReady;if(missing)state.missingIcons++;if(budget>0&&(!t.iconRetry||int32_t(tick-t.iconRetry)>=0)){t.iconRetry=tick+500;if(loadIcon(t)){budget--;if(missing)state.missingIcons--;if(cache)t.iconCached=cache->remember(t,state);}}}
+   bool missing=!t.iconReady;if(used&&missing)state.missingIcons++;if(budget>0&&(!t.iconRetry||int32_t(tick-t.iconRetry)>=0)){t.iconRetry=tick+500;if(loadIcon(t)){budget--;if(used&&missing)state.missingIcons--;if(cache)t.iconCached=cache->remember(t,state);}}
   }
   if(state.typeCount)iconCursor=(iconCursor+4)%state.typeCount;
   if(!roundstate::capture(read,end,probe_))return invalidate(tick);

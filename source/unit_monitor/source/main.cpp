@@ -27,7 +27,7 @@
 #include "tab_control.h"
 using namespace Gdiplus;
 static HWND ui,overlay,stats,bStart,bDemo,cBuildings,cOthers,eTop,eLeft,cTab,tabModeBox,visibilityLabel;static HFONT font;
-static external::ReadSession reader;static um::IconCache iconCache;
+static external::ReadSession reader;static um::IconCache& iconCache=um::sharedIconCache();
 static std::unique_ptr<um::Sampler<external::SharedReadView,external::NoResolve>> sampler;
 static std::unique_ptr<um::Snapshot> snap(new um::Snapshot{}),incoming(new um::Snapshot{});
 static HWND game;static DWORD pid,threadId;static bool enabled=true,demo=false,showOthers=true,buildings=false,hidden=false,manualVisible=false;
@@ -92,7 +92,7 @@ static bool attach(){
   return false;
  }
  pid=c.pid;threadId=c.thread;game=external::discovery::resolveYrppWindow(reader,pid,c.window,&threadId);
- wchar_t image[32768]{};DWORD imageSize=32768;reader.imagePath(image,&imageSize);iconCache.open(std::filesystem::path(image),std::filesystem::path(root)/L"cache"/L"unit-icons");
+ wchar_t image[32768]{};DWORD imageSize=32768;reader.imagePath(image,&imageSize);iconCache.open(std::filesystem::path(image),std::filesystem::path(root)/L"cache"/L"icons");
  sampler=std::make_unique<um::Sampler<external::SharedReadView,external::NoResolve>>(external::SharedReadView{&reader},external::NoResolve{},&iconCache);
  setStatus(L"已连接只读 PID "+std::to_wstring(pid)+(game?L"，验证布局…":L"，等待窗口后再显示覆盖层"));lastGood=GetTickCount();return true;
 }

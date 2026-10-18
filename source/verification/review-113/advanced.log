@@ -1,0 +1,1 @@
+PASS: stable equal-value targets, higher-value priority, rearm/burst gating, dead-target prompt recovery, per-order rejection, pending/attack timeouts, accepted-only movement progress, GuardArea fallback, weapon selection, special immunities and urgent large-selection intents

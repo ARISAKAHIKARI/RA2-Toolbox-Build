@@ -19,7 +19,7 @@ struct Resolve {uint32_t operator()(uint32_t){return 0;}};
 constexpr uint32_t Self=0x100000,Enemy=0x120000,Country=0x200000,Infantry=0x210000;
 struct Fixture {
  Memory m;std::unique_ptr<um::Sampler<Read,Resolve>> sampler;
- Fixture(){
+ Fixture(um::IconCache*cache=nullptr){
   m.put<uint8_t>(0xA8E9A0,1);m.put(0xA83D4C,Self);m.put(0xA8ED84,100);
   m.vector(0xA80228,0x300000,{Self,Enemy});m.vector(0xA8E348,0x300100,{Infantry});
   m.put(Infantry+1588,1);m.put<uint32_t>(Infantry+1740,1);memcpy(m.data.data()+Infantry+1750,"E1ICON",7);memcpy(m.data.data()+Infantry+36,"E1",3);
@@ -27,7 +27,7 @@ struct Fixture {
    m.put(h+um::OwnedOffsets[0]+4,uint32_t(0x310000+i*4));m.put(h+um::OwnedOffsets[0]+8,1);m.put(0x310000+i*4,5+i);
   }
   m.text(Self+90154,u"Me");m.text(Enemy+90154,u"Previous opponent");
-  sampler=std::make_unique<um::Sampler<Read,Resolve>>(Read{&m},Resolve{});
+  sampler=std::make_unique<um::Sampler<Read,Resolve>>(Read{&m},Resolve{},cache);
  }
  const um::Snapshot& sample(){m.bookends=0;return sampler->sample(500,true);}
 };
@@ -58,6 +58,14 @@ int main(){
  // A cached reader must not satisfy the bookend's uncached checks.
  {struct Reader {bool cached=false,freshCalled=false;bool operator()(uint32_t,void*,size_t){cached=true;return false;}bool fresh(uint32_t,void*,size_t){freshCalled=true;return false;}} reader;
   um::roundstate::Stamp stamp;external::layout::Result error;assert(!um::roundstate::capture(reader,stamp,error)&&reader.freshCalled&&!reader.cached);++cases;
+ }
+
+ {namespace fs=std::filesystem;auto dir=fs::temp_directory_path()/std::to_string(std::chrono::steady_clock::now().time_since_epoch().count());fs::create_directories(dir);auto exe=dir/"game.exe";{std::ofstream f(exe);f<<"fixture";}
+  auto scope=um::iconcache::scope(exe);um::iconcache::Record icon{};icon.category=0;strcpy(icon.id,"E1");strcpy(icon.cameo,"E1ICON");icon.icon[20]=4;icon.palette[4]=0xff123456;assert(um::iconcache::write(dir/"cache"/(std::to_string(scope)+".bin"),scope,{icon}));
+  {um::IconCache cache;cache.open(exe,dir/"cache");for(int i=0;i<200&&!cache.loaded;++i)std::this_thread::sleep_for(std::chrono::milliseconds(5));
+   Fixture f(&cache);auto&a=f.sample();auto old=a.match;assert(a.types[0].iconReady==2&&a.types[0].icon[20]==4&&a.palette[4]==0xff123456);
+   f.m.put(0xA8ED84,1);f.m.text(Enemy+90154,u"New player");const auto&b=f.sample();assert(b.match!=old&&b.types[0].iconReady==2&&b.types[0].icon[20]==4&&b.paletteReady&&b.players[1].name[0]=='N');++cases;
+  }fs::remove_all(dir);
  }
  std::cout<<cases<<" round-transition sampler regressions passed\n";
 }

@@ -19,9 +19,9 @@ prefix=r'''
 using namespace assist;
 using DWORD=uint32_t;using HWND=void*;using HFONT=void*;using LRESULT=long;
 struct RECT{long left=0,top=0,right=0,bottom=0;};struct POINT{long x=0,y=0;};
-namespace gameinput{struct PointerPress {uint32_t tick=0,serial=0,match=0;int operation=0;POINT point{};int width=0,height=0;};}
+namespace gameinput{struct PointerPress {uint32_t tick=0,serial=0,match=0;int operation=0;POINT point{};int width=0,height=0;uint8_t keys[256]{};};}
 struct WNDCLASSW{void*hInstance;int lpfnWndProc;const wchar_t*lpszClassName;void*hCursor;};
-constexpr int SW_HIDE=0,FALSE=0,FW_NORMAL=0,DEFAULT_CHARSET=0,OUT_DEFAULT_PRECIS=0,CLIP_DEFAULT_PRECIS=0,CLEARTYPE_QUALITY=0,DEFAULT_PITCH=0,IDC_HAND=0,WS_EX_TOOLWINDOW=0,WS_EX_NOACTIVATE=0,WS_EX_TOPMOST=0,WS_POPUP=0,SWP_NOACTIVATE=0,SWP_SHOWWINDOW=0;
+constexpr int VK_RBUTTON=2,VK_SHIFT=16,SW_HIDE=0,FALSE=0,FW_NORMAL=0,DEFAULT_CHARSET=0,OUT_DEFAULT_PRECIS=0,CLIP_DEFAULT_PRECIS=0,CLEARTYPE_QUALITY=0,DEFAULT_PITCH=0,IDC_HAND=0,WS_EX_TOOLWINDOW=0,WS_EX_NOACTIVATE=0,WS_EX_TOPMOST=0,WS_POPUP=0,SWP_NOACTIVATE=0,SWP_SHOWWINDOW=0;
 static void*HWND_TOPMOST=nullptr;static HWND game=(void*)2;static uint32_t now=1000,pid=1,match=1;static int clientWidth=3840,clientHeight=2160;
 static bool enabled=true,focused=true,fresh=true,queueAccept=true;static std::wstring root=L"/tmp",message;
 static int constructionScalePercent=100;
@@ -33,7 +33,7 @@ struct Reader{std::vector<uint8_t>bytes=std::vector<uint8_t>(0x1000000);uint32_t
  bool imagePath(wchar_t*,DWORD*){return false;}
  template<class T>void put(uint32_t p,T v){memcpy(bytes.data()+p,&v,sizeof v);}
 }externalReader;
-namespace um{struct IconCache{void open(const wchar_t*,const std::filesystem::path&){}};}
+namespace um{struct IconCache{void open(const wchar_t*,const std::filesystem::path&){}};inline IconCache& sharedIconCache(){static IconCache c;return c;}}
 static DWORD GetTickCount(){return now;}static bool foregroundGame(){return focused;}static bool commandFresh(uint32_t){return fresh;}static uint32_t commandMatch(){return match;}
 static bool queueCommand(int c,int a,int b,uint32_t m,int retries=0,uint32_t delay=0,uint32_t token=0){return queueAccept&&commandQueue.add({c,a,b,pid,m,now,retries,now+delay,token});}
 static void notify(const std::wstring&s){message=s;}static void critical(const std::wstring&){}
@@ -48,7 +48,7 @@ static void w(uint32_t p,int v){externalReader.put(p,v);}static void byte(uint32
 static void list(uint32_t p,std::initializer_list<int> v){static uint32_t items=0x900000;w(p+4,items);w(p+8,v.size());w(p+16,v.size());for(int i:v){w(items,i);items+=4;}items+=32;}
 static void setup(){
  buildreserve::reset();commandQueue.clear();externalReader.bytes.assign(0x1000000,0);externalReader.fail=0;extra.constructionQueue=true;focused=fresh=enabled=queueAccept=true;++match;++now;
- w(0xA83D4C,H);w(H+0x34,C);w(C+0xB4,0);w(C+0xB8,0);w(H+0x1D4,10);w(0x8871E0,R);
+ w(0xA8ED84,10);w(0xA83D4C,H);w(H+0x34,C);w(C+0xB4,0);w(C+0xB8,0);w(H+0x1D4,10);w(0x8871E0,R);
  list(0xA83C68,{T,T+0x2000,T+0x4000});list(R+0x358,{0});for(int g=1;g<6;++g)list(R+0x358+g*28,{});
  for(int i=0;i<3;++i){auto t=T+i*0x2000;snap.types[i].index=i;w(t+0x634,1);w(t+0x6CC,1);w(t+0xDA0,-1);w(t+0xDA4,-1);w(t+0xDF8,i);list(t+0x638,i==1?std::initializer_list<int>{-1}:i==2?std::initializer_list<int>{1}:std::initializer_list<int>{});list(t+0x654,{});}
  w(P+0x10,100);w(P+0x21C,H);w(P+0x6C,100);byte(P+0x74,1);byte(P+0x81,1);w(P+0x520,T);w(H+0x53BC,F);w(F+0x6C,H);w(F+0x58,P);
@@ -56,14 +56,14 @@ static void setup(){
  now+=300;buildreserve::service();
 }
 static int choice(int index){for(int i=0;i<int(buildreserve::choices.size());++i)if(buildreserve::choices[i].index==index)return i;return -1;}
-static void tick(int ms=110){now+=ms;buildreserve::service();}
-static void place(){byte(P+0x81,0);byte(P+0x90,1);w(F+0x58,0);w(0x87F7E8+0x1544+84,3);for(int i=0;i<3;++i){w(0x87F7E8+0x1544+88+i*52,i);w(0x87F7E8+0x1544+92+i*52,7);}tick();}
+static void tick(int ms=110,bool advance=true){now+=ms;if(advance)w(0xA8ED84,buildreserve::get<int>(0xA8ED84)+1);buildreserve::service();}
+static void place(){byte(P+0x81,0);byte(P+0x90,1);w(F+0x58,0);w(0x87F7E8+0x1544+84,3);for(int i=0;i<3;++i){w(0x87F7E8+0x1544+88+i*52,i);w(0x87F7E8+0x1544+92+i*52,7);}tick();assert(commandQueue.size==0);tick();}
 int main(){
  using namespace buildreserve;
  setup();assert(choice(0)<0&&choice(1)>=0&&choice(2)<0);assert(choices[choice(1)].future);assert(layout.width()==216&&layout.x(60)==90&&layout.y(48)==72);
  constructionScalePercent=150;tick();assert(layout.width()==324&&layout.x(60)==135);constructionScalePercent=100;tick();
  reserve(choice(1));assert(choice(2)>=0);reserve(choice(2));reserve(choice(1));reserveChoice({0,0,0,T,false},true);reserve(choice(0));assert(books[0].items==std::vector<int>({1,2,1,0,0}));reserve(choice(0));assert(books[0].items.size()==5);
- removeFrom(3);assert(books[0].items.size()==3);removeFrom(1);assert(books[0].items==std::vector<int>({1}));removeFrom(0);assert(books[0].items.empty());
+ removeTop();assert(books[0].items==std::vector<int>({1,2,1,0}));removeItem(0,1);assert(books[0].items==std::vector<int>({1,1,0}));removeTop(true);assert(books[0].items.empty());
  reserve(choice(1));w(P+0x6C,0);byte(P+0x74,0);for(int i=0;i<20;++i)tick();assert(books[0].items==std::vector<int>({1})&&commandQueue.size==0);w(F+0x58,0);tick();tick(300);assert(books[0].items.empty());
  setup();reserve(choice(1));w(F+0x58,0);tick();assert(!books[0].items.empty());tick(300);assert(books[0].items.empty());
  setup();reserve(choice(1));reserve(choice(2));place();assert(books[0].stage==1&&commandQueue.size==1);auto token=books[0].token;result(1,1,100,token+1);assert(books[0].stage==1);result(1,1,100,token);assert(books[0].stage==2);commandQueue.clear();
@@ -81,7 +81,7 @@ int main(){
  setup();w(T+0x2000+0xDA4,1);refreshChoices();assert(choice(1)<0);w(T+0x2000+0xDA4,-1);w(C+0xB8,4);refreshChoices();assert(choice(1)>=0);
  byte(T+0x2000+0xD9B,1);refreshChoices();assert(choice(1)<0);byte(H+0x2BC,1);refreshChoices();assert(choice(1)>=0);
  memcpy(externalReader.bytes.data()+C+0x98,"Americans",10);memcpy(externalReader.bytes.data()+C+0x24,"Americans",10);list(0xA83C98,{C});refreshChoices();assert(choice(1)>=0);
- construction::Layout l;for(int pct:{50,75,100,125,150,200,250})for(auto sizes:std::vector<std::vector<int>>{{2560,1440,3840,2160},{2560,1440,2560,1440},{1920,1080,3840,2160},{1280,720,1920,1080},{1920,1080,2560,1440},{640,480,640,480}}){assert(l.set(sizes[0],sizes[1],sizes[2],sizes[3],pct));assert(l.left()+l.width()<=sizes[2]);assert(l.top()+l.height()<=sizes[3]);for(int i=0;i<5;++i)assert(l.queueAt(l.x(10),l.y(24+i*18+9))==i);for(int i=0;i<l.rows*2;++i)assert(l.choiceAt(l.x((i%2)*72+36),l.y(116+(i/2)*66+33),0,50)==i);assert(l.choiceAt(l.width(),l.y(120),0,50)==-1);}
+ construction::Layout l;for(int pct:{50,75,100,125,150,200,250})for(auto sizes:std::vector<std::vector<int>>{{2560,1440,3840,2160},{2560,1440,2560,1440},{1920,1080,3840,2160},{1280,720,1920,1080},{1920,1080,2560,1440},{640,480,640,480}}){assert(l.set(sizes[0],sizes[1],sizes[2],sizes[3],pct));assert(l.left()+l.width()<=sizes[2]);assert(l.top()+l.height()<=sizes[3]);for(int i=0;i<5;++i)assert(l.queueAt(l.x(10),l.y(construction::StackTop+i*construction::StackStep+9))==i);for(int i=0;i<l.rows*2;++i)assert(l.choiceAt(l.x((i%2)*72+36),l.y(construction::HeaderHeight+(i/2)*66+33),0,50)==i);assert(l.choiceAt(l.width(),l.y(construction::HeaderHeight+4),0,50)==-1);}
 
  // Regression: every reservation category, not only unavailable future types.
  for(int tab=0;tab<2;++tab)for(bool future:{false,true}){
@@ -99,8 +99,8 @@ int main(){
   byte(strip+0x1C,1);w(strip+0x38,0);w(0x886F94,0);w(0x886F9C,1440);w(0xB0B4F8,220);w(0xA8B230,0x530000);
   for(int i=0;i<60;++i){uint32_t g=0xB07E80+i*56;w(g+0xC,2400+i%2*64);w(g+0x10,221+i/2*50);w(g+0x14,60);w(g+0x18,48);}
   w(F+0x24,10);};
- auto press=[&](int op,int x=2420,int y=240){gameinput::PointerPress e;e.tick=now;e.match=match;e.serial=42;e.operation=op;e.width=clientWidth;e.height=clientHeight;e.point={x*3/2,y*3/2};return nativePointer(e);};
- nativeSetup();assert(press(7));assert(books[0].items.empty());assert(press(6));assert(books[0].items==std::vector<int>({0}));assert(choice(0)>=0);assert(!press(5));
+ bool shift=false;auto press=[&](int op,int x=2420,int y=240){gameinput::PointerPress e;e.tick=now;e.match=match;e.serial=42;e.operation=op;e.width=clientWidth;e.height=clientHeight;e.keys[VK_RBUTTON]=op==5;e.keys[VK_SHIFT]=shift;e.point={x*3/2,y*3/2};return nativePointer(e);};
+ nativeSetup();assert(press(7));assert(books[0].items.empty());assert(press(6));assert(books[0].items==std::vector<int>({0}));assert(choice(0)>=0);assert(press(5));
  auto badges=nativeBadges();assert(badges.size()==1&&badges[0].x==2400&&badges[0].y==253&&badges[0].positions==1);
  press(7);press(6);assert(books[0].items==std::vector<int>({0,0}));assert(nativeBadges()[0].positions==3);
  nativeSetup();current[0]=0;press(7);press(6);assert(books[0].items.empty()); // First native order
@@ -116,6 +116,20 @@ int main(){
  nativeSetup();press(7);externalReader.fail=0xB07E80;press(6);assert(books[0].items.empty());externalReader.fail=0;
  nativeSetup();w(0x87F7E8+0x1544+84,3);w(0x87F7E8+0x1544+88+2*52,2);w(0x87F7E8+0x1544+92+2*52,7);w(0x87F7E8+0x1544+0x44,1);
  assert(readNative()&&nativeFrame.cells.size()==1&&nativeFrame.cells[0].index==2);press(7);press(6);assert(books[0].items==std::vector<int>({2}));
+
+ nativeSetup();press(7);press(6);press(7);press(6);assert(books[0].items.size()==2);press(5);press(4);assert(books[0].items.size()==1);press(7);press(6);shift=true;press(5);press(4);shift=false;assert(books[0].items.empty());
+ nativeSetup();press(7);press(6);press(5);press(4,2440);assert(books[0].items.size()==1);
+ // Same game frame: wall-clock ticks cannot release next Produce.
+ setup();reserve(choice(1));byte(P+0x81,0);byte(P+0x90,1);w(F+0x58,0);w(0x87F7E8+0x1544+84,2);w(0x87F7E8+0x1544+88+52,1);w(0x87F7E8+0x1544+92+52,7);
+ tick(110,false);for(int i=0;i<20;++i)tick(110,false);assert(commandQueue.size==0);tick();assert(commandQueue.size==1);
+ // Old placed building can be sold/freed before observing the accepted new
+ // product. Adopt new parent first, retain remaining queue and visible panel.
+ setup();reserve(choice(1));reserve(choice(2));place();token=books[0].token;result(1,1,100,token);commandQueue.clear();
+ w(P+0x10,999);w(p2+0x10,101);w(p2+0x21C,H);w(p2+0x520,T+0x2000);byte(p2+0x81,1);w(F+0x58,p2);tick();assert(books[0].items==std::vector<int>({2})&&books[0].id==101&&geometryReady);
+ // A sole reservation becoming current production must not hide the panel.
+ setup();reserveChoice({0,0,0,T,false},true);place();token=books[0].token;result(1,1,100,token);commandQueue.clear();
+ w(p2+0x10,101);w(p2+0x21C,H);w(p2+0x520,T);byte(p2+0x81,1);w(F+0x58,p2);tick();assert(books[0].items.empty()&&geometryReady&&current[0]==p2);
+ std::cout<<"PASS: overlapping stack, native right cancel, Shift clear, paused frame gate, old-parent reuse, panel stays during final reserved production\n";
  std::cout<<"PASS: native sidebar capture/badges/scroll/duplicates/first click/placement/drag/round/object/focus/timeout/scroll animation/read failures\n";
 
  assert(!l.set(0,0,3840,2160));

@@ -110,7 +110,8 @@ public:
   if(order.mission==1){t.skipTarget=order.target;t.skipUntil=frame+30;if(t.target==order.target)t.pendingShot=false;}
   else if(order.mission==2&&++t.moveFailures>=2){t.progress.hold=true;t.stopped=false;}
  }
- std::vector<Order> step(const World& world,uint32_t flags,int veteran,int elite,int pathTimeout,int scanHz=0,int targetPriority=0){
+ std::vector<Order> step(const World& world,uint32_t flags,int veteran,int elite,int pathTimeout,int scanHz=0,int targetPriority=0,int rangeCells=2){
+  const int rangePadding=std::clamp(rangeCells,0,30)*256;
   if(!validWorld(world)){reset();return {};}
   if(world.match!=match_){reset();match_=world.match;}
   std::vector<Order> combat,out;combat.reserve(16);out.reserve(MaxOrders);
@@ -178,7 +179,7 @@ public:
     task.urgent=false;task.scanned=true;task.scannedAt=world.tick;
     const Actor* current=task.attacking?actor(task.target):nullptr;if(current&&!positionValid(*current))current=nullptr;
     int64_t currentDistance=0;if(current){int64_t dx=int64_t(a->x)-current->x,dy=int64_t(a->y)-current->y;currentDistance=dx*dx+dy*dy;}
-    bool currentValid=current&&(current->flags&Enemy)&&canTarget(*a,*current,currentDistance,mag,mag?0:3*256)&&!(current->id==task.skipTarget&&world.frame<task.skipUntil);
+    bool currentValid=current&&(current->flags&Enemy)&&canTarget(*a,*current,currentDistance,mag,mag?0:rangePadding)&&!(current->id==task.skipTarget&&world.frame<task.skipUntil);
     if(!mag){
      if(task.pendingShot&&a->target==task.target)task.pendingShot=false;
      if(task.pendingShot){
@@ -203,9 +204,9 @@ public:
     if(mag&&(cooldown(*a,world.frame)>0||task.pendingShot)){task.progress.combat(a->x,a->y,world.frame);continue;}
     if(!enemiesBuilt){for(int j=0;j<world.count;++j){const auto&e=world.actors[j];if(positionValid(e)&&(e.flags&Enemy)&&!(e.flags&(Cloaked|Transported|Limbo|OffMap|Protected)))enemies_.add(j,e);}enemiesBuilt=true;}
     const Actor* best=nullptr;double score=-1,bestValue=-1;int64_t nearestDistance=INT64_MAX;
-    enemies_.nearby(a->x,a->y,a->range+(mag?0:3*256),[&](int j){const auto&enemy=world.actors[j];++targetChecks;
+    enemies_.nearby(a->x,a->y,a->range+(mag?0:rangePadding),[&](int j){const auto&enemy=world.actors[j];++targetChecks;
      int64_t dx=int64_t(a->x)-enemy.x,dy=int64_t(a->y)-enemy.y,distance=dx*dx+dy*dy;
-     if(!canTarget(*a,enemy,distance,mag,mag?0:3*256)||(enemy.id==task.skipTarget&&world.frame<task.skipUntil)||(mag&&magneticReservations_.count(enemy.id)))return;
+     if(!canTarget(*a,enemy,distance,mag,mag?0:rangePadding)||(enemy.id==task.skipTarget&&world.frame<task.skipUntil)||(mag&&magneticReservations_.count(enemy.id)))return;
      double value=nativeorders::value(enemy.cost,enemy.veterancy,veteran,elite);
      double rank=!mag&&targetPriority==1?double(a->weapons[weaponIndex(*a,enemy)].effectiveness[enemy.armor]):value;
      bool keep=currentValid&&enemy.id==task.target,kept=currentValid&&best&&best->id==task.target;

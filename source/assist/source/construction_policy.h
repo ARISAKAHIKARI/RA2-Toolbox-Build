@@ -4,7 +4,8 @@
 #include <cstdint>
 #include "../../shared/source/viewport_scale.h"
 namespace assist { namespace construction {
-constexpr int Capacity=5,PanelWidth=144,HeaderHeight=116,RowHeight=66;
+constexpr int Capacity=5,PanelWidth=144,HeaderHeight=188,RowHeight=66;
+constexpr int StackTop=24,StackStep=24,StackHeight=48;
 inline bool prerequisite(int index,const std::vector<int>&owned,const std::vector<int>*groups,int future=-1){
  auto has=[&](int n){return n>=0&&n<int(owned.size())&&(owned[n]>0||n==future);};
  if(index>=0)return has(index);if(index< -6)return false;
@@ -22,10 +23,11 @@ inline bool countryAllowed(uint32_t owner,uint32_t required,uint32_t forbidden,i
 }
 struct Book {
  uint32_t match=0,house=0,source=0,id=0,token=0,sent=0,retry=0,missing=0;
- int stage=0,attempts=0;std::vector<int> items;
+ int stage=0,attempts=0,placedFrame=-1;std::vector<int> items;
  bool add(int index){if(index<0||items.size()>=Capacity)return false;items.push_back(index);return true;}
  int head()const{return items.empty()?-1:items.front();}
- void consume(uint32_t p,uint32_t identity){items.erase(items.begin());source=p;id=identity;stage=attempts=0;sent=retry=missing=token=0;}
+ void consume(uint32_t p,uint32_t identity){items.erase(items.begin());source=p;id=identity;stage=attempts=0;sent=retry=missing=token=0;placedFrame=-1;}
+ bool afterPlacement(int frame,bool ready){if(!ready||frame<0){placedFrame=-1;return false;}if(placedFrame<0||frame<placedFrame){placedFrame=frame;return false;}return frame>placedFrame;}
 };
 // All geometry is in game pixels. Convert both painting AND hit testing with
 // the same transform; monitor dimensions and Windows DPI are not game pixels.
@@ -43,7 +45,7 @@ struct Layout {
  int width()const{return x(PanelWidth);}int height()const{return y(HeaderHeight+rows*RowHeight);}
  int left()const{return std::max(0,int(std::lround(double(gameWidth-168)*clientWidth/gameWidth))-width());}
  int top()const{return std::max(0,std::min(int(std::lround(200.0*clientHeight/gameHeight)),clientHeight-height()-int(std::ceil(8.0*clientHeight/gameHeight))));}
- int queueAt(int px,int py)const{if(px<0||px>=width()||py<y(24)||py>=y(114))return -1;for(int i=0;i<Capacity;++i)if(py<y(24+(i+1)*18))return i;return -1;}
+ int queueAt(int px,int py,int count=Capacity)const{if(px<x(5)||px>=x(139))return -1;for(int i=std::min(count,Capacity)-1;i>=0;--i)if(py>=y(StackTop+i*StackStep)&&py<y(StackTop+i*StackStep+StackHeight))return i;return -1;}
  int choiceAt(int px,int py,int scroll,int count)const{
   if(px<0||px>=width()||py<y(HeaderHeight)||py>=height())return -1;
   int row=0;while(row<rows&&py>=y(HeaderHeight+(row+1)*RowHeight))++row;

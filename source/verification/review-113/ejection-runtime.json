@@ -1,0 +1,90 @@
+{
+  "inputs": {
+    "game": "c287d62a4d6a25b547e9339d071dd6e03adcf545699062e478aaeee38c60e89a",
+    "GameRuntime.dll": "08102b1ce8de5c8db155631c5148ee2da1eba618813b02c76c596fb9cceb31c7"
+  },
+  "filter": "ejection_animation",
+  "scope": "actual DLL/original constructors; synthetic world and Win32, no real network",
+  "results": [
+    {
+      "name": "ejection_animation_interrupted_0",
+      "status": "PASS"
+    },
+    {
+      "name": "ejection_animation_queued_toggle_0",
+      "status": "PASS"
+    },
+    {
+      "name": "ejection_animation_manual_0",
+      "status": "PASS"
+    },
+    {
+      "name": "ejection_animation_off_0",
+      "status": "PASS"
+    },
+    {
+      "name": "ejection_animation_full_queue_0",
+      "status": "PASS"
+    },
+    {
+      "name": "ejection_animation_interrupted_5",
+      "status": "PASS"
+    },
+    {
+      "name": "ejection_animation_queued_toggle_5",
+      "status": "PASS"
+    },
+    {
+      "name": "ejection_animation_manual_5",
+      "status": "PASS"
+    },
+    {
+      "name": "ejection_animation_off_5",
+      "status": "PASS"
+    },
+    {
+      "name": "ejection_animation_full_queue_5",
+      "status": "PASS"
+    },
+    {
+      "name": "ejection_animation_interrupted_3",
+      "status": "PASS"
+    },
+    {
+      "name": "ejection_animation_queued_toggle_3",
+      "status": "PASS"
+    },
+    {
+      "name": "ejection_animation_manual_3",
+      "status": "PASS"
+    },
+    {
+      "name": "ejection_animation_off_3",
+      "status": "PASS"
+    },
+    {
+      "name": "ejection_animation_full_queue_3",
+      "status": "PASS"
+    },
+    {
+      "name": "ejection_animation_interrupted_4",
+      "status": "PASS"
+    },
+    {
+      "name": "ejection_animation_queued_toggle_4",
+      "status": "PASS"
+    },
+    {
+      "name": "ejection_animation_manual_4",
+      "status": "PASS"
+    },
+    {
+      "name": "ejection_animation_off_4",
+      "status": "PASS"
+    },
+    {
+      "name": "ejection_animation_full_queue_4",
+      "status": "PASS"
+    }
+  ]
+}

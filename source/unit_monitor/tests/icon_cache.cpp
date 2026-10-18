@@ -25,6 +25,28 @@ int main(){
   assert(cache.remember(t,*snap)); // destructor flushes pending data before joining the worker
  }
  assert(um::iconcache::read(folder/(std::to_string(scope)+".bin"),scope)[0].icon[44]==33);
+
+ // A learned icon is retained even while the initial resource scan is running.
+ auto shared=root/"shared";
+ {um::IconCache cache;cache.open(exe,shared);um::Type t{};t.category=3;strcpy(t.id,"GAPOWR");strcpy(t.cameo,"POWRICON.SHP");t.iconReady=1;t.icon[10]=55;
+  auto snap=std::make_unique<um::Snapshot>();snap->paletteReady=1;snap->palette[55]=0xff445566;assert(cache.remember(t,*snap));
+  // Monitor and reservation attachment are idempotent; neither resets learning.
+  cache.open(exe,shared);cache.open(exe,shared);
+ }
+ {um::IconCache cache;cache.open(exe,shared);for(int i=0;i<200&&!cache.loaded;++i)std::this_thread::sleep_for(std::chrono::milliseconds(5));
+  um::Type t{};t.category=3;strcpy(t.id,"gapowr");strcpy(t.cameo,"powricon.shp");auto snap=std::make_unique<um::Snapshot>();assert(cache.restore(t,*snap)&&t.icon[10]==55&&snap->palette[55]==0xff445566);
+  // Across a match, all game pointers may change while the art key is stable.
+  t={};t.ptr=0x76543210;t.category=3;strcpy(t.id,"GAPOWR");strcpy(t.cameo,"POWRICON.SHP");assert(cache.restore(t,*snap));
+ }
+ auto beforePlugin=um::iconcache::scope(exe);{std::ofstream f(root/"GameRuntime.dll");f<<"new plugin build";}assert(um::iconcache::scope(exe)==beforePlugin);
+ // Migrate both former consumers, with identical-key records deduplicated.
+ auto legacy=um::iconcache::scope(exe,true);auto oldRoot=root/"migration";
+ assert(um::iconcache::write(oldRoot/"unit-icons"/(std::to_string(legacy)+".bin"),legacy,{r}));
+ auto r2=r;r2.category=3;strcpy(r2.id,"GAPOWR");strcpy(r2.cameo,"powricon.shp");assert(um::iconcache::write(oldRoot/"production-icons"/(std::to_string(legacy)+".bin"),legacy,{r2}));
+ {um::IconCache cache;cache.open(exe,oldRoot/"icons");for(int i=0;i<200&&cache.loaded<2;++i)std::this_thread::sleep_for(std::chrono::milliseconds(5));assert(cache.loaded==2);}
+ assert(um::iconcache::read(oldRoot/"icons"/(std::to_string(beforePlugin)+".bin"),beforePlugin).size()==2);
+ assert(&um::sharedIconCache()==&um::sharedIconCache());
+ std::cout<<"PASS: pending learn, process restart, case-normalized keys, cross-match pointers, plugin-independent scope, legacy consumer merge\n";
  fs::remove_all(root);std::cout<<"PASS: icon roundtrip, atomic replacement, scope isolation, corruption/bounds, resource invalidation\n";
 }
 

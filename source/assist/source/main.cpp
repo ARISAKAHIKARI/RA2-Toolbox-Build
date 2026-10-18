@@ -107,7 +107,7 @@ static const char* iniKeys[]={"Repair","Combat","EmptyTransports","Damaged","Idl
 struct Binding{std::string id;WORD key;};static std::vector<Binding> swBindings;
 static HWND typeList,typeKey,typeCS,csCheck,csKeyEdit,csStatus,tapEdit,typeIdEdit;
 static std::vector<Binding> typeBindings;static std::set<std::string> csUnits;
-static HWND advancedKeyEdit,unloadKeyEdit,nativeStatus,ejectCheck,ejectKeyEdit;static WORD advancedKey,unloadKey,ejectKey;static bool ejectMode;static int advancedScanHz=10,advancedTargetPriority=0;static int pathTimeout=90,veteranPercent=200,elitePercent=300;
+static HWND advancedKeyEdit,unloadKeyEdit,nativeStatus,ejectCheck,ejectKeyEdit;static WORD advancedKey,unloadKey,ejectKey;static bool ejectMode;static int advancedScanHz=10,advancedTargetPriority=0,advancedRangeCells=2;static int pathTimeout=90,veteranPercent=200,elitePercent=300;
 static WORD csKey,csHoldKey;static bool csMode,csHoldEnabled,oreMode,buildAnywhereMode;static int doubleMs=350,toastMs=6000;
 static HWND oreCheck,oreStatus,anywhereCheck,toastEdit,csHoldCheck,csHoldEdit,detailCheck;
 static bool showDetails=false;
@@ -289,9 +289,7 @@ static bool registerKey(int id,WORD key){return hotkeyRegistry.add(id,key,extra.
 static void registerKeys(){for(int id:registeredKeyIDs)UnregisterHotKey(ui,id);registeredKeyIDs.clear();hotkeyRegistry.clear();hotkeyPending.clear();keysRegistered=enabled&&foregroundGame()&&snap.status==1&&!snap.chat;if(!keysRegistered)return;int failures=0;for(int i=0;i<12;++i)if(LOBYTE(hotkeys[i])&&!registerKey(1000+i,hotkeys[i]))++failures;
  for(size_t i=0;i<swBindings.size()&&i<64;++i){auto&b=swBindings[i];if((b.id=="IronCurtainSpecial"&&b.key==hotkeys[9])||(b.id=="ChronoSphereSpecial"&&b.key==hotkeys[10]))continue;if(LOBYTE(b.key)&&!registerKey(int(1020+i),b.key))++failures;}
  for(size_t i=0;i<typeBindings.size()&&i<512;++i){auto&b=typeBindings[i];if(typekeys::firstForKey(typeBindings,unsigned(i))&&!registerKey(int(1100+i),b.key))++failures;}
- if(magnetronMode&&LOBYTE(magnetronKey)&&!registerKey(1695,magnetronKey))++failures;
  if(LOBYTE(ejectKey)&&!registerKey(1696,ejectKey))++failures;
- if(hookAdvanced&&LOBYTE(advancedKey)&&!registerKey(1697,advancedKey))++failures;
  if(hookSmartUnload&&LOBYTE(unloadKey)&&!registerKey(1698,unloadKey))++failures;
  if(hookAutoCS&&LOBYTE(csKey)&&!registerKey(1699,csKey))++failures;
  if(LOBYTE(extra.variantKey)&&!registerKey(1700,WORD(extra.variantKey)))++failures;
@@ -337,7 +335,7 @@ static bool save(){++settingsRevision;saveWriteOK=true;for(int i=0;i<12;++i)writ
  saveWriteOK=(WritePrivateProfileStringW(L"OreTypes",L"Refineries",oreRefineries.c_str(),path(L"Assist.ini").c_str())!=FALSE)&&saveWriteOK;
  write(L"TypeSelection",L"DoublePressMs",doubleMs);write(L"AutoCS",L"Enabled",csMode);write(L"AutoCS",L"ToggleKey",csKey);
  write(L"NativeOrders",L"EjectAssist",ejectMode);write(L"NativeOrders",L"EjectToggleKey",ejectKey);write(L"NativeOrders",L"VeteranPercent",veteranPercent);write(L"NativeOrders",L"ElitePercent",elitePercent);
- write(L"NativeOrders",L"TargetPriority",advancedTargetPriority);write(L"NativeOrders",L"TargetScanHz",advancedScanHz);write(L"NativeOrders",L"AdvancedHoldKey",advancedKey);write(L"NativeOrders",L"UnloadKey",unloadKey);write(L"NativeOrders",L"PathTimeoutFrames",pathTimeout);
+ write(L"NativeOrders",L"TargetRangeExtraCells",advancedRangeCells);write(L"NativeOrders",L"TargetPriority",advancedTargetPriority);write(L"NativeOrders",L"TargetScanHz",advancedScanHz);write(L"NativeOrders",L"AdvancedHoldKey",advancedKey);write(L"NativeOrders",L"UnloadKey",unloadKey);write(L"NativeOrders",L"PathTimeoutFrames",pathTimeout);
  write(L"Hooks",L"Advanced",hookAdvanced);write(L"Hooks",L"SmartUnload",hookSmartUnload);
  write(L"Hooks",L"Eject",hookEject);write(L"Hooks",L"AutoCS",hookAutoCS);
  write(L"Display",L"CrateResults",0);
@@ -514,7 +512,7 @@ static void servicePlanner(){
  worldRevision=seq;
  if(!freshness::valid(w.match,snap.match,w.tick,w.frame,GetTickCount(),snap.frame,freshness::Tactical)||snap.chat){logPlanning(w,snap.chat?L"chat":L"stale-source");wakeGame();return;}
  LARGE_INTEGER begin{},end{},frequency{};QueryPerformanceCounter(&begin);
- submittedPlan=tacticalPlanner.step(w,shared->flags,veteranPercent,elitePercent,pathTimeout,advancedScanHz,advancedTargetPriority);shared->plannerTracking=tacticalPlanner.trackingFlags();
+ submittedPlan=tacticalPlanner.step(w,shared->flags,veteranPercent,elitePercent,pathTimeout,advancedScanHz,advancedTargetPriority,advancedRangeCells);shared->plannerTracking=tacticalPlanner.trackingFlags();
  QueryPerformanceCounter(&end);QueryPerformanceFrequency(&frequency);plannerMicros=frequency.QuadPart>0?DWORD((end.QuadPart-begin.QuadPart)*1000000/frequency.QuadPart):0;
  snap.oreYielded=tacticalPlanner.yielded;snap.oreQueued=tacticalPlanner.queued;snap.oreDocking=tacticalPlanner.docking;snap.oreIssued=tacticalPlanner.issued;
  snap.oreDelivered=tacticalPlanner.oreDelivered;snap.oreUnverified=tacticalPlanner.oreUnverified;
@@ -584,7 +582,7 @@ static bool ensureBridge(){
  if(!game||bridgeBlocked||(bridgeRetryAt&&int32_t(now-bridgeRetryAt)<0))return false;
  ++bridgeAttempts;bridgeRetryAt=now+(bridgeAttempts>=3?30000:2000);
  critical(L"bridge-connect-attempt="+std::to_wstring(bridgeAttempts)+L" pid="+std::to_wstring(pid)+L" thread="+std::to_wstring(gameThread));
- wchar_t n[100];swprintf(n,100,L"Local\\RA2Assist_v046_%lu",pid);
+ wchar_t n[100];swprintf(n,100,L"Local\\RA2Assist_v047_%lu",pid);
  mapping=CreateFileMappingW(INVALID_HANDLE_VALUE,nullptr,PAGE_READWRITE,0,sizeof(Shared),n);
  DWORD mappingError=GetLastError();if(!mapping)return bridgeFailed(L"创建命令共享内存失败",mappingError);
  if(mappingError==ERROR_ALREADY_EXISTS){
@@ -1310,7 +1308,7 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
  typeIdEdit=control(L"EDIT",L"",158,1071,312,26,467,ES_AUTOHSCROLL|WS_TABSTOP);
  control(L"BUTTON",L"添加",481,1071,144,26,449,BS_PUSHBUTTON|WS_TABSTOP);
  csStatus=control(L"STATIC",L"CS：等待对局",20,1107,605,23,0);
- control(L"STATIC",L"高级移动攻击",20,1140,270,24,0);advancedKeyEdit=control(HOTKEY_CLASSW,L"",305,1138,180,25,450,WS_TABSTOP);SendMessageW(advancedKeyEdit,HKM_SETHOTKEY,advancedKey,0);modernui::mouseOnly(advancedKeyEdit);
+ control(L"STATIC",L"高级移动攻击",20,1140,270,24,0);advancedKeyEdit=control(HOTKEY_CLASSW,L"",305,1138,180,25,450,WS_TABSTOP);SendMessageW(advancedKeyEdit,HKM_SETHOTKEY,advancedKey,0);modernui::mouseOnly(advancedKeyEdit);modernui::holdKey(advancedKeyEdit);SendMessageW(advancedKeyEdit,HKM_SETHOTKEY,advancedKey,0);
  control(L"STATIC",L"智能卸载",20,1175,340,24,0);unloadKeyEdit=control(HOTKEY_CLASSW,L"",374,1173,153,25,451,WS_TABSTOP);SendMessageW(unloadKeyEdit,HKM_SETHOTKEY,unloadKey,0);
  control(L"BUTTON",L"卸载",541,1173,84,27,453,BS_PUSHBUTTON|WS_TABSTOP);
  control(L"BUTTON",L"取消当前任务",20,1207,255,27,454,BS_PUSHBUTTON|WS_TABSTOP);
@@ -1320,7 +1318,7 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
  for(int i=0;i<4;++i){if(i==2)continue;int slot=i==3?2:i;hookChecks[i]=control(L"BUTTON",hookNames[i],20+(slot%2)*315,1275+(slot/2)*27,300,25,hookIds[i],BS_AUTOCHECKBOX|WS_TABSTOP);SendMessageW(hookChecks[i],BM_SETCHECK,hookValues[i]?BST_CHECKED:BST_UNCHECKED,0);}
  ejectCheck=control(L"BUTTON",L"逃生助手",20,1330,340,27,455,BS_AUTOCHECKBOX|WS_TABSTOP);SendMessageW(ejectCheck,BM_SETCHECK,ejectMode?BST_CHECKED:BST_UNCHECKED,0);ejectKeyEdit=control(HOTKEY_CLASSW,L"",374,1330,153,25,456,WS_TABSTOP);SendMessageW(ejectKeyEdit,HKM_SETHOTKEY,ejectKey,0);control(L"STATIC",L"自动保存",541,1330,84,27,457,0);
  magnetronCheck=pageControl(2,L"BUTTON",L"磁电轮换攻击",20,342,270,27,477,BS_AUTOCHECKBOX|WS_TABSTOP);SendMessageW(magnetronCheck,BM_SETCHECK,magnetronMode?BST_CHECKED:BST_UNCHECKED,0);
- magnetronKeyEdit=pageControl(2,HOTKEY_CLASSW,L"",305,342,180,26,478,WS_TABSTOP);SendMessageW(magnetronKeyEdit,HKM_SETHOTKEY,magnetronKey,0);modernui::mouseOnly(magnetronKeyEdit);
+ magnetronKeyEdit=pageControl(2,HOTKEY_CLASSW,L"",305,342,180,26,478,WS_TABSTOP);SendMessageW(magnetronKeyEdit,HKM_SETHOTKEY,magnetronKey,0);modernui::mouseOnly(magnetronKeyEdit);modernui::holdKey(magnetronKeyEdit);SendMessageW(magnetronKeyEdit,HKM_SETHOTKEY,magnetronKey,0);
  pageControl(2,L"STATIC",L"磁电：按住配置键配合增强鼠标键；出手后按 ROF 轮换目标。",20,380,605,25,0);
  pageControl(2,L"STATIC",L"手动移动、停止或取消自动任务可接管；独立于高级移动。",20,412,605,25,0);
  oreCheck=pageControl(0,L"BUTTON",L"矿车满载卸矿",20,496,225,25,470,BS_AUTOCHECKBOX|WS_TABSTOP);SendMessageW(oreCheck,BM_SETCHECK,oreMode?BST_CHECKED:BST_UNCHECKED,0);
@@ -1345,7 +1343,7 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
  pageControl(3,L"STATIC",L"500–60000",240,276,150,24,0);
  pageControl(3,L"STATIC",L"自动保存",420,274,205,27,472,0);
  csHoldCheck=pageControl(1,L"BUTTON",L"自定义 CS 按键",20,326,270,25,473,BS_AUTOCHECKBOX|WS_TABSTOP);SendMessageW(csHoldCheck,BM_SETCHECK,csHoldEnabled?BST_CHECKED:BST_UNCHECKED,0);
- csHoldEdit=pageControl(1,HOTKEY_CLASSW,L"",305,326,180,26,474,WS_TABSTOP);SendMessageW(csHoldEdit,HKM_SETHOTKEY,csHoldKey,0);modernui::mouseOnly(csHoldEdit);
+ csHoldEdit=pageControl(1,HOTKEY_CLASSW,L"",305,326,180,26,474,WS_TABSTOP);SendMessageW(csHoldEdit,HKM_SETHOTKEY,csHoldKey,0);modernui::mouseOnly(csHoldEdit);modernui::holdKey(csHoldEdit);SendMessageW(csHoldEdit,HKM_SETHOTKEY,csHoldKey,0);
  
  pageControl(1,L"STATIC",L"双按间隔：20–5000 ms",20,364,400,24,0);
  anywhereCheck=pageControl(4,L"BUTTON",L"任意建造（修改游戏判断 · 联机危险）",20,425,605,27,476,BS_AUTOCHECKBOX|WS_TABSTOP);SendMessageW(anywhereCheck,BM_SETCHECK,buildAnywhereMode?BST_CHECKED:BST_UNCHECKED,0);
@@ -1577,7 +1575,7 @@ int WINAPI wWinMain(HINSTANCE h,HINSTANCE,LPWSTR,int show){SetProcessDPIAware();
  ejectMode=value(L"NativeOrders",L"EjectAssist",0)!=0;hookEject=ejectMode;ejectKey=WORD(value(L"NativeOrders",L"EjectToggleKey",MAKEWORD('J',HOTKEYF_CONTROL|HOTKEYF_ALT)));veteranPercent=std::clamp(value(L"NativeOrders",L"VeteranPercent",200),100,10000);elitePercent=std::clamp(value(L"NativeOrders",L"ElitePercent",300),veteranPercent,10000);
  shiftSidebarWidth=std::clamp(value(L"Click",L"SidebarWidth",GetPrivateProfileIntW(L"Click",L"SidebarWidth",160,path(L"settings.ini").c_str())),32,600);shiftSidebarTop=std::clamp(value(L"Click",L"SidebarTop",GetPrivateProfileIntW(L"Click",L"SidebarTop",200,path(L"settings.ini").c_str())),0,2000);
  shiftClickEnabled=value(L"Click",L"Enabled",GetPrivateProfileIntW(L"Click",L"Enabled",1,path(L"settings.ini").c_str()))!=0;shiftClickMode=std::clamp(value(L"Click",L"Mode",GetPrivateProfileIntW(L"Click",L"Mode",0,path(L"settings.ini").c_str())),0,2);shiftClickGap=std::clamp(value(L"Click",L"IntervalMs",GetPrivateProfileIntW(L"Click",L"IntervalMs",0,path(L"settings.ini").c_str())),0,250);
- advancedTargetPriority=std::clamp(value(L"NativeOrders",L"TargetPriority",0),0,1);advancedScanHz=std::clamp(value(L"NativeOrders",L"TargetScanHz",10),1,60);advancedKey=WORD(value(L"NativeOrders",L"AdvancedHoldKey",MAKEWORD('G',HOTKEYF_ALT)));unloadKey=WORD(value(L"NativeOrders",L"UnloadKey",MAKEWORD('U',HOTKEYF_CONTROL|HOTKEYF_ALT)));pathTimeout=std::clamp(value(L"NativeOrders",L"PathTimeoutFrames",90),30,900);
+ advancedRangeCells=std::clamp(value(L"NativeOrders",L"TargetRangeExtraCells",2),0,30);advancedTargetPriority=std::clamp(value(L"NativeOrders",L"TargetPriority",0),0,1);advancedScanHz=std::clamp(value(L"NativeOrders",L"TargetScanHz",10),1,60);advancedKey=WORD(value(L"NativeOrders",L"AdvancedHoldKey",MAKEWORD('G',HOTKEYF_ALT)));unloadKey=WORD(value(L"NativeOrders",L"UnloadKey",MAKEWORD('U',HOTKEYF_CONTROL|HOTKEYF_ALT)));pathTimeout=std::clamp(value(L"NativeOrders",L"PathTimeoutFrames",90),30,900);
  doubleMs=std::clamp(value(L"TypeSelection",L"DoublePressMs",350),20,5000);csMode=value(L"AutoCS",L"Enabled",0)!=0;csKey=WORD(value(L"AutoCS",L"ToggleKey",MAKEWORD('A',HOTKEYF_CONTROL|HOTKEYF_ALT)));
  toastMs=std::clamp(value(L"Display",L"ToastMs",6000),500,60000);showDetails=value(L"Display",L"DetailedStatus",0)!=0;
  magnetronMode=value(L"Modes",L"MagnetronMove",0)!=0;magnetronKey=WORD(value(L"NativeOrders",L"MagnetronHoldKey",MAKEWORD('M',HOTKEYF_ALT)));

@@ -1,0 +1,86 @@
+{
+  "scope": "Real x86 Runtime + native event constructors; synthetic world and virtual legality query. Not live gameplay/netplay.",
+  "dll_sha256": "08102b1ce8de5c8db155631c5148ee2da1eba618813b02c76c596fb9cceb31c7",
+  "results": [
+    {
+      "case": "0_nearest",
+      "status": "PASS"
+    },
+    {
+      "case": "0_damage_action",
+      "status": "PASS"
+    },
+    {
+      "case": "0_neutral",
+      "status": "PASS"
+    },
+    {
+      "case": "0_virtual_override",
+      "status": "PASS"
+    },
+    {
+      "case": "0_guard_sticky",
+      "status": "PASS"
+    },
+    {
+      "case": "0_exit_transition",
+      "status": "PASS"
+    },
+    {
+      "case": "0_long_scatter",
+      "status": "PASS"
+    },
+    {
+      "case": "0_blocked",
+      "status": "PASS"
+    },
+    {
+      "case": "0_manual_stop",
+      "status": "PASS"
+    },
+    {
+      "case": "0_disabled",
+      "status": "PASS"
+    },
+    {
+      "case": "3_nearest",
+      "status": "PASS"
+    },
+    {
+      "case": "3_damage_action",
+      "status": "PASS"
+    },
+    {
+      "case": "3_neutral",
+      "status": "PASS"
+    },
+    {
+      "case": "3_virtual_override",
+      "status": "PASS"
+    },
+    {
+      "case": "3_guard_sticky",
+      "status": "PASS"
+    },
+    {
+      "case": "3_exit_transition",
+      "status": "PASS"
+    },
+    {
+      "case": "3_long_scatter",
+      "status": "PASS"
+    },
+    {
+      "case": "3_blocked",
+      "status": "PASS"
+    },
+    {
+      "case": "3_manual_stop",
+      "status": "PASS"
+    },
+    {
+      "case": "3_disabled",
+      "status": "PASS"
+    }
+  ]
+}

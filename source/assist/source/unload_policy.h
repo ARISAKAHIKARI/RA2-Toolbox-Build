@@ -9,7 +9,7 @@ inline bool completedDeploy(int sequence){return sequence>=28&&sequence<=30;}
 inline bool deployObserved(int sequence){return sequence>=27&&sequence<=30;}
 inline bool initialMayContinue(int mission,int mode,int landedAge,bool enteringOldCarrier=false,bool ejectDeployer=false){
  if(mission==2&&(mode==0||ejectDeployer&&mode!=0))return landedAge>=0&&landedAge<=ScatterFrames;
- if(mission==0||mission==5||mission==11)return true;
+ if(mission==0||mission==5||mission==6||mission==11)return true;
  if(mission==7&&enteringOldCarrier)return true;
  if(mission==13||mission==7||mission==16)return false;
  return mode!=0&&landedAge>=0&&landedAge<=8;
