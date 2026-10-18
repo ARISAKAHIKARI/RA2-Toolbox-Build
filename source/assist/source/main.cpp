@@ -328,7 +328,7 @@ static bool save(){++settingsRevision;saveWriteOK=true;for(int i=0;i<12;++i)writ
  for(const auto&id:csUnits)csItems.push_back({id,1});
  saveWriteOK=writeSection(L"TypeHotkeys",bindingItems)&&saveWriteOK;
  saveWriteOK=writeSection(L"AutoCSUnits",csItems)&&saveWriteOK;
- write(L"Click",L"SidebarWidth",shiftSidebarWidth);write(L"Click",L"SidebarTop",shiftSidebarTop);write(L"Click",L"Enabled",shiftClickEnabled);write(L"Click",L"Mode",shiftClickMode);write(L"Click",L"IntervalMs",shiftClickGap);write(L"Display",L"ToastMs",toastMs);write(L"Modes",L"AutoOreReturn",oreMode);write(L"Modes",L"MagnetronMove",magnetronMode);write(L"NativeOrders",L"MagnetronHoldKey",magnetronKey);write(L"Modes",L"BuildAnywhere",buildAnywhereMode);write(L"AutoCS",L"HoldEnabled",csHoldEnabled);write(L"AutoCS",L"HoldKey",csHoldKey);
+ write(L"Click",L"SidebarWidth",shiftSidebarWidth);write(L"Click",L"SidebarTop",shiftSidebarTop);write(L"Click",L"Enabled",shiftClickEnabled);write(L"Click",L"Mode",shiftClickMode);write(L"Click",L"IntervalMs",shiftClickGap);write(L"Display",L"ToastMs",toastMs);write(L"Modes",L"AutoOreReturn",oreMode);write(L"Modes",L"MagnetronMove",magnetronMode);write(L"NativeOrders",L"MagnetronHoldKey",magnetronKey);write(L"Experimental",L"BuildAnywhere",buildAnywhereMode);write(L"AutoCS",L"HoldEnabled",csHoldEnabled);write(L"AutoCS",L"HoldKey",csHoldKey);
  write(L"OreTypes",L"CustomMiners",oreTypes.customMiners);write(L"OreTypes",L"CustomRefineries",oreTypes.customRefineries);
  saveWriteOK=(WritePrivateProfileStringW(L"OreTypes",L"Miners",oreMiners.c_str(),path(L"Assist.ini").c_str())!=FALSE)&&saveWriteOK;
  saveWriteOK=(WritePrivateProfileStringW(L"OreTypes",L"Refineries",oreRefineries.c_str(),path(L"Assist.ini").c_str())!=FALSE)&&saveWriteOK;
@@ -581,7 +581,7 @@ static bool ensureBridge(){
  if(!game||bridgeBlocked||(bridgeRetryAt&&int32_t(now-bridgeRetryAt)<0))return false;
  ++bridgeAttempts;bridgeRetryAt=now+(bridgeAttempts>=3?30000:2000);
  critical(L"bridge-connect-attempt="+std::to_wstring(bridgeAttempts)+L" pid="+std::to_wstring(pid)+L" thread="+std::to_wstring(gameThread));
- wchar_t n[100];swprintf(n,100,L"Local\\RA2Assist_v043_%lu",pid);
+ wchar_t n[100];swprintf(n,100,L"Local\\RA2Assist_v044_%lu",pid);
  mapping=CreateFileMappingW(INVALID_HANDLE_VALUE,nullptr,PAGE_READWRITE,0,sizeof(Shared),n);
  DWORD mappingError=GetLastError();if(!mapping)return bridgeFailed(L"创建命令共享内存失败",mappingError);
  if(mappingError==ERROR_ALREADY_EXISTS){
@@ -784,6 +784,11 @@ static void readSnapshot(){
   incoming=candidate;
   bool first=!lastData;snap=incoming;snapshotSeq=a;lastData=GetTickCount();
   logCommandReceipts(incoming);
+  static int loggedPlacement=0,loggedNativeAir=0;
+  if(incoming.placementStatus!=loggedPlacement||incoming.nativeAirStatus!=loggedNativeAir){
+   autolog::write(L"experimental-patches placement="+std::to_wstring(incoming.placementStatus)+L" nativeAir="+std::to_wstring(incoming.nativeAirStatus)+L" installed="+std::to_wstring(incoming.hookInstalled)+L" conflicts="+std::to_wstring(incoming.hookConflicts));
+   loggedPlacement=incoming.placementStatus;loggedNativeAir=incoming.nativeAirStatus;
+  }
   static uint32_t loggedMatch=0,loggedFlags=0,loggedSent=0;static int loggedReady=-1;static DWORD entryAt=0,entryLogAt=0;
   const DWORD logNow=GetTickCount();const bool changed=incoming.match!=loggedMatch||incoming.commandStatus!=loggedReady||shared->flags!=loggedFlags;
   if(incoming.match!=loggedMatch){entryAt=logNow;entryLogAt=0;loggedSent=0;}
@@ -1035,6 +1040,9 @@ static void serviceCommandQueue(DWORD now){
 static void updateModeStatus(DWORD now){
  int phase=!enabled?1:!game?2:snap.status<0?3:(snap.status!=1||(shared&&commandMatch()&&snap.commandStatus!=1))?4:0;
  static int oldPhase=-1;static DWORD last; if(phase==oldPhase&&DWORD(now-last)<200)return;oldPhase=phase;last=now;
+ auto riskText=[&](bool wanted,int state)->std::wstring{if(state==-2)return L"冲突 / 安装或恢复失败";if(state==-1)return L"不支持此游戏版本";if(!wanted)return state==1?L"等待恢复":L"关闭";return phase?L"等待游戏就绪":state==1?L"已启用（联机危险）":L"等待安装";};
+ std::wstring riskStatus=L"任意建造："+riskText(buildAnywhereMode,snap.placementStatus)+L"\n原生路径点："+riskText(extra.nativeAirWaypoints,snap.nativeAirStatus);
+ SetWindowTextW(GetDlgItem(ui,807),riskStatus.c_str());
  const wchar_t*phaseText=phase==1?L"已暂停":phase==2?L"未连接":phase==3?L"接口不可用":commandMatch()?L"本局命令暂挂":L"正在读取对局";
  std::wstring nt=phase?phaseText:snap.nativeHookStatus<0?L"战术接口不可用，相关功能已停用":L"移动任务 "+std::to_wstring(snap.advancedUnits)+L" · 待处理乘员 "+std::to_wstring(snap.unloadPending)+L" · 逃生跟踪 "+std::to_wstring(snap.ejectWatched);
  if(!phase&&commandQueue.size)nt+=L" | 待处理命令 "+std::to_wstring(commandQueue.size);
@@ -1303,7 +1311,12 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
  csHoldEdit=pageControl(1,HOTKEY_CLASSW,L"",305,326,180,26,474,WS_TABSTOP);SendMessageW(csHoldEdit,HKM_SETHOTKEY,csHoldKey,0);modernui::mouseOnly(csHoldEdit);
  
  pageControl(1,L"STATIC",L"双按间隔：20–5000 ms",20,364,400,24,0);
- anywhereCheck=pageControl(4,L"BUTTON",L"随处建造（本版停用）",20,395,306,27,476,BS_AUTOCHECKBOX|WS_TABSTOP);SendMessageW(anywhereCheck,BM_SETCHECK,buildAnywhereMode?BST_CHECKED:BST_UNCHECKED,0);
+ anywhereCheck=pageControl(4,L"BUTTON",L"任意建造（修改游戏判断 · 联机危险）",20,395,605,27,476,BS_AUTOCHECKBOX|WS_TABSTOP);SendMessageW(anywhereCheck,BM_SETCHECK,buildAnywhereMode?BST_CHECKED:BST_UNCHECKED,0);
+ pageControl(4,L"STATIC",L"Hook 修改游戏判断清单 · 以下两项默认关闭，联机危险",20,360,605,26,805);
+ {HWND h=pageControl(4,L"BUTTON",L"飞机原生路径点（修改游戏判断 · 联机危险）",20,434,605,27,806,BS_AUTOCHECKBOX|WS_TABSTOP);SendMessageW(h,BM_SETCHECK,extra.nativeAirWaypoints?BST_CHECKED:BST_UNCHECKED,0);}
+ pageControl(4,L"STATIC",L"两项均可能导致不同步或掉线；由统一 GameRuntime 安装和恢复。",20,474,605,26,0);
+ pageControl(4,L"STATIC",L"原生路径点开启后，外部 Z 队列暂停；补丁冲突时不会强行覆盖。",20,512,605,26,0);
+ pageControl(4,L"STATIC",L"补丁状态：等待连接",20,550,605,54,807);
  pageControl(3,L"STATIC",L"游戏入口：统一消息管理器",20,416,605,24,0);
  schedulerEntryCombo=pageControl(3,L"COMBOBOX",L"",20,447,605,230,760,CBS_DROPDOWNLIST|WS_TABSTOP);
  SendMessageW(schedulerEntryCombo,CB_ADDSTRING,0,(LPARAM)L"统一消息入口 · 不改写游戏代码");
@@ -1320,7 +1333,7 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
  SendMessageW(objectQueueCombo,CB_ADDSTRING,0,(LPARAM)L"1 · YRpp ClickedEvent（仅多人实验）");
  SendMessageW(objectQueueCombo,CB_SETCURSEL,objectQueueMode,0);
 #include "extra_controls.h"
- EnableWindow(GetDlgItem(w,420),FALSE);EnableWindow(anywhereCheck,FALSE);
+ EnableWindow(GetDlgItem(w,420),FALSE);
  statusLabel=control(L"STATIC",L"正在寻找游戏…",20,1370,605,44,430);control(L"BUTTON",L"暂停 / 连接",20,1420,200,28,431,BS_PUSHBUTTON|WS_TABSTOP);control(L"BUTTON",L"使用说明",235,1420,185,28,432,BS_PUSHBUTTON|WS_TABSTOP);control(L"BUTTON",L"退出",435,1420,190,28,433,BS_PUSHBUTTON|WS_TABSTOP);EnableWindow(unloadKeyEdit,FALSE);EnableWindow(GetDlgItem(w,453),FALSE);EnableWindow(hookChecks[1],FALSE);SetWindowTextW(hookChecks[1],L"智能卸载（暂不可用）");finalizeTacticalLayout();ready=true;fillTech(true);fillTypeBindings(true);SetTimer(w,1,250,nullptr);SetTimer(w,2,80,nullptr);registerKeys();return 0;}
  case WM_SIZE:layoutPanel();return 0;
  case modernui::FocusMessage:{for(const auto&c:pageControls)if(c.hwnd==(HWND)lp&&c.page>=0){int top=c.rect.y-scrollY,bottom=top+c.visibleHeight;RECT client{};GetClientRect(w,&client);if(top<uilayout::BodyTop)scrollTo(c.rect.y-uilayout::BodyTop);else if(bottom>uilayout::bodyBottom(client.bottom))scrollTo(c.rect.y+c.visibleHeight-uilayout::bodyBottom(client.bottom));break;}return 0;}
@@ -1448,7 +1461,7 @@ if(id==991){wchar_t query[128]{};GetWindowTextW(featureSearch,query,128);std::ws
  else if(id==473){csHoldEnabled=SendMessageW(csHoldCheck,BM_GETCHECK,0,0)==BST_CHECKED;save();}
  else if(id==475){WORD next=WORD(SendMessageW(csHoldEdit,HKM_GETHOTKEY,0,0));WORD prior=csHoldKey;csHoldKey=0;bool conflict=keyConflict(next,"",false);csHoldKey=prior;if(conflict){notify(L"此按键与已有功能冲突。");return 0;}csHoldKey=next;save();notify(L"CS 按键已保存；留空直接按增强鼠标键，非空按住键配合点击。");}
  else if(id==476){buildAnywhereMode=SendMessageW(anywhereCheck,BM_GETCHECK,0,0)==BST_CHECKED;
-  if(buildAnywhereMode&&snap.status==1&&!eventdelivery::isSingleplayer(snap.session)){buildAnywhereMode=false;SendMessageW(anywhereCheck,BM_SETCHECK,BST_UNCHECKED,0);notify(L"随处建造仅支持单机；原版联机接收端仍会检查放置规则。");}
+  notify(buildAnywhereMode?L"任意建造已开启：会修改原版判断，联机危险。":L"任意建造已关闭，等待游戏线程恢复原判断。");
   save();}
  else if(id==431){enabled=!enabled;if(!enabled){detach();setStatus(L"已暂停。");}else{lastFind=0;setStatus(L"正在重新连接…");}
 #ifdef RA2_UNIFIED
@@ -1521,7 +1534,7 @@ int WINAPI wWinMain(HINSTANCE h,HINSTANCE,LPWSTR,int show){SetProcessDPIAware();
  GetPrivateProfileStringW(L"OreTypes",L"Refineries",L"GAREFN,NAREFN",text,13000,path(L"Assist.ini").c_str());oreRefineries=text;
  oreconfig::parse(oreMiners,oreTypes.miners,oreTypes.minerCount);oreconfig::parse(oreRefineries,oreTypes.refineries,oreTypes.refineryCount);
  oreTypes.customMiners=value(L"OreTypes",L"CustomMiners",0)!=0;oreTypes.customRefineries=value(L"OreTypes",L"CustomRefineries",0)!=0;}
- oreMode=value(L"Modes",L"AutoOreReturn",0)!=0;buildAnywhereMode=false;
+ oreMode=value(L"Modes",L"AutoOreReturn",0)!=0;buildAnywhereMode=value(L"Experimental",L"BuildAnywhere",0)!=0;
  csHoldEnabled=value(L"AutoCS",L"HoldEnabled",0)!=0;csHoldKey=WORD(value(L"AutoCS",L"HoldKey",MAKEWORD('G',HOTKEYF_CONTROL)));
  INITCOMMONCONTROLSEX cc{sizeof cc,ICC_WIN95_CLASSES};InitCommonControlsEx(&cc);GdiplusStartupInput gi;ULONG_PTR token;GdiplusStartup(&token,&gi,nullptr);font=modernui::makeFont();bgBrush=CreateSolidBrush(modernui::Background);editBrush=CreateSolidBrush(modernui::Field);
  WNDCLASSW wc{};wc.hInstance=h;wc.lpfnWndProc=DefWindowProcW;wc.lpszClassName=L"RA2AssistOverlay010";wc.hCursor=LoadCursorW(nullptr,IDC_ARROW);RegisterClassW(&wc);overlay=CreateWindowExW(WS_EX_LAYERED|WS_EX_TRANSPARENT|WS_EX_TOPMOST|WS_EX_TOOLWINDOW|WS_EX_NOACTIVATE,wc.lpszClassName,L"",WS_POPUP,0,0,1,1,nullptr,nullptr,h,nullptr);

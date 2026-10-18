@@ -108,6 +108,6 @@
  pageControl(2,L"STATIC",L"高级移动索敌优先",20,520,270,26,0);
  {auto h=pageControl(2,L"COMBOBOX",L"",305,520,320,150,802,CBS_DROPDOWNLIST|WS_TABSTOP);for(auto text:{L"单位价值优先",L"弹头伤害比例优先"})SendMessageW(h,CB_ADDSTRING,0,(LPARAM)text);SendMessageW(h,CB_SETCURSEL,advancedTargetPriority,0);}
 
- {auto h=pageControl(2,L"BUTTON",L"飞机 Z 路径点",20,636,605,26,803,BS_AUTOCHECKBOX|WS_TABSTOP);SendMessageW(h,BM_SETCHECK,extra.airWaypoints?BST_CHECKED:BST_UNCHECKED,0);}
+ {auto h=pageControl(2,L"BUTTON",L"飞机 Z 路径点（外部队列；原生模式下暂停）",20,636,605,26,803,BS_AUTOCHECKBOX|WS_TABSTOP);SendMessageW(h,BM_SETCHECK,extra.airWaypoints?BST_CHECKED:BST_UNCHECKED,0);}
 
  {auto h=pageControl(0,L"BUTTON",L"自动防偷点杀（防御建筑名单可配置）",20,1112,605,26,804,BS_AUTOCHECKBOX|WS_TABSTOP);SendMessageW(h,BM_SETCHECK,extra.antiTheft?BST_CHECKED:BST_UNCHECKED,0);}

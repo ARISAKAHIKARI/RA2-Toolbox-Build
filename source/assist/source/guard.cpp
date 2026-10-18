@@ -20,6 +20,17 @@ extern "C" int GuardedEnterAction(unsigned address,unsigned source,unsigned targ
 }
 extern "C" unsigned BeginAssistCapture();
 extern "C" void EndAssistCapture(unsigned);
+extern "C" int __cdecl AssistRiskAction(unsigned,unsigned,unsigned);
+extern "C" void AssistFault();
+extern "C" int __cdecl GuardedRiskAction(unsigned op,unsigned object,unsigned house){
+ unsigned token=BeginAssistCapture();if(!token)return 0;
+ int result=0;
+ __try {
+  __try {result=AssistRiskAction(op,object,house);}
+  __except(AssistExceptionFilter(_exception_info(),11)){AssistFault();}
+ }__finally {EndAssistCapture(token);}
+ return result;
+}
 // Compile this tiny boundary with the MSVC x86 ABI. MinGW x86's DWARF
 // exception mode cannot emit Windows SEH funclets reliably.
 extern "C" void AssistTick();

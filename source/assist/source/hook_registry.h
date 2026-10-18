@@ -5,7 +5,7 @@
 // Game-thread-only ownership bookkeeping, NOT a stop-the-world x86 patcher.
 // A stale/foreign site is sticky: never overwrite it on retries or detach.
 namespace assist { namespace hookregistry {
-enum class Owner : uint8_t { Frame, CS, Cursor, NativeEvent, FootClick, Decide, MouseUp, Placement, Sidebar, Unknown };
+enum class Owner : uint8_t { Frame, CS, Cursor, NativeEvent, FootClick, Decide, MouseUp, Placement, Sidebar, NativeAir, Unknown };
 inline Owner ownerAt(uint32_t a){
  switch(a){
  case 0x0055D360: return Owner::Frame;
@@ -15,7 +15,8 @@ inline Owner ownerAt(uint32_t a){
  case 0x004D74E0: return Owner::FootClick;
  case 0x00692610: return Owner::Decide;
  case 0x004AB9B0: return Owner::MouseUp;
- case 0x00464AC0: return Owner::Placement;
+ case 0x00464AC0:case 0x004A8EB0: return Owner::Placement;
+ case 0x007E2908:case 0x00416AB6:return Owner::NativeAir;
  case 0x006A97D2:case 0x006AA781:return Owner::Sidebar;
  // Six verified CALL-sites use the same frame owner.
  case 0x0048CE8A:case 0x00608206:case 0x0060D407:
@@ -34,6 +35,9 @@ inline bool knownOriginal(uint32_t at,const uint8_t* bytes,unsigned size){
  static const uint8_t decide[]={0x83,0xEC,0x10,0xA1,0xC8,0xEC,0xA8,0};
  static const uint8_t mouse[]={0x83,0xEC,0x7C,0x53,0x55,0x56};
  static const uint8_t place[]={0x8A,0x81,0x03,0x17,0,0};
+ static const uint8_t proximity[]={0xA1,0x4C,0x3D,0xA8,0};
+ static const uint8_t airType[]={0x50,0xCB,0x41,0};
+ static const uint8_t airArrival[]={0xC7,0x86,0xBC,0,0,0,3,0,0,0};
  static const uint8_t sidebarClick[]={0xE8,0x99,0xE0,0xE4,0xFF};
  static const uint8_t sidebarRefresh[]={0xE8,0xEA,0xD0,0xE4,0xFF};
  switch(at){
@@ -45,6 +49,9 @@ inline bool knownOriginal(uint32_t at,const uint8_t* bytes,unsigned size){
  case 0x00692610:signature=decide;expected=sizeof decide;break;
  case 0x004AB9B0:signature=mouse;expected=sizeof mouse;break;
  case 0x00464AC0:signature=place;expected=sizeof place;break;
+ case 0x004A8EB0:signature=proximity;expected=sizeof proximity;break;
+ case 0x007E2908:signature=airType;expected=sizeof airType;break;
+ case 0x00416AB6:signature=airArrival;expected=sizeof airArrival;break;
  case 0x006A97D2:signature=sidebarClick;expected=sizeof sidebarClick;break;
  case 0x006AA781:signature=sidebarRefresh;expected=sizeof sidebarRefresh;break;
  case 0x0048CE8A:case 0x00608206:case 0x0060D407:

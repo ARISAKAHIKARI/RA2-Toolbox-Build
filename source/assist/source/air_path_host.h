@@ -18,7 +18,7 @@ static void manual(const gameinput::PointerPress&e){
  for(int n=0;n<count;++n){uint32_t p=get<uint32_t>(items+n*4);if(get<uint32_t>(p)==0x7E22A4)cancel(get<uint32_t>(p+0x10));}
 }
 static void capture(const pointerinput::Intent&i,const pointerinput::Mailbox&box){
- if(box.result<0)return;
+ if(box.result<0||extra.nativeAirWaypoints)return;
  if(box.resolvedTarget){for(int n=0;n<i.count;++n)cancel(i.sources[n].id);ended=true;notify(L"攻击 / 对象命令已结束飞机路径点设置。");return;}
  if(!box.resolvedCell||ended)return;int added=0;
  for(int n=0;n<i.count;++n){if(!(box.sourceAccepted[n/32]&(1u<<(n%32))))continue;uint32_t id=i.sources[n].id;auto found=std::find_if(jobs.begin(),jobs.end(),[&](const Job&j){return j.id==id;});
@@ -35,7 +35,7 @@ static void result(int status,int count,uint32_t id,uint32_t token){for(auto&j:j
  else {cancel(id);notify(L"飞机路径任务已失效，已释放给原生命令。");}return;}}
 static void service(){
  DWORD now=GetTickCount();if(!(GetAsyncKeyState('Z')&0x8000))ended=false;
- if(!extra.airWaypoints||!enabled){if(!jobs.empty())reset();return;}
+ if(!extra.airWaypoints||extra.nativeAirWaypoints||!enabled){if(!jobs.empty())reset();return;}
  if(!shared||!commandFresh(now)||snap.chat)return;
  uint32_t owner=get<uint32_t>(0xA83D4C);int handled=0,sent=0;
  while(!jobs.empty()&&handled++<16){if(cursor>=jobs.size())cursor=0;auto&j=jobs[cursor++];uint32_t p=j.pointer;
@@ -53,7 +53,7 @@ static void service(){
   if(j.stage==0&&sent<4&&int32_t(now-j.sent)>=0&&queueCommand(AirPathMove,int(j.id),int(goal.cell),j.match,0,0,j.token)){j.stage=1;j.sent=now;++j.attempts;++sent;}
  }
 }
-static std::vector<Line> lines(){std::vector<Line> out;if(!extra.airWaypoints)return out;external::Projection projection{snap.cameraX,snap.cameraY,snap.width,snap.height};
+static std::vector<Line> lines(){std::vector<Line> out;if(!extra.airWaypoints||extra.nativeAirWaypoints)return out;external::Projection projection{snap.cameraX,snap.cameraY,snap.width,snap.height};
  for(const auto&j:jobs){if(!j.selected||j.match!=commandMatch())continue;int x=0,y=0;external::project(projection,j.x,j.y,j.z,x,y);
   for(auto point:j.points){int tx=0,ty=0;external::project(projection,int(point.cell%1000)*256+128,int(point.cell/1000)*256+128,point.z,tx,ty);out.push_back({x,y,tx,ty});x=tx;y=ty;if(out.size()>=256)return out;}
  }return out;}

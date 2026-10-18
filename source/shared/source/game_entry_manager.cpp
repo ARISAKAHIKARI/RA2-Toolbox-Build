@@ -2,6 +2,7 @@
 #define NOMINMAX
 #include <windows.h>
 #include "entry_policy.h"
+#include "experimental_patch_policy.h"
 #include "../../assist/source/hook_registry.h"
 using namespace gameentry;
 static Policy policy;
@@ -24,8 +25,36 @@ static void refreshBoundThreadHandle(uint32_t tid){
  boundThreadHandle=OpenThread(SYNCHRONIZE,FALSE,tid);
  if(boundThreadHandle)boundThreadId=tid;
 }
-// No engine code writes in this build. Compatibility callers fail closed.
-static Result applyPatch(const Request&){return Result::PatchDenied;}
+// One writer, bound game thread, exact signatures, Runtime-owned targets.
+static Result applyPatch(const Request&r){
+ if(r.client!=Client::Assist||r.length!=experimentalpatch::size(r.address)||!r.length)return Result::PatchDenied;
+ HMODULE self=nullptr;
+ if(!GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS|GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+   reinterpret_cast<LPCWSTR>(&applyPatch),&self)||r.module!=uint32_t(uintptr_t(self)))return Result::WrongOwner;
+ int slot=patches.find(r.address);
+ if(slot>=0&&patchModules[slot]&&patchModules[slot]!=r.module)return Result::WrongOwner;
+ const auto transition=patches.proposal(r.address,r.before,r.after,r.length);
+ if(transition==assist::hookregistry::Transition::Deny)return Result::PatchDenied;
+ if(transition==assist::hookregistry::Transition::Install){
+  const uint32_t target=experimentalpatch::destination(r.address,r.after,r.length);MEMORY_BASIC_INFORMATION info{};
+  if(!target||!VirtualQuery((void*)(uintptr_t)target,&info,sizeof info)||info.State!=MEM_COMMIT||
+     info.AllocationBase!=self||info.Type!=MEM_IMAGE||!(info.Protect&(PAGE_EXECUTE|PAGE_EXECUTE_READ|PAGE_EXECUTE_READWRITE|PAGE_EXECUTE_WRITECOPY)))return Result::PatchDenied;
+  HMODULE pin=nullptr;if(!GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS|GET_MODULE_HANDLE_EX_FLAG_PIN,
+    reinterpret_cast<LPCWSTR>(target),&pin))return Result::SystemFailure;
+ }
+ void* site=(void*)(uintptr_t)r.address;MEMORY_BASIC_INFORMATION info{};
+ if(!VirtualQuery(site,&info,sizeof info)||info.State!=MEM_COMMIT||info.AllocationBase!=GetModuleHandleW(nullptr)||
+    uintptr_t(site)+r.length>uintptr_t(info.BaseAddress)+info.RegionSize)return Result::PatchDenied;
+ if(memcmp(site,r.before,r.length)){patches.markConflict(r.address);return Result::PatchDenied;}
+ DWORD prior=0;if(!VirtualProtect(site,r.length,PAGE_EXECUTE_READWRITE,&prior))return Result::SystemFailure;
+ memcpy(site,r.after,r.length);
+ const bool flushed=FlushInstructionCache(GetCurrentProcess(),site,r.length)!=FALSE;
+ DWORD ignored=0;const bool protectedAgain=VirtualProtect(site,r.length,prior,&ignored)!=FALSE;
+ // Record actual bytes even on an OS error, so cleanup retains ownership.
+ patches.commit(r.address,r.before,r.after,r.length,transition);
+ slot=patches.find(r.address);if(slot>=0)patchModules[slot]=r.module;
+ return flushed&&protectedAgain?Result::Ok:Result::SystemFailure;
+}
 extern "C" __declspec(dllexport) int32_t __stdcall ManageGameEntry(Request*r){
  if(!r||r->size!=sizeof(Request)||r->version!=Version)return int32_t(Result::Invalid);
  const DWORD tid=GetCurrentThreadId();

@@ -13,6 +13,7 @@ static void changedSetting(){
 static bool autoSettingChanged(int id,int notification){
  if(!ready||updatingControls)return false;
  const bool edit=notification==EN_CHANGE,select=notification==CBN_SELCHANGE;
+ if(id==806&&notification==BN_CLICKED){extra.nativeAirWaypoints=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;airway::reset();pointerMatches.clear();changedSetting();notify(extra.nativeAirWaypoints?L"原生飞机路径点已开启，外部 Z 队列暂停；修改游戏判断，联机危险。":L"原生飞机路径点已关闭，等待恢复原判断。");return true;}
  if(id==804&&notification==BN_CLICKED){extra.antiTheft=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();return true;}
  if(id==803&&notification==BN_CLICKED){extra.airWaypoints=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();return true;}
  if(id==802&&select){advancedTargetPriority=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));changedSetting();return true;}

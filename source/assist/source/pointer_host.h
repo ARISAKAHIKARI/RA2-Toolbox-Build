@@ -45,6 +45,8 @@ static void servicePointer(){
  if(!gameinput::takePointer(hook,e,dropped)){if(dropped)notify(L"输入过密，部分增强请求未接收。");return;}
  if(!inputReady||e.serial!=box.cancelSerial||e.match!=commandMatch())return;
  airway::manual(e);
+ // Native Z planning owns the original click; do not append another feature.
+ if(extra.nativeAirWaypoints&&e.keys['Z']&&airway::selectedAircraft()){leftCaptured=false;return;}
  RECT client{};if(!GetClientRect(game,&client)||client.right!=e.width||client.bottom!=e.height)return;
  DWORD now=GetTickCount();if(!commandFresh(now)||!foregroundGame()||DWORD(now-e.tick)>100||snap.chat)return;
  static pointerinput::Intent in;in={};in.tick=e.tick;in.inputSerial=e.serial;in.match=e.match;
@@ -54,7 +56,7 @@ static void servicePointer(){
  pointerinput::MouseRoute routes[pointerinput::MouseCount]{};
  int routeCount=pointerinput::resolveMouseMatches(e.keys,e.operation==7?6:e.operation,extra.mouseButtons,
   bindings,saleEnabled,extra.allHotkeys,routes);
- if(extra.airWaypoints&&!airway::ended&&airway::selectedAircraft()&&e.keys['Z']&&!e.keys[VK_CONTROL]&&!e.keys[VK_MENU]&&(e.operation==4||e.operation==6||e.operation==7)){routes[0]={pointerinput::AirWaypoint,e.operation==4?uint32_t(pointerinput::RightClick):uint32_t(pointerinput::LeftClick)};routeCount=1;}
+ if(extra.airWaypoints&&!extra.nativeAirWaypoints&&!airway::ended&&airway::selectedAircraft()&&e.keys['Z']&&!e.keys[VK_CONTROL]&&!e.keys[VK_MENU]&&(e.operation==4||e.operation==6||e.operation==7)){routes[0]={pointerinput::AirWaypoint,e.operation==4?uint32_t(pointerinput::RightClick):uint32_t(pointerinput::LeftClick)};routeCount=1;}
  if(!routeCount)return;in.operation=routes[0].operation;in.bindings=routes[0].bindings;
  if(in.operation==pointerinput::Sell&&!(in.bindings&pointerinput::Control))return;
  if(in.operation==pointerinput::FollowNative&&!(shared->flags&AutoCS)&&!(in.bindings&(pointerinput::Advanced|pointerinput::Magnetron|pointerinput::CS)))return;

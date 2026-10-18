@@ -43,7 +43,7 @@ using namespace assist;
 // string literal. The host validates both protocol and structure size before
 // installing a hook; the release verifier can inspect these exports offline.
 extern "C" __declspec(dllexport) const uint32_t AssistProtocolInfo[2]={Version,sizeof(Shared)};
-extern "C" __declspec(dllexport) const wchar_t AssistMappingPrefix[]=L"Local\\RA2Assist_v043_";
+extern "C" __declspec(dllexport) const wchar_t AssistMappingPrefix[]=L"Local\\RA2Assist_v044_";
 static Shared*sh;static HANDLE mapping;static bool checked,good,fault;static DWORD last,slow;static uint32_t lastHouse,match,pendingAck;static int lastFrame;
 static sessionepoch::Tracker sessionTracker;static Snapshot snap;
 static runtimefault::Context faultContext;
@@ -687,7 +687,7 @@ static void command(uint32_t house,DWORD now){uint32_t req=sh->request;if(req==s
  else if(c==SelectSuper){result=superSelect(house,arg);n=result>0;}
  else if(c==SelectIron||c==SelectChrono){result=namedSuper(house,c);n=result>0;}
  else if(c==AirPathMove){uint32_t id=uint32_t(arg),p=worldByID(id),cell=uint32_t(sh->arg2);
-  if(!(sh->flags&AirWaypoints)||!p||!own(p,house)||kind(p)!=0||manualVersions.get(id)!=sh->requestToken||get<bool>(p+0x81)||get<uint32_t>(p+0x11C)||!readMapCell(int(cell%1000),int(cell/1000)))result=-4;
+  if(!(sh->flags&AirWaypoints)||(sh->flags&NativeAirWaypoints)||!p||!own(p,house)||kind(p)!=0||manualVersions.get(id)!=sh->requestToken||get<bool>(p+0x81)||get<uint32_t>(p+0x11C)||!readMapCell(int(cell%1000),int(cell/1000)))result=-4;
   else if(nativeMission(house,id,2,0,cell,11,0,0,taskarbiter::Owner::Generic))n=1;else result=-6;
  }
  else if(c==ProduceReserved){

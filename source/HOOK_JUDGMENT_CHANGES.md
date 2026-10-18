@@ -1,0 +1,33 @@
+# Hook 修改游戏判断清单（1.0.4）
+
+以下两项均为**联机危险**，默认关闭，在战术助手底部独立勾选，修改后自动生效并保存。并未因为统一管理而变成联机安全；其他客户端可能执行不同判断，造成不同步、掉线或指令被拒绝。尚未完成 Windows 游戏实测和真实双机验证。
+
+| 功能 | 修改位置 | 改变的行为 | 关闭与失败处理 |
+|---|---|---|---|
+| 任意建造 | `DisplayClass::PassesProximityCheck`，`0x4A8EB0`，5 字节入口跳转 | 对当前玩家的建筑放宽基地距离/邻接条件；保留原版 `CanPlaceHere` 的地形、地基占用检查。不改科技前提、造价、生产队列，不直接生成建筑。 | 仅恢复自身补丁；签名不匹配或位置被占用则拒绝安装。 |
+| 飞机原生路径点 | `AircraftTypeClass::CanUseWaypoint` 虚表项 `0x7E2908`，4 字节；`AircraftClass::Mission_Move` 到点分支 `0x416AB6`，10 字节 | 放开原生规划资格；原版认定到达目标格后，在原生返航状态之前调用 `TechnoClass::TryNextPlanningTokenNode`（`0x6385C0`）。没有可继续节点时执行原版分支。 | 先安装到点行为、再启用前端；任一步失败回滚整组。关闭时先恢复前端。 |
+
+飞机原生路径点**属于本清单**：原版飞机类型的资格函数直接返回 false，仅构造事件不足以接通原生界面和连续执行。此次没有修改所有单位共用的 false 函数，而是只替换飞机类型的虚表项。
+
+## 使用与边界
+
+- 原生模式使用游戏自身的路径点键（默认 Z）与原生规划界面，节点和后续事件归游戏规划系统管理。原生攻击、取消等操作沿用游戏行为。本次没有另外增加攻击任务拦截，也未验证所有 MOD 下攻击终止规划的表现。
+- 原生模式选中后，旧外部 Z 队列停止捕获、清空待执行请求；Runtime 也拒绝过时的外部路径请求。原生补丁不可用时不会偷偷换回外部队列；面板显示失败，取消原生勾选后才恢复已开启的外部模式。
+- 到点续行只处理仍存活的己方飞机，跳过 Team、空袭和坠毁飞机。采用原版“已到达目标格”条件，没有移植 Phobos 的平滑转弯、飞水面及其它扩展任务补丁。特殊飞机/地图/MOD 行为需要实机确认。
+- `[Experimental] BuildAnywhere=0` 与 `NativeAirWaypoints=0` 为默认值；不继承旧 `[Modes] BuildAnywhere=1`，避免历史设置自动启用危险功能。
+- 面板显示关闭、等待就绪、已启用、不支持、冲突/安装或恢复失败；状态变化写入现有自动日志。
+
+## 统一入口与生命周期
+
+1. EXE 仅发布配置。原有消息入口在绑定游戏线程上安装、恢复补丁；不新增 DLL、不新增调度线程或帧调度 Hook。
+2. `ManageGameEntry` 是唯一修改代码/虚表的写入者，只允许上述三个位置。旧帧、CS、事件、侧栏和 `0x464AC0` 修改请求仍被拒绝。
+3. 管理器验证执行租约、模块身份、原始字节、补丁形状、目标属于本 GameRuntime 的可执行映像、当前字节所有权。冲突不可通过下一轮重试覆盖。
+4. 游戏原生回调在同一管理器取得 Capture 租约；保存/恢复整数寄存器、标志与 x87/SSE 状态。异常边界释放租约并停用功能。回调直接读取当前游戏帧，不要求它等于上一次外部采样帧。
+5. 关闭、对局结束、宿主退出/失活、异常路径均恢复自身补丁；菜单边界可能等到游戏线程下一次正常处理。DLL 固定驻留，避免残留回调指向已卸载代码。外国补丁冲突时不强行写回。
+
+## 依据
+
+- [YRpp DisplayClass::PassesProximityCheck](https://github.com/Phobos-developers/YRpp/blob/master/DisplayClass.h)
+- [YRpp TechnoClass::TryNextPlanningTokenNode](https://github.com/Phobos-developers/YRpp/blob/master/TechnoClass.h)
+- [Phobos 原生飞机扩展任务参考（固定提交）](https://github.com/Phobos-developers/Phobos/blob/ef9a9e288811b4b49f501d78df1190d8b01facb4/src/Ext/Aircraft/Hooks.cpp)
+- 地址、完整指令边界和原始字节同时对照本地 `gamemd-spawn.exe`。实现独立编写，未直接复制 Phobos 补丁代码。
