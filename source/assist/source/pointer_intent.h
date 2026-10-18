@@ -2,7 +2,7 @@
 #include <stdint.h>
 namespace assist { namespace pointerinput {
 constexpr int MaxSources=512;
-enum Operation { Enhanced=1, AttackMove=2, Sell=3, FollowNative=4, Cancel=5, AirWaypoint=6 };
+enum Operation { Enhanced=1, AttackMove=2, Sell=3, FollowNative=4, Cancel=5, AirWaypoint=6, C4Test=7 };
 enum Binding { Advanced=1, Magnetron=2, CS=4, Enter=8, AirFirst=16, AirSecond=32, Control=64, Shift=128, RightClick=1024, SellDrainedInput=2048, SellVehicleInput=4096, PerFeatureMouse=8192, BatchStart=16384, BatchNext=32768, LeftClick=65536 };
 // Physical mouse capture uses 1=middle, 2/3=side buttons, 4=right release.
 // Preserve native right-click handling; configured right orders execute later.

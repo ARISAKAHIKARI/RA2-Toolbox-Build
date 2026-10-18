@@ -5,7 +5,7 @@
 // Game-thread-only ownership bookkeeping, NOT a stop-the-world x86 patcher.
 // A stale/foreign site is sticky: never overwrite it on retries or detach.
 namespace assist { namespace hookregistry {
-enum class Owner : uint8_t { Frame, CS, Cursor, NativeEvent, FootClick, Decide, MouseUp, Placement, Sidebar, NativeAir, RenderMask, Unknown };
+enum class Owner : uint8_t { Frame, CS, Cursor, NativeEvent, FootClick, Decide, MouseUp, Placement, Sidebar, NativeAir, RenderMask, C4Test, Unknown };
 inline Owner ownerAt(uint32_t a){
  switch(a){
  case 0x0055D360: return Owner::Frame;
@@ -18,6 +18,7 @@ inline Owner ownerAt(uint32_t a){
  case 0x00464AC0:case 0x004A8EB0: return Owner::Placement;
  case 0x007E2908:case 0x00416AB6:return Owner::NativeAir;
  case 0x0047EFE0:case 0x0047F250:return Owner::RenderMask;
+ case 0x0051A4D8:return Owner::C4Test;
  case 0x006A97D2:case 0x006AA781:return Owner::Sidebar;
  // Six verified CALL-sites use the same frame owner.
  case 0x0048CE8A:case 0x00608206:case 0x0060D407:
@@ -41,6 +42,7 @@ inline bool knownOriginal(uint32_t at,const uint8_t* bytes,unsigned size){
  static const uint8_t airArrival[]={0xC7,0x86,0xBC,0,0,0,3,0,0,0};
  static const uint8_t shroud[]={0x55,0x8B,0xEC,0x83,0xEC,0x34};
  static const uint8_t fog[]={0xA0,0xC6,0xE7,0x89,0};
+ static const uint8_t c4[]={0x8A,0x81,0xC2,0x0E,0,0};
  static const uint8_t sidebarClick[]={0xE8,0x99,0xE0,0xE4,0xFF};
  static const uint8_t sidebarRefresh[]={0xE8,0xEA,0xD0,0xE4,0xFF};
  switch(at){
@@ -57,6 +59,7 @@ inline bool knownOriginal(uint32_t at,const uint8_t* bytes,unsigned size){
  case 0x00416AB6:signature=airArrival;expected=sizeof airArrival;break;
  case 0x0047EFE0:signature=shroud;expected=sizeof shroud;break;
  case 0x0047F250:signature=fog;expected=sizeof fog;break;
+ case 0x0051A4D8:signature=c4;expected=sizeof c4;break;
  case 0x006A97D2:signature=sidebarClick;expected=sizeof sidebarClick;break;
  case 0x006AA781:signature=sidebarRefresh;expected=sizeof sidebarRefresh;break;
  case 0x0048CE8A:case 0x00608206:case 0x0060D407:

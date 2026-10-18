@@ -5,6 +5,8 @@ static void loadAdditionalSettings(){
  }
 
  extra.antiTheft=value(L"Modes",L"AntiTheft",0)!=0;
+ extra.c4Test=value(L"Experimental",L"InfantryC4",0)!=0;
+ extra.c4Key=value(L"Experimental",L"C4HoldKey",'C'|(4<<8));extra.c4Mouse=std::clamp(value(L"Experimental",L"C4Mouse",1),0,6);if(extra.c4Mouse==5)extra.c4Mouse=1;
  extra.renderReveal=value(L"Experimental",L"RenderReveal",0)!=0;
  extra.experimentalReveal=!extra.renderReveal&&value(L"Experimental",L"RevealMap",0)!=0;
  extra.nativeAirWaypoints=value(L"Experimental",L"NativeAirWaypoints",0)!=0;
@@ -41,6 +43,7 @@ static bool saveAdditionalSettings(){
  }
 
  write(L"Modes",L"AntiTheft",extra.antiTheft);write(L"Experimental",L"RevealMap",extra.experimentalReveal);
+ write(L"Experimental",L"InfantryC4",extra.c4Test);write(L"Experimental",L"C4HoldKey",extra.c4Key);write(L"Experimental",L"C4Mouse",extra.c4Mouse);
  write(L"Experimental",L"RenderReveal",extra.renderReveal);write(L"Experimental",L"NativeAirWaypoints",extra.nativeAirWaypoints);write(L"Aircraft",L"ZWaypoints",extra.airWaypoints);write(L"Production",L"ReserveNext",extra.constructionQueue);write(L"Display",L"EnemyMarkers",extra.enemyMarkers);write(L"Display",L"IdleAircraftIndicator",extra.idleAircraft);
  write(L"Hotkeys",L"ExecuteAllMatches",extra.allHotkeys);write(L"Mouse",L"OverrideNative",extra.overrideNative);
  for(int i=0;i<pointerinput::MouseCount;++i)write(L"Mouse",pointerinput::mouseSetting(i),extra.mouseButtons[i]);
@@ -76,8 +79,8 @@ static void fillExtraTypes(bool force=false){
  for(const auto&t:savedTypes.types){std::string id=t.id;if(!typecatalog::validId(id))continue;std::wstring label=(const wchar_t*)t.name;label+=L" ["+wide(id.c_str())+L"]";int row=int(SendMessageW(extraControls[QuotaType],CB_ADDSTRING,0,(LPARAM)label.c_str()));if(row<0)continue;quotaTypeIDs.push_back(id);if(id==keep)restore=row;}
  if(restore>=0)SendMessageW(extraControls[QuotaType],CB_SETCURSEL,restore,0);
 }
-static uint32_t additionalFlags(){uint32_t f=extra.frozen?Frozen:0;if(extra.antiTheft)f|=AntiTheft;if(extra.constructionQueue)f|=ReserveConstruction;if(extra.nativeAirWaypoints)f|=NativeAirWaypoints;else if(extra.airWaypoints)f|=AirWaypoints;if(extra.experimentalReveal)f|=ExperimentalReveal;if(extra.enter)f|=AdvancedEnter;if(extra.air)f|=AircraftSpread;if(extra.disk)f|=DiskPrimary;if(extra.sellDrained)f|=SellDrained;if(extra.sellVehicles)f|=SellVehicles;if(extra.sellEnemy)f|=SellEnemy;return f;}
-static void syncAdditional(){if(!shared)return;shared->renderReveal=extra.renderReveal;shared->loadMode=extra.loadMode;shared->loadRadius=extra.loadRadius;shared->enterKey=extra.enterKey;shared->airKey1=extra.airKey1;shared->airKey2=extra.airKey2;
+static uint32_t additionalFlags(){uint32_t f=extra.frozen?Frozen:0;if(techMode)f|=UnsafeTech;if(extra.antiTheft)f|=AntiTheft;if(extra.constructionQueue)f|=ReserveConstruction;if(extra.nativeAirWaypoints)f|=NativeAirWaypoints;else if(extra.airWaypoints)f|=AirWaypoints;if(extra.experimentalReveal)f|=ExperimentalReveal;if(extra.enter)f|=AdvancedEnter;if(extra.air)f|=AircraftSpread;if(extra.disk)f|=DiskPrimary;if(extra.sellDrained)f|=SellDrained;if(extra.sellVehicles)f|=SellVehicles;if(extra.sellEnemy)f|=SellEnemy;return f;}
+static void syncAdditional(){if(!shared)return;shared->c4Test=extra.c4Test;shared->renderReveal=extra.renderReveal;shared->loadMode=extra.loadMode;shared->loadRadius=extra.loadRadius;shared->enterKey=extra.enterKey;shared->airKey1=extra.airKey1;shared->airKey2=extra.airKey2;
  externalSampler.flashCount=0; // production tab reminders stay entirely in the host overlay
 }
 static void serviceCooperative(){

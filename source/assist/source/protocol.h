@@ -9,10 +9,10 @@
 #include "cooperative_types.h"
 #include "pointer_intent.h"
 namespace assist {
-constexpr uint32_t Magic=0x41533130, Version=45;
+constexpr uint32_t Magic=0x41533130, Version=46;
 constexpr uint32_t DataMessage=0x8002, WakeTag=0x41533230;
 constexpr int MaxLabels=2048, MaxSW=32, MaxTypes=512, MaxThreats=128, MaxCrates=256, MaxCrateResults=16;
-enum Command { None, Repair, CombatSelection, EmptyTransports, DamagedSelection, IdleHarvester, IdleEngineer, IdleTransport, ClearBeacons, RevealMap, OpenTech, SelectSuper, Produce, SelectIron, SelectChrono, AutoBoard, SelectType, SmartUnload, CancelAdvanced, SelectVariant, ProduceReserved, AirPathMove };
+enum Command { None, Repair, CombatSelection, EmptyTransports, DamagedSelection, IdleHarvester, IdleEngineer, IdleTransport, ClearBeacons, RevealMap, OpenTech, SelectSuper, Produce, SelectIron, SelectChrono, AutoBoard, SelectType, SmartUnload, CancelAdvanced, SelectVariant, ProduceReserved, AirPathMove, CancelTechProduction };
 enum Flags : uint32_t { Capacity=1, Iron=2, Production=4, AllTransports=8, Psychic=16, Crates=32, AutoRepair=64, TextPanel=128, CrateResults=256, AutoCS=512, NativeOrders=1024, EjectAssist=2048, UnsafeTech=4096, AdvancedInput=8192, SmartUnloadOrders=16384, AutoOreReturn=32768, BuildAnywhere=65536, CustomCS=131072, MagnetronInput=262144, Frozen=524288, AdvancedEnter=1048576, AircraftSpread=2097152, DiskPrimary=4194304, SellDrained=8388608, SellVehicles=16777216, SellEnemy=33554432, ExperimentalReveal=67108864, RepairUnrepairable=134217728, ReserveConstruction=268435456, AirWaypoints=536870912, AntiTheft=1073741824, NativeAirWaypoints=0x80000000u };
 constexpr uint32_t CooperativeFlags=AdvancedEnter|AircraftSpread,SpecialClickFlags=CooperativeFlags|DiskPrimary|SellDrained|SellVehicles|SellEnemy;
 struct Threat { uint32_t id,target; int x,y,tx,ty; };
@@ -56,6 +56,7 @@ struct Snapshot {
  uint32_t queuedEvents,observedEvents,commandRejected,receiptCancelled,receiptExpired,receiptDropped;
  uint32_t receiptWrite,receiptCount;TaskReceiptSummary recentReceipts[RecentReceiptCapacity];
  uint32_t entryThread=0,entryCalls=0,entryReentrant=0,entryContended=0,entryWrongThread=0;
+ int c4TestStatus=0;
  int renderRevealStatus=0; // 1=render-only test installed; -2=signature/install/restore conflict
  int lastSubmitError=0; // 0=queued; 1=epoch; 2=session; 3=inactive; 4=chat; 5=thread; 6=room; 7/8=ctor; 9=timer
 
@@ -102,6 +103,7 @@ struct Shared {
  uint8_t selectTypes[MaxTypes];
  volatile long oreConfigSeq;oreconfig::Config oreConfig;
  volatile long featureConfigSeq;featuretypes::Config featureConfig;
+ volatile uint32_t c4Test;
  volatile uint32_t renderReveal; // independent default-off visual experiment; never RevealMap
 
 };

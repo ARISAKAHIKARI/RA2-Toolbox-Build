@@ -43,7 +43,7 @@ static void pointerTick(){
   const bool continuation=next&&!start&&pointerBatchValid&&request==pointerBatchRequest+1&&pointerinput::sameCapture(i,pointerBatchCapture);
   if(!nativeReady()||i.inputSerial!=b.cancelSerial||i.match!=match||i.house!=lastHouse||
      (next&&!continuation)||(next&&start)||DWORD(now-i.tick)>(continuation?1500u:150u)||frame<i.frame||frame-i.frame>(continuation?90:8)||
-     i.count<0||i.count>pointerinput::MaxSources||i.operation<1||i.operation>6){pointerFinish(-7);return;}
+     i.count<0||i.count>pointerinput::MaxSources||i.operation<1||i.operation>7){pointerFinish(-7);return;}
   if(!continuation)pointerBatchValid=false;
   if(i.operation!=pointerinput::Cancel){
    bool shiftUnsupported=(i.bindings&pointerinput::Shift)&&(i.operation==pointerinput::FollowNative||(i.bindings&pointerinput::RightClick)||!(i.bindings&(pointerinput::Advanced|pointerinput::Magnetron|pointerinput::CS|pointerinput::Enter|pointerinput::AirFirst|pointerinput::AirSecond)));
@@ -90,6 +90,13 @@ static void pointerTick(){
   uint32_t p=worldByID(i.sources[n].id);
   if(!p||p!=i.sources[n].pointer||!own(p,lastHouse)||get<bool>(p+0x1C8)||get<uint32_t>(p+0x11C)||
      (!follow&&manualVersions.get(i.sources[n].id)!=pointerTokens[n])){pointerDone[n]=1;continue;}
+  if(i.operation==pointerinput::C4Test){
+   if(!sh->c4Test||!riskC4Active||kind(p)!=1||!pointerTarget||kind(pointerTarget)!=3||own(pointerTarget,lastHouse)||
+      call<bool>(0x4F9A50,lastHouse,(void*)(uintptr_t)get<uint32_t>(pointerTarget+0x21C))||!get<bool>(typeOf(pointerTarget,3)+0x1577)){pointerDone[n]=1;continue;}
+   if(submitted>=limit||outgoingRoom()<=0){++remaining;continue;}
+   if(nativeMission(lastHouse,i.sources[n].id,17,pointerTargetID,pointerTargetID,0x34)){++b.accepted;++submitted;pointerDone[n]=1;}else ++remaining;
+   continue;
+  }
   if(pointerTarget){
    if(submitted>=limit||outgoingRoom()<=0){++remaining;continue;}
    uint32_t before=snap.queuedEvents;int result=cooperativeInput(p,pointerTarget,i.bindings);submitted+=int(snap.queuedEvents-before);if(result<0){++remaining;continue;}pointerDone[n]=1;if(result>0)++b.accepted;continue;

@@ -16,7 +16,7 @@ static std::wstring controlHelp(int id,const std::wstring& label){
  case 110:return L"超时空选兵：使用配置的快捷键选择超时空相关单位。";
  case 111:case 700:case 701:return L"自动装车：选择乘员后执行快捷键，按范围和分配逻辑安排进入己方载具。";
  case 450:case 458:case 787:case 802:return L"高级移动攻击：按住快捷键＋所选鼠标键点地面；空键直接点击。射程＋3格索敌，排除伤害比例≤2%，可按价值或弹头比例优先；默认每秒10次；持续转火，直到新命令接管。";
- case 451:case 453:case 459:return L"智能卸载：当前版本暂不可用，入口已停用；逃生助手独立运行。";
+ case 451:case 453:case 459:return L"智能卸载：开启后选中己方运输载具，按配置热键（默认 Ctrl+Alt+U）或执行按钮；原版卸载后等待乘员走出，再部署、攻击或执行工程师/间谍/C4的原版合法任务。手动新命令或关闭功能即停止跟进。";
  case 454:return L"取消当前自动任务：释放已选单位的高级移动、磁电轮换等持续任务，由原版命令接管。";
  case 455:case 456:return L"逃生助手：仅跟踪已选己方载具；被摧毁后，支持部署的乘员分别尝试原版部署，不等待同格其他乘员。";
  case 477:case 478:return L"磁电轮换攻击：开启后按住快捷键＋所选鼠标键点地面；出手后按武器冷却轮换目标，持续到新命令接管。";
@@ -33,6 +33,7 @@ static std::wstring controlHelp(int id,const std::wstring& label){
  case 795:case 796:case 797:return L"Shift 五连点：按住Shift点击生产侧栏，原生一次后补四次；移鼠标、松开Shift或切出游戏即取消。自动模式遇到Ares时使用其原生五连点。";
  case 804:return L"自动防偷点杀：默认哨戒炮、碉堡、盖特机炮；功能单位清单可改建筑ID。射程内优先攻击敌方工程师、C4、伊文和潜入单位；已锁定这些威胁时保留目标。经统一管理器提交原版攻击，不写目标指针。";
  case 476:return L"任意建造：默认关闭，显式勾选后放宽己方建筑 PassesProximityCheck 距离判断；不改 Prerequisite、不直接生成建筑，保留地形和占用检查。修改游戏判断，联机危险；异版本或其他插件占用时拒绝覆盖。";
+ case 810:case 811:case 812:case 813:return L"C4 Beta 测试（含联机）：默认 Alt+C 加中键点击敌方可 C4 建筑；选中己方步兵，经统一入口提交任务17。显式绕过本地C4执行校验，可能造成联机不同步或掉线；关闭恢复。不是已复现的原版混合路径漏洞。";
  case 808:case 809:return L"绘制测试：只跳过黑幕/迷雾遮罩绘制；不写视野、不自动执行旧地图全开，也不解锁原版选中/攻击/雷达。默认关闭，未完成真实联机验证；关闭后恢复。";
  case 805:case 806:case 807:return L"飞机原生路径点：默认关闭；接通原生规划资格，到达路径点时尝试原生下一节点。使用游戏的路径点键（默认 Z），暂停旧外部队列。修改游戏判断，联机危险；关闭后恢复自己安装的补丁，不覆盖其他插件。";
  case 803:return L"外部飞机路径点（开启原生模式时暂停）：选中飞机，按住Z连续点击地面，松开Z后逐段执行；攻击或Ctrl强制攻击终结设置，普通新命令接管。每架最多64点，经统一GameRuntime提交原版移动。";
@@ -50,7 +51,7 @@ static std::wstring controlHelp(int id,const std::wstring& label){
  case 305:return L"箱子覆盖层：显示可读取的箱子位置与信息。";
  case 306:case 471:return L"文字面板：显示战术状态与播报；提示持续时间单位为毫秒。";
  case 310:case 311:return L"覆盖层显示：设置刷新率与上边距，单位载员和敌方标记使用同一刷新节奏。";
- case 420:case 423:case 424:case 425:case 426:case 427:return L"科技全开：当前仍受生产连续性限制；仅使用界面列出的可用路径，不改写单位Prerequisite。";
+ case 814:case 815:case 420:case 423:case 424:case 425:case 426:case 427:return L"科技生产测试：默认关闭；从外部目录构造原版 Produce，不改 Prerequisite，不 AddCameo。仅兵/车/机，仍要求对应阵营工厂、电力和建造上限；建筑放置未验证。联机未验证。";
  case 761:case 762:return L"事件后端：统一GameRuntime内构造原版事件；此设置下次启动生效。";
  }
  if(!label.empty())return label+L"；设置修改后自动生效并保存。";

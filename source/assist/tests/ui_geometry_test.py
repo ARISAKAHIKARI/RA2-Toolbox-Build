@@ -57,12 +57,14 @@ static HWND ui,repairCheck,repairEdit,keys[12],check[7],rateEdit,marginEdit,swLi
 static AdditionalSettings extra;static HWND extraControls[ExtraControlCount];
 static unsigned schedulerTarget=0,megaQueueMode=0,objectQueueMode=0;static HFONT font;static int scrollY,repairMs=2000,fps=60,topMargin=20,doubleMs=350,toastMs=6000;
 static DWORD GetTickCount(){return 1606;}
+static bool commandFresh(DWORD){return true;}
 static bool techDirectProduce,techMode,csMode,hookAdvanced,hookSmartUnload=true,hookEject,hookAutoCS,ejectMode,magnetronMode,
  oreMode,showDetails,csHoldEnabled,buildAnywhereMode,ready;
 static unsigned hotkeys[12]{},csKey,advancedKey,unloadKey,ejectKey,magnetronKey,csHoldKey;
 static HWND game=1;static bool enabled=true;static std::wstring hoverHelp,statusText;static int advancedScanHz=10,advancedTargetPriority=0,shiftClickMode=0,shiftClickGap=0;static bool shiftClickEnabled=false;
-static struct {int placementStatus=0,nativeAirStatus=0,renderRevealStatus=0,commandStatus=1,entryReentrant=0,entryContended=0,session=5,lastSubmitError=0,queueSent=0,commandRejected=0,queueFull=0,queueTimingFailure=0,status=1,nativeHookStatus=1,advancedUnits=0,unloadPending=0,ejectWatched=0,csHookStatus=1,oreQueued=0,oreDocking=0,oreManual=0,oreDelivered=0,oreUnverified=0,magnetShots=0,magnetUnverified=0,hookConflicts=0,megaQueueAccepted=0,megaQueueRejected=0,megaQueueStatus=0,objectQueueAccepted=0,objectQueueRejected=0,objectQueueStatus=0;} snap;
+static struct {int c4TestStatus=0,placementStatus=0,nativeAirStatus=0,renderRevealStatus=0,commandStatus=1,entryReentrant=0,entryContended=0,session=5,lastSubmitError=0,queueSent=0,commandRejected=0,queueFull=0,queueTimingFailure=0,status=1,nativeHookStatus=1,advancedUnits=0,unloadPending=0,ejectWatched=0,csHookStatus=1,oreQueued=0,oreDocking=0,oreManual=0,oreDelivered=0,oreUnverified=0,magnetShots=0,magnetUnverified=0,hookConflicts=0,megaQueueAccepted=0,megaQueueRejected=0,megaQueueStatus=0,objectQueueAccepted=0,objectQueueRejected=0,objectQueueStatus=0;} snap;
 static struct {int size=0;} commandQueue;
+static struct {bool readFresh(uint32_t,void*,size_t){return false;}} externalReader;
 static struct {int driverMode=0,driverTarget=0,driverStatus=0,driverTicks=0,megaQueueMode=0,objectQueueMode=0;DWORD driverLastTick=0;} mockScheduler;
 static decltype(mockScheduler)* shared=nullptr;
 static unsigned LOBYTE(unsigned key){return key&255;}

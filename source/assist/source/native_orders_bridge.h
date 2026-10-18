@@ -108,7 +108,7 @@ static void smartUnloadTick(uint32_t house,int frame,int&budget){
   bool carrierAlive=carrierValid&&own(r.carrier,house);
   uint32_t passengerType=member&&kind(p)==1?typeOf(p,1):0;
   if(member&&(!featureTypeAllowed(r.mode?featuretypes::EscapePassenger:featuretypes::UnloadPassenger,passengerType)||!featureTypeAllowed(r.mode?featuretypes::EscapeTransport:featuretypes::UnloadTransport,r.carrierType)))r.cancelled=true;
-  bool ejectDeployer=r.mode!=0&&passengerType>=0x10000&&get<bool>(passengerType+0xEC8);
+  bool ejectDeployer=r.mode!=1&&passengerType>=0x10000&&get<bool>(passengerType+0xEC8);
   bool done=!member||get<uint32_t>(p+0x10)!=r.id||kind(p)!=1||get<uint32_t>(p+0x21C)!=house||get<int>(p+0x6C)<=0;
   if(!done){uint32_t carrier=get<uint32_t>(p+0x11C);
    if(carrier&&(carrier!=r.carrier||!carrierValid||r.stage!=0||r.landedFrame))done=true;
@@ -151,6 +151,10 @@ static void smartUnloadTick(uint32_t house,int frame,int&budget){
    }else done=true;
   }
   if(!done&&r.mode!=1&&live(p)&&!get<uint32_t>(p+0x11C)){uint32_t t=typeOf(p,1);int currentMission=get<int>(p+0xAC);
+   // Normal unloading also scatters infantry away from the exit. Keep this
+   // explicit unload job while they walk out; never append Sleep/Deploy to
+   // their temporary Move. Manual orders cancel via the shared input manager.
+   if(r.mode==0&&currentMission==2&&frame-r.landedFrame<=unloadpolicy::ScatterFrames)continue;
    // Observation must survive a full event queue or another passenger using
    // this frame's budget. Otherwise a short interrupted Deploy is never seen.
    const bool canSend=budget>0&&outgoingRoom()>0;

@@ -54,10 +54,14 @@ static void servicePointer(){
  uint32_t saleEnabled=0;
  if(featureFlags&SellDrained)saleEnabled|=pointerinput::SellDrainedInput;
  if(featureFlags&SellVehicles)saleEnabled|=pointerinput::SellVehicleInput;
- pointerinput::MouseRoute routes[pointerinput::MouseCount]{};
+ pointerinput::MouseRoute routes[pointerinput::MouseCount+1]{};
  int routeCount=pointerinput::resolveMouseMatches(e.keys,e.operation==7?6:e.operation,extra.mouseButtons,
   bindings,saleEnabled,extra.allHotkeys,routes);
  if(extra.airWaypoints&&!extra.nativeAirWaypoints&&!airway::ended&&airway::selectedAircraft()&&e.keys['Z']&&!e.keys[VK_CONTROL]&&!e.keys[VK_MENU]&&(e.operation==4||e.operation==6||e.operation==7)){routes[0]={pointerinput::AirWaypoint,e.operation==4?uint32_t(pointerinput::RightClick):uint32_t(pointerinput::LeftClick)};routeCount=1;}
+ if(extra.c4Test&&extra.c4Mouse&&uint32_t(e.operation==7?6:e.operation)==extra.c4Mouse&&pointerinput::matchesHold(e.keys,extra.c4Key,pointerinput::Enhanced)){
+  pointerinput::MouseRoute test{pointerinput::C4Test,pointerinput::PerFeatureMouse|(extra.c4Mouse==4?uint32_t(pointerinput::RightClick):extra.c4Mouse==6?uint32_t(pointerinput::LeftClick):0)};
+  if(extra.allHotkeys&&routeCount&&routes[0].operation!=pointerinput::FollowNative)routes[routeCount++]=test;else{routes[0]=test;routeCount=1;}
+ }
  if(!routeCount)return;in.operation=routes[0].operation;in.bindings=routes[0].bindings;
  if(in.operation==pointerinput::Sell&&!(in.bindings&pointerinput::Control))return;
  if(in.operation==pointerinput::FollowNative&&!(shared->flags&AutoCS)&&!(in.bindings&(pointerinput::Advanced|pointerinput::Magnetron|pointerinput::CS)))return;

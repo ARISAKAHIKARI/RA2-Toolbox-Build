@@ -36,6 +36,7 @@ static PointerPress event;static bool queued=false;
 static void setPointerContext(int,uint32_t,bool){}static uint32_t pointerCancelSerial(int){return cancelSerial;}
 static bool takePointer(int,PointerPress&e,DWORD&dropped){dropped=0;if(!queued)return false;e=event;queued=false;return true;}
 }
+namespace buildreserve{static bool nativePointer(const gameinput::PointerPress&){return false;}}
 namespace airway{static void capture(const pointerinput::Intent&,const pointerinput::Mailbox&){} static bool ended=false;static bool selectedAircraft(){return false;}static void manual(const gameinput::PointerPress&){} }
 '''+body+r'''
 static void capture(){gameinput::event={};auto&e=gameinput::event;e.tick=clockNow;e.serial=cancelSerial;e.match=8;e.operation=1;e.point={100,100};e.width=800;e.height=600;gameinput::queued=true;}
@@ -46,6 +47,14 @@ static void initialize(){
  focused=visible=fresh=true;retryCooperative=false;shared->cooperativeRequest.serial=shared->cooperativePlan=shared->cooperativeAck=cooperativeDelivered=0;clockNow+=10;
 }
 int main(){
+ // C4 uses the existing mailbox, default chord and per-feature mouse setting.
+ initialize();featureFlags=0;extra.c4Test=true;extra.c4Key='C'|(4<<8);extra.c4Mouse=1;
+ capture();servicePointer();assert(shared->pointer.request==shared->pointer.ack); // no chord
+ capture();gameinput::event.keys[18]=gameinput::event.keys['C']=1;servicePointer();assert(shared->pointer.intent.operation==pointerinput::C4Test&&shared->pointer.intent.count==1);ack();servicePointer();
+ extra.c4Key=0;extra.c4Mouse=6;capture();gameinput::event.operation=7;unsigned prior=shared->pointer.request;servicePointer();assert(shared->pointer.request==prior);
+ capture();gameinput::event.operation=6;servicePointer();assert(shared->pointer.request==prior+1&&shared->pointer.intent.operation==pointerinput::C4Test&&(shared->pointer.intent.bindings&pointerinput::LeftClick));ack();servicePointer();
+ extra.c4Test=false;featureFlags=AdvancedInput|CustomCS;
+
  initialize();capture();servicePointer();auto first=shared->pointer.intent;assert(first.bindings&pointerinput::BatchStart);assert((first.bindings&7)==pointerinput::Advanced);
  ack();shared->cooperativeRequest.serial=9;unsigned request=shared->pointer.request;clockNow+=200;servicePointer();assert(shared->pointer.request==request); // not overwritten before host consumes it
  cooperativeDelivered=9;shared->cooperativePlan=1;servicePointer();assert(shared->pointer.request==request);

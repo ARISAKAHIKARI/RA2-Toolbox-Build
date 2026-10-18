@@ -16,7 +16,8 @@ int main(){
  assert(unloadpolicy::initialMayContinue(0,0,0));
  assert(unloadpolicy::initialMayContinue(5,0,0));
  assert(unloadpolicy::initialMayContinue(11,0,0));
- assert(!unloadpolicy::initialMayContinue(2,0,1));
+ assert(unloadpolicy::initialMayContinue(2,0,1));
+ assert(!unloadpolicy::initialMayContinue(2,0,181));
  assert(unloadpolicy::initialMayContinue(2,2,1));
  assert(!unloadpolicy::initialMayContinue(2,2,10));
  assert(unloadpolicy::initialMayContinue(2,2,20,false,true));

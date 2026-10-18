@@ -1,5 +1,5 @@
-// Native sidebar helpers. Full-tech unlock is currently disabled: refreshTech
-// reports -20 and does not patch eligibility, prerequisites or cancellation.
+// Native sidebar helpers. External tech Beta reads its catalogue only;
+// it never patches eligibility, prerequisites or native cameo cancellation.
 // The helpers below are also used by ordinary production and cameo feedback.
 static constexpr uint32_t Sidebar=0x87F7E8, Tabs=Sidebar+0x1544;
 #include "sidebar_policy.h"
@@ -20,7 +20,10 @@ static uint32_t techFactory(uint32_t type,uint32_t house){
  return call<uint32_t>(method,type,true,false,false,(void*)(uintptr_t)house);
 }
 static void restoreTech(){techPending=false;snap.techOpen=0;}
-static void refreshTech(uint32_t,DWORD now){techRefresh=now;restoreTech();snap.techError=-20;snap.techVisible=snap.techUnavailable=0;}
+static void refreshTech(uint32_t,DWORD now){techRefresh=now;snap.techError=0;snap.techVisible=snap.techUnavailable=0;
+ if(!(sh->flags&UnsafeTech)){restoreTech();return;}snap.techOpen=1;
+ for(int i=0;i<snap.typeCount;++i){if(techAllowed[i]&&snap.types[i].kind!=7)++snap.techVisible;else ++snap.techUnavailable;}
+}
 struct FlashRef {uint32_t address;int kind,index,until;};static FlashRef flashRefs[4*75];
 static void clearFlashes(){for(auto&f:flashRefs){if(f.address&&get<int>(f.address-48)==f.index&&get<int>(f.address-44)==f.kind&&get<int>(f.address)==f.until)put<int>(f.address,0);f={};}}
 static void flashCameo(int type,int frame){if(type<0||type>=snap.typeCount)return;int tab=typeTab(type);if(tab!=0&&tab!=3)return;

@@ -9,12 +9,12 @@ inline bool sameCapture(const Intent&a,const Intent&b){
   a.count==b.count&&a.count>=0&&a.count<=MaxSources&&!std::memcmp(a.sources,b.sources,size_t(a.count)*sizeof(Source));
 }
 struct PendingMatches {
- Intent capture{};MouseRoute routes[MouseCount]{};int count=0,at=0,accepted=0,rejected=0;
+ Intent capture{};MouseRoute routes[(MouseCount+1)]{};int count=0,at=0,accepted=0,rejected=0;
  uint32_t revision=0,cooperativeBefore=0;
  void clear(){count=at=accepted=rejected=0;}
  bool active()const{return count>1;}
  bool waiting()const{return active()&&at<count;}
- void begin(const Intent&i,const MouseRoute*r,int n,uint32_t rev){clear();if(n<1||n>MouseCount)return;capture=i;count=n;revision=rev;for(int j=0;j<n&&j<MouseCount;++j)routes[j]=r[j];}
+ void begin(const Intent&i,const MouseRoute*r,int n,uint32_t rev){clear();if(n<1||n>(MouseCount+1))return;capture=i;count=n;revision=rev;for(int j=0;j<n&&j<(MouseCount+1);++j)routes[j]=r[j];}
  Intent next(){if(at>=count)return {};Intent out=capture;const auto&r=routes[at];out.operation=r.operation;out.bindings=r.bindings;
   if(active())out.bindings|=at?BatchNext:BatchStart;++at;return out;
  }

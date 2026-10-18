@@ -1,0 +1,262 @@
+{
+  "scope": "Actual DLL/manager/stubs/native constructors with synthetic world; not game or multiplayer simulation.",
+  "dll_sha256": "4b04bbbcc298b49924697cc6354b95ce8a0d020d4e98cdd5dd7891a7391fe9d8",
+  "results": [
+    {
+      "case": "tech_0_allowed",
+      "status": "PASS"
+    },
+    {
+      "case": "tech_0_disabled",
+      "status": "PASS"
+    },
+    {
+      "case": "tech_0_no_factory",
+      "status": "PASS"
+    },
+    {
+      "case": "tech_0_limit",
+      "status": "PASS"
+    },
+    {
+      "case": "tech_0_building",
+      "status": "PASS"
+    },
+    {
+      "case": "tech_0_cancel",
+      "status": "PASS"
+    },
+    {
+      "case": "c4_0_off",
+      "status": "PASS"
+    },
+    {
+      "case": "c4_0_on",
+      "status": "PASS"
+    },
+    {
+      "case": "c4_0_conflict",
+      "status": "PASS"
+    },
+    {
+      "case": "c4_0_restore",
+      "status": "PASS"
+    },
+    {
+      "case": "smart_unload_0_deployer",
+      "status": "PASS"
+    },
+    {
+      "case": "smart_unload_0_engineer",
+      "status": "PASS"
+    },
+    {
+      "case": "smart_unload_0_manual_stop",
+      "status": "PASS"
+    },
+    {
+      "case": "smart_unload_0_disabled",
+      "status": "PASS"
+    },
+    {
+      "case": "smart_unload_0_off_after",
+      "status": "PASS"
+    },
+    {
+      "case": "smart_unload_0_scatter_timeout",
+      "status": "PASS"
+    },
+    {
+      "case": "tech_3_allowed",
+      "status": "PASS"
+    },
+    {
+      "case": "tech_3_disabled",
+      "status": "PASS"
+    },
+    {
+      "case": "tech_3_no_factory",
+      "status": "PASS"
+    },
+    {
+      "case": "tech_3_limit",
+      "status": "PASS"
+    },
+    {
+      "case": "tech_3_building",
+      "status": "PASS"
+    },
+    {
+      "case": "tech_3_cancel",
+      "status": "PASS"
+    },
+    {
+      "case": "c4_3_off",
+      "status": "PASS"
+    },
+    {
+      "case": "c4_3_on",
+      "status": "PASS"
+    },
+    {
+      "case": "c4_3_conflict",
+      "status": "PASS"
+    },
+    {
+      "case": "c4_3_restore",
+      "status": "PASS"
+    },
+    {
+      "case": "smart_unload_3_deployer",
+      "status": "PASS"
+    },
+    {
+      "case": "smart_unload_3_engineer",
+      "status": "PASS"
+    },
+    {
+      "case": "smart_unload_3_manual_stop",
+      "status": "PASS"
+    },
+    {
+      "case": "smart_unload_3_disabled",
+      "status": "PASS"
+    },
+    {
+      "case": "smart_unload_3_off_after",
+      "status": "PASS"
+    },
+    {
+      "case": "smart_unload_3_scatter_timeout",
+      "status": "PASS"
+    },
+    {
+      "case": "tech_4_allowed",
+      "status": "PASS"
+    },
+    {
+      "case": "tech_4_disabled",
+      "status": "PASS"
+    },
+    {
+      "case": "tech_4_no_factory",
+      "status": "PASS"
+    },
+    {
+      "case": "tech_4_limit",
+      "status": "PASS"
+    },
+    {
+      "case": "tech_4_building",
+      "status": "PASS"
+    },
+    {
+      "case": "tech_4_cancel",
+      "status": "PASS"
+    },
+    {
+      "case": "c4_4_off",
+      "status": "PASS"
+    },
+    {
+      "case": "c4_4_on",
+      "status": "PASS"
+    },
+    {
+      "case": "c4_4_conflict",
+      "status": "PASS"
+    },
+    {
+      "case": "c4_4_restore",
+      "status": "PASS"
+    },
+    {
+      "case": "smart_unload_4_deployer",
+      "status": "PASS"
+    },
+    {
+      "case": "smart_unload_4_engineer",
+      "status": "PASS"
+    },
+    {
+      "case": "smart_unload_4_manual_stop",
+      "status": "PASS"
+    },
+    {
+      "case": "smart_unload_4_disabled",
+      "status": "PASS"
+    },
+    {
+      "case": "smart_unload_4_off_after",
+      "status": "PASS"
+    },
+    {
+      "case": "smart_unload_4_scatter_timeout",
+      "status": "PASS"
+    },
+    {
+      "case": "tech_5_allowed",
+      "status": "PASS"
+    },
+    {
+      "case": "tech_5_disabled",
+      "status": "PASS"
+    },
+    {
+      "case": "tech_5_no_factory",
+      "status": "PASS"
+    },
+    {
+      "case": "tech_5_limit",
+      "status": "PASS"
+    },
+    {
+      "case": "tech_5_building",
+      "status": "PASS"
+    },
+    {
+      "case": "tech_5_cancel",
+      "status": "PASS"
+    },
+    {
+      "case": "c4_5_off",
+      "status": "PASS"
+    },
+    {
+      "case": "c4_5_on",
+      "status": "PASS"
+    },
+    {
+      "case": "c4_5_conflict",
+      "status": "PASS"
+    },
+    {
+      "case": "c4_5_restore",
+      "status": "PASS"
+    },
+    {
+      "case": "smart_unload_5_deployer",
+      "status": "PASS"
+    },
+    {
+      "case": "smart_unload_5_engineer",
+      "status": "PASS"
+    },
+    {
+      "case": "smart_unload_5_manual_stop",
+      "status": "PASS"
+    },
+    {
+      "case": "smart_unload_5_disabled",
+      "status": "PASS"
+    },
+    {
+      "case": "smart_unload_5_off_after",
+      "status": "PASS"
+    },
+    {
+      "case": "smart_unload_5_scatter_timeout",
+      "status": "PASS"
+    }
+  ]
+}

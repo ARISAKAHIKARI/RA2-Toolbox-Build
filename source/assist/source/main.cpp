@@ -33,6 +33,7 @@
 #include "control_link.h"
 #include "event_delivery.h"
 #include "tech_profile.h"
+#include "../../shared/source/viewport_scale.h"
 #include "type_catalog.h"
 #include "external_planner.h"
 #include "clock_ms.h"
@@ -313,7 +314,7 @@ static void chooseTechProfile(int next){
 }
 static bool save(){++settingsRevision;saveWriteOK=true;for(int i=0;i<12;++i)write(L"Hotkeys",wide(iniKeys[i]).c_str(),hotkeys[i]);write(L"Display",L"FPS",fps);write(L"Display",L"LabelRefreshVersion",1);write(L"Display",L"TopMargin",topMargin);
  for(int i=0;i<7;++i){const wchar_t*names[]={L"Capacity",L"Iron",L"Production",L"AllTransports",L"Psychic",L"Crates",L"TextPanel"};write(L"Display",names[i],SendMessageW(check[i],BM_GETCHECK,0,0)==BST_CHECKED);}
- write(L"Modes",L"AutoRepair",SendMessageW(repairCheck,BM_GETCHECK,0,0)==BST_CHECKED);write(L"Modes",L"RepairUnrepairable",repairUnrepairable);write(L"Modes",L"Tech",techMode);write(L"Modes",L"RepairMs",repairMs);
+ write(L"Modes",L"AutoRepair",SendMessageW(repairCheck,BM_GETCHECK,0,0)==BST_CHECKED);write(L"Modes",L"RepairUnrepairable",repairUnrepairable);write(L"Experimental",L"NativeTechProduction",techMode);write(L"Modes",L"RepairMs",repairMs);
  write(L"Tech",L"Profile",techProfile);write(L"Tech",L"DirectProduce",techDirectProduce);write(L"Tech",L"DefaultAllow",techDefault);
  profileExceptions[techProfile]=techExceptions;
  std::wstring ids=serializeIDs(techExceptions);
@@ -581,7 +582,7 @@ static bool ensureBridge(){
  if(!game||bridgeBlocked||(bridgeRetryAt&&int32_t(now-bridgeRetryAt)<0))return false;
  ++bridgeAttempts;bridgeRetryAt=now+(bridgeAttempts>=3?30000:2000);
  critical(L"bridge-connect-attempt="+std::to_wstring(bridgeAttempts)+L" pid="+std::to_wstring(pid)+L" thread="+std::to_wstring(gameThread));
- wchar_t n[100];swprintf(n,100,L"Local\\RA2Assist_v045_%lu",pid);
+ wchar_t n[100];swprintf(n,100,L"Local\\RA2Assist_v046_%lu",pid);
  mapping=CreateFileMappingW(INVALID_HANDLE_VALUE,nullptr,PAGE_READWRITE,0,sizeof(Shared),n);
  DWORD mappingError=GetLastError();if(!mapping)return bridgeFailed(L"创建命令共享内存失败",mappingError);
  if(mappingError==ERROR_ALREADY_EXISTS){
@@ -784,10 +785,10 @@ static void readSnapshot(){
   incoming=candidate;
   bool first=!lastData;snap=incoming;snapshotSeq=a;lastData=GetTickCount();
   logCommandReceipts(incoming);
-  static int loggedPlacement=0,loggedNativeAir=0,loggedRenderReveal=0;
-  if(incoming.placementStatus!=loggedPlacement||incoming.nativeAirStatus!=loggedNativeAir||incoming.renderRevealStatus!=loggedRenderReveal){
-   autolog::write(L"experimental-patches placement="+std::to_wstring(incoming.placementStatus)+L" nativeAir="+std::to_wstring(incoming.nativeAirStatus)+L" renderReveal="+std::to_wstring(incoming.renderRevealStatus)+L" installed="+std::to_wstring(incoming.hookInstalled)+L" conflicts="+std::to_wstring(incoming.hookConflicts));
-   loggedPlacement=incoming.placementStatus;loggedNativeAir=incoming.nativeAirStatus;loggedRenderReveal=incoming.renderRevealStatus;
+  static int loggedPlacement=0,loggedNativeAir=0,loggedRenderReveal=0,loggedC4=0;
+  if(incoming.placementStatus!=loggedPlacement||incoming.nativeAirStatus!=loggedNativeAir||incoming.renderRevealStatus!=loggedRenderReveal||incoming.c4TestStatus!=loggedC4){
+   autolog::write(L"experimental-patches placement="+std::to_wstring(incoming.placementStatus)+L" nativeAir="+std::to_wstring(incoming.nativeAirStatus)+L" renderReveal="+std::to_wstring(incoming.renderRevealStatus)+L" c4Beta="+std::to_wstring(incoming.c4TestStatus)+L" installed="+std::to_wstring(incoming.hookInstalled)+L" conflicts="+std::to_wstring(incoming.hookConflicts));
+   loggedPlacement=incoming.placementStatus;loggedNativeAir=incoming.nativeAirStatus;loggedRenderReveal=incoming.renderRevealStatus;loggedC4=incoming.c4TestStatus;
   }
   static uint32_t loggedMatch=0,loggedFlags=0,loggedSent=0;static int loggedReady=-1;static DWORD entryAt=0,entryLogAt=0;
   const DWORD logNow=GetTickCount();const bool changed=incoming.match!=loggedMatch||incoming.commandStatus!=loggedReady||shared->flags!=loggedFlags;
@@ -887,7 +888,9 @@ static void paint(){
  bool panel=SendMessageW(check[6],BM_GETCHECK,0,0)==BST_CHECKED;
  bool hasToast=panel&&now<toastUntil;bool summary=panel&&snap.transports;
  if(!labelCount&&!hasToast&&!summary&&!snap.threatCount&&!snap.crateCount&&!enemyCount&&!idleTabs&&airLines.empty()&&nativeBadges.empty()){ShowWindow(overlay,SW_HIDE);return;}
- float sx=snap.width>0?float(r.right)/snap.width:1,sy=snap.height>0?float(r.bottom)/snap.height:1;
+ viewport::Scale view;if(!view.set(snap.width,snap.height,r.right,r.bottom)){ShowWindow(overlay,SW_HIDE);return;}
+ const int physicalW=r.right,physicalH=r.bottom;r.right=view.gameWidth;r.bottom=view.gameHeight;
+ const float sx=1,sy=1; // Positions, glyphs, icons and bounds share game-pixel space.
  float top=float(std::clamp(topMargin,0,std::max(0,int(r.bottom)-90)));
  float panelW=std::min(float(std::max(1,int(r.right)-16)),std::max(330.f,hasToast?float(toast.size()*12+24):330.f));
  float panelX=(r.right-panelW)*.5f;
@@ -906,16 +909,16 @@ static void paint(){
  static external::enemies::Marker drawnEnemies[external::enemies::Maximum];static visual::LabelView drawnEnemyViews[MaxLabels];static int drawnEnemyCount,drawnEnemyWidth,drawnEnemyHeight;
  static uint32_t drawnIdleTabs=0,drawnShapeRevision=0;static bool drawnTabPhase=false;
  static std::vector<airway::Line> drawnAirLines;static std::vector<construction::NativeBadge> drawnBadges;
- bool changed=drawnBadges!=nativeBadges||drawnShapeRevision!=sidebarShapes.revision||drawn.width!=snap.width||drawn.height!=snap.height||drawnAirLines.size()!=airLines.size()||(!airLines.empty()&&memcmp(drawnAirLines.data(),airLines.data(),airLines.size()*sizeof(airway::Line)))||drawnIdleTabs!=idleTabs||(idleTabs&&drawnTabPhase!=tabPhase)||oldW!=r.right||oldH!=r.bottom||oldMargin!=topMargin||revision!=paintRevision||lastPanel!=panel||lastSummary!=summary||lastToast!=hasToast||(hasToast&&oldToast!=toast)||drawnCount!=labelCount||drawn.transports!=snap.transports||drawn.used!=snap.used||drawn.capacity!=snap.capacity||memcmp(drawnViews,labelViews,sizeof(visual::LabelView)*labelCount)||drawn.threatCount!=snap.threatCount||drawn.crateCount!=snap.crateCount||memcmp(drawn.threats,snap.threats,sizeof(Threat)*snap.threatCount)||memcmp(drawn.crates,snap.crates,sizeof(CrateMark)*snap.crateCount);
+ bool changed=drawnBadges!=nativeBadges||drawnShapeRevision!=sidebarShapes.revision||drawn.width!=snap.width||drawn.height!=snap.height||drawnAirLines.size()!=airLines.size()||(!airLines.empty()&&memcmp(drawnAirLines.data(),airLines.data(),airLines.size()*sizeof(airway::Line)))||drawnIdleTabs!=idleTabs||(idleTabs&&drawnTabPhase!=tabPhase)||oldW!=physicalW||oldH!=physicalH||oldMargin!=topMargin||revision!=paintRevision||lastPanel!=panel||lastSummary!=summary||lastToast!=hasToast||(hasToast&&oldToast!=toast)||drawnCount!=labelCount||drawn.transports!=snap.transports||drawn.used!=snap.used||drawn.capacity!=snap.capacity||memcmp(drawnViews,labelViews,sizeof(visual::LabelView)*labelCount)||drawn.threatCount!=snap.threatCount||drawn.crateCount!=snap.crateCount||memcmp(drawn.threats,snap.threats,sizeof(Threat)*snap.threatCount)||memcmp(drawn.crates,snap.crates,sizeof(CrateMark)*snap.crateCount);
  changed=changed||drawnEnemyCount!=enemyCount||drawnEnemyWidth!=enemyFrame.width||drawnEnemyHeight!=enemyFrame.height||memcmp(drawnEnemyViews,enemyViews,sizeof(visual::LabelView)*enemyCount)||memcmp(drawnEnemies,enemyFrame.items,sizeof(external::enemies::Marker)*enemyCount);
- origin.x+=left;origin.y+=up;
+ origin.x+=view.left(left);origin.y+=view.top(up);
  if(!changed){RECT shown{};GetWindowRect(overlay,&shown);if(shown.left!=origin.x||shown.top!=origin.y||!IsWindowVisible(overlay))SetWindowPos(overlay,HWND_TOPMOST,origin.x,origin.y,0,0,SWP_NOSIZE|SWP_NOACTIVATE|SWP_SHOWWINDOW);return;}
- int w=((right-left+63)/64)*64,h=((bottom-up+31)/32)*32;if(!surface.resize(w,h))return;
- drawn.transports=snap.transports;drawn.used=snap.used;drawn.capacity=snap.capacity;drawn.threatCount=snap.threatCount;drawn.crateCount=snap.crateCount;memcpy(drawn.threats,snap.threats,sizeof(Threat)*snap.threatCount);memcpy(drawn.crates,snap.crates,sizeof(CrateMark)*snap.crateCount);drawnCount=labelCount;memcpy(drawnViews,labelViews,sizeof(visual::LabelView)*labelCount);oldW=r.right;oldH=r.bottom;oldMargin=topMargin;revision=paintRevision;lastPanel=panel;lastSummary=summary;lastToast=hasToast;oldToast=toast;
+ int w=((view.width(right-left)+65)/64)*64,h=((view.height(bottom-up)+33)/32)*32;if(!surface.resize(w,h))return;
+ drawn.transports=snap.transports;drawn.used=snap.used;drawn.capacity=snap.capacity;drawn.threatCount=snap.threatCount;drawn.crateCount=snap.crateCount;memcpy(drawn.threats,snap.threats,sizeof(Threat)*snap.threatCount);memcpy(drawn.crates,snap.crates,sizeof(CrateMark)*snap.crateCount);drawnCount=labelCount;memcpy(drawnViews,labelViews,sizeof(visual::LabelView)*labelCount);oldW=physicalW;oldH=physicalH;oldMargin=topMargin;revision=paintRevision;lastPanel=panel;lastSummary=summary;lastToast=hasToast;oldToast=toast;
  drawnEnemyCount=enemyCount;drawnEnemyWidth=enemyFrame.width;drawnEnemyHeight=enemyFrame.height;memcpy(drawnEnemies,enemyFrame.items,sizeof(external::enemies::Marker)*enemyCount);memcpy(drawnEnemyViews,enemyViews,sizeof(visual::LabelView)*enemyCount);
  drawn.width=snap.width;drawn.height=snap.height;drawnShapeRevision=sidebarShapes.revision;drawnAirLines=airLines;drawnBadges=nativeBadges;drawnIdleTabs=idleTabs;drawnTabPhase=tabPhase;
  memset(surface.bits,0,size_t(surface.w)*surface.h*4);
- {Bitmap bm(surface.w,surface.h,surface.w*4,PixelFormat32bppPARGB,surface.bits);Graphics g(&bm);g.SetSmoothingMode(SmoothingModeAntiAlias);g.TranslateTransform(-float(left),-float(up));
+ {Bitmap bm(surface.w,surface.h,surface.w*4,PixelFormat32bppPARGB,surface.bits);Graphics g(&bm);g.SetSmoothingMode(SmoothingModeAntiAlias);g.ScaleTransform(view.x,view.y);g.TranslateTransform(-float(left),-float(up));
   if(idleTabs&&tabPhase){auto state=g.Save();g.SetInterpolationMode(InterpolationModeNearestNeighbor);g.SetPixelOffsetMode(PixelOffsetModeHalf);
    for(int i=0;i<4;++i)if(idleTabs&(1u<<i)){auto&f=sidebarShapes.frames[i];Bitmap shape(f.width,f.height,f.width*4,PixelFormat32bppPARGB,reinterpret_cast<BYTE*>(f.pixels.data()));g.DrawImage(&shape,RectF(f.x*sx,f.y*sy,f.width*sx,f.height*sy));}g.Restore(state);
   }
@@ -1027,7 +1030,8 @@ static void result(){if(!shared)return;uint32_t a=shared->ack;if(a==ack)return;M
  if(c==Repair)notify(n?L"已安排维修 "+std::to_wstring(n)+L" 座受损建筑。":L"没有需要维修的己方建筑。");
  else if(c==RevealMap)notify(L"已执行当前对局的地图揭示。");
  else if(c==ClearBeacons)notify(L"已清理己方信标。");
- else if(c==OpenTech){techEnabled=shared->arg!=0;notify(techEnabled?L"原生科技侧栏已启用，当前可见 "+std::to_wstring(n)+L" 项；其余随工厂与建造上限刷新。":L"自定义科技已关闭。");}
+ else if(c==OpenTech){techEnabled=shared->arg!=0;notify(techEnabled?L"外部科技生产测试已启用，清单允许 "+std::to_wstring(n)+L" 项；不添加原生图标、不改前置。":L"自定义科技已关闭。");}
+ else if(c==CancelTechProduction)notify(L"已提交原版取消生产请求。");
  else if(c==Produce)notify(L"生产请求已提交；是否接受以游戏生产队列为准。");
  else if(c==SelectSuper||c==SelectIron||c==SelectChrono)notify(L"已选择超级武器，请在地图上选择目标。");
  else if(c==SmartUnload)notify(n?L"已安排卸载 "+std::to_wstring(n)+L" 辆载具。":L"没有可卸载的已选载具。");
@@ -1056,6 +1060,17 @@ static void updateModeStatus(DWORD now){
  SetWindowTextW(GetDlgItem(ui,807),riskStatus.c_str());
  std::wstring renderText=L"绘制测试：";renderText+=snap.renderRevealStatus==-2?L"冲突 / 安装或恢复失败":!extra.renderReveal?L"关闭":phase?L"等待游戏就绪":snap.renderRevealStatus==1?L"已启用；联机尚未实测":L"等待安装";
  SetWindowTextW(GetDlgItem(ui,809),renderText.c_str());
+ SetWindowTextW(GetDlgItem(ui,813),(L"C4 Beta："+riskText(extra.c4Test,snap.c4TestStatus)).c_str());
+ std::wstring progress=L"外部生产：";uint32_t owner=0;
+ if(techMode&&commandFresh(now)&&externalReader.readFresh(0xA83D4C,&owner,4)&&owner>=0x10000){
+  const int offsets[]={0x53B0,0x53B4,0x53B8,0x53AC};const wchar_t* names[]={L"步兵",L"战车",L"舰船",L"飞机"};
+  for(int j=0;j<4;++j){uint32_t f=0,p=0,own=0;int step=0;bool valid=externalReader.readFresh(owner+offsets[j],&f,4);
+   progress+=names[j];progress+=L" ";
+   if(valid&&f>=0x10000&&externalReader.readFresh(f+0x6C,&own,4)&&own==owner&&externalReader.readFresh(f+0x58,&p,4)&&externalReader.readFresh(f+0x24,&step,4))progress+=p?std::to_wstring(std::clamp(step,0,54)*100/54)+L"%":L"空闲";
+   else progress+=L"—";progress+=(j==1?L"\n":L"   ");
+  }
+ }else progress+=L"未启用 / 等待游戏";
+ SetWindowTextW(GetDlgItem(ui,815),progress.c_str());
  const wchar_t*phaseText=phase==1?L"已暂停":phase==2?L"未连接":phase==3?L"接口不可用":commandMatch()?L"本局命令暂挂":L"正在读取对局";
  std::wstring nt=phase?phaseText:snap.nativeHookStatus<0?L"战术接口不可用，相关功能已停用":L"移动任务 "+std::to_wstring(snap.advancedUnits)+L" · 待处理乘员 "+std::to_wstring(snap.unloadPending)+L" · 逃生跟踪 "+std::to_wstring(snap.ejectWatched);
  if(!phase&&commandQueue.size)nt+=L" | 待处理命令 "+std::to_wstring(commandQueue.size);
@@ -1269,7 +1284,7 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
  for(int i=0;i<7;++i){check[i]=control(L"BUTTON",names[i],20+(i%2)*315,501+(i/2)*28,305,24,300+i,BS_AUTOCHECKBOX|WS_TABSTOP);SendMessageW(check[i],BM_SETCHECK,value(L"Display",ini[i],(i<3||i>=6)?1:0)?BST_CHECKED:BST_UNCHECKED,0);}
  control(L"STATIC",L"刷新率 FPS",20,620,85,23,0);rateEdit=control(L"EDIT",std::to_wstring(fps).c_str(),110,617,48,24,310,ES_NUMBER|WS_TABSTOP);control(L"STATIC",L"5–500",164,620,55,23,0);control(L"STATIC",L"上边距 px",238,620,86,23,0);marginEdit=control(L"EDIT",std::to_wstring(topMargin).c_str(),330,617,55,24,311,ES_NUMBER|WS_TABSTOP);control(L"STATIC",L"自动保存",420,616,205,27,401,0);
  control(L"STATIC",L"超级武器",20,657,600,22,0);swList=control(L"COMBOBOX",L"",20,683,340,240,410,CBS_DROPDOWNLIST|WS_VSCROLL|WS_TABSTOP);swHotkey=control(HOTKEY_CLASSW,L"",374,683,153,25,411,WS_TABSTOP);control(L"STATIC",L"自动保存",541,682,84,27,412,0);
- control(L"BUTTON",L"科技全开（生产连续性待修复）",20,724,305,28,420,BS_AUTOCHECKBOX|WS_TABSTOP);SendDlgItemMessageW(w,420,BM_SETCHECK,techMode?BST_CHECKED:BST_UNCHECKED,0);techSearch=control(L"EDIT",L"",345,726,280,24,421,ES_AUTOHSCROLL|WS_TABSTOP);SendMessageW(techSearch,EM_SETCUEBANNER,TRUE,(LPARAM)L"按名称或单位 ID 搜索");
+ control(L"BUTTON",L"科技生产（测试：兵/车/机）",20,724,305,28,420,BS_AUTOCHECKBOX|WS_TABSTOP);SendDlgItemMessageW(w,420,BM_SETCHECK,techMode?BST_CHECKED:BST_UNCHECKED,0);techSearch=control(L"EDIT",L"",345,726,280,24,421,ES_AUTOHSCROLL|WS_TABSTOP);SendMessageW(techSearch,EM_SETCUEBANNER,TRUE,(LPARAM)L"按名称或单位 ID 搜索");
  techList=control(L"LISTBOX",L"",20,762,455,152,422,LBS_NOTIFY|WS_VSCROLL|WS_TABSTOP);control(L"BUTTON",L"生产",488,763,137,30,423,BS_PUSHBUTTON|WS_TABSTOP);control(L"BUTTON",L"切换",488,799,137,28,424,BS_PUSHBUTTON|WS_TABSTOP);control(L"BUTTON",L"全开",488,834,65,27,425,BS_PUSHBUTTON|WS_TABSTOP);control(L"BUTTON",L"清空",560,834,65,27,426,BS_PUSHBUTTON|WS_TABSTOP);
  control(L"BUTTON",L"Ra2Tool预设",488,868,137,26,427,BS_PUSHBUTTON|WS_TABSTOP);
  control(L"BUTTON",L"配置清单",488,896,137,26,428,BS_PUSHBUTTON|WS_TABSTOP);
@@ -1334,6 +1349,14 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
  pageControl(4,L"STATIC",L"默认关闭。保留原版视野及目标判断；隐藏单位可配合敌方标记。",20,704,605,26,0);
  pageControl(4,L"STATIC",L"建议新对局单独测试；未做真实联机验证。旧地图全开仍是另一功能。",20,738,605,26,0);
  pageControl(4,L"STATIC",L"绘制测试：关闭",20,776,605,26,809);
+ {auto h=pageControl(4,L"BUTTON",L"步兵 C4（Beta／联机危险）",20,820,320,27,810,BS_AUTOCHECKBOX|WS_TABSTOP);SendMessageW(h,BM_SETCHECK,extra.c4Test?BST_CHECKED:BST_UNCHECKED,0);}
+ {auto h=pageControl(4,HOTKEY_CLASSW,L"",345,820,145,27,811,WS_TABSTOP);SendMessageW(h,HKM_SETHOTKEY,extra.c4Key,0);modernui::mouseOnly(h);}
+ {auto h=pageControl(4,L"COMBOBOX",L"",502,820,123,160,812,CBS_DROPDOWNLIST|WS_TABSTOP);for(auto text:{L"停用",L"中键",L"侧键 1",L"侧键 2",L"右键",L"左键"})SendMessageW(h,CB_ADDSTRING,0,(LPARAM)text);SendMessageW(h,CB_SETCURSEL,extra.c4Mouse==6?5:extra.c4Mouse,0);}
+ pageControl(4,L"STATIC",L"修改模拟校验，可能不同步或掉线。选中步兵后按配置键点击敌方建筑。",20,858,605,45,0);
+ pageControl(4,L"STATIC",L"C4 测试：关闭",20,910,605,26,813);
+ pageControl(4,L"STATIC",L"科技测试：只走外部目录，不改规则、不添加原生图标；联机未验证。",20,952,605,44,0);
+ pageControl(4,L"BUTTON",L"取消所选类型的生产",20,1004,250,28,814,BS_PUSHBUTTON|WS_TABSTOP);
+ pageControl(4,L"STATIC",L"外部生产进度：等待游戏",20,1048,605,65,815);
  pageControl(3,L"STATIC",L"游戏入口：统一消息管理器",20,416,605,24,0);
  schedulerEntryCombo=pageControl(3,L"COMBOBOX",L"",20,447,605,230,760,CBS_DROPDOWNLIST|WS_TABSTOP);
  SendMessageW(schedulerEntryCombo,CB_ADDSTRING,0,(LPARAM)L"统一消息入口 · 不改写游戏代码");
@@ -1350,8 +1373,8 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
  SendMessageW(objectQueueCombo,CB_ADDSTRING,0,(LPARAM)L"1 · YRpp ClickedEvent（仅多人实验）");
  SendMessageW(objectQueueCombo,CB_SETCURSEL,objectQueueMode,0);
 #include "extra_controls.h"
- EnableWindow(GetDlgItem(w,420),FALSE);
- statusLabel=control(L"STATIC",L"正在寻找游戏…",20,1370,605,44,430);control(L"BUTTON",L"暂停 / 连接",20,1420,200,28,431,BS_PUSHBUTTON|WS_TABSTOP);control(L"BUTTON",L"使用说明",235,1420,185,28,432,BS_PUSHBUTTON|WS_TABSTOP);control(L"BUTTON",L"退出",435,1420,190,28,433,BS_PUSHBUTTON|WS_TABSTOP);EnableWindow(unloadKeyEdit,FALSE);EnableWindow(GetDlgItem(w,453),FALSE);EnableWindow(hookChecks[1],FALSE);SetWindowTextW(hookChecks[1],L"智能卸载（暂不可用）");finalizeTacticalLayout();ready=true;fillTech(true);fillTypeBindings(true);SetTimer(w,1,250,nullptr);SetTimer(w,2,80,nullptr);registerKeys();return 0;}
+ EnableWindow(GetDlgItem(w,420),TRUE);
+ statusLabel=control(L"STATIC",L"正在寻找游戏…",20,1370,605,44,430);control(L"BUTTON",L"暂停 / 连接",20,1420,200,28,431,BS_PUSHBUTTON|WS_TABSTOP);control(L"BUTTON",L"使用说明",235,1420,185,28,432,BS_PUSHBUTTON|WS_TABSTOP);control(L"BUTTON",L"退出",435,1420,190,28,433,BS_PUSHBUTTON|WS_TABSTOP);EnableWindow(unloadKeyEdit,TRUE);EnableWindow(GetDlgItem(w,453),TRUE);EnableWindow(hookChecks[1],TRUE);SetWindowTextW(hookChecks[1],L"智能卸载");finalizeTacticalLayout();ready=true;fillTech(true);fillTypeBindings(true);SetTimer(w,1,250,nullptr);SetTimer(w,2,80,nullptr);registerKeys();return 0;}
  case WM_SIZE:layoutPanel();return 0;
  case modernui::FocusMessage:{for(const auto&c:pageControls)if(c.hwnd==(HWND)lp&&c.page>=0){int top=c.rect.y-scrollY,bottom=top+c.visibleHeight;RECT client{};GetClientRect(w,&client);if(top<uilayout::BodyTop)scrollTo(c.rect.y-uilayout::BodyTop);else if(bottom>uilayout::bodyBottom(client.bottom))scrollTo(c.rect.y+c.visibleHeight-uilayout::bodyBottom(client.bottom));break;}return 0;}
  case WM_VSCROLL:{SCROLLINFO si{sizeof si,SIF_ALL};GetScrollInfo(w,SB_VERT,&si);int next=scrollY;switch(LOWORD(wp)){case SB_LINEUP:next-=28;break;case SB_LINEDOWN:next+=28;break;case SB_PAGEUP:next-=int(si.nPage);break;case SB_PAGEDOWN:next+=int(si.nPage);break;case SB_THUMBTRACK:next=si.nTrackPos;break;default:return 0;}scrollTo(next);return 0;}
@@ -1429,7 +1452,8 @@ if(id==991){wchar_t query[128]{};GetWindowTextW(featureSearch,query,128);std::ws
   else if(techEnabled)send(OpenTech,1);
   else notify(id==427?L"已选择 Ra2Tool 预设清单并保存。":L"已选择 Assist.ini [tech] 自定义清单并保存。");
  }
- else if(id==423||(id==422&&HIWORD(wp)==LBN_DBLCLK)){int i=(int)SendMessageW(techList,LB_GETCURSEL,0,0);if(!techEnabled)notify(L"先开启自定义科技。");else if(i>=0&&i<(int)techIndices.size()){auto&t=savedTypes.types[techIndices[i]];int live=liveTypeIndex(t);if(!techAllowed(t))notify(L"此项目已从开启清单中排除。");else if(!techDirectProduce)notify(L"已关闭直接生产；此列表只用于查看科技清单。");else if(live<0)notify(L"此单位当前对局不可用；离线缓存不会直接执行生产。");else send(Produce,live);}}
+ else if(id==814){int i=int(SendMessageW(techList,LB_GETCURSEL,0,0));if(techEnabled&&i>=0&&i<int(techIndices.size())){int live=liveTypeIndex(savedTypes.types[techIndices[i]]);if(live>=0)send(CancelTechProduction,live);}}
+ else if(id==423||(id==422&&HIWORD(wp)==LBN_DBLCLK)){int i=(int)SendMessageW(techList,LB_GETCURSEL,0,0);if(!techEnabled)notify(L"先开启自定义科技。");else if(i>=0&&i<(int)techIndices.size()){auto&t=savedTypes.types[techIndices[i]];int live=liveTypeIndex(t);if(!techAllowed(t))notify(L"此项目已从开启清单中排除。");else if(t.kind==7)notify(L"建筑的外部放置链尚未验证，本测试暂只开放步兵、战车、飞机。");else if(live<0)notify(L"此单位当前对局不可用；离线缓存不会直接执行生产。");else send(Produce,live);}}
  else if(id==410&&HIWORD(wp)==CBN_SELCHANGE){ControlUpdate guard;auto type=selectedSuperID();SendMessageW(swHotkey,HKM_SETHOTKEY,type.empty()?0:binding(type.c_str()),0);}
  else if(id==449){
   wchar_t raw[64]{};GetWindowTextW(typeIdEdit,raw,64);std::string id;
@@ -1462,7 +1486,7 @@ if(id==991){wchar_t query[128]{};GetWindowTextW(featureSearch,query,128);std::ws
  if(conflict){notify(L"快捷键冲突，请使用不同组合。");return 0;}advancedKey=nextA;unloadKey=nextU;{hookAdvanced=true;SendMessageW(hookChecks[0],BM_SETCHECK,BST_CHECKED,0);}save();registerKeys();notify(L"原生联机指令快捷键已保存。");}
  else if(id==458||id==459||id==465||id==466){
   hookAdvanced=SendMessageW(hookChecks[0],BM_GETCHECK,0,0)==BST_CHECKED;
-  hookSmartUnload=false;SendMessageW(hookChecks[1],BM_SETCHECK,BST_UNCHECKED,0);
+  hookSmartUnload=SendMessageW(hookChecks[1],BM_GETCHECK,0,0)==BST_CHECKED;
   hookEject=ejectMode;
   hookAutoCS=SendMessageW(hookChecks[3],BM_GETCHECK,0,0)==BST_CHECKED;
   save();registerKeys();diag(L"hook switches flags="+std::to_wstring(flags()));notify(L"功能开关已保存。");}
@@ -1521,12 +1545,12 @@ int WINAPI wWinMain(HINSTANCE h,HINSTANCE,LPWSTR,int show){SetProcessDPIAware();
  techExceptions=profileExceptions[techProfile];
  // Technology uses sidebar entries and vanilla production; old rule-override flags are ignored.
  hookAdvanced=value(L"Hooks",L"Advanced",value(L"NativeOrders",L"EnableInputHooks",1))!=0;
- hookSmartUnload=false;
+ hookSmartUnload=value(L"Hooks",L"SmartUnload",0)!=0;
  hookEject=value(L"Hooks",L"Eject",0)!=0;
  hookAutoCS=value(L"Hooks",L"AutoCS",1)!=0;
  diagEnabled=value(L"Debug",L"Diagnostics",1)!=0;
  autoRevealNewMatch=value(L"Modes",L"AutoRevealNewMatch",0)!=0;
- techMode=false;repairMs=std::clamp(value(L"Modes",L"RepairMs",2000),500,30000);
+ techMode=value(L"Experimental",L"NativeTechProduction",0)!=0;repairMs=std::clamp(value(L"Modes",L"RepairMs",2000),500,30000);
  const WORD defaults[]={'R','Q','T','D','M','E','V','B','O','I','C','L'};static_assert(sizeof(defaults)/sizeof(defaults[0])==12);for(int i=0;i<12;++i)hotkeys[i]=(WORD)value(L"Hotkeys",wide(iniKeys[i]).c_str(),MAKEWORD(defaults[i],HOTKEYF_CONTROL|HOTKEYF_ALT));
  wchar_t section[8192];GetPrivateProfileSectionW(L"SuperHotkeys",section,8192,path(L"Assist.ini").c_str());for(wchar_t*s=section;*s;s+=wcslen(s)+1){std::wstring line=s;size_t e=line.find(L'=');if(e==std::wstring::npos)continue;std::string id;for(size_t i=0;i<e&&i<23;++i)id+=(char)line[i];swBindings.push_back({id,(WORD)_wtoi(line.c_str()+e+1)});}
  for(const wchar_t* sec:{L"TypeHotkeys",L"AutoCSUnits"}){wchar_t entries[32768];GetPrivateProfileSectionW(sec,entries,32768,path(L"Assist.ini").c_str());for(wchar_t* p=entries;*p;p+=wcslen(p)+1){std::wstring line=p;size_t e=line.find(L'=');if(e==std::wstring::npos)continue;std::string id;for(size_t j=0;j<e&&j<23;++j)if(line[j]>32&&line[j]<127)id+=char(line[j]);if(id.empty())continue;int v=_wtoi(line.c_str()+e+1);if(!wcscmp(sec,L"TypeHotkeys")){if(LOBYTE(v)&&typeBindings.size()<512)typeBindings.push_back({id,WORD(v)});}else if(v)csUnits.insert(id);}}

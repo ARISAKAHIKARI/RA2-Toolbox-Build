@@ -22,7 +22,7 @@ using UINT_PTR=unsigned;using HWND=int;using WORD=unsigned short;using BOOL=int;
 constexpr int FALSE=0,EN_CHANGE=1,CBN_SELCHANGE=2,BN_CLICKED=3,HKM_GETHOTKEY=4,HKM_SETHOTKEY=5,CB_GETCURSEL=6,CB_SETCURSEL=7,BM_GETCHECK=8,BM_SETCHECK=9,BST_CHECKED=1,BST_UNCHECKED=0;
 static bool ready=true,updatingControls=false,enabled=true,autoSaveOK=true;
 struct ControlUpdate{bool old=updatingControls;ControlUpdate(){updatingControls=true;}~ControlUpdate(){updatingControls=old;}};
-static bool hookAdvanced=false;static HWND hookChecks[4]={800,801,802,803};
+static bool hookAdvanced=false,hookSmartUnload=false;static HWND hookChecks[4]={800,801,802,803};
 static int ui=1,fps=60,topMargin=20,repairMs=2000,doubleMs=350,toastMs=6000;
 static unsigned settingsRevision=1,paintRevision=0,saves=0,registrations=0,syncs=0,timerMs=0,timers=0,binds=0;
 static struct{int status=1,swCount=1;struct{char id[8]="SW";}supers[1];}snap;

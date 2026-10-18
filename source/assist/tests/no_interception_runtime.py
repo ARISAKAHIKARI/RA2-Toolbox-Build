@@ -44,7 +44,7 @@ for mode in (0,5,3,4):
   assert s.data.inputPatchMask==0 and s.data.hookInstalled==0 and s.driverMode==0
   assert s.data.placementStatus==0
   s.command=10;s.arg=1;s.request+=1;s.requestTick=m.clock;s.requestMatch=s.data.match;save(m,s);s=m.hook()
-  assert C.c_int32(s.result).value==-20 and not s.data.techOpen and not m.codeWrites
+  assert s.result==1 and s.data.techOpen and not m.codeWrites
  check(f'normal_flags_no_engine_patch_session_{mode}',no_patch)
  def order(mode=mode):
   m=fixture(mode);before=bytes(m.u.mem_read(m.unit,0x2000));s=pointer(m)

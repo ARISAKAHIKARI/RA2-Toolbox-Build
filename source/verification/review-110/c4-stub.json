@@ -1,0 +1,54 @@
+{
+  "scope": "Emulate compiled C4 flag-load stub, with callback answer mocked; register/flags/stack/x87/SSE preservation only.",
+  "dll_sha256": "4b04bbbcc298b49924697cc6354b95ce8a0d020d4e98cdd5dd7891a7391fe9d8",
+  "results": [
+    {
+      "enabled": 0,
+      "native_C4": 0,
+      "DF": 0,
+      "status": "PASS"
+    },
+    {
+      "enabled": 0,
+      "native_C4": 0,
+      "DF": 1024,
+      "status": "PASS"
+    },
+    {
+      "enabled": 0,
+      "native_C4": 1,
+      "DF": 0,
+      "status": "PASS"
+    },
+    {
+      "enabled": 0,
+      "native_C4": 1,
+      "DF": 1024,
+      "status": "PASS"
+    },
+    {
+      "enabled": 1,
+      "native_C4": 0,
+      "DF": 0,
+      "status": "PASS"
+    },
+    {
+      "enabled": 1,
+      "native_C4": 0,
+      "DF": 1024,
+      "status": "PASS"
+    },
+    {
+      "enabled": 1,
+      "native_C4": 1,
+      "DF": 0,
+      "status": "PASS"
+    },
+    {
+      "enabled": 1,
+      "native_C4": 1,
+      "DF": 1024,
+      "status": "PASS"
+    }
+  ]
+}

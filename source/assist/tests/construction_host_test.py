@@ -81,6 +81,16 @@ int main(){
  memcpy(externalReader.bytes.data()+C+0x98,"Americans",10);memcpy(externalReader.bytes.data()+C+0x24,"Americans",10);list(0xA83C98,{C});refreshChoices();assert(choice(1)>=0);
  construction::Layout l;for(auto sizes:std::vector<std::vector<int>>{{2560,1440,3840,2160},{2560,1440,2560,1440},{1920,1080,3840,2160},{1280,720,1920,1080},{1920,1080,2560,1440},{640,480,640,480}}){assert(l.set(sizes[0],sizes[1],sizes[2],sizes[3]));assert(l.left()+l.width()<=sizes[2]);assert(l.top()+l.height()<=sizes[3]);for(int i=0;i<5;++i)assert(l.queueAt(l.x(10),l.y(24+i*18+9))==i);for(int i=0;i<l.rows*2;++i)assert(l.choiceAt(l.x((i%2)*72+36),l.y(116+(i/2)*66+33),0,50)==i);assert(l.choiceAt(l.width(),l.y(120),0,50)==-1);}
 
+ // Regression: every reservation category, not only unavailable future types.
+ for(int tab=0;tab<2;++tab)for(bool future:{false,true}){
+  setup();if(tab){w(H+0x53BC,0);w(H+0x53CC,F);w(0x87F7E8+0x539C,1);for(int i=0;i<3;++i)w(T+i*0x2000+0xE08,5);uint32_t strip=0x87F7E8+0x1544+3988;w(strip+84,1);w(strip+88,0);w(strip+92,7);tick();}
+  if(future)reserve(choice(1));else reserveChoice({0,0,tab,T,false},true);
+  assert(books[tab].items==std::vector<int>({future?1:0}));
+  w(P+0x6C,0);byte(P+0x74,0);
+  for(int progress:{0,1,27,53,54}){w(F+0x24,progress);for(int k=0;k<10;++k)tick();assert(books[tab].items==std::vector<int>({future?1:0})&&commandQueue.size==0);}
+  w(F+0x58,0);tick();tick(300);assert(books[tab].items.empty());
+ }
+ std::cout<<"PASS: building/defense x native/future at progress 0/1/27/53/54 survive factory limbo; parent cancellation retained\n";
  // Actual native sidebar capture: real SelectClass positions, scroll mapping,
  // click down/up ownership, no duplicate first production or placement click.
  auto nativeSetup=[&](){setup();uint32_t strip=0x87F7E8+0x1544;

@@ -1,0 +1,96 @@
+name: Publish RA2 Toolbox v1.0.10
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/publish-v110.yml'
+      - 'packages/v1.0.10/**'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: publish-v110
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify current executable update
+        run: |
+          python3 - <<'PY'
+          import json,pathlib,hashlib,zipfile
+          p=pathlib.Path('packages/v1.0.10/RA2-Toolbox-v1.0.10-Update.zip')
+          m=json.loads(p.with_name('manifest.json').read_text())
+          assert p.stat().st_size==m['bytes']
+          assert hashlib.sha256(p.read_bytes()).hexdigest()==m['sha256']
+          with zipfile.ZipFile(p) as z:
+              assert z.testzip() is None
+              assert set(z.namelist())=={'RA2Toolbox.exe','GameRuntime.dll','README-1.0.10.txt'}
+              for n,h in m['files'].items():
+                  assert hashlib.sha256(z.read(n)).hexdigest()==h
+          PY
+      - name: Assemble full runtime distribution from verified resources
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          mkdir -p baseline dist
+          gh release download v1.0.2 --pattern RA2-Toolbox-v1.0.2-Windows.zip --dir baseline
+          python3 - <<'PY'
+          import pathlib,hashlib,zipfile,json
+          p=pathlib.Path('baseline/RA2-Toolbox-v1.0.2-Windows.zip')
+          assert hashlib.sha256(p.read_bytes()).hexdigest()=='e5479b5e1b570e6412afd720059640089bd6912c3d02ae6f88719814588ac7bd'
+          update=pathlib.Path('packages/v1.0.10/RA2-Toolbox-v1.0.10-Update.zip')
+          full=pathlib.Path('dist/RA2-Toolbox-v1.0.10-Windows.zip')
+          with zipfile.ZipFile(p) as src,zipfile.ZipFile(update) as new,zipfile.ZipFile(full,'w',zipfile.ZIP_DEFLATED,compresslevel=6) as dst:
+              names=set()
+              def write(name,data):
+                  info=zipfile.ZipInfo(name,(2026,10,18,0,0,0));info.compress_type=zipfile.ZIP_DEFLATED
+                  dst.writestr(info,data)
+              for name in sorted(src.namelist()):
+                  if name.endswith('/') or name in {'RA2Toolbox.exe','GameRuntime.dll','README.txt'}:continue
+                  assert '..' not in pathlib.PurePosixPath(name).parts and not name.startswith('/')
+                  assert name.split('/')[0] in {'assets','profiles','engine','runtime','licenses'} or name=='Start-Message.cmd',name
+                  assert not name.startswith(('source/','docs/','verification/','third-party/'))
+                  write(name,src.read(name));names.add(name)
+              for name in ('RA2Toolbox.exe','GameRuntime.dll'):write(name,new.read(name));names.add(name)
+              write('README.txt',new.read('README-1.0.10.txt'));names.add('README.txt')
+          with zipfile.ZipFile(full) as z,zipfile.ZipFile(update) as new:
+              assert z.testzip() is None and set(z.namelist())==names
+              for n in ('RA2Toolbox.exe','GameRuntime.dll'):assert z.read(n)==new.read(n)
+          pathlib.Path('dist/full-manifest.json').write_text(json.dumps({'sha256':hashlib.sha256(full.read_bytes()).hexdigest(),'bytes':full.stat().st_size,'files':len(names)}))
+          print(pathlib.Path('dist/full-manifest.json').read_text())
+          PY
+      - name: Publish verified runtime assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag='v1.0.10'
+          if gh release view "$tag" --json isDraft > release-state.json 2>/dev/null; then
+            draft=$(python3 -c 'import json; print(str(json.load(open("release-state.json"))["isDraft"]).lower())')
+          else
+            gh release create "$tag" --target "$GITHUB_SHA" --draft --prerelease --latest=false --title 'RA2 Toolbox v1.0.10 — Beta - Overlay Scaling, Smart Unload and Test Features' --notes-file packages/v1.0.10/RELEASE_NOTES.md
+            draft=true
+          fi
+          if [ "$draft" = true ]; then
+            gh release upload "$tag" packages/v1.0.10/RA2-Toolbox-v1.0.10-Update.zip dist/RA2-Toolbox-v1.0.10-Windows.zip --clobber
+          fi
+          mkdir -p remote-check
+          gh release download "$tag" --pattern 'RA2-Toolbox-v1.0.10-*.zip' --dir remote-check
+          python3 - <<'PY'
+          import pathlib,json,hashlib
+          for suffix,manifest in [('Update','packages/v1.0.10/manifest.json'),('Windows','dist/full-manifest.json')]:
+              m=json.load(open(manifest));p=pathlib.Path('remote-check/RA2-Toolbox-v1.0.10-'+suffix+'.zip')
+              assert p.stat().st_size==m['bytes'] and hashlib.sha256(p.read_bytes()).hexdigest()==m['sha256']
+          PY
+          if [ "$draft" = true ]; then
+            gh release edit "$tag" --draft=false --prerelease --latest=false
+          fi
+          gh release view "$tag" --json url,tagName,isDraft,isPrerelease,assets >> "$GITHUB_STEP_SUMMARY"

@@ -16,6 +16,7 @@
 #include <memory>
 #include <cstdio>
 #include "core.h"
+#include "../../shared/source/viewport_scale.h"
 #include "sampler.h"
 #include "../../external_reader/source/display_state.h"
 #include "../../external_reader/source/shared_reader.h"
@@ -114,9 +115,10 @@ static void drawIcon(Graphics& g,const um::Type& t,const um::Snapshot& s,float x
  else {Pen p(color(col),1.5f);g.DrawRectangle(&p,x+2,y+2,w-4,h-4);std::wstring id;for(char c:t.id){if(!c)break;id+=wchar_t((unsigned char)c);}text(g,id.substr(0,8),x+4,y+h/3,10,Color::White);}
  Pen border(color(col),1.5f);g.DrawRectangle(&border,x,y,w,h);
 }
-static void render(int width,int height,POINT origin){
+static void render(int width,int height,POINT origin,int gameWidth,int gameHeight){
  if(width<100||height<100||width>16384||height>16384)return;
- int viewportW=width,viewportH=height;
+ viewport::Scale view;if(!view.set(gameWidth,gameHeight,width,height))return;
+ int viewportW=gameWidth,viewportH=gameHeight;
  float top=float(std::clamp(topMargin,0,std::max(0,viewportH-100))),left=float(std::clamp(leftMargin,0,std::max(0,viewportW-100)));
  const float maxWidth=std::min(112.f,std::max(76.f,(viewportW-left-6.f)/8.f-4.f));
  float croppedW=left+8,croppedH=top+50;
@@ -128,9 +130,10 @@ static void render(int width,int height,POINT origin){
  }
  width=std::min(viewportW,std::max(1,int(croppedW+2)));height=std::min(viewportH,std::max(1,int(croppedH+2)));
  if(demo){width=viewportW;height=viewportH;}
+ width=view.width(width);height=view.height(height);
  if(!surface.ensure(width,height))return;void* bits=surface.bits;memset(bits,0,size_t(width)*height*4);
  {Bitmap bm(width,height,width*4,PixelFormat32bppPARGB,(BYTE*)bits);Graphics g(&bm);g.SetSmoothingMode(SmoothingModeAntiAlias);g.SetCompositingMode(CompositingModeSourceOver);
- g.TranslateTransform(left-6,top-6);
+ g.ScaleTransform(view.x,view.y);g.TranslateTransform(left-6,top-6);
  float cursorX=6.f;
  for(int pi=0;pi<snap->playerCount;pi++){
   const auto& p=snap->players[pi];if(!showOthers&&!p.local)continue;
@@ -244,8 +247,13 @@ static void tick(){
  RECT r{};POINT pt{};
  if(demo){MONITORINFO mi{sizeof mi};GetMonitorInfoW(MonitorFromWindow(ui,MONITOR_DEFAULTTONEAREST),&mi);r.right=mi.rcMonitor.right-mi.rcMonitor.left;r.bottom=mi.rcMonitor.bottom-mi.rcMonitor.top;pt={mi.rcMonitor.left,mi.rcMonitor.top};}
  else {GetClientRect(game,&r);ClientToScreen(game,&pt);}
- static int previousW=0,previousH=0;if(previousW!=r.right||previousH!=r.bottom){previousW=r.right;previousH=r.bottom;renderDirty=true;}
- if(renderDirty||!surface.dc)render(r.right,r.bottom,pt);
+ int gameWidth=r.right,gameHeight=r.bottom;
+ if(!demo&&(!reader.readFresh(0xA8EB84,&gameWidth,4)||!reader.readFresh(0xA8EB88,&gameHeight,4))){statsVisible(false);ShowWindow(overlay,SW_HIDE);return;}
+ viewport::Scale view;if(!view.set(gameWidth,gameHeight,r.right,r.bottom)){statsVisible(false);ShowWindow(overlay,SW_HIDE);return;}
+ static int previousW=0,previousH=0,previousGW=0,previousGH=0;
+ if(previousW!=r.right||previousH!=r.bottom||previousGW!=gameWidth||previousGH!=gameHeight){previousW=r.right;previousH=r.bottom;previousGW=gameWidth;previousGH=gameHeight;renderDirty=true;
+ log((L"Overlay geometry game="+std::to_wstring(gameWidth)+L"x"+std::to_wstring(gameHeight)+L" client="+std::to_wstring(r.right)+L"x"+std::to_wstring(r.bottom)).c_str());}
+ if(renderDirty||!surface.dc)render(r.right,r.bottom,pt,gameWidth,gameHeight);
  present(pt,alpha);
 }
 static void buttonLabel(){

@@ -43,7 +43,7 @@ using namespace assist;
 // string literal. The host validates both protocol and structure size before
 // installing a hook; the release verifier can inspect these exports offline.
 extern "C" __declspec(dllexport) const uint32_t AssistProtocolInfo[2]={Version,sizeof(Shared)};
-extern "C" __declspec(dllexport) const wchar_t AssistMappingPrefix[]=L"Local\\RA2Assist_v045_";
+extern "C" __declspec(dllexport) const wchar_t AssistMappingPrefix[]=L"Local\\RA2Assist_v046_";
 static Shared*sh;static HANDLE mapping;static bool checked,good,fault;static DWORD last,slow;static uint32_t lastHouse,match,pendingAck;static int lastFrame;
 static sessionepoch::Tracker sessionTracker;static Snapshot snap;
 static runtimefault::Context faultContext;
@@ -526,17 +526,17 @@ static bool nativeObjectEvent(int houseIndex,int eventType,uint32_t objectId){
  snap.objectQueueStatus=int(objectqueue::Result::Appended);
  return acceptedObject();
 }
-static bool nativeProduceEvent(uint32_t house,const Type&t,bool nativeCameo=false){
+static bool nativeProduceEvent(uint32_t house,const Type&t,bool nativeCameo=false,int eventKind=0x0E){
  const int mode=get<int>(0xA8B238);
  if(!house||!eventdelivery::mayQueue(mode))return false;
- // Native build authorization and prerequisite consistency have NOT yet been
- // verified in multiplayer. Default to refusing speculative production there.
+ // External-tech Beta is an explicit opt-in, including multiplayer. Native
+ // prerequisites/cameos stay unchanged; actual acceptance is not guaranteed.
  const bool mp=eventdelivery::isMultiplayer(mode);
  const bool unsafeAllowed=(sh&&sh->flags&UnsafeTech)!=0;
  if(mp&&!unsafeAllowed&&!nativeCameo)return false;
  intent::EventOrder order{};
  const decisions::ProductionView view{get<int>(house+0x30),t.kind,t.index,t.naval,true,mp,unsafeAllowed,nativeCameo};
- const bool planned=decisions::planProduction(view,order);
+ const bool planned=decisions::planProduction(view,order)&&(eventKind==0x0E||eventKind==0x10);order.eventKind=eventKind;
  if(orderpolicy::productionEvent(planned,mp,unsafeAllowed,nativeCameo)!=orderpolicy::Reject::None){++snap.commandRejected;return false;}
  const uint32_t submittedAt=sampleClock(sh);
  const uint32_t synthActor=taskarbiter::syntheticProductionActor(t.kind,t.index);
@@ -682,7 +682,7 @@ static void command(uint32_t house,DWORD now){uint32_t req=sh->request;if(req==s
   else {call<void>(0x577D90,0x87F7E8,(void*)house);n=1;}
  }
  else if(c==OpenTech){
-  // Full-tech unlock remains disabled; refreshTech reports -20 without patches.
+  // External catalogue experiment; no native sidebar/rule mutations.
   {snap.techOpen=arg!=0;memcpy(techAllowed,sh->techAllowed,sizeof techAllowed);snap.techError=0;if(snap.techOpen)refreshTech(house,now);else restoreTech();n=snap.techVisible;if(snap.techError<0)result=snap.techError;}}
  else if(c==SelectSuper){result=superSelect(house,arg);n=result>0;}
  else if(c==SelectIron||c==SelectChrono){result=namedSuper(house,c);n=result>0;}
@@ -699,10 +699,13 @@ static void command(uint32_t house,DWORD now){uint32_t req=sh->request;if(req==s
    else if(nativeProduceEvent(house,t,true))n=1;else result=-6;
   }
  }
- else if(c==Produce){
-  if(!eventdelivery::isSingleplayer(get<int>(0xA8B238))){++snap.commandRejected;result=-13;}
-  else if(arg<0||arg>=snap.typeCount||!techFactory(typePointers[arg],house)||call<int>(0x4F7870,house,(void*)(uintptr_t)typePointers[arg],false,true)<=0)result=-4;
-  else{auto&t=snap.types[arg];result=nativeProduceEvent(house,t)?1:-6;n=result>0;}
+ else if(c==Produce||c==CancelTechProduction){
+  if(!(sh->flags&UnsafeTech)||!snap.techOpen||arg<0||arg>=snap.typeCount||!techAllowed[arg]||!typePointers[arg]||snap.types[arg].kind==7)result=-4;
+  else if(c==CancelTechProduction){auto&t=snap.types[arg];if(nativeProduceEvent(house,t,false,0x10))n=1;else result=-6;}
+  else {const uint32_t type=typePointers[arg];uint32_t table=get<uint32_t>(type),method=table?get<uint32_t>(table+0x94):0;
+   if(method<0x10000||call<int>(0x4F7870,house,(void*)(uintptr_t)type,true,true)<=0||!call<uint32_t>(method,type,true,true,true,(void*)(uintptr_t)house))result=-9;
+   else{auto&t=snap.types[arg];result=nativeProduceEvent(house,t)?1:-6;n=result>0;}
+  }
  }
  else result=-4;
  sh->result=result;sh->count=n;pendingAck=req;pendingAckReady=true;

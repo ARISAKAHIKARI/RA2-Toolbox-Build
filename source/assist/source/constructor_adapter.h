@@ -24,7 +24,7 @@ inline Verdict admit(const intent::EventOrder&r,bool diagnosticProbe=false){
   const bool validProdKind=diagnosticProbe
    ? (r.eventKind==vanilla::EventType::Produce||r.eventKind==vanilla::EventType::Suspend||
       r.eventKind==vanilla::EventType::Abandon||r.eventKind==vanilla::EventType::AbandonAll)
-   : (r.eventKind==vanilla::EventType::Produce);
+   : (r.eventKind==vanilla::EventType::Produce||r.eventKind==vanilla::EventType::Abandon);
   if(r.a<0||r.b<0||(r.c!=0&&r.c!=1)||!validProdKind)return Verdict::InvalidFields;
   break;
  }

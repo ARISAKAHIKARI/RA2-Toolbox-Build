@@ -13,6 +13,9 @@ static void changedSetting(){
 static bool autoSettingChanged(int id,int notification){
  if(!ready||updatingControls)return false;
  const bool edit=notification==EN_CHANGE,select=notification==CBN_SELCHANGE;
+ if(id==810&&notification==BN_CLICKED){extra.c4Test=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;pointerMatches.clear();changedSetting();return true;}
+ if(id==811&&edit){extra.c4Key=uint32_t(SendMessageW(GetDlgItem(ui,id),HKM_GETHOTKEY,0,0));changedSetting();return true;}
+ if(id==812&&select){int selected=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));extra.c4Mouse=selected==5?6:selected;changedSetting();return true;}
  if(id==808&&notification==BN_CLICKED){extra.renderReveal=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;if(extra.renderReveal){extra.experimentalReveal=false;SendMessageW(extraControls[RevealExperimental],BM_SETCHECK,BST_UNCHECKED,0);for(int i=0;i<commandQueue.size;){if(commandQueue.slots[i].command==RevealMap)commandQueue.discard(i);else ++i;}}changedSetting();notify(extra.renderReveal?L"绘制测试已请求：只去黑幕/迷雾，不解除目标判断；建议在未使用旧地图全开的新对局测试。":L"绘制测试已关闭，等待恢复原版遮罩。");return true;}
  if(id==806&&notification==BN_CLICKED){extra.nativeAirWaypoints=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;airway::reset();pointerMatches.clear();changedSetting();notify(extra.nativeAirWaypoints?L"原生飞机路径点已开启，外部 Z 队列暂停；修改游戏判断，联机危险。":L"原生飞机路径点已关闭，等待恢复原判断。");return true;}
  if(id==804&&notification==BN_CLICKED){extra.antiTheft=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();return true;}
@@ -95,7 +98,7 @@ static bool autoSettingChanged(int id,int notification){
  if(target){WORD next=WORD(SendMessageW(widget,HKM_GETHOTKEY,0,0)),old=*target;*target=0;
   bool conflict=keyConflict(next,"",false);*target=old;
   if(conflict){ControlUpdate guard;SendMessageW(widget,HKM_SETHOTKEY,old,0);notify(L"快捷键冲突；已保留原按键，请换一个组合。");return true;}
-  *target=next;if(id==450){hookAdvanced=true;SendMessageW(hookChecks[0],BM_SETCHECK,BST_CHECKED,0);}typeTap.clear();registerKeys();changedSetting();return true;
+  *target=next;if(id==451){hookSmartUnload=true;SendMessageW(hookChecks[1],BM_SETCHECK,BST_CHECKED,0);}if(id==450){hookAdvanced=true;SendMessageW(hookChecks[0],BM_SETCHECK,BST_CHECKED,0);}typeTap.clear();registerKeys();changedSetting();return true;
  }
  if(id==724){WORD next=WORD(SendMessageW(widget,HKM_GETHOTKEY,0,0));uint32_t old=extra.variantKey;extra.variantKey=0;
   bool conflict=keyConflict(next,"",false);extra.variantKey=old;

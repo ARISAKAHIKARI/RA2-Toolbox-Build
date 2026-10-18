@@ -1,13 +1,13 @@
 {
-  "label": "1.0.9.0 SingleRuntime",
-  "file_version": "1.0.9.0",
+  "label": "1.0.10.0 SingleRuntime",
+  "file_version": "1.0.10.0",
   "verified": {
     "RA2Toolbox.exe": {
-      "bytes": 2042368,
-      "sha256": "f731dd6d0957e5e8688d59e83ffa436907b14f9be14229ec2a1aa9b85c1c3d68",
+      "bytes": 2043392,
+      "sha256": "a778c4d1644419ae043496950ff9f56ff20de19d7eab2e5fa8ae36e7c5470265",
       "machine": "PE32 x86",
       "sections": 14,
-      "entry_rva": "0xbdfc0",
+      "entry_rva": "0xbc790",
       "exports": [
         "AssistHostProtocolInfo",
         "_Unwind_DeleteException",
@@ -62,6 +62,7 @@
         "gdiplus.dll": [
           "GdipAddPathString",
           "GdipAlloc",
+          "GdipCloneBrush",
           "GdipCloneImage",
           "GdipCreateBitmapFromScan0",
           "GdipCreateFontFamilyFromName",
@@ -94,6 +95,7 @@
           "GdipResetWorldTransform",
           "GdipRestoreGraphics",
           "GdipSaveGraphics",
+          "GdipScaleWorldTransform",
           "GdipSetClipRect",
           "GdipSetCompositingMode",
           "GdipSetInterpolationMode",
@@ -526,15 +528,15 @@
         "version": "6.0.0.0",
         "architecture": "x86"
       },
-      "assist_protocol": 45,
-      "assist_shared_bytes": 2845920
+      "assist_protocol": 46,
+      "assist_shared_bytes": 2845928
     },
     "GameRuntime.dll": {
-      "bytes": 2487296,
-      "sha256": "af99f542abf8cbe61818c4514d469e2c51c5c06cf953b68be2d77863754dfff2",
+      "bytes": 2487808,
+      "sha256": "4b04bbbcc298b49924697cc6354b95ce8a0d020d4e98cdd5dd7891a7391fe9d8",
       "machine": "PE32 x86",
       "sections": 9,
-      "entry_rva": "0x2bf00",
+      "entry_rva": "0x2c180",
       "exports": [
         "AssistMappingPrefix",
         "AssistProtocolInfo",
@@ -671,8 +673,8 @@
       "GameRuntimePostHook_rva": "0x1820",
       "runtime_protocol": 3,
       "runtime_control_bytes": 120,
-      "assist_protocol": 45,
-      "assist_shared_bytes": 2845920
+      "assist_protocol": 46,
+      "assist_shared_bytes": 2845928
     }
   },
   "runtime_tested": false,

@@ -3,6 +3,7 @@
 #include "pointer_intent.h"
 namespace assist {
 struct AdditionalSettings {
+ bool c4Test=false;uint32_t c4Key='C'|(4<<8),c4Mouse=1;
  bool renderReveal=false,experimentalReveal=false,antiTheft=false,nativeAirWaypoints=false;
  bool enemyMarkers=false,idleAircraft=true,constructionQueue=true,airWaypoints=true;
  bool allHotkeys=false,overrideNative=false;

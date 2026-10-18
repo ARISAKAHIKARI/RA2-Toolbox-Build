@@ -1,23 +1,36 @@
 {
-  "version": "1.0.9",
-  "file_version": "1.0.9.0",
-  "assist_protocol": 45,
-  "exe_sha256": "f731dd6d0957e5e8688d59e83ffa436907b14f9be14229ec2a1aa9b85c1c3d68",
-  "dll_sha256": "af99f542abf8cbe61818c4514d469e2c51c5c06cf953b68be2d77863754dfff2",
-  "runtime_cases": 36,
-  "native_cleanup_cases": 6,
-  "native_branch_probes": 4,
-  "runtime_scope": "actual compiled DLL / original Produce constructor, synthetic world and mocked CanBuild; branch probes are not gameplay",
-  "host_test": "actual host queue/catalogue/service/native click/badges under ASan/UBSan, Win32 drawing stubbed",
-  "ui_geometry": {
-    "controls": 212,
-    "viewports": 12,
-    "reachability_checks": 2448
+  "version": "1.0.10 Beta",
+  "file_version": "1.0.10.0",
+  "assist_protocol": 46,
+  "exe_sha256": "a778c4d1644419ae043496950ff9f56ff20de19d7eab2e5fa8ae36e7c5470265",
+  "dll_sha256": "4b04bbbcc298b49924697cc6354b95ce8a0d020d4e98cdd5dd7891a7391fe9d8",
+  "tests": {
+    "beta-runtime": 64,
+    "construction-runtime": 36,
+    "c4-stub": 8
   },
+  "existing_risk_stub_cases": 12,
+  "host_test": "actual host FIFO/catalogue/service/native click/badges under ASan/UBSan, building/defense x native/future x 5 progress states; Win32 drawing stubbed",
+  "ui_geometry": {
+    "controls": 220,
+    "viewports": 12,
+    "reachability_checks": 2544
+  },
+  "other_checks": [
+    "mouse mailbox C4 chord/left-click/fanout",
+    "settings handler",
+    "constructor adapter",
+    "shared viewport scaling",
+    "patch allowlist",
+    "unload grace policy",
+    "PE ABI/version/dependencies",
+    "architecture boundaries"
+  ],
   "real_windows_game": false,
   "lbw": false,
   "real_netplay": false,
   "pixel_rendering": false,
-  "technology_unlocked": false,
-  "ordinary_infantry_c4": false
+  "technology_beta": "mobile types only; native event + external catalogue; no prerequisite or cameo writes; complete production not verified",
+  "ordinary_infantry_c4": "explicit opt-in, includes multiplayer at user request; actual simulation flag-load bypass may desync",
+  "smart_unload": "enabled UI and exit-scatter retention repaired; real unloading simulated in fixture"
 }

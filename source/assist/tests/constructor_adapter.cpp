@@ -39,9 +39,9 @@ int main(){
  auto prod=intent::produce(3,0xE,40,12,1);
  Trace p;assert(constructors::fill(packet,prod,std::ref(p))==V::Ready);
  assert(p.address==0x4C6970&&p.args==5&&p.values[2]==0xE&&p.values[3]==40&&p.values[4]==12&&p.values[5]==1);
- // Production rejects non-production EventType in live sender mode, accepts Suspend/Abandon in probe mode
+ // Production accepts Produce/Abandon live, keeps Suspend/AbandonAll probe-only
  assert(constructors::admit(intent::produce(3,0x15,40,12,1))==V::InvalidFields);
- assert(constructors::admit(intent::produce(3,0x10,40,12,1),false)==V::InvalidFields);
+ assert(constructors::admit(intent::produce(3,0x10,40,12,1),false)==V::Ready);
  assert(constructors::admit(intent::produce(3,0x10,40,12,1),true)==V::Ready);
  auto sw=intent::superWeapon(0,0x12,8,{4,5});
  Trace w;assert(constructors::fill(packet,sw,std::ref(w))==V::Ready);

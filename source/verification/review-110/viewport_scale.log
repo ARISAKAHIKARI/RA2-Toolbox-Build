@@ -1,0 +1,1 @@
+PASS: shared game-pixel layout scaling of positions/font/icon/bounds at 1x, 1.5x, 2x, 2/3x; invalid view rejected
