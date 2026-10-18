@@ -1,6 +1,9 @@
 #pragma once
 #include <cmath>
 namespace viewport {
+constexpr int MinPercent=50,MaxPercent=250,DefaultPercent=100;
+inline int percent(int value){return value<MinPercent?MinPercent:value>MaxPercent?MaxPercent:value;}
+inline float factor(int value){return percent(value)/100.f;}
 struct Scale {
  int gameWidth=0,gameHeight=0,clientWidth=0,clientHeight=0;
  float x=1,y=1;

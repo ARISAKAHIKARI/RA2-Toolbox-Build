@@ -2,6 +2,7 @@
 #include <vector>
 #include <algorithm>
 #include <cstdint>
+#include "../../shared/source/viewport_scale.h"
 namespace assist { namespace construction {
 constexpr int Capacity=5,PanelWidth=144,HeaderHeight=116,RowHeight=66;
 inline bool prerequisite(int index,const std::vector<int>&owned,const std::vector<int>*groups,int future=-1){
@@ -29,13 +30,19 @@ struct Book {
 // All geometry is in game pixels. Convert both painting AND hit testing with
 // the same transform; monitor dimensions and Windows DPI are not game pixels.
 struct Layout {
- int gameWidth=0,gameHeight=0,clientWidth=0,clientHeight=0,rows=1;
- bool set(int w,int h,int cw,int ch){if(w<640||h<400||w>32768||h>32768||cw<1||ch<1||cw>32768||ch>32768)return false;
-  gameWidth=w;gameHeight=h;clientWidth=cw;clientHeight=ch;rows=std::clamp((h-200-HeaderHeight-8)/RowHeight,1,6);return true;}
- int x(int v)const{return int((int64_t(v)*clientWidth+gameWidth/2)/gameWidth);}
- int y(int v)const{return int((int64_t(v)*clientHeight+gameHeight/2)/gameHeight);}
+ int gameWidth=0,gameHeight=0,clientWidth=0,clientHeight=0,rows=1,scalePercent=100;
+ float zoom=1;
+ bool set(int w,int h,int cw,int ch,int requestedPercent=100){if(w<640||h<400||w>32768||h>32768||cw<1||ch<1||cw>32768||ch>32768)return false;
+  gameWidth=w;gameHeight=h;clientWidth=cw;clientHeight=ch;scalePercent=viewport::percent(requestedPercent);
+  // Fit at least one choice row in a small viewport; keep the saved preference.
+  zoom=std::min(viewport::factor(scalePercent),std::min(float(w-168)/PanelWidth,float(h-8)/(HeaderHeight+RowHeight)));
+  float anchor=std::min(200.f,std::max(0.f,h-8-(HeaderHeight+RowHeight)*zoom));
+  rows=std::clamp(int(((h-anchor-8)/zoom-HeaderHeight)/RowHeight),1,6);return true;}
+ int x(int v)const{return int(std::lround(double(v)*clientWidth/gameWidth*zoom));}
+ int y(int v)const{return int(std::lround(double(v)*clientHeight/gameHeight*zoom));}
  int width()const{return x(PanelWidth);}int height()const{return y(HeaderHeight+rows*RowHeight);}
- int left()const{return x(std::max(0,gameWidth-160-PanelWidth-8));}int top()const{return y(200);}
+ int left()const{return std::max(0,int(std::lround(double(gameWidth-168)*clientWidth/gameWidth))-width());}
+ int top()const{return std::max(0,std::min(int(std::lround(200.0*clientHeight/gameHeight)),clientHeight-height()-int(std::ceil(8.0*clientHeight/gameHeight))));}
  int queueAt(int px,int py)const{if(px<0||px>=width()||py<y(24)||py>=y(114))return -1;for(int i=0;i<Capacity;++i)if(py<y(24+(i+1)*18))return i;return -1;}
  int choiceAt(int px,int py,int scroll,int count)const{
   if(px<0||px>=width()||py<y(HeaderHeight)||py>=height())return -1;

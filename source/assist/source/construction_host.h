@@ -165,10 +165,10 @@ static void service(){
  }
  activeTab=get<int>(0x87F7E8+0x539C,-1);if(activeTab<0||activeTab>1||(!current[activeTab]&&books[activeTab].items.empty())){hide();return;}
  RECT client{};POINT origin{};int width=get<int>(0xA8EB84),height=get<int>(0xA8EB88);
- if(!GetClientRect(game,&client)||!ClientToScreen(game,&origin)||!layout.set(width,height,int(client.right-client.left),int(client.bottom-client.top))){hide();return;}
- static int oldW=0,oldH=0,oldCW=0,oldCH=0;
- if(width!=oldW||height!=oldH||layout.clientWidth!=oldCW||layout.clientHeight!=oldCH){oldW=width;oldH=height;oldCW=layout.clientWidth;oldCH=layout.clientHeight;
-  critical(L"Construction geometry: game="+std::to_wstring(width)+L"x"+std::to_wstring(height)+L" client="+std::to_wstring(oldCW)+L"x"+std::to_wstring(oldCH)+L" panel="+std::to_wstring(layout.width())+L"x"+std::to_wstring(layout.height()));
+ if(!GetClientRect(game,&client)||!ClientToScreen(game,&origin)||!layout.set(width,height,int(client.right-client.left),int(client.bottom-client.top),constructionScalePercent)){hide();return;}
+ static int oldW=0,oldH=0,oldCW=0,oldCH=0,oldScale=0;
+ if(width!=oldW||height!=oldH||layout.clientWidth!=oldCW||layout.clientHeight!=oldCH||oldScale!=constructionScalePercent){oldW=width;oldH=height;oldCW=layout.clientWidth;oldCH=layout.clientHeight;oldScale=constructionScalePercent;
+  critical(L"Construction geometry: game="+std::to_wstring(width)+L"x"+std::to_wstring(height)+L" client="+std::to_wstring(oldCW)+L"x"+std::to_wstring(oldCH)+L" panel="+std::to_wstring(layout.width())+L"x"+std::to_wstring(layout.height())+L" scale="+std::to_wstring(oldScale));
  }
  refreshChoices();if(choices.empty()&&books[activeTab].items.empty()){if(window)ShowWindow(window,SW_HIDE);geometryReady=false;return;}
  int desired=std::max(8,layout.y(13));if(!panelFont||fontHeight!=desired){HFONT next=CreateFontW(-desired,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH,L"Microsoft YaHei UI");if(next){if(panelFont)DeleteObject(panelFont);panelFont=next;fontHeight=desired;}}

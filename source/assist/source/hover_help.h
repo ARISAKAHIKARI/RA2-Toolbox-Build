@@ -51,6 +51,8 @@ static std::wstring controlHelp(int id,const std::wstring& label){
  case 305:return L"箱子覆盖层：显示可读取的箱子位置与信息。";
  case 306:case 471:return L"文字面板：显示战术状态与播报；提示持续时间单位为毫秒。";
  case 310:case 311:return L"覆盖层显示：设置刷新率与上边距，单位载员和敌方标记使用同一刷新节奏。";
+ case 816:return L"载员、铁幕 / 力场及冻结时间的文字缩放，50–250%，默认 100%。叠加实际游戏画面比例，仍贴住原单位位置；输入有效值后立即生效、自动保存。";
+ case 817:return L"建筑预定补充面板缩放，50–250%，默认 100%。图标、编号、字体与点击区域同步缩放；小窗口自动限制尺寸以完整显示。原生侧栏不受影响。";
  case 814:case 815:case 420:case 423:case 424:case 425:case 426:case 427:return L"科技生产测试：默认关闭；从外部目录构造原版 Produce，不改 Prerequisite，不 AddCameo。仅兵/车/机，仍要求对应阵营工厂、电力和建造上限；建筑放置未验证。联机未验证。";
  case 761:case 762:return L"事件后端：统一GameRuntime内构造原版事件；此设置下次启动生效。";
  }

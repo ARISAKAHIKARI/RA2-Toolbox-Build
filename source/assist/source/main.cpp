@@ -62,6 +62,7 @@ static uint32_t lastReceiptWrite=0,lastReceiptMatch=0;
 static Snapshot snap{},incoming{};static uint32_t ack,notice,oldMatch,snapshotSeq=~0u;static std::wstring root,statusText,toast;static DWORD toastUntil,lastFind,lastData,lastPulse;static int fps=visual::DefaultFPS,topMargin=20,repairMs=2000;static bool enabled=true,ready,techEnabled;static std::vector<int> techIndices;static std::wstring lastSearch;
 struct DisplayCounters {DWORD since=0,samples=0,paints=0,uploads=0,maxGap=0;uint64_t readUs=0,maxReadUs=0;};
 static DisplayCounters displayCounters;
+static int labelScalePercent=100,constructionScalePercent=100;
 static visual::Motion motion;static visual::LabelView labelViews[MaxLabels];
 static visual::Motion enemyMotion;static Snapshot enemySample{};static visual::LabelView enemyViews[MaxLabels];
 static_assert(external::enemies::Maximum<=MaxLabels,"Enemy markers reuse the existing display Motion capacity");
@@ -313,6 +314,7 @@ static void chooseTechProfile(int next){
  techExceptions=profileExceptions[techProfile];
 }
 static bool save(){++settingsRevision;saveWriteOK=true;for(int i=0;i<12;++i)write(L"Hotkeys",wide(iniKeys[i]).c_str(),hotkeys[i]);write(L"Display",L"FPS",fps);write(L"Display",L"LabelRefreshVersion",1);write(L"Display",L"TopMargin",topMargin);
+ write(L"Display",L"LabelScalePercent",labelScalePercent);write(L"Display",L"ConstructionScalePercent",constructionScalePercent);
  for(int i=0;i<7;++i){const wchar_t*names[]={L"Capacity",L"Iron",L"Production",L"AllTransports",L"Psychic",L"Crates",L"TextPanel"};write(L"Display",names[i],SendMessageW(check[i],BM_GETCHECK,0,0)==BST_CHECKED);}
  write(L"Modes",L"AutoRepair",SendMessageW(repairCheck,BM_GETCHECK,0,0)==BST_CHECKED);write(L"Modes",L"RepairUnrepairable",repairUnrepairable);write(L"Experimental",L"NativeTechProduction",techMode);write(L"Modes",L"RepairMs",repairMs);
  write(L"Tech",L"Profile",techProfile);write(L"Tech",L"DirectProduce",techDirectProduce);write(L"Tech",L"DefaultAllow",techDefault);
@@ -825,7 +827,8 @@ static const GlyphRaster& glyph(wchar_t ch,Color color){
  glyphRasters.push_back({ch,color.GetValue(),ch==L' '?4.f:ch<128?7.5f:13.f,std::move(bm)});return glyphRasters.back();
 }
 static void drawLabel(Graphics&g,const visual::LabelView&l,float sx,float sy){
- if(l.advanced){SolidBrush red(Color(255,255,0,0));PointF mark[]={{l.x*sx-3,l.y*sy-7},{l.x*sx+3,l.y*sy-7},{l.x*sx,l.y*sy-3}};g.FillPolygon(&red,mark,3);}
+ const float zoom=viewport::factor(labelScalePercent);
+ if(l.advanced){SolidBrush red(Color(255,255,0,0));PointF mark[]={{l.x*sx-3*zoom,l.y*sy-7*zoom},{l.x*sx+3*zoom,l.y*sy-7*zoom},{l.x*sx,l.y*sy-3*zoom}};g.FillPolygon(&red,mark,3);}
  auto&r=labelRasters[l.id];ARGB owner=l.ownerColor?l.ownerColor:0xffeeeeeeu;
  if(!r.image||r.used!=l.used||r.capacity!=l.capacity||r.centis!=l.centis||r.frozenCentis!=l.frozenCentis||r.color!=owner){
   std::vector<std::pair<std::wstring,Color>> lines;auto seconds=[](int n){wchar_t t[40];swprintf(t,40,L"%d.%02ds",n/100,n%100);return std::wstring(t);};
@@ -837,7 +840,7 @@ static void drawLabel(Graphics&g,const visual::LabelView&l,float sx,float sy){
   {Graphics strip(r.image.get());strip.Clear(Color(0,0,0,0));float y=0;for(const auto&line:lines){float row=0;for(wchar_t c:line.first)row+=glyph(c,line.second).advance;float x=(width-row)*.5f;for(wchar_t c:line.first){auto&tile=glyph(c,line.second);strip.DrawImage(tile.image.get(),x,y,25.f,34.f);x+=tile.advance;}y+=14;}}
   r.color=owner;r.width=width;r.used=l.used;r.capacity=l.capacity;r.centis=l.centis;r.frozenCentis=l.frozenCentis;r.shield=int(lines.size());
  }
- if(r.shield)g.DrawImage(r.image.get(),l.x*sx-r.width*.5f-4,l.y*sy-20-(r.shield-1)*14.f,float(r.image->GetWidth()),float(r.image->GetHeight()));
+ if(r.shield)g.DrawImage(r.image.get(),l.x*sx-(r.width*.5f+4)*zoom,l.y*sy-(20+(r.shield-1)*14.f)*zoom,r.image->GetWidth()*zoom,r.image->GetHeight()*zoom);
 }
 static void drawEnemyMarker(Graphics&g,const external::enemies::Marker&m,const visual::LabelView&v,float sx,float sy){
  float x=v.x*sx,y=v.y*sy;Pen edge(Color(245,5,9,16),4.f),mark(Color(m.color),2.f);
@@ -900,7 +903,7 @@ static void paint(){
  for(auto l:airLines)include(std::min(l.x,l.tx)*sx-6,std::min(l.y,l.ty)*sy-6,std::abs(l.x-l.tx)*sx+12,std::abs(l.y-l.ty)*sy+12);
  if(idleTabs)for(int i=0;i<4;++i)if(idleTabs&(1u<<i)){const auto&f=sidebarShapes.frames[i];include(f.x*sx,f.y*sy,f.width*sx,f.height*sy);}
  if(hasToast||summary)include(panelX-3,top-3,panelW+6,(hasToast&&summary)?62.f:32.f);
- for(int i=0;i<labelCount;++i){auto&l=labelViews[i];include(l.x*sx-140,l.y*sy-70,280,110);}
+ for(int i=0;i<labelCount;++i){auto&l=labelViews[i];float z=viewport::factor(labelScalePercent);include(l.x*sx-140*z,l.y*sy-70*z,280*z,110*z);}
  for(int i=0;i<snap.crateCount;++i){auto&c=snap.crates[i];include(c.x*sx-110,c.y*sy-33,220,46);}
  for(int i=0;i<snap.threatCount;++i){auto&t=snap.threats[i];include(std::min(t.x,t.tx)*sx-10,std::min(t.y,t.ty)*sy-10,std::abs(t.x-t.tx)*sx+20,std::abs(t.y-t.ty)*sy+20);}
  for(int i=0;i<enemyCount;++i){const auto&v=enemyViews[i];if(external::enemies::onScreen(v.x,v.y,enemyFrame.width,enemyFrame.height))include(v.x*sx-10,v.y*sy-12,300,54);}
@@ -1276,6 +1279,12 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
  pageControl(10,L"STATIC",L"常用操作与快捷键",20,0,605,30,900);
  pageControl(11,L"STATIC",L"自动化与单位行为",20,0,605,30,901);
  pageControl(12,L"STATIC",L"显示与配置",20,0,605,30,902);
+ pageControl(12,L"STATIC",L"载员 / 铁幕文字缩放 %",20,42,250,24,0);
+ pageControl(12,L"EDIT",std::to_wstring(labelScalePercent).c_str(),290,40,75,26,816,ES_NUMBER|WS_TABSTOP);
+ pageControl(12,L"STATIC",L"50–250 · 默认 100",385,42,240,24,0);
+ pageControl(12,L"STATIC",L"建筑预定面板缩放 %",20,82,250,24,0);
+ pageControl(12,L"EDIT",std::to_wstring(constructionScalePercent).c_str(),290,80,75,26,817,ES_NUMBER|WS_TABSTOP);
+ pageControl(12,L"STATIC",L"50–250 · 默认 100",385,82,240,24,0);
  control(L"STATIC",L"操作",20,84,320,22,0);control(L"STATIC",L"快捷键",345,84,260,22,0);
  for(int i=0;i<12;++i){int y=110+(i==11?0:i+1)*29;HWND action=control(L"BUTTON",labels[i],20,y,306,25,100+i,(i==0?BS_AUTOCHECKBOX:BS_PUSHBUTTON)|WS_TABSTOP);if(i==0){repairCheck=action;SendMessageW(action,BM_SETCHECK,value(L"Modes",L"AutoRepair",0)?BST_CHECKED:BST_UNCHECKED,0);}keys[i]=control(HOTKEY_CLASSW,L"",345,y,280,25,200+i,WS_TABSTOP);SendMessageW(keys[i],HKM_SETHOTKEY,hotkeys[i],0);}
  control(L"STATIC",L"维修间隔 ms",20,464,126,24,0);repairEdit=control(L"EDIT",std::to_wstring(repairMs).c_str(),152,461,72,24,312,ES_NUMBER|WS_TABSTOP);control(L"STATIC",L"500–30000",230,464,100,24,0);
@@ -1524,6 +1533,7 @@ int WINAPI wWinMain(HINSTANCE h,HINSTANCE,LPWSTR,int show){SetProcessDPIAware();
  objectQueueMode=value(L"Orders",L"ObjectEventBackend",0)==1?1u:0u;
  schedulerMode=0;schedulerTarget=0; // Message manager is the only entry.
  int refreshRevision=value(L"Display",L"LabelRefreshVersion",0);fps=visual::initialFPS(value(L"Display",L"FPS",visual::DefaultFPS),refreshRevision);if(refreshRevision<1){write(L"Display",L"FPS",fps);write(L"Display",L"LabelRefreshVersion",1);}topMargin=std::clamp(value(L"Display",L"TopMargin",20),0,4096);
+ labelScalePercent=viewport::percent(value(L"Display",L"LabelScalePercent",100));constructionScalePercent=viewport::percent(value(L"Display",L"ConstructionScalePercent",100));
  techProfile=std::clamp(value(L"Tech",L"Profile",value(L"main",L"CustomTech",0)?1:0),0,2);
  // The [tech] format mirrors Ra2Tool.ini; entries are technology TYPE ARRAY indices.
  for(int kind:{7,16,40,3}){

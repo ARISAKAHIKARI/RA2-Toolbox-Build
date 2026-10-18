@@ -1,0 +1,9 @@
+{
+  "runtime_translation_units_unchanged": [
+    "assist/source/bridge.cpp",
+    "shared/source/game_entry_manager.cpp",
+    "game_runtime/source/runtime.cpp"
+  ],
+  "text_section_identical": true,
+  "text_sha256": "67abae4a1816a1f96e0e8fd1a1575d471ba912693afa280b5366838fa53f75b9"
+}

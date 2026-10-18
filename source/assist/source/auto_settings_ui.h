@@ -47,6 +47,8 @@ static bool autoSettingChanged(int id,int notification){
   target=value;return true;};
  int* numeric=nullptr;int lo=0,hi=0;
  switch(id){case 310:numeric=&fps;lo=5;hi=500;break;case 311:numeric=&topMargin;hi=4096;break;
+ case 816:numeric=&labelScalePercent;lo=50;hi=250;break;
+ case 817:numeric=&constructionScalePercent;lo=50;hi=250;break;
  case 797:numeric=&shiftClickGap;lo=0;hi=250;break;
  case 787:numeric=&advancedScanHz;lo=1;hi=60;break;
  case 312:numeric=&repairMs;lo=500;hi=30000;break;case 444:numeric=&doubleMs;lo=20;hi=5000;break;

@@ -31,7 +31,7 @@ static external::ReadSession reader;static um::IconCache iconCache;
 static std::unique_ptr<um::Sampler<external::SharedReadView,external::NoResolve>> sampler;
 static std::unique_ptr<um::Snapshot> snap(new um::Snapshot{}),incoming(new um::Snapshot{});
 static HWND game;static DWORD pid,threadId;static bool enabled=true,demo=false,showOthers=true,buildings=false,hidden=false,manualVisible=false;
-static int topMargin=20,leftMargin=6;static bool controlsReady=false;
+static int topMargin=20,leftMargin=6,scalePercent=100;static bool controlsReady=false;
 static int page=0;static DWORD lastSearch=0,lastGood=0;static std::wstring root,status;static FILE* logfile;
 static uint32_t demoStart,oldMatch=0;static DWORD lastData=0;
 static void statsVisible(bool value){
@@ -67,7 +67,7 @@ static bool changed(const um::Snapshot& a,const um::Snapshot& b){
 static void log(const wchar_t* msg){if(logfile){fwprintf(logfile,L"[%lu] %ls\n",GetTickCount(),msg);fflush(logfile);}}
 static std::wstring path(const wchar_t* f){return root+L"\\"+f;}
 static void setStatus(const std::wstring& s){if(status!=s){status=s;SetWindowTextW(stats,s.c_str());log(s.c_str());}}
-static void save(){WritePrivateProfileStringW(L"overlay",L"tabEnabled",tabEnabled?L"1":L"0",path(L"settings.ini").c_str());WritePrivateProfileStringW(L"overlay",L"tabMode",std::to_wstring(int(tabMode)).c_str(),path(L"settings.ini").c_str());WritePrivateProfileStringW(L"overlay",L"topMargin",std::to_wstring(topMargin).c_str(),path(L"settings.ini").c_str());WritePrivateProfileStringW(L"overlay",L"leftMargin",std::to_wstring(leftMargin).c_str(),path(L"settings.ini").c_str());WritePrivateProfileStringW(L"overlay",L"buildings",buildings?L"1":L"0",path(L"settings.ini").c_str());WritePrivateProfileStringW(L"overlay",L"otherPlayers",showOthers?L"1":L"0",path(L"settings.ini").c_str());}
+static void save(){WritePrivateProfileStringW(L"overlay",L"scalePercent",std::to_wstring(scalePercent).c_str(),path(L"settings.ini").c_str());WritePrivateProfileStringW(L"overlay",L"tabEnabled",tabEnabled?L"1":L"0",path(L"settings.ini").c_str());WritePrivateProfileStringW(L"overlay",L"tabMode",std::to_wstring(int(tabMode)).c_str(),path(L"settings.ini").c_str());WritePrivateProfileStringW(L"overlay",L"topMargin",std::to_wstring(topMargin).c_str(),path(L"settings.ini").c_str());WritePrivateProfileStringW(L"overlay",L"leftMargin",std::to_wstring(leftMargin).c_str(),path(L"settings.ini").c_str());WritePrivateProfileStringW(L"overlay",L"buildings",buildings?L"1":L"0",path(L"settings.ini").c_str());WritePrivateProfileStringW(L"overlay",L"otherPlayers",showOthers?L"1":L"0",path(L"settings.ini").c_str());}
 static void visibilityStatus(const std::wstring& text){
  static std::wstring previous;if(previous==text)return;previous=text;
  if(visibilityLabel)SetWindowTextW(visibilityLabel,text.c_str());log(text.c_str());
@@ -118,8 +118,13 @@ static void drawIcon(Graphics& g,const um::Type& t,const um::Snapshot& s,float x
 static void render(int width,int height,POINT origin,int gameWidth,int gameHeight){
  if(width<100||height<100||width>16384||height>16384)return;
  viewport::Scale view;if(!view.set(gameWidth,gameHeight,width,height))return;
- int viewportW=gameWidth,viewportH=gameHeight;
- float top=float(std::clamp(topMargin,0,std::max(0,viewportH-100))),left=float(std::clamp(leftMargin,0,std::max(0,viewportW-100)));
+ // Scale content around the existing margin anchor; fit all player columns.
+ int players=0;for(int i=0;i<snap->playerCount;++i)if(showOthers||snap->players[i].local)++players;
+ float anchorX=float(std::clamp(leftMargin,0,std::max(0,gameWidth-100))),anchorY=float(std::clamp(topMargin,0,std::max(0,gameHeight-100)));
+ float zoom=std::min(viewport::factor(scalePercent),std::min((gameWidth-anchorX-8)/(std::max(1,players)*80.f+8),(gameHeight-anchorY-8)/110.f));
+ zoom=std::max(.1f,zoom);view.x*=zoom;view.y*=zoom;
+ int viewportW=int(gameWidth/zoom),viewportH=int(gameHeight/zoom);
+ float top=anchorY/zoom,left=anchorX/zoom;
  const float maxWidth=std::min(112.f,std::max(76.f,(viewportW-left-6.f)/8.f-4.f));
  float croppedW=left+8,croppedH=top+50;
  for(int pi=0;pi<snap->playerCount;++pi){auto& p=snap->players[pi];if(!showOthers&&!p.local)continue;
@@ -277,17 +282,25 @@ static LRESULT CALLBACK proc(HWND w,UINT m,WPARAM a,LPARAM b){
   ctl(L"STATIC",L"上边距",0,14,119,48,20,107);eTop=ctl(L"EDIT",std::to_wstring(topMargin).c_str(),WS_BORDER|ES_NUMBER|ES_AUTOHSCROLL,64,116,52,23,108);
   ctl(L"STATIC",L"左边距",0,168,119,48,20,109);eLeft=ctl(L"EDIT",std::to_wstring(leftMargin).c_str(),WS_BORDER|ES_NUMBER|ES_AUTOHSCROLL,218,116,52,23,110);
   ctl(L"STATIC",L"px",0,120,119,22,20,111);ctl(L"STATIC",L"px",0,274,119,22,20,112);
-  SendMessageW(eTop,EM_SETLIMITTEXT,4,0);SendMessageW(eLeft,EM_SETLIMITTEXT,4,0);controlsReady=true;
+  SendMessageW(eTop,EM_SETLIMITTEXT,4,0);SendMessageW(eLeft,EM_SETLIMITTEXT,4,0);
   cTab=ctl(L"BUTTON",L"常驻显示（不依赖 Tab）",BS_AUTOCHECKBOX,14,149,298,22,113);SendMessageW(cTab,BM_SETCHECK,!tabEnabled?BST_CHECKED:BST_UNCHECKED,0);
   tabModeBox=ctl(L"COMBOBOX",L"",CBS_DROPDOWNLIST|WS_TABSTOP,14,179,298,110,114);SendMessageW(tabModeBox,CB_ADDSTRING,0,(LPARAM)L"按键切换");SendMessageW(tabModeBox,CB_ADDSTRING,0,(LPARAM)L"按住显示");SendMessageW(tabModeBox,CB_ADDSTRING,0,(LPARAM)L"短按切换 / 长按暂显");SendMessageW(tabModeBox,CB_SETCURSEL,int(tabMode),0);
   stats=ctl(L"STATIC",L"等待游戏…",0,14,216,298,34,105);ctl(L"STATIC",L"Tab 不拦截原版菜单；不兼容时用常驻显示",0,14,253,304,20,106);
   ctl(L"STATIC",L"Ctrl+Alt+H 显隐 · Ctrl+Alt+←/→ 翻页",0,14,278,304,20,115);
   ctl(L"BUTTON",L"显示 / 隐藏覆盖层",BS_OWNERDRAW,14,306,298,26,116);
   visibilityLabel=ctl(L"STATIC",L"覆盖层等待游戏",0,14,339,298,42,117);
-  EnableWindow(tabModeBox,tabEnabled);
+  ctl(L"STATIC",L"显示缩放 %",0,14,395,138,23,119);
+  ctl(L"EDIT",std::to_wstring(scalePercent).c_str(),WS_BORDER|ES_NUMBER|ES_AUTOHSCROLL,168,392,102,25,118);
+  SendDlgItemMessageW(w,118,EM_SETLIMITTEXT,3,0);
+  ctl(L"STATIC",L"50–250%，默认 100%，即时生效",0,14,426,298,23,120);
+  EnableWindow(tabModeBox,tabEnabled);controlsReady=true;
   if(!RegisterHotKey(w,1,MOD_CONTROL|MOD_ALT|MOD_NOREPEAT,'H'))visibilityStatus(L"备用快捷键注册失败；请用显示按钮或常驻模式");RegisterHotKey(w,2,MOD_CONTROL|MOD_ALT|MOD_NOREPEAT,VK_RIGHT);RegisterHotKey(w,3,MOD_CONTROL|MOD_ALT|MOD_NOREPEAT,VK_LEFT);SetTimer(w,1,16,nullptr);return 0;}
  case WM_TIMER:case WM_APP+9:tick();return 0;
  case WM_COMMAND:if(controlsReady&&LOWORD(a)==114&&HIWORD(a)==CBN_SELCHANGE){tabMode=tabui::Mode(SendMessageW(tabModeBox,CB_GETCURSEL,0,0));tabs.mode(tabMode);save();tick();return 0;}
+ if(controlsReady&&HIWORD(a)==EN_CHANGE&&LOWORD(a)==118){
+  BOOL ok=FALSE;int value=int(GetDlgItemInt(w,118,&ok,FALSE));
+  if(ok&&value>=viewport::MinPercent&&value<=viewport::MaxPercent){scalePercent=value;save();renderDirty=true;tick();}return 0;
+ }
  if(controlsReady&&HIWORD(a)==EN_CHANGE&&(LOWORD(a)==108||LOWORD(a)==110)){
   BOOL ok=FALSE;UINT value=GetDlgItemInt(w,LOWORD(a),&ok,FALSE);
   if(ok&&value<=4096){if(LOWORD(a)==108)topMargin=int(value);else leftMargin=int(value);save();renderDirty=true;tick();}return 0;
@@ -303,6 +316,7 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR,int){
  HANDLE mutex=CreateMutexW(nullptr,TRUE,L"Local\\RA2_UnitMonitor_UI_v01");if(GetLastError()==ERROR_ALREADY_EXISTS){MessageBoxW(nullptr,L"单位监控已经运行。",L"单位监控",MB_OK);return 0;}
  SetProcessDPIAware();wchar_t fn[2048];GetModuleFileNameW(nullptr,fn,2048);root=fn;root=root.substr(0,root.find_last_of(L"\\/"));logfile=_wfopen(path(L"UnitMonitor.log").c_str(),L"w, ccs=UTF-8");
  topMargin=std::clamp(int(GetPrivateProfileIntW(L"overlay",L"topMargin",20,path(L"settings.ini").c_str())),0,4096);leftMargin=std::clamp(int(GetPrivateProfileIntW(L"overlay",L"leftMargin",6,path(L"settings.ini").c_str())),0,4096);
+ scalePercent=viewport::percent(int(GetPrivateProfileIntW(L"overlay",L"scalePercent",100,path(L"settings.ini").c_str())));
  buildings=GetPrivateProfileIntW(L"overlay",L"buildings",0,path(L"settings.ini").c_str())!=0;showOthers=GetPrivateProfileIntW(L"overlay",L"otherPlayers",1,path(L"settings.ini").c_str())!=0;
 #ifdef RA2_UNIFIED
  enabled=suite::enabled(1);
@@ -312,7 +326,7 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR,int){
  WNDCLASSW wc{};wc.hInstance=inst;wc.lpfnWndProc=overlayProc;wc.lpszClassName=L"RA2UnitTransparentOverlay";RegisterClassW(&wc);
  overlay=CreateWindowExW(WS_EX_LAYERED|WS_EX_TRANSPARENT|WS_EX_TOOLWINDOW|WS_EX_NOACTIVATE|WS_EX_TOPMOST,wc.lpszClassName,L"",WS_POPUP,0,0,1,1,nullptr,nullptr,inst,nullptr);
  wc.lpfnWndProc=proc;wc.lpszClassName=L"RA2UnitMonitorUI";wc.hCursor=LoadCursorW(nullptr,IDC_ARROW);wc.hIcon=LoadIconW(nullptr,IDI_APPLICATION);RegisterClassW(&wc);
- RECT r{0,0,326,392};AdjustWindowRect(&r,WS_OVERLAPPED|WS_CAPTION|WS_SYSMENU|WS_MINIMIZEBOX,FALSE);
+ RECT r{0,0,326,460};AdjustWindowRect(&r,WS_OVERLAPPED|WS_CAPTION|WS_SYSMENU|WS_MINIMIZEBOX,FALSE);
  ui=CreateWindowW(wc.lpszClassName,L"单位统计 v" RA2_RELEASE_VERSION_W,WS_OVERLAPPED|WS_CAPTION|WS_SYSMENU|WS_MINIMIZEBOX,CW_USEDEFAULT,CW_USEDEFAULT,r.right-r.left,r.bottom-r.top,nullptr,nullptr,inst,nullptr);
 #ifdef RA2_UNIFIED
  suite::registerPane(1,ui);

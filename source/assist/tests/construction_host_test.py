@@ -24,6 +24,7 @@ struct WNDCLASSW{void*hInstance;int lpfnWndProc;const wchar_t*lpszClassName;void
 constexpr int SW_HIDE=0,FALSE=0,FW_NORMAL=0,DEFAULT_CHARSET=0,OUT_DEFAULT_PRECIS=0,CLIP_DEFAULT_PRECIS=0,CLEARTYPE_QUALITY=0,DEFAULT_PITCH=0,IDC_HAND=0,WS_EX_TOOLWINDOW=0,WS_EX_NOACTIVATE=0,WS_EX_TOPMOST=0,WS_POPUP=0,SWP_NOACTIVATE=0,SWP_SHOWWINDOW=0;
 static void*HWND_TOPMOST=nullptr;static HWND game=(void*)2;static uint32_t now=1000,pid=1,match=1;static int clientWidth=3840,clientHeight=2160;
 static bool enabled=true,focused=true,fresh=true,queueAccept=true;static std::wstring root=L"/tmp",message;
+static int constructionScalePercent=100;
 static struct{bool constructionQueue=true;}extra;
 static struct{int typeCount=3,chat=0,renderStatus=1;struct{int kind=7,index=0;char id[24]{};wchar_t name[40]{};}types[8];}snap;
 static delivery::Queue commandQueue;
@@ -60,6 +61,7 @@ static void place(){byte(P+0x81,0);byte(P+0x90,1);w(F+0x58,0);w(0x87F7E8+0x1544+
 int main(){
  using namespace buildreserve;
  setup();assert(choice(0)<0&&choice(1)>=0&&choice(2)<0);assert(choices[choice(1)].future);assert(layout.width()==216&&layout.x(60)==90&&layout.y(48)==72);
+ constructionScalePercent=150;tick();assert(layout.width()==324&&layout.x(60)==135);constructionScalePercent=100;tick();
  reserve(choice(1));assert(choice(2)>=0);reserve(choice(2));reserve(choice(1));reserveChoice({0,0,0,T,false},true);reserve(choice(0));assert(books[0].items==std::vector<int>({1,2,1,0,0}));reserve(choice(0));assert(books[0].items.size()==5);
  removeFrom(3);assert(books[0].items.size()==3);removeFrom(1);assert(books[0].items==std::vector<int>({1}));removeFrom(0);assert(books[0].items.empty());
  reserve(choice(1));w(P+0x6C,0);byte(P+0x74,0);for(int i=0;i<20;++i)tick();assert(books[0].items==std::vector<int>({1})&&commandQueue.size==0);w(F+0x58,0);tick();tick(300);assert(books[0].items.empty());
@@ -79,7 +81,7 @@ int main(){
  setup();w(T+0x2000+0xDA4,1);refreshChoices();assert(choice(1)<0);w(T+0x2000+0xDA4,-1);w(C+0xB8,4);refreshChoices();assert(choice(1)>=0);
  byte(T+0x2000+0xD9B,1);refreshChoices();assert(choice(1)<0);byte(H+0x2BC,1);refreshChoices();assert(choice(1)>=0);
  memcpy(externalReader.bytes.data()+C+0x98,"Americans",10);memcpy(externalReader.bytes.data()+C+0x24,"Americans",10);list(0xA83C98,{C});refreshChoices();assert(choice(1)>=0);
- construction::Layout l;for(auto sizes:std::vector<std::vector<int>>{{2560,1440,3840,2160},{2560,1440,2560,1440},{1920,1080,3840,2160},{1280,720,1920,1080},{1920,1080,2560,1440},{640,480,640,480}}){assert(l.set(sizes[0],sizes[1],sizes[2],sizes[3]));assert(l.left()+l.width()<=sizes[2]);assert(l.top()+l.height()<=sizes[3]);for(int i=0;i<5;++i)assert(l.queueAt(l.x(10),l.y(24+i*18+9))==i);for(int i=0;i<l.rows*2;++i)assert(l.choiceAt(l.x((i%2)*72+36),l.y(116+(i/2)*66+33),0,50)==i);assert(l.choiceAt(l.width(),l.y(120),0,50)==-1);}
+ construction::Layout l;for(int pct:{50,75,100,125,150,200,250})for(auto sizes:std::vector<std::vector<int>>{{2560,1440,3840,2160},{2560,1440,2560,1440},{1920,1080,3840,2160},{1280,720,1920,1080},{1920,1080,2560,1440},{640,480,640,480}}){assert(l.set(sizes[0],sizes[1],sizes[2],sizes[3],pct));assert(l.left()+l.width()<=sizes[2]);assert(l.top()+l.height()<=sizes[3]);for(int i=0;i<5;++i)assert(l.queueAt(l.x(10),l.y(24+i*18+9))==i);for(int i=0;i<l.rows*2;++i)assert(l.choiceAt(l.x((i%2)*72+36),l.y(116+(i/2)*66+33),0,50)==i);assert(l.choiceAt(l.width(),l.y(120),0,50)==-1);}
 
  // Regression: every reservation category, not only unavailable future types.
  for(int tab=0;tab<2;++tab)for(bool future:{false,true}){

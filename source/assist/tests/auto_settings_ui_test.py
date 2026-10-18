@@ -23,6 +23,7 @@ constexpr int FALSE=0,EN_CHANGE=1,CBN_SELCHANGE=2,BN_CLICKED=3,HKM_GETHOTKEY=4,H
 static bool ready=true,updatingControls=false,enabled=true,autoSaveOK=true;
 struct ControlUpdate{bool old=updatingControls;ControlUpdate(){updatingControls=true;}~ControlUpdate(){updatingControls=old;}};
 static bool hookAdvanced=false,hookSmartUnload=false;static HWND hookChecks[4]={800,801,802,803};
+static int labelScalePercent=100,constructionScalePercent=100;
 static int ui=1,fps=60,topMargin=20,repairMs=2000,doubleMs=350,toastMs=6000;
 static unsigned settingsRevision=1,paintRevision=0,saves=0,registrations=0,syncs=0,timerMs=0,timers=0,binds=0;
 static struct{int status=1,swCount=1;struct{char id[8]="SW";}supers[1];}snap;
@@ -82,6 +83,12 @@ feature_save=io.split('static bool saveAdditionalSettings(){',1)[1].split(' writ
 prefix+="\nstatic void loadFeatureTypes(){"+feature_load+"}\nstatic void saveFeatureTypes(){"+feature_save+"}\n"
 suffix=r''' 
 int main(){
+ for(int id:{816,817}){
+  int& scale=id==816?labelScalePercent:constructionScalePercent;
+  for(int p:{50,75,100,125,150,200,250}){fields[id]=p;assert(autoSettingChanged(id,EN_CHANGE)&&scale==p&&autoSavePending);}
+  for(int bad:{0,49,251,999}){fields[id]=bad;autoSettingChanged(id,EN_CHANGE);assert(scale==250);}
+ }
+
  loadFeatureTypes();for(int f=0;f<featuretypes::Count;++f)assert(!featureTypes.filters[f].custom);
  for(int f=0;f<featuretypes::Count;++f){featureTypes.filters[f].custom=1;featureTypeText[f]=L"custom_a，CUSTOM_B";}
  saveFeatureTypes();featureTypes={};for(auto&text:featureTypeText)text.clear();loadFeatureTypes();

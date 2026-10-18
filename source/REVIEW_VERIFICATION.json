@@ -1,36 +1,55 @@
 {
-  "version": "1.0.10 Beta",
-  "file_version": "1.0.10.0",
+  "version": "1.0.11 Beta",
+  "file_version": "1.0.11.0",
   "assist_protocol": 46,
-  "exe_sha256": "a778c4d1644419ae043496950ff9f56ff20de19d7eab2e5fa8ae36e7c5470265",
-  "dll_sha256": "4b04bbbcc298b49924697cc6354b95ce8a0d020d4e98cdd5dd7891a7391fe9d8",
-  "tests": {
-    "beta-runtime": 64,
-    "construction-runtime": 36,
-    "c4-stub": 8
+  "exe_sha256": "be3ab317044c64e11cdae45550e123c4acfef99517e638184e55f65af2238a96",
+  "dll_sha256": "87bed5527c824bffb03d914245d650441b331fb651288283c0ccf328ac843c39",
+  "scales": {
+    "minimum": 50,
+    "maximum": 250,
+    "default": 100,
+    "count": 3
   },
-  "existing_risk_stub_cases": 12,
-  "host_test": "actual host FIFO/catalogue/service/native click/badges under ASan/UBSan, building/defense x native/future x 5 progress states; Win32 drawing stubbed",
   "ui_geometry": {
-    "controls": 220,
-    "viewports": 12,
-    "reachability_checks": 2544
+    "controls": 226,
+    "fully_reachable_checks": 2616,
+    "viewport_sizes": 12,
+    "pages": 1,
+    "content_bottom": 5093
   },
-  "other_checks": [
-    "mouse mailbox C4 chord/left-click/fanout",
-    "settings handler",
-    "constructor adapter",
-    "shared viewport scaling",
-    "patch allowlist",
-    "unload grace policy",
-    "PE ABI/version/dependencies",
-    "architecture boundaries"
+  "reservation_geometry": {
+    "percentages": [
+      50,
+      75,
+      100,
+      125,
+      150,
+      200,
+      250
+    ],
+    "resolution_pairs": 6,
+    "paint_hit_same_transform": true
+  },
+  "runtime_equivalence": {
+    "runtime_translation_units_unchanged": [
+      "assist/source/bridge.cpp",
+      "shared/source/game_entry_manager.cpp",
+      "game_runtime/source/runtime.cpp"
+    ],
+    "text_section_identical": true,
+    "text_sha256": "67abae4a1816a1f96e0e8fd1a1575d471ba912693afa280b5366838fa53f75b9"
+  },
+  "verification": [
+    "settings handler portable fixture",
+    "reservation host ASan/UBSan fixture",
+    "tactical UI construction/layout fixture",
+    "viewport scaling",
+    "PE version/ABI/imports/manifest",
+    "source architecture boundaries"
   ],
   "real_windows_game": false,
-  "lbw": false,
   "real_netplay": false,
   "pixel_rendering": false,
-  "technology_beta": "mobile types only; native event + external catalogue; no prerequisite or cameo writes; complete production not verified",
-  "ordinary_infantry_c4": "explicit opt-in, includes multiplayer at user request; actual simulation flag-load bypass may desync",
-  "smart_unload": "enabled UI and exit-scatter retention repaired; real unloading simulated in fixture"
+  "lbw": false,
+  "native_planning_research": "copy and dispatch verified in synthetic world; seed payload candidates, final effect and multiplayer NOT verified; no new runtime feature"
 }
