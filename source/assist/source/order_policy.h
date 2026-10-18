@@ -37,8 +37,8 @@ inline Reject objectEvent(int eventType, bool targetFound, bool targetAlive,
  if(!targetOwnerIsSender)return Reject::UnauthorizedOwner;
  return Reject::None;
 }
-inline Reject productionEvent(bool validPlan, bool multiplayer, bool unsafeTechAllowed) {
- if(multiplayer && !unsafeTechAllowed)return Reject::UnauthorizedOwner;
+inline Reject productionEvent(bool validPlan, bool multiplayer, bool unsafeTechAllowed,bool nativeCameo=false) {
+ if(multiplayer && !unsafeTechAllowed&&!nativeCameo)return Reject::UnauthorizedOwner;
  if(!validPlan)return Reject::UnsupportedOrder;
  return Reject::None;
 }

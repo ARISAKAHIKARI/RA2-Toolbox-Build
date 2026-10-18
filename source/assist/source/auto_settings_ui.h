@@ -13,6 +13,15 @@ static void changedSetting(){
 static bool autoSettingChanged(int id,int notification){
  if(!ready||updatingControls)return false;
  const bool edit=notification==EN_CHANGE,select=notification==CBN_SELCHANGE;
+ if(id==804&&notification==BN_CLICKED){extra.antiTheft=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();return true;}
+ if(id==803&&notification==BN_CLICKED){extra.airWaypoints=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();return true;}
+ if(id==802&&select){advancedTargetPriority=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));changedSetting();return true;}
+ if(id==799&&notification==BN_CLICKED){extra.constructionQueue=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();return true;}
+ if(id==798&&notification==BN_CLICKED){extra.idleAircraft=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();return true;}
+ if(id==795&&notification==BN_CLICKED){shiftClickEnabled=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();return true;}
+ if(id==796&&select){shiftClickMode=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));changedSetting();return true;}
+ if(id==789&&edit){extra.sellKey=uint32_t(SendMessageW(GetDlgItem(ui,id),HKM_GETHOTKEY,0,0));ControlUpdate guard;SendMessageW(extraControls[SellPreset],CB_SETCURSEL,holdPreset(extra.sellKey),0);SendMessageW(extraControls[SellCustom],HKM_SETHOTKEY,extra.sellKey,0);changedSetting();return true;}
+ if(id==788&&notification==BN_CLICKED){extra.overrideNative=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();return true;}
  if(id==786&&notification==BN_CLICKED){extra.allHotkeys=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;typeTap.clear();registerKeys();changedSetting();return true;}
  if(id==785&&notification==BN_CLICKED){extra.enemyMarkers=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();return true;}
  if(id==790&&select){int next=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));if(next>=0&&next<featuretypes::Count){featureTypeIndex=next;featureTypeFields();}return true;}
@@ -33,6 +42,8 @@ static bool autoSettingChanged(int id,int notification){
   target=value;return true;};
  int* numeric=nullptr;int lo=0,hi=0;
  switch(id){case 310:numeric=&fps;lo=5;hi=500;break;case 311:numeric=&topMargin;hi=4096;break;
+ case 797:numeric=&shiftClickGap;lo=0;hi=250;break;
+ case 787:numeric=&advancedScanHz;lo=1;hi=60;break;
  case 312:numeric=&repairMs;lo=500;hi=30000;break;case 444:numeric=&doubleMs;lo=20;hi=5000;break;
  case 471:numeric=&toastMs;lo=500;hi=60000;break;case 701:numeric=&extra.loadRadius;lo=1;hi=512;break;
  case 710:numeric=&extra.defaults.first;hi=512;break;case 711:numeric=&extra.defaults.second;hi=512;break;
@@ -67,12 +78,12 @@ static bool autoSettingChanged(int id,int notification){
   const bool disk=id<=726;int preset=disk?DiskPreset:SellPreset,custom=disk?DiskCustom:SellCustom;
   ControlUpdate guard;if(edit)SendMessageW(extraControls[preset],CB_SETCURSEL,4,0);
   auto key=presetKey(int(SendMessageW(extraControls[preset],CB_GETCURSEL,0,0)),uint32_t(SendMessageW(extraControls[custom],HKM_GETHOTKEY,0,0)));
-  (disk?extra.diskKey:extra.sellKey)=key;SendMessageW(extraControls[custom],HKM_SETHOTKEY,key,0);changedSetting();return true;
+  (disk?extra.diskKey:extra.sellKey)=key;if(!disk)SendMessageW(GetDlgItem(ui,789),HKM_SETHOTKEY,key,0);SendMessageW(extraControls[custom],HKM_SETHOTKEY,key,0);changedSetting();return true;
  }
  if(id>=729&&id<729+pointerinput::MouseCount&&select){
   const int slot=id-729;int key=int(SendMessageW(extraControls[MouseFirst+slot],CB_GETCURSEL,0,0));
-  if(key<0||key>4)return true;
-  extra.mouseButtons[slot]=key;changedSetting();return true;
+  if(key<0||key>5)return true;
+  extra.mouseButtons[slot]=key==5?6:key;changedSetting();return true;
  }
  if(!edit)return false;
  WORD* target=nullptr;HWND widget=GetDlgItem(ui,id);
@@ -103,3 +114,4 @@ static bool autoSettingChanged(int id,int notification){
   bindType(false);return true;}
  return false;
 }
+

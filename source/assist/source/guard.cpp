@@ -28,3 +28,10 @@ extern "C" void GuardedAssistTick() {
     __try { AssistTick(); }
     __except(AssistExceptionFilter(_exception_info(),1)) { AssistFault(); }
 }
+
+
+extern "C" int AssistFilterMessage(void*);
+extern "C" int GuardedAssistFilter(void* message){
+ __try{return AssistFilterMessage(message);}
+ __except(AssistExceptionFilter(_exception_info(),10)){AssistFault();return 0;}
+}

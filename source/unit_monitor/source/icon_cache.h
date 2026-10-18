@@ -40,8 +40,8 @@ inline uint64_t scope(const std::filesystem::path&exe){
  std::filesystem::recursive_directory_iterator it(base,std::filesystem::directory_options::skip_permission_denied,ec),end;
  size_t seen=0;for(;!ec&&it!=end;it.increment(ec)){if(++seen>30000)return 0;if(it.depth()>2){it.disable_recursion_pending();continue;}if(!it->is_regular_file(ec))continue;
   auto ext=it->path().extension().wstring(),name=it->path().filename().wstring();for(auto&c:ext)c=towlower(c);for(auto&c:name)c=towlower(c);
-  bool ini=ext==L".ini"&&name!=L"spawn.ini";
-  if(ini||ext==L".mix"||ext==L".shp"||ext==L".pal"||ext==L".map"||ext==L".mpr"||ext==L".yrm"||ext==L".dll"||it->path()==exe)files.push_back(it->path());
+  bool ini=ext==L".ini"&&(name==L"rules.ini"||name==L"rulesmd.ini"||name==L"art.ini"||name==L"artmd.ini"||name==L"ares.ini"||name==L"phobos.ini");
+  if(ini||ext==L".mix"||ext==L".shp"||ext==L".pal"||ext==L".dll"||it->path()==exe)files.push_back(it->path());
  }if(ec)return 0;std::sort(files.begin(),files.end());auto full=exe.wstring();uint64_t h=hash(full.data(),full.size()*sizeof(wchar_t));
  for(auto&p:files){auto n=p.lexically_relative(base).wstring();h=hash(n.data(),n.size()*sizeof(wchar_t),h);auto size=std::filesystem::file_size(p,ec);if(ec)return 0;h=hash(&size,sizeof size,h);
   if(size<=8*1024*1024){std::ifstream f(p,std::ios::binary);if(!f)return 0;char b[65536];while(f){f.read(b,sizeof b);h=hash(b,size_t(f.gcount()),h);}if(!f.eof())return 0;}
@@ -53,16 +53,18 @@ class IconCache {
  std::mutex mutex;std::condition_variable cv;std::thread worker;bool stop=false,contextPending=false,dirty=false,ready=false;uint64_t generation=0,scopeHash=0;
  std::filesystem::path exe,directory,file;std::map<std::string,iconcache::Record> entries;
  void run(){std::unique_lock<std::mutex> lock(mutex);for(;;){cv.wait_for(lock,std::chrono::milliseconds(500),[&]{return stop||contextPending;});
-   if(contextPending){auto x=exe,dir=directory;auto gen=generation;contextPending=false;lock.unlock();auto h=iconcache::scope(x);auto p=dir/(std::to_string(h)+".bin");auto records=h?iconcache::read(p,h):std::vector<iconcache::Record>{};lock.lock();
-    if(gen==generation){scopeHash=h;file=p;entries.clear();for(auto&r:records)entries[iconcache::key(r)]=r;ready=h!=0;loaded=int(entries.size());}continue;}
-   if(dirty&&ready){std::vector<iconcache::Record> records;for(auto&e:entries)records.push_back(e.second);auto p=file;auto h=scopeHash;dirty=false;lock.unlock();bool ok=iconcache::write(p,h,records);lock.lock();writeFailed=!ok;}
+   if(contextPending){
+    if(dirty&&scopeHash){std::vector<iconcache::Record> save;for(auto&e:entries)save.push_back(e.second);auto p=file;auto h=scopeHash;dirty=false;lock.unlock();bool ok=iconcache::write(p,h,save);lock.lock();writeFailed=!ok;if(!ok)dirty=true;}
+    auto x=exe,dir=directory;auto gen=generation;contextPending=false;lock.unlock();auto h=iconcache::scope(x);auto p=dir/(std::to_string(h)+".bin");auto records=h?iconcache::read(p,h):std::vector<iconcache::Record>{};lock.lock();
+    if(gen==generation){if(scopeHash!=h)entries.clear();scopeHash=h;file=p;for(auto&r:records)if(!entries.count(iconcache::key(r)))entries[iconcache::key(r)]=r;ready=h!=0;loaded=int(entries.size());}continue;}
+   if(dirty&&ready){std::vector<iconcache::Record> records;for(auto&e:entries)records.push_back(e.second);auto p=file;auto h=scopeHash;dirty=false;lock.unlock();bool ok=iconcache::write(p,h,records);lock.lock();writeFailed=!ok;if(!ok)dirty=true;}
    if(stop)break;
   }}
 public:
  std::atomic<int> loaded{0};std::atomic<bool> writeFailed{false};
  ~IconCache(){if(worker.joinable()){{std::lock_guard<std::mutex> l(mutex);stop=true;}cv.notify_one();worker.join();}}
- void rescope(){std::lock_guard<std::mutex> l(mutex);++generation;ready=false;contextPending=true;cv.notify_one();}
- void open(const std::filesystem::path&game,const std::filesystem::path&folder){std::lock_guard<std::mutex> l(mutex);++generation;exe=game;directory=folder;entries.clear();ready=false;dirty=false;loaded=0;contextPending=true;if(!worker.joinable())worker=std::thread([this]{run();});cv.notify_one();}
+ void rescope(){std::lock_guard<std::mutex> l(mutex);++generation;contextPending=true;cv.notify_one();}
+ void open(const std::filesystem::path&game,const std::filesystem::path&folder){std::lock_guard<std::mutex> l(mutex);++generation;bool same=exe==game&&directory==folder;exe=game;directory=folder;if(!same)ready=false;contextPending=true;if(!worker.joinable())worker=std::thread([this]{run();});cv.notify_one();}
  bool restorePalette(const Type&t,Snapshot&s){std::lock_guard<std::mutex> l(mutex);if(!ready)return false;auto it=entries.find(iconcache::key(t));if(it==entries.end())return false;
   memcpy(s.palette,it->second.palette,sizeof s.palette);s.paletteReady=1;return true;}
  bool restore(Type&t,Snapshot&s){std::lock_guard<std::mutex> l(mutex);if(!ready)return false;auto it=entries.find(iconcache::key(t));if(it==entries.end())return false;
@@ -72,3 +74,4 @@ public:
   if(!iconcache::valid(r))return false;auto it=entries.find(k);if(it==entries.end()||memcmp(&it->second,&r,sizeof r)){entries[k]=r;dirty=true;}return true;}
 };
 }
+

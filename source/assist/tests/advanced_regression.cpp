@@ -12,10 +12,10 @@ int main(){auto memory=std::make_unique<World>();auto&w=*memory;Planner p;setup(
  auto v=p.step(w,AdvancedInput,200,300,30);assert(v.size()==1&&v[0].target==21);p.accepted(v[0],w.frame);a.target=21;
  for(int f=3;f<20;++f){w.frame=f;w.actors[2].x=5100+(f%2)*20;assert(p.step(w,AdvancedInput,200,300,30).empty());}
  w.frame=20;w.actors[2].cost=900;v=p.step(w,AdvancedInput,200,300,30);assert(v.size()==1&&v[0].target==22);p.accepted(v[0],20);a.target=22;
- // Keep a legitimate in-range target during rearm/burst without building the
- // enemy spatial index or scanning the enemy list again.
+ // Rearm no longer prevents periodic target evaluation; a native burst is
+ // still allowed to finish before a target change.
  w.frame=21;a.rearmStart=20;a.rearmDuration=30;w.actors[1].cost=1500;
- assert(p.step(w,AdvancedInput,200,300,30).empty()&&p.targetChecks==0);
+ assert(p.step(w,AdvancedInput,200,300,30).empty()&&p.targetChecks>0);
  w.frame=22;w.actors[2].flags|=Cloaked;v=p.step(w,AdvancedInput,200,300,30);assert(v.size()==1&&v[0].target==21);p.accepted(v[0],22);a.target=21;
  w.frame=51;a.flags|=BurstFiring;w.actors[2].flags=Enemy;w.actors[2].cost=2000;
  assert(p.step(w,AdvancedInput,200,300,30).empty()&&p.targetChecks==0);

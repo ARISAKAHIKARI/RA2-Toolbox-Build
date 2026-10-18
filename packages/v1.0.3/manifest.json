@@ -1,0 +1,22 @@
+{
+  "version": "1.0.3",
+  "base": "1.0.2",
+  "type": "binary_update",
+  "sha256": "94e16c366c1c5507e27b18c29880786127e5805b260d4d4104e6c73b5bde54b6",
+  "bytes": 957334,
+  "files": {
+    "RA2Toolbox.exe": "014ac29b58a8ad6bad909067371299d870c5ee9f5738586f9b85ac428a28ed53",
+    "GameRuntime.dll": "4853edd0ca765f03ea172e38b074a01642da978b91328d3c2436bf72415fb81f"
+  },
+  "portable_tests": [
+    "hotfix103",
+    "defense103",
+    "advanced_regression",
+    "magnetron_rof",
+    "icon_cache"
+  ],
+  "pe_abi_version_dependencies_verified": true,
+  "source_boundary_audit_passed": true,
+  "windows_game_tested": false,
+  "real_multiplayer_tested": false
+}

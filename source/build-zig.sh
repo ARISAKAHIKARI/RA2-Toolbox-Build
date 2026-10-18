@@ -9,7 +9,7 @@ if [ "$version" != "0.13.0" ]; then
 fi
 # Use the normal DLL CRT startup: these links include the C/C++ runtime.
 # A direct DllMain entry bypasses its initialization and static constructors.
-rm -f BUILD-VERIFIED-v102.tag verification/BUILD-VERIFIED-v102.tag WINDOWS_BUILD_ARTIFACTS.json verification/WINDOWS_BUILD_ARTIFACTS.json
+rm -f BUILD-VERIFIED-v103.tag verification/BUILD-VERIFIED-v103.tag WINDOWS_BUILD_ARTIFACTS.json verification/WINDOWS_BUILD_ARTIFACTS.json
 "$ZIG" rc /fo shared/source/dll_version.res shared/source/dll_version.rc
 "$ZIG" c++ -target x86-windows-gnu -std=c++17 -O2 -fno-exceptions -fno-rtti -c shared/source/game_entry_manager.cpp -o shared/source/game_entry_manager.o
 "$ZIG" rc /fo suite/source/app.res suite/source/app.rc
@@ -24,3 +24,4 @@ for entry in Cursor Monitor Tactical;do
   "$ZIG" c++ -target x86-windows-gnu -std=c++17 -O2 -DRA2_UNIFIED -DwWinMain="${entry}Entry" -Isuite/source -c "$module/source/main.cpp" -o "suite/source/$module.o"
 done
 "$ZIG" c++ -target x86-windows-gnu -std=c++17 -O2 -municode suite/source/main.cpp suite/source/cursor.o suite/source/unit_monitor.o suite/source/assist.o suite/source/app.res -o RA2Toolbox.exe -Wl,--subsystem,windows -lgdiplus -lcomctl32 -luser32 -lgdi32 -lwinmm -lshell32 -lole32 -lcomdlg32
+

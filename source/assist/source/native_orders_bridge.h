@@ -41,7 +41,7 @@ static bool nativeOutgoing(uint32_t p,int mission,uint32_t packedCell,uint32_t t
  if(!nativeReady()||!own(p,lastHouse))return false;
  int k=kind(p),cx=int(packedCell%1000),cy=int(packedCell/1000);
  bool mag=(bindings&pointerinput::Magnetron)&&(sh->flags&MagnetronInput);
- if(!manualVersions.trackable(get<uint32_t>(p+0x10))||(!(bindings&pointerinput::Advanced)||!(sh->flags&AdvancedInput))&&!mag||(mag?!rawMagnetron(p):!featureObjectAllowed(featuretypes::AdvancedAttack,p))||(k!=1&&k!=2)||!get<bool>(p+0x83)||get<bool>(p+0x1C8)||get<uint32_t>(p+0x11C)||target||
+ if(!manualVersions.trackable(get<uint32_t>(p+0x10))||(!(bindings&pointerinput::Advanced)||!(sh->flags&AdvancedInput))&&!mag||(mag?!rawMagnetron(p):!featureObjectAllowed(featuretypes::AdvancedAttack,p))||(k!=1&&k!=2)||get<bool>(p+0x1C8)||get<uint32_t>(p+0x11C)||target||
   (mission!=2&&mission!=29)||cx<=0||cy<=0||cx>=512||cy>=512||!rawArmed(p))return false;
  int previous=orderIndex(p);if(previous>=0)removeOrder(previous);if(nativeCount>=nativeorders::MaxOrders)return false;
  auto&o=nativeOrders[nativeCount++];o={};o.p=p;o.id=get<uint32_t>(p+0x10);o.mode=mag?planner::MagnetronMove:planner::OrdinaryMove;o.token=manualVersions.get(o.id);o.cell=o.nearest=packedCell;o.gx=cx*256+128;o.gy=cy*256+128;
@@ -216,12 +216,13 @@ static void nativeOrdersTick(uint32_t house,int frame){
  // Input interception is for advanced click / CS capture ONLY.  An input
  // hook error must not cancel an independently observed disembark/ejection:
  // those workers issue vanilla EventClass orders and need no code patch.
- if(snap.nativeHookStatus!=1&&nativeCount){nativeCount=0;advancedObjects.clear();}
+ // Interface readiness may recover next tick; retain explicit intents.
  for(int i=0;i<nativeCount;)if(!worldObjects.contains(nativeOrders[i].p)||get<uint32_t>(nativeOrders[i].p+0x10)!=nativeOrders[i].id||!(sh->flags&(nativeOrders[i].mode==planner::MagnetronMove?MagnetronInput:AdvancedInput))||!(nativeOrders[i].mode==planner::MagnetronMove?rawMagnetron(nativeOrders[i].p):featureObjectAllowed(featuretypes::AdvancedAttack,nativeOrders[i].p)))removeOrder(i);else ++i;
  int budget=recurringBudget(EventLane::Unload);if(unloadCount||(sh->flags&EjectAssist))smartUnloadTick(house,frame,budget);
  // Advanced tactical decisions are made in the EXE's external planner.
  // This DLL retains only local click intents and checks whether IDs remain live.
- for(int i=0;i<nativeCount;){auto&o=nativeOrders[i];if(!worldObjects.contains(o.p)||!own(o.p,house)||get<uint32_t>(o.p+0x10)!=o.id||get<uint32_t>(o.p+0x11C))removeOrder(i);else ++i;}
+ for(int i=0;i<nativeCount;){auto&o=nativeOrders[i];if(!worldObjects.contains(o.p)||!own(o.p,house)||get<uint32_t>(o.p+0x10)!=o.id)removeOrder(i);else ++i;}
  if(nativeCount||snap.advancedUnits){advancedObjects.clear();for(int i=0;i<nativeCount;++i)advancedObjects.add(nativeOrders[i].p,nativeOrders[i].id,uint32_t(i+1));}
  snap.advancedUnits=nativeCount;snap.unloadPending=0;for(int i=0;i<unloadCount;++i)if(unloadPassengers[i].mode!=1)++snap.unloadPending;
 }
+

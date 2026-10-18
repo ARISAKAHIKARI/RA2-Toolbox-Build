@@ -24,7 +24,8 @@ static planner::Weapon rawWeaponFresh(uint32_t weapon){
  if(get<bool>(warhead+0x155))info.flags|=planner::MindControlWeapon;if(get<bool>(warhead+0x178))info.flags|=planner::PsychicWeapon;
  if(get<bool>(warhead+0x15A))info.flags|=planner::TemporalWeapon;if(get<bool>(warhead+0x159))info.flags|=planner::ParasiteWeapon;
  if(get<bool>(weapon+0x15C))info.flags|=planner::MagneticWeapon;if(get<bool>(warhead+0x15B))info.flags|=planner::LocomotorWeapon;
- for(int i=0;i<11;++i){double verses=get<double>(warhead+0xA0+i*8);if(verses>0&&verses<1000000)info.selectMask|=1u<<i;if(verses>0.02&&verses<1000000)info.armorMask|=1u<<i;}
+ info.flags|=planner::EffectivenessKnown;
+ for(int i=0;i<11;++i){double verses=get<double>(warhead+0xA0+i*8);if(verses>0&&verses<1000000)info.effectiveness[i]=float(verses);if(verses>0&&verses<1000000)info.selectMask|=1u<<i;if(verses>0.02&&verses<1000000)info.armorMask|=1u<<i;}
  return info;
 }
 struct WeaponCacheEntry {uint32_t pointer,match;int frame;planner::Weapon data;};

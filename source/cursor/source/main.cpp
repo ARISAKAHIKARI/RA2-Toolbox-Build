@@ -1399,8 +1399,8 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR cmd,int){
  timingReadout=CreateWindowW(L"STATIC",L"补帧就绪",WS_CHILD|WS_VISIBLE,15,743,515,26,mainw,NULL,inst,NULL);
  previewBox=CreateWindowW(L"BUTTON",L"预览",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,540,743,210,31,mainw,(HMENU)10,inst,NULL);
  SendMessageW(previewBox,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);SendMessageW(timingReadout,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);
- clickBox=CreateWindowW(L"BUTTON",L"Shift 五连点",WS_CHILD|WS_VISIBLE|BS_AUTOCHECKBOX,15,584,260,26,mainw,NULL,inst,NULL);SendMessageW(clickBox,BM_SETCHECK,clickEnabled?BST_CHECKED:BST_UNCHECKED,0);label(L"间隔 (ms)",285,588,130);clickGapBox=edit(clickGap,415,584,70);
- clickModeBox=CreateWindowW(L"COMBOBOX",L"",WS_CHILD|WS_VISIBLE|CBS_DROPDOWNLIST,15,623,485,140,mainw,NULL,inst,NULL);for(const wchar_t* t:{L"自动补点",L"强制补点",L"关闭补点"})SendMessageW(clickModeBox,CB_ADDSTRING,0,(LPARAM)t);SendMessageW(clickModeBox,CB_SETCURSEL,clickMode,0);for(HWND q:{smoothBox,clickBox,clickModeBox})SendMessageW(q,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);
+ clickBox=CreateWindowW(L"BUTTON",L"Shift 五连点",WS_CHILD|BS_AUTOCHECKBOX,15,584,260,26,mainw,NULL,inst,NULL);SendMessageW(clickBox,BM_SETCHECK,clickEnabled?BST_CHECKED:BST_UNCHECKED,0);clickGapBox=edit(clickGap,415,584,70);ShowWindow(clickGapBox,SW_HIDE);
+ clickModeBox=CreateWindowW(L"COMBOBOX",L"",WS_CHILD|CBS_DROPDOWNLIST,15,623,485,140,mainw,NULL,inst,NULL);for(const wchar_t* t:{L"自动补点",L"强制补点",L"关闭补点"})SendMessageW(clickModeBox,CB_ADDSTRING,0,(LPARAM)t);SendMessageW(clickModeBox,CB_SETCURSEL,clickMode,0);for(HWND q:{smoothBox,clickBox,clickModeBox})SendMessageW(q,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);
  label(L"",15,665,730);
  systemCursorGuard=GetPrivateProfileIntW(L"Cursor",L"SystemCursorMenuGuard",1,ini().c_str())!=0;autoStart=GetPrivateProfileIntW(L"Startup",L"AutoStart",1,ini().c_str())!=0;
 #ifdef RA2_UNIFIED
@@ -1417,6 +1417,7 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR cmd,int){
  // Keep the existing settings intact, but move them into an initially hidden
  // scrollable Advanced section.  Top-level actions never require scrolling.
  for(HWND child=GetWindow(mainw,GW_CHILD);child;child=GetWindow(child,GW_HWNDNEXT)){
+  if(child==clickBox||child==clickModeBox||child==clickGapBox)continue;
   wchar_t cls[32]={};GetClassNameW(child,cls,32);
   RECT r{};GetWindowRect(child,&r);
   POINT pt={r.left,r.top};ScreenToClient(mainw,&pt);
@@ -1515,7 +1516,7 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR cmd,int){
  while(!quit){
   while(PeekMessageW(&msg,NULL,0,0,PM_REMOVE)){if(msg.message==WM_QUIT){quit=true;break;}TranslateMessage(&msg);DispatchMessageW(&msg);}
   if(quit)break;
-  motionPoll();autoTick();updateRefresh();clickTick();pollPrepare();
+  motionPoll();autoTick();updateRefresh();pollPrepare();
   LARGE_INTEGER now;QueryPerformanceCounter(&now);
   if(now.QuadPart>=next.QuadPart){
    LONGLONG drawStarted=now.QuadPart;
@@ -1545,3 +1546,4 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR cmd,int){
  if(frameTimer)CloseHandle(frameTimer);
  timeEndPeriod(1);hookStop();cursorReader.close();if(dib){SelectObject(memdc,oldbm);DeleteObject(dib);}if(memdc)DeleteDC(memdc);CloseHandle(mutex);return 0;
 }
+

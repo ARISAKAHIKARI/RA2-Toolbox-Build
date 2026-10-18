@@ -10,16 +10,16 @@ struct RepairView {
 inline bool shouldRepair(const RepairView&v){
  return v.active&&!v.alreadyRepairing&&!v.issuedRecently&&v.hp>0&&v.hp<v.maxHp;
 }
-constexpr bool canProduceInSession(bool multiplayer,bool unsafeTechAllowed){
- return !multiplayer||unsafeTechAllowed;
+constexpr bool canProduceInSession(bool multiplayer,bool unsafeTechAllowed,bool nativeCameo=false){
+ return !multiplayer||unsafeTechAllowed||nativeCameo;
 }
 struct ProductionView {
  int player=-1,abstractType=-1,typeIndex=-1,naval=-1;
  bool allowed=false;
- bool multiplayer=false,unsafeTechAllowed=false;
+ bool multiplayer=false,unsafeTechAllowed=false,nativeCameo=false;
 };
 inline bool planProduction(const ProductionView&v,intent::EventOrder&out){
- if(!v.allowed||!canProduceInSession(v.multiplayer,v.unsafeTechAllowed)||
+ if(!v.allowed||!canProduceInSession(v.multiplayer,v.unsafeTechAllowed,v.nativeCameo)||
    v.player<0||v.player>=32||v.typeIndex<0||v.abstractType<0||
    (v.naval!=0&&v.naval!=1))return false;
  out=intent::produce(v.player,vanilla::EventType::Produce,v.abstractType,v.typeIndex,v.naval);

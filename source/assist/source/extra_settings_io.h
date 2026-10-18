@@ -4,14 +4,19 @@ static void loadAdditionalSettings(){
   oreconfig::parse(featureTypeText[i],f.ids,f.count);f.custom=value(L"FeatureTypes",custom.c_str(),0)!=0;
  }
 
+ extra.antiTheft=value(L"Modes",L"AntiTheft",0)!=0;
  extra.experimentalReveal=value(L"Experimental",L"RevealMap",0)!=0;
+ extra.airWaypoints=value(L"Aircraft",L"ZWaypoints",1)!=0;
+ extra.constructionQueue=value(L"Production",L"ReserveNext",1)!=0;
+ extra.idleAircraft=value(L"Display",L"IdleAircraftIndicator",1)!=0;
  extra.enemyMarkers=value(L"Display",L"EnemyMarkers",0)!=0;
+ extra.overrideNative=value(L"Mouse",L"OverrideNative",0)!=0;
  extra.allHotkeys=value(L"Hotkeys",L"ExecuteAllMatches",0)!=0;
  // Missing per-feature values inherit the old category setting exactly once.
  for(int i=0;i<pointerinput::MouseCount;++i){
   const wchar_t*legacy=i<pointerinput::MouseAttack?L"EnhancedButton":i==pointerinput::MouseAttack?L"AttackMoveButton":L"SellButton";
-  int fallback=std::clamp(value(L"Mouse",legacy,pointerinput::mouseDefault(i)),0,4);
-  extra.mouseButtons[i]=std::clamp(value(L"Mouse",pointerinput::mouseSetting(i),fallback),0,4);
+  int fallback=std::clamp(value(L"Mouse",legacy,pointerinput::mouseDefault(i)),0,6);
+  extra.mouseButtons[i]=std::clamp(value(L"Mouse",pointerinput::mouseSetting(i),fallback),0,6);
  }
 
  extra.loadMode=std::clamp(value(L"AutoLoad",L"Logic",0),0,1);extra.loadRadius=std::clamp(value(L"AutoLoad",L"RangeCells",30),1,512);
@@ -33,9 +38,9 @@ static bool saveAdditionalSettings(){
   saveWriteOK=(WritePrivateProfileStringW(L"FeatureTypes",featuretypes::key(i),featureTypeText[i].c_str(),path(L"Assist.ini").c_str())!=FALSE)&&saveWriteOK;
  }
 
- write(L"Experimental",L"RevealMap",extra.experimentalReveal);
- write(L"Display",L"EnemyMarkers",extra.enemyMarkers);
- write(L"Hotkeys",L"ExecuteAllMatches",extra.allHotkeys);
+ write(L"Modes",L"AntiTheft",extra.antiTheft);write(L"Experimental",L"RevealMap",extra.experimentalReveal);
+ write(L"Aircraft",L"ZWaypoints",extra.airWaypoints);write(L"Production",L"ReserveNext",extra.constructionQueue);write(L"Display",L"EnemyMarkers",extra.enemyMarkers);write(L"Display",L"IdleAircraftIndicator",extra.idleAircraft);
+ write(L"Hotkeys",L"ExecuteAllMatches",extra.allHotkeys);write(L"Mouse",L"OverrideNative",extra.overrideNative);
  for(int i=0;i<pointerinput::MouseCount;++i)write(L"Mouse",pointerinput::mouseSetting(i),extra.mouseButtons[i]);
 
  write(L"AutoLoad",L"Logic",extra.loadMode);write(L"AutoLoad",L"RangeCells",extra.loadRadius);
@@ -69,9 +74,9 @@ static void fillExtraTypes(bool force=false){
  for(const auto&t:savedTypes.types){std::string id=t.id;if(!typecatalog::validId(id))continue;std::wstring label=(const wchar_t*)t.name;label+=L" ["+wide(id.c_str())+L"]";int row=int(SendMessageW(extraControls[QuotaType],CB_ADDSTRING,0,(LPARAM)label.c_str()));if(row<0)continue;quotaTypeIDs.push_back(id);if(id==keep)restore=row;}
  if(restore>=0)SendMessageW(extraControls[QuotaType],CB_SETCURSEL,restore,0);
 }
-static uint32_t additionalFlags(){uint32_t f=extra.frozen?Frozen:0;if(extra.experimentalReveal)f|=ExperimentalReveal;if(extra.enter)f|=AdvancedEnter;if(extra.air)f|=AircraftSpread;if(extra.disk)f|=DiskPrimary;if(extra.sellDrained)f|=SellDrained;if(extra.sellVehicles)f|=SellVehicles;if(extra.sellEnemy)f|=SellEnemy;return f;}
+static uint32_t additionalFlags(){uint32_t f=extra.frozen?Frozen:0;if(extra.antiTheft)f|=AntiTheft;if(extra.constructionQueue)f|=ReserveConstruction;if(extra.airWaypoints)f|=AirWaypoints;if(extra.experimentalReveal)f|=ExperimentalReveal;if(extra.enter)f|=AdvancedEnter;if(extra.air)f|=AircraftSpread;if(extra.disk)f|=DiskPrimary;if(extra.sellDrained)f|=SellDrained;if(extra.sellVehicles)f|=SellVehicles;if(extra.sellEnemy)f|=SellEnemy;return f;}
 static void syncAdditional(){if(!shared)return;shared->loadMode=extra.loadMode;shared->loadRadius=extra.loadRadius;shared->enterKey=extra.enterKey;shared->airKey1=extra.airKey1;shared->airKey2=extra.airKey2;
- if(externalSampler.flashCount&&shared->productionRequest==shared->productionAck&&commandFresh(GetTickCount())){shared->productionCount=externalSampler.flashCount;memcpy(shared->productionTypes,externalSampler.flashes,size_t(externalSampler.flashCount)*sizeof(int));shared->productionMatch=snap.match;shared->productionTick=GetTickCount();MemoryBarrier();InterlockedIncrement((volatile LONG*)&shared->productionRequest);externalSampler.flashCount=0;}
+ externalSampler.flashCount=0; // production tab reminders stay entirely in the host overlay
 }
 static void serviceCooperative(){
  if(!shared||!commandFresh(GetTickCount()))return;DWORD now=GetTickCount();
@@ -129,3 +134,4 @@ static void serviceCooperative(){
  MemoryBarrier();InterlockedIncrement((volatile LONG*)&shared->cooperativePlan);wakeGame();
  if(assignments.size()<size_t(request.count))notify(L"已分配 "+std::to_wstring(assignments.size())+L" 个；其余单位受容量、受击上限或目标兼容性限制。");
 }
+

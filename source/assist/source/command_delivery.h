@@ -9,7 +9,7 @@ constexpr uint32_t MaxAgeMs=12000;
 constexpr uint32_t SelectAgeMs=2500; // A selection is transient; never select units seconds later.
 constexpr uint32_t RetryAgeMs=5000; // In-flight commands have a separate clock from queued intents.
 constexpr int Capacity=12;
-struct Item {int command=0,arg=0,arg2=0;uint32_t pid=0,match=0,created=0;int retries=0;uint32_t notBefore=0;};
+struct Item {int command=0,arg=0,arg2=0;uint32_t pid=0,match=0,created=0;int retries=0;uint32_t notBefore=0,token=0;};
 struct Queue {
  Item slots[Capacity]{};int size=0;
  void clear(){size=0;}
@@ -25,7 +25,7 @@ struct Queue {
    slots[0]=it;++size;return true;
   }
   for(int i=0;it.command!=Produce&&i<size;++i)
-   if(slots[i].command==it.command&&slots[i].arg==it.arg&&slots[i].arg2==it.arg2&&slots[i].pid==it.pid&&slots[i].match==it.match){
+   if(slots[i].command==it.command&&slots[i].arg==it.arg&&slots[i].arg2==it.arg2&&slots[i].pid==it.pid&&slots[i].match==it.match&&slots[i].token==it.token){
     // Keep original timestamp, to avoid repeated clicks extending stale commands forever.
     return true;
    }

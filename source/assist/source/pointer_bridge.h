@@ -1,7 +1,7 @@
 // Explicit input mailbox consumed ONLY inside the ordinary leased Assist tick.
 // Original click, mission constructor and received-event functions stay intact.
 static uint32_t pointerSeen,pointerCancelSeen,pointerTarget,pointerTargetID,pointerCell;
-static int pointerAt;static bool pointerActive;
+static int pointerGroundZ;static int pointerAt;static bool pointerActive;
 static uint32_t pointerTokens[pointerinput::MaxSources];
 static uint8_t pointerDone[pointerinput::MaxSources],pointerBatchFollow[pointerinput::MaxSources];
 static uint32_t pointerBatchTickets[pointerinput::MaxSources],pointerBatchRequest;static bool pointerBatchValid;
@@ -29,7 +29,7 @@ static bool pointerLocation(const pointerinput::Intent&i){
  call<void>(0x692300,0x87F7E8,&point,&cell,&coord,&object,&a,&b);
  if(cell.x<=0||cell.y<=0||cell.x>=512||cell.y>=512||!readMapCell(cell.x,cell.y))return false;
  if(object&&!worldObjects.contains(object))return false;
- pointerCell=uint32_t(cell.y*1000+cell.x);pointerTarget=object;pointerTargetID=object?get<uint32_t>(object+0x10):0;return true;
+ pointerGroundZ=coord.z;pointerCell=uint32_t(cell.y*1000+cell.x);pointerTarget=object;pointerTargetID=object?get<uint32_t>(object+0x10):0;return true;
 }
 static void pointerTick(){
  auto&b=sh->pointer;uint32_t request=b.request;MemoryBarrier();
@@ -43,7 +43,7 @@ static void pointerTick(){
   const bool continuation=next&&!start&&pointerBatchValid&&request==pointerBatchRequest+1&&pointerinput::sameCapture(i,pointerBatchCapture);
   if(!nativeReady()||i.inputSerial!=b.cancelSerial||i.match!=match||i.house!=lastHouse||
      (next&&!continuation)||(next&&start)||DWORD(now-i.tick)>(continuation?1500u:150u)||frame<i.frame||frame-i.frame>(continuation?90:8)||
-     i.count<0||i.count>pointerinput::MaxSources||i.operation<1||i.operation>5){pointerFinish(-7);return;}
+     i.count<0||i.count>pointerinput::MaxSources||i.operation<1||i.operation>6){pointerFinish(-7);return;}
   if(!continuation)pointerBatchValid=false;
   if(i.operation!=pointerinput::Cancel){
    bool shiftUnsupported=(i.bindings&pointerinput::Shift)&&(i.operation==pointerinput::FollowNative||(i.bindings&pointerinput::RightClick)||!(i.bindings&(pointerinput::Advanced|pointerinput::Magnetron|pointerinput::CS|pointerinput::Enter|pointerinput::AirFirst|pointerinput::AirSecond)));
@@ -63,7 +63,13 @@ static void pointerTick(){
  if(!nativeReady()||i.inputSerial!=b.cancelSerial||i.match!=match||i.house!=lastHouse||DWORD(now-i.tick)>1500||frame<i.frame||frame-i.frame>90){pointerFinish(-7);return;}
  // A configured right click is observed on release and never swallowed.
  // Give the original input at least one simulation turn before appending.
- if((i.bindings&pointerinput::RightClick)&&frame==i.frame)return;
+ if((i.bindings&(pointerinput::RightClick|pointerinput::LeftClick))&&frame==i.frame)return;
+ if(i.operation==pointerinput::AirWaypoint){
+  b.resolvedCell=pointerCell;b.resolvedTarget=pointerTargetID;b.resolvedZ=pointerGroundZ;memset(b.sourceAccepted,0,sizeof b.sourceAccepted);
+  if(!(sh->flags&AirWaypoints)){pointerFinish(-4);return;}
+  for(int n=0;n<i.count;++n){uint32_t p=worldByID(i.sources[n].id);if(p&&p==i.sources[n].pointer&&own(p,lastHouse)&&kind(p)==0&&!get<bool>(p+0x81)&&!get<uint32_t>(p+0x11C)){b.sourceTokens[n]=manualVersions.get(i.sources[n].id);b.sourceAccepted[n/32]|=1u<<(n%32);++b.accepted;}}
+  pointerFinish(1);return;
+ }
  if(pointerTarget&&(!worldObjects.contains(pointerTarget)||!live(pointerTarget)||get<uint32_t>(pointerTarget+0x10)!=pointerTargetID)){pointerFinish(-4);return;}
  if(i.operation==pointerinput::Sell){
   if(!(i.bindings&pointerinput::Control)||!pointerTarget||!sellAllowed(pointerTarget)){pointerFinish(-4);return;}
@@ -75,10 +81,14 @@ static void pointerTick(){
  }
  int examined=0,remaining=0,submitted=0;
  const int limit=(sh->planRequest!=sh->planAck||sh->cooperativePlan!=sh->cooperativeAck||(sh->flags&(AutoRepair|AutoOreReturn))||loadLedger.count||unloadCount||nativeCount)?12:24;
- bool follow=i.operation==pointerinput::FollowNative||(i.bindings&pointerinput::RightClick);
+ const auto&blocked=sh->suppressedClick;
+ bool suppressed=blocked.match==i.match&&blocked.x==i.x&&blocked.y==i.y&&
+  ((i.bindings&pointerinput::RightClick)?blocked.physical==4:(i.bindings&pointerinput::LeftClick)?blocked.physical==6:false)&&
+  (int32_t(i.tick-blocked.tick)>=-150&&int32_t(i.tick-blocked.tick)<=150);
+ bool follow=!suppressed&&(i.operation==pointerinput::FollowNative||(i.bindings&pointerinput::RightClick));
  while(examined++<i.count){int n=pointerAt++;if(pointerAt>=i.count)pointerAt=0;if(pointerDone[n])continue;
   uint32_t p=worldByID(i.sources[n].id);
-  if(!p||p!=i.sources[n].pointer||!own(p,lastHouse)||!get<bool>(p+0x83)||get<bool>(p+0x1C8)||get<uint32_t>(p+0x11C)||
+  if(!p||p!=i.sources[n].pointer||!own(p,lastHouse)||get<bool>(p+0x1C8)||get<uint32_t>(p+0x11C)||
      (!follow&&manualVersions.get(i.sources[n].id)!=pointerTokens[n])){pointerDone[n]=1;continue;}
   if(pointerTarget){
    if(submitted>=limit||outgoingRoom()<=0){++remaining;continue;}
@@ -115,3 +125,4 @@ static void pointerTick(){
  }
  if(!remaining)pointerFinish(1);
 }
+

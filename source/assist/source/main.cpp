@@ -52,6 +52,9 @@
 #endif
 using namespace assist;using namespace Gdiplus;
 extern "C" __declspec(dllexport) const uint32_t AssistHostProtocolInfo[2]={Version,sizeof(Shared)};
+static void hideAircraftButton();static void destroyAircraftButton();
+static void serviceAirPath();static void resetAirPath();static void airPathResult(int,int,uint32_t,uint32_t);
+static void serviceConstruction();static void hideConstruction();static void resetConstruction();static void destroyConstruction();static void constructionResult(int,int,uint32_t);
 static HWND ui,overlay,statusLabel,swList,techList,techSearch,swHotkey,rateEdit,marginEdit,check[7],keys[12],repairCheck,repairEdit;
 static HFONT font,titleFont;static HBRUSH bgBrush,editBrush;static HWND game;static DWORD pid,gameThread;static HANDLE mapping,gameProcess;static HMODULE module;static gameinput::Subscription hook;static Shared*shared;
 static uint32_t lastReceiptWrite=0,lastReceiptMatch=0;
@@ -70,8 +73,9 @@ static uint32_t schedulerMode=0,schedulerTarget=0,megaQueueMode=0,objectQueueMod
 static HWND schedulerEntryCombo,megaQueueCombo,objectQueueCombo;
 static typecatalog::Catalogue savedTypes;static uint32_t catalogueRevision=0;
 static uint32_t settingsRevision=1;
+static bool shiftClickEnabled=true;static int shiftClickMode=0,shiftClickGap=0,shiftSidebarWidth=160,shiftSidebarTop=200;
 static bool magnetronMode=false;static WORD magnetronKey;static HWND magnetronCheck,magnetronKeyEdit;
-static bool hookAdvanced=true,hookSmartUnload=true,hookEject=false,hookAutoCS=true,diagEnabled=false;
+static bool hookAdvanced=true,hookSmartUnload=false,hookEject=false,hookAutoCS=true,diagEnabled=false;
 static std::wstring bridgeFailure;static bool gameWindowFromYrpp=false;
 static HWND hookChecks[4];static DWORD attachAt=0;static uint32_t paintRevision;static bool keysRegistered;static int scrollY;
 static assist::delivery::Queue commandQueue;
@@ -101,7 +105,7 @@ static const char* iniKeys[]={"Repair","Combat","EmptyTransports","Damaged","Idl
 struct Binding{std::string id;WORD key;};static std::vector<Binding> swBindings;
 static HWND typeList,typeKey,typeCS,csCheck,csKeyEdit,csStatus,tapEdit,typeIdEdit;
 static std::vector<Binding> typeBindings;static std::set<std::string> csUnits;
-static HWND advancedKeyEdit,unloadKeyEdit,nativeStatus,ejectCheck,ejectKeyEdit;static WORD advancedKey,unloadKey,ejectKey;static bool ejectMode;static int pathTimeout=90,veteranPercent=200,elitePercent=300;
+static HWND advancedKeyEdit,unloadKeyEdit,nativeStatus,ejectCheck,ejectKeyEdit;static WORD advancedKey,unloadKey,ejectKey;static bool ejectMode;static int advancedScanHz=10,advancedTargetPriority=0;static int pathTimeout=90,veteranPercent=200,elitePercent=300;
 static WORD csKey,csHoldKey;static bool csMode,csHoldEnabled,oreMode,buildAnywhereMode;static int doubleMs=350,toastMs=6000;
 static HWND oreCheck,oreStatus,anywhereCheck,toastEdit,csHoldCheck,csHoldEdit,detailCheck;
 static bool showDetails=false;
@@ -125,7 +129,8 @@ static bool retryCooperative=false;
 static bool saveAdditionalSettings();static uint32_t additionalFlags();static void syncAdditional();static void serviceCooperative();static void servicePointer();static void fillExtraTypes(bool force);
 static void readSnapshot();static void syncTypeConfig();static void fillTypeBindings(bool force=false);static void typeBindingFields();
 static std::wstring path(const wchar_t*s){return root+L"\\"+s;}static std::wstring wide(const char*s){std::wstring w;while(*s)w+=wchar_t((unsigned char)*s++);return w;}
-static void setStatus(const std::wstring&s){if(statusText!=s){statusText=s;SetWindowTextW(statusLabel,s.c_str());}}
+static std::wstring hoverHelp;
+static void setStatus(const std::wstring&s){if(statusText!=s){statusText=s;if(hoverHelp.empty())SetWindowTextW(statusLabel,s.c_str());}}
 static void notify(const std::wstring&s){toast=s;toastUntil=GetTickCount()+DWORD(toastMs);setStatus(s);}
 static void diag(const std::wstring &s){
  if(!diagEnabled||root.empty())return;
@@ -323,13 +328,13 @@ static bool save(){++settingsRevision;saveWriteOK=true;for(int i=0;i<12;++i)writ
  for(const auto&id:csUnits)csItems.push_back({id,1});
  saveWriteOK=writeSection(L"TypeHotkeys",bindingItems)&&saveWriteOK;
  saveWriteOK=writeSection(L"AutoCSUnits",csItems)&&saveWriteOK;
- write(L"Display",L"ToastMs",toastMs);write(L"Modes",L"AutoOreReturn",oreMode);write(L"Modes",L"MagnetronMove",magnetronMode);write(L"NativeOrders",L"MagnetronHoldKey",magnetronKey);write(L"Modes",L"BuildAnywhere",buildAnywhereMode);write(L"AutoCS",L"HoldEnabled",csHoldEnabled);write(L"AutoCS",L"HoldKey",csHoldKey);
+ write(L"Click",L"SidebarWidth",shiftSidebarWidth);write(L"Click",L"SidebarTop",shiftSidebarTop);write(L"Click",L"Enabled",shiftClickEnabled);write(L"Click",L"Mode",shiftClickMode);write(L"Click",L"IntervalMs",shiftClickGap);write(L"Display",L"ToastMs",toastMs);write(L"Modes",L"AutoOreReturn",oreMode);write(L"Modes",L"MagnetronMove",magnetronMode);write(L"NativeOrders",L"MagnetronHoldKey",magnetronKey);write(L"Modes",L"BuildAnywhere",buildAnywhereMode);write(L"AutoCS",L"HoldEnabled",csHoldEnabled);write(L"AutoCS",L"HoldKey",csHoldKey);
  write(L"OreTypes",L"CustomMiners",oreTypes.customMiners);write(L"OreTypes",L"CustomRefineries",oreTypes.customRefineries);
  saveWriteOK=(WritePrivateProfileStringW(L"OreTypes",L"Miners",oreMiners.c_str(),path(L"Assist.ini").c_str())!=FALSE)&&saveWriteOK;
  saveWriteOK=(WritePrivateProfileStringW(L"OreTypes",L"Refineries",oreRefineries.c_str(),path(L"Assist.ini").c_str())!=FALSE)&&saveWriteOK;
  write(L"TypeSelection",L"DoublePressMs",doubleMs);write(L"AutoCS",L"Enabled",csMode);write(L"AutoCS",L"ToggleKey",csKey);
  write(L"NativeOrders",L"EjectAssist",ejectMode);write(L"NativeOrders",L"EjectToggleKey",ejectKey);write(L"NativeOrders",L"VeteranPercent",veteranPercent);write(L"NativeOrders",L"ElitePercent",elitePercent);
- write(L"NativeOrders",L"AdvancedHoldKey",advancedKey);write(L"NativeOrders",L"UnloadKey",unloadKey);write(L"NativeOrders",L"PathTimeoutFrames",pathTimeout);
+ write(L"NativeOrders",L"TargetPriority",advancedTargetPriority);write(L"NativeOrders",L"TargetScanHz",advancedScanHz);write(L"NativeOrders",L"AdvancedHoldKey",advancedKey);write(L"NativeOrders",L"UnloadKey",unloadKey);write(L"NativeOrders",L"PathTimeoutFrames",pathTimeout);
  write(L"Hooks",L"Advanced",hookAdvanced);write(L"Hooks",L"SmartUnload",hookSmartUnload);
  write(L"Hooks",L"Eject",hookEject);write(L"Hooks",L"AutoCS",hookAutoCS);
  write(L"Display",L"CrateResults",0);
@@ -382,15 +387,15 @@ static void logCommandWait(){
 }
 static bool userCommand(int c){return c!=OpenTech;}
 static DWORD discoverGamePid(); // Same window filter used by attach(), without installing a second Hook.
-static bool queueCommand(int c,int arg,int arg2,uint32_t match,int retries=0,DWORD delayMs=0){
+static bool queueCommand(int c,int arg,int arg2,uint32_t match,int retries=0,DWORD delayMs=0,uint32_t token=0){
  if(c==RevealMap&&!extra.experimentalReveal)return false;
  DWORD now=GetTickCount();
  if(!game||!pid||!IsWindow(game)||(shared&&lastData&&incoming.status<0))return false;
- bool queued=commandQueue.add({c,arg,arg2,pid,match,now,retries,now+delayMs});
+ bool queued=commandQueue.add({c,arg,arg2,pid,match,now,retries,now+delayMs,token});
  if(queued){diag(L"staged command="+std::to_wstring(c)+L" pid="+std::to_wstring(pid)+L" match="+std::to_wstring(match)+L" backlog="+std::to_wstring(commandQueue.size));wakeGame();}
  return queued;
 }
-static void send(int command,int arg=0,int arg2=0,int retries=0,bool fromQueue=false){
+static void send(int command,int arg=0,int arg2=0,int retries=0,bool fromQueue=false,uint32_t requestToken=0){
  if(command==RevealMap&&!extra.experimentalReveal){notify(L"地图全开为实验性功能，请先勾选“启用地图全开（实验性）”。");return;}
  DWORD now=GetTickCount();
  if(game&&!shared)ensureBridge();
@@ -412,7 +417,7 @@ static void send(int command,int arg=0,int arg2=0,int retries=0,bool fromQueue=f
  // Mode syncing must not enqueue automatically every 50ms.
  // Explicit gameplay commands are staged while the match is loading or bridge is busy.
  if(!connected||(!fromQueue&&commandQueue.size&&userCommand(command))){
-  if(userCommand(command)&&queueCommand(command,arg,arg2,commandMatch(),retries)){
+  if(userCommand(command)&&queueCommand(command,arg,arg2,commandMatch(),retries,0,requestToken)){
    logCommandWait();notify(L"指令已排队，尚未提交。"+commandWaitReason());return;
   }
   if(userCommand(command)&&commandQueue.size>=delivery::Capacity){notify(L"待处理命令已满，本次未加入，请稍后再试。");return;}
@@ -425,13 +430,14 @@ static void send(int command,int arg=0,int arg2=0,int retries=0,bool fromQueue=f
   diag(L"Tech request profile="+std::to_wstring(techProfile)+L" selected="+std::to_wstring(requested)+L" match="+std::to_wstring(snap.match));
  }
  inFlightMatch=commandMatch();inFlightRetries=retries;sentAt=now;
- shared->command=command;shared->arg=arg;shared->arg2=arg2;
+ shared->requestToken=requestToken;shared->command=command;shared->arg=arg;shared->arg2=arg2;
  shared->requestTick=now;shared->requestMatch=commandMatch();
  MemoryBarrier();InterlockedIncrement((volatile LONG*)&shared->request);
  wakeGame();
 }
 // A priority mailbox within the same Shared protocol. Game-side selection is
 // consumed by tick() under the same manager lease, without a separate hook.
+static uint32_t pendingSelectionObject=0;
 static void serviceSelection(){
  if(!shared)return;DWORD now=GetTickCount();uint32_t receipt=shared->selectAck;
  if(receipt!=selectionAck){MemoryBarrier();selectionAck=receipt;
@@ -443,12 +449,13 @@ static void serviceSelection(){
  if(pendingSelection.pid!=pid||(pendingSelection.match&&pendingSelection.match!=snap.match)||DWORD(now-pendingSelection.created)>1500){hasSelection=false;return;}
  if(!commandFocus()||!commandFresh(now)||snap.chat)return;
  if(shared->selectRequest!=shared->selectAck){wakeGame();return;}
- shared->selectIndex=pendingSelection.arg;shared->selectGlobal=pendingSelection.arg2;
+ shared->selectObjectID=pendingSelectionObject;shared->selectIndex=pendingSelection.arg;shared->selectGlobal=pendingSelection.arg2;
  shared->selectTick=now;shared->selectMatch=snap.match;memcpy(shared->selectTypes,pendingSelectionTypes,sizeof pendingSelectionTypes);
  MemoryBarrier();InterlockedIncrement((volatile LONG*)&shared->selectRequest);hasSelection=false;
  wakeGame();
 }
-static void sendSelection(int index,bool global,const uint8_t* mask=nullptr){
+static void sendSelection(int index,bool global,const uint8_t* mask=nullptr,uint32_t object=0){
+ pendingSelectionObject=object;
  if(mask)memcpy(pendingSelectionTypes,mask,sizeof pendingSelectionTypes);else memset(pendingSelectionTypes,0,sizeof pendingSelectionTypes);
  if(!shared)ensureBridge();
  pendingSelection={SelectType,index,int(global),pid,commandFresh(GetTickCount())?snap.match:delivery::UnknownMatch,GetTickCount()};hasSelection=true;
@@ -504,7 +511,7 @@ static void servicePlanner(){
  worldRevision=seq;
  if(!freshness::valid(w.match,snap.match,w.tick,w.frame,GetTickCount(),snap.frame,freshness::Tactical)||snap.chat){logPlanning(w,snap.chat?L"chat":L"stale-source");wakeGame();return;}
  LARGE_INTEGER begin{},end{},frequency{};QueryPerformanceCounter(&begin);
- submittedPlan=tacticalPlanner.step(w,shared->flags,veteranPercent,elitePercent,pathTimeout);shared->plannerTracking=tacticalPlanner.trackingFlags();
+ submittedPlan=tacticalPlanner.step(w,shared->flags,veteranPercent,elitePercent,pathTimeout,advancedScanHz,advancedTargetPriority);shared->plannerTracking=tacticalPlanner.trackingFlags();
  QueryPerformanceCounter(&end);QueryPerformanceFrequency(&frequency);plannerMicros=frequency.QuadPart>0?DWORD((end.QuadPart-begin.QuadPart)*1000000/frequency.QuadPart):0;
  snap.oreYielded=tacticalPlanner.yielded;snap.oreQueued=tacticalPlanner.queued;snap.oreDocking=tacticalPlanner.docking;snap.oreIssued=tacticalPlanner.issued;
  snap.oreDelivered=tacticalPlanner.oreDelivered;snap.oreUnverified=tacticalPlanner.oreUnverified;
@@ -546,7 +553,7 @@ static void releaseBridge(){
  else{if(hook)gameinput::release(gameentry::Client::Assist,hook);if(shared)UnmapViewOfFile(shared);if(mapping)CloseHandle(mapping);}
  hook=0;shared=nullptr;mapping=nullptr;module=nullptr;lastData=attachAt=lastPulse=0;incoming={};snapshotSeq=~0u;lastReceiptWrite=lastReceiptMatch=0;reapBridges();
 }
-static void detach(){hotkeyPending.clear();pointerMatches.clear();
+static void detach(){hideAircraftButton();resetConstruction();resetAirPath();hotkeyPending.clear();pointerMatches.clear();
  tacticalPlanner.reset();submittedPlan.clear();worldRevision=-1;plannerAck=0;hasSelection=false;selectionAck=0;
  critical(L"detach pid="+std::to_wstring(pid));commandQueue.clear();inFlightMatch=0;inFlightRetries=0;sentAt=0;lastStallLog=0;typeTap.clear();
  releaseBridge();externalData=nullptr;externalSampler.reset();externalReader.close();externalAt=0;
@@ -574,7 +581,7 @@ static bool ensureBridge(){
  if(!game||bridgeBlocked||(bridgeRetryAt&&int32_t(now-bridgeRetryAt)<0))return false;
  ++bridgeAttempts;bridgeRetryAt=now+(bridgeAttempts>=3?30000:2000);
  critical(L"bridge-connect-attempt="+std::to_wstring(bridgeAttempts)+L" pid="+std::to_wstring(pid)+L" thread="+std::to_wstring(gameThread));
- wchar_t n[100];swprintf(n,100,L"Local\\RA2Assist_v042_%lu",pid);
+ wchar_t n[100];swprintf(n,100,L"Local\\RA2Assist_v043_%lu",pid);
  mapping=CreateFileMappingW(INVALID_HANDLE_VALUE,nullptr,PAGE_READWRITE,0,sizeof(Shared),n);
  DWORD mappingError=GetLastError();if(!mapping)return bridgeFailed(L"创建命令共享内存失败",mappingError);
  if(mappingError==ERROR_ALREADY_EXISTS){
@@ -844,24 +851,40 @@ static void drawEnemyMarker(Graphics&g,const external::enemies::Marker&m,const v
  }
  g.DrawImage(r.image.get(),x+8,y+4,float(r.image->GetWidth()),float(r.image->GetHeight()));
 }
+#include "air_path_host.h"
+static void serviceAirPath(){airway::service();}
+static void resetAirPath(){airway::reset();}
+static void airPathResult(int r,int n,uint32_t id,uint32_t token){airway::result(r,n,id,token);}
+#include "aircraft_indicator.h"
+#include "construction_host.h"
+static void serviceConstruction(){buildreserve::service();}
+static void hideConstruction(){buildreserve::hide();}
+static void resetConstruction(){buildreserve::reset();}
+static void destroyConstruction(){buildreserve::destroy();}
+static void constructionResult(int r,int n,uint32_t id){buildreserve::result(r,n,id);}
 struct Surface{HDC dc{};HBITMAP bitmap{},old{};BYTE*bits{};int w{},h{};~Surface(){clear();}void clear(){if(dc){SelectObject(dc,old);DeleteObject(bitmap);DeleteDC(dc);}dc=nullptr;bitmap=nullptr;bits=nullptr;w=h=0;}bool resize(int x,int y){if(x==w&&y==h&&dc)return true;clear();if(x<1||y<1||x>8192||y>8192)return false;BITMAPINFO bi{};bi.bmiHeader.biSize=sizeof(BITMAPINFOHEADER);bi.bmiHeader.biWidth=x;bi.bmiHeader.biHeight=-y;bi.bmiHeader.biPlanes=1;bi.bmiHeader.biBitCount=32;HDC screen=GetDC(nullptr);dc=CreateCompatibleDC(screen);bitmap=CreateDIBSection(screen,&bi,DIB_RGB_COLORS,(void**)&bits,nullptr,0);ReleaseDC(nullptr,screen);if(!bitmap||!dc){clear();return false;}old=(HBITMAP)SelectObject(dc,bitmap);w=x;h=y;return true;}};static Surface surface;
 static void paint(){
  ++displayCounters.paints;
  if(foregroundGame())sampleExternal(GetTickCount()); // Display cadence is independent of 16 ms command servicing.
- if(!foregroundGame()||snap.renderStatus!=1){ShowWindow(overlay,SW_HIDE);return;}
+ if(!foregroundGame()||snap.renderStatus!=1){ShowWindow(overlay,SW_HIDE);hideAircraftButton();hideConstruction();return;}
  DWORD now=sampleClock(shared),renderNow=sampleRenderClock(shared);int labelCount=motion.render(renderNow,labelViews);
  const auto&enemyFrame=externalSampler.enemyMarkers();
  int enemyCount=extra.enemyMarkers&&externalData&&external::enemies::fresh(enemyFrame,externalData->match,renderNow)?std::min(enemyFrame.count,enemyMotion.render(renderNow,enemyViews)):0;
  RECT r{};GetClientRect(game,&r);POINT origin{};ClientToScreen(game,&origin);
+ updateAircraftButton(origin,r);
+ auto airLines=airway::lines();
+ uint32_t idleTabs=(flags()&Production)?externalSampler.idleProductionMask:0;bool tabPhase=(renderNow/400)%2==0;
  bool panel=SendMessageW(check[6],BM_GETCHECK,0,0)==BST_CHECKED;
  bool hasToast=panel&&now<toastUntil;bool summary=panel&&snap.transports;
- if(!labelCount&&!hasToast&&!summary&&!snap.threatCount&&!snap.crateCount&&!enemyCount){ShowWindow(overlay,SW_HIDE);return;}
+ if(!labelCount&&!hasToast&&!summary&&!snap.threatCount&&!snap.crateCount&&!enemyCount&&!idleTabs&&airLines.empty()){ShowWindow(overlay,SW_HIDE);return;}
  float sx=snap.width>0?float(r.right)/snap.width:1,sy=snap.height>0?float(r.bottom)/snap.height:1;
  float top=float(std::clamp(topMargin,0,std::max(0,int(r.bottom)-90)));
  float panelW=std::min(float(std::max(1,int(r.right)-16)),std::max(330.f,hasToast?float(toast.size()*12+24):330.f));
  float panelX=(r.right-panelW)*.5f;
  int left=r.right,up=r.bottom,right=0,bottom=0;
  auto include=[&](float x,float y,float w,float h){int x0=std::clamp(int(std::floor(x)),0,int(r.right)),y0=std::clamp(int(std::floor(y)),0,int(r.bottom));int x1=std::clamp(int(std::ceil(x+w)),0,int(r.right)),y1=std::clamp(int(std::ceil(y+h)),0,int(r.bottom));if(x1>x0&&y1>y0){left=std::min(left,x0);up=std::min(up,y0);right=std::max(right,x1);bottom=std::max(bottom,y1);}};
+ for(auto l:airLines)include(std::min(l.x,l.tx)*sx-6,std::min(l.y,l.ty)*sy-6,std::abs(l.x-l.tx)*sx+12,std::abs(l.y-l.ty)*sy+12);
+ if(idleTabs)for(int i=0;i<4;++i)if(idleTabs&(1u<<i))include((snap.width-160+i*40)*sx,externalSampler.productionTabsY*sy,40*sx,32*sy);
  if(hasToast||summary)include(panelX-3,top-3,panelW+6,(hasToast&&summary)?62.f:32.f);
  for(int i=0;i<labelCount;++i){auto&l=labelViews[i];include(l.x*sx-140,l.y*sy-70,280,110);}
  for(int i=0;i<snap.crateCount;++i){auto&c=snap.crates[i];include(c.x*sx-110,c.y*sy-33,220,46);}
@@ -870,17 +893,22 @@ static void paint(){
  if(right<=left||bottom<=up){ShowWindow(overlay,SW_HIDE);return;}
  static Snapshot drawn{};static visual::LabelView drawnViews[MaxLabels];static int drawnCount;static bool lastToast,lastPanel,lastSummary;static std::wstring oldToast;static int oldW,oldH,oldMargin;static uint32_t revision;
  static external::enemies::Marker drawnEnemies[external::enemies::Maximum];static visual::LabelView drawnEnemyViews[MaxLabels];static int drawnEnemyCount,drawnEnemyWidth,drawnEnemyHeight;
- bool changed=oldW!=r.right||oldH!=r.bottom||oldMargin!=topMargin||revision!=paintRevision||lastPanel!=panel||lastSummary!=summary||lastToast!=hasToast||(hasToast&&oldToast!=toast)||drawnCount!=labelCount||drawn.transports!=snap.transports||drawn.used!=snap.used||drawn.capacity!=snap.capacity||memcmp(drawnViews,labelViews,sizeof(visual::LabelView)*labelCount)||drawn.threatCount!=snap.threatCount||drawn.crateCount!=snap.crateCount||memcmp(drawn.threats,snap.threats,sizeof(Threat)*snap.threatCount)||memcmp(drawn.crates,snap.crates,sizeof(CrateMark)*snap.crateCount);
+ static uint32_t drawnIdleTabs=0;static bool drawnTabPhase=false;
+ static std::vector<airway::Line> drawnAirLines;
+ bool changed=drawnAirLines.size()!=airLines.size()||(!airLines.empty()&&memcmp(drawnAirLines.data(),airLines.data(),airLines.size()*sizeof(airway::Line)))||drawnIdleTabs!=idleTabs||(idleTabs&&drawnTabPhase!=tabPhase)||oldW!=r.right||oldH!=r.bottom||oldMargin!=topMargin||revision!=paintRevision||lastPanel!=panel||lastSummary!=summary||lastToast!=hasToast||(hasToast&&oldToast!=toast)||drawnCount!=labelCount||drawn.transports!=snap.transports||drawn.used!=snap.used||drawn.capacity!=snap.capacity||memcmp(drawnViews,labelViews,sizeof(visual::LabelView)*labelCount)||drawn.threatCount!=snap.threatCount||drawn.crateCount!=snap.crateCount||memcmp(drawn.threats,snap.threats,sizeof(Threat)*snap.threatCount)||memcmp(drawn.crates,snap.crates,sizeof(CrateMark)*snap.crateCount);
  changed=changed||drawnEnemyCount!=enemyCount||drawnEnemyWidth!=enemyFrame.width||drawnEnemyHeight!=enemyFrame.height||memcmp(drawnEnemyViews,enemyViews,sizeof(visual::LabelView)*enemyCount)||memcmp(drawnEnemies,enemyFrame.items,sizeof(external::enemies::Marker)*enemyCount);
  origin.x+=left;origin.y+=up;
  if(!changed){RECT shown{};GetWindowRect(overlay,&shown);if(shown.left!=origin.x||shown.top!=origin.y||!IsWindowVisible(overlay))SetWindowPos(overlay,HWND_TOPMOST,origin.x,origin.y,0,0,SWP_NOSIZE|SWP_NOACTIVATE|SWP_SHOWWINDOW);return;}
  int w=((right-left+63)/64)*64,h=((bottom-up+31)/32)*32;if(!surface.resize(w,h))return;
  drawn.transports=snap.transports;drawn.used=snap.used;drawn.capacity=snap.capacity;drawn.threatCount=snap.threatCount;drawn.crateCount=snap.crateCount;memcpy(drawn.threats,snap.threats,sizeof(Threat)*snap.threatCount);memcpy(drawn.crates,snap.crates,sizeof(CrateMark)*snap.crateCount);drawnCount=labelCount;memcpy(drawnViews,labelViews,sizeof(visual::LabelView)*labelCount);oldW=r.right;oldH=r.bottom;oldMargin=topMargin;revision=paintRevision;lastPanel=panel;lastSummary=summary;lastToast=hasToast;oldToast=toast;
  drawnEnemyCount=enemyCount;drawnEnemyWidth=enemyFrame.width;drawnEnemyHeight=enemyFrame.height;memcpy(drawnEnemies,enemyFrame.items,sizeof(external::enemies::Marker)*enemyCount);memcpy(drawnEnemyViews,enemyViews,sizeof(visual::LabelView)*enemyCount);
+ drawnAirLines=airLines;drawnIdleTabs=idleTabs;drawnTabPhase=tabPhase;
  memset(surface.bits,0,size_t(surface.w)*surface.h*4);
  {Bitmap bm(surface.w,surface.h,surface.w*4,PixelFormat32bppPARGB,surface.bits);Graphics g(&bm);g.SetSmoothingMode(SmoothingModeAntiAlias);g.TranslateTransform(-float(left),-float(up));
+  if(idleTabs&&tabPhase){Pen edge(Color(235,255,212,81),2.f);SolidBrush glow(Color(65,255,218,84));for(int i=0;i<4;++i)if(idleTabs&(1u<<i)){RectF area((snap.width-160+i*40)*sx+1,externalSampler.productionTabsY*sy+1,40*sx-2,32*sy-2);g.FillRectangle(&glow,area);g.DrawRectangle(&edge,area);}}
   auto enemyClip=g.Save();g.SetClip(RectF(0,0,enemyFrame.width*sx,enemyFrame.height*sy),CombineModeIntersect);
   for(int i=0;i<enemyCount;++i){const auto&v=enemyViews[i];if(external::enemies::onScreen(v.x,v.y,enemyFrame.width,enemyFrame.height))drawEnemyMarker(g,enemyFrame.items[i],v,sx,sy);}g.Restore(enemyClip);
+  Pen flightPen(Color(210,130,235,160),1.5f);flightPen.SetEndCap(LineCapArrowAnchor);for(auto l:airLines){g.DrawLine(&flightPen,float(l.x)*sx,float(l.y)*sy,float(l.tx)*sx,float(l.ty)*sy);g.DrawEllipse(&flightPen,float(l.tx)*sx-3,float(l.ty)*sy-3,6.f,6.f);}
   Pen threatPen(Color(185,245,114,223),1.6f);threatPen.SetEndCap(LineCapArrowAnchor);
   for(int i=0;i<snap.threatCount;++i){auto&t=snap.threats[i];float x=t.x*sx,y=t.y*sy,tx=t.tx*sx,ty=t.ty*sy;g.DrawLine(&threatPen,x,y,tx,ty);g.DrawEllipse(&threatPen,tx-7,ty-7,14.f,14.f);}
   Pen cratePen(Color(245,255,205,82),2.f);
@@ -955,6 +983,8 @@ static std::wstring submitDiagnostic(){
 }
 static void result(){if(!shared)return;uint32_t a=shared->ack;if(a==ack)return;MemoryBarrier();ack=a;commandLatency=sentAt?DWORD(GetTickCount()-sentAt):0;int r=shared->result,n=shared->count,c=shared->command;
  diag(L"ack command="+std::to_wstring(c)+L" result="+std::to_wstring(r)+L" count="+std::to_wstring(n)+L" ack="+std::to_wstring(a));
+ if(c==AirPathMove){airPathResult(r,n,uint32_t(shared->arg),shared->requestToken);return;}
+ if(c==ProduceReserved){constructionResult(r,n,uint32_t(shared->arg2));return;}
  // A newer selection (e.g. a double-tap upgrade) supersedes this ACK.
  // Do not overwrite it with a retry of the older single-tap request.
  if(c==SelectType&&commandQueue.has(SelectType)){
@@ -996,7 +1026,7 @@ static void serviceCommandQueue(DWORD now){
  delivery::Item queued{};
  if(commandQueue.peek(now,pid,commandMatch(),commandMatch()!=0,queued)&&commandFocus()&&
     delivery::bridgeReady(incoming.status,commandFresh(now),incoming.chat,shared->request==shared->ack)){
-  commandQueue.consume();send(queued.command,queued.arg,queued.arg2,queued.retries,true);
+  commandQueue.consume();send(queued.command,queued.arg,queued.arg2,queued.retries,true,queued.token);
  }
  static DWORD waitLoggedAt=0;
  if(commandQueue.size&&DWORD(now-waitLoggedAt)>=2000){waitLoggedAt=now;logCommandWait();}
@@ -1048,6 +1078,7 @@ static void updateModeStatus(DWORD now){
  if(phase)oreText+=L" · "+std::wstring(phaseText);else if(snap.oreManual)oreText+=L" · 手动接管 "+std::to_wstring(snap.oreManual);
  static std::wstring oldOreText;if(oreText!=oldOreText){oldOreText=oreText;SetWindowTextW(oreStatus,oreText.c_str());}
 }
+#include "shift_click_host.h"
 static void tick(){reapBridges();logBridgeHealth();DWORD now=GetTickCount();static DWORD lastControl;if(lastControl&&DWORD(now-lastControl)<8)return;lastControl=now;updateModeStatus(now);if(keysRegistered!=(enabled&&foregroundGame()&&snap.status==1&&!snap.chat))registerKeys();if(!enabled){clockState(false,fps);return;}
  if(game&&DWORD(now-lastProcessCheck)>=250){lastProcessCheck=now;if(!boundGameAlive()){if(pid&&externalReader.alive()){game=nullptr;lastFind=now-2000;}else{detach();lastFind=now-2000;}}}
  if(!game){
@@ -1084,9 +1115,9 @@ static void tick(){reapBridges();logBridgeHealth();DWORD now=GetTickCount();stat
  now=GetTickCount(); // ensureBridge may have created attachAt after tick entry.
  if(shared){
   shared->heartbeat=now;shared->foreground=foregroundGame();shared->flags=configured;syncAdditional();shared->scanMs=8;shared->repairMs=repairMs;
-  DWORD wakePeriod=shared->foreground?16:((configured|shared->plannerTracking)&(AdvancedInput|MagnetronInput|AutoOreReturn)?64:500);
+  DWORD wakePeriod=shared->foreground?16:((configured|shared->plannerTracking)&(AdvancedInput|MagnetronInput|AutoOreReturn|AirWaypoints|AntiTheft)?64:500);
   if(DWORD(now-lastPulse)>=wakePeriod)wakeGame();
-  readSnapshot();schedulerDiagnostic();serviceSelection();result();serviceCommandQueue(GetTickCount());servicePlanner();serviceCooperative();servicePointer();serviceHotkeyBatch();
+  readSnapshot();schedulerDiagnostic();serviceSelection();result();serviceCommandQueue(GetTickCount());servicePlanner();serviceCooperative();servicePointer();serviceHotkeyBatch();serviceConstruction();serviceAirPath();
   now=GetTickCount(); // snapshot/queue services may have advanced lastData/sentAt.
   if(uninitializedBridgeTimedOut()){
    critical(L"uninitialized command bridge timeout; retry before any match is authenticated");logBridgeHealth(true);releaseBridge();
@@ -1116,7 +1147,7 @@ static void tick(){reapBridges();logBridgeHealth();DWORD now=GetTickCount();stat
  }
  if(lastData&&snap.inputPatchMask!=lastLoggedPatchMask){lastLoggedPatchMask=snap.inputPatchMask;diag(L"hook patches installed mask="+std::to_wstring(lastLoggedPatchMask));}
  clockState(foregroundGame()&&snap.renderStatus==1&&enabled,fps);
- if(!foregroundGame()||snap.renderStatus!=1)ShowWindow(overlay,SW_HIDE);
+ if(!foregroundGame()||snap.renderStatus!=1){ShowWindow(overlay,SW_HIDE);hideAircraftButton();hideConstruction();}
  if(snap.status==-2){setStatus(L"命令接口异常，指令已停用；只读显示独立运行。");if(snap.renderStatus!=1)ShowWindow(overlay,SW_HIDE);return;}
  if(snap.status==-1){setStatus(L"命令接口与已核对版本不一致，指令已停用；只读显示独立运行。");if(snap.renderStatus!=1)ShowWindow(overlay,SW_HIDE);return;}
  if(snap.status!=1){
@@ -1146,7 +1177,7 @@ static void tick(){reapBridges();logBridgeHealth();DWORD now=GetTickCount();stat
  }
 
 }
-struct PageControl {HWND hwnd;int page;uilayout::Rect rect;int visibleHeight;};static std::vector<PageControl> pageControls;static int activePage=0;static HWND featureSearch;
+struct PageControl {HWND hwnd;int page;uilayout::Rect rect;int visibleHeight;std::wstring help;};static std::vector<PageControl> pageControls;static int activePage=0;static HWND featureSearch;
 static int pageBottom(){int bottom=uilayout::BodyTop;for(const auto&c:pageControls)if(c.page==activePage)bottom=std::max(bottom,c.rect.y+c.visibleHeight);return bottom+6;}
 static void layoutPanel(){
  RECT client{};GetClientRect(ui,&client);int height=client.bottom,width=client.right,maximum=uilayout::maxScroll(pageBottom(),height);scrollY=std::clamp(scrollY,0,maximum);
@@ -1162,7 +1193,9 @@ static void layoutPanel(){
 static void scrollTo(int position){scrollY=position;layoutPanel();InvalidateRect(ui,nullptr,TRUE);}
 // Convert the existing control definitions into one continuous document.
 // Row intervals keep labels/inputs aligned while removing old page whitespace.
+#include "hover_help.h"
 static void finalizeTacticalLayout(){
+ for(auto&c:pageControls)if(c.page==0&&c.rect.y>=496&&c.rect.y<990)c.page=11;
  int y=uilayout::BodyTop+12;
  for(int section:{10,0,1,11,2,5,6,12,3,4}){
   std::vector<size_t> items;for(size_t i=0;i<pageControls.size();++i)if(pageControls[i].page==section)items.push_back(i);
@@ -1170,7 +1203,9 @@ static void finalizeTacticalLayout(){
   if(items.empty())continue;if(section>=10)y+=20;
   for(size_t at=0;at<items.size();){size_t end=at+1;int top=pageControls[items[at]].rect.y,bottom=top+pageControls[items[at]].visibleHeight;
    while(end<items.size()&&pageControls[items[end]].rect.y<bottom){auto&c=pageControls[items[end++]];bottom=std::max(bottom,c.rect.y+c.visibleHeight);}
-   for(size_t i=at;i<end;++i){auto&c=pageControls[items[i]];c.rect.y=y+c.rect.y-top;}
+   std::wstring rowHelp;
+   for(size_t i=at;i<end;++i){auto&c=pageControls[items[i]];int id=GetDlgCtrlID(c.hwnd);if(id){auto h=controlHelp(id,L"");if(!h.empty()){rowHelp=h;break;}}}
+   for(size_t i=at;i<end;++i){auto&c=pageControls[items[i]];wchar_t label[512]{};GetWindowTextW(c.hwnd,label,512);c.help=controlHelp(GetDlgCtrlID(c.hwnd),L"");if(c.help.empty())c.help=rowHelp.empty()?controlHelp(0,label):rowHelp;c.rect.y=y+c.rect.y-top;}
    y+=bottom-top+12;at=end;
   }
   y+=12;
@@ -1209,7 +1244,7 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
  for(int i=0;i<12;++i){int y=110+(i==11?0:i+1)*29;HWND action=control(L"BUTTON",labels[i],20,y,306,25,100+i,(i==0?BS_AUTOCHECKBOX:BS_PUSHBUTTON)|WS_TABSTOP);if(i==0){repairCheck=action;SendMessageW(action,BM_SETCHECK,value(L"Modes",L"AutoRepair",0)?BST_CHECKED:BST_UNCHECKED,0);}keys[i]=control(HOTKEY_CLASSW,L"",345,y,280,25,200+i,WS_TABSTOP);SendMessageW(keys[i],HKM_SETHOTKEY,hotkeys[i],0);}
  control(L"STATIC",L"维修间隔 ms",20,464,126,24,0);repairEdit=control(L"EDIT",std::to_wstring(repairMs).c_str(),152,461,72,24,312,ES_NUMBER|WS_TABSTOP);control(L"STATIC",L"500–30000",230,464,100,24,0);
  control(L"STATIC",L"自动保存",345,461,280,27,400,0);
- const wchar_t*names[]={L"载具载员 / 空位",L"铁幕 / 力场剩余时间",L"生产提醒",L"显示未选中的载具",L"心灵探测",L"箱子提示",L"文字提示"};const wchar_t*ini[]={L"Capacity",L"Iron",L"Production",L"AllTransports",L"Psychic",L"Crates",L"TextPanel"};
+ const wchar_t*names[]={L"载具载员 / 空位",L"铁幕 / 力场剩余时间",L"队列空闲页签闪烁",L"显示未选中的载具",L"心灵探测",L"箱子提示",L"文字提示"};const wchar_t*ini[]={L"Capacity",L"Iron",L"Production",L"AllTransports",L"Psychic",L"Crates",L"TextPanel"};
  for(int i=0;i<7;++i){check[i]=control(L"BUTTON",names[i],20+(i%2)*315,501+(i/2)*28,305,24,300+i,BS_AUTOCHECKBOX|WS_TABSTOP);SendMessageW(check[i],BM_SETCHECK,value(L"Display",ini[i],(i<3||i>=6)?1:0)?BST_CHECKED:BST_UNCHECKED,0);}
  control(L"STATIC",L"刷新率 FPS",20,620,85,23,0);rateEdit=control(L"EDIT",std::to_wstring(fps).c_str(),110,617,48,24,310,ES_NUMBER|WS_TABSTOP);control(L"STATIC",L"5–500",164,620,55,23,0);control(L"STATIC",L"上边距 px",238,620,86,23,0);marginEdit=control(L"EDIT",std::to_wstring(topMargin).c_str(),330,617,55,24,311,ES_NUMBER|WS_TABSTOP);control(L"STATIC",L"自动保存",420,616,205,27,401,0);
  control(L"STATIC",L"超级武器",20,657,600,22,0);swList=control(L"COMBOBOX",L"",20,683,340,240,410,CBS_DROPDOWNLIST|WS_VSCROLL|WS_TABSTOP);swHotkey=control(HOTKEY_CLASSW,L"",374,683,153,25,411,WS_TABSTOP);control(L"STATIC",L"自动保存",541,682,84,27,412,0);
@@ -1230,17 +1265,17 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
  typeIdEdit=control(L"EDIT",L"",158,1071,312,26,467,ES_AUTOHSCROLL|WS_TABSTOP);
  control(L"BUTTON",L"添加",481,1071,144,26,449,BS_PUSHBUTTON|WS_TABSTOP);
  csStatus=control(L"STATIC",L"CS：等待对局",20,1107,605,23,0);
- control(L"STATIC",L"高级移动攻击",20,1140,340,24,0);advancedKeyEdit=control(HOTKEY_CLASSW,L"",374,1138,153,25,450,WS_TABSTOP);SendMessageW(advancedKeyEdit,HKM_SETHOTKEY,advancedKey,0);modernui::mouseOnly(advancedKeyEdit);
+ control(L"STATIC",L"高级移动攻击",20,1140,270,24,0);advancedKeyEdit=control(HOTKEY_CLASSW,L"",305,1138,180,25,450,WS_TABSTOP);SendMessageW(advancedKeyEdit,HKM_SETHOTKEY,advancedKey,0);modernui::mouseOnly(advancedKeyEdit);
  control(L"STATIC",L"智能卸载",20,1175,340,24,0);unloadKeyEdit=control(HOTKEY_CLASSW,L"",374,1173,153,25,451,WS_TABSTOP);SendMessageW(unloadKeyEdit,HKM_SETHOTKEY,unloadKey,0);
- control(L"STATIC",L"自动保存",541,1138,84,27,452,0);control(L"BUTTON",L"卸载",541,1173,84,27,453,BS_PUSHBUTTON|WS_TABSTOP);
+ control(L"BUTTON",L"卸载",541,1173,84,27,453,BS_PUSHBUTTON|WS_TABSTOP);
  control(L"BUTTON",L"取消当前任务",20,1207,255,27,454,BS_PUSHBUTTON|WS_TABSTOP);
  nativeStatus=control(L"STATIC",L"原生联机指令：等待对局",20,1243,605,28,0);
  const wchar_t* hookNames[]={L"高级移动攻击",L"智能卸载",L"逃生逻辑",L"自动 CS"};
  const int hookIds[]={458,459,465,466};bool hookValues[]={hookAdvanced,hookSmartUnload,hookEject,hookAutoCS};
  for(int i=0;i<4;++i){if(i==2)continue;int slot=i==3?2:i;hookChecks[i]=control(L"BUTTON",hookNames[i],20+(slot%2)*315,1275+(slot/2)*27,300,25,hookIds[i],BS_AUTOCHECKBOX|WS_TABSTOP);SendMessageW(hookChecks[i],BM_SETCHECK,hookValues[i]?BST_CHECKED:BST_UNCHECKED,0);}
  ejectCheck=control(L"BUTTON",L"逃生助手",20,1330,340,27,455,BS_AUTOCHECKBOX|WS_TABSTOP);SendMessageW(ejectCheck,BM_SETCHECK,ejectMode?BST_CHECKED:BST_UNCHECKED,0);ejectKeyEdit=control(HOTKEY_CLASSW,L"",374,1330,153,25,456,WS_TABSTOP);SendMessageW(ejectKeyEdit,HKM_SETHOTKEY,ejectKey,0);control(L"STATIC",L"自动保存",541,1330,84,27,457,0);
- magnetronCheck=pageControl(2,L"BUTTON",L"磁电轮换攻击",20,342,306,27,477,BS_AUTOCHECKBOX|WS_TABSTOP);SendMessageW(magnetronCheck,BM_SETCHECK,magnetronMode?BST_CHECKED:BST_UNCHECKED,0);
- magnetronKeyEdit=pageControl(2,HOTKEY_CLASSW,L"",374,342,153,26,478,WS_TABSTOP);SendMessageW(magnetronKeyEdit,HKM_SETHOTKEY,magnetronKey,0);modernui::mouseOnly(magnetronKeyEdit);pageControl(2,L"STATIC",L"自动保存",541,342,84,27,479,0);
+ magnetronCheck=pageControl(2,L"BUTTON",L"磁电轮换攻击",20,342,270,27,477,BS_AUTOCHECKBOX|WS_TABSTOP);SendMessageW(magnetronCheck,BM_SETCHECK,magnetronMode?BST_CHECKED:BST_UNCHECKED,0);
+ magnetronKeyEdit=pageControl(2,HOTKEY_CLASSW,L"",305,342,180,26,478,WS_TABSTOP);SendMessageW(magnetronKeyEdit,HKM_SETHOTKEY,magnetronKey,0);modernui::mouseOnly(magnetronKeyEdit);
  pageControl(2,L"STATIC",L"磁电：按住配置键配合增强鼠标键；出手后按 ROF 轮换目标。",20,380,605,25,0);
  pageControl(2,L"STATIC",L"手动移动、停止或取消自动任务可接管；独立于高级移动。",20,412,605,25,0);
  oreCheck=pageControl(0,L"BUTTON",L"矿车满载卸矿",20,496,225,25,470,BS_AUTOCHECKBOX|WS_TABSTOP);SendMessageW(oreCheck,BM_SETCHECK,oreMode?BST_CHECKED:BST_UNCHECKED,0);
@@ -1264,16 +1299,16 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
  toastEdit=pageControl(3,L"EDIT",std::to_wstring(toastMs).c_str(),140,274,85,26,471,ES_NUMBER|WS_TABSTOP);
  pageControl(3,L"STATIC",L"500–60000",240,276,150,24,0);
  pageControl(3,L"STATIC",L"自动保存",420,274,205,27,472,0);
- csHoldCheck=pageControl(1,L"BUTTON",L"自定义 CS 按键",20,326,306,25,473,BS_AUTOCHECKBOX|WS_TABSTOP);SendMessageW(csHoldCheck,BM_SETCHECK,csHoldEnabled?BST_CHECKED:BST_UNCHECKED,0);
- csHoldEdit=pageControl(1,HOTKEY_CLASSW,L"",374,326,153,26,474,WS_TABSTOP);SendMessageW(csHoldEdit,HKM_SETHOTKEY,csHoldKey,0);modernui::mouseOnly(csHoldEdit);
- pageControl(1,L"STATIC",L"自动保存",541,326,84,27,475,0);
+ csHoldCheck=pageControl(1,L"BUTTON",L"自定义 CS 按键",20,326,270,25,473,BS_AUTOCHECKBOX|WS_TABSTOP);SendMessageW(csHoldCheck,BM_SETCHECK,csHoldEnabled?BST_CHECKED:BST_UNCHECKED,0);
+ csHoldEdit=pageControl(1,HOTKEY_CLASSW,L"",305,326,180,26,474,WS_TABSTOP);SendMessageW(csHoldEdit,HKM_SETHOTKEY,csHoldKey,0);modernui::mouseOnly(csHoldEdit);
+ 
  pageControl(1,L"STATIC",L"双按间隔：20–5000 ms",20,364,400,24,0);
  anywhereCheck=pageControl(4,L"BUTTON",L"随处建造（本版停用）",20,395,306,27,476,BS_AUTOCHECKBOX|WS_TABSTOP);SendMessageW(anywhereCheck,BM_SETCHECK,buildAnywhereMode?BST_CHECKED:BST_UNCHECKED,0);
  pageControl(3,L"STATIC",L"游戏入口：统一消息管理器",20,416,605,24,0);
  schedulerEntryCombo=pageControl(3,L"COMBOBOX",L"",20,447,605,230,760,CBS_DROPDOWNLIST|WS_TABSTOP);
  SendMessageW(schedulerEntryCombo,CB_ADDSTRING,0,(LPARAM)L"统一消息入口 · 不改写游戏代码");
  SendMessageW(schedulerEntryCombo,CB_SETCURSEL,0,0);EnableWindow(schedulerEntryCombo,FALSE);
- pageControl(3,L"STATIC",L"鼠标键可在下方配置；按住键留空时仅需点击鼠标。",20,484,605,24,0);
+ pageControl(3,L"STATIC",L"每个功能的鼠标键紧随快捷键；空快捷键时直接点击鼠标。",20,484,605,24,0);
  pageControl(6,L"STATIC",L"MegaMission 后端（下次启动生效）",20,407,605,24,0);
  megaQueueCombo=pageControl(6,L"COMBOBOX",L"",20,435,605,180,761,CBS_DROPDOWNLIST|WS_TABSTOP);
  SendMessageW(megaQueueCombo,CB_ADDSTRING,0,(LPARAM)L"0 · EventClass 构造 + 自制入队（默认）");
@@ -1286,16 +1321,17 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
  SendMessageW(objectQueueCombo,CB_SETCURSEL,objectQueueMode,0);
 #include "extra_controls.h"
  EnableWindow(GetDlgItem(w,420),FALSE);EnableWindow(anywhereCheck,FALSE);
- statusLabel=control(L"STATIC",L"正在寻找游戏…",20,1370,605,44,430);control(L"BUTTON",L"暂停 / 连接",20,1420,200,28,431,BS_PUSHBUTTON|WS_TABSTOP);control(L"BUTTON",L"使用说明",235,1420,185,28,432,BS_PUSHBUTTON|WS_TABSTOP);control(L"BUTTON",L"退出",435,1420,190,28,433,BS_PUSHBUTTON|WS_TABSTOP);finalizeTacticalLayout();ready=true;fillTech(true);fillTypeBindings(true);SetTimer(w,1,250,nullptr);registerKeys();return 0;}
+ statusLabel=control(L"STATIC",L"正在寻找游戏…",20,1370,605,44,430);control(L"BUTTON",L"暂停 / 连接",20,1420,200,28,431,BS_PUSHBUTTON|WS_TABSTOP);control(L"BUTTON",L"使用说明",235,1420,185,28,432,BS_PUSHBUTTON|WS_TABSTOP);control(L"BUTTON",L"退出",435,1420,190,28,433,BS_PUSHBUTTON|WS_TABSTOP);EnableWindow(unloadKeyEdit,FALSE);EnableWindow(GetDlgItem(w,453),FALSE);EnableWindow(hookChecks[1],FALSE);SetWindowTextW(hookChecks[1],L"智能卸载（暂不可用）");finalizeTacticalLayout();ready=true;fillTech(true);fillTypeBindings(true);SetTimer(w,1,250,nullptr);SetTimer(w,2,80,nullptr);registerKeys();return 0;}
  case WM_SIZE:layoutPanel();return 0;
  case modernui::FocusMessage:{for(const auto&c:pageControls)if(c.hwnd==(HWND)lp&&c.page>=0){int top=c.rect.y-scrollY,bottom=top+c.visibleHeight;RECT client{};GetClientRect(w,&client);if(top<uilayout::BodyTop)scrollTo(c.rect.y-uilayout::BodyTop);else if(bottom>uilayout::bodyBottom(client.bottom))scrollTo(c.rect.y+c.visibleHeight-uilayout::bodyBottom(client.bottom));break;}return 0;}
  case WM_VSCROLL:{SCROLLINFO si{sizeof si,SIF_ALL};GetScrollInfo(w,SB_VERT,&si);int next=scrollY;switch(LOWORD(wp)){case SB_LINEUP:next-=28;break;case SB_LINEDOWN:next+=28;break;case SB_PAGEUP:next-=int(si.nPage);break;case SB_PAGEDOWN:next+=int(si.nPage);break;case SB_THUMBTRACK:next=si.nTrackPos;break;default:return 0;}scrollTo(next);return 0;}
  case WM_MOUSEWHEEL:{static int remainder;remainder+=short(HIWORD(wp));int steps=remainder/WHEEL_DELTA;remainder%=WHEEL_DELTA;if(steps)scrollTo(scrollY-steps*84);return 0;}
 
  case FrameMessage:{if(enabled)paint();InterlockedExchange(&framePending,0);return 0;}
+ case InputMessage:{shiftClickTick();InterlockedExchange(&inputPending,0);return 0;}
  case ControlMessage:{tick();InterlockedExchange(&controlPending,0);return 0;}
- case DataMessage:{if(shared&&wp==pid){InterlockedExchange(&shared->hostNotifyPending,0);readSnapshot();serviceSelection();result();serviceCommandQueue(GetTickCount());servicePlanner();serviceCooperative();servicePointer();serviceHotkeyBatch();}return 0;}
- case WM_TIMER:if(wp==AutoSaveTimer){flushAutoSettings();return 0;}tick();return 0;
+ case DataMessage:{if(shared&&wp==pid){InterlockedExchange(&shared->hostNotifyPending,0);readSnapshot();serviceSelection();result();serviceCommandQueue(GetTickCount());servicePlanner();serviceCooperative();servicePointer();serviceHotkeyBatch();serviceConstruction();serviceAirPath();}return 0;}
+ case WM_TIMER:if(wp==2){updateHoverHelp();return 0;}if(wp==AutoSaveTimer){flushAutoSettings();return 0;}tick();return 0;
  case WM_HOTKEY:handleHotkey(wp,lp);return 0;
  case WM_COMMAND:{int id=LOWORD(wp);
  if(updatingControls)return 0;
@@ -1395,7 +1431,7 @@ if(id==991){wchar_t query[128]{};GetWindowTextW(featureSearch,query,128);std::ws
  if(conflict){notify(L"快捷键冲突，请使用不同组合。");return 0;}advancedKey=nextA;unloadKey=nextU;{hookAdvanced=true;SendMessageW(hookChecks[0],BM_SETCHECK,BST_CHECKED,0);}save();registerKeys();notify(L"原生联机指令快捷键已保存。");}
  else if(id==458||id==459||id==465||id==466){
   hookAdvanced=SendMessageW(hookChecks[0],BM_GETCHECK,0,0)==BST_CHECKED;
-  hookSmartUnload=SendMessageW(hookChecks[1],BM_GETCHECK,0,0)==BST_CHECKED;
+  hookSmartUnload=false;SendMessageW(hookChecks[1],BM_SETCHECK,BST_UNCHECKED,0);
   hookEject=ejectMode;
   hookAutoCS=SendMessageW(hookChecks[3],BM_GETCHECK,0,0)==BST_CHECKED;
   save();registerKeys();diag(L"hook switches flags="+std::to_wstring(flags()));notify(L"功能开关已保存。");}
@@ -1426,7 +1462,7 @@ if(id==991){wchar_t query[128]{};GetWindowTextW(featureSearch,query,128);std::ws
 #ifdef RA2_UNIFIED
  if(wp!=suite::CloseToken){suite::requestClose();return 0;}
 #endif
- flushAutoSettings();DestroyWindow(w);return 0;case WM_DESTROY:KillTimer(w,AutoSaveTimer);save();stopClock();KillTimer(w,1);detach();for(int id:registeredKeyIDs)UnregisterHotKey(w,id);registeredKeyIDs.clear();PostQuitMessage(0);return 0;}return DefWindowProcW(w,msg,wp,lp);}
+ flushAutoSettings();DestroyWindow(w);return 0;case WM_DESTROY:destroyAircraftButton();destroyConstruction();KillTimer(w,AutoSaveTimer);save();stopClock();KillTimer(w,1);KillTimer(w,2);detach();for(int id:registeredKeyIDs)UnregisterHotKey(w,id);registeredKeyIDs.clear();PostQuitMessage(0);return 0;}return DefWindowProcW(w,msg,wp,lp);}
 int WINAPI wWinMain(HINSTANCE h,HINSTANCE,LPWSTR,int show){SetProcessDPIAware();HANDLE single=CreateMutexW(nullptr,FALSE,L"Local\\RA2Assist_v013_Host");if(GetLastError()==ERROR_ALREADY_EXISTS){MessageBoxW(nullptr,L"战术助手已在运行。",L"尤里战术助手",MB_OK);return 0;}
  wchar_t p[2048];GetModuleFileNameW(nullptr,p,2048);root=p;root.resize(root.find_last_of(L"\\/"));autolog::initialize(root);autolog::write(L"host-start criticalLog=automatic rotation=2MiB+2 backups; verbose Debug.Diagnostics is independent");loadAdditionalSettings();
  megaQueueMode=value(L"Orders",L"MegaMissionBackend",0)==1?1u:0u;
@@ -1454,7 +1490,7 @@ int WINAPI wWinMain(HINSTANCE h,HINSTANCE,LPWSTR,int show){SetProcessDPIAware();
  techExceptions=profileExceptions[techProfile];
  // Technology uses sidebar entries and vanilla production; old rule-override flags are ignored.
  hookAdvanced=value(L"Hooks",L"Advanced",value(L"NativeOrders",L"EnableInputHooks",1))!=0;
- hookSmartUnload=value(L"Hooks",L"SmartUnload",1)!=0;
+ hookSmartUnload=false;
  hookEject=value(L"Hooks",L"Eject",0)!=0;
  hookAutoCS=value(L"Hooks",L"AutoCS",1)!=0;
  diagEnabled=value(L"Debug",L"Diagnostics",1)!=0;
@@ -1474,7 +1510,9 @@ int WINAPI wWinMain(HINSTANCE h,HINSTANCE,LPWSTR,int show){SetProcessDPIAware();
   for(const auto&id:exceptions)if(savedTypes.ensure(id))++catalogueRevision;
  if(catalogueRevision&&!saveCatalogue())diag(L"Initial offline catalogue save failed");
  ejectMode=value(L"NativeOrders",L"EjectAssist",0)!=0;hookEject=ejectMode;ejectKey=WORD(value(L"NativeOrders",L"EjectToggleKey",MAKEWORD('J',HOTKEYF_CONTROL|HOTKEYF_ALT)));veteranPercent=std::clamp(value(L"NativeOrders",L"VeteranPercent",200),100,10000);elitePercent=std::clamp(value(L"NativeOrders",L"ElitePercent",300),veteranPercent,10000);
- advancedKey=WORD(value(L"NativeOrders",L"AdvancedHoldKey",MAKEWORD('G',HOTKEYF_ALT)));unloadKey=WORD(value(L"NativeOrders",L"UnloadKey",MAKEWORD('U',HOTKEYF_CONTROL|HOTKEYF_ALT)));pathTimeout=std::clamp(value(L"NativeOrders",L"PathTimeoutFrames",90),30,900);
+ shiftSidebarWidth=std::clamp(value(L"Click",L"SidebarWidth",GetPrivateProfileIntW(L"Click",L"SidebarWidth",160,path(L"settings.ini").c_str())),32,600);shiftSidebarTop=std::clamp(value(L"Click",L"SidebarTop",GetPrivateProfileIntW(L"Click",L"SidebarTop",200,path(L"settings.ini").c_str())),0,2000);
+ shiftClickEnabled=value(L"Click",L"Enabled",GetPrivateProfileIntW(L"Click",L"Enabled",1,path(L"settings.ini").c_str()))!=0;shiftClickMode=std::clamp(value(L"Click",L"Mode",GetPrivateProfileIntW(L"Click",L"Mode",0,path(L"settings.ini").c_str())),0,2);shiftClickGap=std::clamp(value(L"Click",L"IntervalMs",GetPrivateProfileIntW(L"Click",L"IntervalMs",0,path(L"settings.ini").c_str())),0,250);
+ advancedTargetPriority=std::clamp(value(L"NativeOrders",L"TargetPriority",0),0,1);advancedScanHz=std::clamp(value(L"NativeOrders",L"TargetScanHz",10),1,60);advancedKey=WORD(value(L"NativeOrders",L"AdvancedHoldKey",MAKEWORD('G',HOTKEYF_ALT)));unloadKey=WORD(value(L"NativeOrders",L"UnloadKey",MAKEWORD('U',HOTKEYF_CONTROL|HOTKEYF_ALT)));pathTimeout=std::clamp(value(L"NativeOrders",L"PathTimeoutFrames",90),30,900);
  doubleMs=std::clamp(value(L"TypeSelection",L"DoublePressMs",350),20,5000);csMode=value(L"AutoCS",L"Enabled",0)!=0;csKey=WORD(value(L"AutoCS",L"ToggleKey",MAKEWORD('A',HOTKEYF_CONTROL|HOTKEYF_ALT)));
  toastMs=std::clamp(value(L"Display",L"ToastMs",6000),500,60000);showDetails=value(L"Display",L"DetailedStatus",0)!=0;
  magnetronMode=value(L"Modes",L"MagnetronMove",0)!=0;magnetronKey=WORD(value(L"NativeOrders",L"MagnetronHoldKey",MAKEWORD('M',HOTKEYF_ALT)));
@@ -1494,3 +1532,4 @@ int WINAPI wWinMain(HINSTANCE h,HINSTANCE,LPWSTR,int show){SetProcessDPIAware();
  ShowWindow(ui,show);
 #endif
  startClock();MSG m;while(GetMessageW(&m,nullptr,0,0)>0){if(!IsDialogMessageW(ui,&m)){TranslateMessage(&m);DispatchMessageW(&m);}}DestroyWindow(overlay);surface.clear();textRasters.clear();glyphRasters.clear();labelRasters.clear();DeleteObject(font);DeleteObject(bgBrush);DeleteObject(editBrush);GdiplusShutdown(token);CloseHandle(single);return 0;}
+

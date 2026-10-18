@@ -9,11 +9,11 @@
 #include "cooperative_types.h"
 #include "pointer_intent.h"
 namespace assist {
-constexpr uint32_t Magic=0x41533130, Version=42;
+constexpr uint32_t Magic=0x41533130, Version=43;
 constexpr uint32_t DataMessage=0x8002, WakeTag=0x41533230;
 constexpr int MaxLabels=2048, MaxSW=32, MaxTypes=512, MaxThreats=128, MaxCrates=256, MaxCrateResults=16;
-enum Command { None, Repair, CombatSelection, EmptyTransports, DamagedSelection, IdleHarvester, IdleEngineer, IdleTransport, ClearBeacons, RevealMap, OpenTech, SelectSuper, Produce, SelectIron, SelectChrono, AutoBoard, SelectType, SmartUnload, CancelAdvanced, SelectVariant };
-enum Flags { Capacity=1, Iron=2, Production=4, AllTransports=8, Psychic=16, Crates=32, AutoRepair=64, TextPanel=128, CrateResults=256, AutoCS=512, NativeOrders=1024, EjectAssist=2048, UnsafeTech=4096, AdvancedInput=8192, SmartUnloadOrders=16384, AutoOreReturn=32768, BuildAnywhere=65536, CustomCS=131072, MagnetronInput=262144, Frozen=524288, AdvancedEnter=1048576, AircraftSpread=2097152, DiskPrimary=4194304, SellDrained=8388608, SellVehicles=16777216, SellEnemy=33554432, ExperimentalReveal=67108864, RepairUnrepairable=134217728 };
+enum Command { None, Repair, CombatSelection, EmptyTransports, DamagedSelection, IdleHarvester, IdleEngineer, IdleTransport, ClearBeacons, RevealMap, OpenTech, SelectSuper, Produce, SelectIron, SelectChrono, AutoBoard, SelectType, SmartUnload, CancelAdvanced, SelectVariant, ProduceReserved, AirPathMove };
+enum Flags { Capacity=1, Iron=2, Production=4, AllTransports=8, Psychic=16, Crates=32, AutoRepair=64, TextPanel=128, CrateResults=256, AutoCS=512, NativeOrders=1024, EjectAssist=2048, UnsafeTech=4096, AdvancedInput=8192, SmartUnloadOrders=16384, AutoOreReturn=32768, BuildAnywhere=65536, CustomCS=131072, MagnetronInput=262144, Frozen=524288, AdvancedEnter=1048576, AircraftSpread=2097152, DiskPrimary=4194304, SellDrained=8388608, SellVehicles=16777216, SellEnemy=33554432, ExperimentalReveal=67108864, RepairUnrepairable=134217728, ReserveConstruction=268435456, AirWaypoints=536870912, AntiTheft=1073741824 };
 constexpr uint32_t CooperativeFlags=AdvancedEnter|AircraftSpread,SpecialClickFlags=CooperativeFlags|DiskPrimary|SellDrained|SellVehicles|SellEnemy;
 struct Threat { uint32_t id,target; int x,y,tx,ty; };
 struct CrateMark { int cellX,cellY,x,y,preview; };
@@ -61,7 +61,7 @@ struct Snapshot {
 };
 struct Shared {
  uint32_t magic,version,pid,owner; volatile uint32_t heartbeat,stop,foreground,flags,scanMs;
- volatile uint32_t request,ack; int command,arg,arg2; uint32_t requestTick,requestMatch;
+ volatile uint32_t request,ack; int command,arg,arg2;uint32_t requestToken; uint32_t requestTick,requestMatch;
  int result,count; volatile long seq; Snapshot data;
  uint8_t techAllowed[MaxTypes];
  uint32_t repairMs;
@@ -70,7 +70,7 @@ struct Shared {
  uint32_t advancedKey,pathTimeout,veteranPercent,elitePercent;
  // Selection is local UI state. It must never wait behind simulation commands.
  volatile uint32_t selectRequest,selectAck;
- int selectIndex,selectGlobal;uint32_t selectTick,selectMatch;
+ int selectIndex,selectGlobal;uint32_t selectObjectID;uint32_t selectTick,selectMatch;
  int selectResult,selectCount;uint32_t csHoldKey;
  volatile long worldSeq;planner::World world;
  volatile uint32_t planRequest,planAck;uint32_t planTick,planMatch;
@@ -96,6 +96,7 @@ struct Shared {
  int planFrame,cooperativeFrame;uint32_t cooperativeMatch;
  int cooperativeProcessed,cooperativeResult;uint32_t cooperativeAcceptedBits[16];
  pointerinput::Mailbox pointer;
+ volatile long pointerPolicySeq;pointerinput::NativePolicy pointerPolicy;pointerinput::SuppressedClick suppressedClick;
  // Immutable until selectAck; -3 selects the union of this match-bound mask.
  uint8_t selectTypes[MaxTypes];
  volatile long oreConfigSeq;oreconfig::Config oreConfig;
@@ -111,3 +112,4 @@ inline bool canRepair(int hp,int max,bool active,bool repairing){return active&&
 inline bool queueAvailable(int count,int tail){return count>=0&&count<112&&tail>=0&&tail<128;}
 inline bool validType(int level,bool insignificant,bool spawned,uint32_t owners){return level>=0&&level<=100&&!insignificant&&!spawned&&owners!=0;}
 }
+

@@ -1,6 +1,7 @@
 #pragma once
 #include "core.h"
 #include "icon_cache.h"
+#include "cameo_reader.h"
 #include "owned_counter.h"
 #include "../../external_reader/source/layout_probe.h"
 
@@ -26,29 +27,8 @@ template<class Read,class Resolve> class Sampler {
   PtrList r;r.n=n;if(n&&!bytes(p,r.data(),n*4)){state.readErrors++;return {};}return r;
  }
  int find(uint32_t p){for(int i=0;i<state.typeCount;i++)if(state.types[i].ptr==p)return i;return -1;}
- bool loadIcon(Type& t) {
-  uint32_t p=get<uint32_t>(t.ptr+1776);if(!p)return false;
-  uint16_t tag=get<uint16_t>(p);if(tag==65535){uint32_t d=get<uint32_t>(p+12);if(!d)d=resolve(p);p=d;}
-  if(!p)return false;
-  uint8_t header[32];if(!bytes(p,header,32))return false;
-  uint32_t off=uint32_t(header[28])|(uint32_t(header[29])<<8)|(uint32_t(header[30])<<16)|(uint32_t(header[31])<<24);
-  unsigned w=header[12]|(header[13]<<8),h=header[14]|(header[15]<<8),flags=header[16]&3;
-  if(!w||!h||w>256||h>256||off<32||off>1024*1024)return false;
-  uint8_t* b=iconBuffer;size_t used=32;memcpy(b,header,32);b[28]=32;b[29]=b[30]=b[31]=0;
-  uint32_t at=p+off;
-  for(unsigned y=0;y<h;y++){
-   unsigned len=w;if(flags>=2){uint16_t row=0;if(!bytes(at,&row,2)||row<2||row>1024)return false;len=row;}
-   size_t pos=used;used+=len;if(used>sizeof(iconBuffer)||!bytes(at,b+pos,len))return false;at+=len;
-  }
-  if(!decode(b,used,t.icon))return false;
-  t.iconReady=1;t.iconCached=0;return true;
- }
- void palette(){
-  state.paletteReady=0;
-  uint32_t conv=get<uint32_t>(0x87F6B0),mid=get<uint32_t>(conv+0x174);uint16_t pal[256];
-  if(!conv||get<int>(conv+4)!=2||!bytes(mid,pal,sizeof pal))return;
-  for(int i=0;i<256;i++){uint32_t c=pal[i];unsigned r=((c>>11)&31)*255/31,g=((c>>5)&63)*255/63,b=(c&31)*255/31;state.palette[i]=0xFF000000|(r<<16)|(g<<8)|b;}state.palette[0]=0;state.paletteReady=1;
- }
+ bool loadIcon(Type&t){return readCameo(read,resolve,t,iconBuffer,sizeof iconBuffer);}
+ void palette(){state.paletteReady=0;readCameoPalette(read,state);}
  void types(bool buildings) {
   if(cache)cache->rescope();
   uint32_t arrays[]={0xA8E348,0xA83CE0,0xA8B218,0xA83C68};

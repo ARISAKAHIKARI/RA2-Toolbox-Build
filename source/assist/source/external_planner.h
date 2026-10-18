@@ -16,6 +16,7 @@ namespace assist { namespace planner {
 class Planner {
  struct Advanced {
   uint32_t token=0,cell=0,target=0,mode=0,skipTarget=0;int sent=-100000,shotStart=-1,observedStart=-1,skipUntil=0,observedX=0,observedY=0,attackProgress=0,progressX=0,progressY=0,lastFireStamp=-1,moveFailures=0;
+  uint32_t scannedAt=0;bool scanned=false;
   bool attacking=false,stopped=false,pendingShot=false,urgent=true;nativeorders::Progress progress;
  };
  struct OreJob {
@@ -29,6 +30,7 @@ class Planner {
  std::unordered_map<uint32_t,OreTurn> oreTurns_;
  uint32_t match_=0,inputSerial_=0,flags_=0;int frame_=-1,cursor_=0;
  std::unordered_map<uint32_t,Advanced> advanced_;
+ std::unordered_map<uint32_t,uint32_t> defenseSent_;int defenseCursor_=0;
  ActorLookup actors_;EnemyGrid enemies_;std::vector<const Actor*> refineries_,trucks_;
  std::unordered_map<uint32_t,const Refinery*> areas_;
  std::unordered_set<uint32_t> oreIDs_,waitingCells_,magneticReservations_;
@@ -83,7 +85,7 @@ public:
  bool hasJobs()const{return !ore_.empty()||!advanced_.empty();}
  std::vector<uint32_t> stoppedUnits()const{std::vector<uint32_t> ids;for(const auto&entry:advanced_)if(entry.second.stopped)ids.push_back(entry.first);return ids;}
  uint32_t trackingFlags()const{uint32_t f=ore_.empty()?0:AutoOreReturn;for(const auto&i:advanced_)f|=i.second.mode==MagnetronMove?MagnetronInput:AdvancedInput;return f;}
- void reset(){advanced_.clear();actors_.clear();enemies_.clear();refineries_.clear();trucks_.clear();areas_.clear();ore_.clear();oreTurns_.clear();oreIDs_.clear();waitingCells_.clear();magneticReservations_.clear();match_=inputSerial_=0;frame_=-1;cursor_=0;queued=docking=issued=yielded=0;oreDelivered=oreUnverified=magnetShots=magnetUnverified=0;oreBypasses=oreYieldAttempts=oreTurnTimeouts=0;}
+ void reset(){defenseSent_.clear();defenseCursor_=0;advanced_.clear();actors_.clear();enemies_.clear();refineries_.clear();trucks_.clear();areas_.clear();ore_.clear();oreTurns_.clear();oreIDs_.clear();waitingCells_.clear();magneticReservations_.clear();match_=inputSerial_=0;frame_=-1;cursor_=0;queued=docking=issued=yielded=0;oreDelivered=oreUnverified=magnetShots=magnetUnverified=0;oreBypasses=oreYieldAttempts=oreTurnTimeouts=0;}
  void accepted(const Order& order,int frame){
   if(order.purpose==1||order.purpose==3){auto it=advanced_.find(order.unit);if(it==advanced_.end()||it->second.token!=order.token)return;auto&task=it->second;
    task.sent=frame;task.attacking=order.mission==1;task.target=order.target;task.stopped=order.mission==6;
@@ -108,7 +110,7 @@ public:
   if(order.mission==1){t.skipTarget=order.target;t.skipUntil=frame+30;if(t.target==order.target)t.pendingShot=false;}
   else if(order.mission==2&&++t.moveFailures>=2){t.progress.hold=true;t.stopped=false;}
  }
- std::vector<Order> step(const World& world,uint32_t flags,int veteran,int elite,int pathTimeout){
+ std::vector<Order> step(const World& world,uint32_t flags,int veteran,int elite,int pathTimeout,int scanHz=0,int targetPriority=0){
   if(!validWorld(world)){reset();return {};}
   if(world.match!=match_){reset();match_=world.match;}
   std::vector<Order> combat,out;combat.reserve(16);out.reserve(MaxOrders);
@@ -119,6 +121,23 @@ public:
    if(useOre){if(a.kind==3&&(a.flags&Own))refineries_.push_back(&a);if(truck(&a))trucks_.push_back(&a);}
   }
   for(int i=0;i<world.refineryCount;++i)areas_[world.refineries[i].id]=&world.refineries[i];
+  if(flags&AntiTheft){
+   for(auto it=defenseSent_.begin();it!=defenseSent_.end();)if(!actor(it->first))it=defenseSent_.erase(it);else ++it;
+   for(int n=0;n<world.count;++n){const auto&e=world.actors[n];if(positionValid(e)&&(e.flags&Enemy)&&!(e.flags&(Cloaked|Transported|Limbo|OffMap|Protected)))enemies_.add(n,e);}enemiesBuilt=true;
+   int visited=0,checked=0,sent=0;
+   for(;visited<world.count&&checked<128&&sent<6;++visited){int n=(defenseCursor_+visited)%world.count;const auto&a=world.actors[n];
+    if(!(a.flags&PointDefense)||!(a.flags&Own)||!positionValid(a)||(a.flags&(Disabled|Limbo|OffMap|Transported)))continue;++checked;
+    const Actor* current=actor(a.target);if(current&&(current->flags&Enemy)&&(current->flags&Saboteur))continue;
+    auto pending=defenseSent_.find(a.id);if(pending!=defenseSent_.end()&&uint32_t(world.tick-pending->second)<350)continue;
+    const Actor* best=nullptr;int64_t bestDistance=INT64_MAX;
+    enemies_.nearby(a.x,a.y,a.range,[&](int index){const auto&t=world.actors[index];if(!(t.flags&Saboteur))return;
+     int64_t dx=int64_t(a.x)-t.x,dy=int64_t(a.y)-t.y,d=dx*dx+dy*dy;if(!canTarget(a,t,d,false))return;
+     if(d<bestDistance||(d==bestDistance&&(!best||t.id<best->id))){best=&t;bestDistance=d;}
+    });
+    if(best&&add(combat,{a.id,a.manualVersion,best->id,0,1,0,DefenseOrder,0})){defenseSent_[a.id]=world.tick;++sent;}
+   }if(world.count)defenseCursor_=(defenseCursor_+visited)%world.count;
+  }else defenseSent_.clear();
+
   std::unordered_set<uint32_t> active;
   magneticReservations_.clear();
   if(useCombat){
@@ -154,15 +173,19 @@ public:
    int traversed=0;for(;traversed<count&&work.size()<128;++traversed){int i=(cursor_+traversed)%count;if(!scheduled[i])work.push_back(i);}
    if(count)cursor_=(cursor_+traversed)%count;
    for(int i:work){const auto&intent=world.intents[i];auto it=advanced_.find(intent.id);const Actor* a=actor(intent.id);
-    if(!a||it==advanced_.end()||!active.count(intent.id))continue;auto&task=it->second;task.urgent=false;bool mag=task.mode==MagnetronMove;int purpose=mag?3:1;
+    if(!a||it==advanced_.end()||!active.count(intent.id))continue;auto&task=it->second;bool mag=task.mode==MagnetronMove;int purpose=mag?3:1;
+    if(!mag&&scanHz>0&&!task.urgent&&task.scanned&&uint32_t(world.tick-task.scannedAt)<uint32_t(1000/std::clamp(scanHz,1,60)))continue;
+    task.urgent=false;task.scanned=true;task.scannedAt=world.tick;
     const Actor* current=task.attacking?actor(task.target):nullptr;if(current&&!positionValid(*current))current=nullptr;
     int64_t currentDistance=0;if(current){int64_t dx=int64_t(a->x)-current->x,dy=int64_t(a->y)-current->y;currentDistance=dx*dx+dy*dy;}
-    bool currentValid=current&&(current->flags&Enemy)&&canTarget(*a,*current,currentDistance,mag)&&!(current->id==task.skipTarget&&world.frame<task.skipUntil);
+    bool currentValid=current&&(current->flags&Enemy)&&canTarget(*a,*current,currentDistance,mag,mag?0:3*256)&&!(current->id==task.skipTarget&&world.frame<task.skipUntil);
     if(!mag){
      if(task.pendingShot&&a->target==task.target)task.pendingShot=false;
      if(task.pendingShot){
-      if(current&&(current->flags&Enemy)&&compatibleTarget(*a,*current,false)&&world.frame-task.sent<12){task.progress.combat(a->x,a->y,world.frame);continue;}
-      if(current&&a->target!=task.target){task.skipTarget=task.target;task.skipUntil=world.frame+30;currentValid=false;}task.pendingShot=false;
+      if(current&&(current->flags&Enemy)&&compatibleTarget(*a,*current,false)&&world.frame-task.sent<12){
+       if(scanHz<=0){task.progress.combat(a->x,a->y,world.frame);continue;}
+      }else{
+      if(current&&a->target!=task.target){task.skipTarget=task.target;task.skipUntil=world.frame+30;currentValid=false;}task.pendingShot=false;}
      }
      if(!currentValid&&current&&(current->flags&Enemy)&&compatibleTarget(*a,*current,false)&&a->target==task.target&&world.frame-task.sent<8){
       int64_t range=int64_t(a->weapons[weaponIndex(*a,*current)].range)+((current->flags&Airborne)?a->airRangeBonus:0)+128;
@@ -171,21 +194,22 @@ public:
      if(currentValid){
       int64_t mx=int64_t(a->x)-task.progressX,my=int64_t(a->y)-task.progressY;
       if(mx*mx+my*my>=16*16||(a->rearmDuration>0&&a->rearmStart!=task.lastFireStamp)){task.attackProgress=world.frame;task.progressX=a->x;task.progressY=a->y;task.lastFireStamp=a->rearmStart;}
-      if((a->target==task.target&&(a->flags&SustainedFire))||cooldown(*a,world.frame)>0||(a->flags&BurstFiring)){task.progress.combat(a->x,a->y,world.frame);continue;}
-      if(world.frame-task.attackProgress>=std::clamp(pathTimeout,30,900)){task.skipTarget=task.target;task.skipUntil=world.frame+90;currentValid=false;}
+      if(a->flags&BurstFiring){task.progress.combat(a->x,a->y,world.frame);continue;}
+      if(!(a->flags&SustainedFire)&&world.frame-task.attackProgress>=std::clamp(pathTimeout,30,900)){task.skipTarget=task.target;task.skipUntil=world.frame+90;currentValid=false;}
      }
     }
     // Don't continuously reset a shot waiting for its native event/animation.
     // A reload timer is ammo replenishment, not the weapon's rearm timer.
     if(mag&&(cooldown(*a,world.frame)>0||task.pendingShot)){task.progress.combat(a->x,a->y,world.frame);continue;}
     if(!enemiesBuilt){for(int j=0;j<world.count;++j){const auto&e=world.actors[j];if(positionValid(e)&&(e.flags&Enemy)&&!(e.flags&(Cloaked|Transported|Limbo|OffMap|Protected)))enemies_.add(j,e);}enemiesBuilt=true;}
-    const Actor* best=nullptr;double score=-1;int64_t nearestDistance=INT64_MAX;
-    enemies_.nearby(a->x,a->y,a->range,[&](int j){const auto&enemy=world.actors[j];++targetChecks;
+    const Actor* best=nullptr;double score=-1,bestValue=-1;int64_t nearestDistance=INT64_MAX;
+    enemies_.nearby(a->x,a->y,a->range+(mag?0:3*256),[&](int j){const auto&enemy=world.actors[j];++targetChecks;
      int64_t dx=int64_t(a->x)-enemy.x,dy=int64_t(a->y)-enemy.y,distance=dx*dx+dy*dy;
-     if(!canTarget(*a,enemy,distance,mag)||(enemy.id==task.skipTarget&&world.frame<task.skipUntil)||(mag&&magneticReservations_.count(enemy.id)))return;
+     if(!canTarget(*a,enemy,distance,mag,mag?0:3*256)||(enemy.id==task.skipTarget&&world.frame<task.skipUntil)||(mag&&magneticReservations_.count(enemy.id)))return;
      double value=nativeorders::value(enemy.cost,enemy.veterancy,veteran,elite);
+     double rank=!mag&&targetPriority==1?double(a->weapons[weaponIndex(*a,enemy)].effectiveness[enemy.armor]):value;
      bool keep=currentValid&&enemy.id==task.target,kept=currentValid&&best&&best->id==task.target;
-     if(value>score||(value==score&&((keep&&!kept)||(keep==kept&&(distance<nearestDistance||(distance==nearestDistance&&(!best||enemy.id<best->id))))))){best=&enemy;score=value;nearestDistance=distance;}
+     if(rank>score||(rank==score&&(value>bestValue||(value==bestValue&&((keep&&!kept)||(keep==kept&&(distance<nearestDistance||(distance==nearestDistance&&(!best||enemy.id<best->id))))))))){best=&enemy;score=rank;bestValue=value;nearestDistance=distance;}
     });
     if(best){task.progress.combat(a->x,a->y,world.frame);
      bool attack=!task.attacking||task.target!=best->id||(a->target!=best->id&&world.frame-task.sent>=(mag?45:12));
@@ -320,3 +344,4 @@ public:
  }
 };
 }}
+

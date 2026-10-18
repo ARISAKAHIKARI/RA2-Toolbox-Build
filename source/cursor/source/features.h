@@ -14,11 +14,5 @@ struct Tween {
  unsigned weight(uint32_t now,unsigned duration)const{return from<0?255:std::min(255u,(uint32_t(now-at)*255u)/std::max(1u,duration));}
 };
 inline uint32_t blendPixel(uint32_t a,uint32_t b,unsigned t){uint32_t v=0;for(int sh=0;sh<32;sh+=8){unsigned x=(a>>sh)&255,y=(b>>sh)&255;v|=((x*(255-t)+y*t+127)/255)<<sh;}return v;}
-struct Burst {
- int left=0;bool armed=false;int x=0,y=0;uint32_t due=0;
- void cancel(){left=0;armed=false;}
- void down(int px,int py,bool eligible){cancel();armed=eligible;x=px;y=py;}
- void up(int px,int py,bool eligible,uint32_t now,unsigned gap){if(armed&&eligible&&std::abs(px-x)<=4&&std::abs(py-y)<=4){left=4;due=now+gap;}armed=false;}
- bool ready(uint32_t now)const{return left>0&&int32_t(now-due)>=0;}
- void sent(uint32_t now,unsigned gap){if(left)--left;due=now+gap;}
-};
+#include "../../shared/source/click_burst.h"
+using Burst=clickinput::Burst;

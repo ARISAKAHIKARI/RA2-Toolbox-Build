@@ -8,6 +8,7 @@ extern "C" void AssistRuntimeMessage(int,WPARAM,LPARAM);
 extern "C" void CursorRuntimeMessage(int,WPARAM,LPARAM);
 extern "C" void CursorRuntimePost(int,WPARAM,LPARAM);
 extern "C" void AssistRuntimeWatchdog();
+extern "C" void AssistRuntimeFilter(void*);
 extern "C" void CursorRuntimeWatchdog();
 extern "C" void EntryRuntimeDetach();
 extern "C" __declspec(dllexport) const uint32_t GameRuntimeInfo[2]={runtime::Version,sizeof(runtime::Control)};
@@ -125,6 +126,7 @@ extern "C" __declspec(dllexport) LRESULT CALLBACK GameRuntimeHook(int code,WPARA
       // Cursor work cannot be starved by a stream of tactical commands.
       if(ready&runtime::Cursor)CursorRuntimeMessage(code,wp,lp);
       if(ready&runtime::Tactical)AssistRuntimeMessage(code,wp,lp);
+      if((control->enabled&runtime::Tactical)&&(msg->message==WM_LBUTTONDOWN||msg->message==WM_LBUTTONUP||msg->message==WM_RBUTTONDOWN||msg->message==WM_RBUTTONUP))AssistRuntimeFilter((void*)lp);
       if(ready)InterlockedIncrement(&control->dispatches);
      }else cleanup();
     }
@@ -149,3 +151,4 @@ extern "C" BOOL WINAPI DllMain(HINSTANCE h,DWORD why,LPVOID){
  // No game operations or hook restoration under the loader lock.
  return TRUE;
 }
+

@@ -43,7 +43,7 @@ using namespace assist;
 // string literal. The host validates both protocol and structure size before
 // installing a hook; the release verifier can inspect these exports offline.
 extern "C" __declspec(dllexport) const uint32_t AssistProtocolInfo[2]={Version,sizeof(Shared)};
-extern "C" __declspec(dllexport) const wchar_t AssistMappingPrefix[]=L"Local\\RA2Assist_v042_";
+extern "C" __declspec(dllexport) const wchar_t AssistMappingPrefix[]=L"Local\\RA2Assist_v043_";
 static Shared*sh;static HANDLE mapping;static bool checked,good,fault;static DWORD last,slow;static uint32_t lastHouse,match,pendingAck;static int lastFrame;
 static sessionepoch::Tracker sessionTracker;static Snapshot snap;
 static runtimefault::Context faultContext;
@@ -526,18 +526,18 @@ static bool nativeObjectEvent(int houseIndex,int eventType,uint32_t objectId){
  snap.objectQueueStatus=int(objectqueue::Result::Appended);
  return acceptedObject();
 }
-static bool nativeProduceEvent(uint32_t house,const Type&t){
+static bool nativeProduceEvent(uint32_t house,const Type&t,bool nativeCameo=false){
  const int mode=get<int>(0xA8B238);
  if(!house||!eventdelivery::mayQueue(mode))return false;
  // Native build authorization and prerequisite consistency have NOT yet been
  // verified in multiplayer. Default to refusing speculative production there.
  const bool mp=eventdelivery::isMultiplayer(mode);
  const bool unsafeAllowed=(sh&&sh->flags&UnsafeTech)!=0;
- if(mp&&!unsafeAllowed)return false;
+ if(mp&&!unsafeAllowed&&!nativeCameo)return false;
  intent::EventOrder order{};
- const decisions::ProductionView view{get<int>(house+0x30),t.kind,t.index,t.naval,true,mp,unsafeAllowed};
+ const decisions::ProductionView view{get<int>(house+0x30),t.kind,t.index,t.naval,true,mp,unsafeAllowed,nativeCameo};
  const bool planned=decisions::planProduction(view,order);
- if(orderpolicy::productionEvent(planned,mp,unsafeAllowed)!=orderpolicy::Reject::None){++snap.commandRejected;return false;}
+ if(orderpolicy::productionEvent(planned,mp,unsafeAllowed,nativeCameo)!=orderpolicy::Reject::None){++snap.commandRejected;return false;}
  const uint32_t submittedAt=sampleClock(sh);
  const uint32_t synthActor=taskarbiter::syntheticProductionActor(t.kind,t.index);
  const gateway::Context ctx{match,submittedAt,sh&&!sh->stop&&!fault&&snap.status==1,get<bool>(0xA8BC60+25)};
@@ -587,6 +587,7 @@ static bool rawArmed(uint32_t p){int k=kind(p);uint32_t type=typeOf(p,k);if(!typ
 static bool nativeMegaOriginalOrOwned(){static const uint8_t original[]={0x83,0xEC,0x70,0x32,0xC0};return memcmp((const void*)0x646E90,original,sizeof original)==0;}
 #include "native_input_hooks.h"
 static bool nativeObjectUnhooked(){return nativeObjectSignature();}
+#include "anti_theft_bridge.h"
 #include "external_orders_bridge.h"
 #include "placement_bridge.h"
 #include "cooperative_bridge.h"
@@ -608,12 +609,18 @@ static int planningRoom(int channel){
  return sharedPlanningBudget.room(channel,other);
 }
 static void consumePlanning(int channel){sharedPlanningBudget.consume(channel);}
+#include "../../external_reader/source/idle_aircraft.h"
+static int selectIdleAircraft(uint32_t house,uint32_t id){
+ uint32_t p=worldByID(id);auto reader=[](uint32_t at,void*out,size_t n){return read(at,out,n);};external::aircraft::Inspect<decltype(reader)> planes{reader};
+ if(!p||!planes.idle(p,house)||!call<bool>(get<uint32_t>(get<uint32_t>(p)+0x13C),p))return 0;unselect();if(!selection(p))return 0;
+ uint32_t tactical=get<uint32_t>(0x887324);if(tactical)call<void>(0x6D2420,tactical,(void*)(p+0x9C),0);return 1;
+}
 static void selectionCommand(uint32_t house,DWORD now){
  uint32_t request=sh->selectRequest;if(request==sh->selectAck)return;MemoryBarrier();
  int result=0,count=0;
  if(sh->selectMatch!=match||DWORD(now-sh->selectTick)>1500)result=-7;
  else if(get<bool>(0xA8BC60+25))result=-8;
- else {count=sh->selectIndex==-2?selectVariant(house,sh->selectGlobal!=0):sh->selectIndex==-3?selectTypes(house,sh->selectTypes,sh->selectGlobal!=0):selectType(house,sh->selectIndex,sh->selectGlobal!=0);if(count<0){result=count;count=0;}else result=1;}
+ else {count=sh->selectIndex==-4?selectIdleAircraft(house,sh->selectObjectID):sh->selectIndex==-2?selectVariant(house,sh->selectGlobal!=0):sh->selectIndex==-3?selectTypes(house,sh->selectTypes,sh->selectGlobal!=0):selectType(house,sh->selectIndex,sh->selectGlobal!=0);if(count<0){result=count;count=0;}else result=1;}
  sh->selectResult=result;sh->selectCount=count;MemoryBarrier();sh->selectAck=request;
 }
 static DWORD clampedRepairInterval(uint32_t ms){
@@ -679,6 +686,19 @@ static void command(uint32_t house,DWORD now){uint32_t req=sh->request;if(req==s
   {snap.techOpen=arg!=0;memcpy(techAllowed,sh->techAllowed,sizeof techAllowed);snap.techError=0;if(snap.techOpen)refreshTech(house,now);else restoreTech();n=snap.techVisible;if(snap.techError<0)result=snap.techError;}}
  else if(c==SelectSuper){result=superSelect(house,arg);n=result>0;}
  else if(c==SelectIron||c==SelectChrono){result=namedSuper(house,c);n=result>0;}
+ else if(c==AirPathMove){uint32_t id=uint32_t(arg),p=worldByID(id),cell=uint32_t(sh->arg2);
+  if(!(sh->flags&AirWaypoints)||!p||!own(p,house)||kind(p)!=0||manualVersions.get(id)!=sh->requestToken||get<bool>(p+0x81)||get<uint32_t>(p+0x11C)||!readMapCell(int(cell%1000),int(cell/1000)))result=-4;
+  else if(nativeMission(house,id,2,0,cell,11,0,0,taskarbiter::Owner::Generic))n=1;else result=-6;
+ }
+ else if(c==ProduceReserved){
+  uint32_t origin=worldByID(uint32_t(sh->arg2));
+  if(!(sh->flags&ReserveConstruction)||arg<0||arg>=snap.typeCount||snap.types[arg].kind!=7||!origin||!own(origin,house)||kind(origin)!=3||get<bool>(origin+0x81)||!get<bool>(origin+0x90))result=-4;
+  else {const auto&t=snap.types[arg];int tab=typeTab(arg);uint32_t f=tab==0||tab==1?get<uint32_t>(house+(tab?0x53CC:0x53BC)):0;
+   if(tab<0||tab>1||!hasCameo(7,t.index))result=-9;
+   else if(f>=0x10000&&(get<uint32_t>(f+0x58)||get<int>(f+0x50)>0))result=-9;
+   else if(nativeProduceEvent(house,t,true))n=1;else result=-6;
+  }
+ }
  else if(c==Produce){
   if(!eventdelivery::isSingleplayer(get<int>(0xA8B238))){++snap.commandRejected;result=-13;}
   else if(arg<0||arg>=snap.typeCount||!techFactory(typePointers[arg],house)||call<int>(0x4F7870,house,(void*)(uintptr_t)typePointers[arg],false,true)<=0)result=-4;
@@ -800,7 +820,7 @@ static bool controllerExited(DWORD now){
 static void tick(){
  if(!sh){wchar_t n[80];mapName(n,GetCurrentProcessId());mapping=OpenFileMappingW(FILE_MAP_ALL_ACCESS,FALSE,n);if(!mapping)return;sh=(Shared*)MapViewOfFile(mapping,FILE_MAP_ALL_ACCESS,0,0,sizeof(Shared));if(!sh||sh->magic!=Magic||sh->version!=Version||sh->pid!=GetCurrentProcessId()){disconnect();return;}}
  DWORD now=sampleClock(sh);if(sh->stop||(DWORD(now-sh->heartbeat)>3000&&controllerExited(now))){restoreFrameDriver();Shared* old=sh;reset();if(old->stop)old->stop=2;disconnect();return;}if(!checked){good=signatures();checked=true;}if(!good){if(sh->data.status!=-1){InterlockedIncrement(&sh->seq);sh->data.status=-1;sh->data.labels=0;MemoryBarrier();InterlockedIncrement(&sh->seq);}return;}
- DWORD period=sh->foreground?sh->scanMs:((sh->flags&(AdvancedInput|MagnetronInput|AutoOreReturn))?64:500);if(period<2)period=2;if(period>1000)period=1000;
+ DWORD period=sh->foreground?sh->scanMs:((sh->flags&(AdvancedInput|MagnetronInput|AutoOreReturn|AirWaypoints|AntiTheft))?64:500);if(period<2)period=2;if(period>1000)period=1000;
  bool selectionPending=sh->selectRequest!=sh->selectAck;bool planPending=sh->planRequest!=sh->planAck;bool cooperativePending=sh->cooperativePlan!=sh->cooperativeAck;bool cmd=sh->request!=sh->ack||selectionPending||planPending||cooperativePending||sh->pointer.request!=sh->pointer.ack;// A message wake observes the current simulation frame; pending work bypasses
  // display cadence. This is not a frame hook and does not advance the game.
  bool frameDue=get<int>(0xA8ED84)!=lastFrame&&
@@ -927,6 +947,7 @@ extern "C" void EndAssistCapture(unsigned token){
 extern "C" void AssistTick(){if(gameentry::active(gameentry::Client::Assist))tick();}
 extern "C" void AssistFault(){faultContext={};nativeMegaQueueCallDepth=nativeObjectQueueCallDepth=0;fault=true;restoreClickHooks();resetCooperativeState();clearNativeOrders();restorePlacement();restoreTech();restoreCSHook();if(sh){sh->result=-10;InterlockedIncrement(&sh->seq);sh->data.status=-2;sh->data.bridgeStatus=-2;sh->data.commandStatus=0;sh->data.labels=0;MemoryBarrier();InterlockedIncrement(&sh->seq);sh->ack=sh->request;sh->selectResult=sh->planResult=-10;sh->selectAck=sh->selectRequest;sh->planAccepted=0;sh->planAcceptedMask=sh->planRejectedMask=0;sh->planAck=sh->planRequest;notifyHost();}}
 extern "C" void GuardedAssistTick();
+#include "native_message_policy.h"
 extern "C" void AssistRuntimeMessage(int code,WPARAM wp,LPARAM lp){
  if(code>=0){
   InterlockedExchange(&hostWorkPending,1);
@@ -940,3 +961,4 @@ extern "C" void AssistRuntimeWatchdog(){
  gameentry::Scope entry(gameentry::Client::Assist);if(!entry)return;
  GuardedAssistTick(); // stop/dead-controller branch only; never normal work
 }
+

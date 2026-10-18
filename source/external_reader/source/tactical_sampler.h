@@ -10,6 +10,7 @@
 #include "layout_probe.h"
 #include "display_state.h"
 #include "enemy_markers.h"
+#include "idle_aircraft.h"
 #include <unordered_map>
 namespace external {
 struct Projection {int cameraX=0,cameraY=0,width=0,height=0;double zScale=0.0866025403784;};
@@ -127,12 +128,13 @@ template<class Read> class TacticalSampler {
   }}
  }
 public:
+ uint32_t idleProductionMask=0,idleAircraftTick=0;int idleAircraftCount=0,aircraftTotal=0;uint32_t idleAircraftIDs[8192]{};int productionTabsY=168;
  int flashCount=0,flashes[4]{};
  explicit TacticalSampler(Read read):read_(read){}
  layout::Result probe()const{return probe_;}
  display::State displayState()const{return display_;}
  const enemies::Frame& enemyMarkers()const{return enemies_;}
- void reset(){probe_={};house_=serial_=0;lastFrame_=-1;state_={};sceneFrame_=-1;sceneFlags_=selectionHash_=sceneAt_=0;flashCount=0;productionAt_=0;for(auto&f:factories_)f={};stopped_.clear();enemies_={};sceneEnemies_=false;enemyNames_.clear();enemyOwnerCount_=0;}
+ void reset(){idleProductionMask=idleAircraftTick=0;idleAircraftCount=aircraftTotal=0;probe_={};house_=serial_=0;lastFrame_=-1;state_={};sceneFrame_=-1;sceneFlags_=selectionHash_=sceneAt_=0;flashCount=0;productionAt_=0;for(auto&f:factories_)f={};stopped_.clear();enemies_={};sceneEnemies_=false;enemyNames_.clear();enemyOwnerCount_=0;}
  void stopped(const std::vector<uint32_t>&ids){stopped_.clear();stopped_.insert(ids.begin(),ids.end());}
  void refreshCamera(uint32_t now){
   if(state_.status!=1)return;uint32_t tactical=get<uint32_t>(0x887324);if(tactical<0x10000)return;
@@ -148,7 +150,7 @@ public:
   probe_=layout::inspect(read_);
   if(probe_.stage!=layout::Stage::Ready){
    enemies_.count=0;
-   state_.status=0;state_.labels=state_.selected=state_.transports=state_.used=state_.capacity=0;
+   idleProductionMask=idleAircraftTick=0;idleAircraftCount=aircraftTotal=0;state_.status=0;state_.labels=state_.selected=state_.transports=state_.used=state_.capacity=0;
    state_.typeCount=state_.swCount=state_.threatCount=state_.crateCount=0;
    house_=0;return state_;
   }
@@ -156,7 +158,7 @@ public:
   auto houses=vec(0xA80228,32);if(std::find(houses.begin(),houses.end(),house)==houses.end()){
    enemies_.count=0;
    probe_={layout::Stage::MissingLocalHouseInList,0xA80228,house};
-   state_.status=0;state_.labels=state_.typeCount=state_.swCount=0;
+   idleProductionMask=idleAircraftTick=0;idleAircraftCount=aircraftTotal=0;state_.status=0;state_.labels=state_.typeCount=state_.swCount=0;
    state_.threatCount=state_.crateCount=0;house_=0;return state_;
   }
   bool fresh=house!=house_||frame<lastFrame_;if(fresh){++serial_;house_=house;types();for(auto&f:factories_)f={};flashCount=0;productionAt_=now-100;enemies_.count=0;enemyNames_.clear();}lastFrame_=frame;
@@ -189,7 +191,7 @@ public:
    for(size_t i=0;i<objects.size()&&i<128;++i){if(objects[i]&&kind(objects[i])>=0){anyKnown=true;break;}}
    if(!anyKnown){probe_={layout::Stage::UnrecognizedUnitLayout,0xA8EC78,uint32_t(objects.size())};
     enemies_.count=0;
-    state_.status=0;state_.labels=state_.typeCount=state_.swCount=0;
+    idleProductionMask=idleAircraftTick=0;idleAircraftCount=aircraftTotal=0;state_.status=0;state_.labels=state_.typeCount=state_.swCount=0;
     state_.threatCount=state_.crateCount=0;return state_;}
   }
   for(auto p:objects){int k=p?kind(p):-1;if(k<0||get<int>(p+0x6C)<=0||!get<uint8_t>(p+0x74)||get<uint8_t>(p+0x81)||!get<uint8_t>(p+0x90))continue;
@@ -207,15 +209,20 @@ public:
    labelSources_[state_.labels]={p,id,t,owner,k,selected};auto&l=state_.label[state_.labels++];l={id,sx,sy,used,capacity?cap:0,iron,get<int>(p+0x1C4)!=0,advanced,color,freeze};
   }
   state_.swCount=0;auto supers=vec(house+0x254,256);for(size_t i=0;i<supers.size()&&state_.swCount<assist::MaxSW;++i){uint32_t p=supers[i];if(!p||get<uint32_t>(p+0x2C)!=house||!get<uint8_t>(p+0x6D))continue;uint32_t t=get<uint32_t>(p+0x28);if(!t)continue;auto&d=state_.supers[state_.swCount++];d={};read_(t+0x24,d.id,23);name(t,d.name);d.index=int(i);d.frames=assist::remaining(get<int>(p+0x30),get<int>(p+0x38),frame);d.ready=!get<uint8_t>(p+0x70)&&(get<uint8_t>(t+0xE5)?get<int>(p+0x7C)!=0:get<uint8_t>(p+0x6F)!=0);}
-  if(!productionAt_||uint32_t(now-productionAt_)>=100){productionAt_=now;state_.factories=state_.busyFactories=state_.pausedFactories=state_.completedFactories=0;const int offsets[]={0x53BC,0x53B4,0x53B8,0x53AC};
-   for(int i=0;i<4;++i){uint32_t f=get<uint32_t>(house+offsets[i]);auto&before=factories_[i];if(f<0x10000||get<uint32_t>(f+0x6C)!=house){before={};continue;}++state_.factories;
-    uint32_t p=get<uint32_t>(f+0x58),t=p?type(p,kind(p)):0;int index=-1;for(int j=0;t&&j<state_.typeCount;++j)if(typePointers_[j]==t){index=j;break;}
-    bool busy=p||get<int>(f+0x50)>0,paused=busy&&(get<uint8_t>(f+0x5C)||get<uint8_t>(f+0x71)),complete=busy&&get<int>(f+0x24)>=54;
-    state_.busyFactories+=busy;state_.pausedFactories+=paused;state_.completedFactories+=complete;
-    if((flags&assist::Production)&&before.seen&&before.pointer==f&&((before.busy&&!busy&&!before.complete)||(!before.paused&&paused)||(!before.complete&&complete))){int changed=index>=0?index:before.type;
-     if(changed>=0&&(state_.types[changed].kind==3||state_.types[changed].kind==7)&&flashCount<4){bool seen=false;for(int j=0;j<flashCount;++j)if(flashes[j]==changed)seen=true;if(!seen)flashes[flashCount++]=changed;++state_.noticeSerial;}
-    }if(index<0&&before.pointer==f)index=before.type;before={f,index,busy,paused,complete,(flags&assist::Production)!=0};
+  if(!productionAt_||uint32_t(now-productionAt_)>=100){
+   productionAt_=now;idleProductionMask=0;state_.factories=state_.busyFactories=state_.pausedFactories=state_.completedFactories=0;
+   // YRpp House::Primary_ForBuildings/Defenses/Infantry/Vehicles/Ships/Aircraft.
+   const uint32_t offsets[]={0x53BC,0x53CC,0x53B0,0x53B4,0x53B8,0x53AC};
+   bool active[4]{},exists[4]{};for(int tab=0;tab<4;++tab){int n=get<int>(0x87F7E8+0x1544+tab*3988+84,-1);exists[tab]=n>0&&n<=75;}
+   for(int i=0;i<6;++i){int tab=i<4?i:3;uint32_t f=get<uint32_t>(house+offsets[i]);if(f<0x10000||get<uint32_t>(f+0x6C)!=house)continue;
+    ++state_.factories;bool busy=get<uint32_t>(f+0x58)||get<int>(f+0x50)>0;bool paused=busy&&(get<uint8_t>(f+0x5C)||get<uint8_t>(f+0x71)),complete=busy&&get<int>(f+0x24)>=54;
+    state_.busyFactories+=busy;state_.pausedFactories+=paused;state_.completedFactories+=complete;exists[tab]=true;active[tab]|=busy&&!paused&&!complete;
    }
+   if(flags&assist::Production)for(int tab=0;tab<4;++tab)if(exists[tab]&&!active[tab])idleProductionMask|=1u<<tab;
+   productionTabsY=get<int>(0x87F7E8+0x1544+44,200)-32;if(productionTabsY<100||productionTabsY>state_.height-32)productionTabsY=168;
+   idleAircraftCount=aircraftTotal=0;aircraft::Inspect<Read> planes{read_};
+   for(uint32_t p:vec(0xA8E390,8192))if(planes.valid(p,house)){++aircraftTotal;if(idleAircraftCount<8192&&planes.idle(p,house))idleAircraftIDs[idleAircraftCount++]=get<uint32_t>(p+0x10);}
+   std::sort(idleAircraftIDs,idleAircraftIDs+idleAircraftCount);idleAircraftTick=now;
   }
   if((flags&assist::Crates)&&tactical){uint32_t cells=get<uint32_t>(0x87F7E8+316);int capacity=get<int>(0x87F7E8+320);auto overlays=vec(0xA83D80,4096);
    if(cells>=0x10000&&capacity>0&&capacity<=512*512)for(int i=0;i<256&&state_.crateCount<assist::MaxCrates;++i){uint32_t c=0x87F7E8+344+i*16;int x=get<int16_t>(c+12),y=get<int16_t>(c+14);if(x<=0||y<=0||x>=512||y>=512||y*512+x>=capacity||!assist::remaining(get<int>(c),get<int>(c+8),frame))continue;
@@ -229,3 +236,4 @@ public:
  }
 };
 }
+

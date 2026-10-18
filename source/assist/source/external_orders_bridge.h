@@ -40,10 +40,12 @@ static uint32_t readMapCell(int x,int y){
 static bool publishPlanningWorld(uint32_t house,int frame,DWORD now){
  bool advanced=(sh->flags&(AdvancedInput|MagnetronInput))&&nativeCount>0;
  bool ore=((sh->flags|sh->plannerTracking)&AutoOreReturn)!=0;
+ bool defense=(sh->flags&AntiTheft)!=0;
+ if(defense){defense=false;Vec buildings=vec(0xA8EB40);for(int i=0;i<buildings.count;++i){uint32_t p=item(buildings,i);if(p&&own(p,house)&&get<int>(p+0x6C)>0&&!get<bool>(p+0x81)&&antiTheftBuilding(p)){defense=true;break;}}}
  if(ore&&!refreshOreConfig())return false;
  static long configSeen=-1;bool configChanged=configSeen!=oreConfigRevision;if(configChanged){planningFrame=-1;configSeen=oreConfigRevision;}
- if(!advanced&&!ore&&!sh->plannerTracking&&!planningWorld.count&&!planningWorld.intentCount)return false;
- static uint32_t lastMode;uint32_t mode=(advanced?(sh->flags&(AdvancedInput|MagnetronInput)):0)|(ore?AutoOreReturn:0);
+ if(!advanced&&!ore&&!defense&&!sh->plannerTracking&&!planningWorld.count&&!planningWorld.intentCount)return false;
+ static uint32_t lastMode;uint32_t mode=(advanced?(sh->flags&(AdvancedInput|MagnetronInput)):0)|(ore?AutoOreReturn:0)|(defense?AntiTheft:0);
  if(planningFrame==frame&&planningSerial==inputSerial&&lastMode==mode)return false;planningFrame=frame;planningSerial=inputSerial;if(lastMode!=mode)memset(weaponCache,0,sizeof weaponCache);lastMode=mode;
  auto&w=planningWorld;w.match=match;w.tick=now;w.frame=frame;w.count=w.intentCount=w.refineryCount=0;w.inputSerial=inputSerial;
  Vec all=vec(0xA8EC78);static uint32_t refineryTypes[128],dockMatch,dockItems;static int refineryTypesCount,dockFrame=-100000,dockCount=-1;
@@ -57,15 +59,17 @@ static bool publishPlanningWorld(uint32_t house,int frame,DWORD now){
    }
   }
  }
- if(advanced||ore)for(int pass=0;pass<2;++pass)for(int i=0;i<all.count&&w.count<planner::MaxActors;++i){uint32_t p=item(all,i);int k=p?kind(p):-1;
+ if(advanced||ore||defense)for(int pass=0;pass<2;++pass)for(int i=0;i<all.count&&w.count<planner::MaxActors;++i){uint32_t p=item(all,i);int k=p?kind(p):-1;
   if(k<0||get<int>(p+0x6C)<=0||!get<bool>(p+0x74))continue;
-  bool ownActor=get<uint32_t>(p+0x21C)==house;if(ownActor!=(pass==0))continue;if(!advanced&&(!ownActor||(k!=2&&k!=3)))continue;
+  bool ownActor=get<uint32_t>(p+0x21C)==house;if(ownActor!=(pass==0))continue;if(!advanced&&!defense&&(!ownActor||(k!=2&&k!=3)))continue;
   uint32_t type=typeOf(p,k);if(!type)continue;
   bool tracked=advanced&&ownActor&&orderIndex(p)>=0;
   bool harvester=ore&&ownActor&&k==2&&oreMiner(type);
   bool oreDock=false;if(ore&&ownActor&&k==3)for(int j=0;j<refineryTypesCount;++j)if(refineryTypes[j]==type){oreDock=true;break;}
-  bool enemy=advanced&&!ownActor&&nativeEnemy(p,house);
-  if(!tracked&&!harvester&&!oreDock&&!enemy)continue;
+  bool turret=defense&&ownActor&&antiTheftBuilding(p);
+  bool threat=defense&&!ownActor&&antiTheftThreat(p,house);
+  bool enemy=!ownActor&&(advanced||threat)&&nativeEnemy(p,house);
+  if(!tracked&&!harvester&&!oreDock&&!enemy&&!turret)continue;
   auto&a=w.actors[w.count++];memset(&a,0,sizeof a);
   a.id=get<uint32_t>(p+0x10);a.type=type;a.kind=k;a.x=get<int>(p+0x9C);a.y=get<int>(p+0xA0);a.z=get<int>(p+0xA4);
   a.mission=get<int>(p+0xAC);a.queued=get<int>(p+0xB4);a.cost=get<int>(type+0x610);a.veterancy=get<float>(p+0x150);a.manualVersion=manualVersions.get(a.id);
@@ -75,7 +79,8 @@ static bool publishPlanningWorld(uint32_t house,int frame,DWORD now){
   if(get<uint32_t>(p+0x11C))a.flags|=planner::Transported;if(get<int>(p+0x220)!=0)a.flags|=planner::Cloaked;
   a.target=rawObjectID(get<uint32_t>(p+0x2B4));uint32_t destination=k!=3?get<uint32_t>(p+0x5A4):0;a.destination=rawObjectID(destination);
   if(destination>=0x10000&&!a.destination){int x=get<short>(destination+0x24),y=get<short>(destination+0x26);if(readMapCell(x,y)==destination)a.destinationCell=uint32_t(y*1000+x);}
-  if(advanced)rawCombatInfo(p,type,k,a,tracked,true);
+  if(turret)a.flags|=planner::PointDefense;if(threat)a.flags|=planner::Saboteur;
+  if(advanced||defense)rawCombatInfo(p,type,k,a,tracked||turret,true);
   if(harvester){a.flags|=planner::Harvester;a.storageLimit=get<int>(type+0x800);memcpy(a.storage,(void*)(p+0x33C),sizeof a.storage);
    if(manualVersions.observeOre(a.id,a.mission,a.queued))a.flags|=planner::OrePaused;
    Vec docks=vec(type+0x3E8,256);for(int j=0;j<docks.count&&j<8;++j)a.dockTypes[j]=item(docks,j);
@@ -119,8 +124,9 @@ static bool rawDockLinked(uint32_t refinery,uint32_t unit){
 }
 static bool externalOrderValid(const planner::Order&o,uint32_t house){
  uint32_t unit=worldByID(o.unit);if(!unit||!own(unit,house)||manualVersions.get(o.unit)!=o.token)return false;
- if(get<bool>(unit+0x1C8)||get<uint32_t>(unit+0x11C))return false;
- bool combat=o.purpose==1||o.purpose==3,mag=o.purpose==3;
+ if(get<int>(unit+0x6C)<=0||!get<bool>(unit+0x74)||get<bool>(unit+0x81)||!get<bool>(unit+0x90)||get<bool>(unit+0x1C8)||get<uint32_t>(unit+0x11C))return false;
+ bool defense=o.purpose==planner::DefenseOrder,combat=o.purpose==1||o.purpose==3,mag=o.purpose==3;
+ if(defense){if(!(sh->flags&AntiTheft)||!antiTheftBuilding(unit)||o.mission!=1||!o.target||o.destination||o.destinationTag||!antiTheftThreat(worldByID(o.target),house)||antiTheftThreat(get<uint32_t>(unit+0x2B4),house))return false;}
  if(combat){if(mag?!rawMagnetron(unit):!featureObjectAllowed(featuretypes::AdvancedAttack,unit))return false;int index=orderIndex(unit);if(!(sh->flags&(mag?MagnetronInput:AdvancedInput))||snap.nativeHookStatus!=1||index<0||nativeOrders[index].token!=o.token||nativeOrders[index].mode!=(mag?planner::MagnetronMove:planner::OrdinaryMove))return false;}
  else if(o.purpose==0||o.purpose==2||o.purpose==planner::OreYield){
   if(manualVersions.orePaused(o.unit))return false;
@@ -140,15 +146,15 @@ static bool externalOrderValid(const planner::Order&o,uint32_t house){
   // to reject a dock occupied or foundation placed since its snapshot.
   if(o.mission==7&&(o.destination!=o.refinery||(o.purpose==0&&rawDockBusy(refinery,unit))))return false;
   if(o.mission==2){uint32_t cell=readMapCell(int(o.destination%1000),int(o.destination/1000));if(!cell||get<uint32_t>(cell+0x124)||get<int>(cell+0xEC)==2||get<int>(cell+0xEC)==7)return false;}
- }else return false;
+ }else if(!defense)return false;
  if(o.mission!=1&&o.mission!=2&&o.mission!=6&&o.mission!=7)return false;
  if(o.mission==1&&!o.target)return false;
- if(o.target){uint32_t target=worldByID(o.target);if(!combat||o.mission!=1||!target||!nativeEnemy(target,house)||get<uint32_t>(target+0x11C)||get<int>(target+0x220)!=0)return false;
+ if(o.target){uint32_t target=worldByID(o.target);if((!combat&&!defense)||o.mission!=1||!target||!nativeEnemy(target,house)||get<int>(target+0x6C)<=0||!get<bool>(target+0x74)||get<bool>(target+0x81)||!get<bool>(target+0x90)||get<uint32_t>(target+0x11C)||get<int>(target+0x220)!=0)return false;
   planner::Actor source{},victim{};int sk=kind(unit),tk=kind(target);uint32_t st=typeOf(unit,sk),tt=typeOf(target,tk);if(!st||!tt)return false;
   victim.kind=tk;rawCombatInfo(unit,st,sk,source,true);rawCombatInfo(target,tt,tk,victim,false);
   int64_t dx=int64_t(get<int>(unit+0x9C))-get<int>(target+0x9C),dy=int64_t(get<int>(unit+0xA0))-get<int>(target+0xA0);
   if(dx< -1048576||dx>1048576||dy< -1048576||dy>1048576)return false;
-  if(!planner::canTarget(source,victim,dx*dx+dy*dy,mag)||(mag&&planner::cooldown(source,get<int>(0xA8ED84))>0))return false;
+  if(!planner::canTarget(source,victim,dx*dx+dy*dy,mag,(mag||defense)?0:3*256)||(mag&&planner::cooldown(source,get<int>(0xA8ED84))>0))return false;
  }
  if(o.destinationTag==0x34){uint32_t destination=worldByID(o.destination);if(combat||o.mission!=7||!destination||!own(destination,house)||kind(destination)!=3)return false;}
  else if(o.destinationTag==11){if(o.mission!=2||!readMapCell(int(o.destination%1000),int(o.destination/1000)))return false;}
@@ -182,7 +188,7 @@ static void externalOrdersTick(uint32_t house,int frame,DWORD now){
    if(!nativeMission(house,o.unit,o.mission,o.target,o.destination,o.destinationTag,
                     useExtraNearest?o.destination:0,useExtraNearest?11:0,
                     o.purpose==3?taskarbiter::Owner::Magnetron:
-                    o.purpose==1?taskarbiter::Owner::Combat:taskarbiter::Owner::Ore)){
+                    (o.purpose==1||o.purpose==planner::DefenseOrder)?taskarbiter::Owner::Combat:taskarbiter::Owner::Ore)){
     planBatch.reject();continue;
    }
    planBatch.accept();consumePlanning(0);
@@ -197,3 +203,4 @@ static void externalOrdersTick(uint32_t house,int frame,DWORD now){
  sh->planResult=result;
  MemoryBarrier();sh->planAck=request;notifyHost();
 }
+

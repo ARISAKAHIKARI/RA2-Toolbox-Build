@@ -9,15 +9,15 @@
  extraControls[EnterEnabled]=pageControl(5,L"BUTTON",L"高级进驻",20,175,205,26,702,BS_AUTOCHECKBOX|WS_TABSTOP);
  SendMessageW(extraControls[EnterEnabled],BM_SETCHECK,extra.enter?BST_CHECKED:BST_UNCHECKED,0);
  extraControls[EnterPreset]=pageControl(5,L"COMBOBOX",L"",240,175,105,160,703,CBS_DROPDOWNLIST|WS_TABSTOP);
- extraControls[EnterCustom]=pageControl(5,HOTKEY_CLASSW,L"",357,175,268,26,704,WS_TABSTOP);
+ extraControls[EnterCustom]=pageControl(5,HOTKEY_CLASSW,L"",357,175,142,26,704,WS_TABSTOP);
  pageControl(5,L"STATIC",L"增强键进驻：留空直接点击，非空按住配置键；按容量分配同类目标。",20,211,605,24,0);
  extraControls[AirEnabled]=pageControl(5,L"BUTTON",L"飞机均匀攻击",20,247,205,26,705,BS_AUTOCHECKBOX|WS_TABSTOP);
  SendMessageW(extraControls[AirEnabled],BM_SETCHECK,extra.air?BST_CHECKED:BST_UNCHECKED,0);
  extraControls[AirPreset1]=pageControl(5,L"COMBOBOX",L"",240,247,105,160,706,CBS_DROPDOWNLIST|WS_TABSTOP);
- extraControls[AirCustom1]=pageControl(5,HOTKEY_CLASSW,L"",357,247,268,26,707,WS_TABSTOP);
+ extraControls[AirCustom1]=pageControl(5,HOTKEY_CLASSW,L"",357,247,142,26,707,WS_TABSTOP);
  pageControl(5,L"STATIC",L"飞机均匀攻击 · 键 2",20,283,205,26,0);
  extraControls[AirPreset2]=pageControl(5,L"COMBOBOX",L"",240,283,105,160,708,CBS_DROPDOWNLIST|WS_TABSTOP);
- extraControls[AirCustom2]=pageControl(5,HOTKEY_CLASSW,L"",357,283,268,26,709,WS_TABSTOP);
+ extraControls[AirCustom2]=pageControl(5,HOTKEY_CLASSW,L"",357,283,142,26,709,WS_TABSTOP);
  {const uint32_t binds[]={extra.enterKey,extra.airKey1,extra.airKey2};const int presets[]={EnterPreset,AirPreset1,AirPreset2},customs[]={EnterCustom,AirCustom1,AirCustom2};for(int i=0;i<3;++i){
   for(const auto*s:{L"仅鼠标",L"Alt",L"Ctrl",L"Shift",L"自定义 →"})SendMessageW(extraControls[presets[i]],CB_ADDSTRING,0,(LPARAM)s);
   SendMessageW(extraControls[presets[i]],CB_SETCURSEL,holdPreset(binds[i]),0);SendMessageW(extraControls[customs[i]],HKM_SETHOTKEY,binds[i],0);
@@ -36,33 +36,44 @@
  pageControl(5,L"STATIC",L"自动保存",305,436,320,27,750,0);
  pageControl(5,L"STATIC",L"最大数 0 表示不限；优先数 0 表示不优先。只重分配敌方目标。",20,478,605,24,0);
  pageControl(5,L"STATIC",L"空键直接按增强鼠标键；飞机两键均空时用模式 1。明确按住的键优先。",20,511,605,24,0);
- {const wchar_t*names[]={L"飞碟主武器",L"变卖吸取目标",L"变卖战车",L"变卖敌方建筑（停用）"};bool settings[]={extra.disk,extra.sellDrained,extra.sellVehicles,extra.sellEnemy};const int slots[]={DiskEnabled,SellDrainedEnabled,SellVehiclesEnabled,SellEnemyEnabled};
-  for(int i=0;i<4;++i){extraControls[slots[i]]=pageControl(6,L"BUTTON",names[i],20,110+i*36,605,28,719+i,BS_AUTOCHECKBOX|WS_TABSTOP);SendMessageW(extraControls[slots[i]],BM_SETCHECK,settings[i]?BST_CHECKED:BST_UNCHECKED,0);}
+ {const wchar_t*names[]={L"飞碟主武器",L"变卖吸取目标",L"变卖战车（兰博玩不支持）",L"变卖敌方建筑（停用）"};bool settings[]={extra.disk,extra.sellDrained,extra.sellVehicles,extra.sellEnemy};const int slots[]={DiskEnabled,SellDrainedEnabled,SellVehiclesEnabled,SellEnemyEnabled};
+  for(int i=0;i<4;++i){extraControls[slots[i]]=pageControl(6,L"BUTTON",names[i],20,110+i*36,205,28,719+i,BS_AUTOCHECKBOX|WS_TABSTOP);SendMessageW(extraControls[slots[i]],BM_SETCHECK,settings[i]?BST_CHECKED:BST_UNCHECKED,0);}
  }
  pageControl(6,L"STATIC",L"飞碟：对建筑所在格发送原版强制攻击，使用主武器。",20,263,605,24,0);
  pageControl(6,L"STATIC",L"变卖：配置键+变卖鼠标键；留空直接点击，只支持合法己方目标。",20,293,605,24,0);
- pageControl(6,L"STATIC",L"车辆须与建筑重合；售款归原所属方。详见使用说明。",20,323,605,24,0);
  pageControl(6,L"STATIC",L"自动保存",20,366,605,28,754,0);
  {const uint32_t binds[]={extra.diskKey,extra.sellKey};const int presets[]={DiskPreset,SellPreset},customs[]={DiskCustom,SellCustom};
   const wchar_t* names[]={L"飞碟按住键",L"变卖按住键"};
-  for(int i=0;i<2;++i){int y=550+i*36;
-   pageControl(6,L"STATIC",names[i],20,y,205,26,0);
+  for(int i=0;i<2;++i){int y=110+i*36;
    extraControls[presets[i]]=pageControl(6,L"COMBOBOX",L"",240,y,105,160,700+presets[i],CBS_DROPDOWNLIST|WS_TABSTOP);
-   extraControls[customs[i]]=pageControl(6,HOTKEY_CLASSW,L"",357,y,268,26,700+customs[i],WS_TABSTOP);
+   extraControls[customs[i]]=pageControl(6,HOTKEY_CLASSW,L"",357,y,142,26,700+customs[i],WS_TABSTOP);
    for(const auto*s:{L"仅鼠标",L"Alt",L"Ctrl",L"Shift",L"自定义 →"})SendMessageW(extraControls[presets[i]],CB_ADDSTRING,0,(LPARAM)s);
    SendMessageW(extraControls[presets[i]],CB_SETCURSEL,holdPreset(binds[i]),0);
    SendMessageW(extraControls[customs[i]],HKM_SETHOTKEY,binds[i],0);
   }
  }
- {const wchar_t*names[]={L"高级移动鼠标键",L"磁电轮换鼠标键",L"按键 CS 鼠标键",L"高级进驻鼠标键",L"飞机模式 1 鼠标键",L"飞机模式 2 鼠标键",L"飞碟主武器鼠标键",L"直接攻击移动鼠标键",L"变卖吸取目标鼠标键",L"变卖战车鼠标键"};
-  for(int i=0;i<pointerinput::MouseCount;++i){int y=650+i*36;
-   pageControl(6,L"STATIC",names[i],20,y,305,26,0);
-   auto h=extraControls[MouseFirst+i]=pageControl(6,L"COMBOBOX",L"",345,y,280,160,729+i,CBS_DROPDOWNLIST|WS_TABSTOP);
-   for(const auto*s:{L"停用",L"中键",L"侧键 1",L"侧键 2",L"右键"})SendMessageW(h,CB_ADDSTRING,0,(LPARAM)s);
-   SendMessageW(h,CB_SETCURSEL,extra.mouseButtons[i],0);
-  }
- }
- pageControl(6,L"STATIC",L"每项独立设置并自动保存；右键保留原版点击。",20,1020,605,24,0);
+ auto mouseChoice=[&](int slot,int page,int y,int x=507,int width=118){
+  auto h=extraControls[MouseFirst+slot]=pageControl(page,L"COMBOBOX",L"",x,y,width,160,729+slot,CBS_DROPDOWNLIST|WS_TABSTOP);
+  for(auto name:{L"停用",L"中键",L"侧键 1",L"侧键 2",L"右键",L"左键"})SendMessageW(h,CB_ADDSTRING,0,(LPARAM)name);
+  SendMessageW(h,CB_SETCURSEL,extra.mouseButtons[slot]==6?5:extra.mouseButtons[slot],0);
+ };
+ mouseChoice(pointerinput::MouseAdvanced,2,108,497,128);
+ mouseChoice(pointerinput::MouseMagnetron,2,342,497,128);
+ mouseChoice(pointerinput::MouseCS,1,326,497,128);
+ mouseChoice(pointerinput::MouseEnter,5,175);
+ mouseChoice(pointerinput::MouseAirFirst,5,247);
+ mouseChoice(pointerinput::MouseAirSecond,5,283);
+ mouseChoice(pointerinput::MouseDisk,6,110);
+ mouseChoice(pointerinput::MouseSellDrained,6,146);
+ auto saleKey=pageControl(6,HOTKEY_CLASSW,L"",357,182,142,26,789,WS_TABSTOP);
+ SendMessageW(saleKey,HKM_SETHOTKEY,extra.sellKey,0);modernui::mouseOnly(saleKey);
+ mouseChoice(pointerinput::MouseSellVehicle,6,182);
+ pageControl(2,L"STATIC",L"直接攻击移动（不持续索敌）",20,448,470,26,0);mouseChoice(pointerinput::MouseAttack,2,448,497,128);
+ pageControl(2,L"STATIC",L"高级移动索敌 / 秒",20,484,270,26,0);
+ pageControl(2,L"EDIT",std::to_wstring(advancedScanHz).c_str(),305,484,180,26,787,ES_NUMBER|WS_TABSTOP);
+ pageControl(2,L"STATIC",L"1–60 次",497,484,128,26,0);
+ {auto h=pageControl(2,L"BUTTON",L"覆盖原生指令",20,560,605,26,788,BS_AUTOCHECKBOX|WS_TABSTOP);SendMessageW(h,BM_SETCHECK,extra.overrideNative?BST_CHECKED:BST_UNCHECKED,0);}
+ pageControl(2,L"STATIC",L"默认先原版后追加；覆盖仅尝试屏蔽兼容的地面命令点击。",20,596,605,24,0);
  for(int slot:{EnterCustom,AirCustom1,AirCustom2,DiskCustom,SellCustom})modernui::mouseOnly(extraControls[slot]);
  extraControls[FrozenEnabled]=pageControl(3,L"BUTTON",L"冻结倒计时",20,366,605,26,723,BS_AUTOCHECKBOX|WS_TABSTOP);SendMessageW(extraControls[FrozenEnabled],BM_SETCHECK,extra.frozen?BST_CHECKED:BST_UNCHECKED,0);
  extraControls[EnemyMarkersEnabled]=pageControl(3,L"BUTTON",L"敌方位置标记（包含未揭示区域）",20,526,605,26,785,BS_AUTOCHECKBOX|WS_TABSTOP);
@@ -81,3 +92,22 @@
  {auto all=pageControl(6,L"BUTTON",L"热键冲突时全部执行",20,1100,605,26,786,BS_AUTOCHECKBOX|WS_TABSTOP);
  SendMessageW(all,BM_SETCHECK,extra.allHotkeys?BST_CHECKED:BST_UNCHECKED,0);}
  pageControl(6,L"STATIC",L"键盘及增强鼠标匹配项依次提交；同一单位的后续命令可能覆盖前项。",20,1138,605,24,0);
+
+
+ {auto h=pageControl(0,L"BUTTON",L"Shift 五连点",20,1000,270,26,795,BS_AUTOCHECKBOX|WS_TABSTOP);SendMessageW(h,BM_SETCHECK,shiftClickEnabled?BST_CHECKED:BST_UNCHECKED,0);}
+ auto clickMode=pageControl(0,L"COMBOBOX",L"",305,1000,320,160,796,CBS_DROPDOWNLIST|WS_TABSTOP);
+ for(auto text:{L"自动（Ares 使用原生五连点）",L"强制补四次点击",L"关闭补点"})SendMessageW(clickMode,CB_ADDSTRING,0,(LPARAM)text);
+ SendMessageW(clickMode,CB_SETCURSEL,shiftClickMode,0);
+ pageControl(0,L"STATIC",L"补点间隔 / ms",20,1036,270,26,0);pageControl(0,L"EDIT",std::to_wstring(shiftClickGap).c_str(),305,1036,180,26,797,ES_NUMBER|WS_TABSTOP);
+ pageControl(0,L"STATIC",L"0–250",497,1036,128,26,0);
+
+ {auto h=pageControl(3,L"BUTTON",L"空闲飞机指示器（小地图左侧）",20,604,605,26,798,BS_AUTOCHECKBOX|WS_TABSTOP);SendMessageW(h,BM_SETCHECK,extra.idleAircraft?BST_CHECKED:BST_UNCHECKED,0);}
+
+ {auto h=pageControl(0,L"BUTTON",L"建筑 / 防御各预定 1 个（点图标，无需热键）",20,1076,605,26,799,BS_AUTOCHECKBOX|WS_TABSTOP);SendMessageW(h,BM_SETCHECK,extra.constructionQueue?BST_CHECKED:BST_UNCHECKED,0);}
+
+ pageControl(2,L"STATIC",L"高级移动索敌优先",20,520,270,26,0);
+ {auto h=pageControl(2,L"COMBOBOX",L"",305,520,320,150,802,CBS_DROPDOWNLIST|WS_TABSTOP);for(auto text:{L"单位价值优先",L"弹头伤害比例优先"})SendMessageW(h,CB_ADDSTRING,0,(LPARAM)text);SendMessageW(h,CB_SETCURSEL,advancedTargetPriority,0);}
+
+ {auto h=pageControl(2,L"BUTTON",L"飞机 Z 路径点",20,636,605,26,803,BS_AUTOCHECKBOX|WS_TABSTOP);SendMessageW(h,BM_SETCHECK,extra.airWaypoints?BST_CHECKED:BST_UNCHECKED,0);}
+
+ {auto h=pageControl(0,L"BUTTON",L"自动防偷点杀（防御建筑名单可配置）",20,1112,605,26,804,BS_AUTOCHECKBOX|WS_TABSTOP);SendMessageW(h,BM_SETCHECK,extra.antiTheft?BST_CHECKED:BST_UNCHECKED,0);}

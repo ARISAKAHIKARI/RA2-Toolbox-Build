@@ -3,9 +3,9 @@
 #include "pointer_intent.h"
 namespace assist {
 struct AdditionalSettings {
- bool experimentalReveal=false;
- bool enemyMarkers=false;
- bool allHotkeys=false;
+ bool experimentalReveal=false,antiTheft=false;
+ bool enemyMarkers=false,idleAircraft=true,constructionQueue=true,airWaypoints=true;
+ bool allHotkeys=false,overrideNative=false;
  int loadMode=0,loadRadius=30;
  uint32_t mouseButtons[pointerinput::MouseCount]={1,1,1,1,1,1,1,2,3,3}; // 0=off, 1=middle, 2/3=side, 4=right
  bool enter=false,air=false,disk=false,sellDrained=false,sellVehicles=false,sellEnemy=false,frozen=true;
@@ -17,3 +17,4 @@ enum ExtraControl {LoadLogic,LoadRadius,EnterEnabled,EnterPreset,EnterCustom,Air
 inline int holdPreset(uint32_t key){return !key?0:key==18?1:key==17?2:key==16?3:4;}
 inline uint32_t presetKey(int preset,uint32_t custom){return preset==0?0:preset==1?18:preset==2?17:preset==3?16:custom;}
 }
+

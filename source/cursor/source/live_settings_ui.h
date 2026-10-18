@@ -25,8 +25,9 @@ static void applyScale(){
  if(clicking)burst.cancel();if(geometry||animation)lastFrame=-2;
  bool saved=true;auto put=[&](const wchar_t* section,const wchar_t* key,int v){saved=WritePrivateProfileStringW(section,key,std::to_wstring(v).c_str(),ini().c_str())&&saved;};
  put(L"Cursor",L"ScalePercent",p);put(L"Cursor",L"HotspotOffsetX",x);put(L"Cursor",L"HotspotOffsetY",y);put(L"Cursor",L"AutoScale",au);put(L"Cursor",L"AspectFit",fit);put(L"Cursor",L"GameWidth",gw);put(L"Cursor",L"GameHeight",gh);put(L"Cursor",L"ScreenWidth",sw);put(L"Cursor",L"ScreenHeight",sh);put(L"Cursor",L"WindowsScalePercent",dp);put(L"Cursor",L"WindowsScaleMode",dm);
- put(L"Animation",L"Smooth",sm);put(L"Animation",L"Adaptive",ad);put(L"Animation",L"BlendMs",ms);put(L"Click",L"Enabled",ce);put(L"Click",L"Mode",cm);put(L"Click",L"IntervalMs",gap);
+ put(L"Animation",L"Smooth",sm);put(L"Animation",L"Adaptive",ad);put(L"Animation",L"BlendMs",ms);
  textIfChanged(settingsHint,!saved?L"当前已生效，但写入设置失败，请检查目录权限":incomplete?
   L"有效设置已自动保存；未完成的数字或尺寸组合保留上次值":L"设置已自动保存");
 }
+
 

@@ -11,6 +11,10 @@ int main(){
  auto exe=root/"gamemd.exe";{std::ofstream f(exe);f<<"same executable";}auto first=um::iconcache::scope(exe);assert(first);
  {std::ofstream f(root/"rulesmd.ini");f<<"[HARV]\nImage=OTHER";}auto second=um::iconcache::scope(exe);assert(first!=second);
  {std::ofstream f(root/"spawn.ini");f<<"unrelated player name";}assert(um::iconcache::scope(exe)==second);
+ {std::ofstream f(root/"spawnmap.ini");f<<"per-match generated rules";}
+ {std::ofstream f(root/"spawnmap.yrm");f<<"temporary map";}
+ {std::ofstream f(root/"Assist.ini");f<<"user changed a hotkey";}
+ assert(um::iconcache::scope(exe)==second);
  {std::ofstream f(root/"rulesmd.ini");f<<"[HARV]\nImage=CHANG";}assert(um::iconcache::scope(exe)!=second);
  assert(um::iconcache::scope(root/"different.exe")!=um::iconcache::scope(exe));
  auto scope=um::iconcache::scope(exe);auto folder=root/"cache";assert(um::iconcache::write(folder/(std::to_string(scope)+".bin"),scope,{r}));
@@ -23,3 +27,4 @@ int main(){
  assert(um::iconcache::read(folder/(std::to_string(scope)+".bin"),scope)[0].icon[44]==33);
  fs::remove_all(root);std::cout<<"PASS: icon roundtrip, atomic replacement, scope isolation, corruption/bounds, resource invalidation\n";
 }
+
