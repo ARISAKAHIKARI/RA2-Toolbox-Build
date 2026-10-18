@@ -1,0 +1,196 @@
+{
+  "version": "1.0.6",
+  "dll_sha256": "e915fb981c309b3ed6d5361941d0de31c94673b77ef7b2cb38a1ae99bf9b49dc",
+  "reference_sha256": "c287d62a4d6a25b547e9339d071dd6e03adcf545699062e478aaeee38c60e89a",
+  "stubs": {
+    "0x47efe0": "0x100262a0",
+    "0x47f250": "0x100262f0"
+  },
+  "cases": [
+    {
+      "case": "stub",
+      "site": "0x47efe0",
+      "enabled": false,
+      "DF": false,
+      "pass": true
+    },
+    {
+      "case": "stub",
+      "site": "0x47efe0",
+      "enabled": false,
+      "DF": true,
+      "pass": true
+    },
+    {
+      "case": "stub",
+      "site": "0x47efe0",
+      "enabled": true,
+      "DF": false,
+      "pass": true
+    },
+    {
+      "case": "stub",
+      "site": "0x47efe0",
+      "enabled": true,
+      "DF": true,
+      "pass": true
+    },
+    {
+      "case": "stub",
+      "site": "0x47f250",
+      "enabled": false,
+      "DF": false,
+      "pass": true
+    },
+    {
+      "case": "stub",
+      "site": "0x47f250",
+      "enabled": false,
+      "DF": true,
+      "pass": true
+    },
+    {
+      "case": "stub",
+      "site": "0x47f250",
+      "enabled": true,
+      "DF": false,
+      "pass": true
+    },
+    {
+      "case": "stub",
+      "site": "0x47f250",
+      "enabled": true,
+      "DF": true,
+      "pass": true
+    },
+    {
+      "case": "original_cell_caller",
+      "fog": false,
+      "shroud": -2,
+      "fog_value": -2,
+      "pass": true
+    },
+    {
+      "case": "original_cell_caller",
+      "fog": false,
+      "shroud": -2,
+      "fog_value": -1,
+      "pass": true
+    },
+    {
+      "case": "original_cell_caller",
+      "fog": false,
+      "shroud": -2,
+      "fog_value": 8,
+      "pass": true
+    },
+    {
+      "case": "original_cell_caller",
+      "fog": false,
+      "shroud": -1,
+      "fog_value": -2,
+      "pass": true
+    },
+    {
+      "case": "original_cell_caller",
+      "fog": false,
+      "shroud": -1,
+      "fog_value": -1,
+      "pass": true
+    },
+    {
+      "case": "original_cell_caller",
+      "fog": false,
+      "shroud": -1,
+      "fog_value": 8,
+      "pass": true
+    },
+    {
+      "case": "original_cell_caller",
+      "fog": false,
+      "shroud": 7,
+      "fog_value": -2,
+      "pass": true
+    },
+    {
+      "case": "original_cell_caller",
+      "fog": false,
+      "shroud": 7,
+      "fog_value": -1,
+      "pass": true
+    },
+    {
+      "case": "original_cell_caller",
+      "fog": false,
+      "shroud": 7,
+      "fog_value": 8,
+      "pass": true
+    },
+    {
+      "case": "original_cell_caller",
+      "fog": true,
+      "shroud": -2,
+      "fog_value": -2,
+      "pass": true
+    },
+    {
+      "case": "original_cell_caller",
+      "fog": true,
+      "shroud": -2,
+      "fog_value": -1,
+      "pass": true
+    },
+    {
+      "case": "original_cell_caller",
+      "fog": true,
+      "shroud": -2,
+      "fog_value": 8,
+      "pass": true
+    },
+    {
+      "case": "original_cell_caller",
+      "fog": true,
+      "shroud": -1,
+      "fog_value": -2,
+      "pass": true
+    },
+    {
+      "case": "original_cell_caller",
+      "fog": true,
+      "shroud": -1,
+      "fog_value": -1,
+      "pass": true
+    },
+    {
+      "case": "original_cell_caller",
+      "fog": true,
+      "shroud": -1,
+      "fog_value": 8,
+      "pass": true
+    },
+    {
+      "case": "original_cell_caller",
+      "fog": true,
+      "shroud": 7,
+      "fog_value": -2,
+      "pass": true
+    },
+    {
+      "case": "original_cell_caller",
+      "fog": true,
+      "shroud": 7,
+      "fog_value": -1,
+      "pass": true
+    },
+    {
+      "case": "original_cell_caller",
+      "fog": true,
+      "shroud": 7,
+      "fog_value": 8,
+      "pass": true
+    }
+  ],
+  "occlusion_and_blitters_mocked": true,
+  "real_rendering_tested": false,
+  "real_netplay_tested": false
+}

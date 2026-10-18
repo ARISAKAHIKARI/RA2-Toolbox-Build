@@ -13,6 +13,7 @@ static void changedSetting(){
 static bool autoSettingChanged(int id,int notification){
  if(!ready||updatingControls)return false;
  const bool edit=notification==EN_CHANGE,select=notification==CBN_SELCHANGE;
+ if(id==808&&notification==BN_CLICKED){extra.renderReveal=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;if(extra.renderReveal){extra.experimentalReveal=false;SendMessageW(extraControls[RevealExperimental],BM_SETCHECK,BST_UNCHECKED,0);for(int i=0;i<commandQueue.size;){if(commandQueue.slots[i].command==RevealMap)commandQueue.discard(i);else ++i;}}changedSetting();notify(extra.renderReveal?L"绘制测试已请求：只去黑幕/迷雾，不解除目标判断；建议在未使用旧地图全开的新对局测试。":L"绘制测试已关闭，等待恢复原版遮罩。");return true;}
  if(id==806&&notification==BN_CLICKED){extra.nativeAirWaypoints=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;airway::reset();pointerMatches.clear();changedSetting();notify(extra.nativeAirWaypoints?L"原生飞机路径点已开启，外部 Z 队列暂停；修改游戏判断，联机危险。":L"原生飞机路径点已关闭，等待恢复原判断。");return true;}
  if(id==804&&notification==BN_CLICKED){extra.antiTheft=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();return true;}
  if(id==803&&notification==BN_CLICKED){extra.airWaypoints=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();return true;}

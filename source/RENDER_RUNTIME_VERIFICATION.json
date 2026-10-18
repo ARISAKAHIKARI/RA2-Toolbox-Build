@@ -1,0 +1,35 @@
+{
+  "version": "1.0.6",
+  "dll_sha256": "e915fb981c309b3ed6d5361941d0de31c94673b77ef7b2cb38a1ae99bf9b49dc",
+  "results": [
+    {
+      "name": "enabled",
+      "pass": true
+    },
+    {
+      "name": "off_before_tick",
+      "pass": true
+    },
+    {
+      "name": "stale_host",
+      "pass": true
+    },
+    {
+      "name": "wrong_thread",
+      "pass": true
+    },
+    {
+      "name": "stopped_host",
+      "pass": true
+    },
+    {
+      "name": "foreign_before_install",
+      "pass": true
+    },
+    {
+      "name": "foreign_after_install",
+      "pass": true
+    }
+  ],
+  "real_windows_or_rendering_or_netplay": false
+}

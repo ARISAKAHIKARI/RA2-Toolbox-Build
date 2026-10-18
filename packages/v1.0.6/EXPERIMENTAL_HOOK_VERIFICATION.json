@@ -1,0 +1,92 @@
+{
+  "version": "1.0.6",
+  "dll_sha256": "e915fb981c309b3ed6d5361941d0de31c94673b77ef7b2cb38a1ae99bf9b49dc",
+  "reference_sha256": "c287d62a4d6a25b547e9339d071dd6e03adcf545699062e478aaeee38c60e89a",
+  "signature_addresses": [
+    "0x4a8eb0",
+    "0x7e2908",
+    "0x416ab6",
+    "0x6385c0"
+  ],
+  "stub_addresses": {
+    "0": "0x100261d0",
+    "1": "0x10026220",
+    "2": "0x10026250"
+  },
+  "cases": [
+    {
+      "op": 0,
+      "callback_result": 0,
+      "incoming_DF": false,
+      "pass": true
+    },
+    {
+      "op": 0,
+      "callback_result": 0,
+      "incoming_DF": true,
+      "pass": true
+    },
+    {
+      "op": 0,
+      "callback_result": 1,
+      "incoming_DF": false,
+      "pass": true
+    },
+    {
+      "op": 0,
+      "callback_result": 1,
+      "incoming_DF": true,
+      "pass": true
+    },
+    {
+      "op": 1,
+      "callback_result": 0,
+      "incoming_DF": false,
+      "pass": true
+    },
+    {
+      "op": 1,
+      "callback_result": 0,
+      "incoming_DF": true,
+      "pass": true
+    },
+    {
+      "op": 1,
+      "callback_result": 1,
+      "incoming_DF": false,
+      "pass": true
+    },
+    {
+      "op": 1,
+      "callback_result": 1,
+      "incoming_DF": true,
+      "pass": true
+    },
+    {
+      "op": 2,
+      "callback_result": 0,
+      "incoming_DF": false,
+      "pass": true
+    },
+    {
+      "op": 2,
+      "callback_result": 0,
+      "incoming_DF": true,
+      "pass": true
+    },
+    {
+      "op": 2,
+      "callback_result": 1,
+      "incoming_DF": false,
+      "pass": true
+    },
+    {
+      "op": 2,
+      "callback_result": 1,
+      "incoming_DF": true,
+      "pass": true
+    }
+  ],
+  "native_game_functions_executed": false,
+  "real_netplay_tested": false
+}

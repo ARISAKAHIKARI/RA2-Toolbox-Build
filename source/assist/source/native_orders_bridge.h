@@ -3,7 +3,7 @@
 // All simulation commands go through EventClass constructors and the game's
 // outgoing queue. This file NEVER writes a unit's mission, target, or locomotor.
 struct NativeOrder {uint32_t p,id,cell,nearest,token,mode;int gx,gy;nativeorders::Progress progress;uint32_t target;int sentFrame;bool attacking,stopped;};
-struct UnloadPassenger {uint32_t p,id,carrier,carrierID,carrierType,followTarget,followTargetPointer;int frame,mode,stage,sentFrame,seenUnload,retries,x,y,stableSince,landedFrame;uint32_t followTicket,followQueuedAt;bool sleepObserved,cancelled,followObserved;};
+struct UnloadPassenger {uint32_t p,id,carrier,carrierID,carrierType,followTarget,followTargetPointer;int frame,mode,stage,sentFrame,seenUnload,retries,x,y,stableSince,landedFrame,deployedSince;uint32_t followTicket,followQueuedAt;bool sleepObserved,cancelled,followObserved;};
 static NativeOrder nativeOrders[nativeorders::MaxOrders];static int nativeCount,nativeCursor,nativeFrame=-1;
 static UnloadPassenger unloadPassengers[nativeorders::MaxPassengers];static int unloadCount,unloadCursor;
 static ObjectIndex watchedPassengers;
@@ -146,7 +146,7 @@ static void smartUnloadTick(uint32_t house,int frame,int&budget){
   release=!done&&(release||((r.mode!=0&&!(sh->flags&EjectAssist))||(r.mode!=1&&frame-r.frame>900)));
   if(release){
    // Never leave an undeployed passenger asleep after timeout / switch-off.
-   if((r.stage==1||r.stage==2||(r.stage==3&&get<int>(p+0xAC)==0))&&live(p)&&!get<uint32_t>(p+0x11C)&&!call<bool>(get<uint32_t>(get<uint32_t>(p)+0x554),p)){
+   if((r.stage==1||r.stage==2||r.stage==3)&&get<int>(p+0xAC)==0&&live(p)&&!get<uint32_t>(p+0x11C)&&!call<bool>(get<uint32_t>(get<uint32_t>(p)+0x554),p)){
     if(budget>0&&nativeMission(house,r.id,5,0,0,0,0,0,taskarbiter::Owner::Unload)){--budget;done=true;}else continue;
    }else done=true;
   }
@@ -154,30 +154,37 @@ static void smartUnloadTick(uint32_t house,int frame,int&budget){
    if(!r.landedFrame)r.landedFrame=frame;
    bool takenOver=!unloadpolicy::initialMayContinue(currentMission,r.mode,frame-r.landedFrame,currentMission==7&&get<uint32_t>(p+0x5A4)==r.carrier,ejectDeployer);
    if(!t){done=true;}else if(!r.stage&&takenOver){done=true;}else if(get<bool>(t+0xEC8)){
-    if(call<bool>(get<uint32_t>(get<uint32_t>(p)+0x554),p))done=true;
-    else {
-     int x=get<int>(p+0x9C),y=get<int>(p+0xA0),mission=get<int>(p+0xAC);
-     if(x!=r.x||y!=r.y){r.x=x;r.y=y;r.stableSince=frame;}
+    // InfantryClass::IsDeployed also returns true for Sequence::Deploy (27).
+    // That animation may be interrupted by native ejection scatter. Observe
+    // stable completed sequences instead of treating the first animation as success.
+    int x=get<int>(p+0x9C),y=get<int>(p+0xA0),mission=get<int>(p+0xAC);
+    int sequence=get<int>(p+0x6C4),queued=get<int>(p+0xB4);
+    if(x!=r.x||y!=r.y){r.x=x;r.y=y;r.stableSince=frame;r.deployedSince=0;}
+    if(unloadpolicy::completedDeploy(sequence)&&mission!=2&&queued!=2){
+     if(!r.deployedSince)r.deployedSince=frame;
+     if(frame-r.deployedSince>=2)done=true;
+    }else r.deployedSince=0;
+    if(!done){
+     if(mission==16||unloadpolicy::deployObserved(sequence))r.seenUnload=1;
+     // Neither animation-in-progress nor a queued toggle authorizes another
+     // Deploy. In particular a second toggle could undo a successful deploy.
+     if(unloadpolicy::deployObserved(sequence)||sequence==31||queued==16)continue;
      if(!r.stage){
-      // Each survivor independently uses the original deployment predicate.
-      // Do not wait for another passenger or impose a fixed settling delay.
-      // If not ready, preserve native scatter instead of issuing Sleep.
+      // First attempt stays immediate and independent for every survivor.
+      // CanDeploySlashUnload is a capability predicate, not a settled-cell test.
       bool ready=call<bool>(get<uint32_t>(get<uint32_t>(p)+0x314),p);
       if(ejectDeployer&&!ready)continue;
       if(nativeMission(house,r.id,ready?16:0,0,0,0,0,0,taskarbiter::Owner::Unload)){--budget;r.stage=ready?2:1;r.sentFrame=frame;r.stableSince=frame;r.sleepObserved=false;r.seenUnload=0;if(ready)++snap.unloadIssued;}
      }else if(r.stage==1&&(mission==0||mission==5||mission==11)&&frame-r.sentFrame>=2&&frame-r.stableSince>=2&&call<bool>(get<uint32_t>(get<uint32_t>(p)+0x314),p)){
       if(nativeMission(house,r.id,16,0,0,0,0,0,taskarbiter::Owner::Unload)){--budget;r.stage=2;r.sentFrame=frame;r.seenUnload=0;++snap.unloadIssued;}
-     }else if(r.stage==2){
-      if(mission==16)r.seenUnload=1;
-      // Do not blindly repeat a toggling Deploy while a previous event may
-      // still be in flight. Retry only after observed execution and failure.
-      if(r.seenUnload&&mission!=16&&frame-r.sentFrame>=12){
-       if(ejectDeployer&&mission==2)continue;
-       if(mission!=0&&mission!=5)done=true;
-       else if(++r.retries<3)r.stage=0;
-       else if(mission!=0)done=true;
-       else if(nativeMission(house,r.id,5,0,0,0,0,0,taskarbiter::Owner::Unload)){--budget;done=true;}
-      }
+     }else if(r.stage==2&&r.seenUnload&&mission!=16&&frame-r.sentFrame>=12){
+      // An interrupted survivor keeps native scatter. Only THIS survivor waits
+      // for two stationary frames before retrying; there is no cell-wide lock.
+      if(ejectDeployer&&(mission==2||frame-r.stableSince<2))continue;
+      if(mission!=0&&mission!=5&&mission!=11)done=true;
+      else if(++r.retries<(ejectDeployer?12:3)){r.stage=0;r.seenUnload=0;}
+      else if(mission!=0)done=true;
+      else if(nativeMission(house,r.id,5,0,0,0,0,0,taskarbiter::Owner::Unload)){--budget;done=true;}
      }
     }
    }else{

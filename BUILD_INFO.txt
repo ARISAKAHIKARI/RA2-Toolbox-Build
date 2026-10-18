@@ -1,7 +1,7 @@
-RA2 Toolbox v1.0.5
-File version: 1.0.5.0
-Assist protocol: 44
-Update SHA256: 51cd5baa95d31d266e2fec1a160b85c7b0c1adf61bd2f46f5f8d5f86277e22a5
-Source: source/ at v1.0.5 tag
-Validation: packages/v1.0.5/
-Real Windows game/multiplayer: not tested
+RA2 Toolbox v1.0.6
+File version: 1.0.6.0
+Assist protocol: 45
+Update SHA256: f750865df167b9c573aa64ccc257ad82ac9d6f2592bb51e44aa2592135a4726b
+Source: source/ at v1.0.6 tag
+Validation: packages/v1.0.6/
+Real Windows game/rendering/multiplayer: not tested

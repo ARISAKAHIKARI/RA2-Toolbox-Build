@@ -4,6 +4,9 @@ namespace assist { namespace unloadpolicy {
 // For automatic ejection only, allow a short grace after landing, but never
 // override explicit user Stop (13) or Enter (7).
 constexpr int ScatterFrames=180;
+// YRpp Sequence::Deploy=27; Deployed/DeployedFire/DeployedIdle=28..30.
+inline bool completedDeploy(int sequence){return sequence>=28&&sequence<=30;}
+inline bool deployObserved(int sequence){return sequence>=27&&sequence<=30;}
 inline bool initialMayContinue(int mission,int mode,int landedAge,bool enteringOldCarrier=false,bool ejectDeployer=false){
  if(ejectDeployer&&mode!=0&&mission==2)return landedAge>=0&&landedAge<=ScatterFrames;
  if(mission==0||mission==5||mission==11)return true;

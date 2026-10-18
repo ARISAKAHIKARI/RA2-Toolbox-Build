@@ -24,7 +24,7 @@ class Crate(C.Structure):
 class CrateResult(C.Structure):
     _fields_=[(x,C.c_uint32) for x in 'serial tick'.split()]+[(x,C.c_int32) for x in 'cellX cellY reward amount affected factor detail'.split()]+[('unitID',C.c_char*24),('unitName',C.c_uint16*40)]
 class Weapon(C.Structure):
-    _fields_=[('range',C.c_int32),('minimum',C.c_int32),('flags',C.c_uint32),('armorMask',C.c_uint32),('selectMask',C.c_uint32),('slot',C.c_int32)]
+    _fields_=[('range',C.c_int32),('minimum',C.c_int32),('flags',C.c_uint32),('armorMask',C.c_uint32),('selectMask',C.c_uint32),('slot',C.c_int32),('effectiveness',C.c_float*11)]
 class Actor(C.Structure):
     _fields_=[(x,C.c_uint32) for x in 'id type flags manualVersion target destination destinationCell'.split()]+[(x,C.c_int32) for x in 'kind x y z mission queued cost storageLimit range'.split()]+[('veterancy',C.c_float),('storage',C.c_float*4),('dockTypes',C.c_uint32*8),('radioIDs',C.c_uint32*4)]+[(x,C.c_int32) for x in 'armor rearmStart rearmDuration airRangeBonus'.split()]+[('liftTarget',C.c_uint32),('weapons',Weapon*2)]
 class Intent(C.Structure):
@@ -41,7 +41,7 @@ class Order(C.Structure):
 class TaskReceiptSummary(C.Structure):
     _fields_=[(x,C.c_uint32) for x in 'serial match unit target queuedAt observedAt'.split()]+[(x,C.c_uint8) for x in 'phase failure owner flags'.split()]
 class Snapshot(C.Structure):
-    _fields_=[(x,C.c_int32) for x in 'status frame session width height labels swCount typeCount selected transports used capacity factories busyFactories pausedFactories completedFactories credits techOpen match noticeSerial notice scanMicros'.split()]+[('label',Label*2048),('supers',Super*32),('types',Type*512),('threatCount',C.c_int32),('crateCount',C.c_int32),('threats',Threat*128),('crates',Crate*256)]+[(x,C.c_int32) for x in 'techVisible techUnavailable techError autoRepair repairTotal loadUnits loadVehicles loadIssued loadWaiting loadUnassigned sampledTick cameraX cameraY crateHookStatus crateResultCount crateResultSerial'.split()]+[('crateResults',CrateResult*16)]+[(x,C.c_int32) for x in 'chat csHookStatus csConverted nativeHookStatus advancedUnits unloadPending unloadIssued ejectWatched inputPatchMask oreQueued oreDocking oreIssued placementStatus controlMicros worldMicros displayMicros oreManual oreYielded'.split()]+[(x,C.c_uint32) for x in 'oreDelivered oreUnverified magnetShots magnetUnverified hookInstalled hookConflicts queueSent queueFull queueTimingFailure planDeferred'.split()]+[('megaQueueStatus',C.c_int32),('megaQueueAccepted',C.c_uint32),('megaQueueRejected',C.c_uint32),('objectQueueStatus',C.c_int32),('objectQueueAccepted',C.c_uint32),('objectQueueRejected',C.c_uint32)]+[(x,C.c_int32) for x in 'readStatus bridgeStatus commandStatus renderStatus'.split()]+[(x,C.c_uint32) for x in 'queuedEvents observedEvents commandRejected receiptCancelled receiptExpired receiptDropped receiptWrite receiptCount'.split()]+[('recentReceipts',TaskReceiptSummary*32),('entryThread',C.c_uint32),('entryCalls',C.c_uint32),('entryReentrant',C.c_uint32),('entryContended',C.c_uint32),('entryWrongThread',C.c_uint32),('lastSubmitError',C.c_int32)]
+    _fields_=[(x,C.c_int32) for x in 'status frame session width height labels swCount typeCount selected transports used capacity factories busyFactories pausedFactories completedFactories credits techOpen match noticeSerial notice scanMicros'.split()]+[('label',Label*2048),('supers',Super*32),('types',Type*512),('threatCount',C.c_int32),('crateCount',C.c_int32),('threats',Threat*128),('crates',Crate*256)]+[(x,C.c_int32) for x in 'techVisible techUnavailable techError autoRepair repairTotal loadUnits loadVehicles loadIssued loadWaiting loadUnassigned sampledTick cameraX cameraY crateHookStatus crateResultCount crateResultSerial'.split()]+[('crateResults',CrateResult*16)]+[(x,C.c_int32) for x in 'chat csHookStatus csConverted nativeHookStatus advancedUnits unloadPending unloadIssued ejectWatched inputPatchMask oreQueued oreDocking oreIssued placementStatus nativeAirStatus controlMicros worldMicros displayMicros oreManual oreYielded'.split()]+[(x,C.c_uint32) for x in 'oreDelivered oreUnverified magnetShots magnetUnverified hookInstalled hookConflicts queueSent queueFull queueTimingFailure planDeferred'.split()]+[('megaQueueStatus',C.c_int32),('megaQueueAccepted',C.c_uint32),('megaQueueRejected',C.c_uint32),('objectQueueStatus',C.c_int32),('objectQueueAccepted',C.c_uint32),('objectQueueRejected',C.c_uint32)]+[(x,C.c_int32) for x in 'readStatus bridgeStatus commandStatus renderStatus'.split()]+[(x,C.c_uint32) for x in 'queuedEvents observedEvents commandRejected receiptCancelled receiptExpired receiptDropped receiptWrite receiptCount'.split()]+[('recentReceipts',TaskReceiptSummary*32),('entryThread',C.c_uint32),('entryCalls',C.c_uint32),('entryReentrant',C.c_uint32),('entryContended',C.c_uint32),('entryWrongThread',C.c_uint32),('renderRevealStatus',C.c_int32),('lastSubmitError',C.c_int32)]
 class CooperativeSource(C.Structure):
     _fields_=[('id',C.c_uint32),('token',C.c_uint32)]
 class CooperativeRequest(C.Structure):
@@ -53,19 +53,26 @@ class PointerSource(C.Structure):
 class PointerIntent(C.Structure):
  _fields_=[(x,C.c_uint32) for x in 'tick match house bindings inputSerial'.split()]+[(x,C.c_int32) for x in 'frame operation x y width height cameraX cameraY count'.split()]+[('sources',PointerSource*512)]
 class PointerMailbox(C.Structure):
- _fields_=[(x,C.c_uint32) for x in 'request ack cancelSerial'.split()]+[('intent',PointerIntent)]+[(x,C.c_int32) for x in 'result accepted rejected'.split()]
+ _fields_=[(x,C.c_uint32) for x in 'request ack cancelSerial'.split()]+[('intent',PointerIntent)]+[(x,C.c_int32) for x in 'result accepted rejected'.split()]+[('resolvedCell',C.c_uint32),('resolvedTarget',C.c_uint32),('resolvedZ',C.c_int32),('sourceTokens',C.c_uint32*512),('sourceAccepted',C.c_uint32*16)]
+class NativePolicy(C.Structure):
+ _fields_=[('values',C.c_uint32*22)] # 3 + Bindings(9) + MouseCount(10)
+class SuppressedClick(C.Structure):
+ _fields_=[('values',C.c_uint32*5)]
 class OreConfig(C.Structure):
  _fields_=[(x,C.c_uint32) for x in ("customMiners","customRefineries")]+[(x,C.c_int32) for x in ("minerCount","refineryCount")]+[(x,(C.c_char*24)*512) for x in ("miners","refineries")]
 class FeatureFilter(C.Structure):
  _fields_=[("custom",C.c_uint32),("count",C.c_int32),("ids",(C.c_char*24)*512)]
 class FeatureConfig(C.Structure):
- _fields_=[("filters",FeatureFilter*14)]
+ _fields_=[("filters",FeatureFilter*15)]
 class Shared(C.Structure):
-    _fields_=[(x,C.c_uint32) for x in 'magic version pid owner heartbeat stop foreground flags scanMs request ack command arg arg2 requestTick requestMatch result count seq'.split()]+[('data',Snapshot),('techAllowed',C.c_uint8*512),('repairMs',C.c_uint32),('clockStart',C.c_uint64),('clockFrequency',C.c_uint64),('clockTick',C.c_uint32),('csSeq',C.c_int32),('csMatch',C.c_uint32),('csAllowed',C.c_uint8*512)]+[(x,C.c_uint32) for x in 'advancedKey pathTimeout veteranPercent elitePercent selectRequest selectAck selectIndex selectGlobal selectTick selectMatch selectResult selectCount csHoldKey'.split()]+[('worldSeq',C.c_int32),('world',World)]+[(x,C.c_uint32) for x in 'planRequest planAck planTick planMatch planCount planAccepted planResult'.split()]+[('plan',Order*24),('plannerTracking',C.c_uint32),('hostWindow',C.c_uint32),('hostNotifyPending',C.c_int32),('gameWakePending',C.c_int32),('magnetronKey',C.c_uint32),('planAcceptedMask',C.c_uint32),('planRejectedMask',C.c_uint32)]+[(x,C.c_uint32) for x in 'externalDisplay loadMode loadRadius enterKey airKey1 airKey2'.split()]+[('cooperativeSeq',C.c_int32),('cooperativeRequest',CooperativeRequest)]+[(x,C.c_uint32) for x in 'cooperativePlan cooperativeAck cooperativeSerial cooperativeTick'.split()]+[(x,C.c_int32) for x in 'cooperativeCount cooperativeAccepted cooperativeRejected cooperativeMode'.split()]+[('cooperativeOrders',CooperativeAssignment*512),('clickHookStatus',C.c_int32)]+[(x,C.c_uint32) for x in 'driverMode driverTarget megaQueueMode objectQueueMode'.split()]+[('driverStatus',C.c_int32),('driverTicks',C.c_uint32),('driverLastTick',C.c_uint32)]+[(x,C.c_uint32) for x in 'productionRequest productionAck productionMatch productionTick'.split()]+[('productionCount',C.c_int32),('productionTypes',C.c_int32*4),('planFrame',C.c_int32),('cooperativeFrame',C.c_int32),('cooperativeMatch',C.c_uint32),('cooperativeProcessed',C.c_int32),('cooperativeResult',C.c_int32),('cooperativeAcceptedBits',C.c_uint32*16),('pointer',PointerMailbox),('selectTypes',C.c_uint8*512),('oreConfigSeq',C.c_int32),('oreConfig',OreConfig),('featureConfigSeq',C.c_int32),('featureConfig',FeatureConfig)]
+    _fields_=[(x,C.c_uint32) for x in 'magic version pid owner heartbeat stop foreground flags scanMs request ack command arg arg2 requestToken requestTick requestMatch result count seq'.split()]+[('data',Snapshot),('techAllowed',C.c_uint8*512),('repairMs',C.c_uint32),('clockStart',C.c_uint64),('clockFrequency',C.c_uint64),('clockTick',C.c_uint32),('csSeq',C.c_int32),('csMatch',C.c_uint32),('csAllowed',C.c_uint8*512)]+[(x,C.c_uint32) for x in 'advancedKey pathTimeout veteranPercent elitePercent selectRequest selectAck selectIndex selectGlobal selectObjectID selectTick selectMatch selectResult selectCount csHoldKey'.split()]+[('worldSeq',C.c_int32),('world',World)]+[(x,C.c_uint32) for x in 'planRequest planAck planTick planMatch planCount planAccepted planResult'.split()]+[('plan',Order*24),('plannerTracking',C.c_uint32),('hostWindow',C.c_uint32),('hostNotifyPending',C.c_int32),('gameWakePending',C.c_int32),('magnetronKey',C.c_uint32),('planAcceptedMask',C.c_uint32),('planRejectedMask',C.c_uint32)]+[(x,C.c_uint32) for x in 'externalDisplay loadMode loadRadius enterKey airKey1 airKey2'.split()]+[('cooperativeSeq',C.c_int32),('cooperativeRequest',CooperativeRequest)]+[(x,C.c_uint32) for x in 'cooperativePlan cooperativeAck cooperativeSerial cooperativeTick'.split()]+[(x,C.c_int32) for x in 'cooperativeCount cooperativeAccepted cooperativeRejected cooperativeMode'.split()]+[('cooperativeOrders',CooperativeAssignment*512),('clickHookStatus',C.c_int32)]+[(x,C.c_uint32) for x in 'driverMode driverTarget megaQueueMode objectQueueMode'.split()]+[('driverStatus',C.c_int32),('driverTicks',C.c_uint32),('driverLastTick',C.c_uint32)]+[(x,C.c_uint32) for x in 'productionRequest productionAck productionMatch productionTick'.split()]+[('productionCount',C.c_int32),('productionTypes',C.c_int32*4),('planFrame',C.c_int32),('cooperativeFrame',C.c_int32),('cooperativeMatch',C.c_uint32),('cooperativeProcessed',C.c_int32),('cooperativeResult',C.c_int32),('cooperativeAcceptedBits',C.c_uint32*16),('pointer',PointerMailbox),('pointerPolicySeq',C.c_int32),('pointerPolicy',NativePolicy),('suppressedClick',SuppressedClick),('selectTypes',C.c_uint8*512),('oreConfigSeq',C.c_int32),('oreConfig',OreConfig),('featureConfigSeq',C.c_int32),('featureConfig',FeatureConfig),('renderReveal',C.c_uint32)]
 
 u=Uc(UC_ARCH_X86,UC_MODE_32)
 fixture_paths=globals().get("fixture_paths",sys.argv[1:3])
 game=pefile.PE(fixture_paths[0]); dll=pefile.PE(fixture_paths[1])
+# Stop stale test layouts before emulating any Runtime function.
+protocol_export=next(e for e in dll.DIRECTORY_ENTRY_EXPORT.symbols if e.name==b'AssistProtocolInfo')
+assert C.sizeof(Shared)==struct.unpack('<II',dll.get_data(protocol_export.address,8))[1],('fixture ABI',C.sizeof(Shared))
 broker=dll
 from types import SimpleNamespace
 cursor_dll=SimpleNamespace(OPTIONAL_HEADER=SimpleNamespace(ImageBase=0x19000000))
@@ -116,7 +123,8 @@ def on_code(uc,a,size,_):
         if n=='GetCurrentProcessId':ret(123,0)
         elif n=='GetCurrentThreadId':ret(current_thread,0)
         elif n=='VirtualQuery':
-            u.mem_write(arg(1),struct.pack('<7I',arg(0)&~4095,arg(0)&~4095,0x20,4096,0x1000,0x20,0x1000000));ret(28,3)
+            image=module_at(arg(0));allocation=image.OPTIONAL_HEADER.ImageBase if image else arg(0)&~4095
+            u.mem_write(arg(1),struct.pack('<7I',arg(0)&~4095,allocation,0x20,4096,0x1000,0x20,0x1000000));ret(28,3)
         elif n=='OpenProcess':
             h=0x60000000+len(opened_process_handles)+1 if unique_process_handles else 0x1234
             opened_process_handles.append(h);ret(0 if fail_owner_open else h,3)
@@ -128,7 +136,7 @@ def on_code(uc,a,size,_):
         elif n in ('GetTickCount','timeGetTime'):ret(clock,0)
         elif n=='OpenFileMappingW':
             name=string_at(arg(2),True);mapping_names.append(name)
-            ret(2 if name=='Local\\RA2Runtime_v3_123_456_' else 1 if name=='Local\\RA2Assist_v042_123' else 3 if cursor_mapping_enabled and name=='Local\\RA2CursorBridge_v154_123' else 0,3)
+            ret(2 if name=='Local\\RA2Runtime_v3_123_456_' else 1 if name==f'Local\\RA2Assist_v{struct.unpack("<I",dll.get_data(protocol_export.address,4))[0]:03}_123' else 3 if cursor_mapping_enabled and name=='Local\\RA2CursorBridge_v154_123' else 0,3)
         elif n=='MapViewOfFile':ret(SH+0x3e0000 if arg(0)==2 else 0x22000000 if arg(0)==3 else SH,5)
         elif n=='SetTimer':watchdog_callback=arg(3);watchdog_threads.append(current_thread);ret(0 if fail_watchdog_timer else 1,4)
         elif n=='wsprintfW':
@@ -141,6 +149,7 @@ def on_code(uc,a,size,_):
         elif n=='FlushInstructionCache':ret(1,3)
         elif n=='GetModuleHandleExW':
             pe=module_at(arg(1));ok=pe is not None and not (fail_watchdog_pin and arg(0)&1);w(arg(2),pe.OPTIONAL_HEADER.ImageBase if ok else 0);ret(int(ok),3)
+        elif n=='GetModuleHandleW' and not arg(0):ret(game.OPTIONAL_HEADER.ImageBase,1)
         elif n=='GetModuleHandleW':ret(dll.OPTIONAL_HEADER.ImageBase if string_at(arg(0),True)=='GameRuntime.dll' else 1 if legacy_loaded else 0,1)
         elif n=='GetModuleFileNameW':
             value='C:\\Toolbox\\GameRuntime.dll';data=(value+'\0').encode('utf-16le');u.mem_write(arg(1),data);ret(len(value),3)

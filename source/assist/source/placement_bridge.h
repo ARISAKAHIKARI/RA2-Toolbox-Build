@@ -1,7 +1,7 @@
 // Explicit experimental game-judgment opt-ins. Sole writer: GameEntryManager.
 #include "../../shared/source/experimental_patch_policy.h"
 extern "C" int __cdecl GuardedRiskAction(unsigned,unsigned,unsigned);
-static bool riskPlacementActive=false,riskAirActive=false;
+static bool riskPlacementActive=false,riskAirActive=false,riskRenderActive=false;
 static bool riskReady(){
  if(!gameentry::active(gameentry::Client::Assist)||!sh||sh->stop||fault||!lastHouse||
     DWORD(sampleClock(sh)-sh->heartbeat)>=3000||!get<bool>(0xA8E9A0))return false;
@@ -14,6 +14,7 @@ static bool riskReady(){
 }
 extern "C" int __cdecl AssistRiskAction(unsigned op,unsigned object,unsigned house){
  if(!riskReady())return 0;
+ if(op==3)return riskRenderActive&&sh->renderReveal!=0; // draw-only, no native game calls
  if(op==0)return riskPlacementActive&&(sh->flags&BuildAnywhere)&&house==get<uint32_t>(lastHouse+0x30)&&object>=0x10000&&
    call<int>(get<uint32_t>(get<uint32_t>(object)+0x2C),object)==7;
  if(!riskAirActive||!(sh->flags&NativeAirWaypoints))return 0;
@@ -108,15 +109,81 @@ original:
  push 416AC0h
  ret
 }}
+// Only the final shroud/fog drawing leaf is bypassed. The caller retains
+// GetOcclusion and its original Visibility/Foggedness cache updates.
+static __declspec(naked) void riskShroudEntry(){__asm {
+ pushfd
+ pushad
+ mov ebx,esp
+ sub esp,528
+ and esp,-16
+ fxsave [esp]
+ cld
+ push 0
+ push 0
+ push 3
+ call GuardedRiskAction
+ add esp,12
+ test eax,eax
+ jz original
+ fxrstor [esp]
+ mov esp,ebx
+ popad
+ popfd
+ ret 12
+original:
+ fxrstor [esp]
+ mov esp,ebx
+ popad
+ popfd
+ push ebp
+ mov ebp,esp
+ sub esp,34h
+ push 47EFE6h
+ ret
+}}
+// Only the final shroud/fog drawing leaf is bypassed. The caller retains
+// GetOcclusion and its original Visibility/Foggedness cache updates.
+static __declspec(naked) void riskFogEntry(){__asm {
+ pushfd
+ pushad
+ mov ebx,esp
+ sub esp,528
+ and esp,-16
+ fxsave [esp]
+ cld
+ push 0
+ push 0
+ push 3
+ call GuardedRiskAction
+ add esp,12
+ test eax,eax
+ jz original
+ fxrstor [esp]
+ mov esp,ebx
+ popad
+ popfd
+ ret 12
+original:
+ fxrstor [esp]
+ mov esp,ebx
+ popad
+ popfd
+ mov al,byte ptr ds:[089E7C6h]
+ push 47F255h
+ ret
+}}
 struct RiskSite {uint32_t address;unsigned size;uint8_t before[16],after[16];};
 static RiskSite riskSites[]={
  {experimentalpatch::Placement,5,{0xA1,0x4C,0x3D,0xA8,0},{}},
  {experimentalpatch::AirType,4,{0x50,0xCB,0x41,0},{}},
- {experimentalpatch::AirArrival,10,{0xC7,0x86,0xBC,0,0,0,3,0,0,0},{}}
+ {experimentalpatch::AirArrival,10,{0xC7,0x86,0xBC,0,0,0,3,0,0,0},{}},
+ {experimentalpatch::ShroudDraw,6,{0x55,0x8B,0xEC,0x83,0xEC,0x34},{}},
+ {experimentalpatch::FogDraw,5,{0xA0,0xC6,0xE7,0x89,0},{}}
 };
 static void prepareRiskSites(){static bool ready=false;if(ready)return;ready=true;
- const uint32_t targets[]={uint32_t(uintptr_t(&riskPlacementEntry)),uint32_t(uintptr_t(&riskAirTypeEntry)),uint32_t(uintptr_t(&riskAirArrivalEntry))};
- for(unsigned i=0;i<3;++i){auto&s=riskSites[i];
+ const uint32_t targets[]={uint32_t(uintptr_t(&riskPlacementEntry)),uint32_t(uintptr_t(&riskAirTypeEntry)),uint32_t(uintptr_t(&riskAirArrivalEntry)),uint32_t(uintptr_t(&riskShroudEntry)),uint32_t(uintptr_t(&riskFogEntry))};
+ for(unsigned i=0;i<5;++i){auto&s=riskSites[i];
   if(s.size==4)memcpy(s.after,&targets[i],4);
   else{memset(s.after,0x90,s.size);s.after[0]=0xE9;uint32_t offset=targets[i]-s.address-5;memcpy(s.after+1,&offset,4);}
  }
@@ -131,13 +198,30 @@ static bool installRiskSite(RiskSite&s){
  return gameentry::patch(gameentry::Client::Assist,s.address,s.before,s.after,s.size);
 }
 static void restorePlacement(){
- riskPlacementActive=riskAirActive=false;prepareRiskSites();
+ riskPlacementActive=riskAirActive=riskRenderActive=false;prepareRiskSites();
  bool place=restoreRiskSite(riskSites[0]);
  bool type=restoreRiskSite(riskSites[1]),arrival=restoreRiskSite(riskSites[2]);
  snap.placementStatus=place?0:-2;snap.nativeAirStatus=type&&arrival?0:-2;
+ bool shroud=restoreRiskSite(riskSites[3]),fog=restoreRiskSite(riskSites[4]);
+ snap.renderRevealStatus=shroud&&fog?0:-2;
+}
+static void redrawRevealTest(){
+ // Native redraw bookkeeping only, once per toggle; never reveal/register cells.
+ static const uint8_t signature[]={0x83,0xEC,0x58,0x8B,0x0D,0x88,0xCE,0xB0,0};uint8_t actual[sizeof signature]{};
+ const uint32_t tactical=get<uint32_t>(0x887324);
+ struct Area {int x,y,w,h;};Area area{};
+ if(tactical<0x10000||!riskReady()||!read(0x6D2790,actual,sizeof actual)||memcmp(actual,signature,sizeof actual)||!read(0x886FA0,&area,sizeof area)||area.w<=0||area.h<=0||area.w>16384||area.h>16384)return;
+ call<void>(0x6D2790,tactical,area,false);
 }
 static void placementTick(){
  prepareRiskSites();
+ bool priorRender=riskRenderActive;
+ if(sh->renderReveal){
+  riskRenderActive=installRiskSite(riskSites[3])&&installRiskSite(riskSites[4]);
+  if(!riskRenderActive){restoreRiskSite(riskSites[3]);restoreRiskSite(riskSites[4]);}
+  snap.renderRevealStatus=riskRenderActive?1:-2;
+ }else{riskRenderActive=false;bool a=restoreRiskSite(riskSites[3]),b=restoreRiskSite(riskSites[4]);snap.renderRevealStatus=a&&b?0:-2;}
+ if(priorRender!=riskRenderActive)redrawRevealTest();
  if(sh->flags&BuildAnywhere){riskPlacementActive=installRiskSite(riskSites[0]);snap.placementStatus=riskPlacementActive?1:-2;}
  else{riskPlacementActive=false;snap.placementStatus=restoreRiskSite(riskSites[0])?0:-2;}
  if(sh->flags&NativeAirWaypoints){

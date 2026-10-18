@@ -5,7 +5,8 @@ static void loadAdditionalSettings(){
  }
 
  extra.antiTheft=value(L"Modes",L"AntiTheft",0)!=0;
- extra.experimentalReveal=value(L"Experimental",L"RevealMap",0)!=0;
+ extra.renderReveal=value(L"Experimental",L"RenderReveal",0)!=0;
+ extra.experimentalReveal=!extra.renderReveal&&value(L"Experimental",L"RevealMap",0)!=0;
  extra.nativeAirWaypoints=value(L"Experimental",L"NativeAirWaypoints",0)!=0;
  extra.airWaypoints=value(L"Aircraft",L"ZWaypoints",1)!=0;
  extra.constructionQueue=value(L"Production",L"ReserveNext",1)!=0;
@@ -40,7 +41,7 @@ static bool saveAdditionalSettings(){
  }
 
  write(L"Modes",L"AntiTheft",extra.antiTheft);write(L"Experimental",L"RevealMap",extra.experimentalReveal);
- write(L"Experimental",L"NativeAirWaypoints",extra.nativeAirWaypoints);write(L"Aircraft",L"ZWaypoints",extra.airWaypoints);write(L"Production",L"ReserveNext",extra.constructionQueue);write(L"Display",L"EnemyMarkers",extra.enemyMarkers);write(L"Display",L"IdleAircraftIndicator",extra.idleAircraft);
+ write(L"Experimental",L"RenderReveal",extra.renderReveal);write(L"Experimental",L"NativeAirWaypoints",extra.nativeAirWaypoints);write(L"Aircraft",L"ZWaypoints",extra.airWaypoints);write(L"Production",L"ReserveNext",extra.constructionQueue);write(L"Display",L"EnemyMarkers",extra.enemyMarkers);write(L"Display",L"IdleAircraftIndicator",extra.idleAircraft);
  write(L"Hotkeys",L"ExecuteAllMatches",extra.allHotkeys);write(L"Mouse",L"OverrideNative",extra.overrideNative);
  for(int i=0;i<pointerinput::MouseCount;++i)write(L"Mouse",pointerinput::mouseSetting(i),extra.mouseButtons[i]);
 
@@ -76,7 +77,7 @@ static void fillExtraTypes(bool force=false){
  if(restore>=0)SendMessageW(extraControls[QuotaType],CB_SETCURSEL,restore,0);
 }
 static uint32_t additionalFlags(){uint32_t f=extra.frozen?Frozen:0;if(extra.antiTheft)f|=AntiTheft;if(extra.constructionQueue)f|=ReserveConstruction;if(extra.nativeAirWaypoints)f|=NativeAirWaypoints;else if(extra.airWaypoints)f|=AirWaypoints;if(extra.experimentalReveal)f|=ExperimentalReveal;if(extra.enter)f|=AdvancedEnter;if(extra.air)f|=AircraftSpread;if(extra.disk)f|=DiskPrimary;if(extra.sellDrained)f|=SellDrained;if(extra.sellVehicles)f|=SellVehicles;if(extra.sellEnemy)f|=SellEnemy;return f;}
-static void syncAdditional(){if(!shared)return;shared->loadMode=extra.loadMode;shared->loadRadius=extra.loadRadius;shared->enterKey=extra.enterKey;shared->airKey1=extra.airKey1;shared->airKey2=extra.airKey2;
+static void syncAdditional(){if(!shared)return;shared->renderReveal=extra.renderReveal;shared->loadMode=extra.loadMode;shared->loadRadius=extra.loadRadius;shared->enterKey=extra.enterKey;shared->airKey1=extra.airKey1;shared->airKey2=extra.airKey2;
  externalSampler.flashCount=0; // production tab reminders stay entirely in the host overlay
 }
 static void serviceCooperative(){

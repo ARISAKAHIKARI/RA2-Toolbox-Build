@@ -581,7 +581,7 @@ static bool ensureBridge(){
  if(!game||bridgeBlocked||(bridgeRetryAt&&int32_t(now-bridgeRetryAt)<0))return false;
  ++bridgeAttempts;bridgeRetryAt=now+(bridgeAttempts>=3?30000:2000);
  critical(L"bridge-connect-attempt="+std::to_wstring(bridgeAttempts)+L" pid="+std::to_wstring(pid)+L" thread="+std::to_wstring(gameThread));
- wchar_t n[100];swprintf(n,100,L"Local\\RA2Assist_v044_%lu",pid);
+ wchar_t n[100];swprintf(n,100,L"Local\\RA2Assist_v045_%lu",pid);
  mapping=CreateFileMappingW(INVALID_HANDLE_VALUE,nullptr,PAGE_READWRITE,0,sizeof(Shared),n);
  DWORD mappingError=GetLastError();if(!mapping)return bridgeFailed(L"创建命令共享内存失败",mappingError);
  if(mappingError==ERROR_ALREADY_EXISTS){
@@ -1043,6 +1043,8 @@ static void updateModeStatus(DWORD now){
  auto riskText=[&](bool wanted,int state)->std::wstring{if(state==-2)return L"冲突 / 安装或恢复失败";if(state==-1)return L"不支持此游戏版本";if(!wanted)return state==1?L"等待恢复":L"关闭";return phase?L"等待游戏就绪":state==1?L"已启用（联机危险）":L"等待安装";};
  std::wstring riskStatus=L"任意建造："+riskText(buildAnywhereMode,snap.placementStatus)+L"\n原生路径点："+riskText(extra.nativeAirWaypoints,snap.nativeAirStatus);
  SetWindowTextW(GetDlgItem(ui,807),riskStatus.c_str());
+ std::wstring renderText=L"绘制测试：";renderText+=snap.renderRevealStatus==-2?L"冲突 / 安装或恢复失败":!extra.renderReveal?L"关闭":phase?L"等待游戏就绪":snap.renderRevealStatus==1?L"已启用；联机尚未实测":L"等待安装";
+ SetWindowTextW(GetDlgItem(ui,809),renderText.c_str());
  const wchar_t*phaseText=phase==1?L"已暂停":phase==2?L"未连接":phase==3?L"接口不可用":commandMatch()?L"本局命令暂挂":L"正在读取对局";
  std::wstring nt=phase?phaseText:snap.nativeHookStatus<0?L"战术接口不可用，相关功能已停用":L"移动任务 "+std::to_wstring(snap.advancedUnits)+L" · 待处理乘员 "+std::to_wstring(snap.unloadPending)+L" · 逃生跟踪 "+std::to_wstring(snap.ejectWatched);
  if(!phase&&commandQueue.size)nt+=L" | 待处理命令 "+std::to_wstring(commandQueue.size);
@@ -1317,6 +1319,10 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
  pageControl(4,L"STATIC",L"两项均可能导致不同步或掉线；由统一 GameRuntime 安装和恢复。",20,474,605,26,0);
  pageControl(4,L"STATIC",L"原生路径点开启后，外部 Z 队列暂停；补丁冲突时不会强行覆盖。",20,512,605,26,0);
  pageControl(4,L"STATIC",L"补丁状态：等待连接",20,550,605,54,807);
+ {HWND h=pageControl(4,L"BUTTON",L"地图全开：仅去黑幕 / 迷雾（绘制测试）",20,635,605,27,808,BS_AUTOCHECKBOX|WS_TABSTOP);SendMessageW(h,BM_SETCHECK,extra.renderReveal?BST_CHECKED:BST_UNCHECKED,0);}
+ pageControl(4,L"STATIC",L"默认关闭。保留原版视野及目标判断；隐藏单位可配合敌方标记。",20,674,605,26,0);
+ pageControl(4,L"STATIC",L"建议新对局单独测试；未做真实联机验证。旧地图全开仍是另一功能。",20,708,605,26,0);
+ pageControl(4,L"STATIC",L"绘制测试：关闭",20,746,605,26,809);
  pageControl(3,L"STATIC",L"游戏入口：统一消息管理器",20,416,605,24,0);
  schedulerEntryCombo=pageControl(3,L"COMBOBOX",L"",20,447,605,230,760,CBS_DROPDOWNLIST|WS_TABSTOP);
  SendMessageW(schedulerEntryCombo,CB_ADDSTRING,0,(LPARAM)L"统一消息入口 · 不改写游戏代码");
@@ -1350,6 +1356,7 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
  if(updatingControls)return 0;
  if(id==739&&HIWORD(wp)==BN_CLICKED){
   extra.experimentalReveal=SendMessageW(extraControls[RevealExperimental],BM_GETCHECK,0,0)==BST_CHECKED;
+  if(extra.experimentalReveal){extra.renderReveal=false;SendMessageW(GetDlgItem(ui,808),BM_SETCHECK,BST_UNCHECKED,0);}
   if(!extra.experimentalReveal){for(int i=0;i<commandQueue.size;){if(commandQueue.slots[i].command==RevealMap)commandQueue.discard(i);else ++i;}}
   changedSetting();notify(extra.experimentalReveal?L"已允许实验性地图全开；点击按钮或快捷键执行。":L"已关闭实验性地图全开，待处理请求已取消；已揭示的地图不会回退。");return 0;
  }

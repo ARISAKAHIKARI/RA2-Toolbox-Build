@@ -181,7 +181,7 @@ for mode in (0,5,3,4):
      p=next(p for p in people if m.r(p+0x10)==ident)
      assert p in ready and ident not in ids and (m.r(p+0xac)==5 or scenario=='moving_ready')
      ids.append(ident)
-     if scenario not in ('same_cell_pending','same_cell_mixed','moving_ready'):deployed.add(p)
+     if scenario not in ('same_cell_pending','same_cell_mixed','moving_ready'):deployed.add(p);m.w(p+0x6c4,28)
     if scenario in ('same_cell_pending','moving_ready'):assert count(m)==5,(scenario,age,count(m))
     if scenario=='same_cell_mixed':assert count(m)==sum(age>=1+n*6 for n in range(5)),(scenario,age,count(m))
     seen=count(m)
@@ -189,6 +189,51 @@ for mode in (0,5,3,4):
    if scenario in ('manual_cancel','scatter_timeout'):assert s.data.unloadPending==0
    assert not m.codeWrites
   check(f'ejection_{scenario}_{mode}',dispersal)
+# Regression: IsDeployed returns true during sequence 27, then native scatter
+# cancels it. Two survivors settle immediately; three must independently retry.
+for mode in (0,5,3,4):
+ for scenario in ('interrupted','queued_toggle','manual','off'):
+  def interrupted(mode=mode,scenario=scenario):
+   m=fixture(mode,1024|2048);m.b(m.engT+0xec8,1)
+   people=[m.eng]+[m.obj(0x7eb058,m.engT,m.house,20+n) for n in range(4)]
+   m.vector(0xa83de8,people);m.vector(0xa8ec78,[m.unit,m.building,m.enemyUnit]+people)
+   m.b(m.unit+0x83,1);m.w(m.unit+0x114,5)
+   for p in people:m.w(p+0x11c,m.unit);m.b(p+0x81,1);m.b(p+0x90,0);m.w(p+0xac,7);m.w(p+0x5a4,m.unit)
+   ready=m.r(0x7eb058+0x314);deployed=m.r(0x7eb058+0x554)
+   m.u.hook_add(UC_HOOK_CODE,lambda uc,at,size,_:m.ret(1,0),begin=ready,end=ready)
+   # Match the actual game's inclusive 27..30 behavior, NOT a completed flag.
+   m.u.hook_add(UC_HOOK_CODE,lambda uc,at,size,_:m.ret(int(27<=m.r(m.u.reg_read(UC_X86_REG_ECX)+0x6c4)<=30),0),begin=deployed,end=deployed)
+   tick(m);m.w(m.unit+0x6c,0);m.b(m.unit+0x74,0)
+   for p in people:m.w(p+0x11c,0);m.b(p+0x81,0);m.b(p+0x90,1);m.w(p+0xac,5)
+   s=tick(m);assert count(m)==5 and s.data.unloadPending==5
+   for n,p in enumerate(people):m.w(p+0x6c4,28 if n<2 else 27);m.w(p+0xac,16)
+   for _ in range(4):s=tick(m)
+   assert count(m)==5 and s.data.unloadPending==3,(scenario,s.data.unloadPending)
+   for p in people[2:]:m.w(p+0x6c4,3);m.w(p+0xac,2)
+   if scenario=='manual':pointer(m,5,mutate=lambda s,i:(setattr(i,'count',3),[setattr(i.sources[n],'pointer',p) or setattr(i.sources[n],'id',m.r(p+0x10)) for n,p in enumerate(people[2:])]))
+   if scenario=='off':s=state(m);s.flags=0;save(m,s)
+   seen=count(m);retries=[]
+   for age in range(36):
+    for n,p in enumerate(people[2:]):
+     if age<8+n*5:m.w(p+0x9c,m.r(p+0x9c)+16)
+     else:m.w(p+0xac,5);m.w(p+0x6c4,0)
+     if scenario=='queued_toggle':m.w(p+0xb4,16 if age<28 else 0xffffffff)
+    for p in people:
+     if m.r(p+0x10) in retries:m.w(p+0x6c4,28);m.w(p+0xac,16)
+    s=tick(m)
+    for at in range(seen,count(m)):
+     event=packets(m)[at*111:(at+1)*111];ident=struct.unpack_from('<I',event,7)[0]
+     assert event[12]==16 and ident not in retries and ident in [m.r(p+0x10) for p in people[2:]],(scenario,event[12],ident)
+     retries.append(ident);p=next(p for p in people if m.r(p+0x10)==ident)
+     m.w(p+0x6c4,28);m.w(p+0xac,16)
+    seen=count(m)
+    # Keep successful retry outcomes alive on subsequent samples.
+    for p in people:
+     if m.r(p+0x10) in retries:m.w(p+0x6c4,28);m.w(p+0xac,16)
+    if scenario=='queued_toggle' and age<28:assert count(m)==5
+   assert len(retries)==(3 if scenario in ('interrupted','queued_toggle') else 0),(scenario,retries)
+   assert s.data.unloadPending==0 and not m.codeWrites,(scenario,s.data.unloadPending)
+  check(f'ejection_animation_{scenario}_{mode}',interrupted)
 # Independent physical bindings must not authorize other features at Runtime.
 for mode in (0,5,3,4):
  for scenario in ('enter_ground','disk_ground_auto_cs','vehicle_allow','vehicle_wrong_button','building_allow','building_wrong_button'):
@@ -327,5 +372,5 @@ def reconnect():
  m.w(0xa802c8,0);s=pointer(m,2);assert s.pointer.request==1 and s.pointer.ack==1 and s.pointer.accepted==1 and count(m)==1
  assert packets(m)[12]==29 and not m.codeWrites
 check('reconnect_reused_request_serial_clears_pending_follow',reconnect)
-Path(a.output).write_text(json.dumps({'inputs':{'game':hashlib.sha256(Path(a.game).read_bytes()).hexdigest(),'GameRuntime.dll':hashlib.sha256(Path(a.dll).read_bytes()).hexdigest()},'scope':'actual DLL/constructors/Sell receiver branch; synthetic world and Win32, no real network','results':results},indent=2)+'\n')
+Path(a.output).write_text(json.dumps({'inputs':{'game':hashlib.sha256(Path(a.game).read_bytes()).hexdigest(),'GameRuntime.dll':hashlib.sha256(Path(a.dll).read_bytes()).hexdigest()},'filter':a.filter,'scope':'actual DLL/original constructors; synthetic world and Win32, no real network','results':results},indent=2)+'\n')
 print('TOTAL',len(results))

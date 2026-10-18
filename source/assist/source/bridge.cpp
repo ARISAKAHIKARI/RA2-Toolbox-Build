@@ -43,7 +43,7 @@ using namespace assist;
 // string literal. The host validates both protocol and structure size before
 // installing a hook; the release verifier can inspect these exports offline.
 extern "C" __declspec(dllexport) const uint32_t AssistProtocolInfo[2]={Version,sizeof(Shared)};
-extern "C" __declspec(dllexport) const wchar_t AssistMappingPrefix[]=L"Local\\RA2Assist_v044_";
+extern "C" __declspec(dllexport) const wchar_t AssistMappingPrefix[]=L"Local\\RA2Assist_v045_";
 static Shared*sh;static HANDLE mapping;static bool checked,good,fault;static DWORD last,slow;static uint32_t lastHouse,match,pendingAck;static int lastFrame;
 static sessionepoch::Tracker sessionTracker;static Snapshot snap;
 static runtimefault::Context faultContext;
@@ -672,7 +672,7 @@ static void command(uint32_t house,DWORD now){uint32_t req=sh->request;if(req==s
  else if(c>=CombatSelection&&c<=DamagedSelection)n=selectFilter(house,c);
  else if(c>=IdleHarvester&&c<=IdleTransport)n=findIdle(house,c);
  else if(c==ClearBeacons){call<void>(0x431410,0x89C3B0,get<int>(house+0x30));n=1;}
- else if(c==RevealMap&&!(sh->flags&ExperimentalReveal)){result=-21;}
+ else if(c==RevealMap&&(!(sh->flags&ExperimentalReveal)||sh->renderReveal)){result=-21;}
  else if(c==RevealMap){
   // Early in a restarted match, House can be valid before its map-cell array.
   // A void reveal call against that transitional state silently does nothing.

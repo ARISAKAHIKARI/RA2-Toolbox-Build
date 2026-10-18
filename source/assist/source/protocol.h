@@ -9,7 +9,7 @@
 #include "cooperative_types.h"
 #include "pointer_intent.h"
 namespace assist {
-constexpr uint32_t Magic=0x41533130, Version=44;
+constexpr uint32_t Magic=0x41533130, Version=45;
 constexpr uint32_t DataMessage=0x8002, WakeTag=0x41533230;
 constexpr int MaxLabels=2048, MaxSW=32, MaxTypes=512, MaxThreats=128, MaxCrates=256, MaxCrateResults=16;
 enum Command { None, Repair, CombatSelection, EmptyTransports, DamagedSelection, IdleHarvester, IdleEngineer, IdleTransport, ClearBeacons, RevealMap, OpenTech, SelectSuper, Produce, SelectIron, SelectChrono, AutoBoard, SelectType, SmartUnload, CancelAdvanced, SelectVariant, ProduceReserved, AirPathMove };
@@ -56,6 +56,7 @@ struct Snapshot {
  uint32_t queuedEvents,observedEvents,commandRejected,receiptCancelled,receiptExpired,receiptDropped;
  uint32_t receiptWrite,receiptCount;TaskReceiptSummary recentReceipts[RecentReceiptCapacity];
  uint32_t entryThread=0,entryCalls=0,entryReentrant=0,entryContended=0,entryWrongThread=0;
+ int renderRevealStatus=0; // 1=render-only test installed; -2=signature/install/restore conflict
  int lastSubmitError=0; // 0=queued; 1=epoch; 2=session; 3=inactive; 4=chat; 5=thread; 6=room; 7/8=ctor; 9=timer
 
 };
@@ -101,6 +102,7 @@ struct Shared {
  uint8_t selectTypes[MaxTypes];
  volatile long oreConfigSeq;oreconfig::Config oreConfig;
  volatile long featureConfigSeq;featuretypes::Config featureConfig;
+ volatile uint32_t renderReveal; // independent default-off visual experiment; never RevealMap
 
 };
 inline int remaining(int start,int duration,int frame){
