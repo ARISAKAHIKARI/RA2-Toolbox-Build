@@ -1,10 +1,10 @@
 {
-  "version": "1.0.4",
+  "version": "1.0.5",
   "baseline": "0.7.16",
   "result": "No detected forbidden source-boundary bypass after fixes; remaining migrations explicitly listed. Not full architecture completion.",
   "scope": {
-    "source_files": 148,
-    "host_reachable_files": 99,
+    "source_files": 149,
+    "host_reachable_files": 100,
     "runtime_reachable_files": 77,
     "method": "Recursive local include graph + forbidden API ownership checks + manual review of game-call, queue, patch and scheduling paths. Lexical assertions cannot prove all runtime behavior."
   },
@@ -183,6 +183,7 @@
     "unit_monitor/source/icon_cache.h",
     "unit_monitor/source/main.cpp",
     "unit_monitor/source/owned_counter.h",
+    "unit_monitor/source/round_state.h",
     "unit_monitor/source/sampler.h",
     "unit_monitor/source/tab_control.h"
   ],
@@ -341,7 +342,7 @@
     "assist/source/auto_settings_ui.h": "4959d3415f7cac773cbce16da1a7b744bc0139e9df01946836a89fae6901cbc4",
     "assist/source/autoload.h": "3724b7bb1f2bd3e0db845ab2f78b3ba30d8933e560b4ee7b831dcb3b077da0c6",
     "assist/source/autoload_bridge.h": "7e00b83f0699788350ded1d34023d52eb667fc9f18752d3ad1e0c7c3e4dde177",
-    "assist/source/bridge.cpp": "a4e5d1dbb736011e338e4d5a23c4e3ac7b6c6dac1413f6ecf14ec6d0616735f0",
+    "assist/source/bridge.cpp": "b0362655d9860270bf3df20ee319b0efc79711a4639c9797cbc760411ec95f83",
     "assist/source/business_effects.h": "a7ee8258b4b23fc4f104bc8eb7472352969632c83206b38f95de8696a7c86215",
     "assist/source/clock_ms.h": "fe005a2dbc48c344da3a26607cdf9b47f207b251fa13ae9c924ad3bac1e4384c",
     "assist/source/command_delivery.h": "9830157a74754c71f040587fe8e3a5ecdd1a0748611b1fa29bb0a58ff62f5b20",
@@ -405,7 +406,7 @@
     "assist/source/scheduler_policy.h": "5d7e66c7457c369c7b636adc9e5b7293ee5f1e5b434a683033233dba0be20687",
     "assist/source/session_epoch.h": "1935c87ea55edd287c53b64472c5de8f617204a924c4ca8602fc247d0a6297d9",
     "assist/source/shift_click_host.h": "25781fa3890bb06cb15dfdb652e5a5687d4094ad5760954d33c57b0a452d4435",
-    "assist/source/sidebar.h": "23d74f544b204423876976e255ff08e967ed0e37eaebeda7bdf6938d369afe21",
+    "assist/source/sidebar.h": "69d5cadd54f5ca30bbeb19813002df2d3ad9c6056ebf3690bd725f2559e853bd",
     "assist/source/sidebar_policy.h": "928e16cbbfd10e9ecf907ca360b1214a7b2eeff93c24a2dddf4fae5226769b36",
     "assist/source/signatures.h": "054757060d10fe067ec81880a8f584c53d6e1537c1fcc2695b267b9e68ecdd93",
     "assist/source/tactical_decisions.h": "dd6dc31d55fb7d20d962570e05182557c69729e0cdd2d61f56af351c4b4977cb",
@@ -452,7 +453,7 @@
     "external_reader/source/enemy_markers.h": "c098590dbd43055c4d8b08c8fb81b5b3a8c698c0ff0ba016c212c46d99b7861a",
     "external_reader/source/game_view.h": "1126b54d2e46701600b213d27c831d9a9516105d28dd35bd63d55ca78e3069f8",
     "external_reader/source/idle_aircraft.h": "00c7154875f815a0c0e1a53677de1eccda108946f526887d7d0c6c2ac9658b78",
-    "external_reader/source/layout_probe.h": "bf65830c2f9dbe30c54245b1b3c411e125b407d0f6564db8f1c89b321d890fff",
+    "external_reader/source/layout_probe.h": "2e46071068ec5b177095ba8a80f11d86d1832c2c2bc7fa6c0e20325ba6edce62",
     "external_reader/source/process_connection.h": "b1ca28c51de85e83f1bbc98b0df0252a0667e0f7485790da854a79fb0591913e",
     "external_reader/source/process_discovery.h": "eb391d5325fd95bbc44a55ff44955b2ba425dc5551dbfc39e0d2c494d936ef42",
     "external_reader/source/process_reader.h": "27dd793f7e5da6927e75f563df1fcf1f5097f6443f3039d47a6381952676e524",
@@ -469,7 +470,7 @@
     "shared/source/host_game_input.h": "a3168180cd4fde7c62c57c9013340f4cacae2aa47f647464a088103887c349e5",
     "shared/source/message_query.h": "fee0a8953fbdf08d70725cfd1f6b0f1c1473e50dc863ba8444365195d884d675",
     "shared/source/modern_ui.h": "26d3443c4a65249aa5721f88a91f46825453fd9c314103340f600822c7fc27e5",
-    "shared/source/release_version.h": "d04f81836ebb02e37c51bbbbc3417003ed9fb0af5090da1d369dc51380ad1fc9",
+    "shared/source/release_version.h": "cd62325e69b2bd9cab8d759a88bcdac66c3c0a9dbb27cd0da66ad0759e7fd03a",
     "shared/source/runtime_fault.h": "b4ddf16db57b0cfc1b022b286af5a5df3034f75d892abb27df8d0dcca0653818",
     "shared/source/runtime_protocol.h": "37bd2cfe521a9044599cad037da595af54240c3c81e519d8f28651774ada6053",
     "suite/source/main.cpp": "b7350fada784d59215a51822b6e68dbd68a257d4e44dc7f5314010061c07db29",
@@ -477,9 +478,10 @@
     "unit_monitor/source/cameo_reader.h": "47493e3792d60df5d267677f371ae6c372693ad3e052b3ea26058d7de346dbed",
     "unit_monitor/source/core.h": "adbcc60acc8ddd5dfb95405d63a801dc0a91cf4e9ffa68691b15b6ee3a6b8ed2",
     "unit_monitor/source/icon_cache.h": "fcfa3ab64782019c21125dccca7ed75ded97acc9ac2bc507468f72e0863ced63",
-    "unit_monitor/source/main.cpp": "3f79ca999ebaee858b7ba5d33a85881e930c8efd60b1c29f4976d5cb16325300",
+    "unit_monitor/source/main.cpp": "a4eb11f2b500be89f84b0efd4204ad5adf51359d1077133141ae525b30e9d9ec",
     "unit_monitor/source/owned_counter.h": "3dba2eb0c6d4bd3cb5cfc3354d5c5e7805b44468a73546f076114ef30d2892ac",
-    "unit_monitor/source/sampler.h": "cacf7c87a186af5c66013860603d74a0771ca293063c113cf0d6c97a49210a8c",
+    "unit_monitor/source/round_state.h": "cfab6d3a200ec1ec76a8f09ad9ef49b81d7cab5f115b0d024e065be48ccc0cc2",
+    "unit_monitor/source/sampler.h": "7ca600fafdb7aa15e64ff8f9889eb0fb59aee72f3cda0e89b017f344d68ac989",
     "unit_monitor/source/tab_control.h": "5613545c799e1d0212ed5ca88adedd70269fc4f2de89d087a423a1d571aa1f87"
   }
 }

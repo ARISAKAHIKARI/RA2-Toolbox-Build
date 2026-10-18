@@ -1,12 +1,12 @@
 {
-  "name": "RA2 Toolbox 1.0.2 Full",
-  "version": "1.0.2",
+  "name": "RA2 Toolbox 1.0.5 Full",
+  "version": "1.0.5",
   "compiled_game_binary_included": false,
-  "source": "1.0.1 base; fix obsolete-hook Shift5 settings dependency and polling cadence; optional all matching tactical keyboard/mouse actions via existing queues and anchored input batch; enemy labels omit player prefix",
+  "source": "1.0.4 base; external unit-monitor round identity, fresh bookends and live/UI state invalidation; no Runtime execution changes",
   "resources": "Complete assets/profiles/Python preprocessing runtime/engine included",
   "resources_legacy_reuse": true,
-  "build_protocol": 42,
-  "validation": "60 native portable tests, 26 source/UI checks, 2 mocked read paths, and 880 current x86 DLL model cases; no real Windows/game/netplay/FPS certification",
+  "build_protocol": 44,
+  "validation": "14 actual sampler regressions with ASan/UBSan; PE32 ABI/dependencies/version and source-boundary checks; no real Windows/game/netplay test",
   "build_requirement": "Zig 0.13.0, x86 Windows target; build EXE and GameRuntime.dll together",
   "settings": {
     "Orders.MegaMissionBackend": "0=constructor; 1=high-level MP; SP uses constructor/DoList centrally",
@@ -16,11 +16,11 @@
   "entry_manager_api": 3,
   "package_type": "Full compiled Windows x86 tools and x64 preprocessing runtime",
   "runtime_transport_protocol": 3,
-  "game_code_patching": "Forbidden, including manager Patch requests",
+  "game_code_patching": "Only three explicitly opted-in judgment sites introduced in 1.0.4, owned by central GameRuntime manager",
   "input_entry": "Manager WH_GETMESSAGE / WH_CALLWNDPROCRET only; features have no independent hooks",
   "disabled_features": [
     "Technology unlock",
-    "Build anywhere",
+    "Smart unload",
     "Enemy sale"
   ],
   "symbolic_original_interfaces": [
@@ -36,6 +36,6 @@
     "RA2Toolbox.exe": "16a91bc35a95b9a72635244786a5be1202c0bafc9d6cd323ceba585045eab9d5",
     "UnitMonitorBridge.dll": "d5eda2861e724f4b6a38f18b2153f8ce14a8ff689ace35573ca469a5563590a1"
   },
-  "release_status": "1.0.2 Full; immediate apply/autosave, default-off all matching hotkeys, paired Assist protocol 42",
+  "release_status": "1.0.5; external unit statistics fix; Assist protocol 44 unchanged",
   "technology_experiment": "Withdrawn, not shipped. Production continuity unresolved; technology remains disabled."
 }

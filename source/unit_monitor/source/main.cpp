@@ -60,7 +60,7 @@ static void pollTab(){
  if(down!=previous){previous=down;if(tabs.event(down,tabEligible(),modified,false,GetTickCount())){if(down){hidden=false;manualVisible=false;}renderDirty=true;}}
 }
 static bool changed(const um::Snapshot& a,const um::Snapshot& b){
- return a.status!=b.status||a.typeCount!=b.typeCount||a.playerCount!=b.playerCount||a.paletteReady!=b.paletteReady||
+ return a.match!=b.match||a.status!=b.status||a.typeCount!=b.typeCount||a.playerCount!=b.playerCount||a.paletteReady!=b.paletteReady||
   memcmp(a.palette,b.palette,sizeof a.palette)||memcmp(a.types,b.types,sizeof(um::Type)*a.typeCount)||memcmp(a.players,b.players,sizeof(um::Player)*a.playerCount);
 }
 static void log(const wchar_t* msg){if(logfile){fwprintf(logfile,L"[%lu] %ls\n",GetTickCount(),msg);fflush(logfile);}}
@@ -75,7 +75,7 @@ static void toggleOverlay(){tabui::toggleDisplay(!tabEnabled,tabs.visible(),hidd
 static void detach(){
  statsVisible(false);
  sampler.reset();reader.close();
- game=nullptr;pid=0;threadId=0;lastGood=0;oldMatch=0;gameActive=false;tabs.reset();fade.hide();renderDirty=true;paintedAlpha=-1;memset(snap.get(),0,sizeof(*snap));ShowWindow(overlay,SW_HIDE);
+ game=nullptr;pid=0;threadId=0;lastGood=0;oldMatch=0;page=0;gameActive=false;tabs.reset();fade.hide();renderDirty=true;paintedAlpha=-1;surface.clear();memset(snap.get(),0,sizeof(*snap));memset(incoming.get(),0,sizeof(*incoming));ShowWindow(overlay,SW_HIDE);
 }
 static bool attach(){
  auto scan=external::discovery::scan();
@@ -208,7 +208,13 @@ static void tick(){
    if(sampler){reader.begin();*incoming=sampler->sample(now,true);
      if(incoming->typeCount>=0&&incoming->typeCount<=um::MaxTypes&&incoming->playerCount>=0&&incoming->playerCount<=um::MaxPlayers){
       renderDirty=renderDirty||changed(*snap,*incoming);std::swap(snap,incoming);if(snap->status==1&&now-snap->tick<2000)lastGood=now;
-      if(snap->status==1&&oldMatch!=snap->match){oldMatch=snap->match;tabs.reset();hidden=false;manualVisible=false;fade.hide();paintedAlpha=-1;}
+      if(snap->status!=1||oldMatch!=snap->match){
+       if(snap->status==1){oldMatch=snap->match;hidden=false;manualVisible=false;
+        log((L"单位统计采样代次 "+std::to_wstring(oldMatch)+L"，重建玩家列表与画面").c_str());}
+       else lastGood=0;
+       page=0;tabs.reset();fade.hide();paintedAlpha=-1;renderDirty=true;surface.clear();
+       statsVisible(false);ShowWindow(overlay,SW_HIDE);
+      }
      }
     if(snap->status<0)setStatus(L"此 EXE 的数据布局不受支持，已停止采集");
     else if(snap->status==0){

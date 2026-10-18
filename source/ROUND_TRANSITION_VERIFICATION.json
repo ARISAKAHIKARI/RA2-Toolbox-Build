@@ -1,0 +1,15 @@
+{
+  "version": "1.0.5",
+  "sampler_regressions": 14,
+  "sampler_regressions_passed": true,
+  "asan": true,
+  "ubsan": true,
+  "leak_sanitizer": false,
+  "leak_sanitizer_note": "Container /proc task enumeration unavailable; leak checking disabled",
+  "runtime_executable_sections_identical_to_1_0_4": true,
+  "executable_sections": {
+    ".text": "82c341561fac7195f2b1945cd91913ebfb0987385373f34aca3cb65a51f2891a"
+  },
+  "windows_game_tested": false,
+  "real_multiplayer_tested": false
+}

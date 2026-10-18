@@ -682,7 +682,7 @@ static void command(uint32_t house,DWORD now){uint32_t req=sh->request;if(req==s
   else {call<void>(0x577D90,0x87F7E8,(void*)house);n=1;}
  }
  else if(c==OpenTech){
-  // Only local sidebars are changed; production still uses a native event.
+  // Full-tech unlock remains disabled; refreshTech reports -20 without patches.
   {snap.techOpen=arg!=0;memcpy(techAllowed,sh->techAllowed,sizeof techAllowed);snap.techError=0;if(snap.techOpen)refreshTech(house,now);else restoreTech();n=snap.techVisible;if(snap.techError<0)result=snap.techError;}}
  else if(c==SelectSuper){result=superSelect(house,arg);n=result>0;}
  else if(c==SelectIron||c==SelectChrono){result=namedSuper(house,c);n=result>0;}

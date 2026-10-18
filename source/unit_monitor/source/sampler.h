@@ -3,6 +3,7 @@
 #include "icon_cache.h"
 #include "cameo_reader.h"
 #include "owned_counter.h"
+#include "round_state.h"
 #include "../../external_reader/source/layout_probe.h"
 
 // Layout: YR 1.001 / YRpp; audited against supplied gamemd-spawn(1).exe.
@@ -18,7 +19,10 @@ struct PtrList {
 inline bool sameAscii(const char* a,const char* b){for(;*a&&*b;a++,b++){char x=*a,y=*b;if(x>='A'&&x<='Z')x+=32;if(y>='A'&&y<='Z')y+=32;if(x!=y)return false;}return *a==*b;}
 
 template<class Read,class Resolve> class Sampler {
- Read read; Resolve resolve; IconCache* cache=nullptr; Snapshot state{};external::layout::Result probe_{}; uint32_t localPrev=0; int iconCursor=0; uint32_t ticks=0,matchSerial=0; int framePrev=-1; bool prevBuildings=true; uint8_t iconBuffer[32+256*1024]{}; int ownedBuffer[4096]{};
+ Read read; Resolve resolve; IconCache* cache=nullptr; Snapshot state{};external::layout::Result probe_{}; roundstate::Stamp previous{}; bool haveRound=false; int iconCursor=0; uint32_t ticks=0,matchSerial=0; bool prevBuildings=true; uint8_t iconBuffer[32+256*1024]{}; int ownedBuffer[4096]{};
+ const Snapshot& invalidate(uint32_t tick){
+  memset(&state,0,sizeof state);state.tick=tick;state.match=matchSerial;haveRound=false;iconCursor=0;return state;
+ }
  template<class T>T get(uint32_t a,T def={}) {T v{};return read(a,&v,sizeof(v))?v:def;}
  bool bytes(uint32_t a,void* p,size_t n){return read(a,p,n);}
  PtrList vec(uint32_t a,int limit=4096) {
@@ -29,8 +33,8 @@ template<class Read,class Resolve> class Sampler {
  int find(uint32_t p){for(int i=0;i<state.typeCount;i++)if(state.types[i].ptr==p)return i;return -1;}
  bool loadIcon(Type&t){return readCameo(read,resolve,t,iconBuffer,sizeof iconBuffer);}
  void palette(){state.paletteReady=0;readCameoPalette(read,state);}
- void types(bool buildings) {
-  if(cache)cache->rescope();
+ void types(bool buildings,bool newRound) {
+  if(cache&&newRound)cache->rescope();
   uint32_t arrays[]={0xA8E348,0xA83CE0,0xA8B218,0xA83C68};
   state.typeCount=0;state.truncated=0;iconCursor=0;
   for(int c=0;c<(buildings?4:3);c++){
@@ -63,34 +67,34 @@ template<class Read,class Resolve> class Sampler {
 public:
  Sampler(Read r,Resolve s,IconCache* c=nullptr):read(r),resolve(s),cache(c){}
  external::layout::Result probe()const{return probe_;}
- void reset(){probe_={};localPrev=0;framePrev=-1;}
+ void reset(){probe_={};invalidate(0);}
  const Snapshot& sample(uint32_t tick,bool buildings){
+  roundstate::Stamp start{},end{};
+  if(!roundstate::capture(read,start,probe_))return invalidate(tick);
+  const bool newRound=!haveRound||!start.follows(previous);
+  if(newRound){memset(&state,0,sizeof state);if(++matchSerial==0)++matchSerial;}
   state.tick=tick;state.readErrors=0;state.playerCount=0;state.status=1;
-  probe_=external::layout::inspect(read);
-  if(probe_.stage!=external::layout::Stage::Ready){localPrev=0;state.status=0;return state;}
-  uint32_t local=get<uint32_t>(0xA83D4C),observer=get<uint32_t>(0xAC1198);
-  int frame=get<int>(0xA8ED84);
-  if(local!=localPrev||frame<framePrev)++matchSerial;
-  state.match=matchSerial;state.frame=frame;state.chatActive=get<uint8_t>(0xA8BC60+25)!=0;
-  if(local!=localPrev||frame<framePrev||prevBuildings!=buildings||!state.typeCount){types(buildings);localPrev=local;prevBuildings=buildings;}
-  framePrev=frame;palette();
+  uint32_t local=start.local,observer=get<uint32_t>(0xAC1198);
+  state.match=matchSerial;state.frame=start.frame;state.chatActive=get<uint8_t>(0xA8BC60+25)!=0;
+  if(newRound||prevBuildings!=buildings||!state.typeCount){types(buildings,newRound);prevBuildings=buildings;}
+  palette();
   // All lobby nodes, not just the single local Observer pointer: multiplayer supports multiple spectators.
   PtrList spectators;
   for(uint32_t node:vec(0xA8DA74,32))if(get<int>(node+0x6B)==-1)spectators.push_back(get<int>(node+0x6F,-1));
-  auto houses=vec(0xA80228,32);
-  if(std::find(houses.begin(),houses.end(),local)==houses.end()){
-   probe_={external::layout::Stage::MissingLocalHouseInList,0xA80228,local};
-   state.status=0;return state;
-  }
+  PtrList houses;for(int i=0;i<start.count;++i)houses.push_back(start.houses[i].ptr);
   for(size_t k=0;k<houses.size();k++)if(houses[k]==local){for(size_t j=k;j>0;j--)houses[j]=houses[j-1];houses[0]=local;break;}
   for(uint32_t h:houses){
-   int idx=get<int>(h+48,-1);uint32_t ht=get<uint32_t>(h+52);
+   const roundstate::House* identity=nullptr;for(int i=0;i<start.count;++i)if(start.houses[i].ptr==h)identity=&start.houses[i];
+   int idx=identity->index;uint32_t ht=identity->type;
    bool spec=h==observer||std::find(spectators.begin(),spectators.end(),idx)!=spectators.end();
-   if(!eligible(get<uint8_t>(h+493)||get<uint8_t>(h+492),get<uint8_t>(h+501),get<uint8_t>(h+502),get<uint8_t>(h+504),spec,get<uint8_t>(ht+0x1A6)))continue;
+   uint8_t flags[13]{},passive=0;
+   // Failed status reads must not turn defeated/loser flags into false.
+   if(!bytes(h+492,flags,sizeof flags)||!bytes(ht+0x1A6,&passive,1)){state.readErrors++;continue;}
+   if(!eligible(flags[1]||flags[0],flags[9],flags[10],flags[12],spec,passive))continue;
    if(state.playerCount>=MaxPlayers){state.truncated++;break;}
    Player& player=state.players[state.playerCount++];player={};player.ptr=h;player.houseIndex=idx;player.local=h==local;
    uint8_t rgb[3]={};bytes(h+22265,rgb,3);player.color=0xFF000000|(rgb[0]<<16)|(rgb[1]<<8)|rgb[2];
-   bytes(h+90154,player.name,40);player.name[20]=0;
+   memcpy(player.name,identity->name,40);player.name[20]=0;
    owned(player,h);
   }
   // Factories are distinct from structures, so multiple primary factories cannot double count a shared queue.
@@ -120,7 +124,11 @@ public:
    if(used){bool missing=!t.iconReady;if(missing)state.missingIcons++;if(budget>0&&(!t.iconRetry||int32_t(tick-t.iconRetry)>=0)){t.iconRetry=tick+500;if(loadIcon(t)){budget--;if(missing)state.missingIcons--;if(cache)t.iconCached=cache->remember(t,state);}}}
   }
   if(state.typeCount)iconCursor=(iconCursor+4)%state.typeCount;
-  ticks++;return state;
+  if(!roundstate::capture(read,end,probe_))return invalidate(tick);
+  if(!end.follows(start)){
+   probe_={external::layout::Stage::UnstableSnapshot,0xA80228,0};return invalidate(tick);
+  }
+  previous=end;haveRound=true;ticks++;return state;
  }
 };
 }

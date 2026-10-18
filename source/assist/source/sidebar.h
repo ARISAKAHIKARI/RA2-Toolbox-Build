@@ -1,7 +1,6 @@
-// Native sidebar support, entirely owned by GameRuntime's entry/patch manager.
-// Only the two LOCAL sidebar callers use the configured eligibility policy.
-// The shared House::CanBuild implementation, rules, received events and native
-// cleanup/cancellation code remain original. No repeated fake production.
+// Native sidebar helpers. Full-tech unlock is currently disabled: refreshTech
+// reports -20 and does not patch eligibility, prerequisites or cancellation.
+// The helpers below are also used by ordinary production and cameo feedback.
 static constexpr uint32_t Sidebar=0x87F7E8, Tabs=Sidebar+0x1544;
 #include "sidebar_policy.h"
 static bool techPending;
