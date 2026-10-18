@@ -44,6 +44,7 @@ static void servicePointer(){
  gameinput::PointerPress e{};DWORD dropped=0;
  if(!gameinput::takePointer(hook,e,dropped)){if(dropped)notify(L"输入过密，部分增强请求未接收。");return;}
  if(!inputReady||e.serial!=box.cancelSerial||e.match!=commandMatch())return;
+ if(buildreserve::nativePointer(e)){leftCaptured=false;return;}
  airway::manual(e);
  // Native Z planning owns the original click; do not append another feature.
  if(extra.nativeAirWaypoints&&e.keys['Z']&&airway::selectedAircraft()){leftCaptured=false;return;}

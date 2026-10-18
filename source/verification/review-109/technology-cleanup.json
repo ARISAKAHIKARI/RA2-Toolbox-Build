@@ -1,0 +1,84 @@
+{
+  "inputs": {
+    "game": "c287d62a4d6a25b547e9339d071dd6e03adcf545699062e478aaeee38c60e89a",
+    "GameRuntime.dll": "af99f542abf8cbe61818c4514d469e2c51c5c06cf953b68be2d77863754dfff2"
+  },
+  "scope": "Reproduce original sidebar cleanup. No DLL correctness claim.\nActual EXE cleanup loop/constructors; synthetic types, CanBuild, factory queries.\nProves cancellation is generated before removal, not full economy simulation.\n",
+  "results": [
+    {
+      "name": "active_and_queued",
+      "status": "PASS",
+      "native_cancellation_events": [
+        {
+          "kind": 16,
+          "house": 0,
+          "type": [
+            40,
+            0,
+            0
+          ]
+        },
+        {
+          "kind": 46,
+          "house": 0,
+          "type": [
+            40,
+            0,
+            0
+          ]
+        }
+      ],
+      "cameos_remaining": 0
+    },
+    {
+      "name": "active_only",
+      "status": "PASS",
+      "native_cancellation_events": [
+        {
+          "kind": 16,
+          "house": 0,
+          "type": [
+            40,
+            0,
+            0
+          ]
+        }
+      ],
+      "cameos_remaining": 0
+    },
+    {
+      "name": "queued_without_icon_link",
+      "status": "PASS",
+      "native_cancellation_events": [
+        {
+          "kind": 46,
+          "house": 0,
+          "type": [
+            40,
+            0,
+            0
+          ]
+        }
+      ],
+      "cameos_remaining": 0
+    },
+    {
+      "name": "idle_removed",
+      "status": "PASS",
+      "native_cancellation_events": [],
+      "cameos_remaining": 0
+    },
+    {
+      "name": "legal_retained",
+      "status": "PASS",
+      "native_cancellation_events": [],
+      "cameos_remaining": 1
+    },
+    {
+      "name": "external_only_no_cameo",
+      "status": "PASS",
+      "native_cancellation_events": [],
+      "cameos_remaining": 0
+    }
+  ]
+}

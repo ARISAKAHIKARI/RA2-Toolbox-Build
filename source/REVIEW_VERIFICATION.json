@@ -1,55 +1,23 @@
 {
-  "version": "1.0.8",
-  "file_version": "1.0.8.0",
+  "version": "1.0.9",
+  "file_version": "1.0.9.0",
   "assist_protocol": 45,
-  "exe_sha256": "dddee3d8e683f7a583cde0f26b9627b3eb134a10350f6a3c88fc2c6ca2c7eaab",
-  "dll_sha256": "5ab0ed1eacd0cadc1739d4f544e556f1957ae459262358f4f05d4474a4450fe7",
+  "exe_sha256": "f731dd6d0957e5e8688d59e83ffa436907b14f9be14229ec2a1aa9b85c1c3d68",
+  "dll_sha256": "af99f542abf8cbe61818c4514d469e2c51c5c06cf953b68be2d77863754dfff2",
   "runtime_cases": 36,
-  "runtime_scope": "compiled x86 DLL + original Produce constructor; synthetic world; mocked CanBuild answers",
-  "host_test": "actual construction catalogue, reserve/result/service functions; Win32 presentation stubs; ASan+UBSan (leak detector disabled due container ptrace)",
-  "shape_test": "actual SHP sampler/cache; synthetic raw/row/RLE and reference frames, recolor/transparency; ASan+UBSan",
-  "resolution_cases": [
-    [
-      2560,
-      1440,
-      3840,
-      2160
-    ],
-    [
-      2560,
-      1440,
-      2560,
-      1440
-    ],
-    [
-      1920,
-      1080,
-      3840,
-      2160
-    ],
-    [
-      1280,
-      720,
-      1920,
-      1080
-    ],
-    [
-      1920,
-      1080,
-      2560,
-      1440
-    ],
-    [
-      640,
-      480,
-      640,
-      480
-    ]
-  ],
-  "ui_controls": 212,
-  "ui_viewports": 12,
-  "ui_reachability_checks": 2448,
-  "architecture": "151 source files;102 host includes;77 Runtime includes; no added patch locations/ingress",
-  "real_windows_game_or_lbw_or_netplay": false,
-  "result": "PASS within modeled scope"
+  "native_cleanup_cases": 6,
+  "native_branch_probes": 4,
+  "runtime_scope": "actual compiled DLL / original Produce constructor, synthetic world and mocked CanBuild; branch probes are not gameplay",
+  "host_test": "actual host queue/catalogue/service/native click/badges under ASan/UBSan, Win32 drawing stubbed",
+  "ui_geometry": {
+    "controls": 212,
+    "viewports": 12,
+    "reachability_checks": 2448
+  },
+  "real_windows_game": false,
+  "lbw": false,
+  "real_netplay": false,
+  "pixel_rendering": false,
+  "technology_unlocked": false,
+  "ordinary_infantry_c4": false
 }

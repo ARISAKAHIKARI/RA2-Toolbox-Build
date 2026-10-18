@@ -1,0 +1,41 @@
+{
+  "scope": "Original EXE branch probes with synthetic objects; not gameplay/netplay or planning exploit reproduction.",
+  "results": [
+    {
+      "case": "native_sabotage_gate",
+      "C4": 0,
+      "branch": "0x51a7f4",
+      "status": "PASS"
+    },
+    {
+      "case": "native_sabotage_gate",
+      "C4": 1,
+      "branch": "0x51a4e6",
+      "status": "PASS"
+    },
+    {
+      "case": "native_FindFactory_same_arguments_as_BeginProduction",
+      "full_prereq_result": 0,
+      "limit_result": 0,
+      "buildLimitOnly_args": [
+        [
+          1,
+          1
+        ]
+      ],
+      "status": "PASS"
+    },
+    {
+      "case": "native_FindFactory_same_arguments_as_BeginProduction",
+      "full_prereq_result": 0,
+      "limit_result": 1,
+      "buildLimitOnly_args": [
+        [
+          1,
+          1
+        ]
+      ],
+      "status": "PASS"
+    }
+  ]
+}

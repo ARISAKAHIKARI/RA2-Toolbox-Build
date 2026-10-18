@@ -10,6 +10,7 @@ a=source.index('static RECT rect(');b=source.index('static void service()',a)
 source=source[:a]+'static int proc=0;\n'+source[b:]
 prefix=r'''
 #include "construction_catalog.h"
+#include "native_cameos.h"
 #include "command_delivery.h"
 #include <cassert>
 #include <iostream>
@@ -18,6 +19,7 @@ prefix=r'''
 using namespace assist;
 using DWORD=uint32_t;using HWND=void*;using HFONT=void*;using LRESULT=long;
 struct RECT{long left=0,top=0,right=0,bottom=0;};struct POINT{long x=0,y=0;};
+namespace gameinput{struct PointerPress {uint32_t tick=0,serial=0,match=0;int operation=0;POINT point{};int width=0,height=0;};}
 struct WNDCLASSW{void*hInstance;int lpfnWndProc;const wchar_t*lpszClassName;void*hCursor;};
 constexpr int SW_HIDE=0,FALSE=0,FW_NORMAL=0,DEFAULT_CHARSET=0,OUT_DEFAULT_PRECIS=0,CLIP_DEFAULT_PRECIS=0,CLEARTYPE_QUALITY=0,DEFAULT_PITCH=0,IDC_HAND=0,WS_EX_TOOLWINDOW=0,WS_EX_NOACTIVATE=0,WS_EX_TOPMOST=0,WS_POPUP=0,SWP_NOACTIVATE=0,SWP_SHOWWINDOW=0;
 static void*HWND_TOPMOST=nullptr;static HWND game=(void*)2;static uint32_t now=1000,pid=1,match=1;static int clientWidth=3840,clientHeight=2160;
@@ -57,24 +59,53 @@ static void tick(int ms=110){now+=ms;buildreserve::service();}
 static void place(){byte(P+0x81,0);byte(P+0x90,1);w(F+0x58,0);w(0x87F7E8+0x1544+84,3);for(int i=0;i<3;++i){w(0x87F7E8+0x1544+88+i*52,i);w(0x87F7E8+0x1544+92+i*52,7);}tick();}
 int main(){
  using namespace buildreserve;
- setup();assert(choice(0)>=0&&choice(1)>=0&&choice(2)<0);assert(choices[choice(1)].future);assert(layout.width()==216&&layout.x(60)==90&&layout.y(48)==72);
- reserve(choice(1));assert(choice(2)>=0);reserve(choice(2));reserve(choice(1));reserve(choice(0));reserve(choice(0));assert(books[0].items==std::vector<int>({1,2,1,0,0}));reserve(choice(0));assert(books[0].items.size()==5);
+ setup();assert(choice(0)<0&&choice(1)>=0&&choice(2)<0);assert(choices[choice(1)].future);assert(layout.width()==216&&layout.x(60)==90&&layout.y(48)==72);
+ reserve(choice(1));assert(choice(2)>=0);reserve(choice(2));reserve(choice(1));reserveChoice({0,0,0,T,false},true);reserve(choice(0));assert(books[0].items==std::vector<int>({1,2,1,0,0}));reserve(choice(0));assert(books[0].items.size()==5);
  removeFrom(3);assert(books[0].items.size()==3);removeFrom(1);assert(books[0].items==std::vector<int>({1}));removeFrom(0);assert(books[0].items.empty());
- reserve(choice(1));w(P+0x6C,0);tick();assert(books[0].items.empty()&&commandQueue.size==0);
+ reserve(choice(1));w(P+0x6C,0);byte(P+0x74,0);for(int i=0;i<20;++i)tick();assert(books[0].items==std::vector<int>({1})&&commandQueue.size==0);w(F+0x58,0);tick();tick(300);assert(books[0].items.empty());
  setup();reserve(choice(1));w(F+0x58,0);tick();assert(!books[0].items.empty());tick(300);assert(books[0].items.empty());
  setup();reserve(choice(1));reserve(choice(2));place();assert(books[0].stage==1&&commandQueue.size==1);auto token=books[0].token;result(1,1,100,token+1);assert(books[0].stage==1);result(1,1,100,token);assert(books[0].stage==2);commandQueue.clear();
  uint32_t p2=P+0x3000;w(p2+0x10,101);w(p2+0x21C,H);w(p2+0x6C,100);byte(p2+0x74,1);byte(p2+0x81,1);w(p2+0x520,T+0x2000);w(F+0x58,p2);tick();assert(books[0].items==std::vector<int>({2})&&books[0].id==101&&books[0].stage==0);result(1,1,100,token);assert(books[0].stage==0);
- w(p2+0x6C,0);tick();assert(books[0].items.empty());
+ w(p2+0x6C,0);w(F+0x58,0);tick();tick(300);assert(books[0].items.empty());
  setup();reserve(choice(1));place();assert(commandQueue.size==1);extra.constructionQueue=false;tick();assert(commandQueue.size==0&&books[0].items.empty());
  setup();reserve(choice(1));place();++match;tick();assert(commandQueue.size==0&&books[0].items.empty());
- setup();reserve(choice(1));place();token=books[0].token;result(-9,0,100,token);commandQueue.clear();tick(300);assert(books[0].stage==1&&books[0].attempts==2);result(-6,0,100,token);commandQueue.clear();tick(300);result(-6,0,100,token);assert(books[0].items.empty());
+ setup();reserve(choice(1));place();token=books[0].token;result(-9,0,100,token);commandQueue.clear();tick(1100);assert(books[0].stage==1&&books[0].attempts==2);result(-6,0,100,token);commandQueue.clear();tick(300);result(-6,0,100,token);assert(books[0].items.empty());
+ setup();reserve(choice(1));place();token=books[0].token;
+ for(int i=0;i<12;++i){result(-9,0,100,token);commandQueue.clear();tick(1100);assert(books[0].items==std::vector<int>({1})&&geometryReady&&choice(1)>=0);}
+ setup();reserve(choice(1));externalReader.fail=P+0x74;for(int i=0;i<10;++i)tick();assert(books[0].items==std::vector<int>({1})&&commandQueue.size==0);externalReader.fail=0;
  setup();focused=false;reserve(choice(1));assert(books[0].items.empty());focused=true;queueAccept=false;reserve(choice(1));place();assert(!books[0].stage&&commandQueue.size==0);
- setup();externalReader.fail=T+0x2000+0x638+16;refreshChoices();assert(choice(1)<0&&choice(0)>=0);externalReader.fail=0;
+ setup();externalReader.fail=T+0x2000+0x638+16;refreshChoices();assert(choice(1)<0&&choice(0)<0);externalReader.fail=0;
  // Native -1 sentinels, spawned country parent and stolen tech offsets.
  setup();w(T+0x2000+0xDA4,1);refreshChoices();assert(choice(1)<0);w(T+0x2000+0xDA4,-1);w(C+0xB8,4);refreshChoices();assert(choice(1)>=0);
  byte(T+0x2000+0xD9B,1);refreshChoices();assert(choice(1)<0);byte(H+0x2BC,1);refreshChoices();assert(choice(1)>=0);
  memcpy(externalReader.bytes.data()+C+0x98,"Americans",10);memcpy(externalReader.bytes.data()+C+0x24,"Americans",10);list(0xA83C98,{C});refreshChoices();assert(choice(1)>=0);
  construction::Layout l;for(auto sizes:std::vector<std::vector<int>>{{2560,1440,3840,2160},{2560,1440,2560,1440},{1920,1080,3840,2160},{1280,720,1920,1080},{1920,1080,2560,1440},{640,480,640,480}}){assert(l.set(sizes[0],sizes[1],sizes[2],sizes[3]));assert(l.left()+l.width()<=sizes[2]);assert(l.top()+l.height()<=sizes[3]);for(int i=0;i<5;++i)assert(l.queueAt(l.x(10),l.y(24+i*18+9))==i);for(int i=0;i<l.rows*2;++i)assert(l.choiceAt(l.x((i%2)*72+36),l.y(116+(i/2)*66+33),0,50)==i);assert(l.choiceAt(l.width(),l.y(120),0,50)==-1);}
+
+ // Actual native sidebar capture: real SelectClass positions, scroll mapping,
+ // click down/up ownership, no duplicate first production or placement click.
+ auto nativeSetup=[&](){setup();uint32_t strip=0x87F7E8+0x1544;
+  byte(strip+0x1C,1);w(strip+0x38,0);w(0x886F94,0);w(0x886F9C,1440);w(0xB0B4F8,220);w(0xA8B230,0x530000);
+  for(int i=0;i<60;++i){uint32_t g=0xB07E80+i*56;w(g+0xC,2400+i%2*64);w(g+0x10,221+i/2*50);w(g+0x14,60);w(g+0x18,48);}
+  w(F+0x24,10);};
+ auto press=[&](int op,int x=2420,int y=240){gameinput::PointerPress e;e.tick=now;e.match=match;e.serial=42;e.operation=op;e.width=clientWidth;e.height=clientHeight;e.point={x*3/2,y*3/2};return nativePointer(e);};
+ nativeSetup();assert(press(7));assert(books[0].items.empty());assert(press(6));assert(books[0].items==std::vector<int>({0}));assert(choice(0)>=0);assert(!press(5));
+ auto badges=nativeBadges();assert(badges.size()==1&&badges[0].x==2400&&badges[0].y==253&&badges[0].positions==1);
+ press(7);press(6);assert(books[0].items==std::vector<int>({0,0}));assert(nativeBadges()[0].positions==3);
+ nativeSetup();current[0]=0;press(7);press(6);assert(books[0].items.empty()); // First native order
+ nativeSetup();w(F+0x24,54);press(7);press(6);assert(books[0].items.empty()); // Placement
+ nativeSetup();press(7);w(F+0x24,54);press(6);assert(books[0].items.empty());
+ nativeSetup();press(7);press(6,2430);assert(books[0].items.empty()); // drag
+ nativeSetup();press(7);++match;press(6);assert(books[0].items.empty());
+ nativeSetup();press(7);w(P+0x10,999);press(6);assert(books[0].items.empty());
+ nativeSetup();press(7);w(0x87F7E8+0x1544+0x44,1);press(6);assert(books[0].items.empty());
+ nativeSetup();press(7);focused=false;press(6);assert(books[0].items.empty());
+ nativeSetup();press(7);now+=1600;press(6);assert(books[0].items.empty());
+ nativeSetup();press(7);byte(0x87F7E8+0x1544+0x3F,1);press(6);assert(books[0].items.empty());
+ nativeSetup();press(7);externalReader.fail=0xB07E80;press(6);assert(books[0].items.empty());externalReader.fail=0;
+ nativeSetup();w(0x87F7E8+0x1544+84,3);w(0x87F7E8+0x1544+88+2*52,2);w(0x87F7E8+0x1544+92+2*52,7);w(0x87F7E8+0x1544+0x44,1);
+ assert(readNative()&&nativeFrame.cells.size()==1&&nativeFrame.cells[0].index==2);press(7);press(6);assert(books[0].items==std::vector<int>({2}));
+ std::cout<<"PASS: native sidebar capture/badges/scroll/duplicates/first click/placement/drag/round/object/focus/timeout/scroll animation/read failures\n";
+
  assert(!l.set(0,0,3840,2160));
  std::cout<<"PASS: actual host service FIFO5/duplicates/future unlock/cancel parent/right cancel/round/token ACK/retry/busy/menu; catalogue sentinels/parent/stolen flags/read failure; six resolution transforms and hit regions\n";
 }
