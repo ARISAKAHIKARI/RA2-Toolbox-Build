@@ -9,8 +9,6 @@ static construction::Book books[2];static std::vector<Choice> choices;static HWN
 static uint32_t current[2],currentID[2],lastPID=0,house,refreshed=0,nextToken=0;
 static int activeTab=-1,scroll=0;static um::IconCache& icons=um::sharedIconCache();static construction::Layout layout;
 static construction::NativeFrame nativeFrame;static uint32_t nativeAt=0;
-struct NativeCapture {bool armed=false;uint32_t match=0,serial=0,source=0,id=0,tick=0;int tab=-1,index=-1,x=0,y=0,width=0,height=0,button=7;};
-static NativeCapture nativeCapture;
 static HFONT panelFont;static int fontHeight=0;static bool geometryReady=false;
 template<class T>static T get(uint32_t at,T fallback={}){T v{};return externalReader.readFresh(at,&v,sizeof v)?v:fallback;}
 static uint32_t factory(int tab){return get<uint32_t>(house+(tab?0x53CC:0x53BC));}
@@ -25,7 +23,7 @@ static bool factoryState(int tab,uint32_t&f,uint32_t&p){
 }
 static void queueLog(int tab,const wchar_t*reason){const auto&b=books[tab];critical(L"Construction queue: "+std::wstring(reason)+L" tab="+std::to_wstring(tab)+L" match="+std::to_wstring(b.match)+L" parent="+std::to_wstring(b.id)+L" stage="+std::to_wstring(b.stage)+L" head="+std::to_wstring(b.head())+L" count="+std::to_wstring(b.items.size()));}
 static bool placed(uint32_t p){return !get<uint8_t>(p+0x81,1)&&get<uint8_t>(p+0x90)&&get<uint8_t>(p+0x74);}
-static void hide(){geometryReady=false;nativeCapture={};nativeFrame={};nativeAt=0;if(window)ShowWindow(window,SW_HIDE);}
+static void hide(){publishReservationPolicy({});geometryReady=false;nativeFrame={};nativeAt=0;if(window)ShowWindow(window,SW_HIDE);}
 static void cancel(int tab){auto&b=books[tab];for(int i=0;i<commandQueue.size;)if(commandQueue.slots[i].command==ProduceReserved&&commandQueue.slots[i].token==b.token)commandQueue.discard(i);else ++i;b={};}
 static void reset(){cancel(0);cancel(1);choices.clear();current[0]=current[1]=currentID[0]=currentID[1]=0;activeTab=-1;refreshed=0;hide();}
 static int typeSlot(int index){for(int i=0;i<snap.typeCount;++i)if(snap.types[i].kind==7&&snap.types[i].index==index)return i;return -1;}
@@ -54,13 +52,19 @@ static void resizePanel(){
  if(!window||!geometryReady)return;POINT origin{};
  if(ClientToScreen(game,&origin))SetWindowPos(window,HWND_TOPMOST,origin.x+layout.left(),origin.y+layout.top(),layout.width(),layout.height(),SWP_NOACTIVATE|SWP_SHOWWINDOW);
 }
+static bool usable();
 static void refreshChoices(){
  collectChoices();layout.content(activeTab>=0&&activeTab<2?int(books[activeTab].items.size()):0,int(choices.size()));
  int maximum=std::max(0,(int(choices.size())+1)/2-layout.rows)*2;scroll=std::clamp(scroll,0,maximum);
- resizePanel();
+ construction::InputPolicy policy{};
+ if(usable()&&activeTab>=0&&activeTab<2&&current[activeTab]&&!books[activeTab].stage){
+  policy={commandMatch(),house,current[activeTab],currentID[activeTab],GetTickCount(),activeTab,uint32_t(construction::Capacity-books[activeTab].items.size())};
+  policy.count=int(books[activeTab].items.size());for(int n=0;n<policy.count;++n)policy.queued[n]=books[activeTab].items[n];
+ }
+ publishReservationPolicy(policy);resizePanel();
 }
 static bool usable(){return extra.constructionQueue&&enabled&&commandFresh(GetTickCount())&&foregroundGame()&&!snap.chat&&snap.renderStatus==1;}
-static void reserveChoice(Choice c,bool fromNative=false){
+static void reserveChoice(Choice c,bool fromNative=false,bool nativeCaptured=false){
  if(!usable()||activeTab<0||activeTab>1||c.tab!=activeTab)return;auto&b=books[activeTab];
  if(b.stage){notify(L"生产请求正在提交，请等原版队列更新后再预定。");return;}
  uint32_t p=product(activeTab),identity=get<uint32_t>(p+0x10);if(!p||p!=current[activeTab]||identity!=currentID[activeTab]||get<uint32_t>(0xA83D4C)!=house)return;
@@ -68,7 +72,7 @@ static void reserveChoice(Choice c,bool fromNative=false){
  refreshChoices();bool valid=fromNative&&nativeCameo(c.index,c.tab)&&typeSlot(c.index)==c.slot;for(const auto&choice:choices)if(choice.index==c.index&&choice.type==c.type)valid=true;if(!valid)return;
  if(!b.add(c.index)){notify(L"本类预定已满（5 项）；右键叠放区取消最上层，Shift＋右键清空。");return;}
  if(b.items.size()==1){b.match=commandMatch();b.house=house;b.source=p;b.id=identity;}
- if(!fromNative)requestReservationSound();
+ if(!fromNative||nativeCaptured)requestReservationSound();
  queueLog(activeTab,fromNative?L"reserved-native-click":L"reserved-extra-panel");
  refreshChoices();if(window)InvalidateRect(window,nullptr,FALSE);notify(L"已加入预定 "+std::to_wstring(b.items.size())+L"："+nameOf(c.index)+L"；放下当前建筑后依次继续生产。");
 }
@@ -78,49 +82,32 @@ static bool readNative(){nativeAt=GetTickCount();return construction::readNative
 // be recalled; retain that head until its product is observed, clear the tail.
 static void removeItem(int tab,int item,bool all=false){
  if(!usable()||tab<0||tab>1)return;auto&b=books[tab];if(b.items.empty()||item<0||item>=int(b.items.size()))return;
- bool locked=false;if(b.stage){locked=true;for(int i=0;i<commandQueue.size;++i)if(commandQueue.slots[i].command==ProduceReserved&&commandQueue.slots[i].token==b.token)locked=false;}
+ const size_t before=b.items.size();bool locked=false;if(b.stage){locked=true;for(int i=0;i<commandQueue.size;++i)if(commandQueue.slots[i].command==ProduceReserved&&commandQueue.slots[i].token==b.token)locked=false;}
  if(all){if(locked)b.items.resize(1);else cancel(tab);}
  else if(item==0&&locked){notify(L"这一项已进入原版提交，待生产确认后可在原生侧栏取消。");return;}
  else if(item==0&&b.stage){for(int i=0;i<commandQueue.size;)if(commandQueue.slots[i].command==ProduceReserved&&commandQueue.slots[i].token==b.token)commandQueue.discard(i);else ++i;b.stage=b.attempts=0;b.token=b.sent=b.retry=0;b.items.erase(b.items.begin());if(b.items.empty())cancel(tab);}
  else{b.items.erase(b.items.begin()+item);if(b.items.empty())cancel(tab);}
+ if(b.items.size()<before)requestReservationSound();
  queueLog(tab,all?L"user-cleared-reservations":L"user-canceled-reservation");refreshChoices();if(window)InvalidateRect(window,nullptr,FALSE);
  notify(all?(locked?L"后续预定已清空；已提交项交由原版生产确认。":L"本类预定已全部取消。"):L"已取消一项预定。");
 }
 static void removeTop(bool all=false){if(activeTab>=0&&activeTab<2)removeItem(activeTab,int(books[activeTab].items.size())-1,all);}
 static bool nativePointer(const gameinput::PointerPress&e){
- if(!usable()||e.match!=commandMatch()||uint32_t(GetTickCount()-e.tick)>100){nativeCapture={};return false;}
- bool rightDown=e.operation==5&&e.keys[VK_RBUTTON];
- if(e.operation!=7&&e.operation!=6&&e.operation!=4&&!rightDown){nativeCapture={};return false;}
- RECT client{};if(!GetClientRect(game,&client)||client.right!=e.width||client.bottom!=e.height){nativeCapture={};return false;}
- if(!readNative()||e.width<1||e.height<1){nativeCapture={};return false;}
+ if(!usable()||e.match!=commandMatch()||uint32_t(GetTickCount()-e.tick)>100)return false;
+ RECT client{};if(!GetClientRect(game,&client)||client.right!=e.width||client.bottom!=e.height||e.width<1||e.height<1||!readNative())return false;
  int x=int(int64_t(e.point.x)*nativeFrame.width/e.width),y=int(int64_t(e.point.y)*nativeFrame.height/e.height);
- int index=nativeFrame.hit(x,y),tab=nativeFrame.tab;bool hit=index>=0;
- if(rightDown){nativeCapture={};
-  if(hit&&activeTab==tab&&books[tab].match==e.match&&books[tab].house==house&&!books[tab].items.empty())
-   nativeCapture={true,e.match,e.serial,0,0,e.tick,tab,index,x,y,e.width,e.height,5};
-  return hit;
- }
- if(e.operation==4){auto captured=nativeCapture;nativeCapture={};
-  if(hit&&captured.armed&&captured.button==5&&captured.match==e.match&&captured.serial==e.serial&&captured.tab==tab&&captured.index==index&&
-     captured.width==e.width&&captured.height==e.height&&std::abs(captured.x-x)<=4&&std::abs(captured.y-y)<=4&&uint32_t(e.tick-captured.tick)<=1500&&activeTab==tab&&books[tab].match==e.match&&books[tab].house==house){
-   auto&items=books[tab].items;for(int i=int(items.size())-1;i>=0;--i)if(items[i]==index){removeItem(tab,i,e.keys[VK_SHIFT]!=0);break;}
-  }return hit;
- }
- if(e.operation==7){nativeCapture={};
-  // Require an already-observed product: an idle first click must not also
-  // reserve a duplicate after native processing starts that product.
-  uint32_t p=product(tab),id=get<uint32_t>(p+0x10);int progress=get<int>(factory(tab)+0x24,-1);
-  if(hit&&activeTab==tab&&p&&p==current[tab]&&id==currentID[tab]&&progress>=0&&progress<54&&get<uint32_t>(0xA83D4C)==house)
-   nativeCapture={true,e.match,e.serial,p,id,e.tick,tab,index,x,y,e.width,e.height};
-  return hit;
- }
- auto captured=nativeCapture;nativeCapture={};
- if(!captured.armed||captured.button!=7)return hit;
- if(!hit||captured.match!=e.match||captured.serial!=e.serial||captured.tab!=tab||captured.index!=index||captured.width!=e.width||captured.height!=e.height||
-    std::abs(captured.x-x)>4||std::abs(captured.y-y)>4||uint32_t(e.tick-captured.tick)>1500||activeTab!=tab||product(tab)!=captured.source||get<uint32_t>(captured.source+0x10)!=captured.id||get<int>(factory(tab)+0x24,-1)>=54)return true;
- int slot=typeSlot(index);uint32_t types=get<uint32_t>(0xA83C68+4);int count=get<int>(0xA83C68+16,-1);
- if(slot>=0&&types>=0x10000&&index>=0&&index<count&&count<=4096){uint32_t type=get<uint32_t>(types+index*4);if(type>=0x10000)reserveChoice({slot,index,tab,type,false},true);}
- return true;
+ // Native reservation and cancellation are captured only by Runtime. Polling
+ // merely excludes the sidebar from enhanced ground orders, never duplicates.
+ return nativeFrame.hit(x,y)>=0;
+}
+static void consumeNativeClick(){
+ construction::InputClick c;if(!takeReservationClick(c))return;
+ if(!usable()||c.match!=commandMatch()||uint32_t(GetTickCount()-c.tick)>300||c.house!=house||c.tab!=activeTab||c.tab<0||c.tab>1||
+    c.parent!=current[c.tab]||c.parentID!=currentID[c.tab])return;
+ if(c.operation==2){auto&items=books[c.tab].items;for(int n=int(items.size())-1;n>=0;--n)if(items[n]==c.index){removeItem(c.tab,n,c.all!=0);break;}return;}
+ if(c.operation!=1)return;
+ int slot=typeSlot(c.index);uint32_t types=get<uint32_t>(0xA83C68+4);int count=get<int>(0xA83C68+16,-1);
+ if(slot>=0&&types>=0x10000&&c.index>=0&&c.index<count&&count<=4096){uint32_t type=get<uint32_t>(types+c.index*4);if(type>=0x10000)reserveChoice({slot,c.index,c.tab,type,false},true,true);}
 }
 static std::vector<construction::NativeBadge> nativeBadges(){
  std::vector<construction::NativeBadge> out;if(!usable()||get<uint32_t>(0xA83D4C)!=house)return out;
@@ -161,7 +148,9 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
    paintIcon(dc,b.items[i],42,y,false);RECT number=rect(8,y+2,40,y+23);SetTextColor(dc,RGB(255,231,145));std::wstring label=std::to_wstring(i+1);if(i==0&&b.stage)label+=L"…";DrawTextW(dc,label.c_str(),-1,&number,DT_SINGLELINE|DT_VCENTER);
   }
   if(b.items.empty()){RECT idle=rect(8,24,136,56);SetTextColor(dc,RGB(166,176,157));DrawTextW(dc,L"尚无预定\n点击建造图标追加",-1,&idle,DT_CENTER|DT_WORDBREAK);}
-  RECT hint=rect(4,layout.stackBottom(),140,layout.headerHeight()-1);SetTextColor(dc,RGB(180,188,167));DrawTextW(dc,L"右键退顶层 · Shift 清空",-1,&hint,DT_CENTER|DT_SINGLELINE|DT_VCENTER);
+  RECT hint=rect(4,layout.stackBottom(),140,layout.headerHeight()-construction::SectionGap-1);SetTextColor(dc,RGB(180,188,167));DrawTextW(dc,L"右键退顶层 · Shift 清空",-1,&hint,DT_CENTER|DT_SINGLELINE|DT_VCENTER);
+  int divider=layout.headerHeight()-construction::SectionGap/2;
+  RECT separator=rect(5,divider,139,divider+1);HBRUSH line=CreateSolidBrush(RGB(104,116,86));FillRect(dc,&separator,line);DeleteObject(line);
   for(int n=scroll;n<int(choices.size())&&n<scroll+layout.rows*2;++n){const auto&c=choices[n];if(c.slot<0||c.slot>=snap.typeCount||snap.types[c.slot].kind!=7||snap.types[c.slot].index!=c.index)continue;
    const auto&t=snap.types[c.slot];int x=(n-scroll)%2*72+6,y=(n-scroll)/2*66+layout.headerHeight();
    paintIcon(dc,c.index,x,y,c.future);
@@ -173,7 +162,7 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
  return DefWindowProcW(w,msg,wp,lp);
 }
 static void service(){
- uint32_t now=GetTickCount();if(refreshed&&uint32_t(now-refreshed)<100)return;refreshed=now;
+ consumeNativeClick();uint32_t now=GetTickCount();if(refreshed&&uint32_t(now-refreshed)<100)return;refreshed=now;
  if(!extra.constructionQueue){reset();return;}if(!usable()){hide();return;}
  house=get<uint32_t>(0xA83D4C);if(house<0x10000){hide();return;}
  if(lastPID!=pid){reset();lastPID=pid;wchar_t image[32768]{};DWORD length=32768;if(externalReader.imagePath(image,&length))icons.open(image,std::filesystem::path(root)/L"cache"/L"icons");}

@@ -1,10 +1,10 @@
 {
-  "label": "1.0.14.0 SingleRuntime",
-  "file_version": "1.0.14.0",
+  "label": "1.0.15.0 SingleRuntime",
+  "file_version": "1.0.15.0",
   "verified": {
     "RA2Toolbox.exe": {
       "bytes": 2065408,
-      "sha256": "271ea922339d983e2f599d1198b0b79dbb6015cf0714ccef6e74e35cb410252b",
+      "sha256": "b7ca1bef2591d73a38804f6150534c928db9ef5cb051c9658d65f71fbc939fb3",
       "machine": "PE32 x86",
       "sections": 14,
       "entry_rva": "0xc0b90",
@@ -528,15 +528,15 @@
         "version": "6.0.0.0",
         "architecture": "x86"
       },
-      "assist_protocol": 48,
-      "assist_shared_bytes": 2845944
+      "assist_protocol": 49,
+      "assist_shared_bytes": 2846048
     },
     "GameRuntime.dll": {
-      "bytes": 2490368,
-      "sha256": "586a1871bdb89d12dca8b359cf25c7139ebf2f5ae7c37292d4d55225b64ab704",
+      "bytes": 2498560,
+      "sha256": "4a712272aa97b1d0627f97ba2b02ece8715a72ecfea8b1ad84ec63c537aa6214",
       "machine": "PE32 x86",
       "sections": 9,
-      "entry_rva": "0x2cab0",
+      "entry_rva": "0x2e490",
       "exports": [
         "AssistMappingPrefix",
         "AssistProtocolInfo",
@@ -555,6 +555,7 @@
         "GDI32.dll",
         "api-ms-win-crt-private-l1-1-0.dll",
         "api-ms-win-crt-runtime-l1-1-0.dll",
+        "api-ms-win-crt-utility-l1-1-0.dll",
         "api-ms-win-crt-stdio-l1-1-0.dll",
         "api-ms-win-crt-environment-l1-1-0.dll",
         "api-ms-win-crt-heap-l1-1-0.dll",
@@ -643,6 +644,9 @@
           "_register_onexit_function",
           "abort"
         ],
+        "api-ms-win-crt-utility-l1-1-0.dll": [
+          "abs"
+        ],
         "api-ms-win-crt-stdio-l1-1-0.dll": [
           "__acrt_iob_func",
           "__stdio_common_vfprintf",
@@ -673,8 +677,8 @@
       "GameRuntimePostHook_rva": "0x1820",
       "runtime_protocol": 3,
       "runtime_control_bytes": 120,
-      "assist_protocol": 48,
-      "assist_shared_bytes": 2845944
+      "assist_protocol": 49,
+      "assist_shared_bytes": 2846048
     }
   },
   "runtime_tested": false,

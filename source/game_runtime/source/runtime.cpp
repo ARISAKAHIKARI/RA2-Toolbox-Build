@@ -126,7 +126,7 @@ extern "C" __declspec(dllexport) LRESULT CALLBACK GameRuntimeHook(int code,WPARA
       // Cursor work cannot be starved by a stream of tactical commands.
       if(ready&runtime::Cursor)CursorRuntimeMessage(code,wp,lp);
       if(ready&runtime::Tactical)AssistRuntimeMessage(code,wp,lp);
-      if((control->enabled&runtime::Tactical)&&(msg->message==WM_LBUTTONDOWN||msg->message==WM_LBUTTONUP||msg->message==WM_RBUTTONDOWN||msg->message==WM_RBUTTONUP))AssistRuntimeFilter((void*)lp);
+      if((control->enabled&runtime::Tactical)&&(msg->message==WM_LBUTTONDOWN||msg->message==WM_LBUTTONDBLCLK||msg->message==WM_LBUTTONUP||msg->message==WM_RBUTTONDOWN||msg->message==WM_RBUTTONUP))AssistRuntimeFilter((void*)lp);
       if(ready)InterlockedIncrement(&control->dispatches);
      }else cleanup();
     }

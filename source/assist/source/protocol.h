@@ -8,8 +8,9 @@
 #include "mega_queue_backend.h"
 #include "cooperative_types.h"
 #include "pointer_intent.h"
+#include "construction_input.h"
 namespace assist {
-constexpr uint32_t Magic=0x41533130, Version=48;
+constexpr uint32_t Magic=0x41533130, Version=49;
 constexpr uint32_t DataMessage=0x8002, WakeTag=0x41533230;
 constexpr int MaxLabels=2048, MaxSW=32, MaxTypes=512, MaxThreats=128, MaxCrates=256, MaxCrateResults=16;
 enum Command { None, Repair, CombatSelection, EmptyTransports, DamagedSelection, IdleHarvester, IdleEngineer, IdleTransport, ClearBeacons, RevealMap, OpenTech, SelectSuper, Produce, SelectIron, SelectChrono, AutoBoard, SelectType, SmartUnload, CancelAdvanced, SelectVariant, ProduceReserved, AirPathMove, CancelTechProduction };
@@ -109,6 +110,8 @@ struct Shared {
  // Local UI feedback, consumed by the existing Runtime game-thread dispatcher.
  // Immutable until ack; short lived and never an EventClass / OutList command.
  volatile uint32_t uiSoundRequest,uiSoundAck;uint32_t uiSoundTick,uiSoundMatch;
+ volatile long reservePolicySeq;construction::InputPolicy reservePolicy;
+ volatile uint32_t reserveInput,reserveConsumed;construction::InputClick reserveClick;
 
 };
 inline int remaining(int start,int duration,int frame){

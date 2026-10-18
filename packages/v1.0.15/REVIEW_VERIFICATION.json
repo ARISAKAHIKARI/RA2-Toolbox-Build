@@ -1,0 +1,29 @@
+{
+  "version": "1.0.15 Beta",
+  "file_version": "1.0.15.0",
+  "assist_protocol": 49,
+  "changes": [
+    "native reservation click capture at the common Runtime message boundary",
+    "successful captured native reservation uses GUIBuildSound",
+    "observed reserved production restores native sidebar busy display",
+    "10 game-pixel gap and divider between reservation stack and candidate buttons",
+    "successful reservation cancellation feedback with no duplicate native sound"
+  ],
+  "runtime_cases": {
+    "sidebar-runtime": 84,
+    "construction-runtime": 36
+  },
+  "host_checks": [
+    "actual reservation host lifecycle, authorized native input and no polling duplicate",
+    "2016 content/scale/viewport combinations including 10 px non-clickable gap",
+    "native/overlay successful feedback and alpha setup"
+  ],
+  "real_windows_game": false,
+  "real_audio": false,
+  "real_netplay": false,
+  "lbw": false,
+  "binary_sha256": {
+    "RA2Toolbox.exe": "b7ca1bef2591d73a38804f6150534c928db9ef5cb051c9658d65f71fbc939fb3",
+    "GameRuntime.dll": "4a712272aa97b1d0627f97ba2b02ece8715a72ecfea8b1ad84ec63c537aa6214"
+  }
+}

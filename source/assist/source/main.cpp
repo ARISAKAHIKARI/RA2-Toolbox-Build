@@ -582,7 +582,7 @@ static bool ensureBridge(){
  if(!game||bridgeBlocked||(bridgeRetryAt&&int32_t(now-bridgeRetryAt)<0))return false;
  ++bridgeAttempts;bridgeRetryAt=now+(bridgeAttempts>=3?30000:2000);
  critical(L"bridge-connect-attempt="+std::to_wstring(bridgeAttempts)+L" pid="+std::to_wstring(pid)+L" thread="+std::to_wstring(gameThread));
- wchar_t n[100];swprintf(n,100,L"Local\\RA2Assist_v048_%lu",pid);
+ wchar_t n[100];swprintf(n,100,L"Local\\RA2Assist_v049_%lu",pid);
  mapping=CreateFileMappingW(INVALID_HANDLE_VALUE,nullptr,PAGE_READWRITE,0,sizeof(Shared),n);
  DWORD mappingError=GetLastError();if(!mapping)return bridgeFailed(L"创建命令共享内存失败",mappingError);
  if(mappingError==ERROR_ALREADY_EXISTS){
@@ -868,6 +868,16 @@ static void requestReservationSound(){
  if(!shared||!commandFresh(GetTickCount())||shared->uiSoundRequest!=shared->uiSoundAck)return;
  shared->uiSoundTick=GetTickCount();shared->uiSoundMatch=commandMatch();
  MemoryBarrier();InterlockedIncrement((volatile LONG*)&shared->uiSoundRequest);wakeGame();
+}
+static void publishReservationPolicy(const construction::InputPolicy&p){
+ if(!shared)return;InterlockedIncrement(&shared->reservePolicySeq);shared->reservePolicy=p;MemoryBarrier();InterlockedIncrement(&shared->reservePolicySeq);
+}
+static bool takeReservationClick(construction::InputClick&click){
+ if(!shared||shared->reserveInput==shared->reserveConsumed)return false;
+ uint32_t serial=shared->reserveInput;MemoryBarrier();click=shared->reserveClick;MemoryBarrier();
+ if(serial!=shared->reserveInput)return false;
+ publishReservationPolicy({}); // close authorization before releasing the input slot
+ MemoryBarrier();shared->reserveConsumed=serial;return true;
 }
 #include "construction_host.h"
 #include "../../external_reader/source/sidebar_shapes.h"

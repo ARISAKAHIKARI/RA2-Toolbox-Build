@@ -26,6 +26,9 @@ static void*HWND_TOPMOST=nullptr;static HWND game=(void*)2;static uint32_t now=1
 static bool enabled=true,focused=true,fresh=true,queueAccept=true;static std::wstring root=L"/tmp",message;
 static int constructionScalePercent=100,soundRequests=0,panelAlpha=0;
 static void requestReservationSound(){++soundRequests;}
+static construction::InputPolicy reservationPolicy;static construction::InputClick inputClick;static bool inputPending=false;
+static void publishReservationPolicy(const construction::InputPolicy&p){reservationPolicy=p;}
+static bool takeReservationClick(construction::InputClick&out){if(!inputPending)return false;inputPending=false;out=inputClick;reservationPolicy={};return true;}
 static bool SetLayeredWindowAttributes(HWND,int,int alpha,int flags){assert(flags==LWA_ALPHA);panelAlpha=alpha;return true;}
 static struct{bool constructionQueue=true;}extra;
 static struct{int typeCount=3,chat=0,renderStatus=1;struct{int kind=7,index=0;char id[24]{};wchar_t name[40]{};}types[8];}snap;
@@ -102,25 +105,22 @@ int main(){
   for(int i=0;i<60;++i){uint32_t g=0xB07E80+i*56;w(g+0xC,2400+i%2*64);w(g+0x10,221+i/2*50);w(g+0x14,60);w(g+0x18,48);}
   w(F+0x24,10);};
  bool shift=false;auto press=[&](int op,int x=2420,int y=240){gameinput::PointerPress e;e.tick=now;e.match=match;e.serial=42;e.operation=op;e.width=clientWidth;e.height=clientHeight;e.keys[VK_RBUTTON]=op==5;e.keys[VK_SHIFT]=shift;e.point={x*3/2,y*3/2};return nativePointer(e);};
- nativeSetup();assert(press(7));assert(books[0].items.empty());assert(press(6));assert(books[0].items==std::vector<int>({0}));assert(choice(0)>=0);assert(press(5));
+ auto deliverRemove=[&](bool all=false){inputClick={now,match,H,P,100,0,0,2,uint32_t(all)};inputPending=true;consumeNativeClick();};
+ auto deliver=[&](int index=0){inputClick={now,match,H,P,100,0,index,1,0};inputPending=true;consumeNativeClick();};
+ nativeSetup();assert(reservationPolicy.slots==5);assert(press(7));assert(press(6));assert(books[0].items.empty()); // polling cannot duplicate Runtime input
+ deliver();assert(books[0].items==std::vector<int>({0})&&soundRequests==1&&reservationPolicy.slots==4);
  auto badges=nativeBadges();assert(badges.size()==1&&badges[0].x==2400&&badges[0].y==253&&badges[0].positions==1);
- press(7);press(6);assert(books[0].items==std::vector<int>({0,0}));assert(nativeBadges()[0].positions==3);
- nativeSetup();current[0]=0;press(7);press(6);assert(books[0].items.empty()); // First native order
- nativeSetup();w(F+0x24,54);press(7);press(6);assert(books[0].items.empty()); // Placement
- nativeSetup();press(7);w(F+0x24,54);press(6);assert(books[0].items.empty());
- nativeSetup();press(7);press(6,2430);assert(books[0].items.empty()); // drag
- nativeSetup();press(7);++match;press(6);assert(books[0].items.empty());
- nativeSetup();press(7);w(P+0x10,999);press(6);assert(books[0].items.empty());
- nativeSetup();press(7);w(0x87F7E8+0x1544+0x44,1);press(6);assert(books[0].items.empty());
- nativeSetup();press(7);focused=false;press(6);assert(books[0].items.empty());
- nativeSetup();press(7);now+=1600;press(6);assert(books[0].items.empty());
- nativeSetup();press(7);byte(0x87F7E8+0x1544+0x3F,1);press(6);assert(books[0].items.empty());
- nativeSetup();press(7);externalReader.fail=0xB07E80;press(6);assert(books[0].items.empty());externalReader.fail=0;
- nativeSetup();w(0x87F7E8+0x1544+84,3);w(0x87F7E8+0x1544+88+2*52,2);w(0x87F7E8+0x1544+92+2*52,7);w(0x87F7E8+0x1544+0x44,1);
- assert(readNative()&&nativeFrame.cells.size()==1&&nativeFrame.cells[0].index==2);press(7);press(6);assert(books[0].items==std::vector<int>({2}));
-
- nativeSetup();press(7);press(6);press(7);press(6);assert(books[0].items.size()==2);press(5);press(4);assert(books[0].items.size()==1);press(7);press(6);shift=true;press(5);press(4);shift=false;assert(books[0].items.empty());
- nativeSetup();press(7);press(6);press(5);press(4,2440);assert(books[0].items.size()==1);
+ deliver();assert(books[0].items.size()==2&&soundRequests==2);press(5);press(4);assert(books[0].items.size()==2);deliverRemove();assert(books[0].items.size()==1);
+ shift=true;press(5);press(4);shift=false;deliverRemove(true);assert(books[0].items.empty());
+ nativeSetup();deliver();press(5);press(4,2440);assert(books[0].items.size()==1);
+ nativeSetup();inputClick={now,match,H,P,100,0,0};inputPending=true;++match;consumeNativeClick();assert(books[0].items.empty()&&!soundRequests);
+ nativeSetup();inputClick={now-301,match,H,P,100,0,0};inputPending=true;consumeNativeClick();assert(books[0].items.empty());
+ nativeSetup();inputClick={now,match,H,P,999,0,0};inputPending=true;consumeNativeClick();assert(books[0].items.empty());
+ nativeSetup();focused=false;deliver();assert(books[0].items.empty());focused=true;
+ nativeSetup();w(0x87F7E8+0x1544+84,3);w(0x87F7E8+0x1544+88+2*52,2);w(0x87F7E8+0x1544+92+2*52,7);deliver(2);assert(books[0].items==std::vector<int>({2}));
+ nativeSetup();for(int i=0;i<5;++i)deliver();assert(reservationPolicy.slots==0&&soundRequests==5);deliver();assert(books[0].items.size()==5&&soundRequests==5);
+ hide();assert(!reservationPolicy.slots);
+ std::cout<<"PASS: Runtime input consumer exactly once, no polling duplicate, native right/Shift cancel, match/age/parent/focus/capacity authorization\n";
  // Same game frame: wall-clock ticks cannot release next Produce.
  setup();reserve(choice(1));byte(P+0x81,0);byte(P+0x90,1);w(F+0x58,0);w(0x87F7E8+0x1544+84,2);w(0x87F7E8+0x1544+88+52,1);w(0x87F7E8+0x1544+92+52,7);
  tick(110,false);for(int i=0;i<20;++i)tick(110,false);assert(commandQueue.size==0);tick();assert(commandQueue.size==1);
@@ -132,7 +132,7 @@ int main(){
  setup();reserveChoice({0,0,0,T,false},true);place();token=books[0].token;result(1,1,100,token);commandQueue.clear();
  w(p2+0x10,101);w(p2+0x21C,H);w(p2+0x520,T);byte(p2+0x81,1);w(F+0x58,p2);tick();assert(books[0].items.empty()&&geometryReady&&current[0]==p2);
  std::cout<<"PASS: overlapping stack, native right cancel, Shift clear, paused frame gate, old-parent reuse, panel stays during final reserved production\n";
- std::cout<<"PASS: native sidebar capture/badges/scroll/duplicates/first click/placement/drag/round/object/focus/timeout/scroll animation/read failures\n";
+ std::cout<<"PASS: native sidebar badges and Runtime-authorized input delivery\n";
 
 
  // Content fitting: no padded rows, shrinking, scrolling and hit regions use
@@ -142,18 +142,21 @@ int main(){
   assert(l.set(sizes[0],sizes[1],sizes[2],sizes[3],pct));l.content(q,candidates);
   assert(l.top()+l.height()<=sizes[3]&&l.left()+l.width()<=sizes[2]);
   assert(l.rows<=6&&l.rows<=(candidates+1)/2&&((l.rows==0)==(candidates==0)));
-  assert(l.height()==l.y(l.headerHeight()+l.rows*66));
+  assert(l.height()==l.y(l.headerHeight()+l.rows*66));assert(l.headerHeight()==l.stackBottom()+20+10);assert(l.choiceAt(l.x(36),l.y(l.headerHeight()-5),0,candidates)==-1);
   for(int i=0;i<q;++i)assert(l.queueAt(l.x(10),l.y(24+i*24+9),q)==i);
   for(int i=0;i<std::min(candidates,l.rows*2);++i)assert(l.choiceAt(l.x(i%2*72+36),l.y(l.headerHeight()+i/2*66+33),0,candidates)==i);
   assert(l.choiceAt(l.x(36),l.height(),0,candidates)==-1);
  }
- setup();assert(panelAlpha==216&&layout.rows==1&&layout.queueCount==0&&layout.height()==layout.y(142));
+ setup();reserve(choice(1));int addedSound=soundRequests;removeTop();assert(soundRequests==addedSound+1);removeTop();assert(soundRequests==addedSound+1);
+ reserve(choice(1));reserve(choice(1));addedSound=soundRequests;removeTop(true);assert(soundRequests==addedSound+1); // clear once, not once per item
+ reserve(choice(1));place();commandQueue.clear();addedSound=soundRequests;removeItem(0,0);assert(soundRequests==addedSound); // submitted head cannot be removed
+ setup();assert(panelAlpha==216&&layout.rows==1&&layout.queueCount==0&&layout.height()==layout.y(152));
  int shortHeight=layout.height();reserve(choice(1));assert(soundRequests==1&&layout.queueCount==1&&layout.height()>shortHeight);
  reserveChoice({0,0,0,T,false},true);assert(soundRequests==1); // original sidebar owns its sound
  focused=false;reserve(choice(1));assert(soundRequests==1);focused=true;
  while(books[0].items.size()<5)reserve(choice(1));int heard=soundRequests;reserve(choice(1));assert(soundRequests==heard); // rejected click stays quiet
  removeTop(true);assert(layout.queueCount==0&&layout.height()==shortHeight);
- std::cout<<"PASS: 2016 content/scale/viewport combinations, fitted growth/shrink, 216/255 alpha, successful overlay-only sound requests\n";
+ std::cout<<"PASS: 2016 content/scale/viewport combinations, fitted growth/shrink, 216/255 alpha, successful add/cancel feedback, clear once and no sound on empty/locked cancel\n";
  assert(!l.set(0,0,3840,2160));
  std::cout<<"PASS: actual host service FIFO5/duplicates/future unlock/cancel parent/right cancel/round/token ACK/retry/busy/menu; catalogue sentinels/parent/stolen flags/read failure; six resolution transforms and hit regions\n";
 }

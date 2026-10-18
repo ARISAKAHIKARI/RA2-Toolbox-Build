@@ -43,7 +43,7 @@ using namespace assist;
 // string literal. The host validates both protocol and structure size before
 // installing a hook; the release verifier can inspect these exports offline.
 extern "C" __declspec(dllexport) const uint32_t AssistProtocolInfo[2]={Version,sizeof(Shared)};
-extern "C" __declspec(dllexport) const wchar_t AssistMappingPrefix[]=L"Local\\RA2Assist_v048_";
+extern "C" __declspec(dllexport) const wchar_t AssistMappingPrefix[]=L"Local\\RA2Assist_v049_";
 static Shared*sh;static HANDLE mapping;static bool checked,good,fault;static DWORD last,slow;static uint32_t lastHouse,match,pendingAck;static int lastFrame;
 static sessionepoch::Tracker sessionTracker;static Snapshot snap;
 static runtimefault::Context faultContext;
@@ -526,6 +526,7 @@ static bool nativeObjectEvent(int houseIndex,int eventType,uint32_t objectId){
  snap.objectQueueStatus=int(objectqueue::Result::Appended);
  return acceptedObject();
 }
+#include "construction_sidebar_bridge.h"
 static bool nativeProduceEvent(uint32_t house,const Type&t,bool nativeCameo=false,int eventKind=0x0E){
  const int mode=get<int>(0xA8B238);
  if(!house||!eventdelivery::mayQueue(mode))return false;
@@ -711,7 +712,7 @@ static void command(uint32_t house,DWORD now){uint32_t req=sh->request;if(req==s
   else {const auto&t=snap.types[arg];int tab=typeTab(arg);uint32_t f=tab==0||tab==1?get<uint32_t>(house+(tab?0x53CC:0x53BC)):0;
    if(tab<0||tab>1||!hasCameo(7,t.index)||!typePointers[arg]||call<int>(0x4F7870,house,(void*)(uintptr_t)typePointers[arg],false,true)<=0)result=-9;
    else if(f>=0x10000&&(get<uint32_t>(f+0x58)||get<int>(f+0x50)>0))result=-9;
-   else if(nativeProduceEvent(house,t,true))n=1;else result=-6;
+   else if(nativeProduceEvent(house,t,true)){n=1;watchReservedSidebar(house,t.index,tab,uint32_t(sh->arg2),now);}else result=-6;
   }
  }
  else if(c==Produce||c==CancelTechProduction){
@@ -824,7 +825,7 @@ static void consumeSubmittedIntents(uint32_t house,int frame,DWORD now){
  uint32_t inputFlags=sh->flags|(unloadCount?NativeOrders:0);
  csHooksTick(inputFlags);nativeHooksTick(inputFlags);clickHooksTick(inputFlags);
  snap.inputPatchMask=0;pointerTick();
- command(house,now);externalOrdersTick(house,frame,now);cooperativeTick(house,frame,now);placementTick();
+ command(house,now);reservedSidebarTick(house,now);externalOrdersTick(house,frame,now);cooperativeTick(house,frame,now);placementTick();
 }
 static bool controllerExited(DWORD now){
  if(!sh||!sh->owner)return false;
