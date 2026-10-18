@@ -1,0 +1,369 @@
+{
+  "inputs": {
+    "game": "c287d62a4d6a25b547e9339d071dd6e03adcf545699062e478aaeee38c60e89a",
+    "GameRuntime.dll": "e72150ebe4ab8205dcafcf3feee89b36fe7e357eddd4d36c14ae200c7e7c7b0a"
+  },
+  "scope": "Execute the current x86 Runtime and original constructors across startup boundaries.\nSynthetic world/Win32; no complete game, network, rendering or economy simulation.\n",
+  "results": [
+    {
+      "case": "idle_start_0_autoload_idle_zero_orders_zero_mutations",
+      "status": "PASS"
+    },
+    {
+      "case": "idle_start_0_auto_cs_zero_orders_zero_mutations",
+      "status": "PASS"
+    },
+    {
+      "case": "idle_start_0_magnetron_zero_orders_zero_mutations",
+      "status": "PASS"
+    },
+    {
+      "case": "idle_start_0_aircraft_zero_orders_zero_mutations",
+      "status": "PASS"
+    },
+    {
+      "case": "idle_start_0_disk_primary_zero_orders_zero_mutations",
+      "status": "PASS"
+    },
+    {
+      "case": "idle_start_0_sell_vehicle_zero_orders_zero_mutations",
+      "status": "PASS"
+    },
+    {
+      "case": "idle_start_0_all_zero_orders_zero_mutations",
+      "status": "PASS"
+    },
+    {
+      "case": "boundary_0_menu_blocks_then_recovers",
+      "status": "PASS"
+    },
+    {
+      "case": "boundary_0_dialog_blocks_then_recovers",
+      "status": "PASS"
+    },
+    {
+      "case": "boundary_0_tactical_inactive_blocks_then_recovers",
+      "status": "PASS"
+    },
+    {
+      "case": "boundary_0_negative_frame_blocks_then_recovers",
+      "status": "PASS"
+    },
+    {
+      "case": "boundary_0_frame_max_blocks_then_recovers",
+      "status": "PASS"
+    },
+    {
+      "case": "boundary_0_observer_blocks_then_recovers",
+      "status": "PASS"
+    },
+    {
+      "case": "boundary_0_run_flag_blocks_then_recovers",
+      "status": "PASS"
+    },
+    {
+      "case": "boundary_0_unsupported_mode_blocks_then_recovers",
+      "status": "PASS"
+    },
+    {
+      "case": "first_frame_0_autoload_original_frame_timing_once",
+      "status": "PASS"
+    },
+    {
+      "case": "first_frame_0_auto_repair_only_real_damage_once",
+      "status": "PASS"
+    },
+    {
+      "case": "final_commit_0_timer_changes_frame_rejects",
+      "status": "PASS"
+    },
+    {
+      "case": "final_commit_0_timer_changes_house_rejects",
+      "status": "PASS"
+    },
+    {
+      "case": "final_commit_0_timer_changes_mode_rejects",
+      "status": "PASS"
+    },
+    {
+      "case": "final_commit_0_timer_changes_menu_rejects",
+      "status": "PASS"
+    },
+    {
+      "case": "idle_start_5_autoload_idle_zero_orders_zero_mutations",
+      "status": "PASS"
+    },
+    {
+      "case": "idle_start_5_auto_cs_zero_orders_zero_mutations",
+      "status": "PASS"
+    },
+    {
+      "case": "idle_start_5_magnetron_zero_orders_zero_mutations",
+      "status": "PASS"
+    },
+    {
+      "case": "idle_start_5_aircraft_zero_orders_zero_mutations",
+      "status": "PASS"
+    },
+    {
+      "case": "idle_start_5_disk_primary_zero_orders_zero_mutations",
+      "status": "PASS"
+    },
+    {
+      "case": "idle_start_5_sell_vehicle_zero_orders_zero_mutations",
+      "status": "PASS"
+    },
+    {
+      "case": "idle_start_5_all_zero_orders_zero_mutations",
+      "status": "PASS"
+    },
+    {
+      "case": "boundary_5_menu_blocks_then_recovers",
+      "status": "PASS"
+    },
+    {
+      "case": "boundary_5_dialog_blocks_then_recovers",
+      "status": "PASS"
+    },
+    {
+      "case": "boundary_5_tactical_inactive_blocks_then_recovers",
+      "status": "PASS"
+    },
+    {
+      "case": "boundary_5_negative_frame_blocks_then_recovers",
+      "status": "PASS"
+    },
+    {
+      "case": "boundary_5_frame_max_blocks_then_recovers",
+      "status": "PASS"
+    },
+    {
+      "case": "boundary_5_observer_blocks_then_recovers",
+      "status": "PASS"
+    },
+    {
+      "case": "boundary_5_run_flag_blocks_then_recovers",
+      "status": "PASS"
+    },
+    {
+      "case": "boundary_5_unsupported_mode_blocks_then_recovers",
+      "status": "PASS"
+    },
+    {
+      "case": "first_frame_5_autoload_original_frame_timing_once",
+      "status": "PASS"
+    },
+    {
+      "case": "first_frame_5_auto_repair_only_real_damage_once",
+      "status": "PASS"
+    },
+    {
+      "case": "final_commit_5_timer_changes_frame_rejects",
+      "status": "PASS"
+    },
+    {
+      "case": "final_commit_5_timer_changes_house_rejects",
+      "status": "PASS"
+    },
+    {
+      "case": "final_commit_5_timer_changes_mode_rejects",
+      "status": "PASS"
+    },
+    {
+      "case": "final_commit_5_timer_changes_menu_rejects",
+      "status": "PASS"
+    },
+    {
+      "case": "idle_start_3_autoload_idle_zero_orders_zero_mutations",
+      "status": "PASS"
+    },
+    {
+      "case": "idle_start_3_auto_cs_zero_orders_zero_mutations",
+      "status": "PASS"
+    },
+    {
+      "case": "idle_start_3_magnetron_zero_orders_zero_mutations",
+      "status": "PASS"
+    },
+    {
+      "case": "idle_start_3_aircraft_zero_orders_zero_mutations",
+      "status": "PASS"
+    },
+    {
+      "case": "idle_start_3_disk_primary_zero_orders_zero_mutations",
+      "status": "PASS"
+    },
+    {
+      "case": "idle_start_3_sell_vehicle_zero_orders_zero_mutations",
+      "status": "PASS"
+    },
+    {
+      "case": "idle_start_3_all_zero_orders_zero_mutations",
+      "status": "PASS"
+    },
+    {
+      "case": "boundary_3_menu_blocks_then_recovers",
+      "status": "PASS"
+    },
+    {
+      "case": "boundary_3_dialog_blocks_then_recovers",
+      "status": "PASS"
+    },
+    {
+      "case": "boundary_3_tactical_inactive_blocks_then_recovers",
+      "status": "PASS"
+    },
+    {
+      "case": "boundary_3_negative_frame_blocks_then_recovers",
+      "status": "PASS"
+    },
+    {
+      "case": "boundary_3_frame_max_blocks_then_recovers",
+      "status": "PASS"
+    },
+    {
+      "case": "boundary_3_observer_blocks_then_recovers",
+      "status": "PASS"
+    },
+    {
+      "case": "boundary_3_run_flag_blocks_then_recovers",
+      "status": "PASS"
+    },
+    {
+      "case": "boundary_3_unsupported_mode_blocks_then_recovers",
+      "status": "PASS"
+    },
+    {
+      "case": "first_frame_3_autoload_original_frame_timing_once",
+      "status": "PASS"
+    },
+    {
+      "case": "first_frame_3_auto_repair_only_real_damage_once",
+      "status": "PASS"
+    },
+    {
+      "case": "final_commit_3_timer_changes_frame_rejects",
+      "status": "PASS"
+    },
+    {
+      "case": "final_commit_3_timer_changes_house_rejects",
+      "status": "PASS"
+    },
+    {
+      "case": "final_commit_3_timer_changes_mode_rejects",
+      "status": "PASS"
+    },
+    {
+      "case": "final_commit_3_timer_changes_menu_rejects",
+      "status": "PASS"
+    },
+    {
+      "case": "idle_start_4_autoload_idle_zero_orders_zero_mutations",
+      "status": "PASS"
+    },
+    {
+      "case": "idle_start_4_auto_cs_zero_orders_zero_mutations",
+      "status": "PASS"
+    },
+    {
+      "case": "idle_start_4_magnetron_zero_orders_zero_mutations",
+      "status": "PASS"
+    },
+    {
+      "case": "idle_start_4_aircraft_zero_orders_zero_mutations",
+      "status": "PASS"
+    },
+    {
+      "case": "idle_start_4_disk_primary_zero_orders_zero_mutations",
+      "status": "PASS"
+    },
+    {
+      "case": "idle_start_4_sell_vehicle_zero_orders_zero_mutations",
+      "status": "PASS"
+    },
+    {
+      "case": "idle_start_4_all_zero_orders_zero_mutations",
+      "status": "PASS"
+    },
+    {
+      "case": "boundary_4_menu_blocks_then_recovers",
+      "status": "PASS"
+    },
+    {
+      "case": "boundary_4_dialog_blocks_then_recovers",
+      "status": "PASS"
+    },
+    {
+      "case": "boundary_4_tactical_inactive_blocks_then_recovers",
+      "status": "PASS"
+    },
+    {
+      "case": "boundary_4_negative_frame_blocks_then_recovers",
+      "status": "PASS"
+    },
+    {
+      "case": "boundary_4_frame_max_blocks_then_recovers",
+      "status": "PASS"
+    },
+    {
+      "case": "boundary_4_observer_blocks_then_recovers",
+      "status": "PASS"
+    },
+    {
+      "case": "boundary_4_run_flag_blocks_then_recovers",
+      "status": "PASS"
+    },
+    {
+      "case": "boundary_4_unsupported_mode_blocks_then_recovers",
+      "status": "PASS"
+    },
+    {
+      "case": "first_frame_4_autoload_original_frame_timing_once",
+      "status": "PASS"
+    },
+    {
+      "case": "first_frame_4_auto_repair_only_real_damage_once",
+      "status": "PASS"
+    },
+    {
+      "case": "final_commit_4_timer_changes_frame_rejects",
+      "status": "PASS"
+    },
+    {
+      "case": "final_commit_4_timer_changes_house_rejects",
+      "status": "PASS"
+    },
+    {
+      "case": "final_commit_4_timer_changes_mode_rejects",
+      "status": "PASS"
+    },
+    {
+      "case": "final_commit_4_timer_changes_menu_rejects",
+      "status": "PASS"
+    },
+    {
+      "case": "all_features_0_autoload_payload_unchanged_repair_separate",
+      "status": "PASS"
+    },
+    {
+      "case": "all_features_5_autoload_payload_unchanged_repair_separate",
+      "status": "PASS"
+    },
+    {
+      "case": "all_features_3_autoload_payload_unchanged_repair_separate",
+      "status": "PASS"
+    },
+    {
+      "case": "all_features_4_autoload_payload_unchanged_repair_separate",
+      "status": "PASS"
+    },
+    {
+      "case": "same_house_restart_3_stale_request_rejected_new_accepted",
+      "status": "PASS"
+    },
+    {
+      "case": "same_house_restart_4_stale_request_rejected_new_accepted",
+      "status": "PASS"
+    }
+  ]
+}

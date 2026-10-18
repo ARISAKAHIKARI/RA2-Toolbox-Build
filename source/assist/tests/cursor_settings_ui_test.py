@@ -31,10 +31,10 @@ suffix=r'''
 int main(){
  fields={{1,100},{2,0},{3,0},{4,0},{5,0},{6,0},{7,0},{8,0},{9,60},{10,0},{11,0},{12,0},{13,1},{14,1},{15,1},{16,1},{17,1}};
  fields.erase(scaleBox);fields[smoothBox]=0;applyScale();
- assert(!smoothing&&scalePercent==100&&writes>0&&clickEnabled&&savedClick==1); // no obsolete hook handle is required // unrelated invalid input must not block a switch
+ assert(!smoothing&&scalePercent==100&&writes>0); // no obsolete hook handle is required // unrelated invalid input must not block a switch
  fields[scaleBox]=125;fields[gameWBox]=1920;fields[gameHBox]=0;fields[clickBox]=0;applyScale();
  assert(scalePercent==125&&!clickEnabled&&gameWOverride==0&&gameHOverride==0&&cancels>0);
- fields[clickBox]=1;applyScale();assert(clickEnabled&&savedClick==1);
+ fields[clickBox]=1;applyScale();assert(clickEnabled&&savedClick==-1); // Shift5 belongs to tactical assistant, cursor must not persist it
  fields[gameHBox]=1080;fields.erase(smoothMsBox);fields[clickGapBox]=25;applyScale();
  assert(gameWOverride==1920&&gameHOverride==1080&&smoothMs==60&&clickGap==25);
  fields[smoothMsBox]=60;diskOK=false;fields[offsetXBox]=3;applyScale();assert(hint.find(L"失败")!=std::wstring::npos);
@@ -45,4 +45,4 @@ with tempfile.TemporaryDirectory() as temp:
     cpp=Path(temp)/'ui.cpp';binary=Path(temp)/'ui';cpp.write_text(prefix+body+suffix)
     subprocess.run(['g++','-std=c++17',str(cpp),'-o',str(binary)],check=True)
     subprocess.run([str(binary)],check=True)
-print('PASS: cursor settings: independent toggles, atomic dimension pairs, valid-field persistence and disk retry; Shift5 remains enabled without a mouse hook and can be restored from a disabled legacy INI')
+print('PASS: cursor settings: independent toggles, atomic dimension pairs, valid-field persistence and disk retry; cursor does not overwrite tactical Shift5 configuration')

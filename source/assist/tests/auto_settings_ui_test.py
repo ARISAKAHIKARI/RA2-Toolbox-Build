@@ -19,7 +19,7 @@ static featuretypes::Config featureTypes;static std::wstring featureTypeText[fea
 static void featureTypeFields(){++featureRefreshes;}
 static void GetWindowTextW(int,wchar_t* p,int n){wcsncpy(p,editText.c_str(),n-1);p[n-1]=0;}
 using UINT_PTR=unsigned;using HWND=int;using WORD=unsigned short;using BOOL=int;
-constexpr int FALSE=0,EN_CHANGE=1,CBN_SELCHANGE=2,BN_CLICKED=3,HKM_GETHOTKEY=4,HKM_SETHOTKEY=5,CB_GETCURSEL=6,CB_SETCURSEL=7,BM_GETCHECK=8,BM_SETCHECK=9,BST_CHECKED=1;
+constexpr int FALSE=0,EN_CHANGE=1,CBN_SELCHANGE=2,BN_CLICKED=3,HKM_GETHOTKEY=4,HKM_SETHOTKEY=5,CB_GETCURSEL=6,CB_SETCURSEL=7,BM_GETCHECK=8,BM_SETCHECK=9,BST_CHECKED=1,BST_UNCHECKED=0;
 static bool ready=true,updatingControls=false,enabled=true,autoSaveOK=true;
 struct ControlUpdate{bool old=updatingControls;ControlUpdate(){updatingControls=true;}~ControlUpdate(){updatingControls=old;}};
 static bool hookAdvanced=false;static HWND hookChecks[4]={800,801,802,803};
@@ -35,6 +35,12 @@ static int selectedTypeIndex(){return 0;}
 static WORD typeBinding(const char*){return 0;}
 static struct{void clear(){}}typeTap;
 static AdditionalSettings extra;
+static int advancedScanHz=10,advancedTargetPriority=0,shiftClickMode=0,shiftClickGap=0;static bool shiftClickEnabled=false;
+namespace airway{static unsigned resets=0;static void reset(){++resets;}}
+static struct{unsigned clears=0;void clear(){++clears;}}pointerMatches;
+static constexpr int RevealMap=9;
+static struct{struct Slot{int command;};Slot slots[8]{};int size=0;void discard(int i){for(int j=i+1;j<size;++j)slots[j-1]=slots[j];--size;}}commandQueue;
+
 static int extraControls[ExtraControlCount];
 static WORD hotkeys[12]{},csKey=0,advancedKey=0,unloadKey=0,ejectKey=0,csHoldKey=0,magnetronKey=0;
 static std::unordered_map<std::string,cooperative::Quota>targetQuotas;
@@ -59,8 +65,8 @@ static void bindSuper(){++binds;}
 static void bindType(bool){++binds;}
 '''
 io=(root/'assist/source/extra_settings_io.h').read_text()
-load_mouse=' extra.experimentalReveal='+io.split(' extra.experimentalReveal=',1)[1].split(' extra.loadMode=',1)[0]
-save_mouse=' write(L"Experimental"'+io.split(' write(L"Experimental"',1)[1].split(' write(L"AutoLoad"',1)[0]
+load_mouse=' extra.antiTheft='+io.split(' extra.antiTheft=',1)[1].split(' extra.loadMode=',1)[0]
+save_mouse=' write(L"Modes",L"AntiTheft"'+io.split(' write(L"Modes",L"AntiTheft"',1)[1].split(' write(L"AutoLoad"',1)[0]
 prefix+=r'''
 static std::map<std::wstring,int> profile;
 static std::map<std::wstring,std::wstring> profile_text;static bool saveWriteOK=true;
@@ -71,8 +77,8 @@ static int WritePrivateProfileStringW(const wchar_t*,const wchar_t*key,const wch
 static int value(const wchar_t*,const wchar_t* key,int fallback){auto it=profile.find(key);return it==profile.end()?fallback:it->second;}
 static void write(const wchar_t*,const wchar_t* key,int v){profile[key]=v;}
 '''+"\nstatic void loadMouse(){"+load_mouse+"}\nstatic void saveMouse(){"+save_mouse+"}\n"
-feature_load=io.split('static void loadAdditionalSettings(){',1)[1].split(' extra.experimentalReveal=',1)[0]
-feature_save=io.split('static bool saveAdditionalSettings(){',1)[1].split(' write(L"Experimental"',1)[0]
+feature_load=io.split('static void loadAdditionalSettings(){',1)[1].split(' extra.antiTheft=',1)[0]
+feature_save=io.split('static bool saveAdditionalSettings(){',1)[1].split(' write(L"Modes",L"AntiTheft"',1)[0]
 prefix+="\nstatic void loadFeatureTypes(){"+feature_load+"}\nstatic void saveFeatureTypes(){"+feature_save+"}\n"
 suffix=r''' 
 int main(){
@@ -126,12 +132,22 @@ int main(){
  fields[729]=4;autoSettingChanged(729,CBN_SELCHANGE);assert(extra.mouseButtons[0]==4);
 
  fields[447]='C';autoSettingChanged(447,EN_CHANGE);assert(csKey=='C');autoSettingChanged(447,EN_CHANGE);assert(csKey=='C');
+ // Experimental reveal opt-ins are exclusive and the render path clears queued old reveals.
+ extra.experimentalReveal=true;commandQueue.size=3;commandQueue.slots[0].command=RevealMap;commandQueue.slots[1].command=15;commandQueue.slots[2].command=RevealMap;
+ fields[808]=1;autoSettingChanged(808,BN_CLICKED);assert(extra.renderReveal&&!extra.experimentalReveal&&autoSavePending);
+ assert(commandQueue.size==1&&commandQueue.slots[0].command==15&&fields[739]==BST_UNCHECKED);
+ saveMouse();extra.renderReveal=false;loadMouse();assert(extra.renderReveal&&!extra.experimentalReveal);
+ profile[L"RevealMap"]=1;loadMouse();assert(extra.renderReveal&&!extra.experimentalReveal); // legacy permission loses on load
+ fields[808]=0;autoSettingChanged(808,BN_CLICKED);assert(!extra.renderReveal);saveMouse();loadMouse();assert(!extra.renderReveal);
+ fields[806]=1;autoSettingChanged(806,BN_CLICKED);assert(extra.nativeAirWaypoints&&airway::resets==1&&pointerMatches.clears==1);
+ fields[806]=0;autoSettingChanged(806,BN_CLICKED);assert(!extra.nativeAirWaypoints&&airway::resets==2&&pointerMatches.clears==2);
+ fields[787]=60;autoSettingChanged(787,EN_CHANGE);assert(advancedScanHz==60);fields[787]=61;autoSettingChanged(787,EN_CHANGE);assert(advancedScanHz==60);
  assert(!extra.experimentalReveal);profile[L"RevealMap"]=1;loadMouse();assert(extra.experimentalReveal);
  extra.experimentalReveal=false;saveMouse();extra.experimentalReveal=true;loadMouse();assert(!extra.experimentalReveal);
  profile.clear();profile[L"EnhancedButton"]=3;profile[L"AttackMoveButton"]=1;profile[L"SellButton"]=2;loadMouse();
  for(int i=0;i<pointerinput::MouseCount;++i)assert(extra.mouseButtons[i]==unsigned(i<pointerinput::MouseAttack?3:i==pointerinput::MouseAttack?1:2));
  profile[L"AdvancedButton"]=0;profile[L"MagnetronButton"]=4;profile[L"CSButton"]=99;loadMouse();
- assert(extra.mouseButtons[0]==0&&extra.mouseButtons[1]==4&&extra.mouseButtons[2]==4);
+ assert(extra.mouseButtons[0]==0&&extra.mouseButtons[1]==4&&extra.mouseButtons[2]==6);
  auto saved=extra;saveMouse();extra=AdditionalSettings{};loadMouse();
  for(int i=0;i<pointerinput::MouseCount;++i)assert(extra.mouseButtons[i]==saved.mouseButtons[i]);
  assert(profile[L"EnhancedButton"]==3&&profile[L"SellButton"]==2);
@@ -175,7 +191,7 @@ assert 'external::discovery::resolveYrppWindow(reader,pid,nullptr,&foundThread)'
 assert 'static BOOL CALLBACK findWindow(' not in cursor
 print('PASS: explicit feature/permission linkage, invalid-key isolation, shared cursor discovery and host ACK single-writer contract')
 
-assert 'if(!foregroundGame()||snap.renderStatus!=1)ShowWindow(overlay,SW_HIDE);' in main
+assert 'if(!foregroundGame()||snap.renderStatus!=1){ShowWindow(overlay,SW_HIDE);' in main
 assert 'snap.renderStatus=externalValid&&d.renderStatus==1?1:0;' in main
 monitor=(root/'unit_monitor/source/main.cpp').read_text() if (root/'unit_monitor/source/main.cpp').exists() else (root.parent/'unit_monitor/source/main.cpp').read_text()
 assert 'external::display::inspect' in monitor and 'battlefield&&foregroundGame()' in monitor

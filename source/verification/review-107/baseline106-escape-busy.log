@@ -1,0 +1,10 @@
+Traceback (most recent call last):
+  File "/workspace/scratch/bf135d053f66/release-107/source/assist/tests/no_interception_runtime.py", line 238, in <module>
+    check(f'ejection_animation_{scenario}_{mode}',interrupted)
+  File "/workspace/scratch/bf135d053f66/release-107/source/assist/tests/no_interception_runtime.py", line 38, in check
+    fn();results.append({'name':name,'status':'PASS'});print('PASS',name,flush=True)
+    ^^^^
+  File "/workspace/scratch/bf135d053f66/release-107/source/assist/tests/no_interception_runtime.py", line 213, in interrupted
+    assert count(m)==5 and s.data.unloadPending==3,(scenario,s.data.unloadPending)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ('full_queue', 5)

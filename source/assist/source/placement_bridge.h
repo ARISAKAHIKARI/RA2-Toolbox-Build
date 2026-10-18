@@ -2,15 +2,18 @@
 #include "../../shared/source/experimental_patch_policy.h"
 extern "C" int __cdecl GuardedRiskAction(unsigned,unsigned,unsigned);
 static bool riskPlacementActive=false,riskAirActive=false,riskRenderActive=false;
-static bool riskReady(){
- if(!gameentry::active(gameentry::Client::Assist)||!sh||sh->stop||fault||!lastHouse||
-    DWORD(sampleClock(sh)-sh->heartbeat)>=3000||!get<bool>(0xA8E9A0))return false;
+static bool riskContextReady(){
+ if(!gameentry::active(gameentry::Client::Assist)||fault||!lastHouse||!get<bool>(0xA8E9A0))return false;
  // Native callbacks see the current frame: equality with the last message
  // snapshot would make the behavior disappear between host samples.
  const uint32_t house=get<uint32_t>(0xA83D4C);const int frame=get<int>(0xA8ED84);
  return house==lastHouse&&house!=get<uint32_t>(0xAC1198)&&!get<bool>(house+0x1F5)&&
    !get<bool>(house+0x1F6)&&!get<bool>(house+0x1F8)&&frame>=snap.frame&&frame<INT32_MAX&&
-   get<int>(0xA8B238)==snap.session&&eventdelivery::mayQueue(snap.session);
+   get<int>(0xA8B238)==snap.session&&eventdelivery::mayQueue(snap.session)&&
+   external::display::inspect([](uint32_t at,void*out,size_t n){memcpy(out,(void*)(uintptr_t)at,n);return true;}).visible();
+}
+static bool riskReady(){
+ return sh&&!sh->stop&&DWORD(sampleClock(sh)-sh->heartbeat)<3000&&riskContextReady();
 }
 extern "C" int __cdecl AssistRiskAction(unsigned op,unsigned object,unsigned house){
  if(!riskReady())return 0;
@@ -197,20 +200,25 @@ static bool installRiskSite(RiskSite&s){
  if(codeHookRegistry.active(s.address)){if(riskSiteCurrent(s))return !codeHookRegistry.conflict(s.address);codeHookRegistry.markConflict(s.address);return false;}
  return gameentry::patch(gameentry::Client::Assist,s.address,s.before,s.after,s.size);
 }
+static void redrawRevealTest();
 static void restorePlacement(){
+ const bool wasRendered=riskRenderActive;
  riskPlacementActive=riskAirActive=riskRenderActive=false;prepareRiskSites();
  bool place=restoreRiskSite(riskSites[0]);
  bool type=restoreRiskSite(riskSites[1]),arrival=restoreRiskSite(riskSites[2]);
  snap.placementStatus=place?0:-2;snap.nativeAirStatus=type&&arrival?0:-2;
  bool shroud=restoreRiskSite(riskSites[3]),fog=restoreRiskSite(riskSites[4]);
  snap.renderRevealStatus=shroud&&fog?0:-2;
+ // Stop/host exit still needs one native redraw after restoring the leaves.
+ // A destroyed, changed, paused or faulted world must never be called here.
+ if(wasRendered)redrawRevealTest();
 }
 static void redrawRevealTest(){
  // Native redraw bookkeeping only, once per toggle; never reveal/register cells.
  static const uint8_t signature[]={0x83,0xEC,0x58,0x8B,0x0D,0x88,0xCE,0xB0,0};uint8_t actual[sizeof signature]{};
  const uint32_t tactical=get<uint32_t>(0x887324);
  struct Area {int x,y,w,h;};Area area{};
- if(tactical<0x10000||!riskReady()||!read(0x6D2790,actual,sizeof actual)||memcmp(actual,signature,sizeof actual)||!read(0x886FA0,&area,sizeof area)||area.w<=0||area.h<=0||area.w>16384||area.h>16384)return;
+ if(tactical<0x10000||!riskContextReady()||!read(0x6D2790,actual,sizeof actual)||memcmp(actual,signature,sizeof actual)||!read(0x886FA0,&area,sizeof area)||area.w<=0||area.h<=0||area.w>16384||area.h>16384)return;
  call<void>(0x6D2790,tactical,area,false);
 }
 static void placementTick(){

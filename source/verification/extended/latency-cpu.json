@@ -1,0 +1,151 @@
+{
+  "scope": "Linux native optimized C++ production algorithms; CPU time only; excludes game reads, IPC, OS scheduling, event execution and rendering",
+  "results": [
+    {
+      "name": "cooperative_enter_512_targets",
+      "size": 64,
+      "samples": 200,
+      "mean_ms": 0.243956,
+      "p50_ms": 0.22665,
+      "p95_ms": 0.353239,
+      "p99_ms": 0.553249,
+      "max_ms": 0.985596
+    },
+    {
+      "name": "cooperative_air_512_targets",
+      "size": 64,
+      "samples": 200,
+      "mean_ms": 0.27711,
+      "p50_ms": 0.252068,
+      "p95_ms": 0.409823,
+      "p99_ms": 0.558517,
+      "max_ms": 0.613759
+    },
+    {
+      "name": "cooperative_enter_512_targets",
+      "size": 256,
+      "samples": 200,
+      "mean_ms": 0.740306,
+      "p50_ms": 0.699618,
+      "p95_ms": 0.887508,
+      "p99_ms": 1.100748,
+      "max_ms": 2.585241
+    },
+    {
+      "name": "cooperative_air_512_targets",
+      "size": 256,
+      "samples": 200,
+      "mean_ms": 1.08622,
+      "p50_ms": 0.862562,
+      "p95_ms": 1.557922,
+      "p99_ms": 1.649129,
+      "max_ms": 16.601528
+    },
+    {
+      "name": "cooperative_enter_512_targets",
+      "size": 512,
+      "samples": 200,
+      "mean_ms": 1.557612,
+      "p50_ms": 1.478183,
+      "p95_ms": 2.021917,
+      "p99_ms": 2.668295,
+      "max_ms": 2.682186
+    },
+    {
+      "name": "cooperative_air_512_targets",
+      "size": 512,
+      "samples": 200,
+      "mean_ms": 2.231903,
+      "p50_ms": 1.96309,
+      "p95_ms": 3.109446,
+      "p99_ms": 3.257447,
+      "max_ms": 3.602725
+    },
+    {
+      "name": "autoload_nearest_128_carriers",
+      "size": 64,
+      "samples": 200,
+      "mean_ms": 0.42393,
+      "p50_ms": 0.388241,
+      "p95_ms": 0.577715,
+      "p99_ms": 0.783323,
+      "max_ms": 1.148039
+    },
+    {
+      "name": "autoload_balanced_128_carriers",
+      "size": 64,
+      "samples": 200,
+      "mean_ms": 0.315283,
+      "p50_ms": 0.292979,
+      "p95_ms": 0.428632,
+      "p99_ms": 0.548672,
+      "max_ms": 0.597094
+    },
+    {
+      "name": "autoload_nearest_128_carriers",
+      "size": 512,
+      "samples": 200,
+      "mean_ms": 7.211022,
+      "p50_ms": 6.79172,
+      "p95_ms": 9.031773,
+      "p99_ms": 9.249299,
+      "max_ms": 10.130389
+    },
+    {
+      "name": "autoload_balanced_128_carriers",
+      "size": 512,
+      "samples": 200,
+      "mean_ms": 8.473172,
+      "p50_ms": 7.981852,
+      "p95_ms": 10.353373,
+      "p99_ms": 13.228658,
+      "max_ms": 15.441441
+    },
+    {
+      "name": "advanced_512_intents",
+      "size": 1024,
+      "samples": 200,
+      "mean_ms": 0.608294,
+      "p50_ms": 0.610684,
+      "p95_ms": 0.641431,
+      "p99_ms": 0.738375,
+      "max_ms": 0.775641
+    },
+    {
+      "name": "world_memory_copy_no_RPM",
+      "size": 1024,
+      "samples": 200,
+      "mean_ms": 0.084848,
+      "p50_ms": 0.06683,
+      "p95_ms": 0.094331,
+      "p99_ms": 0.553969,
+      "max_ms": 0.959206
+    },
+    {
+      "name": "advanced_512_intents",
+      "size": 8192,
+      "samples": 200,
+      "mean_ms": 1.661941,
+      "p50_ms": 1.377102,
+      "p95_ms": 3.636255,
+      "p99_ms": 4.161581,
+      "max_ms": 4.504375
+    },
+    {
+      "name": "world_memory_copy_no_RPM",
+      "size": 8192,
+      "samples": 200,
+      "mean_ms": 0.06696,
+      "p50_ms": 0.064336,
+      "p95_ms": 0.083705,
+      "p99_ms": 0.104176,
+      "max_ms": 0.163935
+    }
+  ],
+  "environment": {
+    "platform": "Linux-6.18.55-x86_64-with-glibc2.39",
+    "machine": "x86_64",
+    "cpu_count": 9,
+    "compiler": "g++ (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0"
+  }
+}

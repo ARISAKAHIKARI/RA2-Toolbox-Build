@@ -1,0 +1,1 @@
+PASS: repair delivery waits for evidence; no timeout retry/collision overwrite; identity, health, capacity, reset

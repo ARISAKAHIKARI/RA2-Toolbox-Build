@@ -1,0 +1,34 @@
+[
+  {
+    "suite": "assist/tests/ui_geometry_test.py",
+    "exit": 0
+  },
+  {
+    "suite": "assist/tests/auto_settings_ui_test.py",
+    "exit": 0
+  },
+  {
+    "suite": "assist/tests/cursor_settings_ui_test.py",
+    "exit": 0
+  },
+  {
+    "suite": "assist/tests/pointer_fanout_host_test.py",
+    "exit": 0
+  },
+  {
+    "suite": "assist/tests/enemy_overlay_test.py",
+    "exit": 0
+  },
+  {
+    "suite": "assist/tests/host_input_test.py",
+    "exit": 0
+  },
+  {
+    "suite": "tools/run_extended_cpu_tests.py",
+    "exit": 0
+  },
+  {
+    "suite": "tests/screen_capture_test.py",
+    "exit": 0
+  }
+]

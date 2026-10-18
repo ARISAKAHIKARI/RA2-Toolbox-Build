@@ -1,6 +1,6 @@
 {
-  "version": "1.0.6",
-  "dll_sha256": "e915fb981c309b3ed6d5361941d0de31c94673b77ef7b2cb38a1ae99bf9b49dc",
+  "version": "1.0.7",
+  "dll_sha256": "e72150ebe4ab8205dcafcf3feee89b36fe7e357eddd4d36c14ae200c7e7c7b0a",
   "reference_sha256": "c287d62a4d6a25b547e9339d071dd6e03adcf545699062e478aaeee38c60e89a",
   "signature_addresses": [
     "0x4a8eb0",
@@ -9,9 +9,9 @@
     "0x6385c0"
   ],
   "stub_addresses": {
-    "0": "0x100261d0",
-    "1": "0x10026220",
-    "2": "0x10026250"
+    "0": "0x10026270",
+    "1": "0x100262c0",
+    "2": "0x100262f0"
   },
   "cases": [
     {

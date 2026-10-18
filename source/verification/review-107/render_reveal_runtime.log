@@ -1,0 +1,7 @@
+PASS enabled
+PASS off_before_tick
+PASS stale_host
+PASS wrong_thread
+PASS stopped_host
+PASS foreign_before_install
+PASS foreign_after_install

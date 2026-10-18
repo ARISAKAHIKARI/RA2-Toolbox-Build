@@ -5,7 +5,7 @@ from pathlib import Path
 import subprocess,tempfile
 R=Path(__file__).resolve().parents[2]
 main=(R/'assist/source/main.cpp').read_text()
-draw='static void drawEnemyMarker'+main.split('static void drawEnemyMarker',1)[1].split('struct Surface{',1)[0]
+draw='static void drawEnemyMarker'+main.split('static void drawEnemyMarker',1)[1].split('#include "air_path_host.h"',1)[0].split('#include "construction_host.h"',1)[0]
 prefix=r'''
 #include "../../external_reader/source/enemy_markers.h"
 #include "label_motion.h"
@@ -64,7 +64,7 @@ assert 'enemyMarkers' not in io.split('static uint32_t additionalFlags(){',1)[1]
 assert '!snap.crateCount&&!enemyCount' in main
 assert 'memcmp(drawnEnemyViews,enemyViews' in main and 'memcmp(drawnEnemies,enemyFrame.items' in main
 assert 'g.SetClip(RectF(0,0,enemyFrame.width*sx,enemyFrame.height*sy)' in main and 'g.Restore(enemyClip)' in main
-assert 'if(!foregroundGame()||snap.renderStatus!=1){ShowWindow(overlay,SW_HIDE);return;}' in main
+assert 'if(!foregroundGame()||snap.renderStatus!=1){ShowWindow(overlay,SW_HIDE);' in main
 sampler=(R/'external_reader/source/tactical_sampler.h').read_text()
 assert 'enemies::latest(read_,at,out,n,0)' in sampler
 assert 'reader->readFresh(p,out,n)' in (R/'external_reader/source/shared_reader.h').read_text()

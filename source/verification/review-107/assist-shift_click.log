@@ -1,0 +1,1 @@
+PASS: real Shift5 burst edges, release/drag/cancel, four extra clicks, intervals/wrap; physical polling independent of low display FPS without a second timer

@@ -1,0 +1,2 @@
+PASS: unloading takes precedence over stale waiting moves and switch-off release; actual War Miner / Chrono Miner capacities and first-five-pip boundary
+PASS: blocked waiting-cell replacement, lost-refinery reassign, manual takeover, bounded movement retries, and 24 miners + 16 attacks all delivered under a 12-event prefix budget

@@ -1,4 +1,8 @@
-# 1.0.6 逃生与地图绘制测试
+# 1.0.6–1.0.7 逃生与地图绘制测试
+
+## 1.0.7 整体回归补充
+
+队列满或本帧额度耗尽时仍观察乘员动作，仅提交受额度限制，避免错过短暂部署动画。绘制/判断回调新增菜单、对话框和 TacticalActive 检查。有效对局中停止桥接也请求一次原版重绘；换局、暂停、故障不调用旧世界。战术面板的科技列表/风险说明重叠已修复。详见 [本轮审视和测试](REVIEW-1.0.7.md)。
 
 ## 逃生问题
 
@@ -31,6 +35,6 @@
 - 7 项实际 Runtime 安装/回落/恢复用例，覆盖失联、错误线程、关闭、安装前及安装后第三方修改。
 - 12 项已有任意建造/原生路径点入口桩回归、五位置白名单/恢复/冲突测试、PE32/ABI/依赖与源码边界检查。
 
-上述并非 Windows 加载器、真实绘图、屏幕捕获、联网或性能实测。源码中的旧报告保留各自版本，本版结果以 packages/v1.0.6 为准。
+上述并非 Windows 加载器、真实绘图、屏幕捕获、联网或性能实测。源码中的旧报告保留各自版本，1.0.6 原始结果以 packages/v1.0.6 为准；1.0.7 结果以 packages/v1.0.7 及 verification/review-107 为准。
 
 依据：[YRpp InfantryClass](https://github.com/Phobos-developers/YRpp/blob/master/InfantryClass.h)、[Sequence 枚举](https://github.com/Phobos-developers/YRpp/blob/master/GeneralDefinitions.h)、[TacticalClass](https://github.com/Phobos-developers/YRpp/blob/master/TacticalClass.h)，并核对本地参考 EXE。未把反编译地址当作跨 MOD 保证。

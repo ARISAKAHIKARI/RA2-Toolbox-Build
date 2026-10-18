@@ -1,7 +1,6 @@
-RA2 Toolbox v1.0.6
-File version: 1.0.6.0
-Assist protocol: 45
-Update SHA256: f750865df167b9c573aa64ccc257ad82ac9d6f2592bb51e44aa2592135a4726b
-Source: source/ at v1.0.6 tag
-Validation: packages/v1.0.6/
-Real Windows game/rendering/multiplayer: not tested
+RA2 Toolbox 1.0.7 / Windows file version 1.0.7.0 / Assist protocol 45
+Compiler: Zig 0.13.0, Windows x86
+GameRuntime.dll SHA256: e72150ebe4ab8205dcafcf3feee89b36fe7e357eddd4d36c14ae200c7e7c7b0a
+RA2Toolbox.exe SHA256: c20697860f5f2d4332bf50bb8411487f8b9fedeb2876fd91fc54d46d77bb367a
+Validation: source/REVIEW-1.0.7.md; source/REVIEW_VERIFICATION.json
+No real Windows game or netplay run.

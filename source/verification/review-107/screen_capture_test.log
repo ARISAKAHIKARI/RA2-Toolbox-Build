@@ -1,0 +1,2 @@
+PASS capture analyzer: negative desktop coordinates, clipping, empty samples, nearest-rank P50/P95/P99, lossless BGRA->PNG and dimensions
+PASS passive capture ACK prefix: current mapping protocol 45; PID, torn, short and unknown-version rejection

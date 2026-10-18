@@ -784,10 +784,10 @@ static void readSnapshot(){
   incoming=candidate;
   bool first=!lastData;snap=incoming;snapshotSeq=a;lastData=GetTickCount();
   logCommandReceipts(incoming);
-  static int loggedPlacement=0,loggedNativeAir=0;
-  if(incoming.placementStatus!=loggedPlacement||incoming.nativeAirStatus!=loggedNativeAir){
-   autolog::write(L"experimental-patches placement="+std::to_wstring(incoming.placementStatus)+L" nativeAir="+std::to_wstring(incoming.nativeAirStatus)+L" installed="+std::to_wstring(incoming.hookInstalled)+L" conflicts="+std::to_wstring(incoming.hookConflicts));
-   loggedPlacement=incoming.placementStatus;loggedNativeAir=incoming.nativeAirStatus;
+  static int loggedPlacement=0,loggedNativeAir=0,loggedRenderReveal=0;
+  if(incoming.placementStatus!=loggedPlacement||incoming.nativeAirStatus!=loggedNativeAir||incoming.renderRevealStatus!=loggedRenderReveal){
+   autolog::write(L"experimental-patches placement="+std::to_wstring(incoming.placementStatus)+L" nativeAir="+std::to_wstring(incoming.nativeAirStatus)+L" renderReveal="+std::to_wstring(incoming.renderRevealStatus)+L" installed="+std::to_wstring(incoming.hookInstalled)+L" conflicts="+std::to_wstring(incoming.hookConflicts));
+   loggedPlacement=incoming.placementStatus;loggedNativeAir=incoming.nativeAirStatus;loggedRenderReveal=incoming.renderRevealStatus;
   }
   static uint32_t loggedMatch=0,loggedFlags=0,loggedSent=0;static int loggedReady=-1;static DWORD entryAt=0,entryLogAt=0;
   const DWORD logNow=GetTickCount();const bool changed=incoming.match!=loggedMatch||incoming.commandStatus!=loggedReady||shared->flags!=loggedFlags;
@@ -1313,16 +1313,16 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
  csHoldEdit=pageControl(1,HOTKEY_CLASSW,L"",305,326,180,26,474,WS_TABSTOP);SendMessageW(csHoldEdit,HKM_SETHOTKEY,csHoldKey,0);modernui::mouseOnly(csHoldEdit);
  
  pageControl(1,L"STATIC",L"双按间隔：20–5000 ms",20,364,400,24,0);
- anywhereCheck=pageControl(4,L"BUTTON",L"任意建造（修改游戏判断 · 联机危险）",20,395,605,27,476,BS_AUTOCHECKBOX|WS_TABSTOP);SendMessageW(anywhereCheck,BM_SETCHECK,buildAnywhereMode?BST_CHECKED:BST_UNCHECKED,0);
- pageControl(4,L"STATIC",L"Hook 修改游戏判断清单 · 以下两项默认关闭，联机危险",20,360,605,26,805);
- {HWND h=pageControl(4,L"BUTTON",L"飞机原生路径点（修改游戏判断 · 联机危险）",20,434,605,27,806,BS_AUTOCHECKBOX|WS_TABSTOP);SendMessageW(h,BM_SETCHECK,extra.nativeAirWaypoints?BST_CHECKED:BST_UNCHECKED,0);}
- pageControl(4,L"STATIC",L"两项均可能导致不同步或掉线；由统一 GameRuntime 安装和恢复。",20,474,605,26,0);
- pageControl(4,L"STATIC",L"原生路径点开启后，外部 Z 队列暂停；补丁冲突时不会强行覆盖。",20,512,605,26,0);
- pageControl(4,L"STATIC",L"补丁状态：等待连接",20,550,605,54,807);
- {HWND h=pageControl(4,L"BUTTON",L"地图全开：仅去黑幕 / 迷雾（绘制测试）",20,635,605,27,808,BS_AUTOCHECKBOX|WS_TABSTOP);SendMessageW(h,BM_SETCHECK,extra.renderReveal?BST_CHECKED:BST_UNCHECKED,0);}
- pageControl(4,L"STATIC",L"默认关闭。保留原版视野及目标判断；隐藏单位可配合敌方标记。",20,674,605,26,0);
- pageControl(4,L"STATIC",L"建议新对局单独测试；未做真实联机验证。旧地图全开仍是另一功能。",20,708,605,26,0);
- pageControl(4,L"STATIC",L"绘制测试：关闭",20,746,605,26,809);
+ anywhereCheck=pageControl(4,L"BUTTON",L"任意建造（修改游戏判断 · 联机危险）",20,425,605,27,476,BS_AUTOCHECKBOX|WS_TABSTOP);SendMessageW(anywhereCheck,BM_SETCHECK,buildAnywhereMode?BST_CHECKED:BST_UNCHECKED,0);
+ pageControl(4,L"STATIC",L"Hook 修改游戏判断清单 · 以下两项默认关闭，联机危险",20,390,605,26,805);
+ {HWND h=pageControl(4,L"BUTTON",L"飞机原生路径点（修改游戏判断 · 联机危险）",20,464,605,27,806,BS_AUTOCHECKBOX|WS_TABSTOP);SendMessageW(h,BM_SETCHECK,extra.nativeAirWaypoints?BST_CHECKED:BST_UNCHECKED,0);}
+ pageControl(4,L"STATIC",L"两项均可能导致不同步或掉线；由统一 GameRuntime 安装和恢复。",20,504,605,26,0);
+ pageControl(4,L"STATIC",L"原生路径点开启后，外部 Z 队列暂停；补丁冲突时不会强行覆盖。",20,542,605,26,0);
+ pageControl(4,L"STATIC",L"补丁状态：等待连接",20,580,605,54,807);
+ {HWND h=pageControl(4,L"BUTTON",L"地图全开：仅去黑幕 / 迷雾（绘制测试）",20,665,605,27,808,BS_AUTOCHECKBOX|WS_TABSTOP);SendMessageW(h,BM_SETCHECK,extra.renderReveal?BST_CHECKED:BST_UNCHECKED,0);}
+ pageControl(4,L"STATIC",L"默认关闭。保留原版视野及目标判断；隐藏单位可配合敌方标记。",20,704,605,26,0);
+ pageControl(4,L"STATIC",L"建议新对局单独测试；未做真实联机验证。旧地图全开仍是另一功能。",20,738,605,26,0);
+ pageControl(4,L"STATIC",L"绘制测试：关闭",20,776,605,26,809);
  pageControl(3,L"STATIC",L"游戏入口：统一消息管理器",20,416,605,24,0);
  schedulerEntryCombo=pageControl(3,L"COMBOBOX",L"",20,447,605,230,760,CBS_DROPDOWNLIST|WS_TABSTOP);
  SendMessageW(schedulerEntryCombo,CB_ADDSTRING,0,(LPARAM)L"统一消息入口 · 不改写游戏代码");

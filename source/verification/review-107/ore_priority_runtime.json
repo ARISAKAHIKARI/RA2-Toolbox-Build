@@ -1,0 +1,121 @@
+{
+  "inputs": {
+    "GameRuntime.dll": "e72150ebe4ab8205dcafcf3feee89b36fe7e357eddd4d36c14ae200c7e7c7b0a",
+    "RA2Toolbox.exe": "c20697860f5f2d4332bf50bb8411487f8b9fedeb2876fd91fc54d46d77bb367a"
+  },
+  "results": [
+    {
+      "name": "0_yield_allowed",
+      "status": "PASS"
+    },
+    {
+      "name": "0_ordinary_move_linked",
+      "status": "PASS"
+    },
+    {
+      "name": "0_near_owner",
+      "status": "PASS"
+    },
+    {
+      "name": "0_unloading",
+      "status": "PASS"
+    },
+    {
+      "name": "0_foreign_radio",
+      "status": "PASS"
+    },
+    {
+      "name": "0_disabled_mode",
+      "status": "PASS"
+    },
+    {
+      "name": "0_stale_token",
+      "status": "PASS"
+    },
+    {
+      "name": "0_empty_cargo",
+      "status": "PASS"
+    },
+    {
+      "name": "0_occupied_cell",
+      "status": "PASS"
+    },
+    {
+      "name": "0_water_cell",
+      "status": "PASS"
+    },
+    {
+      "name": "0_wrong_mission",
+      "status": "PASS"
+    },
+    {
+      "name": "0_unexpected_target",
+      "status": "PASS"
+    },
+    {
+      "name": "0_stale_frame",
+      "status": "PASS"
+    },
+    {
+      "name": "3_yield_allowed",
+      "status": "PASS"
+    },
+    {
+      "name": "3_ordinary_move_linked",
+      "status": "PASS"
+    },
+    {
+      "name": "3_near_owner",
+      "status": "PASS"
+    },
+    {
+      "name": "3_unloading",
+      "status": "PASS"
+    },
+    {
+      "name": "3_foreign_radio",
+      "status": "PASS"
+    },
+    {
+      "name": "3_disabled_mode",
+      "status": "PASS"
+    },
+    {
+      "name": "3_stale_token",
+      "status": "PASS"
+    },
+    {
+      "name": "3_empty_cargo",
+      "status": "PASS"
+    },
+    {
+      "name": "3_occupied_cell",
+      "status": "PASS"
+    },
+    {
+      "name": "3_water_cell",
+      "status": "PASS"
+    },
+    {
+      "name": "3_wrong_mission",
+      "status": "PASS"
+    },
+    {
+      "name": "3_unexpected_target",
+      "status": "PASS"
+    },
+    {
+      "name": "3_stale_frame",
+      "status": "PASS"
+    },
+    {
+      "name": "0_host_world_receipt_release_winner_protected_next_turn",
+      "status": "PASS"
+    },
+    {
+      "name": "3_host_world_receipt_release_winner_protected_next_turn",
+      "status": "PASS"
+    }
+  ],
+  "limitations": "Actual DLL and original constructors/queues plus compiled production external planner. Win32, movement, radio release and unloading are modeled. No whole-game, real network or physical timing validation."
+}

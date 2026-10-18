@@ -19,13 +19,21 @@ for args in [(0,1,b''),(1,1,b''),(20000,20000,b'')]:
  try:m.png(*args);raise AssertionError('invalid input accepted')
  except ValueError:pass
 print('PASS capture analyzer: negative desktop coordinates, clipping, empty samples, nearest-rank P50/P95/P99, lossless BGRA->PNG and dimensions')
-for version in (42,):
- prefix=struct.pack('<19I',0x41533130,version,123,*([0]*16))
+for version in (45,):
+ prefix=struct.pack('<20I',0x41533130,version,123,*([0]*17))
  assert m.assist_prefix(prefix,prefix,123)[1]==version
  assert m.assist_prefix(prefix,prefix,124) is None
  assert m.assist_prefix(prefix,prefix[:-1],123) is None
-for unsupported in (33,34,35,36,37,38,39,40,41,43):
- future=struct.pack('<19I',0x41533130,unsupported,123,*([0]*16))
+for unsupported in (33,34,35,36,37,38,39,40,41,42,43,44,46):
+ future=struct.pack('<20I',0x41533130,unsupported,123,*([0]*17))
  assert m.assist_prefix(future,future,123) is None
 assert m.assist_prefix(b'',b'',123) is None
-print('PASS passive capture ACK prefix: current mapping protocol 42; PID, torn, short and unknown-version rejection')
+print('PASS passive capture ACK prefix: current mapping protocol 45; PID, torn, short and unknown-version rejection')
+
+# Stay tied to the shipped C++ protocol, including requestToken before requestTick.
+protocol=(p.parents[1]/'assist/source/protocol.h').read_text()
+import re
+assert int(re.search(r'Version\s*=\s*(\d+)',protocol).group(1))==45
+assert 'uint32_t requestToken; uint32_t requestTick,requestMatch;' in protocol
+values=[0]*20;values[:3]=[0x41533130,45,123];values[9]=values[10]=7;values[14]=98765;values[15]=1234
+b=struct.pack('<20I',*values);assert m.assist_prefix(b,b,123)[15]==1234

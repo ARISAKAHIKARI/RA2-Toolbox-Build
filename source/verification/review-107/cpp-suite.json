@@ -1,0 +1,250 @@
+[
+  {
+    "test": "assist/tests/advanced_regression.cpp",
+    "exit": 0
+  },
+  {
+    "test": "assist/tests/autoload.cpp",
+    "exit": 0
+  },
+  {
+    "test": "assist/tests/autonomy_policy.cpp",
+    "exit": 0
+  },
+  {
+    "test": "assist/tests/business_effects.cpp",
+    "exit": 0
+  },
+  {
+    "test": "assist/tests/command_delivery.cpp",
+    "exit": 0
+  },
+  {
+    "test": "assist/tests/command_gateway.cpp",
+    "exit": 0
+  },
+  {
+    "test": "assist/tests/constructor_adapter.cpp",
+    "exit": 0
+  },
+  {
+    "test": "assist/tests/control_link.cpp",
+    "exit": 0
+  },
+  {
+    "test": "assist/tests/cooperative.cpp",
+    "exit": 0
+  },
+  {
+    "test": "assist/tests/defense103.cpp",
+    "exit": 0
+  },
+  {
+    "test": "assist/tests/dispatch_router.cpp",
+    "exit": 0
+  },
+  {
+    "test": "assist/tests/dual_scheduler.cpp",
+    "exit": 0
+  },
+  {
+    "test": "assist/tests/enemy_markers.cpp",
+    "exit": 0
+  },
+  {
+    "test": "assist/tests/entry_policy.cpp",
+    "exit": 0
+  },
+  {
+    "test": "assist/tests/event_delivery.cpp",
+    "exit": 0
+  },
+  {
+    "test": "assist/tests/experimental_patch_policy.cpp",
+    "exit": 0
+  },
+  {
+    "test": "assist/tests/external_planner.cpp",
+    "exit": 0
+  },
+  {
+    "test": "assist/tests/external_reader.cpp",
+    "exit": 0
+  },
+  {
+    "test": "assist/tests/feature_type_config.cpp",
+    "exit": 0
+  },
+  {
+    "test": "assist/tests/hook_policy.cpp",
+    "exit": 0
+  },
+  {
+    "test": "assist/tests/hook_registry_policy.cpp",
+    "exit": 0
+  },
+  {
+    "test": "assist/tests/hotfix103.cpp",
+    "exit": 0
+  },
+  {
+    "test": "assist/tests/hotkey_routes.cpp",
+    "exit": 0
+  },
+  {
+    "test": "assist/tests/iteration_regression.cpp",
+    "exit": 0
+  },
+  {
+    "test": "assist/tests/label_motion.cpp",
+    "exit": 0
+  },
+  {
+    "test": "assist/tests/lease_arbiter.cpp",
+    "exit": 0
+  },
+  {
+    "test": "assist/tests/loading_equivalence.cpp",
+    "exit": 0
+  },
+  {
+    "test": "assist/tests/magnetron.cpp",
+    "exit": 0
+  },
+  {
+    "test": "assist/tests/magnetron_rof.cpp",
+    "exit": 0
+  },
+  {
+    "test": "assist/tests/manual_ore.cpp",
+    "exit": 0
+  },
+  {
+    "test": "assist/tests/mega_queue_backend.cpp",
+    "exit": 0
+  },
+  {
+    "test": "assist/tests/mission_owner_cancel.cpp",
+    "exit": 0
+  },
+  {
+    "test": "assist/tests/native_orders.cpp",
+    "exit": 0
+  },
+  {
+    "test": "assist/tests/object_event_backend.cpp",
+    "exit": 0
+  },
+  {
+    "test": "assist/tests/object_index.cpp",
+    "exit": 0
+  },
+  {
+    "test": "assist/tests/order_policy.cpp",
+    "exit": 0
+  },
+  {
+    "test": "assist/tests/ore_delivery_effect.cpp",
+    "exit": 0
+  },
+  {
+    "test": "assist/tests/ore_priority.cpp",
+    "exit": 0
+  },
+  {
+    "test": "assist/tests/ore_regression.cpp",
+    "exit": 0
+  },
+  {
+    "test": "assist/tests/ore_type_config.cpp",
+    "exit": 0
+  },
+  {
+    "test": "assist/tests/outgoing_batch.cpp",
+    "exit": 0
+  },
+  {
+    "test": "assist/tests/pacing.cpp",
+    "exit": 0
+  },
+  {
+    "test": "assist/tests/plan_freshness.cpp",
+    "exit": 0
+  },
+  {
+    "test": "assist/tests/planner_index.cpp",
+    "exit": 0
+  },
+  {
+    "test": "assist/tests/policy.cpp",
+    "exit": 0
+  },
+  {
+    "test": "assist/tests/receipt_events.cpp",
+    "exit": 0
+  },
+  {
+    "test": "assist/tests/receipt_visibility.cpp",
+    "exit": 0
+  },
+  {
+    "test": "assist/tests/repair_delivery.cpp",
+    "exit": 0
+  },
+  {
+    "test": "assist/tests/robust_cooperative.cpp",
+    "exit": 0
+  },
+  {
+    "test": "assist/tests/robust_cursor_sequence.cpp",
+    "exit": 0
+  },
+  {
+    "test": "assist/tests/session_epoch.cpp",
+    "exit": 0
+  },
+  {
+    "test": "assist/tests/shift_click.cpp",
+    "exit": 0
+  },
+  {
+    "test": "assist/tests/sidebar_policy.cpp",
+    "exit": 0
+  },
+  {
+    "test": "assist/tests/tactical_decisions.cpp",
+    "exit": 0
+  },
+  {
+    "test": "assist/tests/tech_profile.cpp",
+    "exit": 0
+  },
+  {
+    "test": "assist/tests/type_catalog.cpp",
+    "exit": 0
+  },
+  {
+    "test": "assist/tests/type_hotkey.cpp",
+    "exit": 0
+  },
+  {
+    "test": "assist/tests/unit_task_arbiter.cpp",
+    "exit": 0
+  },
+  {
+    "test": "unit_monitor/tests/icon_cache.cpp",
+    "exit": 0
+  },
+  {
+    "test": "unit_monitor/tests/owned_counter.cpp",
+    "exit": 0
+  },
+  {
+    "test": "unit_monitor/tests/round_transition.cpp",
+    "exit": 0
+  },
+  {
+    "test": "unit_monitor/tests/tab_control.cpp",
+    "exit": 0
+  }
+]

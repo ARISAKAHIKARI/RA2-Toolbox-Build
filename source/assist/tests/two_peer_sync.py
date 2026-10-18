@@ -219,13 +219,13 @@ def main():
                      (32768,'ore_reader'),(2048,'ejection_watch_empty'),(1048576,'enter_install'),
                      (2097152,'air_attack_install'),(4194304,'disk_install'),
                      (8388608,'drained_sell_install'),(16777216,'vehicle_sell_install'),
-                     (33554432,'enemy_sell_guard'),(65536,'placement_guard')]:
+                     (33554432,'enemy_sell_guard'),(65536,'experimental_placement_opt_in')]:
         def flags(ps,bit=bit):
             ps[0].set(flags=bit)
             for i in range(3):
                 for p in ps:p.advance();p.tick()
             s=ps[0].state()
-            if bit==65536:assert s.data.placementStatus<0
+            if bit==65536:assert s.data.placementStatus==1 # code-only opt-in, not a multiplayer gameplay safety test
             return {'flags':bit,'csHookStatus':s.data.csHookStatus,'nativeHookStatus':s.data.nativeHookStatus,
                     'clickHookStatus':s.clickHookStatus,'placementStatus':s.data.placementStatus,
                     'scope':'enable/tick only; not complete gameplay effect'}

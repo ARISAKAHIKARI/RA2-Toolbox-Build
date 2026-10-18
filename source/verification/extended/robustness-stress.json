@@ -1,0 +1,11 @@
+{
+  "allocation_scenarios": 30000,
+  "orders_checked": 739454,
+  "shared_budget_frames": 10000,
+  "budget_wakes": 100000,
+  "owner_pairs": 121,
+  "seed": 7602226,
+  "status": "PASS",
+  "scope": "production pure algorithms under ASan/UBSan; deterministic fuzz; no Windows/game",
+  "leak_sanitizer": "disabled: container thread enumeration unsupported"
+}

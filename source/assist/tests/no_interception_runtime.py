@@ -38,14 +38,14 @@ def check(name,fn):
  fn();results.append({'name':name,'status':'PASS'});print('PASS',name,flush=True)
 for mode in (0,5,3,4):
  def no_patch(mode=mode):
-  m=fixture(mode,(1<<26)-1);s=state(m);s.driverMode=1;s.driverTarget=6;save(m,s)
+  m=fixture(mode,0x7fffffff & ~65536);s=state(m);s.driverMode=1;s.driverTarget=6;save(m,s)
   for n in range(4):s=tick(m)
   assert not m.codeWrites and bytes(m.u.mem_read(m.textAt,m.textSize))==m.textBefore
   assert s.data.inputPatchMask==0 and s.data.hookInstalled==0 and s.driverMode==0
-  assert s.data.placementStatus==-20
+  assert s.data.placementStatus==0
   s.command=10;s.arg=1;s.request+=1;s.requestTick=m.clock;s.requestMatch=s.data.match;save(m,s);s=m.hook()
   assert C.c_int32(s.result).value==-20 and not s.data.techOpen and not m.codeWrites
- check(f'all_flags_no_engine_patch_session_{mode}',no_patch)
+ check(f'normal_flags_no_engine_patch_session_{mode}',no_patch)
  def order(mode=mode):
   m=fixture(mode);before=bytes(m.u.mem_read(m.unit,0x2000));s=pointer(m)
   assert s.pointer.ack==s.pointer.request and s.pointer.accepted==1,(s.pointer.result,s.pointer.accepted,s.data.lastSubmitError)
@@ -192,7 +192,7 @@ for mode in (0,5,3,4):
 # Regression: IsDeployed returns true during sequence 27, then native scatter
 # cancels it. Two survivors settle immediately; three must independently retry.
 for mode in (0,5,3,4):
- for scenario in ('interrupted','queued_toggle','manual','off'):
+ for scenario in ('interrupted','queued_toggle','manual','off','full_queue'):
   def interrupted(mode=mode,scenario=scenario):
    m=fixture(mode,1024|2048);m.b(m.engT+0xec8,1)
    people=[m.eng]+[m.obj(0x7eb058,m.engT,m.house,20+n) for n in range(4)]
@@ -207,7 +207,9 @@ for mode in (0,5,3,4):
    for p in people:m.w(p+0x11c,0);m.b(p+0x81,0);m.b(p+0x90,1);m.w(p+0xac,5)
    s=tick(m);assert count(m)==5 and s.data.unloadPending==5
    for n,p in enumerate(people):m.w(p+0x6c4,28 if n<2 else 27);m.w(p+0xac,16)
+   if scenario=='full_queue':m.w(0x8b41f8 if mode in (0,5) else 0xa802c8,16384 if mode in (0,5) else 112)
    for _ in range(4):s=tick(m)
+   if scenario=='full_queue':m.w(0x8b41f8 if mode in (0,5) else 0xa802c8,5)
    assert count(m)==5 and s.data.unloadPending==3,(scenario,s.data.unloadPending)
    for p in people[2:]:m.w(p+0x6c4,3);m.w(p+0xac,2)
    if scenario=='manual':pointer(m,5,mutate=lambda s,i:(setattr(i,'count',3),[setattr(i.sources[n],'pointer',p) or setattr(i.sources[n],'id',m.r(p+0x10)) for n,p in enumerate(people[2:])]))
@@ -231,7 +233,7 @@ for mode in (0,5,3,4):
     for p in people:
      if m.r(p+0x10) in retries:m.w(p+0x6c4,28);m.w(p+0xac,16)
     if scenario=='queued_toggle' and age<28:assert count(m)==5
-   assert len(retries)==(3 if scenario in ('interrupted','queued_toggle') else 0),(scenario,retries)
+   assert len(retries)==(3 if scenario in ('interrupted','queued_toggle','full_queue') else 0),(scenario,retries)
    assert s.data.unloadPending==0 and not m.codeWrites,(scenario,s.data.unloadPending)
   check(f'ejection_animation_{scenario}_{mode}',interrupted)
 # Independent physical bindings must not authorize other features at Runtime.

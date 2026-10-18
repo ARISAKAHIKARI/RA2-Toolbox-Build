@@ -1,0 +1,58 @@
+{
+  "dll_sha256": "e72150ebe4ab8205dcafcf3feee89b36fe7e357eddd4d36c14ae200c7e7c7b0a",
+  "scope": "Actual x86 Runtime render callbacks across play/menu/round boundaries.\nNative mask blitters and dirty-area implementation are mocked; no real rendering.\n",
+  "results": [
+    {
+      "case": "menu",
+      "status": "PASS"
+    },
+    {
+      "case": "dialog",
+      "status": "PASS"
+    },
+    {
+      "case": "tactical_inactive",
+      "status": "PASS"
+    },
+    {
+      "case": "observer",
+      "status": "PASS"
+    },
+    {
+      "case": "defeated",
+      "status": "PASS"
+    },
+    {
+      "case": "house",
+      "status": "PASS"
+    },
+    {
+      "case": "frame_back",
+      "status": "PASS"
+    },
+    {
+      "case": "frame_ahead",
+      "status": "PASS"
+    },
+    {
+      "case": "mode",
+      "status": "PASS"
+    },
+    {
+      "case": "run_flag",
+      "status": "PASS"
+    },
+    {
+      "case": "chat",
+      "status": "PASS"
+    },
+    {
+      "case": "disable",
+      "status": "PASS"
+    },
+    {
+      "case": "stop",
+      "status": "PASS"
+    }
+  ]
+}

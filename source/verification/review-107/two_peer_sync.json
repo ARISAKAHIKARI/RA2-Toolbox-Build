@@ -1,0 +1,1242 @@
+{
+  "schema": 1,
+  "scope": "real senders + modeled receiver/transport; no live netplay",
+  "inputs": {
+    "gamemd-spawn.exe": "c287d62a4d6a25b547e9339d071dd6e03adcf545699062e478aaeee38c60e89a",
+    "GameRuntime.dll": "e72150ebe4ab8205dcafcf3feee89b36fe7e357eddd4d36c14ae200c7e7c7b0a"
+  },
+  "results": [
+    {
+      "name": "repair_both_mode3_backend0",
+      "status": "PASS",
+      "mode": 3,
+      "backend": 0,
+      "protected_memory_unchanged": true,
+      "commands": [
+        {
+          "player": 0,
+          "result": 1,
+          "count": 1
+        },
+        {
+          "player": 1,
+          "result": 1,
+          "count": 1
+        }
+      ],
+      "events": [
+        {
+          "kind": 21,
+          "house": 0,
+          "frame": 100,
+          "actor": 12,
+          "tag": 52
+        },
+        {
+          "kind": 21,
+          "house": 1,
+          "frame": 100,
+          "actor": 15,
+          "tag": 52
+        }
+      ],
+      "model_hash": "c83d561da9c60e6fbc5f46a4e88dc4b89c0ad1455e73a4103a09166e41c3b494",
+      "transport": "modeled barrier, shuffle and duplicate suppression"
+    },
+    {
+      "name": "auto_board_both_mode3_backend0",
+      "status": "PASS",
+      "mode": 3,
+      "backend": 0,
+      "protected_memory_unchanged": true,
+      "commands": [
+        {
+          "player": 0,
+          "result": 1,
+          "count": 1
+        },
+        {
+          "player": 1,
+          "result": 1,
+          "count": 1
+        }
+      ],
+      "events": [
+        {
+          "kind": 4,
+          "house": 0,
+          "frame": 100,
+          "actor": 11,
+          "tag": 52,
+          "mission": 7,
+          "target": 0,
+          "target_tag": 0,
+          "destination": 10,
+          "destination_tag": 52
+        },
+        {
+          "kind": 4,
+          "house": 1,
+          "frame": 100,
+          "actor": 14,
+          "tag": 52,
+          "mission": 7,
+          "target": 0,
+          "target_tag": 0,
+          "destination": 13,
+          "destination_tag": 52
+        }
+      ],
+      "model_hash": "8247c26600f50f883aaf52425de3e5aa61a6c5c6c846364c5bef7a09d91202a8",
+      "transport": "modeled barrier, shuffle and duplicate suppression"
+    },
+    {
+      "name": "repair_both_mode3_backend1",
+      "status": "PASS",
+      "mode": 3,
+      "backend": 1,
+      "protected_memory_unchanged": true,
+      "commands": [
+        {
+          "player": 0,
+          "result": 1,
+          "count": 1
+        },
+        {
+          "player": 1,
+          "result": 1,
+          "count": 1
+        }
+      ],
+      "events": [
+        {
+          "kind": 21,
+          "house": 0,
+          "frame": 100,
+          "actor": 12,
+          "tag": 52
+        },
+        {
+          "kind": 21,
+          "house": 1,
+          "frame": 100,
+          "actor": 15,
+          "tag": 52
+        }
+      ],
+      "model_hash": "c83d561da9c60e6fbc5f46a4e88dc4b89c0ad1455e73a4103a09166e41c3b494",
+      "transport": "modeled barrier, shuffle and duplicate suppression"
+    },
+    {
+      "name": "auto_board_both_mode3_backend1",
+      "status": "PASS",
+      "mode": 3,
+      "backend": 1,
+      "protected_memory_unchanged": true,
+      "commands": [
+        {
+          "player": 0,
+          "result": 1,
+          "count": 1
+        },
+        {
+          "player": 1,
+          "result": 1,
+          "count": 1
+        }
+      ],
+      "events": [
+        {
+          "kind": 4,
+          "house": 0,
+          "frame": 100,
+          "actor": 11,
+          "tag": 52,
+          "mission": 7,
+          "target": 0,
+          "target_tag": 0,
+          "destination": 10,
+          "destination_tag": 52
+        },
+        {
+          "kind": 4,
+          "house": 1,
+          "frame": 100,
+          "actor": 14,
+          "tag": 52,
+          "mission": 7,
+          "target": 0,
+          "target_tag": 0,
+          "destination": 13,
+          "destination_tag": 52
+        }
+      ],
+      "model_hash": "8247c26600f50f883aaf52425de3e5aa61a6c5c6c846364c5bef7a09d91202a8",
+      "transport": "modeled barrier, shuffle and duplicate suppression"
+    },
+    {
+      "name": "repair_both_mode4_backend0",
+      "status": "PASS",
+      "mode": 4,
+      "backend": 0,
+      "protected_memory_unchanged": true,
+      "commands": [
+        {
+          "player": 0,
+          "result": 1,
+          "count": 1
+        },
+        {
+          "player": 1,
+          "result": 1,
+          "count": 1
+        }
+      ],
+      "events": [
+        {
+          "kind": 21,
+          "house": 0,
+          "frame": 100,
+          "actor": 12,
+          "tag": 52
+        },
+        {
+          "kind": 21,
+          "house": 1,
+          "frame": 100,
+          "actor": 15,
+          "tag": 52
+        }
+      ],
+      "model_hash": "c83d561da9c60e6fbc5f46a4e88dc4b89c0ad1455e73a4103a09166e41c3b494",
+      "transport": "modeled barrier, shuffle and duplicate suppression"
+    },
+    {
+      "name": "auto_board_both_mode4_backend0",
+      "status": "PASS",
+      "mode": 4,
+      "backend": 0,
+      "protected_memory_unchanged": true,
+      "commands": [
+        {
+          "player": 0,
+          "result": 1,
+          "count": 1
+        },
+        {
+          "player": 1,
+          "result": 1,
+          "count": 1
+        }
+      ],
+      "events": [
+        {
+          "kind": 4,
+          "house": 0,
+          "frame": 100,
+          "actor": 11,
+          "tag": 52,
+          "mission": 7,
+          "target": 0,
+          "target_tag": 0,
+          "destination": 10,
+          "destination_tag": 52
+        },
+        {
+          "kind": 4,
+          "house": 1,
+          "frame": 100,
+          "actor": 14,
+          "tag": 52,
+          "mission": 7,
+          "target": 0,
+          "target_tag": 0,
+          "destination": 13,
+          "destination_tag": 52
+        }
+      ],
+      "model_hash": "8247c26600f50f883aaf52425de3e5aa61a6c5c6c846364c5bef7a09d91202a8",
+      "transport": "modeled barrier, shuffle and duplicate suppression"
+    },
+    {
+      "name": "repair_both_mode4_backend1",
+      "status": "PASS",
+      "mode": 4,
+      "backend": 1,
+      "protected_memory_unchanged": true,
+      "commands": [
+        {
+          "player": 0,
+          "result": 1,
+          "count": 1
+        },
+        {
+          "player": 1,
+          "result": 1,
+          "count": 1
+        }
+      ],
+      "events": [
+        {
+          "kind": 21,
+          "house": 0,
+          "frame": 100,
+          "actor": 12,
+          "tag": 52
+        },
+        {
+          "kind": 21,
+          "house": 1,
+          "frame": 100,
+          "actor": 15,
+          "tag": 52
+        }
+      ],
+      "model_hash": "c83d561da9c60e6fbc5f46a4e88dc4b89c0ad1455e73a4103a09166e41c3b494",
+      "transport": "modeled barrier, shuffle and duplicate suppression"
+    },
+    {
+      "name": "auto_board_both_mode4_backend1",
+      "status": "PASS",
+      "mode": 4,
+      "backend": 1,
+      "protected_memory_unchanged": true,
+      "commands": [
+        {
+          "player": 0,
+          "result": 1,
+          "count": 1
+        },
+        {
+          "player": 1,
+          "result": 1,
+          "count": 1
+        }
+      ],
+      "events": [
+        {
+          "kind": 4,
+          "house": 0,
+          "frame": 100,
+          "actor": 11,
+          "tag": 52,
+          "mission": 7,
+          "target": 0,
+          "target_tag": 0,
+          "destination": 10,
+          "destination_tag": 52
+        },
+        {
+          "kind": 4,
+          "house": 1,
+          "frame": 100,
+          "actor": 14,
+          "tag": 52,
+          "mission": 7,
+          "target": 0,
+          "target_tag": 0,
+          "destination": 13,
+          "destination_tag": 52
+        }
+      ],
+      "model_hash": "8247c26600f50f883aaf52425de3e5aa61a6c5c6c846364c5bef7a09d91202a8",
+      "transport": "modeled barrier, shuffle and duplicate suppression"
+    },
+    {
+      "name": "repair_only_one_enabled",
+      "status": "PASS",
+      "mode": 3,
+      "backend": 0,
+      "protected_memory_unchanged": true,
+      "commands": [
+        {
+          "player": 0,
+          "result": 1,
+          "count": 1
+        }
+      ],
+      "events": [
+        {
+          "kind": 21,
+          "house": 0,
+          "frame": 100,
+          "actor": 12,
+          "tag": 52
+        }
+      ],
+      "model_hash": "1f94c59a6aaf4a5bb9cd6aedb1435d9b41389847daaf4bd04c5320f2545d7010",
+      "transport": "modeled barrier, shuffle and duplicate suppression"
+    },
+    {
+      "name": "auto_repair_asymmetric_repeated_ticks",
+      "status": "PASS",
+      "mode": 3,
+      "backend": 0,
+      "protected_memory_unchanged": true,
+      "events": [
+        {
+          "kind": 21,
+          "house": 0,
+          "frame": 100,
+          "actor": 12,
+          "tag": 52
+        }
+      ],
+      "model_hash": "1f94c59a6aaf4a5bb9cd6aedb1435d9b41389847daaf4bd04c5320f2545d7010",
+      "transport": "modeled barrier, shuffle and duplicate suppression"
+    },
+    {
+      "name": "combat_selection",
+      "status": "PASS",
+      "mode": 3,
+      "backend": 0,
+      "protected_memory_unchanged": true,
+      "commands": [
+        {
+          "player": 0,
+          "result": 1,
+          "count": 1
+        },
+        {
+          "player": 1,
+          "result": 1,
+          "count": 1
+        }
+      ],
+      "events": [],
+      "model_hash": "81dd13240c376dd9bc867d4cc18691518108c7e948b0d11b7c335982ce313473",
+      "transport": "modeled barrier, shuffle and duplicate suppression"
+    },
+    {
+      "name": "empty_transports",
+      "status": "PASS",
+      "mode": 3,
+      "backend": 0,
+      "protected_memory_unchanged": true,
+      "commands": [
+        {
+          "player": 0,
+          "result": 1,
+          "count": 1
+        },
+        {
+          "player": 1,
+          "result": 1,
+          "count": 1
+        }
+      ],
+      "events": [],
+      "model_hash": "81dd13240c376dd9bc867d4cc18691518108c7e948b0d11b7c335982ce313473",
+      "transport": "modeled barrier, shuffle and duplicate suppression"
+    },
+    {
+      "name": "damaged_selection",
+      "status": "PASS",
+      "mode": 3,
+      "backend": 0,
+      "protected_memory_unchanged": true,
+      "commands": [
+        {
+          "player": 0,
+          "result": 1,
+          "count": 1
+        },
+        {
+          "player": 1,
+          "result": 1,
+          "count": 0
+        }
+      ],
+      "events": [],
+      "model_hash": "81dd13240c376dd9bc867d4cc18691518108c7e948b0d11b7c335982ce313473",
+      "transport": "modeled barrier, shuffle and duplicate suppression"
+    },
+    {
+      "name": "idle_harvester",
+      "status": "PASS",
+      "mode": 3,
+      "backend": 0,
+      "protected_memory_unchanged": true,
+      "commands": [
+        {
+          "player": 0,
+          "result": 1,
+          "count": 0
+        },
+        {
+          "player": 1,
+          "result": 1,
+          "count": 0
+        }
+      ],
+      "events": [],
+      "model_hash": "81dd13240c376dd9bc867d4cc18691518108c7e948b0d11b7c335982ce313473",
+      "transport": "modeled barrier, shuffle and duplicate suppression"
+    },
+    {
+      "name": "idle_engineer",
+      "status": "PASS",
+      "mode": 3,
+      "backend": 0,
+      "protected_memory_unchanged": true,
+      "commands": [
+        {
+          "player": 0,
+          "result": 1,
+          "count": 1
+        },
+        {
+          "player": 1,
+          "result": 1,
+          "count": 1
+        }
+      ],
+      "events": [],
+      "model_hash": "81dd13240c376dd9bc867d4cc18691518108c7e948b0d11b7c335982ce313473",
+      "transport": "modeled barrier, shuffle and duplicate suppression"
+    },
+    {
+      "name": "idle_transport",
+      "status": "PASS",
+      "mode": 3,
+      "backend": 0,
+      "protected_memory_unchanged": true,
+      "commands": [
+        {
+          "player": 0,
+          "result": 1,
+          "count": 1
+        },
+        {
+          "player": 1,
+          "result": 1,
+          "count": 0
+        }
+      ],
+      "events": [],
+      "model_hash": "81dd13240c376dd9bc867d4cc18691518108c7e948b0d11b7c335982ce313473",
+      "transport": "modeled barrier, shuffle and duplicate suppression"
+    },
+    {
+      "name": "clear_beacons",
+      "status": "PASS",
+      "mode": 3,
+      "backend": 0,
+      "protected_memory_unchanged": true,
+      "commands": [
+        {
+          "player": 0,
+          "result": 1,
+          "count": 1
+        },
+        {
+          "player": 1,
+          "result": 1,
+          "count": 1
+        }
+      ],
+      "events": [],
+      "model_hash": "81dd13240c376dd9bc867d4cc18691518108c7e948b0d11b7c335982ce313473",
+      "transport": "modeled barrier, shuffle and duplicate suppression"
+    },
+    {
+      "name": "type_selection",
+      "status": "PASS",
+      "mode": 3,
+      "backend": 0,
+      "protected_memory_unchanged": true,
+      "commands": [
+        {
+          "player": 0,
+          "result": 1,
+          "count": 0
+        },
+        {
+          "player": 1,
+          "result": 1,
+          "count": 0
+        }
+      ],
+      "events": [],
+      "model_hash": "81dd13240c376dd9bc867d4cc18691518108c7e948b0d11b7c335982ce313473",
+      "transport": "modeled barrier, shuffle and duplicate suppression"
+    },
+    {
+      "name": "cancel_automatic",
+      "status": "PASS",
+      "mode": 3,
+      "backend": 0,
+      "protected_memory_unchanged": true,
+      "commands": [
+        {
+          "player": 0,
+          "result": 1,
+          "count": 2
+        },
+        {
+          "player": 1,
+          "result": 1,
+          "count": 2
+        }
+      ],
+      "events": [],
+      "model_hash": "81dd13240c376dd9bc867d4cc18691518108c7e948b0d11b7c335982ce313473",
+      "transport": "modeled barrier, shuffle and duplicate suppression"
+    },
+    {
+      "name": "weapon_variant_selection",
+      "status": "PASS",
+      "mode": 3,
+      "backend": 0,
+      "protected_memory_unchanged": true,
+      "commands": [
+        {
+          "player": 0,
+          "result": 1,
+          "count": 0
+        },
+        {
+          "player": 1,
+          "result": 1,
+          "count": 0
+        }
+      ],
+      "events": [],
+      "model_hash": "81dd13240c376dd9bc867d4cc18691518108c7e948b0d11b7c335982ce313473",
+      "transport": "modeled barrier, shuffle and duplicate suppression"
+    },
+    {
+      "name": "capacity",
+      "status": "PASS",
+      "mode": 3,
+      "backend": 0,
+      "protected_memory_unchanged": true,
+      "flags": 1,
+      "csHookStatus": 0,
+      "nativeHookStatus": 0,
+      "clickHookStatus": 0,
+      "placementStatus": 0,
+      "scope": "enable/tick only; not complete gameplay effect",
+      "events": [],
+      "model_hash": "81dd13240c376dd9bc867d4cc18691518108c7e948b0d11b7c335982ce313473",
+      "transport": "modeled barrier, shuffle and duplicate suppression"
+    },
+    {
+      "name": "iron",
+      "status": "PASS",
+      "mode": 3,
+      "backend": 0,
+      "protected_memory_unchanged": true,
+      "flags": 2,
+      "csHookStatus": 0,
+      "nativeHookStatus": 0,
+      "clickHookStatus": 0,
+      "placementStatus": 0,
+      "scope": "enable/tick only; not complete gameplay effect",
+      "events": [],
+      "model_hash": "81dd13240c376dd9bc867d4cc18691518108c7e948b0d11b7c335982ce313473",
+      "transport": "modeled barrier, shuffle and duplicate suppression"
+    },
+    {
+      "name": "production_notice",
+      "status": "PASS",
+      "mode": 3,
+      "backend": 0,
+      "protected_memory_unchanged": true,
+      "flags": 4,
+      "csHookStatus": 0,
+      "nativeHookStatus": 0,
+      "clickHookStatus": 0,
+      "placementStatus": 0,
+      "scope": "enable/tick only; not complete gameplay effect",
+      "events": [],
+      "model_hash": "81dd13240c376dd9bc867d4cc18691518108c7e948b0d11b7c335982ce313473",
+      "transport": "modeled barrier, shuffle and duplicate suppression"
+    },
+    {
+      "name": "psychic",
+      "status": "PASS",
+      "mode": 3,
+      "backend": 0,
+      "protected_memory_unchanged": true,
+      "flags": 16,
+      "csHookStatus": 0,
+      "nativeHookStatus": 0,
+      "clickHookStatus": 0,
+      "placementStatus": 0,
+      "scope": "enable/tick only; not complete gameplay effect",
+      "events": [],
+      "model_hash": "81dd13240c376dd9bc867d4cc18691518108c7e948b0d11b7c335982ce313473",
+      "transport": "modeled barrier, shuffle and duplicate suppression"
+    },
+    {
+      "name": "crates",
+      "status": "PASS",
+      "mode": 3,
+      "backend": 0,
+      "protected_memory_unchanged": true,
+      "flags": 32,
+      "csHookStatus": 0,
+      "nativeHookStatus": 0,
+      "clickHookStatus": 0,
+      "placementStatus": 0,
+      "scope": "enable/tick only; not complete gameplay effect",
+      "events": [],
+      "model_hash": "81dd13240c376dd9bc867d4cc18691518108c7e948b0d11b7c335982ce313473",
+      "transport": "modeled barrier, shuffle and duplicate suppression"
+    },
+    {
+      "name": "frozen",
+      "status": "PASS",
+      "mode": 3,
+      "backend": 0,
+      "protected_memory_unchanged": true,
+      "flags": 524288,
+      "csHookStatus": 0,
+      "nativeHookStatus": 0,
+      "clickHookStatus": 0,
+      "placementStatus": 0,
+      "scope": "enable/tick only; not complete gameplay effect",
+      "events": [],
+      "model_hash": "81dd13240c376dd9bc867d4cc18691518108c7e948b0d11b7c335982ce313473",
+      "transport": "modeled barrier, shuffle and duplicate suppression"
+    },
+    {
+      "name": "auto_cs_install",
+      "status": "PASS",
+      "mode": 3,
+      "backend": 0,
+      "protected_memory_unchanged": true,
+      "flags": 512,
+      "csHookStatus": 1,
+      "nativeHookStatus": 0,
+      "clickHookStatus": 0,
+      "placementStatus": 0,
+      "scope": "enable/tick only; not complete gameplay effect",
+      "events": [],
+      "model_hash": "81dd13240c376dd9bc867d4cc18691518108c7e948b0d11b7c335982ce313473",
+      "transport": "modeled barrier, shuffle and duplicate suppression"
+    },
+    {
+      "name": "custom_cs_install",
+      "status": "PASS",
+      "mode": 3,
+      "backend": 0,
+      "protected_memory_unchanged": true,
+      "flags": 131072,
+      "csHookStatus": 1,
+      "nativeHookStatus": 1,
+      "clickHookStatus": 0,
+      "placementStatus": 0,
+      "scope": "enable/tick only; not complete gameplay effect",
+      "events": [],
+      "model_hash": "81dd13240c376dd9bc867d4cc18691518108c7e948b0d11b7c335982ce313473",
+      "transport": "modeled barrier, shuffle and duplicate suppression"
+    },
+    {
+      "name": "advanced_install",
+      "status": "PASS",
+      "mode": 3,
+      "backend": 0,
+      "protected_memory_unchanged": true,
+      "flags": 9216,
+      "csHookStatus": 0,
+      "nativeHookStatus": 1,
+      "clickHookStatus": 0,
+      "placementStatus": 0,
+      "scope": "enable/tick only; not complete gameplay effect",
+      "events": [],
+      "model_hash": "81dd13240c376dd9bc867d4cc18691518108c7e948b0d11b7c335982ce313473",
+      "transport": "modeled barrier, shuffle and duplicate suppression"
+    },
+    {
+      "name": "magnetron_install",
+      "status": "PASS",
+      "mode": 3,
+      "backend": 0,
+      "protected_memory_unchanged": true,
+      "flags": 263168,
+      "csHookStatus": 0,
+      "nativeHookStatus": 1,
+      "clickHookStatus": 0,
+      "placementStatus": 0,
+      "scope": "enable/tick only; not complete gameplay effect",
+      "events": [],
+      "model_hash": "81dd13240c376dd9bc867d4cc18691518108c7e948b0d11b7c335982ce313473",
+      "transport": "modeled barrier, shuffle and duplicate suppression"
+    },
+    {
+      "name": "ore_reader",
+      "status": "PASS",
+      "mode": 3,
+      "backend": 0,
+      "protected_memory_unchanged": true,
+      "flags": 32768,
+      "csHookStatus": 0,
+      "nativeHookStatus": 0,
+      "clickHookStatus": 0,
+      "placementStatus": 0,
+      "scope": "enable/tick only; not complete gameplay effect",
+      "events": [],
+      "model_hash": "81dd13240c376dd9bc867d4cc18691518108c7e948b0d11b7c335982ce313473",
+      "transport": "modeled barrier, shuffle and duplicate suppression"
+    },
+    {
+      "name": "ejection_watch_empty",
+      "status": "PASS",
+      "mode": 3,
+      "backend": 0,
+      "protected_memory_unchanged": true,
+      "flags": 2048,
+      "csHookStatus": 0,
+      "nativeHookStatus": 0,
+      "clickHookStatus": 0,
+      "placementStatus": 0,
+      "scope": "enable/tick only; not complete gameplay effect",
+      "events": [],
+      "model_hash": "81dd13240c376dd9bc867d4cc18691518108c7e948b0d11b7c335982ce313473",
+      "transport": "modeled barrier, shuffle and duplicate suppression"
+    },
+    {
+      "name": "enter_install",
+      "status": "PASS",
+      "mode": 3,
+      "backend": 0,
+      "protected_memory_unchanged": true,
+      "flags": 1048576,
+      "csHookStatus": 0,
+      "nativeHookStatus": 0,
+      "clickHookStatus": 1,
+      "placementStatus": 0,
+      "scope": "enable/tick only; not complete gameplay effect",
+      "events": [],
+      "model_hash": "81dd13240c376dd9bc867d4cc18691518108c7e948b0d11b7c335982ce313473",
+      "transport": "modeled barrier, shuffle and duplicate suppression"
+    },
+    {
+      "name": "air_attack_install",
+      "status": "PASS",
+      "mode": 3,
+      "backend": 0,
+      "protected_memory_unchanged": true,
+      "flags": 2097152,
+      "csHookStatus": 0,
+      "nativeHookStatus": 0,
+      "clickHookStatus": 1,
+      "placementStatus": 0,
+      "scope": "enable/tick only; not complete gameplay effect",
+      "events": [],
+      "model_hash": "81dd13240c376dd9bc867d4cc18691518108c7e948b0d11b7c335982ce313473",
+      "transport": "modeled barrier, shuffle and duplicate suppression"
+    },
+    {
+      "name": "disk_install",
+      "status": "PASS",
+      "mode": 3,
+      "backend": 0,
+      "protected_memory_unchanged": true,
+      "flags": 4194304,
+      "csHookStatus": 0,
+      "nativeHookStatus": 0,
+      "clickHookStatus": 1,
+      "placementStatus": 0,
+      "scope": "enable/tick only; not complete gameplay effect",
+      "events": [],
+      "model_hash": "81dd13240c376dd9bc867d4cc18691518108c7e948b0d11b7c335982ce313473",
+      "transport": "modeled barrier, shuffle and duplicate suppression"
+    },
+    {
+      "name": "drained_sell_install",
+      "status": "PASS",
+      "mode": 3,
+      "backend": 0,
+      "protected_memory_unchanged": true,
+      "flags": 8388608,
+      "csHookStatus": 0,
+      "nativeHookStatus": 0,
+      "clickHookStatus": 1,
+      "placementStatus": 0,
+      "scope": "enable/tick only; not complete gameplay effect",
+      "events": [],
+      "model_hash": "81dd13240c376dd9bc867d4cc18691518108c7e948b0d11b7c335982ce313473",
+      "transport": "modeled barrier, shuffle and duplicate suppression"
+    },
+    {
+      "name": "vehicle_sell_install",
+      "status": "PASS",
+      "mode": 3,
+      "backend": 0,
+      "protected_memory_unchanged": true,
+      "flags": 16777216,
+      "csHookStatus": 0,
+      "nativeHookStatus": 0,
+      "clickHookStatus": 1,
+      "placementStatus": 0,
+      "scope": "enable/tick only; not complete gameplay effect",
+      "events": [],
+      "model_hash": "81dd13240c376dd9bc867d4cc18691518108c7e948b0d11b7c335982ce313473",
+      "transport": "modeled barrier, shuffle and duplicate suppression"
+    },
+    {
+      "name": "enemy_sell_guard",
+      "status": "PASS",
+      "mode": 3,
+      "backend": 0,
+      "protected_memory_unchanged": true,
+      "flags": 33554432,
+      "csHookStatus": 0,
+      "nativeHookStatus": 0,
+      "clickHookStatus": 1,
+      "placementStatus": 0,
+      "scope": "enable/tick only; not complete gameplay effect",
+      "events": [],
+      "model_hash": "81dd13240c376dd9bc867d4cc18691518108c7e948b0d11b7c335982ce313473",
+      "transport": "modeled barrier, shuffle and duplicate suppression"
+    },
+    {
+      "name": "chat_rejects_commands",
+      "status": "PASS",
+      "mode": 3,
+      "backend": 0,
+      "protected_memory_unchanged": true,
+      "events": [],
+      "model_hash": "81dd13240c376dd9bc867d4cc18691518108c7e948b0d11b7c335982ce313473",
+      "transport": "modeled barrier, shuffle and duplicate suppression"
+    },
+    {
+      "name": "old_match_request_rejected",
+      "status": "PASS",
+      "mode": 3,
+      "backend": 0,
+      "protected_memory_unchanged": true,
+      "events": [],
+      "model_hash": "81dd13240c376dd9bc867d4cc18691518108c7e948b0d11b7c335982ce313473",
+      "transport": "modeled barrier, shuffle and duplicate suppression"
+    },
+    {
+      "name": "expired_request_rejected",
+      "status": "PASS",
+      "mode": 3,
+      "backend": 0,
+      "protected_memory_unchanged": true,
+      "events": [],
+      "model_hash": "81dd13240c376dd9bc867d4cc18691518108c7e948b0d11b7c335982ce313473",
+      "transport": "modeled barrier, shuffle and duplicate suppression"
+    },
+    {
+      "name": "mailbox_same_serial_not_replayed",
+      "status": "PASS",
+      "mode": 3,
+      "backend": 0,
+      "protected_memory_unchanged": true,
+      "events": [
+        {
+          "kind": 21,
+          "house": 0,
+          "frame": 100,
+          "actor": 12,
+          "tag": 52
+        },
+        {
+          "kind": 21,
+          "house": 1,
+          "frame": 100,
+          "actor": 15,
+          "tag": 52
+        }
+      ],
+      "model_hash": "c83d561da9c60e6fbc5f46a4e88dc4b89c0ad1455e73a4103a09166e41c3b494",
+      "transport": "modeled barrier, shuffle and duplicate suppression"
+    },
+    {
+      "name": "combined_features_asymmetric",
+      "status": "PASS",
+      "mode": 3,
+      "backend": 0,
+      "protected_memory_unchanged": true,
+      "scope": "combined automation + all local input hooks; other peer disabled",
+      "events": [
+        {
+          "kind": 21,
+          "house": 0,
+          "frame": 100,
+          "actor": 12,
+          "tag": 52
+        },
+        {
+          "kind": 4,
+          "house": 0,
+          "frame": 100,
+          "actor": 11,
+          "tag": 52,
+          "mission": 7,
+          "target": 0,
+          "target_tag": 0,
+          "destination": 10,
+          "destination_tag": 52
+        }
+      ],
+      "model_hash": "1bfa86e036eac6c3d532555aae009e0611304cffbab1f7fb95dba1a92f8ec558",
+      "transport": "modeled barrier, shuffle and duplicate suppression"
+    },
+    {
+      "name": "repair_unobserved_delivery_not_toggled_again",
+      "status": "PASS",
+      "mode": 3,
+      "backend": 0,
+      "protected_memory_unchanged": true,
+      "scope": "7.15 seconds of unchanged repair state; no receiver observation yet",
+      "events": [
+        {
+          "kind": 21,
+          "house": 0,
+          "frame": 101,
+          "actor": 12,
+          "tag": 52
+        }
+      ],
+      "model_hash": "1f94c59a6aaf4a5bb9cd6aedb1435d9b41389847daaf4bd04c5320f2545d7010",
+      "transport": "modeled barrier, shuffle and duplicate suppression"
+    },
+    {
+      "name": "queue_full_timeout_no_late_repair",
+      "status": "PASS",
+      "mode": 3,
+      "backend": 0,
+      "protected_memory_unchanged": true,
+      "scope": "backpressure timeout drops unsent repairs; no delayed surprise submission",
+      "events": [],
+      "model_hash": "81dd13240c376dd9bc867d4cc18691518108c7e948b0d11b7c335982ce313473",
+      "transport": "modeled barrier, shuffle and duplicate suppression"
+    },
+    {
+      "name": "outlist_wrap_at_127",
+      "status": "PASS",
+      "mode": 3,
+      "backend": 0,
+      "protected_memory_unchanged": true,
+      "events": [
+        {
+          "kind": 21,
+          "house": 0,
+          "frame": 100,
+          "actor": 12,
+          "tag": 52
+        },
+        {
+          "kind": 21,
+          "house": 1,
+          "frame": 100,
+          "actor": 15,
+          "tag": 52
+        }
+      ],
+      "model_hash": "c83d561da9c60e6fbc5f46a4e88dc4b89c0ad1455e73a4103a09166e41c3b494",
+      "transport": "modeled barrier, shuffle and duplicate suppression"
+    },
+    {
+      "name": "missing_game_timer_no_packet",
+      "status": "PASS",
+      "mode": 3,
+      "backend": 0,
+      "protected_memory_unchanged": true,
+      "events": [],
+      "model_hash": "81dd13240c376dd9bc867d4cc18691518108c7e948b0d11b7c335982ce313473",
+      "transport": "modeled barrier, shuffle and duplicate suppression"
+    },
+    {
+      "name": "smart_unload_both",
+      "status": "PASS",
+      "mode": 3,
+      "backend": 0,
+      "protected_memory_unchanged": true,
+      "scope": "Unload events; disembark motion and AI remain engine-dependent",
+      "events": [
+        {
+          "kind": 4,
+          "house": 0,
+          "frame": 100,
+          "actor": 10,
+          "tag": 52,
+          "mission": 16,
+          "target": 0,
+          "target_tag": 0,
+          "destination": 0,
+          "destination_tag": 0
+        },
+        {
+          "kind": 4,
+          "house": 1,
+          "frame": 100,
+          "actor": 13,
+          "tag": 52,
+          "mission": 16,
+          "target": 0,
+          "target_tag": 0,
+          "destination": 0,
+          "destination_tag": 0
+        }
+      ],
+      "model_hash": "f918fde6ae2aef063415f04cbb37b69b5c00c48185e0910d48ef870f294ac018",
+      "transport": "modeled barrier, shuffle and duplicate suppression"
+    },
+    {
+      "name": "cooperative_enter_both",
+      "status": "PASS",
+      "mode": 3,
+      "backend": 0,
+      "protected_memory_unchanged": true,
+      "scope": "external cooperative mailbox -> live validation -> Enter event",
+      "events": [
+        {
+          "kind": 4,
+          "house": 0,
+          "frame": 100,
+          "actor": 11,
+          "tag": 52,
+          "mission": 7,
+          "target": 0,
+          "target_tag": 0,
+          "destination": 10,
+          "destination_tag": 52
+        },
+        {
+          "kind": 4,
+          "house": 1,
+          "frame": 100,
+          "actor": 14,
+          "tag": 52,
+          "mission": 7,
+          "target": 0,
+          "target_tag": 0,
+          "destination": 13,
+          "destination_tag": 52
+        }
+      ],
+      "model_hash": "8247c26600f50f883aaf52425de3e5aa61a6c5c6c846364c5bef7a09d91202a8",
+      "transport": "modeled barrier, shuffle and duplicate suppression"
+    },
+    {
+      "name": "cooperative_foreign_actor_rejected",
+      "status": "PASS",
+      "mode": 3,
+      "backend": 0,
+      "protected_memory_unchanged": true,
+      "events": [],
+      "model_hash": "81dd13240c376dd9bc867d4cc18691518108c7e948b0d11b7c335982ce313473",
+      "transport": "modeled barrier, shuffle and duplicate suppression"
+    },
+    {
+      "name": "non_positional_super_event",
+      "status": "PASS",
+      "mode": 3,
+      "backend": 0,
+      "protected_memory_unchanged": true,
+      "commands": [
+        {
+          "player": 0,
+          "result": 1,
+          "count": 1
+        },
+        {
+          "player": 1,
+          "result": 1,
+          "count": 1
+        }
+      ],
+      "events": [
+        {
+          "kind": 18,
+          "house": 0,
+          "frame": 100,
+          "payload": "0000000000000000"
+        },
+        {
+          "kind": 18,
+          "house": 1,
+          "frame": 100,
+          "payload": "0000000000000000"
+        }
+      ],
+      "model_hash": "8ddcf0d33fd5864b5b60ce573021e44885573f5c9bb78dd272325126badcb72a",
+      "transport": "modeled barrier, shuffle and duplicate suppression"
+    },
+    {
+      "name": "different_backends_same_mission_semantics",
+      "status": "PASS",
+      "mode": 3,
+      "backend": 0,
+      "protected_memory_unchanged": true,
+      "events": [
+        {
+          "kind": 4,
+          "house": 0,
+          "frame": 100,
+          "actor": 11,
+          "tag": 52,
+          "mission": 7,
+          "target": 0,
+          "target_tag": 0,
+          "destination": 10,
+          "destination_tag": 52
+        },
+        {
+          "kind": 4,
+          "house": 1,
+          "frame": 100,
+          "actor": 14,
+          "tag": 52,
+          "mission": 7,
+          "target": 0,
+          "target_tag": 0,
+          "destination": 13,
+          "destination_tag": 52
+        }
+      ],
+      "model_hash": "8247c26600f50f883aaf52425de3e5aa61a6c5c6c846364c5bef7a09d91202a8",
+      "transport": "modeled barrier, shuffle and duplicate suppression"
+    },
+    {
+      "name": "repair_ids_same_low12_bits_do_not_requeue",
+      "status": "PASS",
+      "mode": 3,
+      "backend": 0,
+      "protected_memory_unchanged": true,
+      "events": [
+        {
+          "kind": 21,
+          "house": 0,
+          "frame": 101,
+          "actor": 12,
+          "tag": 52
+        },
+        {
+          "kind": 21,
+          "house": 0,
+          "frame": 101,
+          "actor": 4108,
+          "tag": 52
+        }
+      ],
+      "model_hash": "1a72043871215d92db86f482957172b73c8bf6d45fab69534c28b7a9baeb15b8",
+      "transport": "modeled barrier, shuffle and duplicate suppression"
+    },
+    {
+      "name": "negative_controls_verify_oracles",
+      "status": "PASS",
+      "mode": 3,
+      "backend": 0,
+      "protected_memory_unchanged": true,
+      "negative_controls_detected": [
+        "local HP mutation",
+        "dropped event",
+        "duplicate repair toggle",
+        "wrong sender",
+        "different replay order"
+      ],
+      "events": [],
+      "model_hash": "81dd13240c376dd9bc867d4cc18691518108c7e948b0d11b7c335982ce313473",
+      "transport": "modeled barrier, shuffle and duplicate suppression"
+    }
+  ]
+}

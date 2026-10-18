@@ -17,7 +17,7 @@ layout = 'struct PageControl {' + layout
 create = main.split('switch(msg){case WM_CREATE:{', 1)[1].split('\n case WM_SIZE:', 1)[0]
 assert create.rstrip().endswith('return 0;}')
 labels = main.split('static const wchar_t* labels[]=', 1)[1].split(';', 1)[0]
-status = 'static void updateModeStatus(DWORD now){' + main.split('static void updateModeStatus(DWORD now){', 1)[1].split('static void tick()', 1)[0]
+status = 'static void updateModeStatus(DWORD now){' + main.split('static void updateModeStatus(DWORD now){', 1)[1].split('#include "shift_click_host.h"', 1)[0]
 prefix = r'''
 #include "ui_layout.h"
 #include "ore_type_config.h"
@@ -44,7 +44,7 @@ BS_PUSHBUTTON=512,ES_NUMBER=1024,ES_AUTOHSCROLL=2048,CBS_DROPDOWNLIST=4096,LBS_N
 EM_SETLIMITTEXT=99,CB_ADDSTRING=10,CB_SETCURSEL=11,BM_SETCHECK=1,BST_CHECKED=1,BST_UNCHECKED=0,WM_SETFONT=2,HKM_SETHOTKEY=3,EM_SETCUEBANNER=4,
 SIF_RANGE=1,SIF_PAGE=2,SIF_POS=4,SIF_DISABLENOSCROLL=8,SB_VERT=0,SW_SHOW=1,SW_HIDE=0;
 constexpr const wchar_t* HOTKEY_CLASSW=L"HOTKEY";
-struct RECT{int left,top,right,bottom;};
+struct RECT{int left,top,right,bottom;};struct POINT{int x,y;};
 struct SCROLLINFO{unsigned cbSize,fMask;int nMin,nMax;unsigned nPage;int nPos,nTrackPos;};
 struct Window{std::wstring cls,text;int id;uilayout::Rect rect;bool visible=true;RECT clip{};DWORD style=0;bool checked=false;};
 static std::vector<Window> windows(2);static std::vector<RECT> regions(1);static SCROLLINFO scrollInfo{};
@@ -60,8 +60,8 @@ static DWORD GetTickCount(){return 1606;}
 static bool techDirectProduce,techMode,csMode,hookAdvanced,hookSmartUnload=true,hookEject,hookAutoCS,ejectMode,magnetronMode,
  oreMode,showDetails,csHoldEnabled,buildAnywhereMode,ready;
 static unsigned hotkeys[12]{},csKey,advancedKey,unloadKey,ejectKey,magnetronKey,csHoldKey;
-static HWND game=1;static bool enabled=true;
-static struct {int commandStatus=1,entryReentrant=0,entryContended=0,session=5,lastSubmitError=0,queueSent=0,commandRejected=0,queueFull=0,queueTimingFailure=0,status=1,nativeHookStatus=1,advancedUnits=0,unloadPending=0,ejectWatched=0,csHookStatus=1,oreQueued=0,oreDocking=0,oreManual=0,oreDelivered=0,oreUnverified=0,magnetShots=0,magnetUnverified=0,hookConflicts=0,megaQueueAccepted=0,megaQueueRejected=0,megaQueueStatus=0,objectQueueAccepted=0,objectQueueRejected=0,objectQueueStatus=0;} snap;
+static HWND game=1;static bool enabled=true;static std::wstring hoverHelp,statusText;static int advancedScanHz=10,advancedTargetPriority=0,shiftClickMode=0,shiftClickGap=0;static bool shiftClickEnabled=false;
+static struct {int placementStatus=0,nativeAirStatus=0,renderRevealStatus=0,commandStatus=1,entryReentrant=0,entryContended=0,session=5,lastSubmitError=0,queueSent=0,commandRejected=0,queueFull=0,queueTimingFailure=0,status=1,nativeHookStatus=1,advancedUnits=0,unloadPending=0,ejectWatched=0,csHookStatus=1,oreQueued=0,oreDocking=0,oreManual=0,oreDelivered=0,oreUnverified=0,magnetShots=0,magnetUnverified=0,hookConflicts=0,megaQueueAccepted=0,megaQueueRejected=0,megaQueueStatus=0,objectQueueAccepted=0,objectQueueRejected=0,objectQueueStatus=0;} snap;
 static struct {int size=0;} commandQueue;
 static struct {int driverMode=0,driverTarget=0,driverStatus=0,driverTicks=0,megaQueueMode=0,objectQueueMode=0;DWORD driverLastTick=0;} mockScheduler;
 static decltype(mockScheduler)* shared=nullptr;
@@ -86,6 +86,13 @@ static int value(const wchar_t*,const wchar_t*,int def){return def;}
 static void fillTech(bool){}static void fillTypeBindings(bool){}static void registerKeys(){}
 static void SetTimer(HWND,int,int,void*){}
 static void SetWindowTextW(HWND h,const wchar_t* text){windows[h].text=text;}
+static int GetDlgCtrlID(HWND h){return windows[h].id;}
+static void GetWindowTextW(HWND h,wchar_t*out,int n){wcsncpy(out,windows[h].text.c_str(),n-1);out[n-1]=0;}
+static void GetCursorPos(POINT*p){*p={-1,-1};}
+static void GetWindowRect(HWND h,RECT*r){auto a=windows[h].rect;*r={a.x,a.y,a.x+a.w,a.y+a.h};}
+static bool PtInRect(const RECT*r,POINT p){return p.x>=r->left&&p.y>=r->top&&p.x<r->right&&p.y<r->bottom;}
+static bool IsWindowVisible(HWND h){return windows[h].visible;}
+
 '''
 suffix = r'''
 static bool intersects(uilayout::Rect a,uilayout::Rect b){return a.x<b.x+b.w&&b.x<a.x+a.w&&a.y<b.y+b.h&&b.y<a.y+a.h;}
@@ -108,13 +115,13 @@ int main(){
  int inspected=0;
  // All body controls share one continuous page. Every original interactive
  // ID survives the redesign; only redundant save labels/navigation disappear.
- for(int id:{100,111,200,211,300,306,310,311,312,410,411,420,421,422,423,424,425,426,427,428,440,441,443,444,445,446,447,449,450,451,453,454,455,456,458,459,466,467,470,471,473,474,476,477,478,481,700,701,702,703,704,705,706,707,708,709,710,711,712,713,714,715,716,717,718,719,720,721,722,723,724,725,726,727,728,729,730,731,732,733,734,735,736,737,738,739,751,760,761,762,785,786,990,991}){
-  int found=0;for(auto&w:windows)found+=w.id==id;assert(found==1);
+ for(int id:{100,111,200,211,300,306,310,311,312,410,411,420,421,422,423,424,425,426,427,428,440,441,443,444,445,446,447,449,450,451,453,454,455,456,458,459,466,467,470,471,473,474,476,477,478,481,700,701,702,703,704,705,706,707,708,709,710,711,712,713,714,715,716,717,718,719,720,721,722,723,724,725,726,727,728,729,730,731,732,733,734,735,736,737,738,739,751,760,761,762,785,786,787,790,791,792,795,796,797,798,799,802,803,804,805,806,807,808,809,990,991}){
+  int found=0;for(auto&w:windows)found+=w.id==id;if(found!=1){std::cerr<<"Missing/duplicate ID "<<id<<" count "<<found<<"\n";return 1;}
  }
  for(size_t i=0;i<pageControls.size();++i){const auto&a=pageControls[i];if(a.page<0)continue;assert(a.page==0&&a.rect.y>=uilayout::BodyTop);
   auto rect=a.rect;rect.h=a.visibleHeight;
   for(size_t j=i+1;j<pageControls.size();++j){const auto&b=pageControls[j];if(b.page<0)continue;auto other=b.rect;other.h=b.visibleHeight;
-   if(intersects(rect,other)){std::wcerr<<L"Overlap: "<<windows[a.hwnd].text<<L" / "<<windows[b.hwnd].text<<L"\n";return 1;}
+   if(intersects(rect,other)){std::cerr<<"IDs "<<windows[a.hwnd].id<<","<<windows[b.hwnd].id<<" rectangles "<<rect.x<<","<<rect.y<<","<<rect.w<<","<<rect.h<<" / "<<other.x<<","<<other.y<<","<<other.w<<","<<other.h<<"\n";return 1;}
   }
  }
  for(int width:{645,812,1040})for(int height:{440,580,720,900}){
@@ -146,7 +153,7 @@ with tempfile.TemporaryDirectory(prefix='ra2-ui-') as directory:
     run = subprocess.run([str(binary)], capture_output=True, text=True)
     if run.returncode:print(run.stderr, file=sys.stderr)
     run.check_returncode()
-    result = json.loads(run.stdout)
+    result = json.loads(run.stdout,strict=False) # std::quoted permits literal newlines; dump below emits strict JSON
     if '--dump' in sys.argv:Path(sys.argv[sys.argv.index('--dump')+1]).write_text(json.dumps(result,ensure_ascii=False,indent=2)+'\n')
     summary={k:v for k,v in result.items() if k!='geometry'}
     print('PASS: shipped UI construction/layout: ' + json.dumps(summary))

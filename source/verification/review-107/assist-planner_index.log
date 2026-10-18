@@ -1,0 +1,1 @@
+PASS: actor collisions/clear; spatial lookup matches complete distance oracle including negative coordinates, bucket boundaries and long-range fallback

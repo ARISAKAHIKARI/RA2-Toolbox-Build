@@ -15,6 +15,7 @@ program=r'''
 #include <cstring>
 using namespace assist;using DWORD=uint32_t;using LONG=int32_t;
 struct RECT{int left,top,right,bottom;};struct POINT{int x,y;};
+constexpr int VK_CONTROL=17,VK_MENU=18;
 static DWORD clockNow=1000,cancelSerial=3;static DWORD GetTickCount(){return clockNow;}
 static bool focused=true,visible=true,fresh=true;static int game=1,hook=2;
 static auto storage=std::make_unique<Shared>();static Shared*shared=storage.get();
@@ -24,7 +25,7 @@ static uint32_t advancedKey=0,magnetronKey=0,csHoldKey=0;static unsigned wakes=0
 static uint32_t featureFlags=AdvancedInput|CustomCS;static uint32_t flags(){return featureFlags;}
 static uint32_t commandMatch(){return 8;}static bool commandFresh(DWORD){return fresh;}
 static bool foregroundGame(){return focused;}static bool GetClientRect(int,RECT*r){*r={0,0,800,600};return true;}
-static void MemoryBarrier(){}static void InterlockedIncrement(volatile LONG*p){++*p;}
+static void MemoryBarrier(){}template<class T>static void InterlockedIncrement(volatile T*p){++*p;}
 static void wakeGame(){++wakes;}static void notify(const std::wstring&){++notifications;}
 namespace external{namespace display{struct State{bool visible()const{return ::visible;}};template<class R>State inspect(R){return {};}}}
 static std::map<uint32_t,uint32_t> memory;
@@ -35,6 +36,7 @@ static PointerPress event;static bool queued=false;
 static void setPointerContext(int,uint32_t,bool){}static uint32_t pointerCancelSerial(int){return cancelSerial;}
 static bool takePointer(int,PointerPress&e,DWORD&dropped){dropped=0;if(!queued)return false;e=event;queued=false;return true;}
 }
+namespace airway{static void capture(const pointerinput::Intent&,const pointerinput::Mailbox&){} static bool ended=false;static bool selectedAircraft(){return false;}static void manual(const gameinput::PointerPress&){} }
 '''+body+r'''
 static void capture(){gameinput::event={};auto&e=gameinput::event;e.tick=clockNow;e.serial=cancelSerial;e.match=8;e.operation=1;e.point={100,100};e.width=800;e.height=600;gameinput::queued=true;}
 static void ack(int accepted=1){shared->pointer.ack=shared->pointer.request;shared->pointer.result=1;shared->pointer.accepted=accepted;shared->pointer.rejected=0;}

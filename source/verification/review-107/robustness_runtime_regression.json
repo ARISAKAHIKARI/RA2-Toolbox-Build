@@ -1,0 +1,68 @@
+{
+  "scope": "actual compiled sender/manager with synthetic objects and stubbed Windows APIs; not full game simulation",
+  "inputs": {
+    "GameRuntime.dll": "e72150ebe4ab8205dcafcf3feee89b36fe7e357eddd4d36c14ae200c7e7c7b0a"
+  },
+  "results": [
+    {
+      "case": "command_previous_match_rejected",
+      "status": "PASS"
+    },
+    {
+      "case": "command_expired_rejected",
+      "status": "PASS"
+    },
+    {
+      "case": "command_future_timestamp_rejected",
+      "status": "PASS"
+    },
+    {
+      "case": "chat_blocks_command",
+      "status": "PASS"
+    },
+    {
+      "case": "unknown_command_extremes_rejected",
+      "status": "PASS"
+    },
+    {
+      "case": "cooperative_negative_and_oversized_counts_rejected",
+      "status": "PASS"
+    },
+    {
+      "case": "foreign_DLL_busy_preserves_command_without_ack",
+      "status": "PASS"
+    },
+    {
+      "case": "command_resumes_once_after_foreign_DLL_releases",
+      "status": "PASS"
+    },
+    {
+      "case": "command_expiring_during_contention_is_rejected_after_release",
+      "status": "PASS"
+    },
+    {
+      "case": "acknowledged_repair_not_replayed_over_100_frames",
+      "status": "PASS"
+    },
+    {
+      "case": "new_repair_request_respects_pending_evidence",
+      "status": "PASS"
+    },
+    {
+      "case": "command_request_serial_wrap_is_acknowledged",
+      "status": "PASS"
+    },
+    {
+      "case": "zero_serial_repair_survives_queue_backpressure_without_replay",
+      "status": "PASS"
+    },
+    {
+      "case": "temporary_pause_preserves_zero_serial_request",
+      "status": "PASS"
+    },
+    {
+      "case": "zero_serial_rejected_and_acknowledged_after_match_ends",
+      "status": "PASS"
+    }
+  ]
+}

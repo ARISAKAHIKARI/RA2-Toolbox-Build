@@ -28,7 +28,9 @@ def check(name,fn):
  if a.filter and a.filter not in name:return
  try:fn();rows.append({'case':name,'status':'PASS'});print('PASS',name,flush=True)
  except Exception as e:rows.append({'case':name,'status':'FAIL','error':repr(e)});print('FAIL',name,flush=True);traceback.print_exc()
-flags={'autoload_idle':0,'auto_cs':512|131072,'magnetron':1024|262144,'aircraft':2097152,'disk_primary':4194304,'sell_vehicle':16777216,'all':(1<<26)-1}
+# Normal features exclude the two explicitly opted-in native judgment patches.
+NORMAL_FLAGS=0x7fffffff & ~65536
+flags={'autoload_idle':0,'auto_cs':512|131072,'magnetron':1024|262144,'aircraft':2097152,'disk_primary':4194304,'sell_vehicle':16777216,'all':NORMAL_FLAGS}
 for mode in (0,5,3,4):
  for label,mask in flags.items():
   def idle(mode=mode,mask=mask):
@@ -40,7 +42,7 @@ for mode in (0,5,3,4):
   check(f'idle_start_{mode}_{label}_zero_orders_zero_mutations',idle)
  for boundary in ('menu','dialog','tactical_inactive','negative_frame','frame_max','observer','run_flag','unsupported_mode'):
   def boundary_test(mode=mode,boundary=boundary):
-   m=fixture(mode,(1<<26)-1);s=m.hook();epoch=s.data.match
+   m=fixture(mode,NORMAL_FLAGS);s=m.hook();epoch=s.data.match
    # Actual pending manual auto-board uses the known-good event path.
    s.command=15;s.request+=1;s.requestMatch=epoch;s.requestTick=m.clock;save(m,s)
    if boundary=='menu':m.w(0xa8eda0,1)
@@ -60,7 +62,7 @@ for mode in (0,5,3,4):
    else:assert s.data.match!=epoch and count(m)==0
   check(f'boundary_{mode}_{boundary}_blocks_then_recovers',boundary_test)
  def loading(mode=mode):
-  m=fixture(mode,(1<<26)-1,-1);m.b(0xa8e378,0)
+  m=fixture(mode,NORMAL_FLAGS,-1);m.b(0xa8e378,0)
   for _ in range(3):s=m.hook()
   assert s.data.commandStatus==0 and s.data.match==0 and not count(m) and not m.calls
   m.w(0xa8ed84,0);m.b(0xa8e378,1);s=m.hook()
@@ -94,7 +96,7 @@ for mode in (0,5,3,4):
 for mode in (0,5,3,4):
  def combined(mode=mode):
   base=fixture(mode);base.hook();issue(base,15)
-  m=fixture(mode,(1<<26)-1);m.w(m.building+0x6c,50);m.hook();issue(m,15)
+  m=fixture(mode,NORMAL_FLAGS);m.w(m.building+0x6c,50);m.hook();issue(m,15)
   assert count(base)==1 and count(m)==2 and not m.writes
   at=0x8b4204 if mode in (0,5) else 0xa802d4
   assert m.u.mem_read(at,1)==bytes([0x15])

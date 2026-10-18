@@ -1,19 +1,17 @@
-# RA2 Toolbox 1.0.6
+# RA2 Toolbox 1.0.7
 
-Windows 高刷光标、单位统计覆盖层与战术助手。文件版本 **1.0.6.0**，Assist 协议 **45**；EXE 和 GameRuntime.dll 必须配套更新。
+Windows 高刷光标、单位统计覆盖层与战术助手。文件版本 **1.0.7.0**，Assist 协议 **45**；EXE 和 GameRuntime.dll 必须配套更新。
 
-- [完整运行包 / EXE-DLL 更新包](https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/releases/tag/v1.0.6)
-- [源码及构建脚本](source/)、[本版发布说明](packages/v1.0.6/RELEASE_NOTES.md)
+- [完整运行包 / EXE-DLL 更新包](https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/releases/tag/v1.0.7)
+- [源码及构建脚本](source/)、[本版发布说明](packages/v1.0.7/RELEASE_NOTES.md)
 - [逃生根因、地图绘制测试、验证边界](source/ESCAPE_AND_RENDER_REVEAL.md)
 - [Hook 修改清单](source/HOOK_JUDGMENT_CHANGES.md)、[计算位置与解锁方案审视](source/RUNTIME_COMPUTE_AND_UNLOCK_REVIEW.md)
 
 ## 本版
 
-逃生不再把部署动画当作完成。原版散开移动打断后，乘员独立等自己的移动稳定并重试；首次尝试不等待其他乘员，已排队/执行中的部署不重复发送。仍仅跟踪选中载具的乘员。
+整体检查后修复满队列漏观察逃生部署、实验回调缺少菜单检查、停止后未请求遮罩重绘、科技目录/风险说明控件重叠及截图诊断协议过时。没有增加 Hook 位置或私有入口。
 
-新增默认关闭的“地图全开：仅去黑幕 / 迷雾（绘制测试）”。只跳过两个遮罩绘制叶函数，不调用旧 Reveal；原版视野计算及目标判断保留。与旧地图全开许可互斥；建议新对局测试，隐藏对象可配合已有敌方标记。两个位置统一由 GameRuntime 安装、恢复、检查冲突。
-
-验证执行实际 DLL、原版事件构造器和入口桩，但使用合成游戏状态及 Win32/部分函数模拟；未运行真实 Windows 游戏、截图、双机联机和延迟测试，不宣称联机安全。
+[整体审视与测试范围](source/REVIEW-1.0.7.md) · [最终构建验证汇总](source/REVIEW_VERIFICATION.json)。实际 DLL 模拟、双端按帧模型及 UI/算法回归通过；未运行真实 Windows 游戏、LBW、平台联机或像素截图。
 
 ## 当前状态
 

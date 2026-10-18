@@ -51,5 +51,5 @@ for scenario in ('enabled','off_before_tick','stale_host','wrong_thread','stoppe
    assert s.data.renderRevealStatus==0
    assert all(bytes(m.u.mem_read(at,len(sig)))==sig for at,sig in sites.items())
  results.append({'name':scenario,'pass':True});print('PASS',scenario,flush=True)
-Path(a.output).write_text(json.dumps({'version':'1.0.6','dll_sha256':hashlib.sha256(Path(a.dll).read_bytes()).hexdigest(),
+Path(a.output).write_text(json.dumps({'version':'1.0.7','dll_sha256':hashlib.sha256(Path(a.dll).read_bytes()).hexdigest(),
  'results':results,'real_windows_or_rendering_or_netplay':False},indent=2)+'\n')

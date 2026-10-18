@@ -1,0 +1,1 @@
+PASS: 5/30/60/120/500 FPS keep independent 16ms controls, immediate rate changes, no catch-up burst and long-running monotonic time

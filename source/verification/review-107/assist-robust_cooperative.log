@@ -1,0 +1,4 @@
+PASS duplicate_source rejected
+PASS duplicate_target rejected
+PASS capacity accounting avoids signed overflow
+PASS 10000 seeded allocation cases plus 512x512 boundary: capacity, identity, compatibility, quotas, determinism and limits

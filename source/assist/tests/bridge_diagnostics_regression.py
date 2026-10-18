@@ -11,7 +11,7 @@ def passed(name):rows.append({'case':name,'status':'PASS'});print('PASS',name,fl
 m=fixture();s=m.hook();d=diagnostic(m)
 assert d.callbacks==1 and d.seq%2==0 and d.thread==777 and d.tick==m.clock and d.stage==2 and not d.error
 assert d.base==m.dll.OPTIONAL_HEADER.ImageBase and d.base+d.rva==m.entry and s.data.status==1
-assert set(m.mapping_names)=={'Local\\RA2Runtime_v3_123_456_','Local\\RA2Assist_v042_123'}
+assert set(m.mapping_names)=={'Local\\RA2Runtime_v3_123_456_',f'Local\\RA2Assist_v{s.version:03d}_123'}
 passed('actual_export_RVA_thread_namespace_and_first_callback_match')
 m.hook();d=diagnostic(m);assert d.callbacks==2 and d.stage==2
 passed('subsequent_wake_reuses_runtime_and_keeps_reporting')

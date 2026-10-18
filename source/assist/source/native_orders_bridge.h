@@ -150,7 +150,10 @@ static void smartUnloadTick(uint32_t house,int frame,int&budget){
     if(budget>0&&nativeMission(house,r.id,5,0,0,0,0,0,taskarbiter::Owner::Unload)){--budget;done=true;}else continue;
    }else done=true;
   }
-  if(!done&&r.mode!=1&&live(p)&&!get<uint32_t>(p+0x11C)&&budget>0&&outgoingRoom()>0){uint32_t t=typeOf(p,1);int currentMission=get<int>(p+0xAC);
+  if(!done&&r.mode!=1&&live(p)&&!get<uint32_t>(p+0x11C)){uint32_t t=typeOf(p,1);int currentMission=get<int>(p+0xAC);
+   // Observation must survive a full event queue or another passenger using
+   // this frame's budget. Otherwise a short interrupted Deploy is never seen.
+   const bool canSend=budget>0&&outgoingRoom()>0;
    if(!r.landedFrame)r.landedFrame=frame;
    bool takenOver=!unloadpolicy::initialMayContinue(currentMission,r.mode,frame-r.landedFrame,currentMission==7&&get<uint32_t>(p+0x5A4)==r.carrier,ejectDeployer);
    if(!t){done=true;}else if(!r.stage&&takenOver){done=true;}else if(get<bool>(t+0xEC8)){
@@ -169,6 +172,7 @@ static void smartUnloadTick(uint32_t house,int frame,int&budget){
      // Neither animation-in-progress nor a queued toggle authorizes another
      // Deploy. In particular a second toggle could undo a successful deploy.
      if(unloadpolicy::deployObserved(sequence)||sequence==31||queued==16)continue;
+     if(!canSend)continue;
      if(!r.stage){
       // First attempt stays immediate and independent for every survivor.
       // CanDeploySlashUnload is a capability predicate, not a settled-cell test.
@@ -188,6 +192,7 @@ static void smartUnloadTick(uint32_t house,int frame,int&budget){
      }
     }
    }else{
+    if(!canSend)continue;
     if(frame<r.sentFrame)continue;
     bool engineer=get<bool>(t+0xEC3),spy=get<bool>(t+0xEBE),c4=get<bool>(t+0xEC2);uint32_t best=0,bestID=~0u;int mission=-1;int64_t distance=INT64_MAX;
     if(engineer||spy||c4)for(int j=0;j<buildings.count;++j){uint32_t q=item(buildings,j);if(!q||kind(q)!=3||!unloadBuildingCandidate(q,house,engineer))continue;

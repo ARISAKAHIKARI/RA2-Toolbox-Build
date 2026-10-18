@@ -15,9 +15,9 @@ constexpr unsigned WM_SETCURSOR=32,WM_MOUSEMOVE=512,HTCLIENT=1,SMTO_ABORTIFHUNG=
 #define MAKELPARAM(a,b) (LPARAM(uint32_t(a)|(uint32_t(b)<<16)))
 bool SendMessageTimeoutW(HWND,UINT,WPARAM,LPARAM,UINT,UINT,DWORD_PTR*);
 #define INVALID_HANDLE_VALUE ((HANDLE)(intptr_t)-1)
-constexpr int VK_MBUTTON=4,VK_XBUTTON1=5,VK_XBUTTON2=6,VK_RBUTTON=2,VK_CONTROL=17;
+constexpr int VK_LBUTTON=1,VK_MBUTTON=4,VK_XBUTTON1=5,VK_XBUTTON2=6,VK_RBUTTON=2,VK_CONTROL=17;
 struct POINT{LONG x,y;};struct RECT{LONG left,top,right,bottom;};
-short GetAsyncKeyState(int);bool IsIconic(HWND);bool GetCursorPos(POINT*);bool ScreenToClient(HWND,POINT*);bool GetClientRect(HWND,RECT*);
+HWND WindowFromPoint(POINT);short GetAsyncKeyState(int);bool IsIconic(HWND);bool GetCursorPos(POINT*);bool ScreenToClient(HWND,POINT*);bool GetClientRect(HWND,RECT*);
 struct INPUT{unsigned type=0;struct {unsigned dwFlags=0;uintptr_t dwExtraInfo=0;}mi;};
 DWORD GetWindowThreadProcessId(HWND,DWORD*);HWND GetForegroundWindow();void SetLastError(DWORD);DWORD GetLastError();
 HHOOK SetWindowsHookExW(int,HOOKPROC,HMODULE,DWORD);bool UnhookWindowsHookEx(HHOOK);UINT SendInput(UINT,INPUT*,int);
@@ -50,6 +50,7 @@ bool SendMessageTimeoutW(HWND w,UINT msg,WPARAM wp,LPARAM lp,UINT flags,UINT tim
  ++cursorRefreshes;return refreshSucceeds;
 }
 DWORD GetWindowThreadProcessId(HWND w,DWORD*p){*p=uint32_t(uintptr_t(w));return w?windowThread:0;}
+HWND WindowFromPoint(POINT){return reinterpret_cast<HWND>(uintptr_t(fg));}
 HWND GetForegroundWindow(){return reinterpret_cast<HWND>(uintptr_t(fg));}
 void SetLastError(DWORD e){error=e;}DWORD GetLastError(){return error;}
 HHOOK SetWindowsHookExW(int kind,HOOKPROC,HMODULE,DWORD){++installs;if(failPostHook&&kind==WH_CALLWNDPROCRET){error=1428;return nullptr;}return reinterpret_cast<HHOOK>(uintptr_t(installs));}
