@@ -33,9 +33,11 @@ template<class Read,class Quotas> assist::cooperative::Input cooperativeInput(Re
  std::stable_sort(candidates.begin(),candidates.end(),[&](uint32_t a,uint32_t b){if(a==clicked->second||b==clicked->second)return a==clicked->second&&b!=clicked->second;int64_t da=cooperative::distance(out.units[0].x,out.units[0].y,game.template get<int>(a+0x9C),game.template get<int>(a+0xA0)),db=cooperative::distance(out.units[0].x,out.units[0].y,game.template get<int>(b+0x9C),game.template get<int>(b+0xA0));return da!=db?da<db:game.template get<uint32_t>(a+0x10)<game.template get<uint32_t>(b+0x10);});
  std::unordered_map<uint32_t,int> incoming;
  if(r.mode==cooperative::Enter)for(uint32_t q:all){if(!game.live(q)||game.template get<uint32_t>(q+0x21C)!=house||game.template get<uint32_t>(q+0x11C)||std::find(sources.begin(),sources.end(),q)!=sources.end())continue;
-  if(game.template get<int>(q+0xAC)!=7&&game.template get<int>(q+0xB4)!=7)continue;
-  uint32_t target=game.template get<uint32_t>(q+0x500);if(target<0x10000)target=game.template get<uint32_t>(q+0x5A4);
-  if(game.type(target,game.kind(target))!=r.type)continue;int slots=game.capacity(clicked->second).occupants?1:loading::slots(game.template get<double>(game.type(q,game.kind(q))+0x380));
+  uint32_t target=game.entryDestination(q);
+  if(game.type(target,game.kind(target))!=r.type)continue;
+  // Single-vehicle facilities count actual radio contacts in used already.
+  if(game.capacity(target).singleVehicle&&game.radioLinked(target,q))continue;
+  int slots=game.entrySlots(q,target);
   if(slots)incoming[target]+=slots;
  }
  for(uint32_t p:candidates){if(targets.size()>=cooperative::MaxTargets)break;int k=game.kind(p);uint32_t t=game.type(p,k);cooperative::Target target{};target.id=game.template get<uint32_t>(p+0x10);target.type=t;target.x=game.template get<int>(p+0x9C);target.y=game.template get<int>(p+0xA0);target.quota=quota(t);

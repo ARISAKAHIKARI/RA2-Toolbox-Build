@@ -1,0 +1,5 @@
+Traceback (most recent call last):
+  File "/workspace/scratch/bf135d053f66/release-112/source/assist/tests/tank_bunker_runtime.py", line 42, in <module>
+    assert s.cooperativeAck==s.cooperativePlan and s.cooperativeAccepted==2 and count(m)==2,(facility,s.cooperativeAccepted,s.cooperativeRejected)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ('bunker', 0, 2)

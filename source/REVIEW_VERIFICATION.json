@@ -1,55 +1,30 @@
 {
-  "version": "1.0.11 Beta",
-  "file_version": "1.0.11.0",
+  "version": "1.0.12 Beta",
+  "file_version": "1.0.12.0",
   "assist_protocol": 46,
-  "exe_sha256": "be3ab317044c64e11cdae45550e123c4acfef99517e638184e55f65af2238a96",
-  "dll_sha256": "87bed5527c824bffb03d914245d650441b331fb651288283c0ccf328ac843c39",
-  "scales": {
-    "minimum": 50,
-    "maximum": 250,
-    "default": 100,
-    "count": 3
-  },
-  "ui_geometry": {
-    "controls": 226,
-    "fully_reachable_checks": 2616,
-    "viewport_sizes": 12,
-    "pages": 1,
-    "content_bottom": 5093
-  },
-  "reservation_geometry": {
-    "percentages": [
-      50,
-      75,
-      100,
-      125,
-      150,
-      200,
-      250
-    ],
-    "resolution_pairs": 6,
-    "paint_hit_same_transform": true
-  },
-  "runtime_equivalence": {
-    "runtime_translation_units_unchanged": [
-      "assist/source/bridge.cpp",
-      "shared/source/game_entry_manager.cpp",
-      "game_runtime/source/runtime.cpp"
-    ],
-    "text_section_identical": true,
-    "text_sha256": "67abae4a1816a1f96e0e8fd1a1575d471ba912693afa280b5366838fa53f75b9"
+  "fixes": [
+    "facility slot count instead of passenger Size",
+    "nonempty radio links instead of array length",
+    "Enter and Repair incoming reservations with contact deduplication",
+    "paired bunker link completion"
+  ],
+  "runtime_cases": 20,
+  "old_runtime_reproduced": {
+    "accepted": 0,
+    "rejected": 2
   },
   "verification": [
-    "settings handler portable fixture",
-    "reservation host ASan/UBSan fixture",
-    "tactical UI construction/layout fixture",
-    "viewport scaling",
+    "host planning ASan/UBSan (leak detection disabled)",
+    "actual x86 Runtime fixture",
+    "cooperative/external_reader regressions",
     "PE version/ABI/imports/manifest",
     "source architecture boundaries"
   ],
   "real_windows_game": false,
   "real_netplay": false,
-  "pixel_rendering": false,
   "lbw": false,
-  "native_planning_research": "copy and dispatch verified in synthetic world; seed payload candidates, final effect and multiplayer NOT verified; no new runtime feature"
+  "binary_sha256": {
+    "RA2Toolbox.exe": "f47d9c926681d8ff721617c7f68cdaa41885f4592e0fab7244ffe5bea5d74672",
+    "GameRuntime.dll": "f5782932f961772a5cb4ce5f2adbeefb6c55073965ccb889bfe34f9b6eb598c8"
+  }
 }

@@ -1,0 +1,30 @@
+{
+  "version": "1.0.12 Beta",
+  "file_version": "1.0.12.0",
+  "assist_protocol": 46,
+  "fixes": [
+    "facility slot count instead of passenger Size",
+    "nonempty radio links instead of array length",
+    "Enter and Repair incoming reservations with contact deduplication",
+    "paired bunker link completion"
+  ],
+  "runtime_cases": 20,
+  "old_runtime_reproduced": {
+    "accepted": 0,
+    "rejected": 2
+  },
+  "verification": [
+    "host planning ASan/UBSan (leak detection disabled)",
+    "actual x86 Runtime fixture",
+    "cooperative/external_reader regressions",
+    "PE version/ABI/imports/manifest",
+    "source architecture boundaries"
+  ],
+  "real_windows_game": false,
+  "real_netplay": false,
+  "lbw": false,
+  "binary_sha256": {
+    "RA2Toolbox.exe": "f47d9c926681d8ff721617c7f68cdaa41885f4592e0fab7244ffe5bea5d74672",
+    "GameRuntime.dll": "f5782932f961772a5cb4ce5f2adbeefb6c55073965ccb889bfe34f9b6eb598c8"
+  }
+}

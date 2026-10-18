@@ -1,5 +1,5 @@
-RA2 Toolbox 1.0.11 Beta / Windows version 1.0.11.0 / Assist protocol 46
+RA2 Toolbox 1.0.12 Beta / Windows 1.0.12.0 / Assist protocol 46
 Compiler: Zig 0.13.0 / Windows x86
-RA2Toolbox.exe SHA256: be3ab317044c64e11cdae45550e123c4acfef99517e638184e55f65af2238a96
-GameRuntime.dll SHA256: 87bed5527c824bffb03d914245d650441b331fb651288283c0ccf328ac843c39
-DLL .text matches 1.0.10. No real Windows pixel or netplay test.
+RA2Toolbox.exe SHA256: f47d9c926681d8ff721617c7f68cdaa41885f4592e0fab7244ffe5bea5d74672
+GameRuntime.dll SHA256: f5782932f961772a5cb4ce5f2adbeefb6c55073965ccb889bfe34f9b6eb598c8
+20 targeted Runtime fixture cases passed; no real netplay test.

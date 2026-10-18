@@ -15,7 +15,7 @@ static void observeCooperativeEffects(uint32_t house,int frame){
   bool identity=e.match==match&&frame>=e.frame&&actor&&actor==e.actorPointer&&get<uint32_t>(actor+0x21C)==house;
   bool active=identity&&live(actor); // aircraft can temporarily leave the map
   bool targetSame=target&&target==e.targetPointer; // no target-ID reuse false positive
-  bool boarded=identity&&e.mission==7&&targetSame&&get<uint32_t>(actor+0x11C)==target;
+  bool boarded=identity&&e.mission==7&&targetSame&&clickView.entered(actor,target);
   bool targeting=active&&e.mission==1&&frame>e.frame&&targetSame&&get<uint32_t>(actor+0x2B4)==target;
   // An already-selected target is not fresh acquisition, but a NEW rearm can
   // still demonstrate that the repeated Attack caused another firing cycle.
@@ -120,11 +120,12 @@ static void resetCooperativeState(){entryReservationCount=cooperativeEffectCount
 static void restoreClickHooks(){}
 static void clickHooksTick(uint32_t flags){sh->clickHookStatus=(flags&SpecialClickFlags)?1:0;}
 static int entryReserved(uint32_t target,uint32_t ignore,uint32_t house){
- int reserved=0;Vec all=vec(0xA8EC78);for(int i=0;i<all.count;++i){uint32_t p=item(all,i);int k=p?kind(p):-1;
-  if((k!=1&&k!=2)||!own(p,house)||get<uint32_t>(p+0x10)==ignore||get<uint32_t>(p+0x11C)||incomingVehicle(p)!=target)continue;
+ int reserved=0;bool facility=clickView.capacity(target).singleVehicle;Vec all=vec(0xA8EC78);for(int i=0;i<all.count;++i){uint32_t p=item(all,i);int k=p?kind(p):-1;
+  if((k!=1&&k!=2)||!own(p,house)||get<uint32_t>(p+0x10)==ignore||clickView.entryDestination(p)!=target)continue;
+  if(facility&&clickView.radioLinked(target,p))continue;
   int slots=clickView.entrySlots(p,target);if(!slots)return 1024;reserved+=slots;if(reserved>=1024)return 1024;
  }
- for(int i=0;i<entryReservationCount;++i){auto&r=entryReservations[i];uint32_t p=worldByID(r.id);if(r.target==get<uint32_t>(target+0x10)&&r.id!=ignore&&p&&incomingVehicle(p)!=target)reserved+=r.slots;}
+ for(int i=0;i<entryReservationCount;++i){auto&r=entryReservations[i];uint32_t p=worldByID(r.id);if(r.target==get<uint32_t>(target+0x10)&&r.id!=ignore&&p&&clickView.entryDestination(p)!=target&&!(facility&&clickView.radioLinked(target,p)))reserved+=r.slots;}
  return reserved;
 }
 static void cooperativeTick(uint32_t house,int frame,DWORD now){

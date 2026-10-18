@@ -6,7 +6,7 @@
 #include <cmath>
 #include <cstring>
 namespace external {
-struct EntryCapacity {int maximum=0,used=0;double limit=0;bool occupants=false;};
+struct EntryCapacity {int maximum=0,used=0;double limit=0;bool occupants=false,singleVehicle=false;};
 template<class Read> class GameView {
  Read read_;
 public:
@@ -24,10 +24,27 @@ public:
  bool neutral(uint32_t house)const{uint32_t country=get<uint32_t>(house+0x34);return country>=0x10000&&get<uint8_t>(country+0x1A6);}
  bool allied(uint32_t owner,uint32_t house)const{if(owner==house)return true;int i=get<int>(owner+0x30,-1);return i>=0&&i<32&&(get<uint32_t>(house+0x5788)&(1u<<i));}
  bool enemy(uint32_t p,uint32_t house)const{uint32_t owner=get<uint32_t>(p+0x21C);return live(p)&&owner>=0x10000&&!neutral(owner)&&!allied(owner,house);}
+ // RadioClass stores allocated links at E4/E8, including null slots. Counting
+ // E8 as occupancy makes an unused depot/bunker look full. Match the native
+ // contact scan (0x65AE30); malformed/unreadable storage stays unavailable.
+ int radioContacts(uint32_t p)const{
+  int n=get<int>(p+0xE8,-1);uint32_t items=get<uint32_t>(p+0xE4);if(n<0||n>64||(n&&items<0x10000))return 1024;
+  int used=0;for(int i=0;i<n;++i)if(get<uint32_t>(items+uint32_t(i)*4,0xffffffffu))++used;return used;
+ }
+ bool radioLinked(uint32_t p,uint32_t source)const{
+  int n=get<int>(p+0xE8,-1);uint32_t items=get<uint32_t>(p+0xE4);if(n<0||n>64||(n&&items<0x10000))return false;
+  for(int i=0;i<n;++i)if(get<uint32_t>(items+uint32_t(i)*4)==source)return true;return false;
+ }
  EntryCapacity capacity(uint32_t p)const{
   EntryCapacity out;int k=kind(p);uint32_t t=type(p,k);if(!live(p)||!t||get<uint8_t>(p+0x1C8))return out;
   if(k==3&&get<uint8_t>(t+0x157B)){out.maximum=get<int>(t+0x1580);out.used=get<int>(p+0x694);out.limit=128;out.occupants=true;}
-  else if(k==3&&(get<uint8_t>(t+0x16AB)||get<uint8_t>(t+0x16A9))){out.maximum=1;out.used=(get<uint32_t>(p+0x2E4)||get<int>(p+0xE8)!=0||get<int>(p+0x114)!=0)?1:0;out.limit=128;}
+  else if(k==3&&(get<uint8_t>(t+0x16AB)||get<uint8_t>(t+0x16A9))){
+   bool bunker=get<uint8_t>(t+0x16AB)!=0;int docks=get<int>(t+0x1780,1);
+   if(!bunker&&(docks<0||docks>64))return {};
+   out.maximum=bunker?1:(docks>0?docks:1);out.used=radioContacts(p);
+   if((get<uint32_t>(p+0x2E4)||get<int>(p+0x114)!=0)&&out.used<1)out.used=1;
+   out.limit=128;out.singleVehicle=true;
+  }
   else if(k==2||(k==3&&(get<uint8_t>(t+0x16AE)||get<uint8_t>(t+0x16AF)))){
    out.maximum=get<int>(t+0x5E0);out.limit=get<double>(t+0x388);int count=get<int>(p+0x114,-1);uint32_t q=get<uint32_t>(p+0x118),seen[256]{};int n=0;
    if(count<0||count>256)return {};
@@ -37,7 +54,19 @@ public:
   if(out.maximum<=0||out.maximum>1024||out.used<0||!(out.limit>0&&out.limit<=128))return {};
   return out;
  }
- int entrySlots(uint32_t source,uint32_t target)const{auto c=capacity(target);if(!c.maximum)return 0;if(c.occupants)return 1;uint32_t t=type(source,kind(source));return t?assist::loading::slots(get<double>(t+0x380)):0;}
+ int entrySlots(uint32_t source,uint32_t target)const{auto c=capacity(target);if(!c.maximum)return 0;if(c.occupants||c.singleVehicle)return 1;uint32_t t=type(source,kind(source));return t?assist::loading::slots(get<double>(t+0x380)):0;}
+ uint32_t entryDestination(uint32_t source)const{
+  if(get<uint32_t>(source+0x11C)||get<uint32_t>(source+0x2E4))return 0;
+  int mission=get<int>(source+0xAC,-1),queued=get<int>(source+0xB4,-1);bool entering=mission==7||queued==7,repairing=mission==9||queued==9;
+  if(!entering&&!repairing)return 0;
+  uint32_t target=get<uint32_t>(source+0x500);if(target<0x10000)target=get<uint32_t>(source+0x5A4);if(target<0x10000)target=get<uint32_t>(source+0x2B4);
+  if(!entering&&(kind(target)!=3||!get<uint8_t>(type(target,3)+0x16A9)))return 0;
+  return target;
+ }
+ bool entered(uint32_t source,uint32_t target)const{
+  if(get<uint32_t>(source+0x11C)==target)return true;
+  return kind(target)==3&&get<uint8_t>(type(target,3)+0x16AB)&&get<uint32_t>(source+0x2E4)==target&&get<uint32_t>(target+0x2E4)==source;
+ }
  bool entryCompatible(uint32_t source,uint32_t target,uint32_t house)const{
   int sk=kind(source),tk=kind(target);uint32_t st=type(source,sk),tt=type(target,tk),owner=get<uint32_t>(target+0x21C);
   if(source==target||!live(source)||!live(target)||!st||!tt||(sk!=1&&sk!=2)||get<uint8_t>(source+0x1C8)||get<uint32_t>(source+0x11C)||get<uint32_t>(source+0x2E4)||get<uint32_t>(source+0x21C)!=house)return false;
@@ -45,7 +74,8 @@ public:
   if(get<uint8_t>(source+0x134)||get<int>(source+0x94)==3||get<uint8_t>(source+0x84)||get<uint8_t>(source+0x8D))return false;
   auto c=capacity(target);int slots=entrySlots(source,target);if(!c.maximum||!slots||slots>c.limit)return false;
   if(tk==3){if(c.occupants)return sk==1&&get<uint8_t>(st+0xEB4);
-   if(get<uint8_t>(tt+0x16AB)||get<uint8_t>(tt+0x16A9))return sk==2;
+   if(get<uint8_t>(tt+0x16AB))return sk==2&&get<uint8_t>(st+0xD2E); // YRpp Bunkerable
+   if(get<uint8_t>(tt+0x16A9))return sk==2;
    return sk==1?get<uint8_t>(tt+0x16AF)!=0:sk==2&&get<uint8_t>(tt+0x16AE)!=0;
   }return tk==2;
  }

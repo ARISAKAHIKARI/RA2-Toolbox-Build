@@ -23,7 +23,7 @@ static std::wstring controlHelp(int id,const std::wstring& label){
  case 446:case 447:case 466:return L"自动 CS：原版右键移动生效后追加攻击移动；仅处理允许的己方单位，保留原始命令。";
  case 473:case 474:return L"按键 CS：启用后按住快捷键＋所选鼠标键点地面；快捷键留空时直接点击。";
  case 470:case 781:case 782:case 783:case 784:return L"自动倒矿：满载矿车按矿场容量排队；已到场矿车可有限插队，避免反复插队死锁；类型清单可自定义。";
- case 702:case 703:case 704:return L"高级进驻：按住快捷键＋所选鼠标键点击建筑或载具，按原版合法性与容量分配选中乘员；上限512个源对象。";
+ case 702:case 703:case 704:return L"高级进驻：按住快捷键＋所选鼠标键点击目标，在屏幕内同类目标间分配选中单位；支持载具、驻军建筑、坦克碉堡及维修厂/船厂。碉堡每座一车，维修按泊位分配，仍需原版允许；上限512个源对象。";
  case 705:case 706:case 707:case 708:case 709:case 710:case 711:case 712:case 713:case 714:case 715:case 716:case 717:case 718:return L"飞机均匀攻击：按模式键＋鼠标键点击敌方目标，给同类目标分配飞机；优先数与最大受击数可按类型覆盖，最大0为不限。";
  case 719:case 725:case 726:return L"飞碟主武器：按住快捷键＋所选鼠标键点击建筑，向所在格追加原版强制攻击，以使用主武器。";
  case 720:case 727:case 728:return L"变卖吸取目标：按住变卖键＋所选鼠标键点击合法己方目标；保留原版出售条件和退款逻辑。";
