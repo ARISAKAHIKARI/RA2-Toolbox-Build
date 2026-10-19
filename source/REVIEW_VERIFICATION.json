@@ -1,49 +1,33 @@
 {
-  "version": "1.0.16 Beta",
-  "file_version": "1.0.16.0",
-  "assist_protocol": 50,
+  "version": "1.0.17 Beta",
+  "file_version": "1.0.17.0",
+  "assist_protocol": 51,
   "changes": [
-    "retain exact old process identity during bridge retirement; authoritative HWND rescan",
-    "recover empty/partial/delayed type catalogues in three readers",
-    "optional visible radar mirror 100-400 percent",
-    "eight real per-feature dual decision backends",
-    "same-frame actor defer instead of target blacklist; AntiTheft and pending tasks prepare world index"
+    "shared pure unload/deployment decision supports Runtime or host computation",
+    "source-stamped, sequence-locked batch with current state/token/legality revalidation",
+    "statistics, reservations, overlays and minimap remain external by user-approved scope",
+    "settings page exposes ten actual tactical decision locations, defaults preserved"
   ],
-  "dual_families": [
-    "AdvancedAttack",
-    "Magnetron",
-    "OreReturn",
-    "AntiTheft",
-    "AdvancedEnter",
-    "AircraftSpread",
-    "Repair filtering",
-    "AutoLoad allocation"
-  ],
-  "all_features_dual": false,
-  "remaining": "See REVIEW-1.0.16.md: unload/ejection, selection, construction, Z paths and display/statistics remain fixed-location. Native queries/validation/events are always Runtime.",
   "runtime_cases": {
+    "unload-runtime": 20,
+    "ejection-runtime": 76,
+    "unload-locations": 34,
     "compute-runtime": 31,
-    "sidebar-runtime": 84,
-    "construction-runtime": 36,
-    "tank-bunker": 20,
-    "console-runtime": 8
+    "sidebar-runtime": 84
   },
+  "config_masks": 1024,
   "host_checks": [
-    "actual TacticalSampler delayed/partial vector and metadata recovery",
-    "18 unit-monitor round/catalogue/cache cases",
-    "shared read connection lifetime, concurrency and retained old-process identity",
-    "authoritative/reused HWND and process discovery",
-    "432 radar game/client/scale combinations with visibility and resource checks",
-    "actual auto-save settings and protocol-50 passive capture prefix"
+    "real settings handler ten backend combos and save roundtrip",
+    "passive capture prefix ABI 51",
+    "PE exports/imports/version/paired ABI",
+    "source ownership audit"
   ],
-  "config_mask_combinations": 256,
-  "known_old_harness_failure": "Legacy entry_runtime_regression.py main technology/CreateObject fixture fails on both 1.0.15 and current; not counted as a pass. Targeted scripts use its updated ABI driver.",
   "real_windows_game": false,
-  "real_capture_or_lbw": false,
   "real_netplay": false,
+  "real_screen_capture": false,
   "real_latency": false,
   "binary_sha256": {
-    "RA2Toolbox.exe": "fd7d12a089a5a078e8f63200912783cf5e67ec7eab3d23d458ebda1d7c51868a",
-    "GameRuntime.dll": "c2d0a16edbda95c7a69c70c72632d2096b9450fa8e0f460ba6eba1bc22f175bc"
+    "RA2Toolbox.exe": "f45e39c5342880ab5d7cfd976c660af3cf16583a75d9ce379786494766974eb7",
+    "GameRuntime.dll": "c1699b69756654021b6da6a59e9de3254e22498bf8677c74473795d730969487"
   }
 }

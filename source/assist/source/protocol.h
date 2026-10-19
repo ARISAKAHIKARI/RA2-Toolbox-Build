@@ -11,8 +11,9 @@
 #include "construction_input.h"
 #include "compute_policy.h"
 #include "compute_tasks.h"
+#include "unload_compute.h"
 namespace assist {
-constexpr uint32_t Magic=0x41533130, Version=50;
+constexpr uint32_t Magic=0x41533130, Version=51;
 constexpr uint32_t DataMessage=0x8002, WakeTag=0x41533230;
 constexpr int MaxLabels=2048, MaxSW=32, MaxTypes=512, MaxThreats=128, MaxCrates=256, MaxCrateResults=16;
 enum Command { None, Repair, CombatSelection, EmptyTransports, DamagedSelection, IdleHarvester, IdleEngineer, IdleTransport, ClearBeacons, RevealMap, OpenTech, SelectSuper, Produce, SelectIron, SelectChrono, AutoBoard, SelectType, SmartUnload, CancelAdvanced, SelectVariant, ProduceReserved, AirPathMove, CancelTechProduction };
@@ -125,8 +126,10 @@ struct Shared {
  volatile uint32_t repairTask=0,repairComputed=0;compute::RepairInput repairInput;compute::RepairResult repairResult;
  volatile long quotaConfigSeq=0;compute::QuotaConfig quotaConfig;
  volatile uint32_t runtimeCoopDone=0;int runtimeCoopAccepted=0,runtimeCoopRejected=0;
-
-
+ // Coherent immutable unload observations and host-only calculation result.
+ volatile long unloadInputSeq=0,unloadResultSeq=0;
+ volatile uint32_t unloadTask=0,unloadComputed=0;
+ unloadcompute::Input unloadInput;unloadcompute::Result unloadResult;
 
 };
 inline int remaining(int start,int duration,int frame){

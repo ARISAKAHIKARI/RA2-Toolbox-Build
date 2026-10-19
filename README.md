@@ -1,13 +1,13 @@
-# RA2 Toolbox 1.0.16 Beta
+# RA2 Toolbox 1.0.17 Beta
 
-Windows 高刷光标、单位统计与战术助手。文件版本 **1.0.16.0**，Assist 协议 **50**。
+Windows 高刷光标、单位统计与战术助手。文件版本 **1.0.17.0**，Assist 协议 **51**。
 
-- [完整运行包与更新包](https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/releases/tag/v1.0.16)
-- [源码与构建脚本](source/) · [本版说明](packages/v1.0.16/RELEASE_NOTES.md)
-- [架构、位置范围及验证说明](source/REVIEW-1.0.16.md) · [验证记录](source/verification/review-116/)
+- [完整运行包与更新包](https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/releases/tag/v1.0.17)
+- [源码](source/) · [本版说明](packages/v1.0.17/RELEASE_NOTES.md)
+- [计算位置与验证边界](source/REVIEW-1.0.17.md) · [验证记录](source/verification/review-117/)
 
-修复新进程/正式窗口绑定与类型目录迟到加载；加入小地图画面放大和八项真实双计算后端。事件仍经统一 GameRuntime，未增加独立 Hook。并非所有功能都已有双路径，固定位置清单见说明。
+智能卸载、载员逃生补齐内外纯决策路径；十项战术决策集中配置。单位统计、预定列表等与外部 UI 绑定的功能固定外部。原版查询、最终合法性、事件和回执仍统一 GameRuntime，不增加独立 Hook。
 
-退出游戏与工具后成套更新 EXE/DLL，保留配置和 cache。Zig 0.13.0 构建 source/build-zig.sh 或 source/BUILD_ZIG.cmd。Release 附件仅运行文件及说明，源码独立保存。
+配置自动保存，下局或完整桥重建生效。退出游戏和工具后成套更新 EXE/DLL，保留配置和 cache。Zig 0.13.0 构建 source/build-zig.sh 或 source/BUILD_ZIG.cmd。
 
-本轮为编译、源审计及模拟夹具验证，无真实 Windows/LBW 捕获、双机联机或延迟验收。历史报告只代表相应版本。
+245 项 DLL/构造器模拟夹具及相关设置/架构校验通过；没有真实 Windows/LBW、双机联机或延迟验收。历史报告只对应相应版本。

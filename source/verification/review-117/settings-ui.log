@@ -1,0 +1,4 @@
+PASS: shipped settings handler applies/flushes valid edits, preserves conflicting keys, ignores programmatic updates, saves quotas/custom keys; independent overlays and common read leases
+PASS: explicit feature/permission linkage, invalid-key isolation, shared cursor discovery and host ACK single-writer contract
+PASS shared menu visibility is consumed by both overlays; control tick hides even when render clock stops
+PASS experimental reveal default/roundtrip and all host gates; independent manual overlay controls retain battlefield gating

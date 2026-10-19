@@ -6,10 +6,10 @@ import argparse,ctypes as C,json,math,os,struct,time,zlib
 from pathlib import Path
 
 def assist_prefix(first,second,pid):
- # This observer opens only Local\\RA2Assist_v050_; require its matching ABI.
+ # This observer opens only Local\\RA2Assist_v051_; require its matching ABI.
  if len(first)!=80 or first!=second:return None
  values=struct.unpack('<20I',first)
- return values if values[0]==0x41533130 and values[1]==50 and values[2]==pid else None
+ return values if values[0]==0x41533130 and values[1]==51 and values[2]==pid else None
 
 def intersection(a,b):
  l,t=max(a[0],b[0]),max(a[1],b[1]);r,d=min(a[2],b[2]),min(a[3],b[3])
@@ -142,7 +142,7 @@ def main():
    if not candidates:raise RuntimeError('No visible window for requested PID')
    target=max(candidates,key=lambda x:(x['rect'][2]-x['rect'][0])*(x['rect'][3]-x['rect'][1]));hwnd=target['hwnd']
    report['target']={key:target[key] for key in ('hwnd','pid','class')};report['expected_overlays']=expected
-   mapping=k.OpenFileMappingW(4,False,'Local\\RA2Assist_v050_'+str(args.pid))
+   mapping=k.OpenFileMappingW(4,False,'Local\\RA2Assist_v051_'+str(args.pid))
    if mapping:view=k.MapViewOfFile(mapping,4,0,0,80)
    report['passive_ack_mapping']=bool(view);last_ack=None;ack_ages=[];costs=[];intervals=[];last_capture=None;last_crc=None;changes=0;captured=0;simultaneous=0;visible_counts={key:0 for key in classes};skipped=0;last_image=None;start=time.perf_counter();due=start;surface=None
    while time.perf_counter()-start<args.seconds:

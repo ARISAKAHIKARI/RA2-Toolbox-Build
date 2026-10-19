@@ -1,0 +1,21 @@
+TOTAL 0
+PASS 0 nearest
+PASS 0 damage_action
+PASS 0 neutral
+PASS 0 virtual_override
+PASS 0 guard_sticky
+PASS 0 exit_transition
+PASS 0 long_scatter
+PASS 0 blocked
+PASS 0 manual_stop
+PASS 0 disabled
+PASS 3 nearest
+PASS 3 damage_action
+PASS 3 neutral
+PASS 3 virtual_override
+PASS 3 guard_sticky
+PASS 3 exit_transition
+PASS 3 long_scatter
+PASS 3 blocked
+PASS 3 manual_stop
+PASS 3 disabled

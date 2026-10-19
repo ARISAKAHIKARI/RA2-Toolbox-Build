@@ -3,12 +3,14 @@
 // All simulation commands go through EventClass constructors and the game's
 // outgoing queue. This file NEVER writes a unit's mission, target, or locomotor.
 struct NativeOrder {uint32_t p,id,cell,nearest,token,mode;int gx,gy;nativeorders::Progress progress;uint32_t target;int sentFrame;bool attacking,stopped;};
-struct UnloadPassenger {uint32_t p,id,carrier,carrierID,carrierType,followTarget,followTargetPointer;int frame,mode,stage,sentFrame,seenUnload,retries,x,y,stableSince,landedFrame,deployedSince;uint32_t followTicket,followQueuedAt;bool sleepObserved,cancelled,followObserved;};
+struct UnloadPassenger : unloadcompute::State {uint32_t p,id,carrier,carrierID,carrierType,followTarget,followTargetPointer,job;int frame,mode,landedFrame;uint32_t followTicket,followQueuedAt;bool cancelled,followObserved;};
+static uint32_t unloadJobSerial;
+static void resetUnloadCalculation();
 static NativeOrder nativeOrders[nativeorders::MaxOrders];static int nativeCount,nativeCursor,nativeFrame=-1;
 static UnloadPassenger unloadPassengers[nativeorders::MaxPassengers];static int unloadCount,unloadCursor;
 static ObjectIndex watchedPassengers;
 static void restoreNativeHooks();
-static void clearNativeOrders(){nativeCount=nativeCursor=unloadCount=unloadCursor=0;nativeFrame=-1;advancedObjects.clear();snap.advancedUnits=snap.unloadPending=0;restoreNativeHooks();}
+static void clearNativeOrders(){nativeCount=nativeCursor=unloadCount=unloadCursor=0;nativeFrame=-1;advancedObjects.clear();snap.advancedUnits=snap.unloadPending=0;restoreNativeHooks();resetUnloadCalculation();}
 static bool nativeMember(Vec,uint32_t p){return worldObjects.contains(p);}
 static bool nativeReady(){return simulationReady()&&sh->foreground&&!get<bool>(0xA8BC60+25);}
 
@@ -76,7 +78,7 @@ static int smartUnload(uint32_t house){
   if(count>nativeorders::MaxPassengers-unloadCount+replace)return sent?sent:-6;
   if(!nativeMission(house,get<uint32_t>(p+0x10),16,0,0,0,0,0,taskarbiter::Owner::Unload))return sent?sent:-6;
   cancelNative(p);++sent;
-  for(int j=0;j<count;++j){uint32_t q=roster[j];auto&r=unloadPassengers[unloadCount++];r={};r.p=q;r.id=get<uint32_t>(q+0x10);r.carrier=p;r.carrierID=get<uint32_t>(p+0x10);r.carrierType=typeOf(p,2);r.frame=get<int>(0xA8ED84);}
+  for(int j=0;j<count;++j){uint32_t q=roster[j];auto&r=unloadPassengers[unloadCount++];r={};r.job=++unloadJobSerial;r.p=q;r.id=get<uint32_t>(q+0x10);r.carrier=p;r.carrierID=get<uint32_t>(p+0x10);r.carrierType=typeOf(p,2);r.frame=get<int>(0xA8ED84);}
  }return sent;
 }
 static void watchEjections(uint32_t house,int frame,Vec all){
@@ -86,30 +88,14 @@ static void watchEjections(uint32_t house,int frame,Vec all){
  for(int j=0;j<inf.count;++j){uint32_t p=item(inf,j);if(!p||get<uint32_t>(p+0x21C)!=house||!featureObjectAllowed(featuretypes::EscapePassenger,p))continue;uint32_t carrier=get<uint32_t>(p+0x11C);
   if(!carrier||!nativeMember(all,carrier)||!own(carrier,house)||kind(carrier)!=2||!get<bool>(carrier+0x83)||!featureObjectAllowed(featuretypes::EscapeTransport,carrier))continue;
   ++snap.ejectWatched;
-  if(!watchedPassengers.contains(p)&&unloadCount<nativeorders::MaxPassengers){auto&r=unloadPassengers[unloadCount++];r={};r.p=p;r.id=get<uint32_t>(p+0x10);r.carrier=carrier;r.carrierID=get<uint32_t>(carrier+0x10);r.carrierType=typeOf(carrier,2);r.frame=frame;r.mode=1;watchedPassengers.add(p,r.id);}
+  if(!watchedPassengers.contains(p)&&unloadCount<nativeorders::MaxPassengers){auto&r=unloadPassengers[unloadCount++];r={};r.job=++unloadJobSerial;r.p=p;r.id=get<uint32_t>(p+0x10);r.carrier=carrier;r.carrierID=get<uint32_t>(carrier+0x10);r.carrierType=typeOf(carrier,2);r.frame=frame;r.mode=1;watchedPassengers.add(p,r.id);}
  }
 }
-struct UnloadTarget {uint32_t p,id;int x,y;};
-static UnloadTarget unloadTargets[planner::MaxActors];static int unloadTargetsCount,unloadTargetsFrame=-1;static uint32_t unloadTargetsMatch;
-static uint32_t unloadAttackTarget(uint32_t p,uint32_t type,uint32_t house,int frame){
- if(unloadTargetsFrame!=frame||unloadTargetsMatch!=match){
-  unloadTargetsFrame=frame;unloadTargetsMatch=match;unloadTargetsCount=0;Vec all=vec(0xA8EC78);
-  for(int i=0;i<all.count&&unloadTargetsCount<planner::MaxActors;++i){uint32_t q=item(all,i);if(!q||!nativeEnemy(q,house)||get<uint32_t>(q+0x11C)||get<int>(q+0x220))continue;
-   unloadTargets[unloadTargetsCount++]={q,get<uint32_t>(q+0x10),get<int>(q+0x9C),get<int>(q+0xA0)};
-  }
- }
- planner::Actor source{};rawCombatInfo(p,type,1,source,true);uint32_t best=0;int64_t bestDistance=INT64_MAX;
- int x=get<int>(p+0x9C),y=get<int>(p+0xA0);
- for(int i=0;i<unloadTargetsCount;++i){const auto&q=unloadTargets[i];int64_t dx=int64_t(x)-q.x,dy=int64_t(y)-q.y;
-  if(dx< -1048576||dx>1048576||dy< -1048576||dy>1048576)continue;int64_t distance=dx*dx+dy*dy;
-  if(distance>bestDistance||(distance==bestDistance&&best&&q.id>=best))continue;
-  if(!nativeEnemy(q.p,house)||get<uint32_t>(q.p+0x10)!=q.id)continue;int k=kind(q.p);uint32_t t=typeOf(q.p,k);if(!t)continue;
-  planner::Actor target{};rawCombatInfo(q.p,t,k,target,false);if(!planner::compatibleTarget(source,target,false))continue;
-  best=q.id;bestDistance=distance;
- }return best;
-}
+#include "unload_compute_bridge.h"
 static void smartUnloadTick(uint32_t house,int frame,int&budget){
- Vec buildings=vec(0xA8EB40),all=vec(0xA8EC78),inf=vec(0xA83DE8);watchEjections(house,frame,all);int todo=unloadCount;if(todo>nativeorders::WorkPerFrame)todo=nativeorders::WorkPerFrame;
+ serviceUnloadCalculation(house,frame,budget);
+ if(!unloadCalculationPending){unloadExternalInput.count=0;unloadExternalInput.targetCount=0;unloadExternalInput.match=match;unloadExternalInput.tick=sampleClock(sh);unloadExternalInput.frame=frame;}
+ Vec all=vec(0xA8EC78),inf=vec(0xA83DE8);watchEjections(house,frame,all);int todo=unloadCount;if(todo>nativeorders::WorkPerFrame)todo=nativeorders::WorkPerFrame;
  while(todo--&&unloadCount){if(unloadCursor>=unloadCount)unloadCursor=0;int i=unloadCursor++;auto&r=unloadPassengers[i];uint32_t p=r.p;
   bool member=nativeMember(inf,p),carrierMember=nativeMember(all,r.carrier);
   bool carrierValid=carrierMember&&get<uint32_t>(r.carrier+0x10)==r.carrierID;
@@ -164,81 +150,20 @@ static void smartUnloadTick(uint32_t house,int frame,int&budget){
    // their temporary Move. Manual orders cancel via the shared input manager.
    if(r.mode==0&&currentMission==7&&unloadExit(r,currentMission,frame))continue;
    if(r.mode==0&&(currentMission==2||get<int>(p+0xB4)==2)&&frame-r.landedFrame<=unloadpolicy::ScatterFrames){r.stableSince=0;continue;}
-   // Observation must survive a full event queue or another passenger using
-   // this frame's budget. Otherwise a short interrupted Deploy is never seen.
-   const bool canSend=budget>0&&outgoingRoom()>0;
    if(!r.landedFrame)r.landedFrame=frame;
-   bool takenOver=!unloadpolicy::initialMayContinue(currentMission,r.mode,frame-r.landedFrame,unloadExit(r,currentMission,frame),ejectDeployer);
-   if(!t){done=true;}else if(!r.stage&&takenOver){done=true;}else if(get<bool>(t+0xEC8)){
-    // InfantryClass::IsDeployed also returns true for Sequence::Deploy (27).
-    // That animation may be interrupted by native ejection scatter. Observe
-    // stable completed sequences instead of treating the first animation as success.
-    int x=get<int>(p+0x9C),y=get<int>(p+0xA0),mission=get<int>(p+0xAC);
-    int sequence=get<int>(p+0x6C4),queued=get<int>(p+0xB4);
-    if(x!=r.x||y!=r.y){r.x=x;r.y=y;r.stableSince=frame;r.deployedSince=0;}
-    if(unloadpolicy::completedDeploy(sequence)&&mission!=2&&queued!=2){
-     if(!r.deployedSince)r.deployedSince=frame;
-     if(frame-r.deployedSince>=2)done=true;
-    }else r.deployedSince=0;
-    if(!done){
-     if(mission==16||unloadpolicy::deployObserved(sequence))r.seenUnload=1;
-     // Neither animation-in-progress nor a queued toggle authorizes another
-     // Deploy. In particular a second toggle could undo a successful deploy.
-     if(unloadpolicy::deployObserved(sequence)||sequence==31||queued==16)continue;
-     if(!canSend)continue;
-     if(!r.stage){
-      // First attempt stays immediate and independent for every survivor.
-      // CanDeploySlashUnload is a capability predicate, not a settled-cell test.
-      bool ready=call<bool>(get<uint32_t>(get<uint32_t>(p)+0x314),p);
-      if(ejectDeployer&&!ready)continue;
-      if(nativeMission(house,r.id,ready?16:0,0,0,0,0,0,taskarbiter::Owner::Unload)){--budget;r.stage=ready?2:1;r.sentFrame=frame;r.stableSince=frame;r.sleepObserved=false;r.seenUnload=0;if(ready)++snap.unloadIssued;}
-     }else if(r.stage==1&&(mission==0||mission==5||mission==11)&&frame-r.sentFrame>=2&&frame-r.stableSince>=2&&call<bool>(get<uint32_t>(get<uint32_t>(p)+0x314),p)){
-      if(nativeMission(house,r.id,16,0,0,0,0,0,taskarbiter::Owner::Unload)){--budget;r.stage=2;r.sentFrame=frame;r.seenUnload=0;++snap.unloadIssued;}
-     }else if(r.stage==2&&r.seenUnload&&mission!=16&&frame-r.sentFrame>=12){
-      // An interrupted survivor keeps native scatter. Only THIS survivor waits
-      // for two stationary frames before retrying; there is no cell-wide lock.
-      if(ejectDeployer&&(mission==2||frame-r.stableSince<2))continue;
-      if(mission!=0&&mission!=5&&mission!=6&&mission!=11)done=true;
-      else if(++r.retries<(ejectDeployer?12:3)){r.stage=0;r.seenUnload=0;}
-      else if(mission!=0)done=true;
-      else if(nativeMission(house,r.id,5,0,0,0,0,0,taskarbiter::Owner::Unload)){--budget;done=true;}
-     }
-    }
-   }else{
-    if(!r.stableSince)r.stableSince=frame;
-    if(!canSend)continue;
-    if(frame<r.sentFrame)continue;
-    bool engineer=get<bool>(t+0xEC3),spy=get<bool>(t+0xEBE),c4=get<bool>(t+0xEC2);uint32_t best=0,bestID=~0u;int mission=-1;int64_t distance=INT64_MAX;bool queryFailed=false;
-    if(engineer||spy||c4)for(int j=0;j<buildings.count;++j){uint32_t q=item(buildings,j);if(!q||kind(q)!=3||!unloadBuildingCandidate(q,house,engineer))continue;
-     unsigned action=0;uint32_t query=get<uint32_t>(get<uint32_t>(p)+0x74);
-     FaultPhase phase(runtimefault::LoadLegality,p,q);
-     if(query<0x10000||!GuardedEnterAction(query,p,q,&action)){r.sentFrame=frame+6;queryFailed=true;break;}
-     int m=nativeorders::specialMission(engineer,spy,c4,int(action));if(m<0)continue;
-     int64_t dx=int64_t(get<int>(p+0x9C))-get<int>(q+0x9C),dy=int64_t(get<int>(p+0xA0))-get<int>(q+0xA0);if(dx< -1048576||dx>1048576||dy< -1048576||dy>1048576)continue;int64_t d=dx*dx+dy*dy;uint32_t id=get<uint32_t>(q+0x10);
-     if(d<distance||(d==distance&&id<bestID)){best=q;bestID=id;distance=d;mission=m;}
-    }
-    if(queryFailed)continue;
-    if(!best&&!engineer&&!spy){bestID=unloadAttackTarget(p,t,house,frame);best=bestID;mission=1;}
-    uint32_t ticket=0;
-    if(best&&nativeMission(house,r.id,mission,mission==1?bestID:0,mission==1?0:bestID,mission==1?0:0x34,0,0,taskarbiter::Owner::Unload,&ticket)){
-     --budget;++snap.unloadIssued;
-     if(engineer||spy){
-      finishUnloadFollowup(r,frame); // supersede old retries, never leave stale receipt
-      r.stage=3;r.sentFrame=frame;r.followTarget=bestID;r.followTargetPointer=worldByID(bestID);r.followTicket=ticket;
-      r.followQueuedAt=sampleClock(sh);r.followObserved=false;
-      // Business watcher owns this Ticket rather than the generic observer.
-      missionObserver.dismissTicket(match,ticket);
-     }else done=true;
-    }
-    // Just-disembarked infantry may not yet pass native click validation.
-    // Retry specialists briefly, at most once per six frames, then release.
-    if(!best&&(engineer||spy)&&frame-r.stableSince<90){r.sentFrame=frame+6;continue;}
-    // No compatible target: restore native Guard if necessary.
-    if(!best){if(get<int>(p+0xAC)!=0)done=true;else if(nativeMission(house,r.id,5,0,0,0,0,0,taskarbiter::Owner::Unload)){--budget;done=true;}}
+   if(!t||(!r.stage&&!unloadpolicy::initialMayContinue(currentMission,r.mode,frame-r.landedFrame,unloadExit(r,currentMission,frame),ejectDeployer)))done=true;
+   else if(compute::inside(sh->computeApplied,r.mode==0?compute::Unload:compute::Escape)){
+    auto&input=unloadLocalInput;input.count=0;input.targetCount=0;input.match=match;input.tick=sampleClock(sh);input.frame=frame;
+    collectUnloadSource(input,r,house,frame);
+    auto decision=unloadcompute::decide(input.sources[0],input.targets,input.actions[0],input.targetCount);
+    done=applyUnloadDecision(r,input,0,decision,house,frame,budget,false);
+   }else if(!unloadCalculationPending&&unloadExternalInput.count<unloadcompute::MaxSources){
+    collectUnloadSource(unloadExternalInput,r,house,frame);
    }
   }
   if(done){finishUnloadFollowup(unloadPassengers[i],frame);unloadPassengers[i]=unloadPassengers[--unloadCount];unloadCursor=i;}
  }
+ publishUnloadCalculation();
 }
 static void nativeOrdersTick(uint32_t house,int frame){
  if(frame==nativeFrame)return;nativeFrame=frame;

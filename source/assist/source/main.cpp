@@ -486,6 +486,17 @@ static void logPlanning(const planner::World&w,const wchar_t* reason){
 }
 static void serviceCalculationTasks(){
  if(!shared||!commandFresh(GetTickCount()))return;
+ if(shared->unloadTask!=shared->unloadComputed){
+  const long seq=shared->unloadInputSeq;if(seq&1)return;MemoryBarrier();const uint32_t task=shared->unloadTask;
+  static auto input=std::make_unique<unloadcompute::Input>();memcpy(input.get(),&shared->unloadInput,sizeof(*input));MemoryBarrier();
+  if(seq!=shared->unloadInputSeq||task!=shared->unloadTask)return;
+  auto result=unloadcompute::calculate(*input);
+  if(seq==shared->unloadInputSeq&&task==shared->unloadTask){
+   InterlockedIncrement(&shared->unloadResultSeq);MemoryBarrier();shared->unloadResult=result;shared->unloadComputed=task;
+   MemoryBarrier();InterlockedIncrement(&shared->unloadResultSeq);wakeGame();
+  }
+ }
+
  if(shared->loadTask!=shared->loadComputed){uint32_t task=shared->loadTask;MemoryBarrier();
   static auto input=std::make_unique<compute::LoadInput>();static auto work=std::make_unique<loading::Workspace>();
   memcpy(input.get(),&shared->loadInput,sizeof(*input));MemoryBarrier();if(task!=shared->loadTask)return;
@@ -599,7 +610,7 @@ static bool ensureBridge(){
  if(!game||bridgeBlocked||(bridgeRetryAt&&int32_t(now-bridgeRetryAt)<0))return false;
  ++bridgeAttempts;bridgeRetryAt=now+(bridgeAttempts>=3?30000:2000);
  critical(L"bridge-connect-attempt="+std::to_wstring(bridgeAttempts)+L" pid="+std::to_wstring(pid)+L" thread="+std::to_wstring(gameThread));
- wchar_t n[100];swprintf(n,100,L"Local\\RA2Assist_v050_%lu",pid);
+ wchar_t n[100];swprintf(n,100,L"Local\\RA2Assist_v051_%lu",pid);
  mapping=CreateFileMappingW(INVALID_HANDLE_VALUE,nullptr,PAGE_READWRITE,0,sizeof(Shared),n);
  DWORD mappingError=GetLastError();if(!mapping)return bridgeFailed(L"创建命令共享内存失败",mappingError);
  if(mappingError==ERROR_ALREADY_EXISTS){
@@ -1335,9 +1346,9 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
   for(auto text:{L"外部读取 / 计算 → 统一游戏事件",L"GameRuntime 游戏内计算"})SendMessageW(h,CB_ADDSTRING,0,(LPARAM)text);
   SendMessageW(h,CB_SETCURSEL,(computeRequested>>i)&1u,0);
  }
- pageControl(13,L"STATIC",L"上方八项支持真实双路径。原版合法性查询 / 事件构造固定在游戏线程。",20,414,605,44,0);
- pageControl(13,L"STATIC",L"其他功能当前固定：卸载 / 逃生 / 选兵 / 原生判断在 Runtime；预定 / Z 路径 / 显示统计在外部。",20,466,605,48,0);
- pageControl(13,L"STATIC",L"当前生效：等待新对局",20,526,605,104,833);
+ pageControl(13,L"STATIC",L"上方战术决策支持双路径。原版合法性查询 / 事件构造固定在游戏线程。",20,82+40*compute::Count+12,605,44,0);
+ pageControl(13,L"STATIC",L"单位统计、预定列表、覆盖层与小地图固定在外部；选兵 / 原生判断固定在 Runtime。",20,82+40*compute::Count+64,605,48,0);
+ pageControl(13,L"STATIC",L"当前生效：等待新对局",20,82+40*compute::Count+124,605,144,833);
 
  pageControl(12,L"STATIC",L"载员 / 铁幕文字缩放 %",20,42,250,24,0);
  pageControl(12,L"EDIT",std::to_wstring(labelScalePercent).c_str(),290,40,75,26,816,ES_NUMBER|WS_TABSTOP);

@@ -47,7 +47,7 @@ def verify_host_manifest(pe):
 
 
 def verify(root):
-    legacy = json.loads((root / 'BUILD_SOURCE_MANIFEST.json').read_text('utf-8'))['legacy_binary_sha256']
+    legacy = json.loads((root / 'BUILD_SOURCE_MANIFEST.json').read_text('utf-8')).get('legacy_binary_sha256', {})
     recs, images, errors = {}, {}, []
     for name in NAMES:
         try:
@@ -69,7 +69,7 @@ def verify(root):
                        and not x.lower().startswith(('api-ms-win-', 'ext-ms-win-'))]
             if unknown:
                 raise ValueError('unbundled non-system dependency: ' + ', '.join(unknown))
-            if "1.0.16.0".encode("utf-16le") not in pe.resource_bytes():
+            if "1.0.17.0".encode("utf-16le") not in pe.resource_bytes():
                 raise ValueError("file version resource mismatch")
             images[name] = pe
             recs[name] = {'bytes': len(buf), 'sha256': digest, 'machine': 'PE32 x86',
@@ -85,9 +85,9 @@ def verify(root):
             a = host.at_rva(host.exports()['AssistHostProtocolInfo'], 8)
             b = bridge.at_rva(bridge.exports()['AssistProtocolInfo'], 8)
             protocol, shared_bytes = struct.unpack('<II', a)
-            if a != b or protocol != 50 or not shared_bytes:
+            if a != b or protocol != 51 or not shared_bytes:
                 raise ValueError('host/bridge protocol or Shared structure size mismatch')
-            marker = 'Local\\RA2Assist_v050_\0'.encode('utf-16le')
+            marker = 'Local\\RA2Assist_v051_\0'.encode('utf-16le')
             if bridge.at_rva(bridge.exports()['AssistMappingPrefix'], len(marker)) != marker:
                 raise ValueError('incorrect exported mapping namespace')
             manager = images['GameRuntime.dll']
@@ -107,9 +107,9 @@ def verify(root):
             recs['GameRuntime.dll']['runtime_protocol']=3
             recs['GameRuntime.dll']['runtime_control_bytes']=120
             resource = host.resource_bytes()
-            if '1.0.16.0'.encode('utf-16le') not in resource:
+            if '1.0.17.0'.encode('utf-16le') not in resource:
                 raise ValueError('EXE version resource mismatch')
-            for text in (b'requireAdministrator', b'PerMonitorV2', b'1.0.16.0'):
+            for text in (b'requireAdministrator', b'PerMonitorV2', b'1.0.17.0'):
                 if text not in resource:
                     raise ValueError('EXE manifest missing: ' + text.decode())
             for rec in recs.values():
@@ -121,21 +121,21 @@ def verify(root):
 
 
 def main():
-    for name in ('BUILD-VERIFIED-v116.tag', 'WINDOWS_BUILD_ARTIFACTS.json'):
+    for name in ('BUILD-VERIFIED-v117.tag', 'WINDOWS_BUILD_ARTIFACTS.json'):
         (ROOT / name).unlink(missing_ok=True)
     recs, errors = verify(ROOT)
     if errors:
         print('BUILD NOT VERIFIED:\n' + '\n'.join(errors))
         return 1
-    (ROOT / 'BUILD-VERIFIED-v116.tag').write_text(
-        'v1.0.16.0 SingleRuntime: PE32/ABI/import/version checks passed\n'
+    (ROOT / 'BUILD-VERIFIED-v117.tag').write_text(
+        'v1.0.17.0 SingleRuntime: PE32/ABI/import/version checks passed\n'
         'Game runtime and multiplayer not tested\n', encoding='utf-8')
     (ROOT / 'WINDOWS_BUILD_ARTIFACTS.json').write_text(json.dumps({
-        'label': '1.0.16.0 SingleRuntime', 'file_version': '1.0.16.0',
+        'label': '1.0.17.0 SingleRuntime', 'file_version': '1.0.17.0',
         'verified': recs, 'runtime_tested': False, 'multiplayer_tested': False,
         'dependency_check': 'two project binaries import Windows system DLLs only',
     }, ensure_ascii=False, indent=2), encoding='utf-8')
-    print('PASS: 2 current PE32 x86 outputs; hooks exported; ABI/Shared size match; version 1.0.16.0')
+    print('PASS: 2 current PE32 x86 outputs; hooks exported; ABI/Shared size match; version 1.0.17.0')
     print('PASS: no unbundled third-party or compiler-runtime DLL dependencies')
     print('PASS: actual EXE RT_MANIFEST/1 enables x86 Common Controls 6 for subclass helper imports')
     print('NOTE: static validation does not execute the Windows loader or the game')

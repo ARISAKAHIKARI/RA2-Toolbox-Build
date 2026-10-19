@@ -1,0 +1,33 @@
+{
+  "version": "1.0.17 Beta",
+  "file_version": "1.0.17.0",
+  "assist_protocol": 51,
+  "changes": [
+    "shared pure unload/deployment decision supports Runtime or host computation",
+    "source-stamped, sequence-locked batch with current state/token/legality revalidation",
+    "statistics, reservations, overlays and minimap remain external by user-approved scope",
+    "settings page exposes ten actual tactical decision locations, defaults preserved"
+  ],
+  "runtime_cases": {
+    "unload-runtime": 20,
+    "ejection-runtime": 76,
+    "unload-locations": 34,
+    "compute-runtime": 31,
+    "sidebar-runtime": 84
+  },
+  "config_masks": 1024,
+  "host_checks": [
+    "real settings handler ten backend combos and save roundtrip",
+    "passive capture prefix ABI 51",
+    "PE exports/imports/version/paired ABI",
+    "source ownership audit"
+  ],
+  "real_windows_game": false,
+  "real_netplay": false,
+  "real_screen_capture": false,
+  "real_latency": false,
+  "binary_sha256": {
+    "RA2Toolbox.exe": "f45e39c5342880ab5d7cfd976c660af3cf16583a75d9ce379786494766974eb7",
+    "GameRuntime.dll": "c1699b69756654021b6da6a59e9de3254e22498bf8677c74473795d730969487"
+  }
+}

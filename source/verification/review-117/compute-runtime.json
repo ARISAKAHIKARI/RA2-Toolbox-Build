@@ -1,0 +1,130 @@
+{
+  "scope": "Actual x86 DLL and original event constructors; mocked Win32/world/query.\nThe Sell receiver branch is executed from the supplied EXE with resolved-object,\nmap lookup and final virtual sale mocked. This is not real network validation.\n",
+  "dll_sha256": "c1699b69756654021b6da6a59e9de3254e22498bf8677c74473795d730969487",
+  "results": [
+    {
+      "name": "load_0_False_False",
+      "status": "PASS"
+    },
+    {
+      "name": "load_0_False_True",
+      "status": "PASS"
+    },
+    {
+      "name": "load_0_True_False",
+      "status": "PASS"
+    },
+    {
+      "name": "repair_0_False_False",
+      "status": "PASS"
+    },
+    {
+      "name": "repair_0_False_True",
+      "status": "PASS"
+    },
+    {
+      "name": "repair_0_True_False",
+      "status": "PASS"
+    },
+    {
+      "name": "ore_0_False",
+      "status": "PASS"
+    },
+    {
+      "name": "ore_0_True",
+      "status": "PASS"
+    },
+    {
+      "name": "load_3_False_False",
+      "status": "PASS"
+    },
+    {
+      "name": "load_3_False_True",
+      "status": "PASS"
+    },
+    {
+      "name": "load_3_True_False",
+      "status": "PASS"
+    },
+    {
+      "name": "repair_3_False_False",
+      "status": "PASS"
+    },
+    {
+      "name": "repair_3_False_True",
+      "status": "PASS"
+    },
+    {
+      "name": "repair_3_True_False",
+      "status": "PASS"
+    },
+    {
+      "name": "ore_3_False",
+      "status": "PASS"
+    },
+    {
+      "name": "ore_3_True",
+      "status": "PASS"
+    },
+    {
+      "name": "internal_advanced_0_first_frame_admission",
+      "status": "PASS"
+    },
+    {
+      "name": "internal_magnetron_0_first_frame_admission",
+      "status": "PASS"
+    },
+    {
+      "name": "internal_defense_0_first_frame_admission",
+      "status": "PASS"
+    },
+    {
+      "name": "internal_advanced_3_first_frame_admission",
+      "status": "PASS"
+    },
+    {
+      "name": "internal_magnetron_3_first_frame_admission",
+      "status": "PASS"
+    },
+    {
+      "name": "internal_defense_3_first_frame_admission",
+      "status": "PASS"
+    },
+    {
+      "name": "cooperative_0_False_False",
+      "status": "PASS"
+    },
+    {
+      "name": "cooperative_0_False_True",
+      "status": "PASS"
+    },
+    {
+      "name": "cooperative_0_True_False",
+      "status": "PASS"
+    },
+    {
+      "name": "cooperative_0_True_True",
+      "status": "PASS"
+    },
+    {
+      "name": "cooperative_3_False_False",
+      "status": "PASS"
+    },
+    {
+      "name": "cooperative_3_False_True",
+      "status": "PASS"
+    },
+    {
+      "name": "cooperative_3_True_False",
+      "status": "PASS"
+    },
+    {
+      "name": "cooperative_3_True_True",
+      "status": "PASS"
+    },
+    {
+      "name": "1024_mixed_masks_and_no_live_handoff",
+      "status": "PASS"
+    }
+  ]
+}

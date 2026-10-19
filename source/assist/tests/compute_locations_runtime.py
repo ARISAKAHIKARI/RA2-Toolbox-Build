@@ -112,11 +112,11 @@ with tempfile.TemporaryDirectory(prefix='compute-locations-') as tmp:
      save(m,s);s=m.hook();assert s.cooperativeAccepted==len(sources),(mode,air,inside,s.cooperativeAccepted,s.cooperativeRejected)
     assert count(m)==len(sources) and not m.codeWrites
     record(f'cooperative_{mode}_{air}_{inside}')
- # Actual Runtime latches all 256 per-feature combinations; changing settings
+ # Actual Runtime latches all 1024 per-feature combinations; changing settings
  # mid-match cannot transfer live jobs, then the next match applies the mask.
  m=fixture(0)
- for mask in range(256):
-  s=configure(m,mask);s.computeRequested=mask^255;save(m,s);s=tick(m)
+ for mask in range(1024):
+  s=configure(m,mask);s.computeRequested=mask^1023;save(m,s);s=tick(m)
   assert s.computeApplied==mask and count(m)==0
- record('256_mixed_masks_and_no_live_handoff')
+ record('1024_mixed_masks_and_no_live_handoff')
 Path(a.output).write_text(json.dumps({'scope':__doc__,'dll_sha256':hashlib.sha256(Path(a.dll).read_bytes()).hexdigest(),'results':rows},indent=2)+'\n')
