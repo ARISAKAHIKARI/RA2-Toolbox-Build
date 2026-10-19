@@ -37,6 +37,27 @@ static uint32_t readMapCell(int x,int y){
  if(x<=0||y<=0||x>=512||y>=512)return 0;int index=y*512+x,count=get<int>(0x87F7E8+320);uint32_t cells=get<uint32_t>(0x87F7E8+316);
  return cells>=0x10000&&count>index&&count<=512*512?get<uint32_t>(cells+index*4):0;
 }
+static void observeNativeOreIntent(uint32_t p,uint32_t target,uint32_t cell,uint32_t bindings){
+ const uint32_t id=get<uint32_t>(p+0x10);
+ if(!manualVersions.watchingOre(id))return;
+ bool mining=false;
+ if(!(bindings&(pointerinput::NativeForced|pointerinput::Shift))){
+  if(target&&own(target,lastHouse)&&kind(target)==3){
+   uint32_t type=typeOf(target,3);Vec docks=vec(typeOf(p,2)+0x3E8,256);
+   for(int n=0;n<docks.count;++n)if(item(docks,n)==type){mining=true;break;}
+  }else if(!target){
+   // YRpp CellClass::OverlayTypeIndex +0x44, OverlayTypeClass::Tiberium +0x2A9.
+   // Raw reads only: do not invoke a cell action, radio or docking routine.
+   uint32_t at=readMapCell(int(cell%1000),int(cell/1000));Vec overlays=vec(0xA83D80,4096);
+   int index=at?get<int>(at+0x44):-1;uint32_t overlay=index>=0&&index<overlays.count?item(overlays,index):0;
+   mining=overlay>=0x10000&&get<bool>(overlay+0x2A9);
+  }
+ }
+ // An explicit mining/refinery click hands back assistance. Ordinary movement
+ // must first be observed as Move, then return to Harvest; no timeout resumes it.
+ if(mining)manualVersions.resumeOre(id);
+ else{manualVersions.expectOreMission(id,target?1:2);manualVersions.observeOre(id,get<int>(p+0xAC),get<int>(p+0xB4));}
+}
 static bool publishPlanningWorld(uint32_t house,int frame,DWORD now){
  bool advanced=(sh->flags&(AdvancedInput|MagnetronInput))&&nativeCount>0;
  bool ore=((sh->flags|sh->plannerTracking|sh->runtimeTracking)&AutoOreReturn)!=0;

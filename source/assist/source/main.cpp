@@ -26,6 +26,8 @@
 
 #include "../../shared/source/host_game_input.h"
 #include "../../shared/source/automatic_log.h"
+#include "../../shared/source/game_build_diagnostics.h"
+#include <tlhelp32.h>
 #include "../../shared/source/message_query.h"
 #include "scheduler_policy.h"
 #include "hook_policy.h"
@@ -160,11 +162,26 @@ static const wchar_t* runtimeStage(LONG stage){
  }
 }
 static std::wstring hex32(DWORD value){wchar_t out[16];swprintf(out,16,L"0x%08X",unsigned(value));return out;}
+static void logLoadedGameModules(){
+ autolog::ErrorGuard error;
+ HANDLE snapshot=CreateToolhelp32Snapshot(TH32CS_SNAPMODULE|TH32CS_SNAPMODULE32,pid);
+ if(snapshot==INVALID_HANDLE_VALUE){autolog::write(L"game-modules unavailable Win32="+std::to_wstring(GetLastError()));return;}
+ MODULEENTRY32W entry{};entry.dwSize=sizeof entry;std::wstring line=L"game-modules pid="+std::to_wstring(pid)+L" names-and-bases=";
+ unsigned count=0;if(Module32FirstW(snapshot,&entry))do{if(++count>64){line+=L" [truncated]";break;}
+  line+=std::wstring(entry.szModule)+L"@"+hex32(DWORD(uintptr_t(entry.modBaseAddr)))+L";";
+ }while(Module32NextW(snapshot,&entry));CloseHandle(snapshot);autolog::write(line);
+}
 static void logBridgeHealth(bool force=false){
  static DWORD loggedAt=0,previousPid=0;static LONG previousStage=0;static DWORD previousError=0,previousFault=0;static int previousStatus=0;
  static bool previousData=false,previousSubscribed=false;static uint32_t previousMatch=0;
  static int previousCS=0;static uint32_t previousQueued=0,previousRejected=0;
  const DWORD now=GetTickCount();const auto h=gameinput::health(hook);
+ static DWORD roundStarted=0;
+ if(pid&&incoming.status==1&&(pid!=previousPid||incoming.match!=previousMatch||previousStatus!=1)){
+  roundStarted=now;
+  autolog::write(gamebuild::describe([](uint32_t at,void*out,size_t n){return externalReader.readFresh(at,out,n);}));
+  logLoadedGameModules();
+ }
  const bool hasDiagnostic=h.diagnosticValid||h.diagnosticCached;
  const LONG stage=hasDiagnostic?h.stage:runtime::Unseen;
  const DWORD error=h.postError?h.postError:(hasDiagnostic?h.error:0);
@@ -173,7 +190,7 @@ static void logBridgeHealth(bool force=false){
  // published counters too; log on the host at most twice/sec during sustained input.
  const bool ordersChanged=incoming.csConverted!=previousCS||incoming.queueSent!=previousQueued||incoming.commandRejected!=previousRejected;
  if(!force&&pid==previousPid&&stage==previousStage&&error==previousError&&data==previousData&&
-    h.subscribed==previousSubscribed&&h.faultSerial==previousFault&&incoming.status==previousStatus&&incoming.match==previousMatch&&DWORD(now-loggedAt)<(ordersChanged?500u:5000u))return;
+    h.subscribed==previousSubscribed&&h.faultSerial==previousFault&&incoming.status==previousStatus&&incoming.match==previousMatch&&DWORD(now-loggedAt)<(ordersChanged?500u:roundStarted&&DWORD(now-roundStarted)<10000?1000u:5000u))return;
  loggedAt=now;previousPid=pid;previousStage=stage;previousError=error;previousData=data;
  previousSubscribed=h.subscribed;previousMatch=incoming.match;previousFault=h.faultSerial;previousStatus=incoming.status;
  previousCS=incoming.csConverted;previousQueued=incoming.queueSent;previousRejected=incoming.commandRejected;
@@ -203,6 +220,7 @@ static void logBridgeHealth(bool force=false){
   L" csHook="+std::to_wstring(incoming.csHookStatus)+L" csConverted="+std::to_wstring(incoming.csConverted)+
   L" nativeHook="+std::to_wstring(incoming.nativeHookStatus)+L" clickHook="+std::to_wstring(shared?shared->clickHookStatus:0)+
   L" inputPatchMask="+std::to_wstring(incoming.inputPatchMask)+L" hookConflicts="+std::to_wstring(incoming.hookConflicts)+
+  L" installedCodePatches="+std::to_wstring(incoming.hookInstalled)+L" nativeAirMode="+std::to_wstring(incoming.nativeAirStatus)+
   L" queueSent="+std::to_wstring(incoming.queueSent)+L" queueFull="+std::to_wstring(incoming.queueFull)+
   L" commandRejected="+std::to_wstring(incoming.commandRejected)+L" lastSubmitError="+std::to_wstring(incoming.lastSubmitError)+
   L" entryContended="+std::to_wstring(incoming.entryContended)+L" entryWrongThread="+std::to_wstring(incoming.entryWrongThread)+
@@ -678,6 +696,7 @@ static bool attach(){
  }
  pid=c.pid;gameThread=c.thread;game=external::discovery::resolveYrppWindow(externalReader,pid,c.window,&gameThread,&gameWindowFromYrpp);
  critical(L"read-attached pid="+std::to_wstring(pid)+L" hwnd="+std::to_wstring(uintptr_t(game))+L" tid="+std::to_wstring(gameThread)+(gameWindowFromYrpp?L" windowSource=YRpp-0xB73550":L" windowSource=validated-fallback-or-none"));
+ critical(gamebuild::describe([](uint32_t at,void*out,size_t n){return externalReader.readFresh(at,out,n);}));
  gameProcess=OpenProcess(SYNCHRONIZE,FALSE,pid); // Optional: read-only handle also has a liveness query.
  setStatus(L"已连接只读 PID "+std::to_wstring(pid)+
   (game?L"，正在校验内存布局…":L"，尚无可用窗口；控制功能保持关闭"));return true;
@@ -1107,7 +1126,7 @@ static void updateModeStatus(DWORD now){
  static int oldPhase=-1;static DWORD last; if(phase==oldPhase&&DWORD(now-last)<200)return;oldPhase=phase;last=now;
  auto riskText=[&](bool wanted,int state)->std::wstring{if(state==-2)return L"启用或关闭失败，请查看日志";if(state==-1)return L"不支持此游戏版本";if(!wanted)return state==1?L"等待恢复":L"关闭";return phase?L"等待游戏就绪":state==1?L"已启用（联机风险）":L"等待生效";};
  std::wstring riskStatus=L"扩展建造："+riskText(buildAnywhereMode,snap.placementStatus);
- std::wstring airStatus=L"原生路径点：";airStatus+=snap.nativeAirStatus==-2?L"启用或关闭失败，请查看日志":snap.nativeAirStatus==-1?L"不支持此游戏版本":!extra.nativeAirWaypoints?(snap.nativeAirStatus==1?L"等待恢复":L"关闭"):phase?L"等待游戏就绪":snap.nativeAirStatus==1?L"已启用":L"等待生效";
+ std::wstring airStatus=L"原生路径点：";airStatus+=snap.nativeAirStatus==-2?L"启用或关闭失败，请查看日志":snap.nativeAirStatus==-1?L"不支持此游戏版本":!extra.nativeAirWaypoints?(snap.nativeAirStatus==1?L"等待恢复":L"关闭"):phase?L"等待游戏就绪":snap.nativeAirStatus==2?L"已启用（联机兼容）":snap.nativeAirStatus==1?L"已启用":L"等待生效";
  SetWindowTextW(GetDlgItem(ui,866),airStatus.c_str());
  SetWindowTextW(GetDlgItem(ui,807),riskStatus.c_str());
  std::wstring renderText=L"地图显示：";renderText+=snap.renderRevealStatus==-2?L"启用或关闭失败，请查看日志":!extra.renderReveal?L"关闭":phase?L"等待游戏就绪":snap.renderRevealStatus==1?L"已启用":L"等待生效";

@@ -42,7 +42,11 @@ struct ManualVersions {
   unsigned s=slot(id);if(s>=Size)return true;if(ids[s]!=id||!(oreState[s]&1))return false;
   // A click can precede its synchronized execution. An old Harvest snapshot
   // cannot undo that click: require an observed exit and then a fresh Harvest.
-  if(oreExpected[s]&&mission!=10&&mission+1==oreExpected[s])oreState[s]|=2;
+  // Cancellation-only input has no inferred mission (e.g. S or right DOWN).
+  // Observe an actual non-mining mission; mining Return/Guard cycles do not
+  // acknowledge a delayed manual order. A resolved click narrows this further.
+  if(mission>=0&&mission<32&&mission!=10&&
+     (oreExpected[s]?mission+1==oreExpected[s]:(mission!=5&&mission!=12&&mission!=16)))oreState[s]|=2;
   else if(mission==10&&(oreState[s]&2)&&(queued==-1||queued==10)){oreState[s]=0;removePaused(s);}
   return (oreState[s]&1)!=0;
  }

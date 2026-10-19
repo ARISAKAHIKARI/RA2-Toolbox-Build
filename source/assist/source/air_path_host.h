@@ -4,6 +4,8 @@ struct Point {uint32_t cell=0;int z=0;};
 struct Job {uint32_t id=0,pointer=0,token=0,match=0;std::deque<Point> points;int stage=0,attempts=0,x=0,y=0,z=0;bool selected=false;DWORD sent=0,progress=0;int64_t nearest=INT64_MAX;};
 struct Line {int x,y,tx,ty;};
 static std::vector<Job> jobs;static size_t cursor=0;static bool ended=false;static DWORD sampled=0;
+static bool native(){return airpathpolicy::native(snap.session,extra.nativeAirWaypoints);}
+static bool active(){return airpathpolicy::events(snap.session,extra.airWaypoints,extra.nativeAirWaypoints);}
 static void reset(){for(int n=0;n<commandQueue.size;)if(commandQueue.slots[n].command==AirPathMove)commandQueue.discard(n);else ++n;jobs.clear();cursor=0;ended=false;sampled=0;}
 template<class T>static T get(uint32_t at,T fallback={}){T v{};return externalReader.readFresh(at,&v,sizeof v)?v:fallback;}
 static void cancel(uint32_t id){for(size_t n=0;n<jobs.size();)if(jobs[n].id==id)jobs.erase(jobs.begin()+n);else ++n;for(int n=0;n<commandQueue.size;)if(commandQueue.slots[n].command==AirPathMove&&uint32_t(commandQueue.slots[n].arg)==id)commandQueue.discard(n);else ++n;}
@@ -18,7 +20,7 @@ static void manual(const gameinput::PointerPress&e){
  for(int n=0;n<count;++n){uint32_t p=get<uint32_t>(items+n*4);if(get<uint32_t>(p)==0x7E22A4)cancel(get<uint32_t>(p+0x10));}
 }
 static void capture(const pointerinput::Intent&i,const pointerinput::Mailbox&box){
- if(box.result<0||extra.nativeAirWaypoints)return;
+ if(box.result<0||!active())return;
  if(box.resolvedTarget){for(int n=0;n<i.count;++n)cancel(i.sources[n].id);ended=true;notify(L"攻击 / 对象命令已结束飞机路径点设置。");return;}
  if(!box.resolvedCell||ended)return;int added=0;
  for(int n=0;n<i.count;++n){if(!(box.sourceAccepted[n/32]&(1u<<(n%32))))continue;uint32_t id=i.sources[n].id;auto found=std::find_if(jobs.begin(),jobs.end(),[&](const Job&j){return j.id==id;});
@@ -35,7 +37,7 @@ static void result(int status,int count,uint32_t id,uint32_t token){for(auto&j:j
  else {cancel(id);notify(L"飞机路径任务已失效，已释放给原生命令。");}return;}}
 static void service(){
  DWORD now=GetTickCount();if(!(GetAsyncKeyState('Z')&0x8000))ended=false;
- if(!extra.airWaypoints||extra.nativeAirWaypoints||!enabled){if(!jobs.empty())reset();return;}
+ if(!active()||!enabled){if(!jobs.empty())reset();return;}
  if(!shared||!commandFresh(now)||snap.chat)return;
  uint32_t owner=get<uint32_t>(0xA83D4C);int handled=0,sent=0;
  while(!jobs.empty()&&handled++<16){if(cursor>=jobs.size())cursor=0;auto&j=jobs[cursor++];uint32_t p=j.pointer;
@@ -53,7 +55,7 @@ static void service(){
   if(j.stage==0&&sent<4&&int32_t(now-j.sent)>=0&&queueCommand(AirPathMove,int(j.id),int(goal.cell),j.match,0,0,j.token)){j.stage=1;j.sent=now;++j.attempts;++sent;}
  }
 }
-static std::vector<Line> lines(){std::vector<Line> out;if(!extra.airWaypoints||extra.nativeAirWaypoints)return out;external::Projection projection{snap.cameraX,snap.cameraY,snap.width,snap.height};
+static std::vector<Line> lines(){std::vector<Line> out;if(!active())return out;external::Projection projection{snap.cameraX,snap.cameraY,snap.width,snap.height};
  for(const auto&j:jobs){if(!j.selected||j.match!=commandMatch())continue;int x=0,y=0;external::project(projection,j.x,j.y,j.z,x,y);
   for(auto point:j.points){int tx=0,ty=0;external::project(projection,int(point.cell%1000)*256+128,int(point.cell/1000)*256+128,point.z,tx,ty);out.push_back({x,y,tx,ty});x=tx;y=ty;if(out.size()>=256)return out;}
  }return out;}

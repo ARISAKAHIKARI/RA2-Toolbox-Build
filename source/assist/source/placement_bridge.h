@@ -24,7 +24,7 @@ extern "C" int __cdecl AssistRiskAction(unsigned op,unsigned object,unsigned hou
  if(op==3)return riskRenderActive&&sh->renderReveal!=0; // draw-only, no native game calls
  if(op==0)return riskPlacementActive&&(sh->flags&BuildAnywhere)&&house==get<uint32_t>(lastHouse+0x30)&&object>=0x10000&&
    call<int>(get<uint32_t>(get<uint32_t>(object)+0x2C),object)==7;
- if(!riskAirActive||!(sh->flags&NativeAirWaypoints))return 0;
+ if(!riskAirActive||!airpathpolicy::native(get<int>(0xA8B238),(sh->flags&NativeAirWaypoints)!=0))return 0;
  if(op==1)return 1; // AircraftType::CanUseWaypoint, the native UI gate.
  if(op!=2||!own(object,lastHouse)||kind(object)!=0||get<uint32_t>(object+0x5D4)||
     get<uint32_t>(object+0x294)||get<uint8_t>(object+0x6CA))return 0;
@@ -354,12 +354,13 @@ static void placementTick(){
  if(priorRender!=riskRenderActive)redrawRevealTest();
  if(sh->flags&BuildAnywhere){riskPlacementActive=installRiskSite(riskSites[0]);snap.placementStatus=riskPlacementActive?1:-2;}
  else{riskPlacementActive=false;snap.placementStatus=restoreRiskSite(riskSites[0])?0:-2;}
- if(sh->flags&NativeAirWaypoints){
+ if(airpathpolicy::native(get<int>(0xA8B238),(sh->flags&NativeAirWaypoints)!=0)){
   static const uint8_t nextSignature[]={0x81,0xEC,0xE0,0,0,0,0x53,0x56,0x8B,0xF1};uint8_t actual[sizeof nextSignature]{};
   bool supported=read(0x6385C0,actual,sizeof actual)&&!memcmp(actual,nextSignature,sizeof actual);
   // Behavior first, frontend last. Partial installation rolls back as a group.
   riskAirActive=supported&&installRiskSite(riskSites[2])&&installRiskSite(riskSites[1]);
   if(!riskAirActive){restoreRiskSite(riskSites[1]);restoreRiskSite(riskSites[2]);}
   snap.nativeAirStatus=riskAirActive?1:supported?-2:-1;
- }else{riskAirActive=false;bool a=restoreRiskSite(riskSites[1]),b=restoreRiskSite(riskSites[2]);snap.nativeAirStatus=a&&b?0:-2;}
+ }else{riskAirActive=false;bool a=restoreRiskSite(riskSites[1]),b=restoreRiskSite(riskSites[2]);
+  snap.nativeAirStatus=a&&b?((sh->flags&NativeAirWaypoints)&&airpathpolicy::events(get<int>(0xA8B238),false,true)?2:0):-2;}
 }

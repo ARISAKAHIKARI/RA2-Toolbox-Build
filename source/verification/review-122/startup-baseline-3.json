@@ -1,0 +1,128 @@
+{
+  "dll_sha256": "abf9ca73a3292f06ddd456d2444c1eee82ca1695ffdf49560e9a0e4d8bf744d2",
+  "game_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+  "scope": "Actual DLL no-input startup matrix, supplied disk EXE, synthetic idle world.\nMonitors game image and existing object writes, native-code visits, queues and FP state.\nNot a platform launcher/extension/anti-cheat or real netplay test.\n",
+  "baseline_native_air": true,
+  "results": [
+    {
+      "mode": 3,
+      "case": "no_features",
+      "flags": "0x0",
+      "frames": [
+        0,
+        1,
+        2,
+        60
+      ],
+      "game_write_sites": [],
+      "native_instructions_executed": 0,
+      "events": 0,
+      "fp_preserved": true,
+      "status": "PASS"
+    },
+    {
+      "mode": 3,
+      "case": "uploaded_config_A",
+      "flags": "0xd5fcecd7",
+      "frames": [
+        0,
+        1,
+        2,
+        60
+      ],
+      "game_write_sites": [
+        "0x416ab6",
+        "0x416aba",
+        "0x416abe",
+        "0x416abf",
+        "0x7e2908"
+      ],
+      "native_instructions_executed": 0,
+      "events": 0,
+      "fp_preserved": true,
+      "status": "PASS"
+    },
+    {
+      "mode": 3,
+      "case": "uploaded_config_B",
+      "flags": "0xd1fcecd7",
+      "frames": [
+        0,
+        1,
+        2,
+        60
+      ],
+      "game_write_sites": [
+        "0x416ab6",
+        "0x416aba",
+        "0x416abe",
+        "0x416abf",
+        "0x7e2908"
+      ],
+      "native_instructions_executed": 0,
+      "events": 0,
+      "fp_preserved": true,
+      "status": "PASS"
+    },
+    {
+      "mode": 4,
+      "case": "no_features",
+      "flags": "0x0",
+      "frames": [
+        0,
+        1,
+        2,
+        60
+      ],
+      "game_write_sites": [],
+      "native_instructions_executed": 0,
+      "events": 0,
+      "fp_preserved": true,
+      "status": "PASS"
+    },
+    {
+      "mode": 4,
+      "case": "uploaded_config_A",
+      "flags": "0xd5fcecd7",
+      "frames": [
+        0,
+        1,
+        2,
+        60
+      ],
+      "game_write_sites": [
+        "0x416ab6",
+        "0x416aba",
+        "0x416abe",
+        "0x416abf",
+        "0x7e2908"
+      ],
+      "native_instructions_executed": 0,
+      "events": 0,
+      "fp_preserved": true,
+      "status": "PASS"
+    },
+    {
+      "mode": 4,
+      "case": "uploaded_config_B",
+      "flags": "0xd1fcecd7",
+      "frames": [
+        0,
+        1,
+        2,
+        60
+      ],
+      "game_write_sites": [
+        "0x416ab6",
+        "0x416aba",
+        "0x416abe",
+        "0x416abf",
+        "0x7e2908"
+      ],
+      "native_instructions_executed": 0,
+      "events": 0,
+      "fp_preserved": true,
+      "status": "PASS"
+    }
+  ]
+}

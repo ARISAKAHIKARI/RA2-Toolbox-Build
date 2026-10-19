@@ -1,0 +1,54 @@
+{
+  "dll_sha256": "256d6b05918325290b1c075890458a4f9cd92afb6472aeb9aa869296ad31326d",
+  "scope": "Actual Runtime SP five-site / MP three-site lifecycle and shared capture guard.\nSynthetic Win32/world; native planning and graphics are not executed here.\n",
+  "results": [
+    {
+      "case": "all_five_install_independent_disable_menu_round_stop_0",
+      "status": "PASS"
+    },
+    {
+      "case": "foreign_416ab6_group_rollback_other_features_preserved_0",
+      "status": "PASS"
+    },
+    {
+      "case": "foreign_47f250_group_rollback_other_features_preserved_0",
+      "status": "PASS"
+    },
+    {
+      "case": "all_five_install_independent_disable_menu_round_stop_5",
+      "status": "PASS"
+    },
+    {
+      "case": "foreign_416ab6_group_rollback_other_features_preserved_5",
+      "status": "PASS"
+    },
+    {
+      "case": "foreign_47f250_group_rollback_other_features_preserved_5",
+      "status": "PASS"
+    },
+    {
+      "case": "all_five_install_independent_disable_menu_round_stop_3",
+      "status": "PASS"
+    },
+    {
+      "case": "foreign_416ab6_group_rollback_other_features_preserved_3",
+      "status": "PASS"
+    },
+    {
+      "case": "foreign_47f250_group_rollback_other_features_preserved_3",
+      "status": "PASS"
+    },
+    {
+      "case": "all_five_install_independent_disable_menu_round_stop_4",
+      "status": "PASS"
+    },
+    {
+      "case": "foreign_416ab6_group_rollback_other_features_preserved_4",
+      "status": "PASS"
+    },
+    {
+      "case": "foreign_47f250_group_rollback_other_features_preserved_4",
+      "status": "PASS"
+    }
+  ]
+}

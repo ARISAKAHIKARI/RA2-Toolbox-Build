@@ -50,15 +50,20 @@ static void pointerTick(){
    uint32_t tactical=get<uint32_t>(0x887324);
    bool location=continuation?(tactical>=0x10000&&i.width==get<int>(0xA8EB84)&&i.height==get<int>(0xA8EB88)&&i.cameraX==get<int>(tactical+0xB0)&&i.cameraY==get<int>(tactical+0xB4)):pointerLocation(i);
    if((shiftUnsupported&&i.operation!=pointerinput::PlayerSelect&&i.operation!=pointerinput::PlayerOrder)||get<bool>(0x87F7E8+0x11B3)||!location){pointerFinish(-4);return;}
-   if(i.operation==pointerinput::FollowNative&&pointerTarget){pointerFinish(-4);return;}
   }
   if(start){pointerBatchCapture=i;pointerBatchValid=true;memset(pointerBatchTickets,0,sizeof pointerBatchTickets);memset(pointerBatchFollow,0,sizeof pointerBatchFollow);}
   if(start||continuation)pointerBatchRequest=request;
   for(int n=0;n<i.count;++n){uint32_t p=worldByID(i.sources[n].id);
-   if(!continuation){if(p&&p==i.sources[n].pointer&&own(p,lastHouse))cancelNative(p);pointerTokens[n]=manualVersions.get(i.sources[n].id);}
+   if(!continuation){if(p&&p==i.sources[n].pointer&&own(p,lastHouse)){
+     cancelNative(p);
+     if(i.operation==pointerinput::FollowNative)observeNativeOreIntent(p,pointerTarget,pointerCell,i.bindings);
+    }pointerTokens[n]=manualVersions.get(i.sources[n].id);}
    else if(pointerBatchTickets[n]){actorLeaseArbiter.release(match,i.sources[n].id,pointerBatchTickets[n]);pointerBatchTickets[n]=0;}
   }
   if(i.operation==pointerinput::Cancel){pointerFinish(1);return;}
+  // An ordinary object click belongs wholly to the original game. Its mining
+  // intent was observed above; never reinterpret it as a cooperative command.
+  if(i.operation==pointerinput::FollowNative&&pointerTarget){pointerFinish(1);return;}
  }
  if(!nativeReady()||i.inputSerial!=b.cancelSerial||i.match!=match||i.house!=lastHouse||DWORD(now-i.tick)>1500||frame<i.frame||frame-i.frame>90){pointerFinish(-7);return;}
  // A configured right click is observed on release and never swallowed.
@@ -71,7 +76,7 @@ static void pointerTick(){
  }
  if(i.operation==pointerinput::AirWaypoint){
   b.resolvedCell=pointerCell;b.resolvedTarget=pointerTargetID;b.resolvedZ=pointerGroundZ;memset(b.sourceAccepted,0,sizeof b.sourceAccepted);
-  if(!(sh->flags&AirWaypoints)||(sh->flags&NativeAirWaypoints)){pointerFinish(-4);return;}
+  if(!airpathpolicy::events(get<int>(0xA8B238),(sh->flags&AirWaypoints)!=0,(sh->flags&NativeAirWaypoints)!=0)){pointerFinish(-4);return;}
   for(int n=0;n<i.count;++n){uint32_t p=worldByID(i.sources[n].id);if(p&&p==i.sources[n].pointer&&own(p,lastHouse)&&kind(p)==0&&!get<bool>(p+0x81)&&!get<uint32_t>(p+0x11C)){b.sourceTokens[n]=manualVersions.get(i.sources[n].id);b.sourceAccepted[n/32]|=1u<<(n%32);++b.accepted;}}
   pointerFinish(1);return;
  }

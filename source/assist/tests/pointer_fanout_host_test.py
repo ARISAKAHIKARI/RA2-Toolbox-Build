@@ -15,7 +15,7 @@ program=r'''
 #include <cstring>
 using namespace assist;using DWORD=uint32_t;using LONG=int32_t;
 struct RECT{int left,top,right,bottom;};struct POINT{int x,y;};
-constexpr int VK_CONTROL=17,VK_MENU=18;
+constexpr int VK_SHIFT=16,VK_CONTROL=17,VK_MENU=18;
 static DWORD clockNow=1000,cancelSerial=3;static DWORD GetTickCount(){return clockNow;}
 static bool focused=true,visible=true,fresh=true;static int game=1,hook=2;
 static auto storage=std::make_unique<Shared>();static Shared*shared=storage.get();
@@ -37,7 +37,7 @@ static void setPointerContext(int,uint32_t,bool){}static uint32_t pointerCancelS
 static bool takePointer(int,PointerPress&e,DWORD&dropped){dropped=0;if(!queued)return false;e=event;queued=false;return true;}
 }
 namespace buildreserve{static bool nativePointer(const gameinput::PointerPress&){return false;}}
-namespace airway{static void capture(const pointerinput::Intent&,const pointerinput::Mailbox&){} static bool ended=false;static bool selectedAircraft(){return false;}static void manual(const gameinput::PointerPress&){} }
+namespace airway{static bool aircraft=false;static bool native(){return airpathpolicy::native(snap.session,extra.nativeAirWaypoints);}static bool active(){return airpathpolicy::events(snap.session,extra.airWaypoints,extra.nativeAirWaypoints);}static void capture(const pointerinput::Intent&,const pointerinput::Mailbox&){} static bool ended=false;static bool selectedAircraft(){return aircraft;}static void manual(const gameinput::PointerPress&){} }
 '''+body+r'''
 static void capture(){gameinput::event={};auto&e=gameinput::event;e.tick=clockNow;e.serial=cancelSerial;e.match=8;e.operation=1;e.point={100,100};e.width=800;e.height=600;gameinput::queued=true;}
 static void ack(int accepted=1){shared->pointer.ack=shared->pointer.request;shared->pointer.result=1;shared->pointer.accepted=accepted;shared->pointer.rejected=0;}
@@ -70,6 +70,14 @@ int main(){
  // A sale remains eligible without a selection when another matched route needs one.
  initialize();featureFlags=AdvancedInput|SellVehicles;extra.mouseButtons[pointerinput::MouseCS]=0;extra.mouseButtons[pointerinput::MouseSellVehicle]=1;extra.sellKey=0;memory[0xA8ECB8+16]=0;
  capture();servicePointer();assert(shared->pointer.intent.count==0&&pointerMatches.active());ack(0);servicePointer();assert(shared->pointer.intent.operation==pointerinput::Sell);
+ // Native right release still reaches Runtime with automation disabled.
+ ack(0);servicePointer();initialize();featureFlags=0;
+ capture();gameinput::event.operation=4;servicePointer();assert(shared->pointer.intent.operation==pointerinput::FollowNative);ack();servicePointer();
+ capture();gameinput::event.operation=4;gameinput::event.keys[VK_CONTROL]=1;servicePointer();assert(shared->pointer.intent.bindings&pointerinput::NativeForced);ack();servicePointer();
+ // The same saved native preference uses native SP input and event MP input.
+ extra.nativeAirWaypoints=true;airway::aircraft=true;snap.session=5;
+ capture();gameinput::event.operation=4;gameinput::event.keys['Z']=1;request=shared->pointer.request;servicePointer();assert(shared->pointer.request==request);
+ snap.session=3;capture();gameinput::event.operation=4;gameinput::event.keys['Z']=1;servicePointer();assert(shared->pointer.request==request+1&&shared->pointer.intent.operation==pointerinput::AirWaypoint);
 }
 '''
 with tempfile.TemporaryDirectory() as d:

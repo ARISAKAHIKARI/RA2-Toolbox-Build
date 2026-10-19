@@ -52,7 +52,7 @@ label(L"直接攻击移动",20,210);label(L"仅鼠标",240,258);mouse(pointerinp
 note(L"直接攻击移动只下达一次命令；高级移动攻击会持续重新选择目标。",44);
 toggle(803,L"飞机路径点（按住 Z 点击地面）",extra.airWaypoints);next();
 toggle(806,L"飞机原生路径点",extra.nativeAirWaypoints);next();
-note(L"飞机原生路径点开启后，常规飞机路径点暂停；两种模式不同时运行。",44);
+note(L"单机使用原生规划；联机按住 Z 设置、松开后执行。两种路径点设置不同时运行。",44);
 item(L"STATIC",L"原生路径点：关闭",20,605,866);next();
 toggle(795,L"Shift 五连点",shiftClickEnabled,20,270);choices(combo(796),{L"自动兼容",L"始终追加四次点击",L"不追加点击"},shiftClickMode);next();
 number(797,L"连续点击间隔 / 毫秒",shiftClickGap,L"0–250");

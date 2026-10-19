@@ -1,0 +1,43 @@
+{
+  "version": "1.0.22",
+  "file_version": "1.0.22.0",
+  "assist_protocol": 52,
+  "changes": [
+    "multiplayer aircraft waypoints use ordinary queued Move events; single-player native path preserved",
+    "wire actual miner manual pause / mining hand-back observation",
+    "log game build probes, loaded module names/bases, installed patch count and denser startup health"
+  ],
+  "runtime_cases": {
+    "compat-3": 16,
+    "compat-4": 16,
+    "startup-3": 72,
+    "startup-4": 72,
+    "lifecycle-3": 12,
+    "lifecycle-4": 12
+  },
+  "previous_version_baseline_cases": 6,
+  "previous_version_baseline_dll_sha256": "abf9ca73a3292f06ddd456d2444c1eee82ca1695ffdf49560e9a0e4d8bf744d2",
+  "entry_regression": "PASS on both supplied EXEs; actual DLL and constructors, synthetic world/Win32 fixtures",
+  "startup_scope": "Idle healthy synthetic world; Runtime flag matrix at frames 0,1,2,60; monitors game/object writes, game-code visits, queues and FP state. Does not execute host-triggered commands, the Windows loader, platform DLLs or a complete game simulation.",
+  "host_checks": {
+    "actual_pointer_host": true,
+    "manual_ore_state": true,
+    "actual_settings_handler": true,
+    "controls": 284,
+    "viewport_sizes": 12,
+    "fully_reachable_checks": 3228
+  },
+  "supplied_games": {
+    "zhanwang_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+    "lbw_sha256": "c287d62a4d6a25b547e9339d071dd6e03adcf545699062e478aaeee38c60e89a"
+  },
+  "real_windows_game": false,
+  "real_netplay": false,
+  "platform_extensions_executed": false,
+  "disconnect_root_cause_proven": false,
+  "real_capture_or_latency": false,
+  "binary_sha256": {
+    "RA2Toolbox.exe": "7df2e0c87939258917f180ffb0c84a1f200ef5f628e746b915b9c900db251cb9",
+    "GameRuntime.dll": "256d6b05918325290b1c075890458a4f9cd92afb6472aeb9aa869296ad31326d"
+  }
+}

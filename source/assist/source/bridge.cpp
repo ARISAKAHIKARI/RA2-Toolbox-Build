@@ -741,7 +741,7 @@ static void command(uint32_t house,DWORD now){uint32_t req=sh->request;if(req==s
  else if(c==SelectSuper){result=superSelect(house,arg);n=result>0;}
  else if(c==SelectIron||c==SelectChrono){result=namedSuper(house,c);n=result>0;}
  else if(c==AirPathMove){uint32_t id=uint32_t(arg),p=worldByID(id),cell=uint32_t(sh->arg2);
-  if(!(sh->flags&AirWaypoints)||(sh->flags&NativeAirWaypoints)||!p||!own(p,house)||kind(p)!=0||manualVersions.get(id)!=sh->requestToken||get<bool>(p+0x81)||get<uint32_t>(p+0x11C)||!readMapCell(int(cell%1000),int(cell/1000)))result=-4;
+  if(!airpathpolicy::events(get<int>(0xA8B238),(sh->flags&AirWaypoints)!=0,(sh->flags&NativeAirWaypoints)!=0)||!p||!own(p,house)||kind(p)!=0||manualVersions.get(id)!=sh->requestToken||get<bool>(p+0x81)||get<uint32_t>(p+0x11C)||!readMapCell(int(cell%1000),int(cell/1000)))result=-4;
   else if(nativeMission(house,id,2,0,cell,11,0,0,taskarbiter::Owner::Generic))n=1;else result=-6;
  }
  else if(c==ProduceReserved){

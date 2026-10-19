@@ -1,0 +1,71 @@
+{
+  "dll_sha256": "256d6b05918325290b1c075890458a4f9cd92afb6472aeb9aa869296ad31326d",
+  "game_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+  "scope": "Actual DLL and supplied EXE constructors; synthetic world/Win32/click hit testing.\nNo platform launcher, extensions.dll, sockets, rendered frames or real netplay.\n",
+  "results": [
+    {
+      "case": "air_0_backend_sites_no_startup_event",
+      "status": "PASS"
+    },
+    {
+      "case": "ore_0_actual_cancel_observed_move_then_harvest",
+      "status": "PASS"
+    },
+    {
+      "case": "ore_0_plain_move_expected_mission_is_wired",
+      "status": "PASS"
+    },
+    {
+      "case": "ore_0_ore_refinery_handback_force_exclusion_no_extra_events",
+      "status": "PASS"
+    },
+    {
+      "case": "air_5_backend_sites_no_startup_event",
+      "status": "PASS"
+    },
+    {
+      "case": "ore_5_actual_cancel_observed_move_then_harvest",
+      "status": "PASS"
+    },
+    {
+      "case": "ore_5_plain_move_expected_mission_is_wired",
+      "status": "PASS"
+    },
+    {
+      "case": "ore_5_ore_refinery_handback_force_exclusion_no_extra_events",
+      "status": "PASS"
+    },
+    {
+      "case": "air_3_backend_sites_no_startup_event_ordinary_network_move",
+      "status": "PASS"
+    },
+    {
+      "case": "ore_3_actual_cancel_observed_move_then_harvest",
+      "status": "PASS"
+    },
+    {
+      "case": "ore_3_plain_move_expected_mission_is_wired",
+      "status": "PASS"
+    },
+    {
+      "case": "ore_3_ore_refinery_handback_force_exclusion_no_extra_events",
+      "status": "PASS"
+    },
+    {
+      "case": "air_4_backend_sites_no_startup_event_ordinary_network_move",
+      "status": "PASS"
+    },
+    {
+      "case": "ore_4_actual_cancel_observed_move_then_harvest",
+      "status": "PASS"
+    },
+    {
+      "case": "ore_4_plain_move_expected_mission_is_wired",
+      "status": "PASS"
+    },
+    {
+      "case": "ore_4_ore_refinery_handback_force_exclusion_no_extra_events",
+      "status": "PASS"
+    }
+  ]
+}
