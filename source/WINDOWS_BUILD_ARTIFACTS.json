@@ -1,13 +1,13 @@
 {
-  "label": "1.0.15.0 SingleRuntime",
-  "file_version": "1.0.15.0",
+  "label": "1.0.16.0 SingleRuntime",
+  "file_version": "1.0.16.0",
   "verified": {
     "RA2Toolbox.exe": {
-      "bytes": 2065408,
-      "sha256": "b7ca1bef2591d73a38804f6150534c928db9ef5cb051c9658d65f71fbc939fb3",
+      "bytes": 2114048,
+      "sha256": "fd7d12a089a5a078e8f63200912783cf5e67ec7eab3d23d458ebda1d7c51868a",
       "machine": "PE32 x86",
       "sections": 14,
-      "entry_rva": "0xc0b90",
+      "entry_rva": "0xca920",
       "exports": [
         "AssistHostProtocolInfo",
         "_Unwind_DeleteException",
@@ -136,6 +136,7 @@
           "EnumWindows",
           "FillRect",
           "FindWindowW",
+          "FrameRect",
           "GetAncestor",
           "GetAsyncKeyState",
           "GetClassNameW",
@@ -191,6 +192,7 @@
           "SendInput",
           "SendMessageTimeoutW",
           "SendMessageW",
+          "SetDlgItemTextW",
           "SetForegroundWindow",
           "SetLayeredWindowAttributes",
           "SetParent",
@@ -238,6 +240,7 @@
           "SetDCBrushColor",
           "SetStretchBltMode",
           "SetTextColor",
+          "StretchBlt",
           "StretchDIBits",
           "TextOutW"
         ],
@@ -528,15 +531,15 @@
         "version": "6.0.0.0",
         "architecture": "x86"
       },
-      "assist_protocol": 49,
-      "assist_shared_bytes": 2846048
+      "assist_protocol": 50,
+      "assist_shared_bytes": 3132928
     },
     "GameRuntime.dll": {
-      "bytes": 2498560,
-      "sha256": "4a712272aa97b1d0627f97ba2b02ece8715a72ecfea8b1ad84ec63c537aa6214",
+      "bytes": 2617344,
+      "sha256": "c2d0a16edbda95c7a69c70c72632d2096b9450fa8e0f460ba6eba1bc22f175bc",
       "machine": "PE32 x86",
-      "sections": 9,
-      "entry_rva": "0x2e490",
+      "sections": 13,
+      "entry_rva": "0x43c60",
       "exports": [
         "AssistMappingPrefix",
         "AssistProtocolInfo",
@@ -587,6 +590,7 @@
           "OpenThread",
           "QueryPerformanceCounter",
           "QueryPerformanceFrequency",
+          "RaiseException",
           "ReadProcessMemory",
           "Sleep",
           "TlsGetValue",
@@ -677,8 +681,8 @@
       "GameRuntimePostHook_rva": "0x1820",
       "runtime_protocol": 3,
       "runtime_control_bytes": 120,
-      "assist_protocol": 49,
-      "assist_shared_bytes": 2846048
+      "assist_protocol": 50,
+      "assist_shared_bytes": 3132928
     }
   },
   "runtime_tested": false,

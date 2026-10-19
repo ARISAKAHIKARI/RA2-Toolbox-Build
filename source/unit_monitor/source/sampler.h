@@ -4,6 +4,7 @@
 #include "cameo_reader.h"
 #include "owned_counter.h"
 #include "round_state.h"
+#include "../../external_reader/source/catalogue_stamp.h"
 #include "../../external_reader/source/layout_probe.h"
 
 // Layout: YR 1.001 / YRpp; audited against supplied gamemd-spawn(1).exe.
@@ -19,9 +20,9 @@ struct PtrList {
 inline bool sameAscii(const char* a,const char* b){for(;*a&&*b;a++,b++){char x=*a,y=*b;if(x>='A'&&x<='Z')x+=32;if(y>='A'&&y<='Z')y+=32;if(x!=y)return false;}return *a==*b;}
 
 template<class Read,class Resolve> class Sampler {
- Read read; Resolve resolve; IconCache* cache=nullptr; Snapshot state{};external::layout::Result probe_{}; roundstate::Stamp previous{}; bool haveRound=false; int iconCursor=0; uint32_t ticks=0,matchSerial=0; bool prevBuildings=true; uint8_t iconBuffer[32+256*1024]{}; int ownedBuffer[4096]{};
+ Read read; Resolve resolve; IconCache* cache=nullptr; Snapshot state{};external::layout::Result probe_{}; roundstate::Stamp previous{}; bool haveRound=false; int iconCursor=0; uint32_t ticks=0,matchSerial=0,catalogueAt=0;uint64_t catalogueHash=0;bool catalogueReady=false; bool prevBuildings=true; uint8_t iconBuffer[32+256*1024]{}; int ownedBuffer[4096]{};
  const Snapshot& invalidate(uint32_t tick){
-  memset(&state,0,sizeof state);state.tick=tick;state.match=matchSerial;haveRound=false;iconCursor=0;return state;
+  memset(&state,0,sizeof state);state.tick=tick;state.match=matchSerial;haveRound=false;catalogueReady=false;catalogueHash=0;iconCursor=0;return state;
  }
  template<class T>T get(uint32_t a,T def={}) {T v{};return read(a,&v,sizeof(v))?v:def;}
  bool bytes(uint32_t a,void* p,size_t n){return read(a,p,n);}
@@ -77,7 +78,13 @@ public:
   state.tick=tick;state.readErrors=0;state.playerCount=0;state.status=1;
   uint32_t local=start.local,observer=get<uint32_t>(0xAC1198);
   state.match=matchSerial;state.frame=start.frame;state.chatActive=get<uint8_t>(0xA8BC60+25)!=0;
-  if(newRound||prevBuildings!=buildings||!state.typeCount){types(buildings,newRound);prevBuildings=buildings;}
+  bool reload=newRound||prevBuildings!=buildings||!state.typeCount;
+  if(reload||!catalogueReady||uint32_t(tick-catalogueAt)>=500){
+   external::catalogue::Stamp stamp;catalogueAt=tick;
+   if(external::catalogue::capture(read,stamp)){reload=reload||!catalogueReady||catalogueHash!=stamp.hash;catalogueHash=stamp.hash;catalogueReady=true;}
+   else catalogueReady=false;
+  }
+  if(reload){types(buildings,newRound);prevBuildings=buildings;}
   palette();
   // All lobby nodes, not just the single local Observer pointer: multiplayer supports multiple spectators.
   PtrList spectators;

@@ -205,8 +205,11 @@ static void tick(){
   else if(enabled){
    if(pid&&!reader.alive()){
     detach();setStatus(L"游戏进程已退出，等待重新连接…");
-   }else if(pid&&game&&!IsWindow(game)){
-    game=nullptr;threadId=0;lastSearch=now-1500;
+   }else if(pid){
+    DWORD actualPid=0,actualThread=game?GetWindowThreadProcessId(game,&actualPid):0;
+    HWND fallback=actualPid==pid&&actualThread==threadId?game:nullptr;DWORD nextThread=0;
+    HWND next=external::discovery::resolveYrppWindow(reader,pid,fallback,&nextThread);
+    if(next!=game||nextThread!=threadId){game=next;threadId=nextThread;tabs.reset();fade.hide();surface.clear();renderDirty=true;paintedAlpha=-1;if(!game)lastSearch=now-1500;}
    }
    if(pid&&!game&&now-lastSearch>=1500){
     lastSearch=now;auto found=external::discovery::scan(pid);

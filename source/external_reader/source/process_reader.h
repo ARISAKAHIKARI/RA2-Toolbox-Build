@@ -40,6 +40,7 @@ public:
  bool canRead()const{return connection_&&connection_->readable;}
  DWORD pid()const{return connection_?connection_->pid:0;}
  uint64_t generation()const{return connection_?connection_->generation:0;}
+ std::shared_ptr<const ProcessConnection> connectionIdentity()const{return connection_;}
  bool imagePath(wchar_t*out,DWORD*size)const{return connection_&&QueryFullProcessImageNameW(connection_->handle,0,out,size);}
  void begin(){pages_.clear();reads=errors=pageHits=pageMisses=pageFallbacks=0;lastReadError=0;lastFailedAddress=0;lastFailedSize=0;lastBytesRead=0;lastRegionState=lastRegionProtect=0;lastRegionQueried=false;lastRegionQueryError=0;}
  bool read(uint32_t address,void*out,size_t size){

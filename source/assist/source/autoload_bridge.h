@@ -48,6 +48,42 @@ static void finishLoadingReservation(const loading::Reservation&r,uint32_t sessi
  missionObserver.dismissTicket(session,r.ticket);
  recordReceipt(outcome);actorLeaseArbiter.release(session,r.id,r.ticket);
 }
+static bool loadCalculationPending,loadAckPending;static uint32_t loadAckRequest,loadTaskSeen;
+static DWORD loadCalculationStarted;
+static int submitLoading(uint32_t house,const loading::Infantry*soldiers,int ns,const loading::Vehicle*vehicles,int nv,const int*assignment,const uint32_t*tokens){
+ using namespace loading;int frame=get<int>(0xA8ED84);loadQueryFailed=false;
+ faultContext.phase=runtimefault::LoadSubmit;
+ int room[MaxVehicles]{};for(int j=0;j<nv;++j){const auto&v=vehicles[j];if(worldByID(v.id)!=v.object||!loadingObject(v.object,house,2))continue;
+  uint32_t type=typeOf(v.object,2),q=get<uint32_t>(v.object+0x118);room[j]=type?get<int>(type+0x5E0):0;int steps=0;
+  while(q>=0x10000&&steps++<256){int size=passengerSlots(q);if(!size){room[j]=0;break;}room[j]-=size;uint32_t next=get<uint32_t>(q+0x30);if(next==q){room[j]=0;break;}q=next;}if(q>=0x10000)room[j]=0;
+ }
+ Vec all=vec(0xA8EC78);for(int n=0;n<all.count;++n){uint32_t other=item(all,n);int k=other?kind(other):-1;if((k!=1&&k!=2)||!own(other,house))continue;uint32_t target=incomingVehicle(other);if(!target)continue;
+  for(int j=0;j<nv;++j)if(vehicles[j].object==target){int size=passengerSlots(other);room[j]-=size?size:1024;break;}
+ }
+ for(int n=0;n<loadLedger.count;++n){auto&r=loadLedger.records[n];if(!worldObjects.contains(r.object)||incomingVehicle(r.object))continue;for(int j=0;j<nv;++j)if(r.vehicleID==vehicles[j].id){room[j]-=r.slots;break;}}
+ for(int i=0;i<ns;++i){const auto&p=soldiers[i];int j=assignment[i];
+  if(j<0||j>=nv){if(p.slots)++snap.loadUnassigned;continue;}auto&v=vehicles[j];
+  if(room[j]<p.slots||loadLedger.count>=MaxInfantry||worldByID(p.id)!=p.object||worldByID(v.id)!=v.object||manualVersions.get(p.id)!=tokens[i]||
+     !loadingObject(p.object,house,p.kind)||!loadingObject(v.object,house,2)||incomingVehicle(p.object)||loadLedger.contains(p.id)||!canEnter(p.object,v.object)){
+   ++snap.loadUnassigned;if(loadQueryFailed)return -15;continue;
+  }
+  room[j]-=p.slots;
+  cancelUnloadPassenger(p.object);uint32_t ticket=0;bool sent=outgoingRoom()>0&&enterEvent(house,p.id,v.id,&ticket);
+  Reservation job{p.object,p.id,v.object,v.id,p.slots,frame};job.lastSent=sent?frame:-1;job.lastAttempt=frame;job.attempts=sent?0:1;job.retryAfter=sent?frame+30:frame+8;job.x=p.x;job.y=p.y;job.progress=frame;job.initial=loadingObservation(p.object);job.kind=p.kind;job.ticket=ticket;job.queuedAt=sent?sampleClock(sh):0;loadLedger.add(job);
+  if(sent)++snap.loadIssued;else ++snap.loadWaiting;
+ }
+ return snap.loadWaiting?2:1;
+}
+static void loadingCalculationTick(uint32_t house,DWORD now){
+ if(!loadCalculationPending)return;
+ auto finish=[&](int result){loadCalculationPending=false;if(loadAckPending){sh->result=result;sh->count=snap.loadIssued;pendingAck=loadAckRequest;pendingAckReady=true;loadAckPending=false;}};
+ if(DWORD(now-loadCalculationStarted)>1000){finish(-7);return;}
+ if(sh->loadComputed!=sh->loadTask||sh->loadTask==loadTaskSeen)return;MemoryBarrier();loadTaskSeen=sh->loadTask;
+ const auto&in=sh->loadInput;const auto&r=sh->loadResult;
+ if(!compute::valid(in)||r.count!=in.ns||r.match!=in.match||r.tick!=in.tick||r.frame!=in.frame||
+    !freshness::valid(in.match,match,in.tick,in.frame,now,get<int>(0xA8ED84),freshness::Cooperative)||get<bool>(0xA8BC60+25)){finish(-7);return;}
+ finish(submitLoading(house,in.soldiers,in.ns,in.vehicles,in.nv,r.assignment,in.tokens));
+}
 static int autoLoad(uint32_t house){
  using namespace loading;
  FaultPhase phase(runtimefault::LoadCollect);loadQueryFailed=false;
@@ -108,15 +144,20 @@ static int autoLoad(uint32_t house){
  // carrier in the same batch. Full/forbidden carriers may still be passengers.
  faultContext.phase=runtimefault::LoadAssign;
  if(loadQueryFailed)return -15;
+ static uint32_t tokens[MaxInfantry];for(int i=0;i<ns;++i)tokens[i]=manualVersions.get(soldiers[i].id);
+ if(!compute::inside(sh->computeApplied,compute::Load)){
+  if(sh->loadTask!=sh->loadComputed)return -6;
+  auto&in=sh->loadInput;in.match=match;in.tick=sampleClock(sh);in.frame=frame;in.ns=ns;in.nv=nv;in.mode=sh->loadMode==1;in.radius=std::clamp(sh->loadRadius,1,512);
+  memcpy(in.soldiers,soldiers,size_t(ns)*sizeof(Infantry));memcpy(in.vehicles,vehicles,size_t(nv)*sizeof(Vehicle));in.composition=composition;memcpy(in.tokens,tokens,size_t(ns)*4);
+  for(int i=0;i<ns;++i)for(int j=0;j<nv;++j){int64_t dx=int64_t(soldiers[i].x)-vehicles[j].x,dy=int64_t(soldiers[i].y)-vehicles[j].y,limit=int64_t(in.radius)*256;
+   in.compatible[i][j]=soldiers[i].slots<=freeSlots(vehicles[j])&&soldiers[i].slots<=vehicles[j].sizeLimit&&dx*dx+dy*dy<=limit*limit&&canEnter(soldiers[i].object,vehicles[j].object);
+   if(loadQueryFailed)return -15;
+  }
+  loadCalculationPending=true;loadCalculationStarted=in.tick;MemoryBarrier();InterlockedIncrement((volatile LONG*)&sh->loadTask);notifyHost();return -30;
+ }
  static int assignment[MaxInfantry];assign(soldiers,ns,vehicles,nv,sh->loadMode==1?1:0,sh->loadRadius,composition,workspace,assignment,[](const Infantry&p,const Vehicle&v){return canEnter(p.object,v.object);});
  if(loadQueryFailed)return -15;
- faultContext.phase=runtimefault::LoadSubmit;
- for(int i=0;i<ns;++i){auto&p=soldiers[i];int j=assignment[i];if(j<0){if(p.slots)++snap.loadUnassigned;continue;}if(loadLedger.count>=MaxInfantry){++snap.loadUnassigned;continue;}auto&v=vehicles[j];
-  cancelUnloadPassenger(p.object);uint32_t ticket=0;bool sent=outgoingRoom()>0&&enterEvent(house,p.id,v.id,&ticket);
-  Reservation job{p.object,p.id,v.object,v.id,p.slots,frame};job.lastSent=sent?frame:-1;job.lastAttempt=frame;job.attempts=sent?0:1;job.retryAfter=sent?frame+30:frame+8;job.x=p.x;job.y=p.y;job.progress=frame;job.initial=loadingObservation(p.object);job.kind=p.kind;job.ticket=ticket;job.queuedAt=sent?sampleClock(sh):0;loadLedger.add(job);
-  if(sent)++snap.loadIssued;else ++snap.loadWaiting;
- }
- return snap.loadWaiting?2:1;
+ return submitLoading(house,soldiers,ns,vehicles,nv,assignment,tokens);
 }
 
 static void cancelLoadingJobs(uint32_t p){
@@ -166,3 +207,5 @@ static void autoLoadTick(uint32_t house,int frame){
  }
  snap.loadWaiting=loadLedger.count;
 }
+
+static void resetLoadCalculation(){loadCalculationPending=loadAckPending=false;}

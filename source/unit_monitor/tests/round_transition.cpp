@@ -67,5 +67,12 @@ int main(){
    f.m.put(0xA8ED84,1);f.m.text(Enemy+90154,u"New player");const auto&b=f.sample();assert(b.match!=old&&b.types[0].iconReady==2&&b.types[0].icon[20]==4&&b.paletteReady&&b.players[1].name[0]=='N');++cases;
   }fs::remove_all(dir);
  }
+ {Fixture f;constexpr uint32_t second=0x220000;auto old=f.sample().match;
+  memcpy(f.m.data.data()+second+36,"E2",3);memcpy(f.m.data.data()+second+1750,"E2ICON",7);f.m.put(second+1588,1);f.m.put<uint32_t>(second+1740,1);
+  f.m.vector(0xA8E348,0x300100,{Infantry,second});f.m.put(0xA8ED84,101);
+  auto&a=f.sampler->sample(1100,true);assert(a.typeCount==2&&a.match==old);++cases;
+  f.m.put<uint32_t>(second+1740,0);assert(f.sampler->sample(1700,true).typeCount==1);++cases;
+  f.m.put<uint32_t>(second+1740,1);assert(f.sampler->sample(2300,true).typeCount==2);++cases;
+ }
  std::cout<<cases<<" round-transition sampler regressions passed\n";
 }

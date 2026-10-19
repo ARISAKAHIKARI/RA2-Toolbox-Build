@@ -1,4 +1,6 @@
 static void loadAdditionalSettings(){
+ for(int i=0;i<compute::Count;++i){bool mode=value(L"Compute",compute::key(i),compute::inside(compute::Default,compute::Feature(i)))!=0;if(mode)computeRequested|=1u<<i;else computeRequested&=~(1u<<i);}
+ minimapEnabled=value(L"Display",L"MinimapZoom",0)!=0;minimapScale=std::clamp(value(L"Display",L"MinimapScale",200),100,400);
  for(int i=0;i<featuretypes::Count;++i){auto&f=featureTypes.filters[i];std::wstring custom=std::wstring(featuretypes::key(i))+L"Custom";wchar_t text[13000]{};
   GetPrivateProfileStringW(L"FeatureTypes",featuretypes::key(i),featuretypes::initial(i),text,13000,path(L"Assist.ini").c_str());featureTypeText[i]=text;
   oreconfig::parse(featureTypeText[i],f.ids,f.count);f.custom=value(L"FeatureTypes",custom.c_str(),0)!=0;
@@ -37,6 +39,8 @@ static void loadAdditionalSettings(){
  }
 }
 static bool saveAdditionalSettings(){
+ for(int i=0;i<compute::Count;++i)write(L"Compute",compute::key(i),(computeRequested>>i)&1u);
+ write(L"Display",L"MinimapZoom",minimapEnabled);write(L"Display",L"MinimapScale",minimapScale);
  for(int i=0;i<featuretypes::Count;++i){std::wstring custom=std::wstring(featuretypes::key(i))+L"Custom";
   write(L"FeatureTypes",custom.c_str(),featureTypes.filters[i].custom);
   saveWriteOK=(WritePrivateProfileStringW(L"FeatureTypes",featuretypes::key(i),featureTypeText[i].c_str(),path(L"Assist.ini").c_str())!=FALSE)&&saveWriteOK;
@@ -80,11 +84,22 @@ static void fillExtraTypes(bool force=false){
  if(restore>=0)SendMessageW(extraControls[QuotaType],CB_SETCURSEL,restore,0);
 }
 static uint32_t additionalFlags(){uint32_t f=extra.frozen?Frozen:0;if(techMode)f|=UnsafeTech;if(extra.antiTheft)f|=AntiTheft;if(extra.constructionQueue)f|=ReserveConstruction;if(extra.nativeAirWaypoints)f|=NativeAirWaypoints;else if(extra.airWaypoints)f|=AirWaypoints;if(extra.experimentalReveal)f|=ExperimentalReveal;if(extra.enter)f|=AdvancedEnter;if(extra.air)f|=AircraftSpread;if(extra.disk)f|=DiskPrimary;if(extra.sellDrained)f|=SellDrained;if(extra.sellVehicles)f|=SellVehicles;if(extra.sellEnemy)f|=SellEnemy;return f;}
-static void syncAdditional(){if(!shared)return;shared->c4Test=extra.c4Test;shared->renderReveal=extra.renderReveal;shared->loadMode=extra.loadMode;shared->loadRadius=extra.loadRadius;shared->enterKey=extra.enterKey;shared->airKey1=extra.airKey1;shared->airKey2=extra.airKey2;
+static void syncAdditional(){if(!shared)return;shared->computeRequested=computeRequested;shared->advancedScanHz=advancedScanHz;shared->advancedPriority=advancedTargetPriority;shared->c4Test=extra.c4Test;shared->renderReveal=extra.renderReveal;shared->loadMode=extra.loadMode;shared->loadRadius=extra.loadRadius;shared->enterKey=extra.enterKey;shared->airKey1=extra.airKey1;shared->airKey2=extra.airKey2;
+ static uint32_t publishedSettings=~0u;
+ if(!shared->quotaConfigSeq||publishedSettings!=settingsRevision){publishedSettings=settingsRevision;
+  InterlockedIncrement(&shared->quotaConfigSeq);auto&c=shared->quotaConfig;c.defaults=extra.defaults;c.count=0;
+  for(const auto&e:targetQuotas){if(c.count>=512)break;auto&entry=c.entries[c.count++];memset(entry.id,0,24);memcpy(entry.id,e.first.data(),std::min(size_t(23),e.first.size()));entry.quota=e.second;}
+  MemoryBarrier();InterlockedIncrement(&shared->quotaConfigSeq);
+ }
  externalSampler.flashCount=0; // production tab reminders stay entirely in the host overlay
 }
 static void serviceCooperative(){
  if(!shared||!commandFresh(GetTickCount()))return;DWORD now=GetTickCount();
+ auto mode=shared->cooperativeRequest.mode;
+ if(compute::inside(shared->computeApplied,mode==cooperative::Enter?compute::Enter:compute::Aircraft)){
+  if(shared->runtimeCoopDone==shared->cooperativeRequest.serial){cooperativeDelivered=shared->runtimeCoopDone;retryCooperative=false;}
+  return;
+ }
  uint32_t receipt=shared->cooperativeAck;
  if(receipt!=cooperativeReceipt){
   MemoryBarrier();cooperativeReceipt=receipt;

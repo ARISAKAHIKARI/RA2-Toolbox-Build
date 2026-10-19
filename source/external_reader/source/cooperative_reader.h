@@ -30,7 +30,7 @@ template<class Read,class Quotas> assist::cooperative::Input cooperativeInput(Re
   candidates.push_back(p);
  }
  // A busy screen is bounded without depending on engine vector ordering.
- std::stable_sort(candidates.begin(),candidates.end(),[&](uint32_t a,uint32_t b){if(a==clicked->second||b==clicked->second)return a==clicked->second&&b!=clicked->second;int64_t da=cooperative::distance(out.units[0].x,out.units[0].y,game.template get<int>(a+0x9C),game.template get<int>(a+0xA0)),db=cooperative::distance(out.units[0].x,out.units[0].y,game.template get<int>(b+0x9C),game.template get<int>(b+0xA0));return da!=db?da<db:game.template get<uint32_t>(a+0x10)<game.template get<uint32_t>(b+0x10);});
+ std::sort(candidates.begin(),candidates.end(),[&](uint32_t a,uint32_t b){if(a==clicked->second||b==clicked->second)return a==clicked->second&&b!=clicked->second;int64_t da=cooperative::distance(out.units[0].x,out.units[0].y,game.template get<int>(a+0x9C),game.template get<int>(a+0xA0)),db=cooperative::distance(out.units[0].x,out.units[0].y,game.template get<int>(b+0x9C),game.template get<int>(b+0xA0));return da!=db?da<db:game.template get<uint32_t>(a+0x10)<game.template get<uint32_t>(b+0x10);});
  std::unordered_map<uint32_t,int> incoming;
  if(r.mode==cooperative::Enter)for(uint32_t q:all){if(!game.live(q)||game.template get<uint32_t>(q+0x21C)!=house||game.template get<uint32_t>(q+0x11C)||std::find(sources.begin(),sources.end(),q)!=sources.end())continue;
   uint32_t target=game.entryDestination(q);

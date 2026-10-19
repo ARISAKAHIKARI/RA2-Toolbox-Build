@@ -9,8 +9,10 @@
 #include "cooperative_types.h"
 #include "pointer_intent.h"
 #include "construction_input.h"
+#include "compute_policy.h"
+#include "compute_tasks.h"
 namespace assist {
-constexpr uint32_t Magic=0x41533130, Version=49;
+constexpr uint32_t Magic=0x41533130, Version=50;
 constexpr uint32_t DataMessage=0x8002, WakeTag=0x41533230;
 constexpr int MaxLabels=2048, MaxSW=32, MaxTypes=512, MaxThreats=128, MaxCrates=256, MaxCrateResults=16;
 enum Command { None, Repair, CombatSelection, EmptyTransports, DamagedSelection, IdleHarvester, IdleEngineer, IdleTransport, ClearBeacons, RevealMap, OpenTech, SelectSuper, Produce, SelectIron, SelectChrono, AutoBoard, SelectType, SmartUnload, CancelAdvanced, SelectVariant, ProduceReserved, AirPathMove, CancelTechProduction };
@@ -112,6 +114,19 @@ struct Shared {
  volatile uint32_t uiSoundRequest,uiSoundAck;uint32_t uiSoundTick,uiSoundMatch;
  volatile long reservePolicySeq;construction::InputPolicy reservePolicy;
  volatile uint32_t reserveInput,reserveConsumed;construction::InputClick reserveClick;
+ // Requested mask is host-owned; Runtime latches it only at a new match.
+ // This prevents pending state/receipts from being executed by two planners.
+ volatile uint32_t computeRequested=compute::Default,computeApplied=compute::Default;
+ uint32_t advancedScanHz=10,advancedPriority=0;
+ volatile uint32_t runtimeTracking=0,runtimePlannerMicros=0;
+ // Runtime produces raw immutable tasks; host publishes pure results and the
+ // computed serial last. Neither field is a command/event receipt.
+ volatile uint32_t loadTask=0,loadComputed=0;compute::LoadInput loadInput;compute::LoadResult loadResult;
+ volatile uint32_t repairTask=0,repairComputed=0;compute::RepairInput repairInput;compute::RepairResult repairResult;
+ volatile long quotaConfigSeq=0;compute::QuotaConfig quotaConfig;
+ volatile uint32_t runtimeCoopDone=0;int runtimeCoopAccepted=0,runtimeCoopRejected=0;
+
+
 
 };
 inline int remaining(int start,int duration,int frame){

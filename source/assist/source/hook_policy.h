@@ -14,5 +14,5 @@ inline uint32_t resolve(Switches v,bool advancedKeyBound,bool ejectRunning,bool 
 }
 inline bool needsCSInputPatch(uint32_t flags){return (flags&(AutoCS|AdvancedInput|MagnetronInput|CustomCS))!=0;}
 inline bool needsNativeInputPatch(uint32_t flags){return (flags&(AdvancedInput|MagnetronInput|CustomCS))!=0;}
-inline bool needsWorldIndex(bool command,bool activeJobs,uint32_t flags,bool repairDue){return command||activeJobs||repairDue||(flags&(AutoOreReturn|EjectAssist));}
+inline bool needsWorldIndex(bool command,bool activeJobs,uint32_t flags,bool repairDue){return command||activeJobs||repairDue||(flags&(AutoOreReturn|EjectAssist|AntiTheft));}
 }}

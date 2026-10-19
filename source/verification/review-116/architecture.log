@@ -1,0 +1,2 @@
+PASS architecture boundaries: 162 source files; 112 host includes / 94 Runtime includes; read, input, injection, patch, event and frame-grant ownership
+NOTE: eight decision families have dual backends; other fixed-location features and cross-feature snapshot consolidation remain; no real-game/netplay proof

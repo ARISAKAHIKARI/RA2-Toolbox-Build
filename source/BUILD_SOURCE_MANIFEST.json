@@ -1,12 +1,12 @@
 {
-  "name": "RA2 Toolbox 1.0.6 Full",
-  "version": "1.0.6",
+  "name": "RA2 Toolbox 1.0.16 Beta",
+  "version": "1.0.16",
   "compiled_game_binary_included": false,
-  "source": "1.0.5 base; independent ejection deployment retry and default-off render-only shroud/fog experiment",
+  "source": "1.0.15 base; process identity/HWND/catalogue recovery, radar mirror, eight per-feature dual decision backends",
   "resources": "Complete assets/profiles/Python preprocessing runtime/engine included",
   "resources_legacy_reuse": true,
-  "build_protocol": 45,
-  "validation": "Actual x86 DLL/event/stub regressions, patch ownership, PE32 and architecture checks; no real game/rendering/netplay",
+  "build_protocol": 50,
+  "validation": "Current targeted x86 DLL/native constructor fixtures plus sampler/process/minimap/UI tests; no real Windows/LBW/netplay",
   "build_requirement": "Zig 0.13.0, x86 Windows target; build EXE and GameRuntime.dll together",
   "settings": {
     "Orders.MegaMissionBackend": "0=constructor; 1=high-level MP; SP uses constructor/DoList centrally",
@@ -18,11 +18,6 @@
   "runtime_transport_protocol": 3,
   "game_code_patching": "Three existing opt-in judgment sites plus ShroudDraw/FogDraw opt-in render leaves; central GameRuntime sole writer",
   "input_entry": "Manager WH_GETMESSAGE / WH_CALLWNDPROCRET only; features have no independent hooks",
-  "disabled_features": [
-    "Technology unlock",
-    "Smart unload",
-    "Enemy sale"
-  ],
   "symbolic_original_interfaces": [
     "DisplayClass::ProcessClickCoords (0x692300), normal query call",
     "Networking::CreateClickedMissionEvent (0x646E90), optional normal call",
@@ -30,12 +25,7 @@
     "EventClass original constructors + SP DoList / MP OutList",
     "HouseClass::CanBuild (0x4F7870), normal legality query"
   ],
-  "legacy_binary_sha256": {
-    "AssistBridge.dll": "03c959f7b0d9541adb498ee595e93f82c98f7c2a12ad8b91056c42a874f101e7",
-    "CursorHideBridge.dll": "0406fd5252fe7a57a168c58ae199e2d66561666274e2d188d3f2133a3a1bbcbd",
-    "RA2Toolbox.exe": "16a91bc35a95b9a72635244786a5be1202c0bafc9d6cd323ceba585045eab9d5",
-    "UnitMonitorBridge.dll": "d5eda2861e724f4b6a38f18b2153f8ce14a8ff689ace35573ca469a5563590a1"
-  },
-  "release_status": "1.0.6; Assist protocol 45; EXE and DLL paired",
-  "technology_experiment": "Withdrawn, not shipped. Production continuity unresolved; technology remains disabled."
+  "release_status": "1.0.16 Beta; Assist protocol 50; EXE and DLL paired",
+  "technology_experiment": "Existing external catalogue beta remains; no claim of complete safe technology unlock",
+  "calculation_locations": "Eight decision families selectable, applied on new match/full bridge initialization; other fixed-location features explicitly documented in REVIEW-1.0.16.md"
 }

@@ -8,6 +8,7 @@
 #include <unordered_set>
 #include "game_view.h"
 #include "layout_probe.h"
+#include "catalogue_stamp.h"
 #include "display_state.h"
 #include "enemy_markers.h"
 #include "idle_aircraft.h"
@@ -21,6 +22,7 @@ inline bool project(const Projection&p,int x,int y,int z,int&sx,int&sy){
 }
 template<class Read> class TacticalSampler {
  Read read_;assist::Snapshot state_{};layout::Result probe_{};uint32_t house_=0,serial_=0;int lastFrame_=-1;
+ uint64_t catalogueHash_=0;uint32_t catalogueAt_=0;bool catalogueReady_=false;
  int sceneFrame_=-1,sceneX_=0,sceneY_=0,sceneWidth_=0,sceneHeight_=0;uint32_t sceneFlags_=0,selectionHash_=0,sceneAt_=0;
  struct LabelSource {uint32_t object=0,id=0,type=0,owner=0;int kind=-1;bool selected=false;};
  LabelSource labelSources_[assist::MaxLabels]{};display::State display_{};
@@ -134,7 +136,7 @@ public:
  layout::Result probe()const{return probe_;}
  display::State displayState()const{return display_;}
  const enemies::Frame& enemyMarkers()const{return enemies_;}
- void reset(){idleProductionMask=idleAircraftTick=0;idleAircraftCount=aircraftTotal=0;probe_={};house_=serial_=0;lastFrame_=-1;state_={};sceneFrame_=-1;sceneFlags_=selectionHash_=sceneAt_=0;flashCount=0;productionAt_=0;for(auto&f:factories_)f={};stopped_.clear();enemies_={};sceneEnemies_=false;enemyNames_.clear();enemyOwnerCount_=0;}
+ void reset(){idleProductionMask=idleAircraftTick=0;idleAircraftCount=aircraftTotal=0;probe_={};catalogueHash_=0;catalogueAt_=0;catalogueReady_=false;house_=serial_=0;lastFrame_=-1;state_={};sceneFrame_=-1;sceneFlags_=selectionHash_=sceneAt_=0;flashCount=0;productionAt_=0;for(auto&f:factories_)f={};stopped_.clear();enemies_={};sceneEnemies_=false;enemyNames_.clear();enemyOwnerCount_=0;}
  void stopped(const std::vector<uint32_t>&ids){stopped_.clear();stopped_.insert(ids.begin(),ids.end());}
  void refreshCamera(uint32_t now){
   if(state_.status!=1)return;uint32_t tactical=get<uint32_t>(0x887324);if(tactical<0x10000)return;
@@ -152,16 +154,23 @@ public:
    enemies_.count=0;
    idleProductionMask=idleAircraftTick=0;idleAircraftCount=aircraftTotal=0;state_.status=0;state_.labels=state_.selected=state_.transports=state_.used=state_.capacity=0;
    state_.typeCount=state_.swCount=state_.threatCount=state_.crateCount=0;
-   house_=0;return state_;
+   house_=0;catalogueReady_=false;return state_;
   }
   uint32_t house=get<uint32_t>(0xA83D4C);int frame=get<int>(0xA8ED84,-1);
   auto houses=vec(0xA80228,32);if(std::find(houses.begin(),houses.end(),house)==houses.end()){
    enemies_.count=0;
    probe_={layout::Stage::MissingLocalHouseInList,0xA80228,house};
    idleProductionMask=idleAircraftTick=0;idleAircraftCount=aircraftTotal=0;state_.status=0;state_.labels=state_.typeCount=state_.swCount=0;
-   state_.threatCount=state_.crateCount=0;house_=0;return state_;
+   state_.threatCount=state_.crateCount=0;house_=0;catalogueReady_=false;return state_;
   }
-  bool fresh=house!=house_||frame<lastFrame_;if(fresh){++serial_;house_=house;types();for(auto&f:factories_)f={};flashCount=0;productionAt_=now-100;enemies_.count=0;enemyNames_.clear();}lastFrame_=frame;
+  bool fresh=house!=house_||frame<lastFrame_;if(fresh){++serial_;house_=house;catalogueReady_=false;catalogueHash_=0;for(auto&f:factories_)f={};flashCount=0;productionAt_=now-100;enemies_.count=0;enemyNames_.clear();}lastFrame_=frame;
+  if(fresh||uint32_t(now-catalogueAt_)>=uint32_t(catalogueReady_?500:100)){
+   catalogue::Stamp stamp;catalogueAt_=now;
+   if(catalogue::capture(read_,stamp)){
+    if(!catalogueReady_||catalogueHash_!=stamp.hash){types();sceneFrame_=-1;catalogueHash_=stamp.hash;}
+    catalogueReady_=true;
+   }else{catalogueReady_=false;int count=state_.typeCount;types();if(count!=state_.typeCount)sceneFrame_=-1;}
+  }
   state_.status=1;state_.renderStatus=display_.visible()?1:0;state_.frame=frame;state_.match=serial_;state_.session=get<int>(0xA8B238);state_.chat=get<uint8_t>(0xA8BC60+25);state_.credits=get<int>(house+0x30C);
   uint32_t tactical=get<uint32_t>(0x887324);Projection proj;proj.width=state_.width=get<int>(0xA8EB84);proj.height=state_.height=get<int>(0xA8EB88);
   int priorX=state_.cameraX,priorY=state_.cameraY;
@@ -192,7 +201,7 @@ public:
    if(!anyKnown){probe_={layout::Stage::UnrecognizedUnitLayout,0xA8EC78,uint32_t(objects.size())};
     enemies_.count=0;
     idleProductionMask=idleAircraftTick=0;idleAircraftCount=aircraftTotal=0;state_.status=0;state_.labels=state_.typeCount=state_.swCount=0;
-    state_.threatCount=state_.crateCount=0;return state_;}
+    state_.threatCount=state_.crateCount=0;catalogueReady_=false;return state_;}
   }
   for(auto p:objects){int k=p?kind(p):-1;if(k<0||get<int>(p+0x6C)<=0||!get<uint8_t>(p+0x74)||get<uint8_t>(p+0x81)||!get<uint8_t>(p+0x90))continue;
    uint32_t owner=get<uint32_t>(p+0x21C),t=type(p,k);bool local=owner==house,selected=local&&get<uint8_t>(p+0x83);if(selected)++state_.selected;

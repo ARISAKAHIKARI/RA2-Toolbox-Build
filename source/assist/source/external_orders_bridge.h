@@ -39,12 +39,12 @@ static uint32_t readMapCell(int x,int y){
 }
 static bool publishPlanningWorld(uint32_t house,int frame,DWORD now){
  bool advanced=(sh->flags&(AdvancedInput|MagnetronInput))&&nativeCount>0;
- bool ore=((sh->flags|sh->plannerTracking)&AutoOreReturn)!=0;
+ bool ore=((sh->flags|sh->plannerTracking|sh->runtimeTracking)&AutoOreReturn)!=0;
  bool defense=(sh->flags&AntiTheft)!=0;
  if(defense){defense=false;Vec buildings=vec(0xA8EB40);for(int i=0;i<buildings.count;++i){uint32_t p=item(buildings,i);if(p&&own(p,house)&&get<int>(p+0x6C)>0&&!get<bool>(p+0x81)&&antiTheftBuilding(p)){defense=true;break;}}}
  if(ore&&!refreshOreConfig())return false;
  static long configSeen=-1;bool configChanged=configSeen!=oreConfigRevision;if(configChanged){planningFrame=-1;configSeen=oreConfigRevision;}
- if(!advanced&&!ore&&!defense&&!sh->plannerTracking&&!planningWorld.count&&!planningWorld.intentCount)return false;
+ if(!advanced&&!ore&&!defense&&!sh->plannerTracking&&!sh->runtimeTracking&&!planningWorld.count&&!planningWorld.intentCount)return false;
  static uint32_t lastMode;uint32_t mode=(advanced?(sh->flags&(AdvancedInput|MagnetronInput)):0)|(ore?AutoOreReturn:0)|(defense?AntiTheft:0);
  if(planningFrame==frame&&planningSerial==inputSerial&&lastMode==mode)return false;planningFrame=frame;planningSerial=inputSerial;if(lastMode!=mode)memset(weaponCache,0,sizeof weaponCache);lastMode=mode;
  auto&w=planningWorld;w.match=match;w.tick=now;w.frame=frame;w.count=w.intentCount=w.refineryCount=0;w.inputSerial=inputSerial;
@@ -162,6 +162,20 @@ static bool externalOrderValid(const planner::Order&o,uint32_t house){
  return true;
 }
 static outgoing::Batch planBatch;
+// Shared admission for host and Runtime decisions. Neither planner owns a
+// constructor, RNG, mission write, private hook or alternative event channel.
+static int admitPlannerOrder(const planner::Order&o,uint32_t house){
+ if(!externalOrderValid(o,house))return -1;
+ actorFrameArbiter.begin(match,get<int>(0xA8ED84));
+ if(!actorFrameArbiter.canIssue(o.unit,o.token)){++snap.planDeferred;return 0;}
+ if(!planningRoom(0)||!outgoingRoom()){++snap.planDeferred;return 0;}
+ const bool nearest=o.destinationTag==11&&(!sh||sh->megaQueueMode==0);
+ if(!nativeMission(house,o.unit,o.mission,o.target,o.destination,o.destinationTag,nearest?o.destination:0,nearest?11:0,
+    o.purpose==3?taskarbiter::Owner::Magnetron:(o.purpose==1||o.purpose==planner::DefenseOrder)?taskarbiter::Owner::Combat:taskarbiter::Owner::Ore))return -1;
+ consumePlanning(0);
+ if(o.purpose==1||o.purpose==3){int index=orderIndex(worldByID(o.unit));if(index>=0)nativeOrders[index].stopped=o.mission==6;}
+ return 1;
+}
 static void externalOrdersTick(uint32_t house,int frame,DWORD now){
  uint32_t request=sh->planRequest;
  if(request==sh->planAck)return;
@@ -179,20 +193,12 @@ static void externalOrdersTick(uint32_t house,int frame,DWORD now){
    if(!fresh()){result=-7;break;}
    const int i=planBatch.next;
    auto o=sh->plan[i];
-   if(!externalOrderValid(o,house)){planBatch.reject();continue;}
-   // Do not acknowledge unsent orders merely because another feature used
-   // the current frame's budget. Keep the mailbox owned until next frame.
-   if(!planningRoom(0)||!outgoingRoom()){++snap.planDeferred;return;}
+   compute::Feature family=o.purpose==planner::CombatOrder?compute::Advanced:o.purpose==planner::MagnetronOrder?compute::Magnetron:o.purpose==planner::DefenseOrder?compute::Defense:compute::Ore;
+   if(compute::inside(sh->computeApplied,family)){planBatch.reject();continue;}
    if(!fresh()){result=-7;break;}
-   const bool useExtraNearest=o.destinationTag==11&&(!sh||sh->megaQueueMode==0);
-   if(!nativeMission(house,o.unit,o.mission,o.target,o.destination,o.destinationTag,
-                    useExtraNearest?o.destination:0,useExtraNearest?11:0,
-                    o.purpose==3?taskarbiter::Owner::Magnetron:
-                    (o.purpose==1||o.purpose==planner::DefenseOrder)?taskarbiter::Owner::Combat:taskarbiter::Owner::Ore)){
-    planBatch.reject();continue;
-   }
-   planBatch.accept();consumePlanning(0);
-   if(o.purpose==1||o.purpose==3){int index=orderIndex(worldByID(o.unit));if(index>=0)nativeOrders[index].stopped=o.mission==6;}
+   int admitted=admitPlannerOrder(o,house);
+   if(!admitted)return;
+   if(admitted<0)planBatch.reject();else planBatch.accept();
   }
  }
  // On invalidation/restart, all remaining items are explicitly rejected.

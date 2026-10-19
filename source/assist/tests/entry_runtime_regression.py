@@ -68,8 +68,34 @@ class ReservationPolicy(C.Structure):
  _fields_=[(x,C.c_uint32) for x in 'match house parent parentID tick tab slots count'.split()]+[('queued',C.c_int32*5)]
 class ReservationClick(C.Structure):
  _fields_=[(x,C.c_uint32) for x in 'tick match house parent parentID tab index operation all'.split()]
+class LoadSoldier(C.Structure):
+ _fields_=[(x,C.c_uint32) for x in 'object id'.split()]+[(x,C.c_int32) for x in 'x y slots'.split()]+[('type',C.c_uint32),('kind',C.c_int32),('ticket',C.c_uint32),('queuedAt',C.c_uint32)]
+class LoadVehicle(C.Structure):
+ _fields_=[('object',C.c_uint32),('id',C.c_uint32)]+[(x,C.c_int32) for x in 'x y capacity used reserved'.split()]+[('sizeLimit',C.c_double),('passengers',C.c_int32)]
+class LoadComposition(C.Structure):
+ _fields_=[('types',C.c_uint32*512),('count',C.c_int32),('numbers',(C.c_int16*512)*128)]
+class LoadInput(C.Structure):
+ _fields_=[('match',C.c_uint32),('tick',C.c_uint32)]+[(x,C.c_int32) for x in 'frame ns nv mode radius'.split()]+[('soldiers',LoadSoldier*512),('vehicles',LoadVehicle*128),('tokens',C.c_uint32*512),('composition',LoadComposition),('compatible',(C.c_uint8*128)*512)]
+class LoadResult(C.Structure):
+ _fields_=[('match',C.c_uint32),('tick',C.c_uint32),('frame',C.c_int32),('count',C.c_int32),('assignment',C.c_int32*512)]
+class RepairView(C.Structure):
+ _fields_=[('hp',C.c_int32),('maxHp',C.c_int32)]+[(x,C.c_bool) for x in 'active alreadyRepairing issuedRecently'.split()]
+class RepairCandidate(C.Structure):
+ _fields_=[('id',C.c_uint32),('view',RepairView)]
+class RepairInput(C.Structure):
+ _fields_=[('match',C.c_uint32),('tick',C.c_uint32),('frame',C.c_int32),('count',C.c_int32),('items',RepairCandidate*2048)]
+class RepairResult(C.Structure):
+ _fields_=[('match',C.c_uint32),('tick',C.c_uint32),('frame',C.c_int32),('count',C.c_int32),('ids',C.c_uint32*2048)]
+class Quota(C.Structure):
+ _fields_=[(x,C.c_int32) for x in 'first second maximum'.split()]
+class QuotaEntry(C.Structure):
+ _fields_=[('id',C.c_char*24),('quota',Quota)]
+class QuotaConfig(C.Structure):
+ _fields_=[('defaults',Quota),('count',C.c_int32),('entries',QuotaEntry*512)]
 class Shared(C.Structure):
-    _fields_=[(x,C.c_uint32) for x in 'magic version pid owner heartbeat stop foreground flags scanMs request ack command arg arg2 requestToken requestTick requestMatch result count seq'.split()]+[('data',Snapshot),('techAllowed',C.c_uint8*512),('repairMs',C.c_uint32),('clockStart',C.c_uint64),('clockFrequency',C.c_uint64),('clockTick',C.c_uint32),('csSeq',C.c_int32),('csMatch',C.c_uint32),('csAllowed',C.c_uint8*512)]+[(x,C.c_uint32) for x in 'advancedKey pathTimeout veteranPercent elitePercent selectRequest selectAck selectIndex selectGlobal selectObjectID selectTick selectMatch selectResult selectCount csHoldKey'.split()]+[('worldSeq',C.c_int32),('world',World)]+[(x,C.c_uint32) for x in 'planRequest planAck planTick planMatch planCount planAccepted planResult'.split()]+[('plan',Order*24),('plannerTracking',C.c_uint32),('hostWindow',C.c_uint32),('hostNotifyPending',C.c_int32),('gameWakePending',C.c_int32),('magnetronKey',C.c_uint32),('planAcceptedMask',C.c_uint32),('planRejectedMask',C.c_uint32)]+[(x,C.c_uint32) for x in 'externalDisplay loadMode loadRadius enterKey airKey1 airKey2'.split()]+[('cooperativeSeq',C.c_int32),('cooperativeRequest',CooperativeRequest)]+[(x,C.c_uint32) for x in 'cooperativePlan cooperativeAck cooperativeSerial cooperativeTick'.split()]+[(x,C.c_int32) for x in 'cooperativeCount cooperativeAccepted cooperativeRejected cooperativeMode'.split()]+[('cooperativeOrders',CooperativeAssignment*512),('clickHookStatus',C.c_int32)]+[(x,C.c_uint32) for x in 'driverMode driverTarget megaQueueMode objectQueueMode'.split()]+[('driverStatus',C.c_int32),('driverTicks',C.c_uint32),('driverLastTick',C.c_uint32)]+[(x,C.c_uint32) for x in 'productionRequest productionAck productionMatch productionTick'.split()]+[('productionCount',C.c_int32),('productionTypes',C.c_int32*4),('planFrame',C.c_int32),('cooperativeFrame',C.c_int32),('cooperativeMatch',C.c_uint32),('cooperativeProcessed',C.c_int32),('cooperativeResult',C.c_int32),('cooperativeAcceptedBits',C.c_uint32*16),('pointer',PointerMailbox),('pointerPolicySeq',C.c_int32),('pointerPolicy',NativePolicy),('suppressedClick',SuppressedClick),('selectTypes',C.c_uint8*512),('oreConfigSeq',C.c_int32),('oreConfig',OreConfig),('featureConfigSeq',C.c_int32),('featureConfig',FeatureConfig),('c4Test',C.c_uint32),('advancedRangeCells',C.c_uint32),('renderReveal',C.c_uint32)]+[(x,C.c_uint32) for x in 'uiSoundRequest uiSoundAck uiSoundTick uiSoundMatch'.split()]+[('reservePolicySeq',C.c_int32),('reservePolicy',ReservationPolicy),('reserveInput',C.c_uint32),('reserveConsumed',C.c_uint32),('reserveClick',ReservationClick)]
+    _fields_=[(x,C.c_uint32) for x in 'magic version pid owner heartbeat stop foreground flags scanMs request ack command arg arg2 requestToken requestTick requestMatch result count seq'.split()]+[('data',Snapshot),('techAllowed',C.c_uint8*512),('repairMs',C.c_uint32),('clockStart',C.c_uint64),('clockFrequency',C.c_uint64),('clockTick',C.c_uint32),('csSeq',C.c_int32),('csMatch',C.c_uint32),('csAllowed',C.c_uint8*512)]+[(x,C.c_uint32) for x in 'advancedKey pathTimeout veteranPercent elitePercent selectRequest selectAck selectIndex selectGlobal selectObjectID selectTick selectMatch selectResult selectCount csHoldKey'.split()]+[('worldSeq',C.c_int32),('world',World)]+[(x,C.c_uint32) for x in 'planRequest planAck planTick planMatch planCount planAccepted planResult'.split()]+[('plan',Order*24),('plannerTracking',C.c_uint32),('hostWindow',C.c_uint32),('hostNotifyPending',C.c_int32),('gameWakePending',C.c_int32),('magnetronKey',C.c_uint32),('planAcceptedMask',C.c_uint32),('planRejectedMask',C.c_uint32)]+[(x,C.c_uint32) for x in 'externalDisplay loadMode loadRadius enterKey airKey1 airKey2'.split()]+[('cooperativeSeq',C.c_int32),('cooperativeRequest',CooperativeRequest)]+[(x,C.c_uint32) for x in 'cooperativePlan cooperativeAck cooperativeSerial cooperativeTick'.split()]+[(x,C.c_int32) for x in 'cooperativeCount cooperativeAccepted cooperativeRejected cooperativeMode'.split()]+[('cooperativeOrders',CooperativeAssignment*512),('clickHookStatus',C.c_int32)]+[(x,C.c_uint32) for x in 'driverMode driverTarget megaQueueMode objectQueueMode'.split()]+[('driverStatus',C.c_int32),('driverTicks',C.c_uint32),('driverLastTick',C.c_uint32)]+[(x,C.c_uint32) for x in 'productionRequest productionAck productionMatch productionTick'.split()]+[('productionCount',C.c_int32),('productionTypes',C.c_int32*4),('planFrame',C.c_int32),('cooperativeFrame',C.c_int32),('cooperativeMatch',C.c_uint32),('cooperativeProcessed',C.c_int32),('cooperativeResult',C.c_int32),('cooperativeAcceptedBits',C.c_uint32*16),('pointer',PointerMailbox),('pointerPolicySeq',C.c_int32),('pointerPolicy',NativePolicy),('suppressedClick',SuppressedClick),('selectTypes',C.c_uint8*512),('oreConfigSeq',C.c_int32),('oreConfig',OreConfig),('featureConfigSeq',C.c_int32),('featureConfig',FeatureConfig),('c4Test',C.c_uint32),('advancedRangeCells',C.c_uint32),('renderReveal',C.c_uint32)]+[(x,C.c_uint32) for x in 'uiSoundRequest uiSoundAck uiSoundTick uiSoundMatch'.split()]+[('reservePolicySeq',C.c_int32),('reservePolicy',ReservationPolicy),('reserveInput',C.c_uint32),('reserveConsumed',C.c_uint32),('reserveClick',ReservationClick)]+[(x,C.c_uint32) for x in 'computeRequested computeApplied advancedScanHz advancedPriority runtimeTracking runtimePlannerMicros'.split()]+[('loadTask',C.c_uint32),('loadComputed',C.c_uint32),('loadInput',LoadInput),('loadResult',LoadResult),('repairTask',C.c_uint32),('repairComputed',C.c_uint32),('repairInput',RepairInput),('repairResult',RepairResult),('quotaConfigSeq',C.c_int32),('quotaConfig',QuotaConfig),('runtimeCoopDone',C.c_uint32),('runtimeCoopAccepted',C.c_int32),('runtimeCoopRejected',C.c_int32)]
+    def __init__(self,*args,**kw):
+        super().__init__(*args,**kw);self.computeRequested=192;self.computeApplied=192;self.advancedScanHz=10
 
 u=Uc(UC_ARCH_X86,UC_MODE_32)
 fixture_paths=globals().get("fixture_paths",sys.argv[1:3])
@@ -137,6 +163,10 @@ def on_code(uc,a,size,_):
         elif n=='WaitForSingleObject':ret(0 if arg(0)-0x50000000 in dead_threads or arg(0) in dead_process_handles or (arg(0)==0x1234 and process_dead) else 258,2)
         elif n=='GetLastError':ret(5 if fail_owner_open else 8 if fail_watchdog_timer or fail_watchdog_pin else 0,0)
         elif n=='GetCurrentProcess':ret(0xffffffff,0)
+        elif n=='GetProcessHeap':ret(1,0)
+        elif n=='HeapAlloc':ret(alloc(arg(2)),3)
+        elif n=='HeapFree':ret(1,3)
+        elif n=='RaiseException':raise AssertionError('Runtime allocation fault '+hex(arg(0)))
         elif n in ('GetTickCount','timeGetTime'):ret(clock,0)
         elif n=='OpenFileMappingW':
             name=string_at(arg(2),True);mapping_names.append(name)
@@ -167,7 +197,7 @@ def on_code(uc,a,size,_):
             start,value,count=arg(0),arg(1)&255,arg(2);index=bytes(u.mem_read(start,count)).find(bytes([value]));ret(start+index if index>=0 else 0,0)
         elif n=='memcmp':
             a1,a2,count=arg(0),arg(1),arg(2);v1,v2=bytes(u.mem_read(a1,count)),bytes(u.mem_read(a2,count));ret((v1>v2)-(v1<v2),0)
-        elif n=='memcpy':u.mem_write(arg(0),bytes(u.mem_read(arg(1),arg(2))));ret(arg(0),0)
+        elif n in ('memcpy','memmove'):u.mem_write(arg(0),bytes(u.mem_read(arg(1),arg(2))));ret(arg(0),0)
         elif n=='memset':u.mem_write(arg(0),bytes([arg(1)&255])*arg(2));ret(arg(0),0)
         elif n=='VirtualAlloc':
             ret(HEAP+0x3e0000+va_count*4096,4);va_count+=1
@@ -279,6 +309,21 @@ if __name__ == '__main__' and '--clock-baseline' not in sys.argv:
  dead_threads.add(776)
  print('PASS initial Cursor binding cannot be stolen while alive; next Assist bind requires thread termination')
 
+# Initialize the actual compiled Planner object as the DLL CRT does. Locate
+# its constructor call through the unique final global-initializer tail; this
+# does not mock the Planner implementation or claim a Windows loader test.
+ctor_calls=[]
+for section in dll.sections:
+ if not section.Characteristics&0x20000000:continue
+ data=section.get_data()
+ for off in range(len(data)-24):
+  code=data[off:off+24]
+  if code[0]==0xb9 and code[5]==0xe8 and code[10]==0x68 and code[15]==0xe8 and code[20:]==bytes.fromhex('83c404c3'):
+   objaddr=struct.unpack_from('<I',code,1)[0]
+   if dll.OPTIONAL_HEADER.ImageBase+0x70000<=objaddr<dll.OPTIONAL_HEADER.ImageBase+dll.OPTIONAL_HEADER.SizeOfImage:
+    ctor_calls.append((dll.OPTIONAL_HEADER.ImageBase+section.VirtualAddress+off+10+struct.unpack_from('<i',code,6)[0],objaddr))
+assert len(ctor_calls)==1,('Planner initializer tail',ctor_calls)
+run(ctor_calls[0][0],(),ctor_calls[0][1])
 s=Shared();s.magic=0x41533130;s.advancedRangeCells=2;s.version=int.from_bytes(dll.get_data(next(e.address for e in dll.DIRECTORY_ENTRY_EXPORT.symbols if e.name==b'AssistProtocolInfo'),4),'little');s.pid=123;s.heartbeat=clock;s.foreground=1;s.flags=1|2|4|16|32;s.scanMs=100;s.repairMs=2000
 u.mem_write(SH,bytes(s));entry=dll.OPTIONAL_HEADER.ImageBase+next(e.address for e in dll.DIRECTORY_ENTRY_EXPORT.symbols if e.name==b'GameRuntimeHook')
 u.mem_write(SH+0x3e0000,struct.pack('<10I',0x52543236,3,123,456,1,1,1,clock,0,0))

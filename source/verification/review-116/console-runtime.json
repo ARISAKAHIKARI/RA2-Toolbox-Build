@@ -1,0 +1,40 @@
+{
+  "scope": "Actual DLL SP queue/pause/chat tests; OS, game world and time are synthetic.",
+  "inputs": {
+    "GameRuntime.dll": "c2d0a16edbda95c7a69c70c72632d2096b9450fa8e0f460ba6eba1bc22f175bc"
+  },
+  "results": [
+    {
+      "case": "sp_0_message_ingress_authenticates_match",
+      "status": "PASS"
+    },
+    {
+      "case": "sp_0_pause_preserves_identity_and_pending_request",
+      "status": "PASS"
+    },
+    {
+      "case": "sp_0_resume_commits_once_to_DoList_without_frame_hook",
+      "status": "PASS"
+    },
+    {
+      "case": "sp_0_chat_has_explicit_rejection_no_duplicate_event",
+      "status": "PASS"
+    },
+    {
+      "case": "sp_5_message_ingress_authenticates_match",
+      "status": "PASS"
+    },
+    {
+      "case": "sp_5_pause_preserves_identity_and_pending_request",
+      "status": "PASS"
+    },
+    {
+      "case": "sp_5_resume_commits_once_to_DoList_without_frame_hook",
+      "status": "PASS"
+    },
+    {
+      "case": "sp_5_chat_has_explicit_rejection_no_duplicate_event",
+      "status": "PASS"
+    }
+  ]
+}

@@ -15,6 +15,9 @@
 namespace external { namespace discovery {
 constexpr uint32_t YrppGameHwndAddress = assist::messagequery::YrppGameHwndAddr;
 
+template<class Reader> auto windowRead(Reader&r,uint32_t a,void*p,size_t n,int)->decltype(r.readFresh(a,p,n)){return r.readFresh(a,p,n);}
+template<class Reader> bool windowRead(Reader&r,uint32_t a,void*p,size_t n,long){return r.read(a,p,n);}
+
 inline bool isGameName(const wchar_t* text){
  if(!text)return false;
  std::wstring name(text);
@@ -57,7 +60,7 @@ template <class ProcessReader>
 inline HWND resolveYrppWindow(ProcessReader& reader,DWORD pid,HWND fallback=nullptr,DWORD* outThread=nullptr,bool* fromYrpp=nullptr){
  if(fromYrpp)*fromYrpp=false;
  uint32_t rawHwnd=0;
- if(pid&&reader.read(YrppGameHwndAddress,&rawHwnd,sizeof rawHwnd)&&rawHwnd){
+ if(pid&&windowRead(reader,YrppGameHwndAddress,&rawHwnd,sizeof rawHwnd,0)&&rawHwnd){
   HWND w=reinterpret_cast<HWND>(static_cast<uintptr_t>(rawHwnd));
   DWORD wpid=0;DWORD wtid=GetWindowThreadProcessId(w,&wpid);
   if(wtid&&wpid==pid){

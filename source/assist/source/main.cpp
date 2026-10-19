@@ -53,6 +53,9 @@
 #endif
 using namespace assist;using namespace Gdiplus;
 extern "C" __declspec(dllexport) const uint32_t AssistHostProtocolInfo[2]={Version,sizeof(Shared)};
+namespace minimap {static void hide();static void clear();static void destroy();}
+static uint32_t computeRequested=compute::Default;
+static bool minimapEnabled=false;static int minimapScale=200;
 static void hideAircraftButton();static void destroyAircraftButton();
 static void serviceAirPath();static void resetAirPath();static void airPathResult(int,int,uint32_t,uint32_t);
 static void serviceConstruction();static void hideConstruction();static void resetConstruction();static void destroyConstruction();static void constructionResult(int,int,uint32_t,uint32_t);
@@ -481,11 +484,25 @@ static void logPlanning(const planner::World&w,const wchar_t* reason){
   L" planRequest="+std::to_wstring(shared->planRequest)+L" planAck="+std::to_wstring(shared->planAck)+
   L" result="+std::to_wstring(shared->planResult)+L" accepted="+std::to_wstring(shared->planAcceptedMask)+L" rejected="+std::to_wstring(shared->planRejectedMask));
 }
+static void serviceCalculationTasks(){
+ if(!shared||!commandFresh(GetTickCount()))return;
+ if(shared->loadTask!=shared->loadComputed){uint32_t task=shared->loadTask;MemoryBarrier();
+  static auto input=std::make_unique<compute::LoadInput>();static auto work=std::make_unique<loading::Workspace>();
+  memcpy(input.get(),&shared->loadInput,sizeof(*input));MemoryBarrier();if(task!=shared->loadTask)return;
+  auto result=compute::load(*input,*work);
+  if(task==shared->loadTask){shared->loadResult=result;MemoryBarrier();shared->loadComputed=task;wakeGame();}
+ }
+ if(shared->repairTask!=shared->repairComputed){uint32_t task=shared->repairTask;MemoryBarrier();
+  static auto input=std::make_unique<compute::RepairInput>();memcpy(input.get(),&shared->repairInput,sizeof(*input));MemoryBarrier();if(task!=shared->repairTask)return;
+  auto result=compute::repair(*input);
+  if(task==shared->repairTask){shared->repairResult=result;MemoryBarrier();shared->repairComputed=task;wakeGame();}
+ }
+}
 static void servicePlanner(){
  if(!shared||!enabled||snap.status!=1||!commandFresh(GetTickCount()))return;
- snap.oreYielded=tacticalPlanner.yielded;snap.oreQueued=tacticalPlanner.queued;snap.oreDocking=tacticalPlanner.docking;snap.oreIssued=tacticalPlanner.issued;
- snap.oreDelivered=tacticalPlanner.oreDelivered;snap.oreUnverified=tacticalPlanner.oreUnverified;
- snap.magnetShots=tacticalPlanner.magnetShots;snap.magnetUnverified=tacticalPlanner.magnetUnverified;
+ if(!compute::inside(shared->computeApplied,compute::Ore)){snap.oreYielded=tacticalPlanner.yielded;snap.oreQueued=tacticalPlanner.queued;snap.oreDocking=tacticalPlanner.docking;snap.oreIssued=tacticalPlanner.issued;
+ snap.oreDelivered=tacticalPlanner.oreDelivered;snap.oreUnverified=tacticalPlanner.oreUnverified;}
+ if(!compute::inside(shared->computeApplied,compute::Magnetron)){snap.magnetShots=tacticalPlanner.magnetShots;snap.magnetUnverified=tacticalPlanner.magnetUnverified;}
  shared->plannerTracking=tacticalPlanner.trackingFlags();
  uint32_t receipt=shared->planAck;
  if(receipt!=plannerAck){MemoryBarrier();plannerAck=receipt;uint32_t accepted=shared->planAcceptedMask,rejected=shared->planRejectedMask;
@@ -512,11 +529,11 @@ static void servicePlanner(){
  worldRevision=seq;
  if(!freshness::valid(w.match,snap.match,w.tick,w.frame,GetTickCount(),snap.frame,freshness::Tactical)||snap.chat){logPlanning(w,snap.chat?L"chat":L"stale-source");wakeGame();return;}
  LARGE_INTEGER begin{},end{},frequency{};QueryPerformanceCounter(&begin);
- submittedPlan=tacticalPlanner.step(w,shared->flags,veteranPercent,elitePercent,pathTimeout,advancedScanHz,advancedTargetPriority,advancedRangeCells);shared->plannerTracking=tacticalPlanner.trackingFlags();
+ submittedPlan=tacticalPlanner.step(w,compute::plannerFlags(shared->flags,shared->computeApplied,false),veteranPercent,elitePercent,pathTimeout,advancedScanHz,advancedTargetPriority,advancedRangeCells);shared->plannerTracking=tacticalPlanner.trackingFlags();
  QueryPerformanceCounter(&end);QueryPerformanceFrequency(&frequency);plannerMicros=frequency.QuadPart>0?DWORD((end.QuadPart-begin.QuadPart)*1000000/frequency.QuadPart):0;
- snap.oreYielded=tacticalPlanner.yielded;snap.oreQueued=tacticalPlanner.queued;snap.oreDocking=tacticalPlanner.docking;snap.oreIssued=tacticalPlanner.issued;
- snap.oreDelivered=tacticalPlanner.oreDelivered;snap.oreUnverified=tacticalPlanner.oreUnverified;
- snap.magnetShots=tacticalPlanner.magnetShots;snap.magnetUnverified=tacticalPlanner.magnetUnverified;
+ if(!compute::inside(shared->computeApplied,compute::Ore)){snap.oreYielded=tacticalPlanner.yielded;snap.oreQueued=tacticalPlanner.queued;snap.oreDocking=tacticalPlanner.docking;snap.oreIssued=tacticalPlanner.issued;
+ snap.oreDelivered=tacticalPlanner.oreDelivered;snap.oreUnverified=tacticalPlanner.oreUnverified;}
+ if(!compute::inside(shared->computeApplied,compute::Magnetron)){snap.magnetShots=tacticalPlanner.magnetShots;snap.magnetUnverified=tacticalPlanner.magnetUnverified;}
  logPlanning(w,submittedPlan.empty()?L"no-order":L"planned");
  if(submittedPlan.empty())return;
  // Planning is stateful. Expiration makes jobs eligible again without
@@ -527,7 +544,7 @@ static void servicePlanner(){
  memcpy(shared->plan,submittedPlan.data(),submittedPlan.size()*sizeof(planner::Order));shared->planCount=int(submittedPlan.size());shared->planMatch=w.match;shared->planTick=w.tick;shared->planFrame=w.frame;submittedPlanFrame=w.frame;
  MemoryBarrier();InterlockedIncrement((volatile LONG*)&shared->planRequest);wakeGame();
 }
-struct RetiredBridge {Shared*state;HANDLE mapping;HMODULE module;gameinput::Subscription hook;HWND window;DWORD lastWake;DWORD thread;};
+struct RetiredBridge {Shared*state;HANDLE mapping;HMODULE module;gameinput::Subscription hook;HWND window;DWORD lastWake;DWORD thread;std::shared_ptr<const external::ProcessConnection> process;};
 static std::vector<RetiredBridge> retiredBridges;
 static void wakeRetiredBridge(RetiredBridge&r){
  // HWND destruction does not destroy a thread's message queue. Wake that
@@ -544,17 +561,17 @@ static void wakeRetiredBridge(RetiredBridge&r){
  gameinput::release(gameentry::Client::Assist,r.hook);r.hook=cleanup;r.window=candidate.window;r.thread=candidate.thread;
  gameinput::wake(r.hook);
 }
-static void reapBridges(){DWORD now=GetTickCount();for(size_t i=0;i<retiredBridges.size();){auto&r=retiredBridges[i];HANDLE process=OpenProcess(SYNCHRONIZE,FALSE,r.state->pid);bool dead=process?WaitForSingleObject(process,0)==WAIT_OBJECT_0:GetLastError()==ERROR_INVALID_PARAMETER;if(process)CloseHandle(process);
+static void reapBridges(){DWORD now=GetTickCount();for(size_t i=0;i<retiredBridges.size();){auto&r=retiredBridges[i];bool dead=r.process&&!r.process->alive();if(!r.process){HANDLE process=OpenProcess(SYNCHRONIZE,FALSE,r.state->pid);dead=process?WaitForSingleObject(process,0)==WAIT_OBJECT_0:GetLastError()==ERROR_INVALID_PARAMETER;if(process)CloseHandle(process);}
  if(r.state->stop==2||dead){DWORD finished=r.state->pid;gameinput::release(gameentry::Client::Assist,r.hook);UnmapViewOfFile(r.state);CloseHandle(r.mapping);retiredBridges.erase(retiredBridges.begin()+i);if(finished==pid)bridgeRetryAt=0;}
  else{if(DWORD(now-r.lastWake)>=100){r.lastWake=now;wakeRetiredBridge(r);}++i;}}
 }
 static void releaseBridge(){
  tacticalPlanner.reset();submittedPlan.clear();worldRevision=-1;plannerAck=0;hasSelection=false;selectionAck=0;cooperativeDelivered=cooperativeReceipt=0;retryCooperative=false;submittedCooperative.clear();acceptedCooperative.clear();
- if(shared&&hook){shared->stop=1;wakeGame();retiredBridges.push_back({shared,mapping,module,hook,game,GetTickCount(),gameThread});}
+ if(shared&&hook){shared->stop=1;wakeGame();retiredBridges.push_back({shared,mapping,module,hook,game,GetTickCount(),gameThread,externalReader.connectionIdentity()});}
  else{if(hook)gameinput::release(gameentry::Client::Assist,hook);if(shared)UnmapViewOfFile(shared);if(mapping)CloseHandle(mapping);}
  hook=0;shared=nullptr;mapping=nullptr;module=nullptr;lastData=attachAt=lastPulse=0;incoming={};snapshotSeq=~0u;lastReceiptWrite=lastReceiptMatch=0;reapBridges();
 }
-static void detach(){hideAircraftButton();resetConstruction();resetAirPath();hotkeyPending.clear();pointerMatches.clear();
+static void detach(){minimap::clear();hideAircraftButton();resetConstruction();resetAirPath();hotkeyPending.clear();pointerMatches.clear();
  tacticalPlanner.reset();submittedPlan.clear();worldRevision=-1;plannerAck=0;hasSelection=false;selectionAck=0;
  critical(L"detach pid="+std::to_wstring(pid));commandQueue.clear();inFlightMatch=0;inFlightRetries=0;sentAt=0;lastStallLog=0;typeTap.clear();
  releaseBridge();externalData=nullptr;externalSampler.reset();externalReader.close();externalAt=0;
@@ -582,7 +599,7 @@ static bool ensureBridge(){
  if(!game||bridgeBlocked||(bridgeRetryAt&&int32_t(now-bridgeRetryAt)<0))return false;
  ++bridgeAttempts;bridgeRetryAt=now+(bridgeAttempts>=3?30000:2000);
  critical(L"bridge-connect-attempt="+std::to_wstring(bridgeAttempts)+L" pid="+std::to_wstring(pid)+L" thread="+std::to_wstring(gameThread));
- wchar_t n[100];swprintf(n,100,L"Local\\RA2Assist_v049_%lu",pid);
+ wchar_t n[100];swprintf(n,100,L"Local\\RA2Assist_v050_%lu",pid);
  mapping=CreateFileMappingW(INVALID_HANDLE_VALUE,nullptr,PAGE_READWRITE,0,sizeof(Shared),n);
  DWORD mappingError=GetLastError();if(!mapping)return bridgeFailed(L"创建命令共享内存失败",mappingError);
  if(mappingError==ERROR_ALREADY_EXISTS){
@@ -596,7 +613,7 @@ static bool ensureBridge(){
    if(valid&&(ours||ownerDead)){
     bool pending=false;for(const auto&r:retiredBridges)if(r.state->pid==pid)pending=true;
     if(!pending){prior->stop=1;HMODULE cleanupModule=gameinput::runtimeModule();auto cleanupHook=gameinput::install(gameentry::Client::Assist,gameThread,pid,game);
-     if(cleanupHook){retiredBridges.push_back({prior,mapping,cleanupModule,cleanupHook,game,now-100,gameThread});prior=nullptr;mapping=nullptr;reapBridges();}
+     if(cleanupHook){retiredBridges.push_back({prior,mapping,cleanupModule,cleanupHook,game,now-100,gameThread,externalReader.connectionIdentity()});prior=nullptr;mapping=nullptr;reapBridges();}
     }
    }
    std::wstring reason=!valid?L"已有命令映射的大小/协议不匹配；请退出游戏和旧工具箱，再启动新版本。":
@@ -608,7 +625,7 @@ static bool ensureBridge(){
  }
  shared=(Shared*)MapViewOfFile(mapping,FILE_MAP_ALL_ACCESS,0,0,sizeof(Shared));if(!shared){DWORD error=GetLastError();releaseBridge();return bridgeFailed(L"映射命令共享内存失败",error);}
  memset(shared,0,sizeof *shared);shared->magic=Magic;shared->version=Version;shared->pid=pid;shared->owner=GetCurrentProcessId();shared->hostWindow=uint32_t(uintptr_t(ui));shared->heartbeat=now;shared->flags=flags();shared->scanMs=8;shared->repairMs=repairMs;shared->externalDisplay=1;shared->driverMode=schedulerMode;shared->driverTarget=schedulerTarget;
- shared->megaQueueMode=megaQueueMode;shared->objectQueueMode=objectQueueMode;shared->driverStatus=0;syncAdditional();
+ shared->megaQueueMode=megaQueueMode;shared->objectQueueMode=objectQueueMode;shared->driverStatus=0;syncAdditional();syncTypeConfig();
  shared->clockTick=now;shared->clockStart=0;shared->clockFrequency=0;
  module=gameinput::runtimeModule();
  if(module){
@@ -863,6 +880,7 @@ static void serviceAirPath(){airway::service();}
 static void resetAirPath(){airway::reset();}
 static void airPathResult(int r,int n,uint32_t id,uint32_t token){airway::result(r,n,id,token);}
 #include "aircraft_indicator.h"
+#include "minimap_overlay.h"
 static void requestReservationSound(){
  // Best-effort UI feedback must never occupy or delay a production order.
  if(!shared||!commandFresh(GetTickCount())||shared->uiSoundRequest!=shared->uiSoundAck)return;
@@ -891,12 +909,12 @@ struct Surface{HDC dc{};HBITMAP bitmap{},old{};BYTE*bits{};int w{},h{};~Surface(
 static void paint(){
  ++displayCounters.paints;
  if(foregroundGame())sampleExternal(GetTickCount()); // Display cadence is independent of 16 ms command servicing.
- if(!foregroundGame()||snap.renderStatus!=1){ShowWindow(overlay,SW_HIDE);hideAircraftButton();hideConstruction();return;}
+ if(!foregroundGame()||snap.renderStatus!=1){ShowWindow(overlay,SW_HIDE);hideAircraftButton();minimap::hide();hideConstruction();return;}
  DWORD now=sampleClock(shared),renderNow=sampleRenderClock(shared);int labelCount=motion.render(renderNow,labelViews);
  const auto&enemyFrame=externalSampler.enemyMarkers();
  int enemyCount=extra.enemyMarkers&&externalData&&external::enemies::fresh(enemyFrame,externalData->match,renderNow)?std::min(enemyFrame.count,enemyMotion.render(renderNow,enemyViews)):0;
  RECT r{};GetClientRect(game,&r);POINT origin{};ClientToScreen(game,&origin);
- updateAircraftButton(origin,r);
+ updateAircraftButton(origin,r);minimap::update(origin,r);
  auto airLines=airway::lines();
  auto nativeBadges=buildreserve::nativeBadges();
  uint32_t idleTabs=(flags()&Production)?externalSampler.idleProductionMask:0;
@@ -1133,7 +1151,17 @@ static void updateModeStatus(DWORD now){
 }
 #include "shift_click_host.h"
 static void tick(){reapBridges();logBridgeHealth();DWORD now=GetTickCount();static DWORD lastControl;if(lastControl&&DWORD(now-lastControl)<8)return;lastControl=now;updateModeStatus(now);if(keysRegistered!=(enabled&&foregroundGame()&&snap.status==1&&!snap.chat))registerKeys();if(!enabled){clockState(false,fps);return;}
- if(game&&DWORD(now-lastProcessCheck)>=250){lastProcessCheck=now;if(!boundGameAlive()){if(pid&&externalReader.alive()){game=nullptr;lastFind=now-2000;}else{detach();lastFind=now-2000;}}}
+ if(pid&&DWORD(now-lastProcessCheck)>=250){lastProcessCheck=now;
+  if(!externalReader.alive()){detach();lastFind=now-2000;}
+  else {DWORD nextThread=0;bool authoritative=false;
+   HWND next=external::discovery::resolveYrppWindow(externalReader,pid,boundGameAlive()?game:nullptr,&nextThread,&authoritative);
+   if(next&&(next!=game||nextThread!=gameThread)){
+    critical(L"game window rebound pid="+std::to_wstring(pid)+L" thread="+std::to_wstring(nextThread));
+    releaseBridge();commandQueue.clear();sentAt=0;inFlightMatch=0;resetConstruction();resetAirPath();
+    game=next;gameThread=nextThread;gameWindowFromYrpp=authoritative;bridgeRetryAt=0;bridgeBlocked=false;bridgeAttempts=0;
+   }else if(!next){game=nullptr;lastFind=now-2000;}
+  }
+ }
  if(!game){
   clockState(false,fps);
   if(pid&&externalReader.valid()){
@@ -1170,8 +1198,14 @@ static void tick(){reapBridges();logBridgeHealth();DWORD now=GetTickCount();stat
   shared->heartbeat=now;shared->foreground=foregroundGame();shared->flags=configured;syncAdditional();shared->scanMs=8;shared->repairMs=repairMs;
   DWORD wakePeriod=shared->foreground?16:((configured|shared->plannerTracking)&(AdvancedInput|MagnetronInput|AutoOreReturn|AirWaypoints|AntiTheft)?64:500);
   if(DWORD(now-lastPulse)>=wakePeriod)wakeGame();
-  readSnapshot();schedulerDiagnostic();serviceSelection();result();serviceCommandQueue(GetTickCount());servicePlanner();serviceCooperative();servicePointer();serviceHotkeyBatch();serviceConstruction();serviceAirPath();
-  now=GetTickCount(); // snapshot/queue services may have advanced lastData/sentAt.
+  readSnapshot();schedulerDiagnostic();serviceSelection();result();serviceCommandQueue(GetTickCount());serviceCalculationTasks();servicePlanner();serviceCooperative();servicePointer();serviceHotkeyBatch();serviceConstruction();serviceAirPath();
+  if(ready&&GetDlgItem(ui,833)){
+  std::wstring text=L"当前生效：";for(int i=0;i<compute::Count;++i){if(i)text+=L" / ";text+=compute::label(i);text+=compute::inside(shared->computeApplied,compute::Feature(i))?L" 内":L" 外";}
+  if(shared->computeApplied!=computeRequested)text+=L"\r\n配置已修改，下一局生效。";
+  text+=L"\r\n游戏内规划耗时 "+std::to_wstring(shared->runtimePlannerMicros)+L" μs（会占用游戏线程）。";
+  static std::wstring previous;if(previous!=text){previous=text;SetDlgItemTextW(ui,833,text.c_str());}
+ }
+ now=GetTickCount(); // snapshot/queue services may have advanced lastData/sentAt.
   if(uninitializedBridgeTimedOut()){
    critical(L"uninitialized command bridge timeout; retry before any match is authenticated");logBridgeHealth(true);releaseBridge();
   }else if(lastData&&DWORD(now-lastData)>8000){
@@ -1200,7 +1234,7 @@ static void tick(){reapBridges();logBridgeHealth();DWORD now=GetTickCount();stat
  }
  if(lastData&&snap.inputPatchMask!=lastLoggedPatchMask){lastLoggedPatchMask=snap.inputPatchMask;diag(L"hook patches installed mask="+std::to_wstring(lastLoggedPatchMask));}
  clockState(foregroundGame()&&snap.renderStatus==1&&enabled,fps);
- if(!foregroundGame()||snap.renderStatus!=1){ShowWindow(overlay,SW_HIDE);hideAircraftButton();hideConstruction();}
+ if(!foregroundGame()||snap.renderStatus!=1){ShowWindow(overlay,SW_HIDE);hideAircraftButton();minimap::hide();hideConstruction();}
  if(snap.status==-2){setStatus(L"命令接口异常，指令已停用；只读显示独立运行。");if(snap.renderStatus!=1)ShowWindow(overlay,SW_HIDE);return;}
  if(snap.status==-1){setStatus(L"命令接口与已核对版本不一致，指令已停用；只读显示独立运行。");if(snap.renderStatus!=1)ShowWindow(overlay,SW_HIDE);return;}
  if(snap.status!=1){
@@ -1250,7 +1284,7 @@ static void scrollTo(int position){scrollY=position;layoutPanel();InvalidateRect
 static void finalizeTacticalLayout(){
  for(auto&c:pageControls)if(c.page==0&&c.rect.y>=496&&c.rect.y<990)c.page=11;
  int y=uilayout::BodyTop+12;
- for(int section:{10,0,1,11,2,5,6,12,3,4}){
+ for(int section:{10,0,1,11,2,5,6,12,13,3,4}){
   std::vector<size_t> items;for(size_t i=0;i<pageControls.size();++i)if(pageControls[i].page==section)items.push_back(i);
   std::stable_sort(items.begin(),items.end(),[](size_t a,size_t b){return pageControls[a].rect.y<pageControls[b].rect.y;});
   if(items.empty())continue;if(section>=10)y+=20;
@@ -1269,7 +1303,7 @@ static void finalizeTacticalLayout(){
 static HWND placedControl(uilayout::Placement placement,const wchar_t*cls,const wchar_t*text,int id,DWORD style){
  if(!wcscmp(text,L"自动保存"))return HWND{};
  auto r=placement.rect;HWND c=CreateWindowExW((!wcscmp(cls,L"EDIT")||!wcscmp(cls,L"LISTBOX"))?WS_EX_CLIENTEDGE:0,cls,text,WS_CHILD|WS_VISIBLE|WS_CLIPSIBLINGS|style,r.x,r.y,r.w,r.h,ui,(HMENU)(INT_PTR)id,GetModuleHandleW(nullptr),nullptr);
- SendMessageW(c,WM_SETFONT,(WPARAM)font,TRUE);modernui::style(c);if(id==989||(id>=900&&id<=902))modernui::heading(c);pageControls.push_back({c,placement.page,r,!wcscmp(cls,L"COMBOBOX")?26:r.h});return c;
+ SendMessageW(c,WM_SETFONT,(WPARAM)font,TRUE);modernui::style(c);if(id==989||id==832||(id>=900&&id<=902))modernui::heading(c);pageControls.push_back({c,placement.page,r,!wcscmp(cls,L"COMBOBOX")?26:r.h});return c;
 }
 static HWND control(const wchar_t*cls,const wchar_t*text,int x,int y,int w,int h,int id,DWORD style=0){return placedControl(uilayout::legacy(id,{x,y,w,h}),cls,text,id,style);}
 static HWND pageControl(int page,const wchar_t*cls,const wchar_t*text,int x,int y,int w,int h,int id,DWORD style=0){return placedControl({page,{x,y+8,w,h}},cls,text,id,style);}
@@ -1293,12 +1327,30 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
  pageControl(10,L"STATIC",L"常用操作与快捷键",20,0,605,30,900);
  pageControl(11,L"STATIC",L"自动化与单位行为",20,0,605,30,901);
  pageControl(12,L"STATIC",L"显示与配置",20,0,605,30,902);
+ pageControl(13,L"STATIC",L"计算位置 · 每项独立配置",20,0,605,30,832);
+ pageControl(13,L"STATIC",L"自动保存，下一局生效。下令统一由 GameRuntime 校验并构造事件。",20,42,605,26,0);
+ for(int i=0;i<compute::Count;++i){int y=82+i*40;
+  pageControl(13,L"STATIC",compute::label(i),20,y+2,250,24,0);
+  auto h=pageControl(13,L"COMBOBOX",L"",290,y,335,160,840+i,CBS_DROPDOWNLIST|WS_TABSTOP);
+  for(auto text:{L"外部读取 / 计算 → 统一游戏事件",L"GameRuntime 游戏内计算"})SendMessageW(h,CB_ADDSTRING,0,(LPARAM)text);
+  SendMessageW(h,CB_SETCURSEL,(computeRequested>>i)&1u,0);
+ }
+ pageControl(13,L"STATIC",L"上方八项支持真实双路径。原版合法性查询 / 事件构造固定在游戏线程。",20,414,605,44,0);
+ pageControl(13,L"STATIC",L"其他功能当前固定：卸载 / 逃生 / 选兵 / 原生判断在 Runtime；预定 / Z 路径 / 显示统计在外部。",20,466,605,48,0);
+ pageControl(13,L"STATIC",L"当前生效：等待新对局",20,526,605,104,833);
+
  pageControl(12,L"STATIC",L"载员 / 铁幕文字缩放 %",20,42,250,24,0);
  pageControl(12,L"EDIT",std::to_wstring(labelScalePercent).c_str(),290,40,75,26,816,ES_NUMBER|WS_TABSTOP);
  pageControl(12,L"STATIC",L"50–250 · 默认 100",385,42,240,24,0);
  pageControl(12,L"STATIC",L"建筑预定面板缩放 %",20,82,250,24,0);
  pageControl(12,L"EDIT",std::to_wstring(constructionScalePercent).c_str(),290,80,75,26,817,ES_NUMBER|WS_TABSTOP);
  pageControl(12,L"STATIC",L"50–250 · 默认 100",385,82,240,24,0);
+ {auto h=pageControl(12,L"BUTTON",L"小地图放大（画面镜像）",20,122,605,26,830,BS_AUTOCHECKBOX|WS_TABSTOP);SendMessageW(h,BM_SETCHECK,minimapEnabled?BST_CHECKED:BST_UNCHECKED,0);}
+ pageControl(12,L"STATIC",L"小地图放大比例 %",20,162,250,24,0);
+ pageControl(12,L"EDIT",std::to_wstring(minimapScale).c_str(),290,160,75,26,831,ES_NUMBER|WS_TABSTOP);
+ pageControl(12,L"STATIC",L"100–400 · 默认 200",385,162,240,24,0);
+ pageControl(12,L"STATIC",L"只放大已显示雷达，点击穿透；菜单/切屏自动隐藏，最高 60 Hz。",20,202,605,26,0);
+
  control(L"STATIC",L"操作",20,84,320,22,0);control(L"STATIC",L"快捷键",345,84,260,22,0);
  for(int i=0;i<12;++i){int y=110+(i==11?0:i+1)*29;HWND action=control(L"BUTTON",labels[i],20,y,306,25,100+i,(i==0?BS_AUTOCHECKBOX:BS_PUSHBUTTON)|WS_TABSTOP);if(i==0){repairCheck=action;SendMessageW(action,BM_SETCHECK,value(L"Modes",L"AutoRepair",0)?BST_CHECKED:BST_UNCHECKED,0);}keys[i]=control(HOTKEY_CLASSW,L"",345,y,280,25,200+i,WS_TABSTOP);SendMessageW(keys[i],HKM_SETHOTKEY,hotkeys[i],0);}
  control(L"STATIC",L"维修间隔 ms",20,464,126,24,0);repairEdit=control(L"EDIT",std::to_wstring(repairMs).c_str(),152,461,72,24,312,ES_NUMBER|WS_TABSTOP);control(L"STATIC",L"500–30000",230,464,100,24,0);
@@ -1406,7 +1458,7 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
  case FrameMessage:{if(enabled)paint();InterlockedExchange(&framePending,0);return 0;}
  case InputMessage:{shiftClickTick();InterlockedExchange(&inputPending,0);return 0;}
  case ControlMessage:{tick();InterlockedExchange(&controlPending,0);return 0;}
- case DataMessage:{if(shared&&wp==pid){InterlockedExchange(&shared->hostNotifyPending,0);readSnapshot();serviceSelection();result();serviceCommandQueue(GetTickCount());servicePlanner();serviceCooperative();servicePointer();serviceHotkeyBatch();serviceConstruction();serviceAirPath();}return 0;}
+ case DataMessage:{if(shared&&wp==pid){InterlockedExchange(&shared->hostNotifyPending,0);readSnapshot();serviceSelection();result();serviceCommandQueue(GetTickCount());serviceCalculationTasks();servicePlanner();serviceCooperative();servicePointer();serviceHotkeyBatch();serviceConstruction();serviceAirPath();}return 0;}
  case WM_TIMER:if(wp==2){updateHoverHelp();return 0;}if(wp==AutoSaveTimer){flushAutoSettings();return 0;}tick();return 0;
  case WM_HOTKEY:handleHotkey(wp,lp);return 0;
  case WM_COMMAND:{int id=LOWORD(wp);
@@ -1540,7 +1592,7 @@ if(id==991){wchar_t query[128]{};GetWindowTextW(featureSearch,query,128);std::ws
 #ifdef RA2_UNIFIED
  if(wp!=suite::CloseToken){suite::requestClose();return 0;}
 #endif
- flushAutoSettings();DestroyWindow(w);return 0;case WM_DESTROY:destroyAircraftButton();destroyConstruction();KillTimer(w,AutoSaveTimer);save();stopClock();KillTimer(w,1);KillTimer(w,2);detach();for(int id:registeredKeyIDs)UnregisterHotKey(w,id);registeredKeyIDs.clear();PostQuitMessage(0);return 0;}return DefWindowProcW(w,msg,wp,lp);}
+ flushAutoSettings();DestroyWindow(w);return 0;case WM_DESTROY:minimap::destroy();destroyAircraftButton();destroyConstruction();KillTimer(w,AutoSaveTimer);save();stopClock();KillTimer(w,1);KillTimer(w,2);detach();for(int id:registeredKeyIDs)UnregisterHotKey(w,id);registeredKeyIDs.clear();PostQuitMessage(0);return 0;}return DefWindowProcW(w,msg,wp,lp);}
 int WINAPI wWinMain(HINSTANCE h,HINSTANCE,LPWSTR,int show){SetProcessDPIAware();HANDLE single=CreateMutexW(nullptr,FALSE,L"Local\\RA2Assist_v013_Host");if(GetLastError()==ERROR_ALREADY_EXISTS){MessageBoxW(nullptr,L"战术助手已在运行。",L"尤里战术助手",MB_OK);return 0;}
  wchar_t p[2048];GetModuleFileNameW(nullptr,p,2048);root=p;root.resize(root.find_last_of(L"\\/"));autolog::initialize(root);autolog::write(L"host-start criticalLog=automatic rotation=2MiB+2 backups; verbose Debug.Diagnostics is independent");loadAdditionalSettings();
  megaQueueMode=value(L"Orders",L"MegaMissionBackend",0)==1?1u:0u;

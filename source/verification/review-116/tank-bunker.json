@@ -1,0 +1,89 @@
+{
+  "scope": "Production x86 Runtime input -> cooperative mailbox -> native event.\n\nWin32, world, click coordinates and native MouseOverObject legality are modeled.\nBoarding is supplied as observed state, not simulated movement. No real game or\nnetwork claim. Native event constructor/queue and actual Runtime code execute.\n",
+  "inputs": {
+    "gamemd-spawn.exe": "c287d62a4d6a25b547e9339d071dd6e03adcf545699062e478aaeee38c60e89a",
+    "GameRuntime.dll": "c2d0a16edbda95c7a69c70c72632d2096b9450fa8e0f460ba6eba1bc22f175bc"
+  },
+  "results": [
+    {
+      "case": "bunker_dispatch_0",
+      "status": "PASS"
+    },
+    {
+      "case": "depot_dispatch_0",
+      "status": "PASS"
+    },
+    {
+      "case": "yard_dispatch_0",
+      "status": "PASS"
+    },
+    {
+      "case": "duplicate_target_0",
+      "status": "PASS"
+    },
+    {
+      "case": "occupied_race_0",
+      "status": "PASS"
+    },
+    {
+      "case": "native_refusal_0",
+      "status": "PASS"
+    },
+    {
+      "case": "two_docks_0",
+      "status": "PASS"
+    },
+    {
+      "case": "repair_inbound_0",
+      "status": "PASS"
+    },
+    {
+      "case": "contact_not_double_counted_0",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_revoked_0",
+      "status": "PASS"
+    },
+    {
+      "case": "bunker_dispatch_3",
+      "status": "PASS"
+    },
+    {
+      "case": "depot_dispatch_3",
+      "status": "PASS"
+    },
+    {
+      "case": "yard_dispatch_3",
+      "status": "PASS"
+    },
+    {
+      "case": "duplicate_target_3",
+      "status": "PASS"
+    },
+    {
+      "case": "occupied_race_3",
+      "status": "PASS"
+    },
+    {
+      "case": "native_refusal_3",
+      "status": "PASS"
+    },
+    {
+      "case": "two_docks_3",
+      "status": "PASS"
+    },
+    {
+      "case": "repair_inbound_3",
+      "status": "PASS"
+    },
+    {
+      "case": "contact_not_double_counted_3",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_revoked_3",
+      "status": "PASS"
+    }
+  ]
+}

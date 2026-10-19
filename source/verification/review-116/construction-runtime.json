@@ -1,0 +1,150 @@
+{
+  "scope": "Actual x86 GameRuntime + original Produce constructor; mocked world/CanBuild. Not live netplay.",
+  "dll_sha256": "c2d0a16edbda95c7a69c70c72632d2096b9450fa8e0f460ba6eba1bc22f175bc",
+  "results": [
+    {
+      "case": "0_ready",
+      "status": "PASS"
+    },
+    {
+      "case": "0_no_cameo",
+      "status": "PASS"
+    },
+    {
+      "case": "0_no_prerequisite",
+      "status": "PASS"
+    },
+    {
+      "case": "0_in_limbo",
+      "status": "PASS"
+    },
+    {
+      "case": "0_canceled_parent",
+      "status": "PASS"
+    },
+    {
+      "case": "0_not_owner",
+      "status": "PASS"
+    },
+    {
+      "case": "0_occupied",
+      "status": "PASS"
+    },
+    {
+      "case": "0_disabled",
+      "status": "PASS"
+    },
+    {
+      "case": "0_old_round",
+      "status": "PASS"
+    },
+    {
+      "case": "3_ready",
+      "status": "PASS"
+    },
+    {
+      "case": "3_no_cameo",
+      "status": "PASS"
+    },
+    {
+      "case": "3_no_prerequisite",
+      "status": "PASS"
+    },
+    {
+      "case": "3_in_limbo",
+      "status": "PASS"
+    },
+    {
+      "case": "3_canceled_parent",
+      "status": "PASS"
+    },
+    {
+      "case": "3_not_owner",
+      "status": "PASS"
+    },
+    {
+      "case": "3_occupied",
+      "status": "PASS"
+    },
+    {
+      "case": "3_disabled",
+      "status": "PASS"
+    },
+    {
+      "case": "3_old_round",
+      "status": "PASS"
+    },
+    {
+      "case": "4_ready",
+      "status": "PASS"
+    },
+    {
+      "case": "4_no_cameo",
+      "status": "PASS"
+    },
+    {
+      "case": "4_no_prerequisite",
+      "status": "PASS"
+    },
+    {
+      "case": "4_in_limbo",
+      "status": "PASS"
+    },
+    {
+      "case": "4_canceled_parent",
+      "status": "PASS"
+    },
+    {
+      "case": "4_not_owner",
+      "status": "PASS"
+    },
+    {
+      "case": "4_occupied",
+      "status": "PASS"
+    },
+    {
+      "case": "4_disabled",
+      "status": "PASS"
+    },
+    {
+      "case": "4_old_round",
+      "status": "PASS"
+    },
+    {
+      "case": "5_ready",
+      "status": "PASS"
+    },
+    {
+      "case": "5_no_cameo",
+      "status": "PASS"
+    },
+    {
+      "case": "5_no_prerequisite",
+      "status": "PASS"
+    },
+    {
+      "case": "5_in_limbo",
+      "status": "PASS"
+    },
+    {
+      "case": "5_canceled_parent",
+      "status": "PASS"
+    },
+    {
+      "case": "5_not_owner",
+      "status": "PASS"
+    },
+    {
+      "case": "5_occupied",
+      "status": "PASS"
+    },
+    {
+      "case": "5_disabled",
+      "status": "PASS"
+    },
+    {
+      "case": "5_old_round",
+      "status": "PASS"
+    }
+  ]
+}

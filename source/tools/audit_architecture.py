@@ -62,21 +62,22 @@ assert 'controllerID==owner&&controller&&WaitForSingleObject(controller,0)==WAIT
 assert sum('BOOL WINAPI DllMain(' in p.read_text() for p in FILES.values())==1
 for name in ('BUILD_ZIG.cmd','build-zig.sh'):
  build=(ROOT/name).read_text()
- assert build.index('BUILD-VERIFIED-v115.tag')<build.index('game_entry_manager.cpp'),name
+ assert build.index('BUILD-VERIFIED-v116.tag')<build.index('game_entry_manager.cpp'),name
  assert 'verification' in build and 'WINDOWS_BUILD_ARTIFACTS.json' in build,name
  assert build.count('-shared ')==1 and '-o GameRuntime.dll' in build,name
 assert 'tools\\verify_windows_outputs.py' in (ROOT/'BUILD_ZIG.cmd').read_text()
 for p in (ROOT/'engine').rglob('*.py'):
  assert not re.search(r'ReadProcessMemory|WriteProcessMemory|CreateRemoteThread|SetWindowsHookEx|SendInput',p.read_text()),str(p)
 known=[
- {'id':'P01','status':'remaining_migration','feature':'AutoLoad allocation','source':'assist/source/autoload_bridge.h','detail':'Candidate collection and assign() still run inside Runtime; final canEnter/game calls must remain there.'},
- {'id':'P02','status':'remaining_migration','feature':'Automatic repair discovery/cadence','source':'assist/source/bridge.cpp','detail':'repairTick and collectRepairs remain game-side; submission already uses the unified event gateway.'},
- {'id':'P03','status':'remaining_migration','feature':'Smart unload/ejection target choice','source':'assist/source/native_orders_bridge.h','detail':'smartUnloadTick and target search still run in Runtime; advanced move/magnetron decisions already use the host planner.'},
- {'id':'P04','status':'remaining_consolidation','feature':'Read snapshots','source':'external_reader/source/shared_reader.h','detail':'One read API/shared connection, independent task snapshots; not one cross-feature atomic world snapshot.'},
+ {'id':'P01','status':'dual_backend','feature':'AutoLoad allocation','source':'assist/source/autoload_bridge.h','detail':'Runtime raw collection/native legality; matching selectable in Runtime or host; identity/token/capacity recheck and event/retry remain Runtime.'},
+ {'id':'P02','status':'dual_backend','feature':'Repair filtering','source':'assist/source/bridge.cpp','detail':'Runtime snapshot and cadence; pure candidate filtering selectable; pending observation/final legality/event stay Runtime.'},
+ {'id':'P03','status':'remaining_migration','feature':'Smart unload/ejection state and target choice','source':'assist/source/native_orders_bridge.h','detail':'Still Runtime-only. No nonfunctional location switch is exposed.'},
+ {'id':'P04','status':'remaining_consolidation','feature':'Read snapshots','source':'external_reader/source/shared_reader.h','detail':'Shared immutable process connection, independent task caches and source-stamped copies; not one cross-feature atomic world.'},
+ {'id':'P05','status':'remaining_dual_backend','feature':'Other features','detail':'Reservation/air-path/UI statistics remain host-only planning; local selection, native input/judgment remain Runtime. Eight implemented decision families are selectable; not all features.'},
 ]
-report={'version':'1.0.15','baseline':'0.7.16','result':'No detected forbidden source-boundary bypass after fixes; remaining migrations explicitly listed. Not full architecture completion.',
+report={'version':'1.0.16','baseline':'0.7.16','result':'No detected forbidden source-boundary bypass; eight real dual decision backends. Remaining fixed-location features explicitly listed. Not full migration completion.',
  'scope':{'source_files':len(FILES),'host_reachable_files':len(HOST),'runtime_reachable_files':len(RUNTIME),'method':'Recursive local include graph + forbidden API ownership checks + manual review of game-call, queue, patch and scheduling paths. Lexical assertions cannot prove all runtime behavior.'},
- 'freshness_contract':{'protocol':49,'tactical_max_ms':150,'tactical_max_frames':6,'cooperative_max_ms':250,'cooperative_max_frames':12,'intent_max_ms':5000,'source_clock_never_renewed_on_publish':True,'partial_batch_deadline_retained':True,'cooperative_retry_only_unprocessed':True,'real_game_latency_measured':False},
+ 'freshness_contract':{'protocol':50,'tactical_max_ms':150,'tactical_max_frames':6,'cooperative_max_ms':250,'cooperative_max_frames':12,'intent_max_ms':5000,'source_clock_never_renewed_on_publish':True,'partial_batch_deadline_retained':True,'cooperative_retry_only_unprocessed':True,'real_game_latency_measured':False},
  'extended_test_fixes':['Cooperative pending requests bypass display cadence','Round-end settles cooperative ACK with per-serial receipt ownership','Both planning mailboxes share one frame budget and per-channel share'],
  'runtime_diagnostics':{'protocol':3,'control_bytes':120,'transport':'existing unified Runtime mapping','writer':'Runtime','file_io':'host only','native_windows_loader_tested':False},
  'fixes':['Capture-time match identity and context expiry prevent loading/menu input reuse','Loading/menu/invalid-frame quarantine precedes feature initialization; no arbitrary warmup delay','All event backends share live simulationReady preflight; ordinary queue append rechecks after native clock callback','Bounded host startup diagnostics, without DLL file IO','Local native legality query AV boundary remains within Runtime ownership; no private ingress or command replay','Host initial/torn snapshots never replace authenticated state; fresh timestamps avoid false connection timeout','Automatic bounded host logging and callback/handshake evidence without consuming host work','Source time/frame preserved across planning and queueing; per-order expiration; fresh suffix replan preserves aircraft quotas','Cursor WM_SETCURSOR goes through host input manager without holding scheduler mutex','Only the message entry consumes host work; frame detours removed; Patch API permits only three 1.0.4 judgment sites, two 1.0.6 drawing leaves and one 1.0.10 C4 load','Recycled host PID cannot reuse a dead retained controller process handle','Host builds reject including the Runtime execution client','Partial rebuilds invalidate old verification markers; Windows build verifies PE outputs before success'],
@@ -85,4 +86,4 @@ report={'version':'1.0.15','baseline':'0.7.16','result':'No detected forbidden s
  'source_sha256':{n:hashlib.sha256(p.read_bytes()).hexdigest() for n,p in sorted(FILES.items())}}
 (ROOT/'ARCHITECTURE_AUDIT.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
 print(f'PASS architecture boundaries: {len(FILES)} source files; {len(HOST)} host includes / {len(RUNTIME)} Runtime includes; read, input, injection, patch, event and frame-grant ownership')
-print('NOTE: 3 business-planning migrations and cross-feature snapshot consolidation remain; no full-game/real-netplay proof')
+print('NOTE: eight decision families have dual backends; other fixed-location features and cross-feature snapshot consolidation remain; no real-game/netplay proof')

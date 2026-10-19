@@ -20,7 +20,7 @@ inline std::vector<Assignment> allocate(const Input&w){
  std::vector<int> order(ns),reserved(nt),counts(nt),degree(ns);std::iota(order.begin(),order.end(),0);
  for(size_t j=0;j<nt;++j){if(w.targets[j].prior<0||w.targets[j].prior>MaxSources)return out;counts[j]=w.mode==Enter?0:w.targets[j].prior;}
  for(size_t i=0;i<ns;++i)for(size_t j=0;j<nt;++j)degree[i]+=w.compatible[i*nt+j]!=0;
- std::stable_sort(order.begin(),order.end(),[&](int a,int b){if(w.mode==Enter&&w.units[a].slots!=w.units[b].slots)return w.units[a].slots>w.units[b].slots;if(degree[a]!=degree[b])return degree[a]<degree[b];return w.units[a].source.id<w.units[b].source.id;});
+ std::sort(order.begin(),order.end(),[&](int a,int b){if(w.mode==Enter&&w.units[a].slots!=w.units[b].slots)return w.units[a].slots>w.units[b].slots;if(degree[a]!=degree[b])return degree[a]<degree[b];return w.units[a].source.id<w.units[b].source.id;});
  for(int i:order){const auto&u=w.units[i];if(!u.source.id||degree[i]==0||u.x< -1048576||u.x>1048576||u.y< -1048576||u.y>1048576||(w.mode==Enter&&(u.slots<=0||u.slots>128)))continue;
   int best=-1;bool bestPreferred=false;int bestCount=0;int64_t bestDistance=INT64_MAX;
   for(size_t j=0;j<nt;++j){const auto&t=w.targets[j];if(!t.id||t.x< -1048576||t.x>1048576||t.y< -1048576||t.y>1048576||!w.compatible[size_t(i)*nt+j])continue;

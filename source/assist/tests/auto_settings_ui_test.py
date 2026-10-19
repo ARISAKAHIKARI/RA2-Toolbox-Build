@@ -4,6 +4,7 @@ import subprocess,tempfile,sys
 root=Path(sys.argv[1]).resolve() if len(sys.argv)>1 else Path(__file__).resolve().parents[2]
 prefix=r'''
 #include "additional_settings.h"
+#include "compute_policy.h"
 #include "ore_type_config.h"
 #include "feature_type_config.h"
 #include <cwchar>
@@ -23,6 +24,8 @@ constexpr int FALSE=0,EN_CHANGE=1,CBN_SELCHANGE=2,BN_CLICKED=3,HKM_GETHOTKEY=4,H
 static bool ready=true,updatingControls=false,enabled=true,autoSaveOK=true;
 struct ControlUpdate{bool old=updatingControls;ControlUpdate(){updatingControls=true;}~ControlUpdate(){updatingControls=old;}};
 static bool hookAdvanced=false,hookSmartUnload=false;static HWND hookChecks[4]={800,801,802,803};
+static uint32_t computeRequested=compute::Default;static bool minimapEnabled=false;static int minimapScale=200,advancedRangeCells=2;
+namespace minimap {static void hide(){}}static void syncAdditional(){}
 static int labelScalePercent=100,constructionScalePercent=100;
 static int ui=1,fps=60,topMargin=20,repairMs=2000,doubleMs=350,toastMs=6000;
 static unsigned settingsRevision=1,paintRevision=0,saves=0,registrations=0,syncs=0,timerMs=0,timers=0,binds=0;
@@ -83,6 +86,10 @@ feature_save=io.split('static bool saveAdditionalSettings(){',1)[1].split(' writ
 prefix+="\nstatic void loadFeatureTypes(){"+feature_load+"}\nstatic void saveFeatureTypes(){"+feature_save+"}\n"
 suffix=r''' 
 int main(){
+ for(int i=0;i<compute::Count;++i){fields[840+i]=1;assert(autoSettingChanged(840+i,CBN_SELCHANGE)&&compute::inside(computeRequested,compute::Feature(i)));fields[840+i]=0;assert(autoSettingChanged(840+i,CBN_SELCHANGE)&&!compute::inside(computeRequested,compute::Feature(i)));}
+ computeRequested=153;saveFeatureTypes();computeRequested=0;loadFeatureTypes();assert(computeRequested==153);
+ fields[830]=1;assert(autoSettingChanged(830,BN_CLICKED)&&minimapEnabled);
+ for(int n:{100,200,400}){fields[831]=n;assert(autoSettingChanged(831,EN_CHANGE)&&minimapScale==n);}fields[831]=401;autoSettingChanged(831,EN_CHANGE);assert(minimapScale==400);
  for(int id:{816,817}){
   int& scale=id==816?labelScalePercent:constructionScalePercent;
   for(int p:{50,75,100,125,150,200,250}){fields[id]=p;assert(autoSettingChanged(id,EN_CHANGE)&&scale==p&&autoSavePending);}

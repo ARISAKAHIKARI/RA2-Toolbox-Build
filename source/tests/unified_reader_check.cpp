@@ -78,11 +78,11 @@ int main(){
  puts("PASS three simultaneous RPM calls; connect/detach while other sessions read");
  // Closing two clients must not close the remaining client's connection.
  a.close();b.close();assert(closed==0&&c.readFresh(0x11000,&value,4));
- const auto oldGeneration=c.generation();auto old=processes[42];old->alive=false;
+ auto retained=c.connectionIdentity();const auto oldGeneration=c.generation();auto old=processes[42];old->alive=false;
  processes[42]=std::make_shared<Process>();
  assert(a.open(42));assert(a.generation()!=oldGeneration&&!c.alive());
  c.begin();assert(!c.readFresh(0x11000,&value,4));assert(a.readFresh(0x11000,&value,4));
- c.close();assert(closed==1);assert(a.alive());
+ c.close();assert(closed==0&&!retained->alive()&&a.alive());retained.reset();assert(closed==1);
  assert(a.open(42));assert(a.pageHits==0&&a.reads==0);
  a.close();assert(opened==closed);
  puts("PASS retained handle lifetime; dead process/PID reuse creates new generation");

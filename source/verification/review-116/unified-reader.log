@@ -1,0 +1,5 @@
+PASS independent cache/diagnostics, cross-TU shared connection, immediate read bypass
+PASS three simultaneous RPM calls; connect/detach while other sessions read
+PASS retained handle lifetime; dead process/PID reuse creates new generation
+PASS query-only fallback isolated from readable sessions; upgrade, bounds, all handles released
+PASS all three host modules use unified read sessions; no direct RPM or batch mutex

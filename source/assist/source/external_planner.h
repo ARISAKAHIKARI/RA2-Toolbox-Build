@@ -100,6 +100,7 @@ public:
   }
  }
  void expired(const Order&order){
+  if(order.purpose==DefenseOrder)defenseSent_.erase(order.unit);
   if(order.purpose==1||order.purpose==3){auto it=advanced_.find(order.unit);if(it!=advanced_.end()&&it->second.token==order.token)it->second.urgent=true;}
   // Permit a fresh snapshot in the same simulation frame after a pause.
   frame_=-1;

@@ -1,0 +1,342 @@
+{
+  "scope": "Actual DLL common message capture and native sidebar busy-state branch.\nWorld, Win32 and audio device are mocked. No real Windows/LBW/netplay test.\n",
+  "dll_sha256": "c2d0a16edbda95c7a69c70c72632d2096b9450fa8e0f460ba6eba1bc22f175bc",
+  "results": [
+    {
+      "case": "input_0_normal",
+      "status": "PASS"
+    },
+    {
+      "case": "input_0_defense",
+      "status": "PASS"
+    },
+    {
+      "case": "input_0_double_click",
+      "status": "PASS"
+    },
+    {
+      "case": "input_0_scaled",
+      "status": "PASS"
+    },
+    {
+      "case": "input_0_idle",
+      "status": "PASS"
+    },
+    {
+      "case": "input_0_completed",
+      "status": "PASS"
+    },
+    {
+      "case": "input_0_manual_pause",
+      "status": "PASS"
+    },
+    {
+      "case": "input_0_ui_pause",
+      "status": "PASS"
+    },
+    {
+      "case": "input_0_zero_slots",
+      "status": "PASS"
+    },
+    {
+      "case": "input_0_busy_input",
+      "status": "PASS"
+    },
+    {
+      "case": "input_0_policy_odd",
+      "status": "PASS"
+    },
+    {
+      "case": "input_0_old_policy",
+      "status": "PASS"
+    },
+    {
+      "case": "input_0_old_round",
+      "status": "PASS"
+    },
+    {
+      "case": "input_0_parent_reused",
+      "status": "PASS"
+    },
+    {
+      "case": "input_0_menu",
+      "status": "PASS"
+    },
+    {
+      "case": "input_0_chat",
+      "status": "PASS"
+    },
+    {
+      "case": "input_0_observer",
+      "status": "PASS"
+    },
+    {
+      "case": "input_0_disabled",
+      "status": "PASS"
+    },
+    {
+      "case": "input_0_outside",
+      "status": "PASS"
+    },
+    {
+      "case": "input_0_unsupported",
+      "status": "PASS"
+    },
+    {
+      "case": "input_0_right",
+      "status": "PASS"
+    },
+    {
+      "case": "input_0_drag",
+      "status": "PASS"
+    },
+    {
+      "case": "input_0_scroll",
+      "status": "PASS"
+    },
+    {
+      "case": "input_0_changed_parent",
+      "status": "PASS"
+    },
+    {
+      "case": "input_0_lost_focus",
+      "status": "PASS"
+    },
+    {
+      "case": "input_0_expired_hold",
+      "status": "PASS"
+    },
+    {
+      "case": "input_0_full_outlist",
+      "status": "PASS"
+    },
+    {
+      "case": "input_0_frame_advanced",
+      "status": "PASS"
+    },
+    {
+      "case": "input_0_frame_rollback",
+      "status": "PASS"
+    },
+    {
+      "case": "input_0_engine_paused",
+      "status": "PASS"
+    },
+    {
+      "case": "input_0_cancel_right",
+      "status": "PASS"
+    },
+    {
+      "case": "input_0_cancel_shift",
+      "status": "PASS"
+    },
+    {
+      "case": "input_0_cancel_full",
+      "status": "PASS"
+    },
+    {
+      "case": "input_0_cancel_completed",
+      "status": "PASS"
+    },
+    {
+      "case": "input_0_cancel_notqueued",
+      "status": "PASS"
+    },
+    {
+      "case": "input_3_normal",
+      "status": "PASS"
+    },
+    {
+      "case": "input_3_defense",
+      "status": "PASS"
+    },
+    {
+      "case": "input_3_double_click",
+      "status": "PASS"
+    },
+    {
+      "case": "input_3_scaled",
+      "status": "PASS"
+    },
+    {
+      "case": "input_3_idle",
+      "status": "PASS"
+    },
+    {
+      "case": "input_3_completed",
+      "status": "PASS"
+    },
+    {
+      "case": "input_3_manual_pause",
+      "status": "PASS"
+    },
+    {
+      "case": "input_3_ui_pause",
+      "status": "PASS"
+    },
+    {
+      "case": "input_3_zero_slots",
+      "status": "PASS"
+    },
+    {
+      "case": "input_3_busy_input",
+      "status": "PASS"
+    },
+    {
+      "case": "input_3_policy_odd",
+      "status": "PASS"
+    },
+    {
+      "case": "input_3_old_policy",
+      "status": "PASS"
+    },
+    {
+      "case": "input_3_old_round",
+      "status": "PASS"
+    },
+    {
+      "case": "input_3_parent_reused",
+      "status": "PASS"
+    },
+    {
+      "case": "input_3_menu",
+      "status": "PASS"
+    },
+    {
+      "case": "input_3_chat",
+      "status": "PASS"
+    },
+    {
+      "case": "input_3_observer",
+      "status": "PASS"
+    },
+    {
+      "case": "input_3_disabled",
+      "status": "PASS"
+    },
+    {
+      "case": "input_3_outside",
+      "status": "PASS"
+    },
+    {
+      "case": "input_3_unsupported",
+      "status": "PASS"
+    },
+    {
+      "case": "input_3_right",
+      "status": "PASS"
+    },
+    {
+      "case": "input_3_drag",
+      "status": "PASS"
+    },
+    {
+      "case": "input_3_scroll",
+      "status": "PASS"
+    },
+    {
+      "case": "input_3_changed_parent",
+      "status": "PASS"
+    },
+    {
+      "case": "input_3_lost_focus",
+      "status": "PASS"
+    },
+    {
+      "case": "input_3_expired_hold",
+      "status": "PASS"
+    },
+    {
+      "case": "input_3_full_outlist",
+      "status": "PASS"
+    },
+    {
+      "case": "input_3_frame_advanced",
+      "status": "PASS"
+    },
+    {
+      "case": "input_3_frame_rollback",
+      "status": "PASS"
+    },
+    {
+      "case": "input_3_engine_paused",
+      "status": "PASS"
+    },
+    {
+      "case": "input_3_cancel_right",
+      "status": "PASS"
+    },
+    {
+      "case": "input_3_cancel_shift",
+      "status": "PASS"
+    },
+    {
+      "case": "input_3_cancel_full",
+      "status": "PASS"
+    },
+    {
+      "case": "input_3_cancel_completed",
+      "status": "PASS"
+    },
+    {
+      "case": "input_3_cancel_notqueued",
+      "status": "PASS"
+    },
+    {
+      "case": "presentation_0_observed",
+      "status": "PASS"
+    },
+    {
+      "case": "presentation_0_paused",
+      "status": "PASS"
+    },
+    {
+      "case": "presentation_0_completed",
+      "status": "PASS"
+    },
+    {
+      "case": "presentation_0_canceled",
+      "status": "PASS"
+    },
+    {
+      "case": "presentation_0_factory_removed",
+      "status": "PASS"
+    },
+    {
+      "case": "presentation_0_replaced",
+      "status": "PASS"
+    },
+    {
+      "case": "presentation_0_unobserved",
+      "status": "PASS"
+    },
+    {
+      "case": "presentation_3_observed",
+      "status": "PASS"
+    },
+    {
+      "case": "presentation_3_paused",
+      "status": "PASS"
+    },
+    {
+      "case": "presentation_3_completed",
+      "status": "PASS"
+    },
+    {
+      "case": "presentation_3_canceled",
+      "status": "PASS"
+    },
+    {
+      "case": "presentation_3_factory_removed",
+      "status": "PASS"
+    },
+    {
+      "case": "presentation_3_replaced",
+      "status": "PASS"
+    },
+    {
+      "case": "presentation_3_unobserved",
+      "status": "PASS"
+    }
+  ]
+}

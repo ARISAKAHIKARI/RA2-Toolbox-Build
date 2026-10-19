@@ -42,6 +42,17 @@ int main(){using namespace assist;Memory m;Read read{&m};constexpr uint32_t hous
  m.put<int>(unit+0x6C,0);assert(sampler.sample(2304,Capacity|Iron|Frozen).labels==0);
  auto failed=external::display::inspect([](uint32_t,void*,size_t){return false;});assert(!failed.readable&&!failed.visible());
  std::cout<<"PASS: menu enter/exit preserves epoch, paused battlefield visible, same-frame position/boarding/unloading, recycled/dead object and unreadable display state\n";
+ // Recover empty/partial catalogues while the same process and House remain.
+ constexpr uint32_t secondType=0x320000;std::memcpy(m.bytes.data()+type+0x24,"HTNK",5);std::memcpy(m.bytes.data()+secondType+0x24,"FV",3);
+ m.put<int>(secondType+0x634,1);m.put<uint32_t>(secondType+0x6CC,1);
+ auto oldEpoch=sampler.sample(3000,Capacity).match;
+ m.vec(0xA8B218,0x110200,{type,secondType});m.put<int>(0xA8ED84,102);
+ assert(sampler.sample(3600,Capacity).typeCount==2&&sampler.sample(3602,Capacity).match==oldEpoch);
+ m.put<uint32_t>(secondType+0x6CC,0);assert(sampler.sample(4200,Capacity).typeCount==1);
+ m.put<uint32_t>(secondType+0x6CC,1);assert(sampler.sample(4800,Capacity).typeCount==2);
+ m.vec(0xA8B218,0x110200,{});assert(sampler.sample(5400,Capacity).typeCount==0);
+ m.vec(0xA8B218,0x110200,{type});assert(sampler.sample(5500,Capacity).typeCount==1);
+ std::cout<<"PASS: delayed type-vector growth, metadata completion and empty-to-ready recovery in one process/epoch\n";
  int x,y;external::Projection projection;projection.width=1920;projection.height=1080;assert(!external::project(projection,INT32_MIN,0,0,x,y));
  std::cout<<"PASS: actual-layout external snapshot, owner colors, iron/frozen timers with cycle guard, unchanged-frame cache, camera shift and invalid coordinates\n";
 }

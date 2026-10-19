@@ -2,7 +2,7 @@
 setlocal
 cd /d "%~dp0"
 rem Never retain a successful-build marker across a partial rebuild.
-del /q "BUILD-VERIFIED-v115.tag" "verification\BUILD-VERIFIED-v115.tag" "WINDOWS_BUILD_ARTIFACTS.json" "verification\WINDOWS_BUILD_ARTIFACTS.json" 2>nul
+del /q "BUILD-VERIFIED-v116.tag" "verification\BUILD-VERIFIED-v116.tag" "WINDOWS_BUILD_ARTIFACTS.json" "verification\WINDOWS_BUILD_ARTIFACTS.json" 2>nul
 if defined ZIG_EXE (set "ZIG=%ZIG_EXE%") else (set "ZIG=zig")
 "%ZIG%" version
 if errorlevel 1 goto missing
