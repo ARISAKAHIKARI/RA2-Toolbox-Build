@@ -1,13 +1,13 @@
-# RA2 Toolbox 1.0.19 Beta
+# RA2 Toolbox 1.0.20 Beta
 
-Windows 高刷光标、单位统计与战术助手。文件版本 **1.0.19.0**，Assist 协议 **51**。
+Windows 高刷光标、单位统计与战术助手。文件版本 **1.0.20.0**，Assist 协议 **52**。
 
-- [完整运行包与更新包](https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/releases/tag/v1.0.19)
-- [源码](source/) · [本版更新](packages/v1.0.19/RELEASE_NOTES.md)
-- [界面重组与实现说明](source/REVIEW-1.0.19.md) · [验证记录](source/verification/review-119/)
+- [完整运行包与更新包](https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/releases/tag/v1.0.20)
+- [源码](source/) · [本版更新](packages/v1.0.20/RELEASE_NOTES.md)
+- [科技与玩家控制实现说明](source/REVIEW-1.0.20.md) · [验证记录](source/verification/review-120/)
 
-战术助手区分键盘操作与键鼠组合操作，提供分区定位和说明搜索。功能开关、按住键与鼠标键同排；自动 CS 使用一个可见开关。用户说明与技术文档分别维护。
+本版恢复科技解锁的原生侧栏路径，增加跨玩家手动操控、切换操控方和出售其他玩家建筑测试。玩家测试默认关闭，排除中立/平民/治安/观战方；所有指令仍由统一 Runtime 管理。
 
 退出游戏与工具后成套更新 EXE/DLL，保留配置和 cache。Zig 0.13.0 构建 source/build-zig.sh 或 source/BUILD_ZIG.cmd。
 
-本轮为实际控件结构、状态、设置、热键及构建验证，没有真实 Windows/LBW 截图、双机联机或延迟验收。DLL 代码/数据段与 1.0.18 一致；历史报告只对应各自版本。
+本轮有真实编译 DLL 的模拟测试和原生流程局部验证，没有真实 Windows 购买、LBW 或双机联机验收。历史报告只对应各自版本。

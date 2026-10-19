@@ -106,8 +106,10 @@ class UnloadInput(C.Structure):
  _fields_=[('match',C.c_uint32),('tick',C.c_uint32)]+[(x,C.c_int32) for x in 'frame count targetCount'.split()]+[('sources',UnloadSource*64),('targets',UnloadTarget*8192),('actions',(C.c_uint8*8192)*64)]
 class UnloadResult(C.Structure):
  _fields_=[('match',C.c_uint32),('tick',C.c_uint32),('frame',C.c_int32),('count',C.c_int32),('decisions',UnloadDecision*64)]
+class PlayerTestInfo(C.Structure):
+ _fields_=[(x,C.c_uint32) for x in ("pointer","id")]+[(x,C.c_int32) for x in ("index","human")]+[("name",C.c_uint16*21)]
 class Shared(C.Structure):
-    _fields_=[(x,C.c_uint32) for x in 'magic version pid owner heartbeat stop foreground flags scanMs request ack command arg arg2 requestToken requestTick requestMatch result count seq'.split()]+[('data',Snapshot),('techAllowed',C.c_uint8*512),('repairMs',C.c_uint32),('clockStart',C.c_uint64),('clockFrequency',C.c_uint64),('clockTick',C.c_uint32),('csSeq',C.c_int32),('csMatch',C.c_uint32),('csAllowed',C.c_uint8*512)]+[(x,C.c_uint32) for x in 'advancedKey pathTimeout veteranPercent elitePercent selectRequest selectAck selectIndex selectGlobal selectObjectID selectTick selectMatch selectResult selectCount csHoldKey'.split()]+[('worldSeq',C.c_int32),('world',World)]+[(x,C.c_uint32) for x in 'planRequest planAck planTick planMatch planCount planAccepted planResult'.split()]+[('plan',Order*24),('plannerTracking',C.c_uint32),('hostWindow',C.c_uint32),('hostNotifyPending',C.c_int32),('gameWakePending',C.c_int32),('magnetronKey',C.c_uint32),('planAcceptedMask',C.c_uint32),('planRejectedMask',C.c_uint32)]+[(x,C.c_uint32) for x in 'externalDisplay loadMode loadRadius enterKey airKey1 airKey2'.split()]+[('cooperativeSeq',C.c_int32),('cooperativeRequest',CooperativeRequest)]+[(x,C.c_uint32) for x in 'cooperativePlan cooperativeAck cooperativeSerial cooperativeTick'.split()]+[(x,C.c_int32) for x in 'cooperativeCount cooperativeAccepted cooperativeRejected cooperativeMode'.split()]+[('cooperativeOrders',CooperativeAssignment*512),('clickHookStatus',C.c_int32)]+[(x,C.c_uint32) for x in 'driverMode driverTarget megaQueueMode objectQueueMode'.split()]+[('driverStatus',C.c_int32),('driverTicks',C.c_uint32),('driverLastTick',C.c_uint32)]+[(x,C.c_uint32) for x in 'productionRequest productionAck productionMatch productionTick'.split()]+[('productionCount',C.c_int32),('productionTypes',C.c_int32*4),('planFrame',C.c_int32),('cooperativeFrame',C.c_int32),('cooperativeMatch',C.c_uint32),('cooperativeProcessed',C.c_int32),('cooperativeResult',C.c_int32),('cooperativeAcceptedBits',C.c_uint32*16),('pointer',PointerMailbox),('pointerPolicySeq',C.c_int32),('pointerPolicy',NativePolicy),('suppressedClick',SuppressedClick),('selectTypes',C.c_uint8*512),('oreConfigSeq',C.c_int32),('oreConfig',OreConfig),('featureConfigSeq',C.c_int32),('featureConfig',FeatureConfig),('c4Test',C.c_uint32),('advancedRangeCells',C.c_uint32),('renderReveal',C.c_uint32)]+[(x,C.c_uint32) for x in 'uiSoundRequest uiSoundAck uiSoundTick uiSoundMatch'.split()]+[('reservePolicySeq',C.c_int32),('reservePolicy',ReservationPolicy),('reserveInput',C.c_uint32),('reserveConsumed',C.c_uint32),('reserveClick',ReservationClick)]+[(x,C.c_uint32) for x in 'computeRequested computeApplied advancedScanHz advancedPriority runtimeTracking runtimePlannerMicros'.split()]+[('loadTask',C.c_uint32),('loadComputed',C.c_uint32),('loadInput',LoadInput),('loadResult',LoadResult),('repairTask',C.c_uint32),('repairComputed',C.c_uint32),('repairInput',RepairInput),('repairResult',RepairResult),('quotaConfigSeq',C.c_int32),('quotaConfig',QuotaConfig),('runtimeCoopDone',C.c_uint32),('runtimeCoopAccepted',C.c_int32),('runtimeCoopRejected',C.c_int32)]+[('unloadInputSeq',C.c_int32),('unloadResultSeq',C.c_int32),('unloadTask',C.c_uint32),('unloadComputed',C.c_uint32),('unloadInput',UnloadInput),('unloadResult',UnloadResult)]
+    _fields_=[(x,C.c_uint32) for x in 'magic version pid owner heartbeat stop foreground flags scanMs request ack command arg arg2 requestToken requestTick requestMatch result count seq'.split()]+[('data',Snapshot),('techAllowed',C.c_uint8*512),('repairMs',C.c_uint32),('clockStart',C.c_uint64),('clockFrequency',C.c_uint64),('clockTick',C.c_uint32),('csSeq',C.c_int32),('csMatch',C.c_uint32),('csAllowed',C.c_uint8*512)]+[(x,C.c_uint32) for x in 'advancedKey pathTimeout veteranPercent elitePercent selectRequest selectAck selectIndex selectGlobal selectObjectID selectTick selectMatch selectResult selectCount csHoldKey'.split()]+[('worldSeq',C.c_int32),('world',World)]+[(x,C.c_uint32) for x in 'planRequest planAck planTick planMatch planCount planAccepted planResult'.split()]+[('plan',Order*24),('plannerTracking',C.c_uint32),('hostWindow',C.c_uint32),('hostNotifyPending',C.c_int32),('gameWakePending',C.c_int32),('magnetronKey',C.c_uint32),('planAcceptedMask',C.c_uint32),('planRejectedMask',C.c_uint32)]+[(x,C.c_uint32) for x in 'externalDisplay loadMode loadRadius enterKey airKey1 airKey2'.split()]+[('cooperativeSeq',C.c_int32),('cooperativeRequest',CooperativeRequest)]+[(x,C.c_uint32) for x in 'cooperativePlan cooperativeAck cooperativeSerial cooperativeTick'.split()]+[(x,C.c_int32) for x in 'cooperativeCount cooperativeAccepted cooperativeRejected cooperativeMode'.split()]+[('cooperativeOrders',CooperativeAssignment*512),('clickHookStatus',C.c_int32)]+[(x,C.c_uint32) for x in 'driverMode driverTarget megaQueueMode objectQueueMode'.split()]+[('driverStatus',C.c_int32),('driverTicks',C.c_uint32),('driverLastTick',C.c_uint32)]+[(x,C.c_uint32) for x in 'productionRequest productionAck productionMatch productionTick'.split()]+[('productionCount',C.c_int32),('productionTypes',C.c_int32*4),('planFrame',C.c_int32),('cooperativeFrame',C.c_int32),('cooperativeMatch',C.c_uint32),('cooperativeProcessed',C.c_int32),('cooperativeResult',C.c_int32),('cooperativeAcceptedBits',C.c_uint32*16),('pointer',PointerMailbox),('pointerPolicySeq',C.c_int32),('pointerPolicy',NativePolicy),('suppressedClick',SuppressedClick),('selectTypes',C.c_uint8*512),('oreConfigSeq',C.c_int32),('oreConfig',OreConfig),('featureConfigSeq',C.c_int32),('featureConfig',FeatureConfig),('c4Test',C.c_uint32),('advancedRangeCells',C.c_uint32),('renderReveal',C.c_uint32)]+[(x,C.c_uint32) for x in 'uiSoundRequest uiSoundAck uiSoundTick uiSoundMatch'.split()]+[('reservePolicySeq',C.c_int32),('reservePolicy',ReservationPolicy),('reserveInput',C.c_uint32),('reserveConsumed',C.c_uint32),('reserveClick',ReservationClick)]+[(x,C.c_uint32) for x in 'computeRequested computeApplied advancedScanHz advancedPriority runtimeTracking runtimePlannerMicros'.split()]+[('loadTask',C.c_uint32),('loadComputed',C.c_uint32),('loadInput',LoadInput),('loadResult',LoadResult),('repairTask',C.c_uint32),('repairComputed',C.c_uint32),('repairInput',RepairInput),('repairResult',RepairResult),('quotaConfigSeq',C.c_int32),('quotaConfig',QuotaConfig),('runtimeCoopDone',C.c_uint32),('runtimeCoopAccepted',C.c_int32),('runtimeCoopRejected',C.c_int32)]+[('unloadInputSeq',C.c_int32),('unloadResultSeq',C.c_int32),('unloadTask',C.c_uint32),('unloadComputed',C.c_uint32),('unloadInput',UnloadInput),('unloadResult',UnloadResult)]+[(x,C.c_uint32) for x in ('controlAll','switchPlayerEnabled')]+[(x,C.c_int32) for x in ('playerCount','playerCurrent','playerOriginal','playerControlStatus')]+[('players',PlayerTestInfo*32)]
     def __init__(self,*args,**kw):
         super().__init__(*args,**kw);self.computeRequested=960;self.computeApplied=960;self.advancedScanHz=10
 
@@ -247,6 +249,7 @@ def on_code(uc,a,size,_):
         enter_queries.append((source,target));ret(action_overrides.get((source,target),31 if (source,target) in blocked_pairs or a==0x73fd50 else 3),2)
     elif a==0x6cc360:ret(u.mem_read(u.reg_read(UC_X86_REG_ECX)+0x6f,1)[0],0)
     elif a in (0x48dc90,0x6fbfa0,0x6d2420,0x431410,0x577d90,0x4a8bf0,0x4ac8c0,0x4ac660):
+        if globals().get("execute_native_selection",False) and a in (0x48dc90,0x6fbfa0):return
         calls.append((a,u.reg_read(UC_X86_REG_ECX),[arg(i) for i in range(2)]))
         ret(1,{0x48dc90:0,0x6fbfa0:0,0x6d2420:2,0x431410:1,0x577d90:1,0x4a8bf0:1,0x4ac8c0:1,0x4ac660:1}[a])
 for target in list(imports)+[0x4f7870,0x5f7900,0x6abc60,0x6a6300,0x6d2140,0x578080,0x473460,0x51e3b0,0x73fd50,0x6cc360,0x48dc90,0x6fbfa0,0x6d2420,0x431410,0x577d90,0x4a8bf0,0x4ac8c0,0x4ac660]:
@@ -280,6 +283,8 @@ house=alloc(0x20000);enemy=alloc(0x20000);t=alloc(0x2000);engT=alloc(0x2000);bui
 w(house+0x30,0);w(enemy+0x30,1);w(house+0x5788,1);w(house+0x30c,10000)
 for typ,id in [(t,b'HTNK'),(engT,b'ENGINEER'),(buildT,b'NAPOWR')]:
     u.mem_write(typ+0x24,id+b'\0');w(typ+0xa0,100);w(typ+0x634,5);w(typ+0x6cc,1);w(typ+0x610,500)
+for typ,vt in [(t,0x7F5FA0),(engT,0x7EB218),(buildT,0x7E3EBC)]:
+    table=alloc(0x200);w(typ,table);w(table+0x94,0x5f7900)
 w(t+0x5e0,6);b(t+0xdbc,1);b(engT+0xec3,1)
 # Synthetic objects need the secondary COM identity vtable used by the real
 # TargetClass packing constructor. Stub only Fetch_ID, not the command path.
@@ -459,7 +464,7 @@ if __name__ == '__main__':
  child.operation=1;child_copy=EntryRequest.from_buffer_copy(bytes(child));assert manager_call(child)[0]==1
  assert manager_call(child_copy)[0]==-3
  print('PASS actual manager rejects scheduler recursion, out-of-order and duplicate nested lease release')
- at=0x646e90;original=bytes(u.mem_read(at,5));patch=bytes.fromhex('e9 01 02 03 04')
+ at=0x4a8eb0;original=bytes(u.mem_read(at,5));patch=b'\xe9'+struct.pack('<I',(entry-at-5)&0xffffffff)
  def patch_request(before,after,module=None,client=1):
   q=request(2,client,module);q.token=patch_lease.token;q.address=at;q.length=5
   for i in range(5):q.before[i]=before[i];q.after[i]=after[i]
@@ -479,17 +484,13 @@ if __name__ == '__main__':
  q=request(3);q.address=at;result,stats=manager_call(q);assert result==1 and stats.conflict==1 and stats.contended>=1 and stats.wrongThread>=1
  print('PASS one patch writer; duplicate install and cross-module restore denied; foreign bytes preserved; conflict remains sticky')
 
- for frame_at in (0x55d360,0x48ce8a):
+ for frame_at in (0x55d360,0x48ce8a,0x646e90):
   saved_at=at;at=frame_at
-  frame_original=bytes(u.mem_read(at,5));frame_patch=bytes.fromhex('e9 01 02 03 04')
+  frame_original=bytes(u.mem_read(at,5));frame_patch=b'\xe9'+struct.pack('<I',(entry-at-5)&0xffffffff)
   result,_=manager_call(patch_request(frame_original,frame_patch))
-  assert result==(1 if frame_at==0x55d360 else -5),(hex(frame_at),result)
-  if frame_at==0x55d360:first_frame=(frame_at,frame_original,frame_patch)
+  assert result==-5,(hex(frame_at),result)
   at=saved_at
- saved_at=at;at,frame_original,frame_patch=first_frame
- assert manager_call(patch_request(frame_patch,frame_original))[0]==1
- at=saved_at
- print('PASS central manager permits exactly one frame hook candidate at a time')
+ print('PASS central manager denies every retired frame/input hook candidate')
  patch_lease.operation=1;assert manager_call(patch_lease)[0]==1
  assert manager_call(idle)[0]==-3
  print('PASS patch writes require a current manager lease; idle, stale and foreign owners cannot write')

@@ -1,5 +1,5 @@
-RA2 Toolbox 1.0.19 Beta / Windows 1.0.19.0 / Assist protocol 51
+RA2 Toolbox 1.0.20 Beta / Windows 1.0.20.0 / Assist protocol 52
 Compiler: Zig 0.13.0 / Windows x86
-RA2Toolbox.exe SHA256: 1edfcf8f4bf82e1f07317269dd8f9026152777f6412bd7a08cccb6647b882a5d
-GameRuntime.dll SHA256: c96090ad9ad7c3f40e19284e9cb009b03d4e02fd7145babc7d73dcd114072925
-277 controls, 12 viewport sizes, 3144 reachability checks; actual settings/hotkeys; Runtime code/data sections unchanged from 1.0.18. No real Windows or netplay validation.
+RA2Toolbox.exe SHA256: 9c97102ac8e88d82da5ee3308ca14f0bee516c6ce40eff5cf3ef67fec79a18a7
+GameRuntime.dll SHA256: 1cf498886e546857e109db314deb12886db9afc2faae34d158a592c820ca4ede
+37 technology/player scenarios; 36 construction scenarios; entry/lease/constructor regression; 286 controls, 12 viewport sizes, 3252 reachability checks. No real Windows or netplay validation.

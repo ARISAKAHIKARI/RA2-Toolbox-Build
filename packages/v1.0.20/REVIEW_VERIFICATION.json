@@ -1,0 +1,32 @@
+{
+  "version": "1.0.20 Beta",
+  "file_version": "1.0.20.0",
+  "assist_protocol": 52,
+  "changes": [
+    "native technology cameos and paired UI prerequisite gates",
+    "explicit cross-player manual selection and move/attack",
+    "validated player context switching and restoration",
+    "foreign building Sell using original owner identity"
+  ],
+  "host_checks": {
+    "actual_ui_construction_layout_status_hover": true,
+    "controls": 286,
+    "viewport_sizes": 12,
+    "fully_reachable_checks": 3252,
+    "actual_settings_handler": true
+  },
+  "runtime_cases": {
+    "player-tech": 37,
+    "construction": 36
+  },
+  "entry_regression": "PASS; actual DLL and constructors, synthetic world/Win32 fixtures",
+  "new_runtime_tests_scope": "Original sidebar prune branch and mixed selection execute; CanBuild/FindFactory results are fixture stubs. Not proof of live purchase.",
+  "real_windows_game": false,
+  "real_netplay": false,
+  "real_capture_or_lbw": false,
+  "real_latency": false,
+  "binary_sha256": {
+    "RA2Toolbox.exe": "9c97102ac8e88d82da5ee3308ca14f0bee516c6ce40eff5cf3ef67fec79a18a7",
+    "GameRuntime.dll": "1cf498886e546857e109db314deb12886db9afc2faae34d158a592c820ca4ede"
+  }
+}

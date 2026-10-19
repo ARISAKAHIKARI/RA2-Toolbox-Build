@@ -16,7 +16,7 @@ static void servicePointer(){
  if(featureFlags&AdvancedEnter)allowed|=pointerinput::Enter;
  if(featureFlags&AircraftSpread)allowed|=pointerinput::AirFirst|pointerinput::AirSecond;
  if(featureFlags&DiskPrimary)allowed|=256;
- if(featureFlags&(SellDrained|SellVehicles))allowed|=512;
+ if(featureFlags&(SellDrained|SellVehicles|SellEnemy))allowed|=512;
  pointerinput::Bindings bindings{advancedKey,magnetronKey,csHoldKey,extra.enterKey,extra.airKey1,extra.airKey2,extra.diskKey,extra.sellKey,allowed};
  InterlockedIncrement(&shared->pointerPolicySeq);shared->pointerPolicy={};shared->pointerPolicy.match=commandMatch();shared->pointerPolicy.enabled=inputReady;shared->pointerPolicy.overrideNative=extra.overrideNative;shared->pointerPolicy.bindings=bindings;memcpy(shared->pointerPolicy.buttons,extra.mouseButtons,sizeof extra.mouseButtons);MemoryBarrier();InterlockedIncrement(&shared->pointerPolicySeq);
  auto&box=shared->pointer;box.cancelSerial=gameinput::pointerCancelSerial(hook);static uint32_t ack=0;
@@ -52,7 +52,7 @@ static void servicePointer(){
  DWORD now=GetTickCount();if(!commandFresh(now)||!foregroundGame()||DWORD(now-e.tick)>100||snap.chat)return;
  static pointerinput::Intent in;in={};in.tick=e.tick;in.inputSerial=e.serial;in.match=e.match;
  uint32_t saleEnabled=0;
- if(featureFlags&SellDrained)saleEnabled|=pointerinput::SellDrainedInput;
+ if(featureFlags&(SellDrained|SellEnemy))saleEnabled|=pointerinput::SellDrainedInput;
  if(featureFlags&SellVehicles)saleEnabled|=pointerinput::SellVehicleInput;
  pointerinput::MouseRoute routes[pointerinput::MouseCount+1]{};
  int routeCount=pointerinput::resolveMouseMatches(e.keys,e.operation==7?6:e.operation,extra.mouseButtons,
@@ -62,6 +62,7 @@ static void servicePointer(){
   pointerinput::MouseRoute test{pointerinput::C4Test,pointerinput::PerFeatureMouse|(extra.c4Mouse==4?uint32_t(pointerinput::RightClick):extra.c4Mouse==6?uint32_t(pointerinput::LeftClick):0)};
   if(extra.allHotkeys&&routeCount&&routes[0].operation!=pointerinput::FollowNative)routes[routeCount++]=test;else{routes[0]=test;routeCount=1;}
  }
+ if(extra.controlAll&&e.keys[VK_MENU]&&!e.keys[VK_CONTROL]&&(e.operation==7||e.operation==6||e.operation==4)){routes[0]={e.operation==4?pointerinput::PlayerOrder:pointerinput::PlayerSelect,(e.keys[VK_SHIFT]?uint32_t(pointerinput::Shift):0)};routeCount=1;}
  if(!routeCount)return;in.operation=routes[0].operation;in.bindings=routes[0].bindings;
  if(in.operation==pointerinput::Sell&&!(in.bindings&pointerinput::Control))return;
  if(in.operation==pointerinput::FollowNative&&!(shared->flags&AutoCS)&&!(in.bindings&(pointerinput::Advanced|pointerinput::Magnetron|pointerinput::CS)))return;
@@ -71,14 +72,14 @@ static void servicePointer(){
     !read(0x887324,&tactical,4)||tactical<0x10000||!read(tactical+0xB0,&in.cameraX,4)||!read(tactical+0xB4,&in.cameraY,4)||
     !read(0xA8EB84,&in.width,4)||!read(0xA8EB88,&in.height,4)||in.width<=0||in.height<=0||in.width>32768||in.height>32768)return;
  in.x=int(int64_t(e.point.x)*in.width/e.width);in.y=int(int64_t(e.point.y)*in.height/e.height);
- bool selectionNeeded=false;for(int route=0;route<routeCount;++route)if(routes[route].operation!=pointerinput::Sell)selectionNeeded=true;
+ bool selectionNeeded=false;for(int route=0;route<routeCount;++route)if(routes[route].operation!=pointerinput::Sell&&routes[route].operation!=pointerinput::PlayerSelect)selectionNeeded=true;
  if(selectionNeeded&&e.operation==6&&(!leftCaptured||leftCapture.match!=in.match||leftCapture.inputSerial!=in.inputSerial))return;
  if(selectionNeeded&&e.operation==6&&leftCaptured&&leftCapture.match==in.match&&leftCapture.inputSerial==in.inputSerial){in.count=leftCapture.count;memcpy(in.sources,leftCapture.sources,size_t(in.count)*sizeof(in.sources[0]));}
  else if(selectionNeeded){
   if(!read(0xA8ECB8+16,&count,4)||count<0||count>pointerinput::MaxSources||!read(0xA8ECB8+4,&items,4))return;
   for(int i=0;i<count;++i){auto&src=in.sources[in.count];uint32_t owner=0;
    if(!read(items+i*4,&src.pointer,4)||src.pointer<0x10000||!read(src.pointer+0x10,&src.id,4)||!src.id||!read(src.pointer+0x21C,&owner,4))return;
-   if(owner==in.house)++in.count;
+   if(owner==in.house||in.operation==pointerinput::PlayerOrder)++in.count;
   }
   if(!in.count){bool sale=false;for(int j=0;j<routeCount;++j)sale|=routes[j].operation==pointerinput::Sell;if(!sale)return;}
  }
@@ -86,6 +87,7 @@ static void servicePointer(){
  if(!read(0xA8ED84,&frameAfter,4)||frameAfter<in.frame||frameAfter-in.frame>2||
     !read(0xA83D4C,&houseAfter,4)||houseAfter!=in.house||
     !read(tactical+0xB0,&cameraX,4)||!read(tactical+0xB4,&cameraY,4)||cameraX!=in.cameraX||cameraY!=in.cameraY||DWORD(GetTickCount()-in.tick)>100)return;
+ if(e.operation==7&&in.operation==pointerinput::PlayerSelect)return;
  if(e.operation==7){leftCapture=in;leftCaptured=true;return;}
  if(e.operation==6)leftCaptured=false;
  pointerMatches.begin(in,routes,routeCount,settingsRevision);pointerMatches.cooperativeBefore=shared->cooperativeRequest.serial;

@@ -1,9 +1,18 @@
-// Native sidebar helpers. External tech Beta reads its catalogue only;
-// it never patches eligibility, prerequisites or native cameo cancellation.
+// Native sidebar technology test. Two UI eligibility callsites use build-limit
+// validation; Factory::DemandProduction and simulation rules remain native.
 // The helpers below are also used by ordinary production and cameo feedback.
 static constexpr uint32_t Sidebar=0x87F7E8, Tabs=Sidebar+0x1544;
 #include "sidebar_policy.h"
-static bool techPending;
+static int typeSlot(uint32_t);
+static bool techPending;static bool setTechSites(bool);static bool riskTechActive;
+// Persistent sidebar permission must not oscillate on host UI stalls. The
+// central stop/dead-controller cleanup owns restoration; no heartbeat timeout
+// may make native StripClass emit an unintended Abandon mid-production.
+static bool techGate(uint32_t type,uint32_t house){
+ if(!sh||sh->stop||!(sh->flags&UnsafeTech)||!snap.techOpen||!riskTechActive||house!=lastHouse||get<uint32_t>(0xA83D4C)!=house||!get<bool>(0xA8E9A0))return false;
+ int slot=typeSlot(type);return slot>=0&&techAllowed[slot];
+}
+
 static int typeSlot(uint32_t type){for(int i=0;i<snap.typeCount;++i)if(typePointers[i]==type)return i;return -1;}
 static int typeTab(int i){auto&t=snap.types[i];return callFast<int>(0x6ABC60,t.kind,t.index,0);}
 static void sidebarRedraw(int tab){if(tab<0||tab>3)return;put<bool>(Tabs+tab*3988+60,true);put<bool>(Sidebar+0x53A6,true);put<bool>(Sidebar+0x53A7,true);}
@@ -19,10 +28,17 @@ static uint32_t techFactory(uint32_t type,uint32_t house){
  uint32_t table=0,method=0;if(!read(type,&table,4)||!read(table+0x94,&method,4)||method<0x10000)return 0;
  return call<uint32_t>(method,type,true,false,false,(void*)(uintptr_t)house);
 }
-static void restoreTech(){techPending=false;snap.techOpen=0;}
-static void refreshTech(uint32_t,DWORD now){techRefresh=now;snap.techError=0;snap.techVisible=snap.techUnavailable=0;
- if(!(sh->flags&UnsafeTech)){restoreTech();return;}snap.techOpen=1;
- for(int i=0;i<snap.typeCount;++i){if(techAllowed[i]&&snap.types[i].kind!=7)++snap.techVisible;else ++snap.techUnavailable;}
+static bool ensureTechCameo(int i,uint32_t house){
+ if(i<0||i>=snap.typeCount||!techAllowed[i]||!typePointers[i]||!techFactory(typePointers[i],house))return false;
+ auto&t=snap.types[i];if(hasCameo(t.kind,t.index))return true;
+ int tab=typeTab(i);if(tab<0||tab>3||get<int>(Tabs+tab*3988+84)>=75)return false;
+ if(!call<bool>(0x6A6300,Sidebar,t.kind,t.index))return false;sidebarRedraw(tab);return hasCameo(t.kind,t.index);
+}
+static void restoreTech(){techPending=false;snap.techOpen=0;setTechSites(false);}
+static void refreshTech(uint32_t house,DWORD now){techRefresh=now;snap.techError=0;snap.techVisible=snap.techUnavailable=0;
+ if(!(sh->flags&UnsafeTech)){restoreTech();return;}
+ if(!setTechSites(true)){snap.techOpen=0;snap.techError=-11;return;}snap.techOpen=1;
+ for(int i=0;i<snap.typeCount;++i){if(ensureTechCameo(i,house))++snap.techVisible;else ++snap.techUnavailable;}
 }
 struct FlashRef {uint32_t address;int kind,index,until;};static FlashRef flashRefs[4*75];
 static void clearFlashes(){for(auto&f:flashRefs){if(f.address&&get<int>(f.address-48)==f.index&&get<int>(f.address-44)==f.kind&&get<int>(f.address)==f.until)put<int>(f.address,0);f={};}}

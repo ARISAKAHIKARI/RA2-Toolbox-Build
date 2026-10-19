@@ -62,7 +62,9 @@ static std::wstring controlHelp(int id,const std::wstring& label){
  case 830:case 831:case 850:case 851:case 852:return L"放大小地图：选择位置或输入游戏画面坐标，自动避开飞机按钮和原雷达。只放大当前雷达；鼠标穿透，菜单中自动隐藏。";
  case 817:return L"建筑预定面板缩放：范围 50–250%，默认 100%。同步缩放图标、编号和点击区域，不改变游戏侧栏大小。";
  case 481:return L"显示运行耗时：在状态栏查看指令响应、读取和画面更新的耗时。";
- case 814:case 815:case 420:case 421:case 422:case 423:case 424:case 425:case 426:case 427:case 428:return L"科技生产：启用后从列表选择单位进行生产，仍需对应工厂、电力及可用建造数量。实验性功能，联机效果尚未验证。";
+ case 860:case 865:return L"跨玩家操控测试：Alt＋左键选择，Shift 追加，Alt＋右键移动或攻击。AI 指令可能重新接管单位。普通快捷键不属于此测试路径。";
+ case 861:case 862:case 863:case 864:return L"切换整个操控上下文。自动功能、建造和部分退出操作将使用所选玩家。点击恢复原操控方可还原；测试开关不跨程序启动保留。";
+ case 814:case 815:case 420:case 421:case 422:case 423:case 424:case 425:case 426:case 427:case 428:return L"科技生产：启用后补充原生侧栏，也可从列表生产；仍需匹配阵营的生产设施、电力及可用建造数量。实验性功能，联机效果尚未验证。";
  case 761:case 762:return L"指令兼容模式：通常使用标准模式。兼容选项仅供多人测试；修改后须重启游戏和工具箱。";
  case 832:case 833:return L"计算模式按功能独立设置，修改后从下一局生效。当前对局继续使用进入本局时的设置。";
  }

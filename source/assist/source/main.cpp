@@ -74,6 +74,7 @@ struct EnemyRaster {std::wstring text;ARGB color{};std::unique_ptr<Bitmap> image
 static std::unordered_map<uint64_t,EnemyRaster> enemyRasters;static uint32_t enemyRasterMatch=0;
 static void clearEnemyDisplay(){enemyMotion.clear();enemyRasters.clear();enemyRasterMatch=0;}
 struct LabelRaster {std::wstring text;ARGB color{};float width{};int used{},capacity{},centis{},shield{},frozenCentis{};std::unique_ptr<Bitmap> image;};static std::unordered_map<uint32_t,LabelRaster> labelRasters;
+static assist::PlayerTestInfo playerChoices[32]{};static int playerChoiceCount;static uint32_t playerChoicesMatch;
 static bool techMode;static bool autoRevealNewMatch=false;
 static uint32_t schedulerMode=0,schedulerTarget=0,megaQueueMode=0,objectQueueMode=0;
 static HWND schedulerEntryCombo,megaQueueCombo,objectQueueCombo;
@@ -612,7 +613,7 @@ static bool ensureBridge(){
  if(!game||bridgeBlocked||(bridgeRetryAt&&int32_t(now-bridgeRetryAt)<0))return false;
  ++bridgeAttempts;bridgeRetryAt=now+(bridgeAttempts>=3?30000:2000);
  critical(L"bridge-connect-attempt="+std::to_wstring(bridgeAttempts)+L" pid="+std::to_wstring(pid)+L" thread="+std::to_wstring(gameThread));
- wchar_t n[100];swprintf(n,100,L"Local\\RA2Assist_v051_%lu",pid);
+ wchar_t n[100];swprintf(n,100,L"Local\\RA2Assist_v052_%lu",pid);
  mapping=CreateFileMappingW(INVALID_HANDLE_VALUE,nullptr,PAGE_READWRITE,0,sizeof(Shared),n);
  DWORD mappingError=GetLastError();if(!mapping)return bridgeFailed(L"创建命令共享内存失败",mappingError);
  if(mappingError==ERROR_ALREADY_EXISTS){
@@ -1079,6 +1080,7 @@ static void result(){if(!shared)return;uint32_t a=shared->ack;if(a==ack)return;M
  else if(c==RevealMap)notify(L"已执行当前对局的地图揭示。");
  else if(c==ClearBeacons)notify(L"已清理己方信标。");
  else if(c==OpenTech){techEnabled=shared->arg!=0;notify(techEnabled?L"科技生产已启用，允许 "+std::to_wstring(n)+L" 项。请从本面板选择单位生产。":L"科技生产已关闭。");}
+ else if(c==SwitchPlayer||c==RestorePlayer){pointerMatches.clear();commandQueue.clear();notify(c==RestorePlayer?L"已恢复原操控方。":L"已切换操控方；自动功能将按新操控方重新启动。");}
  else if(c==CancelTechProduction)notify(L"已请求取消生产。");
  else if(c==Produce)notify(L"生产请求已提交；是否接受以游戏生产队列为准。");
  else if(c==SelectSuper||c==SelectIron||c==SelectChrono)notify(L"已选择超级武器，请在地图上选择目标。");
@@ -1111,8 +1113,8 @@ static void updateModeStatus(DWORD now){
  SetWindowTextW(GetDlgItem(ui,813),(L"步兵 C4："+riskText(extra.c4Test,snap.c4TestStatus)).c_str());
  std::wstring progress=L"生产进度：";uint32_t owner=0;
  if(techMode&&commandFresh(now)&&externalReader.readFresh(0xA83D4C,&owner,4)&&owner>=0x10000){
-  const int offsets[]={0x53B0,0x53B4,0x53B8,0x53AC};const wchar_t* names[]={L"步兵",L"战车",L"舰船",L"飞机"};
-  for(int j=0;j<4;++j){uint32_t f=0,p=0,own=0;int step=0;bool valid=externalReader.readFresh(owner+offsets[j],&f,4);
+  const int offsets[]={0x53BC,0x53CC,0x53B0,0x53B4,0x53B8,0x53AC};const wchar_t* names[]={L"建筑",L"防御",L"步兵",L"战车",L"舰船",L"飞机"};
+  for(int j=0;j<6;++j){uint32_t f=0,p=0,own=0;int step=0;bool valid=externalReader.readFresh(owner+offsets[j],&f,4);
    progress+=names[j];progress+=L" ";
    if(valid&&f>=0x10000&&externalReader.readFresh(f+0x6C,&own,4)&&own==owner&&externalReader.readFresh(f+0x58,&p,4)&&externalReader.readFresh(f+0x24,&step,4))progress+=p?std::to_wstring(std::clamp(step,0,54)*100/54)+L"%":L"空闲";
    else progress+=L"—";progress+=(j==1?L"\n":L"   ");
@@ -1137,8 +1139,25 @@ static void updateModeStatus(DWORD now){
  if(phase)oreText+=L" · "+std::wstring(phaseText);else if(snap.oreManual)oreText+=L" · 手动接管 "+std::to_wstring(snap.oreManual);
  static std::wstring oldOreText;if(oreText!=oldOreText){oldOreText=oreText;SetWindowTextW(oreStatus,oreText.c_str());}
 }
+static void updatePlayerTestUI(){
+ static DWORD last=0;DWORD now=GetTickCount();if(DWORD(now-last)<200)return;last=now;
+ if(!shared||!commandFresh(GetTickCount()))return;
+ PlayerTestInfo list[32]{};int count=0,current=-1,status=0;uint32_t epoch=0;
+ long before=shared->seq;if(before&1)return;MemoryBarrier();count=shared->playerCount;
+ if(count<0||count>32)return;memcpy(list,shared->players,size_t(count)*sizeof(list[0]));current=shared->playerCurrent;status=shared->playerControlStatus;epoch=shared->data.match;
+ MemoryBarrier();if(before!=shared->seq)return;
+ bool changed=count!=playerChoiceCount||epoch!=playerChoicesMatch||memcmp(list,playerChoices,size_t(count)*sizeof(list[0]));
+ if(changed){int old=int(SendDlgItemMessageW(ui,862,CB_GETCURSEL,0,0));uint32_t selected=old>=0&&old<playerChoiceCount?playerChoices[old].pointer:0;
+  SendDlgItemMessageW(ui,862,CB_RESETCONTENT,0,0);int chosen=0;
+  for(int i=0;i<count;++i){std::wstring label=L"玩家 "+std::to_wstring(list[i].index+1)+L" · "+(list[i].human?L"人类":L"AI")+L" · "+std::wstring((wchar_t*)list[i].name);
+   SendDlgItemMessageW(ui,862,CB_ADDSTRING,0,(LPARAM)label.c_str());if(list[i].pointer==selected)chosen=i;}
+  memcpy(playerChoices,list,sizeof list);playerChoiceCount=count;playerChoicesMatch=epoch;SendDlgItemMessageW(ui,862,CB_SETCURSEL,chosen,0);
+ }
+ std::wstring label=L"跨玩家操控：";label+=!extra.controlAll?L"关闭":status==1?L"已启用（测试）":status<0?L"此版本不兼容，未启用":L"等待生效";
+ label+=L" · 当前玩家 "+std::to_wstring(current+1);SetWindowTextW(GetDlgItem(ui,865),label.c_str());
+}
 #include "shift_click_host.h"
-static void tick(){reapBridges();logBridgeHealth();DWORD now=GetTickCount();static DWORD lastControl;if(lastControl&&DWORD(now-lastControl)<8)return;lastControl=now;updateModeStatus(now);if(keysRegistered!=(enabled&&foregroundGame()&&snap.status==1&&!snap.chat))registerKeys();if(!enabled){clockState(false,fps);return;}
+static void tick(){reapBridges();logBridgeHealth();DWORD now=GetTickCount();static DWORD lastControl;if(lastControl&&DWORD(now-lastControl)<8)return;lastControl=now;updateModeStatus(now);updatePlayerTestUI();if(keysRegistered!=(enabled&&foregroundGame()&&snap.status==1&&!snap.chat))registerKeys();if(!enabled){clockState(false,fps);return;}
  if(pid&&DWORD(now-lastProcessCheck)>=250){lastProcessCheck=now;
   if(!externalReader.alive()){detach();lastFind=now-2000;}
   else {DWORD nextThread=0;bool authoritative=false;
@@ -1324,6 +1343,16 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
  case WM_TIMER:if(wp==2){updateHoverHelp();return 0;}if(wp==AutoSaveTimer){flushAutoSettings();return 0;}tick();return 0;
  case WM_HOTKEY:handleHotkey(wp,lp);return 0;
  case WM_COMMAND:{int id=LOWORD(wp);
+ if(id==863||id==864){
+  if(!shared||!commandFresh(GetTickCount())||shared->request!=shared->ack){notify(L"请等待游戏就绪后再切换。");return 0;}
+  if(id==864)send(RestorePlayer);
+  else {int row=int(SendDlgItemMessageW(w,862,CB_GETCURSEL,0,0));
+   if(!extra.switchPlayerEnabled)notify(L"请先启用切换操控方测试。");
+   else if(playerChoicesMatch!=commandMatch()||row<0||row>=playerChoiceCount)notify(L"玩家列表已更新，请重新选择。");
+   else send(SwitchPlayer,int(playerChoices[row].pointer),int(playerChoices[row].id));
+  }return 0;
+ }
+
  if(updatingControls)return 0;
  if(id>=910&&id<=914){for(const auto&c:pageControls)if(GetDlgCtrlID(c.hwnd)==900+id-910){scrollTo(c.rect.y-uilayout::BodyTop);break;}return 0;}
  if(id==739&&HIWORD(wp)==BN_CLICKED){
@@ -1393,7 +1422,7 @@ if(id==991){wchar_t query[128]{};GetWindowTextW(featureSearch,query,128);std::ws
   else notify(id==427?L"已选择 Ra2Tool 预设清单并保存。":L"已选择 Assist.ini [tech] 自定义清单并保存。");
  }
  else if(id==814){int i=int(SendMessageW(techList,LB_GETCURSEL,0,0));if(techEnabled&&i>=0&&i<int(techIndices.size())){int live=liveTypeIndex(savedTypes.types[techIndices[i]]);if(live>=0)send(CancelTechProduction,live);}}
- else if(id==423||(id==422&&HIWORD(wp)==LBN_DBLCLK)){int i=(int)SendMessageW(techList,LB_GETCURSEL,0,0);if(!techEnabled)notify(L"先开启自定义科技。");else if(i>=0&&i<(int)techIndices.size()){auto&t=savedTypes.types[techIndices[i]];int live=liveTypeIndex(t);if(!techAllowed(t))notify(L"此项目已从开启清单中排除。");else if(t.kind==7)notify(L"科技生产暂不支持建筑，请选择步兵、战车、舰船或飞机。");else if(live<0)notify(L"此单位在当前对局不可用。");else send(Produce,live);}}
+ else if(id==423||(id==422&&HIWORD(wp)==LBN_DBLCLK)){int i=(int)SendMessageW(techList,LB_GETCURSEL,0,0);if(!techEnabled)notify(L"先开启自定义科技。");else if(i>=0&&i<(int)techIndices.size()){auto&t=savedTypes.types[techIndices[i]];int live=liveTypeIndex(t);if(!techAllowed(t))notify(L"此项目已从开启清单中排除。");else if(live<0)notify(L"此单位在当前对局不可用。");else send(Produce,live);}}
  else if(id==410&&HIWORD(wp)==CBN_SELCHANGE){ControlUpdate guard;auto type=selectedSuperID();SendMessageW(swHotkey,HKM_SETHOTKEY,type.empty()?0:binding(type.c_str()),0);}
  else if(id==449){
   wchar_t raw[64]{};GetWindowTextW(typeIdEdit,raw,64);std::string id;

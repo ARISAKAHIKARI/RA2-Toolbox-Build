@@ -43,13 +43,13 @@ static void pointerTick(){
   const bool continuation=next&&!start&&pointerBatchValid&&request==pointerBatchRequest+1&&pointerinput::sameCapture(i,pointerBatchCapture);
   if(!nativeReady()||i.inputSerial!=b.cancelSerial||i.match!=match||i.house!=lastHouse||
      (next&&!continuation)||(next&&start)||DWORD(now-i.tick)>(continuation?1500u:150u)||frame<i.frame||frame-i.frame>(continuation?90:8)||
-     i.count<0||i.count>pointerinput::MaxSources||i.operation<1||i.operation>7){pointerFinish(-7);return;}
+     i.count<0||i.count>pointerinput::MaxSources||i.operation<1||i.operation>9){pointerFinish(-7);return;}
   if(!continuation)pointerBatchValid=false;
   if(i.operation!=pointerinput::Cancel){
    bool shiftUnsupported=(i.bindings&pointerinput::Shift)&&(i.operation==pointerinput::FollowNative||(i.bindings&pointerinput::RightClick)||!(i.bindings&(pointerinput::Advanced|pointerinput::Magnetron|pointerinput::CS|pointerinput::Enter|pointerinput::AirFirst|pointerinput::AirSecond)));
    uint32_t tactical=get<uint32_t>(0x887324);
    bool location=continuation?(tactical>=0x10000&&i.width==get<int>(0xA8EB84)&&i.height==get<int>(0xA8EB88)&&i.cameraX==get<int>(tactical+0xB0)&&i.cameraY==get<int>(tactical+0xB4)):pointerLocation(i);
-   if(shiftUnsupported||get<bool>(0x87F7E8+0x11B3)||!location){pointerFinish(-4);return;}
+   if((shiftUnsupported&&i.operation!=pointerinput::PlayerSelect&&i.operation!=pointerinput::PlayerOrder)||get<bool>(0x87F7E8+0x11B3)||!location){pointerFinish(-4);return;}
    if(i.operation==pointerinput::FollowNative&&pointerTarget){pointerFinish(-4);return;}
   }
   if(start){pointerBatchCapture=i;pointerBatchValid=true;memset(pointerBatchTickets,0,sizeof pointerBatchTickets);memset(pointerBatchFollow,0,sizeof pointerBatchFollow);}
@@ -64,6 +64,11 @@ static void pointerTick(){
  // A configured right click is observed on release and never swallowed.
  // Give the original input at least one simulation turn before appending.
  if((i.bindings&(pointerinput::RightClick|pointerinput::LeftClick))&&frame==i.frame)return;
+ if(i.operation==pointerinput::PlayerSelect){
+  if(!sh->controlAll||!riskControlActive||!pointerTarget||!live(pointerTarget)||!playableHouse(get<uint32_t>(pointerTarget+0x21C))){pointerFinish(-4);return;}
+  if(!(i.bindings&pointerinput::Shift))unselect();
+  b.accepted=get<bool>(pointerTarget+0x83)||selection(pointerTarget);pointerFinish(b.accepted?1:-4);return;
+ }
  if(i.operation==pointerinput::AirWaypoint){
   b.resolvedCell=pointerCell;b.resolvedTarget=pointerTargetID;b.resolvedZ=pointerGroundZ;memset(b.sourceAccepted,0,sizeof b.sourceAccepted);
   if(!(sh->flags&AirWaypoints)||(sh->flags&NativeAirWaypoints)){pointerFinish(-4);return;}
@@ -75,7 +80,7 @@ static void pointerTick(){
   if(!(i.bindings&pointerinput::Control)||!pointerTarget||!sellAllowed(pointerTarget)){pointerFinish(-4);return;}
   if((i.bindings&pointerinput::PerFeatureMouse)&&
      !(i.bindings&(kind(pointerTarget)==2?pointerinput::SellVehicleInput:pointerinput::SellDrainedInput))){pointerFinish(-4);return;}
-  if(nativeObjectEvent(get<int>(lastHouse+0x30),0x16,get<uint32_t>(pointerTarget+0x10))){b.accepted=1;pointerFinish(1);}
+  if(nativeObjectEvent(get<int>(get<uint32_t>(pointerTarget+0x21C)+0x30),0x16,get<uint32_t>(pointerTarget+0x10),get<uint32_t>(pointerTarget+0x21C)==lastHouse?OrderAuthority::Local:OrderAuthority::SellPlayerTest)){b.accepted=1;pointerFinish(1);}
   else if(outgoingRoom()>0)pointerFinish(-6);
   return;
  }
@@ -88,6 +93,13 @@ static void pointerTick(){
  bool follow=!suppressed&&(i.operation==pointerinput::FollowNative||(i.bindings&pointerinput::RightClick));
  while(examined++<i.count){int n=pointerAt++;if(pointerAt>=i.count)pointerAt=0;if(pointerDone[n])continue;
   uint32_t p=worldByID(i.sources[n].id);
+  if(i.operation==pointerinput::PlayerOrder){
+   if(!sh->controlAll||!p||p!=i.sources[n].pointer||!live(p)||!playableHouse(get<uint32_t>(p+0x21C))||get<uint32_t>(p+0x11C)){pointerDone[n]=1;continue;}
+   if(submitted>=limit||outgoingRoom()<=0){++remaining;continue;}
+   uint32_t owner=get<uint32_t>(p+0x21C);int mission=pointerTarget?1:2;
+   if(pointerTarget==p){pointerDone[n]=1;continue;}
+   if(nativeMission(owner,i.sources[n].id,mission,pointerTargetID,pointerTarget?0:pointerCell,pointerTarget?0:11,0,0,taskarbiter::Owner::Generic,nullptr,-1,OrderAuthority::PlayerTest)){++b.accepted;++submitted;pointerDone[n]=1;}else ++remaining;continue;
+  }
   if(!p||p!=i.sources[n].pointer||!own(p,lastHouse)||get<bool>(p+0x1C8)||get<uint32_t>(p+0x11C)||
      (!follow&&manualVersions.get(i.sources[n].id)!=pointerTokens[n])){pointerDone[n]=1;continue;}
   if(i.operation==pointerinput::C4Test){

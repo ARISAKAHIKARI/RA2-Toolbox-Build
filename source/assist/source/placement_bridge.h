@@ -1,6 +1,7 @@
 // Explicit experimental game-judgment opt-ins. Sole writer: GameEntryManager.
 #include "../../shared/source/experimental_patch_policy.h"
 extern "C" int __cdecl GuardedRiskAction(unsigned,unsigned,unsigned);
+static bool riskControlActive;
 static bool riskPlacementActive=false,riskAirActive=false,riskRenderActive=false,riskC4Active=false;
 static bool riskContextReady(){
  if(!gameentry::active(gameentry::Client::Assist)||fault||!lastHouse||!get<bool>(0xA8E9A0))return false;
@@ -16,7 +17,9 @@ static bool riskReady(){
  return sh&&!sh->stop&&DWORD(sampleClock(sh)-sh->heartbeat)<3000&&riskContextReady();
 }
 extern "C" int __cdecl AssistRiskAction(unsigned op,unsigned object,unsigned house){
+ if(op==5)return gameentry::active(gameentry::Client::Assist)&&techGate(object,house);
  if(!riskReady())return 0;
+ if(op==6)return riskControlActive&&sh->controlAll&&playableHouse(house);
  if(op==4)return riskC4Active&&sh->c4Test&&object>=0x10000&&own(object,lastHouse)&&kind(object)==1;
  if(op==3)return riskRenderActive&&sh->renderReveal!=0; // draw-only, no native game calls
  if(op==0)return riskPlacementActive&&(sh->flags&BuildAnywhere)&&house==get<uint32_t>(lastHouse+0x30)&&object>=0x10000&&
@@ -211,6 +214,65 @@ original:
  push 51A4DEh
  ret
 }}
+// Native sidebar CanBuild call ABI: ECX=house; stack=type,limitOnly,includeProduction.
+// Only the UI callsites change limitOnly. The simulation function stays intact.
+static __declspec(naked) void riskTechEntry(){__asm {
+ pushfd
+ pushad
+ mov ebx,esp
+ sub esp,528
+ and esp,-16
+ fxsave [esp]
+ cld
+ mov eax,[ebx+12]
+ push ecx
+ push dword ptr [eax+8]
+ push 5
+ call GuardedRiskAction
+ add esp,12
+ test eax,eax
+ jz original
+ mov eax,[ebx+12]
+ mov dword ptr [eax+12],1
+original:
+ fxrstor [esp]
+ mov esp,ebx
+ popad
+ popfd
+ push 4F7870h
+ ret
+}}
+// Selection-only CanControl callsites. AI, combat and incoming event checks
+// do not call this wrapper; original House::ControlledByPlayer is untouched.
+static __declspec(naked) void riskControlEntry(){__asm {
+ pushfd
+ pushad
+ mov ebx,esp
+ sub esp,528
+ and esp,-16
+ fxsave [esp]
+ cld
+ push ecx
+ push 0
+ push 6
+ call GuardedRiskAction
+ add esp,12
+ test eax,eax
+ jz original
+ fxrstor [esp]
+ mov esp,ebx
+ popad
+ popfd
+ mov al,1
+ ret
+original:
+ fxrstor [esp]
+ mov esp,ebx
+ popad
+ popfd
+ push 50B6F0h
+ ret
+}}
 struct RiskSite {uint32_t address;unsigned size;uint8_t before[16],after[16];};
 static RiskSite riskSites[]={
  {experimentalpatch::Placement,5,{0xA1,0x4C,0x3D,0xA8,0},{}},
@@ -218,13 +280,20 @@ static RiskSite riskSites[]={
  {experimentalpatch::AirArrival,10,{0xC7,0x86,0xBC,0,0,0,3,0,0,0},{}},
  {experimentalpatch::ShroudDraw,6,{0x55,0x8B,0xEC,0x83,0xEC,0x34},{}},
  {experimentalpatch::FogDraw,5,{0xA0,0xC6,0xE7,0x89,0},{}},
- {experimentalpatch::C4Execution,6,{0x8A,0x81,0xC2,0x0E,0,0},{}}
+ {experimentalpatch::C4Execution,6,{0x8A,0x81,0xC2,0x0E,0,0},{}},
+ {experimentalpatch::TechDraw,5,{0xE8,0x99,0xE0,0xE4,0xFF},{}},
+ {experimentalpatch::TechPrune,5,{0xE8,0xEA,0xD0,0xE4,0xFF},{}},
+ {0x6FBFB3,5,{0xE8,0x38,0xF7,0xE0,0xFF},{}},
+ {0x6FBFEF,5,{0xE8,0xFC,0xF6,0xE0,0xFF},{}},
+ {0x5F45D2,5,{0xE8,0x19,0x71,0xF1,0xFF},{}},
+ {0x5F45DF,5,{0xE8,0x0C,0x71,0xF1,0xFF},{}},
+ {0x5F45EF,5,{0xE8,0xFC,0x70,0xF1,0xFF},{}}
 };
 static void prepareRiskSites(){static bool ready=false;if(ready)return;ready=true;
- const uint32_t targets[]={uint32_t(uintptr_t(&riskPlacementEntry)),uint32_t(uintptr_t(&riskAirTypeEntry)),uint32_t(uintptr_t(&riskAirArrivalEntry)),uint32_t(uintptr_t(&riskShroudEntry)),uint32_t(uintptr_t(&riskFogEntry)),uint32_t(uintptr_t(&riskC4Entry))};
- for(unsigned i=0;i<6;++i){auto&s=riskSites[i];
+ const uint32_t targets[]={uint32_t(uintptr_t(&riskPlacementEntry)),uint32_t(uintptr_t(&riskAirTypeEntry)),uint32_t(uintptr_t(&riskAirArrivalEntry)),uint32_t(uintptr_t(&riskShroudEntry)),uint32_t(uintptr_t(&riskFogEntry)),uint32_t(uintptr_t(&riskC4Entry)),uint32_t(uintptr_t(&riskTechEntry)),uint32_t(uintptr_t(&riskTechEntry)),uint32_t(uintptr_t(&riskControlEntry)),uint32_t(uintptr_t(&riskControlEntry)),uint32_t(uintptr_t(&riskControlEntry)),uint32_t(uintptr_t(&riskControlEntry)),uint32_t(uintptr_t(&riskControlEntry))};
+ for(unsigned i=0;i<sizeof(riskSites)/sizeof(riskSites[0]);++i){auto&s=riskSites[i];
   if(s.size==4)memcpy(s.after,&targets[i],4);
-  else{memset(s.after,0x90,s.size);s.after[0]=0xE9;uint32_t offset=targets[i]-s.address-5;memcpy(s.after+1,&offset,4);}
+  else{memset(s.after,0x90,s.size);s.after[0]=experimentalpatch::callSite(s.address)?0xE8:0xE9;uint32_t offset=targets[i]-s.address-5;memcpy(s.after+1,&offset,4);}
  }
 }
 static bool riskSiteCurrent(const RiskSite&s){uint8_t bytes[16]{};return read(s.address,bytes,s.size)&&!memcmp(bytes,s.after,s.size);}
@@ -236,10 +305,23 @@ static bool installRiskSite(RiskSite&s){
  if(codeHookRegistry.active(s.address)){if(riskSiteCurrent(s))return !codeHookRegistry.conflict(s.address);codeHookRegistry.markConflict(s.address);return false;}
  return gameentry::patch(gameentry::Client::Assist,s.address,s.before,s.after,s.size);
 }
+static bool setTechSites(bool enabled){
+ prepareRiskSites();riskTechActive=false;
+ if(enabled){riskTechActive=installRiskSite(riskSites[6])&&installRiskSite(riskSites[7]);if(riskTechActive)return true;}
+ bool a=restoreRiskSite(riskSites[6]),b=restoreRiskSite(riskSites[7]);return !enabled&&a&&b;
+}
+static void controlSitesTick(bool enabled){
+ if(riskControlActive&&!enabled&&riskContextReady())unselect();
+ riskControlActive=false;bool ok=true;
+ if(enabled)for(int i=8;i<13;++i)if(!installRiskSite(riskSites[i]))ok=false;
+ if(!enabled||!ok)for(int i=8;i<13;++i)if(!restoreRiskSite(riskSites[i]))ok=false;
+ riskControlActive=enabled&&ok;if(sh)sh->playerControlStatus=ok?(enabled?1:0):-2;
+}
 static void redrawRevealTest();
 static void restorePlacement(){
  const bool wasRendered=riskRenderActive;
  riskPlacementActive=riskAirActive=riskRenderActive=riskC4Active=false;prepareRiskSites();
+ controlSitesTick(false);
  bool place=restoreRiskSite(riskSites[0]);
  bool type=restoreRiskSite(riskSites[1]),arrival=restoreRiskSite(riskSites[2]);
  snap.placementStatus=place?0:-2;snap.nativeAirStatus=type&&arrival?0:-2;
@@ -260,7 +342,7 @@ static void redrawRevealTest(){
 }
 static void placementTick(){
  prepareRiskSites();
- bool priorRender=riskRenderActive;
+ bool priorRender=riskRenderActive;controlSitesTick(sh->controlAll!=0);
  if(sh->c4Test){riskC4Active=installRiskSite(riskSites[5]);snap.c4TestStatus=riskC4Active?1:-2;}
  else{riskC4Active=false;snap.c4TestStatus=restoreRiskSite(riskSites[5])?0:-2;}
  if(sh->renderReveal){

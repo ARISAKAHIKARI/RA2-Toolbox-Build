@@ -17,7 +17,7 @@ layout = 'struct PageControl {' + layout
 create = main.split('switch(msg){case WM_CREATE:{', 1)[1].split('\n case WM_SIZE:', 1)[0]
 assert create.rstrip().endswith('return 0;}')
 labels = main.split('static const wchar_t* labels[]=', 1)[1].split(';', 1)[0]
-status = 'static void updateModeStatus(DWORD now){' + main.split('static void updateModeStatus(DWORD now){', 1)[1].split('#include "shift_click_host.h"', 1)[0]
+status = 'static void updateModeStatus(DWORD now){' + main.split('static void updateModeStatus(DWORD now){', 1)[1].split('static void updatePlayerTestUI()', 1)[0]
 prefix = r'''
 #include "ui_layout.h"
 #include "ore_type_config.h"
