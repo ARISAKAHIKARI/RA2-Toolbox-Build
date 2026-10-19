@@ -106,7 +106,7 @@ static bool techAllowed(const assist::Type& t){
 }
 static WORD hotkeys[12];static const int actions[]={Repair,CombatSelection,EmptyTransports,DamagedSelection,IdleHarvester,IdleEngineer,IdleTransport,ClearBeacons,RevealMap,SelectIron,SelectChrono,AutoBoard};
 static std::vector<int> registeredKeyIDs;
-static const wchar_t* labels[]={L"自动维修",L"战斗单位",L"选中空载运输载具",L"受损单位",L"空闲矿车",L"空闲工程师",L"定位空闲运输载具",L"清理信标",L"地图全开（实验性）",L"铁幕",L"超时空",L"自动装车"};
+static const wchar_t* labels[]={L"自动维修",L"选择作战单位",L"选择空载运输载具",L"选择受损单位",L"选择空闲矿车",L"选择空闲工程师",L"定位空闲运输载具",L"清除信标",L"地图全开（实验性）",L"铁幕目标选择",L"超时空目标选择",L"自动装车"};
 static const char* iniKeys[]={"Repair","Combat","EmptyTransports","Damaged","IdleHarvester","IdleEngineer","IdleTransport","ClearBeacons","RevealMap","IronCurtain","ChronoSphere","AutoLoad"};
 struct Binding{std::string id;WORD key;};static std::vector<Binding> swBindings;
 static HWND typeList,typeKey,typeCS,csCheck,csKeyEdit,csStatus,tapEdit,typeIdEdit;
@@ -364,22 +364,22 @@ static bool uninitializedBridgeTimedOut(){return shared&&!commandMatch()&&attach
 static bool commandChannelReady(){return controllink::ready(commandLink());}
 static bool commandFresh(DWORD now){return commandChannelReady()&&DWORD(now-lastData)<1500;}
 static std::wstring commandWaitReason(){
- if(!shared)return bridgeFailure.empty()?L"正在建立 GameRuntime 命令连接；尚未提交。":bridgeFailure;
+ if(!shared)return bridgeFailure.empty()?L"正在连接游戏，指令尚未提交。":bridgeFailure;
  const auto health=gameinput::health(hook);
- if(health.diagnosticValid&&health.stage<0)return std::wstring(L"GameRuntime 握手被拒绝：")+runtimeStage(health.stage)+L"，Win32="+std::to_wstring(health.error)+L"；详见 logs/Runtime.log。";
- if(health.postError)return L"无法唤醒游戏线程，Win32="+std::to_wstring(health.postError)+L"；尚未提交。";
+ if(health.diagnosticValid&&health.stage<0)return L"无法建立游戏连接，请查看 logs/Runtime.log。";
+ if(health.postError)return L"游戏暂未响应，指令尚未提交。";
  if(!lastData||!incoming.match){
-  if(!health.dispatches)return health.diagnosticValid&&health.callbacks?L"已收到 GameRuntime 回调，等待调度；详见 logs/Runtime.log。":L"Hook 已安装，尚未收到游戏侧回调报告；详见 logs/Runtime.log。";
-  return L"GameRuntime 已响应，尚未取得可操作的本地玩家与对局身份。";
+  if(!health.dispatches)return L"等待游戏响应；若持续无响应，请查看 logs/Runtime.log。";
+  return L"游戏已连接，等待可操作的玩家与对局。";
  }
- if(shared->stop)return L"命令桥正在停止，等待重新连接。";
- if(incoming.status<0)return L"GameRuntime 执行异常，本次连接已停止接收指令；请重启游戏，详见 logs/Runtime.log。";
- if(DWORD(GetTickCount()-lastData)>=1500)return L"GameRuntime 数据已超过 1.5 秒未更新，等待游戏线程响应。";
- if(incoming.status!=1)return L"当前对局未就绪，等待游戏返回可操作状态。";
- if(incoming.commandStatus!=1)return foregroundGame()?L"游戏逻辑处于暂停或模态状态；恢复游戏后提交。":L"游戏暂停处理指令；切回游戏并恢复运行后提交。";
- if(incoming.chat)return L"游戏聊天输入框占用，请关闭聊天框后继续。";
- if(shared->request!=shared->ack)return L"等待上一条指令回执（请求 "+std::to_wstring(shared->request)+L" / 回执 "+std::to_wstring(shared->ack)+L"）。";
- return L"等待队列中的前序指令提交。";
+ if(shared->stop)return L"游戏连接正在重建，请稍候。";
+ if(incoming.status<0)return L"游戏操作发生异常，已停止发送指令；请重启游戏。详情见 logs/Runtime.log。";
+ if(DWORD(GetTickCount()-lastData)>=1500)return L"游戏数据已超过 1.5 秒未更新，等待恢复。";
+ if(incoming.status!=1)return L"当前对局尚不可操作，等待游戏恢复。";
+ if(incoming.commandStatus!=1)return foregroundGame()?L"游戏已暂停或正在显示菜单，恢复后继续。":L"请切回游戏并恢复运行。";
+ if(incoming.chat)return L"请关闭游戏聊天输入框后继续。";
+ if(shared->request!=shared->ack)return L"正在等待上一条指令处理完成。";
+ return L"正在处理已排队的指令。";
 }
 static void logCommandWait(){
  const auto health=gameinput::health(hook);
@@ -416,7 +416,7 @@ static void send(int command,int arg=0,int arg2=0,int retries=0,bool fromQueue=f
   }else notify(L"尚未发现可连接的游戏窗口。");
   return;
  }
- if(snap.status<0){notify(L"游戏桥接报告接口异常，未执行命令。");return;}
+ if(snap.status<0){notify(L"游戏操作暂不可用，本次指令未执行。");return;}
  readSnapshot();now=GetTickCount();
  if(shared&&lastData&&incoming.status<0){notify(commandWaitReason());return;}
  bool connected=shared&&delivery::bridgeReady(incoming.status,commandFresh(now),incoming.chat,shared->request==shared->ack);
@@ -602,13 +602,13 @@ static bool boundGameAlive(){
 // game window is hidden, owned, or not the largest top-level window.
 static DWORD discoverGamePid(){return external::discovery::scan().best.pid;}
 static bool bridgeFailed(const std::wstring&reason,DWORD error=0){
- const auto text=reason+(error?L"（Win32="+std::to_wstring(error)+L"）":L"");
+ const auto text=reason+(error?L"（错误代码 "+std::to_wstring(error)+L"）":L"");
  if(bridgeFailure!=text){bridgeFailure=text;critical(L"command bridge failure: "+text+L" pid="+std::to_wstring(pid)+L" thread="+std::to_wstring(gameThread));}
  setStatus(text);return false;
 }
 static bool ensureBridge(){
  if(shared)return true;
- if(!gameinput::runtimeModule())return bridgeFailed(L"GameRuntime.dll 加载或协议校验失败，请成套替换 EXE/DLL",GetLastError());DWORD now=GetTickCount();
+ if(!gameinput::runtimeModule())return bridgeFailed(L"运行组件缺失或版本不匹配，请完整更新工具箱",GetLastError());DWORD now=GetTickCount();
  if(!game||bridgeBlocked||(bridgeRetryAt&&int32_t(now-bridgeRetryAt)<0))return false;
  ++bridgeAttempts;bridgeRetryAt=now+(bridgeAttempts>=3?30000:2000);
  critical(L"bridge-connect-attempt="+std::to_wstring(bridgeAttempts)+L" pid="+std::to_wstring(pid)+L" thread="+std::to_wstring(gameThread));
@@ -646,11 +646,11 @@ static bool ensureBridge(){
   if(!identity||identity[0]!=Version||identity[1]!=sizeof(Shared)){
    bridgeBlocked=true;releaseBridge();
    diag(L"Assist bridge protocol/structure mismatch");
-   return bridgeFailed(L"组件协议不匹配，请完整替换 EXE 和 GameRuntime.dll。");
+   return bridgeFailed(L"运行组件版本不匹配，请完整更新工具箱。");
   }
  }
  hook=gameinput::install(gameentry::Client::Assist,gameThread,pid,game);
- if(!hook){DWORD error=GetLastError();releaseBridge();return bridgeFailed(L"安装统一游戏线程 Hook 失败",error);}
+ if(!hook){DWORD error=GetLastError();releaseBridge();return bridgeFailed(L"无法建立游戏操作连接",error);}
  bridgeFailure.clear();ack=notice=0;lastData=0;attachAt=now;wakeGame();
  wchar_t dllPath[32768]={},transportName[96];GetModuleFileNameW(module,dllPath,32768);runtime::mapName(transportName,pid,GetCurrentProcessId());
  critical(std::wstring(L"hook-installed dll=")+dllPath+L" localBase="+std::to_wstring(uintptr_t(module))+
@@ -1074,12 +1074,12 @@ static void result(){if(!shared)return;uint32_t a=shared->ack;if(a==ack)return;M
   }
  }
  if(r==-10||r==-15){critical(L"command exception result="+std::to_wstring(r)+L" command="+std::to_wstring(c));logBridgeHealth(true);}
- if(r<0){const wchar_t*s=r==-10?L"GameRuntime 执行异常，已停止本次连接的命令执行；重启游戏后再试，详见 logs/Runtime.log。":r==-15?L"原版装车合法性查询异常，本批次未提交；其他功能仍可用，详见 logs/Runtime.log。":r==-3?L"当前没有可操作的对局。":r==-5?L"超级武器尚未就绪或当前不可用。":r==-6?L"指令未提交，查看下方提交诊断。":r==-7?L"指令已过期或对局已改变，本次未执行。":r==-8?L"请先关闭游戏聊天输入框。":r==-9?L"缺少可用的匹配工厂 / 供电，或已达建造上限。":r==-11?L"侧栏接口校验失败，科技功能未启用。":r==-12?L"原生指令接口不可用。":r==-21?L"地图全开实验性许可未勾选，本次未执行。":r==-20?L"本版不修改原版合法性判断，此功能已停用。":r==-13?L"此操作仅限单机；本版不提供联机规则绕过。":r==-14?L"地图尚未完成初始化，稍后重试。":L"所选目标已失效，请刷新后重试。";notify(r==-6?std::wstring(s)+submitDiagnostic():std::wstring(s));return;}
+ if(r<0){const wchar_t*s=r==-10?L"游戏操作发生异常，已暂停发送指令；请重启游戏。详情见 logs/Runtime.log。":r==-15?L"无法确认本次装车条件，操作未执行；其他功能仍可用。详情见 logs/Runtime.log。":r==-3?L"当前没有可操作的对局。":r==-5?L"超级武器尚未就绪或当前不可用。":r==-6?L"指令未能提交，详细原因已记录到日志。":r==-7?L"指令已过期或对局已改变，本次未执行。":r==-8?L"请先关闭游戏聊天输入框。":r==-9?L"缺少可用的匹配工厂 / 供电，或已达建造上限。":r==-11?L"此游戏版本暂不支持科技生产，功能未启用。":r==-12?L"此游戏版本暂不支持该操作。":r==-21?L"地图全开实验性许可未勾选，本次未执行。":r==-20?L"当前版本不支持此操作。":r==-13?L"此操作仅支持单机。":r==-14?L"地图尚未完成初始化，稍后重试。":L"所选目标已失效，请刷新后重试。";if(r==-6)critical(L"command submission failed: "+submitDiagnostic());notify(s);return;}
  if(c==Repair)notify(n?L"已安排维修 "+std::to_wstring(n)+L" 座受损建筑。":L"没有需要维修的己方建筑。");
  else if(c==RevealMap)notify(L"已执行当前对局的地图揭示。");
  else if(c==ClearBeacons)notify(L"已清理己方信标。");
- else if(c==OpenTech){techEnabled=shared->arg!=0;notify(techEnabled?L"外部科技生产测试已启用，清单允许 "+std::to_wstring(n)+L" 项；不添加原生图标、不改前置。":L"自定义科技已关闭。");}
- else if(c==CancelTechProduction)notify(L"已提交原版取消生产请求。");
+ else if(c==OpenTech){techEnabled=shared->arg!=0;notify(techEnabled?L"科技生产已启用，允许 "+std::to_wstring(n)+L" 项。请从本面板选择单位生产。":L"科技生产已关闭。");}
+ else if(c==CancelTechProduction)notify(L"已请求取消生产。");
  else if(c==Produce)notify(L"生产请求已提交；是否接受以游戏生产队列为准。");
  else if(c==SelectSuper||c==SelectIron||c==SelectChrono)notify(L"已选择超级武器，请在地图上选择目标。");
  else if(c==SmartUnload)notify(n?L"已安排卸载 "+std::to_wstring(n)+L" 辆载具。":L"没有可卸载的已选载具。");
@@ -1103,13 +1103,13 @@ static void serviceCommandQueue(DWORD now){
 static void updateModeStatus(DWORD now){
  int phase=!enabled?1:!game?2:snap.status<0?3:(snap.status!=1||(shared&&commandMatch()&&snap.commandStatus!=1))?4:0;
  static int oldPhase=-1;static DWORD last; if(phase==oldPhase&&DWORD(now-last)<200)return;oldPhase=phase;last=now;
- auto riskText=[&](bool wanted,int state)->std::wstring{if(state==-2)return L"冲突 / 安装或恢复失败";if(state==-1)return L"不支持此游戏版本";if(!wanted)return state==1?L"等待恢复":L"关闭";return phase?L"等待游戏就绪":state==1?L"已启用（联机危险）":L"等待安装";};
- std::wstring riskStatus=L"任意建造："+riskText(buildAnywhereMode,snap.placementStatus)+L"\n原生路径点："+riskText(extra.nativeAirWaypoints,snap.nativeAirStatus);
+ auto riskText=[&](bool wanted,int state)->std::wstring{if(state==-2)return L"启用或关闭失败，请查看日志";if(state==-1)return L"不支持此游戏版本";if(!wanted)return state==1?L"等待恢复":L"关闭";return phase?L"等待游戏就绪":state==1?L"已启用（联机风险）":L"等待生效";};
+ std::wstring riskStatus=L"扩展建造："+riskText(buildAnywhereMode,snap.placementStatus)+L"\n原生路径点："+riskText(extra.nativeAirWaypoints,snap.nativeAirStatus);
  SetWindowTextW(GetDlgItem(ui,807),riskStatus.c_str());
- std::wstring renderText=L"绘制测试：";renderText+=snap.renderRevealStatus==-2?L"冲突 / 安装或恢复失败":!extra.renderReveal?L"关闭":phase?L"等待游戏就绪":snap.renderRevealStatus==1?L"已启用；联机尚未实测":L"等待安装";
+ std::wstring renderText=L"地图显示：";renderText+=snap.renderRevealStatus==-2?L"启用或关闭失败，请查看日志":!extra.renderReveal?L"关闭":phase?L"等待游戏就绪":snap.renderRevealStatus==1?L"已启用；联机尚未实测":L"等待生效";
  SetWindowTextW(GetDlgItem(ui,809),renderText.c_str());
- SetWindowTextW(GetDlgItem(ui,813),(L"C4 Beta："+riskText(extra.c4Test,snap.c4TestStatus)).c_str());
- std::wstring progress=L"外部生产：";uint32_t owner=0;
+ SetWindowTextW(GetDlgItem(ui,813),(L"步兵 C4："+riskText(extra.c4Test,snap.c4TestStatus)).c_str());
+ std::wstring progress=L"生产进度：";uint32_t owner=0;
  if(techMode&&commandFresh(now)&&externalReader.readFresh(0xA83D4C,&owner,4)&&owner>=0x10000){
   const int offsets[]={0x53B0,0x53B4,0x53B8,0x53AC};const wchar_t* names[]={L"步兵",L"战车",L"舰船",L"飞机"};
   for(int j=0;j<4;++j){uint32_t f=0,p=0,own=0;int step=0;bool valid=externalReader.readFresh(owner+offsets[j],&f,4);
@@ -1119,45 +1119,20 @@ static void updateModeStatus(DWORD now){
   }
  }else progress+=L"未启用 / 等待游戏";
  SetWindowTextW(GetDlgItem(ui,815),progress.c_str());
- const wchar_t*phaseText=phase==1?L"已暂停":phase==2?L"未连接":phase==3?L"接口不可用":commandMatch()?L"本局命令暂挂":L"正在读取对局";
- std::wstring nt=phase?phaseText:snap.nativeHookStatus<0?L"战术接口不可用，相关功能已停用":L"移动任务 "+std::to_wstring(snap.advancedUnits)+L" · 待处理乘员 "+std::to_wstring(snap.unloadPending)+L" · 逃生跟踪 "+std::to_wstring(snap.ejectWatched);
+ const wchar_t*phaseText=phase==1?L"已暂停":phase==2?L"未连接":phase==3?L"暂不可用":commandMatch()?L"等待游戏恢复":L"正在读取对局";
+ std::wstring nt=phase?phaseText:snap.nativeHookStatus<0?L"战术暂不可用，相关功能已停用":L"移动任务 "+std::to_wstring(snap.advancedUnits)+L" · 待处理乘员 "+std::to_wstring(snap.unloadPending)+L" · 逃生跟踪 "+std::to_wstring(snap.ejectWatched);
  if(!phase&&commandQueue.size)nt+=L" | 待处理命令 "+std::to_wstring(commandQueue.size);
- if(!phase&&magnetronMode)nt+=L" | 磁电出手观测 "+std::to_wstring(snap.magnetShots)+
+ if(!phase&&magnetronMode)nt+=L" | 磁电攻击 "+std::to_wstring(snap.magnetShots)+
    L" · 未确认 "+std::to_wstring(snap.magnetUnverified);
- if(snap.hookConflicts>0)nt+=L" | Hook冲突 "+std::to_wstring(snap.hookConflicts);
- if(shared){
-  const int driver=int(shared->driverStatus);
-  nt+=L" | 调度：";
-  if(shared->driverMode==0)nt+=L"Windows 消息";
-  else if(driver==2){
-   const bool fresh=shared->driverLastTick&&DWORD(GetTickCount()-shared->driverLastTick)<=250;
-   nt+=fresh?L"游戏逻辑帧":L"帧跳板待回调（消息兜底）";
-   nt+=L" 候选"+std::to_wstring(shared->driverTarget)+L" #"+std::to_wstring(shared->driverTicks);
-  }
-  else if(driver==scheduler::FrameInstalled)nt+=L"帧跳板已安装，等待连续有效模拟帧（消息兜底）";
-  else if(driver==scheduler::FrameStalled)nt+=L"帧回调停滞，已暂用消息调度";
-  else if(driver<0)nt+=L"候选"+std::to_wstring(shared->driverTarget)+L" 拒绝安装，已回退消息 ("+std::to_wstring(driver)+L")";
-  else nt+=L"帧入口准备中（消息兜底）";
- }
- if(!phase&&shared){
-  if(snap.session==0||snap.session==5)nt+=L" | 单机提交：YRpp EventClass → DoList";
-  if(shared->objectQueueMode==1){nt+=L" | ClickedEvent "+std::to_wstring(snap.objectQueueAccepted)+L"/"+
-    std::to_wstring(snap.objectQueueRejected);if(snap.objectQueueStatus<0)nt+=L" 错误"+std::to_wstring(snap.objectQueueStatus);}
-  if(snap.session!=0&&snap.session!=5)nt+=shared->megaQueueMode==1?L" | 提交：原版QueueMegaMission":L" | 提交：EventClass";
-  if(shared->megaQueueMode==1){nt+=L" ("+std::to_wstring(snap.megaQueueAccepted)+L"/"+
-    std::to_wstring(snap.megaQueueRejected)+L")";
-    if(snap.megaQueueStatus<0)nt+=L" 错误"+std::to_wstring(snap.megaQueueStatus);
-  }
- }
- if(shared)nt+=L" | 统一入口：重入拦截 "+std::to_wstring(snap.entryReentrant)+L"，跨线程争用 "+std::to_wstring(snap.entryContended);
- if(shared&&snap.lastSubmitError)nt+=L" | "+submitDiagnostic();
+ if(snap.hookConflicts>0)nt+=L" · 检测到功能冲突，请查看日志";
+ if(shared&&snap.lastSubmitError)nt+=L" · 部分指令未执行，请查看日志";
  static std::wstring oldNativeText;if(nt!=oldNativeText){oldNativeText=nt;SetWindowTextW(nativeStatus,nt.c_str());}
  bool csRequested=(csMode&&hookAutoCS)||csHoldEnabled;
- std::wstring csText=L"自动 CS："+std::wstring(csMode?(hookAutoCS?L"开":L"接口已关"):L"关")+L" · 按键 CS："+(csHoldEnabled?(LOBYTE(csHoldKey)?L"开":L"仅鼠标"):L"关");
- if(phase)csText+=L" · "+std::wstring(phaseText);else if(csRequested)csText+=snap.csHookStatus<0?L" · 接口不可用":snap.csHookStatus==1?L" · 已就绪":L" · 等待对局";
+ std::wstring csText=L"自动 CS："+std::wstring(csMode?(hookAutoCS?L"开":L"未允许"):L"关")+L" · 按键 CS："+(csHoldEnabled?(LOBYTE(csHoldKey)?L"开":L"仅鼠标"):L"关");
+ if(phase)csText+=L" · "+std::wstring(phaseText);else if(csRequested)csText+=snap.csHookStatus<0?L" · 暂不可用":snap.csHookStatus==1?L" · 已就绪":L" · 等待对局";
  static std::wstring oldCSText;if(csText!=oldCSText){oldCSText=csText;SetWindowTextW(csStatus,csText.c_str());}
  std::wstring oreText=oreMode?L"排队 "+std::to_wstring(snap.oreQueued)+L" · 进场 "+std::to_wstring(snap.oreDocking):L"自动卸矿已关闭";
- if(oreMode){oreText+=L" · 观察卸货 "+std::to_wstring(snap.oreDelivered)+
+ if(oreMode){oreText+=L" · 完成卸矿 "+std::to_wstring(snap.oreDelivered)+
    L" · 未确认 "+std::to_wstring(snap.oreUnverified);}
  if(phase)oreText+=L" · "+std::wstring(phaseText);else if(snap.oreManual)oreText+=L" · 手动接管 "+std::to_wstring(snap.oreManual);
  static std::wstring oldOreText;if(oreText!=oldOreText){oldOreText=oreText;SetWindowTextW(oreStatus,oreText.c_str());}
@@ -1213,9 +1188,9 @@ static void tick(){reapBridges();logBridgeHealth();DWORD now=GetTickCount();stat
   if(DWORD(now-lastPulse)>=wakePeriod)wakeGame();
   readSnapshot();schedulerDiagnostic();serviceSelection();result();serviceCommandQueue(GetTickCount());serviceCalculationTasks();servicePlanner();serviceCooperative();servicePointer();serviceHotkeyBatch();serviceConstruction();serviceAirPath();
   if(ready&&GetDlgItem(ui,833)){
-  std::wstring text=L"当前生效：";for(int i=0;i<compute::Count;++i){if(i)text+=L" / ";text+=compute::label(i);text+=compute::inside(shared->computeApplied,compute::Feature(i))?L" 内":L" 外";}
+  std::wstring text=L"当前生效：";for(int i=0;i<compute::Count;++i){if(i)text+=i%2?L" · ":L"\r\n";text+=compute::label(i);text+=compute::inside(shared->computeApplied,compute::Feature(i))?L"：游戏内":L"：工具箱";}
   if(shared->computeApplied!=computeRequested)text+=L"\r\n配置已修改，下一局生效。";
-  text+=L"\r\n游戏内规划耗时 "+std::to_wstring(shared->runtimePlannerMicros)+L" μs（会占用游戏线程）。";
+  if(showDetails)text+=L"\r\n游戏内计算耗时 "+std::to_wstring(shared->runtimePlannerMicros)+L" 微秒。";
   static std::wstring previous;if(previous!=text){previous=text;SetDlgItemTextW(ui,833,text.c_str());}
  }
  now=GetTickCount(); // snapshot/queue services may have advanced lastData/sentAt.
@@ -1248,20 +1223,17 @@ static void tick(){reapBridges();logBridgeHealth();DWORD now=GetTickCount();stat
  if(lastData&&snap.inputPatchMask!=lastLoggedPatchMask){lastLoggedPatchMask=snap.inputPatchMask;diag(L"hook patches installed mask="+std::to_wstring(lastLoggedPatchMask));}
  clockState(foregroundGame()&&snap.renderStatus==1&&enabled,fps);
  if(!foregroundGame()||snap.renderStatus!=1){ShowWindow(overlay,SW_HIDE);hideAircraftButton();minimap::hide();hideConstruction();}
- if(snap.status==-2){setStatus(L"命令接口异常，指令已停用；只读显示独立运行。");if(snap.renderStatus!=1)ShowWindow(overlay,SW_HIDE);return;}
- if(snap.status==-1){setStatus(L"命令接口与已核对版本不一致，指令已停用；只读显示独立运行。");if(snap.renderStatus!=1)ShowWindow(overlay,SW_HIDE);return;}
+ if(snap.status==-2){setStatus(L"游戏操作异常，指令功能已暂停；信息显示仍可使用。");if(snap.renderStatus!=1)ShowWindow(overlay,SW_HIDE);return;}
+ if(snap.status==-1){setStatus(L"当前游戏版本不兼容，指令功能已暂停；信息显示仍可使用。");if(snap.renderStatus!=1)ShowWindow(overlay,SW_HIDE);return;}
  if(snap.status!=1){
   if(int32_t(now-toastUntil)>=0){const auto p=externalSampler.probe();
-   setStatus(std::wstring(L"只读采集：")+external::layout::description(p.stage)+
-     L" · 指针="+std::to_wstring(p.address)+L" · Win32="+std::to_wstring(externalReader.lastReadError));
+   setStatus(L"正在读取当前对局；若长时间未恢复，请查看日志。");
   }
   ShowWindow(overlay,SW_HIDE);return;
  }
  if(snap.bridgeStatus==1&&snap.readStatus!=1&&int32_t(now-toastUntil)>=0){
   const auto p=externalSampler.probe();
-  setStatus(std::wstring(L"命令桥正常；外部读取未就绪：")+
-    external::layout::description(p.stage)+L" · PID="+std::to_wstring(pid)+
-    L" · Win32="+std::to_wstring(externalReader.lastReadError));
+  setStatus(L"游戏已连接，正在更新单位信息。");
  }
  if(snap.match!=oldMatch){diag(L"match changed "+std::to_wstring(oldMatch)+L" -> "+std::to_wstring(snap.match));oldMatch=snap.match;notice=snap.noticeSerial;techEnabled=false;toastUntil=0;fillTech(true);typeTap.clear();fillTypeBindings(true);if(autoRevealNewMatch&&extra.experimentalReveal)queueCommand(RevealMap,0,0,snap.match);}
  notice=snap.noticeSerial;
@@ -1295,12 +1267,11 @@ static void scrollTo(int position){scrollY=position;layoutPanel();InvalidateRect
 // Row intervals keep labels/inputs aligned while removing old page whitespace.
 #include "hover_help.h"
 static void finalizeTacticalLayout(){
- for(auto&c:pageControls)if(c.page==0&&c.rect.y>=496&&c.rect.y<990)c.page=11;
  int y=uilayout::BodyTop+12;
- for(int section:{10,0,1,11,2,5,6,12,13,3,4}){
+ for(int section:{0,1,2,3,4}){
   std::vector<size_t> items;for(size_t i=0;i<pageControls.size();++i)if(pageControls[i].page==section)items.push_back(i);
   std::stable_sort(items.begin(),items.end(),[](size_t a,size_t b){return pageControls[a].rect.y<pageControls[b].rect.y;});
-  if(items.empty())continue;if(section>=10)y+=20;
+  if(items.empty())continue;if(section>0)y+=24;
   for(size_t at=0;at<items.size();){size_t end=at+1;int top=pageControls[items[at]].rect.y,bottom=top+pageControls[items[at]].visibleHeight;
    while(end<items.size()&&pageControls[items[end]].rect.y<bottom){auto&c=pageControls[items[end++]];bottom=std::max(bottom,c.rect.y+c.visibleHeight);}
    std::wstring rowHelp;
@@ -1316,7 +1287,7 @@ static void finalizeTacticalLayout(){
 static HWND placedControl(uilayout::Placement placement,const wchar_t*cls,const wchar_t*text,int id,DWORD style){
  if(!wcscmp(text,L"自动保存"))return HWND{};
  auto r=placement.rect;HWND c=CreateWindowExW((!wcscmp(cls,L"EDIT")||!wcscmp(cls,L"LISTBOX"))?WS_EX_CLIENTEDGE:0,cls,text,WS_CHILD|WS_VISIBLE|WS_CLIPSIBLINGS|style,r.x,r.y,r.w,r.h,ui,(HMENU)(INT_PTR)id,GetModuleHandleW(nullptr),nullptr);
- SendMessageW(c,WM_SETFONT,(WPARAM)font,TRUE);modernui::style(c);if(id==989||id==832||(id>=900&&id<=902))modernui::heading(c);pageControls.push_back({c,placement.page,r,!wcscmp(cls,L"COMBOBOX")?26:r.h});return c;
+ SendMessageW(c,WM_SETFONT,(WPARAM)font,TRUE);modernui::style(c);if(id==989||id==832||(id>=900&&id<=904))modernui::heading(c);pageControls.push_back({c,placement.page,r,!wcscmp(cls,L"COMBOBOX")?26:r.h});return c;
 }
 static HWND control(const wchar_t*cls,const wchar_t*text,int x,int y,int w,int h,int id,DWORD style=0){return placedControl(uilayout::legacy(id,{x,y,w,h}),cls,text,id,style);}
 static HWND pageControl(int page,const wchar_t*cls,const wchar_t*text,int x,int y,int w,int h,int id,DWORD style=0){return placedControl({page,{x,y+8,w,h}},cls,text,id,style);}
@@ -1333,142 +1304,12 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
 #endif
  switch(msg){case WM_CREATE:{ui=w;
  placedControl({-1,{20,14,280,30}},L"STATIC",L"战术助手",989,0);
- placedControl({-1,{20,46,605,22}},L"STATIC",L"常用操作与自动化，一页管理 · 设置修改后自动保存",0,0);
+ placedControl({-1,{305,20,320,22}},L"STATIC",L"设置修改后自动保存",0,0);
+ {const wchar_t* titles[]={L"键盘操作",L"键鼠操作",L"战术设置",L"显示设置",L"高级设置"};for(int i=0;i<5;++i)placedControl({-1,{20+i*123,46,113,26}},L"BUTTON",titles[i],910+i,BS_PUSHBUTTON|WS_TABSTOP);}
  featureSearch=placedControl({-1,{20,80,470,28}},L"EDIT",L"",990,ES_AUTOHSCROLL|WS_TABSTOP);
  SendMessageW(featureSearch,EM_SETCUEBANNER,TRUE,(LPARAM)L"搜索功能，例如：装车、铁幕、CS");
  placedControl({-1,{505,80,120,28}},L"BUTTON",L"定位功能",991,BS_PUSHBUTTON|WS_TABSTOP);
- pageControl(10,L"STATIC",L"常用操作与快捷键",20,0,605,30,900);
- pageControl(11,L"STATIC",L"自动化与单位行为",20,0,605,30,901);
- pageControl(12,L"STATIC",L"显示与配置",20,0,605,30,902);
- pageControl(13,L"STATIC",L"计算位置 · 每项独立配置",20,0,605,30,832);
- pageControl(13,L"STATIC",L"自动保存，下一局生效。下令统一由 GameRuntime 校验并构造事件。",20,42,605,26,0);
- for(int i=0;i<compute::Count;++i){int y=82+i*40;
-  pageControl(13,L"STATIC",compute::label(i),20,y+2,250,24,0);
-  auto h=pageControl(13,L"COMBOBOX",L"",290,y,335,160,840+i,CBS_DROPDOWNLIST|WS_TABSTOP);
-  for(auto text:{L"外部读取 / 计算 → 统一游戏事件",L"GameRuntime 游戏内计算"})SendMessageW(h,CB_ADDSTRING,0,(LPARAM)text);
-  SendMessageW(h,CB_SETCURSEL,(computeRequested>>i)&1u,0);
- }
- pageControl(13,L"STATIC",L"上方战术决策支持双路径。原版合法性查询 / 事件构造固定在游戏线程。",20,82+40*compute::Count+12,605,44,0);
- pageControl(13,L"STATIC",L"单位统计、预定列表、覆盖层与小地图固定在外部；选兵 / 原生判断固定在 Runtime。",20,82+40*compute::Count+64,605,48,0);
- pageControl(13,L"STATIC",L"当前生效：等待新对局",20,82+40*compute::Count+124,605,144,833);
-
- pageControl(12,L"STATIC",L"载员 / 铁幕文字缩放 %",20,42,250,24,0);
- pageControl(12,L"EDIT",std::to_wstring(labelScalePercent).c_str(),290,40,75,26,816,ES_NUMBER|WS_TABSTOP);
- pageControl(12,L"STATIC",L"50–250 · 默认 100",385,42,240,24,0);
- pageControl(12,L"STATIC",L"建筑预定面板缩放 %",20,82,250,24,0);
- pageControl(12,L"EDIT",std::to_wstring(constructionScalePercent).c_str(),290,80,75,26,817,ES_NUMBER|WS_TABSTOP);
- pageControl(12,L"STATIC",L"50–250 · 默认 100",385,82,240,24,0);
- {auto h=pageControl(12,L"BUTTON",L"小地图放大（画面镜像）",20,122,605,26,830,BS_AUTOCHECKBOX|WS_TABSTOP);SendMessageW(h,BM_SETCHECK,minimapEnabled?BST_CHECKED:BST_UNCHECKED,0);}
- pageControl(12,L"STATIC",L"小地图放大比例 %",20,162,250,24,0);
- pageControl(12,L"EDIT",std::to_wstring(minimapScale).c_str(),290,160,75,26,831,ES_NUMBER|WS_TABSTOP);
- pageControl(12,L"STATIC",L"100–400 · 默认 200",385,162,240,24,0);
- pageControl(12,L"STATIC",L"放大小地图位置",20,202,250,24,0);
- {auto h=pageControl(12,L"COMBOBOX",L"",290,200,335,160,850,CBS_DROPDOWNLIST|WS_TABSTOP);
-  for(auto text:{L"原雷达左侧（自动避让）",L"画面左上",L"画面左下",L"自定义坐标"})SendMessageW(h,CB_ADDSTRING,0,(LPARAM)text);
-  SendMessageW(h,CB_SETCURSEL,minimapPosition,0);}
- pageControl(12,L"STATIC",L"自定义 X / Y",20,242,250,24,0);
- pageControl(12,L"EDIT",std::to_wstring(minimapX).c_str(),290,240,100,26,851,ES_NUMBER|WS_TABSTOP);
- pageControl(12,L"EDIT",std::to_wstring(minimapY).c_str(),405,240,100,26,852,ES_NUMBER|WS_TABSTOP);
- pageControl(12,L"STATIC",L"坐标以游戏画面左上角为原点，单位为游戏像素；自动限制边界并避开原雷达和飞机按钮。",20,280,605,44,0);
- pageControl(12,L"STATIC",L"只放大已显示雷达，点击穿透；菜单/切屏自动隐藏，最高 60 Hz。",20,332,605,26,0);
-
- control(L"STATIC",L"操作",20,84,320,22,0);control(L"STATIC",L"快捷键",345,84,260,22,0);
- for(int i=0;i<12;++i){int y=110+(i==11?0:i+1)*29;HWND action=control(L"BUTTON",labels[i],20,y,306,25,100+i,(i==0?BS_AUTOCHECKBOX:BS_PUSHBUTTON)|WS_TABSTOP);if(i==0){repairCheck=action;SendMessageW(action,BM_SETCHECK,value(L"Modes",L"AutoRepair",0)?BST_CHECKED:BST_UNCHECKED,0);}keys[i]=control(HOTKEY_CLASSW,L"",345,y,280,25,200+i,WS_TABSTOP);SendMessageW(keys[i],HKM_SETHOTKEY,hotkeys[i],0);}
- control(L"STATIC",L"维修间隔 ms",20,464,126,24,0);repairEdit=control(L"EDIT",std::to_wstring(repairMs).c_str(),152,461,72,24,312,ES_NUMBER|WS_TABSTOP);control(L"STATIC",L"500–30000",230,464,100,24,0);
- control(L"STATIC",L"自动保存",345,461,280,27,400,0);
- const wchar_t*names[]={L"载具载员 / 空位",L"铁幕 / 力场剩余时间",L"队列空闲页签闪烁",L"显示未选中的载具",L"心灵探测",L"箱子提示",L"文字提示"};const wchar_t*ini[]={L"Capacity",L"Iron",L"Production",L"AllTransports",L"Psychic",L"Crates",L"TextPanel"};
- for(int i=0;i<7;++i){check[i]=control(L"BUTTON",names[i],20+(i%2)*315,501+(i/2)*28,305,24,300+i,BS_AUTOCHECKBOX|WS_TABSTOP);SendMessageW(check[i],BM_SETCHECK,value(L"Display",ini[i],(i<3||i>=6)?1:0)?BST_CHECKED:BST_UNCHECKED,0);}
- control(L"STATIC",L"刷新率 FPS",20,620,85,23,0);rateEdit=control(L"EDIT",std::to_wstring(fps).c_str(),110,617,48,24,310,ES_NUMBER|WS_TABSTOP);control(L"STATIC",L"5–500",164,620,55,23,0);control(L"STATIC",L"上边距 px",238,620,86,23,0);marginEdit=control(L"EDIT",std::to_wstring(topMargin).c_str(),330,617,55,24,311,ES_NUMBER|WS_TABSTOP);control(L"STATIC",L"自动保存",420,616,205,27,401,0);
- control(L"STATIC",L"超级武器",20,657,600,22,0);swList=control(L"COMBOBOX",L"",20,683,340,240,410,CBS_DROPDOWNLIST|WS_VSCROLL|WS_TABSTOP);swHotkey=control(HOTKEY_CLASSW,L"",374,683,153,25,411,WS_TABSTOP);control(L"STATIC",L"自动保存",541,682,84,27,412,0);
- control(L"BUTTON",L"科技生产（测试：兵/车/机）",20,724,305,28,420,BS_AUTOCHECKBOX|WS_TABSTOP);SendDlgItemMessageW(w,420,BM_SETCHECK,techMode?BST_CHECKED:BST_UNCHECKED,0);techSearch=control(L"EDIT",L"",345,726,280,24,421,ES_AUTOHSCROLL|WS_TABSTOP);SendMessageW(techSearch,EM_SETCUEBANNER,TRUE,(LPARAM)L"按名称或单位 ID 搜索");
- techList=control(L"LISTBOX",L"",20,762,455,152,422,LBS_NOTIFY|WS_VSCROLL|WS_TABSTOP);control(L"BUTTON",L"生产",488,763,137,30,423,BS_PUSHBUTTON|WS_TABSTOP);control(L"BUTTON",L"切换",488,799,137,28,424,BS_PUSHBUTTON|WS_TABSTOP);control(L"BUTTON",L"全开",488,834,65,27,425,BS_PUSHBUTTON|WS_TABSTOP);control(L"BUTTON",L"清空",560,834,65,27,426,BS_PUSHBUTTON|WS_TABSTOP);
- control(L"BUTTON",L"Ra2Tool预设",488,868,137,26,427,BS_PUSHBUTTON|WS_TABSTOP);
- control(L"BUTTON",L"配置清单",488,896,137,26,428,BS_PUSHBUTTON|WS_TABSTOP);
- control(L"STATIC",L"组合选兵 · 多种单位设为同一快捷键即可成组",20,930,605,24,0);
- typeList=control(L"COMBOBOX",L"",20,960,340,260,440,CBS_DROPDOWNLIST|WS_VSCROLL|WS_TABSTOP);
- typeKey=control(HOTKEY_CLASSW,L"",374,960,153,25,441,WS_TABSTOP);control(L"STATIC",L"自动保存",541,960,84,27,442,0);
- control(L"BUTTON",L"解绑",20,996,105,27,443,BS_PUSHBUTTON|WS_TABSTOP);
- control(L"STATIC",L"双按间隔 ms",142,999,106,23,0);tapEdit=control(L"EDIT",std::to_wstring(doubleMs).c_str(),252,996,75,25,444,ES_NUMBER|WS_TABSTOP);
- control(L"STATIC",L"自动保存",340,996,90,27,480,0);
- typeCS=control(L"BUTTON",L"此类型自动 CS",445,997,180,25,445,BS_AUTOCHECKBOX|WS_TABSTOP);
- csCheck=control(L"BUTTON",L"自动 CS",20,1034,340,27,446,BS_AUTOCHECKBOX|WS_TABSTOP);SendMessageW(csCheck,BM_SETCHECK,csMode?BST_CHECKED:BST_UNCHECKED,0);
- csKeyEdit=control(HOTKEY_CLASSW,L"",374,1035,153,25,447,WS_TABSTOP);SendMessageW(csKeyEdit,HKM_SETHOTKEY,csKey,0);control(L"STATIC",L"自动保存",541,1034,84,27,448,0);
- control(L"STATIC",L"手动添加单位 ID",20,1073,133,24,0);
- typeIdEdit=control(L"EDIT",L"",158,1071,312,26,467,ES_AUTOHSCROLL|WS_TABSTOP);
- control(L"BUTTON",L"添加",481,1071,144,26,449,BS_PUSHBUTTON|WS_TABSTOP);
- csStatus=control(L"STATIC",L"CS：等待对局",20,1107,605,23,0);
- control(L"STATIC",L"高级移动攻击",20,1140,270,24,0);advancedKeyEdit=control(HOTKEY_CLASSW,L"",305,1138,180,25,450,WS_TABSTOP);SendMessageW(advancedKeyEdit,HKM_SETHOTKEY,advancedKey,0);modernui::mouseOnly(advancedKeyEdit);modernui::holdKey(advancedKeyEdit);SendMessageW(advancedKeyEdit,HKM_SETHOTKEY,advancedKey,0);
- control(L"STATIC",L"智能卸载",20,1175,340,24,0);unloadKeyEdit=control(HOTKEY_CLASSW,L"",374,1173,153,25,451,WS_TABSTOP);SendMessageW(unloadKeyEdit,HKM_SETHOTKEY,unloadKey,0);
- control(L"BUTTON",L"卸载",541,1173,84,27,453,BS_PUSHBUTTON|WS_TABSTOP);
- control(L"BUTTON",L"取消当前任务",20,1207,255,27,454,BS_PUSHBUTTON|WS_TABSTOP);
- nativeStatus=control(L"STATIC",L"原生联机指令：等待对局",20,1243,605,28,0);
- const wchar_t* hookNames[]={L"高级移动攻击",L"智能卸载",L"逃生逻辑",L"自动 CS"};
- const int hookIds[]={458,459,465,466};bool hookValues[]={hookAdvanced,hookSmartUnload,hookEject,hookAutoCS};
- for(int i=0;i<4;++i){if(i==2)continue;int slot=i==3?2:i;hookChecks[i]=control(L"BUTTON",hookNames[i],20+(slot%2)*315,1275+(slot/2)*27,300,25,hookIds[i],BS_AUTOCHECKBOX|WS_TABSTOP);SendMessageW(hookChecks[i],BM_SETCHECK,hookValues[i]?BST_CHECKED:BST_UNCHECKED,0);}
- ejectCheck=control(L"BUTTON",L"逃生助手",20,1330,340,27,455,BS_AUTOCHECKBOX|WS_TABSTOP);SendMessageW(ejectCheck,BM_SETCHECK,ejectMode?BST_CHECKED:BST_UNCHECKED,0);ejectKeyEdit=control(HOTKEY_CLASSW,L"",374,1330,153,25,456,WS_TABSTOP);SendMessageW(ejectKeyEdit,HKM_SETHOTKEY,ejectKey,0);control(L"STATIC",L"自动保存",541,1330,84,27,457,0);
- magnetronCheck=pageControl(2,L"BUTTON",L"磁电轮换攻击",20,342,270,27,477,BS_AUTOCHECKBOX|WS_TABSTOP);SendMessageW(magnetronCheck,BM_SETCHECK,magnetronMode?BST_CHECKED:BST_UNCHECKED,0);
- magnetronKeyEdit=pageControl(2,HOTKEY_CLASSW,L"",305,342,180,26,478,WS_TABSTOP);SendMessageW(magnetronKeyEdit,HKM_SETHOTKEY,magnetronKey,0);modernui::mouseOnly(magnetronKeyEdit);modernui::holdKey(magnetronKeyEdit);SendMessageW(magnetronKeyEdit,HKM_SETHOTKEY,magnetronKey,0);
- pageControl(2,L"STATIC",L"磁电：按住配置键配合增强鼠标键；出手后按 ROF 轮换目标。",20,380,605,25,0);
- pageControl(2,L"STATIC",L"手动移动、停止或取消自动任务可接管；独立于高级移动。",20,412,605,25,0);
- oreCheck=pageControl(0,L"BUTTON",L"矿车满载卸矿",20,496,225,25,470,BS_AUTOCHECKBOX|WS_TABSTOP);SendMessageW(oreCheck,BM_SETCHECK,oreMode?BST_CHECKED:BST_UNCHECKED,0);
- oreStatus=pageControl(0,L"STATIC",L"等待对局",258,498,367,23,0);
- HWND repairExtra=pageControl(0,L"BUTTON",L"允许维修不可维修的建筑",20,530,605,25,780,BS_AUTOCHECKBOX|WS_TABSTOP);SendMessageW(repairExtra,BM_SETCHECK,repairUnrepairable?BST_CHECKED:BST_UNCHECKED,0);
- for(int i=0;i<2;++i){bool miner=i==0;HWND c=pageControl(0,L"BUTTON",miner?L"自定义矿车类型":L"自定义矿场类型",20,568+i*70,605,25,781+i,BS_AUTOCHECKBOX|WS_TABSTOP);
- SendMessageW(c,BM_SETCHECK,(miner?oreTypes.customMiners:oreTypes.customRefineries)?BST_CHECKED:BST_UNCHECKED,0);
- HWND e=pageControl(0,L"EDIT",(miner?oreMiners:oreRefineries).c_str(),20,596+i*70,605,26,783+i,ES_AUTOHSCROLL|WS_TABSTOP);SendMessageW(e,EM_SETLIMITTEXT,12287,0);}
- pageControl(0,L"STATIC",L"填写单位 ID，以逗号分隔；未勾选时自动识别，勾选后仅用清单。",20,704,605,25,0);
- pageControl(0,L"STATIC",L"空清单表示不参与倒矿；仍须符合游戏原有储矿与卸矿关系。",20,734,605,25,0);
- pageControl(0,L"STATIC",L"功能单位清单 · 飞机 / 飞碟 / 磁电 / 装车 / 进驻等",20,780,605,25,0);
- HWND featureCombo=pageControl(0,L"COMBOBOX",L"",20,814,605,340,790,CBS_DROPDOWNLIST|WS_VSCROLL|WS_TABSTOP);
- for(int i=0;i<featuretypes::Count;++i)SendMessageW(featureCombo,CB_ADDSTRING,0,(LPARAM)featuretypes::name(i));SendMessageW(featureCombo,CB_SETCURSEL,featureTypeIndex,0);
- HWND featureCustom=pageControl(0,L"BUTTON",L"仅处理自定义清单中的类型",20,850,605,25,791,BS_AUTOCHECKBOX|WS_TABSTOP);SendMessageW(featureCustom,BM_SETCHECK,featureTypes.filters[featureTypeIndex].custom?BST_CHECKED:BST_UNCHECKED,0);
- HWND featureEdit=pageControl(0,L"EDIT",featureTypeText[featureTypeIndex].c_str(),20,884,605,26,792,ES_AUTOHSCROLL|WS_TABSTOP);SendMessageW(featureEdit,EM_SETLIMITTEXT,12287,0);
- pageControl(0,L"STATIC",L"单位 ID 逗号分隔；未勾选沿用原有识别，勾选且留空则不处理。",20,924,605,25,0);
- pageControl(0,L"STATIC",L"每项独立、离线可改、自动保存；类型清单不会赋予单位新能力。",20,956,605,25,0);
-
- detailCheck=pageControl(3,L"BUTTON",L"显示详细耗时",20,324,306,25,481,BS_AUTOCHECKBOX|WS_TABSTOP);SendMessageW(detailCheck,BM_SETCHECK,showDetails?BST_CHECKED:BST_UNCHECKED,0);
- pageControl(3,L"STATIC",L"提示时长 ms",20,276,112,24,0);
- toastEdit=pageControl(3,L"EDIT",std::to_wstring(toastMs).c_str(),140,274,85,26,471,ES_NUMBER|WS_TABSTOP);
- pageControl(3,L"STATIC",L"500–60000",240,276,150,24,0);
- pageControl(3,L"STATIC",L"自动保存",420,274,205,27,472,0);
- csHoldCheck=pageControl(1,L"BUTTON",L"自定义 CS 按键",20,326,270,25,473,BS_AUTOCHECKBOX|WS_TABSTOP);SendMessageW(csHoldCheck,BM_SETCHECK,csHoldEnabled?BST_CHECKED:BST_UNCHECKED,0);
- csHoldEdit=pageControl(1,HOTKEY_CLASSW,L"",305,326,180,26,474,WS_TABSTOP);SendMessageW(csHoldEdit,HKM_SETHOTKEY,csHoldKey,0);modernui::mouseOnly(csHoldEdit);modernui::holdKey(csHoldEdit);SendMessageW(csHoldEdit,HKM_SETHOTKEY,csHoldKey,0);
- 
- pageControl(1,L"STATIC",L"双按间隔：20–5000 ms",20,364,400,24,0);
- anywhereCheck=pageControl(4,L"BUTTON",L"任意建造（修改游戏判断 · 联机危险）",20,425,605,27,476,BS_AUTOCHECKBOX|WS_TABSTOP);SendMessageW(anywhereCheck,BM_SETCHECK,buildAnywhereMode?BST_CHECKED:BST_UNCHECKED,0);
- pageControl(4,L"STATIC",L"Hook 修改游戏判断清单 · 以下两项默认关闭，联机危险",20,390,605,26,805);
- {HWND h=pageControl(4,L"BUTTON",L"飞机原生路径点（修改游戏判断 · 联机危险）",20,464,605,27,806,BS_AUTOCHECKBOX|WS_TABSTOP);SendMessageW(h,BM_SETCHECK,extra.nativeAirWaypoints?BST_CHECKED:BST_UNCHECKED,0);}
- pageControl(4,L"STATIC",L"两项均可能导致不同步或掉线；由统一 GameRuntime 安装和恢复。",20,504,605,26,0);
- pageControl(4,L"STATIC",L"原生路径点开启后，外部 Z 队列暂停；补丁冲突时不会强行覆盖。",20,542,605,26,0);
- pageControl(4,L"STATIC",L"补丁状态：等待连接",20,580,605,54,807);
- {HWND h=pageControl(4,L"BUTTON",L"地图全开：仅去黑幕 / 迷雾（绘制测试）",20,665,605,27,808,BS_AUTOCHECKBOX|WS_TABSTOP);SendMessageW(h,BM_SETCHECK,extra.renderReveal?BST_CHECKED:BST_UNCHECKED,0);}
- pageControl(4,L"STATIC",L"默认关闭。保留原版视野及目标判断；隐藏单位可配合敌方标记。",20,704,605,26,0);
- pageControl(4,L"STATIC",L"建议新对局单独测试；未做真实联机验证。旧地图全开仍是另一功能。",20,738,605,26,0);
- pageControl(4,L"STATIC",L"绘制测试：关闭",20,776,605,26,809);
- {auto h=pageControl(4,L"BUTTON",L"步兵 C4（Beta／联机危险）",20,820,320,27,810,BS_AUTOCHECKBOX|WS_TABSTOP);SendMessageW(h,BM_SETCHECK,extra.c4Test?BST_CHECKED:BST_UNCHECKED,0);}
- {auto h=pageControl(4,HOTKEY_CLASSW,L"",345,820,145,27,811,WS_TABSTOP);SendMessageW(h,HKM_SETHOTKEY,extra.c4Key,0);modernui::mouseOnly(h);}
- {auto h=pageControl(4,L"COMBOBOX",L"",502,820,123,160,812,CBS_DROPDOWNLIST|WS_TABSTOP);for(auto text:{L"停用",L"中键",L"侧键 1",L"侧键 2",L"右键",L"左键"})SendMessageW(h,CB_ADDSTRING,0,(LPARAM)text);SendMessageW(h,CB_SETCURSEL,extra.c4Mouse==6?5:extra.c4Mouse,0);}
- pageControl(4,L"STATIC",L"修改模拟校验，可能不同步或掉线。选中步兵后按配置键点击敌方建筑。",20,858,605,45,0);
- pageControl(4,L"STATIC",L"C4 测试：关闭",20,910,605,26,813);
- pageControl(4,L"STATIC",L"科技测试：只走外部目录，不改规则、不添加原生图标；联机未验证。",20,952,605,44,0);
- pageControl(4,L"BUTTON",L"取消所选类型的生产",20,1004,250,28,814,BS_PUSHBUTTON|WS_TABSTOP);
- pageControl(4,L"STATIC",L"外部生产进度：等待游戏",20,1048,605,65,815);
- pageControl(3,L"STATIC",L"游戏入口：统一消息管理器",20,416,605,24,0);
- schedulerEntryCombo=pageControl(3,L"COMBOBOX",L"",20,447,605,230,760,CBS_DROPDOWNLIST|WS_TABSTOP);
- SendMessageW(schedulerEntryCombo,CB_ADDSTRING,0,(LPARAM)L"统一消息入口 · 不改写游戏代码");
- SendMessageW(schedulerEntryCombo,CB_SETCURSEL,0,0);EnableWindow(schedulerEntryCombo,FALSE);
- pageControl(3,L"STATIC",L"每个功能的鼠标键紧随快捷键；空快捷键时直接点击鼠标。",20,484,605,24,0);
- pageControl(6,L"STATIC",L"MegaMission 后端（下次启动生效）",20,407,605,24,0);
- megaQueueCombo=pageControl(6,L"COMBOBOX",L"",20,435,605,180,761,CBS_DROPDOWNLIST|WS_TABSTOP);
- SendMessageW(megaQueueCombo,CB_ADDSTRING,0,(LPARAM)L"0 · EventClass 构造 + 自制入队（默认）");
- SendMessageW(megaQueueCombo,CB_ADDSTRING,0,(LPARAM)L"1 · 原版 QueueMegaMission（仅多人实验）");
- SendMessageW(megaQueueCombo,CB_SETCURSEL,megaQueueMode,0);
- pageControl(6,L"STATIC",L"Repair / Sell 后端（下次启动生效）",20,467,605,24,0);
- objectQueueCombo=pageControl(6,L"COMBOBOX",L"",20,495,605,180,762,CBS_DROPDOWNLIST|WS_TABSTOP);
- SendMessageW(objectQueueCombo,CB_ADDSTRING,0,(LPARAM)L"0 · EventClass 构造 + 入队（默认）");
- SendMessageW(objectQueueCombo,CB_ADDSTRING,0,(LPARAM)L"1 · YRpp ClickedEvent（仅多人实验）");
- SendMessageW(objectQueueCombo,CB_SETCURSEL,objectQueueMode,0);
-#include "extra_controls.h"
+#include "tactical_controls.h"
  EnableWindow(GetDlgItem(w,420),TRUE);
  statusLabel=control(L"STATIC",L"正在寻找游戏…",20,1370,605,44,430);control(L"BUTTON",L"暂停 / 连接",20,1420,200,28,431,BS_PUSHBUTTON|WS_TABSTOP);control(L"BUTTON",L"使用说明",235,1420,185,28,432,BS_PUSHBUTTON|WS_TABSTOP);control(L"BUTTON",L"退出",435,1420,190,28,433,BS_PUSHBUTTON|WS_TABSTOP);EnableWindow(unloadKeyEdit,TRUE);EnableWindow(GetDlgItem(w,453),TRUE);EnableWindow(hookChecks[1],TRUE);SetWindowTextW(hookChecks[1],L"智能卸载");finalizeTacticalLayout();ready=true;fillTech(true);fillTypeBindings(true);SetTimer(w,1,250,nullptr);SetTimer(w,2,80,nullptr);registerKeys();return 0;}
  case WM_SIZE:layoutPanel();return 0;
@@ -1484,6 +1325,7 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
  case WM_HOTKEY:handleHotkey(wp,lp);return 0;
  case WM_COMMAND:{int id=LOWORD(wp);
  if(updatingControls)return 0;
+ if(id>=910&&id<=914){for(const auto&c:pageControls)if(GetDlgCtrlID(c.hwnd)==900+id-910){scrollTo(c.rect.y-uilayout::BodyTop);break;}return 0;}
  if(id==739&&HIWORD(wp)==BN_CLICKED){
   extra.experimentalReveal=SendMessageW(extraControls[RevealExperimental],BM_GETCHECK,0,0)==BST_CHECKED;
   if(extra.experimentalReveal){extra.renderReveal=false;SendMessageW(GetDlgItem(ui,808),BM_SETCHECK,BST_UNCHECKED,0);}
@@ -1494,22 +1336,24 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
  if(id==762&&HIWORD(wp)==CBN_SELCHANGE){
   const int selected=int(SendMessageW(objectQueueCombo,CB_GETCURSEL,0,0));
   if(selected==0||selected==1){objectQueueMode=uint32_t(selected);save();
-   notify(L"ClickedEvent 后端已保存；重启游戏和工具箱后生效。若检测到 Hook 冲突将拒绝执行，不自动重发。");}
+   notify(L"维修与出售兼容模式已保存，重启游戏和工具箱后生效。");}
   return 0;
  }
  if(id==761&&HIWORD(wp)==CBN_SELCHANGE){
   int selected=int(SendMessageW(megaQueueCombo,CB_GETCURSEL,0,0));
   if(selected==0||selected==1){megaQueueMode=uint32_t(selected);save();
-    notify(L"MegaMission 提交后端已保存；重启游戏和工具箱生效。原版队列模式仅限实验性多人会话。");}
+    notify(L"移动指令兼容模式已保存，重启游戏和工具箱后生效。兼容选项仅供多人测试。");}
   return 0;
  }
  if(id==760&&HIWORD(wp)==CBN_SELCHANGE){
   int v=int(SendMessageW(schedulerEntryCombo,CB_GETCURSEL,0,0));
-  if(v>=0&&v<=6){schedulerTarget=uint32_t(v);save();notify(L"帧入口候选已保存；重启游戏和工具箱后生效。未验证入口将自动回退消息模式。");}
+  if(v>=0&&v<=6){schedulerTarget=uint32_t(v);save();notify(L"连接设置已保存，重启游戏和工具箱后生效。");}
   return 0;
  }
 if(id==991){wchar_t query[128]{};GetWindowTextW(featureSearch,query,128);std::wstring needle=query;for(auto&ch:needle)ch=towlower(ch);
- if(needle.empty()){scrollTo(0);return 0;}for(const auto&c:pageControls)if(c.page>=0){wchar_t label[512]{};GetWindowTextW(c.hwnd,label,512);std::wstring text=label;for(auto&ch:text)ch=towlower(ch);if(text.find(needle)!=std::wstring::npos){scrollTo(c.rect.y-uilayout::BodyTop-12);notify(L"已定位："+std::wstring(label));return 0;}}notify(L"未找到匹配功能，请换一个关键词。");return 0;}if(id==750||id==754||id==755){
+ if(needle.empty()){scrollTo(0);return 0;}
+ for(const auto&c:pageControls)if(c.page>=0){wchar_t label[512]{};GetWindowTextW(c.hwnd,label,512);std::wstring text=std::wstring(label)+L" "+c.help;for(auto&ch:text)ch=towlower(ch);if(text.find(needle)!=std::wstring::npos){scrollTo(c.rect.y-uilayout::BodyTop-12);notify(L"已找到匹配功能；操作说明见底部状态栏。");return 0;}}
+ notify(L"未找到匹配功能，请换一个关键词。");return 0;}if(id==750||id==754||id==755){
   if(id==750&&!readAdditionalControls())return 0;
   extra.variantKey=SendMessageW(extraControls[VariantKey],HKM_GETHOTKEY,0,0);
   if(id==754){extra.disk=SendMessageW(extraControls[DiskEnabled],BM_GETCHECK,0,0)==BST_CHECKED;extra.sellDrained=SendMessageW(extraControls[SellDrainedEnabled],BM_GETCHECK,0,0)==BST_CHECKED;extra.sellVehicles=SendMessageW(extraControls[SellVehiclesEnabled],BM_GETCHECK,0,0)==BST_CHECKED;extra.sellEnemy=SendMessageW(extraControls[SellEnemyEnabled],BM_GETCHECK,0,0)==BST_CHECKED;}
@@ -1549,7 +1393,7 @@ if(id==991){wchar_t query[128]{};GetWindowTextW(featureSearch,query,128);std::ws
   else notify(id==427?L"已选择 Ra2Tool 预设清单并保存。":L"已选择 Assist.ini [tech] 自定义清单并保存。");
  }
  else if(id==814){int i=int(SendMessageW(techList,LB_GETCURSEL,0,0));if(techEnabled&&i>=0&&i<int(techIndices.size())){int live=liveTypeIndex(savedTypes.types[techIndices[i]]);if(live>=0)send(CancelTechProduction,live);}}
- else if(id==423||(id==422&&HIWORD(wp)==LBN_DBLCLK)){int i=(int)SendMessageW(techList,LB_GETCURSEL,0,0);if(!techEnabled)notify(L"先开启自定义科技。");else if(i>=0&&i<(int)techIndices.size()){auto&t=savedTypes.types[techIndices[i]];int live=liveTypeIndex(t);if(!techAllowed(t))notify(L"此项目已从开启清单中排除。");else if(t.kind==7)notify(L"建筑的外部放置链尚未验证，本测试暂只开放步兵、战车、飞机。");else if(live<0)notify(L"此单位当前对局不可用；离线缓存不会直接执行生产。");else send(Produce,live);}}
+ else if(id==423||(id==422&&HIWORD(wp)==LBN_DBLCLK)){int i=(int)SendMessageW(techList,LB_GETCURSEL,0,0);if(!techEnabled)notify(L"先开启自定义科技。");else if(i>=0&&i<(int)techIndices.size()){auto&t=savedTypes.types[techIndices[i]];int live=liveTypeIndex(t);if(!techAllowed(t))notify(L"此项目已从开启清单中排除。");else if(t.kind==7)notify(L"科技生产暂不支持建筑，请选择步兵、战车、舰船或飞机。");else if(live<0)notify(L"此单位在当前对局不可用。");else send(Produce,live);}}
  else if(id==410&&HIWORD(wp)==CBN_SELCHANGE){ControlUpdate guard;auto type=selectedSuperID();SendMessageW(swHotkey,HKM_SETHOTKEY,type.empty()?0:binding(type.c_str()),0);}
  else if(id==449){
   wchar_t raw[64]{};GetWindowTextW(typeIdEdit,raw,64);std::string id;
@@ -1575,7 +1419,7 @@ if(id==991){wchar_t query[128]{};GetWindowTextW(featureSearch,query,128);std::ws
  else if(id==440&&HIWORD(wp)==CBN_SELCHANGE)typeBindingFields();
  else if(id==442||id==443)bindType(id==443);
  else if(id==445){int i=selectedTypeIndex();if(i>=0){std::string type=savedTypes.types[i].id;if(SendMessageW(typeCS,BM_GETCHECK,0,0)==BST_CHECKED)csUnits.insert(type);else csUnits.erase(type);save();fillTypeBindings(true);}else notify(L"请从已缓存列表中选择单位类型。");}
- else if(id==446){csMode=SendMessageW(csCheck,BM_GETCHECK,0,0)==BST_CHECKED;if(csMode){hookAutoCS=true;SendMessageW(hookChecks[3],BM_SETCHECK,BST_CHECKED,0);}save();registerKeys();notify(csMode?L"自动 CS 已开启：原版右键移动生效后追加攻击移动。":L"自动 CS 已关闭。");}
+ else if(id==446){csMode=SendMessageW(csCheck,BM_GETCHECK,0,0)==BST_CHECKED;if(csMode){hookAutoCS=true;SendMessageW(hookChecks[3],BM_SETCHECK,BST_CHECKED,0);}save();registerKeys();notify(csMode?L"自动移动攻击（CS）已开启，对允许的单位生效。":L"自动移动攻击（CS）已关闭。");}
  else if(id==448){WORD next=(WORD)SendMessageW(csKeyEdit,HKM_GETHOTKEY,0,0);if(keyConflict(next,"",true)){notify(L"此快捷键已经被其他功能使用。");return 0;}csKey=next;save();registerKeys();notify(L"自动 CS 开关快捷键已保存。");}
  else if(id==452){WORD nextA=WORD(SendMessageW(advancedKeyEdit,HKM_GETHOTKEY,0,0)),nextU=WORD(SendMessageW(unloadKeyEdit,HKM_GETHOTKEY,0,0));WORD oldA=advancedKey,oldU=unloadKey;advancedKey=unloadKey=0;
  bool conflict=keyConflict(nextA,"",false)||keyConflict(nextU,"",false)||(!extra.allHotkeys&&LOBYTE(nextA)&&comparableKey(nextA)==comparableKey(nextU));advancedKey=oldA;unloadKey=oldU;
@@ -1590,16 +1434,16 @@ if(id==991){wchar_t query[128]{};GetWindowTextW(featureSearch,query,128);std::ws
  else if(id==457){WORD next=WORD(SendMessageW(ejectKeyEdit,HKM_GETHOTKEY,0,0)),old=ejectKey;ejectKey=0;bool conflict=keyConflict(next,"",false);ejectKey=old;if(conflict){notify(L"快捷键冲突，请换一个组合。");return 0;}ejectKey=next;save();registerKeys();notify(L"幸存乘员开关快捷键已保存。");}
  else if(id==453)send(SmartUnload);
  else if(id==454)send(CancelAdvanced);
- else if(id==477){magnetronMode=SendMessageW(magnetronCheck,BM_GETCHECK,0,0)==BST_CHECKED;save();registerKeys();notify(magnetronMode?L"磁电移动攻击已开启；按配置的增强鼠标键点地面；按住键可留空。":L"磁电移动攻击已关闭。");}
- else if(id==479){WORD next=WORD(SendMessageW(magnetronKeyEdit,HKM_GETHOTKEY,0,0)),prior=magnetronKey;magnetronKey=0;bool conflict=keyConflict(next,"",false);magnetronKey=prior;if(conflict){notify(L"此按键与已有功能冲突。");return 0;}magnetronKey=next;save();registerKeys();notify(L"磁电移动攻击按住键已保存。");}
- else if(id==470){oreMode=SendMessageW(oreCheck,BM_GETCHECK,0,0)==BST_CHECKED;save();notify(oreMode?L"矿车满载卸矿已开启。":L"矿车满载卸矿已关闭，排队矿车交还原版卸矿流程。");}
+ else if(id==477){magnetronMode=SendMessageW(magnetronCheck,BM_GETCHECK,0,0)==BST_CHECKED;save();registerKeys();notify(magnetronMode?L"磁电轮换攻击已开启；按配置的增强鼠标键点地面；按住键可留空。":L"磁电轮换攻击已关闭。");}
+ else if(id==479){WORD next=WORD(SendMessageW(magnetronKeyEdit,HKM_GETHOTKEY,0,0)),prior=magnetronKey;magnetronKey=0;bool conflict=keyConflict(next,"",false);magnetronKey=prior;if(conflict){notify(L"此按键与已有功能冲突。");return 0;}magnetronKey=next;save();registerKeys();notify(L"磁电轮换攻击按住键已保存。");}
+ else if(id==470){oreMode=SendMessageW(oreCheck,BM_GETCHECK,0,0)==BST_CHECKED;save();notify(oreMode?L"矿车自动卸矿已开启。":L"矿车自动卸矿已关闭，矿车继续使用游戏内卸矿方式。");}
  else if(id==472){BOOL valid;int nextToast=GetDlgItemInt(w,471,&valid,FALSE);if(!valid){notify(L"请输入有效的提示时长。");return 0;}toastMs=std::clamp(nextToast,500,60000);SetWindowTextW(toastEdit,std::to_wstring(toastMs).c_str());save();notify(L"提示时长已保存。");}
  else if(id==480){BOOL valid;int next=GetDlgItemInt(w,444,&valid,FALSE);if(!valid){notify(L"请输入有效的双按间隔。");return 0;}doubleMs=std::clamp(next,20,5000);SetWindowTextW(tapEdit,std::to_wstring(doubleMs).c_str());typeTap.clear();save();notify(L"双按间隔已保存。");}
  else if(id==481){showDetails=SendMessageW(detailCheck,BM_GETCHECK,0,0)==BST_CHECKED;save();}
  else if(id==473){csHoldEnabled=SendMessageW(csHoldCheck,BM_GETCHECK,0,0)==BST_CHECKED;save();}
  else if(id==475){WORD next=WORD(SendMessageW(csHoldEdit,HKM_GETHOTKEY,0,0));WORD prior=csHoldKey;csHoldKey=0;bool conflict=keyConflict(next,"",false);csHoldKey=prior;if(conflict){notify(L"此按键与已有功能冲突。");return 0;}csHoldKey=next;save();notify(L"CS 按键已保存；留空直接按增强鼠标键，非空按住键配合点击。");}
  else if(id==476){buildAnywhereMode=SendMessageW(anywhereCheck,BM_GETCHECK,0,0)==BST_CHECKED;
-  notify(buildAnywhereMode?L"任意建造已开启：会修改原版判断，联机危险。":L"任意建造已关闭，等待游戏线程恢复原判断。");
+  notify(buildAnywhereMode?L"扩展建筑放置范围已开启，可能影响联机同步。":L"扩展建筑放置范围已关闭，等待游戏恢复默认限制。");
   save();}
  else if(id==431){enabled=!enabled;if(!enabled){detach();setStatus(L"已暂停。");}else{lastFind=0;setStatus(L"正在重新连接…");}
 #ifdef RA2_UNIFIED
@@ -1607,7 +1451,7 @@ if(id==991){wchar_t query[128]{};GetWindowTextW(featureSearch,query,128);std::ws
 #endif
  }
  else if(id==432)ShellExecuteW(w,L"open",path(L"README.txt").c_str(),nullptr,root.c_str(),SW_SHOWNORMAL);else if(id==433)PostMessageW(w,WM_CLOSE,0,0);return 0;}
- case WM_CTLCOLORSTATIC:case WM_CTLCOLORBTN:{HDC dc=(HDC)wp;SetBkMode(dc,OPAQUE);int id=GetDlgCtrlID((HWND)lp);SetTextColor(dc,id>=900&&id<=902?modernui::Accent:id==989?modernui::Text:modernui::Muted);SetBkColor(dc,modernui::Background);return (LRESULT)bgBrush;}
+ case WM_CTLCOLORSTATIC:case WM_CTLCOLORBTN:{HDC dc=(HDC)wp;SetBkMode(dc,OPAQUE);int id=GetDlgCtrlID((HWND)lp);SetTextColor(dc,id>=900&&id<=904?modernui::Accent:id==989?modernui::Text:modernui::Muted);SetBkColor(dc,modernui::Background);return (LRESULT)bgBrush;}
  case WM_CTLCOLOREDIT:case WM_CTLCOLORLISTBOX:{HDC dc=(HDC)wp;SetTextColor(dc,modernui::Text);SetBkColor(dc,modernui::Field);return (LRESULT)editBrush;}
  case WM_CLOSE:
 #ifdef RA2_UNIFIED
@@ -1665,7 +1509,7 @@ int WINAPI wWinMain(HINSTANCE h,HINSTANCE,LPWSTR,int show){SetProcessDPIAware();
  shiftSidebarWidth=std::clamp(value(L"Click",L"SidebarWidth",GetPrivateProfileIntW(L"Click",L"SidebarWidth",160,path(L"settings.ini").c_str())),32,600);shiftSidebarTop=std::clamp(value(L"Click",L"SidebarTop",GetPrivateProfileIntW(L"Click",L"SidebarTop",200,path(L"settings.ini").c_str())),0,2000);
  shiftClickEnabled=value(L"Click",L"Enabled",GetPrivateProfileIntW(L"Click",L"Enabled",1,path(L"settings.ini").c_str()))!=0;shiftClickMode=std::clamp(value(L"Click",L"Mode",GetPrivateProfileIntW(L"Click",L"Mode",0,path(L"settings.ini").c_str())),0,2);shiftClickGap=std::clamp(value(L"Click",L"IntervalMs",GetPrivateProfileIntW(L"Click",L"IntervalMs",0,path(L"settings.ini").c_str())),0,250);
  advancedRangeCells=std::clamp(value(L"NativeOrders",L"TargetRangeExtraCells",2),0,30);advancedTargetPriority=std::clamp(value(L"NativeOrders",L"TargetPriority",0),0,1);advancedScanHz=std::clamp(value(L"NativeOrders",L"TargetScanHz",10),1,60);advancedKey=WORD(value(L"NativeOrders",L"AdvancedHoldKey",MAKEWORD('G',HOTKEYF_ALT)));unloadKey=WORD(value(L"NativeOrders",L"UnloadKey",MAKEWORD('U',HOTKEYF_CONTROL|HOTKEYF_ALT)));pathTimeout=std::clamp(value(L"NativeOrders",L"PathTimeoutFrames",90),30,900);
- doubleMs=std::clamp(value(L"TypeSelection",L"DoublePressMs",350),20,5000);csMode=value(L"AutoCS",L"Enabled",0)!=0;csKey=WORD(value(L"AutoCS",L"ToggleKey",MAKEWORD('A',HOTKEYF_CONTROL|HOTKEYF_ALT)));
+ doubleMs=std::clamp(value(L"TypeSelection",L"DoublePressMs",350),20,5000);csMode=value(L"AutoCS",L"Enabled",0)!=0&&hookAutoCS;csKey=WORD(value(L"AutoCS",L"ToggleKey",MAKEWORD('A',HOTKEYF_CONTROL|HOTKEYF_ALT)));
  toastMs=std::clamp(value(L"Display",L"ToastMs",6000),500,60000);showDetails=value(L"Display",L"DetailedStatus",0)!=0;
  magnetronMode=value(L"Modes",L"MagnetronMove",0)!=0;magnetronKey=WORD(value(L"NativeOrders",L"MagnetronHoldKey",MAKEWORD('M',HOTKEYF_ALT)));
  repairUnrepairable=value(L"Modes",L"RepairUnrepairable",0)!=0;

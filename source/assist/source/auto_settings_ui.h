@@ -14,15 +14,15 @@ static bool autoSettingChanged(int id,int notification){
  if(!ready||updatingControls)return false;
  const bool edit=notification==EN_CHANGE,select=notification==CBN_SELCHANGE;
  if(id>=840&&id<840+compute::Count&&select){int mode=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));uint32_t bit=1u<<(id-840);
-  if(mode==1)computeRequested|=bit;else computeRequested&=~bit;changedSetting();syncAdditional();notify(L"计算位置已自动保存，将在下一局生效；当前任务继续使用本局后端。");return true;
+  if(mode==1)computeRequested|=bit;else computeRequested&=~bit;changedSetting();syncAdditional();notify(L"计算模式已自动保存，下一局生效；当前对局继续使用原设置。");return true;
  }
  if(id==850&&select){int next=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));if(next>=0&&next<=3){minimapPosition=next;changedSetting();}return true;}
  if(id==830&&notification==BN_CLICKED){minimapEnabled=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;if(!minimapEnabled)minimap::hide();changedSetting();return true;}
  if(id==810&&notification==BN_CLICKED){extra.c4Test=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;pointerMatches.clear();changedSetting();return true;}
  if(id==811&&edit){extra.c4Key=uint32_t(SendMessageW(GetDlgItem(ui,id),HKM_GETHOTKEY,0,0));changedSetting();return true;}
  if(id==812&&select){int selected=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));extra.c4Mouse=selected==5?6:selected;changedSetting();return true;}
- if(id==808&&notification==BN_CLICKED){extra.renderReveal=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;if(extra.renderReveal){extra.experimentalReveal=false;SendMessageW(extraControls[RevealExperimental],BM_SETCHECK,BST_UNCHECKED,0);for(int i=0;i<commandQueue.size;){if(commandQueue.slots[i].command==RevealMap)commandQueue.discard(i);else ++i;}}changedSetting();notify(extra.renderReveal?L"绘制测试已请求：只去黑幕/迷雾，不解除目标判断；建议在未使用旧地图全开的新对局测试。":L"绘制测试已关闭，等待恢复原版遮罩。");return true;}
- if(id==806&&notification==BN_CLICKED){extra.nativeAirWaypoints=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;airway::reset();pointerMatches.clear();changedSetting();notify(extra.nativeAirWaypoints?L"原生飞机路径点已开启，外部 Z 队列暂停；修改游戏判断，联机危险。":L"原生飞机路径点已关闭，等待恢复原判断。");return true;}
+ if(id==808&&notification==BN_CLICKED){extra.renderReveal=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;if(extra.renderReveal){extra.experimentalReveal=false;SendMessageW(extraControls[RevealExperimental],BM_SETCHECK,BST_UNCHECKED,0);for(int i=0;i<commandQueue.size;){if(commandQueue.slots[i].command==RevealMap)commandQueue.discard(i);else ++i;}}changedSetting();notify(extra.renderReveal?L"已请求移除黑幕与迷雾显示；不开放隐藏目标的选择与攻击。":L"地图显示实验已关闭，等待恢复黑幕与迷雾。");return true;}
+ if(id==806&&notification==BN_CLICKED){extra.nativeAirWaypoints=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;airway::reset();pointerMatches.clear();changedSetting();notify(extra.nativeAirWaypoints?L"飞机原生路径点已开启，常规路径点暂停；可能影响联机同步。":L"飞机原生路径点已关闭，等待游戏恢复。");return true;}
  if(id==804&&notification==BN_CLICKED){extra.antiTheft=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();return true;}
  if(id==803&&notification==BN_CLICKED){extra.airWaypoints=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();return true;}
  if(id==802&&select){advancedTargetPriority=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));changedSetting();return true;}

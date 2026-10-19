@@ -24,6 +24,8 @@ prefix = r'''
 #include "feature_type_config.h"
 #include "additional_settings.h"
 #include "scheduler_policy.h"
+#include "compute_policy.h"
+#include <initializer_list>
 #include <cassert>
 #include <cstdint>
 #include <cwchar>
@@ -49,19 +51,19 @@ struct SCROLLINFO{unsigned cbSize,fMask;int nMin,nMax;unsigned nPage;int nPos,nT
 struct Window{std::wstring cls,text;int id;uilayout::Rect rect;bool visible=true;RECT clip{};DWORD style=0;bool checked=false;};
 static std::vector<Window> windows(2);static std::vector<RECT> regions(1);static SCROLLINFO scrollInfo{};
 static int clientWidth=812,clientHeight=640;
-namespace modernui {static void style(HWND){}static void heading(HWND){}static void mouseOnly(HWND){}}
+namespace modernui {static void style(HWND){}static void heading(HWND){}static void mouseOnly(HWND){}static void holdKey(HWND){}}
 static HWND ui,repairCheck,repairEdit,keys[12],check[7],rateEdit,marginEdit,swList,swHotkey,techSearch,techList,
  typeList,typeKey,tapEdit,typeCS,csCheck,csKeyEdit,typeIdEdit,csStatus,advancedKeyEdit,unloadKeyEdit,nativeStatus,
  hookChecks[4],ejectCheck,ejectKeyEdit,magnetronCheck,magnetronKeyEdit,oreCheck,oreStatus,detailCheck,toastEdit,
  csHoldCheck,csHoldEdit,anywhereCheck,statusLabel,schedulerEntryCombo,megaQueueCombo,objectQueueCombo;
 static AdditionalSettings extra;static HWND extraControls[ExtraControlCount];
-static int labelScalePercent=100,constructionScalePercent=100;
+static int labelScalePercent=100,constructionScalePercent=100;static bool minimapEnabled=false;static int minimapScale=200,minimapPosition=0,minimapX=20,minimapY=60;static uint32_t computeRequested=compute::Default;
 static unsigned schedulerTarget=0,megaQueueMode=0,objectQueueMode=0;static HFONT font;static int scrollY,repairMs=2000,fps=60,topMargin=20,doubleMs=350,toastMs=6000;
 static DWORD GetTickCount(){return 1606;}
 static bool commandFresh(DWORD){return true;}
 static bool techDirectProduce,techMode,csMode,hookAdvanced,hookSmartUnload=true,hookEject,hookAutoCS,ejectMode,magnetronMode,
  oreMode,showDetails,csHoldEnabled,buildAnywhereMode,ready;
-static unsigned hotkeys[12]{},csKey,advancedKey,unloadKey,ejectKey,magnetronKey,csHoldKey;
+static unsigned idleAircraftKey=1616;static int advancedRangeCells=2;static unsigned hotkeys[12]{},csKey,advancedKey,unloadKey,ejectKey,magnetronKey,csHoldKey;
 static HWND game=1;static bool enabled=true;static std::wstring hoverHelp,statusText;static int advancedScanHz=10,advancedTargetPriority=0,shiftClickMode=0,shiftClickGap=0;static bool shiftClickEnabled=false;
 static struct {int c4TestStatus=0,placementStatus=0,nativeAirStatus=0,renderRevealStatus=0,commandStatus=1,entryReentrant=0,entryContended=0,session=5,lastSubmitError=0,queueSent=0,commandRejected=0,queueFull=0,queueTimingFailure=0,status=1,nativeHookStatus=1,advancedUnits=0,unloadPending=0,ejectWatched=0,csHookStatus=1,oreQueued=0,oreDocking=0,oreManual=0,oreDelivered=0,oreUnverified=0,magnetShots=0,magnetUnverified=0,hookConflicts=0,megaQueueAccepted=0,megaQueueRejected=0,megaQueueStatus=0,objectQueueAccepted=0,objectQueueRejected=0,objectQueueStatus=0;} snap;
 static struct {int size=0;} commandQueue;
@@ -91,7 +93,7 @@ static void SetTimer(HWND,int,int,void*){}
 static void SetWindowTextW(HWND h,const wchar_t* text){windows[h].text=text;}
 static int GetDlgCtrlID(HWND h){return windows[h].id;}
 static void GetWindowTextW(HWND h,wchar_t*out,int n){wcsncpy(out,windows[h].text.c_str(),n-1);out[n-1]=0;}
-static void GetCursorPos(POINT*p){*p={-1,-1};}
+static POINT cursor{-1,-1};static void GetCursorPos(POINT*p){*p=cursor;}static void ScreenToClient(HWND,POINT*){}
 static void GetWindowRect(HWND h,RECT*r){auto a=windows[h].rect;*r={a.x,a.y,a.x+a.w,a.y+a.h};}
 static bool PtInRect(const RECT*r,POINT p){return p.x>=r->left&&p.y>=r->top&&p.x<r->right&&p.y<r->bottom;}
 static bool IsWindowVisible(HWND h){return windows[h].visible;}
@@ -103,22 +105,40 @@ int main(){
  create(1);assert(ready&&pageControls.size()>100);
  csHoldEnabled=true;csHoldKey='G';csMode=false;hookAutoCS=false;updateModeStatus(1000);
  assert(windows[csStatus].text.find(L"按键 CS：开")!=std::wstring::npos&&windows[csStatus].text.find(L"已就绪")!=std::wstring::npos);
- snap.status=0;updateModeStatus(1001);assert(windows[csStatus].text.find(L"正在读取对局")!=std::wstring::npos&&windows[nativeStatus].text==L"正在读取对局");
- game=0;updateModeStatus(1002);assert(windows[oreStatus].text.find(L"未连接")!=std::wstring::npos);
- game=1;snap.status=1;updateModeStatus(1003);assert(windows[csStatus].text.find(L"已就绪")!=std::wstring::npos);
- enabled=false;updateModeStatus(1004);assert(windows[nativeStatus].text==L"已暂停");
- enabled=true;snap.status=-1;updateModeStatus(1005);assert(windows[nativeStatus].text==L"接口不可用");
- snap.status=1;snap.csHookStatus=-1;updateModeStatus(1006);assert(windows[csStatus].text.find(L"接口不可用")!=std::wstring::npos);
- snap.csHookStatus=1;snap.oreManual=7;updateModeStatus(1206);
- shared=&mockScheduler;mockScheduler.driverMode=1;mockScheduler.driverStatus=-1;
- updateModeStatus(1406);assert(windows[nativeStatus].text.find(L"回退消息")!=std::wstring::npos);
- mockScheduler.driverStatus=2;mockScheduler.driverLastTick=1606;mockScheduler.driverTicks=9;updateModeStatus(1606);
- assert(windows[nativeStatus].text.find(L"游戏逻辑帧")!=std::wstring::npos);
- shared=nullptr;updateModeStatus(1806);assert(windows[oreStatus].text.find(L"手动接管 7")!=std::wstring::npos);
+ snap.status=0;updateModeStatus(1200);assert(windows[nativeStatus].text==L"正在读取对局");
+ game=0;updateModeStatus(1400);assert(windows[oreStatus].text.find(L"未连接")!=std::wstring::npos);
+ game=1;snap.status=1;updateModeStatus(1600);assert(windows[csStatus].text.find(L"已就绪")!=std::wstring::npos);
+ enabled=false;updateModeStatus(1800);assert(windows[nativeStatus].text==L"已暂停");
+ enabled=true;snap.status=-1;updateModeStatus(2000);assert(windows[nativeStatus].text==L"暂不可用");
+ snap.status=1;snap.csHookStatus=-1;updateModeStatus(2200);assert(windows[csStatus].text.find(L"暂不可用")!=std::wstring::npos);
+ snap.csHookStatus=1;shared=&mockScheduler;snap.hookConflicts=1;updateModeStatus(2400);
+ assert(windows[nativeStatus].text.find(L"冲突")!=std::wstring::npos&&windows[nativeStatus].text.find(L"Hook")==std::wstring::npos);
+ snap.hookConflicts=0;shared=nullptr;updateModeStatus(2600);
+
+
+ // Feature groups and adjacent bindings follow the actual controls.
+ auto at=[&](int id)->const PageControl&{for(auto&c:pageControls)if(GetDlgCtrlID(c.hwnd)==id)return c;assert(false);return pageControls[0];};
+ for(int id:{100,111,451,455,446,853,440,724})assert(at(id).rect.y>at(900).rect.y&&at(id).rect.y<at(901).rect.y);
+ for(int id:{458,450,477,473,702,705,719,720,721,736,795,803,109,110,410})assert(at(id).rect.y>at(901).rect.y&&at(id).rect.y<at(902).rect.y);
+ for(auto pair:{std::pair<int,int>{450,729},{478,730},{474,731},{704,732},{707,733},{709,734},{726,735},{728,737},{789,738},{811,812}})assert(at(pair.first).rect.y==at(pair.second).rect.y&&at(pair.first).rect.x+at(pair.first).rect.w<at(pair.second).rect.x);
+ for(int id:{787,818,788})assert(at(id).visibleHeight==26);
+ // Hidden legacy selector cannot appear via scroll, focus or navigation.
+ assert(at(760).page==-3&&!windows[at(760).hwnd].visible);
+ // Hovering the header/footer must not expose clipped offscreen feature help.
+ clientWidth=812;clientHeight=640;scrollTo(at(450).rect.y-uilayout::BodyTop);
+ cursor={30,50};updateHoverHelp();assert(hoverHelp.empty());
+ cursor={30,uilayout::footerTop(clientHeight)};updateHoverHelp();assert(hoverHelp.empty());
+ cursor={30,uilayout::BodyTop+5};updateHoverHelp();assert(hoverHelp.find(L"高级移动攻击")!=std::wstring::npos);
+ // The status area is two lines tall; instructions remain concise.
+ for(auto&c:pageControls)if(c.page>=0){
+  assert(c.help.find(L"GameRuntime")==std::wstring::npos&&c.help.find(L"OutList")==std::wstring::npos&&c.help.find(L"Hook")==std::wstring::npos);
+  assert(c.help.size()<=110);
+ }
+
  int inspected=0;
  // All body controls share one continuous page. Every original interactive
  // ID survives the redesign; only redundant save labels/navigation disappear.
- for(int id:{100,111,200,211,300,306,310,311,312,410,411,420,421,422,423,424,425,426,427,428,440,441,443,444,445,446,447,449,450,451,453,454,455,456,458,459,466,467,470,471,473,474,476,477,478,481,700,701,702,703,704,705,706,707,708,709,710,711,712,713,714,715,716,717,718,719,720,721,722,723,724,725,726,727,728,729,730,731,732,733,734,735,736,737,738,739,751,760,761,762,785,786,787,790,791,792,795,796,797,798,799,802,803,804,805,806,807,808,809,810,811,812,813,814,815,816,817,990,991}){
+ for(int id:{100,111,200,211,300,306,310,311,312,410,411,420,421,422,423,424,425,426,427,428,440,441,443,444,445,446,447,449,450,451,453,454,455,456,458,459,466,467,470,471,473,474,476,477,478,481,700,701,702,703,704,705,706,707,708,709,710,711,712,713,714,715,716,717,718,719,720,721,722,723,724,725,726,727,728,729,730,731,732,733,734,735,736,737,738,739,751,760,761,762,785,786,787,790,791,792,795,796,797,798,799,818,830,831,832,833,840,841,842,843,844,845,846,847,848,849,850,851,852,853,900,901,902,903,904,910,911,912,913,914,802,803,804,805,806,807,808,809,810,811,812,813,814,815,816,817,990,991}){
   int found=0;for(auto&w:windows)found+=w.id==id;if(found!=1){std::cerr<<"Missing/duplicate ID "<<id<<" count "<<found<<"\n";return 1;}
  }
  for(size_t i=0;i<pageControls.size();++i){const auto&a=pageControls[i];if(a.page<0)continue;assert(a.page==0&&a.rect.y>=uilayout::BodyTop);
@@ -136,7 +156,8 @@ int main(){
   }
   scrollTo(1000000);assert(scrollY==maximum&&scrollInfo.nPos==maximum);
   for(const auto&c:pageControls){const auto&w=windows[c.hwnd];
-   if(c.page==-2){assert(w.rect.y==uilayout::footerTop(height)+c.rect.y&&w.visible);assert(w.rect.y+w.rect.h<=height);}
+   if(c.page==-3){assert(!w.visible);}
+   else if(c.page==-2){assert(w.rect.y==uilayout::footerTop(height)+c.rect.y&&w.visible);assert(w.rect.y+w.rect.h<=height);}
    else if(c.page==-1){assert(w.rect.y==c.rect.y&&w.visible);}
    else if(w.visible&&w.clip.bottom>w.clip.top){assert(w.rect.y+w.clip.top>=uilayout::BodyTop);assert(w.rect.y+w.clip.bottom<=uilayout::bodyBottom(height));}
   }
@@ -151,7 +172,7 @@ with tempfile.TemporaryDirectory(prefix='ra2-ui-') as directory:
     cpp = Path(directory) / 'ui.cpp'
     binary = Path(directory) / 'ui'
     cpp.write_text(prefix + 'static const wchar_t* labels[]=' + labels + ';\n' +
-                   layout + main[main.index('static std::wstring submitDiagnostic(){'):main.index('static void result(){')] + "static uint32_t commandMatch(){return shared?1:0;}\n" + status + '\nstatic int create(HWND w){' + create + '\n' + suffix)
+                   layout + 'static uint32_t commandMatch(){return shared?1:0;}\n' + status + '\nstatic int create(HWND w){' + create + '\n' + suffix)
     subprocess.run(['g++', '-std=c++17', '-O2', '-I', str(source), str(cpp), '-o', str(binary)], check=True)
     run = subprocess.run([str(binary)], capture_output=True, text=True)
     if run.returncode:print(run.stderr, file=sys.stderr)
@@ -161,4 +182,4 @@ with tempfile.TemporaryDirectory(prefix='ra2-ui-') as directory:
     summary={k:v for k,v in result.items() if k!='geometry'}
     print('PASS: shipped UI construction/layout: ' + json.dumps(summary))
     print('PASS: all controls accessible, no overlap, all interactive IDs retained, one continuous page, pinned header/footer, clipped body and scroll limits')
-    print('PASS: shipped mode status distinguishes custom CS, live/waiting/disconnected/paused/fault states and restores live status after re-entry')
+

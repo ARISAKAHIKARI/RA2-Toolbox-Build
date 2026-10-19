@@ -62,7 +62,7 @@ assert 'controllerID==owner&&controller&&WaitForSingleObject(controller,0)==WAIT
 assert sum('BOOL WINAPI DllMain(' in p.read_text() for p in FILES.values())==1
 for name in ('BUILD_ZIG.cmd','build-zig.sh'):
  build=(ROOT/name).read_text()
- assert build.index('BUILD-VERIFIED-v118.tag')<build.index('game_entry_manager.cpp'),name
+ assert build.index('BUILD-VERIFIED-v119.tag')<build.index('game_entry_manager.cpp'),name
  assert 'verification' in build and 'WINDOWS_BUILD_ARTIFACTS.json' in build,name
  assert build.count('-shared ')==1 and '-o GameRuntime.dll' in build,name
 assert 'tools\\verify_windows_outputs.py' in (ROOT/'BUILD_ZIG.cmd').read_text()
@@ -75,7 +75,7 @@ known=[
  {'id':'P04','status':'remaining_consolidation','feature':'Read snapshots','source':'external_reader/source/shared_reader.h','detail':'Shared immutable process connection, independent task caches and source-stamped copies; not one cross-feature atomic world.'},
  {'id':'P05','status':'fixed_by_design','feature':'UI-bound and native interface features','detail':'User-approved scope: statistics/reservation UI/overlays/minimap stay external; native selection/input/judgment stay Runtime. Ten tactical decision families are selectable; external Z paths remain host planning.'},
 ]
-report={'version':'1.0.18','baseline':'0.7.16','result':'No detected forbidden source-boundary bypass; ten selectable tactical decision families; UI-bound features remain external by design. Native APIs always Runtime.',
+report={'version':'1.0.19','baseline':'0.7.16','result':'No detected forbidden source-boundary bypass; ten selectable tactical decision families; UI-bound features remain external by design. Native APIs always Runtime.',
  'scope':{'source_files':len(FILES),'host_reachable_files':len(HOST),'runtime_reachable_files':len(RUNTIME),'method':'Recursive local include graph + forbidden API ownership checks + manual review of game-call, queue, patch and scheduling paths. Lexical assertions cannot prove all runtime behavior.'},
  'freshness_contract':{'protocol':51,'tactical_max_ms':150,'tactical_max_frames':6,'cooperative_max_ms':250,'cooperative_max_frames':12,'intent_max_ms':5000,'source_clock_never_renewed_on_publish':True,'partial_batch_deadline_retained':True,'cooperative_retry_only_unprocessed':True,'real_game_latency_measured':False},
  'extended_test_fixes':['Cooperative pending requests bypass display cadence','Round-end settles cooperative ACK with per-serial receipt ownership','Both planning mailboxes share one frame budget and per-channel share'],

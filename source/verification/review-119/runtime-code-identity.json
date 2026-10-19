@@ -1,0 +1,12 @@
+{
+  "baseline": "1.0.18",
+  "version": "1.0.19",
+  "dll_sha256": "c96090ad9ad7c3f40e19284e9cb009b03d4e02fd7145babc7d73dcd114072925",
+  "baseline_sha256": "bad734740db4d1d69cc4f8be68b81a78a67c4f283f6425a352872dd065dddb96",
+  "sections_equal": {
+    ".text": true,
+    ".rdata": true,
+    ".data": true
+  },
+  "runtime_cases_rerun": 0
+}
