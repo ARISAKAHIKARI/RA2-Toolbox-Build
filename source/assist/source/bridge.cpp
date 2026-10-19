@@ -717,7 +717,7 @@ static void command(uint32_t house,DWORD now){uint32_t req=sh->request;if(req==s
   n=collectRepairs(house,now);if(n<0&&n!=-30){result=n;n=0;}
   if(n>0||n==-30){repairAckRequest=req;repairAckPending=true;repairAckStarted=now;sh->result=1;sh->count=0;return;}
  }
- else if(c==SwitchPlayer||c==RestorePlayer){result=c==RestorePlayer?switchPlayerContext(0):switchPlayerContext(uint32_t(arg),uint32_t(sh->arg2));n=result>0;}
+ else if(c==SwitchPlayer||c==RestorePlayer){result=-4;n=0;} // unavailable in this release, including stale commands
  else if(c==SelectType){n=selectType(house,arg,sh->arg2!=0);if(n<0){result=n;n=0;}}
  else if(c==SelectVariant){n=selectVariant(house,sh->arg2!=0);if(n<0){result=n;n=0;}}
  else if(c==SmartUnload){int sent=smartUnload(house);if(sent<0)result=sent;else n=sent;}

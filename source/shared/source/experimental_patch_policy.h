@@ -6,7 +6,7 @@
 namespace experimentalpatch {
 constexpr uint32_t Placement=0x4A8EB0,AirType=0x7E2908,AirArrival=0x416AB6,ShroudDraw=0x47EFE0,FogDraw=0x47F250,C4Execution=0x51A4D8;
 constexpr uint32_t TechDraw=0x6A97D2,TechPrune=0x6AA781;
-inline bool callSite(uint32_t at){return at==TechDraw||at==TechPrune||at==0x6FBFB3||at==0x6FBFEF||at==0x5F45D2||at==0x5F45DF||at==0x5F45EF;}
+inline bool callSite(uint32_t at){return at==TechDraw||at==TechPrune;}
 inline unsigned size(uint32_t at){if(callSite(at))return 5;return at==Placement?5:at==AirType?4:at==AirArrival?10:at==ShroudDraw?6:at==FogDraw?5:at==C4Execution?6:0;}
 inline uint32_t destination(uint32_t at,const uint8_t* bytes,unsigned n){
  if(!bytes||n!=size(at)||!n)return 0;

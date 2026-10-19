@@ -1,4 +1,5 @@
 #pragma once
+#include "player_test_policy.h"
 #include <stdint.h>
 #include "planner_types.h"
 #include "ore_type_config.h"

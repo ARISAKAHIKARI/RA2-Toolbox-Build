@@ -1,4 +1,5 @@
 #pragma once
+#include "player_test_policy.h"
 #include "cooperative_types.h"
 #include "pointer_intent.h"
 namespace assist {

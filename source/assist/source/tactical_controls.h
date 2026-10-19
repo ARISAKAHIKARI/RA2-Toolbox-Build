@@ -51,6 +51,9 @@ note(L"出售战车不支持兰博玩；两种出售操作共用按住键，鼠�
 label(L"直接攻击移动",20,210);label(L"仅鼠标",240,258);mouse(pointerinput::MouseAttack);next();
 note(L"直接攻击移动只下达一次命令；高级移动攻击会持续重新选择目标。",44);
 toggle(803,L"飞机路径点（按住 Z 点击地面）",extra.airWaypoints);next();
+toggle(806,L"飞机原生路径点",extra.nativeAirWaypoints);next();
+note(L"飞机原生路径点开启后，常规飞机路径点暂停；两种模式不同时运行。",44);
+item(L"STATIC",L"原生路径点：关闭",20,605,866);next();
 toggle(795,L"Shift 五连点",shiftClickEnabled,20,270);choices(combo(796),{L"自动兼容",L"始终追加四次点击",L"不追加点击"},shiftClickMode);next();
 number(797,L"连续点击间隔 / 毫秒",shiftClickGap,L"0–250");
 label(L"超级武器目标选择",20,306);label(L"启用快捷键",345,280);next();
@@ -94,6 +97,10 @@ auto featureEdit=edit(792,featureTypeText[featureTypeIndex],20,605);SendMessageW
 note(L"类型 ID 用逗号分隔；启用后留空表示不处理任何类型。",26);
 
 heading(3,903,L"显示设置",L"调整游戏内信息显示、缩放与位置；有效设置立即生效。");
+toggle(808,L"地图不渲染黑幕与迷雾",extra.renderReveal);next();
+note(L"仅改变地图显示，不开放隐藏目标的选择与攻击；与地图全开不能同时启用。",44);
+item(L"STATIC",L"地图显示：关闭",20,605,809);next();
+
 const wchar_t* displayNames[]={L"载具载员与容量",L"铁幕 / 力场剩余时间",L"生产队列空闲提醒",L"显示未选中的载具",L"心灵控制状态",L"箱子信息",L"战术文字提示"};
 const wchar_t* displayIni[]={L"Capacity",L"Iron",L"Production",L"AllTransports",L"Psychic",L"Crates",L"TextPanel"};
 for(int i=0;i<7;++i){check[i]=toggle(300+i,displayNames[i],value(L"Display",displayIni[i],(i<3||i>=6)?1:0)!=0);next();}
@@ -114,13 +121,8 @@ detailCheck=toggle(481,L"显示运行耗时",showDetails);next();
 
 heading(4,904,L"高级与实验性设置",L"实验性功能尚未完成联机验证，可能导致不同步或掉线。建议单独测试。");
 extraControls[RevealExperimental]=toggle(739,L"允许地图全开（实验性）",extra.experimentalReveal);next();
-toggle(808,L"移除黑幕与迷雾显示（实验性）",extra.renderReveal);next();
-note(L"仅改变地图显示，不开放隐藏目标的选择与攻击；与地图全开不能同时启用。",44);
-item(L"STATIC",L"地图显示：关闭",20,605,809);next();
 item(L"STATIC",L"以下功能可能影响联机同步",20,605,805);next();
 anywhereCheck=toggle(476,L"扩展建筑放置范围（联机风险）",buildAnywhereMode);next();
-toggle(806,L"飞机原生路径点（联机风险）",extra.nativeAirWaypoints);next();
-note(L"飞机原生路径点开启后，常规飞机路径点暂停；两种模式不同时运行。",44);
 item(L"STATIC",L"功能状态：等待连接",20,605,807,0,44);next(44);
 toggle(810,L"步兵 C4（联机风险）",extra.c4Test,20,280);key(811,extra.c4Key,310,188,true);choices(combo(812,510,115,180),{L"停用",L"中键",L"侧键 1",L"侧键 2",L"右键",L"左键"},extra.c4Mouse==6?5:extra.c4Mouse);next();
 note(L"选中步兵，按住配置键并点击敌方建筑；此功能可能导致联机不同步。",44);
@@ -131,15 +133,15 @@ int listTop=rowY;button(423,L"生产所选",488,137);next();button(424,L"切换�
 button(428,L"查看许可清单",20,285);button(814,L"取消所选类型的生产",320,305);next();
 note(L"加入原生生产侧栏；仍需匹配阵营的生产设施、电力及可用建造数量。",44);
 item(L"STATIC",L"生产进度：等待游戏",20,605,815,0,65);next(65);
-toggle(860,L"跨玩家单位操控（测试）",extra.controlAll);next();
-note(L"Alt＋左键选择，Shift 追加选择；Alt＋右键移动或攻击。包含 AI，不含平民、治安与观战方。",44);
-item(L"STATIC",L"跨玩家操控：关闭",20,605,865);next();
-toggle(861,L"允许切换操控方（测试）",extra.switchPlayerEnabled);next();
-combo(862,20,305,240);button(863,L"切换至所选玩家",340,285);next();
-button(864,L"恢复原操控方",20,285);next();
-note(L"切换后，普通操作及工具箱自动功能作用于新操控方。自爆、投降等可能影响该方；联机存在掉线风险。",65);
-extraControls[SellEnemyEnabled]=toggle(722,L"出售其他玩家建筑（测试）",extra.sellEnemy);next();
-note(L"使用“出售被吸取目标”的按键与鼠标键；无需目标正被吸取。不含平民、治安与观战方。",44);
+EnableWindow(toggle(860,L"选择其他玩家单位（暂不可用）",false),FALSE);next();
+
+item(L"STATIC",L"跨玩家操作：当前版本不可用",20,605,865);next();
+EnableWindow(toggle(861,L"切换操控方（暂不可用）",false),FALSE);next();
+EnableWindow(combo(862,20,305,240),FALSE);EnableWindow(button(863,L"切换至所选玩家",340,285),FALSE);next();
+EnableWindow(button(864,L"恢复原操控方",20,285),FALSE);next();
+
+extraControls[SellEnemyEnabled]=toggle(722,L"出售其他玩家建筑（暂不可用）",false);EnableWindow(extraControls[SellEnemyEnabled],FALSE);next();
+
 toggle(788,L"优先执行增强指令",extra.overrideNative);next();
 note(L"用于增强操作与普通地面命令冲突的情况；仅对支持的鼠标操作生效。",44);
 item(L"STATIC",L"计算模式",20,605,832,0,30);next(30);

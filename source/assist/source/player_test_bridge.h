@@ -16,6 +16,7 @@ static bool playableHouse(uint32_t house){
 static bool authorizePlayerOrder(const intent::EventOrder&o,OrderAuthority authority){
  if(!lastHouse||o.player<0||o.player>=32)return false;
  if(authority==OrderAuthority::Local)return o.player==get<int>(lastHouse+0x30);
+ if(!playertest::Available)return false;
  if(!sh||sh->stop||DWORD(sampleClock(sh)-sh->heartbeat)>=3000)return false;
  if(authority==OrderAuthority::PlayerTest){if(!sh->controlAll||o.domain!=vanilla::Domain::MegaMission||!playertest::manualMission(o.mission))return false;}
  else if(authority==OrderAuthority::SellPlayerTest){if(!(sh->flags&SellEnemy)||o.domain!=vanilla::Domain::Object||o.eventKind!=0x16)return false;}
@@ -51,11 +52,11 @@ static void restorePlayerContext(){
  playerContext={};
 }
 static void playerMaintenance(){
- if(playerContext.original){if(!samePlayerWorld()){playerContext={};playerSidebarPending=false;}else{playerContext.frame=get<int>(0xA8ED84);if(!sh||sh->stop||!sh->switchPlayerEnabled)restorePlayerContext();}}
+ if(playerContext.original){if(!samePlayerWorld()){playerContext={};playerSidebarPending=false;}else{playerContext.frame=get<int>(0xA8ED84);if(!playertest::Available||!sh||sh->stop||!sh->switchPlayerEnabled)restorePlayerContext();}}
 }
 static int switchPlayerContext(uint32_t target,uint32_t expectedID=0){
  if(!target){if(!playerContext.original)return -4;restorePlayerContext();return playerContextChanged?1:-7;}
- if(!sh||!sh->switchPlayerEnabled||!playableHouse(target)||get<uint32_t>(target+0x10)!=expectedID)return -4;
+ if(!playertest::Available||!sh||!sh->switchPlayerEnabled||!playableHouse(target)||get<uint32_t>(target+0x10)!=expectedID)return -4;
  if(target==get<uint32_t>(0xA83D4C))return 1;
  if(!playerContext.original){Vec houses=vec(0xA80228,32);if(!houses.count||!playableHouse(lastHouse))return -4;
   auto&c=playerContext;c.original=lastHouse;c.applied=lastHouse;c.items=houses.items;c.count=houses.count;c.scenario=get<uint32_t>(0xA8B230);c.frame=get<int>(0xA8ED84);
@@ -81,6 +82,7 @@ static void rebuildPlayerSidebar(uint32_t house){
  put<uint8_t>(house+0x1FC,1);
 }
 static void publishPlayers(){
+ if(!playertest::Available){sh->playerCount=0;sh->playerCurrent=sh->playerOriginal=-1;sh->playerControlStatus=0;return;}
  static DWORD at=0;static uint32_t epoch=0,local=0;DWORD now=sampleClock(sh);
  if(snap.status==1&&epoch==snap.match&&local==lastHouse&&DWORD(now-at)<250)return;
  at=now;epoch=snap.match;local=lastHouse;

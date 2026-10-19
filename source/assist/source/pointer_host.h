@@ -62,7 +62,7 @@ static void servicePointer(){
   pointerinput::MouseRoute test{pointerinput::C4Test,pointerinput::PerFeatureMouse|(extra.c4Mouse==4?uint32_t(pointerinput::RightClick):extra.c4Mouse==6?uint32_t(pointerinput::LeftClick):0)};
   if(extra.allHotkeys&&routeCount&&routes[0].operation!=pointerinput::FollowNative)routes[routeCount++]=test;else{routes[0]=test;routeCount=1;}
  }
- if(extra.controlAll&&e.keys[VK_MENU]&&!e.keys[VK_CONTROL]&&(e.operation==7||e.operation==6||e.operation==4)){routes[0]={e.operation==4?pointerinput::PlayerOrder:pointerinput::PlayerSelect,(e.keys[VK_SHIFT]?uint32_t(pointerinput::Shift):0)};routeCount=1;}
+ if(playertest::Available&&extra.controlAll&&e.keys[VK_MENU]&&!e.keys[VK_CONTROL]&&(e.operation==7||e.operation==6||e.operation==4)){routes[0]={e.operation==4?pointerinput::PlayerOrder:pointerinput::PlayerSelect,(e.keys[VK_SHIFT]?uint32_t(pointerinput::Shift):0)};routeCount=1;}
  if(!routeCount)return;in.operation=routes[0].operation;in.bindings=routes[0].bindings;
  if(in.operation==pointerinput::Sell&&!(in.bindings&pointerinput::Control))return;
  if(in.operation==pointerinput::FollowNative&&!(shared->flags&AutoCS)&&!(in.bindings&(pointerinput::Advanced|pointerinput::Magnetron|pointerinput::CS)))return;

@@ -48,7 +48,7 @@ SIF_RANGE=1,SIF_PAGE=2,SIF_POS=4,SIF_DISABLENOSCROLL=8,SB_VERT=0,SW_SHOW=1,SW_HI
 constexpr const wchar_t* HOTKEY_CLASSW=L"HOTKEY";
 struct RECT{int left,top,right,bottom;};struct POINT{int x,y;};
 struct SCROLLINFO{unsigned cbSize,fMask;int nMin,nMax;unsigned nPage;int nPos,nTrackPos;};
-struct Window{std::wstring cls,text;int id;uilayout::Rect rect;bool visible=true;RECT clip{};DWORD style=0;bool checked=false;};
+struct Window{std::wstring cls,text;int id;uilayout::Rect rect;bool visible=true;RECT clip{};DWORD style=0;bool checked=false;bool enabled=true;};
 static std::vector<Window> windows(2);static std::vector<RECT> regions(1);static SCROLLINFO scrollInfo{};
 static int clientWidth=812,clientHeight=640;
 namespace modernui {static void style(HWND){}static void heading(HWND){}static void mouseOnly(HWND){}static void holdKey(HWND){}}
@@ -75,7 +75,7 @@ static HWND CreateWindowExW(DWORD,const wchar_t*cls,const wchar_t*text,DWORD sty
  windows.push_back({cls,text,int(id),{x,y,w,h}});windows.back().style=style;return windows.size()-1;
 }
 static HWND GetDlgItem(HWND,int id){for(size_t n=0;n<windows.size();++n)if(windows[n].id==id)return n;return 0;}
-static void EnableWindow(HWND,int){}
+static void EnableWindow(HWND h,int on){windows[h].enabled=bool(on);}
 static HMODULE GetModuleHandleW(void*){return 0;}
 static intptr_t SendMessageW(HWND w,int m,WPARAM a,LPARAM){if(m==BM_SETCHECK&&w<windows.size())windows[w].checked=a==BST_CHECKED;return 0;}
 static intptr_t SendDlgItemMessageW(HWND,int,int,WPARAM,LPARAM){return 0;}
@@ -121,6 +121,13 @@ int main(){
  for(int id:{100,111,451,455,446,853,440,724})assert(at(id).rect.y>at(900).rect.y&&at(id).rect.y<at(901).rect.y);
  for(int id:{458,450,477,473,702,705,719,720,721,736,795,803,109,110,410})assert(at(id).rect.y>at(901).rect.y&&at(id).rect.y<at(902).rect.y);
  for(auto pair:{std::pair<int,int>{450,729},{478,730},{474,731},{704,732},{707,733},{709,734},{726,735},{728,737},{789,738},{811,812}})assert(at(pair.first).rect.y==at(pair.second).rect.y&&at(pair.first).rect.x+at(pair.first).rect.w<at(pair.second).rect.x);
+ for(int id:{860,861,862,863,864,722})assert(!windows[at(id).hwnd].enabled);
+ for(int id:{860,861,722})assert(!windows[at(id).hwnd].checked);
+ for(int id:{803,806,866})assert(at(id).rect.y>at(901).rect.y&&at(id).rect.y<at(902).rect.y);
+ for(int id:{808,809})assert(at(id).rect.y>at(903).rect.y&&at(id).rect.y<at(904).rect.y);
+ for(int id:{806,808})assert(windows[at(id).hwnd].enabled&&windows[at(id).hwnd].text.find(L"测试")==std::wstring::npos&&windows[at(id).hwnd].text.find(L"实验")==std::wstring::npos);
+ extra.nativeAirWaypoints=extra.renderReveal=true;snap.nativeAirStatus=snap.renderRevealStatus=1;updateModeStatus(2800);
+ assert(windows[at(866).hwnd].text==L"原生路径点：已启用"&&windows[at(809).hwnd].text==L"地图显示：已启用");
  for(int id:{787,818,788})assert(at(id).visibleHeight==26);
  // Hidden legacy selector cannot appear via scroll, focus or navigation.
  assert(at(760).page==-3&&!windows[at(760).hwnd].visible);

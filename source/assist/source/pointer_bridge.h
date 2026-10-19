@@ -65,7 +65,7 @@ static void pointerTick(){
  // Give the original input at least one simulation turn before appending.
  if((i.bindings&(pointerinput::RightClick|pointerinput::LeftClick))&&frame==i.frame)return;
  if(i.operation==pointerinput::PlayerSelect){
-  if(!sh->controlAll||!riskControlActive||!pointerTarget||!live(pointerTarget)||!playableHouse(get<uint32_t>(pointerTarget+0x21C))){pointerFinish(-4);return;}
+  if(!playertest::Available||!sh->controlAll||!riskControlActive||!pointerTarget||!live(pointerTarget)||!playableHouse(get<uint32_t>(pointerTarget+0x21C))){pointerFinish(-4);return;}
   if(!(i.bindings&pointerinput::Shift))unselect();
   b.accepted=get<bool>(pointerTarget+0x83)||selection(pointerTarget);pointerFinish(b.accepted?1:-4);return;
  }
@@ -94,7 +94,7 @@ static void pointerTick(){
  while(examined++<i.count){int n=pointerAt++;if(pointerAt>=i.count)pointerAt=0;if(pointerDone[n])continue;
   uint32_t p=worldByID(i.sources[n].id);
   if(i.operation==pointerinput::PlayerOrder){
-   if(!sh->controlAll||!p||p!=i.sources[n].pointer||!live(p)||!playableHouse(get<uint32_t>(p+0x21C))||get<uint32_t>(p+0x11C)){pointerDone[n]=1;continue;}
+   if(!playertest::Available||!sh->controlAll||!p||p!=i.sources[n].pointer||!live(p)||!playableHouse(get<uint32_t>(p+0x21C))||get<uint32_t>(p+0x11C)){pointerDone[n]=1;continue;}
    if(submitted>=limit||outgoingRoom()<=0){++remaining;continue;}
    uint32_t owner=get<uint32_t>(p+0x21C);int mission=pointerTarget?1:2;
    if(pointerTarget==p){pointerDone[n]=1;continue;}

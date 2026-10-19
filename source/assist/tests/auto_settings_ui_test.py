@@ -186,6 +186,12 @@ int main(){
  fields.erase(716);fields[715]=0;autoSettingChanged(715,BN_CLICKED);assert(targetQuotas.empty());
  fields[724]='V';autoSettingChanged(724,EN_CHANGE);assert(extra.variantKey=='V');
  autoSettingChanged(441,EN_CHANGE);autoSettingChanged(411,EN_CHANGE);assert(binds==2);
+ // A forged click on disabled controls must not restore any player capability.
+ for(int id:{860,861,722}){
+  extra.controlAll=extra.switchPlayerEnabled=extra.sellEnemy=true;fields[id]=BST_CHECKED;
+  assert(autoSettingChanged(id,BN_CLICKED));assert(!extra.controlAll&&!extra.switchPlayerEnabled&&!extra.sellEnemy);
+  for(int blocked:{860,861,722})assert(fields[blocked]==BST_UNCHECKED);
+ }
  autoSaveOK=false;flushAutoSettings();assert(lastMessage.find(L"自动保存失败")!=std::wstring::npos);
 }
 '''

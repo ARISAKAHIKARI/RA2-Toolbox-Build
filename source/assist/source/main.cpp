@@ -1106,9 +1106,11 @@ static void updateModeStatus(DWORD now){
  int phase=!enabled?1:!game?2:snap.status<0?3:(snap.status!=1||(shared&&commandMatch()&&snap.commandStatus!=1))?4:0;
  static int oldPhase=-1;static DWORD last; if(phase==oldPhase&&DWORD(now-last)<200)return;oldPhase=phase;last=now;
  auto riskText=[&](bool wanted,int state)->std::wstring{if(state==-2)return L"启用或关闭失败，请查看日志";if(state==-1)return L"不支持此游戏版本";if(!wanted)return state==1?L"等待恢复":L"关闭";return phase?L"等待游戏就绪":state==1?L"已启用（联机风险）":L"等待生效";};
- std::wstring riskStatus=L"扩展建造："+riskText(buildAnywhereMode,snap.placementStatus)+L"\n原生路径点："+riskText(extra.nativeAirWaypoints,snap.nativeAirStatus);
+ std::wstring riskStatus=L"扩展建造："+riskText(buildAnywhereMode,snap.placementStatus);
+ std::wstring airStatus=L"原生路径点：";airStatus+=snap.nativeAirStatus==-2?L"启用或关闭失败，请查看日志":snap.nativeAirStatus==-1?L"不支持此游戏版本":!extra.nativeAirWaypoints?(snap.nativeAirStatus==1?L"等待恢复":L"关闭"):phase?L"等待游戏就绪":snap.nativeAirStatus==1?L"已启用":L"等待生效";
+ SetWindowTextW(GetDlgItem(ui,866),airStatus.c_str());
  SetWindowTextW(GetDlgItem(ui,807),riskStatus.c_str());
- std::wstring renderText=L"地图显示：";renderText+=snap.renderRevealStatus==-2?L"启用或关闭失败，请查看日志":!extra.renderReveal?L"关闭":phase?L"等待游戏就绪":snap.renderRevealStatus==1?L"已启用；联机尚未实测":L"等待生效";
+ std::wstring renderText=L"地图显示：";renderText+=snap.renderRevealStatus==-2?L"启用或关闭失败，请查看日志":!extra.renderReveal?L"关闭":phase?L"等待游戏就绪":snap.renderRevealStatus==1?L"已启用":L"等待生效";
  SetWindowTextW(GetDlgItem(ui,809),renderText.c_str());
  SetWindowTextW(GetDlgItem(ui,813),(L"步兵 C4："+riskText(extra.c4Test,snap.c4TestStatus)).c_str());
  std::wstring progress=L"生产进度：";uint32_t owner=0;
@@ -1140,6 +1142,7 @@ static void updateModeStatus(DWORD now){
  static std::wstring oldOreText;if(oreText!=oldOreText){oldOreText=oreText;SetWindowTextW(oreStatus,oreText.c_str());}
 }
 static void updatePlayerTestUI(){
+ if(!playertest::Available)return;
  static DWORD last=0;DWORD now=GetTickCount();if(DWORD(now-last)<200)return;last=now;
  if(!shared||!commandFresh(GetTickCount()))return;
  PlayerTestInfo list[32]{};int count=0,current=-1,status=0;uint32_t epoch=0;
@@ -1344,6 +1347,7 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
  case WM_HOTKEY:handleHotkey(wp,lp);return 0;
  case WM_COMMAND:{int id=LOWORD(wp);
  if(id==863||id==864){
+  if(!playertest::Available){notify(L"切换操控方暂不可用。");return 0;}
   if(!shared||!commandFresh(GetTickCount())||shared->request!=shared->ack){notify(L"请等待游戏就绪后再切换。");return 0;}
   if(id==864)send(RestorePlayer);
   else {int row=int(SendDlgItemMessageW(w,862,CB_GETCURSEL,0,0));

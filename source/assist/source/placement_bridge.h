@@ -311,6 +311,7 @@ static bool setTechSites(bool enabled){
  bool a=restoreRiskSite(riskSites[6]),b=restoreRiskSite(riskSites[7]);return !enabled&&a&&b;
 }
 static void controlSitesTick(bool enabled){
+ enabled=enabled&&playertest::Available;
  if(riskControlActive&&!enabled&&riskContextReady())unselect();
  riskControlActive=false;bool ok=true;
  if(enabled)for(int i=8;i<13;++i)if(!installRiskSite(riskSites[i]))ok=false;
