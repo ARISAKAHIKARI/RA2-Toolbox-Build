@@ -16,6 +16,7 @@ static bool autoSettingChanged(int id,int notification){
  if(id>=840&&id<840+compute::Count&&select){int mode=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));uint32_t bit=1u<<(id-840);
   if(mode==1)computeRequested|=bit;else computeRequested&=~bit;changedSetting();syncAdditional();notify(L"计算位置已自动保存，将在下一局生效；当前任务继续使用本局后端。");return true;
  }
+ if(id==850&&select){int next=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));if(next>=0&&next<=3){minimapPosition=next;changedSetting();}return true;}
  if(id==830&&notification==BN_CLICKED){minimapEnabled=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;if(!minimapEnabled)minimap::hide();changedSetting();return true;}
  if(id==810&&notification==BN_CLICKED){extra.c4Test=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;pointerMatches.clear();changedSetting();return true;}
  if(id==811&&edit){extra.c4Key=uint32_t(SendMessageW(GetDlgItem(ui,id),HKM_GETHOTKEY,0,0));changedSetting();return true;}
@@ -50,7 +51,7 @@ static bool autoSettingChanged(int id,int notification){
   if(!ok||value<lo||value>hi){setStatus(L"此项有效范围："+std::to_wstring(lo)+L"–"+std::to_wstring(hi)+L"；输入有效值后自动生效。");return false;}
   target=value;return true;};
  int* numeric=nullptr;int lo=0,hi=0;
- switch(id){case 831:numeric=&minimapScale;lo=100;hi=400;break;case 310:numeric=&fps;lo=5;hi=500;break;case 311:numeric=&topMargin;hi=4096;break;
+ switch(id){case 851:numeric=&minimapX;hi=32768;break;case 852:numeric=&minimapY;hi=32768;break;case 831:numeric=&minimapScale;lo=100;hi=400;break;case 310:numeric=&fps;lo=5;hi=500;break;case 311:numeric=&topMargin;hi=4096;break;
  case 816:numeric=&labelScalePercent;lo=50;hi=250;break;
  case 817:numeric=&constructionScalePercent;lo=50;hi=250;break;
  case 797:numeric=&shiftClickGap;lo=0;hi=250;break;
@@ -100,7 +101,7 @@ static bool autoSettingChanged(int id,int notification){
  if(!edit)return false;
  WORD* target=nullptr;HWND widget=GetDlgItem(ui,id);
  if(id>=200&&id<212)target=&hotkeys[id-200];
- else switch(id){case 447:target=&csKey;break;case 450:target=&advancedKey;break;case 451:target=&unloadKey;break;
+ else switch(id){case 853:target=&idleAircraftKey;break;case 447:target=&csKey;break;case 450:target=&advancedKey;break;case 451:target=&unloadKey;break;
  case 456:target=&ejectKey;break;case 474:target=&csHoldKey;break;case 478:target=&magnetronKey;break;}
  if(target){WORD next=WORD(SendMessageW(widget,HKM_GETHOTKEY,0,0)),old=*target;*target=0;
   bool conflict=keyConflict(next,"",false);*target=old;

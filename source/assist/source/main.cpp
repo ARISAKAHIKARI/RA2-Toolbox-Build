@@ -55,7 +55,8 @@ using namespace assist;using namespace Gdiplus;
 extern "C" __declspec(dllexport) const uint32_t AssistHostProtocolInfo[2]={Version,sizeof(Shared)};
 namespace minimap {static void hide();static void clear();static void destroy();}
 static uint32_t computeRequested=compute::Default;
-static bool minimapEnabled=false;static int minimapScale=200;
+static bool minimapEnabled=false;static int minimapScale=200,minimapPosition=0,minimapX=20,minimapY=60;
+static WORD idleAircraftKey=MAKEWORD('P',HOTKEYF_CONTROL|HOTKEYF_ALT);
 static void hideAircraftButton();static void destroyAircraftButton();
 static void serviceAirPath();static void resetAirPath();static void airPathResult(int,int,uint32_t,uint32_t);
 static void serviceConstruction();static void hideConstruction();static void resetConstruction();static void destroyConstruction();static void constructionResult(int,int,uint32_t,uint32_t);
@@ -295,6 +296,7 @@ static void registerKeys(){for(int id:registeredKeyIDs)UnregisterHotKey(ui,id);r
  if(LOBYTE(ejectKey)&&!registerKey(1696,ejectKey))++failures;
  if(hookSmartUnload&&LOBYTE(unloadKey)&&!registerKey(1698,unloadKey))++failures;
  if(hookAutoCS&&LOBYTE(csKey)&&!registerKey(1699,csKey))++failures;
+ if(LOBYTE(idleAircraftKey)&&!registerKey(1701,idleAircraftKey))++failures;
  if(LOBYTE(extra.variantKey)&&!registerKey(1700,WORD(extra.variantKey)))++failures;
  if(failures)notify(L"有 "+std::to_wstring(failures)+L" 个快捷键冲突或注册失败，请更换组合，修改后自动生效。");
 }
@@ -1360,7 +1362,15 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
  pageControl(12,L"STATIC",L"小地图放大比例 %",20,162,250,24,0);
  pageControl(12,L"EDIT",std::to_wstring(minimapScale).c_str(),290,160,75,26,831,ES_NUMBER|WS_TABSTOP);
  pageControl(12,L"STATIC",L"100–400 · 默认 200",385,162,240,24,0);
- pageControl(12,L"STATIC",L"只放大已显示雷达，点击穿透；菜单/切屏自动隐藏，最高 60 Hz。",20,202,605,26,0);
+ pageControl(12,L"STATIC",L"放大小地图位置",20,202,250,24,0);
+ {auto h=pageControl(12,L"COMBOBOX",L"",290,200,335,160,850,CBS_DROPDOWNLIST|WS_TABSTOP);
+  for(auto text:{L"原雷达左侧（自动避让）",L"画面左上",L"画面左下",L"自定义坐标"})SendMessageW(h,CB_ADDSTRING,0,(LPARAM)text);
+  SendMessageW(h,CB_SETCURSEL,minimapPosition,0);}
+ pageControl(12,L"STATIC",L"自定义 X / Y",20,242,250,24,0);
+ pageControl(12,L"EDIT",std::to_wstring(minimapX).c_str(),290,240,100,26,851,ES_NUMBER|WS_TABSTOP);
+ pageControl(12,L"EDIT",std::to_wstring(minimapY).c_str(),405,240,100,26,852,ES_NUMBER|WS_TABSTOP);
+ pageControl(12,L"STATIC",L"坐标以游戏画面左上角为原点，单位为游戏像素；自动限制边界并避开原雷达和飞机按钮。",20,280,605,44,0);
+ pageControl(12,L"STATIC",L"只放大已显示雷达，点击穿透；菜单/切屏自动隐藏，最高 60 Hz。",20,332,605,26,0);
 
  control(L"STATIC",L"操作",20,84,320,22,0);control(L"STATIC",L"快捷键",345,84,260,22,0);
  for(int i=0;i<12;++i){int y=110+(i==11?0:i+1)*29;HWND action=control(L"BUTTON",labels[i],20,y,306,25,100+i,(i==0?BS_AUTOCHECKBOX:BS_PUSHBUTTON)|WS_TABSTOP);if(i==0){repairCheck=action;SendMessageW(action,BM_SETCHECK,value(L"Modes",L"AutoRepair",0)?BST_CHECKED:BST_UNCHECKED,0);}keys[i]=control(HOTKEY_CLASSW,L"",345,y,280,25,200+i,WS_TABSTOP);SendMessageW(keys[i],HKM_SETHOTKEY,hotkeys[i],0);}

@@ -114,3 +114,6 @@
  {auto h=pageControl(2,L"BUTTON",L"飞机 Z 路径点（外部队列；原生模式下暂停）",20,636,605,26,803,BS_AUTOCHECKBOX|WS_TABSTOP);SendMessageW(h,BM_SETCHECK,extra.airWaypoints?BST_CHECKED:BST_UNCHECKED,0);}
 
  {auto h=pageControl(0,L"BUTTON",L"自动防偷点杀（防御建筑名单可配置）",20,1112,605,26,804,BS_AUTOCHECKBOX|WS_TABSTOP);SendMessageW(h,BM_SETCHECK,extra.antiTheft?BST_CHECKED:BST_UNCHECKED,0);}
+
+ pageControl(0,L"STATIC",L"轮选空闲飞机",20,1148,306,25,0);
+ {auto h=pageControl(0,HOTKEY_CLASSW,L"",345,1148,280,25,853,WS_TABSTOP);SendMessageW(h,HKM_SETHOTKEY,idleAircraftKey,0);}

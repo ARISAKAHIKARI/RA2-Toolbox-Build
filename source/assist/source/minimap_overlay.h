@@ -1,3 +1,4 @@
+#include "radar_layout.h"
 // Host-only visible radar mirror. No game-state change, extra hook or synthetic
 // input. The source stays unobstructed; the enlarged window is click-through.
 namespace minimap {
@@ -16,16 +17,10 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
 }
 static void update(POINT origin,const RECT&client){
  if(!minimapEnabled||!enabled||!foregroundGame()||snap.renderStatus!=1||snap.chat||snap.width<320||snap.height<200||client.right<320||client.bottom<200){hide();return;}
- // Native YR sidebar/radar is 160 game pixels wide. Use actual game and client
- // sizes, never desktop/INI resolution. Entire radar frame is mirrored.
- const int sw=std::max(1,int(int64_t(160)*client.right/snap.width));
- const int sh=std::max(1,int(int64_t(140)*client.bottom/snap.height));
- const int sx=origin.x+client.right-sw,sy=origin.y;
- int dw=int(int64_t(sw)*minimapScale/100),dh=int(int64_t(sh)*minimapScale/100);
- const int gap=std::max(6,int(int64_t(10)*client.right/snap.width));
- // Never overlap the source (avoids self-capture feedback). Fit small clients.
- const double fit=std::min(1.0,std::min(double(client.right-sw-gap-4)/std::max(1,dw),double(client.bottom-44)/std::max(1,dh)));
- if(fit<=0){hide();return;}dw=std::max(1,int(dw*fit));dh=std::max(1,int(dh*fit));
+ auto layout=radarlayout::place(snap.width,snap.height,client.right,client.bottom,minimapScale,minimapPosition,minimapX,minimapY,aircraftButtonBox);
+ if(!layout.valid){hide();return;}
+ const int sw=layout.source.w,sh=layout.source.h,sx=origin.x+layout.source.x,sy=origin.y+layout.source.y;
+ const auto&destination=layout.destination;
  if(!window){WNDCLASSW cls{};cls.lpfnWndProc=proc;cls.hInstance=GetModuleHandleW(nullptr);cls.lpszClassName=L"RA2RadarMirror116";RegisterClassW(&cls);
   window=CreateWindowExW(WS_EX_TOOLWINDOW|WS_EX_NOACTIVATE|WS_EX_TOPMOST|WS_EX_TRANSPARENT|WS_EX_LAYERED,cls.lpszClassName,L"小地图放大",WS_POPUP,0,0,1,1,nullptr,nullptr,cls.hInstance,nullptr);}
  if(!window)return;SetLayeredWindowAttributes(window,0,255,LWA_ALPHA);
@@ -35,6 +30,6 @@ static void update(POINT origin,const RECT&client){
   HDC screen=GetDC(nullptr);BOOL ok=BitBlt(captureDC,0,0,sw,sh,screen,sx,sy,SRCCOPY|CAPTUREBLT);ReleaseDC(nullptr,screen);
   if(!ok){hide();return;}capturedAt=now;InvalidateRect(window,nullptr,FALSE);
  }
- SetWindowPos(window,HWND_TOPMOST,sx-gap-dw-2,origin.y+40,dw+2,dh+2,SWP_NOACTIVATE|SWP_SHOWWINDOW);
+ SetWindowPos(window,HWND_TOPMOST,origin.x+destination.x,origin.y+destination.y,destination.w,destination.h,SWP_NOACTIVATE|SWP_SHOWWINDOW);
 }
 }

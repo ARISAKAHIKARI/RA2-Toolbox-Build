@@ -29,12 +29,15 @@ static int repairCheck=1,ejectCheck=2,csCheck=3,hookChecks[4]={4,5,6,7};static s
 static int SendMessageW(int id,int msg,int value,int){if(msg==BM_SETCHECK)controls[id]=value;return controls[id];}
 struct Binding{std::string id;WORD key;};static std::vector<Binding>typeBindings,swBindings;
 static int actions[]={Repair,CombatSelection,EmptyTransports,DamagedSelection,IdleHarvester,IdleEngineer,IdleTransport,ClearBeacons,RevealMap,SelectIron,SelectChrono,AutoBoard};
+static uint32_t pid=123;static bool externalData=true;static uint32_t sampleRenderClock(void*){return now;}
+static struct {uint32_t idleAircraftTick=1000;int idleAircraftCount=3;uint32_t idleAircraftIDs[8192]={10,20,30};}externalSampler;
+static std::vector<uint32_t> selectedAircraft;
 static unsigned notifications=0,saves=0;static void notify(const std::wstring&){++notifications;}static void save(){++saves;}
 static struct{int size=0;}commandQueue;
 static std::vector<int>commands;static std::vector<std::pair<int,bool>> selections;
 static void send(int cmd,int=0){commands.push_back(cmd);++shared->request;}
-static void sendSelection(int index,bool global,const uint8_t* =nullptr){selections.push_back({index,global});++shared->selectRequest;}
-'''+'''static WORD hotkeys[12]{},csKey=0,advancedKey=0,unloadKey=0,ejectKey=0,csHoldKey=0,magnetronKey=0;\nstatic WORD comparableKey'''+conflict+body+r'''
+static void sendSelection(int index,bool global,const uint8_t* =nullptr,uint32_t object=0){if(index==-4)selectedAircraft.push_back(object);selections.push_back({index,global});++shared->selectRequest;}
+'''+(r/'assist/source/idle_aircraft_selection.h').read_text()+'''static WORD idleAircraftKey=0x650;static WORD hotkeys[12]{},csKey=0,advancedKey=0,unloadKey=0,ejectKey=0,csHoldKey=0,magnetronKey=0;\nstatic WORD comparableKey'''+conflict+body+r'''
 static void ack(){shared->ack=shared->request;shared->selectAck=shared->selectRequest;serviceHotkeyBatch();}
 int main(){
  extra.allHotkeys=false;hotkeys[0]=0x641;assert(keyConflict(0xe41,"",false));extra.allHotkeys=true;assert(!keyConflict(0x641,"",false));snap.status=1;snap.match=8;snap.typeCount=1;snap.types[0].kind=40;std::strcpy(snap.types[0].id,"TANK");typeBindings.push_back({"TANK",0x641});
@@ -52,10 +55,28 @@ int main(){
  extra.allHotkeys=true;handleHotkey(1001,event);focused=false;serviceHotkeyBatch();assert(!hotkeyPending.count);focused=true;ack();
  assert(hotkeyPending.add(*hotkeyRegistry.find(1001),now,8));++scene;serviceHotkeyBatch();assert(!hotkeyPending.count);
  --scene;assert(hotkeyPending.add(*hotkeyRegistry.find(1001),now,8));now+=2501;serviceHotkeyBatch();assert(!hotkeyPending.count);
+ hotkeyRegistry.clear();extra.allHotkeys=false;extra.idleAircraft=false;snap.renderStatus=1;
+ assert(keyConflict(idleAircraftKey,"",false));
+ assert(hotkeyRegistry.add(1701,idleAircraftKey,false,install));const intptr_t planeEvent=('P'<<16)|(MOD_CONTROL|MOD_ALT);
+ externalSampler.idleAircraftTick=now;
+ handleHotkey(1701,planeEvent);ack();assert(selectedAircraft.back()==10);
+ selectNextIdleAircraft();ack();assert(selectedAircraft.back()==20); // button uses the same cursor
+ handleHotkey(1701,planeEvent);ack();assert(selectedAircraft.back()==30);
+ handleHotkey(1701,planeEvent);ack();assert(selectedAircraft.back()==10);
+ externalSampler.idleAircraftCount=2;externalSampler.idleAircraftIDs[1]=30;handleHotkey(1701,planeEvent);ack();assert(selectedAircraft.back()==30);
+ ++pid;handleHotkey(1701,planeEvent);ack();assert(selectedAircraft.back()==10);
+ ++scene;handleHotkey(1701,planeEvent);ack();assert(selectedAircraft.back()==10);
+ auto selected=selectedAircraft.size();snap.chat=1;handleHotkey(1701,planeEvent);snap.chat=0;assert(selectedAircraft.size()==selected);
+ snap.renderStatus=0;handleHotkey(1701,planeEvent);snap.renderStatus=1;assert(selectedAircraft.size()==selected);
+ focused=false;handleHotkey(1701,planeEvent);focused=true;assert(selectedAircraft.size()==selected);
+ now+=501;handleHotkey(1701,planeEvent);assert(selectedAircraft.size()==selected);externalSampler.idleAircraftTick=now;
+ externalSampler.idleAircraftCount=0;handleHotkey(1701,planeEvent);assert(selectedAircraft.size()==selected);
+
 }
 '''
 with tempfile.TemporaryDirectory() as d:
  p=Path(d)/'host.cpp';exe=Path(d)/'host';p.write_text(program)
  subprocess.run(['g++','-std=c++17','-O2','-I',str(r/'assist/source'),str(p),'-o',str(exe)],check=True)
  subprocess.run([str(exe)],check=True)
+print('PASS: idle-aircraft hotkey and button share cycle, wrap and process/match reset; hidden indicator independence; stale/menu/chat/focus rejection')
 print('PASS: production hotkey dispatcher executes every match once, waits for command/selection ACK, preserves both double-tap selections, rejects stale bindings/context/deadlines; default-off unchanged')

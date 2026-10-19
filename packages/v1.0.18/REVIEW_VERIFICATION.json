@@ -1,0 +1,33 @@
+{
+  "version": "1.0.18 Beta",
+  "file_version": "1.0.18.0",
+  "assist_protocol": 51,
+  "changes": [
+    "configurable radar mirror placement and source/aircraft exclusion rectangles",
+    "Ctrl+Alt+P configurable idle-aircraft hotkey; button and key share selection cycle",
+    "UI settings immediate and autosaved; hotkey works with indicator hidden"
+  ],
+  "host_checks": {
+    "geometry_combinations": 10368,
+    "asan_ubsan": true,
+    "leak_sanitizer": false,
+    "resource_balance_assertions": true,
+    "actual_settings_handler": true,
+    "actual_hotkey_dispatcher_and_common_selection": true,
+    "code_identity": {
+      ".text": true,
+      ".rdata": true,
+      ".data": true
+    }
+  },
+  "runtime_cases_rerun": 0,
+  "previous_runtime_reports": "1.0.17 reports remain historical; Runtime code/data segments are identical",
+  "real_windows_game": false,
+  "real_netplay": false,
+  "real_capture_or_lbw": false,
+  "real_latency": false,
+  "binary_sha256": {
+    "RA2Toolbox.exe": "ee2ec8b0bd8dd6beb7579818be893db1a280fb1d0d792acc6b6094d41fdfb318",
+    "GameRuntime.dll": "bad734740db4d1d69cc4f8be68b81a78a67c4f283f6425a352872dd065dddb96"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "previous_version": "1.0.17",
+  "version": "1.0.18",
+  "sections_equal": {
+    ".text": true,
+    ".rdata": true,
+    ".data": true
+  },
+  "previous_sha256": "c1699b69756654021b6da6a59e9de3254e22498bf8677c74473795d730969487",
+  "dll_sha256": "bad734740db4d1d69cc4f8be68b81a78a67c4f283f6425a352872dd065dddb96",
+  "meaning": "Runtime machine code unchanged; version resource updated. Prior fixtures are historical, not rerun claims."
+}

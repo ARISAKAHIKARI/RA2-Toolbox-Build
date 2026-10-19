@@ -1,0 +1,12 @@
+{
+  "version": "1.0.18",
+  "file_version": "1.0.18.0",
+  "assist_protocol": 51,
+  "bytes": 1082730,
+  "sha256": "c99979c031e87757591a53ba059cfe128d0a80ddaff5ba74efa379f9d898ad59",
+  "files": {
+    "RA2Toolbox.exe": "ee2ec8b0bd8dd6beb7579818be893db1a280fb1d0d792acc6b6094d41fdfb318",
+    "GameRuntime.dll": "bad734740db4d1d69cc4f8be68b81a78a67c4f283f6425a352872dd065dddb96",
+    "README-1.0.18.txt": "8ad5bcfcb00e7e7521d9ecfb2827805203d35727734e37e6178696e84180a967"
+  }
+}

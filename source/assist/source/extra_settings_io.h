@@ -1,5 +1,7 @@
 static void loadAdditionalSettings(){
  for(int i=0;i<compute::Count;++i){bool mode=value(L"Compute",compute::key(i),compute::inside(compute::Default,compute::Feature(i)))!=0;if(mode)computeRequested|=1u<<i;else computeRequested&=~(1u<<i);}
+ idleAircraftKey=WORD(value(L"Hotkeys",L"IdleAircraft",MAKEWORD('P',HOTKEYF_CONTROL|HOTKEYF_ALT))&65535);
+ minimapPosition=std::clamp(value(L"Display",L"MinimapPosition",0),0,3);minimapX=std::clamp(value(L"Display",L"MinimapX",20),0,32768);minimapY=std::clamp(value(L"Display",L"MinimapY",60),0,32768);
  minimapEnabled=value(L"Display",L"MinimapZoom",0)!=0;minimapScale=std::clamp(value(L"Display",L"MinimapScale",200),100,400);
  for(int i=0;i<featuretypes::Count;++i){auto&f=featureTypes.filters[i];std::wstring custom=std::wstring(featuretypes::key(i))+L"Custom";wchar_t text[13000]{};
   GetPrivateProfileStringW(L"FeatureTypes",featuretypes::key(i),featuretypes::initial(i),text,13000,path(L"Assist.ini").c_str());featureTypeText[i]=text;
@@ -40,6 +42,8 @@ static void loadAdditionalSettings(){
 }
 static bool saveAdditionalSettings(){
  for(int i=0;i<compute::Count;++i)write(L"Compute",compute::key(i),(computeRequested>>i)&1u);
+ write(L"Hotkeys",L"IdleAircraft",idleAircraftKey);
+ write(L"Display",L"MinimapPosition",minimapPosition);write(L"Display",L"MinimapX",minimapX);write(L"Display",L"MinimapY",minimapY);
  write(L"Display",L"MinimapZoom",minimapEnabled);write(L"Display",L"MinimapScale",minimapScale);
  for(int i=0;i<featuretypes::Count;++i){std::wstring custom=std::wstring(featuretypes::key(i))+L"Custom";
   write(L"FeatureTypes",custom.c_str(),featureTypes.filters[i].custom);

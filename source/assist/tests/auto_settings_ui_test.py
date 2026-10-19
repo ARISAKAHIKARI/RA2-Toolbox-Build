@@ -24,7 +24,10 @@ constexpr int FALSE=0,EN_CHANGE=1,CBN_SELCHANGE=2,BN_CLICKED=3,HKM_GETHOTKEY=4,H
 static bool ready=true,updatingControls=false,enabled=true,autoSaveOK=true;
 struct ControlUpdate{bool old=updatingControls;ControlUpdate(){updatingControls=true;}~ControlUpdate(){updatingControls=old;}};
 static bool hookAdvanced=false,hookSmartUnload=false;static HWND hookChecks[4]={800,801,802,803};
-static uint32_t computeRequested=compute::Default;static bool minimapEnabled=false;static int minimapScale=200,advancedRangeCells=2;
+static uint32_t computeRequested=compute::Default;static bool minimapEnabled=false;static int minimapScale=200,advancedRangeCells=2,minimapPosition=0,minimapX=20,minimapY=60;
+constexpr unsigned HOTKEYF_CONTROL=2,HOTKEYF_ALT=4;
+constexpr WORD MAKEWORD(unsigned a,unsigned b){return WORD((a&255)|(b<<8));}
+static WORD idleAircraftKey=MAKEWORD('P',6);
 namespace minimap {static void hide(){}}static void syncAdditional(){}
 static int labelScalePercent=100,constructionScalePercent=100;
 static int ui=1,fps=60,topMargin=20,repairMs=2000,doubleMs=350,toastMs=6000;
@@ -61,7 +64,7 @@ static void clockState(bool,int){}
 static HWND GetDlgItem(int,int id){return id;}
 static int GetDlgItemInt(int,int id,BOOL*ok,int){*ok=fields.count(id);return *ok?fields[id]:0;}
 static int SendMessageW(int id,int msg,unsigned value,int){if(msg==HKM_SETHOTKEY||msg==CB_SETCURSEL||msg==BM_SETCHECK){fields[id]=value;return 0;}return fields[id];}
-static bool keyConflict(WORD next,const std::string&,bool){if(extra.allHotkeys||!next)return false;for(auto k:hotkeys)if(k==next)return true;for(auto k:{csKey,advancedKey,unloadKey,ejectKey,csHoldKey,magnetronKey})if(k==next)return true;return false;}
+static bool keyConflict(WORD next,const std::string&,bool){if(extra.allHotkeys||!next)return false;for(auto k:hotkeys)if(k==next)return true;for(auto k:{csKey,advancedKey,unloadKey,ejectKey,csHoldKey,magnetronKey,idleAircraftKey})if(k==next)return true;return false;}
 static std::string quotaID(){return selectedID;}
 static void readTargetQuota(){ControlUpdate guard;}
 static bool extraNumber(int control,int lo,int hi,int&out){auto i=fields.find(700+control);if(i==fields.end()||i->second<lo||i->second>hi)return false;out=i->second;return true;}
@@ -90,6 +93,15 @@ int main(){
  computeRequested=153;saveFeatureTypes();computeRequested=0;loadFeatureTypes();assert(computeRequested==153);
  fields[830]=1;assert(autoSettingChanged(830,BN_CLICKED)&&minimapEnabled);
  for(int n:{100,200,400}){fields[831]=n;assert(autoSettingChanged(831,EN_CHANGE)&&minimapScale==n);}fields[831]=401;autoSettingChanged(831,EN_CHANGE);assert(minimapScale==400);
+ for(int mode:{0,1,2,3}){fields[850]=mode;assert(autoSettingChanged(850,CBN_SELCHANGE)&&minimapPosition==mode);}
+ fields[850]=4;autoSettingChanged(850,CBN_SELCHANGE);assert(minimapPosition==3);
+ for(int id:{851,852})for(int n:{0,20,32768}){fields[id]=n;assert(autoSettingChanged(id,EN_CHANGE)&&(id==851?minimapX:minimapY)==n);}
+ fields[851]=32769;autoSettingChanged(851,EN_CHANGE);assert(minimapX==32768);
+ fields[853]=MAKEWORD('N',6);assert(autoSettingChanged(853,EN_CHANGE)&&idleAircraftKey==MAKEWORD('N',6));
+ hotkeys[0]='X';fields[853]='X';autoSettingChanged(853,EN_CHANGE);assert(idleAircraftKey==MAKEWORD('N',6));hotkeys[0]=0;
+ saveFeatureTypes();idleAircraftKey=0;minimapPosition=minimapX=minimapY=0;loadFeatureTypes();
+ assert(idleAircraftKey==MAKEWORD('N',6)&&minimapPosition==3&&minimapX==32768&&minimapY==32768);
+ fields[853]=0;autoSettingChanged(853,EN_CHANGE);assert(idleAircraftKey==0);saveFeatureTypes();idleAircraftKey=1;loadFeatureTypes();assert(idleAircraftKey==0);
  for(int id:{816,817}){
   int& scale=id==816?labelScalePercent:constructionScalePercent;
   for(int p:{50,75,100,125,150,200,250}){fields[id]=p;assert(autoSettingChanged(id,EN_CHANGE)&&scale==p&&autoSavePending);}

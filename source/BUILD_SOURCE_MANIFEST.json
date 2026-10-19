@@ -1,12 +1,12 @@
 {
-  "name": "RA2 Toolbox 1.0.17 Beta",
-  "version": "1.0.17",
+  "name": "RA2 Toolbox 1.0.18 Beta",
+  "version": "1.0.18",
   "compiled_game_binary_included": false,
-  "source": "1.0.16 base; shared smart-unload/ejection decision and two computation locations",
+  "source": "1.0.17 base; host-only configurable radar mirror placement, aircraft button avoidance, idle aircraft hotkey",
   "resources": "Complete assets/profiles/Python preprocessing runtime/engine included",
   "resources_legacy_reuse": true,
   "build_protocol": 51,
-  "validation": "Current targeted x86 DLL/native constructor fixtures plus sampler/process/minimap/UI tests; no real Windows/LBW/netplay",
+  "validation": "Host capture/layout geometry and actual hotkey/settings code fixtures; PE/ABI/source audit; Runtime .text/.rdata/.data identical to 1.0.17; no real Windows/LBW/netplay",
   "build_requirement": "Zig 0.13.0, x86 Windows target; build EXE and GameRuntime.dll together",
   "settings": {
     "Orders.MegaMissionBackend": "0=constructor; 1=high-level MP; SP uses constructor/DoList centrally",
@@ -25,7 +25,7 @@
     "EventClass original constructors + SP DoList / MP OutList",
     "HouseClass::CanBuild (0x4F7870), normal legality query"
   ],
-  "release_status": "1.0.17 Beta; Assist protocol 51; paired EXE and DLL",
+  "release_status": "1.0.18 Beta; Assist protocol 51; paired EXE and DLL",
   "technology_experiment": "Existing external catalogue beta remains; no claim of complete safe technology unlock",
   "calculation_locations": "Ten tactical decision families selectable. Statistics, reservations and display remain external by user-approved scope; see REVIEW-1.0.17.md"
 }

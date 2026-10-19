@@ -1,5 +1,6 @@
 // Each colliding action enters the existing request/selection channel in turn.
 static void executeHotkey(WPARAM wp,bool fanout){
+ if(wp==1701){selectNextIdleAircraft();return;}
  if(wp==1700){bool global=variantTap.press(1700,GetTickCount(),snap.match,doubleMs);sendSelection(-2,global);return;}
  if(wp>=1100&&wp<1100+typeBindings.size()){auto&binding=typeBindings[wp-1100];uint8_t mask[MaxTypes]{};
   if(!typekeys::groupMask(typeBindings,binding.key,snap.types,snap.typeCount,mask,MaxTypes)){notify(L"本局没有此组合中的单位类型。");return;}
