@@ -1,5 +1,5 @@
-RA2 Toolbox 1.0.22 / Windows 1.0.22.0 / Assist protocol 52
+RA2 Toolbox 1.0.23 / Windows 1.0.23.0 / Assist protocol 52
 Compiler: Zig 0.13.0 / Windows x86
-RA2Toolbox.exe SHA256: 7df2e0c87939258917f180ffb0c84a1f200ef5f628e746b915b9c900db251cb9
-GameRuntime.dll SHA256: 256d6b05918325290b1c075890458a4f9cd92afb6472aeb9aa869296ad31326d
-{"compat-3": 16, "compat-4": 16, "startup-3": 72, "startup-4": 72, "lifecycle-3": 12, "lifecycle-4": 12}; both entry regressions; 284 controls, 12 viewport sizes, 3228 reachability checks. No real Windows, platform DLL or netplay validation. Disconnect root cause not proven.
+RA2Toolbox.exe SHA256: 6eb367ded908d08347b028ec005bb06c3a5cbd0e5baeb5a576577fcca7b28391
+GameRuntime.dll SHA256: 640817f65cc71b97b9ad4b7128a564effba384da08cb5811a3df51b5674678c9
+16 current Runtime pointer/event cases; 8 previous-version rejection reproductions; host route/pointer checks; both EXE entry regressions. No real flight, platform or netplay validation.

@@ -1,0 +1,32 @@
+{
+  "version": "1.0.23",
+  "file_version": "1.0.23.0",
+  "assist_protocol": 52,
+  "changes": [
+    "allow only AirWaypoint recording while native PlanningMode is set",
+    "report negative path capture receipts and log recording results; no new patches"
+  ],
+  "runtime_cases": {
+    "air-3": 8,
+    "air-4": 8
+  },
+  "previous_version_reproductions": 8,
+  "baseline_dll_sha256": "256d6b05918325290b1c075890458a4f9cd92afb6472aeb9aa869296ad31326d",
+  "host_checks": [
+    "actual air route recorder/service",
+    "actual pointer fanout service"
+  ],
+  "entry_regression": "PASS on both supplied EXEs; actual DLL and constructors with synthetic world/Win32 fixtures",
+  "scope": "PlanningMode=true pointer capture, one-frame click separation, token to Move event, unchanged planning flag/aircraft bytes and no aircraft patches; other enhanced clicks still rejected. Host arrival is a controlled read, not game physics.",
+  "real_windows_game": false,
+  "real_aircraft_flight": false,
+  "real_netplay": false,
+  "platform_extensions_executed": false,
+  "disconnect_fix": false,
+  "ui_layout_changed": false,
+  "ui_geometry_rerun": false,
+  "binary_sha256": {
+    "RA2Toolbox.exe": "6eb367ded908d08347b028ec005bb06c3a5cbd0e5baeb5a576577fcca7b28391",
+    "GameRuntime.dll": "640817f65cc71b97b9ad4b7128a564effba384da08cb5811a3df51b5674678c9"
+  }
+}

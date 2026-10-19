@@ -1,5 +1,5 @@
 {
-  "version": "1.0.22",
+  "version": "1.0.23",
   "baseline": "0.7.16",
   "result": "No detected forbidden source-boundary bypass; ten selectable tactical decision families; UI-bound features remain external by design. Native APIs always Runtime.",
   "scope": {
@@ -43,13 +43,13 @@
     "Automatic bounded host logging and callback/handshake evidence without consuming host work",
     "Source time/frame preserved across planning and queueing; per-order expiration; fresh suffix replan preserves aircraft quotas",
     "Cursor WM_SETCURSOR goes through host input manager without holding scheduler mutex",
-    "Only the message entry consumes host work; frame detours removed; Patch API permits only three 1.0.4 judgment sites, two 1.0.6 drawing leaves one 1.0.10 C4 load, two 1.0.20 sidebar CALLs; 1.0.22 removes all five player-selection CALL permissions",
+    "Only the message entry consumes host work; frame detours removed; Patch API permits only three 1.0.4 judgment sites, two 1.0.6 drawing leaves one 1.0.10 C4 load, two 1.0.20 sidebar CALLs; 1.0.21 removes all five player-selection CALL permissions",
     "Recycled host PID cannot reuse a dead retained controller process handle",
     "Host builds reject including the Runtime execution client",
     "Partial rebuilds invalidate old verification markers; Windows build verifies PE outputs before success"
   ],
   "permitted_exceptions": [
-    "1.0.22 disables every player-control capability at host and Runtime and removes five selection CALL sites; normal automation remains own-only. C4 Beta adds one execution flag-load site (explicit multiplayer risk opt-in). Two other experimental judgment features use three sites; render display uses exactly ShroudDraw/FogDraw leaves; defaults off. Render display and native aircraft waypoints are ordinary UI controls; network aircraft paths now use the ordinary event gateway without either aircraft patch; native aircraft patches are SP-only. All writes owned by the entry manager, callbacks acquire a bound-thread Capture lease. Explicit host polling feeds Runtime. Optional compatible ground-click suppression uses the existing common message boundary only, default off; no OutList rewriting",
+    "1.0.21 disables every player-control capability at host and Runtime and removes five selection CALL sites; normal automation remains own-only. C4 Beta adds one execution flag-load site (explicit multiplayer risk opt-in). Two other experimental judgment features use three sites; render display uses exactly ShroudDraw/FogDraw leaves; defaults off. Render display and native aircraft waypoints are ordinary UI controls; network aircraft paths now use the ordinary event gateway without either aircraft patch; native aircraft patches are SP-only. All writes owned by the entry manager, callbacks acquire a bound-thread Capture lease. Explicit host polling feeds Runtime. Optional compatible ground-click suppression uses the existing common message boundary only, default off; no OutList rewriting",
     "Read-only game-side validation/resource reads under Runtime execution",
     "Watchdog stop/dead-host restoration only",
     "Central transport supports verified construct/enqueue and original high-level backends",
@@ -382,7 +382,7 @@
   ],
   "source_sha256": {
     "assist/source/additional_settings.h": "5b65f55be46fe4a3082f399a7f00a4ab2da3c6ee23d6ab124b074a89cf59bee2",
-    "assist/source/air_path_host.h": "a99cdcebb49bbe9dc325b7abffff0cb4b2670e7c4736161ace2f287c066ed07a",
+    "assist/source/air_path_host.h": "ee82a661859980dc0c87b385e4a58153a9d470cfecae4cfde02b42dd8f5f8e52",
     "assist/source/air_path_policy.h": "36a324e0501f1e00d76d146fa59cb76929646fce3d4d17f53c0dbf8c505d73eb",
     "assist/source/aircraft_indicator.h": "7c3b5b8c25937605b62fc04e8dd328f6b6a40f279013b702e725c84b70c9643b",
     "assist/source/anti_theft_bridge.h": "06c91fb2abaaa97bf68b7776cd328029782eb852c64a1979ec199ce897abd8d4",
@@ -456,7 +456,7 @@
     "assist/source/player_test_bridge.h": "9f0563bf5e4a0de6ba67f53094b757af7f9e7784f293662dcd5682d901a43826",
     "assist/source/player_test_policy.h": "d7f3734b7139a46d14bef30a0513d8759d001f0b5f907392c4cfeb70391e542f",
     "assist/source/pointer_batch.h": "94106eea6e9542b61aae90a797f5c5f978f4bd2fb508774ddabbfa7a6d6d91f4",
-    "assist/source/pointer_bridge.h": "c11f52fde121ff14a5605794cc6c7a48dcc56a8a682cb13fc7c6f00bb42b2258",
+    "assist/source/pointer_bridge.h": "2994030aab692c87191c984e797b756b005e013e51980f13b2b451ea51483305",
     "assist/source/pointer_host.h": "613109f96396939ec056365704096f348423beae0de2e239cef355e74bcddafd",
     "assist/source/pointer_intent.h": "48bd8a4714816581c5d95bb329c5870979c08c61ba51589c574305a92456f2bb",
     "assist/source/protocol.h": "78c0adb847e3f4306a94d5188eba597c884314c8cad54a47a95a74cdb97fecf4",
@@ -538,7 +538,7 @@
     "shared/source/host_game_input.h": "a3168180cd4fde7c62c57c9013340f4cacae2aa47f647464a088103887c349e5",
     "shared/source/message_query.h": "fee0a8953fbdf08d70725cfd1f6b0f1c1473e50dc863ba8444365195d884d675",
     "shared/source/modern_ui.h": "1d1a864cc35be7cbc9dd634dbe942e5b1f1eff150552f505eb2474c33efcc3f6",
-    "shared/source/release_version.h": "439361f351fa6fffa7aeaa9cec94224683f9874041e572fb4e92ee0ae34fe3ee",
+    "shared/source/release_version.h": "96fe97a55b5739f7141363f02cf3315ce93ba2f9b147d3ee42136ede061e5926",
     "shared/source/runtime_fault.h": "b4ddf16db57b0cfc1b022b286af5a5df3034f75d892abb27df8d0dcca0653818",
     "shared/source/runtime_protocol.h": "37bd2cfe521a9044599cad037da595af54240c3c81e519d8f28651774ada6053",
     "shared/source/viewport_scale.h": "40645cde0ef9e9f5a0cd39d9686efde112a173e616b2833126ca3fe5cddf7fad",

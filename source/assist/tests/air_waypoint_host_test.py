@@ -1,0 +1,69 @@
+"""Run the shipped host route recorder/service with controlled reads and receipts.
+This checks hold/release, ordered continuation and cancellation, not game physics.
+"""
+from pathlib import Path
+import subprocess, tempfile
+r = Path(__file__).resolve().parents[2]
+program = r'''
+#include "protocol.h"
+#include "additional_settings.h"
+#include <map>
+#include <vector>
+#include <string>
+#include <cassert>
+#include <algorithm>
+#include <cstring>
+using namespace assist;using DWORD=uint32_t;
+constexpr int VK_CONTROL=17;
+static DWORD clockNow=1000;static DWORD GetTickCount(){return clockNow;}
+static bool held[256]{};static short GetAsyncKeyState(int key){return held[key]?short(0x8000):0;}
+static Snapshot snap{};static AdditionalSettings extra;static bool enabled=true;
+static int connected=1;static int*shared=&connected;static uint32_t epoch=8,paintRevision=0;
+static bool fresh=true;static uint32_t commandMatch(){return epoch;}static bool commandFresh(DWORD){return fresh;}
+static std::wstring lastNotice;static unsigned diagnostics=0;
+static void notify(const std::wstring&s){lastNotice=s;}static void critical(const std::wstring&){++diagnostics;}
+struct Request{int command,arg,arg2;uint32_t match,token;};
+static struct{Request slots[64]{};int size=0;void discard(int n){for(int j=n;j+1<size;++j)slots[j]=slots[j+1];--size;}}commandQueue;
+static bool queueCommand(int c,int arg,int arg2,uint32_t match,int,DWORD,uint32_t token){
+ if(commandQueue.size>=64)return false;commandQueue.slots[commandQueue.size++]={c,arg,arg2,match,token};return true;
+}
+static std::map<uint32_t,uint8_t> memory;
+template<class T>static void put(uint32_t at,T value){auto*p=reinterpret_cast<uint8_t*>(&value);for(size_t n=0;n<sizeof value;++n)memory[at+n]=p[n];}
+static struct{bool readFresh(uint32_t at,void*out,size_t n){for(size_t j=0;j<n;++j){auto i=memory.find(at+j);if(i==memory.end())return false;static_cast<uint8_t*>(out)[j]=i->second;}return true;}}externalReader;
+namespace gameinput{struct PointerPress{int operation=0;uint8_t keys[256]{};};}
+namespace external{struct Projection{int x,y,w,h;};static void project(Projection,int x,int y,int,int&sx,int&sy){sx=x;sy=y;}}
+''' + (r/'assist/source/air_path_host.h').read_text() + r'''
+constexpr uint32_t air=0x40000,house=0x10000;
+static void position(uint32_t cell){put<int>(air+0x9c,int(cell%1000)*256+128);put<int>(air+0xa0,int(cell/1000)*256+128);put<int>(air+0xa4,512);}
+static pointerinput::Intent input;static pointerinput::Mailbox box;
+static void initialize(int mode){
+ airway::reset();memory.clear();commandQueue.size=0;epoch=8;snap.session=mode;extra.nativeAirWaypoints=true;extra.airWaypoints=false;
+ held['Z']=true;enabled=fresh=true;lastNotice.clear();input={};box={};
+ put<uint32_t>(0xa83d4c,house);put<uint32_t>(air,0x7e22a4);put<uint32_t>(air+0x10,40);put<uint32_t>(air+0x21c,house);
+ put<int>(air+0x6c,100);put<uint8_t>(air+0x6ca,0);put<uint8_t>(air+0x83,1);put<int>(air+0xac,5);put<uint32_t>(air+0x2b4,0);position(10010);
+ put<uint32_t>(0xa8ecb8+4,0x30000);put<int>(0xa8ecb8+16,1);put<uint32_t>(0x30000,air);
+ input.match=epoch;input.count=1;input.sources[0]={40,air};box.result=1;box.accepted=1;box.sourceAccepted[0]=1;
+}
+static void capture(uint32_t cell,uint32_t token){box.resolvedCell=cell;box.sourceTokens[0]=token;airway::capture(input,box);}
+int main(){for(int mode:{3,4}){
+ initialize(mode);assert(airway::active()&&!airway::native()&&airway::selectedAircraft());
+ capture(30020,1);capture(30030,2);assert(airway::jobs.size()==1&&airway::jobs[0].points.size()==2);
+ airway::service();assert(commandQueue.size==0); // Z is still held.
+ held['Z']=false;airway::service();assert(commandQueue.size==1);
+ auto q=commandQueue.slots[0];assert(q.command==AirPathMove&&q.arg2==30020&&q.token==2);commandQueue.discard(0);
+ airway::result(1,1,40,2);clockNow+=20;airway::service();assert(commandQueue.size==0); // accepted is not arrived
+ position(30020);airway::service();assert(commandQueue.size==1&&commandQueue.slots[0].arg2==30030);
+ commandQueue.discard(0);airway::result(1,1,40,2);position(30030);airway::service();assert(airway::jobs.empty());
+ initialize(mode);box.result=-4;unsigned n=diagnostics;airway::capture(input,box);assert(airway::jobs.empty()&&!lastNotice.empty()&&diagnostics==n+1);
+ initialize(mode);capture(30020,3);box.resolvedTarget=50;airway::capture(input,box);assert(airway::jobs.empty()&&airway::ended);
+ initialize(mode);capture(30020,4);gameinput::PointerPress e;e.operation=pointerinput::Cancel;e.keys['S']=1;airway::manual(e);assert(airway::jobs.empty());
+ initialize(mode);capture(30020,5);++epoch;held['Z']=false;airway::service();assert(airway::jobs.empty()&&commandQueue.size==0);
+}
+ initialize(5);assert(airway::native()&&!airway::active());capture(30020,1);assert(airway::jobs.empty());
+}
+'''
+with tempfile.TemporaryDirectory() as d:
+ p = Path(d)/'air.cpp'; exe = Path(d)/'air'; p.write_text(program)
+ subprocess.run(['g++', '-std=c++17', '-O2', '-I', str(r/'assist/source'), str(p), '-o', str(exe)], check=True)
+ subprocess.run([str(exe)], check=True)
+print('PASS: shipped host records ordered points, waits for Z release and observed arrival, preserves newest token, reports rejection, cancels attack/stop/new-match, retains SP native mode')

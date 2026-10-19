@@ -20,7 +20,11 @@ static void manual(const gameinput::PointerPress&e){
  for(int n=0;n<count;++n){uint32_t p=get<uint32_t>(items+n*4);if(get<uint32_t>(p)==0x7E22A4)cancel(get<uint32_t>(p+0x10));}
 }
 static void capture(const pointerinput::Intent&i,const pointerinput::Mailbox&box){
- if(box.result<0||!active())return;
+ if(!active())return;
+ if(box.result<0){
+  critical(L"air-path capture rejected result="+std::to_wstring(box.result)+L" match="+std::to_wstring(i.match)+L" sources="+std::to_wstring(i.count));
+  notify(box.result==-7?L"飞机路径点未记录：请求已过期或对局已改变，请重新点击。":L"飞机路径点未记录：当前目标或游戏状态不支持。");return;
+ }
  if(box.resolvedTarget){for(int n=0;n<i.count;++n)cancel(i.sources[n].id);ended=true;notify(L"攻击 / 对象命令已结束飞机路径点设置。");return;}
  if(!box.resolvedCell||ended)return;int added=0;
  for(int n=0;n<i.count;++n){if(!(box.sourceAccepted[n/32]&(1u<<(n%32))))continue;uint32_t id=i.sources[n].id;auto found=std::find_if(jobs.begin(),jobs.end(),[&](const Job&j){return j.id==id;});
@@ -29,6 +33,8 @@ static void capture(const pointerinput::Intent&i,const pointerinput::Mailbox&box
   if(found->token!=box.sourceTokens[n]){found->token=box.sourceTokens[n];found->stage=0;found->attempts=0;}
   if(found->points.size()>=64)continue;if(found->points.empty()||found->points.back().cell!=box.resolvedCell){found->points.push_back({box.resolvedCell,box.resolvedZ});++added;}
  }
+ if(!box.accepted){notify(L"飞机路径点未记录：所选单位中没有可用的己方飞机。");return;}
+ critical(L"air-path recorded aircraft="+std::to_wstring(added)+L" cell="+std::to_wstring(box.resolvedCell)+L" match="+std::to_wstring(i.match));
  ++paintRevision;notify(L"飞机路径点已记录 "+std::to_wstring(added)+L" 架；松开 Z 后执行，攻击命令结束设置。");
 }
 static void result(int status,int count,uint32_t id,uint32_t token){for(auto&j:jobs)if(j.id==id&&j.token==token&&j.stage==1){

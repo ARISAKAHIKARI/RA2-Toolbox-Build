@@ -1,0 +1,47 @@
+{
+  "dll_sha256": "256d6b05918325290b1c075890458a4f9cd92afb6472aeb9aa869296ad31326d",
+  "game_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+  "scope": "Actual Runtime Z-planning input -> capture token -> original Move constructor.\nSynthetic world, hit testing and Windows API; no aircraft physics or real netplay.\nThe baseline option proves the 1.0.22 planning-mode rejection on the same inputs.\n",
+  "results": [
+    {
+      "case": "mode_3_flag_80000000_button_1024",
+      "status": "PASS",
+      "baseline_rejection": true
+    },
+    {
+      "case": "mode_3_flag_80000000_button_65536",
+      "status": "PASS",
+      "baseline_rejection": true
+    },
+    {
+      "case": "mode_3_flag_20000000_button_1024",
+      "status": "PASS",
+      "baseline_rejection": true
+    },
+    {
+      "case": "mode_3_flag_20000000_button_65536",
+      "status": "PASS",
+      "baseline_rejection": true
+    },
+    {
+      "case": "mode_4_flag_80000000_button_1024",
+      "status": "PASS",
+      "baseline_rejection": true
+    },
+    {
+      "case": "mode_4_flag_80000000_button_65536",
+      "status": "PASS",
+      "baseline_rejection": true
+    },
+    {
+      "case": "mode_4_flag_20000000_button_1024",
+      "status": "PASS",
+      "baseline_rejection": true
+    },
+    {
+      "case": "mode_4_flag_20000000_button_65536",
+      "status": "PASS",
+      "baseline_rejection": true
+    }
+  ]
+}

@@ -49,7 +49,12 @@ static void pointerTick(){
    bool shiftUnsupported=(i.bindings&pointerinput::Shift)&&(i.operation==pointerinput::FollowNative||(i.bindings&pointerinput::RightClick)||!(i.bindings&(pointerinput::Advanced|pointerinput::Magnetron|pointerinput::CS|pointerinput::Enter|pointerinput::AirFirst|pointerinput::AirSecond)));
    uint32_t tactical=get<uint32_t>(0x887324);
    bool location=continuation?(tactical>=0x10000&&i.width==get<int>(0xA8EB84)&&i.height==get<int>(0xA8EB88)&&i.cameraX==get<int>(tactical+0xB0)&&i.cameraY==get<int>(tactical+0xB4)):pointerLocation(i);
-   if((shiftUnsupported&&i.operation!=pointerinput::PlayerSelect&&i.operation!=pointerinput::PlayerOrder)||get<bool>(0x87F7E8+0x11B3)||!location){pointerFinish(-4);return;}
+   // Z sets DisplayClass::PlanningMode. AirWaypoint only records a validated
+   // point for the host; rejecting it here would reject its own activation key.
+   // Other enhanced orders keep the native-planning exclusion. Do not clear or
+   // patch PlanningMode, and do not send a move while recording the point.
+   const bool nativePlanningBlocked=get<bool>(0x87F7E8+0x11B3)&&i.operation!=pointerinput::AirWaypoint;
+   if((shiftUnsupported&&i.operation!=pointerinput::PlayerSelect&&i.operation!=pointerinput::PlayerOrder)||nativePlanningBlocked||!location){pointerFinish(-4);return;}
   }
   if(start){pointerBatchCapture=i;pointerBatchValid=true;memset(pointerBatchTickets,0,sizeof pointerBatchTickets);memset(pointerBatchFollow,0,sizeof pointerBatchFollow);}
   if(start||continuation)pointerBatchRequest=request;
