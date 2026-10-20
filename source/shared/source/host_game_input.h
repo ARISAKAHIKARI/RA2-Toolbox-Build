@@ -3,6 +3,8 @@
 #include <mutex>
 #include "game_entry_api.h"
 #include "runtime_protocol.h"
+#include "message_query.h"
+#include "../../external_reader/source/shared_reader.h"
 // EXE-owned subscriptions and cadence. Features never choose a DLL, callback,
 // Win32 hook kind, or injection path. One GETMESSAGE + POST pair per game.
 namespace gameinput {
@@ -145,10 +147,24 @@ inline void CALLBACK pulse(void*,BOOLEAN){
   if(ready)post(t,ready);
  }
 }
+// Enumeration is sufficient for read-only discovery, not for binding the sole
+// executor. A launcher/renderer thread can stay alive after its startup window
+// disappears, which would otherwise permanently occupy the game-thread lease.
+inline HWND nativeWindow(DWORD pid,DWORD thread){
+ if(!pid||!thread){SetLastError(ERROR_INVALID_PARAMETER);return nullptr;}
+ external::ReadSession reader;
+ if(!reader.open(pid)){SetLastError(reader.lastOpenError);return nullptr;}
+ uint32_t raw=0;
+ if(!reader.readFresh(assist::messagequery::YrppGameHwndAddr,&raw,sizeof raw)||!raw){SetLastError(ERROR_NOT_READY);return nullptr;}
+ HWND window=reinterpret_cast<HWND>(uintptr_t(raw));DWORD owner=0;
+ if(GetWindowThreadProcessId(window,&owner)!=thread||owner!=pid){SetLastError(ERROR_NOT_READY);return nullptr;}
+ return window;
+}
 inline Subscription install(gameentry::Client client,DWORD thread,DWORD pid,HWND window){
  auto&h=host();std::lock_guard<std::recursive_mutex>lock(h.mutex);
  DWORD actual=0,tid=window?GetWindowThreadProcessId(window,&actual):0;
  if(!mask(client)||!pid||!thread||actual!=pid||tid!=thread){SetLastError(ERROR_INVALID_PARAMETER);return 0;}
+ window=nativeWindow(pid,thread);if(!window)return 0;
  HMODULE m=runtimeModule();if(!m)return 0;
  Lease*slot=nullptr;for(auto&l:h.leases)if(!l.id){slot=&l;break;}if(!slot){SetLastError(ERROR_NOT_ENOUGH_MEMORY);return 0;}
  unsigned at=8;for(unsigned i=0;i<8;++i)if(h.targets[i].pid==pid){at=i;break;}
@@ -171,6 +187,9 @@ inline Subscription install(gameentry::Client client,DWORD thread,DWORD pid,HWND
   InterlockedExchange(&t.control->wakePending,0);
  }
  auto&t=h.targets[at];
+ // The HWND may be recreated on the same thread between loading and play.
+ // All subscribers must wake the current native window, including old leases.
+ if(t.window!=window){t.window=window;if(t.control)InterlockedExchange(&t.control->wakePending,0);}
  if(!t.message)t.message=SetWindowsHookExW(WH_GETMESSAGE,(HOOKPROC)GetProcAddress(m,"GameRuntimeHook"),m,thread);
  if(t.message&&!t.post)t.post=SetWindowsHookExW(WH_CALLWNDPROCRET,(HOOKPROC)GetProcAddress(m,"GameRuntimePostHook"),m,thread);
  if(!t.message||!t.post){DWORD error=GetLastError();bool used=false;for(auto&l:h.leases)if(l.id&&l.target==at)used=true;if(!used)clear(t);SetLastError(error);return 0;}

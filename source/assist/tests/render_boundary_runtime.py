@@ -45,15 +45,33 @@ for boundary in ('menu','dialog','tactical_inactive','observer','defeated','hous
   for at in (0x47EFE0,0x47F250):m.run(at,(0,0,15),self=m.crateCell)
   assert m.original==([] if enabled else [0x47F03D,0x47F279]),(boundary,m.original)
   after=(bytes(m.u.mem_read(m.crateCell,0x200)),bytes(m.u.mem_read(m.house,0x6000)),m.r(0xA802C8),m.r(0x8B41F8));assert before==after
-  if boundary in ('menu','dialog','tactical_inactive'):
+  if boundary in ('menu','dialog','tactical_inactive','run_flag'):
    m.original.clear();s=m.hook()
    for at in (0x47EFE0,0x47F250):m.run(at,(0,0,15),self=m.crateCell)
    assert m.original==[0x47F03D,0x47F279]
-   m.w(0xa8eda0,0);m.w(0xa8ed8c,0);m.b(0xa8e378,1);m.hook();m.original.clear()
+   m.w(0xa8eda0,0);m.w(0xa8ed8c,0);m.b(0xa8e378,1);m.b(0xa8e9a0,1);m.hook();m.original.clear()
+   assert len(m.redraw)==2,(boundary,"resume must invalidate stale shroud",len(m.redraw))
+   m.hook();assert len(m.redraw)==2,"stable play must not redraw every tick"
    for at in (0x47EFE0,0x47F250):m.run(at,(0,0,15),self=m.crateCell)
    assert m.original==[]
   rows.append({'case':boundary,'status':'PASS'});print('PASS',boundary,flush=True)
  except Exception as e:rows.append({'case':boundary,'status':'FAIL','error':repr(e)});traceback.print_exc()
+for recovery in ('stale_heartbeat','redraw_retry','menu_without_draw'):
+ try:
+  m=fixture();assert len(m.redraw)==1
+  if recovery=='stale_heartbeat':
+   s=state(m);s.heartbeat=m.clock-4001;save(m,s)
+   for at in (0x47EFE0,0x47F250):m.run(at,(0,0,15),self=m.crateCell)
+   assert m.original==[0x47F03D,0x47F279]
+  else:
+   m.w(0xa8eda0,1);m.hook();m.w(0xa8eda0,0)
+   if recovery=='redraw_retry':m.u.mem_write(0x886FA0,struct.pack('<4i',0,0,0,480))
+  m.hook()
+  if recovery=='redraw_retry':
+   assert len(m.redraw)==1;m.u.mem_write(0x886FA0,struct.pack('<4i',0,0,640,480));m.hook()
+  assert len(m.redraw)==2,(recovery,len(m.redraw));m.hook();assert len(m.redraw)==2
+  rows.append({'case':recovery,'status':'PASS'});print('PASS',recovery,flush=True)
+ except Exception as e:rows.append({'case':recovery,'status':'FAIL','error':repr(e)});traceback.print_exc()
 for stop in (False,True):
  try:
   m=fixture();assert len(m.redraw)==1

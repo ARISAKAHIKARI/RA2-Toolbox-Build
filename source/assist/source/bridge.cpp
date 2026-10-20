@@ -893,6 +893,7 @@ static void tick(){
  // A false engine run flag with the SAME valid local House is a suspension
  // (e.g. save/load/modal processing), not proof that the round ended.
  if(controllink::transientPause(running,house==lastHouse,active,lastHouse!=0)){
+  if(riskRenderActive)riskRenderRedrawPending=true;
   snap.status=1;snap.bridgeStatus=1;snap.commandStatus=0;snap.match=match;
   snap.frame=frame;pointerTick();publishSnapshot(now);return;
  }
@@ -901,6 +902,7 @@ static void tick(){
  // consume queued commands in loading/menu/dialog/invalid-frame boundaries.
  if(active&&running&&(!eventdelivery::mayQueue(get<int>(0xA8B238))||frame<0||frame>=INT32_MAX||
     !external::display::inspect([](uint32_t at,void*out,size_t n){memcpy(out,(void*)(uintptr_t)at,n);return true;}).visible())){
+  if(riskRenderActive)riskRenderRedrawPending=true;
   snap.status=1;snap.bridgeStatus=1;snap.commandStatus=0;snap.match=match;
   snap.frame=frame;snap.chat=get<bool>(0xA8BC60+25);pointerTick();publishSnapshot(now);return;
  }

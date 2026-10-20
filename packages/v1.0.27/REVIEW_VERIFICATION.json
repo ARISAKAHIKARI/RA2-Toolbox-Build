@@ -1,0 +1,34 @@
+{
+  "version": "1.0.27",
+  "release_channel": "stable",
+  "file_version": "1.0.27.0",
+  "assist_protocol": 52,
+  "runtime_protocol": 4,
+  "entry_manager_protocol": 3,
+  "changes": [
+    "- 预定面板先绘制完整缓冲画面再显示，复用位图并跳过重复窗口定位，降低刷新闪烁。",
+    "- 新对局连接以游戏主窗口句柄验证目标线程，避免启动辅助窗口抢先绑定；同线程换窗口后更新所有唤醒目标。",
+    "- 预定显示与指令可提交状态分离；命令桥短暂未就绪时保留面板，恢复后再提交。",
+    "- 不渲染黑幕在菜单、短暂失活、绘图上下文恢复后补发重绘；重绘失败保留重试，不写入地图探索状态。",
+    "- 单位统计在每位玩家名称下显示金钱；读取失败显示未知，不沿用上一局的数值。",
+    "- 小地图改为地图数据独立绘制：按地形类型与高度生成底图，叠加玩家颜色单位标记和当前视野框。只画地图，不再捕获周边UI。",
+    "- 小地图采用独立后台读取任务、完整快照发布和可复用绘制缓冲；保留缩放、位置配置、飞机按钮避让、鼠标穿透与菜单隐藏。"
+  ],
+  "verification": {
+    "paint": "PASS GDI model, 1000 ticks, 36 geometries",
+    "host": "PASS actual reservation lifecycle and 2016 layouts",
+    "startup": "PASS validated native HWND/thread and shared wake target replacement",
+    "money": "PASS 22 round-transition sampler regressions",
+    "minimap": "PASS map model, raster, shroud, round reset and 10368 layouts",
+    "render": "PASS 16 x86 cases on each of two user EXEs; native drawing mocked",
+    "windows": "PASS x86 build, resources, imports and ABI",
+    "architecture": "PASS"
+  },
+  "real_windows_game": false,
+  "real_graphics": false,
+  "real_netplay": false,
+  "binary_sha256": {
+    "RA2Toolbox.exe": "c96c18afff2343707daaacf97a1cbdd749673d17f396ec0a4d478f191b082075",
+    "GameRuntime.dll": "27a34f5b4b3f91d85bd9248971c8ea74ca7108818385d62d2f305ec9dcb37f7a"
+  }
+}

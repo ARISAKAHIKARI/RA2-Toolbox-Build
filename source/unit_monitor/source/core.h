@@ -7,7 +7,7 @@ constexpr int MaxTypes=512, MaxPlayers=8, IW=60, IH=48;
 constexpr uint32_t Magic=0x554D3032;
 struct Type { uint32_t ptr; int category,index; char id[24]; char cameo[25]; int iconCached;uint32_t iconRetry; uint8_t icon[IW*IH]; int iconReady; };
 struct Cell { int owned,queued,active,progress,paused; };
-struct Player { uint32_t ptr,color; int houseIndex,local; uint16_t name[21]; Cell cells[MaxTypes]; };
+struct Player { uint32_t ptr,color; int houseIndex,local,credits,creditsKnown; uint16_t name[21]; Cell cells[MaxTypes]; };
 struct Snapshot { int status,typeCount,playerCount,missingIcons,truncated,readErrors,paletteReady; uint32_t tick; uint32_t palette[256]; Type types[MaxTypes]; Player players[MaxPlayers]; uint32_t match; int frame,chatActive; };
 struct Shared { uint32_t magic,pid,owner; volatile int32_t seq,command; volatile uint32_t heartbeat; volatile int32_t includeBuildings; Snapshot data; };
 inline bool eligible(bool human,bool defeated,bool gameOver,bool loser,bool observer,bool passive) {return human&&!defeated&&!gameOver&&!loser&&!observer&&!passive;}

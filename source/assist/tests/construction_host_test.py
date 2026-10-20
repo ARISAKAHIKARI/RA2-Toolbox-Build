@@ -21,7 +21,7 @@ using DWORD=uint32_t;using HWND=void*;using HFONT=void*;using LRESULT=long;
 struct RECT{long left=0,top=0,right=0,bottom=0;};struct POINT{long x=0,y=0;};
 namespace gameinput{struct PointerPress {uint32_t tick=0,serial=0,match=0;int operation=0;POINT point{};int width=0,height=0;uint8_t keys[256]{};};}
 struct WNDCLASSW{void*hInstance;int lpfnWndProc;const wchar_t*lpszClassName;void*hCursor;};
-constexpr int VK_RBUTTON=2,VK_SHIFT=16,SW_HIDE=0,FALSE=0,FW_NORMAL=0,DEFAULT_CHARSET=0,OUT_DEFAULT_PRECIS=0,CLIP_DEFAULT_PRECIS=0,CLEARTYPE_QUALITY=0,DEFAULT_PITCH=0,IDC_HAND=0,WS_EX_TOOLWINDOW=0,WS_EX_NOACTIVATE=0,WS_EX_TOPMOST=0,WS_EX_LAYERED=0x80000,LWA_ALPHA=2,WS_POPUP=0,SWP_NOACTIVATE=0,SWP_SHOWWINDOW=0;
+constexpr int VK_RBUTTON=2,VK_SHIFT=16,SW_HIDE=0,FALSE=0,FW_NORMAL=0,DEFAULT_CHARSET=0,OUT_DEFAULT_PRECIS=0,CLIP_DEFAULT_PRECIS=0,CLEARTYPE_QUALITY=0,DEFAULT_PITCH=0,IDC_HAND=0,WS_EX_TOOLWINDOW=0,WS_EX_NOACTIVATE=0,WS_EX_TOPMOST=0,WS_EX_LAYERED=0x80000,LWA_ALPHA=2,WS_POPUP=0,SWP_NOACTIVATE=1,SWP_SHOWWINDOW=2,SWP_NOOWNERZORDER=4,SWP_NOCOPYBITS=8,SWP_NOZORDER=16;
 static void*HWND_TOPMOST=nullptr;static HWND game=(void*)2;static uint32_t now=1000,pid=1,match=1;static int clientWidth=3840,clientHeight=2160;
 static bool enabled=true,focused=true,fresh=true,queueAccept=true;static std::wstring root=L"/tmp",message;
 static int constructionScalePercent=100,soundRequests=0,panelAlpha=0;
@@ -38,10 +38,12 @@ struct Reader{std::vector<uint8_t>bytes=std::vector<uint8_t>(0x1000000);uint32_t
  bool imagePath(wchar_t*,DWORD*){return false;}
  template<class T>void put(uint32_t p,T v){memcpy(bytes.data()+p,&v,sizeof v);}
 }externalReader;
+namespace assist { namespace construction {struct PanelBuffer{void clear(){}};}}
 namespace um{struct IconCache{void open(const wchar_t*,const std::filesystem::path&){}};inline IconCache& sharedIconCache(){static IconCache c;return c;}}
 static DWORD GetTickCount(){return now;}static bool foregroundGame(){return focused;}static bool commandFresh(uint32_t){return fresh;}static uint32_t commandMatch(){return match;}
 static bool queueCommand(int c,int a,int b,uint32_t m,int retries=0,uint32_t delay=0,uint32_t token=0){return queueAccept&&commandQueue.add({c,a,b,pid,m,now,retries,now+delay,token});}
 static void notify(const std::wstring&s){message=s;}static void critical(const std::wstring&){}
+static bool IsWindowVisible(HWND){return true;}static bool GetWindowRect(HWND,RECT*){return false;}
 static void ShowWindow(HWND,int){}static void InvalidateRect(HWND,void*,int){}static bool GetClientRect(HWND,RECT*r){r->right=clientWidth;r->bottom=clientHeight;return true;}static bool ClientToScreen(HWND,POINT*){return true;}
 static void*GetModuleHandleW(void*){return nullptr;}static void*LoadCursorW(void*,int){return nullptr;}static void RegisterClassW(WNDCLASSW*){}
 template<class...T>static HWND CreateWindowExW(T...){return (void*)3;}template<class...T>static HFONT CreateFontW(T...){return (void*)4;}template<class...T>static void SetWindowPos(T...){}
@@ -157,6 +159,15 @@ int main(){
  while(books[0].items.size()<5)reserve(choice(1));int heard=soundRequests;reserve(choice(1));assert(soundRequests==heard); // rejected click stays quiet
  removeTop(true);assert(layout.queueCount==0&&layout.height()==shortHeight);
  std::cout<<"PASS: 2016 content/scale/viewport combinations, fitted growth/shrink, 216/255 alpha, successful add/cancel feedback, clear once and no sound on empty/locked cancel\n";
+ // A live read-only panel must survive a suspended command lane. Native
+ // input authorization closes and no Produce is issued until commands resume.
+ setup();reserve(choice(1));fresh=false;tick();assert(geometryReady&&books[0].items==std::vector<int>({1})&&reservationPolicy.slots==0);
+ reserve(choice(1));assert(books[0].items.size()==1);place();assert(commandQueue.size==0&&geometryReady);
+ fresh=true;tick();assert(commandQueue.size==0);tick();assert(commandQueue.size==1);
+ setup();snap.chat=1;tick();assert(geometryReady&&reservationPolicy.slots==0);snap.chat=0;tick();assert(reservationPolicy.slots==5);
+ snap.renderStatus=0;tick();assert(!geometryReady&&reservationPolicy.slots==0);snap.renderStatus=1;tick();assert(geometryReady);
+ focused=false;tick();assert(!geometryReady);focused=true;tick();assert(geometryReady);
+ std::cout<<"PASS: read-only panel survives command suspension/chat; closed input/no Produce; resumes once; menu/focus still hide\n";
  assert(!l.set(0,0,3840,2160));
  std::cout<<"PASS: actual host service FIFO5/duplicates/future unlock/cancel parent/right cancel/round/token ACK/retry/busy/menu; catalogue sentinels/parent/stolen flags/read failure; six resolution transforms and hit regions\n";
 }

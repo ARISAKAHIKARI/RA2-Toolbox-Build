@@ -6,9 +6,9 @@ header=r'''
 #pragma once
 #include <cstdint>
 #include <cstddef>
-using DWORD_PTR=uintptr_t;using WPARAM=uintptr_t;using LPARAM=intptr_t;using DWORD=uint32_t;using LONG=int32_t;using UINT=unsigned;using BOOLEAN=unsigned char;using HWND=void*;using HHOOK=void*;using HMODULE=void*;using HANDLE=void*;using HOOKPROC=void*;
+using BOOL=int;using SIZE_T=size_t;using DWORD_PTR=uintptr_t;using WPARAM=uintptr_t;using LPARAM=intptr_t;using DWORD=uint32_t;using LONG=int32_t;using UINT=unsigned;using BOOLEAN=unsigned char;using HWND=void*;using HHOOK=void*;using HMODULE=void*;using HANDLE=void*;using HOOKPROC=void*;
 #define CALLBACK
-constexpr int WH_GETMESSAGE=3,WH_CALLWNDPROCRET=12,ERROR_INVALID_PARAMETER=87,ERROR_ALREADY_EXISTS=183,ERROR_NOT_ENOUGH_MEMORY=8,ERROR_ACCESS_DENIED=5,ERROR_INVALID_HANDLE=6,ERROR_REVISION_MISMATCH=1306,ERROR_BUSY=170;
+constexpr int WH_GETMESSAGE=3,WH_CALLWNDPROCRET=12,ERROR_INVALID_PARAMETER=87,ERROR_ALREADY_EXISTS=183,ERROR_NOT_ENOUGH_MEMORY=8,ERROR_ACCESS_DENIED=5,ERROR_INVALID_HANDLE=6,ERROR_REVISION_MISMATCH=1306,ERROR_BUSY=170,ERROR_NOT_READY=21,ERROR_SUCCESS=0,ERROR_PARTIAL_COPY=299;
 constexpr unsigned INPUT_MOUSE=0,MOUSEEVENTF_LEFTDOWN=2,MOUSEEVENTF_LEFTUP=4,SYNCHRONIZE=1,WAIT_OBJECT_0=0,WAIT_TIMEOUT=258,PAGE_READWRITE=4,FILE_MAP_ALL_ACCESS=1,WT_EXECUTEDEFAULT=0,WM_NULL=0;
 constexpr bool FALSE=false;
 constexpr unsigned WM_SETCURSOR=32,WM_MOUSEMOVE=512,HTCLIENT=1,SMTO_ABORTIFHUNG=2,SMTO_BLOCK=1,SMTO_ERRORONEXIT=32;
@@ -19,6 +19,12 @@ constexpr int VK_LBUTTON=1,VK_MBUTTON=4,VK_XBUTTON1=5,VK_XBUTTON2=6,VK_RBUTTON=2
 struct POINT{LONG x,y;};struct RECT{LONG left,top,right,bottom;};
 HWND WindowFromPoint(POINT);short GetAsyncKeyState(int);bool IsIconic(HWND);bool GetCursorPos(POINT*);bool ScreenToClient(HWND,POINT*);bool GetClientRect(HWND,RECT*);
 struct INPUT{unsigned type=0;struct {unsigned dwFlags=0;uintptr_t dwExtraInfo=0;}mi;};
+constexpr unsigned PROCESS_QUERY_LIMITED_INFORMATION=4096,PROCESS_QUERY_INFORMATION=1024,PROCESS_VM_READ=16,STILL_ACTIVE=259;
+struct MEMORY_BASIC_INFORMATION{DWORD State=0,Protect=0;};
+HANDLE OpenProcess(DWORD,bool,DWORD);bool GetExitCodeProcess(HANDLE,DWORD*);
+bool QueryFullProcessImageNameW(HANDLE,DWORD,wchar_t*,DWORD*);
+bool ReadProcessMemory(HANDLE,const void*,void*,size_t,SIZE_T*);
+SIZE_T VirtualQueryEx(HANDLE,const void*,MEMORY_BASIC_INFORMATION*,size_t);
 DWORD GetWindowThreadProcessId(HWND,DWORD*);HWND GetForegroundWindow();void SetLastError(DWORD);DWORD GetLastError();
 HHOOK SetWindowsHookExW(int,HOOKPROC,HMODULE,DWORD);bool UnhookWindowsHookEx(HHOOK);UINT SendInput(UINT,INPUT*,int);
 DWORD GetModuleFileNameW(HMODULE,wchar_t*,DWORD);HMODULE LoadLibraryW(const wchar_t*);void* GetProcAddress(HMODULE,const char*);bool FreeLibrary(HMODULE);
@@ -39,7 +45,13 @@ body=r'''
 #include <thread>
 extern gameinput::Host* otherHost();extern bool otherRelease(gameinput::Subscription);
 static DWORD error=0,fg=42,clockMs=100,windowThread=12;static int installs=0,unhooks=0,sends=0,loads=0,posts=0;static UINT sentCount=2;static bool failUnhook=false,failPost=false,oldDead=false,failPostHook=false;
-static bool keyDown[256]{};
+static bool keyDown[256]{};static uint32_t nativeHwnd=42;static bool readable=true;
+HANDLE OpenProcess(DWORD,bool,DWORD pid){return (HANDLE)(uintptr_t)pid;}
+bool GetExitCodeProcess(HANDLE,DWORD*p){*p=STILL_ACTIVE;return true;}
+bool QueryFullProcessImageNameW(HANDLE,DWORD,wchar_t*,DWORD*){return false;}
+bool ReadProcessMemory(HANDLE,const void*at,void*out,size_t n,SIZE_T*got){assert(uintptr_t(at)==assist::messagequery::YrppGameHwndAddr&&n==4);*got=readable?4:0;if(readable)memcpy(out,&nativeHwnd,4);return readable;}
+SIZE_T VirtualQueryEx(HANDLE,const void*,MEMORY_BASIC_INFORMATION*,size_t){return 0;}
+
 short GetAsyncKeyState(int k){return keyDown[k]?short(0x8000):0;}bool IsIconic(HWND){return false;}
 bool GetCursorPos(POINT*p){*p={100,100};return true;}bool ScreenToClient(HWND,POINT*){return true;}bool GetClientRect(HWND,RECT*p){*p={0,0,800,600};return true;}
 static runtime::Control block{};static int cursorRefreshes=0;static bool refreshSucceeds=true;
@@ -49,7 +61,7 @@ bool SendMessageTimeoutW(HWND w,UINT msg,WPARAM wp,LPARAM lp,UINT flags,UINT tim
  bool free=false;std::thread check([&]{free=gameinput::host().mutex.try_lock();if(free)gameinput::host().mutex.unlock();});check.join();assert(free);
  ++cursorRefreshes;return refreshSucceeds;
 }
-DWORD GetWindowThreadProcessId(HWND w,DWORD*p){*p=uint32_t(uintptr_t(w));return w?windowThread:0;}
+DWORD GetWindowThreadProcessId(HWND w,DWORD*p){*p=(w==(HWND)142||w==(HWND)242)?42:uint32_t(uintptr_t(w));return w?(w==(HWND)142?windowThread+1:windowThread):0;}
 HWND WindowFromPoint(POINT){return reinterpret_cast<HWND>(uintptr_t(fg));}
 HWND GetForegroundWindow(){return reinterpret_cast<HWND>(uintptr_t(fg));}
 void SetLastError(DWORD e){error=e;}DWORD GetLastError(){return error;}
@@ -59,7 +71,7 @@ DWORD GetModuleFileNameW(HMODULE,wchar_t*p,DWORD){std::wcscpy(p,L"C:\\Toolbox\\R
 HMODULE LoadLibraryW(const wchar_t*p){assert(std::wcscmp(p,L"C:\\Toolbox\\GameRuntime.dll")==0);++loads;return (HMODULE)1;}
 void* GetProcAddress(HMODULE,const char*n){static uint32_t info[]={4,sizeof(runtime::Control)},entry[]={3,108};if(!strcmp(n,"GameRuntimeInfo"))return info;if(!strcmp(n,"GameEntryManagerInfo"))return entry;return (void*)1;}
 bool FreeLibrary(HMODULE){return true;}DWORD GetTickCount(){return clockMs;}DWORD GetCurrentProcessId(){return 456;}
-bool PostMessageW(HWND window,UINT msg,uintptr_t tag,intptr_t owner){assert(window==(HWND)42&&msg==WM_NULL&&tag==runtime::WakeTag&&owner==456);++posts;if(failPost)error=5;return !failPost;}
+bool PostMessageW(HWND window,UINT msg,uintptr_t tag,intptr_t owner){assert(window==(HWND)(uintptr_t)nativeHwnd&&msg==WM_NULL&&tag==runtime::WakeTag&&owner==456);++posts;if(failPost)error=5;return !failPost;}
 HANDLE OpenThread(DWORD,bool,DWORD tid){return (HANDLE)(uintptr_t)tid;}DWORD WaitForSingleObject(HANDLE,DWORD){return oldDead?WAIT_OBJECT_0:WAIT_TIMEOUT;}bool CloseHandle(HANDLE){return true;}
 HANDLE CreateFileMappingW(HANDLE,void*,DWORD,DWORD,DWORD n,const wchar_t*){assert(n==sizeof(block));return (HANDLE)1;}
 void* MapViewOfFile(HANDLE,DWORD,DWORD,DWORD,size_t){return &block;}bool UnmapViewOfFile(void*){return true;}
@@ -68,6 +80,9 @@ UINT SendInput(UINT n,INPUT*input,int size){assert(size==sizeof(INPUT));++sends;
 int main(){
  using namespace gameinput;using gameentry::Client;assert(otherHost()==&host());auto win=(HWND)42;
  assert(!install(Client::Assist,13,42,win)&&installs==0);assert(!install(Client::Assist,12,43,win)&&installs==0);
+ nativeHwnd=0;assert(!install(Client::Assist,12,42,win)&&GetLastError()==ERROR_NOT_READY&&installs==0);
+ nativeHwnd=142;assert(!install(Client::Cursor,12,42,win)&&GetLastError()==ERROR_NOT_READY&&installs==0); // live helper thread cannot bind
+ nativeHwnd=42;readable=false;assert(!install(Client::Assist,12,42,win)&&installs==0);readable=true;
  auto a=install(Client::Assist,12,42,win);auto c=install(Client::Cursor,12,42,win);assert(a&&c&&a!=c&&installs==2&&loads==1&&block.enabled==3);
  block.callbacks=7;block.callbackThread=12;block.stage=runtime::Connected;block.hookRva=123;
  auto diagnostic=health(a);assert(diagnostic.diagnosticValid&&diagnostic.callbacks==7&&diagnostic.callbackThread==12&&diagnostic.stage==2&&diagnostic.hookRva==123);
@@ -130,6 +145,8 @@ int main(){
  failUnhook=true;assert(release(Client::Cursor,c)&&block.enabled==0);assert(host().targets[0].post);failUnhook=false;pulse(nullptr,0);assert(!host().targets[0].pid);
  failPostHook=true;assert(!install(Client::Cursor,13,42,win));assert(GetLastError()==1428);assert(!host().targets[0].pid);failPostHook=false;
  auto fresh=install(Client::Cursor,13,42,win);assert(fresh&&fresh!=c);assert(!release(Client::Cursor,c));assert(release(Client::Cursor,fresh));
+ nativeHwnd=242;auto rebound=install(Client::Assist,13,42,win);assert(rebound&&host().targets[0].window==(HWND)242);
+ nativeHwnd=42;auto sameThread=install(Client::Cursor,13,42,win);assert(sameThread&&host().targets[0].window==win);assert(release(Client::Assist,rebound));assert(release(Client::Cursor,sameThread));
  assert(!refreshCursor(win,43)&&!refreshCursor(nullptr,42)&&cursorRefreshes==0);
  fg=99;assert(!refreshCursor(win,42)&&cursorRefreshes==0);fg=42;
  assert(refreshCursor(win,42)&&cursorRefreshes==1);refreshSucceeds=false;assert(!refreshCursor(win,42)&&cursorRefreshes==2);
@@ -152,3 +169,5 @@ print('PASS cursor refresh uses host input manager, validates target/focus, time
 print("PASS window-addressed wake, post error diagnostics, stale HWND/thread rejected without losing ready bits")
 
 print("PASS pointer capture: loading suppressed; capture epoch retained; cross-match/menu clicks discarded; held release disarmed; context timeout bounded")
+
+print("PASS startup target: zero/unreadable native HWND and live helper thread rejected before hooks; same-thread HWND replacement updates all wake subscribers")

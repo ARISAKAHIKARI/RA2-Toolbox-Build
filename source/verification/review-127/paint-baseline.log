@@ -1,0 +1,7 @@
+paint: /tmp/tmpyeixqmhq/paint.cpp:37: void fill(HDC, const RECT&, uint32_t): Assertion `dc!=&screen && "partial background/card/text reached the visible window"' failed.
+Traceback (most recent call last):
+  File "/workspace/scratch/bf135d053f66/release-127/source/assist/tests/construction_paint_test.py", line 126, in <module>
+    subprocess.run([str(exe)], check=True, env=dict(os.environ, ASAN_OPTIONS='detect_leaks=0'))
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/subprocess.py", line 571, in run
+    raise CalledProcessError(retcode, process.args,
+subprocess.CalledProcessError: Command '['/tmp/tmpyeixqmhq/paint']' died with <Signals.SIGABRT: 6>.

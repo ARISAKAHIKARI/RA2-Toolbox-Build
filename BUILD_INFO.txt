@@ -1,5 +1,5 @@
-RA2 Toolbox 1.0.26 Stable / Windows 1.0.26.0 / Assist 52 / Runtime 4 / Manager 3
+RA2 Toolbox 1.0.27 Stable / Windows 1.0.27.0 / Assist 52 / Runtime 4 / Manager 3
 Compiler: Zig 0.13.0 / Windows x86
-RA2Toolbox.exe SHA256: ebe59f8ad2da39645eca0990b981cbe4c16dc4a2531fd01e2d6f6e6dced18ba9
-GameRuntime.dll SHA256: fcdccd27da43a0f90a83390ecf6c9484dfb06cb327fb8d940b3eb8fb4a83b79e
-378 current controlled cases; 18 previous-DLL comparisons. No real netplay/platform DLL certification.
+RA2Toolbox.exe SHA256: c96c18afff2343707daaacf97a1cbdd749673d17f396ec0a4d478f191b082075
+GameRuntime.dll SHA256: 27a34f5b4b3f91d85bd9248971c8ea74ca7108818385d62d2f305ec9dcb37f7a
+Controlled regressions PASS; actual Windows visual and netplay acceptance not performed.

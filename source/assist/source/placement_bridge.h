@@ -4,6 +4,7 @@
 extern "C" int __cdecl GuardedRiskAction(unsigned,unsigned,unsigned);
 static bool riskControlActive;
 static bool riskPlacementActive=false,riskAirActive=false,riskRenderActive=false,riskC4Active=false;
+static bool riskRenderRedrawPending=false;
 static bool riskContextReady(bool captured=false){
  if((!captured&&!gameentry::active(gameentry::Client::Assist))||fault||!lastHouse||!get<bool>(0xA8E9A0))return false;
  // Native callbacks see the current frame: equality with the last message
@@ -15,14 +16,16 @@ static bool riskContextReady(bool captured=false){
    external::display::inspect([](uint32_t at,void*out,size_t n){memcpy(out,(void*)(uintptr_t)at,n);return true;}).visible();
 }
 static bool riskReady(bool captured=false){
- return sh&&!sh->stop&&DWORD(sampleClock(sh)-sh->heartbeat)<3000&&riskContextReady(captured);
+ if(!sh||sh->stop)return false;
+ const DWORD heartbeat=sh->heartbeat; // Capture before the clock; host writes concurrently.
+ return DWORD(sampleClock(sh)-heartbeat)<3000&&riskContextReady(captured);
 }
 extern "C" int __cdecl AssistRiskAction(unsigned op,unsigned object,unsigned house){
  // Only GuardedRiskAction calls this helper, after obtaining a Capture lease.
  // Keep live world checks, but don't re-enter Validate on every drawn cell.
  if(op==5)return techGate(object,house);
  if(op==3&&(!riskRenderActive||!sh||!sh->renderReveal))return 0;
- if(!riskReady(true))return 0;
+ if(!riskReady(true)){if(op==3)riskRenderRedrawPending=true;return 0;}
  if(op==6)return riskControlActive&&sh->controlAll&&playableHouse(house);
  if(op==4)return riskC4Active&&sh->c4Test&&object>=0x10000&&own(object,lastHouse)&&kind(object)==1;
  if(op==3)return riskRenderActive&&sh->renderReveal!=0; // draw-only, no native game calls
@@ -361,7 +364,7 @@ static void controlSitesTick(bool enabled){
  if(!enabled||!ok)for(int i=8;i<13;++i)if(!restoreRiskSite(riskSites[i]))ok=false;
  riskControlActive=enabled&&ok;if(sh)sh->playerControlStatus=ok?(enabled?1:0):-2;
 }
-static void redrawRevealTest();
+static bool redrawRevealTest();
 static void restorePlacement(){
  const bool wasRendered=riskRenderActive;
  riskPlacementActive=riskAirActive=riskRenderActive=riskC4Active=false;prepareRiskSites();
@@ -374,15 +377,16 @@ static void restorePlacement(){
  snap.c4TestStatus=restoreRiskSite(riskSites[5])?0:-2;
  // Stop/host exit still needs one native redraw after restoring the leaves.
  // A destroyed, changed, paused or faulted world must never be called here.
- if(wasRendered)redrawRevealTest();
+ riskRenderRedrawPending=riskRenderRedrawPending||wasRendered;
+ if(riskRenderRedrawPending&&redrawRevealTest())riskRenderRedrawPending=false;
 }
-static void redrawRevealTest(){
- // Native redraw bookkeeping only, once per toggle; never reveal/register cells.
+static bool redrawRevealTest(){
+ // Native redraw bookkeeping only, once per toggle/recovery; never reveal/register cells.
  static const uint8_t signature[]={0x83,0xEC,0x58,0x8B,0x0D,0x88,0xCE,0xB0,0};uint8_t actual[sizeof signature]{};
  const uint32_t tactical=get<uint32_t>(0x887324);
  struct Area {int x,y,w,h;};Area area{};
- if(tactical<0x10000||!riskContextReady()||!read(0x6D2790,actual,sizeof actual)||memcmp(actual,signature,sizeof actual)||!read(0x886FA0,&area,sizeof area)||area.w<=0||area.h<=0||area.w>16384||area.h>16384)return;
- call<void>(0x6D2790,tactical,area,false);
+ if(tactical<0x10000||!riskContextReady()||!read(0x6D2790,actual,sizeof actual)||memcmp(actual,signature,sizeof actual)||!read(0x886FA0,&area,sizeof area)||area.w<=0||area.h<=0||area.w>16384||area.h>16384)return false;
+ call<void>(0x6D2790,tactical,area,false);return true;
 }
 static void placementTick(){
  prepareRiskSites();
@@ -394,7 +398,8 @@ static void placementTick(){
   if(!riskRenderActive){restoreRiskSite(riskSites[3]);restoreRiskSite(riskSites[4]);}
   snap.renderRevealStatus=riskRenderActive?1:-2;
  }else{riskRenderActive=false;bool a=restoreRiskSite(riskSites[3]),b=restoreRiskSite(riskSites[4]);snap.renderRevealStatus=a&&b?0:-2;}
- if(priorRender!=riskRenderActive)redrawRevealTest();
+ if(priorRender!=riskRenderActive)riskRenderRedrawPending=true;
+ if(riskRenderRedrawPending&&redrawRevealTest())riskRenderRedrawPending=false;
  if(sh->flags&BuildAnywhere){riskPlacementActive=installRiskSite(riskSites[0]);snap.placementStatus=riskPlacementActive?1:-2;}
  else{riskPlacementActive=false;snap.placementStatus=restoreRiskSite(riskSites[0])?0:-2;}
  if(airpathpolicy::native(get<int>(0xA8B238),(sh->flags&NativeAirWaypoints)!=0)){

@@ -655,6 +655,11 @@ static bool ensureBridge(){
  if(shared)return true;
  if(!gameinput::runtimeModule())return bridgeFailed(L"运行组件缺失或版本不匹配，请完整更新工具箱",GetLastError());DWORD now=GetTickCount();
  if(!game||bridgeBlocked||(bridgeRetryAt&&int32_t(now-bridgeRetryAt)<0))return false;
+ if(!gameinput::nativeWindow(pid,gameThread)){
+  // Readiness is not an installation failure. Retry promptly without using
+  // the failure backoff or leaving an uninitialized mapping behind.
+  bridgeRetryAt=now+250;return bridgeFailed(L"等待游戏主窗口就绪，功能将自动连接",GetLastError());
+ }
  ++bridgeAttempts;bridgeRetryAt=now+(bridgeAttempts>=3?30000:2000);
  critical(L"bridge-connect-attempt="+std::to_wstring(bridgeAttempts)+L" pid="+std::to_wstring(pid)+L" thread="+std::to_wstring(gameThread));
  wchar_t n[100];swprintf(n,100,L"Local\\RA2Assist_v052_%lu",pid);

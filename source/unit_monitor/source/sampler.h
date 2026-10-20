@@ -103,6 +103,10 @@ public:
    Player& player=state.players[state.playerCount++];player={};player.ptr=h;player.houseIndex=idx;player.local=h==local;
    uint8_t rgb[3]={};bytes(h+22265,rgb,3);player.color=0xFF000000|(rgb[0]<<16)|(rgb[1]<<8)|rgb[2];
    memcpy(player.name,identity->name,40);player.name[20]=0;
+   // HouseClass::Balance (YRpp +0x30C), read with this player's identity.
+   // Failed reads are unknown, never an invented zero or a previous player's cash.
+   player.creditsKnown=bytes(h+0x30C,&player.credits,sizeof player.credits);
+   if(!player.creditsKnown){player.credits=0;state.readErrors++;}
    owned(player,h);
   }
   // Factories are distinct from structures, so multiple primary factories cannot double count a shared queue.

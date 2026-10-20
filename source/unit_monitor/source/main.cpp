@@ -121,7 +121,7 @@ static void render(int width,int height,POINT origin,int gameWidth,int gameHeigh
  // Scale content around the existing margin anchor; fit all player columns.
  int players=0;for(int i=0;i<snap->playerCount;++i)if(showOthers||snap->players[i].local)++players;
  float anchorX=float(std::clamp(leftMargin,0,std::max(0,gameWidth-100))),anchorY=float(std::clamp(topMargin,0,std::max(0,gameHeight-100)));
- float zoom=std::min(viewport::factor(scalePercent),std::min((gameWidth-anchorX-8)/(std::max(1,players)*80.f+8),(gameHeight-anchorY-8)/110.f));
+ float zoom=std::min(viewport::factor(scalePercent),std::min((gameWidth-anchorX-8)/(std::max(1,players)*80.f+8),(gameHeight-anchorY-8)/124.f));
  zoom=std::max(.1f,zoom);view.x*=zoom;view.y*=zoom;
  int viewportW=int(gameWidth/zoom),viewportH=int(gameHeight/zoom);
  float top=anchorY/zoom,left=anchorX/zoom;
@@ -130,8 +130,8 @@ static void render(int width,int height,POINT origin,int gameWidth,int gameHeigh
  for(int pi=0;pi<snap->playerCount;++pi){auto& p=snap->players[pi];if(!showOthers&&!p.local)continue;
   int entries=0;for(int i=0;i<snap->typeCount;++i)entries+=um::showCell(snap->types[i].category,p.cells[i],buildings);
   int across=entries>1&&maxWidth>=112?2:1;float panelW=across==2?maxWidth:std::min(84.f,maxWidth),rowH=std::min(44.f,(panelW-12)/across-4)*.8f+18;
-  int rows=std::max(1,int((viewportH-top-59)/rowH)),per=rows*across,pages=std::max(1,(entries+per-1)/per),start=(page%pages)*per,shownRows=std::max(1,(std::min(entries,start+per)-start+across-1)/across);
-  croppedW+=panelW+4;croppedH=std::max(croppedH,top+46+shownRows*rowH);
+  int rows=std::max(1,int((viewportH-top-73)/rowH)),per=rows*across,pages=std::max(1,(entries+per-1)/per),start=(page%pages)*per,shownRows=std::max(1,(std::min(entries,start+per)-start+across-1)/across);
+  croppedW+=panelW+4;croppedH=std::max(croppedH,top+60+shownRows*rowH);
  }
  width=std::min(viewportW,std::max(1,int(croppedW+2)));height=std::min(viewportH,std::max(1,int(croppedH+2)));
  if(demo){width=viewportW;height=viewportH;}
@@ -149,22 +149,24 @@ static void render(int width,int height,POINT origin,int gameWidth,int gameHeigh
   float panelW=across==2?maxWidth:std::min(84.f,maxWidth),x=cursorX+6,w=panelW-12;
   cursorX+=panelW+4;
   float tileW=w/across,iconW=std::min(44.f,tileW-4),iconH=iconW*.8f,rowH=iconH+18;
-  int rows=std::max(1,int((viewportH-top-59)/rowH)),per=rows*across;
+  int rows=std::max(1,int((viewportH-top-73)/rowH)),per=rows*across;
   int pages=std::max(1,(int(entries.size())+per-1)/per),current=page%pages;
   int start=current*per,finish=std::min(int(entries.size()),start+per);
   int shownRows=std::max(1,(finish-start+across-1)/across);
-  float panelH=42+shownRows*rowH+4;
+  float panelH=56+shownRows*rowH+4;
   SolidBrush panel(Color(158,12,19,29));g.FillRectangle(&panel,cursorX-panelW-4,6.f,panelW,panelH);
   uint32_t pc=p.color;Pen rule(Color(180,(pc>>16)&255,(pc>>8)&255,pc&255),2.f);g.DrawLine(&rule,x,9.f,x+w,9.f);
   std::wstring name=(const wchar_t*)p.name;if(name.empty())name=L"玩家 "+std::to_wstring(p.houseIndex+1);if(p.local)name=L"我·"+name;
   int maxChars=std::max(3,int(w/11));if(int(name.size())>maxChars)name=name.substr(0,maxChars-1)+L"…";
   text(g,name,x,12,11,color(pc),true);
-  text(g,L"拥有 / +生产",x,27,9,Color(255,214,225,237));
-  if(entries.empty())text(g,L"暂无单位",x,46,10,Color(255,190,204,221));
-  if(pages>1)text(g,std::to_wstring(current+1)+L"/"+std::to_wstring(pages),x+w-26,27,9,Color::White);
+  const std::wstring money=p.creditsKnown?L"$ "+std::to_wstring(p.credits):L"$ —";
+  text(g,money,x,27,std::min(10.f,w/(float(money.size())*.65f)),Color(255,241,215,131),true);
+  text(g,L"拥有 / +生产",x,41,9,Color(255,214,225,237));
+  if(entries.empty())text(g,L"暂无单位",x,60,10,Color(255,190,204,221));
+  if(pages>1)text(g,std::to_wstring(current+1)+L"/"+std::to_wstring(pages),x+w-26,41,9,Color::White);
   for(int j=start;j<finish;j++){
    int ix=entries[j],slot=j-start;const auto& c=p.cells[ix];int category=snap->types[ix].category;
-   float tx=x+(slot%across)*tileW,ty=42+(slot/across)*rowH;
+   float tx=x+(slot%across)*tileW,ty=56+(slot/across)*rowH;
    drawIcon(g,snap->types[ix],*snap,tx,ty,iconW,iconH,pc);
    if(category!=3||buildings)text(g,std::to_wstring(um::shownOwned(category,c,buildings)),tx+1,ty+iconH,12,Color::White,true);
    if(c.queued){float qx=category==3&&!buildings?tx+1:tx+iconW/2; text(g,L"+"+std::to_wstring(c.queued),qx,ty+iconH+1,10,color(pc),true);}
@@ -193,7 +195,7 @@ static void demoData(){
  for(int i=0;i<12;i++){auto& t=snap->types[i];sprintf(t.id,"%s%02d",i%3==0?"AIR":i%3==1?"TANK":"INF",i);t.category=i%4;t.iconReady=1;
   // Symbolic demo silhouettes only; live mode uses the game's actual SHP cameos.
   for(int y=0;y<um::IH;y++)for(int x=0;x<um::IW;x++){bool shape=i%3==0?(abs(x-30)<3&&y>8&&y<40)||(abs(y-24)<4&&abs(x-30)<22):i%3==1?((x>10&&x<49&&y>24&&y<37)||(x>21&&x<40&&y>15&&y<28)||(x>30&&x<54&&y>18&&y<22)):((x-30)*(x-30)+(y-12)*(y-12)<34||(abs(x-30)<6&&y>19&&y<33)||(y>31&&y<42&&(abs(x-25)<3||abs(x-35)<3)));t.icon[y*um::IW+x]=shape?uint8_t(140+i*8):0;}}
- for(int p=0;p<3;p++){auto& v=snap->players[p];v.color=colors[p];v.local=p==0;v.houseIndex=p;memcpy(v.name,names[p],(wcslen(names[p])+1)*2);for(int i=0;i<12-p*3;i++){auto& c=v.cells[i];c.owned=(i*3+p*7)%24+1;if(i%3==0){c.queued=i%5+1;c.active=1;c.progress=((GetTickCount()-demoStart)/150+i*4)%55;c.paused=i==6;}}}
+ for(int p=0;p<3;p++){auto& v=snap->players[p];v.color=colors[p];v.local=p==0;v.houseIndex=p;v.credits=10000+p*2500;v.creditsKnown=1;memcpy(v.name,names[p],(wcslen(names[p])+1)*2);for(int i=0;i<12-p*3;i++){auto& c=v.cells[i];c.owned=(i*3+p*7)%24+1;if(i%3==0){c.queued=i%5+1;c.active=1;c.progress=((GetTickCount()-demoStart)/150+i*4)%55;c.paused=i==6;}}}
  // Repeat a retirement example every 20 seconds; columns compact automatically.
  if((GetTickCount()-demoStart)/1000%20>=12){snap->players[1]=snap->players[2];snap->playerCount=2;}
 }

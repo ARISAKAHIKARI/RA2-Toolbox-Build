@@ -1,11 +1,21 @@
-# RA2 Toolbox 1.0.26 正式版
+# RA2 Toolbox 1.0.27 正式版
 
-Windows高刷光标、单位统计与战术助手。文件版本 **1.0.26.0**，Assist协议52，Runtime协议4。
+[正式版完整包与更新包](https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/releases/tag/v1.0.27) · [源码](source/) · [版本说明](packages/v1.0.27/RELEASE_NOTES.md) · [审查](source/REVIEW-1.0.27.md)
 
-- [正式版完整运行包与更新包](https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/releases/tag/v1.0.26)
-- [源码](source/) · [版本说明](packages/v1.0.26/RELEASE_NOTES.md)
-- [本次审查](source/REVIEW-1.0.26.md) · [验证证据](source/verification/review-126/)
+# RA2 Toolbox v1.0.27 正式版
 
-修复科技侧栏生命周期判断，补齐现有补丁ABI依赖验证和变化后的恢复。保持统一管理器与事件入口。GitHub Release不标记预发行，已有实验功能继续单独标注。
+- 预定面板先绘制完整缓冲画面再显示，复用位图并跳过重复窗口定位，降低刷新闪烁。
+- 新对局连接以游戏主窗口句柄验证目标线程，避免启动辅助窗口抢先绑定；同线程换窗口后更新所有唤醒目标。
+- 预定显示与指令可提交状态分离；命令桥短暂未就绪时保留面板，恢复后再提交。
+- 不渲染黑幕在菜单、短暂失活、绘图上下文恢复后补发重绘；重绘失败保留重试，不写入地图探索状态。
+- 单位统计在每位玩家名称下显示金钱；读取失败显示未知，不沿用上一局的数值。
+- 小地图改为地图数据独立绘制：按地形类型与高度生成底图，叠加玩家颜色单位标记和当前视野框。只画地图，不再捕获周边UI。
+- 小地图采用独立后台读取任务、完整快照发布和可复用绘制缓冲；保留缩放、位置配置、飞机按钮避让、鼠标穿透与菜单隐藏。
 
-退出游戏和工具箱后成套更新EXE/DLL，保留配置和cache。使用Zig 0.13.0运行source/build-zig.sh或source/BUILD_ZIG.cmd。受控回归不等于真实平台双机联机验收；历史报告仅对应报告中标注的版本和哈希。
+验证通过：预定绘制/GDI模型、预定队列、主窗口绑定、22项统计换局回归、小地图数据绘制与10368组布局组合、两份用户游戏EXE上的x86黑幕恢复回调、Windows x86输出与架构审计。
+这些是受控数据和模拟执行验证，尚未完成真实Windows游戏目测或实际平台双机联机验收。
+小地图为地形示意绘制，并非原游戏TMP地表纹理复刻；普通模式保留未探索区，开启“不渲染黑幕”时显示全部地形。高度只用于配色，视野框按地面投影估算。
+
+正式Release，非Beta、非Prerelease。Windows.zip为完整运行资源包，Update.zip用于已有完整安装。先退出游戏和工具箱，成套更新EXE/DLL，保留配置、资源与cache。Release仅含运行文件，源码见仓库source/。
+
+使用Zig 0.13.0运行source/build-zig.sh或source/BUILD_ZIG.cmd。文件版本1.0.27.0，Assist协议52，Runtime协议4，管理器协议3。

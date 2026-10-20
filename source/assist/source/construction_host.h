@@ -1,5 +1,6 @@
 #include "construction_catalog.h"
 #include "native_cameos.h"
+#include "construction_buffer.h"
 #include "../../unit_monitor/source/icon_cache.h"
 #include "../../unit_monitor/source/cameo_reader.h"
 // Host-owned FIFO. GameRuntime remains the only writer/command constructor.
@@ -10,6 +11,7 @@ static uint32_t current[2],currentID[2],lastPID=0,house,refreshed=0,nextToken=0;
 static int activeTab=-1,scroll=0;static um::IconCache& icons=um::sharedIconCache();static construction::Layout layout;
 static construction::NativeFrame nativeFrame;static uint32_t nativeAt=0;
 static HFONT panelFont;static int fontHeight=0;static bool geometryReady=false;
+static construction::PanelBuffer panelBuffer;
 template<class T>static T get(uint32_t at,T fallback={}){T v{};return externalReader.readFresh(at,&v,sizeof v)?v:fallback;}
 static uint32_t factory(int tab){return get<uint32_t>(house+(tab?0x53CC:0x53BC));}
 static uint32_t product(int tab){uint32_t f=factory(tab);return f>=0x10000&&get<uint32_t>(f+0x6C)==house?get<uint32_t>(f+0x58):0;}
@@ -49,10 +51,17 @@ static void collectChoices(){
  }
 }
 static void resizePanel(){
- if(!window||!geometryReady)return;POINT origin{};
- if(ClientToScreen(game,&origin))SetWindowPos(window,HWND_TOPMOST,origin.x+layout.left(),origin.y+layout.top(),layout.width(),layout.height(),SWP_NOACTIVATE|SWP_SHOWWINDOW);
+ if(!window||!geometryReady)return;POINT origin{};RECT previous{};
+ if(!ClientToScreen(game,&origin))return;
+ const int x=origin.x+layout.left(),y=origin.y+layout.top(),w=layout.width(),h=layout.height();
+ const bool visible=IsWindowVisible(window)!=0;
+ if(visible&&GetWindowRect(window,&previous)&&previous.left==x&&previous.top==y&&previous.right-previous.left==w&&previous.bottom-previous.top==h)return;
+ // Do not repeatedly raise a stationary panel above sibling overlays. On a
+ // resize discard copied client pixels; the back buffer supplies a full frame.
+ SetWindowPos(window,HWND_TOPMOST,x,y,w,h,SWP_NOACTIVATE|SWP_NOOWNERZORDER|SWP_NOCOPYBITS|(visible?SWP_NOZORDER:SWP_SHOWWINDOW));
 }
 static bool usable();
+static bool displayReady(){return extra.constructionQueue&&enabled&&foregroundGame()&&snap.renderStatus==1;}
 static void refreshChoices(){
  collectChoices();layout.content(activeTab>=0&&activeTab<2?int(books[activeTab].items.size()):0,int(choices.size()));
  int maximum=std::max(0,(int(choices.size())+1)/2-layout.rows)*2;scroll=std::clamp(scroll,0,maximum);
@@ -63,7 +72,7 @@ static void refreshChoices(){
  }
  publishReservationPolicy(policy);resizePanel();
 }
-static bool usable(){return extra.constructionQueue&&enabled&&commandFresh(GetTickCount())&&foregroundGame()&&!snap.chat&&snap.renderStatus==1;}
+static bool usable(){return displayReady()&&!snap.chat&&commandFresh(GetTickCount());}
 static void reserveChoice(Choice c,bool fromNative=false,bool nativeCaptured=false){
  if(!usable()||activeTab<0||activeTab>1||c.tab!=activeTab)return;auto&b=books[activeTab];
  if(b.stage){notify(L"生产请求正在提交，请等原版队列更新后再预定。");return;}
@@ -110,7 +119,7 @@ static void consumeNativeClick(){
  if(slot>=0&&types>=0x10000&&c.index>=0&&c.index<count&&count<=4096){uint32_t type=get<uint32_t>(types+c.index*4);if(type>=0x10000)reserveChoice({slot,c.index,c.tab,type,false},true,true);}
 }
 static std::vector<construction::NativeBadge> nativeBadges(){
- std::vector<construction::NativeBadge> out;if(!usable()||get<uint32_t>(0xA83D4C)!=house)return out;
+ std::vector<construction::NativeBadge> out;if(!displayReady()||get<uint32_t>(0xA83D4C)!=house)return out;
  if(!nativeAt||uint32_t(GetTickCount()-nativeAt)>=16)readNative();
  int tab=nativeFrame.tab;if(tab<0||tab>1)return out;auto&b=books[tab];if(b.match!=commandMatch()||b.house!=house)return out;
  for(const auto&c:nativeFrame.cells){int mask=0;for(int i=0;i<int(b.items.size());++i)if(b.items[i]==c.index)mask|=1<<i;
@@ -137,8 +146,11 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
   if(msg==WM_RBUTTONUP){if(activeTab<0||activeTab>1)return 0;bool all=(wp&MK_SHIFT)!=0;int slot=layout.queueAt(x,y,int(books[activeTab].items.size()));if(slot>=0)removeTop(all);else{int n=layout.choiceAt(x,y,scroll,int(choices.size()));if(n>=0){auto&items=books[activeTab].items;for(int i=int(items.size())-1;i>=0;--i)if(items[i]==choices[n].index){removeItem(activeTab,i,all);break;}}}}
   else reserve(layout.choiceAt(x,y,scroll,int(choices.size())));return 0;
  }
- if(msg==WM_PAINT){PAINTSTRUCT ps{};HDC dc=BeginPaint(w,&ps);RECT client{};GetClientRect(w,&client);HBRUSH bg=CreateSolidBrush(RGB(24,31,27));FillRect(dc,&client,bg);DeleteObject(bg);
-  if(!geometryReady){EndPaint(w,&ps);return 0;}
+ if(msg==WM_PAINT){PAINTSTRUCT ps{};HDC target=BeginPaint(w,&ps);RECT client{};GetClientRect(w,&client);
+  if(!geometryReady||activeTab<0||activeTab>1){EndPaint(w,&ps);return 0;}
+  HDC dc=panelBuffer.acquire(target,client.right-client.left,client.bottom-client.top);
+  if(!dc){EndPaint(w,&ps);return 0;}
+  HBRUSH bg=CreateSolidBrush(RGB(24,31,27));FillRect(dc,&client,bg);DeleteObject(bg);
   auto previous=SelectObject(dc,panelFont?panelFont:font);SetBkMode(dc,TRANSPARENT);SetTextColor(dc,RGB(237,219,151));RECT title=rect(3,0,141,23);
   DrawTextW(dc,activeTab==1?L"防御预定 5 格":L"建筑预定 5 格",-1,&title,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
   const auto&b=books[activeTab];
@@ -148,7 +160,7 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
    paintIcon(dc,b.items[i],42,y,false);RECT number=rect(8,y+2,40,y+23);SetTextColor(dc,RGB(255,231,145));std::wstring label=std::to_wstring(i+1);if(i==0&&b.stage)label+=L"…";DrawTextW(dc,label.c_str(),-1,&number,DT_SINGLELINE|DT_VCENTER);
   }
   if(b.items.empty()){RECT idle=rect(8,24,136,56);SetTextColor(dc,RGB(166,176,157));DrawTextW(dc,L"尚无预定\n点击建造图标追加",-1,&idle,DT_CENTER|DT_WORDBREAK);}
-  RECT hint=rect(4,layout.stackBottom(),140,layout.headerHeight()-construction::SectionGap-1);SetTextColor(dc,RGB(180,188,167));DrawTextW(dc,L"右键退顶层 · Shift 清空",-1,&hint,DT_CENTER|DT_SINGLELINE|DT_VCENTER);
+  RECT hint=rect(4,layout.stackBottom(),140,layout.headerHeight()-construction::SectionGap-1);SetTextColor(dc,RGB(180,188,167));DrawTextW(dc,usable()?L"右键退顶层 · Shift 清空":L"等待操作恢复",-1,&hint,DT_CENTER|DT_SINGLELINE|DT_VCENTER);
   int divider=layout.headerHeight()-construction::SectionGap/2;
   RECT separator=rect(5,divider,139,divider+1);HBRUSH line=CreateSolidBrush(RGB(104,116,86));FillRect(dc,&separator,line);DeleteObject(line);
   for(int n=scroll;n<int(choices.size())&&n<scroll+layout.rows*2;++n){const auto&c=choices[n];if(c.slot<0||c.slot>=snap.typeCount||snap.types[c.slot].kind!=7||snap.types[c.slot].index!=c.index)continue;
@@ -157,20 +169,23 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
    RECT name=rect(x-3,y+48,x+63,y+64);SetTextColor(dc,c.future?RGB(151,157,147):RGB(231,226,194));DrawTextW(dc,(const wchar_t*)t.name,-1,&name,DT_CENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
    std::wstring numbers;for(int i=0;i<int(b.items.size());++i)if(b.items[i]==c.index){if(!numbers.empty())numbers+=L" ";numbers+=std::to_wstring(i+1);}
    if(!numbers.empty()){RECT badge=rect(x,y+30,x+60,y+48);HBRUSH tag=CreateSolidBrush(RGB(123,87,20));FillRect(dc,&badge,tag);DeleteObject(tag);SetTextColor(dc,RGB(255,243,156));DrawTextW(dc,numbers.c_str(),-1,&badge,DT_CENTER|DT_VCENTER|DT_SINGLELINE);}
-  }SelectObject(dc,previous);EndPaint(w,&ps);return 0;
+  }SelectObject(dc,previous);panelBuffer.present(target);EndPaint(w,&ps);return 0;
  }
  return DefWindowProcW(w,msg,wp,lp);
 }
 static void service(){
  consumeNativeClick();uint32_t now=GetTickCount();if(refreshed&&uint32_t(now-refreshed)<100)return;refreshed=now;
- if(!extra.constructionQueue){reset();return;}if(!usable()){hide();return;}
+ if(!extra.constructionQueue){reset();return;}if(!displayReady()){hide();return;}
  house=get<uint32_t>(0xA83D4C);if(house<0x10000){hide();return;}
  if(lastPID!=pid){reset();lastPID=pid;wchar_t image[32768]{};DWORD length=32768;if(externalReader.imagePath(image,&length))icons.open(image,std::filesystem::path(root)/L"cache"/L"icons");}
  for(int tab=0;tab<2;++tab){auto&b=books[tab];
   if(!b.items.empty()&&(b.match!=commandMatch()||b.house!=house)){queueLog(tab,L"match-or-owner-changed");cancel(tab);}
   uint32_t f=0,p=0;if(!factoryState(tab,f,p))continue;
   uint32_t identity=0;if(p&&!externalReader.readFresh(p+0x10,&identity,4))continue;
-  current[tab]=p;currentID[tab]=identity;if(b.items.empty())continue;
+  current[tab]=p;currentID[tab]=identity;
+  // Display follows read-only state. Command suspension closes input policy
+  // and freezes submission/timeout handling without hiding the existing FIFO.
+  if(b.items.empty()||!usable())continue;
   if(current[tab]&&currentID[tab]!=b.id){int made=get<int>(get<uint32_t>(current[tab]+0x520)+0xDF8,-1);
    if(b.stage==2&&made==b.head()){b.consume(current[tab],currentID[tab]);if(b.items.empty())cancel(tab);continue;}
    if(b.stage!=1){queueLog(tab,L"native-product-replaced");cancel(tab);notify(L"原生新生产已接管，后续预定已取消。");continue;}
@@ -205,5 +220,5 @@ static void service(){
  if(!window){WNDCLASSW cls{};cls.hInstance=GetModuleHandleW(nullptr);cls.lpfnWndProc=proc;cls.lpszClassName=L"RA2ConstructionReserve110";cls.hCursor=LoadCursorW(nullptr,IDC_HAND);RegisterClassW(&cls);window=CreateWindowExW(WS_EX_TOOLWINDOW|WS_EX_NOACTIVATE|WS_EX_TOPMOST|WS_EX_LAYERED,cls.lpszClassName,L"建筑预定",WS_POPUP,0,0,layout.width(),layout.height(),nullptr,nullptr,cls.hInstance,nullptr);if(window)SetLayeredWindowAttributes(window,0,construction::PanelOpacity,LWA_ALPHA);}
  if(window){geometryReady=true;resizePanel();InvalidateRect(window,nullptr,FALSE);}
 }
-static void destroy(){if(window)DestroyWindow(window);window=nullptr;if(panelFont)DeleteObject(panelFont);panelFont=nullptr;fontHeight=0;reset();}
+static void destroy(){if(window)DestroyWindow(window);window=nullptr;panelBuffer.clear();if(panelFont)DeleteObject(panelFont);panelFont=nullptr;fontHeight=0;reset();}
 }

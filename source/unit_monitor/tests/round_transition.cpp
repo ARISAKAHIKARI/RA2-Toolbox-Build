@@ -74,5 +74,14 @@ int main(){
   f.m.put<uint32_t>(second+1740,0);assert(f.sampler->sample(1700,true).typeCount==1);++cases;
   f.m.put<uint32_t>(second+1740,1);assert(f.sampler->sample(2300,true).typeCount==2);++cases;
  }
+ // Cash belongs to the same sampled player and round, with explicit unknown on read failure.
+ {Fixture f;f.m.put(Self+0x30C,12345);f.m.put(Enemy+0x30C,67890);auto& a=f.sample();
+  assert(a.players[0].creditsKnown&&a.players[0].credits==12345&&a.players[1].creditsKnown&&a.players[1].credits==67890);++cases;
+  f.m.put(Self+0x30C,0);f.m.put(Enemy+0x30C,2147483647);auto& b=f.sample();
+  assert(b.players[0].creditsKnown&&b.players[0].credits==0&&b.players[1].credits==2147483647);++cases;
+  f.m.fail=Enemy+0x30C;auto& c=f.sample();assert(c.status==1&&c.playerCount==2&&c.players[0].creditsKnown&&!c.players[1].creditsKnown&&c.readErrors>0);++cases;
+  f.m.fail=0;f.m.text(Enemy+90154,u"Fresh opponent");f.m.put(Enemy+0x30C,500);f.m.put(0xA8ED84,1);auto& d=f.sample();
+  assert(d.players[1].name[0]=='F'&&d.players[1].creditsKnown&&d.players[1].credits==500);++cases;
+ }
  std::cout<<cases<<" round-transition sampler regressions passed\n";
 }
