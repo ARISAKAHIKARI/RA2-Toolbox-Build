@@ -5,7 +5,7 @@ import argparse,ctypes as C,importlib.util,json,hashlib,struct
 from pathlib import Path
 from unicorn.x86_const import UC_X86_REG_EAX,UC_X86_REG_ESP,UC_X86_REG_EIP
 p=argparse.ArgumentParser();p.add_argument('game');p.add_argument('dll');p.add_argument('--output',required=True);a=p.parse_args();rows=[]
-sites={0x4A8EB0:bytes.fromhex('A1 4C 3D A8 00'),0x7E2908:bytes.fromhex('50 CB 41 00'),0x416AB6:bytes.fromhex('C7 86 BC 00 00 00 03 00 00 00'),0x47EFE0:bytes.fromhex('55 8B EC 83 EC 34'),0x47F250:bytes.fromhex('A0 C6 E7 89 00')}
+sites={0x4A8EB0:bytes.fromhex('A1 4C 3D A8 00'),0x7E2908:bytes.fromhex('50 CB 41 00'),0x416AB6:bytes.fromhex('C7 86 BC 00 00 00 03 00 00 00'),0x47F038:bytes.fromhex('8B 45 10 53 56'),0x47F274:bytes.fromhex('8B 44 24 38 53')}
 def state(m):return m.Shared.from_buffer_copy(m.u.mem_read(m.SH,C.sizeof(m.Shared)))
 def save(m,s):m.u.mem_write(m.SH,bytes(s))
 def fixture(mode):
@@ -46,11 +46,11 @@ for mode in (0,5,3,4):
  assert restored(m,sites)
  enable(m);s=state(m);s.stop=1;save(m,s);m.hook();assert restored(m,sites)
  passed(f'all_five_install_independent_disable_menu_round_stop_{mode}')
- for changed in (0x416AB6,0x47F250):
+ for changed in (0x416AB6,0x47F274):
   m=fixture(mode);m.u.mem_write(changed,b'\x90');s=enable(m)
   assert m.u.mem_read(changed,1)==b'\x90' and s.data.placementStatus==1
   if changed==0x416AB6:assert s.data.nativeAirStatus==(-2 if air else 2) and s.data.renderRevealStatus==1 and restored(m,[0x7E2908]) and s.data.hookInstalled==3
-  else:assert s.data.renderRevealStatus==-2 and s.data.nativeAirStatus==(1 if air else 2) and restored(m,[0x47EFE0]) and s.data.hookInstalled==total-2
+  else:assert s.data.renderRevealStatus==-2 and s.data.nativeAirStatus==(1 if air else 2) and restored(m,[0x47F038]) and s.data.hookInstalled==total-2
   s=state(m);s.stop=1;save(m,s);m.hook();assert m.u.mem_read(changed,1)==b'\x90' and restored(m,[at for at in sites if at!=changed])
   passed(f'foreign_{changed:x}_group_rollback_other_features_preserved_{mode}')
 Path(a.output).write_text(json.dumps({'dll_sha256':hashlib.sha256(Path(a.dll).read_bytes()).hexdigest(),'scope':__doc__,'results':rows},indent=2)+'\n')

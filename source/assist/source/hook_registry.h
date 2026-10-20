@@ -17,7 +17,7 @@ inline Owner ownerAt(uint32_t a){
  case 0x004AB9B0: return Owner::MouseUp;
  case 0x00464AC0:case 0x004A8EB0: return Owner::Placement;
  case 0x007E2908:case 0x00416AB6:return Owner::NativeAir;
- case 0x0047EFE0:case 0x0047F250:return Owner::RenderMask;
+ case 0x0047F038:case 0x0047F274:return Owner::RenderMask;
  case 0x0051A4D8:return Owner::C4Test;
  case 0x006A97D2:case 0x006AA781:return Owner::Sidebar;
  case 0x6FBFB3:case 0x6FBFEF:case 0x5F45D2:case 0x5F45DF:case 0x5F45EF:return Owner::PlayerSelection;
@@ -41,8 +41,8 @@ inline bool knownOriginal(uint32_t at,const uint8_t* bytes,unsigned size){
  static const uint8_t proximity[]={0xA1,0x4C,0x3D,0xA8,0};
  static const uint8_t airType[]={0x50,0xCB,0x41,0};
  static const uint8_t airArrival[]={0xC7,0x86,0xBC,0,0,0,3,0,0,0};
- static const uint8_t shroud[]={0x55,0x8B,0xEC,0x83,0xEC,0x34};
- static const uint8_t fog[]={0xA0,0xC6,0xE7,0x89,0};
+ static const uint8_t shroud[]={0x8B,0x45,0x10,0x53,0x56};
+ static const uint8_t fog[]={0x8B,0x44,0x24,0x38,0x53};
  static const uint8_t c4[]={0x8A,0x81,0xC2,0x0E,0,0};
  static const uint8_t selectionCalls[5][5]={{0xE8,0x38,0xF7,0xE0,0xFF},{0xE8,0xFC,0xF6,0xE0,0xFF},{0xE8,0x19,0x71,0xF1,0xFF},{0xE8,0x0C,0x71,0xF1,0xFF},{0xE8,0xFC,0x70,0xF1,0xFF}};
  static const uint8_t sidebarClick[]={0xE8,0x99,0xE0,0xE4,0xFF};
@@ -59,8 +59,8 @@ inline bool knownOriginal(uint32_t at,const uint8_t* bytes,unsigned size){
  case 0x004A8EB0:signature=proximity;expected=sizeof proximity;break;
  case 0x007E2908:signature=airType;expected=sizeof airType;break;
  case 0x00416AB6:signature=airArrival;expected=sizeof airArrival;break;
- case 0x0047EFE0:signature=shroud;expected=sizeof shroud;break;
- case 0x0047F250:signature=fog;expected=sizeof fog;break;
+ case 0x0047F038:signature=shroud;expected=sizeof shroud;break;
+ case 0x0047F274:signature=fog;expected=sizeof fog;break;
  case 0x0051A4D8:signature=c4;expected=sizeof c4;break;
  case 0x6FBFB3:signature=selectionCalls[0];expected=5;break;
  case 0x6FBFEF:signature=selectionCalls[1];expected=5;break;

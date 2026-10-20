@@ -737,7 +737,7 @@ static void command(uint32_t house,DWORD now){uint32_t req=sh->request;if(req==s
  }
  else if(c==OpenTech){
   // Enable paired sidebar eligibility gates before adding native cameos.
-  {snap.techOpen=arg!=0;memcpy(techAllowed,sh->techAllowed,sizeof techAllowed);snap.techError=0;if(snap.techOpen)refreshTech(house,now);else restoreTech();n=snap.techVisible;if(snap.techError<0)result=snap.techError;}}
+  {snap.techOpen=arg!=0;memcpy(techAllowed,sh->techAllowed,sizeof techAllowed);snap.techError=0;if(snap.techOpen){requestTechRefresh();refreshTech(house,now);}else restoreTech();n=snap.techVisible;if(snap.techError<0)result=snap.techError;}}
  else if(c==SelectSuper){result=superSelect(house,arg);n=result>0;}
  else if(c==SelectIron||c==SelectChrono){result=namedSuper(house,c);n=result>0;}
  else if(c==AirPathMove){uint32_t id=uint32_t(arg),p=worldByID(id),cell=uint32_t(sh->arg2);

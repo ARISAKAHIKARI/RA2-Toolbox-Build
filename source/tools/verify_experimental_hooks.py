@@ -26,10 +26,11 @@ prefix=bytes.fromhex('9C 60 89 E3 81 EC 10 02 00 00 83 E4 F0 0F AE 04 24 FC')
 starts=[];offset=0
 while (offset:=mapped.find(prefix,offset))>=0:
     starts.append(offset);offset+=len(prefix)
-assert len(starts)==6,starts
+assert len(starts)==8,starts
 stubs={}
 for start in starts:
-    block=mapped[start:start+48]
+    block=mapped[start:start+96]
+    if bytes.fromhex('6A 05 E8') in block or bytes.fromhex('6A 06 E8') in block:continue # sidebar/control tested by player_tech_runtime.py
     if bytes.fromhex('6A 00 56 6A 04 E8') in block:continue # C4 covered separately
     if bytes.fromhex('6A 00 6A 00 6A 03 E8') in block:continue # covered by verify_render_reveal.py
     if bytes.fromhex('6A 00 51 6A 01 E8') in block:op=1
@@ -86,7 +87,7 @@ for op in range(3):
     assert [u.reg_read(UC_X86_REG_XMM0+n) for n in range(8)]==xmm
     assert struct.unpack('<I',u.mem_read(frame+0xBC,4))[0]==(3 if op==2 and not result else 2)
     results.append({'op':op,'callback_result':result,'incoming_DF':bool(direction),'pass':True})
-report={'version':'1.0.10','dll_sha256':hashlib.sha256(path.read_bytes()).hexdigest(),
+report={'version':'1.0.24','dll_sha256':hashlib.sha256(path.read_bytes()).hexdigest(),
         'reference_sha256':hashlib.sha256(args.reference.read_bytes()).hexdigest(),
         'signature_addresses':[hex(a) for a in signatures],
         'stub_addresses':{str(op):hex(value[0]) for op,value in stubs.items()},'cases':results,

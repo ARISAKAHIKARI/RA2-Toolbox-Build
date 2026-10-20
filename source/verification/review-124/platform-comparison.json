@@ -1,0 +1,360 @@
+{
+  "scope": "Static disk image comparison; matching windows do not prove calling-chain/runtime-DLL compatibility or real netplay. Platform labels supplied by the user.",
+  "samples": [
+    {
+      "label": "ZhanWang (3)",
+      "file": "gamemd-spawn(3).exe",
+      "sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+      "bytes": 5021696,
+      "timestamp": 4261544450,
+      "image_base": "0x400000",
+      "image_size": "0x7cc000",
+      "imports": [
+        "KERNEL32.dll",
+        "USER32.dll",
+        "GDI32.dll",
+        "ADVAPI32.dll",
+        "SHELL32.dll",
+        "ole32.dll",
+        "OLEAUT32.dll",
+        "WINMM.dll",
+        "WSOCK32.dll",
+        "EDRAW.dll",
+        "DSOUND.dll",
+        "VERSION.dll",
+        "COMCTL32.dll",
+        "IMM32.dll",
+        "binkw64.dll"
+      ]
+    },
+    {
+      "label": "LBW (4)",
+      "file": "gamemd-spawn(4).exe",
+      "sha256": "c287d62a4d6a25b547e9339d071dd6e03adcf545699062e478aaeee38c60e89a",
+      "bytes": 5039656,
+      "timestamp": 33686018,
+      "image_base": "0x400000",
+      "image_size": "0x7cb000",
+      "imports": [
+        "KERNEL32.dll",
+        "USER32.dll",
+        "GDI32.dll",
+        "ADVAPI32.dll",
+        "SHELL32.dll",
+        "ole32.dll",
+        "OLEAUT32.dll",
+        "WINMM.dll",
+        "WSOCK32.dll",
+        "RDRAW.dll",
+        "DSOUND.dll",
+        "VERSION.dll",
+        "COMCTL32.dll",
+        "IMM32.dll",
+        "binkw32.dll",
+        "extensions.dll"
+      ]
+    }
+  ],
+  "text_window": {
+    "rva": "0x1000",
+    "length": 4059136,
+    "different_bytes": 1177
+  },
+  "windows": [
+    {
+      "name": "Object_constructor_window",
+      "address": "0x4c65e0",
+      "length": 112,
+      "identical": true,
+      "sha256": [
+        "95558338b18e00a798b020e6304a49834ae074e4344479ef18f564baccd59061",
+        "95558338b18e00a798b020e6304a49834ae074e4344479ef18f564baccd59061"
+      ]
+    },
+    {
+      "name": "MegaMission_constructor_window",
+      "address": "0x4c6860",
+      "length": 272,
+      "identical": true,
+      "sha256": [
+        "18269a972d340fdb23f5ff69d91f69c914a43b1f5cb3d9a57ba53da97f69e108",
+        "18269a972d340fdb23f5ff69d91f69c914a43b1f5cb3d9a57ba53da97f69e108"
+      ]
+    },
+    {
+      "name": "Produce_constructor_window",
+      "address": "0x4c6970",
+      "length": 144,
+      "identical": true,
+      "sha256": [
+        "7aa8384ab3dc994a1c6fb11ca8a88d3dcff3c476874d8b75d3fcd136b31b3e09",
+        "7aa8384ab3dc994a1c6fb11ca8a88d3dcff3c476874d8b75d3fcd136b31b3e09"
+      ]
+    },
+    {
+      "name": "SuperWeapon_constructor_window",
+      "address": "0x4c6b60",
+      "length": 128,
+      "identical": true,
+      "sha256": [
+        "93c20f3835237f87b3fa8103a4e7eda5176ea41a63c19a3d2a57219aed59f9ed",
+        "93c20f3835237f87b3fa8103a4e7eda5176ea41a63c19a3d2a57219aed59f9ed"
+      ]
+    },
+    {
+      "name": "CanBuild_window",
+      "address": "0x4f7870",
+      "length": 1344,
+      "identical": true,
+      "sha256": [
+        "c0a2b7b11fb75e8ad7ae20bb9d458bc740a785bfc045d43d821b87d72c31e334",
+        "c0a2b7b11fb75e8ad7ae20bb9d458bc740a785bfc045d43d821b87d72c31e334"
+      ]
+    },
+    {
+      "name": "Aircraft_move_window",
+      "address": "0x416800",
+      "length": 1024,
+      "identical": true,
+      "sha256": [
+        "c9a2ceaceca0b52c056bdcaa06b401daac982af0855cd3df24387be780bcbf99",
+        "c9a2ceaceca0b52c056bdcaa06b401daac982af0855cd3df24387be780bcbf99"
+      ]
+    },
+    {
+      "name": "TryNextPlanningTokenNode",
+      "address": "0x6385c0",
+      "length": 276,
+      "identical": true,
+      "sha256": [
+        "56afe0180880f53b9722948ffea7286f4b43146804ac2934af5ee95c00f81377",
+        "56afe0180880f53b9722948ffea7286f4b43146804ac2934af5ee95c00f81377"
+      ]
+    },
+    {
+      "name": "ProcessClickCoords_window",
+      "address": "0x692300",
+      "length": 2304,
+      "identical": true,
+      "sha256": [
+        "c462b4da43de46659d6b6cdd70bd336959cd57bf4e75e891a6001c90826bdf00",
+        "c462b4da43de46659d6b6cdd70bd336959cd57bf4e75e891a6001c90826bdf00"
+      ]
+    },
+    {
+      "name": "Frame_increment_window",
+      "address": "0x55de73",
+      "length": 12,
+      "identical": false,
+      "sha256": [
+        "d23771f5c2e8a9157b19ff598fd313b2de0de779c483bb6dc5b819929b282e60",
+        "665a72e657c6f024b787902c320acd4b89ff87286ce3f3589cd3f373046c8912"
+      ],
+      "bytes": [
+        "8b1584eda800a18477b00042",
+        "e9ba07620090909090909042"
+      ]
+    },
+    {
+      "name": "Event_execution_branch",
+      "address": "0x4c794b",
+      "length": 9,
+      "identical": false,
+      "sha256": [
+        "1479082957420c649eb7c602807ceb49144a2512e9aba15f09b7b6b806d0a06d",
+        "6c37ef6034e14fed202f7852eaa4ed7456507d4031605296fcdda3c6dbc87138"
+      ],
+      "bytes": [
+        "8b5607891560eba800",
+        "e9a400000090909090"
+      ]
+    },
+    {
+      "name": "Placement_patch",
+      "address": "0x4a8eb0",
+      "length": 5,
+      "identical": true,
+      "sha256": [
+        "a00acc1bc8488c84e09ac09704c33fadb39358c1f1e3761c5c42b8a4c8cc395b",
+        "a00acc1bc8488c84e09ac09704c33fadb39358c1f1e3761c5c42b8a4c8cc395b"
+      ],
+      "bytes": [
+        "a14c3da800",
+        "a14c3da800"
+      ]
+    },
+    {
+      "name": "Aircraft_type_patch",
+      "address": "0x7e2908",
+      "length": 4,
+      "identical": true,
+      "sha256": [
+        "8133cffae0c5546a9d97936595ae94de4c0c3dce1689b4a053bd2c02281c8111",
+        "8133cffae0c5546a9d97936595ae94de4c0c3dce1689b4a053bd2c02281c8111"
+      ],
+      "bytes": [
+        "50cb4100",
+        "50cb4100"
+      ]
+    },
+    {
+      "name": "Aircraft_arrival_patch",
+      "address": "0x416ab6",
+      "length": 10,
+      "identical": true,
+      "sha256": [
+        "d1d605f8a94d8b691e379a46b3604bf99a9256bdd1bcad23555fbcdfd9157b6e",
+        "d1d605f8a94d8b691e379a46b3604bf99a9256bdd1bcad23555fbcdfd9157b6e"
+      ],
+      "bytes": [
+        "c786bc00000003000000",
+        "c786bc00000003000000"
+      ]
+    },
+    {
+      "name": "Shroud_draw_patch",
+      "address": "0x47f038",
+      "length": 5,
+      "identical": true,
+      "sha256": [
+        "b67e0a157af3a3cff5f1d6f68a72b849e50743ba6cee03463dae2f2fe7e8c473",
+        "b67e0a157af3a3cff5f1d6f68a72b849e50743ba6cee03463dae2f2fe7e8c473"
+      ],
+      "bytes": [
+        "8b45105356",
+        "8b45105356"
+      ]
+    },
+    {
+      "name": "Fog_draw_patch",
+      "address": "0x47f274",
+      "length": 5,
+      "identical": true,
+      "sha256": [
+        "691fbc5c6eba1533b669d64d7711fb6619c37011dccc0cbbab2d8aefb9981c75",
+        "691fbc5c6eba1533b669d64d7711fb6619c37011dccc0cbbab2d8aefb9981c75"
+      ],
+      "bytes": [
+        "8b44243853",
+        "8b44243853"
+      ]
+    },
+    {
+      "name": "CRC_mismatch_branch",
+      "address": "0x64c6e9",
+      "length": 15,
+      "identical": false,
+      "sha256": [
+        "761b66d854a5aed4abb13af6be4be90044536928978c108f3b9164fce73df0ba",
+        "3afb6de5e01c690c339f5143dcd52e7c3213e9059dfd477ab31815efa9ba396a"
+      ],
+      "bytes": [
+        "8bb4400b428b003bd6909090909090",
+        "8bb4400b428b003bd60f8569050000"
+      ]
+    },
+    {
+      "name": "Shroud_check_mode",
+      "address": "0x5c0e30",
+      "length": 3,
+      "identical": true,
+      "sha256": [
+        "01cb47d078b4841b8408ec4fe278efa83115c6f6e101972987507d2b2b57dcf0",
+        "01cb47d078b4841b8408ec4fe278efa83115c6f6e101972987507d2b2b57dcf0"
+      ],
+      "bytes": [
+        "32c0c3",
+        "32c0c3"
+      ]
+    },
+    {
+      "name": "ProtocolZero_queue_site",
+      "address": "0x647beb",
+      "length": 9,
+      "identical": true,
+      "sha256": [
+        "06a8c923b2c16407c85fc4922d226694b96c291f557f6b92c88a8279ae6bf0bf",
+        "06a8c923b2c16407c85fc4922d226694b96c291f557f6b92c88a8279ae6bf0bf"
+      ],
+      "bytes": [
+        "83fe050f8c42030000",
+        "83fe050f8c42030000"
+      ]
+    },
+    {
+      "name": "ProtocolZero_send_rate_site",
+      "address": "0x647eb4",
+      "length": 10,
+      "identical": true,
+      "sha256": [
+        "acb6d3981d42b1d451659705ec6581dc51b6d100b985e713545d93ea2945173c",
+        "acb6d3981d42b1d451659705ec6581dc51b6d100b985e713545d93ea2945173c"
+      ],
+      "bytes": [
+        "24058b0d84eda8000405",
+        "24058b0d84eda8000405"
+      ]
+    },
+    {
+      "name": "ProtocolZero_late_event_site",
+      "address": "0x64c598",
+      "length": 6,
+      "identical": true,
+      "sha256": [
+        "36618464a1de5f063a25b0518f1a00c96d4e27a416f9dfb61f630c7533fd080e",
+        "36618464a1de5f063a25b0518f1a00c96d4e27a416f9dfb61f630c7533fd080e"
+      ],
+      "bytes": [
+        "8b1538b2a800",
+        "8b1538b2a800"
+      ]
+    },
+    {
+      "name": "C4_patch",
+      "address": "0x51a4d8",
+      "length": 6,
+      "identical": true,
+      "sha256": [
+        "4d5c8d09aad3b3bb9bc84dbda1e9efb9e00ba4bc05fbaef14b63f27450c36cd0",
+        "4d5c8d09aad3b3bb9bc84dbda1e9efb9e00ba4bc05fbaef14b63f27450c36cd0"
+      ],
+      "bytes": [
+        "8a81c20e0000",
+        "8a81c20e0000"
+      ]
+    },
+    {
+      "name": "Tech_draw_patch",
+      "address": "0x6a97d2",
+      "length": 5,
+      "identical": true,
+      "sha256": [
+        "f690377d726bd59a2baf325062db05216061e43a5a2a6d0e0f99cefa6ee473aa",
+        "f690377d726bd59a2baf325062db05216061e43a5a2a6d0e0f99cefa6ee473aa"
+      ],
+      "bytes": [
+        "e899e0e4ff",
+        "e899e0e4ff"
+      ]
+    },
+    {
+      "name": "Tech_prune_patch",
+      "address": "0x6aa781",
+      "length": 5,
+      "identical": true,
+      "sha256": [
+        "8dbb1944516d10fbb92b43be1b1a24a947d4625f1e7e48b35091cb3aaca1fc3c",
+        "8dbb1944516d10fbb92b43be1b1a24a947d4625f1e7e48b35091cb3aaca1fc3c"
+      ],
+      "bytes": [
+        "e8ead0e4ff",
+        "e8ead0e4ff"
+      ]
+    }
+  ],
+  "previous_reference": {
+    "sha256": "c287d62a4d6a25b547e9339d071dd6e03adcf545699062e478aaeee38c60e89a",
+    "matches_sample3": false,
+    "matches_sample4": true
+  }
+}

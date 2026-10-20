@@ -11,10 +11,17 @@ using Manage=int32_t (__stdcall*)(Request*);
 extern "C" int32_t __stdcall ManageGameEntry(Request*);
 inline Manage manager(){return &ManageGameEntry;}
 inline uint32_t moduleIdentity(){
+ // A module's base is immutable for its lifetime. Hot draw callbacks used to
+ // enter the loader on every Capture/Validate/Leave operation.
+ static volatile LONG cached=0;
+ const uint32_t found=uint32_t(InterlockedCompareExchange(&cached,0,0));
+ if(found)return found;
  HMODULE m=nullptr;
  GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS|GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
    reinterpret_cast<LPCWSTR>(&moduleIdentity),&m);
- return uint32_t(uintptr_t(m));
+ const uint32_t identity=uint32_t(uintptr_t(m));
+ if(identity)InterlockedCompareExchange(&cached,LONG(identity),0);
+ return identity;
 }
 inline bool manage(Request&r){auto f=manager();return f&&f(&r)==int32_t(Result::Ok);}
 inline volatile LONG activeToken=0;

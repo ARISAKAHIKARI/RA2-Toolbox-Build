@@ -1,0 +1,1 @@
+PASS: reference signatures; 12 compiled x86 stub cases: arguments, stack, branches, flags, registers and x87/SSE state

@@ -11,31 +11,32 @@ def fixture():
  return m
 def state(m):return m.Shared.from_buffer_copy(m.u.mem_read(m.SH,C.sizeof(m.Shared)))
 def save(m,s):m.u.mem_write(m.SH,bytes(s))
-sites={0x47EFE0:bytes.fromhex('55 8B EC 83 EC 34'),0x47F250:bytes.fromhex('A0 C6 E7 89 00')}
+sites={0x47F038:bytes.fromhex('8B 45 10 53 56'),0x47F274:bytes.fromhex('8B 44 24 38 53')}
 results=[]
 for scenario in ('enabled','off_before_tick','stale_host','wrong_thread','stopped_host','foreign_before_install','foreign_after_install'):
  m=fixture();assert state(m).data.renderRevealStatus==0
- if scenario=='foreign_before_install':m.u.mem_write(0x47F250,b'\x90')
+ if scenario=='foreign_before_install':m.u.mem_write(0x47F274,b'\x90')
  s=state(m);s.renderReveal=1;save(m,s);s=m.hook()
  if scenario=='foreign_before_install':
   assert s.data.renderRevealStatus==-2
-  assert bytes(m.u.mem_read(0x47EFE0,6))==sites[0x47EFE0]
-  assert bytes(m.u.mem_read(0x47F250,1))==b'\x90'
+  assert bytes(m.u.mem_read(0x47F038,5))==sites[0x47F038]
+  assert bytes(m.u.mem_read(0x47F274,1))==b'\x90'
  else:
   assert s.data.renderRevealStatus==1,(scenario,s.data.renderRevealStatus)
   assert all(m.u.mem_read(at,1)==b'\xe9' for at in sites)
   if scenario=='foreign_after_install':
-   m.u.mem_write(0x47F250,b'\x90');s=m.hook()
-   assert s.data.renderRevealStatus==-2 and m.u.mem_read(0x47F250,1)==b'\x90'
-   assert bytes(m.u.mem_read(0x47EFE0,6))==sites[0x47EFE0]
+   m.u.mem_write(0x47F274,b'\x90');s=m.hook()
+   assert s.data.renderRevealStatus==-2 and m.u.mem_read(0x47F274,1)==b'\x90'
+   assert bytes(m.u.mem_read(0x47F038,5))==sites[0x47F038]
   else:
    calls=[]
    def original(uc,at,size,_):
     calls.append(at)
-    if at==0x47EFE6:
+    if at==0x47F03D:
      ebp=m.u.reg_read(UC_X86_REG_EBP);m.u.reg_write(UC_X86_REG_EBP,m.r(ebp));m.u.reg_write(UC_X86_REG_ESP,ebp+4)
+    else:m.u.reg_write(UC_X86_REG_ESP,m.u.reg_read(UC_X86_REG_ESP)+0x30)
     m.ret(0,3)
-   for at in (0x47EFE6,0x47F255):m.u.hook_add(UC_HOOK_CODE,original,begin=at,end=at)
+   for at in (0x47F03D,0x47F279):m.u.hook_add(UC_HOOK_CODE,original,begin=at,end=at)
    s=state(m)
    if scenario=='off_before_tick':s.renderReveal=0
    if scenario=='stale_host':s.heartbeat=m.clock-4000
@@ -43,8 +44,8 @@ for scenario in ('enabled','off_before_tick','stale_host','wrong_thread','stoppe
    save(m,s)
    if scenario=='wrong_thread':m.current_thread=778
    before=(bytes(m.u.mem_read(m.crateCell,0x200)),bytes(m.u.mem_read(m.house,0x6000)),m.r(0xA802C8),m.r(0x8B41F8))
-   for at in sites:m.run(at,(0,0,15),self=m.crateCell)
-   assert calls==([] if scenario=='enabled' else [0x47EFE6,0x47F255]),(scenario,calls)
+   for at in (0x47EFE0,0x47F250):m.run(at,(0,0,15),self=m.crateCell)
+   assert calls==([] if scenario=='enabled' else [0x47F03D,0x47F279]),(scenario,calls)
    after=(bytes(m.u.mem_read(m.crateCell,0x200)),bytes(m.u.mem_read(m.house,0x6000)),m.r(0xA802C8),m.r(0x8B41F8))
    assert before==after and not any(c[0]==0x577D90 for c in m.calls)
    m.current_thread=777;s=state(m);s.renderReveal=0;s.stop=0;save(m,s);s=m.hook()

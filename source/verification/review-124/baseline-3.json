@@ -1,0 +1,87 @@
+{
+  "scope": "Actual DLL and supplied EXE instructions; synthetic world/Win32/native resources.\nExercises first shroud/fog draw (including each EXE's real embedded-resource\nprefix), tech startup budgets and callback FP isolation. Not a netplay test.\n",
+  "baseline": true,
+  "game_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+  "dll_sha256": "640817f65cc71b97b9ad4b7128a564effba384da08cb5811a3df51b5674678c9",
+  "results": [
+    {
+      "case": "first_draw_0_False",
+      "status": "PASS",
+      "resource_initialization_retained": true,
+      "baseline_skips_init": false
+    },
+    {
+      "case": "first_draw_0_True",
+      "status": "PASS",
+      "resource_initialization_retained": false,
+      "baseline_skips_init": true
+    },
+    {
+      "case": "first_draw_3_False",
+      "status": "PASS",
+      "resource_initialization_retained": true,
+      "baseline_skips_init": false
+    },
+    {
+      "case": "first_draw_3_True",
+      "status": "PASS",
+      "resource_initialization_retained": false,
+      "baseline_skips_init": true
+    },
+    {
+      "case": "first_draw_4_False",
+      "status": "PASS",
+      "resource_initialization_retained": true,
+      "baseline_skips_init": false
+    },
+    {
+      "case": "first_draw_4_True",
+      "status": "PASS",
+      "resource_initialization_retained": false,
+      "baseline_skips_init": true
+    },
+    {
+      "case": "first_draw_5_False",
+      "status": "PASS",
+      "resource_initialization_retained": true,
+      "baseline_skips_init": false
+    },
+    {
+      "case": "first_draw_5_True",
+      "status": "PASS",
+      "resource_initialization_retained": false,
+      "baseline_skips_init": true
+    },
+    {
+      "case": "tech_bounded_3",
+      "status": "PASS",
+      "first_batch": 42,
+      "baseline_unbounded": true
+    },
+    {
+      "case": "tech_bounded_4",
+      "status": "PASS",
+      "first_batch": 42,
+      "baseline_unbounded": true
+    },
+    {
+      "case": "fp_isolation_message",
+      "status": "PASS",
+      "inside_mxcsr": "0x7fa0",
+      "caller_mxcsr_restored": "0x7fa0"
+    },
+    {
+      "case": "fp_isolation_draw",
+      "status": "PASS",
+      "inside_mxcsr": "0x7fa0",
+      "caller_mxcsr_restored": "0x7fa0"
+    },
+    {
+      "case": "hot_draw_module_identity",
+      "status": "PASS",
+      "draws": 100,
+      "module_lookups": 300
+    }
+  ],
+  "real_netplay": false
+}

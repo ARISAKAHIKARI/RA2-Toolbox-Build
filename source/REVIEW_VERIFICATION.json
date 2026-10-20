@@ -1,32 +1,48 @@
 {
-  "version": "1.0.23",
-  "file_version": "1.0.23.0",
+  "version": "1.0.24",
+  "file_version": "1.0.24.0",
   "assist_protocol": 52,
   "changes": [
-    "allow only AirWaypoint recording while native PlanningMode is set",
-    "report negative path capture receipts and log recording results; no new patches"
+    "Keep real shroud/fog resource initialization before skipping blits; move two manager-owned patch sites",
+    "Bound tech refresh to 32 examined / 8 new cameos per logic-frame batch",
+    "Isolate callback x87/SSE environment and restore before chaining",
+    "Cache module identity without weakening leases; expand read-only runtime byte diagnostics"
   ],
   "runtime_cases": {
+    "compatibility-3": 13,
+    "render-boundary-3": 13,
+    "lifecycle-3": 12,
+    "tech-3": 36,
     "air-3": 8,
-    "air-4": 8
+    "startup-3": 72,
+    "compatibility-4": 13,
+    "render-boundary-4": 13,
+    "lifecycle-4": 12,
+    "tech-4": 36,
+    "air-4": 8,
+    "startup-4": 72,
+    "c4": 8,
+    "render-toggle": 7,
+    "EXPERIMENTAL_HOOK_VERIFICATION.json": 12,
+    "RENDER_REVEAL_VERIFICATION.json": 26
   },
-  "previous_version_reproductions": 8,
-  "baseline_dll_sha256": "256d6b05918325290b1c075890458a4f9cd92afb6472aeb9aa869296ad31326d",
-  "host_checks": [
-    "actual air route recorder/service",
-    "actual pointer fanout service"
-  ],
+  "counted_cases": 361,
+  "previous_version_comparisons": 13,
+  "baseline_dll_sha256": "640817f65cc71b97b9ad4b7128a564effba384da08cb5811a3df51b5674678c9",
   "entry_regression": "PASS on both supplied EXEs; actual DLL and constructors with synthetic world/Win32 fixtures",
-  "scope": "PlanningMode=true pointer capture, one-frame click separation, token to Move event, unchanged planning flag/aircraft bytes and no aircraft patches; other enhanced clicks still rejected. Host arrival is a controlled read, not game physics.",
+  "scope": "Actual supplied EXE initialization prefixes and compiled DLL; real Cell caller with occlusion and blitters mocked. Startup matrix is an idle synthetic world, not a platform launcher. No-input startup matrix does not activate the tech UI command by flags alone; separate tech command tests cover its startup batch.",
+  "static_platform_findings": {
+    "crc_mismatch_branch": "sample3 replaces JNE at 0x64C6F2 with 6 NOP bytes; sample4 preserves it",
+    "protocol_zero": "Not established on either actual platform; checked disk sites do not show that static implementation; runtime DLLs were not executed"
+  },
   "real_windows_game": false,
-  "real_aircraft_flight": false,
+  "real_graphics": false,
   "real_netplay": false,
   "platform_extensions_executed": false,
-  "disconnect_fix": false,
+  "disconnect_fix_proven": false,
   "ui_layout_changed": false,
-  "ui_geometry_rerun": false,
   "binary_sha256": {
-    "RA2Toolbox.exe": "6eb367ded908d08347b028ec005bb06c3a5cbd0e5baeb5a576577fcca7b28391",
-    "GameRuntime.dll": "640817f65cc71b97b9ad4b7128a564effba384da08cb5811a3df51b5674678c9"
+    "RA2Toolbox.exe": "7af83221b990e2c316d6ac927ab671d5e03fbb58d39a061d3b7d325aa378cdf5",
+    "GameRuntime.dll": "0cdb9b3a14685845e5f8a00e7a320a58e2e735ec2199d6e32caab7ff4669b289"
   }
 }

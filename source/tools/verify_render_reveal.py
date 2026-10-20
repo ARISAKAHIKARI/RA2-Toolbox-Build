@@ -12,14 +12,15 @@ root=Path(__file__).resolve().parent.parent
 dll=pefile.PE(str(root/'GameRuntime.dll'));game=pefile.PE(str(args.reference))
 base=dll.OPTIONAL_HEADER.ImageBase;mapped=dll.get_memory_mapped_image()
 prefix=bytes.fromhex('9C 60 89 E3 81 EC 10 02 00 00 83 E4 F0 0F AE 04 24 FC')
-sites={0x47EFE0:bytes.fromhex('55 8B EC 83 EC 34'),0x47F250:bytes.fromhex('A0 C6 E7 89 00')}
+sites={0x47F038:bytes.fromhex('8B 45 10 53 56'),0x47F274:bytes.fromhex('8B 44 24 38 53')}
+entries={0x47F038:0x47EFE0,0x47F274:0x47F250}
 stubs={};offset=0
 while (offset:=mapped.find(prefix,offset))>=0:
  block=mapped[offset:offset+160]
- if bytes.fromhex('6A 00 6A 00 6A 03 E8') in block[:48]:
+ if bytes.fromhex('6A 00 6A 00 6A 03 E8') in block[:96]:
   call=block.index(b'\xe8',len(prefix))
   guard=base+offset+call+5+struct.unpack_from('<i',block,call+1)[0]
-  site=0x47EFE0 if bytes.fromhex('55 89 E5 83 EC 34') in block else 0x47F250
+  site=0x47F038 if bytes.fromhex('68 3D F0 47 00') in block else 0x47F274
   assert site not in stubs
   stubs[site]=(base+offset,guard)
  offset+=len(prefix)
@@ -35,7 +36,8 @@ def machine():
   at=pe.OPTIONAL_HEADER.ImageBase;u.mem_map(at,(pe.OPTIONAL_HEADER.SizeOfImage+4095)&~4095);u.mem_write(at,pe.get_memory_mapped_image())
  u.mem_map(0x2000000,0x20000);u.mem_map(0x3000000,0x10000);u.mem_map(stop,0x1000)
  u.mem_write(stack,struct.pack('<5I',stop,0x2000100,0x2000200,15,0x3333))
- u.mem_write(0x89e7c6,b'\x01')
+ u.mem_write(0x89e7c5,b'\x01\x01')
+ u.mem_write(0xA8B230,struct.pack('<I',rules))
  for reg,value in zip(registers,values):u.reg_write(reg,value)
  u.reg_write(UC_X86_REG_ESP,stack);u.reg_write(UC_X86_REG_EFLAGS,0x202)
  u.reg_write(UC_X86_REG_MXCSR,0x1F80);u.reg_write(UC_X86_REG_FPCW,0x37F)
@@ -50,7 +52,8 @@ results=[]
 for at,(start,guard) in stubs.items():
  for on in (False,True):
   for direction in (0,0x400):
-   u=machine();u.reg_write(UC_X86_REG_EFLAGS,0x202|direction);initial=snapshot(u)
+   u=machine();u.emu_start(entries[at],at,count=100)
+   u.reg_write(UC_X86_REG_EFLAGS,0x202|direction);initial=snapshot(u)
    end=stop if on else at+len(sites[at]);calls=[];finished=[]
    def hook(emu,ip,size,data):
     if ip==guard:
@@ -63,9 +66,12 @@ for at,(start,guard) in stubs.items():
    u.hook_add(UC_HOOK_CODE,hook);u.emu_start(start,0,count=200)
    assert finished==[end] and len(calls)==1
    if on:
-    initial[7]=stack+16;assert snapshot(u)==initial
+    initial[7]=stack+16
+    if at==0x47F038:initial[6]=values[6]
+    assert snapshot(u)==initial
    else:
-    original=machine();original.reg_write(UC_X86_REG_EFLAGS,0x202|direction)
+    original=machine();original.emu_start(entries[at],at,count=100)
+    original.reg_write(UC_X86_REG_EFLAGS,0x202|direction)
     original.emu_start(at,at+len(sites[at]),count=5)
     assert snapshot(u)==snapshot(original),(hex(at),'displaced instructions')
    results.append({'case':'stub','site':hex(at),'enabled':on,'DF':bool(direction),'pass':True})
@@ -92,19 +98,20 @@ for fog in (False,True):
      elif ip in continuations:
       at=continuations[ip];draws.append(at)
       # Restore the leaf prologue's local stack before a mocked blit returns.
-      if at==0x47EFE0:
+      if at==0x47F038:
        ebp=emu.reg_read(UC_X86_REG_EBP);saved=struct.unpack('<I',emu.mem_read(ebp,4))[0]
        emu.reg_write(UC_X86_REG_EBP,saved);emu.reg_write(UC_X86_REG_ESP,ebp+4)
+      else:emu.reg_write(UC_X86_REG_ESP,sp+0x30)
       ret(emu,0,3)
      elif ip==stop:finished.append(ip);emu.emu_stop()
     u.hook_add(UC_HOOK_CODE,caller);u.emu_start(0x4801F0,0,count=1500)
     assert finished==[stop] and queries==[0,1]
     assert u.reg_read(UC_X86_REG_ESP)==stack+12
-    assert draws==([] if enabled else [0x47EFE0]+([0x47F250] if fog else []))
+    assert draws==([] if enabled else [0x47F038]+([0x47F274] if fog else []))
     outcomes.append((bytes(u.mem_read(cell,0x200)),bytes(u.mem_read(house,0x200))))
    assert outcomes[0]==outcomes[1]
    results.append({'case':'original_cell_caller','fog':fog,'shroud':shroudValue,'fog_value':fogValue,'pass':True})
-report={'version':'1.0.10','dll_sha256':hashlib.sha256((root/'GameRuntime.dll').read_bytes()).hexdigest(),
+report={'version':'1.0.24','dll_sha256':hashlib.sha256((root/'GameRuntime.dll').read_bytes()).hexdigest(),
  'reference_sha256':hashlib.sha256(args.reference.read_bytes()).hexdigest(),'stubs':{hex(k):hex(v[0]) for k,v in stubs.items()},
  'cases':results,'occlusion_and_blitters_mocked':True,'real_rendering_tested':False,'real_netplay_tested':False}
 (root/'RENDER_REVEAL_VERIFICATION.json').write_text(json.dumps(report,indent=2)+'\n')

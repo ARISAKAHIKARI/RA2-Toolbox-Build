@@ -43,6 +43,10 @@ static __declspec(naked) void riskPlacementEntry(){__asm {
  and esp,-16
  fxsave [esp]
  cld
+ fninit
+ fldcw [esp]
+ mov dword ptr [esp+512],1F80h
+ ldmxcsr [esp+512]
  mov eax,[ebx+12]
  push dword ptr [eax+12]
  push dword ptr [eax+8]
@@ -74,6 +78,10 @@ static __declspec(naked) void riskAirTypeEntry(){__asm {
  and esp,-16
  fxsave [esp]
  cld
+ fninit
+ fldcw [esp]
+ mov dword ptr [esp+512],1F80h
+ ldmxcsr [esp+512]
  push 0
  push ecx
  push 1
@@ -94,6 +102,10 @@ static __declspec(naked) void riskAirArrivalEntry(){__asm {
  and esp,-16
  fxsave [esp]
  cld
+ fninit
+ fldcw [esp]
+ mov dword ptr [esp+512],1F80h
+ ldmxcsr [esp+512]
  push 0
  push esi
  push 2
@@ -116,8 +128,9 @@ original:
  push 416AC0h
  ret
 }}
-// Only the final shroud/fog drawing leaf is bypassed. The caller retains
-// GetOcclusion and its original Visibility/Foggedness cache updates.
+// Enter AFTER the original resource initialization, including platform code.
+// The old function-entry return also skipped lazy resource initialization.
+// GetOcclusion/cache updates and the complete resource prefix now still run.
 static __declspec(naked) void riskShroudEntry(){__asm {
  pushfd
  pushad
@@ -126,6 +139,10 @@ static __declspec(naked) void riskShroudEntry(){__asm {
  and esp,-16
  fxsave [esp]
  cld
+ fninit
+ fldcw [esp]
+ mov dword ptr [esp+512],1F80h
+ ldmxcsr [esp+512]
  push 0
  push 0
  push 3
@@ -137,20 +154,21 @@ static __declspec(naked) void riskShroudEntry(){__asm {
  mov esp,ebx
  popad
  popfd
+ mov esp,ebp
+ pop ebp
  ret 12
 original:
  fxrstor [esp]
  mov esp,ebx
  popad
  popfd
- push ebp
- mov ebp,esp
- sub esp,34h
- push 47EFE6h
+ mov eax,[ebp+10h]
+ push ebx
+ push esi
+ push 47F03Dh
  ret
 }}
-// Only the final shroud/fog drawing leaf is bypassed. The caller retains
-// GetOcclusion and its original Visibility/Foggedness cache updates.
+// Fog likewise keeps its initialization prefix and the original 0x2C locals.
 static __declspec(naked) void riskFogEntry(){__asm {
  pushfd
  pushad
@@ -159,6 +177,10 @@ static __declspec(naked) void riskFogEntry(){__asm {
  and esp,-16
  fxsave [esp]
  cld
+ fninit
+ fldcw [esp]
+ mov dword ptr [esp+512],1F80h
+ ldmxcsr [esp+512]
  push 0
  push 0
  push 3
@@ -170,14 +192,16 @@ static __declspec(naked) void riskFogEntry(){__asm {
  mov esp,ebx
  popad
  popfd
+ lea esp,[esp+2Ch]
  ret 12
 original:
  fxrstor [esp]
  mov esp,ebx
  popad
  popfd
- mov al,byte ptr ds:[089E7C6h]
- push 47F255h
+ mov eax,[esp+38h]
+ push ebx
+ push 47F279h
  ret
 }}
 // Replace only the six-byte load of the C4 flag. Preserve all original
@@ -191,6 +215,10 @@ static __declspec(naked) void riskC4Entry(){__asm {
  and esp,-16
  fxsave [esp]
  cld
+ fninit
+ fldcw [esp]
+ mov dword ptr [esp+512],1F80h
+ ldmxcsr [esp+512]
  push 0
  push esi
  push 4
@@ -224,6 +252,10 @@ static __declspec(naked) void riskTechEntry(){__asm {
  and esp,-16
  fxsave [esp]
  cld
+ fninit
+ fldcw [esp]
+ mov dword ptr [esp+512],1F80h
+ ldmxcsr [esp+512]
  mov eax,[ebx+12]
  push ecx
  push dword ptr [eax+8]
@@ -252,6 +284,10 @@ static __declspec(naked) void riskControlEntry(){__asm {
  and esp,-16
  fxsave [esp]
  cld
+ fninit
+ fldcw [esp]
+ mov dword ptr [esp+512],1F80h
+ ldmxcsr [esp+512]
  push ecx
  push 0
  push 6
@@ -278,8 +314,8 @@ static RiskSite riskSites[]={
  {experimentalpatch::Placement,5,{0xA1,0x4C,0x3D,0xA8,0},{}},
  {experimentalpatch::AirType,4,{0x50,0xCB,0x41,0},{}},
  {experimentalpatch::AirArrival,10,{0xC7,0x86,0xBC,0,0,0,3,0,0,0},{}},
- {experimentalpatch::ShroudDraw,6,{0x55,0x8B,0xEC,0x83,0xEC,0x34},{}},
- {experimentalpatch::FogDraw,5,{0xA0,0xC6,0xE7,0x89,0},{}},
+ {experimentalpatch::ShroudDraw,5,{0x8B,0x45,0x10,0x53,0x56},{}},
+ {experimentalpatch::FogDraw,5,{0x8B,0x44,0x24,0x38,0x53},{}},
  {experimentalpatch::C4Execution,6,{0x8A,0x81,0xC2,0x0E,0,0},{}},
  {experimentalpatch::TechDraw,5,{0xE8,0x99,0xE0,0xE4,0xFF},{}},
  {experimentalpatch::TechPrune,5,{0xE8,0xEA,0xD0,0xE4,0xFF},{}},

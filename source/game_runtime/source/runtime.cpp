@@ -4,6 +4,7 @@
 #include "../../shared/source/runtime_protocol.h"
 #include "../../shared/source/runtime_fault.h"
 #include "../../shared/source/game_entry_client.h"
+#include "../../shared/source/runtime_fp_scope.h"
 extern "C" void AssistRuntimeMessage(int,WPARAM,LPARAM);
 extern "C" void CursorRuntimeMessage(int,WPARAM,LPARAM);
 extern "C" void CursorRuntimePost(int,WPARAM,LPARAM);
@@ -66,11 +67,10 @@ struct WakeTrace {
 };
 static void cleanup(){AssistRuntimeWatchdog();CursorRuntimeWatchdog();}
 static void CALLBACK watchdogProc(HWND,UINT,UINT_PTR,DWORD){
- __declspec(align(16)) BYTE fx[512];__asm {fxsave fx}
+ RuntimeFPScope fp;
  // This timer only restores stale/disconnected clients. It never schedules
  // new user work. The host owns normal cadence and the command mailboxes.
  if(!InterlockedCompareExchange(&dispatching,1,0)){cleanup();InterlockedExchange(&dispatching,0);}
- __asm {fxrstor fx}
 }
 static bool ensureWatchdog(runtime::Stage* failure=nullptr){
  DWORD tid=GetCurrentThreadId();if(watchdog&&watchdogThread==tid)return true;
@@ -109,7 +109,9 @@ static bool connect(DWORD owner,WakeTrace& trace){
  mapping=m;control=c;controller=p;controllerID=owner;trace.report(runtime::Connected);return true;
 }
 extern "C" __declspec(dllexport) LRESULT CALLBACK GameRuntimeHook(int code,WPARAM wp,LPARAM lp){
- __declspec(align(16)) BYTE fx[512];__asm {fxsave fx}
+ // End isolation before chaining into any other module's Windows hook.
+ {
+ RuntimeFPScope fp;
  if(code>=0&&wp==PM_REMOVE&&lp){
   const MSG* msg=(const MSG*)lp;
   if(!InterlockedCompareExchange(&dispatching,1,0)){
@@ -134,15 +136,16 @@ extern "C" __declspec(dllexport) LRESULT CALLBACK GameRuntimeHook(int code,WPARA
    InterlockedExchange(&dispatching,0);
   }else if(control)InterlockedIncrement(&control->reentrant);
  }
- __asm {fxrstor fx}
+ }
  return CallNextHookEx(nullptr,code,wp,lp);
 }
 extern "C" __declspec(dllexport) LRESULT CALLBACK GameRuntimePostHook(int code,WPARAM wp,LPARAM lp){
- __declspec(align(16)) BYTE fx[512];__asm {fxsave fx}
+ {
+ RuntimeFPScope fp;
  if(code>=0&&control&&(control->enabled&runtime::Cursor)&&!InterlockedCompareExchange(&dispatching,1,0)){
   CursorRuntimePost(code,wp,lp);InterlockedExchange(&dispatching,0);
  }
- __asm {fxrstor fx}
+ }
  return CallNextHookEx(nullptr,code,wp,lp);
 }
 extern "C" BOOL WINAPI DllMain(HINSTANCE h,DWORD why,LPVOID){

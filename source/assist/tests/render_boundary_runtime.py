@@ -6,7 +6,7 @@ from pathlib import Path
 from unicorn import UC_HOOK_CODE
 from unicorn.x86_const import *
 p=argparse.ArgumentParser();p.add_argument('game');p.add_argument('dll');p.add_argument('--output',required=True);a=p.parse_args();rows=[]
-sites={0x47EFE0:bytes.fromhex('55 8B EC 83 EC 34'),0x47F250:bytes.fromhex('A0 C6 E7 89 00')}
+sites={0x47F038:bytes.fromhex('8B 45 10 53 56'),0x47F274:bytes.fromhex('8B 44 24 38 53')}
 def state(m):return m.Shared.from_buffer_copy(m.u.mem_read(m.SH,C.sizeof(m.Shared)))
 def save(m,s):m.u.mem_write(m.SH,bytes(s))
 def fixture():
@@ -14,13 +14,14 @@ def fixture():
  s=state(m);s.flags=0;s.externalDisplay=1;save(m,s);m.hook();m.original=[];m.redraw=[]
  def original(uc,at,size,_):
   m.original.append(at)
-  if at==0x47EFE6:
+  if at==0x47F03D:
    ebp=m.u.reg_read(UC_X86_REG_EBP);m.u.reg_write(UC_X86_REG_EBP,m.r(ebp));m.u.reg_write(UC_X86_REG_ESP,ebp+4)
+  else:m.u.reg_write(UC_X86_REG_ESP,m.u.reg_read(UC_X86_REG_ESP)+0x30)
   m.ret(0,3)
  def redraw(uc,at,size,_):
   sp=m.u.reg_read(UC_X86_REG_ESP);area=struct.unpack('<4i',m.u.mem_read(sp+4,16));assert area==(0,0,640,480);assert m.r(sp+20)==0
   assert m.u.reg_read(UC_X86_REG_ECX)==m.r(0x887324);m.redraw.append(area);m.ret(0,5)
- for at in (0x47EFE6,0x47F255):m.u.hook_add(UC_HOOK_CODE,original,begin=at,end=at)
+ for at in (0x47F03D,0x47F279):m.u.hook_add(UC_HOOK_CODE,original,begin=at,end=at)
  m.u.hook_add(UC_HOOK_CODE,redraw,begin=0x6D2790,end=0x6D2790)
  m.u.mem_write(0x886FA0,struct.pack('<4i',0,0,640,480))
  s=state(m);s.renderReveal=1;save(m,s);s=m.hook();assert s.data.renderRevealStatus==1
@@ -41,15 +42,15 @@ for boundary in ('menu','dialog','tactical_inactive','observer','defeated','hous
   elif boundary=='chat':m.b(0xa8bc60+25,1)
   enabled=boundary in ('frame_ahead','chat')
   before=(bytes(m.u.mem_read(m.crateCell,0x200)),bytes(m.u.mem_read(m.house,0x6000)),m.r(0xA802C8),m.r(0x8B41F8))
-  for at in sites:m.run(at,(0,0,15),self=m.crateCell)
-  assert m.original==([] if enabled else [0x47EFE6,0x47F255]),(boundary,m.original)
+  for at in (0x47EFE0,0x47F250):m.run(at,(0,0,15),self=m.crateCell)
+  assert m.original==([] if enabled else [0x47F03D,0x47F279]),(boundary,m.original)
   after=(bytes(m.u.mem_read(m.crateCell,0x200)),bytes(m.u.mem_read(m.house,0x6000)),m.r(0xA802C8),m.r(0x8B41F8));assert before==after
   if boundary in ('menu','dialog','tactical_inactive'):
    m.original.clear();s=m.hook()
-   for at in sites:m.run(at,(0,0,15),self=m.crateCell)
-   assert m.original==[0x47EFE6,0x47F255]
+   for at in (0x47EFE0,0x47F250):m.run(at,(0,0,15),self=m.crateCell)
+   assert m.original==[0x47F03D,0x47F279]
    m.w(0xa8eda0,0);m.w(0xa8ed8c,0);m.b(0xa8e378,1);m.hook();m.original.clear()
-   for at in sites:m.run(at,(0,0,15),self=m.crateCell)
+   for at in (0x47EFE0,0x47F250):m.run(at,(0,0,15),self=m.crateCell)
    assert m.original==[]
   rows.append({'case':boundary,'status':'PASS'});print('PASS',boundary,flush=True)
  except Exception as e:rows.append({'case':boundary,'status':'FAIL','error':repr(e)});traceback.print_exc()

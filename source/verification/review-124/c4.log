@@ -1,0 +1,1 @@
+PASS: 8 compiled C4 stub cases; only AL changes, all other registers/flags/stack/x87/SSE restored

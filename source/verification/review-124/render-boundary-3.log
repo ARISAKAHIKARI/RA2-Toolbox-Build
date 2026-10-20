@@ -1,0 +1,11 @@
+PASS menu
+PASS dialog
+PASS tactical_inactive
+PASS observer
+PASS defeated
+PASS house
+PASS frame_back
+PASS frame_ahead
+PASS mode
+PASS run_flag
+PASS chat

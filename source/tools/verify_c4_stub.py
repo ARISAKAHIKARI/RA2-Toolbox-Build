@@ -8,11 +8,11 @@ p=argparse.ArgumentParser();p.add_argument('--reference',required=True);p.add_ar
 assert game.get_data(site-game.OPTIONAL_HEADER.ImageBase,6)==bytes.fromhex('8A 81 C2 0E 00 00')
 prefix=bytes.fromhex('9C 60 89 E3 81 EC 10 02 00 00 83 E4 F0 0F AE 04 24 FC');starts=[];at=0
 while (at:=mapped.find(prefix,at))>=0:
- block=mapped[at:at+48]
+ block=mapped[at:at+96]
  if bytes.fromhex('6A 00 56 6A 04 E8') in block:starts.append(at)
  at+=len(prefix)
 assert len(starts)==1
-start=starts[0];block=mapped[start:start+48];call=block.index(b'\xe8',len(prefix));guard=base+start+call+5+struct.unpack_from('<i',block,call+1)[0];rows=[]
+start=starts[0];block=mapped[start:start+96];call=block.index(b'\xe8',len(prefix));guard=base+start+call+5+struct.unpack_from('<i',block,call+1)[0];rows=[]
 regs=[UC_X86_REG_EAX,UC_X86_REG_EBX,UC_X86_REG_ECX,UC_X86_REG_EDX,UC_X86_REG_ESI,UC_X86_REG_EDI,UC_X86_REG_EBP,UC_X86_REG_ESP,UC_X86_REG_EFLAGS,UC_X86_REG_FPCW,UC_X86_REG_MXCSR]+list(range(UC_X86_REG_XMM0,UC_X86_REG_XMM0+8))
 for on in (0,1):
  for native in (0,1):

@@ -5,6 +5,9 @@ static constexpr uint32_t Sidebar=0x87F7E8, Tabs=Sidebar+0x1544;
 #include "sidebar_policy.h"
 static int typeSlot(uint32_t);
 static bool techPending;static bool setTechSites(bool);static bool riskTechActive;
+static int techScanAt,techScanVisible,techScanUnavailable,techScanFrame=INT32_MIN;
+static uint64_t techScanCatalogue;
+static void requestTechRefresh(){techPending=true;techScanAt=techScanVisible=techScanUnavailable=0;techScanCatalogue=catalogueHash;}
 // Persistent sidebar permission must not oscillate on host UI stalls. The
 // central stop/dead-controller cleanup owns restoration; no heartbeat timeout
 // may make native StripClass emit an unintended Abandon mid-production.
@@ -34,11 +37,23 @@ static bool ensureTechCameo(int i,uint32_t house){
  int tab=typeTab(i);if(tab<0||tab>3||get<int>(Tabs+tab*3988+84)>=75)return false;
  if(!call<bool>(0x6A6300,Sidebar,t.kind,t.index))return false;sidebarRedraw(tab);return hasCameo(t.kind,t.index);
 }
-static void restoreTech(){techPending=false;snap.techOpen=0;setTechSites(false);}
-static void refreshTech(uint32_t house,DWORD now){techRefresh=now;snap.techError=0;snap.techVisible=snap.techUnavailable=0;
+static void restoreTech(){techPending=false;techScanAt=techScanVisible=techScanUnavailable=0;techScanFrame=INT32_MIN;snap.techOpen=0;setTechSites(false);}
+static void refreshTech(uint32_t house,DWORD now){techRefresh=now;snap.techError=0;
  if(!(sh->flags&UnsafeTech)){restoreTech();return;}
- if(!setTechSites(true)){snap.techOpen=0;snap.techError=-11;return;}snap.techOpen=1;
- for(int i=0;i<snap.typeCount;++i){if(ensureTechCameo(i,house))++snap.techVisible;else ++snap.techUnavailable;}
+ if(!setTechSites(true)){snap.techOpen=0;techPending=false;snap.techError=-11;return;}snap.techOpen=1;
+ if(!techPending||techScanCatalogue!=catalogueHash)requestTechRefresh();
+ const int frame=get<int>(0xA8ED84);
+ if(techScanFrame==frame)return; // one bounded batch, even with several wakes
+ techScanFrame=frame;
+ unsigned examined=0,added=0;
+ while(techScanAt<snap.typeCount&&examined<32&&added<8){
+  const int i=techScanAt++;++examined;
+  const auto&t=snap.types[i];const bool existed=hasCameo(t.kind,t.index);
+  if(ensureTechCameo(i,house)){++techScanVisible;if(!existed)++added;}
+  else ++techScanUnavailable;
+ }
+ snap.techVisible=techScanVisible;snap.techUnavailable=techScanUnavailable;
+ techPending=techScanAt<snap.typeCount;
 }
 struct FlashRef {uint32_t address;int kind,index,until;};static FlashRef flashRefs[4*75];
 static void clearFlashes(){for(auto&f:flashRefs){if(f.address&&get<int>(f.address-48)==f.index&&get<int>(f.address-44)==f.kind&&get<int>(f.address)==f.until)put<int>(f.address,0);f={};}}

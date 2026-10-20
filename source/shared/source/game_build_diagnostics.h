@@ -13,8 +13,8 @@ template<class Read> std::wstring describe(Read read){
   stamp==33686018u&&size==0x7CB000?L"user-sample-4-LBW":L"unknown";
  std::wstring out=L"game-build hint=";out+=hint;out+=L" (PE metadata; not full file identity)";
  wchar_t number[80];swprintf(number,80,L" machine=%04X stamp=%08X imageSize=%08X",unsigned(machine),unsigned(stamp),unsigned(size));out+=number;
- const uint32_t addresses[]={0x55DE73,0x4C794B,0x416AB6,0x7E2908,0x4C65E0,0x4C6B60};
- for(auto at:addresses){uint8_t bytes[10]{};swprintf(number,80,L" probe-%08X=",unsigned(at));out+=number;
+ const uint32_t addresses[]={0x55DE73,0x4C794B,0x416AB6,0x7E2908,0x4C65E0,0x4C6B60,0x64C6E9,0x5C0E30,0x647BEB,0x647EB4,0x64C598,0x47EFEF,0x47F25C,0x47F038,0x47F274,0x4A8EB0,0x6A97D2,0x6AA781};
+ for(auto at:addresses){uint8_t bytes[16]{};swprintf(number,80,L" probe-%08X=",unsigned(at));out+=number;
   if(!read(at,bytes,sizeof bytes)){out+=L"unreadable";continue;}
   for(auto b:bytes){swprintf(number,80,L"%02X",unsigned(b));out+=number;}
  }
