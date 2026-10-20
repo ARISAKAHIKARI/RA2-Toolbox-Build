@@ -1,0 +1,18 @@
+PASS sidebar_frame_reset {'ui_permission': True, 'no_event_or_type_write': True}
+PASS sidebar_mode_change {'ui_permission': True, 'no_event_or_type_write': True}
+PASS sidebar_observer {'ui_permission': True, 'no_event_or_type_write': True}
+PASS sidebar_defeated {'ui_permission': True, 'no_event_or_type_write': True}
+PASS sidebar_loser {'ui_permission': True, 'no_event_or_type_write': True}
+PASS sidebar_spectator {'ui_permission': True, 'no_event_or_type_write': True}
+PASS sidebar_frame_ahead {'ui_permission': True, 'no_event_or_type_write': True}
+PASS sidebar_menu {'ui_permission': True, 'no_event_or_type_write': True}
+PASS sidebar_host_stall {'ui_permission': True, 'no_event_or_type_write': True}
+PASS sidebar_stopped {'ui_permission': False, 'no_event_or_type_write': True}
+PASS manager_reject_placement_stack {'incompatible_dependency': True, 'installation_accepted': True, 'foreign_bytes_preserved': True}
+PASS manager_reject_shroud_stack {'incompatible_dependency': True, 'installation_accepted': True, 'foreign_bytes_preserved': True}
+PASS manager_reject_fog_stack {'incompatible_dependency': True, 'installation_accepted': True, 'foreign_bytes_preserved': True}
+PASS manager_reject_arrival_stack {'incompatible_dependency': True, 'installation_accepted': True, 'foreign_bytes_preserved': True}
+PASS manager_reject_tech_arguments {'incompatible_dependency': True, 'installation_accepted': True, 'foreign_bytes_preserved': True}
+PASS manager_reject_tech_callee {'incompatible_dependency': True, 'installation_accepted': True, 'foreign_bytes_preserved': True}
+PASS late_dependency_tech {'owned_pair_restored': False, 'ordinary_repair_preserved': True}
+PASS late_dependency_render {'owned_pair_restored': False, 'ordinary_repair_preserved': True}

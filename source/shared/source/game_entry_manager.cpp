@@ -3,6 +3,7 @@
 #include <windows.h>
 #include "entry_policy.h"
 #include "experimental_patch_policy.h"
+#include "patch_context.h"
 #include "../../assist/source/hook_registry.h"
 using namespace gameentry;
 static Policy policy;
@@ -36,6 +37,15 @@ static Result applyPatch(const Request&r){
  const auto transition=patches.proposal(r.address,r.before,r.after,r.length);
  if(transition==assist::hookregistry::Transition::Deny)return Result::PatchDenied;
  if(transition==assist::hookregistry::Transition::Install){
+  // Entry bytes alone do not establish the adapter's stack/continuation ABI.
+  // Restoration must remain possible after a dependency changes.
+  if(!patchcontext::compatible(r.address,[](uint32_t at,void*out,size_t n){
+   MEMORY_BASIC_INFORMATION info{};const void* p=(const void*)(uintptr_t)at;
+   if(!VirtualQuery(p,&info,sizeof info)||info.State!=MEM_COMMIT||
+      info.AllocationBase!=GetModuleHandleW(nullptr)||(info.Protect&(PAGE_GUARD|PAGE_NOACCESS))||
+      uintptr_t(p)+n>uintptr_t(info.BaseAddress)+info.RegionSize)return false;
+   memcpy(out,p,n);return true;
+  }))return Result::PatchDenied;
   const uint32_t target=experimentalpatch::destination(r.address,r.after,r.length);MEMORY_BASIC_INFORMATION info{};
   if(!target||!VirtualQuery((void*)(uintptr_t)target,&info,sizeof info)||info.State!=MEM_COMMIT||
      info.AllocationBase!=self||info.Type!=MEM_IMAGE||!(info.Protect&(PAGE_EXECUTE|PAGE_EXECUTE_READ|PAGE_EXECUTE_READWRITE|PAGE_EXECUTE_WRITECOPY)))return Result::PatchDenied;

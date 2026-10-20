@@ -1,0 +1,152 @@
+{
+  "scope": "Compiled Runtime tests with synthetic worlds; native constructors/branch bytes execute.\nNative CanBuild/FindFactory are explicit fixture stubs, not proof of live purchase.\n",
+  "dll_sha256": "fcdccd27da43a0f90a83390ecf6c9484dfb06cb327fb8d940b3eb8fb4a83b79e",
+  "real_game": false,
+  "real_netplay": false,
+  "results": [
+    {
+      "case": "tech_0_paired_gates_payload_scope_restore",
+      "status": "PASS"
+    },
+    {
+      "case": "tech_3_paired_gates_payload_scope_restore",
+      "status": "PASS"
+    },
+    {
+      "case": "tech_4_paired_gates_payload_scope_restore",
+      "status": "PASS"
+    },
+    {
+      "case": "tech_5_paired_gates_payload_scope_restore",
+      "status": "PASS"
+    },
+    {
+      "case": "native_prune_cancel_branch",
+      "status": "PASS"
+    },
+    {
+      "case": "native_prune_retains",
+      "status": "PASS"
+    },
+    {
+      "case": "tech_conflict_group_rollback",
+      "status": "PASS"
+    },
+    {
+      "case": "player_disabled_0_23",
+      "status": "PASS"
+    },
+    {
+      "case": "player_disabled_0_24",
+      "status": "PASS"
+    },
+    {
+      "case": "player_disabled_3_23",
+      "status": "PASS"
+    },
+    {
+      "case": "player_disabled_3_24",
+      "status": "PASS"
+    },
+    {
+      "case": "player_disabled_4_23",
+      "status": "PASS"
+    },
+    {
+      "case": "player_disabled_4_24",
+      "status": "PASS"
+    },
+    {
+      "case": "player_disabled_5_23",
+      "status": "PASS"
+    },
+    {
+      "case": "player_disabled_5_24",
+      "status": "PASS"
+    },
+    {
+      "case": "player_order_0_True_False",
+      "status": "PASS"
+    },
+    {
+      "case": "player_order_0_False_False",
+      "status": "PASS"
+    },
+    {
+      "case": "player_order_0_True_True",
+      "status": "PASS"
+    },
+    {
+      "case": "player_order_3_True_False",
+      "status": "PASS"
+    },
+    {
+      "case": "player_order_3_False_False",
+      "status": "PASS"
+    },
+    {
+      "case": "player_order_3_True_True",
+      "status": "PASS"
+    },
+    {
+      "case": "player_order_4_True_False",
+      "status": "PASS"
+    },
+    {
+      "case": "player_order_4_False_False",
+      "status": "PASS"
+    },
+    {
+      "case": "player_order_4_True_True",
+      "status": "PASS"
+    },
+    {
+      "case": "player_order_5_True_False",
+      "status": "PASS"
+    },
+    {
+      "case": "player_order_5_False_False",
+      "status": "PASS"
+    },
+    {
+      "case": "player_order_5_True_True",
+      "status": "PASS"
+    },
+    {
+      "case": "foreign_sale_0_False",
+      "status": "PASS"
+    },
+    {
+      "case": "foreign_sale_0_True",
+      "status": "PASS"
+    },
+    {
+      "case": "foreign_sale_3_False",
+      "status": "PASS"
+    },
+    {
+      "case": "foreign_sale_3_True",
+      "status": "PASS"
+    },
+    {
+      "case": "foreign_sale_4_False",
+      "status": "PASS"
+    },
+    {
+      "case": "foreign_sale_4_True",
+      "status": "PASS"
+    },
+    {
+      "case": "foreign_sale_5_False",
+      "status": "PASS"
+    },
+    {
+      "case": "foreign_sale_5_True",
+      "status": "PASS"
+    },
+    {
+      "case": "player_selection_sites_denied_by_manager",
+      "status": "PASS"
+    }
+  ]
+}

@@ -1,11 +1,11 @@
 {
-  "version": "1.0.25",
+  "version": "1.0.26",
   "baseline": "0.7.16",
   "result": "No detected forbidden source-boundary bypass; ten selectable tactical decision families; UI-bound features remain external by design. Native APIs always Runtime.",
   "scope": {
-    "source_files": 172,
+    "source_files": 173,
     "host_reachable_files": 119,
-    "runtime_reachable_files": 100,
+    "runtime_reachable_files": 101,
     "method": "Recursive local include graph + forbidden API ownership checks + manual review of game-call, queue, patch and scheduling paths. Lexical assertions cannot prove all runtime behavior."
   },
   "freshness_contract": {
@@ -43,7 +43,7 @@
     "Automatic bounded host logging and callback/handshake evidence without consuming host work",
     "Source time/frame preserved across planning and queueing; per-order expiration; fresh suffix replan preserves aircraft quotas",
     "Cursor WM_SETCURSOR goes through host input manager without holding scheduler mutex",
-    "Only the message entry consumes host work; frame detours removed; Patch API permits only three 1.0.4 judgment sites, two 1.0.25 post-initialization drawing sites, one 1.0.10 C4 load, two 1.0.20 sidebar CALLs; 1.0.21 removes all five player-selection CALL permissions",
+    "Only the message entry consumes host work; frame detours removed; Patch API permits only three 1.0.4 judgment sites, two 1.0.24 post-initialization drawing sites, one 1.0.10 C4 load, two 1.0.20 sidebar CALLs; 1.0.21 removes all five player-selection CALL permissions",
     "Recycled host PID cannot reuse a dead retained controller process handle",
     "Host builds reject including the Runtime execution client",
     "Partial rebuilds invalidate old verification markers; Windows build verifies PE outputs before success"
@@ -310,6 +310,7 @@
     "shared/source/game_entry_client.h",
     "shared/source/game_entry_manager.cpp",
     "shared/source/message_query.h",
+    "shared/source/patch_context.h",
     "shared/source/runtime_fault.h",
     "shared/source/runtime_fp_scope.h",
     "shared/source/runtime_protocol.h"
@@ -332,12 +333,12 @@
     },
     {
       "file": "shared/source/game_entry_manager.cpp",
-      "line": 49,
+      "line": 59,
       "api": "VirtualProtect"
     },
     {
       "file": "shared/source/game_entry_manager.cpp",
-      "line": 52,
+      "line": 62,
       "api": "VirtualProtect"
     },
     {
@@ -449,7 +450,7 @@
     "assist/source/ore_type_config.h": "eef48140f2bcb1fdd134f55de73a6b78826430488dd657d9f8637fc6491634d2",
     "assist/source/outgoing_batch.h": "e5b4319918eed134fb11c737349f5a15d1ba0f24365a9eb45e6e6d3486edc725",
     "assist/source/pacing.h": "c5bee84db7baa25b91d219afbe2f3d96ef276ae55d7b51d188cde3ce9bbb50db",
-    "assist/source/placement_bridge.h": "9d66de18d7f644739f1466e14f96bb89e285394fb694f99963dd843dfb3f48d2",
+    "assist/source/placement_bridge.h": "bc9f1cb1eb6ee2e2a45600ed4a5e5069545fd90c0d28ee139f2c0c9ebc339725",
     "assist/source/plan_freshness.h": "098a5432d1e60b9cdedc6443f35eedf2ef1be94e1c6e6f95364bc96da3049c0c",
     "assist/source/planner_index.h": "aff36ca9447a530b34dc77e48c3ee7bef3e7f8595c103e3d0e52fb9332353a63",
     "assist/source/planner_types.h": "d2fe03926a4aa071dd15f2d2769df9ea10d6e89ca0f31388202754d089a14137",
@@ -469,7 +470,7 @@
     "assist/source/scheduler_policy.h": "5d7e66c7457c369c7b636adc9e5b7293ee5f1e5b434a683033233dba0be20687",
     "assist/source/session_epoch.h": "1935c87ea55edd287c53b64472c5de8f617204a924c4ca8602fc247d0a6297d9",
     "assist/source/shift_click_host.h": "25781fa3890bb06cb15dfdb652e5a5687d4094ad5760954d33c57b0a452d4435",
-    "assist/source/sidebar.h": "bd3dd6f3763e6ece9267c3af5ce45a0b0350804aaa44fd11731717f3bfe2fac5",
+    "assist/source/sidebar.h": "c1335781efeb35b17a0c74a0f23fab34145b75265ff2b93161527c724f386c42",
     "assist/source/sidebar_policy.h": "928e16cbbfd10e9ecf907ca360b1214a7b2eeff93c24a2dddf4fae5226769b36",
     "assist/source/signatures.h": "054757060d10fe067ec81880a8f584c53d6e1537c1fcc2695b267b9e68ecdd93",
     "assist/source/tactical_controls.h": "f642e6d23d3fe438456efe61025294b2de015659b3ce100b70a571b97b410350",
@@ -532,14 +533,15 @@
     "shared/source/click_burst.h": "a0d77ea036520a1c6f8c2cf777b6ab06242204ce05f475529ad58301e197b891",
     "shared/source/entry_policy.h": "7dd70fcda816cc97bba163ffba9c2c93cf0703c6a34083d2e6ca4d8ba2d879bd",
     "shared/source/experimental_patch_policy.h": "12e13b41739cc6bd809329603ce9a9d4ad76e3264524d10b136b7bee7bb6b48f",
-    "shared/source/game_build_diagnostics.h": "a76608344605e3ae61389e6a757e7f34e63a99a9752958abaeaa0db0ab6291cf",
+    "shared/source/game_build_diagnostics.h": "eb0552dec42cacc5b5e3b583a1f85d349fd20df0f448873906987b43702402c0",
     "shared/source/game_entry_api.h": "a113072ab7abe73d1667b311c5b90d99e2571aa70cff665a8a90645fdabc243b",
     "shared/source/game_entry_client.h": "a750783b2246af878c08565116d225f6acdaf85564894ab24096b4f4e03e0db7",
-    "shared/source/game_entry_manager.cpp": "019182c11a7188e06dcda4040ec8debe8f68bb5efe203faa09382a3b880a25cb",
+    "shared/source/game_entry_manager.cpp": "10a6f6607a0f2f3a3c67d3164f0f9be96439c15c8cadf049af182c95c45192c3",
     "shared/source/host_game_input.h": "6147dbd410ee7bcb6f52af6d4ae163fea9a9174f55b21d026c5845990e5c9c0c",
     "shared/source/message_query.h": "fee0a8953fbdf08d70725cfd1f6b0f1c1473e50dc863ba8444365195d884d675",
     "shared/source/modern_ui.h": "1d1a864cc35be7cbc9dd634dbe942e5b1f1eff150552f505eb2474c33efcc3f6",
-    "shared/source/release_version.h": "d88e45ef566523ff4fde07eb6fd460d4b7cad3d20765d9e26a0303ca1a83b60f",
+    "shared/source/patch_context.h": "88e7fdaf06071c7e43f34097f5f6ba29f783e67f2aed8cba87309e4ee81ba145",
+    "shared/source/release_version.h": "5d1fa47c05aa7573849d7475709fe1e579b02bc2c258d66f42a94929e58430b8",
     "shared/source/runtime_fault.h": "b4ddf16db57b0cfc1b022b286af5a5df3034f75d892abb27df8d0dcca0653818",
     "shared/source/runtime_fp_scope.h": "9b6e42ce25f028a71705dfd5f42f0f89865ae523f73f05c34349786f755646bc",
     "shared/source/runtime_protocol.h": "eb480104be375885b5370692c3c90d76409fd32f2d7f95415e7df6344693a56b",

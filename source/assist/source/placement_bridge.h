@@ -1,5 +1,6 @@
 // Explicit experimental game-judgment opt-ins. Sole writer: GameEntryManager.
 #include "../../shared/source/experimental_patch_policy.h"
+#include "../../shared/source/patch_context.h"
 extern "C" int __cdecl GuardedRiskAction(unsigned,unsigned,unsigned);
 static bool riskControlActive;
 static bool riskPlacementActive=false,riskAirActive=false,riskRenderActive=false,riskC4Active=false;
@@ -341,6 +342,9 @@ static bool restoreRiskSite(RiskSite&s){
  return gameentry::patch(gameentry::Client::Assist,s.address,s.after,s.before,s.size);
 }
 static bool installRiskSite(RiskSite&s){
+ // Recheck on ordinary feature maintenance, never on each drawn cell. If a
+ // later platform patch changes an ABI dependency, release only our own site.
+ if(!patchcontext::compatible(s.address,[](uint32_t at,void*out,size_t n){return read(at,out,n);})){restoreRiskSite(s);return false;}
  if(codeHookRegistry.active(s.address)){if(riskSiteCurrent(s))return !codeHookRegistry.conflict(s.address);codeHookRegistry.markConflict(s.address);return false;}
  return gameentry::patch(gameentry::Client::Assist,s.address,s.before,s.after,s.size);
 }

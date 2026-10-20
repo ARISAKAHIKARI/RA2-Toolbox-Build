@@ -13,6 +13,13 @@ static void requestTechRefresh(){techPending=true;techScanAt=techScanVisible=tec
 // may make native StripClass emit an unintended Abandon mid-production.
 static bool techGate(uint32_t type,uint32_t house){
  if(!sh||sh->stop||!(sh->flags&UnsafeTech)||!snap.techOpen||!riskTechActive||house!=lastHouse||get<uint32_t>(0xA83D4C)!=house||!get<bool>(0xA8E9A0))return false;
+ // Native sidebar calls can run before the next host sample. A reused House
+ // address does not authorize the previous round's catalogue/allow list.
+ // Keep permission during menus and host stalls in the SAME live round.
+ const int frame=get<int>(0xA8ED84),session=get<int>(0xA8B238);
+ if(frame<0||frame<snap.frame||frame>=INT32_MAX||session!=snap.session||
+    !eventdelivery::mayQueue(session)||house==get<uint32_t>(0xAC1198)||
+    get<bool>(house+0x1F5)||get<bool>(house+0x1F6)||get<bool>(house+0x1F8))return false;
  int slot=typeSlot(type);return slot>=0&&techAllowed[slot];
 }
 

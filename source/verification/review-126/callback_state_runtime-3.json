@@ -1,0 +1,105 @@
+{
+  "scope": "Compiled DLL callbacks with synthetic Win32 error/exception delivery.\nReal x86 game/DLL instructions, not a Windows crash dump or netplay test.\n",
+  "baseline": false,
+  "game_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+  "dll_sha256": "fcdccd27da43a0f90a83390ecf6c9484dfb06cb327fb8d940b3eb8fb4a83b79e",
+  "results": [
+    {
+      "case": "last_error_message",
+      "status": "PASS",
+      "caller_last_error": "0x12345678",
+      "chain_observations": [
+        305419896
+      ]
+    },
+    {
+      "case": "last_error_draw",
+      "status": "PASS",
+      "caller_last_error": "0x12345678",
+      "chain_observations": []
+    },
+    {
+      "case": "last_error_rejected",
+      "status": "PASS",
+      "caller_last_error": "0x12345678",
+      "chain_observations": []
+    },
+    {
+      "case": "capture_cost_False",
+      "status": "PASS",
+      "operations": 100,
+      "operation": "draw",
+      "api_calls": {
+        "GetLastError": 100,
+        "GetCurrentThreadId": 200,
+        "WaitForSingleObject": 100,
+        "GetTickCount": 100,
+        "SetLastError": 100
+      }
+    },
+    {
+      "case": "capture_cost_True",
+      "status": "PASS",
+      "operations": 100,
+      "operation": "nested_capture",
+      "api_calls": {
+        "GetCurrentThreadId": 200
+      }
+    },
+    {
+      "case": "native_fault_0x6f49de",
+      "status": "PASS",
+      "reported": true,
+      "continued_exception_search": true,
+      "exception_context_unchanged": true
+    },
+    {
+      "case": "native_fault_0x70af6c",
+      "status": "PASS",
+      "reported": true,
+      "continued_exception_search": true,
+      "exception_context_unchanged": true
+    },
+    {
+      "case": "native_fault_0x65dc17",
+      "status": "PASS",
+      "reported": true,
+      "continued_exception_search": true,
+      "exception_context_unchanged": true
+    },
+    {
+      "case": "native_fault_0x47f050",
+      "status": "PASS",
+      "reported": true,
+      "continued_exception_search": true,
+      "exception_context_unchanged": true
+    },
+    {
+      "case": "ignore_other_thread",
+      "status": "PASS",
+      "reported": false,
+      "continued_exception_search": true,
+      "exception_context_unchanged": true
+    },
+    {
+      "case": "ignore_disabled",
+      "status": "PASS",
+      "reported": false,
+      "continued_exception_search": true,
+      "exception_context_unchanged": true
+    },
+    {
+      "case": "ignore_breakpoint",
+      "status": "PASS",
+      "reported": false,
+      "continued_exception_search": true,
+      "exception_context_unchanged": true
+    },
+    {
+      "case": "observer_registration_failure_is_nonfatal",
+      "status": "PASS",
+      "bridge_remains_usable": true
+    }
+  ],
+  "real_netplay": false
+}

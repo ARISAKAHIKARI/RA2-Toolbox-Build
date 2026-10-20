@@ -1,0 +1,47 @@
+{
+  "version": "1.0.26",
+  "release_channel": "stable",
+  "file_version": "1.0.26.0",
+  "assist_protocol": 52,
+  "runtime_protocol": 4,
+  "entry_manager_protocol": 3,
+  "changes": [
+    "Scope technology UI callbacks to the current live player/session/frame without heartbeat/menu flicker",
+    "Verify fixed stack/argument/continuation dependencies in the sole patch writer and feature maintenance; restore owned groups on drift",
+    "Extend read-only runtime diagnostics for render/SSE patch evidence"
+  ],
+  "counted_cases": 378,
+  "runtime_cases": {
+    "compatibility-3": 24,
+    "compatibility-4": 24,
+    "callback_state_runtime-3": 13,
+    "render_boundary_runtime-3": 13,
+    "player_tech_runtime-3": 36,
+    "player_tech_runtime-4": 36,
+    "platform_compatibility_runtime-3": 13,
+    "platform_compatibility_runtime-4": 13,
+    "experimental_lifecycle_runtime-3": 12,
+    "experimental_lifecycle_runtime-4": 12,
+    "tactical_startup_runtime-3": 72,
+    "tactical_startup_runtime-4": 72,
+    "EXPERIMENTAL_HOOK_VERIFICATION.json": 12,
+    "RENDER_REVEAL_VERIFICATION.json": 26
+  },
+  "previous_version_comparisons": 18,
+  "baseline_dll_sha256": "98d02622ae10dc6601e50e0e74771b8e213e21e626cfa2cc7557656c8a9a367c",
+  "additional_verification": [
+    "Actual native constructor/queue and entry-manager regression",
+    "PE32 ABI/version/import/resource verification",
+    "Architecture ownership audit"
+  ],
+  "scope": "Compiled x86 DLL and both user EXEs with synthetic Win32, world, graphics, and some native-query fixtures; altered ABI dependencies are injected negative controls, not observed platform changes.",
+  "real_windows_game": false,
+  "real_graphics": false,
+  "real_netplay": false,
+  "platform_extensions_executed": false,
+  "disconnect_fix_proven": false,
+  "binary_sha256": {
+    "RA2Toolbox.exe": "ebe59f8ad2da39645eca0990b981cbe4c16dc4a2531fd01e2d6f6e6dced18ba9",
+    "GameRuntime.dll": "fcdccd27da43a0f90a83390ecf6c9484dfb06cb327fb8d940b3eb8fb4a83b79e"
+  }
+}

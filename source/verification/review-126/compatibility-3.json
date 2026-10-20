@@ -1,0 +1,165 @@
+{
+  "scope": "Execute compiled Runtime against supplied EXE code with synthetic Win32/world.\nNegative controls change ABI dependencies, not patch entry bytes. Baseline mode\nrecords 1.0.25 accepting them; it does not claim a real platform uses these edits.\n",
+  "baseline": false,
+  "game_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+  "dll_sha256": "fcdccd27da43a0f90a83390ecf6c9484dfb06cb327fb8d940b3eb8fb4a83b79e",
+  "results": [
+    {
+      "case": "sidebar_frame_reset",
+      "status": "PASS",
+      "ui_permission": false,
+      "no_event_or_type_write": true
+    },
+    {
+      "case": "sidebar_mode_change",
+      "status": "PASS",
+      "ui_permission": false,
+      "no_event_or_type_write": true
+    },
+    {
+      "case": "sidebar_observer",
+      "status": "PASS",
+      "ui_permission": false,
+      "no_event_or_type_write": true
+    },
+    {
+      "case": "sidebar_defeated",
+      "status": "PASS",
+      "ui_permission": false,
+      "no_event_or_type_write": true
+    },
+    {
+      "case": "sidebar_loser",
+      "status": "PASS",
+      "ui_permission": false,
+      "no_event_or_type_write": true
+    },
+    {
+      "case": "sidebar_spectator",
+      "status": "PASS",
+      "ui_permission": false,
+      "no_event_or_type_write": true
+    },
+    {
+      "case": "sidebar_frame_ahead",
+      "status": "PASS",
+      "ui_permission": true,
+      "no_event_or_type_write": true
+    },
+    {
+      "case": "sidebar_menu",
+      "status": "PASS",
+      "ui_permission": true,
+      "no_event_or_type_write": true
+    },
+    {
+      "case": "sidebar_host_stall",
+      "status": "PASS",
+      "ui_permission": true,
+      "no_event_or_type_write": true
+    },
+    {
+      "case": "sidebar_stopped",
+      "status": "PASS",
+      "ui_permission": false,
+      "no_event_or_type_write": true
+    },
+    {
+      "case": "manager_reject_placement_stack",
+      "status": "PASS",
+      "incompatible_dependency": true,
+      "installation_accepted": false,
+      "foreign_bytes_preserved": true
+    },
+    {
+      "case": "manager_valid_then_restore_placement_stack",
+      "status": "PASS",
+      "incompatible_dependency": false,
+      "installation_accepted": true,
+      "foreign_bytes_preserved": true
+    },
+    {
+      "case": "manager_reject_shroud_stack",
+      "status": "PASS",
+      "incompatible_dependency": true,
+      "installation_accepted": false,
+      "foreign_bytes_preserved": true
+    },
+    {
+      "case": "manager_valid_then_restore_shroud_stack",
+      "status": "PASS",
+      "incompatible_dependency": false,
+      "installation_accepted": true,
+      "foreign_bytes_preserved": true
+    },
+    {
+      "case": "manager_reject_fog_stack",
+      "status": "PASS",
+      "incompatible_dependency": true,
+      "installation_accepted": false,
+      "foreign_bytes_preserved": true
+    },
+    {
+      "case": "manager_valid_then_restore_fog_stack",
+      "status": "PASS",
+      "incompatible_dependency": false,
+      "installation_accepted": true,
+      "foreign_bytes_preserved": true
+    },
+    {
+      "case": "manager_reject_arrival_stack",
+      "status": "PASS",
+      "incompatible_dependency": true,
+      "installation_accepted": false,
+      "foreign_bytes_preserved": true
+    },
+    {
+      "case": "manager_valid_then_restore_arrival_stack",
+      "status": "PASS",
+      "incompatible_dependency": false,
+      "installation_accepted": true,
+      "foreign_bytes_preserved": true
+    },
+    {
+      "case": "manager_reject_tech_arguments",
+      "status": "PASS",
+      "incompatible_dependency": true,
+      "installation_accepted": false,
+      "foreign_bytes_preserved": true
+    },
+    {
+      "case": "manager_valid_then_restore_tech_arguments",
+      "status": "PASS",
+      "incompatible_dependency": false,
+      "installation_accepted": true,
+      "foreign_bytes_preserved": true
+    },
+    {
+      "case": "manager_reject_tech_callee",
+      "status": "PASS",
+      "incompatible_dependency": true,
+      "installation_accepted": false,
+      "foreign_bytes_preserved": true
+    },
+    {
+      "case": "manager_valid_then_restore_tech_callee",
+      "status": "PASS",
+      "incompatible_dependency": false,
+      "installation_accepted": true,
+      "foreign_bytes_preserved": true
+    },
+    {
+      "case": "late_dependency_tech",
+      "status": "PASS",
+      "owned_pair_restored": true,
+      "ordinary_repair_preserved": true
+    },
+    {
+      "case": "late_dependency_render",
+      "status": "PASS",
+      "owned_pair_restored": true,
+      "ordinary_repair_preserved": true
+    }
+  ],
+  "real_netplay": false
+}
