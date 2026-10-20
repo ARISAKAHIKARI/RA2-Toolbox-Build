@@ -82,7 +82,10 @@ extern "C" __declspec(dllexport) int32_t __stdcall ManageGameEntry(Request*r){
   const bool priorDead=(policy.thread&&policy.thread!=tid)?isBoundThreadDead(policy.thread):false;
   result=policy.enter(tid,*r,priorDead);
   if(result==Result::Ok){
-   refreshBoundThreadHandle(tid);
+   // Nested capture already owns a live outer lease on this exact thread.
+   // A fresh outer entry still verifies the retained thread object, including
+   // numeric TID reuse. No handle wait/open is needed for the nested level.
+   if(!owned)refreshBoundThreadHandle(tid);
    InterlockedExchange(&activeThread,LONG(tid));InterlockedExchange(&activeModule,LONG(r->module));
    InterlockedIncrement(&entries);retain=true;
   }

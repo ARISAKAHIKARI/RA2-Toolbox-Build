@@ -1,0 +1,5 @@
+PASS last_error_message {'caller_last_error': '0xdead', 'chain_observations': [57005]}
+PASS last_error_draw {'caller_last_error': '0xdead', 'chain_observations': []}
+PASS last_error_rejected {'caller_last_error': '0xdead', 'chain_observations': []}
+PASS capture_cost_False {'operations': 100, 'operation': 'draw', 'api_calls': {'GetCurrentThreadId': 300, 'WaitForSingleObject': 100, 'GetTickCount': 100}}
+PASS capture_cost_True {'operations': 100, 'operation': 'nested_capture', 'api_calls': {'GetCurrentThreadId': 200, 'WaitForSingleObject': 100}}

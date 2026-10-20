@@ -1,0 +1,49 @@
+{
+  "version": "1.0.25",
+  "file_version": "1.0.25.0",
+  "assist_protocol": 52,
+  "runtime_protocol": 4,
+  "runtime_control_bytes": 176,
+  "changes": [
+    "Preserve caller Win32 LastError across unified callbacks and risk helpers, including rejected capture",
+    "Avoid redundant draw validation and nested retained-thread waits without removing lease/liveness checks",
+    "Observe game-thread first-chance exceptions through Runtime-owned passive VEH; always continue exception search",
+    "Host persists final IPC evidence and exit code; bounded periodic runtime byte comparison"
+  ],
+  "counted_cases": 302,
+  "runtime_cases": {
+    "callback-3": 13,
+    "callback-4": 13,
+    "lifecycle-3": 12,
+    "lifecycle-4": 12,
+    "compatibility-3": 13,
+    "compatibility-4": 13,
+    "diagnostics-3": 13,
+    "exceptions-3": 7,
+    "startup-3": 72,
+    "startup-4": 72,
+    "binding-3": 3,
+    "render-boundary-3": 13,
+    "air-3": 8,
+    "EXPERIMENTAL_HOOK_VERIFICATION.json": 12,
+    "RENDER_REVEAL_VERIFICATION.json": 26
+  },
+  "previous_version_comparisons": 5,
+  "baseline_dll_sha256": "0cdb9b3a14685845e5f8a00e7a320a58e2e735ec2199d6e32caab7ff4669b289",
+  "additional_verification": [
+    "Actual entry/constructor/queue regression on supplied sample 3",
+    "Host transport/concurrency/input test",
+    "PE32 ABI/version/import check",
+    "Architecture boundary audit"
+  ],
+  "scope": "Compiled x86 DLL and both supplied EXEs with synthetic Win32, world, native-query and graphics fixtures. VEH invoked with synthetic EXCEPTION_POINTERS; no real Windows exception dispatch. Startup matrix uses no input in an idle fixture.",
+  "real_windows_game": false,
+  "real_graphics": false,
+  "real_netplay": false,
+  "platform_extensions_executed": false,
+  "disconnect_fix_proven": false,
+  "binary_sha256": {
+    "RA2Toolbox.exe": "f4a8fbb0d35d87cd4cdb2215402cd099c84c50f89651a16d24b5ced50c6807b0",
+    "GameRuntime.dll": "98d02622ae10dc6601e50e0e74771b8e213e21e626cfa2cc7557656c8a9a367c"
+  }
+}

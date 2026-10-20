@@ -1,4 +1,6 @@
 #include "../../shared/source/runtime_fault.h"
+extern "C" __declspec(dllimport) unsigned long __stdcall GetLastError();
+extern "C" __declspec(dllimport) void __stdcall SetLastError(unsigned long);
 extern "C" void* _exception_info();
 extern "C" unsigned long _exception_code();
 struct ExceptionRecord32 {unsigned code,flags;void* nested;void* address;unsigned count,info[15];};
@@ -23,12 +25,13 @@ extern "C" void EndAssistCapture(unsigned);
 extern "C" int __cdecl AssistRiskAction(unsigned,unsigned,unsigned);
 extern "C" void AssistFault();
 extern "C" int __cdecl GuardedRiskAction(unsigned op,unsigned object,unsigned house){
- unsigned token=BeginAssistCapture();if(!token)return 0;
+ const unsigned long savedError=GetLastError();
+ unsigned token=BeginAssistCapture();if(!token){SetLastError(savedError);return 0;}
  int result=0;
  __try {
   __try {result=AssistRiskAction(op,object,house);}
   __except(AssistExceptionFilter(_exception_info(),11)){AssistFault();}
- }__finally {EndAssistCapture(token);}
+ }__finally {EndAssistCapture(token);SetLastError(savedError);}
  return result;
 }
 // Compile this tiny boundary with the MSVC x86 ABI. MinGW x86's DWARF

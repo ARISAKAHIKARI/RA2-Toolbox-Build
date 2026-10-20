@@ -1,0 +1,38 @@
+{
+  "scope": "Actual DLL filters/handlers and command continuation under modeled x86 SEH delivery.\nThe OS dispatcher and game MouseOver are synthetic; this is not native Windows SEH validation.\n",
+  "inputs": {
+    "GameRuntime.dll": "98d02622ae10dc6601e50e0e74771b8e213e21e626cfa2cc7557656c8a9a367c"
+  },
+  "results": [
+    {
+      "case": "autoload_mode_0_single_submit_bounded_game_thread_stack",
+      "status": "PASS",
+      "stack_high_water_bytes": 8248
+    },
+    {
+      "case": "autoload_mode_0_query_AV_reports_context_rejects_before_queue",
+      "status": "PASS"
+    },
+    {
+      "case": "autoload_mode_0_repair_and_next_load_continue_without_fault_replay",
+      "status": "PASS"
+    },
+    {
+      "case": "autoload_mode_1_single_submit_bounded_game_thread_stack",
+      "status": "PASS",
+      "stack_high_water_bytes": 8248
+    },
+    {
+      "case": "autoload_mode_1_query_AV_reports_context_rejects_before_queue",
+      "status": "PASS"
+    },
+    {
+      "case": "autoload_mode_1_repair_and_next_load_continue_without_fault_replay",
+      "status": "PASS"
+    },
+    {
+      "case": "non_access_exception_reaches_outer_latch_and_never_replays_unknown_work",
+      "status": "PASS"
+    }
+  ]
+}

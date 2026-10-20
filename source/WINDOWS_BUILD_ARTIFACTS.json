@@ -1,13 +1,13 @@
 {
-  "label": "1.0.24.0 SingleRuntime",
-  "file_version": "1.0.24.0",
+  "label": "1.0.25.0 SingleRuntime",
+  "file_version": "1.0.25.0",
   "verified": {
     "RA2Toolbox.exe": {
-      "bytes": 2120192,
-      "sha256": "7af83221b990e2c316d6ac927ab671d5e03fbb58d39a061d3b7d325aa378cdf5",
+      "bytes": 2136064,
+      "sha256": "f4a8fbb0d35d87cd4cdb2215402cd099c84c50f89651a16d24b5ced50c6807b0",
       "machine": "PE32 x86",
       "sections": 14,
-      "entry_rva": "0xcce90",
+      "entry_rva": "0xcfb80",
       "exports": [
         "AssistHostProtocolInfo",
         "_Unwind_DeleteException",
@@ -535,11 +535,11 @@
       "assist_shared_bytes": 3803344
     },
     "GameRuntime.dll": {
-      "bytes": 3963392,
-      "sha256": "0cdb9b3a14685845e5f8a00e7a320a58e2e735ec2199d6e32caab7ff4669b289",
+      "bytes": 3964928,
+      "sha256": "98d02622ae10dc6601e50e0e74771b8e213e21e626cfa2cc7557656c8a9a367c",
       "machine": "PE32 x86",
       "sections": 13,
-      "entry_rva": "0x466f0",
+      "entry_rva": "0x46a60",
       "exports": [
         "AssistMappingPrefix",
         "AssistProtocolInfo",
@@ -567,6 +567,7 @@
       ],
       "imports": {
         "KERNEL32.dll": [
+          "AddVectoredExceptionHandler",
           "CloseHandle",
           "DeleteCriticalSection",
           "DisableThreadLibraryCalls",
@@ -592,6 +593,7 @@
           "QueryPerformanceFrequency",
           "RaiseException",
           "ReadProcessMemory",
+          "SetLastError",
           "Sleep",
           "TlsGetValue",
           "UnmapViewOfFile",
@@ -678,9 +680,9 @@
         ]
       },
       "GameRuntimeHook_rva": "0x1080",
-      "GameRuntimePostHook_rva": "0x1890",
-      "runtime_protocol": 3,
-      "runtime_control_bytes": 120,
+      "GameRuntimePostHook_rva": "0x1960",
+      "runtime_protocol": 4,
+      "runtime_control_bytes": 176,
       "assist_protocol": 52,
       "assist_shared_bytes": 3803344
     }

@@ -1,0 +1,50 @@
+{
+  "scope": "Compiled DLL callbacks with synthetic Win32 error/exception delivery.\nReal x86 game/DLL instructions, not a Windows crash dump or netplay test.\n",
+  "baseline": true,
+  "game_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+  "dll_sha256": "0cdb9b3a14685845e5f8a00e7a320a58e2e735ec2199d6e32caab7ff4669b289",
+  "results": [
+    {
+      "case": "last_error_message",
+      "status": "PASS",
+      "caller_last_error": "0xdead",
+      "chain_observations": [
+        57005
+      ]
+    },
+    {
+      "case": "last_error_draw",
+      "status": "PASS",
+      "caller_last_error": "0xdead",
+      "chain_observations": []
+    },
+    {
+      "case": "last_error_rejected",
+      "status": "PASS",
+      "caller_last_error": "0xdead",
+      "chain_observations": []
+    },
+    {
+      "case": "capture_cost_False",
+      "status": "PASS",
+      "operations": 100,
+      "operation": "draw",
+      "api_calls": {
+        "GetCurrentThreadId": 300,
+        "WaitForSingleObject": 100,
+        "GetTickCount": 100
+      }
+    },
+    {
+      "case": "capture_cost_True",
+      "status": "PASS",
+      "operations": 100,
+      "operation": "nested_capture",
+      "api_calls": {
+        "GetCurrentThreadId": 200,
+        "WaitForSingleObject": 100
+      }
+    }
+  ],
+  "real_netplay": false
+}

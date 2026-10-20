@@ -57,7 +57,7 @@ HHOOK SetWindowsHookExW(int kind,HOOKPROC,HMODULE,DWORD){++installs;if(failPostH
 bool UnhookWindowsHookEx(HHOOK){++unhooks;error=0;return !failUnhook;}
 DWORD GetModuleFileNameW(HMODULE,wchar_t*p,DWORD){std::wcscpy(p,L"C:\\Toolbox\\RA2Toolbox.exe");return std::wcslen(p);}
 HMODULE LoadLibraryW(const wchar_t*p){assert(std::wcscmp(p,L"C:\\Toolbox\\GameRuntime.dll")==0);++loads;return (HMODULE)1;}
-void* GetProcAddress(HMODULE,const char*n){static uint32_t info[]={3,sizeof(runtime::Control)},entry[]={3,108};if(!strcmp(n,"GameRuntimeInfo"))return info;if(!strcmp(n,"GameEntryManagerInfo"))return entry;return (void*)1;}
+void* GetProcAddress(HMODULE,const char*n){static uint32_t info[]={4,sizeof(runtime::Control)},entry[]={3,108};if(!strcmp(n,"GameRuntimeInfo"))return info;if(!strcmp(n,"GameEntryManagerInfo"))return entry;return (void*)1;}
 bool FreeLibrary(HMODULE){return true;}DWORD GetTickCount(){return clockMs;}DWORD GetCurrentProcessId(){return 456;}
 bool PostMessageW(HWND window,UINT msg,uintptr_t tag,intptr_t owner){assert(window==(HWND)42&&msg==WM_NULL&&tag==runtime::WakeTag&&owner==456);++posts;if(failPost)error=5;return !failPost;}
 HANDLE OpenThread(DWORD,bool,DWORD tid){return (HANDLE)(uintptr_t)tid;}DWORD WaitForSingleObject(HANDLE,DWORD){return oldDead?WAIT_OBJECT_0:WAIT_TIMEOUT;}bool CloseHandle(HANDLE){return true;}

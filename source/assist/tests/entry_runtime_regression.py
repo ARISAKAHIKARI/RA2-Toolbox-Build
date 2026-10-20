@@ -137,6 +137,7 @@ cursor_mapping_enabled=False;watchdog_callback=0;watchdog_threads=[];legacy_load
 fail_owner_open=False;fail_watchdog_pin=False;fail_watchdog_timer=False;mapping_names=[];
 unique_process_handles=False;opened_process_handles=[];dead_process_handles=set()
 native_query_exception=None
+win32_last_error=0;clobber_win32_error=False;exception_observer=0;observer_registration_fails=False
 canbuild_limit_result=1
 canbuild_full_result=0
 execute_native_find_factory=False
@@ -161,11 +162,12 @@ def ret(value,argc):
     sp=u.reg_read(UC_X86_REG_ESP);ip=r(sp)
     u.reg_write(UC_X86_REG_EAX,value&0xffffffff);u.reg_write(UC_X86_REG_ESP,sp+4+argc*4);u.reg_write(UC_X86_REG_EIP,ip)
 def on_code(uc,a,size,_):
-    global counter,projection_calls,size_calls,va_count,watched_read_count,watchdog_callback
+    global counter,projection_calls,size_calls,va_count,watched_read_count,watchdog_callback,win32_last_error,exception_observer
     sp=u.reg_read(UC_X86_REG_ESP)
     arg=lambda i:r(sp+4+i*4)
     if a in imports:
         n=imports[a]
+        if clobber_win32_error and n not in ('GetLastError','SetLastError','CallNextHookEx'):win32_last_error=0xdead
         if n=='GetCurrentProcessId':ret(123,0)
         elif n=='GetCurrentThreadId':ret(current_thread,0)
         elif n=='VirtualQuery':
@@ -177,7 +179,10 @@ def on_code(uc,a,size,_):
         elif n=='OpenThread':
             tid=arg(2);thread_open_counts[tid]=thread_open_counts.get(tid,0)+1;ret(0x50000000+tid,3)
         elif n=='WaitForSingleObject':ret(0 if arg(0)-0x50000000 in dead_threads or arg(0) in dead_process_handles or (arg(0)==0x1234 and process_dead) else 258,2)
-        elif n=='GetLastError':ret(5 if fail_owner_open else 8 if fail_watchdog_timer or fail_watchdog_pin else 0,0)
+        elif n=='GetLastError':ret(5 if fail_owner_open else 8 if fail_watchdog_timer or fail_watchdog_pin else win32_last_error,0)
+        elif n=='SetLastError':win32_last_error=arg(0);ret(0,1)
+        elif n=='AddVectoredExceptionHandler':
+            assert arg(0)==0;exception_observer=arg(1);ret(0 if observer_registration_fails else 0x12345678,2)
         elif n=='GetCurrentProcess':ret(0xffffffff,0)
         elif n=='GetProcessHeap':ret(1,0)
         elif n=='HeapAlloc':ret(alloc(arg(2)),3)
@@ -186,7 +191,7 @@ def on_code(uc,a,size,_):
         elif n in ('GetTickCount','timeGetTime'):ret(clock,0)
         elif n=='OpenFileMappingW':
             name=string_at(arg(2),True);mapping_names.append(name)
-            ret(2 if name=='Local\\RA2Runtime_v3_123_456_' else 1 if name==f'Local\\RA2Assist_v{struct.unpack("<I",dll.get_data(protocol_export.address,4))[0]:03}_123' else 3 if cursor_mapping_enabled and name=='Local\\RA2CursorBridge_v154_123' else 0,3)
+            ret(2 if name in ('Local\\RA2Runtime_v3_123_456_','Local\\RA2Runtime_v4_123_456_') else 1 if name==f'Local\\RA2Assist_v{struct.unpack("<I",dll.get_data(protocol_export.address,4))[0]:03}_123' else 3 if cursor_mapping_enabled and name=='Local\\RA2CursorBridge_v154_123' else 0,3)
         elif n=='MapViewOfFile':ret(SH+0x3e0000 if arg(0)==2 else 0x22000000 if arg(0)==3 else SH,5)
         elif n=='SetTimer':watchdog_callback=arg(3);watchdog_threads.append(current_thread);ret(0 if fail_watchdog_timer else 1,4)
         elif n=='wsprintfW':
@@ -345,7 +350,7 @@ assert len(ctor_calls)==1,('Planner initializer tail',ctor_calls)
 run(ctor_calls[0][0],(),ctor_calls[0][1])
 s=Shared();s.magic=0x41533130;s.advancedRangeCells=2;s.version=int.from_bytes(dll.get_data(next(e.address for e in dll.DIRECTORY_ENTRY_EXPORT.symbols if e.name==b'AssistProtocolInfo'),4),'little');s.pid=123;s.heartbeat=clock;s.foreground=1;s.flags=1|2|4|16|32;s.scanMs=100;s.repairMs=2000
 u.mem_write(SH,bytes(s));entry=dll.OPTIONAL_HEADER.ImageBase+next(e.address for e in dll.DIRECTORY_ENTRY_EXPORT.symbols if e.name==b'GameRuntimeHook')
-u.mem_write(SH+0x3e0000,struct.pack('<10I',0x52543236,3,123,456,1,1,1,clock,0,0))
+u.mem_write(SH+0x3e0000,struct.pack('<10I',0x52543236,struct.unpack('<I',dll.get_data(next(e.address for e in dll.DIRECTORY_ENTRY_EXPORT.symbols if e.name==b'GameRuntimeInfo'),4))[0],123,456,1,1,1,clock,0,0))
 u.mem_write(SH+0x3e0100,struct.pack('<7I',0,0,0x52545736,456,0,0,0))
 def hook():
     global clock

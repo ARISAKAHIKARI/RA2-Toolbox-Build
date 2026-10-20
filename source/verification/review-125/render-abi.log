@@ -1,0 +1,1 @@
+PASS: 8 compiled render stub cases and 18 original Cell caller comparisons; vision/cache parity, stack/flags/register/FPU preservation

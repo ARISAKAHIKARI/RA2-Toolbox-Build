@@ -1,48 +1,49 @@
 {
-  "version": "1.0.24",
-  "file_version": "1.0.24.0",
+  "version": "1.0.25",
+  "file_version": "1.0.25.0",
   "assist_protocol": 52,
+  "runtime_protocol": 4,
+  "runtime_control_bytes": 176,
   "changes": [
-    "Keep real shroud/fog resource initialization before skipping blits; move two manager-owned patch sites",
-    "Bound tech refresh to 32 examined / 8 new cameos per logic-frame batch",
-    "Isolate callback x87/SSE environment and restore before chaining",
-    "Cache module identity without weakening leases; expand read-only runtime byte diagnostics"
+    "Preserve caller Win32 LastError across unified callbacks and risk helpers, including rejected capture",
+    "Avoid redundant draw validation and nested retained-thread waits without removing lease/liveness checks",
+    "Observe game-thread first-chance exceptions through Runtime-owned passive VEH; always continue exception search",
+    "Host persists final IPC evidence and exit code; bounded periodic runtime byte comparison"
   ],
+  "counted_cases": 302,
   "runtime_cases": {
-    "compatibility-3": 13,
-    "render-boundary-3": 13,
+    "callback-3": 13,
+    "callback-4": 13,
     "lifecycle-3": 12,
-    "tech-3": 36,
-    "air-3": 8,
-    "startup-3": 72,
-    "compatibility-4": 13,
-    "render-boundary-4": 13,
     "lifecycle-4": 12,
-    "tech-4": 36,
-    "air-4": 8,
+    "compatibility-3": 13,
+    "compatibility-4": 13,
+    "diagnostics-3": 13,
+    "exceptions-3": 7,
+    "startup-3": 72,
     "startup-4": 72,
-    "c4": 8,
-    "render-toggle": 7,
+    "binding-3": 3,
+    "render-boundary-3": 13,
+    "air-3": 8,
     "EXPERIMENTAL_HOOK_VERIFICATION.json": 12,
     "RENDER_REVEAL_VERIFICATION.json": 26
   },
-  "counted_cases": 361,
-  "previous_version_comparisons": 13,
-  "baseline_dll_sha256": "640817f65cc71b97b9ad4b7128a564effba384da08cb5811a3df51b5674678c9",
-  "entry_regression": "PASS on both supplied EXEs; actual DLL and constructors with synthetic world/Win32 fixtures",
-  "scope": "Actual supplied EXE initialization prefixes and compiled DLL; real Cell caller with occlusion and blitters mocked. Startup matrix is an idle synthetic world, not a platform launcher. No-input startup matrix does not activate the tech UI command by flags alone; separate tech command tests cover its startup batch.",
-  "static_platform_findings": {
-    "crc_mismatch_branch": "sample3 replaces JNE at 0x64C6F2 with 6 NOP bytes; sample4 preserves it",
-    "protocol_zero": "Not established on either actual platform; checked disk sites do not show that static implementation; runtime DLLs were not executed"
-  },
+  "previous_version_comparisons": 5,
+  "baseline_dll_sha256": "0cdb9b3a14685845e5f8a00e7a320a58e2e735ec2199d6e32caab7ff4669b289",
+  "additional_verification": [
+    "Actual entry/constructor/queue regression on supplied sample 3",
+    "Host transport/concurrency/input test",
+    "PE32 ABI/version/import check",
+    "Architecture boundary audit"
+  ],
+  "scope": "Compiled x86 DLL and both supplied EXEs with synthetic Win32, world, native-query and graphics fixtures. VEH invoked with synthetic EXCEPTION_POINTERS; no real Windows exception dispatch. Startup matrix uses no input in an idle fixture.",
   "real_windows_game": false,
   "real_graphics": false,
   "real_netplay": false,
   "platform_extensions_executed": false,
   "disconnect_fix_proven": false,
-  "ui_layout_changed": false,
   "binary_sha256": {
-    "RA2Toolbox.exe": "7af83221b990e2c316d6ac927ab671d5e03fbb58d39a061d3b7d325aa378cdf5",
-    "GameRuntime.dll": "0cdb9b3a14685845e5f8a00e7a320a58e2e735ec2199d6e32caab7ff4669b289"
+    "RA2Toolbox.exe": "f4a8fbb0d35d87cd4cdb2215402cd099c84c50f89651a16d24b5ced50c6807b0",
+    "GameRuntime.dll": "98d02622ae10dc6601e50e0e74771b8e213e21e626cfa2cc7557656c8a9a367c"
   }
 }

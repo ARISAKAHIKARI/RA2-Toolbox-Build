@@ -1,0 +1,13 @@
+PASS last_error_message {'caller_last_error': '0x12345678', 'chain_observations': [305419896]}
+PASS last_error_draw {'caller_last_error': '0x12345678', 'chain_observations': []}
+PASS last_error_rejected {'caller_last_error': '0x12345678', 'chain_observations': []}
+PASS capture_cost_False {'operations': 100, 'operation': 'draw', 'api_calls': {'GetLastError': 100, 'GetCurrentThreadId': 200, 'WaitForSingleObject': 100, 'GetTickCount': 100, 'SetLastError': 100}}
+PASS capture_cost_True {'operations': 100, 'operation': 'nested_capture', 'api_calls': {'GetCurrentThreadId': 200}}
+PASS native_fault_0x6f49de {'reported': True, 'continued_exception_search': True, 'exception_context_unchanged': True}
+PASS native_fault_0x70af6c {'reported': True, 'continued_exception_search': True, 'exception_context_unchanged': True}
+PASS native_fault_0x65dc17 {'reported': True, 'continued_exception_search': True, 'exception_context_unchanged': True}
+PASS native_fault_0x47f050 {'reported': True, 'continued_exception_search': True, 'exception_context_unchanged': True}
+PASS ignore_other_thread {'reported': False, 'continued_exception_search': True, 'exception_context_unchanged': True}
+PASS ignore_disabled {'reported': False, 'continued_exception_search': True, 'exception_context_unchanged': True}
+PASS ignore_breakpoint {'reported': False, 'continued_exception_search': True, 'exception_context_unchanged': True}
+PASS observer_registration_failure_is_nonfatal {'bridge_remains_usable': True}

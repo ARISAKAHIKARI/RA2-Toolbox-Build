@@ -13,6 +13,10 @@ struct Health {
  DWORD callbackTick=0,callbackThread=0,error=0,runtimeBase=0,hookRva=0;
  DWORD faultSerial=0,faultCode=0,faultAddress=0,faultOperation=0,faultAccess=0,faultBoundary=0;
  DWORD faultThread=0,faultTick=0,faultCommand=0,faultPhase=0,faultSource=0,faultTarget=0;
+ bool nativeValid=false;
+ LONG observeState=0,observeError=0;
+ DWORD nativeSerial=0,nativeCode=0,nativeAddress=0,nativeOperation=0,nativeAccess=0;
+ DWORD nativeThread=0,nativeTick=0,nativeEax=0,nativeEcx=0,nativeEsi=0,nativeEbp=0;
 };
 struct PointerPress {DWORD tick=0,serial=0;uint32_t match=0;int operation=0;POINT point{};int width=0,height=0;uint8_t keys[256]{};};
 struct PointerQueue {PointerPress items[16]{};unsigned head=0,count=0;DWORD dropped=0,cancelSerial=0;bool enabled=false,focused=false,rightArmed=false,leftArmed=false;uint32_t match=0;DWORD contextAt=0;uint32_t down=0;uint8_t rightKeys[256]{},leftKeys[256]{};};
@@ -53,6 +57,16 @@ inline Health health(Subscription id){
  for(auto&l:h.leases)if(id&&l.id==id){auto&t=h.targets[l.target];if(t.control){
   auto*c=t.control;Health value=t.lastDiagnostic;value.diagnosticCached=value.diagnosticValid;value.diagnosticValid=false;value.subscribed=true;value.postError=t.lastPostError;
   value.enabled=c->enabled;value.ready=c->ready;value.wakePending=c->wakePending;value.dispatches=c->dispatches;
+  value.observeState=c->observeState;value.observeError=c->observeError;
+  value.nativeValid=false;
+  for(int retry=0;retry<4;++retry){
+   LONG seq=InterlockedCompareExchange(&c->nativeSeq,0,0);if(seq&1)continue;
+   Health next=value;
+   next.nativeSerial=c->nativeSerial;next.nativeCode=c->nativeCode;next.nativeAddress=c->nativeAddress;
+   next.nativeOperation=c->nativeOperation;next.nativeAccess=c->nativeAccess;next.nativeThread=c->nativeThread;next.nativeTick=c->nativeTick;
+   next.nativeEax=c->nativeEax;next.nativeEcx=c->nativeEcx;next.nativeEsi=c->nativeEsi;next.nativeEbp=c->nativeEbp;
+   if(seq==InterlockedCompareExchange(&c->nativeSeq,0,0)){next.nativeValid=true;value=next;break;}
+  }
   for(int retry=0;retry<4;++retry){
    LONG seq=InterlockedCompareExchange(&c->diagnosticSeq,0,0);if(seq&1)continue;
    Health candidate=value;

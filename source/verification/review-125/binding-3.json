@@ -1,0 +1,20 @@
+{
+  "scope": "actual compiled manager in x86 emulator; mocked Win32 thread lifecycle",
+  "inputs": {
+    "GameRuntime.dll": "98d02622ae10dc6601e50e0e74771b8e213e21e626cfa2cc7557656c8a9a367c"
+  },
+  "results": [
+    {
+      "initial_client": 1,
+      "status": "PASS"
+    },
+    {
+      "initial_client": 2,
+      "status": "PASS"
+    },
+    {
+      "initial_client": 3,
+      "status": "PASS"
+    }
+  ]
+}

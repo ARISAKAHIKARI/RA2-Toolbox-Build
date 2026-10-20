@@ -3,8 +3,8 @@
 extern "C" int __cdecl GuardedRiskAction(unsigned,unsigned,unsigned);
 static bool riskControlActive;
 static bool riskPlacementActive=false,riskAirActive=false,riskRenderActive=false,riskC4Active=false;
-static bool riskContextReady(){
- if(!gameentry::active(gameentry::Client::Assist)||fault||!lastHouse||!get<bool>(0xA8E9A0))return false;
+static bool riskContextReady(bool captured=false){
+ if((!captured&&!gameentry::active(gameentry::Client::Assist))||fault||!lastHouse||!get<bool>(0xA8E9A0))return false;
  // Native callbacks see the current frame: equality with the last message
  // snapshot would make the behavior disappear between host samples.
  const uint32_t house=get<uint32_t>(0xA83D4C);const int frame=get<int>(0xA8ED84);
@@ -13,12 +13,15 @@ static bool riskContextReady(){
    get<int>(0xA8B238)==snap.session&&eventdelivery::mayQueue(snap.session)&&
    external::display::inspect([](uint32_t at,void*out,size_t n){memcpy(out,(void*)(uintptr_t)at,n);return true;}).visible();
 }
-static bool riskReady(){
- return sh&&!sh->stop&&DWORD(sampleClock(sh)-sh->heartbeat)<3000&&riskContextReady();
+static bool riskReady(bool captured=false){
+ return sh&&!sh->stop&&DWORD(sampleClock(sh)-sh->heartbeat)<3000&&riskContextReady(captured);
 }
 extern "C" int __cdecl AssistRiskAction(unsigned op,unsigned object,unsigned house){
- if(op==5)return gameentry::active(gameentry::Client::Assist)&&techGate(object,house);
- if(!riskReady())return 0;
+ // Only GuardedRiskAction calls this helper, after obtaining a Capture lease.
+ // Keep live world checks, but don't re-enter Validate on every drawn cell.
+ if(op==5)return techGate(object,house);
+ if(op==3&&(!riskRenderActive||!sh||!sh->renderReveal))return 0;
+ if(!riskReady(true))return 0;
  if(op==6)return riskControlActive&&sh->controlAll&&playableHouse(house);
  if(op==4)return riskC4Active&&sh->c4Test&&object>=0x10000&&own(object,lastHouse)&&kind(object)==1;
  if(op==3)return riskRenderActive&&sh->renderReveal!=0; // draw-only, no native game calls

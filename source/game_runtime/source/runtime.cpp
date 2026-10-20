@@ -16,6 +16,43 @@ extern "C" __declspec(dllexport) const uint32_t GameRuntimeInfo[2]={runtime::Ver
 static runtime::Control* control;
 static HANDLE mapping,controller;
 static DWORD controllerID;
+static PVOID exceptionObserver;
+static DWORD observerThread;
+static volatile LONG observingException;
+static LONG CALLBACK observeException(EXCEPTION_POINTERS* pointers){
+ const DWORD savedError=GetLastError();
+ // Observe only the bound game thread. No stack walking, game reads, file IO,
+ // allocation, exception recovery or game-state mutation in this callback.
+ auto* c=control;const auto* r=pointers?pointers->ExceptionRecord:nullptr;
+ const auto* context=pointers?pointers->ContextRecord:nullptr;
+ if(c&&r&&context&&(c->enabled&runtime::Tactical)&&GetCurrentThreadId()==observerThread&&
+    (r->ExceptionCode==EXCEPTION_ACCESS_VIOLATION||r->ExceptionCode==EXCEPTION_IN_PAGE_ERROR||
+     r->ExceptionCode==EXCEPTION_ILLEGAL_INSTRUCTION||r->ExceptionCode==EXCEPTION_INT_DIVIDE_BY_ZERO)&&
+    !InterlockedCompareExchange(&observingException,1,0)){
+  const bool access=(r->ExceptionCode==EXCEPTION_ACCESS_VIOLATION||r->ExceptionCode==EXCEPTION_IN_PAGE_ERROR)&&r->NumberParameters>=2;
+  InterlockedIncrement(&c->nativeSeq);
+  ++c->nativeSerial;c->nativeCode=r->ExceptionCode;c->nativeAddress=DWORD(uintptr_t(r->ExceptionAddress));
+  c->nativeOperation=access?DWORD(r->ExceptionInformation[0]):~0u;
+  c->nativeAccess=access?DWORD(r->ExceptionInformation[1]):0;
+  c->nativeThread=observerThread;c->nativeTick=GetTickCount();
+  c->nativeEax=context->Eax;c->nativeEcx=context->Ecx;c->nativeEsi=context->Esi;c->nativeEbp=context->Ebp;
+  InterlockedIncrement(&c->nativeSeq);
+  InterlockedExchange(&observingException,0);
+ }
+ SetLastError(savedError);
+ return EXCEPTION_CONTINUE_SEARCH;
+}
+static void ensureExceptionObserver(){
+ if(!control)return;
+ observerThread=GetCurrentThreadId();
+ // The watchdog has pinned this DLL before registration. Append our observer
+ // to the existing handler chain; do not replace platform exception handling.
+ if(!exceptionObserver&&control->observeState==0){
+  exceptionObserver=AddVectoredExceptionHandler(0,observeException);
+  control->observeError=exceptionObserver?0:LONG(GetLastError());
+ }
+ control->observeState=exceptionObserver?1:-1;
+}
 extern "C" void RuntimeReportException(unsigned boundary,unsigned code,unsigned address,unsigned operation,unsigned access,unsigned command,unsigned phase,unsigned source,unsigned target){
  // Called only within the existing Runtime execution/capture scope. No file IO,
  // allocation, game calls, retries or acknowledgements in an exception filter.
@@ -86,7 +123,7 @@ static bool connect(DWORD owner,WakeTrace& trace){
  // A recycled numeric PID is not the same controller process. Reuse only a
  // live retained process object; otherwise follow the normal reconnect path.
  if(control&&controllerID==owner&&controller&&WaitForSingleObject(controller,0)==WAIT_TIMEOUT){
-  bool ok=ensureWatchdog(&failure);trace.report(ok?runtime::Connected:failure,ok?0:GetLastError());return ok;
+  bool ok=ensureWatchdog(&failure);if(ok)ensureExceptionObserver();trace.report(ok?runtime::Connected:failure,ok?0:GetLastError());return ok;
  }
  if(!owner)return false;
  // A pinned 0.6.x executor must be removed by restarting the game. Never
@@ -106,7 +143,7 @@ static bool connect(DWORD owner,WakeTrace& trace){
  HANDLE p=OpenProcess(SYNCHRONIZE,FALSE,owner);
  if(!p||WaitForSingleObject(p,0)!=WAIT_TIMEOUT){trace.report(p?runtime::OwnerNotAlive:runtime::OwnerOpenFailed,p?0:GetLastError());if(p)CloseHandle(p);UnmapViewOfFile(c);CloseHandle(m);return false;}
  if(!ensureWatchdog(&failure)){trace.report(failure,GetLastError());CloseHandle(p);UnmapViewOfFile(c);CloseHandle(m);return false;}
- mapping=m;control=c;controller=p;controllerID=owner;trace.report(runtime::Connected);return true;
+ mapping=m;control=c;controller=p;controllerID=owner;ensureExceptionObserver();trace.report(runtime::Connected);return true;
 }
 extern "C" __declspec(dllexport) LRESULT CALLBACK GameRuntimeHook(int code,WPARAM wp,LPARAM lp){
  // End isolation before chaining into any other module's Windows hook.

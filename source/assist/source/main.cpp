@@ -177,10 +177,31 @@ static void logBridgeHealth(bool force=false){
  static int previousCS=0;static uint32_t previousQueued=0,previousRejected=0;
  const DWORD now=GetTickCount();const auto h=gameinput::health(hook);
  static DWORD roundStarted=0;
+ static DWORD nativePid=0,nativeSerial=0,probePid=0,probeAt=0;
+ static uint32_t probeMatch=0;static std::wstring previousProbe;
+ if(h.nativeValid&&h.nativeSerial&&(nativePid!=pid||nativeSerial!=h.nativeSerial)){
+  nativePid=pid;nativeSerial=h.nativeSerial;
+  const wchar_t* site=h.nativeAddress==0x6F49DE?L"discovery-owner-null-candidate":
+   h.nativeAddress==0x70AF6C?L"sight-owner-null-candidate":h.nativeAddress==0x65DC17?L"entry-edge-owner-null-candidate":L"other";
+  autolog::write(L"native-exception firstChance=1 fatal=unknown pid="+std::to_wstring(pid)+L" serial="+std::to_wstring(h.nativeSerial)+
+   L" code="+hex32(h.nativeCode)+L" address="+hex32(h.nativeAddress)+L" site="+site+
+   L" operation="+std::to_wstring(h.nativeOperation)+L" access="+hex32(h.nativeAccess)+
+   L" thread="+std::to_wstring(h.nativeThread)+L" tick="+std::to_wstring(h.nativeTick)+
+   L" eax="+hex32(h.nativeEax)+L" ecx="+hex32(h.nativeEcx)+L" esi="+hex32(h.nativeEsi)+L" ebp="+hex32(h.nativeEbp));
+ }
  if(pid&&incoming.status==1&&(pid!=previousPid||incoming.match!=previousMatch||previousStatus!=1)){
   roundStarted=now;
-  autolog::write(gamebuild::describe([](uint32_t at,void*out,size_t n){return externalReader.readFresh(at,out,n);}));
   logLoadedGameModules();
+ }
+ // Platform DLLs may change code after the first attachment. Sample a small
+ // fixed byte set on the host, logging only changes, never authorizing patches.
+ if(pid&&incoming.status==1&&(pid!=probePid||incoming.match!=probeMatch||DWORD(now-probeAt)>=1000)){
+  auto current=gamebuild::describe([](uint32_t at,void*out,size_t n){return externalReader.readFresh(at,out,n);});
+  if(pid!=probePid||incoming.match!=probeMatch||current!=previousProbe){
+   autolog::write(L"runtime-code-evidence frame="+std::to_wstring(incoming.frame)+L" "+current);
+   if(probePid==pid)logLoadedGameModules();previousProbe=std::move(current);
+  }
+  probePid=pid;probeMatch=incoming.match;probeAt=now;
  }
  const bool hasDiagnostic=h.diagnosticValid||h.diagnosticCached;
  const LONG stage=hasDiagnostic?h.stage:runtime::Unseen;
@@ -210,6 +231,8 @@ static void logBridgeHealth(bool force=false){
   L" faultBoundary="+std::to_wstring(h.faultBoundary)+L" faultThread="+std::to_wstring(h.faultThread)+
   L" faultTick="+std::to_wstring(h.faultTick)+L" faultCommand="+std::to_wstring(h.faultCommand)+
   L" faultPhase="+std::to_wstring(h.faultPhase)+L" faultSource="+hex32(h.faultSource)+L" faultTarget="+hex32(h.faultTarget)+
+  L" exceptionObserver="+std::to_wstring(h.observeState)+L" observerError="+std::to_wstring(h.observeError)+
+  L" nativeExceptionCount="+std::to_wstring(h.nativeSerial)+
   L" match="+std::to_wstring(incoming.match)+L" status="+std::to_wstring(incoming.status)+
   L" commandStatus="+std::to_wstring(incoming.commandStatus)+L" fresh="+std::to_wstring(data)+
   L" request="+std::to_wstring(shared?shared->request:0)+L" ack="+std::to_wstring(shared?shared->ack:0)+
@@ -598,6 +621,7 @@ static void reapBridges(){DWORD now=GetTickCount();for(size_t i=0;i<retiredBridg
  else{if(DWORD(now-r.lastWake)>=100){r.lastWake=now;wakeRetiredBridge(r);}++i;}}
 }
 static void releaseBridge(){
+ if(hook)logBridgeHealth(true); // preserve the last IPC evidence before unmapping
  tacticalPlanner.reset();submittedPlan.clear();worldRevision=-1;plannerAck=0;hasSelection=false;selectionAck=0;cooperativeDelivered=cooperativeReceipt=0;retryCooperative=false;submittedCooperative.clear();acceptedCooperative.clear();
  if(shared&&hook){shared->stop=1;wakeGame();retiredBridges.push_back({shared,mapping,module,hook,game,GetTickCount(),gameThread,externalReader.connectionIdentity()});}
  else{if(hook)gameinput::release(gameentry::Client::Assist,hook);if(shared)UnmapViewOfFile(shared);if(mapping)CloseHandle(mapping);}
@@ -605,7 +629,9 @@ static void releaseBridge(){
 }
 static void detach(){minimap::clear();hideAircraftButton();resetConstruction();resetAirPath();hotkeyPending.clear();pointerMatches.clear();
  tacticalPlanner.reset();submittedPlan.clear();worldRevision=-1;plannerAck=0;hasSelection=false;selectionAck=0;
- critical(L"detach pid="+std::to_wstring(pid));commandQueue.clear();inFlightMatch=0;inFlightRetries=0;sentAt=0;lastStallLog=0;typeTap.clear();
+ DWORD exitCode=0;bool exitKnown=gameProcess&&GetExitCodeProcess(gameProcess,&exitCode);
+ critical(L"detach pid="+std::to_wstring(pid)+L" processExitCode="+(exitKnown?hex32(exitCode):L"unavailable")+
+  L" stillActive="+std::to_wstring(exitKnown&&exitCode==STILL_ACTIVE));commandQueue.clear();inFlightMatch=0;inFlightRetries=0;sentAt=0;lastStallLog=0;typeTap.clear();
  releaseBridge();externalData=nullptr;externalSampler.reset();externalReader.close();externalAt=0;
  bridgeAttempts=0;bridgeBlocked=false;bridgeRetryAt=0;bridgeFailure.clear();
  if(gameProcess)CloseHandle(gameProcess);gameProcess=nullptr;lastProcessCheck=0;game=nullptr;pid=0;gameThread=0;snap={};motion.clear();labelRasters.clear();clearEnemyDisplay();ShowWindow(overlay,SW_HIDE);
@@ -697,7 +723,8 @@ static bool attach(){
  pid=c.pid;gameThread=c.thread;game=external::discovery::resolveYrppWindow(externalReader,pid,c.window,&gameThread,&gameWindowFromYrpp);
  critical(L"read-attached pid="+std::to_wstring(pid)+L" hwnd="+std::to_wstring(uintptr_t(game))+L" tid="+std::to_wstring(gameThread)+(gameWindowFromYrpp?L" windowSource=YRpp-0xB73550":L" windowSource=validated-fallback-or-none"));
  critical(gamebuild::describe([](uint32_t at,void*out,size_t n){return externalReader.readFresh(at,out,n);}));
- gameProcess=OpenProcess(SYNCHRONIZE,FALSE,pid); // Optional: read-only handle also has a liveness query.
+ gameProcess=OpenProcess(SYNCHRONIZE|PROCESS_QUERY_LIMITED_INFORMATION,FALSE,pid);
+ if(!gameProcess)gameProcess=OpenProcess(SYNCHRONIZE,FALSE,pid); // Liveness still works when exit-code query access is denied.
  setStatus(L"已连接只读 PID "+std::to_wstring(pid)+
   (game?L"，正在校验内存布局…":L"，尚无可用窗口；控制功能保持关闭"));return true;
 }

@@ -1,0 +1,113 @@
+{
+  "scope": "Actual DLL and supplied EXE instructions; synthetic world/Win32/native resources.\nExercises first shroud/fog draw (including each EXE's real embedded-resource\nprefix), tech startup budgets and callback FP isolation. Not a netplay test.\n",
+  "baseline": false,
+  "game_sha256": "c287d62a4d6a25b547e9339d071dd6e03adcf545699062e478aaeee38c60e89a",
+  "dll_sha256": "98d02622ae10dc6601e50e0e74771b8e213e21e626cfa2cc7557656c8a9a367c",
+  "results": [
+    {
+      "case": "first_draw_0_False",
+      "status": "PASS",
+      "resource_initialization_retained": true,
+      "baseline_skips_init": false
+    },
+    {
+      "case": "first_draw_0_True",
+      "status": "PASS",
+      "resource_initialization_retained": true,
+      "baseline_skips_init": false
+    },
+    {
+      "case": "first_draw_3_False",
+      "status": "PASS",
+      "resource_initialization_retained": true,
+      "baseline_skips_init": false
+    },
+    {
+      "case": "first_draw_3_True",
+      "status": "PASS",
+      "resource_initialization_retained": true,
+      "baseline_skips_init": false
+    },
+    {
+      "case": "first_draw_4_False",
+      "status": "PASS",
+      "resource_initialization_retained": true,
+      "baseline_skips_init": false
+    },
+    {
+      "case": "first_draw_4_True",
+      "status": "PASS",
+      "resource_initialization_retained": true,
+      "baseline_skips_init": false
+    },
+    {
+      "case": "first_draw_5_False",
+      "status": "PASS",
+      "resource_initialization_retained": true,
+      "baseline_skips_init": false
+    },
+    {
+      "case": "first_draw_5_True",
+      "status": "PASS",
+      "resource_initialization_retained": true,
+      "baseline_skips_init": false
+    },
+    {
+      "case": "tech_bounded_3",
+      "status": "PASS",
+      "first_batch": 8,
+      "subsequent_batches": [
+        8,
+        8,
+        8,
+        8,
+        2,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "total": 42
+    },
+    {
+      "case": "tech_bounded_4",
+      "status": "PASS",
+      "first_batch": 8,
+      "subsequent_batches": [
+        8,
+        8,
+        8,
+        8,
+        2,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "total": 42
+    },
+    {
+      "case": "fp_isolation_message",
+      "status": "PASS",
+      "inside_mxcsr": "0x1f80",
+      "caller_mxcsr_restored": "0x7fa0"
+    },
+    {
+      "case": "fp_isolation_draw",
+      "status": "PASS",
+      "inside_mxcsr": "0x1f80",
+      "caller_mxcsr_restored": "0x7fa0"
+    },
+    {
+      "case": "hot_draw_module_identity",
+      "status": "PASS",
+      "draws": 100,
+      "module_lookups": 0
+    }
+  ],
+  "real_netplay": false
+}
