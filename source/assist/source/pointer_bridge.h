@@ -38,7 +38,30 @@ static bool pointerLocation(const pointerinput::Intent&i){
  call<void>(0x692300,0x87F7E8,&point,&cell,&coord,&object,&a,&b);
  if(cell.x<=0||cell.y<=0||cell.x>=512||cell.y>=512||!readMapCell(cell.x,cell.y))return false;
  if(object&&!worldObjects.contains(object))return false;
+ // Forced entry may click a building footprint covered by another object.
+ // Resolve the building from the same cell content chain used by boarding.
+ if(i.operation==pointerinput::C4Test&&(!object||kind(object)!=3)){
+  uint32_t c=readMapCell(cell.x,cell.y);
+  for(uint32_t q=get<uint32_t>(c+0xE4),n=0;q>=0x10000&&n<256;++n){
+   if(!worldObjects.contains(q))break;if(kind(q)==3){object=q;break;}
+   uint32_t next=get<uint32_t>(q+0x30);if(next==q)break;q=next;
+  }
+ }
  pointerGroundZ=coord.z;pointerCell=uint32_t(cell.y*1000+cell.x);pointerTarget=object;pointerTargetID=object?get<uint32_t>(object+0x10):0;return true;
+}
+static bool pointerAppendEntry(uint32_t p,int mission,uint32_t building){
+ // Explicit user experiment: serialize the planning order without normal
+ // mission feasibility, allegiance, immobilization or automation arbitration.
+ // The unified constructor/queue still owns packet format and transport.
+ uint32_t id=get<uint32_t>(p+0x10);DWORD now=sampleClock(sh);int frame=get<int>(0xA8ED84);
+ auto order=intent::mega(get<int>(lastHouse+0x30),id,mission,mission==7?0:building,mission==7?0:0x34,building,0x34,0,0);
+ order.appendWaypoint=true;if(!submitConstructed(order))return false;
+ showOrderLines(p);releaseAutoOwner(id);actorFrameArbiter.begin(match,frame);
+ actorFrameArbiter.record(id,manualVersions.get(id),taskarbiter::Owner::Generic);
+ gateway::Receipt receipt{};gateway::Intent intent{match,now,id,building,manualVersions.get(id)};
+ gateway::planned(receipt,missionObserver.allocateSerial(),intent);gateway::submitted(receipt,now);
+ recordReceipt(receipt);actorLeaseArbiter.record(match,frame,id,p,manualVersions.get(id),taskarbiter::Owner::Generic,receipt.serial);
+ return true;
 }
 static void pointerTick(){
  // A queued append must not lose its commit when the next click/cancel arrives.
@@ -57,7 +80,7 @@ static void pointerTick(){
   const bool next=(i.bindings&pointerinput::BatchNext)!=0,start=(i.bindings&pointerinput::BatchStart)!=0;
   const bool continuation=next&&!start&&pointerBatchValid&&request==pointerBatchRequest+1&&pointerinput::sameCapture(i,pointerBatchCapture);
   if(!nativeReady()||i.inputSerial!=b.cancelSerial||i.match!=match||i.house!=lastHouse||
-     (next&&!continuation)||(next&&start)||DWORD(now-i.tick)>(continuation?1500u:150u)||frame<i.frame||frame-i.frame>(continuation?90:8)||
+     (next&&!continuation)||(next&&start)||DWORD(now-i.tick)>((continuation||i.operation==pointerinput::C4Test)?1500u:150u)||frame<i.frame||frame-i.frame>((continuation||i.operation==pointerinput::C4Test)?90:8)||
      i.count<0||i.count>pointerinput::MaxSources||i.operation<1||i.operation>9){pointerFinish(-7);return;}
   if(!continuation)pointerBatchValid=false;
   if(i.operation!=pointerinput::Cancel){
@@ -66,10 +89,10 @@ static void pointerTick(){
    bool location=continuation?(tactical>=0x10000&&i.width==get<int>(0xA8EB84)&&i.height==get<int>(0xA8EB88)&&i.cameraX==get<int>(tactical+0xB0)&&i.cameraY==get<int>(tactical+0xB4)):pointerLocation(i);
    // Z sets DisplayClass::PlanningMode. AirWaypoint only records a validated
    // point for the host; rejecting it here would reject its own activation key.
-   // Other enhanced orders keep the native-planning exclusion. Do not clear or
+   // C4Test appends a native node; other orders keep the exclusion. Do not clear or
    // patch PlanningMode, and do not send a move while recording the point.
    const bool nativePlanningBlocked=get<bool>(0x87F7E8+0x11B3)&&i.operation!=pointerinput::AirWaypoint&&i.operation!=pointerinput::C4Test;
-   if((shiftUnsupported&&i.operation!=pointerinput::PlayerSelect&&i.operation!=pointerinput::PlayerOrder)||nativePlanningBlocked||!location){pointerFinish(-4);return;}
+   if((shiftUnsupported&&i.operation!=pointerinput::PlayerSelect&&i.operation!=pointerinput::PlayerOrder&&i.operation!=pointerinput::C4Test)||nativePlanningBlocked||!location){pointerFinish(-4);return;}
   }
   if(start){pointerBatchCapture=i;pointerBatchValid=true;memset(pointerBatchTickets,0,sizeof pointerBatchTickets);memset(pointerBatchFollow,0,sizeof pointerBatchFollow);}
   if(start||continuation)pointerBatchRequest=request;
@@ -101,6 +124,7 @@ static void pointerTick(){
   pointerFinish(1);return;
  }
  if(pointerTarget&&(!worldObjects.contains(pointerTarget)||!live(pointerTarget)||get<uint32_t>(pointerTarget+0x10)!=pointerTargetID)){pointerFinish(-4);return;}
+ if(i.operation==pointerinput::C4Test&&(!pointerTarget||kind(pointerTarget)!=3)){pointerFinish(-8);return;}
  if(i.operation==pointerinput::Sell){
   if(!(i.bindings&pointerinput::Control)||!pointerTarget||!sellAllowed(pointerTarget)){pointerFinish(-4);return;}
   if((i.bindings&pointerinput::PerFeatureMouse)&&
@@ -125,17 +149,16 @@ static void pointerTick(){
    if(pointerTarget==p){pointerDone[n]=1;continue;}
    if(nativeMission(owner,i.sources[n].id,mission,pointerTargetID,pointerTarget?0:pointerCell,pointerTarget?0:11,0,0,taskarbiter::Owner::Generic,nullptr,-1,OrderAuthority::PlayerTest)){++b.accepted;++submitted;pointerDone[n]=1;}else ++remaining;continue;
   }
-  if(!p||p!=i.sources[n].pointer||!own(p,lastHouse)||get<bool>(p+0x1C8)||get<uint32_t>(p+0x11C)||
+  if(!p||p!=i.sources[n].pointer||!own(p,lastHouse)||(i.operation!=pointerinput::C4Test&&(get<bool>(p+0x1C8)||get<uint32_t>(p+0x11C)))||
      (!follow&&manualVersions.get(i.sources[n].id)!=pointerTokens[n])){pointerDone[n]=1;continue;}
   if(i.operation==pointerinput::C4Test){
    // Append a native planning node; the original event receiver owns tokens.
-   if(!sh->c4Test||kind(p)!=1||!pointerTarget||kind(pointerTarget)!=3||own(pointerTarget,lastHouse)||
-      call<bool>(0x4F9A50,lastHouse,(void*)(uintptr_t)get<uint32_t>(pointerTarget+0x21C))){pointerDone[n]=1;continue;}
+   if(!sh->c4Test||kind(p)!=1){pointerDone[n]=1;continue;}
    const bool editing=get<bool>(0x87F7E8+0x11B3);const int cost=editing?1:2;
    if(submitted+cost>limit||outgoingRoom()<cost){++remaining;continue;}
    uint32_t type=typeOf(p,1);
    int mission=get<bool>(type+0xEC3)?8:get<bool>(type+0xEBE)?7:get<bool>(type+0xEC2)?17:7;
-   if(nativeMission(lastHouse,i.sources[n].id,mission,mission==7?0:pointerTargetID,pointerTargetID,0x34,0,0,taskarbiter::Owner::Generic,nullptr,-1,OrderAuthority::Local,true)){
+   if(pointerAppendEntry(p,mission,pointerTargetID)){
     ++b.accepted;if(!pointerFeedback)pointerFeedback=p;++submitted;pointerDone[n]=1;
     if(!editing){pointerCommitPending=true;pointerCommitMatch=match;pointerCommitHouse=lastHouse;
      if(pointerCommit()){pointerCommitPending=false;++submitted;}else return;}

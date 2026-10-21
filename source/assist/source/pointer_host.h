@@ -21,12 +21,22 @@ static void servicePointer(){
  InterlockedIncrement(&shared->pointerPolicySeq);shared->pointerPolicy={};shared->pointerPolicy.match=commandMatch();shared->pointerPolicy.enabled=inputReady;shared->pointerPolicy.overrideNative=extra.overrideNative;shared->pointerPolicy.bindings=bindings;memcpy(shared->pointerPolicy.buttons,extra.mouseButtons,sizeof extra.mouseButtons);MemoryBarrier();InterlockedIncrement(&shared->pointerPolicySeq);
  auto&box=shared->pointer;box.cancelSerial=gameinput::pointerCancelSerial(hook);static uint32_t ack=0;
  if(ack!=box.ack){ack=box.ack;MemoryBarrier();
+  if(box.intent.operation==pointerinput::C4Test){
+   infantryEntryResultMatch=box.intent.match;
+   infantryEntryResult=L"路径点已入队 "+std::to_wstring(std::max(0,box.accepted))+L" 个";
+   if(box.result==-8)infantryEntryResult+=L"；未点中建筑";
+   else if(box.result==-4)infantryEntryResult+=L"；点击位置或对象已变化";
+   else if(box.result==-7)infantryEntryResult+=L"；输入已过期或被新操作取消";
+   else if(box.result<0)infantryEntryResult+=L"；提交未完成";
+   else if(box.rejected)infantryEntryResult+=L"；跳过 "+std::to_wstring(box.rejected)+L" 个非己方有效步兵";
+   notify(L"步兵强制进建筑："+infantryEntryResult);
+  }
   if(box.intent.operation==pointerinput::AirWaypoint)airway::capture(box.intent,box);
   if(pointerMatches.active()){
    pointerMatches.accepted+=std::max(0,box.accepted);pointerMatches.rejected+=std::max(0,box.rejected);
    if(box.result==-7){pointerMatches.clear();notify(L"匹配组合已失效，未提交的操作已取消。");}
    else if(!pointerMatches.waiting()){notify(L"匹配组合已接收 "+std::to_wstring(pointerMatches.accepted)+L" 项；未接收 "+std::to_wstring(pointerMatches.rejected)+L" 项。");pointerMatches.clear();}
-  }else if(box.intent.operation!=pointerinput::Cancel&&box.intent.operation!=pointerinput::FollowNative&&box.intent.operation!=pointerinput::AirWaypoint){
+  }else if(box.intent.operation!=pointerinput::Cancel&&box.intent.operation!=pointerinput::FollowNative&&box.intent.operation!=pointerinput::AirWaypoint&&box.intent.operation!=pointerinput::C4Test){
    if(box.result<0)notify(L"增强输入未提交：已失效、目标不支持或队列繁忙，请重新操作。");
    else notify(L"增强输入已接收 "+std::to_wstring(box.accepted)+L" 个；未接收 "+std::to_wstring(box.rejected)+L" 个。");
   }

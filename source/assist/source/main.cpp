@@ -132,6 +132,7 @@ static long worldRevision=-1;static uint32_t plannerAck;static int submittedPlan
 static typekeys::Tap typeTap,variantTap;
 static hotkeyroute::Registry hotkeyRegistry;static hotkeyroute::Pending hotkeyPending;
 static pointerinput::PendingMatches pointerMatches;
+static std::wstring infantryEntryResult;static uint32_t infantryEntryResultMatch=0;
 static void serviceHotkeyBatch();
 static AdditionalSettings extra;static HWND extraControls[ExtraControlCount];
 static std::unordered_map<std::string,cooperative::Quota> targetQuotas;static std::vector<std::string> quotaTypeIDs;
@@ -1150,7 +1151,7 @@ static std::wstring submitDiagnostic(){
  static const wchar_t* reasons[]={L"无提交层错误",L"对局代次不匹配",L"不支持的会话类型",L"命令桥未就绪",L"聊天框占用",L"非游戏线程",L"队列已满或帧预算耗尽",L"构造参数被拒绝",L"构造失败",L"游戏计时回调不可用"};
  int e=snap.lastSubmitError;
  return std::wstring(e>=0&&e<10?reasons[e]:L"未知提交错误")+L"；会话="+std::to_wstring(snap.session)+
-  L"，已入队="+std::to_wstring(snap.queueSent)+L"，拒绝="+std::to_wstring(snap.commandRejected)+
+  L"，已入队="+std::to_wstring(snap.queueSent)+L"，全局未提交累计="+std::to_wstring(snap.commandRejected)+
   L"，满="+std::to_wstring(snap.queueFull)+L"，计时失败="+std::to_wstring(snap.queueTimingFailure);
 }
 static void result(){if(!shared)return;uint32_t a=shared->ack;if(a==ack)return;MemoryBarrier();ack=a;commandLatency=sentAt?DWORD(GetTickCount()-sentAt):0;int r=shared->result,n=shared->count,c=shared->command;
@@ -1233,7 +1234,7 @@ static void updateModeStatus(DWORD now){
  SetWindowTextW(GetDlgItem(ui,809),renderText.c_str());
  SetWindowTextW(GetDlgItem(ui,888),!extra.scrollRefreshMode?L"高刷策略：仅光标（沿用光标页设置）":shared&&shared->scrollRefreshStatus<0?L"高刷策略：接口不兼容，保持原版画面刷新":shared&&shared->scrollRefreshStatus==1?(extra.scrollRefreshMode==2?L"高刷策略：全部 · 实验性功能已启用":L"高刷策略：光标＋拖屏 · 实验性功能已启用"):L"高刷策略：等待游戏前台就绪");
  if(shared&&shared->scrollRefreshStatus==1&&shared->scrollRefreshRateMilli){wchar_t label[160];swprintf(label,160,L"%s · 补充绘制 %.1f Hz · 最长间隔 %.1f ms",extra.scrollRefreshMode==2?L"全部（实验性）":L"光标＋拖屏（实验性）",shared->scrollRefreshRateMilli/1000.0,shared->scrollRefreshMaxGapUs/1000.0);SetWindowTextW(GetDlgItem(ui,888),label);}
- SetWindowTextW(GetDlgItem(ui,813),(L"步兵强制进建筑："+riskText(extra.c4Test,snap.c4TestStatus)).c_str());
+ SetWindowTextW(GetDlgItem(ui,813),(L"步兵强制进建筑："+(extra.c4Test&&!phase&&infantryEntryResultMatch==commandMatch()&&!infantryEntryResult.empty()?infantryEntryResult:riskText(extra.c4Test,snap.c4TestStatus))).c_str());
  std::wstring progress=L"生产进度：";uint32_t owner=0;
  if(techMode&&commandFresh(now)&&externalReader.readFresh(0xA83D4C,&owner,4)&&owner>=0x10000){
   const int offsets[]={0x53BC,0x53CC,0x53B0,0x53B4,0x53B8,0x53AC};const wchar_t* names[]={L"建筑",L"防御",L"步兵",L"战车",L"舰船",L"飞机"};

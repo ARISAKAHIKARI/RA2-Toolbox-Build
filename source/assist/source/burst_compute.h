@@ -14,24 +14,24 @@ struct Input {uint32_t match=0,tick=0;int frame=-1,count=0;Source sources[MaxSou
 struct Result {uint32_t match=0,tick=0;int frame=-1,count=0;Decision decisions[MaxSources];};
 inline Decision decide(const Source&s){
  Decision d;if(s.moving){d.done=1;return d;}
- if(!s.phase){
-  if(s.eligible&&s.inRange&&s.currentTarget==s.target&&s.mission==1&&(s.queued==-1||s.queued==1)&&s.burst>=2&&s.index>0&&s.index<s.burst)d.mission=13;
+ if(s.currentTarget&&s.currentTarget!=s.target){d.done=1;return d;}
+ if(s.phase<=0){
+  if(!s.eligible||!s.inRange||s.burst<2){d.done=1;return d;}
+  // Only the FIRST Stop waits for firing evidence for this actor/target.
+  // A positive index already proves a shot; otherwise compare the firing
+  // timer with the value captured when this target was first observed.
+  if(s.currentTarget==s.target&&s.mission==1&&(s.index>0||s.fireStamp!=s.previousFire))d.mission=13;
   return d;
  }
+ if(s.frame<=s.sentFrame)return d;
  if(s.phase==1){
-  if(s.currentTarget&&s.currentTarget!=s.target){d.done=1;return d;}
-  // Stop and Attack use the same ordered native event queue. Restore at the
-  // next frame; sampling the transient Stop mission is not an execution fence.
-  if(s.frame>s.sentFrame){
-   if(s.inRange)d.mission=1;else d.done=1;
-  }return d;
+  // Always restore the captured target after our Stop, including key release
+  // or range loss. Never wait for a sampled Stop / shot / burst-index change.
+  d.mission=1;return d;
  }
- if(s.currentTarget&&s.currentTarget!=s.target){d.done=1;return d;}
- if(s.currentTarget==s.target&&s.mission==1&&s.index>0&&s.fireStamp!=s.previousFire){
-  if(s.eligible&&s.inRange&&(s.queued==-1||s.queued==1)&&s.burst>=2&&s.index<s.burst)d.mission=13;
-  else d.done=1;
- }
- if(s.frame-s.sentFrame>=90)d.done=1;
+ // Continuous S -> Attack, one command per game frame. The ordered native
+ // queue handles execution; observing a new firing cycle is not a gate.
+ if(s.eligible&&s.inRange&&s.burst>=2)d.mission=13;else d.done=1;
  return d;
 }
 inline Result calculate(const Input&i){Result r;r.match=i.match;r.tick=i.tick;r.frame=i.frame;

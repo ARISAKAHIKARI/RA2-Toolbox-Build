@@ -9,7 +9,7 @@ inline bool vector(double vx,double vy,Point&out){
  if(!(vx==vx&&vy==vy)||vx>1e9||vx< -1e9||vy>1e9||vy< -1e9)return false;
  double ax=vx<0?-vx:vx,ay=vy<0?-vy:vy,m=ax>ay?ax:ay;if(m<0.000001)return false;
  int x=int(vx/m*1024),y=int(vy/m*1024);unsigned len=root(unsigned(x*x+y*y));if(!len)return false;
- out={-x*512/int(len),-y*512/int(len)};return true;
+ out={x*512/int(len),y*512/int(len)};return true;
 }
 inline int direction(int x,int y){int ax=x<0?-x:x,ay=y<0?-y:y;if(ax*2<ay)return y<0?0:4;if(ay*2<ax)return x>0?2:6;return y<0?(x>0?1:7):(x>0?3:5);}
 template<class CanEnter> inline uint32_t destination(int px,int py,Point delta,CanEnter canEnter){
