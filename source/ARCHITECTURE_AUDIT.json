@@ -3,13 +3,13 @@
   "baseline": "0.7.16",
   "result": "No detected forbidden source-boundary bypass; thirteen selectable tactical decision families; UI-bound features remain external by design. Native APIs always Runtime.",
   "scope": {
-    "source_files": 193,
-    "host_reachable_files": 127,
-    "runtime_reachable_files": 117,
+    "source_files": 194,
+    "host_reachable_files": 128,
+    "runtime_reachable_files": 118,
     "method": "Recursive local include graph + forbidden API ownership checks + manual review of game-call, queue, patch and scheduling paths. Lexical assertions cannot prove all runtime behavior."
   },
   "freshness_contract": {
-    "protocol": 56,
+    "protocol": 57,
     "tactical_max_ms": 150,
     "tactical_max_frames": 6,
     "cooperative_max_ms": 250,
@@ -226,6 +226,7 @@
     "shared/source/host_game_input.h",
     "shared/source/message_query.h",
     "shared/source/modern_ui.h",
+    "shared/source/precise_clock.h",
     "shared/source/release_version.h",
     "shared/source/runtime_protocol.h",
     "shared/source/viewport_scale.h",
@@ -355,6 +356,7 @@
     "shared/source/game_entry_manager.cpp",
     "shared/source/message_query.h",
     "shared/source/patch_context.h",
+    "shared/source/precise_clock.h",
     "shared/source/runtime_fault.h",
     "shared/source/runtime_fp_scope.h",
     "shared/source/runtime_protocol.h"
@@ -362,7 +364,7 @@
   "api_sites": [
     {
       "file": "assist/source/bridge.cpp",
-      "line": 116,
+      "line": 117,
       "api": "ReadProcessMemory"
     },
     {
@@ -387,32 +389,32 @@
     },
     {
       "file": "shared/source/host_game_input.h",
+      "line": 251,
+      "api": "SendInput"
+    },
+    {
+      "file": "shared/source/host_game_input.h",
+      "line": 253,
+      "api": "SendInput"
+    },
+    {
+      "file": "shared/source/host_game_input.h",
       "line": 240,
-      "api": "SendInput"
-    },
-    {
-      "file": "shared/source/host_game_input.h",
-      "line": 242,
-      "api": "SendInput"
-    },
-    {
-      "file": "shared/source/host_game_input.h",
-      "line": 229,
       "api": "SendMessageTimeoutW"
     },
     {
       "file": "shared/source/host_game_input.h",
-      "line": 203,
+      "line": 214,
       "api": "SetWindowsHookExW"
     },
     {
       "file": "shared/source/host_game_input.h",
-      "line": 204,
+      "line": 215,
       "api": "SetWindowsHookExW"
     },
     {
       "file": "shared/source/host_game_input.h",
-      "line": 41,
+      "line": 43,
       "api": "LoadLibraryW"
     },
     {
@@ -437,7 +439,7 @@
     "assist/source/auto_settings_ui.h": "755a83d14792fe03e1562226772e5c34420b12d31967bf5432800333a28b1e75",
     "assist/source/autoload.h": "3724b7bb1f2bd3e0db845ab2f78b3ba30d8933e560b4ee7b831dcb3b077da0c6",
     "assist/source/autoload_bridge.h": "fbdb5fb08e62c84f7a74feadf00908b87806a0e97aeb48de2e4c1a9f6e9e8809",
-    "assist/source/bridge.cpp": "23d320bbc86d852b59fb3e116aeca4a5eb0e9d590482cc9076405e1f53797f2a",
+    "assist/source/bridge.cpp": "715de206e8c39fbea63cacc5471ccbe7dfe8228d97ca2236e1f48456eacfe220",
     "assist/source/burst_bridge.h": "2705f09ad033da6f1e0af54a1be8fd4031454da27e1a6bfe51ffbdaaa571fc7e",
     "assist/source/burst_compute.h": "f9b3bcff54cd7188eed76911df6aacd5f34c483e744e71136e33fc4b4dcb2bca",
     "assist/source/burst_eligibility.h": "3859a56c913d31539bfedf75d74f528f8b42a5ba3b7e266403d1d16027ed5ed1",
@@ -464,8 +466,8 @@
     "assist/source/cooperative_types.h": "973e6801d0b534c00ed9462bd824628f5bbeb33c3654b33a140fdaa3876390bf",
     "assist/source/crate_names.h": "58a07a6b931edac3465ea52914a967174a050de833082bf7b3dce61acb150a0d",
     "assist/source/dispatch_router.h": "18d7944c2a718ab68e2172fdc7e79ac11ac2ea64a9ecebaadfdfdc31c2cbd9e5",
-    "assist/source/dodge_bridge.h": "1b9c828d0f0bf810c165baa33c30c048bcb60513115565cee785b7566edec9c6",
-    "assist/source/dodge_compute.h": "c6eba632a8d81765029c9601e8ec06cd8d6788876b6a726790d98920793dcbfd",
+    "assist/source/dodge_bridge.h": "45b18d214c5118812148c39d60530d91abed5851c6a24c4a4ce7286ce449a23c",
+    "assist/source/dodge_compute.h": "512b56711272928d123f223fbaddf47d358fda71602d1934b7bfd68bcf5441e2",
     "assist/source/entry_gate.h": "d2d1d5c167ba6c2b94898fa8a5aae9f7b39f9eb96b1e7655f78d6ce9d77680c8",
     "assist/source/event_delivery.h": "6b7c161b6a9882cf4b0228d86657b458c4b26f253bdbb725e31aabe798558a8b",
     "assist/source/external_orders_bridge.h": "9f6d4a292b076297a53ac6ee99d851d4f43fb71dc67f9554c0b987755de20e31",
@@ -488,7 +490,7 @@
     "assist/source/input_patch.h": "18b1e77d65fff3066f69a89dd33606ddddbf7a1a316e8815221966c61d841f2b",
     "assist/source/label_motion.h": "4606d98fd370554042b9abf8d0c3bc1024dbf7f7fe03ab9ed33df031e73e5dd5",
     "assist/source/magnetron_cycle.h": "f075cb51bef3a7a92ccf3e999057aa1c6890601ad5b38e8fd69532cf5f6b36ca",
-    "assist/source/main.cpp": "3e3f917858d94fdf1ac6e56299915ae39fd8d363c0a9f0fbdb1e119af2697694",
+    "assist/source/main.cpp": "ce2384a83b5d54816c90c6230e8c829153a69932a72d8ee5e8fb0b08626dc661",
     "assist/source/mega_queue_backend.h": "02b36f3c661c06fd0279271272f91608b661e2ac16cbb6146cf0e350ec640f1f",
     "assist/source/minimap_overlay.h": "301e71a0b7ee6abca9526cc667645e53b3fc17be932631f6408714500aaf6cc9",
     "assist/source/missile_bridge.h": "230f1c945c633fb504192e16a967dfc83c5210282ec90523dbf9be592a6891ee",
@@ -516,15 +518,15 @@
     "assist/source/pointer_bridge.h": "0c587cf647d110d4a6bb2aee8d3c8dfd1b45dce04deaea84fa1422b22feec83d",
     "assist/source/pointer_host.h": "6d2cd9b8ae250554cb1d372177745143f223c369e17a2303b03487d76e13681c",
     "assist/source/pointer_intent.h": "48bd8a4714816581c5d95bb329c5870979c08c61ba51589c574305a92456f2bb",
-    "assist/source/protocol.h": "88313dd2c7fd1bff8a151fcacd91b83f486748a2ccaf74ca8960bfcffbfd9682",
+    "assist/source/protocol.h": "67f19e8a8c610d92652f13917830197f1dd9f4874ed01c43aaabf540f373dc85",
     "assist/source/radar_layout.h": "c67b2e34e9dfcb10213b39020c0d0822d66bd9372df3825508f808d84f216e3e",
     "assist/source/raw_combat.h": "85c0a53252302ea9226cd398df85cec6a4493c4941e76ec86e63063311f13fc2",
     "assist/source/repair_delivery.h": "195b1b07a3ed2a7c571a27bf9efb9c1beef1f39698c80abe8dd671463a62ead8",
     "assist/source/runtime_allocation.h": "75f44093d417051ad2edcea92cd1c35185e7148d9fd5370a3f3afa553ce3d113",
     "assist/source/runtime_planner_bridge.h": "fbd8342455bad0e3cce6165905da8d661e82877a5b786be1e585ca33d16b94e2",
     "assist/source/scheduler_policy.h": "5d7e66c7457c369c7b636adc9e5b7293ee5f1e5b434a683033233dba0be20687",
-    "assist/source/scroll_refresh.h": "a6fbe98794106956dee63b674a9efec901f36ed2273211f6bb14443a91578c55",
-    "assist/source/scroll_refresh_bridge.h": "68fcf68872b151554ba60e4f6bb1df57e48a5a1df0b1c680690129983802ccd1",
+    "assist/source/scroll_refresh.h": "f2dd1bf402715b62d0dc9c1ef460a8f828ccaa7e6bd955025496e4c0031e9c0d",
+    "assist/source/scroll_refresh_bridge.h": "a6933a8df742888d86c35b9b30b090ab64c93c749ad5cf92d14f7e3529dd2d30",
     "assist/source/session_epoch.h": "1935c87ea55edd287c53b64472c5de8f617204a924c4ca8602fc247d0a6297d9",
     "assist/source/shift_click_host.h": "25781fa3890bb06cb15dfdb652e5a5687d4094ad5760954d33c57b0a452d4435",
     "assist/source/shroud_raster.h": "7ac1b1aa50cd07574747d05b192cb8120ca23ba634b1b43efeb2b45b459c0a99",
@@ -601,11 +603,12 @@
     "shared/source/game_entry_api.h": "a113072ab7abe73d1667b311c5b90d99e2571aa70cff665a8a90645fdabc243b",
     "shared/source/game_entry_client.h": "a750783b2246af878c08565116d225f6acdaf85564894ab24096b4f4e03e0db7",
     "shared/source/game_entry_manager.cpp": "10a6f6607a0f2f3a3c67d3164f0f9be96439c15c8cadf049af182c95c45192c3",
-    "shared/source/host_game_input.h": "20630435a60af19e2abd56c81cdb759ae1b9a4dcab86283dbe7c4124f078ad6b",
+    "shared/source/host_game_input.h": "a1dc6276ce05711b5ce2d3c219fa442d03fc48a8593dae9f7268eedcd6ffef00",
     "shared/source/message_query.h": "fee0a8953fbdf08d70725cfd1f6b0f1c1473e50dc863ba8444365195d884d675",
     "shared/source/modern_ui.h": "1d1a864cc35be7cbc9dd634dbe942e5b1f1eff150552f505eb2474c33efcc3f6",
     "shared/source/patch_context.h": "d44f5c04bce353499adefc85cd59e0d4f54190b4d0a1c40a47fa38bdb20ad2d6",
-    "shared/source/release_version.h": "dbbfc95f638c2b38ebf921e6b531a378f6e31d9143a92ef3cacfbad6186f2700",
+    "shared/source/precise_clock.h": "84accf4522c9867dc762c6e6afef96db7d78d8a5cd65b8386d007fd5020b80cf",
+    "shared/source/release_version.h": "d25504a2eb1cd5520c4bc8a08ab48f69b80dc9246b2e12c4b3816ea300122f9d",
     "shared/source/runtime_fault.h": "b4ddf16db57b0cfc1b022b286af5a5df3034f75d892abb27df8d0dcca0653818",
     "shared/source/runtime_fp_scope.h": "9b6e42ce25f028a71705dfd5f42f0f89865ae523f73f05c34349786f755646bc",
     "shared/source/runtime_protocol.h": "eb480104be375885b5370692c3c90d76409fd32f2d7f95415e7df6344693a56b",

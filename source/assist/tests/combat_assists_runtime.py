@@ -102,12 +102,16 @@ def dodge(mode,inside,kind):
  m.w(m.unit+0x194,0)
  # Enemy vehicle is actively trying to crush this ground unit.
  t=m.r(m.target+0x6c4);m.b(t+0xd29,1);m.w(m.target+0x9c,10256);m.w(m.target+0xa0,10000);m.w(m.target+0xac,2);m.w(m.target+0x2b4,m.unit)
- if kind in ('air','own_air','allied_air','own_healer','own_air_not_targeted'):
+ aircase=kind in ('air','own_air','allied_air','own_healer','own_air_not_targeted','prefire','new_shot','same_shot','ground_shot','late_shot')
+ if aircase:
   m.w(m.target,0x7e22a4);m.b(m.target+0x134,1);m.w(m.target+0xa4,256);m.w(m.target+0xac,1);m.w(t+0x898,m.actual);m.w(m.target+0x2f4,0)
  if kind in ('own_air','own_healer','own_air_not_targeted'):m.w(m.target+0x21c,m.house)
  if kind=='allied_air':m.w(m.house+0x5788,1<<m.r(m.enemy+0x30))
  if kind=='own_healer':m.w(m.actual+0xa4,-40)
  if kind=='own_air_not_targeted':m.w(m.target+0x2b4,0)
+ if aircase and kind!='prefire':
+  m.bullet=m.alloc();m.w(m.bullet,0x7e46e4);m.w(m.bullet+0x10,701);m.b(m.bullet+0x90,1);m.w(m.bullet+0xac,m.alloc());m.w(m.bullet+0xb0,m.target);m.w(m.bullet+0x10c,m.unit if kind!='own_air_not_targeted' else m.target)
+  m.w(m.bullet+0x6c,-40 if kind=='own_healer' else 40);m.w(m.bullet+0x140,m.r(m.unit+0x9c));m.w(m.bullet+0x144,m.r(m.unit+0xa0));m.u.mem_write(m.bullet+0xe8,struct.pack('<ddd',-30,0,-5));m.vector(0xa8ed40,[m.bullet])
  if kind=='allied':m.w(m.target+0x21c,m.house)
  if kind=='not_targeted':m.w(m.target+0x2b4,0)
  if kind=='resistant':m.b(m.t+0xd2a,1)
@@ -120,18 +124,34 @@ def dodge(mode,inside,kind):
  if kind=='blocked':
   for x in range(37,42):
    for y in range(37,42):m.w(m.r(m.cells+(y*512+x)*4)+0x124,1)
+ if kind=='ground_shot':m.w(m.bullet+0x10c,m.r(m.cells+(39*512+39)*4))
+ if kind=='late_shot':
+  m.vector(0xa8ed40,[]);tick(m,inside,'dodge');assert n.count(m)==0
+  m.vector(0xa8ed40,[m.bullet]);s=m.hook()
+  if not inside:compute(m,'dodge');s=m.hook()
+  assert n.count(m)==1,'shot arriving after an earlier sample of the same frame'
+  return
  before=bytes(m.u.mem_read(m.unit,0x800));s=tick(m,inside,'dodge')
  if not inside:
   if kind=='conflict':compute(m,'burst')
   s=tick(m,inside,'dodge')
- expected=kind in ('crush','air','own_air','allied_air','conflict','release')
+ expected=kind in ('crush','air','own_air','allied_air','conflict','release','new_shot','same_shot','ground_shot','late_shot')
  assert n.count(m)==int(expected),(kind,n.count(m),s.dodgeInput.count,s.dodgeActive)
  assert before==bytes(m.u.mem_read(m.unit,0x800)) and not m.codeWrites
  if not expected:return
- packet=n.packets(m)[:111];assert packet[12]==2;cell=struct.unpack_from('<I',packet,19)[0];assert cell%1000<39,'move away from approaching threat'
+ packet=n.packets(m)[:111];assert packet[12]==2;cell=struct.unpack_from('<I',packet,19)[0];assert (abs(cell//1000-39)==2 if aircase else cell%1000<39),'cross the flight path / move away from crusher'
+ if kind in ('new_shot','same_shot'):
+  for _ in range(2):s=m.hook();compute(m,'dodge') if not inside else None
+  assert n.count(m)==1,'same projectile must not spam moves'
+  if kind=='new_shot':
+   m.w(m.bullet+0x10,702);m.w(0xa8ed84,m.r(0xa8ed84)+1)
+   for _ in range(3):s=m.hook();compute(m,'dodge') if not inside else None
+   assert n.count(m)==2,'new shot bypasses 12-frame wait; one-event-per-actor/frame arbitration retained'
+  return
  if kind=='conflict':assert n.state(m).burstIssued==0
  dest=m.r(m.cells+((cell//1000)*512+cell%1000)*4);m.w(m.unit+0xac,2);m.w(m.unit+0x5a4,dest);m.w(m.unit+0x2b4,0)
  m.w(m.target+0x2b4,0)
+ if aircase:m.vector(0xa8ed40,[])
  if kind=='release':s=n.state(m);s.dodgeEnabled=0;n.save(m,s)
  for _ in range(9):s=tick(m,inside,'dodge')
  assert n.count(m)==2,(kind,'restore',n.count(m),s.dodgeActive)
@@ -140,5 +160,5 @@ def dodge(mode,inside,kind):
 for mode in (0,3):
  for inside in (True,False):
   for kind in ('normal','elite','elite_single','burst_one','completed','not_fired','moving','disabled','filter','hold','hold_unselected','hold_unfocused','hold_stale','observer','release','weapon_changed','spawn_owner','spawned','spawn_parent','missile_spawn','aircraft','airborne','hold_spawned','fast_cycle','same_frame'):check(f'burst_{mode}_{inside}_{kind}',lambda m=mode,i=inside,k=kind:burst(m,i,k))
-  for kind in ('crush','air','own_air','allied_air','own_healer','own_air_not_targeted','allied','not_targeted','resistant','disabled','filter','observer','blocked','conflict','release'):check(f'dodge_{mode}_{inside}_{kind}',lambda m=mode,i=inside,k=kind:dodge(m,i,k))
+  for kind in ('crush','air','own_air','allied_air','own_healer','own_air_not_targeted','allied','not_targeted','resistant','disabled','filter','observer','blocked','conflict','release','prefire','new_shot','same_shot','ground_shot','late_shot'):check(f'dodge_{mode}_{inside}_{kind}',lambda m=mode,i=inside,k=kind:dodge(m,i,k))
 Path(a.output).write_text(json.dumps({'scope':__doc__,'native_stop_reset_executed':bytes(n.fixture(0).game.get_data(0x6fcf53-0x400000,6))==bytes.fromhex('399eb4020000'),'dll_sha256':hashlib.sha256(Path(a.dll).read_bytes()).hexdigest(),'results':rows},indent=2)+'\n');raise SystemExit(any(x['status']!='PASS' for x in rows))

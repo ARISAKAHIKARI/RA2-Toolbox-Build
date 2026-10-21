@@ -16,6 +16,8 @@ constexpr unsigned WM_SETCURSOR=32,WM_MOUSEMOVE=512,HTCLIENT=1,SMTO_ABORTIFHUNG=
 bool SendMessageTimeoutW(HWND,UINT,WPARAM,LPARAM,UINT,UINT,DWORD_PTR*);
 #define INVALID_HANDLE_VALUE ((HANDLE)(intptr_t)-1)
 constexpr int VK_LBUTTON=1,VK_MBUTTON=4,VK_XBUTTON1=5,VK_XBUTTON2=6,VK_RBUTTON=2,VK_CONTROL=17;
+struct LARGE_INTEGER{int64_t QuadPart;};bool QueryPerformanceCounter(LARGE_INTEGER*);bool QueryPerformanceFrequency(LARGE_INTEGER*);
+constexpr unsigned TIMERR_NOERROR=0;unsigned timeBeginPeriod(unsigned);unsigned timeEndPeriod(unsigned);bool ChangeTimerQueueTimer(HANDLE,HANDLE,DWORD,DWORD);
 struct POINT{LONG x,y;};struct RECT{LONG left,top,right,bottom;};
 HWND WindowFromPoint(POINT);short GetAsyncKeyState(int);bool IsIconic(HWND);bool GetCursorPos(POINT*);bool ScreenToClient(HWND,POINT*);bool GetClientRect(HWND,RECT*);
 struct INPUT{unsigned type=0;struct {unsigned dwFlags=0;uintptr_t dwExtraInfo=0;}mi;};
@@ -45,6 +47,9 @@ body=r'''
 #include <thread>
 extern gameinput::Host* otherHost();extern bool otherRelease(gameinput::Subscription);
 static DWORD error=0,fg=42,clockMs=100,windowThread=12;static int installs=0,unhooks=0,sends=0,loads=0,posts=0;static UINT sentCount=2;static bool failUnhook=false,failPost=false,oldDead=false,failPostHook=false;
+static uint64_t preciseOverride=0;static int timerBalance=0,timerPeriod=4;
+bool QueryPerformanceCounter(LARGE_INTEGER*p){p->QuadPart=preciseOverride?preciseOverride:uint64_t(clockMs)*1000;return true;}bool QueryPerformanceFrequency(LARGE_INTEGER*p){p->QuadPart=1000000;return true;}
+unsigned timeBeginPeriod(unsigned p){assert(p==1);++timerBalance;return 0;}unsigned timeEndPeriod(unsigned p){assert(p==1);--timerBalance;return 0;}bool ChangeTimerQueueTimer(HANDLE,HANDLE,DWORD due,DWORD period){assert(due==period);timerPeriod=period;return true;}
 static bool keyDown[256]{};static uint32_t nativeHwnd=42;static bool readable=true;
 HANDLE OpenProcess(DWORD,bool,DWORD pid){return (HANDLE)(uintptr_t)pid;}
 bool GetExitCodeProcess(HANDLE,DWORD*p){*p=STILL_ACTIVE;return true;}
@@ -102,7 +107,10 @@ int main(){
  setPointerContext(a,1,true);pulse(nullptr,0);assert(!takePointer(a,press,dropped));
  keyDown[VK_MBUTTON]=false;pulse(nullptr,0);
  setFastTactical(a,true);block.wakePending=0;block.ready=0;clockMs+=4;pulse(nullptr,0);assert(block.ready==3);
- setFastTactical(a,false);block.wakePending=0;block.ready=0;clockMs+=4;pulse(nullptr,0);assert(block.ready==2);
+ assert(timerBalance==1&&timerPeriod==1);
+ preciseOverride=uint64_t(clockMs)*1000+1000;block.wakePending=0;block.ready=0;pulse(nullptr,0);assert(block.ready==runtime::Tactical); // coarse GetTickCount unchanged
+ preciseOverride=0;
+ setFastTactical(a,false);assert(timerBalance==0&&timerPeriod==4);block.wakePending=0;block.ready=0;clockMs+=4;pulse(nullptr,0);assert(block.ready==2);
  keyDown[VK_MBUTTON]=true;pulse(nullptr,0);assert(takePointer(a,press,dropped)&&press.operation==1&&press.serial==pointerCancelSerial(a));
  pulse(nullptr,0);assert(!takePointer(a,press,dropped)); // held button never repeats
  keyDown[VK_MBUTTON]=false;pulse(nullptr,0);
@@ -161,7 +169,7 @@ gameinput::Host* otherHost(){return &gameinput::host();}
 bool otherRelease(gameinput::Subscription h){return gameinput::release(gameentry::Client::Assist,h);}
 '''
 with tempfile.TemporaryDirectory() as temp:
- p=Path(temp);(p/'windows.h').write_text(header);(p/'main.cpp').write_text(body);(p/'other.cpp').write_text(other)
+ p=Path(temp);(p/'windows.h').write_text(header);(p/'mmsystem.h').write_text('');(p/'main.cpp').write_text(body);(p/'other.cpp').write_text(other)
  subprocess.run(['g++','-std=c++17','-pthread','-I'+temp,'-I'+str(root/'shared/source'),str(p/'main.cpp'),str(p/'other.cpp'),'-o',str(p/'test')],check=True)
  subprocess.run([str(p/'test')],check=True)
 print('PASS shared host: one hook pair; 200 concurrent subscriptions; independent release; cadence/coalescing; failed post/unhook recovery; dead-thread migration; stale tokens; balanced input')

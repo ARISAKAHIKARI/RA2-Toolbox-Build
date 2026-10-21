@@ -1,0 +1,57 @@
+{
+  "release": "v1.0.30-pre.4",
+  "final_dll_sha256": "39a2a38a9676c9979199f51e214d2ab3abf0ae3ba15dd4c1772f728c01eee859",
+  "final_exe_sha256": "447709ad478e856e7e34054ae52cae9fe903ca342b2ccd21191f8f743e743d79",
+  "controlled_cases_passed": 432,
+  "batches": [
+    {
+      "report": "refresh-zhanwang.json",
+      "passed": 36,
+      "dll_sha256": "39a2a38a9676c9979199f51e214d2ab3abf0ae3ba15dd4c1772f728c01eee859",
+      "scope": "Actual x86 Runtime + native ScrollMap/SetTacticalPosition; mocked Win32, input producers and renderer; QPC/coarse-clock cadence simulation, not visual FPS or netplay"
+    },
+    {
+      "report": "refresh-lbw.json",
+      "passed": 36,
+      "dll_sha256": "39a2a38a9676c9979199f51e214d2ab3abf0ae3ba15dd4c1772f728c01eee859",
+      "scope": "Actual x86 Runtime + native ScrollMap/SetTacticalPosition; mocked Win32, input producers and renderer; QPC/coarse-clock cadence simulation, not visual FPS or netplay"
+    },
+    {
+      "report": "combat-zhanwang.json",
+      "passed": 180,
+      "dll_sha256": "39a2a38a9676c9979199f51e214d2ab3abf0ae3ba15dd4c1772f728c01eee859",
+      "scope": "Actual Runtime and original weapon/range/event functions in a controlled x86 world; not live game/netplay or projectile physics."
+    },
+    {
+      "report": "combat-lbw.json",
+      "passed": 180,
+      "dll_sha256": "39a2a38a9676c9979199f51e214d2ab3abf0ae3ba15dd4c1772f728c01eee859",
+      "scope": "Actual Runtime and original weapon/range/event functions in a controlled x86 world; not live game/netplay or projectile physics."
+    }
+  ],
+  "entry_regressions": [
+    {
+      "report": "entry-3.log",
+      "pass_lines": 22,
+      "dll_sha256": "39a2a38a9676c9979199f51e214d2ab3abf0ae3ba15dd4c1772f728c01eee859"
+    },
+    {
+      "report": "entry-4.log",
+      "pass_lines": 22,
+      "dll_sha256": "39a2a38a9676c9979199f51e214d2ab3abf0ae3ba15dd4c1772f728c01eee859"
+    }
+  ],
+  "host_checks": [
+    "host-input.log",
+    "settings-ui.log"
+  ],
+  "static_checks": [
+    "architecture.log",
+    "windows-build.log"
+  ],
+  "limitations": [
+    "Win32, input producers and renderer are controlled substitutes; full projectile physics is not executed.",
+    "No real Windows display FPS, complete LBW startup renderer payload, complete game, or two-machine netplay validation.",
+    "Move uses synchronized events and retains one automatic event per actor/frame; does not reproduce immediate engine Scatter."
+  ]
+}

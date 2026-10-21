@@ -1,13 +1,13 @@
 {
-  "label": "1.0.30.2 SingleRuntime",
-  "file_version": "1.0.30.2",
+  "label": "1.0.30.3 SingleRuntime",
+  "file_version": "1.0.30.3",
   "verified": {
     "RA2Toolbox.exe": {
-      "bytes": 2204160,
-      "sha256": "646d56bc0de0627fc0738e3781420a0bcd67edfc6dfc3dcba23c75cee99738a4",
+      "bytes": 2205696,
+      "sha256": "447709ad478e856e7e34054ae52cae9fe903ca342b2ccd21191f8f743e743d79",
       "machine": "PE32 x86",
       "sections": 14,
-      "entry_rva": "0xdbb60",
+      "entry_rva": "0xdc770",
       "exports": [
         "AssistHostProtocolInfo",
         "_Unwind_DeleteException",
@@ -387,6 +387,7 @@
           "AcquireSRWLockShared",
           "AreFileApisANSI",
           "CancelWaitableTimer",
+          "ChangeTimerQueueTimer",
           "CloseHandle",
           "CopyFileW",
           "CreateDirectoryW",
@@ -531,15 +532,15 @@
         "version": "6.0.0.0",
         "architecture": "x86"
       },
-      "assist_protocol": 56,
-      "assist_shared_bytes": 4104168
+      "assist_protocol": 57,
+      "assist_shared_bytes": 4106352
     },
     "GameRuntime.dll": {
-      "bytes": 4078592,
-      "sha256": "2e71608d3f13877f2a35f01ad8daa48d2023409e00267a3b9634626fb1adfc86",
+      "bytes": 4089344,
+      "sha256": "39a2a38a9676c9979199f51e214d2ab3abf0ae3ba15dd4c1772f728c01eee859",
       "machine": "PE32 x86",
       "sections": 13,
-      "entry_rva": "0x51ba0",
+      "entry_rva": "0x52a50",
       "exports": [
         "AssistMappingPrefix",
         "AssistProtocolInfo",
@@ -612,6 +613,7 @@
           "GetClientRect",
           "GetCursor",
           "GetCursorInfo",
+          "GetCursorPos",
           "GetForegroundWindow",
           "GetKeyState",
           "GetWindowThreadProcessId",
@@ -619,6 +621,7 @@
           "IsWindowVisible",
           "LoadCursorW",
           "PostMessageW",
+          "ScreenToClient",
           "SetCursor",
           "SetTimer",
           "ShowCursor",
@@ -683,13 +686,11 @@
       "GameRuntimePostHook_rva": "0x1960",
       "runtime_protocol": 4,
       "runtime_control_bytes": 176,
-      "assist_protocol": 56,
-      "assist_shared_bytes": 4104168
+      "assist_protocol": 57,
+      "assist_shared_bytes": 4106352
     }
   },
   "runtime_tested": false,
   "multiplayer_tested": false,
-  "dependency_check": "two project binaries import Windows system DLLs only",
-  "pre3_validation_report": "verification/pre3/summary.json",
-  "experimental_refresh": "Three modes; final DLL passed 68 controlled refresh cases across supplied EXEs. Actual FPS/Windows/netplay untested."
+  "dependency_check": "two project binaries import Windows system DLLs only"
 }

@@ -1,3 +1,19 @@
+# RA2 Toolbox 1.0.30-pre.4
+
+[预发布完整包与更新包](https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/releases/tag/v1.0.30-pre.4) · [实现与验证](source/REVIEW-1.0.30-pre.4.md)
+
+- 高刷调度改用 QPC，按微秒保持节拍；120 Hz 为约 8.333 ms。实时读取鼠标客户区位置，解决额外拖屏更新重复旧坐标的问题。三档策略保持「仅光标 / 光标＋拖屏 / 全部」。
+- 高刷页增加实际补充绘制频率与最长间隔，便于复测；这些统计不是显示器实际 FPS。全部模式仍不进行运动插帧或提高逻辑帧率。
+- 空袭躲弹改为看到已发射的正伤害弹体后触发，按弹道横向避让；新一发绕过上一发的 12 帧等待，同一发不反复触发新发条件。支持己方/盟军试打与地面目标格，排除治疗弹。碾压分支保留。
+- 原版在飞机开火流程中直接触发目标格散开，本功能仍使用正常同步移动指令，受联机指令延迟限制，不能保证完全复现原版精英或躲过所有弹种。
+- 科技全开、地图显示继续保留，没有新增平台或联机禁用。
+
+文件版本 **1.0.30.3**，Assist **57**、Runtime **4**、入口管理器 **3**。先退出游戏和工具箱，成套替换 EXE/DLL。已有完整安装下载 Update，首次使用下载 Windows 完整包。
+
+已进行受控 x86、宿主调度和 PE/ABI 验证，报告见 [verification/pre4](source/verification/pre4/summary.json)。真实 Windows 画面观感、完整弹道物理与双机联机仍待实际游戏复测。
+
+## 历史版本说明
+
 # RA2 Toolbox 1.0.30-pre.3
 
 [预发布完整包与更新包](https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/releases/tag/v1.0.30-pre.3) · [稳定版 1.0.29](https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/releases/tag/v1.0.29) · [源码](source/) · [实现与验证](source/REVIEW-1.0.30-pre.3.md)

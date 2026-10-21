@@ -1,6 +1,8 @@
 #pragma once
 #include <windows.h>
 #include <mutex>
+#include <mmsystem.h>
+#include "precise_clock.h"
 #include "game_entry_api.h"
 #include "runtime_protocol.h"
 #include "message_query.h"
@@ -27,9 +29,9 @@ inline bool heldBinding(uint32_t binding){
 }
 struct PointerPress {DWORD tick=0,serial=0;uint32_t match=0;int operation=0;POINT point{};int width=0,height=0;uint8_t keys[256]{};};
 struct PointerQueue {PointerPress items[16]{};unsigned head=0,count=0;DWORD dropped=0,cancelSerial=0;bool enabled=false,focused=false,rightArmed=false,leftArmed=false;uint32_t match=0;DWORD contextAt=0;uint32_t down=0;uint8_t rightKeys[256]{},leftKeys[256]{};};
-struct Target {PointerQueue pointer{};Health lastDiagnostic{};DWORD pid=0,thread=0;HWND window=nullptr;HHOOK message=nullptr,post=nullptr;HANDLE mapping=nullptr;runtime::Control*control=nullptr;DWORD cursorAt=0,tacticalAt=0,lastPost=0,lastPostError=0;bool fastTactical=false;};
+struct Target {PointerQueue pointer{};Health lastDiagnostic{};DWORD pid=0,thread=0;HWND window=nullptr;HHOOK message=nullptr,post=nullptr;HANDLE mapping=nullptr;runtime::Control*control=nullptr;uint64_t cursorAt=0,tacticalAt=0;DWORD lastPost=0,lastPostError=0;bool fastTactical=false;};
 struct Lease {Subscription id=0;gameentry::Client client{};unsigned target=0;};
-struct Host {std::recursive_mutex mutex;Target targets[8]{};Lease leases[32]{};Subscription next=0;HMODULE module=nullptr;HANDLE timer=nullptr;volatile LONG pulseBusy=0;};
+struct Host {std::recursive_mutex mutex;Target targets[8]{};Lease leases[32]{};Subscription next=0;HMODULE module=nullptr;HANDLE timer=nullptr;volatile LONG pulseBusy=0;bool preciseTimer=false;};
 inline Host& host(){static Host*value=new Host;return *value;}
 inline uint32_t mask(gameentry::Client c){return c==gameentry::Client::Assist?runtime::Tactical:c==gameentry::Client::Cursor?runtime::Cursor:0;}
 inline HMODULE runtimeModule(){
@@ -139,23 +141,32 @@ inline bool takePointer(Subscription id,PointerPress&out,DWORD&dropped){
  auto&h=host();std::lock_guard<std::recursive_mutex>lock(h.mutex);
  for(auto&l:h.leases)if(id&&l.id==id&&l.client==gameentry::Client::Assist){auto&q=h.targets[l.target].pointer;dropped=q.dropped;q.dropped=0;if(!q.count)return false;out=q.items[q.head];q.head=(q.head+1)%16;--q.count;return true;}return false;
 }
+inline void updateTimer(){
+ auto&h=host();bool fast=false;
+ for(auto&t:h.targets)if(t.pid&&t.fastTactical&&t.pointer.enabled&&t.pointer.focused)fast=true;
+ if(fast==h.preciseTimer||!h.timer)return;
+ if(fast&&timeBeginPeriod(1)!=TIMERR_NOERROR)return;
+ if(!ChangeTimerQueueTimer(nullptr,h.timer,fast?1:4,fast?1:4)){if(fast)timeEndPeriod(1);return;}
+ if(!fast)timeEndPeriod(1);h.preciseTimer=fast;
+}
 inline void setFastTactical(Subscription id,bool enabled){
  auto&h=host();std::lock_guard<std::recursive_mutex>lock(h.mutex);
- for(auto&l:h.leases)if(id&&l.id==id&&l.client==gameentry::Client::Assist){h.targets[l.target].fastTactical=enabled;return;}
+ for(auto&l:h.leases)if(id&&l.id==id&&l.client==gameentry::Client::Assist){h.targets[l.target].fastTactical=enabled;updateTimer();return;}
 }
 inline void CALLBACK pulse(void*,BOOLEAN){
  auto&h=host();if(InterlockedCompareExchange(&h.pulseBusy,1,0))return;
  struct Reset {volatile LONG*value;~Reset(){InterlockedExchange(value,0);}} reset{&h.pulseBusy};
- std::lock_guard<std::recursive_mutex>lock(h.mutex);DWORD now=GetTickCount();
+ std::lock_guard<std::recursive_mutex>lock(h.mutex);DWORD now=GetTickCount();const uint64_t precise=preciseclock::micros();
  for(unsigned i=0;i<8;++i){auto&t=h.targets[i];if(!t.pid)continue;
   uint32_t enabled=0;for(auto&l:h.leases)if(l.id&&l.target==i)enabled|=mask(l.client);
   if(!enabled){clear(t);continue;}if(!t.control)continue;
   if(enabled&runtime::Tactical)pollPointer(t,now);
-  uint32_t ready=0;if((enabled&runtime::Cursor)&&DWORD(now-t.cursorAt)>=4){t.cursorAt=now;ready|=runtime::Cursor;}
-  const DWORD tacticalPeriod=t.fastTactical&&t.pointer.enabled&&t.pointer.focused?4:16;
-  if((enabled&runtime::Tactical)&&DWORD(now-t.tacticalAt)>=tacticalPeriod){t.tacticalAt=now;ready|=runtime::Tactical;}
+  uint32_t ready=0;if((enabled&runtime::Cursor)&&precise-t.cursorAt>=4000){t.cursorAt=precise;ready|=runtime::Cursor;}
+  const uint64_t tacticalPeriod=t.fastTactical&&t.pointer.enabled&&t.pointer.focused?1000:16000;
+  if((enabled&runtime::Tactical)&&precise-t.tacticalAt>=tacticalPeriod){t.tacticalAt=precise;ready|=runtime::Tactical;}
   if(ready)post(t,ready);
  }
+ updateTimer();
 }
 // Enumeration is sufficient for read-only discovery, not for binding the sole
 // executor. A launcher/renderer thread can stay alive after its startup window
@@ -214,7 +225,7 @@ inline bool release(gameentry::Client client,Subscription id){
  if(!id)return true;auto&h=host();std::lock_guard<std::recursive_mutex>lock(h.mutex);
  for(auto&l:h.leases)if(l.id==id){if(l.client!=client){SetLastError(ERROR_ACCESS_DENIED);return false;}
   unsigned at=l.target;l={};uint32_t enabled=0;for(auto&other:h.leases)if(other.id&&other.target==at)enabled|=mask(other.client);
-  auto&t=h.targets[at];if(!(enabled&runtime::Tactical)){t.pointer.enabled=false;disarmPointer(t.pointer);}if(t.control)InterlockedExchange(&t.control->enabled,LONG(enabled));if(!enabled)clear(t);return true;
+  auto&t=h.targets[at];if(!(enabled&runtime::Tactical)){t.pointer.enabled=false;disarmPointer(t.pointer);}if(t.control)InterlockedExchange(&t.control->enabled,LONG(enabled));if(!enabled)clear(t);updateTimer();return true;
  }SetLastError(ERROR_INVALID_HANDLE);return false;
 }
 struct ClickResult {UINT sent=0;DWORD error=0;bool released=false;};

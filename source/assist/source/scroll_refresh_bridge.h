@@ -1,6 +1,7 @@
 #include "scroll_refresh.h"
 static scrollrefresh::Rate scrollRates[3];
-static DWORD scrollRefreshAt;static bool scrollRefreshActive,scrollRendering;
+static scrollrefresh::Cadence scrollCadence;
+static uint64_t scrollMeasureAt,scrollDrawAt;static uint32_t scrollMeasureCount,scrollMaxGap;static bool scrollRefreshActive,scrollRendering;
 struct ScrollCall {int direction;int*distance;bool commit;};
 static bool nativeScrollMap(const ScrollCall&s){
  if(!s.distance||s.direction<0||s.direction>7)return false;
@@ -19,7 +20,7 @@ static int highScrollAction(uint32_t address){
  // cursor. Only edge scroll and mode 0 (anchor-based velocity) are timed.
  const bool velocity=!dragging||call<int>(0x5FBF70,0xA8EB60)==0;
  if(velocity){const int axis=!dragging?0:(s.direction==2||s.direction==6)?1:2;
-  distance=scrollrefresh::amount(scrollRates[axis],distance,s.direction,sampleClock(sh));}
+  distance=scrollrefresh::amount(scrollRates[axis],distance,s.direction,preciseclock::micros());}
  if(distance){ScrollCall scaled{s.direction,&distance,true};nativeScrollMap(scaled);}
  return 2;
 }
@@ -39,8 +40,8 @@ static bool __stdcall highScrollMap(int direction,int*distance,bool commit){
 }
 static RiskSite scrollMapSite{experimentalpatch::ScrollMap,8,{0x8B,0x44,0x24,0x08,0x8A,0x4C,0x24,0x0C},{}};
 static void restoreHighScroll(){
- scrollRefreshActive=false;scrollRendering=false;restoreRiskSite(scrollMapSite);scrollRefreshAt=0;for(auto&r:scrollRates)r={};
- if(sh)sh->scrollRefreshStatus=0;
+ scrollRefreshActive=false;scrollRendering=false;restoreRiskSite(scrollMapSite);scrollCadence={};scrollMeasureAt=scrollDrawAt=0;scrollMeasureCount=scrollMaxGap=0;for(auto&r:scrollRates)r={};
+ if(sh){sh->scrollRefreshStatus=0;sh->scrollRefreshRateMilli=sh->scrollRefreshMaxGapUs=0;}
 }
 static bool highScrollInterfaces(){
  // Query/render interfaces from YRpp, checked against both supplied platforms.
@@ -57,7 +58,7 @@ static bool highScrollInterfaces(){
         !memcmp((void*)0x6D6000,setPosition,sizeof setPosition)&&
         !memcmp((void*)0x692B60,edge,sizeof edge)&&!memcmp((void*)0x693440,drag,sizeof drag);
 }
-static void highScrollTick(DWORD now){
+static void highScrollTick(uint64_t now){
  if(!sh->scrollRefreshMode||sh->scrollRefreshMode>2||!sh->scrollRefreshHz||!sh->foreground||snap.chat||!riskReady()||!simulationReady()){
   if(scrollRefreshActive)restoreHighScroll();return;
  }
@@ -65,12 +66,14 @@ static void highScrollTick(DWORD now){
  if(!highScrollInterfaces()||!installRiskSite(scrollMapSite)){restoreHighScroll();sh->scrollRefreshStatus=-2;return;}
  scrollRefreshActive=true;sh->scrollRefreshStatus=1;
  if(scrollRendering)return;
- if(DWORD(now-scrollRefreshAt)<scrollrefresh::period(sh->scrollRefreshHz))return;scrollRefreshAt=now;
+ if(!scrollCadence.take(now,sh->scrollRefreshHz))return;
  const uint32_t tactical=get<uint32_t>(0x887324),mouse=get<uint32_t>(0x887640);
  if(!tactical||!mouse||!get<uint32_t>(0x88731C)||!get<uint32_t>(0x887308))return;
- // Native mouse coordinates and held-button query; no synthetic input or
- // additional input owner. Never run gameplay AI or the main frame loop.
- POINT point{};auto*current=call<POINT*>(get<uint32_t>(get<uint32_t>(mouse)+0x34),mouse,&point);if(current)point=*current;
+ // WWMouse::GetCoords only returns a cached logic-frame position. Sample
+ // the current client point for extra camera updates without changing that
+ // cache or synthesizing mouse input. Native button/drag state remains owner.
+ HWND window=reinterpret_cast<HWND>(uintptr_t(get<uint32_t>(0xB73550)));DWORD owner=0;
+ POINT point{};const bool current=window&&GetWindowThreadProcessId(window,&owner)&&owner==GetCurrentProcessId()&&GetCursorPos(&point)&&ScreenToClient(window,&point);
  point.x-=get<int>(0x886FA0);point.y-=get<int>(0x886FA4);
  const int width=get<int>(0x886FB8)-get<int>(0x886FA0),height=get<int>(0x886FBC)-get<int>(0x886FA4);
  const bool inside=current&&width>0&&height>0&&point.x>=0&&point.y>=0&&point.x<width&&point.y<height;
@@ -91,4 +94,8 @@ static void highScrollTick(DWORD now){
  call<void>(0x4F4480,0x87F7E8); // native composition + presentation
  scrollRendering=false;
  ++sh->scrollRefreshDraws;
+ if(scrollDrawAt&&now>=scrollDrawAt){uint64_t gap=now-scrollDrawAt;if(gap>scrollMaxGap)scrollMaxGap=uint32_t(gap>UINT32_MAX?UINT32_MAX:gap);}
+ scrollDrawAt=now;
+ if(!scrollMeasureAt)scrollMeasureAt=now;else ++scrollMeasureCount;
+ if(now-scrollMeasureAt>=1000000){sh->scrollRefreshRateMilli=uint32_t(uint64_t(scrollMeasureCount)*1000000000/(now-scrollMeasureAt));sh->scrollRefreshMaxGapUs=scrollMaxGap;scrollMeasureAt=now;scrollMeasureCount=scrollMaxGap=0;}
 }
