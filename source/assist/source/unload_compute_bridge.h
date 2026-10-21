@@ -22,6 +22,12 @@ static bool unloadSourceCurrent(const UnloadPassenger&r,const unloadcompute::Sou
     !featureTypeAllowed(r.mode==0?featuretypes::UnloadTransport:featuretypes::EscapeTransport,r.carrierType)||
     memcmp(static_cast<const unloadcompute::State*>(&r),&s.state,sizeof(s.state)))return false;
  auto current=unloadView(r,frame);current.frame=s.view.frame;current.queryFailed=s.view.queryFailed;
+ // A specialist can receive Capture/Enter while walking away from its carrier.
+ // Preserve every identity, token, mission and animation check; only tolerate
+ // the coordinate drift of that same native Move during host calculation.
+ if(!current.deployer&&(current.engineer||current.spy)&&current.mission==2&&s.view.mission==2){
+  current.x=s.view.x;current.y=s.view.y;
+ }
  // Never deploy from a pre-scatter observation or replace a newer mission.
  return !memcmp(&current,&s.view,sizeof(current));
 }

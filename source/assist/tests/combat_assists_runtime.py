@@ -52,12 +52,32 @@ def burst(mode,inside,kind):
  if kind=='observer':m.b(m.house+0x1f5,1)
  n.save(m,s);before=bytes(m.u.mem_read(m.unit,0x800));s=tick(m,inside,'burst')
  if not inside:s=tick(m,inside,'burst')
- expected=kind in ('normal','elite','hold','release','weapon_changed','conflict')
+ expected=kind in ('normal','elite','hold','release','weapon_changed','conflict','fast_cycle','same_frame')
  assert n.count(m)==int(expected),(kind,n.count(m),s.burstInput.count,s.data.lastSubmitError)
  assert before==bytes(m.u.mem_read(m.unit,0x800)) and not m.codeWrites
  if not expected:return
  assert n.packets(m)[12]==13 and n.packets(m)[14:24]==bytes(10)
- for _ in range(3):s=tick(m,inside,'burst');assert n.count(m)==1,'never repeat pending Stop'
+ if kind in ('fast_cycle','same_frame'):
+  # Never expose a Stop observation: the ordered Attack must still follow.
+  s=tick(m,inside,'burst')
+  if not inside:s=tick(m,inside,'burst')
+  assert n.count(m)==2,'restore next frame without waiting to sample Stop'
+  for _ in range(3):tick(m,inside,'burst');assert n.count(m)==2
+  if kind=='same_frame':
+   # Observe another firing event after an earlier sample of this frame.
+   m.w(m.unit+0x2ec,m.r(m.unit+0x2ec)+1)
+   s=m.hook()
+   if not inside:
+    # First consume the pending pre-shot result, then calculate the fresh sample.
+    for _ in range(2):compute(m,'burst');s=m.hook()
+  else:
+   m.w(m.unit+0x2ec,m.r(m.unit+0x2ec)+1);s=tick(m,inside,'burst')
+   if not inside:s=tick(m,inside,'burst')
+  assert n.count(m)==3 and n.packets(m)[222+12]==13,'new shot starts next cycle without an idle scan'
+  s=tick(m,inside,'burst')
+  if not inside:s=tick(m,inside,'burst')
+  assert n.count(m)==4 and n.packets(m)[333+12]==1
+  assert not m.codeWrites;return
  # Execute original SetTarget(nullptr), which clears CurrentBurstIndex but
  # preserves the current short rearm timer. Other stop effects are controlled.
  boundary=bytes(m.u.mem_read(0x6fcf53,6))
@@ -82,8 +102,12 @@ def dodge(mode,inside,kind):
  m.w(m.unit+0x194,0)
  # Enemy vehicle is actively trying to crush this ground unit.
  t=m.r(m.target+0x6c4);m.b(t+0xd29,1);m.w(m.target+0x9c,10256);m.w(m.target+0xa0,10000);m.w(m.target+0xac,2);m.w(m.target+0x2b4,m.unit)
- if kind=='air':
+ if kind in ('air','own_air','allied_air','own_healer','own_air_not_targeted'):
   m.w(m.target,0x7e22a4);m.b(m.target+0x134,1);m.w(m.target+0xa4,256);m.w(m.target+0xac,1);m.w(t+0x898,m.actual);m.w(m.target+0x2f4,0)
+ if kind in ('own_air','own_healer','own_air_not_targeted'):m.w(m.target+0x21c,m.house)
+ if kind=='allied_air':m.w(m.house+0x5788,1<<m.r(m.enemy+0x30))
+ if kind=='own_healer':m.w(m.actual+0xa4,-40)
+ if kind=='own_air_not_targeted':m.w(m.target+0x2b4,0)
  if kind=='allied':m.w(m.target+0x21c,m.house)
  if kind=='not_targeted':m.w(m.target+0x2b4,0)
  if kind=='resistant':m.b(m.t+0xd2a,1)
@@ -100,7 +124,7 @@ def dodge(mode,inside,kind):
  if not inside:
   if kind=='conflict':compute(m,'burst')
   s=tick(m,inside,'dodge')
- expected=kind in ('crush','air','conflict','release')
+ expected=kind in ('crush','air','own_air','allied_air','conflict','release')
  assert n.count(m)==int(expected),(kind,n.count(m),s.dodgeInput.count,s.dodgeActive)
  assert before==bytes(m.u.mem_read(m.unit,0x800)) and not m.codeWrites
  if not expected:return
@@ -111,10 +135,10 @@ def dodge(mode,inside,kind):
  if kind=='release':s=n.state(m);s.dodgeEnabled=0;n.save(m,s)
  for _ in range(9):s=tick(m,inside,'dodge')
  assert n.count(m)==2,(kind,'restore',n.count(m),s.dodgeActive)
- assert n.packets(m)[111+12]==1,'restore original valid in-range attack'
+ assert n.packets(m)[111+12]==(5 if kind in ('own_air','allied_air') else 1),'restore only a valid hostile attack, otherwise Guard'
  assert not m.codeWrites
 for mode in (0,3):
  for inside in (True,False):
-  for kind in ('normal','elite','elite_single','burst_one','completed','not_fired','moving','disabled','filter','hold','hold_unselected','hold_unfocused','hold_stale','observer','release','weapon_changed','spawn_owner','spawned','spawn_parent','missile_spawn','aircraft','airborne','hold_spawned'):check(f'burst_{mode}_{inside}_{kind}',lambda m=mode,i=inside,k=kind:burst(m,i,k))
-  for kind in ('crush','air','allied','not_targeted','resistant','disabled','filter','observer','blocked','conflict','release'):check(f'dodge_{mode}_{inside}_{kind}',lambda m=mode,i=inside,k=kind:dodge(m,i,k))
+  for kind in ('normal','elite','elite_single','burst_one','completed','not_fired','moving','disabled','filter','hold','hold_unselected','hold_unfocused','hold_stale','observer','release','weapon_changed','spawn_owner','spawned','spawn_parent','missile_spawn','aircraft','airborne','hold_spawned','fast_cycle','same_frame'):check(f'burst_{mode}_{inside}_{kind}',lambda m=mode,i=inside,k=kind:burst(m,i,k))
+  for kind in ('crush','air','own_air','allied_air','own_healer','own_air_not_targeted','allied','not_targeted','resistant','disabled','filter','observer','blocked','conflict','release'):check(f'dodge_{mode}_{inside}_{kind}',lambda m=mode,i=inside,k=kind:dodge(m,i,k))
 Path(a.output).write_text(json.dumps({'scope':__doc__,'native_stop_reset_executed':bytes(n.fixture(0).game.get_data(0x6fcf53-0x400000,6))==bytes.fromhex('399eb4020000'),'dll_sha256':hashlib.sha256(Path(a.dll).read_bytes()).hexdigest(),'results':rows},indent=2)+'\n');raise SystemExit(any(x['status']!='PASS' for x in rows))

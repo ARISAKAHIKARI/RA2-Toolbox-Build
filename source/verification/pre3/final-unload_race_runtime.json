@@ -1,0 +1,133 @@
+{
+  "scope": "Actual x86 DLL and original event constructors; mocked Win32/world/query.\nThe Sell receiver branch is executed from the supplied EXE with resolved-object,\nmap lookup and final virtual sale mocked. This is not real network validation.\n",
+  "results": [
+    {
+      "name": "0_False_native_first",
+      "status": "PASS"
+    },
+    {
+      "name": "0_False_stale_time",
+      "status": "PASS"
+    },
+    {
+      "name": "0_False_stale_frame",
+      "status": "PASS"
+    },
+    {
+      "name": "0_False_reused_id",
+      "status": "PASS"
+    },
+    {
+      "name": "0_False_manual",
+      "status": "PASS"
+    },
+    {
+      "name": "0_False_disabled",
+      "status": "PASS"
+    },
+    {
+      "name": "0_False_moving_host",
+      "status": "PASS"
+    },
+    {
+      "name": "0_False_unobserved_deploy_retry",
+      "status": "PASS"
+    },
+    {
+      "name": "0_True_native_first",
+      "status": "PASS"
+    },
+    {
+      "name": "0_True_stale_time",
+      "status": "PASS"
+    },
+    {
+      "name": "0_True_stale_frame",
+      "status": "PASS"
+    },
+    {
+      "name": "0_True_reused_id",
+      "status": "PASS"
+    },
+    {
+      "name": "0_True_manual",
+      "status": "PASS"
+    },
+    {
+      "name": "0_True_disabled",
+      "status": "PASS"
+    },
+    {
+      "name": "0_True_moving_host",
+      "status": "PASS"
+    },
+    {
+      "name": "0_True_unobserved_deploy_retry",
+      "status": "PASS"
+    },
+    {
+      "name": "3_False_native_first",
+      "status": "PASS"
+    },
+    {
+      "name": "3_False_stale_time",
+      "status": "PASS"
+    },
+    {
+      "name": "3_False_stale_frame",
+      "status": "PASS"
+    },
+    {
+      "name": "3_False_reused_id",
+      "status": "PASS"
+    },
+    {
+      "name": "3_False_manual",
+      "status": "PASS"
+    },
+    {
+      "name": "3_False_disabled",
+      "status": "PASS"
+    },
+    {
+      "name": "3_False_moving_host",
+      "status": "PASS"
+    },
+    {
+      "name": "3_False_unobserved_deploy_retry",
+      "status": "PASS"
+    },
+    {
+      "name": "3_True_native_first",
+      "status": "PASS"
+    },
+    {
+      "name": "3_True_stale_time",
+      "status": "PASS"
+    },
+    {
+      "name": "3_True_stale_frame",
+      "status": "PASS"
+    },
+    {
+      "name": "3_True_reused_id",
+      "status": "PASS"
+    },
+    {
+      "name": "3_True_manual",
+      "status": "PASS"
+    },
+    {
+      "name": "3_True_disabled",
+      "status": "PASS"
+    },
+    {
+      "name": "3_True_moving_host",
+      "status": "PASS"
+    },
+    {
+      "name": "3_True_unobserved_deploy_retry",
+      "status": "PASS"
+    }
+  ]
+}

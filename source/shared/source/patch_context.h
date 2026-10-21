@@ -26,6 +26,18 @@ static constexpr Probe Probes[]={
 };
 template<class Read> bool compatible(uint32_t site,Read read){
  if(!experimentalpatch::size(site))return false;
+ if(site==experimentalpatch::ScrollMap){
+  uint8_t body[0x46]{};if(!read(site+8,body,sizeof body))return false;
+  uint32_t hash=2166136261u;for(uint8_t b:body)hash=(hash^b)*16777619u;
+  if(hash!=0x4C52FE69u)return false;
+ }
+ if(site==experimentalpatch::CameraClamp){
+  // This adapter replaces the whole clamp method, so require its entire
+  // remaining body (excluding our five entry bytes) to be the verified one.
+  uint8_t body[0xB9]{};if(!read(site+5,body,sizeof body))return false;
+  uint32_t hash=2166136261u;for(uint8_t b:body)hash=(hash^b)*16777619u;
+  if(hash!=0xA41008F5u)return false;
+ }
  for(const auto&p:Probes)if(p.site==site){
   uint8_t actual[16]{};
   if(!read(p.address,actual,p.size)||memcmp(actual,p.bytes,p.size))return false;

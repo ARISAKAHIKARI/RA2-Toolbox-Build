@@ -1,0 +1,70 @@
+{
+  "scope": "Actual x86 DLL and original event constructors; mocked Win32/world/query.\nThe Sell receiver branch is executed from the supplied EXE with resolved-object,\nmap lookup and final virtual sale mocked. This is not real network validation.\n",
+  "dll_sha256": "af5bb1a0dde34ff2ce6ea2b3a47007af86ac17042951690c020dc01317741e0c",
+  "results": [
+    {
+      "case": "0_normal_native_equivalence",
+      "status": "PASS"
+    },
+    {
+      "case": "0_both_stable_clamp",
+      "status": "PASS"
+    },
+    {
+      "case": "0_horizontal_stable_clamp",
+      "status": "PASS"
+    },
+    {
+      "case": "0_vertical_stable_clamp",
+      "status": "PASS"
+    },
+    {
+      "case": "0_restore_large_map",
+      "status": "PASS"
+    },
+    {
+      "case": "0_restore_stop",
+      "status": "PASS"
+    },
+    {
+      "case": "0_foreign_0_untouched",
+      "status": "PASS"
+    },
+    {
+      "case": "0_foreign_35_untouched",
+      "status": "PASS"
+    },
+    {
+      "case": "3_normal_native_equivalence",
+      "status": "PASS"
+    },
+    {
+      "case": "3_both_stable_clamp",
+      "status": "PASS"
+    },
+    {
+      "case": "3_horizontal_stable_clamp",
+      "status": "PASS"
+    },
+    {
+      "case": "3_vertical_stable_clamp",
+      "status": "PASS"
+    },
+    {
+      "case": "3_restore_large_map",
+      "status": "PASS"
+    },
+    {
+      "case": "3_restore_stop",
+      "status": "PASS"
+    },
+    {
+      "case": "3_foreign_0_untouched",
+      "status": "PASS"
+    },
+    {
+      "case": "3_foreign_35_untouched",
+      "status": "PASS"
+    }
+  ]
+}

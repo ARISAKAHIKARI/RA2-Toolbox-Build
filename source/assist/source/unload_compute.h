@@ -45,7 +45,10 @@ inline Decision decide(const Source&s,const Target*targets,const uint8_t*actions
    d.accepted.stableSince=frame;d.accepted.sleepObserved=0;d.accepted.seenUnload=0;
   }else if(r.stage==1&&(v.mission==0||v.mission==5||v.mission==11)&&frame-r.sentFrame>=2&&frame-r.stableSince>=2&&v.ready){
    send(16);d.accepted.stage=2;d.accepted.sentFrame=frame;d.accepted.seenUnload=0;
-  }else if(r.stage==2&&r.seenUnload&&v.mission!=16&&frame-r.sentFrame>=12){
+  }else if(r.stage==2&&v.mission!=16&&frame-r.sentFrame>=(r.seenUnload?12:301)){
+   // A queued order can disappear without a sampled Deploy mission (blocked
+   // exit or a very short interrupted animation). Wait out the native receipt
+   // window before retrying an unobserved order, especially in multiplayer.
    if(ejectDeployer&&(v.mission==2||frame-r.stableSince<2))return d;
    if(v.mission!=0&&v.mission!=5&&v.mission!=6&&v.mission!=11)d.done=1;
    else if(++r.retries<(ejectDeployer?12:3)){r.stage=0;r.seenUnload=0;}
@@ -55,7 +58,8 @@ inline Decision decide(const Source&s,const Target*targets,const uint8_t*actions
   return d;
  }
  if(v.x!=r.x||v.y!=r.y||!r.stableSince){r.x=v.x;r.y=v.y;r.stableSince=frame;}
- if(frame-r.stableSince<2||v.mission==2||v.queued==2||v.sequence==31)return d;
+ const bool specialist=v.engineer||v.spy;
+ if(v.sequence==31||(!specialist&&(frame-r.stableSince<2||v.mission==2||v.queued==2)))return d;
  if(frame<r.sentFrame)return d;
  if(v.queryFailed){r.sentFrame=frame+6;return d;}
  int best=-1;int64_t distance=INT64_MAX;bool special=false;

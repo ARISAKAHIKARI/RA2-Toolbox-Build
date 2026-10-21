@@ -22,6 +22,8 @@ static auto storage=std::make_unique<Shared>();static Shared*shared=storage.get(
 static Snapshot snap{},incoming{};static AdditionalSettings extra;static pointerinput::PendingMatches pointerMatches;
 static uint32_t settingsRevision=1,cooperativeDelivered=0;static bool retryCooperative=false;
 static uint32_t advancedKey=0,magnetronKey=0,csHoldKey=0;static unsigned wakes=0,notifications=0;
+static bool hookSmartUnload=false;static uint32_t unloadKey=0;
+#define LOBYTE(v) ((v)&255)
 static uint32_t featureFlags=AdvancedInput|CustomCS;static uint32_t flags(){return featureFlags;}
 static uint32_t commandMatch(){return 8;}static bool commandFresh(DWORD){return fresh;}
 static bool foregroundGame(){return focused;}static bool GetClientRect(int,RECT*r){*r={0,0,800,600};return true;}
@@ -47,6 +49,11 @@ static void initialize(){
  focused=visible=fresh=true;retryCooperative=false;shared->cooperativeRequest.serial=shared->cooperativePlan=shared->cooperativeAck=cooperativeDelivered=0;clockNow+=10;
 }
 int main(){
+ initialize();capture();gameinput::event.operation=5;gameinput::event.keys['D']=gameinput::event.keys[VK_CONTROL]=1;
+ hookSmartUnload=true;unloadKey='D'|(2<<8);unsigned beforeUnload=shared->pointer.request;
+ servicePointer();assert(shared->pointer.request==beforeUnload);
+ capture();gameinput::event.operation=5;gameinput::event.keys['D']=1;servicePointer();
+ assert(shared->pointer.request==beforeUnload+1&&shared->pointer.intent.operation==pointerinput::Cancel);ack();servicePointer();hookSmartUnload=false;
  // C4 uses the existing mailbox, default chord and per-feature mouse setting.
  initialize();featureFlags=0;extra.c4Test=true;extra.c4Key='C'|(4<<8);extra.c4Mouse=1;
  capture();servicePointer();assert(shared->pointer.request==shared->pointer.ack); // no chord

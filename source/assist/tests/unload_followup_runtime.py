@@ -7,7 +7,7 @@ p=argparse.ArgumentParser();p.add_argument('game');p.add_argument('dll');p.add_a
 spec=importlib.util.spec_from_file_location('support',Path(__file__).with_name('no_interception_runtime.py'));n=importlib.util.module_from_spec(spec)
 args=sys.argv;sys.argv=[str(spec.origin),a.game,a.dll,'--filter','__fixture_only__','--output',str(Path(a.output).with_suffix('.helpers.json'))];spec.loader.exec_module(n);sys.argv=args
 for mode in (0,3):
- for case in ('nearest','damage_action','neutral','virtual_override','guard_sticky','exit_transition','long_scatter','blocked','manual_stop','disabled'):
+ for case in ('nearest','damage_action','neutral','virtual_override','guard_sticky','exit_transition','moving_followthrough','blocked','manual_stop','disabled'):
   try:
    m=n.fixture(mode,1024|16384);m.vector(0xa8ecb8,[m.unit]);m.vector(0xa83de8,[m.eng]);m.w(m.unit+0x114,1);m.w(m.unit+0x118,m.eng)
    m.w(m.eng+0x11c,m.unit);m.b(m.eng+0x81,1);m.b(m.eng+0x90,0);m.w(m.eng+0xac,7);m.w(m.eng+0x5a4,m.unit)
@@ -29,11 +29,17 @@ for mode in (0,3):
    m.w(m.eng+0xac,7 if case=='exit_transition' else 2)
    if case=='exit_transition':s=n.tick(m);assert s.data.unloadPending==1
    m.w(m.eng+0xac,2)
-   for _ in range(120 if case=='long_scatter' else 10):s=n.tick(m);assert n.count(m)==1
    if case=='disabled':s.flags=0;n.save(m,s)
+   if case=='manual_stop':m.w(m.eng+0xac,13)
+   expected=case not in ('blocked','manual_stop','disabled')
+   for step in range(120 if case=='moving_followthrough' else 10):
+    if case=='moving_followthrough' and step:
+     # The early Capture was delivered; keep walking toward that building.
+     m.w(m.eng+0xac,8);m.w(m.eng+0x5a4,m.building);m.w(m.eng+0x9c,5000+step)
+    s=n.tick(m);assert n.count(m)==(2 if expected else 1),(case,step,n.count(m))
+   if case=='moving_followthrough':m.w(m.building+0x21c,m.house)
    m.w(m.eng+0xac,13 if case=='manual_stop' else 6 if case=='guard_sticky' else 5);s=n.tick(m)
    for _ in range(2):s=n.tick(m)
-   expected=case not in ('blocked','manual_stop','disabled')
    assert n.count(m)==(2 if expected else 1),(case,n.count(m),s.data.unloadPending,s.data.lastSubmitError)
    if expected:
     packet=n.packets(m)[111:222];assert packet[12]==8 and packet[19:24]==struct.pack('<IB',12,0x34),packet[:24].hex()

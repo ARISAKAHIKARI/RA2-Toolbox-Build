@@ -1,0 +1,82 @@
+{
+  "release": "v1.0.30-pre.3",
+  "final_dll_sha256": "2e71608d3f13877f2a35f01ad8daa48d2023409e00267a3b9634626fb1adfc86",
+  "controlled_cases_passed": 542,
+  "batches": [
+    {
+      "report": "refresh-3.json",
+      "passed": 34,
+      "dll_sha256": "2e71608d3f13877f2a35f01ad8daa48d2023409e00267a3b9634626fb1adfc86",
+      "scope": "Actual x86 DLL and original event constructors; mocked Win32/world/query.\nThe Sell receiver branch is executed from the supplied EXE with resolved-object,\nmap lookup and final virtual sale mocked. This is not real network validation.\n"
+    },
+    {
+      "report": "refresh-4.json",
+      "passed": 34,
+      "dll_sha256": "2e71608d3f13877f2a35f01ad8daa48d2023409e00267a3b9634626fb1adfc86",
+      "scope": "Actual x86 DLL and original event constructors; mocked Win32/world/query.\nThe Sell receiver branch is executed from the supplied EXE with resolved-object,\nmap lookup and final virtual sale mocked. This is not real network validation.\n"
+    },
+    {
+      "report": "camera-3.json",
+      "passed": 16,
+      "dll_sha256": "af5bb1a0dde34ff2ce6ea2b3a47007af86ac17042951690c020dc01317741e0c",
+      "scope": "Actual x86 DLL and original event constructors; mocked Win32/world/query.\nThe Sell receiver branch is executed from the supplied EXE with resolved-object,\nmap lookup and final virtual sale mocked. This is not real network validation.\n"
+    },
+    {
+      "report": "camera-4.json",
+      "passed": 16,
+      "dll_sha256": "af5bb1a0dde34ff2ce6ea2b3a47007af86ac17042951690c020dc01317741e0c",
+      "scope": "Actual x86 DLL and original event constructors; mocked Win32/world/query.\nThe Sell receiver branch is executed from the supplied EXE with resolved-object,\nmap lookup and final virtual sale mocked. This is not real network validation.\n"
+    },
+    {
+      "report": "combat-3.json",
+      "passed": 160,
+      "dll_sha256": "af5bb1a0dde34ff2ce6ea2b3a47007af86ac17042951690c020dc01317741e0c",
+      "scope": "Actual Runtime and original weapon/range/event functions in a controlled x86 world; not live game/netplay or projectile physics."
+    },
+    {
+      "report": "combat-4.json",
+      "passed": 160,
+      "dll_sha256": "af5bb1a0dde34ff2ce6ea2b3a47007af86ac17042951690c020dc01317741e0c",
+      "scope": "Actual Runtime and original weapon/range/event functions in a controlled x86 world; not live game/netplay or projectile physics."
+    },
+    {
+      "report": "final-unload_race_runtime.json",
+      "passed": 32,
+      "dll_sha256": null,
+      "scope": "Actual x86 DLL and original event constructors; mocked Win32/world/query.\nThe Sell receiver branch is executed from the supplied EXE with resolved-object,\nmap lookup and final virtual sale mocked. This is not real network validation.\n"
+    },
+    {
+      "report": "final-unload_followup_runtime.json",
+      "passed": 20,
+      "dll_sha256": "af5bb1a0dde34ff2ce6ea2b3a47007af86ac17042951690c020dc01317741e0c",
+      "scope": "Real x86 Runtime + native event constructors; synthetic world and virtual legality query. Not live gameplay/netplay."
+    },
+    {
+      "report": "final-unload_locations_runtime.json",
+      "passed": 34,
+      "dll_sha256": "af5bb1a0dde34ff2ce6ea2b3a47007af86ac17042951690c020dc01317741e0c",
+      "scope": "Actual x86 DLL and original event constructors; mocked Win32/world/query.\nThe Sell receiver branch is executed from the supplied EXE with resolved-object,\nmap lookup and final virtual sale mocked. This is not real network validation.\n"
+    },
+    {
+      "report": "final-tech-lbw.json",
+      "passed": 36,
+      "dll_sha256": "af5bb1a0dde34ff2ce6ea2b3a47007af86ac17042951690c020dc01317741e0c",
+      "scope": "Compiled Runtime tests with synthetic worlds; native constructors/branch bytes execute.\nNative CanBuild/FindFactory are explicit fixture stubs, not proof of live purchase.\n"
+    }
+  ],
+  "build_sequence": "Combat, unload, camera and technology suites ran on the otherwise-complete candidate af5bb1a0dde34ff2ce6ea2b3a47007af86ac17042951690c020dc01317741e0c. The final code change only accepts the supplied LBW renderer entry prefix while preserving its native call. Both platforms refresh suites and final PE/ABI checks then ran against the packaged DLL. Each report identifies its actual tested binary.",
+  "host_checks": [
+    "settings-ui.log",
+    "host-input.log",
+    "pointer-host.log"
+  ],
+  "static_checks": [
+    "architecture.log",
+    "windows-build.log"
+  ],
+  "limitations": [
+    "Synthetic Win32 and world state; renderer and mouse/edge/drag sources substituted.",
+    "No actual Windows display-FPS, complete game, LBW startup renderer payload or two-machine netplay validation.",
+    "ZhanWang disconnect cause remains unproven; tech/shroud kept available."
+  ]
+}

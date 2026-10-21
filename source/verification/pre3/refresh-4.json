@@ -1,0 +1,142 @@
+{
+  "scope": "Actual x86 DLL and original event constructors; mocked Win32/world/query.\nThe Sell receiver branch is executed from the supplied EXE with resolved-object,\nmap lookup and final virtual sale mocked. This is not real network validation.\n",
+  "dll_sha256": "2e71608d3f13877f2a35f01ad8daa48d2023409e00267a3b9634626fb1adfc86",
+  "results": [
+    {
+      "case": "0_edge",
+      "status": "PASS"
+    },
+    {
+      "case": "0_drag",
+      "status": "PASS"
+    },
+    {
+      "case": "0_drag_displacement",
+      "status": "PASS"
+    },
+    {
+      "case": "0_idle",
+      "status": "PASS"
+    },
+    {
+      "case": "0_disabled",
+      "status": "PASS"
+    },
+    {
+      "case": "0_unfocused",
+      "status": "PASS"
+    },
+    {
+      "case": "0_chat",
+      "status": "PASS"
+    },
+    {
+      "case": "0_menu",
+      "status": "PASS"
+    },
+    {
+      "case": "0_foreign_entry",
+      "status": "PASS"
+    },
+    {
+      "case": "0_foreign_body",
+      "status": "PASS"
+    },
+    {
+      "case": "0_foreign_render",
+      "status": "PASS"
+    },
+    {
+      "case": "0_full_idle",
+      "status": "PASS"
+    },
+    {
+      "case": "0_full_outside",
+      "status": "PASS"
+    },
+    {
+      "case": "0_cursor_only",
+      "status": "PASS"
+    },
+    {
+      "case": "0_invalid_strategy",
+      "status": "PASS"
+    },
+    {
+      "case": "0_strategy_switch_and_boundaries",
+      "status": "PASS"
+    },
+    {
+      "case": "0_wrong_thread_native_fallback_and_stop_restore",
+      "status": "PASS"
+    },
+    {
+      "case": "3_edge",
+      "status": "PASS"
+    },
+    {
+      "case": "3_drag",
+      "status": "PASS"
+    },
+    {
+      "case": "3_drag_displacement",
+      "status": "PASS"
+    },
+    {
+      "case": "3_idle",
+      "status": "PASS"
+    },
+    {
+      "case": "3_disabled",
+      "status": "PASS"
+    },
+    {
+      "case": "3_unfocused",
+      "status": "PASS"
+    },
+    {
+      "case": "3_chat",
+      "status": "PASS"
+    },
+    {
+      "case": "3_menu",
+      "status": "PASS"
+    },
+    {
+      "case": "3_foreign_entry",
+      "status": "PASS"
+    },
+    {
+      "case": "3_foreign_body",
+      "status": "PASS"
+    },
+    {
+      "case": "3_foreign_render",
+      "status": "PASS"
+    },
+    {
+      "case": "3_full_idle",
+      "status": "PASS"
+    },
+    {
+      "case": "3_full_outside",
+      "status": "PASS"
+    },
+    {
+      "case": "3_cursor_only",
+      "status": "PASS"
+    },
+    {
+      "case": "3_invalid_strategy",
+      "status": "PASS"
+    },
+    {
+      "case": "3_strategy_switch_and_boundaries",
+      "status": "PASS"
+    },
+    {
+      "case": "3_wrong_thread_native_fallback_and_stop_restore",
+      "status": "PASS"
+    }
+  ]
+}

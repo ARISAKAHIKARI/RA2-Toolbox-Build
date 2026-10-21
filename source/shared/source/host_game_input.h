@@ -27,7 +27,7 @@ inline bool heldBinding(uint32_t binding){
 }
 struct PointerPress {DWORD tick=0,serial=0;uint32_t match=0;int operation=0;POINT point{};int width=0,height=0;uint8_t keys[256]{};};
 struct PointerQueue {PointerPress items[16]{};unsigned head=0,count=0;DWORD dropped=0,cancelSerial=0;bool enabled=false,focused=false,rightArmed=false,leftArmed=false;uint32_t match=0;DWORD contextAt=0;uint32_t down=0;uint8_t rightKeys[256]{},leftKeys[256]{};};
-struct Target {PointerQueue pointer{};Health lastDiagnostic{};DWORD pid=0,thread=0;HWND window=nullptr;HHOOK message=nullptr,post=nullptr;HANDLE mapping=nullptr;runtime::Control*control=nullptr;DWORD cursorAt=0,tacticalAt=0,lastPost=0,lastPostError=0;};
+struct Target {PointerQueue pointer{};Health lastDiagnostic{};DWORD pid=0,thread=0;HWND window=nullptr;HHOOK message=nullptr,post=nullptr;HANDLE mapping=nullptr;runtime::Control*control=nullptr;DWORD cursorAt=0,tacticalAt=0,lastPost=0,lastPostError=0;bool fastTactical=false;};
 struct Lease {Subscription id=0;gameentry::Client client{};unsigned target=0;};
 struct Host {std::recursive_mutex mutex;Target targets[8]{};Lease leases[32]{};Subscription next=0;HMODULE module=nullptr;HANDLE timer=nullptr;volatile LONG pulseBusy=0;};
 inline Host& host(){static Host*value=new Host;return *value;}
@@ -139,6 +139,10 @@ inline bool takePointer(Subscription id,PointerPress&out,DWORD&dropped){
  auto&h=host();std::lock_guard<std::recursive_mutex>lock(h.mutex);
  for(auto&l:h.leases)if(id&&l.id==id&&l.client==gameentry::Client::Assist){auto&q=h.targets[l.target].pointer;dropped=q.dropped;q.dropped=0;if(!q.count)return false;out=q.items[q.head];q.head=(q.head+1)%16;--q.count;return true;}return false;
 }
+inline void setFastTactical(Subscription id,bool enabled){
+ auto&h=host();std::lock_guard<std::recursive_mutex>lock(h.mutex);
+ for(auto&l:h.leases)if(id&&l.id==id&&l.client==gameentry::Client::Assist){h.targets[l.target].fastTactical=enabled;return;}
+}
 inline void CALLBACK pulse(void*,BOOLEAN){
  auto&h=host();if(InterlockedCompareExchange(&h.pulseBusy,1,0))return;
  struct Reset {volatile LONG*value;~Reset(){InterlockedExchange(value,0);}} reset{&h.pulseBusy};
@@ -148,7 +152,8 @@ inline void CALLBACK pulse(void*,BOOLEAN){
   if(!enabled){clear(t);continue;}if(!t.control)continue;
   if(enabled&runtime::Tactical)pollPointer(t,now);
   uint32_t ready=0;if((enabled&runtime::Cursor)&&DWORD(now-t.cursorAt)>=4){t.cursorAt=now;ready|=runtime::Cursor;}
-  if((enabled&runtime::Tactical)&&DWORD(now-t.tacticalAt)>=16){t.tacticalAt=now;ready|=runtime::Tactical;}
+  const DWORD tacticalPeriod=t.fastTactical&&t.pointer.enabled&&t.pointer.focused?4:16;
+  if((enabled&runtime::Tactical)&&DWORD(now-t.tacticalAt)>=tacticalPeriod){t.tacticalAt=now;ready|=runtime::Tactical;}
   if(ready)post(t,ready);
  }
 }

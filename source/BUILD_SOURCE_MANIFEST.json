@@ -1,12 +1,12 @@
 {
-  "name": "RA2 Toolbox 1.0.30-pre.2",
-  "version": "1.0.30-pre.2",
+  "name": "RA2 Toolbox 1.0.30-pre.3",
+  "version": "1.0.30-pre.3",
   "compiled_game_binary_included": false,
-  "source": "v1.0.30-pre.1 (02614f99): special-order cursor hints and automatic burst aircraft/spawn exclusions",
+  "source": "v1.0.30-pre.2 (18c9d684): refresh strategies, small-map camera bounds, smart unload recovery, fast burst cycle and friendly-aircraft dodge",
   "resources": "Complete assets/profiles/Python preprocessing runtime/engine included",
   "resources_legacy_reuse": true,
-  "build_protocol": 55,
-  "validation": "136 actual x86 DLL controlled regressions; production host mode/color/input and cross-TU sharing tests; ASan/UBSan; static PE32/ABI/dependencies; no live Windows/game/netplay test",
+  "build_protocol": 56,
+  "validation": "See REVIEW-1.0.30-pre.3.md and verification/pre3; controlled x86 execution and static PE/ABI checks, no live Windows/FPS/netplay validation",
   "build_requirement": "Zig 0.13.0, x86 Windows target; build EXE and GameRuntime.dll together",
   "settings": {
     "Orders.MegaMissionBackend": "0=constructor; 1=high-level MP; SP uses constructor/DoList centrally",
@@ -16,7 +16,7 @@
   "entry_manager_api": 3,
   "package_type": "Full compiled Windows x86 tools and x64 preprocessing runtime",
   "runtime_transport_protocol": 4,
-  "game_code_patching": "8 exact available sites; five player-selection CALL sites removed from manager permission; GameRuntime sole writer",
+  "game_code_patching": "10 exact available sites; added camera clamp and ScrollMap entries under GameEntryManager ownership; existing foreign hooks preserved",
   "input_entry": "Manager WH_GETMESSAGE / WH_CALLWNDPROCRET only; features have no independent hooks",
   "symbolic_original_interfaces": [
     "DisplayClass::ProcessClickCoords (0x692300), normal query call",
@@ -25,10 +25,14 @@
     "EventClass original constructors + SP DoList / MP OutList",
     "HouseClass::CanBuild (0x4F7870), normal legality query",
     "TechnoClass::SelectWeapon/GetWeapon/IsCloseEnough, read-only virtual calls",
-    "BuildingClass::IsPowerOnline, read-only virtual call"
+    "BuildingClass::IsPowerOnline, read-only virtual call",
+    "DisplayClass::ScrollMap (0x4A9840), rate-scaled adapter for experimental scrolling",
+    "TacticalClass::SetTacticalPosition (0x6D6000), native camera update",
+    "GScreenClass::Render (0x4F4480), native composition and presentation"
   ],
-  "release_status": "1.0.30-pre.1 prerelease; paired EXE and DLL required",
+  "release_status": "1.0.30-pre.3 prerelease; paired EXE and DLL required",
   "technology_experiment": "Native AddCameo + two local UI CanBuild limit-only callsite wrappers; native factories/events unchanged; no live purchase/netplay certification",
   "calculation_locations": "Thirteen tactical decision families selectable; native queries/events always GameRuntime; statistics/reservations/display external.",
-  "player_control": "Unavailable; host UI and Runtime gate disabled independently"
+  "player_control": "Unavailable; host UI and Runtime gate disabled independently",
+  "refresh_experiment": "0 cursor only (default), 1 cursor + scrolling, 2 full native scene redraw; 60-240 Hz target; no simulation advancement or interpolation"
 }

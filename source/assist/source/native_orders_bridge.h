@@ -8,9 +8,13 @@ static uint32_t unloadJobSerial;
 static void resetUnloadCalculation();
 static NativeOrder nativeOrders[nativeorders::MaxOrders];static int nativeCount,nativeCursor,nativeFrame=-1;
 static UnloadPassenger unloadPassengers[nativeorders::MaxPassengers];static int unloadCount,unloadCursor;
+// Read-only roster history bridges a native D that executes before Ctrl+D's
+// WM_HOTKEY reaches the host. It never starts a job without an explicit command.
+struct RecentPassenger {uint32_t p,id,carrier,carrierID,carrierType,token,tick;int frame;};
+static RecentPassenger recentPassengers[nativeorders::MaxPassengers];static int recentPassengerCount;
 static ObjectIndex watchedPassengers;
 static void restoreNativeHooks();
-static void clearNativeOrders(){nativeCount=nativeCursor=unloadCount=unloadCursor=0;nativeFrame=-1;advancedObjects.clear();snap.advancedUnits=snap.unloadPending=0;restoreNativeHooks();resetUnloadCalculation();}
+static void clearNativeOrders(){nativeCount=nativeCursor=unloadCount=unloadCursor=recentPassengerCount=0;nativeFrame=-1;advancedObjects.clear();snap.advancedUnits=snap.unloadPending=0;restoreNativeHooks();resetUnloadCalculation();}
 static bool nativeMember(Vec,uint32_t p){return worldObjects.contains(p);}
 static bool nativeReady(){return simulationReady()&&sh->foreground&&!get<bool>(0xA8BC60+25);}
 
@@ -65,18 +69,47 @@ static bool unloadExit(const UnloadPassenger&r,int mission,int frame){
  if(mission!=7)return false;uint32_t destination=get<uint32_t>(r.p+0x5A4);
  return destination==r.carrier||(r.mode==0&&!destination&&!get<uint32_t>(r.p+0x2B4)&&frame-r.landedFrame<=unloadpolicy::ScatterFrames);
 }
+static void observeUnloadRoster(uint32_t house,int frame,DWORD now){
+ if(!(sh->flags&SmartUnloadOrders)||snap.chat){recentPassengerCount=0;return;}
+ for(int n=0;n<recentPassengerCount;){auto&r=recentPassengers[n];
+  if(DWORD(now-r.tick)>1500||frame<r.frame||frame-r.frame>90||!worldObjects.contains(r.p)||
+     get<uint32_t>(r.p+0x10)!=r.id||manualVersions.get(r.id)!=r.token)
+   r=recentPassengers[--recentPassengerCount];else ++n;
+ }
+ Vec inf=vec(0xA83DE8);
+ for(int n=0;n<inf.count;++n){uint32_t p=item(inf,n);if(!p)continue;uint32_t carrier=get<uint32_t>(p+0x11C);
+  if(!carrier||!worldObjects.contains(carrier)||!own(carrier,house)||kind(carrier)!=2||!get<bool>(carrier+0x83)||
+     !featureObjectAllowed(featuretypes::UnloadTransport,carrier)||get<uint32_t>(p+0x21C)!=house||
+     !featureObjectAllowed(featuretypes::UnloadPassenger,p))continue;
+  int at=0;for(;at<recentPassengerCount;++at)if(recentPassengers[at].p==p)break;
+  if(at==recentPassengerCount){if(at==nativeorders::MaxPassengers)continue;++recentPassengerCount;}
+  recentPassengers[at]={p,get<uint32_t>(p+0x10),carrier,get<uint32_t>(carrier+0x10),typeOf(carrier,2),manualVersions.get(get<uint32_t>(p+0x10)),now,frame};
+ }
+}
 static int smartUnload(uint32_t house){
  // Smart unload only creates native EventClass missions. The input-hook
  // installation state is unrelated and must never prevent a manual hotkey
  // from starting an otherwise valid unload in a restricted launcher.
  if(!(sh->flags&SmartUnloadOrders)||!loadInterfaces())return -12;
  Vec selected=vec(0xA8ECB8),inf=vec(0xA83DE8);int sent=0;
- for(int i=0;i<selected.count;++i){uint32_t p=item(selected,i);if(!p||!own(p,house)||kind(p)!=2||!featureObjectAllowed(featuretypes::UnloadTransport,p)||get<int>(p+0x114)<=0||get<bool>(p+0x1C8))continue;
+ const int frame=get<int>(0xA8ED84);const DWORD now=sampleClock(sh);
+ for(int i=0;i<selected.count;++i){uint32_t p=item(selected,i);if(!p||!own(p,house)||kind(p)!=2||!featureObjectAllowed(featuretypes::UnloadTransport,p)||get<bool>(p+0x1C8))continue;
   uint32_t roster[nativeorders::MaxPassengers];int count=0;
   for(int j=0;j<inf.count&&count<nativeorders::MaxPassengers;++j){uint32_t q=item(inf,j);if(q&&kind(q)==1&&featureObjectAllowed(featuretypes::UnloadPassenger,q)&&get<uint32_t>(q+0x21C)==house&&get<uint32_t>(q+0x11C)==p)roster[count++]=q;}
+  for(int j=0;j<recentPassengerCount&&count<nativeorders::MaxPassengers;++j){const auto&old=recentPassengers[j];uint32_t q=old.p;
+   if(old.carrier!=p||old.carrierID!=get<uint32_t>(p+0x10)||old.carrierType!=typeOf(p,2)||
+      DWORD(now-old.tick)>1500||frame<old.frame||frame-old.frame>90||!worldObjects.contains(q)||
+      get<uint32_t>(q+0x10)!=old.id||!own(q,house)||get<uint32_t>(q+0x11C)||manualVersions.get(old.id)!=old.token||
+      !featureObjectAllowed(featuretypes::UnloadPassenger,q))continue;
+   bool found=false;for(int k=0;k<count;++k)found|=roster[k]==q;
+   if(!found)roster[count++]=q;
+  }
+  const bool loaded=get<int>(p+0x114)>0;if(!loaded&&!count)continue;
   int replace=0;for(int j=0;j<unloadCount;++j)if(unloadPassengers[j].p==p||unloadPassengers[j].carrier==p)++replace;
   if(count>nativeorders::MaxPassengers-unloadCount+replace)return sent?sent:-6;
-  if(!nativeMission(house,get<uint32_t>(p+0x10),16,0,0,0,0,0,taskarbiter::Owner::Unload))return sent?sent:-6;
+  // Do not issue a second Deploy to an empty vehicle or an active unload.
+  if(loaded&&get<int>(p+0xAC)!=16&&get<int>(p+0xB4)!=16&&
+     !nativeMission(house,get<uint32_t>(p+0x10),16,0,0,0,0,0,taskarbiter::Owner::Unload))return sent?sent:-6;
   cancelNative(p);++sent;
   for(int j=0;j<count;++j){uint32_t q=roster[j];auto&r=unloadPassengers[unloadCount++];r={};r.job=++unloadJobSerial;r.p=q;r.id=get<uint32_t>(q+0x10);r.carrier=p;r.carrierID=get<uint32_t>(p+0x10);r.carrierType=typeOf(p,2);r.frame=get<int>(0xA8ED84);r.manualToken=manualVersions.get(r.id);}
  }return sent;
@@ -152,7 +185,8 @@ static void smartUnloadTick(uint32_t house,int frame,int&budget){
    // explicit unload job while they walk out; never append Sleep/Deploy to
    // their temporary Move. Manual orders cancel via the shared input manager.
    if(r.mode==0&&currentMission==7&&unloadExit(r,currentMission,frame))continue;
-   if(r.mode==0&&(currentMission==2||get<int>(p+0xB4)==2)&&frame-r.frame<=900){r.x=get<int>(p+0x9C);r.y=get<int>(p+0xA0);r.stableSince=frame;continue;}
+   const bool earlySpecialist=!ejectDeployer&&(get<bool>(t+0xEC3)||get<bool>(t+0xEBE));
+   if(r.mode==0&&!earlySpecialist&&(currentMission==2||get<int>(p+0xB4)==2)&&frame-r.frame<=900){r.x=get<int>(p+0x9C);r.y=get<int>(p+0xA0);r.stableSince=frame;continue;}
    if(!r.landedFrame)r.landedFrame=frame;
    if(!t||(!r.stage&&!unloadpolicy::initialMayContinue(currentMission,r.mode,frame-r.landedFrame,unloadExit(r,currentMission,frame),ejectDeployer)))done=true;
    else if(compute::inside(sh->computeApplied,r.mode==0?compute::Unload:compute::Escape)){

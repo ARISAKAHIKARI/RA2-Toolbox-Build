@@ -44,6 +44,10 @@ static void servicePointer(){
  gameinput::PointerPress e{};DWORD dropped=0;
  if(!gameinput::takePointer(hook,e,dropped)){if(dropped)notify(L"输入过密，部分增强请求未接收。");return;}
  if(!inputReady||e.serial!=box.cancelSerial||e.match!=commandMatch())return;
+ // The explicit unload command owns this same chord. A polled native D/S/X
+ // cancellation arriving afterwards must not erase its passenger follow-up.
+ if(e.operation==5&&hookSmartUnload&&LOBYTE(unloadKey)&&
+    pointerinput::matchesHold(e.keys,unloadKey,pointerinput::Enhanced))return;
  if(buildreserve::nativePointer(e)){leftCaptured=false;return;}
  airway::manual(e);
  // Native Z planning owns the original click; do not append another feature.

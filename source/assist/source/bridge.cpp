@@ -47,7 +47,7 @@ using namespace assist;
 // string literal. The host validates both protocol and structure size before
 // installing a hook; the release verifier can inspect these exports offline.
 extern "C" __declspec(dllexport) const uint32_t AssistProtocolInfo[2]={Version,sizeof(Shared)};
-extern "C" __declspec(dllexport) const wchar_t AssistMappingPrefix[]=L"Local\\RA2Assist_v055_";
+extern "C" __declspec(dllexport) const wchar_t AssistMappingPrefix[]=L"Local\\RA2Assist_v056_";
 static Shared*sh;static HANDLE mapping;static bool checked,good,fault;static DWORD last,slow;static uint32_t lastHouse,match,pendingAck;static int lastFrame;
 static sessionepoch::Tracker sessionTracker;static Snapshot snap;
 static runtimefault::Context faultContext;
@@ -609,6 +609,8 @@ static bool nativeObjectUnhooked(){return nativeObjectSignature();}
 #include "external_orders_bridge.h"
 #include "player_test_bridge.h"
 #include "placement_bridge.h"
+#include "small_map_camera_bridge.h"
+#include "scroll_refresh_bridge.h"
 #include "cooperative_bridge.h"
 #include "pointer_bridge.h"
 // Reserve a share for other active task families, then let a lone family use
@@ -902,6 +904,9 @@ static void tick(){
  if(!sh){wchar_t n[80];mapName(n,GetCurrentProcessId());mapping=OpenFileMappingW(FILE_MAP_ALL_ACCESS,FALSE,n);if(!mapping)return;sh=(Shared*)MapViewOfFile(mapping,FILE_MAP_ALL_ACCESS,0,0,sizeof(Shared));if(!sh||sh->magic!=Magic||sh->version!=Version||sh->pid!=GetCurrentProcessId()){disconnect();return;}}
  playerMaintenance();DWORD now=sampleClock(sh);if(sh->stop||(DWORD(now-sh->heartbeat)>3000&&controllerExited(now))){restoreFrameDriver();Shared* old=sh;reset();if(old->stop)old->stop=2;disconnect();return;}if(!checked){good=signatures();checked=true;}if(!good){if(sh->data.status!=-1){InterlockedIncrement(&sh->seq);sh->data.status=-1;sh->data.labels=0;MemoryBarrier();InterlockedIncrement(&sh->seq);}return;}
  DWORD period=sh->foreground?sh->scanMs:((sh->flags&(AdvancedInput|MagnetronInput|AutoOreReturn|AirWaypoints|AntiTheft))?64:500);if(period<2)period=2;if(period>1000)period=1000;
+ // An active refresh adapter must also wake promptly to restore after its
+ // setting is disabled or focus is lost, before returning to idle cadence.
+ if(scrollRefreshActive||(sh->foreground&&(sh->burstEnabled||sh->burstHeld||burstCount||sh->scrollRefreshHz)))period=4;
  bool selectionPending=sh->selectRequest!=sh->selectAck;bool planPending=sh->planRequest!=sh->planAck;bool cooperativePending=sh->cooperativePlan!=sh->cooperativeAck;bool cmd=sh->request!=sh->ack||selectionPending||planPending||cooperativePending||sh->pointer.request!=sh->pointer.ack;// A message wake observes the current simulation frame; pending work bypasses
  // display cadence. This is not a frame hook and does not advance the game.
  bool frameDue=get<int>(0xA8ED84)!=lastFrame&&
@@ -917,6 +922,7 @@ static void tick(){
  // (e.g. save/load/modal processing), not proof that the round ended.
  if(controllink::transientPause(running,house==lastHouse,active,lastHouse!=0)){
   if(riskRenderActive)riskRenderRedrawPending=true;
+  restoreHighScroll();
   snap.status=1;snap.bridgeStatus=1;snap.commandStatus=0;snap.match=match;
   snap.frame=frame;pointerTick();publishSnapshot(now);return;
  }
@@ -926,6 +932,7 @@ static void tick(){
  if(active&&running&&(!eventdelivery::mayQueue(get<int>(0xA8B238))||frame<0||frame>=INT32_MAX||
     !external::display::inspect([](uint32_t at,void*out,size_t n){memcpy(out,(void*)(uintptr_t)at,n);return true;}).visible())){
   if(riskRenderActive)riskRenderRedrawPending=true;
+  restoreHighScroll();
   snap.status=1;snap.bridgeStatus=1;snap.commandStatus=0;snap.match=match;
   snap.frame=frame;snap.chat=get<bool>(0xA8BC60+25);pointerTick();publishSnapshot(now);return;
  }
@@ -954,6 +961,8 @@ static void tick(){
   uint32_t p=worldByID(id);return std::pair<uint32_t,uint32_t>{p,manualVersions.get(id)};
  });
  observePausedOre(house,frame);
+ observeUnloadRoster(house,frame,now);
+ smallMapCameraTick();highScrollTick(now);
  // Only tick consumes feature requests; neither Hook callback can bypass
  // the shared game-thread intent/validation/event pipeline.
  consumeSubmittedIntents(house,frame,now);

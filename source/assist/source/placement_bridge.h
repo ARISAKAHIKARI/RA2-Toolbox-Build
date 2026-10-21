@@ -21,9 +21,12 @@ static bool riskReady(bool captured=false){
  return DWORD(sampleClock(sh)-heartbeat)<3000&&riskContextReady(captured);
 }
 #include "shroud_render_bridge.h"
+static int smallMapCameraAction(uint32_t),highScrollAction(uint32_t);
 extern "C" int __cdecl AssistRiskAction(unsigned op,unsigned object,unsigned house){
  // Only GuardedRiskAction calls this helper, after obtaining a Capture lease.
  // Keep live world checks, but don't re-enter Validate on every drawn cell.
+ if(op==8)return riskReady(true)?highScrollAction(object):0;
+ if(op==7)return riskReady(true)?smallMapCameraAction(object):0;
  if(op==5)return techGate(object,house);
  if(op==3&&(!riskRenderActive||!sh||!sh->renderReveal))return 0;
  if(!riskReady(true)){if(op==3)riskRenderRedrawPending=true;return 0;}
@@ -367,7 +370,9 @@ static void controlSitesTick(bool enabled){
  riskControlActive=enabled&&ok;if(sh)sh->playerControlStatus=ok?(enabled?1:0):-2;
 }
 static bool redrawRevealTest();
+static void restoreSmallMapCamera(),restoreHighScroll();
 static void restorePlacement(){
+ restoreSmallMapCamera();restoreHighScroll();
  const bool wasRendered=riskRenderActive;
  riskPlacementActive=riskAirActive=riskRenderActive=riskC4Active=false;prepareRiskSites();
  controlSitesTick(false);

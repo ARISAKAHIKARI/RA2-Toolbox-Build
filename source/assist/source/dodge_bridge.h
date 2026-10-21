@@ -15,14 +15,14 @@ static bool dodgeSource(uint32_t p,uint32_t house){
  int m=get<int>(p+0xAC);return m==1||m==2||m==5||m==6||m==11||m==13||m==29;
 }
 static int dodgeThreat(uint32_t p,uint32_t q,uint32_t house){
- if(!q||!nativeEnemy(q,house)||get<uint32_t>(q+0x11C)||get<int>(q+0x220))return 0;
+ if(!q||q==p||!live(q)||get<uint32_t>(q+0x11C)||get<int>(q+0x220))return 0;
  int k=kind(q);uint32_t type=typeOf(q,k);if(!type)return 0;
  int64_t dx=int64_t(get<int>(p+0x9C))-get<int>(q+0x9C),dy=int64_t(get<int>(p+0xA0))-get<int>(q+0xA0);
  if(dx< -16384||dx>16384||dy< -16384||dy>16384)return 0;int64_t distance=dx*dx+dy*dy;
  uint32_t target=get<uint32_t>(q+0x2B4),dest=k==3?0:get<uint32_t>(q+0x5A4);
  // Original INI readers: Crusher +D28, OmniCrusher +D29, resistance +D2A;
  // ObjectType::Crushable +22D. No local rank/ability/ownership modifications.
- if(k==2&&(get<bool>(type+0xD28)||get<bool>(type+0xD29))&&distance<=int64_t(640)*640&&
+ if(nativeEnemy(q,house)&&k==2&&(get<bool>(type+0xD28)||get<bool>(type+0xD29))&&distance<=int64_t(640)*640&&
     (target==p||dest==p)&&(get<int>(q+0xAC)==2||get<int>(q+0xAC)==1)){
   uint32_t ownType=typeOf(p,kind(p));if(get<bool>(type+0xD29)?!get<bool>(ownType+0xD2A):get<bool>(ownType+0x22D))return 1;
  }
@@ -47,7 +47,7 @@ static void dodgeObserve(uint32_t p,uint32_t house,dodgecompute::Source&s){
   int m=get<int>(p+0xAC);uint32_t q=get<uint32_t>(p+0x2B4),dest=get<uint32_t>(p+0x5A4);
   // If evasion interrupts our pending Stop, retain its original attack target.
   int bj=burstIndex(s.id);if(bj>=0)q=burstJobs[bj].targetPointer;
-  if(q&&worldObjects.contains(q)){s.restoreMission=1;s.restoreTarget=get<uint32_t>(q+0x10);}
+  if(q&&worldObjects.contains(q)&&nativeEnemy(q,house)){s.restoreMission=1;s.restoreTarget=get<uint32_t>(q+0x10);}
   else if((m==2||m==29)&&dest>=0x10000){int x=get<short>(dest+0x24),y=get<short>(dest+0x26);if(readMapCell(x,y)==dest){s.restoreMission=2;s.restoreTag=11;s.restoreDestination=uint32_t(y*1000+x);}}
  }
  if(sh->dodgeEnabled){for(int n=0;n<dodgeThreatCount&&s.count<dodgecompute::MaxThreats;++n){if(dodgeThreatRefs[n].target!=p)continue;uint32_t q=dodgeThreatRefs[n].pointer;int threat=dodgeThreat(p,q,house);if(threat)s.threats[s.count++]={get<uint32_t>(q+0x10),q,get<int>(q+0x9C),get<int>(q+0xA0),threat};}}

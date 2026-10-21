@@ -1,0 +1,2 @@
+PASS architecture boundaries: 193 source files; 127 host includes / 117 Runtime includes; read, input, injection, patch, event and frame-grant ownership
+NOTE: thirteen tactical decision families have dual backends; UI-bound fixed locations are intentional; cross-feature snapshots are not atomic; no real-game/netplay proof

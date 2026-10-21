@@ -1,16 +1,19 @@
 // Only the common GameRuntime tick collects and submits these commands.
 #include "burst_eligibility.h"
 static bursteligibility::Source burstSource(uint32_t p){
- int k=kind(p);return bursteligibility::inspect(p,typeOf(p,k),k,[](uint32_t at,void*out,size_t size){return read(at,out,size);});
+ // This runs under GuardedAssistTick on the game's owning thread. These are
+ // validated Techno/Type addresses, so avoid per-field ReadProcessMemory calls.
+ int k=kind(p);return bursteligibility::inspect(p,typeOf(p,k),k,[](uint32_t at,void*out,size_t size){memcpy(out,(const void*)(uintptr_t)at,size);return true;});
 }
 struct BurstJob {uint32_t serial=0,id=0,pointer=0,token=0,target=0,targetPointer=0;int phase=0,sentFrame=0,fireStamp=0;};
 static BurstJob burstJobs[256];static int burstCursor,burstFrame=-1;
 static uint32_t burstSerial,burstTask;static bool burstPending;
+static DWORD burstSampleAt;
 static burstcompute::Input burstInput;static burstcompute::Result burstResult;
 static int burstIndex(uint32_t id){for(int n=0;n<burstCount;++n)if(burstJobs[n].id==id)return n;return -1;}
 static bool burstOwns(uint32_t id){return burstIndex(id)>=0;}
 static void cancelBurst(uint32_t id){int n=burstIndex(id);if(n>=0)burstJobs[n]=burstJobs[--burstCount];}
-static void resetBurstControl(){burstCount=burstCursor=0;burstFrame=-1;burstPending=false;if(sh)sh->burstActive=sh->burstIssued=0;}
+static void resetBurstControl(){burstCount=burstCursor=0;burstFrame=-1;burstSampleAt=0;burstPending=false;if(sh)sh->burstActive=sh->burstIssued=0;}
 static bool burstEnabled(uint32_t p){
  if(!refreshFeatureTypes())return false;
  const auto source=burstSource(p);
@@ -34,24 +37,24 @@ static bool burstObserve(uint32_t p,uint32_t q,uint32_t house,burstcompute::Sour
  int order=orderIndex(p);if(order>=0&&nativeOrders[order].mode!=planner::OrdinaryMove)return false;
  return s.burst>=0&&s.burst<=256&&s.index>=0&&s.index<=256;
 }
-static void applyBurstResult(const burstcompute::Result&r,uint32_t house,int frame,DWORD now){
+static void applyBurstResult(const burstcompute::Result&r,uint32_t house,int frame,DWORD now,bool synchronous=false){
  if(r.match!=burstInput.match||r.tick!=burstInput.tick||r.frame!=burstInput.frame||r.count!=burstInput.count||r.count<0||r.count>burstcompute::MaxSources)return;
  for(int n=0;n<r.count;++n){
   if(!freshness::valid(r.match,match,r.tick,r.frame,now,frame,freshness::Tactical)||snap.chat)break;
   const auto&old=burstInput.sources[n];uint32_t p=worldByID(old.id),q=worldByID(old.target);int j=burstIndex(old.id);
   if(p!=old.pointer||q!=old.targetPointer||manualVersions.get(old.id)!=old.token){cancelBurst(old.id);continue;}
   if((old.job&&(j<0||burstJobs[j].serial!=old.job||burstJobs[j].phase!=old.phase))||(!old.job&&j>=0))continue;
-  burstcompute::Source s{};if(!burstObserve(p,q,house,s)){cancelBurst(old.id);continue;}
+  burstcompute::Source s{};if(synchronous)s=old;else if(!burstObserve(p,q,house,s)){cancelBurst(old.id);continue;}
   s.job=old.job;s.phase=old.phase;s.sentFrame=old.sentFrame;s.previousFire=old.previousFire;
   auto fresh=burstcompute::decide(s);const auto&d=r.decisions[n];
   if(d.done&&fresh.done){cancelBurst(old.id);continue;}
   if(d.mission<0||d.mission!=fresh.mission)continue;
-  if(d.mission==13&&(s.weapon!=old.weapon||!s.eligible||burstCount>=256))continue;
+  if(d.mission==13&&(s.weapon!=old.weapon||!s.eligible||(j<0&&burstCount>=256)))continue;
   if(!planningRoom(3)||!outgoingRoom())break;
   if(nativeMission(house,s.id,d.mission,d.mission==1?s.target:0,0,0,0,0,taskarbiter::Owner::BurstRefresh)){
    consumePlanning(3);++sh->burstIssued;
    if(j<0){j=burstCount++;burstJobs[j]={++burstSerial,s.id,p,s.token,s.target,q,1,frame,s.fireStamp};}
-   else {burstJobs[j].phase=2;burstJobs[j].sentFrame=frame;}
+   else {burstJobs[j].phase=d.mission==13?1:2;burstJobs[j].sentFrame=frame;if(d.mission==13)burstJobs[j].fireStamp=s.fireStamp;}
   }
  }
 }
@@ -65,16 +68,19 @@ static bool burstControlTick(uint32_t house,int frame,DWORD now){
   else if(sh->burstComputed==burstTask){long seq=sh->burstResultSeq;if(seq&1)return false;MemoryBarrier();burstResult=sh->burstResult;MemoryBarrier();if(seq!=sh->burstResultSeq)return false;burstPending=false;applyBurstResult(burstResult,house,frame,now);}
   else return false;
  }
- if(frame==burstFrame)return false;burstFrame=frame;auto&i=burstInput;i={};i.match=match;i.tick=now;i.frame=frame;
+ // A shot can occur after our first sample in the same engine frame. Polling
+ // at 4 ms catches it; the central actor arbiter still limits event issuance.
+ if(frame==burstFrame&&DWORD(now-burstSampleAt)<4)return false;burstFrame=frame;burstSampleAt=now;auto&i=burstInput;i={};i.match=match;i.tick=now;i.frame=frame;
  // Pending restoration has priority; active jobs are bounded by the same scan.
  for(int n=0;n<burstCount&&i.count<burstcompute::MaxSources;){auto&j=burstJobs[n];burstcompute::Source s{};
   if(!burstObserve(j.pointer,j.targetPointer,house,s)){burstJobs[n]=burstJobs[--burstCount];continue;}s.job=j.serial;s.phase=j.phase;s.sentFrame=j.sentFrame;s.previousFire=j.fireStamp;i.sources[i.count++]=s;++n;}
  Vec all=vec(0xA8EC78);int visited=0;
- for(;visited<all.count&&i.count<burstcompute::MaxSources;++visited){uint32_t p=item(all,(burstCursor+visited)%all.count);if(!own(p,house)||burstOwns(get<uint32_t>(p+0x10))||!burstEnabled(p))continue;
+ for(;visited<all.count&&i.count<burstcompute::MaxSources;++visited){uint32_t p=item(all,(burstCursor+visited)%all.count);
+  if(!p||get<int>(p+0xAC)!=1||get<int>(p+0x3B8)<=0||!get<uint32_t>(p+0x2B4)||!own(p,house)||burstOwns(get<uint32_t>(p+0x10))||!burstEnabled(p))continue;
   burstcompute::Source s{};if(!burstObserve(p,worldObjects.contains(get<uint32_t>(p+0x2B4))?get<uint32_t>(p+0x2B4):0,house,s)||burstcompute::decide(s).mission!=13)continue;i.sources[i.count++]=s;
  }if(all.count)burstCursor=(burstCursor+visited)%all.count;
  sh->burstActive=burstCount;if(!i.count)return true;
- if(compute::inside(sh->computeApplied,compute::BurstRefresh))applyBurstResult(burstcompute::calculate(i),house,frame,now);
+ if(compute::inside(sh->computeApplied,compute::BurstRefresh))applyBurstResult(burstcompute::calculate(i),house,frame,now,true);
  else {InterlockedIncrement(&sh->burstInputSeq);MemoryBarrier();sh->burstInput=i;burstTask=sh->burstTask+1;sh->burstTask=burstTask;MemoryBarrier();InterlockedIncrement(&sh->burstInputSeq);burstPending=true;notifyHost();}
  return true;
 }

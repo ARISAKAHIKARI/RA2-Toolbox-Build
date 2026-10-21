@@ -20,15 +20,17 @@ inline Decision decide(const Source&s){
  }
  if(s.phase==1){
   if(s.currentTarget&&s.currentTarget!=s.target){d.done=1;return d;}
-  bool stopped=!s.currentTarget&&(s.mission==13||s.mission==5||s.mission==6);
-  // If the stop state was too brief to observe, enqueue the one restoration
-  // after the existing Stop, preserving event order. Never repeat Stop here.
-  if(s.frame>s.sentFrame&&(stopped||s.frame-s.sentFrame>=90)){
+  // Stop and Attack use the same ordered native event queue. Restore at the
+  // next frame; sampling the transient Stop mission is not an execution fence.
+  if(s.frame>s.sentFrame){
    if(s.inRange)d.mission=1;else d.done=1;
   }return d;
  }
  if(s.currentTarget&&s.currentTarget!=s.target){d.done=1;return d;}
- if(s.currentTarget==s.target&&s.mission==1&&s.index>0&&s.fireStamp!=s.previousFire)d.done=1;
+ if(s.currentTarget==s.target&&s.mission==1&&s.index>0&&s.fireStamp!=s.previousFire){
+  if(s.eligible&&s.inRange&&(s.queued==-1||s.queued==1)&&s.burst>=2&&s.index<s.burst)d.mission=13;
+  else d.done=1;
+ }
  if(s.frame-s.sentFrame>=90)d.done=1;
  return d;
 }

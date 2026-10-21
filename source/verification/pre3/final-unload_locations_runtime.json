@@ -1,0 +1,142 @@
+{
+  "scope": "Actual x86 DLL and original event constructors; mocked Win32/world/query.\nThe Sell receiver branch is executed from the supplied EXE with resolved-object,\nmap lookup and final virtual sale mocked. This is not real network validation.\n",
+  "dll_sha256": "af5bb1a0dde34ff2ce6ea2b3a47007af86ac17042951690c020dc01317741e0c",
+  "results": [
+    {
+      "name": "nearest_engineer_0_False_False",
+      "status": "PASS"
+    },
+    {
+      "name": "nearest_engineer_0_False_True",
+      "status": "PASS"
+    },
+    {
+      "name": "nearest_engineer_0_True_False",
+      "status": "PASS"
+    },
+    {
+      "name": "nearest_engineer_0_True_True",
+      "status": "PASS"
+    },
+    {
+      "name": "reject_external_0_stale_ms",
+      "status": "PASS"
+    },
+    {
+      "name": "reject_external_0_stale_frame",
+      "status": "PASS"
+    },
+    {
+      "name": "reject_external_0_moved",
+      "status": "PASS"
+    },
+    {
+      "name": "reject_external_0_manual_stop",
+      "status": "PASS"
+    },
+    {
+      "name": "reject_external_0_token",
+      "status": "PASS"
+    },
+    {
+      "name": "reject_external_0_dead_target",
+      "status": "PASS"
+    },
+    {
+      "name": "reject_external_0_target_action",
+      "status": "PASS"
+    },
+    {
+      "name": "reject_external_0_disabled",
+      "status": "PASS"
+    },
+    {
+      "name": "reject_external_0_new_round",
+      "status": "PASS"
+    },
+    {
+      "name": "reject_external_0_torn",
+      "status": "PASS"
+    },
+    {
+      "name": "reject_external_0_queue_full",
+      "status": "PASS"
+    },
+    {
+      "name": "five_interrupted_survivors_0_False",
+      "status": "PASS"
+    },
+    {
+      "name": "five_interrupted_survivors_0_True",
+      "status": "PASS"
+    },
+    {
+      "name": "nearest_engineer_3_False_False",
+      "status": "PASS"
+    },
+    {
+      "name": "nearest_engineer_3_False_True",
+      "status": "PASS"
+    },
+    {
+      "name": "nearest_engineer_3_True_False",
+      "status": "PASS"
+    },
+    {
+      "name": "nearest_engineer_3_True_True",
+      "status": "PASS"
+    },
+    {
+      "name": "reject_external_3_stale_ms",
+      "status": "PASS"
+    },
+    {
+      "name": "reject_external_3_stale_frame",
+      "status": "PASS"
+    },
+    {
+      "name": "reject_external_3_moved",
+      "status": "PASS"
+    },
+    {
+      "name": "reject_external_3_manual_stop",
+      "status": "PASS"
+    },
+    {
+      "name": "reject_external_3_token",
+      "status": "PASS"
+    },
+    {
+      "name": "reject_external_3_dead_target",
+      "status": "PASS"
+    },
+    {
+      "name": "reject_external_3_target_action",
+      "status": "PASS"
+    },
+    {
+      "name": "reject_external_3_disabled",
+      "status": "PASS"
+    },
+    {
+      "name": "reject_external_3_new_round",
+      "status": "PASS"
+    },
+    {
+      "name": "reject_external_3_torn",
+      "status": "PASS"
+    },
+    {
+      "name": "reject_external_3_queue_full",
+      "status": "PASS"
+    },
+    {
+      "name": "five_interrupted_survivors_3_False",
+      "status": "PASS"
+    },
+    {
+      "name": "five_interrupted_survivors_3_True",
+      "status": "PASS"
+    }
+  ]
+}

@@ -101,6 +101,8 @@ int main(){
  keyDown[VK_MBUTTON]=true;pulse(nullptr,0);assert(!takePointer(a,press,dropped));
  setPointerContext(a,1,true);pulse(nullptr,0);assert(!takePointer(a,press,dropped));
  keyDown[VK_MBUTTON]=false;pulse(nullptr,0);
+ setFastTactical(a,true);block.wakePending=0;block.ready=0;clockMs+=4;pulse(nullptr,0);assert(block.ready==3);
+ setFastTactical(a,false);block.wakePending=0;block.ready=0;clockMs+=4;pulse(nullptr,0);assert(block.ready==2);
  keyDown[VK_MBUTTON]=true;pulse(nullptr,0);assert(takePointer(a,press,dropped)&&press.operation==1&&press.serial==pointerCancelSerial(a));
  pulse(nullptr,0);assert(!takePointer(a,press,dropped)); // held button never repeats
  keyDown[VK_MBUTTON]=false;pulse(nullptr,0);

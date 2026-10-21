@@ -23,6 +23,7 @@ static bool autoSettingChanged(int id,int notification){
  }
  if(id==850&&select){int next=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));if(next>=0&&next<=3){minimapPosition=next;changedSetting();}return true;}
  if(id==830&&notification==BN_CLICKED){minimapEnabled=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;if(!minimapEnabled)minimap::hide();changedSetting();return true;}
+ if(id==886&&select){int mode=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));if(mode>=0&&mode<=2){extra.scrollRefreshMode=mode;changedSetting();syncAdditional();}return true;}
  if(id==810&&notification==BN_CLICKED){extra.c4Test=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;pointerMatches.clear();changedSetting();return true;}
  if(id==811&&edit){extra.c4Key=uint32_t(SendMessageW(GetDlgItem(ui,id),HKM_GETHOTKEY,0,0));changedSetting();return true;}
  if(id==812&&select){int selected=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));extra.c4Mouse=selected==5?6:selected;changedSetting();return true;}
@@ -69,13 +70,14 @@ static bool autoSettingChanged(int id,int notification){
  case 817:numeric=&constructionScalePercent;lo=50;hi=250;break;
  case 797:numeric=&shiftClickGap;lo=0;hi=250;break;
  case 818:numeric=&advancedRangeCells;lo=0;hi=30;break;
+ case 887:numeric=&extra.scrollRefreshHz;lo=60;hi=240;break;
  case 881:numeric=&extra.missileScanHz;lo=1;hi=60;break;
  case 787:numeric=&advancedScanHz;lo=1;hi=60;break;
  case 312:numeric=&repairMs;lo=500;hi=30000;break;case 444:numeric=&doubleMs;lo=20;hi=5000;break;
  case 471:numeric=&toastMs;lo=500;hi=60000;break;case 701:numeric=&extra.loadRadius;lo=1;hi=512;break;
  case 710:numeric=&extra.defaults.first;hi=512;break;case 711:numeric=&extra.defaults.second;hi=512;break;
  case 712:numeric=&extra.defaults.maximum;hi=512;break;}
- if(numeric&&edit){if(number(lo,hi,*numeric)){if(id==310)clockState(foregroundGame()&&snap.status==1&&enabled,fps);if(id==444)typeTap.clear();changedSetting();}return true;}
+ if(numeric&&edit){if(number(lo,hi,*numeric)){if(id==310)clockState(foregroundGame()&&snap.status==1&&enabled,fps);if(id==444)typeTap.clear();changedSetting();if(id==887)syncAdditional();}return true;}
  if(id==714&&edit){if(!quotaID().empty())readTargetQuota();return true;}
  if((id==715&&notification==BN_CLICKED)||(id>=716&&id<=718&&edit)){
   auto type=quotaID();if(type.empty()){setStatus(L"请先选择类型或输入有效的对象 ID。");return true;}

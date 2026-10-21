@@ -27,6 +27,7 @@ static bool hookAdvanced=false,hookSmartUnload=false;static HWND hookChecks[4]={
 static uint32_t computeRequested=compute::Default;static bool minimapEnabled=false;static int minimapScale=200,advancedRangeCells=2,minimapPosition=0,minimapX=20,minimapY=60;
 constexpr unsigned HOTKEYF_CONTROL=2,HOTKEYF_ALT=4;
 constexpr WORD MAKEWORD(unsigned a,unsigned b){return WORD((a&255)|(b<<8));}
+static WORD socialKeys[9]{};static bool autoRevealNewMatch=false;static unsigned autoRevealMatch=0,autoRevealDone=0,autoRevealRetry=0;
 static WORD idleAircraftKey=MAKEWORD('P',6);
 namespace minimap {static void hide(){}}static void syncAdditional(){}
 static int labelScalePercent=100,constructionScalePercent=100;
@@ -89,7 +90,7 @@ feature_save=io.split('static bool saveAdditionalSettings(){',1)[1].split(' writ
 prefix+="\nstatic void loadFeatureTypes(){"+feature_load+"}\nstatic void saveFeatureTypes(){"+feature_save+"}\n"
 suffix=r''' 
 int main(){
- for(int i=0;i<compute::Count;++i){fields[840+i]=1;assert(autoSettingChanged(840+i,CBN_SELCHANGE)&&compute::inside(computeRequested,compute::Feature(i)));fields[840+i]=0;assert(autoSettingChanged(840+i,CBN_SELCHANGE)&&!compute::inside(computeRequested,compute::Feature(i)));}
+ for(int i=0;i<compute::Count;++i){fields[9000+i]=1;assert(autoSettingChanged(9000+i,CBN_SELCHANGE)&&compute::inside(computeRequested,compute::Feature(i)));fields[9000+i]=0;assert(autoSettingChanged(9000+i,CBN_SELCHANGE)&&!compute::inside(computeRequested,compute::Feature(i)));}
  computeRequested=153;saveFeatureTypes();computeRequested=0;loadFeatureTypes();assert(computeRequested==153);
  fields[830]=1;assert(autoSettingChanged(830,BN_CLICKED)&&minimapEnabled);
  for(int n:{100,200,400}){fields[831]=n;assert(autoSettingChanged(831,EN_CHANGE)&&minimapScale==n);}fields[831]=401;autoSettingChanged(831,EN_CHANGE);assert(minimapScale==400);
@@ -158,13 +159,24 @@ int main(){
  fields[729]=4;autoSettingChanged(729,CBN_SELCHANGE);assert(extra.mouseButtons[0]==4);
 
  fields[447]='C';autoSettingChanged(447,EN_CHANGE);assert(csKey=='C');autoSettingChanged(447,EN_CHANGE);assert(csKey=='C');
+ // Refresh mode selection, bounds and persisted defaults/migration.
+ profile.clear();loadMouse();assert(extra.scrollRefreshMode==0&&extra.scrollRefreshHz==120);
+ for(int mode:{0,1,2}){fields[886]=mode;assert(autoSettingChanged(886,CBN_SELCHANGE)&&extra.scrollRefreshMode==mode);saveMouse();extra.scrollRefreshMode=9;loadMouse();assert(extra.scrollRefreshMode==mode);}
+ for(int bad:{-1,3}){fields[886]=bad;autoSettingChanged(886,CBN_SELCHANGE);assert(extra.scrollRefreshMode==2);}
+ for(int hz:{60,120,240}){fields[887]=hz;assert(autoSettingChanged(887,EN_CHANGE)&&extra.scrollRefreshHz==hz);}
+ for(int bad:{0,59,241}){fields[887]=bad;autoSettingChanged(887,EN_CHANGE);assert(extra.scrollRefreshHz==240);}
+ saveMouse();extra.scrollRefreshHz=0;loadMouse();assert(extra.scrollRefreshHz==240);
+ profile.clear();profile[L"ScrollRefresh"]=1;loadMouse();assert(extra.scrollRefreshMode==1);
+ profile[L"RefreshStrategy"]=0;loadMouse();assert(extra.scrollRefreshMode==0);
+ profile[L"RefreshStrategy"]=99;profile[L"ScrollRefreshHz"]=500;loadMouse();assert(extra.scrollRefreshMode==2&&extra.scrollRefreshHz==240);
+ profile.clear();loadMouse();
  // Experimental reveal opt-ins are exclusive and the render path clears queued old reveals.
  extra.experimentalReveal=true;commandQueue.size=3;commandQueue.slots[0].command=RevealMap;commandQueue.slots[1].command=15;commandQueue.slots[2].command=RevealMap;
- fields[808]=1;autoSettingChanged(808,BN_CLICKED);assert(extra.renderReveal&&!extra.experimentalReveal&&autoSavePending);
+ fields[808]=1;autoSettingChanged(808,CBN_SELCHANGE);assert(extra.renderReveal&&!extra.experimentalReveal&&autoSavePending);
  assert(commandQueue.size==1&&commandQueue.slots[0].command==15&&fields[739]==BST_UNCHECKED);
  saveMouse();extra.renderReveal=false;loadMouse();assert(extra.renderReveal&&!extra.experimentalReveal);
  profile[L"RevealMap"]=1;loadMouse();assert(extra.renderReveal&&!extra.experimentalReveal); // legacy permission loses on load
- fields[808]=0;autoSettingChanged(808,BN_CLICKED);assert(!extra.renderReveal);saveMouse();loadMouse();assert(!extra.renderReveal);
+ fields[808]=0;autoSettingChanged(808,CBN_SELCHANGE);assert(!extra.renderReveal);saveMouse();loadMouse();assert(!extra.renderReveal);
  fields[806]=1;autoSettingChanged(806,BN_CLICKED);assert(extra.nativeAirWaypoints&&airway::resets==1&&pointerMatches.clears==1);
  fields[806]=0;autoSettingChanged(806,BN_CLICKED);assert(!extra.nativeAirWaypoints&&airway::resets==2&&pointerMatches.clears==2);
  fields[787]=60;autoSettingChanged(787,EN_CHANGE);assert(advancedScanHz==60);fields[787]=61;autoSettingChanged(787,EN_CHANGE);assert(advancedScanHz==60);
@@ -209,7 +221,7 @@ assert 'L"BUTTON",L"绑定' not in main
 for module in ('assist','unit_monitor'):
  src=(root/module/'source/main.cpp').read_text()
  assert 'external::ReadSession' in src and 'external::ReadScope' not in src
-print('PASS: shipped settings handler applies/flushes valid edits, preserves conflicting keys, ignores programmatic updates, saves quotas/custom keys; independent overlays and common read leases')
+print('PASS: three refresh modes, rate bounds, persistence and legacy migration; shipped settings handler applies/flushes valid edits, preserves conflicting keys, ignores programmatic updates, saves quotas/custom keys; independent overlays and common read leases')
 
 # Hook permissions are linked only after explicit, valid user activation.
 assert (main+(root/'assist/source/hotkey_host.h').read_text()).count('if(csMode){hookAutoCS=true;SendMessageW(hookChecks[3],BM_SETCHECK,BST_CHECKED,0);}')>=2
@@ -233,7 +245,7 @@ assert 'tabEnabled&&enabled&&gameActive&&!demo' in monitor
 
 assert 'if(c==RevealMap&&!extra.experimentalReveal)return false;' in main
 assert 'if(command==RevealMap&&!extra.experimentalReveal)' in main
-assert 'if(autoRevealNewMatch&&extra.experimentalReveal)' in main
+assert 'if(autoRevealNewMatch&&extra.experimentalReveal&&' in main
 assert 'commandQueue.slots[i].command==RevealMap' in main
 assert 'case 116:toggleOverlay();' in monitor
 assert 'if(a==1){toggleOverlay();}' in monitor

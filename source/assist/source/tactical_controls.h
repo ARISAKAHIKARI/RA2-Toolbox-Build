@@ -132,6 +132,10 @@ note(L"坐标从游戏画面左上角计算；自动避开原雷达和飞机按�
 detailCheck=toggle(481,L"显示运行耗时",showDetails);next();
 
 heading(4,904,L"高级与实验性设置",L"实验性功能尚未完成联机验证，可能导致不同步或掉线。建议单独测试。");
+label(L"高刷策略（实验性）",20,260);choices(combo(886),{L"仅光标",L"光标＋拖屏",L"全部"},extra.scrollRefreshMode);next();
+number(887,L"画面目标刷新率 / 帧每秒",extra.scrollRefreshHz,L"60–240 · 默认 120");
+note(L"默认仅光标；拖屏支持右拖与屏幕边缘。“全部”持续重绘，不改变游戏速度，不插帧。",44);
+item(L"STATIC",L"高刷策略：仅光标",20,605,888);next();
 extraControls[RevealExperimental]=toggle(739,L"允许地图全开（实验性）",extra.experimentalReveal);next();
 item(L"STATIC",L"以下功能可能影响联机同步",20,605,805);next();
 anywhereCheck=toggle(476,L"扩展建筑放置范围（联机风险）",buildAnywhereMode);next();

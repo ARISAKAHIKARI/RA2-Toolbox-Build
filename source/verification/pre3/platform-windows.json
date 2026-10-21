@@ -1,0 +1,48 @@
+{
+  "scope": "Static supplied EXE windows. Matching bytes do not validate dynamic launcher patches or netplay. No tech/shroud multiplayer disabling added.",
+  "samples": [
+    {
+      "label": "reference",
+      "sha256": "c287d62a4d6a25b547e9339d071dd6e03adcf545699062e478aaeee38c60e89a",
+      "windows": {
+        "shroud_entry": "558bec83ec34a0c5e7890084c0752932d2e9dae96f00c605c5e7890001e8ae50",
+        "fog_entry": "a0c6e7890083ec2c84c0751832d2e98fe76f00c605c6e7890001e8414e1300a3",
+        "tech_draw": "8b0d4c3da8006a006a005089442438e899e0e4ff8b54242c8b",
+        "tech_prune": "8b881c0200006a015753e8ead0e4ff85c00f85da020000",
+        "canbuild_entry": "83ec3c8a44244453558be9565784c0896c24100f85150700008b7c24508a8798",
+        "camera_clamp": "a1e4f887008b0ddcf8870003c0538b1da86f88002bc155568d0440578b6c24148d34808bc3992bc28b15e8f88700d1f88d3c70a1ecf887008d04408d34808d4451fbc1e6028d04402bf38b1dac6f880003f78d0c808bc3992bc2d1f803c8a1f0f887008d04408d04808d04850e010000992bc28b5504d1f82bc332db03c13bd17d07b301894d04eb093bd07e05894504b3018b45003bc77d0c897d005f5e5db0015bc204003bc67e0c8975005f5e5db0015bc204005f5e8ac35d5bc20400"
+      }
+    },
+    {
+      "label": "ZhanWang",
+      "sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+      "windows": {
+        "shroud_entry": "558bec83ec34a0c5e7890084c0752932d2e94ae86f00c605c5e7890001e8ae50",
+        "fog_entry": "a0c6e7890083ec2c84c0751832d2e9ffe56f00c605c6e7890001e8414e1300a3",
+        "tech_draw": "8b0d4c3da8006a006a005089442438e899e0e4ff8b54242c8b",
+        "tech_prune": "8b881c0200006a015753e8ead0e4ff85c00f85da020000",
+        "canbuild_entry": "83ec3c8a44244453558be9565784c0896c24100f85150700008b7c24508a8798",
+        "camera_clamp": "a1e4f887008b0ddcf8870003c0538b1da86f88002bc155568d0440578b6c24148d34808bc3992bc28b15e8f88700d1f88d3c70a1ecf887008d04408d34808d4451fbc1e6028d04402bf38b1dac6f880003f78d0c808bc3992bc2d1f803c8a1f0f887008d04408d04808d04850e010000992bc28b5504d1f82bc332db03c13bd17d07b301894d04eb093bd07e05894504b3018b45003bc77d0c897d005f5e5db0015bc204003bc67e0c8975005f5e5db0015bc204005f5e8ac35d5bc20400"
+      }
+    },
+    {
+      "label": "LBW",
+      "sha256": "c287d62a4d6a25b547e9339d071dd6e03adcf545699062e478aaeee38c60e89a",
+      "windows": {
+        "shroud_entry": "558bec83ec34a0c5e7890084c0752932d2e9dae96f00c605c5e7890001e8ae50",
+        "fog_entry": "a0c6e7890083ec2c84c0751832d2e98fe76f00c605c6e7890001e8414e1300a3",
+        "tech_draw": "8b0d4c3da8006a006a005089442438e899e0e4ff8b54242c8b",
+        "tech_prune": "8b881c0200006a015753e8ead0e4ff85c00f85da020000",
+        "canbuild_entry": "83ec3c8a44244453558be9565784c0896c24100f85150700008b7c24508a8798",
+        "camera_clamp": "a1e4f887008b0ddcf8870003c0538b1da86f88002bc155568d0440578b6c24148d34808bc3992bc28b15e8f88700d1f88d3c70a1ecf887008d04408d34808d4451fbc1e6028d04402bf38b1dac6f880003f78d0c808bc3992bc2d1f803c8a1f0f887008d04408d04808d04850e010000992bc28b5504d1f82bc332db03c13bd17d07b301894d04eb093bd07e05894504b3018b45003bc77d0c897d005f5e5db0015bc204003bc67e0c8975005f5e5db0015bc204005f5e8ac35d5bc20400"
+      }
+    }
+  ],
+  "experimental_refresh": {
+    "scroll_map_entry": "0x4A9840, 8 displaced bytes, remaining 0x46-byte body FNV1a 4C52FE69 on both images",
+    "renderer_entry": "0x4F4480",
+    "zhanwang_prefix": "83 ec 08 a1 1c 73 88 00 55",
+    "lbw_prefix": "83 ec 08 e9 29 a0 68 00 55",
+    "lbw_limit": "Original renderer entry preserved; target 0xB7E4B1 is populated at startup and cannot be validated from supplied disk image. Controlled renderer substitute does not execute that payload."
+  }
+}
