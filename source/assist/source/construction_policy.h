@@ -4,7 +4,7 @@
 #include <cstdint>
 #include "../../shared/source/viewport_scale.h"
 namespace assist { namespace construction {
-constexpr int Capacity=5,PanelWidth=144,MaxHeaderHeight=198,SectionGap=10,RowHeight=66,PanelOpacity=216;
+constexpr int Capacity=5,PanelWidth=144,MaxHeaderHeight=178,SectionGap=10,RowHeight=66,PanelOpacity=236;
 constexpr int StackTop=24,StackStep=24,StackHeight=48;
 inline bool prerequisite(int index,const std::vector<int>&owned,const std::vector<int>*groups,int future=-1){
  auto has=[&](int n){return n>=0&&n<int(owned.size())&&(owned[n]>0||n==future);};
@@ -40,7 +40,7 @@ struct Layout {
   zoom=std::min(viewport::factor(scalePercent),std::min(float(w-168)/PanelWidth,float(h-8)/(MaxHeaderHeight+RowHeight)));
   content(queueCount,choiceCount);return true;}
  int stackBottom()const{return StackTop+(queueCount?StackHeight+(queueCount-1)*StackStep:32);}
- int headerHeight()const{return stackBottom()+20+SectionGap;}
+ int headerHeight()const{return stackBottom()+SectionGap;}
  void content(int queued,int candidates){
   queueCount=std::clamp(queued,0,Capacity);choiceCount=std::max(0,candidates);rows=0;
   if(!gameHeight||!choiceCount)return;

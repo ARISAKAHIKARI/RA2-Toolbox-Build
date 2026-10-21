@@ -1,3 +1,18 @@
+# RA2 Toolbox 1.0.30-pre.7
+
+[预发布完整包与更新包](https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/releases/tag/v1.0.30-pre.7) · [实现与验证](source/REVIEW-1.0.30-pre.7.md)
+
+- 高刷范围 **仅光标 / 光标＋拖屏 / 全部** 移到「高刷光标」普通页面，画面目标刷新率与实际补充绘制状态一并显示。
+- 「单位统计」集中提供敌方单位提示、载具容量、铁幕 / 力场 / 冷冻时间、蜘蛛寄生和火力 / 防御 / 速度强化开关；状态文字缩放、信息刷新率也放在此处。
+- 预定面板移除常驻操作说明和普通增删提示，保留建造图标与队列序号；使用暗蓝卡片、青色选中态、悬停描边和容量点。缩短提示区域，维持绘制与点击的共同缩放。
+- 沿用已有配置与自动保存，不需重新设置。
+
+文件版本 **1.0.30.6**，Assist **58**、Runtime **4**、入口管理器 **3**。退出游戏和工具箱后成套更新 EXE/DLL。已有安装选 Update，首次安装选 Windows 完整包。
+
+验证报告见 [verification/pre7](source/verification/pre7/summary.json)。已完成编译、设置消息与面板绘制模型回归；尚未进行 Windows 实机画面验证。
+
+## 历史版本说明
+
 # RA2 Toolbox 1.0.30-pre.6
 
 [预发布完整包与更新包](https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/releases/tag/v1.0.30-pre.6) · [实现与验证](source/REVIEW-1.0.30-pre.6.md)

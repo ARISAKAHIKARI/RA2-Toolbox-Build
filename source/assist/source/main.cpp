@@ -1073,7 +1073,7 @@ static void paint(){
    for(int i=0;i<4;++i)if(idleTabs&(1u<<i)){auto&f=sidebarShapes.frames[i];Bitmap shape(f.width,f.height,f.width*4,PixelFormat32bppPARGB,reinterpret_cast<BYTE*>(f.pixels.data()));g.DrawImage(&shape,RectF(f.x*sx,f.y*sy,f.width*sx,f.height*sy));}g.Restore(state);
   }
   for(const auto&b:nativeBadges){SolidBrush tag(Color(230,97,67,14));g.FillRectangle(&tag,b.x*sx,b.y*sy,b.w*sx,b.h*sy);
-   std::wstring numbers=L"预定 ";for(int i=0;i<construction::Capacity;++i)if(b.positions&(1<<i))numbers+=std::to_wstring(i+1);
+   std::wstring numbers;for(int i=0;i<construction::Capacity;++i)if(b.positions&(1<<i))numbers+=std::to_wstring(i+1);
    drawText(g,numbers,b.x*sx+2,b.y*sy,std::max(8.f,10.f*sy),Color(255,255,239,158));}
   auto enemyClip=g.Save();g.SetClip(RectF(0,0,enemyFrame.width*sx,enemyFrame.height*sy),CombineModeIntersect);
   for(int i=0;i<enemyCount;++i){const auto&v=enemyViews[i];if(external::enemies::onScreen(v.x,v.y,enemyFrame.width,enemyFrame.height))drawEnemyMarker(g,enemyFrame.items[i],v,sx,sy);}g.Restore(enemyClip);
@@ -1211,9 +1211,18 @@ static void serviceCommandQueue(DWORD now){
  if(commandQueue.size&&DWORD(now-waitLoggedAt)>=2000){waitLoggedAt=now;logCommandWait();}
  if(commandFresh(now)&&shared->request==shared->ack&&techMode!=bool(snap.techOpen)&&!snap.techError)send(OpenTech,techMode);
 }
+static void publishSuiteDisplay(){
+#ifdef RA2_UNIFIED
+ if(!ready)return;suite::DisplayState state;
+ state.values={extra.scrollRefreshMode,extra.scrollRefreshHz,int(extra.enemyMarkers),int(SendMessageW(check[1],BM_GETCHECK,0,0)==BST_CHECKED),int(SendMessageW(check[0],BM_GETCHECK,0,0)==BST_CHECKED),int(SendMessageW(check[3],BM_GETCHECK,0,0)==BST_CHECKED),int(extra.frozen),int(extra.parasiteMarker),int(extra.crateBuffMarkers),labelScalePercent,fps};
+ state.assistEnabled=enabled;state.refreshStatus=shared?shared->scrollRefreshStatus:0;
+ state.rateMilli=shared?int(shared->scrollRefreshRateMilli):0;state.gapUs=shared?int(shared->scrollRefreshMaxGapUs):0;
+ suite::publishDisplaySettings(state);
+#endif
+}
 static void updateModeStatus(DWORD now){
  int phase=!enabled?1:!game?2:snap.status<0?3:(snap.status!=1||(shared&&commandMatch()&&snap.commandStatus!=1))?4:0;
- static int oldPhase=-1;static DWORD last; if(phase==oldPhase&&DWORD(now-last)<200)return;oldPhase=phase;last=now;
+ static int oldPhase=-1;static DWORD last; if(phase==oldPhase&&DWORD(now-last)<200)return;oldPhase=phase;last=now;publishSuiteDisplay();
  auto riskText=[&](bool wanted,int state)->std::wstring{if(state==-2)return L"启用或关闭失败，请查看日志";if(state==-1)return L"不支持此游戏版本";if(!wanted)return state==1?L"等待恢复":L"关闭";return phase?L"等待游戏就绪":state==1?L"已启用（联机风险）":L"等待生效";};
  std::wstring riskStatus=L"扩展建造："+riskText(buildAnywhereMode,snap.placementStatus);
  std::wstring airStatus=L"原生路径点：";airStatus+=snap.nativeAirStatus==-2?L"启用或关闭失败，请查看日志":snap.nativeAirStatus==-1?L"不支持此游戏版本":!extra.nativeAirWaypoints?(snap.nativeAirStatus==1?L"等待恢复":L"关闭"):phase?L"等待游戏就绪":snap.nativeAirStatus==2?L"已启用（联机兼容）":snap.nativeAirStatus==1?L"已启用":L"等待生效";
@@ -1426,7 +1435,7 @@ static void finalizeTacticalLayout(){
 static HWND placedControl(uilayout::Placement placement,const wchar_t*cls,const wchar_t*text,int id,DWORD style){
  if(!wcscmp(text,L"自动保存"))return HWND{};
  auto r=placement.rect;HWND c=CreateWindowExW((!wcscmp(cls,L"EDIT")||!wcscmp(cls,L"LISTBOX"))?WS_EX_CLIENTEDGE:0,cls,text,WS_CHILD|WS_VISIBLE|WS_CLIPSIBLINGS|style,r.x,r.y,r.w,r.h,ui,(HMENU)(INT_PTR)id,GetModuleHandleW(nullptr),nullptr);
- SendMessageW(c,WM_SETFONT,(WPARAM)font,TRUE);modernui::style(c);if(id==989||id==832||(id>=900&&id<=904))modernui::heading(c);pageControls.push_back({c,placement.page,r,!wcscmp(cls,L"COMBOBOX")?26:r.h});return c;
+ SendMessageW(c,WM_SETFONT,(WPARAM)font,TRUE);modernui::style(c);if(id==989||id==832||(id>=900&&id<=904))modernui::heading(c);pageControls.push_back({c,placement.page,r,!wcscmp(cls,L"COMBOBOX")?26:r.h});if(placement.page==-3)ShowWindow(c,SW_HIDE);return c;
 }
 static HWND control(const wchar_t*cls,const wchar_t*text,int x,int y,int w,int h,int id,DWORD style=0){return placedControl(uilayout::legacy(id,{x,y,w,h}),cls,text,id,style);}
 static HWND pageControl(int page,const wchar_t*cls,const wchar_t*text,int x,int y,int w,int h,int id,DWORD style=0){return placedControl({page,{x,y+8,w,h}},cls,text,id,style);}
@@ -1439,6 +1448,18 @@ static void bindSuper(){std::string id=selectedSuperID();if(id.empty()){notify(L
 static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
 #ifdef RA2_UNIFIED
  if(suite::layoutMessage(w,msg,lp))return 0;
+ if(msg==suite::ApplyDisplaySetting){
+  if(!ready||!suite::validDisplayEdit(int(wp),int(lp)))return 0;
+  const auto& spec=suite::displaySpecs[int(wp)];HWND control=GetDlgItem(w,spec.id);if(!control)return 0;
+  int notification=BN_CLICKED;
+  {ControlUpdate guard;
+   if(spec.control==suite::DisplayControl::Check)SendMessageW(control,BM_SETCHECK,lp?BST_CHECKED:BST_UNCHECKED,0);
+   else if(spec.control==suite::DisplayControl::Choice){SendMessageW(control,CB_SETCURSEL,wp==suite::RefreshMode?lp:0,0);notification=CBN_SELCHANGE;}
+   else {SetWindowTextW(control,std::to_wstring(int(lp)).c_str());notification=EN_CHANGE;}
+  }
+  SendMessageW(w,WM_COMMAND,MAKEWPARAM(spec.id,notification),(LPARAM)control);publishSuiteDisplay();return 0;
+ }
+
  if(msg==suite::ModuleEnable){enabled=bool(wp);if(!enabled){detach();clockState(false,fps);setStatus(L"已暂停。");}else{lastFind=0;setStatus(L"正在重新连接…");}suite::reportEnabled(2,enabled);return 0;}
 #endif
  switch(msg){case WM_CREATE:{ui=w;
@@ -1674,7 +1695,7 @@ int WINAPI wWinMain(HINSTANCE h,HINSTANCE,LPWSTR,int show){SetProcessDPIAware();
  WNDCLASSW wc{};wc.hInstance=h;wc.lpfnWndProc=DefWindowProcW;wc.lpszClassName=L"RA2AssistOverlay010";wc.hCursor=LoadCursorW(nullptr,IDC_ARROW);RegisterClassW(&wc);overlay=CreateWindowExW(WS_EX_LAYERED|WS_EX_TRANSPARENT|WS_EX_TOPMOST|WS_EX_TOOLWINDOW|WS_EX_NOACTIVATE,wc.lpszClassName,L"",WS_POPUP,0,0,1,1,nullptr,nullptr,h,nullptr);
  wc.lpfnWndProc=proc;wc.lpszClassName=L"RA2Assist010";wc.hbrBackground=bgBrush;wc.hIcon=LoadIconW(nullptr,IDI_APPLICATION);RegisterClassW(&wc);RECT work{};SystemParametersInfoW(SPI_GETWORKAREA,0,&work,0);ui=CreateWindowExW(0,wc.lpszClassName,L"战术助手 v" RA2_RELEASE_VERSION_W,WS_OVERLAPPED|WS_CAPTION|WS_SYSMENU|WS_MINIMIZEBOX|WS_VSCROLL, CW_USEDEFAULT,CW_USEDEFAULT,685,std::min(1084,int(work.bottom-work.top)-20),nullptr,nullptr,h,nullptr);
 #ifdef RA2_UNIFIED
- enabled=suite::enabled(2);suite::registerPane(2,ui);
+ enabled=suite::enabled(2);suite::registerPane(2,ui);publishSuiteDisplay();
 #else
  ShowWindow(ui,show);
 #endif

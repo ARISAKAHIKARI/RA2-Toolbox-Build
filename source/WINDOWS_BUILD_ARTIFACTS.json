@@ -1,13 +1,13 @@
 {
-  "label": "1.0.30.5 SingleRuntime",
-  "file_version": "1.0.30.5",
+  "label": "1.0.30.6 SingleRuntime",
+  "file_version": "1.0.30.6",
   "verified": {
     "RA2Toolbox.exe": {
-      "bytes": 2328576,
-      "sha256": "47029b60f45f6d42a100e992c33315b5575ff86afddfded28e93bc266271c320",
+      "bytes": 2339328,
+      "sha256": "dca74990d1660b8255b973d0d33d68caec46cb09d30802da29a1695ebfb3ed56",
       "machine": "PE32 x86",
       "sections": 14,
-      "entry_rva": "0xe03d0",
+      "entry_rva": "0xe18a0",
       "exports": [
         "AssistHostProtocolInfo",
         "_Unwind_DeleteException",
@@ -210,6 +210,7 @@
           "SetWindowsHookExW",
           "ShowWindow",
           "SystemParametersInfoW",
+          "TrackMouseEvent",
           "TranslateMessage",
           "UnhookWindowsHookEx",
           "UnregisterHotKey",
@@ -539,7 +540,7 @@
     },
     "GameRuntime.dll": {
       "bytes": 4065792,
-      "sha256": "0cdaae3c8e79b906e8069fc6bc083b5ba2f27ea8712c16b328a4c3532107689f",
+      "sha256": "3b009e077843d59c92c98a028f32bc7bc6704f6f9b9985a03badcc7cff381691",
       "machine": "PE32 x86",
       "sections": 13,
       "entry_rva": "0x51eb0",

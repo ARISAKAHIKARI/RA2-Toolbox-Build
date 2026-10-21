@@ -12,6 +12,7 @@ root = Path(__file__).resolve().parents[2]
 host = Path(os.environ.get('CONSTRUCTION_HOST', root / 'assist/source/construction_host.h')).read_text()
 position = host[host.index('static void resizePanel()'):host.index('static bool usable();')]
 rect = host[host.index('static RECT rect('):host.index('static void paintIcon(')]
+panel_box = host[host.index('static void panelBox('):host.index('static LRESULT CALLBACK proc(')]
 proc = host[host.index('static LRESULT CALLBACK proc('):host.index('static void service()')]
 prefix = r'''
 #include "construction_policy.h"
@@ -25,14 +26,15 @@ using UINT=unsigned;using WPARAM=uintptr_t;using LPARAM=intptr_t;using LRESULT=i
 struct RECT{int left=0,top=0,right=0,bottom=0;};struct POINT{int x=0,y=0;};
 struct Window{RECT bounds{};bool visible=false;};using HWND=Window*;
 struct Object{int kind=0,w=0,h=0;uint32_t color=0;std::vector<uint32_t> pixels;};
-using HGDIOBJ=Object*;using HBITMAP=Object*;using HBRUSH=Object*;using HFONT=Object*;
-static Object stockBitmap{1},stockFont{2},testFont{2};
-struct DC{HBITMAP bitmap=&stockBitmap;HFONT font=&stockFont;uint32_t text=0;};using HDC=DC*;
+using COLORREF=uint32_t;using HPEN=Object*;using HGDIOBJ=Object*;using HBITMAP=Object*;using HBRUSH=Object*;using HFONT=Object*;
+static Object stockBitmap{1},stockFont{2},testFont{2},stockBrush{3},stockPen{4};
+struct DC{HBITMAP bitmap=&stockBitmap;HFONT font=&stockFont;HBRUSH brush=&stockBrush;HPEN pen=&stockPen;POINT cursor{};uint32_t text=0;};using HDC=DC*;
 static DC screen;struct PAINTSTRUCT{};
 static int fail=0,dcLive=0,bitmapLive=0,allocations=0,blits=0,positions=0,paintStarts=0,paintEnds=0,lastFlags=0;
 static bool originReady=true;static POINT origin{10,20};
 static HGDIOBJ HGDI_ERROR=reinterpret_cast<HGDIOBJ>(intptr_t(-1));
-constexpr int WM_MOUSEACTIVATE=1,WM_ERASEBKGND=2,WM_MOUSEWHEEL=3,WM_LBUTTONUP=4,WM_RBUTTONUP=5,WM_PAINT=6;
+constexpr int WM_MOUSEACTIVATE=1,WM_ERASEBKGND=2,WM_MOUSEWHEEL=3,WM_LBUTTONUP=4,WM_RBUTTONUP=5,WM_PAINT=6,WM_MOUSEMOVE=7,WM_MOUSELEAVE=8;
+constexpr int PS_SOLID=0,TME_LEAVE=2;struct TRACKMOUSEEVENT{size_t cbSize;unsigned flags;HWND hwnd;unsigned hover;};static void TrackMouseEvent(TRACKMOUSEEVENT*){}
 constexpr int MA_NOACTIVATE=3,FALSE=0,MK_SHIFT=4,TRANSPARENT=1,DT_CENTER=1,DT_VCENTER=2,DT_SINGLELINE=4,DT_WORDBREAK=8,DT_END_ELLIPSIS=16;
 constexpr int SRCCOPY=1,SWP_NOACTIVATE=1,SWP_SHOWWINDOW=2,SWP_NOOWNERZORDER=4,SWP_NOCOPYBITS=8,SWP_NOZORDER=16;
 static HWND HWND_TOPMOST=nullptr;
@@ -43,6 +45,7 @@ static HBITMAP CreateCompatibleBitmap(HDC,int w,int h){if(fail==2)return nullptr
 static HGDIOBJ SelectObject(HDC dc,HGDIOBJ object){
  if(fail==3&&object->kind==1&&object!=&stockBitmap)return HGDI_ERROR;
  if(object->kind==1){auto old=dc->bitmap;dc->bitmap=object;return old;}
+ if(object->kind==3){auto old=dc->brush;dc->brush=object;return old;}if(object->kind==4){auto old=dc->pen;dc->pen=object;return old;}
  assert(object->kind==2);auto old=dc->font;dc->font=object;return old;
 }
 static bool DeleteObject(HGDIOBJ p){assert(p!=&stockBitmap&&p!=&stockFont&&p!=&testFont);if(p->kind==1)--bitmapLive;delete p;return true;}
@@ -53,6 +56,10 @@ static void fill(HDC dc,const RECT&r,uint32_t c){
  auto p=dc->bitmap;for(int y=std::max(0,r.top);y<std::min(p->h,r.bottom);++y)for(int x=std::max(0,r.left);x<std::min(p->w,r.right);++x)p->pixels[y*p->w+x]=c;
 }
 static void FillRect(HDC dc,const RECT*r,HBRUSH b){fill(dc,*r,b->color);}
+static HPEN CreatePen(int,int,uint32_t c){auto p=new Object{4};p->color=c;return p;}
+static void RoundRect(HDC dc,int x,int y,int r,int b,int,int){fill(dc,{x,y,r,b},dc->brush->color);}
+static void MoveToEx(HDC dc,int x,int y,void*){dc->cursor={x,y};}
+static void LineTo(HDC dc,int x,int y){fill(dc,{std::min(x,dc->cursor.x),std::min(y,dc->cursor.y),std::max(x,dc->cursor.x)+1,std::max(y,dc->cursor.y)+1},dc->pen->color);dc->cursor={x,y};}
 static void SetBkMode(HDC,int){}static void SetTextColor(HDC dc,uint32_t c){dc->text=c;}
 static void DrawTextW(HDC dc,const wchar_t*t,int,RECT*r,int){if(*t)fill(dc,{r->left+1,r->top+1,r->right-1,std::min(r->bottom,r->top+3)},dc->text);}
 static bool BitBlt(HDC to,int,int,int w,int h,HDC from,int,int,int){
@@ -69,7 +76,7 @@ static void InvalidateRect(HWND,void*,int){}static LRESULT DefWindowProcW(HWND,U
 #include "construction_buffer.h"
 static Window gameObject,panelObject;static HWND game=&gameObject,window=&panelObject;
 static construction::Layout layout;static construction::PanelBuffer panelBuffer;
-static bool geometryReady=true;static int activeTab=0,selectedTab=-1,scroll=0;static HFONT panelFont=&testFont,font=&testFont;
+static bool geometryReady=true;static int activeTab=0,selectedTab=-1,scroll=0,hoverChoice=-1,hoverQueue=-1;static HFONT panelFont=&testFont,font=&testFont;
 static construction::Book books[4];struct Choice{int slot,index,tab;uint32_t type;bool future;};static std::vector<Choice> choices;
 static struct{int typeCount=8;struct{int kind=7,index=0;wchar_t name[40]=L"Building";}types[8];}snap;
 static int encode(int kind,int index){return kind==7?index:(kind<<16)|index;}static void refreshChoices(){}
@@ -121,7 +128,7 @@ int main(){
 with tempfile.TemporaryDirectory() as tmp:
     cpp = Path(tmp) / 'paint.cpp'
     exe = Path(tmp) / 'paint'
-    cpp.write_text(prefix + position + rect + icon + proc + suffix)
+    cpp.write_text(prefix + position + rect + icon + panel_box + proc + suffix)
     subprocess.run(['g++', '-std=c++17', '-O1', '-g', '-fsanitize=address,undefined',
                     '-I' + str(root / 'assist/source'), str(cpp), '-o', str(exe)], check=True)
     subprocess.run([str(exe)], check=True, env=dict(os.environ, ASAN_OPTIONS='detect_leaks=0'))

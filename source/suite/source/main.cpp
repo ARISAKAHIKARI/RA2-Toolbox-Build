@@ -11,6 +11,7 @@
 #include <commctrl.h>
 #include <string>
 #include <atomic>
+#include <mutex>
 #include <algorithm>
 #include "suite_host.h"
 #include "../../shared/source/modern_ui.h"
@@ -23,12 +24,15 @@ static std::wstring config;static int selected=2,closePhase=0;static bool closeA
 static constexpr UINT PaneReady=WM_APP+60,EnabledChanged=WM_APP+61,CloseDecision=WM_APP+62;
 static HINSTANCE instance;static std::wstring args;
 static std::atomic<bool> statsShown{false};
+static std::atomic<HWND> displayPanes[3]{};
+static std::mutex displayMutex;static suite::DisplayState displayState;static bool displayReady=false;
 static const wchar_t* names[]={L"高刷光标",L"单位统计",L"战术助手"};
 static const wchar_t* configKeys[]={L"Cursor",L"Units",L"Assist"};
 namespace suite {
  HWND parent(){return frame;}
  bool enabled(int module){return active[module].load();}
  void registerPane(int module,HWND pane){
+  displayPanes[module].store(pane);PostMessageW(pane,DisplaySettingsChanged,0,0);
   auto style=GetWindowLongPtrW(pane,GWL_STYLE);
   style&=~LONG_PTR(WS_POPUP|WS_CAPTION|WS_SYSMENU|WS_MINIMIZEBOX|WS_MAXIMIZEBOX|WS_THICKFRAME);
   SetWindowLongPtrW(pane,GWL_STYLE,style|WS_CHILD|WS_CLIPCHILDREN);
@@ -40,6 +44,12 @@ namespace suite {
  void closeDecision(bool allow){PostMessageW(frame,CloseDecision,allow,0);}
  void setStatsVisible(bool value){statsShown.store(value);}
  bool statsVisible(){return statsShown.load();}
+ void publishDisplaySettings(const DisplayState& state){
+  {std::lock_guard<std::mutex> lock(displayMutex);if(displayReady&&displayState==state)return;displayState=state;displayReady=true;}
+  for(int i=0;i<2;++i)if(auto pane=displayPanes[i].load())PostMessageW(pane,DisplaySettingsChanged,0,0);
+ }
+ bool readDisplaySettings(DisplayState& state){std::lock_guard<std::mutex> lock(displayMutex);if(!displayReady)return false;state=displayState;return true;}
+ bool requestDisplaySetting(int option,int value){if(!validDisplayEdit(option,value))return false;auto pane=displayPanes[2].load();return pane&&PostMessageW(pane,ApplyDisplaySetting,option,value);}
 }
 static void save(){for(int i=0;i<3;++i)WritePrivateProfileStringW(L"Modules",configKeys[i],active[i]?L"1":L"0",config.c_str());}
 static void layout(){

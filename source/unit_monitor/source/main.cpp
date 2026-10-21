@@ -272,9 +272,11 @@ static void buttonLabel(){
 #endif
  SetWindowTextW(bStart,enabled?L"暂停显示":L"继续显示");SetWindowTextW(bDemo,demo?L"退出演示":L"布局演示");}
 static LRESULT CALLBACK overlayProc(HWND w,UINT m,WPARAM a,LPARAM b){if(m==WM_NCHITTEST)return HTTRANSPARENT;if(m==WM_MOUSEACTIVATE)return MA_NOACTIVATE;if(m==WM_ERASEBKGND)return 1;return DefWindowProcW(w,m,a,b);}
+#include "display_settings_ui.h"
 static LRESULT CALLBACK proc(HWND w,UINT m,WPARAM a,LPARAM b){
 #ifdef RA2_UNIFIED
  if(suite::layoutMessage(w,m,b))return 0;
+ if(m==suite::DisplaySettingsChanged){syncUnitSettings();return 0;}
  if(m==suite::ModuleEnable){enabled=bool(a);if(!enabled)detach();else lastSearch=0;buttonLabel();tick();return 0;}
  if(m==WM_CLOSE&&a!=suite::CloseToken){suite::requestClose();return 0;}
 #endif
@@ -298,10 +300,17 @@ static LRESULT CALLBACK proc(HWND w,UINT m,WPARAM a,LPARAM b){
   ctl(L"EDIT",std::to_wstring(scalePercent).c_str(),WS_BORDER|ES_NUMBER|ES_AUTOHSCROLL,168,392,102,25,118);
   SendDlgItemMessageW(w,118,EM_SETLIMITTEXT,3,0);
   ctl(L"STATIC",L"50–250%，默认 100%，即时生效",0,14,426,298,23,120);
+#ifdef RA2_UNIFIED
+  createUnitSettings(ctl);
+#endif
   EnableWindow(tabModeBox,tabEnabled);controlsReady=true;
   if(!RegisterHotKey(w,1,MOD_CONTROL|MOD_ALT|MOD_NOREPEAT,'H'))visibilityStatus(L"备用快捷键注册失败；请用显示按钮或常驻模式");RegisterHotKey(w,2,MOD_CONTROL|MOD_ALT|MOD_NOREPEAT,VK_RIGHT);RegisterHotKey(w,3,MOD_CONTROL|MOD_ALT|MOD_NOREPEAT,VK_LEFT);SetTimer(w,1,16,nullptr);return 0;}
  case WM_TIMER:case WM_APP+9:tick();return 0;
- case WM_COMMAND:if(controlsReady&&LOWORD(a)==114&&HIWORD(a)==CBN_SELCHANGE){tabMode=tabui::Mode(SendMessageW(tabModeBox,CB_GETCURSEL,0,0));tabs.mode(tabMode);save();tick();return 0;}
+ case WM_COMMAND:
+#ifdef RA2_UNIFIED
+ if(controlsReady&&unitSettingCommand(a))return 0;
+#endif
+ if(controlsReady&&LOWORD(a)==114&&HIWORD(a)==CBN_SELCHANGE){tabMode=tabui::Mode(SendMessageW(tabModeBox,CB_GETCURSEL,0,0));tabs.mode(tabMode);save();tick();return 0;}
  if(controlsReady&&HIWORD(a)==EN_CHANGE&&LOWORD(a)==118){
   BOOL ok=FALSE;int value=int(GetDlgItemInt(w,118,&ok,FALSE));
   if(ok&&value>=viewport::MinPercent&&value<=viewport::MaxPercent){scalePercent=value;save();renderDirty=true;tick();}return 0;
@@ -313,7 +322,7 @@ static LRESULT CALLBACK proc(HWND w,UINT m,WPARAM a,LPARAM b){
  case WM_HOTKEY:if(a==1){toggleOverlay();}else if(a==2)page++;else if(a==3)page=std::max(0,page-1);renderDirty=true;tick();return 0;
  case WM_CTLCOLORSTATIC:case WM_CTLCOLORBTN:SetBkMode((HDC)a,OPAQUE);SetTextColor((HDC)a,modernui::Text);SetBkColor((HDC)a,modernui::Background);SetDCBrushColor((HDC)a,modernui::Background);return (LRESULT)GetStockObject(DC_BRUSH);
  case WM_DRAWITEM:{auto d=(DRAWITEMSTRUCT*)b;HBRUSH br=CreateSolidBrush((d->itemState&ODS_SELECTED)?RGB(47,76,99):RGB(31,48,68));FillRect(d->hDC,&d->rcItem,br);DeleteObject(br);SetBkMode(d->hDC,TRANSPARENT);SetTextColor(d->hDC,RGB(223,237,251));SelectObject(d->hDC,font);wchar_t t[50];GetWindowTextW(d->hwndItem,t,50);DrawTextW(d->hDC,t,-1,&d->rcItem,DT_CENTER|DT_VCENTER|DT_SINGLELINE);return TRUE;}
- case WM_PAINT:{PAINTSTRUCT ps;HDC dc=BeginPaint(w,&ps);RECT r;GetClientRect(w,&r);HBRUSH br=CreateSolidBrush(modernui::Background);FillRect(dc,&r,br);DeleteObject(br);SetBkMode(dc,TRANSPARENT);SetTextColor(dc,RGB(110,210,248));SelectObject(dc,font);TextOutW(dc,14,12,L"UNIT MONITOR  /  单位监控",lstrlenW(L"UNIT MONITOR  /  单位监控"));SetTextColor(dc,RGB(148,166,188));TextOutW(dc,14,32,L"紧凑面板 · 半透明暗底 · 即时生效",lstrlenW(L"紧凑面板 · 半透明暗底 · 即时生效"));EndPaint(w,&ps);return 0;}
+ case WM_PAINT:{PAINTSTRUCT ps;HDC dc=BeginPaint(w,&ps);RECT r;GetClientRect(w,&r);HBRUSH br=CreateSolidBrush(modernui::Background);FillRect(dc,&r,br);DeleteObject(br);SetBkMode(dc,TRANSPARENT);SetTextColor(dc,RGB(110,210,248));SelectObject(dc,font);TextOutW(dc,14,12,L"单位统计",lstrlenW(L"单位统计"));SetTextColor(dc,RGB(148,166,188));TextOutW(dc,14,32,L"玩家兵力与单位状态",lstrlenW(L"玩家兵力与单位状态"));EndPaint(w,&ps);return 0;}
  case WM_DESTROY:surface.clear();KillTimer(w,1);UnregisterHotKey(w,1);UnregisterHotKey(w,2);UnregisterHotKey(w,3);detach();DeleteObject(font);PostQuitMessage(0);return 0;}
  return DefWindowProcW(w,m,a,b);
 }

@@ -54,8 +54,8 @@ static HFONT uiFont=nullptr, titleFont=nullptr, actionFont=nullptr;
 static bool uiLayoutBusy=false;
 // Compact first-run panel; legacy controls are shown only in Advanced.
 static bool advancedOpen=false;
-static constexpr int compactContentW=770,compactContentH=282;
-static constexpr int advancedContentW=770,advancedContentH=1242;
+static constexpr int compactContentW=770,compactContentH=434;
+static constexpr int advancedContentW=770,advancedContentH=1394;
 static int uiContentW=compactContentW,uiContentH=compactContentH;
 static constexpr int advancedOffsetY=325;
 static std::vector<HWND> advancedControls;
@@ -1298,9 +1298,11 @@ static bool cursorCloseAllowed(){
   return MessageBoxW(mainw,L"游戏正在使用透明光标。退出工具箱后可能看不到指针。\n建议先退出游戏，再恢复 SHA。仍退出？",L"透明 SHA",MB_YESNO|MB_ICONWARNING)==IDYES;
  return true;
 }
+#include "refresh_settings_ui.h"
 static LRESULT CALLBACK wndproc(HWND w,UINT m,WPARAM a,LPARAM b){
 #ifdef RA2_UNIFIED
  if(suite::layoutMessage(w,m,b))return 0;
+ if(m==suite::DisplaySettingsChanged){syncRefreshControls();return 0;}
  if(m==suite::ModuleEnable){if(bool(a)!=(autoStart&&!autoPaused))togglePrimary();return 0;}
  if(m==suite::CloseCheck){suite::closeDecision(cursorCloseAllowed());return 0;}
 #endif
@@ -1331,8 +1333,8 @@ static LRESULT CALLBACK wndproc(HWND w,UINT m,WPARAM a,LPARAM b){
               uidpi::scale(36,uiDpi)-scrollX,uidpi::scale(95,uiDpi)-scrollY};
    FillRect(dc,&state,dot);DeleteObject(dot);
    if(advancedOpen){HPEN separator=CreatePen(PS_SOLID,1,RGB(45,60,79));auto saved=SelectObject(dc,separator);
-     MoveToEx(dc,uidpi::scale(22,uiDpi)-scrollX,uidpi::scale(280,uiDpi)-scrollY,nullptr);
-     LineTo(dc,uidpi::scale(758,uiDpi)-scrollX,uidpi::scale(280,uiDpi)-scrollY);
+     MoveToEx(dc,uidpi::scale(22,uiDpi)-scrollX,uidpi::scale(432,uiDpi)-scrollY,nullptr);
+     LineTo(dc,uidpi::scale(758,uiDpi)-scrollX,uidpi::scale(432,uiDpi)-scrollY);
      SelectObject(dc,saved);DeleteObject(separator);}
    EndPaint(w,&ps);return 0;}
 case WM_GETMINMAXINFO:{auto p=(MINMAXINFO*)b;p->ptMinTrackSize={uidpi::scale(advancedOpen?510:376,uiDpi),uidpi::scale(240,uiDpi)};return 0;}
@@ -1341,6 +1343,9 @@ case WM_GETMINMAXINFO:{auto p=(MINMAXINFO*)b;p->ptMinTrackSize={uidpi::scale(adv
  case WM_VSCROLL:case WM_HSCROLL:{int bar=m==WM_VSCROLL?SB_VERT:SB_HORZ;SCROLLINFO si={sizeof(si),SIF_ALL};GetScrollInfo(w,bar,&si);int n=si.nPos;switch(LOWORD(a)){case SB_LINEUP:n-=uidpi::scale(28,uiDpi);break;case SB_LINEDOWN:n+=uidpi::scale(28,uiDpi);break;case SB_PAGEUP:n-=si.nPage;break;case SB_PAGEDOWN:n+=si.nPage;break;case SB_THUMBTRACK:case SB_THUMBPOSITION:n=si.nTrackPos;break;case SB_TOP:n=0;break;case SB_BOTTOM:n=si.nMax;break;}viewport(w,bar==SB_HORZ?n:scrollX,bar==SB_VERT?n:scrollY);return 0;}
  case WM_TIMER:if(a==152){KillTimer(w,152);if(uiReady)applyTargetRate();return 0;}if(a==150){KillTimer(w,150);if(uiReady&&!applyingSettings){applyingSettings=true;applyScale();applyingSettings=false;}return 0;}break;
  case WM_COMMAND:if(!uiReady)return 0;
+#ifdef RA2_UNIFIED
+ if(refreshSettingCommand(a,b))return 0;
+#endif
  if((HWND)b==targetBox&&(HIWORD(a)==CBN_SELCHANGE||HIWORD(a)==CBN_EDITCHANGE)){SetTimer(w,152,HIWORD(a)==CBN_SELCHANGE?1:300,NULL);return 0;}
  if((HWND)b==modeBox&&HIWORD(a)==CBN_SELCHANGE){try{applyHideMode();updateRefresh(true);updatePrimaryAction();}catch(const std::exception& e){SendMessageW(modeBox,CB_SETCURSEL,noCursorMode?3:mode==L"hide"?1:mode==L"sha"?2:0,0);error(e);}return 0;}
  if((HWND)b==styleBox&&HIWORD(a)==CBN_SELCHANGE){try{chooseStyle();}catch(const std::exception& e){error(e);}return 0;}
@@ -1493,18 +1498,33 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR cmd,int){
  detailLabel=CreateWindowW(L"STATIC",L"",WS_CHILD,20,1122,720,42,mainw,NULL,inst,NULL);extra(detailLabel,{20,1122,720,42});
  HWND displayLabel=CreateWindowW(L"STATIC",L"显示方式",WS_CHILD|WS_VISIBLE,20,178,88,22,mainw,nullptr,inst,nullptr);
  controlOrigins.push_back({displayLabel,{20,178,88,22}});
- for(auto& c:controlOrigins)if(c.handle==advancedHeader||std::find(advancedControls.begin(),advancedControls.end(),c.handle)!=advancedControls.end())c.logical.y+=72;
+ for(auto& c:controlOrigins)if(c.handle==advancedHeader||std::find(advancedControls.begin(),advancedControls.end(),c.handle)!=advancedControls.end())c.logical.y+=224;
  configuredPollHz=GetPrivateProfileIntW(L"Display",L"TargetFPS",GetPrivateProfileIntW(L"Display",L"PollHz",0,ini().c_str()),ini().c_str());
  if(configuredPollHz)configuredPollHz=std::clamp(configuredPollHz,30u,500u);
- HWND rateLabel=CreateWindowW(L"STATIC",L"目标帧率",WS_CHILD|WS_VISIBLE,20,214,88,22,mainw,nullptr,inst,nullptr);
+ HWND rateLabel=CreateWindowW(L"STATIC",L"光标目标",WS_CHILD|WS_VISIBLE,20,214,88,22,mainw,nullptr,inst,nullptr);
  targetBox=CreateWindowW(L"COMBOBOX",L"",WS_CHILD|WS_VISIBLE|CBS_DROPDOWN|WS_VSCROLL,114,210,226,180,mainw,(HMENU)153,inst,nullptr);
  for(const wchar_t* rate:{L"自动",L"60",L"120",L"144",L"165",L"240",L"360",L"500"})SendMessageW(targetBox,CB_ADDSTRING,0,(LPARAM)rate);
  SetWindowTextW(targetBox,configuredPollHz?std::to_wstring(configuredPollHz).c_str():L"自动");
  controlOrigins.push_back({rateLabel,{20,214,88,22}});controlOrigins.push_back({targetBox,{114,210,226,180}});
+#ifdef RA2_UNIFIED
+ auto basic=[&](const wchar_t* cls,const wchar_t* text,int x,int y,int width,int height,int id,DWORD style=0){
+  auto h=CreateWindowW(cls,text,WS_CHILD|WS_VISIBLE|style,x,y,width,height,mainw,(HMENU)(INT_PTR)id,inst,nullptr);controlOrigins.push_back({h,{x,y,width,height}});return h;
+ };
+ basic(L"STATIC",L"高刷范围",20,254,88,22,0);
+ refreshModeBox=basic(L"COMBOBOX",L"",114,250,626,150,155,CBS_DROPDOWNLIST|WS_TABSTOP);
+ for(const wchar_t* text:{L"仅光标",L"光标＋拖屏",L"全部"})SendMessageW(refreshModeBox,CB_ADDSTRING,0,(LPARAM)text);
+ basic(L"STATIC",L"画面目标",20,294,88,22,0);
+ refreshRateBox=basic(L"EDIT",L"",114,290,116,26,156,ES_NUMBER|WS_BORDER|WS_TABSTOP);SendMessageW(refreshRateBox,EM_SETLIMITTEXT,3,0);
+ basic(L"STATIC",L"60–240 Hz · 实验性",246,294,494,22,0);
+ refreshStateLabel=basic(L"STATIC",L"读取设置…",20,334,720,24,0);
+ basic(L"STATIC",L"画面高刷不改变游戏速度；单位动作仍跟随游戏逻辑帧。",20,368,720,22,0);
+ EnableWindow(refreshModeBox,FALSE);EnableWindow(refreshRateBox,FALSE);
+#endif
  // Main and advanced settings share one width, palette and renderer.
  for(auto& c:controlOrigins){
   if(c.handle==statusw)c.logical.w=690;
   if(c.handle==subTitleLabel||c.handle==quickInfo)c.logical.w=720;
+  if(c.handle==quickInfo)c.logical.y=402;
   if(c.handle==primaryAction)c.logical={20,128,354,34};
   if(c.handle==advancedAction)c.logical={386,128,354,34};
   if(c.handle==nativeBox||c.handle==targetBox)c.logical.w=626;

@@ -1,0 +1,27 @@
+{
+  "release": "v1.0.30-pre.7",
+  "file_version": "1.0.30.6",
+  "final_exe_sha256": "dca74990d1660b8255b973d0d33d68caec46cb09d30802da29a1695ebfb3ed56",
+  "final_dll_sha256": "3b009e077843d59c92c98a028f32bc7bc6704f6f9b9985a03badcc7cff381691",
+  "host_checks": [
+    "suite-display.log",
+    "settings-ui.log",
+    "construction-host.log",
+    "construction-paint.log"
+  ],
+  "setting_routes": 11,
+  "coherent_cross_thread_publications": 10000,
+  "construction_content_scale_viewports": 2016,
+  "reused_buffer_paints": 1000,
+  "paint_viewport_scale_queue_combinations": 36,
+  "static_checks": [
+    "architecture.log",
+    "windows-build.log"
+  ],
+  "ui_layout_check": "Ordinary refresh controls remain above shifted advanced content; right-column unit status controls have non-overlapping bounds within 680x460.",
+  "limitations": [
+    "Portable window/GDI substitutes do not validate real Windows rendering, fonts, mouse capture or display DPI.",
+    "No complete game or two-machine multiplayer test in this UI-only change.",
+    "Existing execution-module dependencies remain; this release moves the visible setting entries."
+  ]
+}

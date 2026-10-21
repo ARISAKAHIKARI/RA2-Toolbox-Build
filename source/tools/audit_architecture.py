@@ -24,7 +24,7 @@ RUNTIME=closure(['game_runtime/source/runtime.cpp','shared/source/game_entry_man
 assert 'shared/source/game_entry_client.h' not in HOST
 assert 'external_reader/source/process_reader.h' not in RUNTIME
 assert 'shared/source/automatic_log.h' not in RUNTIME
-for n in ('external_reader/source/unit_status.h','assist/source/status_badges.h','assist/source/status_draw.h'):
+for n in ('external_reader/source/unit_status.h','assist/source/status_badges.h','assist/source/status_draw.h','suite/source/display_settings.h','cursor/source/refresh_settings_ui.h','unit_monitor/source/display_settings_ui.h'):
  assert n in HOST and n not in RUNTIME,n
 assert all(n not in HOST for n in ('assist/source/bridge.cpp','cursor/source/hide.cpp','assist/source/input_patch.h'))
 api_sites=[]

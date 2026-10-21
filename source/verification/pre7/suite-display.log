@@ -1,0 +1,2 @@
+PASS 11 routed setting IDs: valid endpoints, invalid edits, owner-thread notifications and not-ready suppression
+PASS 10000 cross-thread state publications: coherent snapshots and unchanged-state notification coalescing

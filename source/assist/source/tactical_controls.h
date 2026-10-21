@@ -115,16 +115,31 @@ item(L"STATIC",L"地图显示：关闭",20,605,809);next();
 
 const wchar_t* displayNames[]={L"载具载员与容量",L"铁幕 / 力场剩余时间",L"生产队列空闲提醒",L"显示未选中的载具",L"心灵控制状态",L"箱子信息",L"战术文字提示"};
 const wchar_t* displayIni[]={L"Capacity",L"Iron",L"Production",L"AllTransports",L"Psychic",L"Crates",L"TextPanel"};
+#ifdef RA2_UNIFIED
+// Keep the original setting owners and IDs; their visible entries live in the
+// corresponding suite panes and send edits to this UI thread.
+auto hiddenToggle=[&](int id,const wchar_t* text,bool on){auto h=placedControl({-3,{0,0,1,1}},L"BUTTON",text,id,BS_AUTOCHECKBOX);SendMessageW(h,BM_SETCHECK,on?BST_CHECKED:BST_UNCHECKED,0);ShowWindow(h,SW_HIDE);return h;};
+for(int i=0;i<7;++i){bool on=value(L"Display",displayIni[i],(i<3||i>=6)?1:0)!=0;if(i==0||i==1||i==3)check[i]=hiddenToggle(300+i,displayNames[i],on);else{check[i]=toggle(300+i,displayNames[i],on);next();}}
+extraControls[FrozenEnabled]=hiddenToggle(723,L"冷冻剩余时间",extra.frozen);
+extraControls[EnemyMarkersEnabled]=hiddenToggle(785,L"敌方单位提示",extra.enemyMarkers);
+hiddenToggle(892,L"蜘蛛寄生标志",extra.parasiteMarker);hiddenToggle(893,L"火力 / 防御 / 速度强化",extra.crateBuffMarkers);
+#else
 for(int i=0;i<7;++i){check[i]=toggle(300+i,displayNames[i],value(L"Display",displayIni[i],(i<3||i>=6)?1:0)!=0);next();}
-extraControls[FrozenEnabled]=toggle(723,L"冻结剩余时间",extra.frozen);next();
+extraControls[FrozenEnabled]=toggle(723,L"冷冻剩余时间",extra.frozen);next();
 extraControls[EnemyMarkersEnabled]=toggle(785,L"敌方位置标记（含未揭示区域）",extra.enemyMarkers);next();
 toggle(892,L"蜘蛛寄生标志",extra.parasiteMarker);next();
 toggle(893,L"箱子强化标志",extra.crateBuffMarkers);next();
+#endif
 toggle(798,L"空闲飞机指示器",extra.idleAircraft);next();
+#ifdef RA2_UNIFIED
+rateEdit=placedControl({-3,{0,0,1,1}},L"EDIT",std::to_wstring(fps).c_str(),310,ES_NUMBER);
+placedControl({-3,{0,0,1,1}},L"EDIT",std::to_wstring(labelScalePercent).c_str(),816,ES_NUMBER);
+#else
 rateEdit=number(310,L"信息显示刷新率 / 帧每秒",fps,L"5–500");
+number(816,L"载员与状态文字缩放 / %",labelScalePercent,L"50–250 · 默认 100");
+#endif
 marginEdit=number(311,L"文字提示上边距 / 像素",topMargin,L"0–4096");
 toastEdit=number(471,L"战术提示时长 / 毫秒",toastMs,L"500–60000");
-number(816,L"载员与状态文字缩放 / %",labelScalePercent,L"50–250 · 默认 100");
 number(817,L"建筑预定面板缩放 / %",constructionScalePercent,L"50–250 · 默认 100");
 toggle(830,L"战术小地图",minimapEnabled);next();
 number(831,L"小地图缩放 / %",minimapScale,L"100–400 · 默认 200");
@@ -134,10 +149,15 @@ note(L"坐标从游戏画面左上角计算；自动避开原雷达和飞机按�
 detailCheck=toggle(481,L"显示运行耗时",showDetails);next();
 
 heading(4,904,L"高级与实验性设置",L"实验性功能尚未完成联机验证，可能导致不同步或掉线。建议单独测试。");
+#ifdef RA2_UNIFIED
+{auto h=placedControl({-3,{0,0,1,1}},L"COMBOBOX",L"",886,CBS_DROPDOWNLIST);choices(h,{L"仅光标",L"光标＋拖屏",L"全部"},extra.scrollRefreshMode);}
+placedControl({-3,{0,0,1,1}},L"EDIT",std::to_wstring(extra.scrollRefreshHz).c_str(),887,ES_NUMBER);
+#else
 label(L"高刷策略（实验性）",20,260);choices(combo(886),{L"仅光标",L"光标＋拖屏",L"全部"},extra.scrollRefreshMode);next();
 number(887,L"画面目标刷新率 / 帧每秒",extra.scrollRefreshHz,L"60–240 · 默认 120");
 note(L"默认仅光标；拖屏支持右拖与屏幕边缘。“全部”持续重绘，不改变游戏速度，不插帧。",44);
 item(L"STATIC",L"高刷策略：仅光标",20,605,888);next();
+#endif
 extraControls[RevealExperimental]=toggle(739,L"允许地图全开（实验性）",extra.experimentalReveal);next();
 item(L"STATIC",L"以下功能可能影响联机同步",20,605,805);next();
 anywhereCheck=toggle(476,L"扩展建筑放置范围（联机风险）",buildAnywhereMode);next();

@@ -144,7 +144,7 @@ int main(){
   assert(l.set(sizes[0],sizes[1],sizes[2],sizes[3],pct));l.content(q,candidates);
   assert(l.top()+l.height()<=sizes[3]&&l.left()+l.width()<=sizes[2]);
   assert(l.rows<=6&&l.rows<=(candidates+1)/2&&((l.rows==0)==(candidates==0)));
-  assert(l.height()==l.y(l.headerHeight()+l.rows*66));assert(l.headerHeight()==l.stackBottom()+20+10);assert(l.choiceAt(l.x(36),l.y(l.headerHeight()-5),0,candidates)==-1);
+  assert(l.height()==l.y(l.headerHeight()+l.rows*66));assert(l.headerHeight()==l.stackBottom()+construction::SectionGap);assert(l.choiceAt(l.x(36),l.y(l.headerHeight()-5),0,candidates)==-1);
   for(int i=0;i<q;++i)assert(l.queueAt(l.x(10),l.y(24+i*24+9),q)==i);
   for(int i=0;i<std::min(candidates,l.rows*2);++i)assert(l.choiceAt(l.x(i%2*72+36),l.y(l.headerHeight()+i/2*66+33),0,candidates)==i);
   assert(l.choiceAt(l.x(36),l.height(),0,candidates)==-1);
@@ -152,13 +152,13 @@ int main(){
  setup();reserve(choice(1));int addedSound=soundRequests;removeTop();assert(soundRequests==addedSound+1);removeTop();assert(soundRequests==addedSound+1);
  reserve(choice(1));reserve(choice(1));addedSound=soundRequests;removeTop(true);assert(soundRequests==addedSound+1); // clear once, not once per item
  reserve(choice(1));place();commandQueue.clear();addedSound=soundRequests;removeItem(0,0);assert(soundRequests==addedSound); // submitted head cannot be removed
- setup();assert(panelAlpha==216&&layout.rows==1&&layout.queueCount==0&&layout.height()==layout.y(152));
+ setup();assert(panelAlpha==construction::PanelOpacity&&layout.rows==1&&layout.queueCount==0&&layout.height()==layout.y(132));
  int shortHeight=layout.height();reserve(choice(1));assert(soundRequests==1&&layout.queueCount==1&&layout.height()>shortHeight);
  reserveChoice({0,0,0,T,false},true);assert(soundRequests==1); // original sidebar owns its sound
  focused=false;reserve(choice(1));assert(soundRequests==1);focused=true;
  while(books[0].items.size()<5)reserve(choice(1));int heard=soundRequests;reserve(choice(1));assert(soundRequests==heard); // rejected click stays quiet
  removeTop(true);assert(layout.queueCount==0&&layout.height()==shortHeight);
- std::cout<<"PASS: 2016 content/scale/viewport combinations, fitted growth/shrink, 216/255 alpha, successful add/cancel feedback, clear once and no sound on empty/locked cancel\n";
+ std::cout<<"PASS: 2016 content/scale/viewport combinations, fitted growth/shrink, 236/255 alpha, successful add/cancel feedback, clear once and no sound on empty/locked cancel\n";
  // A live read-only panel must survive a suspended command lane. Native
  // input authorization closes and no Produce is issued until commands resume.
  setup();reserve(choice(1));fresh=false;tick();assert(geometryReady&&books[0].items==std::vector<int>({1})&&reservationPolicy.slots==0);
