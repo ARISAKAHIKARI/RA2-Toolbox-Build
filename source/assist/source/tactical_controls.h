@@ -23,11 +23,11 @@ for(int i:{11,1,2,3,4,5,6,7,0,8}){
  if(i==0)repairCheck=h;keys[i]=key(200+i,hotkeys[i]);next();
 }
 hookChecks[1]=toggle(459,L"智能卸载",hookSmartUnload,20,270);unloadKeyEdit=key(451,unloadKey,305,180);button(453,L"立即卸载",500,125);next();
-ejectCheck=toggle(455,L"载员逃生",ejectMode,20,306);ejectKeyEdit=key(456,ejectKey);next();
+ejectCheck=toggle(455,L"载员自动逃生",ejectMode,20,306);ejectKeyEdit=key(456,ejectKey);next();
 csCheck=toggle(446,L"自动移动攻击（CS）",csMode,20,306);csKeyEdit=key(447,csKey);next();
 toggle(883,L"按住键启用强制刷弹",extra.burstHoldEnabled,20,306);{auto h=key(884,extra.burstKey);modernui::holdKey(h);}next();
 note(L"选中单位并正常攻击，按住配置键启用；留空停用。松开后恢复普通攻击。",44);
-label(L"喝彩（替代原生快捷键）",20,306);key(870,socialKeys[0]);next();
+label(L"喝彩",20,306);key(870,socialKeys[0]);next();
 for(int i=1;i<9;++i){auto text=L"嘲讽 "+std::to_wstring(i);label(text.c_str(),20,306);key(870+i,socialKeys[i]);next();}
 note(L"绑定后由工具箱接管该组合；聊天和菜单中不接管。嘲讽仍遵循原版冷却与接收方设置。",44);
 label(L"轮选空闲飞机",20,306);key(853,idleAircraftKey);next();
@@ -55,7 +55,7 @@ extraControls[SellVehiclesEnabled]=toggle(721,L"出售战车",extra.sellVehicles
 note(L"出售战车不支持兰博玩；两种出售操作共用按住键，鼠标键分别设置。",44);
 label(L"直接攻击移动",20,210);label(L"仅鼠标",240,258);mouse(pointerinput::MouseAttack);next();
 note(L"直接攻击移动只下达一次命令；高级移动攻击会持续重新选择目标。",44);
-toggle(803,L"飞机路径点（按住 Z 点击地面）",extra.airWaypoints);next();
+toggle(803,L"飞机路径点",extra.airWaypoints);next();
 toggle(806,L"飞机原生路径点",extra.nativeAirWaypoints);next();
 note(L"单机使用原生规划；联机按住 Z 设置、松开后执行。两种路径点设置不同时运行。",44);
 item(L"STATIC",L"原生路径点：关闭",20,605,866);next();
@@ -80,14 +80,14 @@ number(818,L"高级移动攻击额外索敌距离 / 格",advancedRangeCells,L"0�
 label(L"高级移动攻击目标优先级",20,260);choices(combo(802),{L"单位价值优先",L"弹头伤害比例优先"},advancedTargetPriority);next();
 note(L"索敌范围为单位射程加额外距离；忽略伤害比例不超过 2% 的目标。",44);
 toggle(804,L"防御建筑优先攻击渗透单位",extra.antiTheft);next();
-toggle(885,L"自动躲弹（测试）· 空袭与碾压",extra.dodgeEnabled);next();
+toggle(885,L"自动躲弹（实验性）",extra.dodgeEnabled);next();
 note(L"对己方可移动地面单位预判敌机攻击与逼近碾压，短距离躲避。支持类型清单，不保证躲过追踪弹或瞬时伤害。",60);
-toggle(882,L"强制刷弹（测试）· 自动启用单位名单",extra.burstEnabled);next();
+toggle(882,L"强制刷弹（实验性）",extra.burstEnabled);next();
 note(L"在功能单位清单中配置类型；仅对当前实际武器 Burst≥2 的未完成连射尝试中断重启。",44);
 toggle(880,L"防空单位智能拦截导弹",extra.missileDefense);next();
 number(881,L"导弹拦截检测频率 / 次每秒",extra.missileScanHz,L"1–60 · 默认 10");
 note(L"优先拦截射程内的敌方导弹，分配火力减少重复锁定；移动中的单位不接管。",44);
-toggle(799,L"生产预定（四类生产栏各 5 项）",extra.constructionQueue);next();
+toggle(799,L"生产预定",extra.constructionQueue);next();
 // One visible Auto CS switch represents the previous two enable flags.
 hookChecks[3]=placedControl({-3,{0,0,1,1}},L"BUTTON",L"",466,BS_AUTOCHECKBOX);
 SendMessageW(hookChecks[3],BM_SETCHECK,hookAutoCS?BST_CHECKED:BST_UNCHECKED,0);ShowWindow(hookChecks[3],SW_HIDE);
@@ -109,11 +109,11 @@ auto featureEdit=edit(792,featureTypeText[featureTypeIndex],20,605);SendMessageW
 note(L"类型 ID 用逗号分隔；启用后留空表示不处理任何类型。",26);
 
 heading(3,903,L"显示设置",L"调整游戏内信息显示、缩放与位置；有效设置立即生效。");
-label(L"黑幕处理",20,260);choices(combo(808),{L"原版（关闭）",L"半透明",L"不渲染黑幕",L"地图全开（自动 · 联机风险）"},extra.mapStrategy);next();
+label(L"黑幕处理",20,260);choices(combo(808),{L"关闭",L"半透明（实验性）",L"透明（实验性）",L"自动全图（实验性）"},extra.mapStrategy);next();
 note(L"半透明与不渲染仅改变显示；地图全开在对局就绪后自动执行，可能导致联机不同步。",44);
 item(L"STATIC",L"地图显示：关闭",20,605,809);next();
 
-const wchar_t* displayNames[]={L"载具载员与容量",L"铁幕 / 力场剩余时间",L"生产队列空闲提醒",L"显示未选中的载具",L"心灵控制状态",L"箱子信息",L"战术文字提示"};
+const wchar_t* displayNames[]={L"载具载员与容量",L"铁幕 / 力场剩余时间",L"生产队列空闲提醒",L"显示未选中的载具",L"敌方索敌显示",L"箱子信息",L"战术文字提示"};
 const wchar_t* displayIni[]={L"Capacity",L"Iron",L"Production",L"AllTransports",L"Psychic",L"Crates",L"TextPanel"};
 #ifdef RA2_UNIFIED
 // Keep the original setting owners and IDs; their visible entries live in the
@@ -126,7 +126,7 @@ hiddenToggle(892,L"蜘蛛寄生标志",extra.parasiteMarker);hiddenToggle(893,L"
 #else
 for(int i=0;i<7;++i){check[i]=toggle(300+i,displayNames[i],value(L"Display",displayIni[i],(i<3||i>=6)?1:0)!=0);next();}
 extraControls[FrozenEnabled]=toggle(723,L"冷冻剩余时间",extra.frozen);next();
-extraControls[EnemyMarkersEnabled]=toggle(785,L"敌方位置标记（含未揭示区域）",extra.enemyMarkers);next();
+extraControls[EnemyMarkersEnabled]=toggle(785,L"显示敌方单位提示",extra.enemyMarkers);next();
 toggle(892,L"蜘蛛寄生标志",extra.parasiteMarker);next();
 toggle(893,L"箱子强化标志",extra.crateBuffMarkers);next();
 #endif
@@ -143,7 +143,7 @@ toastEdit=number(471,L"战术提示时长 / 毫秒",toastMs,L"500–60000");
 number(817,L"建筑预定面板缩放 / %",constructionScalePercent,L"50–250 · 默认 100");
 toggle(830,L"战术小地图",minimapEnabled);next();
 number(831,L"小地图缩放 / %",minimapScale,L"100–400 · 默认 200");
-label(L"战术小地图位置",20,260);choices(combo(850),{L"原雷达左侧（自动避让）",L"画面左上",L"画面左下",L"自定义坐标"},minimapPosition);next();
+label(L"战术小地图位置",20,260);choices(combo(850),{L"原雷达左侧",L"画面左上",L"画面左下",L"自定义坐标"},minimapPosition);next();
 label(L"自定义位置 X / Y",20,260);edit(851,std::to_wstring(minimapX),290,100,true);edit(852,std::to_wstring(minimapY),405,100,true);next();
 note(L"坐标从游戏画面左上角计算；自动避开原雷达和飞机按钮。放大区域不接收点击。",44);
 detailCheck=toggle(481,L"显示运行耗时",showDetails);next();
@@ -151,18 +151,17 @@ detailCheck=toggle(481,L"显示运行耗时",showDetails);next();
 heading(4,904,L"高级与实验性设置",L"实验性功能尚未完成联机验证，可能导致不同步或掉线。建议单独测试。");
 #ifdef RA2_UNIFIED
 {auto h=placedControl({-3,{0,0,1,1}},L"COMBOBOX",L"",886,CBS_DROPDOWNLIST);choices(h,{L"仅光标",L"光标＋拖屏",L"全部"},extra.scrollRefreshMode);}
-placedControl({-3,{0,0,1,1}},L"EDIT",std::to_wstring(extra.scrollRefreshHz).c_str(),887,ES_NUMBER);
 #else
 label(L"高刷策略（实验性）",20,260);choices(combo(886),{L"仅光标",L"光标＋拖屏",L"全部"},extra.scrollRefreshMode);next();
-number(887,L"画面目标刷新率 / 帧每秒",extra.scrollRefreshHz,L"60–240 · 默认 120");
+number(887,L"画面目标刷新率 / 帧每秒",extra.scrollRefreshHz,L"30–500 · 默认 120");
 note(L"默认仅光标；拖屏支持右拖与屏幕边缘。“全部”持续重绘，不改变游戏速度，不插帧。",44);
 item(L"STATIC",L"高刷策略：仅光标",20,605,888);next();
 #endif
 extraControls[RevealExperimental]=toggle(739,L"允许地图全开（实验性）",extra.experimentalReveal);next();
 item(L"STATIC",L"以下功能可能影响联机同步",20,605,805);next();
-anywhereCheck=toggle(476,L"扩展建筑放置范围（联机风险）",buildAnywhereMode);next();
+anywhereCheck=toggle(476,L"扩展建筑放置范围（实验性）",buildAnywhereMode);next();
 item(L"STATIC",L"功能状态：等待连接",20,605,807,0,44);next(44);
-toggle(810,L"步兵 C4（联机风险）",extra.c4Test,20,280);key(811,extra.c4Key,310,188,true);choices(combo(812,510,115,180),{L"停用",L"中键",L"侧键 1",L"侧键 2",L"右键",L"左键"},extra.c4Mouse==6?5:extra.c4Mouse);next();
+toggle(810,L"步兵 C4（实验性）",extra.c4Test,20,280);key(811,extra.c4Key,310,188,true);choices(combo(812,510,115,180),{L"停用",L"中键",L"侧键 1",L"侧键 2",L"右键",L"左键"},extra.c4Mouse==6?5:extra.c4Mouse);next();
 note(L"选中步兵，按住配置键并点击敌方建筑；此功能可能导致联机不同步。",44);
 item(L"STATIC",L"步兵 C4：关闭",20,605,813);next();
 toggle(420,L"科技解锁（实验性）",techMode,20,305);techSearch=edit(421,L"",345,280);SendMessageW(techSearch,EM_SETCUEBANNER,TRUE,(LPARAM)L"搜索名称或单位 ID");next();
@@ -186,8 +185,8 @@ item(L"STATIC",L"计算模式",20,605,832,0,30);next(30);
 note(L"按功能选择工具箱计算或游戏内计算；修改后从下一局开始使用。",44);
 for(int i=0;i<compute::Count;++i){label(compute::label(i),20,260);choices(combo(9000+i),{L"工具箱计算",L"游戏内计算"},(computeRequested>>i)&1u);next();}
 item(L"STATIC",L"当前计算模式：等待对局",20,605,833,0,166);next(166);
-label(L"移动指令兼容模式",20,260);megaQueueCombo=combo(761);choices(megaQueueCombo,{L"标准（推荐）",L"兼容模式（多人测试）"},megaQueueMode);next();
-label(L"维修与出售兼容模式",20,260);objectQueueCombo=combo(762);choices(objectQueueCombo,{L"标准（推荐）",L"兼容模式（多人测试）"},objectQueueMode);next();
+label(L"移动指令兼容模式",20,260);megaQueueCombo=combo(761);choices(megaQueueCombo,{L"标准（推荐）",L"兼容模式（实验性）"},megaQueueMode);next();
+label(L"维修与出售兼容模式",20,260);objectQueueCombo=combo(762);choices(objectQueueCombo,{L"标准（推荐）",L"兼容模式（实验性）"},objectQueueMode);next();
 note(L"兼容模式需重启游戏和工具箱后生效。通常保持标准模式即可。",44);
 // Retain the disabled compatibility control for old configuration handlers;
 // it is not presented as an adjustable option.

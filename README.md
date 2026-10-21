@@ -1,3 +1,18 @@
+# RA2 Toolbox 1.0.30-pre.8
+
+[预发布完整包与更新包](https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/releases/tag/v1.0.30-pre.8) · [实现与验证](source/REVIEW-1.0.30-pre.8.md)
+
+- 高刷三档共用光标页的目标刷新率，最高 **500 FPS**，自动模式跟随显示器；移除单独的画面目标设置。
+- 名称统一为「载员自动逃生」「敌方索敌显示」，同步修正说明。
+- 原风险和测试标签统一为「实验性」；地图半透明、透明、自动全图逐项标注。
+- 简化飞机路径点、生产预定等按钮的括号说明，保留悬停帮助。
+
+文件版本 **1.0.30.7**，Assist **58**、Runtime **4**、入口管理器 **3**。已有安装选 Update，首次安装选 Windows 完整包，退出游戏和工具箱后成套更新 EXE/DLL。
+
+[验证报告](source/verification/pre8/summary.json)：设置与编译检查通过，两份游戏样本各 46 项实际 DLL 调度回归通过。500 FPS 为目标，实际显示效果仍需 Windows 实机复测。
+
+## 历史版本说明
+
 # RA2 Toolbox 1.0.30-pre.7
 
 [预发布完整包与更新包](https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/releases/tag/v1.0.30-pre.7) · [实现与验证](source/REVIEW-1.0.30-pre.7.md)

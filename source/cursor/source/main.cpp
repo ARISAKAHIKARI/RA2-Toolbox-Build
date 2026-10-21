@@ -54,8 +54,8 @@ static HFONT uiFont=nullptr, titleFont=nullptr, actionFont=nullptr;
 static bool uiLayoutBusy=false;
 // Compact first-run panel; legacy controls are shown only in Advanced.
 static bool advancedOpen=false;
-static constexpr int compactContentW=770,compactContentH=434;
-static constexpr int advancedContentW=770,advancedContentH=1394;
+static constexpr int compactContentW=770,compactContentH=394;
+static constexpr int advancedContentW=770,advancedContentH=1354;
 static int uiContentW=compactContentW,uiContentH=compactContentH;
 static constexpr int advancedOffsetY=325;
 static std::vector<HWND> advancedControls;
@@ -528,7 +528,10 @@ static void updateRefresh(bool force=false){
  HMONITOR mon=MonitorFromWindow(IsWindow(game)?game:mainw,MONITOR_DEFAULTTONEAREST);
  if(!force&&!displaySettingsDirty&&mon==refreshMonitor)return;
  refreshMonitor=mon;displaySettingsDirty=false;detectedRefreshHz=monitorRefresh();
- pollHz=cursorperf::targetRate(configuredPollHz,detectedRefreshHz,nativeGameRefresh&&mode==L"hide");
+ pollHz=cursorperf::targetRate(configuredPollHz,detectedRefreshHz);
+#ifdef RA2_UNIFIED
+ suite::publishRefreshRate(pollHz);
+#endif
  if(shared)shared->sampleIntervalMs=LONG(cursorperf::sampleInterval(pollHz));
 }
 static uint32_t inputNow(){LARGE_INTEGER q;if(freq.QuadPart>0&&QueryPerformanceCounter(&q))return uint32_t((q.QuadPart/freq.QuadPart)*1000+(q.QuadPart%freq.QuadPart)*1000/freq.QuadPart);return GetTickCount();}
@@ -1333,8 +1336,8 @@ static LRESULT CALLBACK wndproc(HWND w,UINT m,WPARAM a,LPARAM b){
               uidpi::scale(36,uiDpi)-scrollX,uidpi::scale(95,uiDpi)-scrollY};
    FillRect(dc,&state,dot);DeleteObject(dot);
    if(advancedOpen){HPEN separator=CreatePen(PS_SOLID,1,RGB(45,60,79));auto saved=SelectObject(dc,separator);
-     MoveToEx(dc,uidpi::scale(22,uiDpi)-scrollX,uidpi::scale(432,uiDpi)-scrollY,nullptr);
-     LineTo(dc,uidpi::scale(758,uiDpi)-scrollX,uidpi::scale(432,uiDpi)-scrollY);
+     MoveToEx(dc,uidpi::scale(22,uiDpi)-scrollX,uidpi::scale(392,uiDpi)-scrollY,nullptr);
+     LineTo(dc,uidpi::scale(758,uiDpi)-scrollX,uidpi::scale(392,uiDpi)-scrollY);
      SelectObject(dc,saved);DeleteObject(separator);}
    EndPaint(w,&ps);return 0;}
 case WM_GETMINMAXINFO:{auto p=(MINMAXINFO*)b;p->ptMinTrackSize={uidpi::scale(advancedOpen?510:376,uiDpi),uidpi::scale(240,uiDpi)};return 0;}
@@ -1498,10 +1501,10 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR cmd,int){
  detailLabel=CreateWindowW(L"STATIC",L"",WS_CHILD,20,1122,720,42,mainw,NULL,inst,NULL);extra(detailLabel,{20,1122,720,42});
  HWND displayLabel=CreateWindowW(L"STATIC",L"显示方式",WS_CHILD|WS_VISIBLE,20,178,88,22,mainw,nullptr,inst,nullptr);
  controlOrigins.push_back({displayLabel,{20,178,88,22}});
- for(auto& c:controlOrigins)if(c.handle==advancedHeader||std::find(advancedControls.begin(),advancedControls.end(),c.handle)!=advancedControls.end())c.logical.y+=224;
+ for(auto& c:controlOrigins)if(c.handle==advancedHeader||std::find(advancedControls.begin(),advancedControls.end(),c.handle)!=advancedControls.end())c.logical.y+=184;
  configuredPollHz=GetPrivateProfileIntW(L"Display",L"TargetFPS",GetPrivateProfileIntW(L"Display",L"PollHz",0,ini().c_str()),ini().c_str());
  if(configuredPollHz)configuredPollHz=std::clamp(configuredPollHz,30u,500u);
- HWND rateLabel=CreateWindowW(L"STATIC",L"光标目标",WS_CHILD|WS_VISIBLE,20,214,88,22,mainw,nullptr,inst,nullptr);
+ HWND rateLabel=CreateWindowW(L"STATIC",L"目标刷新率",WS_CHILD|WS_VISIBLE,20,214,88,22,mainw,nullptr,inst,nullptr);
  targetBox=CreateWindowW(L"COMBOBOX",L"",WS_CHILD|WS_VISIBLE|CBS_DROPDOWN|WS_VSCROLL,114,210,226,180,mainw,(HMENU)153,inst,nullptr);
  for(const wchar_t* rate:{L"自动",L"60",L"120",L"144",L"165",L"240",L"360",L"500"})SendMessageW(targetBox,CB_ADDSTRING,0,(LPARAM)rate);
  SetWindowTextW(targetBox,configuredPollHz?std::to_wstring(configuredPollHz).c_str():L"自动");
@@ -1512,19 +1515,16 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR cmd,int){
  };
  basic(L"STATIC",L"高刷范围",20,254,88,22,0);
  refreshModeBox=basic(L"COMBOBOX",L"",114,250,626,150,155,CBS_DROPDOWNLIST|WS_TABSTOP);
- for(const wchar_t* text:{L"仅光标",L"光标＋拖屏",L"全部"})SendMessageW(refreshModeBox,CB_ADDSTRING,0,(LPARAM)text);
- basic(L"STATIC",L"画面目标",20,294,88,22,0);
- refreshRateBox=basic(L"EDIT",L"",114,290,116,26,156,ES_NUMBER|WS_BORDER|WS_TABSTOP);SendMessageW(refreshRateBox,EM_SETLIMITTEXT,3,0);
- basic(L"STATIC",L"60–240 Hz · 实验性",246,294,494,22,0);
- refreshStateLabel=basic(L"STATIC",L"读取设置…",20,334,720,24,0);
- basic(L"STATIC",L"画面高刷不改变游戏速度；单位动作仍跟随游戏逻辑帧。",20,368,720,22,0);
- EnableWindow(refreshModeBox,FALSE);EnableWindow(refreshRateBox,FALSE);
+ for(const wchar_t* text:{L"仅光标",L"光标＋拖屏（实验性）",L"全部（实验性）"})SendMessageW(refreshModeBox,CB_ADDSTRING,0,(LPARAM)text);
+ refreshStateLabel=basic(L"STATIC",L"读取设置…",20,294,720,24,0);
+ basic(L"STATIC",L"三种范围共用刷新率，最高 500 FPS；自动跟随显示器。",20,328,720,22,0);
+ EnableWindow(refreshModeBox,FALSE);
 #endif
  // Main and advanced settings share one width, palette and renderer.
  for(auto& c:controlOrigins){
   if(c.handle==statusw)c.logical.w=690;
   if(c.handle==subTitleLabel||c.handle==quickInfo)c.logical.w=720;
-  if(c.handle==quickInfo)c.logical.y=402;
+  if(c.handle==quickInfo)c.logical.y=362;
   if(c.handle==primaryAction)c.logical={20,128,354,34};
   if(c.handle==advancedAction)c.logical={386,128,354,34};
   if(c.handle==nativeBox||c.handle==targetBox)c.logical.w=626;

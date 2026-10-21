@@ -1,0 +1,37 @@
+{
+  "release": "v1.0.30-pre.8",
+  "file_version": "1.0.30.7",
+  "final_exe_sha256": "7f8d3e99769425232169b75a7d66e574b33822644d9841f386d7c218b4b01983",
+  "final_dll_sha256": "0a4d856b838990a15d8e0b48b1fda118331d253fef5f7a4039a644f059769973",
+  "host_checks": [
+    "suite-display.log",
+    "settings-ui.log",
+    "cursor-settings.log"
+  ],
+  "setting_routes": 10,
+  "coherent_cross_thread_publications": 10000,
+  "target_hz": [
+    30,
+    60,
+    120,
+    144,
+    165,
+    240,
+    360,
+    500
+  ],
+  "runtime_reports": [
+    "refresh-lbw.json",
+    "refresh-zhanwang.json"
+  ],
+  "runtime_cases_per_sample": 46,
+  "static_checks": [
+    "architecture.log",
+    "windows-build.log"
+  ],
+  "limitations": [
+    "Portable UI/Win32/input/renderer substitutes; not a Windows visual FPS measurement.",
+    "Native game-thread cursor delivery retains its existing 250 Hz sampling cap; requested target is common.",
+    "No complete game or two-machine multiplayer run."
+  ]
+}

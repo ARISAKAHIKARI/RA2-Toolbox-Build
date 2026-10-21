@@ -1214,7 +1214,7 @@ static void serviceCommandQueue(DWORD now){
 static void publishSuiteDisplay(){
 #ifdef RA2_UNIFIED
  if(!ready)return;suite::DisplayState state;
- state.values={extra.scrollRefreshMode,extra.scrollRefreshHz,int(extra.enemyMarkers),int(SendMessageW(check[1],BM_GETCHECK,0,0)==BST_CHECKED),int(SendMessageW(check[0],BM_GETCHECK,0,0)==BST_CHECKED),int(SendMessageW(check[3],BM_GETCHECK,0,0)==BST_CHECKED),int(extra.frozen),int(extra.parasiteMarker),int(extra.crateBuffMarkers),labelScalePercent,fps};
+ state.values={extra.scrollRefreshMode,int(extra.enemyMarkers),int(SendMessageW(check[1],BM_GETCHECK,0,0)==BST_CHECKED),int(SendMessageW(check[0],BM_GETCHECK,0,0)==BST_CHECKED),int(SendMessageW(check[3],BM_GETCHECK,0,0)==BST_CHECKED),int(extra.frozen),int(extra.parasiteMarker),int(extra.crateBuffMarkers),labelScalePercent,fps};
  state.assistEnabled=enabled;state.refreshStatus=shared?shared->scrollRefreshStatus:0;
  state.rateMilli=shared?int(shared->scrollRefreshRateMilli):0;state.gapUs=shared?int(shared->scrollRefreshMaxGapUs):0;
  suite::publishDisplaySettings(state);
@@ -1223,15 +1223,15 @@ static void publishSuiteDisplay(){
 static void updateModeStatus(DWORD now){
  int phase=!enabled?1:!game?2:snap.status<0?3:(snap.status!=1||(shared&&commandMatch()&&snap.commandStatus!=1))?4:0;
  static int oldPhase=-1;static DWORD last; if(phase==oldPhase&&DWORD(now-last)<200)return;oldPhase=phase;last=now;publishSuiteDisplay();
- auto riskText=[&](bool wanted,int state)->std::wstring{if(state==-2)return L"启用或关闭失败，请查看日志";if(state==-1)return L"不支持此游戏版本";if(!wanted)return state==1?L"等待恢复":L"关闭";return phase?L"等待游戏就绪":state==1?L"已启用（联机风险）":L"等待生效";};
+ auto riskText=[&](bool wanted,int state)->std::wstring{if(state==-2)return L"启用或关闭失败，请查看日志";if(state==-1)return L"不支持此游戏版本";if(!wanted)return state==1?L"等待恢复":L"关闭";return phase?L"等待游戏就绪":state==1?L"已启用（实验性）":L"等待生效";};
  std::wstring riskStatus=L"扩展建造："+riskText(buildAnywhereMode,snap.placementStatus);
  std::wstring airStatus=L"原生路径点：";airStatus+=snap.nativeAirStatus==-2?L"启用或关闭失败，请查看日志":snap.nativeAirStatus==-1?L"不支持此游戏版本":!extra.nativeAirWaypoints?(snap.nativeAirStatus==1?L"等待恢复":L"关闭"):phase?L"等待游戏就绪":snap.nativeAirStatus==2?L"已启用（联机兼容）":snap.nativeAirStatus==1?L"已启用":L"等待生效";
  SetWindowTextW(GetDlgItem(ui,866),airStatus.c_str());
  SetWindowTextW(GetDlgItem(ui,807),riskStatus.c_str());
- std::wstring renderText=L"地图显示：";renderText+=extra.mapStrategy==3?(autoRevealDone&&autoRevealDone==commandMatch()?L"自动地图全开已执行":L"等待自动地图全开"):snap.renderRevealStatus==-2?L"启用或关闭失败，请查看日志":!extra.renderReveal?L"关闭":phase?L"等待游戏就绪":snap.renderRevealStatus==1?L"已启用":L"等待生效";
+ std::wstring renderText=extra.mapStrategy?L"地图显示（实验性）：":L"地图显示：";renderText+=extra.mapStrategy==3?(autoRevealDone&&autoRevealDone==commandMatch()?L"自动地图全开已执行":L"等待自动地图全开"):snap.renderRevealStatus==-2?L"启用或关闭失败，请查看日志":!extra.renderReveal?L"关闭":phase?L"等待游戏就绪":snap.renderRevealStatus==1?L"已启用":L"等待生效";
  SetWindowTextW(GetDlgItem(ui,809),renderText.c_str());
- SetWindowTextW(GetDlgItem(ui,888),!extra.scrollRefreshMode?L"高刷策略：仅光标（沿用光标页设置）":shared&&shared->scrollRefreshStatus<0?L"高刷策略：接口不兼容，保持原版画面刷新":shared&&shared->scrollRefreshStatus==1?(extra.scrollRefreshMode==2?L"高刷策略：全部 · 实验模式已启用":L"高刷策略：光标＋拖屏 · 实验模式已启用"):L"高刷策略：等待游戏前台就绪");
- if(shared&&shared->scrollRefreshStatus==1&&shared->scrollRefreshRateMilli){wchar_t label[160];swprintf(label,160,L"%s · 补充绘制 %.1f Hz · 最长间隔 %.1f ms",extra.scrollRefreshMode==2?L"全部（实验）":L"光标＋拖屏（实验）",shared->scrollRefreshRateMilli/1000.0,shared->scrollRefreshMaxGapUs/1000.0);SetWindowTextW(GetDlgItem(ui,888),label);}
+ SetWindowTextW(GetDlgItem(ui,888),!extra.scrollRefreshMode?L"高刷策略：仅光标（沿用光标页设置）":shared&&shared->scrollRefreshStatus<0?L"高刷策略：接口不兼容，保持原版画面刷新":shared&&shared->scrollRefreshStatus==1?(extra.scrollRefreshMode==2?L"高刷策略：全部 · 实验性功能已启用":L"高刷策略：光标＋拖屏 · 实验性功能已启用"):L"高刷策略：等待游戏前台就绪");
+ if(shared&&shared->scrollRefreshStatus==1&&shared->scrollRefreshRateMilli){wchar_t label[160];swprintf(label,160,L"%s · 补充绘制 %.1f Hz · 最长间隔 %.1f ms",extra.scrollRefreshMode==2?L"全部（实验性）":L"光标＋拖屏（实验性）",shared->scrollRefreshRateMilli/1000.0,shared->scrollRefreshMaxGapUs/1000.0);SetWindowTextW(GetDlgItem(ui,888),label);}
  SetWindowTextW(GetDlgItem(ui,813),(L"步兵 C4："+riskText(extra.c4Test,snap.c4TestStatus)).c_str());
  std::wstring progress=L"生产进度：";uint32_t owner=0;
  if(techMode&&commandFresh(now)&&externalReader.readFresh(0xA83D4C,&owner,4)&&owner>=0x10000){
@@ -1276,7 +1276,7 @@ static void updatePlayerTestUI(){
    SendDlgItemMessageW(ui,862,CB_ADDSTRING,0,(LPARAM)label.c_str());if(list[i].pointer==selected)chosen=i;}
   memcpy(playerChoices,list,sizeof list);playerChoiceCount=count;playerChoicesMatch=epoch;SendDlgItemMessageW(ui,862,CB_SETCURSEL,chosen,0);
  }
- std::wstring label=L"跨玩家操控：";label+=!extra.controlAll?L"关闭":status==1?L"已启用（测试）":status<0?L"此版本不兼容，未启用":L"等待生效";
+ std::wstring label=L"跨玩家操控：";label+=!extra.controlAll?L"关闭":status==1?L"已启用（实验性）":status<0?L"此版本不兼容，未启用":L"等待生效";
  label+=L" · 当前玩家 "+std::to_wstring(current+1);SetWindowTextW(GetDlgItem(ui,865),label.c_str());
 }
 #include "shift_click_host.h"
@@ -1448,6 +1448,7 @@ static void bindSuper(){std::string id=selectedSuperID();if(id.empty()){notify(L
 static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
 #ifdef RA2_UNIFIED
  if(suite::layoutMessage(w,msg,lp))return 0;
+ if(msg==suite::RefreshRateChanged){syncRefreshRate();return 0;}
  if(msg==suite::ApplyDisplaySetting){
   if(!ready||!suite::validDisplayEdit(int(wp),int(lp)))return 0;
   const auto& spec=suite::displaySpecs[int(wp)];HWND control=GetDlgItem(w,spec.id);if(!control)return 0;
@@ -1489,7 +1490,7 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
   if(!shared||!commandFresh(GetTickCount())||shared->request!=shared->ack){notify(L"请等待游戏就绪后再切换。");return 0;}
   if(id==864)send(RestorePlayer);
   else {int row=int(SendDlgItemMessageW(w,862,CB_GETCURSEL,0,0));
-   if(!extra.switchPlayerEnabled)notify(L"请先启用切换操控方测试。");
+   if(!extra.switchPlayerEnabled)notify(L"请先启用切换操控方实验性功能。");
    else if(playerChoicesMatch!=commandMatch()||row<0||row>=playerChoiceCount)notify(L"玩家列表已更新，请重新选择。");
    else send(SwitchPlayer,int(playerChoices[row].pointer),int(playerChoices[row].id));
   }return 0;
@@ -1514,7 +1515,7 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
  if(id==761&&HIWORD(wp)==CBN_SELCHANGE){
   int selected=int(SendMessageW(megaQueueCombo,CB_GETCURSEL,0,0));
   if(selected==0||selected==1){megaQueueMode=uint32_t(selected);save();
-    notify(L"移动指令兼容模式已保存，重启游戏和工具箱后生效。兼容选项仅供多人测试。");}
+    notify(L"移动指令兼容模式已保存，重启游戏和工具箱后生效。兼容选项为实验性功能。");}
   return 0;
  }
  if(id==760&&HIWORD(wp)==CBN_SELCHANGE){

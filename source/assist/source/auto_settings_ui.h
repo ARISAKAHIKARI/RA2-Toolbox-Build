@@ -71,7 +71,9 @@ static bool autoSettingChanged(int id,int notification){
  case 817:numeric=&constructionScalePercent;lo=50;hi=250;break;
  case 797:numeric=&shiftClickGap;lo=0;hi=250;break;
  case 818:numeric=&advancedRangeCells;lo=0;hi=30;break;
- case 887:numeric=&extra.scrollRefreshHz;lo=60;hi=240;break;
+#ifndef RA2_UNIFIED
+ case 887:numeric=&extra.scrollRefreshHz;lo=30;hi=500;break;
+#endif
  case 881:numeric=&extra.missileScanHz;lo=1;hi=60;break;
  case 787:numeric=&advancedScanHz;lo=1;hi=60;break;
  case 312:numeric=&repairMs;lo=500;hi=30000;break;case 444:numeric=&doubleMs;lo=20;hi=5000;break;

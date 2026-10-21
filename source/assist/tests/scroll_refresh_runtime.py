@@ -79,8 +79,8 @@ for mode in (0,3):
  m.current_thread=777;s=state(m);s.stop=1;save(m,s);m.hook();assert bytes(m.u.mem_read(site,8))==m.game.get_data(site-0x400000,8)
  record(f'{mode}_wrong_thread_native_fallback_and_stop_restore')
 # QPC advances while GetTickCount is quantized at 16 ms. Verify real Runtime
-# draw counts, gaps and phase for both target rates, not just the pure helper.
-for hz in (120,240):
+# draw counts, gaps and phase for 30-500 FPS targets, not just the pure helper.
+for hz in (30,60,120,144,165,240,360,500):
  m=setup(0);m.mousePoint=(300,300);s=state(m);s.scrollRefreshMode=2;s.scrollRefreshHz=hz;save(m,s)
  origin=m.precise_us;base=m.clock;drawTimes=[]
  for elapsed in range(0,1001000,1000):
@@ -93,4 +93,26 @@ for hz in (120,240):
  assert s.scrollRefreshRateMilli==hz*1000 and s.scrollRefreshMaxGapUs==max(gaps)
  assert count(m)==0
  record(f'coarse_16ms_clock_precise_{hz}hz_phase_and_diagnostics')
+# At 500 Hz, timed scrolling must retain native speed; live rate changes and
+# missed slots must not restart a burst or advance simulation.
+for strategy in (1,2):
+ for kind in ('edge','drag'):
+  m=setup(0);s=state(m);s.scrollRefreshMode=strategy;s.scrollRefreshHz=500;save(m,s)
+  if kind=='drag':
+   m.b(0x87f7e8+0x555a,1);m.b(0x87f7e8+0x5558,1);m.b(0x87f7e8+0x554c,1);m.mousePoint=(300,300)
+  origin=m.precise_us;base=m.clock;frame=m.r(0xa8ed84)
+  def wake(elapsed):
+   m.precise_us=origin+elapsed;m.clock=base+(elapsed//16000)*16-110;return m.hook()
+  for elapsed in range(0,1001000,1000):s=wake(elapsed)
+  assert m.scrollDraws==501 and C.c_int32(m.r(m.tactical+0xd64)).value==604,(strategy,kind,m.scrollDraws,m.r(m.tactical+0xd64))
+  # Changing rates resets phase once; repeated same-time wakes never catch up.
+  s=state(m);s.scrollRefreshHz=120;save(m,s);wake(1001000);before=m.scrollDraws
+  for _ in range(3):wake(1001000)
+  assert m.scrollDraws==before
+  s=state(m);s.scrollRefreshHz=500;save(m,s);wake(1002000);before=m.scrollDraws
+  wake(1039000);assert m.scrollDraws==before+1
+  before=m.scrollDraws
+  for _ in range(3):wake(1039000)
+  assert m.scrollDraws==before and m.r(0xa8ed84)==frame and count(m)==0
+  record(f'scope_{strategy}_{kind}_500hz_native_speed_live_rates_and_missed_slots')
 Path(a.output).write_text(json.dumps({'scope':'Actual x86 Runtime + native ScrollMap/SetTacticalPosition; mocked Win32, input producers and renderer; QPC/coarse-clock cadence simulation, not visual FPS or netplay','dll_sha256':hashlib.sha256(Path(a.dll).read_bytes()).hexdigest(),'results':rows},indent=2)+'\n')

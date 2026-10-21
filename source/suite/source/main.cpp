@@ -25,6 +25,7 @@ static constexpr UINT PaneReady=WM_APP+60,EnabledChanged=WM_APP+61,CloseDecision
 static HINSTANCE instance;static std::wstring args;
 static std::atomic<bool> statsShown{false};
 static std::atomic<HWND> displayPanes[3]{};
+static std::atomic<unsigned> commonRefreshRate{0};
 static std::mutex displayMutex;static suite::DisplayState displayState;static bool displayReady=false;
 static const wchar_t* names[]={L"高刷光标",L"单位统计",L"战术助手"};
 static const wchar_t* configKeys[]={L"Cursor",L"Units",L"Assist"};
@@ -33,6 +34,7 @@ namespace suite {
  bool enabled(int module){return active[module].load();}
  void registerPane(int module,HWND pane){
   displayPanes[module].store(pane);PostMessageW(pane,DisplaySettingsChanged,0,0);
+  if(module==2)PostMessageW(pane,RefreshRateChanged,0,0);
   auto style=GetWindowLongPtrW(pane,GWL_STYLE);
   style&=~LONG_PTR(WS_POPUP|WS_CAPTION|WS_SYSMENU|WS_MINIMIZEBOX|WS_MAXIMIZEBOX|WS_THICKFRAME);
   SetWindowLongPtrW(pane,GWL_STYLE,style|WS_CHILD|WS_CLIPCHILDREN);
@@ -50,6 +52,11 @@ namespace suite {
  }
  bool readDisplaySettings(DisplayState& state){std::lock_guard<std::mutex> lock(displayMutex);if(!displayReady)return false;state=displayState;return true;}
  bool requestDisplaySetting(int option,int value){if(!validDisplayEdit(option,value))return false;auto pane=displayPanes[2].load();return pane&&PostMessageW(pane,ApplyDisplaySetting,option,value);}
+ void publishRefreshRate(unsigned hz){
+  if(hz<30||hz>500||commonRefreshRate.exchange(hz)==hz)return;
+  if(auto pane=displayPanes[2].load())PostMessageW(pane,RefreshRateChanged,0,0);
+ }
+ unsigned refreshRate(){return commonRefreshRate.load();}
 }
 static void save(){for(int i=0;i<3;++i)WritePrivateProfileStringW(L"Modules",configKeys[i],active[i]?L"1":L"0",config.c_str());}
 static void layout(){

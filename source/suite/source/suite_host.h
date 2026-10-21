@@ -5,7 +5,7 @@
 #include "display_settings.h"
 namespace suite {
 constexpr UINT PaneLayout=WM_APP+80,ModuleEnable=WM_APP+81,CloseCheck=WM_APP+82;
-constexpr UINT ApplyDisplaySetting=WM_APP+83,DisplaySettingsChanged=WM_APP+84;
+constexpr UINT ApplyDisplaySetting=WM_APP+83,DisplaySettingsChanged=WM_APP+84,RefreshRateChanged=WM_APP+85;
 constexpr WPARAM CloseToken=0x52413253;
 struct Layout {RECT rect;bool visible;};
 HWND parent();
@@ -16,6 +16,9 @@ void requestClose();
 void closeDecision(bool allow);
 void setStatsVisible(bool value);
 bool statsVisible();
+// Cursor owns the common target, including automatic monitor-rate resolution.
+void publishRefreshRate(unsigned hz);
+unsigned refreshRate();
 void publishDisplaySettings(const DisplayState& state);
 bool readDisplaySettings(DisplayState& state);
 bool requestDisplaySetting(int option,int value);

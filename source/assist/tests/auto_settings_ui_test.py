@@ -170,15 +170,24 @@ int main(){
 
  fields[447]='C';autoSettingChanged(447,EN_CHANGE);assert(csKey=='C');autoSettingChanged(447,EN_CHANGE);assert(csKey=='C');
  // Refresh mode selection, bounds and persisted defaults/migration.
- profile.clear();loadMouse();assert(extra.scrollRefreshMode==0&&extra.scrollRefreshHz==120);
+ profile.clear();loadMouse();assert(extra.scrollRefreshMode==0);
  for(int mode:{0,1,2}){fields[886]=mode;assert(autoSettingChanged(886,CBN_SELCHANGE)&&extra.scrollRefreshMode==mode);saveMouse();extra.scrollRefreshMode=9;loadMouse();assert(extra.scrollRefreshMode==mode);}
  for(int bad:{-1,3}){fields[886]=bad;autoSettingChanged(886,CBN_SELCHANGE);assert(extra.scrollRefreshMode==2);}
- for(int hz:{60,120,240}){fields[887]=hz;assert(autoSettingChanged(887,EN_CHANGE)&&extra.scrollRefreshHz==hz);}
- for(int bad:{0,59,241}){fields[887]=bad;autoSettingChanged(887,EN_CHANGE);assert(extra.scrollRefreshHz==240);}
- saveMouse();extra.scrollRefreshHz=0;loadMouse();assert(extra.scrollRefreshHz==240);
+#ifndef RA2_UNIFIED
+ assert(extra.scrollRefreshHz==120);
+ for(int hz:{30,60,120,240,360,500}){fields[887]=hz;assert(autoSettingChanged(887,EN_CHANGE)&&extra.scrollRefreshHz==hz);}
+ for(int bad:{0,29,501}){fields[887]=bad;autoSettingChanged(887,EN_CHANGE);assert(extra.scrollRefreshHz==500);}
+ saveMouse();extra.scrollRefreshHz=0;loadMouse();assert(extra.scrollRefreshHz==500);
+#else
+ // The old setting cannot feed the unified UI or be changed by its save path.
+ profile[L"ScrollRefreshHz"]=60;assert(!autoSettingChanged(887,EN_CHANGE));saveMouse();assert(profile[L"ScrollRefreshHz"]==60);
+#endif
  profile.clear();profile[L"ScrollRefresh"]=1;loadMouse();assert(extra.scrollRefreshMode==1);
  profile[L"RefreshStrategy"]=0;loadMouse();assert(extra.scrollRefreshMode==0);
- profile[L"RefreshStrategy"]=99;profile[L"ScrollRefreshHz"]=500;loadMouse();assert(extra.scrollRefreshMode==2&&extra.scrollRefreshHz==240);
+ profile[L"RefreshStrategy"]=99;profile[L"ScrollRefreshHz"]=900;loadMouse();assert(extra.scrollRefreshMode==2);
+#ifndef RA2_UNIFIED
+ assert(extra.scrollRefreshHz==500);
+#endif
  profile.clear();loadMouse();
  // Experimental reveal opt-ins are exclusive and the render path clears queued old reveals.
  extra.experimentalReveal=true;commandQueue.size=3;commandQueue.slots[0].command=RevealMap;commandQueue.slots[1].command=15;commandQueue.slots[2].command=RevealMap;
@@ -219,8 +228,9 @@ int main(){
 '''
 with tempfile.TemporaryDirectory() as temp:
  cpp=Path(temp)/'auto.cpp';binary=Path(temp)/'auto';cpp.write_text(prefix+'\n#include "auto_settings_ui.h"\n'+suffix)
- subprocess.run(['g++','-std=c++17','-O0','-I'+str(root/'assist/source'),str(cpp),'-o',str(binary)],check=True)
- subprocess.run([str(binary)],check=True)
+ for defines in ([],['-DRA2_UNIFIED']):
+  subprocess.run(['g++','-std=c++17','-O0',*defines,'-I'+str(root/'assist/source'),str(cpp),'-o',str(binary)],check=True)
+  subprocess.run([str(binary)],check=True)
 main=(root/'assist/source/main.cpp').read_text()
 extra=(root/'assist/source/extra_controls.h').read_text()
 assert 'statsVisible()' not in main

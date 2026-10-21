@@ -7,11 +7,11 @@ inline bool sampleDue(uint32_t now,uint32_t last,bool command,unsigned interval=
  return command || uint32_t(now-last)>=interval;
 }
 inline int prefetchCount(int count) { return count<3?count:3; }
-inline unsigned targetRate(unsigned configured,unsigned monitor,bool native){
+inline unsigned targetRate(unsigned configured,unsigned monitor){
  unsigned rate=configured?configured:monitor;
  if(rate<30)rate=30;if(rate>500)rate=500;
- // Game-thread delivery is capped at 250 Hz; show the effective limit.
- return native&&rate>250?250:rate;
+ // One requested target for every refresh scope; backend delivery is measured separately.
+ return rate;
 }
 inline unsigned sampleInterval(unsigned hz){
  unsigned interval=1000/(hz?hz:60);

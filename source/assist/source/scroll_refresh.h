@@ -13,9 +13,10 @@ inline int amount(Rate&r,int pixels,int direction,uint64_t now){
 }
 struct Cadence {
  uint64_t origin=0,next=0;unsigned rate=0;
- bool ready(uint64_t now,unsigned hz)const{return !rate||rate!=hz||now<origin||now>=next;}
+ static unsigned target(unsigned hz){return hz<30?30:hz>500?500:hz;}
+ bool ready(uint64_t now,unsigned hz)const{return !rate||rate!=target(hz)||now<origin||now>=next;}
  bool take(uint64_t now,unsigned hz){
-  hz=hz<60?60:hz>240?240:hz;
+  hz=target(hz);
   if(!ready(now,hz))return false;
   if(!rate||rate!=hz||now<origin||now-origin>10000000){origin=now;rate=hz;}
   // Keep phase after late wakes, skip missed slots instead of drawing bursts.

@@ -1,0 +1,190 @@
+{
+  "scope": "Actual x86 Runtime + native ScrollMap/SetTacticalPosition; mocked Win32, input producers and renderer; QPC/coarse-clock cadence simulation, not visual FPS or netplay",
+  "dll_sha256": "0a4d856b838990a15d8e0b48b1fda118331d253fef5f7a4039a644f059769973",
+  "results": [
+    {
+      "case": "0_edge",
+      "status": "PASS"
+    },
+    {
+      "case": "0_drag",
+      "status": "PASS"
+    },
+    {
+      "case": "0_drag_displacement",
+      "status": "PASS"
+    },
+    {
+      "case": "0_idle",
+      "status": "PASS"
+    },
+    {
+      "case": "0_disabled",
+      "status": "PASS"
+    },
+    {
+      "case": "0_unfocused",
+      "status": "PASS"
+    },
+    {
+      "case": "0_chat",
+      "status": "PASS"
+    },
+    {
+      "case": "0_menu",
+      "status": "PASS"
+    },
+    {
+      "case": "0_foreign_entry",
+      "status": "PASS"
+    },
+    {
+      "case": "0_foreign_body",
+      "status": "PASS"
+    },
+    {
+      "case": "0_foreign_render",
+      "status": "PASS"
+    },
+    {
+      "case": "0_full_idle",
+      "status": "PASS"
+    },
+    {
+      "case": "0_full_outside",
+      "status": "PASS"
+    },
+    {
+      "case": "0_cursor_only",
+      "status": "PASS"
+    },
+    {
+      "case": "0_invalid_strategy",
+      "status": "PASS"
+    },
+    {
+      "case": "0_strategy_switch_and_boundaries",
+      "status": "PASS"
+    },
+    {
+      "case": "0_wrong_thread_native_fallback_and_stop_restore",
+      "status": "PASS"
+    },
+    {
+      "case": "3_edge",
+      "status": "PASS"
+    },
+    {
+      "case": "3_drag",
+      "status": "PASS"
+    },
+    {
+      "case": "3_drag_displacement",
+      "status": "PASS"
+    },
+    {
+      "case": "3_idle",
+      "status": "PASS"
+    },
+    {
+      "case": "3_disabled",
+      "status": "PASS"
+    },
+    {
+      "case": "3_unfocused",
+      "status": "PASS"
+    },
+    {
+      "case": "3_chat",
+      "status": "PASS"
+    },
+    {
+      "case": "3_menu",
+      "status": "PASS"
+    },
+    {
+      "case": "3_foreign_entry",
+      "status": "PASS"
+    },
+    {
+      "case": "3_foreign_body",
+      "status": "PASS"
+    },
+    {
+      "case": "3_foreign_render",
+      "status": "PASS"
+    },
+    {
+      "case": "3_full_idle",
+      "status": "PASS"
+    },
+    {
+      "case": "3_full_outside",
+      "status": "PASS"
+    },
+    {
+      "case": "3_cursor_only",
+      "status": "PASS"
+    },
+    {
+      "case": "3_invalid_strategy",
+      "status": "PASS"
+    },
+    {
+      "case": "3_strategy_switch_and_boundaries",
+      "status": "PASS"
+    },
+    {
+      "case": "3_wrong_thread_native_fallback_and_stop_restore",
+      "status": "PASS"
+    },
+    {
+      "case": "coarse_16ms_clock_precise_30hz_phase_and_diagnostics",
+      "status": "PASS"
+    },
+    {
+      "case": "coarse_16ms_clock_precise_60hz_phase_and_diagnostics",
+      "status": "PASS"
+    },
+    {
+      "case": "coarse_16ms_clock_precise_120hz_phase_and_diagnostics",
+      "status": "PASS"
+    },
+    {
+      "case": "coarse_16ms_clock_precise_144hz_phase_and_diagnostics",
+      "status": "PASS"
+    },
+    {
+      "case": "coarse_16ms_clock_precise_165hz_phase_and_diagnostics",
+      "status": "PASS"
+    },
+    {
+      "case": "coarse_16ms_clock_precise_240hz_phase_and_diagnostics",
+      "status": "PASS"
+    },
+    {
+      "case": "coarse_16ms_clock_precise_360hz_phase_and_diagnostics",
+      "status": "PASS"
+    },
+    {
+      "case": "coarse_16ms_clock_precise_500hz_phase_and_diagnostics",
+      "status": "PASS"
+    },
+    {
+      "case": "scope_1_edge_500hz_native_speed_live_rates_and_missed_slots",
+      "status": "PASS"
+    },
+    {
+      "case": "scope_1_drag_500hz_native_speed_live_rates_and_missed_slots",
+      "status": "PASS"
+    },
+    {
+      "case": "scope_2_edge_500hz_native_speed_live_rates_and_missed_slots",
+      "status": "PASS"
+    },
+    {
+      "case": "scope_2_drag_500hz_native_speed_live_rates_and_missed_slots",
+      "status": "PASS"
+    }
+  ]
+}
