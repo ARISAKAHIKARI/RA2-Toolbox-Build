@@ -54,7 +54,8 @@ inline Decision decide(const Source&s,const Target*targets,const uint8_t*actions
   }
   return d;
  }
- if(!r.stableSince)r.stableSince=frame;
+ if(v.x!=r.x||v.y!=r.y||!r.stableSince){r.x=v.x;r.y=v.y;r.stableSince=frame;}
+ if(frame-r.stableSince<2||v.mission==2||v.queued==2||v.sequence==31)return d;
  if(frame<r.sentFrame)return d;
  if(v.queryFailed){r.sentFrame=frame+6;return d;}
  int best=-1;int64_t distance=INT64_MAX;bool special=false;

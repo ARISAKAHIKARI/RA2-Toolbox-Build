@@ -1,0 +1,294 @@
+{
+  "scope": "Execute actual x86 GameRuntime and original event constructors with controlled world/Win32/virtual queries. Not live netplay.",
+  "dll_sha256": "0b26b0f2003592f2311ba8487a168d56192b616cc335de2e4e018c5e964a2a22",
+  "results": [
+    {
+      "case": "unload_0_True_long_scatter",
+      "status": "PASS"
+    },
+    {
+      "case": "unload_0_True_interrupted",
+      "status": "PASS"
+    },
+    {
+      "case": "unload_0_True_manual_stop",
+      "status": "PASS"
+    },
+    {
+      "case": "unload_0_True_manual_after",
+      "status": "PASS"
+    },
+    {
+      "case": "unload_0_True_disabled",
+      "status": "PASS"
+    },
+    {
+      "case": "missile_0_True_distribute",
+      "status": "PASS"
+    },
+    {
+      "case": "missile_0_True_height",
+      "status": "PASS"
+    },
+    {
+      "case": "missile_0_True_nonmissile",
+      "status": "PASS"
+    },
+    {
+      "case": "missile_0_True_allied",
+      "status": "PASS"
+    },
+    {
+      "case": "missile_0_True_moving",
+      "status": "PASS"
+    },
+    {
+      "case": "missile_0_True_disabled",
+      "status": "PASS"
+    },
+    {
+      "case": "missile_0_True_filter",
+      "status": "PASS"
+    },
+    {
+      "case": "missile_0_True_observer",
+      "status": "PASS"
+    },
+    {
+      "case": "missile_0_True_power_off",
+      "status": "PASS"
+    },
+    {
+      "case": "missile_0_True_antitheft",
+      "status": "PASS"
+    },
+    {
+      "case": "unload_0_False_long_scatter",
+      "status": "PASS"
+    },
+    {
+      "case": "unload_0_False_interrupted",
+      "status": "PASS"
+    },
+    {
+      "case": "unload_0_False_manual_stop",
+      "status": "PASS"
+    },
+    {
+      "case": "unload_0_False_manual_after",
+      "status": "PASS"
+    },
+    {
+      "case": "unload_0_False_disabled",
+      "status": "PASS"
+    },
+    {
+      "case": "missile_0_False_distribute",
+      "status": "PASS"
+    },
+    {
+      "case": "missile_0_False_height",
+      "status": "PASS"
+    },
+    {
+      "case": "missile_0_False_nonmissile",
+      "status": "PASS"
+    },
+    {
+      "case": "missile_0_False_allied",
+      "status": "PASS"
+    },
+    {
+      "case": "missile_0_False_moving",
+      "status": "PASS"
+    },
+    {
+      "case": "missile_0_False_disabled",
+      "status": "PASS"
+    },
+    {
+      "case": "missile_0_False_filter",
+      "status": "PASS"
+    },
+    {
+      "case": "missile_0_False_observer",
+      "status": "PASS"
+    },
+    {
+      "case": "missile_0_False_power_off",
+      "status": "PASS"
+    },
+    {
+      "case": "missile_0_False_antitheft",
+      "status": "PASS"
+    },
+    {
+      "case": "missile_external_0_stale",
+      "status": "PASS"
+    },
+    {
+      "case": "missile_external_0_dead",
+      "status": "PASS"
+    },
+    {
+      "case": "missile_external_0_range_changed",
+      "status": "PASS"
+    },
+    {
+      "case": "missile_external_0_torn",
+      "status": "PASS"
+    },
+    {
+      "case": "missile_external_0_manual",
+      "status": "PASS"
+    },
+    {
+      "case": "missile_external_0_off_pending",
+      "status": "PASS"
+    },
+    {
+      "case": "unload_3_True_long_scatter",
+      "status": "PASS"
+    },
+    {
+      "case": "unload_3_True_interrupted",
+      "status": "PASS"
+    },
+    {
+      "case": "unload_3_True_manual_stop",
+      "status": "PASS"
+    },
+    {
+      "case": "unload_3_True_manual_after",
+      "status": "PASS"
+    },
+    {
+      "case": "unload_3_True_disabled",
+      "status": "PASS"
+    },
+    {
+      "case": "missile_3_True_distribute",
+      "status": "PASS"
+    },
+    {
+      "case": "missile_3_True_height",
+      "status": "PASS"
+    },
+    {
+      "case": "missile_3_True_nonmissile",
+      "status": "PASS"
+    },
+    {
+      "case": "missile_3_True_allied",
+      "status": "PASS"
+    },
+    {
+      "case": "missile_3_True_moving",
+      "status": "PASS"
+    },
+    {
+      "case": "missile_3_True_disabled",
+      "status": "PASS"
+    },
+    {
+      "case": "missile_3_True_filter",
+      "status": "PASS"
+    },
+    {
+      "case": "missile_3_True_observer",
+      "status": "PASS"
+    },
+    {
+      "case": "missile_3_True_power_off",
+      "status": "PASS"
+    },
+    {
+      "case": "missile_3_True_antitheft",
+      "status": "PASS"
+    },
+    {
+      "case": "unload_3_False_long_scatter",
+      "status": "PASS"
+    },
+    {
+      "case": "unload_3_False_interrupted",
+      "status": "PASS"
+    },
+    {
+      "case": "unload_3_False_manual_stop",
+      "status": "PASS"
+    },
+    {
+      "case": "unload_3_False_manual_after",
+      "status": "PASS"
+    },
+    {
+      "case": "unload_3_False_disabled",
+      "status": "PASS"
+    },
+    {
+      "case": "missile_3_False_distribute",
+      "status": "PASS"
+    },
+    {
+      "case": "missile_3_False_height",
+      "status": "PASS"
+    },
+    {
+      "case": "missile_3_False_nonmissile",
+      "status": "PASS"
+    },
+    {
+      "case": "missile_3_False_allied",
+      "status": "PASS"
+    },
+    {
+      "case": "missile_3_False_moving",
+      "status": "PASS"
+    },
+    {
+      "case": "missile_3_False_disabled",
+      "status": "PASS"
+    },
+    {
+      "case": "missile_3_False_filter",
+      "status": "PASS"
+    },
+    {
+      "case": "missile_3_False_observer",
+      "status": "PASS"
+    },
+    {
+      "case": "missile_3_False_power_off",
+      "status": "PASS"
+    },
+    {
+      "case": "missile_3_False_antitheft",
+      "status": "PASS"
+    },
+    {
+      "case": "missile_external_3_stale",
+      "status": "PASS"
+    },
+    {
+      "case": "missile_external_3_dead",
+      "status": "PASS"
+    },
+    {
+      "case": "missile_external_3_range_changed",
+      "status": "PASS"
+    },
+    {
+      "case": "missile_external_3_torn",
+      "status": "PASS"
+    },
+    {
+      "case": "missile_external_3_manual",
+      "status": "PASS"
+    },
+    {
+      "case": "missile_external_3_off_pending",
+      "status": "PASS"
+    }
+  ]
+}

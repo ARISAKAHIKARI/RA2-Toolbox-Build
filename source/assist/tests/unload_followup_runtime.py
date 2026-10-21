@@ -32,6 +32,7 @@ for mode in (0,3):
    for _ in range(120 if case=='long_scatter' else 10):s=n.tick(m);assert n.count(m)==1
    if case=='disabled':s.flags=0;n.save(m,s)
    m.w(m.eng+0xac,13 if case=='manual_stop' else 6 if case=='guard_sticky' else 5);s=n.tick(m)
+   for _ in range(2):s=n.tick(m)
    expected=case not in ('blocked','manual_stop','disabled')
    assert n.count(m)==(2 if expected else 1),(case,n.count(m),s.data.unloadPending,s.data.lastSubmitError)
    if expected:

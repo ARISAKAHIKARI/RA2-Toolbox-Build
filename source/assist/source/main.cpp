@@ -532,6 +532,13 @@ static void logPlanning(const planner::World&w,const wchar_t* reason){
 }
 static void serviceCalculationTasks(){
  if(!shared||!commandFresh(GetTickCount()))return;
+ if(shared->missileTask!=shared->missileComputed){
+  long seq=shared->missileInputSeq;if(seq&1)return;MemoryBarrier();uint32_t task=shared->missileTask;
+  static auto input=std::make_unique<missilecompute::Input>();memcpy(input.get(),&shared->missileInput,sizeof(*input));MemoryBarrier();
+  if(seq!=shared->missileInputSeq||task!=shared->missileTask)return;
+  auto result=missilecompute::calculate(*input);
+  if(seq==shared->missileInputSeq&&task==shared->missileTask){InterlockedIncrement(&shared->missileResultSeq);MemoryBarrier();shared->missileResult=result;shared->missileComputed=task;MemoryBarrier();InterlockedIncrement(&shared->missileResultSeq);wakeGame();}
+ }
  if(shared->unloadTask!=shared->unloadComputed){
   const long seq=shared->unloadInputSeq;if(seq&1)return;MemoryBarrier();const uint32_t task=shared->unloadTask;
   static auto input=std::make_unique<unloadcompute::Input>();memcpy(input.get(),&shared->unloadInput,sizeof(*input));MemoryBarrier();
@@ -664,7 +671,7 @@ static bool ensureBridge(){
  }
  ++bridgeAttempts;bridgeRetryAt=now+(bridgeAttempts>=3?30000:2000);
  critical(L"bridge-connect-attempt="+std::to_wstring(bridgeAttempts)+L" pid="+std::to_wstring(pid)+L" thread="+std::to_wstring(gameThread));
- wchar_t n[100];swprintf(n,100,L"Local\\RA2Assist_v053_%lu",pid);
+ wchar_t n[100];swprintf(n,100,L"Local\\RA2Assist_v054_%lu",pid);
  mapping=CreateFileMappingW(INVALID_HANDLE_VALUE,nullptr,PAGE_READWRITE,0,sizeof(Shared),n);
  DWORD mappingError=GetLastError();if(!mapping)return bridgeFailed(L"创建命令共享内存失败",mappingError);
  if(mappingError==ERROR_ALREADY_EXISTS){
@@ -1260,12 +1267,12 @@ static void tick(){reapBridges();logBridgeHealth();DWORD now=GetTickCount();stat
   return;
  }
  sampleExternal(now);uint32_t configured=flags();
- bool needsBridge=(externalData&&externalData->status==1)||techMode||commandQueue.size||hasSelection||externalSampler.flashCount||(configured&(AutoCS|AdvancedInput|MagnetronInput|AutoOreReturn|CustomCS|BuildAnywhere|AutoRepair|EjectAssist|SpecialClickFlags));
+ bool needsBridge=(externalData&&externalData->status==1)||techMode||extra.missileDefense||commandQueue.size||hasSelection||externalSampler.flashCount||(configured&(AutoCS|AdvancedInput|MagnetronInput|AutoOreReturn|CustomCS|BuildAnywhere|AutoRepair|EjectAssist|SpecialClickFlags));
  if(needsBridge&&!shared)ensureBridge();
  now=GetTickCount(); // ensureBridge may have created attachAt after tick entry.
  if(shared){
   shared->heartbeat=now;shared->foreground=foregroundGame();shared->flags=configured;syncAdditional();shared->scanMs=8;shared->repairMs=repairMs;
-  DWORD wakePeriod=shared->foreground?16:((configured|shared->plannerTracking)&(AdvancedInput|MagnetronInput|AutoOreReturn|AirWaypoints|AntiTheft)?64:500);
+  DWORD wakePeriod=shared->foreground?16:(shared->missileEnabled||((configured|shared->plannerTracking)&(AdvancedInput|MagnetronInput|AutoOreReturn|AirWaypoints|AntiTheft))?64:500);
   if(DWORD(now-lastPulse)>=wakePeriod)wakeGame();
   readSnapshot();schedulerDiagnostic();serviceSelection();result();serviceCommandQueue(GetTickCount());serviceCalculationTasks();servicePlanner();serviceCooperative();servicePointer();serviceHotkeyBatch();serviceConstruction();serviceAirPath();
   if(ready&&GetDlgItem(ui,833)){

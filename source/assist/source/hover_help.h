@@ -1,7 +1,7 @@
 // Instructions describe visible behavior; implementation diagnostics belong in logs.
 static std::wstring controlHelp(int id,const std::wstring& label){
  if(id>=200&&id<212)id-=100;
- if(id>=840&&id<850)return L"计算模式：工具箱计算便于分担游戏负载；游戏内计算可减少数据传递等待。修改后从下一局生效。";
+ if(id>=9000&&id<9000+compute::Count)return L"计算模式：工具箱计算便于分担游戏负载；游戏内计算可减少数据传递等待。修改后从下一局生效。";
  if(id>=729&&id<=738){const int feature[]={450,478,474,702,705,708,719,736,720,721};if(id!=736)id=feature[id-729];}
  switch(id){
  case 100:case 312:case 780:return L"自动维修：定期维修受损的己方建筑，快捷键用于开关。通常不可维修的建筑需要另行允许。";
@@ -36,6 +36,7 @@ static std::wstring controlHelp(int id,const std::wstring& label){
  case 736:return L"直接攻击移动：仅按所选鼠标键点击地面，下达一次攻击移动。不会启用持续自动索敌。";
  case 788:return L"优先执行增强指令（覆盖原生指令）：当增强操作与普通地面命令冲突时，尝试抑制普通命令。仅支持部分鼠标操作，默认关闭。";
  case 795:case 796:case 797:return L"Shift 五连点：按住 Shift 点击生产图标，一次购买五个。自动模式兼容已有五连点；移动鼠标、松键或切出游戏即停止追加。";
+ case 880:case 881:return L"防空单位智能拦截：按原版武器和含高度的射程判定，优先拦截敌方 V3、无畏级、雷鸣潜艇等可攻击导弹。默认每秒检测 10 次，可调整频率与单位清单。";
  case 804:return L"防御建筑优先攻击渗透单位（防偷点杀）：射程内优先锁定工程师、爆破和潜入单位。已锁定此类威胁时保持目标。";
  case 476:return L"扩展建筑放置范围（任意建造）：放宽建筑间距离限制，仍须满足地形和占用条件。默认关闭，可能导致联机不同步或掉线。";
  case 810:case 811:case 812:case 813:return L"步兵 C4：选中步兵，按住配置键点击敌方建筑；默认 Alt+C 加中键。实验性功能，可能导致联机不同步或掉线。";

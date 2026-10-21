@@ -1,0 +1,36 @@
+{
+  "scope": "Execute the supplied EXE's original IsCloseEnough/6F7220 range arithmetic, including sqrt and integer conversion. Object getters and map/obstacle lookup use controlled fixtures. Not a live map test.",
+  "dll_sha256": "0b26b0f2003592f2311ba8487a168d56192b616cc335de2e4e018c5e964a2a22",
+  "results": [
+    {
+      "case": "near_low",
+      "status": "PASS",
+      "result": 1
+    },
+    {
+      "case": "near_high",
+      "status": "PASS",
+      "result": 0
+    },
+    {
+      "case": "bonus_high",
+      "status": "PASS",
+      "result": 1
+    },
+    {
+      "case": "far_low",
+      "status": "PASS",
+      "result": 0
+    },
+    {
+      "case": "bonus_far",
+      "status": "PASS",
+      "result": 1
+    },
+    {
+      "case": "min_range",
+      "status": "PASS",
+      "result": 0
+    }
+  ]
+}

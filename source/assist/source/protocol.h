@@ -14,8 +14,9 @@
 #include "compute_policy.h"
 #include "compute_tasks.h"
 #include "unload_compute.h"
+#include "missile_compute.h"
 namespace assist {
-constexpr uint32_t Magic=0x41533130, Version=53;
+constexpr uint32_t Magic=0x41533130, Version=54;
 constexpr uint32_t DataMessage=0x8002, WakeTag=0x41533230;
 constexpr int MaxLabels=2048, MaxSW=32, MaxTypes=512, MaxThreats=128, MaxCrates=256, MaxCrateResults=16;
 enum Command { None, Repair, CombatSelection, EmptyTransports, DamagedSelection, IdleHarvester, IdleEngineer, IdleTransport, ClearBeacons, RevealMap, OpenTech, SelectSuper, Produce, SelectIron, SelectChrono, AutoBoard, SelectType, SmartUnload, CancelAdvanced, SelectVariant, ProduceReserved, AirPathMove, CancelTechProduction, SwitchPlayer, RestorePlayer, Cheer, Taunt, ProduceDeferred };
@@ -135,6 +136,11 @@ struct Shared {
  unloadcompute::Input unloadInput;unloadcompute::Result unloadResult;
  volatile uint32_t controlAll=0,switchPlayerEnabled=0; // session-only opt-ins, host owned
  int playerCount=0,playerCurrent=-1,playerOriginal=-1,playerControlStatus=0;
+ volatile uint32_t missileEnabled=0,missileScanHz=10;
+ volatile long missileInputSeq=0,missileResultSeq=0;
+ volatile uint32_t missileTask=0,missileComputed=0;
+ missilecompute::Input missileInput;missilecompute::Result missileResult;
+ uint32_t missileSources=0,missileTargets=0,missileIssued=0;
  PlayerTestInfo players[32]{}; // Runtime writer, protected by seq
 
 

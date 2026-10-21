@@ -1,0 +1,31 @@
+{
+  "version": "1.0.29",
+  "release_channel": "stable",
+  "file_version": "1.0.29.0",
+  "assist_protocol": 54,
+  "runtime_protocol": 4,
+  "entry_manager_protocol": 3,
+  "changes": [
+    "- 修复智能卸载后工程师占领跟踪：保留较长离车散开过程，确认连续两逻辑帧位置稳定后下令；不再把刚获取建筑目标误当作任务结束。被散开或寻路中断时重新校验并有限重试，手动命令立即退出。",
+    "- 新增防空单位智能拦截导弹：优先处理威胁己方的可攻击导弹，按目标耐久与名义单发伤害分配火力；支持 V3、无畏级、雷鸣潜艇等 MissileSpawn 导弹单位。",
+    "- 对空武器与射程使用原版 SelectWeapon / GetWeapon / IsCloseEnough，保留高度、对空射程加成及最小射程判定；提交前再次复核。",
+    "- 拦截默认每秒检测 10 次，可设置 1–60 次；防空单位与导弹类型可分别配置清单。移动、连射、高级移动任务及已锁定渗透单位的防偷点杀不被打断；断电防御建筑不参与。",
+    "- 智能卸载与导弹火控都支持工具箱计算和游戏内计算，新增火控默认游戏内计算；共用同一算法，最终游戏调用和事件构造始终只有 GameRuntime 一个入口。",
+    "- 共用总事件预算，同时为普通战术、协同下令、导弹拦截保留份额；新增功能不安装任何游戏拦截 hook。"
+  ],
+  "verification": {
+    "policy": "PASS ASan/UBSan allocator, existing locks, pending events, limits, shared budget; leak detection unavailable",
+    "hotkeys": "PASS social routes, conflict and game context",
+    "runtime": "PASS 72 scenarios on each of two user EXEs plus 20 prior unload regressions; controlled SP/MP and both compute locations",
+    "range": "PASS 6 original range arithmetic cases on each user EXE, including height, AirRangeBonus and minimum range; controlled object/map queries",
+    "windows": "PASS x86 resources/imports/ABI",
+    "architecture": "PASS eleven compute families and sole Runtime event entry"
+  },
+  "real_windows_game": false,
+  "real_graphics": false,
+  "real_netplay": false,
+  "binary_sha256": {
+    "RA2Toolbox.exe": "ea67f3a7dcbb931fb537fc6670947ab1ec517c4f0b5be3386937ce6ffe20a388",
+    "GameRuntime.dll": "0b26b0f2003592f2311ba8487a168d56192b616cc335de2e4e018c5e964a2a22"
+  }
+}

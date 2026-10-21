@@ -78,6 +78,9 @@ number(818,L"高级移动攻击额外索敌距离 / 格",advancedRangeCells,L"0�
 label(L"高级移动攻击目标优先级",20,260);choices(combo(802),{L"单位价值优先",L"弹头伤害比例优先"},advancedTargetPriority);next();
 note(L"索敌范围为单位射程加额外距离；忽略伤害比例不超过 2% 的目标。",44);
 toggle(804,L"防御建筑优先攻击渗透单位",extra.antiTheft);next();
+toggle(880,L"防空单位智能拦截导弹",extra.missileDefense);next();
+number(881,L"导弹拦截检测频率 / 次每秒",extra.missileScanHz,L"1–60 · 默认 10");
+note(L"优先拦截射程内的敌方导弹，分配火力减少重复锁定；移动中的单位不接管。",44);
 toggle(799,L"生产预定（四类生产栏各 5 项）",extra.constructionQueue);next();
 // One visible Auto CS switch represents the previous two enable flags.
 hookChecks[3]=placedControl({-3,{0,0,1,1}},L"BUTTON",L"",466,BS_AUTOCHECKBOX);
@@ -149,7 +152,7 @@ toggle(788,L"优先执行增强指令",extra.overrideNative);next();
 note(L"用于增强操作与普通地面命令冲突的情况；仅对支持的鼠标操作生效。",44);
 item(L"STATIC",L"计算模式",20,605,832,0,30);next(30);
 note(L"按功能选择工具箱计算或游戏内计算；修改后从下一局开始使用。",44);
-for(int i=0;i<compute::Count;++i){label(compute::label(i),20,260);choices(combo(840+i),{L"工具箱计算",L"游戏内计算"},(computeRequested>>i)&1u);next();}
+for(int i=0;i<compute::Count;++i){label(compute::label(i),20,260);choices(combo(9000+i),{L"工具箱计算",L"游戏内计算"},(computeRequested>>i)&1u);next();}
 item(L"STATIC",L"当前计算模式：等待对局",20,605,833,0,144);next(144);
 label(L"移动指令兼容模式",20,260);megaQueueCombo=combo(761);choices(megaQueueCombo,{L"标准（推荐）",L"兼容模式（多人测试）"},megaQueueMode);next();
 label(L"维修与出售兼容模式",20,260);objectQueueCombo=combo(762);choices(objectQueueCombo,{L"标准（推荐）",L"兼容模式（多人测试）"},objectQueueMode);next();
