@@ -21,7 +21,7 @@ static bool missileSource(uint32_t p,uint32_t house){
  if(!p||!own(p,house)||!live(p)||kind(p)<0||get<bool>(p+0x1C8)||get<uint32_t>(p+0x11C)||!featureObjectAllowed(featuretypes::MissileDefense,p))return false;
  const int m=get<int>(p+0xAC),q=get<int>(p+0xB4);
  // Do not stop movement, transport, deployment, or advanced click jobs.
- if((m!=1&&m!=5&&m!=6&&m!=11&&m!=13)||(q!=-1&&q!=m)||orderIndex(p)>=0)return false;
+ if((m!=1&&m!=5&&m!=6&&m!=11&&m!=13)||(q!=-1&&q!=m)||orderIndex(p)>=0||burstOwns(get<uint32_t>(p+0x10))||dodgeOwns(get<uint32_t>(p+0x10)))return false;
  if((sh->flags&AntiTheft)&&antiTheftBuilding(p)&&antiTheftThreat(get<uint32_t>(p+0x2B4),house))return false;
  if(remaining(get<int>(p+0x2EC),get<int>(p+0x2F4),get<int>(0xA8ED84))>6)return false;
  uint32_t t=typeOf(p,kind(p));if(!t||(get<int>(t+0x684)>=0&&get<int>(p+0x2FC)<=0))return false;

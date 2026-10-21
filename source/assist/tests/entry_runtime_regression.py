@@ -26,17 +26,19 @@ class CrateResult(C.Structure):
 class Weapon(C.Structure):
     _fields_=[('range',C.c_int32),('minimum',C.c_int32),('flags',C.c_uint32),('armorMask',C.c_uint32),('selectMask',C.c_uint32),('slot',C.c_int32),('effectiveness',C.c_float*11)]
 class Actor(C.Structure):
-    _fields_=[(x,C.c_uint32) for x in 'id type flags manualVersion target destination destinationCell'.split()]+[(x,C.c_int32) for x in 'kind x y z mission queued cost storageLimit range'.split()]+[('veterancy',C.c_float),('storage',C.c_float*4),('dockTypes',C.c_uint32*8),('radioIDs',C.c_uint32*4)]+[(x,C.c_int32) for x in 'armor rearmStart rearmDuration airRangeBonus'.split()]+[('liftTarget',C.c_uint32),('weapons',Weapon*2)]
+    _fields_=[(x,C.c_uint32) for x in 'id type flags manualVersion target destination destinationCell'.split()]+[(x,C.c_int32) for x in 'kind x y z mission queued cost storageLimit range'.split()]+[('veterancy',C.c_float),('storage',C.c_float*4),('dockTypes',C.c_uint32*8),('radioIDs',C.c_uint32*4)]+[(x,C.c_int32) for x in 'armor rearmStart rearmDuration airRangeBonus'.split()]+[('liftTarget',C.c_uint32),('weapons',Weapon*2),('combatFirst',C.c_int32),('combatCount',C.c_int32)]
 class Intent(C.Structure):
     _fields_=[(x,C.c_uint32) for x in 'id cell token mode'.split()]
 class WaitingCell(C.Structure):
     _fields_=[('cell',C.c_uint32),('occupation',C.c_uint32),('land',C.c_int32)]
 class Refinery(C.Structure):
     _fields_=[('id',C.c_uint32)]+[(x,C.c_int32) for x in 'cellX cellY dockStyleA dockStyleB count'.split()]+[('waiting',WaitingCell*40)]
+class CombatProbe(C.Structure):
+    _fields_=[('target',C.c_uint32),('flags',C.c_uint32),('slot',C.c_int32),('effectiveness',C.c_float)]
 class World(C.Structure):
-    _fields_=[('match',C.c_uint32),('tick',C.c_uint32)]+[(x,C.c_int32) for x in 'frame count intentCount refineryCount'.split()]+[('inputSerial',C.c_uint32)]+[('actors',Actor*8192),('intents',Intent*2048),('refineries',Refinery*128)]
+    _fields_=[('match',C.c_uint32),('tick',C.c_uint32)]+[(x,C.c_int32) for x in 'frame count intentCount refineryCount'.split()]+[('inputSerial',C.c_uint32)]+[('actors',Actor*8192),('intents',Intent*2048),('refineries',Refinery*128),('combatCount',C.c_int32),('combat',CombatProbe*8192)]
 class Order(C.Structure):
-    _fields_=[(x,C.c_uint32) for x in 'unit token target destination'.split()]+[(x,C.c_int32) for x in 'mission destinationTag purpose'.split()]+[('refinery',C.c_uint32)]
+    _fields_=[(x,C.c_uint32) for x in 'unit token target destination'.split()]+[(x,C.c_int32) for x in 'mission destinationTag purpose'.split()]+[('refinery',C.c_uint32),('pursuit',C.c_uint32)]
 
 class TaskReceiptSummary(C.Structure):
     _fields_=[(x,C.c_uint32) for x in 'serial match unit target queuedAt observedAt'.split()]+[(x,C.c_uint8) for x in 'phase failure owner flags'.split()]
@@ -63,7 +65,7 @@ class OreConfig(C.Structure):
 class FeatureFilter(C.Structure):
  _fields_=[("custom",C.c_uint32),("count",C.c_int32),("ids",(C.c_char*24)*512)]
 class FeatureConfig(C.Structure):
- _fields_=[("filters",FeatureFilter*17)]
+ _fields_=[("filters",FeatureFilter*19)]
 class ReservationPolicy(C.Structure):
  _fields_=[(x,C.c_uint32) for x in 'match house parent parentID tick tab slots count'.split()]+[('queued',C.c_int32*5)]
 class ReservationClick(C.Structure):
@@ -106,6 +108,26 @@ class UnloadInput(C.Structure):
  _fields_=[('match',C.c_uint32),('tick',C.c_uint32)]+[(x,C.c_int32) for x in 'frame count targetCount'.split()]+[('sources',UnloadSource*64),('targets',UnloadTarget*8192),('actions',(C.c_uint8*8192)*64)]
 class UnloadResult(C.Structure):
  _fields_=[('match',C.c_uint32),('tick',C.c_uint32),('frame',C.c_int32),('count',C.c_int32),('decisions',UnloadDecision*64)]
+class BurstSource(C.Structure):
+ _fields_=[(x,C.c_uint32) for x in 'job id pointer token target targetPointer weapon'.split()]+[(x,C.c_int32) for x in 'phase frame sentFrame mission queued burst index fireStamp previousFire'.split()]+[(x,C.c_uint32) for x in 'currentTarget eligible inRange moving'.split()]
+class BurstDecision(C.Structure):
+ _fields_=[('mission',C.c_int32),('done',C.c_uint32)]
+class BurstInput(C.Structure):
+ _fields_=[('match',C.c_uint32),('tick',C.c_uint32),('frame',C.c_int32),('count',C.c_int32),('sources',BurstSource*64)]
+class BurstResult(C.Structure):
+ _fields_=[('match',C.c_uint32),('tick',C.c_uint32),('frame',C.c_int32),('count',C.c_int32),('decisions',BurstDecision*64)]
+class DodgeThreat(C.Structure):
+ _fields_=[('id',C.c_uint32),('pointer',C.c_uint32)]+[(x,C.c_int32) for x in 'x y kind'.split()]
+class DodgeCell(C.Structure):
+ _fields_=[('cell',C.c_uint32),('x',C.c_int32),('y',C.c_int32)]
+class DodgeSource(C.Structure):
+ _fields_=[(x,C.c_uint32) for x in 'id pointer token job destination'.split()]+[(x,C.c_int32) for x in 'x y frame sentFrame moves count cells'.split()]+[(x,C.c_uint32) for x in 'restoreTarget restoreDestination'.split()]+[(x,C.c_int32) for x in 'restoreMission restoreTag'.split()]+[('threats',DodgeThreat*8),('options',DodgeCell*16)]
+class DodgeDecision(C.Structure):
+ _fields_=[('mission',C.c_int32),('target',C.c_uint32),('destination',C.c_uint32),('tag',C.c_int32),('done',C.c_uint32)]
+class DodgeInput(C.Structure):
+ _fields_=[('match',C.c_uint32),('tick',C.c_uint32),('frame',C.c_int32),('count',C.c_int32),('sources',DodgeSource*32)]
+class DodgeResult(C.Structure):
+ _fields_=[('match',C.c_uint32),('tick',C.c_uint32),('frame',C.c_int32),('count',C.c_int32),('decisions',DodgeDecision*32)]
 class PlayerTestInfo(C.Structure):
  _fields_=[(x,C.c_uint32) for x in ("pointer","id")]+[(x,C.c_int32) for x in ("index","human")]+[("name",C.c_uint16*21)]
 class MissileSource(C.Structure):
@@ -121,7 +143,7 @@ class MissileAssignment(C.Structure):
 class MissileResult(C.Structure):
  _fields_=[('match',C.c_uint32),('tick',C.c_uint32),('frame',C.c_int32),('count',C.c_int32),('orders',MissileAssignment*8)]
 class Shared(C.Structure):
-    _fields_=[(x,C.c_uint32) for x in 'magic version pid owner heartbeat stop foreground flags scanMs request ack command arg arg2 requestToken requestTick requestMatch result count seq'.split()]+[('data',Snapshot),('techAllowed',C.c_uint8*512),('repairMs',C.c_uint32),('clockStart',C.c_uint64),('clockFrequency',C.c_uint64),('clockTick',C.c_uint32),('csSeq',C.c_int32),('csMatch',C.c_uint32),('csAllowed',C.c_uint8*512)]+[(x,C.c_uint32) for x in 'advancedKey pathTimeout veteranPercent elitePercent selectRequest selectAck selectIndex selectGlobal selectObjectID selectTick selectMatch selectResult selectCount csHoldKey'.split()]+[('worldSeq',C.c_int32),('world',World)]+[(x,C.c_uint32) for x in 'planRequest planAck planTick planMatch planCount planAccepted planResult'.split()]+[('plan',Order*24),('plannerTracking',C.c_uint32),('hostWindow',C.c_uint32),('hostNotifyPending',C.c_int32),('gameWakePending',C.c_int32),('magnetronKey',C.c_uint32),('planAcceptedMask',C.c_uint32),('planRejectedMask',C.c_uint32)]+[(x,C.c_uint32) for x in 'externalDisplay loadMode loadRadius enterKey airKey1 airKey2'.split()]+[('cooperativeSeq',C.c_int32),('cooperativeRequest',CooperativeRequest)]+[(x,C.c_uint32) for x in 'cooperativePlan cooperativeAck cooperativeSerial cooperativeTick'.split()]+[(x,C.c_int32) for x in 'cooperativeCount cooperativeAccepted cooperativeRejected cooperativeMode'.split()]+[('cooperativeOrders',CooperativeAssignment*512),('clickHookStatus',C.c_int32)]+[(x,C.c_uint32) for x in 'driverMode driverTarget megaQueueMode objectQueueMode'.split()]+[('driverStatus',C.c_int32),('driverTicks',C.c_uint32),('driverLastTick',C.c_uint32)]+[(x,C.c_uint32) for x in 'productionRequest productionAck productionMatch productionTick'.split()]+[('productionCount',C.c_int32),('productionTypes',C.c_int32*4),('planFrame',C.c_int32),('cooperativeFrame',C.c_int32),('cooperativeMatch',C.c_uint32),('cooperativeProcessed',C.c_int32),('cooperativeResult',C.c_int32),('cooperativeAcceptedBits',C.c_uint32*16),('pointer',PointerMailbox),('pointerPolicySeq',C.c_int32),('pointerPolicy',NativePolicy),('suppressedClick',SuppressedClick),('selectTypes',C.c_uint8*512),('oreConfigSeq',C.c_int32),('oreConfig',OreConfig),('featureConfigSeq',C.c_int32),('featureConfig',FeatureConfig),('c4Test',C.c_uint32),('advancedRangeCells',C.c_uint32),('renderReveal',C.c_uint32)]+[(x,C.c_uint32) for x in 'uiSoundRequest uiSoundAck uiSoundTick uiSoundMatch'.split()]+[('reservePolicySeq',C.c_int32),('reservePolicy',ReservationPolicy),('reserveInput',C.c_uint32),('reserveConsumed',C.c_uint32),('reserveClick',ReservationClick)]+[(x,C.c_uint32) for x in 'computeRequested computeApplied advancedScanHz advancedPriority runtimeTracking runtimePlannerMicros'.split()]+[('loadTask',C.c_uint32),('loadComputed',C.c_uint32),('loadInput',LoadInput),('loadResult',LoadResult),('repairTask',C.c_uint32),('repairComputed',C.c_uint32),('repairInput',RepairInput),('repairResult',RepairResult),('quotaConfigSeq',C.c_int32),('quotaConfig',QuotaConfig),('runtimeCoopDone',C.c_uint32),('runtimeCoopAccepted',C.c_int32),('runtimeCoopRejected',C.c_int32)]+[('unloadInputSeq',C.c_int32),('unloadResultSeq',C.c_int32),('unloadTask',C.c_uint32),('unloadComputed',C.c_uint32),('unloadInput',UnloadInput),('unloadResult',UnloadResult)]+[(x,C.c_uint32) for x in ('controlAll','switchPlayerEnabled')]+[(x,C.c_int32) for x in ('playerCount','playerCurrent','playerOriginal','playerControlStatus')]+[(x,C.c_uint32) for x in 'missileEnabled missileScanHz missileInputSeq missileResultSeq missileTask missileComputed'.split()]+[('missileInput',MissileInput),('missileResult',MissileResult)]+[(x,C.c_uint32) for x in 'missileSources missileTargets missileIssued'.split()]+[('players',PlayerTestInfo*32)]
+    _fields_=[(x,C.c_uint32) for x in 'magic version pid owner heartbeat stop foreground flags scanMs request ack command arg arg2 requestToken requestTick requestMatch result count seq'.split()]+[('data',Snapshot),('techAllowed',C.c_uint8*512),('repairMs',C.c_uint32),('clockStart',C.c_uint64),('clockFrequency',C.c_uint64),('clockTick',C.c_uint32),('csSeq',C.c_int32),('csMatch',C.c_uint32),('csAllowed',C.c_uint8*512)]+[(x,C.c_uint32) for x in 'advancedKey pathTimeout veteranPercent elitePercent selectRequest selectAck selectIndex selectGlobal selectObjectID selectTick selectMatch selectResult selectCount csHoldKey'.split()]+[('worldSeq',C.c_int32),('world',World)]+[(x,C.c_uint32) for x in 'planRequest planAck planTick planMatch planCount planAccepted planResult'.split()]+[('plan',Order*24),('plannerTracking',C.c_uint32),('hostWindow',C.c_uint32),('hostNotifyPending',C.c_int32),('gameWakePending',C.c_int32),('magnetronKey',C.c_uint32),('planAcceptedMask',C.c_uint32),('planRejectedMask',C.c_uint32)]+[(x,C.c_uint32) for x in 'externalDisplay loadMode loadRadius enterKey airKey1 airKey2'.split()]+[('cooperativeSeq',C.c_int32),('cooperativeRequest',CooperativeRequest)]+[(x,C.c_uint32) for x in 'cooperativePlan cooperativeAck cooperativeSerial cooperativeTick'.split()]+[(x,C.c_int32) for x in 'cooperativeCount cooperativeAccepted cooperativeRejected cooperativeMode'.split()]+[('cooperativeOrders',CooperativeAssignment*512),('clickHookStatus',C.c_int32)]+[(x,C.c_uint32) for x in 'driverMode driverTarget megaQueueMode objectQueueMode'.split()]+[('driverStatus',C.c_int32),('driverTicks',C.c_uint32),('driverLastTick',C.c_uint32)]+[(x,C.c_uint32) for x in 'productionRequest productionAck productionMatch productionTick'.split()]+[('productionCount',C.c_int32),('productionTypes',C.c_int32*4),('planFrame',C.c_int32),('cooperativeFrame',C.c_int32),('cooperativeMatch',C.c_uint32),('cooperativeProcessed',C.c_int32),('cooperativeResult',C.c_int32),('cooperativeAcceptedBits',C.c_uint32*16),('pointer',PointerMailbox),('pointerPolicySeq',C.c_int32),('pointerPolicy',NativePolicy),('suppressedClick',SuppressedClick),('selectTypes',C.c_uint8*512),('oreConfigSeq',C.c_int32),('oreConfig',OreConfig),('featureConfigSeq',C.c_int32),('featureConfig',FeatureConfig),('c4Test',C.c_uint32),('advancedRangeCells',C.c_uint32),('renderReveal',C.c_uint32)]+[(x,C.c_uint32) for x in 'uiSoundRequest uiSoundAck uiSoundTick uiSoundMatch'.split()]+[('reservePolicySeq',C.c_int32),('reservePolicy',ReservationPolicy),('reserveInput',C.c_uint32),('reserveConsumed',C.c_uint32),('reserveClick',ReservationClick)]+[(x,C.c_uint32) for x in 'computeRequested computeApplied advancedScanHz advancedPriority runtimeTracking runtimePlannerMicros'.split()]+[('loadTask',C.c_uint32),('loadComputed',C.c_uint32),('loadInput',LoadInput),('loadResult',LoadResult),('repairTask',C.c_uint32),('repairComputed',C.c_uint32),('repairInput',RepairInput),('repairResult',RepairResult),('quotaConfigSeq',C.c_int32),('quotaConfig',QuotaConfig),('runtimeCoopDone',C.c_uint32),('runtimeCoopAccepted',C.c_int32),('runtimeCoopRejected',C.c_int32)]+[('unloadInputSeq',C.c_int32),('unloadResultSeq',C.c_int32),('unloadTask',C.c_uint32),('unloadComputed',C.c_uint32),('unloadInput',UnloadInput),('unloadResult',UnloadResult)]+[(x,C.c_uint32) for x in ('controlAll','switchPlayerEnabled')]+[(x,C.c_int32) for x in ('playerCount','playerCurrent','playerOriginal','playerControlStatus')]+[(x,C.c_uint32) for x in 'missileEnabled missileScanHz missileInputSeq missileResultSeq missileTask missileComputed'.split()]+[('missileInput',MissileInput),('missileResult',MissileResult)]+[(x,C.c_uint32) for x in 'missileSources missileTargets missileIssued'.split()]+[(x,C.c_uint32) for x in 'burstEnabled burstHoldEnabled burstHeld burstInputSeq burstResultSeq burstTask burstComputed'.split()]+[('burstInput',BurstInput),('burstResult',BurstResult)]+[(x,C.c_uint32) for x in 'burstActive burstIssued dodgeEnabled dodgeInputSeq dodgeResultSeq dodgeTask dodgeComputed'.split()]+[('dodgeInput',DodgeInput),('dodgeResult',DodgeResult)]+[(x,C.c_uint32) for x in 'dodgeActive dodgeIssued'.split()]+[('players',PlayerTestInfo*32)]
     def __init__(self,*args,**kw):
         super().__init__(*args,**kw);self.computeRequested=1984;self.computeApplied=1984;self.missileScanHz=10;self.advancedScanHz=10
 
@@ -140,7 +162,7 @@ for pe in images:
     u.mem_map(pe.OPTIONAL_HEADER.ImageBase,(pe.OPTIONAL_HEADER.SizeOfImage+4095)&~4095)
     u.mem_write(pe.OPTIONAL_HEADER.ImageBase,pe.get_memory_mapped_image())
 SH=0x20000000;HEAP=0x21000000;STACK=0x30000000;STOP=0x31000000;STUB=0x32000000
-for a,n in [(0,0x10000),(SH,0x400000),(HEAP,0x400000),(STACK-0x100000,0x120000),(STOP,0x10000),(STUB,0x10000)]:u.mem_map(a,n)
+for a,n in [(0,0x10000),(SH,0x600000),(HEAP,0x400000),(STACK-0x100000,0x120000),(STOP,0x10000),(STUB,0x10000)]:u.mem_map(a,n)
 def w(a,v):u.mem_write(a,struct.pack('<I',v&0xffffffff))
 def r(a):return struct.unpack('<I',u.mem_read(a,4))[0]
 def b(a,v):u.mem_write(a,bytes([int(v)]))
@@ -204,7 +226,7 @@ def on_code(uc,a,size,_):
         elif n=='OpenFileMappingW':
             name=string_at(arg(2),True);mapping_names.append(name)
             ret(2 if name in ('Local\\RA2Runtime_v3_123_456_','Local\\RA2Runtime_v4_123_456_') else 1 if name==f'Local\\RA2Assist_v{struct.unpack("<I",dll.get_data(protocol_export.address,4))[0]:03}_123' else 3 if cursor_mapping_enabled and name=='Local\\RA2CursorBridge_v154_123' else 0,3)
-        elif n=='MapViewOfFile':ret(SH+0x3e0000 if arg(0)==2 else 0x22000000 if arg(0)==3 else SH,5)
+        elif n=='MapViewOfFile':ret(SH+0x500000 if arg(0)==2 else 0x22000000 if arg(0)==3 else SH,5)
         elif n=='SetTimer':watchdog_callback=arg(3);watchdog_threads.append(current_thread);ret(0 if fail_watchdog_timer else 1,4)
         elif n=='wsprintfW':
             value='Local\\RA2CursorBridge_v154_123';u.mem_write(arg(0),(value+'\0').encode('utf-16le'));ret(len(value),0)
@@ -275,8 +297,8 @@ def run(address,args=(),self=0):
     # Existing command regressions now enter through the production runtime.
     # A host wake sets the ready bit; an absent request is separately tested.
     if address==globals().get('entry') and args==(0,1,0):
-        w(SH+0x3e0000+20,r(SH+0x3e0000+20)|1)
-        args=(0,1,SH+0x3e0100)
+        w(SH+0x500000+20,r(SH+0x500000+20)|1)
+        args=(0,1,SH+0x500100)
 
     sp=STACK+0x1e000;u.mem_write(sp,struct.pack('<'+'I'*(len(args)+1),STOP,*args));u.reg_write(UC_X86_REG_ESP,sp);u.reg_write(UC_X86_REG_ECX,self)
     try:u.emu_start(address,STOP,count=2000000)
@@ -326,7 +348,7 @@ u.mem_write(0x87f7e8+360,struct.pack('<iii hh',0,0,1,20,30))
 class EntryRequest(C.Structure):
  _fields_=[(n,C.c_uint32) for n in 'size version operation client module token bindThread address length'.split()]+[('before',C.c_uint8*16),('after',C.c_uint8*16)]+[(n,C.c_uint32) for n in 'gameThread activeModule installed conflicts active conflict entries reentrant contended wrongThread'.split()]
 assert C.sizeof(EntryRequest)==108
-control=SH+0x3f0000
+control=SH+0x500000
 manager_export=broker.OPTIONAL_HEADER.ImageBase+next(x.address for x in broker.DIRECTORY_ENTRY_EXPORT.symbols if x.name==b'ManageGameEntry')
 def manager_call(req):
  req.size=108;req.version=int.from_bytes(broker.get_data(next(x.address for x in broker.DIRECTORY_ENTRY_EXPORT.symbols if x.name==b'GameEntryManagerInfo'),4),'little');u.mem_write(control,bytes(req));run(manager_export,(control,));result=C.c_int32(u.reg_read(UC_X86_REG_EAX)).value
@@ -362,8 +384,8 @@ assert len(ctor_calls)==1,('Planner initializer tail',ctor_calls)
 run(ctor_calls[0][0],(),ctor_calls[0][1])
 s=Shared();s.magic=0x41533130;s.advancedRangeCells=2;s.version=int.from_bytes(dll.get_data(next(e.address for e in dll.DIRECTORY_ENTRY_EXPORT.symbols if e.name==b'AssistProtocolInfo'),4),'little');s.pid=123;s.heartbeat=clock;s.foreground=1;s.flags=1|2|4|16|32;s.scanMs=100;s.repairMs=2000
 u.mem_write(SH,bytes(s));entry=dll.OPTIONAL_HEADER.ImageBase+next(e.address for e in dll.DIRECTORY_ENTRY_EXPORT.symbols if e.name==b'GameRuntimeHook')
-u.mem_write(SH+0x3e0000,struct.pack('<10I',0x52543236,struct.unpack('<I',dll.get_data(next(e.address for e in dll.DIRECTORY_ENTRY_EXPORT.symbols if e.name==b'GameRuntimeInfo'),4))[0],123,456,1,1,1,clock,0,0))
-u.mem_write(SH+0x3e0100,struct.pack('<7I',0,0,0x52545736,456,0,0,0))
+u.mem_write(SH+0x500000,struct.pack('<10I',0x52543236,struct.unpack('<I',dll.get_data(next(e.address for e in dll.DIRECTORY_ENTRY_EXPORT.symbols if e.name==b'GameRuntimeInfo'),4))[0],123,456,1,1,1,clock,0,0))
+u.mem_write(SH+0x500100,struct.pack('<7I',0,0,0x52545736,456,0,0,0))
 def hook():
     global clock
     clock+=110;w(SH+Shared.heartbeat.offset,clock);run(entry,(0,1,0));return Shared.from_buffer_copy(u.mem_read(SH,C.sizeof(Shared)))

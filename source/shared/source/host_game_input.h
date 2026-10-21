@@ -20,6 +20,11 @@ struct Health {
  DWORD nativeSerial=0,nativeCode=0,nativeAddress=0,nativeOperation=0,nativeAccess=0;
  DWORD nativeThread=0,nativeTick=0,nativeEax=0,nativeEcx=0,nativeEsi=0,nativeEbp=0;
 };
+inline bool heldBinding(uint32_t binding){
+ const unsigned vk=binding&255,mods=binding>>8;if(!vk)return false;
+ if(!(GetAsyncKeyState(vk)&0x8000))return false;if(binding==16||binding==17||binding==18)return true;
+ return bool(GetAsyncKeyState(16)&0x8000)==bool(mods&1)&&bool(GetAsyncKeyState(17)&0x8000)==bool(mods&2)&&bool(GetAsyncKeyState(18)&0x8000)==bool(mods&4);
+}
 struct PointerPress {DWORD tick=0,serial=0;uint32_t match=0;int operation=0;POINT point{};int width=0,height=0;uint8_t keys[256]{};};
 struct PointerQueue {PointerPress items[16]{};unsigned head=0,count=0;DWORD dropped=0,cancelSerial=0;bool enabled=false,focused=false,rightArmed=false,leftArmed=false;uint32_t match=0;DWORD contextAt=0;uint32_t down=0;uint8_t rightKeys[256]{},leftKeys[256]{};};
 struct Target {PointerQueue pointer{};Health lastDiagnostic{};DWORD pid=0,thread=0;HWND window=nullptr;HHOOK message=nullptr,post=nullptr;HANDLE mapping=nullptr;runtime::Control*control=nullptr;DWORD cursorAt=0,tacticalAt=0,lastPost=0,lastPostError=0;};

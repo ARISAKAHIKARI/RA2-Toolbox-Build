@@ -13,8 +13,9 @@ static bool oreTypeAllowed(uint32_t type,bool miner){char id[24]{};if(!read(type
 static bool oreMiner(uint32_t type){return type&&oreTypeAllowed(type,true)&&
  (oreConfig.customMiners||(get<bool>(type+0xE0E)||get<bool>(type+0xE0F)))&&get<int>(type+0x800)>0;}
 #include "ore_queue.h"
-// The injected side reads raw fields and serializes already planned orders.
-// Target ranking, weapon range, ore totals and dock arbitration run in the EXE.
+// Runtime samples raw fields and original read-only weapon/range decisions.
+// The same pure planner ranks those facts in the configured EXE or Runtime location.
+#include "combat_probe_bridge.h"
 static planner::World planningWorld;static int planningFrame=-1;static uint32_t planningSerial,inputSerial;
 static int pausedOreFrame=-1;
 static void clearOreOrders(){oreConfigRevision=-1;oreConfig={};manualVersions.clear();planningFrame=pausedOreFrame=-1;inputSerial=planningSerial=0;snap.oreQueued=snap.oreDocking=snap.oreIssued=snap.oreManual=0;}
@@ -68,7 +69,7 @@ static bool publishPlanningWorld(uint32_t house,int frame,DWORD now){
  if(!advanced&&!ore&&!defense&&!sh->plannerTracking&&!sh->runtimeTracking&&!planningWorld.count&&!planningWorld.intentCount)return false;
  static uint32_t lastMode;uint32_t mode=(advanced?(sh->flags&(AdvancedInput|MagnetronInput)):0)|(ore?AutoOreReturn:0)|(defense?AntiTheft:0);
  if(planningFrame==frame&&planningSerial==inputSerial&&lastMode==mode)return false;planningFrame=frame;planningSerial=inputSerial;if(lastMode!=mode)memset(weaponCache,0,sizeof weaponCache);lastMode=mode;
- auto&w=planningWorld;w.match=match;w.tick=now;w.frame=frame;w.count=w.intentCount=w.refineryCount=0;w.inputSerial=inputSerial;
+ auto&w=planningWorld;w.match=match;w.tick=now;w.frame=frame;w.count=w.intentCount=w.refineryCount=w.combatCount=0;w.inputSerial=inputSerial;
  Vec all=vec(0xA8EC78);static uint32_t refineryTypes[128],dockMatch,dockItems;static int refineryTypesCount,dockFrame=-100000,dockCount=-1;
  // Dock compatibility is type metadata. Cache it instead of rescanning all
  // combat units just to discover the same refinery types on every frame.
@@ -91,7 +92,7 @@ static bool publishPlanningWorld(uint32_t house,int frame,DWORD now){
   bool threat=defense&&!ownActor&&antiTheftThreat(p,house);
   bool enemy=!ownActor&&(advanced||threat)&&nativeEnemy(p,house);
   if(!tracked&&!harvester&&!oreDock&&!enemy&&!turret)continue;
-  auto&a=w.actors[w.count++];memset(&a,0,sizeof a);
+  auto&a=w.actors[w.count++];memset(&a,0,sizeof a);a.combatFirst=-1;
   a.id=get<uint32_t>(p+0x10);a.type=type;a.kind=k;a.x=get<int>(p+0x9C);a.y=get<int>(p+0xA0);a.z=get<int>(p+0xA4);
   a.mission=get<int>(p+0xAC);a.queued=get<int>(p+0xB4);a.cost=get<int>(type+0x610);a.veterancy=get<float>(p+0x150);a.manualVersion=manualVersions.get(a.id);
   if(ownActor)a.flags|=planner::Own;else if(enemy)a.flags|=planner::Enemy;
@@ -124,8 +125,10 @@ static bool publishPlanningWorld(uint32_t house,int frame,DWORD now){
   }
  }
  for(int i=0;i<nativeCount&&w.intentCount<planner::MaxIntents;++i){const auto&o=nativeOrders[i];w.intents[w.intentCount++]={o.id,o.cell,o.token,o.mode};}
+ if(advanced)collectCombatProbes(w);
  InterlockedIncrement(&sh->worldSeq);sh->world.match=w.match;sh->world.tick=w.tick;sh->world.frame=w.frame;sh->world.count=w.count;sh->world.intentCount=w.intentCount;sh->world.refineryCount=w.refineryCount;sh->world.inputSerial=w.inputSerial;
  memcpy(sh->world.actors,w.actors,size_t(w.count)*sizeof(planner::Actor));memcpy(sh->world.intents,w.intents,size_t(w.intentCount)*sizeof(planner::Intent));memcpy(sh->world.refineries,w.refineries,size_t(w.refineryCount)*sizeof(planner::Refinery));
+ sh->world.combatCount=w.combatCount;memcpy(sh->world.combat,w.combat,size_t(w.combatCount)*sizeof(planner::CombatProbe));
  // The dispatcher publishes the matching control frame before notifying the
  // host. A world update must also prevent the display-throttle early return.
  MemoryBarrier();InterlockedIncrement(&sh->worldSeq);return true;
@@ -146,6 +149,7 @@ static bool rawDockLinked(uint32_t refinery,uint32_t unit){
 static bool externalOrderValid(const planner::Order&o,uint32_t house){
  uint32_t unit=worldByID(o.unit);if(!unit||!own(unit,house)||manualVersions.get(o.unit)!=o.token)return false;
  if(get<int>(unit+0x6C)<=0||!get<bool>(unit+0x74)||get<bool>(unit+0x81)||!get<bool>(unit+0x90)||get<bool>(unit+0x1C8)||get<uint32_t>(unit+0x11C))return false;
+ if(burstOwns(o.unit)||dodgeOwns(o.unit))return false;
  bool defense=o.purpose==planner::DefenseOrder,combat=o.purpose==1||o.purpose==3,mag=o.purpose==3;
  if(defense){if(!(sh->flags&AntiTheft)||!antiTheftBuilding(unit)||o.mission!=1||!o.target||o.destination||o.destinationTag||!antiTheftThreat(worldByID(o.target),house)||antiTheftThreat(get<uint32_t>(unit+0x2B4),house))return false;}
  if(combat){if(mag?!rawMagnetron(unit):!featureObjectAllowed(featuretypes::AdvancedAttack,unit))return false;int index=orderIndex(unit);if(!(sh->flags&(mag?MagnetronInput:AdvancedInput))||snap.nativeHookStatus!=1||index<0||nativeOrders[index].token!=o.token||nativeOrders[index].mode!=(mag?planner::MagnetronMove:planner::OrdinaryMove))return false;}
@@ -175,7 +179,15 @@ static bool externalOrderValid(const planner::Order&o,uint32_t house){
   victim.kind=tk;rawCombatInfo(unit,st,sk,source,true);rawCombatInfo(target,tt,tk,victim,false);
   int64_t dx=int64_t(get<int>(unit+0x9C))-get<int>(target+0x9C),dy=int64_t(get<int>(unit+0xA0))-get<int>(target+0xA0);
   if(dx< -1048576||dx>1048576||dy< -1048576||dy>1048576)return false;
-  if(!planner::canTarget(source,victim,dx*dx+dy*dy,mag,(mag||defense)?0:int(std::min(uint32_t(sh->advancedRangeCells),30u))*256)||(mag&&planner::cooldown(source,get<int>(0xA8ED84))>0))return false;
+  if(combat&&!mag){auto probe=probeCombatPair(unit,target,source,victim,0);if(!(probe.flags&planner::InWeaponRange))return false;}
+  else if(!planner::canTarget(source,victim,dx*dx+dy*dy,mag,0)||(mag&&planner::cooldown(source,get<int>(0xA8ED84))>0))return false;
+ }
+ if(o.pursuit){
+  if(o.purpose!=planner::CombatOrder||o.mission!=2||o.target||o.destinationTag!=11)return false;
+  uint32_t target=worldByID(o.pursuit);if(!target||!nativeEnemy(target,house))return false;
+  planner::Actor source{},victim{};rawCombatInfo(unit,typeOf(unit,kind(unit)),kind(unit),source,true);rawCombatInfo(target,typeOf(target,kind(target)),kind(target),victim,false);
+  auto probe=probeCombatPair(unit,target,source,victim,int(std::min(uint32_t(sh->advancedRangeCells),30u))*256);
+  if(!(probe.flags&planner::InAcquisitionRange)||(probe.flags&planner::InWeaponRange))return false;
  }
  if(o.destinationTag==0x34){uint32_t destination=worldByID(o.destination);if(combat||o.mission!=7||!destination||!own(destination,house)||kind(destination)!=3)return false;}
  else if(o.destinationTag==11){if(o.mission!=2||!readMapCell(int(o.destination%1000),int(o.destination/1000)))return false;}
@@ -186,6 +198,11 @@ static outgoing::Batch planBatch;
 // Shared admission for host and Runtime decisions. Neither planner owns a
 // constructor, RNG, mission write, private hook or alternative event channel.
 static int admitPlannerOrder(const planner::Order&o,uint32_t house){
+ // A fresh in-range target takes precedence over any delayed movement proposal.
+ // Reject an obsolete movement proposal immediately so an external planner can
+ // receive its receipt and use the next world; do not block its whole batch
+ // until the original movement deadline expires.
+ if(o.purpose==planner::CombatOrder&&o.mission==2&&advancedTargetInRange(o.unit,house))return -1;
  if(!externalOrderValid(o,house))return -1;
  actorFrameArbiter.begin(match,get<int>(0xA8ED84));
  if(!actorFrameArbiter.canIssue(o.unit,o.token)){++snap.planDeferred;return 0;}

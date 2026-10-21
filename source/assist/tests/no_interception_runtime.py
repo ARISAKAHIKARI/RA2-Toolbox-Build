@@ -343,7 +343,7 @@ for mag in (False,True):
   m=fixture(3,1024|(262144 if mag else 8192));wh=m.alloc();m.w(m.weapon+0xac,wh);m.b(m.weapon+0x15c,mag);m.b(wh+0x15b,mag)
   m.w(m.unit+0xac,2);m.w(m.unit+0x5a4,m.crateCell);s=pointer(m,4,2 if mag else 1)
   assert s.pointer.accepted==1 and s.world.intentCount==1,(s.pointer.result,s.pointer.accepted,s.world.intentCount)
-  assert count(m)==(0 if mag else 1) and s.data.advancedUnits==1
+  assert count(m)==0 and s.data.advancedUnits==1 # persistent intent only; no blind native AttackMove
   assert not m.codeWrites
  check('native_move_follow_'+('magnetron' if mag else 'advanced'),advanced)
 def enter():

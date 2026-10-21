@@ -22,7 +22,7 @@ extern "C" int GuardedEnterAction(unsigned address,unsigned source,unsigned targ
 }
 // YRpp virtual SelectWeapon (+2E4), GetWeapon (+3F8), IsCloseEnough (+3A8).
 // Read-only queries, on the bound game thread; no click/fire/mission mutation.
-extern "C" int GuardedMissileWeapon(unsigned source,unsigned target,unsigned* weapon){
+extern "C" int GuardedCombatWeapon(unsigned source,unsigned target,unsigned* weapon,int* selected,int* close,int* airborne){
  __try {
   auto table=*(unsigned**)source;
   // Only buildings have a meaningful powered-defense gate here.
@@ -31,9 +31,13 @@ extern "C" int GuardedMissileWeapon(unsigned source,unsigned target,unsigned* we
   if(slot<0||slot>=18)return 0;
   auto info=((unsigned*(__thiscall*)(void*,int))table[0x3F8/4])((void*)source,slot);
   if(!info||!*info)return 0;
-  if(!((bool(__thiscall*)(void*,void*,int))table[0x3A8/4])((void*)source,(void*)target,slot))return 0;
-  *weapon=*info;return 1;
- }__except(_exception_code()==0xc0000005u?AssistExceptionFilter(_exception_info(),9):0){return 0;}
+  *close=((bool(__thiscall*)(void*,void*,int))table[0x3A8/4])((void*)source,(void*)target,slot);
+  *airborne=((bool(__thiscall*)(void*))(*(unsigned**)target)[0x54/4])((void*)target);
+  *selected=slot;*weapon=*info;return 1;
+ }__except(_exception_code()==0xc0000005u?AssistExceptionFilter(_exception_info(),9):0 ){return -1;}
+}
+extern "C" int GuardedMissileWeapon(unsigned source,unsigned target,unsigned* weapon){
+ int slot=0,close=0,airborne=0;return GuardedCombatWeapon(source,target,weapon,&slot,&close,&airborne)>0&&close;
 }
 extern "C" unsigned BeginAssistCapture();
 extern "C" void EndAssistCapture(unsigned);

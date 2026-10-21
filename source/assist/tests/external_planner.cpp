@@ -34,11 +34,12 @@ int main(){
  auto&a=w.actors[0];a.id=10;a.kind=2;a.flags=Own;a.range=1024;a.weapons[0]={1024,0,GroundWeapon,0x7FF};a.x=a.y=5000;a.mission=2;
  for(int i=1;i<4;++i){auto&e=w.actors[i];e.id=uint32_t(20+i);e.flags=Enemy;e.cost=500;e.x=e.y=5100;}
  w.actors[1].veterancy=2;w.actors[3].flags=0;w.actors[3].cost=999999;
+ a.combatFirst=0;a.combatCount=w.combatCount=3;for(int i=0;i<3;++i)w.combat[i]={uint32_t(21+i),3,0,1.0f};
  w.intents[0]={10,30030,0};orders=planner.step(w,AdvancedInput,200,300,90);
  assert(orders.size()==1&&orders[0].mission==1&&orders[0].target==21);planner.accepted(orders[0],w.frame);
  w.frame=3;w.actors[1].flags|=Cloaked;orders=planner.step(w,AdvancedInput,200,300,90);
  assert(orders.size()==1&&orders[0].target==22);planner.accepted(orders[0],w.frame);
- w.count=1;w.frame=4;orders=planner.step(w,AdvancedInput,200,300,90);
+ w.count=1;w.frame=5;orders=planner.step(w,AdvancedInput,200,300,90);
  assert(orders.size()==1&&orders[0].mission==2&&orders[0].destination==30030);planner.accepted(orders[0],w.frame);
  w.frame=96;orders=planner.step(w,AdvancedInput,200,300,90);assert(orders.size()==1&&orders[0].mission==6);planner.accepted(orders[0],w.frame);
  w.frame=97;w.intentCount=0;orders=planner.step(w,AdvancedInput,200,300,90);assert(orders.empty());
@@ -47,7 +48,7 @@ int main(){
  planner.step(w,AdvancedInput,200,300,90);assert(planner.trackingFlags()&AdvancedInput);
  w.intentCount=0;++w.inputSerial;planner.step(w,AdvancedInput,200,300,90);assert(!planner.hasJobs());
  // A target still allocated but off-map must never be ranked as an enemy.
- ++w.frame;w.count=2;w.intentCount=1;w.intents[0]={10,31031,1};w.actors[1].flags=Enemy|OffMap;
+ ++w.frame;w.count=2;w.intentCount=1;w.intents[0]={10,31031,1};w.actors[1].flags=Enemy|OffMap;a.destinationCell=31031;
  orders=planner.step(w,AdvancedInput,200,300,90);assert(orders.empty());
  std::cout<<"PASS: rank priority, neutral/cloaked exclusion, destination resume, stationary timeout and intent cancellation using snapshots only\n";
 }

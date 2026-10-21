@@ -5,9 +5,11 @@ static void loadAdditionalSettings(){
  minimapEnabled=value(L"Display",L"MinimapZoom",0)!=0;minimapScale=std::clamp(value(L"Display",L"MinimapScale",200),100,400);
  for(int i=0;i<featuretypes::Count;++i){auto&f=featureTypes.filters[i];std::wstring custom=std::wstring(featuretypes::key(i))+L"Custom";wchar_t text[13000]{};
   GetPrivateProfileStringW(L"FeatureTypes",featuretypes::key(i),featuretypes::initial(i),text,13000,path(L"Assist.ini").c_str());featureTypeText[i]=text;
-  oreconfig::parse(featureTypeText[i],f.ids,f.count);f.custom=value(L"FeatureTypes",custom.c_str(),0)!=0;
+  oreconfig::parse(featureTypeText[i],f.ids,f.count);f.custom=value(L"FeatureTypes",custom.c_str(),i==featuretypes::BurstRefresh?1:0)!=0;
  }
 
+ extra.dodgeEnabled=value(L"Dodge",L"Enabled",0)!=0;
+ extra.burstEnabled=value(L"BurstRefresh",L"Enabled",0)!=0;extra.burstHoldEnabled=value(L"BurstRefresh",L"HoldEnabled",0)!=0;extra.burstKey=uint32_t(value(L"BurstRefresh",L"HoldKey",'B'|(4<<8)));
  extra.missileDefense=value(L"MissileDefense",L"Enabled",0)!=0;extra.missileScanHz=std::clamp(value(L"MissileDefense",L"ScanHz",10),1,60);
  extra.antiTheft=value(L"Modes",L"AntiTheft",0)!=0;
  extra.c4Test=value(L"Experimental",L"InfantryC4",0)!=0;
@@ -55,6 +57,8 @@ static bool saveAdditionalSettings(){
   saveWriteOK=(WritePrivateProfileStringW(L"FeatureTypes",featuretypes::key(i),featureTypeText[i].c_str(),path(L"Assist.ini").c_str())!=FALSE)&&saveWriteOK;
  }
 
+ write(L"Dodge",L"Enabled",extra.dodgeEnabled);
+ write(L"BurstRefresh",L"Enabled",extra.burstEnabled);write(L"BurstRefresh",L"HoldEnabled",extra.burstHoldEnabled);write(L"BurstRefresh",L"HoldKey",extra.burstKey);
  write(L"MissileDefense",L"Enabled",extra.missileDefense);write(L"MissileDefense",L"ScanHz",extra.missileScanHz);
  write(L"Modes",L"AntiTheft",extra.antiTheft);write(L"Experimental",L"RevealMap",extra.experimentalReveal);
  write(L"Experimental",L"InfantryC4",extra.c4Test);write(L"Experimental",L"C4HoldKey",extra.c4Key);write(L"Experimental",L"C4Mouse",extra.c4Mouse);
@@ -94,7 +98,7 @@ static void fillExtraTypes(bool force=false){
  if(restore>=0)SendMessageW(extraControls[QuotaType],CB_SETCURSEL,restore,0);
 }
 static uint32_t additionalFlags(){uint32_t f=extra.frozen?Frozen:0;if(techMode)f|=UnsafeTech;if(extra.antiTheft)f|=AntiTheft;if(extra.constructionQueue)f|=ReserveConstruction;if(extra.nativeAirWaypoints)f|=NativeAirWaypoints;else if(extra.airWaypoints)f|=AirWaypoints;if(extra.experimentalReveal)f|=ExperimentalReveal;if(extra.enter)f|=AdvancedEnter;if(extra.air)f|=AircraftSpread;if(extra.disk)f|=DiskPrimary;if(extra.sellDrained)f|=SellDrained;if(extra.sellVehicles)f|=SellVehicles;if(playertest::Available&&extra.sellEnemy)f|=SellEnemy;return f;}
-static void syncAdditional(){if(!playertest::Available)extra.controlAll=extra.switchPlayerEnabled=extra.sellEnemy=false;if(!shared)return;shared->missileEnabled=extra.missileDefense;shared->missileScanHz=extra.missileScanHz;shared->controlAll=extra.controlAll;shared->switchPlayerEnabled=extra.switchPlayerEnabled;shared->computeRequested=computeRequested;shared->advancedScanHz=advancedScanHz;shared->advancedPriority=advancedTargetPriority;shared->c4Test=extra.c4Test;shared->renderReveal=extra.renderReveal;shared->loadMode=extra.loadMode;shared->loadRadius=extra.loadRadius;shared->enterKey=extra.enterKey;shared->airKey1=extra.airKey1;shared->airKey2=extra.airKey2;
+static void syncAdditional(){if(!playertest::Available)extra.controlAll=extra.switchPlayerEnabled=extra.sellEnemy=false;if(!shared)return;shared->dodgeEnabled=extra.dodgeEnabled;shared->burstEnabled=extra.burstEnabled;shared->burstHoldEnabled=extra.burstHoldEnabled;shared->burstHeld=enabled&&extra.burstHoldEnabled&&foregroundGame()&&snap.status==1&&snap.renderStatus==1&&!snap.chat&&gameinput::heldBinding(extra.burstKey);shared->missileEnabled=extra.missileDefense;shared->missileScanHz=extra.missileScanHz;shared->controlAll=extra.controlAll;shared->switchPlayerEnabled=extra.switchPlayerEnabled;shared->computeRequested=computeRequested;shared->advancedScanHz=advancedScanHz;shared->advancedPriority=advancedTargetPriority;shared->c4Test=extra.c4Test;shared->renderReveal=extra.renderReveal;shared->loadMode=extra.loadMode;shared->loadRadius=extra.loadRadius;shared->enterKey=extra.enterKey;shared->airKey1=extra.airKey1;shared->airKey2=extra.airKey2;
  static uint32_t publishedSettings=~0u;
  if(!shared->quotaConfigSeq||publishedSettings!=settingsRevision){publishedSettings=settingsRevision;
   InterlockedIncrement(&shared->quotaConfigSeq);auto&c=shared->quotaConfig;c.defaults=extra.defaults;c.count=0;

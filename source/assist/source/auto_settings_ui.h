@@ -32,6 +32,9 @@ static bool autoSettingChanged(int id,int notification){
   for(int i=0;i<commandQueue.size;)if(commandQueue.slots[i].command==RevealMap)commandQueue.discard(i);else ++i;
   autoRevealMatch=autoRevealDone=autoRevealRetry=0;changedSetting();syncAdditional();notify(strategy==3?L"地图全开将在对局就绪后自动执行；此模式有联机不同步风险。":L"地图显示策略已更新。");return true;}
  if(id==806&&notification==BN_CLICKED){extra.nativeAirWaypoints=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;airway::reset();pointerMatches.clear();changedSetting();notify(extra.nativeAirWaypoints?L"飞机路径点已开启；联机自动使用兼容模式。":L"飞机原生路径点已关闭，等待游戏恢复。");return true;}
+ if((id==882||id==883)&&notification==BN_CLICKED){bool on=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;if(id==882)extra.burstEnabled=on;else extra.burstHoldEnabled=on;changedSetting();syncAdditional();return true;}
+ if(id==884&&edit){extra.burstKey=uint32_t(SendMessageW(GetDlgItem(ui,id),HKM_GETHOTKEY,0,0));changedSetting();syncAdditional();return true;}
+ if(id==885&&notification==BN_CLICKED){extra.dodgeEnabled=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();syncAdditional();return true;}
  if(id==880&&notification==BN_CLICKED){extra.missileDefense=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();syncAdditional();return true;}
  if(id==804&&notification==BN_CLICKED){extra.antiTheft=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();return true;}
  if(id==803&&notification==BN_CLICKED){extra.airWaypoints=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();return true;}

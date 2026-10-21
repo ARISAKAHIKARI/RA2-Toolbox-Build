@@ -1,0 +1,439 @@
+{
+  "scope": "Actual Runtime and original weapon/range/event functions in a controlled x86 world; not live game/netplay or projectile physics.",
+  "native_stop_reset_executed": false,
+  "dll_sha256": "23a590c68c5dac77cfc04c19a4db623f98781fccf4fa7266b01e4dd173913296",
+  "results": [
+    {
+      "case": "burst_0_True_normal",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_0_True_elite",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_0_True_elite_single",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_0_True_burst_one",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_0_True_completed",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_0_True_not_fired",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_0_True_moving",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_0_True_disabled",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_0_True_filter",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_0_True_hold",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_0_True_hold_unselected",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_0_True_hold_unfocused",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_0_True_hold_stale",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_0_True_observer",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_0_True_release",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_0_True_weapon_changed",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_0_True_crush",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_0_True_air",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_0_True_allied",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_0_True_not_targeted",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_0_True_resistant",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_0_True_disabled",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_0_True_filter",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_0_True_observer",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_0_True_blocked",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_0_True_conflict",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_0_True_release",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_0_False_normal",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_0_False_elite",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_0_False_elite_single",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_0_False_burst_one",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_0_False_completed",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_0_False_not_fired",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_0_False_moving",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_0_False_disabled",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_0_False_filter",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_0_False_hold",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_0_False_hold_unselected",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_0_False_hold_unfocused",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_0_False_hold_stale",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_0_False_observer",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_0_False_release",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_0_False_weapon_changed",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_0_False_crush",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_0_False_air",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_0_False_allied",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_0_False_not_targeted",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_0_False_resistant",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_0_False_disabled",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_0_False_filter",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_0_False_observer",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_0_False_blocked",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_0_False_conflict",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_0_False_release",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_3_True_normal",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_3_True_elite",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_3_True_elite_single",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_3_True_burst_one",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_3_True_completed",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_3_True_not_fired",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_3_True_moving",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_3_True_disabled",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_3_True_filter",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_3_True_hold",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_3_True_hold_unselected",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_3_True_hold_unfocused",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_3_True_hold_stale",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_3_True_observer",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_3_True_release",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_3_True_weapon_changed",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_3_True_crush",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_3_True_air",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_3_True_allied",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_3_True_not_targeted",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_3_True_resistant",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_3_True_disabled",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_3_True_filter",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_3_True_observer",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_3_True_blocked",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_3_True_conflict",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_3_True_release",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_3_False_normal",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_3_False_elite",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_3_False_elite_single",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_3_False_burst_one",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_3_False_completed",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_3_False_not_fired",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_3_False_moving",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_3_False_disabled",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_3_False_filter",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_3_False_hold",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_3_False_hold_unselected",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_3_False_hold_unfocused",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_3_False_hold_stale",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_3_False_observer",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_3_False_release",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_3_False_weapon_changed",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_3_False_crush",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_3_False_air",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_3_False_allied",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_3_False_not_targeted",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_3_False_resistant",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_3_False_disabled",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_3_False_filter",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_3_False_observer",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_3_False_blocked",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_3_False_conflict",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_3_False_release",
+      "status": "PASS"
+    }
+  ]
+}

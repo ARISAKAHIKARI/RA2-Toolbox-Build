@@ -141,6 +141,9 @@ static void pointerTick(){
    }
    if(mag){if(nativeOutgoing(p,2,pointerCell,0,0,i.bindings))++b.accepted;pointerDone[n]=1;continue;}
   }
+  // Capture advanced intent first. The planner decides Attack versus Move;
+  // do not append a blind native AttackMove before checking actual range.
+  if(advanced&&!mag){if(nativeOutgoing(p,2,pointerCell,0,0,i.bindings))++b.accepted;pointerDone[n]=1;continue;}
   if(submitted>=limit||outgoingRoom()<=0){++remaining;continue;}
   int mission=mag?2:(advanced||cs)?29:2;
   auto owner=mag?taskarbiter::Owner::Magnetron:advanced?taskarbiter::Owner::Combat:taskarbiter::Owner::Generic;

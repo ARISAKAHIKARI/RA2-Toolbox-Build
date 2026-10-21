@@ -1,0 +1,14 @@
+{
+  "version": "1.0.30-pre.1",
+  "release_channel": "prerelease",
+  "file_version": "1.0.30.0",
+  "assist_protocol": 55,
+  "runtime_protocol": 4,
+  "bytes": 1136959,
+  "sha256": "28287db6602354740ebde9f53f315c3b69bb19c616c30076748f7b3ab7071788",
+  "files": {
+    "RA2Toolbox.exe": "a1654430ea6bbb4a52b9a56d11e8c1659bf512e5b198fc3dee729df0e4a4bbb6",
+    "GameRuntime.dll": "23a590c68c5dac77cfc04c19a4db623f98781fccf4fa7266b01e4dd173913296",
+    "README.txt": "7d08db4b6d1987fd3f8e09e733b7727162deb5fffa92640619c168b0c9054677"
+  }
+}

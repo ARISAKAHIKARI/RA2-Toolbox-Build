@@ -16,7 +16,7 @@ namespace assist { namespace planner {
 class Planner {
  struct Advanced {
   uint32_t token=0,cell=0,target=0,mode=0,skipTarget=0;int sent=-100000,shotStart=-1,observedStart=-1,skipUntil=0,observedX=0,observedY=0,attackProgress=0,progressX=0,progressY=0,lastFireStamp=-1,moveFailures=0;
-  uint32_t scannedAt=0;bool scanned=false;
+  uint32_t scannedAt=0,pursuit=0,moveCell=0;bool scanned=false;
   bool attacking=false,stopped=false,pendingShot=false,urgent=true;nativeorders::Progress progress;
  };
  struct OreJob {
@@ -78,6 +78,7 @@ class Planner {
    if(cell.cell&&cell.cell!=job.waitCell&&!cell.occupation&&cell.land!=2&&cell.land!=7&&!waitingCells_.count(cell.cell))return cell.cell;
   }return 0;
  }
+#include "advanced_decision.h"
 public:
  uint32_t oreBypasses=0,oreYieldAttempts=0,oreTurnTimeouts=0;
  uint32_t oreDelivered=0,oreUnverified=0,magnetShots=0,magnetUnverified=0;
@@ -91,6 +92,7 @@ public:
    task.sent=frame;task.attacking=order.mission==1;task.target=order.target;task.stopped=order.mission==6;
    task.pendingShot=order.mission==1;task.shotStart=task.observedStart;task.urgent=false;
    if(order.mission==1){task.attackProgress=frame;task.progressX=task.observedX;task.progressY=task.observedY;task.lastFireStamp=task.observedStart;}
+   task.pursuit=order.pursuit;task.moveCell=order.destination;
    if(order.mission==2){task.progress.begin(task.observedX,task.observedY,frame);task.moveFailures=0;}
   }else for(size_t i=0;i<ore_.size();++i)if(ore_[i].id==order.unit&&ore_[i].token==order.token){
    if(order.purpose==2){ore_.erase(ore_.begin()+i);break;}
@@ -108,6 +110,11 @@ public:
  void rejected(const Order&order,int frame){
   if(order.purpose!=1&&order.purpose!=3)return;auto it=advanced_.find(order.unit);if(it==advanced_.end()||it->second.token!=order.token)return;auto&t=it->second;
   t.urgent=true;
+  // Ordinary combat is based on current native range facts. A rejected old
+  // Move/Attack may simply mean the target or weapon changed in transit.
+  // Re-evaluate next world without blacklisting an in-range enemy or counting
+  // the superseded Move as a path failure. Progress still bounds real stalls.
+  if(order.purpose==CombatOrder){t.pendingShot=false;return;}
   if(order.mission==1){t.skipTarget=order.target;t.skipUntil=frame+30;if(t.target==order.target)t.pendingShot=false;}
   else if(order.mission==2&&++t.moveFailures>=2){t.progress.hold=true;t.stopped=false;}
  }
@@ -176,30 +183,11 @@ public:
    if(count)cursor_=(cursor_+traversed)%count;
    for(int i:work){const auto&intent=world.intents[i];auto it=advanced_.find(intent.id);const Actor* a=actor(intent.id);
     if(!a||it==advanced_.end()||!active.count(intent.id))continue;auto&task=it->second;bool mag=task.mode==MagnetronMove;int purpose=mag?3:1;
-    if(!mag&&scanHz>0&&!task.urgent&&task.scanned&&uint32_t(world.tick-task.scannedAt)<uint32_t(1000/std::clamp(scanHz,1,60)))continue;
+    if(!mag){stepAdvanced(world,*a,task,combat,veteran,elite,pathTimeout,scanHz,targetPriority);continue;}
     task.urgent=false;task.scanned=true;task.scannedAt=world.tick;
     const Actor* current=task.attacking?actor(task.target):nullptr;if(current&&!positionValid(*current))current=nullptr;
     int64_t currentDistance=0;if(current){int64_t dx=int64_t(a->x)-current->x,dy=int64_t(a->y)-current->y;currentDistance=dx*dx+dy*dy;}
     bool currentValid=current&&(current->flags&Enemy)&&canTarget(*a,*current,currentDistance,mag,mag?0:rangePadding)&&!(current->id==task.skipTarget&&world.frame<task.skipUntil);
-    if(!mag){
-     if(task.pendingShot&&a->target==task.target)task.pendingShot=false;
-     if(task.pendingShot){
-      if(current&&(current->flags&Enemy)&&compatibleTarget(*a,*current,false)&&world.frame-task.sent<12){
-       if(scanHz<=0){task.progress.combat(a->x,a->y,world.frame);continue;}
-      }else{
-      if(current&&a->target!=task.target){task.skipTarget=task.target;task.skipUntil=world.frame+30;currentValid=false;}task.pendingShot=false;}
-     }
-     if(!currentValid&&current&&(current->flags&Enemy)&&compatibleTarget(*a,*current,false)&&a->target==task.target&&world.frame-task.sent<8){
-      int64_t range=int64_t(a->weapons[weaponIndex(*a,*current)].range)+((current->flags&Airborne)?a->airRangeBonus:0)+128;
-      if(range>0&&range<65664&&currentDistance<=range*range){task.progress.combat(a->x,a->y,world.frame);continue;}
-     }
-     if(currentValid){
-      int64_t mx=int64_t(a->x)-task.progressX,my=int64_t(a->y)-task.progressY;
-      if(mx*mx+my*my>=16*16||(a->rearmDuration>0&&a->rearmStart!=task.lastFireStamp)){task.attackProgress=world.frame;task.progressX=a->x;task.progressY=a->y;task.lastFireStamp=a->rearmStart;}
-      if(a->flags&BurstFiring){task.progress.combat(a->x,a->y,world.frame);continue;}
-      if(!(a->flags&SustainedFire)&&world.frame-task.attackProgress>=std::clamp(pathTimeout,30,900)){task.skipTarget=task.target;task.skipUntil=world.frame+90;currentValid=false;}
-     }
-    }
     // Don't continuously reset a shot waiting for its native event/animation.
     // A reload timer is ammo replenishment, not the weapon's rearm timer.
     if(mag&&(cooldown(*a,world.frame)>0||task.pendingShot)){task.progress.combat(a->x,a->y,world.frame);continue;}

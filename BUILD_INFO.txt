@@ -1,5 +1,5 @@
-RA2 Toolbox 1.0.29 Stable / Windows 1.0.29.0 / Assist 54 / Runtime 4 / Manager 3
+RA2 Toolbox 1.0.30-pre.1 Prerelease / Windows 1.0.30.0 / Assist 55 / Runtime 4 / Manager 3
 Compiler: Zig 0.13.0 / Windows x86
-RA2Toolbox.exe SHA256: ea67f3a7dcbb931fb537fc6670947ab1ec517c4f0b5be3386937ce6ffe20a388
-GameRuntime.dll SHA256: 0b26b0f2003592f2311ba8487a168d56192b616cc335de2e4e018c5e964a2a22
-Controlled regressions PASS; actual Windows visual and netplay acceptance not performed.
+RA2Toolbox.exe SHA256: a1654430ea6bbb4a52b9a56d11e8c1659bf512e5b198fc3dee729df0e4a4bbb6
+GameRuntime.dll SHA256: 23a590c68c5dac77cfc04c19a4db623f98781fccf4fa7266b01e4dd173913296
+Controlled regressions PASS; no live Windows/netplay/projectile physics acceptance; LBW startup burst-reset code unavailable.

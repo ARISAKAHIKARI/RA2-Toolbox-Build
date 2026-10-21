@@ -532,6 +532,18 @@ static void logPlanning(const planner::World&w,const wchar_t* reason){
 }
 static void serviceCalculationTasks(){
  if(!shared||!commandFresh(GetTickCount()))return;
+ if(shared->dodgeTask!=shared->dodgeComputed){
+  long seq=shared->dodgeInputSeq;if(seq&1)return;MemoryBarrier();uint32_t task=shared->dodgeTask;
+  static auto input=std::make_unique<dodgecompute::Input>();memcpy(input.get(),&shared->dodgeInput,sizeof(*input));MemoryBarrier();
+  if(seq!=shared->dodgeInputSeq||task!=shared->dodgeTask)return;auto result=dodgecompute::calculate(*input);
+  if(seq==shared->dodgeInputSeq&&task==shared->dodgeTask){InterlockedIncrement(&shared->dodgeResultSeq);MemoryBarrier();shared->dodgeResult=result;shared->dodgeComputed=task;MemoryBarrier();InterlockedIncrement(&shared->dodgeResultSeq);wakeGame();}
+ }
+ if(shared->burstTask!=shared->burstComputed){
+  long seq=shared->burstInputSeq;if(seq&1)return;MemoryBarrier();uint32_t task=shared->burstTask;
+  static auto input=std::make_unique<burstcompute::Input>();memcpy(input.get(),&shared->burstInput,sizeof(*input));MemoryBarrier();
+  if(seq!=shared->burstInputSeq||task!=shared->burstTask)return;auto result=burstcompute::calculate(*input);
+  if(seq==shared->burstInputSeq&&task==shared->burstTask){InterlockedIncrement(&shared->burstResultSeq);MemoryBarrier();shared->burstResult=result;shared->burstComputed=task;MemoryBarrier();InterlockedIncrement(&shared->burstResultSeq);wakeGame();}
+ }
  if(shared->missileTask!=shared->missileComputed){
   long seq=shared->missileInputSeq;if(seq&1)return;MemoryBarrier();uint32_t task=shared->missileTask;
   static auto input=std::make_unique<missilecompute::Input>();memcpy(input.get(),&shared->missileInput,sizeof(*input));MemoryBarrier();
@@ -584,6 +596,8 @@ static void servicePlanner(){
  w.count=shared->world.count;w.intentCount=shared->world.intentCount;w.refineryCount=shared->world.refineryCount;
  w.inputSerial=shared->world.inputSerial;
  if(!planner::validWorldCounts(w.count,w.intentCount,w.refineryCount)){tacticalPlanner.reset();shared->plannerTracking=0;return;}
+ w.combatCount=shared->world.combatCount;if(w.combatCount<0||w.combatCount>planner::MaxCombatProbes)return;
+ memcpy(w.combat,shared->world.combat,size_t(w.combatCount)*sizeof(planner::CombatProbe));
  memcpy(w.actors,shared->world.actors,size_t(w.count)*sizeof(planner::Actor));memcpy(w.intents,shared->world.intents,size_t(w.intentCount)*sizeof(planner::Intent));memcpy(w.refineries,shared->world.refineries,size_t(w.refineryCount)*sizeof(planner::Refinery));MemoryBarrier();
  if(seq!=shared->worldSeq)return;
  // The game can publish a new world after readSnapshot() copied the previous
@@ -671,7 +685,7 @@ static bool ensureBridge(){
  }
  ++bridgeAttempts;bridgeRetryAt=now+(bridgeAttempts>=3?30000:2000);
  critical(L"bridge-connect-attempt="+std::to_wstring(bridgeAttempts)+L" pid="+std::to_wstring(pid)+L" thread="+std::to_wstring(gameThread));
- wchar_t n[100];swprintf(n,100,L"Local\\RA2Assist_v054_%lu",pid);
+ wchar_t n[100];swprintf(n,100,L"Local\\RA2Assist_v055_%lu",pid);
  mapping=CreateFileMappingW(INVALID_HANDLE_VALUE,nullptr,PAGE_READWRITE,0,sizeof(Shared),n);
  DWORD mappingError=GetLastError();if(!mapping)return bridgeFailed(L"创建命令共享内存失败",mappingError);
  if(mappingError==ERROR_ALREADY_EXISTS){
@@ -1267,12 +1281,12 @@ static void tick(){reapBridges();logBridgeHealth();DWORD now=GetTickCount();stat
   return;
  }
  sampleExternal(now);uint32_t configured=flags();
- bool needsBridge=(externalData&&externalData->status==1)||techMode||extra.missileDefense||commandQueue.size||hasSelection||externalSampler.flashCount||(configured&(AutoCS|AdvancedInput|MagnetronInput|AutoOreReturn|CustomCS|BuildAnywhere|AutoRepair|EjectAssist|SpecialClickFlags));
+ bool needsBridge=(externalData&&externalData->status==1)||techMode||extra.dodgeEnabled||extra.burstEnabled||extra.burstHoldEnabled||extra.missileDefense||commandQueue.size||hasSelection||externalSampler.flashCount||(configured&(AutoCS|AdvancedInput|MagnetronInput|AutoOreReturn|CustomCS|BuildAnywhere|AutoRepair|EjectAssist|SpecialClickFlags));
  if(needsBridge&&!shared)ensureBridge();
  now=GetTickCount(); // ensureBridge may have created attachAt after tick entry.
  if(shared){
   shared->heartbeat=now;shared->foreground=foregroundGame();shared->flags=configured;syncAdditional();shared->scanMs=8;shared->repairMs=repairMs;
-  DWORD wakePeriod=shared->foreground?16:(shared->missileEnabled||((configured|shared->plannerTracking)&(AdvancedInput|MagnetronInput|AutoOreReturn|AirWaypoints|AntiTheft))?64:500);
+  DWORD wakePeriod=shared->foreground?16:(shared->dodgeEnabled||shared->dodgeActive||shared->burstEnabled||shared->burstHoldEnabled||shared->burstActive||shared->missileEnabled||((configured|shared->plannerTracking)&(AdvancedInput|MagnetronInput|AutoOreReturn|AirWaypoints|AntiTheft))?64:500);
   if(DWORD(now-lastPulse)>=wakePeriod)wakeGame();
   readSnapshot();schedulerDiagnostic();serviceSelection();result();serviceCommandQueue(GetTickCount());serviceCalculationTasks();servicePlanner();serviceCooperative();servicePointer();serviceHotkeyBatch();serviceConstruction();serviceAirPath();
   if(ready&&GetDlgItem(ui,833)){

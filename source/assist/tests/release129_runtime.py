@@ -3,7 +3,7 @@ import argparse,ctypes as C,hashlib,importlib.util,json,struct,subprocess,sys,te
 from pathlib import Path
 from unicorn import UC_HOOK_CODE
 from unicorn.x86_const import *
-p=argparse.ArgumentParser();p.add_argument('game');p.add_argument('dll');p.add_argument('--output',required=True);a=p.parse_args();rows=[]
+p=argparse.ArgumentParser();p.add_argument('game');p.add_argument('dll');p.add_argument('--output',required=True);p.add_argument('--filter',default='');a=p.parse_args();rows=[]
 spec=importlib.util.spec_from_file_location('support',Path(__file__).with_name('no_interception_runtime.py'));n=importlib.util.module_from_spec(spec)
 args=sys.argv;sys.argv=[str(spec.origin),a.game,a.dll,'--filter','__fixture_only__','--output',str(Path(a.output).with_suffix('.helpers.json'))];spec.loader.exec_module(n);sys.argv=args
 root=Path(__file__).resolve().parents[2]
@@ -21,6 +21,7 @@ def tick(m,inside=True,which='unload'):
  if not inside:compute(m,which)
  return n.tick(m)
 def check(name,fn):
+ if a.filter and a.filter not in name:return
  try:fn();rows.append({'case':name,'status':'PASS'});print('PASS',name,flush=True)
  except Exception as e:rows.append({'case':name,'status':'FAIL','error':repr(e)});traceback.print_exc()
 def unload(mode,inside):

@@ -29,10 +29,10 @@ static void finishUnloadFollowup(const UnloadPassenger&r,int frame){
 static void cancelUnloadPassenger(uint32_t p){for(int i=0;i<unloadCount;)
  if(unloadPassengers[i].p==p){finishUnloadFollowup(unloadPassengers[i],get<int>(0xA8ED84));unloadPassengers[i]=unloadPassengers[--unloadCount];}
  else ++i;}
-static void cancelNative(uint32_t p){cancelOreJob(p);cancelLoadingJobs(p);int i=orderIndex(p);if(i>=0)removeOrder(i);for(i=0;i<unloadCount;)
+static void cancelNative(uint32_t p){cancelBurst(get<uint32_t>(p+0x10));cancelDodge(get<uint32_t>(p+0x10));cancelOreJob(p);cancelLoadingJobs(p);int i=orderIndex(p);if(i>=0)removeOrder(i);for(i=0;i<unloadCount;)
  if(unloadPassengers[i].p==p||unloadPassengers[i].carrier==p){finishUnloadFollowup(unloadPassengers[i],get<int>(0xA8ED84));unloadPassengers[i]=unloadPassengers[--unloadCount];}
  else ++i;}
-static void cancelAutomatic(uint32_t p){
+static void cancelAutomatic(uint32_t p){cancelBurst(get<uint32_t>(p+0x10));cancelDodge(get<uint32_t>(p+0x10));
  cancelOreJob(p);cancelLoadingJobs(p);int i=orderIndex(p);if(i>=0)removeOrder(i);
  // Keep a release record until a native Guard can follow a tool-issued Sleep.
  // Manual click paths still use cancelNative because their own order takes over.

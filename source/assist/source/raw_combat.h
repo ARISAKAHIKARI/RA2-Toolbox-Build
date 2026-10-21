@@ -52,7 +52,7 @@ static void rawCombatInfo(uint32_t p,uint32_t type,int k,planner::Actor& a,bool 
  if(weapons){
   a.rearmStart=get<int>(p+0x2EC);a.rearmDuration=get<int>(p+0x2F4);a.liftTarget=rawObjectID(get<uint32_t>(p+0x2AC));
   int slots[2],count=rawWeaponSlots(p,type,slots);if(count==1)a.flags|=planner::FixedWeapon;else if(get<bool>(type+0xCD5))a.flags|=planner::StagedWeapon;
-  a.airRangeBonus=get<int>(type+0x68C);if(a.airRangeBonus<0||a.airRangeBonus>32768)a.airRangeBonus=0;
+  a.airRangeBonus=get<int>(type+0x68C);if(a.airRangeBonus< -32768||a.airRangeBonus>32768)a.airRangeBonus=0;
   if(get<int>(type+0x684)>=0&&get<int>(p+0x2FC)<=0)a.flags|=planner::OutOfAmmo;
   uint32_t temporal=get<uint32_t>(p+0x274);if(temporal>=0x10000&&a.target&&rawObjectID(get<uint32_t>(temporal+0x28))==a.target)a.flags|=planner::SustainedFire;
   for(int i=0;i<count;++i){uint32_t ptr=rawWeapon(type,get<float>(p+0x150),slots[i]);a.weapons[i]=rawWeaponInfo(ptr,cached);a.weapons[i].slot=slots[i];

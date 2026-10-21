@@ -25,6 +25,8 @@ for(int i:{11,1,2,3,4,5,6,7,0,8}){
 hookChecks[1]=toggle(459,L"智能卸载",hookSmartUnload,20,270);unloadKeyEdit=key(451,unloadKey,305,180);button(453,L"立即卸载",500,125);next();
 ejectCheck=toggle(455,L"载员逃生",ejectMode,20,306);ejectKeyEdit=key(456,ejectKey);next();
 csCheck=toggle(446,L"自动移动攻击（CS）",csMode,20,306);csKeyEdit=key(447,csKey);next();
+toggle(883,L"按住键启用强制刷弹",extra.burstHoldEnabled,20,306);{auto h=key(884,extra.burstKey);modernui::holdKey(h);}next();
+note(L"选中单位并正常攻击，按住配置键启用；留空停用。松开后恢复普通攻击。",44);
 label(L"喝彩（替代原生快捷键）",20,306);key(870,socialKeys[0]);next();
 for(int i=1;i<9;++i){auto text=L"嘲讽 "+std::to_wstring(i);label(text.c_str(),20,306);key(870+i,socialKeys[i]);next();}
 note(L"绑定后由工具箱接管该组合；聊天和菜单中不接管。嘲讽仍遵循原版冷却与接收方设置。",44);
@@ -78,6 +80,10 @@ number(818,L"高级移动攻击额外索敌距离 / 格",advancedRangeCells,L"0�
 label(L"高级移动攻击目标优先级",20,260);choices(combo(802),{L"单位价值优先",L"弹头伤害比例优先"},advancedTargetPriority);next();
 note(L"索敌范围为单位射程加额外距离；忽略伤害比例不超过 2% 的目标。",44);
 toggle(804,L"防御建筑优先攻击渗透单位",extra.antiTheft);next();
+toggle(885,L"自动躲弹（测试）· 空袭与碾压",extra.dodgeEnabled);next();
+note(L"对己方可移动地面单位预判敌机攻击与逼近碾压，短距离躲避。支持类型清单，不保证躲过追踪弹或瞬时伤害。",60);
+toggle(882,L"强制刷弹（测试）· 自动启用单位名单",extra.burstEnabled);next();
+note(L"在功能单位清单中配置类型；仅对当前实际武器 Burst≥2 的未完成连射尝试中断重启。",44);
 toggle(880,L"防空单位智能拦截导弹",extra.missileDefense);next();
 number(881,L"导弹拦截检测频率 / 次每秒",extra.missileScanHz,L"1–60 · 默认 10");
 note(L"优先拦截射程内的敌方导弹，分配火力减少重复锁定；移动中的单位不接管。",44);
@@ -153,7 +159,7 @@ note(L"用于增强操作与普通地面命令冲突的情况；仅对支持的�
 item(L"STATIC",L"计算模式",20,605,832,0,30);next(30);
 note(L"按功能选择工具箱计算或游戏内计算；修改后从下一局开始使用。",44);
 for(int i=0;i<compute::Count;++i){label(compute::label(i),20,260);choices(combo(9000+i),{L"工具箱计算",L"游戏内计算"},(computeRequested>>i)&1u);next();}
-item(L"STATIC",L"当前计算模式：等待对局",20,605,833,0,144);next(144);
+item(L"STATIC",L"当前计算模式：等待对局",20,605,833,0,166);next(166);
 label(L"移动指令兼容模式",20,260);megaQueueCombo=combo(761);choices(megaQueueCombo,{L"标准（推荐）",L"兼容模式（多人测试）"},megaQueueMode);next();
 label(L"维修与出售兼容模式",20,260);objectQueueCombo=combo(762);choices(objectQueueCombo,{L"标准（推荐）",L"兼容模式（多人测试）"},objectQueueMode);next();
 note(L"兼容模式需重启游戏和工具箱后生效。通常保持标准模式即可。",44);

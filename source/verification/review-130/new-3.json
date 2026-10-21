@@ -1,0 +1,190 @@
+{
+  "scope": "Actual Runtime, native weapon selection/GetWeapon/range and event constructors. Controlled object getters, map and input; not live game/netplay.",
+  "dll_sha256": "23a590c68c5dac77cfc04c19a4db623f98781fccf4fa7266b01e4dd173913296",
+  "results": [
+    {
+      "case": "0_True_ifv_7",
+      "status": "PASS"
+    },
+    {
+      "case": "0_True_ifv_elite",
+      "status": "PASS"
+    },
+    {
+      "case": "0_True_flak_air",
+      "status": "PASS"
+    },
+    {
+      "case": "0_True_gatt_air",
+      "status": "PASS"
+    },
+    {
+      "case": "0_True_air_bonus",
+      "status": "PASS"
+    },
+    {
+      "case": "0_True_air_high",
+      "status": "PASS"
+    },
+    {
+      "case": "0_True_negative_bonus",
+      "status": "PASS"
+    },
+    {
+      "case": "0_True_minimum",
+      "status": "PASS"
+    },
+    {
+      "case": "0_True_close_priority",
+      "status": "PASS"
+    },
+    {
+      "case": "0_False_ifv_7",
+      "status": "PASS"
+    },
+    {
+      "case": "0_False_ifv_elite",
+      "status": "PASS"
+    },
+    {
+      "case": "0_False_flak_air",
+      "status": "PASS"
+    },
+    {
+      "case": "0_False_gatt_air",
+      "status": "PASS"
+    },
+    {
+      "case": "0_False_air_bonus",
+      "status": "PASS"
+    },
+    {
+      "case": "0_False_air_high",
+      "status": "PASS"
+    },
+    {
+      "case": "0_False_negative_bonus",
+      "status": "PASS"
+    },
+    {
+      "case": "0_False_minimum",
+      "status": "PASS"
+    },
+    {
+      "case": "0_False_close_priority",
+      "status": "PASS"
+    },
+    {
+      "case": "0_external_weapon_changed",
+      "status": "PASS"
+    },
+    {
+      "case": "0_external_stale",
+      "status": "PASS"
+    },
+    {
+      "case": "0_external_target_moved",
+      "status": "PASS"
+    },
+    {
+      "case": "0_external_disabled",
+      "status": "PASS"
+    },
+    {
+      "case": "0_external_target_enters",
+      "status": "PASS"
+    },
+    {
+      "case": "3_True_ifv_7",
+      "status": "PASS"
+    },
+    {
+      "case": "3_True_ifv_elite",
+      "status": "PASS"
+    },
+    {
+      "case": "3_True_flak_air",
+      "status": "PASS"
+    },
+    {
+      "case": "3_True_gatt_air",
+      "status": "PASS"
+    },
+    {
+      "case": "3_True_air_bonus",
+      "status": "PASS"
+    },
+    {
+      "case": "3_True_air_high",
+      "status": "PASS"
+    },
+    {
+      "case": "3_True_negative_bonus",
+      "status": "PASS"
+    },
+    {
+      "case": "3_True_minimum",
+      "status": "PASS"
+    },
+    {
+      "case": "3_True_close_priority",
+      "status": "PASS"
+    },
+    {
+      "case": "3_False_ifv_7",
+      "status": "PASS"
+    },
+    {
+      "case": "3_False_ifv_elite",
+      "status": "PASS"
+    },
+    {
+      "case": "3_False_flak_air",
+      "status": "PASS"
+    },
+    {
+      "case": "3_False_gatt_air",
+      "status": "PASS"
+    },
+    {
+      "case": "3_False_air_bonus",
+      "status": "PASS"
+    },
+    {
+      "case": "3_False_air_high",
+      "status": "PASS"
+    },
+    {
+      "case": "3_False_negative_bonus",
+      "status": "PASS"
+    },
+    {
+      "case": "3_False_minimum",
+      "status": "PASS"
+    },
+    {
+      "case": "3_False_close_priority",
+      "status": "PASS"
+    },
+    {
+      "case": "3_external_weapon_changed",
+      "status": "PASS"
+    },
+    {
+      "case": "3_external_stale",
+      "status": "PASS"
+    },
+    {
+      "case": "3_external_target_moved",
+      "status": "PASS"
+    },
+    {
+      "case": "3_external_disabled",
+      "status": "PASS"
+    },
+    {
+      "case": "3_external_target_enters",
+      "status": "PASS"
+    }
+  ]
+}

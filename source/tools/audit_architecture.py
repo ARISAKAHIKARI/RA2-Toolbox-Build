@@ -66,7 +66,7 @@ assert 'controllerID==owner&&controller&&WaitForSingleObject(controller,0)==WAIT
 assert sum('BOOL WINAPI DllMain(' in p.read_text() for p in FILES.values())==1
 for name in ('BUILD_ZIG.cmd','build-zig.sh'):
  build=(ROOT/name).read_text()
- assert build.index('BUILD-VERIFIED-v129.tag')<build.index('game_entry_manager.cpp'),name
+ assert build.index('BUILD-VERIFIED-v130.tag')<build.index('game_entry_manager.cpp'),name
  assert 'verification' in build and 'WINDOWS_BUILD_ARTIFACTS.json' in build,name
  assert build.count('-shared ')==1 and '-o GameRuntime.dll' in build,name
 assert 'tools\\verify_windows_outputs.py' in (ROOT/'BUILD_ZIG.cmd').read_text()
@@ -77,17 +77,38 @@ assert 'assist/source/missile_bridge.h' in RUNTIME and 'assist/source/missile_br
 missile=FILES['assist/source/missile_bridge.h'].read_text()
 assert 'nativeMission(' in missile and 'planningRoom(2)' in missile and 'consumePlanning(2)' in missile
 assert not re.search(r'\b(?:enqueue|submitConstructed|SetTarget|Fire|QueueMission)\s*\(',missile)
+assert 'assist/source/advanced_decision.h' in HOST and 'assist/source/advanced_decision.h' in RUNTIME
+assert 'assist/source/combat_probe_bridge.h' in RUNTIME and 'assist/source/combat_probe_bridge.h' not in HOST
+probe=FILES['assist/source/combat_probe_bridge.h'].read_text()
+decision=FILES['assist/source/advanced_decision.h'].read_text()
+assert 'GuardedCombatWeapon(' in probe and 'MaxCombatProbes' in probe and 'a.combatFirst=first' in probe
+assert not re.search(r'\b(?:nativeMission|enqueue|submitConstructed|SetTarget|Fire|QueueMission|call|callFast)\s*\(',probe)
+assert not re.search(r'\b(?:GuardedCombatWeapon|get|put|call|callFast|nativeMission|enqueue)\s*\(',decision)
+orders=FILES['assist/source/external_orders_bridge.h'].read_text()
+assert 'advancedTargetInRange(o.unit,house))return -1;' in orders
+assert 'probeCombatPair(unit,target,source,victim,0)' in orders
+assert 'ready>bestReady' in decision and 'a.combatFirst<0' in decision
+for family,channel in (('burst',3),('dodge',4)):
+ pure='assist/source/'+family+'_compute.h';bridge_path='assist/source/'+family+'_bridge.h'
+ assert pure in HOST and pure in RUNTIME and bridge_path in RUNTIME and bridge_path not in HOST
+ code=FILES[bridge_path].read_text();pure_code=FILES[pure].read_text()
+ assert 'nativeMission(' in code and f'planningRoom({channel})' in code and f'consumePlanning({channel})' in code
+ assert 'freshness::valid(' in code and 'manualVersions.get(' in code
+ assert not re.search(r'\b(?:enqueue|submitConstructed|Fire|SetTarget|QueueMission|put)\s*\(',code)
+ assert not re.search(r'\b(?:get|put|call|callFast|nativeMission|enqueue|GuardedCombatWeapon)\s*\(',pure_code)
 known=[
+ {'id':'P08','status':'dual_backend','feature':'Burst restart and threat evasion','detail':'Shared pure decisions on either side; native weapon facts and all Stop/Attack/Move events stay in Runtime. Five planning shares, actor arbitration and explicit suspend/restore coordination. No ability, rank, ROF, burst-index or code writes.'},
+ {'id':'P07','status':'dual_backend','feature':'Advanced attack-move actual weapon range','source':'assist/source/combat_probe_bridge.h','detail':'Runtime-only native SelectWeapon/GetWeapon/IsCloseEnough produces complete per-source facts. Shared pure ranking prefers actual in-range targets; approach Move switches to empty-destination Attack. Fresh admission discards obsolete Move without mailbox blockage. No new hook or direct mission writes.'},
  {'id':'P06','status':'dual_backend','feature':'Missile fire allocation','source':'assist/source/missile_bridge.h','detail':'Runtime native virtual weapon/range queries; shared pure allocation on either side; fresh identity/token/range recheck and shared budget/nativeMission final submission. No new hook.'},
  {'id':'P01','status':'dual_backend','feature':'AutoLoad allocation','source':'assist/source/autoload_bridge.h','detail':'Runtime raw collection/native legality; matching selectable in Runtime or host; identity/token/capacity recheck and event/retry remain Runtime.'},
  {'id':'P02','status':'dual_backend','feature':'Repair filtering','source':'assist/source/bridge.cpp','detail':'Runtime snapshot and cadence; pure candidate filtering selectable; pending observation/final legality/event stay Runtime.'},
  {'id':'P03','status':'dual_backend','feature':'Smart unload/ejection deployment and target choice','source':'assist/source/native_orders_bridge.h','detail':'Shared pure unload_compute decision, Runtime collection/legality and source-stamped host batch; cancellation, identity checks, receipts and final native events stay Runtime.'},
  {'id':'P04','status':'remaining_consolidation','feature':'Read snapshots','source':'external_reader/source/shared_reader.h','detail':'Shared immutable process connection, independent task caches and source-stamped copies; not one cross-feature atomic world.'},
- {'id':'P05','status':'fixed_by_design','feature':'UI-bound and native interface features','detail':'User-approved scope: statistics/reservation UI/overlays/minimap stay external; native selection/input/judgment stay Runtime. Eleven tactical decision families are selectable; external Z paths remain host planning.'},
+ {'id':'P05','status':'fixed_by_design','feature':'UI-bound and native interface features','detail':'User-approved scope: statistics/reservation UI/overlays/minimap stay external; native selection/input/judgment stay Runtime. Thirteen tactical decision families are selectable; external Z paths remain host planning.'},
 ]
-report={'version':'1.0.29','baseline':'0.7.16','result':'No detected forbidden source-boundary bypass; eleven selectable tactical decision families; UI-bound features remain external by design. Native APIs always Runtime.',
+report={'version':'1.0.30','baseline':'0.7.16','result':'No detected forbidden source-boundary bypass; thirteen selectable tactical decision families; UI-bound features remain external by design. Native APIs always Runtime.',
  'scope':{'source_files':len(FILES),'host_reachable_files':len(HOST),'runtime_reachable_files':len(RUNTIME),'method':'Recursive local include graph + forbidden API ownership checks + manual review of game-call, queue, patch and scheduling paths. Lexical assertions cannot prove all runtime behavior.'},
- 'freshness_contract':{'protocol':54,'tactical_max_ms':150,'tactical_max_frames':6,'cooperative_max_ms':250,'cooperative_max_frames':12,'intent_max_ms':5000,'source_clock_never_renewed_on_publish':True,'partial_batch_deadline_retained':True,'cooperative_retry_only_unprocessed':True,'real_game_latency_measured':False},
+ 'freshness_contract':{'protocol':55,'tactical_max_ms':150,'tactical_max_frames':6,'cooperative_max_ms':250,'cooperative_max_frames':12,'intent_max_ms':5000,'source_clock_never_renewed_on_publish':True,'partial_batch_deadline_retained':True,'cooperative_retry_only_unprocessed':True,'real_game_latency_measured':False},
  'extended_test_fixes':['Cooperative pending requests bypass display cadence','Round-end settles cooperative ACK with per-serial receipt ownership','Both planning mailboxes share one frame budget and per-channel share'],
  'runtime_diagnostics':{'protocol':4,'control_bytes':176,'transport':'existing unified Runtime mapping','writer':'Runtime','file_io':'host only','native_windows_loader_tested':False},
  'fixes':['Capture-time match identity and context expiry prevent loading/menu input reuse','Loading/menu/invalid-frame quarantine precedes feature initialization; no arbitrary warmup delay','All event backends share live simulationReady preflight; ordinary queue append rechecks after native clock callback','Bounded host startup diagnostics, without DLL file IO','Local native legality query AV boundary remains within Runtime ownership; no private ingress or command replay','Host initial/torn snapshots never replace authenticated state; fresh timestamps avoid false connection timeout','Automatic bounded host logging and callback/handshake evidence without consuming host work','Source time/frame preserved across planning and queueing; per-order expiration; fresh suffix replan preserves aircraft quotas','Cursor WM_SETCURSOR goes through host input manager without holding scheduler mutex','Only the message entry consumes host work; frame detours removed; Patch API permits only three 1.0.4 judgment sites, two 1.0.24 post-initialization drawing sites, one 1.0.10 C4 load, two 1.0.20 sidebar CALLs; 1.0.21 removes all five player-selection CALL permissions','Recycled host PID cannot reuse a dead retained controller process handle','Host builds reject including the Runtime execution client','Partial rebuilds invalidate old verification markers; Windows build verifies PE outputs before success'],
@@ -96,4 +117,4 @@ report={'version':'1.0.29','baseline':'0.7.16','result':'No detected forbidden s
  'source_sha256':{n:hashlib.sha256(p.read_bytes()).hexdigest() for n,p in sorted(FILES.items())}}
 (ROOT/'ARCHITECTURE_AUDIT.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
 print(f'PASS architecture boundaries: {len(FILES)} source files; {len(HOST)} host includes / {len(RUNTIME)} Runtime includes; read, input, injection, patch, event and frame-grant ownership')
-print('NOTE: eleven tactical decision families have dual backends; UI-bound fixed locations are intentional; cross-feature snapshots are not atomic; no real-game/netplay proof')
+print('NOTE: thirteen tactical decision families have dual backends; UI-bound fixed locations are intentional; cross-feature snapshots are not atomic; no real-game/netplay proof')

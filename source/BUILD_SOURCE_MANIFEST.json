@@ -1,11 +1,11 @@
 {
-  "name": "RA2 Toolbox 1.0.29",
-  "version": "1.0.29",
+  "name": "RA2 Toolbox 1.0.30-pre.1",
+  "version": "1.0.30-pre.1",
   "compiled_game_binary_included": false,
-  "source": "1.0.28 stable base; unload follow-up recovery and native-range missile interception",
+  "source": "1.0.29 stable base; actual-range advanced attack, burst restart and air/crush evasion",
   "resources": "Complete assets/profiles/Python preprocessing runtime/engine included",
   "resources_legacy_reuse": true,
-  "build_protocol": 54,
+  "build_protocol": 55,
   "validation": "Controlled host/runtime tests and static PE/ABI/architecture checks; not live Windows or netplay",
   "build_requirement": "Zig 0.13.0, x86 Windows target; build EXE and GameRuntime.dll together",
   "settings": {
@@ -27,8 +27,8 @@
     "TechnoClass::SelectWeapon/GetWeapon/IsCloseEnough, read-only virtual calls",
     "BuildingClass::IsPowerOnline, read-only virtual call"
   ],
-  "release_status": "1.0.29 stable; paired EXE and DLL required",
+  "release_status": "1.0.30-pre.1 prerelease; paired EXE and DLL required",
   "technology_experiment": "Native AddCameo + two local UI CanBuild limit-only callsite wrappers; native factories/events unchanged; no live purchase/netplay certification",
-  "calculation_locations": "Eleven tactical decision families selectable; native game calls always Runtime; statistics/reservations/display external.",
+  "calculation_locations": "Thirteen tactical decision families selectable; native queries/events always GameRuntime; statistics/reservations/display external.",
   "player_control": "Unavailable; host UI and Runtime gate disabled independently"
 }
