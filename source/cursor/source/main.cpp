@@ -20,6 +20,7 @@
 #include "core.h"
 
 #include "../../shared/source/host_game_input.h"
+#include "../../shared/source/command_cursor_hint.h"
 #ifdef RA2_UNIFIED
 #include "suite_host.h"
 #endif
@@ -140,6 +141,21 @@ static void performanceSample(){
  drawTotalTicks=drawMaxTicks=0;drawMeasured=0;epoch=now;
 }
 static DWORD lastRefreshSampleAt=0;
+struct CommandDefinition {int first=-1,count=0,interval=4,hotX=12345,hotY=12345;};
+static CommandDefinition commandDefs[86];
+static commandcursor::Mode shownCommand=commandcursor::None;
+static DWORD commandSince=0;
+static void resetCommandDefinitions(){
+ for(auto&d:commandDefs)d={};
+ // Verified stock definitions; live table replaces these when readable.
+ // The stock fallback is used only with a standard 55x43 SHA canvas.
+ if(asset.w==55&&asset.h==43){
+  commandDefs[20]={53,5,4,12345,12345};
+  commandDefs[25]={89,10,4,12345,12345};
+  commandDefs[71]={404,9,4,12345,12345};
+ }
+ shownCommand=commandcursor::None;commandSince=0;
+}
 static motion::Image frameCanvas(int n){
  bool styled=displayLoaded&&n<int(displayAsset.frames.size());
  const Asset& art=styled?displayAsset:asset;const DWORD* colors=styled?displayPalette:palette;
@@ -363,10 +379,13 @@ static void attach(bool quiet=false){bridgeFrame.clear();lanboStream.reset();if(
   }
  }
  loadCache();
+ resetCommandDefinitions();
  // Read the read-only, 86-entry built-in definition table once per connection.
  // Even when the guessed cursor-type field differs, consecutive frame ranges
  // still provide a conservative way to recognize an animation.
  if(loaded&&!readRestricted){try{Bytes table=read(0x82d028,86*28);
+   for(int i=0;i<86;++i){size_t off=size_t(i)*28;int first=int(u32(table,off)),count=int(u32(table,off+4));
+    if(cursorRangeMatches(first,count,first,asset.frames.size()))commandDefs[i]={first,count,int(u32(table,off+8)),int(u32(table,off+20)),int(u32(table,off+24))};}
    for(int i=0;i<86;i++)for(int mini=0;mini<2;mini++){
     size_t off=size_t(i)*28+(mini?12:0);int first=(int)u32(table,off),count=(int)u32(table,off+4);
     if(count>1&&cursorRangeMatches(first,count,first,asset.frames.size()))fallbackDefs.push_back({first,count,i*2+mini});
@@ -794,12 +813,30 @@ static void draw(){
   }else visibilityDiagnostic(L"光标帧读取失败",fp);
   lastFrame=-2;tween.reset();activeMotion.reset();
   return;}
+ commandcursor::Mode commandMode=commandcursor::None;
+ auto hint=commandcursor::read(pid,GetTickCount());
+ // Preserve native menu/tools and sidebar/minimap cursors. Release is checked
+ // at display cadence, even if the Tactical thread has not run again yet.
+ bool mapPoint=pos.x>=org.x&&pos.y>=org.y&&pos.x<org.x+rc.right&&pos.y<org.y+rc.bottom;
+ int mapGW=gameWOverride?gameWOverride:sampleGW>0?sampleGW:clickGameWidth>0?clickGameWidth:1024;
+ if(mapGW>sidebarWidth&&int64_t(pos.x-org.x)*mapGW>=int64_t(rc.right)*(mapGW-sidebarWidth))mapPoint=false;
+ if(hint.mode!=commandcursor::None&&mapPoint&&!nativeMenuHold&&!(shared&&shared->menuSuspend)&&
+    commandcursor::ordinary(cursorID)&&gameinput::heldBinding(hint.binding))commandMode=hint.mode;
+ if(commandMode!=shownCommand){shownCommand=commandMode;commandSince=GetTickCount();lastFrame=-2;lastPhase=size_t(-1);tween.reset();timing.resetObservation();activeMotion.reset();}
+ if(commandMode!=commandcursor::None){
+  const auto&d=commandDefs[commandcursor::definition(commandMode)];int chx=0,chy=0;
+  if(cursorRangeMatches(d.first,d.count,d.first,asset.frames.size())&&hot(unsigned(d.hotX),w,chx)&&hot(unsigned(d.hotY),h,chy)){
+   unsigned duration=unsigned(std::clamp(d.interval,1,60))*1000u/60u;
+   frame=d.first+int(uint32_t(GetTickCount()-commandSince)/std::max(1u,duration)%unsigned(d.count));
+   animStart=d.first;animCount=d.count;animKey=2000+int(commandMode);hx=chx;hy=chy;approx=false;inferredRange=false;
+  }else commandMode=commandcursor::None;
+ }
  if(superCenter){auto center=superhot::resolve(superCenters,cursorID,frame,animStart,animCount);
   if(center.valid){hx=center.x;hy=center.y;}}
  diagFrame=frame;diagHotX=hx;diagHotY=hy;
  // Real animation frames can advance without an accessible game definition
  // table on some platform builds; infer only after multiple forward edges.
- if(mode==L"hide"&&shared&&shared->state==1){
+ if(commandMode==commandcursor::None&&mode==L"hide"&&shared&&shared->state==1){
   lanboStream.observe(frame,GetTickCount());
   if(animKey<0&&lanboStream.predicts(frame,asset.frames.size())){
    const auto& aa=asset.frames[frame];const auto& bb=asset.frames[frame+1];
@@ -875,14 +912,17 @@ static void draw(){
  }
 
  static int committedHotX=-9999,committedHotY=-9999;
+ static commandcursor::Mode committedCommand=commandcursor::None;
  static const playback::Frame* submittedImage=nullptr;
- if(frame!=lastFrame||phaseIndex!=lastPhase||!dib||dibw!=dw||dibh!=dh||committedHotX!=shx||committedHotY!=shy){
+ if(frame!=lastFrame||phaseIndex!=lastPhase||!dib||dibw!=dw||dibh!=dh||committedHotX!=shx||committedHotY!=shy||committedCommand!=commandMode){
   bool packetSent=true;
   const playback::Frame& source=(phaseIndex!=size_t(-1)&&activeMotion)?*activeMotion->images[phaseIndex]:displayFrames.at(size_t(frame));
-  bool changed=&source!=submittedImage||!dib||dibw!=dw||dibh!=dh||committedHotX!=shx||committedHotY!=shy||lastFrame==-2;
+  bool changed=&source!=submittedImage||!dib||dibw!=dw||dibh!=dh||committedHotX!=shx||committedHotY!=shy||lastFrame==-2||committedCommand!=commandMode;
   if(changed){
   bitmap(dw,dh);uint32_t* pixels=(uint32_t*)dibbits;
   const auto& raster=rasterCache.get(source,dw,dh);memcpy(pixels,raster.data(),raster.size()*4);
+  if(commandMode!=commandcursor::None)for(int y=0;y<dh;++y)for(int x=0;x<dw;++x)
+   pixels[size_t(y)*dw+x]=commandcursor::recolor(pixels[size_t(y)*dw+x],commandMode,x*w/dw,y*h/dh,w,h);
   POINT dst={pos.x-shx,pos.y-shy},src={0,0};SIZE sz={dw,dh};BLENDFUNCTION bf={AC_SRC_OVER,0,255,AC_SRC_ALPHA};
   // Optional in-game native hardware cursor. The renderer below stays intact
   // for the regular overlay mode and the existing per-frame timeline.
@@ -909,7 +949,7 @@ static void draw(){
    }
   }else if(!UpdateLayeredWindow(overlay,NULL,&dst,&sz,memdc,&src,0,&bf,ULW_ALPHA))fail("Layered window update failed");
   }
-  if(packetSent){committedHotX=shx;committedHotY=shy;lastFrame=frame;lastPhase=phaseIndex;if(changed){submittedImage=&source;++hudCommits;if(phaseIndex!=size_t(-1))++hudMotion;}}
+  if(packetSent){committedCommand=commandMode;committedHotX=shx;committedHotY=shy;lastFrame=frame;lastPhase=phaseIndex;if(changed){submittedImage=&source;++hudCommits;if(phaseIndex!=size_t(-1))++hudMotion;}}
  }
  if(mode!=L"hide"&&nativeMenuCandidateAt&&lastSystemVisible==1&&uint32_t(cursorTime-nativeMenuCandidateAt)>=180&&
  uint32_t(cursorTime-lastObservedFrameAt)>=180)nativeMenuHold=true;

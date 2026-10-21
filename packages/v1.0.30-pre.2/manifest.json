@@ -1,0 +1,12 @@
+{
+  "baseline_tag": "v1.0.30-pre.1",
+  "baseline_commit": "02614f99bde1bc8022e0699ae9e5133f975a2c0e",
+  "file_version": "1.0.30.1",
+  "bytes": 1143035,
+  "sha256": "13c1cca3b18dd0dc95e555554f950afc0019ad6b939a23238cdb90b7c1b0d20c",
+  "files": {
+    "RA2Toolbox.exe": "d766d6df4dc0b9ce410bb64cd53e8c9e1614701cb956a935163f2ea0442a6c9f",
+    "GameRuntime.dll": "568a59031abab477aebcaf244f5bbb13583c3343a425ee2fdbf3787d5bd9b16a",
+    "README.txt": "c7934998f11ce5b703140f837cb090d735b4ff87cc1ab1f75caaa9320509c862"
+  }
+}

@@ -1,12 +1,12 @@
 {
-  "name": "RA2 Toolbox 1.0.30-pre.1",
-  "version": "1.0.30-pre.1",
+  "name": "RA2 Toolbox 1.0.30-pre.2",
+  "version": "1.0.30-pre.2",
   "compiled_game_binary_included": false,
-  "source": "1.0.29 stable base; actual-range advanced attack, burst restart and air/crush evasion",
+  "source": "v1.0.30-pre.1 (02614f99): special-order cursor hints and automatic burst aircraft/spawn exclusions",
   "resources": "Complete assets/profiles/Python preprocessing runtime/engine included",
   "resources_legacy_reuse": true,
   "build_protocol": 55,
-  "validation": "Controlled host/runtime tests and static PE/ABI/architecture checks; not live Windows or netplay",
+  "validation": "136 actual x86 DLL controlled regressions; production host mode/color/input and cross-TU sharing tests; ASan/UBSan; static PE32/ABI/dependencies; no live Windows/game/netplay test",
   "build_requirement": "Zig 0.13.0, x86 Windows target; build EXE and GameRuntime.dll together",
   "settings": {
     "Orders.MegaMissionBackend": "0=constructor; 1=high-level MP; SP uses constructor/DoList centrally",

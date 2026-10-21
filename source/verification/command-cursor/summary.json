@@ -1,0 +1,17 @@
+{
+  "baseline_tag": "v1.0.30-pre.1",
+  "file_version": "1.0.30.1",
+  "runtime_cases": 136,
+  "runtime_passed": 136,
+  "host_modes_colors_filters": "PASS",
+  "asan_ubsan": "PASS; ASAN_OPTIONS=detect_leaks=0",
+  "cross_translation_unit_bus": "PASS",
+  "architecture": "PASS",
+  "existing_pointer_and_input_tests": "PASS",
+  "windows_pe_abi_version_imports": "PASS",
+  "visual_preview": "actual recolor function; source alpha unchanged",
+  "limitations": [
+    "No live Windows game, display or two-peer netplay test",
+    "Cursor hints require existing cursor rendering enabled; unavailable original cursor identification remains unchanged"
+  ]
+}

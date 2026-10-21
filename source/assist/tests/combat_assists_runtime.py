@@ -37,6 +37,14 @@ def burst(mode,inside,kind):
  if kind=='moving':m.w(m.unit+0xac,2);m.w(m.unit+0x5a4,m.crateCell)
  if kind=='disabled':s.burstEnabled=0
  if kind=='filter':s.featureConfig.filters[17].custom=1
+ if kind=='spawn_owner':m.w(m.unit+0x2d4,m.target)
+ if kind=='spawned':m.b(m.t+0xd54,1)
+ if kind=='spawn_parent':m.w(m.t+0xd58,m.t);m.w(m.t+0xd5c,3)
+ if kind=='missile_spawn':m.b(m.t+0xd68,1)
+ if kind=='aircraft':m.w(m.unit,0x7e22a4)
+ if kind=='airborne':m.b(m.unit+0x134,1)
+ if kind=='hold_spawned':
+  s.burstEnabled=0;s.burstHoldEnabled=1;s.burstHeld=1;m.b(m.unit+0x83,1);m.b(m.t+0xd54,1)
  if kind in ('hold','hold_unselected','hold_unfocused','hold_stale'):
   s.burstEnabled=0;s.burstHoldEnabled=1;s.burstHeld=1;s.foreground=kind!='hold_unfocused';m.b(m.unit+0x83,kind!='hold_unselected')
   if kind=='hold_stale':
@@ -107,6 +115,6 @@ def dodge(mode,inside,kind):
  assert not m.codeWrites
 for mode in (0,3):
  for inside in (True,False):
-  for kind in ('normal','elite','elite_single','burst_one','completed','not_fired','moving','disabled','filter','hold','hold_unselected','hold_unfocused','hold_stale','observer','release','weapon_changed'):check(f'burst_{mode}_{inside}_{kind}',lambda m=mode,i=inside,k=kind:burst(m,i,k))
+  for kind in ('normal','elite','elite_single','burst_one','completed','not_fired','moving','disabled','filter','hold','hold_unselected','hold_unfocused','hold_stale','observer','release','weapon_changed','spawn_owner','spawned','spawn_parent','missile_spawn','aircraft','airborne','hold_spawned'):check(f'burst_{mode}_{inside}_{kind}',lambda m=mode,i=inside,k=kind:burst(m,i,k))
   for kind in ('crush','air','allied','not_targeted','resistant','disabled','filter','observer','blocked','conflict','release'):check(f'dodge_{mode}_{inside}_{kind}',lambda m=mode,i=inside,k=kind:dodge(m,i,k))
 Path(a.output).write_text(json.dumps({'scope':__doc__,'native_stop_reset_executed':bytes(n.fixture(0).game.get_data(0x6fcf53-0x400000,6))==bytes.fromhex('399eb4020000'),'dll_sha256':hashlib.sha256(Path(a.dll).read_bytes()).hexdigest(),'results':rows},indent=2)+'\n');raise SystemExit(any(x['status']!='PASS' for x in rows))

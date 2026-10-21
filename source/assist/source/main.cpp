@@ -25,6 +25,7 @@
 #include "protocol.h"
 
 #include "../../shared/source/host_game_input.h"
+#include "../../shared/source/command_cursor_hint.h"
 #include "../../shared/source/automatic_log.h"
 #include "../../shared/source/game_build_diagnostics.h"
 #include <tlhelp32.h>
@@ -644,6 +645,7 @@ static void reapBridges(){DWORD now=GetTickCount();for(size_t i=0;i<retiredBridg
  else{if(DWORD(now-r.lastWake)>=100){r.lastWake=now;wakeRetiredBridge(r);}++i;}}
 }
 static void releaseBridge(){
+ commandcursor::clear();
  if(hook)logBridgeHealth(true); // preserve the last IPC evidence before unmapping
  tacticalPlanner.reset();submittedPlan.clear();worldRevision=-1;plannerAck=0;hasSelection=false;selectionAck=0;cooperativeDelivered=cooperativeReceipt=0;retryCooperative=false;submittedCooperative.clear();acceptedCooperative.clear();
  if(shared&&hook){shared->stop=1;wakeGame();retiredBridges.push_back({shared,mapping,module,hook,game,GetTickCount(),gameThread,externalReader.connectionIdentity()});}
@@ -1240,6 +1242,7 @@ static void updatePlayerTestUI(){
  label+=L" · 当前玩家 "+std::to_wstring(current+1);SetWindowTextW(GetDlgItem(ui,865),label.c_str());
 }
 #include "shift_click_host.h"
+#include "command_cursor_host.h"
 static void tick(){reapBridges();logBridgeHealth();DWORD now=GetTickCount();static DWORD lastControl;if(lastControl&&DWORD(now-lastControl)<8)return;lastControl=now;updateModeStatus(now);updatePlayerTestUI();if(keysRegistered!=(enabled&&foregroundGame()&&snap.status==1&&snap.renderStatus==1&&!snap.chat))registerKeys();if(!enabled){clockState(false,fps);return;}
  if(pid&&DWORD(now-lastProcessCheck)>=250){lastProcessCheck=now;
   if(!externalReader.alive()){detach();lastFind=now-2000;}
@@ -1252,7 +1255,7 @@ static void tick(){reapBridges();logBridgeHealth();DWORD now=GetTickCount();stat
    }else if(!next){game=nullptr;lastFind=now-2000;}
   }
  }
- if(!game){
+ if(!game){commandcursor::clear();
   clockState(false,fps);
   if(pid&&externalReader.valid()){
    // Read-only attachment is independent of the window/WH_GETMESSAGE bridge.
@@ -1288,7 +1291,7 @@ static void tick(){reapBridges();logBridgeHealth();DWORD now=GetTickCount();stat
   shared->heartbeat=now;shared->foreground=foregroundGame();shared->flags=configured;syncAdditional();shared->scanMs=8;shared->repairMs=repairMs;
   DWORD wakePeriod=shared->foreground?16:(shared->dodgeEnabled||shared->dodgeActive||shared->burstEnabled||shared->burstHoldEnabled||shared->burstActive||shared->missileEnabled||((configured|shared->plannerTracking)&(AdvancedInput|MagnetronInput|AutoOreReturn|AirWaypoints|AntiTheft))?64:500);
   if(DWORD(now-lastPulse)>=wakePeriod)wakeGame();
-  readSnapshot();schedulerDiagnostic();serviceSelection();result();serviceCommandQueue(GetTickCount());serviceCalculationTasks();servicePlanner();serviceCooperative();servicePointer();serviceHotkeyBatch();serviceConstruction();serviceAirPath();
+  readSnapshot();schedulerDiagnostic();serviceSelection();result();serviceCommandQueue(GetTickCount());serviceCalculationTasks();servicePlanner();serviceCooperative();servicePointer();serviceCommandCursorHint();serviceHotkeyBatch();serviceConstruction();serviceAirPath();
   if(ready&&GetDlgItem(ui,833)){
   std::wstring text=L"当前生效：";for(int i=0;i<compute::Count;++i){if(i)text+=i%2?L" · ":L"\r\n";text+=compute::label(i);text+=compute::inside(shared->computeApplied,compute::Feature(i))?L"：游戏内":L"：工具箱";}
   if(shared->computeApplied!=computeRequested)text+=L"\r\n配置已修改，下一局生效。";

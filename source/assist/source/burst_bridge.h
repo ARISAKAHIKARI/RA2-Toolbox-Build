@@ -1,4 +1,8 @@
 // Only the common GameRuntime tick collects and submits these commands.
+#include "burst_eligibility.h"
+static bursteligibility::Source burstSource(uint32_t p){
+ int k=kind(p);return bursteligibility::inspect(p,typeOf(p,k),k,[](uint32_t at,void*out,size_t size){return read(at,out,size);});
+}
 struct BurstJob {uint32_t serial=0,id=0,pointer=0,token=0,target=0,targetPointer=0;int phase=0,sentFrame=0,fireStamp=0;};
 static BurstJob burstJobs[256];static int burstCursor,burstFrame=-1;
 static uint32_t burstSerial,burstTask;static bool burstPending;
@@ -9,13 +13,15 @@ static void cancelBurst(uint32_t id){int n=burstIndex(id);if(n>=0)burstJobs[n]=b
 static void resetBurstControl(){burstCount=burstCursor=0;burstFrame=-1;burstPending=false;if(sh)sh->burstActive=sh->burstIssued=0;}
 static bool burstEnabled(uint32_t p){
  if(!refreshFeatureTypes())return false;
- const bool global=sh->burstEnabled&&featureObjectAllowed(featuretypes::BurstRefresh,p);
- const bool held=sh->burstHoldEnabled&&sh->burstHeld&&sh->foreground&&!snap.chat&&DWORD(sampleClock(sh)-sh->heartbeat)<=250&&get<bool>(p+0x83);
+ const auto source=burstSource(p);
+ const bool global=sh->burstEnabled&&bursteligibility::automatic(source)&&featureObjectAllowed(featuretypes::BurstRefresh,p);
+ const bool held=sh->burstHoldEnabled&&sh->burstHeld&&bursteligibility::held(source)&&sh->foreground&&!snap.chat&&DWORD(sampleClock(sh)-sh->heartbeat)<=250&&get<bool>(p+0x83);
  return global||held;
 }
 static bool burstObserve(uint32_t p,uint32_t q,uint32_t house,burstcompute::Source&s){
  if(!p||!q||!own(p,house)||!live(p)||!nativeEnemy(q,house)||dodgeOwns(get<uint32_t>(p+0x10)))return false;
  int k=kind(p),tk=kind(q);if(k<0||tk<0||get<bool>(p+0x1C8)||get<uint32_t>(p+0x11C)||get<uint32_t>(q+0x11C)||get<int>(q+0x220))return false;
+ if(burstSource(p).managed)return false;
  planner::Actor source{},target{};rawCombatInfo(p,typeOf(p,k),k,source,true);rawCombatInfo(q,typeOf(q,tk),tk,target,false);
  if(source.flags&(planner::Manipulated|planner::OutOfAmmo|planner::SustainedFire))return false;
  uint32_t weapon=0;int slot=0,close=0,air=0;if(GuardedCombatWeapon(p,q,&weapon,&slot,&close,&air)<=0)return false;

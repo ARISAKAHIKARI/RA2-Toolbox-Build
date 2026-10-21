@@ -1,6 +1,19 @@
-# RA2 Toolbox 1.0.30-pre.1
+# RA2 Toolbox 1.0.30-pre.2
 
-[预发布完整包与更新包](https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/releases/tag/v1.0.30-pre.1) · [稳定版 1.0.29](https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/releases/tag/v1.0.29) · [源码](source/) · [实现与验证](source/REVIEW-1.0.30.md)
+[预发布完整包与更新包](https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/releases/tag/v1.0.30-pre.2) · [稳定版 1.0.29](https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/releases/tag/v1.0.29) · [源码](source/) · [本次实现与验证](source/REVIEW-1.0.30-pre.2.md)
+
+以 v1.0.30-pre.1（02614f99bde1bc8022e0699ae9e5133f975a2c0e）为基线。
+
+- 特殊下令光标：高级移动攻击使用原版移动攻击图案的内绿外黄配色；飞机分配投弹使用原版攻击图案的内绿外红配色。按键 CS 复用移动攻击图案；磁电、进驻、飞碟主武器也有独立颜色。
+- 按住已配置的特殊键、选中对应己方可用单位时显示；松键、切出游戏、进入聊天/菜单、提示过期、关闭功能或换局恢复。侧栏、雷达、边缘滚屏及原生维修/出售/超武等光标保留。
+- 提示复用现有高刷光标，包括外置图层、透明 SHA 和游戏内硬件光标模式。需要同时开启高刷光标及战术助手；无光标诊断模式或暂停光标时不显示提示。没有设置按住键的纯鼠标操作不会常驻特殊图案。提示只表明当前模式，不代表鼠标下每个目标都可接受该命令。
+- 自动刷弹排除普通飞机、飞行中的载具、航母/无畏等生成子单位的母体、航母小飞机、无畏导弹及 MOD 同类子单位。以 SpawnOwner、Spawned、Spawns/SpawnsNumber、MissileSpawn 属性判断，改名不绕过。母体/子单位也不能被按键刷弹重新纳入；普通飞机仅保留显式按键刷弹通道。
+- 光标状态仅在 EXE 的现有模块间传递；没有新增游戏 Hook、注入入口或下令事件。选区提示按 32ms 节流并使用独立只读页缓存，松键在显示时再次检查。刷弹在两个计算后端的统一采集和提交校验处排除这些单位。
+- 文件版本 1.0.30.1；Assist 55、Runtime 4、入口管理器 3 不变。先退出游戏和工具箱，成套覆盖 EXE/DLL，保留配置、资源和 cache。
+
+验证：本次 136 项真实 x86 DLL 受控用例通过，覆盖单机/联机事件队列、外部/Runtime 计算、刷弹排除以及原有刷弹/躲避恢复；宿主模式、类型过滤、输入及共享模块检查通过，Windows PE/ABI/版本/依赖静态校验通过。预览来自真实像素换色函数。尚未进行 Windows 完整游戏或双机联机实测。
+
+## 继承 pre.1 的功能与限制
 
 # RA2 Toolbox v1.0.30-pre.1 预发布版
 
