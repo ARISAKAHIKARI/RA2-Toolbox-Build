@@ -37,10 +37,10 @@ static struct{int size=0;}commandQueue;
 static std::vector<int>commands;static std::vector<std::pair<int,bool>> selections;
 static void send(int cmd,int=0){commands.push_back(cmd);++shared->request;}
 static void sendSelection(int index,bool global,const uint8_t* =nullptr,uint32_t object=0){if(index==-4)selectedAircraft.push_back(object);selections.push_back({index,global});++shared->selectRequest;}
-'''+(r/'assist/source/idle_aircraft_selection.h').read_text()+'''static WORD idleAircraftKey=0x650;static WORD hotkeys[12]{},csKey=0,advancedKey=0,unloadKey=0,ejectKey=0,csHoldKey=0,magnetronKey=0;\nstatic WORD comparableKey'''+conflict+body+r'''
+'''+(r/'assist/source/idle_aircraft_selection.h').read_text()+'''static WORD socialKeys[9]{};static WORD idleAircraftKey=0x650;static WORD hotkeys[12]{},csKey=0,advancedKey=0,unloadKey=0,ejectKey=0,csHoldKey=0,magnetronKey=0;\nstatic WORD comparableKey'''+conflict+body+r'''
 static void ack(){shared->ack=shared->request;shared->selectAck=shared->selectRequest;serviceHotkeyBatch();}
 int main(){
- extra.allHotkeys=false;hotkeys[0]=0x641;assert(keyConflict(0xe41,"",false));extra.allHotkeys=true;assert(!keyConflict(0x641,"",false));snap.status=1;snap.match=8;snap.typeCount=1;snap.types[0].kind=40;std::strcpy(snap.types[0].id,"TANK");typeBindings.push_back({"TANK",0x641});
+ extra.allHotkeys=false;hotkeys[0]=0x641;assert(keyConflict(0xe41,"",false));extra.allHotkeys=true;assert(!keyConflict(0x641,"",false));snap.status=1;snap.renderStatus=1;snap.match=8;snap.typeCount=1;snap.types[0].kind=40;std::strcpy(snap.types[0].id,"TANK");typeBindings.push_back({"TANK",0x641});
  auto install=[](int,uint16_t){return true;};for(int id:{1001,1100,1700,1699})assert(hotkeyRegistry.add(id,0x641,true,install));
  const intptr_t event=(65<<16)|(MOD_CONTROL|MOD_ALT);
  handleHotkey(1001,event);assert(commands.size()==1&&commands.back()==CombatSelection);assert(selections.empty()&&hotkeyPending.count==3);
@@ -55,6 +55,12 @@ int main(){
  extra.allHotkeys=true;handleHotkey(1001,event);focused=false;serviceHotkeyBatch();assert(!hotkeyPending.count);focused=true;ack();
  assert(hotkeyPending.add(*hotkeyRegistry.find(1001),now,8));++scene;serviceHotkeyBatch();assert(!hotkeyPending.count);
  --scene;assert(hotkeyPending.add(*hotkeyRegistry.find(1001),now,8));now+=2501;serviceHotkeyBatch();assert(!hotkeyPending.count);
+
+ hotkeyRegistry.clear();extra.allHotkeys=false;assert(hotkeyRegistry.add(1710,0x641,false,install));
+ handleHotkey(1710,event);assert(commands.back()==Cheer);ack();
+ hotkeyRegistry.clear();assert(hotkeyRegistry.add(1718,0x641,false,install));handleHotkey(1718,event);assert(commands.back()==Taunt);ack();
+ snap.chat=1;auto socialCount=commands.size();handleHotkey(1718,event);assert(commands.size()==socialCount);snap.chat=0;
+ socialKeys[3]=0x641;assert(keyConflict(0x641,"",false));socialKeys[3]=0;
  hotkeyRegistry.clear();extra.allHotkeys=false;extra.idleAircraft=false;snap.renderStatus=1;
  assert(keyConflict(idleAircraftKey,"",false));
  assert(hotkeyRegistry.add(1701,idleAircraftKey,false,install));const intptr_t planeEvent=('P'<<16)|(MOD_CONTROL|MOD_ALT);

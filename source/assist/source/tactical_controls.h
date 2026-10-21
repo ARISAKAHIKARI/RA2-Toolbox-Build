@@ -25,6 +25,9 @@ for(int i:{11,1,2,3,4,5,6,7,0,8}){
 hookChecks[1]=toggle(459,L"智能卸载",hookSmartUnload,20,270);unloadKeyEdit=key(451,unloadKey,305,180);button(453,L"立即卸载",500,125);next();
 ejectCheck=toggle(455,L"载员逃生",ejectMode,20,306);ejectKeyEdit=key(456,ejectKey);next();
 csCheck=toggle(446,L"自动移动攻击（CS）",csMode,20,306);csKeyEdit=key(447,csKey);next();
+label(L"喝彩（替代原生快捷键）",20,306);key(870,socialKeys[0]);next();
+for(int i=1;i<9;++i){auto text=L"嘲讽 "+std::to_wstring(i);label(text.c_str(),20,306);key(870+i,socialKeys[i]);next();}
+note(L"绑定后由工具箱接管该组合；聊天和菜单中不接管。嘲讽仍遵循原版冷却与接收方设置。",44);
 label(L"轮选空闲飞机",20,306);key(853,idleAircraftKey);next();
 label(L"按当前武器选择同类单位",20,306);extraControls[VariantKey]=key(724,extra.variantKey);next();
 button(454,L"停止所选单位的自动任务");next();
@@ -75,7 +78,7 @@ number(818,L"高级移动攻击额外索敌距离 / 格",advancedRangeCells,L"0�
 label(L"高级移动攻击目标优先级",20,260);choices(combo(802),{L"单位价值优先",L"弹头伤害比例优先"},advancedTargetPriority);next();
 note(L"索敌范围为单位射程加额外距离；忽略伤害比例不超过 2% 的目标。",44);
 toggle(804,L"防御建筑优先攻击渗透单位",extra.antiTheft);next();
-toggle(799,L"建筑预定（建筑、防御各 5 项）",extra.constructionQueue);next();
+toggle(799,L"生产预定（四类生产栏各 5 项）",extra.constructionQueue);next();
 // One visible Auto CS switch represents the previous two enable flags.
 hookChecks[3]=placedControl({-3,{0,0,1,1}},L"BUTTON",L"",466,BS_AUTOCHECKBOX);
 SendMessageW(hookChecks[3],BM_SETCHECK,hookAutoCS?BST_CHECKED:BST_UNCHECKED,0);ShowWindow(hookChecks[3],SW_HIDE);
@@ -97,8 +100,8 @@ auto featureEdit=edit(792,featureTypeText[featureTypeIndex],20,605);SendMessageW
 note(L"类型 ID 用逗号分隔；启用后留空表示不处理任何类型。",26);
 
 heading(3,903,L"显示设置",L"调整游戏内信息显示、缩放与位置；有效设置立即生效。");
-toggle(808,L"地图不渲染黑幕与迷雾",extra.renderReveal);next();
-note(L"仅改变地图显示，不开放隐藏目标的选择与攻击；与地图全开不能同时启用。",44);
+label(L"黑幕处理",20,260);choices(combo(808),{L"原版（关闭）",L"半透明",L"不渲染黑幕",L"地图全开（自动 · 联机风险）"},extra.mapStrategy);next();
+note(L"半透明与不渲染仅改变显示；地图全开在对局就绪后自动执行，可能导致联机不同步。",44);
 item(L"STATIC",L"地图显示：关闭",20,605,809);next();
 
 const wchar_t* displayNames[]={L"载具载员与容量",L"铁幕 / 力场剩余时间",L"生产队列空闲提醒",L"显示未选中的载具",L"心灵控制状态",L"箱子信息",L"战术文字提示"};

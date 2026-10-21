@@ -20,6 +20,7 @@ static bool riskReady(bool captured=false){
  const DWORD heartbeat=sh->heartbeat; // Capture before the clock; host writes concurrently.
  return DWORD(sampleClock(sh)-heartbeat)<3000&&riskContextReady(captured);
 }
+#include "shroud_render_bridge.h"
 extern "C" int __cdecl AssistRiskAction(unsigned op,unsigned object,unsigned house){
  // Only GuardedRiskAction calls this helper, after obtaining a Capture lease.
  // Keep live world checks, but don't re-enter Validate on every drawn cell.
@@ -28,7 +29,7 @@ extern "C" int __cdecl AssistRiskAction(unsigned op,unsigned object,unsigned hou
  if(!riskReady(true)){if(op==3)riskRenderRedrawPending=true;return 0;}
  if(op==6)return riskControlActive&&sh->controlAll&&playableHouse(house);
  if(op==4)return riskC4Active&&sh->c4Test&&object>=0x10000&&own(object,lastHouse)&&kind(object)==1;
- if(op==3)return riskRenderActive&&sh->renderReveal!=0; // draw-only, no native game calls
+ if(op==3)return sh->renderReveal==2?halfShroud(object,house!=0):1;
  if(op==0)return riskPlacementActive&&(sh->flags&BuildAnywhere)&&house==get<uint32_t>(lastHouse+0x30)&&object>=0x10000&&
    call<int>(get<uint32_t>(get<uint32_t>(object)+0x2C),object)==7;
  if(!riskAirActive||!airpathpolicy::native(get<int>(0xA8B238),(sh->flags&NativeAirWaypoints)!=0))return 0;
@@ -151,7 +152,7 @@ static __declspec(naked) void riskShroudEntry(){__asm {
  mov dword ptr [esp+512],1F80h
  ldmxcsr [esp+512]
  push 0
- push 0
+ push ebp
  push 3
  call GuardedRiskAction
  add esp,12
@@ -188,8 +189,9 @@ static __declspec(naked) void riskFogEntry(){__asm {
  fldcw [esp]
  mov dword ptr [esp+512],1F80h
  ldmxcsr [esp+512]
- push 0
- push 0
+ push 1
+ lea eax,[ebx+36]
+ push eax
  push 3
  call GuardedRiskAction
  add esp,12
@@ -390,6 +392,7 @@ static bool redrawRevealTest(){
 }
 static void placementTick(){
  prepareRiskSites();
+ static uint32_t priorStrategy=0;
  bool priorRender=riskRenderActive;controlSitesTick(sh->controlAll!=0);
  if(sh->c4Test){riskC4Active=installRiskSite(riskSites[5]);snap.c4TestStatus=riskC4Active?1:-2;}
  else{riskC4Active=false;snap.c4TestStatus=restoreRiskSite(riskSites[5])?0:-2;}
@@ -398,7 +401,8 @@ static void placementTick(){
   if(!riskRenderActive){restoreRiskSite(riskSites[3]);restoreRiskSite(riskSites[4]);}
   snap.renderRevealStatus=riskRenderActive?1:-2;
  }else{riskRenderActive=false;bool a=restoreRiskSite(riskSites[3]),b=restoreRiskSite(riskSites[4]);snap.renderRevealStatus=a&&b?0:-2;}
- if(priorRender!=riskRenderActive)riskRenderRedrawPending=true;
+ if(priorRender!=riskRenderActive||priorStrategy!=sh->renderReveal)riskRenderRedrawPending=true;
+ priorStrategy=sh->renderReveal;
  if(riskRenderRedrawPending&&redrawRevealTest())riskRenderRedrawPending=false;
  if(sh->flags&BuildAnywhere){riskPlacementActive=installRiskSite(riskSites[0]);snap.placementStatus=riskPlacementActive?1:-2;}
  else{riskPlacementActive=false;snap.placementStatus=restoreRiskSite(riskSites[0])?0:-2;}

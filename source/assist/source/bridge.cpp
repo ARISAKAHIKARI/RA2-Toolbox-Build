@@ -47,7 +47,7 @@ using namespace assist;
 // string literal. The host validates both protocol and structure size before
 // installing a hook; the release verifier can inspect these exports offline.
 extern "C" __declspec(dllexport) const uint32_t AssistProtocolInfo[2]={Version,sizeof(Shared)};
-extern "C" __declspec(dllexport) const wchar_t AssistMappingPrefix[]=L"Local\\RA2Assist_v052_";
+extern "C" __declspec(dllexport) const wchar_t AssistMappingPrefix[]=L"Local\\RA2Assist_v053_";
 static Shared*sh;static HANDLE mapping;static bool checked,good,fault;static DWORD last,slow;static uint32_t lastHouse,match,pendingAck;static int lastFrame;
 static sessionepoch::Tracker sessionTracker;static Snapshot snap;
 static runtimefault::Context faultContext;
@@ -710,6 +710,7 @@ static int superSelect(uint32_t house,int index){Vec v=vec(house+0x254,256);uint
 static int namedSuper(uint32_t house,int command){const char* id=command==SelectIron?"IronCurtainSpecial":"ChronoSphereSpecial";Vec v=vec(house+0x254,256);
  for(int i=0;i<v.count;++i){uint32_t p=item(v,i);if(!p)continue;uint32_t t=get<uint32_t>(p+0x28);if(t&&sameid((const char*)(t+0x24),id))return superSelect(house,i);}return -4;
 }
+#include "social_bridge.h"
 static void command(uint32_t house,DWORD now){uint32_t req=sh->request;if(req==sh->ack||(repairAckPending&&req==repairAckRequest)||(loadAckPending&&req==loadAckRequest))return;MemoryBarrier();int c=sh->command,arg=sh->arg;int result=1,n=0;
  if(sh->requestMatch!=match||DWORD(now-sh->requestTick)>3500){result=-7;}
  else if(get<bool>(0xA8BC60+25)){result=-8;}
@@ -717,6 +718,7 @@ static void command(uint32_t house,DWORD now){uint32_t req=sh->request;if(req==s
   n=collectRepairs(house,now);if(n<0&&n!=-30){result=n;n=0;}
   if(n>0||n==-30){repairAckRequest=req;repairAckPending=true;repairAckStarted=now;sh->result=1;sh->count=0;return;}
  }
+ else if(c==Cheer||c==Taunt){result=socialCommand(house,c,arg,now);n=result>0;}
  else if(c==SwitchPlayer||c==RestorePlayer){result=-4;n=0;} // unavailable in this release, including stale commands
  else if(c==SelectType){n=selectType(house,arg,sh->arg2!=0);if(n<0){result=n;n=0;}}
  else if(c==SelectVariant){n=selectVariant(house,sh->arg2!=0);if(n<0){result=n;n=0;}}
@@ -751,6 +753,16 @@ static void command(uint32_t house,DWORD now){uint32_t req=sh->request;if(req==s
    if(tab<0||tab>1||!hasCameo(7,t.index)||!typePointers[arg]||call<int>(0x4F7870,house,(void*)(uintptr_t)typePointers[arg],false,true)<=0)result=-9;
    else if(f>=0x10000&&(get<uint32_t>(f+0x58)||get<int>(f+0x50)>0))result=-9;
    else if(nativeProduceEvent(house,t,true)){n=1;watchReservedSidebar(house,t.index,tab,uint32_t(sh->arg2),now);}else result=-6;
+  }
+ }
+ else if(c==ProduceDeferred){
+  if(!(sh->flags&ReserveConstruction)||arg<0||arg>=snap.typeCount||!typePointers[arg])result=-4;
+  else {const auto&t=snap.types[arg];int tab=typeTab(arg);uint32_t offset=t.kind==3?0x53AC:t.kind==16?0x53B0:t.kind==40?(t.naval?0x53B8:0x53B4):t.kind==7?(tab==1?0x53CC:0x53BC):0;
+   uint32_t factory=offset?get<uint32_t>(house+offset):0;
+   if(!offset||tab<0||tab>3||!hasCameo(t.kind,t.index)||call<int>(0x4F7870,house,(void*)(uintptr_t)typePointers[arg],false,true)<=0)result=-9;
+   else if(factory>=0x10000&&(get<uint32_t>(factory+0x6C)!=house||get<uint32_t>(factory+0x58)||get<int>(factory+0x50)>0))result=-9;
+   else if(!techFactory(typePointers[arg],house))result=-9;
+   else if(nativeProduceEvent(house,t,true)){n=1;if(t.kind==7)watchReservedSidebar(house,t.index,tab,0,now);}else result=-6;
   }
  }
  else if(c==Produce||c==CancelTechProduction){

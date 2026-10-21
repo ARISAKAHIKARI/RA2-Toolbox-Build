@@ -6,7 +6,7 @@ namespace assist {
 struct AdditionalSettings {
  bool controlAll=false,switchPlayerEnabled=false;
  bool c4Test=false;uint32_t c4Key='C'|(4<<8),c4Mouse=1;
- bool renderReveal=false,experimentalReveal=false,antiTheft=false,nativeAirWaypoints=false;
+ uint32_t renderReveal=0;int mapStrategy=0;bool experimentalReveal=false,antiTheft=false,nativeAirWaypoints=false;
  bool enemyMarkers=false,idleAircraft=true,constructionQueue=true,airWaypoints=true;
  bool allHotkeys=false,overrideNative=false;
  int loadMode=0,loadRadius=30;

@@ -1,0 +1,2 @@
+PASS: 1000 unchanged refreshes, offscreen-only draws and one complete presentation per paint; no redundant position or allocation
+PASS: 36 viewport/scale/queue combinations; move/hide/reopen/invalid-tab; DC/bitmap/selection failures and resource cleanup

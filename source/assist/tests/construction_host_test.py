@@ -31,7 +31,7 @@ static void publishReservationPolicy(const construction::InputPolicy&p){reservat
 static bool takeReservationClick(construction::InputClick&out){if(!inputPending)return false;inputPending=false;out=inputClick;reservationPolicy={};return true;}
 static bool SetLayeredWindowAttributes(HWND,int,int alpha,int flags){assert(flags==LWA_ALPHA);panelAlpha=alpha;return true;}
 static struct{bool constructionQueue=true;}extra;
-static struct{int typeCount=3,chat=0,renderStatus=1;struct{int kind=7,index=0;char id[24]{};wchar_t name[40]{};}types[8];}snap;
+static struct{int typeCount=3,chat=0,renderStatus=1;struct{int kind=7,index=0,naval=0;char id[24]{};wchar_t name[40]{};}types[8];}snap;
 static delivery::Queue commandQueue;
 struct Reader{std::vector<uint8_t>bytes=std::vector<uint8_t>(0x1000000);uint32_t fail=0;
  bool readFresh(uint32_t p,void*out,size_t n){if(p<0x10000||p+n>bytes.size()||(fail&&p<=fail&&p+n>fail))return false;memcpy(out,bytes.data()+p,n);return true;}
@@ -168,6 +168,27 @@ int main(){
  snap.renderStatus=0;tick();assert(!geometryReady&&reservationPolicy.slots==0);snap.renderStatus=1;tick();assert(geometryReady);
  focused=false;tick();assert(!geometryReady);focused=true;tick();assert(geometryReady);
  std::cout<<"PASS: read-only panel survives command suspension/chat; closed input/no Produce; resumes once; menu/focus still hide\n";
+
+ // A queued barracks predicts infantry; no infantry factory exists yet.
+ setup();reserve(choice(1));w(T+0x2000+0xEB8,16);uint32_t I=T+0x6000;
+ list(0xA8E348,{I});w(I+0x634,1);w(I+0x6CC,1);w(I+0xDA0,-1);w(I+0xDA4,-1);list(I+0x638,{1});list(I+0x654,{});
+ snap.typeCount=4;snap.types[3].kind=16;snap.types[3].index=0;
+ selectedTab=activeTab=2;refreshChoices();assert(choice(encode(16,0))>=0);reserve(choice(encode(16,0)));
+ assert(books[2].items.size()==1&&!books[2].source);tick();assert(books[2].items.size()==1&&commandQueue.size==0);
+ removeItem(0,0,true);tick();tick(600);assert(books[2].items.empty()); // dependency canceled
+ // Cross-tab defense preview while only its barracks prerequisite is queued.
+ snap.typeCount=3;setup();reserve(choice(1));w(T+0x4000+0xE08,5);
+ selectedTab=activeTab=1;refreshChoices();assert(choice(2)>=0);reserve(choice(2));assert(!books[1].source);
+ removeItem(0,0,true);tick();tick(600);assert(books[1].items.empty());
+ // Unit production waits for native cameo; consumes exactly once at ACK.
+ snap.typeCount=3;setup();reserve(choice(1));w(T+0x2000+0xEB8,16);
+ list(0xA8E348,{I});w(I+0x634,1);w(I+0x6CC,1);w(I+0xDA0,-1);w(I+0xDA4,-1);list(I+0x638,{1});list(I+0x654,{});
+ snap.typeCount=4;snap.types[3].kind=16;snap.types[3].index=0;
+ selectedTab=activeTab=2;refreshChoices();reserve(choice(encode(16,0)));tick();assert(commandQueue.size==0);
+ uint32_t infantryStrip=0x87F7E8+0x1544+2*3988;w(infantryStrip+84,1);w(infantryStrip+88,0);w(infantryStrip+92,16);
+ tick();assert(commandQueue.size==0);tick();assert(commandQueue.size==1&&commandQueue.slots[0].command==ProduceDeferred);
+ auto deferredToken=books[2].token;result(1,1,0,deferredToken);assert(books[2].items.empty());result(1,1,0,deferredToken);assert(books[2].items.empty());
+ std::cout<<"PASS: missing-barracks infantry, cross-tab defense, canceled prerequisite cascade, native-cameo wait and exactly-once unit ACK\n";
  assert(!l.set(0,0,3840,2160));
  std::cout<<"PASS: actual host service FIFO5/duplicates/future unlock/cancel parent/right cancel/round/token ACK/retry/busy/menu; catalogue sentinels/parent/stolen flags/read failure; six resolution transforms and hit regions\n";
 }

@@ -6,7 +6,7 @@
 #include <condition_variable>
 #include <chrono>
 namespace minimap {
-struct Request {DWORD pid=0;uint32_t match=0;int rate=60;bool reveal=false;};
+struct Request {DWORD pid=0;uint32_t match=0;int rate=60;uint32_t reveal=0;};
 // Separate task cache, shared central read-only connection. Terrain traversal
 // never blocks the UI or the game thread. Publish complete immutable frames.
 class Worker {

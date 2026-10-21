@@ -24,13 +24,13 @@ inline uint32_t terrainColor(int land,int level,bool fog){
 }
 template<class Read> class Sampler {
  Read read_;GameView<Read> view_;Geometry geo_{};std::vector<uint32_t> pointers_;std::shared_ptr<Terrain> pending_;std::shared_ptr<const Terrain> terrain_;
- size_t cursor_=0;int lastFrame_=-1;bool reveal_=false;unsigned revision_=0;
+ size_t cursor_=0;int lastFrame_=-1;uint32_t reveal_=0;unsigned revision_=0;
  template<class T>T get(uint32_t a,T fallback={})const{return view_.template get<T>(a,fallback);}
 public:
  explicit Sampler(Read r):read_(r),view_(r){}
  void reset(){geo_={};pointers_.clear();pending_.reset();terrain_.reset();cursor_=0;lastFrame_=-1;++revision_;}
  unsigned revision()const{return revision_;}
- bool step(bool reveal,int budget=4096){
+ bool step(uint32_t reveal,int budget=4096){
   Geometry g;g.width=get<int>(Map+0xF4);g.height=get<int>(Map+0xF8);g.cells=get<uint32_t>(Map+0x13C);g.count=get<int>(Map+0x140);
   g.factor=get<float>(Map+0x1488);g.offsetX=get<int>(Map+0x1490);g.offsetY=get<int>(Map+0x1498);g.rw=get<int>(Map+0x14A4);g.rh=get<int>(Map+0x14A8);g.house=get<uint32_t>(0xA83D4C);
   int frame=get<int>(0xA8ED84,-1);if(!g.valid()||frame<0||get<uint8_t>(0xA8E9A0)!=1||!display::inspect(read_).visible()){reset();return false;}
@@ -42,7 +42,9 @@ public:
    if(p<0x10000)continue;std::array<uint8_t,0x148> cell{};if(!read_(p,cell.data(),cell.size()))continue;
    int16_t cx=0,cy=0;int land=-1;std::memcpy(&cx,cell.data()+0x24,2);std::memcpy(&cy,cell.data()+0x26,2);std::memcpy(&land,cell.data()+0xEC,4);
    if(cx!=x||cy!=y)continue;int visibility=int8_t(cell[0x120]),fog=int8_t(cell[0x121]);if(!reveal&&visibility!=-1)continue;
-   pending_->colors[cursor_]=terrainColor(land,cell[0x11B],!reveal&&fog!=-1);
+   uint32_t color=terrainColor(land,cell[0x11B],!reveal&&fog!=-1);
+   if(reveal==2&&(visibility!=-1||fog!=-1))color=(color>>1)&0x7F7F7F;
+   pending_->colors[cursor_]=color;
   }
   if(cursor_==pointers_.size()){terrain_=pending_;pending_.reset();++revision_;}return true;
  }

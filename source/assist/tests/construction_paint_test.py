@@ -69,9 +69,10 @@ static void InvalidateRect(HWND,void*,int){}static LRESULT DefWindowProcW(HWND,U
 #include "construction_buffer.h"
 static Window gameObject,panelObject;static HWND game=&gameObject,window=&panelObject;
 static construction::Layout layout;static construction::PanelBuffer panelBuffer;
-static bool geometryReady=true;static int activeTab=0,scroll=0;static HFONT panelFont=&testFont,font=&testFont;
-static construction::Book books[2];struct Choice{int slot,index,tab;uint32_t type;bool future;};static std::vector<Choice> choices;
+static bool geometryReady=true;static int activeTab=0,selectedTab=-1,scroll=0;static HFONT panelFont=&testFont,font=&testFont;
+static construction::Book books[4];struct Choice{int slot,index,tab;uint32_t type;bool future;};static std::vector<Choice> choices;
 static struct{int typeCount=8;struct{int kind=7,index=0;wchar_t name[40]=L"Building";}types[8];}snap;
+static int encode(int kind,int index){return kind==7?index:(kind<<16)|index;}static void refreshChoices(){}
 static bool usable(){return true;}static void removeTop(bool){}static void removeItem(int,int,bool){}static void reserve(int){}
 '''
 icon = r'''

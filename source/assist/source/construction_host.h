@@ -6,16 +6,22 @@
 // Host-owned FIFO. GameRuntime remains the only writer/command constructor.
 namespace buildreserve {
 struct Choice {int slot=0,index=0,tab=0;uint32_t type=0;bool future=false;};
-static construction::Book books[2];static std::vector<Choice> choices;static HWND window;
-static uint32_t current[2],currentID[2],lastPID=0,house,refreshed=0,nextToken=0;
-static int activeTab=-1,scroll=0;static um::IconCache& icons=um::sharedIconCache();static construction::Layout layout;
+static construction::Book books[4];static std::vector<Choice> choices;static HWND window;
+static uint32_t current[4],currentID[4],lastPID=0,house,refreshed=0,nextToken=0;
+static int activeTab=-1,selectedTab=-1,lastNativeTab=-1,scroll=0;static um::IconCache& icons=um::sharedIconCache();static construction::Layout layout;
 static construction::NativeFrame nativeFrame;static uint32_t nativeAt=0;
 static HFONT panelFont;static int fontHeight=0;static bool geometryReady=false;
 static construction::PanelBuffer panelBuffer;
 template<class T>static T get(uint32_t at,T fallback={}){T v{};return externalReader.readFresh(at,&v,sizeof v)?v:fallback;}
+static int encode(int kind,int index){return kind==7?index:(kind<<16)|index;}
+static int absKind(int index){return index<65536?7:index>>16;}
+static int typeIndex(int index){return index&65535;}
+static uint32_t typeArray(int index){switch(absKind(index)){case 7:return 0xA83C68;case 16:return 0xA8E348;case 40:return 0xA83CE0;case 3:return 0xA8B218;default:return 0;}}
+static uint32_t typePointer(int index){uint32_t a=typeArray(index),v=get<uint32_t>(a+4);int count=get<int>(a+16,-1),i=typeIndex(index);return a&&v>=0x10000&&count>0&&count<=4096&&i<count?get<uint32_t>(v+i*4):0;}
+static uint32_t factoryOffset(int index,int tab){int kind=absKind(index);return kind==3?0x53AC:kind==16?0x53B0:kind==40?(get<uint8_t>(typePointer(index)+0xCCE)?0x53B8:0x53B4):(tab?0x53CC:0x53BC);}
 static uint32_t factory(int tab){return get<uint32_t>(house+(tab?0x53CC:0x53BC));}
 static uint32_t product(int tab){uint32_t f=factory(tab);return f>=0x10000&&get<uint32_t>(f+0x6C)==house?get<uint32_t>(f+0x58):0;}
-static bool nativeCameo(int index,int tab){uint32_t strip=0x87F7E8+0x1544+tab*3988;int n=get<int>(strip+84,-1);if(n<0||n>75)return false;for(int i=0;i<n;++i)if(get<int>(strip+88+i*52)==index&&get<int>(strip+92+i*52)==7)return true;return false;}
+static bool nativeCameo(int index,int tab){uint32_t strip=0x87F7E8+0x1544+tab*3988;int n=get<int>(strip+84,-1);if(n<0||n>75)return false;for(int i=0;i<n;++i)if(get<int>(strip+88+i*52)==typeIndex(index)&&get<int>(strip+92+i*52)==absKind(index))return true;return false;}
 static bool factoryState(int tab,uint32_t&f,uint32_t&p){
  f=p=0;if(!externalReader.readFresh(house+(tab?0x53CC:0x53BC),&f,4))return false;if(!f)return true;
  if(f<0x10000)return false;uint32_t owner=0;
@@ -26,28 +32,39 @@ static bool factoryState(int tab,uint32_t&f,uint32_t&p){
 static void queueLog(int tab,const wchar_t*reason){const auto&b=books[tab];critical(L"Construction queue: "+std::wstring(reason)+L" tab="+std::to_wstring(tab)+L" match="+std::to_wstring(b.match)+L" parent="+std::to_wstring(b.id)+L" stage="+std::to_wstring(b.stage)+L" head="+std::to_wstring(b.head())+L" count="+std::to_wstring(b.items.size()));}
 static bool placed(uint32_t p){return !get<uint8_t>(p+0x81,1)&&get<uint8_t>(p+0x90)&&get<uint8_t>(p+0x74);}
 static void hide(){publishReservationPolicy({});geometryReady=false;nativeFrame={};nativeAt=0;if(window)ShowWindow(window,SW_HIDE);}
-static void cancel(int tab){auto&b=books[tab];for(int i=0;i<commandQueue.size;)if(commandQueue.slots[i].command==ProduceReserved&&commandQueue.slots[i].token==b.token)commandQueue.discard(i);else ++i;b={};}
-static void reset(){cancel(0);cancel(1);choices.clear();current[0]=current[1]=currentID[0]=currentID[1]=0;activeTab=-1;refreshed=0;hide();}
-static int typeSlot(int index){for(int i=0;i<snap.typeCount;++i)if(snap.types[i].kind==7&&snap.types[i].index==index)return i;return -1;}
-static std::wstring nameOf(int index){int slot=typeSlot(index);return slot>=0?std::wstring((const wchar_t*)snap.types[slot].name):L"未知建筑";}
-static void result(int status,int count,uint32_t id,uint32_t token){for(int tab=0;tab<2;++tab){auto&b=books[tab];if(b.id!=id||b.token!=token||!token||b.stage!=1)continue;
- if(status>0&&count>0){b.stage=2;b.sent=GetTickCount();queueLog(tab,L"accepted-awaiting-product");}
+static void cancel(int tab){auto&b=books[tab];for(int i=0;i<commandQueue.size;)if((commandQueue.slots[i].command==ProduceReserved||commandQueue.slots[i].command==ProduceDeferred)&&commandQueue.slots[i].token==b.token)commandQueue.discard(i);else ++i;b={};}
+static void reset(){for(int tab=0;tab<4;++tab){cancel(tab);current[tab]=currentID[tab]=0;}choices.clear();activeTab=selectedTab=lastNativeTab=-1;refreshed=0;hide();}
+static int typeSlot(int index){for(int i=0;i<snap.typeCount;++i)if(snap.types[i].kind==absKind(index)&&snap.types[i].index==typeIndex(index))return i;return -1;}
+static std::wstring nameOf(int index){int slot=typeSlot(index);return slot>=0?std::wstring((const wchar_t*)snap.types[slot].name):L"未知类型";}
+static void result(int status,int count,uint32_t id,uint32_t token){for(int tab=0;tab<4;++tab){auto&b=books[tab];if(b.id!=id||b.token!=token||!token||b.stage!=1)continue;
+ if(status>0&&count>0&&tab>=2){b.consume(0,0);if(b.items.empty())cancel(tab);else b.retry=GetTickCount()+100;queueLog(tab,L"accepted-unit-production");}
+ else if(status>0&&count>0){b.stage=2;b.sent=GetTickCount();queueLog(tab,L"accepted-awaiting-product");}
  else if(status==-9){b.stage=0;b.retry=GetTickCount()+1000;if(b.attempts==1)queueLog(tab,L"waiting-native-prerequisite-or-factory");}
  else if((status==-6||status==-7||status==-3)&&b.attempts<3){b.stage=0;b.retry=GetTickCount()+250;}
  else{queueLog(tab,L"submission-rejected");cancel(tab);notify(L"预定未提交，已取消后续预定；原版生产不受影响。");}break;
 }}
+template<class C>static bool loadForecast(C&catalogue){
+ std::vector<int> building;
+ for(int tab=0;tab<2;++tab){uint32_t p=current[tab];if(p&&!placed(p)){int i=get<int>(get<uint32_t>(p+0x520)+0xDF8,-1);if(i>=0)building.push_back(i);}}
+ if(!catalogue.load(house,building))return false;
+ // FIFO prerequisites may cross building/defense tabs; only extend reachable
+ // chains. Never count a blocked reservation as its own prerequisite.
+ size_t at[2]{};for(int pass=0;pass<10;++pass){bool changed=false;
+  for(int tab=0;tab<2;++tab){auto&b=books[tab];if(b.match!=commandMatch()||b.house!=house)continue;
+   if(at[tab]<b.items.size()&&catalogue.append(b.items[at[tab]])){++at[tab];changed=true;}}
+  if(!changed)break;
+ }return true;
+}
 static void collectChoices(){
- choices.clear();if(activeTab<0||activeTab>1||(!current[activeTab]&&books[activeTab].items.empty()))return;
- std::vector<int> future;uint32_t p=current[activeTab];if(p&&!placed(p))future.push_back(get<int>(get<uint32_t>(p+0x520)+0xDF8,-1));
- auto&b=books[activeTab];future.insert(future.end(),b.items.begin(),b.items.end());
- auto read=[](uint32_t at,void*out,size_t n){return externalReader.readFresh(at,out,n);};construction::Catalogue<decltype(read)> catalogue(read);bool previewReady=catalogue.load(house,future);
- uint32_t types=get<uint32_t>(0xA83C68+4);int count=get<int>(0xA83C68+16,-1);if(types<0x10000||count<0||count>4096)return;
- std::vector<int> nativeIndices;uint32_t strip=0x87F7E8+0x1544+activeTab*3988;int cameoCount=get<int>(strip+84,-1);int entries[75*13]{};
- if(cameoCount>0&&cameoCount<=75&&externalReader.readFresh(strip+88,entries,size_t(cameoCount)*52))for(int i=0;i<cameoCount;++i)if(entries[i*13+1]==7)nativeIndices.push_back(entries[i*13]);
- for(int slot=0;slot<snap.typeCount;++slot){const auto&t=snap.types[slot];if(t.kind!=7||t.index<0||t.index>=count)continue;uint32_t type=get<uint32_t>(types+t.index*4);if(type<0x10000)continue;
-  int tab=get<int>(type+0xE08,-1)==5?1:0;if(tab!=activeTab)continue;bool native=std::find(nativeIndices.begin(),nativeIndices.end(),t.index)!=nativeIndices.end();
-  bool queued=std::find(b.items.begin(),b.items.end(),t.index)!=b.items.end();
-  if((native&&queued)||(!native&&(queued||(previewReady&&catalogue.preview(t.index)))))choices.push_back({slot,t.index,tab,type,!native});
+ choices.clear();if(activeTab<0||activeTab>3)return;
+ auto read=[](uint32_t at,void*out,size_t n){return externalReader.readFresh(at,out,n);};construction::Catalogue<decltype(read)> catalogue(read);
+ bool previewReady=loadForecast(catalogue);auto&b=books[activeTab];
+ for(int slot=0;slot<snap.typeCount;++slot){const auto&t=snap.types[slot];int index=encode(t.kind,t.index);uint32_t type=typePointer(index);if(type<0x10000)continue;
+  int tab=t.kind==7?(get<int>(type+0xE08,-1)==5?1:0):t.kind==16?2:(t.kind==40||t.kind==3)?3:-1;
+  if(tab!=activeTab)continue;bool native=nativeCameo(index,tab);
+  bool queued=std::find(b.items.begin(),b.items.end(),index)!=b.items.end();
+  bool future=previewReady&&catalogue.possible(type,t.kind,t.naval!=0)&&!catalogue.possible(type,t.kind,t.naval!=0,false);
+  if(queued||(!native&&future))choices.push_back({slot,index,tab,type,!native});
  }
 }
 static void resizePanel(){
@@ -63,7 +80,7 @@ static void resizePanel(){
 static bool usable();
 static bool displayReady(){return extra.constructionQueue&&enabled&&foregroundGame()&&snap.renderStatus==1;}
 static void refreshChoices(){
- collectChoices();layout.content(activeTab>=0&&activeTab<2?int(books[activeTab].items.size()):0,int(choices.size()));
+ collectChoices();layout.content(activeTab>=0&&activeTab<4?int(books[activeTab].items.size()):0,int(choices.size()));
  int maximum=std::max(0,(int(choices.size())+1)/2-layout.rows)*2;scroll=std::clamp(scroll,0,maximum);
  construction::InputPolicy policy{};
  if(usable()&&activeTab>=0&&activeTab<2&&current[activeTab]&&!books[activeTab].stage){
@@ -74,33 +91,34 @@ static void refreshChoices(){
 }
 static bool usable(){return displayReady()&&!snap.chat&&commandFresh(GetTickCount());}
 static void reserveChoice(Choice c,bool fromNative=false,bool nativeCaptured=false){
- if(!usable()||activeTab<0||activeTab>1||c.tab!=activeTab)return;auto&b=books[activeTab];
+ if(!usable()||activeTab<0||activeTab>3||c.tab!=activeTab)return;auto&b=books[activeTab];
  if(b.stage){notify(L"生产请求正在提交，请等原版队列更新后再预定。");return;}
- uint32_t p=product(activeTab),identity=get<uint32_t>(p+0x10);if(!p||p!=current[activeTab]||identity!=currentID[activeTab]||get<uint32_t>(0xA83D4C)!=house)return;
- if(!b.items.empty()&&(b.match!=commandMatch()||b.house!=house||b.id!=identity)){cancel(activeTab);return;}
+ uint32_t p=activeTab<2?product(activeTab):0,identity=p?get<uint32_t>(p+0x10):0;
+ if((p&&(p!=current[activeTab]||identity!=currentID[activeTab]))||get<uint32_t>(0xA83D4C)!=house)return;
+ if(!b.items.empty()&&(b.match!=commandMatch()||b.house!=house||(b.source&&p&&b.id!=identity))){cancel(activeTab);return;}
  refreshChoices();bool valid=fromNative&&nativeCameo(c.index,c.tab)&&typeSlot(c.index)==c.slot;for(const auto&choice:choices)if(choice.index==c.index&&choice.type==c.type)valid=true;if(!valid)return;
  if(!b.add(c.index)){notify(L"本类预定已满（5 项）；右键叠放区取消最上层，Shift＋右键清空。");return;}
  if(b.items.size()==1){b.match=commandMatch();b.house=house;b.source=p;b.id=identity;}
  if(!fromNative||nativeCaptured)requestReservationSound();
  queueLog(activeTab,fromNative?L"reserved-native-click":L"reserved-extra-panel");
- refreshChoices();if(window)InvalidateRect(window,nullptr,FALSE);notify(L"已加入预定 "+std::to_wstring(b.items.size())+L"："+nameOf(c.index)+L"；放下当前建筑后依次继续生产。");
+ refreshChoices();if(window)InvalidateRect(window,nullptr,FALSE);notify(L"已加入预定 "+std::to_wstring(b.items.size())+L"："+nameOf(c.index)+L"；满足生产条件后按顺序提交。");
 }
 static void reserve(int item){if(item>=0&&item<int(choices.size()))reserveChoice(choices[item]);}
 static bool readNative(){nativeAt=GetTickCount();return construction::readNative([](uint32_t at,void*out,size_t n){return externalReader.readFresh(at,out,n);},nativeFrame);}
 // Cancel only host reservations. Already-issued native Produce events cannot
 // be recalled; retain that head until its product is observed, clear the tail.
 static void removeItem(int tab,int item,bool all=false){
- if(!usable()||tab<0||tab>1)return;auto&b=books[tab];if(b.items.empty()||item<0||item>=int(b.items.size()))return;
- const size_t before=b.items.size();bool locked=false;if(b.stage){locked=true;for(int i=0;i<commandQueue.size;++i)if(commandQueue.slots[i].command==ProduceReserved&&commandQueue.slots[i].token==b.token)locked=false;}
+ if(!usable()||tab<0||tab>3)return;auto&b=books[tab];if(b.items.empty()||item<0||item>=int(b.items.size()))return;
+ const size_t before=b.items.size();bool locked=false;if(b.stage){locked=true;for(int i=0;i<commandQueue.size;++i)if((commandQueue.slots[i].command==ProduceReserved||commandQueue.slots[i].command==ProduceDeferred)&&commandQueue.slots[i].token==b.token)locked=false;}
  if(all){if(locked)b.items.resize(1);else cancel(tab);}
  else if(item==0&&locked){notify(L"这一项已进入原版提交，待生产确认后可在原生侧栏取消。");return;}
- else if(item==0&&b.stage){for(int i=0;i<commandQueue.size;)if(commandQueue.slots[i].command==ProduceReserved&&commandQueue.slots[i].token==b.token)commandQueue.discard(i);else ++i;b.stage=b.attempts=0;b.token=b.sent=b.retry=0;b.items.erase(b.items.begin());if(b.items.empty())cancel(tab);}
+ else if(item==0&&b.stage){for(int i=0;i<commandQueue.size;)if((commandQueue.slots[i].command==ProduceReserved||commandQueue.slots[i].command==ProduceDeferred)&&commandQueue.slots[i].token==b.token)commandQueue.discard(i);else ++i;b.stage=b.attempts=0;b.token=b.sent=b.retry=0;b.items.erase(b.items.begin());if(b.items.empty())cancel(tab);}
  else{b.items.erase(b.items.begin()+item);if(b.items.empty())cancel(tab);}
  if(b.items.size()<before)requestReservationSound();
  queueLog(tab,all?L"user-cleared-reservations":L"user-canceled-reservation");refreshChoices();if(window)InvalidateRect(window,nullptr,FALSE);
  notify(all?(locked?L"后续预定已清空；已提交项交由原版生产确认。":L"本类预定已全部取消。"):L"已取消一项预定。");
 }
-static void removeTop(bool all=false){if(activeTab>=0&&activeTab<2)removeItem(activeTab,int(books[activeTab].items.size())-1,all);}
+static void removeTop(bool all=false){if(activeTab>=0&&activeTab<4)removeItem(activeTab,int(books[activeTab].items.size())-1,all);}
 static bool nativePointer(const gameinput::PointerPress&e){
  if(!usable()||e.match!=commandMatch()||uint32_t(GetTickCount()-e.tick)>100)return false;
  RECT client{};if(!GetClientRect(game,&client)||client.right!=e.width||client.bottom!=e.height||e.width<1||e.height<1||!readNative())return false;
@@ -129,8 +147,8 @@ static std::vector<construction::NativeBadge> nativeBadges(){
 static RECT rect(int x,int y,int r,int bottom){return {layout.x(x),layout.y(y),layout.x(r),layout.y(bottom)};}
 static void paintIcon(HDC dc,int index,int x,int y,bool gray){
  int slot=typeSlot(index);if(slot<0)return;const auto&t=snap.types[slot];
- uint32_t types=get<uint32_t>(0xA83C68+4);int count=get<int>(0xA83C68+16,-1);uint32_t ptr=types>=0x10000&&index>=0&&index<count&&count<=4096?get<uint32_t>(types+index*4):0;
- um::Type type{};type.category=3;memcpy(type.id,t.id,24);type.id[23]=0;if(ptr>=0x10000)externalReader.readFresh(ptr+1750,type.cameo,24);type.cameo[24]=0;type.ptr=ptr;
+ uint32_t ptr=typePointer(index);
+ um::Type type{};type.category=t.kind==7?3:t.kind==16?1:t.kind==40?2:0;memcpy(type.id,t.id,24);type.id[23]=0;if(ptr>=0x10000)externalReader.readFresh(ptr+1750,type.cameo,24);type.cameo[24]=0;type.ptr=ptr;
  static um::Snapshot palette{};palette.paletteReady=0;bool ready=icons.restore(type,palette);
  if(!ready&&ptr>=0x10000){static uint8_t buffer[32+256*1024];auto read=[](uint32_t at,void*out,size_t size){return externalReader.readFresh(at,out,size);};auto resolve=[](uint32_t){return 0u;};if(um::readCameo(read,resolve,type,buffer,sizeof buffer)&&um::readCameoPalette(read,palette)){ready=true;icons.remember(type,palette);}}
  RECT icon=rect(x,y,x+60,y+48);
@@ -143,16 +161,19 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
  if(msg==WM_MOUSEACTIVATE)return MA_NOACTIVATE;if(msg==WM_ERASEBKGND)return 1;
  if(msg==WM_MOUSEWHEEL){if(!geometryReady)return 0;int delta=short(HIWORD(wp)),maximum=std::max(0,(int(choices.size())+1)/2-layout.rows)*2;scroll=std::clamp(scroll+(delta<0?2:-2),0,maximum);InvalidateRect(w,nullptr,FALSE);return 0;}
  if(msg==WM_LBUTTONUP||msg==WM_RBUTTONUP){if(!geometryReady||!usable())return 0;int x=short(LOWORD(lp)),y=short(HIWORD(lp));
-  if(msg==WM_RBUTTONUP){if(activeTab<0||activeTab>1)return 0;bool all=(wp&MK_SHIFT)!=0;int slot=layout.queueAt(x,y,int(books[activeTab].items.size()));if(slot>=0)removeTop(all);else{int n=layout.choiceAt(x,y,scroll,int(choices.size()));if(n>=0){auto&items=books[activeTab].items;for(int i=int(items.size())-1;i>=0;--i)if(items[i]==choices[n].index){removeItem(activeTab,i,all);break;}}}}
+  if(msg==WM_LBUTTONUP&&y>=0&&y<layout.y(24)&&x>=0&&x<layout.width()){
+   selectedTab=std::min(3,int(int64_t(x)*4/layout.width()));activeTab=selectedTab;scroll=0;refreshChoices();InvalidateRect(w,nullptr,FALSE);return 0;}
+  if(msg==WM_RBUTTONUP){if(activeTab<0||activeTab>3)return 0;bool all=(wp&MK_SHIFT)!=0;int slot=layout.queueAt(x,y,int(books[activeTab].items.size()));if(slot>=0)removeTop(all);else{int n=layout.choiceAt(x,y,scroll,int(choices.size()));if(n>=0){auto&items=books[activeTab].items;for(int i=int(items.size())-1;i>=0;--i)if(items[i]==choices[n].index){removeItem(activeTab,i,all);break;}}}}
   else reserve(layout.choiceAt(x,y,scroll,int(choices.size())));return 0;
  }
  if(msg==WM_PAINT){PAINTSTRUCT ps{};HDC target=BeginPaint(w,&ps);RECT client{};GetClientRect(w,&client);
-  if(!geometryReady||activeTab<0||activeTab>1){EndPaint(w,&ps);return 0;}
+  if(!geometryReady||activeTab<0||activeTab>3){EndPaint(w,&ps);return 0;}
   HDC dc=panelBuffer.acquire(target,client.right-client.left,client.bottom-client.top);
   if(!dc){EndPaint(w,&ps);return 0;}
   HBRUSH bg=CreateSolidBrush(RGB(24,31,27));FillRect(dc,&client,bg);DeleteObject(bg);
   auto previous=SelectObject(dc,panelFont?panelFont:font);SetBkMode(dc,TRANSPARENT);SetTextColor(dc,RGB(237,219,151));RECT title=rect(3,0,141,23);
-  DrawTextW(dc,activeTab==1?L"防御预定 5 格":L"建筑预定 5 格",-1,&title,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+  const wchar_t* tabs[]={L"建筑",L"防御",L"步兵",L"载具"};
+  for(int tab=0;tab<4;++tab){RECT r=rect(tab*36,0,(tab+1)*36,23);SetTextColor(dc,tab==activeTab?RGB(255,231,145):RGB(150,161,145));DrawTextW(dc,tabs[tab],-1,&r,DT_CENTER|DT_VCENTER|DT_SINGLELINE);}
   const auto&b=books[activeTab];
   // Paint oldest first. Each later 48 px card overlaps the preceding card by
   // 24 px, so the latest reservation is physically on top.
@@ -163,7 +184,7 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
   RECT hint=rect(4,layout.stackBottom(),140,layout.headerHeight()-construction::SectionGap-1);SetTextColor(dc,RGB(180,188,167));DrawTextW(dc,usable()?L"右键退顶层 · Shift 清空":L"等待操作恢复",-1,&hint,DT_CENTER|DT_SINGLELINE|DT_VCENTER);
   int divider=layout.headerHeight()-construction::SectionGap/2;
   RECT separator=rect(5,divider,139,divider+1);HBRUSH line=CreateSolidBrush(RGB(104,116,86));FillRect(dc,&separator,line);DeleteObject(line);
-  for(int n=scroll;n<int(choices.size())&&n<scroll+layout.rows*2;++n){const auto&c=choices[n];if(c.slot<0||c.slot>=snap.typeCount||snap.types[c.slot].kind!=7||snap.types[c.slot].index!=c.index)continue;
+  for(int n=scroll;n<int(choices.size())&&n<scroll+layout.rows*2;++n){const auto&c=choices[n];if(c.slot<0||c.slot>=snap.typeCount||encode(snap.types[c.slot].kind,snap.types[c.slot].index)!=c.index)continue;
    const auto&t=snap.types[c.slot];int x=(n-scroll)%2*72+6,y=(n-scroll)/2*66+layout.headerHeight();
    paintIcon(dc,c.index,x,y,c.future);
    RECT name=rect(x-3,y+48,x+63,y+64);SetTextColor(dc,c.future?RGB(151,157,147):RGB(231,226,194));DrawTextW(dc,(const wchar_t*)t.name,-1,&name,DT_CENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
@@ -178,20 +199,30 @@ static void service(){
  if(!extra.constructionQueue){reset();return;}if(!displayReady()){hide();return;}
  house=get<uint32_t>(0xA83D4C);if(house<0x10000){hide();return;}
  if(lastPID!=pid){reset();lastPID=pid;wchar_t image[32768]{};DWORD length=32768;if(externalReader.imagePath(image,&length))icons.open(image,std::filesystem::path(root)/L"cache"/L"icons");}
- for(int tab=0;tab<2;++tab){auto&b=books[tab];
+ for(int tab=0;tab<4;++tab){auto&b=books[tab];
   if(!b.items.empty()&&(b.match!=commandMatch()||b.house!=house)){queueLog(tab,L"match-or-owner-changed");cancel(tab);}
-  uint32_t f=0,p=0;if(!factoryState(tab,f,p))continue;
+  uint32_t f=0,p=0;
+  if(tab<2){if(!factoryState(tab,f,p))continue;}
+  else if(!b.items.empty()){f=get<uint32_t>(house+factoryOffset(b.head(),tab));if(f>=0x10000&&get<uint32_t>(f+0x6C)==house)p=get<uint32_t>(f+0x58);}
+
   uint32_t identity=0;if(p&&!externalReader.readFresh(p+0x10,&identity,4))continue;
   current[tab]=p;currentID[tab]=identity;
   // Display follows read-only state. Command suspension closes input policy
   // and freezes submission/timeout handling without hiding the existing FIFO.
   if(b.items.empty()||!usable())continue;
-  if(current[tab]&&currentID[tab]!=b.id){int made=get<int>(get<uint32_t>(current[tab]+0x520)+0xDF8,-1);
+  if(tab<2&&current[tab]&&currentID[tab]!=b.id){int made=get<int>(get<uint32_t>(current[tab]+0x520)+0xDF8,-1);
    if(b.stage==2&&made==b.head()){b.consume(current[tab],currentID[tab]);if(b.items.empty())cancel(tab);continue;}
-   if(b.stage!=1){queueLog(tab,L"native-product-replaced");cancel(tab);notify(L"原生新生产已接管，后续预定已取消。");continue;}
+   if(b.stage!=1&&b.source){queueLog(tab,L"native-product-replaced");cancel(tab);notify(L"原生新生产已接管，后续预定已取消。");continue;}
   }
   if(b.stage==2){if(uint32_t(now-b.sent)>5000){queueLog(tab,L"acceptance-observation-timeout");cancel(tab);notify(L"预定已提交但尚未观察到生产，已停止跟踪，避免重复下单。");}continue;}
   if(b.stage==1){if(uint32_t(now-b.sent)>15000){queueLog(tab,L"submission-timeout");cancel(tab);notify(L"预定请求等待超时，已取消后续预定。");}continue;}
+  if(!b.source){
+   if(int32_t(now-b.retry)<0||current[tab]||!nativeCameo(b.head(),tab))continue;
+   if(!b.afterPlacement(get<int>(0xA8ED84,-1),true))continue;
+   int slot=typeSlot(b.head());if(slot<0){cancel(tab);continue;}
+   if(!b.token){if(!++nextToken)++nextToken;b.token=nextToken;}
+   if(queueCommand(ProduceDeferred,slot,0,b.match,0,0,b.token)){b.stage=1;b.sent=now;++b.attempts;}continue;
+  }
   uint8_t state[0x220]{};if(!externalReader.readFresh(b.source,state,sizeof state))continue;
   uint32_t sourceID=0,owner=0;int health=0;memcpy(&sourceID,state+0x10,4);memcpy(&owner,state+0x21C,4);memcpy(&health,state+0x6C,4);
   if(sourceID!=b.id||owner!=house){queueLog(tab,L"parent-identity-changed");cancel(tab);continue;}
@@ -208,7 +239,18 @@ static void service(){
   if(!b.token){if(!++nextToken)++nextToken;b.token=nextToken;}
   if(queueCommand(ProduceReserved,slot,int(b.id),b.match,0,0,b.token)){b.stage=1;b.sent=now;b.attempts=std::min(b.attempts+1,1000000);queueLog(tab,L"submitted-after-parent-placement");}
  }
- activeTab=get<int>(0x87F7E8+0x539C,-1);if(activeTab<0||activeTab>1||(!current[activeTab]&&books[activeTab].items.empty())){hide();return;}
+ auto read=[](uint32_t at,void*out,size_t n){return externalReader.readFresh(at,out,n);};construction::Catalogue<decltype(read)> forecast(read);
+ if(usable()&&loadForecast(forecast))for(int tab=0;tab<4;++tab){auto&b=books[tab];if(b.items.empty()||b.stage||b.source)continue;
+  int slot=typeSlot(b.head());if(slot<0||!forecast.possible(typePointer(b.head()),absKind(b.head()),get<uint8_t>(typePointer(b.head())+0xCCE)!=0)){
+   if(!b.missing)b.missing=now;else if(uint32_t(now-b.missing)>=500){queueLog(tab,L"future-prerequisite-canceled");cancel(tab);notify(L"前置科技已取消或失效，对应预定已取消。");}
+  }else b.missing=0;
+ }
+ int nativeTab=get<int>(0x87F7E8+0x539C,-1);if(nativeTab!=lastNativeTab){lastNativeTab=nativeTab;selectedTab=-1;}
+ activeTab=selectedTab>=0?selectedTab:nativeTab;
+ if(activeTab<0||activeTab>3){hide();return;}
+ bool context=current[0]||current[1];for(const auto&b:books)context=context||!b.items.empty();
+ if(!context){hide();return;}
+
  RECT client{};POINT origin{};int width=get<int>(0xA8EB84),height=get<int>(0xA8EB88);
  if(!GetClientRect(game,&client)||!ClientToScreen(game,&origin)||!layout.set(width,height,int(client.right-client.left),int(client.bottom-client.top),constructionScalePercent)){hide();return;}
  refreshChoices(); // Keep the panel while the last reserved product is still in production.

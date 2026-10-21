@@ -26,7 +26,11 @@ static bool autoSettingChanged(int id,int notification){
  if(id==810&&notification==BN_CLICKED){extra.c4Test=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;pointerMatches.clear();changedSetting();return true;}
  if(id==811&&edit){extra.c4Key=uint32_t(SendMessageW(GetDlgItem(ui,id),HKM_GETHOTKEY,0,0));changedSetting();return true;}
  if(id==812&&select){int selected=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));extra.c4Mouse=selected==5?6:selected;changedSetting();return true;}
- if(id==808&&notification==BN_CLICKED){extra.renderReveal=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;if(extra.renderReveal){extra.experimentalReveal=false;SendMessageW(extraControls[RevealExperimental],BM_SETCHECK,BST_UNCHECKED,0);for(int i=0;i<commandQueue.size;){if(commandQueue.slots[i].command==RevealMap)commandQueue.discard(i);else ++i;}}changedSetting();notify(extra.renderReveal?L"已请求移除黑幕与迷雾显示；不开放隐藏目标的选择与攻击。":L"地图显示设置已关闭，等待恢复黑幕与迷雾。");return true;}
+ if(id==808&&select){int strategy=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));if(strategy<0||strategy>3)return true;
+  extra.mapStrategy=strategy;extra.renderReveal=strategy==1?2:strategy==2?1:0;extra.experimentalReveal=strategy==3;autoRevealNewMatch=strategy==3;
+  SendMessageW(extraControls[RevealExperimental],BM_SETCHECK,extra.experimentalReveal?BST_CHECKED:BST_UNCHECKED,0);
+  for(int i=0;i<commandQueue.size;)if(commandQueue.slots[i].command==RevealMap)commandQueue.discard(i);else ++i;
+  autoRevealMatch=autoRevealDone=autoRevealRetry=0;changedSetting();syncAdditional();notify(strategy==3?L"地图全开将在对局就绪后自动执行；此模式有联机不同步风险。":L"地图显示策略已更新。");return true;}
  if(id==806&&notification==BN_CLICKED){extra.nativeAirWaypoints=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;airway::reset();pointerMatches.clear();changedSetting();notify(extra.nativeAirWaypoints?L"飞机路径点已开启；联机自动使用兼容模式。":L"飞机原生路径点已关闭，等待游戏恢复。");return true;}
  if(id==804&&notification==BN_CLICKED){extra.antiTheft=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();return true;}
  if(id==803&&notification==BN_CLICKED){extra.airWaypoints=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();return true;}
@@ -105,7 +109,8 @@ static bool autoSettingChanged(int id,int notification){
  }
  if(!edit)return false;
  WORD* target=nullptr;HWND widget=GetDlgItem(ui,id);
- if(id>=200&&id<212)target=&hotkeys[id-200];
+ if(id>=870&&id<=878)target=&socialKeys[id-870];
+ else if(id>=200&&id<212)target=&hotkeys[id-200];
  else switch(id){case 853:target=&idleAircraftKey;break;case 447:target=&csKey;break;case 450:target=&advancedKey;break;case 451:target=&unloadKey;break;
  case 456:target=&ejectKey;break;case 474:target=&csHoldKey;break;case 478:target=&magnetronKey;break;}
  if(target){WORD next=WORD(SendMessageW(widget,HKM_GETHOTKEY,0,0)),old=*target;*target=0;

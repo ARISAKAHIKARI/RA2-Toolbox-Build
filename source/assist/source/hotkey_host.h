@@ -1,5 +1,6 @@
 // Each colliding action enters the existing request/selection channel in turn.
 static void executeHotkey(WPARAM wp,bool fanout){
+ if(wp>=1710&&wp<=1718){send(wp==1710?Cheer:Taunt,int(wp-1710));return;}
  if(wp==1701){selectNextIdleAircraft();return;}
  if(wp==1700){bool global=variantTap.press(1700,GetTickCount(),snap.match,doubleMs);sendSelection(-2,global);return;}
  if(wp>=1100&&wp<1100+typeBindings.size()){auto&binding=typeBindings[wp-1100];uint8_t mask[MaxTypes]{};
@@ -11,7 +12,7 @@ static void executeHotkey(WPARAM wp,bool fanout){
  else if(wp>=1020&&wp<1020+swBindings.size()){auto&b=swBindings[wp-1020];bool found=false;for(int i=0;i<snap.swCount;++i)if(b.id==snap.supers[i].id){send(SelectSuper,snap.supers[i].index);found=true;break;}if(!found)notify(L"本局尚未拥有此超级武器。");}return;
 }
 static void serviceHotkeyBatch(){
- if(!extra.allHotkeys||!enabled||!foregroundGame()||snap.status!=1||snap.chat){hotkeyPending.clear();return;}
+ if(!extra.allHotkeys||!enabled||!foregroundGame()||snap.status!=1||snap.renderStatus!=1||snap.chat){hotkeyPending.clear();return;}
  if(!commandFresh(GetTickCount())||!shared)return;
  for(unsigned n=0;n<hotkeyroute::Pending::Capacity;++n){
   if(hasSelection||commandQueue.size||shared->request!=shared->ack||shared->selectRequest!=shared->selectAck)return;
@@ -20,7 +21,7 @@ static void serviceHotkeyBatch(){
  }
 }
 static void handleHotkey(WPARAM id,LPARAM event){
- if(!enabled||!foregroundGame()||snap.status!=1||snap.chat){typeTap.clear();variantTap.clear();hotkeyPending.clear();return;}
+ if(!enabled||!foregroundGame()||snap.status!=1||snap.renderStatus!=1||snap.chat){typeTap.clear();variantTap.clear();hotkeyPending.clear();return;}
  const auto*g=hotkeyRegistry.find(int(id));if(!g)return;
  WORD key=MAKEWORD(HIWORD(event),((LOWORD(event)&MOD_SHIFT)?HOTKEYF_SHIFT:0)|((LOWORD(event)&MOD_CONTROL)?HOTKEYF_CONTROL:0)|((LOWORD(event)&MOD_ALT)?HOTKEYF_ALT:0));
  if(hotkeyroute::canonical(key)!=g->key)return; // queued notification from an old binding

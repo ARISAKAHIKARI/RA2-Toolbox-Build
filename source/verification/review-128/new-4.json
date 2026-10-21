@@ -1,0 +1,66 @@
+{
+  "scope": "Execute compiled Runtime and vanilla event constructors. World/UI/network send callbacks are modeled; not live netplay.",
+  "dll_sha256": "d8ae690e09ad2d0e37bb9659ef47a485f16e86827bf5be76a754d48c9a0ef023",
+  "results": [
+    {
+      "case": "cheer_0_native_packet_cooldown",
+      "status": "PASS"
+    },
+    {
+      "case": "cheer_3_native_packet_cooldown",
+      "status": "PASS"
+    },
+    {
+      "case": "cheer_4_native_packet_cooldown",
+      "status": "PASS"
+    },
+    {
+      "case": "cheer_5_native_packet_cooldown",
+      "status": "PASS"
+    },
+    {
+      "case": "taunt_registered_command",
+      "status": "PASS"
+    },
+    {
+      "case": "taunt_session_disabled",
+      "status": "PASS"
+    },
+    {
+      "case": "deferred_7_prereq_False",
+      "status": "PASS"
+    },
+    {
+      "case": "deferred_7_prereq_True",
+      "status": "PASS"
+    },
+    {
+      "case": "deferred_16_prereq_False",
+      "status": "PASS"
+    },
+    {
+      "case": "deferred_16_prereq_True",
+      "status": "PASS"
+    },
+    {
+      "case": "deferred_40_prereq_False",
+      "status": "PASS"
+    },
+    {
+      "case": "deferred_40_prereq_True",
+      "status": "PASS"
+    },
+    {
+      "case": "deferred_no_factory_no_event",
+      "status": "PASS"
+    },
+    {
+      "case": "half_shroud_real_boundary",
+      "status": "PASS"
+    },
+    {
+      "case": "half_fog_real_boundary",
+      "status": "PASS"
+    }
+  ]
+}

@@ -7,7 +7,7 @@ enum class Verdict : uint8_t { Ready, ProbeOnly, InvalidPlayer, InvalidFields, U
 inline Verdict admit(const intent::EventOrder&r,bool diagnosticProbe=false){
  if(!vanilla::address(r.domain))return Verdict::UnknownAddress;
  if(r.player<0||r.player>=32)return Verdict::InvalidPlayer;
- if(vanilla::exposure(r.domain)==vanilla::Exposure::ProbeOnly&&!diagnosticProbe)return Verdict::ProbeOnly;
+ if(vanilla::exposure(r.domain)==vanilla::Exposure::ProbeOnly&&!diagnosticProbe&&!(r.domain==vanilla::Domain::NoOptions&&r.eventKind==vanilla::EventType::AllCheer))return Verdict::ProbeOnly;
  switch(r.domain){
  case vanilla::Domain::Object:
   if(r.a<=0 || r.tagA!=vanilla::TargetTag::Techno ||

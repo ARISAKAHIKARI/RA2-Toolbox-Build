@@ -11,8 +11,10 @@ static void loadAdditionalSettings(){
  extra.antiTheft=value(L"Modes",L"AntiTheft",0)!=0;
  extra.c4Test=value(L"Experimental",L"InfantryC4",0)!=0;
  extra.c4Key=value(L"Experimental",L"C4HoldKey",'C'|(4<<8));extra.c4Mouse=std::clamp(value(L"Experimental",L"C4Mouse",1),0,6);if(extra.c4Mouse==5)extra.c4Mouse=1;
- extra.renderReveal=value(L"Experimental",L"RenderReveal",0)!=0;
- extra.experimentalReveal=!extra.renderReveal&&value(L"Experimental",L"RevealMap",0)!=0;
+ for(int i=0;i<9;++i)socialKeys[i]=WORD(value(L"Hotkeys",i?(L"Taunt"+std::to_wstring(i)).c_str():L"Cheer",0)&65535);
+ extra.mapStrategy=std::clamp(value(L"Display",L"ShroudStrategy",value(L"Experimental",L"RenderReveal",0)?2:0),0,3);
+ extra.renderReveal=extra.mapStrategy==1?2:extra.mapStrategy==2?1:0;
+ extra.experimentalReveal=extra.mapStrategy==3||(!extra.renderReveal&&value(L"Experimental",L"RevealMap",0)!=0);
  extra.nativeAirWaypoints=value(L"Experimental",L"NativeAirWaypoints",0)!=0;
  extra.airWaypoints=value(L"Aircraft",L"ZWaypoints",1)!=0;
  extra.constructionQueue=value(L"Production",L"ReserveNext",1)!=0;
@@ -43,6 +45,8 @@ static void loadAdditionalSettings(){
 static bool saveAdditionalSettings(){
  for(int i=0;i<compute::Count;++i)write(L"Compute",compute::key(i),(computeRequested>>i)&1u);
  write(L"Hotkeys",L"IdleAircraft",idleAircraftKey);
+ for(int i=0;i<9;++i)write(L"Hotkeys",i?(L"Taunt"+std::to_wstring(i)).c_str():L"Cheer",socialKeys[i]);
+ write(L"Display",L"ShroudStrategy",extra.mapStrategy);
  write(L"Display",L"MinimapPosition",minimapPosition);write(L"Display",L"MinimapX",minimapX);write(L"Display",L"MinimapY",minimapY);
  write(L"Display",L"MinimapZoom",minimapEnabled);write(L"Display",L"MinimapScale",minimapScale);
  for(int i=0;i<featuretypes::Count;++i){std::wstring custom=std::wstring(featuretypes::key(i))+L"Custom";
