@@ -1,0 +1,62 @@
+TOTAL 0
+PASS 0 plain
+PASS 0 can_c4
+PASS 0 old_patch_conflict
+PASS 0 engineer
+PASS 0 spy
+PASS 0 c4
+PASS 0 off
+PASS 0 own_building
+PASS 0 foreign_infantry
+PASS 0 dead_infantry
+PASS 0 loaded
+PASS 0 stale
+PASS 0 chat
+PASS 0 not_building
+PASS 3 plain
+PASS 3 can_c4
+PASS 3 old_patch_conflict
+PASS 3 engineer
+PASS 3 spy
+PASS 3 c4
+PASS 3 off
+PASS 3 own_building
+PASS 3 foreign_infantry
+PASS 3 dead_infantry
+PASS 3 loaded
+PASS 3 stale
+PASS 3 chat
+PASS 3 not_building
+PASS 4 plain
+PASS 4 can_c4
+PASS 4 old_patch_conflict
+PASS 4 engineer
+PASS 4 spy
+PASS 4 c4
+PASS 4 off
+PASS 4 own_building
+PASS 4 foreign_infantry
+PASS 4 dead_infantry
+PASS 4 loaded
+PASS 4 stale
+PASS 4 chat
+PASS 4 not_building
+PASS 5 plain
+PASS 5 can_c4
+PASS 5 old_patch_conflict
+PASS 5 engineer
+PASS 5 spy
+PASS 5 c4
+PASS 5 off
+PASS 5 own_building
+PASS 5 foreign_infantry
+PASS 5 dead_infantry
+PASS 5 loaded
+PASS 5 stale
+PASS 5 chat
+PASS 5 not_building
+PASS native_cell_gate 8 False
+PASS native_cell_gate 7 False
+PASS native_cell_gate 17 False
+PASS native_cell_gate 17 True
+PASS native_capture_tick

@@ -29,16 +29,16 @@ static bool autoSettingChanged(int id,int notification){
  if(id==812&&select){int selected=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));extra.c4Mouse=selected==5?6:selected;changedSetting();return true;}
  if(id==808&&select){int strategy=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));if(strategy<0||strategy>3)return true;
   extra.mapStrategy=strategy;extra.renderReveal=strategy==1?2:strategy==2?1:0;extra.experimentalReveal=strategy==3;autoRevealNewMatch=strategy==3;
-  SendMessageW(extraControls[RevealExperimental],BM_SETCHECK,extra.experimentalReveal?BST_CHECKED:BST_UNCHECKED,0);
   for(int i=0;i<commandQueue.size;)if(commandQueue.slots[i].command==RevealMap)commandQueue.discard(i);else ++i;
   autoRevealMatch=autoRevealDone=autoRevealRetry=0;changedSetting();syncAdditional();notify(strategy==3?L"地图全开将在对局就绪后自动执行；此模式有联机不同步风险。":L"地图显示策略已更新。");return true;}
- if(id==806&&notification==BN_CLICKED){extra.nativeAirWaypoints=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;airway::reset();pointerMatches.clear();changedSetting();notify(extra.nativeAirWaypoints?L"飞机路径点已开启；联机自动使用兼容模式。":L"飞机原生路径点已关闭，等待游戏恢复。");return true;}
+
  if((id==882||id==883)&&notification==BN_CLICKED){bool on=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;if(id==882)extra.burstEnabled=on;else extra.burstHoldEnabled=on;changedSetting();syncAdditional();return true;}
  if(id==884&&edit){extra.burstKey=uint32_t(SendMessageW(GetDlgItem(ui,id),HKM_GETHOTKEY,0,0));changedSetting();syncAdditional();return true;}
  if(id==885&&notification==BN_CLICKED){extra.dodgeEnabled=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();syncAdditional();return true;}
  if(id==880&&notification==BN_CLICKED){extra.missileDefense=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();syncAdditional();return true;}
  if(id==804&&notification==BN_CLICKED){extra.antiTheft=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();return true;}
- if(id==803&&notification==BN_CLICKED){extra.airWaypoints=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();return true;}
+ if(id==803&&select){int mode=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));if(mode>=0&&mode<=2){extra.airWaypoints=mode==1;extra.nativeAirWaypoints=mode==2;airway::reset();pointerMatches.clear();changedSetting();syncAdditional();}return true;}
+ if(id==894&&edit){extra.airPathKey=uint32_t(SendMessageW(GetDlgItem(ui,id),HKM_GETHOTKEY,0,0));airway::reset();pointerMatches.clear();changedSetting();syncAdditional();return true;}
  if(id==802&&select){advancedTargetPriority=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));changedSetting();return true;}
  if(id==799&&notification==BN_CLICKED){extra.constructionQueue=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();return true;}
  if(id==798&&notification==BN_CLICKED){extra.idleAircraft=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();return true;}
@@ -49,11 +49,10 @@ static bool autoSettingChanged(int id,int notification){
  if(id==786&&notification==BN_CLICKED){extra.allHotkeys=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;typeTap.clear();registerKeys();changedSetting();return true;}
  if((id==892||id==893)&&notification==BN_CLICKED){bool on=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;if(id==892)extra.parasiteMarker=on;else extra.crateBuffMarkers=on;changedSetting();return true;}
  if(id==785&&notification==BN_CLICKED){extra.enemyMarkers=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();return true;}
- if(id==790&&select){int next=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));if(next>=0&&next<featuretypes::Count){featureTypeIndex=next;featureTypeFields();}return true;}
- if(id==791&&notification==BN_CLICKED){featureTypes.filters[featureTypeIndex].custom=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();return true;}
- if(id==792&&edit){wchar_t text[13000]{};GetWindowTextW(GetDlgItem(ui,id),text,13000);auto&f=featureTypes.filters[featureTypeIndex];
-  if(!oreconfig::parse(std::wstring(text),f.ids,f.count)){setStatus(L"类型 ID 最多 512 项，每项 23 字符；请使用英文、数字、下划线或短横线。");return true;}
-  featureTypeText[featureTypeIndex]=text;changedSetting();return true;
+ if(id>=9200&&id<9200+2*featuretypes::Count){int f=(id-9200)/2;
+  if(!(id&1)&&notification==BN_CLICKED){featureTypes.filters[f].custom=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();}
+  else if((id&1)&&edit){wchar_t text[13000]{};GetWindowTextW(GetDlgItem(ui,id),text,13000);auto next=featureTypes.filters[f];if(!oreconfig::parse(std::wstring(text),next.ids,next.count)){setStatus(L"类型 ID 最多 512 项，每项 23 字符。");return true;}featureTypes.filters[f]=next;featureTypeText[f]=text;changedSetting();}
+  return true;
  }
 
  if(id==780&&notification==BN_CLICKED){repairUnrepairable=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();return true;}

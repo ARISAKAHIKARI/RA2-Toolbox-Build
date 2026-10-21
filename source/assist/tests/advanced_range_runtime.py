@@ -27,7 +27,9 @@ def setup(mode,inside,case):
  if case in ('air_bonus','air_high'):actual=weapon(4,6);m.w(m.t+0x68c,4*256);m.w(q+0x9c,10000+8*256);m.w(q+0xa4,(8 if case=='air_high' else 3)*256)
  if case=='negative_bonus':m.w(m.t+0x68c,-3*256);m.w(q+0x9c,10000+6*256);m.w(q+0xa4,0)
  if case=='minimum':m.w(actual+0xb8,4*256);m.w(q+0x9c,10000+2*256);m.w(m.unit+0xac,5);m.w(m.unit+0x5a4,0)
- if case=='target_enters':m.w(q+0x9c,10000+9*256)
+ if case=='target_enters' or case.startswith('ifv_out_'):m.w(q+0x9c,10000+9*256)
+ if case.startswith('ifv_out_'):
+  slot=int(case.rsplit('_',1)[1]);actual=weapon(slot,8);expected=slot;m.w(m.unit+0x138,slot);m.w(m.unit+0xac,1);m.w(m.unit+0x2b4,q);m.w(m.unit+0x5a4,0)
  others=[]
  if case=='close_priority':
   far=m.obj(0x7f5c70,targetT,m.enemy,41);m.b(far+0x14,7);m.w(far+0x9c,10000+9*256);m.w(far+0xa0,10000);m.w(targetT+0x610,9000);otherT=m.alloc();m.b(otherT+0x231,1);m.b(otherT+0xd3a,1);m.b(otherT+0xd38,1);m.w(otherT+0x610,100);m.w(q+0x6c4,otherT);others=[far]
@@ -78,7 +80,7 @@ def case(mode,inside,name):
  if name in ('weapon_changed','stale','target_moved','disabled'):
   assert n.count(m)==0,(name,n.count(m));return
  assert n.count(m)==1,(name,n.count(m),s.world.combatCount,s.world.actors[0].combatFirst,s.data.lastSubmitError)
- packet=n.packets(m)[:111];expect_attack=name not in ('air_high','negative_bonus','minimum')
+ packet=n.packets(m)[:111];expect_attack=name not in ('air_high','negative_bonus','minimum') and not name.startswith('ifv_out_')
  assert packet[12]==(1 if expect_attack else 2),(name,packet[12],[(x.target,x.flags,x.slot) for x in s.world.combat[:s.world.combatCount]])
  if expect_attack:
   assert packet[14:19]==struct.pack('<IB',40,0x34) and packet[19:24]==bytes(5)
@@ -102,6 +104,6 @@ def case(mode,inside,name):
   assert targetCalls==[m.target] and destCalls==[0],(targetCalls,destCalls)
 for mode in (0,3):
  for inside in (True,False):
-  for name in ('ifv_7','ifv_elite','flak_air','gatt_air','air_bonus','air_high','negative_bonus','minimum','close_priority'):check(f'{mode}_{inside}_{name}',lambda m=mode,i=inside,nm=name:case(m,i,nm))
+  for name in ('ifv_7','ifv_elite','flak_air','gatt_air','air_bonus','air_high','negative_bonus','minimum','close_priority','ifv_out_0','ifv_out_1','ifv_out_4','ifv_out_7','ifv_out_14'):check(f'{mode}_{inside}_{name}',lambda m=mode,i=inside,nm=name:case(m,i,nm))
  for name in ('weapon_changed','stale','target_moved','disabled','target_enters'):check(f'{mode}_external_{name}',lambda m=mode,nm=name:case(m,False,nm))
 Path(a.output).write_text(json.dumps({'scope':__doc__,'dll_sha256':hashlib.sha256(Path(a.dll).read_bytes()).hexdigest(),'results':rows},indent=2)+'\n');raise SystemExit(any(x['status']!='PASS' for x in rows))

@@ -21,7 +21,6 @@ extern "C" int AssistFilterMessage(void* raw){
  auto seq=sh->pointerPolicySeq;if(seq&1)return 0;pointerinput::NativePolicy policy;MemoryBarrier();memcpy(&policy,&sh->pointerPolicy,sizeof policy);MemoryBarrier();
  if(seq!=sh->pointerPolicySeq||!policy.enabled||!policy.overrideNative||policy.match!=match)return 0;
  uint8_t keys[256]{};for(unsigned n=0;n<256;++n)keys[n]=(GetKeyState(n)&0x8000)!=0;
- if((sh->flags&NativeAirWaypoints)&&keys['Z'])return 0;
  auto route=pointerinput::resolveMouse(keys,physical,policy.buttons,policy.bindings,0);
  if((route.operation!=pointerinput::Enhanced&&route.operation!=pointerinput::AttackMove)||(route.bindings&pointerinput::Shift))return 0;
  // Object clicks, dragging a build placement, sidebar/minimap, unsupported

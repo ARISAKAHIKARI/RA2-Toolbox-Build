@@ -51,7 +51,7 @@ static void servicePointer(){
  if(buildreserve::nativePointer(e)){leftCaptured=false;return;}
  airway::manual(e);
  // Native Z planning owns the original click; do not append another feature.
- if(airway::native()&&e.keys['Z']&&airway::selectedAircraft()){leftCaptured=false;return;}
+ if(airway::native()&&airway::held(e.keys)&&airway::selectedAircraft()){leftCaptured=false;return;}
  RECT client{};if(!GetClientRect(game,&client)||client.right!=e.width||client.bottom!=e.height)return;
  DWORD now=GetTickCount();if(!commandFresh(now)||!foregroundGame()||DWORD(now-e.tick)>100||snap.chat)return;
  static pointerinput::Intent in;in={};in.tick=e.tick;in.inputSerial=e.serial;in.match=e.match;
@@ -61,7 +61,7 @@ static void servicePointer(){
  pointerinput::MouseRoute routes[pointerinput::MouseCount+1]{};
  int routeCount=pointerinput::resolveMouseMatches(e.keys,e.operation==7?6:e.operation,extra.mouseButtons,
   bindings,saleEnabled,extra.allHotkeys,routes);
- if(airway::active()&&!airway::ended&&airway::selectedAircraft()&&e.keys['Z']&&!e.keys[VK_CONTROL]&&!e.keys[VK_MENU]&&(e.operation==4||e.operation==6||e.operation==7)){routes[0]={pointerinput::AirWaypoint,e.operation==4?uint32_t(pointerinput::RightClick):uint32_t(pointerinput::LeftClick)};routeCount=1;}
+ if(airway::active()&&!airway::ended&&airway::selectedAircraft()&&airway::held(e.keys)&&(e.operation==4||e.operation==6||e.operation==7)){routes[0]={pointerinput::AirWaypoint,e.operation==4?uint32_t(pointerinput::RightClick):uint32_t(pointerinput::LeftClick)};routeCount=1;}
  if(extra.c4Test&&extra.c4Mouse&&uint32_t(e.operation==7?6:e.operation)==extra.c4Mouse&&pointerinput::matchesHold(e.keys,extra.c4Key,pointerinput::Enhanced)){
   pointerinput::MouseRoute test{pointerinput::C4Test,pointerinput::PerFeatureMouse|(extra.c4Mouse==4?uint32_t(pointerinput::RightClick):extra.c4Mouse==6?uint32_t(pointerinput::LeftClick):0)};
   if(extra.allHotkeys&&routeCount&&routes[0].operation!=pointerinput::FollowNative)routes[routeCount++]=test;else{routes[0]=test;routeCount=1;}

@@ -9,6 +9,7 @@ source='\n'.join(line for line in source.splitlines() if not line.startswith('#i
 a=source.index('static RECT rect(');b=source.index('static void service()',a)
 source=source[:a]+'static int proc=0;\n'+source[b:]
 prefix=r'''
+#include "native_hotkeys.h"
 #include "construction_catalog.h"
 #include "native_cameos.h"
 #include "command_delivery.h"
@@ -49,6 +50,9 @@ static void*GetModuleHandleW(void*){return nullptr;}static void*LoadCursorW(void
 template<class...T>static HWND CreateWindowExW(T...){return (void*)3;}template<class...T>static HFONT CreateFontW(T...){return (void*)4;}template<class...T>static void SetWindowPos(T...){}
 static void DeleteObject(void*){}static void DestroyWindow(void*){}
 '''
+prefix+=r'''
+namespace nativekeyhost{static nativekeys::Bindings bindings;static uint8_t keys[256]{};static const nativekeys::Bindings&current(){return bindings;}static void down(uint8_t(&out)[256]){memcpy(out,keys,256);}}
+'''
 suffix=r'''
 static constexpr uint32_t H=0x500000,C=0x510000,R=0x520000,T=0x600000,P=0x700000,F=0x710000;
 static void w(uint32_t p,int v){externalReader.put(p,v);}static void byte(uint32_t p,uint8_t v){externalReader.put(p,v);}
@@ -67,6 +71,9 @@ static void tick(int ms=110,bool advance=true){now+=ms;if(advance)w(0xA8ED84,bui
 static void place(){byte(P+0x81,0);byte(P+0x90,1);w(F+0x58,0);w(0x87F7E8+0x1544+84,3);for(int i=0;i<3;++i){w(0x87F7E8+0x1544+88+i*52,i);w(0x87F7E8+0x1544+92+i*52,7);}tick();assert(commandQueue.size==0);tick();}
 int main(){
  using namespace buildreserve;
+ setup();w(F+0x24,54);tick();assert(choice(0)>=0);reserve(choice(0));assert(books[0].items==std::vector<int>({0})&&commandQueue.size==0);
+ setup();nativekeyhost::bindings.keys[nativekeys::Infantry][0]='I';nativekeyhost::keys['I']=1;tick();assert(activeTab==2&&get<int>(0x87F7E8+0x539C)==0);nativekeyhost::keys['I']=0;tick();assert(activeTab==2);snap.chat=1;nativekeyhost::keys['I']=1;tick();snap.chat=0;nativekeyhost::keys['I']=0;nativekeyhost::bindings={};
+
  setup();assert(choice(0)<0&&choice(1)>=0&&choice(2)<0);assert(choices[choice(1)].future);assert(layout.width()==216&&layout.x(60)==90&&layout.y(48)==72);
  constructionScalePercent=150;tick();assert(layout.width()==324&&layout.x(60)==135);constructionScalePercent=100;tick();
  reserve(choice(1));assert(choice(2)>=0);reserve(choice(2));reserve(choice(1));reserveChoice({0,0,0,T,false},true);reserve(choice(0));assert(books[0].items==std::vector<int>({1,2,1,0,0}));reserve(choice(0));assert(books[0].items.size()==5);

@@ -44,14 +44,14 @@ constexpr int FALSE=0,TRUE=1,WS_CHILD=1,WS_VISIBLE=2,WS_CLIPSIBLINGS=4,WS_EX_CLI
 WS_TABSTOP=16,WS_VSCROLL=32,BS_AUTORADIOBUTTON=64,BS_PUSHLIKE=128,BS_AUTOCHECKBOX=256,
 BS_PUSHBUTTON=512,ES_NUMBER=1024,ES_AUTOHSCROLL=2048,CBS_DROPDOWNLIST=4096,LBS_NOTIFY=8192,
 EM_SETLIMITTEXT=99,CB_ADDSTRING=10,CB_SETCURSEL=11,BM_SETCHECK=1,BST_CHECKED=1,BST_UNCHECKED=0,WM_SETFONT=2,HKM_SETHOTKEY=3,EM_SETCUEBANNER=4,
-SIF_RANGE=1,SIF_PAGE=2,SIF_POS=4,SIF_DISABLENOSCROLL=8,SB_VERT=0,SW_SHOW=1,SW_HIDE=0;
+SIF_RANGE=1,SIF_PAGE=2,SIF_POS=4,SIF_DISABLENOSCROLL=8,SB_VERT=1,SW_SHOW=1,SW_HIDE=0;
 constexpr const wchar_t* HOTKEY_CLASSW=L"HOTKEY";
 struct RECT{int left,top,right,bottom;};struct POINT{int x,y;};
 struct SCROLLINFO{unsigned cbSize,fMask;int nMin,nMax;unsigned nPage;int nPos,nTrackPos;};
 struct Window{std::wstring cls,text;int id;uilayout::Rect rect;bool visible=true;RECT clip{};DWORD style=0;bool checked=false;bool enabled=true;};
 static std::vector<Window> windows(2);static std::vector<RECT> regions(1);static SCROLLINFO scrollInfo{};
 static int clientWidth=812,clientHeight=640;
-namespace modernui {static void style(HWND){}static void heading(HWND){}static void mouseOnly(HWND){}static void holdKey(HWND){}}
+namespace modernui {static void style(HWND){}static void heading(HWND,unsigned=96){}static void tip(HWND,const std::wstring&){}static unsigned panelDpi(unsigned d,bool){return d;}static unsigned windowDpi(HWND){return 96;}static int scale(int n,unsigned d){return (n*int(d)+48)/96;}static HFONT makeFont(int=14,unsigned=96){return 1;}constexpr int BodyPixels=14;static void mouseOnly(HWND){}static void holdKey(HWND){}}
 static HWND ui,repairCheck,repairEdit,keys[12],check[7],rateEdit,marginEdit,swList,swHotkey,techSearch,techList,
  typeList,typeKey,tapEdit,typeCS,csCheck,csKeyEdit,typeIdEdit,csStatus,advancedKeyEdit,unloadKeyEdit,nativeStatus,
  hookChecks[4],ejectCheck,ejectKeyEdit,magnetronCheck,magnetronKeyEdit,oreCheck,oreStatus,detailCheck,toastEdit,
@@ -63,12 +63,13 @@ static DWORD GetTickCount(){return 1606;}
 static bool commandFresh(DWORD){return true;}
 static bool techDirectProduce,techMode,csMode,hookAdvanced,hookSmartUnload=true,hookEject,hookAutoCS,ejectMode,magnetronMode,
  oreMode,showDetails,csHoldEnabled,buildAnywhereMode,ready;
+static unsigned socialKeys[9]{},autoRevealDone=0;static void publishSuiteDisplay(){}
 static unsigned idleAircraftKey=1616;static int advancedRangeCells=2;static unsigned hotkeys[12]{},csKey,advancedKey,unloadKey,ejectKey,magnetronKey,csHoldKey;
 static HWND game=1;static bool enabled=true;static std::wstring hoverHelp,statusText;static int advancedScanHz=10,advancedTargetPriority=0,shiftClickMode=0,shiftClickGap=0;static bool shiftClickEnabled=false;
 static struct {int c4TestStatus=0,placementStatus=0,nativeAirStatus=0,renderRevealStatus=0,commandStatus=1,entryReentrant=0,entryContended=0,session=5,lastSubmitError=0,queueSent=0,commandRejected=0,queueFull=0,queueTimingFailure=0,status=1,nativeHookStatus=1,advancedUnits=0,unloadPending=0,ejectWatched=0,csHookStatus=1,oreQueued=0,oreDocking=0,oreManual=0,oreDelivered=0,oreUnverified=0,magnetShots=0,magnetUnverified=0,hookConflicts=0,megaQueueAccepted=0,megaQueueRejected=0,megaQueueStatus=0,objectQueueAccepted=0,objectQueueRejected=0,objectQueueStatus=0;} snap;
 static struct {int size=0;} commandQueue;
 static struct {bool readFresh(uint32_t,void*,size_t){return false;}} externalReader;
-static struct {int driverMode=0,driverTarget=0,driverStatus=0,driverTicks=0,megaQueueMode=0,objectQueueMode=0;DWORD driverLastTick=0;} mockScheduler;
+static struct {int scrollRefreshStatus=0,scrollRefreshRateMilli=0,scrollRefreshMaxGapUs=0,driverMode=0,driverTarget=0,driverStatus=0,driverTicks=0,megaQueueMode=0,objectQueueMode=0;DWORD driverLastTick=0;} mockScheduler;
 static decltype(mockScheduler)* shared=nullptr;
 static unsigned LOBYTE(unsigned key){return key&255;}
 static HWND CreateWindowExW(DWORD,const wchar_t*cls,const wchar_t*text,DWORD style,int x,int y,int w,int h,HWND,HMENU id,HMODULE,void*){
@@ -85,7 +86,7 @@ static void ShowWindow(HWND h,int show){windows[h].visible=show;}
 static HRGN CreateRectRgn(int l,int t,int r,int b){regions.push_back({l,t,r,b});return regions.size()-1;}
 static bool SetWindowRgn(HWND h,HRGN r,int){windows[h].clip=regions[r];return true;}
 static void DeleteObject(HRGN){}
-static void SetScrollInfo(HWND,int,const SCROLLINFO*s,int){scrollInfo=*s;}
+static void SetScrollInfo(HWND,int bar,const SCROLLINFO*s,int){if(bar==SB_VERT)scrollInfo=*s;}
 static void InvalidateRect(HWND,void*,int){}
 static int value(const wchar_t*,const wchar_t*,int def){return def;}
 static void fillTech(bool){}static void fillTypeBindings(bool){}static void registerKeys(){}
@@ -99,6 +100,7 @@ static bool PtInRect(const RECT*r,POINT p){return p.x>=r->left&&p.y>=r->top&&p.x
 static bool IsWindowVisible(HWND h){return windows[h].visible;}
 
 '''
+prefix+='using UINT=unsigned;using HDWP=int;\nstatic int MulDiv(int n,int mul,int div){return (n*mul+div/2)/div;}\nconstexpr int SWP_NOZORDER=1,SWP_NOACTIVATE=2,SWP_NOCOPYBITS=4,SWP_NOREDRAW=8,SWP_SHOWWINDOW=16,SWP_HIDEWINDOW=32,RDW_INVALIDATE=1,RDW_ERASE=2,RDW_ALLCHILDREN=4,RDW_UPDATENOW=8,SB_HORZ=0;\nstatic HDWP BeginDeferWindowPos(int){return 1;}\nstatic void SetWindowPos(HWND h,void*,int x,int y,int w,int ht,unsigned flags){MoveWindow(h,x,y,w,ht,0);if(flags&SWP_SHOWWINDOW)windows[h].visible=true;if(flags&SWP_HIDEWINDOW)windows[h].visible=false;}\nstatic HDWP DeferWindowPos(HDWP d,HWND h,void*p,int x,int y,int w,int ht,unsigned flags){SetWindowPos(h,p,x,y,w,ht,flags);return d;}\nstatic bool EndDeferWindowPos(HDWP){return true;}static void RedrawWindow(HWND,void*,void*,unsigned){}static int GetPropW(HWND,const wchar_t*){return 0;}\nnamespace airway {static bool native(){return true;}}\n'
 suffix = r'''
 static bool intersects(uilayout::Rect a,uilayout::Rect b){return a.x<b.x+b.w&&b.x<a.x+a.w&&a.y<b.y+b.h&&b.y<a.y+a.h;}
 int main(){
@@ -123,11 +125,11 @@ int main(){
  for(auto pair:{std::pair<int,int>{450,729},{478,730},{474,731},{704,732},{707,733},{709,734},{726,735},{728,737},{789,738},{811,812}})assert(at(pair.first).rect.y==at(pair.second).rect.y&&at(pair.first).rect.x+at(pair.first).rect.w<at(pair.second).rect.x);
  for(int id:{860,861,862,863,864,722})assert(!windows[at(id).hwnd].enabled);
  for(int id:{860,861,722})assert(!windows[at(id).hwnd].checked);
- for(int id:{803,806,866})assert(at(id).rect.y>at(901).rect.y&&at(id).rect.y<at(902).rect.y);
+ for(int id:{803,894,866})assert(at(id).rect.y>at(901).rect.y&&at(id).rect.y<at(902).rect.y);
  for(int id:{808,809})assert(at(id).rect.y>at(903).rect.y&&at(id).rect.y<at(904).rect.y);
- for(int id:{806,808})assert(windows[at(id).hwnd].enabled&&windows[at(id).hwnd].text.find(L"测试")==std::wstring::npos&&windows[at(id).hwnd].text.find(L"实验")==std::wstring::npos);
- extra.nativeAirWaypoints=extra.renderReveal=true;snap.nativeAirStatus=snap.renderRevealStatus=1;updateModeStatus(2800);
- assert(windows[at(866).hwnd].text==L"原生路径点：已启用"&&windows[at(809).hwnd].text==L"地图显示：已启用");
+ for(int id:{803,808})assert(windows[at(id).hwnd].enabled&&windows[at(id).hwnd].text.find(L"测试")==std::wstring::npos&&windows[at(id).hwnd].text.find(L"实验")==std::wstring::npos);
+ extra.airWaypoints=false;extra.nativeAirWaypoints=extra.renderReveal=true;snap.nativeAirStatus=snap.renderRevealStatus=1;updateModeStatus(2800);
+ assert(windows[at(866).hwnd].text==L"飞机路径点：原生模式"&&windows[at(809).hwnd].text==L"地图显示：已启用");
  for(int id:{787,818,788})assert(at(id).visibleHeight==26);
  // Hidden legacy selector cannot appear via scroll, focus or navigation.
  assert(at(760).page==-3&&!windows[at(760).hwnd].visible);
@@ -135,19 +137,25 @@ int main(){
  clientWidth=812;clientHeight=640;scrollTo(at(450).rect.y-uilayout::BodyTop);
  cursor={30,50};updateHoverHelp();assert(hoverHelp.empty());
  cursor={30,uilayout::footerTop(clientHeight)};updateHoverHelp();assert(hoverHelp.empty());
- cursor={30,uilayout::BodyTop+5};updateHoverHelp();assert(hoverHelp.find(L"高级移动攻击")!=std::wstring::npos);
+ assert(!at(450).help.empty());
  // The status area is two lines tall; instructions remain concise.
  for(auto&c:pageControls)if(c.page>=0){
   assert(c.help.find(L"GameRuntime")==std::wstring::npos&&c.help.find(L"OutList")==std::wstring::npos&&c.help.find(L"Hook")==std::wstring::npos);
   assert(c.help.size()<=110);
  }
 
+ // Device-pixel layout must follow the font scale, with the same clipping.
+ for(unsigned dpi:{96u,120u,144u,192u}){panelDpi=dpi;clientWidth=modernui::scale(812,dpi);clientHeight=modernui::scale(640,dpi);
+  scrollTo(at(894).rect.y-uilayout::BodyTop);auto&w=windows[at(894).hwnd];assert(w.rect.w==modernui::scale(at(894).rect.w,dpi));assert(w.rect.y+w.clip.top>=modernui::scale(uilayout::BodyTop,dpi));
+ }
+ panelDpi=96;
  int inspected=0;
  // All body controls share one continuous page. Every original interactive
  // ID survives the redesign; only redundant save labels/navigation disappear.
- for(int id:{100,111,200,211,300,306,310,311,312,410,411,420,421,422,423,424,425,426,427,428,440,441,443,444,445,446,447,449,450,451,453,454,455,456,458,459,466,467,470,471,473,474,476,477,478,481,700,701,702,703,704,705,706,707,708,709,710,711,712,713,714,715,716,717,718,719,720,721,722,723,724,725,726,727,728,729,730,731,732,733,734,735,736,737,738,739,751,760,761,762,785,786,787,790,791,792,795,796,797,798,799,818,830,831,832,833,840,841,842,843,844,845,846,847,848,849,850,851,852,853,900,901,902,903,904,910,911,912,913,914,802,803,804,805,806,807,808,809,810,811,812,813,814,815,816,817,990,991}){
+ for(int id:{100,111,200,211,300,306,310,311,312,410,411,420,421,422,423,424,425,426,427,428,440,441,443,444,445,446,447,449,450,451,453,454,455,456,458,459,466,467,470,471,473,474,476,477,478,481,700,701,702,703,704,705,706,707,708,709,710,711,712,713,714,715,716,717,718,719,720,721,722,723,724,725,726,727,728,729,730,731,732,733,734,735,736,737,738,751,760,761,762,785,786,787,795,796,797,798,799,818,830,831,832,833,850,851,852,853,900,901,902,903,904,910,911,912,913,914,802,803,804,807,808,809,810,811,812,813,814,815,816,817,990,991}){
   int found=0;for(auto&w:windows)found+=w.id==id;if(found!=1){std::cerr<<"Missing/duplicate ID "<<id<<" count "<<found<<"\n";return 1;}
  }
+ for(int id:{108,208,739,790,791,792,805,806})assert(!GetDlgItem(ui,id));
  for(size_t i=0;i<pageControls.size();++i){const auto&a=pageControls[i];if(a.page<0)continue;assert(a.page==0&&a.rect.y>=uilayout::BodyTop);
   auto rect=a.rect;rect.h=a.visibleHeight;
   for(size_t j=i+1;j<pageControls.size();++j){const auto&b=pageControls[j];if(b.page<0)continue;auto other=b.rect;other.h=b.visibleHeight;

@@ -1104,20 +1104,20 @@ static void relayout(HWND w){
   for(const auto& ctl:controlOrigins){
    auto b=uidpi::place(ctl.logical,uiDpi,scrollX,scrollY);
    batch=DeferWindowPos(batch,ctl.handle,NULL,b.x,b.y,b.w,b.h,
-      SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOOWNERZORDER);
+      SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOOWNERZORDER|SWP_NOCOPYBITS|SWP_NOREDRAW);
    if(!batch)break;
   }
   if(batch&&EndDeferWindowPos(batch)){
-   InvalidateRect(w,NULL,TRUE);uiLayoutBusy=false;return;
+   RedrawWindow(w,nullptr,nullptr,RDW_INVALIDATE|RDW_ERASE|RDW_ALLCHILDREN|RDW_UPDATENOW);uiLayoutBusy=false;return;
   }
  }
  // Fallback also fixes every control if a deferred batch fails halfway.
  for(const auto& ctl:controlOrigins){
   auto b=uidpi::place(ctl.logical,uiDpi,scrollX,scrollY);
   SetWindowPos(ctl.handle,NULL,b.x,b.y,b.w,b.h,
-      SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOOWNERZORDER);
+      SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOOWNERZORDER|SWP_NOCOPYBITS|SWP_NOREDRAW);
  }
- InvalidateRect(w,NULL,TRUE);
+ RedrawWindow(w,nullptr,nullptr,RDW_INVALIDATE|RDW_ERASE|RDW_ALLCHILDREN|RDW_UPDATENOW);
  uiLayoutBusy=false;
 }
 static void viewport(HWND w,int sx,int sy){
@@ -1249,7 +1249,7 @@ static void chooseStyle(){
  displayAsset=std::move(candidate);memcpy(displayPalette,cp,1024);displayLoaded=true;profileId=id;profilePath=folder;
  WritePrivateProfileStringW(L"Cursor",L"Profile",id.c_str(),ini().c_str());readPairs();resetPrepared();
  textIfChanged(settingsHint,L"图案已切换并自动保存");
- textIfChanged(prepareInfo,prepareProcess?L"预处理仍在后台进行；切换图案不影响原任务":L"使用独立光标包，不覆盖游戏目录；可预处理 1000 等分补帧");
+ textIfChanged(prepareInfo,prepareProcess?L"预处理仍在后台进行；切换图案不影响原任务":L"");
 }
 static std::wstring pickFile(const wchar_t* title,const wchar_t* filter){
  wchar_t path[32768]={};OPENFILENAMEW o{};o.lStructSize=sizeof(o);o.hwndOwner=mainw;o.lpstrTitle=title;o.lpstrFilter=filter;o.lpstrFile=path;o.nMaxFile=32768;o.Flags=OFN_FILEMUSTEXIST|OFN_PATHMUSTEXIST|OFN_NOCHANGEDIR;
@@ -1309,6 +1309,7 @@ static LRESULT CALLBACK wndproc(HWND w,UINT m,WPARAM a,LPARAM b){
  if(m==suite::ModuleEnable){if(bool(a)!=(autoStart&&!autoPaused))togglePrimary();return 0;}
  if(m==suite::CloseCheck){suite::closeDecision(cursorCloseAllowed());return 0;}
 #endif
+ if(m==modernui::DpiMessage){applyControlDpi(w,unsigned(a));return 0;}
  switch(m){
  case WM_ERASEBKGND:{HDC dc=(HDC)a;RECT r{};GetClientRect(w,&r);FillRect(dc,&r,panelBrush);return TRUE;}
  case WM_CTLCOLORBTN:case WM_CTLCOLORSTATIC:{HDC dc=(HDC)a;SetBkMode(dc,OPAQUE);
@@ -1319,7 +1320,7 @@ static LRESULT CALLBACK wndproc(HWND w,UINT m,WPARAM a,LPARAM b){
  case WM_CTLCOLOREDIT:case WM_CTLCOLORLISTBOX:{HDC dc=(HDC)a;SetTextColor(dc,modernui::Text);SetBkColor(dc,modernui::Field);return (LRESULT)headerBrush;}
  case WM_PAINT:{PAINTSTRUCT ps{};HDC dc=BeginPaint(w,&ps);RECT r{};GetClientRect(w,&r);
    // Use the same dark palette and type family as the toolbox modules.
-   RECT top{0,0,r.right,uidpi::scale(68,uiDpi)};FillRect(dc,&top,panelBrush);
+   FillRect(dc,&r,panelBrush);
    HPEN line=CreatePen(PS_SOLID,1,RGB(45,60,79));auto oldPen=SelectObject(dc,line);
    MoveToEx(dc,uidpi::scale(24,uiDpi)-scrollX,uidpi::scale(68,uiDpi)-scrollY,nullptr);
    LineTo(dc,uidpi::scale(740,uiDpi)-scrollX,uidpi::scale(68,uiDpi)-scrollY);
@@ -1482,14 +1483,14 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR cmd,int){
  subTitleLabel=CreateWindowW(L"STATIC",L"光标显示与补帧 · 设置自动生效",WS_CHILD|WS_VISIBLE,20,44,320,22,mainw,nullptr,inst,nullptr);
  primaryAction=CreateWindowW(L"BUTTON",L"暂停",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,20,128,132,34,mainw,(HMENU)101,inst,nullptr);
  advancedAction=CreateWindowW(L"BUTTON",L"高级设置 ▾",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,164,128,176,34,mainw,(HMENU)102,inst,nullptr);
- quickInfo=CreateWindowW(L"STATIC",L"Ctrl+Alt+F11 开关  ·  设置自动生效",WS_CHILD|WS_VISIBLE,20,250,320,20,mainw,nullptr,inst,nullptr);
+ quickInfo=CreateWindowW(L"STATIC",L"",WS_CHILD|WS_VISIBLE,20,250,320,20,mainw,nullptr,inst,nullptr);
  advancedHeader=CreateWindowW(L"STATIC",L"高级设置",WS_CHILD,20,218,150,26,mainw,nullptr,inst,nullptr);
  for(HWND child:{titleLabel,subTitleLabel,primaryAction,advancedAction,quickInfo,advancedHeader}){
   RECT r{};GetWindowRect(child,&r);POINT pt={r.left,r.top};ScreenToClient(mainw,&pt);
   controlOrigins.push_back({child,{pt.x,pt.y,r.right-r.left,r.bottom-r.top}});
  }
  auto extra=[&](HWND h,uidpi::Rect r){controlOrigins.push_back({h,r});advancedControls.push_back(h);};
- settingsHint=CreateWindowW(L"STATIC",L"修改即生效，无需点击应用",WS_CHILD,180,222,555,22,mainw,NULL,inst,NULL);extra(settingsHint,{180,222,555,22});
+ settingsHint=CreateWindowW(L"STATIC",L"",WS_CHILD,180,222,555,22,mainw,NULL,inst,NULL);extra(settingsHint,{180,222,555,22});
  styleBox=CreateWindowW(L"COMBOBOX",L"",WS_CHILD|CBS_DROPDOWNLIST,20,254,320,240,mainw,NULL,inst,NULL);extra(styleBox,{20,254,320,240});
  HWND import=CreateWindowW(L"BUTTON",L"导入 SHA",WS_CHILD|BS_PUSHBUTTON,350,254,108,30,mainw,(HMENU)130,inst,NULL);extra(import,{350,254,108,30});
  prepareButton=CreateWindowW(L"BUTTON",L"预处理补帧",WS_CHILD|BS_PUSHBUTTON,468,254,128,30,mainw,(HMENU)131,inst,NULL);extra(prepareButton,{468,254,128,30});
@@ -1517,7 +1518,8 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR cmd,int){
  refreshModeBox=basic(L"COMBOBOX",L"",114,250,626,150,155,CBS_DROPDOWNLIST|WS_TABSTOP);
  for(const wchar_t* text:{L"仅光标",L"光标＋拖屏（实验性）",L"全部（实验性）"})SendMessageW(refreshModeBox,CB_ADDSTRING,0,(LPARAM)text);
  refreshStateLabel=basic(L"STATIC",L"读取设置…",20,294,720,24,0);
- basic(L"STATIC",L"三种范围共用刷新率，最高 500 FPS；自动跟随显示器。",20,328,720,22,0);
+ modernui::tip(refreshModeBox,L"三种范围共用目标刷新率，最高 500 FPS；自动跟随显示器。拖屏和全部画面刷新为实验性功能。");
+ modernui::tip(targetBox,L"自动跟随显示器；也可输入 30–500 FPS。光标、拖屏、全部画面使用同一目标值。");
  EnableWindow(refreshModeBox,FALSE);
 #endif
  // Main and advanced settings share one width, palette and renderer.
@@ -1532,6 +1534,11 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR cmd,int){
   if(!_wcsicmp(cls,L"BUTTON")||!_wcsicmp(cls,L"EDIT")||!_wcsicmp(cls,L"COMBOBOX"))
    SetWindowLongPtrW(c.handle,GWL_STYLE,GetWindowLongPtrW(c.handle,GWL_STYLE)|WS_TABSTOP);
  }
+ modernui::tip(primaryAction,L"开关高刷显示；快捷键 Ctrl+Alt+F11。设置修改后自动保存并生效。");
+ modernui::tip(styleBox,L"选择独立光标包；不会覆盖游戏目录。");
+ modernui::tip(prepareButton,L"在本机生成光标动画补帧；可再次点击取消。已完成分段会保留。");
+ modernui::tip(import,L"导入兼容红警或尤里布局的 SHA 文件与色盘。");
+ modernui::tip(groupEdit,L"编辑当前光标包的动画分组。");
  modernui::styleChildren(mainw);
  refreshStyleList();
  uiReady=true;

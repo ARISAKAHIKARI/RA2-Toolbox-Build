@@ -1,0 +1,46 @@
+{
+  "release": "v1.0.30-pre.9",
+  "file_version": "1.0.30.8",
+  "final_exe_sha256": "c49d6a411e2af17248d09154343f8a01d03c45332b737337fd6bc085aea28244",
+  "final_dll_sha256": "2b9199442080d915754d8f4d7f10cf0e4b097be80f0982246be7b79619158a22",
+  "runtime_reports": {
+    "advanced-lbw.json": 66,
+    "advanced-zhanwang.json": 66,
+    "feedback-lbw.json": 10,
+    "feedback-zhanwang.json": 10,
+    "infantry-lbw.json": 61,
+    "infantry-zhanwang.json": 61,
+    "reservation-lbw.json": 86,
+    "reservation-zhanwang.json": 86
+  },
+  "runtime_cases_per_sample": 223,
+  "runtime_cases_total": 446,
+  "host_checks": [
+    "advanced-host.log",
+    "construction-host.log",
+    "cursor-settings.log",
+    "settings-ui.log",
+    "suite-display.log",
+    "ui-geometry.log",
+    "modern-ui.log",
+    "native-hotkeys.log",
+    "architecture.log",
+    "windows-build.log"
+  ],
+  "ui_controls": 357,
+  "ui_reachable_checks": 4092,
+  "ui_viewport_sizes": 12,
+  "dpi_scales": [
+    96,
+    120,
+    144,
+    192
+  ],
+  "limitations": [
+    "Synthetic world, Win32 and selected native-interface substitutes; not a complete game or netplay run.",
+    "Infantry entry: actual queue construction, native mission gate and Capture tick; full pathfinding and arrival effects require game testing.",
+    "Native Voice*/QueueVoice executed with local ownership and noncritical RNG substitutes; audio device not tested.",
+    "No Windows visual DPI/scroll validation.",
+    "IFV hold regression fixed; user live symptom may have additional causes."
+  ]
+}

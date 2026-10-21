@@ -4,7 +4,7 @@ int section=0,rowY=0;
 auto item=[&](const wchar_t* cls,const wchar_t* text,int x,int width,int id,DWORD style=0,int height=26){return pageControl(section,cls,text,x,rowY,width,height,id,style);};
 auto label=[&](const wchar_t* text,int x=20,int width=605){return item(L"STATIC",text,x,width,0);};
 auto next=[&](int height=26){rowY+=height+12;};
-auto note=[&](const wchar_t* text,int height=26){item(L"STATIC",text,20,605,0,0,height);next(height);};
+auto note=[&](const wchar_t* text,int=26){if(pageControls.empty())return;const int y=pageControls.back().rect.y;for(auto i=pageControls.rbegin();i!=pageControls.rend()&&i->page==section&&i->rect.y==y;++i)i->help=text;};
 auto heading=[&](int page,int id,const wchar_t* title,const wchar_t* hint){section=page;rowY=0;item(L"STATIC",title,20,605,id,0,30);next(30);note(hint,44);};
 auto toggle=[&](int id,const wchar_t* text,bool checked,int x=20,int width=605){auto h=item(L"BUTTON",text,x,width,id,BS_AUTOCHECKBOX|WS_TABSTOP);SendMessageW(h,BM_SETCHECK,checked?BST_CHECKED:BST_UNCHECKED,0);return h;};
 auto button=[&](int id,const wchar_t* text,int x=20,int width=605){return item(L"BUTTON",text,x,width,id,BS_PUSHBUTTON|WS_TABSTOP);};
@@ -18,7 +18,7 @@ auto holdPresetControl=[&](int preset,int custom,uint32_t binding){extraControls
 
 heading(0,900,L"键盘快捷操作",L"按一次快捷键执行或切换；选择单位后可直接装车、卸载或启用逃生。 ");
 label(L"操作 / 功能开关",20,306);label(L"快捷键",345,280);next();
-for(int i:{11,1,2,3,4,5,6,7,0,8}){
+for(int i:{11,1,2,3,4,5,6,7,0}){
  HWND h=i==0?toggle(100,labels[0],value(L"Modes",L"AutoRepair",0)!=0,20,306):button(100+i,labels[i],20,306);
  if(i==0)repairCheck=h;keys[i]=key(200+i,hotkeys[i]);next();
 }
@@ -55,10 +55,10 @@ extraControls[SellVehiclesEnabled]=toggle(721,L"出售战车",extra.sellVehicles
 note(L"出售战车不支持兰博玩；两种出售操作共用按住键，鼠标键分别设置。",44);
 label(L"直接攻击移动",20,210);label(L"仅鼠标",240,258);mouse(pointerinput::MouseAttack);next();
 note(L"直接攻击移动只下达一次命令；高级移动攻击会持续重新选择目标。",44);
-toggle(803,L"飞机路径点",extra.airWaypoints);next();
-toggle(806,L"飞机原生路径点",extra.nativeAirWaypoints);next();
-note(L"单机使用原生规划；联机按住 Z 设置、松开后执行。两种路径点设置不同时运行。",44);
-item(L"STATIC",L"原生路径点：关闭",20,605,866);next();
+label(L"飞机路径点",20,260);choices(combo(803),{L"关闭",L"兼容路径点",L"原生优先"},extra.nativeAirWaypoints?2:extra.airWaypoints?1:0);next();
+label(L"路径点按住键",20,306);{auto h=key(894,extra.airPathKey);modernui::holdKey(h);}next();
+note(L"留空跟随游戏当前的路径点按键；自定义按键使用兼容路径点。原生优先在单机使用原生规划，联机自动使用兼容路径点。",44);
+item(L"STATIC",L"飞机路径点：关闭",20,605,866);next();
 toggle(795,L"Shift 五连点",shiftClickEnabled,20,270);choices(combo(796),{L"自动兼容",L"始终追加四次点击",L"不追加点击"},shiftClickMode);next();
 number(797,L"连续点击间隔 / 毫秒",shiftClickGap,L"0–250");
 label(L"超级武器目标选择",20,306);label(L"启用快捷键",345,280);next();
@@ -93,7 +93,7 @@ hookChecks[3]=placedControl({-3,{0,0,1,1}},L"BUTTON",L"",466,BS_AUTOCHECKBOX);
 SendMessageW(hookChecks[3],BM_SETCHECK,hookAutoCS?BST_CHECKED:BST_UNCHECKED,0);ShowWindow(hookChecks[3],SW_HIDE);
 csStatus=item(L"STATIC",L"移动攻击：等待对局",20,605,0,0,44);next(44);
 nativeStatus=item(L"STATIC",L"战术任务：等待对局",20,605,0,0,44);next(44);
-note(L"飞机分配攻击：为每个目标分配的飞机数量",26);
+label(L"飞机分配攻击数量");next();
 extraControls[DefaultFirst]=number(710,L"攻击模式 1 / 架每目标",extra.defaults.first,L"0–512 · 0 为不优先");
 extraControls[DefaultSecond]=number(711,L"攻击模式 2 / 架每目标",extra.defaults.second,L"0–512 · 0 为不优先");
 extraControls[DefaultMaximum]=number(712,L"每个目标最多承受 / 架",extra.defaults.maximum,L"0–512 · 0 为不限");
@@ -102,14 +102,15 @@ extraControls[QuotaOverride]=toggle(715,L"为所选目标类型单独设置分�
 extraControls[QuotaFirst]=number(716,L"所选类型 · 攻击模式 1",1,L"0–512");
 extraControls[QuotaSecond]=number(717,L"所选类型 · 攻击模式 2",2,L"0–512");
 extraControls[QuotaMaximum]=number(718,L"所选类型 · 最大数量",0,L"0–512 · 0 为不限");
-note(L"功能单位清单",26);
-auto featureCombo=combo(790,20,605,340);for(int i=0;i<featuretypes::Count;++i)SendMessageW(featureCombo,CB_ADDSTRING,0,(LPARAM)featuretypes::name(i));SendMessageW(featureCombo,CB_SETCURSEL,featureTypeIndex,0);next();
-toggle(791,L"仅处理清单中的单位类型",featureTypes.filters[featureTypeIndex].custom);next();
-auto featureEdit=edit(792,featureTypeText[featureTypeIndex],20,605);SendMessageW(featureEdit,EM_SETLIMITTEXT,12287,0);next();
-note(L"类型 ID 用逗号分隔；启用后留空表示不处理任何类型。",26);
+heading(5,905,L"单位类型清单",L"每个功能独立设置。关闭限制时按功能本身的条件处理；开启且清单为空时不处理任何类型。");
+for(int f=0;f<featuretypes::Count;++f){
+ label(featuretypes::name(f),20,350);toggle(9200+f*2,L"仅处理清单中的类型",featureTypes.filters[f].custom,380,245);next();
+ auto h=edit(9201+f*2,featureTypeText[f],20,605);SendMessageW(h,EM_SETLIMITTEXT,12287,0);SendMessageW(h,EM_SETCUEBANNER,TRUE,(LPARAM)L"单位类型 ID，以逗号分隔");next();
+ note(L"此开关和清单只作用于上方命名的功能；关闭限制时保留清单，开启且留空表示不处理任何类型。");
+}
 
 heading(3,903,L"显示设置",L"调整游戏内信息显示、缩放与位置；有效设置立即生效。");
-label(L"黑幕处理",20,260);choices(combo(808),{L"关闭",L"半透明（实验性）",L"透明（实验性）",L"自动全图（实验性）"},extra.mapStrategy);next();
+label(L"黑幕绘制方式",20,260);choices(combo(808),{L"关闭",L"半透明（实验性）",L"透明（实验性）",L"自动全图（实验性）"},extra.mapStrategy);next();
 note(L"半透明与不渲染仅改变显示；地图全开在对局就绪后自动执行，可能导致联机不同步。",44);
 item(L"STATIC",L"地图显示：关闭",20,605,809);next();
 
@@ -157,13 +158,12 @@ number(887,L"画面目标刷新率 / 帧每秒",extra.scrollRefreshHz,L"30–500
 note(L"默认仅光标；拖屏支持右拖与屏幕边缘。“全部”持续重绘，不改变游戏速度，不插帧。",44);
 item(L"STATIC",L"高刷策略：仅光标",20,605,888);next();
 #endif
-extraControls[RevealExperimental]=toggle(739,L"允许地图全开（实验性）",extra.experimentalReveal);next();
-item(L"STATIC",L"以下功能可能影响联机同步",20,605,805);next();
+
 anywhereCheck=toggle(476,L"扩展建筑放置范围（实验性）",buildAnywhereMode);next();
 item(L"STATIC",L"功能状态：等待连接",20,605,807,0,44);next(44);
-toggle(810,L"步兵 C4（实验性）",extra.c4Test,20,280);key(811,extra.c4Key,310,188,true);choices(combo(812,510,115,180),{L"停用",L"中键",L"侧键 1",L"侧键 2",L"右键",L"左键"},extra.c4Mouse==6?5:extra.c4Mouse);next();
-note(L"选中步兵，按住配置键并点击敌方建筑；此功能可能导致联机不同步。",44);
-item(L"STATIC",L"步兵 C4：关闭",20,605,813);next();
+toggle(810,L"步兵强制进建筑（实验性）",extra.c4Test,20,280);key(811,extra.c4Key,310,188,true);choices(combo(812,510,115,180),{L"停用",L"中键",L"侧键 1",L"侧键 2",L"右键",L"左键"},extra.c4Mouse==6?5:extra.c4Mouse);next();
+note(L"选中步兵，按住配置键点击敌方建筑，尝试走入建筑格。普通步兵不会因此获得占领、潜入或 C4 能力；到达后可能消失，仍由原版处理。",44);
+item(L"STATIC",L"步兵强制进建筑：关闭",20,605,813);next();
 toggle(420,L"科技解锁（实验性）",techMode,20,305);techSearch=edit(421,L"",345,280);SendMessageW(techSearch,EM_SETCUEBANNER,TRUE,(LPARAM)L"搜索名称或单位 ID");next();
 techList=item(L"LISTBOX",L"",20,455,422,LBS_NOTIFY|WS_VSCROLL|WS_TABSTOP,152);
 int listTop=rowY;button(423,L"生产所选",488,137);next();button(424,L"切换许可",488,137);next();button(425,L"全选",488,65);button(426,L"清空",560,65);next();button(427,L"兼容预设",488,137);rowY=listTop+164;

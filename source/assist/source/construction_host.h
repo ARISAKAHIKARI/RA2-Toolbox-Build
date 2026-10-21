@@ -64,7 +64,7 @@ static void collectChoices(){
   if(tab!=activeTab)continue;bool native=nativeCameo(index,tab);
   bool queued=std::find(b.items.begin(),b.items.end(),index)!=b.items.end();
   bool future=previewReady&&catalogue.possible(type,t.kind,t.naval!=0)&&!catalogue.possible(type,t.kind,t.naval!=0,false);
-  if(queued||(!native&&future))choices.push_back({slot,index,tab,type,!native});
+  if(queued||(!native&&future)||(native&&tab<2&&current[tab]&&get<int>(factory(tab)+0x24)==54))choices.push_back({slot,index,tab,type,!native});
  }
 }
 static void resizePanel(){
@@ -219,6 +219,12 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
  return DefWindowProcW(w,msg,wp,lp);
 }
 static void service(){
+ // Observe every service tick, before the slower catalogue refresh. Native
+ // unavailable tabs may ignore the key, but the reservation tab still follows.
+ static bool previous[4]{};uint8_t keys[256]{};nativekeyhost::down(keys);int requested=-1;
+ const auto&bindings=nativekeyhost::current();
+ for(int tab=0;tab<4;++tab){bool down=bindings.held(nativekeys::Command(tab),keys);if(extra.constructionQueue&&usable()&&down&&!previous[tab])requested=tab;previous[tab]=down;}
+ if(requested>=0){selectedTab=requested;activeTab=requested;lastNativeTab=get<int>(0x87F7E8+0x539C,-1);scroll=0;refreshed=0;}
  consumeNativeClick();uint32_t now=GetTickCount();if(refreshed&&uint32_t(now-refreshed)<100)return;refreshed=now;
  if(!extra.constructionQueue){reset();return;}if(!displayReady()){hide();return;}
  house=get<uint32_t>(0xA83D4C);if(house<0x10000){hide();return;}

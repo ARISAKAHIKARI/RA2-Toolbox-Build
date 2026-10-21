@@ -21,9 +21,10 @@ static void loadAdditionalSettings(){
  for(int i=0;i<9;++i)socialKeys[i]=WORD(value(L"Hotkeys",i?(L"Taunt"+std::to_wstring(i)).c_str():L"Cheer",0)&65535);
  extra.mapStrategy=std::clamp(value(L"Display",L"ShroudStrategy",value(L"Experimental",L"RenderReveal",0)?2:0),0,3);
  extra.renderReveal=extra.mapStrategy==1?2:extra.mapStrategy==2?1:0;
- extra.experimentalReveal=extra.mapStrategy==3||(!extra.renderReveal&&value(L"Experimental",L"RevealMap",0)!=0);
+ extra.experimentalReveal=extra.mapStrategy==3;
  extra.nativeAirWaypoints=value(L"Experimental",L"NativeAirWaypoints",0)!=0;
  extra.airWaypoints=value(L"Aircraft",L"ZWaypoints",1)!=0;
+ int pathMode=std::clamp(value(L"Aircraft",L"WaypointMode",extra.nativeAirWaypoints?2:extra.airWaypoints?1:0),0,2);extra.airWaypoints=pathMode==1;extra.nativeAirWaypoints=pathMode==2;extra.airPathKey=uint32_t(value(L"Aircraft",L"WaypointHoldKey",0));
  extra.constructionQueue=value(L"Production",L"ReserveNext",1)!=0;
  extra.idleAircraft=value(L"Display",L"IdleAircraftIndicator",1)!=0;
  extra.parasiteMarker=value(L"Display",L"ParasiteMarker",1)!=0;extra.crateBuffMarkers=value(L"Display",L"CrateBuffMarkers",1)!=0;
@@ -65,13 +66,13 @@ static bool saveAdditionalSettings(){
  write(L"Dodge",L"Enabled",extra.dodgeEnabled);
  write(L"BurstRefresh",L"Enabled",extra.burstEnabled);write(L"BurstRefresh",L"HoldEnabled",extra.burstHoldEnabled);write(L"BurstRefresh",L"HoldKey",extra.burstKey);
  write(L"MissileDefense",L"Enabled",extra.missileDefense);write(L"MissileDefense",L"ScanHz",extra.missileScanHz);
- write(L"Modes",L"AntiTheft",extra.antiTheft);write(L"Experimental",L"RevealMap",extra.experimentalReveal);
+ write(L"Modes",L"AntiTheft",extra.antiTheft);WritePrivateProfileStringW(L"Experimental",L"RevealMap",nullptr,path(L"Assist.ini").c_str());
  write(L"Experimental",L"RefreshStrategy",extra.scrollRefreshMode);
 #ifndef RA2_UNIFIED
  write(L"Experimental",L"ScrollRefreshHz",extra.scrollRefreshHz);
 #endif
  write(L"Experimental",L"InfantryC4",extra.c4Test);write(L"Experimental",L"C4HoldKey",extra.c4Key);write(L"Experimental",L"C4Mouse",extra.c4Mouse);
- write(L"Experimental",L"RenderReveal",extra.renderReveal);write(L"Experimental",L"NativeAirWaypoints",extra.nativeAirWaypoints);write(L"Aircraft",L"ZWaypoints",extra.airWaypoints);write(L"Production",L"ReserveNext",extra.constructionQueue);write(L"Display",L"EnemyMarkers",extra.enemyMarkers);write(L"Display",L"IdleAircraftIndicator",extra.idleAircraft);
+ write(L"Experimental",L"RenderReveal",extra.renderReveal);write(L"Experimental",L"NativeAirWaypoints",extra.nativeAirWaypoints);write(L"Aircraft",L"ZWaypoints",extra.airWaypoints);write(L"Aircraft",L"WaypointMode",extra.nativeAirWaypoints?2:extra.airWaypoints?1:0);write(L"Aircraft",L"WaypointHoldKey",extra.airPathKey);write(L"Production",L"ReserveNext",extra.constructionQueue);write(L"Display",L"EnemyMarkers",extra.enemyMarkers);write(L"Display",L"IdleAircraftIndicator",extra.idleAircraft);
  write(L"Display",L"ParasiteMarker",extra.parasiteMarker);write(L"Display",L"CrateBuffMarkers",extra.crateBuffMarkers);
  write(L"Hotkeys",L"ExecuteAllMatches",extra.allHotkeys);write(L"Mouse",L"OverrideNative",extra.overrideNative);
  for(int i=0;i<pointerinput::MouseCount;++i)write(L"Mouse",pointerinput::mouseSetting(i),extra.mouseButtons[i]);
@@ -107,7 +108,7 @@ static void fillExtraTypes(bool force=false){
  for(const auto&t:savedTypes.types){std::string id=t.id;if(!typecatalog::validId(id))continue;std::wstring label=(const wchar_t*)t.name;label+=L" ["+wide(id.c_str())+L"]";int row=int(SendMessageW(extraControls[QuotaType],CB_ADDSTRING,0,(LPARAM)label.c_str()));if(row<0)continue;quotaTypeIDs.push_back(id);if(id==keep)restore=row;}
  if(restore>=0)SendMessageW(extraControls[QuotaType],CB_SETCURSEL,restore,0);
 }
-static uint32_t additionalFlags(){uint32_t f=extra.frozen?Frozen:0;if(techMode)f|=UnsafeTech;if(extra.antiTheft)f|=AntiTheft;if(extra.constructionQueue)f|=ReserveConstruction;if(extra.nativeAirWaypoints)f|=NativeAirWaypoints;else if(extra.airWaypoints)f|=AirWaypoints;if(extra.experimentalReveal)f|=ExperimentalReveal;if(extra.enter)f|=AdvancedEnter;if(extra.air)f|=AircraftSpread;if(extra.disk)f|=DiskPrimary;if(extra.sellDrained)f|=SellDrained;if(extra.sellVehicles)f|=SellVehicles;if(playertest::Available&&extra.sellEnemy)f|=SellEnemy;return f;}
+static uint32_t additionalFlags(){uint32_t f=extra.frozen?Frozen:0;if(techMode)f|=UnsafeTech;if(extra.antiTheft)f|=AntiTheft;if(extra.constructionQueue)f|=ReserveConstruction;if(extra.nativeAirWaypoints&&!extra.airPathKey)f|=NativeAirWaypoints;else if(extra.airWaypoints||extra.nativeAirWaypoints)f|=AirWaypoints;if(extra.experimentalReveal)f|=ExperimentalReveal;if(extra.enter)f|=AdvancedEnter;if(extra.air)f|=AircraftSpread;if(extra.disk)f|=DiskPrimary;if(extra.sellDrained)f|=SellDrained;if(extra.sellVehicles)f|=SellVehicles;if(playertest::Available&&extra.sellEnemy)f|=SellEnemy;return f;}
 static void syncRefreshRate(){if(!shared)return;
 #ifdef RA2_UNIFIED
  shared->scrollRefreshHz=extra.scrollRefreshMode?suite::refreshRate():0;

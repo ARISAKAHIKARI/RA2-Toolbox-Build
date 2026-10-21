@@ -1,0 +1,3 @@
+PASS production UI owner-draw routing: state/text/focus/print, checkbox notification ordering, default button, native specialized preview, field contrast, full static invalidation; no Windows raster claim
+PASS production display QPC independent of Shared and command clock, 2 ms progression and timer failure fallback
+PASS shared typography: suite and three panels use one font factory; embedded panels follow the console DPI

@@ -273,6 +273,7 @@ static void buttonLabel(){
  SetWindowTextW(bStart,enabled?L"暂停显示":L"继续显示");SetWindowTextW(bDemo,demo?L"退出演示":L"布局演示");}
 static LRESULT CALLBACK overlayProc(HWND w,UINT m,WPARAM a,LPARAM b){if(m==WM_NCHITTEST)return HTTRANSPARENT;if(m==WM_MOUSEACTIVATE)return MA_NOACTIVATE;if(m==WM_ERASEBKGND)return 1;return DefWindowProcW(w,m,a,b);}
 #include "display_settings_ui.h"
+#include "console_layout.h"
 static LRESULT CALLBACK proc(HWND w,UINT m,WPARAM a,LPARAM b){
 #ifdef RA2_UNIFIED
  if(suite::layoutMessage(w,m,b))return 0;
@@ -280,9 +281,11 @@ static LRESULT CALLBACK proc(HWND w,UINT m,WPARAM a,LPARAM b){
  if(m==suite::ModuleEnable){enabled=bool(a);if(!enabled)detach();else lastSearch=0;buttonLabel();tick();return 0;}
  if(m==WM_CLOSE&&a!=suite::CloseToken){suite::requestClose();return 0;}
 #endif
+ if(m==modernui::DpiMessage){consoleScale(unsigned(a));return 0;}
  switch(m){case WM_CREATE:{
+  ui=w;consoleDpi=modernui::windowDpi(w);
   font=modernui::makeFont();
-  auto ctl=[&](const wchar_t* cls,const wchar_t* title,DWORD style,int x,int y,int cw,int ch,int id){HWND c=CreateWindowW(cls,title,WS_CHILD|WS_VISIBLE|style,x,y,cw,ch,w,(HMENU)(INT_PTR)id,nullptr,nullptr);SendMessageW(c,WM_SETFONT,(WPARAM)font,TRUE);return c;};
+  auto ctl=[&](const wchar_t* cls,const wchar_t* title,DWORD style,int x,int y,int cw,int ch,int id){HWND c=CreateWindowW(cls,title,WS_CHILD|WS_VISIBLE|style,x,y,cw,ch,w,(HMENU)(INT_PTR)id,nullptr,nullptr);SendMessageW(c,WM_SETFONT,(WPARAM)font,TRUE);consoleControls.push_back({c,{x,y,cw,ch}});return c;};
   bStart=ctl(L"BUTTON",L"暂停显示",BS_OWNERDRAW,14,54,94,26,100);bDemo=ctl(L"BUTTON",L"布局演示",BS_OWNERDRAW,116,54,94,26,101);ctl(L"BUTTON",L"重新连接",BS_OWNERDRAW,218,54,94,26,102);
   cBuildings=ctl(L"BUTTON",L"显示建筑",BS_AUTOCHECKBOX,14,89,144,21,103);cOthers=ctl(L"BUTTON",L"其他玩家",BS_AUTOCHECKBOX,168,89,144,21,104);
   SendMessageW(cBuildings,BM_SETCHECK,buildings?BST_CHECKED:BST_UNCHECKED,0);SendMessageW(cOthers,BM_SETCHECK,showOthers?BST_CHECKED:BST_UNCHECKED,0);
@@ -292,19 +295,25 @@ static LRESULT CALLBACK proc(HWND w,UINT m,WPARAM a,LPARAM b){
   SendMessageW(eTop,EM_SETLIMITTEXT,4,0);SendMessageW(eLeft,EM_SETLIMITTEXT,4,0);
   cTab=ctl(L"BUTTON",L"常驻显示（不依赖 Tab）",BS_AUTOCHECKBOX,14,149,298,22,113);SendMessageW(cTab,BM_SETCHECK,!tabEnabled?BST_CHECKED:BST_UNCHECKED,0);
   tabModeBox=ctl(L"COMBOBOX",L"",CBS_DROPDOWNLIST|WS_TABSTOP,14,179,298,110,114);SendMessageW(tabModeBox,CB_ADDSTRING,0,(LPARAM)L"按键切换");SendMessageW(tabModeBox,CB_ADDSTRING,0,(LPARAM)L"按住显示");SendMessageW(tabModeBox,CB_ADDSTRING,0,(LPARAM)L"短按切换 / 长按暂显");SendMessageW(tabModeBox,CB_SETCURSEL,int(tabMode),0);
-  stats=ctl(L"STATIC",L"等待游戏…",0,14,216,298,34,105);ctl(L"STATIC",L"Tab 不拦截原版菜单；不兼容时用常驻显示",0,14,253,304,20,106);
-  ctl(L"STATIC",L"Ctrl+Alt+H 显隐 · Ctrl+Alt+←/→ 翻页",0,14,278,304,20,115);
-  ctl(L"BUTTON",L"显示 / 隐藏覆盖层",BS_OWNERDRAW,14,306,298,26,116);
-  visibilityLabel=ctl(L"STATIC",L"覆盖层等待游戏",0,14,339,298,42,117);
-  ctl(L"STATIC",L"显示缩放 %",0,14,395,138,23,119);
-  ctl(L"EDIT",std::to_wstring(scalePercent).c_str(),WS_BORDER|ES_NUMBER|ES_AUTOHSCROLL,168,392,102,25,118);
+  stats=ctl(L"STATIC",L"等待游戏…",0,14,216,298,34,105);modernui::tip(tabModeBox,L"使用游戏内 Tab 控制统计覆盖层；不会拦截原版菜单。不兼容时可选择常驻显示。");
+  modernui::tip(cTab,L"常驻显示不依赖 Tab；Ctrl+Alt+H 显隐，Ctrl+Alt+←/→ 翻页。");
+  ctl(L"BUTTON",L"显示 / 隐藏覆盖层",BS_OWNERDRAW,14,264,298,26,116);
+  visibilityLabel=ctl(L"STATIC",L"覆盖层等待游戏",0,14,300,298,42,117);
+  ctl(L"STATIC",L"显示缩放 %",0,14,357,138,23,119);
+  ctl(L"EDIT",std::to_wstring(scalePercent).c_str(),WS_BORDER|ES_NUMBER|ES_AUTOHSCROLL,168,354,102,25,118);
   SendDlgItemMessageW(w,118,EM_SETLIMITTEXT,3,0);
-  ctl(L"STATIC",L"50–250%，默认 100%，即时生效",0,14,426,298,23,120);
+  modernui::tip(GetDlgItem(w,118),L"调整游戏内统计覆盖层的大小，范围 50–250%，默认 100%，即时生效。");
+  modernui::tip(GetDlgItem(w,116),L"显示或隐藏游戏内统计覆盖层；快捷键 Ctrl+Alt+H。");
 #ifdef RA2_UNIFIED
   createUnitSettings(ctl);
 #endif
-  EnableWindow(tabModeBox,tabEnabled);controlsReady=true;
+  EnableWindow(tabModeBox,tabEnabled);controlsReady=true;modernui::styleChildren(w);consoleScale(consoleDpi);
   if(!RegisterHotKey(w,1,MOD_CONTROL|MOD_ALT|MOD_NOREPEAT,'H'))visibilityStatus(L"备用快捷键注册失败；请用显示按钮或常驻模式");RegisterHotKey(w,2,MOD_CONTROL|MOD_ALT|MOD_NOREPEAT,VK_RIGHT);RegisterHotKey(w,3,MOD_CONTROL|MOD_ALT|MOD_NOREPEAT,VK_LEFT);SetTimer(w,1,16,nullptr);return 0;}
+ case WM_DPICHANGED:consoleScale(HIWORD(a));if(auto rect=(RECT*)b)SetWindowPos(w,nullptr,rect->left,rect->top,rect->right-rect->left,rect->bottom-rect->top,SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS);return 0;
+ case WM_SIZE:layoutConsole();return 0;
+ case WM_MOUSEWHEEL:consoleY-=GET_WHEEL_DELTA_WPARAM(a)/WHEEL_DELTA*modernui::scale(60,consoleDpi);layoutConsole();return 0;
+ case WM_HSCROLL:case WM_VSCROLL:{int bar=m==WM_HSCROLL?SB_HORZ:SB_VERT;SCROLLINFO si{sizeof si,SIF_ALL};GetScrollInfo(w,bar,&si);int next=si.nPos;switch(LOWORD(a)){case SB_LINEUP:next-=modernui::scale(28,consoleDpi);break;case SB_LINEDOWN:next+=modernui::scale(28,consoleDpi);break;case SB_PAGEUP:next-=si.nPage;break;case SB_PAGEDOWN:next+=si.nPage;break;case SB_THUMBTRACK:case SB_THUMBPOSITION:next=si.nTrackPos;break;case SB_TOP:next=0;break;case SB_BOTTOM:next=si.nMax;break;}(bar==SB_HORZ?consoleX:consoleY)=next;layoutConsole();return 0;}
+ case WM_ERASEBKGND:return 1;
  case WM_TIMER:case WM_APP+9:tick();return 0;
  case WM_COMMAND:
 #ifdef RA2_UNIFIED
@@ -322,7 +331,7 @@ static LRESULT CALLBACK proc(HWND w,UINT m,WPARAM a,LPARAM b){
  case WM_HOTKEY:if(a==1){toggleOverlay();}else if(a==2)page++;else if(a==3)page=std::max(0,page-1);renderDirty=true;tick();return 0;
  case WM_CTLCOLORSTATIC:case WM_CTLCOLORBTN:SetBkMode((HDC)a,OPAQUE);SetTextColor((HDC)a,modernui::Text);SetBkColor((HDC)a,modernui::Background);SetDCBrushColor((HDC)a,modernui::Background);return (LRESULT)GetStockObject(DC_BRUSH);
  case WM_DRAWITEM:{auto d=(DRAWITEMSTRUCT*)b;HBRUSH br=CreateSolidBrush((d->itemState&ODS_SELECTED)?RGB(47,76,99):RGB(31,48,68));FillRect(d->hDC,&d->rcItem,br);DeleteObject(br);SetBkMode(d->hDC,TRANSPARENT);SetTextColor(d->hDC,RGB(223,237,251));SelectObject(d->hDC,font);wchar_t t[50];GetWindowTextW(d->hwndItem,t,50);DrawTextW(d->hDC,t,-1,&d->rcItem,DT_CENTER|DT_VCENTER|DT_SINGLELINE);return TRUE;}
- case WM_PAINT:{PAINTSTRUCT ps;HDC dc=BeginPaint(w,&ps);RECT r;GetClientRect(w,&r);HBRUSH br=CreateSolidBrush(modernui::Background);FillRect(dc,&r,br);DeleteObject(br);SetBkMode(dc,TRANSPARENT);SetTextColor(dc,RGB(110,210,248));SelectObject(dc,font);TextOutW(dc,14,12,L"单位统计",lstrlenW(L"单位统计"));SetTextColor(dc,RGB(148,166,188));TextOutW(dc,14,32,L"玩家兵力与单位状态",lstrlenW(L"玩家兵力与单位状态"));EndPaint(w,&ps);return 0;}
+ case WM_PAINT:{PAINTSTRUCT ps;HDC dc=BeginPaint(w,&ps);RECT r;GetClientRect(w,&r);HBRUSH br=CreateSolidBrush(modernui::Background);FillRect(dc,&r,br);DeleteObject(br);SetBkMode(dc,TRANSPARENT);SetTextColor(dc,RGB(110,210,248));SelectObject(dc,font);TextOutW(dc,modernui::scale(14,consoleDpi)-consoleX,modernui::scale(12,consoleDpi)-consoleY,L"单位统计",lstrlenW(L"单位统计"));SetTextColor(dc,RGB(148,166,188));TextOutW(dc,modernui::scale(14,consoleDpi)-consoleX,modernui::scale(32,consoleDpi)-consoleY,L"玩家兵力与单位状态",lstrlenW(L"玩家兵力与单位状态"));EndPaint(w,&ps);return 0;}
  case WM_DESTROY:surface.clear();KillTimer(w,1);UnregisterHotKey(w,1);UnregisterHotKey(w,2);UnregisterHotKey(w,3);detach();DeleteObject(font);PostQuitMessage(0);return 0;}
  return DefWindowProcW(w,m,a,b);
 }
@@ -340,8 +349,8 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR,int){
  WNDCLASSW wc{};wc.hInstance=inst;wc.lpfnWndProc=overlayProc;wc.lpszClassName=L"RA2UnitTransparentOverlay";RegisterClassW(&wc);
  overlay=CreateWindowExW(WS_EX_LAYERED|WS_EX_TRANSPARENT|WS_EX_TOOLWINDOW|WS_EX_NOACTIVATE|WS_EX_TOPMOST,wc.lpszClassName,L"",WS_POPUP,0,0,1,1,nullptr,nullptr,inst,nullptr);
  wc.lpfnWndProc=proc;wc.lpszClassName=L"RA2UnitMonitorUI";wc.hCursor=LoadCursorW(nullptr,IDC_ARROW);wc.hIcon=LoadIconW(nullptr,IDI_APPLICATION);RegisterClassW(&wc);
- RECT r{0,0,326,460};AdjustWindowRect(&r,WS_OVERLAPPED|WS_CAPTION|WS_SYSMENU|WS_MINIMIZEBOX,FALSE);
- ui=CreateWindowW(wc.lpszClassName,L"单位统计 v" RA2_RELEASE_VERSION_W,WS_OVERLAPPED|WS_CAPTION|WS_SYSMENU|WS_MINIMIZEBOX,CW_USEDEFAULT,CW_USEDEFAULT,r.right-r.left,r.bottom-r.top,nullptr,nullptr,inst,nullptr);
+ RECT r{0,0,700,440};AdjustWindowRect(&r,WS_OVERLAPPEDWINDOW|WS_CLIPCHILDREN|WS_VSCROLL|WS_HSCROLL,FALSE);
+ ui=CreateWindowW(wc.lpszClassName,L"单位统计 v" RA2_RELEASE_VERSION_W,WS_OVERLAPPEDWINDOW|WS_CLIPCHILDREN|WS_VSCROLL|WS_HSCROLL,CW_USEDEFAULT,CW_USEDEFAULT,r.right-r.left,r.bottom-r.top,nullptr,nullptr,inst,nullptr);
 #ifdef RA2_UNIFIED
  suite::registerPane(1,ui);
 #else

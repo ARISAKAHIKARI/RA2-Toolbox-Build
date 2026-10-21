@@ -1,0 +1,46 @@
+{
+  "scope": "Actual VoiceMove/VoiceAttack/QueueVoice and Runtime input acceptance; local owner and noncritical RNG mocked, audio device not emulated.",
+  "dll_sha256": "2b9199442080d915754d8f4d7f10cf0e4b097be80f0982246be7b79619158a22",
+  "results": [
+    {
+      "case": "0_move",
+      "status": "PASS"
+    },
+    {
+      "case": "0_attack",
+      "status": "PASS"
+    },
+    {
+      "case": "0_invalid",
+      "status": "PASS"
+    },
+    {
+      "case": "0_disabled_audio",
+      "status": "PASS"
+    },
+    {
+      "case": "0_follow_native",
+      "status": "PASS"
+    },
+    {
+      "case": "3_move",
+      "status": "PASS"
+    },
+    {
+      "case": "3_attack",
+      "status": "PASS"
+    },
+    {
+      "case": "3_invalid",
+      "status": "PASS"
+    },
+    {
+      "case": "3_disabled_audio",
+      "status": "PASS"
+    },
+    {
+      "case": "3_follow_native",
+      "status": "PASS"
+    }
+  ]
+}

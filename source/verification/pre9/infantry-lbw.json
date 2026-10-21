@@ -1,0 +1,251 @@
+{
+  "scope": "Shipped DLL -> native EventClass -> SP DoList/MP OutList, plus native movement-gate branches.\nSynthetic world/Win32; partial CanEnterCell and Capture tick, not full pathfinding,\narrival effects, Windows audio or peer simulation. Private game EXEs are not shipped.\n",
+  "game_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+  "dll_sha256": "2b9199442080d915754d8f4d7f10cf0e4b097be80f0982246be7b79619158a22",
+  "results": [
+    {
+      "case": "input_0_plain",
+      "status": "PASS"
+    },
+    {
+      "case": "input_0_can_c4",
+      "status": "PASS"
+    },
+    {
+      "case": "input_0_old_patch_conflict",
+      "status": "PASS"
+    },
+    {
+      "case": "input_0_engineer",
+      "status": "PASS"
+    },
+    {
+      "case": "input_0_spy",
+      "status": "PASS"
+    },
+    {
+      "case": "input_0_c4",
+      "status": "PASS"
+    },
+    {
+      "case": "input_0_off",
+      "status": "PASS"
+    },
+    {
+      "case": "input_0_own_building",
+      "status": "PASS"
+    },
+    {
+      "case": "input_0_foreign_infantry",
+      "status": "PASS"
+    },
+    {
+      "case": "input_0_dead_infantry",
+      "status": "PASS"
+    },
+    {
+      "case": "input_0_loaded",
+      "status": "PASS"
+    },
+    {
+      "case": "input_0_stale",
+      "status": "PASS"
+    },
+    {
+      "case": "input_0_chat",
+      "status": "PASS"
+    },
+    {
+      "case": "input_0_not_building",
+      "status": "PASS"
+    },
+    {
+      "case": "input_3_plain",
+      "status": "PASS"
+    },
+    {
+      "case": "input_3_can_c4",
+      "status": "PASS"
+    },
+    {
+      "case": "input_3_old_patch_conflict",
+      "status": "PASS"
+    },
+    {
+      "case": "input_3_engineer",
+      "status": "PASS"
+    },
+    {
+      "case": "input_3_spy",
+      "status": "PASS"
+    },
+    {
+      "case": "input_3_c4",
+      "status": "PASS"
+    },
+    {
+      "case": "input_3_off",
+      "status": "PASS"
+    },
+    {
+      "case": "input_3_own_building",
+      "status": "PASS"
+    },
+    {
+      "case": "input_3_foreign_infantry",
+      "status": "PASS"
+    },
+    {
+      "case": "input_3_dead_infantry",
+      "status": "PASS"
+    },
+    {
+      "case": "input_3_loaded",
+      "status": "PASS"
+    },
+    {
+      "case": "input_3_stale",
+      "status": "PASS"
+    },
+    {
+      "case": "input_3_chat",
+      "status": "PASS"
+    },
+    {
+      "case": "input_3_not_building",
+      "status": "PASS"
+    },
+    {
+      "case": "input_4_plain",
+      "status": "PASS"
+    },
+    {
+      "case": "input_4_can_c4",
+      "status": "PASS"
+    },
+    {
+      "case": "input_4_old_patch_conflict",
+      "status": "PASS"
+    },
+    {
+      "case": "input_4_engineer",
+      "status": "PASS"
+    },
+    {
+      "case": "input_4_spy",
+      "status": "PASS"
+    },
+    {
+      "case": "input_4_c4",
+      "status": "PASS"
+    },
+    {
+      "case": "input_4_off",
+      "status": "PASS"
+    },
+    {
+      "case": "input_4_own_building",
+      "status": "PASS"
+    },
+    {
+      "case": "input_4_foreign_infantry",
+      "status": "PASS"
+    },
+    {
+      "case": "input_4_dead_infantry",
+      "status": "PASS"
+    },
+    {
+      "case": "input_4_loaded",
+      "status": "PASS"
+    },
+    {
+      "case": "input_4_stale",
+      "status": "PASS"
+    },
+    {
+      "case": "input_4_chat",
+      "status": "PASS"
+    },
+    {
+      "case": "input_4_not_building",
+      "status": "PASS"
+    },
+    {
+      "case": "input_5_plain",
+      "status": "PASS"
+    },
+    {
+      "case": "input_5_can_c4",
+      "status": "PASS"
+    },
+    {
+      "case": "input_5_old_patch_conflict",
+      "status": "PASS"
+    },
+    {
+      "case": "input_5_engineer",
+      "status": "PASS"
+    },
+    {
+      "case": "input_5_spy",
+      "status": "PASS"
+    },
+    {
+      "case": "input_5_c4",
+      "status": "PASS"
+    },
+    {
+      "case": "input_5_off",
+      "status": "PASS"
+    },
+    {
+      "case": "input_5_own_building",
+      "status": "PASS"
+    },
+    {
+      "case": "input_5_foreign_infantry",
+      "status": "PASS"
+    },
+    {
+      "case": "input_5_dead_infantry",
+      "status": "PASS"
+    },
+    {
+      "case": "input_5_loaded",
+      "status": "PASS"
+    },
+    {
+      "case": "input_5_stale",
+      "status": "PASS"
+    },
+    {
+      "case": "input_5_chat",
+      "status": "PASS"
+    },
+    {
+      "case": "input_5_not_building",
+      "status": "PASS"
+    },
+    {
+      "case": "native_cell_gate_8_False",
+      "status": "PASS"
+    },
+    {
+      "case": "native_cell_gate_7_False",
+      "status": "PASS"
+    },
+    {
+      "case": "native_cell_gate_17_False",
+      "status": "PASS"
+    },
+    {
+      "case": "native_cell_gate_17_True",
+      "status": "PASS"
+    },
+    {
+      "case": "native_capture_tick_preserves_explicit_destination_without_capabilities",
+      "status": "PASS"
+    }
+  ]
+}

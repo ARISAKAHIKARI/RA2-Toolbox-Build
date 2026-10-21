@@ -20,7 +20,7 @@ static void serviceCommandCursorHint(){
   if((allowed&bits[n])&&pointerinput::matchesHold(keys,holds[n],pointerinput::Enhanced))held|=bits[n];
  }
  // Mouse-only configurations do not leave a permanent special cursor.
- if(!held||keys[27]||((featureFlags&NativeAirWaypoints)&&keys['Z'])){clear();return;}
+ if(!held||keys[27]||((featureFlags&NativeAirWaypoints)&&airway::held(keys))){clear();return;}
  allowed&=held;
  static external::ReadSession previewReader;
  static uint32_t scanAt=0,scanPid=0,scanMatch=0,scanKeys=0,scanRevision=0;

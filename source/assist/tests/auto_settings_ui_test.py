@@ -80,7 +80,7 @@ static std::map<std::wstring,int> profile;
 static std::map<std::wstring,std::wstring> profile_text;static bool saveWriteOK=true;
 static std::wstring path(const wchar_t*s){return s;}
 static void GetPrivateProfileStringW(const wchar_t*,const wchar_t*key,const wchar_t* fallback,wchar_t*out,int n,const wchar_t*){auto it=profile_text.find(key);auto text=it==profile_text.end()?std::wstring(fallback):it->second;wcsncpy(out,text.c_str(),n-1);out[n-1]=0;}
-static int WritePrivateProfileStringW(const wchar_t*,const wchar_t*key,const wchar_t* text,const wchar_t*){profile_text[key]=text;return 1;}
+static int WritePrivateProfileStringW(const wchar_t*,const wchar_t*key,const wchar_t* text,const wchar_t*){if(text)profile_text[key]=text;else{profile_text.erase(key);profile.erase(key);}return 1;}
 
 static int value(const wchar_t*,const wchar_t* key,int fallback){auto it=profile.find(key);return it==profile.end()?fallback:it->second;}
 static void write(const wchar_t*,const wchar_t* key,int v){profile[key]=v;}
@@ -113,11 +113,11 @@ int main(){
  for(int f=0;f<featuretypes::Count;++f){featureTypes.filters[f].custom=1;featureTypeText[f]=L"custom_a，CUSTOM_B";}
  saveFeatureTypes();featureTypes={};for(auto&text:featureTypeText)text.clear();loadFeatureTypes();
  for(int f=0;f<featuretypes::Count;++f)assert(featureTypes.filters[f].custom&&featureTypes.filters[f].count==2&&featuretypes::allowed(featureTypes,f,"CUSTOM_A"));
- for(int f=0;f<featuretypes::Count;++f){fields[790]=f;assert(autoSettingChanged(790,CBN_SELCHANGE)&&featureTypeIndex==f&&featureRefreshes==unsigned(f+1));
-  fields[791]=1;autoSettingChanged(791,BN_CLICKED);editText=L"UNIT_A,unit_b";autoSettingChanged(792,EN_CHANGE);
+ for(int f=0;f<featuretypes::Count;++f){int toggle=9200+f*2,editor=toggle+1;auto other=featureTypes.filters[(f+1)%featuretypes::Count];
+  fields[toggle]=1;autoSettingChanged(toggle,BN_CLICKED);editText=L"UNIT_A,unit_b";autoSettingChanged(editor,EN_CHANGE);
   assert(featureTypes.filters[f].custom&&featureTypes.filters[f].count==2&&featuretypes::allowed(featureTypes,f,"UNIT_B"));
-  editText=L"BAD/ID";autoSettingChanged(792,EN_CHANGE);assert(featureTypes.filters[f].count==2&&featureTypeText[f]==L"UNIT_A,unit_b");
-  editText=L"";autoSettingChanged(792,EN_CHANGE);assert(!featuretypes::allowed(featureTypes,f,"UNIT_A"));
+  editText=L"BAD/ID";autoSettingChanged(editor,EN_CHANGE);assert(featureTypes.filters[f].count==2&&featureTypeText[f]==L"UNIT_A,unit_b");
+  editText=L"";autoSettingChanged(editor,EN_CHANGE);assert(!featuretypes::allowed(featureTypes,f,"UNIT_A"));assert(!memcmp(&other,&featureTypes.filters[(f+1)%featuretypes::Count],sizeof other));
  }
  autoSavePending=false;timers=saves=syncs=0;timerMs=0;settingsRevision=1;paintRevision=0;
 
@@ -192,14 +192,16 @@ int main(){
  // Experimental reveal opt-ins are exclusive and the render path clears queued old reveals.
  extra.experimentalReveal=true;commandQueue.size=3;commandQueue.slots[0].command=RevealMap;commandQueue.slots[1].command=15;commandQueue.slots[2].command=RevealMap;
  fields[808]=1;autoSettingChanged(808,CBN_SELCHANGE);assert(extra.renderReveal&&!extra.experimentalReveal&&autoSavePending);
- assert(commandQueue.size==1&&commandQueue.slots[0].command==15&&fields[739]==BST_UNCHECKED);
+ assert(commandQueue.size==1&&commandQueue.slots[0].command==15);
  saveMouse();extra.renderReveal=false;loadMouse();assert(extra.renderReveal&&!extra.experimentalReveal);
  profile[L"RevealMap"]=1;loadMouse();assert(extra.renderReveal&&!extra.experimentalReveal); // legacy permission loses on load
  fields[808]=0;autoSettingChanged(808,CBN_SELCHANGE);assert(!extra.renderReveal);saveMouse();loadMouse();assert(!extra.renderReveal);
- fields[806]=1;autoSettingChanged(806,BN_CLICKED);assert(extra.nativeAirWaypoints&&airway::resets==1&&pointerMatches.clears==1);
- fields[806]=0;autoSettingChanged(806,BN_CLICKED);assert(!extra.nativeAirWaypoints&&airway::resets==2&&pointerMatches.clears==2);
+ fields[803]=2;autoSettingChanged(803,CBN_SELCHANGE);assert(extra.nativeAirWaypoints&&airway::resets==1&&pointerMatches.clears==1);
+ fields[803]=0;autoSettingChanged(803,CBN_SELCHANGE);assert(!extra.nativeAirWaypoints&&airway::resets==2&&pointerMatches.clears==2);
+ for(int mode:{0,1,2}){fields[803]=mode;autoSettingChanged(803,CBN_SELCHANGE);assert(extra.airWaypoints==(mode==1)&&extra.nativeAirWaypoints==(mode==2));saveMouse();extra.airWaypoints=extra.nativeAirWaypoints=false;loadMouse();assert(extra.airWaypoints==(mode==1)&&extra.nativeAirWaypoints==(mode==2));}
+ for(unsigned key:{0u,unsigned(MAKEWORD('W',2)),0u}){fields[894]=key;autoSettingChanged(894,EN_CHANGE);assert(extra.airPathKey==key);saveMouse();extra.airPathKey=123;loadMouse();assert(extra.airPathKey==key);}
  fields[787]=60;autoSettingChanged(787,EN_CHANGE);assert(advancedScanHz==60);fields[787]=61;autoSettingChanged(787,EN_CHANGE);assert(advancedScanHz==60);
- assert(!extra.experimentalReveal);profile[L"RevealMap"]=1;loadMouse();assert(extra.experimentalReveal);
+ assert(!extra.experimentalReveal);profile[L"RevealMap"]=1;loadMouse();assert(!extra.experimentalReveal);
  extra.experimentalReveal=false;saveMouse();extra.experimentalReveal=true;loadMouse();assert(!extra.experimentalReveal);
  profile.clear();profile[L"EnhancedButton"]=3;profile[L"AttackMoveButton"]=1;profile[L"SellButton"]=2;loadMouse();
  for(int i=0;i<pointerinput::MouseCount;++i)assert(extra.mouseButtons[i]==unsigned(i<pointerinput::MouseAttack?3:i==pointerinput::MouseAttack?1:2));
@@ -266,7 +268,7 @@ assert 'tabEnabled&&enabled&&gameActive&&!demo' in monitor
 assert 'if(c==RevealMap&&!extra.experimentalReveal)return false;' in main
 assert 'if(command==RevealMap&&!extra.experimentalReveal)' in main
 assert 'if(autoRevealNewMatch&&extra.experimentalReveal&&' in main
-assert 'commandQueue.slots[i].command==RevealMap' in main
+assert 'hotkeys[i]=i==8?0:' in main
 assert 'case 116:toggleOverlay();' in monitor
 assert 'if(a==1){toggleOverlay();}' in monitor
 assert 'tabui::displayRequested(hidden,demo||!tabEnabled,manualVisible,tabs.visible())' in monitor

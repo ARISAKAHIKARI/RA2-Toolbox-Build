@@ -7,7 +7,7 @@ namespace suite {
 constexpr UINT PaneLayout=WM_APP+80,ModuleEnable=WM_APP+81,CloseCheck=WM_APP+82;
 constexpr UINT ApplyDisplaySetting=WM_APP+83,DisplaySettingsChanged=WM_APP+84,RefreshRateChanged=WM_APP+85;
 constexpr WPARAM CloseToken=0x52413253;
-struct Layout {RECT rect;bool visible;};
+struct Layout {RECT rect;bool visible;unsigned dpi=96;};
 HWND parent();
 bool enabled(int module);
 void registerPane(int module,HWND pane);
@@ -24,8 +24,8 @@ bool readDisplaySettings(DisplayState& state);
 bool requestDisplaySetting(int option,int value);
 // Executed on each module's UI thread. Layout requests own their payload.
 inline bool layoutMessage(HWND w,UINT m,LPARAM lp){
- if(m!=PaneLayout)return false;auto p=(Layout*)lp;modernui::styleChildren(w);
- SetWindowPos(w,nullptr,p->rect.left,p->rect.top,p->rect.right-p->rect.left,p->rect.bottom-p->rect.top,SWP_NOZORDER|SWP_NOACTIVATE);
+ if(m!=PaneLayout)return false;auto p=(Layout*)lp;modernui::styleChildren(w);SendMessageW(w,modernui::DpiMessage,p->dpi,0);
+ SetWindowPos(w,nullptr,p->rect.left,p->rect.top,p->rect.right-p->rect.left,p->rect.bottom-p->rect.top,SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS);
  ShowWindow(w,p->visible?SW_SHOWNOACTIVATE:SW_HIDE);delete p;return true;
 }
 }

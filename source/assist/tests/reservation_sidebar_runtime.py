@@ -26,13 +26,15 @@ def message(m,kind,x=660,y=220,keys=0):
  m.u.mem_write(m.msg,struct.pack('<7I',1,kind,keys,(x&65535)|((y&65535)<<16),m.clock,0,0));m.run(m.entry,(0,1,m.msg));return m.r(m.msg+4),state(m)
 def event_count(m):return m.r(0x8b41f8)+m.r(0xa802c8)
 for mode in (0,3):
- for case in ('normal','defense','double_click','scaled','idle','completed','manual_pause','ui_pause','zero_slots','busy_input','policy_odd','old_policy','old_round','parent_reused','menu','chat','observer','disabled','outside','unsupported','right','drag','scroll','changed_parent','lost_focus','expired_hold','full_outlist','frame_advanced','frame_rollback','engine_paused','cancel_right','cancel_shift','cancel_full','cancel_completed','cancel_notqueued'):
+ for case in ('normal','defense','double_click','scaled','idle','completed','completed_other','manual_pause','ui_pause','zero_slots','busy_input','policy_odd','old_policy','old_round','parent_reused','menu','chat','observer','disabled','outside','unsupported','right','drag','scroll','changed_parent','lost_focus','expired_hold','full_outlist','frame_advanced','frame_rollback','engine_paused','cancel_right','cancel_shift','cancel_full','cancel_completed','cancel_notqueued'):
   name=f'input_{mode}_{case}'
   try:
    m=fixture(mode,case=='defense');s=state(m)
    if case=='scaled':m.client_width=1600;m.client_height=1200
    if case=='idle':m.w(m.factory+0x58,0)
-   if case=='completed':m.w(m.factory+0x24,54)
+   if case in ('completed','completed_other'):m.w(m.factory+0x24,54)
+   if case=='completed_other':
+    other=m.alloc(0x2000);m.w(other+0xdf8,1);m.w(m.parent+0x520,other)
    if case=='manual_pause':m.b(m.factory+0x70,1);m.b(m.factory+0x71,1)
    if case=='ui_pause':m.w(m.strip+88+0x10,2)
    if case=='zero_slots':s.reservePolicy.slots=0
@@ -58,7 +60,7 @@ for mode in (0,3):
    x,y=(1320,440) if case=='scaled' else (100,100) if case=='outside' else (724,220) if case=='unsupported' else (660,220)
    down=0x203 if case=='double_click' else 0x204 if case=='right' or case.startswith('cancel_') else 0x201
    kind,s=message(m,down,x,y,4 if case=='cancel_shift' else 0)
-   capture=case in ('normal','defense','double_click','scaled','drag','scroll','changed_parent','lost_focus','expired_hold','full_outlist','frame_advanced','cancel_right','cancel_shift','cancel_full','cancel_completed')
+   capture=case in ('normal','defense','double_click','scaled','drag','scroll','changed_parent','lost_focus','expired_hold','full_outlist','frame_advanced','completed_other','cancel_right','cancel_shift','cancel_full','cancel_completed')
    assert kind==(0 if capture else down),(hex(kind),case)
    assert s.reserveInput==(2 if case=='busy_input' else 0)
    if case=='drag':x+=12
@@ -69,7 +71,7 @@ for mode in (0,3):
     m.clock+=1501;s=state(m);s.heartbeat=m.clock;s.reservePolicy.tick=m.clock;save(m,s)
    up=0x205 if case=='right' or case.startswith('cancel_') else 0x202;kind,s=message(m,up,x,y)
    assert kind==(0 if capture else up),(hex(kind),case)
-   accepted=case in ('normal','defense','double_click','scaled','full_outlist','frame_advanced','cancel_right','cancel_shift','cancel_full','cancel_completed')
+   accepted=case in ('normal','defense','double_click','scaled','full_outlist','frame_advanced','completed_other','cancel_right','cancel_shift','cancel_full','cancel_completed')
    assert s.reserveInput==(1 if accepted else 2 if case=='busy_input' else 0)
    if accepted:
     assert (s.reserveClick.index,s.reserveClick.parentID,s.reserveClick.tab)==(0,90,m.tab)

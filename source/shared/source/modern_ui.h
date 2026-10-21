@@ -17,11 +17,27 @@
 #include <string>
 namespace modernui {
 constexpr int BodyPixels=14,HeadingPixels=20;
-// Embedded panels share the suite's physical-pixel layout. Standalone cursor
-// windows retain their existing DPI-scaled layout; do not scale one pane alone.
-constexpr unsigned panelDpi(unsigned dpi,bool embedded){return embedded?96:(dpi>=48&&dpi<=768?dpi:96);}
+// Every console uses 96-DPI design coordinates, including embedded panes.
+constexpr unsigned panelDpi(unsigned dpi,bool){return dpi>=48&&dpi<=768?dpi:96;}
+inline unsigned windowDpi(HWND w){using Fn=UINT(WINAPI*)(HWND);static auto f=(Fn)GetProcAddress(GetModuleHandleW(L"user32.dll"),"GetDpiForWindow");return panelDpi(f?f(w):96,false);}
+inline int scale(int value,unsigned dpi){return MulDiv(value,int(panelDpi(dpi,false)),96);}
+constexpr UINT DpiMessage=WM_APP+95;
 inline HFONT makeFont(int pixels=BodyPixels,unsigned dpi=96,int weight=FW_NORMAL){
  return CreateFontW(-int((pixels*panelDpi(dpi,false)+48)/96),0,0,0,weight,FALSE,FALSE,FALSE,DEFAULT_CHARSET,0,0,CLEARTYPE_QUALITY,0,L"Microsoft YaHei UI");
+}
+inline LRESULT CALLBACK tipProc(HWND w,UINT m,WPARAM a,LPARAM b,UINT_PTR id,DWORD_PTR){
+ if(m==WM_NCDESTROY){delete (std::wstring*)RemovePropW(w,L"RA2.Tip.Text");auto tip=(HWND)RemovePropW(w,L"RA2.Tip.Window");if(tip)DestroyWindow(tip);RemoveWindowSubclass(w,tipProc,id);}
+ return DefSubclassProc(w,m,a,b);
+}
+inline void tip(HWND control,const std::wstring& text){
+ if(!control||text.empty())return;auto storage=(std::wstring*)GetPropW(control,L"RA2.Tip.Text");
+ HWND tooltip=(HWND)GetPropW(control,L"RA2.Tip.Window");
+ if(!storage){storage=new std::wstring;SetPropW(control,L"RA2.Tip.Text",storage);SetWindowSubclass(control,tipProc,0x6220,0);}
+ *storage=text;bool add=!tooltip;
+ if(add){tooltip=CreateWindowExW(WS_EX_TOPMOST,TOOLTIPS_CLASSW,nullptr,WS_POPUP|TTS_ALWAYSTIP|TTS_NOPREFIX,CW_USEDEFAULT,CW_USEDEFAULT,CW_USEDEFAULT,CW_USEDEFAULT,GetParent(control),nullptr,GetModuleHandleW(nullptr),nullptr);SetPropW(control,L"RA2.Tip.Window",tooltip);}
+ if(!tooltip)return;TOOLINFOW info{sizeof info};info.uFlags=TTF_IDISHWND|TTF_SUBCLASS;info.hwnd=GetParent(control);info.uId=(UINT_PTR)control;info.lpszText=const_cast<wchar_t*>(storage->c_str());
+ SendMessageW(tooltip,add?TTM_ADDTOOLW:TTM_UPDATETIPTEXTW,0,(LPARAM)&info);
+ SendMessageW(tooltip,TTM_SETMAXTIPWIDTH,0,scale(440,windowDpi(control)));SendMessageW(tooltip,TTM_SETDELAYTIME,TTDT_INITIAL,450);SendMessageW(tooltip,TTM_SETDELAYTIME,TTDT_AUTOPOP,15000);
 }
 constexpr UINT FocusMessage=WM_APP+94;
 constexpr COLORREF Background=RGB(18,24,34),Surface=RGB(26,35,49),Field=RGB(32,43,59),Text=RGB(231,238,247),Muted=RGB(153,170,193),Accent=RGB(104,198,255);
@@ -29,14 +45,14 @@ inline void rounded(HDC dc,RECT r,COLORREF color,int radius=10){HBRUSH b=CreateS
 constexpr UINT_PTR ButtonSubclass=0x6215,ParentSubclass=0x6217,StaticSubclass=0x6218;
 inline bool toggleType(DWORD_PTR type){return type==BS_AUTOCHECKBOX||type==BS_CHECKBOX;}
 inline void paintButton(HWND w,HDC dc,RECT r,DWORD_PTR type,UINT state){
- int saved=SaveDC(dc);bool enabled=!(state&ODS_DISABLED),focus=(state&ODS_FOCUS)!=0;
+ auto px=[&](int n){return scale(n,windowDpi(w));};int saved=SaveDC(dc);bool enabled=!(state&ODS_DISABLED),focus=(state&ODS_FOCUS)!=0;
  bool toggle=toggleType(type),checked=GetPropW(w,L"RA2.Modern.Checked")!=nullptr;
  bool pressed=(state&ODS_SELECTED)!=0,selected=GetPropW(w,L"RA2.Modern.Selected")!=nullptr;
  COLORREF fill=toggle?Background:selected?RGB(36,67,91):pressed?RGB(46,66,87):Surface;
  HBRUSH base=CreateSolidBrush(Background);FillRect(dc,&r,base);DeleteObject(base);
  if(!toggle)rounded(dc,r,fill);
- RECT text=r;text.left+=toggle?44:12;text.right-=8;
- if(toggle){int y=r.top+(r.bottom-r.top-18)/2;RECT rail{r.left+2,y,r.left+34,y+18};rounded(dc,rail,enabled&&checked?Accent:RGB(67,80,98),18);RECT dot{r.left+(checked?18:4),y+2,r.left+(checked?32:18),y+16};rounded(dc,dot,checked?Background:Text,14);}
+ RECT text=r;text.left+=px(toggle?44:12);text.right-=px(8);
+ if(toggle){int y=r.top+(r.bottom-r.top-px(18))/2;RECT rail{r.left+px(2),y,r.left+px(34),y+px(18)};rounded(dc,rail,enabled&&checked?Accent:RGB(67,80,98),18);RECT dot{r.left+px(checked?18:4),y+px(2),r.left+px(checked?32:18),y+px(16)};rounded(dc,dot,checked?Background:Text,14);}
  wchar_t label[512]{};GetWindowTextW(w,label,512);SetBkMode(dc,TRANSPARENT);SetTextColor(dc,!enabled?RGB(106,121,141):selected?Accent:Text);
  auto font=(HFONT)SendMessageW(w,WM_GETFONT,0,0);if(font)SelectObject(dc,font);
  DrawTextW(dc,label,-1,&text,DT_SINGLELINE|DT_VCENTER|(toggle||selected?DT_LEFT:DT_CENTER));
@@ -136,7 +152,8 @@ inline LRESULT CALLBACK staticProc(HWND w,UINT m,WPARAM wp,LPARAM lp,UINT_PTR id
 }
 inline void mouseOnly(HWND w){SetPropW(w,L"RA2.Modern.MouseOnly",(HANDLE)1);InvalidateRect(w,nullptr,FALSE);}
 inline void holdKey(HWND w){auto key=SendMessageW(w,HKM_GETHOTKEY,0,0);SetPropW(w,L"RA2.Modern.Hold",(HANDLE)1);SendMessageW(w,HKM_SETHOTKEY,key,0);}
-inline void heading(HWND w){static HFONT font=makeFont(HeadingPixels,96,FW_SEMIBOLD);SendMessageW(w,WM_SETFONT,(WPARAM)font,TRUE);}
+inline LRESULT CALLBACK headingProc(HWND w,UINT m,WPARAM a,LPARAM b,UINT_PTR id,DWORD_PTR){if(m==WM_NCDESTROY){auto f=(HFONT)RemovePropW(w,L"RA2.Heading.Font");if(f)DeleteObject(f);RemoveWindowSubclass(w,headingProc,id);}return DefSubclassProc(w,m,a,b);}
+inline void heading(HWND w,unsigned dpi=0){if(!w)return;HFONT next=makeFont(HeadingPixels,dpi?dpi:windowDpi(w),FW_SEMIBOLD);if(!next)return;auto old=(HFONT)GetPropW(w,L"RA2.Heading.Font");SendMessageW(w,WM_SETFONT,(WPARAM)next,FALSE);SetPropW(w,L"RA2.Heading.Font",next);SetWindowSubclass(w,headingProc,0x6221,0);if(old)DeleteObject(old);}
 inline LRESULT CALLBACK focusProc(HWND w,UINT m,WPARAM wp,LPARAM lp,UINT_PTR id,DWORD_PTR){
  if(m==WM_NCDESTROY)RemoveWindowSubclass(w,focusProc,id);
  if(m==WM_SETFOCUS)PostMessageW(GetParent(w),FocusMessage,0,(LPARAM)w);

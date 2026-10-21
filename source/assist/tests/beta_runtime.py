@@ -25,31 +25,8 @@ for mode in (0,3,4,5):
     for _ in range(3):n.tick(m)
     assert n.count(m)==1
   check(f'tech_{mode}_{case}',tech)
- for case in ('off','on','conflict','restore'):
-  def c4(mode=mode,case=case):
-   m=n.fixture(mode,0);site=0x51a4d8;original=bytes(m.u.mem_read(site,6))
-   if case=='conflict':m.u.mem_write(site,b'\x90'*6)
-   s=n.state(m);s.c4Test=case!='off';n.save(m,s);s=n.tick(m)
-   if case=='on':assert s.data.c4TestStatus==1 and bytes(m.u.mem_read(site,1))==b'\xe9'
-   if case=='off':assert bytes(m.u.mem_read(site,6))==original and not m.codeWrites
-   if case=='conflict':assert s.data.c4TestStatus==-2 and bytes(m.u.mem_read(site,6))==b'\x90'*6
-   if case=='restore':
-    assert s.data.c4TestStatus==1;s.c4Test=0;n.save(m,s);s=n.tick(m);assert s.data.c4TestStatus==0 and bytes(m.u.mem_read(site,6))==original
-   # Plain infantry without C4 capability; enemy building with CanC4.
-   m.b(m.engT+0xec2,0);m.b(m.buildT+0x1577,1);m.w(m.building+0x21c,m.enemy);m.queryObject=m.building
-   s=n.pointer(m,7,8192,lambda s,i:setattr(i.sources[0],'id',11) or setattr(i.sources[0],'pointer',m.eng))
-   assert n.count(m)==int(case=='on'),(case,s.pointer.result,s.pointer.accepted,n.count(m))
-   if case=='on':
-    b=n.packets(m);assert b[12]==17 and b[14:19]==struct.pack('<IB',12,0x34) and b[19:24]==struct.pack('<IB',12,0x34),b[:30].hex()
-   if case!='conflict':
-    # Execute the actual installed callback, including manager Capture lease.
-    reached=[]
-    def stop(u,at,size,_):reached.append(at);u.reg_write(UC_X86_REG_EIP,m.STOP)
-    for at in (0x51a4e6,0x51a7f4):m.u.hook_add(UC_HOOK_CODE,stop,begin=at,end=at)
-    m.u.reg_write(UC_X86_REG_ESI,m.eng);m.u.reg_write(UC_X86_REG_ESP,m.STACK+0x1e000);m.u.emu_start(0x51a4d2,m.STOP,count=200000)
-    assert reached==[0x51a4e6 if case=='on' else 0x51a7f4],(case,reached)
-    assert m.u.mem_read(m.engT+0xec2,1)==b'\0' # type rule never mutated
-  check(f'c4_{mode}_{case}',c4)
+ # Infantry building-entry cases, including the removed C4 submission gates,
+ # are covered by infantry_entry_runtime.py (pre.9); no arrival patch installed.
  for case in ('deployer','engineer','manual_stop','disabled','off_after','scatter_timeout'):
   def unload(mode=mode,case=case):
    m=n.fixture(mode,1024|(0 if case=='disabled' else 16384));m.vector(0xa8ecb8,[m.unit]);m.vector(0xa83de8,[m.eng]);m.w(m.unit+0x114,1);m.w(m.unit+0x118,m.eng)

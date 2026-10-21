@@ -15,7 +15,7 @@ static std::wstring controlHelp(int id,const std::wstring& label){
  case 105:return L"选择空闲的己方工程师。";
  case 106:return L"选择并定位空闲的己方运输载具。";
  case 107:return L"清除本地战术信标。";
- case 108:case 739:return L"地图全开：先在高级设置中勾选允许，再按快捷键或点击执行。实验性功能，可能导致联机不同步；关闭许可不会恢复已揭示区域。";
+
  case 109:case 110:case 410:case 411:return L"超级武器：按快捷键进入目标选择，再用鼠标选择位置。需要拥有该武器并完成充能。";
  case 111:case 700:case 701:return L"自动装车：选择乘员后按快捷键，在设定范围内按就近或兵种均衡方式分配到己方载具。";
  case 450:case 458:return L"高级移动攻击：按住配置键并点击地面；留空则仅用鼠标。优先攻击当前射程内目标，进入射程后停止前进；目标消失后继续原路线。支持单独 Ctrl、Shift、Alt。";
@@ -42,10 +42,10 @@ static std::wstring controlHelp(int id,const std::wstring& label){
  case 880:case 881:return L"防空单位智能拦截：按原版武器和含高度的射程判定，优先拦截敌方 V3、无畏级、雷鸣潜艇等可攻击导弹。默认每秒检测 10 次，可调整频率与单位清单。";
  case 804:return L"防御建筑优先攻击渗透单位（防偷点杀）：射程内优先锁定工程师、爆破和潜入单位。已锁定此类威胁时保持目标。";
  case 476:return L"扩展建筑放置范围（任意建造）：放宽建筑间距离限制，仍须满足地形和占用条件。默认关闭，可能导致联机不同步或掉线。";
- case 810:case 811:case 812:case 813:return L"步兵 C4：选中步兵，按住配置键点击敌方建筑；默认 Alt+C 加中键。实验性功能，可能导致联机不同步或掉线。";
+ case 810:case 811:case 812:case 813:return L"步兵强制进建筑：选中步兵，按住配置键点击敌方建筑；默认 Alt+C 加中键。尝试走入建筑格，不检查建筑 CanC4；普通步兵不获得占领、潜入或 C4 能力。实验性，实际结果受原版路径和到达处理影响，到达后可能消失。";
  case 808:case 809:return L"地图渲染（实验性）：半透明保留淡化黑幕，透明隐藏黑幕；自动全图在每局就绪时揭示地图。三种均为实验性功能，联机可能不同步。";
- case 806:case 866:return L"飞机路径点：单机使用原生规划；联机按住 Z 设置路径，松开后依次执行，攻击命令结束路径设置。开启时暂停另一项路径点设置。";
- case 803:return L"飞机路径点：选中飞机，按住 Z 连续点击地面，松键后依次执行。攻击结束路径设置，新命令可接管；每架最多 64 点。";
+ case 803:case 894:case 866:return L"飞机路径点：留空跟随游戏当前路径点按键；自定义键使用兼容路径点。按住并点击地面记录，松键执行。原生优先在单机使用原生规划，联机自动使用兼容路径点。";
+
  case 799:return L"生产预定：四类各 5 项，点击预定面板顶部分栏切换。正在建造或已预定的前置科技可解锁灰色预定；条件满足后自动生产，取消前置会清理关联预定。右键退顶层，Shift＋右键清空。";
  case 870:return L"喝彩：配置的快捷键替代原生按键，通过游戏原版喝彩事件发送；保留冷却，聊天与菜单中不接管。";
  case 871:case 872:case 873:case 874:case 875:case 876:case 877:case 878:return L"嘲讽 1–8：配置组合后替代原生快捷键。仅用于联机；保留原版冷却，本局关闭嘲讽或接收方静音时不会强行播放。";
@@ -78,14 +78,4 @@ static std::wstring controlHelp(int id,const std::wstring& label){
  }
  return label;
 }
-static void updateHoverHelp(){
- POINT point{};GetCursorPos(&point);RECT client{};GetClientRect(ui,&client);POINT local=point;ScreenToClient(ui,&local);
- std::wstring next;
- if(local.x>=15&&local.x<client.right-15&&local.y>=uilayout::BodyTop&&local.y<uilayout::bodyBottom(client.bottom))
- for(const auto&c:pageControls){if(c.page<0||!IsWindowVisible(c.hwnd))continue;RECT rect{};GetWindowRect(c.hwnd,&rect);
-  // Combo dropdown height is not part of its collapsed feature row.
-  rect.bottom=rect.top+c.visibleHeight;
-  if(point.y>=rect.top&&point.y<rect.bottom&&!c.help.empty()){next=c.help;if(PtInRect(&rect,point))break;}
- }
- if(next!=hoverHelp){hoverHelp=next;SetWindowTextW(statusLabel,hoverHelp.empty()?statusText.c_str():hoverHelp.c_str());}
-}
+static void updateHoverHelp(){} // Per-control native tooltips own hover help.

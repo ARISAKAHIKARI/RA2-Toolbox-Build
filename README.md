@@ -1,3 +1,15 @@
+# RA2 Toolbox 1.0.30-pre.9
+
+[预发布完整包与更新包](https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/releases/tag/v1.0.30-pre.9) · [实现与验证](source/REVIEW-1.0.30-pre.9.md) · [研究索引](source/research/INDEX.md)
+
+步兵 C4 调整为**步兵强制进建筑（实验性）**；修正高级移动攻击的旧停步状态，补充手动增强命令的原版单位应答语音。预定面板支持建筑就绪时继续预定及无可用单位时快捷键切页。整合地图与飞机路径点设置，每功能独立配置单位清单；统一 DPI 缩放和悬停说明，修正滚动重绘。
+
+文件版本 **1.0.30.8**，Assist **58**、Runtime **4**、入口管理器 **3**。退出游戏和工具箱后成套更新 EXE/DLL。已有安装选 Update，首次安装选 Windows。
+
+[验证报告](source/verification/pre9/summary.json)记录最终二进制与受控回归。普通步兵不获得 C4/占领/潜入能力，到达建筑后可能消失。实际游戏路径、语音、IFV、Windows DPI 画面及联机仍需实测。
+
+## 历史版本说明
+
 # RA2 Toolbox 1.0.30-pre.8
 
 [预发布完整包与更新包](https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/releases/tag/v1.0.30-pre.8) · [实现与验证](source/REVIEW-1.0.30-pre.8.md)

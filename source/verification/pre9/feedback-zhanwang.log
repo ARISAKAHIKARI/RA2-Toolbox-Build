@@ -1,0 +1,11 @@
+TOTAL 0
+PASS 0 move
+PASS 0 attack
+PASS 0 invalid
+PASS 0 disabled_audio
+PASS 0 follow_native
+PASS 3 move
+PASS 3 attack
+PASS 3 invalid
+PASS 3 disabled_audio
+PASS 3 follow_native

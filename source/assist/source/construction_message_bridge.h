@@ -43,7 +43,7 @@ static bool reservationMessage(MSG*msg){
  }
  if(valid){
   if(right){bool queued=false;for(int n=0;n<policy.count;++n)if(policy.queued[n]==index)queued=true;valid=queued;}
-  else{uint32_t f=get<uint32_t>(lastHouse+(policy.tab?0x53CC:0x53BC));valid=policy.slots&&get<int>(f+0x24)<54;}
+  else{uint32_t f=get<uint32_t>(lastHouse+(policy.tab?0x53CC:0x53BC));valid=policy.slots&&get<int>(f+0x24)<=54;}
  }
  if(down){if(!valid)return false;
   uint32_t f=get<uint32_t>(lastHouse+(policy.tab?0x53CC:0x53BC));
@@ -52,7 +52,7 @@ static bool reservationMessage(MSG*msg){
   if(!right&&type&&get<int>(type+0xDF8)==index){
    bool paused=get<bool>(f+0x70)&&get<bool>(f+0x71);uint32_t strip=0x87F7E8+0x1544+policy.tab*3988;int count=get<int>(strip+84);
    for(int n=0;n<count&&n<75;++n){uint32_t c=strip+88+n*52;if(get<int>(c)==index&&get<int>(c+4)==7&&get<int>(c+0x10)==2)paused=true;}
-   if(paused)return false;
+   if(paused||get<int>(f+0x24)==54)return false;
   }
   reservationCapture={true,policy,index,x,y,int(client.right),int(client.bottom),frame.top,now,button,uint32_t((msg->wParam&MK_SHIFT)!=0)};
   swallowReservation(msg);return true;

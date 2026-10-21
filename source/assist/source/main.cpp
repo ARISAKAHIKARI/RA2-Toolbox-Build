@@ -343,7 +343,7 @@ static void wakeGame(){
 static bool foregroundGame();
 static bool registerKey(int id,WORD key){return hotkeyRegistry.add(id,key,extra.allHotkeys,[](int slot,WORD chord){
  if(!RegisterHotKey(ui,slot,modifiers(chord),LOBYTE(chord)))return false;registeredKeyIDs.push_back(slot);return true;});}
-static void registerKeys(){for(int id:registeredKeyIDs)UnregisterHotKey(ui,id);registeredKeyIDs.clear();hotkeyRegistry.clear();hotkeyPending.clear();keysRegistered=enabled&&foregroundGame()&&snap.status==1&&snap.renderStatus==1&&!snap.chat;if(!keysRegistered)return;int failures=0;for(int i=0;i<12;++i)if(LOBYTE(hotkeys[i])&&!registerKey(1000+i,hotkeys[i]))++failures;
+static void registerKeys(){for(int id:registeredKeyIDs)UnregisterHotKey(ui,id);registeredKeyIDs.clear();hotkeyRegistry.clear();hotkeyPending.clear();keysRegistered=enabled&&foregroundGame()&&snap.status==1&&snap.renderStatus==1&&!snap.chat;if(!keysRegistered)return;int failures=0;for(int i=0;i<12;++i)if(i!=8&&LOBYTE(hotkeys[i])&&!registerKey(1000+i,hotkeys[i]))++failures;
  for(size_t i=0;i<swBindings.size()&&i<64;++i){auto&b=swBindings[i];if((b.id=="IronCurtainSpecial"&&b.key==hotkeys[9])||(b.id=="ChronoSphereSpecial"&&b.key==hotkeys[10]))continue;if(LOBYTE(b.key)&&!registerKey(int(1020+i),b.key))++failures;}
  for(size_t i=0;i<typeBindings.size()&&i<512;++i){auto&b=typeBindings[i];if(typekeys::firstForKey(typeBindings,unsigned(i))&&!registerKey(int(1100+i),b.key))++failures;}
  if(LOBYTE(ejectKey)&&!registerKey(1696,ejectKey))++failures;
@@ -370,7 +370,7 @@ static void chooseTechProfile(int next){
  techProfile=std::clamp(next,0,2);
  techExceptions=profileExceptions[techProfile];
 }
-static bool save(){++settingsRevision;saveWriteOK=true;for(int i=0;i<12;++i)write(L"Hotkeys",wide(iniKeys[i]).c_str(),hotkeys[i]);write(L"Display",L"FPS",fps);write(L"Display",L"LabelRefreshVersion",1);write(L"Display",L"TopMargin",topMargin);
+static bool save(){++settingsRevision;saveWriteOK=true;for(int i=0;i<12;++i)if(i!=8)write(L"Hotkeys",wide(iniKeys[i]).c_str(),hotkeys[i]);WritePrivateProfileStringW(L"Hotkeys",L"RevealMap",nullptr,path(L"Assist.ini").c_str());write(L"Display",L"FPS",fps);write(L"Display",L"LabelRefreshVersion",1);write(L"Display",L"TopMargin",topMargin);
  write(L"Display",L"LabelScalePercent",labelScalePercent);write(L"Display",L"ConstructionScalePercent",constructionScalePercent);
  for(int i=0;i<7;++i){const wchar_t*names[]={L"Capacity",L"Iron",L"Production",L"AllTransports",L"Psychic",L"Crates",L"TextPanel"};write(L"Display",names[i],SendMessageW(check[i],BM_GETCHECK,0,0)==BST_CHECKED);}
  write(L"Modes",L"AutoRepair",SendMessageW(repairCheck,BM_GETCHECK,0,0)==BST_CHECKED);write(L"Modes",L"RepairUnrepairable",repairUnrepairable);write(L"Experimental",L"NativeTechProduction",techMode);write(L"Modes",L"RepairMs",repairMs);
@@ -456,7 +456,7 @@ static bool queueCommand(int c,int arg,int arg2,uint32_t match,int retries=0,DWO
  return queued;
 }
 static void send(int command,int arg=0,int arg2=0,int retries=0,bool fromQueue=false,uint32_t requestToken=0){
- if(command==RevealMap&&!extra.experimentalReveal){notify(L"地图全开为实验性功能，请先勾选“启用地图全开（实验性）”。");return;}
+ if(command==RevealMap&&!extra.experimentalReveal){notify(L"请在黑幕绘制方式中选择自动全图。");return;}
  DWORD now=GetTickCount();
  if(game&&!shared)ensureBridge();
  if(command==SmartUnload&&!hookSmartUnload){notify(L"智能卸载功能开关已关闭。");return;}
@@ -984,6 +984,7 @@ static void drawEnemyMarker(Graphics&g,const external::enemies::Marker&m,const v
  }
  g.DrawImage(r.image.get(),x+8,y+4,float(r.image->GetWidth()),float(r.image->GetHeight()));
 }
+#include "native_hotkeys_host.h"
 #include "air_path_host.h"
 static void serviceAirPath(){airway::service();}
 static void resetAirPath(){airway::reset();}
@@ -1179,7 +1180,7 @@ static void result(){if(!shared)return;uint32_t a=shared->ack;if(a==ack)return;M
  }
  if(c==RevealMap&&r<0&&extra.mapStrategy==3){autoRevealMatch=0;autoRevealRetry=GetTickCount()+2000;}
  if(r==-10||r==-15){critical(L"command exception result="+std::to_wstring(r)+L" command="+std::to_wstring(c));logBridgeHealth(true);}
- if(r<0){const wchar_t*s=r==-10?L"游戏操作发生异常，已暂停发送指令；请重启游戏。详情见 logs/Runtime.log。":r==-15?L"无法确认本次装车条件，操作未执行；其他功能仍可用。详情见 logs/Runtime.log。":r==-3?L"当前没有可操作的对局。":r==-5?L"超级武器尚未就绪或当前不可用。":r==-6?L"指令未能提交，详细原因已记录到日志。":r==-7?L"指令已过期或对局已改变，本次未执行。":r==-8?L"请先关闭游戏聊天输入框。":r==-9?L"缺少可用的匹配工厂 / 供电，或已达建造上限。":r==-11?L"此游戏版本暂不支持科技生产，功能未启用。":r==-12?L"此游戏版本暂不支持该操作。":r==-22?L"喝彩或嘲讽尚在冷却，请稍后再试。":r==-23?L"本局已关闭嘲讽；快捷键不能更改其他玩家的接收设置。":r==-21?L"地图全开实验性许可未勾选，本次未执行。":r==-20?L"当前版本不支持此操作。":r==-13?L"此操作仅支持单机。":r==-14?L"地图尚未完成初始化，稍后重试。":L"所选目标已失效，请刷新后重试。";if(r==-6)critical(L"command submission failed: "+submitDiagnostic());notify(s);return;}
+ if(r<0){const wchar_t*s=r==-10?L"游戏操作发生异常，已暂停发送指令；请重启游戏。详情见 logs/Runtime.log。":r==-15?L"无法确认本次装车条件，操作未执行；其他功能仍可用。详情见 logs/Runtime.log。":r==-3?L"当前没有可操作的对局。":r==-5?L"超级武器尚未就绪或当前不可用。":r==-6?L"指令未能提交，详细原因已记录到日志。":r==-7?L"指令已过期或对局已改变，本次未执行。":r==-8?L"请先关闭游戏聊天输入框。":r==-9?L"缺少可用的匹配工厂 / 供电，或已达建造上限。":r==-11?L"此游戏版本暂不支持科技生产，功能未启用。":r==-12?L"此游戏版本暂不支持该操作。":r==-22?L"喝彩或嘲讽尚在冷却，请稍后再试。":r==-23?L"本局已关闭嘲讽；快捷键不能更改其他玩家的接收设置。":r==-21?L"黑幕绘制方式未选择自动全图，本次未执行。":r==-20?L"当前版本不支持此操作。":r==-13?L"此操作仅支持单机。":r==-14?L"地图尚未完成初始化，稍后重试。":L"所选目标已失效，请刷新后重试。";if(r==-6)critical(L"command submission failed: "+submitDiagnostic());notify(s);return;}
  if(c==Repair)notify(n?L"已安排维修 "+std::to_wstring(n)+L" 座受损建筑。":L"没有需要维修的己方建筑。");
  else if(c==RevealMap){autoRevealDone=inFlightMatch;notify(L"已执行当前对局的地图揭示。");}
  else if(c==Cheer)notify(L"喝彩已提交。");
@@ -1225,14 +1226,14 @@ static void updateModeStatus(DWORD now){
  static int oldPhase=-1;static DWORD last; if(phase==oldPhase&&DWORD(now-last)<200)return;oldPhase=phase;last=now;publishSuiteDisplay();
  auto riskText=[&](bool wanted,int state)->std::wstring{if(state==-2)return L"启用或关闭失败，请查看日志";if(state==-1)return L"不支持此游戏版本";if(!wanted)return state==1?L"等待恢复":L"关闭";return phase?L"等待游戏就绪":state==1?L"已启用（实验性）":L"等待生效";};
  std::wstring riskStatus=L"扩展建造："+riskText(buildAnywhereMode,snap.placementStatus);
- std::wstring airStatus=L"原生路径点：";airStatus+=snap.nativeAirStatus==-2?L"启用或关闭失败，请查看日志":snap.nativeAirStatus==-1?L"不支持此游戏版本":!extra.nativeAirWaypoints?(snap.nativeAirStatus==1?L"等待恢复":L"关闭"):phase?L"等待游戏就绪":snap.nativeAirStatus==2?L"已启用（联机兼容）":snap.nativeAirStatus==1?L"已启用":L"等待生效";
+ std::wstring airStatus=L"飞机路径点：";airStatus+=!(extra.airWaypoints||extra.nativeAirWaypoints)?L"关闭":phase?L"等待游戏就绪":extra.airWaypoints||extra.airPathKey||!airway::native()?L"兼容模式":snap.nativeAirStatus==-2?L"启用或关闭失败，请查看日志":snap.nativeAirStatus==-1?L"不支持此游戏版本":snap.nativeAirStatus==1?L"原生模式":L"等待生效";
  SetWindowTextW(GetDlgItem(ui,866),airStatus.c_str());
  SetWindowTextW(GetDlgItem(ui,807),riskStatus.c_str());
  std::wstring renderText=extra.mapStrategy?L"地图显示（实验性）：":L"地图显示：";renderText+=extra.mapStrategy==3?(autoRevealDone&&autoRevealDone==commandMatch()?L"自动地图全开已执行":L"等待自动地图全开"):snap.renderRevealStatus==-2?L"启用或关闭失败，请查看日志":!extra.renderReveal?L"关闭":phase?L"等待游戏就绪":snap.renderRevealStatus==1?L"已启用":L"等待生效";
  SetWindowTextW(GetDlgItem(ui,809),renderText.c_str());
  SetWindowTextW(GetDlgItem(ui,888),!extra.scrollRefreshMode?L"高刷策略：仅光标（沿用光标页设置）":shared&&shared->scrollRefreshStatus<0?L"高刷策略：接口不兼容，保持原版画面刷新":shared&&shared->scrollRefreshStatus==1?(extra.scrollRefreshMode==2?L"高刷策略：全部 · 实验性功能已启用":L"高刷策略：光标＋拖屏 · 实验性功能已启用"):L"高刷策略：等待游戏前台就绪");
  if(shared&&shared->scrollRefreshStatus==1&&shared->scrollRefreshRateMilli){wchar_t label[160];swprintf(label,160,L"%s · 补充绘制 %.1f Hz · 最长间隔 %.1f ms",extra.scrollRefreshMode==2?L"全部（实验性）":L"光标＋拖屏（实验性）",shared->scrollRefreshRateMilli/1000.0,shared->scrollRefreshMaxGapUs/1000.0);SetWindowTextW(GetDlgItem(ui,888),label);}
- SetWindowTextW(GetDlgItem(ui,813),(L"步兵 C4："+riskText(extra.c4Test,snap.c4TestStatus)).c_str());
+ SetWindowTextW(GetDlgItem(ui,813),(L"步兵强制进建筑："+riskText(extra.c4Test,snap.c4TestStatus)).c_str());
  std::wstring progress=L"生产进度：";uint32_t owner=0;
  if(techMode&&commandFresh(now)&&externalReader.readFresh(0xA83D4C,&owner,4)&&owner>=0x10000){
   const int offsets[]={0x53BC,0x53CC,0x53B0,0x53B4,0x53B8,0x53AC};const wchar_t* names[]={L"建筑",L"防御",L"步兵",L"战车",L"舰船",L"飞机"};
@@ -1399,24 +1400,38 @@ static void tick(){reapBridges();logBridgeHealth();DWORD now=GetTickCount();stat
 }
 struct PageControl {HWND hwnd;int page;uilayout::Rect rect;int visibleHeight;std::wstring help;};static std::vector<PageControl> pageControls;static int activePage=0;static HWND featureSearch;
 static int pageBottom(){int bottom=uilayout::BodyTop;for(const auto&c:pageControls)if(c.page==activePage)bottom=std::max(bottom,c.rect.y+c.visibleHeight);return bottom+6;}
+static unsigned panelDpi=96;static int scrollX=0;static bool arrangingPanel=false;
+static int logical(int n){return MulDiv(n,96,int(panelDpi));}
 static void layoutPanel(){
- RECT client{};GetClientRect(ui,&client);int height=client.bottom,width=client.right,maximum=uilayout::maxScroll(pageBottom(),height);scrollY=std::clamp(scrollY,0,maximum);
- for(const auto&c:pageControls){auto r=uilayout::visible(c.rect,c.page,height,width,scrollY);MoveWindow(c.hwnd,r.x,r.y,r.w,r.h,TRUE);
+ if(!ui||arrangingPanel)return;arrangingPanel=true;
+ RECT client{};GetClientRect(ui,&client);int height=logical(client.bottom),width=logical(client.right),maximum=uilayout::maxScroll(pageBottom(),height);scrollY=std::clamp(scrollY,0,maximum);scrollX=std::clamp(scrollX,0,std::max(0,uilayout::Width-width));
+ auto px=[](int n){return modernui::scale(n,panelDpi);};HDWP batch=BeginDeferWindowPos(int(pageControls.size()));
+ for(const auto&c:pageControls){auto r=uilayout::visible(c.rect,c.page,height,width,scrollY);r.x-=scrollX;
   if(c.page>=0){int top=std::max(0,uilayout::BodyTop-r.y),bottom=std::min(c.visibleHeight,uilayout::bodyBottom(height)-r.y);bool shown=c.page==activePage&&bottom>top;
-   // Empty regions clip offscreen controls without removing them from Tab
-   // navigation. FocusMessage scrolls the newly focused control into view.
-   HRGN region=CreateRectRgn(0,shown?top:0,r.w,shown?bottom:0);if(!SetWindowRgn(c.hwnd,region,TRUE))DeleteObject(region);ShowWindow(c.hwnd,c.page==activePage?SW_SHOW:SW_HIDE);
+   HRGN region=CreateRectRgn(0,shown?px(top):0,px(r.w),shown?px(bottom):0);if(!SetWindowRgn(c.hwnd,region,FALSE))DeleteObject(region);
   }
+  UINT flags=SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS|SWP_NOREDRAW;
+  if(c.page>=0)flags|=c.page==activePage?SWP_SHOWWINDOW:SWP_HIDEWINDOW;
+  if(batch)batch=DeferWindowPos(batch,c.hwnd,nullptr,px(r.x),px(r.y),px(r.w),px(r.h),flags);
+  else SetWindowPos(c.hwnd,nullptr,px(r.x),px(r.y),px(r.w),px(r.h),flags);
  }
+ if(!batch||!EndDeferWindowPos(batch))for(const auto&c:pageControls){auto r=uilayout::visible(c.rect,c.page,height,width,scrollY);r.x-=scrollX;SetWindowPos(c.hwnd,nullptr,px(r.x),px(r.y),px(r.w),px(r.h),SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS|SWP_NOREDRAW|(c.page<0?0:c.page==activePage?SWP_SHOWWINDOW:SWP_HIDEWINDOW));}
  int viewport=std::max(1,uilayout::bodyBottom(height)-uilayout::BodyTop);SCROLLINFO si{sizeof si,SIF_RANGE|SIF_PAGE|SIF_POS|SIF_DISABLENOSCROLL};si.nMin=0;si.nMax=maximum+viewport-1;si.nPage=viewport;si.nPos=scrollY;SetScrollInfo(ui,SB_VERT,&si,TRUE);
+ si.nMax=uilayout::Width-1;si.nPage=std::max(1,width);si.nPos=scrollX;SetScrollInfo(ui,SB_HORZ,&si,TRUE);
+ arrangingPanel=false;RedrawWindow(ui,nullptr,nullptr,RDW_INVALIDATE|RDW_ERASE|RDW_ALLCHILDREN|RDW_UPDATENOW);
 }
-static void scrollTo(int position){scrollY=position;layoutPanel();InvalidateRect(ui,nullptr,TRUE);}
+static void applyPanelDpi(unsigned dpi){
+ dpi=modernui::panelDpi(dpi,false);if(dpi==panelDpi&&ready)return;panelDpi=dpi;
+ HFONT next=modernui::makeFont(modernui::BodyPixels,panelDpi);if(next){for(const auto&c:pageControls){SendMessageW(c.hwnd,WM_SETFONT,(WPARAM)next,FALSE);if(GetPropW(c.hwnd,L"RA2.Heading.Font"))modernui::heading(c.hwnd,panelDpi);}auto old=font;font=next;if(old)DeleteObject(old);}
+ layoutPanel();
+}
+static void scrollTo(int position){scrollY=position;layoutPanel();}
 // Convert the existing control definitions into one continuous document.
 // Row intervals keep labels/inputs aligned while removing old page whitespace.
 #include "hover_help.h"
 static void finalizeTacticalLayout(){
  int y=uilayout::BodyTop+12;
- for(int section:{0,1,2,3,4}){
+ for(int section:{0,1,2,5,3,4}){
   std::vector<size_t> items;for(size_t i=0;i<pageControls.size();++i)if(pageControls[i].page==section)items.push_back(i);
   std::stable_sort(items.begin(),items.end(),[](size_t a,size_t b){return pageControls[a].rect.y<pageControls[b].rect.y;});
   if(items.empty())continue;if(section>0)y+=24;
@@ -1424,18 +1439,18 @@ static void finalizeTacticalLayout(){
    while(end<items.size()&&pageControls[items[end]].rect.y<bottom){auto&c=pageControls[items[end++]];bottom=std::max(bottom,c.rect.y+c.visibleHeight);}
    std::wstring rowHelp;
    for(size_t i=at;i<end;++i){auto&c=pageControls[items[i]];int id=GetDlgCtrlID(c.hwnd);if(id){auto h=controlHelp(id,L"");if(!h.empty()){rowHelp=h;break;}}}
-   for(size_t i=at;i<end;++i){auto&c=pageControls[items[i]];wchar_t label[512]{};GetWindowTextW(c.hwnd,label,512);c.help=controlHelp(GetDlgCtrlID(c.hwnd),L"");if(c.help.empty())c.help=rowHelp.empty()?controlHelp(0,label):rowHelp;c.rect.y=y+c.rect.y-top;}
+   for(size_t i=at;i<end;++i){auto&c=pageControls[items[i]];wchar_t label[512]{};GetWindowTextW(c.hwnd,label,512);if(c.help.empty())c.help=controlHelp(GetDlgCtrlID(c.hwnd),L"");if(c.help.empty())c.help=rowHelp.empty()?controlHelp(0,label):rowHelp;c.rect.y=y+c.rect.y-top;}
    y+=bottom-top+12;at=end;
   }
   y+=12;
  }
- for(auto&c:pageControls)if(c.page>=0)c.page=0;
+ for(auto&c:pageControls)if(c.page>=0){c.page=0;modernui::tip(c.hwnd,c.help);}
  scrollY=0;layoutPanel();
 }
 static HWND placedControl(uilayout::Placement placement,const wchar_t*cls,const wchar_t*text,int id,DWORD style){
  if(!wcscmp(text,L"自动保存"))return HWND{};
  auto r=placement.rect;HWND c=CreateWindowExW((!wcscmp(cls,L"EDIT")||!wcscmp(cls,L"LISTBOX"))?WS_EX_CLIENTEDGE:0,cls,text,WS_CHILD|WS_VISIBLE|WS_CLIPSIBLINGS|style,r.x,r.y,r.w,r.h,ui,(HMENU)(INT_PTR)id,GetModuleHandleW(nullptr),nullptr);
- SendMessageW(c,WM_SETFONT,(WPARAM)font,TRUE);modernui::style(c);if(id==989||id==832||(id>=900&&id<=904))modernui::heading(c);pageControls.push_back({c,placement.page,r,!wcscmp(cls,L"COMBOBOX")?26:r.h});if(placement.page==-3)ShowWindow(c,SW_HIDE);return c;
+ SendMessageW(c,WM_SETFONT,(WPARAM)font,TRUE);modernui::style(c);if(id==989||id==832||(id>=900&&id<=905))modernui::heading(c);pageControls.push_back({c,placement.page,r,!wcscmp(cls,L"COMBOBOX")?26:r.h});if(placement.page==-3)ShowWindow(c,SW_HIDE);return c;
 }
 static HWND control(const wchar_t*cls,const wchar_t*text,int x,int y,int w,int h,int id,DWORD style=0){return placedControl(uilayout::legacy(id,{x,y,w,h}),cls,text,id,style);}
 static HWND pageControl(int page,const wchar_t*cls,const wchar_t*text,int x,int y,int w,int h,int id,DWORD style=0){return placedControl({page,{x,y+8,w,h}},cls,text,id,style);}
@@ -1463,18 +1478,21 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
 
  if(msg==suite::ModuleEnable){enabled=bool(wp);if(!enabled){detach();clockState(false,fps);setStatus(L"已暂停。");}else{lastFind=0;setStatus(L"正在重新连接…");}suite::reportEnabled(2,enabled);return 0;}
 #endif
- switch(msg){case WM_CREATE:{ui=w;
+ if(msg==modernui::DpiMessage){applyPanelDpi(unsigned(wp));return 0;}
+ switch(msg){case WM_CREATE:{ui=w;panelDpi=modernui::windowDpi(w);
  placedControl({-1,{20,14,280,30}},L"STATIC",L"战术助手",989,0);
  placedControl({-1,{305,20,320,22}},L"STATIC",L"设置修改后自动保存",0,0);
- {const wchar_t* titles[]={L"键盘操作",L"键鼠操作",L"战术设置",L"显示设置",L"高级设置"};for(int i=0;i<5;++i)placedControl({-1,{20+i*123,46,113,26}},L"BUTTON",titles[i],910+i,BS_PUSHBUTTON|WS_TABSTOP);}
+ {const wchar_t* titles[]={L"键盘操作",L"键鼠操作",L"自动任务",L"显示设置",L"高级设置",L"单位清单"};for(int i=0;i<6;++i)placedControl({-1,{20+i*102,46,95,26}},L"BUTTON",titles[i],910+i,BS_PUSHBUTTON|WS_TABSTOP);}
  featureSearch=placedControl({-1,{20,80,470,28}},L"EDIT",L"",990,ES_AUTOHSCROLL|WS_TABSTOP);
  SendMessageW(featureSearch,EM_SETCUEBANNER,TRUE,(LPARAM)L"搜索功能，例如：装车、铁幕、CS");
  placedControl({-1,{505,80,120,28}},L"BUTTON",L"定位功能",991,BS_PUSHBUTTON|WS_TABSTOP);
 #include "tactical_controls.h"
  EnableWindow(GetDlgItem(w,420),TRUE);
- statusLabel=control(L"STATIC",L"正在寻找游戏…",20,1370,605,44,430);control(L"BUTTON",L"暂停 / 连接",20,1420,200,28,431,BS_PUSHBUTTON|WS_TABSTOP);control(L"BUTTON",L"使用说明",235,1420,185,28,432,BS_PUSHBUTTON|WS_TABSTOP);control(L"BUTTON",L"退出",435,1420,190,28,433,BS_PUSHBUTTON|WS_TABSTOP);EnableWindow(unloadKeyEdit,TRUE);EnableWindow(GetDlgItem(w,453),TRUE);EnableWindow(hookChecks[1],TRUE);SetWindowTextW(hookChecks[1],L"智能卸载");finalizeTacticalLayout();ready=true;fillTech(true);fillTypeBindings(true);SetTimer(w,1,250,nullptr);SetTimer(w,2,80,nullptr);registerKeys();return 0;}
+ statusLabel=control(L"STATIC",L"正在寻找游戏…",20,1370,605,44,430);control(L"BUTTON",L"暂停 / 连接",20,1420,200,28,431,BS_PUSHBUTTON|WS_TABSTOP);control(L"BUTTON",L"使用说明",235,1420,185,28,432,BS_PUSHBUTTON|WS_TABSTOP);control(L"BUTTON",L"退出",435,1420,190,28,433,BS_PUSHBUTTON|WS_TABSTOP);EnableWindow(unloadKeyEdit,TRUE);EnableWindow(GetDlgItem(w,453),TRUE);EnableWindow(hookChecks[1],TRUE);SetWindowTextW(hookChecks[1],L"智能卸载");finalizeTacticalLayout();applyPanelDpi(panelDpi);ready=true;fillTech(true);fillTypeBindings(true);SetTimer(w,1,250,nullptr);SetTimer(w,2,80,nullptr);registerKeys();return 0;}
  case WM_SIZE:layoutPanel();return 0;
- case modernui::FocusMessage:{for(const auto&c:pageControls)if(c.hwnd==(HWND)lp&&c.page>=0){int top=c.rect.y-scrollY,bottom=top+c.visibleHeight;RECT client{};GetClientRect(w,&client);if(top<uilayout::BodyTop)scrollTo(c.rect.y-uilayout::BodyTop);else if(bottom>uilayout::bodyBottom(client.bottom))scrollTo(c.rect.y+c.visibleHeight-uilayout::bodyBottom(client.bottom));break;}return 0;}
+ case WM_DPICHANGED:{applyPanelDpi(HIWORD(wp));if(!(GetWindowLongPtrW(w,GWL_STYLE)&WS_CHILD)){auto r=(RECT*)lp;SetWindowPos(w,nullptr,r->left,r->top,r->right-r->left,r->bottom-r->top,SWP_NOZORDER|SWP_NOACTIVATE);}return 0;}
+ case WM_HSCROLL:{SCROLLINFO si{sizeof si,SIF_ALL};GetScrollInfo(w,SB_HORZ,&si);switch(LOWORD(wp)){case SB_LINELEFT:scrollX-=28;break;case SB_LINERIGHT:scrollX+=28;break;case SB_PAGELEFT:scrollX-=int(si.nPage);break;case SB_PAGERIGHT:scrollX+=int(si.nPage);break;case SB_THUMBTRACK:case SB_THUMBPOSITION:scrollX=si.nTrackPos;break;}layoutPanel();return 0;}
+ case modernui::FocusMessage:{for(const auto&c:pageControls)if(c.hwnd==(HWND)lp&&c.page>=0){int top=c.rect.y-scrollY,bottom=top+c.visibleHeight;RECT client{};GetClientRect(w,&client);if(top<uilayout::BodyTop)scrollTo(c.rect.y-uilayout::BodyTop);else if(bottom>uilayout::bodyBottom(logical(client.bottom)))scrollTo(c.rect.y+c.visibleHeight-uilayout::bodyBottom(logical(client.bottom)));break;}return 0;}
  case WM_VSCROLL:{SCROLLINFO si{sizeof si,SIF_ALL};GetScrollInfo(w,SB_VERT,&si);int next=scrollY;switch(LOWORD(wp)){case SB_LINEUP:next-=28;break;case SB_LINEDOWN:next+=28;break;case SB_PAGEUP:next-=int(si.nPage);break;case SB_PAGEDOWN:next+=int(si.nPage);break;case SB_THUMBTRACK:next=si.nTrackPos;break;default:return 0;}scrollTo(next);return 0;}
  case WM_MOUSEWHEEL:{static int remainder;remainder+=short(HIWORD(wp));int steps=remainder/WHEEL_DELTA;remainder%=WHEEL_DELTA;if(steps)scrollTo(scrollY-steps*84);return 0;}
 
@@ -1497,14 +1515,8 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
  }
 
  if(updatingControls)return 0;
- if(id>=910&&id<=914){for(const auto&c:pageControls)if(GetDlgCtrlID(c.hwnd)==900+id-910){scrollTo(c.rect.y-uilayout::BodyTop);break;}return 0;}
- if(id==739&&HIWORD(wp)==BN_CLICKED){
-  extra.experimentalReveal=SendMessageW(extraControls[RevealExperimental],BM_GETCHECK,0,0)==BST_CHECKED;
-  if(extra.experimentalReveal){extra.renderReveal=0;if(extra.mapStrategy!=3)extra.mapStrategy=0;}else if(extra.mapStrategy==3){extra.mapStrategy=0;autoRevealNewMatch=false;}
-  SendMessageW(GetDlgItem(ui,808),CB_SETCURSEL,extra.mapStrategy,0);
-  if(!extra.experimentalReveal){for(int i=0;i<commandQueue.size;){if(commandQueue.slots[i].command==RevealMap)commandQueue.discard(i);else ++i;}}
-  changedSetting();notify(extra.experimentalReveal?L"已允许实验性地图全开；点击按钮或快捷键执行。":L"已关闭实验性地图全开，待处理请求已取消；已揭示的地图不会回退。");return 0;
- }
+ if(id>=910&&id<=915){for(const auto&c:pageControls)if(GetDlgCtrlID(c.hwnd)==900+id-910){scrollTo(c.rect.y-uilayout::BodyTop);break;}return 0;}
+
  if(autoSettingChanged(id,HIWORD(wp)))return 0;
  if(id==762&&HIWORD(wp)==CBN_SELCHANGE){
   const int selected=int(SendMessageW(objectQueueCombo,CB_GETCURSEL,0,0));
@@ -1525,7 +1537,7 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
  }
 if(id==991){wchar_t query[128]{};GetWindowTextW(featureSearch,query,128);std::wstring needle=query;for(auto&ch:needle)ch=towlower(ch);
  if(needle.empty()){scrollTo(0);return 0;}
- for(const auto&c:pageControls)if(c.page>=0){wchar_t label[512]{};GetWindowTextW(c.hwnd,label,512);std::wstring text=std::wstring(label)+L" "+c.help;for(auto&ch:text)ch=towlower(ch);if(text.find(needle)!=std::wstring::npos){scrollTo(c.rect.y-uilayout::BodyTop-12);notify(L"已找到匹配功能；操作说明见底部状态栏。");return 0;}}
+ for(const auto&c:pageControls)if(c.page>=0){wchar_t label[512]{};GetWindowTextW(c.hwnd,label,512);std::wstring text=std::wstring(label)+L" "+c.help;for(auto&ch:text)ch=towlower(ch);if(text.find(needle)!=std::wstring::npos){scrollTo(c.rect.y-uilayout::BodyTop-12);notify(L"已找到匹配功能；悬停查看说明。");return 0;}}
  notify(L"未找到匹配功能，请换一个关键词。");return 0;}if(id==750||id==754||id==755){
   if(id==750&&!readAdditionalControls())return 0;
   extra.variantKey=SendMessageW(extraControls[VariantKey],HKM_GETHOTKEY,0,0);
@@ -1624,7 +1636,7 @@ if(id==991){wchar_t query[128]{};GetWindowTextW(featureSearch,query,128);std::ws
 #endif
  }
  else if(id==432)ShellExecuteW(w,L"open",path(L"README.txt").c_str(),nullptr,root.c_str(),SW_SHOWNORMAL);else if(id==433)PostMessageW(w,WM_CLOSE,0,0);return 0;}
- case WM_CTLCOLORSTATIC:case WM_CTLCOLORBTN:{HDC dc=(HDC)wp;SetBkMode(dc,OPAQUE);int id=GetDlgCtrlID((HWND)lp);SetTextColor(dc,id>=900&&id<=904?modernui::Accent:id==989?modernui::Text:modernui::Muted);SetBkColor(dc,modernui::Background);return (LRESULT)bgBrush;}
+ case WM_CTLCOLORSTATIC:case WM_CTLCOLORBTN:{HDC dc=(HDC)wp;SetBkMode(dc,OPAQUE);int id=GetDlgCtrlID((HWND)lp);SetTextColor(dc,id>=900&&id<=905?modernui::Accent:id==989?modernui::Text:modernui::Muted);SetBkColor(dc,modernui::Background);return (LRESULT)bgBrush;}
  case WM_CTLCOLOREDIT:case WM_CTLCOLORLISTBOX:{HDC dc=(HDC)wp;SetTextColor(dc,modernui::Text);SetBkColor(dc,modernui::Field);return (LRESULT)editBrush;}
  case WM_CLOSE:
 #ifdef RA2_UNIFIED
@@ -1663,9 +1675,9 @@ int WINAPI wWinMain(HINSTANCE h,HINSTANCE,LPWSTR,int show){SetProcessDPIAware();
  hookEject=value(L"Hooks",L"Eject",0)!=0;
  hookAutoCS=value(L"Hooks",L"AutoCS",1)!=0;
  diagEnabled=value(L"Debug",L"Diagnostics",1)!=0;
- autoRevealNewMatch=extra.mapStrategy==3||value(L"Modes",L"AutoRevealNewMatch",0)!=0;
+ autoRevealNewMatch=extra.mapStrategy==3;
  techMode=value(L"Experimental",L"NativeTechProduction",0)!=0;repairMs=std::clamp(value(L"Modes",L"RepairMs",2000),500,30000);
- const WORD defaults[]={'R','Q','T','D','M','E','V','B','O','I','C','L'};static_assert(sizeof(defaults)/sizeof(defaults[0])==12);for(int i=0;i<12;++i)hotkeys[i]=(WORD)value(L"Hotkeys",wide(iniKeys[i]).c_str(),MAKEWORD(defaults[i],HOTKEYF_CONTROL|HOTKEYF_ALT));
+ const WORD defaults[]={'R','Q','T','D','M','E','V','B','O','I','C','L'};static_assert(sizeof(defaults)/sizeof(defaults[0])==12);for(int i=0;i<12;++i)hotkeys[i]=i==8?0:(WORD)value(L"Hotkeys",wide(iniKeys[i]).c_str(),MAKEWORD(defaults[i],HOTKEYF_CONTROL|HOTKEYF_ALT));
  wchar_t section[8192];GetPrivateProfileSectionW(L"SuperHotkeys",section,8192,path(L"Assist.ini").c_str());for(wchar_t*s=section;*s;s+=wcslen(s)+1){std::wstring line=s;size_t e=line.find(L'=');if(e==std::wstring::npos)continue;std::string id;for(size_t i=0;i<e&&i<23;++i)id+=(char)line[i];swBindings.push_back({id,(WORD)_wtoi(line.c_str()+e+1)});}
  for(const wchar_t* sec:{L"TypeHotkeys",L"AutoCSUnits"}){wchar_t entries[32768];GetPrivateProfileSectionW(sec,entries,32768,path(L"Assist.ini").c_str());for(wchar_t* p=entries;*p;p+=wcslen(p)+1){std::wstring line=p;size_t e=line.find(L'=');if(e==std::wstring::npos)continue;std::string id;for(size_t j=0;j<e&&j<23;++j)if(line[j]>32&&line[j]<127)id+=char(line[j]);if(id.empty())continue;int v=_wtoi(line.c_str()+e+1);if(!wcscmp(sec,L"TypeHotkeys")){if(LOBYTE(v)&&typeBindings.size()<512)typeBindings.push_back({id,WORD(v)});}else if(v)csUnits.insert(id);}}
  loadCatalogue();
@@ -1694,7 +1706,7 @@ int WINAPI wWinMain(HINSTANCE h,HINSTANCE,LPWSTR,int show){SetProcessDPIAware();
  csHoldEnabled=value(L"AutoCS",L"HoldEnabled",0)!=0;csHoldKey=WORD(value(L"AutoCS",L"HoldKey",MAKEWORD('G',HOTKEYF_CONTROL)));
  INITCOMMONCONTROLSEX cc{sizeof cc,ICC_WIN95_CLASSES};InitCommonControlsEx(&cc);GdiplusStartupInput gi;ULONG_PTR token;GdiplusStartup(&token,&gi,nullptr);font=modernui::makeFont();bgBrush=CreateSolidBrush(modernui::Background);editBrush=CreateSolidBrush(modernui::Field);
  WNDCLASSW wc{};wc.hInstance=h;wc.lpfnWndProc=DefWindowProcW;wc.lpszClassName=L"RA2AssistOverlay010";wc.hCursor=LoadCursorW(nullptr,IDC_ARROW);RegisterClassW(&wc);overlay=CreateWindowExW(WS_EX_LAYERED|WS_EX_TRANSPARENT|WS_EX_TOPMOST|WS_EX_TOOLWINDOW|WS_EX_NOACTIVATE,wc.lpszClassName,L"",WS_POPUP,0,0,1,1,nullptr,nullptr,h,nullptr);
- wc.lpfnWndProc=proc;wc.lpszClassName=L"RA2Assist010";wc.hbrBackground=bgBrush;wc.hIcon=LoadIconW(nullptr,IDI_APPLICATION);RegisterClassW(&wc);RECT work{};SystemParametersInfoW(SPI_GETWORKAREA,0,&work,0);ui=CreateWindowExW(0,wc.lpszClassName,L"战术助手 v" RA2_RELEASE_VERSION_W,WS_OVERLAPPED|WS_CAPTION|WS_SYSMENU|WS_MINIMIZEBOX|WS_VSCROLL, CW_USEDEFAULT,CW_USEDEFAULT,685,std::min(1084,int(work.bottom-work.top)-20),nullptr,nullptr,h,nullptr);
+ wc.lpfnWndProc=proc;wc.lpszClassName=L"RA2Assist010";wc.hbrBackground=bgBrush;wc.hIcon=LoadIconW(nullptr,IDI_APPLICATION);RegisterClassW(&wc);RECT work{};SystemParametersInfoW(SPI_GETWORKAREA,0,&work,0);ui=CreateWindowExW(0,wc.lpszClassName,L"战术助手 v" RA2_RELEASE_VERSION_W,WS_OVERLAPPED|WS_CAPTION|WS_SYSMENU|WS_MINIMIZEBOX|WS_THICKFRAME|WS_VSCROLL|WS_HSCROLL|WS_CLIPCHILDREN, CW_USEDEFAULT,CW_USEDEFAULT,685,std::min(1084,int(work.bottom-work.top)-20),nullptr,nullptr,h,nullptr);
 #ifdef RA2_UNIFIED
  enabled=suite::enabled(2);suite::registerPane(2,ui);publishSuiteDisplay();
 #else

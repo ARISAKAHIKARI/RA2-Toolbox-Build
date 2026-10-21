@@ -1,0 +1,17 @@
+/tmp/tmp8wp9dbq0/host.cpp: In function ‘int main()’:
+/tmp/tmp8wp9dbq0/host.cpp:386:17: warning: narrowing conversion of ‘I’ from ‘uint32_t’ {aka ‘unsigned int’} to ‘int’ [-Wnarrowing]
+  386 |  list(0xA8E348,{I});w(I+0x634,1);w(I+0x6CC,1);w(I+0xDA0,-1);w(I+0xDA4,-1);list(I+0x638,{1});list(I+0x654,{});
+      |                 ^
+/tmp/tmp8wp9dbq0/host.cpp:386:17: warning: narrowing conversion of ‘I’ from ‘uint32_t’ {aka ‘unsigned int’} to ‘int’ [-Wnarrowing]
+/tmp/tmp8wp9dbq0/host.cpp:397:17: warning: narrowing conversion of ‘I’ from ‘uint32_t’ {aka ‘unsigned int’} to ‘int’ [-Wnarrowing]
+  397 |  list(0xA8E348,{I});w(I+0x634,1);w(I+0x6CC,1);w(I+0xDA0,-1);w(I+0xDA4,-1);list(I+0x638,{1});list(I+0x654,{});
+      |                 ^
+/tmp/tmp8wp9dbq0/host.cpp:397:17: warning: narrowing conversion of ‘I’ from ‘uint32_t’ {aka ‘unsigned int’} to ‘int’ [-Wnarrowing]
+PASS: building/defense x native/future at progress 0/1/27/53/54 survive factory limbo; parent cancellation retained
+PASS: Runtime input consumer exactly once, no polling duplicate, native right/Shift cancel, match/age/parent/focus/capacity authorization
+PASS: overlapping stack, native right cancel, Shift clear, paused frame gate, old-parent reuse, panel stays during final reserved production
+PASS: native sidebar badges and Runtime-authorized input delivery
+PASS: 2016 content/scale/viewport combinations, fitted growth/shrink, 236/255 alpha, successful add/cancel feedback, clear once and no sound on empty/locked cancel
+PASS: read-only panel survives command suspension/chat; closed input/no Produce; resumes once; menu/focus still hide
+PASS: missing-barracks infantry, cross-tab defense, canceled prerequisite cascade, native-cameo wait and exactly-once unit ACK
+PASS: actual host service FIFO5/duplicates/future unlock/cancel parent/right cancel/round/token ACK/retry/busy/menu; catalogue sentinels/parent/stolen flags/read failure; six resolution transforms and hit regions

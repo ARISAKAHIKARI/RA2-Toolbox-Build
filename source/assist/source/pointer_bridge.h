@@ -1,5 +1,7 @@
 // Explicit input mailbox consumed ONLY inside the ordinary leased Assist tick.
 // Original click, mission constructor and received-event functions stay intact.
+#include "input_feedback.h"
+static uint32_t pointerFeedback=0;
 static uint32_t pointerSeen,pointerCancelSeen,pointerTarget,pointerTargetID,pointerCell;
 static int pointerGroundZ;static int pointerAt;static bool pointerActive;
 static uint32_t pointerTokens[pointerinput::MaxSources];
@@ -7,11 +9,13 @@ static uint8_t pointerDone[pointerinput::MaxSources],pointerBatchFollow[pointeri
 static uint32_t pointerBatchTickets[pointerinput::MaxSources],pointerBatchRequest;static bool pointerBatchValid;
 static pointerinput::Intent pointerBatchCapture;
 static void resetPointerInput(){
- pointerBatchValid=false;pointerBatchRequest=0;pointerActive=false;pointerSeen=pointerCancelSeen=pointerTarget=pointerTargetID=pointerCell=0;pointerAt=0;
+ pointerFeedback=0;pointerBatchValid=false;pointerBatchRequest=0;pointerActive=false;pointerSeen=pointerCancelSeen=pointerTarget=pointerTargetID=pointerCell=0;pointerAt=0;
  memset(pointerTokens,0,sizeof pointerTokens);memset(pointerDone,0,sizeof pointerDone);
 }
 static void pointerFinish(int result){
- auto&b=sh->pointer;pointerActive=false;if(result==-7)pointerBatchValid=false;b.result=result;b.rejected=b.intent.count-b.accepted;
+ auto&b=sh->pointer;
+ if(result>0&&b.accepted>0&&pointerFeedback&&b.intent.operation!=pointerinput::FollowNative&&!(b.intent.bindings&pointerinput::BatchNext))inputFeedback(pointerFeedback,pointerTarget,b.intent.operation==pointerinput::C4Test||(b.intent.bindings&pointerinput::Enter)!=0);
+ pointerFeedback=0;pointerActive=false;if(result==-7)pointerBatchValid=false;b.result=result;b.rejected=b.intent.count-b.accepted;
  if(b.intent.operation==pointerinput::Sell)b.rejected=b.accepted?0:1;
  if(b.rejected<0)b.rejected=0;MemoryBarrier();b.ack=b.request;notifyHost();
 }
@@ -38,7 +42,7 @@ static void pointerTick(){
  }
  if(request==b.ack)return;
  const auto&i=b.intent;DWORD now=sampleClock(sh);int frame=get<int>(0xA8ED84);
- if(!pointerActive||pointerSeen!=request){pointerActive=true;pointerSeen=request;pointerAt=0;b.accepted=b.rejected=0;memset(pointerDone,0,sizeof pointerDone);
+ if(!pointerActive||pointerSeen!=request){pointerActive=true;pointerSeen=request;pointerFeedback=0;pointerAt=0;b.accepted=b.rejected=0;memset(pointerDone,0,sizeof pointerDone);
   const bool next=(i.bindings&pointerinput::BatchNext)!=0,start=(i.bindings&pointerinput::BatchStart)!=0;
   const bool continuation=next&&!start&&pointerBatchValid&&request==pointerBatchRequest+1&&pointerinput::sameCapture(i,pointerBatchCapture);
   if(!nativeReady()||i.inputSerial!=b.cancelSerial||i.match!=match||i.house!=lastHouse||
@@ -113,15 +117,22 @@ static void pointerTick(){
   if(!p||p!=i.sources[n].pointer||!own(p,lastHouse)||get<bool>(p+0x1C8)||get<uint32_t>(p+0x11C)||
      (!follow&&manualVersions.get(i.sources[n].id)!=pointerTokens[n])){pointerDone[n]=1;continue;}
   if(i.operation==pointerinput::C4Test){
-   if(!sh->c4Test||!riskC4Active||kind(p)!=1||!pointerTarget||kind(pointerTarget)!=3||own(pointerTarget,lastHouse)||
-      call<bool>(0x4F9A50,lastHouse,(void*)(uintptr_t)get<uint32_t>(pointerTarget+0x21C))||!get<bool>(typeOf(pointerTarget,3)+0x1577)){pointerDone[n]=1;continue;}
+   // Legacy mailbox name, now explicit infantry building-entry input. Do not
+   // gate submission on CanC4 or on the old arrival-only C4 patch: ordinary
+   // infantry still fails native Sabotage's earlier CanEnterCell C4 check.
+   if(!sh->c4Test||kind(p)!=1||!pointerTarget||kind(pointerTarget)!=3||own(pointerTarget,lastHouse)||
+      call<bool>(0x4F9A50,lastHouse,(void*)(uintptr_t)get<uint32_t>(pointerTarget+0x21C))){pointerDone[n]=1;continue;}
    if(submitted>=limit||outgoingRoom()<=0){++remaining;continue;}
-   if(nativeMission(lastHouse,i.sources[n].id,17,pointerTargetID,pointerTargetID,0x34)){++b.accepted;++submitted;pointerDone[n]=1;}else ++remaining;
+   uint32_t type=typeOf(p,1);
+   // Capture permits the destination building cell without granting Engineer;
+   // explicit target AND destination avoid native capability-based inference.
+   int mission=get<bool>(type+0xEC3)?8:get<bool>(type+0xEBE)?7:get<bool>(type+0xEC2)?17:8;
+   if(nativeMission(lastHouse,i.sources[n].id,mission,mission==7?0:pointerTargetID,pointerTargetID,0x34)){++b.accepted;if(!pointerFeedback)pointerFeedback=p;++submitted;pointerDone[n]=1;}else ++remaining;
    continue;
   }
   if(pointerTarget){
    if(submitted>=limit||outgoingRoom()<=0){++remaining;continue;}
-   uint32_t before=snap.queuedEvents;int result=cooperativeInput(p,pointerTarget,i.bindings);submitted+=int(snap.queuedEvents-before);if(result<0){++remaining;continue;}pointerDone[n]=1;if(result>0)++b.accepted;continue;
+   uint32_t before=snap.queuedEvents;int result=cooperativeInput(p,pointerTarget,i.bindings);submitted+=int(snap.queuedEvents-before);if(result<0){++remaining;continue;}pointerDone[n]=1;if(result>0){++b.accepted;if(!pointerFeedback)pointerFeedback=p;}continue;
   }
   int k=kind(p);if(k!=1&&k!=2){pointerDone[n]=1;continue;}
   bool mag=(i.bindings&pointerinput::Magnetron)&&(sh->flags&MagnetronInput)&&rawMagnetron(p);
@@ -143,14 +154,14 @@ static void pointerTick(){
   }
   // Capture advanced intent first. The planner decides Attack versus Move;
   // do not append a blind native AttackMove before checking actual range.
-  if(advanced&&!mag){if(nativeOutgoing(p,2,pointerCell,0,0,i.bindings))++b.accepted;pointerDone[n]=1;continue;}
+  if(advanced&&!mag){if(nativeOutgoing(p,2,pointerCell,0,0,i.bindings)){++b.accepted;if(!pointerFeedback)pointerFeedback=p;}pointerDone[n]=1;continue;}
   if(submitted>=limit||outgoingRoom()<=0){++remaining;continue;}
   int mission=mag?2:(advanced||cs)?29:2;
   auto owner=mag?taskarbiter::Owner::Magnetron:advanced?taskarbiter::Owner::Combat:taskarbiter::Owner::Generic;
   uint32_t ticket=0;
   if(nativeMission(lastHouse,i.sources[n].id,mission,0,pointerCell,11,0,0,owner,&ticket)){
    if(i.bindings&(pointerinput::BatchStart|pointerinput::BatchNext))pointerBatchTickets[n]=ticket;
-   ++b.accepted;++submitted;pointerDone[n]=1;if(cs)++snap.csConverted;
+   ++b.accepted;if(!pointerFeedback)pointerFeedback=p;++submitted;pointerDone[n]=1;if(cs)++snap.csConverted;
    if(mag||advanced)nativeOutgoing(p,mission,pointerCell,0,0,i.bindings);
    else if(i.bindings&pointerinput::BatchNext)cancelNative(p); // accepted later direct order replaces this capture's earlier persistent plan
   }else ++remaining;

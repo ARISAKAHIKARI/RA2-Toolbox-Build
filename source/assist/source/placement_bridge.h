@@ -399,8 +399,9 @@ static void placementTick(){
  prepareRiskSites();
  static uint32_t priorStrategy=0;
  bool priorRender=riskRenderActive;controlSitesTick(sh->controlAll!=0);
- if(sh->c4Test){riskC4Active=installRiskSite(riskSites[5]);snap.c4TestStatus=riskC4Active?1:-2;}
- else{riskC4Active=false;snap.c4TestStatus=restoreRiskSite(riskSites[5])?0:-2;}
+ // Building-entry orders no longer depend on or install the arrival-only C4
+ // override. Keep the legacy slot for ABI compatibility and owned restoration.
+ riskC4Active=false;restoreRiskSite(riskSites[5]);snap.c4TestStatus=sh->c4Test?1:0;
  if(sh->renderReveal){
   riskRenderActive=installRiskSite(riskSites[3])&&installRiskSite(riskSites[4]);
   if(!riskRenderActive){restoreRiskSite(riskSites[3]);restoreRiskSite(riskSites[4]);}

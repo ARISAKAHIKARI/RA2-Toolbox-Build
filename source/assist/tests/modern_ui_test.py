@@ -50,6 +50,7 @@ inline int fontHeight=0,fontWeight=0;inline HFONT CreateFontW(int h,int,int,int,
 inline BOOL EnumChildWindows(HWND,BOOL(*)(HWND,LPARAM),LPARAM){return true;}
 LRESULT DefSubclassProc(HWND,UINT,WPARAM,LPARAM);LRESULT SendMessageW(HWND,UINT,WPARAM,LPARAM);
 '''
+header+='\n#define WINAPI\nusing HMODULE=void*;\ninline HMODULE GetModuleHandleW(const wchar_t*){return nullptr;}inline void*GetProcAddress(HMODULE,const char*){return nullptr;}\ninline int MulDiv(int x,int n,int d){return (x*n+d/2)/d;}\nconstexpr int WS_EX_TOPMOST=8,WS_POPUP=16,TTS_ALWAYSTIP=1,TTS_NOPREFIX=2,CW_USEDEFAULT=0,TTF_IDISHWND=1,TTF_SUBCLASS=2,TTM_ADDTOOLW=400,TTM_UPDATETIPTEXTW=401,TTM_SETMAXTIPWIDTH=402,TTM_SETDELAYTIME=403,TTDT_INITIAL=1,TTDT_AUTOPOP=2,WM_SYSCHAR=310,EN_CHANGE=1,VK_SHIFT=16,VK_CONTROL=17,VK_MENU=18,WM_LBUTTONDOWN=311;\nconstexpr auto TOOLTIPS_CLASSW=L"tooltips_class32";\nstruct TOOLINFOW{unsigned cbSize,uFlags=0;HWND hwnd=nullptr;UINT_PTR uId=0;wchar_t*lpszText=nullptr;};\ntemplate<class...T>inline HWND CreateWindowExW(T...){return new Win;}inline bool DestroyWindow(HWND w){delete w;return true;}\ninline unsigned LOWORD(uintptr_t n){return n&65535;}inline WPARAM MAKEWPARAM(unsigned a,unsigned b){return a|(b<<16);}inline int GetDlgCtrlID(HWND){return 1;}\n'
 body=r'''
 #include "modern_ui.h"
 LRESULT DefSubclassProc(HWND w,UINT m,WPARAM a,LPARAM b){
@@ -73,7 +74,7 @@ int main(){
  modernui::makeFont();assert(fontHeight==-14&&fontWeight==400);
  modernui::makeFont(modernui::HeadingPixels,96,600);assert(fontHeight==-20&&fontWeight==600);
  for(unsigned dpi:{96u,120u,144u,192u}){
-  modernui::makeFont(modernui::BodyPixels,modernui::panelDpi(dpi,true));assert(fontHeight==-14);
+  modernui::makeFont(modernui::BodyPixels,modernui::panelDpi(dpi,true));assert(fontHeight==-int((14*dpi+48)/96));
   modernui::makeFont(modernui::BodyPixels,modernui::panelDpi(dpi,false));assert(fontHeight==-int((14*dpi+48)/96));
  }
 
@@ -135,4 +136,4 @@ for name in ("assist", "unit_monitor", "suite"):
 cursor=(root/"cursor/source/main.cpp").read_text()
 assert "return modernui::panelDpi(dpi,true)" in cursor and "next=modernui::panelDpi(next,true)" in cursor
 assert "HFONT fresh=modernui::makeFont(modernui::BodyPixels,uiDpi)" in cursor
-print("PASS shared typography: suite and three panels use one font factory; embedded cursor does not scale alone")
+print("PASS shared typography: suite and three panels use one font factory; embedded panels follow the console DPI")
