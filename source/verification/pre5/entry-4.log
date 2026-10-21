@@ -1,0 +1,23 @@
+PASS initial Cursor binding cannot be stolen while alive; next Assist bind requires thread termination
+PASS compiled repair constructor + queue: session 5 configured backend 0
+PASS compiled repair constructor + queue: session 5 configured backend 1
+PASS compiled repair constructor + queue: session 0 configured backend 0
+PASS compiled repair constructor + queue: session 0 configured backend 1
+PASS compiled repair constructor + queue: session 3 configured backend 0
+PASS compiled repair constructor + queue: session 4 configured backend 0
+PASS compiled repair constructor + queue: session 3 configured backend 1
+PASS compiled repair constructor + queue: session 4 configured backend 1
+PASS fresh request with QPC calibration 7ms behind: no unsigned expiry or heartbeat underflow
+PASS compiled production payload, queue-full reason and unavailable-timer reason; no gameplay/netplay certification
+PASS compiled SP AutoBoard with configured high-level MegaMission backend -> original Enter constructor -> DoList
+PASS passenger-only selection finds nearby transport; compatible MouseOverObject detour no longer disables AutoBoard
+PASS 2.2-second engine suspension preserves the same match, pending request and loading jobs; resumes without a new round
+PASS live controller survives a >4-second heartbeat delay without resetting the command bridge
+PASS single runtime rejects nested scheduling, foreign owners, wrong-thread and stale-token release
+PASS actual manager rejects scheduler recursion, out-of-order and duplicate nested lease release
+PASS one patch writer; duplicate install and cross-module restore denied; foreign bytes preserved; conflict remains sticky
+PASS central manager denies every retired frame/input hook candidate
+PASS patch writes require a current manager lease; idle, stale and foreign owners cannot write
+PASS actual manager refuses live-thread stealing and migrates only after retained old-thread handle is signalled
+PASS recycled thread ID refreshes retained handle and cannot authorize a later live-thread takeover
+VERIFIED_INPUT_SHA256 {"GameRuntime.dll": "5e4c7ea496260eb568080112f2e58ce2fc0c94a5eda64d9e4ddb584ac7cfe0d7", "gamemd-spawn(4).exe": "c287d62a4d6a25b547e9339d071dd6e03adcf545699062e478aaeee38c60e89a"}

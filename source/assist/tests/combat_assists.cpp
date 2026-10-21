@@ -11,11 +11,13 @@ int main(){
  b.phase=1;b.sentFrame=100;assert(burstcompute::decide(b).mission<0);b.frame=101;b.currentTarget=0;b.mission=13;b.eligible=0;assert(burstcompute::decide(b).mission==1); // finish existing cycle on key release
  b.inRange=0;assert(burstcompute::decide(b).done);b.inRange=1;b.currentTarget=99;assert(burstcompute::decide(b).done);
  b.phase=2;b.sentFrame=101;b.frame=102;b.currentTarget=b.target;b.mission=1;b.previousFire=b.fireStamp;assert(!burstcompute::decide(b).done);++b.fireStamp;assert(burstcompute::decide(b).done);
- dodgecompute::Source d;d.x=d.y=1000;d.frame=10;d.count=1;d.threats[0]={10,0,1100,1000,1};d.cells=3;d.options[0]={1001,750,1000};d.options[1]={1002,1250,1000};d.options[2]={1003,750,1000};
- auto out=dodgecompute::decide(d);assert(out.mission==2&&out.destination==1001);d.count=3;d.threats[1]={11,0,750,1000,1};d.threats[2]={12,0,1250,1000,1};assert(dodgecompute::decide(d).mission<0); // cannot move toward the second threat
- d.job=1;d.sentFrame=10;d.count=1;d.frame=11;assert(dodgecompute::decide(d).mission<0);d.frame=22;assert(dodgecompute::decide(d).mission==2);
- d.count=0;d.restoreMission=1;d.restoreTarget=55;out=dodgecompute::decide(d);assert(out.done&&out.mission==1&&out.target==55);
- d.count=1;d.moves=3;assert(dodgecompute::decide(d).mission<0);d.frame=71;assert(dodgecompute::decide(d).done);
+ dodgecompute::Source d;d.frame=10;d.count=1;d.freshThreat=1;
+ assert(dodgecompute::decide(d).scatter);d.busy=1;assert(!dodgecompute::decide(d).scatter);d.busy=0;
+ d.active=1;d.sentFrame=10;
+ for(int f=10;f<310;++f){d.frame=f;auto out=dodgecompute::decide(d);assert(!out.scatter&&!out.release);} // every frame can contain a fresh projectile
+ d.frame=310;assert(dodgecompute::decide(d).release);d.busy=1;assert(!dodgecompute::decide(d).release);
+ d.busy=0;d.observed=1;d.quietFrame=309;assert(!dodgecompute::decide(d).release);d.frame=311;assert(dodgecompute::decide(d).release);
+ d.active=0;d.freshThreat=0;assert(!dodgecompute::decide(d).scatter);d.freshThreat=1;d.count=0;assert(!dodgecompute::decide(d).scatter);
  planningbudget::Budget budget;budget.begin(1,100,24);for(int n=0;n<5;++n){assert(budget.roomMask(n,31)==4);for(int k=0;k<4;++k)budget.consume(n);assert(budget.roomMask(n,31)==0);}assert(budget.total()==20);budget.begin(1,101,12);assert(budget.total()==0&&budget.roomMask(4,31)==2);
- std::cout<<"PASS burst phases, ordinary/elite parameters, hold release, stale target, evasion direction, conflicting threats, bounded retries and five-family budget\n";
+ std::cout<<"PASS burst phases, ordinary/elite parameters, hold release, stale target, native scatter, delayed execution, turning/movement exclusion and settled release and five-family budget\n";
 }

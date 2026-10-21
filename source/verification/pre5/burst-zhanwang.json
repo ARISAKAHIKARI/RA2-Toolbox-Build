@@ -1,0 +1,455 @@
+{
+  "scope": "Actual Runtime and original weapon/range/event functions in a controlled x86 world; not live game/netplay or projectile physics.",
+  "native_stop_reset_executed": true,
+  "dll_sha256": "5e4c7ea496260eb568080112f2e58ce2fc0c94a5eda64d9e4ddb584ac7cfe0d7",
+  "results": [
+    {
+      "case": "burst_0_True_normal",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_0_True_elite",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_0_True_elite_single",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_0_True_burst_one",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_0_True_completed",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_0_True_not_fired",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_0_True_moving",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_0_True_disabled",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_0_True_filter",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_0_True_hold",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_0_True_hold_unselected",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_0_True_hold_unfocused",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_0_True_hold_stale",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_0_True_observer",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_0_True_release",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_0_True_weapon_changed",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_0_True_spawn_owner",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_0_True_spawned",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_0_True_spawn_parent",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_0_True_missile_spawn",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_0_True_aircraft",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_0_True_airborne",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_0_True_hold_spawned",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_0_True_fast_cycle",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_0_True_same_frame",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_0_True_pending_burst",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_0_True_turning_burst",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_0_True_moving_burst",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_0_False_normal",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_0_False_elite",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_0_False_elite_single",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_0_False_burst_one",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_0_False_completed",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_0_False_not_fired",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_0_False_moving",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_0_False_disabled",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_0_False_filter",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_0_False_hold",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_0_False_hold_unselected",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_0_False_hold_unfocused",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_0_False_hold_stale",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_0_False_observer",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_0_False_release",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_0_False_weapon_changed",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_0_False_spawn_owner",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_0_False_spawned",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_0_False_spawn_parent",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_0_False_missile_spawn",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_0_False_aircraft",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_0_False_airborne",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_0_False_hold_spawned",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_0_False_fast_cycle",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_0_False_same_frame",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_0_False_pending_burst",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_0_False_turning_burst",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_0_False_moving_burst",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_3_True_normal",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_3_True_elite",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_3_True_elite_single",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_3_True_burst_one",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_3_True_completed",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_3_True_not_fired",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_3_True_moving",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_3_True_disabled",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_3_True_filter",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_3_True_hold",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_3_True_hold_unselected",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_3_True_hold_unfocused",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_3_True_hold_stale",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_3_True_observer",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_3_True_release",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_3_True_weapon_changed",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_3_True_spawn_owner",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_3_True_spawned",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_3_True_spawn_parent",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_3_True_missile_spawn",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_3_True_aircraft",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_3_True_airborne",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_3_True_hold_spawned",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_3_True_fast_cycle",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_3_True_same_frame",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_3_True_pending_burst",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_3_True_turning_burst",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_3_True_moving_burst",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_3_False_normal",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_3_False_elite",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_3_False_elite_single",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_3_False_burst_one",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_3_False_completed",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_3_False_not_fired",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_3_False_moving",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_3_False_disabled",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_3_False_filter",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_3_False_hold",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_3_False_hold_unselected",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_3_False_hold_unfocused",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_3_False_hold_stale",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_3_False_observer",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_3_False_release",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_3_False_weapon_changed",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_3_False_spawn_owner",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_3_False_spawned",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_3_False_spawn_parent",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_3_False_missile_spawn",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_3_False_aircraft",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_3_False_airborne",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_3_False_hold_spawned",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_3_False_fast_cycle",
+      "status": "PASS"
+    },
+    {
+      "case": "burst_3_False_same_frame",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_3_False_pending_burst",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_3_False_turning_burst",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_3_False_moving_burst",
+      "status": "PASS"
+    }
+  ]
+}

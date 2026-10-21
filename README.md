@@ -1,3 +1,19 @@
+# RA2 Toolbox 1.0.30-pre.5
+
+[预发布完整包与更新包](https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/releases/tag/v1.0.30-pre.5) · [实现与验证](source/REVIEW-1.0.30-pre.5.md)
+
+- 自动躲弹改发原版 **Scatter 散开事件**，由原版处理落点和移动。删除自选两格落点及反复发送 Move 的逻辑。
+- 一轮散开处于等待执行、车体转向或移动中时，后续弹体只记录，不重新选方向；原版已在移动的单位也不会被这次自动躲弹打断。
+- 删除“威胁消失 6 帧后恢复攻击/警戒”的命令；观察到散开执行并停稳后才结束本轮，避免尚未起步就被另一条命令打断。
+- 保留已发射正伤害空袭弹体、己方/盟军试打、地面目标格和敌方碾压的检测；治疗弹排除、类型过滤、内外计算和手动取消继续生效。
+- 同步 Scatter 使用原版默认坐标；飞机原生散开直接带飞机坐标，且无需等待同步事件。因此本版不能等同于原版三星即时散开的方向与时机，也不保证所有弹种可躲。
+
+文件版本 **1.0.30.4**，Assist **58**、Runtime **4**、入口管理器 **3**。先退出游戏和工具箱，成套更新 EXE/DLL。已有完整安装下载 Update，首次使用下载 Windows 完整包。
+
+验证范围与最终二进制哈希见 [verification/pre5](source/verification/pre5/summary.json)。真实完整游戏、弹道物理及双机联机仍待复测。
+
+## 历史版本说明
+
 # RA2 Toolbox 1.0.30-pre.4
 
 [预发布完整包与更新包](https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/releases/tag/v1.0.30-pre.4) · [实现与验证](source/REVIEW-1.0.30-pre.4.md)

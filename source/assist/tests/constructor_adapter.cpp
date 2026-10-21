@@ -1,5 +1,6 @@
 #include "../source/constructor_adapter.h"
 #include "../source/entry_gate.h"
+#include "../source/order_policy.h"
 #include <cassert>
 #include <vector>
 #include <cstdint>
@@ -28,6 +29,15 @@ int main(){
  auto repair=intent::object(2,0x15,700);
  assert(constructors::fill(packet,repair,std::ref(a))==V::Ready);
  assert(a.address==0x4C65E0&&a.args==4&&a.values[1]==2&&a.values[2]==0x15&&a.values[3]==700&&a.values[4]==0x34);
+ auto scatter=intent::object(2,0x07,700);Trace sc;
+ assert(constructors::fill(packet,scatter,std::ref(sc))==V::Ready);
+ assert(sc.address==0x4C65E0&&sc.args==4&&sc.values[2]==0x07&&sc.values[3]==700&&sc.values[4]==0x34);
+ for(bool mp:{false,true}){
+  assert(orderpolicy::objectEvent(7,true,true,true,true,mp)==orderpolicy::Reject::None);
+  assert(orderpolicy::objectEvent(7,true,true,false,true,mp)==orderpolicy::Reject::UnauthorizedOwner);
+  assert(orderpolicy::objectEvent(7,true,true,true,false,mp)==orderpolicy::Reject::UnauthorizedOwner);
+ }
+ assert(constructors::admit(intent::object(2,0x08,700))==V::InvalidFields);
  auto mega=intent::mega(2,701,7,702,0x34,0,0,0,0);
  Trace m;assert(constructors::fill(packet,mega,std::ref(m))==V::Ready);
  assert(m.address==0x4C6860&&m.args==10&&m.values[2]==701&&m.values[4]==7&&m.values[5]==702);

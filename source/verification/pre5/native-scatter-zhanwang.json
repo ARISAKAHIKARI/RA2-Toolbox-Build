@@ -1,0 +1,39 @@
+{
+  "scope": "Execute the EXE's Scatter receiver and UnitClass Scatter/PrimaryFacing gates.\nObject resolution, COM locomotor, map lookup and final SetDestination are mocked.\nThis verifies dispatch/guards, not live pathfinding, bomb avoidance or networking.\n",
+  "game_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+  "dll_sha256": "5e4c7ea496260eb568080112f2e58ce2fc0c94a5eda64d9e4ddb584ac7cfe0d7",
+  "results": [
+    {
+      "case": "idle",
+      "status": "PASS"
+    },
+    {
+      "case": "rotating",
+      "status": "PASS"
+    },
+    {
+      "case": "expired_turn",
+      "status": "PASS"
+    },
+    {
+      "case": "destination",
+      "status": "PASS"
+    },
+    {
+      "case": "deployed",
+      "status": "PASS"
+    },
+    {
+      "case": "dead",
+      "status": "PASS"
+    },
+    {
+      "case": "limbo",
+      "status": "PASS"
+    },
+    {
+      "case": "not_foot",
+      "status": "PASS"
+    }
+  ]
+}

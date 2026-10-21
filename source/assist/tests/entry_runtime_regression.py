@@ -116,14 +116,10 @@ class BurstInput(C.Structure):
  _fields_=[('match',C.c_uint32),('tick',C.c_uint32),('frame',C.c_int32),('count',C.c_int32),('sources',BurstSource*64)]
 class BurstResult(C.Structure):
  _fields_=[('match',C.c_uint32),('tick',C.c_uint32),('frame',C.c_int32),('count',C.c_int32),('decisions',BurstDecision*64)]
-class DodgeThreat(C.Structure):
- _fields_=[('id',C.c_uint32),('pointer',C.c_uint32)]+[(x,C.c_int32) for x in 'x y kind vx vy'.split()]
-class DodgeCell(C.Structure):
- _fields_=[('cell',C.c_uint32),('x',C.c_int32),('y',C.c_int32)]
 class DodgeSource(C.Structure):
- _fields_=[(x,C.c_uint32) for x in 'id pointer token job destination freshShot'.split()]+[(x,C.c_int32) for x in 'x y frame sentFrame moves count cells'.split()]+[(x,C.c_uint32) for x in 'restoreTarget restoreDestination'.split()]+[(x,C.c_int32) for x in 'restoreMission restoreTag'.split()]+[('threats',DodgeThreat*8),('options',DodgeCell*16)]
+ _fields_=[(x,C.c_uint32) for x in 'id pointer token job active busy observed freshThreat'.split()]+[(x,C.c_int32) for x in 'frame sentFrame quietFrame count'.split()]+[('shots',C.c_uint32*32)]
 class DodgeDecision(C.Structure):
- _fields_=[('mission',C.c_int32),('target',C.c_uint32),('destination',C.c_uint32),('tag',C.c_int32),('done',C.c_uint32)]
+ _fields_=[('scatter',C.c_uint32),('release',C.c_uint32)]
 class DodgeInput(C.Structure):
  _fields_=[('match',C.c_uint32),('tick',C.c_uint32),('frame',C.c_int32),('count',C.c_int32),('sources',DodgeSource*32)]
 class DodgeResult(C.Structure):

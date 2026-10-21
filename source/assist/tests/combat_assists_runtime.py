@@ -102,7 +102,7 @@ def dodge(mode,inside,kind):
  m.w(m.unit+0x194,0)
  # Enemy vehicle is actively trying to crush this ground unit.
  t=m.r(m.target+0x6c4);m.b(t+0xd29,1);m.w(m.target+0x9c,10256);m.w(m.target+0xa0,10000);m.w(m.target+0xac,2);m.w(m.target+0x2b4,m.unit)
- aircase=kind in ('air','own_air','allied_air','own_healer','own_air_not_targeted','prefire','new_shot','same_shot','ground_shot','late_shot')
+ aircase=kind in ('air','own_air','allied_air','own_healer','own_air_not_targeted','prefire','new_shot','same_shot','ground_shot','late_shot','pending_burst','turning_burst','moving_burst','settled','native_busy','already_rotating','queued_move','manual','foreign','timeout','clicked_backend')
  if aircase:
   m.w(m.target,0x7e22a4);m.b(m.target+0x134,1);m.w(m.target+0xa4,256);m.w(m.target+0xac,1);m.w(t+0x898,m.actual);m.w(m.target+0x2f4,0)
  if kind in ('own_air','own_healer','own_air_not_targeted'):m.w(m.target+0x21c,m.house)
@@ -118,6 +118,12 @@ def dodge(mode,inside,kind):
  if kind=='disabled':s=n.state(m);s.dodgeEnabled=0;n.save(m,s)
  if kind=='filter':s=n.state(m);s.featureConfigSeq+=2;s.featureConfig.filters[18].custom=1;n.save(m,s)
  if kind=='observer':m.b(m.house+0x1f5,1)
+ if kind=='foreign':m.w(m.unit+0x21c,m.enemy)
+ if kind=='native_busy':m.w(m.unit+0x5a4,m.crateCell)
+ if kind=='queued_move':m.w(m.unit+0xb4,2)
+ if kind=='already_rotating':
+  m.u.mem_write(m.unit+0x39c,struct.pack('<h',8));m.w(m.unit+0x390,m.r(0xa8ed84));m.w(m.unit+0x398,50)
+ if kind=='clicked_backend':s=n.state(m);s.objectQueueMode=1;n.save(m,s)
  for x in range(37,42):
   for y in range(37,42):
    cell=m.alloc();m.u.mem_write(cell+0x24,struct.pack('<hh',x,y));m.w(m.cells+(y*512+x)*4,cell)
@@ -135,30 +141,64 @@ def dodge(mode,inside,kind):
  if not inside:
   if kind=='conflict':compute(m,'burst')
   s=tick(m,inside,'dodge')
- expected=kind in ('crush','air','own_air','allied_air','conflict','release','new_shot','same_shot','ground_shot','late_shot')
- assert n.count(m)==int(expected),(kind,n.count(m),s.dodgeInput.count,s.dodgeActive)
+ expected=kind in ('crush','air','own_air','allied_air','conflict','release','new_shot','same_shot','ground_shot','late_shot','blocked','pending_burst','turning_burst','moving_burst','settled','manual','timeout','clicked_backend')
+ assert n.count(m)==int(expected),(kind,n.count(m),s.dodgeInput.count,s.dodgeActive,s.data.lastSubmitError)
  assert before==bytes(m.u.mem_read(m.unit,0x800)) and not m.codeWrites
- if not expected:return
- packet=n.packets(m)[:111];assert packet[12]==2;cell=struct.unpack_from('<I',packet,19)[0];assert (abs(cell//1000-39)==2 if aircase else cell%1000<39),'cross the flight path / move away from crusher'
- if kind in ('new_shot','same_shot'):
-  for _ in range(2):s=m.hook();compute(m,'dodge') if not inside else None
-  assert n.count(m)==1,'same projectile must not spam moves'
-  if kind=='new_shot':
-   m.w(m.bullet+0x10,702);m.w(0xa8ed84,m.r(0xa8ed84)+1)
-   for _ in range(3):s=m.hook();compute(m,'dodge') if not inside else None
-   assert n.count(m)==2,'new shot bypasses 12-frame wait; one-event-per-actor/frame arbitration retained'
+ if not expected:
+  if kind in ('native_busy','already_rotating','queued_move'):
+   # An existing native movement consumes this shot; don't dodge it late.
+   m.w(m.unit+0x5a4,0);m.w(m.unit+0xb4,-1);m.w(m.unit+0x398,0)
+   for _ in range(5):tick(m,inside,'dodge')
+   assert n.count(m)==0
   return
+ packet=n.packets(m)[:111];assert packet[0]==7 and packet[7:12]==struct.pack('<IB',m.r(m.unit+0x10),0x34)
  if kind=='conflict':assert n.state(m).burstIssued==0
- dest=m.r(m.cells+((cell//1000)*512+cell%1000)*4);m.w(m.unit+0xac,2);m.w(m.unit+0x5a4,dest);m.w(m.unit+0x2b4,0)
+ if kind in ('new_shot','same_shot','pending_burst','turning_burst','moving_burst','settled'):
+  for k in range(20):
+   if kind!='same_shot':m.w(m.bullet+0x10,702+k)
+   if kind=='turning_burst':
+    m.u.mem_write(m.unit+0x39c,struct.pack('<h',8));m.w(m.unit+0x390,m.r(0xa8ed84));m.w(m.unit+0x398,50)
+   if kind in ('moving_burst','settled'):
+    m.w(m.unit+0x5a4,m.crateCell);m.w(m.unit+0x9c,10000+k*8)
+   tick(m,inside,'dodge')
+   assert n.count(m)==1,'fresh shots must not replace a queued/turning/moving scatter'
+  if kind=='settled':
+   m.w(m.unit+0x5a4,0);m.w(m.unit+0xb4,-1)
+   for _ in range(5):tick(m,inside,'dodge')
+   assert n.count(m)==1,'same in-flight projectile after arrival is not a new dodge'
+   m.w(m.bullet+0x10,999)
+   for _ in range(3):tick(m,inside,'dodge')
+   assert n.count(m)==2,'new shot after native movement completes can scatter once'
+  return
+ if kind=='manual':
+  # Selection/order tracker observes a new user Move, cancelling automation.
+  m.queryObject=m.unit;n.pointer(m,4)
+  before_manual=n.count(m)
+  m.vector(0xa8ed40,[])
+  for _ in range(12):tick(m,inside,'dodge')
+  assert n.count(m)==before_manual,'never restore an older attack after a manual order'
+  return
+ if kind=='timeout':
+  m.vector(0xa8ed40,[]);m.w(0xa8ed84,m.r(0xa8ed84)+301)
+  for _ in range(4):tick(m,inside,'dodge')
+  assert n.count(m)==1 and n.state(m).dodgeActive==0,'unobserved scatter expires without a replacement mission'
+  return
+ # Mark the native event as executed, with an ongoing move longer than the
+ # old six-frame restoration timer. Our runtime must never write the unit.
+ m.w(m.unit+0xac,2);m.w(m.unit+0x5a4,m.crateCell);m.w(m.unit+0x2b4,0);m.b(m.unit+0x6b2,1)
  m.w(m.target+0x2b4,0)
  if aircase:m.vector(0xa8ed40,[])
  if kind=='release':s=n.state(m);s.dodgeEnabled=0;n.save(m,s)
- for _ in range(9):s=tick(m,inside,'dodge')
- assert n.count(m)==2,(kind,'restore',n.count(m),s.dodgeActive)
- assert n.packets(m)[111+12]==(5 if kind in ('own_air','allied_air') else 1),'restore only a valid hostile attack, otherwise Guard'
+ before=bytes(m.u.mem_read(m.unit,0x800))
+ for _ in range(12):s=tick(m,inside,'dodge')
+ assert n.count(m)==1 and bytes(m.u.mem_read(m.unit,0x800))==before,'no early Attack/Guard and no local unit writes'
+ m.w(m.unit+0x5a4,0);m.w(m.unit+0xb4,-1)
+ for _ in range(5):s=tick(m,inside,'dodge')
+ assert n.count(m)==1 and s.dodgeActive==0,(kind,'settled',n.count(m),s.dodgeActive)
  assert not m.codeWrites
+
 for mode in (0,3):
  for inside in (True,False):
   for kind in ('normal','elite','elite_single','burst_one','completed','not_fired','moving','disabled','filter','hold','hold_unselected','hold_unfocused','hold_stale','observer','release','weapon_changed','spawn_owner','spawned','spawn_parent','missile_spawn','aircraft','airborne','hold_spawned','fast_cycle','same_frame'):check(f'burst_{mode}_{inside}_{kind}',lambda m=mode,i=inside,k=kind:burst(m,i,k))
-  for kind in ('crush','air','own_air','allied_air','own_healer','own_air_not_targeted','allied','not_targeted','resistant','disabled','filter','observer','blocked','conflict','release','prefire','new_shot','same_shot','ground_shot','late_shot'):check(f'dodge_{mode}_{inside}_{kind}',lambda m=mode,i=inside,k=kind:dodge(m,i,k))
+  for kind in ('crush','air','own_air','allied_air','own_healer','own_air_not_targeted','allied','not_targeted','resistant','disabled','filter','observer','blocked','conflict','release','prefire','new_shot','same_shot','ground_shot','late_shot','pending_burst','turning_burst','moving_burst','settled','native_busy','already_rotating','queued_move','manual','foreign','timeout','clicked_backend'):check(f'dodge_{mode}_{inside}_{kind}',lambda m=mode,i=inside,k=kind:dodge(m,i,k))
 Path(a.output).write_text(json.dumps({'scope':__doc__,'native_stop_reset_executed':bytes(n.fixture(0).game.get_data(0x6fcf53-0x400000,6))==bytes.fromhex('399eb4020000'),'dll_sha256':hashlib.sha256(Path(a.dll).read_bytes()).hexdigest(),'results':rows},indent=2)+'\n');raise SystemExit(any(x['status']!='PASS' for x in rows))

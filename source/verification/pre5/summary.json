@@ -1,0 +1,76 @@
+{
+  "release": "v1.0.30-pre.5",
+  "final_dll_sha256": "5e4c7ea496260eb568080112f2e58ce2fc0c94a5eda64d9e4ddb584ac7cfe0d7",
+  "final_exe_sha256": "dafb78b7b1b68f78d992805118b125f99b3cd1ba00806ad7e2df8c3997e381c2",
+  "controlled_unique_cases_passed": 500,
+  "controlled_case_executions_passed": 512,
+  "duplicate_case_executions": 12,
+  "batches": [
+    {
+      "report": "dodge-zhanwang.json",
+      "passed": 124,
+      "dll_sha256": "5e4c7ea496260eb568080112f2e58ce2fc0c94a5eda64d9e4ddb584ac7cfe0d7",
+      "scope": "Actual Runtime and original weapon/range/event functions in a controlled x86 world; not live game/netplay or projectile physics."
+    },
+    {
+      "report": "burst-zhanwang.json",
+      "passed": 112,
+      "dll_sha256": "5e4c7ea496260eb568080112f2e58ce2fc0c94a5eda64d9e4ddb584ac7cfe0d7",
+      "scope": "Actual Runtime and original weapon/range/event functions in a controlled x86 world; not live game/netplay or projectile physics."
+    },
+    {
+      "report": "combat-lbw.json",
+      "passed": 224,
+      "dll_sha256": "5e4c7ea496260eb568080112f2e58ce2fc0c94a5eda64d9e4ddb584ac7cfe0d7",
+      "scope": "Actual Runtime and original weapon/range/event functions in a controlled x86 world; not live game/netplay or projectile physics."
+    },
+    {
+      "report": "native-scatter-zhanwang.json",
+      "passed": 8,
+      "dll_sha256": "5e4c7ea496260eb568080112f2e58ce2fc0c94a5eda64d9e4ddb584ac7cfe0d7",
+      "scope": "Execute the EXE's Scatter receiver and UnitClass Scatter/PrimaryFacing gates.\nObject resolution, COM locomotor, map lookup and final SetDestination are mocked.\nThis verifies dispatch/guards, not live pathfinding, bomb avoidance or networking.\n"
+    },
+    {
+      "report": "native-scatter-lbw.json",
+      "passed": 8,
+      "dll_sha256": "5e4c7ea496260eb568080112f2e58ce2fc0c94a5eda64d9e4ddb584ac7cfe0d7",
+      "scope": "Execute the EXE's Scatter receiver and UnitClass Scatter/PrimaryFacing gates.\nObject resolution, COM locomotor, map lookup and final SetDestination are mocked.\nThis verifies dispatch/guards, not live pathfinding, bomb avoidance or networking.\n"
+    },
+    {
+      "report": "refresh-zhanwang.json",
+      "passed": 36,
+      "dll_sha256": "5e4c7ea496260eb568080112f2e58ce2fc0c94a5eda64d9e4ddb584ac7cfe0d7",
+      "scope": "Actual x86 Runtime + native ScrollMap/SetTacticalPosition; mocked Win32, input producers and renderer; QPC/coarse-clock cadence simulation, not visual FPS or netplay"
+    }
+  ],
+  "entry_regressions": [
+    {
+      "report": "entry-3.log",
+      "pass_lines": 22,
+      "dll_sha256": "5e4c7ea496260eb568080112f2e58ce2fc0c94a5eda64d9e4ddb584ac7cfe0d7"
+    },
+    {
+      "report": "entry-4.log",
+      "pass_lines": 22,
+      "dll_sha256": "5e4c7ea496260eb568080112f2e58ce2fc0c94a5eda64d9e4ddb584ac7cfe0d7"
+    }
+  ],
+  "host_checks": [
+    "host-input.log",
+    "settings-ui.log"
+  ],
+  "static_checks": [
+    "architecture.log",
+    "windows-build.log"
+  ],
+  "pure_checks": [
+    "combat_assists.cpp",
+    "constructor_adapter.cpp",
+    "order_policy.cpp"
+  ],
+  "limitations": [
+    "Scatter event supplies default coordinates, unlike native aircraft Scatter carrying attacker coordinates; synchronized event delay remains.",
+    "Original UnitClass::Scatter/PrimaryFacing gates execute, but COM locomotor, map search, final SetDestination and object resolution are controlled substitutes.",
+    "No complete game, full projectile/pathfinding physics, Windows display, or two-machine netplay validation."
+  ]
+}

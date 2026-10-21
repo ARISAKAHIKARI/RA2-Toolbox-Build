@@ -11,7 +11,7 @@ inline Verdict admit(const intent::EventOrder&r,bool diagnosticProbe=false){
  switch(r.domain){
  case vanilla::Domain::Object:
   if(r.a<=0 || r.tagA!=vanilla::TargetTag::Techno ||
-     (r.eventKind!=vanilla::EventType::Repair&&r.eventKind!=vanilla::EventType::Sell))
+     (r.eventKind!=vanilla::EventType::Scatter&&r.eventKind!=vanilla::EventType::Repair&&r.eventKind!=vanilla::EventType::Sell))
    return Verdict::InvalidFields;
   break;
  case vanilla::Domain::MegaMission:

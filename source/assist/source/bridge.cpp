@@ -48,7 +48,7 @@ using namespace assist;
 // string literal. The host validates both protocol and structure size before
 // installing a hook; the release verifier can inspect these exports offline.
 extern "C" __declspec(dllexport) const uint32_t AssistProtocolInfo[2]={Version,sizeof(Shared)};
-extern "C" __declspec(dllexport) const wchar_t AssistMappingPrefix[]=L"Local\\RA2Assist_v057_";
+extern "C" __declspec(dllexport) const wchar_t AssistMappingPrefix[]=L"Local\\RA2Assist_v058_";
 static Shared*sh;static HANDLE mapping;static bool checked,good,fault;static DWORD last,slow;static uint32_t lastHouse,match,pendingAck;static int lastFrame;
 static sessionepoch::Tracker sessionTracker;static Snapshot snap;
 static runtimefault::Context faultContext;
@@ -458,7 +458,7 @@ static bool nativeMission(uint32_t house,uint32_t id,int mission,uint32_t target
  }
  return true;
 }
-static bool nativeObjectEvent(int houseIndex,int eventType,uint32_t objectId,OrderAuthority authority=OrderAuthority::Local){
+static bool nativeObjectEvent(int houseIndex,int eventType,uint32_t objectId,OrderAuthority authority=OrderAuthority::Local,gateway::Receipt* receipt=nullptr){
  if(houseIndex<0||houseIndex>=32||!objectId||!lastHouse){++snap.commandRejected;return false;}
  uint32_t object=worldByID(objectId);
  uint32_t owner=object?get<uint32_t>(object+0x21C):0;
@@ -469,7 +469,7 @@ static bool nativeObjectEvent(int houseIndex,int eventType,uint32_t objectId,Ord
  const bool mp=eventdelivery::isMultiplayer(mode);
  auto reject=orderpolicy::objectEvent(eventType,object!=0,object&&live(object),
   uint32_t(houseIndex)==localIndex||(authority==OrderAuthority::SellPlayerTest&&sh&&(sh->flags&SellEnemy)&&eventType==0x16&&object&&kind(object)==3&&playableHouse(owner)),uint32_t(houseIndex)==ownerIndex,mp);
- if(reject!=orderpolicy::Reject::None){++snap.commandRejected;return false;}
+ if(reject!=orderpolicy::Reject::None||(eventType==0x07&&kind(object)!=1&&kind(object)!=2)){++snap.commandRejected;return false;}
  const uint32_t submittedAt=sampleClock(sh);
  const gateway::Context ctx{match,submittedAt,sh&&!sh->stop&&!fault&&snap.status==1,
                             get<bool>(0xA8BC60+25)};
@@ -477,7 +477,7 @@ static bool nativeObjectEvent(int houseIndex,int eventType,uint32_t objectId,Ord
  const gateway::Intent objIntent{match,submittedAt,objectId,0,rev};
  if(gateway::validate(ctx,objIntent,3500)!=gateway::Failure::None){++snap.commandRejected;return false;}
  const int frame=get<int>(0xA8ED84);
- const auto objOwner=eventType==0x16?taskarbiter::Owner::Sell:taskarbiter::Owner::Repair;
+ const auto objOwner=eventType==0x07?taskarbiter::Owner::Dodge:eventType==0x16?taskarbiter::Owner::Sell:taskarbiter::Owner::Repair;
  actorFrameArbiter.begin(match,frame);
  if(!actorFrameArbiter.canIssue(objectId,rev)||
     !actorLeaseArbiter.canIssue(match,frame,objectId,object,rev,objOwner)){
@@ -489,11 +489,11 @@ static bool nativeObjectEvent(int houseIndex,int eventType,uint32_t objectId,Ord
   taskarbiter::Lease superseded{};
   actorLeaseArbiter.record(match,frame,objectId,object,rev,objOwner,queued.serial,&superseded);
   if(superseded.serial)cancelReceiptTicket(superseded.match,superseded.serial);
-  recordReceipt(queued);
+  recordReceipt(queued);if(receipt)*receipt=queued;
   return true;
  };
  if(authority!=OrderAuthority::Local){if(!submitConstructed(intent::object(houseIndex,eventType,objectId),authority))return false;return acceptedObject();}
- if(!sh||sh->objectQueueMode!=1||eventdelivery::isSingleplayer(mode)){
+ if(eventType==0x07||!sh||sh->objectQueueMode!=1||eventdelivery::isSingleplayer(mode)){
   snap.objectQueueStatus=int(objectqueue::Result::DefaultEventClass);
   if(!submitConstructed(intent::object(houseIndex,eventType,objectId)))return false;
   return acceptedObject();
