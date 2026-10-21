@@ -990,7 +990,8 @@ static void tick(){
   else if(receipt.phase==gateway::Phase::Expired)++snap.receiptExpired;
  });
  const bool dodgeChanged=dodgeControlTick(house,frame,now);
- const bool burstChanged=burstControlTick(house,frame,now);
+ resetBurstControl(); // Removed feature: old shared flags never produce commands.
+ const bool burstChanged=false;
  const bool planningChanged=publishPlanningWorld(house,frame,now);
  runtimePlanningTick(house,frame,now);
  const bool missileChanged=missileControlTick(house,frame,now);

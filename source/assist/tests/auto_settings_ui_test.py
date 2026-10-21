@@ -83,7 +83,8 @@ static void GetPrivateProfileStringW(const wchar_t*,const wchar_t*key,const wcha
 static int WritePrivateProfileStringW(const wchar_t*,const wchar_t*key,const wchar_t* text,const wchar_t*){if(text)profile_text[key]=text;else{profile_text.erase(key);profile.erase(key);}return 1;}
 
 static int value(const wchar_t*,const wchar_t* key,int fallback){auto it=profile.find(key);return it==profile.end()?fallback:it->second;}
-static void write(const wchar_t*,const wchar_t* key,int v){profile[key]=v;}
+static std::map<std::wstring,int> burstWrites;
+static void write(const wchar_t* section,const wchar_t* key,int v){profile[key]=v;if(std::wstring(section)==L"BurstRefresh")burstWrites[key]=v;}
 '''+"\nstatic void loadMouse(){"+load_mouse+"}\nstatic void saveMouse(){"+save_mouse+"}\n"
 feature_load=io.split('static void loadAdditionalSettings(){',1)[1].split(' extra.antiTheft=',1)[0]
 feature_save=io.split('static bool saveAdditionalSettings(){',1)[1].split(' write(L"Modes",L"AntiTheft"',1)[0]
@@ -91,6 +92,11 @@ prefix+="\nstatic void loadFeatureTypes(){"+feature_load+"}\nstatic void saveFea
 suffix=r''' 
 int main(){
  assert(extra.dodgeMode==0);
+ profile[L"Enabled"]=profile[L"HoldEnabled"]=1;profile[L"HoldKey"]='B';
+ extra.burstEnabled=extra.burstHoldEnabled=true;extra.burstKey='B';loadFeatureTypes();
+ assert(!extra.burstEnabled&&!extra.burstHoldEnabled&&!extra.burstKey);
+ saveFeatureTypes();assert(burstWrites.size()==3&&!burstWrites[L"Enabled"]&&!burstWrites[L"HoldEnabled"]&&!burstWrites[L"HoldKey"]);
+ for(int id:{882,883,884})assert(!autoSettingChanged(id,BN_CLICKED));
  for(int mode:{0,1}){extra.dodgeMode=mode;saveFeatureTypes();extra.dodgeMode=1-mode;loadFeatureTypes();assert(extra.dodgeMode==mode);}
  extra.dodgeMode=0;
  for(int mode:{1,0}){fields[895]=mode;assert(autoSettingChanged(895,CBN_SELCHANGE));assert(extra.dodgeMode==mode);}

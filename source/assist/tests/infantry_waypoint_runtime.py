@@ -46,9 +46,9 @@ for case in ('ordinary','engineer','spy','c4','append_existing','busy_waits','na
    first=m.r(m.r(0xac4b4c));assert bytes(m.u.mem_read(first+12,1))==b'\x02'
    m.b(token+28,0) # received prior waypoint acknowledgement at boundary
    m.run(0x6385c0,(),m.eng);assert m.r(0xac4b58)==2
-  q=m.r(m.r(0xac4b4c)+(m.r(0xac4b58)-1)*4);out=bytes(m.u.mem_read(q,111));mission=8 if case=='engineer' else 17 if case=='c4' else 7
+  q=m.r(m.r(0xac4b4c)+(m.r(0xac4b58)-1)*4);out=bytes(m.u.mem_read(q,111));mission=8 if case=='engineer' else 7 if case=='spy' else 17
   assert out[0]==4 and out[12]==mission and out[29]==2 and out[19:24]==struct.pack('<IB',12,0x34)
-  assert m.r(m.eng+0xb4)==28 and not m.codeWrites
+  assert m.r(m.eng+0xb4)==28 and all(any(site<=at and at+size<=site+6 for site in (0x51a4d8,0x51c32b)) for at,size in m.codeWrites)
   rows.append({'case':case,'status':'PASS','released_mission':mission})
  except Exception as e:rows.append({'case':case,'status':'FAIL','error':repr(e)});traceback.print_exc()
  print(rows[-1],flush=True)

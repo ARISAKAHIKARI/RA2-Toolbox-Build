@@ -157,7 +157,7 @@ static void pointerTick(){
    const bool editing=get<bool>(0x87F7E8+0x11B3);const int cost=editing?1:2;
    if(submitted+cost>limit||outgoingRoom()<cost){++remaining;continue;}
    uint32_t type=typeOf(p,1);
-   int mission=get<bool>(type+0xEC3)?8:get<bool>(type+0xEBE)?7:get<bool>(type+0xEC2)?17:7;
+   int mission=get<bool>(type+0xEC3)?8:get<bool>(type+0xEBE)?7:17;
    if(pointerAppendEntry(p,mission,pointerTargetID)){
     ++b.accepted;if(!pointerFeedback)pointerFeedback=p;++submitted;pointerDone[n]=1;
     if(!editing){pointerCommitPending=true;pointerCommitMatch=match;pointerCommitHouse=lastHouse;

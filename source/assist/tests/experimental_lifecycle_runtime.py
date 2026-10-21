@@ -11,7 +11,7 @@ def save(m,s):m.u.mem_write(m.SH,bytes(s))
 def fixture(mode):
  spec=importlib.util.spec_from_file_location('risk_fixture',Path(__file__).with_name('entry_runtime_regression.py'));m=importlib.util.module_from_spec(spec);m.fixture_paths=[a.game,a.dll];spec.loader.exec_module(m)
  m.w(0xa8b238,mode);m.w(0xa8ed84,0);s=state(m);s.flags=0;s.externalDisplay=1;save(m,s);m.hook()
- blob=m.dll.get_memory_mapped_image();pattern=bytes.fromhex('6A 00 6A 00 6A 03 E8');offset=blob.index(pattern)+len(pattern)-1
+ blob=m.dll.get_memory_mapped_image();pattern=bytes.fromhex('6A 00 56 6A 04 E8');offset=blob.index(pattern)+len(pattern)-1
  m.guard=m.dll.OPTIONAL_HEADER.ImageBase+offset+5+struct.unpack_from('<i',blob,offset+1)[0]
  return m
 def guarded(m,op):

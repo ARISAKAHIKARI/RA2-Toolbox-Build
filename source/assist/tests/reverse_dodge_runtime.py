@@ -21,7 +21,7 @@ def setup(mode,case,v):
  hook(0x578460,lambda:m.ret(1,2));hook(0x5f5f00,lambda:m.ret(0,0))
  # The actual per-object CanEnterCell is the read-only world boundary.
  def enter():
-  xy=m.cellxy[arg(0)];m.attempts.append(xy);m.ret(int(case=='blocked' or case=='fallback' and xy==(38,40)),5)
+  xy=m.cellxy[arg(0)];m.attempts.append(xy);m.ret(int(case=='blocked' or case=='fallback' and xy==(42,40)),5)
  hook(m.r(m.r(m.unit)+0x1ac),enter)
  m.bullet=m.alloc();m.w(m.bullet,0x7e46e4);m.w(m.bullet+0x10,701);m.b(m.bullet+0x90,1);m.w(m.bullet+0xac,m.alloc());m.w(m.bullet+0xb0,m.target);m.w(m.bullet+0x10c,m.unit);m.w(m.bullet+0x6c,40)
  m.u.mem_write(m.bullet+0xe8,struct.pack('<ddd',v[0]*30,v[1]*30,-5));m.u.mem_write(m.bullet+0x134,struct.pack('<iiiiii',30*256+128,40*256+128,512,40*256+128,40*256+128,0));m.vector(0xa8ed40,[m.bullet])
@@ -49,9 +49,9 @@ for mode in (0,3,4,5):
    if expected:
     b=n.packets(m);assert b[0]==4 and b[12]==2 and b[14:19]==bytes(5) and b[23]==11
     cell=struct.unpack_from('<I',b,19)[0];dx=(cell%1000-40)*256;dy=(cell//1000-40)*256
-    assert dx*v[0]+dy*v[1]<0 and 320**2<=dx*dx+dy*dy<=704**2,(case,cell)
-    if case=='direction0':assert cell==40038
-    if case=='fallback':assert cell!=40038 and m.attempts[0]==(38,40)
+    assert dx*v[0]+dy*v[1]>0 and 320**2<=dx*dx+dy*dy<=704**2,(case,cell)
+    if case=='direction0':assert cell==40042
+    if case=='fallback':assert cell!=40042 and m.attempts[0]==(42,40)
    assert bytes(m.u.mem_read(m.unit,0x800))==before and not m.codeWrites
    first_frame=m.r(0xa8ed84)
    if case.startswith('near_') or case=='fixed_window':
@@ -67,7 +67,7 @@ for mode in (0,3,4,5):
    if case=='new_shot':
     m.w(0xa8ed84,first_frame+12)
     m.w(m.bullet+0x10,703);m.u.mem_write(m.bullet+0xe8,struct.pack('<ddd',0,30,-5));n.tick(m)
-    assert n.count(m)==2 and struct.unpack_from('<I',n.packets(m),111+19)[0]==38040
+    assert n.count(m)==2 and struct.unpack_from('<I',n.packets(m),111+19)[0]==42040
    rows.append({'case':f'{mode}_{case}','status':'PASS'})
   except Exception as e:rows.append({'case':f'{mode}_{case}','status':'FAIL','error':repr(e)});traceback.print_exc()
   print(rows[-1],flush=True)

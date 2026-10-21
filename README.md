@@ -1,3 +1,15 @@
+# RA2 Toolbox 1.0.30-pre.12
+
+[预发布完整包与更新包](https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/releases/tag/v1.0.30-pre.12) · [实现与验证](source/REVIEW-1.0.30-pre.12.md) · [研究索引](source/research/INDEX.md)
+
+删除刷弹入口并停用旧设置；「步兵进入与 C4（实验性）」补齐普通步兵的移动和安放判定，由原版执行炸药计时和到期伤害。工程师、间谍保持原来的占领和潜入任务。默认 Alt+C＋中键点击建筑。
+
+文件版本 **1.0.30.11**，Assist **59**、Runtime **4**、入口管理器 **3**。退出游戏和工具箱后成套更新 EXE/DLL。已有安装选 Update，首次安装选 Windows。
+
+[验证摘要](source/verification/pre12/summary.json)记录最终二进制及正常回归。受控原生函数测试不等于完整游戏寻路、Windows 实机或双机联机测试；C4 补丁改变本机判定，单方启用仍可能不同步。
+
+## 历史版本说明
+
 # RA2 Toolbox 1.0.30-pre.9
 
 [预发布完整包与更新包](https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/releases/tag/v1.0.30-pre.9) · [实现与验证](source/REVIEW-1.0.30-pre.9.md) · [研究索引](source/research/INDEX.md)

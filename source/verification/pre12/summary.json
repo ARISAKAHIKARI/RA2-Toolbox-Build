@@ -1,0 +1,42 @@
+{
+  "release": "v1.0.30-pre.12",
+  "file_version": "1.0.30.11",
+  "final_exe_sha256": "8e9de3567750534752e9099449158a456b113d35cc30ae259d653591a809df12",
+  "final_dll_sha256": "ee9e8d85965b76f689f502a335a8e143d51d077f482d216acc521c79e093b120",
+  "runtime_reports": {
+    "c4-lbw.json": 64,
+    "c4-zhanwang.json": 64,
+    "infantry-lbw.json": 65,
+    "infantry-zhanwang.json": 65,
+    "waypoint-lbw.json": 7,
+    "waypoint-zhanwang.json": 7,
+    "reverse-lbw.json": 112,
+    "reverse-zhanwang.json": 112,
+    "combat-lbw.json": 136,
+    "combat-zhanwang.json": 136,
+    "lifecycle-lbw.json": 12,
+    "lifecycle-zhanwang.json": 12,
+    "c4-stub.json": 8,
+    "c4-movement-stub.json": 8
+  },
+  "runtime_cases_per_sample": 396,
+  "runtime_cases_total": 792,
+  "adapter_abi_cases": 16,
+  "host_checks": [
+    "constructors.log",
+    "patch-policy.log",
+    "settings-ui.log",
+    "ui-geometry.log",
+    "architecture.log",
+    "windows-build.log"
+  ],
+  "ui_controls": 350,
+  "ui_reachable_checks": 4008,
+  "ui_viewport_sizes": 12,
+  "limitations": [
+    "Synthetic world, Win32 and selected native-interface substitutes; not a full game or peer simulation.",
+    "Native charge/timer/expiry code executed; final damage and animation are observed sinks. Complete locomotion, destruction and bridge effects not tested.",
+    "C4 capability patches change local simulation judgments; no netplay consistency claim.",
+    "No Windows visual or audio-device validation."
+  ]
+}

@@ -61,6 +61,7 @@ static int labelScalePercent=100,constructionScalePercent=100;static bool minima
 static unsigned schedulerTarget=0,megaQueueMode=0,objectQueueMode=0;static HFONT font;static int scrollY,repairMs=2000,fps=60,topMargin=20,doubleMs=350,toastMs=6000;
 static DWORD GetTickCount(){return 1606;}
 static bool commandFresh(DWORD){return true;}
+static unsigned infantryEntryResultMatch=0;static std::wstring infantryEntryResult;
 static bool techDirectProduce,techMode,csMode,hookAdvanced,hookSmartUnload=true,hookEject,hookAutoCS,ejectMode,magnetronMode,
  oreMode,showDetails,csHoldEnabled,buildAnywhereMode,ready;
 static unsigned socialKeys[9]{},autoRevealDone=0;static void publishSuiteDisplay(){}
@@ -155,7 +156,7 @@ int main(){
  for(int id:{100,111,200,211,300,306,310,311,312,410,411,420,421,422,423,424,425,426,427,428,440,441,443,444,445,446,447,449,450,451,453,454,455,456,458,459,466,467,470,471,473,474,476,477,478,481,700,701,702,703,704,705,706,707,708,709,710,711,712,713,714,715,716,717,718,719,720,721,722,723,724,725,726,727,728,729,730,731,732,733,734,735,736,737,738,751,760,761,762,785,786,787,795,796,797,798,799,818,830,831,832,833,850,851,852,853,900,901,902,903,904,910,911,912,913,914,802,803,804,807,808,809,810,811,812,813,814,815,816,817,990,991}){
   int found=0;for(auto&w:windows)found+=w.id==id;if(found!=1){std::cerr<<"Missing/duplicate ID "<<id<<" count "<<found<<"\n";return 1;}
  }
- for(int id:{108,208,739,790,791,792,805,806})assert(!GetDlgItem(ui,id));
+ for(int id:{108,208,739,790,791,792,805,806,882,883,884,9234,9235})assert(!GetDlgItem(ui,id));
  for(size_t i=0;i<pageControls.size();++i){const auto&a=pageControls[i];if(a.page<0)continue;assert(a.page==0&&a.rect.y>=uilayout::BodyTop);
   auto rect=a.rect;rect.h=a.visibleHeight;
   for(size_t j=i+1;j<pageControls.size();++j){const auto&b=pageControls[j];if(b.page<0)continue;auto other=b.rect;other.h=b.visibleHeight;

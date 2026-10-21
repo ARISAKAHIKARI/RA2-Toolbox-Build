@@ -15,7 +15,7 @@ struct AdditionalSettings {
  uint32_t airPathKey=0;
  bool parasiteMarker=true,crateBuffMarkers=true;
  bool dodgeEnabled=false;int dodgeMode=0;
- bool burstEnabled=false,burstHoldEnabled=false;uint32_t burstKey='B'|(4<<8);
+ bool burstEnabled=false,burstHoldEnabled=false;uint32_t burstKey=0; // Reserved for configuration compatibility.
  bool missileDefense=false;int missileScanHz=10;
  bool allHotkeys=false,overrideNative=false;
  int loadMode=0,loadRadius=30;

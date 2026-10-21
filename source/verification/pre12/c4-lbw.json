@@ -1,0 +1,315 @@
+{
+  "scope": "Compiled C4 adapters and native movement/arrival/timer branches on private EXEs.\nSynthetic world/Win32, cell lookup and animation/damage sinks. Native code plants\nthe charge, sets its timer/credit and invokes damage at expiry. This does not run\ncomplete locomotion, Windows graphics, destruction or peer simulation.\n",
+  "game_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+  "dll_sha256": "ee9e8d85965b76f689f502a335a8e143d51d077f482d216acc521c79e093b120",
+  "results": [
+    {
+      "case": "0_ordinary",
+      "status": "PASS",
+      "planted": true
+    },
+    {
+      "case": "0_native",
+      "status": "PASS",
+      "planted": true
+    },
+    {
+      "case": "0_native_off",
+      "status": "PASS",
+      "planted": true
+    },
+    {
+      "case": "0_off",
+      "status": "PASS",
+      "planted": false
+    },
+    {
+      "case": "0_foreign",
+      "status": "PASS",
+      "planted": false
+    },
+    {
+      "case": "0_wrong_mission",
+      "status": "PASS",
+      "planted": false
+    },
+    {
+      "case": "0_wrong_building",
+      "status": "PASS",
+      "planted": false
+    },
+    {
+      "case": "0_no_building",
+      "status": "PASS",
+      "planted": false
+    },
+    {
+      "case": "0_selling",
+      "status": "PASS",
+      "planted": false
+    },
+    {
+      "case": "0_immune",
+      "status": "PASS",
+      "planted": false
+    },
+    {
+      "case": "0_already_armed",
+      "status": "PASS",
+      "planted": false
+    },
+    {
+      "case": "0_disable",
+      "status": "PASS",
+      "planted": false
+    },
+    {
+      "case": "0_stop",
+      "status": "PASS",
+      "planted": false
+    },
+    {
+      "case": "0_conflict_arrival",
+      "status": "PASS"
+    },
+    {
+      "case": "0_conflict_movement",
+      "status": "PASS"
+    },
+    {
+      "case": "0_context_changed",
+      "status": "PASS"
+    },
+    {
+      "case": "3_ordinary",
+      "status": "PASS",
+      "planted": true
+    },
+    {
+      "case": "3_native",
+      "status": "PASS",
+      "planted": true
+    },
+    {
+      "case": "3_native_off",
+      "status": "PASS",
+      "planted": true
+    },
+    {
+      "case": "3_off",
+      "status": "PASS",
+      "planted": false
+    },
+    {
+      "case": "3_foreign",
+      "status": "PASS",
+      "planted": false
+    },
+    {
+      "case": "3_wrong_mission",
+      "status": "PASS",
+      "planted": false
+    },
+    {
+      "case": "3_wrong_building",
+      "status": "PASS",
+      "planted": false
+    },
+    {
+      "case": "3_no_building",
+      "status": "PASS",
+      "planted": false
+    },
+    {
+      "case": "3_selling",
+      "status": "PASS",
+      "planted": false
+    },
+    {
+      "case": "3_immune",
+      "status": "PASS",
+      "planted": false
+    },
+    {
+      "case": "3_already_armed",
+      "status": "PASS",
+      "planted": false
+    },
+    {
+      "case": "3_disable",
+      "status": "PASS",
+      "planted": false
+    },
+    {
+      "case": "3_stop",
+      "status": "PASS",
+      "planted": false
+    },
+    {
+      "case": "3_conflict_arrival",
+      "status": "PASS"
+    },
+    {
+      "case": "3_conflict_movement",
+      "status": "PASS"
+    },
+    {
+      "case": "3_context_changed",
+      "status": "PASS"
+    },
+    {
+      "case": "4_ordinary",
+      "status": "PASS",
+      "planted": true
+    },
+    {
+      "case": "4_native",
+      "status": "PASS",
+      "planted": true
+    },
+    {
+      "case": "4_native_off",
+      "status": "PASS",
+      "planted": true
+    },
+    {
+      "case": "4_off",
+      "status": "PASS",
+      "planted": false
+    },
+    {
+      "case": "4_foreign",
+      "status": "PASS",
+      "planted": false
+    },
+    {
+      "case": "4_wrong_mission",
+      "status": "PASS",
+      "planted": false
+    },
+    {
+      "case": "4_wrong_building",
+      "status": "PASS",
+      "planted": false
+    },
+    {
+      "case": "4_no_building",
+      "status": "PASS",
+      "planted": false
+    },
+    {
+      "case": "4_selling",
+      "status": "PASS",
+      "planted": false
+    },
+    {
+      "case": "4_immune",
+      "status": "PASS",
+      "planted": false
+    },
+    {
+      "case": "4_already_armed",
+      "status": "PASS",
+      "planted": false
+    },
+    {
+      "case": "4_disable",
+      "status": "PASS",
+      "planted": false
+    },
+    {
+      "case": "4_stop",
+      "status": "PASS",
+      "planted": false
+    },
+    {
+      "case": "4_conflict_arrival",
+      "status": "PASS"
+    },
+    {
+      "case": "4_conflict_movement",
+      "status": "PASS"
+    },
+    {
+      "case": "4_context_changed",
+      "status": "PASS"
+    },
+    {
+      "case": "5_ordinary",
+      "status": "PASS",
+      "planted": true
+    },
+    {
+      "case": "5_native",
+      "status": "PASS",
+      "planted": true
+    },
+    {
+      "case": "5_native_off",
+      "status": "PASS",
+      "planted": true
+    },
+    {
+      "case": "5_off",
+      "status": "PASS",
+      "planted": false
+    },
+    {
+      "case": "5_foreign",
+      "status": "PASS",
+      "planted": false
+    },
+    {
+      "case": "5_wrong_mission",
+      "status": "PASS",
+      "planted": false
+    },
+    {
+      "case": "5_wrong_building",
+      "status": "PASS",
+      "planted": false
+    },
+    {
+      "case": "5_no_building",
+      "status": "PASS",
+      "planted": false
+    },
+    {
+      "case": "5_selling",
+      "status": "PASS",
+      "planted": false
+    },
+    {
+      "case": "5_immune",
+      "status": "PASS",
+      "planted": false
+    },
+    {
+      "case": "5_already_armed",
+      "status": "PASS",
+      "planted": false
+    },
+    {
+      "case": "5_disable",
+      "status": "PASS",
+      "planted": false
+    },
+    {
+      "case": "5_stop",
+      "status": "PASS",
+      "planted": false
+    },
+    {
+      "case": "5_conflict_arrival",
+      "status": "PASS"
+    },
+    {
+      "case": "5_conflict_movement",
+      "status": "PASS"
+    },
+    {
+      "case": "5_context_changed",
+      "status": "PASS"
+    }
+  ]
+}

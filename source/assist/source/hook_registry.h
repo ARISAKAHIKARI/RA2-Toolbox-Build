@@ -18,7 +18,7 @@ inline Owner ownerAt(uint32_t a){
  case 0x00464AC0:case 0x004A8EB0: return Owner::Placement;
  case 0x007E2908:case 0x00416AB6:return Owner::NativeAir;
  case 0x0047F038:case 0x0047F274:return Owner::RenderMask;
- case 0x0051A4D8:return Owner::C4Test;
+ case 0x0051A4D8:case 0x0051C32B:return Owner::C4Test;
  case 0x006D8640:case 0x004A9840:return Owner::Camera;
  case 0x006A97D2:case 0x006AA781:return Owner::Sidebar;
  case 0x6FBFB3:case 0x6FBFEF:case 0x5F45D2:case 0x5F45DF:case 0x5F45EF:return Owner::PlayerSelection;
@@ -64,7 +64,7 @@ inline bool knownOriginal(uint32_t at,const uint8_t* bytes,unsigned size){
  case 0x00416AB6:signature=airArrival;expected=sizeof airArrival;break;
  case 0x0047F038:signature=shroud;expected=sizeof shroud;break;
  case 0x0047F274:signature=fog;expected=sizeof fog;break;
- case 0x0051A4D8:signature=c4;expected=sizeof c4;break;
+ case 0x0051A4D8:case 0x0051C32B:signature=c4;expected=sizeof c4;break;
  case 0x004A9840:signature=scrolling;expected=sizeof scrolling;break;
  case 0x006D8640:signature=camera;expected=sizeof camera;break;
  case 0x6FBFB3:signature=selectionCalls[0];expected=5;break;

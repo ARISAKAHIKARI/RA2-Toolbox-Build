@@ -5,11 +5,11 @@ static void loadAdditionalSettings(){
  minimapEnabled=value(L"Display",L"MinimapZoom",0)!=0;minimapScale=std::clamp(value(L"Display",L"MinimapScale",200),100,400);
  for(int i=0;i<featuretypes::Count;++i){auto&f=featureTypes.filters[i];std::wstring custom=std::wstring(featuretypes::key(i))+L"Custom";wchar_t text[13000]{};
   GetPrivateProfileStringW(L"FeatureTypes",featuretypes::key(i),featuretypes::initial(i),text,13000,path(L"Assist.ini").c_str());featureTypeText[i]=text;
-  oreconfig::parse(featureTypeText[i],f.ids,f.count);f.custom=value(L"FeatureTypes",custom.c_str(),i==featuretypes::BurstRefresh?1:0)!=0;
+  oreconfig::parse(featureTypeText[i],f.ids,f.count);f.custom=value(L"FeatureTypes",custom.c_str(),0)!=0;
  }
 
  extra.dodgeEnabled=value(L"Dodge",L"Enabled",0)!=0;extra.dodgeMode=std::clamp(value(L"Dodge",L"Logic",0),0,1);
- extra.burstEnabled=value(L"BurstRefresh",L"Enabled",0)!=0;extra.burstHoldEnabled=value(L"BurstRefresh",L"HoldEnabled",0)!=0;extra.burstKey=uint32_t(value(L"BurstRefresh",L"HoldKey",'B'|(4<<8)));
+ extra.burstEnabled=extra.burstHoldEnabled=false;extra.burstKey=0; // Retired: ignore old INI values.
  extra.missileDefense=value(L"MissileDefense",L"Enabled",0)!=0;extra.missileScanHz=std::clamp(value(L"MissileDefense",L"ScanHz",10),1,60);
  extra.antiTheft=value(L"Modes",L"AntiTheft",0)!=0;
  extra.scrollRefreshMode=std::clamp(value(L"Experimental",L"RefreshStrategy",value(L"Experimental",L"ScrollRefresh",0)!=0?1:0),0,2);
@@ -64,7 +64,7 @@ static bool saveAdditionalSettings(){
  }
 
  write(L"Dodge",L"Enabled",extra.dodgeEnabled);write(L"Dodge",L"Logic",extra.dodgeMode);
- write(L"BurstRefresh",L"Enabled",extra.burstEnabled);write(L"BurstRefresh",L"HoldEnabled",extra.burstHoldEnabled);write(L"BurstRefresh",L"HoldKey",extra.burstKey);
+ write(L"BurstRefresh",L"Enabled",0);write(L"BurstRefresh",L"HoldEnabled",0);write(L"BurstRefresh",L"HoldKey",0);
  write(L"MissileDefense",L"Enabled",extra.missileDefense);write(L"MissileDefense",L"ScanHz",extra.missileScanHz);
  write(L"Modes",L"AntiTheft",extra.antiTheft);WritePrivateProfileStringW(L"Experimental",L"RevealMap",nullptr,path(L"Assist.ini").c_str());
  write(L"Experimental",L"RefreshStrategy",extra.scrollRefreshMode);
@@ -117,7 +117,7 @@ static void syncRefreshRate(){if(!shared)return;
 #endif
  shared->scrollRefreshMode=extra.scrollRefreshMode;
 }
-static void syncAdditional(){if(!playertest::Available)extra.controlAll=extra.switchPlayerEnabled=extra.sellEnemy=false;if(!shared)return;syncRefreshRate();shared->dodgeEnabled=extra.dodgeEnabled;shared->dodgeMode=extra.dodgeMode;shared->burstEnabled=extra.burstEnabled;shared->burstHoldEnabled=extra.burstHoldEnabled;shared->burstHeld=enabled&&extra.burstHoldEnabled&&foregroundGame()&&snap.status==1&&snap.renderStatus==1&&!snap.chat&&gameinput::heldBinding(extra.burstKey);shared->missileEnabled=extra.missileDefense;shared->missileScanHz=extra.missileScanHz;shared->controlAll=extra.controlAll;shared->switchPlayerEnabled=extra.switchPlayerEnabled;shared->computeRequested=computeRequested;shared->advancedScanHz=advancedScanHz;shared->advancedPriority=advancedTargetPriority;shared->c4Test=extra.c4Test;shared->renderReveal=extra.renderReveal;shared->loadMode=extra.loadMode;shared->loadRadius=extra.loadRadius;shared->enterKey=extra.enterKey;shared->airKey1=extra.airKey1;shared->airKey2=extra.airKey2;
+static void syncAdditional(){if(!playertest::Available)extra.controlAll=extra.switchPlayerEnabled=extra.sellEnemy=false;if(!shared)return;syncRefreshRate();shared->dodgeEnabled=extra.dodgeEnabled;shared->dodgeMode=extra.dodgeMode;shared->burstEnabled=shared->burstHoldEnabled=shared->burstHeld=0;shared->missileEnabled=extra.missileDefense;shared->missileScanHz=extra.missileScanHz;shared->controlAll=extra.controlAll;shared->switchPlayerEnabled=extra.switchPlayerEnabled;shared->computeRequested=computeRequested;shared->advancedScanHz=advancedScanHz;shared->advancedPriority=advancedTargetPriority;shared->c4Test=extra.c4Test;shared->renderReveal=extra.renderReveal;shared->loadMode=extra.loadMode;shared->loadRadius=extra.loadRadius;shared->enterKey=extra.enterKey;shared->airKey1=extra.airKey1;shared->airKey2=extra.airKey2;
  static uint32_t publishedSettings=~0u;
  if(!shared->quotaConfigSeq||publishedSettings!=settingsRevision){publishedSettings=settingsRevision;
   InterlockedIncrement(&shared->quotaConfigSeq);auto&c=shared->quotaConfig;c.defaults=extra.defaults;c.count=0;

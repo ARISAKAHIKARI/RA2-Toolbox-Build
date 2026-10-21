@@ -1,0 +1,8 @@
+TOTAL 0
+{'case': 'ordinary', 'status': 'PASS', 'released_mission': 17}
+{'case': 'engineer', 'status': 'PASS', 'released_mission': 8}
+{'case': 'spy', 'status': 'PASS', 'released_mission': 7}
+{'case': 'c4', 'status': 'PASS', 'released_mission': 17}
+{'case': 'append_existing', 'status': 'PASS', 'released_mission': 17}
+{'case': 'busy_waits', 'status': 'PASS', 'released_mission': 17}
+{'case': 'native_key', 'status': 'PASS', 'released_mission': 17}

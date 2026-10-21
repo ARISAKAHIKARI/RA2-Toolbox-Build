@@ -30,71 +30,11 @@ def prepare(mode,inside,kind):
  return m
 def burst(mode,inside,kind):
  m=prepare(mode,inside,kind);s=n.state(m)
- if kind=='elite_single':m.w(m.actual+0x9c,1)
- if kind=='burst_one':m.w(m.actual+0x9c,1)
- if kind=='completed':m.w(m.unit+0x3b8,2)
- if kind=='not_fired':m.w(m.unit+0x3b8,0)
- if kind=='moving':m.w(m.unit+0xac,2);m.w(m.unit+0x5a4,m.crateCell)
- if kind=='disabled':s.burstEnabled=0
- if kind=='filter':s.featureConfig.filters[17].custom=1
- if kind=='spawn_owner':m.w(m.unit+0x2d4,m.target)
- if kind=='spawned':m.b(m.t+0xd54,1)
- if kind=='spawn_parent':m.w(m.t+0xd58,m.t);m.w(m.t+0xd5c,3)
- if kind=='missile_spawn':m.b(m.t+0xd68,1)
- if kind=='aircraft':m.w(m.unit,0x7e22a4)
- if kind=='airborne':m.b(m.unit+0x134,1)
- if kind=='hold_spawned':
-  s.burstEnabled=0;s.burstHoldEnabled=1;s.burstHeld=1;m.b(m.unit+0x83,1);m.b(m.t+0xd54,1)
- if kind in ('hold','hold_unselected','hold_unfocused','hold_stale'):
-  s.burstEnabled=0;s.burstHoldEnabled=1;s.burstHeld=1;s.foreground=kind!='hold_unfocused';m.b(m.unit+0x83,kind!='hold_unselected')
-  if kind=='hold_stale':
-   m.u.hook_add(UC_HOOK_CODE,lambda uc,at,size,_:m.w(m.SH+m.Shared.heartbeat.offset,m.clock-1000),begin=m.entry,end=m.entry)
- if kind=='observer':m.b(m.house+0x1f5,1)
- n.save(m,s);before=bytes(m.u.mem_read(m.unit,0x800));s=tick(m,inside,'burst')
- if not inside:s=tick(m,inside,'burst')
- expected=kind in ('normal','elite','hold','release','weapon_changed','conflict','fast_cycle','same_frame')
- assert n.count(m)==int(expected),(kind,n.count(m),s.burstInput.count,s.data.lastSubmitError)
- assert before==bytes(m.u.mem_read(m.unit,0x800)) and not m.codeWrites
- if not expected:return
- assert n.packets(m)[12]==13 and n.packets(m)[14:24]==bytes(10)
- if kind in ('fast_cycle','same_frame'):
-  # Never expose a Stop observation: the ordered Attack must still follow.
-  s=tick(m,inside,'burst')
-  if not inside:s=tick(m,inside,'burst')
-  assert n.count(m)==2,'restore next frame without waiting to sample Stop'
-  for _ in range(3):tick(m,inside,'burst');assert n.count(m)==2
-  if kind=='same_frame':
-   # Observe another firing event after an earlier sample of this frame.
-   m.w(m.unit+0x2ec,m.r(m.unit+0x2ec)+1)
-   s=m.hook()
-   if not inside:
-    # First consume the pending pre-shot result, then calculate the fresh sample.
-    for _ in range(2):compute(m,'burst');s=m.hook()
-  else:
-   m.w(m.unit+0x2ec,m.r(m.unit+0x2ec)+1);s=tick(m,inside,'burst')
-   if not inside:s=tick(m,inside,'burst')
-  assert n.count(m)==3 and n.packets(m)[222+12]==13,'new shot starts next cycle without an idle scan'
-  s=tick(m,inside,'burst')
-  if not inside:s=tick(m,inside,'burst')
-  assert n.count(m)==4 and n.packets(m)[333+12]==1
-  assert not m.codeWrites;return
- # Execute original SetTarget(nullptr), which clears CurrentBurstIndex but
- # preserves the current short rearm timer. Other stop effects are controlled.
- boundary=bytes(m.u.mem_read(0x6fcf53,6))
- if boundary==bytes.fromhex('399eb4020000'):
-  timer=bytes(m.u.mem_read(m.unit+0x2ec,12));m.run(0x6fcdb0,(0,),m.unit);assert m.r(m.unit+0x2b4)==0 and m.r(m.unit+0x3b8)==0 and bytes(m.u.mem_read(m.unit+0x2ec,12))==timer
- else:
-  # Supplied LBW disk image jumps to an absent startup-populated trampoline.
-  # Do not patch it or claim its engine behavior was executed. Only advance
-  # the controlled Stop observation to test our restoration state machine.
-  assert boundary[0]==0xe9;m.w(m.unit+0x2b4,0);m.w(m.unit+0x3b8,0)
- m.w(m.unit+0xac,13)
- if kind in ('release','hold'):s=n.state(m);s.burstEnabled=s.burstHeld=s.burstHoldEnabled=0;n.save(m,s)
- if kind=='weapon_changed':m.w(m.unit+0x138,0);m.w(m.r(m.t+0x898)+0xb4,9*256);m.w(m.r(m.t+0x898)+0x9c,1)
- for _ in range(3):s=tick(m,inside,'burst')
- assert n.count(m)==2,(kind,'restore',n.count(m),s.burstActive)
- packet=n.packets(m)[111:222];assert packet[12]==1 and packet[14:19]==struct.pack('<IB',40,0x34) and packet[19:24]==bytes(5)
- for _ in range(3):tick(m,inside,'burst');assert n.count(m)==2,'wait for new firing evidence'
+ s.burstEnabled=int(kind!='hold');s.burstHoldEnabled=s.burstHeld=int(kind=='hold');m.b(m.unit+0x83,1);n.save(m,s)
+ before=bytes(m.u.mem_read(m.unit,0x800))
+ for step in range(8):
+  m.w(m.unit+0x3b8,step%2);m.w(m.unit+0x2ec,m.r(0xa8ed84))
+  s=tick(m,inside,'burst');assert n.count(m)==0 and s.burstActive==0 and s.burstIssued==0
  assert not m.codeWrites
 
 def dodge(mode,inside,kind):
@@ -199,6 +139,6 @@ def dodge(mode,inside,kind):
 
 for mode in (0,3):
  for inside in (True,False):
-  for kind in ('normal','elite','elite_single','burst_one','completed','not_fired','moving','disabled','filter','hold','hold_unselected','hold_unfocused','hold_stale','observer','release','weapon_changed','spawn_owner','spawned','spawn_parent','missile_spawn','aircraft','airborne','hold_spawned','fast_cycle','same_frame'):check(f'burst_{mode}_{inside}_{kind}',lambda m=mode,i=inside,k=kind:burst(m,i,k))
+  for kind in ('normal','hold','elite'):check(f'burst_removed_{mode}_{inside}_{kind}',lambda m=mode,i=inside,k=kind:burst(m,i,k))
   for kind in ('crush','air','own_air','allied_air','own_healer','own_air_not_targeted','allied','not_targeted','resistant','disabled','filter','observer','blocked','conflict','release','prefire','new_shot','same_shot','ground_shot','late_shot','pending_burst','turning_burst','moving_burst','settled','native_busy','already_rotating','queued_move','manual','foreign','timeout','clicked_backend'):check(f'dodge_{mode}_{inside}_{kind}',lambda m=mode,i=inside,k=kind:dodge(m,i,k))
 Path(a.output).write_text(json.dumps({'scope':__doc__,'native_stop_reset_executed':bytes(n.fixture(0).game.get_data(0x6fcf53-0x400000,6))==bytes.fromhex('399eb4020000'),'dll_sha256':hashlib.sha256(Path(a.dll).read_bytes()).hexdigest(),'results':rows},indent=2)+'\n');raise SystemExit(any(x['status']!='PASS' for x in rows))

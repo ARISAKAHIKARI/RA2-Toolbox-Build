@@ -25,8 +25,6 @@ for(int i:{11,1,2,3,4,5,6,7,0}){
 hookChecks[1]=toggle(459,L"智能卸载",hookSmartUnload,20,270);unloadKeyEdit=key(451,unloadKey,305,180);button(453,L"立即卸载",500,125);next();
 ejectCheck=toggle(455,L"载员自动逃生",ejectMode,20,306);ejectKeyEdit=key(456,ejectKey);next();
 csCheck=toggle(446,L"自动移动攻击（CS）",csMode,20,306);csKeyEdit=key(447,csKey);next();
-toggle(883,L"按住键启用强制刷弹",extra.burstHoldEnabled,20,306);{auto h=key(884,extra.burstKey);modernui::holdKey(h);}next();
-note(L"选中单位并正常攻击，按住配置键启用；留空停用。松开后恢复普通攻击。",44);
 label(L"喝彩",20,306);key(870,socialKeys[0]);next();
 for(int i=1;i<9;++i){auto text=L"嘲讽 "+std::to_wstring(i);label(text.c_str(),20,306);key(870+i,socialKeys[i]);next();}
 note(L"绑定后由工具箱接管该组合；聊天和菜单中不接管。嘲讽仍遵循原版冷却与接收方设置。",44);
@@ -82,8 +80,6 @@ note(L"索敌范围为单位射程加额外距离；忽略伤害比例不超过 
 toggle(804,L"防御建筑优先攻击渗透单位",extra.antiTheft);next();
 toggle(885,L"自动躲弹（实验性）",extra.dodgeEnabled,20,280);choices(combo(895,310,305,180),{L"顺向移动 2 格",L"原版散开（Scatter）"},extra.dodgeMode);next();
 note(L"对己方可移动地面单位预判敌机攻击与逼近碾压，短距离躲避。支持类型清单，不保证躲过追踪弹或瞬时伤害。",60);
-toggle(882,L"强制刷弹（实验性）",extra.burstEnabled);next();
-note(L"当前武器 Burst≥2，打出第一发后持续停止并攻击原目标；后续不等待连射计数。",44);
 toggle(880,L"防空单位智能拦截导弹",extra.missileDefense);next();
 number(881,L"导弹拦截检测频率 / 次每秒",extra.missileScanHz,L"1–60 · 默认 10");
 note(L"优先拦截射程内的敌方导弹，分配火力减少重复锁定；移动中的单位不接管。",44);
@@ -104,6 +100,7 @@ extraControls[QuotaSecond]=number(717,L"所选类型 · 攻击模式 2",2,L"0–
 extraControls[QuotaMaximum]=number(718,L"所选类型 · 最大数量",0,L"0–512 · 0 为不限");
 heading(5,905,L"单位类型清单",L"每个功能独立设置。关闭限制时按功能本身的条件处理；开启且清单为空时不处理任何类型。");
 for(int f=0;f<featuretypes::Count;++f){
+ if(f==featuretypes::BurstRefresh)continue; // Retired slot stays in the shared ABI.
  label(featuretypes::name(f),20,350);toggle(9200+f*2,L"仅处理清单中的类型",featureTypes.filters[f].custom,380,245);next();
  auto h=edit(9201+f*2,featureTypeText[f],20,605);SendMessageW(h,EM_SETLIMITTEXT,12287,0);SendMessageW(h,EM_SETCUEBANNER,TRUE,(LPARAM)L"单位类型 ID，以逗号分隔");next();
  note(L"此开关和清单只作用于上方命名的功能；关闭限制时保留清单，开启且留空表示不处理任何类型。");
@@ -161,9 +158,9 @@ item(L"STATIC",L"高刷策略：仅光标",20,605,888);next();
 
 anywhereCheck=toggle(476,L"扩展建筑放置范围（实验性）",buildAnywhereMode);next();
 item(L"STATIC",L"功能状态：等待连接",20,605,807,0,44);next(44);
-toggle(810,L"步兵强制进建筑（实验性）",extra.c4Test,20,280);key(811,extra.c4Key,310,188,true);choices(combo(812,510,115,180),{L"停用",L"中键",L"侧键 1",L"侧键 2",L"右键",L"左键"},extra.c4Mouse==6?5:extra.c4Mouse);next();
-note(L"按住配置键点击建筑，直接追加原版进入路径点；未编辑时自动提交，编辑中随原版放键提交。入队不代表已进入建筑。",44);
-item(L"STATIC",L"步兵强制进建筑：关闭",20,605,813);next();
+toggle(810,L"步兵进入与 C4（实验性）",extra.c4Test,20,280);key(811,extra.c4Key,310,188,true);choices(combo(812,510,115,180),{L"停用",L"中键",L"侧键 1",L"侧键 2",L"右键",L"左键"},extra.c4Mouse==6?5:extra.c4Mouse);next();
+note(L"按住配置键点击建筑：普通步兵执行 C4，工程师占领、间谍潜入。追加原版路径点并自动提交；路径编辑中随原版提交。",44);
+item(L"STATIC",L"步兵进入与 C4：关闭",20,605,813);next();
 toggle(420,L"科技解锁（实验性）",techMode,20,305);techSearch=edit(421,L"",345,280);SendMessageW(techSearch,EM_SETCUEBANNER,TRUE,(LPARAM)L"搜索名称或单位 ID");next();
 techList=item(L"LISTBOX",L"",20,455,422,LBS_NOTIFY|WS_VSCROLL|WS_TABSTOP,152);
 int listTop=rowY;button(423,L"生产所选",488,137);next();button(424,L"切换许可",488,137);next();button(425,L"全选",488,65);button(426,L"清空",560,65);next();button(427,L"兼容预设",488,137);rowY=listTop+164;

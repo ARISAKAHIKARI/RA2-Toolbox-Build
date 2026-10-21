@@ -254,6 +254,41 @@ original:
  push 51A4DEh
  ret
 }}
+static __declspec(naked) void riskC4MovementEntry(){__asm {
+ pushfd
+ pushad
+ mov ebx,esp
+ sub esp,528
+ and esp,-16
+ fxsave [esp]
+ cld
+ fninit
+ fldcw [esp]
+ mov dword ptr [esp+512],1F80h
+ ldmxcsr [esp+512]
+ push 0
+ push ebp
+ push 4
+ call GuardedRiskAction
+ add esp,12
+ test eax,eax
+ jz original
+ fxrstor [esp]
+ mov esp,ebx
+ popad
+ popfd
+ mov al,1
+ push 51C331h
+ ret
+original:
+ fxrstor [esp]
+ mov esp,ebx
+ popad
+ popfd
+ mov al,byte ptr [ecx+0EC2h]
+ push 51C331h
+ ret
+}}
 // Native sidebar CanBuild call ABI: ECX=house; stack=type,limitOnly,includeProduction.
 // Only the UI callsites change limitOnly. The simulation function stays intact.
 static __declspec(naked) void riskTechEntry(){__asm {
@@ -335,10 +370,11 @@ static RiskSite riskSites[]={
  {0x6FBFEF,5,{0xE8,0xFC,0xF6,0xE0,0xFF},{}},
  {0x5F45D2,5,{0xE8,0x19,0x71,0xF1,0xFF},{}},
  {0x5F45DF,5,{0xE8,0x0C,0x71,0xF1,0xFF},{}},
- {0x5F45EF,5,{0xE8,0xFC,0x70,0xF1,0xFF},{}}
+ {0x5F45EF,5,{0xE8,0xFC,0x70,0xF1,0xFF},{}},
+ {experimentalpatch::C4Movement,6,{0x8A,0x81,0xC2,0x0E,0,0},{}}
 };
 static void prepareRiskSites(){static bool ready=false;if(ready)return;ready=true;
- const uint32_t targets[]={uint32_t(uintptr_t(&riskPlacementEntry)),uint32_t(uintptr_t(&riskAirTypeEntry)),uint32_t(uintptr_t(&riskAirArrivalEntry)),uint32_t(uintptr_t(&riskShroudEntry)),uint32_t(uintptr_t(&riskFogEntry)),uint32_t(uintptr_t(&riskC4Entry)),uint32_t(uintptr_t(&riskTechEntry)),uint32_t(uintptr_t(&riskTechEntry)),uint32_t(uintptr_t(&riskControlEntry)),uint32_t(uintptr_t(&riskControlEntry)),uint32_t(uintptr_t(&riskControlEntry)),uint32_t(uintptr_t(&riskControlEntry)),uint32_t(uintptr_t(&riskControlEntry))};
+ const uint32_t targets[]={uint32_t(uintptr_t(&riskPlacementEntry)),uint32_t(uintptr_t(&riskAirTypeEntry)),uint32_t(uintptr_t(&riskAirArrivalEntry)),uint32_t(uintptr_t(&riskShroudEntry)),uint32_t(uintptr_t(&riskFogEntry)),uint32_t(uintptr_t(&riskC4Entry)),uint32_t(uintptr_t(&riskTechEntry)),uint32_t(uintptr_t(&riskTechEntry)),uint32_t(uintptr_t(&riskControlEntry)),uint32_t(uintptr_t(&riskControlEntry)),uint32_t(uintptr_t(&riskControlEntry)),uint32_t(uintptr_t(&riskControlEntry)),uint32_t(uintptr_t(&riskControlEntry)),uint32_t(uintptr_t(&riskC4MovementEntry))};
  for(unsigned i=0;i<sizeof(riskSites)/sizeof(riskSites[0]);++i){auto&s=riskSites[i];
   if(s.size==4)memcpy(s.after,&targets[i],4);
   else{memset(s.after,0x90,s.size);s.after[0]=experimentalpatch::callSite(s.address)?0xE8:0xE9;uint32_t offset=targets[i]-s.address-5;memcpy(s.after+1,&offset,4);}
@@ -381,7 +417,8 @@ static void restorePlacement(){
  snap.placementStatus=place?0:-2;snap.nativeAirStatus=type&&arrival?0:-2;
  bool shroud=restoreRiskSite(riskSites[3]),fog=restoreRiskSite(riskSites[4]);
  snap.renderRevealStatus=shroud&&fog?0:-2;
- snap.c4TestStatus=restoreRiskSite(riskSites[5])?0:-2;
+ bool c4Arrival=restoreRiskSite(riskSites[5]),c4Movement=restoreRiskSite(riskSites[13]);
+ snap.c4TestStatus=c4Arrival&&c4Movement?0:-2;
  // Stop/host exit still needs one native redraw after restoring the leaves.
  // A destroyed, changed, paused or faulted world must never be called here.
  riskRenderRedrawPending=riskRenderRedrawPending||wasRendered;
@@ -399,9 +436,12 @@ static void placementTick(){
  prepareRiskSites();
  static uint32_t priorStrategy=0;
  bool priorRender=riskRenderActive;controlSitesTick(sh->controlAll!=0);
- // Building-entry orders no longer depend on or install the arrival-only C4
- // override. Keep the legacy slot for ABI compatibility and owned restoration.
- riskC4Active=false;restoreRiskSite(riskSites[5]);snap.c4TestStatus=sh->c4Test?1:0;
+ // Both native C4 capability loads are required: movement into the building
+ // and native charge placement. No type-flag, mission or damage writes here.
+ riskC4Active=false;
+ if(sh->c4Test)riskC4Active=installRiskSite(riskSites[13])&&installRiskSite(riskSites[5]);
+ if(!riskC4Active){bool a=restoreRiskSite(riskSites[5]),b=restoreRiskSite(riskSites[13]);snap.c4TestStatus=sh->c4Test||!a||!b?-2:0;}
+ else snap.c4TestStatus=1;
  if(sh->renderReveal){
   riskRenderActive=installRiskSite(riskSites[3])&&installRiskSite(riskSites[4]);
   if(!riskRenderActive){restoreRiskSite(riskSites[3]);restoreRiskSite(riskSites[4]);}

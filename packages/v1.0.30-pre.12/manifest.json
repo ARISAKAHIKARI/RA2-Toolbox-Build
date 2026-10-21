@@ -1,0 +1,14 @@
+{
+  "version": "1.0.30-pre.12",
+  "file_version": "1.0.30.11",
+  "sha256": "4986f110e418a32c0f4aa274d058f3c6962622cad100491048aa75324adf6d62",
+  "bytes": 1173720,
+  "files": {
+    "RA2Toolbox.exe": "8e9de3567750534752e9099449158a456b113d35cc30ae259d653591a809df12",
+    "GameRuntime.dll": "ee9e8d85965b76f689f502a335a8e143d51d077f482d216acc521c79e093b120",
+    "README.txt": "8fe823119c6ffdc56f15a7b2e83785fb3c89d6f941252be8b06ac3a9d5f1a93a"
+  },
+  "assist_protocol": 59,
+  "runtime_protocol": 4,
+  "manager_api": 3
+}
