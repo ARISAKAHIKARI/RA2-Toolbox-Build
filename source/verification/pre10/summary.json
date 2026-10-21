@@ -1,0 +1,35 @@
+{
+  "release": "v1.0.30-pre.10",
+  "file_version": "1.0.30.9",
+  "final_exe_sha256": "5c2f3700e40b291bd4d2a4040053a225556312656c4bf70b0ed17592d0511077",
+  "final_dll_sha256": "a06fdf203108821eda069999b7c06419c9012b0b62b03b1dac6cad3e1b3f3c33",
+  "runtime_reports": {
+    "reverse-lbw.json": 112,
+    "reverse-zhanwang.json": 112,
+    "scatter-lbw.json": 124,
+    "scatter-zhanwang.json": 124,
+    "infantry-lbw.json": 65,
+    "infantry-zhanwang.json": 65,
+    "waypoint-lbw.json": 7,
+    "waypoint-zhanwang.json": 7
+  },
+  "runtime_cases_per_sample": 308,
+  "runtime_cases_total": 616,
+  "host_checks": [
+    "constructors.log",
+    "settings-ui.log",
+    "ui-geometry.log",
+    "architecture.log",
+    "windows-build.log"
+  ],
+  "ui_controls": 358,
+  "ui_reachable_checks": 4104,
+  "ui_viewport_sizes": 12,
+  "reverse_dodge_merge_frames": 12,
+  "limitations": [
+    "Synthetic world, Win32 and selected native-interface substitutes; not a complete game, projectile physics or netplay run.",
+    "Native waypoint append/commit/next-node extraction tested; full infantry pathfinding and arrival effects require game testing.",
+    "Reverse movement first observed game frame; normal simulation/network event queue delay remains.",
+    "No Windows visual or audio-device validation."
+  ]
+}

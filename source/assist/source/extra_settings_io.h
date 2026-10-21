@@ -8,7 +8,7 @@ static void loadAdditionalSettings(){
   oreconfig::parse(featureTypeText[i],f.ids,f.count);f.custom=value(L"FeatureTypes",custom.c_str(),i==featuretypes::BurstRefresh?1:0)!=0;
  }
 
- extra.dodgeEnabled=value(L"Dodge",L"Enabled",0)!=0;
+ extra.dodgeEnabled=value(L"Dodge",L"Enabled",0)!=0;extra.dodgeMode=std::clamp(value(L"Dodge",L"Logic",0),0,1);
  extra.burstEnabled=value(L"BurstRefresh",L"Enabled",0)!=0;extra.burstHoldEnabled=value(L"BurstRefresh",L"HoldEnabled",0)!=0;extra.burstKey=uint32_t(value(L"BurstRefresh",L"HoldKey",'B'|(4<<8)));
  extra.missileDefense=value(L"MissileDefense",L"Enabled",0)!=0;extra.missileScanHz=std::clamp(value(L"MissileDefense",L"ScanHz",10),1,60);
  extra.antiTheft=value(L"Modes",L"AntiTheft",0)!=0;
@@ -63,7 +63,7 @@ static bool saveAdditionalSettings(){
   saveWriteOK=(WritePrivateProfileStringW(L"FeatureTypes",featuretypes::key(i),featureTypeText[i].c_str(),path(L"Assist.ini").c_str())!=FALSE)&&saveWriteOK;
  }
 
- write(L"Dodge",L"Enabled",extra.dodgeEnabled);
+ write(L"Dodge",L"Enabled",extra.dodgeEnabled);write(L"Dodge",L"Logic",extra.dodgeMode);
  write(L"BurstRefresh",L"Enabled",extra.burstEnabled);write(L"BurstRefresh",L"HoldEnabled",extra.burstHoldEnabled);write(L"BurstRefresh",L"HoldKey",extra.burstKey);
  write(L"MissileDefense",L"Enabled",extra.missileDefense);write(L"MissileDefense",L"ScanHz",extra.missileScanHz);
  write(L"Modes",L"AntiTheft",extra.antiTheft);WritePrivateProfileStringW(L"Experimental",L"RevealMap",nullptr,path(L"Assist.ini").c_str());
@@ -117,7 +117,7 @@ static void syncRefreshRate(){if(!shared)return;
 #endif
  shared->scrollRefreshMode=extra.scrollRefreshMode;
 }
-static void syncAdditional(){if(!playertest::Available)extra.controlAll=extra.switchPlayerEnabled=extra.sellEnemy=false;if(!shared)return;syncRefreshRate();shared->dodgeEnabled=extra.dodgeEnabled;shared->burstEnabled=extra.burstEnabled;shared->burstHoldEnabled=extra.burstHoldEnabled;shared->burstHeld=enabled&&extra.burstHoldEnabled&&foregroundGame()&&snap.status==1&&snap.renderStatus==1&&!snap.chat&&gameinput::heldBinding(extra.burstKey);shared->missileEnabled=extra.missileDefense;shared->missileScanHz=extra.missileScanHz;shared->controlAll=extra.controlAll;shared->switchPlayerEnabled=extra.switchPlayerEnabled;shared->computeRequested=computeRequested;shared->advancedScanHz=advancedScanHz;shared->advancedPriority=advancedTargetPriority;shared->c4Test=extra.c4Test;shared->renderReveal=extra.renderReveal;shared->loadMode=extra.loadMode;shared->loadRadius=extra.loadRadius;shared->enterKey=extra.enterKey;shared->airKey1=extra.airKey1;shared->airKey2=extra.airKey2;
+static void syncAdditional(){if(!playertest::Available)extra.controlAll=extra.switchPlayerEnabled=extra.sellEnemy=false;if(!shared)return;syncRefreshRate();shared->dodgeEnabled=extra.dodgeEnabled;shared->dodgeMode=extra.dodgeMode;shared->burstEnabled=extra.burstEnabled;shared->burstHoldEnabled=extra.burstHoldEnabled;shared->burstHeld=enabled&&extra.burstHoldEnabled&&foregroundGame()&&snap.status==1&&snap.renderStatus==1&&!snap.chat&&gameinput::heldBinding(extra.burstKey);shared->missileEnabled=extra.missileDefense;shared->missileScanHz=extra.missileScanHz;shared->controlAll=extra.controlAll;shared->switchPlayerEnabled=extra.switchPlayerEnabled;shared->computeRequested=computeRequested;shared->advancedScanHz=advancedScanHz;shared->advancedPriority=advancedTargetPriority;shared->c4Test=extra.c4Test;shared->renderReveal=extra.renderReveal;shared->loadMode=extra.loadMode;shared->loadRadius=extra.loadRadius;shared->enterKey=extra.enterKey;shared->airKey1=extra.airKey1;shared->airKey2=extra.airKey2;
  static uint32_t publishedSettings=~0u;
  if(!shared->quotaConfigSeq||publishedSettings!=settingsRevision){publishedSettings=settingsRevision;
   InterlockedIncrement(&shared->quotaConfigSeq);auto&c=shared->quotaConfig;c.defaults=extra.defaults;c.count=0;

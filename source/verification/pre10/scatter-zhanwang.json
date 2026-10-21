@@ -1,0 +1,503 @@
+{
+  "scope": "Actual Runtime and original weapon/range/event functions in a controlled x86 world; not live game/netplay or projectile physics.",
+  "native_stop_reset_executed": false,
+  "dll_sha256": "a06fdf203108821eda069999b7c06419c9012b0b62b03b1dac6cad3e1b3f3c33",
+  "results": [
+    {
+      "case": "dodge_0_True_crush",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_0_True_air",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_0_True_own_air",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_0_True_allied_air",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_0_True_own_healer",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_0_True_own_air_not_targeted",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_0_True_allied",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_0_True_not_targeted",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_0_True_resistant",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_0_True_disabled",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_0_True_filter",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_0_True_observer",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_0_True_blocked",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_0_True_conflict",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_0_True_release",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_0_True_prefire",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_0_True_new_shot",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_0_True_same_shot",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_0_True_ground_shot",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_0_True_late_shot",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_0_True_pending_burst",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_0_True_turning_burst",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_0_True_moving_burst",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_0_True_settled",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_0_True_native_busy",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_0_True_already_rotating",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_0_True_queued_move",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_0_True_manual",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_0_True_foreign",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_0_True_timeout",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_0_True_clicked_backend",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_0_False_crush",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_0_False_air",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_0_False_own_air",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_0_False_allied_air",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_0_False_own_healer",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_0_False_own_air_not_targeted",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_0_False_allied",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_0_False_not_targeted",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_0_False_resistant",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_0_False_disabled",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_0_False_filter",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_0_False_observer",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_0_False_blocked",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_0_False_conflict",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_0_False_release",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_0_False_prefire",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_0_False_new_shot",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_0_False_same_shot",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_0_False_ground_shot",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_0_False_late_shot",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_0_False_pending_burst",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_0_False_turning_burst",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_0_False_moving_burst",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_0_False_settled",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_0_False_native_busy",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_0_False_already_rotating",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_0_False_queued_move",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_0_False_manual",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_0_False_foreign",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_0_False_timeout",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_0_False_clicked_backend",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_3_True_crush",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_3_True_air",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_3_True_own_air",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_3_True_allied_air",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_3_True_own_healer",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_3_True_own_air_not_targeted",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_3_True_allied",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_3_True_not_targeted",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_3_True_resistant",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_3_True_disabled",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_3_True_filter",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_3_True_observer",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_3_True_blocked",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_3_True_conflict",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_3_True_release",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_3_True_prefire",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_3_True_new_shot",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_3_True_same_shot",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_3_True_ground_shot",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_3_True_late_shot",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_3_True_pending_burst",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_3_True_turning_burst",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_3_True_moving_burst",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_3_True_settled",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_3_True_native_busy",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_3_True_already_rotating",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_3_True_queued_move",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_3_True_manual",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_3_True_foreign",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_3_True_timeout",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_3_True_clicked_backend",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_3_False_crush",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_3_False_air",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_3_False_own_air",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_3_False_allied_air",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_3_False_own_healer",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_3_False_own_air_not_targeted",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_3_False_allied",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_3_False_not_targeted",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_3_False_resistant",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_3_False_disabled",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_3_False_filter",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_3_False_observer",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_3_False_blocked",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_3_False_conflict",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_3_False_release",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_3_False_prefire",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_3_False_new_shot",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_3_False_same_shot",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_3_False_ground_shot",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_3_False_late_shot",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_3_False_pending_burst",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_3_False_turning_burst",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_3_False_moving_burst",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_3_False_settled",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_3_False_native_busy",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_3_False_already_rotating",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_3_False_queued_move",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_3_False_manual",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_3_False_foreign",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_3_False_timeout",
+      "status": "PASS"
+    },
+    {
+      "case": "dodge_3_False_clicked_backend",
+      "status": "PASS"
+    }
+  ]
+}

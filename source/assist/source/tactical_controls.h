@@ -80,7 +80,7 @@ number(818,L"高级移动攻击额外索敌距离 / 格",advancedRangeCells,L"0�
 label(L"高级移动攻击目标优先级",20,260);choices(combo(802),{L"单位价值优先",L"弹头伤害比例优先"},advancedTargetPriority);next();
 note(L"索敌范围为单位射程加额外距离；忽略伤害比例不超过 2% 的目标。",44);
 toggle(804,L"防御建筑优先攻击渗透单位",extra.antiTheft);next();
-toggle(885,L"自动躲弹（实验性）",extra.dodgeEnabled);next();
+toggle(885,L"自动躲弹（实验性）",extra.dodgeEnabled,20,280);choices(combo(895,310,305,180),{L"反向移动 2 格",L"原版散开（Scatter）"},extra.dodgeMode);next();
 note(L"对己方可移动地面单位预判敌机攻击与逼近碾压，短距离躲避。支持类型清单，不保证躲过追踪弹或瞬时伤害。",60);
 toggle(882,L"强制刷弹（实验性）",extra.burstEnabled);next();
 note(L"在功能单位清单中配置类型；仅对当前实际武器 Burst≥2 的未完成连射尝试中断重启。",44);
@@ -162,7 +162,7 @@ item(L"STATIC",L"高刷策略：仅光标",20,605,888);next();
 anywhereCheck=toggle(476,L"扩展建筑放置范围（实验性）",buildAnywhereMode);next();
 item(L"STATIC",L"功能状态：等待连接",20,605,807,0,44);next(44);
 toggle(810,L"步兵强制进建筑（实验性）",extra.c4Test,20,280);key(811,extra.c4Key,310,188,true);choices(combo(812,510,115,180),{L"停用",L"中键",L"侧键 1",L"侧键 2",L"右键",L"左键"},extra.c4Mouse==6?5:extra.c4Mouse);next();
-note(L"选中步兵，按住配置键点击敌方建筑，尝试走入建筑格。普通步兵不会因此获得占领、潜入或 C4 能力；到达后可能消失，仍由原版处理。",44);
+note(L"按住配置键点击敌方建筑，追加原版进入路径点；未编辑时自动提交，编辑中随原版放键提交。普通步兵不获得占领、潜入或 C4 能力。",44);
 item(L"STATIC",L"步兵强制进建筑：关闭",20,605,813);next();
 toggle(420,L"科技解锁（实验性）",techMode,20,305);techSearch=edit(421,L"",345,280);SendMessageW(techSearch,EM_SETCUEBANNER,TRUE,(LPARAM)L"搜索名称或单位 ID");next();
 techList=item(L"LISTBOX",L"",20,455,422,LBS_NOTIFY|WS_VSCROLL|WS_TABSTOP,152);

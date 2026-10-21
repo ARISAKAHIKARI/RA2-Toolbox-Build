@@ -90,6 +90,11 @@ feature_save=io.split('static bool saveAdditionalSettings(){',1)[1].split(' writ
 prefix+="\nstatic void loadFeatureTypes(){"+feature_load+"}\nstatic void saveFeatureTypes(){"+feature_save+"}\n"
 suffix=r''' 
 int main(){
+ assert(extra.dodgeMode==0);
+ for(int mode:{0,1}){extra.dodgeMode=mode;saveFeatureTypes();extra.dodgeMode=1-mode;loadFeatureTypes();assert(extra.dodgeMode==mode);}
+ extra.dodgeMode=0;
+ for(int mode:{1,0}){fields[895]=mode;assert(autoSettingChanged(895,CBN_SELCHANGE));assert(extra.dodgeMode==mode);}
+ fields[895]=9;autoSettingChanged(895,CBN_SELCHANGE);assert(extra.dodgeMode==0);
  for(int i=0;i<compute::Count;++i){fields[9000+i]=1;assert(autoSettingChanged(9000+i,CBN_SELCHANGE)&&compute::inside(computeRequested,compute::Feature(i)));fields[9000+i]=0;assert(autoSettingChanged(9000+i,CBN_SELCHANGE)&&!compute::inside(computeRequested,compute::Feature(i)));}
  computeRequested=153;saveFeatureTypes();computeRequested=0;loadFeatureTypes();assert(computeRequested==153);
  fields[830]=1;assert(autoSettingChanged(830,BN_CLICKED)&&minimapEnabled);
@@ -275,3 +280,7 @@ assert 'tabui::displayRequested(hidden,demo||!tabEnabled,manualVisible,tabs.visi
 assert '常驻显示（不依赖 Tab）' in monitor
 print('PASS experimental reveal default/roundtrip and all host gates; independent manual overlay controls retain battlefield gating')
 print('PASS parasite/crate badges default on; independent controls 892/893 apply, autosave and persist both states')
+
+assert 'value(L"Dodge",L"Logic",0)' in (root/'assist/source/extra_settings_io.h').read_text()
+assert 'write(L"Dodge",L"Logic",extra.dodgeMode)' in (root/'assist/source/extra_settings_io.h').read_text()
+print("PASS reverse-dodge default, both live choices, invalid selection and persistence key")

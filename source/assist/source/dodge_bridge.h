@@ -6,6 +6,7 @@ struct DodgeJob {
  uint32_t serial=0,id=0,pointer=0,token=0;int sentFrame=0,quietFrame=0,lastSeen=0,x=0,y=0;
  bool active=false,observed=false,marker=false;uint32_t shots[32]{};unsigned shotNext=0;
  gateway::Receipt receipt{};
+ int reverseFrame=-1;
 };
 static DodgeJob dodgeJobs[128];static int dodgeCursor,dodgeJobCursor;static uint32_t dodgeSerial,dodgeTask;static bool dodgePending;
 struct DodgeThreatRef {uint32_t pointer,target;bool projectile;};static DodgeThreatRef dodgeThreatRefs[8192];static int dodgeThreatCount;
@@ -126,9 +127,12 @@ static void applyDodgeResult(const dodgecompute::Result&r,uint32_t house,int fra
   if(j>=0){dodgeRemember(dodgeJobs[j],s);if(d.release)finishDodge(dodgeJobs[j]);}
  }
 }
+#include "reverse_dodge_bridge.h"
 static bool dodgeControlTick(uint32_t house,int frame,DWORD now){
  if(!sh->dodgeEnabled&&!dodgeCount){dodgePending=false;return false;}if(snap.chat||!simulationReady())return false;
  collectDodgeThreats();updateDodgeJobs(house,frame,now);
+ if(sh->dodgeEnabled&&sh->dodgeMode==0){dodgePending=false;return reverseDodgeTick(house,frame,now);}
+ reverseWasEnabled=false;
  if(dodgePending){if(!freshness::valid(dodgeInput.match,match,dodgeInput.tick,dodgeInput.frame,now,frame,freshness::Tactical))dodgePending=false;
   else if(sh->dodgeComputed==dodgeTask){long seq=sh->dodgeResultSeq;if(seq&1)return false;MemoryBarrier();dodgeResult=sh->dodgeResult;MemoryBarrier();if(seq!=sh->dodgeResultSeq)return false;dodgePending=false;applyDodgeResult(dodgeResult,house,frame,now);}else return false;}
  auto&i=dodgeInput;i={};i.match=match;i.tick=now;i.frame=frame;

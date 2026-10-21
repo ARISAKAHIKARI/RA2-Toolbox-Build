@@ -10,7 +10,7 @@ p=argparse.ArgumentParser();p.add_argument('game');p.add_argument('dll');p.add_a
 spec=importlib.util.spec_from_file_location('entry_support',Path(__file__).with_name('no_interception_runtime.py'));n=importlib.util.module_from_spec(spec)
 args=sys.argv;sys.argv=[str(spec.origin),a.game,a.dll,'--filter','__fixture__','--output',str(Path(a.output).with_suffix('.helper.json'))];spec.loader.exec_module(n);sys.argv=args
 for mode in (0,3,4,5):
- for case in ('plain','can_c4','old_patch_conflict','engineer','spy','c4','off','own_building','foreign_infantry','dead_infantry','loaded','stale','chat','not_building'):
+ for case in ('plain','planning','can_c4','old_patch_conflict','engineer','spy','c4','off','own_building','foreign_infantry','dead_infantry','loaded','stale','chat','not_building'):
   try:
    m=n.fixture(mode);site=0x51a4d8;original=bytes(m.u.mem_read(site,6));m.b(m.engT+0xec3,case=='engineer');m.b(m.engT+0xebe,case=='spy');m.b(m.engT+0xec2,case=='c4');m.b(m.buildT+0x1577,case=='can_c4')
    m.w(m.building+0x21c,m.house if case=='own_building' else m.enemy);m.queryObject=m.enemyUnit if case=='not_building' else m.building
@@ -22,18 +22,20 @@ for mode in (0,3,4,5):
    assert s.data.c4TestStatus==int(case!='off') and bytes(m.u.mem_read(site,6))==original and not m.codeWrites
    if case=='chat':m.b(0xa8bc60+25,1)
    before=bytes(m.u.mem_read(m.engT,0x2000))
+   if case=='planning':m.b(0x87f7e8+0x11b3,1)
    def mutate(s,i):
     i.sources[0]=m.PointerSource(11,m.eng)
     if case=='stale':i.match+=1
-   s=n.pointer(m,7,8192,mutate);accepted=case in ('plain','can_c4','old_patch_conflict','engineer','spy','c4')
-   assert n.count(m)==int(accepted),(case,s.pointer.result,s.pointer.accepted,n.count(m))
+   s=n.pointer(m,7,8192,mutate);accepted=case in ('plain','planning','can_c4','old_patch_conflict','engineer','spy','c4')
+   assert n.count(m)==(1 if case=='planning' else 2 if accepted else 0),(case,s.pointer.result,s.pointer.accepted,n.count(m))
    if accepted:
-    b=n.packets(m);mission=7 if case=='spy' else 17 if case=='c4' else 8
+    b=n.packets(m);mission=8 if case=='engineer' else 17 if case=='c4' else 7
     assert b[0]==4 and b[7:12]==struct.pack('<IB',11,0x34) and b[12]==mission
-    assert b[14:19]==struct.pack('<IB',0,0) if case=='spy' else b[14:19]==struct.pack('<IB',12,0x34)
-    assert b[19:24]==struct.pack('<IB',12,0x34)
+    assert b[14:19]==struct.pack('<IB',0,0) if mission==7 else b[14:19]==struct.pack('<IB',12,0x34)
+    assert b[19:24]==struct.pack('<IB',12,0x34) and b[29]==1
+    if case!='planning':assert b[111]==43
     for _ in range(3):n.tick(m)
-    assert n.count(m)==1
+    assert n.count(m)==(1 if case=='planning' else 2)
    assert bytes(m.u.mem_read(m.engT,0x2000))==before and not m.codeWrites
    rows.append({'case':f'input_{mode}_{case}','status':'PASS'});print('PASS',mode,case,flush=True)
   except Exception as e:rows.append({'case':f'input_{mode}_{case}','status':'FAIL','error':repr(e)});traceback.print_exc()

@@ -1,0 +1,42 @@
+{
+  "scope": "Actual native receiver, planning-node construction, commit and next-node extraction.\nSynthetic network-ID resolver, CRT heap, local-owner/audio and locomotor readiness;\noriginal planning functions and QueueMission execute. No full pathfinding/arrival/netplay.\n",
+  "game_sha256": "c287d62a4d6a25b547e9339d071dd6e03adcf545699062e478aaeee38c60e89a",
+  "dll_sha256": "a06fdf203108821eda069999b7c06419c9012b0b62b03b1dac6cad3e1b3f3c33",
+  "results": [
+    {
+      "case": "ordinary",
+      "status": "PASS",
+      "released_mission": 7
+    },
+    {
+      "case": "engineer",
+      "status": "PASS",
+      "released_mission": 8
+    },
+    {
+      "case": "spy",
+      "status": "PASS",
+      "released_mission": 7
+    },
+    {
+      "case": "c4",
+      "status": "PASS",
+      "released_mission": 17
+    },
+    {
+      "case": "append_existing",
+      "status": "PASS",
+      "released_mission": 7
+    },
+    {
+      "case": "busy_waits",
+      "status": "PASS",
+      "released_mission": 7
+    },
+    {
+      "case": "native_key",
+      "status": "PASS",
+      "released_mission": 7
+    }
+  ]
+}

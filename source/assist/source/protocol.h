@@ -18,7 +18,7 @@
 #include "burst_compute.h"
 #include "dodge_compute.h"
 namespace assist {
-constexpr uint32_t Magic=0x41533130, Version=58;
+constexpr uint32_t Magic=0x41533130, Version=59;
 constexpr uint32_t DataMessage=0x8002, WakeTag=0x41533230;
 constexpr int MaxLabels=2048, MaxSW=32, MaxTypes=512, MaxThreats=128, MaxCrates=256, MaxCrateResults=16;
 enum Command { None, Repair, CombatSelection, EmptyTransports, DamagedSelection, IdleHarvester, IdleEngineer, IdleTransport, ClearBeacons, RevealMap, OpenTech, SelectSuper, Produce, SelectIron, SelectChrono, AutoBoard, SelectType, SmartUnload, CancelAdvanced, SelectVariant, ProduceReserved, AirPathMove, CancelTechProduction, SwitchPlayer, RestorePlayer, Cheer, Taunt, ProduceDeferred };
@@ -151,7 +151,7 @@ struct Shared {
  PlayerTestInfo players[32]{}; // Runtime writer, protected by seq
  volatile uint32_t scrollRefreshMode=0,scrollRefreshHz=0; // 0 cursor, 1 scroll, 2 full scene; zero Hz disables
  int scrollRefreshStatus=0;uint32_t scrollRefreshDraws=0,scrollRefreshRateMilli=0,scrollRefreshMaxGapUs=0; // Runtime diagnostics
-
+ volatile uint32_t dodgeMode=0; // 0 reverse-flight move, 1 existing native Scatter
 
 };
 inline int remaining(int start,int duration,int frame){

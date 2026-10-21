@@ -46,6 +46,11 @@ int main(){
  assert(constructors::admit(intent::mega(2,701,1,0,0x34,0,0,0,0))==V::InvalidFields);
  assert(constructors::admit(intent::mega(2,701,2,0,0,30020,11,30020,11))==V::Ready);
  assert(constructors::admit(intent::mega(2,701,2,0,0,30020,99,0,0))==V::InvalidFields);
+ mega.appendWaypoint=true;packet={};Trace wp;
+ assert(constructors::fill(packet,mega,std::ref(wp))==V::Ready&&packet.payload[22]==1);
+ intent::EventOrder commit{};commit.domain=D::NoOptions;commit.player=2;commit.eventKind=vanilla::EventType::PlanCommit;
+ Trace pc;assert(constructors::fill(packet,commit,std::ref(pc))==V::Ready&&pc.address==0x4C66C0&&pc.values[2]==43);
+ commit.appendWaypoint=true;assert(constructors::admit(commit)==V::InvalidFields);
  auto prod=intent::produce(3,0xE,40,12,1);
  Trace p;assert(constructors::fill(packet,prod,std::ref(p))==V::Ready);
  assert(p.address==0x4C6970&&p.args==5&&p.values[2]==0xE&&p.values[3]==40&&p.values[4]==12&&p.values[5]==1);

@@ -69,7 +69,7 @@ def verify(root):
                        and not x.lower().startswith(('api-ms-win-', 'ext-ms-win-'))]
             if unknown:
                 raise ValueError('unbundled non-system dependency: ' + ', '.join(unknown))
-            if "1.0.30.8".encode("utf-16le") not in pe.resource_bytes():
+            if "1.0.30.9".encode("utf-16le") not in pe.resource_bytes():
                 raise ValueError("file version resource mismatch")
             images[name] = pe
             recs[name] = {'bytes': len(buf), 'sha256': digest, 'machine': 'PE32 x86',
@@ -85,9 +85,9 @@ def verify(root):
             a = host.at_rva(host.exports()['AssistHostProtocolInfo'], 8)
             b = bridge.at_rva(bridge.exports()['AssistProtocolInfo'], 8)
             protocol, shared_bytes = struct.unpack('<II', a)
-            if a != b or protocol != 58 or not shared_bytes:
+            if a != b or protocol != 59 or not shared_bytes:
                 raise ValueError('host/bridge protocol or Shared structure size mismatch')
-            marker = 'Local\\RA2Assist_v058_\0'.encode('utf-16le')
+            marker = 'Local\\RA2Assist_v059_\0'.encode('utf-16le')
             if bridge.at_rva(bridge.exports()['AssistMappingPrefix'], len(marker)) != marker:
                 raise ValueError('incorrect exported mapping namespace')
             manager = images['GameRuntime.dll']
@@ -107,9 +107,9 @@ def verify(root):
             recs['GameRuntime.dll']['runtime_protocol']=4
             recs['GameRuntime.dll']['runtime_control_bytes']=176
             resource = host.resource_bytes()
-            if '1.0.30.8'.encode('utf-16le') not in resource:
+            if '1.0.30.9'.encode('utf-16le') not in resource:
                 raise ValueError('EXE version resource mismatch')
-            for text in (b'requireAdministrator', b'PerMonitorV2', b'1.0.30.8'):
+            for text in (b'requireAdministrator', b'PerMonitorV2', b'1.0.30.9'):
                 if text not in resource:
                     raise ValueError('EXE manifest missing: ' + text.decode())
             for rec in recs.values():
@@ -128,14 +128,14 @@ def main():
         print('BUILD NOT VERIFIED:\n' + '\n'.join(errors))
         return 1
     (ROOT / 'BUILD-VERIFIED-v130.tag').write_text(
-        'v1.0.30.8 SingleRuntime: PE32/ABI/import/version checks passed\n'
+        'v1.0.30.9 SingleRuntime: PE32/ABI/import/version checks passed\n'
         'Game runtime and multiplayer not tested\n', encoding='utf-8')
     (ROOT / 'WINDOWS_BUILD_ARTIFACTS.json').write_text(json.dumps({
-        'label': '1.0.30.8 SingleRuntime', 'file_version': '1.0.30.8',
+        'label': '1.0.30.9 SingleRuntime', 'file_version': '1.0.30.9',
         'verified': recs, 'runtime_tested': False, 'multiplayer_tested': False,
         'dependency_check': 'two project binaries import Windows system DLLs only',
     }, ensure_ascii=False, indent=2), encoding='utf-8')
-    print('PASS: 2 current PE32 x86 outputs; hooks exported; ABI/Shared size match; version 1.0.30.8')
+    print('PASS: 2 current PE32 x86 outputs; hooks exported; ABI/Shared size match; version 1.0.30.9')
     print('PASS: no unbundled third-party or compiler-runtime DLL dependencies')
     print('PASS: actual EXE RT_MANIFEST/1 enables x86 Common Controls 6 for subclass helper imports')
     print('NOTE: static validation does not execute the Windows loader or the game')

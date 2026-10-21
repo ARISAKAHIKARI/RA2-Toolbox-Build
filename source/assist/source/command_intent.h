@@ -11,6 +11,7 @@ struct EventOrder {
  int32_t a=0,b=0,c=0,d=0,mission=0;
  uint8_t tagA=0,tagB=0,tagC=0,nearestTag=0;
  vanilla::Cell cell{};
+ bool appendWaypoint=false; // native MegaMission planning byte: append (1), never execute (2)
 };
 inline EventOrder object(int player,int type,uint32_t id,uint8_t tag=0x34){
  EventOrder r{};r.domain=vanilla::Domain::Object;r.player=player;r.eventKind=type;r.a=int32_t(id);r.tagA=tag;return r;

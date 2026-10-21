@@ -98,7 +98,7 @@ def burst(mode,inside,kind):
  assert not m.codeWrites
 
 def dodge(mode,inside,kind):
- m=prepare(mode,inside,'normal');s=n.state(m);s.burstEnabled=kind=='conflict';s.dodgeEnabled=1;n.save(m,s)
+ m=prepare(mode,inside,'normal');s=n.state(m);s.burstEnabled=kind=='conflict';s.dodgeEnabled=1;s.dodgeMode=1;n.save(m,s)
  m.w(m.unit+0x194,0)
  # Enemy vehicle is actively trying to crush this ground unit.
  t=m.r(m.target+0x6c4);m.b(t+0xd29,1);m.w(m.target+0x9c,10256);m.w(m.target+0xa0,10000);m.w(m.target+0xac,2);m.w(m.target+0x2b4,m.unit)

@@ -7,7 +7,8 @@ enum class Verdict : uint8_t { Ready, ProbeOnly, InvalidPlayer, InvalidFields, U
 inline Verdict admit(const intent::EventOrder&r,bool diagnosticProbe=false){
  if(!vanilla::address(r.domain))return Verdict::UnknownAddress;
  if(r.player<0||r.player>=32)return Verdict::InvalidPlayer;
- if(vanilla::exposure(r.domain)==vanilla::Exposure::ProbeOnly&&!diagnosticProbe&&!(r.domain==vanilla::Domain::NoOptions&&r.eventKind==vanilla::EventType::AllCheer))return Verdict::ProbeOnly;
+ if(vanilla::exposure(r.domain)==vanilla::Exposure::ProbeOnly&&!diagnosticProbe&&!(r.domain==vanilla::Domain::NoOptions&&(r.eventKind==vanilla::EventType::AllCheer||r.eventKind==vanilla::EventType::PlanCommit)))return Verdict::ProbeOnly;
+ if(r.appendWaypoint&&r.domain!=vanilla::Domain::MegaMission)return Verdict::InvalidFields;
  switch(r.domain){
  case vanilla::Domain::Object:
   if(r.a<=0 || r.tagA!=vanilla::TargetTag::Techno ||
@@ -43,12 +44,15 @@ template<class Invoke>
 inline Verdict fill(vanilla::Packet&packet,const intent::EventOrder&r,Invoke invoke,bool diagnosticProbe=false){
  const auto result=admit(r,diagnosticProbe);if(result!=Verdict::Ready)return result;
  const uint32_t self=uint32_t(reinterpret_cast<uintptr_t>(&packet));
+ if(r.appendWaypoint&&r.domain!=vanilla::Domain::MegaMission)return Verdict::InvalidFields;
  switch(r.domain){
  case vanilla::Domain::Object:
   invoke(vanilla::address(r.domain),self,r.player,r.eventKind,r.a,int(r.tagA));break;
  case vanilla::Domain::MegaMission:
   invoke(vanilla::address(r.domain),self,r.player,r.a,int(r.tagA),r.mission,
-   r.b,int(r.tagB),r.c,int(r.tagC),r.d,int(r.nearestTag));break;
+   r.b,int(r.tagB),r.c,int(r.tagC),r.d,int(r.nearestTag));
+  // Same local packet tag set by native Planning::Add (637DD0), after ctor.
+  if(r.appendWaypoint)packet.payload[0x1D-7]=1;break;
  case vanilla::Domain::Production:
   invoke(vanilla::address(r.domain),self,r.player,r.eventKind,r.a,r.b,r.c);break;
  case vanilla::Domain::SellCell:
