@@ -1,0 +1,2154 @@
+{
+  "scope": "Run supplied EXE's vehicle/infantry Scatter direction and cell-selection code.\nThe actual angle lookup, facing conversion, neighbour loop and state branches run.\nWorld queries, locomotor, RNG result and final mission/destination writes are mocked.\nThis is not live pathfinding, projectile physics or multiplayer validation.\nNo game executable or extracted instruction bytes are included in this test.\n",
+  "game_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+  "dll_sha256": "0a4d856b838990a15d8e0b48b1fda118331d253fef5f7a4039a644f059769973",
+  "results": [
+    {
+      "case": "vehicle_source_0_random_0",
+      "status": "PASS",
+      "detail": {
+        "attempts": [
+          3
+        ],
+        "destinations": [
+          [
+            41,
+            41
+          ]
+        ],
+        "rng_ranges": [
+          [
+            0,
+            2
+          ]
+        ],
+        "nearby": 0,
+        "missions": [
+          [
+            2,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "case": "vehicle_source_0_random_1",
+      "status": "PASS",
+      "detail": {
+        "attempts": [
+          4
+        ],
+        "destinations": [
+          [
+            40,
+            41
+          ]
+        ],
+        "rng_ranges": [
+          [
+            0,
+            2
+          ]
+        ],
+        "nearby": 0,
+        "missions": [
+          [
+            2,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "case": "vehicle_source_0_random_2",
+      "status": "PASS",
+      "detail": {
+        "attempts": [
+          5
+        ],
+        "destinations": [
+          [
+            39,
+            41
+          ]
+        ],
+        "rng_ranges": [
+          [
+            0,
+            2
+          ]
+        ],
+        "nearby": 0,
+        "missions": [
+          [
+            2,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "case": "vehicle_source_1_random_0",
+      "status": "PASS",
+      "detail": {
+        "attempts": [
+          4
+        ],
+        "destinations": [
+          [
+            40,
+            41
+          ]
+        ],
+        "rng_ranges": [
+          [
+            0,
+            2
+          ]
+        ],
+        "nearby": 0,
+        "missions": [
+          [
+            2,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "case": "vehicle_source_1_random_1",
+      "status": "PASS",
+      "detail": {
+        "attempts": [
+          5
+        ],
+        "destinations": [
+          [
+            39,
+            41
+          ]
+        ],
+        "rng_ranges": [
+          [
+            0,
+            2
+          ]
+        ],
+        "nearby": 0,
+        "missions": [
+          [
+            2,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "case": "vehicle_source_1_random_2",
+      "status": "PASS",
+      "detail": {
+        "attempts": [
+          6
+        ],
+        "destinations": [
+          [
+            39,
+            40
+          ]
+        ],
+        "rng_ranges": [
+          [
+            0,
+            2
+          ]
+        ],
+        "nearby": 0,
+        "missions": [
+          [
+            2,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "case": "vehicle_source_2_random_0",
+      "status": "PASS",
+      "detail": {
+        "attempts": [
+          5
+        ],
+        "destinations": [
+          [
+            39,
+            41
+          ]
+        ],
+        "rng_ranges": [
+          [
+            0,
+            2
+          ]
+        ],
+        "nearby": 0,
+        "missions": [
+          [
+            2,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "case": "vehicle_source_2_random_1",
+      "status": "PASS",
+      "detail": {
+        "attempts": [
+          6
+        ],
+        "destinations": [
+          [
+            39,
+            40
+          ]
+        ],
+        "rng_ranges": [
+          [
+            0,
+            2
+          ]
+        ],
+        "nearby": 0,
+        "missions": [
+          [
+            2,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "case": "vehicle_source_2_random_2",
+      "status": "PASS",
+      "detail": {
+        "attempts": [
+          7
+        ],
+        "destinations": [
+          [
+            39,
+            39
+          ]
+        ],
+        "rng_ranges": [
+          [
+            0,
+            2
+          ]
+        ],
+        "nearby": 0,
+        "missions": [
+          [
+            2,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "case": "vehicle_source_3_random_0",
+      "status": "PASS",
+      "detail": {
+        "attempts": [
+          6
+        ],
+        "destinations": [
+          [
+            39,
+            40
+          ]
+        ],
+        "rng_ranges": [
+          [
+            0,
+            2
+          ]
+        ],
+        "nearby": 0,
+        "missions": [
+          [
+            2,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "case": "vehicle_source_3_random_1",
+      "status": "PASS",
+      "detail": {
+        "attempts": [
+          7
+        ],
+        "destinations": [
+          [
+            39,
+            39
+          ]
+        ],
+        "rng_ranges": [
+          [
+            0,
+            2
+          ]
+        ],
+        "nearby": 0,
+        "missions": [
+          [
+            2,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "case": "vehicle_source_3_random_2",
+      "status": "PASS",
+      "detail": {
+        "attempts": [
+          0
+        ],
+        "destinations": [
+          [
+            40,
+            39
+          ]
+        ],
+        "rng_ranges": [
+          [
+            0,
+            2
+          ]
+        ],
+        "nearby": 0,
+        "missions": [
+          [
+            2,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "case": "vehicle_source_4_random_0",
+      "status": "PASS",
+      "detail": {
+        "attempts": [
+          7
+        ],
+        "destinations": [
+          [
+            39,
+            39
+          ]
+        ],
+        "rng_ranges": [
+          [
+            0,
+            2
+          ]
+        ],
+        "nearby": 0,
+        "missions": [
+          [
+            2,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "case": "vehicle_source_4_random_1",
+      "status": "PASS",
+      "detail": {
+        "attempts": [
+          0
+        ],
+        "destinations": [
+          [
+            40,
+            39
+          ]
+        ],
+        "rng_ranges": [
+          [
+            0,
+            2
+          ]
+        ],
+        "nearby": 0,
+        "missions": [
+          [
+            2,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "case": "vehicle_source_4_random_2",
+      "status": "PASS",
+      "detail": {
+        "attempts": [
+          1
+        ],
+        "destinations": [
+          [
+            41,
+            39
+          ]
+        ],
+        "rng_ranges": [
+          [
+            0,
+            2
+          ]
+        ],
+        "nearby": 0,
+        "missions": [
+          [
+            2,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "case": "vehicle_source_5_random_0",
+      "status": "PASS",
+      "detail": {
+        "attempts": [
+          0
+        ],
+        "destinations": [
+          [
+            40,
+            39
+          ]
+        ],
+        "rng_ranges": [
+          [
+            0,
+            2
+          ]
+        ],
+        "nearby": 0,
+        "missions": [
+          [
+            2,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "case": "vehicle_source_5_random_1",
+      "status": "PASS",
+      "detail": {
+        "attempts": [
+          1
+        ],
+        "destinations": [
+          [
+            41,
+            39
+          ]
+        ],
+        "rng_ranges": [
+          [
+            0,
+            2
+          ]
+        ],
+        "nearby": 0,
+        "missions": [
+          [
+            2,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "case": "vehicle_source_5_random_2",
+      "status": "PASS",
+      "detail": {
+        "attempts": [
+          2
+        ],
+        "destinations": [
+          [
+            41,
+            40
+          ]
+        ],
+        "rng_ranges": [
+          [
+            0,
+            2
+          ]
+        ],
+        "nearby": 0,
+        "missions": [
+          [
+            2,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "case": "vehicle_source_6_random_0",
+      "status": "PASS",
+      "detail": {
+        "attempts": [
+          1
+        ],
+        "destinations": [
+          [
+            41,
+            39
+          ]
+        ],
+        "rng_ranges": [
+          [
+            0,
+            2
+          ]
+        ],
+        "nearby": 0,
+        "missions": [
+          [
+            2,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "case": "vehicle_source_6_random_1",
+      "status": "PASS",
+      "detail": {
+        "attempts": [
+          2
+        ],
+        "destinations": [
+          [
+            41,
+            40
+          ]
+        ],
+        "rng_ranges": [
+          [
+            0,
+            2
+          ]
+        ],
+        "nearby": 0,
+        "missions": [
+          [
+            2,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "case": "vehicle_source_6_random_2",
+      "status": "PASS",
+      "detail": {
+        "attempts": [
+          3
+        ],
+        "destinations": [
+          [
+            41,
+            41
+          ]
+        ],
+        "rng_ranges": [
+          [
+            0,
+            2
+          ]
+        ],
+        "nearby": 0,
+        "missions": [
+          [
+            2,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "case": "vehicle_source_7_random_0",
+      "status": "PASS",
+      "detail": {
+        "attempts": [
+          2
+        ],
+        "destinations": [
+          [
+            41,
+            40
+          ]
+        ],
+        "rng_ranges": [
+          [
+            0,
+            2
+          ]
+        ],
+        "nearby": 0,
+        "missions": [
+          [
+            2,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "case": "vehicle_source_7_random_1",
+      "status": "PASS",
+      "detail": {
+        "attempts": [
+          3
+        ],
+        "destinations": [
+          [
+            41,
+            41
+          ]
+        ],
+        "rng_ranges": [
+          [
+            0,
+            2
+          ]
+        ],
+        "nearby": 0,
+        "missions": [
+          [
+            2,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "case": "vehicle_source_7_random_2",
+      "status": "PASS",
+      "detail": {
+        "attempts": [
+          4
+        ],
+        "destinations": [
+          [
+            40,
+            41
+          ]
+        ],
+        "rng_ranges": [
+          [
+            0,
+            2
+          ]
+        ],
+        "nearby": 0,
+        "missions": [
+          [
+            2,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "case": "vehicle_blocked_clockwise",
+      "status": "PASS",
+      "detail": {
+        "attempts": [
+          4,
+          5,
+          6,
+          7
+        ],
+        "destinations": [
+          [
+            39,
+            39
+          ]
+        ],
+        "rng_ranges": [
+          [
+            0,
+            2
+          ]
+        ],
+        "nearby": 0,
+        "missions": [
+          [
+            2,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "case": "vehicle_all_blocked",
+      "status": "PASS",
+      "detail": {
+        "attempts": [
+          4,
+          5,
+          6,
+          7,
+          0,
+          1,
+          2,
+          3
+        ],
+        "destinations": [],
+        "rng_ranges": [
+          [
+            0,
+            2
+          ]
+        ],
+        "nearby": 0,
+        "missions": []
+      }
+    },
+    {
+      "case": "vehicle_fallback_first_passable",
+      "status": "PASS",
+      "detail": {
+        "attempts": [
+          4,
+          5,
+          6,
+          7,
+          0,
+          1,
+          2,
+          3
+        ],
+        "destinations": [
+          [
+            40,
+            41
+          ]
+        ],
+        "rng_ranges": [
+          [
+            0,
+            2
+          ]
+        ],
+        "nearby": 0,
+        "missions": [
+          [
+            2,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "case": "vehicle_flag_100_prefers_other",
+      "status": "PASS",
+      "detail": {
+        "attempts": [
+          4,
+          5
+        ],
+        "destinations": [
+          [
+            39,
+            41
+          ]
+        ],
+        "rng_ranges": [
+          [
+            0,
+            2
+          ]
+        ],
+        "nearby": 0,
+        "missions": [
+          [
+            2,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "case": "vehicle_default_uses_nearby",
+      "status": "PASS",
+      "detail": {
+        "attempts": [],
+        "destinations": [
+          [
+            41,
+            40
+          ]
+        ],
+        "rng_ranges": [],
+        "nearby": 1,
+        "missions": []
+      }
+    },
+    {
+      "case": "vehicle_rotating_gate",
+      "status": "PASS",
+      "detail": {
+        "attempts": [],
+        "destinations": [],
+        "rng_ranges": [],
+        "nearby": 0,
+        "missions": []
+      }
+    },
+    {
+      "case": "vehicle_destination_gate",
+      "status": "PASS",
+      "detail": {
+        "attempts": [],
+        "destinations": [],
+        "rng_ranges": [],
+        "nearby": 0,
+        "missions": []
+      }
+    },
+    {
+      "case": "infantry_source_0_random_0",
+      "status": "PASS",
+      "detail": {
+        "attempts": [
+          2
+        ],
+        "destinations": [
+          [
+            41,
+            40
+          ]
+        ],
+        "rng_ranges": [
+          [
+            0,
+            4
+          ]
+        ],
+        "nearby": 0,
+        "missions": [
+          [
+            2,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "case": "infantry_source_0_random_1",
+      "status": "PASS",
+      "detail": {
+        "attempts": [
+          3
+        ],
+        "destinations": [
+          [
+            41,
+            41
+          ]
+        ],
+        "rng_ranges": [
+          [
+            0,
+            4
+          ]
+        ],
+        "nearby": 0,
+        "missions": [
+          [
+            2,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "case": "infantry_source_0_random_2",
+      "status": "PASS",
+      "detail": {
+        "attempts": [
+          4
+        ],
+        "destinations": [
+          [
+            40,
+            41
+          ]
+        ],
+        "rng_ranges": [
+          [
+            0,
+            4
+          ]
+        ],
+        "nearby": 0,
+        "missions": [
+          [
+            2,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "case": "infantry_source_0_random_3",
+      "status": "PASS",
+      "detail": {
+        "attempts": [
+          5
+        ],
+        "destinations": [
+          [
+            39,
+            41
+          ]
+        ],
+        "rng_ranges": [
+          [
+            0,
+            4
+          ]
+        ],
+        "nearby": 0,
+        "missions": [
+          [
+            2,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "case": "infantry_source_0_random_4",
+      "status": "PASS",
+      "detail": {
+        "attempts": [
+          6
+        ],
+        "destinations": [
+          [
+            39,
+            40
+          ]
+        ],
+        "rng_ranges": [
+          [
+            0,
+            4
+          ]
+        ],
+        "nearby": 0,
+        "missions": [
+          [
+            2,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "case": "infantry_source_1_random_0",
+      "status": "PASS",
+      "detail": {
+        "attempts": [
+          3
+        ],
+        "destinations": [
+          [
+            41,
+            41
+          ]
+        ],
+        "rng_ranges": [
+          [
+            0,
+            4
+          ]
+        ],
+        "nearby": 0,
+        "missions": [
+          [
+            2,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "case": "infantry_source_1_random_1",
+      "status": "PASS",
+      "detail": {
+        "attempts": [
+          4
+        ],
+        "destinations": [
+          [
+            40,
+            41
+          ]
+        ],
+        "rng_ranges": [
+          [
+            0,
+            4
+          ]
+        ],
+        "nearby": 0,
+        "missions": [
+          [
+            2,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "case": "infantry_source_1_random_2",
+      "status": "PASS",
+      "detail": {
+        "attempts": [
+          5
+        ],
+        "destinations": [
+          [
+            39,
+            41
+          ]
+        ],
+        "rng_ranges": [
+          [
+            0,
+            4
+          ]
+        ],
+        "nearby": 0,
+        "missions": [
+          [
+            2,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "case": "infantry_source_1_random_3",
+      "status": "PASS",
+      "detail": {
+        "attempts": [
+          6
+        ],
+        "destinations": [
+          [
+            39,
+            40
+          ]
+        ],
+        "rng_ranges": [
+          [
+            0,
+            4
+          ]
+        ],
+        "nearby": 0,
+        "missions": [
+          [
+            2,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "case": "infantry_source_1_random_4",
+      "status": "PASS",
+      "detail": {
+        "attempts": [
+          7
+        ],
+        "destinations": [
+          [
+            39,
+            39
+          ]
+        ],
+        "rng_ranges": [
+          [
+            0,
+            4
+          ]
+        ],
+        "nearby": 0,
+        "missions": [
+          [
+            2,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "case": "infantry_source_2_random_0",
+      "status": "PASS",
+      "detail": {
+        "attempts": [
+          4
+        ],
+        "destinations": [
+          [
+            40,
+            41
+          ]
+        ],
+        "rng_ranges": [
+          [
+            0,
+            4
+          ]
+        ],
+        "nearby": 0,
+        "missions": [
+          [
+            2,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "case": "infantry_source_2_random_1",
+      "status": "PASS",
+      "detail": {
+        "attempts": [
+          5
+        ],
+        "destinations": [
+          [
+            39,
+            41
+          ]
+        ],
+        "rng_ranges": [
+          [
+            0,
+            4
+          ]
+        ],
+        "nearby": 0,
+        "missions": [
+          [
+            2,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "case": "infantry_source_2_random_2",
+      "status": "PASS",
+      "detail": {
+        "attempts": [
+          6
+        ],
+        "destinations": [
+          [
+            39,
+            40
+          ]
+        ],
+        "rng_ranges": [
+          [
+            0,
+            4
+          ]
+        ],
+        "nearby": 0,
+        "missions": [
+          [
+            2,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "case": "infantry_source_2_random_3",
+      "status": "PASS",
+      "detail": {
+        "attempts": [
+          7
+        ],
+        "destinations": [
+          [
+            39,
+            39
+          ]
+        ],
+        "rng_ranges": [
+          [
+            0,
+            4
+          ]
+        ],
+        "nearby": 0,
+        "missions": [
+          [
+            2,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "case": "infantry_source_2_random_4",
+      "status": "PASS",
+      "detail": {
+        "attempts": [
+          0
+        ],
+        "destinations": [
+          [
+            40,
+            39
+          ]
+        ],
+        "rng_ranges": [
+          [
+            0,
+            4
+          ]
+        ],
+        "nearby": 0,
+        "missions": [
+          [
+            2,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "case": "infantry_source_3_random_0",
+      "status": "PASS",
+      "detail": {
+        "attempts": [
+          5
+        ],
+        "destinations": [
+          [
+            39,
+            41
+          ]
+        ],
+        "rng_ranges": [
+          [
+            0,
+            4
+          ]
+        ],
+        "nearby": 0,
+        "missions": [
+          [
+            2,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "case": "infantry_source_3_random_1",
+      "status": "PASS",
+      "detail": {
+        "attempts": [
+          6
+        ],
+        "destinations": [
+          [
+            39,
+            40
+          ]
+        ],
+        "rng_ranges": [
+          [
+            0,
+            4
+          ]
+        ],
+        "nearby": 0,
+        "missions": [
+          [
+            2,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "case": "infantry_source_3_random_2",
+      "status": "PASS",
+      "detail": {
+        "attempts": [
+          7
+        ],
+        "destinations": [
+          [
+            39,
+            39
+          ]
+        ],
+        "rng_ranges": [
+          [
+            0,
+            4
+          ]
+        ],
+        "nearby": 0,
+        "missions": [
+          [
+            2,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "case": "infantry_source_3_random_3",
+      "status": "PASS",
+      "detail": {
+        "attempts": [
+          0
+        ],
+        "destinations": [
+          [
+            40,
+            39
+          ]
+        ],
+        "rng_ranges": [
+          [
+            0,
+            4
+          ]
+        ],
+        "nearby": 0,
+        "missions": [
+          [
+            2,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "case": "infantry_source_3_random_4",
+      "status": "PASS",
+      "detail": {
+        "attempts": [
+          1
+        ],
+        "destinations": [
+          [
+            41,
+            39
+          ]
+        ],
+        "rng_ranges": [
+          [
+            0,
+            4
+          ]
+        ],
+        "nearby": 0,
+        "missions": [
+          [
+            2,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "case": "infantry_source_4_random_0",
+      "status": "PASS",
+      "detail": {
+        "attempts": [
+          6
+        ],
+        "destinations": [
+          [
+            39,
+            40
+          ]
+        ],
+        "rng_ranges": [
+          [
+            0,
+            4
+          ]
+        ],
+        "nearby": 0,
+        "missions": [
+          [
+            2,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "case": "infantry_source_4_random_1",
+      "status": "PASS",
+      "detail": {
+        "attempts": [
+          7
+        ],
+        "destinations": [
+          [
+            39,
+            39
+          ]
+        ],
+        "rng_ranges": [
+          [
+            0,
+            4
+          ]
+        ],
+        "nearby": 0,
+        "missions": [
+          [
+            2,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "case": "infantry_source_4_random_2",
+      "status": "PASS",
+      "detail": {
+        "attempts": [
+          0
+        ],
+        "destinations": [
+          [
+            40,
+            39
+          ]
+        ],
+        "rng_ranges": [
+          [
+            0,
+            4
+          ]
+        ],
+        "nearby": 0,
+        "missions": [
+          [
+            2,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "case": "infantry_source_4_random_3",
+      "status": "PASS",
+      "detail": {
+        "attempts": [
+          1
+        ],
+        "destinations": [
+          [
+            41,
+            39
+          ]
+        ],
+        "rng_ranges": [
+          [
+            0,
+            4
+          ]
+        ],
+        "nearby": 0,
+        "missions": [
+          [
+            2,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "case": "infantry_source_4_random_4",
+      "status": "PASS",
+      "detail": {
+        "attempts": [
+          2
+        ],
+        "destinations": [
+          [
+            41,
+            40
+          ]
+        ],
+        "rng_ranges": [
+          [
+            0,
+            4
+          ]
+        ],
+        "nearby": 0,
+        "missions": [
+          [
+            2,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "case": "infantry_source_5_random_0",
+      "status": "PASS",
+      "detail": {
+        "attempts": [
+          7
+        ],
+        "destinations": [
+          [
+            39,
+            39
+          ]
+        ],
+        "rng_ranges": [
+          [
+            0,
+            4
+          ]
+        ],
+        "nearby": 0,
+        "missions": [
+          [
+            2,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "case": "infantry_source_5_random_1",
+      "status": "PASS",
+      "detail": {
+        "attempts": [
+          0
+        ],
+        "destinations": [
+          [
+            40,
+            39
+          ]
+        ],
+        "rng_ranges": [
+          [
+            0,
+            4
+          ]
+        ],
+        "nearby": 0,
+        "missions": [
+          [
+            2,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "case": "infantry_source_5_random_2",
+      "status": "PASS",
+      "detail": {
+        "attempts": [
+          1
+        ],
+        "destinations": [
+          [
+            41,
+            39
+          ]
+        ],
+        "rng_ranges": [
+          [
+            0,
+            4
+          ]
+        ],
+        "nearby": 0,
+        "missions": [
+          [
+            2,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "case": "infantry_source_5_random_3",
+      "status": "PASS",
+      "detail": {
+        "attempts": [
+          2
+        ],
+        "destinations": [
+          [
+            41,
+            40
+          ]
+        ],
+        "rng_ranges": [
+          [
+            0,
+            4
+          ]
+        ],
+        "nearby": 0,
+        "missions": [
+          [
+            2,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "case": "infantry_source_5_random_4",
+      "status": "PASS",
+      "detail": {
+        "attempts": [
+          3
+        ],
+        "destinations": [
+          [
+            41,
+            41
+          ]
+        ],
+        "rng_ranges": [
+          [
+            0,
+            4
+          ]
+        ],
+        "nearby": 0,
+        "missions": [
+          [
+            2,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "case": "infantry_source_6_random_0",
+      "status": "PASS",
+      "detail": {
+        "attempts": [
+          0
+        ],
+        "destinations": [
+          [
+            40,
+            39
+          ]
+        ],
+        "rng_ranges": [
+          [
+            0,
+            4
+          ]
+        ],
+        "nearby": 0,
+        "missions": [
+          [
+            2,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "case": "infantry_source_6_random_1",
+      "status": "PASS",
+      "detail": {
+        "attempts": [
+          1
+        ],
+        "destinations": [
+          [
+            41,
+            39
+          ]
+        ],
+        "rng_ranges": [
+          [
+            0,
+            4
+          ]
+        ],
+        "nearby": 0,
+        "missions": [
+          [
+            2,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "case": "infantry_source_6_random_2",
+      "status": "PASS",
+      "detail": {
+        "attempts": [
+          2
+        ],
+        "destinations": [
+          [
+            41,
+            40
+          ]
+        ],
+        "rng_ranges": [
+          [
+            0,
+            4
+          ]
+        ],
+        "nearby": 0,
+        "missions": [
+          [
+            2,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "case": "infantry_source_6_random_3",
+      "status": "PASS",
+      "detail": {
+        "attempts": [
+          3
+        ],
+        "destinations": [
+          [
+            41,
+            41
+          ]
+        ],
+        "rng_ranges": [
+          [
+            0,
+            4
+          ]
+        ],
+        "nearby": 0,
+        "missions": [
+          [
+            2,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "case": "infantry_source_6_random_4",
+      "status": "PASS",
+      "detail": {
+        "attempts": [
+          4
+        ],
+        "destinations": [
+          [
+            40,
+            41
+          ]
+        ],
+        "rng_ranges": [
+          [
+            0,
+            4
+          ]
+        ],
+        "nearby": 0,
+        "missions": [
+          [
+            2,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "case": "infantry_source_7_random_0",
+      "status": "PASS",
+      "detail": {
+        "attempts": [
+          1
+        ],
+        "destinations": [
+          [
+            41,
+            39
+          ]
+        ],
+        "rng_ranges": [
+          [
+            0,
+            4
+          ]
+        ],
+        "nearby": 0,
+        "missions": [
+          [
+            2,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "case": "infantry_source_7_random_1",
+      "status": "PASS",
+      "detail": {
+        "attempts": [
+          2
+        ],
+        "destinations": [
+          [
+            41,
+            40
+          ]
+        ],
+        "rng_ranges": [
+          [
+            0,
+            4
+          ]
+        ],
+        "nearby": 0,
+        "missions": [
+          [
+            2,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "case": "infantry_source_7_random_2",
+      "status": "PASS",
+      "detail": {
+        "attempts": [
+          3
+        ],
+        "destinations": [
+          [
+            41,
+            41
+          ]
+        ],
+        "rng_ranges": [
+          [
+            0,
+            4
+          ]
+        ],
+        "nearby": 0,
+        "missions": [
+          [
+            2,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "case": "infantry_source_7_random_3",
+      "status": "PASS",
+      "detail": {
+        "attempts": [
+          4
+        ],
+        "destinations": [
+          [
+            40,
+            41
+          ]
+        ],
+        "rng_ranges": [
+          [
+            0,
+            4
+          ]
+        ],
+        "nearby": 0,
+        "missions": [
+          [
+            2,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "case": "infantry_source_7_random_4",
+      "status": "PASS",
+      "detail": {
+        "attempts": [
+          5
+        ],
+        "destinations": [
+          [
+            39,
+            41
+          ]
+        ],
+        "rng_ranges": [
+          [
+            0,
+            4
+          ]
+        ],
+        "nearby": 0,
+        "missions": [
+          [
+            2,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "case": "infantry_blocked_clockwise",
+      "status": "PASS",
+      "detail": {
+        "attempts": [
+          4,
+          5,
+          6,
+          7
+        ],
+        "destinations": [
+          [
+            39,
+            39
+          ]
+        ],
+        "rng_ranges": [
+          [
+            0,
+            4
+          ]
+        ],
+        "nearby": 0,
+        "missions": [
+          [
+            2,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "case": "infantry_all_blocked",
+      "status": "PASS",
+      "detail": {
+        "attempts": [
+          4,
+          5,
+          6,
+          7,
+          0,
+          1,
+          2,
+          3
+        ],
+        "destinations": [],
+        "rng_ranges": [
+          [
+            0,
+            4
+          ]
+        ],
+        "nearby": 0,
+        "missions": []
+      }
+    },
+    {
+      "case": "infantry_fallback_first_passable",
+      "status": "PASS",
+      "detail": {
+        "attempts": [
+          4,
+          5,
+          6,
+          7,
+          0,
+          1,
+          2,
+          3
+        ],
+        "destinations": [
+          [
+            40,
+            41
+          ]
+        ],
+        "rng_ranges": [
+          [
+            0,
+            4
+          ]
+        ],
+        "nearby": 0,
+        "missions": [
+          [
+            2,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "case": "infantry_flag_100_prefers_other",
+      "status": "PASS",
+      "detail": {
+        "attempts": [
+          4,
+          5
+        ],
+        "destinations": [
+          [
+            39,
+            41
+          ]
+        ],
+        "rng_ranges": [
+          [
+            0,
+            4
+          ]
+        ],
+        "nearby": 0,
+        "missions": [
+          [
+            2,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "case": "infantry_default_uses_nearby",
+      "status": "PASS",
+      "detail": {
+        "attempts": [],
+        "destinations": [
+          [
+            41,
+            40
+          ]
+        ],
+        "rng_ranges": [
+          [
+            0,
+            4
+          ]
+        ],
+        "nearby": 1,
+        "missions": []
+      }
+    },
+    {
+      "case": "infantry_rotating_gate",
+      "status": "PASS",
+      "detail": {
+        "attempts": [
+          4
+        ],
+        "destinations": [
+          [
+            40,
+            41
+          ]
+        ],
+        "rng_ranges": [
+          [
+            0,
+            4
+          ]
+        ],
+        "nearby": 0,
+        "missions": [
+          [
+            2,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "case": "infantry_destination_gate",
+      "status": "PASS",
+      "detail": {
+        "attempts": [
+          4
+        ],
+        "destinations": [
+          [
+            40,
+            41
+          ]
+        ],
+        "rng_ranges": [
+          [
+            0,
+            4
+          ]
+        ],
+        "nearby": 0,
+        "missions": [
+          [
+            2,
+            0
+          ]
+        ]
+      }
+    }
+  ]
+}
