@@ -11,21 +11,18 @@
 #include "catalogue_stamp.h"
 #include "display_state.h"
 #include "enemy_markers.h"
+#include "unit_status.h"
+#include "projection.h"
 #include "idle_aircraft.h"
 #include <unordered_map>
 namespace external {
-struct Projection {int cameraX=0,cameraY=0,width=0,height=0;double zScale=0.0866025403784;};
-inline bool project(const Projection&p,int x,int y,int z,int&sx,int&sy){
- if(std::abs(int64_t(x))>1048576||std::abs(int64_t(y))>1048576||std::abs(int64_t(z))>1048576||!std::isfinite(p.zScale)||p.zScale<0||p.zScale>1)return false;
- sx=int((int64_t(x)-y)*30/256)-p.cameraX;sy=int((int64_t(x)+y)*15/256)-int(z*p.zScale+int(z>=728)+.5)-p.cameraY;
- return sx>=-80&&sx<p.width+80&&sy>=-60&&sy<p.height+60;
-}
 template<class Read> class TacticalSampler {
  Read read_;assist::Snapshot state_{};layout::Result probe_{};uint32_t house_=0,serial_=0;int lastFrame_=-1;
  uint64_t catalogueHash_=0;uint32_t catalogueAt_=0;bool catalogueReady_=false;
  int sceneFrame_=-1,sceneX_=0,sceneY_=0,sceneWidth_=0,sceneHeight_=0;uint32_t sceneFlags_=0,selectionHash_=0,sceneAt_=0;
  struct LabelSource {uint32_t object=0,id=0,type=0,owner=0;int kind=-1;bool selected=false;};
  LabelSource labelSources_[assist::MaxLabels]{};display::State display_{};
+ status::Frame statuses_{};uint32_t statusOptions_=0,sceneStatusOptions_=0;
  enemies::Frame enemies_{};bool sceneEnemies_=false;int sceneEnemyWidth_=0,sceneEnemyHeight_=0;uint32_t enemyOwnerSignature_=0,sceneEnemyOwners_=0;
  struct EnemyOwner {uint32_t pointer=0,color=0;int index=-1;};
  EnemyOwner enemyOwners_[32]{};int enemyOwnerCount_=0;
@@ -84,7 +81,35 @@ template<class Read> class TacticalSampler {
   bool valid=latest(0xA8ED84,&after,4)&&latest(0xA83D4C,&currentHouse,4)&&latest(0xA8E9A0,&started,1)&&
    latest(0x887324,&tactical,4)&&tactical>=0x10000&&latest(tactical+0xB0,&cameraX,4)&&latest(tactical+0xB4,&cameraY,4);
   if(!valid||!started||currentHouse!=house||after<frame||after-frame>2||cameraX!=state_.cameraX||cameraY!=state_.cameraY||!display::inspect(latest).visible()){
-   enemies_.count=0;sceneFrame_=-1;
+   enemies_.count=statuses_.count=0;sceneFrame_=-1;
+  }
+ }
+ bool readStatus(uint32_t p,uint32_t t,int k,uint32_t owner,const Projection&proj,status::Marker&out){
+  out={};out.object=p;out.id=get<uint32_t>(p+0x10);out.type=t;out.owner=owner;out.kind=k;
+  if(!out.id||!status::inspect(read_,p,k,statusOptions_,out))return false;
+  int wx=get<int>(p+0x9C,INT32_MIN),wy=get<int>(p+0xA0,INT32_MIN),wz=get<int>(p+0xA4,INT32_MIN);
+  if(!project(proj,wx,wy,wz,out.x,out.y))return false;
+  if(wx<0||wy<0||wx>=512*256||wy>=512*256)return false;
+  int cx=0,cy=0;project(proj,(wx/256)*256+128,(wy/256)*256+128,wz,cx,cy);
+  out.cellOffsetX=cx-out.x;out.cellOffsetY=cy-out.y;return true;
+ }
+ bool refreshStatuses(const Projection&proj){
+  for(int i=0;i<statuses_.count;++i){auto&mark=statuses_.items[i];uint32_t p=mark.object;
+   if(kind(p)!=mark.kind||get<uint32_t>(p+0x10)!=mark.id||type(p,mark.kind)!=mark.type||
+      get<int>(p+0x6C)<=0||!get<uint8_t>(p+0x74)||get<uint8_t>(p+0x81)||!get<uint8_t>(p+0x90))return false;
+   status::Marker fresh{};if(!readStatus(p,mark.type,mark.kind,get<uint32_t>(p+0x21C),proj,fresh))return false;
+   mark=fresh;
+  }return true;
+ }
+ void publishStatuses(uint32_t house,int frame,uint32_t now){
+  statuses_.match=state_.match;statuses_.house=house;statuses_.tick=now;statuses_.frame=frame;
+  if(!statusOptions_){statuses_.count=0;return;}
+  auto latest=[&](uint32_t at,void*out,size_t n){return enemies::latest(read_,at,out,n,0);};
+  int after=-1;uint32_t currentHouse=0,tactical=0;int cameraX=INT32_MIN,cameraY=INT32_MIN;uint8_t started=0;
+  if(!latest(0xA8ED84,&after,4)||!latest(0xA83D4C,&currentHouse,4)||!latest(0xA8E9A0,&started,1)||
+     !latest(0x887324,&tactical,4)||tactical<0x10000||!latest(tactical+0xB0,&cameraX,4)||!latest(tactical+0xB4,&cameraY,4)||
+     !started||currentHouse!=house||after<frame||after-frame>2||cameraX!=state_.cameraX||cameraY!=state_.cameraY||!display::inspect(latest).visible()){
+   statuses_.count=0;sceneFrame_=-1;
   }
  }
  int frozen(uint32_t object){
@@ -136,7 +161,8 @@ public:
  layout::Result probe()const{return probe_;}
  display::State displayState()const{return display_;}
  const enemies::Frame& enemyMarkers()const{return enemies_;}
- void reset(){idleProductionMask=idleAircraftTick=0;idleAircraftCount=aircraftTotal=0;probe_={};catalogueHash_=0;catalogueAt_=0;catalogueReady_=false;house_=serial_=0;lastFrame_=-1;state_={};sceneFrame_=-1;sceneFlags_=selectionHash_=sceneAt_=0;flashCount=0;productionAt_=0;for(auto&f:factories_)f={};stopped_.clear();enemies_={};sceneEnemies_=false;enemyNames_.clear();enemyOwnerCount_=0;}
+ const status::Frame& unitStatuses()const{return statuses_;}
+ void reset(){idleProductionMask=idleAircraftTick=0;idleAircraftCount=aircraftTotal=0;probe_={};catalogueHash_=0;catalogueAt_=0;catalogueReady_=false;house_=serial_=0;lastFrame_=-1;state_={};sceneFrame_=-1;sceneFlags_=selectionHash_=sceneAt_=0;flashCount=0;productionAt_=0;for(auto&f:factories_)f={};stopped_.clear();enemies_={};statuses_={};statusOptions_=sceneStatusOptions_=0;sceneEnemies_=false;enemyNames_.clear();enemyOwnerCount_=0;}
  void stopped(const std::vector<uint32_t>&ids){stopped_.clear();stopped_.insert(ids.begin(),ids.end());}
  void refreshCamera(uint32_t now){
   if(state_.status!=1)return;uint32_t tactical=get<uint32_t>(0x887324);if(tactical<0x10000)return;
@@ -146,24 +172,25 @@ public:
   for(int i=0;i<state_.crateCount;++i){state_.crates[i].x-=dx;state_.crates[i].y-=dy;}
   for(int i=0;i<state_.threatCount;++i){auto&t=state_.threats[i];t.x-=dx;t.y-=dy;t.tx-=dx;t.ty-=dy;}
   for(int i=0;i<enemies_.count;++i){enemies_.items[i].x-=dx;enemies_.items[i].y-=dy;}
+  for(int i=0;i<statuses_.count;++i){statuses_.items[i].x-=dx;statuses_.items[i].y-=dy;}
  }
- const assist::Snapshot&sample(uint32_t now,uint32_t flags,bool enemyMarkers=false){
-  state_.sampledTick=now;state_.renderStatus=0;display_=display::inspect(read_);
+ const assist::Snapshot&sample(uint32_t now,uint32_t flags,bool enemyMarkers=false,uint32_t statusOptions=0){
+  statusOptions_=statusOptions&3;state_.sampledTick=now;state_.renderStatus=0;display_=display::inspect(read_);
   probe_=layout::inspect(read_);
   if(probe_.stage!=layout::Stage::Ready){
-   enemies_.count=0;
+   enemies_.count=statuses_.count=0;
    idleProductionMask=idleAircraftTick=0;idleAircraftCount=aircraftTotal=0;state_.status=0;state_.labels=state_.selected=state_.transports=state_.used=state_.capacity=0;
    state_.typeCount=state_.swCount=state_.threatCount=state_.crateCount=0;
    house_=0;catalogueReady_=false;return state_;
   }
   uint32_t house=get<uint32_t>(0xA83D4C);int frame=get<int>(0xA8ED84,-1);
   auto houses=vec(0xA80228,32);if(std::find(houses.begin(),houses.end(),house)==houses.end()){
-   enemies_.count=0;
+   enemies_.count=statuses_.count=0;
    probe_={layout::Stage::MissingLocalHouseInList,0xA80228,house};
    idleProductionMask=idleAircraftTick=0;idleAircraftCount=aircraftTotal=0;state_.status=0;state_.labels=state_.typeCount=state_.swCount=0;
    state_.threatCount=state_.crateCount=0;house_=0;catalogueReady_=false;return state_;
   }
-  bool fresh=house!=house_||frame<lastFrame_;if(fresh){++serial_;house_=house;catalogueReady_=false;catalogueHash_=0;for(auto&f:factories_)f={};flashCount=0;productionAt_=now-100;enemies_.count=0;enemyNames_.clear();}lastFrame_=frame;
+  bool fresh=house!=house_||frame<lastFrame_;if(fresh){++serial_;house_=house;catalogueReady_=false;catalogueHash_=0;for(auto&f:factories_)f={};flashCount=0;productionAt_=now-100;enemies_.count=statuses_.count=0;enemyNames_.clear();}lastFrame_=frame;
   if(fresh||uint32_t(now-catalogueAt_)>=uint32_t(catalogueReady_?500:100)){
    catalogue::Stamp stamp;catalogueAt_=now;
    if(catalogue::capture(read_,stamp)){
@@ -179,16 +206,18 @@ public:
   if(showEnemies){enemyOwners(houses,house);int w=get<int>(0xB0CE30),h=get<int>(0xB0CE34);
    if(w>0&&w<=proj.width)enemyProj.width=w;if(h>0&&h<=proj.height)enemyProj.height=h;
   }enemies_.width=enemyProj.width;enemies_.height=enemyProj.height;
+  if(state_.renderStatus!=1)statusOptions_=0;statuses_.width=proj.width;statuses_.height=proj.height;
+  int sw=get<int>(0xB0CE30),sh=get<int>(0xB0CE34);if(sw>0&&sw<statuses_.width)statuses_.width=sw;if(sh>0&&sh<statuses_.height)statuses_.height=sh;
   uint32_t selectedHash=2166136261u;for(uint32_t p:vec(0xA8ECB8,4096))selectedHash=(selectedHash^p)*16777619u;
   bool cameraChanged=proj.cameraX!=sceneX_||proj.cameraY!=sceneY_;
-  bool scene=fresh||showEnemies!=sceneEnemies_||frame!=sceneFrame_||flags!=sceneFlags_||selectedHash!=selectionHash_||proj.width!=sceneWidth_||proj.height!=sceneHeight_||(showEnemies&&(enemyProj.width!=sceneEnemyWidth_||enemyProj.height!=sceneEnemyHeight_||enemyOwnerSignature_!=sceneEnemyOwners_))||(cameraChanged&&uint32_t(now-sceneAt_)>=16);
-  if(!scene&&refreshLabels(proj)&&(!showEnemies||refreshEnemies(enemyProj))){
+  bool scene=fresh||statusOptions_!=sceneStatusOptions_||showEnemies!=sceneEnemies_||frame!=sceneFrame_||flags!=sceneFlags_||selectedHash!=selectionHash_||proj.width!=sceneWidth_||proj.height!=sceneHeight_||(showEnemies&&(enemyProj.width!=sceneEnemyWidth_||enemyProj.height!=sceneEnemyHeight_||enemyOwnerSignature_!=sceneEnemyOwners_))||(cameraChanged&&uint32_t(now-sceneAt_)>=16);
+  if(!scene&&refreshLabels(proj)&&(!statusOptions_||refreshStatuses(proj))&&(!showEnemies||refreshEnemies(enemyProj))){
    int dx=proj.cameraX-priorX,dy=proj.cameraY-priorY;
    for(int i=0;i<state_.crateCount;++i){state_.crates[i].x-=dx;state_.crates[i].y-=dy;}
    for(int i=0;i<state_.threatCount;++i){auto&t=state_.threats[i];t.x-=dx;t.y-=dy;t.tx-=dx;t.ty-=dy;}
-   publishEnemies(house,frame,now,showEnemies);return state_;
+   publishEnemies(house,frame,now,showEnemies);publishStatuses(house,frame,now);return state_;
   }
-  sceneAt_=now;
+  sceneStatusOptions_=statusOptions_;statuses_.count=0;sceneAt_=now;
   sceneFrame_=frame;sceneFlags_=flags;selectionHash_=selectedHash;sceneX_=proj.cameraX;sceneY_=proj.cameraY;sceneWidth_=proj.width;sceneHeight_=proj.height;
   sceneEnemies_=showEnemies;sceneEnemyWidth_=enemyProj.width;sceneEnemyHeight_=enemyProj.height;sceneEnemyOwners_=enemyOwnerSignature_;enemies_.count=enemies_.omitted=0;
   state_.labels=state_.selected=state_.transports=state_.used=state_.capacity=state_.threatCount=state_.crateCount=0;
@@ -199,13 +228,14 @@ public:
   if(objects.size()>=4){bool anyKnown=false;
    for(size_t i=0;i<objects.size()&&i<128;++i){if(objects[i]&&kind(objects[i])>=0){anyKnown=true;break;}}
    if(!anyKnown){probe_={layout::Stage::UnrecognizedUnitLayout,0xA8EC78,uint32_t(objects.size())};
-    enemies_.count=0;
+    enemies_.count=statuses_.count=0;
     idleProductionMask=idleAircraftTick=0;idleAircraftCount=aircraftTotal=0;state_.status=0;state_.labels=state_.typeCount=state_.swCount=0;
     state_.threatCount=state_.crateCount=0;catalogueReady_=false;return state_;}
   }
   for(auto p:objects){int k=p?kind(p):-1;if(k<0||get<int>(p+0x6C)<=0||!get<uint8_t>(p+0x74)||get<uint8_t>(p+0x81)||!get<uint8_t>(p+0x90))continue;
    uint32_t owner=get<uint32_t>(p+0x21C),t=type(p,k);bool local=owner==house,selected=local&&get<uint8_t>(p+0x83);if(selected)++state_.selected;
    if(showEnemies)addEnemy(p,t,k,owner,enemyProj);
+   if(statusOptions_&&statuses_.count<status::Maximum){status::Marker mark;if(readStatus(p,t,k,owner,proj,mark))statuses_.items[statuses_.count++]=mark;}
    int cap=local&&t&&k!=3&&(flags&assist::Capacity)?get<int>(t+0x5E0):0;
    bool capacity=cap>0&&cap<=1024&&(selected||(flags&assist::AllTransports));int used=0;
    if(capacity){used=passengers(p,cap);if(selected){++state_.transports;state_.used+=used;state_.capacity+=cap;}}
@@ -241,7 +271,7 @@ public:
     int sx,sy;if(!project(proj,x*256+128,y*256+128,z,sx,sy))continue;int preview=get<uint8_t>(cell+0x11E);state_.crates[state_.crateCount++]={x,y,sx,sy,preview<19?preview:-1};
    }
   }
-  publishEnemies(house,frame,now,showEnemies);return state_;
+  publishEnemies(house,frame,now,showEnemies);publishStatuses(house,frame,now);return state_;
  }
 };
 }

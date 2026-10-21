@@ -118,6 +118,8 @@ const wchar_t* displayIni[]={L"Capacity",L"Iron",L"Production",L"AllTransports",
 for(int i=0;i<7;++i){check[i]=toggle(300+i,displayNames[i],value(L"Display",displayIni[i],(i<3||i>=6)?1:0)!=0);next();}
 extraControls[FrozenEnabled]=toggle(723,L"冻结剩余时间",extra.frozen);next();
 extraControls[EnemyMarkersEnabled]=toggle(785,L"敌方位置标记（含未揭示区域）",extra.enemyMarkers);next();
+toggle(892,L"蜘蛛寄生标志",extra.parasiteMarker);next();
+toggle(893,L"箱子强化标志",extra.crateBuffMarkers);next();
 toggle(798,L"空闲飞机指示器",extra.idleAircraft);next();
 rateEdit=number(310,L"信息显示刷新率 / 帧每秒",fps,L"5–500");
 marginEdit=number(311,L"文字提示上边距 / 像素",topMargin,L"0–4096");

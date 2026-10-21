@@ -1,0 +1,58 @@
+{
+  "release": "v1.0.30-pre.6",
+  "final_dll_sha256": "0cdaae3c8e79b906e8069fc6bc083b5ba2f27ea8712c16b328a4c3532107689f",
+  "final_exe_sha256": "47029b60f45f6d42a100e992c33315b5575ff86afddfded28e93bc266271c320",
+  "host_checks": [
+    "unit_status.log",
+    "external_reader.log",
+    "tank_bunker.log",
+    "enemy_markers.log",
+    "label_motion.log",
+    "enemy-overlay.log",
+    "settings-ui.log"
+  ],
+  "icon_sizes_game_pixels": {
+    "parasite": [
+      14,
+      14
+    ],
+    "buff": [
+      7,
+      7
+    ],
+    "cell": [
+      60,
+      30
+    ]
+  },
+  "buff_layout_combinations_passed": 57344,
+  "high_refresh_samples": 1000,
+  "logical_frame_scans": 125,
+  "native_field_checks": {
+    "report": "native-fields.json",
+    "games": 2,
+    "stores_per_game": 8
+  },
+  "entry_regressions": [
+    {
+      "report": "entry-3.log",
+      "passed": 22,
+      "dll_sha256": "0cdaae3c8e79b906e8069fc6bc083b5ba2f27ea8712c16b328a4c3532107689f"
+    },
+    {
+      "report": "entry-4.log",
+      "passed": 22,
+      "dll_sha256": "0cdaae3c8e79b906e8069fc6bc083b5ba2f27ea8712c16b328a4c3532107689f"
+    }
+  ],
+  "static_checks": [
+    "architecture.log",
+    "windows-build.log"
+  ],
+  "visual_check": "Inspected preview generated from production pixel masks and geometry; not Windows GDI+ or game rendering.",
+  "limitations": [
+    "No live Windows overlay/game or two-machine netplay validation.",
+    "MOD changes using the same independent multipliers are indistinguishable from crate history.",
+    "Parasite relation uses original engine fields, including other parasite types such as squid."
+  ]
+}

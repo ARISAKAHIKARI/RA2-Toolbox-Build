@@ -1,6 +1,6 @@
 #pragma once
 #include "game_view.h"
-#include "tactical_sampler.h"
+#include "projection.h"
 #include "../../assist/source/cooperative_plan.h"
 #include <unordered_map>
 namespace external {

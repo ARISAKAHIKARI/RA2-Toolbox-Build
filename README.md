@@ -1,3 +1,18 @@
+# RA2 Toolbox 1.0.30-pre.6
+
+[预发布完整包与更新包](https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/releases/tag/v1.0.30-pre.6) · [实现与验证](source/REVIEW-1.0.30-pre.6.md)
+
+- 新增 **蜘蛛寄生标志**：14×14 游戏像素，放在单位当前位置，颜色跟随当前寄生者所属方。
+- 新增 **火力 / 防御 / 速度强化标志**：每个 7×7 游戏像素，放在单位稍下方；三个图标总宽约 25 像素，整组限制在所在的 60×30 菱形格内。
+- 两个显示开关默认开启、分别保存；图标跟随已有高刷覆盖层和窗口缩放，独立于状态文字缩放。
+- 读取独立强化倍率，不把普通三星加成显示成吃箱子；MOD 若通过同一倍率字段强化，也会显示。
+
+文件版本 **1.0.30.5**，Assist **58**、Runtime **4**、入口管理器 **3**。已有安装下载 Update，首次使用下载 Windows 完整包，退出游戏和工具箱后成套更新 EXE/DLL。
+
+字段、布局、设置、编译与入口验证见 [verification/pre6](source/verification/pre6/summary.json)。尚未进行 Windows 完整游戏画面及双机联机验证。
+
+## 历史版本说明
+
 # RA2 Toolbox 1.0.30-pre.5
 
 [预发布完整包与更新包](https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/releases/tag/v1.0.30-pre.5) · [实现与验证](source/REVIEW-1.0.30-pre.5.md)

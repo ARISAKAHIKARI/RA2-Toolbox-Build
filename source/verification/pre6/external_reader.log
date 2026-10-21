@@ -1,0 +1,4 @@
+PASS: 1000 camera samples retain high-rate positions with at most 126 full world enumerations, including viewport exit
+PASS: menu enter/exit preserves epoch, paused battlefield visible, same-frame position/boarding/unloading, recycled/dead object and unreadable display state
+PASS: delayed type-vector growth, metadata completion and empty-to-ready recovery in one process/epoch
+PASS: actual-layout external snapshot, owner colors, iron/frozen timers with cycle guard, unchanged-frame cache, camera shift and invalid coordinates

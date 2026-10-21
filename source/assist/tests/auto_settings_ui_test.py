@@ -129,6 +129,16 @@ int main(){
  assert(!extra.enemyMarkers);fields[785]=1;autoSettingChanged(785,BN_CLICKED);assert(extra.enemyMarkers&&autoSavePending);
  saveMouse();extra.enemyMarkers=false;loadMouse();assert(extra.enemyMarkers);
  fields[785]=0;autoSettingChanged(785,BN_CLICKED);saveMouse();extra.enemyMarkers=true;loadMouse();assert(!extra.enemyMarkers);
+ assert(extra.parasiteMarker&&extra.crateBuffMarkers);
+ for(int id:{892,893}){
+  bool& active=id==892?extra.parasiteMarker:extra.crateBuffMarkers;
+  bool& other=id==892?extra.crateBuffMarkers:extra.parasiteMarker;
+  for(int enabled:{0,1}){
+   bool before=other;autoSavePending=false;fields[id]=enabled;
+   assert(autoSettingChanged(id,BN_CLICKED)&&active==bool(enabled)&&other==before&&autoSavePending);
+   saveMouse();active=!enabled;loadMouse();assert(active==bool(enabled)&&other==before);
+  }
+ }
  autoSavePending=false;timers=saves=syncs=0;timerMs=0;settingsRevision=1;paintRevision=0;
  fields[310]=144;assert(autoSettingChanged(310,EN_CHANGE));assert(fps==144&&saves==0&&autoSavePending&&timerMs==300&&syncs==1);
  fields[311]=42;autoSettingChanged(311,EN_CHANGE);assert(topMargin==42&&saves==0);flushAutoSettings();assert(saves==1&&!autoSavePending);flushAutoSettings();assert(saves==1);
@@ -252,3 +262,4 @@ assert 'if(a==1){toggleOverlay();}' in monitor
 assert 'tabui::displayRequested(hidden,demo||!tabEnabled,manualVisible,tabs.visible())' in monitor
 assert '常驻显示（不依赖 Tab）' in monitor
 print('PASS experimental reveal default/roundtrip and all host gates; independent manual overlay controls retain battlefield gating')
+print('PASS parasite/crate badges default on; independent controls 892/893 apply, autosave and persist both states')

@@ -1,0 +1,15 @@
+{
+  "scope": "Check the documented native field stores in privately supplied game EXEs.\nThis is byte-level evidence, not live game or MOD compatibility validation.",
+  "results": [
+    {
+      "game_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+      "checked_stores": 8,
+      "status": "PASS"
+    },
+    {
+      "game_sha256": "c287d62a4d6a25b547e9339d071dd6e03adcf545699062e478aaeee38c60e89a",
+      "checked_stores": 8,
+      "status": "PASS"
+    }
+  ]
+}

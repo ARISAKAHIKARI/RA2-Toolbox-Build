@@ -1,4 +1,5 @@
 #include "../../external_reader/source/cooperative_reader.h"
+#include "../../external_reader/source/tactical_sampler.h"
 #include <cassert>
 #include <vector>
 #include <cstring>

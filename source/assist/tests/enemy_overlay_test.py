@@ -55,7 +55,7 @@ with tempfile.TemporaryDirectory(prefix='enemy-draw-') as temp:
     cpp=Path(temp)/'draw.cpp';out=Path(temp)/'draw';cpp.write_text(prefix+draw+suffix)
     subprocess.run(['g++','-O2','-std=c++17','-I'+str(R/'assist/source'),str(cpp),'-o',str(out)],check=True)
     subprocess.run([str(out)],check=True)
-assert 'externalSampler.sample(displayNow,flags(),extra.enemyMarkers)' in main
+assert 'externalSampler.sample(displayNow,flags(),extra.enemyMarkers,statusOptions())' in main
 assert 'enemyMotion.update(enemySample,f.frame)' in main and 'enemyMotion.render(renderNow,enemyViews)' in main
 assert 'extra.enemyMarkers' not in main.split('static uint32_t flags(){',1)[1].split('\n',1)[0]
 io=(R/'assist/source/extra_settings_io.h').read_text()

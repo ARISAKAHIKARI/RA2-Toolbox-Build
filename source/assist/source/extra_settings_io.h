@@ -23,6 +23,7 @@ static void loadAdditionalSettings(){
  extra.airWaypoints=value(L"Aircraft",L"ZWaypoints",1)!=0;
  extra.constructionQueue=value(L"Production",L"ReserveNext",1)!=0;
  extra.idleAircraft=value(L"Display",L"IdleAircraftIndicator",1)!=0;
+ extra.parasiteMarker=value(L"Display",L"ParasiteMarker",1)!=0;extra.crateBuffMarkers=value(L"Display",L"CrateBuffMarkers",1)!=0;
  extra.enemyMarkers=value(L"Display",L"EnemyMarkers",0)!=0;
  extra.overrideNative=value(L"Mouse",L"OverrideNative",0)!=0;
  extra.allHotkeys=value(L"Hotkeys",L"ExecuteAllMatches",0)!=0;
@@ -65,6 +66,7 @@ static bool saveAdditionalSettings(){
  write(L"Experimental",L"RefreshStrategy",extra.scrollRefreshMode);write(L"Experimental",L"ScrollRefreshHz",extra.scrollRefreshHz);
  write(L"Experimental",L"InfantryC4",extra.c4Test);write(L"Experimental",L"C4HoldKey",extra.c4Key);write(L"Experimental",L"C4Mouse",extra.c4Mouse);
  write(L"Experimental",L"RenderReveal",extra.renderReveal);write(L"Experimental",L"NativeAirWaypoints",extra.nativeAirWaypoints);write(L"Aircraft",L"ZWaypoints",extra.airWaypoints);write(L"Production",L"ReserveNext",extra.constructionQueue);write(L"Display",L"EnemyMarkers",extra.enemyMarkers);write(L"Display",L"IdleAircraftIndicator",extra.idleAircraft);
+ write(L"Display",L"ParasiteMarker",extra.parasiteMarker);write(L"Display",L"CrateBuffMarkers",extra.crateBuffMarkers);
  write(L"Hotkeys",L"ExecuteAllMatches",extra.allHotkeys);write(L"Mouse",L"OverrideNative",extra.overrideNative);
  for(int i=0;i<pointerinput::MouseCount;++i)write(L"Mouse",pointerinput::mouseSetting(i),extra.mouseButtons[i]);
 
