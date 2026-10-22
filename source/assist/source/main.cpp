@@ -103,7 +103,7 @@ static bool updatingControls=false;
 struct ControlUpdate {bool previous=updatingControls;ControlUpdate(){updatingControls=true;}~ControlUpdate(){updatingControls=previous;}};
 
 // 0=Ra2Tool predefined list, 1=Ra2Tool-style [tech] custom list, 2=legacy all/none.
-static int techProfile=0;static bool techDirectProduce=false;
+static int techProfile=0,techImplementation=0;static bool techDirectProduce=false;
 static techprofile::Lists ra2CustomTech;
 static bool techDefault=true;static std::set<std::string> techExceptions;
 static std::set<std::string> profileExceptions[3];
@@ -375,7 +375,7 @@ static bool save(){++settingsRevision;saveWriteOK=true;for(int i=0;i<12;++i)if(i
  write(L"Display",L"LabelScalePercent",labelScalePercent);write(L"Display",L"ConstructionScalePercent",constructionScalePercent);
  for(int i=0;i<7;++i){const wchar_t*names[]={L"Capacity",L"Iron",L"Production",L"AllTransports",L"Psychic",L"Crates",L"TextPanel"};write(L"Display",names[i],SendMessageW(check[i],BM_GETCHECK,0,0)==BST_CHECKED);}
  write(L"Modes",L"AutoRepair",SendMessageW(repairCheck,BM_GETCHECK,0,0)==BST_CHECKED);write(L"Modes",L"RepairUnrepairable",repairUnrepairable);write(L"Experimental",L"NativeTechProduction",techMode);write(L"Modes",L"RepairMs",repairMs);
- write(L"Tech",L"Profile",techProfile);write(L"Tech",L"DirectProduce",techDirectProduce);write(L"Tech",L"DefaultAllow",techDefault);
+ write(L"Tech",L"Profile",techProfile);write(L"Tech",L"Implementation",techImplementation);write(L"Tech",L"DirectProduce",techDirectProduce);write(L"Tech",L"DefaultAllow",techDefault);
  profileExceptions[techProfile]=techExceptions;
  std::wstring ids=serializeIDs(techExceptions);
  saveWriteOK=(WritePrivateProfileStringW(L"Tech",L"Exceptions",ids.c_str(),path(L"Assist.ini").c_str())!=FALSE)&&saveWriteOK;
@@ -457,6 +457,7 @@ static bool queueCommand(int c,int arg,int arg2,uint32_t match,int retries=0,DWO
  return queued;
 }
 static void send(int command,int arg=0,int arg2=0,int retries=0,bool fromQueue=false,uint32_t requestToken=0){
+ if(command==OpenTech)arg2=techImplementation;
  if(command==RevealMap&&!extra.experimentalReveal){notify(L"请在黑幕绘制方式中选择自动全图。");return;}
  DWORD now=GetTickCount();
  if(game&&!shared)ensureBridge();
@@ -488,7 +489,7 @@ static void send(int command,int arg=0,int arg2=0,int retries=0,bool fromQueue=f
  diag(L"send command="+std::to_wstring(command)+L" match="+std::to_wstring(snap.match)+L" req="+std::to_wstring(shared->request+1)+(command==SelectType?(arg2?L" selection=all":L" selection=visible"):L""));
  if(command==OpenTech){int requested=0;
   for(int i=0;i<MaxTypes;++i){shared->techAllowed[i]=i<snap.typeCount&&techAllowed(snap.types[i]);requested+=shared->techAllowed[i]!=0;}
-  diag(L"Tech request profile="+std::to_wstring(techProfile)+L" selected="+std::to_wstring(requested)+L" match="+std::to_wstring(snap.match));
+  diag(L"Tech request implementation="+std::to_wstring(techImplementation)+L" profile="+std::to_wstring(techProfile)+L" selected="+std::to_wstring(requested)+L" match="+std::to_wstring(snap.match));
  }
  inFlightMatch=commandMatch();inFlightRetries=retries;sentAt=now;
  shared->requestToken=requestToken;shared->command=command;shared->arg=arg;shared->arg2=arg2;
@@ -697,7 +698,7 @@ static bool ensureBridge(){
  }
  ++bridgeAttempts;bridgeRetryAt=now+(bridgeAttempts>=3?30000:2000);
  critical(L"bridge-connect-attempt="+std::to_wstring(bridgeAttempts)+L" pid="+std::to_wstring(pid)+L" thread="+std::to_wstring(gameThread));
- wchar_t n[100];swprintf(n,100,L"Local\\RA2Assist_v059_%lu",pid);
+ wchar_t n[100];swprintf(n,100,L"Local\\RA2Assist_v060_%lu",pid);
  mapping=CreateFileMappingW(INVALID_HANDLE_VALUE,nullptr,PAGE_READWRITE,0,sizeof(Shared),n);
  DWORD mappingError=GetLastError();if(!mapping)return bridgeFailed(L"创建命令共享内存失败",mappingError);
  if(mappingError==ERROR_ALREADY_EXISTS){
@@ -1211,7 +1212,7 @@ static void serviceCommandQueue(DWORD now){
  }
  static DWORD waitLoggedAt=0;
  if(commandQueue.size&&DWORD(now-waitLoggedAt)>=2000){waitLoggedAt=now;logCommandWait();}
- if(commandFresh(now)&&shared->request==shared->ack&&techMode!=bool(snap.techOpen)&&!snap.techError)send(OpenTech,techMode);
+ if(commandFresh(now)&&shared->request==shared->ack&&snap.techOpen!=(techMode?techImplementation+1:0)&&!snap.techError)send(OpenTech,techMode);
 }
 static void publishSuiteDisplay(){
 #ifdef RA2_UNIFIED
@@ -1235,7 +1236,7 @@ static void updateModeStatus(DWORD now){
  SetWindowTextW(GetDlgItem(ui,888),!extra.scrollRefreshMode?L"高刷策略：仅光标（沿用光标页设置）":shared&&shared->scrollRefreshStatus<0?L"高刷策略：接口不兼容，保持原版画面刷新":shared&&shared->scrollRefreshStatus==1?(extra.scrollRefreshMode==2?L"高刷策略：全部 · 实验性功能已启用":L"高刷策略：光标＋拖屏 · 实验性功能已启用"):L"高刷策略：等待游戏前台就绪");
  if(shared&&shared->scrollRefreshStatus==1&&shared->scrollRefreshRateMilli){wchar_t label[160];swprintf(label,160,L"%s · 补充绘制 %.1f Hz · 最长间隔 %.1f ms",extra.scrollRefreshMode==2?L"全部（实验性）":L"光标＋拖屏（实验性）",shared->scrollRefreshRateMilli/1000.0,shared->scrollRefreshMaxGapUs/1000.0);SetWindowTextW(GetDlgItem(ui,888),label);}
  SetWindowTextW(GetDlgItem(ui,813),(L"步兵进入与 C4："+(extra.c4Test&&snap.c4TestStatus==1&&!phase&&infantryEntryResultMatch==commandMatch()&&!infantryEntryResult.empty()?infantryEntryResult:riskText(extra.c4Test,snap.c4TestStatus))).c_str());
- std::wstring progress=L"生产进度：";uint32_t owner=0;
+ std::wstring progress=snap.techOpen==2?L"经典兼容 · 生产进度：":L"生产进度：";uint32_t owner=0;
  if(techMode&&commandFresh(now)&&externalReader.readFresh(0xA83D4C,&owner,4)&&owner>=0x10000){
   const int offsets[]={0x53BC,0x53CC,0x53B0,0x53B4,0x53B8,0x53AC};const wchar_t* names[]={L"建筑",L"防御",L"步兵",L"战车",L"舰船",L"飞机"};
   for(int j=0;j<6;++j){uint32_t f=0,p=0,own=0;int step=0;bool valid=externalReader.readFresh(owner+offsets[j],&f,4);
@@ -1561,6 +1562,7 @@ if(id==991){wchar_t query[128]{};GetWindowTextW(featureSearch,query,128);std::ws
  else if(id==401){BOOL validRate,validMargin;int nextRate=GetDlgItemInt(w,310,&validRate,FALSE),nextMargin=GetDlgItemInt(w,311,&validMargin,FALSE);if(!validRate||!validMargin){notify(L"请输入有效的刷新率和上边距。");return 0;}fps=std::clamp(nextRate,5,500);topMargin=std::clamp(nextMargin,0,4096);SetWindowTextW(rateEdit,std::to_wstring(fps).c_str());SetWindowTextW(marginEdit,std::to_wstring(topMargin).c_str());++paintRevision;save();clockState(foregroundGame(),fps);notify(L"显示设置已保存。");}
  else if(id>=300&&id<307&&ready){++paintRevision;save();}else if(id==412)bindSuper();else if(id==420){techMode=SendDlgItemMessageW(w,420,BM_GETCHECK,0,0)==BST_CHECKED;
   save();if(snap.status==1)send(OpenTech,techMode);}else if(id==421&&HIWORD(wp)==EN_CHANGE&&ready)fillTech();
+ else if(id==896&&HIWORD(wp)==CBN_SELCHANGE&&ready){int selected=int(SendDlgItemMessageW(w,896,CB_GETCURSEL,0,0));techImplementation=selected==1?1:0;save();if(techMode&&snap.status==1)send(OpenTech,1);}
  else if(id>=424&&id<=426){if(shared&&shared->request!=shared->ack){notify(L"上一条指令处理中，请稍后修改清单。");return 0;}int pos=(int)SendMessageW(techList,LB_GETCURSEL,0,0);if(id==424){std::string typeID;
  if(pos>=0&&pos<int(techIndices.size()))typeID=savedTypes.types[techIndices[pos]].id;
  else {wchar_t raw[80]{};GetWindowTextW(techSearch,raw,80);
@@ -1652,6 +1654,7 @@ int WINAPI wWinMain(HINSTANCE h,HINSTANCE,LPWSTR,int show){SetProcessDPIAware();
  int refreshRevision=value(L"Display",L"LabelRefreshVersion",0);fps=visual::initialFPS(value(L"Display",L"FPS",visual::DefaultFPS),refreshRevision);if(refreshRevision<1){write(L"Display",L"FPS",fps);write(L"Display",L"LabelRefreshVersion",1);}topMargin=std::clamp(value(L"Display",L"TopMargin",20),0,4096);
  labelScalePercent=viewport::percent(value(L"Display",L"LabelScalePercent",100));constructionScalePercent=viewport::percent(value(L"Display",L"ConstructionScalePercent",100));
  techProfile=std::clamp(value(L"Tech",L"Profile",value(L"main",L"CustomTech",0)?1:0),0,2);
+ techImplementation=value(L"Tech",L"Implementation",0)==1?1:0;
  // The [tech] format mirrors Ra2Tool.ini; entries are technology TYPE ARRAY indices.
  for(int kind:{7,16,40,3}){
   std::wstring key=std::to_wstring(kind);

@@ -18,7 +18,7 @@
 #include "burst_compute.h"
 #include "dodge_compute.h"
 namespace assist {
-constexpr uint32_t Magic=0x41533130, Version=59;
+constexpr uint32_t Magic=0x41533130, Version=60;
 constexpr uint32_t DataMessage=0x8002, WakeTag=0x41533230;
 constexpr int MaxLabels=2048, MaxSW=32, MaxTypes=512, MaxThreats=128, MaxCrates=256, MaxCrateResults=16;
 enum Command { None, Repair, CombatSelection, EmptyTransports, DamagedSelection, IdleHarvester, IdleEngineer, IdleTransport, ClearBeacons, RevealMap, OpenTech, SelectSuper, Produce, SelectIron, SelectChrono, AutoBoard, SelectType, SmartUnload, CancelAdvanced, SelectVariant, ProduceReserved, AirPathMove, CancelTechProduction, SwitchPlayer, RestorePlayer, Cheer, Taunt, ProduceDeferred };
@@ -38,6 +38,7 @@ struct Super { char id[24]; uint16_t name[40]; int index,ready,frames; };
 struct Type { char id[24]; uint16_t name[40]; int kind,index,naval,cost; };
 struct Snapshot {
  int status,frame,session,width,height,labels,swCount,typeCount,selected,transports,used,capacity;
+ // techOpen: 0=off, 1=current implementation, 2=classic compatibility.
  int factories,busyFactories,pausedFactories,completedFactories,credits,techOpen;
  uint32_t match,noticeSerial; int notice; uint32_t scanMicros;
  Label label[MaxLabels]; Super supers[MaxSW]; Type types[MaxTypes];

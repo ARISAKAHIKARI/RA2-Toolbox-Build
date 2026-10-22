@@ -1,0 +1,32 @@
+{
+  "release": "v1.0.31",
+  "file_version": "1.0.31.0",
+  "final_exe_sha256": "98c60232c327efe34421eaae2677f75ba6d9a6821a36eb3c8d601a4c271686cc",
+  "final_dll_sha256": "9c1984e673d25aa598d34c6f398631110fc18043f6d9296c1b95e8e77307666f",
+  "runtime_reports": {
+    "classic-lbw.json": 15,
+    "classic-zhanwang.json": 15,
+    "existing-lbw.json": 36,
+    "existing-zhanwang.json": 36
+  },
+  "runtime_cases_total": 102,
+  "host_checks": [
+    "constructors.log",
+    "patch-policy.log",
+    "settings-ui.log",
+    "ui-geometry.log",
+    "architecture.log",
+    "windows-build.log"
+  ],
+  "ui_controls": 352,
+  "ui_reachable_checks": 4032,
+  "ui_viewport_sizes": 12,
+  "comparison_target": "0.3.2; user also recalls 0.3.0 may be stable",
+  "recovered_archive_version": "0.3.0, not proven to be 0.3.2",
+  "limitations": [
+    "Synthetic world/Win32/CanBuild/AddCameo substitutes; not a full game or peer simulation.",
+    "Native FindFactory, sidebar prune branch, native event constructor and actual shipped DLL execute.",
+    "No Windows real-game or two-peer netplay verification. Classic is a compatibility candidate, not a proven disconnection fix."
+  ],
+  "flicker_regression": "Native prune keeps allowed cameo across 4s host stall, periodic refresh and mode switch; no duplicate AddCameo or cancellation events in fixture."
+}

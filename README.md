@@ -1,3 +1,15 @@
+# RA2 Toolbox 1.0.31
+
+[预发布完整包与更新包](https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/releases/tag/v1.0.31) · [实现与验证](source/REVIEW-1.0.31.md) · [研究索引](source/research/INDEX.md)
+
+科技全开保留现有方案（默认），新增“实现方式 → 经典兼容”。兼容候选恢复已找回早期源码的工厂/建造上限检查及每秒补齐；工厂忙碌时可能暂时拒绝工具箱追加生产。
+
+用户确认比较目标为 **0.3.2**，并回忆 0.3.0 好像也不掉线；目前仍缺可核实的该版本原包；已找到的 0.3.0 归档不能代替它。本版用于对照，**尚未验证能解决战网掉线**。细节见[研究笔记](source/research/2026-10-22-tech-131.md)。
+
+文件版本 **1.0.31.0**，Assist **60**、Runtime **4**、入口管理器 **3**。退出游戏和工具箱后成套更新 EXE/DLL。已有安装选 Update，首次安装选 Windows。验证范围见[摘要](source/verification/review-131/summary.json)。
+
+## 历史版本说明
+
 # RA2 Toolbox 1.0.30-pre.13
 
 [预发布完整包与更新包](https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/releases/tag/v1.0.30-pre.13) · [实现与验证](source/REVIEW-1.0.30-pre.13.md) · [研究索引](source/research/INDEX.md)

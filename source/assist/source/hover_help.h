@@ -71,6 +71,7 @@ static std::wstring controlHelp(int id,const std::wstring& label){
  case 481:return L"显示运行耗时：在状态栏查看指令响应、读取和画面更新的耗时。";
  case 860:case 865:return L"选择其他玩家单位：当前版本不可用。";
  case 861:case 862:case 863:case 864:return L"切换操控方：当前版本不可用。";
+ case 896:return L"现有方案保持原实现；经典兼容采用早期工厂/建造上限检查，每秒补齐侧栏。两种方案共用统一生产入口；经典兼容用于战网对照，尚未验证不掉线。";
  case 814:case 815:case 420:case 421:case 422:case 423:case 424:case 425:case 426:case 427:case 428:return L"科技生产：启用后补充原生侧栏，也可从列表生产；仍需匹配阵营的生产设施、电力及可用建造数量。实验性功能，联机效果尚未验证。";
  case 761:case 762:return L"指令兼容模式：通常使用标准模式。兼容选项为实验性功能；修改后须重启游戏和工具箱。";
  case 832:case 833:return L"计算模式按功能独立设置，修改后从下一局生效。当前对局继续使用进入本局时的设置。";

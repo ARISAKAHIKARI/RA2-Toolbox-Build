@@ -162,6 +162,8 @@ toggle(810,L"步兵进入与 C4（实验性）",extra.c4Test,20,280);key(811,ext
 note(L"按住配置键点击建筑直接下令：普通步兵执行 C4，工程师占领、间谍潜入。立即替换原有命令，不追加路径点。",44);
 item(L"STATIC",L"步兵进入与 C4：关闭",20,605,813);next();
 toggle(420,L"科技解锁（实验性）",techMode,20,305);techSearch=edit(421,L"",345,280);SendMessageW(techSearch,EM_SETCUEBANNER,TRUE,(LPARAM)L"搜索名称或单位 ID");next();
+label(L"实现方式",20,180);choices(combo(896,220,405,180),{L"现有方案",L"经典兼容"},techImplementation);next();
+note(L"经典兼容沿用已找回的早期工厂/建造上限检查与每秒补齐；保留原生侧栏。用于战网对照，尚未验证不掉线，也未确认等同于 0.3.2。",44);
 techList=item(L"LISTBOX",L"",20,455,422,LBS_NOTIFY|WS_VSCROLL|WS_TABSTOP,152);
 int listTop=rowY;button(423,L"生产所选",488,137);next();button(424,L"切换许可",488,137);next();button(425,L"全选",488,65);button(426,L"清空",560,65);next();button(427,L"兼容预设",488,137);rowY=listTop+164;
 button(428,L"查看许可清单",20,285);button(814,L"取消所选类型的生产",320,305);next();
