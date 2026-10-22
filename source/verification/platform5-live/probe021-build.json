@@ -1,0 +1,252 @@
+{
+  "tool": "RA2MasterProbe",
+  "version": "0.2.1",
+  "platform": "Windows x64",
+  "build": "Zig 0.13.0 x86_64-windows-gnu static",
+  "compiler_warnings": "",
+  "exe_sha256": "159556dfd8cceecaec2c2d3165d4a8ff354c59b17425c17b0b87c4863f7575af",
+  "exe_bytes": 518656,
+  "version_resource": [
+    0,
+    2,
+    1,
+    0
+  ],
+  "imports": [
+    "AcquireSRWLockExclusive",
+    "BCryptCloseAlgorithmProvider",
+    "BCryptCreateHash",
+    "BCryptDestroyHash",
+    "BCryptFinishHash",
+    "BCryptHashData",
+    "BCryptOpenAlgorithmProvider",
+    "CloseHandle",
+    "CreateDirectoryW",
+    "CreateFileW",
+    "CreateToolhelp32Snapshot",
+    "DeleteCriticalSection",
+    "EnterCriticalSection",
+    "EnumChildWindows",
+    "EnumWindows",
+    "FlsAlloc",
+    "FlsGetValue",
+    "FlsSetValue",
+    "GetClassNameW",
+    "GetCurrentProcessId",
+    "GetExitCodeProcess",
+    "GetForegroundWindow",
+    "GetLastError",
+    "GetLocalTime",
+    "GetModuleFileNameW",
+    "GetTickCount64",
+    "GetWindowTextW",
+    "GetWindowThreadProcessId",
+    "InitOnceExecuteOnce",
+    "InitializeCriticalSection",
+    "LeaveCriticalSection",
+    "Module32FirstW",
+    "Module32NextW",
+    "OpenProcess",
+    "Process32FirstW",
+    "Process32NextW",
+    "RaiseException",
+    "ReadFile",
+    "ReadProcessMemory",
+    "ReleaseSRWLockExclusive",
+    "RtlCaptureContext",
+    "RtlLookupFunctionEntry",
+    "RtlRestoreContext",
+    "RtlUnwindEx",
+    "RtlVirtualUnwind",
+    "SetConsoleCP",
+    "SetConsoleOutputCP",
+    "SetUnhandledExceptionFilter",
+    "Sleep",
+    "SleepConditionVariableSRW",
+    "VirtualProtect",
+    "VirtualQuery",
+    "VirtualQueryEx",
+    "WakeAllConditionVariable",
+    "WideCharToMultiByte",
+    "WriteFile",
+    "__C_specific_handler",
+    "___mb_cur_max_func",
+    "__acrt_iob_func",
+    "__p___argc",
+    "__p___argv",
+    "__p__commode",
+    "__p__environ",
+    "__p__fmode",
+    "__pctype_func",
+    "__setusermatherr",
+    "__stdio_common_vfprintf",
+    "__stdio_common_vsprintf",
+    "__stdio_common_vsscanf",
+    "__stdio_common_vswprintf",
+    "__sys_nerr",
+    "_aligned_free",
+    "_aligned_malloc",
+    "_cexit",
+    "_configthreadlocale",
+    "_configure_narrow_argv",
+    "_create_locale",
+    "_crt_atexit",
+    "_errno",
+    "_exit",
+    "_fpreset",
+    "_free_locale",
+    "_initialize_narrow_environment",
+    "_initterm",
+    "_isctype_l",
+    "_iswlower_l",
+    "_mbtowc_l",
+    "_set_app_type",
+    "_set_invalid_parameter_handler",
+    "_set_new_mode",
+    "_strdup",
+    "_strftime_l",
+    "_strtod_l",
+    "_strtoi64_l",
+    "_strtoui64_l",
+    "_wcsicmp",
+    "abort",
+    "calloc",
+    "exit",
+    "fflush",
+    "fgetwc",
+    "fputc",
+    "fputwc",
+    "free",
+    "frexp",
+    "fwrite",
+    "getc",
+    "isxdigit",
+    "localeconv",
+    "malloc",
+    "mbrlen",
+    "mbrtowc",
+    "mbsrtowcs",
+    "memchr",
+    "realloc",
+    "setlocale",
+    "signal",
+    "strcmp",
+    "strerror_s",
+    "strlen",
+    "strtof",
+    "strtoul",
+    "tolower",
+    "toupper",
+    "towlower",
+    "ungetc",
+    "ungetwc",
+    "wcrtomb",
+    "wcrtomb_s",
+    "wcslen"
+  ],
+  "forbidden_mutation_imports": [],
+  "tests": [
+    {
+      "name": "test_diff",
+      "result": "PASS: reversible filtering, unread holes, unstable bytes, boundaries, chunking"
+    },
+    {
+      "name": "test_signature",
+      "result": "PASS signature match/change/unreadable distinction, bounds and rel32 decoding"
+    }
+  ],
+  "disk_sample_sha256": "ebb8b7bd07236c9ba7cbb2ad01bdca82b99faf2fccf08d79f7f60f59c4d77707",
+  "disk_sample_startup_signatures": [
+    {
+      "address": "0x6AA600",
+      "matches": true
+    },
+    {
+      "address": "0x6ABC60",
+      "matches": true
+    },
+    {
+      "address": "0x5F7900",
+      "matches": true
+    },
+    {
+      "address": "0x4F7870",
+      "matches": true
+    },
+    {
+      "address": "0x578080",
+      "matches": true
+    },
+    {
+      "address": "0x4C65E0",
+      "matches": true
+    },
+    {
+      "address": "0x4C6860",
+      "matches": true
+    },
+    {
+      "address": "0x4C6970",
+      "matches": true
+    },
+    {
+      "address": "0x431410",
+      "matches": true
+    },
+    {
+      "address": "0x577D90",
+      "matches": true
+    },
+    {
+      "address": "0x6A6300",
+      "matches": true
+    },
+    {
+      "address": "0x6CC360",
+      "matches": true
+    },
+    {
+      "address": "0x4C6B60",
+      "matches": true
+    },
+    {
+      "address": "0x4A8BF0",
+      "matches": true
+    },
+    {
+      "address": "0x4AC8C0",
+      "matches": true
+    },
+    {
+      "address": "0x4AC660",
+      "matches": true
+    },
+    {
+      "address": "0x48DC90",
+      "matches": true
+    },
+    {
+      "address": "0x6FBFA0",
+      "matches": true
+    },
+    {
+      "address": "0x6D2420",
+      "matches": true
+    },
+    {
+      "address": "0x6D2140",
+      "matches": true
+    },
+    {
+      "address": "0x473460",
+      "matches": true
+    }
+  ],
+  "archive_sha256": "56c62cc01052c3e3ef862d793e07571018cf99aba6c24e4a51f2c31ad42f8a38",
+  "archive_bytes": 215880,
+  "limits": [
+    "Compiled Windows binary and host-side logic tests; no Windows execution in this environment.",
+    "External current reads cannot exclude Runtime self-read failures or earlier transient differences.",
+    "Toolbox remains version 1.0.34; this is diagnostic tooling, not a compatibility fix."
+  ]
+}

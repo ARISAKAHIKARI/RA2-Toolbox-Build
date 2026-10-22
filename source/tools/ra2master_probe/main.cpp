@@ -12,10 +12,13 @@
 #include <iostream>
 #include <sstream>
 #include <stdexcept>
+#include <set>
 #include "diff_core.h"
+#include "signature_check.h"
+#include "../../assist/source/signatures.h"
 
 using probe::Snapshot;
-static const char* VERSION="0.2.0";
+static const char* VERSION="0.2.1";
 static std::wstring output;
 static std::string utf8(const std::wstring& s) {
     if(s.empty())return {};
@@ -187,6 +190,76 @@ static DWORD selectGame() {
     auto line=ask("PID（q 退出）：");DWORD pid=(DWORD)std::stoul(line);for(auto& p:games)if(p.id==pid)return pid;
     throw std::runtime_error("PID 不在 gamemd.exe 列表中。");
 }
+static DWORD selectPlatformGame(){
+    auto all=processes();std::vector<Proc> choices;
+    for(const auto&p:all)if(!_wcsicmp(p.name.c_str(),L"gamemd.exe")||!_wcsicmp(p.name.c_str(),L"gamemd-spawn.exe")||
+       !_wcsicmp(p.name.c_str(),L"gamemd-ares.exe")||!_wcsicmp(p.name.c_str(),L"gamemd.dat")||!_wcsicmp(p.name.c_str(),L"gamemd-spawn.dat"))choices.push_back(p);
+    for(const auto&p:choices)std::cout<<p.id<<"  "<<utf8(p.name)<<std::endl;
+    if(choices.size()==1)return choices[0].id;
+    auto text=ask("输入游戏 PID（任务管理器“详细信息”可查；不是窗口标题）：");
+    const auto id=std::stoul(text);if(!id||id>0xffffffffull||id==GetCurrentProcessId())throw std::runtime_error("PID 无效。");
+    for(const auto&p:all)if(p.id==id)return DWORD(id);
+    throw std::runtime_error("所选 PID 不存在。");
+}
+struct PlatformWindows {DWORD pid;std::ostringstream json;bool comma=false;};
+static BOOL CALLBACK platformWindow(HWND w,LPARAM value){
+    auto&out=*reinterpret_cast<PlatformWindows*>(value);DWORD pid=0,tid=GetWindowThreadProcessId(w,&pid);if(pid!=out.pid)return TRUE;
+    wchar_t title[512]{},name[256]{};GetWindowTextW(w,title,512);GetClassNameW(w,name,256);
+    if(out.comma)out.json<<",";out.comma=true;
+    out.json<<"{\"hwnd\":"<<j(hx(uintptr_t(w)))<<",\"thread\":"<<tid<<",\"title\":"<<j(utf8(title))<<",\"class\":"<<j(utf8(name))<<"}";return TRUE;
+}
+static void dumpPlatform(){
+    say("平台兼容单次采集：保持游戏和工具箱运行，进入出现问题的对局。无需修改大师，也不用四阶段开关测试。");
+    DWORD pid=selectPlatformGame();Handle h(OpenProcess(PROCESS_QUERY_INFORMATION|PROCESS_VM_READ,FALSE,pid));
+    if(!h.h)throw std::runtime_error("无法读取游戏："+winerr()+"。请与游戏使用相同权限运行采集器。");
+    Image im=describe(h,mainModule(pid));
+    if(im.base!=0x400000||im.size<0x780000)throw std::runtime_error("目标不符合本工具的 YR 地址布局，请核对 PID。");
+    std::cout<<"采集目标："<<utf8(im.path)<<"，PID "<<pid<<std::endl;
+    ask("回游戏触发一次失效功能，再回来按回车开始只读采集：");
+    writeText(L"session.json","{\"tool_version\":"+j(VERSION)+",\"mode\":\"platform_startup_signatures\","+imageMeta(im,pid)+"}");
+    auto s=capture(h,im,pid,L"platform");
+    PlatformWindows windows{pid,{},{}};windows.json<<"[";EnumWindows(platformWindow,reinterpret_cast<LPARAM>(&windows));
+    HWND fg=GetForegroundWindow();if(fg)EnumChildWindows(fg,platformWindow,reinterpret_cast<LPARAM>(&windows));windows.json<<"]";
+    uint32_t raw=0;SIZE_T got=0;bool hwndRead=ReadProcessMemory(h,(LPCVOID)0xB73550,&raw,sizeof raw,&got)&&got==sizeof raw;
+    DWORD nativePid=0,nativeTid=hwndRead?GetWindowThreadProcessId((HWND)uintptr_t(raw),&nativePid):0;
+    writeText(L"platform-windows.json","{\"native_hwnd_read\":"+std::string(hwndRead?"true":"false")+",\"native_hwnd\":"+j(hx(raw))+",\"native_owner\":"+std::to_string(nativePid)+",\"native_thread\":"+std::to_string(nativeTid)+",\"windows\":"+windows.json.str()+"}");
+    std::ostringstream report,summary;report<<"{\"tool_version\":"<<j(VERSION)<<",\"base\":"<<j(hx(im.base))<<",\"signatures\":[";
+    summary<<"Platform single capture "<<VERSION<<"\nPID: "<<pid<<"\n";
+    size_t changed=0,unreadable=0;bool comma=false;std::set<uint32_t> savedTargets;
+    for(const auto&sig:Signatures){
+        auto state=probe::checkSignature(s,im.base,sig.address,sig.bytes,sig.length);
+        const char*label=state==probe::SignatureState::Match?"match":state==probe::SignatureState::Changed?"changed":"unreadable";
+        changed+=state==probe::SignatureState::Changed;unreadable+=state==probe::SignatureState::Unreadable;
+        auto entry=readImage(h,sig.address,32);size_t valid=0;while(valid<entry.valid.size()&&entry.valid[valid])++valid;
+        if(comma)report<<",";comma=true;
+        report<<"{\"address\":"<<j(hx(sig.address))<<",\"length\":"<<sig.length<<",\"state\":"<<j(label)
+              <<",\"expected\":"<<j(probe::hex(sig.bytes,sig.length))<<",\"snapshot_actual\":"<<j(probe::hex(s.bytes.data()+sig.address-im.base,sig.length))
+              <<",\"snapshot_valid\":"<<j(probe::hex(s.valid.data()+sig.address-im.base,sig.length))<<",\"entry_later\":"<<j(probe::hex(entry.bytes.data(),entry.bytes.size()))
+              <<",\"snapshot_stable\":"<<j(probe::hex(s.stable.data()+sig.address-im.base,sig.length))
+              <<",\"entry_later_valid\":"<<j(probe::hex(entry.valid.data(),entry.valid.size()));
+        uint32_t target=0;if(probe::relativeJump(sig.address,entry.bytes.data(),valid,target)){
+            report<<",\"rel32_target\":"<<j(hx(target));MEMORY_BASIC_INFORMATION region{};
+            if(VirtualQueryEx(h,(LPCVOID)uintptr_t(target),&region,sizeof region)){
+                report<<",\"target_region\":{\"base\":"<<j(hx(uintptr_t(region.BaseAddress)))<<",\"allocation_base\":"<<j(hx(uintptr_t(region.AllocationBase)))
+                      <<",\"bytes\":"<<region.RegionSize<<",\"state\":"<<region.State<<",\"protection\":"<<region.Protect<<",\"type\":"<<region.Type<<"}";
+                if(region.State==MEM_COMMIT&&readable(region.Protect)&&savedTargets.insert(target).second){
+                    size_t n=std::min<size_t>(65536,uintptr_t(region.BaseAddress)+region.RegionSize-target);
+                    auto code=readImage(h,target,n);std::wstring name=L"platform-target-"+std::to_wstring(target)+L".mem";
+                    writeFile(name,code.bytes.data(),n);writeFile(name+L".valid",code.valid.data(),n);report<<",\"target_file\":"<<j(utf8(name));
+                }
+            }
+        }
+        report<<"}";summary<<hx(sig.address)<<" "<<label<<" expected="<<probe::hex(sig.bytes,sig.length)<<"\n";
+    }
+    report<<"],\"changed\":"<<changed<<",\"unreadable\":"<<unreadable<<",\"warning\":\"External live observations only; no hooks installed, no patch writes, no compatibility authorization. Target fragments are later single reads. Matching signatures do not exclude earlier transient differences or runtime self-read failures.\"}";
+    writeText(L"platform-signatures.json",report.str());
+    // Save executable private regions as supplemental evidence. Direct rel32
+    // targets above are saved independently of this existing bounded sweep.
+    privateCode(h,L"platform",false);
+    summary<<"Changed startup signatures: "<<changed<<"\nUnreadable startup signatures: "<<unreadable<<"\nReturn the entire capture folder; raw memory is not an executable or a patch.\n";
+    writeText(L"platform-summary.txt",summary.str());
+    std::cout<<"启动校验差异 "<<changed<<" 项，不可读 "<<unreadable<<" 项。请把整个结果文件夹压缩回传：\n"<<utf8(output)<<std::endl;
+}
 static void dumpTrainer() {
     auto line=ask("是否采集修改大师运行后的主模块？[回车=是，n=跳过]（用于查看解压后的代码）");
     if(line=="n"||line=="N")return;
@@ -222,11 +295,13 @@ static void setupOutput() {
     swprintf(name,100,L"\\RA2Master-Capture-%04u%02u%02u-%02u%02u%02u-%lu",st.wYear,st.wMonth,st.wDay,st.wHour,st.wMinute,st.wSecond,GetCurrentProcessId());
     output=root+name;if(!CreateDirectoryW(output.c_str(),nullptr))throw std::runtime_error("结果目录创建失败；请先解压到可写文件夹："+winerr());
 }
-int main() {
+int main(int argc,char**argv) {
     SetConsoleOutputCP(CP_UTF8);SetConsoleCP(CP_UTF8);
     try {
         setupOutput();std::cout<<"RA2Master 实机采集工具 v"<<VERSION<<std::endl;
-        if(ask("模式：回车=游戏开关对比；输入 2=只采集修改大师主模块") == "2") {
+        std::string mode=argc==2&&std::string(argv[1])=="--platform"?"3":ask("模式：回车=游戏开关对比；2=修改大师主模块；3=平台兼容单次采集");
+        if(mode=="3"){dumpPlatform();ask("回车关闭窗口：");return 0;}
+        if(mode == "2") {
             dumpTrainer();std::cout<<"结果目录："<<utf8(output)<<std::endl;ask("回车关闭窗口：");return 0;
         }
         struct Feature {const char* id;const char* name;const char* action;};
