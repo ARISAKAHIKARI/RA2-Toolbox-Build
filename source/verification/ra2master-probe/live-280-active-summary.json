@@ -1,0 +1,189 @@
+{
+  "archive_sha256": "4fb04e8e5a25d70c25317b93aa23ced89ab8a8eeb0c416d36797767db6eacd89",
+  "user_report": "Able to select and command enemy units; entered game and interacted between each stage",
+  "network_mode_unspecified": true,
+  "game": {
+    "tool_version": "0.1.0",
+    "target_name_policy": "exact_gamemd.exe",
+    "pid": 29604,
+    "name": "gamemd.exe",
+    "image_base": "0x400000",
+    "image_size": 7942144,
+    "machine": 332,
+    "pe_timestamp": 1004491854,
+    "file_sha256": "7B8A068535D6AF06845EDF95AE829B113D00C02909330E16F197426CD7DB94B6",
+    "sections": [
+      {
+        "name": ".text",
+        "rva": 4096,
+        "size": 4063232,
+        "characteristics": 1610612768
+      },
+      {
+        "name": ".rdata",
+        "rva": 4067328,
+        "size": 200704,
+        "characteristics": 1073741888
+      },
+      {
+        "name": ".data",
+        "rva": 4268032,
+        "size": 3570660,
+        "characteristics": 3221225536
+      },
+      {
+        "name": ".rsrc",
+        "rva": 7839744,
+        "size": 102400,
+        "characteristics": 1073741888
+      }
+    ]
+  },
+  "trainer_sha256": "47d2792b8a322c2aa8009e338e79b84488d6471a53c5709ac8dfa9d19be70ec6",
+  "trainer_memory_sha256": "6594799595d568a1f06863b76c12a6af787a29146f03fc6a2fb747adb2443942",
+  "trainer_pid_slot": 29604,
+  "previous_pid_slot": 9544,
+  "startup_changed_code_bytes": 0,
+  "on": {
+    "schema": 1,
+    "image_base": "0x400000",
+    "mode": "pairwise_observation",
+    "warning": "Correlation only; not a traced writer or proof of multiplayer synchronization",
+    "changes": [
+      {
+        "section": ".text",
+        "executable": true,
+        "rva": "0x10B6F7",
+        "va": "0x50B6F7",
+        "length": 2,
+        "before": "751D",
+        "enabled": "EB17",
+        "context_rva": "0x10B6E7",
+        "context_before": "909090909090909090A138B2A80085C0751D8A81EC01000084C0750D8A81ED010000",
+        "context_enabled": "909090909090909090A138B2A80085C0EB178A81EC01000084C0750D8A81ED010000",
+        "context_before_valid": "01010101010101010101010101010101010101010101010101010101010101010101",
+        "context_enabled_valid": "01010101010101010101010101010101010101010101010101010101010101010101"
+      },
+      {
+        "section": ".text",
+        "executable": true,
+        "rva": "0x2339BB",
+        "va": "0x6339BB",
+        "length": 1,
+        "before": "31",
+        "enabled": "57",
+        "context_rva": "0x2339AB",
+        "context_before": "90909090908B891C020000568B7130E8317DEDFF84C0740EA14C3DA80085C07405",
+        "context_enabled": "90909090908B891C020000568B7130E8577DEDFF84C0740EA14C3DA80085C07405",
+        "context_before_valid": "010101010101010101010101010101010101010101010101010101010101010101",
+        "context_enabled_valid": "010101010101010101010101010101010101010101010101010101010101010101"
+      },
+      {
+        "section": ".text",
+        "executable": true,
+        "rva": "0x2378E1",
+        "va": "0x6378E1",
+        "length": 1,
+        "before": "AB",
+        "enabled": "D1",
+        "context_rva": "0x2378D1",
+        "context_before": "A54CAC0084C9750485C075388B0DACE8AB38EDFF7E2E03C8A1984CAC006A0051B9",
+        "context_enabled": "A54CAC0084C9750485C075388B0DACE8D138EDFF7E2E03C8A1984CAC006A0051B9",
+        "context_before_valid": "010101010101010101010101010101010101010101010101010101010101010101",
+        "context_enabled_valid": "010101010101010101010101010101010101010101010101010101010101010101"
+      }
+    ],
+    "changed_bytes": 4,
+    "emitted_runs": 3,
+    "omitted_runs": 0
+  },
+  "off": {
+    "schema": 1,
+    "image_base": "0x400000",
+    "mode": "pairwise_observation",
+    "warning": "Correlation only; not a traced writer or proof of multiplayer synchronization",
+    "changes": [
+      {
+        "section": ".text",
+        "executable": true,
+        "rva": "0x10B6F7",
+        "va": "0x50B6F7",
+        "length": 2,
+        "before": "EB17",
+        "enabled": "751D",
+        "context_rva": "0x10B6E7",
+        "context_before": "909090909090909090A138B2A80085C0EB178A81EC01000084C0750D8A81ED010000",
+        "context_enabled": "909090909090909090A138B2A80085C0751D8A81EC01000084C0750D8A81ED010000",
+        "context_before_valid": "01010101010101010101010101010101010101010101010101010101010101010101",
+        "context_enabled_valid": "01010101010101010101010101010101010101010101010101010101010101010101"
+      },
+      {
+        "section": ".text",
+        "executable": true,
+        "rva": "0x2339BB",
+        "va": "0x6339BB",
+        "length": 1,
+        "before": "57",
+        "enabled": "31",
+        "context_rva": "0x2339AB",
+        "context_before": "90909090908B891C020000568B7130E8577DEDFF84C0740EA14C3DA80085C07405",
+        "context_enabled": "90909090908B891C020000568B7130E8317DEDFF84C0740EA14C3DA80085C07405",
+        "context_before_valid": "010101010101010101010101010101010101010101010101010101010101010101",
+        "context_enabled_valid": "010101010101010101010101010101010101010101010101010101010101010101"
+      },
+      {
+        "section": ".text",
+        "executable": true,
+        "rva": "0x2378E1",
+        "va": "0x6378E1",
+        "length": 1,
+        "before": "D1",
+        "enabled": "AB",
+        "context_rva": "0x2378D1",
+        "context_before": "A54CAC0084C9750485C075388B0DACE8D138EDFF7E2E03C8A1984CAC006A0051B9",
+        "context_enabled": "A54CAC0084C9750485C075388B0DACE8AB38EDFF7E2E03C8A1984CAC006A0051B9",
+        "context_before_valid": "010101010101010101010101010101010101010101010101010101010101010101",
+        "context_enabled_valid": "010101010101010101010101010101010101010101010101010101010101010101"
+      }
+    ],
+    "changed_bytes": 4,
+    "emitted_runs": 3,
+    "omitted_runs": 0
+  },
+  "coverage": [
+    {
+      "stage": "00-clean",
+      "tick_ms": 2635937,
+      "read_bytes": 7942144,
+      "stable_bytes": 7942109,
+      "image_bytes": 7942144
+    },
+    {
+      "stage": "01-off",
+      "tick_ms": 2658906,
+      "read_bytes": 7942144,
+      "stable_bytes": 7942108,
+      "image_bytes": 7942144
+    },
+    {
+      "stage": "02-control-on",
+      "tick_ms": 2676625,
+      "read_bytes": 7942144,
+      "stable_bytes": 7942086,
+      "image_bytes": 7942144
+    },
+    {
+      "stage": "03-control-off",
+      "tick_ms": 2684687,
+      "read_bytes": 7942144,
+      "stable_bytes": 7942117,
+      "image_bytes": 7942144
+    }
+  ],
+  "all_section_reversible_bytes": 18,
+  "private_executable_regions": [],
+  "third_change_verified_instruction_boundary": false,
+  "third_change_matching_call_in_other_samples": "0x637E40",
+  "event_houseindex_traced": false,
+  "multiplayer_tested_by_assistant": false
+}

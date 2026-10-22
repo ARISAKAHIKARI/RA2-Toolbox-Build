@@ -1,0 +1,278 @@
+{
+  "evidence_level": "composite instruction fixture; not live-game replay",
+  "sample_checks": [
+    {
+      "sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+      "captured_house_suffix_matches": true,
+      "captured_index_helper_prefix_matches": true,
+      "anomalous_context_mismatches_vs_private_pe": [
+        "0x6378e0",
+        "0x6378e1",
+        "0x6378e2",
+        "0x6378e3",
+        "0x6378e4"
+      ],
+      "same_five_bytes_at_valid_call": "0x637E40",
+      "not_same_game_sha_as_capture": true
+    },
+    {
+      "sha256": "c287d62a4d6a25b547e9339d071dd6e03adcf545699062e478aaeee38c60e89a",
+      "captured_house_suffix_matches": true,
+      "captured_index_helper_prefix_matches": true,
+      "anomalous_context_mismatches_vs_private_pe": [
+        "0x6378e0",
+        "0x6378e1",
+        "0x6378e2",
+        "0x6378e3",
+        "0x6378e4"
+      ],
+      "same_five_bytes_at_valid_call": "0x637E40",
+      "not_same_game_sha_as_capture": true
+    }
+  ],
+  "cases": [
+    {
+      "sample_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+      "patch": "baseline",
+      "game_mode": 0,
+      "foreign": false,
+      "controlled_result": 1,
+      "index_helper_result": 0,
+      "owner_and_current_player_unchanged": true,
+      "passed": true
+    },
+    {
+      "sample_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+      "patch": "baseline",
+      "game_mode": 0,
+      "foreign": true,
+      "controlled_result": 0,
+      "index_helper_result": 1,
+      "owner_and_current_player_unchanged": true,
+      "passed": true
+    },
+    {
+      "sample_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+      "patch": "baseline",
+      "game_mode": 3,
+      "foreign": false,
+      "controlled_result": 1,
+      "index_helper_result": 0,
+      "owner_and_current_player_unchanged": true,
+      "passed": true
+    },
+    {
+      "sample_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+      "patch": "baseline",
+      "game_mode": 3,
+      "foreign": true,
+      "controlled_result": 0,
+      "index_helper_result": 1,
+      "owner_and_current_player_unchanged": true,
+      "passed": true
+    },
+    {
+      "sample_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+      "patch": "global_only",
+      "game_mode": 0,
+      "foreign": false,
+      "controlled_result": 1,
+      "index_helper_result": 0,
+      "owner_and_current_player_unchanged": true,
+      "passed": true
+    },
+    {
+      "sample_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+      "patch": "global_only",
+      "game_mode": 0,
+      "foreign": true,
+      "controlled_result": 1,
+      "index_helper_result": 0,
+      "owner_and_current_player_unchanged": true,
+      "passed": true
+    },
+    {
+      "sample_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+      "patch": "global_only",
+      "game_mode": 3,
+      "foreign": false,
+      "controlled_result": 1,
+      "index_helper_result": 0,
+      "owner_and_current_player_unchanged": true,
+      "passed": true
+    },
+    {
+      "sample_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+      "patch": "global_only",
+      "game_mode": 3,
+      "foreign": true,
+      "controlled_result": 1,
+      "index_helper_result": 0,
+      "owner_and_current_player_unchanged": true,
+      "passed": true
+    },
+    {
+      "sample_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+      "patch": "global_and_index_helper",
+      "game_mode": 0,
+      "foreign": false,
+      "controlled_result": 1,
+      "index_helper_result": 0,
+      "owner_and_current_player_unchanged": true,
+      "passed": true
+    },
+    {
+      "sample_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+      "patch": "global_and_index_helper",
+      "game_mode": 0,
+      "foreign": true,
+      "controlled_result": 1,
+      "index_helper_result": 1,
+      "owner_and_current_player_unchanged": true,
+      "passed": true
+    },
+    {
+      "sample_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+      "patch": "global_and_index_helper",
+      "game_mode": 3,
+      "foreign": false,
+      "controlled_result": 1,
+      "index_helper_result": 0,
+      "owner_and_current_player_unchanged": true,
+      "passed": true
+    },
+    {
+      "sample_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+      "patch": "global_and_index_helper",
+      "game_mode": 3,
+      "foreign": true,
+      "controlled_result": 1,
+      "index_helper_result": 1,
+      "owner_and_current_player_unchanged": true,
+      "passed": true
+    },
+    {
+      "sample_sha256": "c287d62a4d6a25b547e9339d071dd6e03adcf545699062e478aaeee38c60e89a",
+      "patch": "baseline",
+      "game_mode": 0,
+      "foreign": false,
+      "controlled_result": 1,
+      "index_helper_result": 0,
+      "owner_and_current_player_unchanged": true,
+      "passed": true
+    },
+    {
+      "sample_sha256": "c287d62a4d6a25b547e9339d071dd6e03adcf545699062e478aaeee38c60e89a",
+      "patch": "baseline",
+      "game_mode": 0,
+      "foreign": true,
+      "controlled_result": 0,
+      "index_helper_result": 1,
+      "owner_and_current_player_unchanged": true,
+      "passed": true
+    },
+    {
+      "sample_sha256": "c287d62a4d6a25b547e9339d071dd6e03adcf545699062e478aaeee38c60e89a",
+      "patch": "baseline",
+      "game_mode": 3,
+      "foreign": false,
+      "controlled_result": 1,
+      "index_helper_result": 0,
+      "owner_and_current_player_unchanged": true,
+      "passed": true
+    },
+    {
+      "sample_sha256": "c287d62a4d6a25b547e9339d071dd6e03adcf545699062e478aaeee38c60e89a",
+      "patch": "baseline",
+      "game_mode": 3,
+      "foreign": true,
+      "controlled_result": 0,
+      "index_helper_result": 1,
+      "owner_and_current_player_unchanged": true,
+      "passed": true
+    },
+    {
+      "sample_sha256": "c287d62a4d6a25b547e9339d071dd6e03adcf545699062e478aaeee38c60e89a",
+      "patch": "global_only",
+      "game_mode": 0,
+      "foreign": false,
+      "controlled_result": 1,
+      "index_helper_result": 0,
+      "owner_and_current_player_unchanged": true,
+      "passed": true
+    },
+    {
+      "sample_sha256": "c287d62a4d6a25b547e9339d071dd6e03adcf545699062e478aaeee38c60e89a",
+      "patch": "global_only",
+      "game_mode": 0,
+      "foreign": true,
+      "controlled_result": 1,
+      "index_helper_result": 0,
+      "owner_and_current_player_unchanged": true,
+      "passed": true
+    },
+    {
+      "sample_sha256": "c287d62a4d6a25b547e9339d071dd6e03adcf545699062e478aaeee38c60e89a",
+      "patch": "global_only",
+      "game_mode": 3,
+      "foreign": false,
+      "controlled_result": 1,
+      "index_helper_result": 0,
+      "owner_and_current_player_unchanged": true,
+      "passed": true
+    },
+    {
+      "sample_sha256": "c287d62a4d6a25b547e9339d071dd6e03adcf545699062e478aaeee38c60e89a",
+      "patch": "global_only",
+      "game_mode": 3,
+      "foreign": true,
+      "controlled_result": 1,
+      "index_helper_result": 0,
+      "owner_and_current_player_unchanged": true,
+      "passed": true
+    },
+    {
+      "sample_sha256": "c287d62a4d6a25b547e9339d071dd6e03adcf545699062e478aaeee38c60e89a",
+      "patch": "global_and_index_helper",
+      "game_mode": 0,
+      "foreign": false,
+      "controlled_result": 1,
+      "index_helper_result": 0,
+      "owner_and_current_player_unchanged": true,
+      "passed": true
+    },
+    {
+      "sample_sha256": "c287d62a4d6a25b547e9339d071dd6e03adcf545699062e478aaeee38c60e89a",
+      "patch": "global_and_index_helper",
+      "game_mode": 0,
+      "foreign": true,
+      "controlled_result": 1,
+      "index_helper_result": 1,
+      "owner_and_current_player_unchanged": true,
+      "passed": true
+    },
+    {
+      "sample_sha256": "c287d62a4d6a25b547e9339d071dd6e03adcf545699062e478aaeee38c60e89a",
+      "patch": "global_and_index_helper",
+      "game_mode": 3,
+      "foreign": false,
+      "controlled_result": 1,
+      "index_helper_result": 0,
+      "owner_and_current_player_unchanged": true,
+      "passed": true
+    },
+    {
+      "sample_sha256": "c287d62a4d6a25b547e9339d071dd6e03adcf545699062e478aaeee38c60e89a",
+      "patch": "global_and_index_helper",
+      "game_mode": 3,
+      "foreign": true,
+      "controlled_result": 1,
+      "index_helper_result": 1,
+      "owner_and_current_player_unchanged": true,
+      "passed": true
+    }
+  ],
+  "passed": 24,
+  "multiplayer_tested": false,
+  "event_houseindex_traced": false
+}
