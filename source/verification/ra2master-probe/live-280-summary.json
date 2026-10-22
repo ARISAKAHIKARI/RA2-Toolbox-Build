@@ -1,0 +1,69 @@
+{
+  "capture_archive_sha256": "bf32cb43eb1a0c797f91f0a01793c48988d1229d4d2b4f6125d87edac8839d8d",
+  "user_280_archive_sha256": "ccd770fcb2d8c1ab8fc3acfe90fb6544b7eb9798205ad59ec81fd14e31d053ea",
+  "trainer_file_sha256": "47d2792b8a322c2aa8009e338e79b84488d6471a53c5709ac8dfa9d19be70ec6",
+  "trainer_memory_sha256": "d8e54412de4c4ea28cc484db1c44ecd4908f588a77ed2ad887f10a2871df19be",
+  "game_file_sha256": "7b8a068535d6af06845edf95ae829b113d00c02909330e16f197426cd7db94b6",
+  "game_image_base": "0x400000",
+  "game_image_size": 7942144,
+  "trainer_image_size": 14958592,
+  "capture_stages": [
+    {
+      "stage": "00-clean",
+      "tick_ms": 638437,
+      "read_bytes": 7942144,
+      "stable_bytes": 7942117,
+      "image_bytes": 7942144
+    },
+    {
+      "stage": "01-off",
+      "tick_ms": 1174671,
+      "read_bytes": 7942144,
+      "stable_bytes": 7942119,
+      "image_bytes": 7942144
+    },
+    {
+      "stage": "02-control-on",
+      "tick_ms": 1181625,
+      "read_bytes": 7942144,
+      "stable_bytes": 7941990,
+      "image_bytes": 7942144
+    },
+    {
+      "stage": "03-control-off",
+      "tick_ms": 1185750,
+      "read_bytes": 7942144,
+      "stable_bytes": 7942122,
+      "image_bytes": 7942144
+    }
+  ],
+  "protector_signature": "VMProtect(2.0.3-2.13)",
+  "trainer_start_code_change": {
+    "game_va": "0x577B3A",
+    "old": "74",
+    "new": "75"
+  },
+  "toggle_code_changes": 0,
+  "reversible_data_bytes": 8,
+  "private_executable_regions_clean": 0,
+  "private_executable_regions_control_on": 0,
+  "separate_sell_stages_present": false,
+  "controlall_config_key_va": "0x4A2EA4",
+  "controlall_config_ui_id": "0x16026C49",
+  "config_associated_callback_va": "0x403964",
+  "protected_jump_target": "0xB4342A",
+  "synthetic_callback_stop": {
+    "pc": "0x672AD3",
+    "missing_address": "0x0153B914",
+    "reason": "read outside captured main image; missing module-external state, plausibly heap"
+  },
+  "real_control_or_network_effect_verified": false,
+  "captured_game_pid": 29604,
+  "captured_trainer_pid": 28900,
+  "trainer_read_write_pid_global": {
+    "va": "0x631C84",
+    "value": 9544,
+    "matches_captured_game_pid": false,
+    "scope": "unprotected selected-object remote read/write path; protected ControlAll path unresolved"
+  }
+}
