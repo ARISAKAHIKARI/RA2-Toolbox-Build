@@ -2,11 +2,6 @@
 // Original click, mission constructor and received-event functions stay intact.
 #include "input_feedback.h"
 static uint32_t pointerFeedback=0;
-static bool pointerCommitPending=false;static uint32_t pointerCommitMatch=0,pointerCommitHouse=0;
-static bool pointerCommit(){
- intent::EventOrder o{};o.domain=vanilla::Domain::NoOptions;o.player=get<int>(lastHouse+0x30);o.eventKind=vanilla::EventType::PlanCommit;
- return submitConstructed(o);
-}
 static uint32_t pointerSeen,pointerCancelSeen,pointerTarget,pointerTargetID,pointerCell;
 static int pointerGroundZ;static int pointerAt;static bool pointerActive;
 static uint32_t pointerTokens[pointerinput::MaxSources];
@@ -14,7 +9,7 @@ static uint8_t pointerDone[pointerinput::MaxSources],pointerBatchFollow[pointeri
 static uint32_t pointerBatchTickets[pointerinput::MaxSources],pointerBatchRequest;static bool pointerBatchValid;
 static pointerinput::Intent pointerBatchCapture;
 static void resetPointerInput(){
- pointerCommitPending=false;pointerFeedback=0;pointerBatchValid=false;pointerBatchRequest=0;pointerActive=false;pointerSeen=pointerCancelSeen=pointerTarget=pointerTargetID=pointerCell=0;pointerAt=0;
+ pointerFeedback=0;pointerBatchValid=false;pointerBatchRequest=0;pointerActive=false;pointerSeen=pointerCancelSeen=pointerTarget=pointerTargetID=pointerCell=0;pointerAt=0;
  memset(pointerTokens,0,sizeof pointerTokens);memset(pointerDone,0,sizeof pointerDone);
 }
 static void pointerFinish(int result){
@@ -49,13 +44,13 @@ static bool pointerLocation(const pointerinput::Intent&i){
  }
  pointerGroundZ=coord.z;pointerCell=uint32_t(cell.y*1000+cell.x);pointerTarget=object;pointerTargetID=object?get<uint32_t>(object+0x10):0;return true;
 }
-static bool pointerAppendEntry(uint32_t p,int mission,uint32_t building){
- // Explicit user experiment: serialize the planning order without normal
+static bool pointerDirectEntry(uint32_t p,int mission,uint32_t building){
+ // Explicit user experiment: serialize a direct order without normal
  // mission feasibility, allegiance, immobilization or automation arbitration.
  // The unified constructor/queue still owns packet format and transport.
  uint32_t id=get<uint32_t>(p+0x10);DWORD now=sampleClock(sh);int frame=get<int>(0xA8ED84);
  auto order=intent::mega(get<int>(lastHouse+0x30),id,mission,mission==7?0:building,mission==7?0:0x34,building,0x34,0,0);
- order.appendWaypoint=true;if(!submitConstructed(order))return false;
+ if(!submitConstructed(order))return false;
  showOrderLines(p);releaseAutoOwner(id);actorFrameArbiter.begin(match,frame);
  actorFrameArbiter.record(id,manualVersions.get(id),taskarbiter::Owner::Generic);
  gateway::Receipt receipt{};gateway::Intent intent{match,now,id,building,manualVersions.get(id)};
@@ -64,12 +59,6 @@ static bool pointerAppendEntry(uint32_t p,int mission,uint32_t building){
  return true;
 }
 static void pointerTick(){
- // A queued append must not lose its commit when the next click/cancel arrives.
- if(pointerCommitPending){
-  if(pointerCommitMatch!=match||pointerCommitHouse!=lastHouse)pointerCommitPending=false;
-  else if(get<bool>(0x87F7E8+0x11B3))pointerCommitPending=false; // native key release commits
-  else if(!nativeReady()||!pointerCommit())return;else pointerCommitPending=false;
- }
  auto&b=sh->pointer;uint32_t request=b.request;MemoryBarrier();
  if(pointerCancelSeen!=b.cancelSerial){pointerCancelSeen=b.cancelSerial;
   if(pointerActive&&pointerSeen==request&&request!=b.ack)pointerFinish(-7);
@@ -89,8 +78,8 @@ static void pointerTick(){
    bool location=continuation?(tactical>=0x10000&&i.width==get<int>(0xA8EB84)&&i.height==get<int>(0xA8EB88)&&i.cameraX==get<int>(tactical+0xB0)&&i.cameraY==get<int>(tactical+0xB4)):pointerLocation(i);
    // Z sets DisplayClass::PlanningMode. AirWaypoint only records a validated
    // point for the host; rejecting it here would reject its own activation key.
-   // C4Test appends a native node; other orders keep the exclusion. Do not clear or
-   // patch PlanningMode, and do not send a move while recording the point.
+   // C4Test explicitly issues a direct order even with a key bound to Z.
+   // Other orders keep the exclusion; never change native PlanningMode here.
    const bool nativePlanningBlocked=get<bool>(0x87F7E8+0x11B3)&&i.operation!=pointerinput::AirWaypoint&&i.operation!=pointerinput::C4Test;
    if((shiftUnsupported&&i.operation!=pointerinput::PlayerSelect&&i.operation!=pointerinput::PlayerOrder&&i.operation!=pointerinput::C4Test)||nativePlanningBlocked||!location){pointerFinish(-4);return;}
   }
@@ -152,16 +141,13 @@ static void pointerTick(){
   if(!p||p!=i.sources[n].pointer||!own(p,lastHouse)||(i.operation!=pointerinput::C4Test&&(get<bool>(p+0x1C8)||get<uint32_t>(p+0x11C)))||
      (!follow&&manualVersions.get(i.sources[n].id)!=pointerTokens[n])){pointerDone[n]=1;continue;}
   if(i.operation==pointerinput::C4Test){
-   // Append a native planning node; the original event receiver owns tokens.
+   // One direct native order per infantry, independent of path editing mode.
    if(!sh->c4Test||kind(p)!=1){pointerDone[n]=1;continue;}
-   const bool editing=get<bool>(0x87F7E8+0x11B3);const int cost=editing?1:2;
-   if(submitted+cost>limit||outgoingRoom()<cost){++remaining;continue;}
+   if(submitted>=limit||outgoingRoom()<=0){++remaining;continue;}
    uint32_t type=typeOf(p,1);
    int mission=get<bool>(type+0xEC3)?8:get<bool>(type+0xEBE)?7:17;
-   if(pointerAppendEntry(p,mission,pointerTargetID)){
+   if(pointerDirectEntry(p,mission,pointerTargetID)){
     ++b.accepted;if(!pointerFeedback)pointerFeedback=p;++submitted;pointerDone[n]=1;
-    if(!editing){pointerCommitPending=true;pointerCommitMatch=match;pointerCommitHouse=lastHouse;
-     if(pointerCommit()){pointerCommitPending=false;++submitted;}else return;}
    }else ++remaining;
    continue;
   }

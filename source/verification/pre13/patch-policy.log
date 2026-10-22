@@ -1,0 +1,2 @@
+PASS: seven-site allowlist, shape/length checks, install/restore and sticky foreign conflict; retired sites denied
+PASS experimental_patch_policy

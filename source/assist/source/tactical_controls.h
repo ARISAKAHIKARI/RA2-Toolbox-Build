@@ -159,7 +159,7 @@ item(L"STATIC",L"高刷策略：仅光标",20,605,888);next();
 anywhereCheck=toggle(476,L"扩展建筑放置范围（实验性）",buildAnywhereMode);next();
 item(L"STATIC",L"功能状态：等待连接",20,605,807,0,44);next(44);
 toggle(810,L"步兵进入与 C4（实验性）",extra.c4Test,20,280);key(811,extra.c4Key,310,188,true);choices(combo(812,510,115,180),{L"停用",L"中键",L"侧键 1",L"侧键 2",L"右键",L"左键"},extra.c4Mouse==6?5:extra.c4Mouse);next();
-note(L"按住配置键点击建筑：普通步兵执行 C4，工程师占领、间谍潜入。追加原版路径点并自动提交；路径编辑中随原版提交。",44);
+note(L"按住配置键点击建筑直接下令：普通步兵执行 C4，工程师占领、间谍潜入。立即替换原有命令，不追加路径点。",44);
 item(L"STATIC",L"步兵进入与 C4：关闭",20,605,813);next();
 toggle(420,L"科技解锁（实验性）",techMode,20,305);techSearch=edit(421,L"",345,280);SendMessageW(techSearch,EM_SETCUEBANNER,TRUE,(LPARAM)L"搜索名称或单位 ID");next();
 techList=item(L"LISTBOX",L"",20,455,422,LBS_NOTIFY|WS_VSCROLL|WS_TABSTOP,152);

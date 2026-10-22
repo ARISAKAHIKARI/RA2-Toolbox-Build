@@ -389,16 +389,6 @@
       "api": "ReadProcessMemory"
     },
     {
-      "file": "shared/source/game_entry_manager.cpp",
-      "line": 59,
-      "api": "VirtualProtect"
-    },
-    {
-      "file": "shared/source/game_entry_manager.cpp",
-      "line": 62,
-      "api": "VirtualProtect"
-    },
-    {
       "file": "shared/source/host_game_input.h",
       "line": 251,
       "api": "SendInput"
@@ -427,6 +417,16 @@
       "file": "shared/source/host_game_input.h",
       "line": 43,
       "api": "LoadLibraryW"
+    },
+    {
+      "file": "shared/source/game_entry_manager.cpp",
+      "line": 59,
+      "api": "VirtualProtect"
+    },
+    {
+      "file": "shared/source/game_entry_manager.cpp",
+      "line": 62,
+      "api": "VirtualProtect"
     },
     {
       "file": "external_reader/source/process_reader.h",
@@ -529,8 +529,8 @@
     "assist/source/player_test_bridge.h": "9f0563bf5e4a0de6ba67f53094b757af7f9e7784f293662dcd5682d901a43826",
     "assist/source/player_test_policy.h": "d7f3734b7139a46d14bef30a0513d8759d001f0b5f907392c4cfeb70391e542f",
     "assist/source/pointer_batch.h": "94106eea6e9542b61aae90a797f5c5f978f4bd2fb508774ddabbfa7a6d6d91f4",
-    "assist/source/pointer_bridge.h": "47ed420c779dd4e1f326036ad063bc3b2b2a4ee0e4997f740f3cf65e6324c554",
-    "assist/source/pointer_host.h": "18ed625083766ba52fbe1a8e7d62e89d46bceafcd4fe221e52171ab62914143c",
+    "assist/source/pointer_bridge.h": "70824e3fdfa4164229fe303d6e654747b806ef3b556c8bf24396cc71d3c2ee2c",
+    "assist/source/pointer_host.h": "8105c6f9a358095dd0e658f5ff7e3422cfd43a2ffa4a5f83a9632e5434c249a0",
     "assist/source/pointer_intent.h": "48bd8a4714816581c5d95bb329c5870979c08c61ba51589c574305a92456f2bb",
     "assist/source/protocol.h": "ef933bac8019486132377fda972964cb59efbbe47553adc9c590b358b2d3a9e5",
     "assist/source/radar_layout.h": "c67b2e34e9dfcb10213b39020c0d0822d66bd9372df3825508f808d84f216e3e",
@@ -555,7 +555,7 @@
     "assist/source/social_bridge.h": "9bd2b149f853c2d9528d47cd6637b6af999ec37039ae08c2d219cc07c8d0efda",
     "assist/source/status_badges.h": "a38349d2a5f555bb6007c9fdb5632e667b467dcdef9591bb1697f7692723c4e7",
     "assist/source/status_draw.h": "b468bce40b6822f511e6089e2952487b03a6716fd5c8c921b1217f65f2944418",
-    "assist/source/tactical_controls.h": "55981fdcc99011b09a925b68cd87fdc5a60475598359e42175c4890883c78475",
+    "assist/source/tactical_controls.h": "d8a28fab81ff071eebe7b2be654912f9608357a483a3f79ce0ffde1bed41a081",
     "assist/source/tactical_decisions.h": "dd6dc31d55fb7d20d962570e05182557c69729e0cdd2d61f56af351c4b4977cb",
     "assist/source/tech_profile.h": "a9bcd3be36b4cf7fff6f7408b7af92508d69ae6cba92ebf9e832bfd7577735a0",
     "assist/source/type_bindings_ui.h": "ba75793d32020f7a1f81faa3fd0073dab1cab761923ef5a5217069af24b982bd",
@@ -629,7 +629,7 @@
     "shared/source/modern_ui.h": "87dbd41d11f857c1440813a62ab07f87c984aad77c5992f9e62a7932e2dd4335",
     "shared/source/patch_context.h": "2914972e6d8ce51acdc98dabd93d37f2cf03a627c62edb3bbcbb6d14546a7608",
     "shared/source/precise_clock.h": "84accf4522c9867dc762c6e6afef96db7d78d8a5cd65b8386d007fd5020b80cf",
-    "shared/source/release_version.h": "a0bd3f3108e629e9022953866f1471060094078b09cdaa08ba7f6f1e413ac732",
+    "shared/source/release_version.h": "b3d1be169e62d02174f5cb0ecebdd7a282fec9539cef5781f5d59a1c8ab44c83",
     "shared/source/runtime_fault.h": "b4ddf16db57b0cfc1b022b286af5a5df3034f75d892abb27df8d0dcca0653818",
     "shared/source/runtime_fp_scope.h": "9b6e42ce25f028a71705dfd5f42f0f89865ae523f73f05c34349786f755646bc",
     "shared/source/runtime_protocol.h": "eb480104be375885b5370692c3c90d76409fd32f2d7f95415e7df6344693a56b",

@@ -1,0 +1,33 @@
+{
+  "release": "v1.0.30-pre.13",
+  "file_version": "1.0.30.12",
+  "final_exe_sha256": "a45c5b11b5502a13518a41a294f49ade9c4283e547de991f8eddbe548e263a39",
+  "final_dll_sha256": "ca6cea11424886a07b7ac81ad1eb6aca69302a18948506e5501f9a7502d6d4af",
+  "runtime_reports": {
+    "infantry-lbw.json": 77,
+    "infantry-zhanwang.json": 77,
+    "direct-lbw.json": 8,
+    "direct-zhanwang.json": 8,
+    "c4-lbw.json": 64,
+    "c4-zhanwang.json": 64
+  },
+  "runtime_cases_per_sample": 149,
+  "runtime_cases_total": 298,
+  "host_checks": [
+    "constructors.log",
+    "patch-policy.log",
+    "settings-ui.log",
+    "ui-geometry.log",
+    "architecture.log",
+    "windows-build.log"
+  ],
+  "ui_controls": 350,
+  "ui_reachable_checks": 4008,
+  "ui_viewport_sizes": 12,
+  "limitations": [
+    "Synthetic world, Win32 and selected native-interface substitutes; not a full game or peer simulation.",
+    "Existing routes are constructed by the native planning receiver and cancelled by native 6386E0 using the shipped direct packet. Full ordinary mission receiver and locomotion are not simulated.",
+    "Native charge/timer/expiry code executed; final damage and animation are observed sinks.",
+    "No Windows visual/audio or peer netplay validation; C4 capability patches change local simulation judgments."
+  ]
+}

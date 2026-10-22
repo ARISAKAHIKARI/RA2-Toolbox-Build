@@ -23,13 +23,13 @@ static void servicePointer(){
  if(ack!=box.ack){ack=box.ack;MemoryBarrier();
   if(box.intent.operation==pointerinput::C4Test){
    infantryEntryResultMatch=box.intent.match;
-   infantryEntryResult=L"路径点已入队 "+std::to_wstring(std::max(0,box.accepted))+L" 个";
+   infantryEntryResult=L"命令已入队 "+std::to_wstring(std::max(0,box.accepted))+L" 个";
    if(box.result==-8)infantryEntryResult+=L"；未点中建筑";
    else if(box.result==-4)infantryEntryResult+=L"；点击位置或对象已变化";
    else if(box.result==-7)infantryEntryResult+=L"；输入已过期或被新操作取消";
    else if(box.result<0)infantryEntryResult+=L"；提交未完成";
    else if(box.rejected)infantryEntryResult+=L"；跳过 "+std::to_wstring(box.rejected)+L" 个非己方有效步兵";
-   notify(L"步兵强制进建筑："+infantryEntryResult);
+   notify(L"步兵进入与 C4："+infantryEntryResult);
   }
   if(box.intent.operation==pointerinput::AirWaypoint)airway::capture(box.intent,box);
   if(pointerMatches.active()){

@@ -1,0 +1,47 @@
+{
+  "scope": "Shipped DLL direct orders plus the original route-cancellation function.\nNative planning receiver creates an existing route for replacement cases; the\noriginal 6386E0 then consumes the emitted direct packet. Synthetic world, heap,\nnetwork-ID and audio interfaces; no full mission receiver/pathfinding/netplay.\n",
+  "game_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+  "dll_sha256": "ca6cea11424886a07b7ac81ad1eb6aca69302a18948506e5501f9a7502d6d4af",
+  "results": [
+    {
+      "case": "ordinary",
+      "status": "PASS",
+      "direct_mission": 17
+    },
+    {
+      "case": "engineer",
+      "status": "PASS",
+      "direct_mission": 8
+    },
+    {
+      "case": "spy",
+      "status": "PASS",
+      "direct_mission": 7
+    },
+    {
+      "case": "c4",
+      "status": "PASS",
+      "direct_mission": 17
+    },
+    {
+      "case": "replace_existing",
+      "status": "PASS",
+      "direct_mission": 17
+    },
+    {
+      "case": "busy",
+      "status": "PASS",
+      "direct_mission": 17
+    },
+    {
+      "case": "native_key",
+      "status": "PASS",
+      "direct_mission": 17
+    },
+    {
+      "case": "native_key_existing",
+      "status": "PASS",
+      "direct_mission": 17
+    }
+  ]
+}
