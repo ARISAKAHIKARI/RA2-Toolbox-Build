@@ -1,0 +1,148 @@
+{
+  "scope": "Original event receiver and unit QueueMission in a synthetic world.\n\nRuns original receiver/mission code; ID resolution, radio housekeeping and\ntarget/destination/Sell endpoints are explicit test doubles. This proves\ndispatch and queued unit state, not movement, completed sales or netplay.\n",
+  "game_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+  "dll_sha256": "9c1984e673d25aa598d34c6f398631110fc18043f6d9296c1b95e8e77307666f",
+  "results": [
+    {
+      "case": "direct_unit_queue",
+      "status": "PASS",
+      "calls": [
+        [
+          "QueueMission",
+          553960992,
+          2,
+          0
+        ]
+      ],
+      "outlist_count": 0,
+      "dolist_count": 0
+    },
+    {
+      "case": "move_header_local",
+      "status": "PASS",
+      "calls": [
+        [
+          "QueueMission",
+          553960992,
+          2,
+          0
+        ],
+        [
+          "SetTarget",
+          553960992,
+          0
+        ],
+        [
+          "SetDestination",
+          553960992,
+          553952800,
+          1
+        ]
+      ],
+      "outlist_count": 0,
+      "dolist_count": 0
+    },
+    {
+      "case": "move_header_owner",
+      "status": "PASS",
+      "calls": [
+        [
+          "QueueMission",
+          553960992,
+          2,
+          0
+        ],
+        [
+          "SetTarget",
+          553960992,
+          0
+        ],
+        [
+          "SetDestination",
+          553960992,
+          553952800,
+          1
+        ]
+      ],
+      "outlist_count": 0,
+      "dolist_count": 0
+    },
+    {
+      "case": "attack_header_local",
+      "status": "PASS",
+      "calls": [
+        [
+          "QueueMission",
+          553960992,
+          1,
+          0
+        ],
+        [
+          "SetTarget",
+          553960992,
+          553936416
+        ],
+        [
+          "SetDestination",
+          553960992,
+          0,
+          1
+        ]
+      ],
+      "outlist_count": 0,
+      "dolist_count": 0
+    },
+    {
+      "case": "attack_header_owner",
+      "status": "PASS",
+      "calls": [
+        [
+          "QueueMission",
+          553960992,
+          1,
+          0
+        ],
+        [
+          "SetTarget",
+          553960992,
+          553936416
+        ],
+        [
+          "SetDestination",
+          553960992,
+          0,
+          1
+        ]
+      ],
+      "outlist_count": 0,
+      "dolist_count": 0
+    },
+    {
+      "case": "dead_actor",
+      "status": "PASS",
+      "calls": [],
+      "outlist_count": 0,
+      "dolist_count": 0
+    },
+    {
+      "case": "sell_header_local",
+      "status": "PASS",
+      "calls": [],
+      "outlist_count": 0,
+      "dolist_count": 0
+    },
+    {
+      "case": "sell_header_owner",
+      "status": "PASS",
+      "calls": [
+        [
+          "Sell",
+          553952800,
+          4294967295
+        ]
+      ],
+      "outlist_count": 0,
+      "dolist_count": 0
+    }
+  ]
+}
