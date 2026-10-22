@@ -1,3 +1,15 @@
+# RA2 Toolbox 1.0.32
+
+[预发布完整包与更新包](https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/releases/tag/v1.0.32) · [实现与验证](source/REVIEW-1.0.32.md) · [研究索引](source/research/INDEX.md)
+
+恢复「操控其他玩家单位」与「出售其他玩家建筑」两个实验性入口，首次升级默认打开，之后分别保存选择。Alt＋左键选择、Alt＋右键下令；出售模式按增强出售键点击其他玩家建筑。继续使用统一入口和原版事件队列，不改变对象所属方或当前玩家。
+
+切换玩家仍然禁用，并在执行层拒绝切换请求。1.0.31 的科技全开两种实现保留。
+
+文件版本 **1.0.32.0**，Assist **60**、Runtime **4**、入口管理器 **3**。两份样本共 **90** 项受控回归及设置、补丁策略、架构和 PE/ABI 检查通过；**尚未完成 Windows 实机或双机联机验证**。见[验证摘要](source/verification/review-132/summary.json)。退出游戏和工具箱后成套更新；已有安装选 Update，首次安装选 Windows。
+
+## 历史版本说明
+
 # RA2 Toolbox 1.0.31
 
 [预发布完整包与更新包](https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/releases/tag/v1.0.31) · [实现与验证](source/REVIEW-1.0.31.md) · [研究索引](source/research/INDEX.md)

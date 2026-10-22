@@ -53,7 +53,7 @@ assert C.c_int32(s.result).value==-11 and s.data.techOpen==0
 assert bytes(m.u.mem_read(0x6AA781,5))==b'\x90'*5
 assert bytes(m.u.mem_read(0x6A97D2,5))==m.game.get_data(0x6A97D2-0x400000,5)
 record('tech_conflict_group_rollback')
-# Disabled player capability: even explicitly requested flags/commands are rejected.
+# Switching stays disabled even while manual control is enabled.
 for mode in (0,3,4,5):
  for command in (23,24):
   m,s=fixture(mode);s.switchPlayerEnabled=s.controlAll=1;write(m,s)
@@ -61,26 +61,26 @@ for mode in (0,3,4,5):
   s=issue(m,command,m.enemy,102)
   assert C.c_int32(s.result).value<0 and m.r(0xa83d4c)==m.house
   assert before==(bytes(m.u.mem_read(m.house,0x200)),bytes(m.u.mem_read(m.enemy,0x200)))
-  assert s.playerCount==0 and s.playerControlStatus==0 and s.data.hookInstalled==0
-  for site in (0x6FBFB3,0x6FBFEF,0x5F45D2,0x5F45DF,0x5F45EF):assert bytes(m.u.mem_read(site,5))==m.game.get_data(site-0x400000,5)
-  record(f'player_disabled_{mode}_{command}')
+  assert s.playerCount==2 and s.playerControlStatus==1 and s.data.hookInstalled==5
+  for site in (0x6FBFB3,0x6FBFEF,0x5F45D2,0x5F45DF,0x5F45EF):assert bytes(m.u.mem_read(site,5))!=m.game.get_data(site-0x400000,5)
+  record(f'player_switch_disabled_{mode}_{command}')
 # Explicit player order gateway, SP must preserve actor owner instead of local house.
 for mode in (0,3,4,5):
- for enabled,neutral in ((True,False),(False,False),(True,True)):
+ for enabled,neutral,attack in ((True,False,False),(False,False,False),(True,True,False),(True,False,True),(False,False,True)):
   m,s=fixture(mode);s.controlAll=enabled;s.externalDisplay=1;write(m,s);s=m.hook()
   if neutral:m.u.mem_write(m.r(m.enemy+0x34)+0x24,b'Neutral\0')
   # Stub screen hit testing only; use actual gateway, constructor and transport.
   def click():
    sp=m.u.reg_read(UC_X86_REG_ESP);arg=lambda n:m.r(sp+4+n*4)
-   m.u.mem_write(arg(1),struct.pack('<hh',20,30));m.u.mem_write(arg(2),struct.pack('<iii',5120,7680,0));m.w(arg(3),0);m.ret(0,6)
+   m.u.mem_write(arg(1),struct.pack('<hh',20,30));m.u.mem_write(arg(2),struct.pack('<iii',5120,7680,0));m.w(arg(3),m.building if attack else 0);m.ret(0,6)
   addhook(m,0x692300,click)
   i=s.pointer.intent;i.match=s.data.match;i.tick=m.clock;i.frame=m.r(0xa8ed84);i.house=m.house;i.operation=9;i.width=800;i.height=600;i.x=20;i.y=30;i.count=1;i.sources[0].id=13;i.sources[0].pointer=m.enemyUnit
   s.pointer.request+=1;write(m,s);s=m.hook()
-  n=m.r(0x8b41f8)+m.r(0xa802c8);assert n==0,(mode,enabled,neutral,n,s.pointer.result,s.pointer.accepted)
+  n=m.r(0x8b41f8)+m.r(0xa802c8);assert n==int(enabled and not neutral),(mode,enabled,neutral,n,s.pointer.result,s.pointer.accepted)
   if n:
-   at=0x8b4204 if mode in (0,5) else 0xa802d4;packet=bytes(m.u.mem_read(at,111));assert packet[2]==1 and packet[0]==4 and packet[12]==2,packet.hex()
+   at=0x8b4204 if mode in (0,5) else 0xa802d4;packet=bytes(m.u.mem_read(at,111));assert packet[2]==1 and packet[0]==4 and packet[12]==(1 if attack else 2),packet.hex()
   assert m.r(m.enemyUnit+0x21c)==m.enemy and m.r(0xa83d4c)==m.house
-  record(f'player_order_{mode}_{enabled}_{neutral}')
+  record(f'player_order_{mode}_{enabled}_{neutral}_{attack}')
 # Cross-player sale, gate and target class.
 for mode in (0,3,4,5):
  for enabled in (False,True):
@@ -90,22 +90,30 @@ for mode in (0,3,4,5):
    m.u.mem_write(arg(1),struct.pack('<hh',20,30));m.u.mem_write(arg(2),struct.pack('<iii',5120,7680,0));m.w(arg(3),m.building);m.ret(0,6)
   addhook(m,0x692300,click)
   i=s.pointer.intent;i.match=s.data.match;i.tick=m.clock;i.frame=m.r(0xa8ed84);i.house=m.house;i.operation=3;i.bindings=64|2048|8192;i.width=800;i.height=600;i.x=20;i.y=30
-  s.pointer.request+=1;write(m,s);s=m.hook();n=m.r(0x8b41f8)+m.r(0xa802c8);assert n==0,(mode,enabled,n,s.pointer.result)
+  s.pointer.request+=1;write(m,s);s=m.hook();n=m.r(0x8b41f8)+m.r(0xa802c8);assert n==int(enabled),(mode,enabled,n,s.pointer.result)
   if n:
    at=0x8b4204 if mode in (0,5) else 0xa802d4;packet=bytes(m.u.mem_read(at,111));assert packet[0]==0x16 and packet[2]==1 and packet[7:12]==struct.pack('<IB',12,0x34)
   assert m.r(m.building+0x21c)==m.enemy
   record(f'foreign_sale_{mode}_{enabled}')
-# Exact manager policy also blocks all five retired selection CALL sites.
-m,s=fixture();s.controlAll=1;write(m,s);s=m.hook();assert s.playerControlStatus==0 and s.data.hookInstalled==0
-for site in (0x6FBFB3,0x6FBFEF,0x5F45D2,0x5F45DF,0x5F45EF):
- req=m.request(0);req.bindThread=1
- result,lease=m.manager_call(req);assert result==1
- patch=m.request(2);patch.token=lease.token;patch.address=site;patch.length=5
- original=bytes(m.game.get_data(site-0x400000,5));target=m.manager_export
- changed=b'\xe8'+struct.pack('<i',target-site-5)
- for i in range(5):patch.before[i]=original[i];patch.after[i]=changed[i]
- assert m.manager_call(patch)[0]==-5
- lease.operation=1;assert m.manager_call(lease)[0]==1
- assert bytes(m.u.mem_read(site,5))==original
-record('player_selection_sites_denied_by_manager')
+# Selection patches are bounded CALL sites, restore on toggle, and leave
+# the common owner predicate and incoming receiver unchanged.
+sites=(0x6FBFB3,0x6FBFEF,0x5F45D2,0x5F45DF,0x5F45EF)
+m,s=fixture();s.controlAll=1;write(m,s);s=m.hook()
+assert s.playerControlStatus==1 and s.data.hookInstalled==5
+for site in sites:
+ assert m.u.mem_read(site,1)==b'\xe8'
+ target=site+5+struct.unpack('<i',m.u.mem_read(site+1,4))[0]
+ m.run(target,(),m.enemy);assert m.u.reg_read(UC_X86_REG_EAX)&255==1
+for at,n in ((0x50b6f0,32),(0x4c6cb0,32),(0x4c6f3b,19)):
+ assert bytes(m.u.mem_read(at,n))==m.game.get_data(at-0x400000,n)
+s.controlAll=0;write(m,s);s=m.hook()
+assert s.playerControlStatus==0 and s.data.hookInstalled==0
+for site in sites:assert bytes(m.u.mem_read(site,5))==m.game.get_data(site-0x400000,5)
+record('player_selection_calls_install_execute_restore')
+# A platform conflict rolls back the whole group and preserves foreign bytes.
+m,s=fixture();m.u.mem_write(sites[2],b'\x90'*5);s.controlAll=1;write(m,s);s=m.hook()
+assert C.c_int32(s.playerControlStatus).value==-2 and s.data.hookInstalled==0
+for site in sites:
+ assert bytes(m.u.mem_read(site,5))==(b'\x90'*5 if site==sites[2] else m.game.get_data(site-0x400000,5))
+record('player_selection_conflict_group_rollback')
 Path(a.output).write_text(json.dumps({'scope':__doc__,'dll_sha256':hashlib.sha256(Path(a.dll).read_bytes()).hexdigest(),'real_game':False,'real_netplay':False,'results':rows},indent=2)+'\n')

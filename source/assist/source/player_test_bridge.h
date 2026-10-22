@@ -52,11 +52,12 @@ static void restorePlayerContext(){
  playerContext={};
 }
 static void playerMaintenance(){
- if(playerContext.original){if(!samePlayerWorld()){playerContext={};playerSidebarPending=false;}else{playerContext.frame=get<int>(0xA8ED84);if(!playertest::Available||!sh||sh->stop||!sh->switchPlayerEnabled)restorePlayerContext();}}
+ if(playerContext.original){if(!samePlayerWorld()){playerContext={};playerSidebarPending=false;}else{playerContext.frame=get<int>(0xA8ED84);if(!playertest::SwitchAvailable||!sh||sh->stop||!sh->switchPlayerEnabled)restorePlayerContext();}}
 }
 static int switchPlayerContext(uint32_t target,uint32_t expectedID=0){
+ if(!playertest::SwitchAvailable)return -4;
  if(!target){if(!playerContext.original)return -4;restorePlayerContext();return playerContextChanged?1:-7;}
- if(!playertest::Available||!sh||!sh->switchPlayerEnabled||!playableHouse(target)||get<uint32_t>(target+0x10)!=expectedID)return -4;
+ if(!sh||!sh->switchPlayerEnabled||!playableHouse(target)||get<uint32_t>(target+0x10)!=expectedID)return -4;
  if(target==get<uint32_t>(0xA83D4C))return 1;
  if(!playerContext.original){Vec houses=vec(0xA80228,32);if(!houses.count||!playableHouse(lastHouse))return -4;
   auto&c=playerContext;c.original=lastHouse;c.applied=lastHouse;c.items=houses.items;c.count=houses.count;c.scenario=get<uint32_t>(0xA8B230);c.frame=get<int>(0xA8ED84);

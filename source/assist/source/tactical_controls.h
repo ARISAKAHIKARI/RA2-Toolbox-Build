@@ -169,14 +169,14 @@ int listTop=rowY;button(423,L"生产所选",488,137);next();button(424,L"切换�
 button(428,L"查看许可清单",20,285);button(814,L"取消所选类型的生产",320,305);next();
 note(L"加入原生生产侧栏；仍需匹配阵营的生产设施、电力及可用建造数量。",44);
 item(L"STATIC",L"生产进度：等待游戏",20,605,815,0,65);next(65);
-EnableWindow(toggle(860,L"选择其他玩家单位（暂不可用）",false),FALSE);next();
+toggle(860,L"操控其他玩家单位（实验性）",extra.controlAll);next();
 
-item(L"STATIC",L"跨玩家操作：当前版本不可用",20,605,865);next();
+item(L"STATIC",L"跨玩家操控：等待连接",20,605,865);next();
 EnableWindow(toggle(861,L"切换操控方（暂不可用）",false),FALSE);next();
 EnableWindow(combo(862,20,305,240),FALSE);EnableWindow(button(863,L"切换至所选玩家",340,285),FALSE);next();
 EnableWindow(button(864,L"恢复原操控方",20,285),FALSE);next();
 
-extraControls[SellEnemyEnabled]=toggle(722,L"出售其他玩家建筑（暂不可用）",false);EnableWindow(extraControls[SellEnemyEnabled],FALSE);next();
+extraControls[SellEnemyEnabled]=toggle(722,L"出售其他玩家建筑（实验性）",extra.sellEnemy);next();
 
 toggle(788,L"优先执行增强指令",extra.overrideNative);next();
 note(L"用于增强操作与普通地面命令冲突的情况；仅对支持的鼠标操作生效。",44);

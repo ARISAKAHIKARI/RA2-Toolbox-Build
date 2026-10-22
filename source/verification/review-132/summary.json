@@ -1,0 +1,28 @@
+{
+  "release": "v1.0.32",
+  "file_version": "1.0.32.0",
+  "final_exe_sha256": "34a4879b6e3cf768a35e768bbd1791919eb08c72d64ba7c287fd7db30dcecb93",
+  "final_dll_sha256": "cb847ec550605e09f11ca81c9ffe741cc5bd23f97e26755282b97d45fe66e473",
+  "runtime_reports": {
+    "player-lbw.json": 45,
+    "player-zhanwang.json": 45
+  },
+  "runtime_cases_total": 90,
+  "host_checks": [
+    "settings-ui.log",
+    "patch-policy.log",
+    "architecture.log",
+    "windows-build.log"
+  ],
+  "features": [
+    "Independent manual player control and Sell restored; default on for first migration, persisted afterward",
+    "Five selection-only CALL sites managed as a conflict/rollback group",
+    "Current-player switching disabled at UI and Runtime; forged requests rejected",
+    "Native constructors and existing event queue transport retained; no local direct-executor backend"
+  ],
+  "limitations": [
+    "Synthetic worlds and Win32 substitutes; not full Windows game execution.",
+    "Native constructors and shipped DLL execute; hit testing and selected interfaces use fixtures.",
+    "No two-peer netplay verification; admission/queue submission is not proof of remote execution."
+  ]
+}

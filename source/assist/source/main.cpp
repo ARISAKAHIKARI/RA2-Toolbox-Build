@@ -1506,7 +1506,7 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
  case WM_HOTKEY:handleHotkey(wp,lp);return 0;
  case WM_COMMAND:{int id=LOWORD(wp);
  if(id==863||id==864){
-  if(!playertest::Available){notify(L"切换操控方暂不可用。");return 0;}
+  if(!playertest::SwitchAvailable){notify(L"切换操控方暂不可用。");return 0;}
   if(!shared||!commandFresh(GetTickCount())||shared->request!=shared->ack){notify(L"请等待游戏就绪后再切换。");return 0;}
   if(id==864)send(RestorePlayer);
   else {int row=int(SendDlgItemMessageW(w,862,CB_GETCURSEL,0,0));

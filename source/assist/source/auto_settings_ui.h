@@ -16,9 +16,14 @@ static bool autoSettingChanged(int id,int notification){
  if(id>=9000&&id<9000+compute::Count&&select){int mode=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));uint32_t bit=1u<<(id-9000);
   if(mode==1)computeRequested|=bit;else computeRequested&=~bit;changedSetting();syncAdditional();notify(L"计算模式已自动保存，下一局生效；当前对局继续使用原设置。");return true;
  }
- if((id==860||id==861||id==722)&&notification==BN_CLICKED){
-  extra.controlAll=extra.switchPlayerEnabled=extra.sellEnemy=false;
-  for(int blocked:{860,861,722})SendMessageW(GetDlgItem(ui,blocked),BM_SETCHECK,BST_UNCHECKED,0);
+ if((id==860||id==722)&&notification==BN_CLICKED){
+  bool on=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;
+  if(id==860)extra.controlAll=on;else extra.sellEnemy=on;
+  pointerMatches.clear();changedSetting();syncAdditional();return true;
+ }
+ if(id==861&&notification==BN_CLICKED){
+  extra.switchPlayerEnabled=false;
+  SendMessageW(GetDlgItem(ui,861),BM_SETCHECK,BST_UNCHECKED,0);
   pointerMatches.clear();changedSetting();syncAdditional();notify(L"此功能暂不可用。");return true;
  }
  if(id==850&&select){int next=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));if(next>=0&&next<=3){minimapPosition=next;changedSetting();}return true;}

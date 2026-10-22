@@ -1,0 +1,2 @@
+PASS architecture boundaries: 207 source files; 138 host includes / 119 Runtime includes; read, input, injection, patch, event and frame-grant ownership
+NOTE: legacy protocol slots remain stable; burst scheduling is retired; UI-bound fixed locations are intentional; cross-feature snapshots are not atomic; no real-game/netplay proof

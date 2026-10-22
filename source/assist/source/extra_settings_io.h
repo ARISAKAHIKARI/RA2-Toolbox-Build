@@ -43,7 +43,7 @@ static void loadAdditionalSettings(){
  extra.enterKey=value(L"Cooperative",L"EnterHoldKey",18)&65535;extra.airKey1=value(L"Cooperative",L"AirHoldKey1",17)&65535;extra.airKey2=value(L"Cooperative",L"AirHoldKey2",0)&65535;
 
  extra.diskKey=value(L"SpecialClick",L"DiskHoldKey",17)&65535;extra.sellKey=value(L"SpecialClick",L"SellHoldKey",17)&65535;
- extra.disk=value(L"SpecialClick",L"DiskPrimary",0)!=0;extra.sellDrained=value(L"SpecialClick",L"SellDrained",0)!=0;extra.sellVehicles=value(L"SpecialClick",L"SellVehicles",0)!=0;extra.sellEnemy=false;extra.controlAll=false;extra.switchPlayerEnabled=false;
+ extra.disk=value(L"SpecialClick",L"DiskPrimary",0)!=0;extra.sellDrained=value(L"SpecialClick",L"SellDrained",0)!=0;extra.sellVehicles=value(L"SpecialClick",L"SellVehicles",0)!=0;const bool commandsConfigured=value(L"Experimental",L"PlayerCommandOptionsVersion",0)>=1;extra.sellEnemy=playertest::Available&&(!commandsConfigured||value(L"SpecialClick",L"SellEnemyBuildings",1)!=0);extra.controlAll=playertest::Available&&(!commandsConfigured||value(L"Experimental",L"ControlAll",1)!=0);extra.switchPlayerEnabled=false;
  extra.frozen=value(L"Display",L"Frozen",1)!=0;extra.variantKey=value(L"TypeSelection",L"VariantKey",'T'|(2<<8))&65535;
  extra.defaults=cooperative::bounded({value(L"AircraftQuota",L"First",1),value(L"AircraftQuota",L"Second",2),value(L"AircraftQuota",L"Maximum",0)});
  wchar_t entries[32768]{};GetPrivateProfileSectionW(L"AircraftQuotaOverrides",entries,32768,path(L"Assist.ini").c_str());
@@ -81,6 +81,7 @@ static bool saveAdditionalSettings(){
  write(L"Cooperative",L"AdvancedEnter",extra.enter);write(L"Cooperative",L"AircraftSpread",extra.air);write(L"Cooperative",L"EnterHoldKey",extra.enterKey);write(L"Cooperative",L"AirHoldKey1",extra.airKey1);write(L"Cooperative",L"AirHoldKey2",extra.airKey2);
  write(L"SpecialClick",L"DiskHoldKey",extra.diskKey);write(L"SpecialClick",L"SellHoldKey",extra.sellKey);
  write(L"SpecialClick",L"DiskPrimary",extra.disk);write(L"SpecialClick",L"SellDrained",extra.sellDrained);write(L"SpecialClick",L"SellVehicles",extra.sellVehicles);write(L"SpecialClick",L"SellEnemyBuildings",playertest::Available&&extra.sellEnemy);
+ write(L"Experimental",L"PlayerCommandOptionsVersion",1);write(L"Experimental",L"ControlAll",playertest::Available&&extra.controlAll);write(L"Experimental",L"SwitchPlayerEnabled",0);
  write(L"Display",L"Frozen",extra.frozen);write(L"TypeSelection",L"VariantKey",extra.variantKey);
  write(L"AircraftQuota",L"First",extra.defaults.first);write(L"AircraftQuota",L"Second",extra.defaults.second);write(L"AircraftQuota",L"Maximum",extra.defaults.maximum);
  std::wstring block;for(const auto&entry:targetQuotas){const auto&q=entry.second;block+=wide(entry.first.c_str())+L"="+std::to_wstring(q.first)+L","+std::to_wstring(q.second)+L","+std::to_wstring(q.maximum);block.push_back(0);}block.push_back(0);if(block.size()==1)block.push_back(0);
@@ -117,7 +118,7 @@ static void syncRefreshRate(){if(!shared)return;
 #endif
  shared->scrollRefreshMode=extra.scrollRefreshMode;
 }
-static void syncAdditional(){if(!playertest::Available)extra.controlAll=extra.switchPlayerEnabled=extra.sellEnemy=false;if(!shared)return;syncRefreshRate();shared->dodgeEnabled=extra.dodgeEnabled;shared->dodgeMode=extra.dodgeMode;shared->burstEnabled=shared->burstHoldEnabled=shared->burstHeld=0;shared->missileEnabled=extra.missileDefense;shared->missileScanHz=extra.missileScanHz;shared->controlAll=extra.controlAll;shared->switchPlayerEnabled=extra.switchPlayerEnabled;shared->computeRequested=computeRequested;shared->advancedScanHz=advancedScanHz;shared->advancedPriority=advancedTargetPriority;shared->c4Test=extra.c4Test;shared->renderReveal=extra.renderReveal;shared->loadMode=extra.loadMode;shared->loadRadius=extra.loadRadius;shared->enterKey=extra.enterKey;shared->airKey1=extra.airKey1;shared->airKey2=extra.airKey2;
+static void syncAdditional(){if(!playertest::Available)extra.controlAll=extra.sellEnemy=false;if(!playertest::SwitchAvailable)extra.switchPlayerEnabled=false;if(!shared)return;syncRefreshRate();shared->dodgeEnabled=extra.dodgeEnabled;shared->dodgeMode=extra.dodgeMode;shared->burstEnabled=shared->burstHoldEnabled=shared->burstHeld=0;shared->missileEnabled=extra.missileDefense;shared->missileScanHz=extra.missileScanHz;shared->controlAll=extra.controlAll;shared->switchPlayerEnabled=extra.switchPlayerEnabled;shared->computeRequested=computeRequested;shared->advancedScanHz=advancedScanHz;shared->advancedPriority=advancedTargetPriority;shared->c4Test=extra.c4Test;shared->renderReveal=extra.renderReveal;shared->loadMode=extra.loadMode;shared->loadRadius=extra.loadRadius;shared->enterKey=extra.enterKey;shared->airKey1=extra.airKey1;shared->airKey2=extra.airKey2;
  static uint32_t publishedSettings=~0u;
  if(!shared->quotaConfigSeq||publishedSettings!=settingsRevision){publishedSettings=settingsRevision;
   InterlockedIncrement(&shared->quotaConfigSeq);auto&c=shared->quotaConfig;c.defaults=extra.defaults;c.count=0;
