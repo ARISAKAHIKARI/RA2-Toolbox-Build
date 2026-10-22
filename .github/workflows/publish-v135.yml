@@ -1,0 +1,74 @@
+name: Publish RA2 Toolbox v1.0.35
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/publish-v135.yml'
+      - 'packages/v1.0.35/**'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: publish-v135
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify compiled deliverables
+        run: |
+          python3 - <<'PY'
+          import json,pathlib,hashlib,zipfile
+          root=pathlib.Path('packages/v1.0.35')
+          manifest=json.loads((root/'manifest.json').read_text())
+          assert manifest['version']=='1.0.35'
+          expected={'RA2-Toolbox-v1.0.35-Update.zip','RA2-Toolbox-v1.0.35-Source.zip'}
+          assert {a['name'] for a in manifest['assets']}==expected
+          for asset in manifest['assets']:
+              p=root/asset['name']
+              assert p.stat().st_size==asset['bytes']
+              assert hashlib.sha256(p.read_bytes()).hexdigest()==asset['sha256']
+              with zipfile.ZipFile(p) as z:
+                  assert z.testzip() is None
+                  if p.name.endswith('-Update.zip'):
+                      assert set(z.namelist())=={'RA2Toolbox.exe','GameRuntime.dll'}
+                  for name,digest in asset.get('files',{}).items():
+                      assert hashlib.sha256(z.read(name)).hexdigest()==digest
+          PY
+      - name: Publish verified update and source
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag='v1.0.35'
+          if gh release view "$tag" --json isDraft > release-state.json 2>/dev/null; then
+            draft=$(python3 -c 'import json; print(str(json.load(open("release-state.json"))["isDraft"]).lower())')
+          else
+            gh release create "$tag" --target "$GITHUB_SHA" --draft --latest=true --title 'RA2 Toolbox v1.0.35 — Platform Startup Compatibility' --notes-file packages/v1.0.35/RELEASE_NOTES.md
+            draft=true
+          fi
+          if [ "$draft" = true ]; then
+            gh release upload "$tag" packages/v1.0.35/RA2-Toolbox-v1.0.35-Update.zip packages/v1.0.35/RA2-Toolbox-v1.0.35-Source.zip --clobber
+          fi
+          mkdir -p remote-check
+          gh release download "$tag" --pattern '*.zip' --dir remote-check
+          python3 - <<'PY'
+          import pathlib,json,hashlib
+          manifest=json.load(open('packages/v1.0.35/manifest.json'))
+          for asset in manifest['assets']:
+              p=pathlib.Path('remote-check')/asset['name']
+              assert p.stat().st_size==asset['bytes']
+              assert hashlib.sha256(p.read_bytes()).hexdigest()==asset['sha256']
+          PY
+          if [ "$draft" = true ]; then
+            gh release edit "$tag" --draft=false --prerelease=false --latest=true
+          fi
+          gh release view "$tag" --json url,tagName,isDraft,isPrerelease,assets > published-release.json
+          python3 -c 'import json; r=json.load(open("published-release.json")); assert not r["isDraft"] and not r["isPrerelease"]'
+          cat published-release.json >> "$GITHUB_STEP_SUMMARY"

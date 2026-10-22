@@ -1,0 +1,23 @@
+{
+  "capture_sha256": "baa565a4b55267470324d346e0823962118dd82b0731421d4bbfa79184c36943",
+  "game_disk_sha256": "ebb8b7bd07236c9ba7cbb2ad01bdca82b99faf2fccf08d79f7f60f59c4d77707",
+  "changed": 1,
+  "unreadable": 0,
+  "matched_count": 20,
+  "mismatching_entry": "0x431410",
+  "module": "MRGA1.DLL",
+  "module_bytes": 12308480,
+  "target_rva": "0x12FB60",
+  "function_bytes": 295,
+  "captured_function_sha256": "8bbac63bacebd8c9f1a9d00c72b57f3411f314a5a9fe382119a2ec935f79086d",
+  "absolute_operand_offsets": [
+    4,
+    63,
+    99,
+    105,
+    279
+  ],
+  "normalized_fnv1a64": "78fb89765759f745",
+  "normalized_sha256": "1a301b27344f26b9dd704499a4334db86bca9ecfe6911e3e6e14bc1a8f5497ae",
+  "scope": "Metadata and analysis only; raw capture not redistributed"
+}

@@ -18,7 +18,7 @@ static bool autoSettingChanged(int id,int notification){
  }
  if((id==860||id==722)&&notification==BN_CLICKED){
   bool on=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;
-  if(id==860)extra.controlAll=on;else extra.sellEnemy=on;
+  if(id==860)extra.controlAll=on;else {extra.sellEnemy=false;SendMessageW(GetDlgItem(ui,id),BM_SETCHECK,BST_UNCHECKED,0);}
   pointerMatches.clear();changedSetting();syncAdditional();return true;
  }
  if(id==861&&notification==BN_CLICKED){

@@ -1,0 +1,19 @@
+{
+  "version": "1.0.35.0",
+  "compiled_files": {
+    "RA2Toolbox.exe": "4c8a2b3f8498618bc0ae01f58663eb19866f2e19e18e762934b1fe4f2c694601",
+    "GameRuntime.dll": "e70e96f9e7312d3615250650804c65c3f408d9c09d7fa2abf0503a0ca8bad112"
+  },
+  "compiled_runtime_checks": {
+    "platform-startup.json": 23,
+    "player-tech-platform5.json": 56
+  },
+  "host_settings_handler": "PASS (standalone and RA2_UNIFIED)",
+  "pe_abi_import_manifest": "PASS; source/WINDOWS_BUILD_ARTIFACTS.json",
+  "architecture": "PASS; source/ARCHITECTURE_AUDIT.json",
+  "compiler_output": "",
+  "real_platform_game_tested": false,
+  "real_netplay_tested": false,
+  "confirmed_issue": "One changed beacon function entrance caused global startup signatures rejection; known captured replacement accepted after module/body validation.",
+  "sale": "Enemy building sale UI/config and Runtime authorization disabled"
+}

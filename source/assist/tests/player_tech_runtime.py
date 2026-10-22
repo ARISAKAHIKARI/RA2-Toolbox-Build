@@ -81,7 +81,7 @@ for mode in (0,3,4,5):
    at=0x8b4204 if mode in (0,5) else 0xa802d4;packet=bytes(m.u.mem_read(at,111));assert packet[2]==1 and packet[0]==4 and packet[12]==(1 if attack else 2),packet.hex()
   assert m.r(m.enemyUnit+0x21c)==m.enemy and m.r(0xa83d4c)==m.house
   record(f'player_order_{mode}_{enabled}_{neutral}_{attack}')
-# Cross-player sale, gate and target class.
+# Cross-player sale stays disabled, including stale shared-memory flags.
 for mode in (0,3,4,5):
  for enabled in (False,True):
   m,s=fixture(mode);m.w(m.building+0x21c,m.enemy);s.flags=33554432 if enabled else 0;write(m,s)
@@ -90,7 +90,7 @@ for mode in (0,3,4,5):
    m.u.mem_write(arg(1),struct.pack('<hh',20,30));m.u.mem_write(arg(2),struct.pack('<iii',5120,7680,0));m.w(arg(3),m.building);m.ret(0,6)
   addhook(m,0x692300,click)
   i=s.pointer.intent;i.match=s.data.match;i.tick=m.clock;i.frame=m.r(0xa8ed84);i.house=m.house;i.operation=3;i.bindings=64|2048|8192;i.width=800;i.height=600;i.x=20;i.y=30
-  s.pointer.request+=1;write(m,s);s=m.hook();n=m.r(0x8b41f8)+m.r(0xa802c8);assert n==int(enabled),(mode,enabled,n,s.pointer.result)
+  s.pointer.request+=1;write(m,s);s=m.hook();n=m.r(0x8b41f8)+m.r(0xa802c8);assert n==0,(mode,enabled,n,s.pointer.result)
   if n:
    at=0x8b4204 if mode in (0,5) else 0xa802d4;packet=bytes(m.u.mem_read(at,111));assert packet[0]==0x16 and packet[2]==1 and packet[7:12]==struct.pack('<IB',12,0x34)
   assert m.r(m.building+0x21c)==m.enemy

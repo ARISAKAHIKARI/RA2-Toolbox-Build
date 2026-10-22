@@ -14,6 +14,7 @@
 #include "../../shared/source/precise_clock.h"
 #include "../../shared/source/runtime_fault.h"
 #include "signatures.h"
+#include "startup_signature_compat.h"
 #include "autoload.h"
 #include "outgoing_batch.h"
 #include "object_index.h"
@@ -140,7 +141,26 @@ static void reset(){resetLoadCalculation();resetRuntimePlanner();catalogueReady=
 static void mapName(wchar_t*out,DWORD p){const wchar_t*s=AssistMappingPrefix;int i=0;while(*s)out[i++]=*s++;wchar_t d[16];int n=0;do{d[n++]=L'0'+p%10;p/=10;}while(p);while(n)out[i++]=d[--n];out[i]=0;}
 static HANDLE controllerProcess;static DWORD controllerPID,controllerCheckAt;
 static void disconnect(){restorePlayerContext();InterlockedExchange(&hostWorkPending,0);if(controllerProcess)CloseHandle(controllerProcess);controllerProcess=nullptr;controllerPID=controllerCheckAt=0;restoreFrameDriver();InterlockedExchange(&messageGameThread,0);reset();sessionTracker.update(false,0,-1,-1);if(sh)UnmapViewOfFile(sh);sh=nullptr;if(mapping)CloseHandle(mapping);mapping=nullptr;lastHouse=pendingAck=0;pendingAckReady=false;}
-static bool signatures(){for(auto&s:Signatures){unsigned char b[12];if(!read(s.address,b,s.length)||memcmp(b,s.bytes,s.length))return false;}return true;}
+static_assert(Signatures[8].address==startupcompat::BeaconEntry,"ClearBeacons signature index");
+static bool startupSignature(const Signature&s){
+ unsigned char b[12];if(s.length>sizeof b||!read(s.address,b,s.length))return false;
+ if(!memcmp(b,s.bytes,s.length))return true;
+ if(s.address!=startupcompat::BeaconEntry)return false;
+ const uint32_t module=uint32_t(uintptr_t(GetModuleHandleW(L"MRGA1.DLL")));uint32_t target=0;
+ if(!startupcompat::beaconTarget(b,s.length,module,target))return false;
+ IMAGE_DOS_HEADER dos{};IMAGE_NT_HEADERS32 nt{};
+ if(!read(module,&dos,sizeof dos)||dos.e_magic!=IMAGE_DOS_SIGNATURE||dos.e_lfanew<64||dos.e_lfanew>4096||
+    !read(module+uint32_t(dos.e_lfanew),&nt,sizeof nt)||nt.Signature!=IMAGE_NT_SIGNATURE||nt.FileHeader.Machine!=IMAGE_FILE_MACHINE_I386||
+    nt.OptionalHeader.Magic!=IMAGE_NT_OPTIONAL_HDR32_MAGIC||nt.OptionalHeader.SizeOfImage!=startupcompat::ModuleBytes)return false;
+ MEMORY_BASIC_INFORMATION region{};const size_t bytes=startupcompat::BeaconBytes;
+ if(VirtualQuery((void*)(uintptr_t)target,&region,sizeof region)!=sizeof region||region.State!=MEM_COMMIT||region.Type!=MEM_IMAGE||
+    uintptr_t(region.AllocationBase)!=module||(region.Protect&PAGE_GUARD)||
+    !(region.Protect&(PAGE_EXECUTE|PAGE_EXECUTE_READ|PAGE_EXECUTE_READWRITE|PAGE_EXECUTE_WRITECOPY))||
+    uint64_t(target)+bytes>uint64_t(uintptr_t(region.BaseAddress))+region.RegionSize)return false;
+ unsigned char body[startupcompat::BeaconBytes];
+ return read(target,body,sizeof body)&&startupcompat::beaconBody(body,sizeof body,module);
+}
+static bool signatures(){for(auto&s:Signatures)if(!startupSignature(s))return false;return true;}
 static void notifyHost(){
  if(!sh||!sh->hostWindow)return;
  if(!InterlockedCompareExchange(&sh->hostNotifyPending,1,0)&&!PostMessageW((HWND)(uintptr_t)sh->hostWindow,DataMessage,sh->pid,0))InterlockedExchange(&sh->hostNotifyPending,0);
@@ -468,7 +488,7 @@ static bool nativeObjectEvent(int houseIndex,int eventType,uint32_t objectId,Ord
  if(!eventdelivery::mayQueue(mode)){++snap.commandRejected;return false;}
  const bool mp=eventdelivery::isMultiplayer(mode);
  auto reject=orderpolicy::objectEvent(eventType,object!=0,object&&live(object),
-  uint32_t(houseIndex)==localIndex||(authority==OrderAuthority::SellPlayerTest&&sh&&(sh->flags&SellEnemy)&&eventType==0x16&&object&&kind(object)==3&&playableHouse(owner)),uint32_t(houseIndex)==ownerIndex,mp);
+  uint32_t(houseIndex)==localIndex||(playertest::SellAvailable&&authority==OrderAuthority::SellPlayerTest&&sh&&(sh->flags&SellEnemy)&&eventType==0x16&&object&&kind(object)==3&&playableHouse(owner)),uint32_t(houseIndex)==ownerIndex,mp);
  if(reject!=orderpolicy::Reject::None||(eventType==0x07&&kind(object)!=1&&kind(object)!=2)){++snap.commandRejected;return false;}
  const uint32_t submittedAt=sampleClock(sh);
  const gateway::Context ctx{match,submittedAt,sh&&!sh->stop&&!fault&&snap.status==1,
@@ -741,7 +761,7 @@ static void command(uint32_t house,DWORD now){uint32_t req=sh->request;if(req==s
  else if(c==AutoBoard){result=autoLoad(house);n=snap.loadIssued;if(result==-30){loadAckRequest=req;loadAckPending=true;return;}}
  else if(c>=CombatSelection&&c<=DamagedSelection)n=selectFilter(house,c);
  else if(c>=IdleHarvester&&c<=IdleTransport)n=findIdle(house,c);
- else if(c==ClearBeacons){call<void>(0x431410,0x89C3B0,get<int>(house+0x30));n=1;}
+ else if(c==ClearBeacons){if(!startupSignature(Signatures[8]))result=-11;else {call<void>(0x431410,0x89C3B0,get<int>(house+0x30));n=1;}}
  else if(c==RevealMap&&(!(sh->flags&ExperimentalReveal)||sh->renderReveal)){result=-21;}
  else if(c==RevealMap){
   // Early in a restarted match, House can be valid before its map-cell array.

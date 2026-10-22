@@ -230,13 +230,13 @@ int main(){
  fields.erase(716);fields[715]=0;autoSettingChanged(715,BN_CLICKED);assert(targetQuotas.empty());
  fields[724]='V';autoSettingChanged(724,EN_CHANGE);assert(extra.variantKey=='V');
  autoSettingChanged(441,EN_CHANGE);autoSettingChanged(411,EN_CHANGE);assert(binds==2);
- // Manual capabilities toggle independently; switching stays unavailable.
+ // Manual control remains available; removed sale UI messages cannot enable sale.
  extra.controlAll=extra.sellEnemy=false;fields[860]=BST_CHECKED;
  assert(autoSettingChanged(860,BN_CLICKED)&&extra.controlAll&&!extra.sellEnemy);
- fields[722]=BST_CHECKED;assert(autoSettingChanged(722,BN_CLICKED)&&extra.controlAll&&extra.sellEnemy);
- fields[860]=BST_UNCHECKED;assert(autoSettingChanged(860,BN_CLICKED)&&!extra.controlAll&&extra.sellEnemy);
+ fields[722]=BST_CHECKED;assert(autoSettingChanged(722,BN_CLICKED)&&extra.controlAll&&!extra.sellEnemy);
+ fields[860]=BST_UNCHECKED;assert(autoSettingChanged(860,BN_CLICKED)&&!extra.controlAll&&!extra.sellEnemy);
  extra.switchPlayerEnabled=true;fields[861]=BST_CHECKED;
- assert(autoSettingChanged(861,BN_CLICKED)&&!extra.switchPlayerEnabled&&extra.sellEnemy);
+ assert(autoSettingChanged(861,BN_CLICKED)&&!extra.switchPlayerEnabled&&!extra.sellEnemy);
  assert(fields[861]==BST_UNCHECKED);
  fields[722]=BST_UNCHECKED;assert(autoSettingChanged(722,BN_CLICKED)&&!extra.sellEnemy);
  autoSaveOK=false;flushAutoSettings();assert(lastMessage.find(L"自动保存失败")!=std::wstring::npos);

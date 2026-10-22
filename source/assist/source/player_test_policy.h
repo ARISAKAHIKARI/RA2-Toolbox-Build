@@ -3,6 +3,8 @@
 namespace assist { namespace playertest {
 // Product availability, shared by host and Runtime; not a user setting.
 constexpr bool Available=true;
+// Disabled separately at the user's request; stale profiles/IPC cannot enable it.
+constexpr bool SellAvailable=false;
 // Player-context replacement is independent of manual event submission.
 // Keep the crashing path disabled, including stale shared-memory requests.
 constexpr bool SwitchAvailable=false;
