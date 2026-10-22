@@ -1,0 +1,162 @@
+{
+  "name": "RA2MasterProbe-0.1.0.exe",
+  "bytes": 465408,
+  "sha256": "bf39b70b2c39b2d3a080869e657e97e20f768e6acdacf7964924f95ff818528e",
+  "machine": "0x8664",
+  "version": "0.1.0.0",
+  "imports": {
+    "bcrypt.dll": [
+      "BCryptCloseAlgorithmProvider",
+      "BCryptCreateHash",
+      "BCryptDestroyHash",
+      "BCryptFinishHash",
+      "BCryptHashData",
+      "BCryptOpenAlgorithmProvider"
+    ],
+    "api-ms-win-crt-heap-l1-1-0.dll": [
+      "_aligned_free",
+      "_aligned_malloc",
+      "_set_new_mode",
+      "calloc",
+      "free",
+      "malloc",
+      "realloc"
+    ],
+    "api-ms-win-crt-private-l1-1-0.dll": [
+      "__C_specific_handler",
+      "memchr"
+    ],
+    "api-ms-win-crt-runtime-l1-1-0.dll": [
+      "__p___argc",
+      "__p___argv",
+      "__sys_nerr",
+      "_cexit",
+      "_configure_narrow_argv",
+      "_crt_atexit",
+      "_errno",
+      "_exit",
+      "_fpreset",
+      "_initialize_narrow_environment",
+      "_initterm",
+      "_set_app_type",
+      "_set_invalid_parameter_handler",
+      "abort",
+      "exit",
+      "signal",
+      "strerror_s"
+    ],
+    "api-ms-win-crt-stdio-l1-1-0.dll": [
+      "__acrt_iob_func",
+      "__p__commode",
+      "__p__fmode",
+      "__stdio_common_vfprintf",
+      "__stdio_common_vsprintf",
+      "__stdio_common_vsscanf",
+      "__stdio_common_vswprintf",
+      "fflush",
+      "fgetwc",
+      "fputc",
+      "fputwc",
+      "fwrite",
+      "getc",
+      "ungetc",
+      "ungetwc"
+    ],
+    "api-ms-win-crt-string-l1-1-0.dll": [
+      "_isctype_l",
+      "_iswlower_l",
+      "_strdup",
+      "_wcsicmp",
+      "isxdigit",
+      "mbrlen",
+      "strcmp",
+      "strlen",
+      "tolower",
+      "toupper",
+      "towlower",
+      "wcslen"
+    ],
+    "KERNEL32.dll": [
+      "AcquireSRWLockExclusive",
+      "CloseHandle",
+      "CreateDirectoryW",
+      "CreateFileW",
+      "CreateToolhelp32Snapshot",
+      "DeleteCriticalSection",
+      "EnterCriticalSection",
+      "FlsAlloc",
+      "FlsGetValue",
+      "FlsSetValue",
+      "GetCurrentProcessId",
+      "GetExitCodeProcess",
+      "GetLastError",
+      "GetLocalTime",
+      "GetModuleFileNameW",
+      "GetTickCount64",
+      "InitOnceExecuteOnce",
+      "InitializeCriticalSection",
+      "LeaveCriticalSection",
+      "Module32FirstW",
+      "Module32NextW",
+      "OpenProcess",
+      "Process32FirstW",
+      "Process32NextW",
+      "RaiseException",
+      "ReadFile",
+      "ReadProcessMemory",
+      "ReleaseSRWLockExclusive",
+      "RtlCaptureContext",
+      "RtlLookupFunctionEntry",
+      "RtlRestoreContext",
+      "RtlUnwindEx",
+      "RtlVirtualUnwind",
+      "SetConsoleCP",
+      "SetConsoleOutputCP",
+      "SetUnhandledExceptionFilter",
+      "Sleep",
+      "SleepConditionVariableSRW",
+      "VirtualProtect",
+      "VirtualQuery",
+      "VirtualQueryEx",
+      "WakeAllConditionVariable",
+      "WideCharToMultiByte",
+      "WriteFile"
+    ],
+    "api-ms-win-crt-math-l1-1-0.dll": [
+      "__setusermatherr",
+      "frexp"
+    ],
+    "api-ms-win-crt-environment-l1-1-0.dll": [
+      "__p__environ"
+    ],
+    "api-ms-win-crt-locale-l1-1-0.dll": [
+      "___mb_cur_max_func",
+      "__pctype_func",
+      "_configthreadlocale",
+      "_create_locale",
+      "_free_locale",
+      "localeconv",
+      "setlocale"
+    ],
+    "api-ms-win-crt-multibyte-l1-1-0.dll": [
+      "_mbtowc_l"
+    ],
+    "api-ms-win-crt-time-l1-1-0.dll": [
+      "_strftime_l"
+    ],
+    "api-ms-win-crt-convert-l1-1-0.dll": [
+      "_strtod_l",
+      "_strtoi64_l",
+      "_strtoui64_l",
+      "mbrtowc",
+      "mbsrtowcs",
+      "strtof",
+      "strtoul",
+      "wcrtomb",
+      "wcrtomb_s"
+    ]
+  },
+  "forbidden_imports_found": [],
+  "real_windows_run": false,
+  "diff_core_tests": "passed"
+}

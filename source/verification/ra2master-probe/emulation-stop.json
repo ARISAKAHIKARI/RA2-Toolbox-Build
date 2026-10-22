@@ -1,0 +1,36 @@
+{
+  "stop_reason": {
+    "kind": "unknown_import",
+    "address": "0x70840ED0",
+    "instruction_count": 19959382,
+    "details": {
+      "import_name": "kernel32.dll!CreateFileW",
+      "target": "0x70840ED0",
+      "action": "stub",
+      "transfer": "block_entry"
+    }
+  },
+  "error": null,
+  "blocks": 19959382,
+  "hooks": {
+    "backend": "python"
+  },
+  "registers": {
+    "eax": 1887702736,
+    "ebx": 0,
+    "ecx": 2694,
+    "edx": 28,
+    "esi": 13409886,
+    "edi": 11631810,
+    "ebp": 1612704724,
+    "esp": 1612704412,
+    "eip": 1887702736,
+    "rflags": "0x0000000000000246"
+  },
+  "written_destination_pages": [],
+  "input": "sample-sha256:779b70da60e9e78e9ee18a60b8b3692b0b184faedd477a1943a72e0ea7d59aac",
+  "entry": "0xD4B0C6",
+  "analysis_pe": null,
+  "reconstruction_error": "unpack failed unknown_import",
+  "events": "private execution log"
+}
