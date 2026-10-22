@@ -61,8 +61,8 @@ for mode in (0,3,4,5):
   s=issue(m,command,m.enemy,102)
   assert C.c_int32(s.result).value<0 and m.r(0xa83d4c)==m.house
   assert before==(bytes(m.u.mem_read(m.house,0x200)),bytes(m.u.mem_read(m.enemy,0x200)))
-  assert s.playerCount==2 and s.playerControlStatus==1 and s.data.hookInstalled==5
-  for site in (0x6FBFB3,0x6FBFEF,0x5F45D2,0x5F45DF,0x5F45EF):assert bytes(m.u.mem_read(site,5))!=m.game.get_data(site-0x400000,5)
+  assert s.playerCount==2 and s.playerControlStatus==1 and s.data.hookInstalled==3
+  for site in (0x50B6F0,0x6339BA,0x637E40):assert bytes(m.u.mem_read(site,5))!=m.game.get_data(site-0x400000,5)
   record(f'player_switch_disabled_{mode}_{command}')
 # Explicit player order gateway, SP must preserve actor owner instead of local house.
 for mode in (0,3,4,5):
@@ -95,25 +95,48 @@ for mode in (0,3,4,5):
    at=0x8b4204 if mode in (0,5) else 0xa802d4;packet=bytes(m.u.mem_read(at,111));assert packet[0]==0x16 and packet[2]==1 and packet[7:12]==struct.pack('<IB',12,0x34)
   assert m.r(m.building+0x21c)==m.enemy
   record(f'foreign_sale_{mode}_{enabled}')
-# Selection patches are bounded CALL sites, restore on toggle, and leave
-# the common owner predicate and incoming receiver unchanged.
-sites=(0x6FBFB3,0x6FBFEF,0x5F45D2,0x5F45DF,0x5F45EF)
-m,s=fixture();s.controlAll=1;write(m,s);s=m.hook()
-assert s.playerControlStatus==1 and s.data.hookInstalled==5
-for site in sites:
- assert m.u.mem_read(site,1)==b'\xe8'
- target=site+5+struct.unpack('<i',m.u.mem_read(site+1,4))[0]
- m.run(target,(),m.enemy);assert m.u.reg_read(UC_X86_REG_EAX)&255==1
-for at,n in ((0x50b6f0,32),(0x4c6cb0,32),(0x4c6f3b,19)):
- assert bytes(m.u.mem_read(at,n))==m.game.get_data(at-0x400000,n)
-s.controlAll=0;write(m,s);s=m.hook()
-assert s.playerControlStatus==0 and s.data.hookInstalled==0
-for site in sites:assert bytes(m.u.mem_read(site,5))==m.game.get_data(site-0x400000,5)
-record('player_selection_calls_install_execute_restore')
-# A platform conflict rolls back the whole group and preserves foreign bytes.
-m,s=fixture();m.u.mem_write(sites[2],b'\x90'*5);s.controlAll=1;write(m,s);s=m.hook()
+# Compiled manager-owned shared predicate + two original-owner query adapters.
+sites=(0x6339BA,0x637E40,0x50B6F0)
+legacy=(0x6FBFB3,0x6FBFEF,0x5F45D2,0x5F45DF,0x5F45EF)
+for mode in (0,3,4,5):
+ for unpacked in (False,True):
+  m,s=fixture(mode)
+  if unpacked:m.u.mem_write(0x50B6F0,bytes.fromhex('A138B2A80085C0751D'))
+  originals={at:bytes(m.u.mem_read(at,5)) for at in sites}
+  original_anomaly=bytes(m.u.mem_read(0x6378DD,8))
+  s.controlAll=1;write(m,s);s=m.hook()
+  assert s.playerControlStatus==1 and s.data.hookInstalled==3,(s.playerControlStatus,s.data.hookInstalled)
+  for house in (m.house,m.enemy):
+   m.run(0x50B6F0,(),house);assert m.u.reg_read(UC_X86_REG_EAX)==1
+   for site in sites[:2]:
+    target=site+5+struct.unpack('<i',m.u.mem_read(site+1,4))[0]
+    m.run(target,(),house);assert m.u.reg_read(UC_X86_REG_EAX)==int(house==m.house)
+  # Execute the actual effective-owner helper, including its patched CALL.
+  m.run(0x6339B0,(),m.enemyUnit);assert m.u.reg_read(UC_X86_REG_EAX)==1
+  assert m.r(m.enemyUnit+0x21c)==m.enemy and m.r(0xa83d4c)==m.house
+  for at,n in [(x,5) for x in legacy]+[(0x4c6cb0,32),(0x4c6f3b,19)]:
+   assert bytes(m.u.mem_read(at,n))==m.game.get_data(at-0x400000,n)
+  assert bytes(m.u.mem_read(0x6378DD,8))==original_anomaly
+  s.controlAll=0;write(m,s);s=m.hook()
+  assert s.playerControlStatus==0 and s.data.hookInstalled==0
+  for site in sites:assert bytes(m.u.mem_read(site,5))==originals[site]
+  record(f'player_shared_control_{mode}_unpacked_{unpacked}_owner_queries_restore')
+# Conflicts at every site roll back the group without overwriting foreign bytes.
+for conflict in sites:
+ m,s=fixture();m.u.mem_write(conflict,b'\x90'*5);s.controlAll=1;write(m,s);s=m.hook()
+ assert C.c_int32(s.playerControlStatus).value==-2 and s.data.hookInstalled==0
+ for site in sites:
+  assert bytes(m.u.mem_read(site,5))==(b'\x90'*5 if site==conflict else m.game.get_data(site-0x400000,5))
+ record(f'player_shared_conflict_{conflict:x}_rollback')
+# Neighboring instructions are an ABI gate, not just the five replaced bytes.
+m,s=fixture();m.b(0x637E45,0x90);s.controlAll=1;write(m,s);s=m.hook()
 assert C.c_int32(s.playerControlStatus).value==-2 and s.data.hookInstalled==0
-for site in sites:
- assert bytes(m.u.mem_read(site,5))==(b'\x90'*5 if site==sites[2] else m.game.get_data(site-0x400000,5))
-record('player_selection_conflict_group_rollback')
+for site in sites:assert bytes(m.u.mem_read(site,5))==m.game.get_data(site-0x400000,5)
+assert bytes(m.u.mem_read(0x637E45,1))==b'\x90'
+record('player_shared_context_mismatch_rollback')
+# Dead/stopped host cleanup goes through the existing manager and restores all.
+m,s=fixture();s.controlAll=1;write(m,s);s=m.hook();assert s.data.hookInstalled==3
+s.stop=1;write(m,s);m.hook()
+for site in sites:assert bytes(m.u.mem_read(site,5))==m.game.get_data(site-0x400000,5)
+record('player_shared_stop_restore')
 Path(a.output).write_text(json.dumps({'scope':__doc__,'dll_sha256':hashlib.sha256(Path(a.dll).read_bytes()).hexdigest(),'real_game':False,'real_netplay':False,'results':rows},indent=2)+'\n')

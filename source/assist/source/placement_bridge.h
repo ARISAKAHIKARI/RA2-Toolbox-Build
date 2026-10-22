@@ -321,39 +321,18 @@ original:
  push 4F7870h
  ret
 }}
-// Selection-only CanControl callsites. AI, combat and incoming event checks
-// do not call this wrapper; original House::ControlledByPlayer is untouched.
+// The capture shows a shared control predicate, not selection-only calls.
+// Installed only as one manager-owned group after context/heartbeat preflight.
+// These hot leaf functions do no polling, lease acquisition, allocation or IO.
 static __declspec(naked) void riskControlEntry(){__asm {
- pushfd
- pushad
- mov ebx,esp
- sub esp,528
- and esp,-16
- fxsave [esp]
- cld
- fninit
- fldcw [esp]
- mov dword ptr [esp+512],1F80h
- ldmxcsr [esp+512]
- push ecx
- push 0
- push 6
- call GuardedRiskAction
- add esp,12
- test eax,eax
- jz original
- fxrstor [esp]
- mov esp,ebx
- popad
- popfd
- mov al,1
+ mov eax,1
  ret
-original:
- fxrstor [esp]
- mov esp,ebx
- popad
- popfd
- push 50B6F0h
+}}
+static __declspec(naked) void riskControlOwnerEntry(){__asm {
+ mov edx,dword ptr ds:[0A83D4Ch]
+ xor eax,eax
+ cmp ecx,edx
+ sete al
  ret
 }}
 struct RiskSite {uint32_t address;unsigned size;uint8_t before[16],after[16];};
@@ -366,15 +345,10 @@ static RiskSite riskSites[]={
  {experimentalpatch::C4Execution,6,{0x8A,0x81,0xC2,0x0E,0,0},{}},
  {experimentalpatch::TechDraw,5,{0xE8,0x99,0xE0,0xE4,0xFF},{}},
  {experimentalpatch::TechPrune,5,{0xE8,0xEA,0xD0,0xE4,0xFF},{}},
- {0x6FBFB3,5,{0xE8,0x38,0xF7,0xE0,0xFF},{}},
- {0x6FBFEF,5,{0xE8,0xFC,0xF6,0xE0,0xFF},{}},
- {0x5F45D2,5,{0xE8,0x19,0x71,0xF1,0xFF},{}},
- {0x5F45DF,5,{0xE8,0x0C,0x71,0xF1,0xFF},{}},
- {0x5F45EF,5,{0xE8,0xFC,0x70,0xF1,0xFF},{}},
  {experimentalpatch::C4Movement,6,{0x8A,0x81,0xC2,0x0E,0,0},{}}
 };
 static void prepareRiskSites(){static bool ready=false;if(ready)return;ready=true;
- const uint32_t targets[]={uint32_t(uintptr_t(&riskPlacementEntry)),uint32_t(uintptr_t(&riskAirTypeEntry)),uint32_t(uintptr_t(&riskAirArrivalEntry)),uint32_t(uintptr_t(&riskShroudEntry)),uint32_t(uintptr_t(&riskFogEntry)),uint32_t(uintptr_t(&riskC4Entry)),uint32_t(uintptr_t(&riskTechEntry)),uint32_t(uintptr_t(&riskTechEntry)),uint32_t(uintptr_t(&riskControlEntry)),uint32_t(uintptr_t(&riskControlEntry)),uint32_t(uintptr_t(&riskControlEntry)),uint32_t(uintptr_t(&riskControlEntry)),uint32_t(uintptr_t(&riskControlEntry)),uint32_t(uintptr_t(&riskC4MovementEntry))};
+ const uint32_t targets[]={uint32_t(uintptr_t(&riskPlacementEntry)),uint32_t(uintptr_t(&riskAirTypeEntry)),uint32_t(uintptr_t(&riskAirArrivalEntry)),uint32_t(uintptr_t(&riskShroudEntry)),uint32_t(uintptr_t(&riskFogEntry)),uint32_t(uintptr_t(&riskC4Entry)),uint32_t(uintptr_t(&riskTechEntry)),uint32_t(uintptr_t(&riskTechEntry)),uint32_t(uintptr_t(&riskC4MovementEntry))};
  for(unsigned i=0;i<sizeof(riskSites)/sizeof(riskSites[0]);++i){auto&s=riskSites[i];
   if(s.size==4)memcpy(s.after,&targets[i],4);
   else{memset(s.after,0x90,s.size);s.after[0]=experimentalpatch::callSite(s.address)?0xE8:0xE9;uint32_t offset=targets[i]-s.address-5;memcpy(s.after+1,&offset,4);}
@@ -397,12 +371,33 @@ static bool setTechSites(bool enabled){
  if(enabled){riskTechActive=installRiskSite(riskSites[6])&&installRiskSite(riskSites[7]);if(riskTechActive)return true;}
  bool a=restoreRiskSite(riskSites[6]),b=restoreRiskSite(riskSites[7]);return !enabled&&a&&b;
 }
+// Preserve both owner-index paths before enabling the common predicate.
+// 0x637E40 is a verified CALL boundary. Never write the sample's 0x6378E0.
+static RiskSite controlSites[]={
+ {experimentalpatch::ControlOwner,5,{0xE8,0x31,0x7D,0xED,0xFF},{}},
+ {experimentalpatch::ControlPlanning,5,{0xE8,0xAB,0x38,0xED,0xFF},{}},
+ {experimentalpatch::ControlHouse,5,{0xA1,0x38,0xB2,0xA8,0},{}}
+};
 static void controlSitesTick(bool enabled){
  enabled=enabled&&playertest::Available;
  if(riskControlActive&&!enabled&&riskContextReady())unselect();
  riskControlActive=false;bool ok=true;
- if(enabled)for(int i=8;i<13;++i)if(!installRiskSite(riskSites[i]))ok=false;
- if(!enabled||!ok)for(int i=8;i<13;++i)if(!restoreRiskSite(riskSites[i]))ok=false;
+ static bool prepared=false;
+ if(!prepared){
+  for(auto&s:controlSites){const uint32_t target=uint32_t(uintptr_t(s.address==experimentalpatch::ControlHouse?&riskControlEntry:&riskControlOwnerEntry));
+   s.after[0]=experimentalpatch::callSite(s.address)?0xE8:0xE9;const uint32_t offset=target-s.address-5;memcpy(s.after+1,&offset,4);}
+  prepared=true;
+ }
+ if(enabled){
+  auto&s=controlSites[2];uint8_t original[5]{};
+  if(!codeHookRegistry.active(s.address)){
+   if(!read(s.address,original,5)||!hookregistry::knownOriginal(s.address,original,5))ok=false;
+   else memcpy(s.before,original,5);
+  }
+  if(ok)for(auto&site:controlSites)if(!installRiskSite(site)){ok=false;break;}
+ }
+ // Restore the common predicate first; preserve foreign bytes on conflict.
+ if(!enabled||!ok)for(int i=2;i>=0;--i)if(!restoreRiskSite(controlSites[i]))ok=false;
  riskControlActive=enabled&&ok;if(sh)sh->playerControlStatus=ok?(enabled?1:0):-2;
 }
 static bool redrawRevealTest();
@@ -417,7 +412,7 @@ static void restorePlacement(){
  snap.placementStatus=place?0:-2;snap.nativeAirStatus=type&&arrival?0:-2;
  bool shroud=restoreRiskSite(riskSites[3]),fog=restoreRiskSite(riskSites[4]);
  snap.renderRevealStatus=shroud&&fog?0:-2;
- bool c4Arrival=restoreRiskSite(riskSites[5]),c4Movement=restoreRiskSite(riskSites[13]);
+ bool c4Arrival=restoreRiskSite(riskSites[5]),c4Movement=restoreRiskSite(riskSites[8]);
  snap.c4TestStatus=c4Arrival&&c4Movement?0:-2;
  // Stop/host exit still needs one native redraw after restoring the leaves.
  // A destroyed, changed, paused or faulted world must never be called here.
@@ -439,8 +434,8 @@ static void placementTick(){
  // Both native C4 capability loads are required: movement into the building
  // and native charge placement. No type-flag, mission or damage writes here.
  riskC4Active=false;
- if(sh->c4Test)riskC4Active=installRiskSite(riskSites[13])&&installRiskSite(riskSites[5]);
- if(!riskC4Active){bool a=restoreRiskSite(riskSites[5]),b=restoreRiskSite(riskSites[13]);snap.c4TestStatus=sh->c4Test||!a||!b?-2:0;}
+ if(sh->c4Test)riskC4Active=installRiskSite(riskSites[8])&&installRiskSite(riskSites[5]);
+ if(!riskC4Active){bool a=restoreRiskSite(riskSites[5]),b=restoreRiskSite(riskSites[8]);snap.c4TestStatus=sh->c4Test||!a||!b?-2:0;}
  else snap.c4TestStatus=1;
  if(sh->renderReveal){
   riskRenderActive=installRiskSite(riskSites[3])&&installRiskSite(riskSites[4]);

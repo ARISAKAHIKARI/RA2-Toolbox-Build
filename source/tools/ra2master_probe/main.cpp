@@ -15,7 +15,7 @@
 #include "diff_core.h"
 
 using probe::Snapshot;
-static const char* VERSION="0.1.0";
+static const char* VERSION="0.2.0";
 static std::wstring output;
 static std::string utf8(const std::wstring& s) {
     if(s.empty())return {};
@@ -134,16 +134,20 @@ static Snapshot capture(HANDLE h,const Image& im,DWORD pid,const std::wstring& l
     if(!valid)throw std::runtime_error("主模块没有读到任何字节；检查权限。");
     std::ostringstream meta;meta<<"{\"stage\":"<<j(utf8(label))<<",\"tick_ms\":"<<GetTickCount64()<<",\"read_bytes\":"<<valid
         <<",\"stable_bytes\":"<<stable<<",\"image_bytes\":"<<im.size<<",\"modules\":"<<modules(pid)<<"}";
-    writeText(label+L"-capture.json",meta.str());std::cout<<"已读 "<<valid<<" / "<<im.size<<" 字节。"<<std::endl;return a;
+    writeText(label+L"-capture.json",meta.str());
+    writeFile(label+L"-game.mem",a.bytes.data(),a.bytes.size());
+    writeFile(label+L"-game.valid",a.valid.data(),a.valid.size());
+    writeFile(label+L"-game.stable",a.stable.data(),a.stable.size());
+    std::cout<<"已读 "<<valid<<" / "<<im.size<<" 字节。"<<std::endl;return a;
 }
-static size_t diff(const Image& im,const Snapshot& a,const Snapshot& b,const Snapshot* c,const std::wstring& name) {
-    std::ostringstream o;o<<"{\"schema\":1,\"image_base\":"<<j(hx(im.base))<<",\"mode\":"<<j(c?"stable_off_on_off_candidates":"pairwise_observation")
+static size_t diff(const Image& im,const Snapshot& a,const Snapshot& b,const Snapshot* c,const std::wstring& name,bool allStable=false) {
+    std::ostringstream o;o<<"{\"schema\":1,\"image_base\":"<<j(hx(im.base))<<",\"mode\":"<<j(c?"stable_off_on_off_candidates":allStable?"pairwise_stable_all_sections":"pairwise_observation")
         <<",\"warning\":\"Correlation only; not a traced writer or proof of multiplayer synchronization\",\"changes\":[";
     bool comma=false;size_t total=0,emitted=0,skipped=0;
     for(const auto& s:im.sections){
         const bool code=(s.flags&IMAGE_SCN_MEM_EXECUTE)!=0;
-        if(!c&&!code)continue;
-        auto r=probe::runs(s.begin,s.end,[&](size_t i){return c?probe::reversible(a,b,*c,i):probe::changed(a,b,i);});
+        if(!c&&!code&&!allStable)continue;
+        auto r=probe::runs(s.begin,s.end,[&](size_t i){return c?probe::reversible(a,b,*c,i):allStable?probe::stableChanged(a,b,i):probe::changed(a,b,i);});
         for(auto run:r){total+=run.length;if(emitted>=30000){++skipped;continue;}++emitted;
             if(comma)o<<",";comma=true;const size_t i=run.offset,n=run.length,lo=i>16?std::max(s.begin,i-16):s.begin,hi=std::min(s.end,i+n+16);
             o<<"{\"section\":"<<j(s.name)<<",\"executable\":"<<(code?"true":"false")<<",\"rva\":"<<j(hx(i))<<",\"va\":"<<j(hx(im.base+i))
@@ -157,14 +161,14 @@ static size_t diff(const Image& im,const Snapshot& a,const Snapshot& b,const Sna
     o<<"],\"changed_bytes\":"<<total<<",\"emitted_runs\":"<<emitted<<",\"omitted_runs\":"<<skipped<<"}";
     writeText(name+L".json",o.str());return total;
 }
-// Supplementary injection evidence: only private executable pages in the selected game.
-// No heaps, stacks, screenshots, or other processes are captured here.
-static void privateCode(HANDLE h,const std::wstring& label) {
+// Only the explicitly selected process. Data snapshots are optional and bounded;
+// they may contain heaps/stacks and are not atomic or stability-filtered.
+static void privateCode(HANDLE h,const std::wstring& label,bool includeData=false) {
     std::ostringstream meta;meta<<"[";bool comma=false;size_t used=0;uintptr_t addr=0;MEMORY_BASIC_INFORMATION m{};unsigned k=0;
     while(addr<0x100000000ull&&VirtualQueryEx(h,(LPCVOID)addr,&m,sizeof(m))){
         uintptr_t base=(uintptr_t)m.BaseAddress,next=base+m.RegionSize;if(next<=addr)break;addr=next;
-        if(m.State!=MEM_COMMIT||m.Type!=MEM_PRIVATE||!executable(m.Protect))continue;
-        size_t n=std::min(size_t(m.RegionSize),size_t(1024*1024));n=std::min(n,size_t(8*1024*1024)-used);
+        if(m.State!=MEM_COMMIT||m.Type!=MEM_PRIVATE||!readable(m.Protect)||(!includeData&&!executable(m.Protect)))continue;
+        size_t n=std::min(size_t(m.RegionSize),size_t((includeData?32:1)*1024*1024));n=std::min(n,size_t((includeData?128:8)*1024*1024)-used);
         std::wstring file=label+L"-private-"+std::to_wstring(k++)+L".mem";size_t valid=0;
         if(n){auto s=readImage(h,base,n);for(auto v:s.valid)valid+=v!=0;
             writeFile(file,s.bytes.data(),n);writeFile(file+L".valid",s.valid.data(),n);used+=n;}
@@ -188,7 +192,7 @@ static void dumpTrainer() {
     if(line=="n"||line=="N")return;
     auto all=processes();std::vector<Proc> choices;
     for(auto p:all){std::wstring lower=p.name;for(auto& c:lower)c=towlower(c);
-        if(lower.find(L"修改大师")!=std::wstring::npos||lower.find(L"修改大師")!=std::wstring::npos||lower.find(L"ra2master")!=std::wstring::npos){
+        if(lower.find(L"修改大")!=std::wstring::npos||lower.find(L"ra2master")!=std::wstring::npos){
             if(p.id!=GetCurrentProcessId())choices.push_back(p);}}
     say("候选修改大师进程：");for(auto& p:choices)std::cout<<p.id<<"  "<<utf8(p.name)<<std::endl;
     std::string id=ask("输入修改大师 PID（任务管理器“详细信息”可查；回车跳过）：");if(id.empty())return;
@@ -203,6 +207,13 @@ static void dumpTrainer() {
     if(!count)throw std::runtime_error("修改大师主模块完全不可读。");
     writeFile(L"trainer-main.mem",s.bytes.data(),s.bytes.size());writeFile(L"trainer-main.valid",s.valid.data(),s.valid.size());
     writeText(L"trainer-main.json","{\"layout\":\"memory_image_offset_equals_RVA\",\"unread_bytes_are_zero\":true,"+imageMeta(im,pid)+",\"read_bytes\":"+std::to_string(count)+",\"modules\":"+modules(pid)+"}");
+    if(sha256(im.path)=="47D2792B8A322C2AA8009E338E79B84488D6471A53C5709AC8DFA9D19BE70EC6"&&im.size>0x231C88){
+        bool valid=true;for(size_t at=0x231C84;at<0x231C88;++at)valid=valid&&s.valid[at];
+        if(valid){DWORD value=0;memcpy(&value,s.bytes.data()+0x231C84,4);std::wstring name;
+            for(const auto&p:processes())if(p.id==value)name=p.name;
+            writeText(L"trainer-pid-slot.json","{\"rva\":\"0x231C84\",\"value\":"+std::to_string(value)+",\"observed_process_name\":"+j(utf8(name))+",\"tick_ms\":"+std::to_string(GetTickCount64())+",\"meaning\":\"sample-specific slot; active feature use not proven\"}");}
+    }
+    if(ask("补采修改大师私有内存？[回车=是，n=否]（追踪受保护回调需要，最多 128 MiB）")!="n")privateCode(h,L"trainer",true);
     say("修改大师主模块已保存。它是内存映像，不能作为 EXE 运行，也不代表虚拟化代码已还原。");
 }
 static void setupOutput() {
@@ -218,26 +229,45 @@ int main() {
         if(ask("模式：回车=游戏开关对比；输入 2=只采集修改大师主模块") == "2") {
             dumpTrainer();std::cout<<"结果目录："<<utf8(output)<<std::endl;ask("回车关闭窗口：");return 0;
         }
-        say("请先进入 gamemd.exe 的单机对局，退出 RA2 Toolbox，暂时关闭修改大师。\n每一步只改变指定开关；建议暂停游戏。回到此窗口按回车采样，q 退出。\n本工具只请求查询/读取权限，不注入、不修改游戏，也不自动上传。\n结果中含代码片段及可选的修改大师内存映像，请直接回传分析，不要公开发布。\n");
+        struct Feature {const char* id;const char* name;const char* action;};
+        const Feature features[]={
+            {"control","控制全部","选中敌方单位并下达一次移动命令"},
+            {"map","地图全开","回到游戏移动视野，观察原黑幕区域"},
+            {"placement","随处建造","准备好建筑后移动放置预览，观察能否远处放置"},
+            {"psychic","心灵探测","选择单位并下令，观察索敌/目标指示是否变化"},
+            {"tech","科技全开","切换各生产侧栏，观察可建造图标，不必开始生产"},
+            {"enhance","科技加强","选中受影响单位并下令，观察该功能实际效果"},
+            {"sell","卖别人建筑","进入出售模式，观察敌方建筑的出售光标"},
+            {"custom","自定义功能","执行一次能触发此功能的游戏操作"}
+        };
+        say("选择本轮要分析的单个功能：");
+        for(unsigned i=0;i<sizeof(features)/sizeof(features[0]);++i)std::cout<<i+1<<". "<<features[i].name<<std::endl;
+        auto choice=ask("编号（回车=1）：");size_t selected=choice.empty()?0:std::stoul(choice)-1;
+        if(selected>=sizeof(features)/sizeof(features[0]))throw std::runtime_error("功能编号无效。");
+        const auto&feature=features[selected];std::string featureName=feature.name;
+        if(selected==7){featureName=ask("输入功能名称：");if(featureName.empty())featureName=feature.name;}
+        say("每轮只测一个功能。建议重新启动游戏进入单机对局，退出 Toolbox，暂不启动修改大师。\n每一步都回到游戏操作一下，让开关真正生效，再回此窗口按回车。不要只在两个工具窗口之间切换。\n本工具只查询和读取，不注入、不修改游戏、不自动上传。原始采集仅回传分析。\n");
+        const bool privateData=ask("是否同时采集游戏私有内存？[回车=是，n=否] 科技类建议开启；每阶段最多 128 MiB，压缩前文件较大。")!="n";
+        const auto restarted=ask("本轮是否已经重新启动游戏？[y=是，回车=否/不确定]：");
         DWORD pid=selectGame();Handle h(OpenProcess(PROCESS_QUERY_INFORMATION|PROCESS_VM_READ,FALSE,pid));
-        if(!h.h)throw std::runtime_error("无法读取游戏："+winerr()+"。若游戏以管理员身份运行，请同样以管理员运行本工具。");
-        Image im=describe(h,mainModule(pid));writeText(L"session.json","{\"tool_version\":"+j(VERSION)+",\"target_name_policy\":\"exact_gamemd.exe\","+imageMeta(im,pid)+"}");
-        writeText(L"README.txt","Read-only diagnostic capture. Partial output is useful. *.json contains addresses, changed bytes and read coverage. *.mem is a raw memory-layout image, NOT an executable. *.valid has one byte per captured byte (1=read, 0=unread). No network tracing, API writer tracing or multiplayer proof. Do not publish private raw captures.\r\n");
-        ask("[1/4] 修改大师尚未启动。回车采集游戏原始状态：");auto clean=capture(h,im,pid,L"00-clean");privateCode(h,L"00-clean");
-        ask("[2/4] 打开修改大师，确认已识别游戏，“控制全部”关闭，其余功能保持关闭。回车：");auto off=capture(h,im,pid,L"01-off");
-        size_t init=diff(im,clean,off,nullptr,L"01-trainer-start-code");
-        ask("[3/4] 仅开启修改大师的“控制全部”（名称相近的控制所有单位功能）。回车：");auto on=capture(h,im,pid,L"02-control-on");
-        size_t enable=diff(im,off,on,nullptr,L"02-control-on-code");privateCode(h,L"02-control-on");
-        ask("[4/4] 关闭刚才的“控制全部”，保持当前对局。回车：");auto again=capture(h,im,pid,L"03-control-off");
-        size_t disable=diff(im,on,again,nullptr,L"03-control-off-code");
-        size_t rev=diff(im,off,on,&again,L"04-control-reversible");
-        std::ostringstream summary;summary<<"Tool "<<VERSION<<"\nTrainer-start executable changed bytes: "<<init<<"\nControl-on executable changed bytes: "<<enable<<"\nControl-off executable changed bytes: "<<disable<<"\nStable off/on/off reversible bytes (all PE sections): "<<rev<<"\nThese are candidate correlations, not proof of the writer or network synchronization.\n";
-        writeText(L"summary.txt",summary.str());say("控制全部的采集已保存。");
-        if(ask("如果修改大师还有独立的“卖别人建筑”开关，要继续采集吗？[y=继续，回车=跳过]")=="y"){
-            ask("保持控制全部关闭、卖别人建筑关闭，回车采集：");auto s0=capture(h,im,pid,L"10-sell-off");
-            ask("只开启“卖别人建筑”，回车采集：");auto s1=capture(h,im,pid,L"11-sell-on");diff(im,s0,s1,nullptr,L"11-sell-on-code");privateCode(h,L"11-sell-on");
-            ask("再关闭“卖别人建筑”，回车采集：");auto s2=capture(h,im,pid,L"12-sell-off");diff(im,s1,s2,nullptr,L"12-sell-off-code");diff(im,s0,s1,&s2,L"13-sell-reversible");
-        }
+        if(!h.h)throw std::runtime_error("无法读取游戏："+winerr()+"。若游戏以管理员运行，请同样以管理员运行本工具。");
+        Image im=describe(h,mainModule(pid));writeText(L"session.json","{\"tool_version\":"+j(VERSION)+",\"target_name_policy\":\"exact_gamemd.exe\",\"feature_id\":"+j(feature.id)+",\"feature_name\":"+j(featureName)+",\"game_restart_reported\":"+(restarted=="y"?"true":"false")+",\"private_data_capture\":"+(privateData?"true":"false")+","+imageMeta(im,pid)+"}");
+        writeText(L"README.txt","Read-only diagnostic capture. *.mem is a raw memory-layout image, not an executable. *.valid and *.stable mark readable/stable bytes. Private memory is optional, bounded and non-atomic; truncation is recorded. Pairwise all-section differences retain irreversible changes as well as reversible candidates. No API writer or network tracing. Do not publish raw captures.\r\n");
+        ask("[1/4] 修改大师尚未启动。先回到游戏操作一下，再回来按回车采集原始状态：");auto clean=capture(h,im,pid,L"00-clean");privateCode(h,L"00-clean");
+        ask("[2/4] 打开修改大师，关闭本轮功能和其他开关。回游戏操作一下，再回来按回车：");auto off=capture(h,im,pid,L"01-off");privateCode(h,L"01-off",privateData);
+        const auto init=diff(im,clean,off,nullptr,L"01-trainer-start-code");diff(im,clean,off,nullptr,L"01-trainer-start-all-stable",true);
+        std::cout<<"[3/4] 只开启："<<featureName<<"。"<<feature.action<<"。"<<std::endl;
+        ask("完成游戏内操作后，回来按回车：");auto on=capture(h,im,pid,L"02-on");privateCode(h,L"02-on",privateData);
+        const auto enabled=diff(im,off,on,nullptr,L"02-on-code");const auto allEnabled=diff(im,off,on,nullptr,L"02-on-all-stable",true);
+        const auto effect=ask("刚才实际生效了吗？[y=是，n=否，回车=不确定]：");
+        ask("[4/4] 关闭本轮功能，回游戏再操作一下，再回来按回车。若关闭后不恢复，也照常采集：");auto again=capture(h,im,pid,L"03-off");privateCode(h,L"03-off",privateData);
+        const auto disabled=diff(im,on,again,nullptr,L"03-off-code");diff(im,on,again,nullptr,L"03-off-all-stable",true);
+        const auto remaining=diff(im,off,again,nullptr,L"04-not-restored-all-stable",true);
+        const auto reversible=diff(im,off,on,&again,L"04-reversible");
+        const auto remarks=ask("可选备注（如子选项、效果、关闭后残留；回车跳过）：");
+        writeText(L"observation.json","{\"feature_id\":"+j(feature.id)+",\"effect_reported\":"+j(effect=="y"?"yes":effect=="n"?"no":"unknown")+",\"remarks\":"+j(remarks)+"}");
+        std::ostringstream summary;summary<<"Tool "<<VERSION<<"\nFeature: "<<featureName<<"\nTrainer-start code changed bytes: "<<init<<"\nEnabled code changed bytes: "<<enabled<<"\nDisabled code changed bytes: "<<disabled<<"\nEnabled stable all-section changed bytes: "<<allEnabled<<"\nRemaining stable all-section changed bytes: "<<remaining<<"\nReversible all-section changed bytes: "<<reversible<<"\nCorrelation only; no writer trace or multiplayer proof. Private-region raw files are analyzed separately.\n";
+        writeText(L"summary.txt",summary.str());say("本轮功能采集已保存。测下一项时请另开一轮，并重新启动游戏以隔离残留。");
         try{dumpTrainer();}catch(const std::exception& e){say(e.what());writeText(L"trainer-error.txt",e.what());}
         say("完成。把下面整个结果文件夹压缩为 ZIP 发回来即可：");std::cout<<utf8(output)<<std::endl;
         ask("回车关闭窗口：");return 0;

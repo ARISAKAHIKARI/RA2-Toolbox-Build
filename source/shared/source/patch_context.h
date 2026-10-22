@@ -10,6 +10,12 @@
 namespace patchcontext {
 struct Probe {uint32_t site,address;uint8_t size,bytes[16];};
 static constexpr Probe Probes[]={
+ {experimentalpatch::ControlHouse,0x50B6F9,16,{0x8A,0x81,0xEC,1,0,0,0x84,0xC0,0x75,0x0D,0x8A,0x81,0xED,1,0,0}},
+ {experimentalpatch::ControlHouse,0x50B709,13,{0x84,0xC0,0x75,3,0x33,0xC0,0xC3,0xB8,1,0,0,0,0xC3}},
+ {experimentalpatch::ControlOwner,0x6339B0,10,{0x8B,0x89,0x1C,2,0,0,0x56,0x8B,0x71,0x30}},
+ {experimentalpatch::ControlOwner,0x6339BF,13,{0x84,0xC0,0x74,0x0E,0xA1,0x4C,0x3D,0xA8,0,0x85,0xC0,0x74,5}},
+ {experimentalpatch::ControlPlanning,0x637E37,9,{0x8B,0x8F,0x1C,2,0,0,0x8B,0x71,0x30}},
+ {experimentalpatch::ControlPlanning,0x637E45,13,{0x84,0xC0,0x74,0x0C,0xA1,0x4C,0x3D,0xA8,0,0x85,0xC0,0x74,3}},
  {experimentalpatch::C4Movement,0x51C320,5,{0x83,0xF8,0x11,0x75,0x10}},
  {experimentalpatch::C4Movement,0x51C331,4,{0x84,0xC0,0x75,0x48}},
  {experimentalpatch::C4Execution,0x51A4C9,9,{0x83,0xF8,0x11,0x0F,0x85,0x22,0x03,0,0}},
@@ -30,6 +36,12 @@ static constexpr Probe Probes[]={
 };
 template<class Read> bool compatible(uint32_t site,Read read){
  if(!experimentalpatch::size(site))return false;
+ if(site==experimentalpatch::ControlHouse){
+  // Native unpacked entry and the two supplied platform forwarders have the
+  // same verified leaf ABI. Do not accept an arbitrary pre-existing detour.
+  uint8_t tail[4]{};const uint8_t native[]={0x85,0xC0,0x75,0x1D},forwarded[]={0xCC,0xCC,0xCC,0xCC};
+  if(!read(site+5,tail,4)||(memcmp(tail,native,4)&&memcmp(tail,forwarded,4)))return false;
+ }
  if(site==experimentalpatch::ScrollMap){
   uint8_t body[0x46]{};if(!read(site+8,body,sizeof body))return false;
   uint32_t hash=2166136261u;for(uint8_t b:body)hash=(hash^b)*16777619u;

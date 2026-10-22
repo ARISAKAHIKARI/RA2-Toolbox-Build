@@ -1,0 +1,12 @@
+{
+  "version": "0.2.0",
+  "sha256": "32390392b2ddb5ef391a3f3ad0ec9fd0d99c3a62d1155e2e58509be435a6def5",
+  "bytes": 480256,
+  "machine": "AMD64",
+  "required_read_imports": true,
+  "write_injection_debug_imports_absent": true,
+  "difference_algorithm_tests": "passed",
+  "real_windows_new_flow_tested": false,
+  "private_region_cap_mib": 32,
+  "private_total_cap_mib": 128
+}

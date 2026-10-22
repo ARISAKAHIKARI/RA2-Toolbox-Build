@@ -1,10 +1,10 @@
 {
-  "label": "1.0.32.0 SingleRuntime",
-  "file_version": "1.0.32.0",
+  "label": "1.0.33.0 SingleRuntime",
+  "file_version": "1.0.33.0",
   "verified": {
     "RA2Toolbox.exe": {
       "bytes": 2346496,
-      "sha256": "34a4879b6e3cf768a35e768bbd1791919eb08c72d64ba7c287fd7db30dcecb93",
+      "sha256": "97d4583d4dc2fa589513ef53f3725642dbde1d97b66ee033315383ee412c855c",
       "machine": "PE32 x86",
       "sections": 14,
       "entry_rva": "0xe0ca0",
@@ -540,11 +540,11 @@
       "assist_shared_bytes": 4096112
     },
     "GameRuntime.dll": {
-      "bytes": 4085760,
-      "sha256": "cb847ec550605e09f11ca81c9ffe741cc5bd23f97e26755282b97d45fe66e473",
+      "bytes": 4087296,
+      "sha256": "4b75b7813accf5e847c6885a5b5175239be4cc35306220d8a932afe91355bdbb",
       "machine": "PE32 x86",
       "sections": 13,
-      "entry_rva": "0x51e10",
+      "entry_rva": "0x52290",
       "exports": [
         "AssistMappingPrefix",
         "AssistProtocolInfo",

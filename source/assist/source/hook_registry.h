@@ -5,7 +5,7 @@
 // Game-thread-only ownership bookkeeping, NOT a stop-the-world x86 patcher.
 // A stale/foreign site is sticky: never overwrite it on retries or detach.
 namespace assist { namespace hookregistry {
-enum class Owner : uint8_t { Frame, CS, Cursor, NativeEvent, FootClick, Decide, MouseUp, Placement, Sidebar, NativeAir, RenderMask, C4Test, PlayerSelection, Camera, Unknown };
+enum class Owner : uint8_t { Frame, CS, Cursor, NativeEvent, FootClick, Decide, MouseUp, Placement, Sidebar, NativeAir, RenderMask, C4Test, PlayerControl, Camera, Unknown };
 inline Owner ownerAt(uint32_t a){
  switch(a){
  case 0x0055D360: return Owner::Frame;
@@ -21,7 +21,7 @@ inline Owner ownerAt(uint32_t a){
  case 0x0051A4D8:case 0x0051C32B:return Owner::C4Test;
  case 0x006D8640:case 0x004A9840:return Owner::Camera;
  case 0x006A97D2:case 0x006AA781:return Owner::Sidebar;
- case 0x6FBFB3:case 0x6FBFEF:case 0x5F45D2:case 0x5F45DF:case 0x5F45EF:return Owner::PlayerSelection;
+ case 0x50B6F0:case 0x6339BA:case 0x637E40:return Owner::PlayerControl;
  // Six verified CALL-sites use the same frame owner.
  case 0x0048CE8A:case 0x00608206:case 0x0060D407:
  case 0x0062314E:case 0x00623D72:case 0x00624271: return Owner::Frame;
@@ -47,7 +47,8 @@ inline bool knownOriginal(uint32_t at,const uint8_t* bytes,unsigned size){
  static const uint8_t c4[]={0x8A,0x81,0xC2,0x0E,0,0};
  static const uint8_t scrolling[]={0x8B,0x44,0x24,0x08,0x8A,0x4C,0x24,0x0C};
  static const uint8_t camera[]={0xA1,0xE4,0xF8,0x87,0};
- static const uint8_t selectionCalls[5][5]={{0xE8,0x38,0xF7,0xE0,0xFF},{0xE8,0xFC,0xF6,0xE0,0xFF},{0xE8,0x19,0x71,0xF1,0xFF},{0xE8,0x0C,0x71,0xF1,0xFF},{0xE8,0xFC,0x70,0xF1,0xFF}};
+ static const uint8_t controlEntries[3][5]={{0xA1,0x38,0xB2,0xA8,0},{0xE9,0xFB,0x2A,0x67,0},{0xE9,0x8B,0x2C,0x67,0}};
+ static const uint8_t controlOwner[]={0xE8,0x31,0x7D,0xED,0xFF},controlPlanning[]={0xE8,0xAB,0x38,0xED,0xFF};
  static const uint8_t sidebarClick[]={0xE8,0x99,0xE0,0xE4,0xFF};
  static const uint8_t sidebarRefresh[]={0xE8,0xEA,0xD0,0xE4,0xFF};
  switch(at){
@@ -67,11 +68,9 @@ inline bool knownOriginal(uint32_t at,const uint8_t* bytes,unsigned size){
  case 0x0051A4D8:case 0x0051C32B:signature=c4;expected=sizeof c4;break;
  case 0x004A9840:signature=scrolling;expected=sizeof scrolling;break;
  case 0x006D8640:signature=camera;expected=sizeof camera;break;
- case 0x6FBFB3:signature=selectionCalls[0];expected=5;break;
- case 0x6FBFEF:signature=selectionCalls[1];expected=5;break;
- case 0x5F45D2:signature=selectionCalls[2];expected=5;break;
- case 0x5F45DF:signature=selectionCalls[3];expected=5;break;
- case 0x5F45EF:signature=selectionCalls[4];expected=5;break;
+ case 0x50B6F0:return size==5&&(!memcmp(bytes,controlEntries[0],5)||!memcmp(bytes,controlEntries[1],5)||!memcmp(bytes,controlEntries[2],5));
+ case 0x6339BA:signature=controlOwner;expected=5;break;
+ case 0x637E40:signature=controlPlanning;expected=5;break;
  case 0x006A97D2:signature=sidebarClick;expected=sizeof sidebarClick;break;
  case 0x006AA781:signature=sidebarRefresh;expected=sizeof sidebarRefresh;break;
  case 0x0048CE8A:case 0x00608206:case 0x0060D407:

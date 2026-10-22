@@ -1,7 +1,7 @@
 #include <windows.h>
 1 VERSIONINFO
- FILEVERSION 0,1,0,0
- PRODUCTVERSION 0,1,0,0
+ FILEVERSION 0,2,0,0
+ PRODUCTVERSION 0,2,0,0
  FILEFLAGSMASK 0x3fL
  FILEFLAGS 0
  FILEOS VOS_NT_WINDOWS32
@@ -12,10 +12,10 @@ BEGIN
   BLOCK "040904B0"
   BEGIN
    VALUE "FileDescription", "RA2Master Read-only Research Capture\0"
-   VALUE "FileVersion", "0.1.0.0\0"
+   VALUE "FileVersion", "0.2.0.0\0"
    VALUE "ProductName", "RA2MasterProbe\0"
-   VALUE "ProductVersion", "0.1.0.0\0"
-   VALUE "OriginalFilename", "RA2MasterProbe-0.1.0.exe\0"
+   VALUE "ProductVersion", "0.2.0.0\0"
+   VALUE "OriginalFilename", "RA2MasterProbe-0.2.0.exe\0"
   END
  END
  BLOCK "VarFileInfo"

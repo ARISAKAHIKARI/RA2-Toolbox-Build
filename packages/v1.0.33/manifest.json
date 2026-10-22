@@ -1,0 +1,29 @@
+{
+  "version": "1.0.33",
+  "file_version": "1.0.33.0",
+  "assets": [
+    {
+      "name": "RA2-Toolbox-v1.0.33-Update.zip",
+      "bytes": 1176208,
+      "sha256": "2aae165ab4c7f7ef91c6b1b44bfa6f9be37ba0fd85ff106e4a41691716c33cec",
+      "files": {
+        "RA2Toolbox.exe": "97d4583d4dc2fa589513ef53f3725642dbde1d97b66ee033315383ee412c855c",
+        "GameRuntime.dll": "4b75b7813accf5e847c6885a5b5175239be4cc35306220d8a932afe91355bdbb"
+      }
+    },
+    {
+      "name": "RA2-Toolbox-v1.0.33-Source.zip",
+      "bytes": 1402524,
+      "sha256": "d9ef10cba0bb4b1234bb6d65b6f6f304e08032f3a562deec34b579a19ec6a664"
+    },
+    {
+      "name": "RA2MasterProbe-0.2.0.zip",
+      "bytes": 198810,
+      "sha256": "a7c12f27c24d6547dcac2b47a08ea9e0efef499a0cbd28a9d45f6c0a131edea5",
+      "files": {
+        "RA2MasterProbe-0.2.0.exe": "32390392b2ddb5ef391a3f3ad0ec9fd0d99c3a62d1155e2e58509be435a6def5",
+        "README.txt": "acf29c5a499c194fe2d4b76ed8022291a47b5256632e540747fa164f1bcdb02b"
+      }
+    }
+  ]
+}

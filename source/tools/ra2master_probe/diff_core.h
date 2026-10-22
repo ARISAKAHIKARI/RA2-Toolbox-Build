@@ -22,6 +22,9 @@ inline bool reversible(const Snapshot& off,const Snapshot& on,const Snapshot& ag
     return fixed(off,i) && fixed(on,i) && fixed(again,i) &&
         off.bytes[i] != on.bytes[i] && off.bytes[i] == again.bytes[i];
 }
+inline bool stableChanged(const Snapshot& a,const Snapshot& b,size_t i) {
+    return fixed(a,i)&&fixed(b,i)&&a.bytes[i]!=b.bytes[i];
+}
 template<class Predicate> std::vector<Run> runs(size_t start,size_t end,Predicate p) {
     std::vector<Run> out;
     for(size_t i=start;i<end;) {

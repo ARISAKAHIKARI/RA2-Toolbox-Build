@@ -26,7 +26,7 @@ prefix=bytes.fromhex('9C 60 89 E3 81 EC 10 02 00 00 83 E4 F0 0F AE 04 24 FC')
 starts=[];offset=0
 while (offset:=mapped.find(prefix,offset))>=0:
     starts.append(offset);offset+=len(prefix)
-assert len(starts)==8,starts
+assert len(starts)==7,starts
 stubs={}
 for start in starts:
     block=mapped[start:start+96]
