@@ -67,3 +67,24 @@
 - 不需要靠切换 CurrentPlayer 来定位这些执行方法；切换指针会引入另一组 UI/玩家上下文问题。
 
 命名交叉参考：上游 [YRpp MissionClass.h](https://github.com/Phobos-developers/YRpp/blob/master/MissionClass.h)、[TechnoClass.h](https://github.com/Phobos-developers/YRpp/blob/master/TechnoClass.h)、[ObjectClass.h](https://github.com/Phobos-developers/YRpp/blob/master/ObjectClass.h)、[NetworkEvents.h](https://github.com/Phobos-developers/YRpp/blob/master/NetworkEvents.h)。精确地址及结论以以上两个样本和受控结果为准，未发布私有游戏文件或原始转储。
+
+## 联机同步补充：执行器可以参与联机，但不负责广播
+
+用户追问：事件执行器能否联机，怎样制造能同步执行的事件？本节为公开源码交叉核对和方案推导，没有新增私有样本执行测试。
+
+本地参考 `CnCNet/yr-patches` 提交 `0318b1f1bddcc9c664c50ebee820cde74a662f47`；2026-10-22 同时读取上游 main 的相关文件：
+
+- `src/spawner/extended_events.asm` 在 `4C6CC8` 接入 `_Networking_RespondToEvent`，把扩展事件交给 `Extended_Events`。这是已定位的 `4C6CB0` 执行器内部，说明该接收执行路径用于网络事件，而不是只能单机调用。
+- `src/spawner/extended_events_c.c` 同时扩展 EventNames、EventLengths 和接收处理，`EventClass__Add` 仍把事件放进 OutList。这里已有 RESPONSE_TIME2 的实际例子。不能只选一个新编号、写入队列，就假定未安装扩展的客户端知道如何处理。
+- `src/spawner/protocol_zero_c.c::Send_Response_Time` 给该扩展事件设置 `Frame + MaxAhead` 后入 OutList；`Handle_Timing_Change` 在联机会话中处理。本例是时序控制事件，不代表所有普通命令都应由工具手填同一帧公式。
+
+同步设计要求（由代码和确定性仿真模型推导）：各端先有一致的规则与仿真状态，再在同一仿真帧、同一确定顺序执行相同命令及参数。网络对象标识/地图坐标可以作为数据；本机对象指针不可当成跨端对象标识。不能先本机直接执行，然后再发送同一事件，否则本端可能多执行一次或提前改变状态。
+
+可选实现：
+
+1. 原版已有事件：经统一入口和原版网络调度提交，各端以原有接收器执行。接收端不必装工具来理解已有语义，但事件仍须符合各端原生判定；能广播不等于拥有对任何单位的操作权限。
+2. 自定义网络事件：所有参与仿真的客户端安装兼容的事件格式、长度、处理逻辑；借用原版传输/调度，处理函数内部再调用执行器或单位方法。现有统一管理器负责接入，不能让每项功能各装入口 Hook。
+3. 各端一致的仿真扩展：所有客户端在相同逻辑点，依据同步状态运行相同算法；不能以各端鼠标、墙钟或外部线程到达时间作仿真触发。若操作来自玩家本地输入，该输入仍须先通过事件同步。
+4. 另建通信通道也能传命令，但仍需全端插件实现一致排序、去重、未来执行帧和迟到时等待等调度；并不能让原版客户端理解新操作，成本通常高于复用现有事件系统。
+
+未发现可以把任意本机内存改动自动同步给其他客户端的通用调用。更改 HouseIndex、只在本机写 DoList 或关闭同步校验，都不能替代传播与一致执行。此结论不等于证明敌方 Move/Attack/Sell 在现有平台必然被网络层拒绝；其发送、接收与执行证据仍需逐段补齐。
