@@ -1,0 +1,78 @@
+name: Publish RA2 Toolbox v1.0.35 Complete Windows Package
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/publish-v135-full.yml'
+      - 'source/tools/assemble_v135_windows.py'
+      - 'packages/v1.0.35/README-Windows.txt'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: publish-v135
+  cancel-in-progress: false
+jobs:
+  publish-full:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download pinned complete resource baseline
+        run: |
+          mkdir -p baseline dist
+          gh release download v1.0.2 --pattern RA2-Toolbox-v1.0.2-Windows.zip --dir baseline
+      - name: Assemble and verify complete package
+        run: |
+          python3 source/tools/assemble_v135_windows.py --baseline baseline/RA2-Toolbox-v1.0.2-Windows.zip --output-dir dist
+          cat dist/full-manifest.json >> "$GITHUB_STEP_SUMMARY"
+      - name: Verify published version and preserve existing assets
+        run: |
+          set -euo pipefail
+          gh release view v1.0.35 --json isDraft,isPrerelease,assets > release-before.json
+          mkdir -p remote-check
+          gh release download v1.0.35 --pattern RA2-Toolbox-v1.0.35-Update.zip --pattern RA2-Toolbox-v1.0.35-Source.zip --dir remote-check
+          python3 - <<'PY'
+          import json, pathlib, hashlib
+          release=json.load(open('release-before.json'))
+          assert not release['isDraft'] and not release['isPrerelease']
+          for a in json.load(open('packages/v1.0.35/manifest.json'))['assets']:
+              p=pathlib.Path('remote-check')/a['name']
+              assert p.stat().st_size==a['bytes'] and hashlib.sha256(p.read_bytes()).hexdigest()==a['sha256'], a['name']
+          PY
+      - name: Append complete package to existing release
+        run: |
+          set -euo pipefail
+          full='RA2-Toolbox-v1.0.35-Windows.zip'
+          exists=$(python3 -c 'import json; print(str(any(a["name"]=="RA2-Toolbox-v1.0.35-Windows.zip" for a in json.load(open("release-before.json"))["assets"])).lower())')
+          if [ "$exists" = false ]; then
+            gh release upload v1.0.35 "dist/$full"
+          fi
+          gh release download v1.0.35 --pattern "$full" --dir remote-check
+          python3 - <<'PY'
+          import pathlib,json,hashlib
+          m=json.load(open('dist/full-manifest.json'))
+          p=pathlib.Path('remote-check')/m['name']
+          assert p.stat().st_size==m['bytes'] and hashlib.sha256(p.read_bytes()).hexdigest()==m['sha256'], 'Published complete package mismatch'
+          PY
+          gh release edit v1.0.35 --notes-file packages/v1.0.35/RELEASE_NOTES.md
+          gh release view v1.0.35 --json url,tagName,isDraft,isPrerelease,assets > published-release.json
+          python3 - <<'PY'
+          import json
+          before=json.load(open('release-before.json'))
+          after=json.load(open('published-release.json'))
+          assert not after['isDraft'] and not after['isPrerelease']
+          ids={a['name']:a['id'] for a in after['assets']}
+          for a in before['assets']:
+              assert ids[a['name']]==a['id'], a['name']
+          PY
+          cat published-release.json >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: v1.0.35-complete-package-manifest
+          path: dist/full-manifest.json
