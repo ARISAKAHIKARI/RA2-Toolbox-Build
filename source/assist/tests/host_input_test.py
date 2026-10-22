@@ -42,6 +42,7 @@ body=r'''
 #include "host_game_input.h"
 #include "../../assist/source/pointer_intent.h"
 #include <cassert>
+#include <string>
 #include <cstring>
 #include <cwchar>
 #include <thread>
@@ -85,7 +86,7 @@ UINT SendInput(UINT n,INPUT*input,int size){assert(size==sizeof(INPUT));++sends;
 int main(){
  using namespace gameinput;using gameentry::Client;assert(otherHost()==&host());auto win=(HWND)42;
  assert(!install(Client::Assist,13,42,win)&&installs==0);assert(!install(Client::Assist,12,43,win)&&installs==0);
- nativeHwnd=0;assert(!install(Client::Assist,12,42,win)&&GetLastError()==ERROR_NOT_READY&&installs==0);
+ nativeHwnd=0;assert(!install(Client::Assist,12,42,win)&&GetLastError()==ERROR_NOT_READY&&installs==0);assert(std::wstring(installationStage())==L"native-window-check");NativeWindowProbe probe;assert(!nativeWindow(42,12,&probe)&&probe.read&&probe.raw==0);
  nativeHwnd=142;assert(!install(Client::Cursor,12,42,win)&&GetLastError()==ERROR_NOT_READY&&installs==0); // live helper thread cannot bind
  nativeHwnd=42;readable=false;assert(!install(Client::Assist,12,42,win)&&installs==0);readable=true;
  auto a=install(Client::Assist,12,42,win);auto c=install(Client::Cursor,12,42,win);assert(a&&c&&a!=c&&installs==2&&loads==1&&block.enabled==3);
@@ -153,7 +154,7 @@ int main(){
  windowThread=13;block.wakePending=0;before=posts;wake(c);assert(posts==before&&health(c).postError==ERROR_INVALID_PARAMETER&&block.wakePending==0);assert(!install(Client::Assist,13,42,win));oldDead=true;auto migrated=install(Client::Assist,13,42,win);assert(migrated&&installs==4&&block.enabled==3);oldDead=false;
  assert(release(Client::Assist,migrated)&&block.enabled==2);
  failUnhook=true;assert(release(Client::Cursor,c)&&block.enabled==0);assert(host().targets[0].post);failUnhook=false;pulse(nullptr,0);assert(!host().targets[0].pid);
- failPostHook=true;assert(!install(Client::Cursor,13,42,win));assert(GetLastError()==1428);assert(!host().targets[0].pid);failPostHook=false;
+ failPostHook=true;assert(!install(Client::Cursor,13,42,win));assert(GetLastError()==1428);assert(std::wstring(installationStage())==L"WH_CALLWNDPROCRET");assert(!host().targets[0].pid);failPostHook=false;
  auto fresh=install(Client::Cursor,13,42,win);assert(fresh&&fresh!=c);assert(!release(Client::Cursor,c));assert(release(Client::Cursor,fresh));
  nativeHwnd=242;auto rebound=install(Client::Assist,13,42,win);assert(rebound&&host().targets[0].window==(HWND)242);
  nativeHwnd=42;auto sameThread=install(Client::Cursor,13,42,win);assert(sameThread&&host().targets[0].window==win);assert(release(Client::Assist,rebound));assert(release(Client::Cursor,sameThread));

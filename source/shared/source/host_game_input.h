@@ -31,8 +31,9 @@ struct PointerPress {DWORD tick=0,serial=0;uint32_t match=0;int operation=0;POIN
 struct PointerQueue {PointerPress items[16]{};unsigned head=0,count=0;DWORD dropped=0,cancelSerial=0;bool enabled=false,focused=false,rightArmed=false,leftArmed=false;uint32_t match=0;DWORD contextAt=0;uint32_t down=0;uint8_t rightKeys[256]{},leftKeys[256]{};};
 struct Target {PointerQueue pointer{};Health lastDiagnostic{};DWORD pid=0,thread=0;HWND window=nullptr;HHOOK message=nullptr,post=nullptr;HANDLE mapping=nullptr;runtime::Control*control=nullptr;uint64_t cursorAt=0,tacticalAt=0;DWORD lastPost=0,lastPostError=0;bool fastTactical=false;};
 struct Lease {Subscription id=0;gameentry::Client client{};unsigned target=0;};
-struct Host {std::recursive_mutex mutex;Target targets[8]{};Lease leases[32]{};Subscription next=0;HMODULE module=nullptr;HANDLE timer=nullptr;volatile LONG pulseBusy=0;bool preciseTimer=false;};
+struct Host {std::recursive_mutex mutex;Target targets[8]{};Lease leases[32]{};Subscription next=0;HMODULE module=nullptr;HANDLE timer=nullptr;volatile LONG pulseBusy=0;bool preciseTimer=false;const wchar_t* installStage=L"not-started";};
 inline Host& host(){static Host*value=new Host;return *value;}
+inline const wchar_t* installationStage(){auto&h=host();std::lock_guard<std::recursive_mutex> lock(h.mutex);return h.installStage;}
 inline uint32_t mask(gameentry::Client c){return c==gameentry::Client::Assist?runtime::Tactical:c==gameentry::Client::Cursor?runtime::Cursor:0;}
 inline HMODULE runtimeModule(){
  auto&h=host();std::lock_guard<std::recursive_mutex>lock(h.mutex);if(h.module)return h.module;
@@ -171,25 +172,33 @@ inline void CALLBACK pulse(void*,BOOLEAN){
 // Enumeration is sufficient for read-only discovery, not for binding the sole
 // executor. A launcher/renderer thread can stay alive after its startup window
 // disappears, which would otherwise permanently occupy the game-thread lease.
-inline HWND nativeWindow(DWORD pid,DWORD thread){
+struct NativeWindowProbe {bool read=false;uint32_t raw=0;DWORD owner=0,thread=0,error=0;};
+inline HWND nativeWindow(DWORD pid,DWORD thread,NativeWindowProbe* detail=nullptr){
+ NativeWindowProbe probe{};struct Save{NativeWindowProbe*dest;NativeWindowProbe&source;~Save(){if(dest){source.error=GetLastError();*dest=source;}}}save{detail,probe};
  if(!pid||!thread){SetLastError(ERROR_INVALID_PARAMETER);return nullptr;}
  external::ReadSession reader;
  if(!reader.open(pid)){SetLastError(reader.lastOpenError);return nullptr;}
  uint32_t raw=0;
- if(!reader.readFresh(assist::messagequery::YrppGameHwndAddr,&raw,sizeof raw)||!raw){SetLastError(ERROR_NOT_READY);return nullptr;}
+ probe.read=reader.readFresh(assist::messagequery::YrppGameHwndAddr,&raw,sizeof raw);probe.raw=raw;
+ if(!probe.read||!raw){SetLastError(ERROR_NOT_READY);return nullptr;}
  HWND window=reinterpret_cast<HWND>(uintptr_t(raw));DWORD owner=0;
- if(GetWindowThreadProcessId(window,&owner)!=thread||owner!=pid){SetLastError(ERROR_NOT_READY);return nullptr;}
+ probe.thread=GetWindowThreadProcessId(window,&owner);probe.owner=owner;
+ if(probe.thread!=thread||owner!=pid){SetLastError(ERROR_NOT_READY);return nullptr;}
+ SetLastError(ERROR_SUCCESS);
  return window;
 }
 inline Subscription install(gameentry::Client client,DWORD thread,DWORD pid,HWND window){
  auto&h=host();std::lock_guard<std::recursive_mutex>lock(h.mutex);
+ h.installStage=L"window-owner-check";
  DWORD actual=0,tid=window?GetWindowThreadProcessId(window,&actual):0;
  if(!mask(client)||!pid||!thread||actual!=pid||tid!=thread){SetLastError(ERROR_INVALID_PARAMETER);return 0;}
- window=nativeWindow(pid,thread);if(!window)return 0;
- HMODULE m=runtimeModule();if(!m)return 0;
+ h.installStage=L"native-window-check";window=nativeWindow(pid,thread);if(!window)return 0;
+ h.installStage=L"load-runtime";HMODULE m=runtimeModule();if(!m)return 0;
+ h.installStage=L"subscription-slots";
  Lease*slot=nullptr;for(auto&l:h.leases)if(!l.id){slot=&l;break;}if(!slot){SetLastError(ERROR_NOT_ENOUGH_MEMORY);return 0;}
  unsigned at=8;for(unsigned i=0;i<8;++i)if(h.targets[i].pid==pid){at=i;break;}
  if(at<8&&h.targets[at].thread!=thread){
+  h.installStage=L"previous-thread-still-alive";
   auto&t=h.targets[at];HANDLE old=OpenThread(SYNCHRONIZE,FALSE,t.thread);
   bool dead=old?WaitForSingleObject(old,0)==WAIT_OBJECT_0:GetLastError()==ERROR_INVALID_PARAMETER;if(old)CloseHandle(old);
   if(!dead){SetLastError(ERROR_BUSY);return 0;}
@@ -199,6 +208,7 @@ inline Subscription install(gameentry::Client client,DWORD thread,DWORD pid,HWND
  }
  if(at==8){for(unsigned i=0;i<8;++i)if(!h.targets[i].pid){at=i;break;}if(at==8){SetLastError(ERROR_NOT_ENOUGH_MEMORY);return 0;}
   auto&t=h.targets[at];t.pid=pid;t.thread=thread;t.window=window;
+  h.installStage=L"shared-mapping";
   wchar_t name[96];runtime::mapName(name,pid,GetCurrentProcessId());t.mapping=CreateFileMappingW(INVALID_HANDLE_VALUE,nullptr,PAGE_READWRITE,0,sizeof(runtime::Control),name);
   if(t.mapping)t.control=(runtime::Control*)MapViewOfFile(t.mapping,FILE_MAP_ALL_ACCESS,0,0,sizeof(runtime::Control));
   if(!t.control){DWORD error=GetLastError();clear(t);SetLastError(error);return 0;}
@@ -211,11 +221,12 @@ inline Subscription install(gameentry::Client client,DWORD thread,DWORD pid,HWND
  // The HWND may be recreated on the same thread between loading and play.
  // All subscribers must wake the current native window, including old leases.
  if(t.window!=window){t.window=window;if(t.control)InterlockedExchange(&t.control->wakePending,0);}
- if(!t.message)t.message=SetWindowsHookExW(WH_GETMESSAGE,(HOOKPROC)GetProcAddress(m,"GameRuntimeHook"),m,thread);
- if(t.message&&!t.post)t.post=SetWindowsHookExW(WH_CALLWNDPROCRET,(HOOKPROC)GetProcAddress(m,"GameRuntimePostHook"),m,thread);
+ if(!t.message){h.installStage=L"WH_GETMESSAGE";t.message=SetWindowsHookExW(WH_GETMESSAGE,(HOOKPROC)GetProcAddress(m,"GameRuntimeHook"),m,thread);}
+ if(t.message&&!t.post){h.installStage=L"WH_CALLWNDPROCRET";t.post=SetWindowsHookExW(WH_CALLWNDPROCRET,(HOOKPROC)GetProcAddress(m,"GameRuntimePostHook"),m,thread);}
  if(!t.message||!t.post){DWORD error=GetLastError();bool used=false;for(auto&l:h.leases)if(l.id&&l.target==at)used=true;if(!used)clear(t);SetLastError(error);return 0;}
+ h.installStage=L"host-timer";
  if(!h.timer&&!CreateTimerQueueTimer(&h.timer,nullptr,pulse,nullptr,4,4,WT_EXECUTEDEFAULT)){DWORD error=GetLastError();clear(t);SetLastError(error);return 0;}
- if(!++h.next)++h.next;*slot={h.next,client,at};InterlockedOr(&t.control->enabled,LONG(mask(client)));post(t,mask(client));return slot->id;
+ if(!++h.next)++h.next;*slot={h.next,client,at};InterlockedOr(&t.control->enabled,LONG(mask(client)));post(t,mask(client));h.installStage=L"installed-awaiting-callback";return slot->id;
 }
 inline bool wake(Subscription id){
  auto&h=host();std::lock_guard<std::recursive_mutex>lock(h.mutex);

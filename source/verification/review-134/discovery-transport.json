@@ -1,0 +1,62 @@
+{
+  "scope": "Host discovery and hook connection diagnostics; mocked Win32, no live platform execution",
+  "checks": [
+    {
+      "command": [
+        "g++",
+        "-std=c++17",
+        "-pthread",
+        "-Isource/tests/winmock",
+        "source/tests/random_process_discovery.cpp",
+        "-o",
+        "/workspace/scratch/163fefaa0056/test-random-process"
+      ],
+      "exit_code": 0,
+      "output": ""
+    },
+    {
+      "command": [
+        "/workspace/scratch/163fefaa0056/test-random-process",
+        "/workspace/scratch/163fefaa0056/upload/gamemd-spawn(5).exe"
+      ],
+      "exit_code": 0,
+      "output": "PASS supplied image fingerprint, corrupt/truncated rejection, changing names/PIDs, unrelated executable, cache/PID reuse, windowless/child/fallback discovery, ambiguity and access denial\n"
+    },
+    {
+      "command": [
+        "python3",
+        "source/tests/winmock_check.py"
+      ],
+      "exit_code": 0,
+      "output": "PASS read robustness: cache lifetime, cross-page reads, partial failure/recovery, bounds; 2 threads / 4000 batches / 256000 reads / 4000 mocked RPM calls\nPASS: process snapshot/fallback, lazy Win32 region queries, permission-denial isolation\n"
+    },
+    {
+      "command": [
+        "g++",
+        "-std=c++17",
+        "-pthread",
+        "-Isource/tests/winmock",
+        "source/tests/process_relaunch.cpp",
+        "-o",
+        "/workspace/scratch/163fefaa0056/test-relaunch"
+      ],
+      "exit_code": 0,
+      "output": ""
+    },
+    {
+      "command": [
+        "/workspace/scratch/163fefaa0056/test-relaunch"
+      ],
+      "exit_code": 0,
+      "output": "PASS: new-process discovery, reused HWND rejection, delayed authoritative HWND with live helper, uncached reads, minimized .dat launchers\n"
+    },
+    {
+      "command": [
+        "python3",
+        "source/assist/tests/host_input_test.py"
+      ],
+      "exit_code": 0,
+      "output": "PASS shared host: one hook pair; 200 concurrent subscriptions; independent release; cadence/coalescing; failed post/unhook recovery; dead-thread migration; stale tokens; balanced input\nPASS cursor refresh uses host input manager, validates target/focus, times out without holding scheduler mutex\nPASS window-addressed wake, post error diagnostics, stale HWND/thread rejected without losing ready bits\nPASS pointer capture: loading suppressed; capture epoch retained; cross-match/menu clicks discarded; held release disarmed; context timeout bounded\nPASS startup target: zero/unreadable native HWND and live helper thread rejected before hooks; same-thread HWND replacement updates all wake subscribers\n"
+    }
+  ]
+}

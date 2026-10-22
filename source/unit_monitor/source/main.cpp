@@ -82,7 +82,7 @@ static bool attach(){
  auto scan=external::discovery::scan();
  if(!scan.best.pid){
   if(scan.snapshotError)setStatus(L"游戏进程快照失败，Win32="+std::to_wstring(scan.snapshotError));
-  else if(!scan.processCount)setStatus(L"尚未发现 gamemd 进程");
+  else if(!scan.processCount)setStatus(L"尚未发现兼容游戏进程（支持随机进程名）");
   else setStatus(L"多个无窗口游戏进程，无法确定目标 PID");
   return false;
  }

@@ -23,3 +23,23 @@ extern "C" { HANDLE OpenProcess(DWORD,BOOL,DWORD); BOOL CloseHandle(HANDLE); DWO
 extern "C" BOOL QueryFullProcessImageNameW(HANDLE,DWORD,wchar_t*,DWORD*);
 #define CALLBACK
 #define ERROR_SUCCESS 0
+struct LARGE_INTEGER {int64_t QuadPart;};
+struct FILETIME {DWORD dwLowDateTime,dwHighDateTime;};
+constexpr DWORD GENERIC_READ=0x80000000,FILE_SHARE_READ=1,FILE_SHARE_WRITE=2,FILE_SHARE_DELETE=4,OPEN_EXISTING=3,FILE_ATTRIBUTE_NORMAL=128,FILE_BEGIN=0;
+#ifdef WINMOCK_IMAGE_FILES
+extern "C" {
+HANDLE CreateFileW(const wchar_t*,DWORD,DWORD,void*,DWORD,DWORD,HANDLE);
+BOOL GetFileSizeEx(HANDLE,LARGE_INTEGER*);BOOL SetFilePointerEx(HANDLE,LARGE_INTEGER,LARGE_INTEGER*,DWORD);BOOL ReadFile(HANDLE,void*,DWORD,DWORD*,void*);
+BOOL GetProcessTimes(HANDLE,FILETIME*,FILETIME*,FILETIME*,FILETIME*);DWORD GetTickCount();
+HWND GetForegroundWindow();BOOL EnumChildWindows(HWND,BOOL(*)(HWND,LPARAM),LPARAM);
+}
+#else
+inline HANDLE CreateFileW(const wchar_t*,DWORD,DWORD,void*,DWORD,DWORD,HANDLE){return INVALID_HANDLE_VALUE;}
+inline BOOL GetFileSizeEx(HANDLE,LARGE_INTEGER*){return FALSE;}
+inline BOOL SetFilePointerEx(HANDLE,LARGE_INTEGER,LARGE_INTEGER*,DWORD){return FALSE;}
+inline BOOL ReadFile(HANDLE,void*,DWORD,DWORD*,void*){return FALSE;}
+inline BOOL GetProcessTimes(HANDLE,FILETIME*,FILETIME*,FILETIME*,FILETIME*){return FALSE;}
+inline DWORD GetTickCount(){return 1;}
+inline HWND GetForegroundWindow(){return nullptr;}
+inline BOOL EnumChildWindows(HWND,BOOL(*)(HWND,LPARAM),LPARAM){return TRUE;}
+#endif

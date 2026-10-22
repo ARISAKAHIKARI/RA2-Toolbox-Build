@@ -7,6 +7,7 @@
 #include <string>
 #include <unordered_set>
 #include "../../shared/source/message_query.h"
+#include "process_image_identity.h"
 
 // Discover candidate game processes before looking for a window. No handle
 // injection, no privilege adjustment, no writing of game memory.
@@ -79,20 +80,20 @@ inline HWND resolveYrppWindow(ProcessReader& reader,DWORD pid,HWND fallback=null
  if(outThread)*outThread=0;
  return nullptr;
 }
-// Fallback for restricted snapshots: validate an existing window's owner by
-// its executable basename. This is diagnostic compatibility, not a bypass.
-struct FallbackContext { std::unordered_set<DWORD>* ids; };
+// Known names preserve existing discovery. Renamed window owners must match
+// the supplied game image; a random title/name alone never admits a process.
+struct FallbackContext { std::unordered_set<DWORD>* ids;std::unordered_set<DWORD> checked; };
 inline BOOL CALLBACK checkFallbackWindow(HWND w,LPARAM value){
  auto* ctx=reinterpret_cast<FallbackContext*>(value);
  DWORD pid=0;GetWindowThreadProcessId(w,&pid);
- if(!pid||ctx->ids->count(pid)||pid==GetCurrentProcessId())return TRUE;
+ if(!pid||ctx->ids->count(pid)||pid==GetCurrentProcessId()||!ctx->checked.insert(pid).second)return TRUE;
  HANDLE h=OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION,FALSE,pid);
  if(!h)return TRUE;
  wchar_t path[2048]{};DWORD n=2048;
  if(QueryFullProcessImageNameW(h,0,path,&n)){
   const wchar_t* file=path;
   for(const wchar_t*p=path;*p;++p)if(*p==L'\\'||*p==L'/')file=p+1;
-  if(isGameName(file))ctx->ids->insert(pid);
+  if(isGameName(file)||imageidentity::processMatches(pid))ctx->ids->insert(pid);
  }
  CloseHandle(h);return TRUE;
 }
@@ -103,17 +104,21 @@ inline Scan scan(DWORD preferredPid=0){
  PROCESSENTRY32W entry{};entry.dwSize=sizeof entry;
  std::unordered_set<DWORD> ids;
  if(snapshot!=INVALID_HANDLE_VALUE&&Process32FirstW(snapshot,&entry))do{
-  if(isGameName(entry.szExeFile)&&entry.th32ProcessID!=GetCurrentProcessId())ids.insert(entry.th32ProcessID);
+  if(entry.th32ProcessID!=GetCurrentProcessId()&&(isGameName(entry.szExeFile)||
+     (imageidentity::randomName(entry.szExeFile)&&imageidentity::processMatches(entry.th32ProcessID))))ids.insert(entry.th32ProcessID);
  }while(Process32NextW(snapshot,&entry));
  else if(snapshot!=INVALID_HANDLE_VALUE)result.snapshotError=GetLastError();
  if(snapshot!=INVALID_HANDLE_VALUE)CloseHandle(snapshot);
- if(ids.empty()){
-  FallbackContext ctx{&ids};EnumWindows(checkFallbackWindow,reinterpret_cast<LPARAM>(&ctx));
- }
+ // Also inspect window owners when a fixed-name instance already exists.
+ // Child renderers can belong to a different PID than their platform parent.
+ FallbackContext fallback{&ids,{}};
+ EnumWindows(checkFallbackWindow,reinterpret_cast<LPARAM>(&fallback));
+ HWND foreground=GetForegroundWindow();if(foreground)EnumChildWindows(foreground,checkFallbackWindow,reinterpret_cast<LPARAM>(&fallback));
  result.processCount=static_cast<DWORD>(ids.size());
  if(!ids.empty()){
   WindowContext ctx{&result,&ids,preferredPid};
   EnumWindows(checkWindow,reinterpret_cast<LPARAM>(&ctx));
+  if(foreground)EnumChildWindows(foreground,checkWindow,reinterpret_cast<LPARAM>(&ctx));
   if(!result.best.window){
    DWORD candidate=0;
    if(preferredPid && ids.count(preferredPid))candidate=preferredPid;

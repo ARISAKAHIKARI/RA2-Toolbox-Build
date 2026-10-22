@@ -424,7 +424,8 @@ static std::wstring commandWaitReason(){
  if(health.diagnosticValid&&health.stage<0)return L"无法建立游戏连接，请查看 logs/Runtime.log。";
  if(health.postError)return L"游戏暂未响应，指令尚未提交。";
  if(!lastData||!incoming.match){
-  if(!health.dispatches)return L"等待游戏响应；若持续无响应，请查看 logs/Runtime.log。";
+  if(!health.callbacks)return L"只读连接可用，尚未收到游戏内 Hook 回调；详情见 logs/Runtime.log。";
+  if(!health.dispatches)return L"Hook 已回调，正在等待游戏内连接完成；详情见 logs/Runtime.log。";
   return L"游戏已连接，等待可操作的玩家与对局。";
  }
  if(shared->stop)return L"游戏连接正在重建，请稍候。";
@@ -691,10 +692,17 @@ static bool ensureBridge(){
  if(shared)return true;
  if(!gameinput::runtimeModule())return bridgeFailed(L"运行组件缺失或版本不匹配，请完整更新工具箱",GetLastError());DWORD now=GetTickCount();
  if(!game||bridgeBlocked||(bridgeRetryAt&&int32_t(now-bridgeRetryAt)<0))return false;
- if(!gameinput::nativeWindow(pid,gameThread)){
+ gameinput::NativeWindowProbe native{};
+ if(!gameinput::nativeWindow(pid,gameThread,&native)){
   // Readiness is not an installation failure. Retry promptly without using
   // the failure backoff or leaving an uninitialized mapping behind.
-  bridgeRetryAt=now+250;return bridgeFailed(L"等待游戏主窗口就绪，功能将自动连接",GetLastError());
+  static DWORD lastProbe=0,probePid=0;
+  if(pid!=probePid||DWORD(now-lastProbe)>=5000){lastProbe=now;probePid=pid;
+   critical(L"native-window-check read="+std::to_wstring(native.read)+L" raw="+hex32(native.raw)+
+    L" owner="+std::to_wstring(native.owner)+L" actualTid="+std::to_wstring(native.thread)+
+    L" expectedPid="+std::to_wstring(pid)+L" expectedTid="+std::to_wstring(gameThread)+L" error="+std::to_wstring(native.error));
+  }
+  bridgeRetryAt=now+250;return bridgeFailed(L"等待游戏主窗口就绪，功能将自动连接",native.error);
  }
  ++bridgeAttempts;bridgeRetryAt=now+(bridgeAttempts>=3?30000:2000);
  critical(L"bridge-connect-attempt="+std::to_wstring(bridgeAttempts)+L" pid="+std::to_wstring(pid)+L" thread="+std::to_wstring(gameThread));
@@ -736,7 +744,9 @@ static bool ensureBridge(){
   }
  }
  hook=gameinput::install(gameentry::Client::Assist,gameThread,pid,game);
- if(!hook){DWORD error=GetLastError();releaseBridge();return bridgeFailed(L"无法建立游戏操作连接",error);}
+ if(!hook){DWORD error=GetLastError();std::wstring stage=gameinput::installationStage();releaseBridge();
+  critical(L"hook-install-failed stage="+stage+L" Win32="+std::to_wstring(error));logLoadedGameModules();
+  return bridgeFailed(L"无法建立游戏操作连接（"+stage+L"）",error);}
  bridgeFailure.clear();ack=notice=0;lastData=0;attachAt=now;wakeGame();
  wchar_t dllPath[32768]={},transportName[96];GetModuleFileNameW(module,dllPath,32768);runtime::mapName(transportName,pid,GetCurrentProcessId());
  critical(std::wstring(L"hook-installed dll=")+dllPath+L" localBase="+std::to_wstring(uintptr_t(module))+
@@ -751,7 +761,7 @@ static bool attach(){
  auto scan=external::discovery::scan();
  if(!scan.best.pid){
   if(scan.snapshotError)setStatus(L"进程快照失败，Win32="+std::to_wstring(scan.snapshotError));
-  else if(!scan.processCount)setStatus(L"未发现 gamemd 游戏进程（非内存读取错误）");
+  else if(!scan.processCount)setStatus(L"未发现兼容游戏进程（支持随机进程名）");
   else setStatus(L"找到多个游戏进程但没有匹配窗口，无法安全选择只读 PID");
   return false;
  }
@@ -764,6 +774,9 @@ static bool attach(){
  pid=c.pid;gameThread=c.thread;game=external::discovery::resolveYrppWindow(externalReader,pid,c.window,&gameThread,&gameWindowFromYrpp);
  critical(L"read-attached pid="+std::to_wstring(pid)+L" hwnd="+std::to_wstring(uintptr_t(game))+L" tid="+std::to_wstring(gameThread)+(gameWindowFromYrpp?L" windowSource=YRpp-0xB73550":L" windowSource=validated-fallback-or-none"));
  critical(gamebuild::describe([](uint32_t at,void*out,size_t n){return externalReader.readFresh(at,out,n);}));
+ wchar_t imagePath[32768]{};DWORD pathLength=32768;
+ if(externalReader.imagePath(imagePath,&pathLength))critical(std::wstring(L"game-image path=")+imagePath);
+ logLoadedGameModules();
  gameProcess=OpenProcess(SYNCHRONIZE|PROCESS_QUERY_LIMITED_INFORMATION,FALSE,pid);
  if(!gameProcess)gameProcess=OpenProcess(SYNCHRONIZE,FALSE,pid); // Liveness still works when exit-code query access is denied.
  setStatus(L"已连接只读 PID "+std::to_wstring(pid)+
@@ -1342,7 +1355,7 @@ static void tick(){reapBridges();logBridgeHealth();DWORD now=GetTickCount();stat
  }
  now=GetTickCount(); // snapshot/queue services may have advanced lastData/sentAt.
   if(uninitializedBridgeTimedOut()){
-   critical(L"uninitialized command bridge timeout; retry before any match is authenticated");logBridgeHealth(true);releaseBridge();
+   critical(L"uninitialized command bridge timeout; retry before any match is authenticated");logBridgeHealth(true);logLoadedGameModules();releaseBridge();
   }else if(lastData&&DWORD(now-lastData)>8000){
    // A live game's delayed callback is not a new match. Keep mapping, epoch,
    // outstanding serial and job state; never replay an unacknowledged request.

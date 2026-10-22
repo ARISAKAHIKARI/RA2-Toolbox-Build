@@ -1,10 +1,10 @@
 {
-  "version": "1.0.33",
+  "version": "1.0.34",
   "baseline": "0.7.16",
   "result": "No detected forbidden source-boundary bypass; selectable tactical decisions with the retired burst slot hidden; UI-bound features remain external by design. Native APIs always Runtime.",
   "scope": {
-    "source_files": 207,
-    "host_reachable_files": 138,
+    "source_files": 209,
+    "host_reachable_files": 140,
     "runtime_reachable_files": 119,
     "method": "Recursive local include graph + forbidden API ownership checks + manual review of game-call, queue, patch and scheduling paths. Lexical assertions cannot prove all runtime behavior."
   },
@@ -43,13 +43,13 @@
     "Automatic bounded host logging and callback/handshake evidence without consuming host work",
     "Source time/frame preserved across planning and queueing; per-order expiration; fresh suffix replan preserves aircraft quotas",
     "Cursor WM_SETCURSOR goes through host input manager without holding scheduler mutex",
-    "Only the message entry consumes host work; frame detours removed; Patch API permits only three 1.0.4 judgment sites, two 1.0.24 post-initialization drawing sites, two pre.12 C4 capability loads, two 1.0.20 sidebar CALLs and pre.3 camera clamp and experimental scroll entries; 1.0.33 uses one shared-control entry and two strict owner-query CALL adapters under the manager; current-player switching remains disabled",
+    "Only the message entry consumes host work; frame detours removed; Patch API permits only three 1.0.4 judgment sites, two 1.0.24 post-initialization drawing sites, two pre.12 C4 capability loads, two 1.0.20 sidebar CALLs and pre.3 camera clamp and experimental scroll entries; 1.0.34 uses one shared-control entry and two strict owner-query CALL adapters under the manager; current-player switching remains disabled",
     "Recycled host PID cannot reuse a dead retained controller process handle",
     "Host builds reject including the Runtime execution client",
     "Partial rebuilds invalidate old verification markers; Windows build verifies PE outputs before success"
   ],
   "permitted_exceptions": [
-    "1.0.33 retains manual other-player events and uses a shared House predicate with two owner-query adapters; it does not patch the native receiver, object Owner, or the sample anomaly at 6378E0. Current-player switching remains disabled at host and Runtime; normal automation remains own-only. C4 uses two capability-load sites (movement and charge placement), installed/restored as a group; native charge/timer/damage code remains in the game. This changes local simulation judgments and is not a netplay-safe claim. Two other experimental judgment features use three sites; render display uses exactly ShroudDraw/FogDraw post-initialization sites; defaults off. Render display and native aircraft waypoints are ordinary UI controls; network aircraft paths now use the ordinary event gateway without either aircraft patch; native aircraft patches are SP-only. Small-map clamp adds one manager-owned five-byte entry only when viewport bounds invert and the full remaining native body matches; existing foreign patches are preserved. All writes owned by the entry manager; stateful callbacks acquire a bound-thread Capture lease, while the control hot leaves only return a constant or compare CurrentPlayer. Explicit host polling feeds Runtime. Optional compatible ground-click suppression uses the existing common message boundary only, default off; no OutList rewriting",
+    "1.0.34 retains manual other-player events and uses a shared House predicate with two owner-query adapters; it does not patch the native receiver, object Owner, or the sample anomaly at 6378E0. Current-player switching remains disabled at host and Runtime; normal automation remains own-only. C4 uses two capability-load sites (movement and charge placement), installed/restored as a group; native charge/timer/damage code remains in the game. This changes local simulation judgments and is not a netplay-safe claim. Two other experimental judgment features use three sites; render display uses exactly ShroudDraw/FogDraw post-initialization sites; defaults off. Render display and native aircraft waypoints are ordinary UI controls; network aircraft paths now use the ordinary event gateway without either aircraft patch; native aircraft patches are SP-only. Small-map clamp adds one manager-owned five-byte entry only when viewport bounds invert and the full remaining native body matches; existing foreign patches are preserved. All writes owned by the entry manager; stateful callbacks acquire a bound-thread Capture lease, while the control hot leaves only return a constant or compare CurrentPlayer. Explicit host polling feeds Runtime. Optional compatible ground-click suppression uses the existing common message boundary only, default off; no OutList rewriting",
     "Read-only game-side validation/resource reads under Runtime execution",
     "Watchdog stop/dead-host restoration only",
     "Central transport supports verified construct/enqueue and original high-level backends",
@@ -213,11 +213,13 @@
     "external_reader/source/cooperative_reader.h",
     "external_reader/source/display_state.h",
     "external_reader/source/enemy_markers.h",
+    "external_reader/source/game_image_identity.h",
     "external_reader/source/game_view.h",
     "external_reader/source/idle_aircraft.h",
     "external_reader/source/layout_probe.h",
     "external_reader/source/process_connection.h",
     "external_reader/source/process_discovery.h",
+    "external_reader/source/process_image_identity.h",
     "external_reader/source/process_reader.h",
     "external_reader/source/projection.h",
     "external_reader/source/radar_map.h",
@@ -390,32 +392,32 @@
     },
     {
       "file": "shared/source/host_game_input.h",
+      "line": 262,
+      "api": "SendInput"
+    },
+    {
+      "file": "shared/source/host_game_input.h",
+      "line": 264,
+      "api": "SendInput"
+    },
+    {
+      "file": "shared/source/host_game_input.h",
       "line": 251,
-      "api": "SendInput"
-    },
-    {
-      "file": "shared/source/host_game_input.h",
-      "line": 253,
-      "api": "SendInput"
-    },
-    {
-      "file": "shared/source/host_game_input.h",
-      "line": 240,
       "api": "SendMessageTimeoutW"
     },
     {
       "file": "shared/source/host_game_input.h",
-      "line": 214,
+      "line": 224,
       "api": "SetWindowsHookExW"
     },
     {
       "file": "shared/source/host_game_input.h",
-      "line": 215,
+      "line": 225,
       "api": "SetWindowsHookExW"
     },
     {
       "file": "shared/source/host_game_input.h",
-      "line": 43,
+      "line": 44,
       "api": "LoadLibraryW"
     },
     {
@@ -502,7 +504,7 @@
     "assist/source/input_patch.h": "18b1e77d65fff3066f69a89dd33606ddddbf7a1a316e8815221966c61d841f2b",
     "assist/source/label_motion.h": "4606d98fd370554042b9abf8d0c3bc1024dbf7f7fe03ab9ed33df031e73e5dd5",
     "assist/source/magnetron_cycle.h": "f075cb51bef3a7a92ccf3e999057aa1c6890601ad5b38e8fd69532cf5f6b36ca",
-    "assist/source/main.cpp": "44acf4a333dff4d67d95b56aac029c384e93d032c4f06141ea3f69c6784c53f6",
+    "assist/source/main.cpp": "2b42345eacfdf8b68c9ec7ca120df95b678fc680608c0f961287a3714d7b28d5",
     "assist/source/mega_queue_backend.h": "02b36f3c661c06fd0279271272f91608b661e2ac16cbb6146cf0e350ec640f1f",
     "assist/source/minimap_overlay.h": "301e71a0b7ee6abca9526cc667645e53b3fc17be932631f6408714500aaf6cc9",
     "assist/source/missile_bridge.h": "230f1c945c633fb504192e16a967dfc83c5210282ec90523dbf9be592a6891ee",
@@ -577,7 +579,7 @@
     "cursor/source/hide.cpp": "1b73593be67e107504a4725e28cdb66570c3fdd3047fefe4816a8201cd6840f4",
     "cursor/source/hide_watch.h": "809f3bcec5f8f48c4f3fc3c000fae399c8972a631289fad1e2ce6fb699107958",
     "cursor/source/live_settings_ui.h": "aa38e2dffd3af1e3d5f1cd21915e9cb12e325cc1076c90aa2a17b40dfd7c16ea",
-    "cursor/source/main.cpp": "f96edf20922589da10fa6465890d190e5a939103755d16963e5c9e0b4a69d863",
+    "cursor/source/main.cpp": "dfc271e8e219d1097fb19615ac61fd2ad44010360c7f450acffbdedc80a13de7",
     "cursor/source/motion.h": "ca4c66fe02959d6f65ea6c4e3eeb732efc8c2a3b424ed2f8df630543d5243531",
     "cursor/source/native_cache.h": "ddfe385ca306b131c5bd49adafacbccae2599f00ea6e9af285ecda2791a4e671",
     "cursor/source/native_hotspot.h": "e45ee1fe631a9bd8c1781f45d6d1a9b171ada4fd343f24680bda4b25fab8dfd7",
@@ -602,11 +604,13 @@
     "external_reader/source/cooperative_reader.h": "1debd7cee0d75793e1167f7da4ab4d1b987272cb3954cc04796e77b894e813e2",
     "external_reader/source/display_state.h": "c4ddc14791c554174247fdc896f55e30f61efa6790d3d3aa91de9191ddfa17e0",
     "external_reader/source/enemy_markers.h": "c098590dbd43055c4d8b08c8fb81b5b3a8c698c0ff0ba016c212c46d99b7861a",
+    "external_reader/source/game_image_identity.h": "70aa5a374b1744610064171eb06028f07d94d5072add04a8810d521a5f81901d",
     "external_reader/source/game_view.h": "972b98d31e254e0e50fc07756203d8fd72600faa8a0a3f6ddd2042f10af99e0a",
     "external_reader/source/idle_aircraft.h": "00c7154875f815a0c0e1a53677de1eccda108946f526887d7d0c6c2ac9658b78",
     "external_reader/source/layout_probe.h": "2e46071068ec5b177095ba8a80f11d86d1832c2c2bc7fa6c0e20325ba6edce62",
     "external_reader/source/process_connection.h": "b1ca28c51de85e83f1bbc98b0df0252a0667e0f7485790da854a79fb0591913e",
-    "external_reader/source/process_discovery.h": "13df5200025790d0fd8c28bffacd9cdc9d2a931db873dd954ac100d1040120e4",
+    "external_reader/source/process_discovery.h": "14646943da4004680f0bb45628efa8a6f21f854045fe12b0e068c0576fd6f09c",
+    "external_reader/source/process_image_identity.h": "f0b93b4c65d2e6b47c4b31dff47f8323c541b0e0b6617132493ca5ace3eca534",
     "external_reader/source/process_reader.h": "0979dfacda89e807c863c93d33076d393a0d459497eafb67ea9acb36840c61eb",
     "external_reader/source/projection.h": "dbc5154a9206ac13a2c60adf685f0a4795f21190b4c76551486ba2f13e439bdc",
     "external_reader/source/radar_map.h": "7f92c61a7560ca9bca07bc736955891ee1e3cab93f707ddd0d29e8dbd2ca788c",
@@ -624,12 +628,12 @@
     "shared/source/game_entry_api.h": "a113072ab7abe73d1667b311c5b90d99e2571aa70cff665a8a90645fdabc243b",
     "shared/source/game_entry_client.h": "a750783b2246af878c08565116d225f6acdaf85564894ab24096b4f4e03e0db7",
     "shared/source/game_entry_manager.cpp": "10a6f6607a0f2f3a3c67d3164f0f9be96439c15c8cadf049af182c95c45192c3",
-    "shared/source/host_game_input.h": "a1dc6276ce05711b5ce2d3c219fa442d03fc48a8593dae9f7268eedcd6ffef00",
+    "shared/source/host_game_input.h": "c7bafb8471006a28c279d72f863e5184b45aa8585b5fe1c15493e520a84b77bf",
     "shared/source/message_query.h": "fee0a8953fbdf08d70725cfd1f6b0f1c1473e50dc863ba8444365195d884d675",
     "shared/source/modern_ui.h": "87dbd41d11f857c1440813a62ab07f87c984aad77c5992f9e62a7932e2dd4335",
     "shared/source/patch_context.h": "dea68fac7848073e762d9300ca7556097480d1f6b7e37e8e96e314d1e20fec27",
     "shared/source/precise_clock.h": "84accf4522c9867dc762c6e6afef96db7d78d8a5cd65b8386d007fd5020b80cf",
-    "shared/source/release_version.h": "9e99694671b52d883caf6fe443840695cfc953977cb326b3b9dcbbd81002baf6",
+    "shared/source/release_version.h": "71499140f9c4d3f894d16e9163d61a5f3c9b6e8e61e34563df8f047786421719",
     "shared/source/runtime_fault.h": "b4ddf16db57b0cfc1b022b286af5a5df3034f75d892abb27df8d0dcca0653818",
     "shared/source/runtime_fp_scope.h": "9b6e42ce25f028a71705dfd5f42f0f89865ae523f73f05c34349786f755646bc",
     "shared/source/runtime_protocol.h": "eb480104be375885b5370692c3c90d76409fd32f2d7f95415e7df6344693a56b",
@@ -642,7 +646,7 @@
     "unit_monitor/source/core.h": "3a3174a11b5c9f925f78ac541b34497d70a1568e17897d12fff8decb1402e5a9",
     "unit_monitor/source/display_settings_ui.h": "86187f3002d3c7d724c05441841d306234ce88ffe194584cada48d304ecb3867",
     "unit_monitor/source/icon_cache.h": "4da09dff0569aa0d788ffd4add79821cf0fe43362ec41725a5d69437c1ed8d25",
-    "unit_monitor/source/main.cpp": "935cf3f0121a2a9c4fd568bb319c7fc5bfa2ab2f62ceec6fb756e8a2a9994e86",
+    "unit_monitor/source/main.cpp": "20017800c3496e6614610e6fa771f21a32cfff47e92d71687e16286a19ce1837",
     "unit_monitor/source/owned_counter.h": "3dba2eb0c6d4bd3cb5cfc3354d5c5e7805b44468a73546f076114ef30d2892ac",
     "unit_monitor/source/round_state.h": "cfab6d3a200ec1ec76a8f09ad9ef49b81d7cab5f115b0d024e065be48ccc0cc2",
     "unit_monitor/source/sampler.h": "67e9964b265d30de1a6a96daf33695defc80b34a7ac5355f809a597316983faa",

@@ -1,0 +1,20 @@
+{
+  "version": "1.0.34",
+  "file_version": "1.0.34.0",
+  "assets": [
+    {
+      "name": "RA2-Toolbox-v1.0.34-Update.zip",
+      "bytes": 1180276,
+      "sha256": "a261e7cd441372e19bca938d3b51a3fe68324194bf04968ba7ae1129379069dd",
+      "files": {
+        "RA2Toolbox.exe": "c856a3eff65c81cea75bd2360217e8753550b6ba2c996ced113e0f79b6581445",
+        "GameRuntime.dll": "7270a986b1c75f84fe8f86eeb06a7950cbf64e0938eb422fc8b3351845cb6011"
+      }
+    },
+    {
+      "name": "RA2-Toolbox-v1.0.34-Source.zip",
+      "bytes": 1414245,
+      "sha256": "ceae0ee84a50506e305f0d079a11011b054b2bee4df947ec3c91ce845011c20c"
+    }
+  ]
+}

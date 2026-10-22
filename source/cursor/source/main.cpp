@@ -359,7 +359,7 @@ static void visibilityDiagnostic(const wchar_t* reason,DWORD foregroundPid=0){
 }
 
 static void loadCache(){bridgeFrame.clear();lanboStream.reset();fallbackTracker.reset();fallbackDefs.clear();timing.clear();activeMotion.reset();previewStart=-1;previewCount=0;loaded=false;try{original=file(cacheKey+L"\\original.sha");asset=decode(original);Bytes pal=file(cacheKey+L"\\palette.bgra");if(pal.size()!=sizeof(palette))return;memcpy(palette,pal.data(),sizeof(palette));loaded=true;lastFrame=-2;if(displayLoaded)rebuildDisplay();}catch(...){}}
-static void attach(bool quiet=false){bridgeFrame.clear();lanboStream.reset();if(running)fail("Stop the preview before attaching again");HANDLE snap=CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS,0);if(snap==INVALID_HANDLE_VALUE)fail("Process enumeration failed");PROCESSENTRY32W pe={sizeof(pe)};std::vector<DWORD> ids;if(Process32FirstW(snap,&pe))do{if(accepted(pe.szExeFile))ids.push_back(pe.th32ProcessID);}while(Process32NextW(snap,&pe));CloseHandle(snap);if(ids.size()!=1)fail("Keep exactly one Yuri game running, then Attach (RA2 game.exe is not supported)");cursorReader.close();pid=ids[0];clickGameWidth=clickGameHeight=0;gameParentPid=parentProcess(pid);// Query-only fallback preserves Runtime cursor snapshots when VM_READ is denied.
+static void attach(bool quiet=false){bridgeFrame.clear();lanboStream.reset();if(running)fail("Stop the preview before attaching again");auto scan=external::discovery::scan();if(scan.snapshotError&&!scan.processCount)fail("Process enumeration failed");if(scan.processCount!=1||!scan.best.pid)fail("Keep exactly one compatible Yuri game running, then Attach (random process names are supported)");cursorReader.close();pid=scan.best.pid;clickGameWidth=clickGameHeight=0;gameParentPid=parentProcess(pid);// Query-only fallback preserves Runtime cursor snapshots when VM_READ is denied.
  if(!cursorReader.open(pid,mode==L"hide"||nativeGameRefresh||noCursorMode))
   throw std::runtime_error("OpenProcess failed; Win32="+std::to_string(cursorReader.lastOpenError));
  readRestricted=!cursorReader.canRead();
@@ -410,7 +410,7 @@ static bool manuallyBlankSHA(){
   return exists(legacy)&&bytes==file(legacy);
  }catch(...){return false;}
 }
-static bool anyGame(){HANDLE sn=CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS,0);if(sn==INVALID_HANDLE_VALUE)return true;PROCESSENTRY32W e={sizeof(e)};bool yes=false;if(Process32FirstW(sn,&e))do{if(accepted(e.szExeFile)){yes=true;break;}}while(Process32NextW(sn,&e));CloseHandle(sn);return yes;}
+static bool anyGame(){auto scan=external::discovery::scan();return scan.processCount||scan.snapshotError;}
 static void install(){if(gameDir.empty()||!loaded)fail("Select the game folder first; bundled assets must be readable");if(anyGame())fail("Exit all Yuri game processes before installing");std::wstring dst=gameDir+L"\\mouse.sha",mark=dst+L".cursor-preview-state",bak=dst+L".cursor-preview-backup";if(exists(mark)||exists(bak))fail("Existing preview state/backup found. Restore first; never overwrite backups");if(manuallyBlankSHA()){status(L"检测到手动放入的透明 SHA，已可直接选择替换 SHA 模式；没有本程序的自动恢复备份。");return;}Bytes blank=encode(asset,true);save(cacheKey+L"\\transparent.sha",blank);bool had=exists(dst);if(had&&!CopyFileW(dst.c_str(),bak.c_str(),TRUE))fail("Backup failed");Bytes m={uint8_t(had?1:0)};try{save(mark,m);save(dst,blank);}catch(...){if(had)CopyFileW(bak.c_str(),dst.c_str(),FALSE);else DeleteFileW(dst.c_str());throw;}installOwned=true;status(L"透明 SHA 已安装。重开游戏，连接，再启动外部光标。不要叠加旧 HWCursor。");}
 static void restoreFile(){if(gameDir.empty())fail("Attach once to identify the game directory");if(anyGame())fail("Exit all Yuri game processes before restoring SHA");std::wstring dst=gameDir+L"\\mouse.sha",mark=dst+L".cursor-preview-state",bak=dst+L".cursor-preview-backup";if(!exists(mark)){
   if(manuallyBlankSHA()){
@@ -1180,7 +1180,7 @@ static void togglePrimary(){
   status(L"已关闭外部光标与自动检测。原游戏光标是否显示由当前隐藏模式决定。");
  }else{
   autoStart=true;autoPaused=false;lastAutoCheck=0;
-  status(L"已开启自动检测：等待兼容的 gamemd 游戏窗口。");
+  status(L"已开启自动检测：等待兼容游戏窗口（支持随机进程名）。");
  }
  WritePrivateProfileStringW(L"Startup",L"AutoStart",autoStart?L"1":L"0",ini().c_str());
  if(IsWindow(autoStartBox))SendMessageW(autoStartBox,BM_SETCHECK,autoStart?BST_CHECKED:BST_UNCHECKED,0);
