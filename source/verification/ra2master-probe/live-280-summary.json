@@ -64,6 +64,12 @@
     "va": "0x631C84",
     "value": 9544,
     "matches_captured_game_pid": false,
-    "scope": "unprotected selected-object remote read/write path; protected ControlAll path unresolved"
+    "scope": "unprotected selected-object remote read/write path; protected ControlAll path unresolved",
+    "user_reported_process_name": "explorer.exe",
+    "process_identity_source": "user correction; identity and observation time not recorded in capture",
+    "actual_controlall_target_pid_verified": false,
+    "direct_reference_count": 507,
+    "direct_reference_encoding": "FF 35 84 1C 63 00",
+    "writer_unresolved": true
   }
 }
