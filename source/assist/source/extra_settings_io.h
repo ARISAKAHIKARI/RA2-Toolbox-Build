@@ -1,4 +1,5 @@
 static void loadAdditionalSettings(){
+ extra.watchEnabled=value(L"Watch",L"Enabled",1)!=0;extra.watchDanger=value(L"Watch",L"DangerCarriers",1)!=0;extra.watchKey=value(L"Watch",L"PinKey",extra.watchKey)&65535;
  extra.formationEnabled=value(L"Formation",L"Enabled",1)!=0;extra.formationHold=value(L"Formation",L"HoldKey",18)&65535;
  const wchar_t* shapeKeys[]={L"RectangleKey",L"DispersedKey",L"CircleKey",L"FanKey"};for(int n=0;n<4;++n)extra.formationKeys[n]=value(L"Formation",shapeKeys[n],extra.formationKeys[n])&65535;
  for(int i=0;i<compute::Count;++i){bool mode=value(L"Compute",compute::key(i),compute::inside(compute::Default,compute::Feature(i)))!=0;if(mode)computeRequested|=1u<<i;else computeRequested&=~(1u<<i);}
@@ -15,7 +16,7 @@ static void loadAdditionalSettings(){
  extra.missileScope=std::clamp(value(L"MissileDefense",L"TargetScope",0),0,1);extra.missileAllocation=std::clamp(value(L"MissileDefense",L"Allocation",0),0,1);extra.magnetronGlobal=value(L"Magnetron",L"Global",0)!=0;
  extra.missileDefense=value(L"MissileDefense",L"Enabled",0)!=0;extra.missileScanHz=std::clamp(value(L"MissileDefense",L"ScanHz",10),1,60);
  extra.antiTheft=value(L"Modes",L"AntiTheft",0)!=0;
- extra.scrollRefreshMode=std::clamp(value(L"Experimental",L"RefreshStrategy",value(L"Experimental",L"ScrollRefresh",0)!=0?1:0),0,2);
+ extra.scrollRefreshMode=std::clamp(value(L"Experimental",L"RefreshStrategy",value(L"Experimental",L"ScrollRefresh",0)!=0?1:0),0,3);
 #ifndef RA2_UNIFIED
  extra.scrollRefreshHz=std::clamp(value(L"Experimental",L"ScrollRefreshHz",120),30,500);
 #endif
@@ -56,6 +57,7 @@ static void loadAdditionalSettings(){
  }
 }
 static bool saveAdditionalSettings(){
+ write(L"Watch",L"Enabled",extra.watchEnabled);write(L"Watch",L"DangerCarriers",extra.watchDanger);write(L"Watch",L"PinKey",extra.watchKey);
  write(L"Formation",L"Enabled",extra.formationEnabled);write(L"Formation",L"HoldKey",extra.formationHold);
  const wchar_t* shapeKeys[]={L"RectangleKey",L"DispersedKey",L"CircleKey",L"FanKey"};for(int n=0;n<4;++n)write(L"Formation",shapeKeys[n],extra.formationKeys[n]);
  write(L"Display",L"PassengerBubbles",extra.passengerBubbles);write(L"Display",L"DangerPassengers",extra.dangerPassengers);write(L"Magnetron",L"AutoDrop",extra.magnetronDrop);

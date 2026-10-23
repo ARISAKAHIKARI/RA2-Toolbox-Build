@@ -1,0 +1,117 @@
+{
+  "scope": "Actual x86 DLL and original event constructors; mocked Win32/world/query.\nThe Sell receiver branch is executed from the supplied EXE with resolved-object,\nmap lookup and final virtual sale mocked. This is not real network validation.\n",
+  "results": [
+    {
+      "case": "drop_0_tree",
+      "status": "PASS"
+    },
+    {
+      "case": "drop_0_ore_pillar",
+      "status": "PASS"
+    },
+    {
+      "case": "drop_0_tank",
+      "status": "PASS"
+    },
+    {
+      "case": "drop_0_aircraft",
+      "status": "PASS"
+    },
+    {
+      "case": "drop_0_hover_low",
+      "status": "PASS"
+    },
+    {
+      "case": "drop_0_lifted",
+      "status": "PASS"
+    },
+    {
+      "case": "drop_0_air_layer",
+      "status": "PASS"
+    },
+    {
+      "case": "drop_0_different_cell",
+      "status": "PASS"
+    },
+    {
+      "case": "drop_0_crumbling",
+      "status": "PASS"
+    },
+    {
+      "case": "drop_0_bridge",
+      "status": "PASS"
+    },
+    {
+      "case": "global_0_idle",
+      "status": "PASS"
+    },
+    {
+      "case": "global_0_moving",
+      "status": "PASS"
+    },
+    {
+      "case": "global_0_attack",
+      "status": "PASS"
+    },
+    {
+      "case": "global_0_disabled",
+      "status": "PASS"
+    },
+    {
+      "case": "drop_3_tree",
+      "status": "PASS"
+    },
+    {
+      "case": "drop_3_ore_pillar",
+      "status": "PASS"
+    },
+    {
+      "case": "drop_3_tank",
+      "status": "PASS"
+    },
+    {
+      "case": "drop_3_aircraft",
+      "status": "PASS"
+    },
+    {
+      "case": "drop_3_hover_low",
+      "status": "PASS"
+    },
+    {
+      "case": "drop_3_lifted",
+      "status": "PASS"
+    },
+    {
+      "case": "drop_3_air_layer",
+      "status": "PASS"
+    },
+    {
+      "case": "drop_3_different_cell",
+      "status": "PASS"
+    },
+    {
+      "case": "drop_3_crumbling",
+      "status": "PASS"
+    },
+    {
+      "case": "drop_3_bridge",
+      "status": "PASS"
+    },
+    {
+      "case": "global_3_idle",
+      "status": "PASS"
+    },
+    {
+      "case": "global_3_moving",
+      "status": "PASS"
+    },
+    {
+      "case": "global_3_attack",
+      "status": "PASS"
+    },
+    {
+      "case": "global_3_disabled",
+      "status": "PASS"
+    }
+  ]
+}

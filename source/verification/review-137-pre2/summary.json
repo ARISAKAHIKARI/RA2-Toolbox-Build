@@ -1,0 +1,183 @@
+{
+  "version": "1.0.37-pre.2",
+  "base_commit": "b6911ba562010ab3b5b07f766b34625e72f811fe",
+  "file_version": "1.0.37.1",
+  "samples": {
+    "lbw": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+    "zhanwang": "c287d62a4d6a25b547e9339d071dd6e03adcf545699062e478aaeee38c60e89a"
+  },
+  "controlled_total": 296,
+  "controlled": [
+    {
+      "test": "scroll-refresh",
+      "sample": "lbw",
+      "cases": 52,
+      "status": "PASS",
+      "evidence": "scroll-refresh-lbw.json"
+    },
+    {
+      "test": "scroll-refresh",
+      "sample": "zhanwang",
+      "cases": 52,
+      "status": "PASS",
+      "evidence": "scroll-refresh-zhanwang.json"
+    },
+    {
+      "test": "formation",
+      "sample": "lbw",
+      "cases": 28,
+      "status": "PASS",
+      "evidence": "formation-lbw.json"
+    },
+    {
+      "test": "formation",
+      "sample": "zhanwang",
+      "cases": 28,
+      "status": "PASS",
+      "evidence": "formation-zhanwang.json"
+    },
+    {
+      "test": "terrain-native",
+      "sample": "lbw",
+      "cases": 4,
+      "status": "PASS",
+      "evidence": "terrain-native-lbw.json"
+    },
+    {
+      "test": "terrain-native",
+      "sample": "zhanwang",
+      "cases": 4,
+      "status": "PASS",
+      "evidence": "terrain-native-zhanwang.json"
+    },
+    {
+      "test": "missile137",
+      "sample": "lbw",
+      "cases": 36,
+      "status": "PASS",
+      "evidence": "missile137-lbw.json"
+    },
+    {
+      "test": "missile137",
+      "sample": "zhanwang",
+      "cases": 36,
+      "status": "PASS",
+      "evidence": "missile137-zhanwang.json"
+    },
+    {
+      "test": "magnetron137",
+      "sample": "lbw",
+      "cases": 28,
+      "status": "PASS",
+      "evidence": "magnetron137-lbw.json"
+    },
+    {
+      "test": "magnetron137",
+      "sample": "zhanwang",
+      "cases": 28,
+      "status": "PASS",
+      "evidence": "magnetron137-zhanwang.json"
+    }
+  ],
+  "portable_ui": [
+    {
+      "name": "ddraw_config",
+      "status": "PASS",
+      "evidence": "ddraw_config.log"
+    },
+    {
+      "name": "watch_view",
+      "status": "PASS",
+      "evidence": "watch_view.log"
+    },
+    {
+      "name": "terrain_preview",
+      "status": "PASS",
+      "evidence": "terrain_preview.log"
+    },
+    {
+      "name": "formation_host",
+      "status": "PASS",
+      "evidence": "formation_host.log"
+    },
+    {
+      "name": "formation",
+      "status": "PASS",
+      "evidence": "formation.log"
+    },
+    {
+      "name": "voxel_preview",
+      "status": "PASS",
+      "evidence": "voxel_preview.log"
+    },
+    {
+      "name": "auto_settings_ui_test",
+      "status": "PASS",
+      "evidence": "auto_settings_ui_test.log"
+    },
+    {
+      "name": "hotkey_host_test",
+      "status": "PASS",
+      "evidence": "hotkey_host_test.log"
+    },
+    {
+      "name": "suite_display_test",
+      "status": "PASS",
+      "evidence": "suite_display_test.log"
+    },
+    {
+      "name": "ui_geometry_test",
+      "status": "PASS",
+      "evidence": "ui_geometry_test.log"
+    },
+    {
+      "name": "hold_key_ui_test",
+      "status": "PASS",
+      "evidence": "hold_key_ui_test.log"
+    },
+    {
+      "name": "cursor_settings_ui_test",
+      "status": "PASS",
+      "evidence": "cursor_settings_ui_test.log"
+    }
+  ],
+  "sanitizers": {
+    "checks": [
+      "terrain_preview",
+      "watch_view",
+      "ddraw_config",
+      "formation_host"
+    ],
+    "status": "PASS",
+    "scope": "AddressSanitizer and UndefinedBehaviorSanitizer; detect_leaks=0 because LeakSanitizer cannot access sandbox /proc task entries. Initial environment failure logs retained."
+  },
+  "build": "Zig 0.13.0, PE32 x86; final relink and PE/ABI/manifest/dependency verification",
+  "pe_evidence": "pe.log",
+  "artifacts": {
+    "RA2Toolbox.exe": {
+      "bytes": 2513920,
+      "sha256": "cd224bc103afae541b3f58ddaa9582a1ba4932acdc0d9d591a428201328756ba"
+    },
+    "GameRuntime.dll": {
+      "bytes": 4166656,
+      "sha256": "c14953dfe81135945653a195071f8e33194b6d94df90a78614dd81b06a1db699"
+    }
+  },
+  "known_baseline_failures": [
+    "no_interception_source_contract.py: pre-existing VirtualProtect ban conflicts with entry-manager adapter",
+    "shared_entry_source_contract.py: pre-existing assertion requires obsolete input_patch gameentry::patch route"
+  ],
+  "live_game_validation": false,
+  "limitations": [
+    "No Windows loader/UI/file-dialog/ReplaceFile execution here.",
+    "No real FPS, full terrain lighting/depth/bridge/special MOD resource rendering validation.",
+    "No real multiplayer, projectile/drop physics or pathfinding validation.",
+    "Observation uses loaded TMP/SHP and fixed-heading unit models; simplified lighting, painter order and radar-style exploration filtering, not a native second camera.",
+    "Forced redraw is selectable in multiplayer at user request; controlled tests do not establish synchronization."
+  ],
+  "package": {
+    "name": "RA2-Toolbox-v1.0.37-pre.2-Update.zip",
+    "bytes": 1279953,
+    "sha256": "1c3734784cd29b74b5d0b92fc1e9421d048ebbcbec24b0f52e122e4fd3e168a3"
+  }
+}

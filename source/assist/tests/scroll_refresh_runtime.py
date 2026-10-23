@@ -4,7 +4,7 @@ exec(compile(Path(__file__).with_name('no_interception_runtime.py').read_text().
 rows=[];site=0x4a9840
 
 def setup(mode):
- m=fixture(mode);m.precise_us=m.clock*1000;m.w(0xb73550,1);m.scrollDraws=0;m.edgeCalls=0;m.dragCalls=0;m.mousePoint=(799,300);m.dragMode=0
+ m=fixture(mode);m.precise_us=m.clock*1000;m.w(0xb73550,1);m.scrollDraws=0;m.fullRedraws=0;m.edgeCalls=0;m.dragCalls=0;m.mousePoint=(799,300);m.dragMode=0
  for at,value in zip((0x87f8dc,0x87f8e4,0x87f8e8,0x87f8ec,0x87f8f0,0x886fa8,0x886fac,0x886fb8,0x886fbc),(80,2,4,70,60,640,600,800,600)):m.w(at,value)
  m.tactical=m.r(0x887324)
  for off,value in ((0xd64,0),(0xd68,2000),(0xd74,0),(0xd78,2000)):m.w(m.tactical+off,value)
@@ -16,8 +16,12 @@ def setup(mode):
  def point():out=arg();m.u.mem_write(out,struct.pack('<ii',300,300));m.ret(out,1)
  add(getter,point);add(0x54f5c0,lambda:m.ret(1,1));add(0x5fbf70,lambda:m.ret(m.dragMode,0));add(0x6da230,lambda:m.ret(0,1))
  add(0x6d8b30,lambda:m.ret(0,0)) # map projection cache, no real surfaces
- def draw():m.scrollDraws+=1;m.ret(0,0)
+ def draw():
+  m.scrollDraws+=1
+  if m.r(0x87f7e8+0xc)==2:m.fullRedraws+=1
+  m.w(0x87f7e8+0xc,0);m.ret(0,0)
  add(0x4f4480,draw)
+ add(0x578ac0,lambda:m.ret(0,0)) # map dirty-cell enumeration; real FlagRedraw executes
  distance=m.alloc(4);m.w(distance,10)
  stub=m.alloc(32);code=b'\x6a\x01\x68'+struct.pack('<I',distance)+b'\x6a\x02\xb8'+struct.pack('<I',site)+b'\xff\xd0\xc2\x04\x00';m.u.mem_write(stub,code)
  def scroll(which):
@@ -39,7 +43,7 @@ for mode in (0,3):
   if case.startswith('full_'):s.scrollRefreshMode=2
   if case=='full_outside':m.mousePoint=(-10,-10)
   if case=='cursor_only':s.scrollRefreshMode=0
-  if case=='invalid_strategy':s.scrollRefreshMode=3
+  if case=='invalid_strategy':s.scrollRefreshMode=4
   if case=='disabled':s.scrollRefreshHz=0
   if case=='unfocused':s.foreground=0
   if case=='chat':m.b(0xa8bc60+25,1)
@@ -78,6 +82,21 @@ for mode in (0,3):
  d=m.alloc(4);m.w(d,10);before=m.r(m.tactical+0xd74);m.run(site,(2,d,1));assert m.r(m.tactical+0xd74)==before+10
  m.current_thread=777;s=state(m);s.stop=1;save(m,s);m.hook();assert bytes(m.u.mem_read(site,8))==m.game.get_data(site-0x400000,8)
  record(f'{mode}_wrong_thread_native_fallback_and_stop_restore')
+# Real FlagRedraw ABI plus original render entry, explicitly enabled in SP/LAN/Internet.
+for mode in (0,5,3,4):
+ m=setup(mode);m.mousePoint=(300,300);s=state(m);s.scrollRefreshMode=3;s.scrollRefreshHz=144;save(m,s)
+ original=bytes(m.u.mem_read(site,8));before=bytes(m.u.mem_read(m.unit,0x800));frame=m.r(0xa8ed84)
+ for _ in range(6):s=pulse(m)
+ assert m.fullRedraws==m.scrollDraws==6 and s.scrollRefreshStatus==1,(mode,m.fullRedraws,m.scrollDraws,s.scrollRefreshStatus)
+ assert count(m)==0 and m.r(0xa8ed84)==frame and before==bytes(m.u.mem_read(m.unit,0x800))
+ # Switching back drops forced invalidation immediately, without disabling normal rendering.
+ s=state(m);s.scrollRefreshMode=2;save(m,s);s=pulse(m);assert m.fullRedraws==6 and m.scrollDraws==7
+ s=state(m);s.scrollRefreshMode=0;save(m,s);s=pulse(m);assert m.scrollDraws==7 and bytes(m.u.mem_read(site,8))==original
+ record(f'{mode}_forced_redraw_and_live_switch')
+for offset in (0,30):
+ m=setup(0);s=state(m);s.scrollRefreshMode=3;s.scrollRefreshHz=144;save(m,s);m.u.mem_write(0x4f42f0+offset,b'\x90');s=pulse(m)
+ assert not m.scrollDraws and s.scrollRefreshStatus==-2 and not m.codeWrites
+ record(f'foreign_redraw_{offset}_rejected')
 # QPC advances while GetTickCount is quantized at 16 ms. Verify real Runtime
 # draw counts, gaps and phase for 30-500 FPS targets, not just the pure helper.
 for hz in (30,60,120,144,165,240,360,500):

@@ -1,8 +1,10 @@
-# RA2 Toolbox 1.0.37-pre.1（测试分支）
+# RA2 Toolbox 1.0.37-pre.2（测试分支）
 
-新增火控后排预留与两种分配策略、磁电地面障碍检测/全局无限吸，以及 Alt 拖动队形和外部自行绘制的真实 VXL 半透明预览。同键绑定可循环切换队形。此版本仍需实机视觉、完整物理/寻路和联机复测。
+新增可在联机选择的第四种「强制高刷」、CnC-DDraw / TS-DDraw 高刷配置与恢复，以及左中 11×11 格局部观察窗。观察窗读取真实 TMP 地表、SHP 树木/覆盖物和 VXL 模型，自动跟随危险载员的敌方载具，也可用 Ctrl+Alt+W 固定悬停或选中的单位。修正队形拖动朝向及预览缓存。
 
-[测试更新包](packages/v1.0.37-pre.1/RA2-Toolbox-v1.0.37-pre.1-Update.zip) · [发布说明](packages/v1.0.37-pre.1/RELEASE_NOTES.md) · [操作与验证](source/REVIEW-1.0.37-pre.1.md)
+保留 pre.1 的火控后排预留/平均或按血量分配、磁电地面障碍检测/全局无限吸、Alt 拖动队形和同键循环切换。小窗暂为固定朝向与简化光照；高刷数值是绘制调用频率，真实画面和联机仍需实机验证。
+
+[测试更新包](packages/v1.0.37-pre.2/RA2-Toolbox-v1.0.37-pre.2-Update.zip) · [发布说明](packages/v1.0.37-pre.2/RELEASE_NOTES.md) · [操作与验证](source/REVIEW-1.0.37-pre.2.md)
 
 ## 当前正式版：1.0.36
 

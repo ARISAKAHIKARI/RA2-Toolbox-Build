@@ -10,7 +10,7 @@ static void syncRefreshControls(){
  if(scene&&!state.assistEnabled)text=L"画面高刷已暂停";
  else if(scene&&state.refreshStatus<0)text=L"当前游戏使用原版画面刷新";
  else if(scene&&state.refreshStatus==1){
-  wchar_t value[160];swprintf(value,160,L"补充绘制 %.1f Hz   ·   最长间隔 %.1f ms",state.rateMilli/1000.0,state.gapUs/1000.0);text=value;
+  wchar_t value[160];swprintf(value,160,L"绘制调用 %.1f Hz（非实测屏幕 FPS）   ·   最长间隔 %.1f ms",state.rateMilli/1000.0,state.gapUs/1000.0);text=value;
  }
  SetWindowTextW(refreshStateLabel,text.c_str());refreshingSuiteControls=false;
 }

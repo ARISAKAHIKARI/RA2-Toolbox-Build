@@ -1,0 +1,24 @@
+{
+  "version": "1.0.37-pre.2",
+  "file_version": "1.0.37.1",
+  "base_commit": "b6911ba562010ab3b5b07f766b34625e72f811fe",
+  "assets": [
+    {
+      "name": "RA2-Toolbox-v1.0.37-pre.2-Update.zip",
+      "bytes": 1279953,
+      "sha256": "1c3734784cd29b74b5d0b92fc1e9421d048ebbcbec24b0f52e122e4fd3e168a3",
+      "files": {
+        "RA2Toolbox.exe": {
+          "bytes": 2513920,
+          "sha256": "cd224bc103afae541b3f58ddaa9582a1ba4932acdc0d9d591a428201328756ba"
+        },
+        "GameRuntime.dll": {
+          "bytes": 4166656,
+          "sha256": "c14953dfe81135945653a195071f8e33194b6d94df90a78614dd81b06a1db699"
+        }
+      }
+    }
+  ],
+  "validation": "source/verification/review-137-pre2/summary.json",
+  "installation": "Update for existing 1.0.36 or 1.0.37-pre.1 installation. Preserve configuration and assets. Not a complete first-install package."
+}

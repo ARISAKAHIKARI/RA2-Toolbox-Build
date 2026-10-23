@@ -17,6 +17,9 @@ inline int cycle(int current,uint32_t key,const uint32_t*keys){
  return next>=0?next:first>=0?first:current;
 }
 struct Point {double x=0,y=0;};
+// Inverse of the shared 30:15 isometric projection. Keep sub-cell drag
+// direction; snapping the pointer to a map cell must not snap the facing.
+inline double dragFacing(double x,double y,double fallback){return x||y?std::atan2(2*y-x,2*y+x):fallback;}
 inline void layout(int count,int shape,double stretch,bool click,Point*out){
  count=std::clamp(count,0,Maximum);shape=std::clamp(shape,0,3);stretch=std::clamp(stretch,0.,1.);
  if(!count)return;

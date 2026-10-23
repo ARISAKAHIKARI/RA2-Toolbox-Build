@@ -1,0 +1,2 @@
+ASan + UBSan; LeakSanitizer disabled because sandbox /proc task access is unavailable.
+PASS automatic dangerous carrier, hover/selection pin, 121 cells, range edge, fog, passengers/cloak exclusion, dead/recycled target, corrupt list and map bounds

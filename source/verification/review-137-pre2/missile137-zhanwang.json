@@ -1,0 +1,149 @@
+{
+  "scope": "Execute actual x86 GameRuntime and original event constructors with controlled world/Win32/virtual queries. Not live netplay.",
+  "results": [
+    {
+      "case": "0_False_smart",
+      "status": "PASS"
+    },
+    {
+      "case": "0_False_even",
+      "status": "PASS"
+    },
+    {
+      "case": "0_False_stagger",
+      "status": "PASS"
+    },
+    {
+      "case": "0_False_missile_only",
+      "status": "PASS"
+    },
+    {
+      "case": "0_False_all_air",
+      "status": "PASS"
+    },
+    {
+      "case": "0_False_landed",
+      "status": "PASS"
+    },
+    {
+      "case": "0_False_disable",
+      "status": "PASS"
+    },
+    {
+      "case": "0_False_stop",
+      "status": "PASS"
+    },
+    {
+      "case": "0_False_manual",
+      "status": "PASS"
+    },
+    {
+      "case": "0_True_smart",
+      "status": "PASS"
+    },
+    {
+      "case": "0_True_even",
+      "status": "PASS"
+    },
+    {
+      "case": "0_True_stagger",
+      "status": "PASS"
+    },
+    {
+      "case": "0_True_missile_only",
+      "status": "PASS"
+    },
+    {
+      "case": "0_True_all_air",
+      "status": "PASS"
+    },
+    {
+      "case": "0_True_landed",
+      "status": "PASS"
+    },
+    {
+      "case": "0_True_disable",
+      "status": "PASS"
+    },
+    {
+      "case": "0_True_stop",
+      "status": "PASS"
+    },
+    {
+      "case": "0_True_manual",
+      "status": "PASS"
+    },
+    {
+      "case": "3_False_smart",
+      "status": "PASS"
+    },
+    {
+      "case": "3_False_even",
+      "status": "PASS"
+    },
+    {
+      "case": "3_False_stagger",
+      "status": "PASS"
+    },
+    {
+      "case": "3_False_missile_only",
+      "status": "PASS"
+    },
+    {
+      "case": "3_False_all_air",
+      "status": "PASS"
+    },
+    {
+      "case": "3_False_landed",
+      "status": "PASS"
+    },
+    {
+      "case": "3_False_disable",
+      "status": "PASS"
+    },
+    {
+      "case": "3_False_stop",
+      "status": "PASS"
+    },
+    {
+      "case": "3_False_manual",
+      "status": "PASS"
+    },
+    {
+      "case": "3_True_smart",
+      "status": "PASS"
+    },
+    {
+      "case": "3_True_even",
+      "status": "PASS"
+    },
+    {
+      "case": "3_True_stagger",
+      "status": "PASS"
+    },
+    {
+      "case": "3_True_missile_only",
+      "status": "PASS"
+    },
+    {
+      "case": "3_True_all_air",
+      "status": "PASS"
+    },
+    {
+      "case": "3_True_landed",
+      "status": "PASS"
+    },
+    {
+      "case": "3_True_disable",
+      "status": "PASS"
+    },
+    {
+      "case": "3_True_stop",
+      "status": "PASS"
+    },
+    {
+      "case": "3_True_manual",
+      "status": "PASS"
+    }
+  ]
+}

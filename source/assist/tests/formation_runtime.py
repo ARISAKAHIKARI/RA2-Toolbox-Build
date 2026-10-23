@@ -42,11 +42,17 @@ for mode in (0,3):
    packet=packets(m);assert packet[12]==2 and packet[19:24]==struct.pack('<IB',30020,11)
    if case=='duplicate_up':kind,_=message(m,0x205);assert kind==0x205;tick(m);assert count(m)==1
   assert not m.codeWrites;rows.append({'case':f'{mode}_{case}','status':'PASS'});print('PASS',mode,case,flush=True)
+# A 10-pixel drag remains in one queried cell but still has a real facing.
+for mode in (0,3):
+ m=setup(mode);m.held_keys.add(18);message(m,0x104,18);message(m,0x204);m.clock+=20;_,s=message(m,0x200,x=110,y=100)
+ assert abs(s.formationPreview.facing+3.141592653589793/4)<1e-6
+ message(m,0x100,27);assert not state(m).formationPreview.active
+ rows.append({'case':f'{mode}_subcell_drag_direction','status':'PASS'});print('PASS',mode,'subcell drag direction',flush=True)
 for mode in (0,3):
  for manual in (False,True):
   m=setup(mode,16);m.held_keys.add(18);message(m,0x104,18);before=bytes(state(m).formationPreview.slots)
   message(m,0x104,67);assert before!=bytes(state(m).formationPreview.slots), 'stationary shape preview must change';message(m,0x105,67)
-  message(m,0x104,90);message(m,0x105,90);message(m,0x204);_,s=message(m,0x205,x=420)
+  message(m,0x104,90);message(m,0x105,90);message(m,0x204);_,s=message(m,0x205,x=420,y=260)
   assert not s.formationPreview.active and s.formationAccepted==16
   # Input exits immediately, submission drains through the normal gateway.
   s=tick(m);assert count(m)==16

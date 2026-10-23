@@ -1,0 +1,2 @@
+ASan + UBSan; LeakSanitizer disabled because sandbox /proc task access is unavailable.
+PASS preview seqlock continuity, content revisions, ownership-race protection, full model-cache eviction, image-budget eviction and active-image protection

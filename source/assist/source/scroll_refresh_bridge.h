@@ -44,6 +44,10 @@ static void restoreHighScroll(){
  if(sh){sh->scrollRefreshStatus=0;sh->scrollRefreshRateMilli=sh->scrollRefreshMaxGapUs=0;}
 }
 static bool highScrollInterfaces(){
+ // FlagRedraw(2) schedules a full scene rebuild; Render alone may reuse the
+ // last composed surface. This extra work is explicitly opt-in, including LAN/Internet.
+ static const uint8_t redraw[]={0xA1,0x24,0x73,0x88,0x00,0x85,0xC0,0x74,0x07,0xC6,0x80,0x7D,0x0D,0x00,0x00,0x01,0x8B,0x44,0x24,0x04,0x85,0xC0,0x74,0x13,0x83,0x79,0x0C,0x02,0x74,0x03,0x89,0x41,0x0C,0xB9,0xE8,0xF7,0x87,0x00,0xE8,0xA5,0x47,0x08,0x00,0xC2,0x04,0x00};
+ if(sh->scrollRefreshMode==3&&memcmp((void*)0x4F42F0,redraw,sizeof redraw))return false;
  // Query/render interfaces from YRpp, checked against both supplied platforms.
  static const uint8_t render[]={0x83,0xEC,8,0xA1,0x1C,0x73,0x88,0,0x55};
  // Supplied LBW image redirects the displaced load through its startup code.
@@ -59,7 +63,7 @@ static bool highScrollInterfaces(){
         !memcmp((void*)0x692B60,edge,sizeof edge)&&!memcmp((void*)0x693440,drag,sizeof drag);
 }
 static void highScrollTick(uint64_t now){
- if(!sh->scrollRefreshMode||sh->scrollRefreshMode>2||!sh->scrollRefreshHz||!sh->foreground||snap.chat||!riskReady()||!simulationReady()){
+ if(!sh->scrollRefreshMode||sh->scrollRefreshMode>3||!sh->scrollRefreshHz||!sh->foreground||snap.chat||!riskReady()||!simulationReady()){
   if(scrollRefreshActive)restoreHighScroll();return;
  }
  if(!scrollMapSite.after[0]){scrollMapSite.after[0]=0xE9;uint32_t offset=uint32_t(uintptr_t(&highScrollMap))-scrollMapSite.address-5;memcpy(scrollMapSite.after+1,&offset,4);memset(scrollMapSite.after+5,0x90,3);}
@@ -89,8 +93,9 @@ static void highScrollTick(uint64_t now){
  smallcamera::Point position{get<int>(tactical+0xD74),get<int>(tactical+0xD78)};
  const bool moved=scrolling&&(position.x!=get<int>(tactical+0xD64)||position.y!=get<int>(tactical+0xD68));
  if(moved)call<void>(0x6D6000,tactical,&position);
- if(!moved&&sh->scrollRefreshMode!=2)return;
+ if(!moved&&sh->scrollRefreshMode<2)return;
  scrollRendering=true;
+ if(sh->scrollRefreshMode==3)call<void>(0x4F42F0,0x87F7E8,2);
  call<void>(0x4F4480,0x87F7E8); // native composition + presentation
  scrollRendering=false;
  ++sh->scrollRefreshDraws;

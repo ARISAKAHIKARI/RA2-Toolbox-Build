@@ -45,10 +45,9 @@ static bool formationCell(int x,int y){
 static void formationLayout(int x,int y,int px,int py){
  formationLayoutTick=sampleClock(sh);
  const int count=formationView.count;if(count<=0)return;
- double dx=double(x)-formationView.ax,dy=double(y)-formationView.ay;
  double pixels=std::hypot(double(px-formationStartX),double(py-formationStartY));bool click=formationView.dragging&&pixels<6;
  formationDirected=!click;
- if(!click&&(dx||dy))formationView.facing=std::atan2(dy,dx);
+ if(!click&&formationView.dragging)formationView.facing=formation::dragFacing(double(px)-formationStartX,double(py)-formationStartY,formationView.facing);
  double stretch=!formationView.dragging||click?0:std::clamp((pixels-6)/314.,0.,1.);formation::Point points[formation::Maximum];formation::layout(count,formationView.shape,stretch,click,points);
  double fx=std::cos(formationView.facing),fy=std::sin(formationView.facing);
  for(int n=0;n<count;++n){int cx=int(std::lround((formationView.ax-128)/256.+points[n].x*(-fy)-points[n].y*fx));int cy=int(std::lround((formationView.ay-128)/256.+points[n].x*fx-points[n].y*fy));

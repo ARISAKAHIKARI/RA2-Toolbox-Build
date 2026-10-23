@@ -1301,6 +1301,7 @@ static bool cursorCloseAllowed(){
   return MessageBoxW(mainw,L"游戏正在使用透明光标。退出工具箱后可能看不到指针。\n建议先退出游戏，再恢复 SHA。仍退出？",L"透明 SHA",MB_YESNO|MB_ICONWARNING)==IDYES;
  return true;
 }
+#include "ddraw_settings_ui.h"
 #include "refresh_settings_ui.h"
 static LRESULT CALLBACK wndproc(HWND w,UINT m,WPARAM a,LPARAM b){
 #ifdef RA2_UNIFIED
@@ -1349,6 +1350,8 @@ case WM_GETMINMAXINFO:{auto p=(MINMAXINFO*)b;p->ptMinTrackSize={uidpi::scale(adv
  case WM_COMMAND:if(!uiReady)return 0;
 #ifdef RA2_UNIFIED
  if(refreshSettingCommand(a,b))return 0;
+ if(LOWORD(a)==157&&HIWORD(a)==BN_CLICKED){ddrawsettings::configure(false);return 0;}
+ if(LOWORD(a)==158&&HIWORD(a)==BN_CLICKED){ddrawsettings::configure(true);return 0;}
 #endif
  if((HWND)b==targetBox&&(HIWORD(a)==CBN_SELCHANGE||HIWORD(a)==CBN_EDITCHANGE)){SetTimer(w,152,HIWORD(a)==CBN_SELCHANGE?1:300,NULL);return 0;}
  if((HWND)b==modeBox&&HIWORD(a)==CBN_SELCHANGE){try{applyHideMode();updateRefresh(true);updatePrimaryAction();}catch(const std::exception& e){SendMessageW(modeBox,CB_SETCURSEL,noCursorMode?3:mode==L"hide"?1:mode==L"sha"?2:0,0);error(e);}return 0;}
@@ -1502,7 +1505,7 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR cmd,int){
  detailLabel=CreateWindowW(L"STATIC",L"",WS_CHILD,20,1122,720,42,mainw,NULL,inst,NULL);extra(detailLabel,{20,1122,720,42});
  HWND displayLabel=CreateWindowW(L"STATIC",L"显示方式",WS_CHILD|WS_VISIBLE,20,178,88,22,mainw,nullptr,inst,nullptr);
  controlOrigins.push_back({displayLabel,{20,178,88,22}});
- for(auto& c:controlOrigins)if(c.handle==advancedHeader||std::find(advancedControls.begin(),advancedControls.end(),c.handle)!=advancedControls.end())c.logical.y+=184;
+ for(auto& c:controlOrigins)if(c.handle==advancedHeader||std::find(advancedControls.begin(),advancedControls.end(),c.handle)!=advancedControls.end())c.logical.y+=240;
  configuredPollHz=GetPrivateProfileIntW(L"Display",L"TargetFPS",GetPrivateProfileIntW(L"Display",L"PollHz",0,ini().c_str()),ini().c_str());
  if(configuredPollHz)configuredPollHz=std::clamp(configuredPollHz,30u,500u);
  HWND rateLabel=CreateWindowW(L"STATIC",L"目标刷新率",WS_CHILD|WS_VISIBLE,20,214,88,22,mainw,nullptr,inst,nullptr);
@@ -1516,21 +1519,23 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR cmd,int){
  };
  basic(L"STATIC",L"高刷范围",20,254,88,22,0);
  refreshModeBox=basic(L"COMBOBOX",L"",114,250,626,150,155,CBS_DROPDOWNLIST|WS_TABSTOP);
- for(const wchar_t* text:{L"仅光标",L"光标＋拖屏（实验性）",L"全部（实验性）"})SendMessageW(refreshModeBox,CB_ADDSTRING,0,(LPARAM)text);
+ for(const wchar_t* text:{L"仅光标",L"光标＋拖屏（实验性）",L"全部（实验性）",L"强制高刷（实验性 · 联机待验证）"})SendMessageW(refreshModeBox,CB_ADDSTRING,0,(LPARAM)text);
  refreshStateLabel=basic(L"STATIC",L"读取设置…",20,294,720,24,0);
- modernui::tip(refreshModeBox,L"三种范围共用目标刷新率，最高 500 FPS；自动跟随显示器。拖屏和全部画面刷新为实验性功能。");
+ modernui::tip(refreshModeBox,L"共用目标刷新率，最高 500 FPS。强制高刷可用于单机及联机，联机效果待实机验证；仍需 DDraw 呈现帧率配合，单位动画受游戏逻辑帧限制。");
  modernui::tip(targetBox,L"自动跟随显示器；也可输入 30–500 FPS。光标、拖屏、全部画面使用同一目标值。");
  EnableWindow(refreshModeBox,FALSE);
  basic(L"STATIC",L"黑幕绘制",20,332,88,22,0);
  shroudModeBox=basic(L"COMBOBOX",L"",114,328,626,150,156,CBS_DROPDOWNLIST|WS_TABSTOP);
  for(const wchar_t*text:{L"关闭",L"半透明（实验性）",L"透明（实验性）",L"自动全图（实验性）"})SendMessageW(shroudModeBox,CB_ADDSTRING,0,(LPARAM)text);
  EnableWindow(shroudModeBox,FALSE);modernui::tip(shroudModeBox,L"半透明和透明改变黑幕绘制；自动全图在对局就绪后执行。三种方式均为实验性功能。");
+ basic(L"BUTTON",L"配置 DDraw 高刷…",20,366,350,32,157,BS_PUSHBUTTON|WS_TABSTOP);
+ basic(L"BUTTON",L"恢复 DDraw 配置…",390,366,350,32,158,BS_PUSHBUTTON|WS_TABSTOP);
 #endif
  // Main and advanced settings share one width, palette and renderer.
  for(auto& c:controlOrigins){
   if(c.handle==statusw)c.logical.w=690;
   if(c.handle==subTitleLabel||c.handle==quickInfo)c.logical.w=720;
-  if(c.handle==quickInfo)c.logical.y=362;
+  if(c.handle==quickInfo)c.logical.y=418;
   if(c.handle==primaryAction)c.logical={20,128,354,34};
   if(c.handle==advancedAction)c.logical={386,128,354,34};
   if(c.handle==nativeBox||c.handle==targetBox)c.logical.w=626;

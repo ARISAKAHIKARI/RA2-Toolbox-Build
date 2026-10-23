@@ -6,7 +6,7 @@ namespace assist {
 struct AdditionalSettings {
  bool formationEnabled=true;uint32_t formationHold=18,formationKeys[4]={'Z','X','C','V'};
  bool controlAll=false,switchPlayerEnabled=false;
- int scrollRefreshMode=0; // cursor / cursor + scrolling / full scene
+ int scrollRefreshMode=0; // cursor / scrolling / scene / forced redraw
 #ifndef RA2_UNIFIED
  int scrollRefreshHz=120; // standalone assist only
 #endif
@@ -15,6 +15,7 @@ struct AdditionalSettings {
  bool enemyMarkers=false,idleAircraft=true,constructionQueue=true,airWaypoints=true;
  uint32_t airPathKey=0;
  bool parasiteMarker=true,crateBuffMarkers=true;
+ bool watchEnabled=true,watchDanger=true;uint32_t watchKey='W'|(6<<8);
  bool passengerBubbles=true,dangerPassengers=false,magnetronDrop=false;
  bool dodgeEnabled=false;int dodgeMode=0;
  bool burstEnabled=false,burstHoldEnabled=false;uint32_t burstKey=0; // Reserved for configuration compatibility.

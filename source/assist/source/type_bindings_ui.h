@@ -13,6 +13,7 @@ static bool keyConflict(WORD key,const std::string& ignore,bool toggle){
  for(auto&b:swBindings)if(comparableKey(b.key)==key)return true;
  if(ignore.empty())for(auto&b:typeBindings)if(comparableKey(b.key)==key)return true;
  if(comparableKey(idleAircraftKey)==key)return true;
+ if(extra.watchEnabled&&comparableKey(WORD(extra.watchKey))==key)return true;
  for(auto social:socialKeys)if(comparableKey(social)==key)return true;
  if(comparableKey(WORD(extra.variantKey))==key)return true;
  return (!toggle&&comparableKey(csKey)==key)||comparableKey(advancedKey)==key||comparableKey(unloadKey)==key||comparableKey(ejectKey)==key||comparableKey(csHoldKey)==key||comparableKey(magnetronKey)==key;

@@ -29,7 +29,7 @@ static bool autoSettingChanged(int id,int notification){
  if((id==897||id==898||id==899)&&notification==BN_CLICKED){bool on=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;if(id==897)extra.passengerBubbles=on;else if(id==898)extra.dangerPassengers=on;else extra.magnetronDrop=on;changedSetting();syncAdditional();return true;}
  if(id==850&&select){int next=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));if(next>=0&&next<=3){minimapPosition=next;changedSetting();}return true;}
  if(id==830&&notification==BN_CLICKED){minimapEnabled=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;if(!minimapEnabled)minimap::hide();changedSetting();return true;}
- if(id==886&&select){int mode=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));if(mode>=0&&mode<=2){extra.scrollRefreshMode=mode;changedSetting();syncAdditional();}return true;}
+ if(id==886&&select){int mode=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));if(mode>=0&&mode<=3){extra.scrollRefreshMode=mode;changedSetting();syncAdditional();}return true;}
  if(id==810&&notification==BN_CLICKED){extra.c4Test=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;pointerMatches.clear();changedSetting();return true;}
  if(id==811&&edit){extra.c4Key=uint32_t(SendMessageW(GetDlgItem(ui,id),HKM_GETHOTKEY,0,0));changedSetting();return true;}
  if(id==812&&select){int selected=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));extra.c4Mouse=selected==5?6:selected;changedSetting();return true;}
@@ -42,11 +42,13 @@ static bool autoSettingChanged(int id,int notification){
  if(id==885&&notification==BN_CLICKED){extra.dodgeEnabled=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();syncAdditional();return true;}
  if((id==9040||id==9041)&&select){int v=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));if(v>=0&&v<=1){(id==9040?extra.missileScope:extra.missileAllocation)=v;changedSetting();syncAdditional();}return true;}
  if(id==9042&&notification==BN_CLICKED){extra.magnetronGlobal=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();syncAdditional();return true;}
+ if((id==9060||id==9061)&&notification==BN_CLICKED){(id==9060?extra.watchEnabled:extra.watchDanger)=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;registerKeys();changedSetting();return true;}
+ if(id==9062&&edit){extra.watchKey=uint32_t(SendMessageW(GetDlgItem(ui,id),HKM_GETHOTKEY,0,0));registerKeys();changedSetting();return true;}
  if(id==9050&&notification==BN_CLICKED){extra.formationEnabled=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();syncAdditional();return true;}
  if(id>=9051&&id<=9055&&edit){uint32_t k=uint32_t(SendMessageW(GetDlgItem(ui,id),HKM_GETHOTKEY,0,0));if(id==9051)extra.formationHold=k;else extra.formationKeys[id-9052]=k;changedSetting();syncAdditional();return true;}
  if(id==880&&notification==BN_CLICKED){extra.missileDefense=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();syncAdditional();return true;}
  if(id==804&&notification==BN_CLICKED){extra.antiTheft=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();return true;}
- if(id==803&&select){int mode=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));if(mode>=0&&mode<=2){extra.airWaypoints=mode==1;extra.nativeAirWaypoints=mode==2;airway::reset();pointerMatches.clear();changedSetting();syncAdditional();}return true;}
+ if(id==803&&select){int mode=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));if(mode>=0&&mode<=3){extra.airWaypoints=mode==1;extra.nativeAirWaypoints=mode==2;airway::reset();pointerMatches.clear();changedSetting();syncAdditional();}return true;}
  if(id==894&&edit){extra.airPathKey=uint32_t(SendMessageW(GetDlgItem(ui,id),HKM_GETHOTKEY,0,0));airway::reset();pointerMatches.clear();changedSetting();syncAdditional();return true;}
  if(id==802&&select){advancedTargetPriority=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));changedSetting();return true;}
  if(id==799&&notification==BN_CLICKED){extra.constructionQueue=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();return true;}

@@ -186,8 +186,8 @@ int main(){
  fields[447]='C';autoSettingChanged(447,EN_CHANGE);assert(csKey=='C');autoSettingChanged(447,EN_CHANGE);assert(csKey=='C');
  // Refresh mode selection, bounds and persisted defaults/migration.
  profile.clear();loadMouse();assert(extra.scrollRefreshMode==0);
- for(int mode:{0,1,2}){fields[886]=mode;assert(autoSettingChanged(886,CBN_SELCHANGE)&&extra.scrollRefreshMode==mode);saveMouse();extra.scrollRefreshMode=9;loadMouse();assert(extra.scrollRefreshMode==mode);}
- for(int bad:{-1,3}){fields[886]=bad;autoSettingChanged(886,CBN_SELCHANGE);assert(extra.scrollRefreshMode==2);}
+ for(int mode:{0,1,2,3}){fields[886]=mode;assert(autoSettingChanged(886,CBN_SELCHANGE)&&extra.scrollRefreshMode==mode);saveMouse();extra.scrollRefreshMode=9;loadMouse();assert(extra.scrollRefreshMode==mode);}
+ for(int bad:{-1,4}){fields[886]=bad;autoSettingChanged(886,CBN_SELCHANGE);assert(extra.scrollRefreshMode==3);}
 #ifndef RA2_UNIFIED
  assert(extra.scrollRefreshHz==120);
  for(int hz:{30,60,120,240,360,500}){fields[887]=hz;assert(autoSettingChanged(887,EN_CHANGE)&&extra.scrollRefreshHz==hz);}
@@ -199,7 +199,7 @@ int main(){
 #endif
  profile.clear();profile[L"ScrollRefresh"]=1;loadMouse();assert(extra.scrollRefreshMode==1);
  profile[L"RefreshStrategy"]=0;loadMouse();assert(extra.scrollRefreshMode==0);
- profile[L"RefreshStrategy"]=99;profile[L"ScrollRefreshHz"]=900;loadMouse();assert(extra.scrollRefreshMode==2);
+ profile[L"RefreshStrategy"]=99;profile[L"ScrollRefreshHz"]=900;loadMouse();assert(extra.scrollRefreshMode==3);
 #ifndef RA2_UNIFIED
  assert(extra.scrollRefreshHz==500);
 #endif
@@ -213,7 +213,7 @@ int main(){
  fields[808]=0;autoSettingChanged(808,CBN_SELCHANGE);assert(!extra.renderReveal);saveMouse();loadMouse();assert(!extra.renderReveal);
  fields[803]=2;autoSettingChanged(803,CBN_SELCHANGE);assert(extra.nativeAirWaypoints&&airway::resets==1&&pointerMatches.clears==1);
  fields[803]=0;autoSettingChanged(803,CBN_SELCHANGE);assert(!extra.nativeAirWaypoints&&airway::resets==2&&pointerMatches.clears==2);
- for(int mode:{0,1,2}){fields[803]=mode;autoSettingChanged(803,CBN_SELCHANGE);assert(extra.airWaypoints==(mode==1)&&extra.nativeAirWaypoints==(mode==2));saveMouse();extra.airWaypoints=extra.nativeAirWaypoints=false;loadMouse();assert(extra.airWaypoints==(mode==1)&&extra.nativeAirWaypoints==(mode==2));}
+ for(int mode:{0,1,2,3}){fields[803]=mode;autoSettingChanged(803,CBN_SELCHANGE);assert(extra.airWaypoints==(mode==1)&&extra.nativeAirWaypoints==(mode==2));saveMouse();extra.airWaypoints=extra.nativeAirWaypoints=false;loadMouse();assert(extra.airWaypoints==(mode==1)&&extra.nativeAirWaypoints==(mode==2));}
  for(unsigned key:{0u,unsigned(MAKEWORD('W',2)),0u}){fields[894]=key;autoSettingChanged(894,EN_CHANGE);assert(extra.airPathKey==key);saveMouse();extra.airPathKey=123;loadMouse();assert(extra.airPathKey==key);}
  fields[787]=60;autoSettingChanged(787,EN_CHANGE);assert(advancedScanHz==60);fields[787]=61;autoSettingChanged(787,EN_CHANGE);assert(advancedScanHz==60);
  assert(!extra.experimentalReveal);profile[L"RevealMap"]=1;loadMouse();assert(!extra.experimentalReveal);

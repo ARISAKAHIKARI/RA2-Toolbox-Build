@@ -84,12 +84,25 @@ inline bool render(const Model&model,double angle,const std::array<uint32_t,256>
 }
 // Infantry and SHP vehicles retain their real standing sprite; they are not
 // fabricated as voxels. Frame 0 is used when no verified sequence is available.
-template<class Read>bool sprite(Read read,uint32_t pointer,const std::array<uint32_t,256>&pal,Image&out){
- uint8_t head[8];if(!range(pointer,8)||!read(pointer,head,8))return false;if(u16(head)==65535){uint32_t decoded=0;if(!read(pointer+12,&decoded,4)||!range(decoded,8)||!read(decoded,head,8))return false;pointer=decoded;}
- int w=u16(head+2),h=u16(head+4),frames=u16(head+6);if(w<1||h<1||w>512||h>512||frames<1||frames>8192)return false;uint8_t frame[24];if(!read(pointer+8,frame,24))return false;int x=u16(frame),y=u16(frame+2),width=u16(frame+4),height=u16(frame+6);uint32_t compression=u32(frame+8)&3,offset=u32(frame+20);if(!width||!height||x+width>w||y+height>h||offset<uint32_t(8+frames*24)||offset>MaxBytes||!range(pointer+offset,1))return false;
+template<class Read>bool sprite(Read read,uint32_t pointer,const std::array<uint32_t,256>&pal,Image&out,int frameIndex=0){
+ uint8_t head[8];if(!range(pointer,32)||!read(pointer,head,8))return false;if(u16(head)==65535){uint32_t decoded=0;if(!read(pointer+12,&decoded,4)||!range(decoded,32)||!read(decoded,head,8))return false;pointer=decoded;}
+ int w=u16(head+2),h=u16(head+4),frames=u16(head+6);if(w<1||h<1||w>512||h>512||frames<1||frames>8192||frameIndex<0||frameIndex>=frames||!range(pointer,8+size_t(frames)*24))return false;uint8_t frame[24];if(!read(pointer+8+frameIndex*24,frame,24))return false;int x=u16(frame),y=u16(frame+2),width=u16(frame+4),height=u16(frame+6);uint32_t compression=u32(frame+8)&3,offset=u32(frame+20);if(!width||!height||x+width>w||y+height>h||offset<uint32_t(8+frames*24)||offset>MaxBytes||uint64_t(pointer)+offset>0xffffffffull||!range(pointer+offset,1))return false;
  Image next;next.width=w;next.height=h;next.x=-w/2;next.y=-h/2;next.pixels.resize(size_t(w)*h);uint32_t at=pointer+offset;
  for(int row=0;row<height;++row){uint8_t bytes[2048];unsigned n=width;if(compression>=2){uint16_t length;if(!read(at,&length,2)||length<2||length>sizeof bytes)return false;n=length;}if(!range(at,n)||!read(at,bytes,n))return false;at+=n;unsigned p=compression>=2?2:0;int col=0;
   while(p<n&&col<width){uint8_t color=bytes[p++];if(compression==3&&!color){if(p>=n||!bytes[p]||col+bytes[p]>width)return false;col+=bytes[p++];continue;}if(color)next.pixels[(row+y)*w+x+col]=premultiply(pal[color],1);++col;}if(col!=width)return false;
  }out=std::move(next);return true;
+}
+// Shared read-only model capture for formation and local observation views.
+template<class Read>bool actorImage(Read read,uint32_t p,uint32_t type,uint32_t id,double angle,Image&out){
+ auto word=[&](uint32_t a){uint32_t v=0;read(a,&v,4);return v;};
+ if(word(p+0x10)!=id)return false;uint32_t owner=word(p+0x21C);std::array<uint32_t,256> colors{};if(!palette(read,type,owner,colors))return false;
+ uint32_t parts[6]{};if(!read(type+0xB0,parts,sizeof parts))return false;
+ if(!parts[0])return sprite(read,word(type+0xA4),colors,out);
+ double sx=1,sy=1;read(type+0x360,&sx,8);read(type+0x368,&sy,8);if(!std::isfinite(sx)||sx<=0||sx>8)sx=1;if(!std::isfinite(sy)||sy<=0||sy>8)sy=1;
+ Model model;if(!capturePart(read,parts[0],parts[1],model,0,float(sx),float(sy)))return false;
+ int offset=int32_t(word(type+0x720));if(offset<-4096||offset>4096)return false;
+ for(int n=2;n<6;n+=2)if(parts[n]&&!capturePart(read,parts[n],parts[n+1],model,float(offset)*12/256,float(sx),float(sy)))return false;
+ uint32_t after[6]{};if(!read(type+0xB0,after,sizeof after)||memcmp(parts,after,sizeof parts)||word(p+0x10)!=id||word(p+0x21C)!=owner)return false;
+ return render(model,angle,colors,out);
 }
 }}

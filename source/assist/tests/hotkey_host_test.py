@@ -23,6 +23,7 @@ static WORD MAKEWORD(unsigned a,unsigned b){return WORD((a&255)|((b&255)<<8));}
 static uint32_t now=1000,scene=8;static uint32_t GetTickCount(){return now;}
 static AdditionalSettings extra;static Snapshot snap{};static auto memory=std::make_unique<Shared>();static Shared*shared=memory.get();
 static bool enabled=true,focused=true,hasSelection=false,ejectMode=false,hookEject=false,csMode=false,hookAutoCS=false;
+static bool formationInputOwns(){return false;}static bool formationHotkey(WORD){return false;}namespace watchhost {static int pins=0;static void pin(){++pins;}}
 static bool foregroundGame(){return focused;}static bool commandFresh(uint32_t){return true;}static uint32_t commandMatch(){return scene;}
 static int doubleMs=350;static typekeys::Tap typeTap,variantTap;static hotkeyroute::Registry hotkeyRegistry;static hotkeyroute::Pending hotkeyPending;
 static int repairCheck=1,ejectCheck=2,csCheck=3,hookChecks[4]={4,5,6,7};static std::map<int,int>controls;
@@ -61,6 +62,7 @@ int main(){
  hotkeyRegistry.clear();assert(hotkeyRegistry.add(1718,0x641,false,install));handleHotkey(1718,event);assert(commands.back()==Taunt);ack();
  snap.chat=1;auto socialCount=commands.size();handleHotkey(1718,event);assert(commands.size()==socialCount);snap.chat=0;
  socialKeys[3]=0x641;assert(keyConflict(0x641,"",false));socialKeys[3]=0;
+ hotkeyRegistry.clear();assert(hotkeyRegistry.add(1702,0x657,false,install));handleHotkey(1702,('W'<<16)|(MOD_CONTROL|MOD_ALT));assert(watchhost::pins==1);
  hotkeyRegistry.clear();extra.allHotkeys=false;extra.idleAircraft=false;snap.renderStatus=1;
  assert(keyConflict(idleAircraftKey,"",false));
  assert(hotkeyRegistry.add(1701,idleAircraftKey,false,install));const intptr_t planeEvent=('P'<<16)|(MOD_CONTROL|MOD_ALT);

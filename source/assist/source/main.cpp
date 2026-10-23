@@ -352,6 +352,7 @@ static void registerKeys(){for(int id:registeredKeyIDs)UnregisterHotKey(ui,id);r
  if(LOBYTE(ejectKey)&&!registerKey(1696,ejectKey))++failures;
  if(hookSmartUnload&&LOBYTE(unloadKey)&&!registerKey(1698,unloadKey))++failures;
  if(hookAutoCS&&LOBYTE(csKey)&&!registerKey(1699,csKey))++failures;
+ if(extra.watchEnabled&&LOBYTE(extra.watchKey)&&!registerKey(1702,WORD(extra.watchKey)))++failures;
  if(LOBYTE(idleAircraftKey)&&!registerKey(1701,idleAircraftKey))++failures;
  for(int i=0;i<9;++i)if(LOBYTE(socialKeys[i])&&!registerKey(1710+i,socialKeys[i]))++failures;
  if(LOBYTE(extra.variantKey)&&!registerKey(1700,WORD(extra.variantKey)))++failures;
@@ -985,6 +986,7 @@ static void drawLabel(Graphics&g,const visual::LabelView&l,float sx,float sy){
 #include "formation_host.h"
 #include "status_draw.h"
 #include "passenger_draw.h"
+#include "watch_host.h"
 static void drawEnemyMarker(Graphics&g,const external::enemies::Marker&m,const visual::LabelView&v,float sx,float sy){
  float x=v.x*sx,y=v.y*sy;Pen edge(Color(245,5,9,16),4.f),mark(Color(m.color),2.f);
  if(m.kind==3){g.DrawRectangle(&edge,x-7,y-7,14.f,14.f);g.DrawRectangle(&mark,x-7,y-7,14.f,14.f);}
@@ -1046,7 +1048,7 @@ static void paint(){
  int enemyCount=extra.enemyMarkers&&externalData&&external::enemies::fresh(enemyFrame,externalData->match,renderNow)?std::min(enemyFrame.count,enemyMotion.render(renderNow,enemyViews)):0;
  RECT r{};GetClientRect(game,&r);POINT origin{};ClientToScreen(game,&origin);
  updateAircraftButton(origin,r);minimap::update(origin,r);
- formationhost::update();
+ formationhost::update();watchhost::update();
  auto passengerBubbles=passengerView(renderNow);
  auto airLines=airway::lines();
  auto nativeBadges=buildreserve::nativeBadges();
@@ -1056,7 +1058,7 @@ static void paint(){
  bool tabPhase=(renderNow/400)%2==0;bool spiderPhase=(renderNow/650)%2==0;
  bool panel=SendMessageW(check[6],BM_GETCHECK,0,0)==BST_CHECKED;
  bool hasToast=panel&&now<toastUntil;bool summary=panel&&snap.transports;
- if(!formationhost::visible()&&!labelCount&&!hasToast&&!summary&&!snap.threatCount&&!snap.crateCount&&!enemyCount&&!statusCount&&!idleTabs&&passengerBubbles.empty()&&airLines.empty()&&nativeBadges.empty()){ShowWindow(overlay,SW_HIDE);return;}
+ if(!watchhost::shown&&!formationhost::visible()&&!labelCount&&!hasToast&&!summary&&!snap.threatCount&&!snap.crateCount&&!enemyCount&&!statusCount&&!idleTabs&&passengerBubbles.empty()&&airLines.empty()&&nativeBadges.empty()){ShowWindow(overlay,SW_HIDE);return;}
  viewport::Scale view;if(!view.set(snap.width,snap.height,r.right,r.bottom)){ShowWindow(overlay,SW_HIDE);return;}
  const int physicalW=r.right,physicalH=r.bottom;r.right=view.gameWidth;r.bottom=view.gameHeight;
  const float sx=1,sy=1; // Positions, glyphs, icons and bounds share game-pixel space.
@@ -1065,6 +1067,7 @@ static void paint(){
  float panelX=(r.right-panelW)*.5f;
  int left=r.right,up=r.bottom,right=0,bottom=0;
  auto include=[&](float x,float y,float w,float h){int x0=std::clamp(int(std::floor(x)),0,int(r.right)),y0=std::clamp(int(std::floor(y)),0,int(r.bottom));int x1=std::clamp(int(std::ceil(x+w)),0,int(r.right)),y1=std::clamp(int(std::ceil(y+h)),0,int(r.bottom));if(x1>x0&&y1>y0){left=std::min(left,x0);up=std::min(up,y0);right=std::max(right,x1);bottom=std::max(bottom,y1);}};
+ if(watchhost::shown)include(watchhost::left,watchhost::top,watchhost::Width,watchhost::Height);
  if(formationhost::visible())include(0,0,r.right,r.bottom);
  for(const auto&b:passengerBubbles)include(b.left,b.top,b.width,b.height+6);
  for(const auto&b:nativeBadges)include(b.x*sx,b.y*sy,b.w*sx,b.h*sy);
@@ -1113,7 +1116,7 @@ static void paint(){
   for(int i=0;i<statusCount;++i)drawUnitStatus(g,statusFrame.items[i],statusViews[i],spiderPhase);g.Restore(statusClip);
   for(int i=0;i<labelCount;++i)drawLabel(g,labelViews[i],sx,sy);
   for(const auto&b:passengerBubbles)drawPassengerBubble(g,b);
-  formationhost::draw(g);
+  formationhost::draw(g);watchhost::draw(g);
   float y=top;
   if(summary){std::wstring text=L"载员 "+std::to_wstring(snap.used)+L" / "+std::to_wstring(snap.capacity)+L" · 剩余 "+std::to_wstring(std::max(0,snap.capacity-snap.used));SolidBrush bg(Color(150,13,21,31));g.FillRectangle(&bg,panelX,y,panelW,26.f);drawText(g,text,panelX+10,y+4,13,Color::White);y+=30;}
   if(hasToast){SolidBrush bg(Color(155,13,21,31));g.FillRectangle(&bg,panelX,y,panelW,27.f);drawText(g,toast,panelX+10,y+4,12,Color(255,220,233,247));y+=31;}
@@ -1259,8 +1262,8 @@ static void updateModeStatus(DWORD now){
  SetWindowTextW(GetDlgItem(ui,807),riskStatus.c_str());
  std::wstring renderText=extra.mapStrategy?L"地图显示（实验性）：":L"地图显示：";renderText+=extra.mapStrategy==3?(autoRevealDone&&autoRevealDone==commandMatch()?L"自动地图全开已执行":L"等待自动地图全开"):snap.renderRevealStatus==-2?L"启用或关闭失败，请查看日志":!extra.renderReveal?L"关闭":phase?L"等待游戏就绪":snap.renderRevealStatus==1?L"已启用":L"等待生效";
  SetWindowTextW(GetDlgItem(ui,809),renderText.c_str());
- SetWindowTextW(GetDlgItem(ui,888),!extra.scrollRefreshMode?L"高刷策略：仅光标（沿用光标页设置）":shared&&shared->scrollRefreshStatus<0?L"高刷策略：接口不兼容，保持原版画面刷新":shared&&shared->scrollRefreshStatus==1?(extra.scrollRefreshMode==2?L"高刷策略：全部 · 实验性功能已启用":L"高刷策略：光标＋拖屏 · 实验性功能已启用"):L"高刷策略：等待游戏前台就绪");
- if(shared&&shared->scrollRefreshStatus==1&&shared->scrollRefreshRateMilli){wchar_t label[160];swprintf(label,160,L"%s · 补充绘制 %.1f Hz · 最长间隔 %.1f ms",extra.scrollRefreshMode==2?L"全部（实验性）":L"光标＋拖屏（实验性）",shared->scrollRefreshRateMilli/1000.0,shared->scrollRefreshMaxGapUs/1000.0);SetWindowTextW(GetDlgItem(ui,888),label);}
+ SetWindowTextW(GetDlgItem(ui,888),!extra.scrollRefreshMode?L"高刷策略：仅光标（沿用光标页设置）":shared&&shared->scrollRefreshStatus<0?L"高刷策略：接口不兼容，保持原版画面刷新":shared&&shared->scrollRefreshStatus==1?(extra.scrollRefreshMode==3?L"高刷策略：强制高刷 · 实验性功能已启用":extra.scrollRefreshMode==2?L"高刷策略：全部 · 实验性功能已启用":L"高刷策略：光标＋拖屏 · 实验性功能已启用"):L"高刷策略：等待游戏前台就绪");
+ if(shared&&shared->scrollRefreshStatus==1&&shared->scrollRefreshRateMilli){wchar_t label[160];swprintf(label,160,L"%s · 绘制调用 %.1f Hz（非屏幕 FPS） · 最长间隔 %.1f ms",extra.scrollRefreshMode==3?L"强制高刷":extra.scrollRefreshMode==2?L"全部（实验性）":L"光标＋拖屏（实验性）",shared->scrollRefreshRateMilli/1000.0,shared->scrollRefreshMaxGapUs/1000.0);SetWindowTextW(GetDlgItem(ui,888),label);}
  SetWindowTextW(GetDlgItem(ui,813),(L"步兵强制进入建筑："+(extra.c4Test&&snap.c4TestStatus==1&&!phase&&infantryEntryResultMatch==commandMatch()&&!infantryEntryResult.empty()?infantryEntryResult:riskText(extra.c4Test,snap.c4TestStatus))).c_str());
  std::wstring progress=snap.techOpen==2?L"经典兼容 · 生产进度：":L"生产进度：";uint32_t owner=0;
  if(techMode&&commandFresh(now)&&externalReader.readFresh(0xA83D4C,&owner,4)&&owner>=0x10000){

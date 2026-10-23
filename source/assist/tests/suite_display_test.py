@@ -77,7 +77,7 @@ int main(){
  monitorHz=60;++testMonitor;testClock+=1000;int postsBefore=refreshPosts;updateRefresh();syncRefreshRate();assert(shared->scrollRefreshHz==500&&refreshPosts==postsBefore);
  for(unsigned rate:{30u,60u,120u,144u,165u,240u,360u,500u}){
   configuredPollHz=rate;updateRefresh(true);
-  for(int mode:{0,1,2}){extra.scrollRefreshMode=mode;syncRefreshRate();assert(shared->scrollRefreshMode==unsigned(mode)&&shared->scrollRefreshHz==(mode?pollHz:0)&&pollHz==rate);}
+  for(int mode:{0,1,2,3}){extra.scrollRefreshMode=mode;syncRefreshRate();assert(shared->scrollRefreshMode==unsigned(mode)&&shared->scrollRefreshHz==(mode?pollHz:0)&&pollHz==rate);}
  }
  // Pending older notifications read the newest value, not a stale payload.
  publishRefreshRate(60);publishRefreshRate(500);syncRefreshRate();syncRefreshRate();assert(shared->scrollRefreshHz==500);

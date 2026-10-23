@@ -1,5 +1,6 @@
 // Each colliding action enters the existing request/selection channel in turn.
 static void executeHotkey(WPARAM wp,bool fanout){
+ if(wp==1702){watchhost::pin();return;}
  if(wp>=1710&&wp<=1718){send(wp==1710?Cheer:Taunt,int(wp-1710));return;}
  if(wp==1701){selectNextIdleAircraft();return;}
  if(wp==1700){bool global=variantTap.press(1700,GetTickCount(),snap.match,doubleMs);sendSelection(-2,global);return;}

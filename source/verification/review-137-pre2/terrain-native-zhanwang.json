@@ -1,0 +1,22 @@
+{
+  "scope": "Actual x86 DLL and original event constructors; mocked Win32/world/query.\nThe Sell receiver branch is executed from the supplied EXE with resolved-object,\nmap lookup and final virtual sale mocked. This is not real network validation.\n",
+  "dll_sha256": "c14953dfe81135945653a195071f8e33194b6d94df90a78614dd81b06a1db699",
+  "results": [
+    {
+      "case": "native_GetImage_returns_loaded_TMP_at_A4",
+      "status": "PASS"
+    },
+    {
+      "case": "native_subtile_2_modulo_directory_cliff_height_and_slope",
+      "status": "PASS"
+    },
+    {
+      "case": "native_subtile_6_modulo_directory_cliff_height_and_slope",
+      "status": "PASS"
+    },
+    {
+      "case": "native_subtile_254_modulo_directory_cliff_height_and_slope",
+      "status": "PASS"
+    }
+  ]
+}

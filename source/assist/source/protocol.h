@@ -151,7 +151,7 @@ struct Shared {
  volatile uint32_t dodgeEnabled=0;volatile long dodgeInputSeq=0,dodgeResultSeq=0;volatile uint32_t dodgeTask=0,dodgeComputed=0;
  dodgecompute::Input dodgeInput;dodgecompute::Result dodgeResult;uint32_t dodgeActive=0,dodgeIssued=0;
  PlayerTestInfo players[32]{}; // Runtime writer, protected by seq
- volatile uint32_t scrollRefreshMode=0,scrollRefreshHz=0; // 0 cursor, 1 scroll, 2 full scene; zero Hz disables
+ volatile uint32_t scrollRefreshMode=0,scrollRefreshHz=0; // 0 cursor, 1 scroll, 2 scene, 3 forced redraw; zero Hz disables
  int scrollRefreshStatus=0;uint32_t scrollRefreshDraws=0,scrollRefreshRateMilli=0,scrollRefreshMaxGapUs=0; // Runtime diagnostics
  volatile uint32_t magnetronDrop=0;
  volatile uint32_t missileScope=0,missileAllocation=0,magnetronGlobal=0,missileHeld=0;

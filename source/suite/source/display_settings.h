@@ -5,7 +5,7 @@ enum DisplayOption {RefreshMode,EnemyMarkers,Iron,Capacity,AllTransports,Frozen,
 enum class DisplayControl {Check,Choice,Number};
 struct DisplaySpec {int id,min,max;DisplayControl control;};
 constexpr DisplaySpec displaySpecs[]={
- {886,0,2,DisplayControl::Choice},
+ {886,0,3,DisplayControl::Choice},
  {785,0,1,DisplayControl::Check},{301,0,1,DisplayControl::Check},
  {300,0,1,DisplayControl::Check},{303,0,1,DisplayControl::Check},
  {723,0,1,DisplayControl::Check},{892,0,1,DisplayControl::Check},
