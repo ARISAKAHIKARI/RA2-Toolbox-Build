@@ -57,6 +57,7 @@
 #endif
 using namespace assist;using namespace Gdiplus;
 extern "C" __declspec(dllexport) const uint32_t AssistHostProtocolInfo[2]={Version,sizeof(Shared)};
+extern "C" __declspec(dllexport) const MappingPrefixValue AssistHostMappingPrefix{};
 namespace minimap {static void hide();static void clear();static void destroy();}
 static uint32_t computeRequested=compute::Default;
 static bool minimapEnabled=false;static int minimapScale=200,minimapPosition=0,minimapX=20,minimapY=60;
@@ -714,7 +715,7 @@ static bool ensureBridge(){
  }
  ++bridgeAttempts;bridgeRetryAt=now+(bridgeAttempts>=3?30000:2000);
  critical(L"bridge-connect-attempt="+std::to_wstring(bridgeAttempts)+L" pid="+std::to_wstring(pid)+L" thread="+std::to_wstring(gameThread));
- wchar_t n[100];swprintf(n,100,L"Local\\RA2Assist_v065_%lu",pid);
+ wchar_t n[100];mappingName(n,pid);
  mapping=CreateFileMappingW(INVALID_HANDLE_VALUE,nullptr,PAGE_READWRITE,0,sizeof(Shared),n);
  DWORD mappingError=GetLastError();if(!mapping)return bridgeFailed(L"创建命令共享内存失败",mappingError);
  if(mappingError==ERROR_ALREADY_EXISTS){
@@ -745,7 +746,8 @@ static bool ensureBridge(){
  module=gameinput::runtimeModule();
  if(module){
   auto identity=reinterpret_cast<const uint32_t*>(GetProcAddress(module,"AssistProtocolInfo"));
-  if(!identity||identity[0]!=Version||identity[1]!=sizeof(Shared)){
+  auto prefix=reinterpret_cast<const wchar_t*>(GetProcAddress(module,"AssistMappingPrefix"));
+  if(!identity||identity[0]!=Version||identity[1]!=sizeof(Shared)||!prefix||wcscmp(prefix,MappingPrefix.text)){
    bridgeBlocked=true;releaseBridge();
    diag(L"Assist bridge protocol/structure mismatch");
    return bridgeFailed(L"运行组件版本不匹配，请完整更新工具箱。");

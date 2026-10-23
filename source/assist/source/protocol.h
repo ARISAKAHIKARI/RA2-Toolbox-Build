@@ -20,6 +20,15 @@
 #include "dodge_compute.h"
 namespace assist {
 constexpr uint32_t Magic=0x41533130, Version=66;
+// Both binaries derive the namespace from the protocol version. Do not maintain
+// a separate literal in the host: a valid ABI with a different name never connects.
+struct MappingPrefixValue {
+ wchar_t text[sizeof(L"Local\\RA2Assist_v000_")/sizeof(wchar_t)]=L"Local\\RA2Assist_v000_";
+ constexpr MappingPrefixValue(){static_assert(Version<1000);const unsigned n=sizeof(text)/sizeof(wchar_t)-5;text[n]=L'0'+Version/100;text[n+1]=L'0'+Version/10%10;text[n+2]=L'0'+Version%10;}
+};
+constexpr MappingPrefixValue MappingPrefix{};
+inline void mappingName(wchar_t*out,uint32_t pid){const wchar_t*s=MappingPrefix.text;int i=0;while(*s)out[i++]=*s++;wchar_t digits[10];int n=0;do{digits[n++]=L'0'+pid%10;pid/=10;}while(pid);while(n)out[i++]=digits[--n];out[i]=0;}
+
 constexpr uint32_t DataMessage=0x8002, WakeTag=0x41533230;
 constexpr int MaxLabels=2048, MaxSW=32, MaxTypes=512, MaxThreats=128, MaxCrates=256, MaxCrateResults=16;
 enum Command { None, Repair, CombatSelection, EmptyTransports, DamagedSelection, IdleHarvester, IdleEngineer, IdleTransport, ClearBeacons, RevealMap, OpenTech, SelectSuper, Produce, SelectIron, SelectChrono, AutoBoard, SelectType, SmartUnload, CancelAdvanced, SelectVariant, ProduceReserved, AirPathMove, CancelTechProduction, SwitchPlayer, RestorePlayer, Cheer, Taunt, ProduceDeferred, StickyGuard };

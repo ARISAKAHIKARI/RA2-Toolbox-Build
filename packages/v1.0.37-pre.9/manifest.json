@@ -1,0 +1,30 @@
+{
+  "version": "1.0.37-pre.9",
+  "file_version": "1.0.37.9",
+  "base_commit": "2faa423ccabfdf7356cf87e237ebeb5d7abc65d0",
+  "assets": [
+    {
+      "name": "RA2-Toolbox-v1.0.37-pre.9-Update.zip",
+      "bytes": 1424539,
+      "sha256": "7173f67bd056346bdb5af1e8330630993063c464a53cf1ed026af900cb003769",
+      "files": {
+        "RA2Toolbox.exe": {
+          "bytes": 2773504,
+          "sha256": "3982af6b907537364d814d688ab97ab73fc224f30ca012b85661d429303f2bcd"
+        },
+        "GameRuntime.dll": {
+          "bytes": 4859392,
+          "sha256": "709852d62e1131bf842616d73912cfa86a2abb74a5f133fdc08daeef6587b99f"
+        },
+        "README-Windows.txt": {
+          "bytes": 584,
+          "sha256": "473f466b07ce3895e4458b8e594a914df7567f5b4aa908b96f6b7943c148b455"
+        },
+        "RELEASE_NOTES.md": {
+          "bytes": 1448,
+          "sha256": "9c96fa729fdb44ecb59c77004660f8877af074d36299eb407edcdc44cfb96458"
+        }
+      }
+    }
+  ]
+}

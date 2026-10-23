@@ -4,6 +4,7 @@ Usage: python entry_runtime_regression.py path/to/gamemd-spawn.exe path/to/GameR
 No game executable is distributed with this project. Not a multiplayer test.
 """
 import math
+import os
 import ctypes as C
 import struct
 import sys
@@ -230,7 +231,7 @@ def on_code(uc,a,size,_):
         elif n in ('GetTickCount','timeGetTime'):ret(clock,0)
         elif n=='OpenFileMappingW':
             name=string_at(arg(2),True);mapping_names.append(name)
-            ret(2 if name in ('Local\\RA2Runtime_v3_123_456_','Local\\RA2Runtime_v4_123_456_') else 1 if name==f'Local\\RA2Assist_v{struct.unpack("<I",dll.get_data(protocol_export.address,4))[0]:03}_123' else 3 if cursor_mapping_enabled and name=='Local\\RA2CursorBridge_v154_123' else 0,3)
+            ret(2 if name in ('Local\\RA2Runtime_v3_123_456_','Local\\RA2Runtime_v4_123_456_') else 1 if name==os.environ.get('RA2_FIXTURE_MAPPING_NAME',f'Local\\RA2Assist_v{struct.unpack("<I",dll.get_data(protocol_export.address,4))[0]:03}_123') else 3 if cursor_mapping_enabled and name=='Local\\RA2CursorBridge_v154_123' else 0,3)
         elif n=='MapViewOfFile':ret(SH+0x500000 if arg(0)==2 else 0x22000000 if arg(0)==3 else SH,5)
         elif n=='SetTimer':watchdog_callback=arg(3);watchdog_threads.append(current_thread);ret(0 if fail_watchdog_timer else 1,4)
         elif n=='wsprintfW':

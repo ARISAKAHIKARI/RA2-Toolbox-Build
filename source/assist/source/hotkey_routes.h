@@ -28,8 +28,11 @@ struct Action {int id=0;uint32_t tick=0,match=0;};
 struct Pending {
  static constexpr unsigned Capacity=128;Action items[Capacity]{};unsigned head=0,count=0;
  void clear(){head=count=0;}
+ void expire(uint32_t now,uint32_t match){
+  unsigned kept=0;for(unsigned i=0;i<count;++i){const auto item=items[(head+i)%Capacity];if(item.match==match&&uint32_t(now-item.tick)<=2500)items[(head+kept++)%Capacity]=item;}count=kept;if(!count)head=0;
+ }
  bool add(const Group&g,uint32_t tick,uint32_t match){
-  if(!match||g.actions.size()>Capacity-count)return false;
+  expire(tick,match);if(!match||g.actions.size()>Capacity-count)return false;
   for(int id:g.actions)items[(head+count++)%Capacity]={id,tick,match};return true;
  }
  bool pop(uint32_t now,uint32_t match,Action&out){

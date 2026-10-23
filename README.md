@@ -1,3 +1,9 @@
+# RA2 Toolbox 1.0.37-pre.9（快捷键修复）
+
+修复 pre.8 主程序/DLL 通信名称不一致导致所有快捷键失效，以及未连接时误报“队列已满”。两端通信名现统一生成，增加成对映射验证与等待回执期间的过期队列清理。请退出游戏和工具，同时更新 EXE/DLL。
+
+[下载 pre.9](https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/releases/tag/v1.0.37-pre.9) · [说明](packages/v1.0.37-pre.9/RELEASE_NOTES.md) · [验证](source/REVIEW-1.0.37-pre.9.md)
+
 # RA2 Toolbox 1.0.37-pre.8（测试分支）
 
 队形与观察窗共用真实 SHP/VXL 加载和色盘，参考 FA2 补齐剧场与覆盖物规则；新增单机显式 Sticky 驻守，磁电自动摔落独立覆盖手动吸取及水陆/悬崖判断。216个 Runtime 受控用例通过；具体 MOD 画面和完整物理仍需实机复测。

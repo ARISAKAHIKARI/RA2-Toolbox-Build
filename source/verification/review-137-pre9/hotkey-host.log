@@ -1,0 +1,3 @@
+PASS: disconnected command identity does not enter or falsely fill queue; notification throttled; stale command/selection ACK waits expire and recovery dispatches once
+PASS: idle-aircraft hotkey and button share cycle, wrap and process/match reset; hidden indicator independence; stale/menu/chat/focus rejection
+PASS: production hotkey dispatcher executes every match once, waits for command/selection ACK, preserves both double-tap selections, rejects stale bindings/context/deadlines; default-off unchanged

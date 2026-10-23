@@ -15,6 +15,8 @@ int main(){
  assert(queue.add(*registry.find(10),1,8));assert(!queue.pop(2502,8,a));
  assert(queue.add(*registry.find(10),100,8));assert(!queue.pop(101,9,a));
  hotkeyroute::Group full{1,1,std::vector<int>(128,7)};assert(queue.add(full,100,8));assert(!queue.add(*registry.find(10),100,8));assert(queue.count==128);
+ // A full blocked queue releases expired slots before the next insertion.
+ assert(queue.add(*registry.find(10),2701,8));assert(queue.count==3);queue.expire(2702,9);assert(queue.count==0);
  queue.clear();registry.clear();assert(!registry.find(10));
  using namespace pointerinput;uint8_t keys[256]{};uint32_t buttons[MouseCount];for(auto&b:buttons)b=1;
  Bindings c{0,0,0,0,0,0,0,0,1023};MouseRoute routes[MouseCount+1]{};

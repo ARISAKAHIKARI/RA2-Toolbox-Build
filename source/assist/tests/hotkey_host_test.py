@@ -26,7 +26,7 @@ static uint32_t now=1000,scene=8;static uint32_t GetTickCount(){return now;}
 static AdditionalSettings extra;static Snapshot snap{};static auto memory=std::make_unique<Shared>();static Shared*shared=memory.get();
 static bool enabled=true,focused=true,hasSelection=false,ejectMode=false,hookEject=false,csMode=false,hookAutoCS=false;
 static bool formationInputOwns(){return false;}static bool formationHotkey(WORD){return false;}namespace watchhost {static int pins=0;static void pin(){++pins;}}
-static bool foregroundGame(){return focused;}static bool commandFresh(uint32_t){return true;}static uint32_t commandMatch(){return scene;}
+static bool foregroundGame(){return focused;}static bool freshConnection=true;static bool commandFresh(uint32_t){return freshConnection;}static uint32_t commandMatch(){return scene;}
 static int doubleMs=350;static typekeys::Tap typeTap,variantTap;static hotkeyroute::Registry hotkeyRegistry;static hotkeyroute::Pending hotkeyPending;
 static int repairCheck=1,ejectCheck=2,csCheck=3,hookChecks[4]={4,5,6,7};static std::map<int,int>controls;
 static int SendMessageW(int id,int msg,int value,int){if(msg==BM_SETCHECK)controls[id]=value;return controls[id];}
@@ -85,6 +85,14 @@ int main(){
 
  // Sticky uses the same configurable/double-only routing and command channel.
  hotkeyRegistry.clear();hotkeyPending.clear();assert(hotkeyRegistry.add(1723,0x8000|'S',false,install));auto stickyCount=commands.size();handleHotkey(1723,'S'<<16);assert(commands.size()==stickyCount);now+=100;handleHotkey(1723,'S'<<16);assert(commands.size()==stickyCount+1&&commands.back()==StickyGuard);ack();
+ // An external display can be ready while the command bridge has no identity.
+ hotkeyRegistry.clear();hotkeyPending.clear();assert(hotkeyRegistry.add(1723,'S',false,install));auto oldScene=scene;scene=0;now+=3000;auto beforeNotice=notifications;auto beforeCommands=commands.size();
+ for(int n=0;n<140;++n)handleHotkey(1723,'S'<<16);
+ assert(hotkeyPending.count==0&&commands.size()==beforeCommands&&notifications==beforeNotice+1);scene=oldScene;
+ freshConnection=false;now+=3000;handleHotkey(1723,'S'<<16);assert(hotkeyPending.count==0);freshConnection=true;
+ // Expiration must run even while either mailbox is awaiting acknowledgement.
+ ++shared->request;for(int n=0;n<128;++n)handleHotkey(1723,'S'<<16);assert(hotkeyPending.count==128);now+=2501;serviceHotkeyBatch();assert(hotkeyPending.count==0);ack();handleHotkey(1723,'S'<<16);assert(commands.size()==beforeCommands+1);ack();
+ ++shared->selectRequest;handleHotkey(1723,'S'<<16);assert(hotkeyPending.count==1);now+=2501;serviceHotkeyBatch();assert(hotkeyPending.count==0);ack();
  // Configured double-only commands execute once, after the second tap.
  hotkeyRegistry.clear();hotkeyPending.clear();assert(hotkeyRegistry.add(1702,0x8000|'Q',false,install));
  auto pins=watchhost::pins;handleHotkey(1702,'Q'<<16);assert(watchhost::pins==pins);now+=100;handleHotkey(1702,'Q'<<16);assert(watchhost::pins==pins+1);
@@ -103,5 +111,6 @@ with tempfile.TemporaryDirectory() as d:
  p=Path(d)/'host.cpp';exe=Path(d)/'host';p.write_text(program)
  subprocess.run(['g++','-std=c++17','-O2','-I',str(r/'assist/source'),str(p),'-o',str(exe)],check=True)
  subprocess.run([str(exe)],check=True)
+print('PASS: disconnected command identity does not enter or falsely fill queue; notification throttled; stale command/selection ACK waits expire and recovery dispatches once')
 print('PASS: idle-aircraft hotkey and button share cycle, wrap and process/match reset; hidden indicator independence; stale/menu/chat/focus rejection')
 print('PASS: production hotkey dispatcher executes every match once, waits for command/selection ACK, preserves both double-tap selections, rejects stale bindings/context/deadlines; default-off unchanged')

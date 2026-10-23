@@ -1,0 +1,32 @@
+{
+  "scope": "Use the shipped host's namespace as the only Win32 mapping visible to the DLL.\nRuns actual compiled Runtime hooks; Win32/world/renderer remain synthetic.\nAn ABI/version-only check previously missed pre.8's mismatched namespace.\n",
+  "host_namespace": "Local\\RA2Assist_v066_",
+  "expect_disconnected": false,
+  "inputs": {
+    "RA2Toolbox.exe": "3982af6b907537364d814d688ab97ab73fc224f30ca012b85661d429303f2bcd",
+    "GameRuntime.dll": "709852d62e1131bf842616d73912cfa86a2abb74a5f133fdc08daeef6587b99f",
+    "gamemd-spawn(3).exe": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0"
+  },
+  "results": [
+    {
+      "mode": 0,
+      "connected": true,
+      "status": "PASS"
+    },
+    {
+      "mode": 5,
+      "connected": true,
+      "status": "PASS"
+    },
+    {
+      "mode": 3,
+      "connected": true,
+      "status": "PASS"
+    },
+    {
+      "mode": 4,
+      "connected": true,
+      "status": "PASS"
+    }
+  ]
+}

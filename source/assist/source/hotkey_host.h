@@ -20,6 +20,7 @@ static void executeHotkey(WPARAM wp,bool fanout){
 }
 static void serviceHotkeyBatch(){
  if(formationInputOwns()||!enabled||!foregroundGame()||snap.status!=1||snap.renderStatus!=1||snap.chat){hotkeyPending.clear();hotkeyRegistry.cancel();return;}
+ hotkeyPending.expire(GetTickCount(),commandMatch());
  if(!commandFresh(GetTickCount())||!shared)return;
  // Bare modifier shortcuts cannot be registered with RegisterHotKey. Reuse
  // the existing EXE input sampler; autorepeat never advances its press serial.
@@ -35,6 +36,12 @@ static void serviceHotkeyBatch(){
 static void handleHotkey(WPARAM id,LPARAM event){
  if(!enabled||!foregroundGame()||snap.status!=1||snap.renderStatus!=1||snap.chat){typeTap.clear();variantTap.clear();hotkeyPending.clear();return;}
  const auto*g=hotkeyRegistry.find(int(id));if(!g)return;
+ // External display readiness is not a connected command session. In particular,
+ // match=0 is not queue exhaustion. Never buffer actions across a reconnect.
+ if(!shared||!commandMatch()||!commandFresh(GetTickCount())){
+  hotkeyPending.clear();hotkeyRegistry.cancel();static uint32_t notifiedAt=0;uint32_t now=GetTickCount();
+  if(!notifiedAt||uint32_t(now-notifiedAt)>=2500){notifiedAt=now;notify(L"快捷键暂不可用：游戏命令连接尚未就绪，恢复后请重新按键。");}return;
+ }
  WORD key=MAKEWORD(HIWORD(event),((LOWORD(event)&MOD_SHIFT)?HOTKEYF_SHIFT:0)|((LOWORD(event)&MOD_CONTROL)?HOTKEYF_CONTROL:0)|((LOWORD(event)&MOD_ALT)?HOTKEYF_ALT:0));
  if(hotkeyroute::canonical(key)!=g->key)return; // queued notification from an old binding
  if(formationHotkey(key)){hotkeyPending.clear();return;}
