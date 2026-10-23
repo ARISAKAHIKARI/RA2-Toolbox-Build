@@ -38,4 +38,4 @@ for mode in (0,3):
    assert not m.codeWrites
    rows.append({'case':f'left_attack_old_beam_{mode}_{inside}_{target_kind}','status':'PASS'})
 print('PASS',len(rows),'manual attacks / independent global drop cases')
-Path(a.output).write_text(json.dumps({'scope':PROBE_SCOPE,'results':rows},indent=2)+'\n')
+Path(a.output).write_text(json.dumps({'scope':PROBE_SCOPE,'inputs':{Path(x).name:hashlib.sha256(Path(x).read_bytes()).hexdigest() for x in (a.game,a.dll)},'results':rows},indent=2)+'\n')

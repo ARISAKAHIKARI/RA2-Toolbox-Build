@@ -1,10 +1,10 @@
 {
-  "label": "1.0.37.10 SingleRuntime",
-  "file_version": "1.0.37.10",
+  "label": "1.0.37.11 SingleRuntime",
+  "file_version": "1.0.37.11",
   "verified": {
     "RA2Toolbox.exe": {
       "bytes": 2788864,
-      "sha256": "4976801bfbc1d369d49581d4727bfe2a78ddf44fb945add7acc9aac72b8f1ace",
+      "sha256": "b612f6d510342d2a5f8dc4368e6a7a30047b480a3872f3046665185831e2d221",
       "machine": "PE32 x86",
       "sections": 14,
       "entry_rva": "0x1313b0",
@@ -554,7 +554,7 @@
     },
     "GameRuntime.dll": {
       "bytes": 4860416,
-      "sha256": "ebb3a2a50de82a785af3a57fe3ab2a55287fd4b118b7d7e13cd38f3e210c3c41",
+      "sha256": "a4324c8e749b5d0845412b1a9ee2b733ce09af64d35aedc2d41a1ff3083b9742",
       "machine": "PE32 x86",
       "sections": 13,
       "entry_rva": "0x60ba0",

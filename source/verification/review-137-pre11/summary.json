@@ -1,0 +1,75 @@
+{
+  "version": "1.0.37-pre.11",
+  "base_commit": "d9c8e48f65623b2628a22e038fb94e3b90916eaa",
+  "artifacts": {
+    "RA2Toolbox.exe": "b612f6d510342d2a5f8dc4368e6a7a30047b480a3872f3046665185831e2d221",
+    "GameRuntime.dll": "a4324c8e749b5d0845412b1a9ee2b733ce09af64d35aedc2d41a1ff3083b9742"
+  },
+  "build": "Zig 0.13.0 x86 Windows; PE/ABI/version/dependencies and architecture checks passed",
+  "native_suites": [
+    {
+      "suite": "magnetron_drop_lease_runtime-lbw",
+      "passed": 4,
+      "scope": "Execute compiled Runtime sampling/admission and native Idle constructors.\nSynthetic Win32/world/terrain; release and falling physics are not simulated.\nNo claim of real multiplayer or guaranteed kill after delivery latency.\n"
+    },
+    {
+      "suite": "magnetron_drop_lease_runtime-zhanwang",
+      "passed": 4,
+      "scope": "Execute compiled Runtime sampling/admission and native Idle constructors.\nSynthetic Win32/world/terrain; release and falling physics are not simulated.\nNo claim of real multiplayer or guaranteed kill after delivery latency.\n"
+    },
+    {
+      "suite": "magnetron_drop_runtime-lbw",
+      "passed": 14,
+      "scope": "Execute compiled Runtime sampling/admission and native Idle constructors.\nSynthetic Win32/world/terrain; release and falling physics are not simulated.\nNo claim of real multiplayer or guaranteed kill after delivery latency.\n"
+    },
+    {
+      "suite": "magnetron_drop_runtime-zhanwang",
+      "passed": 14,
+      "scope": "Execute compiled Runtime sampling/admission and native Idle constructors.\nSynthetic Win32/world/terrain; release and falling physics are not simulated.\nNo claim of real multiplayer or guaranteed kill after delivery latency.\n"
+    },
+    {
+      "suite": "magnetron_friendly_drop_runtime-lbw",
+      "passed": 82,
+      "scope": "Actual Runtime sampling/admission and native Idle serialization for friendly lifts.\nThe lift, map, Win32 and final event delivery are fixtures; no falling-physics,\ndamage, Windows UI or multiplayer-peer validation is claimed.\n"
+    },
+    {
+      "suite": "magnetron_friendly_drop_runtime-zhanwang",
+      "passed": 82,
+      "scope": "Actual Runtime sampling/admission and native Idle serialization for friendly lifts.\nThe lift, map, Win32 and final event delivery are fixtures; no falling-physics,\ndamage, Windows UI or multiplayer-peer validation is claimed.\n"
+    },
+    {
+      "suite": "magnetron_landing_runtime-lbw",
+      "passed": 52,
+      "scope": "Execute compiled Runtime sampling/admission and native Idle constructors.\nSynthetic Win32/world/terrain; release and falling physics are not simulated.\nNo claim of real multiplayer or guaranteed kill after delivery latency.\n"
+    },
+    {
+      "suite": "magnetron_landing_runtime-zhanwang",
+      "passed": 52,
+      "scope": "Execute compiled Runtime sampling/admission and native Idle constructors.\nSynthetic Win32/world/terrain; release and falling physics are not simulated.\nNo claim of real multiplayer or guaranteed kill after delivery latency.\n"
+    },
+    {
+      "suite": "magnetron_manual_drop_runtime-lbw",
+      "passed": 8,
+      "scope": "Execute compiled Runtime sampling/admission and native Idle constructors.\nSynthetic Win32/world/terrain; release and falling physics are not simulated.\nNo claim of real multiplayer or guaranteed kill after delivery latency.\n"
+    },
+    {
+      "suite": "magnetron_manual_drop_runtime-zhanwang",
+      "passed": 8,
+      "scope": "Execute compiled Runtime sampling/admission and native Idle constructors.\nSynthetic Win32/world/terrain; release and falling physics are not simulated.\nNo claim of real multiplayer or guaranteed kill after delivery latency.\n"
+    }
+  ],
+  "native_cases": 320,
+  "pure_suites": [
+    "magnetron_landing",
+    "review136",
+    "magnetron",
+    "lease_arbiter",
+    "auto_settings_ui"
+  ],
+  "negative_regression": "pre.10 DLL rejects the first own-victim/building hazard before publishing DropHazard; friendly-drop-before.log",
+  "limits": [
+    "No real Windows UI or gameplay verification",
+    "Lift state and map are modeled; no full Idle delivery / AI release / falling collision or damage simulation",
+    "No multiplayer peer validation"
+  ]
+}

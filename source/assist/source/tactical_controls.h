@@ -45,7 +45,6 @@ label(L"功能开关",20,210);label(L"按住键 / 自定义组合",240,258);labe
 hookChecks[0]=toggle(458,L"高级移动攻击",hookAdvanced,20,210);advancedKeyEdit=key(450,advancedKey,240,258,true);mouse(pointerinput::MouseAdvanced);next();
 magnetronCheck=toggle(477,L"磁电轮换攻击",magnetronMode,20,210);magnetronKeyEdit=key(478,magnetronKey,240,258,true);mouse(pointerinput::MouseMagnetron);next();
  toggle(9042,L"磁电全局无限吸",extra.magnetronGlobal);next();note(L"自动接管空闲磁电，沿用轮换和类型清单；手动移动或攻击优先。关闭后停止自动接续。");
- toggle(899,L"磁电全局自动摔落",extra.magnetronDrop);next();note(L"独立检查全图己方磁电正在吸起的敌人，手动攻击也生效。检测建筑、地面坦克、树木、矿柱、不可通行悬崖及水陆不适配；两栖/悬浮不因普通水陆而摔，排除空中单位和桥面。");
 csHoldCheck=toggle(473,L"按键移动攻击（CS）",csHoldEnabled,20,210);csHoldEdit=key(474,csHoldKey,240,258,true);mouse(pointerinput::MouseCS);next();
 extraControls[EnterEnabled]=toggle(702,L"高级进驻",extra.enter,20,210);holdPresetControl(EnterPreset,EnterCustom,extra.enterKey);mouse(pointerinput::MouseEnter);next();
 extraControls[AirEnabled]=toggle(705,L"飞机分配攻击 · 1",extra.air,20,210);holdPresetControl(AirPreset1,AirCustom1,extra.airKey1);mouse(pointerinput::MouseAirFirst);next();
@@ -171,6 +170,8 @@ note(L"坐标从游戏画面左上角计算；自动避开原雷达和飞机按�
 detailCheck=toggle(481,L"显示运行耗时",showDetails);next();
 
 heading(4,904,L"高级与实验性设置",L"实验性功能尚未完成联机验证，可能导致不同步或掉线。建议单独测试。");
+toggle(899,L"磁电全局自动摔落（实验性）",extra.magnetronDrop);next();
+note(L"独立检查全图己方磁电已吸起的载具，包括己方、盟友和敌方，手动强制攻击也生效。检测建筑、地面坦克、树木、矿柱、悬崖及水陆不适配；两栖/悬浮不因普通水陆而摔，排除下方空中单位和桥面。默认关闭，实际摔落效果仍需测试。",76);
 toggle(9090,L"视角缩放",extra.viewZoomEnabled);next();
 label(L"视角倍率",20,260);choices(combo(9091),{L"50%",L"75%",L"100%",L"125%",L"150%"},viewzoom::index(extra.viewZoomPercent));next();
 button(9092,L"恢复 100%",20,280);next();

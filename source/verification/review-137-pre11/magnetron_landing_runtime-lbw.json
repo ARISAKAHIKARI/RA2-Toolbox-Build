@@ -1,0 +1,217 @@
+{
+  "scope": "Execute compiled Runtime sampling/admission and native Idle constructors.\nSynthetic Win32/world/terrain; release and falling physics are not simulated.\nNo claim of real multiplayer or guaranteed kill after delivery latency.\n",
+  "inputs": {
+    "gamemd-spawn(3).exe": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+    "GameRuntime.dll": "a4324c8e749b5d0845412b1a9ee2b733ce09af64d35aedc2d41a1ff3083b9742"
+  },
+  "results": [
+    {
+      "case": "cliff_clear_land_0_False",
+      "status": "PASS"
+    },
+    {
+      "case": "cliff_edge_walkable_0_False",
+      "status": "PASS"
+    },
+    {
+      "case": "tank_water_0_False",
+      "status": "PASS"
+    },
+    {
+      "case": "ship_land_0_False",
+      "status": "PASS"
+    },
+    {
+      "case": "ship_water_0_False",
+      "status": "PASS"
+    },
+    {
+      "case": "tank_clear_0_False",
+      "status": "PASS"
+    },
+    {
+      "case": "rough_passable_0_False",
+      "status": "PASS"
+    },
+    {
+      "case": "cliff_impassable_0_False",
+      "status": "PASS"
+    },
+    {
+      "case": "hover_water_0_False",
+      "status": "PASS"
+    },
+    {
+      "case": "amphibious_water_0_False",
+      "status": "PASS"
+    },
+    {
+      "case": "amphibious_land_0_False",
+      "status": "PASS"
+    },
+    {
+      "case": "beach_ship_beach_0_False",
+      "status": "PASS"
+    },
+    {
+      "case": "beach_ship_land_0_False",
+      "status": "PASS"
+    },
+    {
+      "case": "cliff_clear_land_0_True",
+      "status": "PASS"
+    },
+    {
+      "case": "cliff_edge_walkable_0_True",
+      "status": "PASS"
+    },
+    {
+      "case": "tank_water_0_True",
+      "status": "PASS"
+    },
+    {
+      "case": "ship_land_0_True",
+      "status": "PASS"
+    },
+    {
+      "case": "ship_water_0_True",
+      "status": "PASS"
+    },
+    {
+      "case": "tank_clear_0_True",
+      "status": "PASS"
+    },
+    {
+      "case": "rough_passable_0_True",
+      "status": "PASS"
+    },
+    {
+      "case": "cliff_impassable_0_True",
+      "status": "PASS"
+    },
+    {
+      "case": "hover_water_0_True",
+      "status": "PASS"
+    },
+    {
+      "case": "amphibious_water_0_True",
+      "status": "PASS"
+    },
+    {
+      "case": "amphibious_land_0_True",
+      "status": "PASS"
+    },
+    {
+      "case": "beach_ship_beach_0_True",
+      "status": "PASS"
+    },
+    {
+      "case": "beach_ship_land_0_True",
+      "status": "PASS"
+    },
+    {
+      "case": "cliff_clear_land_3_False",
+      "status": "PASS"
+    },
+    {
+      "case": "cliff_edge_walkable_3_False",
+      "status": "PASS"
+    },
+    {
+      "case": "tank_water_3_False",
+      "status": "PASS"
+    },
+    {
+      "case": "ship_land_3_False",
+      "status": "PASS"
+    },
+    {
+      "case": "ship_water_3_False",
+      "status": "PASS"
+    },
+    {
+      "case": "tank_clear_3_False",
+      "status": "PASS"
+    },
+    {
+      "case": "rough_passable_3_False",
+      "status": "PASS"
+    },
+    {
+      "case": "cliff_impassable_3_False",
+      "status": "PASS"
+    },
+    {
+      "case": "hover_water_3_False",
+      "status": "PASS"
+    },
+    {
+      "case": "amphibious_water_3_False",
+      "status": "PASS"
+    },
+    {
+      "case": "amphibious_land_3_False",
+      "status": "PASS"
+    },
+    {
+      "case": "beach_ship_beach_3_False",
+      "status": "PASS"
+    },
+    {
+      "case": "beach_ship_land_3_False",
+      "status": "PASS"
+    },
+    {
+      "case": "cliff_clear_land_3_True",
+      "status": "PASS"
+    },
+    {
+      "case": "cliff_edge_walkable_3_True",
+      "status": "PASS"
+    },
+    {
+      "case": "tank_water_3_True",
+      "status": "PASS"
+    },
+    {
+      "case": "ship_land_3_True",
+      "status": "PASS"
+    },
+    {
+      "case": "ship_water_3_True",
+      "status": "PASS"
+    },
+    {
+      "case": "tank_clear_3_True",
+      "status": "PASS"
+    },
+    {
+      "case": "rough_passable_3_True",
+      "status": "PASS"
+    },
+    {
+      "case": "cliff_impassable_3_True",
+      "status": "PASS"
+    },
+    {
+      "case": "hover_water_3_True",
+      "status": "PASS"
+    },
+    {
+      "case": "amphibious_water_3_True",
+      "status": "PASS"
+    },
+    {
+      "case": "amphibious_land_3_True",
+      "status": "PASS"
+    },
+    {
+      "case": "beach_ship_beach_3_True",
+      "status": "PASS"
+    },
+    {
+      "case": "beach_ship_land_3_True",
+      "status": "PASS"
+    }
+  ]
+}

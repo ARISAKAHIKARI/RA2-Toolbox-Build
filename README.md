@@ -1,3 +1,9 @@
+# RA2 Toolbox 1.0.37-pre.11（磁电自动摔落实验修正）
+
+修正“己方磁电吸己方坦克”在检查落点前被敌方过滤条件挡住的问题。已吸起目标不再受阵营限制，开关移至“实验功能”，保留原设置和默认关闭。检测、原生停止命令排队与边界回归通过；完整摔落物理和联机效果仍待实机验证。
+
+[下载 pre.11](https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/releases/tag/v1.0.37-pre.11) · [说明](packages/v1.0.37-pre.11/RELEASE_NOTES.md) · [研究与验证范围](source/research/2026-10-23-friendly-magnetron-drop-137-pre11.md)
+
 # RA2 Toolbox 1.0.37-pre.9（快捷键修复）
 
 修复 pre.8 主程序/DLL 通信名称不一致导致所有快捷键失效，以及未连接时误报“队列已满”。两端通信名现统一生成，增加成对映射验证与等待回执期间的过期队列清理。请退出游戏和工具，同时更新 EXE/DLL。

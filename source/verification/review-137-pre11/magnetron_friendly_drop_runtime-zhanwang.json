@@ -1,0 +1,337 @@
+{
+  "scope": "Actual Runtime sampling/admission and native Idle serialization for friendly lifts.\nThe lift, map, Win32 and final event delivery are fixtures; no falling-physics,\ndamage, Windows UI or multiplayer-peer validation is claimed.\n",
+  "inputs": {
+    "gamemd-spawn(4).exe": "c287d62a4d6a25b547e9339d071dd6e03adcf545699062e478aaeee38c60e89a",
+    "GameRuntime.dll": "a4324c8e749b5d0845412b1a9ee2b733ce09af64d35aedc2d41a1ff3083b9742"
+  },
+  "results": [
+    {
+      "case": "own_building_0_False",
+      "status": "PASS"
+    },
+    {
+      "case": "allied_building_0_False",
+      "status": "PASS"
+    },
+    {
+      "case": "neutral_building_0_False",
+      "status": "PASS"
+    },
+    {
+      "case": "enemy_building_0_False",
+      "status": "PASS"
+    },
+    {
+      "case": "own_tree_0_False",
+      "status": "PASS"
+    },
+    {
+      "case": "own_tank_0_False",
+      "status": "PASS"
+    },
+    {
+      "case": "own_water_0_False",
+      "status": "PASS"
+    },
+    {
+      "case": "own_ship_land_0_False",
+      "status": "PASS"
+    },
+    {
+      "case": "own_cliff_0_False",
+      "status": "PASS"
+    },
+    {
+      "case": "own_clear_0_False",
+      "status": "PASS"
+    },
+    {
+      "case": "own_aircraft_0_False",
+      "status": "PASS"
+    },
+    {
+      "case": "own_hover_low_0_False",
+      "status": "PASS"
+    },
+    {
+      "case": "own_amphibious_water_0_False",
+      "status": "PASS"
+    },
+    {
+      "case": "own_bridge_0_False",
+      "status": "PASS"
+    },
+    {
+      "case": "no_friendly_acquisition_own_0_False",
+      "status": "PASS"
+    },
+    {
+      "case": "no_friendly_acquisition_allied_0_False",
+      "status": "PASS"
+    },
+    {
+      "case": "no_friendly_acquisition_neutral_0_False",
+      "status": "PASS"
+    },
+    {
+      "case": "own_building_0_True",
+      "status": "PASS"
+    },
+    {
+      "case": "allied_building_0_True",
+      "status": "PASS"
+    },
+    {
+      "case": "neutral_building_0_True",
+      "status": "PASS"
+    },
+    {
+      "case": "enemy_building_0_True",
+      "status": "PASS"
+    },
+    {
+      "case": "own_tree_0_True",
+      "status": "PASS"
+    },
+    {
+      "case": "own_tank_0_True",
+      "status": "PASS"
+    },
+    {
+      "case": "own_water_0_True",
+      "status": "PASS"
+    },
+    {
+      "case": "own_ship_land_0_True",
+      "status": "PASS"
+    },
+    {
+      "case": "own_cliff_0_True",
+      "status": "PASS"
+    },
+    {
+      "case": "own_clear_0_True",
+      "status": "PASS"
+    },
+    {
+      "case": "own_aircraft_0_True",
+      "status": "PASS"
+    },
+    {
+      "case": "own_hover_low_0_True",
+      "status": "PASS"
+    },
+    {
+      "case": "own_amphibious_water_0_True",
+      "status": "PASS"
+    },
+    {
+      "case": "own_bridge_0_True",
+      "status": "PASS"
+    },
+    {
+      "case": "no_friendly_acquisition_own_0_True",
+      "status": "PASS"
+    },
+    {
+      "case": "no_friendly_acquisition_allied_0_True",
+      "status": "PASS"
+    },
+    {
+      "case": "no_friendly_acquisition_neutral_0_True",
+      "status": "PASS"
+    },
+    {
+      "case": "friendly_beam_race_disabled_0",
+      "status": "PASS"
+    },
+    {
+      "case": "friendly_beam_race_source_foreign_0",
+      "status": "PASS"
+    },
+    {
+      "case": "friendly_beam_race_broken_link_0",
+      "status": "PASS"
+    },
+    {
+      "case": "friendly_beam_race_gone_0",
+      "status": "PASS"
+    },
+    {
+      "case": "friendly_beam_race_grounded_0",
+      "status": "PASS"
+    },
+    {
+      "case": "friendly_beam_race_victim_allied_0",
+      "status": "PASS"
+    },
+    {
+      "case": "friendly_beam_race_victim_enemy_0",
+      "status": "PASS"
+    },
+    {
+      "case": "own_building_3_False",
+      "status": "PASS"
+    },
+    {
+      "case": "allied_building_3_False",
+      "status": "PASS"
+    },
+    {
+      "case": "neutral_building_3_False",
+      "status": "PASS"
+    },
+    {
+      "case": "enemy_building_3_False",
+      "status": "PASS"
+    },
+    {
+      "case": "own_tree_3_False",
+      "status": "PASS"
+    },
+    {
+      "case": "own_tank_3_False",
+      "status": "PASS"
+    },
+    {
+      "case": "own_water_3_False",
+      "status": "PASS"
+    },
+    {
+      "case": "own_ship_land_3_False",
+      "status": "PASS"
+    },
+    {
+      "case": "own_cliff_3_False",
+      "status": "PASS"
+    },
+    {
+      "case": "own_clear_3_False",
+      "status": "PASS"
+    },
+    {
+      "case": "own_aircraft_3_False",
+      "status": "PASS"
+    },
+    {
+      "case": "own_hover_low_3_False",
+      "status": "PASS"
+    },
+    {
+      "case": "own_amphibious_water_3_False",
+      "status": "PASS"
+    },
+    {
+      "case": "own_bridge_3_False",
+      "status": "PASS"
+    },
+    {
+      "case": "no_friendly_acquisition_own_3_False",
+      "status": "PASS"
+    },
+    {
+      "case": "no_friendly_acquisition_allied_3_False",
+      "status": "PASS"
+    },
+    {
+      "case": "no_friendly_acquisition_neutral_3_False",
+      "status": "PASS"
+    },
+    {
+      "case": "own_building_3_True",
+      "status": "PASS"
+    },
+    {
+      "case": "allied_building_3_True",
+      "status": "PASS"
+    },
+    {
+      "case": "neutral_building_3_True",
+      "status": "PASS"
+    },
+    {
+      "case": "enemy_building_3_True",
+      "status": "PASS"
+    },
+    {
+      "case": "own_tree_3_True",
+      "status": "PASS"
+    },
+    {
+      "case": "own_tank_3_True",
+      "status": "PASS"
+    },
+    {
+      "case": "own_water_3_True",
+      "status": "PASS"
+    },
+    {
+      "case": "own_ship_land_3_True",
+      "status": "PASS"
+    },
+    {
+      "case": "own_cliff_3_True",
+      "status": "PASS"
+    },
+    {
+      "case": "own_clear_3_True",
+      "status": "PASS"
+    },
+    {
+      "case": "own_aircraft_3_True",
+      "status": "PASS"
+    },
+    {
+      "case": "own_hover_low_3_True",
+      "status": "PASS"
+    },
+    {
+      "case": "own_amphibious_water_3_True",
+      "status": "PASS"
+    },
+    {
+      "case": "own_bridge_3_True",
+      "status": "PASS"
+    },
+    {
+      "case": "no_friendly_acquisition_own_3_True",
+      "status": "PASS"
+    },
+    {
+      "case": "no_friendly_acquisition_allied_3_True",
+      "status": "PASS"
+    },
+    {
+      "case": "no_friendly_acquisition_neutral_3_True",
+      "status": "PASS"
+    },
+    {
+      "case": "friendly_beam_race_disabled_3",
+      "status": "PASS"
+    },
+    {
+      "case": "friendly_beam_race_source_foreign_3",
+      "status": "PASS"
+    },
+    {
+      "case": "friendly_beam_race_broken_link_3",
+      "status": "PASS"
+    },
+    {
+      "case": "friendly_beam_race_gone_3",
+      "status": "PASS"
+    },
+    {
+      "case": "friendly_beam_race_grounded_3",
+      "status": "PASS"
+    },
+    {
+      "case": "friendly_beam_race_victim_allied_3",
+      "status": "PASS"
+    },
+    {
+      "case": "friendly_beam_race_victim_enemy_3",
+      "status": "PASS"
+    }
+  ]
+}

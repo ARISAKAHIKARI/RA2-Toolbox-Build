@@ -1,0 +1,25 @@
+{
+  "scope": "Execute compiled Runtime sampling/admission and native Idle constructors.\nSynthetic Win32/world/terrain; release and falling physics are not simulated.\nNo claim of real multiplayer or guaranteed kill after delivery latency.\n",
+  "inputs": {
+    "gamemd-spawn(4).exe": "c287d62a4d6a25b547e9339d071dd6e03adcf545699062e478aaeee38c60e89a",
+    "GameRuntime.dll": "a4324c8e749b5d0845412b1a9ee2b733ce09af64d35aedc2d41a1ff3083b9742"
+  },
+  "results": [
+    {
+      "case": "manual_attack_lease_then_drop_0_False",
+      "status": "PASS"
+    },
+    {
+      "case": "manual_attack_lease_then_drop_0_True",
+      "status": "PASS"
+    },
+    {
+      "case": "manual_attack_lease_then_drop_3_False",
+      "status": "PASS"
+    },
+    {
+      "case": "manual_attack_lease_then_drop_3_True",
+      "status": "PASS"
+    }
+  ]
+}

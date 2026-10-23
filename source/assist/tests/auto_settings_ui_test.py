@@ -47,7 +47,8 @@ static AdditionalSettings extra;
 static int advancedScanHz=10,advancedTargetPriority=0,shiftClickMode=0,shiftClickGap=0;static bool shiftClickEnabled=false;
 namespace airway{static unsigned resets=0;static void reset(){++resets;}}
 static struct{unsigned clears=0;void clear(){++clears;}}pointerMatches;
-static constexpr int RevealMap=9;
+static constexpr int RevealMap=9,StickyGuard=28;
+static void send(int){}
 static struct{struct Slot{int command;};Slot slots[8]{};int size=0;void discard(int i){for(int j=i+1;j<size;++j)slots[j-1]=slots[j];--size;}}commandQueue;
 
 static int extraControls[ExtraControlCount];
