@@ -577,7 +577,11 @@ static void clickTick(){
   if(clickGap>0)return;
  }
 }
-static void stop(){bridgeFrame.clear();lanboStream.reset();usingHeldSample=false;lastPhase=size_t(-1);diagFrame=diagHotX=diagHotY=-1;nativeMenuHold=false;nativeMenuCandidateAt=0;previousObservedFrame=-1;fallbackTracker.reset();wasInside=false;refreshTries=0;SetRectEmpty(&clickRegion);burst.cancel();tween.reset();timing.resetObservation();activeMotion.reset();running=false;ShowWindow(overlay,SW_HIDE);if(hud)ShowWindow(hud,SW_HIDE);hookStop();status(mode==L"sha"?L"外部光标已停止。透明版游戏内可能看不到指针；Ctrl+Alt+F11 可重新启动。":L"已停止；如使用 HideCursor，已请求配对恢复操作。");}
+static void stop(){
+#ifdef RA2_UNIFIED
+ suite::publishHardwareCursor(false);
+#endif
+bridgeFrame.clear();lanboStream.reset();usingHeldSample=false;lastPhase=size_t(-1);diagFrame=diagHotX=diagHotY=-1;nativeMenuHold=false;nativeMenuCandidateAt=0;previousObservedFrame=-1;fallbackTracker.reset();wasInside=false;refreshTries=0;SetRectEmpty(&clickRegion);burst.cancel();tween.reset();timing.resetObservation();activeMotion.reset();running=false;ShowWindow(overlay,SW_HIDE);if(hud)ShowWindow(hud,SW_HIDE);hookStop();status(mode==L"sha"?L"外部光标已停止。透明版游戏内可能看不到指针；Ctrl+Alt+F11 可重新启动。":L"已停止；如使用 HideCursor，已请求配对恢复操作。");}
 static void start(){if(!playbackReady){status(L"准备播放缓存，完成后自动连接游戏");return;}if(running)return;if(!live()||!IsWindow(game))attach();if(!loaded)fail("Bundled original.sha or palette.bgra missing; check assets folder");if(!readRestricted)mouse();
  bool managedBlank=exists(gameDir+L"\\mouse.sha.cursor-preview-state");
  bool manualBlank=!managedBlank && manuallyBlankSHA();
@@ -657,6 +661,9 @@ static void pollOriginalResource(){
  }catch(const std::exception& e){log(L"Original resource rejected: "+widen(e.what()));}
 }
 static void draw(){
+#ifdef RA2_UNIFIED
+ suite::publishHardwareCursor(running&&!manualCursorPause&&nativeGameRefresh&&!noCursorMode&&mode==L"hide"&&shared&&shared->nativeEnabled&&!shared->menuSuspend);
+#endif
  cursorReader.begin(); // task-local diagnostics; immediate reads never cache old frames
  pollOriginalResource();if(!running)return;if(shared){shared->heartbeat=GetTickCount();
   LONG repairs=shared->postSetCursorRepairs;
@@ -824,7 +831,7 @@ static void draw(){
  int mapGW=gameWOverride?gameWOverride:sampleGW>0?sampleGW:clickGameWidth>0?clickGameWidth:1024;
  if(mapGW>sidebarWidth&&int64_t(pos.x-org.x)*mapGW>=int64_t(rc.right)*(mapGW-sidebarWidth))mapPoint=false;
  if(hint.mode!=commandcursor::None&&mapPoint&&!nativeMenuHold&&!(shared&&shared->menuSuspend)&&
-    commandcursor::ordinary(cursorID)&&gameinput::heldBinding(hint.binding))commandMode=hint.mode;
+    (commandcursor::ordinary(cursorID)||(hint.mode==commandcursor::Enter&&cursorID==25))&&gameinput::heldBinding(hint.binding))commandMode=hint.mode;
  if(commandMode!=shownCommand){shownCommand=commandMode;commandSince=GetTickCount();lastFrame=-2;lastPhase=size_t(-1);tween.reset();timing.resetObservation();activeMotion.reset();}
  if(commandMode!=commandcursor::None){
   const auto&d=commandDefs[commandcursor::definition(commandMode)];int chx=0,chy=0;

@@ -8,6 +8,9 @@ int main(){tabui::Controller tab;tab.mode(tabui::Mode::TapOrHold);tab.holdThresh
  assert(!tab.event(true,true,true,false,3000));assert(!tab.event(true,true,false,true,3100));assert(!tab.event(true,false,false,false,3200));
  tab.event(true,true,false,false,0xfffffff0u);tab.event(false,true,false,false,0x300u);assert(!tab.visible());
  tab.mode(tabui::Mode::Toggle);tab.event(true,true,false,false);assert(tab.visible());tab.event(false,true,false,false);assert(tab.visible());tab.mode(tabui::Mode::Hold);tab.event(true,true,false,false);assert(tab.visible());tab.event(false,true,false,false);assert(!tab.visible());
+ for(auto mode:{tabui::Mode::Toggle,tabui::Mode::TapOrHold}){tab.mode(mode);tab.event(true,true,false,false,100);tab.event(false,true,false,false,150);assert(tab.visible());
+  for(int i=0;i<5;++i)tab.loseFocus();assert(tab.visible());tab.event(true,true,false,false,1000);tab.event(false,true,false,false,1050);assert(!tab.visible());tab.loseFocus();assert(!tab.visible());}
+ tab.mode(tabui::Mode::Hold);tab.event(true,true,false,false);tab.loseFocus();assert(!tab.visible());
  for(auto mode:{tabui::Mode::Toggle,tabui::Mode::Hold,tabui::Mode::TapOrHold}){
   tab.mode(mode);bool hidden=false,manual=false;
   assert(!tabui::displayRequested(hidden,false,manual,tab.visible()));

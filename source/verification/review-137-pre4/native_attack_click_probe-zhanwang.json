@@ -1,0 +1,39 @@
+{
+  "scope": "Native Foot Action::Attack dispatch and original QueueMegaMission, tested separately.\nIntercepts ClickedMission arguments before platform-extension trampolines. It does\nnot execute the complete click-to-AI chain or prove pursuit/pathfinding behavior.\n",
+  "game_sha256": "c287d62a4d6a25b547e9339d071dd6e03adcf545699062e478aaeee38c60e89a",
+  "results": [
+    {
+      "distance": 128,
+      "clicked_mission_args": [
+        1,
+        "enemy",
+        0,
+        0
+      ],
+      "payload": "0a0000003401000d0000003400000000000a0000000000",
+      "status": "PASS"
+    },
+    {
+      "distance": 1024,
+      "clicked_mission_args": [
+        1,
+        "enemy",
+        0,
+        0
+      ],
+      "payload": "0a0000003401000d0000003400000000000a0000000000",
+      "status": "PASS"
+    },
+    {
+      "distance": 8192,
+      "clicked_mission_args": [
+        1,
+        "enemy",
+        0,
+        0
+      ],
+      "payload": "0a0000003401000d0000003400000000000a0000000000",
+      "status": "PASS"
+    }
+  ]
+}

@@ -45,6 +45,18 @@ int main(){
   assert(!p.magnetUnverified&&!p.magnetShots);
  }
  p.reset();++w.frame;w.actors[1].x=a.x+3000;orders=p.step(w,MagnetronInput,200,300,90);assert(orders.empty());
+ // A stationary Attack outside either boundary must leave the wait state.
+ // Global mode uses the same pursuit moves, and returns to Attack on entry.
+ for(int offset:{128,2304}){p.reset();w.frame=600;w.count=2;w.intentCount=1;w.intents[0].global=1;
+  a.x=a.y=5000;a.target=0;a.mission=5;a.destinationCell=0;a.rearmStart=-1;a.rearmDuration=0;
+  auto&e=w.actors[1];e.x=a.x+offset;e.y=a.y;e.flags=Enemy;
+  orders=p.step(w,MagnetronInput,200,300,90);assert(orders.size()==1&&orders[0].mission==1);p.accepted(orders[0],w.frame);a.target=e.id;a.mission=1;
+  for(int n=0;n<23;++n){++w.frame;assert(p.step(w,MagnetronInput,200,300,90).empty());}
+  ++w.frame;orders=p.step(w,MagnetronInput,200,300,90);assert(orders.size()==1&&orders[0].mission==2&&orders[0].pursuit==e.id&&!orders[0].target);
+  if(offset==128)assert(int(orders[0].destination%1000)*256+128<a.x);p.accepted(orders[0],w.frame);a.mission=2;a.destinationCell=orders[0].destination;
+  for(int n=0;n<12;++n){++w.frame;assert(p.step(w,MagnetronInput,200,300,90).empty());}
+  e.x=a.x+1024;++w.frame;orders=p.step(w,MagnetronInput,200,300,90);assert(orders.size()==1&&orders[0].mission==1&&orders[0].target==e.id);
+ }
  // Basic armor / AA / AG / minimum range checks use the selected elite profile.
  Actor src{},t{};src.weapons[0]={2048,256,GroundWeapon,1u<<3};t.armor=3;t.kind=2;
  assert(canTarget(src,t,512*512,false));assert(!canTarget(src,t,128*128,false));

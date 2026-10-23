@@ -4,7 +4,7 @@
 #include "pointer_intent.h"
 namespace assist {
 struct AdditionalSettings {
- bool formationEnabled=true;uint32_t formationHold=18,formationKeys[4]={'Z','X','C','V'};
+ bool formationEnabled=true;uint32_t formationHold=18,formationKeys[4]={'Z','X','C','V'},formationMouse=2;
  bool controlAll=false,switchPlayerEnabled=false;
  int scrollRefreshMode=0; // cursor / scrolling / scene / forced redraw
 #ifndef RA2_UNIFIED

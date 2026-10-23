@@ -44,6 +44,7 @@ static bool autoSettingChanged(int id,int notification){
  if(id==9042&&notification==BN_CLICKED){extra.magnetronGlobal=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();syncAdditional();return true;}
  if((id==9060||id==9061)&&notification==BN_CLICKED){(id==9060?extra.watchEnabled:extra.watchDanger)=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;registerKeys();changedSetting();return true;}
  if(id==9062&&edit){extra.watchKey=uint32_t(SendMessageW(GetDlgItem(ui,id),HKM_GETHOTKEY,0,0));registerKeys();changedSetting();return true;}
+ if(id==9056&&select){int v=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));if(v==0||v==1){extra.formationMouse=v==1?1:2;changedSetting();syncAdditional();}return true;}
  if(id==9050&&notification==BN_CLICKED){extra.formationEnabled=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();syncAdditional();return true;}
  if(id>=9051&&id<=9055&&edit){uint32_t k=uint32_t(SendMessageW(GetDlgItem(ui,id),HKM_GETHOTKEY,0,0));if(id==9051)extra.formationHold=k;else extra.formationKeys[id-9052]=k;changedSetting();syncAdditional();return true;}
  if(id==880&&notification==BN_CLICKED){extra.missileDefense=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();syncAdditional();return true;}

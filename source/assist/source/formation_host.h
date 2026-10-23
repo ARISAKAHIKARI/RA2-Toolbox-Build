@@ -71,7 +71,7 @@ static void update(){
 static bool visible(){return shared&&shared->formationPreview.active&&extra.formationEnabled&&!snap.chat;}
 static void draw(Graphics&g){
  for(const auto&v:visuals){auto&i=*v.image;Bitmap bitmap(i.width,i.height,i.width*4,PixelFormat32bppPARGB,reinterpret_cast<BYTE*>(const_cast<uint32_t*>(i.pixels.data())));g.DrawImage(&bitmap,v.x+i.x,v.y+i.y,i.width,i.height);}
- if(visible()){const wchar_t*names[]={L"矩形横队",L"分散横队",L"圆形聚集",L"扇形"};std::wstring text=L"队形 · "+std::wstring(names[std::clamp(preview.shape,0,3)])+L" · 右拖排列 / 右击聚集 · Esc 取消";
+ if(visible()){const wchar_t*names[]={L"矩形横队",L"分散横队",L"圆形聚集",L"扇形"};std::wstring text=L"队形 · "+std::wstring(names[std::clamp(preview.shape,0,3)])+(extra.formationMouse==1?L" · 左拖排列 / 左击聚集 · Esc 取消":L" · 右拖排列 / 右击聚集 · Esc 取消");
   if(missing)text+=L" · "+std::to_wstring(missing)+L" 个模型未载入";drawText(g,text,18,44,12,Color(230,220,244,255));}
 }
 }

@@ -18,6 +18,7 @@ public:
   std::vector<Slice> files;WIN32_FIND_DATAW info{};HANDLE search=FindFirstFileW((root+L"*.mix").c_str(),&info);if(search!=INVALID_HANDLE_VALUE){do{if(info.dwFileAttributes&FILE_ATTRIBUTE_DIRECTORY)continue;std::wstring w=info.cFileName;if(w.size()>127||std::any_of(w.begin(),w.end(),[](wchar_t c){return c>127;}))continue;files.push_back({std::string(w.begin(),w.end()),0,(uint64_t(info.nFileSizeHigh)<<32)|info.nFileSizeLow});}while(files.size()<512&&FindNextFileW(search,&info));FindClose(search);}
   auto memory=[&](uint32_t p,void*out,size_t n){return r.readFresh(p,out,n);};directory.build(std::move(files),indices(memory),[&](auto&nm,uint64_t at,void*out,size_t n){return read(nm,at,out,n);});
  }
+ size_t count()const{return directory.count();}
  bool load(const std::string&nm,std::vector<uint8_t>&out){if(root.empty())return false;return directory.load(nm,out,[&](auto&file,uint64_t at,void*p,size_t n){return read(file,at,p,n);},size(nm));}
 };
 }}

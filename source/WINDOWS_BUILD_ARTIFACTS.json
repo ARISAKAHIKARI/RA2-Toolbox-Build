@@ -1,13 +1,13 @@
 {
-  "label": "1.0.37.2 SingleRuntime",
-  "file_version": "1.0.37.2",
+  "label": "1.0.37.3 SingleRuntime",
+  "file_version": "1.0.37.3",
   "verified": {
     "RA2Toolbox.exe": {
-      "bytes": 2620416,
-      "sha256": "fdfc789c37bd008bd291248f49432d771afd171671e89adb53de32cd0643eb95",
+      "bytes": 2659840,
+      "sha256": "960f78d4c7ebd74de1e2a9233af815f357bfc24df779440a4636c18af64bb925",
       "machine": "PE32 x86",
       "sections": 14,
-      "entry_rva": "0x1150d0",
+      "entry_rva": "0x11c440",
       "exports": [
         "AssistHostProtocolInfo",
         "_Unwind_DeleteException",
@@ -200,6 +200,7 @@
           "SendMessageTimeoutW",
           "SendMessageW",
           "SetCapture",
+          "SetCursor",
           "SetDlgItemTextW",
           "SetForegroundWindow",
           "SetLayeredWindowAttributes",
@@ -547,15 +548,15 @@
         "version": "6.0.0.0",
         "architecture": "x86"
       },
-      "assist_protocol": 63,
-      "assist_shared_bytes": 4164312
+      "assist_protocol": 64,
+      "assist_shared_bytes": 4164824
     },
     "GameRuntime.dll": {
-      "bytes": 4175872,
-      "sha256": "11a316569d5d67c7b60bbd7355d9dd2b0f5839d94c86d8dd9ba55f701e8891ad",
+      "bytes": 4849152,
+      "sha256": "21c308a5d89c87c110ddaf7d7d6bfabd3d1ec5a1637c82353fd5a268ad021acb",
       "machine": "PE32 x86",
       "sections": 13,
-      "entry_rva": "0x5b470",
+      "entry_rva": "0x5e590",
       "exports": [
         "AssistMappingPrefix",
         "AssistProtocolInfo",
@@ -707,8 +708,8 @@
       "GameRuntimePostHook_rva": "0x1970",
       "runtime_protocol": 4,
       "runtime_control_bytes": 176,
-      "assist_protocol": 63,
-      "assist_shared_bytes": 4164312
+      "assist_protocol": 64,
+      "assist_shared_bytes": 4164824
     }
   },
   "runtime_tested": false,

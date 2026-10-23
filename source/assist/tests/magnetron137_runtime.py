@@ -37,5 +37,47 @@ for mode in (0,3):
    m.w(m.unit+0xac,1);m.w(m.unit+0x5a4,m.crateCell);s=tick(m);assert s.data.advancedUnits==1,'own native pursuit must not cancel global task'
    s.magnetronGlobal=0;save(m,s);s=tick(m);assert s.data.advancedUnits==0
   rows.append({'case':f'global_{mode}_{case}','status':'PASS'})
-print('PASS',len(rows),'new magnetron terrain/air rejection and global enrolment cases')
+# An accepted Attack with no movement or shot must escalate to a vanilla Move.
+for mode in (0,3):
+ for distance in (128,4352):
+  m=setup(mode,True);m.w(m.unit+0x2ac,0);m.w(m.enemyUnit+0x2b0,0);m.w(m.unit+0xac,5);m.w(m.unit+0x5a4,0);m.w(m.enemyUnit+0xa4,0);m.w(m.weapon+0xb8,512);m.w(m.enemyUnit+0x9c,m.r(m.unit+0x9c)+distance)
+  for y in range(26,35):
+   for x in range(15,42):
+    cell=m.alloc(0x200);m.u.mem_write(cell+0x24,struct.pack('<hh',x,y));m.w(m.cells+(y*512+x)*4,cell)
+  s=state(m);s.flags=1024|262144;s.magnetronGlobal=1;save(m,s);s=tick(m)
+  assert count(m)==1 and packets(m)[12]==1
+  m.w(m.unit+0xac,1);m.w(m.unit+0x2b4,m.enemyUnit)
+  for _ in range(23):tick(m)
+  assert count(m)==1,'preserve a normal pending native pursuit'
+  tick(m);assert count(m)==2,(mode,distance,count(m))
+  packet=packets(m)[111:222];assert packet[12]==2 and packet[14:19]==bytes(5)
+  cell=struct.unpack_from('<I',packet,19)[0];assert cell%1000<20 if distance==128 else cell%1000>20
+  m.w(m.unit+0xac,2);m.w(m.unit+0x5a4,m.r(m.cells+(cell//1000*512+cell%1000)*4))
+  for _ in range(4):tick(m)
+  assert count(m)==2
+  m.w(m.enemyUnit+0x9c,m.r(m.unit+0x9c)+1024);tick(m)
+  assert count(m)==3 and packets(m)[2*111+12]==1
+  assert not m.codeWrites;rows.append({'case':f'pursuit_{mode}_{distance}_attack_move_reenter','status':'PASS'})
+# Ordinary LEFT object attack is handed to the native game. The mailbox only
+# observes/cancels automation. Model delayed delivery to catch re-enrolment in
+# the idle gap, then a long attack using either of the magnetron's weapons.
+for mode in (0,3):
+ for inside in (False,True):
+  for target_kind in ('vehicle','building'):
+   m=setup(mode,inside);m.w(m.unit+0x2ac,0);m.w(m.enemyUnit+0x2b0,0);m.w(m.unit+0xac,5);m.w(m.unit+0x5a4,0);m.w(m.enemyUnit+0xa4,0)
+   m.w(m.building+0x21c,m.enemy);secondary=m.alloc();proj=m.alloc();wh=m.alloc();m.w(m.t+0x898+28,secondary);m.w(secondary+0xb4,6*256);m.w(secondary+0xa0,proj);m.w(secondary+0xac,wh);m.b(proj+0x2a5,1)
+   for n in range(11):m.u.mem_write(wh+0xa0+n*8,struct.pack('<d',1.))
+   s=state(m);s.flags=1024|262144;s.magnetronGlobal=1;save(m,s);s=tick(m);assert s.data.advancedUnits==1
+   old=count(m);m.queryObject=m.building if target_kind=='building' else m.enemyUnit
+   s=pointer(m,4,65536);assert s.pointer.result==1 and count(m)==old
+   for _ in range(8):
+    s=tick(m);assert s.data.advancedUnits==0 and count(m)==old,('retook pending left attack',mode,inside,target_kind)
+   m.w(m.unit+0xac,1);m.w(m.unit+0x2b4,m.queryObject)
+   m.w(0xa8ed84,m.r(0xa8ed84)+100);s=tick(m)
+   assert s.data.advancedUnits==0 and count(m)==old,'ongoing ordinary Attack stays native after pending grace'
+   m.w(m.unit+0xac,5);s=tick(m);assert s.data.advancedUnits==0,'idle mission with live attack target is not free'
+   m.w(m.unit+0x2b4,0);s=tick(m);assert s.data.advancedUnits==1,'resume only after native attack has ended'
+   assert not m.codeWrites
+   rows.append({'case':f'ordinary_left_attack_{mode}_{inside}_{target_kind}_pending_active_finished','status':'PASS'})
+print('PASS',len(rows),'magnetron terrain/air rejection, global enrolment and ordinary left attack ownership cases')
 Path(a.output).write_text(json.dumps({'scope':__doc__,'results':rows},indent=2)+'\n')

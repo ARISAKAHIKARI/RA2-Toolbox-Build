@@ -13,7 +13,7 @@ static uint32_t GetTickCount(){return clockValue;}static uint32_t commandMatch()
 static void MemoryBarrier(){}static void InterlockedIncrement(volatile LONG*p){++*p;}static void wakeGame(){}
 struct Color {Color(int,int,int,int){}};struct Bitmap {Bitmap(int,int,int,int,BYTE*){}};struct Graphics {void DrawImage(Bitmap*,int,int,int,int){}};
 static void drawText(Graphics&,const std::wstring&,int,int,int,Color){}
-static struct {bool formationEnabled=true;uint32_t formationHold=18,formationKeys[4]={'Z','X','C','V'};}extra;
+static struct {bool formationEnabled=true;uint32_t formationHold=18,formationMouse=2,formationKeys[4]={'Z','X','C','V'};}extra;
 static struct {int chat=0,cameraX=0,cameraY=0,width=800,height=600;}snap;
 static struct State {formation::Preview formationPreview;LONG formationSeq=0,formationKey=0,formationKeyAck=0;uint32_t formationKeyCode=0;}state,*shared=&state;
 static std::map<uint32_t,uint32_t> memory;static int ownerReads=0;static bool ownershipRace=false;

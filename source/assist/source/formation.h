@@ -5,7 +5,7 @@
 namespace assist { namespace formation {
 constexpr int Maximum=256, Shapes=4;
 constexpr double Pi=3.14159265358979323846;
-struct Policy {uint32_t enabled=0,hold=18,keys[4]={'Z','X','C','V'};};
+struct Policy {uint32_t enabled=0,hold=18,keys[4]={'Z','X','C','V'},mouse=2;};
 struct Unit {uint32_t id=0,pointer=0,type=0,token=0,color=0;int x=0,y=0,z=0,kind=0;};
 struct Slot {int x=0,y=0,z=0;uint32_t valid=0;};
 struct Preview {uint32_t match=0,tick=0,active=0,dragging=0,revision=0;int shape=0,count=0,ax=0,ay=0;double facing=0;Unit units[Maximum]{};Slot slots[Maximum]{};};

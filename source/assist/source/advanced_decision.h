@@ -25,6 +25,15 @@
    if(!task.urgent&&task.scanned&&scanHz>0&&uint32_t(w.tick-task.scannedAt)<uint32_t(1000/std::clamp(scanHz,1,60))){task.progress.combat(a.x,a.y,w.frame);return;}
   }
   task.urgent=false;task.scanned=true;task.scannedAt=w.tick;
+  if(bestReposition&&task.attacking&&task.target==best->id)attackMadeProgress(a,task,w.frame);
+  bool minimumStalled=bestReposition&&task.attacking&&task.target==best->id&&w.frame-task.attackProgress>=24;
+  bool minimumMove=bestReposition&&!task.attacking&&task.pursuit==best->id;
+  if((minimumStalled||minimumMove)&&best){
+   uint32_t destination=rangeMoveCell(a,*best,true);bool pending=minimumMove&&w.frame-task.sent<12;
+   bool movingTo=a.mission==2&&a.destinationCell==task.moveCell;int64_t dx=int64_t(a.x)-(int(task.moveCell%1000)*256+128),dy=int64_t(a.y)-(int(task.moveCell/1000)*256+128);
+   if(destination&&!pending&&(!movingTo||dx*dx+dy*dy<=128*128))add(out,{a.id,task.token,0,destination,2,11,CombatOrder,0,best->id});
+   return;
+  }
   if(bestReady||bestReposition){
    task.progress.combat(a.x,a.y,w.frame);
    bool attack=!task.attacking||task.target!=best->id||a.target!=best->id||a.mission!=1||(moving&&!bestReposition);

@@ -20,6 +20,7 @@ inline Owner ownerAt(uint32_t a){
  case 0x0047F038:case 0x0047F274:return Owner::RenderMask;
  case 0x0051A4D8:case 0x0051C32B:return Owner::C4Test;
  case 0x006D8640:case 0x004A9840:return Owner::Camera;
+ case 0x44574A:case 0x445795:case 0x4457D0:case 0x445810:case 0x6AA788:
  case 0x006A97D2:case 0x006AA781:return Owner::Sidebar;
  case 0x50B6F0:case 0x6339BA:case 0x637E40:return Owner::PlayerControl;
  // Six verified CALL-sites use the same frame owner.
@@ -51,7 +52,10 @@ inline bool knownOriginal(uint32_t at,const uint8_t* bytes,unsigned size){
  static const uint8_t controlOwner[]={0xE8,0x31,0x7D,0xED,0xFF},controlPlanning[]={0xE8,0xAB,0x38,0xED,0xFF};
  static const uint8_t sidebarClick[]={0xE8,0x99,0xE0,0xE4,0xFF};
  static const uint8_t sidebarRefresh[]={0xE8,0xEA,0xD0,0xE4,0xFF};
+ static const uint8_t masterEnum[]={0x6A,1,0x6A,0,0x8B},masterPrune[]={0x0F,0x85,0xDA,2,0,0};
  switch(at){
+ case 0x44574A:case 0x445795:case 0x4457D0:case 0x445810:signature=masterEnum;expected=5;break;
+ case 0x6AA788:signature=masterPrune;expected=6;break;
  case 0x0055D360:signature=frame;expected=sizeof frame;break;
  case 0x00646E90:signature=cs;expected=sizeof cs;break;
  case 0x00731BF0:signature=cursor;expected=sizeof cursor;break;
@@ -85,7 +89,7 @@ struct Slot {
  uint8_t size=0;bool active=false,conflict=false;
 };
 enum class Transition : uint8_t { Deny, Install, Restore };
-template<unsigned Capacity=16> struct Registry {
+template<unsigned Capacity=32> struct Registry {
  Slot slots[Capacity]{};unsigned used=0;
  int find(uint32_t a)const{for(unsigned i=0;i<used;++i)if(slots[i].address==a)return int(i);return -1;}
  bool conflict(uint32_t a)const{int i=find(a);return i>=0&&slots[i].conflict;}

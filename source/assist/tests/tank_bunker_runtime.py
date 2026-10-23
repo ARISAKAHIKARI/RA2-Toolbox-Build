@@ -5,6 +5,8 @@ Boarding is supplied as observed state, not simulated movement. No real game or
 network claim. Native event constructor/queue and actual Runtime code execute.
 """
 from pathlib import Path
+from unicorn import UC_HOOK_CODE
+from unicorn.x86_const import *
 PROBE_SCOPE=__doc__
 _base=Path(__file__).with_name('no_interception_runtime.py').read_text().split('for mode in (0,5,3,4):',1)[0]
 exec(compile(_base,str(Path(__file__).with_name('no_interception_runtime.py')),'exec'))
@@ -42,7 +44,7 @@ for mode in (0,3):
   assert s.cooperativeAck==s.cooperativePlan and s.cooperativeAccepted==2 and count(m)==2,(facility,s.cooperativeAccepted,s.cooperativeRejected)
   for n,t in enumerate(buildings):
    event=packets(m)[111*n:111*(n+1)]
-   assert event[0]==4 and event[12]==(2 if facility=='bunker' else 9)
+   assert event[0]==4 and event[12]==(7 if facility=='bunker' else 9)
    assert event[14:19]==bytes(5) and event[19:24]==struct.pack('<IB',m.r(t+0x10),0x34)
   if facility=='bunker':
    for u,t in zip(units,buildings):m.w(u+0x2e4,t);m.w(t+0x2e4,u)
@@ -67,5 +69,43 @@ for mode in (0,3):
   assert s.cooperativeAccepted==expected and count(m)==expected,(condition,mode,s.cooperativeAccepted,s.cooperativeRejected)
   assert s.cooperativeAck==s.cooperativePlan and not m.codeWrites
   rows.append({'case':f'{condition}_{mode}','status':'PASS'})
-print('PASS',len(rows),'Runtime cases: capture, native Enter/Repair encoding, capacity race, reservations, refusal, filters and bunker receipt')
+# Execute the relevant native fragments separately, with explicit radio/map
+# boundaries. This proves mission and handshake dispatch, not full pathfinding.
+m,units,buildings=setup(0);u=units[0];b=buildings[0];calls=[];hooks=[]
+def hook(at,fn):hooks.append(m.u.hook_add(UC_HOOK_CODE,lambda uc,addr,size,_:fn(),begin=at,end=at))
+def args(n):
+ sp=m.u.reg_read(UC_X86_REG_ESP);return tuple(m.r(sp+4+i*4) for i in range(n))
+def capture(label,n,result=1):
+ calls.append((label,args(n)));m.ret(result,n)
+def fragment(start,end,regs):
+ m.u.reg_write(UC_X86_REG_ESP,m.STACK+0x1d000)
+ for reg,value in regs.items():m.u.reg_write(reg,value)
+ m.u.emu_start(start,end,count=10000);assert m.u.reg_read(UC_X86_REG_EIP)==end
+hook(m.r(0x7f5c70+0x480),lambda:capture('destination',2))
+hook(m.r(0x7f5c70+0x278),lambda:capture('radio',2))
+hook(m.r(0x7f5c70+0x1e8),lambda:capture('mission',2))
+fragment(0x4e0045,0x4e006d,{UC_X86_REG_EDI:u,UC_X86_REG_ESI:b})
+assert calls==[('destination',(b,1)),('radio',(2,b)),('mission',(7,1))],calls
+for h in hooks:m.u.hook_del(h)
+hooks=[];calls=[]
+hook(0x65ae30,lambda:m.ret(0,0))
+hook(m.r(0x7f5c70+0x278),lambda:capture('radio',2))
+hook(m.r(0x7f5c70+0x274),lambda:capture('contacts',1))
+hook(0x4d94b0,lambda:capture('foot_destination',2))
+m.w(m.STACK+0x1d000+0x98,1)
+fragment(0x742caf,0x742d10,{UC_X86_REG_EBP:u,UC_X86_REG_EBX:b,UC_X86_REG_EDI:b})
+assert calls==[('radio',(2,b)),('contacts',(14,)),('foot_destination',(b,1))],calls
+for h in hooks:m.u.hook_del(h)
+hooks=[]
+hook(0x65ad30,lambda:m.ret(b,1))
+hook(m.r(0x7e3ebc+0x2c),lambda:m.ret(6,0))
+hook(m.r(0x7f5c70+0x1bc),lambda:m.ret(m.crateCell,0))
+hook(0x47c520,lambda:m.ret(0,0))
+hook(m.r(0x7f5c70+0x1e8),lambda:capture('mission',2))
+for mission in (2,7):
+ calls=[];m.w(u+0xac,mission)
+ fragment(0x738c9d,0x738d21,{UC_X86_REG_ESI:u,UC_X86_REG_EBP:5})
+ assert calls==([('mission',(5,0))] if mission==2 else []),(mission,calls)
+rows.append({'case':'native_bunker_enter_helper_destination_radio_and_enroute_mission_guard','status':'PASS'})
+print('PASS',len(rows),'Runtime cases and native bunker dispatch fragments; boarding state remains modeled')
 Path(a.output).write_text(json.dumps({'scope':PROBE_SCOPE,'inputs':{str(Path(x).name):hashlib.sha256(Path(x).read_bytes()).hexdigest() for x in (a.game,a.dll)},'results':rows},indent=2)+'\n')

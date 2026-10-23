@@ -1,0 +1,58 @@
+{
+  "samples": [
+    "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+    "c287d62a4d6a25b547e9339d071dd6e03adcf545699062e478aaeee38c60e89a"
+  ],
+  "regions": [
+    {
+      "address": "0x4c93d0",
+      "length": 151,
+      "name": "FacingCurrent",
+      "identical": true,
+      "sha256": [
+        "91860925a70f214168f72fe3a7aef4160f64504f61746ae21c9d19c2b49c4602",
+        "91860925a70f214168f72fe3a7aef4160f64504f61746ae21c9d19c2b49c4602"
+      ]
+    },
+    {
+      "address": "0x518d80",
+      "length": 521,
+      "name": "InfantryShapeNumber",
+      "identical": true,
+      "sha256": [
+        "60ee1cdafdd13ab060a3fc6fc80794476f42f943d933090b63d41ced74714608",
+        "60ee1cdafdd13ab060a3fc6fc80794476f42f943d933090b63d41ced74714608"
+      ]
+    },
+    {
+      "address": "0x7eaefc",
+      "length": 128,
+      "name": "InfantryDirectionLookup",
+      "identical": true,
+      "sha256": [
+        "a61ba506024fcfda40e02997bbd6a0b03b063c5f55d6f5fcbfbd35c75db34875",
+        "a61ba506024fcfda40e02997bbd6a0b03b063c5f55d6f5fcbfbd35c75db34875"
+      ]
+    },
+    {
+      "address": "0x7e1b78",
+      "length": 672,
+      "name": "TheaterTable",
+      "identical": true,
+      "sha256": [
+        "2881748ca63cb213fff046915e5a0e994ffc76b8135822a9b984da56ff7b6a93",
+        "2881748ca63cb213fff046915e5a0e994ffc76b8135822a9b984da56ff7b6a93"
+      ]
+    },
+    {
+      "address": "0x5349c0",
+      "length": 128,
+      "name": "TheaterArchiveNames",
+      "identical": true,
+      "sha256": [
+        "8ffc1c4683fe4e9da44abb36702c3926856244a11e16c42b8885d4eaa023fa01",
+        "8ffc1c4683fe4e9da44abb36702c3926856244a11e16c42b8885d4eaa023fa01"
+      ]
+    }
+  ]
+}

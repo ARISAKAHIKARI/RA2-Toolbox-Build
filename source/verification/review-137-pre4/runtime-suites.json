@@ -1,0 +1,134 @@
+[
+  {
+    "suite": "formation_runtime",
+    "sample": "zhanwang",
+    "exit": 0,
+    "dll_sha256": "21c308a5d89c87c110ddaf7d7d6bfabd3d1ec5a1637c82353fd5a268ad021acb"
+  },
+  {
+    "suite": "formation_runtime",
+    "sample": "lbw",
+    "exit": 0,
+    "dll_sha256": "21c308a5d89c87c110ddaf7d7d6bfabd3d1ec5a1637c82353fd5a268ad021acb"
+  },
+  {
+    "suite": "master_tech_runtime",
+    "sample": "zhanwang",
+    "exit": 0,
+    "dll_sha256": "21c308a5d89c87c110ddaf7d7d6bfabd3d1ec5a1637c82353fd5a268ad021acb"
+  },
+  {
+    "suite": "master_tech_runtime",
+    "sample": "lbw",
+    "exit": 0,
+    "dll_sha256": "21c308a5d89c87c110ddaf7d7d6bfabd3d1ec5a1637c82353fd5a268ad021acb"
+  },
+  {
+    "suite": "missile137_runtime",
+    "sample": "zhanwang",
+    "exit": 0,
+    "dll_sha256": "21c308a5d89c87c110ddaf7d7d6bfabd3d1ec5a1637c82353fd5a268ad021acb"
+  },
+  {
+    "suite": "missile137_runtime",
+    "sample": "lbw",
+    "exit": 0,
+    "dll_sha256": "21c308a5d89c87c110ddaf7d7d6bfabd3d1ec5a1637c82353fd5a268ad021acb"
+  },
+  {
+    "suite": "native_attack_click_probe",
+    "sample": "zhanwang",
+    "exit": 0,
+    "dll_sha256": "21c308a5d89c87c110ddaf7d7d6bfabd3d1ec5a1637c82353fd5a268ad021acb"
+  },
+  {
+    "suite": "native_attack_click_probe",
+    "sample": "lbw",
+    "exit": 0,
+    "dll_sha256": "21c308a5d89c87c110ddaf7d7d6bfabd3d1ec5a1637c82353fd5a268ad021acb"
+  },
+  {
+    "suite": "ore_priority_runtime",
+    "sample": "zhanwang",
+    "exit": 0,
+    "dll_sha256": "21c308a5d89c87c110ddaf7d7d6bfabd3d1ec5a1637c82353fd5a268ad021acb"
+  },
+  {
+    "suite": "ore_priority_runtime",
+    "sample": "lbw",
+    "exit": 0,
+    "dll_sha256": "21c308a5d89c87c110ddaf7d7d6bfabd3d1ec5a1637c82353fd5a268ad021acb"
+  },
+  {
+    "suite": "magnetron137_runtime",
+    "sample": "zhanwang",
+    "exit": 0,
+    "dll_sha256": "21c308a5d89c87c110ddaf7d7d6bfabd3d1ec5a1637c82353fd5a268ad021acb"
+  },
+  {
+    "suite": "magnetron137_runtime",
+    "sample": "lbw",
+    "exit": 0,
+    "dll_sha256": "21c308a5d89c87c110ddaf7d7d6bfabd3d1ec5a1637c82353fd5a268ad021acb"
+  },
+  {
+    "suite": "advanced_range_runtime",
+    "sample": "zhanwang",
+    "exit": 0,
+    "dll_sha256": "21c308a5d89c87c110ddaf7d7d6bfabd3d1ec5a1637c82353fd5a268ad021acb"
+  },
+  {
+    "suite": "advanced_range_runtime",
+    "sample": "lbw",
+    "exit": 0,
+    "dll_sha256": "21c308a5d89c87c110ddaf7d7d6bfabd3d1ec5a1637c82353fd5a268ad021acb"
+  },
+  {
+    "suite": "tank_bunker_runtime",
+    "sample": "zhanwang",
+    "exit": 0,
+    "dll_sha256": "21c308a5d89c87c110ddaf7d7d6bfabd3d1ec5a1637c82353fd5a268ad021acb"
+  },
+  {
+    "suite": "tank_bunker_runtime",
+    "sample": "lbw",
+    "exit": 0,
+    "dll_sha256": "21c308a5d89c87c110ddaf7d7d6bfabd3d1ec5a1637c82353fd5a268ad021acb"
+  },
+  {
+    "suite": "tech_compat_runtime",
+    "sample": "zhanwang",
+    "exit": 0,
+    "dll_sha256": "21c308a5d89c87c110ddaf7d7d6bfabd3d1ec5a1637c82353fd5a268ad021acb"
+  },
+  {
+    "suite": "tech_compat_runtime",
+    "sample": "lbw",
+    "exit": 0,
+    "dll_sha256": "21c308a5d89c87c110ddaf7d7d6bfabd3d1ec5a1637c82353fd5a268ad021acb"
+  },
+  {
+    "suite": "player_tech_runtime",
+    "sample": "zhanwang",
+    "exit": 0,
+    "dll_sha256": "21c308a5d89c87c110ddaf7d7d6bfabd3d1ec5a1637c82353fd5a268ad021acb"
+  },
+  {
+    "suite": "player_tech_runtime",
+    "sample": "lbw",
+    "exit": 0,
+    "dll_sha256": "21c308a5d89c87c110ddaf7d7d6bfabd3d1ec5a1637c82353fd5a268ad021acb"
+  },
+  {
+    "suite": "visual_pose_runtime",
+    "sample": "zhanwang",
+    "exit": 0,
+    "dll_sha256": "21c308a5d89c87c110ddaf7d7d6bfabd3d1ec5a1637c82353fd5a268ad021acb"
+  },
+  {
+    "suite": "visual_pose_runtime",
+    "sample": "lbw",
+    "exit": 0,
+    "dll_sha256": "21c308a5d89c87c110ddaf7d7d6bfabd3d1ec5a1637c82353fd5a268ad021acb"
+  }
+]

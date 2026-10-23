@@ -214,7 +214,7 @@ static void tick(){
     DWORD actualPid=0,actualThread=game?GetWindowThreadProcessId(game,&actualPid):0;
     HWND fallback=actualPid==pid&&actualThread==threadId?game:nullptr;DWORD nextThread=0;
     HWND next=external::discovery::resolveYrppWindow(reader,pid,fallback,&nextThread);
-    if(next!=game||nextThread!=threadId){game=next;threadId=nextThread;tabs.reset();fade.hide();surface.clear();renderDirty=true;paintedAlpha=-1;if(!game)lastSearch=now-1500;}
+    if(next!=game||nextThread!=threadId){game=next;threadId=nextThread;tabs.loseFocus();fade.hide();surface.clear();renderDirty=true;paintedAlpha=-1;if(!game)lastSearch=now-1500;}
    }
    if(pid&&!game&&now-lastSearch>=1500){
     lastSearch=now;auto found=external::discovery::scan(pid);
@@ -225,10 +225,10 @@ static void tick(){
      if(incoming->typeCount>=0&&incoming->typeCount<=um::MaxTypes&&incoming->playerCount>=0&&incoming->playerCount<=um::MaxPlayers){
       renderDirty=renderDirty||changed(*snap,*incoming);std::swap(snap,incoming);if(snap->status==1&&now-snap->tick<2000)lastGood=now;
       if(snap->status!=1||oldMatch!=snap->match){
-       if(snap->status==1){oldMatch=snap->match;hidden=false;manualVisible=false;
+       if(snap->status==1){oldMatch=snap->match;hidden=false;manualVisible=false;tabs.reset();
         log((L"单位统计采样代次 "+std::to_wstring(oldMatch)+L"，重建玩家列表与画面").c_str());}
        else lastGood=0;
-       page=0;tabs.reset();fade.hide();paintedAlpha=-1;renderDirty=true;surface.clear();
+       page=0;tabs.loseFocus();fade.hide();paintedAlpha=-1;renderDirty=true;surface.clear();
        statsVisible(false);ShowWindow(overlay,SW_HIDE);
       }
      }
@@ -253,6 +253,7 @@ static void tick(){
  if(!active){
   visibilityStatus(!enabled?L"覆盖层已暂停":!foregroundGame()?L"覆盖层隐藏：游戏未在前台":snap->status!=1||now-lastGood>=3000?L"覆盖层等待有效游戏数据":!displayState.readable?L"覆盖层隐藏：菜单状态读取失败":L"覆盖层隐藏：菜单/对话框/非战场 · tactical="+std::to_wstring(displayState.tactical)+L" dialog="+std::to_wstring(displayState.specialDialog)+L" windows="+std::to_wstring(displayState.dialogCount));
   statsVisible(false);gameActive=false;tabs.loseFocus();fade.hide();paintedAlpha=-1;ShowWindow(overlay,SW_HIDE);return;}
+ if(!gameActive){renderDirty=true;paintedAlpha=-1;SetWindowPos(overlay,HWND_TOPMOST,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE);}
  gameActive=true;
  bool desired=tabui::displayRequested(hidden,demo||!tabEnabled,manualVisible,tabs.visible());fade.target(desired,now);
  visibilityStatus(desired?(manualVisible?L"覆盖层已请求显示：手动开启":!tabEnabled?L"覆盖层已请求显示：常驻模式":L"覆盖层已请求显示：Tab/演示"):hidden?L"覆盖层手动隐藏：按钮或 Ctrl+Alt+H 开启":L"覆盖层等待 Tab：也可用按钮或 Ctrl+Alt+H");

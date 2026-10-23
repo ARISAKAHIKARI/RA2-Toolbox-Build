@@ -21,8 +21,8 @@ inline bool sameAscii(const char* a,const char* b){for(;*a&&*b;a++,b++){char x=*
 
 template<class Read,class Resolve> class Sampler {
  Read read; Resolve resolve;AssetLoad files=nullptr; IconCache* cache=nullptr; Snapshot state{};external::layout::Result probe_{}; roundstate::Stamp previous{}; bool haveRound=false; int iconCursor=0; uint32_t ticks=0,matchSerial=0,catalogueAt=0;uint64_t catalogueHash=0;bool catalogueReady=false; bool prevBuildings=true; uint8_t iconBuffer[32+256*1024]{}; int ownedBuffer[4096]{};
- const Snapshot& invalidate(uint32_t tick){
-  memset(&state,0,sizeof state);state.tick=tick;state.match=matchSerial;haveRound=false;catalogueReady=false;catalogueHash=0;iconCursor=0;return state;
+ const Snapshot& invalidate(uint32_t tick,bool forgetRound=false){
+  memset(&state,0,sizeof state);state.tick=tick;state.match=matchSerial;if(forgetRound)haveRound=false;catalogueReady=false;catalogueHash=0;iconCursor=0;return state;
  }
  template<class T>T get(uint32_t a,T def={}) {T v{};return read(a,&v,sizeof(v))?v:def;}
  bool bytes(uint32_t a,void* p,size_t n){return read(a,p,n);}
@@ -69,10 +69,10 @@ template<class Read,class Resolve> class Sampler {
 public:
  Sampler(Read r,Resolve s,IconCache* c=nullptr,AssetLoad f=nullptr):read(r),resolve(s),files(f),cache(c){}
  external::layout::Result probe()const{return probe_;}
- void reset(){probe_={};invalidate(0);}
+ void reset(){probe_={};invalidate(0,true);}
  const Snapshot& sample(uint32_t tick,bool buildings){
   roundstate::Stamp start{},end{};
-  if(!roundstate::capture(read,start,probe_))return invalidate(tick);
+  if(!roundstate::capture(read,start,probe_))return invalidate(tick,probe_.stage==external::layout::Stage::WaitingForMatch);
   const bool newRound=!haveRound||!start.follows(previous);
   if(newRound){memset(&state,0,sizeof state);if(++matchSerial==0)++matchSerial;}
   state.tick=tick;state.readErrors=0;state.playerCount=0;state.status=1;

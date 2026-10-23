@@ -7,6 +7,18 @@ struct UnloadPassenger : unloadcompute::State {uint32_t p,id,carrier,carrierID,c
 static uint32_t unloadJobSerial;
 static void resetUnloadCalculation();
 static NativeOrder nativeOrders[nativeorders::MaxOrders];static int nativeCount,nativeCursor,nativeFrame=-1;
+// A manual click can precede its native event by several simulation frames.
+// Cancellation alone is insufficient: the still-idle unit would immediately
+// re-enrol with the NEW manual token and then overwrite that arriving Attack.
+struct GlobalMagnetronPause {uint32_t pointer,id;int frame;};
+static GlobalMagnetronPause globalMagnetronPauses[nativeorders::MaxOrders];static int globalMagnetronPauseCount=0,globalMagnetronPauseOverflow=-1;
+static ObjectIndex globalMagnetronPauseIndex;
+static void pauseGlobalMagnetron(uint32_t p){
+ if(!sh||!sh->magnetronGlobal||!rawMagnetron(p))return;int frame=get<int>(0xA8ED84);uint32_t id=get<uint32_t>(p+0x10);
+ for(int i=0;i<globalMagnetronPauseCount;++i)if(globalMagnetronPauses[i].id==id){globalMagnetronPauses[i]={p,id,frame};return;}
+ if(globalMagnetronPauseCount<nativeorders::MaxOrders)globalMagnetronPauses[globalMagnetronPauseCount++]={p,id,frame};
+ else globalMagnetronPauseOverflow=frame; // bounded capacity: defer enrolment, never evict another manual command
+}
 static UnloadPassenger unloadPassengers[nativeorders::MaxPassengers];static int unloadCount,unloadCursor;
 // Read-only roster history bridges a native D that executes before Ctrl+D's
 // WM_HOTKEY reaches the host. It never starts a job without an explicit command.
@@ -14,7 +26,7 @@ struct RecentPassenger {uint32_t p,id,carrier,carrierID,carrierType,token,tick;i
 static RecentPassenger recentPassengers[nativeorders::MaxPassengers];static int recentPassengerCount;
 static ObjectIndex watchedPassengers;
 static void restoreNativeHooks();
-static void clearNativeOrders(){nativeCount=nativeCursor=unloadCount=unloadCursor=recentPassengerCount=0;nativeFrame=-1;advancedObjects.clear();snap.advancedUnits=snap.unloadPending=0;restoreNativeHooks();resetUnloadCalculation();}
+static void clearNativeOrders(){globalMagnetronPauseCount=0;globalMagnetronPauseOverflow=-1;globalMagnetronPauseIndex.clear();nativeCount=nativeCursor=unloadCount=unloadCursor=recentPassengerCount=0;nativeFrame=-1;advancedObjects.clear();snap.advancedUnits=snap.unloadPending=0;restoreNativeHooks();resetUnloadCalculation();}
 static bool nativeMember(Vec,uint32_t p){return worldObjects.contains(p);}
 static bool nativeReady(){return simulationReady()&&sh->foreground&&!get<bool>(0xA8BC60+25);}
 
@@ -33,7 +45,9 @@ static void finishUnloadFollowup(const UnloadPassenger&r,int frame){
 static void cancelUnloadPassenger(uint32_t p){for(int i=0;i<unloadCount;)
  if(unloadPassengers[i].p==p){finishUnloadFollowup(unloadPassengers[i],get<int>(0xA8ED84));unloadPassengers[i]=unloadPassengers[--unloadCount];}
  else ++i;}
-static void cancelNative(uint32_t p){cancelBurst(get<uint32_t>(p+0x10));cancelDodge(get<uint32_t>(p+0x10));cancelOreJob(p);cancelLoadingJobs(p);int i=orderIndex(p);if(i>=0)removeOrder(i);for(i=0;i<unloadCount;)
+static void cancelNative(uint32_t p){
+ pauseGlobalMagnetron(p);
+ cancelBurst(get<uint32_t>(p+0x10));cancelDodge(get<uint32_t>(p+0x10));cancelOreJob(p);cancelLoadingJobs(p);int i=orderIndex(p);if(i>=0)removeOrder(i);for(i=0;i<unloadCount;)
  if(unloadPassengers[i].p==p||unloadPassengers[i].carrier==p){finishUnloadFollowup(unloadPassengers[i],get<int>(0xA8ED84));unloadPassengers[i]=unloadPassengers[--unloadCount];}
  else ++i;}
 static void cancelAutomatic(uint32_t p){cancelBurst(get<uint32_t>(p+0x10));cancelDodge(get<uint32_t>(p+0x10));
@@ -216,8 +230,16 @@ static void nativeOrdersTick(uint32_t house,int frame){
  // manual-input token cancels it; destination alone is not a manual command.
  for(int i=0;i<nativeCount;)if(nativeOrders[i].global&&(!sh->magnetronGlobal||manualVersions.get(nativeOrders[i].id)!=nativeOrders[i].token))removeOrder(i);else ++i;
  advancedObjects.clear();for(int i=0;i<nativeCount;++i)advancedObjects.add(nativeOrders[i].p,nativeOrders[i].id,uint32_t(i+1));
- if(sh->magnetronGlobal&&!snap.chat){Vec all=vec(0xA8EC78);
-  for(int n=0;n<all.count&&nativeCount<nativeorders::MaxOrders;++n){uint32_t p=item(all,n);if(!p||!own(p,house)||!rawMagnetron(p)||formationOwns(get<uint32_t>(p+0x10))||orderIndex(p)>=0||get<bool>(p+0x1C8)||get<uint32_t>(p+0x11C)||get<uint32_t>(p+0x5A4))continue;
+ // Match the pending-input horizon. After it expires, normal mission, queued
+ // mission, destination and target checks still protect an ongoing command.
+ globalMagnetronPauseIndex.clear();
+ for(int i=0;i<globalMagnetronPauseCount;){const auto&p=globalMagnetronPauses[i];
+  if(!worldObjects.contains(p.pointer)||get<uint32_t>(p.pointer+0x10)!=p.id||frame<p.frame||frame-p.frame>=90)globalMagnetronPauses[i]=globalMagnetronPauses[--globalMagnetronPauseCount];
+  else {globalMagnetronPauseIndex.add(p.pointer,p.id);++i;}
+ }
+ if(globalMagnetronPauseOverflow>=0&&(frame<globalMagnetronPauseOverflow||frame-globalMagnetronPauseOverflow>=90))globalMagnetronPauseOverflow=-1;
+ if(sh->magnetronGlobal&&!snap.chat&&globalMagnetronPauseOverflow<0){Vec all=vec(0xA8EC78);
+  for(int n=0;n<all.count&&nativeCount<nativeorders::MaxOrders;++n){uint32_t p=item(all,n);if(!p||!own(p,house)||!rawMagnetron(p)||formationOwns(get<uint32_t>(p+0x10))||globalMagnetronPauseIndex.contains(p)||orderIndex(p)>=0||get<bool>(p+0x1C8)||get<uint32_t>(p+0x11C)||get<uint32_t>(p+0x5A4)||get<uint32_t>(p+0x2B4)||get<uint32_t>(p+0x2AC))continue;
    int m=get<int>(p+0xAC),q=get<int>(p+0xB4);if((m!=5&&m!=6&&m!=11&&m!=13)||(q!=-1&&q!=m))continue;
    int x=get<int>(p+0x9C)/256,y=get<int>(p+0xA0)/256;if(x<=0||x>=512||y<=0||y>=512)continue;
    auto&o=nativeOrders[nativeCount++];o={};o.p=p;o.id=get<uint32_t>(p+0x10);o.token=manualVersions.get(o.id);o.mode=planner::MagnetronMove;o.cell=o.nearest=y*1000+x;o.gx=x*256+128;o.gy=y*256+128;o.global=true;o.progress.hold=true;

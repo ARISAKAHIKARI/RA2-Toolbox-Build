@@ -56,9 +56,10 @@ note(L"出售战车不支持兰博玩；两种出售操作共用按住键，鼠�
 label(L"直接攻击移动",20,210);label(L"仅鼠标",240,258);mouse(pointerinput::MouseAttack);next();
 note(L"直接攻击移动只下达一次命令；高级移动攻击会持续重新选择目标。",44);
 toggle(9050,L"队形排列（地面单位）",extra.formationEnabled);next();
+label(L"队形拖拽鼠标键",20,260);choices(combo(9056),{L"右键",L"左键（覆盖原生下令）"},extra.formationMouse==1?1:0);next();
 label(L"队形按住键",20,306);key(9051,extra.formationHold,345,280,true);next();
 {const wchar_t* names[]={L"矩形横队",L"分散横队",L"圆形聚集",L"扇形（60°）"};for(int n=0;n<4;++n){label(names[n],20,306);key(9052+n,extra.formationKeys[n]);next();}}
-note(L"按住队形键右拖，或双击 Alt 后右拖。方向决定朝向，拖到 320 像素是一横排；直接右击聚集。Esc 取消。队形可共用按键，连续按下循环切换；提交一次退出。",44);
+note(L"按住队形键拖拽，或双击 Alt 进入后拖拽；使用上方设置的鼠标键。拖动方向决定朝向，320 像素是一横排；点按聚集。Esc 取消。形状键可共用并连续切换；提交一次退出预览，选中成员不变时后续普通移动保持队形。",44);
 label(L"飞机路径点",20,260);choices(combo(803),{L"关闭",L"兼容路径点",L"原生优先"},extra.nativeAirWaypoints?2:extra.airWaypoints?1:0);next();
 label(L"路径点按住键",20,306);{auto h=key(894,extra.airPathKey);modernui::holdKey(h);}next();
 note(L"留空跟随游戏当前的路径点按键；自定义按键使用兼容路径点。原生优先在单机使用原生规划，联机自动使用兼容路径点。",44);
@@ -90,7 +91,7 @@ toggle(880,L"防空火控",extra.missileDefense);next();
 label(L"目标范围",20,260);choices(combo(9040),{L"仅导弹类",L"所有敌方空中单位"},extra.missileScope);next();
 label(L"火力分配",20,260);choices(combo(9041),{L"智能分配（血量与伤害）",L"平均分配"},extra.missileAllocation);next();
 number(881,L"火控检测频率 / 次每秒",extra.missileScanHz,L"1–60 · 默认 10");
-note(L"优先拦截射程内的敌方导弹，分配火力减少重复锁定；移动中的单位不接管。",44);
+note(L"智能分配以预计 120% 血量为覆盖线。仅在射程外 4 格内还有后续目标时短暂留枪，最多等 30 帧；无后续目标或近身威胁时继续开火。移动中的单位不接管。",44);
 
 // One visible Auto CS switch represents the previous two enable flags.
 hookChecks[3]=placedControl({-3,{0,0,1,1}},L"BUTTON",L"",466,BS_AUTOCHECKBOX);
@@ -183,8 +184,8 @@ item(L"STATIC",L"功能状态：等待连接",20,605,807,0,44);next(44);
 toggle(810,L"步兵强制进入建筑（实验性）",extra.c4Test,20,280);key(811,extra.c4Key,310,188,true);choices(combo(812,510,115,180),{L"停用",L"中键",L"侧键 1",L"侧键 2",L"右键",L"左键"},extra.c4Mouse==6?5:extra.c4Mouse);next();
 item(L"STATIC",L"步兵强制进入建筑：关闭",20,605,813);next();
 toggle(420,L"科技解锁（实验性）",techMode,20,305);techSearch=edit(421,L"",345,280);SendMessageW(techSearch,EM_SETCUEBANNER,TRUE,(LPARAM)L"搜索名称或单位 ID");next();
-label(L"实现方式",20,180);choices(combo(896,220,405,180),{L"现有方案",L"经典兼容"},techImplementation);next();
-note(L"经典兼容沿用已找回的早期工厂/建造上限检查与每秒补齐；保留原生侧栏。用于战网对照，尚未验证不掉线，也未确认等同于 0.3.2。",44);
+label(L"实现方式",20,180);choices(combo(896,220,405,180),{L"现有方案（默认）",L"经典兼容",L"修改大师模式"},techImplementation);next();
+note(L"修改大师模式显示 TechLevel 非 -1 的项目，并保留侧栏图标；此模式不使用下方许可筛选。经典兼容保留早期检查。实际生产与联机效果仍待实测。",44);
 techList=item(L"LISTBOX",L"",20,455,422,LBS_NOTIFY|WS_VSCROLL|WS_TABSTOP,152);
 int listTop=rowY;button(423,L"生产所选",488,137);next();button(424,L"切换许可",488,137);next();button(425,L"全选",488,65);button(426,L"清空",560,65);next();button(427,L"兼容预设",488,137);rowY=listTop+164;
 button(428,L"查看许可清单",20,285);button(814,L"取消所选类型的生产",320,305);next();

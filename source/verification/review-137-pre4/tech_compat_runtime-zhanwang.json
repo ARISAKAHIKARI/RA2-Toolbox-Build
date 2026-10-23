@@ -1,0 +1,69 @@
+{
+  "scope": "Shipped DLL + native FindFactory in synthetic worlds; CanBuild, AddCameo and\nWin32 are fixture substitutes. This is not a peer simulation or netplay test.\n",
+  "game_sha256": "c287d62a4d6a25b547e9339d071dd6e03adcf545699062e478aaeee38c60e89a",
+  "dll_sha256": "21c308a5d89c87c110ddaf7d7d6bfabd3d1ec5a1637c82353fd5a268ad021acb",
+  "real_game": false,
+  "real_netplay": false,
+  "results": [
+    {
+      "case": "mode_0_implementation_0_native_factory_scope_payload_restore",
+      "status": "PASS"
+    },
+    {
+      "case": "mode_0_implementation_1_native_factory_scope_payload_restore",
+      "status": "PASS"
+    },
+    {
+      "case": "mode_3_implementation_0_native_factory_scope_payload_restore",
+      "status": "PASS"
+    },
+    {
+      "case": "mode_3_implementation_1_native_factory_scope_payload_restore",
+      "status": "PASS"
+    },
+    {
+      "case": "mode_4_implementation_0_native_factory_scope_payload_restore",
+      "status": "PASS"
+    },
+    {
+      "case": "mode_4_implementation_1_native_factory_scope_payload_restore",
+      "status": "PASS"
+    },
+    {
+      "case": "mode_5_implementation_0_native_factory_scope_payload_restore",
+      "status": "PASS"
+    },
+    {
+      "case": "mode_5_implementation_1_native_factory_scope_payload_restore",
+      "status": "PASS"
+    },
+    {
+      "case": "implementation_0_native_build_limit_rejection",
+      "status": "PASS"
+    },
+    {
+      "case": "implementation_1_native_build_limit_rejection",
+      "status": "PASS"
+    },
+    {
+      "case": "one_second_refresh_switch_and_invalid_selection_no_events",
+      "status": "PASS"
+    },
+    {
+      "case": "classic_sidebar_capacity_guard",
+      "status": "PASS"
+    },
+    {
+      "case": "classic_foreign_patch_rollback",
+      "status": "PASS"
+    },
+    {
+      "case": "implementation_0_native_prune_keeps_during_stall_refresh_switch",
+      "status": "PASS"
+    },
+    {
+      "case": "implementation_1_native_prune_keeps_during_stall_refresh_switch",
+      "status": "PASS"
+    }
+  ]
+}

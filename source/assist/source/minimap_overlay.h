@@ -46,6 +46,14 @@ static void clear(){hide();paintBuffer.clear();paintedTerrain.reset();pixels.cle
 static void destroy(){clear();worker.shutdown();if(window)DestroyWindow(window);window=nullptr;}
 static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
  if(msg==WM_NCHITTEST)return HTCLIENT;
+ if(msg==WM_SETCURSOR){
+#ifdef RA2_UNIFIED
+  if(!suite::hardwareCursorActive())SetCursor(nullptr);
+#else
+  SetCursor(nullptr);
+#endif
+  return TRUE; // Never install a second Windows arrow/hand over the game cursor.
+ }
  if(msg==WM_LBUTTONDOWN){dragging=true;dragMatch=commandMatch();SetCapture(w);navigate(w,lp);return 0;}
  if(msg==WM_MOUSEMOVE&&dragging){if(!(wp&MK_LBUTTON)){cancelDrag();return 0;}navigate(w,lp);return 0;}
  if(msg==WM_LBUTTONUP){if(dragging)navigate(w,lp);cancelDrag();return 0;}
@@ -73,7 +81,7 @@ static void update(POINT origin,const RECT&client){
  auto layout=radarlayout::place(snap.width,snap.height,client.right,client.bottom,minimapScale,minimapPosition,minimapX,minimapY,aircraftButtonBox);
  if(!layout.valid){hide();return;}auto destination=layout.destination;const auto&g=frame->terrain->geo;
  double fit=std::min(double(destination.w-2)/g.rw,double(destination.h-2)/g.rh);destination.w=std::max(3,int(g.rw*fit)+2);destination.h=std::max(3,int(g.rh*fit)+2);
- if(!window){WNDCLASSW cls{};cls.lpfnWndProc=proc;cls.hInstance=GetModuleHandleW(nullptr);cls.lpszClassName=L"RA2DataRadar127";cls.hCursor=LoadCursorW(nullptr,IDC_HAND);RegisterClassW(&cls);window=CreateWindowExW(WS_EX_TOOLWINDOW|WS_EX_NOACTIVATE|WS_EX_TOPMOST|WS_EX_LAYERED,cls.lpszClassName,L"战术小地图",WS_POPUP,0,0,1,1,nullptr,nullptr,cls.hInstance,nullptr);if(window)SetLayeredWindowAttributes(window,0,255,LWA_ALPHA);}
+ if(!window){WNDCLASSW cls{};cls.lpfnWndProc=proc;cls.hInstance=GetModuleHandleW(nullptr);cls.lpszClassName=L"RA2DataRadar127";cls.hCursor=nullptr;RegisterClassW(&cls);window=CreateWindowExW(WS_EX_TOOLWINDOW|WS_EX_NOACTIVATE|WS_EX_TOPMOST|WS_EX_LAYERED,cls.lpszClassName,L"战术小地图",WS_POPUP,0,0,1,1,nullptr,nullptr,cls.hInstance,nullptr);if(window)SetLayeredWindowAttributes(window,0,255,LWA_ALPHA);}
  if(!window)return;RECT old{};GetWindowRect(window,&old);int x=origin.x+destination.x,y=origin.y+destination.y;
  if(!IsWindowVisible(window)||old.left!=x||old.top!=y||old.right-old.left!=destination.w||old.bottom-old.top!=destination.h)SetWindowPos(window,HWND_TOPMOST,x,y,destination.w,destination.h,SWP_NOACTIVATE|SWP_SHOWWINDOW);
  InvalidateRect(window,nullptr,FALSE);

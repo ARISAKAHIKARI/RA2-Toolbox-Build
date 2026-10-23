@@ -11,7 +11,7 @@ namespace external { namespace voxel {
 // evidence: YRpp + native 755DB0/7563A8, 5BD5C0/5BD730 and 705D70.
 constexpr size_t MaxBytes=8*1024*1024,MaxVoxels=100000,MaxFaces=150000;
 struct Vec {float x=0,y=0,z=0;};
-struct Face {Vec p[4];uint8_t color=0;};
+struct Face {Vec p[4];uint8_t color=0;bool turret=false;};
 struct Model {std::vector<Face> faces;};
 struct Image {int width=0,height=0,x=0,y=0;std::vector<uint32_t> pixels;};
 struct Library {uint32_t failed=0,headers=0,tailers=0,size=0,head=0,tail=0,body=0;};
@@ -68,13 +68,14 @@ inline Vec rotate(Vec p,double angle){double c=std::cos(angle),s=std::sin(angle)
 struct Screen {float x,y,z;};
 inline Screen project(Vec p){return {float((p.x-p.y)*0.70710678118),float((p.x+p.y)*0.35355339059-p.z*0.86602540378),float((p.x+p.y)*0.61237243569+p.z*.5)};}
 inline uint32_t premultiply(uint32_t c,float light,unsigned alpha=124){unsigned r=unsigned(std::clamp(((c>>16)&255)*light,0.f,255.f)),g=unsigned(std::clamp(((c>>8)&255)*light,0.f,255.f)),b=unsigned(std::clamp((c&255)*light,0.f,255.f));return (alpha<<24)|((r*alpha/255)<<16)|((g*alpha/255)<<8)|(b*alpha/255);}
-inline bool render(const Model&model,double angle,const std::array<uint32_t,256>&pal,Image&out){
+inline bool render(const Model&model,double angle,const std::array<uint32_t,256>&pal,Image&out,double turretAngle=std::numeric_limits<double>::quiet_NaN(),float turretOffset=0){
  out={};if(model.faces.empty()||model.faces.size()>MaxFaces||!std::isfinite(angle))return false;
- float minX=0,minY=0,maxX=0,maxY=0;for(const auto&f:model.faces)for(auto p:f.p){auto s=project(rotate(p,angle));if(!finite(s.x)||!finite(s.y)||!finite(s.z))return false;minX=std::min(minX,s.x);minY=std::min(minY,s.y);maxX=std::max(maxX,s.x);maxY=std::max(maxY,s.y);}
+ auto worldPoint=[&](const Face&f,Vec p){if(!f.turret||!std::isfinite(turretAngle))return rotate(p,angle);p=rotate(p,turretAngle);auto pivot=rotate({turretOffset,0,0},angle);p.x+=pivot.x;p.y+=pivot.y;return p;};
+ float minX=0,minY=0,maxX=0,maxY=0;for(const auto&f:model.faces)for(auto p:f.p){auto s=project(worldPoint(f,p));if(!finite(s.x)||!finite(s.y)||!finite(s.z))return false;minX=std::min(minX,s.x);minY=std::min(minY,s.y);maxX=std::max(maxX,s.x);maxY=std::max(maxY,s.y);}
  int left=int(std::floor(minX))-1,top=int(std::floor(minY))-1,w=int(std::ceil(maxX))-left+2,h=int(std::ceil(maxY))-top+2;if(w<1||h<1||w>512||h>512)return false;
  out.width=w;out.height=h;out.x=left;out.y=top;out.pixels.assign(size_t(w)*h,0);std::vector<float> depth(size_t(w)*h,-std::numeric_limits<float>::infinity());
  auto edge=[](Screen a,Screen b,float x,float y){return (x-a.x)*(b.y-a.y)-(y-a.y)*(b.x-a.x);};
- for(const auto&f:model.faces){Screen s[4];Vec world[4];for(int c=0;c<4;++c){world[c]=rotate(f.p[c],angle);s[c]=project(world[c]);s[c].x-=left;s[c].y-=top;}
+ for(const auto&f:model.faces){Screen s[4];Vec world[4];for(int c=0;c<4;++c){world[c]=worldPoint(f,f.p[c]);s[c]=project(world[c]);s[c].x-=left;s[c].y-=top;}
   Vec a{world[1].x-world[0].x,world[1].y-world[0].y,world[1].z-world[0].z},b{world[2].x-world[0].x,world[2].y-world[0].y,world[2].z-world[0].z};Vec normal{a.y*b.z-a.z*b.y,a.z*b.x-a.x*b.z,a.x*b.y-a.y*b.x};float len=std::sqrt(normal.x*normal.x+normal.y*normal.y+normal.z*normal.z);float light=.67f+(len>0?std::max(0.f,(-.4f*normal.x-.5f*normal.y+.76f*normal.z)/len)*.4f:0);uint32_t color=premultiply(pal[f.color],light);
   for(int t=0;t<2;++t){Screen v[3]={s[0],s[t+1],s[t+2]};float area=edge(v[0],v[1],v[2].x,v[2].y);if(std::abs(area)<1e-6f)continue;
    int x0=std::max(0,int(std::floor(std::min({v[0].x,v[1].x,v[2].x})))),x1=std::min(w-1,int(std::ceil(std::max({v[0].x,v[1].x,v[2].x}))));int y0=std::max(0,int(std::floor(std::min({v[0].y,v[1].y,v[2].y})))),y1=std::min(h-1,int(std::ceil(std::max({v[0].y,v[1].y,v[2].y}))));

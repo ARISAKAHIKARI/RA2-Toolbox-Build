@@ -28,15 +28,15 @@ for mode in (0,3):
  for inside in (False,True):
   for case in ('smart','even','stagger','missile_only','all_air','landed','disable','stop','manual'):
    def test(mode=mode,inside=inside,case=case):
-    m=setup(mode,inside,case in ('even','stagger'),case in ('all_air','landed'),case!='stagger')
+    m=setup(mode,inside,case in ('even','stagger','disable','stop','manual'),case in ('all_air','landed'),case not in ('stagger','disable','stop','manual'))
     if case in ('missile_only','all_air','landed'):m.b(m.typ+0xd68,0)
     if case=='landed':
      for q in m.targets:m.w(q+0xa4,0)
     s=run_scan(m,inside);events=apply(m);attacks=[t for _,a,t in events if a==1];held=[p for p,a,_ in events if a==0]
     if case in ('missile_only','landed'):assert not events;return
     if case=='even':assert attacks.count(40)==attacks.count(41)==3 and not held
-    elif case=='stagger':assert attacks.count(40)==3 and 41 not in attacks and len(held)==3
-    else:assert attacks.count(40)==1 and attacks.count(41)==3 and len(held)==2,(case,events)
+    elif case in ('stagger','disable','stop','manual'):assert attacks.count(40)==3 and 41 not in attacks and len(held)==3
+    else:assert attacks.count(40)==2 and attacks.count(41)==4 and len(held)==0,(case,events)
     old=n.count(m)
     if case=='stagger':
      # Later target crosses the native firing boundary: the reserved three
@@ -52,12 +52,40 @@ for mode in (0,3):
     if case=='manual':
      # Explicit Cancel runs through the existing pointer gateway, updating the
      # manual token before the native user attack is observed.
-     p=next(p for p in m.guns if m.r(p+0x10)==held[0]);id=m.r(p+0x10)
+     id=held[0];p=next(p for p in m.guns if m.r(p+0x10)==id)
      n.pointer(m,5,mutate=lambda s,i:setattr(i.sources[0],'pointer',p) or setattr(i.sources[0],'id',id))
      m.w(p+0xac,1);m.w(p+0x2b4,m.targets[0]);start=n.count(m)
      for _ in range(14):run_scan(m,inside)
      assert all(struct.unpack_from('<I',n.packets(m),j*111+7)[0]!=id for j in range(start,n.count(m)))
     assert not m.codeWrites
    check(f'{mode}_{inside}_{case}',test)
+# Conditional reservations must release without stranding any held shooter.
+for mode in (0,3):
+ for inside in (False,True):
+  for case in ('no_following','coverage_lost','urgent','timeout','gone'):
+   def conditional(mode=mode,inside=inside,case=case):
+    m=setup(mode,inside,close2=False);run_scan(m,inside);initial=apply(m);held=[id for id,action,_ in initial if action==0]
+    assert len(held)==4 and sum(action==1 for _,action,_ in initial)==2,(case,initial)
+    old=n.count(m)
+    if case=='no_following':m.w(m.targets[1]+0x9c,10000)
+    elif case=='gone':m.w(m.targets[1]+0x6c,0)
+    elif case=='coverage_lost':
+     for p in m.guns:
+      if m.r(p+0x10) not in held:m.w(p+0x2ec,m.r(0xa8ed84));m.w(p+0x2f4,60)
+    elif case=='urgent':m.w(m.targets[0]+0x2b4,m.guns[0])
+    else:m.w(0xa8ed84,m.r(0xa8ed84)+31)
+    # Keep a positive approach velocity for the still-eligible following target.
+    m.w(m.targets[1]+0x9c,m.r(m.targets[1]+0x9c)-64)
+    run_scan(m,inside);new=apply(m,old)
+    woken=[id for id,action,target in new if id in held and action==1 and target==40]
+    if case=='coverage_lost':
+     # Two ready 40-damage guns replace the cooling pair and cover 40 HP
+     # at 120%. Other guns may keep reserving for the following aircraft.
+     assert len(woken)>=2,(case,new,held)
+    else:assert set(woken)==set(held),(case,new,held)
+    before=n.count(m);m.w(m.targets[1]+0x9c,m.r(m.targets[1]+0x9c)-16);run_scan(m,inside);more=apply(m,before)
+    assert not any(action==0 and id in woken for id,action,_ in more),'release grace prevents immediate sleep oscillation'
+    assert not m.codeWrites
+   check(f'{mode}_{inside}_{case}_conditional_reservation',conditional)
 Path(a.output).write_text(json.dumps({'scope':__doc__,'results':rows},indent=2)+'\n')
 raise SystemExit(any(r['status']!='PASS' for r in rows))

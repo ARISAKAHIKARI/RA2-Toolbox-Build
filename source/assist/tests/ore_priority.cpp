@@ -99,5 +99,18 @@ int main(){int cases=0;
  {Scene s;s.start();s.arrive(2);s.next();s.accept();--s.w.count;s.w.refineryCount=0;s.next();assert(s.orders.empty());++cases;}
  // An old receipt after a new manual token cannot reactivate the old turn.
  {Scene s;s.start();s.arrive(2);s.next();auto old=s.one(2,OreYield);++s.miner(1).manualVersion;s.miner(1).flags|=OrePaused;s.next();s.p.accepted(old,s.w.frame);s.release();s.next();assert(!s.count(2,OreYield));++cases;}
+ // Native partial returns must get a protected turn without prematurely
+ // recalling a partially loaded miner that is still harvesting.
+ for(int mode=0;mode<4;++mode){Scene s(4);s.miner(1).storage[0]=7;
+  s.miner(1).mission=mode==2?7:12;
+  if(mode!=1)s.miner(1).destination=500;
+  if(mode==1||mode==3)s.ref().radioIDs[0]=1;
+  s.next();s.accept();s.arrive(2);s.next();assert(s.one(2,OreYield).unit==1);s.accept();s.release();s.next();assert(s.one(7).unit==2);s.accept();
+  s.miner(2).flags|=Unloading;s.empty(2);s.next();assert(s.one(7).unit==1);s.accept();s.miner(1).destination=500;s.ref().radioIDs[0]=1;
+  s.arrive(3);s.arrive(4);for(int f=0;f<60;++f){s.next();assert(!s.count(2,OreYield));}++cases;
+ }
+ {Scene s(1);s.miner(1).storage[0]=7;s.next();assert(s.orders.empty());
+  s.miner(1).mission=12;s.next();assert(s.one(7).unit==1); // native Return without a link still joins
+  s.miner(1).destination=500;s.miner(1).flags|=OrePaused;s.next();assert(s.orders.empty());++cases;}
  std::cout<<"PASS: "<<cases<<" ore priority scenarios: observed release, one winner, bounded retries, protected next turn, cancellation, starvation and finite-load progress\n";
 }

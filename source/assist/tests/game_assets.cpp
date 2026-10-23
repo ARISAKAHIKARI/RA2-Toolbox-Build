@@ -13,6 +13,12 @@ int main(){
  disk["RA2MD.MIX"]=mix("CAMEO.SHP",{1});disk["ECACHEMD01.MIX"]=mix("CAMEO.SHP",{2});disk["EXPANDMD01.MIX"]=mix("CAMEO.SHP",{3});disk["EXPANDMD99.MIX"]=mix("LOCALMD.MIX",mix("CAMEO.SHP",{4}));
  std::vector<Slice> files;for(auto&[n,b]:disk)files.push_back({n,0,b.size()});Directory d;d.build(files,{{"LOCALMD.MIX",{}}},read);std::vector<uint8_t> bytes;assert(d.load("cameo.shp",bytes,read,0)&&bytes==std::vector<uint8_t>{4});
  disk["CAMEO.SHP"]={5};assert(d.load("cameo.shp",bytes,read,1)&&bytes==std::vector<uint8_t>{5});assert(!d.load("../x",bytes,read,1));
+ // Native standard nested packs must load without a live node or selected
+ // model having been loaded by the game's renderer.
+ disk.clear();disk["RA2MD.MIX"]=mix("ISOTEMMD.MIX",mix("SLOPE01.TEM",{7}));
+ disk["RA2.MIX"]=mix("CACHE.MIX",mix("HTNK.VXL",{8}));files.clear();for(auto&[n,b]:disk)files.push_back({n,0,b.size()});
+ d.build(files,{},read);assert(d.load("SLOPE01.TEM",bytes,read,0)&&bytes==std::vector<uint8_t>{7});assert(d.load("HTNK.VXL",bytes,read,0)&&bytes==std::vector<uint8_t>{8});
+ assert(archiveName("C:\\Games\\RA2\\ra2md.mix")=="RA2MD.MIX");assert(archiveName("../").empty());
  // An encrypted directory uses the validated live index, not resource memory.
  disk["EXPANDMD99.MIX"].assign(109,0);put(disk["EXPANDMD99.MIX"],0,0x20000);disk["EXPANDMD99.MIX"][108]=6;files.clear();files.push_back({"EXPANDMD99.MIX",0,109});
  d.build(files,{{"EXPANDMD99.MIX",{{hash("CAMEO.SHP"),0,1}}}},read);assert(d.load("CAMEO.SHP",bytes,read,0)&&bytes==std::vector<uint8_t>{6});

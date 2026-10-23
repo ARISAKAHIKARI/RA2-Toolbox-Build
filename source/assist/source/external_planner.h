@@ -50,6 +50,17 @@ class Planner {
   auto i=areas_.find(r.id);if(i==areas_.end())return INT64_MAX;
   return ore::dockDistance(a.x,a.y,r.x,r.y,i->second->dockStyleB!=0);
  }
+ static uint32_t rangeMoveCell(const Actor&a,const Actor&t,bool tooClose){
+  int x=t.x/256,y=t.y/256;
+  if(tooClose){double dx=double(a.x)-t.x,dy=double(a.y)-t.y,d=std::sqrt(dx*dx+dy*dy);
+   if(d<1){dx=1;dy=0;d=1;}x=int(a.x+dx*384/d)/256;y=int(a.y+dy*384/d)/256;
+  }
+  return x>0&&x<512&&y>0&&y<512?uint32_t(y*1000+x):0;
+ }
+ static bool attackMadeProgress(const Actor&a,Advanced&task,int frame){
+  int64_t dx=int64_t(a.x)-task.progressX,dy=int64_t(a.y)-task.progressY;
+  if(dx*dx+dy*dy<16*16)return false;task.attackProgress=frame;task.progressX=a.x;task.progressY=a.y;return true;
+ }
  static bool add(std::vector<Order>& out,Order order){if(out.size()>=MaxOrders)return false;out.push_back(order);return true;}
  static std::vector<Order> merge(const std::vector<Order>& combat,const std::vector<Order>& ore){
   std::vector<Order> result;result.reserve(MaxOrders);size_t c=0,o=0;
@@ -59,6 +70,12 @@ class Planner {
    if(o<ore.size())result.push_back(ore[o++]);
    if(c<combat.size()&&result.size()<MaxOrders)result.push_back(combat[c++]);
   }return result;
+ }
+ const Actor* returningRefinery(const Actor& a)const{
+  if(load(a)<=0)return nullptr;
+  for(const Actor* r:refineries_)if(refineryValid(r)&&compatible(a,*r)&&linked(*r,a.id))return r;
+  const Actor* r=actor(a.destination);
+  return refineryValid(r)&&compatible(a,*r)&&(ore::automaticMission(a.mission)||a.mission==7||(a.flags&Unloading))?r:nullptr;
  }
  const Actor* nearest(const Actor& a)const{
   const Actor* best=nullptr;int64_t distance=INT64_MAX;
@@ -175,11 +192,12 @@ public:
       task.skipUntil=magnetcycle::avoidUntil(world.frame,a->rearmDuration);
       if(task.target)magneticReservations_.insert(task.target);
      }else {
-      int64_t dx=int64_t(a->x)-task.progressX,dy=int64_t(a->y)-task.progressY;
-      if(dx*dx+dy*dy>=16*16){task.attackProgress=world.frame;task.progressX=a->x;task.progressY=a->y;}
+      attackMadeProgress(*a,task,world.frame);
       int64_t tx=t?int64_t(a->x)-t->x:0,ty=t?int64_t(a->y)-t->y:0;
       bool reachable=t&&(t->flags&Enemy)&&magneticAcquisition(*a,*t,tx*tx+ty*ty,rangePadding);
-      if(reachable&&!magnetcycle::shotStalled(world.frame,task.attackProgress,std::clamp(pathTimeout,45,900))&&
+      const bool stalledRange=reachable&&!canTarget(*a,*t,tx*tx+ty*ty,true)&&world.frame-task.attackProgress>=24;
+      if(stalledRange){task.pendingShot=false;}
+      else if(reachable&&!magnetcycle::shotStalled(world.frame,task.attackProgress,std::clamp(pathTimeout,45,900))&&
          (a->target==task.target||world.frame-task.sent<12))magneticReservations_.insert(task.target);
       else {
       // An unobserved shot may mean the event was dropped or the unit acquired
@@ -225,6 +243,18 @@ public:
      if(!best||(!bestInRange&&inRange)||(bestInRange==inRange&&((bestSkipped&&!skipped)||(bestSkipped==skipped&&higher)))){bestInRange=inRange;best=&enemy;bestSkipped=skipped;score=rank;bestValue=value;nearestDistance=distance;}
     });
     if(best){task.progress.combat(a->x,a->y,world.frame);
+     // Let normal Attack pursue first; a turret target is not movement.
+     bool continueMove=task.pursuit==best->id&&!task.attacking;
+     bool stalled=task.attacking&&task.target==best->id&&world.frame-task.attackProgress>=24;
+     if(!bestInRange&&(continueMove||stalled)){
+      const auto&weapon=a->weapons[weaponIndex(*a,*best)];bool tooClose=nearestDistance<int64_t(weapon.minimum)*weapon.minimum;
+      uint32_t destination=rangeMoveCell(*a,*best,tooClose);bool pending=continueMove&&world.frame-task.sent<12;
+      bool moving=continueMove&&a->mission==2&&a->destinationCell==task.moveCell;
+      int64_t dx=int64_t(a->x)-(int(task.moveCell%1000)*256+128),dy=int64_t(a->y)-(int(task.moveCell/1000)*256+128);
+      bool arrived=dx*dx+dy*dy<=128*128;
+      if(destination&&!pending&&(!moving||arrived)&&world.frame>task.sent)add(combat,{a->id,task.token,0,destination,2,11,purpose,0,best->id});
+      continue;
+     }
      bool attack=!task.attacking||task.target!=best->id||((a->target!=best->id||a->mission!=1)&&world.frame-task.sent>=12);
      if(sent<MaxOrders&&world.frame>task.sent&&attack&&add(combat,{a->id,task.token,best->id,0,1,0,purpose})){++sent;if(mag)magneticReservations_.insert(best->id);}
      continue;
@@ -262,9 +292,9 @@ public:
   }
   oreIDs_.clear();for(const auto&job:ore_)oreIDs_.insert(job.id);
   std::vector<const Actor*> newTrucks;
-  for(const auto*a:trucks_)if(full(*a)&&!(a->flags&OrePaused)&&!active.count(a->id)&&ore::automaticMission(a->mission)&&!oreIDs_.count(a->id))newTrucks.push_back(a);
+  for(const auto*a:trucks_)if(!(a->flags&OrePaused)&&!active.count(a->id)&&!oreIDs_.count(a->id)&&(returningRefinery(*a)||(load(*a)>0&&a->mission==12)||(full(*a)&&ore::automaticMission(a->mission))))newTrucks.push_back(a);
   std::sort(newTrucks.begin(),newTrucks.end(),[](auto*a,auto*b){return a->id<b->id;});
-  for(const auto*a:newTrucks){if(ore_.size()>=ore::MaxJobs)break;const Actor* refinery=nearest(*a);if(!refinery)continue;
+  for(const auto*a:newTrucks){if(ore_.size()>=ore::MaxJobs)break;const Actor* refinery=returningRefinery(*a);if(!refinery)refinery=nearest(*a);if(!refinery)continue;
    OreJob job{a->id,refinery->id,a->manualVersion};job.x=a->x;job.y=a->y;job.progressFrame=world.frame;job.initialCargo=load(*a);job.dockingObserved=(a->flags&Unloading)!=0;
    if(a->flags&Unloading)job.stage=ore::Docking;ore_.push_back(job);
   }

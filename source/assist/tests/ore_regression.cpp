@@ -53,6 +53,7 @@ int main(){
  // Neither the attack list nor the FIFO tail can starve the other family.
  p.reset();setup(w,24);int base=w.count;w.count+=17;w.intentCount=16;
  for(int i=0;i<16;++i){auto&a=w.actors[base+i];a.id=100+i;a.kind=2;a.flags=Own;a.x=a.y=50000;a.range=1024;a.weapons[0]={1024,0,GroundWeapon,0x7FF};w.intents[i]={a.id,30030,0};}
+ w.combatCount=16;for(int i=0;i<16;++i){w.actors[base+i].combatFirst=i;w.actors[base+i].combatCount=1;w.combat[i]={400,InWeaponRange|InAcquisitionRange,0,1.0f};}
  auto&e=w.actors[base+16];e.id=400;e.kind=2;e.flags=Enemy;e.x=e.y=50100;e.cost=200;
  int oreOrders=0,attacks=0;
  for(int f=1;f<=8;++f){w.frame=f;v=p.step(w,AutoOreReturn|AdvancedInput,200,300,90);

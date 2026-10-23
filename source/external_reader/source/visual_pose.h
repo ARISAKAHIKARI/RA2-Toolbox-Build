@@ -1,0 +1,38 @@
+#pragma once
+#include "game_view.h"
+namespace external { namespace visual {
+constexpr double Pi=3.14159265358979323846;
+// FacingClass::Current (4C93D0): interpolate the signed shortest turn using
+// the simulation timer, rather than drawing DesiredFacing ahead of the unit.
+template<class Read>uint16_t facing(GameView<Read>&g,uint32_t p,int frame){
+ uint16_t desired=g.template get<uint16_t>(p),start=g.template get<uint16_t>(p+4);
+ int rate=g.template get<int16_t>(p+20),timer=g.template get<int>(p+8,-1),duration=g.template get<int>(p+16);
+ int left=timer==-1?duration:std::max(0,duration-(frame-timer));
+ int diff=int16_t(uint16_t(desired-start)),steps=rate>0?std::abs(diff)/rate:0;
+ return rate>0&&left>0&&left<=32768&&steps>0?uint16_t(desired-(diff/steps)*left):desired;
+}
+inline unsigned bucket(uint16_t raw){return ((unsigned(raw)+1024)>>11)&31;}
+inline double radians(unsigned direction){return (int(direction)-8)*(-2*Pi/32);}
+struct Pose {uint8_t body=0,turret=0;int frame=0,variant=-1;};
+template<class Read>Pose pose(GameView<Read>&g,uint32_t p,uint32_t type,int kind,int frame){
+ Pose out;out.body=bucket(facing(g,p+0x388,frame));out.turret=g.template get<uint8_t>(type+0xCA1)?bucket(facing(g,p+0x3A0,frame)):out.body;
+ if(g.template get<int>(type+0x808)>0&&!g.template get<uint8_t>(type+0xCD5)){int variant=g.template get<int>(p+0x124,-1);if(variant>=0&&variant<18)out.variant=variant;}
+ if(kind==1){
+  int sequence=g.template get<int>(p+0x6C4);if(sequence==-1)sequence=0;
+  uint32_t list=g.template get<uint32_t>(type+0xE3C);if(sequence<0||sequence>=42||list<0x10000){out.frame=-1;return out;}
+  uint32_t s=list+uint32_t(sequence)*36;int start=g.template get<int>(s,-1),count=g.template get<int>(s+4),stride=g.template get<int>(s+8);
+  // Native Infantry::ShapeNumber 518D80 uses this direction lookup, not the
+  // SequenceFacing metadata (which is consumed when loading the sequence).
+  int dir=g.template get<int>(0x7EAEFC+out.body*4,-1),stage=g.template get<int>(p+0xF8);
+  if(start<0||start>=8192||count<0||count>8192||stride<0||stride>8192||dir<0||dir>7||stage<0){out.frame=-1;return out;}
+  out.frame=start+stage%std::max(1,count)+dir*stride;
+ }else if(kind==2&&!g.template get<uint32_t>(type+0xB0)){
+  int dir=g.template get<int>(type+0xE3C)==8?((unsigned(facing(g,p+0x388,frame))+4096)/8192+1)&7:0;
+  int firing=g.template get<int>(p+0x6C0,-1),stand=g.template get<int>(type+0xE1C),walk=g.template get<int8_t>(type+0xE5C);
+  if(firing>=0)out.frame=g.template get<int>(type+0xE30)+dir*g.template get<int8_t>(type+0xE5D)+firing/2;
+  else if(stand>0)out.frame=g.template get<int>(type+0xE28)+dir*stand;
+  else out.frame=g.template get<int>(type+0xE2C)+dir*std::max(0,walk)+std::max(0,g.template get<int>(p+0x538))%std::max(1,walk);
+ }
+ if(out.frame<0||out.frame>=8192)out.frame=-1;return out;
+}
+}}

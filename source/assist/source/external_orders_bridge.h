@@ -154,7 +154,7 @@ static bool externalOrderValid(const planner::Order&o,uint32_t house){
  if(get<int>(unit+0x6C)<=0||!get<bool>(unit+0x74)||get<bool>(unit+0x81)||!get<bool>(unit+0x90)||get<bool>(unit+0x1C8)||get<uint32_t>(unit+0x11C))return false;
  if(burstOwns(o.unit)||dodgeOwns(o.unit))return false;
  if(o.purpose==planner::MagnetronDropOrder)return o.mission==13&&!o.target&&!o.destination&&!o.destinationTag&&!o.pursuit&&o.refinery&&rawMagnetronDrop(unit,worldByID(o.refinery),house);
- int globalIndex=orderIndex(unit);if(globalIndex>=0&&nativeOrders[globalIndex].global&&(!sh->magnetronGlobal||o.mission==2))return false;
+ int globalIndex=orderIndex(unit);if(globalIndex>=0&&nativeOrders[globalIndex].global&&(!sh->magnetronGlobal||(o.mission==2&&!o.pursuit)))return false;
  bool defense=o.purpose==planner::DefenseOrder,combat=o.purpose==1||o.purpose==3,mag=o.purpose==3;
  if(defense){if(!(sh->flags&AntiTheft)||!antiTheftBuilding(unit)||o.mission!=1||!o.target||o.destination||o.destinationTag||!antiTheftThreat(worldByID(o.target),house)||antiTheftThreat(get<uint32_t>(unit+0x2B4),house))return false;}
  if(combat){if(mag?!rawMagnetron(unit):!featureObjectAllowed(featuretypes::AdvancedAttack,unit))return false;int index=orderIndex(unit);if(!(sh->flags&(mag?MagnetronInput:AdvancedInput))||snap.nativeHookStatus!=1||index<0||nativeOrders[index].token!=o.token||nativeOrders[index].mode!=(mag?planner::MagnetronMove:planner::OrdinaryMove))return false;}
@@ -188,11 +188,15 @@ static bool externalOrderValid(const planner::Order&o,uint32_t house){
   else if(mag?!planner::magneticAcquisition(source,victim,dx*dx+dy*dy,int(std::min(uint32_t(sh->advancedRangeCells),30u))*256):!planner::canTarget(source,victim,dx*dx+dy*dy,false,0))return false;
  }
  if(o.pursuit){
-  if(o.purpose!=planner::CombatOrder||o.mission!=2||o.target||o.destinationTag!=11)return false;
+  if((o.purpose!=planner::CombatOrder&&o.purpose!=planner::MagnetronOrder)||o.mission!=2||o.target||o.destinationTag!=11)return false;
   uint32_t target=worldByID(o.pursuit);if(!target||!nativeEnemy(target,house))return false;
   planner::Actor source{},victim{};rawCombatInfo(unit,typeOf(unit,kind(unit)),kind(unit),source,true);rawCombatInfo(target,typeOf(target,kind(target)),kind(target),victim,false);
-  auto probe=probeCombatPair(unit,target,source,victim,int(std::min(uint32_t(sh->advancedRangeCells),30u))*256);
-  if(!(probe.flags&planner::InAcquisitionRange)||(probe.flags&planner::InWeaponRange))return false;
+  int padding=int(std::min(uint32_t(sh->advancedRangeCells),30u))*256;
+  if(mag){int64_t dx=int64_t(get<int>(unit+0x9C))-get<int>(target+0x9C),dy=int64_t(get<int>(unit+0xA0))-get<int>(target+0xA0);
+   if(!planner::magneticAcquisition(source,victim,dx*dx+dy*dy,padding)||planner::canTarget(source,victim,dx*dx+dy*dy,true))return false;
+  }else{auto probe=probeCombatPair(unit,target,source,victim,padding);
+   if(!(probe.flags&planner::InAcquisitionRange)||(probe.flags&planner::InWeaponRange))return false;
+  }
  }
  if(o.destinationTag==0x34){uint32_t destination=worldByID(o.destination);if(combat||o.mission!=7||!destination||!own(destination,house)||kind(destination)!=3)return false;}
  else if(o.destinationTag==11){if(o.mission!=2||!readMapCell(int(o.destination%1000),int(o.destination/1000)))return false;}

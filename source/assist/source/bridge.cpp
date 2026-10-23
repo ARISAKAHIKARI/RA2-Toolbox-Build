@@ -49,7 +49,7 @@ using namespace assist;
 // string literal. The host validates both protocol and structure size before
 // installing a hook; the release verifier can inspect these exports offline.
 extern "C" __declspec(dllexport) const uint32_t AssistProtocolInfo[2]={Version,sizeof(Shared)};
-extern "C" __declspec(dllexport) const wchar_t AssistMappingPrefix[]=L"Local\\RA2Assist_v063_";
+extern "C" __declspec(dllexport) const wchar_t AssistMappingPrefix[]=L"Local\\RA2Assist_v064_";
 static Shared*sh;static HANDLE mapping;static bool checked,good,fault;static DWORD last,slow;static uint32_t lastHouse,match,pendingAck;static int lastFrame;
 static sessionepoch::Tracker sessionTracker;static Snapshot snap;
 static runtimefault::Context faultContext;
@@ -779,7 +779,7 @@ static void command(uint32_t house,DWORD now){uint32_t req=sh->request;if(req==s
  }
  else if(c==OpenTech){
   // Enable paired sidebar eligibility gates before adding native cameos.
-  if(arg&&sh->arg2>1)result=-4;
+  if(arg&&sh->arg2>2)result=-4;
   else {techImplementation=arg?sh->arg2:0;snap.techOpen=arg?int(techImplementation)+1:0;memcpy(techAllowed,sh->techAllowed,sizeof techAllowed);snap.techError=0;if(snap.techOpen){requestTechRefresh();refreshTech(house,now);}else restoreTech();n=snap.techVisible;if(snap.techError<0)result=snap.techError;}}
  else if(c==SelectSuper){result=superSelect(house,arg);n=result>0;}
  else if(c==SelectIron||c==SelectChrono){result=namedSuper(house,c);n=result>0;}
@@ -939,6 +939,7 @@ static void tick(){
   }
   restoreFrameDriver();Shared* old=sh;reset();if(old->stop)old->stop=2;disconnect();return;
  }if(!checked){good=signatures();checked=true;}if(!good){if(sh->data.status!=-1){InterlockedIncrement(&sh->seq);sh->data.status=-1;sh->data.labels=0;MemoryBarrier();InterlockedIncrement(&sh->seq);}return;}
+ if(snap.techOpen&&!(sh->flags&UnsafeTech))restoreTech();
  DWORD period=sh->foreground?sh->scanMs:((sh->flags&(AdvancedInput|MagnetronInput|AutoOreReturn|AirWaypoints|AntiTheft))?64:500);if(period<2)period=2;if(period>1000)period=1000;
  // An active refresh adapter must also wake promptly to restore after its
  // setting is disabled or focus is lost, before returning to idle cadence.

@@ -9,11 +9,11 @@ def setup(mode=0,count=1):
  for y in range(18,44):
   for x in range(15,36):
    cell=m.alloc(0x200);m.u.mem_write(cell+0x24,struct.pack('<hh',x,y));m.w(m.cells+(y*512+x)*4,cell)
- m.units=[m.unit]+[m.obj(0x7f5c70,m.t,m.house,20+j) for j in range(count-1)];m.vector(0xa8ec78,m.units);m.vector(0xa8ecb8,m.units);s=state(m);s.formationPolicy.enabled=1;s.formationPolicy.hold=18;s.formationPolicy.keys[:]=[90,90,67,90];save(m,s);tick(m);m.codeWrites.clear();return m
+ m.units=[m.unit]+[m.obj(0x7f5c70,m.t,m.house,20+j) for j in range(count-1)];m.vector(0xa8ec78,m.units);m.vector(0xa8ecb8,m.units);s=state(m);s.formationPolicy.enabled=1;s.formationPolicy.mouse=2;s.formationPolicy.hold=18;s.formationPolicy.keys[:]=[90,90,67,90];save(m,s);tick(m);m.codeWrites.clear();return m
 
 def message(m,kind,key=0,repeat=False,x=100,y=100):
  lp=(1<<30) if repeat else 0
- if kind in (0x204,0x205,0x200):lp=x|(y<<16)
+ if kind in (0x201,0x202,0x204,0x205,0x200):lp=x|(y<<16)
  m.queryPoint=(x,y);m.queryCell=(20+(x-100)//30,30+(y-100)//30)
  m.u.mem_write(m.msg,struct.pack('<7I',1,kind,key,lp,m.clock,0,0));m.run(m.entry,(0,1,m.msg));return m.r(m.msg+4),state(m)
 for mode in (0,3):
@@ -82,4 +82,35 @@ for mode in (0,3):
    m.w(unit+0x9c,cell%1000*256+128);m.w(unit+0xa0,cell//1000*256+128)
   s=tick(m);assert s.formationJobs==0
   rows.append({'case':f'{mode}_drag16_manual_{manual}','status':'PASS'});print('PASS',mode,'16-unit drag and facing approach',manual,flush=True)
+# Configurable left/right drag, one native voice, and persistent per-member offsets.
+for mode in (0,3):
+ for button in (1,2):
+  for scenario in ('move','reordered_selection','deselect','replace_member','box_drag','native_reject','object_click'):
+   m=setup(mode,4);s=state(m);s.formationPolicy.mouse=button;save(m,s)
+   voices=[];m.vector(m.t+0x468,[71]);m.w(m.unit+0x4f0,0xffffffff);m.b(0x822cf2,1)
+   m.u.hook_add(UC_HOOK_CODE,lambda uc,at,size,_:m.ret(1,0),begin=0x50b6f0,end=0x50b6f0)
+   m.u.hook_add(UC_HOOK_CODE,lambda uc,at,size,_:m.ret(0,0),begin=0x65c780,end=0x65c780)
+   m.u.hook_add(UC_HOOK_CODE,lambda uc,at,size,_:voices.append(at),begin=0x708d90,end=0x708d90)
+   m.held_keys.add(18);message(m,0x104,18);down,up=(0x201,0x202) if button==1 else (0x204,0x205)
+   assert message(m,down)[0]==0;assert message(m,up)[0]==0
+   s=tick(m);assert count(m)==4 and len(voices)==1
+   initial={struct.unpack_from('<I',packets(m),j*111+7)[0]:struct.unpack_from('<I',packets(m),j*111+19)[0] for j in range(4)}
+   m.held_keys.clear();message(m,0x105,18)
+   if scenario=='reordered_selection':m.vector(0xa8ecb8,m.units[::-1])
+   if scenario=='deselect':m.vector(0xa8ecb8,[])
+   if scenario=='replace_member':m.vector(0xa8ecb8,m.units[:-1]+[m.enemyUnit])
+   # A plain native click is never swallowed; native execution is modeled.
+   assert message(m,0x201,x=190,y=160)[0]==0x201
+   if scenario=='box_drag':message(m,0x200,x=220,y=190)
+   if scenario=='object_click':m.queryObject=m.enemyUnit
+   assert message(m,0x202,x=190,y=160)[0]==0x202
+   cell=32023;mapCell=m.r(m.cells+(32*512+23)*4)
+   if scenario!='native_reject':
+    for p in m.units:m.w(p+0xac,2);m.w(p+0x5a4,mapCell)
+   s=tick(m);expected=scenario in ('move','reordered_selection');assert count(m)==(8 if expected else 4),(mode,button,scenario,count(m))
+   if expected:
+    final={struct.unpack_from('<I',packets(m),j*111+7)[0]:struct.unpack_from('<I',packets(m),j*111+19)[0] for j in range(4,8)}
+    assert all(final[id]-initial[id]==2003 for id in initial)
+   assert len(voices)==1,'automatic continuation must not replay voice'
+   assert not m.codeWrites;rows.append({'case':f'{mode}_{button}_{scenario}_persistent_formation_voice','status':'PASS'})
 Path(a.output).write_text(json.dumps({'scope':__doc__,'results':rows},indent=2)+'\n')

@@ -25,6 +25,7 @@ static uint32_t GetTickCount(){return clockNow;}
 static short GetAsyncKeyState(int n){return keys[n]?short(0x8000):0;}
 static bool commandFresh(uint32_t){return fresh;}static bool foregroundGame(){return focused;}
 static uint32_t commandMatch(){return 8;}static uint32_t flags(){return featureFlags;}
+namespace airway {bool held(const uint8_t*){return false;}}
 #include "../source/command_cursor_host.h"
 static constexpr uint32_t unit=0x20000,type=0x30000,house=0x40000,weapon=0x50000,projectile=0x60000,warhead=0x70000;
 void fixture(){
@@ -59,6 +60,18 @@ int main(){
  assert(read(pid+1,clockNow-101).mode==commandcursor::None);
  fixture();keys['G']=keys[17]=1;assert(mode()==CS);
  keys[18]=1;assert(mode()==commandcursor::None); // exact modifier matching
+ fixture();featureFlags=AdvancedEnter;extra.enterKey=18;keys[18]=1;
+ assert(mode()==commandcursor::None); // Flat ground never advertises entry.
+ const uint32_t carrier=0x90000,carrierType=0xA0000;zero(carrier,0x2000);zero(carrierType,0x2000);
+ put(0xA8EC78+4,0xB0000);put(0xA8EC78+8,1);put(0xA8EC78+16,1);put(0xB0000,carrier);
+ put(carrier,0x7f5c70);put(carrier+0x6c4,carrierType);put(carrier+0x6c,100);put<uint8_t>(carrier+0x74,1);put<uint8_t>(carrier+0x90,1);put<uint8_t>(carrier+0x431,1);put(carrier+0x21c,house);
+ put(carrierType+0x5e0,4);put<double>(carrierType+0x388,3.);put<double>(type+0x380,2.);
+ assert(mode()==Enter);put<uint8_t>(carrier+0x431,0);assert(mode()==commandcursor::None);put<uint8_t>(carrier+0x431,1);
+ put(carrier+0x21c,house+0x20000);put<int>(house+0x20000+0x30,1);assert(mode()==commandcursor::None);put(carrier+0x21c,house);
+ put(carrierType+0x5e0,1);assert(mode()==commandcursor::None);put(carrierType+0x5e0,4);
+ put(unit+0x11c,carrier);assert(mode()==commandcursor::None);put(unit+0x11c,0);
+ featureTypes.filters[featuretypes::EnterTarget].custom=1;assert(mode()==commandcursor::None);featureTypes={};
+ put(0xA8ECB8+16,0);assert(mode()==commandcursor::None);
  assert(ordinary(18)&&ordinary(71)&&!ordinary(30)&&!ordinary(79)&&!ordinary(1));
  for(auto m:{Advanced,AirFirst,AirSecond,CS,Magnetron,Enter,Disk}){
   assert(recolor(0,m,27,21,55,43)==0);assert(recolor(0xff000000,m,27,21,55,43)==0xff000000);

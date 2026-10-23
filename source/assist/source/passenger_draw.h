@@ -3,12 +3,10 @@ struct PassengerVisual {
  uint32_t id=0,color=0;int left=0,top=0,width=0,height=0,anchor=0;bool danger=false;std::vector<std::wstring> lines;
  bool operator==(const PassengerVisual&o)const{return id==o.id&&color==o.color&&left==o.left&&top==o.top&&width==o.width&&height==o.height&&anchor==o.anchor&&danger==o.danger&&lines==o.lines;}
 };
-static std::vector<PassengerVisual> passengerView(DWORD now){
- static DWORD last=0;static uint32_t match=0,options=0,process=0;static std::vector<PassengerVisual> cached;
- uint32_t currentOptions=uint32_t(extra.passengerBubbles)|(uint32_t(extra.dangerPassengers)<<1);
- std::vector<PassengerVisual> out;if(!enabled||!externalData||snap.chat||(!extra.passengerBubbles&&!extra.dangerPassengers)){cached.clear();last=0;return out;}
- if(last&&DWORD(now-last)<50&&match==uint32_t(snap.match)&&options==currentOptions&&process==pid)return cached;
- last=now;match=snap.match;options=currentOptions;process=pid;
+static std::vector<PassengerVisual> passengerView(){
+ // Called once per overlay paint, after the reader's per-paint page cache and
+ // camera are refreshed. Position and contents share the overlay's cadence.
+ std::vector<PassengerVisual> out;if(!enabled||!externalData||snap.chat||(!extra.passengerBubbles&&!extra.dangerPassengers))return out;
  external::Projection projection;projection.width=snap.width-160;projection.height=snap.height;projection.cameraX=snap.cameraX;projection.cameraY=snap.cameraY;
  projection.zScale=externalReader.get<double>(0xB0CD48,0.0866025403784);
  auto read=[](uint32_t at,void*p,size_t n){return externalReader.read(at,p,n);};
@@ -18,7 +16,7 @@ static std::vector<PassengerVisual> passengerView(DWORD now){
   size_t limit=size_t(std::max(2,std::min(10,(projection.height-48)/17)));if(v.lines.size()>limit){size_t remaining=v.lines.size()-limit+1;v.lines.resize(limit-1);v.lines.push_back(L"另有 "+std::to_wstring(remaining)+L" 类乘员");longest=std::max(longest,v.lines.back().size());}
   v.width=std::clamp(int(longest)*12+16,70,282);v.height=int(v.lines.size())*17+12;
   v.left=std::clamp(b.x-v.width/2,0,std::max(0,projection.width-v.width));v.top=std::max(0,b.y-26-v.height);v.anchor=std::clamp(b.x,v.left+8,v.left+v.width-8);out.push_back(std::move(v));
- }cached=out;return out;
+ }return out;
 }
 static void drawPassengerBubble(Graphics&g,const PassengerVisual&b){
  SolidBrush bg(Color(230,17,25,35)),ink(Color(b.color));Pen outline(Color(b.danger?255:210,b.danger?255:140,b.danger?190:170,b.danger?75:195),1.f);

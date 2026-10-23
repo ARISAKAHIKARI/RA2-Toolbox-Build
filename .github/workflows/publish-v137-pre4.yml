@@ -1,0 +1,62 @@
+name: Publish RA2 Toolbox v1.0.37-pre.4
+on:
+  push:
+    branches: [codex/fire-formation-v137-pre1]
+    paths:
+      - '.github/workflows/publish-v137-pre4.yml'
+      - 'source/tools/prepare_v137_pre3_release.py'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: publish-v137-pre4
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify update and prepare independent source package
+        run: python3 source/tools/prepare_v137_pre3_release.py
+      - name: Publish verified prerelease
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag='v1.0.37-pre.4'
+          if gh release view "$tag" --json isDraft,isPrerelease > release-state.json 2>/dev/null; then
+            draft=$(python3 -c 'import json; print(str(json.load(open("release-state.json"))["isDraft"]).lower())')
+          else
+            gh release create "$tag" --target "$GITHUB_SHA" --draft --prerelease --latest=false --title 'RA2 Toolbox v1.0.37-pre.4 — Attack Recovery, Formation Memory and Tracking Artwork' --notes-file packages/v1.0.37-pre.4/RELEASE_NOTES.md
+            draft=true
+          fi
+          if [ "$draft" = true ]; then
+            gh release upload "$tag" dist/v1.0.37-pre.4/RA2-Toolbox-v1.0.37-pre.4-Update.zip dist/v1.0.37-pre.4/RA2-Toolbox-v1.0.37-pre.4-Source.zip dist/v1.0.37-pre.4/release-manifest.json --clobber
+          fi
+          mkdir -p remote-check
+          gh release download "$tag" --pattern '*.zip' --pattern 'release-manifest.json' --dir remote-check
+          python3 - <<'PY'
+          import hashlib,json,pathlib
+          manifest=json.load(open('dist/v1.0.37-pre.4/release-manifest.json'))
+          for asset in manifest['assets']:
+              p=pathlib.Path('remote-check')/asset['name']
+              assert p.stat().st_size==asset['bytes']
+              assert hashlib.sha256(p.read_bytes()).hexdigest()==asset['sha256']
+          assert pathlib.Path('remote-check/release-manifest.json').read_bytes()==pathlib.Path('dist/v1.0.37-pre.4/release-manifest.json').read_bytes()
+          PY
+          if [ "$draft" = true ]; then
+            gh release edit "$tag" --draft=false --prerelease=true --latest=false
+          fi
+          gh release view "$tag" --json url,tagName,isDraft,isPrerelease,assets > published-release.json
+          python3 - <<'PY'
+          import json
+          r=json.load(open('published-release.json'))
+          assert not r['isDraft'] and r['isPrerelease']
+          assert {a['name'] for a in r['assets']}=={'RA2-Toolbox-v1.0.37-pre.4-Update.zip','RA2-Toolbox-v1.0.37-pre.4-Source.zip','release-manifest.json'}
+          PY
+          cat published-release.json >> "$GITHUB_STEP_SUMMARY"

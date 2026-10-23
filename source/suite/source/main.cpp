@@ -24,7 +24,7 @@ static unsigned consoleDpi=96;
 static std::wstring config;static int selected=2,closePhase=0;static bool closeAsked=false;
 static constexpr UINT PaneReady=WM_APP+60,EnabledChanged=WM_APP+61,CloseDecision=WM_APP+62;
 static HINSTANCE instance;static std::wstring args;
-static std::atomic<bool> statsShown{false};
+static std::atomic<bool> statsShown{false},hardwarePointer{false};
 static std::atomic<HWND> displayPanes[3]{};
 static std::atomic<unsigned> commonRefreshRate{0};
 static std::mutex displayMutex;static suite::DisplayState displayState;static bool displayReady=false;
@@ -48,6 +48,8 @@ namespace suite {
  void closeDecision(bool allow){PostMessageW(frame,CloseDecision,allow,0);}
  void setStatsVisible(bool value){statsShown.store(value);}
  bool statsVisible(){return statsShown.load();}
+ void publishHardwareCursor(bool active){hardwarePointer.store(active);}
+ bool hardwareCursorActive(){return hardwarePointer.load();}
  void publishDisplaySettings(const DisplayState& state){
   {std::lock_guard<std::mutex> lock(displayMutex);if(displayReady&&displayState==state)return;displayState=state;displayReady=true;}
   for(int i=0;i<2;++i)if(auto pane=displayPanes[i].load())PostMessageW(pane,DisplaySettingsChanged,0,0);

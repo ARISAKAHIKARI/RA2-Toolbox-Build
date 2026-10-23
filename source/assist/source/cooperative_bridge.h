@@ -135,7 +135,12 @@ uint32_t p=worldByID(o.id),t=worldByID(o.target);bool valid=p&&t&&own(p,house)&&
   int slots=0,mission=enter?7:1;
   if(valid&&enter){valid=featureObjectAllowed(featuretypes::EnterSource,p)&&featureObjectAllowed(featuretypes::EnterTarget,t)&&clickView.entryCompatible(p,t,house);auto c=clickView.capacity(t);slots=clickView.entrySlots(p,t);int reserved=entryReserved(t,o.id,house);
    valid=valid&&entryReservationCount<cooperative::MaxSources&&slots>0&&int64_t(c.used)+reserved+slots<=c.maximum;
-   if(valid){int action=call<int>(get<uint32_t>(get<uint32_t>(p)+0x74),p,t,true);bool bunker=kind(t)==3&&get<bool>(o.type+0x16AB);valid=action==3||action==11||(bunker&&action==1);if(bunker)mission=2;else if(action==11)mission=9;}
+   if(valid){int action=call<int>(get<uint32_t>(get<uint32_t>(p)+0x74),p,t,true);bool bunker=kind(t)==3&&get<bool>(o.type+0x16AB);valid=action==3||action==11||(bunker&&action==1);
+    // TankBunker hover returns Action::Move, but that is not the completed
+    // boarding mission. Native EnterTankBunker (4E0045..4E0067) sets the
+    // building destination, establishes radio and queues Mission::Enter=7.
+    // SetDestination in the received Enter event owns that same handshake.
+    if(!bunker&&action==11)mission=9;}
   }else if(valid){valid=airUnit(p)&&nativeEnemy(t,house);if(valid){planner::Actor source{},target{};rawCombatInfo(p,typeOf(p,kind(p)),kind(p),source,true);rawCombatInfo(t,o.type,kind(t),target,false);valid=planner::compatibleTarget(source,target,false);}}
   if(!valid)return -1;
 

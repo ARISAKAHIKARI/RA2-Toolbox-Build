@@ -16,6 +16,8 @@ void requestClose();
 void closeDecision(bool allow);
 void setStatsVisible(bool value);
 bool statsVisible();
+void publishHardwareCursor(bool active);
+bool hardwareCursorActive();
 // Cursor owns the common target, including automatic monitor-rate resolution.
 void publishRefreshRate(unsigned hz);
 unsigned refreshRate();

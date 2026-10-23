@@ -1,0 +1,308 @@
+{
+  "version": "1.0.37-pre.4",
+  "file_version": "1.0.37.3",
+  "protocol": 64,
+  "files": {
+    "RA2Toolbox.exe": {
+      "bytes": 2659840,
+      "sha256": "960f78d4c7ebd74de1e2a9233af815f357bfc24df779440a4636c18af64bb925"
+    },
+    "GameRuntime.dll": {
+      "bytes": 4849152,
+      "sha256": "21c308a5d89c87c110ddaf7d7d6bfabd3d1ec5a1637c82353fd5a268ad021acb"
+    }
+  },
+  "build": "PASS Zig i686 Windows build and PE32 ABI/dependencies/version/manifest checks",
+  "host_checks": [
+    {
+      "test": "magnetron",
+      "status": "PASS"
+    },
+    {
+      "test": "advanced_range",
+      "status": "PASS"
+    },
+    {
+      "test": "missile_compute",
+      "status": "PASS"
+    },
+    {
+      "test": "ore_priority",
+      "status": "PASS"
+    },
+    {
+      "test": "ore_regression",
+      "status": "PASS"
+    },
+    {
+      "test": "manual_ore",
+      "status": "PASS"
+    },
+    {
+      "test": "sidebar_shapes",
+      "status": "PASS"
+    },
+    {
+      "test": "formation",
+      "status": "PASS"
+    },
+    {
+      "test": "command_cursor_host",
+      "status": "PASS"
+    },
+    {
+      "test": "hook_registry_policy",
+      "status": "PASS"
+    },
+    {
+      "test": "experimental_patch_policy",
+      "status": "PASS"
+    },
+    {
+      "test": "round_transition",
+      "status": "PASS"
+    },
+    {
+      "test": "tab_control",
+      "status": "PASS"
+    },
+    {
+      "test": "game_assets",
+      "status": "PASS"
+    },
+    {
+      "test": "watch_view",
+      "status": "PASS"
+    },
+    {
+      "test": "voxel_preview",
+      "status": "PASS"
+    },
+    {
+      "test": "visual_pose",
+      "status": "PASS"
+    },
+    {
+      "test": "terrain_preview",
+      "status": "PASS"
+    },
+    {
+      "test": "review136",
+      "status": "PASS"
+    },
+    {
+      "test": "watch_host",
+      "status": "PASS"
+    },
+    {
+      "test": "formation_host",
+      "status": "PASS"
+    },
+    {
+      "test": "game_assets-sanitized",
+      "status": "PASS",
+      "sanitizers": "address,undefined; leak detector disabled for container"
+    },
+    {
+      "test": "watch_host-sanitized",
+      "status": "PASS",
+      "sanitizers": "address,undefined; leak detector disabled for container"
+    }
+  ],
+  "runtime_suites": [
+    {
+      "suite": "formation_runtime",
+      "sample": "zhanwang",
+      "exit": 0,
+      "dll_sha256": "21c308a5d89c87c110ddaf7d7d6bfabd3d1ec5a1637c82353fd5a268ad021acb",
+      "report": "formation_runtime-zhanwang.json",
+      "cases": 58
+    },
+    {
+      "suite": "formation_runtime",
+      "sample": "lbw",
+      "exit": 0,
+      "dll_sha256": "21c308a5d89c87c110ddaf7d7d6bfabd3d1ec5a1637c82353fd5a268ad021acb",
+      "report": "formation_runtime-lbw.json",
+      "cases": 58
+    },
+    {
+      "suite": "master_tech_runtime",
+      "sample": "zhanwang",
+      "exit": 0,
+      "dll_sha256": "21c308a5d89c87c110ddaf7d7d6bfabd3d1ec5a1637c82353fd5a268ad021acb",
+      "report": "master_tech_runtime-zhanwang.json",
+      "cases": 17
+    },
+    {
+      "suite": "master_tech_runtime",
+      "sample": "lbw",
+      "exit": 0,
+      "dll_sha256": "21c308a5d89c87c110ddaf7d7d6bfabd3d1ec5a1637c82353fd5a268ad021acb",
+      "report": "master_tech_runtime-lbw.json",
+      "cases": 17
+    },
+    {
+      "suite": "missile137_runtime",
+      "sample": "zhanwang",
+      "exit": 0,
+      "dll_sha256": "21c308a5d89c87c110ddaf7d7d6bfabd3d1ec5a1637c82353fd5a268ad021acb",
+      "report": "missile137_runtime-zhanwang.json",
+      "cases": 56
+    },
+    {
+      "suite": "missile137_runtime",
+      "sample": "lbw",
+      "exit": 0,
+      "dll_sha256": "21c308a5d89c87c110ddaf7d7d6bfabd3d1ec5a1637c82353fd5a268ad021acb",
+      "report": "missile137_runtime-lbw.json",
+      "cases": 56
+    },
+    {
+      "suite": "native_attack_click_probe",
+      "sample": "zhanwang",
+      "exit": 0,
+      "dll_sha256": "21c308a5d89c87c110ddaf7d7d6bfabd3d1ec5a1637c82353fd5a268ad021acb",
+      "report": "native_attack_click_probe-zhanwang.json",
+      "cases": 3
+    },
+    {
+      "suite": "native_attack_click_probe",
+      "sample": "lbw",
+      "exit": 0,
+      "dll_sha256": "21c308a5d89c87c110ddaf7d7d6bfabd3d1ec5a1637c82353fd5a268ad021acb",
+      "report": "native_attack_click_probe-lbw.json",
+      "cases": 3
+    },
+    {
+      "suite": "ore_priority_runtime",
+      "sample": "zhanwang",
+      "exit": 0,
+      "dll_sha256": "21c308a5d89c87c110ddaf7d7d6bfabd3d1ec5a1637c82353fd5a268ad021acb",
+      "report": "ore_priority_runtime-zhanwang.json",
+      "cases": 30
+    },
+    {
+      "suite": "ore_priority_runtime",
+      "sample": "lbw",
+      "exit": 0,
+      "dll_sha256": "21c308a5d89c87c110ddaf7d7d6bfabd3d1ec5a1637c82353fd5a268ad021acb",
+      "report": "ore_priority_runtime-lbw.json",
+      "cases": 30
+    },
+    {
+      "suite": "magnetron137_runtime",
+      "sample": "zhanwang",
+      "exit": 0,
+      "dll_sha256": "21c308a5d89c87c110ddaf7d7d6bfabd3d1ec5a1637c82353fd5a268ad021acb",
+      "report": "magnetron137_runtime-zhanwang.json",
+      "cases": 50
+    },
+    {
+      "suite": "magnetron137_runtime",
+      "sample": "lbw",
+      "exit": 0,
+      "dll_sha256": "21c308a5d89c87c110ddaf7d7d6bfabd3d1ec5a1637c82353fd5a268ad021acb",
+      "report": "magnetron137_runtime-lbw.json",
+      "cases": 50
+    },
+    {
+      "suite": "advanced_range_runtime",
+      "sample": "zhanwang",
+      "exit": 0,
+      "dll_sha256": "21c308a5d89c87c110ddaf7d7d6bfabd3d1ec5a1637c82353fd5a268ad021acb",
+      "report": "advanced_range_runtime-zhanwang.json",
+      "cases": 106
+    },
+    {
+      "suite": "advanced_range_runtime",
+      "sample": "lbw",
+      "exit": 0,
+      "dll_sha256": "21c308a5d89c87c110ddaf7d7d6bfabd3d1ec5a1637c82353fd5a268ad021acb",
+      "report": "advanced_range_runtime-lbw.json",
+      "cases": 106
+    },
+    {
+      "suite": "tank_bunker_runtime",
+      "sample": "zhanwang",
+      "exit": 0,
+      "dll_sha256": "21c308a5d89c87c110ddaf7d7d6bfabd3d1ec5a1637c82353fd5a268ad021acb",
+      "report": "tank_bunker_runtime-zhanwang.json",
+      "cases": 21
+    },
+    {
+      "suite": "tank_bunker_runtime",
+      "sample": "lbw",
+      "exit": 0,
+      "dll_sha256": "21c308a5d89c87c110ddaf7d7d6bfabd3d1ec5a1637c82353fd5a268ad021acb",
+      "report": "tank_bunker_runtime-lbw.json",
+      "cases": 21
+    },
+    {
+      "suite": "tech_compat_runtime",
+      "sample": "zhanwang",
+      "exit": 0,
+      "dll_sha256": "21c308a5d89c87c110ddaf7d7d6bfabd3d1ec5a1637c82353fd5a268ad021acb",
+      "report": "tech_compat_runtime-zhanwang.json",
+      "cases": 15
+    },
+    {
+      "suite": "tech_compat_runtime",
+      "sample": "lbw",
+      "exit": 0,
+      "dll_sha256": "21c308a5d89c87c110ddaf7d7d6bfabd3d1ec5a1637c82353fd5a268ad021acb",
+      "report": "tech_compat_runtime-lbw.json",
+      "cases": 15
+    },
+    {
+      "suite": "player_tech_runtime",
+      "sample": "zhanwang",
+      "exit": 0,
+      "dll_sha256": "21c308a5d89c87c110ddaf7d7d6bfabd3d1ec5a1637c82353fd5a268ad021acb",
+      "report": "player_tech_runtime-zhanwang.json",
+      "cases": 56
+    },
+    {
+      "suite": "player_tech_runtime",
+      "sample": "lbw",
+      "exit": 0,
+      "dll_sha256": "21c308a5d89c87c110ddaf7d7d6bfabd3d1ec5a1637c82353fd5a268ad021acb",
+      "report": "player_tech_runtime-lbw.json",
+      "cases": 56
+    },
+    {
+      "suite": "visual_pose_runtime",
+      "sample": "zhanwang",
+      "exit": 0,
+      "dll_sha256": "21c308a5d89c87c110ddaf7d7d6bfabd3d1ec5a1637c82353fd5a268ad021acb",
+      "report": "visual_pose_runtime-zhanwang.json",
+      "cases": 56
+    },
+    {
+      "suite": "visual_pose_runtime",
+      "sample": "lbw",
+      "exit": 0,
+      "dll_sha256": "21c308a5d89c87c110ddaf7d7d6bfabd3d1ec5a1637c82353fd5a268ad021acb",
+      "report": "visual_pose_runtime-lbw.json",
+      "cases": 56
+    }
+  ],
+  "runtime_cases": 936,
+  "other_checks": [
+    "architecture boundaries PASS",
+    "auto settings UI contract PASS",
+    "git diff --check PASS"
+  ],
+  "excluded_legacy_snapshots": [
+    "no_interception_source_contract.py: obsolete all-patches-denied/protocol42 assumptions",
+    "mega_queue_contract.py: obsolete protocol42 assertion"
+  ],
+  "limitations": [
+    "No new live Windows rendering, audio-device or two-peer test.",
+    "Native execution uses constructed worlds, Win32 stubs and declared virtual-boundary substitutes.",
+    "MIX/TMP/SHP/VXL tests use synthetic assets; game-directory assets and all MOD visual variants still require real-game confirmation.",
+    "Game-file art falls back to already loaded memory; encrypted MIX needs a decoded live index.",
+    "No complete projectile-in-flight damage ledger.",
+    "Ordinary left-click takeover race reproduced with global magnetron enabled; other freezing causes remain possible."
+  ]
+}

@@ -366,10 +366,23 @@ static bool installRiskSite(RiskSite&s){
  if(codeHookRegistry.active(s.address)){if(riskSiteCurrent(s))return !codeHookRegistry.conflict(s.address);codeHookRegistry.markConflict(s.address);return false;}
  return gameentry::patch(gameentry::Client::Assist,s.address,s.before,s.after,s.size);
 }
+#include "master_tech_bridge.h"
 static bool setTechSites(bool enabled){
- prepareRiskSites();riskTechActive=false;
- if(enabled){riskTechActive=installRiskSite(riskSites[6])&&installRiskSite(riskSites[7]);if(riskTechActive)return true;}
- bool a=restoreRiskSite(riskSites[6]),b=restoreRiskSite(riskSites[7]);return !enabled&&a&&b;
+ prepareRiskSites();prepareMasterTech();riskTechActive=false;
+ if(enabled&&techImplementation==2){
+  // The old call gates and master prune have adjacent ABI dependencies.
+  // Restore the old pair before preflighting the complete new group.
+  bool a=restoreRiskSite(riskSites[6]),b=restoreRiskSite(riskSites[7]);bool ok=a&&b;
+  for(auto&s:masterTechSites){uint8_t bytes[16]{};bool active=codeHookRegistry.active(s.address);
+   if(!patchcontext::compatible(s.address,[](uint32_t p,void*out,size_t n){return read(p,out,n);})||codeHookRegistry.conflict(s.address)||!read(s.address,bytes,s.size)||memcmp(bytes,active?s.after:s.before,s.size))ok=false;
+  }
+  if(ok)for(auto&s:masterTechSites)if(!installRiskSite(s)){ok=false;break;}
+  if(ok){riskTechActive=true;return true;}
+  restoreMasterTech();return false;
+ }
+ bool masterOff=restoreMasterTech();
+ if(enabled&&masterOff){riskTechActive=installRiskSite(riskSites[6])&&installRiskSite(riskSites[7]);if(riskTechActive)return true;}
+ bool a=restoreRiskSite(riskSites[6]),b=restoreRiskSite(riskSites[7]);return !enabled&&masterOff&&a&&b;
 }
 // Preserve both owner-index paths before enabling the common predicate.
 // 0x637E40 is a verified CALL boundary. Never write the sample's 0x6378E0.

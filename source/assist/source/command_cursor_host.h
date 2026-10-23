@@ -1,4 +1,4 @@
-// A mode preview, not a promise that the hovered target accepts an order.
+// Enter is shown only for a compatible hovered destination with free capacity.
 // It uses the same key resolver, feature switches and type filters as clicks.
 static void serviceCommandCursorHint(){
  using namespace commandcursor;
@@ -35,7 +35,14 @@ static void serviceCommandCursorHint(){
  // Native placement and native UI modes always retain their own cursor.
  uint8_t tools[5]{};
  if(house<0x10000||frame<0||!read(0x87F7E8+0x11B0,tools,sizeof tools)||tools[0]||tools[1]||tools[2]||tools[3]||tools[4]){clear();return;}
- uint32_t eligible=0;
+ uint32_t eligible=0,enterTarget=0;
+ if(allowed&pointerinput::Enter)for(uint32_t q:view.vec(0xA8EC78)){
+  if(!view.live(q)||!view.template get<uint8_t>(q+0x431))continue;
+  uint32_t qt=view.type(q,view.kind(q));char id[24]{};
+  if(!qt||!read(qt+0x24,id,23)||!featuretypes::allowed(featureTypes,featuretypes::EnterTarget,id))continue;
+  auto capacity=view.capacity(q);if(capacity.maximum>capacity.used){enterTarget=q;break;}
+ }
+
  for(uint32_t p:view.vec(0xA8ECB8,pointerinput::MaxSources)){
   if(!view.live(p)||view.template get<uint32_t>(p+0x21C)!=house||view.template get<uint8_t>(p+0x1C8)||view.template get<uint32_t>(p+0x11C))continue;
   int k=view.kind(p);uint32_t t=view.type(p,k);char id[24]{};
@@ -52,7 +59,7 @@ static void serviceCommandCursorHint(){
   if(armed&&accepts(featuretypes::AdvancedAttack))eligible|=pointerinput::Advanced;
   if(armed)eligible|=pointerinput::CS;
   if(armed&&accepts(featuretypes::Magnetron)&&((combat.weapons[0].flags|combat.weapons[1].flags)&planner::LocomotorWeapon))eligible|=pointerinput::Magnetron;
-  if(accepts(featuretypes::EnterSource))eligible|=pointerinput::Enter;
+  if(enterTarget&&accepts(featuretypes::EnterSource)&&view.entryCompatible(p,enterTarget,house)){auto c=view.capacity(enterTarget);if(view.entrySlots(p,enterTarget)<=c.maximum-c.used)eligible|=pointerinput::Enter;}
   if(k==2&&accepts(featuretypes::Disk)&&oreconfig::equal(id,"DISK"))eligible|=256;
   if((eligible&allowed)==allowed)break;
  }

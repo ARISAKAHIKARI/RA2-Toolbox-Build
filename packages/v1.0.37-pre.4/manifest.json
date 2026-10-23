@@ -1,0 +1,32 @@
+{
+  "version": "1.0.37-pre.4",
+  "file_version": "1.0.37.3",
+  "base_commit": "2a33d012c85cf3eb904b50e24040da2a08e3d39b",
+  "assets": [
+    {
+      "name": "RA2-Toolbox-v1.0.37-pre.4-Update.zip",
+      "bytes": 1360571,
+      "sha256": "7e2a2e75f45e232ba6097a7bda6bcbfbc14abc760c4f4fdffbbe649df42e61f3",
+      "files": {
+        "RA2Toolbox.exe": {
+          "bytes": 2659840,
+          "sha256": "960f78d4c7ebd74de1e2a9233af815f357bfc24df779440a4636c18af64bb925"
+        },
+        "GameRuntime.dll": {
+          "bytes": 4849152,
+          "sha256": "21c308a5d89c87c110ddaf7d7d6bfabd3d1ec5a1637c82353fd5a268ad021acb"
+        },
+        "README-Windows.txt": {
+          "bytes": 509,
+          "sha256": "c06449e46d63fa7b38c8807cb8b5d60614ee7f09f602caad5d82835daadc5601"
+        },
+        "RELEASE_NOTES.md": {
+          "bytes": 1716,
+          "sha256": "8da3efa5c9d2c5dcba4e32f21595f891657c3e6b68bc9de0615590b03b13c817"
+        }
+      }
+    }
+  ],
+  "validation": "source/verification/review-137-pre4/summary.json",
+  "installation": "Update for existing RA2 Toolbox installation. Preserve configuration, cursor resources and offline compute environment. Not a complete first-install package."
+}

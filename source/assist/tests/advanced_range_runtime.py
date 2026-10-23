@@ -16,7 +16,8 @@ def setup(mode,inside,case):
  m=n.fixture(mode,8192|1024);s=n.state(m);s.computeApplied=1985 if inside else 1984;s.advancedScanHz=10;n.save(m,s)
  m.w(m.enemy+0x34,m.alloc());m.b(m.unit+0x14,7);m.w(m.unit+0x9c,10000);m.w(m.unit+0xa0,10000);m.w(m.unit+0xac,2);m.w(m.unit+0x5a4,m.crateCell)
  air=case in ('flak_air','gatt_air','air_bonus','air_high','negative_bonus')
- targetT=m.alloc();q=m.obj(0x7e22a4 if air else 0x7f5c70,targetT,m.enemy,40);m.b(q+0x14,7);m.b(q+0x134,air);m.w(q+0x9c,10000+7*256);m.w(q+0xa0,10000);m.w(q+0xa4,2*256 if air else 0)
+ building=case.startswith('mag_building')
+ targetT=m.alloc();q=m.obj(0x7e3ebc if building else 0x7e22a4 if air else 0x7f5c70,targetT,m.enemy,40);m.b(q+0x14,7);m.b(q+0x134,air);m.w(q+0x9c,10000+7*256);m.w(q+0xa0,10000);m.w(q+0xa4,2*256 if air else 0)
  def weapon(slot,range_,aa=True,ag=True,elite=False):
   w=m.alloc();proj=m.alloc();wh=m.alloc();m.w(w+0xb4,int(range_*256));m.w(w+0xa4,40);m.w(w+0xa0,proj);m.w(w+0xac,wh);m.b(proj+0x2a4,aa);m.b(proj+0x2a5,ag);m.u.mem_write(wh+0xa0,struct.pack('<11d',*([1.0]*11)));m.w(m.t+(0xa94 if elite else 0x898)+slot*28,w);return w
  weapon(0,6);actual=weapon(4,8);expected=4;m.w(m.t+0x808,15);m.w(m.t+0x80c,15);m.w(m.unit+0x138,4)
@@ -27,6 +28,15 @@ def setup(mode,inside,case):
  if case in ('air_bonus','air_high'):actual=weapon(4,6);m.w(m.t+0x68c,4*256);m.w(q+0x9c,10000+8*256);m.w(q+0xa4,(8 if case=='air_high' else 3)*256)
  if case=='negative_bonus':m.w(m.t+0x68c,-3*256);m.w(q+0x9c,10000+6*256);m.w(q+0xa4,0)
  if case=='minimum':m.w(actual+0xb8,4*256);m.w(q+0x9c,10000+2*256);m.w(m.unit+0xac,5);m.w(m.unit+0x5a4,0)
+ if case.startswith('mag_'):
+  # Run the actual native two-weapon selection. Deliberately distinct ranges
+  # catch borrowing primary range/minimum for the building weapon or vice versa.
+  m.w(m.t+0x808,0);m.w(m.t+0x80c,0);m.w(m.unit+0x138,0)
+  primary=weapon(0,12,False);secondary=weapon(1,12 if case.endswith('wide') else 6,False)
+  m.b(primary+0x15c,1);m.b(m.r(primary+0xac)+0x15b,1);m.w(primary+0xb8,3*256);m.w(secondary+0xb8,256)
+  actual=secondary if building else primary;expected=int(building)
+  distance=(7 if building else 13)*256 if case.endswith('out') else (128 if building else 2*256) if case.endswith('minimum') else 9*256 if case.endswith('wide') else (5 if building else 7)*256
+  m.w(q+0x9c,10000+distance);m.w(m.unit+0xac,5);m.w(m.unit+0x5a4,0)
  if case=='target_enters' or case.startswith('ifv_out_'):m.w(q+0x9c,10000+9*256)
  if case.startswith('ifv_out_'):
   slot=int(case.rsplit('_',1)[1]);actual=weapon(slot,8);expected=slot;m.w(m.unit+0x138,slot);m.w(m.unit+0xac,1);m.w(m.unit+0x2b4,q);m.w(m.unit+0x5a4,0)
@@ -43,8 +53,9 @@ def setup(mode,inside,case):
  def self():return m.u.reg_read(UC_X86_REG_ECX)
  def arg(i=0):return m.r(m.u.reg_read(UC_X86_REG_ESP)+4+4*i)
  def coords():out=arg();m.u.mem_write(out,bytes(m.u.mem_read(self()+0x9c,12)));m.ret(out,1)
- for table in (0x7f5c70,0x7e22a4):
-  add(m.r(table+0x48),coords);add(m.r(table+0x54),lambda:m.ret(int(m.r(self()+0x134)&255!=0),0));add(m.r(table+0x50),lambda:m.ret(0,0));add(m.r(table+0x84),lambda:m.ret(m.r(self()+0x6c4),0));add(m.r(table+0x2c),lambda:m.ret(2 if m.r(self())==0x7e22a4 else 1,0));add(m.r(table+0x400),lambda:m.ret(0,0));add(m.r(table+0x1bc),lambda:m.ret(m.crateCell,0))
+ for table in (0x7f5c70,0x7e22a4,0x7e3ebc):
+  add(m.r(table+0x48),coords);add(m.r(table+0x54),lambda:m.ret(int(m.r(self()+0x134)&255!=0),0));add(m.r(table+0x50),lambda:m.ret(0,0));add(m.r(table+0x84),lambda:m.ret(m.r(self()+(0x520 if m.r(self())==0x7e3ebc else 0x6c4)),0));add(m.r(table+0x2c),lambda:m.ret(6 if m.r(self())==0x7e3ebc else 2 if m.r(self())==0x7e22a4 else 1,0));add(m.r(table+0x400),lambda:m.ret(0,0));add(m.r(table+0x1bc),lambda:m.ret(m.crateCell,0))
+ add(0x45eca0,lambda:m.ret(0,1));add(0x45ec90,lambda:m.ret(0,0))
  add(0x565730,lambda:m.ret(m.crateCell,1));add(0x4cc310,lambda:m.ret(0,2));m.w(m.crateCell+0xec,0)
  m.hits={k:0 for k in ('select','weapon','range')}
  for at,k in [(0x746cd0,'select'),(0x70e140,'weapon'),(0x6f7220,'range')]:
@@ -80,12 +91,14 @@ def case(mode,inside,name):
  if name in ('weapon_changed','stale','target_moved','disabled'):
   assert n.count(m)==0,(name,n.count(m));return
  assert n.count(m)==1,(name,n.count(m),s.world.combatCount,s.world.actors[0].combatFirst,s.data.lastSubmitError)
- packet=n.packets(m)[:111];expect_attack=name not in ('air_high','negative_bonus') and not name.startswith('ifv_out_')
+ packet=n.packets(m)[:111];expect_attack=name not in ('air_high','negative_bonus') and not name.startswith('ifv_out_') and not (name.startswith('mag_') and name.endswith('out'))
  assert packet[12]==(1 if expect_attack else 2),(name,packet[12],[(x.target,x.flags,x.slot) for x in s.world.combat[:s.world.combatCount]])
  if expect_attack:
   assert packet[14:19]==struct.pack('<IB',40,0x34) and packet[19:24]==bytes(5)
-  probe=next(x for x in s.world.combat[:s.world.combatCount] if x.target==40);assert probe.slot==m.expectedSlot and probe.flags&(8 if name=='minimum' else 1),(name,probe.slot)
- else:assert packet[14:19]==bytes(5)
+  probe=next(x for x in s.world.combat[:s.world.combatCount] if x.target==40);assert probe.slot==m.expectedSlot and probe.flags&(8 if name.endswith('minimum') else 1),(name,probe.slot)
+ else:
+  assert packet[14:19]==bytes(5)
+  if name.startswith('mag_'):assert next(x for x in s.world.combat[:s.world.combatCount] if x.target==40).slot==m.expectedSlot
  assert all(m.hits.values()),m.hits
  assert before==bytes(m.u.mem_read(m.unit,0x800)) and not m.codeWrites,'sender must not mutate simulation objects/code'
  # Execute the native event receiver's actual SetTarget / SetDestination block.
@@ -104,6 +117,35 @@ def case(mode,inside,name):
   assert targetCalls==[m.target] and destCalls==[0],(targetCalls,destCalls)
 for mode in (0,3):
  for inside in (True,False):
-  for name in ('ifv_7','ifv_elite','flak_air','gatt_air','air_bonus','air_high','negative_bonus','minimum','close_priority','ifv_out_0','ifv_out_1','ifv_out_4','ifv_out_7','ifv_out_14'):check(f'{mode}_{inside}_{name}',lambda m=mode,i=inside,nm=name:case(m,i,nm))
+  for name in ('ifv_7','ifv_elite','flak_air','gatt_air','air_bonus','air_high','negative_bonus','minimum','close_priority','ifv_out_0','ifv_out_1','ifv_out_4','ifv_out_7','ifv_out_14','mag_vehicle_inside','mag_vehicle_out','mag_vehicle_minimum','mag_building_inside','mag_building_out','mag_building_minimum','mag_building_wide'):check(f'{mode}_{inside}_{name}',lambda m=mode,i=inside,nm=name:case(m,i,nm))
  for name in ('weapon_changed','stale','target_moved','disabled','target_enters'):check(f'{mode}_external_{name}',lambda m=mode,nm=name:case(m,False,nm))
+for mode in (0,3):
+ for inside in (True,False):
+  for variant in ('minimum','mag_vehicle_minimum','mag_building_minimum'):
+   def minimum_pursuit(mode=mode,inside=inside,variant=variant):
+    m=setup(mode,inside,variant)
+    for y in range(35,43):
+     for x in range(32,44):
+      cell=m.alloc(0x200);m.u.mem_write(cell+0x24,struct.pack('<hh',x,y));m.w(m.cells+(y*512+x)*4,cell)
+    h=subprocess.Popen([str(host)],stdin=subprocess.PIPE,stdout=subprocess.PIPE) if not inside else None
+    try:
+     n.pointer(m,2,1)
+     if h:external(m,h);n.tick(m)
+     assert n.count(m)==1 and n.packets(m)[12]==1
+     m.w(m.unit+0xac,1);m.w(m.unit+0x2b4,m.target)
+     for _ in range(26):
+      if h:external(m,h,1)
+      n.tick(m)
+     assert n.count(m)==2 and n.packets(m)[111+12]==2,(n.count(m),inside)
+     cell=struct.unpack_from('<I',n.packets(m),111+19)[0];assert cell%1000<10000//256
+     m.w(m.unit+0xac,2);m.w(m.unit+0x5a4,m.r(m.cells+(cell//1000*512+cell%1000)*4))
+     m.w(m.target+0x9c,10000+5*256)
+     for _ in range(3):
+      if h:external(m,h,1)
+      n.tick(m)
+     assert n.count(m)==3 and n.packets(m)[222+12]==1
+     assert not m.codeWrites
+    finally:
+     if h:h.terminate();h.wait()
+   check(f'{mode}_{inside}_{variant}_stall_move_reenter',minimum_pursuit)
 Path(a.output).write_text(json.dumps({'scope':__doc__,'dll_sha256':hashlib.sha256(Path(a.dll).read_bytes()).hexdigest(),'results':rows},indent=2)+'\n');raise SystemExit(any(x['status']!='PASS' for x in rows))

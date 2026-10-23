@@ -1,0 +1,2 @@
+PASS: manual Move/Attack/Stop priority, no empty/full or toggle resume, fresh mining hand-back, in-flight input lag and tool waiting Move distinction
+PASS: paused-miner dense list, swap removal, repeated pointer replacement, non-miner exclusion and live-ID compaction preserve tokens and hand-back stage

@@ -1,0 +1,237 @@
+{
+  "scope": "Actual x86 DLL and original event constructors; mocked Win32/world/query.\nThe Sell receiver branch is executed from the supplied EXE with resolved-object,\nmap lookup and final virtual sale mocked. This is not real network validation.\n",
+  "results": [
+    {
+      "case": "0_click",
+      "status": "PASS"
+    },
+    {
+      "case": "0_cycle",
+      "status": "PASS"
+    },
+    {
+      "case": "0_escape",
+      "status": "PASS"
+    },
+    {
+      "case": "0_chat",
+      "status": "PASS"
+    },
+    {
+      "case": "0_focus",
+      "status": "PASS"
+    },
+    {
+      "case": "0_disabled",
+      "status": "PASS"
+    },
+    {
+      "case": "0_duplicate_up",
+      "status": "PASS"
+    },
+    {
+      "case": "0_double_alt",
+      "status": "PASS"
+    },
+    {
+      "case": "0_custom_double_alt",
+      "status": "PASS"
+    },
+    {
+      "case": "0_policy_in_flight",
+      "status": "PASS"
+    },
+    {
+      "case": "0_advanced_frame",
+      "status": "PASS"
+    },
+    {
+      "case": "3_click",
+      "status": "PASS"
+    },
+    {
+      "case": "3_cycle",
+      "status": "PASS"
+    },
+    {
+      "case": "3_escape",
+      "status": "PASS"
+    },
+    {
+      "case": "3_chat",
+      "status": "PASS"
+    },
+    {
+      "case": "3_focus",
+      "status": "PASS"
+    },
+    {
+      "case": "3_disabled",
+      "status": "PASS"
+    },
+    {
+      "case": "3_duplicate_up",
+      "status": "PASS"
+    },
+    {
+      "case": "3_double_alt",
+      "status": "PASS"
+    },
+    {
+      "case": "3_custom_double_alt",
+      "status": "PASS"
+    },
+    {
+      "case": "3_policy_in_flight",
+      "status": "PASS"
+    },
+    {
+      "case": "3_advanced_frame",
+      "status": "PASS"
+    },
+    {
+      "case": "0_configured_double_hold_shape",
+      "status": "PASS"
+    },
+    {
+      "case": "3_configured_double_hold_shape",
+      "status": "PASS"
+    },
+    {
+      "case": "0_subcell_drag_direction",
+      "status": "PASS"
+    },
+    {
+      "case": "3_subcell_drag_direction",
+      "status": "PASS"
+    },
+    {
+      "case": "0_drag16_manual_False",
+      "status": "PASS"
+    },
+    {
+      "case": "0_drag16_manual_True",
+      "status": "PASS"
+    },
+    {
+      "case": "3_drag16_manual_False",
+      "status": "PASS"
+    },
+    {
+      "case": "3_drag16_manual_True",
+      "status": "PASS"
+    },
+    {
+      "case": "0_1_move_persistent_formation_voice",
+      "status": "PASS"
+    },
+    {
+      "case": "0_1_reordered_selection_persistent_formation_voice",
+      "status": "PASS"
+    },
+    {
+      "case": "0_1_deselect_persistent_formation_voice",
+      "status": "PASS"
+    },
+    {
+      "case": "0_1_replace_member_persistent_formation_voice",
+      "status": "PASS"
+    },
+    {
+      "case": "0_1_box_drag_persistent_formation_voice",
+      "status": "PASS"
+    },
+    {
+      "case": "0_1_native_reject_persistent_formation_voice",
+      "status": "PASS"
+    },
+    {
+      "case": "0_1_object_click_persistent_formation_voice",
+      "status": "PASS"
+    },
+    {
+      "case": "0_2_move_persistent_formation_voice",
+      "status": "PASS"
+    },
+    {
+      "case": "0_2_reordered_selection_persistent_formation_voice",
+      "status": "PASS"
+    },
+    {
+      "case": "0_2_deselect_persistent_formation_voice",
+      "status": "PASS"
+    },
+    {
+      "case": "0_2_replace_member_persistent_formation_voice",
+      "status": "PASS"
+    },
+    {
+      "case": "0_2_box_drag_persistent_formation_voice",
+      "status": "PASS"
+    },
+    {
+      "case": "0_2_native_reject_persistent_formation_voice",
+      "status": "PASS"
+    },
+    {
+      "case": "0_2_object_click_persistent_formation_voice",
+      "status": "PASS"
+    },
+    {
+      "case": "3_1_move_persistent_formation_voice",
+      "status": "PASS"
+    },
+    {
+      "case": "3_1_reordered_selection_persistent_formation_voice",
+      "status": "PASS"
+    },
+    {
+      "case": "3_1_deselect_persistent_formation_voice",
+      "status": "PASS"
+    },
+    {
+      "case": "3_1_replace_member_persistent_formation_voice",
+      "status": "PASS"
+    },
+    {
+      "case": "3_1_box_drag_persistent_formation_voice",
+      "status": "PASS"
+    },
+    {
+      "case": "3_1_native_reject_persistent_formation_voice",
+      "status": "PASS"
+    },
+    {
+      "case": "3_1_object_click_persistent_formation_voice",
+      "status": "PASS"
+    },
+    {
+      "case": "3_2_move_persistent_formation_voice",
+      "status": "PASS"
+    },
+    {
+      "case": "3_2_reordered_selection_persistent_formation_voice",
+      "status": "PASS"
+    },
+    {
+      "case": "3_2_deselect_persistent_formation_voice",
+      "status": "PASS"
+    },
+    {
+      "case": "3_2_replace_member_persistent_formation_voice",
+      "status": "PASS"
+    },
+    {
+      "case": "3_2_box_drag_persistent_formation_voice",
+      "status": "PASS"
+    },
+    {
+      "case": "3_2_native_reject_persistent_formation_voice",
+      "status": "PASS"
+    },
+    {
+      "case": "3_2_object_click_persistent_formation_voice",
+      "status": "PASS"
+    }
+  ]
+}

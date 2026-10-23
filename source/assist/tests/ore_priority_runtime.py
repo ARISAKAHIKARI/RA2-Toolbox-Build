@@ -63,9 +63,11 @@ with tempfile.TemporaryDirectory(prefix='ore-host-') as temp:
  cpp=Path(temp)/'host.cpp';exe=Path(temp)/'host'
  cpp.write_text('#include "'+str(root/'assist/source/external_planner.h')+'"\n#include <cstdio>\n#include <memory>\nint main(){using namespace assist;using namespace planner;Planner p;auto w=std::make_unique<World>();uint32_t kind;while(fread(&kind,4,1,stdin)==1){if(kind==0){if(fread(w.get(),sizeof(World),1,stdin)!=1)return 2;auto out=p.step(*w,AutoOreReturn,200,300,90);uint32_t n=out.size();fwrite(&n,4,1,stdout);fwrite(out.data(),sizeof(Order),n,stdout);fflush(stdout);}else{uint32_t n;int frame;if(fread(&frame,4,1,stdin)!=1||fread(&n,4,1,stdin)!=1)return 3;for(uint32_t i=0;i<n;++i){Order o;if(fread(&o,sizeof o,1,stdin)!=1)return 4;p.accepted(o,frame);}}}}')
  subprocess.run(['g++','-O2','-std=c++17',str(cpp),'-o',str(exe)],check=True)
- for mode in (0,3):
-  def pipeline(mode=mode):
-   m,s=fixture(mode);radio(m,[]);s=tick(m)
+ for mode,partial in ((0,False),(3,False),(0,True),(3,True)):
+  def pipeline(mode=mode,partial=partial):
+   m,s=fixture(mode);radio(m,[])
+   if partial:m.u.mem_write(m.unit+0x33c,struct.pack("<4f",7,0,0,0));m.w(m.unit+0xac,12)
+   s=tick(m)
    with subprocess.Popen([str(exe)],stdin=subprocess.PIPE,stdout=subprocess.PIPE) as host:
     def plan(s):
      host.stdin.write(struct.pack('<I',0)+bytes(s.world));host.stdin.flush();n=struct.unpack('<I',host.stdout.read(4))[0];return [m.Order.from_buffer_copy(host.stdout.read(C.sizeof(m.Order))) for i in range(n)]
@@ -86,5 +88,5 @@ with tempfile.TemporaryDirectory(prefix='ore-host-') as temp:
     for f in range(10):assert not enters(plan(tick(m)))
     m.u.mem_write(m.miners[1]+0x33c,bytes(16));radio(m,[]);orders=plan(tick(m));assert enters(orders)==[10] and not [o for o in orders if o.purpose==4];deliver(orders)
     host.stdin.close();assert host.wait(timeout=10)==0
-  check(str(mode)+'_host_world_receipt_release_winner_protected_next_turn',pipeline)
+  check(str(mode)+'_'+str(partial)+'_host_world_receipt_release_winner_protected_next_turn',pipeline)
 Path(a.output).write_text(json.dumps({'inputs':{'GameRuntime.dll':hashlib.sha256(Path(a.dll).read_bytes()).hexdigest(),'RA2Toolbox.exe':hashlib.sha256((root/'RA2Toolbox.exe').read_bytes()).hexdigest()},'results':results,'limitations':'Actual DLL and original constructors/queues plus compiled production external planner. Win32, movement, radio release and unloading are modeled. No whole-game, real network or physical timing validation.'},indent=2)+'\n')

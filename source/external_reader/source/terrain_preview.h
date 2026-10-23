@@ -6,6 +6,7 @@ namespace external { namespace terrain {
 // Format references and native evidence are recorded in research/INDEX.md.
 template<class Read>bool palette(Read read,uint32_t address,std::array<uint32_t,256>&out){
  uint8_t rgb[768];if(!voxel::range(address,sizeof rgb)||!read(address,rgb,sizeof rgb))return false;
+ if(std::all_of(rgb,rgb+sizeof rgb,[](uint8_t c){return c==0;}))return false;
  for(int i=0;i<256;++i)out[i]=0xff000000u|(uint32_t(rgb[i*3])<<16)|(uint32_t(rgb[i*3+1])<<8)|rgb[i*3+2];return true;
 }
 template<class Read>bool tile(Read read,uint32_t pointer,unsigned index,const std::array<uint32_t,256>&pal,voxel::Image&out){

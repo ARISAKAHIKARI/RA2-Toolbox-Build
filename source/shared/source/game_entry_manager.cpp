@@ -11,7 +11,7 @@ static HANDLE boundThreadHandle=nullptr;
 static uint32_t boundThreadId=0;
 static volatile LONG busy,activeThread,activeModule,entries,reentrant,contended,wrongThread;
 static assist::hookregistry::Registry<> patches;
-static uint32_t patchModules[16];
+static uint32_t patchModules[32];
 extern "C" __declspec(dllexport) const uint32_t GameEntryManagerInfo[2]={Version,sizeof(Request)};
 static bool isBoundThreadDead(uint32_t boundTid){
  // Numeric thread IDs can be recycled. Only the retained object handle

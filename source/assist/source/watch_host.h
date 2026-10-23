@@ -1,17 +1,25 @@
 #include "../../external_reader/source/watch_view.h"
 #include "../../external_reader/source/voxel_preview.h"
 #include "../../external_reader/source/terrain_preview.h"
+#include <tuple>
 namespace watchhost {
 static external::watch::Target pinned,tracking;
 static external::watch::Frame frame;
 struct Cached {external::voxel::Image image;DWORD retry=0;uint64_t used=0;bool ready=false;};
-static std::map<std::pair<uint32_t,uint32_t>,Cached> images;
+using ArtKey=std::tuple<uint32_t,uint32_t,int,int>;
+using ImageKey=std::tuple<uint32_t,uint32_t,int,int,int,int,int>;
+struct ArtCached {gameassets::ActorArt art;DWORD retry=0;bool ready=false;};
+static std::map<ArtKey,ArtCached> actorArt;
+static std::map<ImageKey,Cached> images;
+static size_t actorCursor=0;static DWORD diagnosticAt=0;
+static ArtKey artKey(const external::watch::Actor&a){return {a.type,a.owner,a.kind,a.pose.variant};}
+static ImageKey imageKey(const external::watch::Actor&a){return {a.type,a.owner,a.kind,a.kind==4?0:a.pose.body,a.kind==4?0:a.pose.turret,a.kind==4?a.stage:a.pose.frame,a.pose.variant};}
 static std::map<std::pair<uint32_t,uint32_t>,Cached> tiles,overlays;
 static std::array<uint32_t,256> terrainPalette{};
 static uint64_t serial=0;static DWORD last=0,process=0;static uint32_t epoch=0;static bool shown=false;
 static constexpr int Width=320,Height=256;static int left=12,top=48;
 static bool read(uint32_t p,void*out,size_t n){return externalReader.read(p,out,n);}
-static void reset(){pinned=tracking={};frame={};images.clear();tiles.clear();overlays.clear();terrainPalette={};last=0;if(shown){shown=false;++paintRevision;}}
+static void reset(){pinned=tracking={};frame={};images.clear();actorArt.clear();actorCursor=0;diagnosticAt=0;tiles.clear();overlays.clear();terrainPalette={};last=0;if(shown){shown=false;++paintRevision;}}
 static void pin(){
  if(!enabled||!extra.watchEnabled||!foregroundGame()||snap.chat||formationInputOwns())return;
  if(process!=pid||epoch!=commandMatch()){reset();process=pid;epoch=commandMatch();}
@@ -27,7 +35,7 @@ static void update(){
  tracking=external::watch::choose(read,pinned,tracking,extra.watchDanger);frame=external::watch::sample(read,tracking,extra.renderReveal||extra.mapStrategy==3,20);
  shown=bool(frame.focus);++paintRevision;if(!shown)return;
  gameassets::update();
- std::array<uint32_t,256> palette{};if((external::terrain::palette(read,0xABBED0,palette)||gameassets::palette(true,palette))&&palette!=terrainPalette){terrainPalette=palette;tiles.clear();overlays.clear();for(auto it=images.begin();it!=images.end();)if(it->first.second<0x10000)it=images.erase(it);else ++it;}
+ std::array<uint32_t,256> palette{};if((external::terrain::palette(read,0xABBED0,palette)||gameassets::palette(true,palette))&&palette!=terrainPalette){terrainPalette=palette;tiles.clear();overlays.clear();for(auto it=images.begin();it!=images.end();)if(std::get<2>(it->first)==4)it=images.erase(it);else ++it;}
  auto fetchStatic=[&](auto&cache,bool tmp){
   std::vector<std::pair<uint32_t,uint32_t>> wanted;for(const auto&t:frame.tiles){uint32_t p=tmp?t.type:t.overlayType;if(p)wanted.emplace_back(p,uint32_t(tmp?t.sub:t.overlayFrame));}
   for(auto it=cache.begin();it!=cache.end();)if(std::find(wanted.begin(),wanted.end(),it->first)==wanted.end())it=cache.erase(it);else ++it;
@@ -39,17 +47,41 @@ static void update(){
    if(ok&&pixels+image.pixels.size()<=4*1024*1024){pixels+=image.pixels.size();for(auto&p:image.pixels)if(unsigned alpha=p>>24)p=0xff000000u|(std::min(255u,((p>>16)&255)*255/alpha)<<16)|(std::min(255u,((p>>8)&255)*255/alpha)<<8)|std::min(255u,(p&255)*255/alpha);c.image=std::move(image);c.ready=true;}
   }
  };fetchStatic(tiles,true);fetchStatic(overlays,false);
- std::vector<std::pair<uint32_t,uint32_t>> keys;for(const auto&a:frame.actors)keys.emplace_back(a.type,a.kind==4?uint32_t(a.stage):a.owner);
- auto evict=[&](){auto old=images.end();for(auto it=images.begin();it!=images.end();++it)if(std::find(keys.begin(),keys.end(),it->first)==keys.end()&&(old==images.end()||it->second.used<old->second.used))old=it;if(old==images.end())return false;images.erase(old);return true;};
- int work=0;
- for(const auto&a:frame.actors){auto key=std::make_pair(a.type,a.kind==4?uint32_t(a.stage):a.owner);auto it=images.find(key);if(it==images.end()){if(images.size()>=32&&!evict())continue;it=images.emplace(key,Cached{}).first;}auto&c=it->second;c.used=++serial;
-  if(c.ready||work||(c.retry&&int32_t(now-c.retry)<0))continue;++work;c.retry=now+2000;external::voxel::Image image;
-  bool ok=false;if(a.kind==4){uint32_t shp=0;read(a.type+0xA4,&shp,4);ok=gameassets::sprite(a.type,shp,terrainPalette,a.stage,image)||external::voxel::sprite(read,shp,terrainPalette,image,a.stage);}else ok=gameassets::actor(a.target.pointer,a.type,a.target.id,0,image)||external::voxel::actorImage(read,a.target.pointer,a.type,a.target.id,0,image);if(!ok)continue;
-  auto count=[&](){size_t n=image.pixels.size();for(const auto&i:images)n+=i.second.image.pixels.size();return n;};while(count()>4*1024*1024&&evict()){}if(count()>4*1024*1024)continue;
-  // Same genuine model as the formation preview, made opaque for observation.
-  for(auto&p:image.pixels)if(unsigned alpha=p>>24){p=0xff000000u|(std::min(255u,((p>>16)&255)*255/alpha)<<16)|(std::min(255u,((p>>8)&255)*255/alpha)<<8)|std::min(255u,(p&255)*255/alpha);}
+ std::set<ArtKey> artWanted;std::set<ImageKey> wanted;
+ for(const auto&a:frame.actors){artWanted.insert(artKey(a));wanted.insert(imageKey(a));}
+ for(auto it=actorArt.begin();it!=actorArt.end();)if(!artWanted.count(it->first))it=actorArt.erase(it);else ++it;
+ for(auto it=images.begin();it!=images.end();)if(!wanted.count(it->first))it=images.erase(it);else ++it;
+ // Fair work queue across every sampled unit, with no selected-unit filter or
+ // 32-type cap. A failed first model cannot starve the remaining viewport.
+ size_t pixels=0,faces=0;for(const auto&i:images)pixels+=i.second.image.pixels.size();for(const auto&i:actorArt)faces+=i.second.art.model.faces.size();
+ int work=0;DWORD started=GetTickCount();size_t n=frame.actors.size();
+ for(size_t scanned=0;scanned<n;++scanned){
+  const auto&a=frame.actors[actorCursor++%n];auto&c=images[imageKey(a)];c.used=++serial;
+  if(c.ready||(c.retry&&int32_t(now-c.retry)<0))continue;
+  if(work>=16||(work&&DWORD(GetTickCount()-started)>=6))break;
+  ++work;external::voxel::Image image;bool ok=false;
+  if(a.kind==4){uint32_t shp=0;read(a.type+0xA4,&shp,4);ok=gameassets::sprite(a.type,shp,terrainPalette,a.stage,image)||external::voxel::sprite(read,shp,terrainPalette,image,a.stage);}
+  else{
+   auto&source=actorArt[artKey(a)];
+   if(!source.ready&&(!source.retry||int32_t(now-source.retry)>=0)){
+    source.retry=now+2000;gameassets::ActorArt art;
+    if(gameassets::captureActor(a.target.pointer,a.type,a.target.id,art)&&faces+art.model.faces.size()<=4*1024*1024){faces+=art.model.faces.size();source.art=std::move(art);source.ready=true;}
+   }
+   if(source.ready)ok=gameassets::renderActor(source.art,a.pose,image);
+  }
+  c.retry=ok?0:now+2000;if(!ok)continue;
+  if(pixels+image.pixels.size()>32*1024*1024){c.retry=now+2000;continue;}
+  pixels+=image.pixels.size();
+  for(auto&p:image.pixels)if(unsigned alpha=p>>24)p=0xff000000u|(std::min(255u,((p>>16)&255)*255/alpha)<<16)|(std::min(255u,((p>>8)&255)*255/alpha)<<8)|std::min(255u,(p&255)*255/alpha);
   c.image=std::move(image);c.ready=true;
  }
+ if(!diagnosticAt||DWORD(now-diagnosticAt)>=5000){
+  diagnosticAt=now;size_t actorsReady=0,tileReady=0;std::string missing;
+  for(const auto&a:frame.actors){auto i=images.find(imageKey(a));if(i!=images.end()&&i->second.ready)++actorsReady;else if(missing.empty())missing=gameassets::text(a.type+0x24,24);}
+  for(const auto&t:frame.tiles){auto i=tiles.find({t.type,uint32_t(t.sub)});if(i!=tiles.end()&&i->second.ready)++tileReady;else if(missing.empty()&&t.type)missing=gameassets::text(t.type+0x2F5,14);}
+  critical(L"watch assets archives="+std::to_wstring(gameassets::files.count())+L" actors="+std::to_wstring(actorsReady)+L"/"+std::to_wstring(frame.actors.size())+L" terrain="+std::to_wstring(tileReady)+L"/"+std::to_wstring(frame.tiles.size())+L" missing="+std::wstring(missing.begin(),missing.end()));
+ }
+
 }
 static void draw(Graphics&g){
  if(!shown)return;auto state=g.Save();g.SetClip(RectF(float(left),float(top),float(Width),float(Height)),CombineModeIntersect);g.TranslateTransform(float(left),float(top));
@@ -69,8 +101,8 @@ static void draw(Graphics&g){
    auto over=overlays.find({t.overlayType,uint32_t(t.overlayFrame)});if(over!=overlays.end()&&over->second.ready)image(over->second.image,px,py);
   }else{const auto&a=frame.actors[item.actor];int cx=a.x/256-frame.cx+radius,cy=a.y/256-frame.cy+radius;if(cx<0||cy<0||cx>=side||cy>=side)continue;
    float x=ox+(float(a.x-a.y)/256-frame.cx+frame.cy)*30*scale,y=oy+item.depth*15*scale-(float(a.z)*60/256-centerLevel*15)*scale;
-   auto found=images.find({a.type,a.kind==4?uint32_t(a.stage):a.owner});
-   if(found!=images.end()&&found->second.ready)image(found->second.image,x,y);else{SolidBrush marker(Color(a.color));g.FillEllipse(&marker,x-3,y-2,6.f,4.f);}
+   auto found=images.find(imageKey(a));
+   if(found!=images.end()&&found->second.ready)image(found->second.image,x,y);
    if(a.target==frame.focus){Pen ring(Color(255,255,224,111),1.3f);g.DrawEllipse(&ring,x-10,y-5,20.f,10.f);}
   }
  }

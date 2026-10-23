@@ -108,6 +108,7 @@ static techprofile::Lists ra2CustomTech;
 static bool techDefault=true;static std::set<std::string> techExceptions;
 static std::set<std::string> profileExceptions[3];
 static bool techAllowed(const assist::Type& t){
+ if(techImplementation==2)return true;
  bool base=techprofile::allowed(ra2CustomTech,techProfile,t.kind,t.index,techDefault);
  return base != (techExceptions.count(t.id)!=0);
 }
@@ -710,7 +711,7 @@ static bool ensureBridge(){
  }
  ++bridgeAttempts;bridgeRetryAt=now+(bridgeAttempts>=3?30000:2000);
  critical(L"bridge-connect-attempt="+std::to_wstring(bridgeAttempts)+L" pid="+std::to_wstring(pid)+L" thread="+std::to_wstring(gameThread));
- wchar_t n[100];swprintf(n,100,L"Local\\RA2Assist_v063_%lu",pid);
+ wchar_t n[100];swprintf(n,100,L"Local\\RA2Assist_v064_%lu",pid);
  mapping=CreateFileMappingW(INVALID_HANDLE_VALUE,nullptr,PAGE_READWRITE,0,sizeof(Shared),n);
  DWORD mappingError=GetLastError();if(!mapping)return bridgeFailed(L"创建命令共享内存失败",mappingError);
  if(mappingError==ERROR_ALREADY_EXISTS){
@@ -1051,7 +1052,7 @@ static void paint(){
  RECT r{};GetClientRect(game,&r);POINT origin{};ClientToScreen(game,&origin);
  updateAircraftButton(origin,r);minimap::update(origin,r);
  formationhost::update();watchhost::update();
- auto passengerBubbles=passengerView(renderNow);
+ auto passengerBubbles=passengerView();
  auto airLines=airway::lines();
  auto nativeBadges=buildreserve::nativeBadges();
  uint32_t pausedTabs=0,idleTabs=0;
@@ -1596,7 +1597,7 @@ if(id==991){wchar_t query[128]{};GetWindowTextW(featureSearch,query,128);std::ws
  else if(id==401){BOOL validRate,validMargin;int nextRate=GetDlgItemInt(w,310,&validRate,FALSE),nextMargin=GetDlgItemInt(w,311,&validMargin,FALSE);if(!validRate||!validMargin){notify(L"请输入有效的刷新率和上边距。");return 0;}fps=std::clamp(nextRate,5,500);topMargin=std::clamp(nextMargin,0,4096);SetWindowTextW(rateEdit,std::to_wstring(fps).c_str());SetWindowTextW(marginEdit,std::to_wstring(topMargin).c_str());++paintRevision;save();clockState(foregroundGame(),fps);notify(L"显示设置已保存。");}
  else if(id>=300&&id<307&&ready){++paintRevision;save();}else if(id==412)bindSuper();else if(id==420){techMode=SendDlgItemMessageW(w,420,BM_GETCHECK,0,0)==BST_CHECKED;
   save();if(snap.status==1)send(OpenTech,techMode);}else if(id==421&&HIWORD(wp)==EN_CHANGE&&ready)fillTech();
- else if(id==896&&HIWORD(wp)==CBN_SELCHANGE&&ready){int selected=int(SendDlgItemMessageW(w,896,CB_GETCURSEL,0,0));techImplementation=selected==1?1:0;save();if(techMode&&snap.status==1)send(OpenTech,1);}
+ else if(id==896&&HIWORD(wp)==CBN_SELCHANGE&&ready){int selected=int(SendDlgItemMessageW(w,896,CB_GETCURSEL,0,0));techImplementation=selected>=0&&selected<=2?selected:0;save();fillTech(true);if(techMode&&snap.status==1)send(OpenTech,1);}
  else if(id>=424&&id<=426){if(shared&&shared->request!=shared->ack){notify(L"上一条指令处理中，请稍后修改清单。");return 0;}int pos=(int)SendMessageW(techList,LB_GETCURSEL,0,0);if(id==424){std::string typeID;
  if(pos>=0&&pos<int(techIndices.size()))typeID=savedTypes.types[techIndices[pos]].id;
  else {wchar_t raw[80]{};GetWindowTextW(techSearch,raw,80);
@@ -1688,7 +1689,7 @@ int WINAPI wWinMain(HINSTANCE h,HINSTANCE,LPWSTR,int show){SetProcessDPIAware();
  int refreshRevision=value(L"Display",L"LabelRefreshVersion",0);fps=visual::initialFPS(value(L"Display",L"FPS",visual::DefaultFPS),refreshRevision);if(refreshRevision<1){write(L"Display",L"FPS",fps);write(L"Display",L"LabelRefreshVersion",1);}topMargin=std::clamp(value(L"Display",L"TopMargin",20),0,4096);
  labelScalePercent=viewport::percent(value(L"Display",L"LabelScalePercent",100));constructionScalePercent=viewport::percent(value(L"Display",L"ConstructionScalePercent",100));
  techProfile=std::clamp(value(L"Tech",L"Profile",value(L"main",L"CustomTech",0)?1:0),0,2);
- techImplementation=value(L"Tech",L"Implementation",0)==1?1:0;
+ techImplementation=value(L"Tech",L"Implementation",0);if(techImplementation<0||techImplementation>2)techImplementation=0;
  // The [tech] format mirrors Ra2Tool.ini; entries are technology TYPE ARRAY indices.
  for(int kind:{7,16,40,3}){
   std::wstring key=std::to_wstring(kind);

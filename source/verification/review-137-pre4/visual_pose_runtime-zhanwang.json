@@ -1,0 +1,424 @@
+{
+  "scope": "Actual x86 DLL and original event constructors; mocked Win32/world/query.\nThe Sell receiver branch is executed from the supplied EXE with resolved-object,\nmap lookup and final virtual sale mocked. This is not real network validation.\n",
+  "game_sha256": "c287d62a4d6a25b547e9339d071dd6e03adcf545699062e478aaeee38c60e89a",
+  "native_infantry_facing_lookup": [
+    7,
+    7,
+    6,
+    6,
+    6,
+    6,
+    5,
+    5,
+    5,
+    5,
+    4,
+    4,
+    4,
+    4,
+    3,
+    3,
+    3,
+    3,
+    2,
+    2,
+    2,
+    2,
+    1,
+    1,
+    1,
+    1,
+    0,
+    0,
+    0,
+    0,
+    7,
+    7
+  ],
+  "results": [
+    {
+      "case": "native_current_facing",
+      "desired": 16384,
+      "start": 0,
+      "elapsed": 0,
+      "actual": 0,
+      "status": "PASS"
+    },
+    {
+      "case": "native_current_facing",
+      "desired": 16384,
+      "start": 0,
+      "elapsed": 1,
+      "actual": 1024,
+      "status": "PASS"
+    },
+    {
+      "case": "native_current_facing",
+      "desired": 16384,
+      "start": 0,
+      "elapsed": 4,
+      "actual": 4096,
+      "status": "PASS"
+    },
+    {
+      "case": "native_current_facing",
+      "desired": 16384,
+      "start": 0,
+      "elapsed": 8,
+      "actual": 8192,
+      "status": "PASS"
+    },
+    {
+      "case": "native_current_facing",
+      "desired": 16384,
+      "start": 0,
+      "elapsed": 16,
+      "actual": 16384,
+      "status": "PASS"
+    },
+    {
+      "case": "native_current_facing",
+      "desired": 16384,
+      "start": 0,
+      "elapsed": 20,
+      "actual": 16384,
+      "status": "PASS"
+    },
+    {
+      "case": "native_current_facing",
+      "desired": 1024,
+      "start": 64512,
+      "elapsed": 0,
+      "actual": 64512,
+      "status": "PASS"
+    },
+    {
+      "case": "native_current_facing",
+      "desired": 1024,
+      "start": 64512,
+      "elapsed": 1,
+      "actual": 65024,
+      "status": "PASS"
+    },
+    {
+      "case": "native_current_facing",
+      "desired": 1024,
+      "start": 64512,
+      "elapsed": 4,
+      "actual": 1024,
+      "status": "PASS"
+    },
+    {
+      "case": "native_current_facing",
+      "desired": 1024,
+      "start": 64512,
+      "elapsed": 8,
+      "actual": 1024,
+      "status": "PASS"
+    },
+    {
+      "case": "native_current_facing",
+      "desired": 1024,
+      "start": 64512,
+      "elapsed": 16,
+      "actual": 1024,
+      "status": "PASS"
+    },
+    {
+      "case": "native_current_facing",
+      "desired": 1024,
+      "start": 64512,
+      "elapsed": 20,
+      "actual": 1024,
+      "status": "PASS"
+    },
+    {
+      "case": "native_current_facing",
+      "desired": 64512,
+      "start": 1024,
+      "elapsed": 0,
+      "actual": 1024,
+      "status": "PASS"
+    },
+    {
+      "case": "native_current_facing",
+      "desired": 64512,
+      "start": 1024,
+      "elapsed": 1,
+      "actual": 512,
+      "status": "PASS"
+    },
+    {
+      "case": "native_current_facing",
+      "desired": 64512,
+      "start": 1024,
+      "elapsed": 4,
+      "actual": 64512,
+      "status": "PASS"
+    },
+    {
+      "case": "native_current_facing",
+      "desired": 64512,
+      "start": 1024,
+      "elapsed": 8,
+      "actual": 64512,
+      "status": "PASS"
+    },
+    {
+      "case": "native_current_facing",
+      "desired": 64512,
+      "start": 1024,
+      "elapsed": 16,
+      "actual": 64512,
+      "status": "PASS"
+    },
+    {
+      "case": "native_current_facing",
+      "desired": 64512,
+      "start": 1024,
+      "elapsed": 20,
+      "actual": 64512,
+      "status": "PASS"
+    },
+    {
+      "case": "native_current_facing",
+      "desired": 12500,
+      "start": 2000,
+      "elapsed": 0,
+      "actual": 2000,
+      "status": "PASS"
+    },
+    {
+      "case": "native_current_facing",
+      "desired": 12500,
+      "start": 2000,
+      "elapsed": 1,
+      "actual": 2700,
+      "status": "PASS"
+    },
+    {
+      "case": "native_current_facing",
+      "desired": 12500,
+      "start": 2000,
+      "elapsed": 4,
+      "actual": 4800,
+      "status": "PASS"
+    },
+    {
+      "case": "native_current_facing",
+      "desired": 12500,
+      "start": 2000,
+      "elapsed": 8,
+      "actual": 7600,
+      "status": "PASS"
+    },
+    {
+      "case": "native_current_facing",
+      "desired": 12500,
+      "start": 2000,
+      "elapsed": 16,
+      "actual": 12500,
+      "status": "PASS"
+    },
+    {
+      "case": "native_current_facing",
+      "desired": 12500,
+      "start": 2000,
+      "elapsed": 20,
+      "actual": 12500,
+      "status": "PASS"
+    },
+    {
+      "case": "native_infantry_shape",
+      "direction": 0,
+      "sprite_frame": 124,
+      "status": "PASS"
+    },
+    {
+      "case": "native_infantry_shape",
+      "direction": 1,
+      "sprite_frame": 124,
+      "status": "PASS"
+    },
+    {
+      "case": "native_infantry_shape",
+      "direction": 2,
+      "sprite_frame": 118,
+      "status": "PASS"
+    },
+    {
+      "case": "native_infantry_shape",
+      "direction": 3,
+      "sprite_frame": 118,
+      "status": "PASS"
+    },
+    {
+      "case": "native_infantry_shape",
+      "direction": 4,
+      "sprite_frame": 118,
+      "status": "PASS"
+    },
+    {
+      "case": "native_infantry_shape",
+      "direction": 5,
+      "sprite_frame": 118,
+      "status": "PASS"
+    },
+    {
+      "case": "native_infantry_shape",
+      "direction": 6,
+      "sprite_frame": 112,
+      "status": "PASS"
+    },
+    {
+      "case": "native_infantry_shape",
+      "direction": 7,
+      "sprite_frame": 112,
+      "status": "PASS"
+    },
+    {
+      "case": "native_infantry_shape",
+      "direction": 8,
+      "sprite_frame": 112,
+      "status": "PASS"
+    },
+    {
+      "case": "native_infantry_shape",
+      "direction": 9,
+      "sprite_frame": 112,
+      "status": "PASS"
+    },
+    {
+      "case": "native_infantry_shape",
+      "direction": 10,
+      "sprite_frame": 106,
+      "status": "PASS"
+    },
+    {
+      "case": "native_infantry_shape",
+      "direction": 11,
+      "sprite_frame": 106,
+      "status": "PASS"
+    },
+    {
+      "case": "native_infantry_shape",
+      "direction": 12,
+      "sprite_frame": 106,
+      "status": "PASS"
+    },
+    {
+      "case": "native_infantry_shape",
+      "direction": 13,
+      "sprite_frame": 106,
+      "status": "PASS"
+    },
+    {
+      "case": "native_infantry_shape",
+      "direction": 14,
+      "sprite_frame": 100,
+      "status": "PASS"
+    },
+    {
+      "case": "native_infantry_shape",
+      "direction": 15,
+      "sprite_frame": 100,
+      "status": "PASS"
+    },
+    {
+      "case": "native_infantry_shape",
+      "direction": 16,
+      "sprite_frame": 100,
+      "status": "PASS"
+    },
+    {
+      "case": "native_infantry_shape",
+      "direction": 17,
+      "sprite_frame": 100,
+      "status": "PASS"
+    },
+    {
+      "case": "native_infantry_shape",
+      "direction": 18,
+      "sprite_frame": 94,
+      "status": "PASS"
+    },
+    {
+      "case": "native_infantry_shape",
+      "direction": 19,
+      "sprite_frame": 94,
+      "status": "PASS"
+    },
+    {
+      "case": "native_infantry_shape",
+      "direction": 20,
+      "sprite_frame": 94,
+      "status": "PASS"
+    },
+    {
+      "case": "native_infantry_shape",
+      "direction": 21,
+      "sprite_frame": 94,
+      "status": "PASS"
+    },
+    {
+      "case": "native_infantry_shape",
+      "direction": 22,
+      "sprite_frame": 88,
+      "status": "PASS"
+    },
+    {
+      "case": "native_infantry_shape",
+      "direction": 23,
+      "sprite_frame": 88,
+      "status": "PASS"
+    },
+    {
+      "case": "native_infantry_shape",
+      "direction": 24,
+      "sprite_frame": 88,
+      "status": "PASS"
+    },
+    {
+      "case": "native_infantry_shape",
+      "direction": 25,
+      "sprite_frame": 88,
+      "status": "PASS"
+    },
+    {
+      "case": "native_infantry_shape",
+      "direction": 26,
+      "sprite_frame": 82,
+      "status": "PASS"
+    },
+    {
+      "case": "native_infantry_shape",
+      "direction": 27,
+      "sprite_frame": 82,
+      "status": "PASS"
+    },
+    {
+      "case": "native_infantry_shape",
+      "direction": 28,
+      "sprite_frame": 82,
+      "status": "PASS"
+    },
+    {
+      "case": "native_infantry_shape",
+      "direction": 29,
+      "sprite_frame": 82,
+      "status": "PASS"
+    },
+    {
+      "case": "native_infantry_shape",
+      "direction": 30,
+      "sprite_frame": 124,
+      "status": "PASS"
+    },
+    {
+      "case": "native_infantry_shape",
+      "direction": 31,
+      "sprite_frame": 124,
+      "status": "PASS"
+    }
+  ]
+}
