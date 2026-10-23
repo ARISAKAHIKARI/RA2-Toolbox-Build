@@ -31,7 +31,7 @@ extern "C" int __cdecl AssistRiskAction(unsigned op,unsigned object,unsigned hou
  if(op==3&&(!riskRenderActive||!sh||!sh->renderReveal))return 0;
  if(!riskReady(true)){if(op==3)riskRenderRedrawPending=true;return 0;}
  if(op==6)return riskControlActive&&sh->controlAll&&playableHouse(house);
- if(op==4)return riskC4Active&&sh->c4Test&&object>=0x10000&&own(object,lastHouse)&&kind(object)==1;
+ if(op==4)return 0; // retired: preserve native movement and C4 capability checks
  if(op==3)return sh->renderReveal==2?halfShroud(object,house!=0):1;
  if(op==0)return riskPlacementActive&&(sh->flags&BuildAnywhere)&&house==get<uint32_t>(lastHouse+0x30)&&object>=0x10000&&
    call<int>(get<uint32_t>(get<uint32_t>(object)+0x2C),object)==7;
@@ -431,12 +431,10 @@ static void placementTick(){
  prepareRiskSites();
  static uint32_t priorStrategy=0;
  bool priorRender=riskRenderActive;controlSitesTick(sh->controlAll!=0);
- // Both native C4 capability loads are required: movement into the building
- // and native charge placement. No type-flag, mission or damage writes here.
+ // Infantry entry is now an ordinary planning event. Never install either
+ // capability override, including when an older configuration enables C4Test.
  riskC4Active=false;
- if(sh->c4Test)riskC4Active=installRiskSite(riskSites[8])&&installRiskSite(riskSites[5]);
- if(!riskC4Active){bool a=restoreRiskSite(riskSites[5]),b=restoreRiskSite(riskSites[8]);snap.c4TestStatus=sh->c4Test||!a||!b?-2:0;}
- else snap.c4TestStatus=1;
+ {bool a=restoreRiskSite(riskSites[5]),b=restoreRiskSite(riskSites[8]);snap.c4TestStatus=!a||!b?-2:sh->c4Test?1:0;}
  if(sh->renderReveal){
   riskRenderActive=installRiskSite(riskSites[3])&&installRiskSite(riskSites[4]);
   if(!riskRenderActive){restoreRiskSite(riskSites[3]);restoreRiskSite(riskSites[4]);}

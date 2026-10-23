@@ -5,7 +5,7 @@
 #include "display_settings.h"
 namespace suite {
 constexpr UINT PaneLayout=WM_APP+80,ModuleEnable=WM_APP+81,CloseCheck=WM_APP+82;
-constexpr UINT ApplyDisplaySetting=WM_APP+83,DisplaySettingsChanged=WM_APP+84,RefreshRateChanged=WM_APP+85;
+constexpr UINT ApplyDisplaySetting=WM_APP+83,DisplaySettingsChanged=WM_APP+84,RefreshRateChanged=WM_APP+85,SelectCategory=WM_APP+86;
 constexpr WPARAM CloseToken=0x52413253;
 struct Layout {RECT rect;bool visible;unsigned dpi=96;};
 HWND parent();

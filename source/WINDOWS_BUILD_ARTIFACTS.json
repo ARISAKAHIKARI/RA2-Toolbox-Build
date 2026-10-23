@@ -1,13 +1,13 @@
 {
-  "label": "1.0.35.0 SingleRuntime",
-  "file_version": "1.0.35.0",
+  "label": "1.0.36.0 SingleRuntime",
+  "file_version": "1.0.36.0",
   "verified": {
     "RA2Toolbox.exe": {
-      "bytes": 2355712,
-      "sha256": "4c8a2b3f8498618bc0ae01f58663eb19866f2e19e18e762934b1fe4f2c694601",
+      "bytes": 2389504,
+      "sha256": "e50103598d5ca01f704ae3921ab1e234dda92ac46e8f6d293cf3b0c5fbc4be2d",
       "machine": "PE32 x86",
       "sections": 14,
-      "entry_rva": "0xe2ca0",
+      "entry_rva": "0xe9c20",
       "exports": [
         "AssistHostProtocolInfo",
         "_Unwind_DeleteException",
@@ -82,9 +82,11 @@
           "GdipDrawImageRect",
           "GdipDrawImageRectRect",
           "GdipDrawLine",
+          "GdipDrawLines",
           "GdipDrawPath",
           "GdipDrawPolygon",
           "GdipDrawRectangle",
+          "GdipFillEllipse",
           "GdipFillPath",
           "GdipFillPolygon",
           "GdipFillRectangle",
@@ -537,15 +539,15 @@
         "version": "6.0.0.0",
         "architecture": "x86"
       },
-      "assist_protocol": 60,
-      "assist_shared_bytes": 4096112
+      "assist_protocol": 61,
+      "assist_shared_bytes": 4108416
     },
     "GameRuntime.dll": {
-      "bytes": 4088832,
-      "sha256": "e70e96f9e7312d3615250650804c65c3f408d9c09d7fa2abf0503a0ca8bad112",
+      "bytes": 4095488,
+      "sha256": "7e2b1ca23d119e4411599025dbf7fc933cd000ae6e58ce27be903ad4d71d9604",
       "machine": "PE32 x86",
       "sections": 13,
-      "entry_rva": "0x52730",
+      "entry_rva": "0x53cb0",
       "exports": [
         "AssistMappingPrefix",
         "AssistProtocolInfo",
@@ -691,8 +693,8 @@
       "GameRuntimePostHook_rva": "0x1960",
       "runtime_protocol": 4,
       "runtime_control_bytes": 176,
-      "assist_protocol": 60,
-      "assist_shared_bytes": 4096112
+      "assist_protocol": 61,
+      "assist_shared_bytes": 4108416
     }
   },
   "runtime_tested": false,

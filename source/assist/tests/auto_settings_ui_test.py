@@ -133,6 +133,10 @@ int main(){
  autoSavePending=false;timers=saves=syncs=0;timerMs=0;settingsRevision=1;paintRevision=0;
 
  for(int i=0;i<ExtraControlCount;++i)extraControls[i]=700+i;
+ assert(extra.passengerBubbles&&!extra.dangerPassengers&&!extra.magnetronDrop);
+ for(auto option:{std::pair<int,bool*>{897,&extra.passengerBubbles},{898,&extra.dangerPassengers},{899,&extra.magnetronDrop}}){
+  for(bool on:{false,true}){fields[option.first]=on;autoSettingChanged(option.first,BN_CLICKED);assert(*option.second==on&&autoSavePending);saveFeatureTypes();saveMouse();*option.second=!on;loadMouse();assert(*option.second==on);}
+ }
  assert(!extra.allHotkeys);fields[786]=1;autoSettingChanged(786,BN_CLICKED);assert(extra.allHotkeys&&autoSavePending);saveMouse();extra.allHotkeys=false;loadMouse();assert(extra.allHotkeys);
  fields[200]='X';fields[201]='X';autoSettingChanged(200,EN_CHANGE);autoSettingChanged(201,EN_CHANGE);assert(hotkeys[0]=='X'&&hotkeys[1]=='X');
  fields[707]='K';fields[709]='K';autoSettingChanged(707,EN_CHANGE);autoSettingChanged(709,EN_CHANGE);assert(extra.airKey1=='K'&&extra.airKey2=='K');
@@ -293,3 +297,5 @@ print('PASS parasite/crate badges default on; independent controls 892/893 apply
 assert 'value(L"Dodge",L"Logic",0)' in (root/'assist/source/extra_settings_io.h').read_text()
 assert 'write(L"Dodge",L"Logic",extra.dodgeMode)' in (root/'assist/source/extra_settings_io.h').read_text()
 print("PASS reverse-dodge default, both live choices, invalid selection and persistence key")
+
+print('PASS passenger inspection, persistent dangerous cargo and independent magnetron drop: UI toggle, autosave, persisted off/on roundtrips')

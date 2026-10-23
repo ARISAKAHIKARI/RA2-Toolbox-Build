@@ -44,7 +44,7 @@ constexpr int FALSE=0,TRUE=1,WS_CHILD=1,WS_VISIBLE=2,WS_CLIPSIBLINGS=4,WS_EX_CLI
 WS_TABSTOP=16,WS_VSCROLL=32,BS_AUTORADIOBUTTON=64,BS_PUSHLIKE=128,BS_AUTOCHECKBOX=256,
 BS_PUSHBUTTON=512,ES_NUMBER=1024,ES_AUTOHSCROLL=2048,CBS_DROPDOWNLIST=4096,LBS_NOTIFY=8192,
 EM_SETLIMITTEXT=99,CB_ADDSTRING=10,CB_SETCURSEL=11,BM_SETCHECK=1,BST_CHECKED=1,BST_UNCHECKED=0,WM_SETFONT=2,HKM_SETHOTKEY=3,EM_SETCUEBANNER=4,
-SIF_RANGE=1,SIF_PAGE=2,SIF_POS=4,SIF_DISABLENOSCROLL=8,SB_VERT=1,SW_SHOW=1,SW_HIDE=0;
+SIF_RANGE=1,SIF_PAGE=2,SIF_POS=4,SIF_DISABLENOSCROLL=8,SB_VERT=1,SW_SHOW=1,SW_SHOWNA=1,SW_HIDE=0;
 constexpr const wchar_t* HOTKEY_CLASSW=L"HOTKEY";
 struct RECT{int left,top,right,bottom;};struct POINT{int x,y;};
 struct SCROLLINFO{unsigned cbSize,fMask;int nMin,nMax;unsigned nPage;int nPos,nTrackPos;};
@@ -125,10 +125,11 @@ int main(){
  for(int id:{100,111,451,455,446,853,440,724})assert(at(id).rect.y>at(900).rect.y&&at(id).rect.y<at(901).rect.y);
  for(int id:{458,450,477,473,702,705,719,720,721,736,795,803,109,110,410})assert(at(id).rect.y>at(901).rect.y&&at(id).rect.y<at(902).rect.y);
  for(auto pair:{std::pair<int,int>{450,729},{478,730},{474,731},{704,732},{707,733},{709,734},{726,735},{728,737},{789,738},{811,812}})assert(at(pair.first).rect.y==at(pair.second).rect.y&&at(pair.first).rect.x+at(pair.first).rect.w<at(pair.second).rect.x);
- for(int id:{860,861,862,863,864,722})assert(!windows[at(id).hwnd].enabled);
- for(int id:{860,861,722})assert(!windows[at(id).hwnd].checked);
+ for(int id:{861,862,863,864})assert(!windows[at(id).hwnd].enabled);
+ for(int id:{861})assert(!windows[at(id).hwnd].checked);
  for(int id:{803,894,866})assert(at(id).rect.y>at(901).rect.y&&at(id).rect.y<at(902).rect.y);
- for(int id:{808,809})assert(at(id).rect.y>at(903).rect.y&&at(id).rect.y<at(904).rect.y);
+ for(int id:{808,809,799})assert(at(id).page==1);
+ for(int id:{420,860})assert(at(id).page==2);
  for(int id:{803,808})assert(windows[at(id).hwnd].enabled&&windows[at(id).hwnd].text.find(L"测试")==std::wstring::npos&&windows[at(id).hwnd].text.find(L"实验")==std::wstring::npos);
  extra.airWaypoints=false;extra.nativeAirWaypoints=extra.renderReveal=true;snap.nativeAirStatus=snap.renderRevealStatus=1;updateModeStatus(2800);
  assert(windows[at(866).hwnd].text==L"飞机路径点：原生模式"&&windows[at(809).hwnd].text==L"地图显示：已启用");
@@ -152,21 +153,21 @@ int main(){
  }
  panelDpi=96;
  int inspected=0;
- // All body controls share one continuous page. Every original interactive
+ // Body controls are split across three independent categories. Every supported interactive
  // ID survives the redesign; only redundant save labels/navigation disappear.
- for(int id:{100,111,200,211,300,306,310,311,312,410,411,420,421,422,423,424,425,426,427,428,440,441,443,444,445,446,447,449,450,451,453,454,455,456,458,459,466,467,470,471,473,474,476,477,478,481,700,701,702,703,704,705,706,707,708,709,710,711,712,713,714,715,716,717,718,719,720,721,722,723,724,725,726,727,728,729,730,731,732,733,734,735,736,737,738,751,760,761,762,785,786,787,795,796,797,798,799,818,830,831,832,833,850,851,852,853,900,901,902,903,904,910,911,912,913,914,802,803,804,807,808,809,810,811,812,813,814,815,816,817,990,991}){
+ for(int id:{100,111,200,211,300,306,310,311,312,410,411,420,421,422,423,424,425,426,427,428,440,441,443,444,445,446,447,449,450,451,453,454,455,456,458,459,466,467,470,471,473,474,476,477,478,481,700,701,702,703,704,705,706,707,708,709,710,711,712,713,714,715,716,717,718,719,720,721,723,724,725,726,727,728,729,730,731,732,733,734,735,736,737,738,751,760,761,762,785,786,787,795,796,797,798,799,818,830,831,832,833,850,851,852,853,900,901,902,903,904,910,911,912,915,802,803,804,807,808,809,810,811,812,813,814,815,816,817,990,991}){
   int found=0;for(auto&w:windows)found+=w.id==id;if(found!=1){std::cerr<<"Missing/duplicate ID "<<id<<" count "<<found<<"\n";return 1;}
  }
- for(int id:{108,208,739,790,791,792,805,806,882,883,884,9234,9235})assert(!GetDlgItem(ui,id));
- for(size_t i=0;i<pageControls.size();++i){const auto&a=pageControls[i];if(a.page<0)continue;assert(a.page==0&&a.rect.y>=uilayout::BodyTop);
+ for(int id:{108,208,722,913,914,739,790,791,792,805,806,882,883,884,9234,9235})assert(!GetDlgItem(ui,id));
+ for(size_t i=0;i<pageControls.size();++i){const auto&a=pageControls[i];if(a.page<0)continue;assert(a.page>=0&&a.page<3&&a.rect.y>=uilayout::BodyTop);
   auto rect=a.rect;rect.h=a.visibleHeight;
-  for(size_t j=i+1;j<pageControls.size();++j){const auto&b=pageControls[j];if(b.page<0)continue;auto other=b.rect;other.h=b.visibleHeight;
+  for(size_t j=i+1;j<pageControls.size();++j){const auto&b=pageControls[j];if(b.page!=a.page)continue;auto other=b.rect;other.h=b.visibleHeight;
    if(intersects(rect,other)){std::cerr<<"IDs "<<windows[a.hwnd].id<<","<<windows[b.hwnd].id<<" rectangles "<<rect.x<<","<<rect.y<<","<<rect.w<<","<<rect.h<<" / "<<other.x<<","<<other.y<<","<<other.w<<","<<other.h<<"\n";return 1;}
   }
  }
- for(int width:{645,812,1040})for(int height:{440,580,720,900}){
+ for(activePage=0;activePage<3;++activePage)for(int width:{645,812,1040})for(int height:{440,580,720,900}){
   clientWidth=width;clientHeight=height;const int maximum=uilayout::maxScroll(pageBottom(),height);
-  for(const auto&c:pageControls)if(c.page>=0){
+  for(const auto&c:pageControls)if(c.page==activePage){
    scrollTo(c.rect.y-uilayout::BodyTop);const auto&w=windows[c.hwnd];
    assert(w.visible&&w.rect.y>=uilayout::BodyTop&&w.rect.y+c.visibleHeight<=uilayout::bodyBottom(height));
    assert(w.clip.top==0&&w.clip.bottom==c.visibleHeight);++inspected;
@@ -175,11 +176,11 @@ int main(){
   for(const auto&c:pageControls){const auto&w=windows[c.hwnd];
    if(c.page==-3){assert(!w.visible);}
    else if(c.page==-2){assert(w.rect.y==uilayout::footerTop(height)+c.rect.y&&w.visible);assert(w.rect.y+w.rect.h<=height);}
-   else if(c.page==-1){assert(w.rect.y==c.rect.y&&w.visible);}
+   else if(c.page==-1){assert(w.rect.y==c.rect.y);if(w.id>=910&&w.id<=915)assert(w.visible==(activePage==0));else assert(w.visible);}
    else if(w.visible&&w.clip.bottom>w.clip.top){assert(w.rect.y+w.clip.top>=uilayout::BodyTop);assert(w.rect.y+w.clip.bottom<=uilayout::bodyBottom(height));}
   }
  }
- std::cout<<"{\"controls\":"<<pageControls.size()<<",\"fully_reachable_checks\":"<<inspected<<",\"viewport_sizes\":12,\"pages\":1,\"content_bottom\":"<<pageBottom()<<",\"geometry\":[";
+ std::cout<<"{\"controls\":"<<pageControls.size()<<",\"fully_reachable_checks\":"<<inspected<<",\"viewport_sizes\":12,\"pages\":3,\"content_bottom\":"<<pageBottom()<<",\"geometry\":[";
  std::wstring_convert<std::codecvt_utf8<wchar_t>> utf8;bool first=true;
  for(auto&c:pageControls){if(!first)std::cout<<",";first=false;auto&w=windows[c.hwnd];std::cout<<"{\"id\":"<<w.id<<",\"page\":"<<c.page<<",\"x\":"<<c.rect.x<<",\"y\":"<<c.rect.y<<",\"w\":"<<c.rect.w<<",\"h\":"<<c.visibleHeight<<",\"toggle\":"<<((w.style&BS_AUTOCHECKBOX)?"true":"false")<<",\"checked\":"<<(w.checked?"true":"false")<<",\"class\":"<<std::quoted(utf8.to_bytes(w.cls))<<",\"text\":"<<std::quoted(utf8.to_bytes(w.text))<<"}";}
  std::cout<<"]}\n";
@@ -198,5 +199,5 @@ with tempfile.TemporaryDirectory(prefix='ra2-ui-') as directory:
     if '--dump' in sys.argv:Path(sys.argv[sys.argv.index('--dump')+1]).write_text(json.dumps(result,ensure_ascii=False,indent=2)+'\n')
     summary={k:v for k,v in result.items() if k!='geometry'}
     print('PASS: shipped UI construction/layout: ' + json.dumps(summary))
-    print('PASS: all controls accessible, no overlap, all interactive IDs retained, one continuous page, pinned header/footer, clipped body and scroll limits')
+    print('PASS: all controls accessible, no overlap, supported interactive IDs retained, three independently scrollable categories, pinned header/footer, clipped body and scroll limits')
 

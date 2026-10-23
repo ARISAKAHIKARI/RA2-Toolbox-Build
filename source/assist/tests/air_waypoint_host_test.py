@@ -7,6 +7,7 @@ r = Path(__file__).resolve().parents[2]
 program = r'''
 #include "protocol.h"
 #include "additional_settings.h"
+#include "air_path_policy.h"
 #include <map>
 #include <vector>
 #include <string>
@@ -30,6 +31,12 @@ static bool queueCommand(int c,int arg,int arg2,uint32_t match,int,DWORD,uint32_
 static std::map<uint32_t,uint8_t> memory;
 template<class T>static void put(uint32_t at,T value){auto*p=reinterpret_cast<uint8_t*>(&value);for(size_t n=0;n<sizeof value;++n)memory[at+n]=p[n];}
 static struct{bool readFresh(uint32_t at,void*out,size_t n){for(size_t j=0;j<n;++j){auto i=memory.find(at+j);if(i==memory.end())return false;static_cast<uint8_t*>(out)[j]=i->second;}return true;}}externalReader;
+namespace nativekeys{constexpr int Planning=0;}
+namespace nativekeyhost{
+struct Binding{bool held(int,const uint8_t*keys)const{return keys['Z']!=0;}};
+static Binding current(){return {};}
+static void down(uint8_t*keys){for(int i=0;i<256;++i)keys[i]=::held[i];}
+}
 namespace gameinput{struct PointerPress{int operation=0;uint8_t keys[256]{};};}
 namespace external{struct Projection{int x,y,w,h;};static void project(Projection,int x,int y,int,int&sx,int&sy){sx=x;sy=y;}}
 ''' + (r/'assist/source/air_path_host.h').read_text() + r'''
@@ -58,6 +65,29 @@ int main(){for(int mode:{3,4}){
  initialize(mode);capture(30020,3);box.resolvedTarget=50;airway::capture(input,box);assert(airway::jobs.empty()&&airway::ended);
  initialize(mode);capture(30020,4);gameinput::PointerPress e;e.operation=pointerinput::Cancel;e.keys['S']=1;airway::manual(e);assert(airway::jobs.empty());
  initialize(mode);capture(30020,5);++epoch;held['Z']=false;airway::service();assert(airway::jobs.empty()&&commandQueue.size==0);
+ // Automatic acquisition must not erase the next waypoint.
+ initialize(mode);capture(30020,8);capture(30030,8);held['Z']=false;airway::service();commandQueue.discard(0);airway::result(1,1,40,8);
+ put<int>(air+0xac,1);put<uint32_t>(air+0x2b4,0x50000);airway::service();assert(airway::jobs.size()==1&&airway::jobs[0].points.size()==2);
+ position(30020);airway::service();assert(commandQueue.size==1&&commandQueue.slots[0].arg2==30030);
+ // More than three temporary queue failures retain the route.
+ initialize(mode);capture(30020,9);held['Z']=false;
+ for(int retry=0;retry<5;++retry){airway::service();assert(commandQueue.size==1);commandQueue.discard(0);airway::result(-6,0,40,9);clockNow+=200;assert(airway::jobs.size()==1);}
+ airway::service();assert(commandQueue.size==1);commandQueue.discard(0);airway::result(1,1,40,9);position(30020);airway::service();assert(airway::jobs.empty());
+ // A high-speed ground segment crosses between two host samples.
+ initialize(mode);capture(30020,10);capture(30030,10);position(30017);held['Z']=false;airway::service();commandQueue.discard(0);airway::result(1,1,40,10);
+ put<int>(air+0xac,2);put<uint32_t>(air+0x5a4,0x60000);put<int16_t>(0x60024,20);put<int16_t>(0x60026,30);airway::service();
+ position(30023);airway::service();assert(commandQueue.size==1&&commandQueue.slots[0].arg2==30030);
+ initialize(mode);capture(30020,11);held['Z']=false;e={};e.operation=7;airway::manual(e);assert(airway::jobs.size()==1);
+ e.operation=4;airway::manual(e);assert(airway::jobs.empty());
+ // Return-to-base before arrival retries the same point and retains the rest.
+ initialize(mode);capture(30020,12);capture(30030,12);held['Z']=false;airway::service();commandQueue.discard(0);airway::result(1,1,40,12);
+ put<int>(air+0xac,2);put<uint32_t>(air+0x5a4,0x60000);put<int16_t>(0x60024,20);put<int16_t>(0x60026,30);airway::service();
+ put<int>(air+0xac,7);put<uint32_t>(air+0x5a4,0x70000);clockNow+=300;airway::service();clockNow+=200;airway::service();
+ assert(commandQueue.size==1&&commandQueue.slots[0].arg2==30020&&airway::jobs[0].points.size()==2);
+ // A stalled aircraft does not reset its no-progress timer on every ACK.
+ initialize(mode);capture(30020,13);held['Z']=false;
+ for(int n=0;n<40&&!airway::jobs.empty();++n){airway::service();if(commandQueue.size){commandQueue.discard(0);airway::result(1,1,40,13);}clockNow+=1000;}
+ assert(airway::jobs.empty());
 }
  initialize(5);assert(airway::native()&&!airway::active());capture(30020,1);assert(airway::jobs.empty());
 }

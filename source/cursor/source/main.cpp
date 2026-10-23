@@ -1521,6 +1521,10 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR cmd,int){
  modernui::tip(refreshModeBox,L"三种范围共用目标刷新率，最高 500 FPS；自动跟随显示器。拖屏和全部画面刷新为实验性功能。");
  modernui::tip(targetBox,L"自动跟随显示器；也可输入 30–500 FPS。光标、拖屏、全部画面使用同一目标值。");
  EnableWindow(refreshModeBox,FALSE);
+ basic(L"STATIC",L"黑幕绘制",20,332,88,22,0);
+ shroudModeBox=basic(L"COMBOBOX",L"",114,328,626,150,156,CBS_DROPDOWNLIST|WS_TABSTOP);
+ for(const wchar_t*text:{L"关闭",L"半透明（实验性）",L"透明（实验性）",L"自动全图（实验性）"})SendMessageW(shroudModeBox,CB_ADDSTRING,0,(LPARAM)text);
+ EnableWindow(shroudModeBox,FALSE);modernui::tip(shroudModeBox,L"半透明和透明改变黑幕绘制；自动全图在对局就绪后执行。三种方式均为实验性功能。");
 #endif
  // Main and advanced settings share one width, palette and renderer.
  for(auto& c:controlOrigins){

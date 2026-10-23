@@ -16,7 +16,7 @@ static void observeCooperativeEffects(uint32_t house,int frame){
   bool identity=e.match==match&&frame>=e.frame&&actor&&actor==e.actorPointer&&get<uint32_t>(actor+0x21C)==house;
   bool active=identity&&live(actor); // aircraft can temporarily leave the map
   bool targetSame=target&&target==e.targetPointer; // no target-ID reuse false positive
-  bool boarded=identity&&e.mission==7&&targetSame&&clickView.entered(actor,target);
+  bool boarded=identity&&(e.mission==7||e.mission==2)&&targetSame&&clickView.entered(actor,target);
   bool targeting=active&&e.mission==1&&frame>e.frame&&targetSame&&get<uint32_t>(actor+0x2B4)==target;
   // An already-selected target is not fresh acquisition, but a NEW rearm can
   // still demonstrate that the repeated Attack caused another firing cycle.
@@ -135,7 +135,7 @@ uint32_t p=worldByID(o.id),t=worldByID(o.target);bool valid=p&&t&&own(p,house)&&
   int slots=0,mission=enter?7:1;
   if(valid&&enter){valid=featureObjectAllowed(featuretypes::EnterSource,p)&&featureObjectAllowed(featuretypes::EnterTarget,t)&&clickView.entryCompatible(p,t,house);auto c=clickView.capacity(t);slots=clickView.entrySlots(p,t);int reserved=entryReserved(t,o.id,house);
    valid=valid&&entryReservationCount<cooperative::MaxSources&&slots>0&&int64_t(c.used)+reserved+slots<=c.maximum;
-   if(valid){int action=call<int>(get<uint32_t>(get<uint32_t>(p)+0x74),p,t,true);valid=action==3||action==11;if(action==11)mission=9;}
+   if(valid){int action=call<int>(get<uint32_t>(get<uint32_t>(p)+0x74),p,t,true);bool bunker=kind(t)==3&&get<bool>(o.type+0x16AB);valid=action==3||action==11||(bunker&&action==1);if(bunker)mission=2;else if(action==11)mission=9;}
   }else if(valid){valid=airUnit(p)&&nativeEnemy(t,house);if(valid){planner::Actor source{},target{};rawCombatInfo(p,typeOf(p,kind(p)),kind(p),source,true);rawCombatInfo(t,o.type,kind(t),target,false);valid=planner::compatibleTarget(source,target,false);}}
   if(!valid)return -1;
 
@@ -144,7 +144,7 @@ uint32_t p=worldByID(o.id),t=worldByID(o.target);bool valid=p&&t&&own(p,house)&&
   if(!nativeMission(house,o.id,mission,enter?0:o.target,enter?o.target:0,enter?0x34:0,0,0,taskarbiter::Owner::Cooperative,&ticket))return 0;
   // Preserve raw native event encoding, add only read-only effect observations.
   supersedeCooperativeEffect(o.id,match);
-  if(ticket&&cooperativeEffectCount<cooperative::MaxSources&&(mission==1||mission==7)){
+  if(ticket&&cooperativeEffectCount<cooperative::MaxSources&&(mission==1||mission==7||mission==2)){
    // One observer owns this ticket: avoid generic timeout/observed duplicates.
    missionObserver.dismissTicket(match,ticket);
    cooperativeEffects[cooperativeEffectCount++]={o.id,o.target,ticket,match,p,t,beforeTarget,now,frame,mission,beforeRearm,false};

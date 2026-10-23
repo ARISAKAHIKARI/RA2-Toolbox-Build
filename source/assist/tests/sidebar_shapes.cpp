@@ -17,7 +17,8 @@ int main(){Memory m;auto read=[&](uint32_t p,void*out,size_t n){return m(p,out,n
  b(0xB07C48+0x2C,1);assert(sample(read,0,2560,1440,out));
  uint32_t ref=0x630000;h(ref,65535);w(ref+12,shp);w(0xB07C48+0x58,ref);assert(sample(read,0,2560,1440,out));
  w(ref+12,0);assert(!sample(read,0,2560,1440,out)&&out.pixels.empty());w(ref+12,shp);
- Cache cache;assert(cache.update(read,1000,1,2,2560,1440,15)==9);int calls=m.reads;assert(cache.update(read,1001,1,2,2560,1440,15)==9&&m.reads==calls);assert(cache.frames[1].pixels.empty()&&cache.frames[2].pixels.empty());
+ Cache cache;assert(cache.update(read,1000,1,2,2560,1440,15)==15);int calls=m.reads;assert(cache.update(read,1001,1,2,2560,1440,15)==15&&m.reads==calls);assert(!cache.frames[1].pixels.empty()&&!cache.frames[2].pixels.empty());
+ auto yellow=cache.frames[0].pixels;assert(cache.update(read,1101,1,2,2560,1440,15,0)==15);assert(cache.frames[0].pixels!=yellow);
  assert(cache.update(read,1002,1,2,2560,1440,0)==0);assert(cache.update(read,1102,1,2,2560,1440,0)==0&&cache.frames[0].pixels.empty());
  auto rev=cache.revision;assert(cache.update(read,1200,1,3,2560,1440,9)==9&&cache.revision>rev);
  b(0xB07C48+0x1E,1);assert(cache.update(read,1400,1,3,2560,1440,9)==8);b(0xB07C48+0x1E,0);
@@ -25,5 +26,5 @@ int main(){Memory m;auto read=[&](uint32_t p,void*out,size_t n){return m(p,out,n
  b(0xB07C48+0x2C,0);h(shp+8+4,300);assert(!sample(read,0,2560,1440,out));h(shp+8+4,4);
  b(0xB07C48+0x2C,0);b(shp+56+3,10);assert(!sample(read,0,2560,1440,out));
  for(int format=0;format<=2;++format){w(shp+8+8,format);w(0xB07C48+0x58,shp);uint8_t bytes[12]={1,0,2,0,2,1,0,0};if(format==2){uint8_t prefixed[12]={6,0,1,0,2,0,6,0,2,1,0,0};memcpy(bytes,prefixed,12);}memcpy(m.mem.data()+shp+56,bytes,format==2?12:8);assert(sample(read,0,2560,1440,out));}
- std::cout<<"PASS: actual sidebar SHP frames 0/1, raw/row/RLE, references, palette recolor, transparency, button geometry, mask9, cache/read bounds/resize/round/disabled/read failure\n";
+ std::cout<<"PASS: actual sidebar SHP frames 0/1, raw/row/RLE, references, palette recolor, transparency, button geometry, all four tabs/red idle/yellow paused, cache/read bounds/resize/round/disabled/read failure\n";
 }

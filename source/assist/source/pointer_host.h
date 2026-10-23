@@ -29,7 +29,7 @@ static void servicePointer(){
    else if(box.result==-7)infantryEntryResult+=L"；输入已过期或被新操作取消";
    else if(box.result<0)infantryEntryResult+=L"；提交未完成";
    else if(box.rejected)infantryEntryResult+=L"；跳过 "+std::to_wstring(box.rejected)+L" 个非己方有效步兵";
-   notify(L"步兵进入与 C4："+infantryEntryResult);
+   notify(L"步兵强制进入建筑："+infantryEntryResult);
   }
   if(box.intent.operation==pointerinput::AirWaypoint)airway::capture(box.intent,box);
   if(pointerMatches.active()){

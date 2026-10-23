@@ -15,10 +15,10 @@ int main(){
  // A current attack has not necessarily lifted anything. Don't change/reset it
  // while its native shot is pending, even if a more valuable unit appears.
  a.target=21;w.actors[2].armor=0;++w.frame;assert(p.step(w,MagnetronInput,200,300,90).empty());
- // Real weapon rearm, including a paused timer, suppresses both orders/scanning.
+ // A confirmed lift can rotate even while native rearm runs or is paused.
  a.rearmStart=w.frame;a.rearmDuration=10;w.actors[1].flags|=Manipulated;
- ++w.frame;assert(p.step(w,MagnetronInput,200,300,90).empty()&&p.targetChecks==0);
- a.rearmStart=-1;w.frame=100;assert(p.step(w,MagnetronInput,200,300,90).empty());
+ ++w.frame;orders=p.step(w,MagnetronInput,200,300,90);assert(orders.size()==1&&orders[0].target==22);
+ a.rearmStart=-1;w.frame=100;orders=p.step(w,MagnetronInput,200,300,90);assert(orders.size()==1&&orders[0].target==22);
  a.rearmStart=3;w.frame=101;orders=p.step(w,MagnetronInput,200,300,90);assert(orders.size()==1&&orders[0].target==22);p.accepted(orders[0],w.frame);
  // Two magnets reserve distinct not-yet-lifted victims within a submitted batch.
  p.reset();w.frame=200;w.intentCount=2;w.count=9;w.actors[1].flags=Enemy;

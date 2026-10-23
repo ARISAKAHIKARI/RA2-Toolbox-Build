@@ -29,9 +29,9 @@ inline Reject missionWithTargetTag(bool actorFound, bool actorOwned, bool actorA
 }
 inline Reject objectEvent(int eventType, bool targetFound, bool targetAlive,
                           bool senderIsLocal, bool targetOwnerIsSender, bool multiplayer) {
- if(eventType!=0x07&&eventType!=0x15&&eventType!=0x16)return Reject::InvalidEvent;
+ if(eventType!=0x06&&eventType!=0x07&&eventType!=0x15&&eventType!=0x16)return Reject::InvalidEvent;
  if(!targetFound||!targetAlive)return Reject::NoActor;
- if(eventType==0x07||eventType==0x15)return (senderIsLocal&&targetOwnerIsSender)?Reject::None:Reject::UnauthorizedOwner;
+ if(eventType==0x06||eventType==0x07||eventType==0x15)return (senderIsLocal&&targetOwnerIsSender)?Reject::None:Reject::UnauthorizedOwner;
  // Selling another player's object has no validated multiplayer semantics.
  if(multiplayer && (!senderIsLocal || !targetOwnerIsSender))return Reject::UnauthorizedOwner;
  if(!targetOwnerIsSender)return Reject::UnauthorizedOwner;

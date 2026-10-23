@@ -22,12 +22,16 @@ template<class Create> static void createUnitSettings(Create ctl){
  toggle(suite::Frozen,L"冷冻剩余时间",212);
  toggle(suite::Parasite,L"蜘蛛寄生标志",250);
  toggle(suite::CrateBuffs,L"火力 / 防御 / 速度强化",288);
+ toggle(suite::PassengerBubbles,L"敌方载员气泡",326);
+ toggle(suite::DangerPassengers,L"危险载员常驻提示",364);
+ modernui::tip(unitSettingControls[suite::PassengerBubbles],L"悬停或选中敌方载具时，在正上方显示乘员类型与数量。");
+ modernui::tip(unitSettingControls[suite::DangerPassengers],L"敌方载具内含工程师、间谍或爆破单位时常驻显示载员气泡。");
  auto number=[&](suite::DisplayOption option,const wchar_t* text,int y,const wchar_t* unit){
   ctl(L"STATIC",text,0,354,y+3,178,23,0);
   auto h=ctl(L"EDIT",L"",WS_BORDER|ES_NUMBER|ES_AUTOHSCROLL|WS_TABSTOP,538,y,74,26,600+option);unitSettingControls[option]=h;SendMessageW(h,EM_SETLIMITTEXT,3,0);EnableWindow(h,FALSE);
   ctl(L"STATIC",unit,0,624,y+3,56,23,0);
  };
- number(suite::LabelScale,L"状态文字缩放",344,L"%");number(suite::InfoFPS,L"信息刷新率",386,L"Hz");
+ number(suite::LabelScale,L"状态文字缩放",420,L"%");number(suite::InfoFPS,L"信息刷新率",462,L"Hz");
  syncUnitSettings();
 }
 static bool unitSettingCommand(WPARAM wp){

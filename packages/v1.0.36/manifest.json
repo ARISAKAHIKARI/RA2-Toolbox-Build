@@ -1,0 +1,23 @@
+{
+  "version": "1.0.36",
+  "file_version": "1.0.36.0",
+  "assets": [
+    {
+      "name": "RA2-Toolbox-v1.0.36-Update.zip",
+      "bytes": 1198938,
+      "sha256": "3147a154b9c22a53e0cd23e989e103903747eabc6c86387f921d4ac4a8b45891",
+      "files": {
+        "RA2Toolbox.exe": "e50103598d5ca01f704ae3921ab1e234dda92ac46e8f6d293cf3b0c5fbc4be2d",
+        "GameRuntime.dll": "7e2b1ca23d119e4411599025dbf7fc933cd000ae6e58ce27be903ad4d71d9604"
+      }
+    },
+    {
+      "name": "RA2-Toolbox-v1.0.36-Source.zip",
+      "bytes": 1480314,
+      "sha256": "a3560fe1b6f6e80b6464949b13845fd0c7c07fa0964df3f9a539df389501054c",
+      "file_count": 821
+    }
+  ],
+  "validation": "source/verification/review-136/summary.json",
+  "full_package": "assembled by publish-v136.yml from pinned v1.0.2 assets and these verified packages"
+}

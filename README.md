@@ -1,12 +1,12 @@
-# RA2 Toolbox 1.0.35
+# RA2 Toolbox 1.0.36
 
-[下载 Windows 完整包](https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/releases/download/v1.0.35/RA2-Toolbox-v1.0.35-Windows.zip) · [Release / 更新包 / 源码](https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/releases/tag/v1.0.35) · [研究索引](source/research/INDEX.md)
+[下载 Windows 完整包](https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/releases/download/v1.0.36/RA2-Toolbox-v1.0.36-Windows.zip) · [Release / 更新包 / 源码](https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/releases/tag/v1.0.36) · [研究索引](source/research/INDEX.md)
 
-修复已定位的新平台运行时启动校验问题，兼容采集确认的 MRGA1 信标替换函数；关闭「卖敌方建筑」入口和旧开关，保留操控其他玩家单位。
+五大面板：画面设置、单位统计、战术控制、战场信息、实验功能。新增敌方载员气泡、危险乘员常驻和磁电自动摔落；修复路径点、磁电轮换和坦克碉堡，改进小地图、状态图标与队列提醒。详见 [发布说明](packages/v1.0.36/RELEASE_NOTES.md)。
 
-完整包包含程序、光标资源、三套配置和离线预计算环境，解压后运行 `RA2Toolbox.exe`。默认设置首次运行自动生成，不需另外下载旧版本。已有安装也可选 Update，同时覆盖 EXE/DLL；更新前先退出工具箱和游戏。
+完整包包含程序、光标资源、三套配置和离线预计算环境，解压后运行 `RA2Toolbox.exe`；已有安装可选 Update。先退出工具箱和游戏，再同时更新 EXE/DLL。文件版本 **1.0.36.0** / Assist **61**。
 
-文件版本 **1.0.35.0**。编译、受控启动/ABI 与相关回归已通过；完整包另检查资源完整性和文件哈希。平台实机与真实联机效果仍需复测。
+已编译并完成受控事件、路径点、设置和布局回归；[验证说明](source/REVIEW-1.0.36.md)。实机画面、完整运动/摔落物理和真实联机仍需平台复测。
 
 ## 历史版本说明
 

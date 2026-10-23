@@ -1,0 +1,6 @@
+PASS live reciprocal parasite relation including Limbo attacker; attacker ownership/color changes in same frame; separate settings; read-only host data
+PASS detach/death and stale one-way parasite pointers clear the icon
+PASS crate fields separate from elite rank; individual icons; no marker for NaN/infinity/default or invalid multipliers
+PASS all owners, infantry/vehicle/aircraft fields; buildings/transported units excluded; menu/session/read failures and recycled IDs
+PASS 1000 high-refresh samples with 125 frame scans; freshness expires at 250ms
+PASS exact icon sizes/colors and all buff corners inside the native 60x30 diamond over 57344 layouts

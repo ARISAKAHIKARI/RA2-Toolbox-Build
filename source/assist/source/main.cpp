@@ -620,7 +620,7 @@ static void servicePlanner(){
  worldRevision=seq;
  if(!freshness::valid(w.match,snap.match,w.tick,w.frame,GetTickCount(),snap.frame,freshness::Tactical)||snap.chat){logPlanning(w,snap.chat?L"chat":L"stale-source");wakeGame();return;}
  LARGE_INTEGER begin{},end{},frequency{};QueryPerformanceCounter(&begin);
- submittedPlan=tacticalPlanner.step(w,compute::plannerFlags(shared->flags,shared->computeApplied,false),veteranPercent,elitePercent,pathTimeout,advancedScanHz,advancedTargetPriority,advancedRangeCells);shared->plannerTracking=tacticalPlanner.trackingFlags();
+ submittedPlan=tacticalPlanner.step(w,compute::plannerFlags(shared->flags,shared->computeApplied,false),veteranPercent,elitePercent,pathTimeout,advancedScanHz,advancedTargetPriority,advancedRangeCells,extra.magnetronDrop&&!compute::inside(shared->computeApplied,compute::Magnetron));shared->plannerTracking=tacticalPlanner.trackingFlags();
  QueryPerformanceCounter(&end);QueryPerformanceFrequency(&frequency);plannerMicros=frequency.QuadPart>0?DWORD((end.QuadPart-begin.QuadPart)*1000000/frequency.QuadPart):0;
  if(!compute::inside(shared->computeApplied,compute::Ore)){snap.oreYielded=tacticalPlanner.yielded;snap.oreQueued=tacticalPlanner.queued;snap.oreDocking=tacticalPlanner.docking;snap.oreIssued=tacticalPlanner.issued;
  snap.oreDelivered=tacticalPlanner.oreDelivered;snap.oreUnverified=tacticalPlanner.oreUnverified;}
@@ -706,7 +706,7 @@ static bool ensureBridge(){
  }
  ++bridgeAttempts;bridgeRetryAt=now+(bridgeAttempts>=3?30000:2000);
  critical(L"bridge-connect-attempt="+std::to_wstring(bridgeAttempts)+L" pid="+std::to_wstring(pid)+L" thread="+std::to_wstring(gameThread));
- wchar_t n[100];swprintf(n,100,L"Local\\RA2Assist_v060_%lu",pid);
+ wchar_t n[100];swprintf(n,100,L"Local\\RA2Assist_v061_%lu",pid);
  mapping=CreateFileMappingW(INVALID_HANDLE_VALUE,nullptr,PAGE_READWRITE,0,sizeof(Shared),n);
  DWORD mappingError=GetLastError();if(!mapping)return bridgeFailed(L"创建命令共享内存失败",mappingError);
  if(mappingError==ERROR_ALREADY_EXISTS){
@@ -981,6 +981,7 @@ static void drawLabel(Graphics&g,const visual::LabelView&l,float sx,float sy){
  if(r.shield)g.DrawImage(r.image.get(),l.x*sx-(r.width*.5f+4)*zoom,l.y*sy-(20+(r.shield-1)*14.f)*zoom,r.image->GetWidth()*zoom,r.image->GetHeight()*zoom);
 }
 #include "status_draw.h"
+#include "passenger_draw.h"
 static void drawEnemyMarker(Graphics&g,const external::enemies::Marker&m,const visual::LabelView&v,float sx,float sy){
  float x=v.x*sx,y=v.y*sy;Pen edge(Color(245,5,9,16),4.f),mark(Color(m.color),2.f);
  if(m.kind==3){g.DrawRectangle(&edge,x-7,y-7,14.f,14.f);g.DrawRectangle(&mark,x-7,y-7,14.f,14.f);}
@@ -1042,14 +1043,16 @@ static void paint(){
  int enemyCount=extra.enemyMarkers&&externalData&&external::enemies::fresh(enemyFrame,externalData->match,renderNow)?std::min(enemyFrame.count,enemyMotion.render(renderNow,enemyViews)):0;
  RECT r{};GetClientRect(game,&r);POINT origin{};ClientToScreen(game,&origin);
  updateAircraftButton(origin,r);minimap::update(origin,r);
+ auto passengerBubbles=passengerView(renderNow);
  auto airLines=airway::lines();
  auto nativeBadges=buildreserve::nativeBadges();
- uint32_t idleTabs=(flags()&Production)?externalSampler.idleProductionMask:0;
- idleTabs=sidebarShapes.update([](uint32_t at,void*out,size_t size){return externalReader.readFresh(at,out,size);},renderNow,pid,commandMatch(),snap.width,snap.height,idleTabs);
- bool tabPhase=(renderNow/400)%2==0;
+ uint32_t pausedTabs=(flags()&Production)?externalSampler.pausedProductionMask:0;
+ uint32_t idleTabs=(flags()&Production)?externalSampler.idleProductionMask|pausedTabs:0;
+ idleTabs=sidebarShapes.update([](uint32_t at,void*out,size_t size){return externalReader.readFresh(at,out,size);},renderNow,pid,commandMatch(),snap.width,snap.height,idleTabs,pausedTabs);
+ bool tabPhase=(renderNow/400)%2==0;bool spiderPhase=(renderNow/650)%2==0;
  bool panel=SendMessageW(check[6],BM_GETCHECK,0,0)==BST_CHECKED;
  bool hasToast=panel&&now<toastUntil;bool summary=panel&&snap.transports;
- if(!labelCount&&!hasToast&&!summary&&!snap.threatCount&&!snap.crateCount&&!enemyCount&&!statusCount&&!idleTabs&&airLines.empty()&&nativeBadges.empty()){ShowWindow(overlay,SW_HIDE);return;}
+ if(!labelCount&&!hasToast&&!summary&&!snap.threatCount&&!snap.crateCount&&!enemyCount&&!statusCount&&!idleTabs&&passengerBubbles.empty()&&airLines.empty()&&nativeBadges.empty()){ShowWindow(overlay,SW_HIDE);return;}
  viewport::Scale view;if(!view.set(snap.width,snap.height,r.right,r.bottom)){ShowWindow(overlay,SW_HIDE);return;}
  const int physicalW=r.right,physicalH=r.bottom;r.right=view.gameWidth;r.bottom=view.gameHeight;
  const float sx=1,sy=1; // Positions, glyphs, icons and bounds share game-pixel space.
@@ -1058,6 +1061,7 @@ static void paint(){
  float panelX=(r.right-panelW)*.5f;
  int left=r.right,up=r.bottom,right=0,bottom=0;
  auto include=[&](float x,float y,float w,float h){int x0=std::clamp(int(std::floor(x)),0,int(r.right)),y0=std::clamp(int(std::floor(y)),0,int(r.bottom));int x1=std::clamp(int(std::ceil(x+w)),0,int(r.right)),y1=std::clamp(int(std::ceil(y+h)),0,int(r.bottom));if(x1>x0&&y1>y0){left=std::min(left,x0);up=std::min(up,y0);right=std::max(right,x1);bottom=std::max(bottom,y1);}};
+ for(const auto&b:passengerBubbles)include(b.left,b.top,b.width,b.height+6);
  for(const auto&b:nativeBadges)include(b.x*sx,b.y*sy,b.w*sx,b.h*sy);
  for(auto l:airLines)include(std::min(l.x,l.tx)*sx-6,std::min(l.y,l.ty)*sy-6,std::abs(l.x-l.tx)*sx+12,std::abs(l.y-l.ty)*sy+12);
  if(idleTabs)for(int i=0;i<4;++i)if(idleTabs&(1u<<i)){const auto&f=sidebarShapes.frames[i];include(f.x*sx,f.y*sy,f.width*sx,f.height*sy);}
@@ -1071,9 +1075,11 @@ static void paint(){
  static Snapshot drawn{};static visual::LabelView drawnViews[MaxLabels];static int drawnCount;static bool lastToast,lastPanel,lastSummary;static std::wstring oldToast;static int oldW,oldH,oldMargin;static uint32_t revision;
  static external::enemies::Marker drawnEnemies[external::enemies::Maximum];static visual::LabelView drawnEnemyViews[MaxLabels];static int drawnEnemyCount,drawnEnemyWidth,drawnEnemyHeight;
  static external::status::Marker drawnStatuses[external::status::Maximum];static visual::LabelView drawnStatusViews[MaxLabels];static int drawnStatusCount,drawnStatusWidth,drawnStatusHeight;
+ static bool drawnSpiderPhase=false;
  static uint32_t drawnIdleTabs=0,drawnShapeRevision=0;static bool drawnTabPhase=false;
+ static std::vector<PassengerVisual> drawnPassengers;
  static std::vector<airway::Line> drawnAirLines;static std::vector<construction::NativeBadge> drawnBadges;
- bool changed=drawnBadges!=nativeBadges||drawnShapeRevision!=sidebarShapes.revision||drawn.width!=snap.width||drawn.height!=snap.height||drawnAirLines.size()!=airLines.size()||(!airLines.empty()&&memcmp(drawnAirLines.data(),airLines.data(),airLines.size()*sizeof(airway::Line)))||drawnIdleTabs!=idleTabs||(idleTabs&&drawnTabPhase!=tabPhase)||oldW!=physicalW||oldH!=physicalH||oldMargin!=topMargin||revision!=paintRevision||lastPanel!=panel||lastSummary!=summary||lastToast!=hasToast||(hasToast&&oldToast!=toast)||drawnCount!=labelCount||drawn.transports!=snap.transports||drawn.used!=snap.used||drawn.capacity!=snap.capacity||memcmp(drawnViews,labelViews,sizeof(visual::LabelView)*labelCount)||drawn.threatCount!=snap.threatCount||drawn.crateCount!=snap.crateCount||memcmp(drawn.threats,snap.threats,sizeof(Threat)*snap.threatCount)||memcmp(drawn.crates,snap.crates,sizeof(CrateMark)*snap.crateCount);
+ bool changed=(statusCount&&drawnSpiderPhase!=spiderPhase)||drawnPassengers!=passengerBubbles||drawnBadges!=nativeBadges||drawnShapeRevision!=sidebarShapes.revision||drawn.width!=snap.width||drawn.height!=snap.height||drawnAirLines.size()!=airLines.size()||(!airLines.empty()&&memcmp(drawnAirLines.data(),airLines.data(),airLines.size()*sizeof(airway::Line)))||drawnIdleTabs!=idleTabs||(idleTabs&&drawnTabPhase!=tabPhase)||oldW!=physicalW||oldH!=physicalH||oldMargin!=topMargin||revision!=paintRevision||lastPanel!=panel||lastSummary!=summary||lastToast!=hasToast||(hasToast&&oldToast!=toast)||drawnCount!=labelCount||drawn.transports!=snap.transports||drawn.used!=snap.used||drawn.capacity!=snap.capacity||memcmp(drawnViews,labelViews,sizeof(visual::LabelView)*labelCount)||drawn.threatCount!=snap.threatCount||drawn.crateCount!=snap.crateCount||memcmp(drawn.threats,snap.threats,sizeof(Threat)*snap.threatCount)||memcmp(drawn.crates,snap.crates,sizeof(CrateMark)*snap.crateCount);
  changed=changed||drawnEnemyCount!=enemyCount||drawnEnemyWidth!=enemyFrame.width||drawnEnemyHeight!=enemyFrame.height||memcmp(drawnEnemyViews,enemyViews,sizeof(visual::LabelView)*enemyCount)||memcmp(drawnEnemies,enemyFrame.items,sizeof(external::enemies::Marker)*enemyCount);
  changed=changed||drawnStatusCount!=statusCount||drawnStatusWidth!=statusFrame.width||drawnStatusHeight!=statusFrame.height||memcmp(drawnStatusViews,statusViews,sizeof(visual::LabelView)*statusCount)||memcmp(drawnStatuses,statusFrame.items,sizeof(external::status::Marker)*statusCount);
  origin.x+=view.left(left);origin.y+=view.top(up);
@@ -1082,7 +1088,7 @@ static void paint(){
  drawn.transports=snap.transports;drawn.used=snap.used;drawn.capacity=snap.capacity;drawn.threatCount=snap.threatCount;drawn.crateCount=snap.crateCount;memcpy(drawn.threats,snap.threats,sizeof(Threat)*snap.threatCount);memcpy(drawn.crates,snap.crates,sizeof(CrateMark)*snap.crateCount);drawnCount=labelCount;memcpy(drawnViews,labelViews,sizeof(visual::LabelView)*labelCount);oldW=physicalW;oldH=physicalH;oldMargin=topMargin;revision=paintRevision;lastPanel=panel;lastSummary=summary;lastToast=hasToast;oldToast=toast;
  drawnEnemyCount=enemyCount;drawnEnemyWidth=enemyFrame.width;drawnEnemyHeight=enemyFrame.height;memcpy(drawnEnemies,enemyFrame.items,sizeof(external::enemies::Marker)*enemyCount);memcpy(drawnEnemyViews,enemyViews,sizeof(visual::LabelView)*enemyCount);
  drawnStatusCount=statusCount;drawnStatusWidth=statusFrame.width;drawnStatusHeight=statusFrame.height;memcpy(drawnStatuses,statusFrame.items,sizeof(external::status::Marker)*statusCount);memcpy(drawnStatusViews,statusViews,sizeof(visual::LabelView)*statusCount);
- drawn.width=snap.width;drawn.height=snap.height;drawnShapeRevision=sidebarShapes.revision;drawnAirLines=airLines;drawnBadges=nativeBadges;drawnIdleTabs=idleTabs;drawnTabPhase=tabPhase;
+ drawnSpiderPhase=spiderPhase;drawnPassengers=passengerBubbles;drawn.width=snap.width;drawn.height=snap.height;drawnShapeRevision=sidebarShapes.revision;drawnAirLines=airLines;drawnBadges=nativeBadges;drawnIdleTabs=idleTabs;drawnTabPhase=tabPhase;
  memset(surface.bits,0,size_t(surface.w)*surface.h*4);
  {Bitmap bm(surface.w,surface.h,surface.w*4,PixelFormat32bppPARGB,surface.bits);Graphics g(&bm);g.SetSmoothingMode(SmoothingModeAntiAlias);g.ScaleTransform(view.x,view.y);g.TranslateTransform(-float(left),-float(up));
   if(idleTabs&&tabPhase){auto state=g.Save();g.SetInterpolationMode(InterpolationModeNearestNeighbor);g.SetPixelOffsetMode(PixelOffsetModeHalf);
@@ -1099,8 +1105,9 @@ static void paint(){
   Pen cratePen(Color(245,255,205,82),2.f);
   for(int i=0;i<snap.crateCount;++i){auto&c=snap.crates[i];float x=c.x*sx,y=c.y*sy;g.DrawRectangle(&cratePen,x-10,y-9,20.f,18.f);std::wstring text=c.preview<0?L"随机箱":std::wstring(L"预设 · ")+crateName(c.preview);drawText(g,text,x-text.size()*6,y-29,12,Color(255,255,216,117));}
   auto statusClip=g.Save();g.SetClip(RectF(0,0,float(statusFrame.width),float(statusFrame.height)),CombineModeIntersect);
-  for(int i=0;i<statusCount;++i)drawUnitStatus(g,statusFrame.items[i],statusViews[i]);g.Restore(statusClip);
+  for(int i=0;i<statusCount;++i)drawUnitStatus(g,statusFrame.items[i],statusViews[i],spiderPhase);g.Restore(statusClip);
   for(int i=0;i<labelCount;++i)drawLabel(g,labelViews[i],sx,sy);
+  for(const auto&b:passengerBubbles)drawPassengerBubble(g,b);
   float y=top;
   if(summary){std::wstring text=L"载员 "+std::to_wstring(snap.used)+L" / "+std::to_wstring(snap.capacity)+L" · 剩余 "+std::to_wstring(std::max(0,snap.capacity-snap.used));SolidBrush bg(Color(150,13,21,31));g.FillRectangle(&bg,panelX,y,panelW,26.f);drawText(g,text,panelX+10,y+4,13,Color::White);y+=30;}
   if(hasToast){SolidBrush bg(Color(155,13,21,31));g.FillRectangle(&bg,panelX,y,panelW,27.f);drawText(g,toast,panelX+10,y+4,12,Color(255,220,233,247));y+=31;}
@@ -1230,7 +1237,7 @@ static void serviceCommandQueue(DWORD now){
 static void publishSuiteDisplay(){
 #ifdef RA2_UNIFIED
  if(!ready)return;suite::DisplayState state;
- state.values={extra.scrollRefreshMode,int(extra.enemyMarkers),int(SendMessageW(check[1],BM_GETCHECK,0,0)==BST_CHECKED),int(SendMessageW(check[0],BM_GETCHECK,0,0)==BST_CHECKED),int(SendMessageW(check[3],BM_GETCHECK,0,0)==BST_CHECKED),int(extra.frozen),int(extra.parasiteMarker),int(extra.crateBuffMarkers),labelScalePercent,fps};
+ state.values={extra.scrollRefreshMode,int(extra.enemyMarkers),int(SendMessageW(check[1],BM_GETCHECK,0,0)==BST_CHECKED),int(SendMessageW(check[0],BM_GETCHECK,0,0)==BST_CHECKED),int(SendMessageW(check[3],BM_GETCHECK,0,0)==BST_CHECKED),int(extra.frozen),int(extra.parasiteMarker),int(extra.crateBuffMarkers),labelScalePercent,fps,extra.mapStrategy,int(extra.passengerBubbles),int(extra.dangerPassengers)};
  state.assistEnabled=enabled;state.refreshStatus=shared?shared->scrollRefreshStatus:0;
  state.rateMilli=shared?int(shared->scrollRefreshRateMilli):0;state.gapUs=shared?int(shared->scrollRefreshMaxGapUs):0;
  suite::publishDisplaySettings(state);
@@ -1248,7 +1255,7 @@ static void updateModeStatus(DWORD now){
  SetWindowTextW(GetDlgItem(ui,809),renderText.c_str());
  SetWindowTextW(GetDlgItem(ui,888),!extra.scrollRefreshMode?L"高刷策略：仅光标（沿用光标页设置）":shared&&shared->scrollRefreshStatus<0?L"高刷策略：接口不兼容，保持原版画面刷新":shared&&shared->scrollRefreshStatus==1?(extra.scrollRefreshMode==2?L"高刷策略：全部 · 实验性功能已启用":L"高刷策略：光标＋拖屏 · 实验性功能已启用"):L"高刷策略：等待游戏前台就绪");
  if(shared&&shared->scrollRefreshStatus==1&&shared->scrollRefreshRateMilli){wchar_t label[160];swprintf(label,160,L"%s · 补充绘制 %.1f Hz · 最长间隔 %.1f ms",extra.scrollRefreshMode==2?L"全部（实验性）":L"光标＋拖屏（实验性）",shared->scrollRefreshRateMilli/1000.0,shared->scrollRefreshMaxGapUs/1000.0);SetWindowTextW(GetDlgItem(ui,888),label);}
- SetWindowTextW(GetDlgItem(ui,813),(L"步兵进入与 C4："+(extra.c4Test&&snap.c4TestStatus==1&&!phase&&infantryEntryResultMatch==commandMatch()&&!infantryEntryResult.empty()?infantryEntryResult:riskText(extra.c4Test,snap.c4TestStatus))).c_str());
+ SetWindowTextW(GetDlgItem(ui,813),(L"步兵强制进入建筑："+(extra.c4Test&&snap.c4TestStatus==1&&!phase&&infantryEntryResultMatch==commandMatch()&&!infantryEntryResult.empty()?infantryEntryResult:riskText(extra.c4Test,snap.c4TestStatus))).c_str());
  std::wstring progress=snap.techOpen==2?L"经典兼容 · 生产进度：":L"生产进度：";uint32_t owner=0;
  if(techMode&&commandFresh(now)&&externalReader.readFresh(0xA83D4C,&owner,4)&&owner>=0x10000){
   const int offsets[]={0x53BC,0x53CC,0x53B0,0x53B4,0x53B8,0x53AC};const wchar_t* names[]={L"建筑",L"防御",L"步兵",L"战车",L"舰船",L"飞机"};
@@ -1421,7 +1428,7 @@ static void layoutPanel(){
  if(!ui||arrangingPanel)return;arrangingPanel=true;
  RECT client{};GetClientRect(ui,&client);int height=logical(client.bottom),width=logical(client.right),maximum=uilayout::maxScroll(pageBottom(),height);scrollY=std::clamp(scrollY,0,maximum);scrollX=std::clamp(scrollX,0,std::max(0,uilayout::Width-width));
  auto px=[](int n){return modernui::scale(n,panelDpi);};HDWP batch=BeginDeferWindowPos(int(pageControls.size()));
- for(const auto&c:pageControls){auto r=uilayout::visible(c.rect,c.page,height,width,scrollY);r.x-=scrollX;
+ for(const auto&c:pageControls){int cid=GetDlgCtrlID(c.hwnd);if(cid>=910&&cid<=915)ShowWindow(c.hwnd,activePage==0?SW_SHOWNA:SW_HIDE);auto r=uilayout::visible(c.rect,c.page,height,width,scrollY);r.x-=scrollX;
   if(c.page>=0){int top=std::max(0,uilayout::BodyTop-r.y),bottom=std::min(c.visibleHeight,uilayout::bodyBottom(height)-r.y);bool shown=c.page==activePage&&bottom>top;
    HRGN region=CreateRectRgn(0,shown?px(top):0,px(r.w),shown?px(bottom):0);if(!SetWindowRgn(c.hwnd,region,FALSE))DeleteObject(region);
   }
@@ -1430,7 +1437,7 @@ static void layoutPanel(){
   if(batch)batch=DeferWindowPos(batch,c.hwnd,nullptr,px(r.x),px(r.y),px(r.w),px(r.h),flags);
   else SetWindowPos(c.hwnd,nullptr,px(r.x),px(r.y),px(r.w),px(r.h),flags);
  }
- if(!batch||!EndDeferWindowPos(batch))for(const auto&c:pageControls){auto r=uilayout::visible(c.rect,c.page,height,width,scrollY);r.x-=scrollX;SetWindowPos(c.hwnd,nullptr,px(r.x),px(r.y),px(r.w),px(r.h),SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS|SWP_NOREDRAW|(c.page<0?0:c.page==activePage?SWP_SHOWWINDOW:SWP_HIDEWINDOW));}
+ if(!batch||!EndDeferWindowPos(batch))for(const auto&c:pageControls){int cid=GetDlgCtrlID(c.hwnd);if(cid>=910&&cid<=915)ShowWindow(c.hwnd,activePage==0?SW_SHOWNA:SW_HIDE);auto r=uilayout::visible(c.rect,c.page,height,width,scrollY);r.x-=scrollX;SetWindowPos(c.hwnd,nullptr,px(r.x),px(r.y),px(r.w),px(r.h),SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS|SWP_NOREDRAW|(c.page<0?0:c.page==activePage?SWP_SHOWWINDOW:SWP_HIDEWINDOW));}
  int viewport=std::max(1,uilayout::bodyBottom(height)-uilayout::BodyTop);SCROLLINFO si{sizeof si,SIF_RANGE|SIF_PAGE|SIF_POS|SIF_DISABLENOSCROLL};si.nMin=0;si.nMax=maximum+viewport-1;si.nPage=viewport;si.nPos=scrollY;SetScrollInfo(ui,SB_VERT,&si,TRUE);
  si.nMax=uilayout::Width-1;si.nPage=std::max(1,width);si.nPos=scrollX;SetScrollInfo(ui,SB_HORZ,&si,TRUE);
  arrangingPanel=false;RedrawWindow(ui,nullptr,nullptr,RDW_INVALIDATE|RDW_ERASE|RDW_ALLCHILDREN|RDW_UPDATENOW);
@@ -1441,12 +1448,13 @@ static void applyPanelDpi(unsigned dpi){
  layoutPanel();
 }
 static void scrollTo(int position){scrollY=position;layoutPanel();}
-// Convert the existing control definitions into one continuous document.
+// Pack controls into tactical, battlefield-information and experimental pages.
 // Row intervals keep labels/inputs aligned while removing old page whitespace.
 #include "hover_help.h"
 static void finalizeTacticalLayout(){
- int y=uilayout::BodyTop+12;
+ int bottoms[3]={uilayout::BodyTop+12,uilayout::BodyTop+12,uilayout::BodyTop+12};
  for(int section:{0,1,2,5,3,4}){
+  int category=section==3?1:section==4?2:0;int&y=bottoms[category];
   std::vector<size_t> items;for(size_t i=0;i<pageControls.size();++i)if(pageControls[i].page==section)items.push_back(i);
   std::stable_sort(items.begin(),items.end(),[](size_t a,size_t b){return pageControls[a].rect.y<pageControls[b].rect.y;});
   if(items.empty())continue;if(section>0)y+=24;
@@ -1459,7 +1467,7 @@ static void finalizeTacticalLayout(){
   }
   y+=12;
  }
- for(auto&c:pageControls)if(c.page>=0){c.page=0;modernui::tip(c.hwnd,c.help);}
+ for(auto&c:pageControls)if(c.page>=0){c.page=c.page==3?1:c.page==4?2:0;modernui::tip(c.hwnd,c.help);}
  scrollY=0;layoutPanel();
 }
 static HWND placedControl(uilayout::Placement placement,const wchar_t*cls,const wchar_t*text,int id,DWORD style){
@@ -1478,6 +1486,7 @@ static void bindSuper(){std::string id=selectedSuperID();if(id.empty()){notify(L
 static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
 #ifdef RA2_UNIFIED
  if(suite::layoutMessage(w,msg,lp))return 0;
+ if(msg==suite::SelectCategory){int page=std::clamp(int(wp),0,2);if(activePage!=page){activePage=page;scrollY=scrollX=0;SetWindowTextW(GetDlgItem(w,989),page==0?L"战术控制":page==1?L"战场信息":L"实验功能");layoutPanel();}return 0;}
  if(msg==suite::RefreshRateChanged){syncRefreshRate();return 0;}
  if(msg==suite::ApplyDisplaySetting){
   if(!ready||!suite::validDisplayEdit(int(wp),int(lp)))return 0;
@@ -1485,7 +1494,7 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
   int notification=BN_CLICKED;
   {ControlUpdate guard;
    if(spec.control==suite::DisplayControl::Check)SendMessageW(control,BM_SETCHECK,lp?BST_CHECKED:BST_UNCHECKED,0);
-   else if(spec.control==suite::DisplayControl::Choice){SendMessageW(control,CB_SETCURSEL,wp==suite::RefreshMode?lp:0,0);notification=CBN_SELCHANGE;}
+   else if(spec.control==suite::DisplayControl::Choice){SendMessageW(control,CB_SETCURSEL,lp,0);notification=CBN_SELCHANGE;}
    else {SetWindowTextW(control,std::to_wstring(int(lp)).c_str());notification=EN_CHANGE;}
   }
   SendMessageW(w,WM_COMMAND,MAKEWPARAM(spec.id,notification),(LPARAM)control);publishSuiteDisplay();return 0;
@@ -1495,9 +1504,9 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
 #endif
  if(msg==modernui::DpiMessage){applyPanelDpi(unsigned(wp));return 0;}
  switch(msg){case WM_CREATE:{ui=w;panelDpi=modernui::windowDpi(w);
- placedControl({-1,{20,14,280,30}},L"STATIC",L"战术助手",989,0);
+ placedControl({-1,{20,14,280,30}},L"STATIC",L"战术控制",989,0);
  placedControl({-1,{305,20,320,22}},L"STATIC",L"设置修改后自动保存",0,0);
- {const wchar_t* titles[]={L"键盘操作",L"键鼠操作",L"自动任务",L"显示设置",L"高级设置",L"单位清单"};for(int i=0;i<6;++i)placedControl({-1,{20+i*102,46,95,26}},L"BUTTON",titles[i],910+i,BS_PUSHBUTTON|WS_TABSTOP);}
+ {const wchar_t* titles[]={L"键盘操作",L"键鼠操作",L"自动任务",L"显示设置",L"高级设置",L"单位清单"};for(int i:{0,1,2,5})placedControl({-1,{20+(i==5?3:i)*154,46,145,26}},L"BUTTON",titles[i],910+i,BS_PUSHBUTTON|WS_TABSTOP);}
  featureSearch=placedControl({-1,{20,80,470,28}},L"EDIT",L"",990,ES_AUTOHSCROLL|WS_TABSTOP);
  SendMessageW(featureSearch,EM_SETCUEBANNER,TRUE,(LPARAM)L"搜索功能，例如：装车、铁幕、CS");
  placedControl({-1,{505,80,120,28}},L"BUTTON",L"定位功能",991,BS_PUSHBUTTON|WS_TABSTOP);
@@ -1552,7 +1561,7 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
  }
 if(id==991){wchar_t query[128]{};GetWindowTextW(featureSearch,query,128);std::wstring needle=query;for(auto&ch:needle)ch=towlower(ch);
  if(needle.empty()){scrollTo(0);return 0;}
- for(const auto&c:pageControls)if(c.page>=0){wchar_t label[512]{};GetWindowTextW(c.hwnd,label,512);std::wstring text=std::wstring(label)+L" "+c.help;for(auto&ch:text)ch=towlower(ch);if(text.find(needle)!=std::wstring::npos){scrollTo(c.rect.y-uilayout::BodyTop-12);notify(L"已找到匹配功能；悬停查看说明。");return 0;}}
+ for(const auto&c:pageControls)if(c.page==activePage){wchar_t label[512]{};GetWindowTextW(c.hwnd,label,512);std::wstring text=std::wstring(label)+L" "+c.help;for(auto&ch:text)ch=towlower(ch);if(text.find(needle)!=std::wstring::npos){scrollTo(c.rect.y-uilayout::BodyTop-12);notify(L"已找到匹配功能；悬停查看说明。");return 0;}}
  notify(L"未找到匹配功能，请换一个关键词。");return 0;}if(id==750||id==754||id==755){
   if(id==750&&!readAdditionalControls())return 0;
   extra.variantKey=SendMessageW(extraControls[VariantKey],HKM_GETHOTKEY,0,0);

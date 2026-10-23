@@ -26,6 +26,7 @@ static bool autoSettingChanged(int id,int notification){
   SendMessageW(GetDlgItem(ui,861),BM_SETCHECK,BST_UNCHECKED,0);
   pointerMatches.clear();changedSetting();syncAdditional();notify(L"此功能暂不可用。");return true;
  }
+ if((id==897||id==898||id==899)&&notification==BN_CLICKED){bool on=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;if(id==897)extra.passengerBubbles=on;else if(id==898)extra.dangerPassengers=on;else extra.magnetronDrop=on;changedSetting();syncAdditional();return true;}
  if(id==850&&select){int next=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));if(next>=0&&next<=3){minimapPosition=next;changedSetting();}return true;}
  if(id==830&&notification==BN_CLICKED){minimapEnabled=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;if(!minimapEnabled)minimap::hide();changedSetting();return true;}
  if(id==886&&select){int mode=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));if(mode>=0&&mode<=2){extra.scrollRefreshMode=mode;changedSetting();syncAdditional();}return true;}

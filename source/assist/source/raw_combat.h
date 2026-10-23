@@ -34,8 +34,8 @@ static planner::Weapon rawWeaponInfo(uint32_t weapon,bool cached){
  if(!cached)return rawWeaponFresh(weapon);int frame=get<int>(0xA8ED84);auto&e=weaponCache[(weapon>>4)&1023];
  if(e.pointer!=weapon||e.match!=match||frame<e.frame||frame-e.frame>=30){e.pointer=weapon;e.match=match;e.frame=frame;e.data=rawWeaponFresh(weapon);}return e.data;
 }
-static bool rawMagnetron(uint32_t p){
- int k=kind(p);uint32_t type=typeOf(p,k);if(k!=2||!type||!featureTypeAllowed(featuretypes::Magnetron,type))return false;int slots[2],count=rawWeaponSlots(p,type,slots);
+static bool rawMagnetron(uint32_t p,featuretypes::Feature feature=featuretypes::Magnetron){
+ int k=kind(p);uint32_t type=typeOf(p,k);if(k!=2||!type||!featureTypeAllowed(feature,type))return false;int slots[2],count=rawWeaponSlots(p,type,slots);
  for(int i=0;i<count;++i){uint32_t w=rawWeapon(type,get<float>(p+0x150),slots[i]);if(w>=0x10000&&get<bool>(w+0x15C)){uint32_t wh=get<uint32_t>(w+0xAC);if(wh>=0x10000&&get<bool>(wh+0x15B))return true;}}return false;
 }
 static void rawCombatInfo(uint32_t p,uint32_t type,int k,planner::Actor& a,bool weapons,bool cached=false){

@@ -4,10 +4,11 @@ static planner::Planner runtimePlanner;
 static void resetRuntimePlanner(){runtimePlanner.reset();if(sh){sh->runtimeTracking=0;sh->runtimePlannerMicros=0;}}
 static void runtimePlanningTick(uint32_t house,int frame,DWORD now){
  uint32_t selected=compute::plannerFlags(sh->flags,sh->computeApplied,true);
- if(!selected&&!runtimePlanner.hasJobs()){sh->runtimeTracking=0;return;}
+ bool drop=sh->magnetronDrop&&compute::inside(sh->computeApplied,compute::Magnetron);
+ if(!selected&&!drop&&!runtimePlanner.hasJobs()){sh->runtimeTracking=0;return;}
  if(snap.chat||!freshness::valid(planningWorld.match,match,planningWorld.tick,planningWorld.frame,now,frame,freshness::Tactical))return;
  LARGE_INTEGER begin{},end{},frequency{};QueryPerformanceCounter(&begin);
- auto orders=runtimePlanner.step(planningWorld,selected,int(sh->veteranPercent),int(sh->elitePercent),int(sh->pathTimeout),int(sh->advancedScanHz),int(sh->advancedPriority),int(sh->advancedRangeCells));
+ auto orders=runtimePlanner.step(planningWorld,selected,int(sh->veteranPercent),int(sh->elitePercent),int(sh->pathTimeout),int(sh->advancedScanHz),int(sh->advancedPriority),int(sh->advancedRangeCells),drop);
  for(const auto&o:orders){
   if(!freshness::valid(planningWorld.match,match,planningWorld.tick,planningWorld.frame,sampleClock(sh),get<int>(0xA8ED84),freshness::Tactical)){runtimePlanner.expired(o);continue;}
   int result=admitPlannerOrder(o,house);

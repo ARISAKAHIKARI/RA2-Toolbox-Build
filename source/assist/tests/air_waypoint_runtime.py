@@ -19,19 +19,23 @@ for mode in (3, 4):
    def state(): return m.Shared.from_buffer_copy(m.u.mem_read(m.SH, C.sizeof(m.Shared)))
    def save(s): m.u.mem_write(m.SH, bytes(s))
    m.w(0xa8b238, mode)
+   view_x,view_y=(18,32) if binding==65536 else (0,0)
+   m.w(0x886fa0,view_x);m.w(0x886fa4,view_y)
+   m.floor_height=512 if binding==65536 else 0
    airtype = m.alloc(0x2000); air = m.obj(0x7e22a4, airtype, m.house, 40, selected=True)
    m.vector(0xa8ec78, [m.unit, m.eng, m.building, m.enemyUnit, air])
    s = state(); s.flags = flag; s.externalDisplay = 1; save(s); s = m.hook()
    m.b(0x87f7e8 + 0x11b3, 1)  # DisplayClass::PlanningMode while Z is used.
    def click(u, at, size, _):
     sp = m.u.reg_read(UC_X86_REG_ESP); arg = lambda n: m.r(sp + 4 + n * 4)
+    assert struct.unpack('<ii',m.u.mem_read(arg(0),8))==(20,30), 'full-client origin must be subtracted exactly once'
     m.u.mem_write(arg(1), struct.pack('<hh', 20, 30))
     m.u.mem_write(arg(2), struct.pack('<iii', 5248, 7808, 0)); m.w(arg(3), 0); m.ret(0, 6)
    m.u.hook_add(UC_HOOK_CODE, click, begin=0x692300, end=0x692300)
    before = bytes(m.u.mem_read(air, 0x2000))
    s = state(); i = s.pointer.intent
    i.match = s.data.match; i.tick = m.clock; i.frame = m.r(0xa8ed84); i.house = m.house
-   i.operation = 6; i.bindings = binding; i.width = 800; i.height = 600; i.x = 20; i.y = 30
+   i.operation = 6; i.bindings = binding; i.width = 800; i.height = 600; i.x = 20+view_x; i.y = 30+view_y
    i.count = 1; i.sources[0].id = 40; i.sources[0].pointer = air
    s.pointer.request += 1; save(s); s = m.hook()
    if a.expect_rejected:
@@ -41,6 +45,7 @@ for mode in (3, 4):
     m.w(0xa8ed84, m.r(0xa8ed84) + 1); s = m.hook()
     assert s.pointer.ack == s.pointer.request and s.pointer.result == 1
     assert s.pointer.accepted == 1 and s.pointer.resolvedCell == 30020 and s.pointer.sourceAccepted[0] == 1
+    assert s.pointer.resolvedZ==m.floor_height, 'waypoint marker uses terrain elevation'
    assert m.r(0xa802c8) == m.r(0x8b41f8) == 0, 'recording must not emit commands'
    assert bytes(m.u.mem_read(air, 0x2000)) == before
    assert m.u.mem_read(0x87f7e8 + 0x11b3, 1) == b'\x01', 'do not clear native planning mode'

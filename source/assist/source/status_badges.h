@@ -5,7 +5,7 @@
 #include <cstdint>
 namespace assist { namespace statusbadges {
 // All sizes are game pixels, independent of status-text zoom.
-constexpr int SpiderSize=14,BuffSize=7;
+constexpr int SpiderSize=14,BuffSize=9;
 struct Sprite {int width=0,height=0;std::array<uint32_t,SpiderSize*SpiderSize> pixels{};};
 template<int W,int H> Sprite raster(const char*const(&mask)[H],uint32_t color){
  Sprite s;s.width=W;s.height=H;
@@ -27,14 +27,14 @@ inline Sprite buff(unsigned index){
 }
 struct Point {float x=0,y=0;};
 struct Layout {Point center;Point icons[3];unsigned kinds[3]{};int count=0;};
-// Projected cell is a 60x30 diamond. Fit the complete 7x7 tile (including
+// Projected cell is a 60x30 diamond. Fit the complete 9x9 tile (including
 // outline), not just its center, inside that diamond with a subpixel margin.
 inline Layout layout(float x,float y,float cellX,float cellY,uint32_t buffs,bool parasite){
  Layout r;r.center={cellX,cellY};
  for(unsigned i=0;i<3;++i)if(buffs&(1u<<i))r.kinds[r.count++]=i;
  float minU=1e6f,maxU=-1e6f,minV=1e6f,maxV=-1e6f;
  for(int i=0;i<r.count;++i){
-  float dx=(i-(r.count-1)*.5f)*9.f,dy=parasite?(r.count==3&&i!=1?4.5f:9.f):8.f;
+  float dx=(i-(r.count-1)*.5f)*11.f,dy=parasite?(r.count==3&&i!=1?4.5f:9.f):8.f;
   r.icons[i]={dx,dy};float u=dx/30.f+dy/15.f,v=dx/30.f-dy/15.f;
   minU=std::min(minU,u);maxU=std::max(maxU,u);minV=std::min(minV,v);maxV=std::max(maxV,v);
  }

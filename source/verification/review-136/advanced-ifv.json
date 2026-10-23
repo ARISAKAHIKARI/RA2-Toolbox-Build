@@ -1,0 +1,86 @@
+{
+  "scope": "Actual Runtime, native weapon selection/GetWeapon/range and event constructors. Controlled object getters, map and input; not live game/netplay.",
+  "dll_sha256": "7e2b1ca23d119e4411599025dbf7fc933cd000ae6e58ce27be903ad4d71d9604",
+  "results": [
+    {
+      "case": "0_True_ifv_out_0",
+      "status": "PASS"
+    },
+    {
+      "case": "0_True_ifv_out_1",
+      "status": "PASS"
+    },
+    {
+      "case": "0_True_ifv_out_4",
+      "status": "PASS"
+    },
+    {
+      "case": "0_True_ifv_out_7",
+      "status": "PASS"
+    },
+    {
+      "case": "0_True_ifv_out_14",
+      "status": "PASS"
+    },
+    {
+      "case": "0_False_ifv_out_0",
+      "status": "PASS"
+    },
+    {
+      "case": "0_False_ifv_out_1",
+      "status": "PASS"
+    },
+    {
+      "case": "0_False_ifv_out_4",
+      "status": "PASS"
+    },
+    {
+      "case": "0_False_ifv_out_7",
+      "status": "PASS"
+    },
+    {
+      "case": "0_False_ifv_out_14",
+      "status": "PASS"
+    },
+    {
+      "case": "3_True_ifv_out_0",
+      "status": "PASS"
+    },
+    {
+      "case": "3_True_ifv_out_1",
+      "status": "PASS"
+    },
+    {
+      "case": "3_True_ifv_out_4",
+      "status": "PASS"
+    },
+    {
+      "case": "3_True_ifv_out_7",
+      "status": "PASS"
+    },
+    {
+      "case": "3_True_ifv_out_14",
+      "status": "PASS"
+    },
+    {
+      "case": "3_False_ifv_out_0",
+      "status": "PASS"
+    },
+    {
+      "case": "3_False_ifv_out_1",
+      "status": "PASS"
+    },
+    {
+      "case": "3_False_ifv_out_4",
+      "status": "PASS"
+    },
+    {
+      "case": "3_False_ifv_out_7",
+      "status": "PASS"
+    },
+    {
+      "case": "3_False_ifv_out_14",
+      "status": "PASS"
+    }
+  ]
+}

@@ -20,7 +20,7 @@ def setup(mode,facility='bunker',docks=1):
  for building in buildings:
   m.w(building+0xe8,docks);m.w(building+0xe4,m.alloc(4*docks))
  for unit in units:
-  for building in buildings:m.action_overrides[(unit,building)]=3 if facility=='bunker' else 11
+  for building in buildings:m.action_overrides[(unit,building)]=1 if facility=='bunker' else 11
  m.queryObject=buildings[0]
  def select(s,i):
   i.count=len(units)
@@ -42,7 +42,7 @@ for mode in (0,3):
   assert s.cooperativeAck==s.cooperativePlan and s.cooperativeAccepted==2 and count(m)==2,(facility,s.cooperativeAccepted,s.cooperativeRejected)
   for n,t in enumerate(buildings):
    event=packets(m)[111*n:111*(n+1)]
-   assert event[0]==4 and event[12]==(7 if facility=='bunker' else 9)
+   assert event[0]==4 and event[12]==(2 if facility=='bunker' else 9)
    assert event[14:19]==bytes(5) and event[19:24]==struct.pack('<IB',m.r(t+0x10),0x34)
   if facility=='bunker':
    for u,t in zip(units,buildings):m.w(u+0x2e4,t);m.w(t+0x2e4,u)

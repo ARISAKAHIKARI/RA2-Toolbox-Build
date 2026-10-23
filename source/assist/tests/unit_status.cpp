@@ -64,7 +64,7 @@ int main(){using namespace external::status;
   std::cout<<"PASS 1000 high-refresh samples with 125 frame scans; freshness expires at 250ms\n";
  }
  {
-  using namespace assist::statusbadges;assert(SpiderSize==14&&BuffSize==7);
+  using namespace assist::statusbadges;assert(SpiderSize==14&&BuffSize==9);
   auto icon=spider(0xFF14D28C);assert(icon.width==14&&icon.height==14);int colored=0;
   for(auto c:icon.pixels){assert(!c||c==0xFF07101B||c==0xFF14D28C);if(c==0xFF14D28C)++colored;}assert(colored>25);
   // Exhaust the positions within a tile; every corner of every buff remains
@@ -74,7 +74,7 @@ int main(){using namespace external::status;
    auto l=layout(x,y,0,15,b,p);assert(l.count>=1&&l.count<=3);
    for(int i=1;i<l.count;++i)assert(l.icons[i].x-l.icons[i-1].x>8.9f);
    for(int i=0;i<l.count;++i)for(int dx:{-1,1})for(int dy:{-1,1})
-    assert(std::abs(l.icons[i].x+dx*3.5f-l.center.x)/30.f+std::abs(l.icons[i].y+dy*3.5f-l.center.y)/15.f<1.f);
+    assert(std::abs(l.icons[i].x+dx*4.5f-l.center.x)/30.f+std::abs(l.icons[i].y+dy*4.5f-l.center.y)/15.f<1.f);
   }
   std::cout<<"PASS exact icon sizes/colors and all buff corners inside the native 60x30 diamond over 57344 layouts\n";
  }

@@ -58,9 +58,9 @@ public:
  uint32_t entryDestination(uint32_t source)const{
   if(get<uint32_t>(source+0x11C)||get<uint32_t>(source+0x2E4))return 0;
   int mission=get<int>(source+0xAC,-1),queued=get<int>(source+0xB4,-1);bool entering=mission==7||queued==7,repairing=mission==9||queued==9;
-  if(!entering&&!repairing)return 0;
+  bool moving=mission==2||queued==2;if(!entering&&!repairing&&!moving)return 0;
   uint32_t target=get<uint32_t>(source+0x500);if(target<0x10000)target=get<uint32_t>(source+0x5A4);if(target<0x10000)target=get<uint32_t>(source+0x2B4);
-  if(!entering&&(kind(target)!=3||!get<uint8_t>(type(target,3)+0x16A9)))return 0;
+  if(!entering){if(kind(target)!=3)return 0;uint32_t t=type(target,3);if(!(repairing&&get<uint8_t>(t+0x16A9))&&!(moving&&get<uint8_t>(t+0x16AB)))return 0;}
   return target;
  }
  bool entered(uint32_t source,uint32_t target)const{

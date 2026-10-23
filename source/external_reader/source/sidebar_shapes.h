@@ -4,13 +4,13 @@
 #include <vector>
 #include <algorithm>
 namespace external { namespace sidebar {
-constexpr uint32_t ReminderMask=(1u<<0)|(1u<<3); // building / vehicles only
+constexpr uint32_t ReminderMask=15; // all four native production pages
 struct Frame {int x=0,y=0,width=0,height=0;std::vector<uint32_t> pixels;};
 inline unsigned u16(const uint8_t*b){return unsigned(b[0])|(unsigned(b[1])<<8);}
 inline uint32_t u32(const uint8_t*b){return uint32_t(u16(b))|(uint32_t(u16(b+2))<<16);}
 // TAB00..03.SHP are already loaded by Sidebar at 6A593E. Read the actual
 // ShapeButton (stride 0x60), state frame and palette; never load/patch in-game.
-template<class Read> bool sample(Read read,int tab,int screenWidth,int screenHeight,Frame&out){
+template<class Read> bool sample(Read read,int tab,int screenWidth,int screenHeight,Frame&out,bool paused=true){
  out={};if(tab<0||tab>3)return false;uint32_t button=0xB07C48+tab*0x60;uint8_t b[0x60]{};
  if(!read(button,b,sizeof b)||u32(b+0x24)!=unsigned(203+tab)||b[0x1E])return false;
  int x=int32_t(u32(b+0x0C)),y=int32_t(u32(b+0x10));
@@ -32,7 +32,7 @@ template<class Read> bool sample(Read read,int tab,int screenWidth,int screenHei
   while(pos<bytes&&col<width){unsigned v=data[pos++];if(compression==3&&!v){if(pos>=bytes)return false;unsigned run=data[pos++];if(!run||col+int(run)>width)return false;col+=run;continue;}
    if(v){unsigned rgb=palette[v],r=((rgb>>11)&31)*255/31,g=((rgb>>5)&63)*255/63,blue=(rgb&31)*255/31,luma=(r*3+g*6+blue)/10;
     // Preserve the SHP's shading/transparent silhouette, recolor to warm gold.
-    unsigned rr=std::min(255u,80+luma),gg=std::min(230u,40+luma*4/5),bb=15+luma/4;
+    unsigned rr=std::min(255u,80+luma),gg=paused?std::min(230u,40+luma*4/5):20+luma/5,bb=15+luma/4;
     pixels[(top+row)*w+left+col]=0xFF000000u|(rr<<16)|(gg<<8)|bb;
    }++col;
   }if(col!=width)return false;
@@ -43,11 +43,11 @@ template<class Read> bool sample(Read read,int tab,int screenWidth,int screenHei
 }
 struct Cache {
  Frame frames[4];uint32_t tick=0,pid=0,match=0,revision=0;int width=0,height=0;
- template<class Read>uint32_t update(Read read,uint32_t now,uint32_t process,uint32_t epoch,int w,int h,uint32_t mask){
+ template<class Read>uint32_t update(Read read,uint32_t now,uint32_t process,uint32_t epoch,int w,int h,uint32_t mask,uint32_t pausedMask=15){
   bool context=pid!=process||match!=epoch||width!=w||height!=h;
   if(context){for(auto&f:frames)f={};pid=process;match=epoch;width=w;height=h;tick=0;++revision;}
   mask&=ReminderMask;
-  if(!tick||uint32_t(now-tick)>=100){tick=now;for(int i=0;i<4;++i){Frame next;if(mask&(1u<<i))sample(read,i,w,h,next);auto&f=frames[i];
+  if(!tick||uint32_t(now-tick)>=100){tick=now;for(int i=0;i<4;++i){Frame next;if(mask&(1u<<i))sample(read,i,w,h,next,(pausedMask&(1u<<i))!=0);auto&f=frames[i];
    if(f.x!=next.x||f.y!=next.y||f.width!=next.width||f.height!=next.height||f.pixels!=next.pixels){f=std::move(next);++revision;}
   }}
   uint32_t ready=0;for(int i=0;i<4;++i)if((mask&(1u<<i))&&!frames[i].pixels.empty())ready|=1u<<i;return ready;

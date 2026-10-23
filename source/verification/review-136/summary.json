@@ -1,0 +1,42 @@
+{
+  "version": "1.0.36",
+  "file_version": "1.0.36.0",
+  "assist_protocol": 61,
+  "compiled_sha256": {
+    "RA2Toolbox.exe": "e50103598d5ca01f704ae3921ab1e234dda92ac46e8f6d293cf3b0c5fbc4be2d",
+    "GameRuntime.dll": "7e2b1ca23d119e4411599025dbf7fc933cd000ae6e58ce27be903ad4d71d9604"
+  },
+  "controlled_native_cases": 398,
+  "native_reports": {
+    "infantry_waypoint_runtime-lbw.json": 7,
+    "air_waypoint_runtime-lbw.json": 8,
+    "tank_bunker_runtime-lbw.json": 20,
+    "magnetron_drop_runtime-lbw.json": 14,
+    "infantry_entry_runtime-lbw.json": 65,
+    "infantry_waypoint_runtime-zhanwang.json": 7,
+    "c4_arrival_runtime-lbw.json": 64,
+    "air_waypoint_runtime-zhanwang.json": 8,
+    "tank_bunker_runtime-zhanwang.json": 20,
+    "infantry_entry_runtime-zhanwang.json": 65,
+    "magnetron_drop_runtime-zhanwang.json": 14,
+    "c4_arrival_runtime-zhanwang.json": 64,
+    "platform-startup.json": 22,
+    "advanced-ifv.json": 20
+  },
+  "portable_checks": [
+    "air_waypoint_host_test",
+    "suite_display_test",
+    "auto_settings_ui_test",
+    "ui_geometry_test",
+    "sidebar_shapes",
+    "minimap_overlay",
+    "unit_status",
+    "magnetron",
+    "magnetron_rof",
+    "tank_bunker",
+    "review136"
+  ],
+  "platform_live_tested": false,
+  "real_multiplayer_tested": false,
+  "scope": "Controlled x86 original event/receiver branches with modeled Win32/world; portable policy/layout checks. No complete real-game locomotion/graphics/drop physics certification."
+}

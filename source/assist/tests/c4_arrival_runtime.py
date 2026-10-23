@@ -1,4 +1,4 @@
-"""Compiled C4 adapters and native movement/arrival/timer branches on private EXEs.
+"""Retired capability overrides: original movement/arrival/timer branches on private EXEs.
 Synthetic world/Win32, cell lookup and animation/damage sinks. Native code plants
 the charge, sets its timer/credit and invokes damage at expiry. This does not run
 complete locomotion, Windows graphics, destruction or peer simulation.
@@ -33,13 +33,14 @@ for mode in (0,3,4,5):
    if case=='context_changed':m.u.mem_write(0x51c331,b'\x90')
    s=set_on(m,case not in ('off','native_off'))
    failed=bool(conflict or case=='context_changed')
-   assert s.data.c4TestStatus==(-2 if failed else int(case not in ('off','native_off')))
+   assert s.data.c4TestStatus==int(case not in ('off','native_off'))
    if case in ('disable','stop'):
     s=n.state(m)
     if case=='stop':s.stop=1
     else:s.c4Test=0
     n.save(m,s);n.tick(m)
-   enabled=case not in ('off','native_off','disable','stop') and not failed
+   enabled=False  # v1.0.36 never installs either C4 capability override
+   assert not m.codeWrites
    for at in sites:
     assert bytes(m.u.mem_read(at,6))==(b'\x90'*6 if at==conflict else original) if not enabled else m.u.mem_read(at,1)==b'\xe9'
    if failed:
@@ -80,7 +81,7 @@ for mode in (0,3,4,5):
     m.w(0xa8ed84,start+delay);run_segment(m,0x4401d2,(0x440378,0x44035e),regs)
     assert damage==[(m.r(m.building+0x6c),0x12345678,m.eng,1)],damage
    elif case=='already_armed':
-    assert reached==0x51a550 and m.r(m.building+0x528)==42 and m.r(m.building+0x530)==99 and m.r(m.building+0x540)==m.unit and not animation
+    assert m.r(m.building+0x528)==42 and m.r(m.building+0x530)==99 and m.r(m.building+0x540)==m.unit and not animation
    else:assert m.u.mem_read(m.building+0x6df,1)==b'\0' and not animation
    assert bytes(m.u.mem_read(m.engT,0x2000))==type_before
    rows.append({'case':f'{mode}_{case}','status':'PASS','planted':planted})

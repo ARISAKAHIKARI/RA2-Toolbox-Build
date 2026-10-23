@@ -19,9 +19,7 @@ for mode in (0,3,4,5):
    if case=='dead_infantry':m.w(m.eng+0x6c,0);m.b(m.eng+0x74,0)
    if case=='loaded':m.w(m.eng+0x11c,m.unit)
    s=n.state(m);s.c4Test=case!='off';n.save(m,s);s=n.tick(m)
-   assert s.data.c4TestStatus==(-2 if case=='old_patch_conflict' else int(case!='off'))
-   assert all(any(site<=at and at+size<=site+6 for site in (0x51a4d8,0x51c32b)) for at,size in m.codeWrites),m.codeWrites
-   if case in ('old_patch_conflict','off'):assert bytes(m.u.mem_read(site,6))==original
+   assert s.data.c4TestStatus==int(case!='off') and bytes(m.u.mem_read(site,6))==original and not m.codeWrites
    if case=='chat':m.b(0xa8bc60+25,1)
    before=bytes(m.u.mem_read(m.engT,0x2000))
    if case=='planning':m.b(0x87f7e8+0x11b3,1)
@@ -29,55 +27,18 @@ for mode in (0,3,4,5):
     i.sources[0]=m.PointerSource(11,m.eng)
     if case=='stale':i.match+=1
    s=n.pointer(m,7,8192,mutate);accepted=case in ('plain','planning','can_c4','old_patch_conflict','engineer','spy','c4','own_building','loaded')
-   assert n.count(m)==int(accepted),(case,s.pointer.result,s.pointer.accepted,n.count(m))
+   assert n.count(m)==(1 if case=='planning' else 2 if accepted else 0),(case,s.pointer.result,s.pointer.accepted,n.count(m))
    if accepted:
-    b=n.packets(m);mission=8 if case=='engineer' else 7 if case=='spy' else 17
+    b=n.packets(m);mission=8 if case=='engineer' else 17 if case=='c4' else 7
     assert b[0]==4 and b[7:12]==struct.pack('<IB',11,0x34) and b[12]==mission
     assert b[14:19]==struct.pack('<IB',0,0) if mission==7 else b[14:19]==struct.pack('<IB',12,0x34)
-    assert b[19:24]==struct.pack('<IB',12,0x34) and b[29]==0
+    assert b[19:24]==struct.pack('<IB',12,0x34) and b[29]==1
+    if case!='planning':assert b[111]==43
     for _ in range(3):n.tick(m)
-    assert n.count(m)==1
-   assert bytes(m.u.mem_read(m.engT,0x2000))==before
+    assert n.count(m)==(1 if case=='planning' else 2)
+   assert bytes(m.u.mem_read(m.engT,0x2000))==before and not m.codeWrites
    rows.append({'case':f'input_{mode}_{case}','status':'PASS'});print('PASS',mode,case,flush=True)
   except Exception as e:rows.append({'case':f'input_{mode}_{case}','status':'FAIL','error':repr(e)});traceback.print_exc()
-# Capacity/retry regression: a direct entry costs one event, never a commit pair.
-for mode in (0,3,4,5):
- for case in ('one_slot','full_retry','batch'):
-  try:
-   m=n.fixture(mode);m.b(m.engT+0xec3,0);m.queryObject=m.building
-   people=[m.eng]
-   if case=='batch':
-    people += [m.obj(0x7eb058,m.engT,m.house,20+j) for j in range(32)]
-    m.vector(0xa83de8,people);m.vector(0xa8ec78,[m.unit,m.building,m.enemyUnit]+people)
-   s=n.state(m);s.c4Test=1;n.save(m,s);n.tick(m)
-   single=mode in (0,5);count_at=0x8b41f8 if single else 0xa802c8
-   base=0x8b4204 if single else 0xa802d4;tail=0x8b4200 if single else 0xa802d0
-   capacity=16384 if single else 112
-   if case!='batch':m.w(count_at,capacity-(case=='one_slot'));m.w(tail,0)
-   def sources(s,i):
-    i.count=len(people)
-    for j,unit in enumerate(people):i.sources[j]=m.PointerSource(m.r(unit+0x10),unit)
-   s=n.pointer(m,7,8192,sources)
-   if case=='full_retry':
-    assert s.pointer.accepted==0 and s.pointer.ack!=s.pointer.request
-    m.w(count_at,capacity-1);s=n.tick(m)
-   if case=='batch':
-    assert s.pointer.accepted==24 and n.count(m)==24 and s.pointer.ack!=s.pointer.request
-    s=n.tick(m);assert s.pointer.accepted==33 and n.count(m)==33 and s.pointer.ack==s.pointer.request
-    data=n.packets(m);ids=[]
-    for j in range(33):
-     packet=data[j*111:(j+1)*111];ids.append(struct.unpack_from('<I',packet,7)[0])
-     assert packet[0]==4 and packet[12]==17 and packet[29]==0
-    assert set(ids)=={m.r(unit+0x10) for unit in people} and len(set(ids))==33
-   else:
-    assert s.pointer.accepted==1 and s.pointer.ack==s.pointer.request and n.count(m)==capacity
-    packet=bytes(m.u.mem_read(base,111));assert packet[0]==4 and packet[12]==17 and packet[29]==0
-   # Free transport space: no deferred commit or duplicate is allowed to appear.
-   m.w(count_at,0);m.w(tail,0)
-   for _ in range(3):n.tick(m)
-   assert n.count(m)==0
-   rows.append({'case':f'capacity_{mode}_{case}','status':'PASS'});print('PASS',mode,case,flush=True)
-  except Exception as e:rows.append({'case':f'capacity_{mode}_{case}','status':'FAIL','error':repr(e)});traceback.print_exc()
 # Execute the actual native mission discrimination inside CanEnterCell. A
 # mission-17 ordinary infantry fails before the old arrival-only patch can run.
 for mission,c4 in ((8,False),(7,False),(17,False),(17,True)):

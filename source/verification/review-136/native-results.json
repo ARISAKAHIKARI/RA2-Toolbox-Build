@@ -1,0 +1,72 @@
+[
+  {
+    "test": "infantry_waypoint_runtime-lbw",
+    "returncode": 0,
+    "tail": "TOTAL 0\n{'case': 'ordinary', 'status': 'PASS', 'released_mission': 7}\n{'case': 'engineer', 'status': 'PASS', 'released_mission': 8}\n{'case': 'spy', 'status': 'PASS', 'released_mission': 7}\n{'case': 'c4', 'status': 'PASS', 'released_mission': 17}\n{'case': 'append_existing', 'status': 'PASS', 'released_mission': 7}\n{'case': 'busy_waits', 'status': 'PASS', 'released_mission': 7}\n{'case': 'native_key', 'status': 'PASS', 'released_mission': 7}\n"
+  },
+  {
+    "test": "air_waypoint_runtime-lbw",
+    "returncode": 0,
+    "tail": "PASS mode_3_flag_80000000_button_1024\nPASS mode_3_flag_80000000_button_65536\nPASS mode_3_flag_20000000_button_1024\nPASS mode_3_flag_20000000_button_65536\nPASS mode_4_flag_80000000_button_1024\nPASS mode_4_flag_80000000_button_65536\nPASS mode_4_flag_20000000_button_1024\nPASS mode_4_flag_20000000_button_65536\n"
+  },
+  {
+    "test": "tank_bunker_runtime-lbw",
+    "returncode": 0,
+    "tail": "PASS 20 Runtime cases: capture, native Enter/Repair encoding, capacity race, reservations, refusal, filters and bunker receipt\n"
+  },
+  {
+    "test": "magnetron_drop_runtime-lbw",
+    "returncode": 0,
+    "tail": "PASS 14 native Idle/outgoing cases: independent toggle, both compute locations, dedup, release, live races and independent type filter\n"
+  },
+  {
+    "test": "infantry_entry_runtime-lbw",
+    "returncode": 0,
+    "tail": "building\nPASS 4 foreign_infantry\nPASS 4 dead_infantry\nPASS 4 loaded\nPASS 4 stale\nPASS 4 chat\nPASS 4 not_building\nPASS 5 plain\nPASS 5 planning\nPASS 5 can_c4\nPASS 5 old_patch_conflict\nPASS 5 engineer\nPASS 5 spy\nPASS 5 c4\nPASS 5 off\nPASS 5 own_building\nPASS 5 foreign_infantry\nPASS 5 dead_infantry\nPASS 5 loaded\nPASS 5 stale\nPASS 5 chat\nPASS 5 not_building\nPASS native_cell_gate 8 False\nPASS native_cell_gate 7 False\nPASS native_cell_gate 17 False\nPASS native_cell_gate 17 True\nPASS native_capture_tick\n"
+  },
+  {
+    "test": "infantry_waypoint_runtime-zhanwang",
+    "returncode": 0,
+    "tail": "TOTAL 0\n{'case': 'ordinary', 'status': 'PASS', 'released_mission': 7}\n{'case': 'engineer', 'status': 'PASS', 'released_mission': 8}\n{'case': 'spy', 'status': 'PASS', 'released_mission': 7}\n{'case': 'c4', 'status': 'PASS', 'released_mission': 17}\n{'case': 'append_existing', 'status': 'PASS', 'released_mission': 7}\n{'case': 'busy_waits', 'status': 'PASS', 'released_mission': 7}\n{'case': 'native_key', 'status': 'PASS', 'released_mission': 7}\n"
+  },
+  {
+    "test": "c4_arrival_runtime-lbw",
+    "returncode": 0,
+    "tail": "planted': False}\n{'case': '5_wrong_mission', 'status': 'PASS', 'planted': False}\n{'case': '5_wrong_building', 'status': 'PASS', 'planted': False}\n{'case': '5_no_building', 'status': 'PASS', 'planted': False}\n{'case': '5_selling', 'status': 'PASS', 'planted': False}\n{'case': '5_immune', 'status': 'PASS', 'planted': False}\n{'case': '5_already_armed', 'status': 'PASS', 'planted': False}\n{'case': '5_disable', 'status': 'PASS', 'planted': False}\n{'case': '5_stop', 'status': 'PASS', 'planted': False}\n"
+  },
+  {
+    "test": "air_waypoint_runtime-zhanwang",
+    "returncode": 0,
+    "tail": "PASS mode_3_flag_80000000_button_1024\nPASS mode_3_flag_80000000_button_65536\nPASS mode_3_flag_20000000_button_1024\nPASS mode_3_flag_20000000_button_65536\nPASS mode_4_flag_80000000_button_1024\nPASS mode_4_flag_80000000_button_65536\nPASS mode_4_flag_20000000_button_1024\nPASS mode_4_flag_20000000_button_65536\n"
+  },
+  {
+    "test": "tank_bunker_runtime-zhanwang",
+    "returncode": 0,
+    "tail": "PASS 20 Runtime cases: capture, native Enter/Repair encoding, capacity race, reservations, refusal, filters and bunker receipt\n"
+  },
+  {
+    "test": "infantry_entry_runtime-zhanwang",
+    "returncode": 0,
+    "tail": "building\nPASS 4 foreign_infantry\nPASS 4 dead_infantry\nPASS 4 loaded\nPASS 4 stale\nPASS 4 chat\nPASS 4 not_building\nPASS 5 plain\nPASS 5 planning\nPASS 5 can_c4\nPASS 5 old_patch_conflict\nPASS 5 engineer\nPASS 5 spy\nPASS 5 c4\nPASS 5 off\nPASS 5 own_building\nPASS 5 foreign_infantry\nPASS 5 dead_infantry\nPASS 5 loaded\nPASS 5 stale\nPASS 5 chat\nPASS 5 not_building\nPASS native_cell_gate 8 False\nPASS native_cell_gate 7 False\nPASS native_cell_gate 17 False\nPASS native_cell_gate 17 True\nPASS native_capture_tick\n"
+  },
+  {
+    "test": "magnetron_drop_runtime-zhanwang",
+    "returncode": 0,
+    "tail": "PASS 14 native Idle/outgoing cases: independent toggle, both compute locations, dedup, release, live races and independent type filter\n"
+  },
+  {
+    "test": "windows-outputs",
+    "returncode": 0,
+    "tail": "PASS: 2 current PE32 x86 outputs; hooks exported; ABI/Shared size match; version 1.0.36.0\nPASS: no unbundled third-party or compiler-runtime DLL dependencies\nPASS: actual EXE RT_MANIFEST/1 enables x86 Common Controls 6 for subclass helper imports\nNOTE: static validation does not execute the Windows loader or the game\n"
+  },
+  {
+    "test": "platform_startup",
+    "returncode": 0,
+    "tail": "g_owner_startup_gate_no_patch_no_event\nPASS non_image_startup_gate_no_patch_no_event\nPASS non_exec_startup_gate_no_patch_no_event\nPASS guarded_startup_gate_no_patch_no_event\nPASS short_region_startup_gate_no_patch_no_event\nPASS rebased_module_0x40000000\nPASS rebased_module_0x68000000\nPASS beacon_command_rechecks_changed_body\nPASS captured_beacon_thiscall_ret4_index_-1\nPASS captured_beacon_thiscall_ret4_index_0\nPASS captured_beacon_thiscall_ret4_index_7\nPASS captured_beacon_thiscall_ret4_index_8\n"
+  },
+  {
+    "test": "c4_arrival_runtime-zhanwang",
+    "returncode": 0,
+    "tail": "planted': False}\n{'case': '5_wrong_mission', 'status': 'PASS', 'planted': False}\n{'case': '5_wrong_building', 'status': 'PASS', 'planted': False}\n{'case': '5_no_building', 'status': 'PASS', 'planted': False}\n{'case': '5_selling', 'status': 'PASS', 'planted': False}\n{'case': '5_immune', 'status': 'PASS', 'planted': False}\n{'case': '5_already_armed', 'status': 'PASS', 'planted': False}\n{'case': '5_disable', 'status': 'PASS', 'planted': False}\n{'case': '5_stop', 'status': 'PASS', 'planted': False}\n"
+  }
+]

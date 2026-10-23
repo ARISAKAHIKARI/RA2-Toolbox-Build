@@ -8,7 +8,7 @@ inline bool shotObserved(int frame, int sentFrame, int readyRemaining,
  // A nonzero cooldown may have preceded the order. It is NOT evidence that
  // this order fired. Require a fresh rearm timestamp or a lift/manipulation.
  (void)readyRemaining;
- return (rearmStart!=shotStart && rearmStart>sentFrame && rearmStart<=frame) || liftedOrManipulated;
+ return (rearmStart!=shotStart && rearmStart>=sentFrame && rearmStart<=frame) || liftedOrManipulated;
 }
 inline int avoidUntil(int frame,int rearmDuration){
  // At least one full cycle, bounded so an idle target can eventually be retried.

@@ -17,6 +17,10 @@ int main(){using namespace external::radar;Memory m;constexpr uint32_t cells=0x1
  m.zero(cells,4096*4);m.set(cells+(3*512+3)*4,cell);m.zero(cell,0x148);m.set<int16_t>(cell+0x24,3);m.set<int16_t>(cell+0x26,3);m.set(cell+0xEC,2);m.set<int8_t>(cell+0x120,-1);m.set<int8_t>(cell+0x121,-1);
  Sampler<Read> sampler(Read{&m});assert(sampler.step(false,2048));assert(!sampler.snapshot(1).terrain);assert(sampler.step(false,2048));auto a=sampler.snapshot(2);assert(a.terrain&&a.terrain->colors[3*512+3]==terrainColor(2,0,false));
  double u,v;a.terrain->geo.project(3.5,3.5,u,v);assert(u==.5&&v==.375);std::vector<uint32_t> pixels;raster(*a.terrain,80,80,pixels);assert(pixels[30*80+40]==terrainColor(2,0,false));
+ // Interpolate known cells without bleeding visible colors into black shroud.
+ Terrain mix=*a.terrain;mix.colors[3*512+3]=0x010101;mix.colors[3*512+4]=0xffffff;
+ assert(smoothColor(mix,3.5,3.5)==0x010101);assert(smoothColor(mix,4.,3.5)==0x808080);
+ mix.colors[3*512+4]=0;assert(smoothColor(mix,4.,3.5)==0x080c08);assert(smoothColor(mix,3.9,3.5)==0x010101);
  // Never expose a partially refreshed terrain bank; old immutable bank survives.
  m.set<int8_t>(cell+0x120,-2);sampler.step(false,2048);assert(sampler.snapshot(3).terrain==a.terrain);sampler.step(false,2048);assert(sampler.snapshot(4).terrain->colors[3*512+3]==0);assert(a.terrain->colors[3*512+3]!=0);
  sampler.step(true,4096);assert(sampler.snapshot(5).terrain->colors[3*512+3]!=0);

@@ -28,6 +28,7 @@ static void loadAdditionalSettings(){
  extra.constructionQueue=value(L"Production",L"ReserveNext",1)!=0;
  extra.idleAircraft=value(L"Display",L"IdleAircraftIndicator",1)!=0;
  extra.parasiteMarker=value(L"Display",L"ParasiteMarker",1)!=0;extra.crateBuffMarkers=value(L"Display",L"CrateBuffMarkers",1)!=0;
+ extra.passengerBubbles=value(L"Display",L"PassengerBubbles",1)!=0;extra.dangerPassengers=value(L"Display",L"DangerPassengers",0)!=0;extra.magnetronDrop=value(L"Magnetron",L"AutoDrop",0)!=0;
  extra.enemyMarkers=value(L"Display",L"EnemyMarkers",0)!=0;
  extra.overrideNative=value(L"Mouse",L"OverrideNative",0)!=0;
  extra.allHotkeys=value(L"Hotkeys",L"ExecuteAllMatches",0)!=0;
@@ -52,6 +53,7 @@ static void loadAdditionalSettings(){
  }
 }
 static bool saveAdditionalSettings(){
+ write(L"Display",L"PassengerBubbles",extra.passengerBubbles);write(L"Display",L"DangerPassengers",extra.dangerPassengers);write(L"Magnetron",L"AutoDrop",extra.magnetronDrop);
  for(int i=0;i<compute::Count;++i)write(L"Compute",compute::key(i),(computeRequested>>i)&1u);
  write(L"Hotkeys",L"IdleAircraft",idleAircraftKey);
  for(int i=0;i<9;++i)write(L"Hotkeys",i?(L"Taunt"+std::to_wstring(i)).c_str():L"Cheer",socialKeys[i]);
@@ -118,7 +120,7 @@ static void syncRefreshRate(){if(!shared)return;
 #endif
  shared->scrollRefreshMode=extra.scrollRefreshMode;
 }
-static void syncAdditional(){if(!playertest::Available)extra.controlAll=false;if(!playertest::SellAvailable)extra.sellEnemy=false;if(!playertest::SwitchAvailable)extra.switchPlayerEnabled=false;if(!shared)return;syncRefreshRate();shared->dodgeEnabled=extra.dodgeEnabled;shared->dodgeMode=extra.dodgeMode;shared->burstEnabled=shared->burstHoldEnabled=shared->burstHeld=0;shared->missileEnabled=extra.missileDefense;shared->missileScanHz=extra.missileScanHz;shared->controlAll=extra.controlAll;shared->switchPlayerEnabled=extra.switchPlayerEnabled;shared->computeRequested=computeRequested;shared->advancedScanHz=advancedScanHz;shared->advancedPriority=advancedTargetPriority;shared->c4Test=extra.c4Test;shared->renderReveal=extra.renderReveal;shared->loadMode=extra.loadMode;shared->loadRadius=extra.loadRadius;shared->enterKey=extra.enterKey;shared->airKey1=extra.airKey1;shared->airKey2=extra.airKey2;
+static void syncAdditional(){if(!playertest::Available)extra.controlAll=false;if(!playertest::SellAvailable)extra.sellEnemy=false;if(!playertest::SwitchAvailable)extra.switchPlayerEnabled=false;if(!shared)return;syncRefreshRate();shared->magnetronDrop=extra.magnetronDrop;shared->dodgeEnabled=extra.dodgeEnabled;shared->dodgeMode=extra.dodgeMode;shared->burstEnabled=shared->burstHoldEnabled=shared->burstHeld=0;shared->missileEnabled=extra.missileDefense;shared->missileScanHz=extra.missileScanHz;shared->controlAll=extra.controlAll;shared->switchPlayerEnabled=extra.switchPlayerEnabled;shared->computeRequested=computeRequested;shared->advancedScanHz=advancedScanHz;shared->advancedPriority=advancedTargetPriority;shared->c4Test=extra.c4Test;shared->renderReveal=extra.renderReveal;shared->loadMode=extra.loadMode;shared->loadRadius=extra.loadRadius;shared->enterKey=extra.enterKey;shared->airKey1=extra.airKey1;shared->airKey2=extra.airKey2;
  static uint32_t publishedSettings=~0u;
  if(!shared->quotaConfigSeq||publishedSettings!=settingsRevision){publishedSettings=settingsRevision;
   InterlockedIncrement(&shared->quotaConfigSeq);auto&c=shared->quotaConfig;c.defaults=extra.defaults;c.count=0;

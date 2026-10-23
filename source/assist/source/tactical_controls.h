@@ -43,6 +43,7 @@ heading(1,901,L"键鼠组合操作",L"按住配置键并点击目标；配置键
 label(L"功能开关",20,210);label(L"按住键 / 自定义组合",240,258);label(L"鼠标键",510,115);next();
 hookChecks[0]=toggle(458,L"高级移动攻击",hookAdvanced,20,210);advancedKeyEdit=key(450,advancedKey,240,258,true);mouse(pointerinput::MouseAdvanced);next();
 magnetronCheck=toggle(477,L"磁电轮换攻击",magnetronMode,20,210);magnetronKeyEdit=key(478,magnetronKey,240,258,true);mouse(pointerinput::MouseMagnetron);next();
+ toggle(899,L"磁电自动摔落",extra.magnetronDrop);next();note(L"吸起的目标正下方出现致毁障碍时，下达原版停止命令释放目标。可独立开启；启用轮换时继续寻找下一目标。");
 csHoldCheck=toggle(473,L"按键移动攻击（CS）",csHoldEnabled,20,210);csHoldEdit=key(474,csHoldKey,240,258,true);mouse(pointerinput::MouseCS);next();
 extraControls[EnterEnabled]=toggle(702,L"高级进驻",extra.enter,20,210);holdPresetControl(EnterPreset,EnterCustom,extra.enterKey);mouse(pointerinput::MouseEnter);next();
 extraControls[AirEnabled]=toggle(705,L"飞机分配攻击 · 1",extra.air,20,210);holdPresetControl(AirPreset1,AirCustom1,extra.airKey1);mouse(pointerinput::MouseAirFirst);next();
@@ -83,7 +84,7 @@ note(L"对己方可移动地面单位预判敌机攻击与逼近碾压，短距�
 toggle(880,L"防空单位智能拦截导弹",extra.missileDefense);next();
 number(881,L"导弹拦截检测频率 / 次每秒",extra.missileScanHz,L"1–60 · 默认 10");
 note(L"优先拦截射程内的敌方导弹，分配火力减少重复锁定；移动中的单位不接管。",44);
-toggle(799,L"生产预定",extra.constructionQueue);next();
+
 // One visible Auto CS switch represents the previous two enable flags.
 hookChecks[3]=placedControl({-3,{0,0,1,1}},L"BUTTON",L"",466,BS_AUTOCHECKBOX);
 SendMessageW(hookChecks[3],BM_SETCHECK,hookAutoCS?BST_CHECKED:BST_UNCHECKED,0);ShowWindow(hookChecks[3],SW_HIDE);
@@ -106,10 +107,17 @@ for(int f=0;f<featuretypes::Count;++f){
  note(L"此开关和清单只作用于上方命名的功能；关闭限制时保留清单，开启且留空表示不处理任何类型。");
 }
 
-heading(3,903,L"显示设置",L"调整游戏内信息显示、缩放与位置；有效设置立即生效。");
+heading(3,903,L"战场信息",L"调整游戏内信息显示、缩放与位置；有效设置立即生效。");
+
+#ifdef RA2_UNIFIED
+{auto h=placedControl({-3,{0,0,1,1}},L"COMBOBOX",L"",808,CBS_DROPDOWNLIST);choices(h,{L"关闭",L"半透明（实验性）",L"透明（实验性）",L"自动全图（实验性）"},extra.mapStrategy);}
+placedControl({-3,{0,0,1,1}},L"STATIC",L"",809,0);
+#else
 label(L"黑幕绘制方式",20,260);choices(combo(808),{L"关闭",L"半透明（实验性）",L"透明（实验性）",L"自动全图（实验性）"},extra.mapStrategy);next();
 note(L"半透明与不渲染仅改变显示；地图全开在对局就绪后自动执行，可能导致联机不同步。",44);
 item(L"STATIC",L"地图显示：关闭",20,605,809);next();
+#endif
+toggle(799,L"生产预定",extra.constructionQueue);next();
 
 const wchar_t* displayNames[]={L"载具载员与容量",L"铁幕 / 力场剩余时间",L"生产队列空闲提醒",L"显示未选中的载具",L"敌方索敌显示",L"箱子信息",L"战术文字提示"};
 const wchar_t* displayIni[]={L"Capacity",L"Iron",L"Production",L"AllTransports",L"Psychic",L"Crates",L"TextPanel"};
@@ -120,11 +128,13 @@ auto hiddenToggle=[&](int id,const wchar_t* text,bool on){auto h=placedControl({
 for(int i=0;i<7;++i){bool on=value(L"Display",displayIni[i],(i<3||i>=6)?1:0)!=0;if(i==0||i==1||i==3)check[i]=hiddenToggle(300+i,displayNames[i],on);else{check[i]=toggle(300+i,displayNames[i],on);next();}}
 extraControls[FrozenEnabled]=hiddenToggle(723,L"冷冻剩余时间",extra.frozen);
 extraControls[EnemyMarkersEnabled]=hiddenToggle(785,L"敌方单位提示",extra.enemyMarkers);
+hiddenToggle(897,L"敌方载员气泡",extra.passengerBubbles);hiddenToggle(898,L"危险载员常驻提示",extra.dangerPassengers);
 hiddenToggle(892,L"蜘蛛寄生标志",extra.parasiteMarker);hiddenToggle(893,L"火力 / 防御 / 速度强化",extra.crateBuffMarkers);
 #else
 for(int i=0;i<7;++i){check[i]=toggle(300+i,displayNames[i],value(L"Display",displayIni[i],(i<3||i>=6)?1:0)!=0);next();}
 extraControls[FrozenEnabled]=toggle(723,L"冷冻剩余时间",extra.frozen);next();
 extraControls[EnemyMarkersEnabled]=toggle(785,L"显示敌方单位提示",extra.enemyMarkers);next();
+toggle(897,L"敌方载员气泡",extra.passengerBubbles);next();toggle(898,L"危险载员常驻提示",extra.dangerPassengers);next();
 toggle(892,L"蜘蛛寄生标志",extra.parasiteMarker);next();
 toggle(893,L"箱子强化标志",extra.crateBuffMarkers);next();
 #endif
@@ -158,9 +168,8 @@ item(L"STATIC",L"高刷策略：仅光标",20,605,888);next();
 
 anywhereCheck=toggle(476,L"扩展建筑放置范围（实验性）",buildAnywhereMode);next();
 item(L"STATIC",L"功能状态：等待连接",20,605,807,0,44);next(44);
-toggle(810,L"步兵进入与 C4（实验性）",extra.c4Test,20,280);key(811,extra.c4Key,310,188,true);choices(combo(812,510,115,180),{L"停用",L"中键",L"侧键 1",L"侧键 2",L"右键",L"左键"},extra.c4Mouse==6?5:extra.c4Mouse);next();
-note(L"按住配置键点击建筑直接下令：普通步兵执行 C4，工程师占领、间谍潜入。立即替换原有命令，不追加路径点。",44);
-item(L"STATIC",L"步兵进入与 C4：关闭",20,605,813);next();
+toggle(810,L"步兵强制进入建筑（实验性）",extra.c4Test,20,280);key(811,extra.c4Key,310,188,true);choices(combo(812,510,115,180),{L"停用",L"中键",L"侧键 1",L"侧键 2",L"右键",L"左键"},extra.c4Mouse==6?5:extra.c4Mouse);next();
+item(L"STATIC",L"步兵强制进入建筑：关闭",20,605,813);next();
 toggle(420,L"科技解锁（实验性）",techMode,20,305);techSearch=edit(421,L"",345,280);SendMessageW(techSearch,EM_SETCUEBANNER,TRUE,(LPARAM)L"搜索名称或单位 ID");next();
 label(L"实现方式",20,180);choices(combo(896,220,405,180),{L"现有方案",L"经典兼容"},techImplementation);next();
 note(L"经典兼容沿用已找回的早期工厂/建造上限检查与每秒补齐；保留原生侧栏。用于战网对照，尚未验证不掉线，也未确认等同于 0.3.2。",44);
@@ -176,7 +185,7 @@ EnableWindow(toggle(861,L"切换操控方（暂不可用）",false),FALSE);next(
 EnableWindow(combo(862,20,305,240),FALSE);EnableWindow(button(863,L"切换至所选玩家",340,285),FALSE);next();
 EnableWindow(button(864,L"恢复原操控方",20,285),FALSE);next();
 
-extraControls[SellEnemyEnabled]=nullptr;extra.sellEnemy=false;
+extraControls[SellEnemyEnabled]=HWND{};extra.sellEnemy=false;
 
 toggle(788,L"优先执行增强指令",extra.overrideNative);next();
 note(L"用于增强操作与普通地面命令冲突的情况；仅对支持的鼠标操作生效。",44);

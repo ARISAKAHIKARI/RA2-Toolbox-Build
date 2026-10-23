@@ -97,7 +97,7 @@ int main(){
  std::atomic<bool> done{false};std::thread writer([&]{for(int n=1;n<=10000;++n){DisplayState s;s.values.fill(n);s.rateMilli=n;s.gapUs=n;publishDisplaySettings(s);}done=true;});
  do{if(readDisplaySettings(out)){for(auto v:out.values)assert(v==out.rateMilli);assert(out.gapUs==out.rateMilli);}}while(!done);
  writer.join();assert(readDisplaySettings(out)&&out.rateMilli==10000);int count=posted;publishDisplaySettings(out);assert(posted==count);
- std::cout<<"PASS 10 routed setting IDs: valid endpoints, invalid edits, owner-thread notifications and not-ready suppression\n";
+ std::cout<<"PASS 13 routed setting IDs: valid endpoints, invalid edits, owner-thread notifications and not-ready suppression\n";
  std::cout<<"PASS 10000 cross-thread state publications: coherent snapshots and unchanged-state notification coalescing\n";
 }
 '''

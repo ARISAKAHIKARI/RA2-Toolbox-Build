@@ -1,0 +1,96 @@
+{
+  "scope": "Actual compiled DLL startup against captured signature/body bytes.\nWin32 APIs, world state and platform callees are fixtures, not a live platform test.\nPrivate capture bytes are supplied separately and are never included in releases.\n",
+  "dll_sha256": "7e2b1ca23d119e4411599025dbf7fc933cd000ae6e58ce27be903ad4d71d9604",
+  "capture_body_sha256": "8bbac63bacebd8c9f1a9d00c72b57f3411f314a5a9fe382119a2ec935f79086d",
+  "real_game_execution": false,
+  "results": [
+    {
+      "case": "native_startup_gate_no_patch_no_event",
+      "status": "PASS"
+    },
+    {
+      "case": "captured_startup_gate_no_patch_no_event",
+      "status": "PASS"
+    },
+    {
+      "case": "missing_module_startup_gate_no_patch_no_event",
+      "status": "PASS"
+    },
+    {
+      "case": "bad_target_startup_gate_no_patch_no_event",
+      "status": "PASS"
+    },
+    {
+      "case": "bad_body_startup_gate_no_patch_no_event",
+      "status": "PASS"
+    },
+    {
+      "case": "bad_header_startup_gate_no_patch_no_event",
+      "status": "PASS"
+    },
+    {
+      "case": "bad_size_startup_gate_no_patch_no_event",
+      "status": "PASS"
+    },
+    {
+      "case": "other_signature_startup_gate_no_patch_no_event",
+      "status": "PASS"
+    },
+    {
+      "case": "unreadable_body_startup_gate_no_patch_no_event",
+      "status": "PASS"
+    },
+    {
+      "case": "unreadable_entry_startup_gate_no_patch_no_event",
+      "status": "PASS"
+    },
+    {
+      "case": "wrong_owner_startup_gate_no_patch_no_event",
+      "status": "PASS"
+    },
+    {
+      "case": "non_image_startup_gate_no_patch_no_event",
+      "status": "PASS"
+    },
+    {
+      "case": "non_exec_startup_gate_no_patch_no_event",
+      "status": "PASS"
+    },
+    {
+      "case": "guarded_startup_gate_no_patch_no_event",
+      "status": "PASS"
+    },
+    {
+      "case": "short_region_startup_gate_no_patch_no_event",
+      "status": "PASS"
+    },
+    {
+      "case": "rebased_module_0x40000000",
+      "status": "PASS"
+    },
+    {
+      "case": "rebased_module_0x68000000",
+      "status": "PASS"
+    },
+    {
+      "case": "beacon_command_rechecks_changed_body",
+      "status": "PASS"
+    },
+    {
+      "case": "captured_beacon_thiscall_ret4_index_-1",
+      "status": "PASS"
+    },
+    {
+      "case": "captured_beacon_thiscall_ret4_index_0",
+      "status": "PASS"
+    },
+    {
+      "case": "captured_beacon_thiscall_ret4_index_7",
+      "status": "PASS"
+    },
+    {
+      "case": "captured_beacon_thiscall_ret4_index_8",
+      "status": "PASS"
+    }
+  ]
+}

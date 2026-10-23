@@ -14,6 +14,7 @@ struct AdditionalSettings {
  bool enemyMarkers=false,idleAircraft=true,constructionQueue=true,airWaypoints=true;
  uint32_t airPathKey=0;
  bool parasiteMarker=true,crateBuffMarkers=true;
+ bool passengerBubbles=true,dangerPassengers=false,magnetronDrop=false;
  bool dodgeEnabled=false;int dodgeMode=0;
  bool burstEnabled=false,burstHoldEnabled=false;uint32_t burstKey=0; // Reserved for configuration compatibility.
  bool missileDefense=false;int missileScanHz=10;

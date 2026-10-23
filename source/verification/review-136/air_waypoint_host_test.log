@@ -1,0 +1,1 @@
+PASS: shipped host records ordered points, waits for Z release and observed arrival, preserves newest token, reports rejection, cancels attack/stop/new-match, retains SP native mode

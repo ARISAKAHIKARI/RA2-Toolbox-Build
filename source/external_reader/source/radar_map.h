@@ -58,9 +58,22 @@ public:
   }return out;
  }
 };
+inline uint32_t smoothColor(const Terrain&t,double x,double y){
+ const auto&g=t.geo;int cx=int(std::floor(x)),cy=int(std::floor(y));
+ if(!g.legal(cx,cy))return 0x101710;
+ uint32_t center=t.colors[cy*512+cx];if(!center)return 0x080c08;
+ x-=.5;y-=.5;int ix=int(std::floor(x)),iy=int(std::floor(y));double fx=x-ix,fy=y-iy;
+ double red=0,green=0,blue=0;
+ for(int j=0;j<2;++j)for(int i=0;i<2;++i){double weight=(i?fx:1-fx)*(j?fy:1-fy);int xx=ix+i,yy=iy+j;
+  uint32_t c=g.legal(xx,yy)?t.colors[yy*512+xx]:0;if(!c)c=center;
+  red+=((c>>16)&255)*weight;green+=((c>>8)&255)*weight;blue+=(c&255)*weight;
+ }
+ return (uint32_t(red+.5)<<16)|(uint32_t(green+.5)<<8)|uint32_t(blue+.5);
+}
 inline void raster(const Terrain&t,int w,int h,std::vector<uint32_t>&pixels){
  if(w<=0||h<=0||w>4096||h>4096){pixels.clear();return;}pixels.assign(size_t(w)*h,0x101710);if(!t.geo.valid()||t.colors.size()!=512*512)return;const auto&g=t.geo;
  for(int py=0;py<h;++py)for(int px=0;px<w;++px){double u=(px+.5)*g.rw/(w*g.factor)-g.offsetX,v=(py+.5)*g.rh/(h*g.factor)+g.offsetY;
-  int x=int(std::floor((u+v)/2)),y=int(std::floor((v-u)/2));if(g.legal(x,y)){uint32_t c=t.colors[y*512+x];pixels[size_t(py)*w+px]=c?c:0x080c08;}}
+  pixels[size_t(py)*w+px]=smoothColor(t,(u+v)/2,(v-u)/2);
+ }
 }
 }}

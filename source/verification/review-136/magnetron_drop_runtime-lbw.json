@@ -1,0 +1,65 @@
+{
+  "scope": "Execute compiled Runtime sampling/admission and native Idle constructors.\nSynthetic Win32/world/terrain; release and falling physics are not simulated.\nNo claim of real multiplayer or guaranteed kill after delivery latency.\n",
+  "inputs": {
+    "gamemd-spawn(3).exe": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+    "GameRuntime.dll": "7e2b1ca23d119e4411599025dbf7fc933cd000ae6e58ce27be903ad4d71d9604"
+  },
+  "results": [
+    {
+      "case": "native_stop_0_False",
+      "status": "PASS"
+    },
+    {
+      "case": "native_stop_0_True",
+      "status": "PASS"
+    },
+    {
+      "case": "race_0_disabled",
+      "status": "PASS"
+    },
+    {
+      "case": "race_0_bridge",
+      "status": "PASS"
+    },
+    {
+      "case": "race_0_ground",
+      "status": "PASS"
+    },
+    {
+      "case": "race_0_broken_link",
+      "status": "PASS"
+    },
+    {
+      "case": "race_0_filter",
+      "status": "PASS"
+    },
+    {
+      "case": "native_stop_3_False",
+      "status": "PASS"
+    },
+    {
+      "case": "native_stop_3_True",
+      "status": "PASS"
+    },
+    {
+      "case": "race_3_disabled",
+      "status": "PASS"
+    },
+    {
+      "case": "race_3_bridge",
+      "status": "PASS"
+    },
+    {
+      "case": "race_3_ground",
+      "status": "PASS"
+    },
+    {
+      "case": "race_3_broken_link",
+      "status": "PASS"
+    },
+    {
+      "case": "race_3_filter",
+      "status": "PASS"
+    }
+  ]
+}

@@ -30,6 +30,7 @@ class Planner {
  std::unordered_map<uint32_t,OreTurn> oreTurns_;
  uint32_t match_=0,inputSerial_=0,flags_=0;int frame_=-1,cursor_=0;
  std::unordered_map<uint32_t,Advanced> advanced_;
+ struct Drop {uint32_t victim,token;int sent;};std::unordered_map<uint32_t,Drop> drops_;bool dropEnabled_=false;
  std::unordered_map<uint32_t,uint32_t> defenseSent_;int defenseCursor_=0;
  ActorLookup actors_;EnemyGrid enemies_;std::vector<const Actor*> refineries_,trucks_;
  std::unordered_map<uint32_t,const Refinery*> areas_;
@@ -86,8 +87,9 @@ public:
  bool hasJobs()const{return !ore_.empty()||!advanced_.empty();}
  std::vector<uint32_t> stoppedUnits()const{std::vector<uint32_t> ids;for(const auto&entry:advanced_)if(entry.second.stopped)ids.push_back(entry.first);return ids;}
  uint32_t trackingFlags()const{uint32_t f=ore_.empty()?0:AutoOreReturn;for(const auto&i:advanced_)f|=i.second.mode==MagnetronMove?MagnetronInput:AdvancedInput;return f;}
- void reset(){defenseSent_.clear();defenseCursor_=0;advanced_.clear();actors_.clear();enemies_.clear();refineries_.clear();trucks_.clear();areas_.clear();ore_.clear();oreTurns_.clear();oreIDs_.clear();waitingCells_.clear();magneticReservations_.clear();match_=inputSerial_=0;frame_=-1;cursor_=0;queued=docking=issued=yielded=0;oreDelivered=oreUnverified=magnetShots=magnetUnverified=0;oreBypasses=oreYieldAttempts=oreTurnTimeouts=0;}
+ void reset(){drops_.clear();dropEnabled_=false;defenseSent_.clear();defenseCursor_=0;advanced_.clear();actors_.clear();enemies_.clear();refineries_.clear();trucks_.clear();areas_.clear();ore_.clear();oreTurns_.clear();oreIDs_.clear();waitingCells_.clear();magneticReservations_.clear();match_=inputSerial_=0;frame_=-1;cursor_=0;queued=docking=issued=yielded=0;oreDelivered=oreUnverified=magnetShots=magnetUnverified=0;oreBypasses=oreYieldAttempts=oreTurnTimeouts=0;}
  void accepted(const Order& order,int frame){
+  if(order.purpose==MagnetronDropOrder){drops_[order.unit]={order.refinery,order.token,frame};auto it=advanced_.find(order.unit);if(it!=advanced_.end()){auto&t=it->second;t.pendingShot=t.attacking=false;t.target=0;t.sent=frame;}return;}
   if(order.purpose==1||order.purpose==3){auto it=advanced_.find(order.unit);if(it==advanced_.end()||it->second.token!=order.token)return;auto&task=it->second;
    task.sent=frame;task.attacking=order.mission==1;task.target=order.target;task.stopped=order.mission==6;
    task.pendingShot=order.mission==1;task.shotStart=task.observedStart;task.urgent=false;
@@ -118,18 +120,25 @@ public:
   if(order.mission==1){t.skipTarget=order.target;t.skipUntil=frame+30;if(t.target==order.target)t.pendingShot=false;}
   else if(order.mission==2&&++t.moveFailures>=2){t.progress.hold=true;t.stopped=false;}
  }
- std::vector<Order> step(const World& world,uint32_t flags,int veteran,int elite,int pathTimeout,int scanHz=0,int targetPriority=0,int rangeCells=2){
+ std::vector<Order> step(const World& world,uint32_t flags,int veteran,int elite,int pathTimeout,int scanHz=0,int targetPriority=0,int rangeCells=2,bool autoDrop=false){
   const int rangePadding=std::clamp(rangeCells,0,30)*256;
   if(!validWorld(world)){reset();return {};}
   if(world.match!=match_){reset();match_=world.match;}
   std::vector<Order> combat,out;combat.reserve(16);out.reserve(MaxOrders);
-  if(world.frame==frame_&&world.inputSerial==inputSerial_&&flags==flags_)return out;frame_=world.frame;inputSerial_=world.inputSerial;flags_=flags;queued=docking=yielded=0;targetChecks=0;
+  if(world.frame==frame_&&world.inputSerial==inputSerial_&&flags==flags_&&dropEnabled_==autoDrop)return out;frame_=world.frame;inputSerial_=world.inputSerial;flags_=flags;dropEnabled_=autoDrop;queued=docking=yielded=0;targetChecks=0;
   actors_.clear();enemies_.clear();refineries_.clear();trucks_.clear();areas_.clear();bool enemiesBuilt=false;
   bool useOre=(flags&AutoOreReturn)||!ore_.empty(),useCombat=(flags&(AdvancedInput|MagnetronInput))&&world.intentCount;
   for(int i=0;i<world.count;++i){const auto&a=world.actors[i];if(!a.id)continue;actors_.add(a);
    if(useOre){if(a.kind==3&&(a.flags&Own))refineries_.push_back(&a);if(truck(&a))trucks_.push_back(&a);}
   }
   for(int i=0;i<world.refineryCount;++i)areas_[world.refineries[i].id]=&world.refineries[i];
+  std::unordered_set<uint32_t> dropping;
+  for(auto it=drops_.begin();it!=drops_.end();){const Actor*a=actor(it->first);if(!autoDrop||!a||a->manualVersion!=it->second.token||a->liftTarget!=it->second.victim)it=drops_.erase(it);else ++it;}
+  if(autoDrop)for(int n=0;n<world.count;++n){const auto&a=world.actors[n];if(!(a.flags&Own)||!a.liftTarget||!magnetron(a)||(a.flags&(Disabled|Limbo|OffMap|Transported)))continue;
+   auto pending=drops_.find(a.id);if(pending!=drops_.end()){dropping.insert(a.id);if(world.frame-pending->second.sent<30)continue;}
+   if(!(a.flags&DropHazard))continue;
+   dropping.insert(a.id);add(combat,{a.id,a.manualVersion,0,0,13,0,MagnetronDropOrder,a.liftTarget});
+  }
   if(flags&AntiTheft){
    for(auto it=defenseSent_.begin();it!=defenseSent_.end();)if(!actor(it->first))it=defenseSent_.erase(it);else ++it;
    for(int n=0;n<world.count;++n){const auto&e=world.actors[n];if(positionValid(e)&&(e.flags&Enemy)&&!(e.flags&(Cloaked|Transported|Limbo|OffMap|Protected)))enemies_.add(n,e);}enemiesBuilt=true;
@@ -182,7 +191,7 @@ public:
    int traversed=0;for(;traversed<count&&work.size()<128;++traversed){int i=(cursor_+traversed)%count;if(!scheduled[i])work.push_back(i);}
    if(count)cursor_=(cursor_+traversed)%count;
    for(int i:work){const auto&intent=world.intents[i];auto it=advanced_.find(intent.id);const Actor* a=actor(intent.id);
-    if(!a||it==advanced_.end()||!active.count(intent.id))continue;auto&task=it->second;bool mag=task.mode==MagnetronMove;int purpose=mag?3:1;
+    if(!a||it==advanced_.end()||!active.count(intent.id)||dropping.count(intent.id))continue;auto&task=it->second;bool mag=task.mode==MagnetronMove;int purpose=mag?3:1;
     if(!mag){stepAdvanced(world,*a,task,combat,veteran,elite,pathTimeout,scanHz,targetPriority);continue;}
     task.urgent=false;task.scanned=true;task.scannedAt=world.tick;
     const Actor* current=task.attacking?actor(task.target):nullptr;if(current&&!positionValid(*current))current=nullptr;
@@ -190,22 +199,33 @@ public:
     bool currentValid=current&&(current->flags&Enemy)&&canTarget(*a,*current,currentDistance,mag,mag?0:rangePadding)&&!(current->id==task.skipTarget&&world.frame<task.skipUntil);
     // Don't continuously reset a shot waiting for its native event/animation.
     // A reload timer is ammo replenishment, not the weapon's rearm timer.
-    if(mag&&(cooldown(*a,world.frame)>0||task.pendingShot)){task.progress.combat(a->x,a->y,world.frame);continue;}
+    // Once a shot/lift is observed, the next native Attack must be allowed to
+    // release the beam even while its rearm timer is running or suspended.
+    // Native execution still owns ROF; this never edits a weapon or timer.
+    if(task.pendingShot){task.progress.combat(a->x,a->y,world.frame);continue;}
     if(!enemiesBuilt){for(int j=0;j<world.count;++j){const auto&e=world.actors[j];if(positionValid(e)&&(e.flags&Enemy)&&!(e.flags&(Cloaked|Transported|Limbo|OffMap|Protected)))enemies_.add(j,e);}enemiesBuilt=true;}
-    const Actor* best=nullptr;double score=-1,bestValue=-1;int64_t nearestDistance=INT64_MAX;
+    const Actor* best=nullptr;double score=-1,bestValue=-1;int64_t nearestDistance=INT64_MAX;bool bestSkipped=true,rangeTarget=false;
     enemies_.nearby(a->x,a->y,a->range+(mag?0:rangePadding),[&](int j){const auto&enemy=world.actors[j];++targetChecks;
      int64_t dx=int64_t(a->x)-enemy.x,dy=int64_t(a->y)-enemy.y,distance=dx*dx+dy*dy;
-     if(!canTarget(*a,enemy,distance,mag,mag?0:rangePadding)||(enemy.id==task.skipTarget&&world.frame<task.skipUntil)||(mag&&magneticReservations_.count(enemy.id)))return;
+     if(!canTarget(*a,enemy,distance,mag,mag?0:rangePadding))return;
+     rangeTarget=true;if(magneticReservations_.count(enemy.id))return;
+     const bool skipped=enemy.id==task.skipTarget&&world.frame<task.skipUntil;
      double value=nativeorders::value(enemy.cost,enemy.veterancy,veteran,elite);
      double rank=!mag&&targetPriority==1?double(a->weapons[weaponIndex(*a,enemy)].effectiveness[enemy.armor]):value;
      bool keep=currentValid&&enemy.id==task.target,kept=currentValid&&best&&best->id==task.target;
-     if(rank>score||(rank==score&&(value>bestValue||(value==bestValue&&((keep&&!kept)||(keep==kept&&(distance<nearestDistance||(distance==nearestDistance&&(!best||enemy.id<best->id))))))))){best=&enemy;score=rank;bestValue=value;nearestDistance=distance;}
+     const bool closer=distance<nearestDistance||(distance==nearestDistance&&(!best||enemy.id<best->id));
+     const bool tie=(keep&&!kept)||(keep==kept&&closer);
+     const bool higher=rank>score||(rank==score&&(value>bestValue||(value==bestValue&&tie)));
+     if(!best||(bestSkipped&&!skipped)||(bestSkipped==skipped&&higher)){best=&enemy;bestSkipped=skipped;score=rank;bestValue=value;nearestDistance=distance;}
     });
     if(best){task.progress.combat(a->x,a->y,world.frame);
-     bool attack=!task.attacking||task.target!=best->id||(a->target!=best->id&&world.frame-task.sent>=(mag?45:12));
-     if(sent<MaxOrders&&world.frame-task.sent>=2&&attack&&add(combat,{a->id,task.token,best->id,0,1,0,purpose})){++sent;if(mag)magneticReservations_.insert(best->id);}
+     bool attack=!task.attacking||task.target!=best->id||((a->target!=best->id||a->mission!=1)&&world.frame-task.sent>=12);
+     if(sent<MaxOrders&&world.frame>task.sent&&attack&&add(combat,{a->id,task.token,best->id,0,1,0,purpose})){++sent;if(mag)magneticReservations_.insert(best->id);}
      continue;
     }
+    // A pending shot by another magnet is temporary contention, not proof
+    // that combat ended. Keep scanning instead of resuming the old move.
+    if(rangeTarget){task.progress.combat(a->x,a->y,world.frame);continue;}
     if(task.attacking){if(sent<MaxOrders&&add(combat,{a->id,task.token,0,task.progress.hold?0:task.cell,task.progress.hold?6:2,task.progress.hold?0:11,purpose}))++sent;continue;}
     task.progress.update(a->x,a->y,world.frame,a->mission,int(task.cell%1000)*256+128,int(task.cell/1000)*256+128,std::clamp(pathTimeout,30,900));
     if(task.progress.hold&&!task.stopped&&sent<MaxOrders&&add(combat,{a->id,task.token,0,0,6,0,purpose}))++sent;
