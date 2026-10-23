@@ -44,7 +44,9 @@ static void update(){
   for(auto key:wanted){auto&c=cache[key];if(c.ready||work>=4||(c.retry&&int32_t(now-c.retry)<0))continue;++work;c.retry=now+2000;external::voxel::Image image;
    uint32_t pointer=0;read(key.first+0xA4,&pointer,4);
    bool ok=tmp?gameassets::tile(key.first,key.second,terrainPalette,image):gameassets::sprite(key.first,pointer,terrainPalette,int(key.second),image);
-   if(!ok)ok=tmp?external::terrain::tile(read,pointer,key.second,terrainPalette,image):external::voxel::sprite(read,pointer,terrainPalette,image,int(key.second));c.issue=ok?"":gameassets::failure;
+   std::string memoryReason;
+   if(!ok)ok=tmp?external::terrain::tile(read,pointer,key.second,terrainPalette,image,&memoryReason):external::voxel::sprite(read,pointer,terrainPalette,image,int(key.second));
+   c.issue=ok?"":gameassets::failure+(memoryReason.empty()?"":" memory="+memoryReason);
    if(ok&&pixels+image.pixels.size()<=4*1024*1024){pixels+=image.pixels.size();for(auto&p:image.pixels)if(unsigned alpha=p>>24)p=0xff000000u|(std::min(255u,((p>>16)&255)*255/alpha)<<16)|(std::min(255u,((p>>8)&255)*255/alpha)<<8)|std::min(255u,(p&255)*255/alpha);c.image=std::move(image);c.ready=true;}
   }
  };if(paletteReady){fetchStatic(tiles,true);fetchStatic(overlays,false);}

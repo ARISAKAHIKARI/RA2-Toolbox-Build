@@ -41,7 +41,7 @@ int main(){
  assert(orders.size()==1&&orders[0].target==22);planner.accepted(orders[0],w.frame);
  w.count=1;w.frame=5;orders=planner.step(w,AdvancedInput,200,300,90);
  assert(orders.size()==1&&orders[0].mission==2&&orders[0].destination==30030);planner.accepted(orders[0],w.frame);
- w.frame=96;orders=planner.step(w,AdvancedInput,200,300,90);assert(orders.size()==1&&orders[0].mission==6);planner.accepted(orders[0],w.frame);
+ w.frame=96;orders=planner.step(w,AdvancedInput,200,300,90);assert(orders.size()==1&&orders[0].mission==5);planner.accepted(orders[0],w.frame);
  w.frame=97;w.intentCount=0;orders=planner.step(w,AdvancedInput,200,300,90);assert(orders.empty());
  // Local clicks can change while the simulation frame is paused / unchanged.
  w.intentCount=1;w.inputSerial=1;w.intents[0]={10,31031,1};a.manualVersion=1;

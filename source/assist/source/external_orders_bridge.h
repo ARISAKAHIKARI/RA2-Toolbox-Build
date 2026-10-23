@@ -177,7 +177,9 @@ static bool externalOrderValid(const planner::Order&o,uint32_t house){
   if(o.mission==7&&(o.destination!=o.refinery||(o.purpose==0&&rawDockBusy(refinery,unit))))return false;
   if(o.mission==2){uint32_t cell=readMapCell(int(o.destination%1000),int(o.destination/1000));if(!cell||get<uint32_t>(cell+0x124)||get<int>(cell+0xEC)==2||get<int>(cell+0xEC)==7)return false;}
  }else if(!defense)return false;
- if(o.mission!=1&&o.mission!=2&&o.mission!=6&&o.mission!=7)return false;
+ // Reject stale pre.6 Sticky proposals at the shared admission boundary.
+ if(o.mission!=1&&o.mission!=2&&o.mission!=5&&o.mission!=7)return false;
+ if(o.mission==5&&(!combat||o.target||o.destination||o.destinationTag||o.pursuit))return false;
  if(o.mission==1&&!o.target)return false;
  if(o.target){uint32_t target=worldByID(o.target);if((!combat&&!defense)||o.mission!=1||!target||!nativeEnemy(target,house)||get<int>(target+0x6C)<=0||!get<bool>(target+0x74)||get<bool>(target+0x81)||!get<bool>(target+0x90)||get<uint32_t>(target+0x11C)||get<int>(target+0x220)!=0)return false;
   planner::Actor source{},victim{};int sk=kind(unit),tk=kind(target);uint32_t st=typeOf(unit,sk),tt=typeOf(target,tk);if(!st||!tt)return false;
@@ -221,7 +223,7 @@ static int admitPlannerOrder(const planner::Order&o,uint32_t house){
  if(!nativeMission(house,o.unit,o.mission,o.target,o.destination,o.destinationTag,nearest?o.destination:0,nearest?11:0,
     o.purpose==3?taskarbiter::Owner::Magnetron:(o.purpose==1||o.purpose==planner::DefenseOrder)?taskarbiter::Owner::Combat:taskarbiter::Owner::Ore))return -1;
  consumePlanning(0);
- if(o.purpose==1||o.purpose==3){int index=orderIndex(worldByID(o.unit));if(index>=0)nativeOrders[index].stopped=o.mission==6;}
+ if(o.purpose==1||o.purpose==3){int index=orderIndex(worldByID(o.unit));if(index>=0)nativeOrders[index].stopped=o.mission==5;}
  return 1;
 }
 static void externalOrdersTick(uint32_t house,int frame,DWORD now){

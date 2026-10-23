@@ -1,0 +1,93 @@
+{
+  "version": "1.0.37-pre.7",
+  "base_commit": "0b53b0ff654da2e0c35d19a300bdd30b2528af01",
+  "native_and_runtime_cases": 512,
+  "tests": [
+    {
+      "file": "advanced_range_runtime-lbw.json",
+      "cases": 106
+    },
+    {
+      "file": "advanced_range_runtime-zhanwang.json",
+      "cases": 106
+    },
+    {
+      "file": "enhanced_object_attack_runtime-lbw.json",
+      "cases": 108
+    },
+    {
+      "file": "enhanced_object_attack_runtime-zhanwang.json",
+      "cases": 108
+    },
+    {
+      "file": "guard-zhanwang.json",
+      "cases": 6
+    },
+    {
+      "file": "magnetron_guard_runtime-lbw.json",
+      "cases": 6
+    },
+    {
+      "file": "magnetron_manual_drop_runtime-lbw.json",
+      "cases": 8
+    },
+    {
+      "file": "magnetron_manual_drop_runtime-zhanwang.json",
+      "cases": 8
+    },
+    {
+      "file": "magnetron_stop_reacquire_runtime-lbw.json",
+      "cases": 20
+    },
+    {
+      "file": "magnetron_stop_reacquire_runtime-zhanwang.json",
+      "cases": 20
+    },
+    {
+      "file": "sticky-native-lbw.json",
+      "cases": 8
+    },
+    {
+      "file": "sticky-native-zhanwang.json",
+      "cases": 8
+    }
+  ],
+  "portable_passes": [
+    "external_planner",
+    "advanced_range",
+    "terrain_preview",
+    "game_assets",
+    "sprite_formats",
+    "watch_host",
+    "visual_pose",
+    "attack_trace",
+    "game-assets-host"
+  ],
+  "sanitizers": {
+    "address_undefined": [
+      "terrain_preview",
+      "sprite_formats"
+    ],
+    "leak_detection": false
+  },
+  "negative_controls": [
+    "guard-before.log",
+    "art-name-before.log"
+  ],
+  "preexisting_failure": {
+    "test": "advanced_regression.cpp",
+    "assertion_line": 12,
+    "unmodified_pre6_reproduced": true,
+    "reason": "legacy fixture lacks current CombatProbe samples",
+    "included_in_pass_count": false
+  },
+  "limits": [
+    "No complete Windows game, pathfinding, audio or multiplayer run",
+    "No actual user SNO bytes available; terrain recovery unconfirmed",
+    "Existing Sticky state in old games/saves not automatically repaired"
+  ],
+  "binaries": {
+    "RA2Toolbox.exe": "5eca926763daf4d5fdc3d0102637055d25b4201b3d4cca756fc2b90feb094ba3",
+    "GameRuntime.dll": "e2bd698d989febdbacd0e3e64a94506b48508ac14f553e0f5327001aea090e7b"
+  }
+}

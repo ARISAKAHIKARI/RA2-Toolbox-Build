@@ -1,3 +1,9 @@
+# RA2 Toolbox 1.0.37-pre.7（测试分支）
+
+修复磁电/高级移动发送 Sticky 后，后续普通攻击无法切换任务的问题，改用可中断的普通待命。修正资源 ImageFile 偏移导致的前四字符丢失，并改善地形解码兼容与诊断。已卡住的旧对局需更新后开新局；完整实机地形显示仍待复测。
+
+[测试发布](https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/releases/tag/v1.0.37-pre.7) · [发布说明](packages/v1.0.37-pre.7/RELEASE_NOTES.md) · [操作与验证](source/REVIEW-1.0.37-pre.7.md)
+
 # RA2 Toolbox 1.0.37-pre.6（测试分支）
 
 基于 pre.5。修正右拖取消队形、增强对象攻击接受0个、SHP格式2解码及步兵预览朝向，增加资源缺失和磁电首次攻击后不追击的只读诊断。持续追击问题尚未确认修复；不将事件入队测试当成实机寻路验证。

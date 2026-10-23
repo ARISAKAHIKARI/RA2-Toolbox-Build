@@ -14,16 +14,16 @@ static bool palette(bool iso,std::array<uint32_t,256>&out){std::vector<uint8_t> 
 static bool sprite(uint32_t type,uint32_t pointer,const std::array<uint32_t,256>&pal,int frame,external::voxel::Image&out){
  std::string filename=external::assets::shapeName(read,pointer);std::vector<uint8_t> bytes;
  if(!filename.empty()&&files.load(filename,bytes)&&external::assets::shp(std::move(bytes),frame,pal,out))return true;
- std::string stem=text(type+0x1FC,25);if(stem.empty())stem=text(type+0x24,24);if(stem.empty())return false;
+ std::string stem=text(type+0x1F8,25);if(stem.empty())stem=text(type+0x24,24);if(stem.empty())return false;
  // The live SHPReference name above remains authoritative for NewTheater and
  // alternate art. These candidates also cover resources not yet referenced.
  for(auto suffix:{std::string(".SHP"),"."+theater(78,3)})if(files.load(stem+suffix,bytes)&&external::assets::shp(std::move(bytes),frame,pal,out))return true;failure="sprite-load/decode:"+(filename.empty()?stem:filename)+" frame="+std::to_string(frame);return false;
 }
-static bool tile(uint32_t type,unsigned sub,const std::array<uint32_t,256>&pal,external::voxel::Image&out){std::vector<uint8_t> bytes;auto filename=text(type+0x2F5,14);if(filename.empty()){failure="tile-name-empty type="+std::to_string(type);return false;}if(!files.load(filename,bytes)){failure="tile-not-found:"+filename;return false;}if(!external::assets::tmp(std::move(bytes),sub,pal,out)){failure="tile-format:"+filename+" sub="+std::to_string(sub);return false;}return true;}
+static bool tile(uint32_t type,unsigned sub,const std::array<uint32_t,256>&pal,external::voxel::Image&out){std::vector<uint8_t> bytes;auto filename=text(type+0x2F5,14);if(filename.empty()){failure="tile-name-empty type="+std::to_string(type);return false;}if(!files.load(filename,bytes)){failure="tile-not-found:"+filename;return false;}std::string reason;if(!external::assets::tmp(std::move(bytes),sub,pal,out,&reason)){failure="tile-format:"+filename+" sub="+std::to_string(sub)+" "+reason;return false;}return true;}
 static bool actor(uint32_t p,uint32_t type,uint32_t id,double angle,external::voxel::Image&out){
  if(word(p+0x10)!=id)return false;uint32_t owner=word(p+0x21C);std::array<uint32_t,256> pal{};
  if(!external::voxel::palette(read,type,owner,pal)){if(!palette(false,pal))return false;uint8_t rgb[3]{};if(read(owner+22265,rgb,3))for(int i=16;i<32;++i){unsigned f=unsigned(8+i-16);pal[i]=0xff000000u|((unsigned(rgb[0])*f/23)<<16)|((unsigned(rgb[1])*f/23)<<8)|(unsigned(rgb[2])*f/23);}}
- auto stem=text(type+0x1FC,25);if(stem.empty())stem=text(type+0x24,24);std::vector<uint8_t> v,h;external::voxel::Model model;
+ auto stem=text(type+0x1F8,25);if(stem.empty())stem=text(type+0x24,24);std::vector<uint8_t> v,h;external::voxel::Model model;
  double sx=1,sy=1;read(type+0x360,&sx,8);read(type+0x368,&sy,8);if(!std::isfinite(sx)||sx<=0||sx>8)sx=1;if(!std::isfinite(sy)||sy<=0||sy>8)sy=1;
  if(!stem.empty()&&files.load(stem+".VXL",v)&&files.load(stem+".HVA",h)&&external::assets::vxl(v,h,model,0,float(sx),float(sy))){
   int offset=int32_t(word(type+0x720));if(offset<-4096||offset>4096)offset=0;
@@ -44,7 +44,7 @@ static bool captureActor(uint32_t p,uint32_t type,uint32_t id,ActorArt&out){
   if(!palette(false,next.colors))return false;uint8_t rgb[3]{};
   if(read(owner+22265,rgb,3))for(int i=16;i<32;++i){unsigned f=unsigned(8+i-16);next.colors[i]=0xff000000u|((unsigned(rgb[0])*f/23)<<16)|((unsigned(rgb[1])*f/23)<<8)|(unsigned(rgb[2])*f/23);}
  }
- auto stem=text(type+0x1FC,25);if(stem.empty())stem=text(type+0x24,24);
+ auto stem=text(type+0x1F8,25);if(stem.empty())stem=text(type+0x24,24);
  double sx=1,sy=1;read(type+0x360,&sx,8);read(type+0x368,&sy,8);if(!std::isfinite(sx)||sx<=0||sx>8)sx=1;if(!std::isfinite(sy)||sy<=0||sy>8)sy=1;
  auto part=[&](const std::string&suffix,uint32_t at,bool turret){
   external::voxel::Model model;std::vector<uint8_t> v,h;

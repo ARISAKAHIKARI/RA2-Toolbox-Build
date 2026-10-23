@@ -1,0 +1,5 @@
+Traceback (most recent call last):
+  File "/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/magnetron_guard_runtime.py", line 24, in <module>
+    assert count(m)==1,(mode,inside,s.planAccepted,s.planRejectedMask,count(m))
+           ^^^^^^^^^^^
+AssertionError: (0, False, 0, 1, 0)

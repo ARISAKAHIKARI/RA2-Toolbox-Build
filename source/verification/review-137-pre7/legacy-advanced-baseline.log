@@ -1,0 +1,2 @@
+Unmodified pre.6 tracked source, local f7a0356
+test: /tmp/tmp3isqs6na/source/assist/tests/advanced_regression.cpp:12: int main(): Assertion `v.size()==1&&v[0].target==21' failed.

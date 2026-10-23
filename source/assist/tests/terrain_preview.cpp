@@ -14,6 +14,9 @@ int main(){
  // Palette bytes are already expanded by 5454D6; don't shift them twice.
  memory[0x20000+3]=200;memory[0x20000+4]=100;memory[0x20000+5]=44;std::array<uint32_t,256> colors{};assert(terrain::palette(read,0x20000,colors)&&colors[1]==0xffc8642c);
  word(block+36,0);assert(terrain::tile(read,base,2,palette,image));assert(image.width==60&&image.height==30&&std::count(image.pixels.begin(),image.pixels.end(),palette[1])==900);
+ // No extra image: these fields are unused by the native renderer.
+ word(block+36,0x80000000);word(block+20,0xcdcdcdcd);word(block+24,0xcdcdcdcd);
+ assert(terrain::tile(read,base,2,palette,image));word(block+36,0);word(block+20,uint32_t(-40));word(block+24,3);
  assert(terrain::tile(read,base,6,palette,image));assert(!terrain::tile(read,base,4,palette,image));word(base+16+2*4,0);assert(!terrain::tile(read,base,2,palette,image));word(base+16+2*4,block);
  word(block+12,0);assert(!terrain::tile(read,base,2,palette,image));word(block+12,952);word(block+36,1);word(block+28,513);assert(!terrain::tile(read,base,2,palette,image));word(block+28,20);word(block+8,0xfffffff0);assert(!terrain::tile(read,base,2,palette,image));word(block+8,1852);
  int calls=0;auto racing=[&](uint32_t at,void*p,size_t n){bool ok=read(at,p,n);if(at==base+24&&++calls==2)*static_cast<uint32_t*>(p)=block+4;return ok;};assert(!terrain::tile(racing,base,2,palette,image));

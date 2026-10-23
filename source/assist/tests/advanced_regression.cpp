@@ -38,7 +38,7 @@ int main(){auto memory=std::make_unique<World>();auto&w=*memory;Planner p;setup(
  // Repeated failed destination validation falls back to one GuardArea.
  w.count=1;w.frame=33;v=p.step(w,AdvancedInput,200,300,30);assert(v.size()==1&&v[0].mission==2);p.rejected(v[0],33);
  w.frame=34;v=p.step(w,AdvancedInput,200,300,30);assert(v.size()==1&&v[0].mission==2);p.rejected(v[0],34);
- w.frame=35;v=p.step(w,AdvancedInput,200,300,30);assert(v.size()==1&&v[0].mission==6);p.accepted(v[0],35);
+ w.frame=35;v=p.step(w,AdvancedInput,200,300,30);assert(v.size()==1&&v[0].mission==5);p.accepted(v[0],35);
  w.frame=36;assert(p.step(w,AdvancedInput,200,300,30).empty());
  // Slow but continuous approach counts cumulatively as movement progress;
  // a per-frame distance threshold would incorrectly abandon this target.

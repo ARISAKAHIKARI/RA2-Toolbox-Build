@@ -1,0 +1,441 @@
+{
+  "scope": "Actual DLL submits explicit enhanced object-target Attack through native queues.\nSynthetic actors/Win32/click query. Does not prove pathfinding or netplay.\n",
+  "inputs": {
+    "gamemd-spawn(4).exe": "c287d62a4d6a25b547e9339d071dd6e03adcf545699062e478aaeee38c60e89a",
+    "GameRuntime.dll": "e2bd698d989febdbacd0e3e64a94506b48508ac14f553e0f5327001aea090e7b"
+  },
+  "results": [
+    {
+      "case": "attack_stop_attack_0_1_0_vehicle_128",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_0_1_0_vehicle_2048",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_0_1_0_vehicle_8192",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_0_1_0_building_128",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_0_1_0_building_2048",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_0_1_0_building_8192",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_0_1_65536_vehicle_128",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_0_1_65536_vehicle_2048",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_0_1_65536_vehicle_8192",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_0_1_65536_building_128",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_0_1_65536_building_2048",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_0_1_65536_building_8192",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_0_1_1024_vehicle_128",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_0_1_1024_vehicle_2048",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_0_1_1024_vehicle_8192",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_0_1_1024_building_128",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_0_1_1024_building_2048",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_0_1_1024_building_8192",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_0_2_0_vehicle_128",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_0_2_0_vehicle_2048",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_0_2_0_vehicle_8192",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_0_2_0_building_128",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_0_2_0_building_2048",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_0_2_0_building_8192",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_0_2_65536_vehicle_128",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_0_2_65536_vehicle_2048",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_0_2_65536_vehicle_8192",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_0_2_65536_building_128",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_0_2_65536_building_2048",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_0_2_65536_building_8192",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_0_2_1024_vehicle_128",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_0_2_1024_vehicle_2048",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_0_2_1024_vehicle_8192",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_0_2_1024_building_128",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_0_2_1024_building_2048",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_0_2_1024_building_8192",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_0_4_0_vehicle_128",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_0_4_0_vehicle_2048",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_0_4_0_vehicle_8192",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_0_4_0_building_128",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_0_4_0_building_2048",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_0_4_0_building_8192",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_0_4_65536_vehicle_128",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_0_4_65536_vehicle_2048",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_0_4_65536_vehicle_8192",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_0_4_65536_building_128",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_0_4_65536_building_2048",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_0_4_65536_building_8192",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_0_4_1024_vehicle_128",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_0_4_1024_vehicle_2048",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_0_4_1024_vehicle_8192",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_0_4_1024_building_128",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_0_4_1024_building_2048",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_0_4_1024_building_8192",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_3_1_0_vehicle_128",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_3_1_0_vehicle_2048",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_3_1_0_vehicle_8192",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_3_1_0_building_128",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_3_1_0_building_2048",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_3_1_0_building_8192",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_3_1_65536_vehicle_128",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_3_1_65536_vehicle_2048",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_3_1_65536_vehicle_8192",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_3_1_65536_building_128",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_3_1_65536_building_2048",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_3_1_65536_building_8192",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_3_1_1024_vehicle_128",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_3_1_1024_vehicle_2048",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_3_1_1024_vehicle_8192",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_3_1_1024_building_128",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_3_1_1024_building_2048",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_3_1_1024_building_8192",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_3_2_0_vehicle_128",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_3_2_0_vehicle_2048",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_3_2_0_vehicle_8192",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_3_2_0_building_128",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_3_2_0_building_2048",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_3_2_0_building_8192",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_3_2_65536_vehicle_128",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_3_2_65536_vehicle_2048",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_3_2_65536_vehicle_8192",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_3_2_65536_building_128",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_3_2_65536_building_2048",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_3_2_65536_building_8192",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_3_2_1024_vehicle_128",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_3_2_1024_vehicle_2048",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_3_2_1024_vehicle_8192",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_3_2_1024_building_128",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_3_2_1024_building_2048",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_3_2_1024_building_8192",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_3_4_0_vehicle_128",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_3_4_0_vehicle_2048",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_3_4_0_vehicle_8192",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_3_4_0_building_128",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_3_4_0_building_2048",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_3_4_0_building_8192",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_3_4_65536_vehicle_128",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_3_4_65536_vehicle_2048",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_3_4_65536_vehicle_8192",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_3_4_65536_building_128",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_3_4_65536_building_2048",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_3_4_65536_building_8192",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_3_4_1024_vehicle_128",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_3_4_1024_vehicle_2048",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_3_4_1024_vehicle_8192",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_3_4_1024_building_128",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_3_4_1024_building_2048",
+      "status": "PASS"
+    },
+    {
+      "case": "attack_stop_attack_3_4_1024_building_8192",
+      "status": "PASS"
+    }
+  ]
+}

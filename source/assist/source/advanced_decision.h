@@ -50,7 +50,7 @@
   // Hold belongs to one goal; a completed waypoint must not pin a new pursuit.
   if(task.attacking||task.moveCell!=destination||task.pursuit!=pursuit){task.pendingShot=false;task.progress={};task.progress.begin(a.x,a.y,w.frame);}
   else task.progress.update(a.x,a.y,w.frame,a.mission,int(destination%1000)*256+128,int(destination/1000)*256+128,std::clamp(pathTimeout,30,900));
-  if(task.progress.hold){if(!task.stopped)add(out,{a.id,task.token,0,0,6,0,CombatOrder});return;}
+  if(task.progress.hold){if(!task.stopped)add(out,{a.id,task.token,0,0,5,0,CombatOrder});return;}
   bool pending=task.moveCell==destination&&task.pursuit==pursuit&&w.frame-task.sent<12&&!task.attacking;
   bool observed=a.mission==2&&a.destinationCell==destination;
   if(!pending&&!observed&&w.frame-task.sent>=(pursuit&&moving?12:2))add(out,{a.id,task.token,0,destination,2,11,CombatOrder,0,pursuit});

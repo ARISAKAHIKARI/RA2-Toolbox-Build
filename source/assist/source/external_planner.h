@@ -108,7 +108,7 @@ public:
  void accepted(const Order& order,int frame){
   if(order.purpose==MagnetronDropOrder){drops_[order.unit]={order.refinery,order.token,frame};auto it=advanced_.find(order.unit);if(it!=advanced_.end()){auto&t=it->second;t.pendingShot=t.attacking=false;t.target=0;t.sent=frame;}return;}
   if(order.purpose==1||order.purpose==3){auto it=advanced_.find(order.unit);if(it==advanced_.end()||it->second.token!=order.token)return;auto&task=it->second;
-   task.sent=frame;task.attacking=order.mission==1;task.target=order.target;task.stopped=order.mission==6;
+   task.sent=frame;task.attacking=order.mission==1;task.target=order.target;task.stopped=order.mission==5;
    task.pendingShot=order.mission==1;task.shotStart=task.observedStart;task.urgent=false;
    if(order.mission==1){task.attackProgress=frame;task.progressX=task.observedX;task.progressY=task.observedY;task.lastFireStamp=task.observedStart;}
    task.pursuit=order.pursuit;task.moveCell=order.destination;
@@ -262,9 +262,11 @@ public:
     // A pending shot by another magnet is temporary contention, not proof
     // that combat ended. Keep scanning instead of resuming the old move.
     if(rangeTarget){task.progress.combat(a->x,a->y,world.frame);continue;}
-    if(task.attacking){if(sent<MaxOrders&&add(combat,{a->id,task.token,0,task.progress.hold?0:task.cell,task.progress.hold?6:2,task.progress.hold?0:11,purpose}))++sent;continue;}
+    // Sticky (6) permanently blocks Unit::ReadyToNextMission. Ordinary
+    // Guard stays interruptible by both native clicks and future automation.
+    if(task.attacking){if(sent<MaxOrders&&add(combat,{a->id,task.token,0,task.progress.hold?0:task.cell,task.progress.hold?5:2,task.progress.hold?0:11,purpose}))++sent;continue;}
     task.progress.update(a->x,a->y,world.frame,a->mission,int(task.cell%1000)*256+128,int(task.cell/1000)*256+128,std::clamp(pathTimeout,30,900));
-    if(task.progress.hold&&!task.stopped&&sent<MaxOrders&&add(combat,{a->id,task.token,0,0,6,0,purpose}))++sent;
+    if(task.progress.hold&&!task.stopped&&sent<MaxOrders&&add(combat,{a->id,task.token,0,0,5,0,purpose}))++sent;
    }
   }
   for(auto i=advanced_.begin();i!=advanced_.end();)if(!active.count(i->first))i=advanced_.erase(i);else ++i;

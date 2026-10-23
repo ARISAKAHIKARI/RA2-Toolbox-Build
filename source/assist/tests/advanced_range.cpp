@@ -33,7 +33,7 @@ int main(){
  ++w.frame;++w.tick;o=step();assert(o.size()==1&&o[0].mission==1&&o[0].target==20);
  // Reaching the waypoint used to leave a sticky hold that blocked pursuit.
  p.reset();a.manualVersion=0;a.mission=5;a.target=0;a.combatCount=0;w.combatCount=0;a.x=30*256+128;a.y=30*256+128;a.destinationCell=0;w.frame+=10;
- o=step();assert(o.size()==1&&o[0].mission==2);p.accepted(o[0],w.frame);w.frame+=14;o=step();assert(o.size()==1&&o[0].mission==6);p.accepted(o[0],w.frame);
+ o=step();assert(o.size()==1&&o[0].mission==2);p.accepted(o[0],w.frame);w.frame+=14;o=step();assert(o.size()==1&&o[0].mission==5);p.accepted(o[0],w.frame);
  a.combatCount=1;w.combatCount=1;w.combat[0]={20,2,0,1.0f};near.x=a.x+7*256;near.y=a.y;w.frame+=2;
  o=step();assert(o.size()==1&&o[0].mission==2&&o[0].pursuit==20);p.accepted(o[0],w.frame);
  w.combat[0].flags=3;w.frame+=2;o=step();assert(o.size()==1&&o[0].mission==1&&o[0].target==20&&!o[0].destination);p.accepted(o[0],w.frame);

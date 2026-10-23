@@ -1,0 +1,54 @@
+{
+  "scope": "Execute native QueueMission, Unit::ReadyToNextMission and NextMission.\n\nThe readiness function and both mission transitions are original executable\ninstructions. Only idle locomotor/radio/map queries are test doubles. This is\nnot a whole-game movement, weapon selection, or multiplayer test.\n",
+  "game_sha256": "c287d62a4d6a25b547e9339d071dd6e03adcf545699062e478aaeee38c60e89a",
+  "results": [
+    {
+      "initial": 5,
+      "requested": 1,
+      "ready": true,
+      "status": "PASS"
+    },
+    {
+      "initial": 5,
+      "requested": 2,
+      "ready": true,
+      "status": "PASS"
+    },
+    {
+      "initial": 5,
+      "requested": 5,
+      "ready": true,
+      "status": "PASS"
+    },
+    {
+      "initial": 5,
+      "requested": 13,
+      "ready": true,
+      "status": "PASS"
+    },
+    {
+      "initial": 6,
+      "requested": 1,
+      "ready": false,
+      "status": "PASS"
+    },
+    {
+      "initial": 6,
+      "requested": 2,
+      "ready": false,
+      "status": "PASS"
+    },
+    {
+      "initial": 6,
+      "requested": 5,
+      "ready": false,
+      "status": "PASS"
+    },
+    {
+      "initial": 6,
+      "requested": 13,
+      "ready": false,
+      "status": "PASS"
+    }
+  ]
+}

@@ -7,10 +7,11 @@ struct Memory {
  bool operator()(uint32_t p,void*out,size_t n)const{if(p<Base||uint64_t(p-Base)+n>bytes.size())return false;memcpy(out,bytes.data()+p-Base,n);return true;}
  uint32_t append(const void*p,size_t n){if(bytes.size()+n>voxel::MaxBytes)return 0;uint32_t at=Base+bytes.size();bytes.resize(bytes.size()+n);if(n)memcpy(bytes.data()+at-Base,p,n);return at;}
 };
-inline bool tmp(std::vector<uint8_t> bytes,unsigned sub,const std::array<uint32_t,256>&pal,voxel::Image&out){
+inline bool tmp(std::vector<uint8_t> bytes,unsigned sub,const std::array<uint32_t,256>&pal,voxel::Image&out,std::string*reason=nullptr){
+ if(reason)*reason="directory bytes="+std::to_string(bytes.size());
  if(bytes.size()<20)return false;uint32_t cols=word(bytes.data()),rows=word(bytes.data()+4);if(!cols||!rows||cols>64||rows>64||16+cols*rows*4>bytes.size())return false;
  for(unsigned i=0;i<cols*rows;++i){uint32_t p=word(bytes.data()+16+i*4);if(p){if(p>=bytes.size()||p<16+cols*rows*4)return false;p+=Memory::Base;memcpy(bytes.data()+16+i*4,&p,4);}}
- Memory memory{std::move(bytes)};return terrain::tile(memory,Memory::Base,sub,pal,out);
+ Memory memory{std::move(bytes)};return terrain::tile(memory,Memory::Base,sub,pal,out,reason);
 }
 inline bool shp(std::vector<uint8_t> bytes,int frame,const std::array<uint32_t,256>&pal,voxel::Image&out){Memory m{std::move(bytes)};return voxel::sprite(m,Memory::Base,pal,out,frame);}
 inline bool pal(const std::vector<uint8_t>&bytes,std::array<uint32_t,256>&out){if(bytes.size()!=768)return false;for(int i=0;i<256;++i){if(bytes[i*3]>63||bytes[i*3+1]>63||bytes[i*3+2]>63)return false;out[i]=0xff000000u|(uint32_t(bytes[i*3])*4<<16)|(uint32_t(bytes[i*3+1])*4<<8)|uint32_t(bytes[i*3+2])*4;}out[0]=0;return true;}
