@@ -4,7 +4,7 @@ on:
     branches: [codex/fire-formation-v137-pre1]
     paths:
       - '.github/workflows/publish-v137-pre4.yml'
-      - 'source/tools/prepare_v137_pre3_release.py'
+      - 'source/tools/prepare_v137_pre4_release.py'
   workflow_dispatch:
 permissions:
   contents: read
@@ -23,7 +23,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Verify update and prepare independent source package
-        run: python3 source/tools/prepare_v137_pre3_release.py
+        run: python3 source/tools/prepare_v137_pre4_release.py
       - name: Publish verified prerelease
         shell: bash
         run: |
@@ -36,6 +36,7 @@ jobs:
             draft=true
           fi
           if [ "$draft" = true ]; then
+            gh release edit "$tag" --target "$GITHUB_SHA"
             gh release upload "$tag" dist/v1.0.37-pre.4/RA2-Toolbox-v1.0.37-pre.4-Update.zip dist/v1.0.37-pre.4/RA2-Toolbox-v1.0.37-pre.4-Source.zip dist/v1.0.37-pre.4/release-manifest.json --clobber
           fi
           mkdir -p remote-check
