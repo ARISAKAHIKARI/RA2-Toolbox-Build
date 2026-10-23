@@ -109,15 +109,20 @@ static void pointerTick(){
   if(start||continuation)pointerBatchRequest=request;
   for(int n=0;n<i.count;++n){uint32_t p=worldByID(i.sources[n].id);
    if(!continuation){if(p&&p==i.sources[n].pointer&&own(p,lastHouse)){
+     // A normal friendly click can select an object instead of commanding the
+     // previous group. Use the original read-only action before cancelling it.
+     if(i.operation==pointerinput::FollowNative&&(i.bindings&pointerinput::LeftClick)&&pointerTarget&&own(pointerTarget,lastHouse)&&!(i.bindings&pointerinput::NativeForced)){
+      unsigned action=0;if(!GuardedEnterAction(get<uint32_t>(get<uint32_t>(p)+0x74),p,pointerTarget,&action)||action==0||action==2||action==7||action==8||action==30||action==31||action==32){pointerTokens[n]=manualVersions.get(i.sources[n].id);continue;}
+     }
      cancelNative(p);
      if(i.operation==pointerinput::FollowNative)observeNativeOreIntent(p,pointerTarget,pointerCell,i.bindings);
     }pointerTokens[n]=manualVersions.get(i.sources[n].id);}
    else if(pointerBatchTickets[n]){actorLeaseArbiter.release(match,i.sources[n].id,pointerBatchTickets[n]);pointerBatchTickets[n]=0;}
   }
   if(i.operation==pointerinput::Cancel){pointerFinish(1);return;}
-  // An ordinary object click belongs wholly to the original game. Its mining
-  // intent was observed above; never reinterpret it as a cooperative command.
-  if(i.operation==pointerinput::FollowNative&&pointerTarget){pointerFinish(1);return;}
+  // Ordinary left clicks only hand back control. Native gameplay/voice owns
+  // both object and ground orders; never convert this observer into AttackMove.
+  if(i.operation==pointerinput::FollowNative&&(pointerTarget||(i.bindings&pointerinput::LeftClick))){pointerFinish(1);return;}
  }
  if(!nativeReady()||i.inputSerial!=b.cancelSerial||i.match!=match||i.house!=lastHouse||DWORD(now-i.tick)>1500||frame<i.frame||frame-i.frame>90){pointerFinish(-7);return;}
  // A configured right click is observed on release and never swallowed.

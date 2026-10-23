@@ -1,12 +1,12 @@
 {
-  "name": "RA2 Toolbox 1.0.36",
-  "version": "1.0.36",
+  "name": "RA2 Toolbox 1.0.37-pre.5",
+  "version": "1.0.37-pre.5",
   "compiled_game_binary_included": false,
-  "source": "v1.0.35 with panel reorganization, native waypoints, bunker Move admission, magnetron rotation/drop and read-only displays",
-  "resources": "Complete assets/profiles/Python preprocessing runtime/engine included",
+  "source": "Published v1.0.37-zoom.1 plus plain-left manual ownership, formation follow-up and encrypted/nested MIX fixes",
+  "resources": "Update package reuses existing assets/profiles/preprocessing runtime/engine",
   "resources_legacy_reuse": true,
-  "build_protocol": 61,
-  "validation": "REVIEW-1.0.36.md and verification/review-136; controlled x86 + portable + PE/ABI; no live game or netplay certification",
+  "build_protocol": 65,
+  "validation": "REVIEW-1.0.37-pre.5.md and verification/review-137-pre5; controlled x86 + portable + PE/ABI; no live game or netplay certification",
   "build_requirement": "Zig 0.13.0, x86 Windows target; build EXE and GameRuntime.dll together",
   "settings": {
     "Orders.MegaMissionBackend": "0=constructor; 1=high-level MP; SP uses constructor/DoList centrally",
@@ -14,9 +14,9 @@
   },
   "legacy_root_exe_or_dll_included": false,
   "entry_manager_api": 3,
-  "package_type": "Full compiled Windows x86 tools and x64 preprocessing runtime",
+  "package_type": "Paired Windows x86 EXE/DLL update plus separate tracked-source archive",
   "runtime_transport_protocol": 4,
-  "game_code_patching": "Central GameEntryManager retains existing experimental features; this release removes infantry C4 capability adapters and adds no new gameplay code patches",
+  "game_code_patching": "Retains existing experimental hooks; pre.5 adds no gameplay code patches",
   "input_entry": "Manager WH_GETMESSAGE / WH_CALLWNDPROCRET only; features have no independent hooks",
   "symbolic_original_interfaces": [
     "DisplayClass::ProcessClickCoords (0x692300), normal query call",
@@ -30,9 +30,9 @@
     "TacticalClass::SetTacticalPosition (0x6D6000), native camera update",
     "GScreenClass::Render (0x4F4480), native composition and presentation"
   ],
-  "release_status": "1.0.36 stable distribution; paired EXE and DLL required",
+  "release_status": "1.0.37-pre.5 prerelease; paired EXE and DLL required",
   "technology_experiment": "Native AddCameo + two local UI CanBuild limit-only callsite wrappers; native factories/events unchanged; no live purchase/netplay certification",
   "calculation_locations": "Thirteen tactical decision families selectable; native queries/events always GameRuntime; statistics/reservations/display external.",
-  "player_control": "Shared-control experimental selection retained; enemy Sell and player switching disabled",
-  "refresh_experiment": "0 cursor, 1 cursor + scroll, 2 native redraw; common 30-500 Hz target; no simulation interpolation"
+  "player_control": "Experimental shared control/enemy Sell retained; current-player switching disabled",
+  "refresh_experiment": "Cursor, cursor + scrolling, all and forced native refresh retained; CnC-DDraw experimental view zoom retained"
 }

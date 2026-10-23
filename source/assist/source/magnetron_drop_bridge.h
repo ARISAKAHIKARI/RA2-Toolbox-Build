@@ -3,6 +3,11 @@ extern "C" int GuardedObjectAir(unsigned,int*);
 static bool rawMagnetronDrop(uint32_t source,uint32_t victim,uint32_t house){
  if(!source||!victim||!sh->magnetronDrop||!rawMagnetron(source,featuretypes::MagnetronDrop)||get<uint32_t>(source+0x2AC)!=victim||
     !worldObjects.contains(victim)||kind(victim)!=2||!live(victim)||get<uint32_t>(victim+0x2B0)!=source||!nativeEnemy(victim,house))return false;
+ // A native left attack can already be pending while the previous beam still
+ // owns its victim. Idle is an order to the source, so dropping that old beam
+ // would cancel the new attack (including the building/secondary weapon).
+ uint32_t target=get<uint32_t>(source+0x2B4);
+ if(manualMagnetronDropPaused(source,victim)||(target&&target!=victim))return false;
  struct {int x,y,z;} position{get<int>(victim+0x9C),get<int>(victim+0xA0),get<int>(victim+0xA4)};
  uint32_t cell=readMapCell(position.x/256,position.y/256);if(!cell)return false;
  magnetdrop::Ground g;g.lifted=true;g.enemy=true;g.land=get<int>(cell+0xEC);g.bridge=(get<uint32_t>(cell+0x140)&0x100)!=0;

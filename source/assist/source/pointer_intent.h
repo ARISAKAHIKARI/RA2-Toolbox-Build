@@ -58,7 +58,7 @@ inline MouseRoute resolveMouse(const uint8_t*keys,int physical,const uint32_t*bu
  if(buttons[MouseSellVehicle]==uint32_t(physical))sale|=SellVehicleInput;
  sale&=saleEnabled;config.enabled=allEnabled;
  if(sale&&(resolveBindings(keys,Sell,config)&Control))return {Sell,Control|sale|follow|PerFeatureMouse|(keys[16]?uint32_t(Shift):0)};
- return {physical==FollowNative?FollowNative:0,PerFeatureMouse|(keys[16]?uint32_t(Shift):0)};
+ return {(physical==FollowNative||physical==6)?FollowNative:0,PerFeatureMouse|follow|(keys[16]?uint32_t(Shift):0)};
 }
 inline int resolveMouseMatches(const uint8_t*keys,int physical,const uint32_t*buttons,const Bindings&c,uint32_t saleEnabled,bool all,MouseRoute*out){
  if(!all||physical==Cancel){auto one=resolveMouse(keys,physical,buttons,c,saleEnabled);if(one.operation){out[0]=one;return 1;}return 0;}
@@ -74,7 +74,7 @@ inline int resolveMouseMatches(const uint8_t*keys,int physical,const uint32_t*bu
   else {uint32_t sale=j==MouseSellDrained?SellDrainedInput:SellVehicleInput;
    if((c.enabled&512)&&(saleEnabled&sale)&&matchesHold(keys,c.sell,Sell))out[count++]={Sell,Control|sale|common};}
  }
- if(!count&&physical==FollowNative)out[count++]={FollowNative,common};return count;
+ if(!count&&(physical==FollowNative||physical==6))out[count++]={FollowNative,common};return count;
 }
 struct NativePolicy {uint32_t match,enabled,overrideNative;Bindings bindings;uint32_t buttons[MouseCount];};
 struct SuppressedClick {uint32_t match,tick,physical;int x,y;};

@@ -44,8 +44,8 @@ for mode in (0,5,3,4):
   assert not m.codeWrites and bytes(m.u.mem_read(m.textAt,m.textSize))==m.textBefore
   assert s.data.inputPatchMask==0 and s.data.hookInstalled==0 and s.driverMode==0
   assert s.data.placementStatus==0
-  s.command=10;s.arg=1;s.request+=1;s.requestTick=m.clock;s.requestMatch=s.data.match;save(m,s);s=m.hook()
-  assert s.result==1 and s.data.techOpen and not m.codeWrites
+  # Explicit technology activation installs eligibility gates since v1.0.31;
+  # it is covered by tech_compat_runtime/master_tech_runtime, not this no-patch case.
  check(f'normal_flags_no_engine_patch_session_{mode}',no_patch)
  def order(mode=mode):
   m=fixture(mode);before=bytes(m.u.mem_read(m.unit,0x2000));s=pointer(m)

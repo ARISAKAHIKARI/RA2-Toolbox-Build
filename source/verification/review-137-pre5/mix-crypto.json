@@ -1,0 +1,14 @@
+{
+  "passed": true,
+  "vectors": 130,
+  "sanitized": false,
+  "output": "PASS 130 independent RSA/Blowfish vectors; encrypted nested MIX, same-name fallback, custom XCC child, bounds",
+  "fixtures": {
+    "ECACHEMD02.MIX": "911964c8871ea5e96ec00cd45210c4a311666f428ddc95ba8be5d9934761321f",
+    "EXPANDMD99.MIX": "a303e6a94ff722872f189837cbb2b2aa51fda20b253c4d939e99927fcaf555cf",
+    "vectors.txt": "56934d4ff5a2014326329c3446fb4a161737e39b2351c2b50a27a4766118d8ca",
+    "RA2MD.MIX": "86231829c255f8dfa51375ad89d7171ffba0b4391633d0dd1e1b207e5c1c61a6",
+    "BAD-DATABASE.MIX": "c10c696ccfa206f65718c4294a21d753d7954783abd44c5ba1513f830ee43f1f",
+    "BAD-EXTENT.MIX": "65c450032a1f0565ce70537b7ed50dc7c0c20f98334bd50df4dfe7c5c3ecdb50"
+  }
+}

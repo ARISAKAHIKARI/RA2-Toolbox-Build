@@ -17,7 +17,7 @@ int main(){
  hotkeyroute::Group full{1,1,std::vector<int>(128,7)};assert(queue.add(full,100,8));assert(!queue.add(*registry.find(10),100,8));assert(queue.count==128);
  queue.clear();registry.clear();assert(!registry.find(10));
  using namespace pointerinput;uint8_t keys[256]{};uint32_t buttons[MouseCount];for(auto&b:buttons)b=1;
- Bindings c{0,0,0,0,0,0,0,0,1023};MouseRoute routes[MouseCount]{};
+ Bindings c{0,0,0,0,0,0,0,0,1023};MouseRoute routes[MouseCount+1]{};
  assert(resolveMouseMatches(keys,1,buttons,c,SellDrainedInput|SellVehicleInput,false,routes)==1);
  assert(routes[0].operation==Enhanced&&(routes[0].bindings&7)==7);
  assert(resolveMouseMatches(keys,1,buttons,c,SellDrainedInput|SellVehicleInput,true,routes)==10);
@@ -26,6 +26,7 @@ int main(){
  c.advanced='G';keys['G']=1;assert(resolveMouseMatches(keys,1,buttons,c,0,true,routes)==8);assert((routes[0].bindings&Advanced)&&(routes[1].bindings&Magnetron));keys['G']=0;
  c.enabled=0;for(auto&b:buttons)b=0;assert(!resolveMouseMatches(keys,1,buttons,c,0,true,routes));
  assert(resolveMouseMatches(keys,4,buttons,c,0,true,routes)==1&&routes[0].operation==FollowNative);
+ for(bool all:{false,true}){assert(resolveMouseMatches(keys,6,buttons,c,0,all,routes)==1);assert(routes[0].operation==FollowNative&&(routes[0].bindings&LeftClick));}
  assert(resolveMouseMatches(keys,5,buttons,c,0,true,routes)==1&&routes[0].operation==Cancel);
  assert(!resolveMouseMatches(keys,0,buttons,c,0,true,routes));
  c={0,0,0,0,17,17,0,0,1023};keys[17]=1;buttons[MouseAirFirst]=buttons[MouseAirSecond]=2;
@@ -37,6 +38,6 @@ int main(){
  assert(first.bindings&BatchStart);assert(!(first.bindings&BatchNext));assert(second.bindings&BatchNext);assert(sameCapture(first,second));assert(!pending.waiting());
  auto changed=second;++changed.sources[MaxSources-1].id;assert(!sameCapture(first,changed));changed=second;++changed.tick;assert(!sameCapture(first,changed));
  changed=second;changed.count=MaxSources+1;assert(!sameCapture(changed,changed));assert(!pending.next().operation);
- pending.begin(i,routes,MouseCount+1,7);assert(!pending.active());pending.clear();
+ pending.begin(i,routes,MouseCount+2,7);assert(!pending.active());pending.clear();
  std::cout<<"PASS: one OS registration/all matched keyboard actions, bounded FIFO/identity/deadline; all ten mouse routes, default precedence, both aircraft modes and anchored batch capture\n";
 }

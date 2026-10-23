@@ -1,0 +1,236 @@
+{
+  "version": "1.0.37-pre.5",
+  "file_version": "1.0.37.5",
+  "protocol": 65,
+  "base_commit": "2dfe3c861bf55b071419105457f1e1d8bed2bc36",
+  "files": {
+    "RA2Toolbox.exe": {
+      "bytes": 2715136,
+      "sha256": "f815b49eaa740ea56b7202b328e544540f3306a7f667eeec609d56ba4fe6863e"
+    },
+    "GameRuntime.dll": {
+      "bytes": 4855808,
+      "sha256": "6a0dc9dcf0d5ee6bb963c1fce8849ead3c1331dfd99aeedfddcd83d09acfe302"
+    }
+  },
+  "build": "PASS Zig 0.13 Windows x86; PE32/ABI/system dependency/manifest and architecture checks",
+  "runtime_cases": 927,
+  "runtime": {
+    "dll_sha256": "6a0dc9dcf0d5ee6bb963c1fce8849ead3c1331dfd99aeedfddcd83d09acfe302",
+    "scope": "Controlled x86/Win32/map fixtures; not Windows rendering, game pathfinding, audio or netplay.",
+    "suites": [
+      {
+        "name": "formation_runtime-lbw",
+        "exit_code": 0,
+        "cases": 70,
+        "failures": []
+      },
+      {
+        "name": "formation_runtime-zhanwang",
+        "exit_code": 0,
+        "cases": 70,
+        "failures": []
+      },
+      {
+        "name": "magnetron_stop_reacquire_runtime-lbw",
+        "exit_code": 0,
+        "cases": 20,
+        "failures": []
+      },
+      {
+        "name": "magnetron_stop_reacquire_runtime-zhanwang",
+        "exit_code": 0,
+        "cases": 20,
+        "failures": []
+      },
+      {
+        "name": "magnetron_manual_drop_runtime-lbw",
+        "exit_code": 0,
+        "cases": 8,
+        "failures": []
+      },
+      {
+        "name": "magnetron_manual_drop_runtime-zhanwang",
+        "exit_code": 0,
+        "cases": 8,
+        "failures": []
+      },
+      {
+        "name": "tank_bunker_arrival_runtime-lbw",
+        "exit_code": 0,
+        "cases": 6,
+        "failures": []
+      },
+      {
+        "name": "tank_bunker_arrival_runtime-zhanwang",
+        "exit_code": 0,
+        "cases": 6,
+        "failures": []
+      },
+      {
+        "name": "tank_bunker_runtime-lbw",
+        "exit_code": 0,
+        "cases": 21,
+        "failures": []
+      },
+      {
+        "name": "tank_bunker_runtime-zhanwang",
+        "exit_code": 0,
+        "cases": 21,
+        "failures": []
+      },
+      {
+        "name": "magnetron137_runtime-lbw",
+        "exit_code": 0,
+        "cases": 50,
+        "failures": []
+      },
+      {
+        "name": "magnetron137_runtime-zhanwang",
+        "exit_code": 0,
+        "cases": 50,
+        "failures": []
+      },
+      {
+        "name": "advanced_range_runtime-lbw",
+        "exit_code": 0,
+        "cases": 106,
+        "failures": []
+      },
+      {
+        "name": "advanced_range_runtime-zhanwang",
+        "exit_code": 0,
+        "cases": 106,
+        "failures": []
+      },
+      {
+        "name": "no_interception_runtime-lbw",
+        "exit_code": 0,
+        "cases": 169,
+        "failures": []
+      },
+      {
+        "name": "no_interception_runtime-zhanwang",
+        "exit_code": 0,
+        "cases": 169,
+        "failures": []
+      },
+      {
+        "name": "view_zoom_runtime-zhanwang",
+        "exit_code": 0,
+        "cases": 25,
+        "failures": []
+      },
+      {
+        "name": "view_zoom_unsupported_runtime-lbw",
+        "exit_code": 0,
+        "cases": 2,
+        "failures": []
+      }
+    ],
+    "compatibility_notes": [
+      "The inherited zoom.1 whole-function fingerprint supports CnCNet/MRGA, not LBW. The all-level zoom test is not applicable to LBW; the dedicated unsupported-fingerprint test verifies status -2 and no resize."
+    ]
+  },
+  "host": {
+    "scope": "Host source algorithms/Win32 stubs, no live rendering",
+    "suites": [
+      {
+        "name": "hotkey_routes",
+        "exit_code": 0
+      },
+      {
+        "name": "cooperative",
+        "exit_code": 0
+      },
+      {
+        "name": "hotfix103",
+        "exit_code": 0
+      },
+      {
+        "name": "formation",
+        "exit_code": 0
+      },
+      {
+        "name": "formation_host",
+        "exit_code": 0
+      },
+      {
+        "name": "watch_host",
+        "exit_code": 0
+      },
+      {
+        "name": "watch_view",
+        "exit_code": 0
+      },
+      {
+        "name": "game_assets",
+        "exit_code": 0
+      },
+      {
+        "name": "magnetron",
+        "exit_code": 0
+      },
+      {
+        "name": "magnetron_rof",
+        "exit_code": 0
+      },
+      {
+        "name": "native_orders",
+        "exit_code": 0
+      },
+      {
+        "name": "advanced_range",
+        "exit_code": 0
+      },
+      {
+        "name": "view_zoom",
+        "exit_code": 0
+      },
+      {
+        "name": "pointer_fanout_host_test",
+        "exit_code": 0
+      },
+      {
+        "name": "auto_settings_ui_test",
+        "exit_code": 0
+      }
+    ]
+  },
+  "crypto": [
+    {
+      "passed": true,
+      "vectors": 130,
+      "sanitized": false,
+      "output": "PASS 130 independent RSA/Blowfish vectors; encrypted nested MIX, same-name fallback, custom XCC child, bounds",
+      "fixtures": {
+        "ECACHEMD02.MIX": "911964c8871ea5e96ec00cd45210c4a311666f428ddc95ba8be5d9934761321f",
+        "EXPANDMD99.MIX": "a303e6a94ff722872f189837cbb2b2aa51fda20b253c4d939e99927fcaf555cf",
+        "vectors.txt": "56934d4ff5a2014326329c3446fb4a161737e39b2351c2b50a27a4766118d8ca",
+        "RA2MD.MIX": "86231829c255f8dfa51375ad89d7171ffba0b4391633d0dd1e1b207e5c1c61a6",
+        "BAD-DATABASE.MIX": "c10c696ccfa206f65718c4294a21d753d7954783abd44c5ba1513f830ee43f1f",
+        "BAD-EXTENT.MIX": "65c450032a1f0565ce70537b7ed50dc7c0c20f98334bd50df4dfe7c5c3ecdb50"
+      }
+    },
+    {
+      "passed": true,
+      "vectors": 130,
+      "sanitized": true,
+      "output": "PASS 130 independent RSA/Blowfish vectors; encrypted nested MIX, same-name fallback, custom XCC child, bounds",
+      "fixtures": {
+        "ECACHEMD02.MIX": "911964c8871ea5e96ec00cd45210c4a311666f428ddc95ba8be5d9934761321f",
+        "EXPANDMD99.MIX": "a303e6a94ff722872f189837cbb2b2aa51fda20b253c4d939e99927fcaf555cf",
+        "vectors.txt": "56934d4ff5a2014326329c3446fb4a161737e39b2351c2b50a27a4766118d8ca",
+        "RA2MD.MIX": "86231829c255f8dfa51375ad89d7171ffba0b4391633d0dd1e1b207e5c1c61a6",
+        "BAD-DATABASE.MIX": "c10c696ccfa206f65718c4294a21d753d7954783abd44c5ba1513f830ee43f1f",
+        "BAD-EXTENT.MIX": "65c450032a1f0565ce70537b7ed50dc7c0c20f98334bd50df4dfe7c5c3ecdb50"
+      }
+    }
+  ],
+  "limitations": [
+    "Controlled Win32/world/input/delivery fixtures, not real game, Windows visual/audio or network peers.",
+    "No current user MOD MIX assets available; encrypted and nested archives tested with independently generated fixtures.",
+    "Ordinary attack fix establishes an automation/input race; does not prove every native/disabled-tool freeze resolved.",
+    "LBW zoom unsupported by inherited fingerprint; remains at 100%."
+  ]
+}

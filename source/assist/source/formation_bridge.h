@@ -10,7 +10,7 @@ static bool formationDirected=false,formationHoldConsumed=false,formationFeedbac
 static UINT formationButtonUp=WM_RBUTTONUP;
 struct FormationMemory {int count=0,ax=0,ay=0;double facing=0;bool directed=false;formation::Unit units[formation::Maximum]{};formation::Slot offsets[formation::Maximum]{};};
 static FormationMemory formationMemory;
-struct FormationFollow {uint32_t cell=0,tick=0;bool down=false,dragged=false;UINT up=0;int x=0,y=0;};
+struct FormationFollow {uint32_t cell=0,tick=0;int frame=0;bool down=false,dragged=false;UINT up=0;int x=0,y=0;};
 static FormationFollow formationFollow;
 static bool formationSameSelection(){
  if(!formationMemory.count)return false;Vec selected=vec(0xA8ECB8);if(selected.count!=formationMemory.count)return false;
@@ -94,31 +94,40 @@ static void formationCommit(bool remember=true,bool feedback=true){
 static void formationWatchNative(MSG*msg){
  if(!formationMemory.count)return;
  if(!formationSameSelection()){formationForget();return;}
- if(msg->message==WM_LBUTTONDOWN||msg->message==WM_RBUTTONDOWN){
-  formationFollow={};formationFollow.down=true;formationFollow.up=msg->message==WM_LBUTTONDOWN?WM_LBUTTONUP:WM_RBUTTONUP;formationFollow.x=short(LOWORD(msg->lParam));formationFollow.y=short(HIWORD(msg->lParam));
+ // Native RA2 uses left click to move and right click to cancel selection.
+ // Keep both native messages (including box selection and its one voice).
+ if(msg->message==WM_RBUTTONDOWN){formationJobCount=0;formationFeedback=false;formationForget();return;}
+ if(msg->message==WM_LBUTTONDOWN){
+  formationFollow={};formationFollow.down=true;formationFollow.up=WM_LBUTTONUP;formationFollow.x=short(LOWORD(msg->lParam));formationFollow.y=short(HIWORD(msg->lParam));
+  int x,y,px,py;bool ground=false;
+  if(!(GetKeyState(VK_SHIFT)&0x8000)&&!(GetKeyState(VK_CONTROL)&0x8000)&&!(GetKeyState(VK_MENU)&0x8000)&&formationPoint(msg,x,y,px,py,&ground)&&ground)
+   sh->formationConsumedUntil=sampleClock(sh)+200;
  }else if(msg->message==WM_MOUSEMOVE&&formationFollow.down){
   formationFollow.dragged|=std::abs(short(LOWORD(msg->lParam))-formationFollow.x)>5||std::abs(short(HIWORD(msg->lParam))-formationFollow.y)>5;
- }else if(msg->message==formationFollow.up&&formationFollow.down){
+ }else if(msg->message==WM_LBUTTONUP&&formationFollow.down){
   formationFollow.down=false;int x,y,px,py;bool ground=false;
   if(formationFollow.dragged||(GetKeyState(VK_SHIFT)&0x8000)||(GetKeyState(VK_CONTROL)&0x8000)||(GetKeyState(VK_MENU)&0x8000)||!formationPoint(msg,x,y,px,py,&ground)){formationFollow.cell=0;return;}
-  // An explicit native command replaces pending automatic facing adjustments.
   formationJobCount=0;formationFeedback=false;
-  if(ground){formationFollow.cell=y/256*1000+x/256;formationFollow.tick=sampleClock(sh);}
+  if(ground){formationFollow.cell=y/256*1000+x/256;formationFollow.tick=sampleClock(sh);formationFollow.frame=get<int>(0xA8ED84);sh->formationConsumedUntil=sampleClock(sh)+200;}
  }
 }
 static void formationContinue(DWORD now){
  if(!formationMemory.count)return;
  if(!formationSameSelection()){formationForget();return;}
  if(!formationFollow.cell)return;
+ // GETMESSAGE sees button-up before the game consumes it. Queue our per-unit
+ // moves on a later simulation turn, after the native common move/voice.
+ if(get<int>(0xA8ED84)<=formationFollow.frame)return;
  if(DWORD(now-formationFollow.tick)>1500){formationFollow.cell=0;return;}
  uint32_t cell=formationFollow.cell,mapCell=readMapCell(cell%1000,cell/1000);if(!mapCell)return;
- // Observe native acceptance; a right-click deselect or left drag never turns
- // into a move, and does not get a second voice acknowledgement.
- for(int n=0;n<formationMemory.count;++n){auto&u=formationMemory.units[n];if(!formationActor(u.pointer)){formationForget();return;}if(get<int>(u.pointer+0xAC)!=2||get<uint32_t>(u.pointer+0x5A4)!=mapCell)return;}
+ // The click is the new intent. Native moves may have distinct scatter cells,
+ // arrive at different times, or still be queued; none is grounds to reject it.
+ for(int n=0;n<formationMemory.count;++n){auto&u=formationMemory.units[n];if(!formationActor(u.pointer)){formationForget();return;}}
  formationView.count=formationMemory.count;formationView.ax=int(cell%1000)*256+128;formationView.ay=int(cell/1000)*256+128;formationView.facing=formationMemory.facing;formationDirected=formationMemory.directed;
  for(int n=0;n<formationMemory.count;++n){auto u=formationMemory.units[n];u.token=manualVersions.get(u.id);formationView.units[n]=u;auto goal=formationMemory.offsets[n];goal.x+=formationView.ax;goal.y+=formationView.ay;goal.valid=0;
   int cx=goal.x/256,cy=goal.y/256;
   for(int radius=0;radius<=4&&!goal.valid;++radius)for(int dy=-radius;dy<=radius&&!goal.valid;++dy)for(int dx=-radius;dx<=radius&&!goal.valid;++dx){if(std::max(std::abs(dx),std::abs(dy))!=radius||!formationCell(cx+dx,cy+dy))continue;bool used=false;for(int j=0;j<n;++j)if(formationView.slots[j].valid&&formationView.slots[j].x==(cx+dx)*256+128&&formationView.slots[j].y==(cy+dy)*256+128)used=true;if(!used){goal.x=(cx+dx)*256+128;goal.y=(cy+dy)*256+128;goal.valid=1;}}
+  if(goal.valid){struct Coord{int x,y,z;}c{goal.x,goal.y,0};goal.z=call<int>(0x578080,0x87F7E8,&c);}
   formationView.slots[n]=goal;
  }
  formationCommit(false,false);
@@ -151,6 +160,7 @@ static void formationTick(uint32_t house,int frame,DWORD now){
  if(!formationContext()){if(formationView.active)formationCancel();formationFollow={};if(!sh->formationPolicy.enabled){formationJobCount=0;formationForget();}}
  if(sh->formationKey!=sh->formationKeyAck){if(formationView.active)formationSwitch(sh->formationKeyCode);sh->formationKeyAck=sh->formationKey;formationPublish();}
  if(!simulationReady()||snap.chat)return;
+ if(formationFollow.down&&!formationFollow.dragged&&int32_t(sh->formationConsumedUntil-now)>0)sh->formationConsumedUntil=now+200;
  formationContinue(now);
  int visited=0;while(formationJobCount&&visited++<32){if(formationJobCursor>=formationJobCount)formationJobCursor=0;int at=formationJobCursor++;auto&j=formationJobs[at];uint32_t p=worldByID(j.unit.id);
   bool remove=j.epoch!=match||p!=j.unit.pointer||!formationActor(p)||manualVersions.get(j.unit.id)!=j.unit.token||frame<j.frame||frame-j.frame>1800;

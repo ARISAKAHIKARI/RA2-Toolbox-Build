@@ -1,0 +1,7 @@
+host: /tmp/tmp2f9vglfp/host.cpp:198: int main(): Assertion `shared->pointer.request==requestBefore+1' failed.
+Traceback (most recent call last):
+  File "/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/pointer_fanout_host_test.py", line 106, in <module>
+    subprocess.run([str(exe)],check=True)
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/subprocess.py", line 571, in run
+    raise CalledProcessError(retcode, process.args,
+subprocess.CalledProcessError: Command '['/tmp/tmp2f9vglfp/host']' died with <Signals.SIGABRT: 6>.

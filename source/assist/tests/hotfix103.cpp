@@ -11,15 +11,20 @@ int main(){
  w->intents[0]={10,20020,0,OrdinaryMove};
  auto&b=w->actors[1];b.id=20;b.kind=2;b.flags=Enemy;b.x=5000+1024+3*256;b.y=5000;b.cost=100;
  auto&c=w->actors[2];c=b;c.id=30;c.x++;c.cost=1000;
- auto orders=p->step(*w,AdvancedInput,200,300,90,10);assert(orders.size()==1&&orders[0].target==20);p->accepted(orders[0],1);a.target=20;
+ // Since the native-range probe interface, the planner cannot synthesize
+ // these facts from a primary weapon. Supply the sampled candidate/range set.
+ w->combatCount=2;a.combatFirst=0;a.combatCount=2;
+ w->combat[0].target=20;w->combat[0].flags=InAcquisitionRange;
+ w->combat[1].target=30;w->combat[1].flags=0;
+ auto orders=p->step(*w,AdvancedInput,200,300,90,10);assert(orders.size()==1&&orders[0].mission==2&&orders[0].pursuit==20);p->accepted(orders[0],1);a.mission=2;a.destinationCell=orders[0].destination;
  // Fire range remains native; the extra three cells authorize acquisition/chase.
  assert(!canTarget(a,b,int64_t(1792)*1792,false));assert(canTarget(a,b,int64_t(1792)*1792,false,768));assert(!canTarget(a,c,int64_t(1793)*1793,false,768));
- c.x--;w->frame=3;w->tick=199;assert(p->step(*w,AdvancedInput,200,300,90,10).empty());
- w->frame=4;w->tick=200;orders=p->step(*w,AdvancedInput,200,300,90,10);assert(orders.size()==1&&orders[0].target==30);p->accepted(orders[0],4);a.target=30;
+ c.x=b.x-256;w->combat[1].flags=InAcquisitionRange;w->frame=14;w->tick=300;
+ orders=p->step(*w,AdvancedInput,200,300,90,10);assert(orders.size()==1&&orders[0].mission==2&&orders[0].pursuit==30);p->accepted(orders[0],14);
  // Destination arrival and a long spell with no enemies do not disarm the task.
  w->count=1;a.x=a.y=20*256+128;w->frame=500;w->tick=10000;orders=p->step(*w,AdvancedInput,200,300,90,10);for(auto&o:orders)p->accepted(o,w->frame);
  w->frame=1000;w->tick=20000;p->step(*w,AdvancedInput,200,300,90,10);assert(p->hasJobs());
- w->count=2;b.x=a.x+100;b.y=a.y;w->frame=1002;w->tick=20100;orders=p->step(*w,AdvancedInput,200,300,90,10);assert(orders.size()==1&&orders[0].target==20);
+ w->count=2;b.x=a.x+100;b.y=a.y;w->combat[0].flags=InAcquisitionRange|InWeaponRange;w->frame=1002;w->tick=20100;orders=p->step(*w,AdvancedInput,200,300,90,10);assert(orders.size()==1&&orders[0].mission==1&&orders[0].target==20);
  w->intentCount=0;++w->frame;w->tick+=100;p->step(*w,AdvancedInput,200,300,90,10);assert(!p->hasJobs());
  idleaircraft::View plane{4,4,5,-1,true,false,false,true,false};assert(idleaircraft::idle(plane));
  plane.ammo=3;assert(!idleaircraft::idle(plane));plane.ammo=4;plane.airborne=true;plane.docked=false;assert(!idleaircraft::idle(plane));

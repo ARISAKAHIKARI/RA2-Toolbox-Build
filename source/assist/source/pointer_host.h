@@ -89,6 +89,7 @@ static void servicePointer(){
  in.x=int(int64_t(e.point.x)*in.width/e.width);in.y=int(int64_t(e.point.y)*in.height/e.height);
  bool selectionNeeded=false;for(int route=0;route<routeCount;++route)if(routes[route].operation!=pointerinput::Sell&&routes[route].operation!=pointerinput::PlayerSelect)selectionNeeded=true;
  if(selectionNeeded&&e.operation==6&&(!leftCaptured||leftCapture.match!=in.match||leftCapture.inputSerial!=in.inputSerial))return;
+ if(selectionNeeded&&e.operation==6&&leftCaptured&&in.operation==pointerinput::FollowNative&&(std::abs(int64_t(in.x)-leftCapture.x)>5||std::abs(int64_t(in.y)-leftCapture.y)>5)){leftCaptured=false;return;}
  if(selectionNeeded&&e.operation==6&&leftCaptured&&leftCapture.match==in.match&&leftCapture.inputSerial==in.inputSerial){in.count=leftCapture.count;memcpy(in.sources,leftCapture.sources,size_t(in.count)*sizeof(in.sources[0]));}
  else if(selectionNeeded){
   if(!read(0xA8ECB8+16,&count,4)||count<0||count>pointerinput::MaxSources||!read(0xA8ECB8+4,&items,4))return;

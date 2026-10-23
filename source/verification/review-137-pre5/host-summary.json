@@ -1,0 +1,65 @@
+{
+  "scope": "Host source algorithms/Win32 stubs, no live rendering",
+  "suites": [
+    {
+      "name": "hotkey_routes",
+      "exit_code": 0
+    },
+    {
+      "name": "cooperative",
+      "exit_code": 0
+    },
+    {
+      "name": "hotfix103",
+      "exit_code": 0
+    },
+    {
+      "name": "formation",
+      "exit_code": 0
+    },
+    {
+      "name": "formation_host",
+      "exit_code": 0
+    },
+    {
+      "name": "watch_host",
+      "exit_code": 0
+    },
+    {
+      "name": "watch_view",
+      "exit_code": 0
+    },
+    {
+      "name": "game_assets",
+      "exit_code": 0
+    },
+    {
+      "name": "magnetron",
+      "exit_code": 0
+    },
+    {
+      "name": "magnetron_rof",
+      "exit_code": 0
+    },
+    {
+      "name": "native_orders",
+      "exit_code": 0
+    },
+    {
+      "name": "advanced_range",
+      "exit_code": 0
+    },
+    {
+      "name": "view_zoom",
+      "exit_code": 0
+    },
+    {
+      "name": "pointer_fanout_host_test",
+      "exit_code": 0
+    },
+    {
+      "name": "auto_settings_ui_test",
+      "exit_code": 0
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "scope": "Existing zoom.1 compatibility gate rejects the unsupported LBW fingerprint.\nActual compiled Runtime with mocked renderer; no resize or game simulation.\n",
+  "dll_sha256": "6a0dc9dcf0d5ee6bb963c1fce8849ead3c1331dfd99aeedfddcd83d09acfe302",
+  "results": [
+    {
+      "case": "lbw_unsupported_zoom_0_no_resize",
+      "status": "PASS"
+    },
+    {
+      "case": "lbw_unsupported_zoom_3_no_resize",
+      "status": "PASS"
+    }
+  ]
+}

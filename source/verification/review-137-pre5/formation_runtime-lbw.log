@@ -1,0 +1,30 @@
+PASS 0 click
+PASS 0 cycle
+PASS 0 escape
+PASS 0 chat
+PASS 0 focus
+PASS 0 disabled
+PASS 0 duplicate_up
+PASS 0 double_alt
+PASS 0 custom_double_alt
+PASS 0 policy_in_flight
+PASS 0 advanced_frame
+PASS 3 click
+PASS 3 cycle
+PASS 3 escape
+PASS 3 chat
+PASS 3 focus
+PASS 3 disabled
+PASS 3 duplicate_up
+PASS 3 double_alt
+PASS 3 custom_double_alt
+PASS 3 policy_in_flight
+PASS 3 advanced_frame
+PASS 0 configured double hold and shape
+PASS 3 configured double hold and shape
+PASS 0 subcell drag direction
+PASS 3 subcell drag direction
+PASS 0 16-unit drag and facing approach False
+PASS 0 16-unit drag and facing approach True
+PASS 3 16-unit drag and facing approach False
+PASS 3 16-unit drag and facing approach True

@@ -82,6 +82,18 @@ int main(){
  ack(0);servicePointer();initialize();featureFlags=0;
  capture();gameinput::event.operation=4;servicePointer();assert(shared->pointer.intent.operation==pointerinput::FollowNative);ack();servicePointer();
  capture();gameinput::event.operation=4;gameinput::event.keys[VK_CONTROL]=1;servicePointer();assert(shared->pointer.intent.bindings&pointerinput::NativeForced);ack();servicePointer();
+ // Plain LEFT down/up must observe a manual order even with no feature bound.
+ // Previously both route modes silently dropped it before Runtime cancellation.
+ for(bool all:{false,true}){
+  initialize();featureFlags=0;extra.allHotkeys=all;unsigned requestBefore=shared->pointer.request;
+  capture();gameinput::event.operation=7;servicePointer();assert(shared->pointer.request==requestBefore);
+  capture();gameinput::event.operation=6;servicePointer();
+  assert(shared->pointer.request==requestBefore+1);
+  assert(shared->pointer.intent.operation==pointerinput::FollowNative&&(shared->pointer.intent.bindings&pointerinput::LeftClick));
+  ack();servicePointer();
+  capture();gameinput::event.operation=7;servicePointer();requestBefore=shared->pointer.request;
+  capture();gameinput::event.operation=6;gameinput::event.point={180,180};servicePointer();assert(shared->pointer.request==requestBefore);
+ }
  // The same saved native preference uses native SP input and event MP input.
  extra.nativeAirWaypoints=true;airway::aircraft=true;snap.session=5;
  capture();gameinput::event.operation=4;gameinput::event.keys['Z']=1;request=shared->pointer.request;servicePointer();assert(shared->pointer.request==request);

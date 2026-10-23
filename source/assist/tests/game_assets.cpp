@@ -30,5 +30,5 @@ int main(){
  put(v,tail,0);put(v,tail+4,4);put(v,tail+8,8);real(v,tail+12,1);for(int i=0;i<3;++i)real(v,tail+76+i*4,1);v[tail+88]=v[tail+89]=v[tail+90]=1;v[tail+91]=4;
  put(h,16,1);put(h,20,1);memcpy(h.data()+24,"body",4);for(int i=0;i<3;++i)real(h,40+i*20,1);external::voxel::Model model;assert(vxl(v,h,model)&&model.faces.size()==6);assert(external::voxel::render(model,0,colors,image));
  v[body+12]=2;model={};assert(!vxl(v,h,model));put(h,20,99);assert(!vxl(v,h,model));
- std::cout<<"PASS loose/expand/ecache/base/nested precedence; encrypted live-index disk reads, malformed extents; TMP/PAL/VXL/HVA resource decode\n";
+ std::cout<<"PASS loose/expand/ecache/base/nested precedence; encrypted live-index compatibility disk reads, malformed extents; TMP/PAL/VXL/HVA resource decode\n";
 }
