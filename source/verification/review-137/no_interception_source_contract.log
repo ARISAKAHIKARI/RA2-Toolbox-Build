@@ -1,0 +1,5 @@
+Traceback (most recent call last):
+  File "/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/no_interception_source_contract.py", line 8, in <module>
+    assert not re.search(r'\b(?:WriteProcessMemory|VirtualProtect|CreateRemoteThread|VirtualAllocEx)\s*\(',s),p
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: /workspace/scratch/9191caa5da6a/ra2-toolbox/source/shared/source/game_entry_manager.cpp

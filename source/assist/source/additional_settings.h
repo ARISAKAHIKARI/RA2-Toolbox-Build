@@ -4,6 +4,7 @@
 #include "pointer_intent.h"
 namespace assist {
 struct AdditionalSettings {
+ bool formationEnabled=true;uint32_t formationHold=18,formationKeys[4]={'Z','X','C','V'};
  bool controlAll=false,switchPlayerEnabled=false;
  int scrollRefreshMode=0; // cursor / cursor + scrolling / full scene
 #ifndef RA2_UNIFIED
@@ -17,7 +18,7 @@ struct AdditionalSettings {
  bool passengerBubbles=true,dangerPassengers=false,magnetronDrop=false;
  bool dodgeEnabled=false;int dodgeMode=0;
  bool burstEnabled=false,burstHoldEnabled=false;uint32_t burstKey=0; // Reserved for configuration compatibility.
- bool missileDefense=false;int missileScanHz=10;
+ bool missileDefense=false;int missileScanHz=10,missileScope=0,missileAllocation=0;bool magnetronGlobal=false;
  bool allHotkeys=false,overrideNative=false;
  int loadMode=0,loadRadius=30;
  uint32_t mouseButtons[pointerinput::MouseCount]={1,1,1,1,1,1,1,2,3,3}; // 0=off, 1=middle, 2/3=side, 4=right

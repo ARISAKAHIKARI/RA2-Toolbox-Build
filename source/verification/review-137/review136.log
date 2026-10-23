@@ -1,0 +1,6 @@
+In file included from /workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/review136.cpp:2:
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/enemy_markers.cpp: In function ‘int prior_enemy_test()’:
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/enemy_markers.cpp:120:1: warning: control reaches end of non-void function [-Wreturn-type]
+  120 | }
+      | ^
+PASS passenger hover/selection/danger capabilities/list corruption/unload; all queue states; independent drop toggle/stop dedup/release/retry

@@ -1,0 +1,65 @@
+{
+  "scope": "portable algorithms and UI stubs; no live game",
+  "results": [
+    {
+      "case": "missile_compute",
+      "status": "PASS"
+    },
+    {
+      "case": "formation",
+      "status": "PASS"
+    },
+    {
+      "case": "voxel_preview",
+      "status": "PASS"
+    },
+    {
+      "case": "magnetron",
+      "status": "PASS"
+    },
+    {
+      "case": "magnetron_rof",
+      "status": "PASS"
+    },
+    {
+      "case": "external_planner",
+      "status": "PASS"
+    },
+    {
+      "case": "lease_arbiter",
+      "status": "PASS"
+    },
+    {
+      "case": "unit_task_arbiter",
+      "status": "PASS"
+    },
+    {
+      "case": "review136",
+      "status": "PASS"
+    },
+    {
+      "case": "planner_index",
+      "status": "PASS"
+    },
+    {
+      "case": "auto_settings_ui_test",
+      "status": "PASS"
+    },
+    {
+      "case": "ui_geometry_test",
+      "status": "PASS"
+    },
+    {
+      "case": "no_interception_source_contract",
+      "status": "FAIL"
+    },
+    {
+      "case": "shared_entry_source_contract",
+      "status": "FAIL"
+    },
+    {
+      "case": "hold_key_ui_test",
+      "status": "PASS"
+    }
+  ]
+}

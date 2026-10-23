@@ -1,13 +1,13 @@
 {
-  "label": "1.0.36.0 SingleRuntime",
-  "file_version": "1.0.36.0",
+  "label": "1.0.37.0 SingleRuntime",
+  "file_version": "1.0.37.0",
   "verified": {
     "RA2Toolbox.exe": {
-      "bytes": 2389504,
-      "sha256": "e50103598d5ca01f704ae3921ab1e234dda92ac46e8f6d293cf3b0c5fbc4be2d",
+      "bytes": 2424832,
+      "sha256": "e136c5133a327c03b9b31cd15d4844ae2261f4225c3055f622c41a41b15b36eb",
       "machine": "PE32 x86",
       "sections": 14,
-      "entry_rva": "0xe9c20",
+      "entry_rva": "0xf0520",
       "exports": [
         "AssistHostProtocolInfo",
         "_Unwind_DeleteException",
@@ -80,6 +80,7 @@
           "GdipDisposeImage",
           "GdipDrawEllipse",
           "GdipDrawImageRect",
+          "GdipDrawImageRectI",
           "GdipDrawImageRectRect",
           "GdipDrawLine",
           "GdipDrawLines",
@@ -539,15 +540,15 @@
         "version": "6.0.0.0",
         "architecture": "x86"
       },
-      "assist_protocol": 61,
-      "assist_shared_bytes": 4108416
+      "assist_protocol": 62,
+      "assist_shared_bytes": 4164288
     },
     "GameRuntime.dll": {
-      "bytes": 4095488,
-      "sha256": "7e2b1ca23d119e4411599025dbf7fc933cd000ae6e58ce27be903ad4d71d9604",
+      "bytes": 4166656,
+      "sha256": "7971748f62efa88c16877d010e843601a1733078b9043efc2bbf4a994731d118",
       "machine": "PE32 x86",
       "sections": 13,
-      "entry_rva": "0x53cb0",
+      "entry_rva": "0x59170",
       "exports": [
         "AssistMappingPrefix",
         "AssistProtocolInfo",
@@ -564,6 +565,7 @@
         "KERNEL32.dll",
         "USER32.dll",
         "GDI32.dll",
+        "api-ms-win-crt-math-l1-1-0.dll",
         "api-ms-win-crt-private-l1-1-0.dll",
         "api-ms-win-crt-runtime-l1-1-0.dll",
         "api-ms-win-crt-utility-l1-1-0.dll",
@@ -639,6 +641,11 @@
           "CreateDIBSection",
           "DeleteObject"
         ],
+        "api-ms-win-crt-math-l1-1-0.dll": [
+          "atan2",
+          "hypot",
+          "lround"
+        ],
         "api-ms-win-crt-private-l1-1-0.dll": [
           "_except_handler3",
           "memchr"
@@ -690,11 +697,11 @@
         ]
       },
       "GameRuntimeHook_rva": "0x1080",
-      "GameRuntimePostHook_rva": "0x1960",
+      "GameRuntimePostHook_rva": "0x1970",
       "runtime_protocol": 4,
       "runtime_control_bytes": 176,
-      "assist_protocol": 61,
-      "assist_shared_bytes": 4108416
+      "assist_protocol": 62,
+      "assist_shared_bytes": 4164288
     }
   },
   "runtime_tested": false,

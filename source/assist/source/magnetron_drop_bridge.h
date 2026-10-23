@@ -1,3 +1,4 @@
+extern "C" int GuardedObjectAir(unsigned,int*);
 #include "magnetron_drop.h"
 static bool rawMagnetronDrop(uint32_t source,uint32_t victim,uint32_t house){
  if(!source||!victim||!sh->magnetronDrop||!rawMagnetron(source,featuretypes::MagnetronDrop)||get<uint32_t>(source+0x2AC)!=victim||
@@ -6,10 +7,27 @@ static bool rawMagnetronDrop(uint32_t source,uint32_t victim,uint32_t house){
  uint32_t cell=readMapCell(position.x/256,position.y/256);if(!cell)return false;
  magnetdrop::Ground g;g.lifted=true;g.enemy=true;g.land=get<int>(cell+0xEC);g.bridge=(get<uint32_t>(cell+0x140)&0x100)!=0;
  g.height=position.z-call<int>(0x578080,0x87F7E8,&position);
- // Follow the same cell object chain as native landing, ignoring the victim.
- uint32_t q=get<uint32_t>(cell+0xE4);for(int n=0;q&&n<128;++n){if(q<0x10000)return false;
-  if(q!=victim&&worldObjects.contains(q)&&kind(q)==3&&live(q)){g.building=true;break;}
-  uint32_t next=get<uint32_t>(q+0x30);if(next==q)return false;q=next;
+ // Cell content (not screen projection) also contains TerrainClass, which
+ // is absent from TechnoClass::Array. Trees and ore pillars share this class.
+ uint32_t q=get<uint32_t>(cell+0xE4),seen[128]{};int count=0;
+ while(q){
+  if(count==128||q<0x10000)return false;for(int n=0;n<count;++n)if(seen[n]==q)return false;seen[count++]=q;
+  uint32_t table=0,next=0;if(!read(q,&table,4)||!read(q+0x30,&next,4))return false;
+  if(q!=victim&&q!=source){
+   if(table==0x7F522Cu&&live(q)&&!get<bool>(q+0xCD))g.terrain=true;
+   else if(worldObjects.contains(q)&&live(q)){
+    if(kind(q)==3)g.building=true;
+    else if(kind(q)==2&&!get<uint32_t>(q+0x11C)&&!get<uint32_t>(q+0x2B0)&&!get<bool>(q+0x427)&&
+            !get<bool>(q+0x134)&&!get<bool>(q+0x84)&&!get<bool>(q+0x8D)&&get<int>(q+0x94)!=3){
+     struct {int x,y,z;} below{get<int>(q+0x9C),get<int>(q+0xA0),get<int>(q+0xA4)};
+     // Even low hovering objects (below IsInAir's threshold) are excluded.
+     int air=0; // native height/air queries are read-only
+     if(below.x/256==position.x/256&&below.y/256==position.y/256&&
+        below.z==call<int>(0x578080,0x87F7E8,&below)&&GuardedObjectAir(q,&air)&&!air)g.groundVehicle=true;
+    }
+   }
+  }
+  q=next;
  }
- return magnetdrop::lethal(g);
+ return magnetdrop::opportunity(g);
 }

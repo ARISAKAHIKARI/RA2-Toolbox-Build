@@ -1,5 +1,6 @@
 #pragma once
 #include "player_test_policy.h"
+#include "formation.h"
 #include "air_path_policy.h"
 #include <stdint.h>
 #include "planner_types.h"
@@ -18,7 +19,7 @@
 #include "burst_compute.h"
 #include "dodge_compute.h"
 namespace assist {
-constexpr uint32_t Magic=0x41533130, Version=61;
+constexpr uint32_t Magic=0x41533130, Version=62;
 constexpr uint32_t DataMessage=0x8002, WakeTag=0x41533230;
 constexpr int MaxLabels=2048, MaxSW=32, MaxTypes=512, MaxThreats=128, MaxCrates=256, MaxCrateResults=16;
 enum Command { None, Repair, CombatSelection, EmptyTransports, DamagedSelection, IdleHarvester, IdleEngineer, IdleTransport, ClearBeacons, RevealMap, OpenTech, SelectSuper, Produce, SelectIron, SelectChrono, AutoBoard, SelectType, SmartUnload, CancelAdvanced, SelectVariant, ProduceReserved, AirPathMove, CancelTechProduction, SwitchPlayer, RestorePlayer, Cheer, Taunt, ProduceDeferred };
@@ -153,6 +154,10 @@ struct Shared {
  volatile uint32_t scrollRefreshMode=0,scrollRefreshHz=0; // 0 cursor, 1 scroll, 2 full scene; zero Hz disables
  int scrollRefreshStatus=0;uint32_t scrollRefreshDraws=0,scrollRefreshRateMilli=0,scrollRefreshMaxGapUs=0; // Runtime diagnostics
  volatile uint32_t magnetronDrop=0;
+ volatile uint32_t missileScope=0,missileAllocation=0,magnetronGlobal=0,missileHeld=0;
+ volatile long formationPolicySeq=0,formationSeq=0;formation::Policy formationPolicy;formation::Preview formationPreview;
+ volatile uint32_t formationKey=0,formationKeyAck=0,formationKeyCode=0,formationConsumedUntil=0;
+ uint32_t formationAccepted=0,formationRejected=0,formationJobs=0;
  volatile uint32_t dodgeMode=0; // 0 reverse-flight move, 1 existing native Scatter
 
 };

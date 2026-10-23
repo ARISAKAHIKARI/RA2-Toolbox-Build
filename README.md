@@ -1,4 +1,10 @@
-# RA2 Toolbox 1.0.36
+# RA2 Toolbox 1.0.37-pre.1（测试分支）
+
+新增火控后排预留与两种分配策略、磁电地面障碍检测/全局无限吸，以及 Alt 拖动队形和外部自行绘制的真实 VXL 半透明预览。同键绑定可循环切换队形。此版本仍需实机视觉、完整物理/寻路和联机复测。
+
+[测试更新包](packages/v1.0.37-pre.1/RA2-Toolbox-v1.0.37-pre.1-Update.zip) · [发布说明](packages/v1.0.37-pre.1/RELEASE_NOTES.md) · [操作与验证](source/REVIEW-1.0.37-pre.1.md)
+
+## 当前正式版：1.0.36
 
 [下载 Windows 完整包](https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/releases/download/v1.0.36/RA2-Toolbox-v1.0.36-Windows.zip) · [Release / 更新包 / 源码](https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/releases/tag/v1.0.36) · [研究索引](source/research/INDEX.md)
 

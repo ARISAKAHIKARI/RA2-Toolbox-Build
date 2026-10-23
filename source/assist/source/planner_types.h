@@ -12,7 +12,7 @@ struct Actor {
  int armor,rearmStart,rearmDuration,airRangeBonus;uint32_t liftTarget;Weapon weapons[2];int combatFirst=-1,combatCount=0;
 };
 enum IntentMode { OrdinaryMove=0,MagnetronMove=1 };
-struct Intent {uint32_t id,cell,token,mode;};
+struct Intent {uint32_t id,cell,token,mode;uint32_t global=0;};
 struct WaitingCell {uint32_t cell,occupation;int land;};
 struct Refinery {uint32_t id;int cellX,cellY,dockStyleA,dockStyleB,count;WaitingCell waiting[MaxWaitingCells];};
 enum CombatProbeFlags { InWeaponRange=1, InAcquisitionRange=2 };

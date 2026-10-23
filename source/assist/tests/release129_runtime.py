@@ -113,7 +113,7 @@ def aa(mode,inside,case):
   n.tick(m);assert n.count(m)==0,(case,n.count(m));return
  if not inside:s=tick(m,inside,'missile')
  expected=case not in ('height','nonmissile','allied','moving','disabled','filter','observer','power_off','antitheft')
- assert n.count(m)==(2 if expected else 0),(case,inside,n.count(m),s.missileSources,s.missileTargets,s.missileInput.count)
+ assert n.count(m)==(2 if expected or case=='height' else 0),(case,inside,n.count(m),s.missileSources,s.missileTargets,s.missileInput.count)
  if expected:
   packets=n.packets(m);targets=set()
   for i in range(2):packet=packets[i*111:(i+1)*111];assert packet[12]==1 and packet[18]==0x34;targets.add(struct.unpack_from('<I',packet,14)[0])
@@ -122,7 +122,9 @@ def aa(mode,inside,case):
   for i in range(2):packet=packets[i*111:(i+1)*111];ident=struct.unpack_from('<I',packet,7)[0];target=struct.unpack_from('<I',packet,14)[0];p=next(p for p in guns if m.r(p+0x10)==ident);q=next(q for q in missiles if m.r(q+0x10)==target);m.w(p+0x2b4,q);m.w(p+0xac,1)
   for _ in range(8):tick(m,inside,'missile')
   assert n.count(m)==2
- elif case=='height':assert queries and all(x[2]==2000 for x in queries)
+ elif case=='height':
+  assert queries and all(x[2]==2000 for x in queries)
+  assert all(n.packets(m)[j*111+12]==0 for j in range(2)), 'approaching high targets may reserve Sleep; never Attack outside native range'
  if not expected:assert before==[bytes(m.u.mem_read(p,0x800)) for p in guns+missiles]
  assert not m.codeWrites
 for mode in (0,3):

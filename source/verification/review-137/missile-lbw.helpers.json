@@ -1,0 +1,9 @@
+{
+  "inputs": {
+    "game": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+    "GameRuntime.dll": "7971748f62efa88c16877d010e843601a1733078b9043efc2bbf4a994731d118"
+  },
+  "filter": "__fixture_only__",
+  "scope": "actual DLL/original constructors; synthetic world and Win32, no real network",
+  "results": []
+}

@@ -36,6 +36,10 @@ extern "C" int GuardedCombatWeapon(unsigned source,unsigned target,unsigned* wea
   *selected=slot;*weapon=*info;return 1;
  }__except(_exception_code()==0xc0000005u?AssistExceptionFilter(_exception_info(),9):0 ){return -1;}
 }
+extern "C" int GuardedObjectAir(unsigned object,int* airborne){
+ __try {*airborne=((bool(__thiscall*)(void*))(*(unsigned**)object)[0x54/4])((void*)object);return 1;}
+ __except(_exception_code()==0xc0000005u?AssistExceptionFilter(_exception_info(),9):0){return 0;}
+}
 extern "C" int GuardedMissileWeapon(unsigned source,unsigned target,unsigned* weapon){
  int slot=0,close=0,airborne=0;return GuardedCombatWeapon(source,target,weapon,&slot,&close,&airborne)>0&&close;
 }

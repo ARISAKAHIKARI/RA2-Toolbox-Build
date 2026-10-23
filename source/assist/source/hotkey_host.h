@@ -12,7 +12,7 @@ static void executeHotkey(WPARAM wp,bool fanout){
  else if(wp>=1020&&wp<1020+swBindings.size()){auto&b=swBindings[wp-1020];bool found=false;for(int i=0;i<snap.swCount;++i)if(b.id==snap.supers[i].id){send(SelectSuper,snap.supers[i].index);found=true;break;}if(!found)notify(L"本局尚未拥有此超级武器。");}return;
 }
 static void serviceHotkeyBatch(){
- if(!extra.allHotkeys||!enabled||!foregroundGame()||snap.status!=1||snap.renderStatus!=1||snap.chat){hotkeyPending.clear();return;}
+ if(formationInputOwns()||!extra.allHotkeys||!enabled||!foregroundGame()||snap.status!=1||snap.renderStatus!=1||snap.chat){hotkeyPending.clear();return;}
  if(!commandFresh(GetTickCount())||!shared)return;
  for(unsigned n=0;n<hotkeyroute::Pending::Capacity;++n){
   if(hasSelection||commandQueue.size||shared->request!=shared->ack||shared->selectRequest!=shared->selectAck)return;
@@ -25,6 +25,7 @@ static void handleHotkey(WPARAM id,LPARAM event){
  const auto*g=hotkeyRegistry.find(int(id));if(!g)return;
  WORD key=MAKEWORD(HIWORD(event),((LOWORD(event)&MOD_SHIFT)?HOTKEYF_SHIFT:0)|((LOWORD(event)&MOD_CONTROL)?HOTKEYF_CONTROL:0)|((LOWORD(event)&MOD_ALT)?HOTKEYF_ALT:0));
  if(hotkeyroute::canonical(key)!=g->key)return; // queued notification from an old binding
+ if(formationHotkey(key)){hotkeyPending.clear();return;}
  if(!extra.allHotkeys){executeHotkey(id,false);return;}
  if(!hotkeyPending.add(*g,GetTickCount(),commandMatch()))notify(L"快捷键请求队列已满，本次组合未提交。");
  serviceHotkeyBatch();

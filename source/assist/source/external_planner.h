@@ -163,6 +163,7 @@ public:
     if(!(flags&(mag?MagnetronInput:AdvancedInput))||!a||!positionValid(*a)||!(a->flags&Own)||a->manualVersion!=intent.token||(a->flags&(Disabled|Transported|Limbo|OffMap|Manipulated))||(mag&&!magnetron(*a)))continue;
     active.insert(intent.id);auto&task=advanced_[intent.id];
     if(task.token!=intent.token||task.cell!=intent.cell||task.mode!=intent.mode){task={};task.token=intent.token;task.cell=intent.cell;task.mode=intent.mode;task.progress.begin(a->x,a->y,world.frame);}
+    if(intent.global)task.progress.hold=true;
     task.observedStart=a->rearmStart;task.observedX=a->x;task.observedY=a->y;
     if(mag&&task.pendingShot){const Actor* t=actor(task.target);
      const bool hit=t&&((t->flags&Manipulated)||a->liftTarget==task.target);

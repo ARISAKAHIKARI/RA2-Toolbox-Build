@@ -1,0 +1,5 @@
+Traceback (most recent call last):
+  File "/workspace/scratch/163fefaa0056/ra2-toolbox/source/assist/tests/shared_entry_source_contract.py", line 9, in <module>
+    assert 'gameentry::patch' in writer
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError

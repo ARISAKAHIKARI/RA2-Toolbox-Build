@@ -43,7 +43,8 @@ heading(1,901,L"键鼠组合操作",L"按住配置键并点击目标；配置键
 label(L"功能开关",20,210);label(L"按住键 / 自定义组合",240,258);label(L"鼠标键",510,115);next();
 hookChecks[0]=toggle(458,L"高级移动攻击",hookAdvanced,20,210);advancedKeyEdit=key(450,advancedKey,240,258,true);mouse(pointerinput::MouseAdvanced);next();
 magnetronCheck=toggle(477,L"磁电轮换攻击",magnetronMode,20,210);magnetronKeyEdit=key(478,magnetronKey,240,258,true);mouse(pointerinput::MouseMagnetron);next();
- toggle(899,L"磁电自动摔落",extra.magnetronDrop);next();note(L"吸起的目标正下方出现致毁障碍时，下达原版停止命令释放目标。可独立开启；启用轮换时继续寻找下一目标。");
+ toggle(9042,L"磁电全局无限吸",extra.magnetronGlobal);next();note(L"自动接管空闲磁电，沿用轮换和类型清单；手动移动或攻击优先。关闭后停止自动接续。");
+ toggle(899,L"磁电自动摔落",extra.magnetronDrop);next();note(L"吸起的目标正下方有建筑、地面坦克、树木、矿柱或岩石时，下达原版停止命令释放目标。可独立开启；启用轮换时继续寻找下一目标。");
 csHoldCheck=toggle(473,L"按键移动攻击（CS）",csHoldEnabled,20,210);csHoldEdit=key(474,csHoldKey,240,258,true);mouse(pointerinput::MouseCS);next();
 extraControls[EnterEnabled]=toggle(702,L"高级进驻",extra.enter,20,210);holdPresetControl(EnterPreset,EnterCustom,extra.enterKey);mouse(pointerinput::MouseEnter);next();
 extraControls[AirEnabled]=toggle(705,L"飞机分配攻击 · 1",extra.air,20,210);holdPresetControl(AirPreset1,AirCustom1,extra.airKey1);mouse(pointerinput::MouseAirFirst);next();
@@ -54,6 +55,10 @@ extraControls[SellVehiclesEnabled]=toggle(721,L"出售战车",extra.sellVehicles
 note(L"出售战车不支持兰博玩；两种出售操作共用按住键，鼠标键分别设置。",44);
 label(L"直接攻击移动",20,210);label(L"仅鼠标",240,258);mouse(pointerinput::MouseAttack);next();
 note(L"直接攻击移动只下达一次命令；高级移动攻击会持续重新选择目标。",44);
+toggle(9050,L"队形排列（地面单位）",extra.formationEnabled);next();
+label(L"队形按住键",20,306);key(9051,extra.formationHold,345,280,true);next();
+{const wchar_t* names[]={L"矩形横队",L"分散横队",L"圆形聚集",L"扇形（60°）"};for(int n=0;n<4;++n){label(names[n],20,306);key(9052+n,extra.formationKeys[n]);next();}}
+note(L"按住队形键右拖，或双击 Alt 后右拖。方向决定朝向，拖到 320 像素是一横排；直接右击聚集。Esc 取消。队形可共用按键，连续按下循环切换；提交一次退出。",44);
 label(L"飞机路径点",20,260);choices(combo(803),{L"关闭",L"兼容路径点",L"原生优先"},extra.nativeAirWaypoints?2:extra.airWaypoints?1:0);next();
 label(L"路径点按住键",20,306);{auto h=key(894,extra.airPathKey);modernui::holdKey(h);}next();
 note(L"留空跟随游戏当前的路径点按键；自定义按键使用兼容路径点。原生优先在单机使用原生规划，联机自动使用兼容路径点。",44);
@@ -81,8 +86,10 @@ note(L"索敌范围为单位射程加额外距离；忽略伤害比例不超过 
 toggle(804,L"防御建筑优先攻击渗透单位",extra.antiTheft);next();
 toggle(885,L"自动躲弹（实验性）",extra.dodgeEnabled,20,280);choices(combo(895,310,305,180),{L"顺向移动 2 格",L"原版散开（Scatter）"},extra.dodgeMode);next();
 note(L"对己方可移动地面单位预判敌机攻击与逼近碾压，短距离躲避。支持类型清单，不保证躲过追踪弹或瞬时伤害。",60);
-toggle(880,L"防空单位智能拦截导弹",extra.missileDefense);next();
-number(881,L"导弹拦截检测频率 / 次每秒",extra.missileScanHz,L"1–60 · 默认 10");
+toggle(880,L"防空火控",extra.missileDefense);next();
+label(L"目标范围",20,260);choices(combo(9040),{L"仅导弹类",L"所有敌方空中单位"},extra.missileScope);next();
+label(L"火力分配",20,260);choices(combo(9041),{L"智能分配（血量与伤害）",L"平均分配"},extra.missileAllocation);next();
+number(881,L"火控检测频率 / 次每秒",extra.missileScanHz,L"1–60 · 默认 10");
 note(L"优先拦截射程内的敌方导弹，分配火力减少重复锁定；移动中的单位不接管。",44);
 
 // One visible Auto CS switch represents the previous two enable flags.

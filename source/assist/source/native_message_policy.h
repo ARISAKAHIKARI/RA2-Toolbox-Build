@@ -4,6 +4,7 @@ static uint32_t blockedButtons;
 static pointerinput::SuppressedClick blockedOrigins[2];
 extern "C" int AssistFilterMessage(void* raw){
  auto*msg=static_cast<MSG*>(raw);if(!msg)return 0;
+ if(formationMessage(msg))return 1;
  if(reservationMessage(msg))return 1;
  bool left=msg->message==WM_LBUTTONDOWN||msg->message==WM_LBUTTONUP;
  bool right=msg->message==WM_RBUTTONDOWN||msg->message==WM_RBUTTONUP;

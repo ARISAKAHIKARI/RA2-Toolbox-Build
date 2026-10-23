@@ -3,7 +3,7 @@ static void servicePointer(){
  static pointerinput::Intent leftCapture{};static bool leftCaptured=false;
  const DWORD capturedNow=GetTickCount();
  auto visible=external::display::inspect([](uint32_t at,void*p,size_t n){return externalReader.readFresh(at,p,n);});
- const bool inputReady=shared&&commandFresh(capturedNow)&&foregroundGame()&&!incoming.chat&&visible.visible();
+ const bool inputReady=!formationInputOwns()&&shared&&commandFresh(capturedNow)&&foregroundGame()&&!incoming.chat&&visible.visible();
  gameinput::setPointerContext(hook,commandMatch(),inputReady);
  if(pointerMatches.active()&&(!inputReady||!extra.allHotkeys||pointerMatches.revision!=settingsRevision||
     pointerMatches.capture.match!=commandMatch()||pointerMatches.capture.inputSerial!=gameinput::pointerCancelSerial(hook)))pointerMatches.clear();

@@ -2,7 +2,7 @@
 #include "unload_policy.h"
 // All simulation commands go through EventClass constructors and the game's
 // outgoing queue. This file NEVER writes a unit's mission, target, or locomotor.
-struct NativeOrder {uint32_t p,id,cell,nearest,token,mode;int gx,gy;nativeorders::Progress progress;uint32_t target;int sentFrame;bool attacking,stopped;};
+struct NativeOrder {uint32_t p,id,cell,nearest,token,mode;int gx,gy;nativeorders::Progress progress;uint32_t target;int sentFrame;bool attacking,stopped,global;};
 struct UnloadPassenger : unloadcompute::State {uint32_t p,id,carrier,carrierID,carrierType,followTarget,followTargetPointer,job;int frame,mode,landedFrame;uint32_t followTicket,followQueuedAt,manualToken;bool cancelled,followObserved;};
 static uint32_t unloadJobSerial;
 static void resetUnloadCalculation();
@@ -210,6 +210,18 @@ static void nativeOrdersTick(uint32_t house,int frame){
  // those workers issue vanilla EventClass orders and need no code patch.
  // Interface readiness may recover next tick; retain explicit intents.
  for(int i=0;i<nativeCount;)if(!worldObjects.contains(nativeOrders[i].p)||get<uint32_t>(nativeOrders[i].p+0x10)!=nativeOrders[i].id||!(sh->flags&(nativeOrders[i].mode==planner::MagnetronMove?MagnetronInput:AdvancedInput))||!(nativeOrders[i].mode==planner::MagnetronMove?rawMagnetron(nativeOrders[i].p):featureObjectAllowed(featuretypes::AdvancedAttack,nativeOrders[i].p)))removeOrder(i);else ++i;
+ // Global mode enrolls only idle magnets; manual movement/attacks are not
+ // converted into automation. Existing explicit enhanced-click tasks survive.
+ for(int i=0;i<nativeCount;)if(nativeOrders[i].global&&(!sh->magnetronGlobal||manualVersions.get(nativeOrders[i].id)!=nativeOrders[i].token||get<uint32_t>(nativeOrders[i].p+0x5A4)))removeOrder(i);else ++i;
+ advancedObjects.clear();for(int i=0;i<nativeCount;++i)advancedObjects.add(nativeOrders[i].p,nativeOrders[i].id,uint32_t(i+1));
+ if(sh->magnetronGlobal&&!snap.chat){Vec all=vec(0xA8EC78);
+  for(int n=0;n<all.count&&nativeCount<nativeorders::MaxOrders;++n){uint32_t p=item(all,n);if(!p||!own(p,house)||!rawMagnetron(p)||formationOwns(get<uint32_t>(p+0x10))||orderIndex(p)>=0||get<bool>(p+0x1C8)||get<uint32_t>(p+0x11C)||get<uint32_t>(p+0x5A4))continue;
+   int m=get<int>(p+0xAC),q=get<int>(p+0xB4);if((m!=5&&m!=6&&m!=11&&m!=13)||(q!=-1&&q!=m))continue;
+   int x=get<int>(p+0x9C)/256,y=get<int>(p+0xA0)/256;if(x<=0||x>=512||y<=0||y>=512)continue;
+   auto&o=nativeOrders[nativeCount++];o={};o.p=p;o.id=get<uint32_t>(p+0x10);o.token=manualVersions.get(o.id);o.mode=planner::MagnetronMove;o.cell=o.nearest=y*1000+x;o.gx=x*256+128;o.gy=y*256+128;o.global=true;o.progress.hold=true;
+   advancedObjects.add(p,o.id,uint32_t(nativeCount));
+  }
+ }
  int budget=recurringBudget(EventLane::Unload);if(unloadCount||(sh->flags&EjectAssist))smartUnloadTick(house,frame,budget);
  // Advanced decisions use the selected shared Planner backend.
  // This state stores click intents and validates actor identities in either mode.

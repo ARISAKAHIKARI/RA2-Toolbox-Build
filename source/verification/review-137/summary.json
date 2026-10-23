@@ -1,0 +1,94 @@
+{
+  "version": "1.0.37-pre.1",
+  "file_version": "1.0.37.0",
+  "base_commit": "b6911ba562010ab3b5b07f766b34625e72f811fe",
+  "date": "2026-10-23",
+  "protocols": {
+    "Assist": 62,
+    "Runtime": 4,
+    "EntryManager": 3
+  },
+  "artifacts": {
+    "RA2Toolbox.exe": {
+      "sha256": "e136c5133a327c03b9b31cd15d4844ae2261f4225c3055f622c41a41b15b36eb",
+      "bytes": 2424832
+    },
+    "GameRuntime.dll": {
+      "sha256": "7971748f62efa88c16877d010e843601a1733078b9043efc2bbf4a994731d118",
+      "bytes": 4166656
+    }
+  },
+  "game_samples": {
+    "lbw": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+    "zhanwang": "c287d62a4d6a25b547e9339d071dd6e03adcf545699062e478aaeee38c60e89a"
+  },
+  "controlled_runtime": {
+    "passed": 180,
+    "reports": [
+      {
+        "sample": "lbw",
+        "suite": "missile",
+        "passed": 36,
+        "report": "missile-lbw.json"
+      },
+      {
+        "sample": "lbw",
+        "suite": "magnetron",
+        "passed": 28,
+        "report": "magnetron-lbw.json"
+      },
+      {
+        "sample": "lbw",
+        "suite": "formation",
+        "passed": 26,
+        "report": "formation-lbw.json"
+      },
+      {
+        "sample": "zhanwang",
+        "suite": "missile",
+        "passed": 36,
+        "report": "missile-zhanwang.json"
+      },
+      {
+        "sample": "zhanwang",
+        "suite": "magnetron",
+        "passed": 28,
+        "report": "magnetron-zhanwang.json"
+      },
+      {
+        "sample": "zhanwang",
+        "suite": "formation",
+        "passed": 26,
+        "report": "formation-zhanwang.json"
+      }
+    ],
+    "scope": "Actual DLL and native event constructors; synthetic Win32, worlds, combat queries, movement completion. Includes reserved guns attacking the later target after it enters native range."
+  },
+  "portable": {
+    "passed": 13,
+    "report": "portable.json",
+    "formation_layout_combinations": 4096
+  },
+  "build_and_pe": "PASS; Windows x86; exports, protocol/layout, Common Controls 6 manifest, no unbundled runtime dependencies",
+  "baseline_failures": [
+    {
+      "test": "no_interception_source_contract",
+      "status": "FAIL_IN_CURRENT_AND_UNMODIFIED_BASELINE",
+      "current_log": "no_interception_source_contract.log",
+      "baseline_log": "no_interception_source_contract-baseline.log"
+    },
+    {
+      "test": "shared_entry_source_contract",
+      "status": "FAIL_IN_CURRENT_AND_UNMODIFIED_BASELINE",
+      "current_log": "shared_entry_source_contract.log",
+      "baseline_log": "shared_entry_source_contract-baseline.log"
+    }
+  ],
+  "not_validated": [
+    "Windows/game overlay visuals and scale",
+    "special mod voxel replacements and turret offsets",
+    "full projectile and drop physics",
+    "complete native pathfinding and final facing",
+    "real multiplayer/network synchronisation"
+  ]
+}

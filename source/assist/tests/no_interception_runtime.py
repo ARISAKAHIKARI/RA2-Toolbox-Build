@@ -19,8 +19,9 @@ def fixture(mode=5,flags=0):
  def query(uc,at,size,_):
   sp=m.u.reg_read(UC_X86_REG_ESP);arg=lambda i:m.r(sp+4+i*4)
   assert m.u.reg_read(UC_X86_REG_ECX)==0x87f7e8
-  assert struct.unpack('<ii',m.u.mem_read(arg(0),8))==(100,100)
-  m.u.mem_write(arg(1),struct.pack('<hh',20,30));m.u.mem_write(arg(2),struct.pack('<iii',20*256+128,30*256+128,0));m.w(arg(3),m.queryObject);m.b(arg(4),0);m.b(arg(5),0);m.queryCalls+=1;m.ret(0,6)
+  assert struct.unpack('<ii',m.u.mem_read(arg(0),8))==getattr(m,'queryPoint',(100,100))
+  cx,cy=getattr(m,'queryCell',(20,30))
+  m.u.mem_write(arg(1),struct.pack('<hh',cx,cy));m.u.mem_write(arg(2),struct.pack('<iii',cx*256+128,cy*256+128,0));m.w(arg(3),m.queryObject);m.b(arg(4),0);m.b(arg(5),0);m.queryCalls+=1;m.ret(0,6)
  m.u.hook_add(UC_HOOK_CODE,query,begin=0x692300,end=0x692300)
  m.u.mem_write(m.crateCell+0x24,struct.pack('<hh',20,30));weapon=m.alloc();m.w(m.t+0x898,weapon);m.weapon=weapon
  s=state(m);s.flags=flags;s.externalDisplay=1;save(m,s);m.hook()
