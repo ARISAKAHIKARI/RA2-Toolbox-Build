@@ -4,6 +4,7 @@
 #include <cstring>
 #include "../../external_reader/source/radar_map.h"
 #include "../source/radar_layout.h"
+#include "../../external_reader/source/radar_navigation.h"
 struct Memory {
  std::map<uint32_t,uint8_t> bytes;
  bool operator()(uint32_t at,void*out,size_t n)const{auto*p=(uint8_t*)out;for(size_t i=0;i<n;++i){auto it=bytes.find(at+i);if(it==bytes.end())return false;p[i]=it->second;}return true;}
@@ -17,6 +18,10 @@ int main(){using namespace external::radar;Memory m;constexpr uint32_t cells=0x1
  m.zero(cells,4096*4);m.set(cells+(3*512+3)*4,cell);m.zero(cell,0x148);m.set<int16_t>(cell+0x24,3);m.set<int16_t>(cell+0x26,3);m.set(cell+0xEC,2);m.set<int8_t>(cell+0x120,-1);m.set<int8_t>(cell+0x121,-1);
  Sampler<Read> sampler(Read{&m});assert(sampler.step(false,2048));assert(!sampler.snapshot(1).terrain);assert(sampler.step(false,2048));auto a=sampler.snapshot(2);assert(a.terrain&&a.terrain->colors[3*512+3]==terrainColor(2,0,false));
  double u,v;a.terrain->geo.project(3.5,3.5,u,v);assert(u==.5&&v==.375);std::vector<uint32_t> pixels;raster(*a.terrain,80,80,pixels);assert(pixels[30*80+40]==terrainColor(2,0,false));
+ int nx=0,ny=0;assert(navigate(a.terrain->geo,41,31,82,82,120,80,nx,ny));assert(nx==-60&&ny==65);
+ assert(navigate(a.terrain->geo,81,61,162,162,120,80,nx,ny)&&nx==-60&&ny==65);
+ assert(navigate(a.terrain->geo,-50,999,82,82,120,80,nx,ny)&&nx==-180&&ny==140);
+ assert(!navigate(a.terrain->geo,1,1,2,82,120,80,nx,ny));
  // Interpolate known cells without bleeding visible colors into black shroud.
  Terrain mix=*a.terrain;mix.colors[3*512+3]=0x010101;mix.colors[3*512+4]=0xffffff;
  assert(smoothColor(mix,3.5,3.5)==0x010101);assert(smoothColor(mix,4.,3.5)==0x808080);

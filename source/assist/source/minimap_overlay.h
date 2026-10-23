@@ -1,4 +1,5 @@
 #include "radar_layout.h"
+#include "../../external_reader/source/radar_navigation.h"
 #include "construction_buffer.h"
 #include "../../external_reader/source/radar_map.h"
 #include <thread>
@@ -33,11 +34,23 @@ public:
 static assist::construction::PanelBuffer paintBuffer;
 static Worker worker;static HWND window;static std::shared_ptr<const external::radar::Frame> frame;
 static std::shared_ptr<const external::radar::Terrain> paintedTerrain;static std::vector<uint32_t> pixels;static int imageW,imageH;
-static void hide(){worker.set({});frame.reset();if(window)ShowWindow(window,SW_HIDE);}
+static bool dragging=false;static uint32_t dragMatch=0;
+static void cancelDrag(){dragging=false;dragMatch=0;if(window&&GetCapture()==window)ReleaseCapture();}
+static void hide(){cancelDrag();worker.set({});frame.reset();if(window)ShowWindow(window,SW_HIDE);}
+static void navigate(HWND w,LPARAM lp){
+ DWORD now=GetTickCount();if(!shared||!enabled||!minimapEnabled||!foregroundGame()||snap.chat||!commandFresh(now)||!frame||!frame->terrain||DWORD(now-frame->tick)>500||dragMatch!=commandMatch()){cancelDrag();return;}
+ RECT r{};GetClientRect(w,&r);int x=0,y=0;if(!external::radar::navigate(frame->terrain->geo,short(LOWORD(lp)),short(HIWORD(lp)),r.right,r.bottom,std::max(1,snap.width-160),snap.height,x,y))return;
+ InterlockedIncrement(&shared->cameraSeq);shared->cameraMatch=commandMatch();shared->cameraTick=sampleClock(shared);shared->cameraTargetX=x;shared->cameraTargetY=y;MemoryBarrier();InterlockedIncrement(&shared->cameraSeq);
+}
 static void clear(){hide();paintBuffer.clear();paintedTerrain.reset();pixels.clear();imageW=imageH=0;}
 static void destroy(){clear();worker.shutdown();if(window)DestroyWindow(window);window=nullptr;}
 static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
- if(msg==WM_NCHITTEST)return HTTRANSPARENT;if(msg==WM_MOUSEACTIVATE)return MA_NOACTIVATE;if(msg==WM_ERASEBKGND)return 1;
+ if(msg==WM_NCHITTEST)return HTCLIENT;
+ if(msg==WM_LBUTTONDOWN){dragging=true;dragMatch=commandMatch();SetCapture(w);navigate(w,lp);return 0;}
+ if(msg==WM_MOUSEMOVE&&dragging){if(!(wp&MK_LBUTTON)){cancelDrag();return 0;}navigate(w,lp);return 0;}
+ if(msg==WM_LBUTTONUP){if(dragging)navigate(w,lp);cancelDrag();return 0;}
+ if(msg==WM_CAPTURECHANGED||msg==WM_CANCELMODE){cancelDrag();return 0;}
+ if(msg==WM_RBUTTONDOWN||msg==WM_RBUTTONUP||msg==WM_LBUTTONDBLCLK)return 0;if(msg==WM_MOUSEACTIVATE)return MA_NOACTIVATE;if(msg==WM_ERASEBKGND)return 1;
  if(msg==WM_PAINT){PAINTSTRUCT ps{};HDC dc=BeginPaint(w,&ps);RECT r{};GetClientRect(w,&r);int width=r.right,height=r.bottom;
   if(frame&&frame->terrain&&width>2&&height>2){int mw=width-2,mh=height-2;
    if(paintedTerrain!=frame->terrain||imageW!=mw||imageH!=mh){external::radar::raster(*frame->terrain,mw,mh,pixels);paintedTerrain=frame->terrain;imageW=mw;imageH=mh;}
@@ -56,11 +69,11 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
 }
 static void update(POINT origin,const RECT&client){
  if(!minimapEnabled||!enabled||!foregroundGame()||snap.renderStatus!=1||snap.chat||!pid||snap.width<320||snap.height<200||client.right<320||client.bottom<200){hide();return;}
- worker.set({pid,snap.match,fps,extra.renderReveal});frame=worker.get();if(!frame||!frame->terrain){if(window)ShowWindow(window,SW_HIDE);return;}
+ worker.set({pid,snap.match,fps,extra.renderReveal});frame=worker.get();if(!frame||!frame->terrain){cancelDrag();if(window)ShowWindow(window,SW_HIDE);return;}if(dragging&&dragMatch!=commandMatch())cancelDrag();
  auto layout=radarlayout::place(snap.width,snap.height,client.right,client.bottom,minimapScale,minimapPosition,minimapX,minimapY,aircraftButtonBox);
  if(!layout.valid){hide();return;}auto destination=layout.destination;const auto&g=frame->terrain->geo;
  double fit=std::min(double(destination.w-2)/g.rw,double(destination.h-2)/g.rh);destination.w=std::max(3,int(g.rw*fit)+2);destination.h=std::max(3,int(g.rh*fit)+2);
- if(!window){WNDCLASSW cls{};cls.lpfnWndProc=proc;cls.hInstance=GetModuleHandleW(nullptr);cls.lpszClassName=L"RA2DataRadar127";RegisterClassW(&cls);window=CreateWindowExW(WS_EX_TOOLWINDOW|WS_EX_NOACTIVATE|WS_EX_TOPMOST|WS_EX_TRANSPARENT|WS_EX_LAYERED,cls.lpszClassName,L"战术小地图",WS_POPUP,0,0,1,1,nullptr,nullptr,cls.hInstance,nullptr);if(window)SetLayeredWindowAttributes(window,0,255,LWA_ALPHA);}
+ if(!window){WNDCLASSW cls{};cls.lpfnWndProc=proc;cls.hInstance=GetModuleHandleW(nullptr);cls.lpszClassName=L"RA2DataRadar127";cls.hCursor=LoadCursorW(nullptr,IDC_HAND);RegisterClassW(&cls);window=CreateWindowExW(WS_EX_TOOLWINDOW|WS_EX_NOACTIVATE|WS_EX_TOPMOST|WS_EX_LAYERED,cls.lpszClassName,L"战术小地图",WS_POPUP,0,0,1,1,nullptr,nullptr,cls.hInstance,nullptr);if(window)SetLayeredWindowAttributes(window,0,255,LWA_ALPHA);}
  if(!window)return;RECT old{};GetWindowRect(window,&old);int x=origin.x+destination.x,y=origin.y+destination.y;
  if(!IsWindowVisible(window)||old.left!=x||old.top!=y||old.right-old.left!=destination.w||old.bottom-old.top!=destination.h)SetWindowPos(window,HWND_TOPMOST,x,y,destination.w,destination.h,SWP_NOACTIVATE|SWP_SHOWWINDOW);
  InvalidateRect(window,nullptr,FALSE);

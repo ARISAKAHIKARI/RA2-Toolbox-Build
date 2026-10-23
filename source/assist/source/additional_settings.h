@@ -13,6 +13,7 @@ struct AdditionalSettings {
  bool c4Test=false;uint32_t c4Key='C'|(4<<8),c4Mouse=1;
  uint32_t renderReveal=0;int mapStrategy=0;bool experimentalReveal=false,antiTheft=false,nativeAirWaypoints=false;
  bool enemyMarkers=false,idleAircraft=true,constructionQueue=true,airWaypoints=true;
+ uint32_t productionReminderMask=63; // buildings, defenses, infantry, vehicles, ships, aircraft
  uint32_t airPathKey=0;
  bool parasiteMarker=true,crateBuffMarkers=true;
  bool watchEnabled=true,watchDanger=true;uint32_t watchKey='W'|(6<<8);

@@ -38,5 +38,10 @@ int main(){
  o=step();assert(o.size()==1&&o[0].mission==2&&o[0].pursuit==20);p.accepted(o[0],w.frame);
  w.combat[0].flags=3;w.frame+=2;o=step();assert(o.size()==1&&o[0].mission==1&&o[0].target==20&&!o[0].destination);p.accepted(o[0],w.frame);
  a.mission=1;a.target=20;w.combat[0].flags=2;near.x+=256;w.frame+=2;o=step();assert(o.size()==1&&o[0].mission==2&&o[0].pursuit==20);
+ // Minimum-range acquisition delegates repositioning to a native Attack;
+ // its observed movement must not cause repeated Attack/Move resets.
+ p.reset();a.mission=5;a.target=0;a.destinationCell=0;w.frame+=20;w.combat[0].flags=InAcquisitionRange|NeedsReposition;
+ o=step();assert(o.size()==1&&o[0].mission==1&&o[0].target==20&&!o[0].destination);p.accepted(o[0],w.frame);
+ a.mission=1;a.target=20;a.destinationCell=40040;w.frame+=20;o=step();assert(o.empty());
  std::cout<<"PASS in-range priority, delayed Attack suppression, no-chase reset, approach-only Move, immediate range entry, waypoint resume, incomplete samples and manual cancellation\n";
 }

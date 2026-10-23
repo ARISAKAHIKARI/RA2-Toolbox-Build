@@ -23,8 +23,19 @@ int main(){using F=EnemyFixture;
   auto sample=[&](){f.now+=101;f.next();f.sampler.sample(f.now,assist::Production);};sample();assert(f.sampler.idleProductionMask==15&&!f.sampler.pausedProductionMask);
   for(int tab=0;tab<4;++tab){uint32_t at=factory+tab*0x100;f.mem.put(at+0x58,F::foe);}
   sample();assert(!f.sampler.idleProductionMask&&!f.sampler.pausedProductionMask);
-  f.mem.put<uint8_t>(factory+0x5C,1);f.mem.put<uint8_t>(factory+0x100+0x71,1);sample();assert(!f.sampler.idleProductionMask&&f.sampler.pausedProductionMask==3);
-  f.mem.put<int>(factory+0x24,54);sample();assert(f.sampler.pausedProductionMask==2);
+  // IsManual remains set after Unsuspend: it is not a paused queue.
+  f.mem.put<uint8_t>(factory+0x100+0x71,1);sample();assert(!f.sampler.pausedProductionMask);
+  f.mem.put<uint8_t>(factory+0x5C,1);f.mem.put<uint8_t>(factory+0x100+0x70,1);f.now+=601;sample();assert(!f.sampler.idleProductionMask&&f.sampler.pausedProductionMask==3);
+  uint32_t idle=0,paused=0;f.sampler.productionReminders(1,idle,paused);assert(paused==1&&!idle);f.sampler.productionReminders(0,idle,paused);assert(!idle&&!paused);
+  // A decreasing balance/progress advancement suppresses transient hold flags.
+  f.mem.put<int>(factory+0x24,2);sample();assert(f.sampler.pausedProductionMask==2);
+  f.mem.put<uint8_t>(factory+0x100+0x70,0);sample();assert(!f.sampler.pausedProductionMask);
+  f.now+=601;sample();assert(f.sampler.pausedProductionMask==1);
+  f.mem.put<int>(factory+0x24,54);sample();assert(!f.sampler.pausedProductionMask);
+  // Three vehicle tab production lines: an active line silences that tab.
+  const uint32_t ship=factory+0x400;f.mem.put(F::local+0x53B8,ship);f.mem.put(ship+0x6C,F::local);sample();f.sampler.productionReminders(16,idle,paused);assert(!idle);
+  f.mem.put<uint32_t>(factory+0x300+0x58,0);sample();f.sampler.productionReminders(16,idle,paused);assert(idle==8);f.sampler.productionReminders(32,idle,paused);assert(!idle);
+
  }
  {using namespace assist;using namespace planner;assert(magnetdrop::lethal({true,true,false,true,1,0}));assert(magnetdrop::lethal({true,true,false,false,200,7}));
   assert(!magnetdrop::lethal({true,true,false,false,200,0}));assert(!magnetdrop::lethal({true,true,true,true,200,7}));assert(!magnetdrop::lethal({true,false,false,true,200,7}));

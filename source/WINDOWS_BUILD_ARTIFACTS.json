@@ -1,13 +1,13 @@
 {
-  "label": "1.0.37.1 SingleRuntime",
-  "file_version": "1.0.37.1",
+  "label": "1.0.37.2 SingleRuntime",
+  "file_version": "1.0.37.2",
   "verified": {
     "RA2Toolbox.exe": {
-      "bytes": 2513920,
-      "sha256": "cd224bc103afae541b3f58ddaa9582a1ba4932acdc0d9d591a428201328756ba",
+      "bytes": 2620416,
+      "sha256": "fdfc789c37bd008bd291248f49432d771afd171671e89adb53de32cd0643eb95",
       "machine": "PE32 x86",
       "sections": 14,
-      "entry_rva": "0x100d30",
+      "entry_rva": "0x1150d0",
       "exports": [
         "AssistHostProtocolInfo",
         "_Unwind_DeleteException",
@@ -144,6 +144,7 @@
           "FrameRect",
           "GetAncestor",
           "GetAsyncKeyState",
+          "GetCapture",
           "GetClassNameW",
           "GetClientRect",
           "GetCursorInfo",
@@ -190,6 +191,7 @@
           "RedrawWindow",
           "RegisterClassW",
           "RegisterHotKey",
+          "ReleaseCapture",
           "ReleaseDC",
           "RemovePropW",
           "ScreenToClient",
@@ -197,6 +199,7 @@
           "SendInput",
           "SendMessageTimeoutW",
           "SendMessageW",
+          "SetCapture",
           "SetDlgItemTextW",
           "SetForegroundWindow",
           "SetLayeredWindowAttributes",
@@ -430,6 +433,7 @@
           "GetDiskFreeSpaceExW",
           "GetEnvironmentVariableW",
           "GetExitCodeProcess",
+          "GetFileAttributesExW",
           "GetFileAttributesW",
           "GetFileInformationByHandle",
           "GetFileInformationByHandleEx",
@@ -543,15 +547,15 @@
         "version": "6.0.0.0",
         "architecture": "x86"
       },
-      "assist_protocol": 62,
-      "assist_shared_bytes": 4164288
+      "assist_protocol": 63,
+      "assist_shared_bytes": 4164312
     },
     "GameRuntime.dll": {
-      "bytes": 4166656,
-      "sha256": "c14953dfe81135945653a195071f8e33194b6d94df90a78614dd81b06a1db699",
+      "bytes": 4175872,
+      "sha256": "11a316569d5d67c7b60bbd7355d9dd2b0f5839d94c86d8dd9ba55f701e8891ad",
       "machine": "PE32 x86",
       "sections": 13,
-      "entry_rva": "0x59210",
+      "entry_rva": "0x5b470",
       "exports": [
         "AssistMappingPrefix",
         "AssistProtocolInfo",
@@ -703,8 +707,8 @@
       "GameRuntimePostHook_rva": "0x1970",
       "runtime_protocol": 4,
       "runtime_control_bytes": 176,
-      "assist_protocol": 62,
-      "assist_shared_bytes": 4164288
+      "assist_protocol": 63,
+      "assist_shared_bytes": 4164312
     }
   },
   "runtime_tested": false,

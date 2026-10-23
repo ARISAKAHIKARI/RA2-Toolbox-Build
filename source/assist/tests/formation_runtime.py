@@ -42,6 +42,18 @@ for mode in (0,3):
    packet=packets(m);assert packet[12]==2 and packet[19:24]==struct.pack('<IB',30020,11)
    if case=='duplicate_up':kind,_=message(m,0x205);assert kind==0x205;tick(m);assert count(m)==1
   assert not m.codeWrites;rows.append({'case':f'{mode}_{case}','status':'PASS'});print('PASS',mode,case,flush=True)
+# Configurable double-tap hold and double-tap shape: repeats are not taps.
+for mode in (0,3):
+ m=setup(mode);s=state(m);s.formationPolicy.hold=0x8000|32;s.formationPolicy.keys[:]=[90|0x8000,90|0x8000,67,86];save(m,s)
+ m.held_keys.add(32);kind,s=message(m,0x100,32);assert not s.formationPreview.active
+ message(m,0x100,32,True);m.held_keys.clear();message(m,0x101,32);m.clock+=80;m.w(m.SH+m.Shared.heartbeat.offset,m.clock)
+ m.held_keys.add(32);kind,s=message(m,0x100,32);assert kind==0 and s.formationPreview.active
+ old=s.formationPreview.shape;kind,s=message(m,0x100,90);assert kind==0 and s.formationPreview.shape==old
+ message(m,0x100,90,True);message(m,0x101,90);m.clock+=50;m.w(m.SH+m.Shared.heartbeat.offset,m.clock)
+ kind,s=message(m,0x100,90);assert kind==0 and s.formationPreview.shape==1;message(m,0x101,90)
+ m.held_keys.clear();_,s=message(m,0x101,32);assert not s.formationPreview.active
+ assert count(m)==0 and not m.codeWrites
+ rows.append({'case':f'{mode}_configured_double_hold_shape','status':'PASS'});print('PASS',mode,'configured double hold and shape',flush=True)
 # A 10-pixel drag remains in one queried cell but still has a real facing.
 for mode in (0,3):
  m=setup(mode);m.held_keys.add(18);message(m,0x104,18);message(m,0x204);m.clock+=20;_,s=message(m,0x200,x=110,y=100)

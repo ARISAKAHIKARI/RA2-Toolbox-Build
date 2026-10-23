@@ -212,7 +212,9 @@ static void nativeOrdersTick(uint32_t house,int frame){
  for(int i=0;i<nativeCount;)if(!worldObjects.contains(nativeOrders[i].p)||get<uint32_t>(nativeOrders[i].p+0x10)!=nativeOrders[i].id||!(sh->flags&(nativeOrders[i].mode==planner::MagnetronMove?MagnetronInput:AdvancedInput))||!(nativeOrders[i].mode==planner::MagnetronMove?rawMagnetron(nativeOrders[i].p):featureObjectAllowed(featuretypes::AdvancedAttack,nativeOrders[i].p)))removeOrder(i);else ++i;
  // Global mode enrolls only idle magnets; manual movement/attacks are not
  // converted into automation. Existing explicit enhanced-click tasks survive.
- for(int i=0;i<nativeCount;)if(nativeOrders[i].global&&(!sh->magnetronGlobal||manualVersions.get(nativeOrders[i].id)!=nativeOrders[i].token||get<uint32_t>(nativeOrders[i].p+0x5A4)))removeOrder(i);else ++i;
+ // An enrolled Attack may set its own destination while approaching. Only the
+ // manual-input token cancels it; destination alone is not a manual command.
+ for(int i=0;i<nativeCount;)if(nativeOrders[i].global&&(!sh->magnetronGlobal||manualVersions.get(nativeOrders[i].id)!=nativeOrders[i].token))removeOrder(i);else ++i;
  advancedObjects.clear();for(int i=0;i<nativeCount;++i)advancedObjects.add(nativeOrders[i].p,nativeOrders[i].id,uint32_t(i+1));
  if(sh->magnetronGlobal&&!snap.chat){Vec all=vec(0xA8EC78);
   for(int n=0;n<all.count&&nativeCount<nativeorders::MaxOrders;++n){uint32_t p=item(all,n);if(!p||!own(p,house)||!rawMagnetron(p)||formationOwns(get<uint32_t>(p+0x10))||orderIndex(p)>=0||get<bool>(p+0x1C8)||get<uint32_t>(p+0x11C)||get<uint32_t>(p+0x5A4))continue;

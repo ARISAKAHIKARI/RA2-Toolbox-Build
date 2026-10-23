@@ -30,6 +30,13 @@ inline bool compatibleTarget(const Actor&s,const Actor&t,bool mag){
  if((t.flags&TemporalTarget)&&!(w.flags&TemporalWeapon))return false;
  return (t.flags&Airborne)?(w.flags&AirWeapon)!=0:(w.flags&GroundWeapon)!=0;
 }
+// Attack acquisition is broader than the firing annulus. A native Attack
+// mission owns approach/reposition; do not reject it merely for min/max range.
+inline bool magneticAcquisition(const Actor&s,const Actor&t,int64_t distance,int padding=512){
+ if(distance<0||distance>0xFFFFFFFFll||!compatibleTarget(s,t,true))return false;
+ const auto&w=s.weapons[weaponIndex(s,t)];int64_t z=int64_t(s.z)-t.z,reach=int64_t(w.range)+std::clamp(padding,0,30*256);
+ return std::abs(z)<=1048576&&distance+z*z<=reach*reach;
+}
 inline bool canTarget(const Actor&s,const Actor&t,int64_t distance,bool mag,int acquisitionPadding=0){
  if(distance<0||distance>0xFFFFFFFFll||!compatibleTarget(s,t,mag))return false;const auto&w=s.weapons[weaponIndex(s,t)];
  int64_t dz=(s.flags&Airborne)?0:int64_t(s.z)-t.z;if(dz< -1048576||dz>1048576)return false;distance+=dz*dz;

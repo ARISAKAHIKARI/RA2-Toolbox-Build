@@ -1,0 +1,93 @@
+{
+  "version": "1.0.37-pre.3",
+  "file_version": "1.0.37.2",
+  "protocol": 63,
+  "base_commit": "7404f12892dc9feeb2e91e3339f8aef794af83b7",
+  "controlled_total": 328,
+  "controlled": [
+    {
+      "evidence": "advanced_range_runtime-lbw.json",
+      "cases": 66,
+      "status": "PASS"
+    },
+    {
+      "evidence": "advanced_range_runtime-zhanwang.json",
+      "cases": 66,
+      "status": "PASS"
+    },
+    {
+      "evidence": "direct_order_execution_probe-lbw.json",
+      "cases": 8,
+      "status": "PASS"
+    },
+    {
+      "evidence": "direct_order_execution_probe-zhanwang.json",
+      "cases": 8,
+      "status": "PASS"
+    },
+    {
+      "evidence": "formation_runtime-lbw.json",
+      "cases": 30,
+      "status": "PASS"
+    },
+    {
+      "evidence": "formation_runtime-zhanwang.json",
+      "cases": 30,
+      "status": "PASS"
+    },
+    {
+      "evidence": "magnetron137_runtime-lbw.json",
+      "cases": 38,
+      "status": "PASS"
+    },
+    {
+      "evidence": "magnetron137_runtime-zhanwang.json",
+      "cases": 38,
+      "status": "PASS"
+    },
+    {
+      "evidence": "navigation137_runtime-lbw.json",
+      "cases": 22,
+      "status": "PASS"
+    },
+    {
+      "evidence": "navigation137_runtime-zhanwang.json",
+      "cases": 22,
+      "status": "PASS"
+    }
+  ],
+  "host_logic": [
+    "advanced_range",
+    "magnetron",
+    "key_gesture",
+    "game_assets",
+    "formation_host",
+    "review136",
+    "watch_view",
+    "minimap_overlay",
+    "modern_ui_test",
+    "pointer_fanout_host_test",
+    "hotkey_host_test",
+    "hold_key_ui_test",
+    "host_input_test",
+    "air_waypoint_host_test",
+    "construction_host_test"
+  ],
+  "checks": [
+    "Zig 0.13 Windows x86 build exit 0",
+    "PE architecture, dependencies, v6 manifest, matching protocol/size/mapping prefix",
+    "probe memory valid/stable/on-off masks independently recomputed",
+    "git diff --check"
+  ],
+  "binaries": {
+    "RA2Toolbox.exe": "fdfc789c37bd008bd291248f49432d771afd171671e89adb53de32cd0643eb95",
+    "GameRuntime.dll": "11a316569d5d67c7b60bbd7355d9dd2b0f5839d94c86d8dd9ba55f701e8891ad"
+  },
+  "limits": [
+    "Synthetic Win32/game fixtures are not Windows visual validation.",
+    "No full native pathfinding, projectile physics or multiplayer validation.",
+    "Encrypted MIX needs a game-decoded directory; no offline decryption.",
+    "Watch actors have fixed heading and simplified lighting.",
+    "Probe establishes reversible module edits, not writer attribution, heap rule edits or full production."
+  ]
+}

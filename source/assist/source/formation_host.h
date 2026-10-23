@@ -1,7 +1,7 @@
 #include "../../external_reader/source/voxel_preview.h"
 #include <map>
 namespace formationhost {
-struct Cached {external::voxel::Model model;std::array<uint32_t,256> palette{};external::voxel::Image sprite;bool attempted=false,ready=false,isVoxel=false;uint32_t retry=0;uint64_t used=0,viewUsed[32]{};std::map<int,external::voxel::Image> views;};
+struct Cached {external::voxel::Model model;std::array<uint32_t,256> palette{};external::voxel::Image sprite;bool attempted=false,ready=false,isVoxel=false,fileBacked=false;int fileFacing=-1;uint32_t retry=0;uint64_t used=0,viewUsed[32]{};std::map<int,external::voxel::Image> views;};
 struct Visual {int x,y;const external::voxel::Image*image;};
 static std::map<std::pair<uint32_t,uint32_t>,Cached> models;
 static formation::Preview preview;static std::vector<Visual> visuals;
@@ -14,7 +14,7 @@ static bool needed(const std::pair<uint32_t,uint32_t>&key){return std::find(want
 static bool evictModel(){auto oldest=models.end();for(auto it=models.begin();it!=models.end();++it)if(!needed(it->first)&&(oldest==models.end()||it->second.used<oldest->second.used))oldest=it;if(oldest==models.end())return false;models.erase(oldest);++revision;return true;}
 static size_t pixelCount(){size_t n=0;for(const auto&e:models){n+=e.second.sprite.pixels.size();for(const auto&v:e.second.views)n+=v.second.pixels.size();}return n;}
 static bool roomForImage(size_t pixels){while(pixelCount()+pixels>4*1024*1024){Cached*owner=nullptr;int angle=-1;uint64_t oldest=UINT64_MAX;for(auto&e:models)for(const auto&v:e.second.views)if(!(needed(e.first)&&v.first==wantedFacing)&&e.second.viewUsed[v.first]<oldest){owner=&e.second;angle=v.first;oldest=owner->viewUsed[angle];}if(owner){owner->views.erase(angle);++revision;}else if(!evictModel())return false;}return true;}
-static bool capture(const formation::Unit&u,Cached&cache){
+static bool captureMemory(const formation::Unit&u,Cached&cache){
  uint32_t owner=word(u.pointer+0x21C);cache={};cache.used=++useSerial;cache.attempted=true;cache.retry=GetTickCount()+2000;
  if(word(u.pointer+0x10)!=u.id||!external::voxel::palette(read,u.type,owner,cache.palette))return false;
  uint32_t parts[6]{};if(!read(u.type+0xB0,parts,sizeof parts))return false;
@@ -27,6 +27,14 @@ static bool capture(const formation::Unit&u,Cached&cache){
  }else if(!external::voxel::sprite(read,word(u.type+0xA4),cache.palette,cache.sprite))return false;
  for(;;){size_t faces=0;for(const auto&e:models)faces+=e.second.model.faces.size();if(faces<=400000)break;if(!evictModel()){cache.model.faces.clear();return false;}}
  if(!roomForImage(0))return false;cache.ready=true;return true;
+}
+static bool capture(const formation::Unit&u,Cached&cache){
+ if(captureMemory(u,cache))return true;
+ gameassets::update();cache.model={};cache.views.clear();cache.isVoxel=false;
+ if(!gameassets::actor(u.pointer,u.type,u.id,wantedFacing*(2*formation::Pi/32),cache.sprite))return false;
+ if(!roomForImage(0)){cache.sprite={};return false;}
+ // File-backed fallback is keyed by the preview heading as well.
+ cache.ready=true;cache.attempted=true;cache.fileBacked=true;cache.fileFacing=wantedFacing;return true;
 }
 static void update(){
  static bool wasActive=false;bool activeNow=shared&&shared->formationPreview.active&&extra.formationEnabled&&!snap.chat;if(activeNow!=wasActive){wasActive=activeNow;++paintRevision;}
@@ -46,6 +54,7 @@ static void update(){
   // Protect this cache entry too before any eviction can invalidate c.
   if(!needed(key))wanted.push_back(key);
   auto found=models.find(key);if(found==models.end()){if(models.size()>=64&&!evictModel()){++missing;continue;}found=models.emplace(key,Cached{}).first;}auto&c=found->second;c.used=++useSerial;
+  if(c.fileBacked&&c.fileFacing!=wantedFacing){c.ready=false;c.attempted=false;}
   if(!c.ready&&work<1&&(!c.attempted||int32_t(GetTickCount()-c.retry)>=0)){++work;if(!capture(u,c)){c.model.faces.clear();c.sprite={};}++revision;}
   if(!c.ready){++missing;continue;}const external::voxel::Image*image=&c.sprite;
   if(c.isVoxel){auto it=c.views.find(facing);if(it==c.views.end()){if(work>=1){++missing;continue;}++work;external::voxel::Image rendered;
@@ -69,5 +78,6 @@ static void draw(Graphics&g){
 static bool formationHotkey(WORD key){
  if(!shared||!extra.formationEnabled||!shared->formationPreview.active)return false;
  uint32_t normalized=key;if((extra.formationHold&255)==VK_MENU)normalized&=~(4u<<8);if((extra.formationHold&255)==VK_CONTROL)normalized&=~(2u<<8);if((extra.formationHold&255)==VK_SHIFT)normalized&=~(1u<<8);
- for(auto k:extra.formationKeys)if(k&&k==normalized){if(shared->formationKey==shared->formationKeyAck){shared->formationKeyCode=normalized;MemoryBarrier();InterlockedIncrement((volatile LONG*)&shared->formationKey);wakeGame();}return true;}return false;
+ static typekeys::Tap tap;bool single=false,twice=false;for(auto k:extra.formationKeys)if(k&&(k&0x7ff)==normalized){single|=!(k&0x8000);twice|=(k&0x8000)!=0;}
+ if(single||twice){if(twice){if(!tap.press(normalized,GetTickCount(),commandMatch(),350))return true;normalized|=0x8000;}if(shared->formationKey==shared->formationKeyAck){shared->formationKeyCode=normalized;MemoryBarrier();InterlockedIncrement((volatile LONG*)&shared->formationKey);wakeGame();}return true;}return false;
 }

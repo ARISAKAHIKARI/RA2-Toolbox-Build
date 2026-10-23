@@ -20,7 +20,7 @@ struct PtrList {
 inline bool sameAscii(const char* a,const char* b){for(;*a&&*b;a++,b++){char x=*a,y=*b;if(x>='A'&&x<='Z')x+=32;if(y>='A'&&y<='Z')y+=32;if(x!=y)return false;}return *a==*b;}
 
 template<class Read,class Resolve> class Sampler {
- Read read; Resolve resolve; IconCache* cache=nullptr; Snapshot state{};external::layout::Result probe_{}; roundstate::Stamp previous{}; bool haveRound=false; int iconCursor=0; uint32_t ticks=0,matchSerial=0,catalogueAt=0;uint64_t catalogueHash=0;bool catalogueReady=false; bool prevBuildings=true; uint8_t iconBuffer[32+256*1024]{}; int ownedBuffer[4096]{};
+ Read read; Resolve resolve;AssetLoad files=nullptr; IconCache* cache=nullptr; Snapshot state{};external::layout::Result probe_{}; roundstate::Stamp previous{}; bool haveRound=false; int iconCursor=0; uint32_t ticks=0,matchSerial=0,catalogueAt=0;uint64_t catalogueHash=0;bool catalogueReady=false; bool prevBuildings=true; uint8_t iconBuffer[32+256*1024]{}; int ownedBuffer[4096]{};
  const Snapshot& invalidate(uint32_t tick){
   memset(&state,0,sizeof state);state.tick=tick;state.match=matchSerial;haveRound=false;catalogueReady=false;catalogueHash=0;iconCursor=0;return state;
  }
@@ -32,8 +32,8 @@ template<class Read,class Resolve> class Sampler {
   PtrList r;r.n=n;if(n&&!bytes(p,r.data(),n*4)){state.readErrors++;return {};}return r;
  }
  int find(uint32_t p){for(int i=0;i<state.typeCount;i++)if(state.types[i].ptr==p)return i;return -1;}
- bool loadIcon(Type&t){return readCameo(read,resolve,t,iconBuffer,sizeof iconBuffer);}
- void palette(){state.paletteReady=0;readCameoPalette(read,state);}
+ bool loadIcon(Type&t){return readCameo(read,resolve,t,iconBuffer,sizeof iconBuffer,files);}
+ void palette(){state.paletteReady=0;std::vector<uint8_t> colors;if(files&&files("cameo.pal",colors)&&colors.size()==768){bool valid=true;for(auto c:colors)valid&=c<=63;if(valid){for(int i=0;i<256;++i)state.palette[i]=0xff000000u|(uint32_t(colors[i*3])*4<<16)|(uint32_t(colors[i*3+1])*4<<8)|uint32_t(colors[i*3+2])*4;state.palette[0]=0;state.paletteReady=1;return;}}readCameoPalette(read,state);}
  void types(bool buildings,bool newRound) {
   // Artwork survives a match. Rebuilding Type pointers must not start a new
   // disk scan or abandon the previous match's pending icon writes.
@@ -67,7 +67,7 @@ template<class Read,class Resolve> class Sampler {
   }
  }
 public:
- Sampler(Read r,Resolve s,IconCache* c=nullptr):read(r),resolve(s),cache(c){}
+ Sampler(Read r,Resolve s,IconCache* c=nullptr,AssetLoad f=nullptr):read(r),resolve(s),files(f),cache(c){}
  external::layout::Result probe()const{return probe_;}
  void reset(){probe_={};invalidate(0);}
  const Snapshot& sample(uint32_t tick,bool buildings){

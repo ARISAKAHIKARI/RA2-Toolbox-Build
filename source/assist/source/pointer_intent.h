@@ -10,7 +10,7 @@ enum Binding { Advanced=1, Magnetron=2, CS=4, Enter=8, AirFirst=16, AirSecond=32
 inline bool matchesHold(const uint8_t*keys,uint32_t key,int operation){
  const unsigned vk=key&255,mods=key>>8;
  if(!vk)return (operation==Enhanced||operation==AttackMove||operation==Sell)&&!keys[16]&&!keys[17]&&!keys[18];
- if(!keys[vk])return false;
+ if(!keys[vk]||((key&0x8000)&&!(keys[vk]&2)))return false;key&=0x7fff;
  if(key==16||key==17||key==18)return true;
  return bool(keys[16])==bool(mods&1)&&bool(keys[17])==bool(mods&2)&&bool(keys[18])==bool(mods&4);
 }

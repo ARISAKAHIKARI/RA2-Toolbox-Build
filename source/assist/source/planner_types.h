@@ -15,7 +15,7 @@ enum IntentMode { OrdinaryMove=0,MagnetronMove=1 };
 struct Intent {uint32_t id,cell,token,mode;uint32_t global=0;};
 struct WaitingCell {uint32_t cell,occupation;int land;};
 struct Refinery {uint32_t id;int cellX,cellY,dockStyleA,dockStyleB,count;WaitingCell waiting[MaxWaitingCells];};
-enum CombatProbeFlags { InWeaponRange=1, InAcquisitionRange=2 };
+enum CombatProbeFlags { InWeaponRange=1, InAcquisitionRange=2, NeedsReposition=8 };
 struct CombatProbe {uint32_t target,flags;int slot;float effectiveness;};
 struct World {
  uint32_t match,tick;int frame,count,intentCount,refineryCount;uint32_t inputSerial;

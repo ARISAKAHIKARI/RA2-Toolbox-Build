@@ -80,11 +80,11 @@ def case(mode,inside,name):
  if name in ('weapon_changed','stale','target_moved','disabled'):
   assert n.count(m)==0,(name,n.count(m));return
  assert n.count(m)==1,(name,n.count(m),s.world.combatCount,s.world.actors[0].combatFirst,s.data.lastSubmitError)
- packet=n.packets(m)[:111];expect_attack=name not in ('air_high','negative_bonus','minimum') and not name.startswith('ifv_out_')
+ packet=n.packets(m)[:111];expect_attack=name not in ('air_high','negative_bonus') and not name.startswith('ifv_out_')
  assert packet[12]==(1 if expect_attack else 2),(name,packet[12],[(x.target,x.flags,x.slot) for x in s.world.combat[:s.world.combatCount]])
  if expect_attack:
   assert packet[14:19]==struct.pack('<IB',40,0x34) and packet[19:24]==bytes(5)
-  probe=next(x for x in s.world.combat[:s.world.combatCount] if x.target==40);assert probe.slot==m.expectedSlot and probe.flags&1,(name,probe.slot)
+  probe=next(x for x in s.world.combat[:s.world.combatCount] if x.target==40);assert probe.slot==m.expectedSlot and probe.flags&(8 if name=='minimum' else 1),(name,probe.slot)
  else:assert packet[14:19]==bytes(5)
  assert all(m.hits.values()),m.hits
  assert before==bytes(m.u.mem_read(m.unit,0x800)) and not m.codeWrites,'sender must not mutate simulation objects/code'

@@ -338,13 +338,14 @@ static void rememberLiveTypes(){
  }
 }
 static UINT modifiers(WORD key){BYTE f=HIBYTE(key);return MOD_NOREPEAT|((f&HOTKEYF_CONTROL)?MOD_CONTROL:0)|((f&HOTKEYF_ALT)?MOD_ALT:0)|((f&HOTKEYF_SHIFT)?MOD_SHIFT:0);}
-static std::wstring keyText(WORD key){if(!LOBYTE(key))return L"未绑定";std::wstring r;BYTE f=HIBYTE(key);if(f&HOTKEYF_CONTROL)r+=L"Ctrl+";if(f&HOTKEYF_ALT)r+=L"Alt+";if(f&HOTKEYF_SHIFT)r+=L"Shift+";wchar_t s[80];LONG code=MapVirtualKeyW(LOBYTE(key),MAPVK_VK_TO_VSC)<<16;if(f&HOTKEYF_EXT)code|=1<<24;GetKeyNameTextW(code,s,80);return r+s;}
+static std::wstring keyText(WORD key){if(!LOBYTE(key))return L"未绑定";std::wstring r=(key&0x8000)?L"双击 ":L"";BYTE f=HIBYTE(key);if(f&HOTKEYF_CONTROL)r+=L"Ctrl+";if(f&HOTKEYF_ALT)r+=L"Alt+";if(f&HOTKEYF_SHIFT)r+=L"Shift+";wchar_t s[80];LONG code=MapVirtualKeyW(LOBYTE(key),MAPVK_VK_TO_VSC)<<16;if(f&HOTKEYF_EXT)code|=1<<24;GetKeyNameTextW(code,s,80);return r+s;}
 static bool foregroundGame(){if(!game||!IsWindow(game)||IsIconic(game))return false;HWND fg=GetForegroundWindow();if(fg==game)return true;DWORD fgPid=0;GetWindowThreadProcessId(fg,&fgPid);return fgPid&&fgPid==pid;}
 static void wakeGame(){
  if(gameinput::wake(hook))lastPulse=GetTickCount();
 }
 static bool foregroundGame();
 static bool registerKey(int id,WORD key){return hotkeyRegistry.add(id,key,extra.allHotkeys,[](int slot,WORD chord){
+ if(chord==VK_SHIFT||chord==VK_CONTROL||chord==VK_MENU)return true;
  if(!RegisterHotKey(ui,slot,modifiers(chord),LOBYTE(chord)))return false;registeredKeyIDs.push_back(slot);return true;});}
 static void registerKeys(){for(int id:registeredKeyIDs)UnregisterHotKey(ui,id);registeredKeyIDs.clear();hotkeyRegistry.clear();hotkeyPending.clear();keysRegistered=enabled&&foregroundGame()&&snap.status==1&&snap.renderStatus==1&&!snap.chat;if(!keysRegistered)return;int failures=0;for(int i=0;i<12;++i)if(i!=8&&LOBYTE(hotkeys[i])&&!registerKey(1000+i,hotkeys[i]))++failures;
  for(size_t i=0;i<swBindings.size()&&i<64;++i){auto&b=swBindings[i];if((b.id=="IronCurtainSpecial"&&b.key==hotkeys[9])||(b.id=="ChronoSphereSpecial"&&b.key==hotkeys[10]))continue;if(LOBYTE(b.key)&&!registerKey(int(1020+i),b.key))++failures;}
@@ -709,7 +710,7 @@ static bool ensureBridge(){
  }
  ++bridgeAttempts;bridgeRetryAt=now+(bridgeAttempts>=3?30000:2000);
  critical(L"bridge-connect-attempt="+std::to_wstring(bridgeAttempts)+L" pid="+std::to_wstring(pid)+L" thread="+std::to_wstring(gameThread));
- wchar_t n[100];swprintf(n,100,L"Local\\RA2Assist_v062_%lu",pid);
+ wchar_t n[100];swprintf(n,100,L"Local\\RA2Assist_v063_%lu",pid);
  mapping=CreateFileMappingW(INVALID_HANDLE_VALUE,nullptr,PAGE_READWRITE,0,sizeof(Shared),n);
  DWORD mappingError=GetLastError();if(!mapping)return bridgeFailed(L"创建命令共享内存失败",mappingError);
  if(mappingError==ERROR_ALREADY_EXISTS){
@@ -983,6 +984,7 @@ static void drawLabel(Graphics&g,const visual::LabelView&l,float sx,float sy){
  }
  if(r.shield)g.DrawImage(r.image.get(),l.x*sx-(r.width*.5f+4)*zoom,l.y*sy-(20+(r.shield-1)*14.f)*zoom,r.image->GetWidth()*zoom,r.image->GetHeight()*zoom);
 }
+#include "game_assets_host.h"
 #include "formation_host.h"
 #include "status_draw.h"
 #include "passenger_draw.h"
@@ -1052,8 +1054,9 @@ static void paint(){
  auto passengerBubbles=passengerView(renderNow);
  auto airLines=airway::lines();
  auto nativeBadges=buildreserve::nativeBadges();
- uint32_t pausedTabs=(flags()&Production)?externalSampler.pausedProductionMask:0;
- uint32_t idleTabs=(flags()&Production)?externalSampler.idleProductionMask|pausedTabs:0;
+ uint32_t pausedTabs=0,idleTabs=0;
+ if(flags()&Production)externalSampler.productionReminders(extra.productionReminderMask,idleTabs,pausedTabs);
+ idleTabs|=pausedTabs;
  idleTabs=sidebarShapes.update([](uint32_t at,void*out,size_t size){return externalReader.readFresh(at,out,size);},renderNow,pid,commandMatch(),snap.width,snap.height,idleTabs,pausedTabs);
  bool tabPhase=(renderNow/400)%2==0;bool spiderPhase=(renderNow/650)%2==0;
  bool panel=SendMessageW(check[6],BM_GETCHECK,0,0)==BST_CHECKED;

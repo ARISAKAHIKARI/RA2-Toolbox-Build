@@ -33,6 +33,7 @@ static int actions[]={Repair,CombatSelection,EmptyTransports,DamagedSelection,Id
 static uint32_t pid=123;static bool externalData=true;static uint32_t sampleRenderClock(void*){return now;}
 static struct {uint32_t idleAircraftTick=1000;int idleAircraftCount=3;uint32_t idleAircraftIDs[8192]={10,20,30};}externalSampler;
 static std::vector<uint32_t> selectedAircraft;
+static int hook=0;namespace gameinput {uint8_t keys[256]{};uint32_t serial[256]{};void keySnapshot(int,uint8_t*k,uint32_t*s){memcpy(k,keys,256);memcpy(s,serial,1024);}}
 static unsigned notifications=0,saves=0;static void notify(const std::wstring&){++notifications;}static void save(){++saves;}
 static struct{int size=0;}commandQueue;
 static std::vector<int>commands;static std::vector<std::pair<int,bool>> selections;
@@ -79,6 +80,18 @@ int main(){
  focused=false;handleHotkey(1701,planeEvent);focused=true;assert(selectedAircraft.size()==selected);
  now+=501;handleHotkey(1701,planeEvent);assert(selectedAircraft.size()==selected);externalSampler.idleAircraftTick=now;
  externalSampler.idleAircraftCount=0;handleHotkey(1701,planeEvent);assert(selectedAircraft.size()==selected);
+
+ // Configured double-only commands execute once, after the second tap.
+ hotkeyRegistry.clear();hotkeyPending.clear();assert(hotkeyRegistry.add(1702,0x8000|'Q',false,install));
+ auto pins=watchhost::pins;handleHotkey(1702,'Q'<<16);assert(watchhost::pins==pins);now+=100;handleHotkey(1702,'Q'<<16);assert(watchhost::pins==pins+1);
+ // Bare modifiers use physical press serials, never held-key timer repeats.
+ hotkeyRegistry.clear();assert(hotkeyRegistry.add(1702,0x8000|17,false,install));
+ gameinput::keys[17]=1;gameinput::serial[17]=1;serviceHotkeyBatch();serviceHotkeyBatch();assert(watchhost::pins==pins+1);
+ gameinput::keys[17]=0;serviceHotkeyBatch();now+=100;gameinput::keys[17]=3;gameinput::serial[17]=2;serviceHotkeyBatch();assert(watchhost::pins==pins+2);
+ // A pending first tap is discarded on focus loss.
+ gameinput::keys[17]=1;gameinput::serial[17]=3;now+=50;serviceHotkeyBatch();focused=false;serviceHotkeyBatch();focused=true;
+ gameinput::serial[17]=4;now+=100;serviceHotkeyBatch();assert(watchhost::pins==pins+2);
+ gameinput::serial[17]=5;now+=100;serviceHotkeyBatch();assert(watchhost::pins==pins+3);
 
 }
 '''

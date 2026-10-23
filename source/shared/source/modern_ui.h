@@ -80,6 +80,7 @@ inline void paintHotkey(HWND w,HDC dc){
  const auto key=static_cast<unsigned>(SendMessageW(w,HKM_GETHOTKEY,0,0));
  std::wstring label;const unsigned vk=key&255,mods=(key>>8)&255;
  if(vk){
+  if(key&0x8000)label+=L"双击 ";
   if(mods&HOTKEYF_CONTROL)label+=L"Ctrl + ";
   if(mods&HOTKEYF_ALT)label+=L"Alt + ";
   if(mods&HOTKEYF_SHIFT)label+=L"Shift + ";
@@ -91,16 +92,23 @@ inline void paintHotkey(HWND w,HDC dc){
  }else label=GetPropW(w,L"RA2.Modern.MouseOnly")?L"仅鼠标":L"未设置";
  auto font=(HFONT)SendMessageW(w,WM_GETFONT,0,0);if(font)SelectObject(dc,font);
  SetBkMode(dc,TRANSPARENT);SetTextColor(dc,IsWindowEnabled(w)?Text:Muted);
- RECT text=r;text.left+=8;text.right-=8;
+ RECT text=r;text.left+=8;text.right-=scale(42,windowDpi(w));
+ RECT mode=r;mode.left=mode.right-scale(40,windowDpi(w));DrawTextW(dc,(key&0x8000)?L"双击":L"单击",-1,&mode,DT_SINGLELINE|DT_VCENTER|DT_CENTER);
  DrawTextW(dc,label.c_str(),-1,&text,DT_SINGLELINE|DT_VCENTER|DT_LEFT);
  if(GetFocus()==w){InflateRect(&r,-2,-2);DrawFocusRect(dc,&r);}
  if(saved)RestoreDC(dc,saved);
 }
 inline LRESULT CALLBACK hotkeyProc(HWND w,UINT m,WPARAM wp,LPARAM lp,UINT_PTR id,DWORD_PTR){
- if(m==WM_NCDESTROY){for(auto key:{L"RA2.Modern.MouseOnly",L"RA2.Modern.Hold",L"RA2.Modern.Modifier",L"RA2.Modern.PendingModifier"})RemovePropW(w,key);RemoveWindowSubclass(w,hotkeyProc,id);return DefSubclassProc(w,m,wp,lp);}
+ if(m==WM_NCDESTROY){for(auto key:{L"RA2.Modern.MouseOnly",L"RA2.Modern.Hold",L"RA2.Modern.Modifier",L"RA2.Modern.PendingModifier",L"RA2.Modern.Double"})RemovePropW(w,key);RemoveWindowSubclass(w,hotkeyProc,id);return DefSubclassProc(w,m,wp,lp);}
+ if(m==HKM_SETHOTKEY){if(wp&0x8000)SetPropW(w,L"RA2.Modern.Double",(HANDLE)1);else RemovePropW(w,L"RA2.Modern.Double");wp&=0x7fff;}
+ if(m==HKM_GETHOTKEY){auto held=GetPropW(w,L"RA2.Modern.Modifier");auto value=held?(LRESULT)(UINT_PTR)held:DefSubclassProc(w,m,wp,lp);return value|(GetPropW(w,L"RA2.Modern.Double")?0x8000:0);}
+ if(m==WM_LBUTTONDOWN||m==WM_RBUTTONUP){RECT r{};GetClientRect(w,&r);if(m==WM_RBUTTONUP||short(LOWORD(lp))>=r.right-scale(40,windowDpi(w))){
+  if(GetPropW(w,L"RA2.Modern.Double"))RemovePropW(w,L"RA2.Modern.Double");else SetPropW(w,L"RA2.Modern.Double",(HANDLE)1);
+  InvalidateRect(w,nullptr,FALSE);SendMessageW(GetParent(w),WM_COMMAND,MAKEWPARAM(GetDlgCtrlID(w),EN_CHANGE),(LPARAM)w);return 0;
+ }}
  // HOTKEY_CLASS treats Ctrl/Shift/Alt as chord prefixes and drops them on
  // release. Hold bindings also need a bare modifier, without a global hotkey.
- if(GetPropW(w,L"RA2.Modern.Hold")){
+ if(GetPropW(w,L"RA2.Modern.Hold")||GetPropW(w,L"RA2.Modern.Double")||GetPropW(w,L"RA2.Modern.Modifier")){
   auto modifier=[](WPARAM key){return key==VK_SHIFT||key==VK_CONTROL||key==VK_MENU;};
   if(m==HKM_GETHOTKEY){auto held=GetPropW(w,L"RA2.Modern.Modifier");if(held)return (LRESULT)(UINT_PTR)held;}
   if(m==HKM_SETHOTKEY){if(modifier(wp)){SetPropW(w,L"RA2.Modern.Modifier",(HANDLE)(UINT_PTR)wp);wp=0;}else RemovePropW(w,L"RA2.Modern.Modifier");}

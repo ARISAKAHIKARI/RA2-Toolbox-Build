@@ -28,7 +28,8 @@ template<class Read> class TacticalSampler {
  EnemyOwner enemyOwners_[32]{};int enemyOwnerCount_=0;
  struct EnemyTypeName {uint16_t text[40]{};};std::unordered_map<uint32_t,EnemyTypeName> enemyNames_;
  uint32_t typePointers_[assist::MaxTypes]{};std::unordered_set<uint32_t> stopped_;
- struct FactoryState {uint32_t pointer=0;int type=-1;bool busy=false,paused=false,complete=false,seen=false;};FactoryState factories_[4];uint32_t productionAt_=0;
+ struct FactoryState {uint32_t pointer=0,product=0,changed=0;int progress=0,balance=0;bool seen=false;};FactoryState factories_[6];uint32_t productionAt_=0;
+ uint32_t idleLines_=0,pausedLines_=0,activeTabs_=0;
  template<class T>T get(uint32_t a,T fallback={}){T v{};return read_(a,&v,sizeof v)?v:fallback;}
  std::vector<uint32_t> vec(uint32_t a,int maximum=16384){
   uint32_t items=get<uint32_t>(a+4);int cap=get<int>(a+8,-1),n=get<int>(a+16,-1);
@@ -162,7 +163,8 @@ public:
  display::State displayState()const{return display_;}
  const enemies::Frame& enemyMarkers()const{return enemies_;}
  const status::Frame& unitStatuses()const{return statuses_;}
- void reset(){idleProductionMask=pausedProductionMask=idleAircraftTick=0;idleAircraftCount=aircraftTotal=0;probe_={};catalogueHash_=0;catalogueAt_=0;catalogueReady_=false;house_=serial_=0;lastFrame_=-1;state_={};sceneFrame_=-1;sceneFlags_=selectionHash_=sceneAt_=0;flashCount=0;productionAt_=0;for(auto&f:factories_)f={};stopped_.clear();enemies_={};statuses_={};statusOptions_=sceneStatusOptions_=0;sceneEnemies_=false;enemyNames_.clear();enemyOwnerCount_=0;}
+ void productionReminders(uint32_t enabled,uint32_t&idle,uint32_t&paused)const{idle=paused=0;for(int i=0;i<6;++i){unsigned tab=i<4?i:3;if(!(enabled&(1u<<i))||(activeTabs_&(1u<<tab)))continue;if(idleLines_&(1u<<i))idle|=1u<<tab;if(pausedLines_&(1u<<i))paused|=1u<<tab;}}
+ void reset(){idleLines_=pausedLines_=activeTabs_=0;idleProductionMask=pausedProductionMask=idleAircraftTick=0;idleAircraftCount=aircraftTotal=0;probe_={};catalogueHash_=0;catalogueAt_=0;catalogueReady_=false;house_=serial_=0;lastFrame_=-1;state_={};sceneFrame_=-1;sceneFlags_=selectionHash_=sceneAt_=0;flashCount=0;productionAt_=0;for(auto&f:factories_)f={};stopped_.clear();enemies_={};statuses_={};statusOptions_=sceneStatusOptions_=0;sceneEnemies_=false;enemyNames_.clear();enemyOwnerCount_=0;}
  void stopped(const std::vector<uint32_t>&ids){stopped_.clear();stopped_.insert(ids.begin(),ids.end());}
  void refreshCamera(uint32_t now){
   if(state_.status!=1)return;uint32_t tactical=get<uint32_t>(0x887324);if(tactical<0x10000)return;
@@ -252,12 +254,24 @@ public:
    productionAt_=now;idleProductionMask=pausedProductionMask=0;state_.factories=state_.busyFactories=state_.pausedFactories=state_.completedFactories=0;
    // YRpp House::Primary_ForBuildings/Defenses/Infantry/Vehicles/Ships/Aircraft.
    const uint32_t offsets[]={0x53BC,0x53CC,0x53B0,0x53B4,0x53B8,0x53AC};
-   bool active[4]{},busyTab[4]{},pausedTab[4]{},exists[4]{};for(int tab=0;tab<4;++tab){int n=get<int>(0x87F7E8+0x1544+tab*3988+84,-1);exists[tab]=n>0&&n<=75;}
-   for(int i=0;i<6;++i){int tab=i<4?i:3;uint32_t f=get<uint32_t>(house+offsets[i]);if(f<0x10000||get<uint32_t>(f+0x6C)!=house)continue;
-    ++state_.factories;bool busy=get<uint32_t>(f+0x58)||get<int>(f+0x50)>0;bool paused=busy&&(get<uint8_t>(f+0x5C)||get<uint8_t>(f+0x71)),complete=busy&&get<int>(f+0x24)>=54;
-    state_.busyFactories+=busy;state_.pausedFactories+=paused;state_.completedFactories+=complete;exists[tab]=true;busyTab[tab]|=busy;pausedTab[tab]|=paused&&!complete;active[tab]|=busy&&!paused&&!complete;
+   idleLines_=pausedLines_=activeTabs_=0;
+   for(int i=0;i<6;++i){int tab=i<4?i:3;uint32_t f=get<uint32_t>(house+offsets[i]);auto&previous=factories_[i];
+    if(f<0x10000||get<uint32_t>(f+0x6C)!=house){previous={};if(i<4){int n=get<int>(0x87F7E8+0x1544+tab*3988+84,-1);if(n>0&&n<=75)idleLines_|=1u<<i;}continue;}
+    uint32_t product=get<uint32_t>(f+0x58);int progress=get<int>(f+0x24),balance=get<int>(f+0x60);
+    bool busy=product||get<int>(f+0x50)>0,complete=busy&&progress>=54;
+    // +71 records who last changed suspension; Unsuspend leaves it set.
+    // +70 is current suspension, +5C is the insufficient-funds hold.
+    bool paused=busy&&!complete&&(get<uint8_t>(f+0x70)||get<uint8_t>(f+0x5C));
+    bool same=previous.seen&&previous.pointer==f&&previous.product==product;
+    bool moving=same&&(progress>previous.progress||balance<previous.balance);
+    uint32_t changed=moving?now:same?previous.changed:now;
+    if(moving||(!get<uint8_t>(f+0x70)&&uint32_t(now-changed)<600))paused=false;
+    previous={f,product,changed,progress,balance,true};
+    ++state_.factories;state_.busyFactories+=busy;state_.pausedFactories+=paused;state_.completedFactories+=complete;
+    if(busy&&!paused&&!complete)activeTabs_|=1u<<tab;
+    if(!busy)idleLines_|=1u<<i;else if(paused)pausedLines_|=1u<<i;
    }
-   if(flags&assist::Production)for(int tab=0;tab<4;++tab)if(exists[tab]&&!active[tab]){if(!busyTab[tab])idleProductionMask|=1u<<tab;else if(pausedTab[tab])pausedProductionMask|=1u<<tab;}
+   if(flags&assist::Production)productionReminders(63,idleProductionMask,pausedProductionMask);
    productionTabsY=get<int>(0x87F7E8+0x1544+44,200)-32;if(productionTabsY<100||productionTabsY>state_.height-32)productionTabsY=168;
    idleAircraftCount=aircraftTotal=0;aircraft::Inspect<Read> planes{read_};
    for(uint32_t p:vec(0xA8E390,8192))if(planes.valid(p,house)){++aircraftTotal;if(idleAircraftCount<8192&&planes.idle(p,house))idleAircraftIDs[idleAircraftCount++]=get<uint32_t>(p+0x10);}

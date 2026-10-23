@@ -1,0 +1,75 @@
+{
+  "archive_sha256": "69403b9b81fca271da7c16f11fe334b391283fa43c0829107f16e656ee26f5d5",
+  "sample_sha256": "7b8a068535d6af06845edf95ae829b113d00c02909330e16f197426cd7db94b6",
+  "stage_image_sha256": {
+    "00-clean": "22a01173812915853006e2c642242a73b3a417c97f97f2be0f7cf7bfde00db58",
+    "01-off": "7befc905c2418a8c8767aa4ec2fc308094334e35829361ed7083d33ff8687b1a",
+    "02-on": "b7659bcb8e3818a7e2c9b9b1191f2f9da15ce779836b31c51a37c145fd69f234",
+    "03-off": "b6cb80586a35eabbad232c9cdbb7b4c8cd62d9fcd60d88585545c46aa8c7301c"
+  },
+  "verified_reversible_bytes": 315,
+  "categories": {
+    "executable": 83,
+    "other_static_data": 43,
+    "sidebar_and_display": 189
+  },
+  "logical_code_patches": [
+    {
+      "va": "0x44574a",
+      "length": 21,
+      "meaning": "building enumeration: CanBuild -> TechLevel != -1",
+      "before": "6a016a008b0cb0518b0d4c3da800e813210b0085c0",
+      "enabled": "8b0cb08b813406000083f8ff909090909090909090",
+      "restored": true
+    },
+    {
+      "va": "0x445795",
+      "length": 15,
+      "meaning": "vehicle enumeration: CanBuild -> TechLevel != -1",
+      "before": "6a016a008b04b250e8ce200b0085c0",
+      "enabled": "8b04b28b803406000083f8ff909090",
+      "restored": true
+    },
+    {
+      "va": "0x4457d0",
+      "length": 21,
+      "meaning": "infantry enumeration: CanBuild -> TechLevel != -1",
+      "before": "6a016a008b14b18b0d4c3da80052e88d200b0085c0",
+      "enabled": "8b14b18b823406000083f8ff909090909090909090",
+      "restored": true
+    },
+    {
+      "va": "0x445810",
+      "length": 21,
+      "meaning": "aircraft enumeration: CanBuild -> TechLevel != -1",
+      "before": "6a016a008b0cb0518b0d4c3da800e84d200b0085c0",
+      "enabled": "8b0cb08b813406000083f8ff909090909090909090",
+      "restored": true
+    },
+    {
+      "va": "0x6aa788",
+      "length": 6,
+      "meaning": "sidebar prune conditional JNE -> unconditional JMP",
+      "before": "0f85da020000",
+      "enabled": "e9db02000090",
+      "restored": true
+    }
+  ],
+  "startup_changes": [
+    {
+      "va": "0x577B3A",
+      "length": 1
+    },
+    {
+      "va": "0x6378E0",
+      "length": 5
+    }
+  ],
+  "private_regions": {
+    "00-clean": 0,
+    "01-off": 0,
+    "02-on": 0,
+    "03-off": 0
+  },
+  "scope": "Observed reversible module bytes, with validity/stability masks checked. Not writer attribution, heap/type-rule inspection, full production execution or multiplayer evidence."
+}

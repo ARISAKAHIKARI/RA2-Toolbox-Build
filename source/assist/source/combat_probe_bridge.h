@@ -13,7 +13,12 @@ static planner::CombatProbe probeCombatPair(uint32_t p,uint32_t q,const planner:
  result.slot=slot;result.effectiveness=source.weapons[0].effectiveness[target.armor];
  if(close){result.flags=planner::InWeaponRange|planner::InAcquisitionRange;return result;}
  int64_t dx=int64_t(get<int>(p+0x9C))-get<int>(q+0x9C),dy=int64_t(get<int>(p+0xA0))-get<int>(q+0xA0);
- if(dx>=-1048576&&dx<=1048576&&dy>=-1048576&&dy<=1048576&&padding>0&&planner::canTarget(source,target,dx*dx+dy*dy,false,padding))result.flags=planner::InAcquisitionRange;
+ if(dx>=-1048576&&dx<=1048576&&dy>=-1048576&&dy<=1048576){
+  const auto&weapon=source.weapons[0];int64_t dz=(source.flags&planner::Airborne)?0:int64_t(source.z)-target.z;
+  int64_t distance=dx*dx+dy*dy;if(std::abs(dz)<=1048576&&weapon.minimum>0&&distance+dz*dz<int64_t(weapon.minimum)*weapon.minimum)
+   result.flags=planner::InAcquisitionRange|planner::NeedsReposition;
+  else if(padding>0&&planner::canTarget(source,target,distance,false,padding))result.flags=planner::InAcquisitionRange;
+ }
  return result;
 }
 static bool combatCandidate(const planner::Actor&a){return (a.flags&planner::Enemy)&&!(a.flags&(planner::Protected|planner::Cloaked|planner::Limbo|planner::OffMap|planner::Transported));}

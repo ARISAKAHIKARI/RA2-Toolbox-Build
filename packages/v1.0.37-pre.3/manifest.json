@@ -1,0 +1,32 @@
+{
+  "version": "1.0.37-pre.3",
+  "file_version": "1.0.37.2",
+  "base_commit": "7404f12892dc9feeb2e91e3339f8aef794af83b7",
+  "assets": [
+    {
+      "name": "RA2-Toolbox-v1.0.37-pre.3-Update.zip",
+      "bytes": 1337027,
+      "sha256": "bab3abc5b159da946af2337b66ee3284c681836d958e937768eee7588bc39fe6",
+      "files": {
+        "RA2Toolbox.exe": {
+          "bytes": 2620416,
+          "sha256": "fdfc789c37bd008bd291248f49432d771afd171671e89adb53de32cd0643eb95"
+        },
+        "GameRuntime.dll": {
+          "bytes": 4175872,
+          "sha256": "11a316569d5d67c7b60bbd7355d9dd2b0f5839d94c86d8dd9ba55f701e8891ad"
+        },
+        "README-Windows.txt": {
+          "bytes": 795,
+          "sha256": "478d176f1fa1cbf7e7e38ae60bb260e59565c74c8880620fcef064db10d6e04b"
+        },
+        "RELEASE_NOTES.md": {
+          "bytes": 2885,
+          "sha256": "2c57b1f2e0c32b4b0c149bf004a9a8aaa03f30e7ba0260a60edd37f35440f1ff"
+        }
+      }
+    }
+  ],
+  "validation": "source/verification/review-137-pre3/summary.json",
+  "installation": "Update for existing 1.0.36 or 1.0.37 prerelease installation. Preserve configuration and assets. Not a complete first-install package."
+}

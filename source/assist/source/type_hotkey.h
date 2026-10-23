@@ -1,7 +1,7 @@
 #pragma once
 #include <stdint.h>
 namespace typekeys {
-inline uint16_t canonical(uint16_t key){return key&0x7ff;}
+inline uint16_t canonical(uint16_t key){return key&0x87ff;}
 template<class Bindings> bool firstForKey(const Bindings& bindings,unsigned at){
  const auto key=canonical(bindings[at].key);if(!(key&255))return false;
  for(unsigned i=0;i<at;++i)if(canonical(bindings[i].key)==key)return false;

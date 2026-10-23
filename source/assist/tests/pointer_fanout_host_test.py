@@ -39,7 +39,8 @@ static void setPointerContext(int,uint32_t,bool){}static uint32_t pointerCancelS
 static bool takePointer(int,PointerPress&e,DWORD&dropped){dropped=0;if(!queued)return false;e=event;queued=false;return true;}
 }
 namespace buildreserve{static bool nativePointer(const gameinput::PointerPress&){return false;}}
-namespace airway{static bool aircraft=false;static bool native(){return airpathpolicy::native(snap.session,extra.nativeAirWaypoints);}static bool active(){return airpathpolicy::events(snap.session,extra.airWaypoints,extra.nativeAirWaypoints);}static void capture(const pointerinput::Intent&,const pointerinput::Mailbox&){} static bool ended=false;static bool selectedAircraft(){return aircraft;}static void manual(const gameinput::PointerPress&){} }
+static bool formationInputOwns(){return false;}static uint32_t infantryEntryResultMatch=0;static std::wstring infantryEntryResult;
+namespace airway{template<class K>static bool held(const K&k){return k['Z']!=0;}static bool aircraft=false;static bool native(){return airpathpolicy::native(snap.session,extra.nativeAirWaypoints);}static bool active(){return airpathpolicy::events(snap.session,extra.airWaypoints,extra.nativeAirWaypoints);}static void capture(const pointerinput::Intent&,const pointerinput::Mailbox&){} static bool ended=false;static bool selectedAircraft(){return aircraft;}static void manual(const gameinput::PointerPress&){} }
 '''+body+r'''
 static void capture(){gameinput::event={};auto&e=gameinput::event;e.tick=clockNow;e.serial=cancelSerial;e.match=8;e.operation=1;e.point={100,100};e.width=800;e.height=600;gameinput::queued=true;}
 static void ack(int accepted=1){shared->pointer.ack=shared->pointer.request;shared->pointer.result=1;shared->pointer.accepted=accepted;shared->pointer.rejected=0;}

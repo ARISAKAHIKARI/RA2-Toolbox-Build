@@ -6,7 +6,7 @@ static int selectedTypeIndex(){
  return index>=0&&index<int(savedTypes.types.size())&&savedTypes.types[index].kind!=7?index:-1;
 }
 static WORD typeBinding(const char* id){for(auto&b:typeBindings)if(b.id==id)return b.key;return 0;}
-static WORD comparableKey(WORD k){return MAKEWORD(LOBYTE(k),HIBYTE(k)&(HOTKEYF_CONTROL|HOTKEYF_ALT|HOTKEYF_SHIFT));}
+static WORD comparableKey(WORD k){return MAKEWORD(LOBYTE(k),HIBYTE(k)&(HOTKEYF_CONTROL|HOTKEYF_ALT|HOTKEYF_SHIFT|0x80));}
 static bool keyConflict(WORD key,const std::string& ignore,bool toggle){
  if(extra.allHotkeys||!LOBYTE(key))return false;key=comparableKey(key);
  for(auto k:hotkeys)if(comparableKey(k)==key)return true;

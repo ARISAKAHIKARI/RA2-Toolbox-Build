@@ -3,6 +3,7 @@
 #include <mutex>
 #include <mmsystem.h>
 #include "precise_clock.h"
+#include "key_gesture.h"
 #include "game_entry_api.h"
 #include "runtime_protocol.h"
 #include "message_query.h"
@@ -29,7 +30,7 @@ inline bool heldBinding(uint32_t binding){
 }
 struct PointerPress {DWORD tick=0,serial=0;uint32_t match=0;int operation=0;POINT point{};int width=0,height=0;uint8_t keys[256]{};};
 struct PointerQueue {PointerPress items[16]{};unsigned head=0,count=0;DWORD dropped=0,cancelSerial=0;bool enabled=false,focused=false,rightArmed=false,leftArmed=false;uint32_t match=0;DWORD contextAt=0;uint32_t down=0;uint8_t rightKeys[256]{},leftKeys[256]{};};
-struct Target {PointerQueue pointer{};Health lastDiagnostic{};DWORD pid=0,thread=0;HWND window=nullptr;HHOOK message=nullptr,post=nullptr;HANDLE mapping=nullptr;runtime::Control*control=nullptr;uint64_t cursorAt=0,tacticalAt=0;DWORD lastPost=0,lastPostError=0;bool fastTactical=false;};
+struct Target {keygesture::Tracker keys;PointerQueue pointer{};Health lastDiagnostic{};DWORD pid=0,thread=0;HWND window=nullptr;HHOOK message=nullptr,post=nullptr;HANDLE mapping=nullptr;runtime::Control*control=nullptr;uint64_t cursorAt=0,tacticalAt=0;DWORD lastPost=0,lastPostError=0;bool fastTactical=false;};
 struct Lease {Subscription id=0;gameentry::Client client{};unsigned target=0;};
 struct Host {std::recursive_mutex mutex;Target targets[8]{};Lease leases[32]{};Subscription next=0;HMODULE module=nullptr;HANDLE timer=nullptr;volatile LONG pulseBusy=0;bool preciseTimer=false;const wchar_t* installStage=L"not-started";};
 inline Host& host(){static Host*value=new Host;return *value;}
@@ -110,22 +111,25 @@ inline void setPointerContext(Subscription id,uint32_t match,bool enabled){
 }
 // Polling belongs to the EXE manager. No low-level mouse/keyboard hooks and no
 // game input is swallowed or rewritten. Right UP follows the native click.
+inline void keySnapshot(Subscription id,uint8_t*out,uint32_t*serial=nullptr){auto&h=host();std::lock_guard<std::recursive_mutex>lock(h.mutex);memset(out,0,256);for(auto&l:h.leases)if(id&&l.id==id){auto&t=h.targets[l.target];memcpy(out,t.keys.held,256);if(serial)memcpy(serial,t.keys.serial,256*sizeof(uint32_t));return;}}
 inline void pollPointer(Target&t,DWORD now){
  auto&q=t.pointer;DWORD fg=0;GetWindowThreadProcessId(GetForegroundWindow(),&fg);
  const int keys[]={VK_MBUTTON,VK_XBUTTON1,VK_XBUTTON2,VK_RBUTTON,'S','D','X',VK_LBUTTON};
  uint32_t down=0;for(unsigned i=0;i<8;++i)if(GetAsyncKeyState(keys[i])&0x8000)down|=1u<<i;
  if(q.enabled&&DWORD(now-q.contextAt)>150){q.enabled=false;disarmPointer(q);}
  if(!q.enabled||fg!=t.pid||!t.window||IsIconic(t.window)){
-  if(q.focused||q.rightArmed||q.count)disarmPointer(q);q.down=down;return;
+  if(q.focused||q.rightArmed||q.count)disarmPointer(q);t.keys.clear();q.down=down;return;
  }
- if(!q.focused){q.focused=true;q.rightArmed=false;q.down=down;return;}
+ uint8_t physical[256]{};for(unsigned i=0;i<256;++i)physical[i]=(GetAsyncKeyState(i)&0x8000)!=0;
+ if(!q.focused){q.focused=true;q.rightArmed=false;q.down=down;t.keys.clear();memcpy(t.keys.held,physical,256);return;}
+ t.keys.sample(physical,now);t.keys.decorate(physical);
  POINT hit{};if(GetCursorPos(&hit)){DWORD hitPID=0;GetWindowThreadProcessId(WindowFromPoint(hit),&hitPID);if(hitPID!=t.pid){if(q.rightArmed||q.leftArmed||q.count)disarmPointer(q);q.down=down;return;}}
  uint32_t pressed=down&~q.down,released=q.down&~down;q.down=down;
  bool follow=(released&8)&&q.rightArmed,left=(released&128)&&q.leftArmed;
  if(released&128)q.leftArmed=false;
- if(pressed&128){q.leftArmed=true;for(unsigned i=0;i<256;++i)q.leftKeys[i]=(GetAsyncKeyState(i)&0x8000)!=0;}
+ if(pressed&128){q.leftArmed=true;for(unsigned i=0;i<256;++i)q.leftKeys[i]=physical[i];}
  if(released&8)q.rightArmed=false;
- if(pressed&8){q.rightArmed=false;for(unsigned i=0;i<256;++i)q.rightKeys[i]=(GetAsyncKeyState(i)&0x8000)!=0;}
+ if(pressed&8){q.rightArmed=false;for(unsigned i=0;i<256;++i)q.rightKeys[i]=physical[i];}
  int operation=(pressed&~135u)?5:left?6:(pressed&128)?7:follow?4:(pressed&1)?1:(pressed&2)?2:(pressed&4)?3:0;
  if(!operation)return;if(operation!=4&&operation!=6)++q.cancelSerial;
  PointerPress e{};e.tick=now;e.serial=q.cancelSerial;e.match=q.match;e.operation=operation;RECT rect{};
@@ -133,7 +137,7 @@ inline void pollPointer(Target&t,DWORD now){
  e.width=rect.right;e.height=rect.bottom;
  if(e.width<=0||e.height<=0||e.point.x<0||e.point.y<0||e.point.x>=e.width||e.point.y>=e.height)return;
  if(pressed&8)q.rightArmed=true;
- for(unsigned i=0;i<256;++i)e.keys[i]=operation==4?q.rightKeys[i]:operation==6?q.leftKeys[i]:(GetAsyncKeyState(i)&0x8000)!=0;
+ for(unsigned i=0;i<256;++i)e.keys[i]=operation==4?q.rightKeys[i]:operation==6?q.leftKeys[i]:physical[i];
  // Modifier authorization belongs to the configured host binding resolver.
  if(q.count==16){++q.dropped;return;}q.items[(q.head+q.count++)%16]=e;
 }

@@ -1,0 +1,270 @@
+{
+  "scope": "Actual Runtime, native weapon selection/GetWeapon/range and event constructors. Controlled object getters, map and input; not live game/netplay.",
+  "dll_sha256": "11a316569d5d67c7b60bbd7355d9dd2b0f5839d94c86d8dd9ba55f701e8891ad",
+  "results": [
+    {
+      "case": "0_True_ifv_7",
+      "status": "PASS"
+    },
+    {
+      "case": "0_True_ifv_elite",
+      "status": "PASS"
+    },
+    {
+      "case": "0_True_flak_air",
+      "status": "PASS"
+    },
+    {
+      "case": "0_True_gatt_air",
+      "status": "PASS"
+    },
+    {
+      "case": "0_True_air_bonus",
+      "status": "PASS"
+    },
+    {
+      "case": "0_True_air_high",
+      "status": "PASS"
+    },
+    {
+      "case": "0_True_negative_bonus",
+      "status": "PASS"
+    },
+    {
+      "case": "0_True_minimum",
+      "status": "PASS"
+    },
+    {
+      "case": "0_True_close_priority",
+      "status": "PASS"
+    },
+    {
+      "case": "0_True_ifv_out_0",
+      "status": "PASS"
+    },
+    {
+      "case": "0_True_ifv_out_1",
+      "status": "PASS"
+    },
+    {
+      "case": "0_True_ifv_out_4",
+      "status": "PASS"
+    },
+    {
+      "case": "0_True_ifv_out_7",
+      "status": "PASS"
+    },
+    {
+      "case": "0_True_ifv_out_14",
+      "status": "PASS"
+    },
+    {
+      "case": "0_False_ifv_7",
+      "status": "PASS"
+    },
+    {
+      "case": "0_False_ifv_elite",
+      "status": "PASS"
+    },
+    {
+      "case": "0_False_flak_air",
+      "status": "PASS"
+    },
+    {
+      "case": "0_False_gatt_air",
+      "status": "PASS"
+    },
+    {
+      "case": "0_False_air_bonus",
+      "status": "PASS"
+    },
+    {
+      "case": "0_False_air_high",
+      "status": "PASS"
+    },
+    {
+      "case": "0_False_negative_bonus",
+      "status": "PASS"
+    },
+    {
+      "case": "0_False_minimum",
+      "status": "PASS"
+    },
+    {
+      "case": "0_False_close_priority",
+      "status": "PASS"
+    },
+    {
+      "case": "0_False_ifv_out_0",
+      "status": "PASS"
+    },
+    {
+      "case": "0_False_ifv_out_1",
+      "status": "PASS"
+    },
+    {
+      "case": "0_False_ifv_out_4",
+      "status": "PASS"
+    },
+    {
+      "case": "0_False_ifv_out_7",
+      "status": "PASS"
+    },
+    {
+      "case": "0_False_ifv_out_14",
+      "status": "PASS"
+    },
+    {
+      "case": "0_external_weapon_changed",
+      "status": "PASS"
+    },
+    {
+      "case": "0_external_stale",
+      "status": "PASS"
+    },
+    {
+      "case": "0_external_target_moved",
+      "status": "PASS"
+    },
+    {
+      "case": "0_external_disabled",
+      "status": "PASS"
+    },
+    {
+      "case": "0_external_target_enters",
+      "status": "PASS"
+    },
+    {
+      "case": "3_True_ifv_7",
+      "status": "PASS"
+    },
+    {
+      "case": "3_True_ifv_elite",
+      "status": "PASS"
+    },
+    {
+      "case": "3_True_flak_air",
+      "status": "PASS"
+    },
+    {
+      "case": "3_True_gatt_air",
+      "status": "PASS"
+    },
+    {
+      "case": "3_True_air_bonus",
+      "status": "PASS"
+    },
+    {
+      "case": "3_True_air_high",
+      "status": "PASS"
+    },
+    {
+      "case": "3_True_negative_bonus",
+      "status": "PASS"
+    },
+    {
+      "case": "3_True_minimum",
+      "status": "PASS"
+    },
+    {
+      "case": "3_True_close_priority",
+      "status": "PASS"
+    },
+    {
+      "case": "3_True_ifv_out_0",
+      "status": "PASS"
+    },
+    {
+      "case": "3_True_ifv_out_1",
+      "status": "PASS"
+    },
+    {
+      "case": "3_True_ifv_out_4",
+      "status": "PASS"
+    },
+    {
+      "case": "3_True_ifv_out_7",
+      "status": "PASS"
+    },
+    {
+      "case": "3_True_ifv_out_14",
+      "status": "PASS"
+    },
+    {
+      "case": "3_False_ifv_7",
+      "status": "PASS"
+    },
+    {
+      "case": "3_False_ifv_elite",
+      "status": "PASS"
+    },
+    {
+      "case": "3_False_flak_air",
+      "status": "PASS"
+    },
+    {
+      "case": "3_False_gatt_air",
+      "status": "PASS"
+    },
+    {
+      "case": "3_False_air_bonus",
+      "status": "PASS"
+    },
+    {
+      "case": "3_False_air_high",
+      "status": "PASS"
+    },
+    {
+      "case": "3_False_negative_bonus",
+      "status": "PASS"
+    },
+    {
+      "case": "3_False_minimum",
+      "status": "PASS"
+    },
+    {
+      "case": "3_False_close_priority",
+      "status": "PASS"
+    },
+    {
+      "case": "3_False_ifv_out_0",
+      "status": "PASS"
+    },
+    {
+      "case": "3_False_ifv_out_1",
+      "status": "PASS"
+    },
+    {
+      "case": "3_False_ifv_out_4",
+      "status": "PASS"
+    },
+    {
+      "case": "3_False_ifv_out_7",
+      "status": "PASS"
+    },
+    {
+      "case": "3_False_ifv_out_14",
+      "status": "PASS"
+    },
+    {
+      "case": "3_external_weapon_changed",
+      "status": "PASS"
+    },
+    {
+      "case": "3_external_stale",
+      "status": "PASS"
+    },
+    {
+      "case": "3_external_target_moved",
+      "status": "PASS"
+    },
+    {
+      "case": "3_external_disabled",
+      "status": "PASS"
+    },
+    {
+      "case": "3_external_target_enters",
+      "status": "PASS"
+    }
+  ]
+}

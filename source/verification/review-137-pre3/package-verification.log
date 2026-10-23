@@ -1,0 +1,2 @@
+PASS update ZIP: exact four entries, CRC, sizes and SHA-256 match manifest.
+PASS source package: tracked text files only, paths/content verified, no game executables or raw dumps.

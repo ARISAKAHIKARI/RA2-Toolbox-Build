@@ -33,6 +33,18 @@ int main(){
  w.frame=205;w.actors[1].flags=Enemy;orders=p.step(w,MagnetronInput,200,300,90);assert(orders.size()==1&&orders[0].target==21);
  a.manualVersion=1;++w.frame;p.step(w,MagnetronInput,200,300,90);assert(p.hasJobs());
  w.intentCount=0;++w.frame;assert(p.step(w,MagnetronInput,200,300,90).empty()&&!p.hasJobs());
+ // Native Attack is allowed beyond firing range and inside minimum range.
+ for(int offset:{128,2304}){
+  p.reset();w.frame=300;w.count=2;w.intentCount=1;a.manualVersion=0;a.target=0;a.mission=5;a.x=a.y=5000;a.rearmStart=-1;a.rearmDuration=0;
+  auto&e=w.actors[1];e.flags=Enemy;e.x=a.x+offset;e.y=a.y;
+  orders=p.step(w,MagnetronInput,200,300,90);assert(orders.size()==1&&orders[0].mission==1&&orders[0].target==e.id&&!orders[0].destination);p.accepted(orders[0],w.frame);
+  a.target=e.id;a.mission=1;
+  // Continuous motion past the old 45-frame and configured 90-frame deadlines
+  // must not generate replacement orders or count an unobserved shot.
+  for(int n=0;n<120;++n){++w.frame;a.x+=20;e.x+=20;assert(p.step(w,MagnetronInput,200,300,90).empty());}
+  assert(!p.magnetUnverified&&!p.magnetShots);
+ }
+ p.reset();++w.frame;w.actors[1].x=a.x+3000;orders=p.step(w,MagnetronInput,200,300,90);assert(orders.empty());
  // Basic armor / AA / AG / minimum range checks use the selected elite profile.
  Actor src{},t{};src.weapons[0]={2048,256,GroundWeapon,1u<<3};t.armor=3;t.kind=2;
  assert(canTarget(src,t,512*512,false));assert(!canTarget(src,t,128*128,false));

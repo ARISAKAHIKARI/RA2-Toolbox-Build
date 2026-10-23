@@ -15,12 +15,26 @@ for mode in (0,3):
   m.vector(0xa8ec78,[m.unit,m.enemyUnit,m.building]+([] if terrain else [q]));s=state(m);s.magnetronDrop=1;save(m,s);s=tick(m)
   assert count(m)==int(case in ('tree','ore_pillar','tank')),(mode,case,count(m))
   assert not m.codeWrites;rows.append({'case':f'drop_{mode}_{case}','status':'PASS'})
+ for case in ('inside','maximum','minimum','too_far','airborne'):
+  m=setup(mode,True);m.w(m.unit+0x2ac,0);m.w(m.enemyUnit+0x2b0,0);m.w(m.unit+0xac,5);m.w(m.unit+0x5a4,0);m.w(m.enemyUnit+0xa4,0)
+  m.w(m.weapon+0xb8,512);distance=4352 if case=='maximum' else 128 if case=='minimum' else 5000 if case=='too_far' else 1024
+  m.w(m.enemyUnit+0x9c,m.r(m.unit+0x9c)+distance)
+  if case=='airborne':m.w(m.enemyUnit+0x94,3);m.b(m.enemyUnit+0x134,1)
+  s=state(m);s.flags=1024|262144;s.magnetronGlobal=1;save(m,s);s=tick(m)
+  if case in ('inside','maximum','minimum'):
+   assert count(m)==1,(mode,case,count(m),s.world.count,s.world.intentCount)
+   event=packets(m);assert event[12]==1 and event[14:19]==struct.pack('<IB',m.r(m.enemyUnit+0x10),0x34) and event[19:24]==bytes(5)
+  else:
+   # A newly enrolled global unit may enter AreaGuard, but cannot attack this candidate.
+   assert count(m)<=1 and (not count(m) or packets(m)[12]==6),(case,packets(m)[:30].hex())
+  assert not m.codeWrites;rows.append({'case':f'acquisition_{mode}_{case}','status':'PASS'})
  for case in ('idle','moving','attack','disabled'):
   m=setup(mode,True);m.w(m.unit+0x2ac,0);m.w(m.enemyUnit+0x2b0,0);m.w(m.unit+0xac,2 if case=='moving' else 1 if case=='attack' else 5)
   s=state(m);s.flags=1024|262144;s.magnetronGlobal=case!='disabled';save(m,s);s=tick(m)
   assert s.data.advancedUnits==int(case=='idle'),(case,s.data.advancedUnits,hex(m.r(m.unit+0x5a4)),m.r(m.unit+0xb4),hex(s.flags),s.magnetronGlobal,s.world.intentCount,hex(m.r(m.t+0x898)),m.r(m.unit+0x6c),m.r(m.unit+0x1c8))
   if case=='idle':
    assert any(getattr(i,"global") for i in s.world.intents[:s.world.intentCount])
+   m.w(m.unit+0xac,1);m.w(m.unit+0x5a4,m.crateCell);s=tick(m);assert s.data.advancedUnits==1,'own native pursuit must not cancel global task'
    s.magnetronGlobal=0;save(m,s);s=tick(m);assert s.data.advancedUnits==0
   rows.append({'case':f'global_{mode}_{case}','status':'PASS'})
 print('PASS',len(rows),'new magnetron terrain/air rejection and global enrolment cases')

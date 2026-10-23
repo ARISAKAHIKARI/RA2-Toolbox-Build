@@ -174,14 +174,18 @@ public:
       ++magnetShots;task.pendingShot=false;task.skipTarget=task.target;
       task.skipUntil=magnetcycle::avoidUntil(world.frame,a->rearmDuration);
       if(task.target)magneticReservations_.insert(task.target);
-     }else if(t&&(t->flags&Enemy)&&magneticGroundTarget(*t)&&
-              !magnetcycle::shotStalled(world.frame,task.sent)&&
-              (a->target==task.target||world.frame-task.sent<12)){
-      magneticReservations_.insert(task.target);
-     }else if(magnetcycle::shotStalled(world.frame,task.sent)||a->target!=task.target){
+     }else {
+      int64_t dx=int64_t(a->x)-task.progressX,dy=int64_t(a->y)-task.progressY;
+      if(dx*dx+dy*dy>=16*16){task.attackProgress=world.frame;task.progressX=a->x;task.progressY=a->y;}
+      int64_t tx=t?int64_t(a->x)-t->x:0,ty=t?int64_t(a->y)-t->y:0;
+      bool reachable=t&&(t->flags&Enemy)&&magneticAcquisition(*a,*t,tx*tx+ty*ty,rangePadding);
+      if(reachable&&!magnetcycle::shotStalled(world.frame,task.attackProgress,std::clamp(pathTimeout,45,900))&&
+         (a->target==task.target||world.frame-task.sent<12))magneticReservations_.insert(task.target);
+      else {
       // An unobserved shot may mean the event was dropped or the unit acquired
       // another target.  Retry elsewhere, but do not pretend the shot fired.
       ++magnetUnverified;task.skipTarget=task.target;task.skipUntil=world.frame+30;task.pendingShot=false;
+      }
      }
     }
    }
@@ -197,7 +201,7 @@ public:
     task.urgent=false;task.scanned=true;task.scannedAt=world.tick;
     const Actor* current=task.attacking?actor(task.target):nullptr;if(current&&!positionValid(*current))current=nullptr;
     int64_t currentDistance=0;if(current){int64_t dx=int64_t(a->x)-current->x,dy=int64_t(a->y)-current->y;currentDistance=dx*dx+dy*dy;}
-    bool currentValid=current&&(current->flags&Enemy)&&canTarget(*a,*current,currentDistance,mag,mag?0:rangePadding)&&!(current->id==task.skipTarget&&world.frame<task.skipUntil);
+    bool currentValid=current&&(current->flags&Enemy)&&magneticAcquisition(*a,*current,currentDistance,rangePadding)&&!(current->id==task.skipTarget&&world.frame<task.skipUntil);
     // Don't continuously reset a shot waiting for its native event/animation.
     // A reload timer is ammo replenishment, not the weapon's rearm timer.
     // Once a shot/lift is observed, the next native Attack must be allowed to
@@ -205,10 +209,11 @@ public:
     // Native execution still owns ROF; this never edits a weapon or timer.
     if(task.pendingShot){task.progress.combat(a->x,a->y,world.frame);continue;}
     if(!enemiesBuilt){for(int j=0;j<world.count;++j){const auto&e=world.actors[j];if(positionValid(e)&&(e.flags&Enemy)&&!(e.flags&(Cloaked|Transported|Limbo|OffMap|Protected)))enemies_.add(j,e);}enemiesBuilt=true;}
-    const Actor* best=nullptr;double score=-1,bestValue=-1;int64_t nearestDistance=INT64_MAX;bool bestSkipped=true,rangeTarget=false;
-    enemies_.nearby(a->x,a->y,a->range+(mag?0:rangePadding),[&](int j){const auto&enemy=world.actors[j];++targetChecks;
+    const Actor* best=nullptr;double score=-1,bestValue=-1;int64_t nearestDistance=INT64_MAX;bool bestSkipped=true,rangeTarget=false,bestInRange=false;
+    enemies_.nearby(a->x,a->y,a->range+rangePadding,[&](int j){const auto&enemy=world.actors[j];++targetChecks;
      int64_t dx=int64_t(a->x)-enemy.x,dy=int64_t(a->y)-enemy.y,distance=dx*dx+dy*dy;
-     if(!canTarget(*a,enemy,distance,mag,mag?0:rangePadding))return;
+     if(!magneticAcquisition(*a,enemy,distance,rangePadding))return;
+     const bool inRange=canTarget(*a,enemy,distance,true);
      rangeTarget=true;if(magneticReservations_.count(enemy.id))return;
      const bool skipped=enemy.id==task.skipTarget&&world.frame<task.skipUntil;
      double value=nativeorders::value(enemy.cost,enemy.veterancy,veteran,elite);
@@ -217,7 +222,7 @@ public:
      const bool closer=distance<nearestDistance||(distance==nearestDistance&&(!best||enemy.id<best->id));
      const bool tie=(keep&&!kept)||(keep==kept&&closer);
      const bool higher=rank>score||(rank==score&&(value>bestValue||(value==bestValue&&tie)));
-     if(!best||(bestSkipped&&!skipped)||(bestSkipped==skipped&&higher)){best=&enemy;bestSkipped=skipped;score=rank;bestValue=value;nearestDistance=distance;}
+     if(!best||(!bestInRange&&inRange)||(bestInRange==inRange&&((bestSkipped&&!skipped)||(bestSkipped==skipped&&higher)))){bestInRange=inRange;best=&enemy;bestSkipped=skipped;score=rank;bestValue=value;nearestDistance=distance;}
     });
     if(best){task.progress.combat(a->x,a->y,world.frame);
      bool attack=!task.attacking||task.target!=best->id||((a->target!=best->id||a->mission!=1)&&world.frame-task.sent>=12);

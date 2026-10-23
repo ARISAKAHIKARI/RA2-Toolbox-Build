@@ -4,6 +4,13 @@ static uint32_t blockedButtons;
 static pointerinput::SuppressedClick blockedOrigins[2];
 extern "C" int AssistFilterMessage(void* raw){
  auto*msg=static_cast<MSG*>(raw);if(!msg)return 0;
+ static uint32_t keyEpoch=0;
+ bool keyContext=sh&&!sh->stop&&!fault&&sh->foreground&&!get<bool>(0xA8BC60+25)&&DWORD(sampleClock(sh)-sh->heartbeat)<=150;
+ if(!keyContext||keyEpoch!=match){runtimeKeys.clear();keyEpoch=match;}
+ if(keyContext&&(msg->message==WM_KEYDOWN||msg->message==WM_KEYUP||msg->message==WM_SYSKEYDOWN||msg->message==WM_SYSKEYUP)){
+  uint8_t physical[256]{};for(unsigned i=0;i<256;++i)physical[i]=(GetKeyState(i)&0x8000)!=0;unsigned vk=unsigned(msg->wParam)&255;
+  bool down=msg->message==WM_KEYDOWN||msg->message==WM_SYSKEYDOWN;runtimeKeys.edge(vk,down,down&&(msg->lParam&(1u<<30)),sampleClock(sh),keygesture::chord(vk,physical));
+ }
  if(formationMessage(msg))return 1;
  if(reservationMessage(msg))return 1;
  bool left=msg->message==WM_LBUTTONDOWN||msg->message==WM_LBUTTONUP;
@@ -21,7 +28,7 @@ extern "C" int AssistFilterMessage(void* raw){
  DWORD foreground=0;GetWindowThreadProcessId(GetForegroundWindow(),&foreground);if(foreground!=GetCurrentProcessId())return 0;
  auto seq=sh->pointerPolicySeq;if(seq&1)return 0;pointerinput::NativePolicy policy;MemoryBarrier();memcpy(&policy,&sh->pointerPolicy,sizeof policy);MemoryBarrier();
  if(seq!=sh->pointerPolicySeq||!policy.enabled||!policy.overrideNative||policy.match!=match)return 0;
- uint8_t keys[256]{};for(unsigned n=0;n<256;++n)keys[n]=(GetKeyState(n)&0x8000)!=0;
+ uint8_t keys[256]{};for(unsigned n=0;n<256;++n)keys[n]=(GetKeyState(n)&0x8000)!=0;runtimeKeys.decorate(keys);
  auto route=pointerinput::resolveMouse(keys,physical,policy.buttons,policy.bindings,0);
  if((route.operation!=pointerinput::Enhanced&&route.operation!=pointerinput::AttackMove)||(route.bindings&pointerinput::Shift))return 0;
  // Object clicks, dragging a build placement, sidebar/minimap, unsupported

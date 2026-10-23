@@ -145,7 +145,9 @@ toggle(897,L"敌方载员气泡",extra.passengerBubbles);next();toggle(898,L"危
 toggle(892,L"蜘蛛寄生标志",extra.parasiteMarker);next();
 toggle(893,L"箱子强化标志",extra.crateBuffMarkers);next();
 #endif
-toggle(9060,L"左中局部观察窗（11×11 格）",extra.watchEnabled);next();
+const wchar_t* lineNames[]={L"队列提醒：建筑",L"队列提醒：防御",L"队列提醒：步兵",L"队列提醒：载具",L"队列提醒：舰船",L"队列提醒：飞机"};
+for(int i=0;i<6;++i){toggle(9070+i,lineNames[i],(extra.productionReminderMask&(1u<<i))!=0);next();}
+toggle(9060,L"左中局部观察窗",extra.watchEnabled);next();
 toggle(9061,L"自动跟随危险载员的敌方载具",extra.watchDanger);next();
 label(L"固定 / 解除观察（悬停或选中）",20,306);key(9062,extra.watchKey);next();
 toggle(798,L"空闲飞机指示器",extra.idleAircraft);next();

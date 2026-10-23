@@ -1,0 +1,8 @@
+{'case': 'direct_unit_queue', 'status': 'PASS', 'calls': [['QueueMission', 553960992, 2, 0]], 'outlist_count': 0, 'dolist_count': 0}
+{'case': 'move_header_local', 'status': 'PASS', 'calls': [['QueueMission', 553960992, 2, 0], ['SetTarget', 553960992, 0], ['SetDestination', 553960992, 553952800, 1]], 'outlist_count': 0, 'dolist_count': 0}
+{'case': 'move_header_owner', 'status': 'PASS', 'calls': [['QueueMission', 553960992, 2, 0], ['SetTarget', 553960992, 0], ['SetDestination', 553960992, 553952800, 1]], 'outlist_count': 0, 'dolist_count': 0}
+{'case': 'attack_header_local', 'status': 'PASS', 'calls': [['QueueMission', 553960992, 1, 0], ['SetTarget', 553960992, 553936416], ['SetDestination', 553960992, 0, 1]], 'outlist_count': 0, 'dolist_count': 0}
+{'case': 'attack_header_owner', 'status': 'PASS', 'calls': [['QueueMission', 553960992, 1, 0], ['SetTarget', 553960992, 553936416], ['SetDestination', 553960992, 0, 1]], 'outlist_count': 0, 'dolist_count': 0}
+{'case': 'dead_actor', 'status': 'PASS', 'calls': [], 'outlist_count': 0, 'dolist_count': 0}
+{'case': 'sell_header_local', 'status': 'PASS', 'calls': [], 'outlist_count': 0, 'dolist_count': 0}
+{'case': 'sell_header_owner', 'status': 'PASS', 'calls': [['Sell', 553952800, 4294967295]], 'outlist_count': 0, 'dolist_count': 0}

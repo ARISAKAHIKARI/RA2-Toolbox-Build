@@ -184,8 +184,8 @@ static bool externalOrderValid(const planner::Order&o,uint32_t house){
   victim.kind=tk;rawCombatInfo(unit,st,sk,source,true);rawCombatInfo(target,tt,tk,victim,false);
   int64_t dx=int64_t(get<int>(unit+0x9C))-get<int>(target+0x9C),dy=int64_t(get<int>(unit+0xA0))-get<int>(target+0xA0);
   if(dx< -1048576||dx>1048576||dy< -1048576||dy>1048576)return false;
-  if(combat&&!mag){auto probe=probeCombatPair(unit,target,source,victim,0);if(!(probe.flags&planner::InWeaponRange))return false;}
-  else if(!planner::canTarget(source,victim,dx*dx+dy*dy,mag,0))return false;
+  if(combat&&!mag){auto probe=probeCombatPair(unit,target,source,victim,0);if(!(probe.flags&(planner::InWeaponRange|planner::NeedsReposition)))return false;}
+  else if(mag?!planner::magneticAcquisition(source,victim,dx*dx+dy*dy,int(std::min(uint32_t(sh->advancedRangeCells),30u))*256):!planner::canTarget(source,victim,dx*dx+dy*dy,false,0))return false;
  }
  if(o.pursuit){
   if(o.purpose!=planner::CombatOrder||o.mission!=2||o.target||o.destinationTag!=11)return false;

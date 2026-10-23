@@ -87,11 +87,11 @@ static bool formationMessage(MSG*msg){
   uint32_t mods=((GetKeyState(VK_SHIFT)&0x8000)?1:0)|((GetKeyState(VK_CONTROL)&0x8000)?2:0)|((GetKeyState(VK_MENU)&0x8000)?4:0);
   uint32_t chord=key|(mods<<8);if(key==VK_MENU)chord&=~(4u<<8);if(key==VK_SHIFT)chord&=~(1u<<8);if(key==VK_CONTROL)chord&=~(2u<<8);
   if(key==VK_MENU&&!repeated){uint32_t now=sampleClock(sh);if(formationAltAt&&DWORD(now-formationAltAt)<=350){formationModal=true;formationView.active=1;formationSelect();formationAtCursor(msg);formationAltAt=0;formationSuppressed[key]=true;formationPublish();return swallow();}else formationAltAt=now;}
-  if(formationPolicy.hold&&chord==formationPolicy.hold){if(formationHoldConsumed)return swallow();formationHolding=true;formationView.active=1;formationSuppressed[key]=true;if(!repeated&&!formationButton){formationSelect();formationAtCursor(msg);}formationPublish();return swallow();}
+  if(formationPolicy.hold&&chord==(formationPolicy.hold&0x7ff)&&runtimeKeys.qualifies(uint16_t(formationPolicy.hold))){if(formationHoldConsumed)return swallow();formationHolding=true;formationView.active=1;formationSuppressed[key]=true;if(!repeated&&!formationButton){formationSelect();formationAtCursor(msg);}formationPublish();return swallow();}
   if(formationView.active&&key==VK_ESCAPE){formationCancel();formationSuppressed[key]=true;return swallow();}
   // Ignore the mode's hold modifier while interpreting a shape binding.
   if(formationView.active){uint32_t shapeChord=chord;uint32_t hold=formationPolicy.hold&255;if(formationHolding){if(hold==VK_MENU)shapeChord&=~(4u<<8);if(hold==VK_CONTROL)shapeChord&=~(2u<<8);if(hold==VK_SHIFT)shapeChord&=~(1u<<8);}
-   bool matches=false;for(auto k:formationPolicy.keys)matches|=k&&k==shapeChord;if(matches){if(!repeated)formationSwitch(shapeChord);formationSuppressed[key]=true;formationPublish();return swallow();}
+   bool matches=false;for(auto k:formationPolicy.keys)matches|=k&&(k&0x7ff)==shapeChord;if(matches){if(!repeated){bool single=false,twice=false;for(auto k:formationPolicy.keys)if((k&0x7ff)==shapeChord){single|=!(k&0x8000);twice|=(k&0x8000)!=0;}if(twice&&(runtimeKeys.held[key]&2))formationSwitch(shapeChord|0x8000);else if(single&&!twice)formationSwitch(shapeChord);}formationSuppressed[key]=true;formationPublish();return swallow();}
   }
  }
  if(!formationView.active)return false;
