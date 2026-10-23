@@ -184,7 +184,21 @@ static void pointerTick(){
   }
   if(pointerTarget){
    if(submitted>=limit||outgoingRoom()<=0){++remaining;continue;}
-   uint32_t before=snap.queuedEvents;int result=cooperativeInput(p,pointerTarget,i.bindings);submitted+=int(snap.queuedEvents-before);if(result<0){++remaining;continue;}pointerDone[n]=1;if(result>0){++b.accepted;if(!pointerFeedback)pointerFeedback=p;}continue;
+   uint32_t before=snap.queuedEvents;int result=cooperativeInput(p,pointerTarget,i.bindings);bool nativeObserved=false;
+   // Object clicks are not limited to transport/aircraft cooperative actions.
+   // Native LEFT object clicks are retained by the message filter; observe
+   // their Attack instead of duplicating it. Other explicit bindings submit
+   // the same native object-target Attack, without a weapon-range admission.
+   bool mag=(i.bindings&pointerinput::Magnetron)&&(sh->flags&MagnetronInput)&&rawMagnetron(p);
+   bool advanced=(i.bindings&pointerinput::Advanced)&&(sh->flags&AdvancedInput)&&featureObjectAllowed(featuretypes::AdvancedAttack,p);
+   bool cs=i.operation==pointerinput::AttackMove||((i.bindings&pointerinput::CS)&&csAllowedFor(p,true));
+   if(!result&&!(i.bindings&pointerinput::Shift)&&(mag||advanced||cs)&&(kind(p)==1||kind(p)==2)&&nativeEnemy(pointerTarget,lastHouse)&&rawArmed(p)){
+    if((i.bindings&pointerinput::LeftClick)&&!suppressed){
+     if(get<uint32_t>(p+0x2B4)!=pointerTarget||(get<int>(p+0xAC)!=1&&get<int>(p+0xB4)!=1)){++remaining;continue;}
+     result=1;nativeObserved=true;
+    }else result=nativeMission(lastHouse,i.sources[n].id,1,pointerTargetID,0,0,0,0,taskarbiter::Owner::Generic)?1:-1;
+   }
+   submitted+=int(snap.queuedEvents-before);if(result<0){++remaining;continue;}pointerDone[n]=1;if(result>0){++b.accepted;if(!nativeObserved&&!pointerFeedback)pointerFeedback=p;}continue;
   }
   int k=kind(p);if(k!=1&&k!=2){pointerDone[n]=1;continue;}
   bool mag=(i.bindings&pointerinput::Magnetron)&&(sh->flags&MagnetronInput)&&rawMagnetron(p);

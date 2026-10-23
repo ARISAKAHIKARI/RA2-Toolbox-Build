@@ -1,8 +1,8 @@
-# RA2 Toolbox 1.0.37-pre.5（测试分支）
+# RA2 Toolbox 1.0.37-pre.6（测试分支）
 
-基于最新 `v1.0.37-zoom.1`。修复未绑定增强功能的普通左键漏掉手动接管通知、旧磁电摔落覆盖新攻击、队形续走等待所有单位同一目的格；补齐加密MIX离线目录和同名子包的基础资源回退。坦克碉堡沿用Enter修正，新增真正到达后双向进驻关联的原生片段验证。
+基于 pre.5。修正右拖取消队形、增强对象攻击接受0个、SHP格式2解码及步兵预览朝向，增加资源缺失和磁电首次攻击后不追击的只读诊断。持续追击问题尚未确认修复；不将事件入队测试当成实机寻路验证。
 
-[测试发布](https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/releases/tag/v1.0.37-pre.5) · [发布说明](packages/v1.0.37-pre.5/RELEASE_NOTES.md) · [操作与验证](source/REVIEW-1.0.37-pre.5.md)
+[测试发布](https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/releases/tag/v1.0.37-pre.6) · [发布说明](packages/v1.0.37-pre.6/RELEASE_NOTES.md) · [操作与验证](source/REVIEW-1.0.37-pre.6.md)
 
 # RA2 Toolbox 1.0.37-pre.4（测试分支）
 

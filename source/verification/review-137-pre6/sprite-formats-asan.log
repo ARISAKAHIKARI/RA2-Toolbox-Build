@@ -1,0 +1,3 @@
+PASS real SHP 14 frames
+PASS real SHP 6 frames
+PASS SHP raw/fixed-stride/RLE, transparent/empty/cropped frames and malformed bounds

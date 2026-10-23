@@ -51,7 +51,7 @@ static DWORD error=0,fg=42,clockMs=100,windowThread=12;static int installs=0,unh
 static uint64_t preciseOverride=0;static int timerBalance=0,timerPeriod=4;
 bool QueryPerformanceCounter(LARGE_INTEGER*p){p->QuadPart=preciseOverride?preciseOverride:uint64_t(clockMs)*1000;return true;}bool QueryPerformanceFrequency(LARGE_INTEGER*p){p->QuadPart=1000000;return true;}
 unsigned timeBeginPeriod(unsigned p){assert(p==1);++timerBalance;return 0;}unsigned timeEndPeriod(unsigned p){assert(p==1);--timerBalance;return 0;}bool ChangeTimerQueueTimer(HANDLE,HANDLE,DWORD due,DWORD period){assert(due==period);timerPeriod=period;return true;}
-static bool keyDown[256]{};static uint32_t nativeHwnd=42;static bool readable=true;
+static POINT cursorPoint{100,100};static bool keyDown[256]{};static uint32_t nativeHwnd=42;static bool readable=true;
 HANDLE OpenProcess(DWORD,bool,DWORD pid){return (HANDLE)(uintptr_t)pid;}
 bool GetExitCodeProcess(HANDLE,DWORD*p){*p=STILL_ACTIVE;return true;}
 bool QueryFullProcessImageNameW(HANDLE,DWORD,wchar_t*,DWORD*){return false;}
@@ -59,7 +59,7 @@ bool ReadProcessMemory(HANDLE,const void*at,void*out,size_t n,SIZE_T*got){assert
 SIZE_T VirtualQueryEx(HANDLE,const void*,MEMORY_BASIC_INFORMATION*,size_t){return 0;}
 
 short GetAsyncKeyState(int k){return keyDown[k]?short(0x8000):0;}bool IsIconic(HWND){return false;}
-bool GetCursorPos(POINT*p){*p={100,100};return true;}bool ScreenToClient(HWND,POINT*){return true;}bool GetClientRect(HWND,RECT*p){*p={0,0,800,600};return true;}
+bool GetCursorPos(POINT*p){*p=cursorPoint;return true;}bool ScreenToClient(HWND,POINT*){return true;}bool GetClientRect(HWND,RECT*p){*p={0,0,800,600};return true;}
 static runtime::Control block{};static int cursorRefreshes=0;static bool refreshSucceeds=true;
 bool SendMessageTimeoutW(HWND w,UINT msg,WPARAM wp,LPARAM lp,UINT flags,UINT timeout,DWORD_PTR*){
  assert(w==(HWND)42&&wp==uintptr_t(w)&&msg==WM_SETCURSOR&&lp==MAKELPARAM(HTCLIENT,WM_MOUSEMOVE));
@@ -115,7 +115,7 @@ int main(){
  keyDown[VK_MBUTTON]=true;pulse(nullptr,0);assert(takePointer(a,press,dropped)&&press.operation==1&&press.serial==pointerCancelSerial(a));
  pulse(nullptr,0);assert(!takePointer(a,press,dropped)); // held button never repeats
  keyDown[VK_MBUTTON]=false;pulse(nullptr,0);
- keyDown[VK_CONTROL]=true;keyDown[VK_RBUTTON]=true;pulse(nullptr,0);assert(takePointer(a,press,dropped)&&press.operation==5);
+ keyDown[VK_CONTROL]=true;keyDown[VK_RBUTTON]=true;pulse(nullptr,0);assert(!takePointer(a,press,dropped));
  keyDown[VK_CONTROL]=false;keyDown[VK_RBUTTON]=false;pulse(nullptr,0);assert(takePointer(a,press,dropped)&&press.operation==4&&press.keys[VK_CONTROL]);
  keyDown[VK_XBUTTON2]=true;pulse(nullptr,0);assert(takePointer(a,press,dropped)&&press.operation==3&&!press.keys[VK_CONTROL]);
  {using namespace assist::pointerinput;Bindings config{0,0,0,0,0,0,17,17,512};
@@ -127,11 +127,18 @@ int main(){
  for(int i=0;i<20;++i){keyDown[VK_MBUTTON]=true;pulse(nullptr,0);keyDown[VK_MBUTTON]=false;pulse(nullptr,0);}
  assert(takePointer(a,press,dropped)&&dropped==4);
  fg=99;pulse(nullptr,0);assert(!takePointer(a,press,dropped));fg=42;keyDown[VK_MBUTTON]=true;pulse(nullptr,0);assert(!takePointer(a,press,dropped));keyDown[VK_MBUTTON]=false;pulse(nullptr,0);
+ // A right drag (even returning to its origin) is camera input, never Cancel/Move.
+ for(bool returnToOrigin:{false,true}){
+  keyDown[VK_RBUTTON]=true;pulse(nullptr,0);assert(!takePointer(a,press,dropped));
+  cursorPoint={170,130};pulse(nullptr,0);assert(!takePointer(a,press,dropped));
+  if(returnToOrigin){cursorPoint={100,100};pulse(nullptr,0);}
+  keyDown[VK_RBUTTON]=false;pulse(nullptr,0);assert(!takePointer(a,press,dropped));cursorPoint={100,100};
+ }
  // A held right button from another window is not a new native click.
  fg=99;keyDown[VK_RBUTTON]=true;pulse(nullptr,0);fg=42;pulse(nullptr,0);
  keyDown[VK_RBUTTON]=false;pulse(nullptr,0);assert(!takePointer(a,press,dropped));
  // A valid down followed by focus loss is also disarmed.
- keyDown[VK_RBUTTON]=true;pulse(nullptr,0);assert(takePointer(a,press,dropped)&&press.operation==5);
+ keyDown[VK_RBUTTON]=true;pulse(nullptr,0);assert(!takePointer(a,press,dropped));
  fg=99;pulse(nullptr,0);fg=42;pulse(nullptr,0);keyDown[VK_RBUTTON]=false;pulse(nullptr,0);assert(!takePointer(a,press,dropped));
  // A queued click belongs to its capture match and cannot cross epochs.
  keyDown[VK_MBUTTON]=true;pulse(nullptr,0);setPointerContext(a,2,true);
@@ -139,12 +146,12 @@ int main(){
  keyDown[VK_MBUTTON]=false;pulse(nullptr,0);keyDown[VK_MBUTTON]=true;pulse(nullptr,0);
  assert(takePointer(a,press,dropped)&&press.match==2);keyDown[VK_MBUTTON]=false;pulse(nullptr,0);
  // Right down before a menu/match transition must not become a release intent.
- keyDown[VK_RBUTTON]=true;pulse(nullptr,0);assert(takePointer(a,press,dropped));
+ keyDown[VK_RBUTTON]=true;pulse(nullptr,0);assert(!takePointer(a,press,dropped));
  auto serial=pointerCancelSerial(a);setPointerContext(a,2,false);assert(pointerCancelSerial(a)!=serial);
  setPointerContext(a,3,true);pulse(nullptr,0);keyDown[VK_RBUTTON]=false;pulse(nullptr,0);
  assert(!takePointer(a,press,dropped));
  // UI starvation expires capture; re-arming never interprets a held button.
- keyDown[VK_RBUTTON]=true;pulse(nullptr,0);assert(takePointer(a,press,dropped));
+ keyDown[VK_RBUTTON]=true;pulse(nullptr,0);assert(!takePointer(a,press,dropped));
  clockMs+=151;pulse(nullptr,0);keyDown[VK_RBUTTON]=false;pulse(nullptr,0);assert(!takePointer(a,press,dropped));
  setPointerContext(a,3,true);pulse(nullptr,0);keyDown[VK_MBUTTON]=true;pulse(nullptr,0);
  assert(takePointer(a,press,dropped)&&press.match==3);keyDown[VK_MBUTTON]=false;pulse(nullptr,0);

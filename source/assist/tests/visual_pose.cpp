@@ -13,6 +13,12 @@ int main(){
  // Infantry sequence frames include animation progress and its actual facing.
  put(t+0xE3C,0x30000u);put(p+0x6C4,2);put(0x30000+72,80);put(0x30000+76,6);put(0x30000+80,6);put(p+0xF8,8);put(0x7EAEFC+16*4,5);
  pose=external::visual::pose(g,p,t,1,100);assert(pose.frame==112);put(p+0x6C4,42);assert(external::visual::pose(g,p,t,1,100).frame==-1);
+ // Preview uses the Ready sequence and each requested heading, even when the
+ // live actor is running or firing. The lookup intentionally is not linear.
+ put(0x30000,16);put(0x30004,1);put(0x30008,1);
+ int lookup[8]={0,7,6,5,4,3,2,1};
+ for(int i=0;i<32;++i)put(0x7EAEFC+i*4,lookup[((i+2)/4)&7]);
+ for(int heading=0;heading<32;heading+=4){int body=(8-heading)&31;assert(external::visual::previewFrame(g,t,1,heading)==16+lookup[((body+2)/4)&7]);}
  // SHP vehicle standing frames use the native +1 facing convention.
  put(t+0xB0,0u);put(t+0xE3C,8);put(p+0x6C0,-1);put(t+0xE1C,2);put(t+0xE28,10);pose=external::visual::pose(g,p,t,2,100);assert(pose.frame==20);
  std::cout<<"PASS current facing interpolation, wraparound, independent turret, infantry sequence and SHP vehicle directions\n";

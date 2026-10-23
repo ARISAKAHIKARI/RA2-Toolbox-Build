@@ -842,6 +842,8 @@ static void mergeExternal(){
  if(snap.readStatus==1){rememberLiveTypes();if(snap.renderStatus==1)motion.update(snap,d.frame);else motion.clear();if(labelRasters.size()>size_t(snap.labels+32)){std::unordered_set<uint32_t> live;for(int i=0;i<snap.labels;++i)live.insert(snap.label[i].id);for(auto i=labelRasters.begin();i!=labelRasters.end();)if(!live.count(i->first))i=labelRasters.erase(i);else ++i;}}else{motion.clear();labelRasters.clear();}
  updateEnemyDisplay(d);updateStatusDisplay(d);
 }
+#include "../../external_reader/source/attack_trace.h"
+static external::attacktrace::Recorder attackRecorder;
 static void sampleExternal(DWORD now){
  if(shared&&shared->viewZoomBusy)return;
  
@@ -852,6 +854,10 @@ static void sampleExternal(DWORD now){
   const DWORD gap=externalAt?DWORD(displayNow-externalAt):0;
   LARGE_INTEGER sampleStart{},sampleEnd{},sampleFrequency{};QueryPerformanceCounter(&sampleStart);
   externalAt=displayNow;externalReader.begin();externalSampler.stopped(tacticalPlanner.stoppedUnits());externalData=&externalSampler.sample(displayNow,flags(),extra.enemyMarkers,statusOptions());
+  if(externalData->status==1)attackRecorder.sample([](uint32_t p,void*out,size_t n){return externalReader.readFresh(p,out,n);},
+   [](const std::string&s){critical(std::wstring(s.begin(),s.end()));},now,externalReader.generation(),externalData->match,
+   "flags="+std::to_string(flags())+" global="+std::to_string(extra.magnetronGlobal)+" drop="+std::to_string(extra.magnetronDrop)+
+   "toolEnabled="+std::to_string(enabled)+" sent="+std::to_string(incoming.queuedEvents));
   QueryPerformanceCounter(&sampleEnd);QueryPerformanceFrequency(&sampleFrequency);
   const uint64_t cost=sampleFrequency.QuadPart>0?uint64_t(sampleEnd.QuadPart-sampleStart.QuadPart)*1000000/uint64_t(sampleFrequency.QuadPart):0;
   auto&dc=displayCounters;if(!dc.since)dc.since=displayNow;

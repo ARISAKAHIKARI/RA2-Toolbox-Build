@@ -24,7 +24,7 @@ static bool captureMemory(const formation::Unit&u,Cached&cache){
   // TurretOffset is in leptons; the voxel coordinate unit is 1/12 cell.
   for(int n=2;n<6;n+=2)if(parts[n]&&!external::voxel::capturePart(read,parts[n],parts[n+1],cache.model,float(offset)*12/256,float(sx),float(sy)))return false;
   uint32_t after[6]{};if(!read(u.type+0xB0,after,sizeof after)||memcmp(parts,after,sizeof parts))return false;
- }else if(!external::voxel::sprite(read,word(u.type+0xA4),cache.palette,cache.sprite))return false;
+ }else{external::GameView game(&read);int frame=external::visual::previewFrame(game,u.type,u.kind,wantedFacing);if(!external::voxel::sprite(read,word(u.type+0xA4),cache.palette,cache.sprite,frame))return false;cache.fileFacing=wantedFacing;}
  for(;;){size_t faces=0;for(const auto&e:models)faces+=e.second.model.faces.size();if(faces<=400000)break;if(!evictModel()){cache.model.faces.clear();return false;}}
  if(!roomForImage(0))return false;cache.ready=true;return true;
 }
@@ -54,7 +54,7 @@ static void update(){
   // Protect this cache entry too before any eviction can invalidate c.
   if(!needed(key))wanted.push_back(key);
   auto found=models.find(key);if(found==models.end()){if(models.size()>=64&&!evictModel()){++missing;continue;}found=models.emplace(key,Cached{}).first;}auto&c=found->second;c.used=++useSerial;
-  if(c.fileBacked&&c.fileFacing!=wantedFacing){c.ready=false;c.attempted=false;}
+  if((c.fileBacked||(!c.isVoxel&&c.fileFacing>=0))&&c.fileFacing!=wantedFacing){c.ready=false;c.attempted=false;}
   if(!c.ready&&work<1&&(!c.attempted||int32_t(GetTickCount()-c.retry)>=0)){++work;if(!capture(u,c)){c.model.faces.clear();c.sprite={};}++revision;}
   if(!c.ready){++missing;continue;}const external::voxel::Image*image=&c.sprite;
   if(c.isVoxel){auto it=c.views.find(facing);if(it==c.views.end()){if(work>=1){++missing;continue;}++work;external::voxel::Image rendered;

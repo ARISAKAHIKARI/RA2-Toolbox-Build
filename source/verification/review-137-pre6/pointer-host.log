@@ -1,0 +1,1 @@
+PASS: production pointer host serializes all matches, waits for cooperative consumption/ACK/retries, preserves capture/deadline, cancels on context/config/manual change; default-off and no-selection sale

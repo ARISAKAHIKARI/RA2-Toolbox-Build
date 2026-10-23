@@ -5,10 +5,10 @@
 namespace watchhost {
 static external::watch::Target pinned,tracking;
 static external::watch::Frame frame;
-struct Cached {external::voxel::Image image;DWORD retry=0;uint64_t used=0;bool ready=false;};
+struct Cached {external::voxel::Image image;DWORD retry=0;uint64_t used=0;bool ready=false;std::string issue;};
 using ArtKey=std::tuple<uint32_t,uint32_t,int,int>;
 using ImageKey=std::tuple<uint32_t,uint32_t,int,int,int,int,int>;
-struct ArtCached {gameassets::ActorArt art;DWORD retry=0;bool ready=false;};
+struct ArtCached {gameassets::ActorArt art;DWORD retry=0;bool ready=false;std::string issue;};
 static std::map<ArtKey,ArtCached> actorArt;
 static std::map<ImageKey,Cached> images;
 static size_t actorCursor=0;static DWORD diagnosticAt=0;
@@ -36,6 +36,7 @@ static void update(){
  shown=bool(frame.focus);++paintRevision;if(!shown)return;
  gameassets::update();
  std::array<uint32_t,256> palette{};if((external::terrain::palette(read,0xABBED0,palette)||gameassets::palette(true,palette))&&palette!=terrainPalette){terrainPalette=palette;tiles.clear();overlays.clear();for(auto it=images.begin();it!=images.end();)if(std::get<2>(it->first)==4)it=images.erase(it);else ++it;}
+ bool paletteReady=std::any_of(terrainPalette.begin(),terrainPalette.end(),[](uint32_t c){return c!=0;});std::string paletteIssue=paletteReady?"":gameassets::failure;
  auto fetchStatic=[&](auto&cache,bool tmp){
   std::vector<std::pair<uint32_t,uint32_t>> wanted;for(const auto&t:frame.tiles){uint32_t p=tmp?t.type:t.overlayType;if(p)wanted.emplace_back(p,uint32_t(tmp?t.sub:t.overlayFrame));}
   for(auto it=cache.begin();it!=cache.end();)if(std::find(wanted.begin(),wanted.end(),it->first)==wanted.end())it=cache.erase(it);else ++it;
@@ -43,10 +44,10 @@ static void update(){
   for(auto key:wanted){auto&c=cache[key];if(c.ready||work>=4||(c.retry&&int32_t(now-c.retry)<0))continue;++work;c.retry=now+2000;external::voxel::Image image;
    uint32_t pointer=0;read(key.first+0xA4,&pointer,4);
    bool ok=tmp?gameassets::tile(key.first,key.second,terrainPalette,image):gameassets::sprite(key.first,pointer,terrainPalette,int(key.second),image);
-   if(!ok)ok=tmp?external::terrain::tile(read,pointer,key.second,terrainPalette,image):external::voxel::sprite(read,pointer,terrainPalette,image,int(key.second));
+   if(!ok)ok=tmp?external::terrain::tile(read,pointer,key.second,terrainPalette,image):external::voxel::sprite(read,pointer,terrainPalette,image,int(key.second));c.issue=ok?"":gameassets::failure;
    if(ok&&pixels+image.pixels.size()<=4*1024*1024){pixels+=image.pixels.size();for(auto&p:image.pixels)if(unsigned alpha=p>>24)p=0xff000000u|(std::min(255u,((p>>16)&255)*255/alpha)<<16)|(std::min(255u,((p>>8)&255)*255/alpha)<<8)|std::min(255u,(p&255)*255/alpha);c.image=std::move(image);c.ready=true;}
   }
- };fetchStatic(tiles,true);fetchStatic(overlays,false);
+ };if(paletteReady){fetchStatic(tiles,true);fetchStatic(overlays,false);}
  std::set<ArtKey> artWanted;std::set<ImageKey> wanted;
  for(const auto&a:frame.actors){artWanted.insert(artKey(a));wanted.insert(imageKey(a));}
  for(auto it=actorArt.begin();it!=actorArt.end();)if(!artWanted.count(it->first))it=actorArt.erase(it);else ++it;
@@ -60,16 +61,16 @@ static void update(){
   if(c.ready||(c.retry&&int32_t(now-c.retry)<0))continue;
   if(work>=16||(work&&DWORD(GetTickCount()-started)>=6))break;
   ++work;external::voxel::Image image;bool ok=false;
-  if(a.kind==4){uint32_t shp=0;read(a.type+0xA4,&shp,4);ok=gameassets::sprite(a.type,shp,terrainPalette,a.stage,image)||external::voxel::sprite(read,shp,terrainPalette,image,a.stage);}
+  if(a.kind==4){uint32_t shp=0;read(a.type+0xA4,&shp,4);if(paletteReady)ok=gameassets::sprite(a.type,shp,terrainPalette,a.stage,image)||external::voxel::sprite(read,shp,terrainPalette,image,a.stage);else gameassets::failure=paletteIssue;}
   else{
    auto&source=actorArt[artKey(a)];
    if(!source.ready&&(!source.retry||int32_t(now-source.retry)>=0)){
     source.retry=now+2000;gameassets::ActorArt art;
-    if(gameassets::captureActor(a.target.pointer,a.type,a.target.id,art)&&faces+art.model.faces.size()<=4*1024*1024){faces+=art.model.faces.size();source.art=std::move(art);source.ready=true;}
+    if(gameassets::captureActor(a.target.pointer,a.type,a.target.id,art)&&faces+art.model.faces.size()<=4*1024*1024){faces+=art.model.faces.size();source.art=std::move(art);source.ready=true;}source.issue=source.ready?"":gameassets::failure;
    }
-   if(source.ready)ok=gameassets::renderActor(source.art,a.pose,image);
+   if(source.ready)ok=gameassets::renderActor(source.art,a.pose,image);else gameassets::failure=source.issue;
   }
-  c.retry=ok?0:now+2000;if(!ok)continue;
+  c.issue=ok?"":gameassets::failure;c.retry=ok?0:now+2000;if(!ok)continue;
   if(pixels+image.pixels.size()>32*1024*1024){c.retry=now+2000;continue;}
   pixels+=image.pixels.size();
   for(auto&p:image.pixels)if(unsigned alpha=p>>24)p=0xff000000u|(std::min(255u,((p>>16)&255)*255/alpha)<<16)|(std::min(255u,((p>>8)&255)*255/alpha)<<8)|std::min(255u,(p&255)*255/alpha);
@@ -79,7 +80,10 @@ static void update(){
   diagnosticAt=now;size_t actorsReady=0,tileReady=0;std::string missing;
   for(const auto&a:frame.actors){auto i=images.find(imageKey(a));if(i!=images.end()&&i->second.ready)++actorsReady;else if(missing.empty())missing=gameassets::text(a.type+0x24,24);}
   for(const auto&t:frame.tiles){auto i=tiles.find({t.type,uint32_t(t.sub)});if(i!=tiles.end()&&i->second.ready)++tileReady;else if(missing.empty()&&t.type)missing=gameassets::text(t.type+0x2F5,14);}
-  critical(L"watch assets archives="+std::to_wstring(gameassets::files.count())+L" actors="+std::to_wstring(actorsReady)+L"/"+std::to_wstring(frame.actors.size())+L" terrain="+std::to_wstring(tileReady)+L"/"+std::to_wstring(frame.tiles.size())+L" missing="+std::wstring(missing.begin(),missing.end()));
+  critical(L"watch assets archives="+std::to_wstring(gameassets::files.count())+L" actors="+std::to_wstring(actorsReady)+L"/"+std::to_wstring(frame.actors.size())+L" terrain="+std::to_wstring(tileReady)+L"/"+std::to_wstring(frame.tiles.size())+L" palette="+std::to_wstring(paletteReady)+L" missing="+std::wstring(missing.begin(),missing.end()));
+  if(!paletteReady)critical(L"watch palette reason="+std::wstring(paletteIssue.begin(),paletteIssue.end()));
+  int reported=0;for(const auto&a:frame.actors){auto i=images.find(imageKey(a));if(i==images.end()||i->second.ready)continue;auto name=gameassets::text(a.type+0x24,24),issue=i->second.issue;critical(L"watch actor="+std::wstring(name.begin(),name.end())+L" kind="+std::to_wstring(a.kind)+L" frame="+std::to_wstring(a.pose.frame)+L" reason="+std::wstring(issue.begin(),issue.end()));if(++reported==3)break;}
+  reported=0;for(const auto&t:tiles)if(!t.second.ready){auto issue=t.second.issue;critical(L"watch tile type="+std::to_wstring(t.first.first)+L" sub="+std::to_wstring(t.first.second)+L" reason="+std::wstring(issue.begin(),issue.end()));if(++reported==3)break;}
  }
 
 }

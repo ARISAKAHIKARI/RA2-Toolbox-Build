@@ -20,6 +20,7 @@ static std::map<uint32_t,uint32_t> memory;static int ownerReads=0;static bool ow
 static struct {bool readFresh(uint32_t p,void*out,size_t n){if(ownershipRace&&p==0x1021c&&n==4){uint32_t owner=++ownerReads==1?2:3;memcpy(out,&owner,4);return true;}auto it=memory.find(p);if(n!=4||it==memory.end())return false;memcpy(out,&it->second,4);return true;}}externalReader;
 #include "../source/type_hotkey.h"
 #include "../../external_reader/source/voxel_preview.h"
+#include "../../external_reader/source/visual_pose.h"
 namespace gameassets {static void update(){}static bool actor(uint32_t,uint32_t,uint32_t,double,external::voxel::Image&){return false;}}
 #include "../source/formation_host.h"
 int main(){using namespace formationhost;

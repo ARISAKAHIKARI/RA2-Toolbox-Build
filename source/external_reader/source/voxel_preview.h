@@ -87,10 +87,20 @@ inline bool render(const Model&model,double angle,const std::array<uint32_t,256>
 // fabricated as voxels. Frame 0 is used when no verified sequence is available.
 template<class Read>bool sprite(Read read,uint32_t pointer,const std::array<uint32_t,256>&pal,Image&out,int frameIndex=0){
  uint8_t head[8];if(!range(pointer,32)||!read(pointer,head,8))return false;if(u16(head)==65535){uint32_t decoded=0;if(!read(pointer+12,&decoded,4)||!range(decoded,32)||!read(decoded,head,8))return false;pointer=decoded;}
- int w=u16(head+2),h=u16(head+4),frames=u16(head+6);if(w<1||h<1||w>512||h>512||frames<1||frames>8192||frameIndex<0||frameIndex>=frames||!range(pointer,8+size_t(frames)*24))return false;uint8_t frame[24];if(!read(pointer+8+frameIndex*24,frame,24))return false;int x=u16(frame),y=u16(frame+2),width=u16(frame+4),height=u16(frame+6);uint32_t compression=u32(frame+8)&3,offset=u32(frame+20);if(!width||!height||x+width>w||y+height>h||offset<uint32_t(8+frames*24)||offset>MaxBytes||uint64_t(pointer)+offset>0xffffffffull||!range(pointer+offset,1))return false;
- Image next;next.width=w;next.height=h;next.x=-w/2;next.y=-h/2;next.pixels.resize(size_t(w)*h);uint32_t at=pointer+offset;
- for(int row=0;row<height;++row){uint8_t bytes[2048];unsigned n=width;if(compression>=2){uint16_t length;if(!read(at,&length,2)||length<2||length>sizeof bytes)return false;n=length;}if(!range(at,n)||!read(at,bytes,n))return false;at+=n;unsigned p=compression>=2?2:0;int col=0;
-  while(p<n&&col<width){uint8_t color=bytes[p++];if(compression==3&&!color){if(p>=n||!bytes[p]||col+bytes[p]>width)return false;col+=bytes[p++];continue;}if(color)next.pixels[(row+y)*w+x+col]=premultiply(pal[color],1);++col;}if(col!=width)return false;
+ int w=u16(head+2),h=u16(head+4),frames=u16(head+6);if(w<1||h<1||w>512||h>512||frames<1||frames>8192||frameIndex<0||frameIndex>=frames||!range(pointer,8+size_t(frames)*24))return false;uint8_t frame[24];if(!read(pointer+8+frameIndex*24,frame,24))return false;int x=int16_t(u16(frame)),y=int16_t(u16(frame+2)),width=u16(frame+4),height=u16(frame+6);uint32_t compression=u32(frame+8)&3,offset=u32(frame+20);
+ // The canvas is the origin reference, not a clipping box. Cropped frames
+ // may extend beyond it (weapons/death animations). Keep their real anchor.
+ if(width>512||height>512||std::abs(x)>4096||std::abs(y)>4096)return false;
+ Image next;next.width=std::max(1,width);next.height=std::max(1,height);next.x=x-w/2;next.y=y-h/2;next.pixels.resize(size_t(next.width)*next.height);
+ if(!offset||!width||!height){out=std::move(next);return true;}
+ if(offset<uint32_t(8+frames*24)||offset>MaxBytes||uint64_t(pointer)+offset>0xffffffffull||!range(pointer+offset,1))return false;
+ uint32_t at=pointer+offset;unsigned stride=width;
+ // Format 2 stores ONE length prefix followed by fixed-stride raw rows.
+ // Format 3 stores a separate length prefix for each RLE-zero row.
+ if(compression==2){uint16_t length;if(!read(at,&length,2)||length<2||unsigned(length-2)>unsigned(width))return false;stride=length-2;at+=2;}
+ for(int row=0;row<height;++row){uint8_t bytes[2048];unsigned n=stride;if(compression==3){uint16_t length;if(!read(at,&length,2)||length<2||length>sizeof bytes)return false;n=length;}if(!range(at,n)||!read(at,bytes,n))return false;at+=n;unsigned p=compression==3?2:0;int col=0;
+  while(p<n&&col<width){uint8_t color=bytes[p++];if(compression==3&&!color){if(p>=n||!bytes[p]||col+bytes[p]>width)return false;col+=bytes[p++];continue;}if(color)next.pixels[size_t(row)*next.width+col]=premultiply(pal[color],1);++col;}
+  // Unstored right-hand pixels are transparent, including empty RLE rows.
  }out=std::move(next);return true;
 }
 // Shared read-only model capture for formation and local observation views.

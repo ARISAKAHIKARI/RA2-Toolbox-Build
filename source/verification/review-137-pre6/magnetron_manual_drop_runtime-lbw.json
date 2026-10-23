@@ -1,0 +1,37 @@
+{
+  "scope": "Execute compiled Runtime sampling/admission and native Idle constructors.\nSynthetic Win32/world/terrain; release and falling physics are not simulated.\nNo claim of real multiplayer or guaranteed kill after delivery latency.\n",
+  "results": [
+    {
+      "case": "left_attack_old_beam_0_False_vehicle",
+      "status": "PASS"
+    },
+    {
+      "case": "left_attack_old_beam_0_False_building",
+      "status": "PASS"
+    },
+    {
+      "case": "left_attack_old_beam_0_True_vehicle",
+      "status": "PASS"
+    },
+    {
+      "case": "left_attack_old_beam_0_True_building",
+      "status": "PASS"
+    },
+    {
+      "case": "left_attack_old_beam_3_False_vehicle",
+      "status": "PASS"
+    },
+    {
+      "case": "left_attack_old_beam_3_False_building",
+      "status": "PASS"
+    },
+    {
+      "case": "left_attack_old_beam_3_True_vehicle",
+      "status": "PASS"
+    },
+    {
+      "case": "left_attack_old_beam_3_True_building",
+      "status": "PASS"
+    }
+  ]
+}

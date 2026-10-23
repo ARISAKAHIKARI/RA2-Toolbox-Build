@@ -14,18 +14,27 @@ template<class Read>uint16_t facing(GameView<Read>&g,uint32_t p,int frame){
 inline unsigned bucket(uint16_t raw){return ((unsigned(raw)+1024)>>11)&31;}
 inline double radians(unsigned direction){return (int(direction)-8)*(-2*Pi/32);}
 struct Pose {uint8_t body=0,turret=0;int frame=0,variant=-1;};
+template<class Read>int infantryFrame(GameView<Read>&g,uint32_t type,int sequence,int stage,unsigned body){
+ uint32_t list=g.template get<uint32_t>(type+0xE3C);if(sequence<0||sequence>=42||list<0x10000)return -1;
+ uint32_t s=list+uint32_t(sequence)*36;int start=g.template get<int>(s,-1),count=g.template get<int>(s+4),stride=g.template get<int>(s+8);
+ int dir=g.template get<int>(0x7EAEFC+(body&31)*4,-1);
+ if(start<0||start>=8192||count<0||count>8192||stride<0||stride>8192||dir<0||dir>7||stage<0)return -1;
+ int result=start+stage%std::max(1,count)+dir*stride;return result<8192?result:-1;
+}
+template<class Read>int previewFrame(GameView<Read>&g,uint32_t type,int kind,int heading){
+ unsigned body=(8-heading)&31;
+ if(kind==1)return infantryFrame(g,type,0,0,body); // Ready, no animation advance
+ if(kind==2&&g.template get<int>(type+0xE3C)==8){int dir=((body+2)/4+1)&7,stand=g.template get<int>(type+0xE1C);return stand>0?g.template get<int>(type+0xE28)+dir*stand:g.template get<int>(type+0xE2C)+dir*std::max(0,int(g.template get<int8_t>(type+0xE5C)));}
+ return 0;
+}
 template<class Read>Pose pose(GameView<Read>&g,uint32_t p,uint32_t type,int kind,int frame){
  Pose out;out.body=bucket(facing(g,p+0x388,frame));out.turret=g.template get<uint8_t>(type+0xCA1)?bucket(facing(g,p+0x3A0,frame)):out.body;
  if(g.template get<int>(type+0x808)>0&&!g.template get<uint8_t>(type+0xCD5)){int variant=g.template get<int>(p+0x124,-1);if(variant>=0&&variant<18)out.variant=variant;}
  if(kind==1){
   int sequence=g.template get<int>(p+0x6C4);if(sequence==-1)sequence=0;
-  uint32_t list=g.template get<uint32_t>(type+0xE3C);if(sequence<0||sequence>=42||list<0x10000){out.frame=-1;return out;}
-  uint32_t s=list+uint32_t(sequence)*36;int start=g.template get<int>(s,-1),count=g.template get<int>(s+4),stride=g.template get<int>(s+8);
   // Native Infantry::ShapeNumber 518D80 uses this direction lookup, not the
   // SequenceFacing metadata (which is consumed when loading the sequence).
-  int dir=g.template get<int>(0x7EAEFC+out.body*4,-1),stage=g.template get<int>(p+0xF8);
-  if(start<0||start>=8192||count<0||count>8192||stride<0||stride>8192||dir<0||dir>7||stage<0){out.frame=-1;return out;}
-  out.frame=start+stage%std::max(1,count)+dir*stride;
+  out.frame=infantryFrame(g,type,sequence,g.template get<int>(p+0xF8),out.body);
  }else if(kind==2&&!g.template get<uint32_t>(type+0xB0)){
   int dir=g.template get<int>(type+0xE3C)==8?((unsigned(facing(g,p+0x388,frame))+4096)/8192+1)&7:0;
   int firing=g.template get<int>(p+0x6C0,-1),stand=g.template get<int>(type+0xE1C),walk=g.template get<int8_t>(type+0xE5C);

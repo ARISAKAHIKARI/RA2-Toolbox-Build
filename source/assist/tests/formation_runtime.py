@@ -85,7 +85,7 @@ for mode in (0,3):
 # Configurable left/right drag, one native voice, and persistent per-member offsets.
 for mode in (0,3):
  for button in (1,2):
-  for scenario in ('move','reordered_selection','deselect','replace_member','box_drag','native_pending','scattered_destinations','rapid_retarget','right_cancel','object_click'):
+  for scenario in ('move','reordered_selection','deselect','replace_member','box_drag','native_pending','scattered_destinations','rapid_retarget','right_click_same_selection','right_pan','right_deselect','object_click'):
    m=setup(mode,4);s=state(m);s.formationPolicy.mouse=button;save(m,s)
    voices=[];m.vector(m.t+0x468,[71]);m.w(m.unit+0x4f0,0xffffffff);m.b(0x822cf2,1)
    m.u.hook_add(UC_HOOK_CODE,lambda uc,at,size,_:m.ret(1,0),begin=0x50b6f0,end=0x50b6f0)
@@ -99,7 +99,12 @@ for mode in (0,3):
    if scenario=='reordered_selection':m.vector(0xa8ecb8,m.units[::-1])
    if scenario=='deselect':m.vector(0xa8ecb8,[])
    if scenario=='replace_member':m.vector(0xa8ecb8,m.units[:-1]+[m.enemyUnit])
-   if scenario=='right_cancel':assert message(m,0x204)[0]==0x204;assert message(m,0x205)[0]==0x205
+   if scenario.startswith('right_'):
+    assert message(m,0x204)[0]==0x204
+    if scenario=='right_pan':assert message(m,0x200,x=220,y=190)[0]==0x200
+    assert message(m,0x205,x=220 if scenario=='right_pan' else 100,y=190 if scenario=='right_pan' else 100)[0]==0x205
+    # Only an actual native deselection breaks membership, not the button.
+    if scenario=='right_deselect':m.vector(0xa8ecb8,[])
    # Original click/voice stays native; continuation does not wait for delivery.
    assert message(m,0x201,x=190,y=160)[0]==0x201
    if scenario=='box_drag':message(m,0x200,x=220,y=190)
@@ -112,7 +117,7 @@ for mode in (0,3):
    if scenario!='native_pending':
     for j,p in enumerate(m.units):
      m.w(p+0xac,2);m.w(p+0x5a4,m.r(m.cells+(32*512+23+j)*4) if scenario=='scattered_destinations' else mapCell)
-   s=tick(m);expected=scenario in ('move','reordered_selection','native_pending','scattered_destinations','rapid_retarget');assert count(m)==(8 if expected else 4),(mode,button,scenario,count(m))
+   s=tick(m);expected=scenario in ('move','reordered_selection','native_pending','scattered_destinations','rapid_retarget','right_click_same_selection','right_pan');assert count(m)==(8 if expected else 4),(mode,button,scenario,count(m))
    if expected:
     assert s.formationAccepted==4 and s.formationRejected==0
     final={struct.unpack_from('<I',packets(m),j*111+7)[0]:struct.unpack_from('<I',packets(m),j*111+19)[0] for j in range(4,8)}

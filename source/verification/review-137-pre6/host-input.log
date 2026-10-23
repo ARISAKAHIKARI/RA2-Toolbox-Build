@@ -1,0 +1,5 @@
+PASS shared host: one hook pair; 200 concurrent subscriptions; independent release; cadence/coalescing; failed post/unhook recovery; dead-thread migration; stale tokens; balanced input
+PASS cursor refresh uses host input manager, validates target/focus, times out without holding scheduler mutex
+PASS window-addressed wake, post error diagnostics, stale HWND/thread rejected without losing ready bits
+PASS pointer capture: loading suppressed; capture epoch retained; cross-match/menu clicks discarded; held release disarmed; context timeout bounded
+PASS startup target: zero/unreadable native HWND and live helper thread rejected before hooks; same-thread HWND replacement updates all wake subscribers

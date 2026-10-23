@@ -1,0 +1,6 @@
+Expected failure with released pre.5 DLL 6a0dc9dcf0d5ee6bb963c1fce8849ead3c1331dfd99aeedfddcd83d09acfe302
+Traceback (most recent call last):
+  File "/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/enhanced_object_attack_runtime.py", line 28, in <module>
+    assert s.pointer.accepted==1 and s.pointer.rejected==0,(mode,binding,click,target_kind,distance,s.pointer.result)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: (0, 1, 0, 'vehicle', 128, 1)

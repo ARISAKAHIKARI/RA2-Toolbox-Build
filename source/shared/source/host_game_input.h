@@ -29,7 +29,7 @@ inline bool heldBinding(uint32_t binding){
  return bool(GetAsyncKeyState(16)&0x8000)==bool(mods&1)&&bool(GetAsyncKeyState(17)&0x8000)==bool(mods&2)&&bool(GetAsyncKeyState(18)&0x8000)==bool(mods&4);
 }
 struct PointerPress {DWORD tick=0,serial=0;uint32_t match=0;int operation=0;POINT point{};int width=0,height=0;uint8_t keys[256]{};};
-struct PointerQueue {PointerPress items[16]{};unsigned head=0,count=0;DWORD dropped=0,cancelSerial=0;bool enabled=false,focused=false,rightArmed=false,leftArmed=false;uint32_t match=0;DWORD contextAt=0;uint32_t down=0;uint8_t rightKeys[256]{},leftKeys[256]{};};
+struct PointerQueue {PointerPress items[16]{};unsigned head=0,count=0;DWORD dropped=0,cancelSerial=0;bool enabled=false,focused=false,rightArmed=false,leftArmed=false,rightDragged=false;POINT rightOrigin{};uint32_t match=0;DWORD contextAt=0;uint32_t down=0;uint8_t rightKeys[256]{},leftKeys[256]{};};
 struct Target {keygesture::Tracker keys;PointerQueue pointer{};Health lastDiagnostic{};DWORD pid=0,thread=0;HWND window=nullptr;HHOOK message=nullptr,post=nullptr;HANDLE mapping=nullptr;runtime::Control*control=nullptr;uint64_t cursorAt=0,tacticalAt=0;DWORD lastPost=0,lastPostError=0;bool fastTactical=false;};
 struct Lease {Subscription id=0;gameentry::Client client{};unsigned target=0;};
 struct Host {std::recursive_mutex mutex;Target targets[8]{};Lease leases[32]{};Subscription next=0;HMODULE module=nullptr;HANDLE timer=nullptr;volatile LONG pulseBusy=0;bool preciseTimer=false;const wchar_t* installStage=L"not-started";};
@@ -123,20 +123,22 @@ inline void pollPointer(Target&t,DWORD now){
  uint8_t physical[256]{};for(unsigned i=0;i<256;++i)physical[i]=(GetAsyncKeyState(i)&0x8000)!=0;
  if(!q.focused){q.focused=true;q.rightArmed=false;q.down=down;t.keys.clear();memcpy(t.keys.held,physical,256);return;}
  t.keys.sample(physical,now);t.keys.decorate(physical);
- POINT hit{};if(GetCursorPos(&hit)){DWORD hitPID=0;GetWindowThreadProcessId(WindowFromPoint(hit),&hitPID);if(hitPID!=t.pid){if(q.rightArmed||q.leftArmed||q.count)disarmPointer(q);q.down=down;return;}}
+ POINT hit{};bool located=GetCursorPos(&hit);if(located){DWORD hitPID=0;GetWindowThreadProcessId(WindowFromPoint(hit),&hitPID);if(hitPID!=t.pid){if(q.rightArmed||q.leftArmed||q.count)disarmPointer(q);q.down=down;return;}}
  uint32_t pressed=down&~q.down,released=q.down&~down;q.down=down;
- bool follow=(released&8)&&q.rightArmed,left=(released&128)&&q.leftArmed;
+ if(q.rightArmed&&located&&(hit.x-q.rightOrigin.x>5||q.rightOrigin.x-hit.x>5||hit.y-q.rightOrigin.y>5||q.rightOrigin.y-hit.y>5))q.rightDragged=true;
+ bool follow=(released&8)&&q.rightArmed&&!q.rightDragged,left=(released&128)&&q.leftArmed;
  if(released&128)q.leftArmed=false;
  if(pressed&128){q.leftArmed=true;for(unsigned i=0;i<256;++i)q.leftKeys[i]=physical[i];}
  if(released&8)q.rightArmed=false;
- if(pressed&8){q.rightArmed=false;for(unsigned i=0;i<256;++i)q.rightKeys[i]=physical[i];}
- int operation=(pressed&~135u)?5:left?6:(pressed&128)?7:follow?4:(pressed&1)?1:(pressed&2)?2:(pressed&4)?3:0;
- if(!operation)return;if(operation!=4&&operation!=6)++q.cancelSerial;
+ // A right press may become camera panning. It cancels stale input captures,
+ // but must not emit a gameplay Cancel before the gesture is known.
+ if(pressed&8){q.rightArmed=located;q.rightDragged=false;q.rightOrigin=hit;++q.cancelSerial;for(unsigned i=0;i<256;++i)q.rightKeys[i]=physical[i];}
+ int operation=(pressed&112u)?5:left?6:(pressed&128)?7:follow?4:(pressed&1)?1:(pressed&2)?2:(pressed&4)?3:0;
+ if(!operation)return;if(operation!=4&&operation!=6&&!(pressed&8))++q.cancelSerial;
  PointerPress e{};e.tick=now;e.serial=q.cancelSerial;e.match=q.match;e.operation=operation;RECT rect{};
  if(!GetCursorPos(&e.point)||!ScreenToClient(t.window,&e.point)||!GetClientRect(t.window,&rect))return;
  e.width=rect.right;e.height=rect.bottom;
  if(e.width<=0||e.height<=0||e.point.x<0||e.point.y<0||e.point.x>=e.width||e.point.y>=e.height)return;
- if(pressed&8)q.rightArmed=true;
  for(unsigned i=0;i<256;++i)e.keys[i]=operation==4?q.rightKeys[i]:operation==6?q.leftKeys[i]:physical[i];
  // Modifier authorization belongs to the configured host binding resolver.
  if(q.count==16){++q.dropped;return;}q.items[(q.head+q.count++)%16]=e;

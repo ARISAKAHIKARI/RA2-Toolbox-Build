@@ -1,0 +1,41 @@
+{
+  "version": "1.0.37-pre.6",
+  "binaries": {
+    "RA2Toolbox.exe": "e1cf12e0ba25518dff0cf1d080451f6b148a56b66669a18a1425583cdf3bd694",
+    "GameRuntime.dll": "e53d8cd6dc7ef68c33b2c0ac0d064d925225b4c8230c78331abb7599efb9ef31"
+  },
+  "controlled_runtime_cases": {
+    "formation-lbw.json": 78,
+    "formation-zhanwang.json": 78,
+    "enhanced_object_attack_runtime-lbw.json": 108,
+    "enhanced_object_attack_runtime-zhanwang.json": 108,
+    "magnetron_stop_reacquire_runtime-lbw.json": 20,
+    "magnetron_stop_reacquire_runtime-zhanwang.json": 20,
+    "magnetron_manual_drop_runtime-lbw.json": 8,
+    "magnetron_manual_drop_runtime-zhanwang.json": 8
+  },
+  "total_controlled_runtime_cases": 428,
+  "portable_and_host_checks": [
+    "attack_trace",
+    "host_input_test",
+    "pointer_fanout_host_test",
+    "formation_host",
+    "visual_pose",
+    "watch_host",
+    "game_assets",
+    "terrain_preview",
+    "voxel_preview",
+    "sprite_formats",
+    "game_assets_host_test"
+  ],
+  "sanitizers": "SHP ASan/UBSan passed; LeakSanitizer unsupported in container and disabled",
+  "negative_controls": [
+    "released pre.5 DLL fails enhanced object attack assertion",
+    "released pre.5 DLL fails same-selection right-button formation retention"
+  ],
+  "limits": [
+    "persistent magnetron pursuit failure is NOT confirmed fixed",
+    "actual user MOD terrain and infantry visibility remains unverified",
+    "controlled object arrival/Win32/map fixtures do not prove live AI/pathfinding/audio/netplay"
+  ]
+}

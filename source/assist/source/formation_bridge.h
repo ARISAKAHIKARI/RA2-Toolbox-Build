@@ -94,9 +94,9 @@ static void formationCommit(bool remember=true,bool feedback=true){
 static void formationWatchNative(MSG*msg){
  if(!formationMemory.count)return;
  if(!formationSameSelection()){formationForget();return;}
- // Native RA2 uses left click to move and right click to cancel selection.
- // Keep both native messages (including box selection and its one voice).
- if(msg->message==WM_RBUTTONDOWN){formationJobCount=0;formationFeedback=false;formationForget();return;}
+ // Right-button panning is not a selection change. Keep the remembered
+ // member set and in-flight jobs until the actual selection changes.
+ // Native left messages (including box selection and its one voice) pass on.
  if(msg->message==WM_LBUTTONDOWN){
   formationFollow={};formationFollow.down=true;formationFollow.up=WM_LBUTTONUP;formationFollow.x=short(LOWORD(msg->lParam));formationFollow.y=short(HIWORD(msg->lParam));
   int x,y,px,py;bool ground=false;

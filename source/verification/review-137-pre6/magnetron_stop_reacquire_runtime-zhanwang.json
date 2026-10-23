@@ -1,0 +1,89 @@
+{
+  "scope": "Execute compiled Runtime sampling/admission and native Idle constructors.\nSynthetic Win32/world/terrain; release and falling physics are not simulated.\nNo claim of real multiplayer or guaranteed kill after delivery latency.\n",
+  "inputs": {
+    "gamemd-spawn(4).exe": "c287d62a4d6a25b547e9339d071dd6e03adcf545699062e478aaeee38c60e89a",
+    "GameRuntime.dll": "e53d8cd6dc7ef68c33b2c0ac0d064d925225b4c8230c78331abb7599efb9ef31"
+  },
+  "results": [
+    {
+      "case": "first_stop_reacquire_left_0_False_vehicle_0",
+      "status": "PASS"
+    },
+    {
+      "case": "first_stop_reacquire_left_0_False_vehicle_1",
+      "status": "PASS"
+    },
+    {
+      "case": "first_stop_reacquire_left_0_False_building_0",
+      "status": "PASS"
+    },
+    {
+      "case": "first_stop_reacquire_left_0_False_building_1",
+      "status": "PASS"
+    },
+    {
+      "case": "first_stop_reacquire_left_0_True_vehicle_0",
+      "status": "PASS"
+    },
+    {
+      "case": "first_stop_reacquire_left_0_True_vehicle_1",
+      "status": "PASS"
+    },
+    {
+      "case": "first_stop_reacquire_left_0_True_building_0",
+      "status": "PASS"
+    },
+    {
+      "case": "first_stop_reacquire_left_0_True_building_1",
+      "status": "PASS"
+    },
+    {
+      "case": "first_stop_reacquire_left_3_False_vehicle_0",
+      "status": "PASS"
+    },
+    {
+      "case": "first_stop_reacquire_left_3_False_vehicle_1",
+      "status": "PASS"
+    },
+    {
+      "case": "first_stop_reacquire_left_3_False_building_0",
+      "status": "PASS"
+    },
+    {
+      "case": "first_stop_reacquire_left_3_False_building_1",
+      "status": "PASS"
+    },
+    {
+      "case": "first_stop_reacquire_left_3_True_vehicle_0",
+      "status": "PASS"
+    },
+    {
+      "case": "first_stop_reacquire_left_3_True_vehicle_1",
+      "status": "PASS"
+    },
+    {
+      "case": "first_stop_reacquire_left_3_True_building_0",
+      "status": "PASS"
+    },
+    {
+      "case": "first_stop_reacquire_left_3_True_building_1",
+      "status": "PASS"
+    },
+    {
+      "case": "friendly_click_native_action_7",
+      "status": "PASS"
+    },
+    {
+      "case": "friendly_click_native_action_8",
+      "status": "PASS"
+    },
+    {
+      "case": "friendly_click_native_action_31",
+      "status": "PASS"
+    },
+    {
+      "case": "friendly_click_native_action_3",
+      "status": "PASS"
+    }
+  ]
+}
