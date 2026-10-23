@@ -15,7 +15,7 @@ struct NativeView {int tab=-1,top=0,width=0,height=0,count=0;NativeCell cells[60
 template<class Read>bool readNativeView(Read read,NativeView&out){
  out={};auto get=[&](uint32_t at,int&v){return read(at,&v,4);};
  int tab=-1,width=0,height=0,sidebarY=0,sidebarH=0,topY=0;uint32_t session=0;
- if(!get(0x87F7E8+0x539C,tab)||tab<0||tab>1||!get(0xA8EB84,width)||!get(0xA8EB88,height)||width<640||height<400||width>32768||height>32768)return false;
+ if(!get(0x87F7E8+0x539C,tab)||tab<0||tab>1||!get(0x8A00A4,width)||!get(0x8A00A8,height)||width<640||height<400||width>32768||height>32768)return false;
  if(!get(0x886F94,sidebarY)||!get(0x886F9C,sidebarH)||!get(0xB0B4F8,topY)||!read(0xA8B230,&session,4)||session<0x10000)return false;
  int small=0;if(!get(session+0x34B8,small))return false;
  // Same visible row count as SidebarClass::GetVisibleCameos (0x6AC430).
@@ -32,7 +32,7 @@ template<class Read>bool readNativeView(Read read,NativeView&out){
   frame.cells[frame.count++]={entries[entry*13],box[0],box[1],box[2],box[3]};
  }
  int tabAfter=-1,wAfter=0,hAfter=0;
- if(!read(strip,after,sizeof after)||memcmp(header+0x1C,after+0x1C,88-0x1C)||!get(0x87F7E8+0x539C,tabAfter)||tabAfter!=tab||!get(0xA8EB84,wAfter)||!get(0xA8EB88,hAfter)||wAfter!=width||hAfter!=height)return false;
+ if(!read(strip,after,sizeof after)||memcmp(header+0x1C,after+0x1C,88-0x1C)||!get(0x87F7E8+0x539C,tabAfter)||tabAfter!=tab||!get(0x8A00A4,wAfter)||!get(0x8A00A8,hAfter)||wAfter!=width||hAfter!=height)return false;
  out=frame;return true;
 }
 template<class Read>bool readNative(Read read,NativeFrame&out){
@@ -41,3 +41,4 @@ template<class Read>bool readNative(Read read,NativeFrame&out){
 }
 struct NativeBadge {int x=0,y=0,w=0,h=0,positions=0;bool operator==(const NativeBadge&o)const{return x==o.x&&y==o.y&&w==o.w&&h==o.h&&positions==o.positions;}};
 }}
+

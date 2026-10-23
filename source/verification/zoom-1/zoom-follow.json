@@ -1,0 +1,26 @@
+{
+  "inputs": {
+    "game": "c287d62a4d6a25b547e9339d071dd6e03adcf545699062e478aaeee38c60e89a",
+    "GameRuntime.dll": "f022d022724385c0ef7cab923dcc02b3ea030b5d7531b77e6fc214421ed57a99"
+  },
+  "filter": "native_move_then_append",
+  "scope": "actual DLL/original constructors; synthetic world and Win32, no real network",
+  "results": [
+    {
+      "name": "native_move_then_append_once_session_0",
+      "status": "PASS"
+    },
+    {
+      "name": "native_move_then_append_once_session_5",
+      "status": "PASS"
+    },
+    {
+      "name": "native_move_then_append_once_session_3",
+      "status": "PASS"
+    },
+    {
+      "name": "native_move_then_append_once_session_4",
+      "status": "PASS"
+    }
+  ]
+}

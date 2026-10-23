@@ -1,0 +1,214 @@
+{
+  "scope": "Actual x86 Runtime + native ScrollMap/SetTacticalPosition; mocked Win32, input producers and renderer; QPC/coarse-clock cadence simulation, not visual FPS or netplay",
+  "dll_sha256": "f022d022724385c0ef7cab923dcc02b3ea030b5d7531b77e6fc214421ed57a99",
+  "results": [
+    {
+      "case": "0_edge",
+      "status": "PASS"
+    },
+    {
+      "case": "0_drag",
+      "status": "PASS"
+    },
+    {
+      "case": "0_drag_displacement",
+      "status": "PASS"
+    },
+    {
+      "case": "0_idle",
+      "status": "PASS"
+    },
+    {
+      "case": "0_disabled",
+      "status": "PASS"
+    },
+    {
+      "case": "0_unfocused",
+      "status": "PASS"
+    },
+    {
+      "case": "0_chat",
+      "status": "PASS"
+    },
+    {
+      "case": "0_menu",
+      "status": "PASS"
+    },
+    {
+      "case": "0_foreign_entry",
+      "status": "PASS"
+    },
+    {
+      "case": "0_foreign_body",
+      "status": "PASS"
+    },
+    {
+      "case": "0_foreign_render",
+      "status": "PASS"
+    },
+    {
+      "case": "0_full_idle",
+      "status": "PASS"
+    },
+    {
+      "case": "0_full_outside",
+      "status": "PASS"
+    },
+    {
+      "case": "0_cursor_only",
+      "status": "PASS"
+    },
+    {
+      "case": "0_invalid_strategy",
+      "status": "PASS"
+    },
+    {
+      "case": "0_strategy_switch_and_boundaries",
+      "status": "PASS"
+    },
+    {
+      "case": "0_wrong_thread_native_fallback_and_stop_restore",
+      "status": "PASS"
+    },
+    {
+      "case": "3_edge",
+      "status": "PASS"
+    },
+    {
+      "case": "3_drag",
+      "status": "PASS"
+    },
+    {
+      "case": "3_drag_displacement",
+      "status": "PASS"
+    },
+    {
+      "case": "3_idle",
+      "status": "PASS"
+    },
+    {
+      "case": "3_disabled",
+      "status": "PASS"
+    },
+    {
+      "case": "3_unfocused",
+      "status": "PASS"
+    },
+    {
+      "case": "3_chat",
+      "status": "PASS"
+    },
+    {
+      "case": "3_menu",
+      "status": "PASS"
+    },
+    {
+      "case": "3_foreign_entry",
+      "status": "PASS"
+    },
+    {
+      "case": "3_foreign_body",
+      "status": "PASS"
+    },
+    {
+      "case": "3_foreign_render",
+      "status": "PASS"
+    },
+    {
+      "case": "3_full_idle",
+      "status": "PASS"
+    },
+    {
+      "case": "3_full_outside",
+      "status": "PASS"
+    },
+    {
+      "case": "3_cursor_only",
+      "status": "PASS"
+    },
+    {
+      "case": "3_invalid_strategy",
+      "status": "PASS"
+    },
+    {
+      "case": "3_strategy_switch_and_boundaries",
+      "status": "PASS"
+    },
+    {
+      "case": "3_wrong_thread_native_fallback_and_stop_restore",
+      "status": "PASS"
+    },
+    {
+      "case": "0_forced_redraw_and_live_switch",
+      "status": "PASS"
+    },
+    {
+      "case": "5_forced_redraw_and_live_switch",
+      "status": "PASS"
+    },
+    {
+      "case": "3_forced_redraw_and_live_switch",
+      "status": "PASS"
+    },
+    {
+      "case": "4_forced_redraw_and_live_switch",
+      "status": "PASS"
+    },
+    {
+      "case": "foreign_redraw_0_rejected",
+      "status": "PASS"
+    },
+    {
+      "case": "foreign_redraw_30_rejected",
+      "status": "PASS"
+    },
+    {
+      "case": "coarse_16ms_clock_precise_30hz_phase_and_diagnostics",
+      "status": "PASS"
+    },
+    {
+      "case": "coarse_16ms_clock_precise_60hz_phase_and_diagnostics",
+      "status": "PASS"
+    },
+    {
+      "case": "coarse_16ms_clock_precise_120hz_phase_and_diagnostics",
+      "status": "PASS"
+    },
+    {
+      "case": "coarse_16ms_clock_precise_144hz_phase_and_diagnostics",
+      "status": "PASS"
+    },
+    {
+      "case": "coarse_16ms_clock_precise_165hz_phase_and_diagnostics",
+      "status": "PASS"
+    },
+    {
+      "case": "coarse_16ms_clock_precise_240hz_phase_and_diagnostics",
+      "status": "PASS"
+    },
+    {
+      "case": "coarse_16ms_clock_precise_360hz_phase_and_diagnostics",
+      "status": "PASS"
+    },
+    {
+      "case": "coarse_16ms_clock_precise_500hz_phase_and_diagnostics",
+      "status": "PASS"
+    },
+    {
+      "case": "scope_1_edge_500hz_native_speed_live_rates_and_missed_slots",
+      "status": "PASS"
+    },
+    {
+      "case": "scope_1_drag_500hz_native_speed_live_rates_and_missed_slots",
+      "status": "PASS"
+    },
+    {
+      "case": "scope_2_edge_500hz_native_speed_live_rates_and_missed_slots",
+      "status": "PASS"
+    },
+    {
+      "case": "scope_2_drag_500hz_native_speed_live_rates_and_missed_slots",
+      "status": "PASS"
+    }
+  ]
+}

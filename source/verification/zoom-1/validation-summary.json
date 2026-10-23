@@ -1,0 +1,27 @@
+{
+  "dll_sha256": "f022d022724385c0ef7cab923dcc02b3ea030b5d7531b77e6fc214421ed57a99",
+  "portable_checks": [
+    "view_zoom.cpp",
+    "external_reader.cpp",
+    "enemy_markers.cpp",
+    "auto_settings_ui_test.py (standalone and unified)",
+    "construction_host_test.py",
+    "pointer_fanout_host_test.py",
+    "hold_key_ui_test.py",
+    "unified_reader_check.py"
+  ],
+  "windows_static_checks": "PE32 architecture, imports, exported protocol size/version, x86 Common Controls manifest: PASS",
+  "controlled_checks": {
+    "zoom-pointer.json": 4,
+    "zoom-runtime-mrga.json": 25,
+    "zoom-scroll.json": 52,
+    "zoom-runtime-cnc.json": 25,
+    "zoom-follow.json": 4
+  },
+  "known_baseline_failure": {
+    "test": "no_interception_runtime.py: normal_flags_no_engine_patch_session_0",
+    "status": "FAIL on both clean v1.0.37-pre.4 source rebuild and zoom.1",
+    "detail": "OpenTech succeeds, but the old assertion forbids all code writes even though the baseline now installs managed technology patches. Feature-off no-patch assertions before OpenTech pass. Full suite stops at this unchanged baseline assertion; do not claim the full no_interception suite passed."
+  },
+  "limitations": "No real Windows loader/DirectDraw/visual-input/netplay validation; zoom transition test mocks native resize and renderer APIs."
+}

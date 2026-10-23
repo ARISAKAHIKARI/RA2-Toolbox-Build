@@ -42,7 +42,7 @@ static void formationSelect(){
 }
 static bool formationPoint(MSG*msg,int&x,int&y,int&px,int&py,bool*ground=nullptr){
  RECT r{};if(!GetClientRect(msg->hwnd,&r)||r.right<=0||r.bottom<=0)return false;uint32_t tactical=get<uint32_t>(0x887324);if(!tactical)return false;
- pointerinput::Intent point{};point.width=get<int>(0xA8EB84);point.height=get<int>(0xA8EB88);point.cameraX=get<int>(tactical+0xB0);point.cameraY=get<int>(tactical+0xB4);point.operation=pointerinput::AirWaypoint;
+ pointerinput::Intent point{};point.width=get<int>(0x8A00A4);point.height=get<int>(0x8A00A8);point.cameraX=get<int>(tactical+0xB0);point.cameraY=get<int>(tactical+0xB4);point.operation=pointerinput::AirWaypoint;
  px=point.x=int(int64_t(short(LOWORD(msg->lParam)))*point.width/r.right);py=point.y=int(int64_t(short(HIWORD(msg->lParam)))*point.height/r.bottom);
  uint32_t c=pointerCell,t=pointerTarget,id=pointerTargetID;int z=pointerGroundZ;bool ok=pointerLocation(point);if(ground)*ground=ok&&!pointerTarget&&!get<bool>(0x87F7E8+0x11B3);if(ok){x=int(pointerCell%1000)*256+128;y=int(pointerCell/1000)*256+128;}
  pointerCell=c;pointerTarget=t;pointerTargetID=id;pointerGroundZ=z;return ok;
@@ -167,3 +167,4 @@ static void formationTick(uint32_t house,int frame,DWORD now){
   if(remove){formationJobs[at]=formationJobs[--formationJobCount];formationJobCursor=at;}
  }sh->formationJobs=formationJobCount;
 }
+

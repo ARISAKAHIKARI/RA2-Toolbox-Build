@@ -83,7 +83,7 @@ static bool newCooperative(uint32_t p,uint32_t target,int mode){
  cancelNative(p);InterlockedIncrement(&sh->cooperativeSeq);
  if(!same){memset(&r,0,sizeof r);r.serial=++clickSerial;if(!r.serial)r.serial=++clickSerial;r.match=match;r.target=targetID;r.type=typeOf(target,kind(target));r.mode=mode;r.frame=frame;
   uint32_t tactical=get<uint32_t>(0x887324);if(tactical>=0x10000){r.cameraX=get<int>(tactical+0xB0);r.cameraY=get<int>(tactical+0xB4);}
-  int width=get<int>(0xB0CE30),height=get<int>(0xB0CE34);r.viewWidth=width>0&&width<=32768?width:get<int>(0xA8EB84);r.viewHeight=height>0&&height<=32768?height:get<int>(0xA8EB88);
+  int width=get<int>(0xB0CE30),height=get<int>(0xB0CE34);r.viewWidth=width>0&&width<=32768?width:get<int>(0x8A00A4);r.viewHeight=height>0&&height<=32768?height:get<int>(0x8A00A8);
  }
  r.tick=now;r.sources[r.count++]={id,manualVersions.get(id)};MemoryBarrier();InterlockedIncrement(&sh->cooperativeSeq);notifyHost();return true;
 }
@@ -207,3 +207,4 @@ static void cooperativeTick(uint32_t house,int frame,DWORD now){
  }
  if(cooperativeAt>=sh->cooperativeCount){MemoryBarrier();sh->cooperativeAck=plan;notifyHost();}
 }
+

@@ -46,7 +46,7 @@ static void capture(){gameinput::event={};auto&e=gameinput::event;e.tick=clockNo
 static void ack(int accepted=1){shared->pointer.ack=shared->pointer.request;shared->pointer.result=1;shared->pointer.accepted=accepted;shared->pointer.rejected=0;}
 static void initialize(){
  pointerMatches.clear();extra.allHotkeys=true;for(auto&b:extra.mouseButtons)b=0;extra.mouseButtons[pointerinput::MouseAdvanced]=extra.mouseButtons[pointerinput::MouseCS]=1;
- memory={{0xA83D4C,0x10000},{0xA8ED84,5},{0x887324,0x20000},{0x200B0,0},{0x200B4,0},{0xA8EB84,800},{0xA8EB88,600},{0xA8ECB8+16,1},{0xA8ECB8+4,0x30000},{0x30000,0x40000},{0x40010,10},{0x4021C,0x10000}};
+ memory={{0xA83D4C,0x10000},{0xA8ED84,5},{0x887324,0x20000},{0x200B0,0},{0x200B4,0},{0x8A00A4,800},{0x8A00A8,600},{0xA8ECB8+16,1},{0xA8ECB8+4,0x30000},{0x30000,0x40000},{0x40010,10},{0x4021C,0x10000}};
  focused=visible=fresh=true;retryCooperative=false;shared->cooperativeRequest.serial=shared->cooperativePlan=shared->cooperativeAck=cooperativeDelivered=0;clockNow+=10;
 }
 int main(){
@@ -93,3 +93,4 @@ with tempfile.TemporaryDirectory() as d:
  subprocess.run(['g++','-std=c++17','-O2','-I',str(r/'assist/source'),str(p),'-o',str(exe)],check=True)
  subprocess.run([str(exe)],check=True)
 print('PASS: production pointer host serializes all matches, waits for cooperative consumption/ACK/retries, preserves capture/deadline, cancels on context/config/manual change; default-off and no-selection sale')
+

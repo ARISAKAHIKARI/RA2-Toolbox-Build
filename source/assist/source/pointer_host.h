@@ -3,7 +3,7 @@ static void servicePointer(){
  static pointerinput::Intent leftCapture{};static bool leftCaptured=false;
  const DWORD capturedNow=GetTickCount();
  auto visible=external::display::inspect([](uint32_t at,void*p,size_t n){return externalReader.readFresh(at,p,n);});
- const bool inputReady=!formationInputOwns()&&shared&&commandFresh(capturedNow)&&foregroundGame()&&!incoming.chat&&visible.visible();
+ const bool inputReady=!formationInputOwns()&&shared&&!shared->viewZoomBusy&&commandFresh(capturedNow)&&foregroundGame()&&!incoming.chat&&visible.visible();
  gameinput::setPointerContext(hook,commandMatch(),inputReady);
  if(pointerMatches.active()&&(!inputReady||!extra.allHotkeys||pointerMatches.revision!=settingsRevision||
     pointerMatches.capture.match!=commandMatch()||pointerMatches.capture.inputSerial!=gameinput::pointerCancelSerial(hook)))pointerMatches.clear();
@@ -85,7 +85,7 @@ static void servicePointer(){
  uint32_t tactical=0,items=0;int count=0,frameAfter=0;uint32_t houseAfter=0;
  if(!read(0xA83D4C,&in.house,4)||in.house<0x10000||!read(0xA8ED84,&in.frame,4)||
     !read(0x887324,&tactical,4)||tactical<0x10000||!read(tactical+0xB0,&in.cameraX,4)||!read(tactical+0xB4,&in.cameraY,4)||
-    !read(0xA8EB84,&in.width,4)||!read(0xA8EB88,&in.height,4)||in.width<=0||in.height<=0||in.width>32768||in.height>32768)return;
+    !read(0x8A00A4,&in.width,4)||!read(0x8A00A8,&in.height,4)||in.width<=0||in.height<=0||in.width>32768||in.height>32768)return;
  in.x=int(int64_t(e.point.x)*in.width/e.width);in.y=int(int64_t(e.point.y)*in.height/e.height);
  bool selectionNeeded=false;for(int route=0;route<routeCount;++route)if(routes[route].operation!=pointerinput::Sell&&routes[route].operation!=pointerinput::PlayerSelect)selectionNeeded=true;
  if(selectionNeeded&&e.operation==6&&(!leftCaptured||leftCapture.match!=in.match||leftCapture.inputSerial!=in.inputSerial))return;
@@ -108,4 +108,5 @@ static void servicePointer(){
  pointerMatches.begin(in,routes,routeCount,settingsRevision);pointerMatches.cooperativeBefore=shared->cooperativeRequest.serial;
  box.intent=pointerMatches.next();MemoryBarrier();InterlockedIncrement((volatile LONG*)&box.request);wakeGame();
 }
+
 

@@ -29,6 +29,12 @@ static bool autoSettingChanged(int id,int notification){
  if((id==897||id==898||id==899)&&notification==BN_CLICKED){bool on=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;if(id==897)extra.passengerBubbles=on;else if(id==898)extra.dangerPassengers=on;else extra.magnetronDrop=on;changedSetting();syncAdditional();return true;}
  if(id==850&&select){int next=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));if(next>=0&&next<=3){minimapPosition=next;changedSetting();}return true;}
  if(id==830&&notification==BN_CLICKED){minimapEnabled=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;if(!minimapEnabled)minimap::hide();changedSetting();return true;}
+ if((id==9090&&notification==BN_CLICKED)||(id==9091&&select)||(id==9092&&notification==BN_CLICKED)){
+  if(id==9090)extra.viewZoomEnabled=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;
+  if(id==9091){int row=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));if(row>=0&&row<5)extra.viewZoomPercent=viewzoom::Levels[row];}
+  if(id==9092){extra.viewZoomPercent=100;ControlUpdate guard;SendMessageW(GetDlgItem(ui,9091),CB_SETCURSEL,2,0);}
+  registerKeys();changedSetting();syncAdditional();return true;
+ }
  if(id==886&&select){int mode=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));if(mode>=0&&mode<=3){extra.scrollRefreshMode=mode;changedSetting();syncAdditional();}return true;}
  if(id==810&&notification==BN_CLICKED){extra.c4Test=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;pointerMatches.clear();changedSetting();return true;}
  if(id==811&&edit){extra.c4Key=uint32_t(SendMessageW(GetDlgItem(ui,id),HKM_GETHOTKEY,0,0));changedSetting();return true;}
@@ -159,4 +165,5 @@ static bool autoSettingChanged(int id,int notification){
   bindType(false);return true;}
  return false;
 }
+
 

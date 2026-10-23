@@ -47,6 +47,7 @@
 #include "pointer_batch.h"
 #include "ui_layout.h"
 #include "additional_settings.h"
+#include "view_zoom.h"
 #include "../../external_reader/source/cooperative_reader.h"
 #include "../../external_reader/source/shared_reader.h"
 #include "../../external_reader/source/process_discovery.h"
@@ -252,7 +253,7 @@ static void logBridgeHealth(bool force=false){
   L" nativeHook="+std::to_wstring(incoming.nativeHookStatus)+L" clickHook="+std::to_wstring(shared?shared->clickHookStatus:0)+
   L" inputPatchMask="+std::to_wstring(incoming.inputPatchMask)+L" hookConflicts="+std::to_wstring(incoming.hookConflicts)+
   L" installedCodePatches="+std::to_wstring(incoming.hookInstalled)+L" nativeAirMode="+std::to_wstring(incoming.nativeAirStatus)+
-  L" refreshMode="+std::to_wstring(shared?shared->scrollRefreshMode:0)+L" scrollHz="+std::to_wstring(shared?shared->scrollRefreshHz:0)+L" scrollStatus="+std::to_wstring(shared?shared->scrollRefreshStatus:0)+L" scrollDraws="+std::to_wstring(shared?shared->scrollRefreshDraws:0)+L" extraRenderMilliHz="+std::to_wstring(shared?shared->scrollRefreshRateMilli:0)+L" extraRenderMaxGapUs="+std::to_wstring(shared?shared->scrollRefreshMaxGapUs:0)+
+  L" zoomStatus="+std::to_wstring(shared?shared->viewZoomStatus:0)+L" zoomApplied="+std::to_wstring(shared?shared->viewZoomApplied:100)+L" refreshMode="+std::to_wstring(shared?shared->scrollRefreshMode:0)+L" scrollHz="+std::to_wstring(shared?shared->scrollRefreshHz:0)+L" scrollStatus="+std::to_wstring(shared?shared->scrollRefreshStatus:0)+L" scrollDraws="+std::to_wstring(shared?shared->scrollRefreshDraws:0)+L" extraRenderMilliHz="+std::to_wstring(shared?shared->scrollRefreshRateMilli:0)+L" extraRenderMaxGapUs="+std::to_wstring(shared?shared->scrollRefreshMaxGapUs:0)+
   L" renderReveal="+std::to_wstring(shared?shared->renderReveal:0)+L" renderStatus="+std::to_wstring(incoming.renderRevealStatus)+
   L" burstEnabled="+std::to_wstring(shared?shared->burstEnabled:0)+L" burstHeld="+std::to_wstring(shared?shared->burstHeld:0)+
   L" burstActive="+std::to_wstring(shared?shared->burstActive:0)+L" burstIssued="+std::to_wstring(shared?shared->burstIssued:0)+
@@ -354,6 +355,7 @@ static void registerKeys(){for(int id:registeredKeyIDs)UnregisterHotKey(ui,id);r
  if(LOBYTE(ejectKey)&&!registerKey(1696,ejectKey))++failures;
  if(hookSmartUnload&&LOBYTE(unloadKey)&&!registerKey(1698,unloadKey))++failures;
  if(hookAutoCS&&LOBYTE(csKey)&&!registerKey(1699,csKey))++failures;
+ if(extra.viewZoomEnabled){for(int i=0;i<3;++i)if(!registerKey(1720+i,WORD((i==0?VK_OEM_MINUS:i==1?VK_OEM_PLUS:VK_BACK)|(6<<8))))++failures;}
  if(extra.watchEnabled&&LOBYTE(extra.watchKey)&&!registerKey(1702,WORD(extra.watchKey)))++failures;
  if(LOBYTE(idleAircraftKey)&&!registerKey(1701,idleAircraftKey))++failures;
  for(int i=0;i<9;++i)if(LOBYTE(socialKeys[i])&&!registerKey(1710+i,socialKeys[i]))++failures;
@@ -711,7 +713,7 @@ static bool ensureBridge(){
  }
  ++bridgeAttempts;bridgeRetryAt=now+(bridgeAttempts>=3?30000:2000);
  critical(L"bridge-connect-attempt="+std::to_wstring(bridgeAttempts)+L" pid="+std::to_wstring(pid)+L" thread="+std::to_wstring(gameThread));
- wchar_t n[100];swprintf(n,100,L"Local\\RA2Assist_v064_%lu",pid);
+ wchar_t n[100];swprintf(n,100,L"Local\\RA2Assist_v065_%lu",pid);
  mapping=CreateFileMappingW(INVALID_HANDLE_VALUE,nullptr,PAGE_READWRITE,0,sizeof(Shared),n);
  DWORD mappingError=GetLastError();if(!mapping)return bridgeFailed(L"创建命令共享内存失败",mappingError);
  if(mappingError==ERROR_ALREADY_EXISTS){
@@ -841,6 +843,7 @@ static void mergeExternal(){
  updateEnemyDisplay(d);updateStatusDisplay(d);
 }
 static void sampleExternal(DWORD now){
+ if(shared&&shared->viewZoomBusy)return;
  
  if(!externalReader.valid())return;
  const DWORD displayNow=sampleRenderClock(nullptr);
@@ -1266,6 +1269,17 @@ static void updateModeStatus(DWORD now){
  SetWindowTextW(GetDlgItem(ui,807),riskStatus.c_str());
  std::wstring renderText=extra.mapStrategy?L"地图显示（实验性）：":L"地图显示：";renderText+=extra.mapStrategy==3?(autoRevealDone&&autoRevealDone==commandMatch()?L"自动地图全开已执行":L"等待自动地图全开"):snap.renderRevealStatus==-2?L"启用或关闭失败，请查看日志":!extra.renderReveal?L"关闭":phase?L"等待游戏就绪":snap.renderRevealStatus==1?L"已启用":L"等待生效";
  SetWindowTextW(GetDlgItem(ui,809),renderText.c_str());
+ {int z=shared?shared->viewZoomStatus:viewzoom::Waiting;std::wstring text=L"视角缩放：";
+  if(!shared)text+=extra.viewZoomEnabled?L"等待连接":L"关闭";
+  else switch(z){case viewzoom::Off:text+=L"100%";break;case viewzoom::Applied:text+=std::to_wstring(shared->viewZoomApplied)+L"% · "+std::to_wstring(shared->viewZoomWidth)+L" × "+std::to_wstring(shared->viewZoomHeight);break;
+   case viewzoom::Renderer:text+=L"需要带 Zoom 接口的 CnC-DDraw";break;case viewzoom::Native:text+=L"游戏版本不兼容，或游戏使用原生窗口模式";break;
+   case viewzoom::Dimensions:text+=L"目标解析度超出范围（640×480 至 8192×8192）";break;
+   case viewzoom::ResizeFailed:text+=L"切换失败，已恢复上一次倍率";break;case viewzoom::RestoreFailed:text+=L"恢复失败，请重新启动游戏";break;
+   case viewzoom::Fault:text+=L"原生切换异常，请重新启动游戏";break;
+   case viewzoom::Presentation:text+=L"存在黑边或渲染器改变视窗大小；请用等比例普通窗口模式";break;
+   default:text+=L"等待游戏前台就绪 / 松开鼠标";break;}
+  SetWindowTextW(GetDlgItem(ui,9093),text.c_str());
+ }
  SetWindowTextW(GetDlgItem(ui,888),!extra.scrollRefreshMode?L"高刷策略：仅光标（沿用光标页设置）":shared&&shared->scrollRefreshStatus<0?L"高刷策略：接口不兼容，保持原版画面刷新":shared&&shared->scrollRefreshStatus==1?(extra.scrollRefreshMode==3?L"高刷策略：强制高刷 · 实验性功能已启用":extra.scrollRefreshMode==2?L"高刷策略：全部 · 实验性功能已启用":L"高刷策略：光标＋拖屏 · 实验性功能已启用"):L"高刷策略：等待游戏前台就绪");
  if(shared&&shared->scrollRefreshStatus==1&&shared->scrollRefreshRateMilli){wchar_t label[160];swprintf(label,160,L"%s · 绘制调用 %.1f Hz（非屏幕 FPS） · 最长间隔 %.1f ms",extra.scrollRefreshMode==3?L"强制高刷":extra.scrollRefreshMode==2?L"全部（实验性）":L"光标＋拖屏（实验性）",shared->scrollRefreshRateMilli/1000.0,shared->scrollRefreshMaxGapUs/1000.0);SetWindowTextW(GetDlgItem(ui,888),label);}
  SetWindowTextW(GetDlgItem(ui,813),(L"步兵强制进入建筑："+(extra.c4Test&&snap.c4TestStatus==1&&!phase&&infantryEntryResultMatch==commandMatch()&&!infantryEntryResult.empty()?infantryEntryResult:riskText(extra.c4Test,snap.c4TestStatus))).c_str());
@@ -1752,4 +1766,5 @@ int WINAPI wWinMain(HINSTANCE h,HINSTANCE,LPWSTR,int show){SetProcessDPIAware();
  ShowWindow(ui,show);
 #endif
  startClock();MSG m;while(GetMessageW(&m,nullptr,0,0)>0){if(!IsDialogMessageW(ui,&m)){TranslateMessage(&m);DispatchMessageW(&m);}}DestroyWindow(overlay);surface.clear();textRasters.clear();glyphRasters.clear();labelRasters.clear();DeleteObject(font);DeleteObject(bgBrush);DeleteObject(editBrush);GdiplusShutdown(token);CloseHandle(single);return 0;}
+
 

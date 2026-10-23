@@ -4,6 +4,7 @@ import subprocess,tempfile,sys
 root=Path(sys.argv[1]).resolve() if len(sys.argv)>1 else Path(__file__).resolve().parents[2]
 prefix=r'''
 #include "additional_settings.h"
+#include "view_zoom.h"
 #include "compute_policy.h"
 #include "ore_type_config.h"
 #include "feature_type_config.h"
@@ -91,6 +92,7 @@ feature_save=io.split('static bool saveAdditionalSettings(){',1)[1].split(' writ
 prefix+="\nstatic void loadFeatureTypes(){"+feature_load+"}\nstatic void saveFeatureTypes(){"+feature_save+"}\n"
 suffix=r''' 
 int main(){
+ assert(!extra.viewZoomEnabled&&extra.viewZoomPercent==100);
  assert(extra.dodgeMode==0);
  profile[L"Enabled"]=profile[L"HoldEnabled"]=1;profile[L"HoldKey"]='B';
  extra.burstEnabled=extra.burstHoldEnabled=true;extra.burstKey='B';loadFeatureTypes();
@@ -120,6 +122,10 @@ int main(){
   for(int bad:{0,49,251,999}){fields[id]=bad;autoSettingChanged(id,EN_CHANGE);assert(scale==250);}
  }
 
+ fields[9090]=1;assert(autoSettingChanged(9090,BN_CLICKED)&&extra.viewZoomEnabled);
+ for(int i=0;i<5;++i){fields[9091]=i;assert(autoSettingChanged(9091,CBN_SELCHANGE)&&extra.viewZoomPercent==viewzoom::Levels[i]);}
+ assert(autoSettingChanged(9092,BN_CLICKED)&&extra.viewZoomPercent==100&&fields[9091]==2);
+ fields[9090]=0;assert(autoSettingChanged(9090,BN_CLICKED)&&!extra.viewZoomEnabled);
  loadFeatureTypes();for(int f=0;f<featuretypes::Count;++f)assert(!featureTypes.filters[f].custom);
  for(int f=0;f<featuretypes::Count;++f){featureTypes.filters[f].custom=1;featureTypeText[f]=L"custom_a，CUSTOM_B";}
  saveFeatureTypes();featureTypes={};for(auto&text:featureTypeText)text.clear();loadFeatureTypes();
@@ -299,3 +305,4 @@ assert 'write(L"Dodge",L"Logic",extra.dodgeMode)' in (root/'assist/source/extra_
 print("PASS reverse-dodge default, both live choices, invalid selection and persistence key")
 
 print('PASS passenger inspection, persistent dangerous cargo and independent magnetron drop: UI toggle, autosave, persisted off/on roundtrips')
+

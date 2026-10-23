@@ -62,6 +62,7 @@ static bool highScrollInterfaces(){
         !memcmp((void*)0x6D6000,setPosition,sizeof setPosition)&&
         !memcmp((void*)0x692B60,edge,sizeof edge)&&!memcmp((void*)0x693440,drag,sizeof drag);
 }
+static bool zoomClientPoint(HWND,POINT&);
 static void highScrollTick(uint64_t now){
  if(!sh->scrollRefreshMode||sh->scrollRefreshMode>3||!sh->scrollRefreshHz||!sh->foreground||snap.chat||!riskReady()||!simulationReady()){
   if(scrollRefreshActive)restoreHighScroll();return;
@@ -77,7 +78,7 @@ static void highScrollTick(uint64_t now){
  // the current client point for extra camera updates without changing that
  // cache or synthesizing mouse input. Native button/drag state remains owner.
  HWND window=reinterpret_cast<HWND>(uintptr_t(get<uint32_t>(0xB73550)));DWORD owner=0;
- POINT point{};const bool current=window&&GetWindowThreadProcessId(window,&owner)&&owner==GetCurrentProcessId()&&GetCursorPos(&point)&&ScreenToClient(window,&point);
+ POINT point{};const bool current=window&&GetWindowThreadProcessId(window,&owner)&&owner==GetCurrentProcessId()&&zoomClientPoint(window,point);
  point.x-=get<int>(0x886FA0);point.y-=get<int>(0x886FA4);
  const int width=get<int>(0x886FB8)-get<int>(0x886FA0),height=get<int>(0x886FBC)-get<int>(0x886FA4);
  const bool inside=current&&width>0&&height>0&&point.x>=0&&point.y>=0&&point.x<width&&point.y<height;
@@ -104,3 +105,4 @@ static void highScrollTick(uint64_t now){
  if(!scrollMeasureAt)scrollMeasureAt=now;else ++scrollMeasureCount;
  if(now-scrollMeasureAt>=1000000){sh->scrollRefreshRateMilli=uint32_t(uint64_t(scrollMeasureCount)*1000000000/(now-scrollMeasureAt));sh->scrollRefreshMaxGapUs=scrollMaxGap;scrollMeasureAt=now;scrollMeasureCount=scrollMaxGap=0;}
 }
+

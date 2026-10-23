@@ -29,7 +29,7 @@ struct EnemyFixture {
  EnemyMemory mem;EnemyRead reader{&mem};external::TacticalSampler<EnemyRead> sampler{reader};uint32_t now=100;int frame=100;
  EnemyFixture(){
   mem.put<uint8_t>(0xA8E9A0,1);mem.put<uint8_t>(0xA8E378,1);mem.put(0xA83D4C,local);mem.put(0x887324,tactical);mem.put<int>(0xA8ED84,frame);
-  mem.put<int>(0xA8EB84,1920);mem.put<int>(0xA8EB88,1080);mem.put<int>(0xB0CE30,1600);mem.put<int>(0xB0CE34,1000);
+  mem.put<int>(0x8A00A4,1920);mem.put<int>(0x8A00A8,1080);mem.put<int>(0xB0CE30,1600);mem.put<int>(0xB0CE34,1000);
   mem.put<int>(tactical+0xB0,-320);mem.put<int>(tactical+0xB4,800);mem.put<double>(0xB0CD48,.0866025403784);
   mem.vector(0xA80228,0x820000,{local,enemy,ally,neutral});
   for(int i=0;i<4;++i){uint32_t h=local+uint32_t(i)*0x20000,country=0x780000+uint32_t(i)*0x1000;mem.put(h+0x30,i);mem.put(h+0x34,country);mem.put<uint8_t>(country+0x1A6,i==3);mem.put<uint8_t>(h+22265,220);mem.put<uint8_t>(h+22266,80);mem.put<uint8_t>(h+22267,70);}
@@ -118,3 +118,4 @@ int main(){using F=EnemyFixture;using namespace assist;
   std::cout<<"PASS tactical viewport/sidebar bounds, invalid coordinates, freshness/epoch/wrap, 2048-marker limit and corrupt object-array bounds\n";
  }
 }
+

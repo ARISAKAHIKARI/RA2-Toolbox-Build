@@ -26,7 +26,7 @@ static void pointerFinish(int result){
 }
 static bool pointerLocation(const pointerinput::Intent&i){
  uint32_t tactical=get<uint32_t>(0x887324);if(tactical<0x10000)return false;
- if(i.width!=get<int>(0xA8EB84)||i.height!=get<int>(0xA8EB88)||
+ if(i.width!=get<int>(0x8A00A4)||i.height!=get<int>(0x8A00A8)||
     i.cameraX!=get<int>(tactical+0xB0)||i.cameraY!=get<int>(tactical+0xB4))return false;
  int width=get<int>(0xB0CE30),height=get<int>(0xB0CE34);
  // ProcessClickCoords does not check upper bounds. Never query the sidebar.
@@ -97,7 +97,7 @@ static void pointerTick(){
   if(i.operation!=pointerinput::Cancel){
    bool shiftUnsupported=(i.bindings&pointerinput::Shift)&&(i.operation==pointerinput::FollowNative||(i.bindings&pointerinput::RightClick)||!(i.bindings&(pointerinput::Advanced|pointerinput::Magnetron|pointerinput::CS|pointerinput::Enter|pointerinput::AirFirst|pointerinput::AirSecond)));
    uint32_t tactical=get<uint32_t>(0x887324);
-   bool location=continuation?(tactical>=0x10000&&i.width==get<int>(0xA8EB84)&&i.height==get<int>(0xA8EB88)&&i.cameraX==get<int>(tactical+0xB0)&&i.cameraY==get<int>(tactical+0xB4)):pointerLocation(i);
+   bool location=continuation?(tactical>=0x10000&&i.width==get<int>(0x8A00A4)&&i.height==get<int>(0x8A00A8)&&i.cameraX==get<int>(tactical+0xB0)&&i.cameraY==get<int>(tactical+0xB4)):pointerLocation(i);
    // Z sets DisplayClass::PlanningMode. AirWaypoint only records a validated
    // point for the host; rejecting it here would reject its own activation key.
    // C4Test appends native planning nodes; Z release owns their commit.
@@ -215,4 +215,5 @@ static void pointerTick(){
  }
  if(!remaining)pointerFinish(1);
 }
+
 

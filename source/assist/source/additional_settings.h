@@ -6,6 +6,7 @@ namespace assist {
 struct AdditionalSettings {
  bool formationEnabled=true;uint32_t formationHold=18,formationKeys[4]={'Z','X','C','V'},formationMouse=2;
  bool controlAll=false,switchPlayerEnabled=false;
+ bool viewZoomEnabled=false;int viewZoomPercent=100;
  int scrollRefreshMode=0; // cursor / scrolling / scene / forced redraw
 #ifndef RA2_UNIFIED
  int scrollRefreshHz=120; // standalone assist only
@@ -33,4 +34,5 @@ enum ExtraControl {LoadLogic,LoadRadius,EnterEnabled,EnterPreset,EnterCustom,Air
 inline int holdPreset(uint32_t key){return !key?0:key==18?1:key==17?2:key==16?3:4;}
 inline uint32_t presetKey(int preset,uint32_t custom){return preset==0?0:preset==1?18:preset==2?17:preset==3?16:custom;}
 }
+
 

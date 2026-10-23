@@ -15,7 +15,7 @@ static void shiftClickTick(){
   (shiftClickMode==1||(known&&!nativeFive));
  if(eligible&&(!context||uint32_t(now-context)>=32)){
   context=now;visible=external::display::inspect([](uint32_t at,void*p,size_t n){return externalReader.readFresh(at,p,n);}).visible();
-  width=height=0;externalReader.readFresh(0xA8EB84,&width,4);externalReader.readFresh(0xA8EB88,&height,4);
+  width=height=0;externalReader.readFresh(0x8A00A4,&width,4);externalReader.readFresh(0x8A00A8,&height,4);
  }
  eligible=eligible&&visible&&width>=320&&height>=200&&
   (GetAsyncKeyState(VK_SHIFT)&0x8000)&&!((GetAsyncKeyState(VK_CONTROL)|GetAsyncKeyState(VK_MENU))&0x8000);
@@ -28,3 +28,4 @@ static void shiftClickTick(){
  if(down)return;
  for(int n=0;n<4&&shiftBurst.ready(GetTickCount());++n){auto sent=gameinput::clickPair(game,pid);if(sent.sent!=2){shiftBurst.cancel();critical(L"Shift5 SendInput failed Win32="+std::to_wstring(sent.error));break;}shiftBurst.sent(GetTickCount(),unsigned(shiftClickGap));if(shiftClickGap)break;}
 }
+

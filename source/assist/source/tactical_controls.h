@@ -170,6 +170,11 @@ note(L"坐标从游戏画面左上角计算；自动避开原雷达和飞机按�
 detailCheck=toggle(481,L"显示运行耗时",showDetails);next();
 
 heading(4,904,L"高级与实验性设置",L"实验性功能尚未完成联机验证，可能导致不同步或掉线。建议单独测试。");
+toggle(9090,L"视角缩放",extra.viewZoomEnabled);next();
+label(L"视角倍率",20,260);choices(combo(9091),{L"50%",L"75%",L"100%",L"125%",L"150%"},viewzoom::index(extra.viewZoomPercent));next();
+button(9092,L"恢复 100%",20,280);next();
+note(L"实验性：使用 CnC-DDraw；整个画面和侧栏一起缩放。Ctrl+Alt+- 缩小，Ctrl+Alt+= 放大，Ctrl+Alt+Backspace 恢复。",56);
+item(L"STATIC",L"视角缩放：关闭",20,605,9093,0,48);next(48);
 #ifdef RA2_UNIFIED
 {auto h=placedControl({-3,{0,0,1,1}},L"COMBOBOX",L"",886,CBS_DROPDOWNLIST);choices(h,{L"仅光标",L"光标＋拖屏",L"全部",L"强制高刷（实验性 · 联机待验证）"},extra.scrollRefreshMode);}
 #else
@@ -213,3 +218,4 @@ note(L"兼容模式需重启游戏和工具箱后生效。通常保持标准模�
 // it is not presented as an adjustable option.
 schedulerEntryCombo=placedControl({-3,{0,0,1,1}},L"COMBOBOX",L"",760,CBS_DROPDOWNLIST);
 choices(schedulerEntryCombo,{L"自动"},0);EnableWindow(schedulerEntryCombo,FALSE);ShowWindow(schedulerEntryCombo,SW_HIDE);
+

@@ -262,7 +262,7 @@ static void tick(){
  if(demo){MONITORINFO mi{sizeof mi};GetMonitorInfoW(MonitorFromWindow(ui,MONITOR_DEFAULTTONEAREST),&mi);r.right=mi.rcMonitor.right-mi.rcMonitor.left;r.bottom=mi.rcMonitor.bottom-mi.rcMonitor.top;pt={mi.rcMonitor.left,mi.rcMonitor.top};}
  else {GetClientRect(game,&r);ClientToScreen(game,&pt);}
  int gameWidth=r.right,gameHeight=r.bottom;
- if(!demo&&(!reader.readFresh(0xA8EB84,&gameWidth,4)||!reader.readFresh(0xA8EB88,&gameHeight,4))){statsVisible(false);ShowWindow(overlay,SW_HIDE);return;}
+ if(!demo&&(!reader.readFresh(0x8A00A4,&gameWidth,4)||!reader.readFresh(0x8A00A8,&gameHeight,4))){statsVisible(false);ShowWindow(overlay,SW_HIDE);return;}
  viewport::Scale view;if(!view.set(gameWidth,gameHeight,r.right,r.bottom)){statsVisible(false);ShowWindow(overlay,SW_HIDE);return;}
  static int previousW=0,previousH=0,previousGW=0,previousGH=0;
  if(previousW!=r.right||previousH!=r.bottom||previousGW!=gameWidth||previousGH!=gameHeight){previousW=r.right;previousH=r.bottom;previousGW=gameWidth;previousGH=gameHeight;renderDirty=true;
@@ -364,3 +364,4 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR,int){
 
  MSG msg;while(GetMessageW(&msg,nullptr,0,0)>0){TranslateMessage(&msg);DispatchMessageW(&msg);}DestroyWindow(overlay);iconImages.clear();GdiplusShutdown(token);if(logfile)fclose(logfile);CloseHandle(mutex);return 0;
 }
+

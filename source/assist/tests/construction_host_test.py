@@ -63,7 +63,7 @@ static void setup(){
  list(0xA83C68,{T,T+0x2000,T+0x4000});list(R+0x358,{0});for(int g=1;g<6;++g)list(R+0x358+g*28,{});
  for(int i=0;i<3;++i){auto t=T+i*0x2000;snap.types[i].index=i;w(t+0x634,1);w(t+0x6CC,1);w(t+0xDA0,-1);w(t+0xDA4,-1);w(t+0xDF8,i);list(t+0x638,i==1?std::initializer_list<int>{-1}:i==2?std::initializer_list<int>{1}:std::initializer_list<int>{});list(t+0x654,{});}
  w(P+0x10,100);w(P+0x21C,H);w(P+0x6C,100);byte(P+0x74,1);byte(P+0x81,1);w(P+0x520,T);w(H+0x53BC,F);w(F+0x6C,H);w(F+0x58,P);
- w(0x87F7E8+0x539C,0);w(0xA8EB84,2560);w(0xA8EB88,1440);w(0x87F7E8+0x1544+84,1);w(0x87F7E8+0x1544+88,0);w(0x87F7E8+0x1544+92,7);
+ w(0x87F7E8+0x539C,0);w(0x8A00A4,2560);w(0x8A00A8,1440);w(0x87F7E8+0x1544+84,1);w(0x87F7E8+0x1544+88,0);w(0x87F7E8+0x1544+92,7);
  now+=300;buildreserve::service();
 }
 static int choice(int index){for(int i=0;i<int(buildreserve::choices.size());++i)if(buildreserve::choices[i].index==index)return i;return -1;}
@@ -204,3 +204,4 @@ with tempfile.TemporaryDirectory() as tmp:
     cpp=Path(tmp)/'host.cpp';exe=Path(tmp)/'host';cpp.write_text(prefix+source+suffix)
     subprocess.run(['g++','-std=c++17','-O1','-g','-fsanitize=address,undefined','-I'+str(root/'assist/source'),str(cpp),'-o',str(exe)],check=True)
     subprocess.run([str(exe)],check=True,env=dict(os.environ,ASAN_OPTIONS="detect_leaks=0"))
+

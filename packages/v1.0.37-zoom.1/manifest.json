@@ -1,0 +1,31 @@
+{
+  "version": "v1.0.37-zoom.1",
+  "file_version": "1.0.37.4",
+  "baseline_commit": "78c3deafa3c73b7c1c3a3c50ed362dbeed8fa34f",
+  "experimental": true,
+  "assets": [
+    {
+      "name": "RA2-Toolbox-v1.0.37-zoom.1-Update.zip",
+      "bytes": 1366098,
+      "sha256": "7f7a8288ae4b0a64cdc36d89a64d38c36fbbb06d0432a540af10427c4571e5d3",
+      "files": {
+        "RA2Toolbox.exe": {
+          "bytes": 2666496,
+          "sha256": "69241f2c21b0699e51f8973e1b5963bc48b0fbae4a076379f7a06b0341a2ea79"
+        },
+        "GameRuntime.dll": {
+          "bytes": 4854272,
+          "sha256": "f022d022724385c0ef7cab923dcc02b3ea030b5d7531b77e6fc214421ed57a99"
+        },
+        "README-Windows.txt": {
+          "bytes": 1928,
+          "sha256": "a22e14c6a968394ee4f9c26c860cc0dd3621ca1618546e30fb6f011accfa31a7"
+        },
+        "RELEASE_NOTES.md": {
+          "bytes": 1767,
+          "sha256": "0e36ed0d04c7223e11ef33cf05fa68552f0d6669addc2a1c6e222ebb35aef2cd"
+        }
+      }
+    }
+  ]
+}

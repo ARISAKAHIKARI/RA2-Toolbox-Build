@@ -281,7 +281,7 @@ static void service(){
  bool context=current[0]||current[1];for(const auto&b:books)context=context||!b.items.empty();
  if(!context){hide();return;}
 
- RECT client{};POINT origin{};int width=get<int>(0xA8EB84),height=get<int>(0xA8EB88);
+ RECT client{};POINT origin{};int width=get<int>(0x8A00A4),height=get<int>(0x8A00A8);
  if(!GetClientRect(game,&client)||!ClientToScreen(game,&origin)||!layout.set(width,height,int(client.right-client.left),int(client.bottom-client.top),constructionScalePercent)){hide();return;}
  refreshChoices(); // Keep the panel while the last reserved product is still in production.
  static int oldW=0,oldH=0,oldCW=0,oldCH=0,oldScale=0;
@@ -294,3 +294,4 @@ static void service(){
 }
 static void destroy(){if(window)DestroyWindow(window);window=nullptr;panelBuffer.clear();if(panelFont)DeleteObject(panelFont);panelFont=nullptr;fontHeight=0;reset();}
 }
+

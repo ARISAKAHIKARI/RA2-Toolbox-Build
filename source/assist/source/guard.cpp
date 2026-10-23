@@ -72,3 +72,9 @@ extern "C" int GuardedAssistFilter(void* message){
  __try{return AssistFilterMessage(message);}
  __except(AssistExceptionFilter(_exception_info(),10)){AssistFault();return 0;}
 }
+
+
+extern "C" int GuardedViewResize(unsigned enableZoom,int width,int height){
+ __try {((void(__cdecl*)())enableZoom)();return ((bool(__fastcall*)(int,int))0x560BF0)(width,height)?1:0;}
+ __except(AssistExceptionFilter(_exception_info(),12)){return -1;}
+}

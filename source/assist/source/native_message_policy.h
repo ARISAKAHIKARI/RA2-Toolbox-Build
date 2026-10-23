@@ -34,7 +34,7 @@ extern "C" int AssistFilterMessage(void* raw){
  // Object clicks, dragging a build placement, sidebar/minimap, unsupported
  // selections and absent host capacity keep their original native message.
  uint32_t tactical=get<uint32_t>(0x887324);if(tactical<0x10000||get<bool>(0x87F7E8+0x11B3))return 0;
- pointerinput::Intent point{};point.width=get<int>(0xA8EB84);point.height=get<int>(0xA8EB88);point.cameraX=get<int>(tactical+0xB0);point.cameraY=get<int>(tactical+0xB4);
+ pointerinput::Intent point{};point.width=get<int>(0x8A00A4);point.height=get<int>(0x8A00A8);point.cameraX=get<int>(tactical+0xB0);point.cameraY=get<int>(tactical+0xB4);
  RECT client{};if(!GetClientRect(msg->hwnd,&client)||client.right<=0||client.bottom<=0)return 0;
  point.x=int(int64_t(short(LOWORD(msg->lParam)))*point.width/client.right);point.y=int(int64_t(short(HIWORD(msg->lParam)))*point.height/client.bottom);
  uint32_t oldCell=pointerCell,oldTarget=pointerTarget,oldID=pointerTargetID;int oldZ=pointerGroundZ;bool location=pointerLocation(point);bool ground=location&&!pointerTarget;pointerCell=oldCell;pointerTarget=oldTarget;pointerTargetID=oldID;pointerGroundZ=oldZ;if(!ground)return 0;
@@ -54,3 +54,4 @@ extern "C" void AssistRuntimeFilter(void* message){
  gameentry::Scope entry(gameentry::Client::Assist);if(!entry)return;
  GuardedAssistFilter(message);
 }
+

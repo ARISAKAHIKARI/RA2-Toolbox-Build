@@ -1,0 +1,106 @@
+{
+  "scope": "Actual x86 DLL and original event constructors; mocked Win32/world/query.\nThe Sell receiver branch is executed from the supplied EXE with resolved-object,\nmap lookup and final virtual sale mocked. This is not real network validation.\n",
+  "dll_sha256": "f022d022724385c0ef7cab923dcc02b3ea030b5d7531b77e6fc214421ed57a99",
+  "results": [
+    {
+      "case": "0_all_levels_roundtrip_no_simulation_or_ini_changes",
+      "status": "PASS"
+    },
+    {
+      "case": "0_stop_restores_base",
+      "status": "PASS"
+    },
+    {
+      "case": "0_menu_restores_base",
+      "status": "PASS"
+    },
+    {
+      "case": "0_match_restores_base",
+      "status": "PASS"
+    },
+    {
+      "case": "5_all_levels_roundtrip_no_simulation_or_ini_changes",
+      "status": "PASS"
+    },
+    {
+      "case": "5_stop_restores_base",
+      "status": "PASS"
+    },
+    {
+      "case": "5_menu_restores_base",
+      "status": "PASS"
+    },
+    {
+      "case": "5_match_restores_base",
+      "status": "PASS"
+    },
+    {
+      "case": "3_all_levels_roundtrip_no_simulation_or_ini_changes",
+      "status": "PASS"
+    },
+    {
+      "case": "3_stop_restores_base",
+      "status": "PASS"
+    },
+    {
+      "case": "3_menu_restores_base",
+      "status": "PASS"
+    },
+    {
+      "case": "3_match_restores_base",
+      "status": "PASS"
+    },
+    {
+      "case": "4_all_levels_roundtrip_no_simulation_or_ini_changes",
+      "status": "PASS"
+    },
+    {
+      "case": "4_stop_restores_base",
+      "status": "PASS"
+    },
+    {
+      "case": "4_menu_restores_base",
+      "status": "PASS"
+    },
+    {
+      "case": "4_match_restores_base",
+      "status": "PASS"
+    },
+    {
+      "case": "renderer_fails_closed_or_rolls_back",
+      "status": "PASS"
+    },
+    {
+      "case": "signature_fails_closed_or_rolls_back",
+      "status": "PASS"
+    },
+    {
+      "case": "windowed_fails_closed_or_rolls_back",
+      "status": "PASS"
+    },
+    {
+      "case": "held_fails_closed_or_rolls_back",
+      "status": "PASS"
+    },
+    {
+      "case": "background_fails_closed_or_rolls_back",
+      "status": "PASS"
+    },
+    {
+      "case": "chat_fails_closed_or_rolls_back",
+      "status": "PASS"
+    },
+    {
+      "case": "failed_fails_closed_or_rolls_back",
+      "status": "PASS"
+    },
+    {
+      "case": "presentation_fails_closed_or_rolls_back",
+      "status": "PASS"
+    },
+    {
+      "case": "invalid_fails_closed_or_rolls_back",
+      "status": "PASS"
+    }
+  ]
+}

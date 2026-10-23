@@ -1,13 +1,13 @@
 {
-  "label": "1.0.37.3 SingleRuntime",
-  "file_version": "1.0.37.3",
+  "label": "1.0.37.4 SingleRuntime",
+  "file_version": "1.0.37.4",
   "verified": {
     "RA2Toolbox.exe": {
-      "bytes": 2659840,
-      "sha256": "960f78d4c7ebd74de1e2a9233af815f357bfc24df779440a4636c18af64bb925",
+      "bytes": 2666496,
+      "sha256": "69241f2c21b0699e51f8973e1b5963bc48b0fbae4a076379f7a06b0341a2ea79",
       "machine": "PE32 x86",
       "sections": 14,
-      "entry_rva": "0x11c440",
+      "entry_rva": "0x11d3d0",
       "exports": [
         "AssistHostProtocolInfo",
         "_Unwind_DeleteException",
@@ -548,15 +548,15 @@
         "version": "6.0.0.0",
         "architecture": "x86"
       },
-      "assist_protocol": 64,
-      "assist_shared_bytes": 4164824
+      "assist_protocol": 65,
+      "assist_shared_bytes": 4164848
     },
     "GameRuntime.dll": {
-      "bytes": 4849152,
-      "sha256": "21c308a5d89c87c110ddaf7d7d6bfabd3d1ec5a1637c82353fd5a268ad021acb",
+      "bytes": 4854272,
+      "sha256": "f022d022724385c0ef7cab923dcc02b3ea030b5d7531b77e6fc214421ed57a99",
       "machine": "PE32 x86",
       "sections": 13,
-      "entry_rva": "0x5e590",
+      "entry_rva": "0x5f590",
       "exports": [
         "AssistMappingPrefix",
         "AssistProtocolInfo",
@@ -597,6 +597,7 @@
           "GetLastError",
           "GetModuleHandleExW",
           "GetModuleHandleW",
+          "GetProcAddress",
           "GetProcessHeap",
           "GetTickCount",
           "HeapAlloc",
@@ -708,8 +709,8 @@
       "GameRuntimePostHook_rva": "0x1970",
       "runtime_protocol": 4,
       "runtime_control_bytes": 176,
-      "assist_protocol": 64,
-      "assist_shared_bytes": 4164824
+      "assist_protocol": 65,
+      "assist_shared_bytes": 4164848
     }
   },
   "runtime_tested": false,

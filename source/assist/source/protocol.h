@@ -19,7 +19,7 @@
 #include "burst_compute.h"
 #include "dodge_compute.h"
 namespace assist {
-constexpr uint32_t Magic=0x41533130, Version=64;
+constexpr uint32_t Magic=0x41533130, Version=65;
 constexpr uint32_t DataMessage=0x8002, WakeTag=0x41533230;
 constexpr int MaxLabels=2048, MaxSW=32, MaxTypes=512, MaxThreats=128, MaxCrates=256, MaxCrateResults=16;
 enum Command { None, Repair, CombatSelection, EmptyTransports, DamagedSelection, IdleHarvester, IdleEngineer, IdleTransport, ClearBeacons, RevealMap, OpenTech, SelectSuper, Produce, SelectIron, SelectChrono, AutoBoard, SelectType, SmartUnload, CancelAdvanced, SelectVariant, ProduceReserved, AirPathMove, CancelTechProduction, SwitchPlayer, RestorePlayer, Cheer, Taunt, ProduceDeferred };
@@ -153,6 +153,8 @@ struct Shared {
  PlayerTestInfo players[32]{}; // Runtime writer, protected by seq
  volatile uint32_t scrollRefreshMode=0,scrollRefreshHz=0; // 0 cursor, 1 scroll, 2 scene, 3 forced redraw; zero Hz disables
  int scrollRefreshStatus=0;uint32_t scrollRefreshDraws=0,scrollRefreshRateMilli=0,scrollRefreshMaxGapUs=0; // Runtime diagnostics
+ volatile uint32_t viewZoomPercent=100;volatile long viewZoomBusy=0;
+ int viewZoomStatus=0,viewZoomApplied=100,viewZoomWidth=0,viewZoomHeight=0;
  volatile uint32_t magnetronDrop=0;
  volatile uint32_t missileScope=0,missileAllocation=0,magnetronGlobal=0,missileHeld=0;
  volatile long formationPolicySeq=0,formationSeq=0;formation::Policy formationPolicy;formation::Preview formationPreview;
@@ -171,4 +173,5 @@ inline bool canRepair(int hp,int max,bool active,bool repairing){return active&&
 inline bool queueAvailable(int count,int tail){return count>=0&&count<112&&tail>=0&&tail<128;}
 inline bool validType(int level,bool insignificant,bool spawned,uint32_t owners){return level>=0&&level<=100&&!insignificant&&!spawned&&owners!=0;}
 }
+
 
