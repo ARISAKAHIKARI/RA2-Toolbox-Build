@@ -1,3 +1,9 @@
+# RA2 Toolbox 1.0.37-pre.8（测试分支）
+
+队形与观察窗共用真实 SHP/VXL 加载和色盘，参考 FA2 补齐剧场与覆盖物规则；新增单机显式 Sticky 驻守，磁电自动摔落独立覆盖手动吸取及水陆/悬崖判断。216个 Runtime 受控用例通过；具体 MOD 画面和完整物理仍需实机复测。
+
+[测试发布](https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/releases/tag/v1.0.37-pre.8) · [发布说明](packages/v1.0.37-pre.8/RELEASE_NOTES.md) · [操作与验证](source/REVIEW-1.0.37-pre.8.md)
+
 # RA2 Toolbox 1.0.37-pre.7（测试分支）
 
 修复磁电/高级移动发送 Sticky 后，后续普通攻击无法切换任务的问题，改用可中断的普通待命。修正资源 ImageFile 偏移导致的前四字符丢失，并改善地形解码兼容与诊断。已卡住的旧对局需更新后开新局；完整实机地形显示仍待复测。

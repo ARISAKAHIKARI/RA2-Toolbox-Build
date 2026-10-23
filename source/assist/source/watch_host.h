@@ -11,6 +11,7 @@ using ImageKey=std::tuple<uint32_t,uint32_t,int,int,int,int,int>;
 struct ArtCached {gameassets::ActorArt art;DWORD retry=0;bool ready=false;std::string issue;};
 static std::map<ArtKey,ArtCached> actorArt;
 static std::map<ImageKey,Cached> images;
+static std::map<std::pair<uint32_t,uint32_t>,ImageKey> displayed;
 static size_t actorCursor=0;static DWORD diagnosticAt=0;
 static ArtKey artKey(const external::watch::Actor&a){return {a.type,a.owner,a.kind,a.pose.variant};}
 static ImageKey imageKey(const external::watch::Actor&a){return {a.type,a.owner,a.kind,a.kind==4?0:a.pose.body,a.kind==4?0:a.pose.turret,a.kind==4?a.stage:a.pose.frame,a.pose.variant};}
@@ -19,7 +20,7 @@ static std::array<uint32_t,256> terrainPalette{};
 static uint64_t serial=0;static DWORD last=0,process=0;static uint32_t epoch=0;static bool shown=false;
 static constexpr int Width=320,Height=256;static int left=12,top=48;
 static bool read(uint32_t p,void*out,size_t n){return externalReader.read(p,out,n);}
-static void reset(){pinned=tracking={};frame={};images.clear();actorArt.clear();actorCursor=0;diagnosticAt=0;tiles.clear();overlays.clear();terrainPalette={};last=0;if(shown){shown=false;++paintRevision;}}
+static void reset(){pinned=tracking={};frame={};images.clear();displayed.clear();actorArt.clear();actorCursor=0;diagnosticAt=0;tiles.clear();overlays.clear();terrainPalette={};last=0;if(shown){shown=false;++paintRevision;}}
 static void pin(){
  if(!enabled||!extra.watchEnabled||!foregroundGame()||snap.chat||formationInputOwns())return;
  if(process!=pid||epoch!=commandMatch()){reset();process=pid;epoch=commandMatch();}
@@ -43,16 +44,20 @@ static void update(){
   size_t pixels=0;for(const auto&item:cache)pixels+=item.second.image.pixels.size();int work=0;
   for(auto key:wanted){auto&c=cache[key];if(c.ready||work>=4||(c.retry&&int32_t(now-c.retry)<0))continue;++work;c.retry=now+2000;external::voxel::Image image;
    uint32_t pointer=0;read(key.first+0xA4,&pointer,4);
-   bool ok=tmp?gameassets::tile(key.first,key.second,terrainPalette,image):gameassets::sprite(key.first,pointer,terrainPalette,int(key.second),image);
+   bool ok=tmp?gameassets::tile(key.first,key.second,terrainPalette,image):gameassets::overlay(key.first,pointer,int(key.second),image);
    std::string memoryReason;
-   if(!ok)ok=tmp?external::terrain::tile(read,pointer,key.second,terrainPalette,image,&memoryReason):external::voxel::sprite(read,pointer,terrainPalette,image,int(key.second));
+   if(!ok&&tmp)ok=external::terrain::tile(read,pointer,key.second,terrainPalette,image,&memoryReason);
    c.issue=ok?"":gameassets::failure+(memoryReason.empty()?"":" memory="+memoryReason);
    if(ok&&pixels+image.pixels.size()<=4*1024*1024){pixels+=image.pixels.size();for(auto&p:image.pixels)if(unsigned alpha=p>>24)p=0xff000000u|(std::min(255u,((p>>16)&255)*255/alpha)<<16)|(std::min(255u,((p>>8)&255)*255/alpha)<<8)|std::min(255u,(p&255)*255/alpha);c.image=std::move(image);c.ready=true;}
   }
- };if(paletteReady){fetchStatic(tiles,true);fetchStatic(overlays,false);}
+ };if(paletteReady)fetchStatic(tiles,true);fetchStatic(overlays,false);
  std::set<ArtKey> artWanted;std::set<ImageKey> wanted;
  for(const auto&a:frame.actors){artWanted.insert(artKey(a));wanted.insert(imageKey(a));}
  for(auto it=actorArt.begin();it!=actorArt.end();)if(!artWanted.count(it->first))it=actorArt.erase(it);else ++it;
+ // Keep each actor's last real rendered pose until its new frame is ready.
+ // Animated SHP frames otherwise vanish every time the work budget is full.
+ std::set<std::pair<uint32_t,uint32_t>> visible;for(const auto&a:frame.actors)visible.insert({a.target.pointer,a.target.id});
+ for(auto it=displayed.begin();it!=displayed.end();)if(!visible.count(it->first))it=displayed.erase(it);else{wanted.insert(it->second);++it;}
  for(auto it=images.begin();it!=images.end();)if(!wanted.count(it->first))it=images.erase(it);else ++it;
  // Fair work queue across every sampled unit, with no selected-unit filter or
  // 32-type cap. A failed first model cannot starve the remaining viewport.
@@ -78,6 +83,7 @@ static void update(){
   for(auto&p:image.pixels)if(unsigned alpha=p>>24)p=0xff000000u|(std::min(255u,((p>>16)&255)*255/alpha)<<16)|(std::min(255u,((p>>8)&255)*255/alpha)<<8)|std::min(255u,(p&255)*255/alpha);
   c.image=std::move(image);c.ready=true;
  }
+ for(const auto&a:frame.actors){auto key=imageKey(a);auto i=images.find(key);if(i!=images.end()&&i->second.ready)displayed[{a.target.pointer,a.target.id}]=key;}
  if(!diagnosticAt||DWORD(now-diagnosticAt)>=5000){
   diagnosticAt=now;size_t actorsReady=0,tileReady=0;std::string missing;
   for(const auto&a:frame.actors){auto i=images.find(imageKey(a));if(i!=images.end()&&i->second.ready)++actorsReady;else if(missing.empty())missing=gameassets::text(a.type+0x24,24);}
@@ -86,6 +92,7 @@ static void update(){
   if(!paletteReady)critical(L"watch palette reason="+std::wstring(paletteIssue.begin(),paletteIssue.end()));
   int reported=0;for(const auto&a:frame.actors){auto i=images.find(imageKey(a));if(i==images.end()||i->second.ready)continue;auto name=gameassets::text(a.type+0x24,24),issue=i->second.issue;critical(L"watch actor="+std::wstring(name.begin(),name.end())+L" kind="+std::to_wstring(a.kind)+L" frame="+std::to_wstring(a.pose.frame)+L" reason="+std::wstring(issue.begin(),issue.end()));if(++reported==3)break;}
   reported=0;for(const auto&t:tiles)if(!t.second.ready){auto issue=t.second.issue;critical(L"watch tile type="+std::to_wstring(t.first.first)+L" sub="+std::to_wstring(t.first.second)+L" reason="+std::wstring(issue.begin(),issue.end()));if(++reported==3)break;}
+  reported=0;for(const auto&t:overlays)if(!t.second.ready){auto issue=t.second.issue;critical(L"watch overlay type="+std::to_wstring(t.first.first)+L" frame="+std::to_wstring(t.first.second)+L" reason="+std::wstring(issue.begin(),issue.end()));if(++reported==3)break;}
  }
 
 }
@@ -108,6 +115,7 @@ static void draw(Graphics&g){
   }else{const auto&a=frame.actors[item.actor];int cx=a.x/256-frame.cx+radius,cy=a.y/256-frame.cy+radius;if(cx<0||cy<0||cx>=side||cy>=side)continue;
    float x=ox+(float(a.x-a.y)/256-frame.cx+frame.cy)*30*scale,y=oy+item.depth*15*scale-(float(a.z)*60/256-centerLevel*15)*scale;
    auto found=images.find(imageKey(a));
+   if(found==images.end()||!found->second.ready){auto old=displayed.find({a.target.pointer,a.target.id});if(old!=displayed.end())found=images.find(old->second);}
    if(found!=images.end()&&found->second.ready)image(found->second.image,x,y);
    if(a.target==frame.focus){Pen ring(Color(255,255,224,111),1.3f);g.DrawEllipse(&ring,x-10,y-5,20.f,10.f);}
   }

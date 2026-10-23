@@ -37,7 +37,7 @@ int main(){using F=EnemyFixture;
   f.mem.put<uint32_t>(factory+0x300+0x58,0);sample();f.sampler.productionReminders(16,idle,paused);assert(idle==8);f.sampler.productionReminders(32,idle,paused);assert(!idle);
 
  }
- {using namespace assist;using namespace planner;assert(magnetdrop::lethal({true,true,false,true,1,0}));assert(magnetdrop::lethal({true,true,false,false,200,7}));
+ {using namespace assist;using namespace planner;assert(magnetdrop::lethal({true,true,false,true,1,0}));assert(!magnetdrop::lethal({true,true,false,false,200,7}));
   assert(!magnetdrop::lethal({true,true,false,false,200,0}));assert(!magnetdrop::lethal({true,true,true,true,200,7}));assert(!magnetdrop::lethal({true,false,false,true,200,7}));
   auto wp=std::make_unique<World>();auto&w=*wp;w.match=1;w.frame=100;w.count=1;auto&a=w.actors[0];a.id=1;a.kind=2;a.flags=Own|DropHazard;a.liftTarget=2;a.manualVersion=4;a.x=a.y=5000;a.range=2048;a.weapons[0]={2048,0,GroundWeapon|MagneticWeapon|LocomotorWeapon,0x7ff};
   Planner p;auto step=[&](bool enabled){return p.step(w,0,200,300,90,10,0,2,enabled);};assert(step(false).empty());auto orders=step(true);assert(orders.size()==1&&orders[0].purpose==MagnetronDropOrder&&orders[0].refinery==2&&orders[0].mission==13);p.accepted(orders[0],w.frame);

@@ -151,7 +151,7 @@ public:
   for(int i=0;i<world.refineryCount;++i)areas_[world.refineries[i].id]=&world.refineries[i];
   std::unordered_set<uint32_t> dropping;
   for(auto it=drops_.begin();it!=drops_.end();){const Actor*a=actor(it->first);if(!autoDrop||!a||a->manualVersion!=it->second.token||a->liftTarget!=it->second.victim)it=drops_.erase(it);else ++it;}
-  if(autoDrop)for(int n=0;n<world.count;++n){const auto&a=world.actors[n];if(!(a.flags&Own)||!a.liftTarget||!magnetron(a)||(a.flags&(Disabled|Limbo|OffMap|Transported)))continue;
+  if(autoDrop)for(int n=0;n<world.count;++n){const auto&a=world.actors[n];if(!(a.flags&Own)||!a.liftTarget||(a.flags&(Disabled|Limbo|OffMap|Transported)))continue;
    auto pending=drops_.find(a.id);if(pending!=drops_.end()){dropping.insert(a.id);if(world.frame-pending->second.sent<30)continue;}
    if(!(a.flags&DropHazard))continue;
    dropping.insert(a.id);add(combat,{a.id,a.manualVersion,0,0,13,0,MagnetronDropOrder,a.liftTarget});

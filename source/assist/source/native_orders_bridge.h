@@ -14,17 +14,11 @@ struct GlobalMagnetronPause {uint32_t pointer,id;int frame;uint32_t victim;};
 static GlobalMagnetronPause globalMagnetronPauses[nativeorders::MaxOrders];static int globalMagnetronPauseCount=0,globalMagnetronPauseOverflow=-1;
 static ObjectIndex globalMagnetronPauseIndex;
 static void pauseGlobalMagnetron(uint32_t p){
- if(!sh||!((sh->magnetronGlobal&&rawMagnetron(p))||(sh->magnetronDrop&&rawMagnetron(p,featuretypes::MagnetronDrop))))return;
+ if(!sh||!sh->magnetronGlobal||!rawMagnetron(p))return;
  int frame=get<int>(0xA8ED84);uint32_t id=get<uint32_t>(p+0x10),victim=get<uint32_t>(p+0x2AC);
  for(int i=0;i<globalMagnetronPauseCount;++i)if(globalMagnetronPauses[i].id==id){globalMagnetronPauses[i]={p,id,frame,victim};globalMagnetronPauseIndex.add(p,id,uint32_t(i+1));return;}
  if(globalMagnetronPauseCount<nativeorders::MaxOrders){globalMagnetronPauses[globalMagnetronPauseCount++]={p,id,frame,victim};globalMagnetronPauseIndex.add(p,id,uint32_t(globalMagnetronPauseCount));}
  else globalMagnetronPauseOverflow=frame; // bounded capacity: defer enrolment, never evict another manual command
-}
-static bool manualMagnetronDropPaused(uint32_t p,uint32_t victim){
- int frame=get<int>(0xA8ED84);
- if(globalMagnetronPauseOverflow>=0&&frame>=globalMagnetronPauseOverflow&&frame-globalMagnetronPauseOverflow<90)return true;
- uint32_t slot=globalMagnetronPauseIndex.byId(get<uint32_t>(p+0x10));if(!slot||slot>uint32_t(globalMagnetronPauseCount))return false;
- const auto&r=globalMagnetronPauses[slot-1];return r.pointer==p&&r.victim==victim&&frame>=r.frame&&frame-r.frame<90;
 }
 static void pruneMagnetronPauses(int frame){
  globalMagnetronPauseIndex.clear();
@@ -60,12 +54,13 @@ static void finishUnloadFollowup(const UnloadPassenger&r,int frame){
 static void cancelUnloadPassenger(uint32_t p){for(int i=0;i<unloadCount;)
  if(unloadPassengers[i].p==p){finishUnloadFollowup(unloadPassengers[i],get<int>(0xA8ED84));unloadPassengers[i]=unloadPassengers[--unloadCount];}
  else ++i;}
-static void cancelNative(uint32_t p){
+static void cancelNative(uint32_t p,bool manual=true){
+ if(manual)releaseSticky(p);
  pauseGlobalMagnetron(p);
  cancelBurst(get<uint32_t>(p+0x10));cancelDodge(get<uint32_t>(p+0x10));cancelOreJob(p);cancelLoadingJobs(p);int i=orderIndex(p);if(i>=0)removeOrder(i);for(i=0;i<unloadCount;)
  if(unloadPassengers[i].p==p||unloadPassengers[i].carrier==p){finishUnloadFollowup(unloadPassengers[i],get<int>(0xA8ED84));unloadPassengers[i]=unloadPassengers[--unloadCount];}
  else ++i;}
-static void cancelAutomatic(uint32_t p){cancelBurst(get<uint32_t>(p+0x10));cancelDodge(get<uint32_t>(p+0x10));
+static void cancelAutomatic(uint32_t p){releaseSticky(p);cancelBurst(get<uint32_t>(p+0x10));cancelDodge(get<uint32_t>(p+0x10));
  cancelOreJob(p);cancelLoadingJobs(p);int i=orderIndex(p);if(i>=0)removeOrder(i);
  // Keep a release record until a native Guard can follow a tool-issued Sleep.
  // Manual click paths still use cancelNative because their own order takes over.
@@ -249,7 +244,7 @@ static void nativeOrdersTick(uint32_t house,int frame){
  // Match the pending-input horizon. After it expires, normal mission, queued
  // mission, destination and target checks still protect an ongoing command.
  if(sh->magnetronGlobal&&!snap.chat&&globalMagnetronPauseOverflow<0){Vec all=vec(0xA8EC78);
-  for(int n=0;n<all.count&&nativeCount<nativeorders::MaxOrders;++n){uint32_t p=item(all,n);if(!p||!own(p,house)||!rawMagnetron(p)||formationOwns(get<uint32_t>(p+0x10))||globalMagnetronPauseIndex.contains(p)||orderIndex(p)>=0||get<bool>(p+0x1C8)||get<uint32_t>(p+0x11C)||get<uint32_t>(p+0x5A4)||get<uint32_t>(p+0x2B4)||get<uint32_t>(p+0x2AC))continue;
+  for(int n=0;n<all.count&&nativeCount<nativeorders::MaxOrders;++n){uint32_t p=item(all,n);if(!p||!own(p,house)||!rawMagnetron(p)||stickyOwns(p)||formationOwns(get<uint32_t>(p+0x10))||globalMagnetronPauseIndex.contains(p)||orderIndex(p)>=0||get<bool>(p+0x1C8)||get<uint32_t>(p+0x11C)||get<uint32_t>(p+0x5A4)||get<uint32_t>(p+0x2B4)||get<uint32_t>(p+0x2AC))continue;
    int m=get<int>(p+0xAC),q=get<int>(p+0xB4);if((m!=5&&m!=6&&m!=11&&m!=13)||(q!=-1&&q!=m))continue;
    int x=get<int>(p+0x9C)/256,y=get<int>(p+0xA0)/256;if(x<=0||x>=512||y<=0||y>=512)continue;
    auto&o=nativeOrders[nativeCount++];o={};o.p=p;o.id=get<uint32_t>(p+0x10);o.token=manualVersions.get(o.id);o.mode=planner::MagnetronMove;o.cell=o.nearest=y*1000+x;o.gx=x*256+128;o.gy=y*256+128;o.global=true;o.progress.hold=true;

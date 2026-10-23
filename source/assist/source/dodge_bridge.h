@@ -39,7 +39,7 @@ static void finishDodge(DodgeJob&j,bool cancelled=false){
 static void cancelDodge(uint32_t id){int n=dodgeIndex(id);if(n>=0){finishDodge(dodgeJobs[n],true);dodgeJobs[n]=dodgeJobs[--dodgeCount];}}
 static void resetDodgeControl(){dodgeCount=dodgeCursor=dodgeJobCursor=0;dodgePending=false;if(sh)sh->dodgeActive=sh->dodgeIssued=0;}
 static bool dodgeSource(uint32_t p,uint32_t house){
- if(!p)return false;int k=kind(p);if((k!=1&&k!=2)||!own(p,house)||!live(p)||get<bool>(p+0x1C8)||get<uint32_t>(p+0x11C)||!featureObjectAllowed(featuretypes::Dodge,p))return false;
+ if(!p||stickyOwns(p))return false;int k=kind(p);if((k!=1&&k!=2)||!own(p,house)||!live(p)||get<bool>(p+0x1C8)||get<uint32_t>(p+0x11C)||!featureObjectAllowed(featuretypes::Dodge,p))return false;
  planner::Actor a{};rawCombatInfo(p,typeOf(p,k),k,a,false);if(a.flags&(planner::Airborne|planner::Manipulated|planner::Protected))return false;
  int m=get<int>(p+0xAC);return m==1||m==2||m==5||m==6||m==11||m==13||m==29;
 }

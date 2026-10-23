@@ -62,6 +62,7 @@ template<class Read>bool palette(Read read,uint32_t type,uint32_t owner,std::arr
  uint32_t vector=0,items=0,scheme=0;int index=-1,count=0;
  if(!read(owner+0x16054,&index,4)||index<0||index>=512||!read(type+0xDF0,&vector,4))return false;if(!vector)vector=0xB054D0;
  uint8_t colors[768];if(!read(vector+4,&items,4)||!read(vector+16,&count,4)||count<=index||count>512||!range(items,count*4)||!read(items+index*4,&scheme,4)||!range(scheme,772)||!read(scheme+4,colors,sizeof colors))return false;
+ if(std::all_of(colors,colors+sizeof colors,[](uint8_t c){return c==0;}))return false;
  for(int i=0;i<256;++i)out[i]=0xFF000000u|(uint32_t(colors[i*3])<<16)|(uint32_t(colors[i*3+1])<<8)|colors[i*3+2];out[0]=0;return true;
 }
 inline Vec rotate(Vec p,double angle){double c=std::cos(angle),s=std::sin(angle);return {float(p.x*c-p.y*s),float(p.x*s+p.y*c),p.z};}

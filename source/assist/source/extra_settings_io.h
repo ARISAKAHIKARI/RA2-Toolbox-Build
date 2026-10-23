@@ -1,5 +1,6 @@
 static void loadAdditionalSettings(){
  extra.viewZoomEnabled=value(L"ViewZoom",L"Enabled",0)!=0;extra.viewZoomPercent=value(L"ViewZoom",L"Percent",100);if(!viewzoom::valid(extra.viewZoomPercent))extra.viewZoomPercent=100;
+ extra.stickyKey=value(L"Hotkeys",L"StickyGuard",extra.stickyKey)&65535;
  extra.watchEnabled=value(L"Watch",L"Enabled",1)!=0;extra.watchDanger=value(L"Watch",L"DangerCarriers",1)!=0;extra.watchKey=value(L"Watch",L"PinKey",extra.watchKey)&65535;
  extra.formationEnabled=value(L"Formation",L"Enabled",1)!=0;extra.formationHold=value(L"Formation",L"HoldKey",18)&65535;extra.formationMouse=value(L"Formation",L"MouseButton",2)==1?1:2;
  const wchar_t* shapeKeys[]={L"RectangleKey",L"DispersedKey",L"CircleKey",L"FanKey"};for(int n=0;n<4;++n)extra.formationKeys[n]=value(L"Formation",shapeKeys[n],extra.formationKeys[n])&65535;
@@ -60,6 +61,7 @@ static void loadAdditionalSettings(){
 }
 static bool saveAdditionalSettings(){
  write(L"ViewZoom",L"Enabled",extra.viewZoomEnabled);write(L"ViewZoom",L"Percent",extra.viewZoomPercent);
+ write(L"Hotkeys",L"StickyGuard",extra.stickyKey);
  write(L"Watch",L"Enabled",extra.watchEnabled);write(L"Watch",L"DangerCarriers",extra.watchDanger);write(L"Watch",L"PinKey",extra.watchKey);
  write(L"Formation",L"Enabled",extra.formationEnabled);write(L"Formation",L"HoldKey",extra.formationHold);write(L"Formation",L"MouseButton",extra.formationMouse);
  const wchar_t* shapeKeys[]={L"RectangleKey",L"DispersedKey",L"CircleKey",L"FanKey"};for(int n=0;n<4;++n)write(L"Formation",shapeKeys[n],extra.formationKeys[n]);

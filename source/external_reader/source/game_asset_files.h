@@ -28,6 +28,7 @@ public:
   directory.build(std::move(files),std::move(decoded),[&](auto&nm,uint64_t at,void*out,size_t n){return read(nm,at,out,n);});fingerprint=next;
  }
  size_t count()const{return directory.count();}
+ uint64_t revision()const{return fingerprint^uint64_t(process)<<32^epoch;}
  bool load(const std::string&nm,std::vector<uint8_t>&out){if(root.empty())return false;return directory.load(nm,out,[&](auto&file,uint64_t at,void*p,size_t n){return read(file,at,p,n);},size(nm));}
 };
 }}

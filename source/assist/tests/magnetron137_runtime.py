@@ -25,8 +25,8 @@ for mode in (0,3):
    assert count(m)==1,(mode,case,count(m),s.world.count,s.world.intentCount)
    event=packets(m);assert event[12]==1 and event[14:19]==struct.pack('<IB',m.r(m.enemyUnit+0x10),0x34) and event[19:24]==bytes(5)
   else:
-   # A newly enrolled global unit may enter AreaGuard, but cannot attack this candidate.
-   assert count(m)<=1 and (not count(m) or packets(m)[12]==6),(case,packets(m)[:30].hex())
+   # A newly enrolled global unit may enter Guard, but cannot attack this candidate.
+   assert count(m)<=1 and (not count(m) or packets(m)[12]==5),(case,packets(m)[:30].hex())
   assert not m.codeWrites;rows.append({'case':f'acquisition_{mode}_{case}','status':'PASS'})
  for case in ('idle','moving','attack','disabled'):
   m=setup(mode,True);m.w(m.unit+0x2ac,0);m.w(m.enemyUnit+0x2b0,0);m.w(m.unit+0xac,2 if case=='moving' else 1 if case=='attack' else 5)

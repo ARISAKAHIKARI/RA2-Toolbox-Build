@@ -114,7 +114,7 @@ static void pointerTick(){
      if(i.operation==pointerinput::FollowNative&&(i.bindings&pointerinput::LeftClick)&&pointerTarget&&own(pointerTarget,lastHouse)&&!(i.bindings&pointerinput::NativeForced)){
       unsigned action=0;if(!GuardedEnterAction(get<uint32_t>(get<uint32_t>(p)+0x74),p,pointerTarget,&action)||action==0||action==2||action==7||action==8||action==30||action==31||action==32){pointerTokens[n]=manualVersions.get(i.sources[n].id);continue;}
      }
-     cancelNative(p);
+     cancelNative(p,!(i.operation==pointerinput::FollowNative&&(i.bindings&pointerinput::RightClick)));
      if(i.operation==pointerinput::FollowNative)observeNativeOreIntent(p,pointerTarget,pointerCell,i.bindings);
     }pointerTokens[n]=manualVersions.get(i.sources[n].id);}
    else if(pointerBatchTickets[n]){actorLeaseArbiter.release(match,i.sources[n].id,pointerBatchTickets[n]);pointerBatchTickets[n]=0;}

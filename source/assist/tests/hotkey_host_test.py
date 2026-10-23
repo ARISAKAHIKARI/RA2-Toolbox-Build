@@ -9,6 +9,7 @@ program=r'''
 #include "additional_settings.h"
 #include "hotkey_routes.h"
 #include "type_hotkey.h"
+#include "view_zoom.h"
 #include <memory>
 #include <vector>
 #include <map>
@@ -20,6 +21,7 @@ constexpr int MOD_ALT=1,MOD_CONTROL=2,MOD_SHIFT=4,HOTKEYF_SHIFT=1,HOTKEYF_CONTRO
 constexpr int BM_SETCHECK=1,BM_GETCHECK=2,BST_CHECKED=1,BST_UNCHECKED=0;
 static unsigned LOBYTE(uintptr_t x){return x&255;}static unsigned HIBYTE(uintptr_t x){return (x>>8)&255;}static unsigned LOWORD(uintptr_t x){return x&65535;}static unsigned HIWORD(uintptr_t x){return (x>>16)&65535;}
 static WORD MAKEWORD(unsigned a,unsigned b){return WORD((a&255)|((b&255)<<8));}
+struct ControlUpdate {};static int ui=0;constexpr int CB_SETCURSEL=3;static void SendDlgItemMessageW(int,int,int,int,int){}static void syncAdditional(){}
 static uint32_t now=1000,scene=8;static uint32_t GetTickCount(){return now;}
 static AdditionalSettings extra;static Snapshot snap{};static auto memory=std::make_unique<Shared>();static Shared*shared=memory.get();
 static bool enabled=true,focused=true,hasSelection=false,ejectMode=false,hookEject=false,csMode=false,hookAutoCS=false;
@@ -81,6 +83,8 @@ int main(){
  now+=501;handleHotkey(1701,planeEvent);assert(selectedAircraft.size()==selected);externalSampler.idleAircraftTick=now;
  externalSampler.idleAircraftCount=0;handleHotkey(1701,planeEvent);assert(selectedAircraft.size()==selected);
 
+ // Sticky uses the same configurable/double-only routing and command channel.
+ hotkeyRegistry.clear();hotkeyPending.clear();assert(hotkeyRegistry.add(1723,0x8000|'S',false,install));auto stickyCount=commands.size();handleHotkey(1723,'S'<<16);assert(commands.size()==stickyCount);now+=100;handleHotkey(1723,'S'<<16);assert(commands.size()==stickyCount+1&&commands.back()==StickyGuard);ack();
  // Configured double-only commands execute once, after the second tap.
  hotkeyRegistry.clear();hotkeyPending.clear();assert(hotkeyRegistry.add(1702,0x8000|'Q',false,install));
  auto pins=watchhost::pins;handleHotkey(1702,'Q'<<16);assert(watchhost::pins==pins);now+=100;handleHotkey(1702,'Q'<<16);assert(watchhost::pins==pins+1);

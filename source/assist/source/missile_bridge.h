@@ -31,7 +31,7 @@ static bool missileTarget(uint32_t p,uint32_t house){
  return get<bool>(t+0x231)&&!get<bool>(t+0x233)&&!remaining(get<int>(p+0x18C),get<int>(p+0x194),get<int>(0xA8ED84));
 }
 static bool missileSource(uint32_t p,uint32_t house){
- if(!p||!own(p,house)||kind(p)<0||get<bool>(p+0x1C8)||get<uint32_t>(p+0x11C)||!featureObjectAllowed(featuretypes::MissileDefense,p))return false;
+ if(!p||stickyOwns(p)||!own(p,house)||kind(p)<0||get<bool>(p+0x1C8)||get<uint32_t>(p+0x11C)||!featureObjectAllowed(featuretypes::MissileDefense,p))return false;
  if(formationOwns(get<uint32_t>(p+0x10))||missileManuallyOwned(p))return false;
  int at=missileRecord(get<uint32_t>(p+0x10));bool held=at>=0&&missileSends[at].held&&missileSends[at].token==manualVersions.get(get<uint32_t>(p+0x10));
  const int m=get<int>(p+0xAC),q=get<int>(p+0xB4);

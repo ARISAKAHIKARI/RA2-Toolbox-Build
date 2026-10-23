@@ -356,6 +356,7 @@ static void registerKeys(){for(int id:registeredKeyIDs)UnregisterHotKey(ui,id);r
  if(hookSmartUnload&&LOBYTE(unloadKey)&&!registerKey(1698,unloadKey))++failures;
  if(hookAutoCS&&LOBYTE(csKey)&&!registerKey(1699,csKey))++failures;
  if(extra.viewZoomEnabled){for(int i=0;i<3;++i)if(!registerKey(1720+i,WORD((i==0?VK_OEM_MINUS:i==1?VK_OEM_PLUS:VK_BACK)|(6<<8))))++failures;}
+ if(LOBYTE(extra.stickyKey)&&!registerKey(1723,WORD(extra.stickyKey)))++failures;
  if(extra.watchEnabled&&LOBYTE(extra.watchKey)&&!registerKey(1702,WORD(extra.watchKey)))++failures;
  if(LOBYTE(idleAircraftKey)&&!registerKey(1701,idleAircraftKey))++failures;
  for(int i=0;i<9;++i)if(LOBYTE(socialKeys[i])&&!registerKey(1710+i,socialKeys[i]))++failures;
@@ -980,7 +981,7 @@ static const GlyphRaster& glyph(wchar_t ch,Color color){
 }
 static void drawLabel(Graphics&g,const visual::LabelView&l,float sx,float sy){
  const float zoom=viewport::factor(labelScalePercent);
- if(l.advanced){SolidBrush red(Color(255,255,0,0));PointF mark[]={{l.x*sx-3*zoom,l.y*sy-7*zoom},{l.x*sx+3*zoom,l.y*sy-7*zoom},{l.x*sx,l.y*sy-3*zoom}};g.FillPolygon(&red,mark,3);}
+ if(l.advanced){SolidBrush red(l.advanced==2?Color(255,255,190,45):Color(255,255,0,0));PointF mark[]={{l.x*sx-3*zoom,l.y*sy-7*zoom},{l.x*sx+3*zoom,l.y*sy-7*zoom},{l.x*sx,l.y*sy-3*zoom}};g.FillPolygon(&red,mark,3);}
  auto&r=labelRasters[l.id];ARGB owner=l.ownerColor?l.ownerColor:0xffeeeeeeu;
  if(!r.image||r.used!=l.used||r.capacity!=l.capacity||r.centis!=l.centis||r.frozenCentis!=l.frozenCentis||r.color!=owner){
   std::vector<std::pair<std::wstring,Color>> lines;auto seconds=[](int n){wchar_t t[40];swprintf(t,40,L"%d.%02ds",n/100,n%100);return std::wstring(t);};
@@ -1200,6 +1201,7 @@ static std::wstring submitDiagnostic(){
 static void result(){if(!shared)return;uint32_t a=shared->ack;if(a==ack)return;MemoryBarrier();ack=a;commandLatency=sentAt?DWORD(GetTickCount()-sentAt):0;int r=shared->result,n=shared->count,c=shared->command;
  diag(L"ack command="+std::to_wstring(c)+L" result="+std::to_wstring(r)+L" count="+std::to_wstring(n)+L" ack="+std::to_wstring(a));
  if(c==AirPathMove){airPathResult(r,n,uint32_t(shared->arg),shared->requestToken);return;}
+ if(c==StickyGuard&&r==-40){notify(L"Sticky 驻守目前仅支持单机；联机同步解除尚未实现。");return;}
  if(c==ProduceReserved||c==ProduceDeferred){constructionResult(r,n,uint32_t(shared->arg2),shared->requestToken);return;}
  // A newer selection (e.g. a double-tap upgrade) supersedes this ACK.
  // Do not overwrite it with a retry of the older single-tap request.
@@ -1236,6 +1238,7 @@ static void result(){if(!shared)return;uint32_t a=shared->ack;if(a==ack)return;M
  else if(c==Produce)notify(L"生产请求已提交；是否接受以游戏生产队列为准。");
  else if(c==SelectSuper||c==SelectIron||c==SelectChrono)notify(L"已选择超级武器，请在地图上选择目标。");
  else if(c==SmartUnload)notify(n?L"已安排卸载 "+std::to_wstring(n)+L" 辆载具。":L"没有可卸载的已选载具。");
+ else if(c==StickyGuard)notify(L"已切换 Sticky 驻守："+std::to_wstring(n)+L" 个单位；手动下令解除。");
  else if(c==CancelAdvanced)notify(L"已取消所选单位的自动任务。");
  else if(c==AutoBoard){if(!snap.loadUnits)notify(L"请先框选要装车的步兵或载具。");else if(!snap.loadVehicles)notify(L"所选或附近没有可用的己方运输车辆。");else notify(L"装车指令已提交 "+std::to_wstring(n)+L" 个；已在途中 "+std::to_wstring(snap.loadWaiting)+L" 个；未分配 "+std::to_wstring(snap.loadUnassigned)+L" 个。"+(r==2?L"已自动排队，无需重复按键。":L""));}
  else notify(n?L"已选择 / 定位 "+std::to_wstring(n)+L" 个单位。":L"没有符合条件的己方单位。");

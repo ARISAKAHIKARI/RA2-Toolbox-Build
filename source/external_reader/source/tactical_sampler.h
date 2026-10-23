@@ -244,7 +244,7 @@ public:
    if((flags&assist::Psychic)&&view.enemy(p,house)&&state_.threatCount<assist::MaxThreats){uint32_t target=get<uint32_t>(p+0x2B4);if(view.live(target)&&get<uint32_t>(target+0x21C)==house){int sx,sy,tx,ty;if(project(proj,get<int>(p+0x9C),get<int>(p+0xA0),get<int>(p+0xA4),sx,sy)&&project(proj,get<int>(target+0x9C),get<int>(target+0xA0),get<int>(target+0xA4),tx,ty))state_.threats[state_.threatCount++]={get<uint32_t>(p+0x10),get<uint32_t>(target+0x10),sx,sy,tx,ty};}}
    int iron=(flags&assist::Iron)?assist::remaining(get<int>(p+0x18C),get<int>(p+0x194),frame):0;
    int freeze=(flags&assist::Frozen)?frozen(p):0;
-   uint32_t id=get<uint32_t>(p+0x10);bool advanced=local&&stopped_.count(id);
+   uint32_t id=get<uint32_t>(p+0x10);int advanced=local&&get<int>(p+0xAC)==6?2:local&&stopped_.count(id);
    if(!capacity&&!iron&&!freeze&&!advanced)continue;int sx,sy;if(!tactical||!project(proj,get<int>(p+0x9C),get<int>(p+0xA0),get<int>(p+0xA4),sx,sy)||state_.labels>=assist::MaxLabels)continue;
    uint8_t rgb[3]={255,255,255};if(owner>=0x10000)read_(owner+22265,rgb,3);uint32_t color=0xff000000u|(uint32_t(rgb[0])<<16)|(uint32_t(rgb[1])<<8)|rgb[2];
    labelSources_[state_.labels]={p,id,t,owner,k,selected};auto&l=state_.label[state_.labels++];l={id,sx,sy,used,capacity?cap:0,iron,get<int>(p+0x1C4)!=0,advanced,color,freeze};

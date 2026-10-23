@@ -4,6 +4,7 @@
 #include "pointer_intent.h"
 namespace assist {
 struct AdditionalSettings {
+ uint32_t stickyKey='S'|(6<<8);
  bool formationEnabled=true;uint32_t formationHold=18,formationKeys[4]={'Z','X','C','V'},formationMouse=2;
  bool controlAll=false,switchPlayerEnabled=false;
  bool viewZoomEnabled=false;int viewZoomPercent=100;

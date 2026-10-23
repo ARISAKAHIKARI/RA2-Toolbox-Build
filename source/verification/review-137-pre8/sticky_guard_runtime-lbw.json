@@ -1,0 +1,77 @@
+{
+  "scope": "Explicit Sticky owns native mission transitions only in single-player.\nExecutes the compiled DLL and original ForceMission/NextMission instructions.\nWorld, Win32 and event delivery are fixtures, not a live game or netplay test.\n",
+  "results": [
+    {
+      "case": "0_attack",
+      "status": "PASS"
+    },
+    {
+      "case": "0_move",
+      "status": "PASS"
+    },
+    {
+      "case": "0_repeat_key",
+      "status": "PASS"
+    },
+    {
+      "case": "0_manual_left",
+      "status": "PASS"
+    },
+    {
+      "case": "0_right_cancel",
+      "status": "PASS"
+    },
+    {
+      "case": "0_cancel_tasks",
+      "status": "PASS"
+    },
+    {
+      "case": "0_disable",
+      "status": "PASS"
+    },
+    {
+      "case": "0_recycled_id",
+      "status": "PASS"
+    },
+    {
+      "case": "5_attack",
+      "status": "PASS"
+    },
+    {
+      "case": "5_move",
+      "status": "PASS"
+    },
+    {
+      "case": "5_repeat_key",
+      "status": "PASS"
+    },
+    {
+      "case": "5_manual_left",
+      "status": "PASS"
+    },
+    {
+      "case": "5_right_cancel",
+      "status": "PASS"
+    },
+    {
+      "case": "5_cancel_tasks",
+      "status": "PASS"
+    },
+    {
+      "case": "5_disable",
+      "status": "PASS"
+    },
+    {
+      "case": "5_recycled_id",
+      "status": "PASS"
+    },
+    {
+      "case": "network_3_no_local_mutation",
+      "status": "PASS"
+    },
+    {
+      "case": "network_4_no_local_mutation",
+      "status": "PASS"
+    }
+  ]
+}

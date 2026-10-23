@@ -31,6 +31,7 @@ note(L"绑定后由工具箱接管该组合；聊天和菜单中不接管。嘲�
 label(L"轮选空闲飞机",20,306);key(853,idleAircraftKey);next();
 label(L"按当前武器选择同类单位",20,306);extraControls[VariantKey]=key(724,extra.variantKey);next();
 button(454,L"停止所选单位的自动任务");next();
+button(9094,L"Sticky 驻守（单机）",20,306);key(9095,extra.stickyKey);next();note(L"设置所选地面单位为 Sticky=6，并显示金色标记。再次按键切换解除；手动移动、攻击或停止自动解除。支持自定义组合与双击；联机暂不支持。");
 note(L"组合选兵：多个单位类型可使用同一快捷键；单按选屏幕内，双按选全图。",44);
 typeList=combo(440,20,315,300);typeKey=key(441,0,345,180);button(443,L"解除绑定",537,88);next();
 label(L"手动添加单位 ID",20,180);typeIdEdit=edit(467,L"",210,315);button(449,L"添加",537,88);next();
@@ -44,7 +45,7 @@ label(L"功能开关",20,210);label(L"按住键 / 自定义组合",240,258);labe
 hookChecks[0]=toggle(458,L"高级移动攻击",hookAdvanced,20,210);advancedKeyEdit=key(450,advancedKey,240,258,true);mouse(pointerinput::MouseAdvanced);next();
 magnetronCheck=toggle(477,L"磁电轮换攻击",magnetronMode,20,210);magnetronKeyEdit=key(478,magnetronKey,240,258,true);mouse(pointerinput::MouseMagnetron);next();
  toggle(9042,L"磁电全局无限吸",extra.magnetronGlobal);next();note(L"自动接管空闲磁电，沿用轮换和类型清单；手动移动或攻击优先。关闭后停止自动接续。");
- toggle(899,L"磁电自动摔落",extra.magnetronDrop);next();note(L"吸起的目标正下方有建筑、地面坦克、树木、矿柱或岩石时，下达原版停止命令释放目标。可独立开启；启用轮换时继续寻找下一目标。");
+ toggle(899,L"磁电全局自动摔落",extra.magnetronDrop);next();note(L"独立检查全图己方磁电正在吸起的敌人，手动攻击也生效。检测建筑、地面坦克、树木、矿柱、不可通行悬崖及水陆不适配；两栖/悬浮不因普通水陆而摔，排除空中单位和桥面。");
 csHoldCheck=toggle(473,L"按键移动攻击（CS）",csHoldEnabled,20,210);csHoldEdit=key(474,csHoldKey,240,258,true);mouse(pointerinput::MouseCS);next();
 extraControls[EnterEnabled]=toggle(702,L"高级进驻",extra.enter,20,210);holdPresetControl(EnterPreset,EnterCustom,extra.enterKey);mouse(pointerinput::MouseEnter);next();
 extraControls[AirEnabled]=toggle(705,L"飞机分配攻击 · 1",extra.air,20,210);holdPresetControl(AirPreset1,AirCustom1,extra.airKey1);mouse(pointerinput::MouseAirFirst);next();

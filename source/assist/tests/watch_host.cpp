@@ -24,6 +24,7 @@ namespace gameassets {
  static void update(){}static bool palette(bool,std::array<uint32_t,256>&){return false;}static std::string text(uint32_t,int){return {};}
  static bool tile(uint32_t,unsigned,const std::array<uint32_t,256>&pal,external::voxel::Image&image){++tileCalls;image.width=image.height=1;image.pixels={pal[3]};return true;}
  static bool sprite(uint32_t,uint32_t,const std::array<uint32_t,256>&,int,external::voxel::Image&){return false;}
+ static bool overlay(uint32_t,uint32_t,int,external::voxel::Image&){return false;}
  static bool captureActor(uint32_t,uint32_t,uint32_t id,ActorArt&art){++captures;if(id==1)return false;art.marker=id;return true;}
  static bool renderActor(const ActorArt&,const external::visual::Pose&pose,external::voxel::Image&image){++renders;image.width=image.height=1;image.pixels={uint32_t(0xff000000|pose.body<<8|pose.turret)};return true;}
 }
@@ -41,6 +42,9 @@ int main(){
  Graphics g;watchhost::draw(g);assert(draws==299); // no schematic marker for failed asset
  int before=captures,oldRenders=renders;put(actors[1]+0x388,uint16_t(32768));put(actors[1]+0x3A0,uint16_t(49152));clockValue+=50;watchhost::update();assert(captures==before&&renders>oldRenders);
  auto a=std::find_if(watchhost::frame.actors.begin(),watchhost::frame.actors.end(),[](auto&a){return a.target.id==2;});assert(a!=watchhost::frame.actors.end());assert(watchhost::images.at(watchhost::imageKey(*a)).image.pixels[0]==0xff001018);
+ // All 299 valid models turn together: the 16-item work budget must retain
+ // the previous real image for actors whose new pose is still waiting.
+ for(auto p:actors)put(p+0x388,uint16_t(2048));clockValue+=50;watchhost::update();draws=0;watchhost::draw(g);assert(draws==299);assert(watchhost::images.size()<=600);
  assert(tileCalls==0&&watchhost::tiles.empty()); // no transparent success cache before palette arrives
  put(0xABBED0+9,uint8_t(32));clockValue+=50;watchhost::update();assert(tileCalls==1&&watchhost::tiles.begin()->second.ready&&watchhost::tiles.begin()->second.image.pixels[0]!=0);
  extra.watchEnabled=false;clockValue+=50;watchhost::update();assert(!watchhost::shown);watchhost::reset();assert(watchhost::images.empty()&&watchhost::actorArt.empty());

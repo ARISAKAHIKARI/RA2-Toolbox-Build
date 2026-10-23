@@ -1,6 +1,7 @@
 #include "../../external_reader/source/game_asset_files.h"
 #include "../../external_reader/source/asset_decode.h"
 #include "../../external_reader/source/visual_pose.h"
+#include "../../external_reader/source/art_metadata.h"
 namespace gameassets {
 static external::assets::Files files;
 static std::string failure;
@@ -10,27 +11,65 @@ static bool read(uint32_t p,void*out,size_t n){return externalReader.readFresh(p
 static uint32_t word(uint32_t p){uint32_t v=0;read(p,&v,4);return v;}
 static std::string text(uint32_t p,unsigned n){return external::assets::text(read,p,n);}
 static std::string theater(int field,int size){unsigned n=word(0x822CF8);return n<6?text(0x7E1B78+n*112+field,size):std::string{};}
+static external::assets::ArtINI artINI,rulesINI;static uint64_t iniRevision=0;
+static void metadata(){uint64_t revision=files.revision();if(revision==iniRevision)return;iniRevision=revision;artINI.clear();rulesINI.clear();std::vector<uint8_t>b;
+ if(files.load("ARTMD.INI",b)||files.load("ART.INI",b))artINI.parse(b);
+ if(files.load("RULESMD.INI",b)||files.load("RULES.INI",b))rulesINI.parse(b);
+}
+static std::string artName(uint32_t type){metadata();std::string stem=text(type+0x1F8,25);if(stem.empty())stem=text(type+0x24,24);return stem;}
+static bool paletteFile(const std::string&name,std::array<uint32_t,256>&out){std::vector<uint8_t>b;if(!files.load(name,b)){failure="palette-not-found:"+name;return false;}if(!external::assets::pal(b,out)){failure="palette-format:"+name;return false;}return true;}
 static bool palette(bool iso,std::array<uint32_t,256>&out){std::vector<uint8_t> bytes;std::string n=iso?theater(68,10):"UNIT"+theater(78,3);if(n.empty()){failure="palette-theater-name";return false;}n+=".PAL";if(!files.load(n,bytes)){failure="palette-not-found:"+n;return false;}if(!external::assets::pal(bytes,out)){failure="palette-format:"+n;return false;}return true;}
+static std::vector<std::string> spriteNames(uint32_t type,uint32_t pointer){
+ std::vector<std::string> result;auto add=[&](std::string s){s=external::assets::name(s);if(external::assets::safe(s)&&std::find(result.begin(),result.end(),s)==result.end())result.push_back(s);};
+ auto live=external::assets::shapeName(read,pointer);if(!live.empty())add(live);auto stem=artName(type);if(stem.empty())return result;
+ auto image=artINI.get(stem,"IMAGE");if(!image.empty()&&external::assets::safe(image))stem=external::assets::name(image);
+ bool seasonal=(word(type+0x22C)&255)||artINI.yes(artName(type),"THEATER");
+ bool newTheater=(word(type+0x237)&255)||artINI.yes(artName(type),"NEWTHEATER");
+ if(seasonal)add(stem+"."+theater(78,3));
+ if(newTheater&&stem.size()>1){auto variant=stem;auto chr=theater(86,1);if(!chr.empty()){variant[1]=chr[0];add(variant+".SHP");}variant[1]='G';add(variant+".SHP");}
+ add(stem+".SHP");add(stem+"."+theater(78,3));
+ return result;
+}
+static bool shapeBytes(uint32_t type,uint32_t pointer,std::vector<uint8_t>&bytes,std::string&file){
+ auto names=spriteNames(type,pointer);for(const auto&n:names)if(files.load(n,bytes)){file=n;return true;}
+ file.clear();failure="sprite-not-found:"+artName(type);for(const auto&n:names)failure+=" "+n;return false;
+}
+static bool spritePalette(uint32_t type,const std::string&file,bool overlay,uint32_t owner,std::array<uint32_t,256>&out){
+ metadata();auto stem=artName(type);auto custom=artINI.get(stem,"PALETTE");if(!overlay&&custom.empty())custom=text(type+0xDD0,32);
+ auto id=text(type+0x24,24);bool resource=overlay&&(rulesINI.yes(id,"TIBERIUM")||rulesINI.yes(id,"ISVEINS")||rulesINI.yes(id,"ISVEINHOLEMONSTER"));
+ bool seasonal=file.size()>4&&external::assets::name(file.substr(file.size()-4))!=".SHP";
+ bool iso=artINI.yes(stem,"TERRAINPALETTE")||seasonal;
+ // A type-specific live scheme already contains its custom palette and remap.
+ // The global unit scheme cannot substitute for a missing custom scheme.
+ if(!overlay&&!iso&&(custom.empty()||word(type+0xDF0))&&external::voxel::palette(read,type,owner,out))return true;
+ bool ok=false;
+ if(!custom.empty()){custom=external::assets::name(custom);if(custom.size()>4&&custom.substr(custom.size()-4)==".PAL")ok=paletteFile(custom,out);
+  else ok=paletteFile(custom+theater(78,3)+".PAL",out)||paletteFile(custom+".PAL",out);
+ }else if(resource)ok=paletteFile(theater(48,10)+".PAL",out);
+ else ok=palette(iso,out);
+ if(!ok)return false;
+ if(!iso&&!overlay&&owner>=0x10000){uint8_t rgb[3]{};if(read(owner+22265,rgb,3))for(int i=16;i<32;++i){unsigned f=unsigned(8+i-16);out[i]=0xff000000u|((unsigned(rgb[0])*f/23)<<16)|((unsigned(rgb[1])*f/23)<<8)|(unsigned(rgb[2])*f/23);}}
+ return true;
+}
+static bool overlay(uint32_t type,uint32_t pointer,int frame,external::voxel::Image&out){std::vector<uint8_t>bytes;std::string file;bool disk=shapeBytes(type,pointer,bytes,file);std::array<uint32_t,256>pal{};if(!spritePalette(type,file,true,0,pal))return false;
+ bool ok=disk?external::assets::shp(std::move(bytes),frame,pal,out):external::voxel::sprite(read,pointer,pal,out,frame);if(!ok)failure="overlay-frame/decode:"+file+" frame="+std::to_string(frame);return ok;}
 static bool sprite(uint32_t type,uint32_t pointer,const std::array<uint32_t,256>&pal,int frame,external::voxel::Image&out){
- std::string filename=external::assets::shapeName(read,pointer);std::vector<uint8_t> bytes;
- if(!filename.empty()&&files.load(filename,bytes)&&external::assets::shp(std::move(bytes),frame,pal,out))return true;
- std::string stem=text(type+0x1F8,25);if(stem.empty())stem=text(type+0x24,24);if(stem.empty())return false;
- // The live SHPReference name above remains authoritative for NewTheater and
- // alternate art. These candidates also cover resources not yet referenced.
- for(auto suffix:{std::string(".SHP"),"."+theater(78,3)})if(files.load(stem+suffix,bytes)&&external::assets::shp(std::move(bytes),frame,pal,out))return true;failure="sprite-load/decode:"+(filename.empty()?stem:filename)+" frame="+std::to_string(frame);return false;
+ std::vector<uint8_t> bytes;std::string filename;if(!shapeBytes(type,pointer,bytes,filename))return false;
+ if(external::assets::shp(std::move(bytes),frame,pal,out))return true;failure="sprite-load/decode:"+filename+" frame="+std::to_string(frame);return false;
 }
 static bool tile(uint32_t type,unsigned sub,const std::array<uint32_t,256>&pal,external::voxel::Image&out){std::vector<uint8_t> bytes;auto filename=text(type+0x2F5,14);if(filename.empty()){failure="tile-name-empty type="+std::to_string(type);return false;}if(!files.load(filename,bytes)){failure="tile-not-found:"+filename;return false;}std::string reason;if(!external::assets::tmp(std::move(bytes),sub,pal,out,&reason)){failure="tile-format:"+filename+" sub="+std::to_string(sub)+" "+reason;return false;}return true;}
 static bool actor(uint32_t p,uint32_t type,uint32_t id,double angle,external::voxel::Image&out){
  if(word(p+0x10)!=id)return false;uint32_t owner=word(p+0x21C);std::array<uint32_t,256> pal{};
- if(!external::voxel::palette(read,type,owner,pal)){if(!palette(false,pal))return false;uint8_t rgb[3]{};if(read(owner+22265,rgb,3))for(int i=16;i<32;++i){unsigned f=unsigned(8+i-16);pal[i]=0xff000000u|((unsigned(rgb[0])*f/23)<<16)|((unsigned(rgb[1])*f/23)<<8)|(unsigned(rgb[2])*f/23);}}
+
  auto stem=text(type+0x1F8,25);if(stem.empty())stem=text(type+0x24,24);std::vector<uint8_t> v,h;external::voxel::Model model;
  double sx=1,sy=1;read(type+0x360,&sx,8);read(type+0x368,&sy,8);if(!std::isfinite(sx)||sx<=0||sx>8)sx=1;if(!std::isfinite(sy)||sy<=0||sy>8)sy=1;
  if(!stem.empty()&&files.load(stem+".VXL",v)&&files.load(stem+".HVA",h)&&external::assets::vxl(v,h,model,0,float(sx),float(sy))){
   int offset=int32_t(word(type+0x720));if(offset<-4096||offset>4096)offset=0;
   for(auto part:{"TUR","BARL"})if(files.load(stem+part+".VXL",v)&&files.load(stem+part+".HVA",h))external::assets::vxl(v,h,model,float(offset)*12/256,float(sx),float(sy));
-  return external::voxel::render(model,angle,pal,out)&&word(p+0x10)==id;
+  return spritePalette(type,"",false,owner,pal)&&external::voxel::render(model,angle,pal,out)&&word(p+0x10)==id;
  }external::GameView game(&read);int heading=int(std::lround(angle*32/(2*external::visual::Pi)))&31;
- return sprite(type,word(type+0xA4),pal,external::visual::previewFrame(game,type,game.kind(p),heading),out)&&word(p+0x10)==id;
+ std::vector<uint8_t> shape;std::string file;if(!shapeBytes(type,word(type+0xA4),shape,file)||!spritePalette(type,file,false,owner,pal))return false;
+ return external::assets::shp(std::move(shape),external::visual::previewFrame(game,type,game.kind(p),heading),pal,out)&&word(p+0x10)==id;
 }
 // Observation assets are retained separately from rendered headings: turning a
 // unit must not reopen/redecode its VXL/HVA files every overlay frame.
@@ -40,10 +79,7 @@ struct ActorArt {
 };
 static bool captureActor(uint32_t p,uint32_t type,uint32_t id,ActorArt&out){
  failure.clear();if(word(p+0x10)!=id){failure="actor-identity";return false;}ActorArt next;uint32_t owner=word(p+0x21C);
- if(!external::voxel::palette(read,type,owner,next.colors)){
-  if(!palette(false,next.colors))return false;uint8_t rgb[3]{};
-  if(read(owner+22265,rgb,3))for(int i=16;i<32;++i){unsigned f=unsigned(8+i-16);next.colors[i]=0xff000000u|((unsigned(rgb[0])*f/23)<<16)|((unsigned(rgb[1])*f/23)<<8)|(unsigned(rgb[2])*f/23);}
- }
+
  auto stem=text(type+0x1F8,25);if(stem.empty())stem=text(type+0x24,24);
  double sx=1,sy=1;read(type+0x360,&sx,8);read(type+0x368,&sy,8);if(!std::isfinite(sx)||sx<=0||sx>8)sx=1;if(!std::isfinite(sy)||sy<=0||sy>8)sy=1;
  auto part=[&](const std::string&suffix,uint32_t at,bool turret){
@@ -53,6 +89,7 @@ static bool captureActor(uint32_t p,uint32_t type,uint32_t id,ActorArt&out){
   if(ok){for(auto&f:model.faces)f.turret=turret;next.model.faces.insert(next.model.faces.end(),model.faces.begin(),model.faces.end());}return ok;
  };
  if(part("",type+0xB0,false)){
+  if(!spritePalette(type,"",false,owner,next.colors))return false;
   next.voxel=true;int offset=int32_t(word(type+0x720));if(offset<-4096||offset>4096)return false;next.turretOffset=float(offset)*12/256*float(sx);
   int variant=-1;if(int(word(type+0x808))>0&&!uint8_t(word(type+0xCD5)))variant=int(word(p+0x124));
   if(variant>=0&&variant<18){
@@ -63,9 +100,10 @@ static bool captureActor(uint32_t p,uint32_t type,uint32_t id,ActorArt&out){
    }
   }else{part("TUR",type+0xB8,true);part("BARL",type+0xC0,true);}
  }else{
-  next.pointer=word(type+0xA4);std::string filename=external::assets::shapeName(read,next.pointer);
-  bool loaded=!filename.empty()&&files.load(filename,next.shape);
-  if(!loaded&&!stem.empty())for(auto suffix:{std::string(".SHP"),"."+theater(78,3)})if(files.load(stem+suffix,next.shape)){loaded=true;break;}
+  next.pointer=word(type+0xA4);std::string filename;
+  bool loaded=shapeBytes(type,next.pointer,next.shape,filename);
+  if(!loaded)filename=external::assets::shapeName(read,next.pointer);
+  if(!spritePalette(type,filename,false,owner,next.colors))return false;
   if(!loaded){external::voxel::Image check;if(!external::voxel::sprite(read,next.pointer,next.colors,check)){failure="sprite-not-found/unloaded:"+(filename.empty()?stem:filename);return false;}}
  }
  if(word(p+0x10)!=id||word(p+0x21C)!=owner)return false;out=std::move(next);return true;

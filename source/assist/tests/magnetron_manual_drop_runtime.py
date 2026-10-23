@@ -1,4 +1,4 @@
-"""Ordinary left attacks must not be followed by stale-beam automatic Idle.
+"""Explicit global drop also releases hazardous beams during manual left attacks.
 Runs actual Runtime/event constructors with modeled delayed native delivery;
 does not simulate Windows input, projectile/lift physics or network peers.
 """
@@ -17,14 +17,17 @@ for mode in (0,3):
    roster=[m.unit,m.enemyUnit,m.building]+([target] if target_kind=='vehicle' else [])
    m.vector(0xa8ec78,roster);m.queryObject=target;s=state(m);s.flags=1024|262144;s.magnetronGlobal=0;s.magnetronDrop=1;save(m,s)
    before=count(m);s=pointer(m,4,65536);assert s.pointer.result==1
-   for _ in range(8):
-    s=tick(m);assert count(m)==before,('automatic Idle replaced pending manual attack',mode,inside,target_kind,count(m))
-    assert not any(x.id==10 and x.flags&536870912 for x in s.world.actors[:s.world.count])
-   if not inside:
-    s=current_drop(m);assert s.planRejectedMask==1 and count(m)==before,'late external drop rejected at admission'
-   # Native manual event arrives while its previous lift is still linked.
-   m.w(m.unit+0xac,1);m.w(m.unit+0x2b4,target);m.w(0xa8ed84,m.r(0xa8ed84)+100);s=tick(m)
-   assert count(m)==before and not any(x.id==10 and x.flags&536870912 for x in s.world.actors[:s.world.count])
+   # Explicit global drop now has precedence even for manually controlled beams.
+   s=tick(m)
+   assert any(x.id==10 and x.flags&536870912 for x in s.world.actors[:s.world.count])
+   if not inside:s=current_drop(m)
+   assert count(m)==before+1 and packets(m)[before*111]==6,(mode,inside,target_kind,count(m))
+   for _ in range(8):tick(m)
+   assert count(m)==before+1,'the same beam must not spam Idle'
+   # A different manual target does not disqualify an active hazardous beam.
+   m.w(m.unit+0xac,1);m.w(m.unit+0x2b4,target);s=tick(m)
+   assert any(x.id==10 and x.flags&536870912 for x in s.world.actors[:s.world.count])
+   before=count(m)
    # A subsequent lift remains eligible with global/enhanced orders disabled.
    next_victim=m.obj(0x7f5c70,m.t,m.enemy,102);roster.append(next_victim);m.vector(0xa8ec78,roster)
    for offset in (0x9c,0xa0,0xa4):m.w(next_victim+offset,m.r(m.enemyUnit+offset))
@@ -34,5 +37,5 @@ for mode in (0,3):
    assert count(m)==before+1 and packets(m)[before*111]==6,('new beam remains eligible',mode,inside,count(m),before,s.planRejectedMask,[(x.id,x.flags,x.manualVersion,x.liftTarget) for x in s.world.actors[:s.world.count]])
    assert not m.codeWrites
    rows.append({'case':f'left_attack_old_beam_{mode}_{inside}_{target_kind}','status':'PASS'})
-print('PASS',len(rows),'ordinary left attack / automatic drop arbitration cases')
+print('PASS',len(rows),'manual attacks / independent global drop cases')
 Path(a.output).write_text(json.dumps({'scope':PROBE_SCOPE,'results':rows},indent=2)+'\n')

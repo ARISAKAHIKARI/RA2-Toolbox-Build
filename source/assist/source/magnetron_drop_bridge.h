@@ -3,15 +3,17 @@ extern "C" int GuardedObjectAir(unsigned,int*);
 static bool rawMagnetronDrop(uint32_t source,uint32_t victim,uint32_t house){
  if(!source||!victim||!sh->magnetronDrop||!rawMagnetron(source,featuretypes::MagnetronDrop)||get<uint32_t>(source+0x2AC)!=victim||
     !worldObjects.contains(victim)||kind(victim)!=2||!live(victim)||get<uint32_t>(victim+0x2B0)!=source||!nativeEnemy(victim,house))return false;
- // A native left attack can already be pending while the previous beam still
- // owns its victim. Idle is an order to the source, so dropping that old beam
- // would cancel the new attack (including the building/secondary weapon).
- uint32_t target=get<uint32_t>(source+0x2B4);
- if(manualMagnetronDropPaused(source,victim)||(target&&target!=victim))return false;
+ // This independent toggle explicitly applies to every owned active beam,
+ // including manual attacks. Manual pause belongs only to auto acquisition.
  struct {int x,y,z;} position{get<int>(victim+0x9C),get<int>(victim+0xA0),get<int>(victim+0xA4)};
  uint32_t cell=readMapCell(position.x/256,position.y/256);if(!cell)return false;
  magnetdrop::Ground g;g.lifted=true;g.enemy=true;g.land=get<int>(cell+0xEC);g.bridge=(get<uint32_t>(cell+0x140)&0x100)!=0;
  g.height=position.z-call<int>(0x578080,0x87F7E8,&position);
+ uint32_t type=typeOf(victim,2);if(!type)return false;
+ g.speed=get<int>(type+0x67C);g.zone=get<int>(type+0x5B4);
+ if(g.land>=0&&g.land<12&&g.speed>=0&&g.speed<8){float speed=0;
+  if(read(0x89EA40u+uint32_t(g.land*9+g.speed)*4,&speed,4)&&std::isfinite(speed)&&speed>=0&&speed<1000000){g.mobilityKnown=true;g.passable=speed>0;}
+ }
  // Cell content (not screen projection) also contains TerrainClass, which
  // is absent from TechnoClass::Array. Trees and ore pillars share this class.
  uint32_t q=get<uint32_t>(cell+0xE4),seen[128]{};int count=0;

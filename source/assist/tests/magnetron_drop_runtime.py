@@ -7,7 +7,7 @@ PROBE_SCOPE=__doc__
 exec(compile(Path(__file__).with_name('no_interception_runtime.py').read_text().split('for mode in (0,5,3,4):',1)[0],str(Path(__file__).with_name('no_interception_runtime.py')),'exec'))
 rows=[]
 def setup(mode,inside):
- m=fixture(mode);projectile=m.alloc();warhead=m.alloc();m.w(m.weapon+0xb4,4096);m.w(m.weapon+0xa0,projectile);m.w(m.weapon+0xac,warhead);m.b(projectile+0x2a5,1);m.b(m.weapon+0x15c,1);m.b(warhead+0x15b,1)
+ m=fixture(mode);m.w(m.t+0x67c,1);m.w(m.t+0x5b4,0);m.u.mem_write(0x89ea40,struct.pack('<108f',*([1.]*108)));projectile=m.alloc();warhead=m.alloc();m.w(m.weapon+0xb4,4096);m.w(m.weapon+0xa0,projectile);m.w(m.weapon+0xac,warhead);m.b(projectile+0x2a5,1);m.b(m.weapon+0x15c,1);m.b(warhead+0x15b,1)
  m.w(m.enemy+0x34,m.alloc());m.w(m.unit+0x18c,0)
  for n in range(11):m.u.mem_write(warhead+0xa0+n*8,struct.pack('<d',1.))
  m.vector(0xa8ec78,[m.unit,m.enemyUnit,m.building]);m.w(m.unit+0x2ac,m.enemyUnit);m.w(m.enemyUnit+0x2b0,m.unit)

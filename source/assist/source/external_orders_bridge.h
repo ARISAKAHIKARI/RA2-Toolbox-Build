@@ -150,7 +150,7 @@ static bool rawDockLinked(uint32_t refinery,uint32_t unit){
  for(int i=0;i<n;++i)if(get<uint32_t>(links+i*4)==unit)return true;return false;
 }
 static bool externalOrderValid(const planner::Order&o,uint32_t house){
- uint32_t unit=worldByID(o.unit);if(!unit||!own(unit,house)||manualVersions.get(o.unit)!=o.token)return false;
+ uint32_t unit=worldByID(o.unit);if(!unit||!own(unit,house)||manualVersions.get(o.unit)!=o.token||(stickyOwns(unit)&&o.purpose!=planner::MagnetronDropOrder))return false;
  if(get<int>(unit+0x6C)<=0||!get<bool>(unit+0x74)||get<bool>(unit+0x81)||!get<bool>(unit+0x90)||get<bool>(unit+0x1C8)||get<uint32_t>(unit+0x11C))return false;
  if(burstOwns(o.unit)||dodgeOwns(o.unit))return false;
  if(o.purpose==planner::MagnetronDropOrder)return o.mission==13&&!o.target&&!o.destination&&!o.destinationTag&&!o.pursuit&&o.refinery&&rawMagnetronDrop(unit,worldByID(o.refinery),house);
