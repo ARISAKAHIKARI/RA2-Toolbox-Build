@@ -1,0 +1,1 @@
+PASS tank-bunker/depot/naval-dock allocation: Size=3, empty/active radio links, one tank per bunker, multi-dock counting, Enter/Repair incoming without double count, linked completion, capability and passenger/garrison boundaries

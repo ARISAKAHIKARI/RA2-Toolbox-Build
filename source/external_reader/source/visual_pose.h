@@ -12,7 +12,11 @@ template<class Read>uint16_t facing(GameView<Read>&g,uint32_t p,int frame){
  return rate>0&&left>0&&left<=32768&&steps>0?uint16_t(desired-(diff/steps)*left):desired;
 }
 inline unsigned bucket(uint16_t raw){return ((unsigned(raw)+1024)>>11)&31;}
-inline double radians(unsigned direction){return (int(direction)-8)*(-2*Pi/32);}
+// FA2 loads voxel direction i at Z=45*i+90 and stores it as (7-i).
+// Its clockwise Z rotation followed by X=300 degrees is equivalent to our
+// isometric projection with this positive world-space angle, not its inverse.
+inline double radians(unsigned direction){return (int(direction)-8)*(2*Pi/32);}
+inline unsigned previewBody(int heading){return unsigned(8+heading)&31;}
 struct Pose {uint8_t body=0,turret=0;int frame=0,variant=-1;};
 template<class Read>int infantryFrame(GameView<Read>&g,uint32_t type,int sequence,int stage,unsigned body){
  uint32_t list=g.template get<uint32_t>(type+0xE3C);if(sequence<0||sequence>=42||list<0x10000)return -1;
@@ -22,7 +26,7 @@ template<class Read>int infantryFrame(GameView<Read>&g,uint32_t type,int sequenc
  int result=start+stage%std::max(1,count)+dir*stride;return result<8192?result:-1;
 }
 template<class Read>int previewFrame(GameView<Read>&g,uint32_t type,int kind,int heading){
- unsigned body=(8-heading)&31;
+ unsigned body=previewBody(heading);
  if(kind==1)return infantryFrame(g,type,0,0,body); // Ready, no animation advance
  if(kind==2&&g.template get<int>(type+0xE3C)==8){int dir=((body+2)/4+1)&7,stand=g.template get<int>(type+0xE1C);return stand>0?g.template get<int>(type+0xE28)+dir*stand:g.template get<int>(type+0xE2C)+dir*std::max(0,int(g.template get<int8_t>(type+0xE5C)));}
  return 0;

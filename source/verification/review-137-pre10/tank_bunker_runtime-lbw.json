@@ -1,0 +1,125 @@
+{
+  "scope": "Production x86 Runtime input -> cooperative mailbox -> native event.\n\nWin32, world, click coordinates and native MouseOverObject legality are modeled.\nBoarding is supplied as observed state, not simulated movement. No real game or\nnetwork claim. Native event constructor/queue and actual Runtime code execute.\n",
+  "inputs": {
+    "gamemd-spawn(3).exe": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+    "GameRuntime.dll": "ebb3a2a50de82a785af3a57fe3ab2a55287fd4b118b7d7e13cd38f3e210c3c41"
+  },
+  "results": [
+    {
+      "case": "bunker_dispatch_0",
+      "status": "PASS"
+    },
+    {
+      "case": "depot_dispatch_0",
+      "status": "PASS"
+    },
+    {
+      "case": "yard_dispatch_0",
+      "status": "PASS"
+    },
+    {
+      "case": "duplicate_target_0",
+      "status": "PASS"
+    },
+    {
+      "case": "occupied_race_0",
+      "status": "PASS"
+    },
+    {
+      "case": "native_refusal_0",
+      "status": "PASS"
+    },
+    {
+      "case": "two_docks_0",
+      "status": "PASS"
+    },
+    {
+      "case": "repair_inbound_0",
+      "status": "PASS"
+    },
+    {
+      "case": "contact_not_double_counted_0",
+      "status": "PASS"
+    },
+    {
+      "case": "clicked_self_contact_0",
+      "status": "PASS"
+    },
+    {
+      "case": "contact_without_destination_0",
+      "status": "PASS"
+    },
+    {
+      "case": "contact_but_occupied_0",
+      "status": "PASS"
+    },
+    {
+      "case": "contact_but_passenger_0",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_revoked_0",
+      "status": "PASS"
+    },
+    {
+      "case": "bunker_dispatch_3",
+      "status": "PASS"
+    },
+    {
+      "case": "depot_dispatch_3",
+      "status": "PASS"
+    },
+    {
+      "case": "yard_dispatch_3",
+      "status": "PASS"
+    },
+    {
+      "case": "duplicate_target_3",
+      "status": "PASS"
+    },
+    {
+      "case": "occupied_race_3",
+      "status": "PASS"
+    },
+    {
+      "case": "native_refusal_3",
+      "status": "PASS"
+    },
+    {
+      "case": "two_docks_3",
+      "status": "PASS"
+    },
+    {
+      "case": "repair_inbound_3",
+      "status": "PASS"
+    },
+    {
+      "case": "contact_not_double_counted_3",
+      "status": "PASS"
+    },
+    {
+      "case": "clicked_self_contact_3",
+      "status": "PASS"
+    },
+    {
+      "case": "contact_without_destination_3",
+      "status": "PASS"
+    },
+    {
+      "case": "contact_but_occupied_3",
+      "status": "PASS"
+    },
+    {
+      "case": "contact_but_passenger_3",
+      "status": "PASS"
+    },
+    {
+      "case": "filter_revoked_3",
+      "status": "PASS"
+    },
+    {
+      "case": "native_bunker_enter_helper_destination_radio_and_enroute_mission_guard",
+      "status": "PASS"
+    }
+  ]
+}

@@ -40,7 +40,7 @@ int main(){using namespace formationhost;
  // Formation and observation use the same source capture/render API. A turn
  // selects a new pose while retaining source art and premultiplied alpha.
  reset();wanted.clear();v.units[0]={100,0x10000,7};memory[0x10010]=100;v.facing=0;step();assert(visuals.size()==1&&gameassets::captures==1&&gameassets::renders==1);assert(visuals[0].image->pixels[0]==0x7c000008);
- v.facing=formation::Pi/2;step();assert(visuals.size()==1&&gameassets::captures==1&&gameassets::renders==2);assert(visuals[0].image->pixels[0]==0x7c000000);v.facing=0;step();assert(gameassets::renders==2);
+ v.facing=formation::Pi/2;step();assert(visuals.size()==1&&gameassets::captures==1&&gameassets::renders==2);assert(visuals[0].image->pixels[0]==0x7c000010);v.facing=0;step();assert(gameassets::renders==2);
  v.active=0;step();assert(visuals.empty());reset();assert(models.empty());
  std::cout<<"PASS preview seqlock continuity, content revisions, ownership-race protection, full model-cache eviction, image-budget eviction and active-image protection\n";
 }

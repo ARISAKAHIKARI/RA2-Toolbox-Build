@@ -5,12 +5,14 @@ from pathlib import Path
 PROBE_SCOPE=__doc__
 exec(compile(Path(__file__).with_name('magnetron_drop_runtime.py').read_text().split('for mode in (0,3):',1)[0],str(Path(__file__).with_name('magnetron_drop_runtime.py')),'exec'))
 rows=[]
-cases=[('tank_water',2,1,0,1,True),('ship_land',0,5,10,1,True),('ship_water',2,5,10,1,False),('tank_clear',0,1,0,1,False),('rough_passable',7,1,0,1,False),('cliff_impassable',3,1,0,0,True),('hover_water',2,3,0,1,False),('amphibious_water',2,1,3,1,False),('amphibious_land',0,6,5,1,False),('beach_ship_beach',6,7,11,1,False),('beach_ship_land',0,7,11,1,True)]
+cases=[('cliff_clear_land',0,1,0,1,True),('cliff_edge_walkable',0,1,0,1,False),('tank_water',2,1,0,1,True),('ship_land',0,5,10,1,True),('ship_water',2,5,10,1,False),('tank_clear',0,1,0,1,False),('rough_passable',7,1,0,1,False),('cliff_impassable',3,1,0,0,True),('hover_water',2,3,0,1,False),('amphibious_water',2,1,3,1,False),('amphibious_land',0,6,5,1,False),('beach_ship_beach',6,7,11,1,False),('beach_ship_land',0,7,11,1,True)]
 for mode in (0,3):
  for inside in (False,True):
   for name,land,speed,zone,passable,expected in cases:
    m=setup(mode,inside);m.w(m.crateCell+0xe4,0);m.w(m.crateCell+0xec,land);m.w(m.t+0x67c,speed);m.w(m.t+0x5b4,zone)
    m.u.mem_write(0x89ea40,struct.pack('<108f',*([1.]*108)));m.u.mem_write(0x89ea40+(land*9+speed)*4,struct.pack('<f',passable))
+   if name.startswith('cliff_') and name!='cliff_impassable':
+    m.w(0xaa073c,100);m.w(m.crateCell+0x38,100);m.b(m.crateCell+0x11a,1 if name=='cliff_clear_land' else 0)
    s=state(m);s.flags=0;s.magnetronGlobal=0;s.magnetronDrop=1;save(m,s);s=tick(m)
    source=next(x for x in s.world.actors[:s.world.count] if x.id==10);assert bool(source.flags&536870912)==expected,(name,mode,inside,source.flags)
    if not inside:s=submit(m)

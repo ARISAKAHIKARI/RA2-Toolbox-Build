@@ -15,7 +15,7 @@ inline bool safe(const std::string&s){return !s.empty()&&s.size()<128&&s.find_fi
 // basename as an archive identity; disk access remains confined to game root.
 inline std::string archiveName(std::string s){auto p=s.find_last_of("/\\");if(p!=std::string::npos)s.erase(0,p+1);return safe(s)?name(s):std::string{};}
 inline std::vector<std::string> standardArchives(){
- std::vector<std::string> out={"RA2MD.MIX","RA2.MIX","LANGMD.MIX","LANGUAGE.MIX","CACHEMD.MIX","CACHE.MIX","LOCALMD.MIX","LOCAL.MIX","CONQMD.MIX","CONQUER.MIX","ISOGENMD.MIX","ISOGEN.MIX"};
+ std::vector<std::string> out={"RA2MD.MIX","RA2.MIX","LANGMD.MIX","LANGUAGE.MIX","CACHEMD.MIX","CACHE.MIX","LOCALMD.MIX","LOCAL.MIX","CONQMD.MIX","CONQUER.MIX","GENERICMD.MIX","GENERIC.MIX","CAMEOMD.MIX","CAMEO.MIX","ISOGENMD.MIX","ISOGEN.MIX"};
  const char*theaters[][4]={{"TEMPERAT","ISOTEMP","ISOTEM","TEM"},{"SNOW","ISOSNOW","ISOSNO","SNO"},{"URBAN","ISOURB","ISOURB","URB"},{"DESERT","ISODES","ISODES","DES"},{"URBANN","ISOUBN","ISOUBN","UBN"},{"LUNAR","ISOLUN","ISOLUN","LUN"}};
  for(auto&t:theaters){for(int i:{0,1,3})out.emplace_back(std::string(t[i])+".MIX");for(int i:{0,2})out.emplace_back(std::string(t[i])+"MD.MIX");}return out;
 }

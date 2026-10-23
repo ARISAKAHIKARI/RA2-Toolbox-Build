@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <cstring>
 #include <limits>
+#include <string>
 #include <vector>
 namespace external { namespace voxel {
 // Read-only in-memory VXL/HVA capture. Never calls the game renderer. Layout
@@ -84,23 +85,23 @@ inline bool render(const Model&model,double angle,const std::array<uint32_t,256>
   }
  }return true;
 }
-// Infantry and SHP vehicles retain their real standing sprite; they are not
-// fabricated as voxels. Frame 0 is used when no verified sequence is available.
-template<class Read>bool sprite(Read read,uint32_t pointer,const std::array<uint32_t,256>&pal,Image&out,int frameIndex=0){
- uint8_t head[8];if(!range(pointer,32)||!read(pointer,head,8))return false;if(u16(head)==65535){uint32_t decoded=0;if(!read(pointer+12,&decoded,4)||!range(decoded,32)||!read(decoded,head,8))return false;pointer=decoded;}
- int w=u16(head+2),h=u16(head+4),frames=u16(head+6);if(w<1||h<1||w>512||h>512||frames<1||frames>8192||frameIndex<0||frameIndex>=frames||!range(pointer,8+size_t(frames)*24))return false;uint8_t frame[24];if(!read(pointer+8+frameIndex*24,frame,24))return false;int x=int16_t(u16(frame)),y=int16_t(u16(frame+2)),width=u16(frame+4),height=u16(frame+6);uint32_t compression=u32(frame+8)&3,offset=u32(frame+20);
+// FA2/XCC's Cshp_ts_file::is_compressed + decode3 semantics. RA2 flags bit 1
+// means length-prefixed RLE rows (including flag 2 opaque rows). In particular,
+// real odd-width sprites pad their final transparent run past the crop width;
+// FA2 clips that run. It is not an invalid frame or a fixed-stride bitmap.
+template<class Read>bool sprite(Read read,uint32_t pointer,const std::array<uint32_t,256>&pal,Image&out,int frameIndex=0,std::string*reason=nullptr){
+ auto fail=[&](const std::string&s){if(reason)*reason=s;return false;};if(reason)reason->clear();
+ uint8_t head[8];if(!range(pointer,32)||!read(pointer,head,8))return fail("header-read");if(u16(head)==65535){uint32_t decoded=0;if(!read(pointer+12,&decoded,4)||!range(decoded,32)||!read(decoded,head,8))return fail("reference-unloaded");pointer=decoded;}
+ int w=u16(head+2),h=u16(head+4),frames=u16(head+6);if(u16(head)||w<1||h<1||w>2048||h>2048||frames<1||frames>8192||frameIndex<0||frameIndex>=frames||!range(pointer,8+size_t(frames)*24))return fail("header/frame-range frames="+std::to_string(frames));uint8_t frame[24];if(!read(pointer+8+frameIndex*24,frame,24))return fail("frame-read");int x=int16_t(u16(frame)),y=int16_t(u16(frame+2)),width=u16(frame+4),height=u16(frame+6);bool compressed=(u32(frame+8)&2)!=0;uint32_t offset=u32(frame+20);
  // The canvas is the origin reference, not a clipping box. Cropped frames
  // may extend beyond it (weapons/death animations). Keep their real anchor.
- if(width>512||height>512||std::abs(x)>4096||std::abs(y)>4096)return false;
+ if(width>2048||height>2048||std::abs(x)>4096||std::abs(y)>4096)return fail("crop-bounds");
  Image next;next.width=std::max(1,width);next.height=std::max(1,height);next.x=x-w/2;next.y=y-h/2;next.pixels.resize(size_t(next.width)*next.height);
  if(!offset||!width||!height){out=std::move(next);return true;}
- if(offset<uint32_t(8+frames*24)||offset>MaxBytes||uint64_t(pointer)+offset>0xffffffffull||!range(pointer+offset,1))return false;
- uint32_t at=pointer+offset;unsigned stride=width;
- // Format 2 stores ONE length prefix followed by fixed-stride raw rows.
- // Format 3 stores a separate length prefix for each RLE-zero row.
- if(compression==2){uint16_t length;if(!read(at,&length,2)||length<2||unsigned(length-2)>unsigned(width))return false;stride=length-2;at+=2;}
- for(int row=0;row<height;++row){uint8_t bytes[2048];unsigned n=stride;if(compression==3){uint16_t length;if(!read(at,&length,2)||length<2||length>sizeof bytes)return false;n=length;}if(!range(at,n)||!read(at,bytes,n))return false;at+=n;unsigned p=compression==3?2:0;int col=0;
-  while(p<n&&col<width){uint8_t color=bytes[p++];if(compression==3&&!color){if(p>=n||!bytes[p]||col+bytes[p]>width)return false;col+=bytes[p++];continue;}if(color)next.pixels[size_t(row)*next.width+col]=premultiply(pal[color],1);++col;}
+ if(offset<uint32_t(8+frames*24)||offset>MaxBytes||uint64_t(pointer)+offset>0xffffffffull||!range(pointer+offset,1))return fail("pixel-offset");
+ uint32_t at=pointer+offset;
+ for(int row=0;row<height;++row){uint8_t bytes[8192];unsigned n=width;if(compressed){uint16_t length;if(!read(at,&length,2)||length<2||length>sizeof bytes)return fail("row-length row="+std::to_string(row));n=length;}if(uint64_t(at)-pointer+n>MaxBytes||!range(at,n)||!read(at,bytes,n))return fail("row-read row="+std::to_string(row));at+=n;unsigned p=compressed?2:0;int col=0;
+  while(p<n){uint8_t color=bytes[p++];if(compressed&&!color){if(p>=n)return fail("rle-truncated row="+std::to_string(row));col+=std::min(int(bytes[p++]),width-col);continue;}if(col>=width)return fail("row-literal-overflow row="+std::to_string(row));if(color)next.pixels[size_t(row)*next.width+col]=premultiply(pal[color],1);++col;}
   // Unstored right-hand pixels are transparent, including empty RLE rows.
  }out=std::move(next);return true;
 }

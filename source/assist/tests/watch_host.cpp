@@ -24,7 +24,7 @@ namespace gameassets {
  static void update(){}static bool palette(bool,std::array<uint32_t,256>&){return false;}static std::string text(uint32_t,int){return {};}
  static bool tile(uint32_t,unsigned,const std::array<uint32_t,256>&pal,external::voxel::Image&image){++tileCalls;image.width=image.height=1;image.pixels={pal[3]};return true;}
  static bool sprite(uint32_t,uint32_t,const std::array<uint32_t,256>&,int,external::voxel::Image&){return false;}
- static bool overlay(uint32_t,uint32_t,int,external::voxel::Image&){return false;}
+ static bool overlay(uint32_t,uint32_t,int,external::voxel::Image&,bool=false){return false;}
  static bool captureActor(uint32_t,uint32_t,uint32_t id,ActorArt&art){++captures;if(id==1)return false;art.marker=id;return true;}
  static bool renderActor(const ActorArt&,const external::visual::Pose&pose,external::voxel::Image&image){++renders;image.width=image.height=1;image.pixels={uint32_t(0xff000000|pose.body<<8|pose.turret)};return true;}
 }

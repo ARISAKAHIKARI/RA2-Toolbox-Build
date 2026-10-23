@@ -1,13 +1,13 @@
 {
-  "label": "1.0.37.9 SingleRuntime",
-  "file_version": "1.0.37.9",
+  "label": "1.0.37.10 SingleRuntime",
+  "file_version": "1.0.37.10",
   "verified": {
     "RA2Toolbox.exe": {
-      "bytes": 2773504,
-      "sha256": "3982af6b907537364d814d688ab97ab73fc224f30ca012b85661d429303f2bcd",
+      "bytes": 2788864,
+      "sha256": "4976801bfbc1d369d49581d4727bfe2a78ddf44fb945add7acc9aac72b8f1ace",
       "machine": "PE32 x86",
       "sections": 14,
-      "entry_rva": "0x12e710",
+      "entry_rva": "0x1313b0",
       "exports": [
         "AssistHostMappingPrefix",
         "AssistHostProtocolInfo",
@@ -553,11 +553,11 @@
       "assist_shared_bytes": 4164848
     },
     "GameRuntime.dll": {
-      "bytes": 4859392,
-      "sha256": "709852d62e1131bf842616d73912cfa86a2abb74a5f133fdc08daeef6587b99f",
+      "bytes": 4860416,
+      "sha256": "ebb3a2a50de82a785af3a57fe3ab2a55287fd4b118b7d7e13cd38f3e210c3c41",
       "machine": "PE32 x86",
       "sections": 13,
-      "entry_rva": "0x606f0",
+      "entry_rva": "0x60ba0",
       "exports": [
         "AssistMappingPrefix",
         "AssistProtocolInfo",

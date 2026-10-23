@@ -485,7 +485,7 @@ static bool nativeMission(uint32_t house,uint32_t id,int mission,uint32_t target
  }
  return true;
 }
-static bool nativeObjectEvent(int houseIndex,int eventType,uint32_t objectId,OrderAuthority authority=OrderAuthority::Local,gateway::Receipt* receipt=nullptr){
+static bool nativeObjectEvent(int houseIndex,int eventType,uint32_t objectId,OrderAuthority authority=OrderAuthority::Local,gateway::Receipt* receipt=nullptr,bool hazardDrop=false){
  if(houseIndex<0||houseIndex>=32||!objectId||!lastHouse){++snap.commandRejected;return false;}
  uint32_t object=worldByID(objectId);
  uint32_t owner=object?get<uint32_t>(object+0x21C):0;
@@ -504,7 +504,7 @@ static bool nativeObjectEvent(int houseIndex,int eventType,uint32_t objectId,Ord
  const gateway::Intent objIntent{match,submittedAt,objectId,0,rev};
  if(gateway::validate(ctx,objIntent,3500)!=gateway::Failure::None){++snap.commandRejected;return false;}
  const int frame=get<int>(0xA8ED84);
- const auto objOwner=eventType==0x06?taskarbiter::Owner::Magnetron:eventType==0x07?taskarbiter::Owner::Dodge:eventType==0x16?taskarbiter::Owner::Sell:taskarbiter::Owner::Repair;
+ const auto objOwner=eventType==0x06?(hazardDrop?taskarbiter::Owner::MagnetronDrop:taskarbiter::Owner::Magnetron):eventType==0x07?taskarbiter::Owner::Dodge:eventType==0x16?taskarbiter::Owner::Sell:taskarbiter::Owner::Repair;
  actorFrameArbiter.begin(match,frame);
  if(!actorFrameArbiter.canIssue(objectId,rev)||
     !actorLeaseArbiter.canIssue(match,frame,objectId,object,rev,objOwner)){

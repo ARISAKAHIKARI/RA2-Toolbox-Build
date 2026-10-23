@@ -27,6 +27,10 @@ int main(){
  assert(a.record(10,120,9,0x6000,1,Owner::Repair,70));
  assert(a.canIssue(10,121,9,0x6000,1,Owner::Sell));
  assert(a.record(10,121,9,0x6000,1,Owner::Sell,71,&removed)&&removed.owner==Owner::Repair);
+ assert(!a.canIssue(10,122,9,0x6000,1,Owner::MagnetronDrop));
+ assert(a.record(10,121,7,0x4000,1,Owner::Generic,72));
+ assert(!a.canIssue(10,122,7,0x4000,1,Owner::Magnetron));
+ assert(a.canIssue(10,122,7,0x4000,1,Owner::MagnetronDrop));
  assert(syntheticProductionActor(3,5)!=syntheticSuperWeaponActor(5));
  FrameArbiter<4> frame;frame.begin(10,120);assert(frame.record(7,1,Owner::Combat));
  assert(!frame.canIssue(7,1));frame.begin(10,121);assert(frame.canIssue(7,1));

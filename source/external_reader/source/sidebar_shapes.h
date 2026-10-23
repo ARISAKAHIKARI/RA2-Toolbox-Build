@@ -29,8 +29,9 @@ template<class Read> bool sample(Read read,int tab,int screenWidth,int screenHei
  for(int row=0;row<height;++row){uint8_t data[1024];unsigned bytes=width;
   if(compression>=2){uint16_t n=0;if(!read(at,&n,2)||n<2||n>1024)return false;bytes=n;}
   if(!read(at,data,bytes))return false;at+=bytes;unsigned pos=compression>=2?2:0;int col=0;
-  while(pos<bytes&&col<width){unsigned v=data[pos++];if(compression==3&&!v){if(pos>=bytes)return false;unsigned run=data[pos++];if(!run||col+int(run)>width)return false;col+=run;continue;}
-   if(v){unsigned rgb=palette[v],r=((rgb>>11)&31)*255/31,g=((rgb>>5)&63)*255/63,blue=(rgb&31)*255/31,luma=(r*3+g*6+blue)/10;
+  while(pos<bytes){unsigned v=data[pos++];if(compression>=2&&!v){if(pos>=bytes)return false;unsigned run=data[pos++];col+=std::min(run,unsigned(width-col));continue;}
+   if(col>=width)return false;
+   if(v){unsigned rgb=palette[v],r=((rgb>>11)&31)*255/31,g=((rgb>>5)&63)*255/63,blue=(rgb&31)*255/31;
     pixels[(top+row)*w+left+col]=0xFF000000u|(r<<16)|(g<<8)|blue;
    }++col;
   }if(col!=width)return false;
@@ -39,25 +40,19 @@ template<class Read> bool sample(Read read,int tab,int screenWidth,int screenHei
  uint32_t after=0;if(!read(button+0x58,&after,4)||after!=u32(b+0x58))return false;
  out={x,y,w,h,std::move(pixels)};return true;
 }
-// A TAB SHP contains both its glyph and an opaque rectangular plate.
-// Compare the four normal-state tabs to remove that shared plate, including
-// bevels/gradients. Never turn an unavailable glyph mask into a solid rectangle.
-inline bool glyph(const Frame(&base)[4],int tab,Frame&shown,bool paused){
- const auto&own=base[tab];if(shown.width!=own.width||shown.height!=own.height)return false;
- for(const auto&f:base)if(f.width!=own.width||f.height!=own.height||f.pixels.size()!=own.pixels.size())return false;
- std::vector<uint8_t> mask(own.pixels.size());unsigned count=0;
- for(size_t i=0;i<mask.size();++i){if(!own.pixels[i])continue;unsigned equal=0;
-  for(const auto&f:base)equal+=f.pixels[i]==own.pixels[i];
-  // Glyph-only differences. Shared central strokes may remain uncolored;
-  // shared backing pixels must never blink merely because they are opaque.
-  if(equal<=2){bool backing=false;size_t row=i/own.width;for(int x=0;x<own.width&&!backing;++x){size_t q=row*own.width+x;bool shared=true;for(const auto&f:base)shared&=f.pixels[q]==base[0].pixels[q];backing=shared&&base[0].pixels[q]==own.pixels[i];}if(!backing){mask[i]=1;++count;}}
- }
- if(!count||count*2>mask.size())return false;
- for(size_t i=0;i<mask.size();++i){if(!mask[i]){shown.pixels[i]=0;continue;}
-  auto color=shown.pixels[i];if(!color)continue;unsigned luma=(((color>>16)&255)*3+((color>>8)&255)*6+(color&255))/10;
+// Compare each tab to its OWN disabled frame (native ShapeButton frame 2).
+// Only red/gold glyph ink changes there. Shared strokes across different tabs
+// are valid ink too; opaque backing, bevels and unrelated colors stay untouched.
+inline bool glyph(const Frame&disabled,Frame&shown,bool paused){
+ if(shown.width!=disabled.width||shown.height!=disabled.height||shown.pixels.size()!=disabled.pixels.size())return false;
+ unsigned count=0;
+ for(size_t i=0;i<shown.pixels.size();++i){auto color=shown.pixels[i];unsigned r=(color>>16)&255,g=(color>>8)&255,b=color&255;
+  bool warm=r>=32&&r>=g&&r>b+8&&(r-g>=8||g-b>=16);
+  if(!warm||color==disabled.pixels[i]){shown.pixels[i]=0;continue;}
+  ++count;unsigned luma=(r*3+g*6+b)/10;
   unsigned rr=std::min(255u,80+luma),gg=paused?std::min(230u,40+luma*4/5):20+luma/5,bb=15+luma/4;
   shown.pixels[i]=0xFF000000u|(rr<<16)|(gg<<8)|bb;
- }return true;
+ }return count!=0;
 }
 struct Cache {
  Frame frames[4];uint32_t tick=0,pid=0,match=0,revision=0;int width=0,height=0;
@@ -65,10 +60,12 @@ struct Cache {
   bool context=pid!=process||match!=epoch||width!=w||height!=h;
   if(context){for(auto&f:frames)f={};pid=process;match=epoch;width=w;height=h;tick=0;++revision;}
   mask&=ReminderMask;
-  if(!tick||uint32_t(now-tick)>=100){tick=now;Frame base[4];bool ready=true;for(int i=0;i<4;++i)if(!sample(read,i,w,h,base[i],0))ready=false;
-   for(int i=0;i<4;++i){Frame next;if((mask&(1u<<i))&&ready&&sample(read,i,w,h,next)&&!glyph(base,i,next,(pausedMask&(1u<<i))!=0))next={};auto&f=frames[i];
-   if(f.x!=next.x||f.y!=next.y||f.width!=next.width||f.height!=next.height||f.pixels!=next.pixels){f=std::move(next);++revision;}
-  }}
+  if(!tick||uint32_t(now-tick)>=100){tick=now;
+   for(int i=0;i<4;++i){Frame next,disabled;
+    if(mask&(1u<<i)){if(!sample(read,i,w,h,next)||!sample(read,i,w,h,disabled,2)||!glyph(disabled,next,(pausedMask&(1u<<i))!=0))next={};}
+    auto&f=frames[i];if(f.x!=next.x||f.y!=next.y||f.width!=next.width||f.height!=next.height||f.pixels!=next.pixels){f=std::move(next);++revision;}
+   }
+  }
   uint32_t ready=0;for(int i=0;i<4;++i)if((mask&(1u<<i))&&!frames[i].pixels.empty())ready|=1u<<i;return ready;
  }
 };

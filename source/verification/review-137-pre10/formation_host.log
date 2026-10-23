@@ -1,0 +1,270 @@
+In file included from /workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/formation_host.cpp:21:
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/type_hotkey.h: In function ‘int typekeys::groupSize(const Bindings&, uint16_t)’:
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/type_hotkey.h:12:2: warning: this ‘for’ clause does not guard... [-Wmisleading-indentation]
+   12 |  for(const auto&b:bindings)if(canonical(b.key)==key)++n;return n;
+      |  ^~~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/type_hotkey.h:12:57: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘for’
+   12 |  for(const auto&b:bindings)if(canonical(b.key)==key)++n;return n;
+      |                                                         ^~~~~~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/type_hotkey.h: In function ‘int typekeys::groupMask(const Bindings&, uint16_t, const Types&, int, uint8_t*, int)’:
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/type_hotkey.h:15:2: warning: this ‘for’ clause does not guard... [-Wmisleading-indentation]
+   15 |  for(int i=0;i<limit;++i)mask[i]=0;key=canonical(key);if(!(key&255))return 0;
+      |  ^~~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/type_hotkey.h:15:36: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘for’
+   15 |  for(int i=0;i<limit;++i)mask[i]=0;key=canonical(key);if(!(key&255))return 0;
+      |                                    ^~~
+In file included from /workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/formation_host.cpp:22:
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/voxel_preview.h: In function ‘bool external::voxel::capturePart(Read, uint32_t, uint32_t, Model&, float, float, float)’:
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/voxel_preview.h:54:5: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+   54 |     if(pending.faces.size()+out.faces.size()>=MaxFaces)return false;Face face;face.color=color;
+      |     ^~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/voxel_preview.h:54:69: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+   54 |     if(pending.faces.size()+out.faces.size()>=MaxFaces)return false;Face face;face.color=color;
+      |                                                                     ^~~~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/voxel_preview.h: In function ‘bool external::voxel::palette(Read, uint32_t, uint32_t, std::array<unsigned int, 256>&)’:
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/voxel_preview.h:64:2: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+   64 |  if(!read(owner+0x16054,&index,4)||index<0||index>=512||!read(type+0xDF0,&vector,4))return false;if(!vector)vector=0xB054D0;
+      |  ^~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/voxel_preview.h:64:98: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+   64 |  if(!read(owner+0x16054,&index,4)||index<0||index>=512||!read(type+0xDF0,&vector,4))return false;if(!vector)vector=0xB054D0;
+      |                                                                                                  ^~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/voxel_preview.h:67:2: warning: this ‘for’ clause does not guard... [-Wmisleading-indentation]
+   67 |  for(int i=0;i<256;++i)out[i]=0xFF000000u|(uint32_t(colors[i*3])<<16)|(uint32_t(colors[i*3+1])<<8)|colors[i*3+2];out[0]=0;return true;
+      |  ^~~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/voxel_preview.h:67:114: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘for’
+   67 |  for(int i=0;i<256;++i)out[i]=0xFF000000u|(uint32_t(colors[i*3])<<16)|(uint32_t(colors[i*3+1])<<8)|colors[i*3+2];out[0]=0;return true;
+      |                                                                                                                  ^~~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/voxel_preview.h: In function ‘bool external::voxel::actorImage(Read, uint32_t, uint32_t, uint32_t, double, Image&)’:
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/voxel_preview.h:111:2: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+  111 |  if(word(p+0x10)!=id)return false;uint32_t owner=word(p+0x21C);std::array<uint32_t,256> colors{};if(!palette(read,type,owner,colors))return false;
+      |  ^~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/voxel_preview.h:111:35: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+  111 |  if(word(p+0x10)!=id)return false;uint32_t owner=word(p+0x21C);std::array<uint32_t,256> colors{};if(!palette(read,type,owner,colors))return false;
+      |                                   ^~~~~~~~
+In file included from /workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/../../assist/source/protocol.h:7,
+                 from /workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/game_view.h:2,
+                 from /workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/visual_pose.h:2,
+                 from /workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/formation_host.cpp:23:
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/../../assist/source/ore_type_config.h: In function ‘bool assist::oreconfig::parse(const std::wstring&, char (&)[512][24], int&)’:
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/../../assist/source/ore_type_config.h:18:3: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+   18 |   if(!((c>=L'a'&&c<=L'z')||(c>=L'A'&&c<=L'Z')||(c>=L'0'&&c<=L'9')||c==L'_'||c==L'-')||id.size()==23)return false;id+=upper(char(c));}
+      |   ^~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/../../assist/source/ore_type_config.h:18:114: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+   18 |   if(!((c>=L'a'&&c<=L'z')||(c>=L'A'&&c<=L'Z')||(c>=L'0'&&c<=L'9')||c==L'_'||c==L'-')||id.size()==23)return false;id+=upper(char(c));}
+      |                                                                                                                  ^~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/../../assist/source/ore_type_config.h:19:2: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+   19 |  if(!add())return false;memcpy(out,parsed,sizeof parsed);count=n;return true;
+      |  ^~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/../../assist/source/ore_type_config.h:19:25: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+   19 |  if(!add())return false;memcpy(out,parsed,sizeof parsed);count=n;return true;
+      |                         ^~~~~~
+In file included from /workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/../../assist/source/protocol.h:8:
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/../../assist/source/feature_type_config.h: In function ‘bool assist::featuretypes::allowed(const Config&, int, const char*)’:
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/../../assist/source/feature_type_config.h:17:2: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+   17 |  if(!id||f.count<0||f.count>oreconfig::Limit)return false;for(int i=0;i<f.count;++i)if(oreconfig::equal(f.ids[i],id))return true;return false;}
+      |  ^~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/../../assist/source/feature_type_config.h:17:59: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+   17 |  if(!id||f.count<0||f.count>oreconfig::Limit)return false;for(int i=0;i<f.count;++i)if(oreconfig::equal(f.ids[i],id))return true;return false;}
+      |                                                           ^~~
+In file included from /workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/../../assist/source/protocol.h:13:
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/../../assist/source/pointer_intent.h: In function ‘bool assist::pointerinput::matchesHold(const uint8_t*, uint32_t, int)’:
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/../../assist/source/pointer_intent.h:13:2: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+   13 |  if(!keys[vk]||((key&0x8000)&&!(keys[vk]&2)))return false;key&=0x7fff;
+      |  ^~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/../../assist/source/pointer_intent.h:13:59: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+   13 |  if(!keys[vk]||((key&0x8000)&&!(keys[vk]&2)))return false;key&=0x7fff;
+      |                                                           ^~~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/../../assist/source/pointer_intent.h: In function ‘int assist::pointerinput::resolveMouseMatches(const uint8_t*, int, const uint32_t*, const Bindings&, uint32_t, bool, MouseRoute*)’:
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/../../assist/source/pointer_intent.h:77:2: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+   77 |  if(!count&&(physical==FollowNative||physical==6))out[count++]={FollowNative,common};return count;
+      |  ^~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/../../assist/source/pointer_intent.h:77:86: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+   77 |  if(!count&&(physical==FollowNative||physical==6))out[count++]={FollowNative,common};return count;
+      |                                                                                      ^~~~~~
+In file included from /workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/../../assist/source/protocol.h:15:
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/../../assist/source/compute_policy.h: In function ‘uint32_t assist::compute::plannerFlags(uint32_t, uint32_t, bool)’:
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/../../assist/source/compute_policy.h:11:2: warning: this ‘for’ clause does not guard... [-Wmisleading-indentation]
+   11 |  for(int i=0;i<4;++i)if(inside(mask,Feature(i))==runtime)out|=flags&bits[i];return out;
+      |  ^~~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/../../assist/source/compute_policy.h:11:77: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘for’
+   11 |  for(int i=0;i<4;++i)if(inside(mask,Feature(i))==runtime)out|=flags&bits[i];return out;
+      |                                                                             ^~~~~~
+In file included from /workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/../../assist/source/compute_tasks.h:2,
+                 from /workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/../../assist/source/protocol.h:16:
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/../../assist/source/autoload.h: In function ‘int assist::loading::assign(const Infantry*, int, Vehicle*, int, int, int, Composition&, Workspace&, int*, Compatible)’:
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/../../assist/source/autoload.h:63:4: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+   63 |    if(bi<0)break;out[bi]=bj;v[bj].reserved+=p[bi].slots;++v[bj].passengers;composition.add(bj,p[bi].type);++assigned;
+      |    ^~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/../../assist/source/autoload.h:63:18: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+   63 |    if(bi<0)break;out[bi]=bj;v[bj].reserved+=p[bi].slots;++v[bj].passengers;composition.add(bj,p[bi].type);++assigned;
+      |                  ^~~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/../../assist/source/autoload.h:88:4: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+   88 |    if(bi<0)continue;out[bi]=bj;v[bj].reserved+=p[bi].slots;++v[bj].passengers;composition.add(bj,p[bi].type);++assigned;progress=true;
+      |    ^~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/../../assist/source/autoload.h:88:21: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+   88 |    if(bi<0)continue;out[bi]=bj;v[bj].reserved+=p[bi].slots;++v[bj].passengers;composition.add(bj,p[bi].type);++assigned;progress=true;
+      |                     ^~~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/../../assist/source/compute_tasks.h: In function ‘assist::compute::LoadResult assist::compute::load(LoadInput&, assist::loading::Workspace&)’:
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/../../assist/source/compute_tasks.h:20:2: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+   20 |  if(!valid(i))return r;r.count=i.ns;
+      |  ^~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/../../assist/source/compute_tasks.h:20:24: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+   20 |  if(!valid(i))return r;r.count=i.ns;
+      |                        ^
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/../../assist/source/compute_tasks.h: In function ‘assist::compute::RepairResult assist::compute::repair(const RepairInput&)’:
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/../../assist/source/compute_tasks.h:24:2: warning: this ‘for’ clause does not guard... [-Wmisleading-indentation]
+   24 |  for(int n=0;n<i.count;++n)if(i.items[n].id&&decisions::shouldRepair(i.items[n].view))r.ids[r.count++]=i.items[n].id;return r;
+      |  ^~~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/../../assist/source/compute_tasks.h:24:118: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘for’
+   24 |  for(int n=0;n<i.count;++n)if(i.items[n].id&&decisions::shouldRepair(i.items[n].view))r.ids[r.count++]=i.items[n].id;return r;
+      |                                                                                                                      ^~~~~~
+In file included from /workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/../../assist/source/unload_compute.h:4,
+                 from /workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/../../assist/source/protocol.h:17:
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/../../assist/source/unload_policy.h: In function ‘bool assist::unloadpolicy::initialMayContinue(int, int, int, bool, bool)’:
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/../../assist/source/unload_policy.h:11:40: warning: suggest parentheses around ‘&&’ within ‘||’ [-Wparentheses]
+   11 |  if(mission==2&&(mode==0||ejectDeployer&&mode!=0))return landedAge>=0&&landedAge<=(mode==0?900:ScatterFrames);
+      |                           ~~~~~~~~~~~~~^~~~~~~~~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/../../assist/source/unload_compute.h: In function ‘assist::unloadcompute::Result assist::unloadcompute::calculate(const Input&)’:
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/../../assist/source/unload_compute.h:84:2: warning: this ‘for’ clause does not guard... [-Wmisleading-indentation]
+   84 |  for(int n=0;n<i.count;++n)r.decisions[n]=decide(i.sources[n],i.targets,i.actions[n],i.targetCount);return r;
+      |  ^~~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/../../assist/source/unload_compute.h:84:101: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘for’
+   84 |  for(int n=0;n<i.count;++n)r.decisions[n]=decide(i.sources[n],i.targets,i.actions[n],i.targetCount);return r;
+      |                                                                                                     ^~~~~~
+In file included from /workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/../../assist/source/protocol.h:18:
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/../../assist/source/missile_compute.h: In function ‘assist::missilecompute::Result assist::missilecompute::calculate(const Input&)’:
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/../../assist/source/missile_compute.h:52:3: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+   52 |   if(bs<0)break;assigned[bs]=bt;++number[bt];damage[bt]+=i.edges[bs][bt].damage;
+      |   ^~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/../../assist/source/missile_compute.h:52:17: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+   52 |   if(bs<0)break;assigned[bs]=bt;++number[bt];damage[bt]+=i.edges[bs][bt].damage;
+      |                 ^~~~~~~~
+In file included from /workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/../../assist/source/protocol.h:19:
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/../../assist/source/burst_compute.h: In function ‘assist::burstcompute::Result assist::burstcompute::calculate(const Input&)’:
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/../../assist/source/burst_compute.h:38:2: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+   38 |  if(i.count<0||i.count>MaxSources)return r;r.count=i.count;for(int n=0;n<i.count;++n)r.decisions[n]=decide(i.sources[n]);return r;}
+      |  ^~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/../../assist/source/burst_compute.h:38:44: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+   38 |  if(i.count<0||i.count>MaxSources)return r;r.count=i.count;for(int n=0;n<i.count;++n)r.decisions[n]=decide(i.sources[n]);return r;}
+      |                                            ^
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/../../assist/source/protocol.h: In function ‘int assist::remaining(int, int, int)’:
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/../../assist/source/protocol.h:177:2: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+  177 |  if(duration<=0)return 0; if(start==-1)return duration;
+      |  ^~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/../../assist/source/protocol.h:177:27: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+  177 |  if(duration<=0)return 0; if(start==-1)return duration;
+      |                           ^~
+In file included from /workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/game_view.h:4:
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/../../assist/source/weapon_policy.h: In function ‘int assist::planner::weaponIndex(const Actor&, const Actor&)’:
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/../../assist/source/weapon_policy.h:15:2: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+   15 |  if(!(qm&bit))return 0;if(!(pm&bit))return 1;
+      |  ^~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/../../assist/source/weapon_policy.h:15:24: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+   15 |  if(!(qm&bit))return 0;if(!(pm&bit))return 1;
+      |                        ^~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/../../assist/source/weapon_policy.h: In function ‘bool assist::planner::canTarget(const Actor&, const Actor&, int64_t, bool, int)’:
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/../../assist/source/weapon_policy.h:41:2: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+   41 |  if(distance<0||distance>0xFFFFFFFFll||!compatibleTarget(s,t,mag))return false;const auto&w=s.weapons[weaponIndex(s,t)];
+      |  ^~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/../../assist/source/weapon_policy.h:41:80: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+   41 |  if(distance<0||distance>0xFFFFFFFFll||!compatibleTarget(s,t,mag))return false;const auto&w=s.weapons[weaponIndex(s,t)];
+      |                                                                                ^~~~~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/game_view.h: In member function ‘bool external::GameView<Read>::radioLinked(uint32_t, uint32_t) const’:
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/game_view.h:36:3: warning: this ‘for’ clause does not guard... [-Wmisleading-indentation]
+   36 |   for(int i=0;i<n;++i)if(get<uint32_t>(items+uint32_t(i)*4)==source)return true;return false;
+      |   ^~~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/game_view.h:36:81: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘for’
+   36 |   for(int i=0;i<n;++i)if(get<uint32_t>(items+uint32_t(i)*4)==source)return true;return false;
+      |                                                                                 ^~~~~~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/game_view.h: In member function ‘assist::planner::Weapon external::GameView<Read>::weapon(uint32_t) const’:
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/game_view.h:86:3: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+   86 |   if(get<uint8_t>(projectile+0x2A4))w.flags|=AirWeapon;if(get<uint8_t>(projectile+0x2A5))w.flags|=GroundWeapon;
+      |   ^~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/game_view.h:86:56: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+   86 |   if(get<uint8_t>(projectile+0x2A4))w.flags|=AirWeapon;if(get<uint8_t>(projectile+0x2A5))w.flags|=GroundWeapon;
+      |                                                        ^~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/game_view.h:87:3: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+   87 |   if(get<int>(p+0xA4)<0)w.flags|=HealingWeapon;if(get<uint8_t>(warhead+0x155))w.flags|=MindControlWeapon;if(get<uint8_t>(warhead+0x178))w.flags|=PsychicWeapon;
+      |   ^~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/game_view.h:87:48: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+   87 |   if(get<int>(p+0xA4)<0)w.flags|=HealingWeapon;if(get<uint8_t>(warhead+0x155))w.flags|=MindControlWeapon;if(get<uint8_t>(warhead+0x178))w.flags|=PsychicWeapon;
+      |                                                ^~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/game_view.h:88:3: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+   88 |   if(get<uint8_t>(warhead+0x15A))w.flags|=TemporalWeapon;if(get<uint8_t>(warhead+0x159))w.flags|=ParasiteWeapon;
+      |   ^~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/game_view.h:88:58: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+   88 |   if(get<uint8_t>(warhead+0x15A))w.flags|=TemporalWeapon;if(get<uint8_t>(warhead+0x159))w.flags|=ParasiteWeapon;
+      |                                                          ^~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/game_view.h:89:3: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+   89 |   if(get<uint8_t>(p+0x15C))w.flags|=MagneticWeapon;if(get<uint8_t>(warhead+0x15B))w.flags|=LocomotorWeapon;
+      |   ^~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/game_view.h:89:52: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+   89 |   if(get<uint8_t>(p+0x15C))w.flags|=MagneticWeapon;if(get<uint8_t>(warhead+0x15B))w.flags|=LocomotorWeapon;
+      |                                                    ^~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/game_view.h: In member function ‘assist::planner::Actor external::GameView<Read>::combat(uint32_t, int, bool) const’:
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/game_view.h:95:3: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+   95 |   if(get<uint8_t>(p+0x1C8))a.flags|=Disabled;if(get<uint32_t>(p+0x11C))a.flags|=Transported;if(get<int>(p+0x220)!=0)a.flags|=Cloaked;
+      |   ^~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/game_view.h:95:46: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+   95 |   if(get<uint8_t>(p+0x1C8))a.flags|=Disabled;if(get<uint32_t>(p+0x11C))a.flags|=Transported;if(get<int>(p+0x220)!=0)a.flags|=Cloaked;
+      |                                              ^~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/game_view.h:96:3: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+   96 |   if(get<uint8_t>(p+0x81))a.flags|=Limbo;if(!get<uint8_t>(p+0x90))a.flags|=OffMap;
+      |   ^~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/game_view.h:96:42: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+   96 |   if(get<uint8_t>(p+0x81))a.flags|=Limbo;if(!get<uint8_t>(p+0x90))a.flags|=OffMap;
+      |                                          ^~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/game_view.h:97:3: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+   97 |   if(get<uint8_t>(t+0xD35))a.flags|=PsionicImmune;if(get<uint8_t>(t+0xD36))a.flags|=PsychicImmune;
+      |   ^~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/game_view.h:97:51: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+   97 |   if(get<uint8_t>(t+0xD35))a.flags|=PsionicImmune;if(get<uint8_t>(t+0xD36))a.flags|=PsychicImmune;
+      |                                                   ^~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/game_view.h:98:3: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+   98 |   if(!get<uint8_t>(t+0xD3A))a.flags|=TemporalImmune;if(!get<uint8_t>(t+0xD38))a.flags|=ParasiteImmune;
+      |   ^~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/game_view.h:98:53: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+   98 |   if(!get<uint8_t>(t+0xD3A))a.flags|=TemporalImmune;if(!get<uint8_t>(t+0xD38))a.flags|=ParasiteImmune;
+      |                                                     ^~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/game_view.h:99:3: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+   99 |   if(get<uint32_t>(p+0x2C0)&&get<uint8_t>(p+0x2C4))a.flags|=Controlled;if(k!=3&&get<uint32_t>(p+0x694))a.flags|=Infested;
+      |   ^~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/game_view.h:99:72: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+   99 |   if(get<uint32_t>(p+0x2C0)&&get<uint8_t>(p+0x2C4))a.flags|=Controlled;if(k!=3&&get<uint32_t>(p+0x694))a.flags|=Infested;
+      |                                                                        ^~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/visual_pose.h: In function ‘external::visual::Pose external::visual::pose(external::GameView<Read>&, uint32_t, uint32_t, int, int)’:
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/visual_pose.h:49:2: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+   49 |  if(out.frame<0||out.frame>=8192)out.frame=-1;return out;
+      |  ^~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../../external_reader/source/visual_pose.h:49:47: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+   49 |  if(out.frame<0||out.frame>=8192)out.frame=-1;return out;
+      |                                               ^~~~~~
+In file included from /workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/formation_host.cpp:25:
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/formation_host.h: In function ‘void formationhost::update()’:
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/formation_host.h:32:2: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+   32 |  if(activeNow&&sampledAt&&DWORD(GetTickCount()-sampledAt)<33)return;sampledAt=GetTickCount();
+      |  ^~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/formation_host.h:32:69: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+   32 |  if(activeNow&&sampledAt&&DWORD(GetTickCount()-sampledAt)<33)return;sampledAt=GetTickCount();
+      |                                                                     ^~~~~~~~~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/formation_host.h:42:3: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+   42 |   if(word(u.pointer+0x10)!=u.id)continue;auto key=modelKey(u);
+      |   ^~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/formation_host.h:42:42: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+   42 |   if(word(u.pointer+0x10)!=u.id)continue;auto key=modelKey(u);
+      |                                          ^~~~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/formation_host.h: In function ‘void formationhost::draw(Graphics&)’:
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/formation_host.h:67:3: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+   67 |   if(missing)text+=L" · "+std::to_wstring(missing)+L" 个模型未载入";drawText(g,text,18,44,12,Color(230,220,244,255));}
+      |   ^~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/formation_host.h:67:69: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+   67 |   if(missing)text+=L" · "+std::to_wstring(missing)+L" 个模型未载入";drawText(g,text,18,44,12,Color(230,220,244,255));}
+      |                                                                     ^~~~~~~~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/formation_host.h: At global scope:
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/formation_host.h:70:13: warning: ‘bool formationHotkey(WORD)’ defined but not used [-Wunused-function]
+   70 | static bool formationHotkey(WORD key){
+      |             ^~~~~~~~~~~~~~~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/formation_host.h:64:13: warning: ‘void formationhost::draw(Graphics&)’ defined but not used [-Wunused-function]
+   64 | static void draw(Graphics&g){
+      |             ^~~~
+PASS preview seqlock continuity, content revisions, ownership-race protection, full model-cache eviction, image-budget eviction and active-image protection

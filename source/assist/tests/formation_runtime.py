@@ -124,4 +124,18 @@ for mode in (0,3):
     assert all(final[id]-initial[id]==(3004 if scenario=='rapid_retarget' else 2003) for id in initial)
    assert len(voices)==1,'automatic continuation must not replay voice'
    assert not m.codeWrites;rows.append({'case':f'{mode}_{button}_{scenario}_persistent_formation_voice','status':'PASS'})
+# A directed first layout still aligns arrival; later clicks go straight to
+# translated slots. Deliver every continuation and verify no extra approach.
+for mode in (0,3):
+ m=setup(mode,4);m.held_keys.add(18);message(m,0x104,18);message(m,0x204);message(m,0x205,x=190,y=145);tick(m)
+ assert count(m)==4
+ m.held_keys.clear();message(m,0x105,18)
+ for step in range(2):
+  old=count(m);message(m,0x201,x=160+step*30,y=160);message(m,0x202,x=160+step*30,y=160);tick(m)
+  assert count(m)==old+4
+  for n in range(old,old+4):
+   packet=packets(m)[n*111:(n+1)*111];uid,cell=struct.unpack_from('<I',packet,7)[0],struct.unpack_from('<I',packet,19)[0]
+   unit=next(p for p in m.units if m.r(p+0x10)==uid);m.w(unit+0xac,2);m.w(unit+0x5a4,m.r(m.cells+(cell//1000*512+cell%1000)*4));m.w(unit+0x9c,cell%1000*256+128);m.w(unit+0xa0,cell//1000*256+128)
+  s=tick(m);assert count(m)==old+4 and s.formationJobs==0,('continuation-facing-detour',mode,step,count(m),s.formationJobs)
+ rows.append({'case':f'{mode}_directed_layout_then_two_direct_continuations','status':'PASS'})
 Path(a.output).write_text(json.dumps({'scope':__doc__,'results':rows},indent=2)+'\n')

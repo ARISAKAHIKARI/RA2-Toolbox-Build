@@ -1,0 +1,33 @@
+{
+  "scope": "Native bunker arrival/linking handler 458E50 with explicit map/locomotor\nboundaries. Native code writes both BunkerLinkedItem fields; no fixture writes\nthem. This covers arrival gates, not complete pathfinding or rendered entry.\n",
+  "inputs": {
+    "gamemd-spawn(3).exe": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+    "GameRuntime.dll": "ebb3a2a50de82a785af3a57fe3ab2a55287fd4b118b7d7e13cd38f3e210c3c41"
+  },
+  "results": [
+    {
+      "case": "native_bunker_stage0_at_goalFalse_movingFalse",
+      "status": "PASS"
+    },
+    {
+      "case": "native_bunker_stage0_at_goalTrue_movingTrue",
+      "status": "PASS"
+    },
+    {
+      "case": "native_bunker_stage3_at_goalFalse_movingFalse",
+      "status": "PASS"
+    },
+    {
+      "case": "native_bunker_stage3_at_goalTrue_movingTrue",
+      "status": "PASS"
+    },
+    {
+      "case": "native_bunker_stage3_at_goalTrue_movingFalse",
+      "status": "PASS"
+    },
+    {
+      "case": "native_bunker_stage5_at_goalTrue_movingFalse",
+      "status": "PASS"
+    }
+  ]
+}

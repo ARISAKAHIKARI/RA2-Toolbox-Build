@@ -1,0 +1,45 @@
+PASS /workspace/scratch/9191caa5da6a/pre10-private-assets/03976ec7.shp frames=2 FA2 pixels and crop anchors
+PASS /workspace/scratch/9191caa5da6a/pre10-private-assets/2e81d66a.shp frames=2 FA2 pixels and crop anchors
+PASS /workspace/scratch/9191caa5da6a/pre10-private-assets/34b795eb.shp frames=1 FA2 pixels and crop anchors
+PASS /workspace/scratch/9191caa5da6a/pre10-private-assets/4724ec6e.shp frames=2 FA2 pixels and crop anchors
+PASS /workspace/scratch/9191caa5da6a/pre10-private-assets/51d8da20.shp frames=8 FA2 pixels and crop anchors
+PASS /workspace/scratch/9191caa5da6a/pre10-private-assets/65ac42bd.shp frames=1 FA2 pixels and crop anchors
+PASS /workspace/scratch/9191caa5da6a/pre10-private-assets/822d84c0.shp frames=2 FA2 pixels and crop anchors
+PASS /workspace/scratch/9191caa5da6a/pre10-private-assets/993e1589.shp frames=1 FA2 pixels and crop anchors
+PASS /workspace/scratch/9191caa5da6a/pre10-private-assets/9ec94e4c.shp frames=2 FA2 pixels and crop anchors
+PASS /workspace/scratch/9191caa5da6a/pre10-private-assets/a75b3f2b.shp frames=22 FA2 pixels and crop anchors
+PASS /workspace/scratch/9191caa5da6a/pre10-private-assets/a7d704f1.shp frames=2 FA2 pixels and crop anchors
+PASS /workspace/scratch/9191caa5da6a/pre10-private-assets/a9ae9965.shp frames=2 FA2 pixels and crop anchors
+PASS /workspace/scratch/9191caa5da6a/pre10-private-assets/b13df4af.shp frames=2 FA2 pixels and crop anchors
+PASS /workspace/scratch/9191caa5da6a/pre10-private-assets/c08ea57c.shp frames=2 FA2 pixels and crop anchors
+PASS /workspace/scratch/9191caa5da6a/pre10-private-assets/c811c773.shp frames=2 FA2 pixels and crop anchors
+PASS /workspace/scratch/9191caa5da6a/pre10-private-assets/dff6809d.shp frames=2 FA2 pixels and crop anchors
+PASS /workspace/scratch/9191caa5da6a/pre10-private-assets/e363ba6e.shp frames=2 FA2 pixels and crop anchors
+PASS /workspace/scratch/9191caa5da6a/pre10-private-assets/yurig.shp frames=630 FA2 pixels and crop anchors
+PASS /workspace/scratch/9191caa5da6a/infdie.shp frames=14 FA2 pixels and crop anchors
+PASS /workspace/scratch/9191caa5da6a/gtradr.shp frames=6 FA2 pixels and crop anchors
+{
+  "reference_sha256": "264ca03a53afa422b08027c66cd46f0d7ccf53406a88073a3f98de959832a23f",
+  "samples": {
+    "03976ec7.shp": "ef7032a2e5aeaa3293a016ed0224fbc96cc5e30517d29986c600da7ce9d86898",
+    "2e81d66a.shp": "0fb81219299f968b708c772e7a761a24c8e5d2d4403fdf30fb4951edb1d6a6d8",
+    "34b795eb.shp": "c954d359201817d69cbd525cd65dcb59e2f435340096c908ae6149a22b58e6f5",
+    "4724ec6e.shp": "bfdb6173464a4bc6e19a1d2ad7a0edc71afcdf06bada2b3f5804b338c64dc982",
+    "51d8da20.shp": "d7e92839fef021b832d96b4571f870a939f124efe77b33b503711188dea93077",
+    "65ac42bd.shp": "d3c0c157a02aa66585aa65c548f21ed80eb41b1489fe2e76fcf35b176b668de8",
+    "822d84c0.shp": "bee70be90ff737967e81e0c17a55012fdbfe59fbc8d7addf2bdaa879b57658ed",
+    "993e1589.shp": "00aacadb264096e155da26637be0486950503d4fe97cd3608b15c6878c31831f",
+    "9ec94e4c.shp": "40e66e9d277d9114e6f8b53da815c34825b12964b7b76dfeb62b91a7634092a4",
+    "a75b3f2b.shp": "242939bf710116d2ea874163eed08a006b03bb7040b66c50288565a1f9b10bf5",
+    "a7d704f1.shp": "ec4b969a7df98dff9c5d3d61b7e4662e4e0c34b592dfe261f6285f1530440285",
+    "a9ae9965.shp": "0c51ab853ac6f5c0b0fa335c90457cd123aa8887a0305fe03ad214b3b1d85529",
+    "b13df4af.shp": "221a096b1270a0e3aff77431ddca104a04dad77e91917f5cd2924046d06f9ae0",
+    "c08ea57c.shp": "8cd4ea21f2d74691fa965e887d1a8335404bdc357fd679324e615d7d2f829491",
+    "c811c773.shp": "a9299a1313f3e20c9d4a059f8426cd2f958f973acfc671b502de08f4634095a9",
+    "dff6809d.shp": "f5b18e5ea44f551d771eeb476cebac1bfc82ea7557731f7327dd9ef2d5505cd7",
+    "e363ba6e.shp": "8d3d4cfbbf9841ad25646e883edabc442deb8c85da1ac8f98b66a042d1d6a868",
+    "yurig.shp": "1c73fa3a7bdce534f4c4d3a6470a974490dccad18ee2da7bca01177aa1098ef9",
+    "infdie.shp": "957014c4243750fe69f055fba773d1e5f310b04024db393697455e0dfb4e5a47",
+    "gtradr.shp": "cb78a78405848b7e4117bd5293a9931feafab130426ed40ec4ce5b5543851d15"
+  }
+}

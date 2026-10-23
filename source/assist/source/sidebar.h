@@ -43,6 +43,7 @@ static uint32_t techFactory(uint32_t type,uint32_t house){
 }
 static bool ensureTechCameo(int i,uint32_t house){
  if(i<0||i>=snap.typeCount||!techAllowed[i]||!typePointers[i])return false;
+ if(techImplementation==2)return hasCameo(snap.types[i].kind,snap.types[i].index);
  uint32_t factory=0;
  if(techImplementation==1){
   // Early 0.3.0 archives used FindFactory(true,false,true,house): retain the
@@ -57,27 +58,23 @@ static bool ensureTechCameo(int i,uint32_t house){
  if(!call<bool>(0x6A6300,Sidebar,t.kind,t.index))return false;sidebarRedraw(tab);return hasCameo(t.kind,t.index);
 }
 static void restoreTech(){techPending=false;techScanAt=techScanVisible=techScanUnavailable=0;techScanFrame=INT32_MIN;snap.techOpen=0;techImplementation=0;setTechSites(false);}
-static void refreshMasterCameos(){
- const uint32_t arrays[]={0xA83C68,0xA83CE0,0xA8E348,0xA8B218};const int kinds[]={7,40,16,3};
- int ordinal=0;unsigned examined=0,added=0;bool more=false;
- for(int k=0;k<4;++k){Vec v=vec(arrays[k],4096);for(int i=0;i<v.count;++i,++ordinal){
-  if(ordinal<techScanAt)continue;if(examined>=32||added>=8){more=true;break;}
-  ++examined;++techScanAt;uint32_t t=item(v,i);if(!t||get<int>(t+0x634)==-1)continue;
-  if(hasCameo(kinds[k],i)){++techScanVisible;continue;}
-  int tab=callFast<int>(0x6ABC60,kinds[k],i,0);
-  if(tab<0||tab>3||get<int>(Tabs+tab*3988+84)>=75||!call<bool>(0x6A6300,Sidebar,kinds[k],i)){++techScanUnavailable;continue;}
-  sidebarRedraw(tab);++added;++techScanVisible;
- }if(more)break;}
- techPending=more;snap.techVisible=techScanVisible;snap.techUnavailable=techScanUnavailable;
+static void observeMasterCameos(){
+ // The master mode only owns its verified eligibility patches. Building
+ // completion and other native triggers refresh the sidebar themselves;
+ // neither add icons here nor request a House::RecheckTechTree.
+ techScanCatalogue=catalogueHash;
+ techPending=false;techScanVisible=0;
+ for(int tab=0;tab<4;++tab){int count=get<int>(Tabs+tab*3988+84);if(count>=0&&count<=75)techScanVisible+=count;}
+ snap.techVisible=techScanVisible;snap.techUnavailable=0;
 }
 static void refreshTech(uint32_t house,DWORD now){techRefresh=now;snap.techError=0;
  if(!(sh->flags&UnsafeTech)){restoreTech();return;}
  if(!setTechSites(true)){snap.techOpen=0;techPending=false;snap.techError=-11;return;}snap.techOpen=int(techImplementation)+1;
+ if(techImplementation==2){observeMasterCameos();return;}
  if(!techPending||techScanCatalogue!=catalogueHash)requestTechRefresh();
  const int frame=get<int>(0xA8ED84);
  if(techScanFrame==frame)return; // one bounded batch, even with several wakes
  techScanFrame=frame;
- if(techImplementation==2){refreshMasterCameos();return;}
  if(techImplementation==1){
   // The early-source implementation scans the catalogue once per second.
   // An explicit enable/list change requests one immediate pass. No recurring

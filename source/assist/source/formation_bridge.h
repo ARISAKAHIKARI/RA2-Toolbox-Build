@@ -84,7 +84,9 @@ static void formationCommit(bool remember=true,bool feedback=true){
   cancelNative(u.pointer);u.token=manualVersions.get(u.id);
   int dx=int(std::lround(std::cos(formationView.facing))),dy=int(std::lround(std::sin(formationView.facing)));
   uint32_t approach=0;int cx=goal.x/256-dx,cy=goal.y/256-dy;
-  if(formationDirected&&formationCell(cx,cy))approach=cy*1000+cx;
+  // Only a newly dragged layout asks for a common final heading. Continuation
+  // translates the saved slots directly, without another facing detour.
+  if(remember&&formationDirected&&formationCell(cx,cy))approach=cy*1000+cx;
   auto&j=formationJobs[formationJobCount++];j={};j.unit=u;j.goal=goal;j.approach=approach;j.epoch=match;j.frame=get<int>(0xA8ED84);++sh->formationAccepted;
   if(remember){int at=formationMemory.count++;formationMemory.units[at]=u;formationMemory.offsets[at]=goal;formationMemory.offsets[at].x-=formationView.ax;formationMemory.offsets[at].y-=formationView.ay;}
  }

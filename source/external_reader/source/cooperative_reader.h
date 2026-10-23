@@ -19,7 +19,9 @@ template<class Read,class Quotas> assist::cooperative::Input cooperativeInput(Re
   if(r.mode==cooperative::Enter){if((k!=1&&k!=2)||!game.entryCompatible(p,clicked->second,house))continue;}
   else if(!((k==0||k==2)&&(combat.flags&planner::Airborne))||(combat.flags&(planner::Manipulated|planner::TemporalTarget)))continue;
   int slots=r.mode==cooperative::Enter?game.entrySlots(p,clicked->second):1;
-  out.units.push_back({r.sources[i],t,game.template get<int>(p+0x9C),game.template get<int>(p+0xA0),slots});sources.push_back(p);sourceCombat.push_back(combat);
+  uint32_t destination=r.mode==cooperative::Enter?game.entryDestination(p):0;
+  uint32_t reserved=destination&&game.capacity(destination).singleVehicle&&game.radioLinked(destination,p)?game.template get<uint32_t>(destination+0x10):0;
+  out.units.push_back({r.sources[i],t,game.template get<int>(p+0x9C),game.template get<int>(p+0xA0),slots,reserved});sources.push_back(p);sourceCombat.push_back(combat);
  }
  if(sources.empty())return out;
  std::vector<uint32_t> candidates;

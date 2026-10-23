@@ -19,6 +19,7 @@ def run_slice(m,start,ends,registers):
  return reached[0]
 for session in (0,3,4,5):
  m=fixture(session);s=issue(m,10,1,2);assert s.data.techOpen==3 and s.data.hookInstalled==5 and C.c_int32(s.result).value>=0,(s.result,s.data.techError,s.data.hookInstalled)
+ assert not m.sidebar_add_calls and not m.r(m.house+0x1fc)&255
  for site in (0x6A97D2,0x6AA781):assert bytes(m.u.mem_read(site,5))==original(m,site,5)
  arr=m.alloc();m.w(arr,m.t)
  for at,base,yes,no in [(0x44574A,UC_X86_REG_EAX,0x445761,0x44576E),(0x445795,UC_X86_REG_EDX,0x4457A6,0x4457B3),(0x4457D0,UC_X86_REG_ECX,0x4457E7,0x4457F4),(0x445810,UC_X86_REG_EAX,0x445827,0x445834)]:
@@ -31,6 +32,29 @@ for session in (0,3,4,5):
   s=issue(m,10,1,impl);assert s.data.techOpen==impl+1 and s.data.hookInstalled==(5 if impl==2 else 2)
  s=issue(m,10,0);assert not s.data.techOpen and not s.data.hookInstalled;restored(m)
  record(f'{session}_four_enumerators_levels_stack_prune_switch_disable')
+# Actual House recheck -> actual Building UpdateConstructionOptions -> patched
+# enumerator. AddCameo itself is a sink; no factory or native factory gates are
+# synthesized by Toolbox. Tick/Produce must never add an absent cameo directly.
+for case in ('factory','none','limbo','inactive','not_constructed','selling','foreign','hidden_type'):
+ m=fixture(0);m.b(m.building+0x41b,1);m.w(m.t+0x634,1)
+ if case=='none':m.vector(m.house+0x68,[])
+ if case=='limbo':m.b(m.building+0x81,1)
+ if case=='inactive':m.b(m.building+0x660,0)
+ if case=='not_constructed':m.b(m.building+0x41b,0)
+ if case=='selling':m.w(m.building+0xac,19)
+ if case=='foreign':m.w(m.building+0x21c,m.enemy)
+ if case=='hidden_type':m.w(m.t+0x634,0xffffffff)
+ issue(m,10,1,2);assert not m.sidebar_add_calls and not m.r(m.house+0x1fc)&255
+ s=issue(m,12,1);assert C.c_int32(s.result).value==-9 and not m.sidebar_add_calls and count(m)==0
+ for at in (0x6a7d20,0x50af10,0x50b1d0):m.u.hook_add(UC_HOOK_CODE,lambda uc,at,size,_:m.ret(0,0),begin=at,end=at)
+ # Model a later native building-completion trigger; the tool never sets it.
+ m.b(m.house+0x1fc,1)
+ run_slice(m,0x4f9265,(0x4f9302,),{UC_X86_REG_ESI:m.house})
+ assert m.sidebar_add_calls==([(40,0)] if case=='factory' else []),(case,m.sidebar_add_calls)
+ assert not m.r(m.house+0x1fc)&255
+ before=list(m.sidebar_add_calls);m.clock+=1100;tick(m)
+ assert m.sidebar_add_calls==before and not m.r(m.house+0x1fc)&255
+ record('master_native_recheck_'+case)
 for corrupt in list(sites)+[0x445755,0x4457A2,0x4457DD,0x44581A]:
  m=fixture();m.u.mem_write(corrupt,b'\xcc');s=issue(m,10,1,2)
  assert C.c_int32(s.result).value==-11 and not s.data.techOpen and not s.data.hookInstalled

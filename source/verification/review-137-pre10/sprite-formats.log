@@ -1,0 +1,21 @@
+PASS real SHP 2 frames
+PASS real SHP 2 frames
+PASS real SHP 1 frames
+PASS real SHP 2 frames
+PASS real SHP 8 frames
+PASS real SHP 1 frames
+PASS real SHP 2 frames
+PASS real SHP 1 frames
+PASS real SHP 2 frames
+PASS real SHP 22 frames
+PASS real SHP 2 frames
+PASS real SHP 2 frames
+PASS real SHP 2 frames
+PASS real SHP 2 frames
+PASS real SHP 2 frames
+PASS real SHP 2 frames
+PASS real SHP 2 frames
+PASS real SHP 630 frames
+PASS real SHP 14 frames
+PASS real SHP 6 frames
+PASS SHP raw/FA2-prefixed-RLE, transparent/empty/cropped frames and malformed bounds

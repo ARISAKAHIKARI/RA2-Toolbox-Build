@@ -1,0 +1,5 @@
+Traceback (most recent call last):
+  File "/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/magnetron_drop_lease_runtime.py", line 21, in <module>
+    assert count(m)==2 and packets(m)[111]==6,('hazardous manual beam blocked by prior attack lease',mode,inside,count(m),s.data.commandRejected)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ('hazardous manual beam blocked by prior attack lease', 0, False, 1, 1)

@@ -47,7 +47,7 @@ static void update(){
   if(!c.ready&&work<4&&(!c.attempted||int32_t(GetTickCount()-c.retry)>=0)){++work;if(!capture(u,c))c.art={};++revision;}
   if(!c.ready){++missing;continue;}
   auto it=c.views.find(facing);if(it==c.views.end()){if(work>=4){++missing;continue;}++work;external::voxel::Image rendered;external::GameView game(&read);
-   external::visual::Pose pose;pose.body=pose.turret=uint8_t((8-facing)&31);pose.frame=external::visual::previewFrame(game,u.type,u.kind,facing);
+   external::visual::Pose pose;pose.body=pose.turret=uint8_t(external::visual::previewBody(facing));pose.frame=external::visual::previewFrame(game,u.type,u.kind,facing);
    if(!gameassets::renderActor(c.art,pose,rendered)){++missing;continue;}
    // Both SHP and VXL keep rendered headings; changing the drag direction
    // never reopens archives or redecodes the source model.

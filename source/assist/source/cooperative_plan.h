@@ -4,7 +4,7 @@
 #include <vector>
 #include <numeric>
 namespace assist { namespace cooperative {
-struct Unit {Source source;uint32_t type;int x,y,slots;};
+struct Unit {Source source;uint32_t type;int x,y,slots;uint32_t reservedTarget=0;};
 struct Target {uint32_t id,type;int x,y,free,used;Quota quota;int prior=0;};
 struct Input {int mode=Enter;uint32_t clicked=0;std::vector<Unit> units;std::vector<Target> targets;std::vector<uint8_t> compatible;};
 inline int64_t distance(int x,int y,int a,int b){int64_t dx=int64_t(x)-a,dy=int64_t(y)-b;if(dx< -2097152||dx>2097152||dy< -2097152||dy>2097152)return INT64_MAX;return dx*dx+dy*dy;}
@@ -22,6 +22,12 @@ inline std::vector<Assignment> allocate(const Input&w){
  for(size_t i=0;i<ns;++i)for(size_t j=0;j<nt;++j)degree[i]+=w.compatible[i*nt+j]!=0;
  std::sort(order.begin(),order.end(),[&](int a,int b){if(w.mode==Enter&&w.units[a].slots!=w.units[b].slots)return w.units[a].slots>w.units[b].slots;if(degree[a]!=degree[b])return degree[a]<degree[b];return w.units[a].source.id<w.units[b].source.id;});
  for(int i:order){const auto&u=w.units[i];if(!u.source.id||degree[i]==0||u.x< -1048576||u.x>1048576||u.y< -1048576||u.y>1048576||(w.mode==Enter&&(u.slots<=0||u.slots>128)))continue;
+  // A native click may already have radio-reserved this tank's bunker. That
+  // place is included in used, not free: retain its owner without opening it
+  // to another unit or consuming the same place a second time.
+  bool retained=false;if(w.mode==Enter&&u.reservedTarget)for(size_t j=0;j<nt;++j){const auto&t=w.targets[j];
+   if(t.id==u.reservedTarget&&t.used>=u.slots&&w.compatible[size_t(i)*nt+j]){out.push_back({u.source.id,u.source.token,t.id,t.type});retained=true;break;}}
+  if(retained)continue;
   int best=-1;bool bestPreferred=false;int bestCount=0;int64_t bestDistance=INT64_MAX;
   for(size_t j=0;j<nt;++j){const auto&t=w.targets[j];if(!t.id||t.x< -1048576||t.x>1048576||t.y< -1048576||t.y>1048576||!w.compatible[size_t(i)*nt+j])continue;
    if(w.mode==Enter&&(t.free<0||int64_t(reserved[j])+u.slots>t.free))continue;

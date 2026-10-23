@@ -134,8 +134,9 @@ static int admitCooperative(const cooperative::Assignment&o,bool enter,uint32_t 
 uint32_t p=worldByID(o.id),t=worldByID(o.target);bool valid=p&&t&&own(p,house)&&live(t)&&typeOf(t,kind(t))==o.type&&manualVersions.get(o.id)==o.token&&!get<bool>(p+0x1C8)&&!get<uint32_t>(p+0x11C);
   int slots=0,mission=enter?7:1;
   if(valid&&enter){valid=featureObjectAllowed(featuretypes::EnterSource,p)&&featureObjectAllowed(featuretypes::EnterTarget,t)&&clickView.entryCompatible(p,t,house);auto c=clickView.capacity(t);slots=clickView.entrySlots(p,t);int reserved=entryReserved(t,o.id,house);
-   valid=valid&&entryReservationCount<cooperative::MaxSources&&slots>0&&int64_t(c.used)+reserved+slots<=c.maximum;
-   if(valid){int action=call<int>(get<uint32_t>(get<uint32_t>(p)+0x74),p,t,true);bool bunker=kind(t)==3&&get<bool>(o.type+0x16AB);valid=action==3||action==11||(bunker&&action==1);
+   bool ownContact=c.singleVehicle&&clickView.entryDestination(p)==t&&clickView.radioLinked(t,p);
+   valid=valid&&entryReservationCount<cooperative::MaxSources&&slots>0&&int64_t(c.used)-(ownContact?1:0)+reserved+slots<=c.maximum;
+   if(valid){int action=call<int>(get<uint32_t>(get<uint32_t>(p)+0x74),p,t,true);bool bunker=kind(t)==3&&get<bool>(o.type+0x16AB);valid=action==3||action==11||(bunker&&(action==1||ownContact));
     // TankBunker hover returns Action::Move, but that is not the completed
     // boarding mission. Native EnterTankBunker (4E0045..4E0067) sets the
     // building destination, establishes radio and queues Mission::Enter=7.

@@ -39,6 +39,16 @@ int main(){
  auto assigned=cooperative::allocate(input);std::map<uint32_t,int> counts;
  for(auto a:assigned)++counts[a.target];
  assert(assigned.size()==3&&counts[20]==1&&counts[25]==1&&counts[26]==1);
+ // The native left click has already linked one SELECTED tank to the clicked
+ // bunker. It must keep that reservation and receive Enter, rather than being
+ // redistributed while the clicked bunker is excluded as apparently full.
+ m.put<uint32_t>(0x110400,tanks[0]);m.put<int>(tanks[0]+0xac,2);m.put(tanks[0]+0x5a4,bunkers[0]);
+ input=external::cooperativeInput(read,r,[](uint32_t){return cooperative::Quota{};});assigned=cooperative::allocate(input);counts.clear();
+ for(auto a:assigned){++counts[a.target];if(a.id==10)assert(a.target==20);else assert(a.target!=20);}
+ assert(assigned.size()==3&&counts[20]==1&&counts[25]==1&&counts[26]==1);
+ m.put(bunkers[0]+0x2e4,tanks[5]);assert(!game.entryCompatible(tanks[0],bunkers[0],house));m.put<uint32_t>(bunkers[0]+0x2e4,0);
+ m.put<int>(bunkers[0]+0x114,1);assert(!game.entryCompatible(tanks[0],bunkers[0],house));m.put<int>(bunkers[0]+0x114,0);
+ m.put<uint32_t>(0x110400,0);m.put<int>(tanks[0]+0xac,5);m.put<uint32_t>(tanks[0]+0x5a4,0);
  // A real radio contact reserves the building; empty storage must not.
  m.put<uint32_t>(0x110400,tanks[4]);assert(game.capacity(bunkers[0]).used==1);
  m.put<uint32_t>(0x110400,0);assert(game.capacity(bunkers[0]).used==0);

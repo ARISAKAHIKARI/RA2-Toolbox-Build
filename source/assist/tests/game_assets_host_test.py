@@ -2,7 +2,7 @@
 Only Win32 file/memory boundaries are synthetic; no Windows visual assertion.
 """
 from pathlib import Path
-import subprocess,tempfile
+import subprocess,tempfile,sys
 root=Path(__file__).resolve().parents[3]
 header=r'''
 #pragma once
@@ -29,6 +29,7 @@ body=r'''
 #include <cassert>
 #include <cstring>
 #include <iostream>
+#include <fstream>
 #include "source/external_reader/source/game_archive.h"
 static std::map<std::string,std::vector<uint8_t>> disk;
 static std::vector<uint8_t> memory(0x1000000);
@@ -56,9 +57,9 @@ static std::vector<uint8_t> mix(const std::map<std::string,std::vector<uint8_t>>
  size_t head=10+12*files.size(),size=0;for(auto&[n,b]:files)size+=b.size();std::vector<uint8_t> out(head+size);half(out,4,files.size());word(out,6,size);size_t slot=10,at=0;
  for(auto&[n,b]:files){word(out,slot,external::assets::hash(n));word(out,slot+4,at);word(out,slot+8,b.size());memcpy(out.data()+head+at,b.data(),b.size());slot+=12;at+=b.size();}return out;
 }
-int main(){
- std::vector<uint8_t> shp(8+24*24+24*14);half(shp,2,4);half(shp,4,3);half(shp,6,24);
- for(int f=0;f<24;++f){int at=8+f*24,data=8+24*24+f*14;half(shp,at+4,4);half(shp,at+6,3);word(shp,at+8,2);word(shp,at+20,data);half(shp,data,6);std::fill(shp.begin()+data+2,shp.begin()+data+14,3+f);}
+int main(int argc,char**argv){
+ std::vector<uint8_t> shp(8+24*24+24*18);half(shp,2,4);half(shp,4,3);half(shp,6,24);
+ for(int f=0;f<24;++f){int at=8+f*24,data=8+24*24+f*18;half(shp,at+4,4);half(shp,at+6,3);word(shp,at+8,2);word(shp,at+20,data);for(int row=0;row<3;++row){half(shp,data+row*6,6);std::fill(shp.begin()+data+row*6+2,shp.begin()+data+row*6+6,3+f);}}
  std::vector<uint8_t> pal(768,32),tmp(20+52+1800,3);word(tmp,0,1);word(tmp,4,1);word(tmp,8,60);word(tmp,12,30);word(tmp,16,20);std::fill(tmp.begin()+20,tmp.begin()+72,0);word(tmp,32,952);
  disk["RA2MD.MIX"]=mix({{"LOCALMD.MIX",mix({{"UNITTEM.PAL",pal},{"ISOTEM.PAL",pal},{"LONGINFANTRY.SHP",shp}})},{"ISOTEMMD.MIX",mix({{"CLEAR01.TEM",tmp}})}});
  // Incomplete higher-priority subarchive must not hide the base E1 resource.
@@ -76,7 +77,7 @@ int main(){
  gameassets::update();assert(gameassets::files.count()>=5);
  gameassets::ActorArt art;assert(gameassets::captureActor(p,t,42,art));assert(!art.voxel&&!art.shape.empty());assert(art.colors[3]==0xff0c1824u);
  external::GameView game(&gameassets::read);external::voxel::Image image;
- for(int heading=0;heading<32;heading+=4){external::visual::Pose pose;pose.frame=external::visual::previewFrame(game,t,1,heading);assert(gameassets::renderActor(art,pose,image));assert(image.width==4&&image.height==3&&std::count_if(image.pixels.begin(),image.pixels.end(),[](auto c){return c!=0;})==12);assert(pose.frame==dirs[(8-heading)&31]);assert(image.pixels[0]==external::voxel::premultiply(art.colors[3+pose.frame],1));}
+ for(int heading=0;heading<32;heading+=4){external::visual::Pose pose;pose.frame=external::visual::previewFrame(game,t,1,heading);assert(gameassets::renderActor(art,pose,image));assert(image.width==4&&image.height==3&&std::count_if(image.pixels.begin(),image.pixels.end(),[](auto c){return c!=0;})==12);assert(pose.frame==dirs[(8+heading)&31]);assert(image.pixels[0]==external::voxel::premultiply(art.colors[3+pose.frame],1));}
  // Walk sequence: two frames per facing, distinct indexed colors at each frame.
  word(memory,p+0x6C4,1);for(int body=0;body<32;body+=4)for(int stage=0;stage<2;++stage){half(memory,p+0x388,uint16_t(body*2048));word(memory,p+0xF8,stage);auto pose=external::visual::pose(game,p,t,1,0);assert(pose.frame==8+dirs[body]*2+stage);assert(gameassets::renderActor(art,pose,image));assert(image.pixels[0]==external::voxel::premultiply(art.colors[3+pose.frame],1));}
  std::array<uint32_t,256> colors{};assert(gameassets::palette(true,colors));assert(gameassets::tile(tileType,0,colors,image));assert(std::count_if(image.pixels.begin(),image.pixels.end(),[](auto c){return c!=0;})==900);
@@ -87,6 +88,25 @@ int main(){
  // An all-black uninitialized live scheme must not suppress disk palette fallback.
  word(memory,house+0x16054,0);word(memory,0xB054D0+4,0x80000);word(memory,0xB054D0+16,1);word(memory,0x80000,0x90000);
  assert(!external::voxel::palette(gameassets::read,t,house,colors));
+
+ // Cross-theater fallback must carry the matched palette, not the map palette.
+ constexpr uint32_t tree=0xa0000;memcpy(memory.data()+tree+0x24,"TREE",5);memory[tree+0x22c]=1;
+ disk["TREE.TEM"]=shp;disk["ISOTEM.PAL"]=pal;
+ memcpy(memory.data()+0x7E1B78+78,"SNO",4);memcpy(memory.data()+0x7E1B78+68,"ISOSNO",7);memory[0x7E1B78+86]='A';
+ clockValue+=6000;gameassets::update();assert(gameassets::overlay(tree,0,0,image,true));assert(image.pixels[0]==external::voxel::premultiply(0xff0c1824u,1));
+ assert(gameassets::overlay(ore,0,0,image));assert(image.pixels[0]==external::voxel::premultiply(0xff585858u,1));
+ memcpy(memory.data()+0x7E1B78+78,"TEM",4);memcpy(memory.data()+0x7E1B78+68,"ISOTEM",7);memory[0x7E1B78+86]='T';
+ // Real art through an unloaded GENERICMD archive and RULES -> ART Image aliases.
+ if(argc>1){std::ifstream f(argv[1],std::ios::binary);std::vector<uint8_t> real((std::istreambuf_iterator<char>(f)),{});assert(real.size()>32);
+  std::string rules="[E1]\nImage=ALIAS\n[ORE]\nTiberium=yes\n",artText="[ALIAS]\nImage=LIVEYURI\n[LIVEYURI]\nPalette=custom\n";
+  disk["RULESMD.INI"]={rules.begin(),rules.end()};disk["ARTMD.INI"]={artText.begin(),artText.end()};
+  disk["RA2MD.MIX"]=mix({{"GENERICMD.MIX",mix({{"LIVEYURI.SHP",real},{"UNITTEM.PAL",pal},{"ISOTEM.PAL",pal}})}});
+  memset(memory.data()+t+0x1F8,0,25);clockValue+=6000;gameassets::update();assert(gameassets::captureActor(p,t,42,art));assert(art.filename=="LIVEYURI.SHP");
+  int frames=external::voxel::u16(real.data()+6);for(int frame=0;frame<frames;++frame){external::visual::Pose pose;pose.frame=frame;assert(gameassets::renderActor(art,pose,image));}
+  // The same bytes also traverse the overlay-specific lookup/palette branch.
+  constexpr uint32_t realOverlay=0xb0000;memcpy(memory.data()+realOverlay+0x24,"LIVEYURI",9);assert(gameassets::overlay(realOverlay,0,5,image));assert(std::any_of(image.pixels.begin(),image.pixels.end(),[](auto c){return c!=0;}));
+  std::cout<<"PASS real SHP host pipeline, "<<frames<<" actor frames, overlay frame, GENERICMD and Image aliases\n";
+ }
  // No selected bit, memory SHP, VXL, palette or live MIX index was supplied.
  assert(memory[p+0x83]==0);disk.clear();clockValue+=6000;gameassets::update();assert(!gameassets::tile(tileType,0,colors,image));assert(gameassets::failure=="tile-not-found:CLEAR01.TEM");
  std::cout<<"PASS production file discovery, nested base/override fallback, unloaded unselected infantry at eight headings, TMP pixels and missing-resource diagnostic\n";
@@ -96,4 +116,4 @@ with tempfile.TemporaryDirectory() as tmp:
  p=Path(tmp);(p/'windows.h').write_text(header);(p/'test.cpp').write_text(body)
  exe=p/'test'
  subprocess.run(['g++','-std=c++17','-O2','-I'+str(p),'-I'+str(root),str(p/'test.cpp'),'-o',str(exe)],check=True)
- subprocess.run([str(exe)],check=True)
+ subprocess.run([str(exe),*sys.argv[1:]],check=True)

@@ -1,0 +1,251 @@
+In file included from /workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/protocol.h:7,
+                 from /workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/external_planner.h:2,
+                 from /workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/magnetron.cpp:1:
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/ore_type_config.h: In function ‘bool assist::oreconfig::parse(const std::wstring&, char (&)[512][24], int&)’:
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/ore_type_config.h:18:3: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+   18 |   if(!((c>=L'a'&&c<=L'z')||(c>=L'A'&&c<=L'Z')||(c>=L'0'&&c<=L'9')||c==L'_'||c==L'-')||id.size()==23)return false;id+=upper(char(c));}
+      |   ^~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/ore_type_config.h:18:114: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+   18 |   if(!((c>=L'a'&&c<=L'z')||(c>=L'A'&&c<=L'Z')||(c>=L'0'&&c<=L'9')||c==L'_'||c==L'-')||id.size()==23)return false;id+=upper(char(c));}
+      |                                                                                                                  ^~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/ore_type_config.h:19:2: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+   19 |  if(!add())return false;memcpy(out,parsed,sizeof parsed);count=n;return true;
+      |  ^~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/ore_type_config.h:19:25: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+   19 |  if(!add())return false;memcpy(out,parsed,sizeof parsed);count=n;return true;
+      |                         ^~~~~~
+In file included from /workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/protocol.h:8:
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/feature_type_config.h: In function ‘bool assist::featuretypes::allowed(const Config&, int, const char*)’:
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/feature_type_config.h:17:2: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+   17 |  if(!id||f.count<0||f.count>oreconfig::Limit)return false;for(int i=0;i<f.count;++i)if(oreconfig::equal(f.ids[i],id))return true;return false;}
+      |  ^~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/feature_type_config.h:17:59: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+   17 |  if(!id||f.count<0||f.count>oreconfig::Limit)return false;for(int i=0;i<f.count;++i)if(oreconfig::equal(f.ids[i],id))return true;return false;}
+      |                                                           ^~~
+In file included from /workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/protocol.h:13:
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/pointer_intent.h: In function ‘bool assist::pointerinput::matchesHold(const uint8_t*, uint32_t, int)’:
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/pointer_intent.h:13:2: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+   13 |  if(!keys[vk]||((key&0x8000)&&!(keys[vk]&2)))return false;key&=0x7fff;
+      |  ^~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/pointer_intent.h:13:59: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+   13 |  if(!keys[vk]||((key&0x8000)&&!(keys[vk]&2)))return false;key&=0x7fff;
+      |                                                           ^~~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/pointer_intent.h: In function ‘int assist::pointerinput::resolveMouseMatches(const uint8_t*, int, const uint32_t*, const Bindings&, uint32_t, bool, MouseRoute*)’:
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/pointer_intent.h:77:2: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+   77 |  if(!count&&(physical==FollowNative||physical==6))out[count++]={FollowNative,common};return count;
+      |  ^~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/pointer_intent.h:77:86: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+   77 |  if(!count&&(physical==FollowNative||physical==6))out[count++]={FollowNative,common};return count;
+      |                                                                                      ^~~~~~
+In file included from /workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/protocol.h:15:
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/compute_policy.h: In function ‘uint32_t assist::compute::plannerFlags(uint32_t, uint32_t, bool)’:
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/compute_policy.h:11:2: warning: this ‘for’ clause does not guard... [-Wmisleading-indentation]
+   11 |  for(int i=0;i<4;++i)if(inside(mask,Feature(i))==runtime)out|=flags&bits[i];return out;
+      |  ^~~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/compute_policy.h:11:77: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘for’
+   11 |  for(int i=0;i<4;++i)if(inside(mask,Feature(i))==runtime)out|=flags&bits[i];return out;
+      |                                                                             ^~~~~~
+In file included from /workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/compute_tasks.h:2,
+                 from /workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/protocol.h:16:
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/autoload.h: In function ‘int assist::loading::assign(const Infantry*, int, Vehicle*, int, int, int, Composition&, Workspace&, int*, Compatible)’:
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/autoload.h:63:4: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+   63 |    if(bi<0)break;out[bi]=bj;v[bj].reserved+=p[bi].slots;++v[bj].passengers;composition.add(bj,p[bi].type);++assigned;
+      |    ^~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/autoload.h:63:18: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+   63 |    if(bi<0)break;out[bi]=bj;v[bj].reserved+=p[bi].slots;++v[bj].passengers;composition.add(bj,p[bi].type);++assigned;
+      |                  ^~~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/autoload.h:88:4: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+   88 |    if(bi<0)continue;out[bi]=bj;v[bj].reserved+=p[bi].slots;++v[bj].passengers;composition.add(bj,p[bi].type);++assigned;progress=true;
+      |    ^~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/autoload.h:88:21: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+   88 |    if(bi<0)continue;out[bi]=bj;v[bj].reserved+=p[bi].slots;++v[bj].passengers;composition.add(bj,p[bi].type);++assigned;progress=true;
+      |                     ^~~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/compute_tasks.h: In function ‘assist::compute::LoadResult assist::compute::load(LoadInput&, assist::loading::Workspace&)’:
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/compute_tasks.h:20:2: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+   20 |  if(!valid(i))return r;r.count=i.ns;
+      |  ^~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/compute_tasks.h:20:24: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+   20 |  if(!valid(i))return r;r.count=i.ns;
+      |                        ^
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/compute_tasks.h: In function ‘assist::compute::RepairResult assist::compute::repair(const RepairInput&)’:
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/compute_tasks.h:24:2: warning: this ‘for’ clause does not guard... [-Wmisleading-indentation]
+   24 |  for(int n=0;n<i.count;++n)if(i.items[n].id&&decisions::shouldRepair(i.items[n].view))r.ids[r.count++]=i.items[n].id;return r;
+      |  ^~~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/compute_tasks.h:24:118: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘for’
+   24 |  for(int n=0;n<i.count;++n)if(i.items[n].id&&decisions::shouldRepair(i.items[n].view))r.ids[r.count++]=i.items[n].id;return r;
+      |                                                                                                                      ^~~~~~
+In file included from /workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/unload_compute.h:4,
+                 from /workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/protocol.h:17:
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/unload_policy.h: In function ‘bool assist::unloadpolicy::initialMayContinue(int, int, int, bool, bool)’:
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/unload_policy.h:11:40: warning: suggest parentheses around ‘&&’ within ‘||’ [-Wparentheses]
+   11 |  if(mission==2&&(mode==0||ejectDeployer&&mode!=0))return landedAge>=0&&landedAge<=(mode==0?900:ScatterFrames);
+      |                           ~~~~~~~~~~~~~^~~~~~~~~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/unload_compute.h: In function ‘assist::unloadcompute::Result assist::unloadcompute::calculate(const Input&)’:
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/unload_compute.h:84:2: warning: this ‘for’ clause does not guard... [-Wmisleading-indentation]
+   84 |  for(int n=0;n<i.count;++n)r.decisions[n]=decide(i.sources[n],i.targets,i.actions[n],i.targetCount);return r;
+      |  ^~~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/unload_compute.h:84:101: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘for’
+   84 |  for(int n=0;n<i.count;++n)r.decisions[n]=decide(i.sources[n],i.targets,i.actions[n],i.targetCount);return r;
+      |                                                                                                     ^~~~~~
+In file included from /workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/protocol.h:18:
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/missile_compute.h: In function ‘assist::missilecompute::Result assist::missilecompute::calculate(const Input&)’:
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/missile_compute.h:52:3: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+   52 |   if(bs<0)break;assigned[bs]=bt;++number[bt];damage[bt]+=i.edges[bs][bt].damage;
+      |   ^~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/missile_compute.h:52:17: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+   52 |   if(bs<0)break;assigned[bs]=bt;++number[bt];damage[bt]+=i.edges[bs][bt].damage;
+      |                 ^~~~~~~~
+In file included from /workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/protocol.h:19:
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/burst_compute.h: In function ‘assist::burstcompute::Result assist::burstcompute::calculate(const Input&)’:
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/burst_compute.h:38:2: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+   38 |  if(i.count<0||i.count>MaxSources)return r;r.count=i.count;for(int n=0;n<i.count;++n)r.decisions[n]=decide(i.sources[n]);return r;}
+      |  ^~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/burst_compute.h:38:44: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+   38 |  if(i.count<0||i.count>MaxSources)return r;r.count=i.count;for(int n=0;n<i.count;++n)r.decisions[n]=decide(i.sources[n]);return r;}
+      |                                            ^
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/protocol.h: In function ‘int assist::remaining(int, int, int)’:
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/protocol.h:177:2: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+  177 |  if(duration<=0)return 0; if(start==-1)return duration;
+      |  ^~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/protocol.h:177:27: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+  177 |  if(duration<=0)return 0; if(start==-1)return duration;
+      |                           ^~
+In file included from /workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/external_planner.h:3:
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/native_orders.h: In function ‘double nativeorders::value(int, float, int, int)’:
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/native_orders.h:8:2: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+    8 |  if(weight<100)weight=100;if(weight>10000)weight=10000;
+      |  ^~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/native_orders.h:8:27: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+    8 |  if(weight<100)weight=100;if(weight>10000)weight=10000;
+      |                           ^~
+In file included from /workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/external_planner.h:4:
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/ore_queue.h: In function ‘int64_t assist::ore::dockDistance(int, int, int, int, bool)’:
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/ore_queue.h:13:2: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+   13 |  if(dx<0)dx=-dx;if(dy<0)dy=-dy;return dx>dy?dx:dy;
+      |  ^~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/ore_queue.h:13:17: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+   13 |  if(dx<0)dx=-dx;if(dy<0)dy=-dy;return dx>dy?dx:dy;
+      |                 ^~
+In file included from /workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/external_planner.h:7:
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/weapon_policy.h: In function ‘int assist::planner::weaponIndex(const Actor&, const Actor&)’:
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/weapon_policy.h:15:2: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+   15 |  if(!(qm&bit))return 0;if(!(pm&bit))return 1;
+      |  ^~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/weapon_policy.h:15:24: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+   15 |  if(!(qm&bit))return 0;if(!(pm&bit))return 1;
+      |                        ^~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/weapon_policy.h: In function ‘bool assist::planner::canTarget(const Actor&, const Actor&, int64_t, bool, int)’:
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/weapon_policy.h:41:2: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+   41 |  if(distance<0||distance>0xFFFFFFFFll||!compatibleTarget(s,t,mag))return false;const auto&w=s.weapons[weaponIndex(s,t)];
+      |  ^~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/weapon_policy.h:41:80: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+   41 |  if(distance<0||distance>0xFFFFFFFFll||!compatibleTarget(s,t,mag))return false;const auto&w=s.weapons[weaponIndex(s,t)];
+      |                                                                                ^~~~~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/external_planner.h: In static member function ‘static bool assist::planner::Planner::attackMadeProgress(const assist::planner::Actor&, Advanced&, int)’:
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/external_planner.h:62:3: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+   62 |   if(dx*dx+dy*dy<16*16)return false;task.attackProgress=frame;task.progressX=a.x;task.progressY=a.y;return true;
+      |   ^~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/external_planner.h:62:37: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+   62 |   if(dx*dx+dy*dy<16*16)return false;task.attackProgress=frame;task.progressX=a.x;task.progressY=a.y;return true;
+      |                                     ^~~~
+In file included from /workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/external_planner.h:99:
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/advanced_decision.h: In member function ‘void assist::planner::Planner::stepAdvanced(const assist::planner::World&, const assist::planner::Actor&, Advanced&, std::vector<assist::planner::Order>&, int, int, int, int, int)’:
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/advanced_decision.h:40:39: warning: missing initializer for member ‘assist::planner::Order::refinery’ [-Wmissing-field-initializers]
+   40 |    if(attack&&w.frame-task.sent>=2)add(out,{a.id,task.token,best->id,0,1,0,CombatOrder});
+      |                                    ~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/advanced_decision.h:40:39: warning: missing initializer for member ‘assist::planner::Order::refinery’ [-Wmissing-field-initializers]
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/advanced_decision.h:53:46: warning: missing initializer for member ‘assist::planner::Order::refinery’ [-Wmissing-field-initializers]
+   53 |   if(task.progress.hold){if(!task.stopped)add(out,{a.id,task.token,0,0,5,0,CombatOrder});return;}
+      |                                           ~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/advanced_decision.h:53:46: warning: missing initializer for member ‘assist::planner::Order::refinery’ [-Wmissing-field-initializers]
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/advanced_decision.h:5:16: warning: unused variable ‘current’ [-Wunused-variable]
+    5 |   const Actor* current=actor(task.target);bool currentReady=false,currentReposition=false;
+      |                ^~~~~~~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/external_planner.h: In member function ‘uint32_t assist::planner::Planner::trackingFlags() const’:
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/external_planner.h:106:55: warning: enumerated and non-enumerated type in conditional expression [-Wextra]
+  106 |  uint32_t trackingFlags()const{uint32_t f=ore_.empty()?0:AutoOreReturn;for(const auto&i:advanced_)f|=i.second.mode==MagnetronMove?MagnetronInput:AdvancedInput;return f;}
+      |                                           ~~~~~~~~~~~~^~~~~~~~~~~~~~~~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/external_planner.h: In member function ‘void assist::planner::Planner::rejected(const assist::planner::Order&, int)’:
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/external_planner.h:130:3: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+  130 |   if(order.purpose!=1&&order.purpose!=3)return;auto it=advanced_.find(order.unit);if(it==advanced_.end()||it->second.token!=order.token)return;auto&t=it->second;
+      |   ^~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/external_planner.h:130:48: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+  130 |   if(order.purpose!=1&&order.purpose!=3)return;auto it=advanced_.find(order.unit);if(it==advanced_.end()||it->second.token!=order.token)return;auto&t=it->second;
+      |                                                ^~~~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/external_planner.h: In member function ‘std::vector<assist::planner::Order> assist::planner::Planner::step(const assist::planner::World&, uint32_t, int, int, int, int, int, int, bool)’:
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/external_planner.h:145:3: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+  145 |   if(world.frame==frame_&&world.inputSerial==inputSerial_&&flags==flags_&&dropEnabled_==autoDrop)return out;frame_=world.frame;inputSerial_=world.inputSerial;flags_=flags;dropEnabled_=autoDrop;queued=docking=yielded=0;targetChecks=0;
+      |   ^~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/external_planner.h:145:109: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+  145 |   if(world.frame==frame_&&world.inputSerial==inputSerial_&&flags==flags_&&dropEnabled_==autoDrop)return out;frame_=world.frame;inputSerial_=world.inputSerial;flags_=flags;dropEnabled_=autoDrop;queued=docking=yielded=0;targetChecks=0;
+      |                                                                                                             ^~~~~~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/external_planner.h:164:5: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+  164 |     if(!(a.flags&PointDefense)||!(a.flags&Own)||!positionValid(a)||(a.flags&(Disabled|Limbo|OffMap|Transported)))continue;++checked;
+      |     ^~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/external_planner.h:164:123: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+  164 |     if(!(a.flags&PointDefense)||!(a.flags&Own)||!positionValid(a)||(a.flags&(Disabled|Limbo|OffMap|Transported)))continue;++checked;
+      |                                                                                                                           ^~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/external_planner.h:217:5: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+  217 |     if(!a||it==advanced_.end()||!active.count(intent.id)||dropping.count(intent.id))continue;auto&task=it->second;bool mag=task.mode==MagnetronMove;int purpose=mag?3:1;
+      |     ^~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/external_planner.h:217:94: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+  217 |     if(!a||it==advanced_.end()||!active.count(intent.id)||dropping.count(intent.id))continue;auto&task=it->second;bool mag=task.mode==MagnetronMove;int purpose=mag?3:1;
+      |                                                                                              ^~~~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/external_planner.h:259:59: warning: missing initializer for member ‘assist::planner::Order::refinery’ [-Wmissing-field-initializers]
+  259 |      if(sent<MaxOrders&&world.frame>task.sent&&attack&&add(combat,{a->id,task.token,best->id,0,1,0,purpose})){++sent;if(mag)magneticReservations_.insert(best->id);}
+      |                                                        ~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/external_planner.h:259:59: warning: missing initializer for member ‘assist::planner::Order::refinery’ [-Wmissing-field-initializers]
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/external_planner.h:267:46: warning: missing initializer for member ‘assist::planner::Order::refinery’ [-Wmissing-field-initializers]
+  267 |     if(task.attacking){if(sent<MaxOrders&&add(combat,{a->id,task.token,0,task.progress.hold?0:task.cell,task.progress.hold?5:2,task.progress.hold?0:11,purpose}))++sent;continue;}
+      |                                           ~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/external_planner.h:267:46: warning: missing initializer for member ‘assist::planner::Order::refinery’ [-Wmissing-field-initializers]
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/external_planner.h:269:62: warning: missing initializer for member ‘assist::planner::Order::refinery’ [-Wmissing-field-initializers]
+  269 |     if(task.progress.hold&&!task.stopped&&sent<MaxOrders&&add(combat,{a->id,task.token,0,0,5,0,purpose}))++sent;
+      |                                                           ~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/external_planner.h:269:62: warning: missing initializer for member ‘assist::planner::Order::refinery’ [-Wmissing-field-initializers]
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/external_planner.h:301:4: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+  301 |    if(a->flags&Unloading)job.stage=ore::Docking;ore_.push_back(job);
+      |    ^~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/external_planner.h:301:49: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+  301 |    if(a->flags&Unloading)job.stage=ore::Docking;ore_.push_back(job);
+      |                                                 ^~~~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/external_planner.h: In lambda function:
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/external_planner.h:337:4: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+  337 |    if(j.stage==ore::Docking)return 1;return j.priority?2:3;
+      |    ^~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/external_planner.h:337:38: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+  337 |    if(j.stage==ore::Docking)return 1;return j.priority?2:3;
+      |                                      ^~~~~~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/external_planner.h: In member function ‘std::vector<assist::planner::Order> assist::planner::Planner::step(const assist::planner::World&, uint32_t, int, int, int, int, int, int, bool)’:
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/external_planner.h:352:4: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+  352 |    if(d->waitCell)waitingCells_.erase(d->waitCell);d->waitCell=cell;waitingCells_.insert(cell);
+      |    ^~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/external_planner.h:352:52: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+  352 |    if(d->waitCell)waitingCells_.erase(d->waitCell);d->waitCell=cell;waitingCells_.insert(cell);
+      |                                                    ^
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/magnetron.cpp: In function ‘int main()’:
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/magnetron.cpp:9:74: warning: missing initializer for member ‘assist::planner::Weapon::selectMask’ [-Wmissing-field-initializers]
+    9 |  a.weapons[0]={2048,256,GroundWeapon|MagneticWeapon|LocomotorWeapon,0x7FF};w.intents[0]={10,30030,0,MagnetronMove};
+      |                                                                          ^
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/magnetron.cpp:9:74: warning: missing initializer for member ‘assist::planner::Weapon::slot’ [-Wmissing-field-initializers]
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/magnetron.cpp:9:74: warning: missing initializer for member ‘assist::planner::Weapon::selectMask’ [-Wmissing-field-initializers]
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/magnetron.cpp:9:74: warning: missing initializer for member ‘assist::planner::Weapon::slot’ [-Wmissing-field-initializers]
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/magnetron.cpp:56:3: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+   56 |   if(offset==128)assert(int(orders[0].destination%1000)*256+128<a.x);p.accepted(orders[0],w.frame);a.mission=2;a.destinationCell=orders[0].destination;
+      |   ^~
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/magnetron.cpp:56:70: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+   56 |   if(offset==128)assert(int(orders[0].destination%1000)*256+128<a.x);p.accepted(orders[0],w.frame);a.mission=2;a.destinationCell=orders[0].destination;
+      |                                                                      ^
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/magnetron.cpp:61:61: warning: missing initializer for member ‘assist::planner::Weapon::selectMask’ [-Wmissing-field-initializers]
+   61 |  Actor src{},t{};src.weapons[0]={2048,256,GroundWeapon,1u<<3};t.armor=3;t.kind=2;
+      |                                                             ^
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/magnetron.cpp:61:61: warning: missing initializer for member ‘assist::planner::Weapon::slot’ [-Wmissing-field-initializers]
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/magnetron.cpp:61:61: warning: missing initializer for member ‘assist::planner::Weapon::selectMask’ [-Wmissing-field-initializers]
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/magnetron.cpp:61:61: warning: missing initializer for member ‘assist::planner::Weapon::slot’ [-Wmissing-field-initializers]
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/magnetron.cpp:63:97: warning: missing initializer for member ‘assist::planner::Weapon::selectMask’ [-Wmissing-field-initializers]
+   63 |  t.flags=Airborne;assert(!canTarget(src,t,512*512,false));src.weapons[1]={1024,0,AirWeapon,1u<<3};assert(canTarget(src,t,512*512,false));
+      |                                                                                                 ^
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/magnetron.cpp:63:97: warning: missing initializer for member ‘assist::planner::Weapon::slot’ [-Wmissing-field-initializers]
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/magnetron.cpp:63:97: warning: missing initializer for member ‘assist::planner::Weapon::selectMask’ [-Wmissing-field-initializers]
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/magnetron.cpp:63:97: warning: missing initializer for member ‘assist::planner::Weapon::slot’ [-Wmissing-field-initializers]
+PASS: independent magnetron intents, actual cooldown and lift, pending-shot preservation, ground/organic/armor filtering, distinct victims, movement resume, manual cancellation and basic weapon compatibility

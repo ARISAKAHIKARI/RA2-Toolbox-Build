@@ -1,0 +1,205 @@
+{
+  "scope": "Actual x86 DLL and original event constructors; mocked Win32/world/query.\nThe Sell receiver branch is executed from the supplied EXE with resolved-object,\nmap lookup and final virtual sale mocked. This is not real network validation.\n",
+  "results": [
+    {
+      "case": "drop_0_tree",
+      "status": "PASS"
+    },
+    {
+      "case": "drop_0_ore_pillar",
+      "status": "PASS"
+    },
+    {
+      "case": "drop_0_tank",
+      "status": "PASS"
+    },
+    {
+      "case": "drop_0_aircraft",
+      "status": "PASS"
+    },
+    {
+      "case": "drop_0_hover_low",
+      "status": "PASS"
+    },
+    {
+      "case": "drop_0_lifted",
+      "status": "PASS"
+    },
+    {
+      "case": "drop_0_air_layer",
+      "status": "PASS"
+    },
+    {
+      "case": "drop_0_different_cell",
+      "status": "PASS"
+    },
+    {
+      "case": "drop_0_crumbling",
+      "status": "PASS"
+    },
+    {
+      "case": "drop_0_bridge",
+      "status": "PASS"
+    },
+    {
+      "case": "acquisition_0_inside",
+      "status": "PASS"
+    },
+    {
+      "case": "acquisition_0_maximum",
+      "status": "PASS"
+    },
+    {
+      "case": "acquisition_0_minimum",
+      "status": "PASS"
+    },
+    {
+      "case": "acquisition_0_too_far",
+      "status": "PASS"
+    },
+    {
+      "case": "acquisition_0_airborne",
+      "status": "PASS"
+    },
+    {
+      "case": "global_0_idle",
+      "status": "PASS"
+    },
+    {
+      "case": "global_0_moving",
+      "status": "PASS"
+    },
+    {
+      "case": "global_0_attack",
+      "status": "PASS"
+    },
+    {
+      "case": "global_0_disabled",
+      "status": "PASS"
+    },
+    {
+      "case": "drop_3_tree",
+      "status": "PASS"
+    },
+    {
+      "case": "drop_3_ore_pillar",
+      "status": "PASS"
+    },
+    {
+      "case": "drop_3_tank",
+      "status": "PASS"
+    },
+    {
+      "case": "drop_3_aircraft",
+      "status": "PASS"
+    },
+    {
+      "case": "drop_3_hover_low",
+      "status": "PASS"
+    },
+    {
+      "case": "drop_3_lifted",
+      "status": "PASS"
+    },
+    {
+      "case": "drop_3_air_layer",
+      "status": "PASS"
+    },
+    {
+      "case": "drop_3_different_cell",
+      "status": "PASS"
+    },
+    {
+      "case": "drop_3_crumbling",
+      "status": "PASS"
+    },
+    {
+      "case": "drop_3_bridge",
+      "status": "PASS"
+    },
+    {
+      "case": "acquisition_3_inside",
+      "status": "PASS"
+    },
+    {
+      "case": "acquisition_3_maximum",
+      "status": "PASS"
+    },
+    {
+      "case": "acquisition_3_minimum",
+      "status": "PASS"
+    },
+    {
+      "case": "acquisition_3_too_far",
+      "status": "PASS"
+    },
+    {
+      "case": "acquisition_3_airborne",
+      "status": "PASS"
+    },
+    {
+      "case": "global_3_idle",
+      "status": "PASS"
+    },
+    {
+      "case": "global_3_moving",
+      "status": "PASS"
+    },
+    {
+      "case": "global_3_attack",
+      "status": "PASS"
+    },
+    {
+      "case": "global_3_disabled",
+      "status": "PASS"
+    },
+    {
+      "case": "pursuit_0_128_attack_move_reenter",
+      "status": "PASS"
+    },
+    {
+      "case": "pursuit_0_4352_attack_move_reenter",
+      "status": "PASS"
+    },
+    {
+      "case": "pursuit_3_128_attack_move_reenter",
+      "status": "PASS"
+    },
+    {
+      "case": "pursuit_3_4352_attack_move_reenter",
+      "status": "PASS"
+    },
+    {
+      "case": "ordinary_left_attack_0_False_vehicle_pending_active_finished",
+      "status": "PASS"
+    },
+    {
+      "case": "ordinary_left_attack_0_False_building_pending_active_finished",
+      "status": "PASS"
+    },
+    {
+      "case": "ordinary_left_attack_0_True_vehicle_pending_active_finished",
+      "status": "PASS"
+    },
+    {
+      "case": "ordinary_left_attack_0_True_building_pending_active_finished",
+      "status": "PASS"
+    },
+    {
+      "case": "ordinary_left_attack_3_False_vehicle_pending_active_finished",
+      "status": "PASS"
+    },
+    {
+      "case": "ordinary_left_attack_3_False_building_pending_active_finished",
+      "status": "PASS"
+    },
+    {
+      "case": "ordinary_left_attack_3_True_vehicle_pending_active_finished",
+      "status": "PASS"
+    },
+    {
+      "case": "ordinary_left_attack_3_True_building_pending_active_finished",
+      "status": "PASS"
+    }
+  ]
+}

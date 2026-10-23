@@ -52,13 +52,19 @@ for mode in (0,3):
    for u in units:assert any(r.unit==m.r(u+0x10) and r.phase==4 for r in s.data.recentReceipts),('no completed bunker receipt',m.r(u+0x10))
   assert not m.codeWrites
   rows.append({'case':f'{facility}_dispatch_{mode}','status':'PASS'})
- for condition in ('duplicate_target','occupied_race','native_refusal','two_docks','repair_inbound','contact_not_double_counted','filter_revoked'):
+ for condition in ('duplicate_target','occupied_race','native_refusal','two_docks','repair_inbound','contact_not_double_counted','clicked_self_contact','contact_without_destination','contact_but_occupied','contact_but_passenger','filter_revoked'):
   facility='yard' if condition in ('two_docks','repair_inbound','contact_not_double_counted') else 'bunker'
   m,units,buildings=setup(mode,facility,2 if condition in ('two_docks','contact_not_double_counted') else 1)
   targets=buildings[:];expected=2
   if condition=='duplicate_target':targets=[buildings[0],buildings[0]];expected=1
   if condition=='occupied_race':m.w(buildings[0]+0x2e4,m.enemyUnit);expected=1
   if condition=='native_refusal':m.action_overrides[(units[0],buildings[0])]=31;expected=1
+  if condition in ('clicked_self_contact','contact_without_destination','contact_but_occupied','contact_but_passenger'):
+   m.w(m.r(buildings[0]+0xe4),units[0]);m.action_overrides[(units[0],buildings[0])]=31
+   m.w(units[0]+0xac,2);m.w(units[0]+0x5a4,0 if condition=='contact_without_destination' else buildings[0])
+   if condition=='contact_without_destination':expected=1
+   if condition=='contact_but_occupied':m.w(buildings[0]+0x2e4,m.enemyUnit);expected=1
+   if condition=='contact_but_passenger':m.w(buildings[0]+0x114,1);expected=1
   if condition=='filter_revoked':
    s=state(m);s.featureConfig.filters[7].custom=1;s.featureConfig.filters[7].count=0;s.featureConfigSeq+=2;save(m,s);expected=0
   if condition=='two_docks':targets=[buildings[0],buildings[0]]

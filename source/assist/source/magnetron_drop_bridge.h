@@ -9,6 +9,9 @@ static bool rawMagnetronDrop(uint32_t source,uint32_t victim,uint32_t house){
  uint32_t cell=readMapCell(position.x/256,position.y/256);if(!cell)return false;
  magnetdrop::Ground g;g.lifted=true;g.enemy=true;g.land=get<int>(cell+0xEC);g.bridge=(get<uint32_t>(cell+0x140)&0x100)!=0;
  g.height=position.z-call<int>(0x578080,0x87F7E8,&position);
+ // Cliff tiles need not have LandType::Rock or a zero speed multiplier.
+ // Native Tile_Is_Cliff reads theater tile ranges and the tile's sub-index.
+ g.cliff=call<bool>(0x4863D0,cell);
  uint32_t type=typeOf(victim,2);if(!type)return false;
  g.speed=get<int>(type+0x67C);g.zone=get<int>(type+0x5B4);
  if(g.land>=0&&g.land<12&&g.speed>=0&&g.speed<8){float speed=0;

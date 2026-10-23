@@ -1,0 +1,119 @@
+{
+  "version": "1.0.37-pre.10",
+  "base_commit": "39bc1ae3b2860cac44f6d3556b8b0d56819789ff",
+  "artifacts": {
+    "RA2Toolbox.exe": "4976801bfbc1d369d49581d4727bfe2a78ddf44fb945add7acc9aac72b8f1ace",
+    "GameRuntime.dll": "ebb3a2a50de82a785af3a57fe3ab2a55287fd4b118b7d7e13cd38f3e210c3c41"
+  },
+  "build": "Zig 0.13.0 x86 Windows; verify_windows_outputs.py and audit_architecture.py passed",
+  "native_suites": [
+    {
+      "suite": "formation_runtime-lbw",
+      "passed": 80,
+      "scope": "Actual x86 DLL and original event constructors; mocked Win32/world/query.\nThe Sell receiver branch is executed from the supplied EXE with resolved-object,\nmap lookup and final virtual sale mocked. This is not real network validation.\n"
+    },
+    {
+      "suite": "formation_runtime-zhanwang",
+      "passed": 80,
+      "scope": "Actual x86 DLL and original event constructors; mocked Win32/world/query.\nThe Sell receiver branch is executed from the supplied EXE with resolved-object,\nmap lookup and final virtual sale mocked. This is not real network validation.\n"
+    },
+    {
+      "suite": "magnetron137_runtime-lbw",
+      "passed": 50,
+      "scope": "Actual x86 DLL and original event constructors; mocked Win32/world/query.\nThe Sell receiver branch is executed from the supplied EXE with resolved-object,\nmap lookup and final virtual sale mocked. This is not real network validation.\n"
+    },
+    {
+      "suite": "magnetron_drop_lease_runtime-lbw",
+      "passed": 4,
+      "scope": "Execute compiled Runtime sampling/admission and native Idle constructors.\nSynthetic Win32/world/terrain; release and falling physics are not simulated.\nNo claim of real multiplayer or guaranteed kill after delivery latency.\n"
+    },
+    {
+      "suite": "magnetron_drop_lease_runtime-zhanwang",
+      "passed": 4,
+      "scope": "Execute compiled Runtime sampling/admission and native Idle constructors.\nSynthetic Win32/world/terrain; release and falling physics are not simulated.\nNo claim of real multiplayer or guaranteed kill after delivery latency.\n"
+    },
+    {
+      "suite": "magnetron_drop_runtime-lbw",
+      "passed": 14,
+      "scope": "Execute compiled Runtime sampling/admission and native Idle constructors.\nSynthetic Win32/world/terrain; release and falling physics are not simulated.\nNo claim of real multiplayer or guaranteed kill after delivery latency.\n"
+    },
+    {
+      "suite": "magnetron_landing_runtime-lbw",
+      "passed": 52,
+      "scope": "Execute compiled Runtime sampling/admission and native Idle constructors.\nSynthetic Win32/world/terrain; release and falling physics are not simulated.\nNo claim of real multiplayer or guaranteed kill after delivery latency.\n"
+    },
+    {
+      "suite": "magnetron_landing_runtime-zhanwang",
+      "passed": 52,
+      "scope": "Execute compiled Runtime sampling/admission and native Idle constructors.\nSynthetic Win32/world/terrain; release and falling physics are not simulated.\nNo claim of real multiplayer or guaranteed kill after delivery latency.\n"
+    },
+    {
+      "suite": "magnetron_manual_drop_runtime-lbw",
+      "passed": 8,
+      "scope": "Execute compiled Runtime sampling/admission and native Idle constructors.\nSynthetic Win32/world/terrain; release and falling physics are not simulated.\nNo claim of real multiplayer or guaranteed kill after delivery latency.\n"
+    },
+    {
+      "suite": "master_tech_runtime-lbw",
+      "passed": 25,
+      "scope": "Shipped DLL + native FindFactory in synthetic worlds; CanBuild, AddCameo and\nWin32 are fixture substitutes. This is not a peer simulation or netplay test.\n"
+    },
+    {
+      "suite": "master_tech_runtime-zhanwang",
+      "passed": 25,
+      "scope": "Shipped DLL + native FindFactory in synthetic worlds; CanBuild, AddCameo and\nWin32 are fixture substitutes. This is not a peer simulation or netplay test.\n"
+    },
+    {
+      "suite": "sticky_guard_runtime-lbw",
+      "passed": 18,
+      "scope": "Explicit Sticky owns native mission transitions only in single-player.\nExecutes the compiled DLL and original ForceMission/NextMission instructions.\nWorld, Win32 and event delivery are fixtures, not a live game or netplay test.\n"
+    },
+    {
+      "suite": "tank_bunker_arrival_runtime-lbw",
+      "passed": 6,
+      "scope": "Native bunker arrival/linking handler 458E50 with explicit map/locomotor\nboundaries. Native code writes both BunkerLinkedItem fields; no fixture writes\nthem. This covers arrival gates, not complete pathfinding or rendered entry.\n"
+    },
+    {
+      "suite": "tank_bunker_runtime-lbw",
+      "passed": 29,
+      "scope": "Production x86 Runtime input -> cooperative mailbox -> native event.\n\nWin32, world, click coordinates and native MouseOverObject legality are modeled.\nBoarding is supplied as observed state, not simulated movement. No real game or\nnetwork claim. Native event constructor/queue and actual Runtime code execute.\n"
+    },
+    {
+      "suite": "tank_bunker_runtime-zhanwang",
+      "passed": 29,
+      "scope": "Production x86 Runtime input -> cooperative mailbox -> native event.\n\nWin32, world, click coordinates and native MouseOverObject legality are modeled.\nBoarding is supplied as observed state, not simulated movement. No real game or\nnetwork claim. Native event constructor/queue and actual Runtime code execute.\n"
+    },
+    {
+      "suite": "tech_compat_runtime-lbw",
+      "passed": 15,
+      "scope": "Shipped DLL + native FindFactory in synthetic worlds; CanBuild, AddCameo and\nWin32 are fixture substitutes. This is not a peer simulation or netplay test.\n"
+    }
+  ],
+  "native_cases": 491,
+  "pure_suites": [
+    "visual_pose",
+    "formation_host",
+    "watch_host",
+    "lease_arbiter",
+    "cooperative",
+    "robust_cooperative",
+    "formation",
+    "magnetron_landing",
+    "review136",
+    "magnetron",
+    "tank_bunker",
+    "sidebar_shapes",
+    "attack_trace"
+  ],
+  "real_shp": {
+    "files": 20,
+    "frames": 707,
+    "comparison": "FA2 decode3 indexed pixels and crop anchors under ASan/UBSan; game_assets_host_test also drives actual art through MIX/INI/palette/render"
+  },
+  "negative_regression": "pre.9 DLL fails manual pending-attack lease + existing hazardous beam; see drop-lease-before.log",
+  "limits": [
+    "No real Windows game rendering or audio device verification",
+    "No complete Idle delivery -> AI -> release -> fall physics/damage simulation",
+    "No multiplayer peer validation",
+    "Master capture patches do not prove all displayed MOD items can be produced"
+  ]
+}

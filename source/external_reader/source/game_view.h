@@ -74,7 +74,7 @@ public:
   if(get<uint8_t>(source+0x134)||get<int>(source+0x94)==3||get<uint8_t>(source+0x84)||get<uint8_t>(source+0x8D))return false;
   auto c=capacity(target);int slots=entrySlots(source,target);if(!c.maximum||!slots||slots>c.limit)return false;
   if(tk==3){if(c.occupants)return sk==1&&get<uint8_t>(st+0xEB4);
-   if(get<uint8_t>(tt+0x16AB))return sk==2&&get<uint8_t>(st+0xD2E); // YRpp Bunkerable
+   if(get<uint8_t>(tt+0x16AB))return sk==2&&get<uint8_t>(st+0xD2E)&&!get<uint32_t>(target+0x2E4)&&!get<int>(target+0x114); // Empty bunker; radio contact alone is only a reservation.
    if(get<uint8_t>(tt+0x16A9))return sk==2;
    return sk==1?get<uint8_t>(tt+0x16AF)!=0:sk==2&&get<uint8_t>(tt+0x16AE)!=0;
   }return tk==2;

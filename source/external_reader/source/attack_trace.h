@@ -8,7 +8,7 @@ namespace external { namespace attacktrace {
 // Host-only observation. No virtual calls, events, unit writes or feature gate:
 // a failure that survives disabling automation must remain observable.
 class Recorder {
- struct Previous {std::array<uint32_t,44> state{};uint32_t at=0,seen=0,id=0;bool valid=false;};
+ struct Previous {std::array<uint32_t,50> state{};uint32_t at=0,seen=0,id=0;bool valid=false;};
  std::map<uint32_t,Previous> previous;
  uint64_t connection=0;uint32_t match=0,last=0;
 public:
@@ -32,14 +32,17 @@ public:
    auto byteFlags=[&](std::initializer_list<unsigned> offsets){uint32_t v=0;unsigned n=0;for(auto at:offsets)v|=uint32_t(bytes[at]!=0)<<n++;return v;};
    // First 32 values are discrete state; remaining values can change while
    // moving/firing and are throttled to one report per second.
-   std::array<uint32_t,44> s={id,type,word(0xAC),word(0xB4),target,word(0x2B8),victim,word(0x2B0),word(0x5A4),word(0x5A8),word(0x5C0),word(0x5C4),word(0x5C8),word(0x5CC),word(0x2E4),loco,g.template get<uint32_t>(loco),word(0x1CC),word(0x1D0),
+   std::array<uint32_t,50> s={id,type,word(0xAC),word(0xB4),target,word(0x2B8),victim,word(0x2B0),word(0x5A4),word(0x5A8),word(0x5C0),word(0x5C4),word(0x5C8),word(0x5CC),word(0x2E4),loco,g.template get<uint32_t>(loco),word(0x1CC),word(0x1D0),
     byteFlags({0x82,0x1C8,0x279,0x3D5,0x68C,0x68D,0x6AD,0x6AE,0x6B6,0x6B7}),
     victim>=0x10000?g.template get<uint32_t>(victim+0x2B0):0,
     weapons[0],weapons[0]>=0x10000?g.template get<uint32_t>(weapons[0]+0xB8):0,weapons[0]>=0x10000?g.template get<uint32_t>(weapons[0]+0xB4):0,
     weapons[1],weapons[1]>=0x10000?g.template get<uint32_t>(weapons[1]+0xB8):0,weapons[1]>=0x10000?g.template get<uint32_t>(weapons[1]+0xB4):0,
     word(0x598),word(0x5B8),word(0x640),word(0x644),word(0x648),
     word(0x9C),word(0xA0),word(0xA4),target>=0x10000?g.template get<uint32_t>(target+0x9C):0,target>=0x10000?g.template get<uint32_t>(target+0xA0):0,target>=0x10000?g.template get<uint32_t>(target+0xA4):0,
-    word(0x2EC),word(0x2F4),word(0x3B8),word(0x5E0),word(0x638),word(0x63C)};
+    word(0x2EC),word(0x2F4),word(0x3B8),word(0x5E0),word(0x638),word(0x63C),
+    victim>=0x10000?g.template get<uint32_t>(victim+0x10):0,victim>=0x10000?g.template get<uint32_t>(victim+0x9C):0,
+    victim>=0x10000?g.template get<uint32_t>(victim+0xA0):0,victim>=0x10000?g.template get<uint32_t>(victim+0xA4):0,
+    victim>=0x10000?g.template get<uint8_t>(victim+0x425):0u,victim>=0x10000?g.template get<uint8_t>(victim+0x427):0u};
    if(g.template get<uint32_t>(p+0x10)!=id||g.template get<uint32_t>(0xA8ED84)!=frame)continue;
    auto&prev=previous[p];prev.seen=now;
    bool core=!prev.valid||!std::equal(s.begin(),s.begin()+32,prev.state.begin());

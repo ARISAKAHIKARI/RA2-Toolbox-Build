@@ -218,7 +218,7 @@ static int admitPlannerOrder(const planner::Order&o,uint32_t house){
  actorFrameArbiter.begin(match,get<int>(0xA8ED84));
  if(!actorFrameArbiter.canIssue(o.unit,o.token)){++snap.planDeferred;return 0;}
  if(!planningRoom(0)||!outgoingRoom()){++snap.planDeferred;return 0;}
- if(o.purpose==planner::MagnetronDropOrder){if(!nativeObjectEvent(get<int>(house+0x30),vanilla::EventType::Idle,o.unit))return 0;consumePlanning(0);return 1;}
+ if(o.purpose==planner::MagnetronDropOrder){if(!nativeObjectEvent(get<int>(house+0x30),vanilla::EventType::Idle,o.unit,OrderAuthority::Local,nullptr,true))return 0;consumePlanning(0);return 1;}
  const bool nearest=o.destinationTag==11&&(!sh||sh->megaQueueMode==0);
  if(!nativeMission(house,o.unit,o.mission,o.target,o.destination,o.destinationTag,nearest?o.destination:0,nearest?11:0,
     o.purpose==3?taskarbiter::Owner::Magnetron:(o.purpose==1||o.purpose==planner::DefenseOrder)?taskarbiter::Owner::Combat:taskarbiter::Owner::Ore))return -1;

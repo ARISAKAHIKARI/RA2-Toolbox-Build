@@ -1,0 +1,6 @@
+In file included from /workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/lease_arbiter.cpp:1:
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/unit_task_arbiter.h: In instantiation of ‘bool assist::taskarbiter::FrameArbiter<Capacity>::canIssue(uint32_t, uint32_t) const [with int Capacity = 4; uint32_t = unsigned int]’:
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/lease_arbiter.cpp:36:2:   required from here
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/../source/unit_task_arbiter.h:26:40: warning: unused parameter ‘revision’ [-Wunused-parameter]
+   26 |  bool canIssue(uint32_t actor,uint32_t revision)const{
+      |                               ~~~~~~~~~^~~~~~~~
