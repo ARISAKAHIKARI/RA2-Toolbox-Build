@@ -1,0 +1,26 @@
+[
+  {
+    "case": "ambient_cell_update",
+    "address": "0x484680",
+    "length": 368,
+    "identical_samples": true,
+    "sha256": "f8f3e364e2a1bcb2f084e7f3be34c5665a88247db4a84a010d96e8a5960455d2",
+    "status": "PASS"
+  },
+  {
+    "case": "lighting_mode_switch",
+    "address": "0x53c280",
+    "length": 450,
+    "identical_samples": true,
+    "sha256": "8be1ee0867f82f587335881489a427d9a9b5d9df1e8d573125af32fb042fa17c",
+    "status": "PASS"
+  },
+  {
+    "case": "converter_tint_fields",
+    "address": "0x556090",
+    "length": 258,
+    "identical_samples": true,
+    "sha256": "cb544a9aa324a82a2e3cbabd5d32199683da1f9191ceefb3ccec134b53328dd7",
+    "status": "PASS"
+  }
+]

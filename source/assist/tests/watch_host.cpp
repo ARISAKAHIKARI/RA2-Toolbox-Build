@@ -15,8 +15,9 @@ static struct {int chat=0,renderStatus=1,width=800,height=600;}snap;
 static std::vector<uint8_t> memory(0x1800000);
 static struct {bool read(uint32_t p,void*out,size_t n){if(uint64_t(p)+n>memory.size())return false;memcpy(out,memory.data()+p,n);return true;}}externalReader;
 struct Color {template<class... T>Color(T...){}};struct SolidBrush {SolidBrush(Color){}};struct Pen {Pen(Color,float){}};struct PointF {float x,y;};struct RectF {RectF(float,float,float,float){}};struct Bitmap {Bitmap(int,int,int,int,BYTE*){}};
-constexpr int PixelFormat32bppPARGB=1,CombineModeIntersect=1;
-struct Graphics {int Save(){return 0;}void Restore(int){}void SetClip(RectF,int){}void TranslateTransform(float,float){}void FillRectangle(SolidBrush*,float,float,float,float){}void DrawRectangle(Pen*,float,float,float,float){}void FillPolygon(SolidBrush*,PointF*,int){}void DrawEllipse(Pen*,float,float,float,float){}void DrawImage(Bitmap*,RectF){++draws;}};
+struct ColorMatrix {float m[5][5]{};};static ColorMatrix drawnMatrix;struct ImageAttributes {void SetColorMatrix(ColorMatrix*m){drawnMatrix=*m;}};
+constexpr int PixelFormat32bppPARGB=1,CombineModeIntersect=1,UnitPixel=2;
+struct Graphics {int Save(){return 0;}void Restore(int){}void SetClip(RectF,int){}void TranslateTransform(float,float){}void FillRectangle(SolidBrush*,float,float,float,float){}void DrawRectangle(Pen*,float,float,float,float){}void FillPolygon(SolidBrush*,PointF*,int){}void DrawEllipse(Pen*,float,float,float,float){}void DrawImage(Bitmap*,RectF,float,float,float,float,int,ImageAttributes*){++draws;}};
 namespace gameassets {
  static std::string failure;
  struct ActorArt {external::voxel::Model model;int marker=0;};
@@ -47,6 +48,9 @@ int main(){
  for(auto p:actors)put(p+0x388,uint16_t(2048));clockValue+=50;watchhost::update();draws=0;watchhost::draw(g);assert(draws==299);assert(watchhost::images.size()<=600);
  assert(tileCalls==0&&watchhost::tiles.empty()); // no transparent success cache before palette arrives
  put(0xABBED0+9,uint8_t(32));clockValue+=50;watchhost::update();assert(tileCalls==1&&watchhost::tiles.begin()->second.ready&&watchhost::tiles.begin()->second.image.pixels[0]!=0);
+ // A live lighting change affects every cached actor without any recapture.
+ put(0xA8B230,0xC00000u);put(0xC0352C,80);for(int off:{0x3534,0x3538,0x353C})put(0xC00000+off,100);
+ before=captures;oldRenders=renders;clockValue+=50;watchhost::update();watchhost::draw(g);assert(captures==before&&drawnMatrix.m[0][0]==.8f&&drawnMatrix.m[3][3]==1.f);
  extra.watchEnabled=false;clockValue+=50;watchhost::update();assert(!watchhost::shown);watchhost::reset();assert(watchhost::images.empty()&&watchhost::actorArt.empty());
  std::cout<<"PASS 300 unique types regardless of selection, failed-focus fairness, actual-image-only drawing, body/turret cache invalidation without asset reload, reset\n";
 }

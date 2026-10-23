@@ -1,0 +1,18 @@
+{
+  "scope": "Original Building Mission_Attack RANGE branch, Sleep body and normal wake.\nCombat queries/SetTarget are doubles; mission transitions and animation-ready\nfragment are original code. Not the full animation loop, projectiles or netplay.\n",
+  "game_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+  "results": [
+    {
+      "case": "native_out_of_range_attack_clears_target_and_guards",
+      "status": "PASS"
+    },
+    {
+      "case": "sleep_normal_animation_ready_then_1",
+      "status": "PASS"
+    },
+    {
+      "case": "sleep_normal_animation_ready_then_5",
+      "status": "PASS"
+    }
+  ]
+}

@@ -1,0 +1,423 @@
+{
+  "scope": "Execute actual x86 GameRuntime and original event constructors with controlled world/Win32/virtual queries. Not live netplay.",
+  "game_sha256": "c287d62a4d6a25b547e9339d071dd6e03adcf545699062e478aaeee38c60e89a",
+  "dll_sha256": "417bce24fbe51d57ebd3dfec1a3e2138a7da4b1c9ae299e6700e31362d43a96e",
+  "results": [
+    {
+      "case": "0_False_large_army",
+      "status": "PASS"
+    },
+    {
+      "case": "0_False_late_approach",
+      "status": "PASS"
+    },
+    {
+      "case": "0_False_stagger_even",
+      "status": "PASS"
+    },
+    {
+      "case": "0_False_stagger_smart",
+      "status": "PASS"
+    },
+    {
+      "case": "0_False_future_only",
+      "status": "PASS"
+    },
+    {
+      "case": "0_False_timeout",
+      "status": "PASS"
+    },
+    {
+      "case": "0_False_leash",
+      "status": "PASS"
+    },
+    {
+      "case": "0_False_target_leash",
+      "status": "PASS"
+    },
+    {
+      "case": "0_False_gone",
+      "status": "PASS"
+    },
+    {
+      "case": "0_False_out_band",
+      "status": "PASS"
+    },
+    {
+      "case": "0_False_receding",
+      "status": "PASS"
+    },
+    {
+      "case": "0_False_disable",
+      "status": "PASS"
+    },
+    {
+      "case": "0_False_pending_disable",
+      "status": "PASS"
+    },
+    {
+      "case": "0_False_stop",
+      "status": "PASS"
+    },
+    {
+      "case": "0_False_manual",
+      "status": "PASS"
+    },
+    {
+      "case": "0_False_ordinary_move",
+      "status": "PASS"
+    },
+    {
+      "case": "0_False_sticky",
+      "status": "PASS"
+    },
+    {
+      "case": "0_False_building",
+      "status": "PASS"
+    },
+    {
+      "case": "0_False_building_enter",
+      "status": "PASS"
+    },
+    {
+      "case": "0_False_building_disable",
+      "status": "PASS"
+    },
+    {
+      "case": "0_False_building_gone",
+      "status": "PASS"
+    },
+    {
+      "case": "0_False_infantry",
+      "status": "PASS"
+    },
+    {
+      "case": "0_False_coverage_lost",
+      "status": "PASS"
+    },
+    {
+      "case": "0_False_urgent",
+      "status": "PASS"
+    },
+    {
+      "case": "0_False_minimum",
+      "status": "PASS"
+    },
+    {
+      "case": "0_False_wrong_weapon",
+      "status": "PASS"
+    },
+    {
+      "case": "0_True_large_army",
+      "status": "PASS"
+    },
+    {
+      "case": "0_True_late_approach",
+      "status": "PASS"
+    },
+    {
+      "case": "0_True_stagger_even",
+      "status": "PASS"
+    },
+    {
+      "case": "0_True_stagger_smart",
+      "status": "PASS"
+    },
+    {
+      "case": "0_True_future_only",
+      "status": "PASS"
+    },
+    {
+      "case": "0_True_timeout",
+      "status": "PASS"
+    },
+    {
+      "case": "0_True_leash",
+      "status": "PASS"
+    },
+    {
+      "case": "0_True_target_leash",
+      "status": "PASS"
+    },
+    {
+      "case": "0_True_gone",
+      "status": "PASS"
+    },
+    {
+      "case": "0_True_out_band",
+      "status": "PASS"
+    },
+    {
+      "case": "0_True_receding",
+      "status": "PASS"
+    },
+    {
+      "case": "0_True_disable",
+      "status": "PASS"
+    },
+    {
+      "case": "0_True_pending_disable",
+      "status": "PASS"
+    },
+    {
+      "case": "0_True_stop",
+      "status": "PASS"
+    },
+    {
+      "case": "0_True_manual",
+      "status": "PASS"
+    },
+    {
+      "case": "0_True_ordinary_move",
+      "status": "PASS"
+    },
+    {
+      "case": "0_True_sticky",
+      "status": "PASS"
+    },
+    {
+      "case": "0_True_building",
+      "status": "PASS"
+    },
+    {
+      "case": "0_True_building_enter",
+      "status": "PASS"
+    },
+    {
+      "case": "0_True_building_disable",
+      "status": "PASS"
+    },
+    {
+      "case": "0_True_building_gone",
+      "status": "PASS"
+    },
+    {
+      "case": "0_True_infantry",
+      "status": "PASS"
+    },
+    {
+      "case": "0_True_coverage_lost",
+      "status": "PASS"
+    },
+    {
+      "case": "0_True_urgent",
+      "status": "PASS"
+    },
+    {
+      "case": "0_True_minimum",
+      "status": "PASS"
+    },
+    {
+      "case": "0_True_wrong_weapon",
+      "status": "PASS"
+    },
+    {
+      "case": "3_False_large_army",
+      "status": "PASS"
+    },
+    {
+      "case": "3_False_late_approach",
+      "status": "PASS"
+    },
+    {
+      "case": "3_False_stagger_even",
+      "status": "PASS"
+    },
+    {
+      "case": "3_False_stagger_smart",
+      "status": "PASS"
+    },
+    {
+      "case": "3_False_future_only",
+      "status": "PASS"
+    },
+    {
+      "case": "3_False_timeout",
+      "status": "PASS"
+    },
+    {
+      "case": "3_False_leash",
+      "status": "PASS"
+    },
+    {
+      "case": "3_False_target_leash",
+      "status": "PASS"
+    },
+    {
+      "case": "3_False_gone",
+      "status": "PASS"
+    },
+    {
+      "case": "3_False_out_band",
+      "status": "PASS"
+    },
+    {
+      "case": "3_False_receding",
+      "status": "PASS"
+    },
+    {
+      "case": "3_False_disable",
+      "status": "PASS"
+    },
+    {
+      "case": "3_False_pending_disable",
+      "status": "PASS"
+    },
+    {
+      "case": "3_False_stop",
+      "status": "PASS"
+    },
+    {
+      "case": "3_False_manual",
+      "status": "PASS"
+    },
+    {
+      "case": "3_False_ordinary_move",
+      "status": "PASS"
+    },
+    {
+      "case": "3_False_sticky",
+      "status": "PASS"
+    },
+    {
+      "case": "3_False_building",
+      "status": "PASS"
+    },
+    {
+      "case": "3_False_building_enter",
+      "status": "PASS"
+    },
+    {
+      "case": "3_False_building_disable",
+      "status": "PASS"
+    },
+    {
+      "case": "3_False_building_gone",
+      "status": "PASS"
+    },
+    {
+      "case": "3_False_infantry",
+      "status": "PASS"
+    },
+    {
+      "case": "3_False_coverage_lost",
+      "status": "PASS"
+    },
+    {
+      "case": "3_False_urgent",
+      "status": "PASS"
+    },
+    {
+      "case": "3_False_minimum",
+      "status": "PASS"
+    },
+    {
+      "case": "3_False_wrong_weapon",
+      "status": "PASS"
+    },
+    {
+      "case": "3_True_large_army",
+      "status": "PASS"
+    },
+    {
+      "case": "3_True_late_approach",
+      "status": "PASS"
+    },
+    {
+      "case": "3_True_stagger_even",
+      "status": "PASS"
+    },
+    {
+      "case": "3_True_stagger_smart",
+      "status": "PASS"
+    },
+    {
+      "case": "3_True_future_only",
+      "status": "PASS"
+    },
+    {
+      "case": "3_True_timeout",
+      "status": "PASS"
+    },
+    {
+      "case": "3_True_leash",
+      "status": "PASS"
+    },
+    {
+      "case": "3_True_target_leash",
+      "status": "PASS"
+    },
+    {
+      "case": "3_True_gone",
+      "status": "PASS"
+    },
+    {
+      "case": "3_True_out_band",
+      "status": "PASS"
+    },
+    {
+      "case": "3_True_receding",
+      "status": "PASS"
+    },
+    {
+      "case": "3_True_disable",
+      "status": "PASS"
+    },
+    {
+      "case": "3_True_pending_disable",
+      "status": "PASS"
+    },
+    {
+      "case": "3_True_stop",
+      "status": "PASS"
+    },
+    {
+      "case": "3_True_manual",
+      "status": "PASS"
+    },
+    {
+      "case": "3_True_ordinary_move",
+      "status": "PASS"
+    },
+    {
+      "case": "3_True_sticky",
+      "status": "PASS"
+    },
+    {
+      "case": "3_True_building",
+      "status": "PASS"
+    },
+    {
+      "case": "3_True_building_enter",
+      "status": "PASS"
+    },
+    {
+      "case": "3_True_building_disable",
+      "status": "PASS"
+    },
+    {
+      "case": "3_True_building_gone",
+      "status": "PASS"
+    },
+    {
+      "case": "3_True_infantry",
+      "status": "PASS"
+    },
+    {
+      "case": "3_True_coverage_lost",
+      "status": "PASS"
+    },
+    {
+      "case": "3_True_urgent",
+      "status": "PASS"
+    },
+    {
+      "case": "3_True_minimum",
+      "status": "PASS"
+    },
+    {
+      "case": "3_True_wrong_weapon",
+      "status": "PASS"
+    }
+  ]
+}

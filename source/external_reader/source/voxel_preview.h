@@ -78,7 +78,11 @@ inline bool render(const Model&model,double angle,const std::array<uint32_t,256>
  out.width=w;out.height=h;out.x=left;out.y=top;out.pixels.assign(size_t(w)*h,0);std::vector<float> depth(size_t(w)*h,-std::numeric_limits<float>::infinity());
  auto edge=[](Screen a,Screen b,float x,float y){return (x-a.x)*(b.y-a.y)-(y-a.y)*(b.x-a.x);};
  for(const auto&f:model.faces){Screen s[4];Vec world[4];for(int c=0;c<4;++c){world[c]=worldPoint(f,f.p[c]);s[c]=project(world[c]);s[c].x-=left;s[c].y-=top;}
-  Vec a{world[1].x-world[0].x,world[1].y-world[0].y,world[1].z-world[0].z},b{world[2].x-world[0].x,world[2].y-world[0].y,world[2].z-world[0].z};Vec normal{a.y*b.z-a.z*b.y,a.z*b.x-a.x*b.z,a.x*b.y-a.y*b.x};float len=std::sqrt(normal.x*normal.x+normal.y*normal.y+normal.z*normal.z);float light=.67f+(len>0?std::max(0.f,(-.4f*normal.x-.5f*normal.y+.76f*normal.z)/len)*.4f:0);uint32_t color=premultiply(pal[f.color],light);
+  Vec a{world[1].x-world[0].x,world[1].y-world[0].y,world[1].z-world[0].z},b{world[2].x-world[0].x,world[2].y-world[0].y,world[2].z-world[0].z};Vec normal{a.y*b.z-a.z*b.y,a.z*b.x-a.x*b.z,a.x*b.y-a.y*b.x};float len=std::sqrt(normal.x*normal.x+normal.y*normal.y+normal.z*normal.z);
+  // FA2's ambient/directional response, with the model's transformed surface
+  // normals. Global map tint/ambient is applied separately at presentation.
+  float directional=len>0?std::clamp((normal.z-normal.x)*.70710678f/len,0.f,1.f):0;
+  float light=(200.f+300.f*directional)/255.f;uint32_t color=premultiply(pal[f.color],light);
   for(int t=0;t<2;++t){Screen v[3]={s[0],s[t+1],s[t+2]};float area=edge(v[0],v[1],v[2].x,v[2].y);if(std::abs(area)<1e-6f)continue;
    int x0=std::max(0,int(std::floor(std::min({v[0].x,v[1].x,v[2].x})))),x1=std::min(w-1,int(std::ceil(std::max({v[0].x,v[1].x,v[2].x}))));int y0=std::max(0,int(std::floor(std::min({v[0].y,v[1].y,v[2].y})))),y1=std::min(h-1,int(std::ceil(std::max({v[0].y,v[1].y,v[2].y}))));
    for(int y=y0;y<=y1;++y)for(int x=x0;x<=x1;++x){float a=edge(v[1],v[2],x+.5f,y+.5f)/area,b=edge(v[2],v[0],x+.5f,y+.5f)/area,c=1-a-b;if(a<-.0001f||b<-.0001f||c<-.0001f)continue;float z=a*v[0].z+b*v[1].z+c*v[2].z;size_t at=size_t(y)*w+x;if(z>depth[at]){depth[at]=z;out.pixels[at]=color;}}

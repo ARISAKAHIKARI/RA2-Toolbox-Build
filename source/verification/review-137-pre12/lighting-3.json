@@ -1,0 +1,51 @@
+{
+  "scope": "Execute original LightConvert::UpdateColors field selection up to ramp generation.\nTests native tint state/ABI, not palette rasterization or real Windows output.\n",
+  "game_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+  "results": [
+    {
+      "case": "normal",
+      "status": "PASS",
+      "active_tint": [
+        1000,
+        800,
+        1200
+      ]
+    },
+    {
+      "case": "flash",
+      "status": "PASS",
+      "active_tint": [
+        1300,
+        500,
+        800
+      ]
+    },
+    {
+      "case": "restore",
+      "status": "PASS",
+      "active_tint": [
+        1000,
+        800,
+        1200
+      ]
+    },
+    {
+      "case": "flash_restore",
+      "status": "PASS",
+      "active_tint": [
+        1300,
+        500,
+        800
+      ]
+    },
+    {
+      "case": "clamp",
+      "status": "PASS",
+      "active_tint": [
+        2000,
+        0,
+        0
+      ]
+    }
+  ]
+}

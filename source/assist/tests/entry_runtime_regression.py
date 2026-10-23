@@ -129,7 +129,7 @@ class DodgeResult(C.Structure):
 class PlayerTestInfo(C.Structure):
  _fields_=[(x,C.c_uint32) for x in ("pointer","id")]+[(x,C.c_int32) for x in ("index","human")]+[("name",C.c_uint16*21)]
 class MissileSource(C.Structure):
- _fields_=[(x,C.c_uint32) for x in 'id pointer token current pending'.split()]+[(x,C.c_int32) for x in 'cooldown held pendingMission holdFrames releaseFrames'.split()]
+ _fields_=[(x,C.c_uint32) for x in 'id pointer token current pending'.split()]+[(x,C.c_int32) for x in 'cooldown held pendingMission advanceFrames releaseFrames managed'.split()]
 class MissileTarget(C.Structure):
  _fields_=[('id',C.c_uint32),('pointer',C.c_uint32),('hp',C.c_int32),('threatening',C.c_uint32)]
 class MissileEdge(C.Structure):

@@ -1,4 +1,5 @@
 #include "../../external_reader/source/voxel_preview.h"
+#include "../../external_reader/source/scene_lighting.h"
 #include <map>
 #include <tuple>
 namespace formationhost {
@@ -9,6 +10,7 @@ static std::map<ModelKey,Cached> models;
 static formation::Preview preview;static std::vector<Visual> visuals;
 static std::vector<ModelKey> wanted;static uint64_t useSerial=0;static int wantedFacing=0;
 static uint32_t epoch=0,process=0,revision=0,sampledAt=0;static uint64_t visualSignature=0;static int missing=0;
+static external::lighting::State sceneLight;
 static bool read(uint32_t p,void*out,size_t n){return externalReader.readFresh(p,out,n);}
 static uint32_t word(uint32_t p){uint32_t v=0;read(p,&v,4);return v;}
 static void reset(){models.clear();visuals.clear();preview={};missing=0;++revision;}
@@ -33,6 +35,7 @@ static void update(){
  formation::Preview next{};
  if(!activeNow||!shared||!foregroundGame()){if(!visuals.empty()){visuals.clear();++paintRevision;}return;}
  long seq=shared->formationSeq;if(seq&1)return;MemoryBarrier();next=shared->formationPreview;MemoryBarrier();if(seq!=shared->formationSeq||!next.active||next.match!=epoch||next.count<0||next.count>formation::Maximum)return;
+ auto light=external::lighting::sample(read);if(light!=sceneLight){sceneLight=light;++revision;}
  // Input may stand still indefinitely; validity is anchored by the live shared
  // context, not a timer that would make stationary previews disappear.
  visuals.clear();missing=0;wanted.clear();preview=next;external::Projection projection{snap.cameraX,snap.cameraY,snap.width,snap.height};
@@ -62,7 +65,8 @@ static void update(){
 }
 static bool visible(){return shared&&shared->formationPreview.active&&extra.formationEnabled&&!snap.chat;}
 static void draw(Graphics&g){
- for(const auto&v:visuals){auto&i=*v.image;Bitmap bitmap(i.width,i.height,i.width*4,PixelFormat32bppPARGB,reinterpret_cast<BYTE*>(const_cast<uint32_t*>(i.pixels.data())));g.DrawImage(&bitmap,v.x+i.x,v.y+i.y,i.width,i.height);}
+ auto gains=sceneLight.gains();ColorMatrix matrix={};for(int n=0;n<5;++n)matrix.m[n][n]=n<3?gains[n]:1.f;ImageAttributes attributes;attributes.SetColorMatrix(&matrix);
+ for(const auto&v:visuals){auto&i=*v.image;Bitmap bitmap(i.width,i.height,i.width*4,PixelFormat32bppPARGB,reinterpret_cast<BYTE*>(const_cast<uint32_t*>(i.pixels.data())));g.DrawImage(&bitmap,RectF(float(v.x+i.x),float(v.y+i.y),float(i.width),float(i.height)),0.f,0.f,float(i.width),float(i.height),UnitPixel,&attributes);}
  if(visible()){const wchar_t*names[]={L"矩形横队",L"分散横队",L"圆形聚集",L"扇形"};std::wstring text=L"队形 · "+std::wstring(names[std::clamp(preview.shape,0,3)])+(extra.formationMouse==1?L" · 左拖排列 / 左击聚集 · Esc 取消":L" · 右拖排列 / 右击聚集 · Esc 取消");
   if(missing)text+=L" · "+std::to_wstring(missing)+L" 个模型未载入";drawText(g,text,18,44,12,Color(230,220,244,255));}
 }

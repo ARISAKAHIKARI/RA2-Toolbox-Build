@@ -91,7 +91,7 @@ toggle(880,L"防空火控",extra.missileDefense);next();
 label(L"目标范围",20,260);choices(combo(9040),{L"仅导弹类",L"所有敌方空中单位"},extra.missileScope);next();
 label(L"火力分配",20,260);choices(combo(9041),{L"智能分配（血量与伤害）",L"平均分配"},extra.missileAllocation);next();
 number(881,L"火控检测频率 / 次每秒",extra.missileScanHz,L"1–60 · 默认 10");
-note(L"智能分配以预计 120% 血量为覆盖线。仅在射程外 4 格内还有后续目标时短暂留枪，最多等 30 帧；无后续目标或近身威胁时继续开火。移动中的单位不接管。",44);
+note(L"智能分配以预计 120% 血量为覆盖线，优先补足近处火力。建筑为射程外 4 格内的空中目标预留火力；战车、步兵用原版攻击命令接近，最多 60 帧、离起点 4 格。手动移动和队形优先，无后续目标时正常开火。",44);
 
 // One visible Auto CS switch represents the previous two enable flags.
 hookChecks[3]=placedControl({-3,{0,0,1,1}},L"BUTTON",L"",466,BS_AUTOCHECKBOX);

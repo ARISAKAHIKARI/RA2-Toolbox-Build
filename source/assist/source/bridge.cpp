@@ -938,7 +938,7 @@ static void tick(){
  if(!sh){wchar_t n[80];mapName(n,GetCurrentProcessId());mapping=OpenFileMappingW(FILE_MAP_ALL_ACCESS,FALSE,n);if(!mapping)return;sh=(Shared*)MapViewOfFile(mapping,FILE_MAP_ALL_ACCESS,0,0,sizeof(Shared));if(!sh||sh->magic!=Magic||sh->version!=Version||sh->pid!=GetCurrentProcessId()){disconnect();return;}}
  playerMaintenance();DWORD now=sampleClock(sh);if(sh->stop||(DWORD(now-sh->heartbeat)>3000&&controllerExited(now))){
   stickyTick(true);
-  // Drain only our native Sleep leases before acknowledging detach. No game
+  // Release our automatic attack/hold orders before acknowledging detach. No game
   // field is changed locally, including when the controlling EXE has exited.
   if(missileHoldCount&&lastHouse&&get<uint32_t>(0xA83D4C)==lastHouse&&get<bool>(0xA8E9A0)){
    int cleanupFrame=get<int>(0xA8ED84);snap.frame=cleanupFrame;indexWorld(cleanupFrame);missileCleanup=true;

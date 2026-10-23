@@ -1,0 +1,93 @@
+{
+  "version": "1.0.37-pre.12",
+  "base_remote_commit": "09cebbc3378ddfdfa5ee99b60d9b340acf2e51c1",
+  "build": {
+    "toolchain": "Zig 0.13.0",
+    "file_version": "1.0.37.12",
+    "assist": 67,
+    "runtime": 4,
+    "files": {
+      "RA2Toolbox.exe": {
+        "bytes": 2793472,
+        "sha256": "d0ccf373ea079202f49528d0f7ec86561ae2995bde56146452f22b69f45a5b89"
+      },
+      "GameRuntime.dll": {
+        "bytes": 4866048,
+        "sha256": "417bce24fbe51d57ebd3dfec1a3e2138a7da4b1c9ae299e6700e31362d43a96e"
+      }
+    }
+  },
+  "controlled_native_runtime_cases": 296,
+  "suites": [
+    {
+      "file": "missile_advance_runtime-3.json",
+      "cases": 104,
+      "status": "PASS"
+    },
+    {
+      "file": "mapping_pair_runtime-3.json",
+      "cases": 4,
+      "status": "PASS"
+    },
+    {
+      "file": "missile_native_range-3.json",
+      "cases": 6,
+      "status": "PASS"
+    },
+    {
+      "file": "missile_advance_runtime-4.json",
+      "cases": 104,
+      "status": "PASS"
+    },
+    {
+      "file": "mapping_pair_runtime-4.json",
+      "cases": 4,
+      "status": "PASS"
+    },
+    {
+      "file": "missile_native_range-4.json",
+      "cases": 6,
+      "status": "PASS"
+    },
+    {
+      "file": "missile-regression-4.json",
+      "cases": 52,
+      "status": "PASS"
+    },
+    {
+      "file": "lighting-3.json",
+      "cases": 5,
+      "status": "PASS"
+    },
+    {
+      "file": "building-native-3.json",
+      "cases": 3,
+      "status": "PASS"
+    },
+    {
+      "file": "lighting-4.json",
+      "cases": 5,
+      "status": "PASS"
+    },
+    {
+      "file": "building-native-4.json",
+      "cases": 3,
+      "status": "PASS"
+    }
+  ],
+  "pure_groups": 8,
+  "real_shp_frames": 630,
+  "gameplay_field_writes_during_fire_control_scans": false,
+  "fire_control_uses_sticky": false,
+  "mobile_fire_control_uses_sleep": false,
+  "building_reservation": "native Sleep with target; native Attack when in range; native Guard on release",
+  "real_windows_visual_test": false,
+  "full_game_movement_projectile_physics": false,
+  "multiplayer_peer_test": false,
+  "limits": [
+    "Controlled original native instructions, compiled Runtime and event packets; fixtures replace world/combat/Win32 queries and delivery",
+    "Global ambient/RGB only: local lights, shadowing and original full voxel normal tables are not replicated",
+    "Building animation-ready fragment tested; complete animation loop and renderer need real-game validation",
+    "Damage estimate has no complete in-flight projectile ledger"
+  ]
+}

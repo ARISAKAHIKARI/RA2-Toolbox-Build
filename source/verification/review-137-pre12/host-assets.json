@@ -1,0 +1,17 @@
+{
+  "scope": "Production file discovery and real SHP decode, no real Windows assertion",
+  "suite": "game_assets_host_test.py",
+  "asset_sha256": "1c73fa3a7bdce534f4c4d3a6470a974490dccad18ee2da7bca01177aa1098ef9",
+  "actor_frames": 630,
+  "status": "PASS",
+  "checks": [
+    "eight-direction infantry sequence",
+    "all 630 real frames",
+    "overlay frame",
+    "GENERICMD nested archive",
+    "rules/art Image aliases",
+    "TMP",
+    "cross-theater palette",
+    "missing-resource fallback"
+  ]
+}

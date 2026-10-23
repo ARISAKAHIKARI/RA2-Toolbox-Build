@@ -1,13 +1,13 @@
 {
-  "label": "1.0.37.11 SingleRuntime",
-  "file_version": "1.0.37.11",
+  "label": "1.0.37.12 SingleRuntime",
+  "file_version": "1.0.37.12",
   "verified": {
     "RA2Toolbox.exe": {
-      "bytes": 2788864,
-      "sha256": "b612f6d510342d2a5f8dc4368e6a7a30047b480a3872f3046665185831e2d221",
+      "bytes": 2793472,
+      "sha256": "d0ccf373ea079202f49528d0f7ec86561ae2995bde56146452f22b69f45a5b89",
       "machine": "PE32 x86",
       "sections": 14,
-      "entry_rva": "0x1313b0",
+      "entry_rva": "0x1322b0",
       "exports": [
         "AssistHostMappingPrefix",
         "AssistHostProtocolInfo",
@@ -68,6 +68,7 @@
           "GdipCloneImage",
           "GdipCreateBitmapFromScan0",
           "GdipCreateFontFamilyFromName",
+          "GdipCreateImageAttributes",
           "GdipCreatePath",
           "GdipCreatePen1",
           "GdipCreateSolidFill",
@@ -79,9 +80,9 @@
           "GdipDeletePen",
           "GdipDeleteStringFormat",
           "GdipDisposeImage",
+          "GdipDisposeImageAttributes",
           "GdipDrawEllipse",
           "GdipDrawImageRect",
-          "GdipDrawImageRectI",
           "GdipDrawImageRectRect",
           "GdipDrawLine",
           "GdipDrawLines",
@@ -104,6 +105,7 @@
           "GdipSetClipPath",
           "GdipSetClipRect",
           "GdipSetCompositingMode",
+          "GdipSetImageAttributesColorMatrix",
           "GdipSetInterpolationMode",
           "GdipSetPenEndCap",
           "GdipSetPenLineJoin",
@@ -549,15 +551,15 @@
         "version": "6.0.0.0",
         "architecture": "x86"
       },
-      "assist_protocol": 66,
-      "assist_shared_bytes": 4164848
+      "assist_protocol": 67,
+      "assist_shared_bytes": 4165104
     },
     "GameRuntime.dll": {
-      "bytes": 4860416,
-      "sha256": "a4324c8e749b5d0845412b1a9ee2b733ce09af64d35aedc2d41a1ff3083b9742",
+      "bytes": 4866048,
+      "sha256": "417bce24fbe51d57ebd3dfec1a3e2138a7da4b1c9ae299e6700e31362d43a96e",
       "machine": "PE32 x86",
       "sections": 13,
-      "entry_rva": "0x60ba0",
+      "entry_rva": "0x60f50",
       "exports": [
         "AssistMappingPrefix",
         "AssistProtocolInfo",
@@ -710,8 +712,8 @@
       "GameRuntimePostHook_rva": "0x1970",
       "runtime_protocol": 4,
       "runtime_control_bytes": 176,
-      "assist_protocol": 66,
-      "assist_shared_bytes": 4164848
+      "assist_protocol": 67,
+      "assist_shared_bytes": 4165104
     }
   },
   "runtime_tested": false,

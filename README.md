@@ -1,3 +1,9 @@
+# RA2 Toolbox 1.0.37-pre.12（地图光照与防空提前接敌）
+
+观察窗和队形中的 SHP/VXL 跟随当前地图亮度、RGB 色调与临时光照。火控提前分配目标：建筑预留火力，机动防空用原版攻击在距离和时间限制内接近，并优先补足近处火力；手动指令与队形优先。
+
+[下载 pre.12](https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/releases/tag/v1.0.37-pre.12) · [说明](packages/v1.0.37-pre.12/RELEASE_NOTES.md) · [研究与验证范围](source/research/2026-10-23-lighting-advance-137-pre12.md)
+
 # RA2 Toolbox 1.0.37-pre.11（磁电自动摔落实验修正）
 
 修正“己方磁电吸己方坦克”在检查落点前被敌方过滤条件挡住的问题。已吸起目标不再受阵营限制，开关移至“实验功能”，保留原设置和默认关闭。检测、原生停止命令排队与边界回归通过；完整摔落物理和联机效果仍待实机验证。

@@ -3,10 +3,11 @@
 #include <climits>
 #include <algorithm>
 namespace assist { namespace missilecompute {
-constexpr int MaxSources=64,MaxTargets=64,MaxOrders=64,LookAhead=30,CoveragePercent=120,MaxHoldFrames=30,ReleaseGraceFrames=30;
+constexpr int MaxSources=64,MaxTargets=64,MaxOrders=64,LookAhead=30,CoveragePercent=120,MaxAdvanceFrames=60,AdvanceLeash=1024,ReleaseGraceFrames=30;
 enum Mode { Smart=0, Even=1 };
-enum Action { Attack=1, Hold=0, Release=5 };
-struct Source {uint32_t id=0,pointer=0,token=0,current=0,pending=0;int cooldown=0,held=0,pendingMission=-1,holdFrames=0,releaseFrames=0;};
+// Advance is a planner action: mobile Attack or passive building reservation.
+enum Action { Attack=1, Release=5, Advance=32 };
+struct Source {uint32_t id=0,pointer=0,token=0,current=0,pending=0;int cooldown=0,held=0,pendingMission=-1,advanceFrames=-1,releaseFrames=0,managed=0;};
 struct Target {uint32_t id=0,pointer=0;int hp=0;uint32_t threatening=0;};
 // eta is prediction only; close is the original IsCloseEnough result.
 struct Edge {int damage=0;uint32_t distance=0;int eta=0,close=1;};
@@ -24,10 +25,9 @@ inline Result calculate(const Input&i){
   for(int t=0;t<i.targetCount;++t)if(i.targets[t].hp>0&&i.edges[s][t].damage>0){
    if(std::max(i.edges[s][t].eta,i.sources[s].cooldown)<=LookAhead)++options[s];
   }
-  // Pending events reserve their shooters. Existing auto-acquired targets do
-  // not: excess shooters need an explicit native Sleep to preserve ammunition.
+  // Pending events reserve their shooters, including attacks still approaching.
   busy[s]=i.sources[s].pendingMission>=0;
-  if(busy[s]&&i.sources[s].pendingMission==Attack)for(int t=0;t<i.targetCount;++t)
+  if(busy[s]&&(i.sources[s].pendingMission==Attack||i.sources[s].pendingMission==0))for(int t=0;t<i.targetCount;++t)
    if(i.sources[s].pending==i.targets[t].id&&i.edges[s][t].damage>0){assigned[s]=t;++number[t];damage[t]+=i.edges[s][t].damage;break;}
  }
  for(int pass=0;pass<i.count;++pass){int bs=-1,bt=-1,br=INT_MAX;
@@ -51,10 +51,10 @@ inline Result calculate(const Input&i){
   }
   if(bs<0)break;assigned[bs]=bt;++number[bt];damage[bt]+=i.edges[bs][bt].damage;
  }
- // Only immediately usable shots justify holding a ready gun. Future
+ // Only immediately usable shots justify sending a ready gun ahead. Future
  // assignments/cooldowns are planning reservations, not guaranteed damage.
  int64_t covering[MaxTargets]{};
- for(int s=0;s<i.count;++s){int t=assigned[s];if(t>=0&&i.edges[s][t].close&&i.sources[s].cooldown<=3)covering[t]+=i.edges[s][t].damage;}
+ for(int s=0;s<i.count;++s){int t=assigned[s];if(t>=0&&i.edges[s][t].close&&i.sources[s].cooldown<=3&&i.sources[s].pendingMission!=0)covering[t]+=i.edges[s][t].damage;}
  int actions[MaxSources]{};
  for(int s=0;s<i.count;++s){if(busy[s])continue;int t=assigned[s],fallback=-1,future=-1;
   for(int n=0;n<i.targetCount;++n){const auto&e=i.edges[s][n];if(e.damage<=0||i.targets[n].hp<=0)continue;
@@ -67,21 +67,19 @@ inline Result calculate(const Input&i){
   if(t>=0&&i.edges[s][t].close)action=Attack;
   else if(fallback>=0){
    bool covered=covering[fallback]*100>=int64_t(i.targets[fallback].hp)*CoveragePercent;
-   bool wait=future>=0&&covered&&i.targets[fallback].threatening<2&&i.sources[s].holdFrames<MaxHoldFrames&&!i.sources[s].releaseFrames;
-   if(wait){action=Hold;t=future;}
+   bool ahead=future>=0&&covered&&i.targets[fallback].threatening<2&&!i.sources[s].releaseFrames&&i.sources[s].cooldown<=LookAhead;
+   if(ahead){action=Advance;if(t<0)t=future;}
    else{action=Attack;t=fallback;if(i.sources[s].cooldown<=3)covering[t]+=i.edges[s][t].damage;}
-  }
-  // Without a current in-range target, leave ordinary guard/search running.
-  // A previously held source is explicitly woken if its reason disappears.
+  }else if(future>=0&&!i.sources[s].releaseFrames&&i.sources[s].cooldown<=LookAhead){action=Advance;if(t<0)t=future;}
+  // No eligible target: release only an automatic order we still own.
   actions[s]=action;assigned[s]=t;
  }
- // Establish covering attacks/wakes before holds. If the gateway exhausts
- // its budget, it must not put every spare gun to sleep before coverage is sent.
+ // Covering attacks/wakes precede advances if the gateway runs out of budget.
  for(int phase=0;phase<2;++phase)for(int s=0;s<i.count;++s){if(busy[s])continue;
-  int t=assigned[s],action=actions[s];if((phase==1)!=(action==Hold))continue;
-  if(action==Hold&&i.sources[s].held)continue;
-  if(action==Release&&!i.sources[s].held)continue;
-  if(action==Attack&&!i.sources[s].held&&i.sources[s].current==i.targets[t].id)continue;
+  int t=assigned[s],action=actions[s];if((phase==1)!=(action==Advance))continue;
+  if(action==Release&&!i.sources[s].held&&!i.sources[s].managed)continue;
+  if(action!=Release&&i.sources[s].current==i.targets[t].id&&
+     ((action==Attack&&!i.sources[s].held)||(action==Advance&&i.sources[s].managed&&i.sources[s].advanceFrames>=0)))continue;
   r.orders[r.count++]={s,t,action};
  }
  return r;

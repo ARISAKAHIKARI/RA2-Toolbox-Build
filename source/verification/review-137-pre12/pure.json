@@ -1,0 +1,42 @@
+[
+  {
+    "suite": "scene_lighting",
+    "status": "PASS",
+    "output": "PASS ambient, normal/tinted converter, map changes, bounded reads, palette-independent RGB, premultiplied alpha and neutral fallback\n"
+  },
+  {
+    "suite": "missile_compute",
+    "status": "PASS",
+    "output": "PASS smart/even quotas, staggered entry, advance acquisition, excess locks, cooldown, pending, release and capacity\n"
+  },
+  {
+    "suite": "voxel_preview",
+    "status": "PASS",
+    "output": "PASS independent turret/body rotation and offset; VXL spans, HVA translation once, bounds, malformed input, depth, premultiplied alpha\n"
+  },
+  {
+    "suite": "watch_host",
+    "status": "PASS",
+    "output": "PASS 300 unique types regardless of selection, failed-focus fairness, actual-image-only drawing, body/turret cache invalidation without asset reload, reset\n"
+  },
+  {
+    "suite": "formation_host",
+    "status": "PASS",
+    "output": "PASS preview seqlock continuity, content revisions, ownership-race protection, full model-cache eviction, image-budget eviction and active-image protection\n"
+  },
+  {
+    "suite": "game_assets",
+    "status": "PASS",
+    "output": "PASS loose/expand/ecache/base/nested precedence; encrypted live-index compatibility disk reads, malformed extents; TMP/PAL/VXL/HVA resource decode\n"
+  },
+  {
+    "suite": "unit_task_arbiter",
+    "status": "PASS",
+    "output": ""
+  },
+  {
+    "suite": "command_gateway",
+    "status": "PASS",
+    "output": ""
+  }
+]

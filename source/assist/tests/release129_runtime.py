@@ -124,7 +124,7 @@ def aa(mode,inside,case):
   assert n.count(m)==2
  elif case=='height':
   assert queries and all(x[2]==2000 for x in queries)
-  assert all(n.packets(m)[j*111+12]==0 for j in range(2)), 'approaching high targets may reserve Sleep; never Attack outside native range'
+  assert all(n.packets(m)[j*111+12]==1 for j in range(2)), 'nearby high targets receive an ordinary Attack approach; never Sleep/Sticky'
  if not expected:assert before==[bytes(m.u.mem_read(p,0x800)) for p in guns+missiles]
  assert not m.codeWrites
 for mode in (0,3):
