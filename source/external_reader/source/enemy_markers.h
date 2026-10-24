@@ -7,6 +7,7 @@ constexpr int Maximum=2048;
 struct Marker {
  uint32_t object=0,id=0,type=0,owner=0,color=0;
  int x=0,y=0,kind=-1,player=-1;
+ int worldX=INT32_MIN,worldY=INT32_MIN,quantity=1;
  uint16_t name[40]{};
 };
 struct Frame {

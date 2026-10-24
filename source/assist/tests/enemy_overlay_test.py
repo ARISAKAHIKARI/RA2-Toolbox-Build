@@ -13,6 +13,8 @@ prefix=r'''
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <map>
+#include <tuple>
 #include <vector>
 using namespace assist;using ARGB=uint32_t;
 constexpr int PixelFormat32bppPARGB=1,SmoothingModeAntiAlias=2,StringFormatFlagsNoWrap=3,FontStyleBold=4,LineJoinRound=5;
@@ -33,8 +35,9 @@ struct Graphics{std::vector<Call> calls;Graphics(Bitmap*){}void Clear(Color){}vo
  void DrawPath(Pen*,GraphicsPath*){}void FillPath(SolidBrush*,GraphicsPath*){}
 };
 struct EnemyRaster{std::wstring text;ARGB color{};std::unique_ptr<Bitmap>image;};
-static std::unordered_map<uint64_t,EnemyRaster>enemyRasters;
-static uint64_t enemyRasterKey(const external::enemies::Marker&m){return(uint64_t(m.type)<<32)|m.owner;}
+using EnemyRasterKey=std::tuple<uint32_t,uint32_t,int>;
+static std::map<EnemyRasterKey,EnemyRaster>enemyRasters;
+static EnemyRasterKey enemyRasterKey(const external::enemies::Marker&m){return {m.type,m.owner,m.quantity};}
 '''
 suffix=r'''
 int main(){
@@ -48,6 +51,8 @@ int main(){
  m.kind=2;g.calls.clear();drawEnemyMarker(g,m,v,1,1);assert(g.calls[0].kind==2&&g.calls[1].color==m.color);
  m.owner+=0x10000;m.player=2;drawEnemyMarker(g,m,v,1,1);assert(allocations==2&&enemyRasters.size()==2);
  for(auto&ch:m.name)ch=u'长';drawEnemyMarker(g,m,v,1,1);auto&cached=enemyRasters[enemyRasterKey(m)];assert(cached.text.size()==18&&cached.image->GetWidth()<=280);
+ m.quantity=3;drawEnemyMarker(g,m,v,1,1);assert(enemyRasters[enemyRasterKey(m)].text.find(L" ×3")!=std::wstring::npos);
+ int oldAllocations=allocations;m.quantity=7;drawEnemyMarker(g,m,v,1,1);assert(allocations==oldAllocations+1);m.quantity=3;drawEnemyMarker(g,m,v,1,1);assert(allocations==oldAllocations+1);m.quantity=1;
  for(auto&ch:m.name)ch=0;m.name[0]=10;drawEnemyMarker(g,m,v,1,1);assert(enemyRasters[enemyRasterKey(m)].text==L"单位");
 }
 '''

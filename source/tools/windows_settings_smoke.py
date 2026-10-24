@@ -97,7 +97,7 @@ def scenario(folder):
             h=child(root,id)
             assert check(h)==1,(key,'restart lost saved on')
         # Switch off and exit immediately, exercising pending autosave at shutdown.
-        for id,key in keys.items():send(child(root,id),0xF5)
+        for id in [604]+[id for id in keys if id!=604]:send(child(root,id),0xF5)
         close(p,root)
         p,root,f,d=launch(folder)
         for id,key in keys.items():
@@ -113,7 +113,7 @@ if __name__=='__main__':
         folder=pathlib.Path(t)
         for name in ('RA2Toolbox.exe','GameRuntime.dll'):shutil.copy2(source/name,folder/name)
         scenario(folder)
-    result={'status':'PASS','version':'1.0.37','runs':3,'display_switches':9,
+    result={'status':'PASS','version':'1.0.38-pre.2','runs':3,'display_switches':9,
             'checks':['all fresh UI switches off','user hotkeys','cross-pane edits',
                       'real Win32 INI writes','restart on','restart off',
                       'immediate exit','existing settings preserved'],

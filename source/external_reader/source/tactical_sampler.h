@@ -58,7 +58,8 @@ template<class Read> class TacticalSampler {
       get<uint32_t>(m.object+0x21C)!=m.owner||get<int>(m.object+0x6C)<=0||!get<uint8_t>(m.object+0x74)||
       get<uint8_t>(m.object+0x81)||!get<uint8_t>(m.object+0x90)||(m.kind!=3&&get<uint32_t>(m.object+0x11C,0xffffffffu)))return false;
    int x=INT32_MIN,y=INT32_MIN;
-   project(proj,get<int>(m.object+0x9C,INT32_MIN),get<int>(m.object+0xA0,INT32_MIN),get<int>(m.object+0xA4,INT32_MIN),x,y);
+   m.worldX=get<int>(m.object+0x9C,INT32_MIN);m.worldY=get<int>(m.object+0xA0,INT32_MIN);
+   project(proj,m.worldX,m.worldY,get<int>(m.object+0xA4,INT32_MIN),x,y);
    if(x==INT32_MIN||y==INT32_MIN)return false; // Offscreen coordinates remain valid.
    m.x=x;m.y=y;m.color=owner->color;m.player=owner->index;
   }return true;
@@ -66,10 +67,11 @@ template<class Read> class TacticalSampler {
  void addEnemy(uint32_t p,uint32_t t,int k,uint32_t owner,const Projection&proj){
   const auto*enemy=enemyOwner(owner);if(!enemy||t<0x10000||(k!=3&&get<uint32_t>(p+0x11C,0xffffffffu)))return;
   uint32_t id=get<uint32_t>(p+0x10);if(!id)return;int x,y;
-  if(!project(proj,get<int>(p+0x9C,INT32_MIN),get<int>(p+0xA0,INT32_MIN),get<int>(p+0xA4,INT32_MIN),x,y))return;
+  int worldX=get<int>(p+0x9C,INT32_MIN),worldY=get<int>(p+0xA0,INT32_MIN);
+  if(!project(proj,worldX,worldY,get<int>(p+0xA4,INT32_MIN),x,y))return;
   if(enemies_.count>=enemies::Maximum){++enemies_.omitted;return;}
   auto&mark=enemies_.items[enemies_.count++];mark={};mark.object=p;mark.id=id;mark.type=t;mark.owner=owner;
-  mark.color=enemy->color;mark.player=enemy->index;mark.kind=k;mark.x=x;mark.y=y;
+  mark.color=enemy->color;mark.player=enemy->index;mark.kind=k;mark.x=x;mark.y=y;mark.worldX=worldX;mark.worldY=worldY;
   auto found=enemyNames_.find(t);if(found==enemyNames_.end()){
    if(enemyNames_.size()>=1024)enemyNames_.clear();EnemyTypeName value{};name(t,value.text);found=enemyNames_.emplace(t,value).first;
   }std::memcpy(mark.name,found->second.text,sizeof mark.name);

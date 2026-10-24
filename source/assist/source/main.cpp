@@ -79,11 +79,16 @@ static DisplayCounters displayCounters;
 static overlayui::Recovery overlayRecovery;
 static int labelScalePercent=100,constructionScalePercent=100;
 static visual::Motion motion;static visual::LabelView labelViews[MaxLabels];
+#include "enemy_clusters.h"
+static external::enemies::Frame clusteredEnemies;
+static std::vector<enemyclusters::Group> enemyGroups;
+static visual::LabelView clusteredEnemyViews[MaxLabels];
 static visual::Motion enemyMotion;static Snapshot enemySample{};static visual::LabelView enemyViews[MaxLabels];
 static_assert(external::enemies::Maximum<=MaxLabels,"Enemy markers reuse the existing display Motion capacity");
 struct EnemyRaster {std::wstring text;ARGB color{};std::unique_ptr<Bitmap> image;};
-static std::unordered_map<uint64_t,EnemyRaster> enemyRasters;static uint32_t enemyRasterMatch=0;
-static void clearEnemyDisplay(){enemyMotion.clear();enemyRasters.clear();enemyRasterMatch=0;}
+using EnemyRasterKey=std::tuple<uint32_t,uint32_t,int>;
+static std::map<EnemyRasterKey,EnemyRaster> enemyRasters;static uint32_t enemyRasterMatch=0;
+static void clearEnemyDisplay(){enemyMotion.clear();enemyRasters.clear();enemyGroups.clear();clusteredEnemies.count=0;enemyRasterMatch=0;}
 struct LabelRaster {std::wstring text;ARGB color{};float width{};int used{},capacity{},centis{},shield{},frozenCentis{};std::unique_ptr<Bitmap> image;};static std::unordered_map<uint32_t,LabelRaster> labelRasters;
 static visual::Motion statusMotion;static visual::LabelView statusViews[MaxLabels];static Snapshot statusSample;
 static_assert(external::status::Maximum<=MaxLabels,"Unit status markers share the existing Motion capacity");
@@ -800,7 +805,7 @@ static bool attach(){
  setStatus(L"已连接只读 PID "+std::to_wstring(pid)+
   (game?L"，正在校验内存布局…":L"，尚无可用窗口；控制功能保持关闭"));return true;
 }
-static uint64_t enemyRasterKey(const external::enemies::Marker&m){return (uint64_t(m.type)<<32)|m.owner;}
+static EnemyRasterKey enemyRasterKey(const external::enemies::Marker&m){return {m.type,m.owner,m.quantity};}
 static uint32_t statusOptions(){return (extra.parasiteMarker?external::status::Parasite:0)|(extra.crateBuffMarkers?external::status::CrateBuffs:0);}
 static void updateStatusDisplay(const Snapshot&source){
  const auto&f=externalSampler.unitStatuses();
@@ -818,10 +823,9 @@ static void updateEnemyDisplay(const Snapshot&source){
  enemySample.cameraX=source.cameraX;enemySample.cameraY=source.cameraY;
  for(int i=0;i<f.count;++i){const auto&m=f.items[i];enemySample.label[i]={m.id,m.x,m.y,0,0,0,0,0,m.color,0};}
  enemyMotion.update(enemySample,f.frame);
- if(enemyRasters.size()>size_t(f.count+32)){
-  std::unordered_set<uint64_t> live;for(int i=0;i<f.count;++i)live.insert(enemyRasterKey(f.items[i]));
-  for(auto i=enemyRasters.begin();i!=enemyRasters.end();)if(!live.count(i->first))i=enemyRasters.erase(i);else ++i;
- }
+ enemyGroups=enemyclusters::group(f);
+ // Count-specific text is shared across equal groups; bound historical counts.
+ if(enemyRasters.size()>4096)enemyRasters.clear();
 }
 static void mergeExternal(){
  if(!externalData)return;const auto&d=*externalData;const DWORD displayNow=sampleRenderClock(nullptr);
@@ -1015,9 +1019,10 @@ static void drawEnemyMarker(Graphics&g,const external::enemies::Marker&m,const v
  if(m.kind==3){g.DrawRectangle(&edge,x-7,y-7,14.f,14.f);g.DrawRectangle(&mark,x-7,y-7,14.f,14.f);}
  else{PointF points[]={{x,y-7},{x+7,y},{x,y+7},{x-7,y}};g.DrawPolygon(&edge,points,4);g.DrawPolygon(&mark,points,4);}
  std::wstring text;
- for(int i=0;i<18&&m.name[i];++i)if(m.name[i]>=32&&m.name[i]!=127)text.push_back(wchar_t(m.name[i]));
+ for(int i=0;i<(m.quantity>1?14:18)&&m.name[i];++i)if(m.name[i]>=32&&m.name[i]!=127)text.push_back(wchar_t(m.name[i]));
  if(!text.empty()&&text.back()>=0xD800&&text.back()<=0xDBFF)text.pop_back();
  if(text.empty())text+=m.kind==3?L"建筑":L"单位";
+ if(m.quantity>1)text+=L" ×"+std::to_wstring(m.quantity);
  auto&r=enemyRasters[enemyRasterKey(m)];
  if(!r.image||r.text!=text){
   const int width=std::clamp(int(text.size())*13+12,48,280);r.image=std::make_unique<Bitmap>(width,36,PixelFormat32bppPARGB);
@@ -1069,8 +1074,11 @@ static void paint(){
  DWORD now=sampleClock(shared),renderNow=sampleRenderClock(shared);int labelCount=motion.render(renderNow,labelViews);
  const auto&statusFrame=externalSampler.unitStatuses();
  int statusCount=statusOptions()&&externalData&&external::status::fresh(statusFrame,externalData->match,renderNow)?std::min(statusFrame.count,statusMotion.render(renderNow,statusViews)):0;
- const auto&enemyFrame=externalSampler.enemyMarkers();
- int enemyCount=extra.enemyMarkers&&externalData&&external::enemies::fresh(enemyFrame,externalData->match,renderNow)?std::min(enemyFrame.count,enemyMotion.render(renderNow,enemyViews)):0;
+ const auto&rawEnemyFrame=externalSampler.enemyMarkers();
+ int rawEnemyCount=extra.enemyMarkers&&externalData&&external::enemies::fresh(rawEnemyFrame,externalData->match,renderNow)?std::min(rawEnemyFrame.count,enemyMotion.render(renderNow,enemyViews)):0;
+ int enemyCount=rawEnemyCount?enemyclusters::render(rawEnemyFrame,enemyViews,rawEnemyCount,enemyGroups,clusteredEnemies,clusteredEnemyViews):0;
+ std::copy(clusteredEnemyViews,clusteredEnemyViews+enemyCount,enemyViews);
+ const auto&enemyFrame=clusteredEnemies;
  RECT r{};GetClientRect(game,&r);POINT origin{};ClientToScreen(game,&origin);
  updateAircraftButton(origin,r);minimap::update(origin,r);
  formationhost::update();watchhost::update(renderNow);watchwindows::update(origin,r);
