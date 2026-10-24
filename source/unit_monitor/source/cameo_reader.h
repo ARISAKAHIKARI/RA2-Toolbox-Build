@@ -1,5 +1,7 @@
 #pragma once
 #include "core.h"
+#include <vector>
+#include <string>
 namespace um {
 using AssetLoad=bool(*)(const char*,std::vector<uint8_t>&);
 template<class Read,class Resolve>bool readCameo(Read read,Resolve resolve,Type&t,uint8_t*buffer,size_t capacity,AssetLoad files=nullptr){
