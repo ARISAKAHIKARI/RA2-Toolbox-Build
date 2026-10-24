@@ -1,0 +1,74 @@
+name: Publish RA2 Toolbox 1.0.37
+on:
+  push:
+    branches: [codex/stable-v137]
+    paths: ['.github/workflows/publish-v137-stable.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: publish-v137-stable
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      actions: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      BUILD_SHA: 67018aae94785155fbfc4ebbdf37743cac6d4cc1
+      BUILD_RUN: '40119126777'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Require successful validation of these exact sources
+        run: |
+          set -euo pipefail
+          gh api "repos/$GH_REPO/actions/runs/$BUILD_RUN" > /tmp/build-run.json
+          python3 - <<'PY'
+          import json,os
+          r=json.load(open('/tmp/build-run.json'))
+          assert r['head_sha']==os.environ['BUILD_SHA'] and r['conclusion']=='success'
+          assert r['path']=='.github/workflows/validate-v137-stable.yml'
+          PY
+          git fetch --depth=1 origin "$BUILD_SHA"
+          git diff --exit-code "$BUILD_SHA" HEAD -- source/assist/source source/cursor/source source/unit_monitor/source source/external_reader/source source/shared/source source/suite/source source/game_runtime/source source/build-zig.sh source/defaults
+          gh run download "$BUILD_RUN" --name stable137-binaries --dir source
+          gh run download "$BUILD_RUN" --name stable137-windows-settings --dir source
+          python3 source/tools/verify_windows_outputs.py
+          python3 source/tools/package_stable137.py
+      - name: Publish verified stable release
+        run: |
+          set -euo pipefail
+          tag=v1.0.37
+          if gh release view "$tag" --json isDraft > /tmp/release-state.json 2>/dev/null; then
+            python3 - <<'PY'
+          import json
+          assert json.load(open('/tmp/release-state.json'))['isDraft'],'Refusing to replace an already-published stable release'
+          PY
+          else
+            gh release create "$tag" --target "$GITHUB_SHA" --draft --title 'RA2 Toolbox 1.0.37' --notes-file packages/v1.0.37/RELEASE_NOTES.md
+          fi
+          gh release edit "$tag" --target "$GITHUB_SHA" --title 'RA2 Toolbox 1.0.37' --notes-file packages/v1.0.37/RELEASE_NOTES.md
+          gh release upload "$tag" dist/v1.0.37/RA2-Toolbox-v1.0.37-Update.zip dist/v1.0.37/RA2-Toolbox-v1.0.37-Source.zip dist/v1.0.37/release-manifest.json --clobber
+          mkdir remote-check
+          gh release download "$tag" --pattern '*.zip' --pattern release-manifest.json --dir remote-check
+          python3 - <<'PY'
+          import hashlib,json,pathlib
+          manifest=json.load(open('dist/v1.0.37/release-manifest.json'))
+          for item in manifest['assets']:
+              data=(pathlib.Path('remote-check')/item['name']).read_bytes()
+              assert len(data)==item['bytes'] and hashlib.sha256(data).hexdigest()==item['sha256']
+          assert pathlib.Path('remote-check/release-manifest.json').read_bytes()==pathlib.Path('dist/v1.0.37/release-manifest.json').read_bytes()
+          PY
+          gh release edit "$tag" --draft=false --prerelease=false --latest
+          gh release view "$tag" --json url,tagName,isDraft,isPrerelease,assets > published-release.json
+          python3 - <<'PY'
+          import json
+          r=json.load(open('published-release.json'))
+          assert r['tagName']=='v1.0.37' and not r['isDraft'] and not r['isPrerelease']
+          assert {a['name'] for a in r['assets']}=={'RA2-Toolbox-v1.0.37-Update.zip','RA2-Toolbox-v1.0.37-Source.zip','release-manifest.json'}
+          PY
+          cat published-release.json >> "$GITHUB_STEP_SUMMARY"

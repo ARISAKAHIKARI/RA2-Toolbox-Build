@@ -40,7 +40,8 @@ def main():
         for name in sorted(paths):
             p=Path(name);assert not p.is_absolute() and '..' not in p.parts and not (ROOT/p).is_symlink()
             assert p.suffix.lower() not in {'.exe','.dll','.pdb','.zip','.7z','.o','.lib'}
-            z.write(ROOT/p,name)
+            # Archive the committed source, not reports regenerated in the build workspace.
+            z.writestr(name,subprocess.check_output(['git','show','HEAD:'+name],cwd=ROOT))
     with zipfile.ZipFile(src) as z:assert z.testzip() is None and set(z.namelist())==set(paths)
     assets.append({'name':src.name,'bytes':src.stat().st_size,'sha256':sha(src.read_bytes()),'tracked_files':len(paths)})
     report={'version':'1.0.37','file_version':'1.0.37.0','assist_protocol':71,
