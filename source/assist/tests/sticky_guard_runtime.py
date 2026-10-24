@@ -1,4 +1,4 @@
-"""Explicit Sticky owns native mission transitions only in single-player.
+"""Explicit Sticky: local SP transitions and network entry by synchronized event.
 Executes the compiled DLL and original ForceMission/NextMission instructions.
 World, Win32 and event delivery are fixtures, not a live game or netplay test.
 """
@@ -30,8 +30,25 @@ for mode in (0,5):
   assert not m.codeWrites
   rows.append({'case':f'{mode}_{action}','status':'PASS'})
 for mode in (3,4):
- m=fixture(mode);before=bytes(m.u.mem_read(m.unit,0x700));s=command(m)
- assert C.c_int32(s.result).value==-40 and not count(m) and bytes(m.u.mem_read(m.unit,0x700))==before
- rows.append({'case':f'network_{mode}_no_local_mutation','status':'PASS'})
+ for case in ('entry','repeat_pending','observed_repeat','manual','stop_tool','recycled','foreign','queue_full','unsupported'):
+  m=fixture(mode);m.vector(0xa8ecb8,[m.unit]);m.w(m.unit+0xac,5);m.w(m.unit+0xb4,0xffffffff)
+  if case=='foreign':m.w(m.unit+0x21c,m.enemy)
+  if case=='queue_full':m.w(0xa802c8,112)
+  if case=='unsupported':m.w(0xa8b238,2)
+  before=bytes(m.u.mem_read(m.unit,0x700));prior=count(m);s=command(m)
+  accepted=case not in ('foreign','queue_full','unsupported')
+  assert count(m)==prior+int(accepted),(mode,case,s.result,s.count,count(m))
+  assert bytes(m.u.mem_read(m.unit,0x700))==before,'network command must not locally execute mission'
+  if accepted:
+   event=packets(m)[prior*111:(prior+1)*111];assert event[0]==4 and event[12]==6 and event[7:12]==struct.pack('<IB',10,0x34)
+   assert event[13:24]==bytes(11),'Sticky has no target or destination'
+   if case=='observed_repeat':m.w(m.unit+0xac,6)
+   if case in ('repeat_pending','observed_repeat'):command(m)
+   if case=='manual':pointer(m,4,65536)
+   if case=='stop_tool':s=state(m);s.stop=1;save(m,s);m.hook()
+   if case=='recycled':m.w(m.unit+0x10,999);tick(m)
+   assert count(m)==prior+1 and m.r(m.unit+0xac)==(6 if case=='observed_repeat' else 5)
+  assert not m.codeWrites
+  rows.append({'case':f'network_{mode}_{case}_synchronized_no_local_mutation','status':'PASS'})
 Path(a.output).write_text(json.dumps({'scope':PROBE_SCOPE,'results':rows},indent=2)+'\n')
 print('PASS',len(rows),'explicit Sticky hold/release/manual/cleanup/session cases')

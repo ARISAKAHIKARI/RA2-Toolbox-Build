@@ -1,0 +1,22 @@
+{
+  "scope": "Execute compiled Runtime sampling/admission and native Idle constructors.\nSynthetic Win32/world/terrain; release and falling physics are not simulated.\nNo claim of real multiplayer or guaranteed kill after delivery latency.\n",
+  "dll_sha256": "61fc50ae57b295fba74046269297e22506d768be0dea94e3e1775af238bc6b25",
+  "results": [
+    {
+      "case": "0_global_inside_False_shared_target_reservation",
+      "status": "PASS"
+    },
+    {
+      "case": "0_global_inside_True_shared_target_reservation",
+      "status": "PASS"
+    },
+    {
+      "case": "3_global_inside_False_shared_target_reservation",
+      "status": "PASS"
+    },
+    {
+      "case": "3_global_inside_True_shared_target_reservation",
+      "status": "PASS"
+    }
+  ]
+}

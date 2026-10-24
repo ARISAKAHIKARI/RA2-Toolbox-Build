@@ -1,0 +1,289 @@
+{
+  "release": "1.0.37-pre.13",
+  "file_version": "1.0.37.13",
+  "assist_protocol": 69,
+  "runtime_protocol": 4,
+  "status": "PASS",
+  "binaries": {
+    "RA2Toolbox.exe": {
+      "sha256": "05cae7b284758cf9d9cc92ffab2d2066536d9935a6b74b65940432c371eef882",
+      "bytes": 2827776
+    },
+    "GameRuntime.dll": {
+      "sha256": "61fc50ae57b295fba74046269297e22506d768be0dea94e3e1775af238bc6b25",
+      "bytes": 4869632
+    }
+  },
+  "runtime_native_cases": 846,
+  "runtime_native_suites": [
+    {
+      "test": "formation_runtime_3",
+      "cases": 112,
+      "status": "PASS",
+      "result": "formation_runtime_3.json"
+    },
+    {
+      "test": "sticky_guard_runtime_3",
+      "cases": 34,
+      "status": "PASS",
+      "result": "sticky_guard_runtime_3.json"
+    },
+    {
+      "test": "magnetron_compute_runtime_3",
+      "cases": 48,
+      "status": "PASS",
+      "result": "magnetron_compute_runtime_3.json"
+    },
+    {
+      "test": "magnetron_drop_runtime_3",
+      "cases": 14,
+      "status": "PASS",
+      "result": "magnetron_drop_runtime_3.json"
+    },
+    {
+      "test": "magnetron_friendly_drop_runtime_3",
+      "cases": 82,
+      "status": "PASS",
+      "result": "magnetron_friendly_drop_runtime_3.json"
+    },
+    {
+      "test": "magnetron_guard_runtime_3",
+      "cases": 6,
+      "status": "PASS",
+      "result": "magnetron_guard_runtime_3.json"
+    },
+    {
+      "test": "magnetron_split_admission_runtime_3",
+      "cases": 4,
+      "status": "PASS",
+      "result": "magnetron_split_admission_runtime_3.json"
+    },
+    {
+      "test": "navigation137_runtime_3",
+      "cases": 22,
+      "status": "PASS",
+      "result": "navigation137_runtime_3.json"
+    },
+    {
+      "test": "magnetron137_runtime_3",
+      "cases": 50,
+      "status": "PASS",
+      "result": "magnetron137_runtime_3.json"
+    },
+    {
+      "test": "sticky_mission_native_3",
+      "cases": 10,
+      "status": "PASS",
+      "result": "sticky_mission_native_3.json"
+    },
+    {
+      "test": "cell_scene_native_3",
+      "cases": 48,
+      "status": "PASS",
+      "result": "cell_scene_native_3.json"
+    },
+    {
+      "test": "mission_candidates_native_3",
+      "cases": 14,
+      "status": "PASS",
+      "result": "mission_candidates_native_3.json"
+    },
+    {
+      "test": "formation_runtime_4",
+      "cases": 112,
+      "status": "PASS",
+      "result": "formation_runtime_4.json"
+    },
+    {
+      "test": "sticky_guard_runtime_4",
+      "cases": 34,
+      "status": "PASS",
+      "result": "sticky_guard_runtime_4.json"
+    },
+    {
+      "test": "magnetron_compute_runtime_4",
+      "cases": 48,
+      "status": "PASS",
+      "result": "magnetron_compute_runtime_4.json"
+    },
+    {
+      "test": "magnetron_drop_runtime_4",
+      "cases": 14,
+      "status": "PASS",
+      "result": "magnetron_drop_runtime_4.json"
+    },
+    {
+      "test": "magnetron_friendly_drop_runtime_4",
+      "cases": 82,
+      "status": "PASS",
+      "result": "magnetron_friendly_drop_runtime_4.json"
+    },
+    {
+      "test": "magnetron_guard_runtime_4",
+      "cases": 6,
+      "status": "PASS",
+      "result": "magnetron_guard_runtime_4.json"
+    },
+    {
+      "test": "magnetron_split_admission_runtime_4",
+      "cases": 4,
+      "status": "PASS",
+      "result": "magnetron_split_admission_runtime_4.json"
+    },
+    {
+      "test": "navigation137_runtime_4",
+      "cases": 22,
+      "status": "PASS",
+      "result": "navigation137_runtime_4.json"
+    },
+    {
+      "test": "sticky_mission_native_4",
+      "cases": 10,
+      "status": "PASS",
+      "result": "sticky_mission_native_4.json"
+    },
+    {
+      "test": "cell_scene_native_4",
+      "cases": 48,
+      "status": "PASS",
+      "result": "cell_scene_native_4.json"
+    },
+    {
+      "test": "mission_candidates_native_4",
+      "cases": 14,
+      "status": "PASS",
+      "result": "mission_candidates_native_4.json"
+    },
+    {
+      "test": "mapping_pair_3",
+      "cases": 4,
+      "status": "PASS",
+      "result": "mapping_pair_3.json"
+    },
+    {
+      "test": "mapping_pair_4",
+      "cases": 4,
+      "status": "PASS",
+      "result": "mapping_pair_4.json"
+    }
+  ],
+  "host_pure_suites": [
+    {
+      "test": "assist/scene_lighting",
+      "status": "PASS",
+      "log": "source/verification/review-137-pre13/assist-scene_lighting.log"
+    },
+    {
+      "test": "assist/formation_host",
+      "status": "PASS",
+      "log": "source/verification/review-137-pre13/assist-formation_host.log"
+    },
+    {
+      "test": "assist/watch_host",
+      "status": "PASS",
+      "log": "source/verification/review-137-pre13/assist-watch_host.log"
+    },
+    {
+      "test": "assist/watch_view",
+      "status": "PASS",
+      "log": "source/verification/review-137-pre13/assist-watch_view.log"
+    },
+    {
+      "test": "assist/formation",
+      "status": "PASS",
+      "log": "source/verification/review-137-pre13/assist-formation.log"
+    },
+    {
+      "test": "assist/external_planner",
+      "status": "PASS",
+      "log": "source/verification/review-137-pre13/assist-external_planner.log"
+    },
+    {
+      "test": "assist/magnetron_compute",
+      "status": "PASS",
+      "log": "source/verification/review-137-pre13/assist-magnetron_compute.log"
+    },
+    {
+      "test": "assist/magnetron",
+      "status": "PASS",
+      "log": "source/verification/review-137-pre13/assist-magnetron.log"
+    },
+    {
+      "test": "assist/magnetron_rof",
+      "status": "PASS",
+      "log": "source/verification/review-137-pre13/assist-magnetron_rof.log"
+    },
+    {
+      "test": "assist/magnetron_landing",
+      "status": "PASS",
+      "log": "source/verification/review-137-pre13/assist-magnetron_landing.log"
+    },
+    {
+      "test": "assist/feature_type_config",
+      "status": "PASS",
+      "log": "source/verification/review-137-pre13/assist-feature_type_config.log"
+    },
+    {
+      "test": "monitor/tab_control",
+      "status": "PASS",
+      "log": "source/verification/review-137-pre13/monitor-tab_control.log"
+    },
+    {
+      "test": "monitor/overlay_recovery",
+      "status": "PASS",
+      "log": "source/verification/review-137-pre13/monitor-overlay_recovery.log"
+    },
+    {
+      "test": "monitor/round_transition",
+      "status": "PASS",
+      "log": "source/verification/review-137-pre13/monitor-round_transition.log"
+    },
+    {
+      "test": "auto_settings_ui_test",
+      "status": "PASS",
+      "log": "source/verification/review-137-pre13/auto_settings_ui_test.log"
+    },
+    {
+      "test": "ui_geometry_test",
+      "status": "PASS",
+      "log": "source/verification/review-137-pre13/ui_geometry_test.log"
+    },
+    {
+      "test": "suite_display_test",
+      "status": "PASS",
+      "log": "source/verification/review-137-pre13/suite_display_test.log"
+    },
+    {
+      "test": "persistent_ui_source_test",
+      "status": "PASS",
+      "log": "source/verification/review-137-pre13/persistent_ui_source_test.log"
+    },
+    {
+      "test": "assist/watch_slots",
+      "status": "PASS",
+      "log": "source/verification/review-137-pre13/assist-watch_slots.log"
+    },
+    {
+      "test": "assist/hotkey_routes",
+      "status": "PASS",
+      "log": "source/verification/review-137-pre13/assist-hotkey_routes.log"
+    },
+    {
+      "test": "hotkey_host_test",
+      "status": "PASS",
+      "log": "source/verification/review-137-pre13/hotkey_host_test.log"
+    },
+    {
+      "test": "watch_windows_test",
+      "status": "PASS",
+      "log": "source/verification/review-137-pre13/watch_windows_test.log"
+    }
+  ],
+  "scope": "Controlled actual-DLL/native-instruction execution and production Host logic with synthetic Win32, GDI, world, asset and selected engine endpoints. No real Windows display, full physics/AI or two-peer multiplayer validation.",
+  "limitations": [
+    "Multiplayer Sticky entry uses the original sync event, but multiplayer exit is not implemented.",
+    "Hunt/Patrol/Retreat are investigated candidates only, not added buttons.",
+    "Layered and tracking-window appearance/cursor behavior still require Windows/game verification.",
+    "Source package is generated and verified again from the remote release commit."
+  ]
+}

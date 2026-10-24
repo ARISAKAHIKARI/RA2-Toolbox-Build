@@ -1,0 +1,13 @@
+PASS catalogue populated from live game and written to disk
+PASS catalogue restored prior to UI creation
+PASS offline lists populated at UI creation
+PASS type binding list uses durable cached values
+PASS tech uses cached values
+PASS runtime select still uses match type indexes
+PASS game process detaching does not erase catalogue
+PASS manual offline type ID entry
+PASS old saved technology IDs survive first upgrade
+PASS bindings written as one multisz section
+PASS per-profile tech overrides retained
+PASS writes report failure
+PASS persistent catalogue deliberately separated from bridge hooks

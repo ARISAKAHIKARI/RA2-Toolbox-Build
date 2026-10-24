@@ -25,7 +25,7 @@ struct ControlUpdate {};static int ui=0;constexpr int CB_SETCURSEL=3;static void
 static uint32_t now=1000,scene=8;static uint32_t GetTickCount(){return now;}
 static AdditionalSettings extra;static Snapshot snap{};static auto memory=std::make_unique<Shared>();static Shared*shared=memory.get();
 static bool enabled=true,focused=true,hasSelection=false,ejectMode=false,hookEject=false,csMode=false,hookAutoCS=false;
-static bool formationInputOwns(){return false;}static bool formationHotkey(WORD){return false;}namespace watchhost {static int pins=0;static void pin(){++pins;}}
+static bool formationInputOwns(){return false;}static bool formationHotkey(WORD){return false;}namespace watchhost {static int pins=0;static uint32_t lastKey=0;static void pin(uint32_t key){lastKey=key;++pins;}}
 static bool foregroundGame(){return focused;}static bool freshConnection=true;static bool commandFresh(uint32_t){return freshConnection;}static uint32_t commandMatch(){return scene;}
 static int doubleMs=350;static typekeys::Tap typeTap,variantTap;static hotkeyroute::Registry hotkeyRegistry;static hotkeyroute::Pending hotkeyPending;
 static int repairCheck=1,ejectCheck=2,csCheck=3,hookChecks[4]={4,5,6,7};static std::map<int,int>controls;
@@ -65,7 +65,7 @@ int main(){
  hotkeyRegistry.clear();assert(hotkeyRegistry.add(1718,0x641,false,install));handleHotkey(1718,event);assert(commands.back()==Taunt);ack();
  snap.chat=1;auto socialCount=commands.size();handleHotkey(1718,event);assert(commands.size()==socialCount);snap.chat=0;
  socialKeys[3]=0x641;assert(keyConflict(0x641,"",false));socialKeys[3]=0;
- hotkeyRegistry.clear();assert(hotkeyRegistry.add(1702,0x657,false,install));handleHotkey(1702,('W'<<16)|(MOD_CONTROL|MOD_ALT));assert(watchhost::pins==1);
+ hotkeyRegistry.clear();assert(hotkeyRegistry.add(1730,0x657,false,install));handleHotkey(1730,('W'<<16)|(MOD_CONTROL|MOD_ALT));assert(watchhost::pins==1);
  hotkeyRegistry.clear();extra.allHotkeys=false;extra.idleAircraft=false;snap.renderStatus=1;
  assert(keyConflict(idleAircraftKey,"",false));
  assert(hotkeyRegistry.add(1701,idleAircraftKey,false,install));const intptr_t planeEvent=('P'<<16)|(MOD_CONTROL|MOD_ALT);
@@ -94,10 +94,10 @@ int main(){
  ++shared->request;for(int n=0;n<128;++n)handleHotkey(1723,'S'<<16);assert(hotkeyPending.count==128);now+=2501;serviceHotkeyBatch();assert(hotkeyPending.count==0);ack();handleHotkey(1723,'S'<<16);assert(commands.size()==beforeCommands+1);ack();
  ++shared->selectRequest;handleHotkey(1723,'S'<<16);assert(hotkeyPending.count==1);now+=2501;serviceHotkeyBatch();assert(hotkeyPending.count==0);ack();
  // Configured double-only commands execute once, after the second tap.
- hotkeyRegistry.clear();hotkeyPending.clear();assert(hotkeyRegistry.add(1702,0x8000|'Q',false,install));
- auto pins=watchhost::pins;handleHotkey(1702,'Q'<<16);assert(watchhost::pins==pins);now+=100;handleHotkey(1702,'Q'<<16);assert(watchhost::pins==pins+1);
+ hotkeyRegistry.clear();hotkeyPending.clear();assert(hotkeyRegistry.add(1730,0x8000|'Q',false,install));
+ auto pins=watchhost::pins;handleHotkey(1730,'Q'<<16);assert(watchhost::pins==pins);now+=100;handleHotkey(1730,'Q'<<16);assert(watchhost::pins==pins+1);
  // Bare modifiers use physical press serials, never held-key timer repeats.
- hotkeyRegistry.clear();assert(hotkeyRegistry.add(1702,0x8000|17,false,install));
+ hotkeyRegistry.clear();assert(hotkeyRegistry.add(1730,0x8000|17,false,install));
  gameinput::keys[17]=1;gameinput::serial[17]=1;serviceHotkeyBatch();serviceHotkeyBatch();assert(watchhost::pins==pins+1);
  gameinput::keys[17]=0;serviceHotkeyBatch();now+=100;gameinput::keys[17]=3;gameinput::serial[17]=2;serviceHotkeyBatch();assert(watchhost::pins==pins+2);
  // A pending first tap is discarded on focus loss.

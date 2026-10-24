@@ -1,0 +1,198 @@
+{
+  "scope": "Execute compiled Runtime sampling/admission and native Idle constructors.\nSynthetic Win32/world/terrain; release and falling physics are not simulated.\nNo claim of real multiplayer or guaranteed kill after delivery latency.\n",
+  "dll_sha256": "61fc50ae57b295fba74046269297e22506d768be0dea94e3e1775af238bc6b25",
+  "results": [
+    {
+      "case": "0_0_explicit",
+      "status": "PASS"
+    },
+    {
+      "case": "0_0_global",
+      "status": "PASS"
+    },
+    {
+      "case": "0_0_drop",
+      "status": "PASS"
+    },
+    {
+      "case": "0_1_explicit",
+      "status": "PASS"
+    },
+    {
+      "case": "0_1_global",
+      "status": "PASS"
+    },
+    {
+      "case": "0_1_drop",
+      "status": "PASS"
+    },
+    {
+      "case": "0_2_explicit",
+      "status": "PASS"
+    },
+    {
+      "case": "0_2_global",
+      "status": "PASS"
+    },
+    {
+      "case": "0_2_drop",
+      "status": "PASS"
+    },
+    {
+      "case": "0_3_explicit",
+      "status": "PASS"
+    },
+    {
+      "case": "0_3_global",
+      "status": "PASS"
+    },
+    {
+      "case": "0_3_drop",
+      "status": "PASS"
+    },
+    {
+      "case": "0_4_explicit",
+      "status": "PASS"
+    },
+    {
+      "case": "0_4_global",
+      "status": "PASS"
+    },
+    {
+      "case": "0_4_drop",
+      "status": "PASS"
+    },
+    {
+      "case": "0_5_explicit",
+      "status": "PASS"
+    },
+    {
+      "case": "0_5_global",
+      "status": "PASS"
+    },
+    {
+      "case": "0_5_drop",
+      "status": "PASS"
+    },
+    {
+      "case": "0_6_explicit",
+      "status": "PASS"
+    },
+    {
+      "case": "0_6_global",
+      "status": "PASS"
+    },
+    {
+      "case": "0_6_drop",
+      "status": "PASS"
+    },
+    {
+      "case": "0_7_explicit",
+      "status": "PASS"
+    },
+    {
+      "case": "0_7_global",
+      "status": "PASS"
+    },
+    {
+      "case": "0_7_drop",
+      "status": "PASS"
+    },
+    {
+      "case": "3_0_explicit",
+      "status": "PASS"
+    },
+    {
+      "case": "3_0_global",
+      "status": "PASS"
+    },
+    {
+      "case": "3_0_drop",
+      "status": "PASS"
+    },
+    {
+      "case": "3_1_explicit",
+      "status": "PASS"
+    },
+    {
+      "case": "3_1_global",
+      "status": "PASS"
+    },
+    {
+      "case": "3_1_drop",
+      "status": "PASS"
+    },
+    {
+      "case": "3_2_explicit",
+      "status": "PASS"
+    },
+    {
+      "case": "3_2_global",
+      "status": "PASS"
+    },
+    {
+      "case": "3_2_drop",
+      "status": "PASS"
+    },
+    {
+      "case": "3_3_explicit",
+      "status": "PASS"
+    },
+    {
+      "case": "3_3_global",
+      "status": "PASS"
+    },
+    {
+      "case": "3_3_drop",
+      "status": "PASS"
+    },
+    {
+      "case": "3_4_explicit",
+      "status": "PASS"
+    },
+    {
+      "case": "3_4_global",
+      "status": "PASS"
+    },
+    {
+      "case": "3_4_drop",
+      "status": "PASS"
+    },
+    {
+      "case": "3_5_explicit",
+      "status": "PASS"
+    },
+    {
+      "case": "3_5_global",
+      "status": "PASS"
+    },
+    {
+      "case": "3_5_drop",
+      "status": "PASS"
+    },
+    {
+      "case": "3_6_explicit",
+      "status": "PASS"
+    },
+    {
+      "case": "3_6_global",
+      "status": "PASS"
+    },
+    {
+      "case": "3_6_drop",
+      "status": "PASS"
+    },
+    {
+      "case": "3_7_explicit",
+      "status": "PASS"
+    },
+    {
+      "case": "3_7_global",
+      "status": "PASS"
+    },
+    {
+      "case": "3_7_drop",
+      "status": "PASS"
+    }
+  ]
+}

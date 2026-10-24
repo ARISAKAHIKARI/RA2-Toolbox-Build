@@ -141,7 +141,7 @@ class MissileAssignment(C.Structure):
 class MissileResult(C.Structure):
  _fields_=[('match',C.c_uint32),('tick',C.c_uint32),('frame',C.c_int32),('count',C.c_int32),('orders',MissileAssignment*64)]
 class FormationPolicy(C.Structure):
-    _fields_=[('enabled',C.c_uint32),('hold',C.c_uint32),('keys',C.c_uint32*4),('mouse',C.c_uint32)]
+    _fields_=[('enabled',C.c_uint32),('hold',C.c_uint32),('keys',C.c_uint32*6),('mouse',C.c_uint32)]
 class FormationUnit(C.Structure):
     _fields_=[(x,C.c_uint32) for x in 'id pointer type token color'.split()]+[(x,C.c_int32) for x in 'x y z kind'.split()]
 class FormationSlot(C.Structure):

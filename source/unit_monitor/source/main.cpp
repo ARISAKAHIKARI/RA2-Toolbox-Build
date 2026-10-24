@@ -25,6 +25,7 @@
 #include "suite_host.h"
 #endif
 #include "tab_control.h"
+#include "../../shared/source/overlay_recovery.h"
 #include "../../external_reader/source/game_asset_files.h"
 using namespace Gdiplus;
 static HWND ui,overlay,stats,bStart,bDemo,cBuildings,cOthers,eTop,eLeft,cTab,tabModeBox,visibilityLabel;static HFONT font;
@@ -44,6 +45,7 @@ static void statsVisible(bool value){
 }
 static bool tabEnabled=true,renderDirty=true,gameActive=false;
 static tabui::Mode tabMode=tabui::Mode::TapOrHold;static tabui::Controller tabs;static tabui::Fade fade;
+static overlayui::Recovery overlayRecovery;
 struct UnitSurface {
  HDC dc=nullptr;HBITMAP bitmap=nullptr,old=nullptr;void* bits=nullptr;int w=0,h=0;
  void clear(){if(dc){SelectObject(dc,old);DeleteObject(bitmap);DeleteDC(dc);}dc=nullptr;bitmap=old=nullptr;bits=nullptr;w=h=0;}
@@ -77,6 +79,7 @@ static void visibilityStatus(const std::wstring& text){
 }
 static void toggleOverlay(){tabui::toggleDisplay(!tabEnabled,tabs.visible(),hidden,manualVisible);renderDirty=true;}
 static void detach(){
+ overlayRecovery.suspend();
  statsVisible(false);
  sampler.reset();assetFiles.clear();reader.close();
  game=nullptr;pid=0;threadId=0;lastGood=0;oldMatch=0;page=0;gameActive=false;tabs.reset();fade.hide();renderDirty=true;paintedAlpha=-1;surface.clear();memset(snap.get(),0,sizeof(*snap));memset(incoming.get(),0,sizeof(*incoming));ShowWindow(overlay,SW_HIDE);
@@ -181,14 +184,15 @@ static void render(int width,int height,POINT origin,int gameWidth,int gameHeigh
  }
  renderDirty=false;paintedAlpha=-1;
 }
-static void present(POINT origin,int alpha){
+static void present(POINT origin,int alpha,bool repair=false){
  if(!surface.dc||alpha<=0){statsVisible(false);ShowWindow(overlay,SW_HIDE);paintedAlpha=0;return;}
  statsVisible(true);
- if(alpha!=paintedAlpha||origin.x!=paintedOrigin.x||origin.y!=paintedOrigin.y||!IsWindowVisible(overlay)){
+ if(repair||alpha!=paintedAlpha||origin.x!=paintedOrigin.x||origin.y!=paintedOrigin.y||!IsWindowVisible(overlay)){
   SIZE size{surface.w,surface.h};POINT zero{};BLENDFUNCTION blend{AC_SRC_OVER,0,BYTE(alpha),AC_SRC_ALPHA};
-  if(UpdateLayeredWindow(overlay,nullptr,&origin,&size,surface.dc,&zero,0,&blend,ULW_ALPHA)){paintedAlpha=alpha;paintedOrigin=origin;}
+  bool uploaded=UpdateLayeredWindow(overlay,nullptr,&origin,&size,surface.dc,&zero,0,&blend,ULW_ALPHA)!=0;
+  overlayRecovery.submitted(uploaded);if(uploaded){paintedAlpha=alpha;paintedOrigin=origin;}
  }
- if(!IsWindowVisible(overlay))SetWindowPos(overlay,HWND_TOPMOST,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE|SWP_SHOWWINDOW);
+ if(repair||!IsWindowVisible(overlay))SetWindowPos(overlay,HWND_TOPMOST,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE|SWP_SHOWWINDOW);
 }
 
 static void demoData(){
@@ -225,7 +229,9 @@ static void tick(){
      if(incoming->typeCount>=0&&incoming->typeCount<=um::MaxTypes&&incoming->playerCount>=0&&incoming->playerCount<=um::MaxPlayers){
       renderDirty=renderDirty||changed(*snap,*incoming);std::swap(snap,incoming);if(snap->status==1&&now-snap->tick<2000)lastGood=now;
       if(snap->status!=1||oldMatch!=snap->match){
-       if(snap->status==1){oldMatch=snap->match;hidden=false;manualVisible=false;tabs.reset();
+       if(snap->status==1){oldMatch=snap->match;
+        // Keep the user's latched/manual visibility through loading and rounds.
+        // loseFocus below releases a held Tab without changing that choice.
         log((L"单位统计采样代次 "+std::to_wstring(oldMatch)+L"，重建玩家列表与画面").c_str());}
        else lastGood=0;
        page=0;tabs.loseFocus();fade.hide();paintedAlpha=-1;renderDirty=true;surface.clear();
@@ -251,13 +257,14 @@ static void tick(){
  }
  bool active=enabled&&(demo||(battlefield&&foregroundGame()&&snap->status==1&&now-lastGood<3000));
  if(!active){
+  overlayRecovery.suspend();
   visibilityStatus(!enabled?L"覆盖层已暂停":!foregroundGame()?L"覆盖层隐藏：游戏未在前台":snap->status!=1||now-lastGood>=3000?L"覆盖层等待有效游戏数据":!displayState.readable?L"覆盖层隐藏：菜单状态读取失败":L"覆盖层隐藏：菜单/对话框/非战场 · tactical="+std::to_wstring(displayState.tactical)+L" dialog="+std::to_wstring(displayState.specialDialog)+L" windows="+std::to_wstring(displayState.dialogCount));
   statsVisible(false);gameActive=false;tabs.loseFocus();fade.hide();paintedAlpha=-1;ShowWindow(overlay,SW_HIDE);return;}
  if(!gameActive){renderDirty=true;paintedAlpha=-1;SetWindowPos(overlay,HWND_TOPMOST,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE);}
  gameActive=true;
  bool desired=tabui::displayRequested(hidden,demo||!tabEnabled,manualVisible,tabs.visible());fade.target(desired,now);
  visibilityStatus(desired?(manualVisible?L"覆盖层已请求显示：手动开启":!tabEnabled?L"覆盖层已请求显示：常驻模式":L"覆盖层已请求显示：Tab/演示"):hidden?L"覆盖层手动隐藏：按钮或 Ctrl+Alt+H 开启":L"覆盖层等待 Tab：也可用按钮或 Ctrl+Alt+H");
- int alpha=fade.value(now);if(!desired&&alpha==0){statsVisible(false);ShowWindow(overlay,SW_HIDE);paintedAlpha=0;return;}
+ int alpha=fade.value(now);if(!desired)overlayRecovery.suspend();if(!desired&&alpha==0){statsVisible(false);ShowWindow(overlay,SW_HIDE);paintedAlpha=0;return;}
  RECT r{};POINT pt{};
  if(demo){MONITORINFO mi{sizeof mi};GetMonitorInfoW(MonitorFromWindow(ui,MONITOR_DEFAULTTONEAREST),&mi);r.right=mi.rcMonitor.right-mi.rcMonitor.left;r.bottom=mi.rcMonitor.bottom-mi.rcMonitor.top;pt={mi.rcMonitor.left,mi.rcMonitor.top};}
  else {GetClientRect(game,&r);ClientToScreen(game,&pt);}
@@ -267,8 +274,10 @@ static void tick(){
  static int previousW=0,previousH=0,previousGW=0,previousGH=0;
  if(previousW!=r.right||previousH!=r.bottom||previousGW!=gameWidth||previousGH!=gameHeight){previousW=r.right;previousH=r.bottom;previousGW=gameWidth;previousGH=gameHeight;renderDirty=true;
  log((L"Overlay geometry game="+std::to_wstring(gameWidth)+L"x"+std::to_wstring(gameHeight)+L" client="+std::to_wstring(r.right)+L"x"+std::to_wstring(r.bottom)).c_str());}
+ bool repair=overlayRecovery.due(now,desired&&alpha>0,{uintptr_t(game),pid,snap->match,r.right,r.bottom},IsWindowVisible(overlay)!=0);
+ if(repair)renderDirty=true;
  if(renderDirty||!surface.dc)render(r.right,r.bottom,pt,gameWidth,gameHeight);
- present(pt,alpha);
+ present(pt,alpha,repair);
 }
 static void buttonLabel(){
 #ifdef RA2_UNIFIED

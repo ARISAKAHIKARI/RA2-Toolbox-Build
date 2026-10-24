@@ -24,14 +24,12 @@ for(int i:{11,1,2,3,4,5,6,7,0}){
 }
 hookChecks[1]=toggle(459,L"智能卸载",hookSmartUnload,20,270);unloadKeyEdit=key(451,unloadKey,305,180);button(453,L"立即卸载",500,125);next();
 ejectCheck=toggle(455,L"载员自动逃生",ejectMode,20,306);ejectKeyEdit=key(456,ejectKey);next();
-csCheck=toggle(446,L"自动移动攻击（CS）",csMode,20,306);csKeyEdit=key(447,csKey);next();
 label(L"喝彩",20,306);key(870,socialKeys[0]);next();
 for(int i=1;i<9;++i){auto text=L"嘲讽 "+std::to_wstring(i);label(text.c_str(),20,306);key(870+i,socialKeys[i]);next();}
 note(L"绑定后由工具箱接管该组合；聊天和菜单中不接管。嘲讽仍遵循原版冷却与接收方设置。",44);
 label(L"轮选空闲飞机",20,306);key(853,idleAircraftKey);next();
 label(L"按当前武器选择同类单位",20,306);extraControls[VariantKey]=key(724,extra.variantKey);next();
 button(454,L"停止所选单位的自动任务");next();
-button(9094,L"Sticky 驻守（单机）",20,306);key(9095,extra.stickyKey);next();note(L"设置所选地面单位为 Sticky=6，并显示金色标记。再次按键切换解除；手动移动、攻击或停止自动解除。支持自定义组合与双击；联机暂不支持。");
 note(L"组合选兵：多个单位类型可使用同一快捷键；单按选屏幕内，双按选全图。",44);
 typeList=combo(440,20,315,300);typeKey=key(441,0,345,180);button(443,L"解除绑定",537,88);next();
 label(L"手动添加单位 ID",20,180);typeIdEdit=edit(467,L"",210,315);button(449,L"添加",537,88);next();
@@ -45,7 +43,6 @@ label(L"功能开关",20,210);label(L"按住键 / 自定义组合",240,258);labe
 hookChecks[0]=toggle(458,L"高级移动攻击",hookAdvanced,20,210);advancedKeyEdit=key(450,advancedKey,240,258,true);mouse(pointerinput::MouseAdvanced);next();
 magnetronCheck=toggle(477,L"磁电轮换攻击",magnetronMode,20,210);magnetronKeyEdit=key(478,magnetronKey,240,258,true);mouse(pointerinput::MouseMagnetron);next();
  toggle(9042,L"磁电全局无限吸",extra.magnetronGlobal);next();note(L"自动接管空闲磁电，沿用轮换和类型清单；手动移动或攻击优先。关闭后停止自动接续。");
-csHoldCheck=toggle(473,L"按键移动攻击（CS）",csHoldEnabled,20,210);csHoldEdit=key(474,csHoldKey,240,258,true);mouse(pointerinput::MouseCS);next();
 extraControls[EnterEnabled]=toggle(702,L"高级进驻",extra.enter,20,210);holdPresetControl(EnterPreset,EnterCustom,extra.enterKey);mouse(pointerinput::MouseEnter);next();
 extraControls[AirEnabled]=toggle(705,L"飞机分配攻击 · 1",extra.air,20,210);holdPresetControl(AirPreset1,AirCustom1,extra.airKey1);mouse(pointerinput::MouseAirFirst);next();
 label(L"飞机分配攻击 · 2",20,210);holdPresetControl(AirPreset2,AirCustom2,extra.airKey2);mouse(pointerinput::MouseAirSecond);next();
@@ -58,8 +55,9 @@ note(L"直接攻击移动只下达一次命令；高级移动攻击会持续重�
 toggle(9050,L"队形排列（地面单位）",extra.formationEnabled);next();
 label(L"队形拖拽鼠标键",20,260);choices(combo(9056),{L"右键",L"左键（覆盖原生下令）"},extra.formationMouse==1?1:0);next();
 label(L"队形按住键",20,306);key(9051,extra.formationHold,345,280,true);next();
-{const wchar_t* names[]={L"矩形横队",L"分散横队",L"圆形聚集",L"扇形（60°）"};for(int n=0;n<4;++n){label(names[n],20,306);key(9052+n,extra.formationKeys[n]);next();}}
-note(L"按住队形键拖拽，或双击 Alt 进入后拖拽；使用上方设置的鼠标键。拖动方向决定朝向，320 像素是一横排；点按聚集。Esc 取消。形状键可共用并连续切换；提交一次退出预览，选中成员不变时后续普通移动保持队形。",44);
+{const wchar_t* names[]={L"矩形横队",L"分散横队",L"圆形聚集",L"扇形（60°）",L"正方形聚集",L"空心框聚集"};const int ids[]={9052,9053,9054,9055,9057,9058};for(int n=0;n<6;++n){label(names[n],20,306);key(ids[n],extra.formationKeys[n]);next();}}
+note(L"按住队形键或双击 Alt 进入，点按提交当前预览；拖动方向决定朝向。形状可共用键，每敲一次切换，长按不重复。Esc 取消。提交后退出预览；成员不变时后续移动保持队形。",44);
+note(L"正方形默认 B，空心框默认 N。框形未拖动时边框面积与中空面积约 3∶1，拖到最大变成单层边框；其余形状拖到最大为一横排。",44);
 label(L"飞机路径点",20,260);choices(combo(803),{L"关闭",L"兼容路径点",L"原生优先"},extra.nativeAirWaypoints?2:extra.airWaypoints?1:0);next();
 label(L"路径点按住键",20,306);{auto h=key(894,extra.airPathKey);modernui::holdKey(h);}next();
 note(L"留空跟随游戏当前的路径点按键；自定义按键使用兼容路径点。原生优先在单机使用原生规划，联机自动使用兼容路径点。",44);
@@ -112,7 +110,7 @@ for(int f=0;f<featuretypes::Count;++f){
  if(f==featuretypes::BurstRefresh)continue; // Retired slot stays in the shared ABI.
  label(featuretypes::name(f),20,350);toggle(9200+f*2,L"仅处理清单中的类型",featureTypes.filters[f].custom,380,245);next();
  auto h=edit(9201+f*2,featureTypeText[f],20,605);SendMessageW(h,EM_SETLIMITTEXT,12287,0);SendMessageW(h,EM_SETCUEBANNER,TRUE,(LPARAM)L"单位类型 ID，以逗号分隔");next();
- note(L"此开关和清单只作用于上方命名的功能；关闭限制时保留清单，开启且留空表示不处理任何类型。");
+ note(L"此开关和清单只作用于上方命名的功能；不勾选时忽略预填 ID，按功能自身能力条件自动识别；勾选后再按清单缩小范围，留空则不处理任何类型。");
 }
 
 heading(3,903,L"战场信息",L"调整游戏内信息显示、缩放与位置；有效设置立即生效。");
@@ -150,7 +148,8 @@ const wchar_t* lineNames[]={L"队列提醒：建筑",L"队列提醒：防御",L"
 for(int i=0;i<6;++i){toggle(9070+i,lineNames[i],(extra.productionReminderMask&(1u<<i))!=0);next();}
 toggle(9060,L"左中局部观察窗",extra.watchEnabled);next();
 toggle(9061,L"自动跟随危险载员的敌方载具",extra.watchDanger);next();
-label(L"固定 / 解除观察（悬停或选中）",20,306);key(9062,extra.watchKey);next();
+for(int n=0;n<3;++n){const wchar_t* names[]={L"跟踪窗口 1 快捷键",L"跟踪窗口 2 快捷键",L"跟踪窗口 3 快捷键"};label(names[n],20,306);key(9062+n,extra.watchKeys[n]);next();}
+note(L"同键每按一次添加一个窗口，只使用该键绑定的空位。左击跳转；Shift＋右击关闭。组内目标死亡时，接替原选中组中距它 5 格内的最近单位。",44);
 toggle(798,L"空闲飞机指示器",extra.idleAircraft);next();
 #ifdef RA2_UNIFIED
 rateEdit=placedControl({-3,{0,0,1,1}},L"EDIT",std::to_wstring(fps).c_str(),310,ES_NUMBER);
@@ -170,6 +169,10 @@ note(L"坐标从游戏画面左上角计算；自动避开原雷达和飞机按�
 detailCheck=toggle(481,L"显示运行耗时",showDetails);next();
 
 heading(4,904,L"高级与实验性设置",L"实验性功能尚未完成联机验证，可能导致不同步或掉线。建议单独测试。");
+button(9094,L"Sticky 驻守（实验性／支持联机进入）",20,306);key(9095,extra.stickyKey);next();note(L"所选地面单位进入 Sticky=6；默认 Ctrl+Alt+S，可改组合或双击。联机仅支持同步进入，重复键不重发，退出尚未实现。单机可再次按键或手动下令解除；实际进入后显示金色标记。");
+csCheck=toggle(446,L"自动移动攻击（CS）",csMode,20,306);csKeyEdit=key(447,csKey);next();
+csHoldCheck=toggle(473,L"按键移动攻击（CS）",csHoldEnabled,20,210);csHoldEdit=key(474,csHoldKey,240,258,true);mouse(pointerinput::MouseCS);next();
+note(L"自动模式和按键模式均使用原版移动攻击命令；参与类型、快捷键和鼠标键设置保持不变。");
 toggle(899,L"磁电全局自动摔落（实验性）",extra.magnetronDrop);next();
 note(L"独立检查全图己方磁电已吸起的载具，包括己方、盟友和敌方，手动强制攻击也生效。检测建筑、地面坦克、树木、矿柱、悬崖及水陆不适配；两栖/悬浮不因普通水陆而摔，排除下方空中单位和桥面。默认关闭，实际摔落效果仍需测试。",76);
 toggle(9090,L"视角缩放",extra.viewZoomEnabled);next();
@@ -212,7 +215,7 @@ note(L"用于增强操作与普通地面命令冲突的情况；仅对支持的�
 item(L"STATIC",L"计算模式",20,605,832,0,30);next(30);
 note(L"按功能选择工具箱计算或游戏内计算；修改后从下一局开始使用。",44);
 for(int i=0;i<compute::Count;++i){if(i==compute::BurstRefresh)continue;label(compute::label(i),20,260);choices(combo(9000+i),{L"工具箱计算",L"游戏内计算"},(computeRequested>>i)&1u);next();}
-item(L"STATIC",L"当前计算模式：等待对局",20,605,833,0,166);next(166);
+item(L"STATIC",L"当前计算模式：等待对局",20,605,833,0,192);next(192);
 label(L"移动指令兼容模式",20,260);megaQueueCombo=combo(761);choices(megaQueueCombo,{L"标准（推荐）",L"兼容模式（实验性）"},megaQueueMode);next();
 label(L"维修与出售兼容模式",20,260);objectQueueCombo=combo(762);choices(objectQueueCombo,{L"标准（推荐）",L"兼容模式（实验性）"},objectQueueMode);next();
 note(L"兼容模式需重启游戏和工具箱后生效。通常保持标准模式即可。",44);

@@ -6,7 +6,7 @@ static void executeHotkey(WPARAM wp,bool fanout){
   save();syncAdditional();notify(L"视角缩放请求："+std::to_wstring(extra.viewZoomPercent)+L"%");return;
  }
  if(wp==1723){send(StickyGuard);return;}
- if(wp==1702){watchhost::pin();return;}
+ if(wp>=1730&&wp<=1732){watchhost::pin(extra.watchKeys[wp-1730]);return;}
  if(wp>=1710&&wp<=1718){send(wp==1710?Cheer:Taunt,int(wp-1710));return;}
  if(wp==1701){selectNextIdleAircraft();return;}
  if(wp==1700){bool global=(extra.variantKey&0x8000)||variantTap.press(1700,GetTickCount(),snap.match,doubleMs);sendSelection(-2,global);return;}

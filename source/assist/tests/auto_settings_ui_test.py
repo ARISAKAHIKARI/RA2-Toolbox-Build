@@ -106,6 +106,9 @@ int main(){
  fields[895]=9;autoSettingChanged(895,CBN_SELCHANGE);assert(extra.dodgeMode==0);
  for(int i=0;i<compute::Count;++i){fields[9000+i]=1;assert(autoSettingChanged(9000+i,CBN_SELCHANGE)&&compute::inside(computeRequested,compute::Feature(i)));fields[9000+i]=0;assert(autoSettingChanged(9000+i,CBN_SELCHANGE)&&!compute::inside(computeRequested,compute::Feature(i)));}
  computeRequested=153;saveFeatureTypes();computeRequested=0;loadFeatureTypes();assert(computeRequested==153);
+ for(int legacy:{0,1}){profile.erase(L"MagnetronGlobal");profile.erase(L"MagnetronDrop");profile[L"Magnetron"]=legacy;loadFeatureTypes();assert(compute::inside(computeRequested,compute::MagnetronGlobal)==bool(legacy)&&compute::inside(computeRequested,compute::MagnetronDrop)==bool(legacy));}
+ profile[L"MagnetronGlobal"]=0;profile[L"MagnetronDrop"]=1;profile[L"Magnetron"]=0;loadFeatureTypes();assert(!compute::inside(computeRequested,compute::MagnetronGlobal)&&compute::inside(computeRequested,compute::MagnetronDrop));
+
  fields[830]=1;assert(autoSettingChanged(830,BN_CLICKED)&&minimapEnabled);
  for(int n:{100,200,400}){fields[831]=n;assert(autoSettingChanged(831,EN_CHANGE)&&minimapScale==n);}fields[831]=401;autoSettingChanged(831,EN_CHANGE);assert(minimapScale==400);
  for(int mode:{0,1,2,3}){fields[850]=mode;assert(autoSettingChanged(850,CBN_SELCHANGE)&&minimapPosition==mode);}
@@ -210,7 +213,10 @@ int main(){
 #ifndef RA2_UNIFIED
  assert(extra.scrollRefreshHz==500);
 #endif
- profile.clear();loadMouse();
+ profile.clear();profile[L"PinKey"]=0x657;loadFeatureTypes();assert(extra.watchKeys[0]==0x657&&extra.watchKeys[1]==0x657&&extra.watchKeys[2]==0x657);
+ for(int n=0;n<3;++n){fields[9062+n]=n==2?0:0x8000|'Q';assert(autoSettingChanged(9062+n,EN_CHANGE));}saveFeatureTypes();extra=AdditionalSettings{};loadFeatureTypes();assert(extra.watchKeys[0]==(0x8000|'Q')&&extra.watchKeys[1]==extra.watchKeys[0]&&!extra.watchKeys[2]);
+ fields[9057]='Z';fields[9058]='Z';assert(autoSettingChanged(9057,EN_CHANGE)&&autoSettingChanged(9058,EN_CHANGE));saveFeatureTypes();extra=AdditionalSettings{};loadFeatureTypes();assert(extra.formationKeys[4]=='Z'&&extra.formationKeys[5]=='Z'&&extra.formationMouse==2);
+ profile.clear();loadFeatureTypes();
  // Experimental reveal opt-ins are exclusive and the render path clears queued old reveals.
  extra.experimentalReveal=true;commandQueue.size=3;commandQueue.slots[0].command=RevealMap;commandQueue.slots[1].command=15;commandQueue.slots[2].command=RevealMap;
  fields[808]=1;autoSettingChanged(808,CBN_SELCHANGE);assert(extra.renderReveal&&!extra.experimentalReveal&&autoSavePending);
@@ -282,7 +288,7 @@ assert 'external::discovery::resolveYrppWindow(reader,pid,nullptr,&foundThread)'
 assert 'static BOOL CALLBACK findWindow(' not in cursor
 print('PASS: explicit feature/permission linkage, invalid-key isolation, shared cursor discovery and host ACK single-writer contract')
 
-assert 'if(!foregroundGame()||snap.renderStatus!=1){ShowWindow(overlay,SW_HIDE);' in main
+assert 'if(!enabled||!foregroundGame()||snap.renderStatus!=1||snap.chat){overlayRecovery.suspend();ShowWindow(overlay,SW_HIDE);' in main
 assert 'snap.renderStatus=externalValid&&d.renderStatus==1?1:0;' in main
 monitor=(root/'unit_monitor/source/main.cpp').read_text() if (root/'unit_monitor/source/main.cpp').exists() else (root.parent/'unit_monitor/source/main.cpp').read_text()
 assert 'external::display::inspect' in monitor and 'battlefield&&foregroundGame()' in monitor

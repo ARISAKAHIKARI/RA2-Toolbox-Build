@@ -215,15 +215,20 @@ static int admitPlannerOrder(const planner::Order&o,uint32_t house){
  // until the original movement deadline expires.
  if(o.purpose==planner::CombatOrder&&o.mission==2&&advancedTargetInRange(o.unit,house))return -1;
  if(!externalOrderValid(o,house))return -1;
+ // Explicit and global magnets may use different calculation locations.
+ // Reserve queued magnetic targets at their common admission boundary too.
+ if(o.purpose==planner::MagnetronOrder&&o.mission==1){int frame=get<int>(0xA8ED84);
+  for(int n=0;n<nativeCount;++n){const auto&r=nativeOrders[n];if(r.id!=o.unit&&r.mode==planner::MagnetronMove&&r.attacking&&r.target==o.target&&frame>=r.sentFrame&&frame-r.sentFrame<12&&manualVersions.get(r.id)==r.token)return -1;}
+ }
  actorFrameArbiter.begin(match,get<int>(0xA8ED84));
  if(!actorFrameArbiter.canIssue(o.unit,o.token)){++snap.planDeferred;return 0;}
  if(!planningRoom(0)||!outgoingRoom()){++snap.planDeferred;return 0;}
- if(o.purpose==planner::MagnetronDropOrder){if(!nativeObjectEvent(get<int>(house+0x30),vanilla::EventType::Idle,o.unit,OrderAuthority::Local,nullptr,true))return 0;consumePlanning(0);return 1;}
+ if(o.purpose==planner::MagnetronDropOrder){if(!nativeObjectEvent(get<int>(house+0x30),vanilla::EventType::Idle,o.unit,OrderAuthority::Local,nullptr,true))return 0;int index=orderIndex(worldByID(o.unit));if(index>=0)nativeOrders[index].attacking=false;consumePlanning(0);return 1;}
  const bool nearest=o.destinationTag==11&&(!sh||sh->megaQueueMode==0);
  if(!nativeMission(house,o.unit,o.mission,o.target,o.destination,o.destinationTag,nearest?o.destination:0,nearest?11:0,
     o.purpose==3?taskarbiter::Owner::Magnetron:(o.purpose==1||o.purpose==planner::DefenseOrder)?taskarbiter::Owner::Combat:taskarbiter::Owner::Ore))return -1;
  consumePlanning(0);
- if(o.purpose==1||o.purpose==3){int index=orderIndex(worldByID(o.unit));if(index>=0)nativeOrders[index].stopped=o.mission==5;}
+ if(o.purpose==1||o.purpose==3){int index=orderIndex(worldByID(o.unit));if(index>=0){auto&r=nativeOrders[index];r.stopped=o.mission==5;r.attacking=o.mission==1;r.target=o.target;r.sentFrame=get<int>(0xA8ED84);}}
  return 1;
 }
 static void externalOrdersTick(uint32_t house,int frame,DWORD now){
@@ -243,7 +248,8 @@ static void externalOrdersTick(uint32_t house,int frame,DWORD now){
    if(!fresh()){result=-7;break;}
    const int i=planBatch.next;
    auto o=sh->plan[i];
-   compute::Feature family=o.purpose==planner::CombatOrder?compute::Advanced:(o.purpose==planner::MagnetronOrder||o.purpose==planner::MagnetronDropOrder)?compute::Magnetron:o.purpose==planner::DefenseOrder?compute::Defense:compute::Ore;
+   int index=o.purpose==planner::MagnetronOrder?orderIndex(worldByID(o.unit)):-1;
+   compute::Feature family=o.purpose==planner::CombatOrder?compute::Advanced:o.purpose==planner::MagnetronDropOrder?compute::MagnetronDrop:o.purpose==planner::MagnetronOrder?(index>=0&&nativeOrders[index].global?compute::MagnetronGlobal:compute::Magnetron):o.purpose==planner::DefenseOrder?compute::Defense:compute::Ore;
    if(compute::inside(sh->computeApplied,family)){planBatch.reject();continue;}
    if(!fresh()){result=-7;break;}
    int admitted=admitPlannerOrder(o,house);

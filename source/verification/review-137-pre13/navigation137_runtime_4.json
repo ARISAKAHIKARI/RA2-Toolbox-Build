@@ -1,0 +1,94 @@
+{
+  "scope": "Actual Runtime camera mailbox and SetTacticalPosition; synthetic Win32/world.\nSelection endpoints are mocked. No Windows pointer/visual or multiplayer claim.\n",
+  "dll_sha256": "61fc50ae57b295fba74046269297e22506d768be0dea94e3e1775af238bc6b25",
+  "results": [
+    {
+      "case": "camera_0_valid",
+      "status": "PASS"
+    },
+    {
+      "case": "camera_0_latest",
+      "status": "PASS"
+    },
+    {
+      "case": "camera_0_duplicate",
+      "status": "PASS"
+    },
+    {
+      "case": "camera_0_stale",
+      "status": "PASS"
+    },
+    {
+      "case": "camera_0_odd",
+      "status": "PASS"
+    },
+    {
+      "case": "camera_0_match",
+      "status": "PASS"
+    },
+    {
+      "case": "camera_0_focus",
+      "status": "PASS"
+    },
+    {
+      "case": "camera_0_chat",
+      "status": "PASS"
+    },
+    {
+      "case": "camera_0_bounds",
+      "status": "PASS"
+    },
+    {
+      "case": "camera_0_signature",
+      "status": "PASS"
+    },
+    {
+      "case": "idle_aircraft_0_selection_without_camera",
+      "status": "PASS"
+    },
+    {
+      "case": "camera_3_valid",
+      "status": "PASS"
+    },
+    {
+      "case": "camera_3_latest",
+      "status": "PASS"
+    },
+    {
+      "case": "camera_3_duplicate",
+      "status": "PASS"
+    },
+    {
+      "case": "camera_3_stale",
+      "status": "PASS"
+    },
+    {
+      "case": "camera_3_odd",
+      "status": "PASS"
+    },
+    {
+      "case": "camera_3_match",
+      "status": "PASS"
+    },
+    {
+      "case": "camera_3_focus",
+      "status": "PASS"
+    },
+    {
+      "case": "camera_3_chat",
+      "status": "PASS"
+    },
+    {
+      "case": "camera_3_bounds",
+      "status": "PASS"
+    },
+    {
+      "case": "camera_3_signature",
+      "status": "PASS"
+    },
+    {
+      "case": "idle_aircraft_3_selection_without_camera",
+      "status": "PASS"
+    }
+  ]
+}

@@ -5,7 +5,7 @@
 namespace assist {
 struct AdditionalSettings {
  uint32_t stickyKey='S'|(6<<8);
- bool formationEnabled=true;uint32_t formationHold=18,formationKeys[4]={'Z','X','C','V'},formationMouse=2;
+ bool formationEnabled=true;uint32_t formationHold=18,formationKeys[6]={'Z','X','C','V','B','N'},formationMouse=2;
  bool controlAll=false,switchPlayerEnabled=false;
  bool viewZoomEnabled=false;int viewZoomPercent=100;
  int scrollRefreshMode=0; // cursor / scrolling / scene / forced redraw
@@ -18,7 +18,7 @@ struct AdditionalSettings {
  uint32_t productionReminderMask=63; // buildings, defenses, infantry, vehicles, ships, aircraft
  uint32_t airPathKey=0;
  bool parasiteMarker=true,crateBuffMarkers=true;
- bool watchEnabled=true,watchDanger=true;uint32_t watchKey='W'|(6<<8);
+ bool watchEnabled=true,watchDanger=true;uint32_t watchKeys[3]={'W'|(6<<8),'W'|(6<<8),'W'|(6<<8)};
  bool passengerBubbles=true,dangerPassengers=false,magnetronDrop=false;
  bool dodgeEnabled=false;int dodgeMode=0;
  bool burstEnabled=false,burstHoldEnabled=false;uint32_t burstKey=0; // Reserved for configuration compatibility.

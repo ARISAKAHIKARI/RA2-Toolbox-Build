@@ -25,6 +25,7 @@ prefix = r'''
 #include "additional_settings.h"
 #include "scheduler_policy.h"
 #include "compute_policy.h"
+#include "view_zoom.h"
 #include <initializer_list>
 #include <cassert>
 #include <cstdint>
@@ -71,7 +72,7 @@ static HWND game=1;static bool enabled=true;static std::wstring hoverHelp,status
 static struct {int techOpen=0,c4TestStatus=0,placementStatus=0,nativeAirStatus=0,renderRevealStatus=0,commandStatus=1,entryReentrant=0,entryContended=0,session=5,lastSubmitError=0,queueSent=0,commandRejected=0,queueFull=0,queueTimingFailure=0,status=1,nativeHookStatus=1,advancedUnits=0,unloadPending=0,ejectWatched=0,csHookStatus=1,oreQueued=0,oreDocking=0,oreManual=0,oreDelivered=0,oreUnverified=0,magnetShots=0,magnetUnverified=0,hookConflicts=0,megaQueueAccepted=0,megaQueueRejected=0,megaQueueStatus=0,objectQueueAccepted=0,objectQueueRejected=0,objectQueueStatus=0;} snap;
 static struct {int size=0;} commandQueue;
 static struct {bool readFresh(uint32_t,void*,size_t){return false;}} externalReader;
-static struct {int scrollRefreshStatus=0,scrollRefreshRateMilli=0,scrollRefreshMaxGapUs=0,driverMode=0,driverTarget=0,driverStatus=0,driverTicks=0,megaQueueMode=0,objectQueueMode=0;DWORD driverLastTick=0;} mockScheduler;
+static struct {int viewZoomStatus=0,viewZoomApplied=100,viewZoomWidth=800,viewZoomHeight=600,scrollRefreshStatus=0,scrollRefreshRateMilli=0,scrollRefreshMaxGapUs=0,driverMode=0,driverTarget=0,driverStatus=0,driverTicks=0,megaQueueMode=0,objectQueueMode=0;DWORD driverLastTick=0;} mockScheduler;
 static decltype(mockScheduler)* shared=nullptr;
 static unsigned LOBYTE(unsigned key){return key&255;}
 static HWND CreateWindowExW(DWORD,const wchar_t*cls,const wchar_t*text,DWORD style,int x,int y,int w,int h,HWND,HMENU id,HMODULE,void*){
@@ -107,6 +108,7 @@ suffix = r'''
 static bool intersects(uilayout::Rect a,uilayout::Rect b){return a.x<b.x+b.w&&b.x<a.x+a.w&&a.y<b.y+b.h&&b.y<a.y+a.h;}
 int main(){
  create(1);assert(ready&&pageControls.size()>100);
+ for(int id:{446,447,473,474,9094,9095}){bool found=false;for(const auto&c:pageControls)if(GetDlgCtrlID(c.hwnd)==id){assert(c.page==2);found=true;}assert(found);}
  csHoldEnabled=true;csHoldKey='G';csMode=false;hookAutoCS=false;updateModeStatus(1000);
  assert(windows[csStatus].text.find(L"按键 CS：开")!=std::wstring::npos&&windows[csStatus].text.find(L"已就绪")!=std::wstring::npos);
  snap.status=0;updateModeStatus(1200);assert(windows[nativeStatus].text==L"正在读取对局");
@@ -122,8 +124,8 @@ int main(){
 
  // Feature groups and adjacent bindings follow the actual controls.
  auto at=[&](int id)->const PageControl&{for(auto&c:pageControls)if(GetDlgCtrlID(c.hwnd)==id)return c;assert(false);return pageControls[0];};
- for(int id:{100,111,451,455,446,853,440,724})assert(at(id).rect.y>at(900).rect.y&&at(id).rect.y<at(901).rect.y);
- for(int id:{458,450,477,473,702,705,719,720,721,736,795,803,109,110,410})assert(at(id).rect.y>at(901).rect.y&&at(id).rect.y<at(902).rect.y);
+ for(int id:{100,111,451,455,853,440,724})assert(at(id).rect.y>at(900).rect.y&&at(id).rect.y<at(901).rect.y);
+ for(int id:{458,450,477,702,705,719,720,721,736,795,803,109,110,410})assert(at(id).rect.y>at(901).rect.y&&at(id).rect.y<at(902).rect.y);
  for(auto pair:{std::pair<int,int>{450,729},{478,730},{474,731},{704,732},{707,733},{709,734},{726,735},{728,737},{789,738},{811,812}})assert(at(pair.first).rect.y==at(pair.second).rect.y&&at(pair.first).rect.x+at(pair.first).rect.w<at(pair.second).rect.x);
  for(int id:{861,862,863,864})assert(!windows[at(id).hwnd].enabled);
  for(int id:{861})assert(!windows[at(id).hwnd].checked);
@@ -144,7 +146,7 @@ int main(){
  // The status area is two lines tall; instructions remain concise.
  for(auto&c:pageControls)if(c.page>=0){
   assert(c.help.find(L"GameRuntime")==std::wstring::npos&&c.help.find(L"OutList")==std::wstring::npos&&c.help.find(L"Hook")==std::wstring::npos);
-  assert(c.help.size()<=110);
+  if(c.help.size()>110){std::cerr<<"Long help id "<<GetDlgCtrlID(c.hwnd)<<" chars "<<c.help.size()<<"\n";assert(false);}
  }
 
  // Device-pixel layout must follow the font scale, with the same clipping.

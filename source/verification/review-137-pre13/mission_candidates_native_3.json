@@ -1,0 +1,119 @@
+{
+  "scope": "Native task candidates and camera center: queue/readiness and Unit handlers.\nThe locomotor/map queries are controlled doubles. This does NOT prove whole-game\nHunt/Patrol/Retreat behavior, network compatibility, or state effects in a mod.\n",
+  "game_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+  "results": [
+    {
+      "case": "Sleep",
+      "mission": 0,
+      "guard_exit_ready_in_fixture": true,
+      "guard_exit_completed_in_fixture": true,
+      "status": "PASS"
+    },
+    {
+      "case": "Retreat",
+      "mission": 4,
+      "guard_exit_ready_in_fixture": true,
+      "guard_exit_completed_in_fixture": true,
+      "status": "PASS"
+    },
+    {
+      "case": "Ambush",
+      "mission": 14,
+      "guard_exit_ready_in_fixture": true,
+      "guard_exit_completed_in_fixture": true,
+      "status": "PASS"
+    },
+    {
+      "case": "Hunt",
+      "mission": 15,
+      "guard_exit_ready_in_fixture": true,
+      "guard_exit_completed_in_fixture": true,
+      "status": "PASS"
+    },
+    {
+      "case": "Harmless",
+      "mission": 23,
+      "guard_exit_ready_in_fixture": true,
+      "guard_exit_completed_in_fixture": true,
+      "status": "PASS"
+    },
+    {
+      "case": "Patrol",
+      "mission": 25,
+      "guard_exit_ready_in_fixture": true,
+      "guard_exit_completed_in_fixture": true,
+      "status": "PASS"
+    },
+    {
+      "case": "Wait",
+      "mission": 28,
+      "guard_exit_ready_in_fixture": true,
+      "guard_exit_completed_in_fixture": false,
+      "status": "PASS"
+    },
+    {
+      "case": "Sleep_handler",
+      "address": "0x5b2e10",
+      "return": 450,
+      "unit_unchanged": true,
+      "status": "PASS"
+    },
+    {
+      "case": "Harmless_handler",
+      "address": "0x5b2e20",
+      "return": 450,
+      "unit_unchanged": true,
+      "status": "PASS"
+    },
+    {
+      "case": "Ambush_handler",
+      "address": "0x5b2e30",
+      "return": 450,
+      "unit_unchanged": true,
+      "status": "PASS"
+    },
+    {
+      "case": "Wait_handler",
+      "address": "0x5b2fa0",
+      "return": 450,
+      "unit_unchanged": true,
+      "status": "PASS"
+    },
+    {
+      "case": "native_camera_center_to_origin",
+      "viewport": [
+        640,
+        600
+      ],
+      "center": [
+        300,
+        1020
+      ],
+      "status": "PASS"
+    },
+    {
+      "case": "native_camera_center_to_origin",
+      "viewport": [
+        1280,
+        720
+      ],
+      "center": [
+        -200,
+        2200
+      ],
+      "status": "PASS"
+    },
+    {
+      "case": "native_camera_center_to_origin",
+      "viewport": [
+        641,
+        601
+      ],
+      "center": [
+        300,
+        1020
+      ],
+      "status": "PASS"
+    }
+  ]
+}

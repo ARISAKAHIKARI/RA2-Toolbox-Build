@@ -50,7 +50,7 @@ def run(address, *args):
     return u.reg_read(UC_X86_REG_EAX) & 255
 rows = []
 for current in (5, 6):
-    for requested in (1, 2, 5, 13):
+    for requested in (1, 2, 5, 6, 13):
         u.mem_write(unit, bytes(0x2000))
         w(unit, 0x7f5c70)
         w(unit+0x674, loco)

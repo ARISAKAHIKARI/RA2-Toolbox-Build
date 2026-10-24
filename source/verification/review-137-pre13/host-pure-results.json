@@ -1,0 +1,112 @@
+[
+  {
+    "test": "assist/scene_lighting",
+    "status": "PASS",
+    "log": "source/verification/review-137-pre13/assist-scene_lighting.log"
+  },
+  {
+    "test": "assist/formation_host",
+    "status": "PASS",
+    "log": "source/verification/review-137-pre13/assist-formation_host.log"
+  },
+  {
+    "test": "assist/watch_host",
+    "status": "PASS",
+    "log": "source/verification/review-137-pre13/assist-watch_host.log"
+  },
+  {
+    "test": "assist/watch_view",
+    "status": "PASS",
+    "log": "source/verification/review-137-pre13/assist-watch_view.log"
+  },
+  {
+    "test": "assist/formation",
+    "status": "PASS",
+    "log": "source/verification/review-137-pre13/assist-formation.log"
+  },
+  {
+    "test": "assist/external_planner",
+    "status": "PASS",
+    "log": "source/verification/review-137-pre13/assist-external_planner.log"
+  },
+  {
+    "test": "assist/magnetron_compute",
+    "status": "PASS",
+    "log": "source/verification/review-137-pre13/assist-magnetron_compute.log"
+  },
+  {
+    "test": "assist/magnetron",
+    "status": "PASS",
+    "log": "source/verification/review-137-pre13/assist-magnetron.log"
+  },
+  {
+    "test": "assist/magnetron_rof",
+    "status": "PASS",
+    "log": "source/verification/review-137-pre13/assist-magnetron_rof.log"
+  },
+  {
+    "test": "assist/magnetron_landing",
+    "status": "PASS",
+    "log": "source/verification/review-137-pre13/assist-magnetron_landing.log"
+  },
+  {
+    "test": "assist/feature_type_config",
+    "status": "PASS",
+    "log": "source/verification/review-137-pre13/assist-feature_type_config.log"
+  },
+  {
+    "test": "monitor/tab_control",
+    "status": "PASS",
+    "log": "source/verification/review-137-pre13/monitor-tab_control.log"
+  },
+  {
+    "test": "monitor/overlay_recovery",
+    "status": "PASS",
+    "log": "source/verification/review-137-pre13/monitor-overlay_recovery.log"
+  },
+  {
+    "test": "monitor/round_transition",
+    "status": "PASS",
+    "log": "source/verification/review-137-pre13/monitor-round_transition.log"
+  },
+  {
+    "test": "auto_settings_ui_test",
+    "status": "PASS",
+    "log": "source/verification/review-137-pre13/auto_settings_ui_test.log"
+  },
+  {
+    "test": "ui_geometry_test",
+    "status": "PASS",
+    "log": "source/verification/review-137-pre13/ui_geometry_test.log"
+  },
+  {
+    "test": "suite_display_test",
+    "status": "PASS",
+    "log": "source/verification/review-137-pre13/suite_display_test.log"
+  },
+  {
+    "test": "persistent_ui_source_test",
+    "status": "PASS",
+    "log": "source/verification/review-137-pre13/persistent_ui_source_test.log"
+  },
+  {
+    "test": "assist/watch_slots",
+    "status": "PASS",
+    "log": "source/verification/review-137-pre13/assist-watch_slots.log"
+  },
+  {
+    "test": "assist/hotkey_routes",
+    "status": "PASS",
+    "log": "source/verification/review-137-pre13/assist-hotkey_routes.log"
+  },
+  {
+    "test": "hotkey_host_test",
+    "status": "PASS",
+    "log": "source/verification/review-137-pre13/hotkey_host_test.log"
+  },
+  {
+    "test": "watch_windows_test",
+    "status": "PASS",
+    "log": "source/verification/review-137-pre13/watch_windows_test.log"
+  }
+]

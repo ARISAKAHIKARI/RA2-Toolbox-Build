@@ -14,11 +14,11 @@ static void MemoryBarrier(){}static void InterlockedIncrement(volatile LONG*p){+
 struct ColorMatrix {float m[5][5]{};};static ColorMatrix drawnMatrix;struct ImageAttributes {void SetColorMatrix(ColorMatrix*m){drawnMatrix=*m;}};struct RectF {RectF(float,float,float,float){}};constexpr int UnitPixel=2;
 struct Color {Color(int,int,int,int){}};struct Bitmap {Bitmap(int,int,int,int,BYTE*){}};struct Graphics {void DrawImage(Bitmap*,RectF,float,float,float,float,int,ImageAttributes*){}};
 static void drawText(Graphics&,const std::wstring&,int,int,int,Color){}
-static struct {bool formationEnabled=true;uint32_t formationHold=18,formationMouse=2,formationKeys[4]={'Z','X','C','V'};}extra;
+static struct {bool formationEnabled=true;uint32_t formationHold=18,formationMouse=2,formationKeys[6]={'Z','X','C','V','B','N'};}extra;
 static struct {int chat=0,cameraX=0,cameraY=0,width=800,height=600;}snap;
 static struct State {formation::Preview formationPreview;LONG formationSeq=0,formationKey=0,formationKeyAck=0;uint32_t formationKeyCode=0;}state,*shared=&state;
 static std::map<uint32_t,uint32_t> memory;static int ownerReads=0;static bool ownershipRace=false;
-static struct {bool readFresh(uint32_t p,void*out,size_t n){if(ownershipRace&&p==0x1021c&&n==4){uint32_t owner=++ownerReads==1?2:3;memcpy(out,&owner,4);return true;}auto it=memory.find(p);if(n%4)return false;for(size_t i=0;i<n;i+=4){auto v=memory.find(p+i);if(v==memory.end())return false;memcpy(static_cast<uint8_t*>(out)+i,&v->second,4);}return true;}}externalReader;
+static struct {bool readFresh(uint32_t p,void*out,size_t n){if(ownershipRace&&p==0x1021c&&n==4){uint32_t owner=++ownerReads==1?2:3;memcpy(out,&owner,4);return true;}for(size_t i=0;i<n;++i){auto v=memory.upper_bound(p+i);if(v==memory.begin())return false;--v;if(p+i-v->first>=4)return false;static_cast<uint8_t*>(out)[i]=uint8_t(v->second>>((p+i-v->first)*8));}return true;}}externalReader;
 #include "../source/type_hotkey.h"
 #include "../../external_reader/source/voxel_preview.h"
 #include "../../external_reader/source/visual_pose.h"
@@ -44,6 +44,12 @@ int main(){using namespace formationhost;
  v.facing=formation::Pi/2;step();assert(visuals.size()==1&&gameassets::captures==1&&gameassets::renders==2);assert(visuals[0].image->pixels[0]==0x7c000010);v.facing=0;step();assert(gameassets::renders==2);
  // Stationary preview still repaints a lighting change without rerendering poses.
  before=paintRevision;int rendered=gameassets::renders;memory[0xA8B230]=0xC00000;memory[0xC0352C]=75;for(int off:{0x3534,0x3538,0x353C})memory[0xC00000+off]=100;step();assert(paintRevision>before&&gameassets::renders==rendered);Graphics g;draw(g);assert(drawnMatrix.m[1][1]==.75f&&drawnMatrix.m[3][3]==1.f);
+ // Use live projection scale and the destination cell, not the source unit.
+ double zScale=.144337567;uint32_t words[2];memcpy(words,&zScale,8);memory[0xB0CD48]=words[0];memory[0xB0CD4C]=words[1];
+ memory[0x87F7E8+0x13C]=0x200000;memory[0x87F7E8+0x140]=512*512;memory[0x200000+(512+1)*4]=0x300000;
+ memory[0x300024]=0x00010001;memory[0x300034]=0;memory[0x300104]=65536;memory[0x300108]=1100u<<16;memory[0x30010C]=900|(1350u<<16);memory[0x300140]=0;
+ v.slots[0].z=104;step();assert(visuals[0].y==15&&visuals[0].light.intensity==1100);draw(g);assert(drawnMatrix.m[0][0]==1.1f&&gameassets::renders==rendered);
+ before=paintRevision;memory[0x300108]=1250u<<16;step();draw(g);assert(paintRevision>before&&drawnMatrix.m[0][0]==1.25f&&gameassets::renders==rendered);
  v.active=0;step();assert(visuals.empty());reset();assert(models.empty());
  std::cout<<"PASS preview seqlock continuity, content revisions, ownership-race protection, full model-cache eviction, image-budget eviction and active-image protection\n";
 }

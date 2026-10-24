@@ -34,6 +34,13 @@ static bool formationContext(){
  long seq=sh->formationPolicySeq;if(seq&1)return formationPolicy.enabled!=0;MemoryBarrier();auto p=sh->formationPolicy;MemoryBarrier();if(seq!=sh->formationPolicySeq)return formationPolicy.enabled!=0;formationPolicy=p;return p.enabled!=0;
 }
 static bool formationActor(uint32_t p){int air=0,k=kind(p);return p&&worldObjects.contains(p)&&own(p,lastHouse)&&(k==1||k==2)&&!get<bool>(p+0x1C8)&&!get<uint32_t>(p+0x11C)&&!get<uint32_t>(p+0x2B0)&&!get<bool>(p+0x427)&&GuardedObjectAir(p,&air)&&!air;}
+static bool formationSelectionMatchesPreview(){
+ Vec selected=vec(0xA8ECB8);bool found[formation::Maximum]{};int count=0;
+ for(int n=0;n<selected.count;++n){uint32_t p=item(selected,n);if(!formationActor(p))continue;++count;int j=0;
+  for(;j<formationView.count;++j)if(!found[j]&&p==formationView.units[j].pointer&&get<uint32_t>(p+0x10)==formationView.units[j].id)break;
+  if(j==formationView.count)return false;found[j]=true;
+ }return count==formationView.count&&count>0;
+}
 static void formationSelect(){
  indexWorld(get<int>(0xA8ED84));formationView.count=0;Vec selected=vec(0xA8ECB8);
  for(int n=0;n<selected.count&&formationView.count<formation::Maximum;++n){uint32_t p=item(selected,n);if(!formationActor(p))continue;
@@ -57,10 +64,10 @@ static bool formationCell(int x,int y){
 static void formationLayout(int x,int y,int px,int py){
  formationLayoutTick=sampleClock(sh);
  const int count=formationView.count;if(count<=0)return;
- double pixels=std::hypot(double(px-formationStartX),double(py-formationStartY));bool click=formationView.dragging&&pixels<6;
+ double pixels=std::hypot(double(px-formationStartX),double(py-formationStartY));bool click=!formationView.dragging;
  formationDirected=!click;
- if(!click&&formationView.dragging)formationView.facing=formation::dragFacing(double(px)-formationStartX,double(py)-formationStartY,formationView.facing);
- double stretch=!formationView.dragging||click?0:std::clamp((pixels-6)/314.,0.,1.);formation::Point points[formation::Maximum];formation::layout(count,formationView.shape,stretch,click,points);
+ if(!click&&pixels>=8)formationView.facing=formation::dragFacing(double(px)-formationStartX,double(py)-formationStartY,formationView.facing);
+ double stretch=click?0:std::clamp((pixels-8)/312.,0.,1.);formation::Point points[formation::Maximum];formation::layout(count,formationView.shape,stretch,click,points);
  double fx=std::cos(formationView.facing),fy=std::sin(formationView.facing);
  for(int n=0;n<count;++n){int cx=int(std::lround((formationView.ax-128)/256.+points[n].x*(-fy)-points[n].y*fx));int cy=int(std::lround((formationView.ay-128)/256.+points[n].x*fx-points[n].y*fy));
   formation::Slot result{};
@@ -139,7 +146,8 @@ static bool formationMessage(MSG*msg){
  const bool down=msg->message==WM_KEYDOWN||msg->message==WM_SYSKEYDOWN,up=msg->message==WM_KEYUP||msg->message==WM_SYSKEYUP;
  uint32_t key=uint32_t(msg->wParam)&255;auto swallow=[&](){msg->message=WM_NULL;msg->wParam=msg->lParam=0;return true;};
  if(up&&formationSuppressed[key]){formationSuppressed[key]=false;if(key==(formationPolicy.hold&255))formationHoldConsumed=false;if(key==(formationPolicy.hold&255)){formationHolding=false;if(!formationModal&&!formationButton)formationCancel();}return swallow();}
- if(msg->message==formationButtonUp&&formationButton){formationButton=false;if(formationContext()&&formationView.active){int x,y,px,py;if(formationPoint(msg,x,y,px,py)){formationLayout(x,y,px,py);formationCommit();}else formationCancel();}else formationCancel();return swallow();}
+ // Release commits the last published layout, never an unseen extra solve.
+ if(msg->message==formationButtonUp&&formationButton){formationButton=false;if(formationContext()&&formationView.active&&formationSelectionMatchesPreview()){int x,y,px,py;if(formationPoint(msg,x,y,px,py))formationCommit();else formationCancel();}else formationCancel();return swallow();}
  if(!formationContext()){if(formationView.active)formationCancel();formationFollow={};if(sh&&!sh->formationPolicy.enabled)formationForget();return false;}
  if(down){bool repeated=(msg->lParam&(1u<<30))!=0;
   uint32_t mods=((GetKeyState(VK_SHIFT)&0x8000)?1:0)|((GetKeyState(VK_CONTROL)&0x8000)?2:0)|((GetKeyState(VK_MENU)&0x8000)?4:0);
@@ -153,8 +161,20 @@ static bool formationMessage(MSG*msg){
   }
  }
  if(!formationView.active){formationWatchNative(msg);return false;}
- if(msg->message==(formationPolicy.mouse==1?WM_LBUTTONDOWN:WM_RBUTTONDOWN)){int x,y,px,py;if(!formationPoint(msg,x,y,px,py))return false;formationSelect();if(!formationView.count)return false;formationButton=true;formationButtonUp=formationPolicy.mouse==1?WM_LBUTTONUP:WM_RBUTTONUP;formationView.dragging=1;formationView.ax=x;formationView.ay=y;formationStartX=px;formationStartY=py;formationLayout(x,y,px,py);sh->formationConsumedUntil=sampleClock(sh)+200;return swallow();}
- if(msg->message==WM_MOUSEMOVE){if(DWORD(sampleClock(sh)-formationLayoutTick)<16)return formationButton?swallow():false;int x,y,px,py;if(formationPoint(msg,x,y,px,py)){if(!formationButton){formationSelect();formationView.ax=x;formationView.ay=y;formationStartX=px;formationStartY=py;}formationLayout(x,y,px,py);}if(formationButton)return swallow();}
+ if(msg->message==(formationPolicy.mouse==1?WM_LBUTTONDOWN:WM_RBUTTONDOWN)){int x,y,px,py;if(!formationPoint(msg,x,y,px,py))return false;
+  if(!formationSelectionMatchesPreview()){formationCancel();return swallow();}
+  formationButton=true;formationButtonUp=formationPolicy.mouse==1?WM_LBUTTONUP:WM_RBUTTONUP;formationStartX=formationPixelX=px;formationStartY=formationPixelY=py;
+  sh->formationConsumedUntil=sampleClock(sh)+200;return swallow();
+ }
+ if(msg->message==WM_MOUSEMOVE){if(DWORD(sampleClock(sh)-formationLayoutTick)<16)return formationButton?swallow():false;int x,y,px,py;if(formationPoint(msg,x,y,px,py)){
+   if(formationButton){
+    if(!formationSelectionMatchesPreview()){formationCancel();return swallow();}
+    if(!formationView.dragging&&std::hypot(double(px-formationStartX),double(py-formationStartY))<8)return swallow();
+    if(formationView.dragging&&std::hypot(double(px-formationPixelX),double(py-formationPixelY))<2)return swallow();
+    formationView.dragging=1;
+   }else{formationSelect();formationView.ax=x;formationView.ay=y;formationStartX=px;formationStartY=py;}
+   formationLayout(x,y,px,py);
+  }if(formationButton)return swallow();}
  return false;
 }
 static void formationTick(uint32_t house,int frame,DWORD now){

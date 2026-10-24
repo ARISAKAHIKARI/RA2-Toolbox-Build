@@ -1,0 +1,349 @@
+{
+  "scope": "Execute original cell-light, overlay-offset and Z-projection functions.\nOnly special-light query results are substituted. Controlled memory is not a\nlive render, DWM/DirectDraw test, or proof of multiplayer behavior.\n",
+  "game_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+  "code_sha256": {
+    "0x484680": "18ada50c7ec55c2cb7491d5afb4bb5de92203f7f5e4f7e5daf8167c7dbc95890",
+    "0x480110": "ddcd3bfbfbe44a8f8a8195140e649b31aedc13804bfb2877adc2ea6bb93a1e63",
+    "0x5fdcc0": "34119092ea97eeb574af09740339515858c2a7e718b21ff6fbc1efb8b35e65c0",
+    "0x6d20e0": "ef5aaaffa67d7a34ade1bbe5582b0c30a9c3ee4c7ac837a3bec904eb18c0e13c"
+  },
+  "results": [
+    {
+      "case": "cell_light_0_0_70",
+      "values": [
+        660,
+        660,
+        800
+      ],
+      "status": "PASS"
+    },
+    {
+      "case": "cell_light_0_8_70",
+      "values": [
+        1015,
+        761,
+        866
+      ],
+      "status": "PASS"
+    },
+    {
+      "case": "cell_light_0_1_10",
+      "values": [
+        0,
+        0,
+        0
+      ],
+      "status": "PASS"
+    },
+    {
+      "case": "cell_light_0_10_200",
+      "values": [
+        2000,
+        2000,
+        2000
+      ],
+      "status": "PASS"
+    },
+    {
+      "case": "cell_light_1_0_70",
+      "values": [
+        660,
+        660,
+        800
+      ],
+      "status": "PASS"
+    },
+    {
+      "case": "cell_light_1_8_70",
+      "values": [
+        1015,
+        761,
+        866
+      ],
+      "status": "PASS"
+    },
+    {
+      "case": "cell_light_1_1_10",
+      "values": [
+        0,
+        0,
+        0
+      ],
+      "status": "PASS"
+    },
+    {
+      "case": "cell_light_1_10_200",
+      "values": [
+        2000,
+        2000,
+        2000
+      ],
+      "status": "PASS"
+    },
+    {
+      "case": "cell_light_2_0_70",
+      "values": [
+        660,
+        660,
+        800
+      ],
+      "status": "PASS"
+    },
+    {
+      "case": "cell_light_2_8_70",
+      "values": [
+        1015,
+        761,
+        866
+      ],
+      "status": "PASS"
+    },
+    {
+      "case": "cell_light_2_1_10",
+      "values": [
+        0,
+        0,
+        0
+      ],
+      "status": "PASS"
+    },
+    {
+      "case": "cell_light_2_10_200",
+      "values": [
+        2000,
+        2000,
+        2000
+      ],
+      "status": "PASS"
+    },
+    {
+      "case": "cell_light_3_0_70",
+      "values": [
+        660,
+        660,
+        800
+      ],
+      "status": "PASS"
+    },
+    {
+      "case": "cell_light_3_8_70",
+      "values": [
+        1015,
+        761,
+        866
+      ],
+      "status": "PASS"
+    },
+    {
+      "case": "cell_light_3_1_10",
+      "values": [
+        0,
+        0,
+        0
+      ],
+      "status": "PASS"
+    },
+    {
+      "case": "cell_light_3_10_200",
+      "values": [
+        2000,
+        2000,
+        2000
+      ],
+      "status": "PASS"
+    },
+    {
+      "case": "ordinary",
+      "offset": [
+        30,
+        75
+      ],
+      "status": "PASS"
+    },
+    {
+      "case": "wall",
+      "offset": [
+        30,
+        18
+      ],
+      "status": "PASS"
+    },
+    {
+      "case": "ore",
+      "offset": [
+        30,
+        -27
+      ],
+      "status": "PASS"
+    },
+    {
+      "case": "veins",
+      "offset": [
+        30,
+        33
+      ],
+      "status": "PASS"
+    },
+    {
+      "case": "type126",
+      "offset": [
+        30,
+        48
+      ],
+      "status": "PASS"
+    },
+    {
+      "case": "rock126",
+      "offset": [
+        30,
+        13
+      ],
+      "status": "PASS"
+    },
+    {
+      "case": "bridge_start",
+      "offset": [
+        30,
+        29
+      ],
+      "status": "PASS"
+    },
+    {
+      "case": "bridge_middle",
+      "offset": [
+        30,
+        14
+      ],
+      "status": "PASS"
+    },
+    {
+      "case": "bridge_end17",
+      "offset": [
+        30,
+        14
+      ],
+      "status": "PASS"
+    },
+    {
+      "case": "bridge_end18",
+      "offset": [
+        30,
+        29
+      ],
+      "status": "PASS"
+    },
+    {
+      "case": "overlay239",
+      "offset": [
+        30,
+        15
+      ],
+      "status": "PASS"
+    },
+    {
+      "case": "projection_0.0866025403784_-104",
+      "height": -8,
+      "status": "PASS"
+    },
+    {
+      "case": "projection_0.0866025403784_0",
+      "height": 0,
+      "status": "PASS"
+    },
+    {
+      "case": "projection_0.0866025403784_104",
+      "height": 9,
+      "status": "PASS"
+    },
+    {
+      "case": "projection_0.0866025403784_416",
+      "height": 36,
+      "status": "PASS"
+    },
+    {
+      "case": "projection_0.0866025403784_727",
+      "height": 63,
+      "status": "PASS"
+    },
+    {
+      "case": "projection_0.0866025403784_728",
+      "height": 64,
+      "status": "PASS"
+    },
+    {
+      "case": "projection_0.0866025403784_1040",
+      "height": 91,
+      "status": "PASS"
+    },
+    {
+      "case": "projection_0.144337567_-104",
+      "height": -14,
+      "status": "PASS"
+    },
+    {
+      "case": "projection_0.144337567_0",
+      "height": 0,
+      "status": "PASS"
+    },
+    {
+      "case": "projection_0.144337567_104",
+      "height": 15,
+      "status": "PASS"
+    },
+    {
+      "case": "projection_0.144337567_416",
+      "height": 60,
+      "status": "PASS"
+    },
+    {
+      "case": "projection_0.144337567_727",
+      "height": 105,
+      "status": "PASS"
+    },
+    {
+      "case": "projection_0.144337567_728",
+      "height": 106,
+      "status": "PASS"
+    },
+    {
+      "case": "projection_0.144337567_1040",
+      "height": 151,
+      "status": "PASS"
+    },
+    {
+      "case": "projection_0.25_-104",
+      "height": -25,
+      "status": "PASS"
+    },
+    {
+      "case": "projection_0.25_0",
+      "height": 0,
+      "status": "PASS"
+    },
+    {
+      "case": "projection_0.25_104",
+      "height": 26,
+      "status": "PASS"
+    },
+    {
+      "case": "projection_0.25_416",
+      "height": 104,
+      "status": "PASS"
+    },
+    {
+      "case": "projection_0.25_727",
+      "height": 182,
+      "status": "PASS"
+    },
+    {
+      "case": "projection_0.25_728",
+      "height": 183,
+      "status": "PASS"
+    },
+    {
+      "case": "projection_0.25_1040",
+      "height": 261,
+      "status": "PASS"
+    }
+  ]
+}

@@ -9,7 +9,7 @@ def setup(mode=0,count=1):
  for y in range(18,44):
   for x in range(15,36):
    cell=m.alloc(0x200);m.u.mem_write(cell+0x24,struct.pack('<hh',x,y));m.w(m.cells+(y*512+x)*4,cell)
- m.units=[m.unit]+[m.obj(0x7f5c70,m.t,m.house,20+j) for j in range(count-1)];m.vector(0xa8ec78,m.units);m.vector(0xa8ecb8,m.units);s=state(m);s.formationPolicy.enabled=1;s.formationPolicy.mouse=2;s.formationPolicy.hold=18;s.formationPolicy.keys[:]=[90,90,67,90];save(m,s);tick(m);m.codeWrites.clear();return m
+ m.units=[m.unit]+[m.obj(0x7f5c70,m.t,m.house,20+j) for j in range(count-1)];m.vector(0xa8ec78,m.units);m.vector(0xa8ecb8,m.units);s=state(m);s.formationPolicy.enabled=1;s.formationPolicy.mouse=2;s.formationPolicy.hold=18;s.formationPolicy.keys[:]=[90,90,67,90,90,90];save(m,s);tick(m);m.codeWrites.clear();return m
 
 def message(m,kind,key=0,repeat=False,x=100,y=100):
  lp=(1<<30) if repeat else 0
@@ -22,7 +22,7 @@ for mode in (0,3):
   if case=='double_alt':
    m.held_keys.clear();message(m,0x105,18);m.clock+=100;m.w(m.SH+m.Shared.heartbeat.offset,m.clock);m.held_keys.add(18);message(m,0x104,18);m.held_keys.clear();_,s=message(m,0x105,18);assert s.formationPreview.active
   if case=='cycle':
-   for expected in (1,3,0):
+   for expected in (1,3,4,5,0):
     kind,s=message(m,0x104,90);assert kind==0 and s.formationPreview.shape==expected
     _,s=message(m,0x104,90,True);assert s.formationPreview.shape==expected;kind,s=message(m,0x105,90);assert kind==0
   if case=='advanced_frame':m.w(0xA8ED84,m.r(0xA8ED84)+2)
@@ -44,7 +44,7 @@ for mode in (0,3):
   assert not m.codeWrites;rows.append({'case':f'{mode}_{case}','status':'PASS'});print('PASS',mode,case,flush=True)
 # Configurable double-tap hold and double-tap shape: repeats are not taps.
 for mode in (0,3):
- m=setup(mode);s=state(m);s.formationPolicy.hold=0x8000|32;s.formationPolicy.keys[:]=[90|0x8000,90|0x8000,67,86];save(m,s)
+ m=setup(mode);s=state(m);s.formationPolicy.hold=0x8000|32;s.formationPolicy.keys[:]=[90|0x8000,90|0x8000,67,86,0,0];save(m,s)
  m.held_keys.add(32);kind,s=message(m,0x100,32);assert not s.formationPreview.active
  message(m,0x100,32,True);m.held_keys.clear();message(m,0x101,32);m.clock+=80;m.w(m.SH+m.Shared.heartbeat.offset,m.clock)
  m.held_keys.add(32);kind,s=message(m,0x100,32);assert kind==0 and s.formationPreview.active
@@ -63,8 +63,8 @@ for mode in (0,3):
 for mode in (0,3):
  for manual in (False,True):
   m=setup(mode,16);m.held_keys.add(18);message(m,0x104,18);before=bytes(state(m).formationPreview.slots)
-  message(m,0x104,67);assert before!=bytes(state(m).formationPreview.slots), 'stationary shape preview must change';message(m,0x105,67)
-  message(m,0x104,90);message(m,0x105,90);message(m,0x204);_,s=message(m,0x205,x=420,y=260)
+  message(m,0x104,67);assert before==bytes(state(m).formationPreview.slots), 'zero-length preview stays compact until drag';message(m,0x105,67)
+  message(m,0x104,90);message(m,0x105,90);message(m,0x204);m.clock+=20;message(m,0x200,x=420,y=260);_,s=message(m,0x205,x=420,y=260)
   assert not s.formationPreview.active and s.formationAccepted==16
   # Input exits immediately, submission drains through the normal gateway.
   s=tick(m);assert count(m)==16
@@ -127,7 +127,7 @@ for mode in (0,3):
 # A directed first layout still aligns arrival; later clicks go straight to
 # translated slots. Deliver every continuation and verify no extra approach.
 for mode in (0,3):
- m=setup(mode,4);m.held_keys.add(18);message(m,0x104,18);message(m,0x204);message(m,0x205,x=190,y=145);tick(m)
+ m=setup(mode,4);m.held_keys.add(18);message(m,0x104,18);message(m,0x204);m.clock+=20;message(m,0x200,x=190,y=145);message(m,0x205,x=190,y=145);tick(m)
  assert count(m)==4
  m.held_keys.clear();message(m,0x105,18)
  for step in range(2):
@@ -138,4 +138,28 @@ for mode in (0,3):
    unit=next(p for p in m.units if m.r(p+0x10)==uid);m.w(unit+0xac,2);m.w(unit+0x5a4,m.r(m.cells+(cell//1000*512+cell%1000)*4));m.w(unit+0x9c,cell%1000*256+128);m.w(unit+0xa0,cell//1000*256+128)
   s=tick(m);assert count(m)==old+4 and s.formationJobs==0,('continuation-facing-detour',mode,step,count(m),s.formationJobs)
  rows.append({'case':f'{mode}_directed_layout_then_two_direct_continuations','status':'PASS'})
+# Click commits the compact preview verbatim, including per-member assignment.
+for mode in (0,3):
+ for button in (1,2):
+  for shape in range(6):
+   m=setup(mode,9);s=state(m);s.formationPolicy.mouse=button;s.formationPolicy.keys[:]=[90,88,67,86,66,78];save(m,s)
+   m.held_keys.add(18);message(m,0x104,18);message(m,0x104,[90,88,67,86,66,78][shape]);message(m,0x105,[90,88,67,86,66,78][shape])
+   preview=state(m).formationPreview;before=bytes(preview.slots)
+   destinations={preview.units[n].id:preview.slots[n].y//256*1000+preview.slots[n].x//256 for n in range(preview.count)}
+   # Units move after sampling: a click must not run assignment again.
+   for n,unit in enumerate(m.units):m.w(unit+0x9c,(25-n)*256+128)
+   down,up=(0x201,0x202) if button==1 else (0x204,0x205)
+   message(m,down);m.clock+=20;message(m,0x200,x=103,y=102);_,s=message(m,up,x=101,y=100)
+   assert bytes(s.formationPreview.slots)==before and not s.formationPreview.dragging
+   tick(m);assert count(m)==9
+   actual={struct.unpack_from('<I',packets(m),n*111+7)[0]:struct.unpack_from('<I',packets(m),n*111+19)[0] for n in range(9)}
+   assert actual==destinations,(mode,button,shape,actual,destinations)
+   rows.append({'case':f'{mode}_{button}_{shape}_zero_drag_preview_exact_commit','status':'PASS'})
+  m=setup(mode,9);s=state(m);s.formationPolicy.mouse=button;save(m,s);m.held_keys.add(18);message(m,0x104,18)
+  down,up=(0x201,0x202) if button==1 else (0x204,0x205);message(m,down);m.clock+=20;_,s=message(m,0x200,x=150,y=130);assert s.formationPreview.dragging
+  before=bytes(s.formationPreview.slots);message(m,up,x=155,y=133);assert bytes(state(m).formationPreview.slots)==before
+  rows.append({'case':f'{mode}_{button}_release_does_not_resolve_layout','status':'PASS'})
+  m=setup(mode,4);s=state(m);s.formationPolicy.mouse=button;save(m,s);m.held_keys.add(18);message(m,0x104,18);message(m,down)
+  m.vector(0xa8ecb8,m.units[:-1]);message(m,up);tick(m);assert count(m)==0
+  rows.append({'case':f'{mode}_{button}_changed_members_cancel_frozen_preview','status':'PASS'})
 Path(a.output).write_text(json.dumps({'scope':__doc__,'results':rows},indent=2)+'\n')

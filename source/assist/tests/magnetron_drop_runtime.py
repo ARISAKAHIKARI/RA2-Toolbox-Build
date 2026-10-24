@@ -16,8 +16,8 @@ def setup(mode,inside):
  m.vector(0xa8ec78,[m.unit,m.enemyUnit,m.building]);m.w(m.unit+0x2ac,m.enemyUnit);m.w(m.enemyUnit+0x2b0,m.unit)
  for obj in (m.unit,m.enemyUnit):m.w(obj+0x9c,20*256+128);m.w(obj+0xa0,30*256+128)
  m.w(m.enemyUnit+0xa4,512);m.w(m.crateCell+0xe4,m.building);m.floor_height=0
- m.clock+=16;m.b(0xa8e9a0,0);m.hook();s=state(m);s.computeRequested=192|(2 if inside else 0);save(m,s)
- m.clock+=16;m.b(0xa8e9a0,1);m.w(0xa8ed84,1);s=m.hook();assert s.computeApplied==192|(2 if inside else 0)
+ m.clock+=16;m.b(0xa8e9a0,0);m.hook();s=state(m);s.computeRequested=192|((2|8192|16384) if inside else 0);save(m,s)
+ m.clock+=16;m.b(0xa8e9a0,1);m.w(0xa8ed84,1);s=m.hook();assert s.computeApplied==192|((2|8192|16384) if inside else 0)
  return m
 
 def submit(m):

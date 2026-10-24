@@ -1,0 +1,94 @@
+[
+  {
+    "test": "formation_runtime_3",
+    "returncode": 0
+  },
+  {
+    "test": "sticky_guard_runtime_3",
+    "returncode": 0
+  },
+  {
+    "test": "magnetron_compute_runtime_3",
+    "returncode": 0
+  },
+  {
+    "test": "magnetron_drop_runtime_3",
+    "returncode": 0
+  },
+  {
+    "test": "magnetron_friendly_drop_runtime_3",
+    "returncode": 0
+  },
+  {
+    "test": "magnetron_guard_runtime_3",
+    "returncode": 0
+  },
+  {
+    "test": "magnetron_split_admission_runtime_3",
+    "returncode": 0
+  },
+  {
+    "test": "navigation137_runtime_3",
+    "returncode": 0
+  },
+  {
+    "test": "magnetron137_runtime_3",
+    "returncode": 0
+  },
+  {
+    "test": "sticky_mission_native_3",
+    "returncode": 0
+  },
+  {
+    "test": "cell_scene_native_3",
+    "returncode": 0
+  },
+  {
+    "test": "mission_candidates_native_3",
+    "returncode": 0
+  },
+  {
+    "test": "formation_runtime_4",
+    "returncode": 0
+  },
+  {
+    "test": "sticky_guard_runtime_4",
+    "returncode": 0
+  },
+  {
+    "test": "magnetron_compute_runtime_4",
+    "returncode": 0
+  },
+  {
+    "test": "magnetron_drop_runtime_4",
+    "returncode": 0
+  },
+  {
+    "test": "magnetron_friendly_drop_runtime_4",
+    "returncode": 0
+  },
+  {
+    "test": "magnetron_guard_runtime_4",
+    "returncode": 0
+  },
+  {
+    "test": "magnetron_split_admission_runtime_4",
+    "returncode": 0
+  },
+  {
+    "test": "navigation137_runtime_4",
+    "returncode": 0
+  },
+  {
+    "test": "sticky_mission_native_4",
+    "returncode": 0
+  },
+  {
+    "test": "cell_scene_native_4",
+    "returncode": 0
+  },
+  {
+    "test": "mission_candidates_native_4",
+    "returncode": 0
+  }
+]

@@ -1,0 +1,116 @@
+{
+  "scope": "Exact listed blocks only; Hunt/Retreat prefixes do not prove whole functions match. No game execution or networking claim.",
+  "status": "PASS",
+  "samples": [
+    {
+      "game_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+      "blocks": {
+        "QueueMission": {
+          "address": "0x5b35e0",
+          "bytes": 101,
+          "sha256": "83872e5ce87f870c60cf72a6743f0e65e1b122b65ef779b044d37bfe235e7830"
+        },
+        "SetTacticalPosition": {
+          "address": "0x6d6000",
+          "bytes": 108,
+          "sha256": "2fda799b3b003a58c856cbf2edb12171ae9c213e663016888f0d33319713cce3"
+        },
+        "CenterToOriginPrefix": {
+          "address": "0x6d8b30",
+          "bytes": 102,
+          "sha256": "119aea240359caded4082d3ec5bcff046ba343c1ab38f40f0fb313fc07ab20f4"
+        },
+        "Sleep": {
+          "address": "0x5b2e10",
+          "bytes": 6,
+          "sha256": "772c52c7ca2794698239764b386055b2d9655d51c4ea25fee637a2c0a8ec4374"
+        },
+        "Harmless": {
+          "address": "0x5b2e20",
+          "bytes": 6,
+          "sha256": "772c52c7ca2794698239764b386055b2d9655d51c4ea25fee637a2c0a8ec4374"
+        },
+        "Ambush": {
+          "address": "0x5b2e30",
+          "bytes": 6,
+          "sha256": "772c52c7ca2794698239764b386055b2d9655d51c4ea25fee637a2c0a8ec4374"
+        },
+        "Wait": {
+          "address": "0x5b2fa0",
+          "bytes": 6,
+          "sha256": "772c52c7ca2794698239764b386055b2d9655d51c4ea25fee637a2c0a8ec4374"
+        },
+        "HuntPrefix": {
+          "address": "0x73efc0",
+          "bytes": 64,
+          "sha256": "3b046f9ae786059cc0aeb366986003dc3c3421f9ef0968aa6b17e717d7652c6f"
+        },
+        "Patrol": {
+          "address": "0x740b10",
+          "bytes": 65,
+          "sha256": "dd4ae34a4dcab16b68b5c46973e2d86b4a4ddd2ce50a6d176fb92c13ed9e344d"
+        },
+        "RetreatPrefix": {
+          "address": "0x4da2c0",
+          "bytes": 64,
+          "sha256": "ea40f964298adcd78910d5d4803e3075639f15c49f6383584b2bf926dba35df5"
+        }
+      }
+    },
+    {
+      "game_sha256": "c287d62a4d6a25b547e9339d071dd6e03adcf545699062e478aaeee38c60e89a",
+      "blocks": {
+        "QueueMission": {
+          "address": "0x5b35e0",
+          "bytes": 101,
+          "sha256": "83872e5ce87f870c60cf72a6743f0e65e1b122b65ef779b044d37bfe235e7830"
+        },
+        "SetTacticalPosition": {
+          "address": "0x6d6000",
+          "bytes": 108,
+          "sha256": "2fda799b3b003a58c856cbf2edb12171ae9c213e663016888f0d33319713cce3"
+        },
+        "CenterToOriginPrefix": {
+          "address": "0x6d8b30",
+          "bytes": 102,
+          "sha256": "119aea240359caded4082d3ec5bcff046ba343c1ab38f40f0fb313fc07ab20f4"
+        },
+        "Sleep": {
+          "address": "0x5b2e10",
+          "bytes": 6,
+          "sha256": "772c52c7ca2794698239764b386055b2d9655d51c4ea25fee637a2c0a8ec4374"
+        },
+        "Harmless": {
+          "address": "0x5b2e20",
+          "bytes": 6,
+          "sha256": "772c52c7ca2794698239764b386055b2d9655d51c4ea25fee637a2c0a8ec4374"
+        },
+        "Ambush": {
+          "address": "0x5b2e30",
+          "bytes": 6,
+          "sha256": "772c52c7ca2794698239764b386055b2d9655d51c4ea25fee637a2c0a8ec4374"
+        },
+        "Wait": {
+          "address": "0x5b2fa0",
+          "bytes": 6,
+          "sha256": "772c52c7ca2794698239764b386055b2d9655d51c4ea25fee637a2c0a8ec4374"
+        },
+        "HuntPrefix": {
+          "address": "0x73efc0",
+          "bytes": 64,
+          "sha256": "3b046f9ae786059cc0aeb366986003dc3c3421f9ef0968aa6b17e717d7652c6f"
+        },
+        "Patrol": {
+          "address": "0x740b10",
+          "bytes": 65,
+          "sha256": "dd4ae34a4dcab16b68b5c46973e2d86b4a4ddd2ce50a6d176fb92c13ed9e344d"
+        },
+        "RetreatPrefix": {
+          "address": "0x4da2c0",
+          "bytes": 64,
+          "sha256": "ea40f964298adcd78910d5d4803e3075639f15c49f6383584b2bf926dba35df5"
+        }
+      }
+    }
+  ]
+}

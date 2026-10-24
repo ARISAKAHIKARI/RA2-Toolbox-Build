@@ -30,7 +30,7 @@ class Planner {
  std::unordered_map<uint32_t,OreTurn> oreTurns_;
  uint32_t match_=0,inputSerial_=0,flags_=0;int frame_=-1,cursor_=0;
  std::unordered_map<uint32_t,Advanced> advanced_;
- struct Drop {uint32_t victim,token;int sent;};std::unordered_map<uint32_t,Drop> drops_;bool dropEnabled_=false;
+ struct Drop {uint32_t victim,token;int sent;};std::unordered_map<uint32_t,Drop> drops_;bool dropEnabled_=false,dropObserved_=false;uint32_t magnetronModes_=3;
  std::unordered_map<uint32_t,uint32_t> defenseSent_;int defenseCursor_=0;
  ActorLookup actors_;EnemyGrid enemies_;std::vector<const Actor*> refineries_,trucks_;
  std::unordered_map<uint32_t,const Refinery*> areas_;
@@ -104,7 +104,7 @@ public:
  bool hasJobs()const{return !ore_.empty()||!advanced_.empty();}
  std::vector<uint32_t> stoppedUnits()const{std::vector<uint32_t> ids;for(const auto&entry:advanced_)if(entry.second.stopped)ids.push_back(entry.first);return ids;}
  uint32_t trackingFlags()const{uint32_t f=ore_.empty()?0:AutoOreReturn;for(const auto&i:advanced_)f|=i.second.mode==MagnetronMove?MagnetronInput:AdvancedInput;return f;}
- void reset(){drops_.clear();dropEnabled_=false;defenseSent_.clear();defenseCursor_=0;advanced_.clear();actors_.clear();enemies_.clear();refineries_.clear();trucks_.clear();areas_.clear();ore_.clear();oreTurns_.clear();oreIDs_.clear();waitingCells_.clear();magneticReservations_.clear();match_=inputSerial_=0;frame_=-1;cursor_=0;queued=docking=issued=yielded=0;oreDelivered=oreUnverified=magnetShots=magnetUnverified=0;oreBypasses=oreYieldAttempts=oreTurnTimeouts=0;}
+ void reset(){drops_.clear();dropEnabled_=dropObserved_=false;magnetronModes_=3;defenseSent_.clear();defenseCursor_=0;advanced_.clear();actors_.clear();enemies_.clear();refineries_.clear();trucks_.clear();areas_.clear();ore_.clear();oreTurns_.clear();oreIDs_.clear();waitingCells_.clear();magneticReservations_.clear();match_=inputSerial_=0;frame_=-1;cursor_=0;queued=docking=issued=yielded=0;oreDelivered=oreUnverified=magnetShots=magnetUnverified=0;oreBypasses=oreYieldAttempts=oreTurnTimeouts=0;}
  void accepted(const Order& order,int frame){
   if(order.purpose==MagnetronDropOrder){drops_[order.unit]={order.refinery,order.token,frame};auto it=advanced_.find(order.unit);if(it!=advanced_.end()){auto&t=it->second;t.pendingShot=t.attacking=false;t.target=0;t.sent=frame;}return;}
   if(order.purpose==1||order.purpose==3){auto it=advanced_.find(order.unit);if(it==advanced_.end()||it->second.token!=order.token)return;auto&task=it->second;
@@ -137,12 +137,13 @@ public:
   if(order.mission==1){t.skipTarget=order.target;t.skipUntil=frame+30;if(t.target==order.target)t.pendingShot=false;}
   else if(order.mission==2&&++t.moveFailures>=2){t.progress.hold=true;t.stopped=false;}
  }
- std::vector<Order> step(const World& world,uint32_t flags,int veteran,int elite,int pathTimeout,int scanHz=0,int targetPriority=0,int rangeCells=2,bool autoDrop=false){
+ std::vector<Order> step(const World& world,uint32_t flags,int veteran,int elite,int pathTimeout,int scanHz=0,int targetPriority=0,int rangeCells=2,bool autoDrop=false,uint32_t magnetronModes=3,bool observeDrop=false){
   const int rangePadding=std::clamp(rangeCells,0,30)*256;
   if(!validWorld(world)){reset();return {};}
   if(world.match!=match_){reset();match_=world.match;}
   std::vector<Order> combat,out;combat.reserve(16);out.reserve(MaxOrders);
-  if(world.frame==frame_&&world.inputSerial==inputSerial_&&flags==flags_&&dropEnabled_==autoDrop)return out;frame_=world.frame;inputSerial_=world.inputSerial;flags_=flags;dropEnabled_=autoDrop;queued=docking=yielded=0;targetChecks=0;
+  observeDrop|=autoDrop;
+  if(world.frame==frame_&&world.inputSerial==inputSerial_&&flags==flags_&&dropEnabled_==autoDrop&&magnetronModes_==magnetronModes&&dropObserved_==observeDrop)return out;frame_=world.frame;inputSerial_=world.inputSerial;flags_=flags;dropEnabled_=autoDrop;magnetronModes_=magnetronModes;dropObserved_=observeDrop;queued=docking=yielded=0;targetChecks=0;
   actors_.clear();enemies_.clear();refineries_.clear();trucks_.clear();areas_.clear();bool enemiesBuilt=false;
   bool useOre=(flags&AutoOreReturn)||!ore_.empty(),useCombat=(flags&(AdvancedInput|MagnetronInput))&&world.intentCount;
   for(int i=0;i<world.count;++i){const auto&a=world.actors[i];if(!a.id)continue;actors_.add(a);
@@ -151,10 +152,10 @@ public:
   for(int i=0;i<world.refineryCount;++i)areas_[world.refineries[i].id]=&world.refineries[i];
   std::unordered_set<uint32_t> dropping;
   for(auto it=drops_.begin();it!=drops_.end();){const Actor*a=actor(it->first);if(!autoDrop||!a||a->manualVersion!=it->second.token||a->liftTarget!=it->second.victim)it=drops_.erase(it);else ++it;}
-  if(autoDrop)for(int n=0;n<world.count;++n){const auto&a=world.actors[n];if(!(a.flags&Own)||!a.liftTarget||(a.flags&(Disabled|Limbo|OffMap|Transported)))continue;
+  if(observeDrop)for(int n=0;n<world.count;++n){const auto&a=world.actors[n];if(!(a.flags&Own)||!a.liftTarget||(a.flags&(Disabled|Limbo|OffMap|Transported)))continue;
    auto pending=drops_.find(a.id);if(pending!=drops_.end()){dropping.insert(a.id);if(world.frame-pending->second.sent<30)continue;}
    if(!(a.flags&DropHazard))continue;
-   dropping.insert(a.id);add(combat,{a.id,a.manualVersion,0,0,13,0,MagnetronDropOrder,a.liftTarget});
+   dropping.insert(a.id);if(autoDrop)add(combat,{a.id,a.manualVersion,0,0,13,0,MagnetronDropOrder,a.liftTarget});
   }
   if(flags&AntiTheft){
    for(auto it=defenseSent_.begin();it!=defenseSent_.end();)if(!actor(it->first))it=defenseSent_.erase(it);else ++it;
@@ -177,7 +178,7 @@ public:
   magneticReservations_.clear();
   if(useCombat){
    for(int i=0;i<world.intentCount;++i){const auto&intent=world.intents[i];const Actor* a=actor(intent.id);if(!intent.id||intent.mode>MagnetronMove||intent.cell%1000<=0||intent.cell%1000>=512||intent.cell/1000<=0||intent.cell/1000>=512)continue;bool mag=intent.mode==MagnetronMove;
-    if(!(flags&(mag?MagnetronInput:AdvancedInput))||!a||!positionValid(*a)||!(a->flags&Own)||a->manualVersion!=intent.token||(a->flags&(Disabled|Transported|Limbo|OffMap|Manipulated))||(mag&&!magnetron(*a)))continue;
+    if(!(flags&(mag?MagnetronInput:AdvancedInput))||(mag&&!(magnetronModes&(intent.global?2u:1u)))||!a||!positionValid(*a)||!(a->flags&Own)||a->manualVersion!=intent.token||(a->flags&(Disabled|Transported|Limbo|OffMap|Manipulated))||(mag&&!magnetron(*a)))continue;
     active.insert(intent.id);auto&task=advanced_[intent.id];
     if(task.token!=intent.token||task.cell!=intent.cell||task.mode!=intent.mode){task={};task.token=intent.token;task.cell=intent.cell;task.mode=intent.mode;task.progress.begin(a->x,a->y,world.frame);}
     if(intent.global)task.progress.hold=true;

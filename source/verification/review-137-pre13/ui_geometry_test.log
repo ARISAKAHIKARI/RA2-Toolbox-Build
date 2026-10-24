@@ -1,0 +1,2 @@
+PASS: shipped UI construction/layout: {"controls": 402, "fully_reachable_checks": 4656, "viewport_sizes": 12, "pages": 3, "content_bottom": 130}
+PASS: all controls accessible, no overlap, supported interactive IDs retained, three independently scrollable categories, pinned header/footer, clipped body and scroll limits

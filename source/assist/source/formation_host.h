@@ -4,7 +4,7 @@
 #include <tuple>
 namespace formationhost {
 struct Cached {gameassets::ActorArt art;bool attempted=false,ready=false;uint32_t retry=0;uint64_t used=0,viewUsed[32]{};std::map<int,external::voxel::Image> views;};
-struct Visual {int x,y;const external::voxel::Image*image;};
+struct Visual {int x,y;const external::voxel::Image*image;external::lighting::State light;};
 using ModelKey=std::tuple<uint32_t,uint32_t,int>;
 static std::map<ModelKey,Cached> models;
 static formation::Preview preview;static std::vector<Visual> visuals;
@@ -38,7 +38,7 @@ static void update(){
  auto light=external::lighting::sample(read);if(light!=sceneLight){sceneLight=light;++revision;}
  // Input may stand still indefinitely; validity is anchored by the live shared
  // context, not a timer that would make stationary previews disappear.
- visuals.clear();missing=0;wanted.clear();preview=next;external::Projection projection{snap.cameraX,snap.cameraY,snap.width,snap.height};
+ visuals.clear();missing=0;wanted.clear();preview=next;external::Projection projection{snap.cameraX,snap.cameraY,snap.width,snap.height};projection.zScale=external::projectionZScale(read);
  int facing=int(std::lround(next.facing*32/(2*formation::Pi)))&31;wantedFacing=facing;int work=0;
  for(int n=0;n<next.count;++n)if(next.slots[n].valid){int x,y;if(external::project(projection,next.slots[n].x,next.slots[n].y,next.slots[n].z,x,y))wanted.push_back(modelKey(next.units[n]));}
  for(int n=0;n<next.count;++n){const auto&u=next.units[n];const auto&s=next.slots[n];if(!s.valid)continue;int x,y;if(!external::project(projection,s.x,s.y,s.z,x,y))continue;
@@ -58,16 +58,15 @@ static void update(){
    if(!roomForImage(rendered.pixels.size())){++missing;continue;}it=c.views.emplace(facing,std::move(rendered)).first;++revision;
   }
   const external::voxel::Image*image=&it->second;c.viewUsed[facing]=++useSerial;
-  visuals.push_back({x,y,image});
+  visuals.push_back({x,y,image,external::lighting::at(read,s.x,s.y,s.z,sceneLight)});
  }
  std::sort(visuals.begin(),visuals.end(),[](const Visual&a,const Visual&b){return a.y<b.y;});
- uint64_t hash=(uint64_t(revision)<<32)^uint64_t(facing+1)*1099511628211ull^uint64_t(next.shape+1)*16777619ull^missing;for(const auto&v:visuals){hash=(hash^uint32_t(v.x))*1099511628211ull;hash=(hash^uint32_t(v.y))*1099511628211ull;hash=(hash^uintptr_t(v.image))*1099511628211ull;}if(hash!=visualSignature){visualSignature=hash;++paintRevision;}
+ uint64_t hash=(uint64_t(revision)<<32)^uint64_t(facing+1)*1099511628211ull^uint64_t(next.shape+1)*16777619ull^missing;for(const auto&v:visuals){hash=(hash^uint32_t(v.x))*1099511628211ull;hash=(hash^uint32_t(v.y))*1099511628211ull;hash=(hash^uintptr_t(v.image))*1099511628211ull;hash=(hash^uint32_t(v.light.intensity))*1099511628211ull;for(int c:v.light.tint)hash=(hash^uint32_t(c))*1099511628211ull;}if(hash!=visualSignature){visualSignature=hash;++paintRevision;}
 }
 static bool visible(){return shared&&shared->formationPreview.active&&extra.formationEnabled&&!snap.chat;}
 static void draw(Graphics&g){
- auto gains=sceneLight.gains();ColorMatrix matrix={};for(int n=0;n<5;++n)matrix.m[n][n]=n<3?gains[n]:1.f;ImageAttributes attributes;attributes.SetColorMatrix(&matrix);
- for(const auto&v:visuals){auto&i=*v.image;Bitmap bitmap(i.width,i.height,i.width*4,PixelFormat32bppPARGB,reinterpret_cast<BYTE*>(const_cast<uint32_t*>(i.pixels.data())));g.DrawImage(&bitmap,RectF(float(v.x+i.x),float(v.y+i.y),float(i.width),float(i.height)),0.f,0.f,float(i.width),float(i.height),UnitPixel,&attributes);}
- if(visible()){const wchar_t*names[]={L"矩形横队",L"分散横队",L"圆形聚集",L"扇形"};std::wstring text=L"队形 · "+std::wstring(names[std::clamp(preview.shape,0,3)])+(extra.formationMouse==1?L" · 左拖排列 / 左击聚集 · Esc 取消":L" · 右拖排列 / 右击聚集 · Esc 取消");
+ for(const auto&v:visuals){auto gains=v.light.gains();ColorMatrix matrix={};for(int n=0;n<5;++n)matrix.m[n][n]=n<3?gains[n]:1.f;ImageAttributes attributes;attributes.SetColorMatrix(&matrix);auto&i=*v.image;Bitmap bitmap(i.width,i.height,i.width*4,PixelFormat32bppPARGB,reinterpret_cast<BYTE*>(const_cast<uint32_t*>(i.pixels.data())));g.DrawImage(&bitmap,RectF(float(v.x+i.x),float(v.y+i.y),float(i.width),float(i.height)),0.f,0.f,float(i.width),float(i.height),UnitPixel,&attributes);}
+ if(visible()){const wchar_t*names[]={L"矩形横队",L"分散横队",L"圆形聚集",L"扇形",L"正方形聚集",L"空心框聚集"};std::wstring text=L"队形 · "+std::wstring(names[std::clamp(preview.shape,0,formation::Shapes-1)])+(extra.formationMouse==1?L" · 左拖排列 / 左击提交预览 · Esc 取消":L" · 右拖排列 / 右击提交预览 · Esc 取消");
   if(missing)text+=L" · "+std::to_wstring(missing)+L" 个模型未载入";drawText(g,text,18,44,12,Color(230,220,244,255));}
 }
 }
