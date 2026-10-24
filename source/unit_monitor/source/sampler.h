@@ -33,7 +33,7 @@ template<class Read,class Resolve> class Sampler {
  }
  int find(uint32_t p){for(int i=0;i<state.typeCount;i++)if(state.types[i].ptr==p)return i;return -1;}
  bool loadIcon(Type&t){return readCameo(read,resolve,t,iconBuffer,sizeof iconBuffer,files);}
- void palette(){state.paletteReady=0;std::vector<uint8_t> colors;if(files&&files("cameo.pal",colors)&&colors.size()==768){bool valid=true;for(auto c:colors)valid&=c<=63;if(valid){for(int i=0;i<256;++i)state.palette[i]=0xff000000u|(uint32_t(colors[i*3])*4<<16)|(uint32_t(colors[i*3+1])*4<<8)|uint32_t(colors[i*3+2])*4;state.palette[0]=0;state.paletteReady=1;return;}}readCameoPalette(read,state);}
+ void palette(){state.paletteReady=0;readCameoPalette(read,state,files);}
  void types(bool buildings,bool newRound) {
   // Artwork survives a match. Rebuilding Type pointers must not start a new
   // disk scan or abandon the previous match's pending icon writes.

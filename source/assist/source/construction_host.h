@@ -150,7 +150,7 @@ static void paintIcon(HDC dc,int index,int x,int y,bool gray){
  uint32_t ptr=typePointer(index);
  um::Type type{};type.category=t.kind==7?3:t.kind==16?1:t.kind==40?2:0;memcpy(type.id,t.id,24);type.id[23]=0;if(ptr>=0x10000)externalReader.readFresh(ptr+1750,type.cameo,24);type.cameo[24]=0;type.ptr=ptr;
  static um::Snapshot palette{};palette.paletteReady=0;bool ready=icons.restore(type,palette);
- if(!ready&&ptr>=0x10000){static uint8_t buffer[32+256*1024];auto read=[](uint32_t at,void*out,size_t size){return externalReader.readFresh(at,out,size);};auto resolve=[](uint32_t){return 0u;};if(um::readCameo(read,resolve,type,buffer,sizeof buffer,gameassets::cameo)&&um::readCameoPalette(read,palette)){ready=true;icons.remember(type,palette);}}
+ if(!ready&&ptr>=0x10000){static uint8_t buffer[32+256*1024];auto read=[](uint32_t at,void*out,size_t size){return externalReader.readFresh(at,out,size);};auto resolve=[](uint32_t){return 0u;};if(um::readCameo(read,resolve,type,buffer,sizeof buffer,gameassets::cameo)&&um::readCameoPalette(read,palette,gameassets::cameo)){ready=true;icons.remember(type,palette);}}
  RECT icon=rect(x,y,x+60,y+48);
  if(ready){uint32_t pixels[60*48];for(int i=0;i<60*48;++i){uint32_t color=palette.palette[type.icon[i]];if(gray){unsigned value=(((color>>16)&255)*3+((color>>8)&255)*6+(color&255))/10;color=(value<<16)|(value<<8)|value;}pixels[i]=color&0xFFFFFF;}
   BITMAPINFO info{};info.bmiHeader.biSize=sizeof(BITMAPINFOHEADER);info.bmiHeader.biWidth=60;info.bmiHeader.biHeight=-48;info.bmiHeader.biPlanes=1;info.bmiHeader.biBitCount=32;

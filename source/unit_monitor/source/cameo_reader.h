@@ -11,7 +11,10 @@ template<class Read,class Resolve>bool readCameo(Read read,Resolve resolve,Type&
  for(unsigned y=0;y<height;++y){unsigned length=width;if(flags>=2){uint16_t row=0;if(!read(at,&row,2)||row<2||row>1024)return false;length=row;}if(used+length>capacity||!read(at,buffer+used,length))return false;at+=length;used+=length;}
  if(!decode(buffer,used,t.icon))return false;t.iconReady=1;t.iconCached=0;return true;
 }
-template<class Read>bool readCameoPalette(Read read,Snapshot&s){
+template<class Read>bool readCameoPalette(Read read,Snapshot&s,AssetLoad files=nullptr){
+ // Building and statistics icons resolve the same MIX/loose-file palette.
+ if(files){std::vector<uint8_t> colors;if(files("cameo.pal",colors)&&colors.size()==768){bool valid=true;for(auto c:colors)valid&=c<=63;if(valid){for(int i=0;i<256;++i)s.palette[i]=0xff000000u|(uint32_t(colors[i*3])*4<<16)|(uint32_t(colors[i*3+1])*4<<8)|uint32_t(colors[i*3+2])*4;s.palette[0]=0;s.paletteReady=1;return true;}}}
+
  uint32_t conv=0,mid=0;int mode=0;uint16_t palette[256];if(!read(0x87F6B0,&conv,4)||!conv||!read(conv+4,&mode,4)||mode!=2||!read(conv+0x174,&mid,4)||!mid||!read(mid,palette,sizeof palette))return false;
  for(int i=0;i<256;++i){unsigned c=palette[i],r=((c>>11)&31)*255/31,g=((c>>5)&63)*255/63,b=(c&31)*255/31;s.palette[i]=0xFF000000u|(r<<16)|(g<<8)|b;}s.palette[0]=0;s.paletteReady=1;return true;
 }

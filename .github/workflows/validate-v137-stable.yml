@@ -8,7 +8,7 @@ permissions:
   contents: read
 concurrency:
   group: validate-v137-stable
-  cancel-in-progress: false
+  cancel-in-progress: true
 jobs:
   build:
     runs-on: ubuntu-24.04
@@ -28,6 +28,10 @@ jobs:
             g++ -std=c++17 -O2 "source/assist/tests/$test.cpp" -o "/tmp/$test"
             "/tmp/$test"
           done
+          g++ -std=c++17 -O2 source/unit_monitor/tests/cameo_palette.cpp -o /tmp/cameo-palette
+          /tmp/cameo-palette
+          g++ -std=c++17 -O2 source/unit_monitor/tests/icon_cache.cpp -o /tmp/icon-cache -pthread
+          /tmp/icon-cache
           python3 source/tools/audit_architecture.py
       - name: Install pinned Zig compiler
         run: |
