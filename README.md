@@ -1,3 +1,21 @@
+# RA2 Toolbox 1.0.38-pre.2
+
+副相机新增 VXL 法线／VPL 光照、SHP／TMP 逐像素深度、建筑遮挡、阴影和实际建筑附加动画；小地图支持示意／实景。统一覆盖层层级，敌方标识按两格聚类，建造和统计图标共用游戏已解析字段、内存 INI 与 MIX 资源解析。
+
+[下载 1.0.38-pre.2](https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/releases/tag/v1.0.38-pre.2) · [发布说明](packages/v1.0.38-pre.2/RELEASE_NOTES.md) · [完整特性树](docs/FEATURES-1.0.38-pre.2.md) · [渲染研究](source/research/2026-10-24-camera-pipeline-138-pre2.md)
+
+EXE 与 Runtime 文件版本 **1.0.38.2**，Assist **72**。关闭游戏与工具箱后同时替换 EXE/DLL；已有 INI 保留，首次所有功能开关默认关闭。提供更新包与对应源码包。
+
+渲染仍属预览：施工、闸门、废墟等特殊建筑主体帧和部分 MOD 效果尚未完整复刻；自动回归及 Windows 窗口测试不代表已完成游戏画面、性能或联机验证。gamemd-ares.exe 原已在共用识别名单中，本版补充真实 Windows 进程发现测试；命令桥仍需通过实际映像特征检查。
+
+## 当前正式版：1.0.37
+
+[正式版下载](https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/releases/tag/v1.0.37) · [新增／修复与完整特性树](https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/blob/v1.0.37/packages/v1.0.37/RELEASE_NOTES.md)
+
+修复冷冻时间、危险载员等设置保存与恢复，改进敌方标识和载员提示跟随，增加 MIX 图标读取；保留直接模式、科技加强与仅光标高刷。配置和快捷键采用用户预设，首次功能开关全关，更新保留已有配置。
+
+## 历史预览版本
+
 # RA2 Toolbox 1.0.38-pre.1
 
 地图全开和随处建造新增“直接模式”，原方案命名为“受控模式”；科技生产保留经典兼容，新增独立“科技加强（实验性）”。仅保留光标高刷可用，拖屏/全部/强制高刷及视角缩放暂时置灰。步兵强行进入建筑保持原状。
@@ -74,7 +92,7 @@
 
 [测试更新包](packages/v1.0.37-pre.2/RA2-Toolbox-v1.0.37-pre.2-Update.zip) · [发布说明](packages/v1.0.37-pre.2/RELEASE_NOTES.md) · [操作与验证](source/REVIEW-1.0.37-pre.2.md)
 
-## 当前正式版：1.0.36
+## 历史正式版：1.0.36
 
 [下载 Windows 完整包](https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/releases/download/v1.0.36/RA2-Toolbox-v1.0.36-Windows.zip) · [Release / 更新包 / 源码](https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/releases/tag/v1.0.36) · [研究索引](source/research/INDEX.md)
 

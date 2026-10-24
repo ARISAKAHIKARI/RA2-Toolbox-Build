@@ -1,0 +1,76 @@
+name: Publish RA2 Toolbox 1.0.38-pre.2
+on:
+  push:
+    branches: [codex/camera-v138-pre2]
+    paths: ['.github/workflows/publish-v138-pre2.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: publish-v138-pre2
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      actions: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      BUILD_SHA: 24ec76634de50c6e0aa0fe147fafb1d726e20710
+      BUILD_RUN: '40125478842'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Require successful validation of these exact sources
+        run: |
+          set -euo pipefail
+          gh api "repos/$GH_REPO/actions/runs/$BUILD_RUN" > /tmp/build-run.json
+          python3 - <<'PY'
+          import json,os
+          r=json.load(open('/tmp/build-run.json'))
+          assert r['head_sha']==os.environ['BUILD_SHA'] and r['conclusion']=='success'
+          assert r['path']=='.github/workflows/validate-v138-pre2.yml'
+          PY
+          git fetch --depth=1 origin "$BUILD_SHA"
+          git diff --exit-code "$BUILD_SHA" HEAD -- source ':(exclude)source/tools/package_pre1382.py' .github/workflows/validate-v138-pre2.yml
+          gh run download "$BUILD_RUN" --name camera138pre2-binaries --dir "$RUNNER_TEMP/camera138pre2-binaries"
+          gh run download "$BUILD_RUN" --name camera138pre2-windows-settings --dir "$RUNNER_TEMP/camera138pre2-windows-settings"
+          cp "$RUNNER_TEMP/camera138pre2-binaries/RA2Toolbox.exe" "$RUNNER_TEMP/camera138pre2-binaries/GameRuntime.dll" "$RUNNER_TEMP/camera138pre2-binaries/WINDOWS_BUILD_ARTIFACTS.json" source/
+          cp "$RUNNER_TEMP/camera138pre2-windows-settings/WINDOWS_SETTINGS_SMOKE.json" source/
+          python3 source/tools/verify_windows_outputs.py
+          python3 source/tools/package_pre1382.py
+      - name: Publish verified preview release
+        run: |
+          set -euo pipefail
+          tag=v1.0.38-pre.2
+          if gh release view "$tag" --json isDraft > /tmp/release-state.json 2>/dev/null; then
+            python3 - <<'PY'
+          import json
+          assert json.load(open('/tmp/release-state.json'))['isDraft'],'Refusing to replace an already-published preview release'
+          PY
+          else
+            gh release create "$tag" --target "$GITHUB_SHA" --draft --prerelease --title 'RA2 Toolbox 1.0.38-pre.2' --notes-file packages/v1.0.38-pre.2/RELEASE_NOTES.md
+          fi
+          gh release edit "$tag" --target "$GITHUB_SHA" --title 'RA2 Toolbox 1.0.38-pre.2' --notes-file packages/v1.0.38-pre.2/RELEASE_NOTES.md
+          gh release upload "$tag" dist/v1.0.38-pre.2/RA2-Toolbox-v1.0.38-pre.2-Update.zip dist/v1.0.38-pre.2/RA2-Toolbox-v1.0.38-pre.2-Source.zip dist/v1.0.38-pre.2/release-manifest.json --clobber
+          mkdir remote-check
+          gh release download "$tag" --pattern '*.zip' --pattern release-manifest.json --dir remote-check
+          python3 - <<'PY'
+          import hashlib,json,pathlib
+          manifest=json.load(open('dist/v1.0.38-pre.2/release-manifest.json'))
+          for item in manifest['assets']:
+              data=(pathlib.Path('remote-check')/item['name']).read_bytes()
+              assert len(data)==item['bytes'] and hashlib.sha256(data).hexdigest()==item['sha256']
+          assert pathlib.Path('remote-check/release-manifest.json').read_bytes()==pathlib.Path('dist/v1.0.38-pre.2/release-manifest.json').read_bytes()
+          PY
+          gh release edit "$tag" --draft=false --prerelease=true --latest=false
+          gh release view "$tag" --json url,tagName,isDraft,isPrerelease,assets > published-release.json
+          python3 - <<'PY'
+          import json
+          r=json.load(open('published-release.json'))
+          assert r['tagName']=='v1.0.38-pre.2' and not r['isDraft'] and r['isPrerelease']
+          assert {a['name'] for a in r['assets']}=={'RA2-Toolbox-v1.0.38-pre.2-Update.zip','RA2-Toolbox-v1.0.38-pre.2-Source.zip','release-manifest.json'}
+          PY
+          cat published-release.json >> "$GITHUB_STEP_SUMMARY"
