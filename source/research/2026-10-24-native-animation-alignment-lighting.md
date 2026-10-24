@@ -26,6 +26,8 @@
 
 `Anim::GetYSort 0x422BC0` 返回 render X+Y 加 `+0x104`（leptons）；`GetLayer 0x424CB0` 對附著動畫返回 2，否則用 type `+0x364`。本次建築動畫均為地面層 2。改按 Layer/YSort 插入物件，不再全部留到最後；同錨點先身體後動畫，使前方單位能蓋住後方動畫。
 
+`Building::GetYSort 0x449410`（thiscall、無棧參數）還按 type `+0x16C5 != 0` 加 32、`+0x16B7 != 0` 減 16 leptons。更新包的 watch/radar 採集已包含這兩項；最後再以原指令逐棟執行複核。快照中 CAOUTP、NALASR、YAGGUN、YAREFN 的前項非零，不能把所有建築只按 Location 排序。一般物件使用已採樣 Layer `+0x94`，動畫則用上列原版 GetLayer 規則。
+
 建築繪圖片段 `0x43D6FF/0x43D787` 使用 BUILDNGZ、參考點 (198,446)、type `+0x1530/+0x1534` ZShapePointMove 與 foundation 遠角，寬度 >=8 跳過形狀。新入口優先讀已載入 BUILDNGZ 指標 `0x89DDBC` 及 `NormalZAdjust+0x1520`。這些是反組譯證據，未執行整個 Draw_It。
 
 VXL 內部面 Z 只解決模型內遮擋。場景合成改用快取形狀的站立梯度與未加 padding 的模型底部，避免直接帶入與 TMP/BUILDNGZ 基準不相容的模型相對 Z。依據下列 CNCMaps VoxelDrawable，未宣稱完整重現原版 voxel raster。

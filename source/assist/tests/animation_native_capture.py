@@ -25,11 +25,13 @@ with zipfile.ZipFile(a.capture) as z:
    sp=stack+0x800;u.mem_write(sp,struct.pack('<'+'I'*(len(args)+1),stop,*args));u.reg_write(UC_X86_REG_ESP,sp);u.reg_write(UC_X86_REG_ECX,obj);u.emu_start(addr,stop,count=10000)
    assert u.reg_read(UC_X86_REG_ESP)==sp+4+len(args)*4
    return u.reg_read(UC_X86_REG_EAX)
-  n=0;paused=0;starts=0
+  n=0;paused=0;starts=0;buildings=0;adjusted=0
   for i in range(value(0xA8EB40+16)):
    b=value(value(0xA8EB40+4)+i*4)
    if value(b)!=0x7e3ebc or signed(b+0x6c)<=0:continue
    run(0x459ef0,b,(out,));v=xyz(b+0x9c);assert xyz(out)==(v[0]-128,v[1]-128,v[2])
+   bt=value(b+0x520);adjustment=(32 if u.mem_read(bt+0x16c5,1)[0] else 0)-(16 if u.mem_read(bt+0x16b7,1)[0] else 0)
+   assert run(0x449410,b)==((sum(v[:2])-256+adjustment)&0xffffffff);buildings+=1;adjusted+=adjustment!=0
    for off in list(range(0x55c,0x5b0,4))+list(range(0x5c8,0x5e8,4)):
     obj=value(b+off)
     if not obj:continue
@@ -41,7 +43,7 @@ with zipfile.ZipFile(a.capture) as z:
     sp=stack+0x800;u.reg_write(UC_X86_REG_ESP,sp);u.reg_write(UC_X86_REG_ESI,obj);u.emu_start(0x42303f,0x423061,count=100)
     assert value(sp+0x2c)==value(obj+0xac)+value(t+0x2b4)
     n+=1;paused+=bool(u.mem_read(obj+0x19e,1)[0]);starts+=value(t+0x2b4)>0
-  results.append({'stage':stage,'native_animations':n,'power_off':paused,'nonzero_start':starts})
-  for addr,length in [(0x451890,0x2a4),(0x459ef0,0x2b),(0x447ac0,0x54),(0x422be0,0x85),(0x422bc0,0x12),(0x424cb0,0x27),(0x42303f,0x22)]:
+  results.append({'stage':stage,'native_animations':n,'power_off':paused,'nonzero_start':starts,'native_building_sort':buildings,'adjusted_building_sort':adjusted})
+  for addr,length in [(0x451890,0x2a4),(0x459ef0,0x2b),(0x449410,0x2e),(0x5f6bd0,0x36),(0x447ac0,0x54),(0x422be0,0x85),(0x422bc0,0x12),(0x424cb0,0x27),(0x42303f,0x22)]:
    hashes[hex(addr)]=hashlib.sha256(bytes(u.mem_read(addr,length))).hexdigest()
  a.output.parent.mkdir(parents=True,exist_ok=True);a.output.write_text(json.dumps({'scope':__doc__,'game_exe_sha256':session['file_sha256'],'code_sha256':hashes,'results':results},indent=2)+'\n');print(json.dumps(results))

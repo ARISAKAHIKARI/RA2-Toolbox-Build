@@ -4,6 +4,8 @@
   "code_sha256": {
     "0x451890": "a059be11e3af8eb28b87d9a0644839fdebe566ed086f52b8bc4fada3b476f12a",
     "0x459ef0": "8b57ece16fea95a1895caa2e8df6be2f2ee7fbfb57edadb12beb56ff1cdcdb3a",
+    "0x449410": "020909c8e94230233cbfd13c3f2334f6476afa50ad81d6534d3a6f45d1257431",
+    "0x5f6bd0": "b3043b3c7d1d5157238fe227018cc818225a5b0498e29eca8a47c4a758e03db9",
     "0x447ac0": "9313b2a6f51c9c5aa1be2df9b290cce1e02e872f144ea41789754bdcec08c7c1",
     "0x422be0": "15b78675c90ef7750dfafabd576269befb24b35004f953efb8beb69ca5bf4d8c",
     "0x422bc0": "20e6ea5ce30fb524fc87885df6b98d97e49d8e9386fad98a1cdbf48e55386300",
@@ -15,19 +17,25 @@
       "stage": "01-off",
       "native_animations": 39,
       "power_off": 15,
-      "nonzero_start": 1
+      "nonzero_start": 1,
+      "native_building_sort": 48,
+      "adjusted_building_sort": 3
     },
     {
       "stage": "02-on",
       "native_animations": 43,
       "power_off": 15,
-      "nonzero_start": 1
+      "nonzero_start": 1,
+      "native_building_sort": 53,
+      "adjusted_building_sort": 6
     },
     {
       "stage": "03-off",
       "native_animations": 44,
       "power_off": 15,
-      "nonzero_start": 1
+      "nonzero_start": 1,
+      "native_building_sort": 57,
+      "adjusted_building_sort": 7
     }
   ]
 }
