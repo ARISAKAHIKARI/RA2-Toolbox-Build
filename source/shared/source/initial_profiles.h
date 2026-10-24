@@ -30,6 +30,7 @@ MinimapX=20
 MinimapY=60
 MinimapZoom=0
 MinimapScale=200
+MinimapMode=0
 ParasiteMarker=0
 CrateBuffMarkers=0
 [Hotkeys]

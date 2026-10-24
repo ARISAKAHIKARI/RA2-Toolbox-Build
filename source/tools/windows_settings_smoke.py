@@ -88,6 +88,10 @@ def scenario(folder):
             h=child(root,id)
             click(root,h,1)
             assert ini(folder,'Display',key)==1,(key,'not saved on')
+        # Real minimap mode selection persists through the same owner notification.
+        mode=child(root,9065,'RA2Assist010');assert mode and send(mode,0x147)==0
+        send(mode,0x14E,1);send(u.GetParent(mode),0x111,9065|(1<<16),mode)
+        until(lambda:ini(folder,'Display','MinimapMode')==1,'real minimap mode saved')
         # Change an unrelated tactical setting: it must not reset these values.
         h=child(root,702,'RA2Assist010');click(root,h,1)
         assert ini(folder,'Display','Frozen')==ini(folder,'Display','DangerPassengers')==1
@@ -96,12 +100,15 @@ def scenario(folder):
         for id,key in keys.items():
             h=child(root,id)
             assert check(h)==1,(key,'restart lost saved on')
+        assert send(child(root,9065,'RA2Assist010'),0x147)==1,'real minimap mode lost on restart'
+        mode=child(root,9065,'RA2Assist010');send(mode,0x14E,0);send(u.GetParent(mode),0x111,9065|(1<<16),mode)
         # Switch off and exit immediately, exercising pending autosave at shutdown.
         for id in [604]+[id for id in keys if id!=604]:send(child(root,id),0xF5)
         close(p,root)
         p,root,f,d=launch(folder)
         for id,key in keys.items():
             assert check(child(root,id))==0 and ini(folder,'Display',key)==0,(key,'restart lost saved off')
+        assert send(child(root,9065,'RA2Assist010'),0x147)==0 and ini(folder,'Display','MinimapMode')==0
         assert ini(folder,'Cooperative','AdvancedEnter')==1,'first-use defaults overwrote existing settings'
         close(p,root)
     finally:
@@ -116,7 +123,7 @@ if __name__=='__main__':
     result={'status':'PASS','version':'1.0.38-pre.2','runs':3,'display_switches':9,
             'checks':['all fresh UI switches off','user hotkeys','cross-pane edits',
                       'real Win32 INI writes','restart on','restart off',
-                      'immediate exit','existing settings preserved'],
+                      'minimap diagram/scene mode restart','immediate exit','existing settings preserved'],
             'game_tested':False,'multiplayer_tested':False}
     print(json.dumps(result,ensure_ascii=False))
     (source/'WINDOWS_SETTINGS_SMOKE.json').write_text(json.dumps(result,ensure_ascii=False,indent=2)+'\n')

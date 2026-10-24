@@ -1,4 +1,5 @@
 #include "../../shared/source/modern_ui.h"
+#include "../../shared/source/overlay_stack.h"
 #include "../../shared/source/release_version.h"
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
@@ -38,6 +39,7 @@ static int page=0;static DWORD lastSearch=0,lastGood=0;static std::wstring root,
 #include "../../external_reader/source/cameo_catalog.h"
 static external::assets::Files assetFiles;static uint32_t assetMatch=0;
 static bool loadAsset(const char* name,std::vector<uint8_t>&out){assetFiles.update(reader,pid,assetMatch);return assetFiles.load(name,out);}
+
 static bool readCameoMemory(uint32_t p,void*out,size_t n){return reader.readFresh(p,out,n);}
 static external::assets::RuntimeCameos<decltype(&readCameoMemory)> cameoCatalog(&readCameoMemory);
 static void resolveCameo(um::Type&t,uint32_t match){
@@ -201,7 +203,7 @@ static void present(POINT origin,int alpha,bool repair=false){
   bool uploaded=UpdateLayeredWindow(overlay,nullptr,&origin,&size,surface.dc,&zero,0,&blend,ULW_ALPHA)!=0;
   overlayRecovery.submitted(uploaded);if(uploaded){paintedAlpha=alpha;paintedOrigin=origin;}
  }
- if(repair||!IsWindowVisible(overlay))SetWindowPos(overlay,HWND_TOPMOST,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE|SWP_SHOWWINDOW);
+ if(repair||!IsWindowVisible(overlay))overlaystack::place(overlay,overlaystack::Layer::Statistics,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE|SWP_SHOWWINDOW);
 }
 
 static void demoData(){
@@ -269,7 +271,7 @@ static void tick(){
   overlayRecovery.suspend();
   visibilityStatus(!enabled?L"覆盖层已暂停":!foregroundGame()?L"覆盖层隐藏：游戏未在前台":snap->status!=1||now-lastGood>=3000?L"覆盖层等待有效游戏数据":!displayState.readable?L"覆盖层隐藏：菜单状态读取失败":L"覆盖层隐藏：菜单/对话框/非战场 · tactical="+std::to_wstring(displayState.tactical)+L" dialog="+std::to_wstring(displayState.specialDialog)+L" windows="+std::to_wstring(displayState.dialogCount));
   statsVisible(false);gameActive=false;tabs.loseFocus();fade.hide();paintedAlpha=-1;ShowWindow(overlay,SW_HIDE);return;}
- if(!gameActive){renderDirty=true;paintedAlpha=-1;SetWindowPos(overlay,HWND_TOPMOST,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE);}
+ if(!gameActive){renderDirty=true;paintedAlpha=-1;overlaystack::place(overlay,overlaystack::Layer::Statistics,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE);}
  gameActive=true;
  bool desired=tabui::displayRequested(hidden,demo||!tabEnabled,manualVisible,tabs.visible());fade.target(desired,now);
  visibilityStatus(desired?(manualVisible?L"覆盖层已请求显示：手动开启":!tabEnabled?L"覆盖层已请求显示：常驻模式":L"覆盖层已请求显示：Tab/演示"):hidden?L"覆盖层手动隐藏：按钮或 Ctrl+Alt+H 开启":L"覆盖层等待 Tab：也可用按钮或 Ctrl+Alt+H");

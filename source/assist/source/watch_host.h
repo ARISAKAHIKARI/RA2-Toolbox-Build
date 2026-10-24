@@ -3,11 +3,12 @@
 #include "../../external_reader/source/terrain_preview.h"
 #include "../../external_reader/source/scene_lighting.h"
 #include "label_motion.h"
+#include "../../external_reader/source/camera_raster.h"
 #include <memory>
 #include <tuple>
 namespace watchhost {
 struct View {external::watch::Frame frame;external::watch::Box box;bool shown=false,reveal=false;int sampleFrame=-1;uint32_t tick=0,revision=0;
- std::unique_ptr<assist::visual::Motion> motion;std::map<uint32_t,assist::visual::LabelView> positions;};
+ std::unique_ptr<assist::visual::Motion> motion;std::map<uint32_t,assist::visual::LabelView> positions;mutable external::camera::Surface raster;};
 static external::watch::Track tracks[external::watch::MaximumWindows];
 static View views[external::watch::MaximumWindows];
 static external::watch::Target automatic;static bool autoSuppressed=false;
@@ -50,14 +51,14 @@ static void refreshAssets(external::watch::Frame&frame,DWORD now){
  auto fetchStatic=[&](auto&cache,bool tmp){
   std::vector<std::pair<uint32_t,uint32_t>> wanted;for(const auto&t:frame.tiles){uint32_t p=tmp?t.type:t.overlayType;if(p)wanted.emplace_back(p,uint32_t(tmp?t.sub:t.overlayFrame));}
   for(auto it=cache.begin();it!=cache.end();)if(std::find(wanted.begin(),wanted.end(),it->first)==wanted.end())it=cache.erase(it);else ++it;
-  size_t pixels=0;for(const auto&item:cache)pixels+=item.second.image.pixels.size();int work=0;
+  size_t pixels=0;for(const auto&item:cache)pixels+=external::camera::pixels(item.second.image);int work=0;
   for(auto key:wanted){auto&c=cache[key];if(c.ready||work>=4||(c.retry&&int32_t(now-c.retry)<0))continue;++work;c.retry=now+2000;external::voxel::Image image;
    uint32_t pointer=0;read(key.first+0xA4,&pointer,4);
    bool ok=tmp?gameassets::tile(key.first,key.second,terrainPalette,image):gameassets::overlay(key.first,pointer,int(key.second),image);
    std::string memoryReason;
    if(!ok&&tmp)ok=external::terrain::tile(read,pointer,key.second,terrainPalette,image,&memoryReason);
    c.issue=ok?"":gameassets::failure+(memoryReason.empty()?"":" memory="+memoryReason);
-   if(ok&&pixels+image.pixels.size()<=4*1024*1024){pixels+=image.pixels.size();for(auto&p:image.pixels)if(unsigned alpha=p>>24)p=0xff000000u|(std::min(255u,((p>>16)&255)*255/alpha)<<16)|(std::min(255u,((p>>8)&255)*255/alpha)<<8)|std::min(255u,(p&255)*255/alpha);c.image=std::move(image);c.ready=true;}
+   if(ok&&pixels+external::camera::pixels(image)<=4*1024*1024){pixels+=external::camera::pixels(image);external::camera::opaque(image);c.image=std::move(image);c.ready=true;}
   }
  };if(paletteReady)fetchStatic(tiles,true);fetchStatic(overlays,false);
  std::set<ArtKey> artWanted;std::set<ImageKey> wanted;
@@ -70,7 +71,7 @@ static void refreshAssets(external::watch::Frame&frame,DWORD now){
  for(auto it=images.begin();it!=images.end();)if(!wanted.count(it->first))it=images.erase(it);else ++it;
  // Fair work queue across every sampled unit, with no selected-unit filter or
  // 32-type cap. A failed first model cannot starve the remaining viewport.
- size_t pixels=0,faces=0;for(const auto&i:images)pixels+=i.second.image.pixels.size();for(const auto&i:actorArt)faces+=i.second.art.model.faces.size();
+ size_t pixels=0,faces=0,artBytes=0;for(const auto&i:images)pixels+=external::camera::pixels(i.second.image);for(const auto&i:actorArt){faces+=i.second.art.model.faces.size();artBytes+=gameassets::artBytes(i.second.art);}
  int work=0;DWORD started=GetTickCount();size_t n=frame.actors.size();
  for(size_t scanned=0;scanned<n;++scanned){
   const auto&a=frame.actors[actorCursor++%n];auto&c=images[imageKey(a)];c.used=++serial;
@@ -82,14 +83,14 @@ static void refreshAssets(external::watch::Frame&frame,DWORD now){
    auto&source=actorArt[artKey(a)];
    if(!source.ready&&(!source.retry||int32_t(now-source.retry)>=0)){
     source.retry=now+2000;gameassets::ActorArt art;
-    if(gameassets::captureActor(a.target.pointer,a.type,a.target.id,art)&&faces+art.model.faces.size()<=4*1024*1024){faces+=art.model.faces.size();source.art=std::move(art);source.ready=true;}source.issue=source.ready?"":gameassets::failure;
+    if((a.kind==5?gameassets::captureAnimation(a.target.pointer,a.type,a.target.id,art):gameassets::captureActor(a.target.pointer,a.type,a.target.id,art))&&faces+art.model.faces.size()<=4*1024*1024&&artBytes+gameassets::artBytes(art)<=128*1024*1024){faces+=art.model.faces.size();artBytes+=gameassets::artBytes(art);source.art=std::move(art);source.ready=true;}source.issue=source.ready?"":gameassets::failure;
    }
    if(source.ready)ok=gameassets::renderActor(source.art,a.pose,image);else gameassets::failure=source.issue;
   }
   c.issue=ok?"":gameassets::failure;c.retry=ok?0:now+2000;if(!ok)continue;
-  if(pixels+image.pixels.size()>32*1024*1024){c.retry=now+2000;continue;}
+  if(pixels+external::camera::pixels(image)>32*1024*1024){c.retry=now+2000;continue;}
   pixels+=image.pixels.size();
-  for(auto&p:image.pixels)if(unsigned alpha=p>>24)p=0xff000000u|(std::min(255u,((p>>16)&255)*255/alpha)<<16)|(std::min(255u,((p>>8)&255)*255/alpha)<<8)|std::min(255u,(p&255)*255/alpha);
+  external::camera::opaque(image);
   c.image=std::move(image);c.ready=true;
  }
  for(const auto&a:frame.actors){auto key=imageKey(a);auto i=images.find(key);if(i!=images.end()&&i->second.ready)displayed[{a.target.pointer,a.target.id}]=key;}
@@ -127,7 +128,7 @@ static void update(uint32_t now){
   bool targetChanged=!(target==v.frame.focus);
   if(targetChanged||frame!=v.sampleFrame||reveal!=v.reveal||!external::watch::refresh(read,v.frame))v.frame=external::watch::sample(read,target,reveal,20);
   if(targetChanged&&v.motion)v.motion->clear();v.sampleFrame=frame;v.reveal=reveal;v.shown=bool(v.frame.focus);
-  if(v.shown){updateMotion(v,now,frame);++v.revision;}else{v.positions.clear();if(v.motion)v.motion->clear();}
+  if(v.shown){for(auto&a:v.frame.actors)if(a.kind==3)a.pose.frame=gameassets::buildingFrame(a.target.pointer,a.type);updateMotion(v,now,frame);++v.revision;}else{v.positions.clear();if(v.motion)v.motion->clear();}
   if(v.shown){resources.light=v.frame.light;resources.tiles.insert(resources.tiles.end(),v.frame.tiles.begin(),v.frame.tiles.end());resources.actors.insert(resources.actors.end(),v.frame.actors.begin(),v.frame.actors.end());}
  }
  arrange();if(shown)refreshAssets(resources,now);
@@ -144,26 +145,29 @@ static void drawView(Graphics&g,const View&view){
  // The camera and units use the same interpolated position. Crossing a cell
  // boundary must not jump the entire second view by one tile.
  for(const auto&a:frame.actors)if(a.target==frame.focus){auto p=position(a);cameraX=p.first;cameraY=p.second;break;}
- auto image=[&](external::voxel::Image&i,float x,float y,const external::lighting::State&light){auto gains=light.gains();ColorMatrix matrix={};for(int n=0;n<5;++n)matrix.m[n][n]=n<3?gains[n]:1.f;ImageAttributes attributes;attributes.SetColorMatrix(&matrix);Bitmap bitmap(i.width,i.height,i.width*4,PixelFormat32bppPARGB,reinterpret_cast<BYTE*>(i.pixels.data()));g.DrawImage(&bitmap,RectF(x+i.x*scale,y+i.y*scale,i.width*scale,i.height*scale),0.f,0.f,float(i.width),float(i.height),UnitPixel,&attributes);};
- struct Item {int layer;float depth;int tile,actor;};std::vector<Item> order;
- for(int n=0;n<side*side;++n)order.push_back({0,float(n%side+n/side-2*radius),n,-1});
- for(size_t n=0;n<frame.actors.size();++n){const auto&a=frame.actors[n];order.push_back({a.kind==4?1:2,float(a.x+a.y)/256-frame.cx-frame.cy-1,-1,int(n)});}
- // Whole-sprite painters cannot use a ground tile's Y as a Z buffer. Draw
- // all ground/overlays and terrain props before SHP/VXL units/buildings.
- std::stable_sort(order.begin(),order.end(),[](const Item&a,const Item&b){return a.layer!=b.layer?a.layer<b.layer:a.depth<b.depth;});
- for(const auto&item:order){if(item.tile>=0){int n=item.tile,x=frame.cx+n%side-radius,y=frame.cy+n/side-radius;const auto&t=frame.tiles[n];float px=ox+((x-y)*30-cameraX)*scale,py=oy+((x+y+1)*15-t.level*15-cameraY)*scale;
-   if(!frame.cells[n]||px<-128||px>Width+128||py<-128||py>Height+128)continue;auto found=tiles.find({t.type,uint32_t(t.sub)});
-   if(found!=tiles.end()&&found->second.ready)image(found->second.image,px,py,t.light);
-   else{SolidBrush ground(Color(external::lighting::pixel(frame.cells[n],t.light)));PointF diamond[]={{px,py-15*scale},{px+30*scale,py},{px,py+15*scale},{px-30*scale,py}};g.FillPolygon(&ground,diamond,4);}
-   auto over=overlays.find({t.overlayType,uint32_t(t.overlayFrame)});if(over!=overlays.end()&&over->second.ready)image(over->second.image,px,py+t.overlayY*scale,t.overlayLight);
-  }else{const auto&a=frame.actors[item.actor];int cx=a.x/256-frame.cx+radius,cy=a.y/256-frame.cy+radius;if(cx<0||cy<0||cx>=side||cy>=side)continue;
-   auto p=position(a);float x=ox+(p.first-cameraX)*scale,y=oy+(p.second-cameraY)*scale;
-   auto found=images.find(imageKey(a));
-   if(found==images.end()||!found->second.ready){auto old=displayed.find({a.target.pointer,a.target.id});if(old!=displayed.end())found=images.find(old->second);}
-   if(found!=images.end()&&found->second.ready)image(found->second.image,x,y,a.light);
-   if(a.target==frame.focus){Pen ring(Color(255,255,224,111),1.3f);g.DrawEllipse(&ring,x-10,y-5,20.f,10.f);}
-  }
+ auto&canvas=view.raster;canvas.reset(Width,Height);
+ for(int n=0;n<side*side;++n){int x=frame.cx+n%side-radius,y=frame.cy+n/side-radius;const auto&t=frame.tiles[n];
+  float px=ox+((x-y)*30-cameraX)*scale,py=oy+((x+y+1)*15-t.level*15-cameraY)*scale,base=float((x+y)*15);
+  if(!frame.cells[n]||px<-256||px>Width+256||py<-256||py>Height+256)continue;auto found=tiles.find({t.type,uint32_t(t.sub)});
+  if(found!=tiles.end()&&found->second.ready)canvas.blit(found->second.image,px,py,scale,scale,base,t.light,0);
+  else canvas.diamond(px,py,scale,scale,base,frame.cells[n],t.light);
+  auto over=overlays.find({t.overlayType,uint32_t(t.overlayFrame)});
+  if(over!=overlays.end()&&over->second.ready)canvas.blit(over->second.image,px,py+t.overlayY*scale,scale,scale,base+(t.bridge?60:0),t.overlayLight,2);
  }
+ std::vector<const external::watch::Actor*> order;for(const auto&a:frame.actors)order.push_back(&a);
+ std::stable_sort(order.begin(),order.end(),[](const auto*a,const auto*b){return int64_t(a->x)+a->y<int64_t(b->x)+b->y;});
+ float focusX=-100,focusY=-100;
+ for(const auto*actor:order){const auto&a=*actor;int cx=a.x/256-frame.cx+radius,cy=a.y/256-frame.cy+radius;if(cx<0||cy<0||cx>=side||cy>=side)continue;
+  auto p=position(a);float x=ox+(p.first-cameraX)*scale,y=oy+(p.second-cameraY)*scale;
+  auto found=images.find(imageKey(a));if(found==images.end()||!found->second.ready){auto old=displayed.find({a.target.pointer,a.target.id});if(old!=displayed.end())found=images.find(old->second);}
+  if(found!=images.end()&&found->second.ready)canvas.blit(found->second.image,x,y,scale,scale,float((int64_t(a.x)+a.y)*15/256.)-15-a.drawZ+(frame.tiles[cy*side+cx].bridge?60:0),a.light,a.kind==4?12:(a.kind==3||a.kind==5)?2:1,
+    float(std::max(0,external::screenHeight(a.z,frame.zScale)-(frame.tiles[cy*side+cx].level+(frame.tiles[cy*side+cx].bridge?4:0))*15)));
+  if(a.target==frame.focus){focusX=x;focusY=y;}
+ }
+ if(!canvas.color.empty()){Bitmap bitmap(Width,Height,Width*4,PixelFormat32bppPARGB,reinterpret_cast<BYTE*>(canvas.color.data()));
+  g.DrawImage(&bitmap,RectF(0,0,float(Width),float(Height)),0.f,0.f,float(Width),float(Height),UnitPixel,nullptr);}
+ if(focusX>-100){Pen ring(Color(255,255,224,111),1.3f);g.DrawEllipse(&ring,focusX-10,focusY-5,20.f,10.f);}
+
  Pen border(Color(255,frame.dangerous?255:105,frame.dangerous?167:195,frame.dangerous?62:225),3.f);g.DrawRectangle(&border,1.5f,1.5f,float(Width-3),float(Height-3));g.Restore(state);
 }
 }

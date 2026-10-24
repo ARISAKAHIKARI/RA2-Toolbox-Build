@@ -29,6 +29,6 @@ static void updateAircraftButton(POINT origin,const RECT&client){
  if(!aircraftButton)return;
  aircraftButtonBox=radarlayout::aircraft(snap.width,snap.height,client.right,client.bottom);
  const auto&box=aircraftButtonBox;
- SetWindowPos(aircraftButton,HWND_TOPMOST,origin.x+box.x,origin.y+box.y,box.w,box.h,SWP_NOACTIVATE|SWP_SHOWWINDOW);
+ overlaystack::place(aircraftButton,overlaystack::Layer::Aircraft,origin.x+box.x,origin.y+box.y,box.w,box.h,SWP_NOACTIVATE|SWP_SHOWWINDOW);
  static int idle=-1,total=-1;if(idle!=externalSampler.idleAircraftCount||total!=externalSampler.aircraftTotal){idle=externalSampler.idleAircraftCount;total=externalSampler.aircraftTotal;InvalidateRect(aircraftButton,nullptr,FALSE);}
 }

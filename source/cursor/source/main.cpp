@@ -1,6 +1,7 @@
 #include "../../external_reader/source/shared_reader.h"
 #include "../../external_reader/source/process_discovery.h"
 #include "../../shared/source/modern_ui.h"
+#include "../../shared/source/overlay_stack.h"
 #include "../../shared/source/disabled_choices.h"
 #include "../../shared/source/release_version.h"
 #define WIN32_LEAN_AND_MEAN
@@ -713,7 +714,7 @@ static void draw(){
  if(!wasInside){
   // Re-arm at game focus/client re-entry, BEFORE presenting the first overlay.
   if(mode==L"hide"&&!manualCursorPause&&!hook){try{hookStart();}catch(const std::exception& e){hookStop();log(L"Hook re-arm failed: "+widen(e.what()));stop();return;}}
-  hudEpoch=inputNow();nativeMenuHold=false;nativeMenuCandidateAt=0;previousObservedFrame=-1;fallbackTracker.reset();hudUpdates=hudCommits=hudMotion=hudChanges=0;hudLastFrame=-1;hudPaintAt=0;wasInside=true;lastFrame=-2;lastPhase=size_t(-1);tween.reset();timing.resetObservation();activeMotion.reset();refreshTries=3;refreshAt=GetTickCount();if(!nativeGameRefresh)SetWindowPos(overlay,HWND_TOPMOST,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE);log(L"Game focus/client re-entered: redraw and cursor refresh, no simulated activation clicks");}
+  hudEpoch=inputNow();nativeMenuHold=false;nativeMenuCandidateAt=0;previousObservedFrame=-1;fallbackTracker.reset();hudUpdates=hudCommits=hudMotion=hudChanges=0;hudLastFrame=-1;hudPaintAt=0;wasInside=true;lastFrame=-2;lastPhase=size_t(-1);tween.reset();timing.resetObservation();activeMotion.reset();refreshTries=3;refreshAt=GetTickCount();if(!nativeGameRefresh)overlaystack::place(overlay,overlaystack::Layer::Cursor,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE);log(L"Game focus/client re-entered: redraw and cursor refresh, no simulated activation clicks");}
  if(noCursorMode){
   ShowWindow(overlay,SW_HIDE);diagAnimation=L"无光标诊断：不发布鼠标图像";
   if(!manualCursorPause&&shared&&shared->state!=1&&uint32_t(GetTickCount()-nativeStartAt)>2000){
@@ -969,7 +970,7 @@ static void draw(){
    if(shared&&shared->nativeVisible)++hudUpdates;
   }else if([&](){RECT shown{};int x=pos.x-shx,y=pos.y-shy;
     if(IsWindowVisible(overlay)&&GetWindowRect(overlay,&shown)&&shown.left==x&&shown.top==y)return true;
-    return SetWindowPos(overlay,HWND_TOPMOST,x,y,0,0,SWP_NOSIZE|SWP_NOACTIVATE|SWP_SHOWWINDOW)!=FALSE;
+    return overlaystack::place(overlay,overlaystack::Layer::Cursor,x,y,0,0,SWP_NOSIZE|SWP_NOACTIVATE|SWP_SHOWWINDOW)!=FALSE;
    }()){
    ++hudUpdates;
   }else{
@@ -1045,7 +1046,7 @@ static void diagnosticHud(){
  bool hudIsVisible=IsWindowVisible(hud)!=FALSE;
  bool same=hudIsVisible&&GetWindowRect(hud,&oldRect)&&oldRect.left==hudX&&oldRect.top==hudY&&
     oldRect.right-oldRect.left==hudW&&oldRect.bottom-oldRect.top==230;
- if(!same)SetWindowPos(hud,HWND_TOPMOST,hudX,hudY,hudW,230,SWP_NOACTIVATE|SWP_SHOWWINDOW);
+ if(!same)overlaystack::place(hud,overlaystack::Layer::Diagnostics,hudX,hudY,hudW,230,SWP_NOACTIVATE|SWP_SHOWWINDOW);
  InvalidateRect(hud,NULL,FALSE); // Never erase between frames; double-buffered paint below.
 }
 static LRESULT CALLBACK overlayProc(HWND w,UINT m,WPARAM a,LPARAM b){if(m==WM_DPICHANGED)return 0;if(m==WM_NCHITTEST)return HTTRANSPARENT;if(m==WM_MOUSEACTIVATE)return MA_NOACTIVATE;return DefWindowProcW(w,m,a,b);}

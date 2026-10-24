@@ -4,10 +4,11 @@
 #include "visual_pose.h"
 #include "scene_lighting.h"
 #include "projection.h"
+#include "building_animations.h"
 namespace external { namespace watch {
 struct Target {uint32_t pointer=0,id=0;bool operator==(const Target&o)const{return pointer==o.pointer&&id==o.id;}explicit operator bool()const{return pointer&&id;}};
-struct Actor {visual::Pose pose;Target target;uint32_t type=0,owner=0,color=0;int x=0,y=0,z=0,kind=-1,health=0,stage=0;uint16_t name[40]{};lighting::State light;};
-struct Tile {uint32_t image=0,overlay=0,type=0,overlayType=0;int sub=0,level=0,overlayFrame=0,overlayY=0;lighting::State light,overlayLight;};
+struct Actor {visual::Pose pose;Target target;uint32_t type=0,owner=0,color=0;int x=0,y=0,z=0,kind=-1,health=0,stage=0,drawZ=0;Target parent;uint16_t name[40]{};lighting::State light;};
+struct Tile {uint32_t image=0,overlay=0,type=0,overlayType=0;int sub=0,level=0,overlayFrame=0,overlayY=0;bool bridge=false;lighting::State light,overlayLight;};
 struct Frame {Target focus;int cx=0,cy=0;int radius=5,side=11;std::vector<uint32_t> cells=std::vector<uint32_t>(121);std::vector<Tile> tiles=std::vector<Tile>(121);std::vector<Actor> actors;std::vector<passengers::Group> passengers;bool dangerous=false;lighting::State light;double zScale=Projection{}.zScale;};
 template<class Read>int overlayOffset(Read read,uint32_t cell,uint32_t type,int index,int frame){
  GameView<Read> g(read);int offset=0;
@@ -41,6 +42,7 @@ template<class Read> bool refresh(Read read,Frame&out){
  auto light=lighting::sample(read);double zScale=projectionZScale(read);
  if(light!=out.light||zScale!=out.zScale)return false;
  for(auto&a:out.actors){uint32_t p=a.target.pointer;
+  if(a.kind==5){animations::State state;if(!animations::capture(read,p,a.parent.pointer,a.parent.id,state)||state.type!=a.type||state.id!=a.target.id)return false;a.x=state.x;a.y=state.y;a.z=state.z;a.pose.frame=state.frame;a.drawZ=state.zAdjust;a.light=lighting::at(read,a.x,a.y,a.z,out.light);if(state.normalLight)a.light={};continue;}
   if(a.kind==4){if(g.template get<uint32_t>(p)!=0x7F522C||g.template get<uint32_t>(p+0x10)!=a.target.id||g.template get<uint8_t>(p+0xCD)||g.template get<int>(p+0x6C)<=0||g.template get<uint32_t>(p+0xC8)!=a.type)return false;a.stage=g.template get<int>(p+0xAC);}
   else{if(!valid(g,a.target)||g.kind(p)!=a.kind||g.type(p,a.kind)!=a.type||g.template get<uint32_t>(p+0x21C)!=a.owner)return false;a.health=g.template get<int>(p+0x6C);a.pose=visual::pose(g,p,a.type,a.kind,g.template get<int>(0xA8ED84));}
   a.x=g.template get<int>(p+0x9C,-1);a.y=g.template get<int>(p+0xA0,-1);a.z=g.template get<int>(p+0xA4);
@@ -66,7 +68,7 @@ template<class Read> Frame sample(Read read,Target focus,bool reveal,int radius=
   if(type>=0&&size_t(type)<tileTypes.size()){t.type=tileTypes[type];t.image=g.template get<uint32_t>(t.type+0xA4); }
   int overlay=g.template get<int>(p+0x44,-1);if(overlay>=0&&size_t(overlay)<overlayTypes.size()){t.overlayType=overlayTypes[overlay];t.overlay=g.template get<uint32_t>(t.overlayType+0xA4);t.overlayFrame=g.template get<uint8_t>(p+0x11E);}
   if(t.overlayType){t.overlayY=overlayOffset(read,p,t.overlayType,overlay,t.overlayFrame);
-   if(g.template get<uint32_t>(p+0x140)&0x80)t.overlayLight=lighting::cell(read,p,out.light,lighting::Layer::Bridge);
+   if(g.template get<uint32_t>(p+0x140)&0x80){t.bridge=true;t.overlayLight=lighting::cell(read,p,out.light,lighting::Layer::Bridge);}
    else if(g.template get<uint8_t>(t.overlayType+0x2A9)){t.overlayLight=out.light;t.overlayLight.intensity=1000;}
    else if(g.template get<uint8_t>(t.overlayType+0x2A8))t.overlayLight=lighting::cell(read,p,out.light,lighting::Layer::Object,false);
   }
@@ -83,6 +85,9 @@ template<class Read> Frame sample(Read read,Target focus,bool reveal,int radius=
   int x=g.template get<int>(p+0x9C,-1),y=g.template get<int>(p+0xA0,-1);if(x<0||y<0)continue;int cx=x/256-out.cx,cy=y/256-out.cy;if(cx<-out.radius||cx>out.radius||cy<-out.radius||cy>out.radius||!out.cells[(cy+out.radius)*out.side+cx+out.radius])continue;
   Actor a;a.target={p,g.template get<uint32_t>(p+0x10)};a.x=x;a.y=y;a.z=g.template get<int>(p+0xA4);a.type=g.template get<uint32_t>(p+0xC8);a.kind=4;a.stage=g.template get<int>(p+0xAC);a.color=0xff83a95bu;a.light=lighting::at(read,a.x,a.y,a.z,out.light,true);out.actors.push_back(a);
  }
- if(!valid(g,focus))return {};std::sort(out.actors.begin(),out.actors.end(),[](const Actor&a,const Actor&b){return int64_t(a.x)+a.y<int64_t(b.x)+b.y;});return out;
+ size_t bodies=out.actors.size();for(size_t i=0;i<bodies;++i){auto body=out.actors[i];if(body.kind!=3)continue;
+  for(const auto&state:animations::attached(read,body.target.pointer,body.target.id)){Actor a;a.target={state.object,state.id};a.parent=body.target;a.type=state.type;a.owner=state.owner;a.x=state.x;a.y=state.y;a.z=state.z;a.kind=5;a.pose.frame=state.frame;a.drawZ=state.zAdjust;a.light=lighting::at(read,a.x,a.y,a.z,out.light);if(state.normalLight)a.light={};out.actors.push_back(a);}
+ }
+ if(!valid(g,focus))return {};std::stable_sort(out.actors.begin(),out.actors.end(),[](const Actor&a,const Actor&b){return int64_t(a.x)+a.y<int64_t(b.x)+b.y;});return out;
 }
 }}

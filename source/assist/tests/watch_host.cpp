@@ -25,9 +25,12 @@ namespace gameassets {
  static void update(){}static bool palette(bool,std::array<uint32_t,256>&){return false;}static std::string text(uint32_t,int){return {};}
  static bool tile(uint32_t,unsigned,const std::array<uint32_t,256>&pal,external::voxel::Image&image){++tileCalls;image.width=image.height=1;image.pixels={pal[3]};return true;}
  static bool sprite(uint32_t,uint32_t,const std::array<uint32_t,256>&,int,external::voxel::Image&){return false;}
+ static int buildingFrame(uint32_t,uint32_t){return 0;}
  static bool overlay(uint32_t,uint32_t,int,external::voxel::Image&,bool=false){return false;}
+ static bool captureAnimation(uint32_t,uint32_t,uint32_t,ActorArt&){return false;}
  static bool captureActor(uint32_t,uint32_t,uint32_t id,ActorArt&art){++captures;if(id==1)return false;art.marker=id;return true;}
- static bool renderActor(const ActorArt&,const external::visual::Pose&pose,external::voxel::Image&image){++renders;image.width=image.height=1;image.pixels={uint32_t(0xff000000|pose.body<<8|pose.turret)};return true;}
+ static size_t artBytes(const ActorArt&a){return a.model.faces.size()*sizeof(external::voxel::Face);}
+ static bool renderActor(const ActorArt&,const external::visual::Pose&pose,external::voxel::Image&image){++renders;image.width=image.height=2;image.pixels.assign(4,uint32_t(0xff000000|pose.body<<8|pose.turret));return true;}
 }
 #include "../source/watch_host.h"
 int main(){
@@ -40,17 +43,17 @@ int main(){
  for(int i=0;i<24;++i){clockValue+=50;watchhost::update(clockValue);}
  assert(watchhost::views[0].frame.actors.size()==300);assert(watchhost::actorArt.size()==300);
  for(const auto&a:watchhost::views[0].frame.actors){auto it=watchhost::images.find(watchhost::imageKey(a));assert(it!=watchhost::images.end());assert(it->second.ready==(a.target.id!=1));}
- Graphics g;watchhost::drawView(g,watchhost::views[0]);assert(draws==299); // no schematic marker for failed asset
+ Graphics g;watchhost::drawView(g,watchhost::views[0]);assert(draws==1&&watchhost::views[0].raster.color.size()==320*256); // no schematic marker for failed asset
  int before=captures,oldRenders=renders;put(actors[1]+0x388,uint16_t(32768));put(actors[1]+0x3A0,uint16_t(49152));clockValue+=50;watchhost::update(clockValue);assert(captures==before&&renders>oldRenders);
  auto a=std::find_if(watchhost::views[0].frame.actors.begin(),watchhost::views[0].frame.actors.end(),[](auto&a){return a.target.id==2;});assert(a!=watchhost::views[0].frame.actors.end());assert(watchhost::images.at(watchhost::imageKey(*a)).image.pixels[0]==0xff001018);
  // All 299 valid models turn together: the 16-item work budget must retain
  // the previous real image for actors whose new pose is still waiting.
- for(auto p:actors)put(p+0x388,uint16_t(2048));clockValue+=50;watchhost::update(clockValue);draws=0;watchhost::drawView(g,watchhost::views[0]);assert(draws==299);assert(watchhost::images.size()<=600);
+ for(auto p:actors)put(p+0x388,uint16_t(2048));clockValue+=50;watchhost::update(clockValue);draws=0;watchhost::drawView(g,watchhost::views[0]);assert(draws==1&&watchhost::views[0].raster.color.size()==320*256);assert(watchhost::images.size()<=600);
  assert(tileCalls==0&&watchhost::tiles.empty()); // no transparent success cache before palette arrives
  put(0xABBED0+9,uint8_t(32));clockValue+=50;watchhost::update(clockValue);assert(tileCalls==1&&watchhost::tiles.begin()->second.ready&&watchhost::tiles.begin()->second.image.pixels[0]!=0);
  // A live lighting change affects every cached actor without any recapture.
  put(0xA8B230,0xC00000u);put(0xC0352C,80);for(int off:{0x3534,0x3538,0x353C})put(0xC00000+off,100);
- before=captures;oldRenders=renders;clockValue+=50;watchhost::update(clockValue);watchhost::drawView(g,watchhost::views[0]);assert(captures==before&&drawnMatrix.m[0][0]==.8f&&drawnMatrix.m[3][3]==1.f);
+ before=captures;oldRenders=renders;clockValue+=50;watchhost::update(clockValue);watchhost::drawView(g,watchhost::views[0]);assert(captures==before&&watchhost::views[0].frame.light.ambient==80);
  // Three windows share every model/pose cache, with independent centered boxes.
  before=captures;watchhost::tracks[1].target={actors[1],2};watchhost::tracks[2].target={actors[2],3};clockValue+=50;watchhost::update(clockValue);
  assert(captures==before&&watchhost::actorArt.size()==300);for(auto&v:watchhost::views)assert(v.shown&&v.frame.actors.size()==300);
@@ -66,13 +69,18 @@ int main(){
  put(0xB0CD48,.144337567);clockValue+=50;watchhost::update(clockValue);assert(watchhost::views[0].frame.zScale==.144337567);
  auto actor=watchhost::views[0].frame.actors[1];auto&f=watchhost::views[0].frame;f.radius=1;f.side=3;f.cx=actor.x/256;f.cy=actor.y/256;actor.x=f.cx*256+128;actor.y=f.cy*256+128;actor.z=208;actor.light.intensity=1200;f.actors={actor};watchhost::views[0].positions.clear();f.cells.assign(9,0);f.cells[4]=0xff112233;f.tiles.assign(9,{});f.tiles[4].level=2;f.tiles[4].overlayType=0xdead;f.tiles[4].overlayY=-31;f.tiles[4].overlayLight.intensity=1500;
  auto&overlay=watchhost::overlays[{0xdead,0}];overlay.ready=true;overlay.image.width=overlay.image.height=1;overlay.image.pixels={0xffabcdef};
- drawnRects.clear();drawnGains.clear();watchhost::drawView(g,watchhost::views[0]);assert(drawnRects.size()==2);assert(drawnRects[0].y==watchhost::Height/2.f-15.5f&&drawnGains[0]==1.5f);assert(drawnRects[1].y==watchhost::Height/2.f&&drawnGains[1]==1.2f);
- // A foreground terrain tile and tree must not paint over either kind of
- // unit. Record the production DrawImage sequence by distinct light gains.
- f.cells[8]=0xff112233;f.tiles[8].type=0xbeef;auto&ground=watchhost::tiles[{0xbeef,0}];ground.ready=true;ground.image=overlay.image;f.tiles[8].light.intensity=700;
- auto tree=actor;tree.target={0xeeee,999};tree.kind=4;tree.type=0xaaaa;tree.x+=256;tree.y+=256;tree.light.intensity=900;auto&treeImage=watchhost::images[watchhost::imageKey(tree)];treeImage.ready=true;treeImage.image=overlay.image;f.actors.push_back(tree);
- auto infantry=actor;infantry.target={0xdddd,1000};infantry.kind=1;infantry.type=0xbbbb;infantry.x-=256;infantry.light.intensity=1300;auto&infImage=watchhost::images[watchhost::imageKey(infantry)];infImage.ready=true;infImage.image=overlay.image;f.actors.push_back(infantry);
- drawnRects.clear();drawnGains.clear();watchhost::drawView(g,watchhost::views[0]);assert(drawnGains.size()==5);assert(drawnGains[0]==1.5f&&drawnGains[1]==.7f&&drawnGains[2]==.9f&&drawnGains[3]==1.3f&&drawnGains[4]==1.2f);
+ // One composed canvas keeps native-height positioning and pixel depth.
+ f.focus=actor.target;overlay.image.width=overlay.image.height=8;overlay.image.pixels.assign(64,0xffabcdef);
+ auto&actorImage=watchhost::images[watchhost::imageKey(actor)];actorImage.ready=true;actorImage.image=overlay.image;actorImage.image.pixels.assign(64,0xff204080);
+ drawnRects.clear();watchhost::drawView(g,watchhost::views[0]);assert(drawnRects.size()==1&&drawnRects[0].w==320);
+ auto&canvas=watchhost::views[0].raster;assert(canvas.color[114*320+161]==external::camera::lit(0xffabcdef,0,false,f.tiles[4].overlayLight));
+ assert(canvas.color[129*320+161]==external::camera::lit(0xff204080,0,false,actor.light));
+ // Two overlapping standing shapes contain nearer and farther pixels within
+ // the same row. Whole-image ordering cannot produce this split result.
+ f.tiles[4].overlayType=0;actor.light={};f.actors={actor};auto second=actor;second.target={0xeeee,999};second.type=0xaaaa;second.kind=4;second.light={};f.actors.push_back(second);
+ auto&firstImage=watchhost::images[watchhost::imageKey(actor)];firstImage.ready=true;firstImage.image={};firstImage.image.width=4;firstImage.image.height=2;firstImage.image.pixels.assign(8,0xffe04020);firstImage.image.depth={5,5,1,1,5,5,1,1};
+ auto&secondImage=watchhost::images[watchhost::imageKey(second)];secondImage.ready=true;secondImage.image=firstImage.image;secondImage.image.pixels.assign(8,0xff20b0e0);secondImage.image.depth.assign(8,3);
+ watchhost::drawView(g,watchhost::views[0]);assert(canvas.color[128*320+160]==0xffe04020&&canvas.color[128*320+161]==0xff20b0e0);
  auto read=[](uint32_t p,void*out,size_t n){return externalReader.read(p,out,n);};put(0x900140,0x80u);put(0x9102A8,uint8_t(1));assert(external::watch::overlayOffset(read,0x900000,0x910000,1,9)==-43);put(0x900140,0u);assert(external::watch::overlayOffset(read,0x900000,0x910000,239,0)==-27);
  extra.watchEnabled=false;clockValue+=50;watchhost::update(clockValue);assert(!watchhost::shown);watchhost::reset();assert(watchhost::images.empty()&&watchhost::actorArt.empty());
  std::cout<<"PASS 300 unique types regardless of selection, failed-focus fairness, actual-image-only drawing, body/turret cache invalidation without asset reload, reset\n";

@@ -75,7 +75,7 @@ static void resizePanel(){
  if(visible&&GetWindowRect(window,&previous)&&previous.left==x&&previous.top==y&&previous.right-previous.left==w&&previous.bottom-previous.top==h)return;
  // Do not repeatedly raise a stationary panel above sibling overlays. On a
  // resize discard copied client pixels; the back buffer supplies a full frame.
- SetWindowPos(window,HWND_TOPMOST,x,y,w,h,SWP_NOACTIVATE|SWP_NOOWNERZORDER|SWP_NOCOPYBITS|(visible?SWP_NOZORDER:SWP_SHOWWINDOW));
+ overlaystack::place(window,overlaystack::Layer::Construction,x,y,w,h,SWP_NOACTIVATE|SWP_NOOWNERZORDER|SWP_NOCOPYBITS|(visible?SWP_NOZORDER:SWP_SHOWWINDOW));
 }
 static bool usable();
 static bool displayReady(){return extra.constructionQueue&&enabled&&foregroundGame()&&snap.renderStatus==1;}
@@ -148,8 +148,7 @@ static RECT rect(int x,int y,int r,int bottom){return {layout.x(x),layout.y(y),l
 static void paintIcon(HDC dc,int index,int x,int y,bool gray){
  int slot=typeSlot(index);if(slot<0)return;const auto&t=snap.types[slot];
  uint32_t ptr=typePointer(index);
- um::Type type{};type.category=t.kind==7?3:t.kind==16?1:t.kind==40?2:0;memcpy(type.id,t.id,24);type.id[23]=0;if(ptr>=0x10000)externalReader.readFresh(ptr+1750,type.cameo,24);type.cameo[24]=0;type.ptr=ptr;
- gameassets::resolveCameo(type);
+ um::Type type{};type.category=t.kind==7?3:t.kind==16?1:t.kind==40?2:0;memcpy(type.id,t.id,24);type.id[23]=0;if(ptr>=0x10000)externalReader.readFresh(ptr+1750,type.cameo,24);type.cameo[24]=0;type.ptr=ptr;gameassets::resolveCameo(type);
  static um::Snapshot palette{};palette.paletteReady=0;bool ready=icons.restore(type,palette);
  if(!ready&&ptr>=0x10000){static uint8_t buffer[32+256*1024];auto read=[](uint32_t at,void*out,size_t size){return externalReader.readFresh(at,out,size);};auto resolve=[](uint32_t){return 0u;};if(um::readCameo(read,resolve,type,buffer,sizeof buffer,gameassets::cameo)&&um::readCameoPalette(read,palette,gameassets::cameo)){ready=true;icons.remember(type,palette);}}
  RECT icon=rect(x,y,x+60,y+48);

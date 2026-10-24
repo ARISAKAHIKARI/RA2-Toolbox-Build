@@ -24,7 +24,7 @@ jobs:
           python3 source/assist/tests/cursor_settings_ui_test.py
           python3 source/assist/tests/ui_geometry_test.py
           python3 source/assist/tests/enemy_overlay_test.py
-          for test in label_motion passenger_motion pacing enemy_markers enemy_clusters watch_view watch_host watch_slots visual_pose voxel_preview game_assets live_ini cameo_catalog sprite_formats terrain_preview scene_lighting command_delivery direct_modes; do
+          for test in label_motion passenger_motion pacing enemy_markers enemy_clusters watch_view watch_host watch_slots visual_pose voxel_preview game_assets live_ini cameo_catalog camera_raster building_animations radar_scene sprite_formats terrain_preview scene_lighting command_delivery direct_modes; do
             g++ -std=c++17 -O2 "source/assist/tests/$test.cpp" -o "/tmp/$test"
             "/tmp/$test"
           done
@@ -43,6 +43,8 @@ jobs:
           echo "ZIG=/tmp/zig-linux-x86_64-0.13.0/zig" >> "$GITHUB_ENV"
       - name: Build matching EXE and Runtime
         run: bash source/build-zig.sh
+      - name: Build overlay stacking fixture
+        run: '"$ZIG" c++ -target x86-windows-gnu -std=c++17 -O2 source/assist/tests/overlay_stack_windows.cpp -o source/overlay-stack-test.exe -luser32'
       - name: Validate final PE files and bridge ABI
         run: python3 source/tools/verify_windows_outputs.py
       - uses: actions/upload-artifact@v4
@@ -51,6 +53,7 @@ jobs:
           path: |
             source/RA2Toolbox.exe
             source/GameRuntime.dll
+            source/overlay-stack-test.exe
             source/WINDOWS_BUILD_ARTIFACTS.json
           retention-days: 7
   windows-ui:
@@ -63,6 +66,8 @@ jobs:
         with:
           name: camera138pre2-binaries
           path: source
+      - name: Real overlay window stacking
+        run: .\\source\\overlay-stack-test.exe
       - name: Real styled controls, INI persistence and restart
         run: python source/tools/windows_settings_smoke.py
       - uses: actions/upload-artifact@v4

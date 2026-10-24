@@ -56,7 +56,7 @@ static void update(POINT origin,const RECT&client){
   int x=origin.x+int(int64_t(box.x)*client.right/snap.width),y=origin.y+int(int64_t(box.y)*client.bottom/snap.height),w=std::max(1,int(int64_t(box.w)*client.right/snap.width)),h=std::max(1,int(int64_t(box.h)*client.bottom/snap.height));
   RECT old{};GetWindowRect(window,&old);bool changed=old.left!=x||old.top!=y||old.right-old.left!=w||old.bottom-old.top!=h;
   bool repair=recovery[i].due(GetTickCount(),true,{uintptr_t(game),pid,commandMatch(),w,h},IsWindowVisible(window)!=FALSE);
-  if(changed||repair)recovery[i].submitted(SetWindowPos(window,HWND_TOPMOST,x,y,w,h,SWP_NOACTIVATE|SWP_SHOWWINDOW)!=FALSE);
+  if(changed||repair)recovery[i].submitted(overlaystack::place(window,overlaystack::Layer::Watch,x,y,w,h,SWP_NOACTIVATE|SWP_SHOWWINDOW)!=FALSE);
   if(changed||repair||revisions[i]!=view.revision){revisions[i]=view.revision;InvalidateRect(window,nullptr,FALSE);UpdateWindow(window);}
  }
 }
