@@ -8,6 +8,11 @@ int main(){
  assert(um::iconcache::read(file,43).empty());r.icon[44]=19;assert(um::iconcache::write(file,42,{r}));assert(um::iconcache::read(file,42)[0].icon[44]==19);
  {std::fstream f(file,std::ios::in|std::ios::out|std::ios::binary);f.seekp(sizeof(um::iconcache::Header)+50);f.put(77);}assert(um::iconcache::read(file,42).empty());
  {std::ofstream f(file,std::ios::binary|std::ios::trunc);um::iconcache::Header h;h.scope=42;h.count=~0u;f.write((char*)&h,sizeof h);}assert(um::iconcache::read(file,42).empty());
+ // Version 1 could contain flag-2 icons decoded as raw; never reuse it.
+ assert(um::iconcache::write(file,42,{r}));
+ {std::fstream f(file,std::ios::in|std::ios::out|std::ios::binary);uint32_t old=1;f.seekp(4);f.write((char*)&old,4);}assert(um::iconcache::read(file,42).empty());
+ auto longRecord=r;strcpy(longRecord.cameo,"long_mod_specific_infantry_icon.shp");
+ assert(um::iconcache::write(file,42,{longRecord}));auto longRead=um::iconcache::read(file,42);assert(longRead.size()==1&&!strcmp(longRead[0].cameo,longRecord.cameo));
  auto exe=root/"gamemd.exe";{std::ofstream f(exe);f<<"same executable";}auto first=um::iconcache::scope(exe);assert(first);
  {std::ofstream f(root/"rulesmd.ini");f<<"[HARV]\nImage=OTHER";}auto second=um::iconcache::scope(exe);assert(first!=second);
  {std::ofstream f(root/"spawn.ini");f<<"unrelated player name";}assert(um::iconcache::scope(exe)==second);

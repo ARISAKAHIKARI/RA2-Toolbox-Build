@@ -35,8 +35,16 @@ static std::unique_ptr<um::Snapshot> snap(new um::Snapshot{}),incoming(new um::S
 static HWND game;static DWORD pid,threadId;static bool enabled=true,demo=false,showOthers=true,buildings=false,hidden=false,manualVisible=false;
 static int topMargin=20,leftMargin=6,scalePercent=100;static bool controlsReady=false;
 static int page=0;static DWORD lastSearch=0,lastGood=0;static std::wstring root,status;static FILE* logfile;
+#include "../../external_reader/source/cameo_catalog.h"
 static external::assets::Files assetFiles;
 static bool loadAsset(const char* name,std::vector<uint8_t>&out){assetFiles.update(reader,pid,snap->match);return assetFiles.load(name,out);}
+static bool readCameoMemory(uint32_t p,void*out,size_t n){return reader.readFresh(p,out,n);}
+static external::assets::RuntimeCameos<decltype(&readCameoMemory)> cameoCatalog(&readCameoMemory);
+static void resolveCameo(um::Type&t){
+ assetFiles.update(reader,pid,snap->match);char image[26]{};reader.readFresh(t.ptr+0x1F8,image,25);
+ auto file=cameoCatalog.resolve(loadAsset,assetFiles.revision(),assetFiles.revision()^(GetTickCount64()/5000),t.id,image,t.cameo);
+ memset(t.cameo,0,sizeof t.cameo);if(file.size()<sizeof t.cameo)memcpy(t.cameo,file.data(),file.size());
+}
 static uint32_t demoStart,oldMatch=0;static DWORD lastData=0;
 static void statsVisible(bool value){
 #ifdef RA2_UNIFIED
@@ -81,7 +89,7 @@ static void toggleOverlay(){tabui::toggleDisplay(!tabEnabled,tabs.visible(),hidd
 static void detach(){
  overlayRecovery.suspend();
  statsVisible(false);
- sampler.reset();assetFiles.clear();reader.close();
+ sampler.reset();assetFiles.clear();cameoCatalog.clear();reader.close();
  game=nullptr;pid=0;threadId=0;lastGood=0;oldMatch=0;page=0;gameActive=false;tabs.reset();fade.hide();renderDirty=true;paintedAlpha=-1;surface.clear();memset(snap.get(),0,sizeof(*snap));memset(incoming.get(),0,sizeof(*incoming));ShowWindow(overlay,SW_HIDE);
 }
 static bool attach(){
@@ -99,7 +107,7 @@ static bool attach(){
  }
  pid=c.pid;threadId=c.thread;game=external::discovery::resolveYrppWindow(reader,pid,c.window,&threadId);
  wchar_t image[32768]{};DWORD imageSize=32768;reader.imagePath(image,&imageSize);iconCache.open(std::filesystem::path(image),std::filesystem::path(root)/L"cache"/L"icons");
- sampler=std::make_unique<um::Sampler<external::SharedReadView,external::NoResolve>>(external::SharedReadView{&reader},external::NoResolve{},&iconCache,loadAsset);
+ sampler=std::make_unique<um::Sampler<external::SharedReadView,external::NoResolve>>(external::SharedReadView{&reader},external::NoResolve{},&iconCache,loadAsset,resolveCameo);
  setStatus(L"已连接只读 PID "+std::to_wstring(pid)+(game?L"，验证布局…":L"，等待窗口后再显示覆盖层"));lastGood=GetTickCount();return true;
 }
 static Color color(uint32_t c){return Color(c);}

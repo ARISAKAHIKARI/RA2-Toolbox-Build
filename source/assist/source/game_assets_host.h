@@ -2,6 +2,8 @@
 #include "../../external_reader/source/asset_decode.h"
 #include "../../external_reader/source/visual_pose.h"
 #include "../../external_reader/source/art_metadata.h"
+#include "../../external_reader/source/cameo_catalog.h"
+#include "../../unit_monitor/source/core.h"
 namespace gameassets {
 static external::assets::Files files;
 static std::string failure;
@@ -11,8 +13,10 @@ static bool read(uint32_t p,void*out,size_t n){return externalReader.readFresh(p
 static uint32_t word(uint32_t p){uint32_t v=0;read(p,&v,4);return v;}
 static std::string text(uint32_t p,unsigned n){return external::assets::text(read,p,n);}
 static std::string theater(int field,int size){unsigned n=word(0x822CF8);return n<6?text(0x7E1B78+n*112+field,size):std::string{};}
-static external::assets::ArtINI artINI,rulesINI;static uint64_t iniRevision=0;
-static void metadata(){uint64_t revision=files.revision();if(revision==iniRevision)return;iniRevision=revision;artINI.clear();rulesINI.clear();std::vector<uint8_t>b;
+static external::assets::EffectiveINI<decltype(&read)> artINI(&read,external::assets::LiveINI::ArtObject),rulesINI(&read,external::assets::LiveINI::RulesPointer,true);static uint64_t iniRevision=~uint64_t(0);
+static external::assets::RuntimeCameos<decltype(&read)> cameoCatalog(&read);
+static void resolveCameo(um::Type&t){update();auto file=cameoCatalog.resolve(cameo,files.revision(),files.revision()^(GetTickCount64()/5000),t.id,text(t.ptr+0x1F8,25),t.cameo);memset(t.cameo,0,sizeof t.cameo);if(file.size()<sizeof t.cameo)memcpy(t.cameo,file.data(),file.size());}
+static void metadata(){uint64_t revision=files.revision();uint64_t generation=revision^(GetTickCount64()/5000);artINI.generation(generation);rulesINI.generation(generation);if(revision==iniRevision)return;iniRevision=revision;artINI.clear();rulesINI.clear();std::vector<uint8_t>b;
  if(files.load("ARTMD.INI",b)||files.load("ART.INI",b))artINI.parse(b);
  if(files.load("RULESMD.INI",b)||files.load("RULES.INI",b))rulesINI.parse(b);
 }

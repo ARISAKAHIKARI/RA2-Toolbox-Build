@@ -20,7 +20,7 @@ struct PtrList {
 inline bool sameAscii(const char* a,const char* b){for(;*a&&*b;a++,b++){char x=*a,y=*b;if(x>='A'&&x<='Z')x+=32;if(y>='A'&&y<='Z')y+=32;if(x!=y)return false;}return *a==*b;}
 
 template<class Read,class Resolve> class Sampler {
- Read read; Resolve resolve;AssetLoad files=nullptr; IconCache* cache=nullptr; Snapshot state{};external::layout::Result probe_{}; roundstate::Stamp previous{}; bool haveRound=false; int iconCursor=0; uint32_t ticks=0,matchSerial=0,catalogueAt=0;uint64_t catalogueHash=0;bool catalogueReady=false; bool prevBuildings=true; uint8_t iconBuffer[32+256*1024]{}; int ownedBuffer[4096]{};
+ Read read; Resolve resolve;AssetLoad files=nullptr;CameoResolve resolveCameo=nullptr; IconCache* cache=nullptr; Snapshot state{};external::layout::Result probe_{}; roundstate::Stamp previous{}; bool haveRound=false; int iconCursor=0; uint32_t ticks=0,matchSerial=0,catalogueAt=0;uint64_t catalogueHash=0;bool catalogueReady=false; bool prevBuildings=true; uint8_t iconBuffer[32+256*1024]{}; int ownedBuffer[4096]{};
  const Snapshot& invalidate(uint32_t tick,bool forgetRound=false){
   memset(&state,0,sizeof state);state.tick=tick;state.match=matchSerial;if(forgetRound)haveRound=false;catalogueReady=false;catalogueHash=0;iconCursor=0;return state;
  }
@@ -42,10 +42,11 @@ template<class Read,class Resolve> class Sampler {
   for(int c=0;c<(buildings?4:3);c++){
    auto v=vec(arrays[c]);for(size_t ix=0;ix<v.size();ix++){
     uint32_t p=v[ix];char cameo[25]={};if(!bytes(p+1750,cameo,24))continue;
-    bool has=cameo[0]&&!sameAscii(cameo,"none")&&!sameAscii(cameo,"<none>");
+    Type pending{};pending.ptr=p;pending.category=c;pending.index=int(ix);bytes(p+36,pending.id,23);pending.id[23]=0;memcpy(pending.cameo,cameo,sizeof cameo);if(resolveCameo)resolveCameo(pending);
+    bool has=pending.cameo[0]&&!sameAscii(pending.cameo,"none")&&!sameAscii(pending.cameo,"<none>");
     if(!buildable(get<int>(p+1588,-1),get<uint32_t>(p+1740),get<uint8_t>(p+562)!=0,get<uint8_t>(p+3412)!=0,has))continue;
     if(state.typeCount==MaxTypes){state.truncated++;continue;}
-    Type& t=state.types[state.typeCount++];t={};t.ptr=p;t.category=c;t.index=int(ix);bytes(p+36,t.id,23);t.id[23]=0;memcpy(t.cameo,cameo,sizeof t.cameo);
+    state.types[state.typeCount++]=pending;
    }
   }
  }
@@ -67,7 +68,7 @@ template<class Read,class Resolve> class Sampler {
   }
  }
 public:
- Sampler(Read r,Resolve s,IconCache* c=nullptr,AssetLoad f=nullptr):read(r),resolve(s),files(f),cache(c){}
+ Sampler(Read r,Resolve s,IconCache* c=nullptr,AssetLoad f=nullptr,CameoResolve cr=nullptr):read(r),resolve(s),files(f),resolveCameo(cr),cache(c){}
  external::layout::Result probe()const{return probe_;}
  void reset(){probe_={};invalidate(0,true);}
  const Snapshot& sample(uint32_t tick,bool buildings){

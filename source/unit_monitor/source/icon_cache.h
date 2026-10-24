@@ -13,14 +13,14 @@
 namespace um {
 namespace iconcache {
 inline uint64_t hash(const void*p,size_t n,uint64_t h=14695981039346656037ull){auto b=static_cast<const uint8_t*>(p);while(n--){h^=*b++;h*=1099511628211ull;}return h;}
-struct Record {int category;char id[24],cameo[25];uint8_t icon[IW*IH];uint32_t palette[256];};
-struct Header {uint32_t magic=0x55494332,version=1,count=0,bytes=0;uint64_t scope=0,checksum=0;};
+struct Record {int category;char id[24],cameo[128];uint8_t icon[IW*IH];uint32_t palette[256];};
+struct Header {uint32_t magic=0x55494332,version=2,count=0,bytes=0;uint64_t scope=0,checksum=0;};
 inline std::string key(int category,const char*id,const char*cameo){std::string s=std::to_string(category)+":"+id+":"+cameo;for(char&c:s){if(c>='A'&&c<='Z')c+=32;if(c=='\\')c='/';}return s;}
 inline std::string key(const Record&r){return key(r.category,r.id,r.cameo);}
 inline std::string key(const Type&t){return key(t.category,t.id,t.cameo);}
 inline bool valid(const Record&r){return r.category>=0&&r.category<4&&r.id[0]&&r.cameo[0]&&memchr(r.id,0,sizeof r.id)&&memchr(r.cameo,0,sizeof r.cameo);}
 inline std::vector<Record> read(const std::filesystem::path&p,uint64_t scope){
- std::ifstream f(p,std::ios::binary);Header h{};if(!f.read(reinterpret_cast<char*>(&h),sizeof h)||h.magic!=0x55494332||h.version!=1||h.scope!=scope||h.count>MaxTypes||h.bytes!=h.count*sizeof(Record))return {};
+ std::ifstream f(p,std::ios::binary);Header h{};if(!f.read(reinterpret_cast<char*>(&h),sizeof h)||h.magic!=0x55494332||h.version!=2||h.scope!=scope||h.count>MaxTypes||h.bytes!=h.count*sizeof(Record))return {};
  std::vector<Record> records(h.count);if(!f.read(reinterpret_cast<char*>(records.data()),h.bytes)||f.peek()!=EOF||hash(records.data(),h.bytes)!=h.checksum)return {};
  for(auto&r:records)if(!valid(r))return {};return records;
 }
