@@ -17,13 +17,13 @@ class Worker {
  std::mutex mutex;std::condition_variable cv;std::thread thread;bool stop=false,paused=false;Request request{};uint64_t generation=0;
  std::shared_ptr<const external::radar::Frame> latest;
  void run(){
-  external::ReadSession reader;external::cameraassets::Context<external::ReadSession> assets(reader);external::radar::SceneRenderer<decltype(assets)> renderer;external::radar::Sampler<external::SharedReadView> sampler(external::SharedReadView{&reader});uint64_t active=~uint64_t(0);int previousFrame=-1;unsigned previousRevision=0;Request activeRequest{};
+  external::ReadSession reader;external::cameraassets::Context<external::ReadSession> assets(reader);external::radar::SceneRenderer<decltype(assets)> renderer;external::radar::DiagramRenderer diagram;external::radar::Sampler<external::SharedReadView> sampler(external::SharedReadView{&reader});uint64_t active=~uint64_t(0);int previousFrame=-1;unsigned previousRevision=0;Request activeRequest{};
   for(;;){Request r;uint64_t token;{std::unique_lock<std::mutex> lock(mutex);cv.wait(lock,[&]{return stop||(!paused&&request.pid);});if(stop)return;r=request;token=generation;}
-   if(token!=active){if(r.pid!=activeRequest.pid||r.match!=activeRequest.match){reader.close();sampler.reset();renderer.reset();}else if(r.mode!=activeRequest.mode)sampler.reset();activeRequest=r;active=token;previousFrame=-1;previousRevision=0;}
+   if(token!=active){if(r.pid!=activeRequest.pid||r.match!=activeRequest.match){reader.close();sampler.reset();renderer.reset();diagram.reset();}else if(r.mode!=activeRequest.mode)sampler.reset();activeRequest=r;active=token;previousFrame=-1;previousRevision=0;}
    std::shared_ptr<const external::radar::Frame> next;
    if(reader.open(r.pid)){reader.begin();bool ok=sampler.step(r.reveal,4096,r.mode==1);int frame=reader.get<int>(0xA8ED84,-1);
     if(ok&&(r.mode==1||frame!=previousFrame||sampler.revision()!=previousRevision)){
-     auto data=sampler.snapshot(GetTickCount());if(data.terrain){auto map=std::make_shared<external::radar::Scene>();map->width=r.width;map->height=r.height;external::radar::raster(*data.terrain,r.width,r.height,map->pixels);data.map=std::move(map);}auto fresh=[&](uint32_t p,void*out,size_t n){return reader.readFresh(p,out,n);};
+     auto data=sampler.snapshot(GetTickCount());data.map=diagram.render(data.terrain,r.width,r.height);auto fresh=[&](uint32_t p,void*out,size_t n){return reader.readFresh(p,out,n);};
      auto sampled=external::radar::publicationContext(fresh);
      if(external::radar::sameWorld(data,sampled)){
       if(!external::radar::freshMarkers(data,sampled))data.markers.clear();

@@ -31,6 +31,13 @@ using namespace external::radar;Memory m;constexpr uint32_t cells=0x100000,cell=
  m.zero(cells,4096*4);m.set(cells+(3*512+3)*4,cell);m.zero(cell,0x148);m.set<int16_t>(cell+0x24,3);m.set<int16_t>(cell+0x26,3);m.set(cell+0xEC,2);m.set<int8_t>(cell+0x120,-1);m.set<int8_t>(cell+0x121,-1);
  Sampler<Read> sampler(Read{&m});assert(sampler.step(false,2048));assert(!sampler.snapshot(1).terrain);assert(sampler.step(false,2048));auto a=sampler.snapshot(2);assert(a.terrain&&a.terrain->colors[3*512+3]==terrainColor(2,0,false));
  double u,v;a.terrain->geo.project(3.5,3.5,u,v);assert(u==.5&&v==.375);std::vector<uint32_t> pixels;raster(*a.terrain,80,80,pixels);assert(pixels[30*80+40]==terrainColor(2,0,false));
+ DiagramRenderer diagram;auto scaled=diagram.render(a.terrain,80,80);assert(scaled&&scaled->pixels==pixels);
+ for(int i=0;i<100;++i)assert(diagram.render(a.terrain,80,80)==scaled);
+ auto larger=diagram.render(a.terrain,1600,800);assert(larger!=scaled&&larger->pixels.size()==1600*800);
+ auto changedTerrain=std::make_shared<Terrain>(*a.terrain);changedTerrain->colors[3*512+3]=0;
+ auto changedDiagram=diagram.render(changedTerrain,80,80);assert(changedDiagram!=scaled&&changedDiagram->pixels!=scaled->pixels);
+ assert(scaled->pixels==pixels);diagram.reset();assert(diagram.render(a.terrain,80,80)!=scaled);
+ assert(!diagram.render(a.terrain,0,80)&&!diagram.render(a.terrain,2049,80));
  PublicationContext context{house,cells,a.frame+1,true};assert(freshMarkers(a,context));
  context.frame=a.frame+120;assert(sameWorld(a,context)&&!freshMarkers(a,context)); // slow rendering is not a map change
  context.frame=a.frame-1;assert(!sameWorld(a,context));context.frame=a.frame+120;
@@ -51,7 +58,7 @@ using namespace external::radar;Memory m;constexpr uint32_t cells=0x100000,cell=
  m.set(0xA83D4C,house+0x10000);sampler.step(true,1);assert(!sampler.snapshot(8).terrain);m.set(0xA8ED8C,1);assert(!sampler.step(true));assert(!sampler.snapshot(9).terrain);m.set(0xA8ED8C,0);
  m.set(Map+0x1488,std::numeric_limits<float>::quiet_NaN());assert(!sampler.step(true));m.set(Map+0x1488,10.f);m.set(Map+0x140,999999);assert(!sampler.step(true));
  raster(*a.terrain,-1,80,pixels);assert(pixels.empty());int count=0;
- for(int gw:{800,1920,2560,3840})for(int gh:{600,1080,1440,2160})for(int cw:{640,1920,3840})for(int ch:{480,1080,2160})for(int scale:{100,200,400})for(int mode:{0,1,2,3})for(int coord:{0,300,32768})for(bool plane:{false,true}){
+ for(int gw:{800,1920,2560,3840})for(int gh:{600,1080,1440,2160})for(int cw:{640,1920,3840})for(int ch:{480,1080,2160})for(int scale:{100,200,400,1000})for(int mode:{0,1,2,3})for(int coord:{0,300,32768})for(bool plane:{false,true}){
   auto aircraft=plane?radarlayout::aircraft(gw,gh,cw,ch):radarlayout::Box{};auto layout=radarlayout::place(gw,gh,cw,ch,scale,mode,coord,coord,aircraft);assert(layout.valid);auto b=layout.destination;
   assert(b.x>=0&&b.y>=0&&b.x+b.w<=cw&&b.y+b.h<=ch);assert(!radarlayout::overlap(b,aircraft)&&!radarlayout::overlap(b,layout.source));++count;
  }

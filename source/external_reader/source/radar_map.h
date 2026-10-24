@@ -98,4 +98,17 @@ inline void raster(const Terrain&t,int w,int h,std::vector<uint32_t>&pixels){
   pixels[size_t(py)*w+px]=smoothColor(t,(u+v)/2,(v-u)/2);
  }
 }
+// Immutable terrain banks change independently of marker/display frames.
+// Retain their scaled background so higher refresh rates do not rescale it.
+class DiagramRenderer {
+ std::shared_ptr<const Terrain> terrain_;std::shared_ptr<const Scene> scene_;
+public:
+ void reset(){terrain_.reset();scene_.reset();}
+ std::shared_ptr<const Scene> render(const std::shared_ptr<const Terrain>&terrain,int width,int height){
+  if(!terrain||width<1||height<1||width>2048||height>2048)return {};
+  if(terrain_==terrain&&scene_&&scene_->width==width&&scene_->height==height)return scene_;
+  auto scene=std::make_shared<Scene>();scene->width=width;scene->height=height;raster(*terrain,width,height,scene->pixels);
+  terrain_=terrain;scene_=std::move(scene);return scene_;
+ }
+};
 }}
