@@ -16,7 +16,8 @@ public:
    auto equal=line.find('=');if(section.empty()||equal==line.npos)continue;auto key=name(trim(line.substr(0,equal)));if(!key.empty())sections_[section][key]=trim(line.substr(equal+1));
   }
  }
- std::string get(const std::string&s,const std::string&k)const{auto i=sections_.find(name(s));if(i==sections_.end())return {};auto j=i->second.find(name(k));return j==i->second.end()?std::string{}:j->second;}
+ bool find(const std::string&s,const std::string&k,std::string&out)const{out.clear();auto i=sections_.find(name(s));if(i==sections_.end())return false;auto j=i->second.find(name(k));if(j==i->second.end())return false;out=j->second;return true;}
+ std::string get(const std::string&s,const std::string&k)const{std::string out;find(s,k,out);return out;}
  bool yes(const std::string&s,const std::string&k)const{auto v=name(get(s,k));return v=="YES"||v=="TRUE"||v=="1";}
 };
 }}

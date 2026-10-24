@@ -49,7 +49,8 @@ int main(){
  assert(icons.resolve(load,1,12,"E1","","")=="INGAME.SHP");
  assert(icons.resolve(load,1,12,"E1","","mapoverride.shp")=="MAPOVERRIDE.SHP");
  assert(icons.resolve(load,1,12,"E1","","none").empty());
- m.text(0x16200,"none");assert(icons.resolve(load,1,13,"E1","","").empty());
+ m.text(0x16200,"");assert(icons.resolve(load,1,13,"E1","","").empty());
+ m.text(0x16200,"none");assert(icons.resolve(load,1,14,"E1","","").empty());
  m.put(LiveINI::ArtObject,0);assert(icons.resolve(load,1,14,"E1","","")=="ONDISK.SHP");
  // A key string ending at a readable allocation boundary still works.
  m.ini(0x12000,"GI","Cameo","edge");m.put(0x15010,uint32_t(m.b.size()-5));m.text(uint32_t(m.b.size()-5),"edge");

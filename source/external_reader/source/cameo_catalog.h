@@ -20,14 +20,14 @@ public:
   // An explicit native None is authoritative; absent/unreadable fields fall back.
   auto current=name(nativeCameo);if(current=="NONE"||current=="<NONE>")return {};
   if(usable(current)){if(current.find('.')==current.npos)current+=".SHP";return current;}
-  auto get=[&](bool rules,const std::string&s,const std::string&k){std::string out;if(live_&&live_(rules,s,k,out))return out;return (rules?rules_:art_).get(s,k);};
+  auto get=[&](bool rules,const std::string&s,const std::string&k,bool*present=nullptr){std::string out;bool found=(live_&&live_(rules,s,k,out));if(!found)found=(rules?rules_:art_).find(s,k,out);if(present)*present=found;return out;};
   std::vector<std::string> roots;if(usable(nativeImage))roots.push_back(nativeImage);
   auto image=get(true,id,"IMAGE");if(usable(image))roots.push_back(image);else roots.push_back(id);
   std::set<std::string> seen;
   for(auto section:roots)for(int hops=0;hops<8&&usable(section);++hops){
    section=name(section);if(!seen.insert(section).second)break;
-   auto file=elite?get(false,section,"ALTCAMEO"):std::string{};if(file.empty())file=get(false,section,"CAMEO");
-   if(!file.empty()){if(!usable(file))return {};file=name(file);if(file.find('.')==file.npos)file+=".SHP";return file;}
+   bool present=false;auto file=elite?get(false,section,"ALTCAMEO",&present):std::string{};if(file.empty())file=get(false,section,"CAMEO",&present);
+   if(present){if(!usable(file))return {};file=name(file);if(file.find('.')==file.npos)file+=".SHP";return file;}
    section=get(false,section,"IMAGE");
   }
   if(!usable(nativeCameo))return {};auto file=name(nativeCameo);if(file.find('.')==file.npos)file+=".SHP";return file;
