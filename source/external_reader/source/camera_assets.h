@@ -31,7 +31,7 @@ uint32_t word(uint32_t p){uint32_t v=0;read(p,&v,4);return v;}
 std::string text(uint32_t p,unsigned n){return external::assets::text(read,p,n);}
 std::string theater(int field,int size){unsigned n=word(0x822CF8);return n<6?text(0x7E1B78+n*112+field,size):std::string{};}
 external::assets::EffectiveINI<Read> artINI,rulesINI;uint64_t iniRevision=~uint64_t(0);
- std::shared_ptr<const external::voxel::Image> buildingMask;uint64_t maskRevision=~uint64_t(0);
+ std::shared_ptr<const external::voxel::Image> buildingMask;bool buildingMaskBiased=false;uint64_t maskRevision=~uint64_t(0);
  external::assets::RuntimeCameos<Read> cameoCatalog;external::voxel::Vpl voxelLight;uint64_t voxelRevision=~uint64_t(0);
  void resolveCameo(um::Type&t){update();auto file=cameoCatalog.resolve([&](const char*n,std::vector<uint8_t>&b){return files.load(n,b);},files.revision(),files.revision()^(GetTickCount64()/5000),t.id,text(t.ptr+0x1F8,25),t.cameo);memset(t.cameo,0,sizeof t.cameo);if(file.size()<sizeof t.cameo)memcpy(t.cameo,file.data(),file.size());}
  void vpl(){if(voxelRevision==files.revision())return;voxelRevision=files.revision();std::vector<uint8_t>b;files.load("VOXELS.VPL",b);voxelLight.load(b);}
@@ -76,10 +76,19 @@ bool spritePalette(uint32_t type,const std::string&file,bool overlay,uint32_t ow
  return true;
 }
 int buildingFrame(uint32_t object,uint32_t type){
+ int frame=int32_t(word(object+0xF8)),state=int32_t(word(object+0x534));
+ if(word(type+0x16BF)&255)return int32_t(word(object+0x618));
+ if(word(type+0x16C0)&255)return int32_t(word(object+0x61C));
+ if(state==0){int start=int32_t(word(type+0xF04)),count=int32_t(word(type+0xF08));
+  if(word(type+0x16B7)&255)frame=start+count-frame-1;
+  int mission=int32_t(word(object+0xAC));if(mission==-1)mission=int32_t(word(object+0xB4));
+  if(mission==19)frame=start+count-frame-1;
+  return frame>=0&&frame<8192?frame:-1;
+ }
  metadata();int strength=int32_t(word(type+0xA0)),health=int32_t(word(object+0x6C));if(strength<=0||health<=0)return 0;
  auto value=rulesINI.get("AUDIOVISUAL","CONDITIONYELLOW");char*end=nullptr;double threshold=strtod(value.c_str(),&end);if(end&&*end=='%')threshold/=100.;
  if(value.empty()||!std::isfinite(threshold)||threshold<0||threshold>1)threshold=.5;
- return health<double(strength)*threshold?1:0;
+ return std::clamp(frame,0,8191)+(health<double(strength)*threshold?1:0);
 }
 bool overlay(uint32_t type,uint32_t pointer,int frame,external::voxel::Image&out,bool terrain=false){std::vector<uint8_t>bytes;std::string file;bool disk=shapeBytes(type,pointer,bytes,file,!terrain);std::array<uint32_t,256>pal{};if(!spritePalette(type,file,true,0,pal,terrain))return false;
  std::string why;bool ok=disk?external::voxel::sprite(external::assets::Memory{std::move(bytes)},external::assets::Memory::Base,pal,out,frame,&why):external::voxel::sprite(read,pointer,pal,out,frame,&why);if(!ok)failure="overlay-frame/decode:"+file+" frame="+std::to_string(frame)+" "+why;
@@ -114,7 +123,7 @@ struct ActorArt {
  external::voxel::Model model;std::vector<uint8_t> shape;std::array<uint32_t,256> colors{};
  std::string filename;
  uint32_t pointer=0,type=0;float turretOffset=0;bool voxel=false;int kind=-1,fw=1,fh=1,moveX=0,moveY=0,drawY=0,zAdjust=0;bool flat=false,shadow=true;
- std::shared_ptr<const external::voxel::Image> depthMask;
+ std::shared_ptr<const external::voxel::Image> depthMask;bool depthMaskBiased=false;
 };
 static size_t cost(const ActorArt&a){return a.shape.size()+a.model.faces.size()*sizeof(external::voxel::Face);}
 static int integer(const std::string&s,int fallback=0){if(s.empty())return fallback;char*end=nullptr;long n=strtol(s.c_str(),&end,10);return end!=s.c_str()&&!*end?int(std::clamp(n,-8192l,8192l)):fallback;}
@@ -150,8 +159,9 @@ bool captureActor(uint32_t p,uint32_t type,uint32_t id,ActorArt&out){
   int liveAdjust=0;if(read(type+0x1520,&liveAdjust,4)&&std::abs(int64_t(liveAdjust))<=8192)next.zAdjust=liveAdjust;
   if(maskRevision!=files.revision()){maskRevision=files.revision();buildingMask.reset();std::vector<uint8_t>b;std::array<uint32_t,256>dummy{};dummy.fill(0xffffffff);
    auto mask=std::make_shared<external::voxel::Image>();
-   if(external::voxel::sprite(read,word(0x89DDBC),dummy,*mask,0,nullptr,255)||((files.load("BUILDNGZ.SHA",b)||files.load("BUILDNGZ.SHP",b))&&external::assets::shp(std::move(b),0,dummy,*mask)))buildingMask=std::move(mask);}
-  if(next.fw<8)next.depthMask=buildingMask; // native 43D787 skips the cone for width >= 8
+   buildingMaskBiased=external::voxel::sprite(read,word(0x89DDBC),dummy,*mask,0,nullptr,255);
+   if(buildingMaskBiased||((files.load("BUILDNGZ.SHA",b)||files.load("BUILDNGZ.SHP",b))&&external::assets::shp(std::move(b),0,dummy,*mask)))buildingMask=std::move(mask);}
+  if(next.fw<8){next.depthMask=buildingMask;next.depthMaskBiased=buildingMaskBiased;} // native 43D787 skips the cone for width >= 8
  }
 
  auto stem=text(type+0x1F8,25);if(stem.empty())stem=text(type+0x24,24);
@@ -174,8 +184,12 @@ bool captureActor(uint32_t p,uint32_t type,uint32_t id,ActorArt&out){
    }
   }else{part("TUR",type+0xB8,true);part("BARL",type+0xC0,true);}
  }else{
-  next.pointer=word(type+0xA4);std::string filename;
-  bool loaded=shapeBytes(type,next.pointer,next.shape,filename,false,next.kind==3);next.filename=filename;
+  bool buildup=next.kind==3&&word(p+0x534)==0;
+  next.pointer=word(type+(buildup?0xE00:0xA4));std::string filename;bool loaded=false;
+  if(buildup){auto stem=text(type+0xE5C,16);if(stem.empty())stem=artValue(type,"Buildup");
+   auto names=external::assets::spriteNames(stem,external::assets::shapeName(read,next.pointer),theater(78,3),theater(86,1),(word(type+0x22C)&255)!=0,(word(type+0x237)&255)!=0,false,true);
+   for(const auto&name:names)if(files.load(name,next.shape)){filename=name;loaded=true;break;}
+  }else loaded=shapeBytes(type,next.pointer,next.shape,filename,false,next.kind==3);next.filename=filename;
   if(!loaded)filename=external::assets::shapeName(read,next.pointer);
   if(!spritePalette(type,filename,false,owner,next.colors))return false;
   if(!loaded){external::voxel::Image check;if(!external::voxel::sprite(read,next.pointer,next.colors,check)){failure="sprite-not-found/unloaded:"+(filename.empty()?stem:filename);return false;}}
@@ -198,7 +212,7 @@ bool renderActor(const ActorArt&art,const external::visual::Pose&pose,external::
  std::string why;auto decode=[&](int frame,external::voxel::Image&image){return !art.shape.empty()?external::voxel::sprite(bytes,external::assets::Memory::Base,art.colors,image,frame,&why,255):external::voxel::sprite(read,art.pointer,art.colors,image,frame,&why,255);};
  if(!decode(pose.frame,out)){failure="sprite-frame/decode:"+art.filename+" frame="+std::to_string(pose.frame)+" "+why;return false;}
  out.y+=art.drawY;out.objectPalette=true;out.flat=art.flat;out.writeDepth=art.kind==3;out.depthBias=-float(art.zAdjust);
- if(art.kind==3&&!out.flat&&art.depthMask)external::camera::buildingDepth(out,*art.depthMask,art.fw,art.fh,art.moveX,art.moveY);
+ if(art.kind==3&&!out.flat&&art.depthMask)external::camera::buildingDepth(out,*art.depthMask,art.fw,art.fh,art.moveX,art.moveY,art.depthMaskBiased);
  uint8_t header[8]{};bool head=!art.shape.empty()?bytes(external::assets::Memory::Base,header,8):read(art.pointer,header,8);int frames=head?external::voxel::u16(header+6):0;
  if(art.shadow&&frames>=2&&pose.frame<frames/2){external::voxel::Image shadow;if(decode(pose.frame+frames/2,shadow)){shadow.y+=art.drawY;shadow.shadow=true;shadow.flat=true;shadow.writeDepth=art.kind==3&&!art.flat;out.shadowsAfter=shadow.writeDepth;shadow.depthBias=out.depthBias+(art.kind==3?1:art.kind==5?0:2);out.attachments.push_back(std::move(shadow));}}
  return true;

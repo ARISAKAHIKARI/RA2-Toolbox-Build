@@ -32,6 +32,7 @@ body=r'''
 #include <fstream>
 #include "source/external_reader/source/game_archive.h"
 static std::map<std::string,std::vector<uint8_t>> disk;
+static int fileReads=0;
 static std::vector<uint8_t> memory(0x1000000);
 static DWORD clockValue=1000,pid=1;static uint32_t commandMatch(){return 1;}
 namespace external {struct ReadSession {
@@ -45,7 +46,7 @@ DWORD GetTickCount(){return clockValue;}uint64_t GetTickCount64(){return clockVa
 bool GetFileAttributesExW(const wchar_t*p,unsigned,WIN32_FILE_ATTRIBUTE_DATA*out){auto i=disk.find(filename(p));if(i==disk.end())return false;*out={};out->nFileSizeLow=i->second.size();return true;}
 HANDLE CreateFileW(const wchar_t*p,unsigned,unsigned,void*,unsigned,unsigned,void*){auto i=disk.find(filename(p));return i==disk.end()?INVALID_HANDLE_VALUE:new OpenFile{&i->second,0};}
 bool SetFilePointerEx(HANDLE h,LARGE_INTEGER n,LARGE_INTEGER*,unsigned){if(n.QuadPart<0)return false;static_cast<OpenFile*>(h)->pos=n.QuadPart;return true;}
-bool ReadFile(HANDLE h,void*out,DWORD n,DWORD*got,void*){auto&f=*static_cast<OpenFile*>(h);if(f.pos+n>f.data->size()){*got=0;return false;}memcpy(out,f.data->data()+f.pos,n);f.pos+=n;*got=n;return true;}
+bool ReadFile(HANDLE h,void*out,DWORD n,DWORD*got,void*){++fileReads;auto&f=*static_cast<OpenFile*>(h);if(f.pos+n>f.data->size()){*got=0;return false;}memcpy(out,f.data->data()+f.pos,n);f.pos+=n;*got=n;return true;}
 bool CloseHandle(HANDLE h){delete static_cast<OpenFile*>(h);return true;}
 struct Search {std::vector<std::string> names;size_t at=0;};
 bool FindNextFileW(HANDLE h,WIN32_FIND_DATAW*out){auto&s=*static_cast<Search*>(h);if(s.at==s.names.size())return false;auto&n=s.names[s.at++];*out={};std::wstring w(n.begin(),n.end());std::wcscpy(out->cFileName,w.c_str());out->nFileSizeLow=disk.at(n).size();return true;}
@@ -127,6 +128,18 @@ int main(int argc,char**argv){
  gameassets::ActorArt v;v.voxel=true;v.shadow=false;v.colors.fill(0xff808080);external::voxel::Face face;face.color=1;face.p[0]={0,0,0};face.p[1]={8,0,0};face.p[2]={8,8,0};face.p[3]={0,8,0};v.model.faces.push_back(face);
  assert(gameassets::renderActor(v,{},image)&&image.depth.empty()&&!image.writeDepth&&image.depthBottom!=std::numeric_limits<int>::min());
  std::cout<<"PASS production absolute-slot animation -> theater SHP -> Value+Start pixels, power-off first frame, stale slot rejection and voxel scene-depth handoff\n";
+ // Successful archived bytes remain resident; repeated frames do no file reads.
+ std::vector<uint8_t> bytes;assert(gameassets::files.load("CUSTOMTEM.PAL",bytes));int reads=fileReads;
+ for(int i=0;i<50;++i)assert(gameassets::files.load("CUSTOMTEM.PAL",bytes));assert(fileReads==reads);
+ // Separate make art, native stage and selling reverse order.
+ memcpy(memory.data()+buildingType+0xE5C,"CAOILDMK",9);memory[buildingType+0x237]=1;word(memory,buildingType+0xF04,0);word(memory,buildingType+0xF08,12);word(memory,buildingType+0xA0,100);word(memory,building+0x534,0);word(memory,building+0xF8,3);word(memory,building+0xAC,18);
+ disk["CTOILDMK.SHP"]=shp;assert(gameassets::captureActor(building,buildingType,501,art)&&art.filename=="CTOILDMK.SHP");
+ ap.frame=gameassets::buildingFrame(building,buildingType);assert(ap.frame==3&&gameassets::renderActor(art,ap,image));
+ word(memory,building+0xAC,19);assert(gameassets::buildingFrame(building,buildingType)==8);ap.frame=8;assert(gameassets::renderActor(art,ap,image));
+ assert(external::visual::pose(game,building,buildingType,3,0).variant==-2);
+ // Standalone warhead/explosion art uses ANIM.PAL, with no building slot.
+ disk["ANIM.PAL"]=pal;disk["EXPLODE.SHP"]=shp;memcpy(memory.data()+animType+0x24,"EXPLODE",8);memory[anim+0x118]=0;
+ assert(gameassets::captureAnimation(anim,animType,502,0,0,art)&&art.filename=="EXPLODE.SHP");ap.frame=0;assert(gameassets::renderActor(art,ap,image));
  // No selected bit, memory SHP, VXL, palette or live MIX index was supplied.
  assert(memory[p+0x83]==0);disk.clear();clockValue+=6000;gameassets::update();assert(!gameassets::tile(tileType,0,colors,image));assert(gameassets::failure.find("tile-not-found:CLEAR01.TEM")==0);
  std::cout<<"PASS production file discovery, nested base/override fallback, unloaded unselected infantry at eight headings, TMP pixels and missing-resource diagnostic\n";

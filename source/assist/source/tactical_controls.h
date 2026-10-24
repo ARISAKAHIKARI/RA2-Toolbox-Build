@@ -163,7 +163,7 @@ toastEdit=number(471,L"战术提示时长 / 毫秒",toastMs,L"500–60000");
 number(817,L"建筑预定面板缩放 / %",constructionScalePercent,L"50–250 · 默认 100");
 toggle(830,L"战术小地图",minimapEnabled);next();
 label(L"小地图画面",20,260);choices(combo(9065),{L"示意",L"实景"},minimapMode);next();
-number(831,L"小地图缩放 / %",minimapScale,L"100–400 · 默认 200");
+number(831,L"小地图缩放 / %",minimapScale,L"100–1000 · 默认 200");
 label(L"战术小地图位置",20,260);choices(combo(850),{L"原雷达左侧",L"画面左上",L"画面左下",L"自定义坐标"},minimapPosition);next();
 label(L"自定义位置 X / Y",20,260);edit(851,std::to_wstring(minimapX),290,100,true);edit(852,std::to_wstring(minimapY),405,100,true);next();
 label(L"自定义水平对齐",20,260);choices(combo(9100),{L"靠左",L"居中",L"靠右"},minimapAlignX);next();

@@ -17,7 +17,7 @@ inline Layout place(int gw,int gh,int cw,int ch,int scale,int mode,int userX,int
  result.source={cw-sw,0,sw,sh};
  const int gap=std::max(6,int(int64_t(10)*cw/gw)),pad=2;
  const int top=plane.w>0?plane.y+plane.h+gap:std::max(gap,int(int64_t(40)*ch/gh));
- int w=int(int64_t(sw)*std::clamp(scale,100,400)/100)+2,h=int(int64_t(sh)*std::clamp(scale,100,400)/100)+2;
+ int w=int(int64_t(sw)*std::clamp(scale,100,1000)/100)+2,h=int(int64_t(sh)*std::clamp(scale,100,1000)/100)+2;
  // There is always a fallback slot left of radar and below the aircraft button.
  const int availableW=cw-sw-gap-pad,availableH=ch-top-pad;
  if(availableW<3||availableH<3)return result;
@@ -26,7 +26,7 @@ inline Layout place(int gw,int gh,int cw,int ch,int scale,int mode,int userX,int
  int boxW=w,boxH=h;
  // Fit the real map BEFORE anchoring and collision avoidance. Resizing an
  // already positioned square leaves a large gap below a wide minimap.
- if(aspect>0&&aspect<1024){double innerW=std::min(1024.,double(w-2)),innerH=std::min(1024.,double(h-2));
+ if(aspect>0&&aspect<1024){double innerW=std::min(2048.,double(w-2)),innerH=std::min(2048.,double(h-2));
   innerW=std::min(innerW,innerH*aspect);innerH=innerW/aspect;w=std::max(3,int(innerW)+2);h=std::max(3,int(innerH)+2);}
  int x=cw-sw-gap-w,y=top;
  if(mode==1){x=gap;y=gap;}else if(mode==2){x=gap;y=ch-h-gap;}

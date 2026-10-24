@@ -4,7 +4,7 @@ No game update, loader, renderer, Win32 display or multiplayer is executed.
 from pathlib import Path
 import argparse,hashlib,json,struct,zipfile
 from unicorn import Uc,UC_ARCH_X86,UC_MODE_32
-from unicorn.x86_const import UC_X86_REG_ESP,UC_X86_REG_ECX,UC_X86_REG_ESI,UC_X86_REG_EAX
+from unicorn.x86_const import UC_X86_REG_ESP,UC_X86_REG_ECX,UC_X86_REG_ESI,UC_X86_REG_EAX,UC_X86_REG_EDX,UC_X86_REG_EDI
 p=argparse.ArgumentParser(description=__doc__);p.add_argument('capture',type=Path);p.add_argument('--output',type=Path,required=True);a=p.parse_args()
 with zipfile.ZipFile(a.capture) as z:
  session_name=next(n for n in z.namelist() if n.endswith('/session.json'));base=session_name[:-len('session.json')];session=json.loads(z.read(session_name));results=[];hashes={}
@@ -43,7 +43,27 @@ with zipfile.ZipFile(a.capture) as z:
     sp=stack+0x800;u.reg_write(UC_X86_REG_ESP,sp);u.reg_write(UC_X86_REG_ESI,obj);u.emu_start(0x42303f,0x423061,count=100)
     assert value(sp+0x2c)==value(obj+0xac)+value(t+0x2b4)
     n+=1;paused+=bool(u.mem_read(obj+0x19e,1)[0]);starts+=value(t+0x2b4)>0
-  results.append({'stage':stage,'native_animations':n,'power_off':paused,'nonzero_start':starts,'native_building_sort':buildings,'adjusted_building_sort':adjusted})
-  for addr,length in [(0x451890,0x2a4),(0x459ef0,0x2b),(0x449410,0x2e),(0x5f6bd0,0x36),(0x447ac0,0x54),(0x422be0,0x85),(0x422bc0,0x12),(0x424cb0,0x27),(0x42303f,0x22)]:
+  # Original in-place BUILDNGZ preprocessing; controlled bytes, original code.
+  mask=bytes(range(256));u.mem_write(out,mask);u.reg_write(UC_X86_REG_EDX,out);u.reg_write(UC_X86_REG_ESI,256);u.reg_write(UC_X86_REG_EDI,1)
+  u.emu_start(0x45e940,0x45e95c,count=4000)
+  assert bytes(u.mem_read(out,256))==bytes((v-65)&255 if v else 0 for v in range(256))
+  # Controlled construction/selling state on an actual captured GACNST object.
+  # This validates frame selection, not that a game update plays these states.
+  build_frames=0
+  for i in range(value(0xA8EB40+16)):
+   b=value(value(0xA8EB40+4)+i*4);bt=value(b+0x520)
+   if bytes(u.mem_read(bt+0x24,6))!=b'GACNST':continue
+   count=signed(bt+0xf08);start=signed(bt+0xf04)
+   if count<=0 or count>8192:continue
+   saved={off:bytes(u.mem_read(b+off,4)) for off in [0x534,0xf8,0xac]}
+   u.mem_write(b+0x534,struct.pack('<I',0))
+   for mission in [18,19]:
+    u.mem_write(b+0xac,struct.pack('<I',mission))
+    for frame in [0,count//2,count-1]:
+     u.mem_write(b+0xf8,struct.pack('<I',frame));assert run(0x43ef90,b)==(frame if mission==18 else start+count-frame-1);build_frames+=1
+   for off,data in saved.items():u.mem_write(b+off,data)
+   break
+  results.append({'stage':stage,'native_mask_bytes':256,'controlled_buildup_frames':build_frames,'native_animations':n,'power_off':paused,'nonzero_start':starts,'native_building_sort':buildings,'adjusted_building_sort':adjusted})
+  for addr,length in [(0x45e8f0,0x72),(0x43ef90,0x1e4),(0x4513d0,0x30),(0x465960,0x190),(0x451890,0x2a4),(0x459ef0,0x2b),(0x449410,0x2e),(0x5f6bd0,0x36),(0x447ac0,0x54),(0x422be0,0x85),(0x422bc0,0x12),(0x424cb0,0x27),(0x42303f,0x22)]:
    hashes[hex(addr)]=hashlib.sha256(bytes(u.mem_read(addr,length))).hexdigest()
  a.output.parent.mkdir(parents=True,exist_ok=True);a.output.write_text(json.dumps({'scope':__doc__,'game_exe_sha256':session['file_sha256'],'code_sha256':hashes,'results':results},indent=2)+'\n');print(json.dumps(results))

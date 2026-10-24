@@ -13,7 +13,7 @@ static void loadAdditionalSettings(){
  minimapPosition=std::clamp(value(L"Display",L"MinimapPosition",0),0,3);minimapX=std::clamp(value(L"Display",L"MinimapX",20),0,32768);minimapY=std::clamp(value(L"Display",L"MinimapY",60),0,32768);
  minimapAlignX=std::clamp(value(L"Display",L"MinimapAlignX",0),0,2);minimapAlignY=std::clamp(value(L"Display",L"MinimapAlignY",0),0,2);
  minimapMode=std::clamp(value(L"Display",L"MinimapMode",0),0,1);
- minimapEnabled=value(L"Display",L"MinimapZoom",0)!=0;minimapScale=std::clamp(value(L"Display",L"MinimapScale",200),100,400);
+ minimapEnabled=value(L"Display",L"MinimapZoom",0)!=0;minimapScale=std::clamp(value(L"Display",L"MinimapScale",200),100,1000);
  for(int i=0;i<featuretypes::Count;++i){auto&f=featureTypes.filters[i];std::wstring custom=std::wstring(featuretypes::key(i))+L"Custom";wchar_t text[13000]{};
   GetPrivateProfileStringW(L"FeatureTypes",featuretypes::key(i),featuretypes::initial(i),text,13000,path(L"Assist.ini").c_str());featureTypeText[i]=text;
   oreconfig::parse(featureTypeText[i],f.ids,f.count);f.custom=value(L"FeatureTypes",custom.c_str(),0)!=0;

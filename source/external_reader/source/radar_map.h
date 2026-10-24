@@ -20,7 +20,7 @@ struct Marker {double u=0,v=0;uint32_t color=0;bool building=false;uint32_t obje
 struct CellArt {uint32_t cell=0,type=0,overlayType=0;int16_t overlay=-1;uint8_t sub=0,level=0,overlayFrame=0;};
 struct Scene {int width=0,height=0;std::vector<uint32_t> pixels;};
 struct Terrain {Geometry geo;std::vector<uint32_t> colors;std::vector<CellArt> art;};
-struct Frame {std::shared_ptr<const Terrain> terrain;std::vector<Marker> markers;std::shared_ptr<const Scene> scene;uint32_t tick=0;int frame=-1;};
+struct Frame {std::shared_ptr<const Terrain> terrain;std::vector<Marker> markers;std::shared_ptr<const Scene> scene,map;uint32_t tick=0;int frame=-1;};
 inline uint32_t terrainColor(int land,int level,bool fog){
  static constexpr uint32_t colors[]={0x66794b,0x85836c,0x285e86,0x70756d,0x999684,0xb7a843,0xb4a47c,0x77734d,0xb4cbd0,0x77766b,0x55584f,0x58703d};
  if(land<0||land>=12)return 0x44483a;uint32_t c=colors[land];int shade=std::clamp(level,0,14)*2;
@@ -37,7 +37,8 @@ public:
  bool step(uint32_t reveal,int budget=4096,bool real=false){
   Geometry g;g.width=get<int>(Map+0xF4);g.height=get<int>(Map+0xF8);g.cells=get<uint32_t>(Map+0x13C);g.count=get<int>(Map+0x140);
   g.factor=get<float>(Map+0x1488);g.offsetX=get<int>(Map+0x1490);g.offsetY=get<int>(Map+0x1498);g.rw=get<int>(Map+0x14A4);g.rh=get<int>(Map+0x14A8);g.house=get<uint32_t>(0xA83D4C);
-  int frame=get<int>(0xA8ED84,-1);if(!g.valid()||frame<0||get<uint8_t>(0xA8E9A0)!=1||!display::inspect(read_).visible()){reset();return false;}
+  int frame=get<int>(0xA8ED84,-1);if(!g.valid()||frame<0||get<uint8_t>(0xA8E9A0)!=1 ){reset();return false;}
+  if(!display::inspect(read_).visible())return false;
   if(!g.same(geo_)||frame<lastFrame_||reveal_!=reveal){reset();geo_=g;reveal_=reveal;}lastFrame_=frame;
   if(!pending_){pointers_.resize(g.count);if(!read_(g.cells,pointers_.data(),pointers_.size()*4)){reset();return false;}
    pending_=std::make_shared<Terrain>();pending_->geo=g;pending_->colors.resize(512*512);if(real){pending_->art.resize(512*512);tileTypes_=view_.vec(0xA8ED28,65536);overlayTypes_=view_.vec(0xA83D80);}cursor_=0;}
@@ -65,6 +66,10 @@ public:
   if(!terrain_->art.empty()){
    const auto bodies=out.markers;for(const auto&body:bodies)if(body.kind==3)for(const auto&a:animations::attached(read_,body.object,body.id)){
     Marker m;m.object=a.object;m.id=a.id;m.type=a.type;m.owner=a.owner;m.parent=a.parent;m.parentId=a.parentId;m.x=a.x;m.y=a.y;m.z=a.z;m.kind=5;m.pose.frame=a.frame;m.drawZ=a.zAdjust;m.sort=a.sort;m.layer=a.layer;m.normalLight=a.normalLight;m.onBridge=get<uint8_t>(a.parent+0x8C)!=0;geo_.project(double(m.x)/256,double(m.y)/256,m.u,m.v);if(m.u>=0&&m.u<1&&m.v>=0&&m.v<1)out.markers.push_back(m);
+   }
+   std::set<uint32_t> seen;for(const auto&m:out.markers)if(m.kind==5)seen.insert(m.object);
+   for(const auto&a:animations::all(read_)){if(!seen.insert(a.object).second||!terrain_->colors[(a.y/256)*512+a.x/256])continue;
+    Marker m;m.object=a.object;m.id=a.id;m.type=a.type;m.owner=a.owner;m.x=a.x;m.y=a.y;m.z=a.z;m.kind=5;m.pose.frame=a.frame;m.drawZ=a.zAdjust;m.sort=a.sort;m.layer=a.layer;m.normalLight=a.normalLight;geo_.project(double(m.x)/256,double(m.y)/256,m.u,m.v);if(m.u>=0&&m.u<1&&m.v>=0&&m.v<1)out.markers.push_back(m);
    }
    for(auto p:view_.vec(0xA8E988)){if(get<uint32_t>(p)!=0x7F522C||get<uint8_t>(p+0xCD)||get<int>(p+0x6C)<=0)continue;
     Marker m;m.object=p;m.id=get<uint32_t>(p+0x10);m.type=get<uint32_t>(p+0xC8);m.x=get<int>(p+0x9C,-1);m.y=get<int>(p+0xA0,-1);m.z=get<int>(p+0xA4);m.kind=4;m.pose.frame=get<int>(p+0xAC);

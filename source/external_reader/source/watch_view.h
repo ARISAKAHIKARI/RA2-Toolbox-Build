@@ -48,7 +48,7 @@ template<class Read> bool refresh(Read read,Frame&out){
   a.layer=std::clamp(g.template get<int>(p+0x94,2),0,4);a.onBridge=g.template get<uint8_t>(p+0x8C)!=0;a.x=g.template get<int>(p+0x9C,-1);a.y=g.template get<int>(p+0xA0,-1);a.z=g.template get<int>(p+0xA4);
   int cx=a.x/256-out.cx+out.radius,cy=a.y/256-out.cy+out.radius;
   if(a.x<0||a.y<0||cx<0||cy<0||cx>=out.side||cy>=out.side||!out.cells[cy*out.side+cx])return false;
-  a.light=lighting::at(read,a.x,a.y,a.z,out.light,a.kind==4);
+  a.light=lighting::at(read,a.x,a.y,a.z,out.light,a.kind==4);if(a.kind==3)a.light.intensity=(a.light.intensity<0?a.light.ambient*10:a.light.intensity)+g.template get<int16_t>(a.type+0x1548);
  }
  out.passengers.clear();out.dangerous=false;passengers::contents(read,out.focus.pointer,out.passengers,out.dangerous);
  return valid(g,out.focus);
@@ -79,7 +79,7 @@ template<class Read> Frame sample(Read read,Target focus,bool reveal,int radius=
   Actor a;a.target=t;a.onBridge=g.template get<uint8_t>(p+0x8C)!=0;a.x=x;a.y=y;a.kind=g.kind(p);a.type=g.type(p,a.kind);a.owner=g.template get<uint32_t>(p+0x21C);a.health=g.template get<int>(p+0x6C);a.z=g.template get<int>(p+0xA4);a.pose=visual::pose(g,p,a.type,a.kind,g.template get<int>(0xA8ED84));uint8_t rgb[3]{180,180,180};read(a.owner+22265,rgb,3);a.color=0xff000000u|(uint32_t(rgb[0])<<16)|(uint32_t(rgb[1])<<8)|rgb[2];
   uint32_t name=g.template get<uint32_t>(a.type+0x60);if(!name||!read(name,a.name,sizeof a.name)){char id[24]{};read(a.type+0x24,id,23);for(int i=0;i<23;++i)a.name[i]=uint8_t(id[i]);}a.name[39]=0;
   a.layer=std::clamp(g.template get<int>(p+0x94,2),0,4);if(a.kind==3)a.sort=(g.template get<uint8_t>(a.type+0x16C5)?32:0)-(g.template get<uint8_t>(a.type+0x16B7)?16:0);
-  a.light=lighting::at(read,a.x,a.y,a.z,out.light);out.actors.push_back(a);
+  a.light=lighting::at(read,a.x,a.y,a.z,out.light);if(a.kind==3)a.light.intensity=(a.light.intensity<0?a.light.ambient*10:a.light.intensity)+g.template get<int16_t>(a.type+0x1548);out.actors.push_back(a);
  }
  // Trees and static terrain are ObjectClass instances, outside TechnoClass::Array.
  for(auto p:g.vec(0xA8E988)){if(g.template get<uint32_t>(p)!=0x7F522C||g.template get<uint8_t>(p+0xCD)||g.template get<int>(p+0x6C)<=0)continue;
@@ -88,6 +88,12 @@ template<class Read> Frame sample(Read read,Target focus,bool reveal,int radius=
  }
  size_t bodies=out.actors.size();for(size_t i=0;i<bodies;++i){auto body=out.actors[i];if(body.kind!=3)continue;
   for(const auto&state:animations::attached(read,body.target.pointer,body.target.id)){Actor a;a.target={state.object,state.id};a.parent=body.target;a.onBridge=body.onBridge;a.type=state.type;a.owner=state.owner;a.x=state.x;a.y=state.y;a.z=state.z;a.kind=5;a.pose.frame=state.frame;a.drawZ=state.zAdjust;a.sort=state.sort;a.layer=state.layer;a.light=lighting::at(read,a.x,a.y,a.z,out.light);if(state.normalLight)a.light={};out.actors.push_back(a);}
+ }
+ std::set<uint32_t> seen;for(const auto&a:out.actors)if(a.kind==5)seen.insert(a.target.pointer);
+ for(const auto&state:animations::all(read)){if(!seen.insert(state.object).second)continue;
+  int cx=state.x/256-out.cx+out.radius,cy=state.y/256-out.cy+out.radius;
+  if(cx<0||cy<0||cx>=out.side||cy>=out.side||!out.cells[cy*out.side+cx])continue;
+  Actor a;a.target={state.object,state.id};a.type=state.type;a.owner=state.owner;a.x=state.x;a.y=state.y;a.z=state.z;a.kind=5;a.pose.frame=state.frame;a.drawZ=state.zAdjust;a.sort=state.sort;a.layer=state.layer;a.light=state.normalLight?lighting::State{}:lighting::at(read,a.x,a.y,a.z,out.light);out.actors.push_back(a);
  }
  if(!valid(g,focus))return {};std::stable_sort(out.actors.begin(),out.actors.end(),[](const Actor&a,const Actor&b){return int64_t(a.x)+a.y<int64_t(b.x)+b.y;});return out;
 }

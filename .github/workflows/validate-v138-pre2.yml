@@ -29,6 +29,8 @@ jobs:
             g++ -std=c++17 -O2 "source/assist/tests/$test.cpp" -o "/tmp/$test"
             "/tmp/$test"
           done
+          g++ -std=c++17 -O2 -pthread source/assist/tests/latest_worker.cpp -o /tmp/latest-worker
+          /tmp/latest-worker
           g++ -std=c++17 -O2 source/unit_monitor/tests/cameo_palette.cpp -o /tmp/cameo-palette
           /tmp/cameo-palette
           g++ -std=c++17 -O2 source/unit_monitor/tests/round_transition.cpp -o /tmp/round-transition -pthread

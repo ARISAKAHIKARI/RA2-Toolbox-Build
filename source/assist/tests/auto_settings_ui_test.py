@@ -110,7 +110,7 @@ int main(){
  profile[L"MagnetronGlobal"]=0;profile[L"MagnetronDrop"]=1;profile[L"Magnetron"]=0;loadFeatureTypes();assert(!compute::inside(computeRequested,compute::MagnetronGlobal)&&compute::inside(computeRequested,compute::MagnetronDrop));
 
  fields[830]=1;assert(autoSettingChanged(830,BN_CLICKED)&&minimapEnabled);
- for(int n:{100,200,400}){fields[831]=n;assert(autoSettingChanged(831,EN_CHANGE)&&minimapScale==n);}fields[831]=401;autoSettingChanged(831,EN_CHANGE);assert(minimapScale==400);
+ for(int n:{100,200,400,1000}){fields[831]=n;assert(autoSettingChanged(831,EN_CHANGE)&&minimapScale==n);}fields[831]=1001;autoSettingChanged(831,EN_CHANGE);assert(minimapScale==1000);
  for(int mode:{0,1,2,3}){fields[850]=mode;assert(autoSettingChanged(850,CBN_SELCHANGE)&&minimapPosition==mode);}
  for(int n:{0,1}){fields[9065]=n;assert(autoSettingChanged(9065,CBN_SELCHANGE)&&minimapMode==n);}fields[9065]=2;autoSettingChanged(9065,CBN_SELCHANGE);assert(minimapMode==1);
  fields[850]=4;autoSettingChanged(850,CBN_SELCHANGE);assert(minimapPosition==3);

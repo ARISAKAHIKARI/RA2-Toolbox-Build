@@ -10,6 +10,9 @@ u.EnumChildWindows.argtypes=[W.HWND,CB,W.LPARAM]
 u.GetWindowThreadProcessId.argtypes=[W.HWND,C.POINTER(W.DWORD)]
 u.GetClassNameW.argtypes=[W.HWND,W.LPWSTR,C.c_int]
 u.GetWindowTextW.argtypes=[W.HWND,W.LPWSTR,C.c_int]
+u.SetWindowTextW.argtypes=[W.HWND,W.LPCWSTR];u.SetWindowTextW.restype=W.BOOL
+u.IsWindowVisible.argtypes=[W.HWND];u.IsWindowVisible.restype=W.BOOL
+u.GetWindowRect.argtypes=[W.HWND,C.POINTER(W.RECT)];u.GetWindowRect.restype=W.BOOL
 u.GetDlgCtrlID.argtypes=[W.HWND]
 u.GetParent.argtypes=[W.HWND];u.GetParent.restype=W.HWND
 u.IsWindowEnabled.argtypes=[W.HWND];u.IsWindowEnabled.restype=W.BOOL
@@ -49,6 +52,12 @@ def root_for(pid):
     for h in windows():
         n=W.DWORD();u.GetWindowThreadProcessId(h,C.byref(n))
         if n.value==pid and text(h,True)=='RA2Toolbox020':return h
+def stats_surface(pid):
+    for h in windows():
+        n=W.DWORD();u.GetWindowThreadProcessId(h,C.byref(n))
+        if n.value!=pid or text(h,True)!='RA2UnitTransparentOverlay' or not u.IsWindowVisible(h):continue
+        r=W.RECT()
+        if u.GetWindowRect(h,C.byref(r)) and r.right-r.left>100 and r.bottom-r.top>100:return h
 def child(root,id,parentclass=None):
     return next((h for h in windows(root) if u.GetDlgCtrlID(h)==id and
         (parentclass is None or text(u.GetParent(h),True)==parentclass)),None)
@@ -96,6 +105,9 @@ def scenario(folder):
             h=child(root,id,'RA2Assist010');assert h and send(h,0x147)==0
             send(h,0x14E,value);send(u.GetParent(h),0x111,id|(1<<16),h)
             until(lambda:ini(folder,'Display',key)==value,key+' saved')
+        scale=child(root,831,'RA2Assist010');assert scale
+        u.SetWindowTextW(scale,'1000');send(u.GetParent(scale),0x111,831|(0x300<<16),scale)
+        until(lambda:ini(folder,'Display','MinimapScale')==1000,'1000 percent minimap saved')
         # Change an unrelated tactical setting: it must not reset these values.
         h=child(root,702,'RA2Assist010');click(root,h,1)
         assert ini(folder,'Display','Frozen')==ini(folder,'Display','DangerPassengers')==1
@@ -105,6 +117,7 @@ def scenario(folder):
             h=child(root,id)
             assert check(h)==1,(key,'restart lost saved on')
         assert send(child(root,9065,'RA2Assist010'),0x147)==1,'real minimap mode lost on restart'
+        assert ini(folder,'Display','MinimapScale')==1000,'1000 percent minimap lost on restart'
         assert send(child(root,9100,'RA2Assist010'),0x147)==2 and send(child(root,9101,'RA2Assist010'),0x147)==1,'minimap alignment lost on restart'
         mode=child(root,9065,'RA2Assist010');send(mode,0x14E,0);send(u.GetParent(mode),0x111,9065|(1<<16),mode)
         # Switch off and exit immediately, exercising pending autosave at shutdown.
@@ -115,6 +128,15 @@ def scenario(folder):
             assert check(child(root,id))==0 and ini(folder,'Display',key)==0,(key,'restart lost saved off')
         assert send(child(root,9065,'RA2Assist010'),0x147)==0 and ini(folder,'Display','MinimapMode')==0
         assert ini(folder,'Cooperative','AdvancedEnter')==1,'first-use defaults overwrote existing settings'
+        # The shipped statistics renderer must finish on its worker and publish a
+        # real layered surface. Keep it active through shutdown to cover ownership.
+        demo=child(root,101,'RA2UnitMonitorUI');assert demo
+        send(demo,0xF5)
+        until(lambda:stats_surface(p.pid),'asynchronous statistics demo surface')
+        for _ in range(10):
+            send(root,0);send(u.GetParent(demo),0)
+            time.sleep(.05)
+        assert p.poll() is None,'renderer terminated the host'
         close(p,root)
     finally:
         if p.poll() is None:p.kill();p.wait()
@@ -128,7 +150,8 @@ if __name__=='__main__':
     result={'status':'PASS','version':'1.0.38-pre.2','runs':3,'display_switches':9,
             'checks':['all fresh UI switches off','user hotkeys','cross-pane edits',
                       'real Win32 INI writes','restart on','restart off',
-                      'minimap diagram/scene mode restart','immediate exit','existing settings preserved'],
+                      'minimap diagram/scene mode and alignment restart','1000 percent minimap save/restart',
+                      'asynchronous statistics demo surface and shutdown','immediate exit','existing settings preserved'],
             'game_tested':False,'multiplayer_tested':False}
     print(json.dumps(result,ensure_ascii=False))
     (source/'WINDOWS_SETTINGS_SMOKE.json').write_text(json.dumps(result,ensure_ascii=False,indent=2)+'\n')

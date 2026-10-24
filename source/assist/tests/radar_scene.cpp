@@ -24,7 +24,8 @@ int main(){
  scene=renderer.render(frame,128,64,read,assets);assert(scene&&std::find(scene->pixels.begin(),scene->pixels.end(),0xff00aa00)!=scene->pixels.end()&&assets.loads==loads);
  auto old=scene;auto replacement=std::make_shared<Terrain>(*terrain);frame.terrain=replacement;scene=renderer.render(frame,128,64,read,assets);assert(scene&&old->pixels.size()==128*64); // completed background stays visible while refreshing
  scene=renderer.render(frame,64,32,read,assets);assert(!scene||scene->width==64);
- scene.reset();for(int i=0;i<80&&!scene;++i)scene=renderer.render(frame,64,32,read,assets);assert(scene&&scene->width==64&&scene->height==32);
+ scene.reset();for(int i=0;i<80&&!scene;++i)scene=renderer.render(frame,64,32,read,assets);assert(scene&&scene->width==64&&scene->height==32&&assets.loads==loads);
+ scene=renderer.render(frame,1600,800,read,assets);assert(scene&&scene->width==1600&&assets.loads==loads);
  ++assets.files.value;int oldLoads=assets.loads;renderer.render(frame,64,32,read,assets);assert(assets.loads>oldLoads);assert(!renderer.render(frame,100000,2,read,assets));
  // Continuous motion formerly exhausted the first eight decode slots forever.
  renderer.reset();assets.small=true;assets.seen.clear();frame.markers.clear();

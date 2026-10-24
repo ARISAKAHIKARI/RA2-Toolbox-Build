@@ -16,6 +16,8 @@ int main(){
  put(a+0xAC,9000);assert(external::animations::attached(read,b,42).empty());put(a+0xAC,3);
  put(a+0xCC,b+4);assert(external::animations::attached(read,b,42).empty());put(a+0xCC,0u);
  assert(external::animations::attached(read,b,41).empty());put(a+0x9C,132000);assert(external::animations::attached(read,b,42).empty());put(a+0x9C,100000);assert(external::animations::attached(read,b,42).size()==1); // valid far side of a large map
+ external::animations::State global;assert(external::animations::capture(read,a,0,0,global)&&global.parent==0&&global.frame==3);
+ put(a+0x179,uint8_t(1));assert(!external::animations::capture(read,a,0,0,global));put(a+0x179,uint8_t(0));
  // A real SetOwnerObject attachment is relative to the building CENTER; this
  // native foundation table read is deliberately separate from the slot link.
  put(a+0xCC,b);put(a+0x9C,128);put(a+0xA0,-128);put(a+0xA4,64);put(bt+0xEF0,3);
@@ -29,6 +31,10 @@ int main(){
  image.width=4;image.height=2;image.pixels.assign(8,0xffffffff);mask.indices[446*396+198]=69;
  external::camera::buildingDepth(image,mask,1,1,0,0);assert(image.depth[0]==-8&&image.depth[1]==-11);
  external::camera::buildingDepth(image,mask,1,1,1,0);assert(image.depth[0]==-11);
+ auto diskDepth=image.depth;for(auto&v:mask.indices)if(v)v=uint8_t(v-65);
+ external::camera::buildingDepth(image,mask,1,1,1,0,true);assert(image.depth==diskDepth);
+ // Signed native mask values must retain negative depth, not wrap to 200+.
+ mask.indices[446*396+199]=uint8_t(-10);external::camera::buildingDepth(image,mask,1,1,1,0,true);assert(image.depth[0]==-22);
  for(const auto&climate:std::vector<std::pair<std::string,std::string>>{{"TEM","T"},{"SNO","A"},{"URB","U"},{"LUN","L"},{"DES","D"},{"UBN","N"}}){
   for(const auto&stem:std::vector<std::string>{"CAOILD_A","GACNST_A","NACNST_B","YACNST_A"}){
    auto names=external::assets::spriteNames(stem,"",climate.first,climate.second,false,true,false,true);
