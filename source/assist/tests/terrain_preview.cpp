@@ -18,7 +18,14 @@ int main(){
  word(block+36,0x80000000);word(block+20,0xcdcdcdcd);word(block+24,0xcdcdcdcd);
  assert(terrain::tile(read,base,2,palette,image));word(block+36,0);word(block+20,uint32_t(-40));word(block+24,3);
  assert(terrain::tile(read,base,6,palette,image));assert(!terrain::tile(read,base,4,palette,image));word(base+16+2*4,0);assert(!terrain::tile(read,base,2,palette,image));word(base+16+2*4,block);
- word(block+12,0);assert(!terrain::tile(read,base,2,palette,image));word(block+12,952);word(block+36,1);word(block+28,513);assert(!terrain::tile(read,base,2,palette,image));word(block+28,20);word(block+8,0xfffffff0);assert(!terrain::tile(read,base,2,palette,image));word(block+8,1852);
+ // No-Z tiles ignore the unused offset; Z-bearing tiles validate and retain it.
+ word(block+12,0);assert(terrain::tile(read,base,2,palette,image));assert(std::all_of(image.depth.begin(),image.depth.end(),[](float z){return std::isnan(z);}));
+ word(block+36,2);assert(!terrain::tile(read,base,2,palette,image));word(block+12,952);std::fill(memory.begin()+block+952,memory.begin()+block+1852,8);
+ assert(terrain::tile(read,base,2,palette,image));assert(std::count(image.depth.begin(),image.depth.end(),-8.f)==900);
+ word(block+36,3);word(block+16,2092);std::fill(memory.begin()+block+2092,memory.begin()+block+2092+240,4);
+ assert(terrain::tile(read,base,2,palette,image));assert(std::count(image.depth.begin(),image.depth.end(),-4.f)==239);
+ word(block+16,0xfffffff0);assert(!terrain::tile(read,base,2,palette,image));word(block+16,2092);
+word(block+36,1);word(block+28,513);assert(!terrain::tile(read,base,2,palette,image));word(block+28,20);word(block+8,0xfffffff0);assert(!terrain::tile(read,base,2,palette,image));word(block+8,1852);
  int calls=0;auto racing=[&](uint32_t at,void*p,size_t n){bool ok=read(at,p,n);if(at==base+24&&++calls==2)*static_cast<uint32_t*>(p)=block+4;return ok;};assert(!terrain::tile(racing,base,2,palette,image));
  // SHP frame selection is shared by tree animation and cell overlays.
  uint32_t shp=0x24000;uint16_t h[]={0,2,1,2};memcpy(memory.data()+shp,h,sizeof h);

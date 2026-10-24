@@ -146,7 +146,9 @@ static void drawView(Graphics&g,const View&view){
  // boundary must not jump the entire second view by one tile.
  for(const auto&a:frame.actors)if(a.target==frame.focus){auto p=position(a);cameraX=p.first;cameraY=p.second;break;}
  auto&canvas=view.raster;canvas.reset(Width,Height);
- for(int n=0;n<side*side;++n){int x=frame.cx+n%side-radius,y=frame.cy+n/side-radius;const auto&t=frame.tiles[n];
+ std::vector<int> tileOrder;tileOrder.reserve(side*side);for(int n=0;n<side*side;++n)if(frame.cells[n])tileOrder.push_back(n);
+ std::stable_sort(tileOrder.begin(),tileOrder.end(),[&](int a,int b){return a%side+a/side<b%side+b/side;});
+ for(int n:tileOrder){int x=frame.cx+n%side-radius,y=frame.cy+n/side-radius;const auto&t=frame.tiles[n];
   float px=ox+((x-y)*30-cameraX)*scale,py=oy+((x+y+1)*15-t.level*15-cameraY)*scale,base=float((x+y)*15);
   if(!frame.cells[n]||px<-256||px>Width+256||py<-256||py>Height+256)continue;auto found=tiles.find({t.type,uint32_t(t.sub)});
   if(found!=tiles.end()&&found->second.ready)canvas.blit(found->second.image,px,py,scale,scale,base,t.light,0);
@@ -160,8 +162,8 @@ static void drawView(Graphics&g,const View&view){
  for(const auto*actor:order){const auto&a=*actor;int cx=a.x/256-frame.cx+radius,cy=a.y/256-frame.cy+radius;if(cx<0||cy<0||cx>=side||cy>=side)continue;
   auto p=position(a);float x=ox+(p.first-cameraX)*scale,y=oy+(p.second-cameraY)*scale;
   auto found=images.find(imageKey(a));if(found==images.end()||!found->second.ready){auto old=displayed.find({a.target.pointer,a.target.id});if(old!=displayed.end())found=images.find(old->second);}
-  if(found!=images.end()&&found->second.ready)canvas.blit(found->second.image,x,y,scale,scale,float((int64_t(a.x)+a.y)*15/256.)-15-a.drawZ+(frame.tiles[cy*side+cx].bridge?60:0),a.light,a.kind==4?12:(a.kind==3||a.kind==5)?2:1,
-    float(std::max(0,external::screenHeight(a.z,frame.zScale)-(frame.tiles[cy*side+cx].level+(frame.tiles[cy*side+cx].bridge?4:0))*15)));
+  if(found!=images.end()&&found->second.ready)canvas.blit(found->second.image,x,y,scale,scale,float((int64_t(a.x)+a.y)*15/256.)-15-a.drawZ+(a.onBridge?60:0),a.light,a.kind==4?12:(a.kind==3||a.kind==5)?2:1,
+    float(std::max(0,external::screenHeight(a.z,frame.zScale)-(frame.tiles[cy*side+cx].level+(a.onBridge?4:0))*15)));
   if(a.target==frame.focus){focusX=x;focusY=y;}
  }
  if(!canvas.color.empty()){Bitmap bitmap(Width,Height,Width*4,PixelFormat32bppPARGB,reinterpret_cast<BYTE*>(canvas.color.data()));

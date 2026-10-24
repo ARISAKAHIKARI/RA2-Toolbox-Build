@@ -16,7 +16,7 @@ struct Geometry {
  bool legal(int x,int y)const{return x>0&&y>0&&x<512&&y<512&&x+y>width&&x-y<width&&y-x<width&&x+y<=width+2*height;}
  void project(double x,double y,double&u,double&v)const{u=(x-y+offsetX)*factor/rw;v=(x+y-offsetY)*factor/rh;}
 };
-struct Marker {double u=0,v=0;uint32_t color=0;bool building=false;uint32_t object=0,id=0,type=0,owner=0;int x=0,y=0,z=0,kind=-1,drawZ=0;bool normalLight=false;visual::Pose pose;};
+struct Marker {double u=0,v=0;uint32_t color=0;bool building=false;uint32_t object=0,id=0,type=0,owner=0;int x=0,y=0,z=0,kind=-1,drawZ=0;bool normalLight=false,onBridge=false;visual::Pose pose;};
 struct CellArt {uint32_t cell=0,type=0,overlayType=0;int16_t overlay=-1;uint8_t sub=0,level=0,overlayFrame=0;};
 struct Scene {int width=0,height=0;std::vector<uint32_t> pixels;};
 struct Terrain {Geometry geo;std::vector<uint32_t> colors;std::vector<CellArt> art;};
@@ -59,11 +59,11 @@ public:
    int x=get<int>(p+0x9C,-1),y=get<int>(p+0xA0,-1);if(x<0||y<0||x>=512*256||y>=512*256)continue;int cx=x/256,cy=y/256;
    if(!geo_.legal(cx,cy)||!terrain_->colors[cy*512+cx])continue;uint32_t owner=get<uint32_t>(p+0x21C);uint8_t rgb[3]{};if(owner<0x10000||!read_(owner+22265,rgb,3))continue;
    Marker m;geo_.project(double(x)/256,double(y)/256,m.u,m.v);if(m.u<0||m.u>=1||m.v<0||m.v>=1)continue;
-   m.color=uint32_t(rgb[0])<<16|uint32_t(rgb[1])<<8|rgb[2];m.building=kind==3;m.object=p;m.id=get<uint32_t>(p+0x10);m.type=view_.type(p,kind);m.owner=owner;m.x=x;m.y=y;m.z=get<int>(p+0xA4);m.kind=kind;m.pose=visual::pose(live,p,m.type,kind,lastFrame_);out.markers.push_back(m);
+   m.color=uint32_t(rgb[0])<<16|uint32_t(rgb[1])<<8|rgb[2];m.building=kind==3;m.object=p;m.id=get<uint32_t>(p+0x10);m.type=view_.type(p,kind);m.owner=owner;m.x=x;m.y=y;m.z=get<int>(p+0xA4);m.kind=kind;m.onBridge=get<uint8_t>(p+0x8C)!=0;m.pose=visual::pose(live,p,m.type,kind,lastFrame_);out.markers.push_back(m);
   }
   if(!terrain_->art.empty()){
    const auto bodies=out.markers;for(const auto&body:bodies)if(body.kind==3)for(const auto&a:animations::attached(read_,body.object,body.id)){
-    Marker m;m.object=a.object;m.id=a.id;m.type=a.type;m.owner=a.owner;m.x=a.x;m.y=a.y;m.z=a.z;m.kind=5;m.pose.frame=a.frame;m.drawZ=a.zAdjust;m.normalLight=a.normalLight;geo_.project(double(m.x)/256,double(m.y)/256,m.u,m.v);if(m.u>=0&&m.u<1&&m.v>=0&&m.v<1)out.markers.push_back(m);
+    Marker m;m.object=a.object;m.id=a.id;m.type=a.type;m.owner=a.owner;m.x=a.x;m.y=a.y;m.z=a.z;m.kind=5;m.pose.frame=a.frame;m.drawZ=a.zAdjust;m.normalLight=a.normalLight;m.onBridge=get<uint8_t>(a.parent+0x8C)!=0;geo_.project(double(m.x)/256,double(m.y)/256,m.u,m.v);if(m.u>=0&&m.u<1&&m.v>=0&&m.v<1)out.markers.push_back(m);
    }
    for(auto p:view_.vec(0xA8E988)){if(get<uint32_t>(p)!=0x7F522C||get<uint8_t>(p+0xCD)||get<int>(p+0x6C)<=0)continue;
     Marker m;m.object=p;m.id=get<uint32_t>(p+0x10);m.type=get<uint32_t>(p+0xC8);m.x=get<int>(p+0x9C,-1);m.y=get<int>(p+0xA0,-1);m.z=get<int>(p+0xA4);m.kind=4;m.pose.frame=get<int>(p+0xAC);
