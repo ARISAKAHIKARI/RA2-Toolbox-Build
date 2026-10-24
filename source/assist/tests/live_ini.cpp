@@ -6,7 +6,7 @@ struct Memory {
  std::vector<uint8_t>b=std::vector<uint8_t>(0x900000);size_t reads=0;
  bool operator()(uint32_t p,void*out,size_t n){++reads;if(uint64_t(p)+n>b.size())return false;memcpy(out,b.data()+p,n);return true;}
  void put(uint32_t p,uint32_t v){memcpy(b.data()+p,&v,4);}
- void text(uint32_t p,const std::string&s){assert(p+s.size()+1<b.size());memcpy(b.data()+p,s.c_str(),s.size()+1);}
+ void text(uint32_t p,const std::string&s){assert(p+s.size()+1<=b.size());memcpy(b.data()+p,s.c_str(),s.size()+1);}
  void index(uint32_t at,uint32_t table,int count){put(at,table);put(at+4,count);put(at+8,count);}
  void ini(uint32_t root,const std::string&section,const std::string&key,const std::string&value){
   put(root,0x7E1AF4);index(root+0x28,0x14000,1);put(0x14004,0x13000);
