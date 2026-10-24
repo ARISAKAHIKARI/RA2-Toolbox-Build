@@ -1,4 +1,7 @@
-#include "../../external_reader/source/tactical_sampler.h"
+#ifndef ENEMY_SAMPLER_HEADER
+#define ENEMY_SAMPLER_HEADER "../../external_reader/source/tactical_sampler.h"
+#endif
+#include ENEMY_SAMPLER_HEADER
 #include "../source/label_motion.h"
 #include <cassert>
 #include <cstring>
@@ -17,6 +20,7 @@ struct EnemyMemory {
    if(guard==2&&at==0xA83D4C){uint32_t v=0x6A0000;std::memcpy(out,&v,4);}
    if(guard==3&&at==0xA8EDA0){int v=1;std::memcpy(out,&v,4);}
    if(guard==4&&at==0xA8E9A0){*static_cast<uint8_t*>(out)=0;}
+   if(guard==5&&(at==0x7A0000+0xB0||at==0x7A0000+0xB4)){int value;std::memcpy(&value,out,4);value+=at==0x7A0000+0xB0?3:5;std::memcpy(out,&value,4);}
   }return true;
  }
  uint64_t hash()const{uint64_t h=1469598103934665603ull;for(auto b:data)h=(h^b)*1099511628211ull;return h;}
@@ -106,6 +110,22 @@ int main(){using F=EnemyFixture;using namespace assist;
   for(int i=0;i<1000;++i){f.mem.put<int>(F::tactical+0xB0,-300+i*3);f.sample();}
   assert(f.mem.scans>0&&f.mem.scans<=126);
   std::cout<<"PASS 1000 shared 2ms display samples: exact position/interpolation agreement with carrier labels; 125 frame scans; continuous camera movement at most 126 scans\n";
+ }
+ {
+  F f;const auto& initial=f.sample();int cx=initial.cameraX,cy=initial.cameraY;
+  const int enemyX=f.marks().items[0].x,enemyY=f.marks().items[0].y;
+  const int labelX=initial.label[0].x,labelY=initial.label[0].y;
+  f.mem.guard=5;f.mem.scans=0;
+  for(int i=0;i<1000;++i){
+   const auto&s=f.sample();assert(f.marks().count==4);
+   assert(s.cameraX==cx+3&&s.cameraY==cy+5);
+   assert(f.marks().items[0].x==enemyX-3&&f.marks().items[0].y==enemyY-5);
+   assert(s.label[0].x==labelX-3&&s.label[0].y==labelY-5);
+   assert(f.marks().tick==s.sampledTick); // Same object sample; camera rebase does not age it independently.
+  }
+  assert(f.mem.scans==0);f.mem.guard=0;const auto&s=f.sample();
+  assert(f.marks().count==4&&s.cameraX==cx&&s.cameraY==cy);
+  std::cout<<"PASS 1000 camera changes during sampling: no enemy gaps/rescan storm, same camera rebase as capacity labels\n";
  }
  {
   F f;f.mem.put<int>(F::foe+0x9C,70*256);f.mem.put<int>(F::foe+0xA0,20*256);f.sample();assert(!f.has(2));f.mem.put<int>(0xB0CE30,1920);f.sample();assert(f.has(2));

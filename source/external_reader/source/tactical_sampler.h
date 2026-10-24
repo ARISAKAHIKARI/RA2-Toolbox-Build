@@ -81,8 +81,13 @@ template<class Read> class TacticalSampler {
   int after=-1;uint32_t currentHouse=0,tactical=0;int cameraX=INT32_MIN,cameraY=INT32_MIN;uint8_t started=0;
   bool valid=latest(0xA8ED84,&after,4)&&latest(0xA83D4C,&currentHouse,4)&&latest(0xA8E9A0,&started,1)&&
    latest(0x887324,&tactical,4)&&tactical>=0x10000&&latest(tactical+0xB0,&cameraX,4)&&latest(tactical+0xB4,&cameraY,4);
-  if(!valid||!started||currentHouse!=house||after<frame||after-frame>2||cameraX!=state_.cameraX||cameraY!=state_.cameraY||!display::inspect(latest).visible()){
+  if(!valid||!started||currentHouse!=house||after<frame||after-frame>2||!display::inspect(latest).visible()){
    enemies_.count=statuses_.count=0;sceneFrame_=-1;
+  }else{
+   // Scrolling during a read is not an object/epoch change. Keep the same
+   // sample and move every overlay into the latest viewport together.
+   // Dropping only enemy/status data here caused visible gaps and full rescans.
+   rebaseCamera(cameraX,cameraY);
   }
  }
  bool readStatus(uint32_t p,uint32_t t,int k,uint32_t owner,const Projection&proj,status::Marker&out){
@@ -167,13 +172,17 @@ public:
  void stopped(const std::vector<uint32_t>&ids){stopped_.clear();stopped_.insert(ids.begin(),ids.end());}
  void refreshCamera(uint32_t now){
   if(state_.status!=1)return;uint32_t tactical=get<uint32_t>(0x887324);if(tactical<0x10000)return;
-  int x=get<int>(tactical+0xB0),y=get<int>(tactical+0xB4),dx=x-state_.cameraX,dy=y-state_.cameraY;
+  rebaseCamera(get<int>(tactical+0xB0),get<int>(tactical+0xB4));
+ }
+ void rebaseCamera(int x,int y){
+  const int64_t dx=int64_t(x)-state_.cameraX,dy=int64_t(y)-state_.cameraY;
   if(!dx&&!dy)return;state_.cameraX=x;state_.cameraY=y; // Camera-only updates cannot freshen the object sample.
-  for(int i=0;i<state_.labels;++i){state_.label[i].x-=dx;state_.label[i].y-=dy;}
-  for(int i=0;i<state_.crateCount;++i){state_.crates[i].x-=dx;state_.crates[i].y-=dy;}
-  for(int i=0;i<state_.threatCount;++i){auto&t=state_.threats[i];t.x-=dx;t.y-=dy;t.tx-=dx;t.ty-=dy;}
-  for(int i=0;i<enemies_.count;++i){enemies_.items[i].x-=dx;enemies_.items[i].y-=dy;}
-  for(int i=0;i<statuses_.count;++i){statuses_.items[i].x-=dx;statuses_.items[i].y-=dy;}
+  auto shift=[](int&v,int64_t delta){v=int(std::clamp(int64_t(v)-delta,int64_t(INT32_MIN),int64_t(INT32_MAX)));};
+  for(int i=0;i<state_.labels;++i){shift(state_.label[i].x,dx);shift(state_.label[i].y,dy);}
+  for(int i=0;i<state_.crateCount;++i){shift(state_.crates[i].x,dx);shift(state_.crates[i].y,dy);}
+  for(int i=0;i<state_.threatCount;++i){auto&t=state_.threats[i];shift(t.x,dx);shift(t.y,dy);shift(t.tx,dx);shift(t.ty,dy);}
+  for(int i=0;i<enemies_.count;++i){shift(enemies_.items[i].x,dx);shift(enemies_.items[i].y,dy);}
+  for(int i=0;i<statuses_.count;++i){shift(statuses_.items[i].x,dx);shift(statuses_.items[i].y,dy);}
  }
  const assist::Snapshot&sample(uint32_t now,uint32_t flags,bool enemyMarkers=false,uint32_t statusOptions=0){
   statusOptions_=statusOptions&3;state_.sampledTick=now;state_.renderStatus=0;display_=display::inspect(read_);

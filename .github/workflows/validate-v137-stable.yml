@@ -33,6 +33,20 @@ jobs:
           g++ -std=c++17 -O2 source/unit_monitor/tests/icon_cache.cpp -o /tmp/icon-cache -pthread
           /tmp/icon-cache
           python3 source/tools/audit_architecture.py
+      - name: Prove the camera regression fails before the fix
+        run: |
+          set -euo pipefail
+          ulimit -c 0
+          git fetch --depth=1 origin a608e5e00309976bdbf160ef73b66802d9e19b2f
+          git show a608e5e00309976bdbf160ef73b66802d9e19b2f:source/external_reader/source/tactical_sampler.h > source/external_reader/source/tactical_sampler_before137.h
+          g++ -std=c++17 -O2 '-DENEMY_SAMPLER_HEADER="../../external_reader/source/tactical_sampler_before137.h"' source/assist/tests/enemy_markers.cpp -o /tmp/enemy-before
+          python3 - <<'PY'
+          import subprocess
+          r=subprocess.run(['/tmp/enemy-before'],capture_output=True,text=True)
+          assert r.returncode!=0 and 'f.marks().count==4' in r.stderr,(r.returncode,r.stdout,r.stderr)
+          print('PASS: regression reproduces missing enemy markers on the previous production sampler')
+          PY
+          rm source/external_reader/source/tactical_sampler_before137.h
       - name: Install pinned Zig compiler
         run: |
           curl --fail --location --retry 3 https://ziglang.org/download/0.13.0/zig-linux-x86_64-0.13.0.tar.xz -o /tmp/zig.tar.xz
