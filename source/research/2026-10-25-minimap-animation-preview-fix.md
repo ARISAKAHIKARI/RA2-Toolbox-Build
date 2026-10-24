@@ -1,5 +1,7 @@
 # 实景小地图消失、建筑常驻动画与队形预览
 
+**后续更正**：本篇 OwnerObject、相对坐标、PausedAnimFrame 和动画最后绘制的判断被实机快照否定；请以 [RenderFix2 实证](2026-10-24-native-animation-alignment-lighting.md) 为准。其他小地图发布/透明度修复保留。
+
 基线：`01f395f065f5e9d11547601da92e6b8e74e9ae17`（1.0.38-pre.2）。日期：2026-10-25。
 
 ## 问题和证据边界

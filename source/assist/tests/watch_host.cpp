@@ -20,6 +20,7 @@ constexpr int PixelFormat32bppPARGB=1,CombineModeIntersect=1,CombineModeExclude=
 struct Graphics {int Save(){return 0;}void Restore(int){}void SetClip(RectF r,int mode){if(mode==CombineModeExclude)excluded.push_back(r);}void TranslateTransform(float,float){}void FillRectangle(SolidBrush*,float,float,float,float){}void DrawRectangle(Pen*,float,float,float,float){}void FillPolygon(SolidBrush*,PointF*,int){}void DrawEllipse(Pen*,float,float,float,float){}void DrawImage(Bitmap*,RectF rect,float,float,float,float,int,ImageAttributes*){++draws;drawnRects.push_back(rect);drawnGains.push_back(drawnMatrix.m[0][0]);}};
 namespace gameassets {
  static uint64_t revision(){return 1;}
+ static std::wstring lightingStatus(){return L"test";}
  static std::string failure;
  struct ActorArt {external::voxel::Model model;int marker=0;};
  static struct {size_t count(){return 1;}}files;
@@ -28,7 +29,7 @@ namespace gameassets {
  static bool sprite(uint32_t,uint32_t,const std::array<uint32_t,256>&,int,external::voxel::Image&){return false;}
  static int buildingFrame(uint32_t,uint32_t){return 0;}
  static bool overlay(uint32_t,uint32_t,int,external::voxel::Image&,bool=false){return false;}
- static bool captureAnimation(uint32_t,uint32_t,uint32_t,ActorArt&){return false;}
+ static bool captureAnimation(uint32_t,uint32_t,uint32_t,uint32_t,uint32_t,ActorArt&){return false;}
  static bool captureActor(uint32_t,uint32_t,uint32_t id,ActorArt&art){++captures;if(id==1)return false;art.marker=id;return true;}
  static size_t artBytes(const ActorArt&a){return a.model.faces.size()*sizeof(external::voxel::Face);}
  static bool renderActor(const ActorArt&,const external::visual::Pose&pose,external::voxel::Image&image){++renders;image.width=image.height=2;image.pixels.assign(4,uint32_t(0xff000000|pose.body<<8|pose.turret));return true;}

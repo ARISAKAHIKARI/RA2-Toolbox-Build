@@ -64,7 +64,7 @@ extern "C" __declspec(dllexport) const MappingPrefixValue AssistHostMappingPrefi
 namespace minimap {static void hide();static void clear();static void destroy();}
 namespace watchwindows {static void hide();}
 static uint32_t computeRequested=compute::Default;
-static bool minimapEnabled=false;static int minimapMode=0,minimapScale=200,minimapPosition=0,minimapX=20,minimapY=60;
+static bool minimapEnabled=false;static int minimapMode=0,minimapScale=200,minimapPosition=0,minimapX=20,minimapY=60,minimapAlignX=0,minimapAlignY=0;
 static WORD socialKeys[9]{}; // Cheer, taunts 1..8; empty by default.
 static WORD idleAircraftKey=MAKEWORD('P',HOTKEYF_CONTROL|HOTKEYF_ALT);
 static void hideAircraftButton();static void destroyAircraftButton();

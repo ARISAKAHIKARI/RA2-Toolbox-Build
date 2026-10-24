@@ -84,7 +84,7 @@ static void refreshAssets(external::watch::Frame&frame,DWORD now){
    auto&source=actorArt[artKey(a)];
    if(!source.ready&&(!source.retry||int32_t(now-source.retry)>=0)){
     source.retry=now+2000;gameassets::ActorArt art;
-    if((a.kind==5?gameassets::captureAnimation(a.target.pointer,a.type,a.target.id,art):gameassets::captureActor(a.target.pointer,a.type,a.target.id,art))&&faces+art.model.faces.size()<=4*1024*1024&&artBytes+gameassets::artBytes(art)<=128*1024*1024){faces+=art.model.faces.size();artBytes+=gameassets::artBytes(art);source.art=std::move(art);source.ready=true;}source.issue=source.ready?"":gameassets::failure;
+    if((a.kind==5?gameassets::captureAnimation(a.target.pointer,a.type,a.target.id,a.parent.pointer,a.parent.id,art):gameassets::captureActor(a.target.pointer,a.type,a.target.id,art))&&faces+art.model.faces.size()<=4*1024*1024&&artBytes+gameassets::artBytes(art)<=128*1024*1024){faces+=art.model.faces.size();artBytes+=gameassets::artBytes(art);source.art=std::move(art);source.ready=true;}source.issue=source.ready?"":gameassets::failure;
    }
    if(source.ready)ok=gameassets::renderActor(source.art,a.pose,image);else gameassets::failure=source.issue;
   }
@@ -101,6 +101,11 @@ static void refreshAssets(external::watch::Frame&frame,DWORD now){
   for(const auto&t:frame.tiles){auto i=tiles.find({t.type,uint32_t(t.sub)});if(i!=tiles.end()&&i->second.ready)++tileReady;else if(missing.empty()&&t.type)missing=gameassets::text(t.type+0x2F5,14);}
   for(const auto&t:frame.tiles)if(t.overlayType){++overlayCount;auto i=overlays.find({t.overlayType,uint32_t(t.overlayFrame)});if(i!=overlays.end()&&i->second.ready)++overlayReady;}
   critical(L"watch assets archives="+std::to_wstring(gameassets::files.count())+L" actors="+std::to_wstring(actorsReady)+L"/"+std::to_wstring(frame.actors.size())+L" terrain="+std::to_wstring(tileReady)+L"/"+std::to_wstring(frame.tiles.size())+L" overlays="+std::to_wstring(overlayReady)+L"/"+std::to_wstring(overlayCount)+L" palette="+std::to_wstring(paletteReady)+L" missing="+std::wstring(missing.begin(),missing.end()));
+  std::set<int> reportedKinds;for(const auto&a:frame.actors){if(reportedKinds.size()>=5||!reportedKinds.insert(a.kind).second)continue;
+   auto i=images.find(imageKey(a));unsigned peak=0;if(i!=images.end()&&i->second.ready)for(auto p:i->second.image.pixels)for(int shift:{0,8,16})peak=std::max(peak,(p>>shift)&255u);
+   auto name=gameassets::text(a.type+0x24,24);const auto&l=a.light;
+   critical(L"watch lighting actor="+std::wstring(name.begin(),name.end())+L" kind="+std::to_wstring(a.kind)+L" ambient="+std::to_wstring(l.ambient)+L" intensity="+std::to_wstring(l.intensity)+L" tint="+std::to_wstring(l.tint[0])+L","+std::to_wstring(l.tint[1])+L","+std::to_wstring(l.tint[2])+L" sourcePeak="+std::to_wstring(peak)+L" voxel="+gameassets::lightingStatus());
+  }
   if(!paletteReady)critical(L"watch palette reason="+std::wstring(paletteIssue.begin(),paletteIssue.end()));
   int reported=0;for(const auto&a:frame.actors){auto i=images.find(imageKey(a));if(i==images.end()||i->second.ready)continue;auto name=gameassets::text(a.type+0x24,24),issue=i->second.issue;critical(L"watch actor="+std::wstring(name.begin(),name.end())+L" kind="+std::to_wstring(a.kind)+L" frame="+std::to_wstring(a.pose.frame)+L" reason="+std::wstring(issue.begin(),issue.end()));if(++reported==3)break;}
   reported=0;for(const auto&t:tiles)if(!t.second.ready){auto issue=t.second.issue;critical(L"watch tile type="+std::to_wstring(t.first.first)+L" sub="+std::to_wstring(t.first.second)+L" reason="+std::wstring(issue.begin(),issue.end()));if(++reported==3)break;}
@@ -113,7 +118,7 @@ static void updateMotion(View&view,uint32_t now,int frame){
  if(!view.motion)view.motion=std::make_unique<assist::visual::Motion>();
  sample.match=epoch;sample.frame=frame;sample.sampledTick=now;sample.cameraX=sample.cameraY=0;
  sample.labels=std::min<int>(assist::MaxLabels,view.frame.actors.size());
- for(int i=0;i<sample.labels;++i){const auto&a=view.frame.actors[i];sample.label[i]={a.target.id,int((int64_t(a.x)-a.y)*30/256),int((int64_t(a.x)+a.y)*15/256)-external::screenHeight(a.z,view.frame.zScale)};}
+ for(int i=0;i<sample.labels;++i){const auto&a=view.frame.actors[i];sample.label[i]={a.target.id,int((int64_t(a.x)-a.y)*30/256),int((int64_t(a.x)+a.y)*15/256)-external::screenHeight(a.z,view.frame.zScale)+external::camera::anchorY(a.kind)};}
  view.motion->update(sample,frame);int n=view.motion->render(now,output);view.positions.clear();for(int i=0;i<n;++i)view.positions[output[i].id]=output[i];view.tick=now;
 }
 static void update(uint32_t now){
@@ -141,7 +146,7 @@ static void drawView(Graphics&g,const View&view){
  // Overscan the diamond map in world space and crop only at the rectangular
  // viewport. There is no separate title, status/footer or fixed 11x11 diamond.
  const float ox=Width/2.f,oy=Height/2.f,scale=.5f;int side=frame.side,radius=frame.radius,centerLevel=frame.tiles[radius*side+radius].level;
- auto position=[&](const external::watch::Actor&a){auto i=view.positions.find(a.target.id);if(i!=view.positions.end())return std::pair<float,float>{i->second.x,i->second.y};return std::pair<float,float>{float((int64_t(a.x)-a.y)*30/256),float((int64_t(a.x)+a.y)*15/256-external::screenHeight(a.z,frame.zScale))};};
+ auto position=[&](const external::watch::Actor&a){auto i=view.positions.find(a.target.id);if(i!=view.positions.end())return std::pair<float,float>{i->second.x,i->second.y};return std::pair<float,float>{float((int64_t(a.x)-a.y)*30/256),float((int64_t(a.x)+a.y)*15/256-external::screenHeight(a.z,frame.zScale)+external::camera::anchorY(a.kind))};};
  float cameraX=(frame.cx-frame.cy)*30.f,cameraY=(frame.cx+frame.cy+1)*15.f-centerLevel*15.f;
  // The camera and units use the same interpolated position. Crossing a cell
  // boundary must not jump the entire second view by one tile.
@@ -158,12 +163,12 @@ static void drawView(Graphics&g,const View&view){
   if(over!=overlays.end()&&over->second.ready)canvas.blit(over->second.image,px,py+t.overlayY*scale,scale,scale,base+(t.bridge?60:0),t.overlayLight,2);
  }
  std::vector<const external::watch::Actor*> order;for(const auto&a:frame.actors)order.push_back(&a);
- std::stable_sort(order.begin(),order.end(),[](const auto*a,const auto*b){if((a->kind==5)!=(b->kind==5))return b->kind==5;return int64_t(a->x)+a->y<int64_t(b->x)+b->y;});
+ std::stable_sort(order.begin(),order.end(),[](const auto*a,const auto*b){return external::camera::orderKey(a->layer,a->kind,a->x,a->y,a->sort)<external::camera::orderKey(b->layer,b->kind,b->x,b->y,b->sort);});
  float focusX=-100,focusY=-100;
  for(const auto*actor:order){const auto&a=*actor;int cx=a.x/256-frame.cx+radius,cy=a.y/256-frame.cy+radius;if(cx<0||cy<0||cx>=side||cy>=side)continue;
   auto p=position(a);float x=ox+(p.first-cameraX)*scale,y=oy+(p.second-cameraY)*scale;
   auto found=images.find(imageKey(a));if(found==images.end()||!found->second.ready){auto old=displayed.find({a.target.pointer,a.target.id});if(old!=displayed.end())found=images.find(old->second);}
-  if(found!=images.end()&&found->second.ready)canvas.blit(found->second.image,x,y,scale,scale,float((int64_t(a.x)+a.y)*15/256.)-15-a.drawZ+(a.onBridge?60:0),a.light,a.kind==4?12:(a.kind==3||a.kind==5)?2:1,
+  if(found!=images.end()&&found->second.ready)canvas.blit(found->second.image,x,y,scale,scale,float((int64_t(a.x)+a.y)*15/256.)-15+external::camera::anchorY(a.kind)-a.drawZ+(a.onBridge?60:0),a.light,a.kind==4?12:(a.kind==3||a.kind==5)?2:1,
     float(std::max(0,external::screenHeight(a.z,frame.zScale)-(frame.tiles[cy*side+cx].level+(a.onBridge?4:0))*15)));
   if(a.target==frame.focus){focusX=x;focusY=y;}
  }

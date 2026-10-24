@@ -44,7 +44,7 @@ std::string imageName(uint32_t type){auto stem=artName(type),image=artINI.get(st
 std::string artValue(uint32_t type,const std::string&key){auto image=imageName(type),value=artINI.get(image,key);return value.empty()?artINI.get(artName(type),key):value;}
 bool artYes(uint32_t type,const std::string&key){auto v=external::assets::name(artValue(type,key));return v=="YES"||v=="TRUE"||v=="1";}
 bool paletteFile(const std::string&name,std::array<uint32_t,256>&out){std::vector<uint8_t>b;if(!files.load(name,b)){failure="palette-not-found:"+name;return false;}if(!external::assets::pal(b,out)){failure="palette-format:"+name;return false;}return true;}
-bool palette(bool iso,std::array<uint32_t,256>&out){std::vector<uint8_t> bytes;std::string n=iso?theater(68,10):"UNIT"+theater(78,3);if(n.empty()){failure="palette-theater-name";return false;}n+=".PAL";if(!files.load(n,bytes)){failure="palette-not-found:"+n;return false;}if(!external::assets::pal(bytes,out)){failure="palette-format:"+n;return false;}return true;}
+bool palette(bool iso,std::array<uint32_t,256>&out){if(iso&&external::terrain::palette(read,0xABBED0,out))return true;std::vector<uint8_t> bytes;std::string n=iso?theater(68,10):"UNIT"+theater(78,3);if(n.empty()){failure="palette-theater-name";return false;}n+=".PAL";if(!files.load(n,bytes)){failure="palette-not-found:"+n;return false;}if(!external::assets::pal(bytes,out)){failure="palette-format:"+n;return false;}return true;}
 std::vector<std::string> spriteNames(uint32_t type,uint32_t pointer,bool overlay=false,bool buildingPart=false,uint32_t parentType=0){
  auto live=external::assets::shapeName(read,pointer);auto stem=imageName(type);
  bool seasonal=(word(type+0x22C)&255)||artYes(type,"THEATER");
@@ -89,7 +89,12 @@ bool sprite(uint32_t type,uint32_t pointer,const std::array<uint32_t,256>&pal,in
  std::vector<uint8_t> bytes;std::string filename;if(!shapeBytes(type,pointer,bytes,filename))return false;
  if(external::assets::shp(std::move(bytes),frame,pal,out))return true;failure="sprite-load/decode:"+filename+" frame="+std::to_string(frame);return false;
 }
-bool tile(uint32_t type,unsigned sub,const std::array<uint32_t,256>&pal,external::voxel::Image&out){std::vector<uint8_t> bytes;auto filename=text(type+0x2F5,14);if(filename.empty()){failure="tile-name-empty type="+std::to_string(type);return false;}if(!files.load(filename,bytes)){failure="tile-not-found:"+filename;return false;}std::string reason;if(!external::assets::tmp(std::move(bytes),sub,pal,out,&reason)){failure="tile-format:"+filename+" sub="+std::to_string(sub)+" "+reason;return false;}return true;}
+bool tile(uint32_t type,unsigned sub,const std::array<uint32_t,256>&pal,external::voxel::Image&out){
+ std::vector<uint8_t> bytes;auto filename=text(type+0x2F5,14);std::string reason;
+ if(!filename.empty()&&files.load(filename,bytes)&&external::assets::tmp(std::move(bytes),sub,pal,out,&reason))return true;
+ if(external::terrain::tile(read,word(type+0xA4),sub,pal,out,&reason)){failure.clear();return true;}
+ failure="tile-not-found:"+filename+" memory="+reason;return false;
+}
 bool actor(uint32_t p,uint32_t type,uint32_t id,double angle,external::voxel::Image&out){
  if(word(p+0x10)!=id)return false;uint32_t owner=word(p+0x21C);std::array<uint32_t,256> pal{};
 
@@ -113,9 +118,9 @@ struct ActorArt {
 };
 static size_t cost(const ActorArt&a){return a.shape.size()+a.model.faces.size()*sizeof(external::voxel::Face);}
 static int integer(const std::string&s,int fallback=0){if(s.empty())return fallback;char*end=nullptr;long n=strtol(s.c_str(),&end,10);return end!=s.c_str()&&!*end?int(std::clamp(n,-8192l,8192l)):fallback;}
-bool captureAnimation(uint32_t p,uint32_t type,uint32_t id,ActorArt&out){
- uint32_t parent=word(p+0xCC);external::animations::State state;
- if(!external::animations::capture(read,p,parent,word(parent+0x10),state)||state.id!=id||state.type!=type)return false;
+bool captureAnimation(uint32_t p,uint32_t type,uint32_t id,uint32_t parent,uint32_t parentId,ActorArt&out){
+ external::animations::State state;
+ if(!external::animations::capture(read,p,parent,parentId,state)||state.id!=id||state.type!=type){failure="animation-identity/slot";return false;}
  ActorArt next;next.kind=5;next.type=type;next.pointer=word(type+0xA4);next.flat=(word(type+0x369)&255)!=0;next.shadow=(word(type+0x372)&255)!=0;
  next.drawY=int32_t(word(type+0x344));if(std::abs(int64_t(next.drawY))>4096)return false;
  bool loaded=shapeBytes(type,next.pointer,next.shape,next.filename,false,true,word(parent+0x520));
@@ -126,10 +131,11 @@ bool captureAnimation(uint32_t p,uint32_t type,uint32_t id,ActorArt&out){
  else colors=paletteFile("ANIM.PAL",next.colors);
  if(!colors)return false;
  // A theater SHP already loaded by the engine remains usable when its archive
- // cannot be resolved on disk. Frame zero and PausedAnimFrame zero are valid.
+ // cannot be resolved on disk. Frame zero is valid.
  if(!loaded){external::voxel::Image check;std::string why;
   if(!external::voxel::sprite(read,next.pointer,next.colors,check,state.frame,&why,255)){failure="animation-memory:"+why;return false;}}
- if(word(p+0x10)!=id||word(p+0xC8)!=type||word(p+0xCC)!=parent||word(parent+0x10)!=state.parentId)return false;
+ external::animations::State after;
+ if(!external::animations::capture(read,p,parent,parentId,after)||after.id!=id||after.type!=type||after.owner!=state.owner){failure="animation-changed";return false;}
  failure.clear();out=std::move(next);return true;
 }
 bool captureActor(uint32_t p,uint32_t type,uint32_t id,ActorArt&out){
@@ -138,11 +144,14 @@ bool captureActor(uint32_t p,uint32_t type,uint32_t id,ActorArt&out){
  if(next.kind==3){
   auto foundation=external::assets::name(artValue(type,"FOUNDATION"));int fw=1,fh=1;
   if(foundation=="CUSTOM"){fw=integer(artValue(type,"FOUNDATION.X"),1);fh=integer(artValue(type,"FOUNDATION.Y"),1);}else if(sscanf(foundation.c_str(),"%dX%d",&fw,&fh)!=2)fw=fh=1;
-  next.fw=std::clamp(fw,1,32);next.fh=std::clamp(fh,1,32);auto move=artValue(type,"ZSHAPEPOINTMOVE");sscanf(move.c_str(),"%d,%d",&next.moveX,&next.moveY);
+  external::animations::foundation(read,type,fw,fh);next.fw=std::clamp(fw,1,32);next.fh=std::clamp(fh,1,32);auto move=artValue(type,"ZSHAPEPOINTMOVE");sscanf(move.c_str(),"%d,%d",&next.moveX,&next.moveY);
+  read(type+0x1530,&next.moveX,4);read(type+0x1534,&next.moveY,4);
   next.moveX=std::clamp(next.moveX,-4096,4096);next.moveY=std::clamp(next.moveY,-4096,4096);next.zAdjust=integer(artValue(type,"NORMALZADJUST"));
+  int liveAdjust=0;if(read(type+0x1520,&liveAdjust,4)&&std::abs(int64_t(liveAdjust))<=8192)next.zAdjust=liveAdjust;
   if(maskRevision!=files.revision()){maskRevision=files.revision();buildingMask.reset();std::vector<uint8_t>b;std::array<uint32_t,256>dummy{};dummy.fill(0xffffffff);
-   if(files.load("BUILDNGZ.SHA",b)||files.load("BUILDNGZ.SHP",b)){auto mask=std::make_shared<external::voxel::Image>();if(external::assets::shp(std::move(b),0,dummy,*mask))buildingMask=std::move(mask);}}
-  next.depthMask=buildingMask;
+   auto mask=std::make_shared<external::voxel::Image>();
+   if(external::voxel::sprite(read,word(0x89DDBC),dummy,*mask,0,nullptr,255)||((files.load("BUILDNGZ.SHA",b)||files.load("BUILDNGZ.SHP",b))&&external::assets::shp(std::move(b),0,dummy,*mask)))buildingMask=std::move(mask);}
+  if(next.fw<8)next.depthMask=buildingMask; // native 43D787 skips the cone for width >= 8
  }
 
  auto stem=text(type+0x1F8,25);if(stem.empty())stem=text(type+0x24,24);
@@ -176,9 +185,12 @@ bool captureActor(uint32_t p,uint32_t type,uint32_t id,ActorArt&out){
 bool renderActor(const ActorArt&art,const external::visual::Pose&pose,external::voxel::Image&out){
  auto angle=external::visual::radians(pose.body),turret=external::visual::radians(pose.turret);
  if(art.voxel){vpl();if(!external::voxel::render(art.model,angle,art.colors,out,turret,art.turretOffset,&voxelLight,255))return false;
-  out.writeDepth=false;
+  // The model Z buffer resolves faces inside the cached voxel only. The game
+  // submits that cached image through the same standing shape Z test as SHP.
+  // Orthographic model depth is not in the terrain/BUILDNGZ buffer's units.
+  out.depth.clear();out.writeDepth=false;
   if(art.shadow){auto ground=art.model;for(auto&face:ground.faces)for(auto&p:face.p)p.z=0;external::voxel::Image shadow;
-   if(external::voxel::render(ground,angle,art.colors,shadow,turret,art.turretOffset,nullptr,255)){shadow.x+=3;shadow.shadow=true;shadow.flat=true;shadow.writeDepth=false;shadow.depth.clear();out.attachments.push_back(std::move(shadow));}}
+   if(external::voxel::render(ground,angle,art.colors,shadow,turret,art.turretOffset,nullptr,255)){shadow.x+=3;shadow.shadow=true;shadow.flat=true;shadow.writeDepth=false;shadow.depthBias=2;shadow.depth.clear();out.attachments.push_back(std::move(shadow));}}
   return true;
  }
  if(pose.frame<0){failure="sprite-sequence";return false;}
@@ -188,7 +200,7 @@ bool renderActor(const ActorArt&art,const external::visual::Pose&pose,external::
  out.y+=art.drawY;out.objectPalette=true;out.flat=art.flat;out.writeDepth=art.kind==3;out.depthBias=-float(art.zAdjust);
  if(art.kind==3&&!out.flat&&art.depthMask)external::camera::buildingDepth(out,*art.depthMask,art.fw,art.fh,art.moveX,art.moveY);
  uint8_t header[8]{};bool head=!art.shape.empty()?bytes(external::assets::Memory::Base,header,8):read(art.pointer,header,8);int frames=head?external::voxel::u16(header+6):0;
- if(art.shadow&&frames>=2&&pose.frame<frames/2){external::voxel::Image shadow;if(decode(pose.frame+frames/2,shadow)){shadow.y+=art.drawY;shadow.shadow=true;shadow.flat=true;shadow.writeDepth=false;out.attachments.push_back(std::move(shadow));}}
+ if(art.shadow&&frames>=2&&pose.frame<frames/2){external::voxel::Image shadow;if(decode(pose.frame+frames/2,shadow)){shadow.y+=art.drawY;shadow.shadow=true;shadow.flat=true;shadow.writeDepth=art.kind==3&&!art.flat;out.shadowsAfter=shadow.writeDepth;shadow.depthBias=out.depthBias+(art.kind==3?1:art.kind==5?0:2);out.attachments.push_back(std::move(shadow));}}
  return true;
 }
 

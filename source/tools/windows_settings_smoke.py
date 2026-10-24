@@ -92,6 +92,10 @@ def scenario(folder):
         mode=child(root,9065,'RA2Assist010');assert mode and send(mode,0x147)==0
         send(mode,0x14E,1);send(u.GetParent(mode),0x111,9065|(1<<16),mode)
         until(lambda:ini(folder,'Display','MinimapMode')==1,'real minimap mode saved')
+        for id,key,value in [(9100,'MinimapAlignX',2),(9101,'MinimapAlignY',1)]:
+            h=child(root,id,'RA2Assist010');assert h and send(h,0x147)==0
+            send(h,0x14E,value);send(u.GetParent(h),0x111,id|(1<<16),h)
+            until(lambda:ini(folder,'Display',key)==value,key+' saved')
         # Change an unrelated tactical setting: it must not reset these values.
         h=child(root,702,'RA2Assist010');click(root,h,1)
         assert ini(folder,'Display','Frozen')==ini(folder,'Display','DangerPassengers')==1
@@ -101,6 +105,7 @@ def scenario(folder):
             h=child(root,id)
             assert check(h)==1,(key,'restart lost saved on')
         assert send(child(root,9065,'RA2Assist010'),0x147)==1,'real minimap mode lost on restart'
+        assert send(child(root,9100,'RA2Assist010'),0x147)==2 and send(child(root,9101,'RA2Assist010'),0x147)==1,'minimap alignment lost on restart'
         mode=child(root,9065,'RA2Assist010');send(mode,0x14E,0);send(u.GetParent(mode),0x111,9065|(1<<16),mode)
         # Switch off and exit immediately, exercising pending autosave at shutdown.
         for id in [604]+[id for id in keys if id!=604]:send(child(root,id),0xF5)

@@ -10,7 +10,7 @@ struct Assets {
  bool overlay(uint32_t,uint32_t,int,external::voxel::Image&,bool=false){return false;}
  int buildingFrame(uint32_t,uint32_t){return 0;}
  bool captureActor(uint32_t,uint32_t,uint32_t id,ActorArt&a){a.id=id;return true;}
- bool captureAnimation(uint32_t,uint32_t,uint32_t id,ActorArt&a){a.id=id;a.anim=true;return true;}
+ bool captureAnimation(uint32_t,uint32_t,uint32_t id,uint32_t,uint32_t,ActorArt&a){a.id=id;a.anim=true;return true;}
  bool renderActor(const ActorArt&a,const external::visual::Pose&,external::voxel::Image&i){seen.insert(a.id);i.width=i.height=small?8:60;i.x=i.y=-i.width/2;i.pixels.assign(i.width*i.height,a.anim?0xffaaff00:0xff00aa00);i.depth.assign(i.width*i.height,a.anim?100:5);i.writeDepth=false;return true;}
 };
 int main(){
@@ -39,5 +39,12 @@ int main(){
  scene=renderer.render(frame,128,64,read,assets);assert(scene->pixels[32*128+64]==0xffaaff00);
  // Removing/hiding an attachment must remove its retained pose immediately.
  frame.markers.resize(1);scene=renderer.render(frame,128,64,read,assets);assert(std::find(scene->pixels.begin(),scene->pixels.end(),0xffaaff00)==scene->pixels.end());
- std::cout<<"PASS complete scene publication, first-frame building anims, moving-object budget fairness, retained poses, deferred animation pass, removal, resize and theater/resource reset\n";
+ // Ground animation is NOT a blanket foreground overlay. Native YSortAdjust
+ // is in leptons and must order it among units even though neither writes Z.
+ renderer.reset();auto front=m;front.x=m.x+256;front.y=m.y+256;front.u=front.v=.5;front.kind=2;front.layer=2;
+ pump.x=m.x-128;pump.y=m.y-128;pump.u=pump.v=.5;pump.layer=2;pump.sort=362;
+ frame.markers={front,pump};scene=renderer.render(frame,128,64,read,assets);assert(scene->pixels[32*128+64]==0xff00aa00);
+ frame.markers[0].x=m.x-256;frame.markers[0].y=m.y-256;scene=renderer.render(frame,128,64,read,assets);assert(scene->pixels[32*128+64]==0xffaaff00);
+ frame.markers[0]=front;frame.markers[1].layer=3;scene=renderer.render(frame,128,64,read,assets);assert(scene->pixels[32*128+64]==0xffaaff00);
+ std::cout<<"PASS complete scene publication, frame-zero anims, fair retained poses, native ground/air layers and YSort foreground occlusion, removal, resize and theater/resource reset\n";
 }

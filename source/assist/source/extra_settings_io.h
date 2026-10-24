@@ -11,6 +11,7 @@ static void loadAdditionalSettings(){
   bool mode=value(L"Compute",compute::key(i),fallback)!=0;if(mode)computeRequested|=1u<<i;else computeRequested&=~(1u<<i);}
  idleAircraftKey=WORD(value(L"Hotkeys",L"IdleAircraft",MAKEWORD('P',HOTKEYF_CONTROL|HOTKEYF_ALT))&65535);
  minimapPosition=std::clamp(value(L"Display",L"MinimapPosition",0),0,3);minimapX=std::clamp(value(L"Display",L"MinimapX",20),0,32768);minimapY=std::clamp(value(L"Display",L"MinimapY",60),0,32768);
+ minimapAlignX=std::clamp(value(L"Display",L"MinimapAlignX",0),0,2);minimapAlignY=std::clamp(value(L"Display",L"MinimapAlignY",0),0,2);
  minimapMode=std::clamp(value(L"Display",L"MinimapMode",0),0,1);
  minimapEnabled=value(L"Display",L"MinimapZoom",0)!=0;minimapScale=std::clamp(value(L"Display",L"MinimapScale",200),100,400);
  for(int i=0;i<featuretypes::Count;++i){auto&f=featureTypes.filters[i];std::wstring custom=std::wstring(featuretypes::key(i))+L"Custom";wchar_t text[13000]{};
@@ -77,6 +78,7 @@ static bool saveAdditionalSettings(){
  for(int i=0;i<9;++i)write(L"Hotkeys",i?(L"Taunt"+std::to_wstring(i)).c_str():L"Cheer",socialKeys[i]);
  write(L"Display",L"ShroudStrategy",extra.mapStrategy);
  write(L"Display",L"MinimapPosition",minimapPosition);write(L"Display",L"MinimapX",minimapX);write(L"Display",L"MinimapY",minimapY);
+ write(L"Display",L"MinimapAlignX",minimapAlignX);write(L"Display",L"MinimapAlignY",minimapAlignY);
  write(L"Display",L"MinimapMode",minimapMode);
  write(L"Display",L"MinimapZoom",minimapEnabled);write(L"Display",L"MinimapScale",minimapScale);
  for(int i=0;i<featuretypes::Count;++i){std::wstring custom=std::wstring(featuretypes::key(i))+L"Custom";

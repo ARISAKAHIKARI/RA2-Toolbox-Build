@@ -1,0 +1,33 @@
+{
+  "scope": "Execute original animation coordinate/frame/sort functions on private captures.\nNo game update, loader, renderer, Win32 display or multiplayer is executed.\n",
+  "game_exe_sha256": "7B8A068535D6AF06845EDF95AE829B113D00C02909330E16F197426CD7DB94B6",
+  "code_sha256": {
+    "0x451890": "a059be11e3af8eb28b87d9a0644839fdebe566ed086f52b8bc4fada3b476f12a",
+    "0x459ef0": "8b57ece16fea95a1895caa2e8df6be2f2ee7fbfb57edadb12beb56ff1cdcdb3a",
+    "0x447ac0": "9313b2a6f51c9c5aa1be2df9b290cce1e02e872f144ea41789754bdcec08c7c1",
+    "0x422be0": "15b78675c90ef7750dfafabd576269befb24b35004f953efb8beb69ca5bf4d8c",
+    "0x422bc0": "20e6ea5ce30fb524fc87885df6b98d97e49d8e9386fad98a1cdbf48e55386300",
+    "0x424cb0": "b2643cab14b027151bda3c7e96f9f573995e6a5a82459f88830a0cb5581555cd",
+    "0x42303f": "c0abdf20100d2d0d3ae02a5528b7e0b5756e35418ccb466edb70075990cac7c1"
+  },
+  "results": [
+    {
+      "stage": "01-off",
+      "native_animations": 39,
+      "power_off": 15,
+      "nonzero_start": 1
+    },
+    {
+      "stage": "02-on",
+      "native_animations": 43,
+      "power_off": 15,
+      "nonzero_start": 1
+    },
+    {
+      "stage": "03-off",
+      "native_animations": 44,
+      "power_off": 15,
+      "nonzero_start": 1
+    }
+  ]
+}

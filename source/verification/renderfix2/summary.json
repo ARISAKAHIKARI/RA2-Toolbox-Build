@@ -1,0 +1,17 @@
+{
+  "scope": "Read-only capture replay, original instruction slices, constructed rendering/layout tests and static PE verification; no live Windows game visual or multiplayer claim",
+  "local_status": "PASS",
+  "capture_animation_observations": 126,
+  "capture_decoded_animation_observations": 4,
+  "capture_unloaded_shape_references": 122,
+  "sanitizers": [
+    "building_animations ASan+UBSan",
+    "camera_raster ASan+UBSan",
+    "radar_scene ASan+UBSan"
+  ],
+  "layout_combinations": 10368,
+  "binaries": {
+    "RA2Toolbox.exe": "77bc51489aa475f129fc5501fa46aa55fe8058fd224deb690ac6b70d490f0c2b",
+    "GameRuntime.dll": "8f53f95bbb68676c8fbd317605de1baa4d25683170259c03da7005354e9f5c5d"
+  }
+}

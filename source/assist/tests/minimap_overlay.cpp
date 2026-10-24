@@ -13,7 +13,19 @@ struct Memory {
  void zero(uint32_t at,int n){for(int i=0;i<n;++i)bytes[at+i]=0;}
 };
 struct Read{Memory*m;bool operator()(uint32_t p,void*out,size_t n)const{return (*m)(p,out,n);}};
-int main(){using namespace external::radar;Memory m;constexpr uint32_t cells=0x100000,cell=0x200000,house=0x300000;
+int main(){
+ // Actual aspect ratio participates in placement, not a later resize.
+ for(double aspect:{.25,.5,1.,2.,4.}){
+  auto plane=radarlayout::aircraft(1920,1080,1920,1080);
+  auto box=radarlayout::place(1920,1080,1920,1080,200,2,0,0,plane,aspect);
+  assert(box.valid&&box.destination.x==10&&box.destination.y+box.destination.h==1070);
+  auto upper=radarlayout::place(1920,1080,1920,1080,200,1,0,0,plane,aspect);assert(upper.valid&&upper.destination.x==10&&upper.destination.y==10);
+  auto full=radarlayout::place(1920,1080,1920,1080,200,3,100,300,plane);
+  for(int ax=0;ax<3;++ax)for(int ay=0;ay<3;++ay){auto custom=radarlayout::place(1920,1080,1920,1080,200,3,100,300,plane,aspect,ax,ay);assert(custom.valid);
+   assert(custom.destination.x==100+(full.destination.w-custom.destination.w)*ax/2);
+   assert(custom.destination.y==300+(full.destination.h-custom.destination.h)*ay/2);}
+ }
+using namespace external::radar;Memory m;constexpr uint32_t cells=0x100000,cell=0x200000,house=0x300000;
  m.set(Map+0xF4,4);m.set(Map+0xF8,4);m.set(Map+0x13C,cells);m.set(Map+0x140,4096);m.set(Map+0x1488,10.f);m.set(Map+0x1490,4);m.set(Map+0x1498,4);m.set(Map+0x14A4,80);m.set(Map+0x14A8,80);
  m.set(0xA83D4C,house);m.set(0xA8ED84,10);m.set<uint8_t>(0xA8E9A0,1);m.set<uint8_t>(0xA8E378,1);m.set(0xA8EDA0,0);m.set(0xA8ED8C,0);
  m.zero(cells,4096*4);m.set(cells+(3*512+3)*4,cell);m.zero(cell,0x148);m.set<int16_t>(cell+0x24,3);m.set<int16_t>(cell+0x26,3);m.set(cell+0xEC,2);m.set<int8_t>(cell+0x120,-1);m.set<int8_t>(cell+0x121,-1);

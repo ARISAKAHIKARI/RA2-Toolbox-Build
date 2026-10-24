@@ -13,9 +13,9 @@ namespace external { namespace voxel {
 // evidence: YRpp + native 755DB0/7563A8, 5BD5C0/5BD730 and 705D70.
 constexpr size_t MaxBytes=8*1024*1024,MaxVoxels=100000,MaxFaces=150000;
 struct Vec {float x=0,y=0,z=0;};
-struct Face {Vec p[4],normal{};uint8_t color=0,normalIndex=255;bool turret=false,hasNormal=false;};
+struct Face {Vec p[4],normal{};uint8_t color=0,normalIndex=255,normalType=0;bool turret=false,hasNormal=false;};
 struct Model {std::vector<Face> faces;};
-struct Image {int canvasWidth=0,canvasHeight=0;int width=0,height=0,x=0,y=0;std::vector<uint32_t> pixels;std::vector<float> depth;std::vector<uint8_t> indices;bool objectPalette=false,flat=false,writeDepth=true,shadow=false;float depthBias=0;std::vector<Image> attachments;};
+struct Image {int canvasWidth=0,canvasHeight=0;int width=0,height=0,x=0,y=0,depthBottom=std::numeric_limits<int>::min();std::vector<uint32_t> pixels;std::vector<float> depth;std::vector<uint8_t> indices;bool objectPalette=false,flat=false,writeDepth=true,shadow=false,shadowsAfter=false;float depthBias=0;std::vector<Image> attachments;};
 struct Library {uint32_t failed=0,headers=0,tailers=0,size=0,head=0,tail=0,body=0;};
 struct Tail {uint32_t start,end,data;float multiplier,matrix[12],bounds[24];uint8_t size[3],normal;};
 static_assert(sizeof(Tail)==164,"VXL memory tailer stride");
@@ -53,7 +53,7 @@ template<class Read>bool capturePart(Read read,uint32_t vxl,uint32_t hva,Model&o
   for(int z=0;z<sz;++z)for(int y=0;y<sy;++y)for(int x=0;x<sx;++x){uint8_t color=grid[index(x,y,z)];if(!color)continue;
    for(int f=0;f<6;++f){int nx=x+normals[f][0],ny=y+normals[f][1],nz=z+normals[f][2];if(nx>=0&&nx<sx&&ny>=0&&ny<sy&&nz>=0&&nz<sz&&grid[index(nx,ny,nz)])continue;
     if(pending.faces.size()+out.faces.size()>=MaxFaces)return false;Face face;face.color=color;face.normalIndex=shading[index(x,y,z)];std::array<float,3> normal{};
-    face.hasNormal=normalVector(t.normal,face.normalIndex,normal);
+    face.normalType=t.normal;face.hasNormal=normalVector(t.normal,face.normalIndex,normal);
     if(face.hasNormal){face.normal={(m[0]*normal[0]+m[1]*normal[1]+m[2]*normal[2])/scaleX,(m[4]*normal[0]+m[5]*normal[1]+m[6]*normal[2])/scaleY,m[8]*normal[0]+m[9]*normal[1]+m[10]*normal[2]};float n=std::sqrt(face.normal.x*face.normal.x+face.normal.y*face.normal.y+face.normal.z*face.normal.z);if(n>1e-6f){face.normal.x/=n;face.normal.y/=n;face.normal.z/=n;}else face.hasNormal=false;}
     for(int c=0;c<4;++c){int v=corners[f][c];Vec p{lo.x+(x+(v&1))*step.x,lo.y+(y+((v>>1)&1))*step.y,lo.z+(z+((v>>2)&1))*step.z};p=transform(m.data(),p);p.x=(p.x+offset)*scaleX;p.y*=scaleY;face.p[c]=p;}pending.faces.push_back(face);
    }
@@ -78,7 +78,7 @@ inline bool render(const Model&model,double angle,const std::array<uint32_t,256>
  auto worldPoint=[&](const Face&f,Vec p){if(!f.turret||!std::isfinite(turretAngle))return rotate(p,angle);p=rotate(p,turretAngle);auto pivot=rotate({turretOffset,0,0},angle);p.x+=pivot.x;p.y+=pivot.y;return p;};
  float minX=0,minY=0,maxX=0,maxY=0;for(const auto&f:model.faces)for(auto p:f.p){auto s=project(worldPoint(f,p));if(!finite(s.x)||!finite(s.y)||!finite(s.z))return false;minX=std::min(minX,s.x);minY=std::min(minY,s.y);maxX=std::max(maxX,s.x);maxY=std::max(maxY,s.y);}
  int left=int(std::floor(minX))-1,top=int(std::floor(minY))-1,w=int(std::ceil(maxX))-left+2,h=int(std::ceil(maxY))-top+2;if(w<1||h<1||w>512||h>512)return false;
- out.width=w;out.height=h;out.x=left;out.y=top;out.pixels.assign(size_t(w)*h,0);out.depth.assign(size_t(w)*h,-std::numeric_limits<float>::infinity());out.indices.assign(size_t(w)*h,0);out.objectPalette=true;
+ out.width=w;out.height=h;out.x=left;out.y=top;out.depthBottom=int(std::ceil(maxY))-1;out.pixels.assign(size_t(w)*h,0);out.depth.assign(size_t(w)*h,-std::numeric_limits<float>::infinity());out.indices.assign(size_t(w)*h,0);out.objectPalette=true;
  auto edge=[](Screen a,Screen b,float x,float y){return (x-a.x)*(b.y-a.y)-(y-a.y)*(b.x-a.x);};
  for(const auto&f:model.faces){Screen s[4];Vec world[4];for(int c=0;c<4;++c){world[c]=worldPoint(f,f.p[c]);s[c]=project(world[c]);s[c].x-=left;s[c].y-=top;}
   Vec a{world[1].x-world[0].x,world[1].y-world[0].y,world[1].z-world[0].z},b{world[2].x-world[0].x,world[2].y-world[0].y,world[2].z-world[0].z};Vec normal{a.y*b.z-a.z*b.y,a.z*b.x-a.x*b.z,a.x*b.y-a.y*b.x};float len=std::sqrt(normal.x*normal.x+normal.y*normal.y+normal.z*normal.z);
@@ -88,8 +88,11 @@ inline bool render(const Model&model,double angle,const std::array<uint32_t,256>
    if(f.normalIndex<253){
     double heading=(f.turret&&std::isfinite(turretAngle)?turretAngle:angle)+1.5707963267948966;
     Vec source{-float(std::cos(heading)),-float(std::sin(heading)),0};
-    float diffuse=std::max(0.f,f.normal.x*source.x+f.normal.y*source.y);
-    float halfDot=(f.normal.x*source.x+f.normal.y*source.y+f.normal.z)*.70710678118f;
+    // VPL pages use the section's normal table and facing, independently of
+    // HVA geometry/scale. The transformed normal is only for Lambert fallback.
+    std::array<float,3> raw{};Vec n=f.normal;if(normalVector(f.normalType,f.normalIndex,raw))n={raw[0],raw[1],raw[2]};
+    float diffuse=std::max(0.f,n.x*source.x+n.y*source.y);
+    float halfDot=(n.x*source.x+n.y*source.y+n.z)*.70710678118f;
     float specular=std::max(0.f,halfDot/(3.f-2.f*halfDot));
     page=unsigned(std::clamp((diffuse+specular)*16.f,0.f,255.f));
    }

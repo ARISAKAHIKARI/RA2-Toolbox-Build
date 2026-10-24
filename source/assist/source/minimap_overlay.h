@@ -95,11 +95,10 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
 }
 static void update(POINT origin,const RECT&client){
  if(!minimapEnabled||!enabled||!foregroundGame()||snap.renderStatus!=1||snap.chat||!pid||snap.width<320||snap.height<200||client.right<320||client.bottom<200){hide();return;}
- auto layout=radarlayout::place(snap.width,snap.height,client.right,client.bottom,minimapScale,minimapPosition,minimapX,minimapY,aircraftButtonBox);
- if(!layout.valid){hide();return;}auto destination=layout.destination;
  auto latest=worker.get();if(latest&&latest->terrain)lastGeometry=latest->terrain->geo;
  double rw=lastGeometry.valid()?lastGeometry.rw:1,rh=lastGeometry.valid()?lastGeometry.rh:1;if(minimapMode==1)rw*=2;
- double fit=std::min(double(destination.w-2)/rw,double(destination.h-2)/rh);fit=std::min(fit,std::min(1024./rw,1024./rh));destination.w=std::max(3,int(rw*fit)+2);destination.h=std::max(3,int(rh*fit)+2);
+ auto layout=radarlayout::place(snap.width,snap.height,client.right,client.bottom,minimapScale,minimapPosition,minimapX,minimapY,aircraftButtonBox,rw/rh,minimapAlignX,minimapAlignY);
+ if(!layout.valid){hide();return;}auto destination=layout.destination;
  worker.set({pid,snap.match,fps,extra.renderReveal,minimapMode,std::min(1024,destination.w-2),std::min(1024,destination.h-2)});
  frame=worker.get();if(!frame||!frame->terrain){cancelDrag();if(window)ShowWindow(window,SW_HIDE);return;}if(dragging&&dragMatch!=commandMatch())cancelDrag();
  if(!window){WNDCLASSW cls{};cls.lpfnWndProc=proc;cls.hInstance=GetModuleHandleW(nullptr);cls.lpszClassName=L"RA2DataRadar127";cls.hCursor=nullptr;RegisterClassW(&cls);window=CreateWindowExW(WS_EX_TOOLWINDOW|WS_EX_NOACTIVATE|WS_EX_TOPMOST|WS_EX_LAYERED,cls.lpszClassName,L"战术小地图",WS_POPUP,0,0,1,1,nullptr,nullptr,cls.hInstance,nullptr);if(window)SetLayeredWindowAttributes(window,0,255,LWA_ALPHA);}

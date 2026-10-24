@@ -64,21 +64,21 @@ public:
    if(cached.ready||(cached.retry&&int32_t(frame.tick-cached.retry)<0))continue;
    ++work;voxel::Image image;bool ready=false;auto source=art_.find(artKey(m));
    if(m.kind==4)ready=assets.overlay(m.type,game.template get<uint32_t>(m.type+0xA4),m.pose.frame,image,true);
-   else{if(source==art_.end()){typename Assets::ActorArt art;if((m.kind==5?assets.captureAnimation(m.object,m.type,m.id,art):assets.captureActor(m.object,m.type,m.id,art))&&artBytes+Assets::cost(art)<=128*1024*1024){artBytes+=Assets::cost(art);source=art_.emplace(artKey(m),std::move(art)).first;}}
+   else{if(source==art_.end()){typename Assets::ActorArt art;if((m.kind==5?assets.captureAnimation(m.object,m.type,m.id,m.parent,m.parentId,art):assets.captureActor(m.object,m.type,m.id,art))&&artBytes+Assets::cost(art)<=128*1024*1024){artBytes+=Assets::cost(art);source=art_.emplace(artKey(m),std::move(art)).first;}}
     if(source!=art_.end())ready=assets.renderActor(source->second,m.pose,image);}
    if(ready&&pixels+camera::pixels(image)<=8*1024*1024){camera::opaque(image);pixels+=camera::pixels(image);cached.image=std::move(image);cached.ready=true;}
    cached.retry=cached.ready?0:frame.tick+2000;
   }
   for(const auto&m:markers){auto key=imageKey(m);auto i=sprites_.find(key);if(i!=sprites_.end()&&i->second.ready)displayed_[{m.object,m.id}]=key;}
   std::vector<const Marker*> order;for(const auto&m:markers)order.push_back(&m);
-  // AnimClass paints after the object pass, tests scene depth, and never writes
-  // the building's depth. A negative attachment offset must not put it first.
-  std::stable_sort(order.begin(),order.end(),[](const Marker*a,const Marker*b){if((a->kind==5)!=(b->kind==5))return b->kind==5;return int64_t(a->x)+a->y<int64_t(b->x)+b->y;});
+  // Native ground animations share object order (Layer, GetYSort). A blanket
+  // final animation pass incorrectly paints pumps/fire over foreground units.
+  std::stable_sort(order.begin(),order.end(),[](const Marker*a,const Marker*b){return camera::orderKey(a->layer,a->kind,a->x,a->y,a->sort)<camera::orderKey(b->layer,b->kind,b->x,b->y,b->sort);});
   for(const auto*marker:order){const auto&m=*marker;if(m.x<0||m.y<0||m.x>=512*256||m.y>=512*256)continue;
    auto found=sprites_.find(imageKey(m));if(found==sprites_.end()||!found->second.ready){auto old=displayed_.find({m.object,m.id});if(old!=displayed_.end())found=sprites_.find(old->second);}
-   float px=float(m.u*width),py=float(m.v*height)-screenHeight(m.z,projectionZScale(read))*scale.second;
+   float px=float(m.u*width),py=float(m.v*height)+(camera::anchorY(m.kind)-screenHeight(m.z,projectionZScale(read)))*scale.second;
    if(found!=sprites_.end()&&found->second.ready){auto light=m.normalLight?lighting::State{}:lighting::at(read,m.x,m.y,m.z,scene,m.kind==4);uint32_t cell=frame.terrain->art[(m.y/256)*512+m.x/256].cell;bool bridge=m.onBridge;int level=game.template get<uint8_t>(cell+0x11B);
-    view.blit(found->second.image,px,py,scale.first,scale.second,float((int64_t(m.x)+m.y)*15/256.)-15-m.drawZ+(bridge?60:0),light,m.kind==4?12:(m.kind==3||m.kind==5)?2:1,float(std::max(0,screenHeight(m.z,projectionZScale(read))-(level+(bridge?4:0))*15)));}
+    view.blit(found->second.image,px,py,scale.first,scale.second,float((int64_t(m.x)+m.y)*15/256.)-15+camera::anchorY(m.kind)-m.drawZ+(bridge?60:0),light,m.kind==4?12:(m.kind==3||m.kind==5)?2:1,float(std::max(0,screenHeight(m.z,projectionZScale(read))-(level+(bridge?4:0))*15)));}
    else if(m.kind<4){int x=int(m.u*width),y=int(m.v*height);for(int yy=std::max(0,y-1);yy<std::min(height,y+2);++yy)for(int xx=std::max(0,x-1);xx<std::min(width,x+2);++xx)view.color[size_t(yy)*width+xx]=0xff000000u|m.color;}
   }
   if(tiles_.size()>4096)tiles_.clear();if(overlays_.size()>4096)overlays_.clear();
