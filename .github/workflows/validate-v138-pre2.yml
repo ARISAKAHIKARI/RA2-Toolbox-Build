@@ -45,6 +45,8 @@ jobs:
         run: bash source/build-zig.sh
       - name: Build overlay stacking fixture
         run: '"$ZIG" c++ -target x86-windows-gnu -std=c++17 -O2 source/assist/tests/overlay_stack_windows.cpp -o source/overlay-stack-test.exe -luser32'
+      - name: Build process discovery fixture
+        run: '"$ZIG" c++ -target x86-windows-gnu -std=c++17 -O2 -municode source/tests/process_discovery_windows.cpp -o source/process-discovery-test.exe -luser32'
       - name: Validate final PE files and bridge ABI
         run: python3 source/tools/verify_windows_outputs.py
       - uses: actions/upload-artifact@v4
@@ -54,6 +56,7 @@ jobs:
             source/RA2Toolbox.exe
             source/GameRuntime.dll
             source/overlay-stack-test.exe
+            source/process-discovery-test.exe
             source/WINDOWS_BUILD_ARTIFACTS.json
           retention-days: 7
   windows-ui:
@@ -68,6 +71,8 @@ jobs:
           path: source
       - name: Real overlay window stacking
         run: .\\source\\overlay-stack-test.exe
+      - name: Real Ares and spawn process discovery
+        run: .\\source\\process-discovery-test.exe
       - name: Real styled controls, INI persistence and restart
         run: python source/tools/windows_settings_smoke.py
       - uses: actions/upload-artifact@v4
