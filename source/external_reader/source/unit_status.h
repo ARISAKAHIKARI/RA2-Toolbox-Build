@@ -9,7 +9,7 @@ enum Options : uint32_t { Parasite=1, CrateBuffs=2 };
 enum Buffs : uint32_t { Firepower=1, Armor=2, Speed=4 };
 struct Marker {
  uint32_t object=0,id=0,type=0,owner=0,parasite=0,parasiteOwner=0,parasiteColor=0,buffs=0;
- int kind=-1,x=0,y=0,cellOffsetX=0,cellOffsetY=0;
+ int kind=-1,x=0,y=0;
 };
 struct Frame {uint32_t match=0,tick=0,house=0;int frame=-1,count=0,width=0,height=0;Marker items[Maximum]{};};
 inline bool fresh(const Frame&f,uint32_t match,uint32_t now){return f.match==match&&f.tick&&uint32_t(now-f.tick)<250&&f.count>=0&&f.count<=Maximum;}

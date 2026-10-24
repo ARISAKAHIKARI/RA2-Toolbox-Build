@@ -841,9 +841,8 @@ static void draw(){
    animStart=d.first;animCount=d.count;animKey=2000+int(commandMode);hx=chx;hy=chy;approx=false;inferredRange=false;
   }else commandMode=commandcursor::None;
  }
- if(superCenter){auto center=superhot::resolve(superCenters,cursorID,frame,animStart,animCount);
-  if(center.valid){hx=center.x;hy=center.y;}}
- diagFrame=frame;diagHotX=hx;diagHotY=hy;
+ const auto visualCenter=superCenter?superhot::resolve(superCenters,cursorID,frame,animStart,animCount):superhot::Point{};
+ diagFrame=frame;diagHotX=visualCenter.valid?int(std::lround(visualCenter.x)):hx;diagHotY=visualCenter.valid?int(std::lround(visualCenter.y)):hy;
  // Real animation frames can advance without an accessible game definition
  // table on some platform builds; infer only after multiple forward edges.
  if(commandMode==commandcursor::None&&mode==L"hide"&&shared&&shared->state==1){
@@ -913,7 +912,7 @@ static void draw(){
  int useGW=gameWOverride?gameWOverride:gw,useGH=gameHOverride?gameHOverride:gh;int useSW=screenWOverride?screenWOverride:mw,useSH=screenHOverride?screenHOverride:mh;double dp=dpiOverride?dpiOverride:dx*100.0/96;
  int displayW=mw>0?(int)std::lround(double(rc.right)*useSW/mw):rc.right,displayH=mh>0?(int)std::lround(double(rc.bottom)*useSH/mh):rc.bottom;
  refreshClickRegion();
- Scale sc=cursorScale(autoScale,aspectFit,scalePercent,displayW,displayH,useGW,useGH);double wf=dpiMode==1?dp/100:dpiMode==2?100/dp:1;sc.x=std::max(.125,std::min(8.0,sc.x*wf));sc.y=std::max(.125,std::min(8.0,sc.y*wf));int dw=std::min(1024,scaledSize(w,sc.x)),dh=std::min(1024,scaledSize(h,sc.y));int shx=scaledHotspot(hx,w,dw,offsetX),shy=scaledHotspot(hy,h,dh,offsetY);
+ Scale sc=cursorScale(autoScale,aspectFit,scalePercent,displayW,displayH,useGW,useGH);double wf=dpiMode==1?dp/100:dpiMode==2?100/dp:1;sc.x=std::max(.125,std::min(8.0,sc.x*wf));sc.y=std::max(.125,std::min(8.0,sc.y*wf));int dw=std::min(1024,scaledSize(w,sc.x)),dh=std::min(1024,scaledSize(h,sc.y));int shx=superhot::scaledAnchor(hx,visualCenter,false,w,dw,offsetX),shy=superhot::scaledAnchor(hy,visualCenter,true,h,dh,offsetY);
  if(GetTickCount()-lastReadout>1000){
   lastReadout=GetTickCount();
   wchar_t info[260];
@@ -1509,6 +1508,7 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR cmd,int){
  superCenter=GetPrivateProfileIntW(L"Cursor",L"SuperWeaponVisualCenter",1,ini().c_str())!=0;
  superCenterBox=CreateWindowW(L"BUTTON",L"超武热点居中",WS_CHILD|BS_AUTOCHECKBOX,20,1095,510,25,mainw,(HMENU)154,inst,NULL);extra(superCenterBox,{20,1095,510,25});
  SendMessageW(superCenterBox,BM_SETCHECK,superCenter?BST_CHECKED:BST_UNCHECKED,0);
+ modernui::tip(superCenterBox,L"超武图案的视觉锚点对齐点击位置；铁幕使用中间圈圆心。启用时不叠加普通光标的手动热点偏移。");
  detailLabel=CreateWindowW(L"STATIC",L"",WS_CHILD,20,1122,720,42,mainw,NULL,inst,NULL);extra(detailLabel,{20,1122,720,42});
  HWND displayLabel=CreateWindowW(L"STATIC",L"显示方式",WS_CHILD|WS_VISIBLE,20,178,88,22,mainw,nullptr,inst,nullptr);
  controlOrigins.push_back({displayLabel,{20,178,88,22}});

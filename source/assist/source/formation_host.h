@@ -31,7 +31,8 @@ static bool capture(const formation::Unit&u,Cached&cache){
 static void update(){
  static bool wasActive=false;bool activeNow=shared&&shared->formationPreview.active&&extra.formationEnabled&&!snap.chat;if(activeNow!=wasActive){wasActive=activeNow;++paintRevision;}
  if(process!=pid||epoch!=commandMatch()){reset();process=pid;epoch=commandMatch();}
- if(activeNow&&sampledAt&&DWORD(GetTickCount()-sampledAt)<33)return;sampledAt=GetTickCount();
+ // Preview positions follow the same paint clock as every other unit overlay.
+ sampledAt=GetTickCount();
  formation::Preview next{};
  if(!activeNow||!shared||!foregroundGame()){if(!visuals.empty()){visuals.clear();++paintRevision;}return;}
  long seq=shared->formationSeq;if(seq&1)return;MemoryBarrier();next=shared->formationPreview;MemoryBarrier();if(seq!=shared->formationSeq||!next.active||next.match!=epoch||next.count<0||next.count>formation::Maximum)return;

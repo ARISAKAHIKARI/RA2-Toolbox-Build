@@ -42,6 +42,9 @@ int main(){using namespace formationhost;
  // selects a new pose while retaining source art and premultiplied alpha.
  reset();wanted.clear();v.units[0]={100,0x10000,7};memory[0x10010]=100;v.facing=0;step();assert(visuals.size()==1&&gameassets::captures==1&&gameassets::renders==1);assert(visuals[0].image->pixels[0]==0x7c000008);
  v.facing=formation::Pi/2;step();assert(visuals.size()==1&&gameassets::captures==1&&gameassets::renders==2);assert(visuals[0].image->pixels[0]==0x7c000010);v.facing=0;step();assert(gameassets::renders==2);
+ // A new preview point is visible in the next 2ms overlay tick, without
+ // the old independent 33ms gate, even when the pose/art stay cached.
+ int oldX=visuals[0].x;v.slots[0].x+=256;clockValue+=2;update();assert(visuals[0].x==oldX+30);v.slots[0].x-=256;clockValue+=2;update();assert(visuals[0].x==oldX);
  // Stationary preview still repaints a lighting change without rerendering poses.
  before=paintRevision;int rendered=gameassets::renders;memory[0xA8B230]=0xC00000;memory[0xC0352C]=75;for(int off:{0x3534,0x3538,0x353C})memory[0xC00000+off]=100;step();assert(paintRevision>before&&gameassets::renders==rendered);Graphics g;draw(g);assert(drawnMatrix.m[1][1]==.75f&&drawnMatrix.m[3][3]==1.f);
  // Use live projection scale and the destination cell, not the source unit.

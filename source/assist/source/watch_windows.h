@@ -8,6 +8,12 @@ static overlayui::Recovery recovery[3];static uint32_t revisions[3]{};
 static bool usable(){return enabled&&extra.watchEnabled&&foregroundGame()&&snap.renderStatus==1&&!snap.chat&&external::display::inspect([](uint32_t p,void*out,size_t n){return externalReader.readFresh(p,out,n);}).visible();}
 static void hide(){for(int i=0;i<3;++i){recovery[i].suspend();if(windows[i])ShowWindow(windows[i],SW_HIDE);}}
 static void destroy(){hide();for(int i=0;i<3;++i){if(windows[i])DestroyWindow(windows[i]);windows[i]=nullptr;buffers[i].clear();}watchhost::reset();}
+static void occlude(Graphics&g){
+ // The tactical overlay is itself topmost. Exclude the opaque camera panels
+ // before drawing any badges/bubbles/previews, regardless of Windows' last
+ // topmost reassertion order. Use the same game-pixel geometry as update().
+ for(int i=0;i<3;++i)if(windows[i]&&IsWindowVisible(windows[i])&&watchhost::views[i].shown){auto b=watchhost::views[i].box;g.SetClip(RectF(float(b.x-1),float(b.y-1),float(b.w+2),float(b.h+2)),CombineModeExclude);}
+}
 static void navigate(int slot){
  if(slot<0||slot>=3||!usable()||!shared||!commandFresh(GetTickCount()))return;
  auto fresh=[](uint32_t p,void*out,size_t n){return externalReader.readFresh(p,out,n);};
@@ -51,7 +57,7 @@ static void update(POINT origin,const RECT&client){
   RECT old{};GetWindowRect(window,&old);bool changed=old.left!=x||old.top!=y||old.right-old.left!=w||old.bottom-old.top!=h;
   bool repair=recovery[i].due(GetTickCount(),true,{uintptr_t(game),pid,commandMatch(),w,h},IsWindowVisible(window)!=FALSE);
   if(changed||repair)recovery[i].submitted(SetWindowPos(window,HWND_TOPMOST,x,y,w,h,SWP_NOACTIVATE|SWP_SHOWWINDOW)!=FALSE);
-  if(changed||repair||revisions[i]!=paintRevision){revisions[i]=paintRevision;InvalidateRect(window,nullptr,FALSE);}
+  if(changed||repair||revisions[i]!=view.revision){revisions[i]=view.revision;InvalidateRect(window,nullptr,FALSE);UpdateWindow(window);}
  }
 }
 }

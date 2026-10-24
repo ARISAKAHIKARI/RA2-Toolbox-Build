@@ -1,0 +1,124 @@
+{
+  "scope": "Focused host display regression; optional original SHA/palette stay private.",
+  "suites": 22,
+  "results": [
+    {
+      "test": "assist-cursor_visual_anchor",
+      "status": "PASS",
+      "exit_code": 0
+    },
+    {
+      "test": "assist-unit_status",
+      "status": "PASS",
+      "exit_code": 0
+    },
+    {
+      "test": "assist-status_overlay",
+      "status": "PASS",
+      "exit_code": 0
+    },
+    {
+      "test": "assist-label_motion",
+      "status": "PASS",
+      "exit_code": 0
+    },
+    {
+      "test": "assist-enemy_markers",
+      "status": "PASS",
+      "exit_code": 0
+    },
+    {
+      "test": "assist-watch_host",
+      "status": "PASS",
+      "exit_code": 0
+    },
+    {
+      "test": "assist-watch_view",
+      "status": "PASS",
+      "exit_code": 0
+    },
+    {
+      "test": "assist-watch_slots",
+      "status": "PASS",
+      "exit_code": 0
+    },
+    {
+      "test": "assist-formation_host",
+      "status": "PASS",
+      "exit_code": 0
+    },
+    {
+      "test": "assist-scene_lighting",
+      "status": "PASS",
+      "exit_code": 0
+    },
+    {
+      "test": "assist-visual_pose",
+      "status": "PASS",
+      "exit_code": 0
+    },
+    {
+      "test": "assist-terrain_preview",
+      "status": "PASS",
+      "exit_code": 0
+    },
+    {
+      "test": "assist-voxel_preview",
+      "status": "PASS",
+      "exit_code": 0
+    },
+    {
+      "test": "assist-pacing",
+      "status": "PASS",
+      "exit_code": 0
+    },
+    {
+      "test": "unit_monitor-overlay_recovery",
+      "status": "PASS",
+      "exit_code": 0
+    },
+    {
+      "test": "unit_monitor-round_transition",
+      "status": "PASS",
+      "exit_code": 0
+    },
+    {
+      "test": "watch_windows_test",
+      "status": "PASS",
+      "exit_code": 0
+    },
+    {
+      "test": "enemy_overlay_test",
+      "status": "PASS",
+      "exit_code": 0,
+      "verification_note": "Rerun passed after fixing stale test helper extraction and the expected battlefield/recovery guard."
+    },
+    {
+      "test": "cursor_settings_ui_test",
+      "status": "PASS",
+      "exit_code": 0
+    },
+    {
+      "test": "ui_geometry_test",
+      "status": "PASS",
+      "exit_code": 0
+    },
+    {
+      "test": "persistent_ui_source_test",
+      "status": "PASS",
+      "exit_code": 0
+    },
+    {
+      "test": "suite_display_test",
+      "status": "PASS",
+      "exit_code": 0
+    }
+  ],
+  "windows_visual_tested": false,
+  "physical_refresh_measured": false,
+  "multiplayer_tested": false,
+  "private_resource_sha256": {
+    "cursor": "d1cdc8d48ffbf4a579a16c456a77d945e5cbe4f2def7dbee687ac3908156c3d6",
+    "palette": "7510fd2f15598e00489bfb02f7441dfa988397faec252fd18dd2437dbdf1bbee"
+  }
+}

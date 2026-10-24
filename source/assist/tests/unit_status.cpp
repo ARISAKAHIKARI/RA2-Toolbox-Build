@@ -64,18 +64,22 @@ int main(){using namespace external::status;
   std::cout<<"PASS 1000 high-refresh samples with 125 frame scans; freshness expires at 250ms\n";
  }
  {
-  using namespace assist::statusbadges;assert(SpiderSize==14&&BuffSize==9);
-  auto icon=spider(0xFF14D28C);assert(icon.width==14&&icon.height==14);int colored=0;
-  for(auto c:icon.pixels){assert(!c||c==0xFF07101B||c==0xFF14D28C);if(c==0xFF14D28C)++colored;}assert(colored>25);
-  // Exhaust the positions within a tile; every corner of every buff remains
-  // within its real 60x30 cell, even while the unit crosses a cell edge.
-  for(int wx=0;wx<256;wx+=4)for(int wy=0;wy<256;wy+=4)for(unsigned b=1;b<8;++b)for(bool p:{false,true}){
-   float x=(wx-wy)*30.f/256.f,y=(wx+wy)*15.f/256.f;
-   auto l=layout(x,y,0,15,b,p);assert(l.count>=1&&l.count<=3);
-   for(int i=1;i<l.count;++i)assert(l.icons[i].x-l.icons[i-1].x>8.9f);
-   for(int i=0;i<l.count;++i)for(int dx:{-1,1})for(int dy:{-1,1})
-    assert(std::abs(l.icons[i].x+dx*4.5f-l.center.x)/30.f+std::abs(l.icons[i].y+dy*4.5f-l.center.y)/15.f<1.f);
+  using namespace assist::statusbadges;assert(SpiderSize==20&&BuffSize==9);
+  // Every marker and its dirty bounds must translate with the rendered unit,
+  // including fractional camera movement and every native cell boundary.
+  for(int wx=-512;wx<512;wx+=4)for(int wy=-256;wy<256;wy+=4)for(unsigned b=0;b<8;++b)for(bool p:{false,true}){
+   float x=wx/8.f,y=wy/8.f;auto l=layout(x,y,b,p),next=layout(x+.125f,y-.25f,b,p);
+   auto box=bounds(x,y,b,p),moved=bounds(x+.125f,y-.25f,b,p);
+   assert(l.count==next.count);
+   if(l.count||p){assert(std::abs(moved.x-box.x-.125f)<.0001f&&std::abs(moved.y-box.y+.25f)<.0001f);}
+   for(int i=0;i<l.count;++i){
+    assert(std::abs(next.icons[i].x-l.icons[i].x-.125f)<.0001f&&std::abs(next.icons[i].y-l.icons[i].y+.25f)<.0001f);
+    assert(l.icons[i].x-4.5f>=box.x&&l.icons[i].x+4.5f<=box.x+box.w);
+    assert(l.icons[i].y-4.5f>=box.y&&l.icons[i].y+4.5f<=box.y+box.h);
+    if(i)assert(l.icons[i].x-l.icons[i-1].x>8.9f);
+    if(p)assert(l.icons[i].y-4.5f>y+SpiderExtent);
+   }
   }
-  std::cout<<"PASS exact icon sizes/colors and all buff corners inside the native 60x30 diamond over 57344 layouts\n";
+  std::cout<<"PASS 262144 moving layouts: identical subpixel translation, no tile clamp, 20px spider, separated buffs and complete dirty bounds\n";
  }
 }

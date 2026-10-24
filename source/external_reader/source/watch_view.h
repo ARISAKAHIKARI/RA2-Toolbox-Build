@@ -31,6 +31,26 @@ template<class Read> Target choose(Read read,Target pinned,Target prior,bool aut
  uint32_t house=g.template get<uint32_t>(0xA83D4C);if(danger(read,g,prior,house))return prior;
  for(auto p:g.vec(0xA8EC78)){Target t{p,g.template get<uint32_t>(p+0x10)};if(danger(read,g,t,house))return t;}return {};
 }
+// Between simulation frames, re-read live actors at the overlay cadence while
+// reusing the unchanged terrain/object inventory. No independent millisecond
+// throttle: simulation changes still take the complete sampling path below.
+template<class Read> bool refresh(Read read,Frame&out){
+ GameView<Read> g(read);if(!valid(g,out.focus))return false;
+ int fx=g.template get<int>(out.focus.pointer+0x9C,-1),fy=g.template get<int>(out.focus.pointer+0xA0,-1);
+ if(fx<0||fy<0||fx/256!=out.cx||fy/256!=out.cy)return false;
+ auto light=lighting::sample(read);double zScale=projectionZScale(read);
+ if(light!=out.light||zScale!=out.zScale)return false;
+ for(auto&a:out.actors){uint32_t p=a.target.pointer;
+  if(a.kind==4){if(g.template get<uint32_t>(p)!=0x7F522C||g.template get<uint32_t>(p+0x10)!=a.target.id||g.template get<uint8_t>(p+0xCD)||g.template get<int>(p+0x6C)<=0||g.template get<uint32_t>(p+0xC8)!=a.type)return false;a.stage=g.template get<int>(p+0xAC);}
+  else{if(!valid(g,a.target)||g.kind(p)!=a.kind||g.type(p,a.kind)!=a.type||g.template get<uint32_t>(p+0x21C)!=a.owner)return false;a.health=g.template get<int>(p+0x6C);a.pose=visual::pose(g,p,a.type,a.kind,g.template get<int>(0xA8ED84));}
+  a.x=g.template get<int>(p+0x9C,-1);a.y=g.template get<int>(p+0xA0,-1);a.z=g.template get<int>(p+0xA4);
+  int cx=a.x/256-out.cx+out.radius,cy=a.y/256-out.cy+out.radius;
+  if(a.x<0||a.y<0||cx<0||cy<0||cx>=out.side||cy>=out.side||!out.cells[cy*out.side+cx])return false;
+  a.light=lighting::at(read,a.x,a.y,a.z,out.light,a.kind==4);
+ }
+ out.passengers.clear();out.dangerous=false;passengers::contents(read,out.focus.pointer,out.passengers,out.dangerous);
+ return valid(g,out.focus);
+}
 template<class Read> Frame sample(Read read,Target focus,bool reveal,int radius=5){
  Frame out;out.radius=std::clamp(radius,5,24);out.side=2*out.radius+1;out.cells.resize(out.side*out.side);out.tiles.resize(out.side*out.side);GameView<Read> g(read);if(!valid(g,focus))return out;
  out.cx=g.template get<int>(focus.pointer+0x9C,-256)/256;out.cy=g.template get<int>(focus.pointer+0xA0,-256)/256;if(out.cx<0||out.cy<0||out.cx>=512||out.cy>=512)return {};

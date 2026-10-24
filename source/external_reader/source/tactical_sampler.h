@@ -91,8 +91,7 @@ template<class Read> class TacticalSampler {
   int wx=get<int>(p+0x9C,INT32_MIN),wy=get<int>(p+0xA0,INT32_MIN),wz=get<int>(p+0xA4,INT32_MIN);
   if(!project(proj,wx,wy,wz,out.x,out.y))return false;
   if(wx<0||wy<0||wx>=512*256||wy>=512*256)return false;
-  int cx=0,cy=0;project(proj,(wx/256)*256+128,(wy/256)*256+128,wz,cx,cy);
-  out.cellOffsetX=cx-out.x;out.cellOffsetY=cy-out.y;return true;
+  return true;
  }
  bool refreshStatuses(const Projection&proj){
   for(int i=0;i<statuses_.count;++i){auto&mark=statuses_.items[i];uint32_t p=mark.object;

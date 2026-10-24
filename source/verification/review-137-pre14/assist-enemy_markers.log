@@ -1,0 +1,6 @@
+
+PASS enemy units/buildings/infantry/aircraft without reading fog/cells; allies/neutrals excluded; setting isolated; same-frame coordinates and cached names
+PASS menu/paused-frame restore, fresh frame/house/menu/end-game guards, read failure and reconnect clearing
+PASS alliance/neutral/ownership changes, recycled IDs/types, dead/off-map/limbo/transported units and invalid owner data
+PASS 1000 shared 2ms display samples: exact position/interpolation agreement with carrier labels; 125 frame scans; continuous camera movement at most 126 scans
+PASS tactical viewport/sidebar bounds, invalid coordinates, freshness/epoch/wrap, 2048-marker limit and corrupt object-array bounds

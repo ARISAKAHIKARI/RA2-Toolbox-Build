@@ -1069,7 +1069,7 @@ static void paint(){
  int enemyCount=extra.enemyMarkers&&externalData&&external::enemies::fresh(enemyFrame,externalData->match,renderNow)?std::min(enemyFrame.count,enemyMotion.render(renderNow,enemyViews)):0;
  RECT r{};GetClientRect(game,&r);POINT origin{};ClientToScreen(game,&origin);
  updateAircraftButton(origin,r);minimap::update(origin,r);
- formationhost::update();watchhost::update();watchwindows::update(origin,r);
+ formationhost::update();watchhost::update(renderNow);watchwindows::update(origin,r);
  auto passengerBubbles=passengerView();
  auto airLines=airway::lines();
  auto nativeBadges=buildreserve::nativeBadges();
@@ -1098,7 +1098,7 @@ static void paint(){
  for(int i=0;i<labelCount;++i){auto&l=labelViews[i];float z=viewport::factor(labelScalePercent);include(l.x*sx-140*z,l.y*sy-70*z,280*z,110*z);}
  for(int i=0;i<snap.crateCount;++i){auto&c=snap.crates[i];include(c.x*sx-110,c.y*sy-33,220,46);}
  for(int i=0;i<snap.threatCount;++i){auto&t=snap.threats[i];include(std::min(t.x,t.tx)*sx-10,std::min(t.y,t.ty)*sy-10,std::abs(t.x-t.tx)*sx+20,std::abs(t.y-t.ty)*sy+20);}
- for(int i=0;i<statusCount;++i){const auto&v=statusViews[i];const auto&m=statusFrame.items[i];include(v.x-8,v.y-8,16,16);include(float(m.x+m.cellOffsetX)-30,float(m.y+m.cellOffsetY)-15,60,30);}
+ for(int i=0;i<statusCount;++i){const auto&v=statusViews[i];const auto&m=statusFrame.items[i];auto b=statusbadges::bounds(v.x,v.y,m.buffs,m.parasite!=0);include(b.x,b.y,b.w,b.h);}
  for(int i=0;i<enemyCount;++i){const auto&v=enemyViews[i];if(external::enemies::onScreen(v.x,v.y,enemyFrame.width,enemyFrame.height))include(v.x*sx-10,v.y*sy-12,300,54);}
  if(right<=left||bottom<=up){ShowWindow(overlay,SW_HIDE);return;}
  static Snapshot drawn{};static visual::LabelView drawnViews[MaxLabels];static int drawnCount;static bool lastToast,lastPanel,lastSummary;static std::wstring oldToast;static int oldW,oldH,oldMargin;static uint32_t revision;
@@ -1121,6 +1121,7 @@ static void paint(){
  drawnSpiderPhase=spiderPhase;drawnPassengers=passengerBubbles;drawn.width=snap.width;drawn.height=snap.height;drawnShapeRevision=sidebarShapes.revision;drawnAirLines=airLines;drawnBadges=nativeBadges;drawnIdleTabs=idleTabs;drawnTabPhase=tabPhase;
  memset(surface.bits,0,size_t(surface.w)*surface.h*4);
  {Bitmap bm(surface.w,surface.h,surface.w*4,PixelFormat32bppPARGB,surface.bits);Graphics g(&bm);g.SetSmoothingMode(SmoothingModeAntiAlias);g.ScaleTransform(view.x,view.y);g.TranslateTransform(-float(left),-float(up));
+  watchwindows::occlude(g);
   if(idleTabs&&tabPhase){auto state=g.Save();g.SetInterpolationMode(InterpolationModeNearestNeighbor);g.SetPixelOffsetMode(PixelOffsetModeHalf);
    for(int i=0;i<4;++i)if(idleTabs&(1u<<i)){auto&f=sidebarShapes.frames[i];Bitmap shape(f.width,f.height,f.width*4,PixelFormat32bppPARGB,reinterpret_cast<BYTE*>(f.pixels.data()));g.DrawImage(&shape,RectF(f.x*sx,f.y*sy,f.width*sx,f.height*sy));}g.Restore(state);
   }

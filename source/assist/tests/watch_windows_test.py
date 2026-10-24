@@ -33,17 +33,20 @@ static HWND CreateWindowExW(int,const wchar_t*,const wchar_t*,int,int,int,int,in
 static void SetLayeredWindowAttributes(HWND,int,int,int){}static void GetWindowRect(HWND w,RECT*r){*r=win[w].rect;}static bool IsWindowVisible(HWND w){return win[w].visible;}
 static bool SetWindowPos(HWND w,HWND,int x,int y,int width,int height,int flags){assert(flags&SWP_NOACTIVATE);win[w].rect={x,y,x+width,y+height};win[w].visible=true;++win[w].raises;return true;}
 static void InvalidateRect(HWND w,void*,bool){++win[w].invalidations;}
+static int synchronousPaints=0;static void UpdateWindow(HWND w){++synchronousPaints;windowProc(w,WM_PAINT,0,0);}
 #include "../source/watch_windows.h"
 int main(){
  battlefield(true);auto put=[](uint32_t p,auto v){memcpy(memory.data()+p,&v,sizeof v);};
  uint32_t p=0x10000;put(p,0x7F5C70u);put(p+0x10,42u);put(p+0x6C,100);put(p+0x74,uint8_t(1));put(p+0x90,uint8_t(1));put(p+0x9C,40*256);put(p+0xA0,30*256);put(p+0xA4,208);put(0xB0CD48,.144337567);
  for(int i=0;i<3;++i){watchhost::tracks[i].target={p,42};watchhost::views[i].shown=true;watchhost::views[i].frame.focus={p,42};}watchhost::arrange();
- RECT client{0,0,1600,1200};POINT origin{100,200};watchwindows::update(origin,client);assert(win.size()==3);for(auto w:watchwindows::windows){assert(win[w].visible&&win[w].raises==1&&win[w].invalidations==1);}
+ RECT client{0,0,1600,1200};POINT origin{100,200};watchwindows::update(origin,client);assert(win.size()==3&&synchronousPaints==3);for(auto w:watchwindows::windows){assert(win[w].visible&&win[w].raises==1&&win[w].invalidations==1);}
+ Graphics clipping;watchwindows::occlude(clipping);assert(excluded.size()==3);for(int i=0;i<3;++i){auto b=watchhost::views[i].box;assert(excluded[i].x==b.x-1&&excluded[i].y==b.y-1&&excluded[i].w==b.w+2&&excluded[i].h==b.h+2);}
+ int paints=synchronousPaints;for(int n=0;n<100;++n){for(auto&v:watchhost::views)++v.revision;watchwindows::update(origin,client);}assert(synchronousPaints==paints+300);
  HWND middle=watchwindows::windows[1];auto box=watchhost::views[1].box;assert(win[middle].rect.left==100+box.x*2&&win[middle].rect.top==200+box.y*2);
  assert(watchwindows::proc(middle,WM_MOUSEACTIVATE,0,0)==MA_NOACTIVATE);watchwindows::proc(middle,WM_LBUTTONDOWN,0,0);assert(wakes==1&&shared->cameraSeq==2&&shared->cameraMatch==1&&shared->cameraTargetX==300&&shared->cameraTargetY==1020);
  watchwindows::proc(middle,WM_LBUTTONUP,0,0);assert(wakes==1);watchwindows::proc(middle,WM_RBUTTONDOWN,0,0);assert(watchhost::tracks[1]);
  for(int scenario=0;scenario<4;++scenario){battlefield(scenario!=0);focused=scenario!=1;fresh=scenario!=2;snap.chat=scenario==3;watchwindows::proc(middle,WM_LBUTTONDOWN,0,0);assert(wakes==1);}battlefield(true);focused=fresh=true;snap.chat=0;
- clockValue+=999;watchwindows::update(origin,client);assert(win[middle].raises==1);++clockValue;watchwindows::update(origin,client);assert(win[middle].raises==2&&win[middle].invalidations==2);
+ clockValue+=999;watchwindows::update(origin,client);assert(win[middle].raises==1);++clockValue;watchwindows::update(origin,client);assert(win[middle].raises==2&&win[middle].invalidations==102);
  battlefield(false);watchwindows::update(origin,client);for(auto w:watchwindows::windows)assert(!win[w].visible);clockValue+=2000;watchwindows::update(origin,client);assert(win[middle].raises==2);battlefield(true);watchwindows::update(origin,client);assert(win[middle].visible&&win[middle].raises==3);
  watchwindows::proc(middle,WM_RBUTTONDOWN,MK_SHIFT,0);assert(!watchhost::tracks[1]&&!watchhost::views[1].shown&&!win[middle].visible&&watchhost::tracks[0]&&watchhost::tracks[2]);clockValue+=1000;watchwindows::update(origin,client);assert(!win[middle].visible);
  watchwindows::proc(watchwindows::windows[0],WM_SETCURSOR,0,0);assert(cursors==1);watchwindows::destroy();assert(win.empty());

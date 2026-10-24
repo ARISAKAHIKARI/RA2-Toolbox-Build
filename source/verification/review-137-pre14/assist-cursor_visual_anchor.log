@@ -1,0 +1,2 @@
+PASS inner-ring anchor, stable animation, asymmetric shadow/decoration, unavailable table, conflicting cursor, scale/manual-offset precedence and unrecognized-art fallback
+PASS supplied 450-frame SHA/palette: all five Iron Curtain frames share inner mark (28.5,21), independent of canvas/bounds

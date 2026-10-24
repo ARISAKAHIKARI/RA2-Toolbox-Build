@@ -1,0 +1,12 @@
+In file included from /workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/unit_status.cpp:2:
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/enemy_markers.cpp: In function ‘int previous_enemy_marker_test_main()’:
+/workspace/scratch/9191caa5da6a/ra2-toolbox/source/assist/tests/enemy_markers.cpp:120:1: warning: control reaches end of non-void function [-Wreturn-type]
+  120 | }
+      | ^
+
+PASS live reciprocal parasite relation including Limbo attacker; attacker ownership/color changes in same frame; separate settings; read-only host data
+PASS detach/death and stale one-way parasite pointers clear the icon
+PASS crate fields separate from elite rank; individual icons; no marker for NaN/infinity/default or invalid multipliers
+PASS all owners, infantry/vehicle/aircraft fields; buildings/transported units excluded; menu/session/read failures and recycled IDs
+PASS 1000 high-refresh samples with 125 frame scans; freshness expires at 250ms
+PASS 262144 moving layouts: identical subpixel translation, no tile clamp, 20px spider, separated buffs and complete dirty bounds

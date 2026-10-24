@@ -1,13 +1,13 @@
 {
-  "label": "1.0.37.13 SingleRuntime",
-  "file_version": "1.0.37.13",
+  "label": "1.0.37.14 SingleRuntime",
+  "file_version": "1.0.37.14",
   "verified": {
     "RA2Toolbox.exe": {
-      "bytes": 2827776,
-      "sha256": "05cae7b284758cf9d9cc92ffab2d2066536d9935a6b74b65940432c371eef882",
+      "bytes": 2823680,
+      "sha256": "488eb6358014cd284bc400e94eb2b5df803a116aa7a6842a363db329a5d4ccb6",
       "machine": "PE32 x86",
       "sections": 14,
-      "entry_rva": "0x1397b0",
+      "entry_rva": "0x13b6c0",
       "exports": [
         "AssistHostMappingPrefix",
         "AssistHostProtocolInfo",
@@ -61,7 +61,6 @@
       ],
       "imports": {
         "gdiplus.dll": [
-          "GdipAddPathPolygon",
           "GdipAddPathString",
           "GdipAlloc",
           "GdipCloneBrush",
@@ -103,7 +102,6 @@
           "GdipRestoreGraphics",
           "GdipSaveGraphics",
           "GdipScaleWorldTransform",
-          "GdipSetClipPath",
           "GdipSetClipRect",
           "GdipSetCompositingMode",
           "GdipSetImageAttributesColorMatrix",
@@ -226,6 +224,7 @@
           "UnhookWindowsHookEx",
           "UnregisterHotKey",
           "UpdateLayeredWindow",
+          "UpdateWindow",
           "WindowFromPoint",
           "wsprintfW"
         ],
@@ -557,7 +556,7 @@
     },
     "GameRuntime.dll": {
       "bytes": 4869632,
-      "sha256": "61fc50ae57b295fba74046269297e22506d768be0dea94e3e1775af238bc6b25",
+      "sha256": "515fdea45e53aa091d311bba32fd3effd7bbdbd21ec907ae93e7f12c75948013",
       "machine": "PE32 x86",
       "sections": 13,
       "entry_rva": "0x61c20",

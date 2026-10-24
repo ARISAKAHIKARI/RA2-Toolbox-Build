@@ -1,0 +1,37 @@
+{
+  "version": "1.0.37-pre.14",
+  "base_commit": "da3bfab8f10e88c46ff57527a460124d9a737c22",
+  "build": "PASS: Zig 0.13.0 PE32 x86",
+  "host_suites": 22,
+  "host_status": "PASS",
+  "runtime_mapping_cases": 8,
+  "runtime_mapping_reports": [
+    {
+      "report": "mapping-pair-3.json",
+      "cases": 4,
+      "status": "PASS"
+    },
+    {
+      "report": "mapping-pair-4.json",
+      "cases": 4,
+      "status": "PASS"
+    }
+  ],
+  "artifacts": {
+    "RA2Toolbox.exe": {
+      "bytes": 2823680,
+      "sha256": "488eb6358014cd284bc400e94eb2b5df803a116aa7a6842a363db329a5d4ccb6"
+    },
+    "GameRuntime.dll": {
+      "bytes": 4869632,
+      "sha256": "515fdea45e53aa091d311bba32fd3effd7bbdbd21ec907ae93e7f12c75948013"
+    }
+  },
+  "build_receipt": "windows-artifacts.json",
+  "host_receipt": "host-tests.json",
+  "private_game_resources_published": false,
+  "windows_visual_tested": false,
+  "physical_refresh_measured": false,
+  "multiplayer_tested": false,
+  "scope": "Host display and version resources only. Historical 846 Runtime cases were not rerun. Controlled GDI/Win32 tests do not prove real desktop composition or physical FPS."
+}
