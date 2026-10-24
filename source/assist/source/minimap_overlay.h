@@ -4,6 +4,7 @@
 #include "../../external_reader/source/radar_map.h"
 #include "../../external_reader/source/camera_assets.h"
 #include "../../external_reader/source/radar_scene.h"
+#include "../../external_reader/source/radar_publication.h"
 #include <thread>
 #include <mutex>
 #include <condition_variable>
@@ -21,10 +22,23 @@ class Worker {
    if(token!=active){reader.close();sampler.reset();renderer.reset();active=token;previousFrame=-1;previousRevision=0;}
    std::shared_ptr<const external::radar::Frame> next;
    if(reader.open(r.pid)){reader.begin();bool ok=sampler.step(r.reveal,4096,r.mode==1);int frame=reader.get<int>(0xA8ED84,-1);
-    if(ok&&(r.mode==1||frame!=previousFrame||sampler.revision()!=previousRevision)){auto data=sampler.snapshot(GetTickCount());if(data.terrain&&r.mode==1){assets.identity(r.pid,r.match);data.scene=renderer.render(data,r.width,r.height,external::SharedReadView{&reader},assets);}if(data.terrain)next=std::make_shared<external::radar::Frame>(std::move(data));else {std::lock_guard<std::mutex> lock(mutex);if(token==generation)latest.reset();}previousFrame=frame;previousRevision=sampler.revision();}
+    if(ok&&(r.mode==1||frame!=previousFrame||sampler.revision()!=previousRevision)){
+     auto data=sampler.snapshot(GetTickCount());auto fresh=[&](uint32_t p,void*out,size_t n){return reader.readFresh(p,out,n);};
+     auto sampled=external::radar::publicationContext(fresh);
+     if(external::radar::sameWorld(data,sampled)){
+      if(!external::radar::freshMarkers(data,sampled))data.markers.clear();
+      // Publish terrain immediately; retain the last completed scene while the
+      // next one loads. Initial MIX scans must not keep the whole window hidden.
+      {std::lock_guard<std::mutex> lock(mutex);if(token==generation){if(r.mode==1&&latest&&latest->scene&&latest->terrain->geo.same(data.terrain->geo)&&latest->scene->width==r.width&&latest->scene->height==r.height)data.scene=latest->scene;latest=std::make_shared<external::radar::Frame>(data);}}
+      if(r.mode==1){assets.identity(r.pid,r.match);auto scene=renderer.render(data,r.width,r.height,external::SharedReadView{&reader},assets);if(scene)data.scene=std::move(scene);}
+      next=std::make_shared<external::radar::Frame>(std::move(data));
+     }else{std::lock_guard<std::mutex> lock(mutex);if(token==generation)latest.reset();}
+     previousFrame=frame;previousRevision=sampler.revision();
+    }
     if(!ok){std::lock_guard<std::mutex> lock(mutex);if(token==generation)latest.reset();}
    }else{std::lock_guard<std::mutex> lock(mutex);if(token==generation)latest.reset();}
-   {std::unique_lock<std::mutex> lock(mutex);if(token==generation&&next){uint32_t house=0;int endFrame=-1;bool consistent=reader.readFresh(0xA83D4C,&house,4)&&reader.readFresh(0xA8ED84,&endFrame,4)&&house==next->terrain->geo.house&&endFrame>=next->frame&&endFrame-next->frame<=2;if(consistent)latest=std::move(next);else latest.reset();}cv.wait_for(lock,std::chrono::milliseconds(std::max(2,1000/std::clamp(r.rate,5,500))),[&]{return stop||generation!=token;});if(stop)return;}
+   auto fresh=[&](uint32_t p,void*out,size_t n){return reader.readFresh(p,out,n);};auto completed=external::radar::publicationContext(fresh);
+   {std::unique_lock<std::mutex> lock(mutex);if(token==generation&&next){if(external::radar::sameWorld(*next,completed))latest=std::move(next);else latest.reset();}cv.wait_for(lock,std::chrono::milliseconds(std::max(2,1000/std::clamp(r.rate,5,500))),[&]{return stop||generation!=token;});if(stop)return;}
   }
  }
 public:

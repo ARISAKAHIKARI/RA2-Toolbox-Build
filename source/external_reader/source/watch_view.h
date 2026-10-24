@@ -86,7 +86,7 @@ template<class Read> Frame sample(Read read,Target focus,bool reveal,int radius=
   Actor a;a.target={p,g.template get<uint32_t>(p+0x10)};a.x=x;a.y=y;a.z=g.template get<int>(p+0xA4);a.type=g.template get<uint32_t>(p+0xC8);a.kind=4;a.stage=g.template get<int>(p+0xAC);a.color=0xff83a95bu;a.light=lighting::at(read,a.x,a.y,a.z,out.light,true);out.actors.push_back(a);
  }
  size_t bodies=out.actors.size();for(size_t i=0;i<bodies;++i){auto body=out.actors[i];if(body.kind!=3)continue;
-  for(const auto&state:animations::attached(read,body.target.pointer,body.target.id)){Actor a;a.target={state.object,state.id};a.parent=body.target;a.type=state.type;a.owner=state.owner;a.x=state.x;a.y=state.y;a.z=state.z;a.kind=5;a.pose.frame=state.frame;a.drawZ=state.zAdjust;a.light=lighting::at(read,a.x,a.y,a.z,out.light);if(state.normalLight)a.light={};out.actors.push_back(a);}
+  for(const auto&state:animations::attached(read,body.target.pointer,body.target.id)){Actor a;a.target={state.object,state.id};a.parent=body.target;a.onBridge=body.onBridge;a.type=state.type;a.owner=state.owner;a.x=state.x;a.y=state.y;a.z=state.z;a.kind=5;a.pose.frame=state.frame;a.drawZ=state.zAdjust;a.light=lighting::at(read,a.x,a.y,a.z,out.light);if(state.normalLight)a.light={};out.actors.push_back(a);}
  }
  if(!valid(g,focus))return {};std::stable_sort(out.actors.begin(),out.actors.end(),[](const Actor&a,const Actor&b){return int64_t(a.x)+a.y<int64_t(b.x)+b.y;});return out;
 }

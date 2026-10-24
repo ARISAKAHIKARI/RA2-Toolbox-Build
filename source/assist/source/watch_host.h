@@ -19,7 +19,7 @@ struct ArtCached {gameassets::ActorArt art;DWORD retry=0;bool ready=false;std::s
 static std::map<ArtKey,ArtCached> actorArt;
 static std::map<ImageKey,Cached> images;
 static std::map<std::pair<uint32_t,uint32_t>,ImageKey> displayed;
-static size_t actorCursor=0;static DWORD diagnosticAt=0;
+static size_t actorCursor=0;static DWORD diagnosticAt=0;static uint64_t assetRevision=0;
 static ArtKey artKey(const external::watch::Actor&a){return {a.type,a.owner,a.kind,a.pose.variant};}
 static ImageKey imageKey(const external::watch::Actor&a){return {a.type,a.owner,a.kind,a.kind==4?0:a.pose.body,a.kind==4?0:a.pose.turret,a.kind==4?a.stage:a.pose.frame,a.pose.variant};}
 static std::map<std::pair<uint32_t,uint32_t>,Cached> tiles,overlays;
@@ -45,6 +45,7 @@ static void pin(uint32_t key){
 }
 static void refreshAssets(external::watch::Frame&frame,DWORD now){
  gameassets::update();
+ if(assetRevision!=gameassets::revision()){assetRevision=gameassets::revision();images.clear();displayed.clear();actorArt.clear();tiles.clear();overlays.clear();terrainPalette={};actorCursor=0;}
  sceneLight=frame.light;
  std::array<uint32_t,256> palette{};if((external::terrain::palette(read,0xABBED0,palette)||gameassets::palette(true,palette))&&palette!=terrainPalette){terrainPalette=palette;tiles.clear();overlays.clear();for(auto it=images.begin();it!=images.end();)if(std::get<2>(it->first)==4)it=images.erase(it);else ++it;}
  bool paletteReady=std::any_of(terrainPalette.begin(),terrainPalette.end(),[](uint32_t c){return c!=0;});std::string paletteIssue=paletteReady?"":gameassets::failure;
@@ -157,7 +158,7 @@ static void drawView(Graphics&g,const View&view){
   if(over!=overlays.end()&&over->second.ready)canvas.blit(over->second.image,px,py+t.overlayY*scale,scale,scale,base+(t.bridge?60:0),t.overlayLight,2);
  }
  std::vector<const external::watch::Actor*> order;for(const auto&a:frame.actors)order.push_back(&a);
- std::stable_sort(order.begin(),order.end(),[](const auto*a,const auto*b){return int64_t(a->x)+a->y<int64_t(b->x)+b->y;});
+ std::stable_sort(order.begin(),order.end(),[](const auto*a,const auto*b){if((a->kind==5)!=(b->kind==5))return b->kind==5;return int64_t(a->x)+a->y<int64_t(b->x)+b->y;});
  float focusX=-100,focusY=-100;
  for(const auto*actor:order){const auto&a=*actor;int cx=a.x/256-frame.cx+radius,cy=a.y/256-frame.cy+radius;if(cx<0||cy<0||cx>=side||cy>=side)continue;
   auto p=position(a);float x=ox+(p.first-cameraX)*scale,y=oy+(p.second-cameraY)*scale;

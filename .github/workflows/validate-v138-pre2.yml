@@ -1,7 +1,7 @@
 name: Validate RA2 Toolbox 1.0.38-pre.2
 on:
   push:
-    branches: [codex/camera-v138-pre2]
+    branches: [codex/camera-v138-pre2, codex/building-animation-fix]
     paths: ['source/**', '.github/workflows/validate-v138-pre2.yml']
   workflow_dispatch:
 permissions:
@@ -24,7 +24,7 @@ jobs:
           python3 source/assist/tests/cursor_settings_ui_test.py
           python3 source/assist/tests/ui_geometry_test.py
           python3 source/assist/tests/enemy_overlay_test.py
-          for test in label_motion passenger_motion pacing enemy_markers enemy_clusters watch_view watch_host watch_slots visual_pose voxel_preview game_assets live_ini cameo_catalog camera_raster building_animations radar_scene sprite_formats terrain_preview scene_lighting command_delivery direct_modes; do
+          for test in label_motion passenger_motion pacing enemy_markers enemy_clusters watch_view watch_host watch_slots visual_pose voxel_preview game_assets live_ini cameo_catalog camera_raster building_animations radar_scene minimap_overlay formation_host sprite_formats terrain_preview scene_lighting command_delivery direct_modes; do
             g++ -std=c++17 -O2 "source/assist/tests/$test.cpp" -o "/tmp/$test"
             "/tmp/$test"
           done

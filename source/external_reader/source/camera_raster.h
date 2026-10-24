@@ -14,6 +14,13 @@ struct Light {
  }
 };
 inline uint32_t lit(uint32_t pixel,uint8_t index,bool object,const lighting::State&state){return Light(state).apply(pixel,index,object);}
+// Presentation-only opacity. Shared camera poses stay opaque; translucent
+// previews retain premultiplied RGB and the same indexed lighting rules.
+inline void previewPixels(const voxel::Image&image,const lighting::State&state,unsigned opacity,std::vector<uint32_t>&out){
+ Light light(state);opacity=std::min(255u,opacity);out.resize(image.pixels.size());bool indexed=image.indices.size()==out.size();
+ for(size_t i=0;i<out.size();++i){uint32_t p=light.apply(image.pixels[i],indexed?image.indices[i]:0,image.objectPalette),v=0;
+  for(int shift:{0,8,16,24})v|=((((p>>shift)&255)*opacity+127)/255)<<shift;out[i]=v;}
+}
 inline size_t pixels(const voxel::Image&i){size_t n=i.pixels.size();for(const auto&part:i.attachments)n+=pixels(part);return n;}
 inline void opaque(voxel::Image&i){
  for(auto&p:i.pixels)if(unsigned a=p>>24)p=0xff000000u|(std::min(255u,((p>>16)&255)*255/a)<<16)|(std::min(255u,((p>>8)&255)*255/a)<<8)|std::min(255u,(p&255)*255/a);

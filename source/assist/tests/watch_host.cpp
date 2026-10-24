@@ -19,6 +19,7 @@ struct ColorMatrix {float m[5][5]{};};static ColorMatrix drawnMatrix;static std:
 constexpr int PixelFormat32bppPARGB=1,CombineModeIntersect=1,CombineModeExclude=3,UnitPixel=2;
 struct Graphics {int Save(){return 0;}void Restore(int){}void SetClip(RectF r,int mode){if(mode==CombineModeExclude)excluded.push_back(r);}void TranslateTransform(float,float){}void FillRectangle(SolidBrush*,float,float,float,float){}void DrawRectangle(Pen*,float,float,float,float){}void FillPolygon(SolidBrush*,PointF*,int){}void DrawEllipse(Pen*,float,float,float,float){}void DrawImage(Bitmap*,RectF rect,float,float,float,float,int,ImageAttributes*){++draws;drawnRects.push_back(rect);drawnGains.push_back(drawnMatrix.m[0][0]);}};
 namespace gameassets {
+ static uint64_t revision(){return 1;}
  static std::string failure;
  struct ActorArt {external::voxel::Model model;int marker=0;};
  static struct {size_t count(){return 1;}}files;

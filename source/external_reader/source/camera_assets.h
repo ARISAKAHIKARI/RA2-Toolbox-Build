@@ -6,6 +6,7 @@
 #include "cameo_catalog.h"
 #include "shape_depth.h"
 #include "building_animations.h"
+#include "sprite_names.h"
 #include <cstdio>
 #include <cstdlib>
 #include <memory>
@@ -24,6 +25,7 @@ public:
 external::assets::Files files;
 std::string failure;
 void update(){files.update(reader_,process_,match_);}
+uint64_t revision(){return files.revision()^(uint64_t(word(0x822CF8)+1)*0x9e3779b97f4a7c15ull);}
 bool cameo(const char*name,std::vector<uint8_t>&out){update();return files.load(name,out);}
 uint32_t word(uint32_t p){uint32_t v=0;read(p,&v,4);return v;}
 std::string text(uint32_t p,unsigned n){return external::assets::text(read,p,n);}
@@ -43,23 +45,16 @@ std::string artValue(uint32_t type,const std::string&key){auto image=imageName(t
 bool artYes(uint32_t type,const std::string&key){auto v=external::assets::name(artValue(type,key));return v=="YES"||v=="TRUE"||v=="1";}
 bool paletteFile(const std::string&name,std::array<uint32_t,256>&out){std::vector<uint8_t>b;if(!files.load(name,b)){failure="palette-not-found:"+name;return false;}if(!external::assets::pal(b,out)){failure="palette-format:"+name;return false;}return true;}
 bool palette(bool iso,std::array<uint32_t,256>&out){std::vector<uint8_t> bytes;std::string n=iso?theater(68,10):"UNIT"+theater(78,3);if(n.empty()){failure="palette-theater-name";return false;}n+=".PAL";if(!files.load(n,bytes)){failure="palette-not-found:"+n;return false;}if(!external::assets::pal(bytes,out)){failure="palette-format:"+n;return false;}return true;}
-std::vector<std::string> spriteNames(uint32_t type,uint32_t pointer,bool overlay=false){
- std::vector<std::string> result;auto add=[&](std::string s){s=external::assets::name(s);if(external::assets::safe(s)&&std::find(result.begin(),result.end(),s)==result.end())result.push_back(s);};
- auto live=external::assets::shapeName(read,pointer);if(!live.empty())add(live);auto stem=imageName(type);if(stem.empty())return result;
+std::vector<std::string> spriteNames(uint32_t type,uint32_t pointer,bool overlay=false,bool buildingPart=false,uint32_t parentType=0){
+ auto live=external::assets::shapeName(read,pointer);auto stem=imageName(type);
  bool seasonal=(word(type+0x22C)&255)||artYes(type,"THEATER");
  bool newTheater=(word(type+0x237)&255)||artYes(type,"NEWTHEATER");
- auto extensions=[&](){add(stem+"."+theater(78,3));for(auto e:{"TEM","SNO","URB","LUN","DES","UBN"})add(stem+"."+e);};
- auto variants=[&](){if(stem.size()<2)return;auto variant=stem;auto chr=theater(86,1);if(!chr.empty()){variant[1]=chr[0];add(variant+".SHP");}for(char c:std::string("GTAUNDL")){variant[1]=c;add(variant+".SHP");}};
- // FindUnitShp's ordered phases, including cross-theater fallback. Overlay
- // loading first tries the current theater's extension even without Theater=yes.
- if(overlay)add(stem+"."+theater(78,3));else if(seasonal)extensions();
- bool supports=std::string("GNCY").find(stem[0])!=std::string::npos;
- if(newTheater||(!overlay&&supports))variants();
- add(stem+".SHP");extensions();variants();
- return result;
+ if(parentType>=0x10000)newTheater|=(word(parentType+0x237)&255)||artYes(parentType,"NEWTHEATER");
+ return external::assets::spriteNames(stem,live,theater(78,3),theater(86,1),seasonal,newTheater,overlay,buildingPart);
 }
-bool shapeBytes(uint32_t type,uint32_t pointer,std::vector<uint8_t>&bytes,std::string&file,bool overlay=false){
- auto names=spriteNames(type,pointer,overlay);for(const auto&n:names)if(files.load(n,bytes)){file=n;return true;}
+bool shapeBytes(uint32_t type,uint32_t pointer,std::vector<uint8_t>&bytes,std::string&file,bool overlay=false,bool buildingPart=false,uint32_t parentType=0){
+ auto names=spriteNames(type,pointer,overlay,buildingPart,parentType);for(const auto&n:names)if(files.load(n,bytes)){file=n;return true;}
+ bytes.clear();
  file.clear();failure="sprite-not-found:"+artName(type);for(const auto&n:names)failure+=" "+n;return false;
 }
 bool spritePalette(uint32_t type,const std::string&file,bool overlay,uint32_t owner,std::array<uint32_t,256>&out,bool terrain=false){
@@ -123,12 +118,19 @@ bool captureAnimation(uint32_t p,uint32_t type,uint32_t id,ActorArt&out){
  if(!external::animations::capture(read,p,parent,word(parent+0x10),state)||state.id!=id||state.type!=type)return false;
  ActorArt next;next.kind=5;next.type=type;next.pointer=word(type+0xA4);next.flat=(word(type+0x369)&255)!=0;next.shadow=(word(type+0x372)&255)!=0;
  next.drawY=int32_t(word(type+0x344));if(std::abs(int64_t(next.drawY))>4096)return false;
- if(!shapeBytes(type,next.pointer,next.shape,next.filename))return false;
+ bool loaded=shapeBytes(type,next.pointer,next.shape,next.filename,false,true,word(parent+0x520));
+ if(!loaded)next.filename=external::assets::shapeName(read,next.pointer);
  auto custom=text(p+0xDC,32);if(custom.empty())custom=artValue(type,"PALETTE");bool colors=false;
  if(!custom.empty()){custom=external::assets::name(custom);colors=custom.size()>4&&custom.substr(custom.size()-4)==".PAL"?paletteFile(custom,next.colors):(paletteFile(custom+theater(78,3)+".PAL",next.colors)||paletteFile(custom+".PAL",next.colors));}
  else if((word(p+0x118)&255)||(word(type+0x361)&255))colors=spritePalette(word(parent+0x520),"",false,state.owner,next.colors);
  else colors=paletteFile("ANIM.PAL",next.colors);
- if(!colors||word(p+0x10)!=id||word(p+0xC8)!=type)return false;out=std::move(next);return true;
+ if(!colors)return false;
+ // A theater SHP already loaded by the engine remains usable when its archive
+ // cannot be resolved on disk. Frame zero and PausedAnimFrame zero are valid.
+ if(!loaded){external::voxel::Image check;std::string why;
+  if(!external::voxel::sprite(read,next.pointer,next.colors,check,state.frame,&why,255)){failure="animation-memory:"+why;return false;}}
+ if(word(p+0x10)!=id||word(p+0xC8)!=type||word(p+0xCC)!=parent||word(parent+0x10)!=state.parentId)return false;
+ failure.clear();out=std::move(next);return true;
 }
 bool captureActor(uint32_t p,uint32_t type,uint32_t id,ActorArt&out){
  failure.clear();if(word(p+0x10)!=id){failure="actor-identity";return false;}ActorArt next;external::GameView game(read);next.kind=game.kind(p);next.type=type;uint32_t owner=word(p+0x21C);
@@ -164,7 +166,7 @@ bool captureActor(uint32_t p,uint32_t type,uint32_t id,ActorArt&out){
   }else{part("TUR",type+0xB8,true);part("BARL",type+0xC0,true);}
  }else{
   next.pointer=word(type+0xA4);std::string filename;
-  bool loaded=shapeBytes(type,next.pointer,next.shape,filename);next.filename=filename;
+  bool loaded=shapeBytes(type,next.pointer,next.shape,filename,false,next.kind==3);next.filename=filename;
   if(!loaded)filename=external::assets::shapeName(read,next.pointer);
   if(!spritePalette(type,filename,false,owner,next.colors))return false;
   if(!loaded){external::voxel::Image check;if(!external::voxel::sprite(read,next.pointer,next.colors,check)){failure="sprite-not-found/unloaded:"+(filename.empty()?stem:filename);return false;}}

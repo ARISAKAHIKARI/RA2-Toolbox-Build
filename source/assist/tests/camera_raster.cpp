@@ -16,6 +16,13 @@ int main(){
  voxel::Image facingA,facingB;assert(voxel::render(model,0,colors,facingA,0,0,&vpl,255));assert(voxel::render(model,1.57079632679,colors,facingB,0,0,&vpl,255));
  auto index=[](const voxel::Image&i){for(size_t n=0;n<i.pixels.size();++n)if(i.pixels[n]>>24)return i.indices[n];return uint8_t(0);};assert(index(facingA)!=index(facingB));
  bytes.resize(800);assert(!vpl.load(bytes));
+ // SHP and VXL presentation share premultiplied opacity and indexed lighting.
+ voxel::Image preview;preview.width=3;preview.height=1;preview.pixels={0xff804020,0xff804020,0};preview.indices={20,245,0};preview.objectPalette=true;
+ auto source=preview.pixels;std::vector<uint32_t> translucent;light.intensity=500;camera::previewPixels(preview,light,124,translucent);
+ assert((translucent[0]>>24)==124&&(translucent[1]>>24)==124&&translucent[2]==0&&preview.pixels==source);
+ assert((translucent[0]&0xffffff)<(translucent[1]&0xffffff)); // emissive color still bypasses dimming
+ for(auto p:translucent)for(int shift:{0,8,16})assert(((p>>shift)&255)<=(p>>24));
+ camera::previewPixels(facingA,light,124,translucent);assert(std::any_of(translucent.begin(),translucent.end(),[](uint32_t p){return p>>24==124;}));
  std::array<float,3> n{};assert(voxel::normalVector(4,0,n)&&!voxel::normalVector(4,250,n)&&!voxel::normalVector(0,0,n));
  assert(!s.reset(100000,100000));
  std::cout<<"PASS per-pixel depth, ties, animation read-only depth, emissive indices, quantized light and bounded VPL lookup\n";

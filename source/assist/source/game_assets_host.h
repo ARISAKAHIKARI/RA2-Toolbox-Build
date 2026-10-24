@@ -5,6 +5,7 @@ using ActorArt=Context::ActorArt;
 static Context context(externalReader);
 static auto&files=context.files;static auto&failure=context.failure;
 static void update(){context.identity(pid,commandMatch());}
+static uint64_t revision(){return context.revision();}
 static bool cameo(const char*n,std::vector<uint8_t>&b){update();return context.cameo(n,b);}
 static void resolveCameo(um::Type&t){update();context.resolveCameo(t);}
 static std::string text(uint32_t p,unsigned n){return context.text(p,n);}
