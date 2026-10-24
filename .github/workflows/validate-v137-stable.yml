@@ -24,7 +24,7 @@ jobs:
           python3 source/assist/tests/cursor_settings_ui_test.py
           python3 source/assist/tests/ui_geometry_test.py
           python3 source/assist/tests/enemy_overlay_test.py
-          for test in label_motion pacing enemy_markers watch_view command_delivery direct_modes; do
+          for test in label_motion passenger_motion pacing enemy_markers watch_view command_delivery direct_modes; do
             g++ -std=c++17 -O2 "source/assist/tests/$test.cpp" -o "/tmp/$test"
             "/tmp/$test"
           done

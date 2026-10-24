@@ -67,6 +67,7 @@ static bool minimapEnabled=false;static int minimapScale=200,minimapPosition=0,m
 static WORD socialKeys[9]{}; // Cheer, taunts 1..8; empty by default.
 static WORD idleAircraftKey=MAKEWORD('P',HOTKEYF_CONTROL|HOTKEYF_ALT);
 static void hideAircraftButton();static void destroyAircraftButton();
+static void clearPassengerDisplay();
 static void serviceAirPath();static void resetAirPath();static void airPathResult(int,int,uint32_t,uint32_t);
 static void serviceConstruction();static void hideConstruction();static void resetConstruction();static void destroyConstruction();static void constructionResult(int,int,uint32_t,uint32_t);
 static HWND ui,overlay,statusLabel,swList,techList,techSearch,swHotkey,rateEdit,marginEdit,check[7],keys[12],repairCheck,repairEdit;
@@ -680,7 +681,7 @@ static void releaseBridge(){
  else{if(hook)gameinput::release(gameentry::Client::Assist,hook);if(shared)UnmapViewOfFile(shared);if(mapping)CloseHandle(mapping);}
  hook=0;shared=nullptr;mapping=nullptr;module=nullptr;lastData=attachAt=lastPulse=0;incoming={};snapshotSeq=~0u;lastReceiptWrite=lastReceiptMatch=0;reapBridges();
 }
-static void detach(){watchwindows::hide();minimap::clear();hideAircraftButton();resetConstruction();resetAirPath();hotkeyPending.clear();pointerMatches.clear();
+static void detach(){clearPassengerDisplay();watchwindows::hide();minimap::clear();hideAircraftButton();resetConstruction();resetAirPath();hotkeyPending.clear();pointerMatches.clear();
  tacticalPlanner.reset();submittedPlan.clear();worldRevision=-1;plannerAck=0;hasSelection=false;selectionAck=0;
  DWORD exitCode=0;bool exitKnown=gameProcess&&GetExitCodeProcess(gameProcess,&exitCode);
  critical(L"detach pid="+std::to_wstring(pid)+L" processExitCode="+(exitKnown?hex32(exitCode):L"unavailable")+
@@ -1064,7 +1065,7 @@ static void paint(){
  ++displayCounters.paints;
  if(foregroundGame())sampleExternal(GetTickCount()); // Display cadence is independent of 16 ms command servicing.
  bool battlefield=foregroundGame()&&external::display::inspect([](uint32_t at,void*out,size_t n){return externalReader.readFresh(at,out,n);}).visible();
- if(!battlefield||snap.renderStatus!=1){overlayRecovery.suspend();ShowWindow(overlay,SW_HIDE);hideAircraftButton();minimap::hide();watchwindows::hide();hideConstruction();return;}
+ if(!battlefield||snap.renderStatus!=1){overlayRecovery.suspend();ShowWindow(overlay,SW_HIDE);hideAircraftButton();minimap::hide();watchwindows::hide();hideConstruction();clearPassengerDisplay();return;}
  DWORD now=sampleClock(shared),renderNow=sampleRenderClock(shared);int labelCount=motion.render(renderNow,labelViews);
  const auto&statusFrame=externalSampler.unitStatuses();
  int statusCount=statusOptions()&&externalData&&external::status::fresh(statusFrame,externalData->match,renderNow)?std::min(statusFrame.count,statusMotion.render(renderNow,statusViews)):0;
@@ -1073,7 +1074,7 @@ static void paint(){
  RECT r{};GetClientRect(game,&r);POINT origin{};ClientToScreen(game,&origin);
  updateAircraftButton(origin,r);minimap::update(origin,r);
  formationhost::update();watchhost::update(renderNow);watchwindows::update(origin,r);
- auto passengerBubbles=passengerView();
+ auto passengerBubbles=passengerView(renderNow);
  auto airLines=airway::lines();
  auto nativeBadges=buildreserve::nativeBadges();
  uint32_t pausedTabs=0,idleTabs=0;
