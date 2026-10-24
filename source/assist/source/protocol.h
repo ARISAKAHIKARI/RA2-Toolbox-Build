@@ -3,6 +3,7 @@
 #include "formation.h"
 #include "air_path_policy.h"
 #include <stdint.h>
+#include <stddef.h>
 #include "planner_types.h"
 #include "ore_type_config.h"
 #include "feature_type_config.h"
@@ -19,7 +20,7 @@
 #include "burst_compute.h"
 #include "dodge_compute.h"
 namespace assist {
-constexpr uint32_t Magic=0x41533130, Version=69;
+constexpr uint32_t Magic=0x41533130, Version=70;
 // Both binaries derive the namespace from the protocol version. Do not maintain
 // a separate literal in the host: a valid ABI with a different name never connects.
 struct MappingPrefixValue {
@@ -46,9 +47,15 @@ constexpr int RecentReceiptCapacity=32;
 struct Label { uint32_t id; int x,y,used,capacity,ironFrames,shield,advanced; uint32_t ownerColor; int frozenFrames; };
 struct Super { char id[24]; uint16_t name[40]; int index,ready,frames; };
 struct Type { char id[24]; uint16_t name[40]; int kind,index,naval,cost; };
+inline bool typeIndexedCommand(int c,int arg){return (c==OpenTech&&arg)||c==Produce||c==CancelTechProduction||c==ProduceReserved||c==ProduceDeferred||c==SelectType;}
+inline uint64_t typeListHash(const Type*types,int count){
+ if(count<0||count>MaxTypes)return 0;uint64_t h=1469598103934665603ull;
+ auto mix=[&](const void*p,size_t n){auto b=(const uint8_t*)p;while(n--)h=(h^*b++)*1099511628211ull;};
+ mix(&count,4);for(int i=0;i<count;++i){mix(types[i].id,24);mix(&types[i].kind,4);mix(&types[i].index,4);}return h?h:1;
+}
 struct Snapshot {
  int status,frame,session,width,height,labels,swCount,typeCount,selected,transports,used,capacity;
- // techOpen: 0=off, 1=current implementation, 2=classic compatibility.
+ // techOpen: 0=off, 1=controlled, 2=classic compatibility, 3=direct.
  int factories,busyFactories,pausedFactories,completedFactories,credits,techOpen;
  uint32_t match,noticeSerial; int notice; uint32_t scanMicros;
  Label label[MaxLabels]; Super supers[MaxSW]; Type types[MaxTypes];
@@ -171,6 +178,9 @@ struct Shared {
  uint32_t formationAccepted=0,formationRejected=0,formationJobs=0;
  volatile long cameraSeq=0;volatile uint32_t cameraAck=0,cameraTick=0,cameraMatch=0;int cameraTargetX=0,cameraTargetY=0;
  volatile uint32_t dodgeMode=0; // 0 reverse-flight move, 1 existing native Scatter
+ volatile uint32_t placementImplementation=0,techEnhance=0;
+ uint64_t requestTypeHash=0;
+ int techEnhanceStatus=0;uint32_t techEnhanceCount=0;
 
 };
 inline int remaining(int start,int duration,int frame){

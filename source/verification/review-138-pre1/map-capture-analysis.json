@@ -1,0 +1,334 @@
+{
+  "archive": "RA2Master-Capture-20261025-002452-24508.zip",
+  "archive_sha256": "effd9473f9d6489cbf637d706dcdd1745aedffb43a4ce40f3fa66b2f0e7aff12",
+  "session": {
+    "tool_version": "0.2.0",
+    "target_name_policy": "exact_gamemd.exe",
+    "feature_id": "map",
+    "feature_name": "地图全开",
+    "game_restart_reported": true,
+    "private_data_capture": true,
+    "pid": 18120,
+    "name": "gamemd.exe",
+    "image_base": "0x400000",
+    "image_size": 7942144,
+    "machine": 332,
+    "pe_timestamp": 1004491854,
+    "file_sha256": "7B8A068535D6AF06845EDF95AE829B113D00C02909330E16F197426CD7DB94B6",
+    "sections": [
+      {
+        "name": ".text",
+        "rva": 4096,
+        "size": 4063232,
+        "characteristics": 1610612768
+      },
+      {
+        "name": ".rdata",
+        "rva": 4067328,
+        "size": 200704,
+        "characteristics": 1073741888
+      },
+      {
+        "name": ".data",
+        "rva": 4268032,
+        "size": 3570660,
+        "characteristics": 3221225536
+      },
+      {
+        "name": ".rsrc",
+        "rva": 7839744,
+        "size": 102400,
+        "characteristics": 1073741888
+      }
+    ]
+  },
+  "observation": {
+    "feature_id": "map",
+    "effect_reported": "yes",
+    "remarks": "无残留"
+  },
+  "stages": {
+    "00-clean": {
+      "image_sha256": "be4c916fbc8a3fffde39ea1010a6b405711086b6d3120d4dc66ca9f50676efab",
+      "tick_ms": 254140,
+      "private_regions": 0,
+      "private_saved_bytes": 0
+    },
+    "01-off": {
+      "image_sha256": "1c784ddc7064de68936dc61c79792d3bf8545c01e699eff813e57e727ecfc86c",
+      "tick_ms": 267750,
+      "private_regions": 156,
+      "private_saved_bytes": 118886400
+    },
+    "02-on": {
+      "image_sha256": "62a6109e710cbb1d4b114780111c9aa01656b68a00d3af922332ab5a0a85f754",
+      "tick_ms": 284703,
+      "private_regions": 150,
+      "private_saved_bytes": 119435264
+    },
+    "03-off": {
+      "image_sha256": "6d44f7d326d4c188a7dd34ab2d0c2ceceb8a15f29fcb4d7dccd586f85108fcee",
+      "tick_ms": 296125,
+      "private_regions": 149,
+      "private_saved_bytes": 119582720
+    }
+  },
+  "code_changes": [
+    {
+      "va": "0x508e60",
+      "rva": "0x108e60",
+      "length": 1,
+      "clean": "7d",
+      "off": "7d",
+      "on": "eb",
+      "off_again": "7d",
+      "restored": true
+    },
+    {
+      "va": "0x508eba",
+      "rva": "0x108eba",
+      "length": 2,
+      "clean": "744c",
+      "off": "744c",
+      "on": "9090",
+      "off_again": "744c",
+      "restored": true
+    },
+    {
+      "va": "0x508f8f",
+      "rva": "0x108f8f",
+      "length": 2,
+      "clean": "7465",
+      "off": "7465",
+      "on": "9090",
+      "off_again": "7465",
+      "restored": true
+    },
+    {
+      "va": "0x577b3a",
+      "rva": "0x177b3a",
+      "length": 1,
+      "clean": "74",
+      "off": "74",
+      "on": "eb",
+      "off_again": "75",
+      "restored": false
+    },
+    {
+      "va": "0x6378e0",
+      "rva": "0x2378e0",
+      "length": 5,
+      "clean": "4cac0085c9",
+      "off": "4cac0085c9",
+      "on": "e8ab38edff",
+      "off_again": "e8ab38edff",
+      "restored": false
+    },
+    {
+      "va": "0x6d88fc",
+      "rva": "0x2d88fc",
+      "length": 1,
+      "clean": "75",
+      "off": "75",
+      "on": "eb",
+      "off_again": "75",
+      "restored": true
+    }
+  ],
+  "reversible_bytes_verified": 20,
+  "type_counts": {
+    "BuildingType": [
+      402,
+      402,
+      402
+    ],
+    "InfantryType": [
+      65,
+      65,
+      65
+    ],
+    "UnitType": [
+      82,
+      82,
+      82
+    ],
+    "AircraftType": [
+      12,
+      12,
+      12
+    ]
+  },
+  "type_changes": [
+    {
+      "kind": "BuildingType",
+      "id": "NAFLAK",
+      "object": "0x14745640",
+      "offset": "0x1538",
+      "length": 9,
+      "off": "000000000000000000",
+      "on": "e5ffffffd7ffffff50",
+      "off_again": "e5ffffffd7ffffff50",
+      "restored": false,
+      "word_offset": "0x1538",
+      "word_values": [
+        "000000000000000000000000",
+        "e5ffffffd7ffffff50000000",
+        "e5ffffffd7ffffff50000000"
+      ]
+    },
+    {
+      "kind": "BuildingType",
+      "id": "NAFLAK",
+      "object": "0x14745640",
+      "offset": "0x1544",
+      "length": 1,
+      "off": "00",
+      "on": "45",
+      "off_again": "45",
+      "restored": false,
+      "word_offset": "0x1544",
+      "word_values": [
+        "00000000",
+        "45000000",
+        "45000000"
+      ]
+    },
+    {
+      "kind": "BuildingType",
+      "id": "NAREFN",
+      "object": "0x149e70c0",
+      "offset": "0x1538",
+      "length": 9,
+      "off": "000000000000000000",
+      "on": "a8ffffffc9ffffffbc",
+      "off_again": "a8ffffffc9ffffffbc",
+      "restored": false,
+      "word_offset": "0x1538",
+      "word_values": [
+        "000000000000000000000000",
+        "a8ffffffc9ffffffbc000000",
+        "a8ffffffc9ffffffbc000000"
+      ]
+    },
+    {
+      "kind": "BuildingType",
+      "id": "NAREFN",
+      "object": "0x149e70c0",
+      "offset": "0x1544",
+      "length": 1,
+      "off": "00",
+      "on": "90",
+      "off_again": "90",
+      "restored": false,
+      "word_offset": "0x1544",
+      "word_values": [
+        "00000000",
+        "90000000",
+        "90000000"
+      ]
+    },
+    {
+      "kind": "BuildingType",
+      "id": "NATBNK",
+      "object": "0x14ed8158",
+      "offset": "0x1538",
+      "length": 9,
+      "off": "000000000000000000",
+      "on": "c6fffffffdffffff76",
+      "off_again": "c6fffffffdffffff76",
+      "restored": false,
+      "word_offset": "0x1538",
+      "word_values": [
+        "000000000000000000000000",
+        "c6fffffffdffffff76000000",
+        "c6fffffffdffffff76000000"
+      ]
+    },
+    {
+      "kind": "BuildingType",
+      "id": "NATBNK",
+      "object": "0x14ed8158",
+      "offset": "0x1544",
+      "length": 1,
+      "off": "00",
+      "on": "3f",
+      "off_again": "3f",
+      "restored": false,
+      "word_offset": "0x1544",
+      "word_values": [
+        "00000000",
+        "3f000000",
+        "3f000000"
+      ]
+    },
+    {
+      "kind": "BuildingType",
+      "id": "YAREFN",
+      "object": "0x14eea060",
+      "offset": "0x1538",
+      "length": 9,
+      "off": "000000000000000000",
+      "on": "c9ffffffe5ffffff6d",
+      "off_again": "c9ffffffe5ffffff6d",
+      "restored": false,
+      "word_offset": "0x1538",
+      "word_values": [
+        "000000000000000000000000",
+        "c9ffffffe5ffffff6d000000",
+        "c9ffffffe5ffffff6d000000"
+      ]
+    },
+    {
+      "kind": "BuildingType",
+      "id": "YAREFN",
+      "object": "0x14eea060",
+      "offset": "0x1544",
+      "length": 1,
+      "off": "00",
+      "on": "4e",
+      "off_again": "4e",
+      "restored": false,
+      "word_offset": "0x1544",
+      "word_values": [
+        "00000000",
+        "4e000000",
+        "4e000000"
+      ]
+    },
+    {
+      "kind": "BuildingType",
+      "id": "NABNKR",
+      "object": "0x14ef1888",
+      "offset": "0x1538",
+      "length": 9,
+      "off": "000000000000000000",
+      "on": "ceffffffefffffff6e",
+      "off_again": "ceffffffefffffff6e",
+      "restored": false,
+      "word_offset": "0x1538",
+      "word_values": [
+        "000000000000000000000000",
+        "ceffffffefffffff6e000000",
+        "ceffffffefffffff6e000000"
+      ]
+    },
+    {
+      "kind": "BuildingType",
+      "id": "NABNKR",
+      "object": "0x14ef1888",
+      "offset": "0x1544",
+      "length": 1,
+      "off": "00",
+      "on": "4a",
+      "off_again": "4a",
+      "restored": false,
+      "word_offset": "0x1544",
+      "word_values": [
+        "00000000",
+        "4a000000",
+        "4a000000"
+      ]
+    }
+  ],
+  "unreadable_types": []
+}

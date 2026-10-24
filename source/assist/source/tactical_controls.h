@@ -116,10 +116,10 @@ for(int f=0;f<featuretypes::Count;++f){
 heading(3,903,L"战场信息",L"调整游戏内信息显示、缩放与位置；有效设置立即生效。");
 
 #ifdef RA2_UNIFIED
-{auto h=placedControl({-3,{0,0,1,1}},L"COMBOBOX",L"",808,CBS_DROPDOWNLIST);choices(h,{L"关闭",L"半透明（实验性）",L"透明（实验性）",L"自动全图（实验性）"},extra.mapStrategy);}
+{auto h=placedControl({-3,{0,0,1,1}},L"COMBOBOX",L"",808,CBS_DROPDOWNLIST);choices(h,{L"关闭",L"受控模式（半透明）",L"受控模式（透明）",L"原生揭示（实验性）",L"直接模式（全图）"},extra.mapStrategy);}
 placedControl({-3,{0,0,1,1}},L"STATIC",L"",809,0);
 #else
-label(L"黑幕绘制方式",20,260);choices(combo(808),{L"关闭",L"半透明（实验性）",L"透明（实验性）",L"自动全图（实验性）"},extra.mapStrategy);next();
+label(L"黑幕绘制方式",20,260);choices(combo(808),{L"关闭",L"受控模式（半透明）",L"受控模式（透明）",L"原生揭示（实验性）",L"直接模式（全图）"},extra.mapStrategy);next();
 note(L"半透明与不渲染仅改变显示；地图全开在对局就绪后自动执行，可能导致联机不同步。",44);
 item(L"STATIC",L"地图显示：关闭",20,605,809);next();
 #endif
@@ -175,27 +175,32 @@ csHoldCheck=toggle(473,L"按键移动攻击（CS）",csHoldEnabled,20,210);csHol
 note(L"自动模式和按键模式均使用原版移动攻击命令；参与类型、快捷键和鼠标键设置保持不变。");
 toggle(899,L"磁电全局自动摔落（实验性）",extra.magnetronDrop);next();
 note(L"独立检查全图己方磁电已吸起的载具，包括己方、盟友和敌方，手动强制攻击也生效。检测建筑、地面坦克、树木、矿柱、悬崖及水陆不适配；两栖/悬浮不因普通水陆而摔，排除下方空中单位和桥面。默认关闭，实际摔落效果仍需测试。",76);
-toggle(9090,L"视角缩放",extra.viewZoomEnabled);next();
-label(L"视角倍率",20,260);choices(combo(9091),{L"50%",L"75%",L"100%",L"125%",L"150%"},viewzoom::index(extra.viewZoomPercent));next();
-button(9092,L"恢复 100%",20,280);next();
-note(L"实验性：使用 CnC-DDraw；整个画面和侧栏一起缩放。Ctrl+Alt+- 缩小，Ctrl+Alt+= 放大，Ctrl+Alt+Backspace 恢复。",56);
+EnableWindow(toggle(9090,L"视角缩放（暂不可用）",false),FALSE);next();
+label(L"视角倍率",20,260);choices(combo(9091),{L"50%",L"75%",L"100%",L"125%",L"150%"},viewzoom::index(extra.viewZoomPercent));EnableWindow(GetDlgItem(ui,9091),FALSE);next();
+EnableWindow(button(9092,L"恢复 100%",20,280),FALSE);next();
+note(L"视角缩放暂时停用；旧倍率设置和缩放快捷键均不生效。",56);
 item(L"STATIC",L"视角缩放：关闭",20,605,9093,0,48);next(48);
 #ifdef RA2_UNIFIED
 {auto h=placedControl({-3,{0,0,1,1}},L"COMBOBOX",L"",886,CBS_DROPDOWNLIST);choices(h,{L"仅光标",L"光标＋拖屏",L"全部",L"强制高刷（实验性 · 联机待验证）"},extra.scrollRefreshMode);}
 #else
 label(L"高刷策略（实验性）",20,260);choices(combo(886),{L"仅光标",L"光标＋拖屏",L"全部",L"强制高刷（实验性 · 联机待验证）"},extra.scrollRefreshMode);next();
 number(887,L"画面目标刷新率 / 帧每秒",extra.scrollRefreshHz,L"30–500 · 默认 120");
-note(L"默认仅光标；拖屏支持右拖与屏幕边缘。“全部”持续重绘，不改变游戏速度，不插帧。",44);
+EnableWindow(GetDlgItem(ui,886),FALSE);EnableWindow(GetDlgItem(ui,887),FALSE);
+note(L"当前仅保留光标高刷；拖屏、全部及强制高刷暂不可用。",44);
 item(L"STATIC",L"高刷策略：仅光标",20,605,888);next();
 #endif
 
-anywhereCheck=toggle(476,L"扩展建筑放置范围（实验性）",buildAnywhereMode);next();
+anywhereCheck=toggle(476,L"随处建造（实验性）",buildAnywhereMode);next();
+label(L"建造方式",20,180);choices(combo(9096,220,405,180),{L"受控模式（默认）",L"直接模式"},extra.placementImplementation);next();
 item(L"STATIC",L"功能状态：等待连接",20,605,807,0,44);next(44);
 toggle(810,L"步兵强制进入建筑（实验性）",extra.c4Test,20,280);key(811,extra.c4Key,310,188,true);choices(combo(812,510,115,180),{L"停用",L"中键",L"侧键 1",L"侧键 2",L"右键",L"左键"},extra.c4Mouse==6?5:extra.c4Mouse);next();
 item(L"STATIC",L"步兵强制进入建筑：关闭",20,605,813);next();
+toggle(9097,L"科技加强（实验性）",extra.techEnhance);next();
+note(L"开放奶牛、电影英雄等隐藏类型；关闭后恢复本功能修改的科技等级。可能影响联机同步。",44);
+item(L"STATIC",L"科技加强：关闭",20,605,9098);next();
 toggle(420,L"科技解锁（实验性）",techMode,20,305);techSearch=edit(421,L"",345,280);SendMessageW(techSearch,EM_SETCUEBANNER,TRUE,(LPARAM)L"搜索名称或单位 ID");next();
-label(L"实现方式",20,180);choices(combo(896,220,405,180),{L"现有方案（默认）",L"经典兼容",L"修改大师模式"},techImplementation);next();
-note(L"修改大师模式显示 TechLevel 非 -1 的项目，并保留侧栏图标；此模式不使用下方许可筛选。经典兼容保留早期检查。实际生产与联机效果仍待实测。",44);
+label(L"实现方式",20,180);choices(combo(896,220,405,180),{L"受控模式（默认）",L"经典兼容",L"直接模式"},techImplementation);next();
+note(L"直接模式显示 TechLevel 非 -1 的项目，并保留侧栏图标；此模式不使用下方许可筛选。经典兼容保留早期检查。实际生产与联机效果仍待实测。",44);
 techList=item(L"LISTBOX",L"",20,455,422,LBS_NOTIFY|WS_VSCROLL|WS_TABSTOP,152);
 int listTop=rowY;button(423,L"生产所选",488,137);next();button(424,L"切换许可",488,137);next();button(425,L"全选",488,65);button(426,L"清空",560,65);next();button(427,L"兼容预设",488,137);rowY=listTop+164;
 button(428,L"查看许可清单",20,285);button(814,L"取消所选类型的生产",320,305);next();

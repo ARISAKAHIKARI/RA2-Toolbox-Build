@@ -367,6 +367,7 @@ static bool installRiskSite(RiskSite&s){
  return gameentry::patch(gameentry::Client::Assist,s.address,s.before,s.after,s.size);
 }
 #include "master_tech_bridge.h"
+#include "direct_modes_bridge.h"
 static bool setTechSites(bool enabled){
  prepareRiskSites();prepareMasterTech();riskTechActive=false;
  if(enabled&&techImplementation==2){
@@ -420,11 +421,13 @@ static void restorePlacement(){
  const bool wasRendered=riskRenderActive;
  riskPlacementActive=riskAirActive=riskRenderActive=riskC4Active=false;prepareRiskSites();
  controlSitesTick(false);
- bool place=restoreRiskSite(riskSites[0]);
+ bool directPlace=directGroupRestore(directpatch::Group::Placement);
+ bool directMap=directGroupRestore(directpatch::Group::Map);
+ bool place=restoreRiskSite(riskSites[0])&&directPlace;
  bool type=restoreRiskSite(riskSites[1]),arrival=restoreRiskSite(riskSites[2]);
  snap.placementStatus=place?0:-2;snap.nativeAirStatus=type&&arrival?0:-2;
  bool shroud=restoreRiskSite(riskSites[3]),fog=restoreRiskSite(riskSites[4]);
- snap.renderRevealStatus=shroud&&fog?0:-2;
+ snap.renderRevealStatus=shroud&&fog&&directMap?0:-2;
  bool c4Arrival=restoreRiskSite(riskSites[5]),c4Movement=restoreRiskSite(riskSites[8]);
  snap.c4TestStatus=c4Arrival&&c4Movement?0:-2;
  // Stop/host exit still needs one native redraw after restoring the leaves.
@@ -448,16 +451,32 @@ static void placementTick(){
  // capability override, including when an older configuration enables C4Test.
  riskC4Active=false;
  {bool a=restoreRiskSite(riskSites[5]),b=restoreRiskSite(riskSites[8]);snap.c4TestStatus=!a||!b?-2:sh->c4Test?1:0;}
- if(sh->renderReveal){
-  riskRenderActive=installRiskSite(riskSites[3])&&installRiskSite(riskSites[4]);
-  if(!riskRenderActive){restoreRiskSite(riskSites[3]);restoreRiskSite(riskSites[4]);}
-  snap.renderRevealStatus=riskRenderActive?1:-2;
- }else{riskRenderActive=false;bool a=restoreRiskSite(riskSites[3]),b=restoreRiskSite(riskSites[4]);snap.renderRevealStatus=a&&b?0:-2;}
+ if(sh->renderReveal==3){
+  riskRenderActive=false;bool a=restoreRiskSite(riskSites[3]),b=restoreRiskSite(riskSites[4]);
+  bool ok=a&&b&&directGroupEnable(directpatch::Group::Map);
+  if(!ok)directGroupRestore(directpatch::Group::Map);
+  snap.renderRevealStatus=ok?1:-2;
+ }else{
+  bool directOff=directGroupRestore(directpatch::Group::Map);
+  if(sh->renderReveal&&sh->renderReveal<=2&&directOff){
+   riskRenderActive=installRiskSite(riskSites[3])&&installRiskSite(riskSites[4]);
+   if(!riskRenderActive){restoreRiskSite(riskSites[3]);restoreRiskSite(riskSites[4]);}
+   snap.renderRevealStatus=riskRenderActive?1:-2;
+  }else{riskRenderActive=false;bool a=restoreRiskSite(riskSites[3]),b=restoreRiskSite(riskSites[4]);snap.renderRevealStatus=a&&b&&directOff?0:-2;}
+ }
  if(priorRender!=riskRenderActive||priorStrategy!=sh->renderReveal)riskRenderRedrawPending=true;
  priorStrategy=sh->renderReveal;
  if(riskRenderRedrawPending&&redrawRevealTest())riskRenderRedrawPending=false;
- if(sh->flags&BuildAnywhere){riskPlacementActive=installRiskSite(riskSites[0]);snap.placementStatus=riskPlacementActive?1:-2;}
- else{riskPlacementActive=false;snap.placementStatus=restoreRiskSite(riskSites[0])?0:-2;}
+ if((sh->flags&BuildAnywhere)&&sh->placementImplementation==1){
+  riskPlacementActive=false;bool off=restoreRiskSite(riskSites[0]);
+  bool ok=off&&directGroupEnable(directpatch::Group::Placement);
+  if(!ok)directGroupRestore(directpatch::Group::Placement);
+  snap.placementStatus=ok?1:-2;
+ }else{
+  bool directOff=directGroupRestore(directpatch::Group::Placement);
+  if((sh->flags&BuildAnywhere)&&sh->placementImplementation==0&&directOff){riskPlacementActive=installRiskSite(riskSites[0]);snap.placementStatus=riskPlacementActive?1:-2;}
+  else{riskPlacementActive=false;bool off=restoreRiskSite(riskSites[0]);snap.placementStatus=off&&directOff?0:-2;}
+ }
  if(airpathpolicy::native(get<int>(0xA8B238),(sh->flags&NativeAirWaypoints)!=0)){
   static const uint8_t nextSignature[]={0x81,0xEC,0xE0,0,0,0,0x53,0x56,0x8B,0xF1};uint8_t actual[sizeof nextSignature]{};
   bool supported=read(0x6385C0,actual,sizeof actual)&&!memcmp(actual,nextSignature,sizeof actual);

@@ -7,6 +7,7 @@ struct AdditionalSettings {
  uint32_t stickyKey='S'|(6<<8);
  bool formationEnabled=true;uint32_t formationHold=18,formationKeys[6]={'Z','X','C','V','B','N'},formationMouse=2;
  bool controlAll=false,switchPlayerEnabled=false;
+ bool techEnhance=false;int placementImplementation=0;
  bool viewZoomEnabled=false;int viewZoomPercent=100;
  int scrollRefreshMode=0; // cursor / scrolling / scene / forced redraw
 #ifndef RA2_UNIFIED

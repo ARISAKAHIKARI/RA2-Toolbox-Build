@@ -72,7 +72,7 @@ static HWND game=1;static bool enabled=true;static std::wstring hoverHelp,status
 static struct {int techOpen=0,c4TestStatus=0,placementStatus=0,nativeAirStatus=0,renderRevealStatus=0,commandStatus=1,entryReentrant=0,entryContended=0,session=5,lastSubmitError=0,queueSent=0,commandRejected=0,queueFull=0,queueTimingFailure=0,status=1,nativeHookStatus=1,advancedUnits=0,unloadPending=0,ejectWatched=0,csHookStatus=1,oreQueued=0,oreDocking=0,oreManual=0,oreDelivered=0,oreUnverified=0,magnetShots=0,magnetUnverified=0,hookConflicts=0,megaQueueAccepted=0,megaQueueRejected=0,megaQueueStatus=0,objectQueueAccepted=0,objectQueueRejected=0,objectQueueStatus=0;} snap;
 static struct {int size=0;} commandQueue;
 static struct {bool readFresh(uint32_t,void*,size_t){return false;}} externalReader;
-static struct {int viewZoomStatus=0,viewZoomApplied=100,viewZoomWidth=800,viewZoomHeight=600,scrollRefreshStatus=0,scrollRefreshRateMilli=0,scrollRefreshMaxGapUs=0,driverMode=0,driverTarget=0,driverStatus=0,driverTicks=0,megaQueueMode=0,objectQueueMode=0;DWORD driverLastTick=0;} mockScheduler;
+static struct {int techEnhanceStatus=0,techEnhanceCount=0,viewZoomStatus=0,viewZoomApplied=100,viewZoomWidth=800,viewZoomHeight=600,scrollRefreshStatus=0,scrollRefreshRateMilli=0,scrollRefreshMaxGapUs=0,driverMode=0,driverTarget=0,driverStatus=0,driverTicks=0,megaQueueMode=0,objectQueueMode=0;DWORD driverLastTick=0;} mockScheduler;
 static decltype(mockScheduler)* shared=nullptr;
 static unsigned LOBYTE(unsigned key){return key&255;}
 static HWND CreateWindowExW(DWORD,const wchar_t*cls,const wchar_t*text,DWORD style,int x,int y,int w,int h,HWND,HMENU id,HMODULE,void*){

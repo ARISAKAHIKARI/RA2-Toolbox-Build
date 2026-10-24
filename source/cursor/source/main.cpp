@@ -1,6 +1,7 @@
 #include "../../external_reader/source/shared_reader.h"
 #include "../../external_reader/source/process_discovery.h"
 #include "../../shared/source/modern_ui.h"
+#include "../../shared/source/disabled_choices.h"
 #include "../../shared/source/release_version.h"
 #define WIN32_LEAN_AND_MEAN
 #ifndef NOMINMAX
@@ -1525,16 +1526,17 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR cmd,int){
   auto h=CreateWindowW(cls,text,WS_CHILD|WS_VISIBLE|style,x,y,width,height,mainw,(HMENU)(INT_PTR)id,inst,nullptr);controlOrigins.push_back({h,{x,y,width,height}});return h;
  };
  basic(L"STATIC",L"高刷范围",20,254,88,22,0);
- refreshModeBox=basic(L"COMBOBOX",L"",114,250,626,150,155,CBS_DROPDOWNLIST|WS_TABSTOP);
+ refreshModeBox=basic(L"COMBOBOX",L"",114,250,626,150,155,CBS_DROPDOWNLIST|CBS_OWNERDRAWFIXED|CBS_HASSTRINGS|WS_TABSTOP);
  for(const wchar_t* text:{L"仅光标",L"光标＋拖屏（实验性）",L"全部（实验性）",L"强制高刷（实验性 · 联机待验证）"})SendMessageW(refreshModeBox,CB_ADDSTRING,0,(LPARAM)text);
+ disabledchoices::set(refreshModeBox,1);
  refreshStateLabel=basic(L"STATIC",L"读取设置…",20,294,720,24,0);
- modernui::tip(refreshModeBox,L"共用目标刷新率，最高 500 FPS。强制高刷可用于单机及联机，联机效果待实机验证；仍需 DDraw 呈现帧率配合，单位动画受游戏逻辑帧限制。");
- modernui::tip(targetBox,L"自动跟随显示器；也可输入 30–500 FPS。光标、拖屏、全部画面使用同一目标值。");
+ modernui::tip(refreshModeBox,L"当前仅保留光标高刷；拖屏、全部及强制高刷暂不可用。");
+ modernui::tip(targetBox,L"自动跟随显示器；也可输入 30–500 FPS，当前用于光标刷新。");
  EnableWindow(refreshModeBox,FALSE);
  basic(L"STATIC",L"黑幕绘制",20,332,88,22,0);
  shroudModeBox=basic(L"COMBOBOX",L"",114,328,626,150,156,CBS_DROPDOWNLIST|WS_TABSTOP);
- for(const wchar_t*text:{L"关闭",L"半透明（实验性）",L"透明（实验性）",L"自动全图（实验性）"})SendMessageW(shroudModeBox,CB_ADDSTRING,0,(LPARAM)text);
- EnableWindow(shroudModeBox,FALSE);modernui::tip(shroudModeBox,L"半透明和透明改变黑幕绘制；自动全图在对局就绪后执行。三种方式均为实验性功能。");
+ for(const wchar_t*text:{L"关闭",L"受控模式（半透明）",L"受控模式（透明）",L"原生揭示（实验性）",L"直接模式（全图）"})SendMessageW(shroudModeBox,CB_ADDSTRING,0,(LPARAM)text);
+ EnableWindow(shroudModeBox,FALSE);modernui::tip(shroudModeBox,L"受控模式改变黑幕绘制；原生揭示调用游戏揭示流程；直接模式使用已验证的固定判定修改。均为实验性功能。");
  basic(L"BUTTON",L"配置 DDraw 高刷…",20,366,350,32,157,BS_PUSHBUTTON|WS_TABSTOP);
  basic(L"BUTTON",L"恢复 DDraw 配置…",390,366,350,32,158,BS_PUSHBUTTON|WS_TABSTOP);
 #endif

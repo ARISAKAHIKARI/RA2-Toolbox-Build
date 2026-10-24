@@ -27,6 +27,8 @@ assert 'shared/source/automatic_log.h' not in RUNTIME
 for n in ('external_reader/source/unit_status.h','assist/source/status_badges.h','assist/source/status_draw.h','suite/source/display_settings.h','cursor/source/refresh_settings_ui.h','unit_monitor/source/display_settings_ui.h'):
  assert n in HOST and n not in RUNTIME,n
 assert all(n not in HOST for n in ('assist/source/bridge.cpp','cursor/source/hide.cpp','assist/source/input_patch.h'))
+assert 'assist/source/direct_modes_bridge.h' in RUNTIME and 'assist/source/direct_modes_bridge.h' not in HOST
+assert 'assist/source/tech_enhancement_bridge.h' in RUNTIME and 'assist/source/tech_enhancement_bridge.h' not in HOST
 api_sites=[]
 for n,p in FILES.items():
  s=p.read_text()
@@ -39,7 +41,7 @@ for n,p in FILES.items():
  if re.search(r'\bLoadLibrary(?:Ex)?[AW]?\s*\(',s):
   assert n in ('shared/source/host_game_input.h','cursor/source/main.cpp'),n
   if n=='cursor/source/main.cpp':assert re.findall(r'LoadLibraryW\(([^)]+)\)',s)==['L"shcore.dll"'],n
- if 'gameentry::patch(' in s:assert n=='assist/source/placement_bridge.h',n
+ if 'gameentry::patch(' in s:assert n in ('assist/source/placement_bridge.h','assist/source/direct_modes_bridge.h'),n
  if re.search(r'\bVirtualProtect\s*\(',s):assert n=='shared/source/game_entry_manager.cpp',n
  if 'constructors::fill(' in s or re.search(r'\benqueue\(',s):assert n=='assist/source/bridge.cpp',n
  for hook in re.findall(r'SetWindowsHookExW\(([^,]+)',s):

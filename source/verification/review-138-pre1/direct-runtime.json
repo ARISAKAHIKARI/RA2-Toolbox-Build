@@ -1,0 +1,59 @@
+{
+  "scope": "Actual compiled Runtime + manager with a supplied game image; synthetic Win32/world.\nTests patch lifecycle and type writes, not visual reveal, production or netplay.\n",
+  "dll_sha256": "65ac8feb50e75fc6989e1192c5360447ee039113cff617b2d4541be03ea9a32a",
+  "game_sha256": "b18c95c03ac5ea19469250bcb82a423d47227213f578f55445a4c7624b1fe31f",
+  "results": [
+    {
+      "case": "0_direct_controlled_switch_stop_restoration",
+      "status": "PASS"
+    },
+    {
+      "case": "3_direct_controlled_switch_stop_restoration",
+      "status": "PASS"
+    },
+    {
+      "case": "4_direct_controlled_switch_stop_restoration",
+      "status": "PASS"
+    },
+    {
+      "case": "5_direct_controlled_switch_stop_restoration",
+      "status": "PASS"
+    },
+    {
+      "case": "foreign_577b3a_whole_group_refused",
+      "status": "PASS"
+    },
+    {
+      "case": "foreign_508eba_whole_group_refused",
+      "status": "PASS"
+    },
+    {
+      "case": "foreign_4a918e_whole_group_refused",
+      "status": "PASS"
+    },
+    {
+      "case": "enhancement_off",
+      "status": "PASS"
+    },
+    {
+      "case": "enhancement_stop",
+      "status": "PASS"
+    },
+    {
+      "case": "enhancement_foreign",
+      "status": "PASS"
+    },
+    {
+      "case": "enhancement_new_round",
+      "status": "PASS"
+    },
+    {
+      "case": "enhancement_stale_request",
+      "status": "PASS"
+    },
+    {
+      "case": "stale_shared_refresh_zoom_remain_disabled",
+      "status": "PASS"
+    }
+  ]
+}

@@ -1,0 +1,379 @@
+{
+  "archive": "RA2Master-Capture-20261025-003340-3568.zip",
+  "archive_sha256": "8e1cd4963777046b9e1986d494255edf17472c8e8f40691781b9561591a2fbea",
+  "session": {
+    "tool_version": "0.2.0",
+    "target_name_policy": "exact_gamemd.exe",
+    "feature_id": "placement",
+    "feature_name": "随处建造",
+    "game_restart_reported": true,
+    "private_data_capture": true,
+    "pid": 18120,
+    "name": "gamemd.exe",
+    "image_base": "0x400000",
+    "image_size": 7942144,
+    "machine": 332,
+    "pe_timestamp": 1004491854,
+    "file_sha256": "7B8A068535D6AF06845EDF95AE829B113D00C02909330E16F197426CD7DB94B6",
+    "sections": [
+      {
+        "name": ".text",
+        "rva": 4096,
+        "size": 4063232,
+        "characteristics": 1610612768
+      },
+      {
+        "name": ".rdata",
+        "rva": 4067328,
+        "size": 200704,
+        "characteristics": 1073741888
+      },
+      {
+        "name": ".data",
+        "rva": 4268032,
+        "size": 3570660,
+        "characteristics": 3221225536
+      },
+      {
+        "name": ".rsrc",
+        "rva": 7839744,
+        "size": 102400,
+        "characteristics": 1073741888
+      }
+    ]
+  },
+  "observation": {
+    "feature_id": "placement",
+    "effect_reported": "yes",
+    "remarks": ""
+  },
+  "stages": {
+    "00-clean": {
+      "image_sha256": "94ac595e7a6fef82839b7959f3f926a52708fc857fbc65aa9ff88428dff3f4bd",
+      "tick_ms": 666031,
+      "private_regions": 0,
+      "private_saved_bytes": 0
+    },
+    "01-off": {
+      "image_sha256": "c873ec62f26c853701d386af8c38a5c69c661389bd3debe0c3f99c3bd3565804",
+      "tick_ms": 677234,
+      "private_regions": 153,
+      "private_saved_bytes": 119255040
+    },
+    "02-on": {
+      "image_sha256": "2606aa7c49e9b08c54790d7d4b9dadc90b90f31fd372318962d89e66794c09b0",
+      "tick_ms": 699812,
+      "private_regions": 149,
+      "private_saved_bytes": 120328192
+    },
+    "03-off": {
+      "image_sha256": "b418bd568714470ae68531392eafef9362d3fbe7aae82743460dfd836fdaddd6",
+      "tick_ms": 710046,
+      "private_regions": 149,
+      "private_saved_bytes": 120365056
+    }
+  },
+  "code_changes": [
+    {
+      "va": "0x4a8ec3",
+      "rva": "0xa8ec3",
+      "length": 2,
+      "clean": "0f85",
+      "off": "0f85",
+      "on": "90e9",
+      "off_again": "0f85",
+      "restored": true
+    },
+    {
+      "va": "0x4a918e",
+      "rva": "0xa918e",
+      "length": 1,
+      "clean": "75",
+      "off": "75",
+      "on": "eb",
+      "off_again": "75",
+      "restored": true
+    }
+  ],
+  "reversible_bytes_verified": 20,
+  "type_counts": {
+    "BuildingType": [
+      402,
+      402,
+      402
+    ],
+    "InfantryType": [
+      65,
+      65,
+      65
+    ],
+    "UnitType": [
+      82,
+      82,
+      82
+    ],
+    "AircraftType": [
+      12,
+      12,
+      12
+    ]
+  },
+  "type_changes": [
+    {
+      "kind": "BuildingType",
+      "id": "GAPOWR",
+      "object": "0x14dbc5e0",
+      "offset": "0x1538",
+      "length": 9,
+      "off": "000000000000000000",
+      "on": "d5ffffffd7ffffff6d",
+      "off_again": "d5ffffffd7ffffff6d",
+      "restored": false,
+      "word_offset": "0x1538",
+      "word_values": [
+        "000000000000000000000000",
+        "d5ffffffd7ffffff6d000000",
+        "d5ffffffd7ffffff6d000000"
+      ]
+    },
+    {
+      "kind": "BuildingType",
+      "id": "GAPOWR",
+      "object": "0x14dbc5e0",
+      "offset": "0x1544",
+      "length": 1,
+      "off": "00",
+      "on": "5c",
+      "off_again": "5c",
+      "restored": false,
+      "word_offset": "0x1544",
+      "word_values": [
+        "00000000",
+        "5c000000",
+        "5c000000"
+      ]
+    },
+    {
+      "kind": "BuildingType",
+      "id": "GACNST",
+      "object": "0x14dc0df8",
+      "offset": "0x1538",
+      "length": 9,
+      "off": "000000000000000000",
+      "on": "97ffffffd9ffffffe8",
+      "off_again": "97ffffffd9ffffffe8",
+      "restored": false,
+      "word_offset": "0x1538",
+      "word_values": [
+        "000000000000000000000000",
+        "97ffffffd9ffffffe8000000",
+        "97ffffffd9ffffffe8000000"
+      ]
+    },
+    {
+      "kind": "BuildingType",
+      "id": "GACNST",
+      "object": "0x14dc0df8",
+      "offset": "0x1544",
+      "length": 1,
+      "off": "00",
+      "on": "94",
+      "off_again": "94",
+      "restored": false,
+      "word_offset": "0x1544",
+      "word_values": [
+        "00000000",
+        "94000000",
+        "94000000"
+      ]
+    },
+    {
+      "kind": "BuildingType",
+      "id": "NAWEAP",
+      "object": "0x14dd4660",
+      "offset": "0x1538",
+      "length": 9,
+      "off": "000000000000000000",
+      "on": "a8ffffffb5ffffffd9",
+      "off_again": "a8ffffffb5ffffffd9",
+      "restored": false,
+      "word_offset": "0x1538",
+      "word_values": [
+        "000000000000000000000000",
+        "a8ffffffb5ffffffd9000000",
+        "a8ffffffb5ffffffd9000000"
+      ]
+    },
+    {
+      "kind": "BuildingType",
+      "id": "NAWEAP",
+      "object": "0x14dd4660",
+      "offset": "0x1544",
+      "length": 1,
+      "off": "00",
+      "on": "b8",
+      "off_again": "b8",
+      "restored": false,
+      "word_offset": "0x1544",
+      "word_values": [
+        "00000000",
+        "b8000000",
+        "b8000000"
+      ]
+    },
+    {
+      "kind": "BuildingType",
+      "id": "YAGGUN",
+      "object": "0x14fd8898",
+      "offset": "0x1538",
+      "length": 9,
+      "off": "000000000000000000",
+      "on": "e6ffffffdbffffff51",
+      "off_again": "e6ffffffdbffffff51",
+      "restored": false,
+      "word_offset": "0x1538",
+      "word_values": [
+        "000000000000000000000000",
+        "e6ffffffdbffffff51000000",
+        "e6ffffffdbffffff51000000"
+      ]
+    },
+    {
+      "kind": "BuildingType",
+      "id": "YAGGUN",
+      "object": "0x14fd8898",
+      "offset": "0x1544",
+      "length": 1,
+      "off": "00",
+      "on": "3f",
+      "off_again": "3f",
+      "restored": false,
+      "word_offset": "0x1544",
+      "word_values": [
+        "00000000",
+        "3f000000",
+        "3f000000"
+      ]
+    },
+    {
+      "kind": "UnitType",
+      "id": "AMCV",
+      "object": "0x14f8abe0",
+      "offset": "0x244",
+      "length": 5,
+      "off": "9052be1601",
+      "on": "f0edae1811",
+      "off_again": "f0edae1811",
+      "restored": false,
+      "word_offset": "0x244",
+      "word_values": [
+        "9052be1601000000",
+        "f0edae1811000000",
+        "f0edae1811000000"
+      ]
+    },
+    {
+      "kind": "UnitType",
+      "id": "AMCV",
+      "object": "0x14f8abe0",
+      "offset": "0x24c",
+      "length": 1,
+      "off": "0a",
+      "on": "14",
+      "off_again": "14",
+      "restored": false,
+      "word_offset": "0x24c",
+      "word_values": [
+        "0a000000",
+        "14000000",
+        "14000000"
+      ]
+    },
+    {
+      "kind": "UnitType",
+      "id": "AMCV",
+      "object": "0x14f8abe0",
+      "offset": "0x250",
+      "length": 1,
+      "off": "01",
+      "on": "00",
+      "off_again": "00",
+      "restored": false,
+      "word_offset": "0x250",
+      "word_values": [
+        "01000000",
+        "00000000",
+        "00000000"
+      ]
+    },
+    {
+      "kind": "UnitType",
+      "id": "AMCV",
+      "object": "0x14f8abe0",
+      "offset": "0x254",
+      "length": 4,
+      "off": "9052be16",
+      "on": "f8edae18",
+      "off_again": "f8edae18",
+      "restored": false,
+      "word_offset": "0x254",
+      "word_values": [
+        "9052be16",
+        "f8edae18",
+        "f8edae18"
+      ]
+    },
+    {
+      "kind": "UnitType",
+      "id": "AMCV",
+      "object": "0x14f8abe0",
+      "offset": "0x26c",
+      "length": 5,
+      "off": "3052be1601",
+      "on": "c0aeae1811",
+      "off_again": "c0aeae1811",
+      "restored": false,
+      "word_offset": "0x26c",
+      "word_values": [
+        "3052be1601000000",
+        "c0aeae1811000000",
+        "c0aeae1811000000"
+      ]
+    },
+    {
+      "kind": "UnitType",
+      "id": "AMCV",
+      "object": "0x14f8abe0",
+      "offset": "0x274",
+      "length": 1,
+      "off": "0a",
+      "on": "14",
+      "off_again": "14",
+      "restored": false,
+      "word_offset": "0x274",
+      "word_values": [
+        "0a000000",
+        "14000000",
+        "14000000"
+      ]
+    },
+    {
+      "kind": "UnitType",
+      "id": "AMCV",
+      "object": "0x14f8abe0",
+      "offset": "0x27c",
+      "length": 4,
+      "off": "3052be16",
+      "on": "c8aeae18",
+      "off_again": "c8aeae18",
+      "restored": false,
+      "word_offset": "0x27c",
+      "word_values": [
+        "3052be16",
+        "c8aeae18",
+        "c8aeae18"
+      ]
+    }
+  ],
+  "unreadable_types": []
+}

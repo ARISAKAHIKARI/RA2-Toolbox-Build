@@ -1,0 +1,107 @@
+{
+  "scope": "Shipped DLL + native FindFactory in synthetic worlds; CanBuild, AddCameo and\nWin32 are fixture substitutes. This is not a peer simulation or netplay test.\n",
+  "game_sha256": "b18c95c03ac5ea19469250bcb82a423d47227213f578f55445a4c7624b1fe31f",
+  "dll_sha256": "65ac8feb50e75fc6989e1192c5360447ee039113cff617b2d4541be03ea9a32a",
+  "results": [
+    {
+      "case": "0_four_enumerators_levels_stack_prune_switch_disable",
+      "status": "PASS"
+    },
+    {
+      "case": "3_four_enumerators_levels_stack_prune_switch_disable",
+      "status": "PASS"
+    },
+    {
+      "case": "4_four_enumerators_levels_stack_prune_switch_disable",
+      "status": "PASS"
+    },
+    {
+      "case": "5_four_enumerators_levels_stack_prune_switch_disable",
+      "status": "PASS"
+    },
+    {
+      "case": "master_native_recheck_factory",
+      "status": "PASS"
+    },
+    {
+      "case": "master_native_recheck_none",
+      "status": "PASS"
+    },
+    {
+      "case": "master_native_recheck_limbo",
+      "status": "PASS"
+    },
+    {
+      "case": "master_native_recheck_inactive",
+      "status": "PASS"
+    },
+    {
+      "case": "master_native_recheck_not_constructed",
+      "status": "PASS"
+    },
+    {
+      "case": "master_native_recheck_selling",
+      "status": "PASS"
+    },
+    {
+      "case": "master_native_recheck_foreign",
+      "status": "PASS"
+    },
+    {
+      "case": "master_native_recheck_hidden_type",
+      "status": "PASS"
+    },
+    {
+      "case": "signature_44574A_group_rejected_without_writes",
+      "status": "PASS"
+    },
+    {
+      "case": "signature_445795_group_rejected_without_writes",
+      "status": "PASS"
+    },
+    {
+      "case": "signature_4457D0_group_rejected_without_writes",
+      "status": "PASS"
+    },
+    {
+      "case": "signature_445810_group_rejected_without_writes",
+      "status": "PASS"
+    },
+    {
+      "case": "signature_6AA788_group_rejected_without_writes",
+      "status": "PASS"
+    },
+    {
+      "case": "signature_445755_group_rejected_without_writes",
+      "status": "PASS"
+    },
+    {
+      "case": "signature_4457A2_group_rejected_without_writes",
+      "status": "PASS"
+    },
+    {
+      "case": "signature_4457DD_group_rejected_without_writes",
+      "status": "PASS"
+    },
+    {
+      "case": "signature_44581A_group_rejected_without_writes",
+      "status": "PASS"
+    },
+    {
+      "case": "flag_off_owned_cleanup",
+      "status": "PASS"
+    },
+    {
+      "case": "stop_owned_cleanup",
+      "status": "PASS"
+    },
+    {
+      "case": "round_end_owned_cleanup",
+      "status": "PASS"
+    },
+    {
+      "case": "foreign_owned_cleanup",
+      "status": "PASS"
+    }
+  ]
+}

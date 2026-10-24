@@ -68,24 +68,24 @@ int main(){
  // Either UI may start first. Only the cursor resolves and publishes rates.
  displayPanes[2]=0;extra.scrollRefreshMode=2;syncRefreshRate();assert(shared->scrollRefreshHz==0);
  updateRefresh(true);assert(refreshRate()==144&&refreshPosts==0);
- registerDisplayPane(2,ui);assert(refreshPosts==1);syncRefreshRate();assert(shared->scrollRefreshHz==144);
+ registerDisplayPane(2,ui);assert(refreshPosts==1);syncRefreshRate();assert(shared->scrollRefreshHz==0);
  commonRefreshRate=0;syncRefreshRate();assert(shared->scrollRefreshHz==0);
- updateRefresh(true);syncRefreshRate();assert(shared->scrollRefreshHz==144);
+ updateRefresh(true);syncRefreshRate();assert(shared->scrollRefreshHz==0);
  // Automatic follows monitor changes; explicit settings stay fixed across them.
- monitorHz=165;++testMonitor;testClock+=1000;updateRefresh();syncRefreshRate();assert(pollHz==165&&shared->scrollRefreshHz==165);
- configuredPollHz=500;updateRefresh(true);syncRefreshRate();assert(pollHz==500&&shared->scrollRefreshHz==500);
- monitorHz=60;++testMonitor;testClock+=1000;int postsBefore=refreshPosts;updateRefresh();syncRefreshRate();assert(shared->scrollRefreshHz==500&&refreshPosts==postsBefore);
+ monitorHz=165;++testMonitor;testClock+=1000;updateRefresh();syncRefreshRate();assert(pollHz==165&&shared->scrollRefreshHz==0);
+ configuredPollHz=500;updateRefresh(true);syncRefreshRate();assert(pollHz==500&&shared->scrollRefreshHz==0);
+ monitorHz=60;++testMonitor;testClock+=1000;int postsBefore=refreshPosts;updateRefresh();syncRefreshRate();assert(shared->scrollRefreshHz==0&&refreshPosts==postsBefore);
  for(unsigned rate:{30u,60u,120u,144u,165u,240u,360u,500u}){
   configuredPollHz=rate;updateRefresh(true);
-  for(int mode:{0,1,2,3}){extra.scrollRefreshMode=mode;syncRefreshRate();assert(shared->scrollRefreshMode==unsigned(mode)&&shared->scrollRefreshHz==(mode?pollHz:0)&&pollHz==rate);}
+  for(int mode:{0,1,2,3}){extra.scrollRefreshMode=mode;syncRefreshRate();assert(shared->scrollRefreshMode==0&&shared->scrollRefreshHz==0&&pollHz==rate);}
  }
  // Pending older notifications read the newest value, not a stale payload.
- publishRefreshRate(60);publishRefreshRate(500);syncRefreshRate();syncRefreshRate();assert(shared->scrollRefreshHz==500);
+ publishRefreshRate(60);publishRefreshRate(500);syncRefreshRate();syncRefreshRate();assert(shared->scrollRefreshHz==0);
  for(unsigned bad:{0u,29u,501u})publishRefreshRate(bad);assert(refreshRate()==500);
  postsBefore=refreshPosts;publishRefreshRate(500);assert(refreshPosts==postsBefore);
- shared=nullptr;syncRefreshRate();shared=&runtimeState;syncRefreshRate();assert(shared->scrollRefreshHz==500);
- configuredPollHz=0;monitorHz=240;displaySettingsDirty=true;testClock+=1000;updateRefresh();syncRefreshRate();assert(pollHz==240&&shared->scrollRefreshHz==240);
- std::cout<<"PASS common 30-500 FPS: both startup orders, automatic monitor changes, explicit target, live scope changes, latest-value notifications and reconnect\n";
+ shared=nullptr;syncRefreshRate();shared=&runtimeState;syncRefreshRate();assert(shared->scrollRefreshHz==0);
+ configuredPollHz=0;monitorHz=240;displaySettingsDirty=true;testClock+=1000;updateRefresh();syncRefreshRate();assert(pollHz==240&&shared->scrollRefreshHz==0);
+ std::cout<<"PASS cursor 30-500 FPS and disabled scene refresh: startup orders, monitor changes, stale modes, notifications and reconnect\n";
  std::set<int> ids;
  for(int key=0;key<DisplayOptionCount;++key){const auto&s=displaySpecs[key];assert(ids.insert(s.id).second);
   for(int value:{s.min,s.max}){assert(requestDisplaySetting(key,value));int before=notifications;forwardDisplay(ui,key,value);assert(notifications==before+1&&lastID==s.id&&fields[s.id]==value);

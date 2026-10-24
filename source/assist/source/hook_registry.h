@@ -2,11 +2,13 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <string.h>
+#include "../../shared/source/direct_patch_policy.h"
 // Game-thread-only ownership bookkeeping, NOT a stop-the-world x86 patcher.
 // A stale/foreign site is sticky: never overwrite it on retries or detach.
 namespace assist { namespace hookregistry {
 enum class Owner : uint8_t { Frame, CS, Cursor, NativeEvent, FootClick, Decide, MouseUp, Placement, Sidebar, NativeAir, RenderMask, C4Test, PlayerControl, Camera, Unknown };
 inline Owner ownerAt(uint32_t a){
+ if(auto s=directpatch::find(a))return s->group==directpatch::Group::Map?Owner::RenderMask:Owner::Placement;
  switch(a){
  case 0x0055D360: return Owner::Frame;
  case 0x00646E90: return Owner::CS;
@@ -31,6 +33,7 @@ inline Owner ownerAt(uint32_t a){
 }
 inline bool knownOriginal(uint32_t at,const uint8_t* bytes,unsigned size){
  if(!bytes)return false;
+ if(directpatch::find(at))return directpatch::original(at,bytes,size);
  const uint8_t*signature=nullptr;unsigned expected=0;
  static const uint8_t frame[]={0xA0,0xA0,0xE9,0xA8,0x00};
  static const uint8_t cs[]={0x83,0xEC,0x70,0x32,0xC0};
@@ -89,7 +92,8 @@ struct Slot {
  uint8_t size=0;bool active=false,conflict=false;
 };
 enum class Transition : uint8_t { Deny, Install, Restore };
-template<unsigned Capacity=32> struct Registry {
+template<unsigned Capacity=64> struct Registry {
+ static constexpr unsigned CapacityLimit=Capacity;
  Slot slots[Capacity]{};unsigned used=0;
  int find(uint32_t a)const{for(unsigned i=0;i<used;++i)if(slots[i].address==a)return int(i);return -1;}
  bool conflict(uint32_t a)const{int i=find(a);return i>=0&&slots[i].conflict;}

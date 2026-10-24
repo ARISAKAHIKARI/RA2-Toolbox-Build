@@ -11,7 +11,7 @@ static HANDLE boundThreadHandle=nullptr;
 static uint32_t boundThreadId=0;
 static volatile LONG busy,activeThread,activeModule,entries,reentrant,contended,wrongThread;
 static assist::hookregistry::Registry<> patches;
-static uint32_t patchModules[32];
+static uint32_t patchModules[decltype(patches)::CapacityLimit];
 extern "C" __declspec(dllexport) const uint32_t GameEntryManagerInfo[2]={Version,sizeof(Request)};
 static bool isBoundThreadDead(uint32_t boundTid){
  // Numeric thread IDs can be recycled. Only the retained object handle
@@ -46,11 +46,15 @@ static Result applyPatch(const Request&r){
       uintptr_t(p)+n>uintptr_t(info.BaseAddress)+info.RegionSize)return false;
    memcpy(out,p,n);return true;
   }))return Result::PatchDenied;
+  if(directpatch::find(r.address)){
+   if(!directpatch::installed(r.address,r.after,r.length))return Result::PatchDenied;
+  }else{
   const uint32_t target=experimentalpatch::destination(r.address,r.after,r.length);MEMORY_BASIC_INFORMATION info{};
   if(!target||!VirtualQuery((void*)(uintptr_t)target,&info,sizeof info)||info.State!=MEM_COMMIT||
      info.AllocationBase!=self||info.Type!=MEM_IMAGE||!(info.Protect&(PAGE_EXECUTE|PAGE_EXECUTE_READ|PAGE_EXECUTE_READWRITE|PAGE_EXECUTE_WRITECOPY)))return Result::PatchDenied;
   HMODULE pin=nullptr;if(!GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS|GET_MODULE_HANDLE_EX_FLAG_PIN,
     reinterpret_cast<LPCWSTR>(target),&pin))return Result::SystemFailure;
+  }
  }
  void* site=(void*)(uintptr_t)r.address;MEMORY_BASIC_INFORMATION info{};
  if(!VirtualQuery(site,&info,sizeof info)||info.State!=MEM_COMMIT||info.AllocationBase!=GetModuleHandleW(nullptr)||

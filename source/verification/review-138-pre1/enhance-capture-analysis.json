@@ -1,0 +1,528 @@
+{
+  "archive": "RA2Master-Capture-20261025-003048-19724.zip",
+  "archive_sha256": "c8acd7885b9e4d31450059745aa06b5d9e2d4b136b3f8bfef2ace0a38e7f6485",
+  "session": {
+    "tool_version": "0.2.0",
+    "target_name_policy": "exact_gamemd.exe",
+    "feature_id": "enhance",
+    "feature_name": "科技加强",
+    "game_restart_reported": false,
+    "private_data_capture": true,
+    "pid": 18120,
+    "name": "gamemd.exe",
+    "image_base": "0x400000",
+    "image_size": 7942144,
+    "machine": 332,
+    "pe_timestamp": 1004491854,
+    "file_sha256": "7B8A068535D6AF06845EDF95AE829B113D00C02909330E16F197426CD7DB94B6",
+    "sections": [
+      {
+        "name": ".text",
+        "rva": 4096,
+        "size": 4063232,
+        "characteristics": 1610612768
+      },
+      {
+        "name": ".rdata",
+        "rva": 4067328,
+        "size": 200704,
+        "characteristics": 1073741888
+      },
+      {
+        "name": ".data",
+        "rva": 4268032,
+        "size": 3570660,
+        "characteristics": 3221225536
+      },
+      {
+        "name": ".rsrc",
+        "rva": 7839744,
+        "size": 102400,
+        "characteristics": 1073741888
+      }
+    ]
+  },
+  "observation": {
+    "feature_id": "enhance",
+    "effect_reported": "yes",
+    "remarks": "有残留"
+  },
+  "stages": {
+    "00-clean": {
+      "image_sha256": "836dc4366aa9e9123660d82f218fe941fb464e23dd34e4202013afa8c1f6f8f4",
+      "tick_ms": 486015,
+      "private_regions": 0,
+      "private_saved_bytes": 0
+    },
+    "01-off": {
+      "image_sha256": "f49de9cae6167e1b9c373812b9329178d016af7a7dc7026cf0d9e09937a0fe02",
+      "tick_ms": 496953,
+      "private_regions": 144,
+      "private_saved_bytes": 119300096
+    },
+    "02-on": {
+      "image_sha256": "85bf65d82e9450eefb58d84f96f6621bdb11c67ac4ec1eb1c9a6c644601584f0",
+      "tick_ms": 526640,
+      "private_regions": 147,
+      "private_saved_bytes": 120041472
+    },
+    "03-off": {
+      "image_sha256": "b7984c15507f2b0d840560fb034ea03ec5f9b3b0a365d5132105b861c03098c8",
+      "tick_ms": 564031,
+      "private_regions": 147,
+      "private_saved_bytes": 120414208
+    }
+  },
+  "code_changes": [],
+  "reversible_bytes_verified": 200,
+  "type_counts": {
+    "BuildingType": [
+      402,
+      402,
+      402
+    ],
+    "InfantryType": [
+      65,
+      65,
+      65
+    ],
+    "UnitType": [
+      82,
+      82,
+      82
+    ],
+    "AircraftType": [
+      12,
+      12,
+      12
+    ]
+  },
+  "type_changes": [
+    {
+      "kind": "BuildingType",
+      "id": "GAPOWR",
+      "object": "0x149cf040",
+      "offset": "0x1538",
+      "length": 9,
+      "off": "000000000000000000",
+      "on": "d5ffffffd7ffffff6d",
+      "off_again": "d5ffffffd7ffffff6d",
+      "restored": false,
+      "word_offset": "0x1538",
+      "word_values": [
+        "000000000000000000000000",
+        "d5ffffffd7ffffff6d000000",
+        "d5ffffffd7ffffff6d000000"
+      ]
+    },
+    {
+      "kind": "BuildingType",
+      "id": "GAPOWR",
+      "object": "0x149cf040",
+      "offset": "0x1544",
+      "length": 1,
+      "off": "00",
+      "on": "5c",
+      "off_again": "5c",
+      "restored": false,
+      "word_offset": "0x1544",
+      "word_values": [
+        "00000000",
+        "5c000000",
+        "5c000000"
+      ]
+    },
+    {
+      "kind": "BuildingType",
+      "id": "GAPILE",
+      "object": "0x149d2050",
+      "offset": "0x1538",
+      "length": 9,
+      "off": "000000000000000000",
+      "on": "cdffffffc8ffffffab",
+      "off_again": "cdffffffc8ffffffab",
+      "restored": false,
+      "word_offset": "0x1538",
+      "word_values": [
+        "000000000000000000000000",
+        "cdffffffc8ffffffab000000",
+        "cdffffffc8ffffffab000000"
+      ]
+    },
+    {
+      "kind": "BuildingType",
+      "id": "GAPILE",
+      "object": "0x149d2050",
+      "offset": "0x1544",
+      "length": 1,
+      "off": "00",
+      "on": "7f",
+      "off_again": "7f",
+      "restored": false,
+      "word_offset": "0x1544",
+      "word_values": [
+        "00000000",
+        "7f000000",
+        "7f000000"
+      ]
+    },
+    {
+      "kind": "InfantryType",
+      "id": "WEEDGUY",
+      "object": "0x14932890",
+      "offset": "0x634",
+      "length": 1,
+      "off": "ff",
+      "on": "01",
+      "off_again": "01",
+      "restored": false,
+      "word_offset": "0x634",
+      "word_values": [
+        "ffffffff",
+        "01ffffff",
+        "01ffffff"
+      ]
+    },
+    {
+      "kind": "InfantryType",
+      "id": "COW",
+      "object": "0x14f9bc70",
+      "offset": "0x634",
+      "length": 1,
+      "off": "ff",
+      "on": "01",
+      "off_again": "01",
+      "restored": false,
+      "word_offset": "0x634",
+      "word_values": [
+        "ffffffff",
+        "01ffffff",
+        "01ffffff"
+      ]
+    },
+    {
+      "kind": "InfantryType",
+      "id": "ALL",
+      "object": "0x14f9cb78",
+      "offset": "0x634",
+      "length": 1,
+      "off": "ff",
+      "on": "01",
+      "off_again": "01",
+      "restored": false,
+      "word_offset": "0x634",
+      "word_values": [
+        "ffffffff",
+        "01ffffff",
+        "01ffffff"
+      ]
+    },
+    {
+      "kind": "InfantryType",
+      "id": "PRES",
+      "object": "0x14fa8b88",
+      "offset": "0x634",
+      "length": 1,
+      "off": "ff",
+      "on": "01",
+      "off_again": "01",
+      "restored": false,
+      "word_offset": "0x634",
+      "word_values": [
+        "ffffffff",
+        "01ffffff",
+        "01ffffff"
+      ]
+    },
+    {
+      "kind": "InfantryType",
+      "id": "JOSH",
+      "object": "0x14fb4068",
+      "offset": "0x634",
+      "length": 1,
+      "off": "ff",
+      "on": "01",
+      "off_again": "01",
+      "restored": false,
+      "word_offset": "0x634",
+      "word_values": [
+        "ffffffff",
+        "01ffffff",
+        "01ffffff"
+      ]
+    },
+    {
+      "kind": "InfantryType",
+      "id": "POLARB",
+      "object": "0x14fb5e78",
+      "offset": "0x634",
+      "length": 1,
+      "off": "ff",
+      "on": "01",
+      "off_again": "01",
+      "restored": false,
+      "word_offset": "0x634",
+      "word_values": [
+        "ffffffff",
+        "01ffffff",
+        "01ffffff"
+      ]
+    },
+    {
+      "kind": "InfantryType",
+      "id": "CLNT",
+      "object": "0x14fbd6b8",
+      "offset": "0x634",
+      "length": 1,
+      "off": "ff",
+      "on": "01",
+      "off_again": "01",
+      "restored": false,
+      "word_offset": "0x634",
+      "word_values": [
+        "ffffffff",
+        "01ffffff",
+        "01ffffff"
+      ]
+    },
+    {
+      "kind": "InfantryType",
+      "id": "ARND",
+      "object": "0x14fbe5c0",
+      "offset": "0x634",
+      "length": 1,
+      "off": "ff",
+      "on": "01",
+      "off_again": "01",
+      "restored": false,
+      "word_offset": "0x634",
+      "word_values": [
+        "ffffffff",
+        "01ffffff",
+        "01ffffff"
+      ]
+    },
+    {
+      "kind": "InfantryType",
+      "id": "STLN",
+      "object": "0x14fbf4c8",
+      "offset": "0x634",
+      "length": 1,
+      "off": "ff",
+      "on": "01",
+      "off_again": "01",
+      "restored": false,
+      "word_offset": "0x634",
+      "word_values": [
+        "ffffffff",
+        "01ffffff",
+        "01ffffff"
+      ]
+    },
+    {
+      "kind": "InfantryType",
+      "id": "LUNR",
+      "object": "0x14fc21e0",
+      "offset": "0x634",
+      "length": 1,
+      "off": "0b",
+      "on": "01",
+      "off_again": "01",
+      "restored": false,
+      "word_offset": "0x634",
+      "word_values": [
+        "0b000000",
+        "01000000",
+        "01000000"
+      ]
+    },
+    {
+      "kind": "UnitType",
+      "id": "BUS",
+      "object": "0x14907c60",
+      "offset": "0x634",
+      "length": 1,
+      "off": "ff",
+      "on": "01",
+      "off_again": "01",
+      "restored": false,
+      "word_offset": "0x634",
+      "word_values": [
+        "ffffffff",
+        "01ffffff",
+        "01ffffff"
+      ]
+    },
+    {
+      "kind": "UnitType",
+      "id": "HOWI",
+      "object": "0x14a83540",
+      "offset": "0x634",
+      "length": 1,
+      "off": "ff",
+      "on": "01",
+      "off_again": "01",
+      "restored": false,
+      "word_offset": "0x634",
+      "word_values": [
+        "ffffffff",
+        "01ffffff",
+        "01ffffff"
+      ]
+    },
+    {
+      "kind": "UnitType",
+      "id": "CMON",
+      "object": "0x14a87de8",
+      "offset": "0x634",
+      "length": 1,
+      "off": "ff",
+      "on": "01",
+      "off_again": "01",
+      "restored": false,
+      "word_offset": "0x634",
+      "word_values": [
+        "ffffffff",
+        "01ffffff",
+        "01ffffff"
+      ]
+    },
+    {
+      "kind": "UnitType",
+      "id": "HIND",
+      "object": "0x14a89af8",
+      "offset": "0x634",
+      "length": 1,
+      "off": "ff",
+      "on": "01",
+      "off_again": "01",
+      "restored": false,
+      "word_offset": "0x634",
+      "word_values": [
+        "ffffffff",
+        "01ffffff",
+        "01ffffff"
+      ]
+    },
+    {
+      "kind": "UnitType",
+      "id": "XCOMET",
+      "object": "0x14a8e3a0",
+      "offset": "0x634",
+      "length": 1,
+      "off": "ff",
+      "on": "01",
+      "off_again": "01",
+      "restored": false,
+      "word_offset": "0x634",
+      "word_values": [
+        "ffffffff",
+        "01ffffff",
+        "01ffffff"
+      ]
+    },
+    {
+      "kind": "UnitType",
+      "id": "VLAD",
+      "object": "0x14a91dc0",
+      "offset": "0x634",
+      "length": 1,
+      "off": "ff",
+      "on": "01",
+      "off_again": "01",
+      "restored": false,
+      "word_offset": "0x634",
+      "word_values": [
+        "ffffffff",
+        "01ffffff",
+        "01ffffff"
+      ]
+    },
+    {
+      "kind": "UnitType",
+      "id": "CDEST",
+      "object": "0x14f75a30",
+      "offset": "0x634",
+      "length": 1,
+      "off": "ff",
+      "on": "01",
+      "off_again": "01",
+      "restored": false,
+      "word_offset": "0x634",
+      "word_values": [
+        "ffffffff",
+        "01ffffff",
+        "01ffffff"
+      ]
+    },
+    {
+      "kind": "UnitType",
+      "id": "SCHD",
+      "object": "0x14f82ea0",
+      "offset": "0x634",
+      "length": 1,
+      "off": "ff",
+      "on": "01",
+      "off_again": "01",
+      "restored": false,
+      "word_offset": "0x634",
+      "word_values": [
+        "ffffffff",
+        "01ffffff",
+        "01ffffff"
+      ]
+    },
+    {
+      "kind": "AircraftType",
+      "id": "V3ROCKET",
+      "object": "0x147963d0",
+      "offset": "0x634",
+      "length": 1,
+      "off": "ff",
+      "on": "01",
+      "off_again": "01",
+      "restored": false,
+      "word_offset": "0x634",
+      "word_values": [
+        "ffffffff",
+        "01ffffff",
+        "01ffffff"
+      ]
+    },
+    {
+      "kind": "AircraftType",
+      "id": "CMISL",
+      "object": "0x148fa8a0",
+      "offset": "0x634",
+      "length": 1,
+      "off": "ff",
+      "on": "01",
+      "off_again": "01",
+      "restored": false,
+      "word_offset": "0x634",
+      "word_values": [
+        "ffffffff",
+        "01ffffff",
+        "01ffffff"
+      ]
+    },
+    {
+      "kind": "AircraftType",
+      "id": "DMISL",
+      "object": "0x14a11e20",
+      "offset": "0x634",
+      "length": 1,
+      "off": "ff",
+      "on": "01",
+      "off_again": "01",
+      "restored": false,
+      "word_offset": "0x634",
+      "word_values": [
+        "ffffffff",
+        "01ffffff",
+        "01ffffff"
+      ]
+    }
+  ],
+  "unreadable_types": []
+}

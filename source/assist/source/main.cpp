@@ -87,7 +87,7 @@ struct LabelRaster {std::wstring text;ARGB color{};float width{};int used{},capa
 static visual::Motion statusMotion;static visual::LabelView statusViews[MaxLabels];static Snapshot statusSample;
 static_assert(external::status::Maximum<=MaxLabels,"Unit status markers share the existing Motion capacity");
 static assist::PlayerTestInfo playerChoices[32]{};static int playerChoiceCount;static uint32_t playerChoicesMatch;
-static bool techMode;static bool autoRevealNewMatch=false;static uint32_t autoRevealMatch=0,autoRevealRetry=0,autoRevealDone=0,autoRevealPID=0;
+static uint64_t techAcknowledgedHash=0;static bool techMode;static bool autoRevealNewMatch=false;static uint32_t autoRevealMatch=0,autoRevealRetry=0,autoRevealDone=0,autoRevealPID=0;
 static uint32_t schedulerMode=0,schedulerTarget=0,megaQueueMode=0,objectQueueMode=0;
 static HWND schedulerEntryCombo,megaQueueCombo,objectQueueCombo;
 static typecatalog::Catalogue savedTypes;static uint32_t catalogueRevision=0;
@@ -462,15 +462,16 @@ static void logCommandWait(){
 }
 static bool userCommand(int c){return c!=OpenTech;}
 static DWORD discoverGamePid(); // Same window filter used by attach(), without installing a second Hook.
-static bool queueCommand(int c,int arg,int arg2,uint32_t match,int retries=0,DWORD delayMs=0,uint32_t token=0){
+static bool queueCommand(int c,int arg,int arg2,uint32_t match,int retries=0,DWORD delayMs=0,uint32_t token=0,uint64_t typeHash=0){
  if(c==RevealMap&&!extra.experimentalReveal)return false;
  DWORD now=GetTickCount();
  if(!game||!pid||!IsWindow(game)||(shared&&lastData&&incoming.status<0))return false;
- bool queued=commandQueue.add({c,arg,arg2,pid,match,now,retries,now+delayMs,token});
+ bool queued=commandQueue.add({c,arg,arg2,pid,match,now,retries,now+delayMs,token,typeHash?typeHash:typeListHash(snap.types,snap.typeCount)});
  if(queued){diag(L"staged command="+std::to_wstring(c)+L" pid="+std::to_wstring(pid)+L" match="+std::to_wstring(match)+L" backlog="+std::to_wstring(commandQueue.size));wakeGame();}
  return queued;
 }
 static void send(int command,int arg=0,int arg2=0,int retries=0,bool fromQueue=false,uint32_t requestToken=0){
+ const uint64_t intentTypes=typeListHash(snap.types,snap.typeCount);
  if(command==OpenTech)arg2=techImplementation;
  if(command==RevealMap&&!extra.experimentalReveal){notify(L"请在黑幕绘制方式中选择自动全图。");return;}
  DWORD now=GetTickCount();
@@ -488,6 +489,7 @@ static void send(int command,int arg=0,int arg2=0,int retries=0,bool fromQueue=f
  }
  if(snap.status<0){notify(L"游戏操作暂不可用，本次指令未执行。");return;}
  readSnapshot();now=GetTickCount();
+ if(typeIndexedCommand(command,arg)&&intentTypes!=typeListHash(snap.types,snap.typeCount)){notify(L"单位清单已改变，请重新选择后提交。");return;}
  if(shared&&lastData&&incoming.status<0){notify(commandWaitReason());return;}
  bool connected=shared&&delivery::bridgeReady(incoming.status,commandFresh(now),incoming.chat,shared->request==shared->ack);
  // Mode syncing must not enqueue automatically every 50ms.
@@ -506,6 +508,7 @@ static void send(int command,int arg=0,int arg2=0,int retries=0,bool fromQueue=f
   diag(L"Tech request implementation="+std::to_wstring(techImplementation)+L" profile="+std::to_wstring(techProfile)+L" selected="+std::to_wstring(requested)+L" match="+std::to_wstring(snap.match));
  }
  inFlightMatch=commandMatch();inFlightRetries=retries;sentAt=now;
+ shared->requestTypeHash=typeListHash(snap.types,snap.typeCount);
  shared->requestToken=requestToken;shared->command=command;shared->arg=arg;shared->arg2=arg2;
  shared->requestTick=now;shared->requestMatch=commandMatch();
  MemoryBarrier();InterlockedIncrement((volatile LONG*)&shared->request);
@@ -1217,7 +1220,8 @@ static void result(){if(!shared)return;uint32_t a=shared->ack;if(a==ack)return;M
  if(c==SelectType&&commandQueue.has(SelectType)){
   diag(L"selection ACK superseded by newer pending selection");return;
  }
- if(c==SelectType&&snap.status==1&&
+ const bool sameTypes=!typeIndexedCommand(c,shared->arg)||shared->requestTypeHash==typeListHash(snap.types,snap.typeCount);
+ if(c==SelectType&&sameTypes&&snap.status==1&&
     delivery::retrySelection(r,inFlightRetries,GetTickCount(),sentAt,
       inFlightMatch,snap.match,foregroundGame(),snap.chat)){
   if(queueCommand(c,shared->arg,shared->arg2,inFlightMatch,1,60)){
@@ -1228,7 +1232,7 @@ static void result(){if(!shared)return;uint32_t a=shared->ack;if(a==ack)return;M
  // A command already submitted to the game must never be replayed speculatively.
  if((c==RevealMap||c==AutoBoard||c==Produce)&&(r==-7||r==-3||
     (c==Produce&&r==-6)||(c==RevealMap&&r==-14))&&inFlightRetries<(r==-14?20:c==Produce?6:2)&&
-    snap.status==1&&inFlightMatch==snap.match&&game&&pid){
+    sameTypes&&snap.status==1&&inFlightMatch==snap.match&&game&&pid){
   if(queueCommand(c,shared->arg,shared->arg2,inFlightMatch,inFlightRetries+1,r==-14?300:c==Produce?50:100)){
    notify(L"游戏暂未接收指令，已安排有限重试，无需重复按键。");return;
   }
@@ -1241,7 +1245,7 @@ static void result(){if(!shared)return;uint32_t a=shared->ack;if(a==ack)return;M
  else if(c==Cheer)notify(L"喝彩已提交。");
  else if(c==Taunt)notify(L"嘲讽已交给原生发送命令。");
  else if(c==ClearBeacons)notify(L"已清理己方信标。");
- else if(c==OpenTech){techEnabled=shared->arg!=0;notify(techEnabled?L"科技生产已启用，允许 "+std::to_wstring(n)+L" 项。请从本面板选择单位生产。":L"科技生产已关闭。");}
+ else if(c==OpenTech){techAcknowledgedHash=shared->requestTypeHash;techEnabled=shared->arg!=0;notify(techEnabled?L"科技生产已启用，允许 "+std::to_wstring(n)+L" 项。请从本面板选择单位生产。":L"科技生产已关闭。");}
  else if(c==SwitchPlayer||c==RestorePlayer){pointerMatches.clear();commandQueue.clear();notify(c==RestorePlayer?L"已恢复原操控方。":L"已切换操控方；自动功能将按新操控方重新启动。");}
  else if(c==CancelTechProduction)notify(L"已请求取消生产。");
  else if(c==Produce)notify(L"生产请求已提交；是否接受以游戏生产队列为准。");
@@ -1262,11 +1266,13 @@ static void serviceCommandQueue(DWORD now){
  delivery::Item queued{};
  if(commandQueue.peek(now,pid,commandMatch(),commandMatch()!=0,queued)&&commandFocus()&&
     delivery::bridgeReady(incoming.status,commandFresh(now),incoming.chat,shared->request==shared->ack)){
-  commandQueue.consume();send(queued.command,queued.arg,queued.arg2,queued.retries,true,queued.token);
+  commandQueue.consume();
+  if(typeIndexedCommand(queued.command,queued.arg)&&queued.typeHash!=typeListHash(snap.types,snap.typeCount))notify(L"单位清单已改变，旧的待处理指令已取消。");
+  else send(queued.command,queued.arg,queued.arg2,queued.retries,true,queued.token);
  }
  static DWORD waitLoggedAt=0;
  if(commandQueue.size&&DWORD(now-waitLoggedAt)>=2000){waitLoggedAt=now;logCommandWait();}
- if(commandFresh(now)&&shared->request==shared->ack&&snap.techOpen!=(techMode?techImplementation+1:0)&&!snap.techError)send(OpenTech,techMode);
+ if(commandFresh(now)&&shared->request==shared->ack&&(snap.techOpen!=(techMode?techImplementation+1:0)||(techMode&&techAcknowledgedHash!=typeListHash(snap.types,snap.typeCount)))&&!snap.techError)send(OpenTech,techMode);
 }
 static void publishSuiteDisplay(){
 #ifdef RA2_UNIFIED
@@ -1281,7 +1287,8 @@ static void updateModeStatus(DWORD now){
  int phase=!enabled?1:!game?2:snap.status<0?3:(snap.status!=1||(shared&&commandMatch()&&snap.commandStatus!=1))?4:0;
  static int oldPhase=-1;static DWORD last; if(phase==oldPhase&&DWORD(now-last)<200)return;oldPhase=phase;last=now;publishSuiteDisplay();
  auto riskText=[&](bool wanted,int state)->std::wstring{if(state==-2)return L"启用或关闭失败，请查看日志";if(state==-1)return L"不支持此游戏版本";if(!wanted)return state==1?L"等待恢复":L"关闭";return phase?L"等待游戏就绪":state==1?L"已启用（实验性）":L"等待生效";};
- std::wstring riskStatus=L"扩展建造："+riskText(buildAnywhereMode,snap.placementStatus);
+ std::wstring enhancement=L"科技加强：";enhancement+=!extra.techEnhance?L"关闭":!shared||phase?L"等待游戏就绪":shared->techEnhanceStatus<0?L"部分字段不兼容或已被修改，请查看日志":shared->techEnhanceStatus==1?L"已启用（"+std::to_wstring(shared->techEnhanceCount)+L" 项）":L"等待生效";SetWindowTextW(GetDlgItem(ui,9098),enhancement.c_str());
+ std::wstring riskStatus=L"随处建造："+riskText(buildAnywhereMode,snap.placementStatus);
  std::wstring airStatus=L"飞机路径点：";airStatus+=!(extra.airWaypoints||extra.nativeAirWaypoints)?L"关闭":phase?L"等待游戏就绪":extra.airWaypoints||extra.airPathKey||!airway::native()?L"兼容模式":snap.nativeAirStatus==-2?L"启用或关闭失败，请查看日志":snap.nativeAirStatus==-1?L"不支持此游戏版本":snap.nativeAirStatus==1?L"原生模式":L"等待生效";
  SetWindowTextW(GetDlgItem(ui,866),airStatus.c_str());
  SetWindowTextW(GetDlgItem(ui,807),riskStatus.c_str());
@@ -1390,7 +1397,7 @@ static void tick(){reapBridges();logBridgeHealth();DWORD now=GetTickCount();stat
   return;
  }
  sampleExternal(now);uint32_t configured=flags();
- bool needsBridge=(externalData&&externalData->status==1)||techMode||extra.dodgeEnabled||extra.missileDefense||commandQueue.size||hasSelection||externalSampler.flashCount||(configured&(AutoCS|AdvancedInput|MagnetronInput|AutoOreReturn|CustomCS|BuildAnywhere|AutoRepair|EjectAssist|SpecialClickFlags));
+ bool needsBridge=(externalData&&externalData->status==1)||techMode||extra.techEnhance||extra.dodgeEnabled||extra.missileDefense||commandQueue.size||hasSelection||externalSampler.flashCount||(configured&(AutoCS|AdvancedInput|MagnetronInput|AutoOreReturn|CustomCS|BuildAnywhere|AutoRepair|EjectAssist|SpecialClickFlags));
  if(needsBridge&&!shared)ensureBridge();
  now=GetTickCount(); // ensureBridge may have created attachAt after tick entry.
  if(shared){

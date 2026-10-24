@@ -64,6 +64,7 @@ static bool highScrollInterfaces(){
 }
 static bool zoomClientPoint(HWND,POINT&);
 static void highScrollTick(uint64_t now){
+ if(!featureavailability::SceneRefresh){if(scrollRefreshActive)restoreHighScroll();if(sh)sh->scrollRefreshStatus=0;return;}
  if(!sh->scrollRefreshMode||sh->scrollRefreshMode>3||!sh->scrollRefreshHz||!sh->foreground||snap.chat||!riskReady()||!simulationReady()){
   if(scrollRefreshActive)restoreHighScroll();return;
  }

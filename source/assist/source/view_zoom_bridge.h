@@ -74,7 +74,7 @@ static void restoreViewZoom(){
 }
 static void viewZoomTick(){
  if(!sh)return;
- const int desired=int(sh->viewZoomPercent);
+ const int desired=featureavailability::zoomPercent(int(sh->viewZoomPercent));
  if(zoomFaulted){zoomPublish(viewzoom::Fault);return;}
  auto current=zoomCurrent();
  if(zoomBase.width&&current!=zoomOwned)forgetViewZoom();

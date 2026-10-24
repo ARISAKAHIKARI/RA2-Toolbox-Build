@@ -1,13 +1,13 @@
 {
-  "label": "1.0.37.14 SingleRuntime",
-  "file_version": "1.0.37.14",
+  "label": "1.0.38.1 SingleRuntime",
+  "file_version": "1.0.38.1",
   "verified": {
     "RA2Toolbox.exe": {
-      "bytes": 2823680,
-      "sha256": "488eb6358014cd284bc400e94eb2b5df803a116aa7a6842a363db329a5d4ccb6",
+      "bytes": 2831360,
+      "sha256": "4c439735353c6399933d51c16558a6acb49c06f9db929bb6eedaba98bc69aa5e",
       "machine": "PE32 x86",
       "sections": 14,
-      "entry_rva": "0x13b6c0",
+      "entry_rva": "0x13d170",
       "exports": [
         "AssistHostMappingPrefix",
         "AssistHostProtocolInfo",
@@ -241,6 +241,7 @@
           "DeleteObject",
           "GetDeviceCaps",
           "GetStockObject",
+          "GetTextMetricsW",
           "LineTo",
           "MoveToEx",
           "Polygon",
@@ -551,15 +552,15 @@
         "version": "6.0.0.0",
         "architecture": "x86"
       },
-      "assist_protocol": 69,
-      "assist_shared_bytes": 4165112
+      "assist_protocol": 70,
+      "assist_shared_bytes": 4165136
     },
     "GameRuntime.dll": {
-      "bytes": 4869632,
-      "sha256": "515fdea45e53aa091d311bba32fd3effd7bbdbd21ec907ae93e7f12c75948013",
+      "bytes": 4874240,
+      "sha256": "65ac8feb50e75fc6989e1192c5360447ee039113cff617b2d4541be03ea9a32a",
       "machine": "PE32 x86",
       "sections": 13,
-      "entry_rva": "0x61c20",
+      "entry_rva": "0x62130",
       "exports": [
         "AssistMappingPrefix",
         "AssistProtocolInfo",
@@ -579,12 +580,12 @@
         "api-ms-win-crt-math-l1-1-0.dll",
         "api-ms-win-crt-private-l1-1-0.dll",
         "api-ms-win-crt-runtime-l1-1-0.dll",
+        "api-ms-win-crt-string-l1-1-0.dll",
         "api-ms-win-crt-utility-l1-1-0.dll",
         "api-ms-win-crt-stdio-l1-1-0.dll",
         "api-ms-win-crt-environment-l1-1-0.dll",
         "api-ms-win-crt-heap-l1-1-0.dll",
-        "api-ms-win-crt-time-l1-1-0.dll",
-        "api-ms-win-crt-string-l1-1-0.dll"
+        "api-ms-win-crt-time-l1-1-0.dll"
       ],
       "imports": {
         "KERNEL32.dll": [
@@ -679,6 +680,11 @@
           "_register_onexit_function",
           "abort"
         ],
+        "api-ms-win-crt-string-l1-1-0.dll": [
+          "strcmp",
+          "strlen",
+          "strncmp"
+        ],
         "api-ms-win-crt-utility-l1-1-0.dll": [
           "abs"
         ],
@@ -702,18 +708,14 @@
           "__timezone",
           "__tzname",
           "_tzset"
-        ],
-        "api-ms-win-crt-string-l1-1-0.dll": [
-          "strlen",
-          "strncmp"
         ]
       },
       "GameRuntimeHook_rva": "0x1080",
       "GameRuntimePostHook_rva": "0x1970",
       "runtime_protocol": 4,
       "runtime_control_bytes": 176,
-      "assist_protocol": 69,
-      "assist_shared_bytes": 4165112
+      "assist_protocol": 70,
+      "assist_shared_bytes": 4165136
     }
   },
   "runtime_tested": false,

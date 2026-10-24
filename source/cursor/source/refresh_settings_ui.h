@@ -3,7 +3,7 @@ static HWND refreshModeBox,refreshStateLabel,shroudModeBox;static bool refreshin
 static void syncRefreshControls(){
  suite::DisplayState state;if(!suite::readDisplaySettings(state)||!refreshModeBox)return;
  refreshingSuiteControls=true;EnableWindow(refreshModeBox,TRUE);
- SendMessageW(refreshModeBox,CB_SETCURSEL,state.values[suite::RefreshMode],0);
+ SendMessageW(refreshModeBox,CB_SETCURSEL,0,0);
  if(shroudModeBox){EnableWindow(shroudModeBox,TRUE);SendMessageW(shroudModeBox,CB_SETCURSEL,state.values[suite::ShroudStrategy],0);}
  bool scene=state.values[suite::RefreshMode]!=0;
  std::wstring text=scene?L"等待游戏前台就绪":L"仅光标 · 使用上方目标刷新率";
@@ -17,7 +17,7 @@ static void syncRefreshControls(){
 static bool refreshSettingCommand(WPARAM wp,LPARAM lp){
  if(refreshingSuiteControls)return false;HWND control=(HWND)lp;
  if(control==shroudModeBox&&HIWORD(wp)==CBN_SELCHANGE){suite::requestDisplaySetting(suite::ShroudStrategy,int(SendMessageW(control,CB_GETCURSEL,0,0)));return true;}
- if(control==refreshModeBox&&HIWORD(wp)==CBN_SELCHANGE){suite::requestDisplaySetting(suite::RefreshMode,int(SendMessageW(control,CB_GETCURSEL,0,0)));return true;}
+ if(control==refreshModeBox&&HIWORD(wp)==CBN_SELCHANGE){SendMessageW(control,CB_SETCURSEL,0,0);suite::requestDisplaySetting(suite::RefreshMode,0);return true;}
  return false;
 }
 #endif

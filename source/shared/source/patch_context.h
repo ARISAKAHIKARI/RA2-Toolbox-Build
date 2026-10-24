@@ -41,6 +41,7 @@ static constexpr Probe Probes[]={
 };
 template<class Read> bool compatible(uint32_t site,Read read){
  if(!experimentalpatch::size(site))return false;
+ if(auto s=directpatch::find(site))return directpatch::compatible(*s,read);
  if(site==experimentalpatch::ControlHouse){
   // Native unpacked entry and the two supplied platform forwarders have the
   // same verified leaf ABI. Do not accept an arbitrary pre-existing detour.

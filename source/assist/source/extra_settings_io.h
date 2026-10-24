@@ -1,5 +1,7 @@
 static void loadAdditionalSettings(){
- extra.viewZoomEnabled=value(L"ViewZoom",L"Enabled",0)!=0;extra.viewZoomPercent=value(L"ViewZoom",L"Percent",100);if(!viewzoom::valid(extra.viewZoomPercent))extra.viewZoomPercent=100;
+ extra.viewZoomEnabled=false;extra.viewZoomPercent=100; // temporarily unavailable, including saved settings
+ extra.techEnhance=value(L"Experimental",L"TechEnhance",0)!=0;
+ extra.placementImplementation=std::clamp(value(L"Experimental",L"PlacementImplementation",0),0,1);
  extra.stickyKey=value(L"Hotkeys",L"StickyGuard",extra.stickyKey)&65535;
  extra.watchEnabled=value(L"Watch",L"Enabled",1)!=0;extra.watchDanger=value(L"Watch",L"DangerCarriers",1)!=0;for(int n=0;n<3;++n){const wchar_t* keys[]={L"PinKey",L"PinKey2",L"PinKey3"};extra.watchKeys[n]=value(L"Watch",keys[n],n?extra.watchKeys[0]:extra.watchKeys[n])&65535;}
  extra.formationEnabled=value(L"Formation",L"Enabled",1)!=0;extra.formationHold=value(L"Formation",L"HoldKey",18)&65535;extra.formationMouse=value(L"Formation",L"MouseButton",2)==1?1:2;
@@ -20,15 +22,15 @@ static void loadAdditionalSettings(){
  extra.missileScope=std::clamp(value(L"MissileDefense",L"TargetScope",0),0,1);extra.missileAllocation=std::clamp(value(L"MissileDefense",L"Allocation",0),0,1);extra.magnetronGlobal=value(L"Magnetron",L"Global",0)!=0;
  extra.missileDefense=value(L"MissileDefense",L"Enabled",0)!=0;extra.missileScanHz=std::clamp(value(L"MissileDefense",L"ScanHz",10),1,60);
  extra.antiTheft=value(L"Modes",L"AntiTheft",0)!=0;
- extra.scrollRefreshMode=std::clamp(value(L"Experimental",L"RefreshStrategy",value(L"Experimental",L"ScrollRefresh",0)!=0?1:0),0,3);
+ extra.scrollRefreshMode=0; // only cursor refresh is available in this release
 #ifndef RA2_UNIFIED
  extra.scrollRefreshHz=std::clamp(value(L"Experimental",L"ScrollRefreshHz",120),30,500);
 #endif
  extra.c4Test=value(L"Experimental",L"InfantryC4",0)!=0;
  extra.c4Key=value(L"Experimental",L"C4HoldKey",'C'|(4<<8));extra.c4Mouse=std::clamp(value(L"Experimental",L"C4Mouse",1),0,6);if(extra.c4Mouse==5)extra.c4Mouse=1;
  for(int i=0;i<9;++i)socialKeys[i]=WORD(value(L"Hotkeys",i?(L"Taunt"+std::to_wstring(i)).c_str():L"Cheer",0)&65535);
- extra.mapStrategy=std::clamp(value(L"Display",L"ShroudStrategy",value(L"Experimental",L"RenderReveal",0)?2:0),0,3);
- extra.renderReveal=extra.mapStrategy==1?2:extra.mapStrategy==2?1:0;
+ extra.mapStrategy=std::clamp(value(L"Display",L"ShroudStrategy",value(L"Experimental",L"RenderReveal",0)?2:0),0,4);
+ extra.renderReveal=extra.mapStrategy==1?2:extra.mapStrategy==2?1:extra.mapStrategy==4?3:0;
  extra.experimentalReveal=extra.mapStrategy==3;
  extra.nativeAirWaypoints=value(L"Experimental",L"NativeAirWaypoints",0)!=0;
  extra.airWaypoints=value(L"Aircraft",L"ZWaypoints",1)!=0;
@@ -62,7 +64,8 @@ static void loadAdditionalSettings(){
  }
 }
 static bool saveAdditionalSettings(){
- write(L"ViewZoom",L"Enabled",extra.viewZoomEnabled);write(L"ViewZoom",L"Percent",extra.viewZoomPercent);
+ write(L"ViewZoom",L"Enabled",0);write(L"ViewZoom",L"Percent",100);
+ write(L"Experimental",L"TechEnhance",extra.techEnhance);write(L"Experimental",L"PlacementImplementation",extra.placementImplementation);
  write(L"Hotkeys",L"StickyGuard",extra.stickyKey);
  write(L"Watch",L"Enabled",extra.watchEnabled);write(L"Watch",L"DangerCarriers",extra.watchDanger);for(int n=0;n<3;++n){const wchar_t* keys[]={L"PinKey",L"PinKey2",L"PinKey3"};write(L"Watch",keys[n],extra.watchKeys[n]);}
  write(L"Formation",L"Enabled",extra.formationEnabled);write(L"Formation",L"HoldKey",extra.formationHold);write(L"Formation",L"MouseButton",extra.formationMouse);
@@ -127,17 +130,13 @@ static void fillExtraTypes(bool force=false){
  if(restore>=0)SendMessageW(extraControls[QuotaType],CB_SETCURSEL,restore,0);
 }
 static uint32_t additionalFlags(){uint32_t f=extra.frozen?Frozen:0;if(techMode)f|=UnsafeTech;if(extra.antiTheft)f|=AntiTheft;if(extra.constructionQueue)f|=ReserveConstruction;if(extra.nativeAirWaypoints&&!extra.airPathKey)f|=NativeAirWaypoints;else if(extra.airWaypoints||extra.nativeAirWaypoints)f|=AirWaypoints;if(extra.experimentalReveal)f|=ExperimentalReveal;if(extra.enter)f|=AdvancedEnter;if(extra.air)f|=AircraftSpread;if(extra.disk)f|=DiskPrimary;if(extra.sellDrained)f|=SellDrained;if(extra.sellVehicles)f|=SellVehicles;if(playertest::SellAvailable&&extra.sellEnemy)f|=SellEnemy;return f;}
-static void syncRefreshRate(){if(!shared)return;
-#ifdef RA2_UNIFIED
- shared->scrollRefreshHz=extra.scrollRefreshMode?suite::refreshRate():0;
-#else
- shared->scrollRefreshHz=extra.scrollRefreshMode?extra.scrollRefreshHz:0;
-#endif
- shared->scrollRefreshMode=extra.scrollRefreshMode;
+static void syncRefreshRate(){extra.scrollRefreshMode=0;if(!shared)return;
+ shared->scrollRefreshHz=0;shared->scrollRefreshMode=0;
 }
 static void syncAdditional(){
  if(!playertest::Available)extra.controlAll=false;if(!playertest::SellAvailable)extra.sellEnemy=false;if(!playertest::SwitchAvailable)extra.switchPlayerEnabled=false;if(!shared)return;
- shared->viewZoomPercent=extra.viewZoomEnabled?extra.viewZoomPercent:100;
+ extra.viewZoomEnabled=false;extra.viewZoomPercent=100;shared->viewZoomPercent=100;
+ shared->placementImplementation=extra.placementImplementation;shared->techEnhance=extra.techEnhance;
  InterlockedIncrement(&shared->formationPolicySeq);shared->formationPolicy.enabled=extra.formationEnabled;shared->formationPolicy.hold=extra.formationHold;shared->formationPolicy.mouse=extra.formationMouse;memcpy(shared->formationPolicy.keys,extra.formationKeys,sizeof extra.formationKeys);MemoryBarrier();InterlockedIncrement(&shared->formationPolicySeq);
  syncRefreshRate();shared->magnetronDrop=extra.magnetronDrop;shared->dodgeEnabled=extra.dodgeEnabled;shared->dodgeMode=extra.dodgeMode;shared->burstEnabled=shared->burstHoldEnabled=shared->burstHeld=0;shared->missileScope=extra.missileScope;shared->missileAllocation=extra.missileAllocation;shared->magnetronGlobal=extra.magnetronGlobal;shared->missileEnabled=extra.missileDefense;shared->missileScanHz=extra.missileScanHz;shared->controlAll=extra.controlAll;shared->switchPlayerEnabled=extra.switchPlayerEnabled;shared->computeRequested=computeRequested;shared->advancedScanHz=advancedScanHz;shared->advancedPriority=advancedTargetPriority;shared->c4Test=extra.c4Test;shared->renderReveal=extra.renderReveal;shared->loadMode=extra.loadMode;shared->loadRadius=extra.loadRadius;shared->enterKey=extra.enterKey;shared->airKey1=extra.airKey1;shared->airKey2=extra.airKey2;
  static uint32_t publishedSettings=~0u;

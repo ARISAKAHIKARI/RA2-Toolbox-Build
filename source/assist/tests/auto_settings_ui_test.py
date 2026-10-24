@@ -126,8 +126,8 @@ int main(){
   for(int bad:{0,49,251,999}){fields[id]=bad;autoSettingChanged(id,EN_CHANGE);assert(scale==250);}
  }
 
- fields[9090]=1;assert(autoSettingChanged(9090,BN_CLICKED)&&extra.viewZoomEnabled);
- for(int i=0;i<5;++i){fields[9091]=i;assert(autoSettingChanged(9091,CBN_SELCHANGE)&&extra.viewZoomPercent==viewzoom::Levels[i]);}
+ fields[9090]=1;assert(autoSettingChanged(9090,BN_CLICKED)&&!extra.viewZoomEnabled);
+ for(int i=0;i<5;++i){fields[9091]=i;assert(autoSettingChanged(9091,CBN_SELCHANGE)&&extra.viewZoomPercent==100);}
  assert(autoSettingChanged(9092,BN_CLICKED)&&extra.viewZoomPercent==100&&fields[9091]==2);
  fields[9090]=0;assert(autoSettingChanged(9090,BN_CLICKED)&&!extra.viewZoomEnabled);
  loadFeatureTypes();for(int f=0;f<featuretypes::Count;++f)assert(!featureTypes.filters[f].custom);
@@ -196,8 +196,8 @@ int main(){
  fields[447]='C';autoSettingChanged(447,EN_CHANGE);assert(csKey=='C');autoSettingChanged(447,EN_CHANGE);assert(csKey=='C');
  // Refresh mode selection, bounds and persisted defaults/migration.
  profile.clear();loadMouse();assert(extra.scrollRefreshMode==0);
- for(int mode:{0,1,2,3}){fields[886]=mode;assert(autoSettingChanged(886,CBN_SELCHANGE)&&extra.scrollRefreshMode==mode);saveMouse();extra.scrollRefreshMode=9;loadMouse();assert(extra.scrollRefreshMode==mode);}
- for(int bad:{-1,4}){fields[886]=bad;autoSettingChanged(886,CBN_SELCHANGE);assert(extra.scrollRefreshMode==3);}
+ for(int mode:{0,1,2,3}){fields[886]=mode;assert(autoSettingChanged(886,CBN_SELCHANGE)&&extra.scrollRefreshMode==0);saveMouse();extra.scrollRefreshMode=9;loadMouse();assert(extra.scrollRefreshMode==0);}
+ for(int bad:{-1,4}){fields[886]=bad;autoSettingChanged(886,CBN_SELCHANGE);assert(extra.scrollRefreshMode==0);}
 #ifndef RA2_UNIFIED
  assert(extra.scrollRefreshHz==120);
  for(int hz:{30,60,120,240,360,500}){fields[887]=hz;assert(autoSettingChanged(887,EN_CHANGE)&&extra.scrollRefreshHz==hz);}
@@ -207,9 +207,9 @@ int main(){
  // The old setting cannot feed the unified UI or be changed by its save path.
  profile[L"ScrollRefreshHz"]=60;assert(!autoSettingChanged(887,EN_CHANGE));saveMouse();assert(profile[L"ScrollRefreshHz"]==60);
 #endif
- profile.clear();profile[L"ScrollRefresh"]=1;loadMouse();assert(extra.scrollRefreshMode==1);
+ profile.clear();profile[L"ScrollRefresh"]=1;loadMouse();assert(extra.scrollRefreshMode==0);
  profile[L"RefreshStrategy"]=0;loadMouse();assert(extra.scrollRefreshMode==0);
- profile[L"RefreshStrategy"]=99;profile[L"ScrollRefreshHz"]=900;loadMouse();assert(extra.scrollRefreshMode==3);
+ profile[L"RefreshStrategy"]=99;profile[L"ScrollRefreshHz"]=900;loadMouse();assert(extra.scrollRefreshMode==0);
 #ifndef RA2_UNIFIED
  assert(extra.scrollRefreshHz==500);
 #endif
@@ -223,7 +223,9 @@ int main(){
  assert(commandQueue.size==1&&commandQueue.slots[0].command==15);
  saveMouse();extra.renderReveal=false;loadMouse();assert(extra.renderReveal&&!extra.experimentalReveal);
  profile[L"RevealMap"]=1;loadMouse();assert(extra.renderReveal&&!extra.experimentalReveal); // legacy permission loses on load
- fields[808]=0;autoSettingChanged(808,CBN_SELCHANGE);assert(!extra.renderReveal);saveMouse();loadMouse();assert(!extra.renderReveal);
+ fields[808]=4;autoSettingChanged(808,CBN_SELCHANGE);assert(extra.renderReveal==3&&!extra.experimentalReveal);saveFeatureTypes();saveMouse();loadFeatureTypes();loadMouse();assert(extra.mapStrategy==4&&extra.renderReveal==3);
+ fields[9096]=1;autoSettingChanged(9096,CBN_SELCHANGE);fields[9097]=1;autoSettingChanged(9097,BN_CLICKED);saveFeatureTypes();saveMouse();extra.placementImplementation=0;extra.techEnhance=false;loadFeatureTypes();loadMouse();assert(extra.placementImplementation==1&&extra.techEnhance);
+ fields[808]=0;autoSettingChanged(808,CBN_SELCHANGE);assert(!extra.renderReveal);saveFeatureTypes();saveMouse();loadMouse();assert(!extra.renderReveal);
  fields[803]=2;autoSettingChanged(803,CBN_SELCHANGE);assert(extra.nativeAirWaypoints&&airway::resets==1&&pointerMatches.clears==1);
  fields[803]=0;autoSettingChanged(803,CBN_SELCHANGE);assert(!extra.nativeAirWaypoints&&airway::resets==2&&pointerMatches.clears==2);
  for(int mode:{0,1,2,3}){fields[803]=mode;autoSettingChanged(803,CBN_SELCHANGE);assert(extra.airWaypoints==(mode==1)&&extra.nativeAirWaypoints==(mode==2));saveMouse();extra.airWaypoints=extra.nativeAirWaypoints=false;loadMouse();assert(extra.airWaypoints==(mode==1)&&extra.nativeAirWaypoints==(mode==2));}

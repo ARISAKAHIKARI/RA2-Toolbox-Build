@@ -4,6 +4,13 @@ using namespace assist::delivery;
 using assist::SelectType;
 using assist::RevealMap;
 int main(){
+ // A reordered catalogue is a different intent, even when its slot is identical.
+ Queue catalog;Item c{assist::CancelTechProduction,1,0,123,8,100,0,0,0,111};
+ assert(catalog.add(c));c.typeHash=222;assert(catalog.add(c)&&catalog.size==2);
+ Item pending;assert(catalog.peek(101,123,8,true,pending)&&pending.typeHash==111);
+ assist::Type types[2]{};types[0].kind=16;types[1].kind=40;types[0].id[0]='A';types[1].id[0]='B';
+ auto hash=assist::typeListHash(types,2);auto tmp=types[0];types[0]=types[1];types[1]=tmp;
+ assert(hash!=assist::typeListHash(types,2));
  Queue q;Item a{9,0,0,123,UnknownMatch,100,0};
  assert(!q.add(Item{SelectType,1,0,123,UnknownMatch,100}));
  assert(!q.add(Item{assist::AutoBoard,0,0,123,UnknownMatch,100}));
