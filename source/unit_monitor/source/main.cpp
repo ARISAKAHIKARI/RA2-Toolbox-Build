@@ -36,12 +36,13 @@ static HWND game;static DWORD pid,threadId;static bool enabled=true,demo=false,s
 static int topMargin=20,leftMargin=6,scalePercent=100;static bool controlsReady=false;
 static int page=0;static DWORD lastSearch=0,lastGood=0;static std::wstring root,status;static FILE* logfile;
 #include "../../external_reader/source/cameo_catalog.h"
-static external::assets::Files assetFiles;
-static bool loadAsset(const char* name,std::vector<uint8_t>&out){assetFiles.update(reader,pid,snap->match);return assetFiles.load(name,out);}
+static external::assets::Files assetFiles;static uint32_t assetMatch=0;
+static bool loadAsset(const char* name,std::vector<uint8_t>&out){assetFiles.update(reader,pid,assetMatch);return assetFiles.load(name,out);}
 static bool readCameoMemory(uint32_t p,void*out,size_t n){return reader.readFresh(p,out,n);}
 static external::assets::RuntimeCameos<decltype(&readCameoMemory)> cameoCatalog(&readCameoMemory);
-static void resolveCameo(um::Type&t){
- assetFiles.update(reader,pid,snap->match);char image[26]{};reader.readFresh(t.ptr+0x1F8,image,25);
+static void resolveCameo(um::Type&t,uint32_t match){
+ assetMatch=match;
+ assetFiles.update(reader,pid,assetMatch);char image[26]{};reader.readFresh(t.ptr+0x1F8,image,25);
  auto file=cameoCatalog.resolve(loadAsset,assetFiles.revision(),assetFiles.revision()^(GetTickCount64()/5000),t.id,image,t.cameo);
  memset(t.cameo,0,sizeof t.cameo);if(file.size()<sizeof t.cameo)memcpy(t.cameo,file.data(),file.size());
 }
@@ -89,7 +90,7 @@ static void toggleOverlay(){tabui::toggleDisplay(!tabEnabled,tabs.visible(),hidd
 static void detach(){
  overlayRecovery.suspend();
  statsVisible(false);
- sampler.reset();assetFiles.clear();cameoCatalog.clear();reader.close();
+ sampler.reset();assetMatch=0;assetFiles.clear();cameoCatalog.clear();reader.close();
  game=nullptr;pid=0;threadId=0;lastGood=0;oldMatch=0;page=0;gameActive=false;tabs.reset();fade.hide();renderDirty=true;paintedAlpha=-1;surface.clear();memset(snap.get(),0,sizeof(*snap));memset(incoming.get(),0,sizeof(*incoming));ShowWindow(overlay,SW_HIDE);
 }
 static bool attach(){

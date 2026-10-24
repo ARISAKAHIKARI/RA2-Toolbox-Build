@@ -16,7 +16,7 @@
 - INISection::Name +0x0C，EntryIndex +0x2C；INIEntry::Key +0x0C、Value +0x10。
 - IndexClass 开头依次为 table/count/capacity，表项是 CRC 与 32 位对象指针，共 8 字节。本实现按名字做有界查找，不假定排序或复用引擎的 Archive 游标，不调用任何引擎函数。
 
-限制每表 16384 项、容量 65536，名称 127 字节、值 4095 字节；检验地址范围、字符串终止与重复 section/key，捕获前后核对索引与 root。缓存以资源/进程/局次及五秒刷新代次失效。原生对象已经给出图标名时无需遍历 INI。
+限制每表 16384 项、容量 65536，名称 127 字节、值 4095 字节；检验地址范围、字符串终止与重复 section/key，捕获前后核对索引与 root。缓存以资源/进程/局次及五秒刷新代次失效。原生对象已经给出图标名时无需遍历 INI。单位统计的解析回调显式接收当前采样的 matchSerial，资源读取使用该局次，而不是上一次已显示快照的 match；避免新局首次建目录时沿用上一局 live INI 缓存。
 
 ## 采用顺序
 
@@ -33,6 +33,6 @@
 
 ## 验证
 
-新增 source/assist/tests/live_ini.cpp 覆盖 Rules 指针与 Art 对象、大小写、越界指针/计数、未终止值、并发索引变化、缓存更新、空值与 native/live/file 优先级；cameo_catalog.cpp 覆盖 Image/Cameo 映射、别名、None、长文件名和 flags=2 图标；unit_monitor/tests/icon_cache.cpp 覆盖旧格式拒绝及长文件名往返。验证工作流同时保留既有显示、资源、Windows 编译与真实控件持久化测试。
+新增 source/assist/tests/live_ini.cpp 覆盖 Rules 指针与 Art 对象、大小写、越界指针/计数、未终止值、并发索引变化、缓存更新、空值与 native/live/file 优先级；cameo_catalog.cpp 覆盖 Image/Cameo 映射、别名、None、长文件名和 flags=2 图标；unit_monitor/tests/icon_cache.cpp 覆盖旧格式拒绝及长文件名往返。round_transition.cpp 还验证无原生 Cameo 时解析先于可建造过滤，并在换局首次建目录时收到新局次。验证工作流同时保留既有显示、资源、Windows 编译与真实控件持久化测试。
 
 测试结果以对应 GitHub Actions 运行记录为准。内存模型测试不证明实际游戏中的资源选择、图像效果或性能。

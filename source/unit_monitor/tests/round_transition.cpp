@@ -19,7 +19,7 @@ struct Resolve {uint32_t operator()(uint32_t){return 0;}};
 constexpr uint32_t Self=0x100000,Enemy=0x120000,Country=0x200000,Infantry=0x210000;
 struct Fixture {
  Memory m;std::unique_ptr<um::Sampler<Read,Resolve>> sampler;
- Fixture(um::IconCache*cache=nullptr){
+ Fixture(um::IconCache*cache=nullptr,um::CameoResolve cameo=nullptr){
   m.put<uint8_t>(0xA8E9A0,1);m.put(0xA83D4C,Self);m.put(0xA8ED84,100);
   m.vector(0xA80228,0x300000,{Self,Enemy});m.vector(0xA8E348,0x300100,{Infantry});
   m.put(Infantry+1588,1);m.put<uint32_t>(Infantry+1740,1);memcpy(m.data.data()+Infantry+1750,"E1ICON",7);memcpy(m.data.data()+Infantry+36,"E1",3);
@@ -27,12 +27,17 @@ struct Fixture {
    m.put(h+um::OwnedOffsets[0]+4,uint32_t(0x310000+i*4));m.put(h+um::OwnedOffsets[0]+8,1);m.put(0x310000+i*4,5+i);
   }
   m.text(Self+90154,u"Me");m.text(Enemy+90154,u"Previous opponent");
-  sampler=std::make_unique<um::Sampler<Read,Resolve>>(Read{&m},Resolve{},cache);
+  sampler=std::make_unique<um::Sampler<Read,Resolve>>(Read{&m},Resolve{},cache,nullptr,cameo);
  }
  const um::Snapshot& sample(){m.bookends=0;return sampler->sample(500,true);}
 };
+static std::vector<uint32_t> resolvedMatches;
+static void resolveCameo(um::Type&t,uint32_t match){resolvedMatches.push_back(match);auto name="LIVE"+std::to_string(match)+".SHP";strcpy(t.cameo,name.c_str());}
 int main(){
  int cases=0;
+ {Fixture f(nullptr,resolveCameo);f.m.data[Infantry+1750]=0;auto&first=f.sample();assert(first.typeCount==1&&resolvedMatches.back()==first.match);auto old=first.match;
+  f.m.put(0xA8ED84,1);auto&next=f.sample();assert(next.typeCount==1&&next.match!=old&&resolvedMatches.back()==next.match);assert(std::string(next.types[0].cameo)=="LIVE"+std::to_string(next.match)+".SHP");++cases;
+ }
  {Fixture f;auto& a=f.sample();assert(a.status==1&&a.playerCount==2&&a.typeCount==1&&a.players[1].cells[0].owned==6);uint32_t epoch=a.match;
   f.m.put<uint8_t>(Self+501,1);f.m.put(0xA8ED84,101);auto& b=f.sample();
   assert(b.status==1&&b.match==epoch&&b.playerCount==1&&b.players[0].ptr==Enemy);++cases; // death does not end spectatorship

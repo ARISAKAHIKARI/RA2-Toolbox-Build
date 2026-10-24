@@ -4,7 +4,7 @@
 #include <string>
 namespace um {
 using AssetLoad=bool(*)(const char*,std::vector<uint8_t>&);
-using CameoResolve=void(*)(Type&);
+using CameoResolve=void(*)(Type&,uint32_t);
 template<class Read,class Resolve>bool readCameo(Read read,Resolve resolve,Type&t,uint8_t*buffer,size_t capacity,AssetLoad files=nullptr){
  if(files&&t.cameo[0]){std::vector<uint8_t> bytes;std::string n=t.cameo;if(n.find('.')==std::string::npos)n+=".shp";if(files(n.c_str(),bytes)&&decode(bytes.data(),bytes.size(),t.icon)){t.iconReady=1;t.iconCached=0;return true;}}
  auto get32=[&](uint32_t at){uint32_t v=0;read(at,&v,4);return v;};uint32_t p=get32(t.ptr+1776);if(!p)return false;uint16_t tag=0;if(!read(p,&tag,2))return false;

@@ -42,7 +42,7 @@ template<class Read,class Resolve> class Sampler {
   for(int c=0;c<(buildings?4:3);c++){
    auto v=vec(arrays[c]);for(size_t ix=0;ix<v.size();ix++){
     uint32_t p=v[ix];char cameo[25]={};if(!bytes(p+1750,cameo,24))continue;
-    Type pending{};pending.ptr=p;pending.category=c;pending.index=int(ix);bytes(p+36,pending.id,23);pending.id[23]=0;memcpy(pending.cameo,cameo,sizeof cameo);if(resolveCameo)resolveCameo(pending);
+    Type pending{};pending.ptr=p;pending.category=c;pending.index=int(ix);bytes(p+36,pending.id,23);pending.id[23]=0;memcpy(pending.cameo,cameo,sizeof cameo);if(resolveCameo)resolveCameo(pending,state.match);
     bool has=pending.cameo[0]&&!sameAscii(pending.cameo,"none")&&!sameAscii(pending.cameo,"<none>");
     if(!buildable(get<int>(p+1588,-1),get<uint32_t>(p+1740),get<uint8_t>(p+562)!=0,get<uint8_t>(p+3412)!=0,has))continue;
     if(state.typeCount==MaxTypes){state.truncated++;continue;}

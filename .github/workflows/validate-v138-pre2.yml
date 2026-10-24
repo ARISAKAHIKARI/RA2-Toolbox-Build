@@ -30,6 +30,8 @@ jobs:
           done
           g++ -std=c++17 -O2 source/unit_monitor/tests/cameo_palette.cpp -o /tmp/cameo-palette
           /tmp/cameo-palette
+          g++ -std=c++17 -O2 source/unit_monitor/tests/round_transition.cpp -o /tmp/round-transition -pthread
+          /tmp/round-transition
           g++ -std=c++17 -O2 source/unit_monitor/tests/icon_cache.cpp -o /tmp/icon-cache -pthread
           /tmp/icon-cache
           python3 source/tools/audit_architecture.py
