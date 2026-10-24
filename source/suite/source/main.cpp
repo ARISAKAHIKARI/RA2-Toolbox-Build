@@ -14,6 +14,7 @@
 #include <mutex>
 #include <algorithm>
 #include "suite_host.h"
+#include "../../shared/source/initial_profiles.h"
 #include "../../shared/source/modern_ui.h"
 extern "C" int WINAPI CursorEntry(HINSTANCE,HINSTANCE,LPWSTR,int);
 extern "C" int WINAPI MonitorEntry(HINSTANCE,HINSTANCE,LPWSTR,int);
@@ -116,7 +117,8 @@ static LRESULT CALLBACK proc(HWND w,UINT m,WPARAM wp,LPARAM lp){switch(m){
 int WINAPI wWinMain(HINSTANCE h,HINSTANCE,LPWSTR cmd,int show){
  HANDLE single=CreateMutexW(nullptr,FALSE,L"Local\\RA2Toolbox_v020");if(GetLastError()==ERROR_ALREADY_EXISTS){HWND old=FindWindowW(L"RA2Toolbox020",nullptr);if(old){ShowWindow(old,SW_RESTORE);SetForegroundWindow(old);}CloseHandle(single);return 0;}
  instance=h;args=cmd;wchar_t exe[32768];GetModuleFileNameW(nullptr,exe,32768);std::wstring root=exe;root.resize(root.find_last_of(L"\\/"));config=root+L"\\Toolbox.ini";
- int defaults[3]={int(GetPrivateProfileIntW(L"Startup",L"AutoStart",1,(root+L"\\settings.ini").c_str())),1,1};
+ if(!initialprofiles::initialize(root)){MessageBoxW(nullptr,L"無法建立預設配置，請將工具箱移到可寫入的資料夾後重試。",L"紅警工具箱",MB_OK|MB_ICONERROR);CloseHandle(single);return 1;}
+ int defaults[3]={int(GetPrivateProfileIntW(L"Startup",L"AutoStart",0,(root+L"\\settings.ini").c_str())),0,0};
  for(int i=0;i<3;++i)active[i]=GetPrivateProfileIntW(L"Modules",configKeys[i],defaults[i],config.c_str())!=0;
  selected=std::clamp(int(GetPrivateProfileIntW(L"UI",L"Page",2,config.c_str())),0,4);
  INITCOMMONCONTROLSEX cc{sizeof cc,ICC_WIN95_CLASSES};InitCommonControlsEx(&cc);

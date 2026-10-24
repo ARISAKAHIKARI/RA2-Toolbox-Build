@@ -1,0 +1,65 @@
+name: Validate RA2 Toolbox 1.0.37 stable
+on:
+  push:
+    branches: [codex/stable-v137]
+    paths: ['source/**', '.github/workflows/validate-v137-stable.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: validate-v137-stable
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check settings and display regressions
+        run: |
+          set -euo pipefail
+          python3 source/assist/tests/auto_settings_ui_test.py
+          python3 source/assist/tests/suite_display_test.py
+          python3 source/assist/tests/modern_ui_test.py
+          python3 source/assist/tests/cursor_settings_ui_test.py
+          python3 source/assist/tests/ui_geometry_test.py
+          python3 source/assist/tests/enemy_overlay_test.py
+          for test in label_motion pacing enemy_markers watch_view command_delivery direct_modes; do
+            g++ -std=c++17 -O2 "source/assist/tests/$test.cpp" -o "/tmp/$test"
+            "/tmp/$test"
+          done
+          python3 source/tools/audit_architecture.py
+      - name: Install pinned Zig compiler
+        run: |
+          curl --fail --location --retry 3 https://ziglang.org/download/0.13.0/zig-linux-x86_64-0.13.0.tar.xz -o /tmp/zig.tar.xz
+          echo 'd45312e61ebcc48032b77bc4cf6fd6915c11fa16e4aad116b66c9468211230ea  /tmp/zig.tar.xz' | sha256sum -c -
+          tar -xf /tmp/zig.tar.xz -C /tmp
+          echo "ZIG=/tmp/zig-linux-x86_64-0.13.0/zig" >> "$GITHUB_ENV"
+      - name: Build matching EXE and Runtime
+        run: bash source/build-zig.sh
+      - name: Validate final PE files and bridge ABI
+        run: python3 source/tools/verify_windows_outputs.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stable137-binaries
+          path: |
+            source/RA2Toolbox.exe
+            source/GameRuntime.dll
+            source/WINDOWS_BUILD_ARTIFACTS.json
+          retention-days: 7
+  windows-ui:
+    needs: build
+    runs-on: windows-2022
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: stable137-binaries
+          path: source
+      - name: Real styled controls, INI persistence and restart
+        run: python source/tools/windows_settings_smoke.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stable137-windows-settings
+          path: source/WINDOWS_SETTINGS_SMOKE.json

@@ -353,7 +353,7 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR,int){
  SetProcessDPIAware();wchar_t fn[2048];GetModuleFileNameW(nullptr,fn,2048);root=fn;root=root.substr(0,root.find_last_of(L"\\/"));logfile=_wfopen(path(L"UnitMonitor.log").c_str(),L"w, ccs=UTF-8");
  topMargin=std::clamp(int(GetPrivateProfileIntW(L"overlay",L"topMargin",20,path(L"settings.ini").c_str())),0,4096);leftMargin=std::clamp(int(GetPrivateProfileIntW(L"overlay",L"leftMargin",6,path(L"settings.ini").c_str())),0,4096);
  scalePercent=viewport::percent(int(GetPrivateProfileIntW(L"overlay",L"scalePercent",100,path(L"settings.ini").c_str())));
- buildings=GetPrivateProfileIntW(L"overlay",L"buildings",0,path(L"settings.ini").c_str())!=0;showOthers=GetPrivateProfileIntW(L"overlay",L"otherPlayers",1,path(L"settings.ini").c_str())!=0;
+ buildings=GetPrivateProfileIntW(L"overlay",L"buildings",0,path(L"settings.ini").c_str())!=0;showOthers=GetPrivateProfileIntW(L"overlay",L"otherPlayers",0,path(L"settings.ini").c_str())!=0;
 #ifdef RA2_UNIFIED
  enabled=suite::enabled(1);
 #endif

@@ -1436,7 +1436,7 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR cmd,int){
 
 
  HWND note=CreateWindowW(L"STATIC",L"",WS_CHILD|WS_VISIBLE,15,212,735,58,mainw,NULL,inst,NULL);SendMessageW(note,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);
- scalePercent=(int)GetPrivateProfileIntW(L"Cursor",L"ScalePercent",100,ini().c_str());scalePercent=std::max(25,std::min(400,scalePercent));offsetX=(int)GetPrivateProfileIntW(L"Cursor",L"HotspotOffsetX",0,ini().c_str());offsetY=(int)GetPrivateProfileIntW(L"Cursor",L"HotspotOffsetY",0,ini().c_str());offsetX=std::max(-256,std::min(256,offsetX));offsetY=std::max(-256,std::min(256,offsetY));autoScale=GetPrivateProfileIntW(L"Cursor",L"AutoScale",1,ini().c_str())!=0;aspectFit=GetPrivateProfileIntW(L"Cursor",L"AspectFit",1,ini().c_str())!=0;
+ scalePercent=(int)GetPrivateProfileIntW(L"Cursor",L"ScalePercent",100,ini().c_str());scalePercent=std::max(25,std::min(400,scalePercent));offsetX=(int)GetPrivateProfileIntW(L"Cursor",L"HotspotOffsetX",0,ini().c_str());offsetY=(int)GetPrivateProfileIntW(L"Cursor",L"HotspotOffsetY",0,ini().c_str());offsetX=std::max(-256,std::min(256,offsetX));offsetY=std::max(-256,std::min(256,offsetY));autoScale=GetPrivateProfileIntW(L"Cursor",L"AutoScale",0,ini().c_str())!=0;aspectFit=GetPrivateProfileIntW(L"Cursor",L"AspectFit",0,ini().c_str())!=0;
  if(lanboPreset){offsetX=offsetY=0;}
  auto label=[&](const wchar_t* text,int x,int y,int width){HWND q=CreateWindowW(L"STATIC",text,WS_CHILD|WS_VISIBLE,x,y,width,22,mainw,NULL,inst,NULL);SendMessageW(q,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);};
  label(L"缩放 %",15,280,65);scaleBox=CreateWindowW(L"COMBOBOX",L"",WS_CHILD|WS_VISIBLE|CBS_DROPDOWN|WS_VSCROLL,80,276,90,180,mainw,NULL,inst,NULL);for(auto v:{100,125,150,200})SendMessageW(scaleBox,CB_ADDSTRING,0,(LPARAM)std::to_wstring(v).c_str());SetWindowTextW(scaleBox,std::to_wstring(scalePercent).c_str());
@@ -1451,8 +1451,8 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR cmd,int){
  label(L"游戏宽/高",15,390,75);gameWBox=edit(gameWOverride,90,386,70);gameHBox=edit(gameHOverride,170,386,70);label(L"系统宽/高",265,390,80);screenWBox=edit(screenWOverride,350,386,70);screenHBox=edit(screenHOverride,430,386,70);label(L"Windows %",520,390,105);dpiBox=edit(dpiOverride,635,386,90);
  label(L"缩放计算",15,430,345);dpiModeBox=CreateWindowW(L"COMBOBOX",L"",WS_CHILD|WS_VISIBLE|CBS_DROPDOWNLIST,365,426,360,140,mainw,NULL,inst,NULL);for(const wchar_t* text:{L"物理像素",L"系统缩放",L"抵消缩放"})SendMessageW(dpiModeBox,CB_ADDSTRING,0,(LPARAM)text);SendMessageW(dpiModeBox,CB_SETCURSEL,dpiMode,0);SendMessageW(dpiModeBox,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);
  readout=CreateWindowW(L"STATIC",L"自动识别分辨率与刷新率",WS_CHILD|WS_VISIBLE,15,472,725,60,mainw,NULL,inst,NULL);SendMessageW(readout,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);
- adaptive=GetPrivateProfileIntW(L"Animation",L"Adaptive",1,ini().c_str())!=0;
- smoothing=GetPrivateProfileIntW(L"Animation",L"Smooth",1,ini().c_str())!=0;smoothMs=std::max(10,std::min(200,(int)GetPrivateProfileIntW(L"Animation",L"BlendMs",60,ini().c_str())));clickEnabled=GetPrivateProfileIntW(L"Click",L"Enabled",1,ini().c_str())!=0;clickMode=std::min(2u,GetPrivateProfileIntW(L"Click",L"Mode",0,ini().c_str()));clickGap=std::max(0,std::min(250,(int)GetPrivateProfileIntW(L"Click",L"IntervalMs",0,ini().c_str())));sidebarWidth=std::max(32,std::min(600,(int)GetPrivateProfileIntW(L"Click",L"SidebarWidth",160,ini().c_str())));sidebarTop=std::max(0,std::min(2000,(int)GetPrivateProfileIntW(L"Click",L"SidebarTop",200,ini().c_str())));
+ adaptive=GetPrivateProfileIntW(L"Animation",L"Adaptive",0,ini().c_str())!=0;
+ smoothing=GetPrivateProfileIntW(L"Animation",L"Smooth",0,ini().c_str())!=0;smoothMs=std::max(10,std::min(200,(int)GetPrivateProfileIntW(L"Animation",L"BlendMs",60,ini().c_str())));clickEnabled=GetPrivateProfileIntW(L"Click",L"Enabled",0,ini().c_str())!=0;clickMode=std::min(2u,GetPrivateProfileIntW(L"Click",L"Mode",0,ini().c_str()));clickGap=std::max(0,std::min(250,(int)GetPrivateProfileIntW(L"Click",L"IntervalMs",0,ini().c_str())));sidebarWidth=std::max(32,std::min(600,(int)GetPrivateProfileIntW(L"Click",L"SidebarWidth",160,ini().c_str())));sidebarTop=std::max(0,std::min(2000,(int)GetPrivateProfileIntW(L"Click",L"SidebarTop",200,ini().c_str())));
  smoothBox=CreateWindowW(L"BUTTON",L"平滑补帧",WS_CHILD|WS_VISIBLE|BS_AUTOCHECKBOX,15,545,240,26,mainw,NULL,inst,NULL);SendMessageW(smoothBox,BM_SETCHECK,smoothing?BST_CHECKED:BST_UNCHECKED,0);label(L"备用 ms",265,549,80);smoothMsBox=edit(smoothMs,350,545,70);
  adaptiveBox=CreateWindowW(L"BUTTON",L"自适应",WS_CHILD|WS_VISIBLE|BS_AUTOCHECKBOX,445,545,270,26,mainw,NULL,inst,NULL);SendMessageW(adaptiveBox,BM_SETCHECK,adaptive?BST_CHECKED:BST_UNCHECKED,0);SendMessageW(adaptiveBox,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);
  timingReadout=CreateWindowW(L"STATIC",L"补帧就绪",WS_CHILD|WS_VISIBLE,15,743,515,26,mainw,NULL,inst,NULL);
@@ -1461,11 +1461,11 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR cmd,int){
  clickBox=CreateWindowW(L"BUTTON",L"Shift 五连点",WS_CHILD|BS_AUTOCHECKBOX,15,584,260,26,mainw,NULL,inst,NULL);SendMessageW(clickBox,BM_SETCHECK,clickEnabled?BST_CHECKED:BST_UNCHECKED,0);clickGapBox=edit(clickGap,415,584,70);ShowWindow(clickGapBox,SW_HIDE);
  clickModeBox=CreateWindowW(L"COMBOBOX",L"",WS_CHILD|CBS_DROPDOWNLIST,15,623,485,140,mainw,NULL,inst,NULL);for(const wchar_t* t:{L"自动补点",L"强制补点",L"关闭补点"})SendMessageW(clickModeBox,CB_ADDSTRING,0,(LPARAM)t);SendMessageW(clickModeBox,CB_SETCURSEL,clickMode,0);for(HWND q:{smoothBox,clickBox,clickModeBox})SendMessageW(q,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);
  label(L"",15,665,730);
- systemCursorGuard=GetPrivateProfileIntW(L"Cursor",L"SystemCursorMenuGuard",1,ini().c_str())!=0;autoStart=GetPrivateProfileIntW(L"Startup",L"AutoStart",1,ini().c_str())!=0;
+ systemCursorGuard=GetPrivateProfileIntW(L"Cursor",L"SystemCursorMenuGuard",0,ini().c_str())!=0;autoStart=GetPrivateProfileIntW(L"Startup",L"AutoStart",0,ini().c_str())!=0;
 #ifdef RA2_UNIFIED
  autoStart=suite::enabled(0);
 #endif
- focusRefresh=GetPrivateProfileIntW(L"Startup",L"FocusRefresh",1,ini().c_str())!=0;
+ focusRefresh=GetPrivateProfileIntW(L"Startup",L"FocusRefresh",0,ini().c_str())!=0;
  autoStartBox=CreateWindowW(L"BUTTON",L"自动检测",WS_CHILD|WS_VISIBLE|BS_AUTOCHECKBOX,15,705,520,26,mainw,(HMENU)8,inst,NULL);SendMessageW(autoStartBox,BM_SETCHECK,autoStart?BST_CHECKED:BST_UNCHECKED,0);SendMessageW(autoStartBox,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);
  nativeGameRefresh=GetPrivateProfileIntW(L"Display",L"GameThreadRefresh",0,ini().c_str())!=0;
  if(wcsstr(cmd,L"--game-refresh"))nativeGameRefresh=true;
@@ -1506,7 +1506,7 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR cmd,int){
  prepareButton=CreateWindowW(L"BUTTON",L"预处理补帧",WS_CHILD|BS_PUSHBUTTON,468,254,128,30,mainw,(HMENU)131,inst,NULL);extra(prepareButton,{468,254,128,30});
  HWND groupEdit=CreateWindowW(L"BUTTON",L"动画分组",WS_CHILD|BS_PUSHBUTTON,606,254,128,30,mainw,(HMENU)132,inst,NULL);extra(groupEdit,{606,254,128,30});
  prepareInfo=CreateWindowW(L"STATIC",L"",WS_CHILD,20,290,710,22,mainw,NULL,inst,NULL);extra(prepareInfo,{20,290,710,22});
- superCenter=GetPrivateProfileIntW(L"Cursor",L"SuperWeaponVisualCenter",1,ini().c_str())!=0;
+ superCenter=GetPrivateProfileIntW(L"Cursor",L"SuperWeaponVisualCenter",0,ini().c_str())!=0;
  superCenterBox=CreateWindowW(L"BUTTON",L"超武热点居中",WS_CHILD|BS_AUTOCHECKBOX,20,1095,510,25,mainw,(HMENU)154,inst,NULL);extra(superCenterBox,{20,1095,510,25});
  SendMessageW(superCenterBox,BM_SETCHECK,superCenter?BST_CHECKED:BST_UNCHECKED,0);
  modernui::tip(superCenterBox,L"超武图案的视觉锚点对齐点击位置；铁幕使用中间圈圆心。启用时不叠加普通光标的手动热点偏移。");

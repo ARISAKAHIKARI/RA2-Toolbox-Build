@@ -143,7 +143,7 @@ int main(){
  autoSavePending=false;timers=saves=syncs=0;timerMs=0;settingsRevision=1;paintRevision=0;
 
  for(int i=0;i<ExtraControlCount;++i)extraControls[i]=700+i;
- assert(extra.passengerBubbles&&!extra.dangerPassengers&&!extra.magnetronDrop);
+ assert(!extra.passengerBubbles&&!extra.dangerPassengers&&!extra.magnetronDrop);
  for(auto option:{std::pair<int,bool*>{897,&extra.passengerBubbles},{898,&extra.dangerPassengers},{899,&extra.magnetronDrop}}){
   for(bool on:{false,true}){fields[option.first]=on;autoSettingChanged(option.first,BN_CLICKED);assert(*option.second==on&&autoSavePending);saveFeatureTypes();saveMouse();*option.second=!on;loadMouse();assert(*option.second==on);}
  }
@@ -154,7 +154,7 @@ int main(){
  assert(!extra.enemyMarkers);fields[785]=1;autoSettingChanged(785,BN_CLICKED);assert(extra.enemyMarkers&&autoSavePending);
  saveMouse();extra.enemyMarkers=false;loadMouse();assert(extra.enemyMarkers);
  fields[785]=0;autoSettingChanged(785,BN_CLICKED);saveMouse();extra.enemyMarkers=true;loadMouse();assert(!extra.enemyMarkers);
- assert(extra.parasiteMarker&&extra.crateBuffMarkers);
+ assert(!extra.parasiteMarker&&!extra.crateBuffMarkers);
  for(int id:{892,893}){
   bool& active=id==892?extra.parasiteMarker:extra.crateBuffMarkers;
   bool& other=id==892?extra.crateBuffMarkers:extra.parasiteMarker;
@@ -280,8 +280,8 @@ print('PASS: three refresh modes, rate bounds, persistence and legacy migration;
 
 # Hook permissions are linked only after explicit, valid user activation.
 assert (main+(root/'assist/source/hotkey_host.h').read_text()).count('if(csMode){hookAutoCS=true;SendMessageW(hookChecks[3],BM_SETCHECK,BST_CHECKED,0);}')>=2
-assert 'hookAutoCS=value(L"Hooks",L"AutoCS",1)' in main
-assert 'value(L"NativeOrders",L"EnableInputHooks",1)' in main
+assert 'hookAutoCS=value(L"Hooks",L"AutoCS",0)' in main
+assert 'value(L"NativeOrders",L"EnableInputHooks",0)' in main
 import re
 assert not re.search(r'shared->(?:ack|result)\s*=(?!=)',main)
 cursor=(root/'cursor/source/main.cpp').read_text()
@@ -307,7 +307,7 @@ assert 'if(a==1){toggleOverlay();}' in monitor
 assert 'tabui::displayRequested(hidden,demo||!tabEnabled,manualVisible,tabs.visible())' in monitor
 assert '常驻显示（不依赖 Tab）' in monitor
 print('PASS experimental reveal default/roundtrip and all host gates; independent manual overlay controls retain battlefield gating')
-print('PASS parasite/crate badges default on; independent controls 892/893 apply, autosave and persist both states')
+print('PASS parasite/crate badges default off; independent controls 892/893 apply, autosave and persist both states')
 
 assert 'value(L"Dodge",L"Logic",0)' in (root/'assist/source/extra_settings_io.h').read_text()
 assert 'write(L"Dodge",L"Logic",extra.dodgeMode)' in (root/'assist/source/extra_settings_io.h').read_text()

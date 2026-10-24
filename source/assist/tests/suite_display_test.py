@@ -45,6 +45,7 @@ static void SendMessageW(int h,int message,WPARAM wp,LPARAM lp){
  if(message==WM_COMMAND){assert(!updatingControls&&h==ui);++notifications;lastID=wp&65535;lastNotification=wp>>16;assert(lp==lastID);}
  else {assert(updatingControls);fields[h]=int(wp);}
 }
+static int proc(int h,int message,WPARAM wp,LPARAM lp){SendMessageW(h,message,wp,lp);return 0;}
 static void SetWindowTextW(int h,const wchar_t* text){assert(updatingControls);fields[h]=std::stoi(text);}
 static void publishSuiteDisplay(){}
 static struct {unsigned scrollRefreshHz=0,scrollRefreshMode=0;int sampleIntervalMs=0;} runtimeState,*shared=&runtimeState;

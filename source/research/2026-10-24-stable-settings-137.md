@@ -1,0 +1,13 @@
+# 1.0.37 正式版：设置持久化与首次默认值
+
+依据用户 Assist(1).ini（2026-10-24，8800 bytes；作为参数及快捷键基准）。两项 Display.Frozen / DangerPassengers 已有读取及写入，并非漏写键。
+
+源码定位：套件 ApplyDisplaySetting 先 BM_SETCHECK，再向已 modernui::style 的父窗发送 WM_COMMAND / BN_CLICKED；modernui::parentProc 将这个合成通知再次作为点击翻转复选值，因此 owner 收到的值与请求相反。同一路径影响所有转移到单位信息/画面设置面板的复选框。修正为已赋值后直接调用 owner 的 proc 处理通知，避免再次经过点击翻转；真实鼠标/空格/BM_CLICK 仍经过现代控件正常翻转。
+
+首次启动从用户预设建立 UTF-16LE INI，功能开关全关，参数与快捷键保留，已有 INI 不覆盖。缺失开关的默认值亦改关。计算位置 Compute 项是实现方式选择，不是功能启用，按用户文件保留。tabEnabled 为“常驻显示”的反向设置，保留 1 以使常驻复选项关闭。
+
+版本：主程序与 GameRuntime 1.0.37.0；Assist 71，由共同协议生成 Local\\RA2Assist_v071_，主/DLL 导出结构长度必须一致。Runtime 传输结构未改，仍为 v4/176 bytes，不为改显示编号而修改 ABI。
+
+新增 Windows 真控件与真实 INI 重启验证：全部默认开关、用户快捷键、跨面板九个开关逐项开启/关闭、立刻退出与重启、已有配置不被首次默认覆盖。是否通过以工作流实际结果为准；不等于游戏内、性能或联机实测。
+
+显示调查：敌方标记共享 Display.FPS、QPC 采样/绘制时钟及 visual::Motion，没有单独低刷计时器；载员详情在每次 paint 重新 sample，但气泡直接使用整数逻辑位置，未接 Motion，且每次扫描所有对象/乘员链。后续平滑及扫描成本需要单独验证，尚不能据源码宣称用户实际卡顿已解决。

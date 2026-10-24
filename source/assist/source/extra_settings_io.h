@@ -3,8 +3,8 @@ static void loadAdditionalSettings(){
  extra.techEnhance=value(L"Experimental",L"TechEnhance",0)!=0;
  extra.placementImplementation=std::clamp(value(L"Experimental",L"PlacementImplementation",0),0,1);
  extra.stickyKey=value(L"Hotkeys",L"StickyGuard",extra.stickyKey)&65535;
- extra.watchEnabled=value(L"Watch",L"Enabled",1)!=0;extra.watchDanger=value(L"Watch",L"DangerCarriers",1)!=0;for(int n=0;n<3;++n){const wchar_t* keys[]={L"PinKey",L"PinKey2",L"PinKey3"};extra.watchKeys[n]=value(L"Watch",keys[n],n?extra.watchKeys[0]:extra.watchKeys[n])&65535;}
- extra.formationEnabled=value(L"Formation",L"Enabled",1)!=0;extra.formationHold=value(L"Formation",L"HoldKey",18)&65535;extra.formationMouse=value(L"Formation",L"MouseButton",2)==1?1:2;
+ extra.watchEnabled=value(L"Watch",L"Enabled",0)!=0;extra.watchDanger=value(L"Watch",L"DangerCarriers",0)!=0;for(int n=0;n<3;++n){const wchar_t* keys[]={L"PinKey",L"PinKey2",L"PinKey3"};extra.watchKeys[n]=value(L"Watch",keys[n],n?extra.watchKeys[0]:extra.watchKeys[n])&65535;}
+ extra.formationEnabled=value(L"Formation",L"Enabled",0)!=0;extra.formationHold=value(L"Formation",L"HoldKey",18)&65535;extra.formationMouse=value(L"Formation",L"MouseButton",2)==1?1:2;
  const wchar_t* shapeKeys[]={L"RectangleKey",L"DispersedKey",L"CircleKey",L"FanKey",L"SquareKey",L"FrameKey"};for(int n=0;n<6;++n)extra.formationKeys[n]=value(L"Formation",shapeKeys[n],extra.formationKeys[n])&65535;
  for(int i=0;i<compute::Count;++i){int fallback=compute::inside(compute::Default,compute::Feature(i));
   if(i==compute::MagnetronGlobal||i==compute::MagnetronDrop)fallback=compute::inside(computeRequested,compute::Magnetron);
@@ -33,13 +33,13 @@ static void loadAdditionalSettings(){
  extra.renderReveal=extra.mapStrategy==1?2:extra.mapStrategy==2?1:extra.mapStrategy==4?3:0;
  extra.experimentalReveal=extra.mapStrategy==3;
  extra.nativeAirWaypoints=value(L"Experimental",L"NativeAirWaypoints",0)!=0;
- extra.airWaypoints=value(L"Aircraft",L"ZWaypoints",1)!=0;
+ extra.airWaypoints=value(L"Aircraft",L"ZWaypoints",0)!=0;
  int pathMode=std::clamp(value(L"Aircraft",L"WaypointMode",extra.nativeAirWaypoints?2:extra.airWaypoints?1:0),0,2);extra.airWaypoints=pathMode==1;extra.nativeAirWaypoints=pathMode==2;extra.airPathKey=uint32_t(value(L"Aircraft",L"WaypointHoldKey",0));
- extra.productionReminderMask=uint32_t(value(L"Production",L"ReminderLines",63))&63;
- extra.constructionQueue=value(L"Production",L"ReserveNext",1)!=0;
- extra.idleAircraft=value(L"Display",L"IdleAircraftIndicator",1)!=0;
- extra.parasiteMarker=value(L"Display",L"ParasiteMarker",1)!=0;extra.crateBuffMarkers=value(L"Display",L"CrateBuffMarkers",1)!=0;
- extra.passengerBubbles=value(L"Display",L"PassengerBubbles",1)!=0;extra.dangerPassengers=value(L"Display",L"DangerPassengers",0)!=0;extra.magnetronDrop=value(L"Magnetron",L"AutoDrop",0)!=0;
+ extra.productionReminderMask=uint32_t(value(L"Production",L"ReminderLines",0))&63;
+ extra.constructionQueue=value(L"Production",L"ReserveNext",0)!=0;
+ extra.idleAircraft=value(L"Display",L"IdleAircraftIndicator",0)!=0;
+ extra.parasiteMarker=value(L"Display",L"ParasiteMarker",0)!=0;extra.crateBuffMarkers=value(L"Display",L"CrateBuffMarkers",0)!=0;
+ extra.passengerBubbles=value(L"Display",L"PassengerBubbles",0)!=0;extra.dangerPassengers=value(L"Display",L"DangerPassengers",0)!=0;extra.magnetronDrop=value(L"Magnetron",L"AutoDrop",0)!=0;
  extra.enemyMarkers=value(L"Display",L"EnemyMarkers",0)!=0;
  extra.overrideNative=value(L"Mouse",L"OverrideNative",0)!=0;
  extra.allHotkeys=value(L"Hotkeys",L"ExecuteAllMatches",0)!=0;
@@ -55,8 +55,8 @@ static void loadAdditionalSettings(){
  extra.enterKey=value(L"Cooperative",L"EnterHoldKey",18)&65535;extra.airKey1=value(L"Cooperative",L"AirHoldKey1",17)&65535;extra.airKey2=value(L"Cooperative",L"AirHoldKey2",0)&65535;
 
  extra.diskKey=value(L"SpecialClick",L"DiskHoldKey",17)&65535;extra.sellKey=value(L"SpecialClick",L"SellHoldKey",17)&65535;
- extra.disk=value(L"SpecialClick",L"DiskPrimary",0)!=0;extra.sellDrained=value(L"SpecialClick",L"SellDrained",0)!=0;extra.sellVehicles=value(L"SpecialClick",L"SellVehicles",0)!=0;const bool commandsConfigured=value(L"Experimental",L"PlayerCommandOptionsVersion",0)>=1;extra.sellEnemy=false;extra.controlAll=playertest::Available&&(!commandsConfigured||value(L"Experimental",L"ControlAll",1)!=0);extra.switchPlayerEnabled=false;
- extra.frozen=value(L"Display",L"Frozen",1)!=0;extra.variantKey=value(L"TypeSelection",L"VariantKey",'T'|(2<<8))&65535;
+ extra.disk=value(L"SpecialClick",L"DiskPrimary",0)!=0;extra.sellDrained=value(L"SpecialClick",L"SellDrained",0)!=0;extra.sellVehicles=value(L"SpecialClick",L"SellVehicles",0)!=0;const bool commandsConfigured=value(L"Experimental",L"PlayerCommandOptionsVersion",0)>=1;extra.sellEnemy=false;extra.controlAll=playertest::Available&&value(L"Experimental",L"ControlAll",0)!=0;extra.switchPlayerEnabled=false;
+ extra.frozen=value(L"Display",L"Frozen",0)!=0;extra.variantKey=value(L"TypeSelection",L"VariantKey",'T'|(2<<8))&65535;
  extra.defaults=cooperative::bounded({value(L"AircraftQuota",L"First",1),value(L"AircraftQuota",L"Second",2),value(L"AircraftQuota",L"Maximum",0)});
  wchar_t entries[32768]{};GetPrivateProfileSectionW(L"AircraftQuotaOverrides",entries,32768,path(L"Assist.ini").c_str());
  for(wchar_t*p=entries;*p;p+=wcslen(p)+1){std::wstring line=p;size_t e=line.find(L'=');if(e==std::wstring::npos)continue;std::string id;for(size_t j=0;j<e;++j)if(line[j]>32&&line[j]<127)id+=char(line[j]);if(!typecatalog::validId(id)||targetQuotas.size()>=512)continue;

@@ -5,7 +5,7 @@
 namespace assist {
 struct AdditionalSettings {
  uint32_t stickyKey='S'|(6<<8);
- bool formationEnabled=true;uint32_t formationHold=18,formationKeys[6]={'Z','X','C','V','B','N'},formationMouse=2;
+ bool formationEnabled=false;uint32_t formationHold=18,formationKeys[6]={'Z','X','C','V','B','N'},formationMouse=2;
  bool controlAll=false,switchPlayerEnabled=false;
  bool techEnhance=false;int placementImplementation=0;
  bool viewZoomEnabled=false;int viewZoomPercent=100;
@@ -15,19 +15,19 @@ struct AdditionalSettings {
 #endif
  bool c4Test=false;uint32_t c4Key='C'|(4<<8),c4Mouse=1;
  uint32_t renderReveal=0;int mapStrategy=0;bool experimentalReveal=false,antiTheft=false,nativeAirWaypoints=false;
- bool enemyMarkers=false,idleAircraft=true,constructionQueue=true,airWaypoints=true;
- uint32_t productionReminderMask=63; // buildings, defenses, infantry, vehicles, ships, aircraft
+ bool enemyMarkers=false,idleAircraft=false,constructionQueue=false,airWaypoints=false;
+ uint32_t productionReminderMask=0; // buildings, defenses, infantry, vehicles, ships, aircraft
  uint32_t airPathKey=0;
- bool parasiteMarker=true,crateBuffMarkers=true;
- bool watchEnabled=true,watchDanger=true;uint32_t watchKeys[3]={'W'|(6<<8),'W'|(6<<8),'W'|(6<<8)};
- bool passengerBubbles=true,dangerPassengers=false,magnetronDrop=false;
+ bool parasiteMarker=false,crateBuffMarkers=false;
+ bool watchEnabled=false,watchDanger=false;uint32_t watchKeys[3]={'W'|(6<<8),'W'|(6<<8),'W'|(6<<8)};
+ bool passengerBubbles=false,dangerPassengers=false,magnetronDrop=false;
  bool dodgeEnabled=false;int dodgeMode=0;
  bool burstEnabled=false,burstHoldEnabled=false;uint32_t burstKey=0; // Reserved for configuration compatibility.
  bool missileDefense=false;int missileScanHz=10,missileScope=0,missileAllocation=0;bool magnetronGlobal=false;
  bool allHotkeys=false,overrideNative=false;
  int loadMode=0,loadRadius=30;
  uint32_t mouseButtons[pointerinput::MouseCount]={1,1,1,1,1,1,1,2,3,3}; // 0=off, 1=middle, 2/3=side, 4=right
- bool enter=false,air=false,disk=false,sellDrained=false,sellVehicles=false,sellEnemy=false,frozen=true;
+ bool enter=false,air=false,disk=false,sellDrained=false,sellVehicles=false,sellEnemy=false,frozen=false;
  uint32_t diskKey=17,sellKey=17;
  uint32_t enterKey=18,airKey1=17,airKey2=0,variantKey='T'|(2<<8);
  cooperative::Quota defaults{};
