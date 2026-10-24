@@ -35,8 +35,10 @@ jobs:
           PY
           git fetch --depth=1 origin "$BUILD_SHA"
           git diff --exit-code "$BUILD_SHA" HEAD -- source/assist/source source/cursor/source source/unit_monitor/source source/external_reader/source source/shared/source source/suite/source source/game_runtime/source source/build-zig.sh source/defaults
-          gh run download "$BUILD_RUN" --name stable137-binaries --dir source
-          gh run download "$BUILD_RUN" --name stable137-windows-settings --dir source
+          gh run download "$BUILD_RUN" --name stable137-binaries --dir "$RUNNER_TEMP/stable137-binaries"
+          gh run download "$BUILD_RUN" --name stable137-windows-settings --dir "$RUNNER_TEMP/stable137-windows-settings"
+          cp "$RUNNER_TEMP/stable137-binaries/RA2Toolbox.exe" "$RUNNER_TEMP/stable137-binaries/GameRuntime.dll" "$RUNNER_TEMP/stable137-binaries/WINDOWS_BUILD_ARTIFACTS.json" source/
+          cp "$RUNNER_TEMP/stable137-windows-settings/WINDOWS_SETTINGS_SMOKE.json" source/
           python3 source/tools/verify_windows_outputs.py
           python3 source/tools/package_stable137.py
       - name: Publish verified stable release
