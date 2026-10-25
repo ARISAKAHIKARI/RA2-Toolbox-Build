@@ -87,6 +87,8 @@ prefix = r'''
 static bool higher(HWND a,HWND b){for(HWND w:GetTopWindow(nullptr)?order:std::vector<HWND>{}){if(w==a)return true;if(w==b)return false;}return false;}
 static HWND game;static DWORD pid=2;static bool focused=true,enabled=true,minimapEnabled=true;
 static int minimapMode=0,minimapScale=200,minimapPosition=1,minimapX=0,minimapY=0,minimapAlignX=0,minimapAlignY=0,fps=60;
+static int effectiveInfoFPS=144;
+static int informationFPS(){return effectiveInfoFPS;}
 static struct{int width=800,height=600,renderStatus=1,chat=0;uint32_t match=1;}snap;
 static struct{uint32_t renderReveal=0;}extra;static radarlayout::Box aircraftButtonBox;
 static bool foregroundGame(){return focused;}static uint32_t commandMatch(){return snap.match;}
@@ -95,7 +97,7 @@ struct Geometry{double rw=100,rh=100;bool valid()const{return true;}};struct Ter
 }}
 namespace minimap{
 struct Request{DWORD pid;uint32_t match;int rate;uint32_t reveal;int mode,width,height;};
-struct Worker{std::shared_ptr<const external::radar::Frame>latest=std::make_shared<external::radar::Frame>();bool paused=false;void set(Request){paused=false;}void pause(){paused=true;}auto get(){return latest;}};
+struct Worker{std::shared_ptr<const external::radar::Frame>latest=std::make_shared<external::radar::Frame>();bool paused=false;int rate=0;void set(Request r){paused=false;rate=r.rate;}void pause(){paused=true;}auto get(){return latest;}};
 static Worker worker;static HWND window;static std::shared_ptr<const external::radar::Frame>frame;static external::radar::Geometry lastGeometry;
 static bool dragging=false;static uint32_t dragMatch=0;static overlayui::Recovery recovery;
 static void cancelDrag(){dragging=false;dragMatch=0;}static LRESULT proc(HWND,UINT,WPARAM,LPARAM){return 0;}
@@ -133,7 +135,8 @@ static void stackCase(DWORD statsThread){
 static void minimapCase(){
  game=makeWindow(2);windows[game]={true,2,{0,0,800,600}};foreground=game;clockValue+=2000;
  POINT origin{};RECT client{0,0,800,600};minimap::update(origin,client);HWND window=minimap::window;assert(IsWindowVisible(window));
- int placed=windows[window].places;clockValue+=1000;minimap::update(origin,client);
+ assert(minimap::worker.rate==144&&fps==60);effectiveInfoFPS=240;
+ int placed=windows[window].places;clockValue+=1000;minimap::update(origin,client);assert(minimap::worker.rate==240);
  assert(windows[window].places>placed&&"unchanged visible minimap must periodically repair its z-order");
  SetWindowPos(game,HWND_TOPMOST,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE);clockValue+=1000;minimap::update(origin,client);assert(higher(window,game));
  for(int phase=0;phase<4;++phase){

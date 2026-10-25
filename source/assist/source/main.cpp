@@ -39,6 +39,7 @@
 #include "tech_profile.h"
 #include "../../shared/source/viewport_scale.h"
 #include "../../shared/source/overlay_recovery.h"
+#include "../../shared/source/monitor_refresh.h"
 #include "type_catalog.h"
 #include "external_planner.h"
 #include "clock_ms.h"
@@ -75,6 +76,10 @@ static HWND ui,overlay,statusLabel,swList,techList,techSearch,swHotkey,rateEdit,
 static HFONT font,titleFont;static HBRUSH bgBrush,editBrush;static HWND game;static DWORD pid,gameThread;static HANDLE mapping,gameProcess;static HMODULE module;static gameinput::Subscription hook;static Shared*shared;
 static uint32_t lastReceiptWrite=0,lastReceiptMatch=0;
 static Snapshot snap{},incoming{};static uint32_t ack,notice,oldMatch,snapshotSeq=~0u;static std::wstring root,statusText,toast;static DWORD toastUntil,lastFind,lastData,lastPulse;static int fps=visual::DefaultFPS,topMargin=20,repairMs=2000;static bool enabled=true,ready,techEnabled;static std::vector<int> techIndices;static std::wstring lastSearch;
+static bool infoAdaptive=false;
+static monitorrefresh::Tracker informationMonitor;
+static int informationFPS(){return infoAdaptive?informationMonitor.rate():std::clamp(fps,5,500);}
+static void publishSuiteDisplay();
 struct DisplayCounters {DWORD since=0,samples=0,paints=0,uploads=0,maxGap=0;uint64_t readUs=0,maxReadUs=0;};
 static DisplayCounters displayCounters;
 static overlayui::Recovery overlayRecovery;
@@ -391,7 +396,7 @@ static void chooseTechProfile(int next){
  techProfile=std::clamp(next,0,2);
  techExceptions=profileExceptions[techProfile];
 }
-static bool save(){++settingsRevision;saveWriteOK=true;for(int i=0;i<12;++i)if(i!=8)write(L"Hotkeys",wide(iniKeys[i]).c_str(),hotkeys[i]);WritePrivateProfileStringW(L"Hotkeys",L"RevealMap",nullptr,path(L"Assist.ini").c_str());write(L"Display",L"FPS",fps);write(L"Display",L"LabelRefreshVersion",1);write(L"Display",L"TopMargin",topMargin);
+static bool save(){++settingsRevision;saveWriteOK=true;for(int i=0;i<12;++i)if(i!=8)write(L"Hotkeys",wide(iniKeys[i]).c_str(),hotkeys[i]);WritePrivateProfileStringW(L"Hotkeys",L"RevealMap",nullptr,path(L"Assist.ini").c_str());write(L"Display",L"FPS",fps);write(L"Display",L"AdaptiveFPS",infoAdaptive);write(L"Display",L"LabelRefreshVersion",1);write(L"Display",L"TopMargin",topMargin);
  write(L"Display",L"LabelScalePercent",labelScalePercent);write(L"Display",L"ConstructionScalePercent",constructionScalePercent);
  for(int i=0;i<7;++i){const wchar_t*names[]={L"Capacity",L"Iron",L"Production",L"AllTransports",L"Psychic",L"Crates",L"TextPanel"};write(L"Display",names[i],SendMessageW(check[i],BM_GETCHECK,0,0)==BST_CHECKED);}
  write(L"Modes",L"AutoRepair",SendMessageW(repairCheck,BM_GETCHECK,0,0)==BST_CHECKED);write(L"Modes",L"RepairUnrepairable",repairUnrepairable);write(L"Experimental",L"NativeTechProduction",techMode);write(L"Modes",L"RepairMs",repairMs);
@@ -865,7 +870,7 @@ static void sampleExternal(DWORD now){
  
  if(!externalReader.valid())return;
  const DWORD displayNow=sampleRenderClock(nullptr);
- const DWORD period=foregroundGame()?DWORD(1000/std::clamp(fps,5,500)):250;
+ const DWORD period=foregroundGame()?DWORD(1000/informationFPS()):250;
  if(!externalAt||DWORD(displayNow-externalAt)>=period){
   const DWORD gap=externalAt?DWORD(displayNow-externalAt):0;
   LARGE_INTEGER sampleStart{},sampleEnd{},sampleFrequency{};QueryPerformanceCounter(&sampleStart);
@@ -887,7 +892,7 @@ static void sampleExternal(DWORD now){
   }
   DWORD elapsed=displayNow-dc.since;
   if(elapsed>=5000){
-   critical(L"display targetHz="+std::to_wstring(fps)+L" windowMs="+std::to_wstring(elapsed)+
+   critical(L"display targetHz="+std::to_wstring(informationFPS())+L" adaptive="+std::to_wstring(infoAdaptive)+L" windowMs="+std::to_wstring(elapsed)+
     L" samples="+std::to_wstring(dc.samples)+L" paintCalls="+std::to_wstring(dc.paints)+L" uploads="+std::to_wstring(dc.uploads)+
     L" meanReadUs="+std::to_wstring(dc.samples?dc.readUs/dc.samples:0)+L" maxReadUs="+std::to_wstring(dc.maxReadUs)+
     L" maxSampleGapMs="+std::to_wstring(dc.maxGap)+L" labels="+std::to_wstring(externalData->labels)+
@@ -1188,6 +1193,22 @@ static void paint(){
 
 }
 #include "frame_clock.h"
+// Resolve on the UI/control thread; drawing only reads the cached target.
+static void syncInformationRate(bool force=false){
+ HWND fallback=ui;
+#ifdef RA2_UNIFIED
+ if(suite::parent())fallback=suite::parent();
+#endif
+ if(infoAdaptive)informationMonitor.update(game,fallback,GetTickCount(),force);
+ const int rate=informationFPS();static int lastRate=0;static bool lastAdaptive=false;
+ clockState(foregroundGame()&&snap.renderStatus==1&&enabled,rate);
+ if(force||rate!=lastRate||infoAdaptive!=lastAdaptive){
+  lastRate=rate;lastAdaptive=infoAdaptive;++paintRevision;
+  if(rateEdit)EnableWindow(rateEdit,!infoAdaptive);
+  if(auto status=GetDlgItem(ui,9161))SetWindowTextW(status,(L"当前："+std::to_wstring(rate)+L" Hz").c_str());
+  publishSuiteDisplay();
+ }
+}
 static WORD binding(const char*id){for(auto&b:swBindings)if(b.id==id)return b.key;return 0;}
 static std::vector<std::string> visibleSuperIDs;
 static std::string selectedSuperID(){
@@ -1315,7 +1336,8 @@ static void serviceCommandQueue(DWORD now){
 static void publishSuiteDisplay(){
 #ifdef RA2_UNIFIED
  if(!ready)return;suite::DisplayState state;
- state.values={extra.scrollRefreshMode,int(extra.enemyMarkers),int(SendMessageW(check[1],BM_GETCHECK,0,0)==BST_CHECKED),int(SendMessageW(check[0],BM_GETCHECK,0,0)==BST_CHECKED),int(SendMessageW(check[3],BM_GETCHECK,0,0)==BST_CHECKED),int(extra.frozen),int(extra.parasiteMarker),int(extra.crateBuffMarkers),labelScalePercent,fps,extra.mapStrategy,int(extra.passengerBubbles),int(extra.dangerPassengers)};
+ state.values={extra.scrollRefreshMode,int(extra.enemyMarkers),int(SendMessageW(check[1],BM_GETCHECK,0,0)==BST_CHECKED),int(SendMessageW(check[0],BM_GETCHECK,0,0)==BST_CHECKED),int(SendMessageW(check[3],BM_GETCHECK,0,0)==BST_CHECKED),int(extra.frozen),int(extra.parasiteMarker),int(extra.crateBuffMarkers),labelScalePercent,fps,extra.mapStrategy,int(extra.passengerBubbles),int(extra.dangerPassengers),int(infoAdaptive)};
+ state.infoRate=informationFPS();
  state.assistEnabled=enabled;state.refreshStatus=shared?shared->scrollRefreshStatus:0;
  state.rateMilli=shared?int(shared->scrollRefreshRateMilli):0;state.gapUs=shared?int(shared->scrollRefreshMaxGapUs):0;
  suite::publishDisplaySettings(state);
@@ -1394,7 +1416,7 @@ static void updatePlayerTestUI(){
 }
 #include "shift_click_host.h"
 #include "command_cursor_host.h"
-static void tick(){reapBridges();logBridgeHealth();DWORD now=GetTickCount();static DWORD lastControl;if(lastControl&&DWORD(now-lastControl)<8)return;lastControl=now;updateModeStatus(now);updatePlayerTestUI();if(keysRegistered!=(enabled&&foregroundGame()&&snap.status==1&&snap.renderStatus==1&&!snap.chat))registerKeys();if(!enabled){clockState(false,fps);return;}
+static void tick(){reapBridges();logBridgeHealth();DWORD now=GetTickCount();static DWORD lastControl;if(lastControl&&DWORD(now-lastControl)<8)return;lastControl=now;syncInformationRate();updateModeStatus(now);updatePlayerTestUI();if(keysRegistered!=(enabled&&foregroundGame()&&snap.status==1&&snap.renderStatus==1&&!snap.chat))registerKeys();if(!enabled){clockState(false,informationFPS());return;}
  if(pid&&DWORD(now-lastProcessCheck)>=250){lastProcessCheck=now;
   if(!externalReader.alive()){detach();lastFind=now-2000;}
   else {DWORD nextThread=0;bool authoritative=false;
@@ -1407,7 +1429,7 @@ static void tick(){reapBridges();logBridgeHealth();DWORD now=GetTickCount();stat
   }
  }
  if(!game){commandcursor::clear();
-  clockState(false,fps);
+  clockState(false,informationFPS());
   if(pid&&externalReader.valid()){
    // Read-only attachment is independent of the window/WH_GETMESSAGE bridge.
    // Never send commands while HWND/thread ID are unavailable.
@@ -1478,7 +1500,7 @@ static void tick(){reapBridges();logBridgeHealth();DWORD now=GetTickCount();stat
   diag(L"submit "+submitDiagnostic()+L" entryThread="+std::to_wstring(snap.entryThread)+L" entries="+std::to_wstring(snap.entryCalls)+L" reentrant="+std::to_wstring(snap.entryReentrant)+L" contended="+std::to_wstring(snap.entryContended)+L" wrongThread="+std::to_wstring(snap.entryWrongThread));
  }
  if(lastData&&snap.inputPatchMask!=lastLoggedPatchMask){lastLoggedPatchMask=snap.inputPatchMask;diag(L"hook patches installed mask="+std::to_wstring(lastLoggedPatchMask));}
- clockState(foregroundGame()&&snap.renderStatus==1&&enabled,fps);
+ clockState(foregroundGame()&&snap.renderStatus==1&&enabled,informationFPS());
  if(!enabled||!foregroundGame()||snap.renderStatus!=1||snap.chat){overlayRecovery.suspend();ShowWindow(overlay,SW_HIDE);hideAircraftButton();minimap::hide();watchwindows::hide();hideConstruction();}
  if(snap.status==-2){setStatus(L"游戏操作异常，指令功能已暂停；信息显示仍可使用。");if(snap.renderStatus!=1)ShowWindow(overlay,SW_HIDE);return;}
  if(snap.status==-1){setStatus(L"当前游戏版本不兼容，指令功能已暂停；信息显示仍可使用。");if(snap.renderStatus!=1)ShowWindow(overlay,SW_HIDE);return;}
@@ -1592,7 +1614,7 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
   proc(w,WM_COMMAND,MAKEWPARAM(spec.id,notification),(LPARAM)control);publishSuiteDisplay();return 0;
  }
 
- if(msg==suite::ModuleEnable){enabled=bool(wp);if(!enabled){detach();clockState(false,fps);setStatus(L"已暂停。");}else{lastFind=0;setStatus(L"正在重新连接…");}suite::reportEnabled(2,enabled);return 0;}
+ if(msg==suite::ModuleEnable){enabled=bool(wp);if(!enabled){detach();clockState(false,informationFPS());setStatus(L"已暂停。");}else{lastFind=0;setStatus(L"正在重新连接…");}suite::reportEnabled(2,enabled);return 0;}
 #endif
  if(msg==modernui::DpiMessage){applyPanelDpi(unsigned(wp));return 0;}
  switch(msg){case WM_CREATE:{ui=w;panelDpi=modernui::windowDpi(w);
@@ -1605,6 +1627,7 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
 #include "tactical_controls.h"
  EnableWindow(GetDlgItem(w,420),TRUE);
  statusLabel=control(L"STATIC",L"正在寻找游戏…",20,1370,605,44,430);control(L"BUTTON",L"暂停 / 连接",20,1420,200,28,431,BS_PUSHBUTTON|WS_TABSTOP);control(L"BUTTON",L"使用说明",235,1420,185,28,432,BS_PUSHBUTTON|WS_TABSTOP);control(L"BUTTON",L"退出",435,1420,190,28,433,BS_PUSHBUTTON|WS_TABSTOP);EnableWindow(unloadKeyEdit,TRUE);EnableWindow(GetDlgItem(w,453),TRUE);EnableWindow(hookChecks[1],TRUE);SetWindowTextW(hookChecks[1],L"智能卸载");finalizeTacticalLayout();applyPanelDpi(panelDpi);ready=true;fillTech(true);fillTypeBindings(true);SetTimer(w,1,250,nullptr);SetTimer(w,2,80,nullptr);registerKeys();return 0;}
+ case WM_DISPLAYCHANGE:informationMonitor.invalidate();syncInformationRate(true);return 0;
  case WM_SIZE:layoutPanel();return 0;
  case WM_DPICHANGED:{applyPanelDpi(HIWORD(wp));if(!(GetWindowLongPtrW(w,GWL_STYLE)&WS_CHILD)){auto r=(RECT*)lp;SetWindowPos(w,nullptr,r->left,r->top,r->right-r->left,r->bottom-r->top,SWP_NOZORDER|SWP_NOACTIVATE);}return 0;}
  case WM_HSCROLL:{SCROLLINFO si{sizeof si,SIF_ALL};GetScrollInfo(w,SB_HORZ,&si);switch(LOWORD(wp)){case SB_LINELEFT:scrollX-=28;break;case SB_LINERIGHT:scrollX+=28;break;case SB_PAGELEFT:scrollX-=int(si.nPage);break;case SB_PAGERIGHT:scrollX+=int(si.nPage);break;case SB_THUMBTRACK:case SB_THUMBPOSITION:scrollX=si.nTrackPos;break;}layoutPanel();return 0;}
@@ -1673,7 +1696,7 @@ if(id==991){wchar_t query[128]{};GetWindowTextW(featureSearch,query,128);std::ws
   notify(save()?L"此类型的受击数已保存。":L"保存失败，请检查 Assist.ini 写入权限。");return 0;
  }
  if(id>=100&&id<112){if(id==100){save();notify(L"自动维修开关已保存，每局自动应用。");}else send(actions[id-100]);return 0;}if(id==400){BOOL ok;int nextRepair=GetDlgItemInt(w,312,&ok,FALSE);if(!ok){notify(L"请输入有效的维修间隔。");return 0;}repairMs=std::clamp(nextRepair,500,30000);SetWindowTextW(repairEdit,std::to_wstring(repairMs).c_str());for(int i=0;i<12;++i)hotkeys[i]=(WORD)SendMessageW(keys[i],HKM_GETHOTKEY,0,0);save();notify(L"快捷键已保存。");registerKeys();}
- else if(id==401){BOOL validRate,validMargin;int nextRate=GetDlgItemInt(w,310,&validRate,FALSE),nextMargin=GetDlgItemInt(w,311,&validMargin,FALSE);if(!validRate||!validMargin){notify(L"请输入有效的刷新率和上边距。");return 0;}fps=std::clamp(nextRate,5,500);topMargin=std::clamp(nextMargin,0,4096);SetWindowTextW(rateEdit,std::to_wstring(fps).c_str());SetWindowTextW(marginEdit,std::to_wstring(topMargin).c_str());++paintRevision;save();clockState(foregroundGame(),fps);notify(L"显示设置已保存。");}
+ else if(id==401){BOOL validRate,validMargin;int nextRate=GetDlgItemInt(w,310,&validRate,FALSE),nextMargin=GetDlgItemInt(w,311,&validMargin,FALSE);if(!validRate||!validMargin){notify(L"请输入有效的刷新率和上边距。");return 0;}fps=std::clamp(nextRate,5,500);topMargin=std::clamp(nextMargin,0,4096);SetWindowTextW(rateEdit,std::to_wstring(fps).c_str());SetWindowTextW(marginEdit,std::to_wstring(topMargin).c_str());++paintRevision;save();syncInformationRate(true);notify(L"显示设置已保存。");}
  else if(id>=300&&id<307&&ready){++paintRevision;save();}else if(id==412)bindSuper();else if(id==420){techMode=SendDlgItemMessageW(w,420,BM_GETCHECK,0,0)==BST_CHECKED;
   save();if(snap.status==1)send(OpenTech,techMode);}else if(id==421&&HIWORD(wp)==EN_CHANGE&&ready)fillTech();
  else if(id==896&&HIWORD(wp)==CBN_SELCHANGE&&ready){int selected=int(SendDlgItemMessageW(w,896,CB_GETCURSEL,0,0));techImplementation=selected>=0&&selected<=2?selected:0;save();fillTech(true);if(techMode&&snap.status==1)send(OpenTech,1);}
@@ -1765,6 +1788,7 @@ int WINAPI wWinMain(HINSTANCE h,HINSTANCE,LPWSTR,int show){SetProcessDPIAware();
  megaQueueMode=value(L"Orders",L"MegaMissionBackend",0)==1?1u:0u;
  objectQueueMode=value(L"Orders",L"ObjectEventBackend",0)==1?1u:0u;
  schedulerMode=0;schedulerTarget=0; // Message manager is the only entry.
+ infoAdaptive=value(L"Display",L"AdaptiveFPS",0)!=0;
  int refreshRevision=value(L"Display",L"LabelRefreshVersion",0);fps=visual::initialFPS(value(L"Display",L"FPS",visual::DefaultFPS),refreshRevision);if(refreshRevision<1){write(L"Display",L"FPS",fps);write(L"Display",L"LabelRefreshVersion",1);}topMargin=std::clamp(value(L"Display",L"TopMargin",20),0,4096);
  labelScalePercent=viewport::percent(value(L"Display",L"LabelScalePercent",100));constructionScalePercent=viewport::percent(value(L"Display",L"ConstructionScalePercent",100));
  techProfile=std::clamp(value(L"Tech",L"Profile",value(L"main",L"CustomTech",0)?1:0),0,2);
@@ -1830,6 +1854,6 @@ int WINAPI wWinMain(HINSTANCE h,HINSTANCE,LPWSTR,int show){SetProcessDPIAware();
 #else
  ShowWindow(ui,show);
 #endif
- startClock();MSG m;while(GetMessageW(&m,nullptr,0,0)>0){if(!IsDialogMessageW(ui,&m)){TranslateMessage(&m);DispatchMessageW(&m);}}DestroyWindow(overlay);surface.clear();textRasters.clear();glyphRasters.clear();labelRasters.clear();DeleteObject(font);DeleteObject(bgBrush);DeleteObject(editBrush);GdiplusShutdown(token);CloseHandle(single);return 0;}
+ syncInformationRate(true);startClock();MSG m;while(GetMessageW(&m,nullptr,0,0)>0){if(!IsDialogMessageW(ui,&m)){TranslateMessage(&m);DispatchMessageW(&m);}}DestroyWindow(overlay);surface.clear();textRasters.clear();glyphRasters.clear();labelRasters.clear();DeleteObject(font);DeleteObject(bgBrush);DeleteObject(editBrush);GdiplusShutdown(token);CloseHandle(single);return 0;}
 
 

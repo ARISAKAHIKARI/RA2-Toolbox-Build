@@ -153,9 +153,12 @@ note(L"同键每按一次添加一个窗口，只使用该键绑定的空位。�
 toggle(798,L"空闲飞机指示器",extra.idleAircraft);next();
 #ifdef RA2_UNIFIED
 rateEdit=placedControl({-3,{0,0,1,1}},L"EDIT",std::to_wstring(fps).c_str(),310,ES_NUMBER);
+hiddenToggle(9160,L"自适应屏幕刷新率",infoAdaptive);
 placedControl({-3,{0,0,1,1}},L"EDIT",std::to_wstring(labelScalePercent).c_str(),816,ES_NUMBER);
 #else
-rateEdit=number(310,L"信息显示刷新率 / 帧每秒",fps,L"5–500");
+toggle(9160,L"自适应屏幕刷新率",infoAdaptive);next();
+rateEdit=number(310,L"手动信息刷新率 / Hz",fps,L"5–500");
+item(L"STATIC",(L"当前："+std::to_wstring(informationFPS())+L" Hz").c_str(),20,605,9161);next();
 number(816,L"载员与状态文字缩放 / %",labelScalePercent,L"50–250 · 默认 100");
 #endif
 marginEdit=number(311,L"文字提示上边距 / 像素",topMargin,L"0–4096");

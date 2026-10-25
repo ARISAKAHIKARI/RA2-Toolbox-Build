@@ -101,6 +101,7 @@ static LRESULT CALLBACK proc(HWND w,UINT m,WPARAM wp,LPARAM lp){switch(m){
  case EnabledChanged:{int i=int(wp);if(i>=0&&i<3){SendMessageW(checks[i],BM_SETCHECK,lp?BST_CHECKED:BST_UNCHECKED,0);save();}return 0;}
  case WM_COMMAND:if(LOWORD(wp)>=200&&LOWORD(wp)<=204&&HIWORD(wp)==BN_CLICKED){selected=LOWORD(wp)-200;WritePrivateProfileStringW(L"UI",L"Page",std::to_wstring(selected).c_str(),config.c_str());layout();return 0;}if(LOWORD(wp)>=100&&LOWORD(wp)<103&&HIWORD(wp)==BN_CLICKED){int i=LOWORD(wp)-100;active[i]=SendMessageW(checks[i],BM_GETCHECK,0,0)==BST_CHECKED;save();if(panes[i])PostMessageW(panes[i],suite::ModuleEnable,active[i],0);return 0;}break;
 
+ case WM_DISPLAYCHANGE:for(auto& slot:displayPanes)if(auto pane=slot.load())PostMessageW(pane,WM_DISPLAYCHANGE,wp,lp);return 0;
  case WM_SIZE:layout();return 0;
  case WM_GETMINMAXINFO:((MINMAXINFO*)lp)->ptMinTrackSize={modernui::scale(760,consoleDpi),modernui::scale(620,consoleDpi)};return 0;
  case WM_DPICHANGED:{applyDpi(HIWORD(wp));auto r=(RECT*)lp;SetWindowPos(w,nullptr,r->left,r->top,r->right-r->left,r->bottom-r->top,SWP_NOZORDER|SWP_NOACTIVATE);layout();return 0;}
