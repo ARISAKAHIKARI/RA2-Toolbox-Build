@@ -109,7 +109,7 @@ int main(){
  // One composed canvas keeps native-height positioning and pixel depth.
  f.focus=actor.target;f.center.target=actor.target;overlay.image.width=overlay.image.height=8;overlay.image.pixels.assign(64,0xffabcdef);
  auto&actorImage=engine.images[engine.imageKey(actor)];actorImage.ready=true;actorImage.image=overlay.image;actorImage.image.pixels.assign(64,0xff204080);
- engine.views[0].reveal=true; // The following independent Z tests use hand-built one-cell art.
+ f.reveal=true; // The following independent Z tests use hand-built one-cell art.
  drawnRects.clear();engine.drawView(g,engine.views[0]);assert(drawnRects.size()==1&&drawnRects[0].w==640);
  auto&canvas=engine.views[0].raster;assert(canvas.color[228*640+322]==external::camera::lit(0xffabcdef,0,false,f.tiles[4].overlayLight));
  assert(canvas.color[258*640+322]==external::camera::lit(0xff204080,0,false,actor.light));

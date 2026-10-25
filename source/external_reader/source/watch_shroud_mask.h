@@ -20,7 +20,7 @@ public:
   std::vector<size_t> order;order.reserve(frame.shade.size());
   for(size_t n=0;n<frame.shade.size();++n)if(frame.shade[n].shroud!=127)order.push_back(n);
   std::stable_sort(order.begin(),order.end(),[&](size_t a,size_t b){return a%frame.side+a/frame.side<b%frame.side+b/frame.side;});
-  for(int kind=0;kind<2;++kind)for(size_t n:order){
+  for(int kind=0;kind<(frame.fogEnabled?2:1);++kind)for(size_t n:order){
    auto raw=kind?frame.shade[n].fog:frame.shade[n].shroud;
    int index=raw==-2?15:raw==-1?0:int(raw);
    if(index<0||index>=47)return false;

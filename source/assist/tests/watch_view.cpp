@@ -8,8 +8,8 @@ int main(){
  auto write=[&](uint32_t p,auto value){memcpy(memory.data()+p,&value,sizeof value);};
  auto read=[&](uint32_t p,void*out,size_t n){if(uint64_t(p)+n>memory.size())return false;memcpy(out,memory.data()+p,n);return true;};
  auto vec=[&](uint32_t p,std::initializer_list<uint32_t> items){uint32_t data=alloc(items.size()*4);unsigned i=0;for(auto v:items)write(data+4*i++,v);write(p+4,data);write(p+8,int(items.size()));write(p+16,int(items.size()));};
- uint32_t local=alloc(0x20000),enemy=alloc(0x20000),carrierType=alloc(0x2000),engineerType=alloc(0x2000);
- write(0xA83D4C,local);write(enemy+0x30,1);write(engineerType+0xEC3,uint8_t(1));
+ uint32_t local=alloc(0x20000),enemy=alloc(0x20000),carrierType=alloc(0x2000),engineerType=alloc(0x2000),options=alloc(0x100);
+ write(0xA83D4C,local);write(0xA8B230,options);write(options+1,uint8_t(0x10));write(enemy+0x30,1);write(engineerType+0xEC3,uint8_t(1));
  auto obj=[&](uint32_t type,bool infantry,int id,int x,int y){uint32_t p=alloc(0x800);write(p,infantry?0x7EB058u:0x7F5C70u);write(p+0x10,id);write(p+0x6C,100);write(p+0x74,uint8_t(1));write(p+0x90,uint8_t(1));write(p+0x21C,enemy);write(p+(infantry?0x6C0:0x6C4),type);write(p+0x9C,x*256+128);write(p+0xA0,y*256+128);return p;};
  uint32_t a=obj(carrierType,false,10,20,30),b=obj(carrierType,false,11,25,35),cargo=obj(engineerType,true,12,20,30),far=obj(carrierType,false,13,26,30),hidden=obj(carrierType,false,14,20,31);
  write(a+0x114,1);write(a+0x118,cargo);write(cargo+0x11C,a);write(hidden+0x220,1);vec(0xA8EC78,{a,b,cargo,far,hidden});vec(0xA8ECB8,{b});
@@ -26,10 +26,18 @@ int main(){
  // Cached draw-frame bytes can disagree with the live neighbor flags; derive
  // the mask from the native lookup, including an edge frame past 15.
  write(0x7F4194+255,int8_t(46));write(center+0x120,int8_t(-2));write(center+0x121,int8_t(-2));write(center+0x12C,uint8_t(0x18));
- frame=watch::sample(read,ta,false);assert(frame.cells[60]&&frame.actors.size()==2&&frame.shade[60]==(radar::ShroudFrames{46,-1}));
+ frame=watch::sample(read,ta,false);assert(frame.fogEnabled&&frame.cells[60]&&frame.actors.size()==2&&frame.shade[60]==(radar::ShroudFrames{46,-1}));
+ write(center+0x140,uint8_t(3));write(center+0xEC,2);
+ frame=watch::sample(read,ta,false);assert(frame.fogEnabled&&frame.shade[60]==(radar::ShroudFrames{46,46}));
+ uint32_t dim=frame.cells[60];assert(dim==(0xff000000u|radar::terrainColor(2,0,true)));
+ assert(watch::refresh(read,frame));write(options+1,uint8_t(0));assert(!watch::refresh(read,frame));
+ frame=watch::sample(read,ta,false);assert(!frame.fogEnabled&&frame.shade[60].shroud==46&&frame.cells[60]==(0xff000000u|radar::terrainColor(2,0,false))&&frame.cells[60]!=dim);
+ write(options+1,uint8_t(0x10));write(local+0x1F5,uint8_t(1));
+ frame=watch::sample(read,ta,false);assert(!frame.fogEnabled&&frame.shade[60].shroud==46&&frame.cells[60]!=dim);
+ write(local+0x1F5,uint8_t(0));assert(!watch::refresh(read,frame));
  write(center+0x12C,uint8_t(0));frame=watch::sample(read,ta,false);assert(frame.cells[60]==0&&frame.actors.size()==1&&frame.shade[60].shroud==-2);
  write(0x7F4194+255,int8_t(127));frame=watch::sample(read,ta,false);assert(!frame.focus);write(0x7F4194+255,int8_t(46));
- frame=watch::sample(read,ta,true);assert(frame.cells[60]&&frame.actors.size()==2&&frame.shade[60]==(radar::ShroudFrames{-1,-1}));
+ frame=watch::sample(read,ta,true);assert(frame.cells[60]&&!frame.fogEnabled&&frame.actors.size()==2&&frame.shade[60]==(radar::ShroudFrames{-1,-1}));
  // Stable identities: a recycled address must not inherit the pinned unit.
  write(a+0x10,99u);assert(!watch::choose(read,ta,{},true));assert(!watch::sample(read,ta,true).focus);write(a+0x10,10u);
  write(cargo+0x30,cargo);assert(!watch::choose(read,{},ta,true));write(cargo+0x30,0u);

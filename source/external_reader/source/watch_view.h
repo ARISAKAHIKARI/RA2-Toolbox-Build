@@ -14,7 +14,11 @@ namespace external { namespace watch {
 constexpr int NativeViewWidth=640,NativeViewHeight=512;
 struct Actor {visual::Pose pose;Target target;uint32_t type=0,owner=0,color=0;int x=0,y=0,z=0,kind=-1,health=0,stage=0,drawZ=0,sort=0,layer=2;Target parent;bool onBridge=false;uint16_t name[40]{};lighting::State light;};
 struct Tile {uint32_t image=0,overlay=0,type=0,overlayType=0;int sub=0,level=0,overlayFrame=0,overlayY=0;bool bridge=false;lighting::State light,overlayLight;};
-struct Frame {Target focus;Anchor center;int cx=0,cy=0,focusCx=0,focusCy=0;int radius=5,side=11;std::vector<uint32_t> cells=std::vector<uint32_t>(121);std::vector<Tile> tiles=std::vector<Tile>(121);std::vector<radar::ShroudFrames> shade=std::vector<radar::ShroudFrames>(121);std::vector<Actor> actors;std::vector<passengers::Group> passengers;bool dangerous=false,cameraReady=false;lighting::State light;double zScale=Projection{}.zScale,cameraX=0,cameraY=0;mapbounds::Bounds bounds;std::vector<repairvisuals::Sprite> repairs;};
+struct Frame {Target focus;Anchor center;int cx=0,cy=0,focusCx=0,focusCy=0;int radius=5,side=11;std::vector<uint32_t> cells=std::vector<uint32_t>(121);std::vector<Tile> tiles=std::vector<Tile>(121);std::vector<radar::ShroudFrames> shade=std::vector<radar::ShroudFrames>(121);std::vector<Actor> actors;std::vector<passengers::Group> passengers;bool dangerous=false,cameraReady=false,reveal=false,fogEnabled=false;lighting::State light;double zScale=Projection{}.zScale,cameraX=0,cameraY=0;mapbounds::Bounds bounds;std::vector<repairvisuals::Sprite> repairs;};
+template<class Read> bool nativeFog(const GameView<Read>&g){
+ uint32_t options=g.template get<uint32_t>(0xA8B230),house=g.template get<uint32_t>(0xA83D4C);
+ return options>=0x10000&&house>=0x10000&&(g.template get<uint8_t>(options+1)&0x10)&&g.template get<uint8_t>(house+0x1F5)==0;
+}
 template<class Read>void repairSprites(Read read,Frame&out){
  out.repairs.clear();for(const auto&a:out.actors)if(a.kind==3){repairvisuals::Sprite sprite;if(repairvisuals::sample(read,a.target.pointer,a.target.id,sprite))out.repairs.push_back(sprite);}
 }
@@ -45,6 +49,7 @@ template<class Read> Target choose(Read read,Target pinned,Target prior,bool aut
 // throttle: simulation changes still take the complete sampling path below.
 template<class Read> bool refresh(Read read,Frame&out){
  GameView<Read> g(read);auto center=anchor(read,out.focus,out.center);if(!center.located||mapbounds::sample(read)!=out.bounds)return false;
+ if(out.fogEnabled!=(!out.reveal&&nativeFog(g)))return false;
  int fx=center.x,fy=center.y;
  if(!(center.target==out.center.target)||fx/256!=out.focusCx||fy/256!=out.focusCy)return false;
  auto light=lighting::sample(read);double zScale=projectionZScale(read);
@@ -69,7 +74,7 @@ template<class Read> bool refresh(Read read,Frame&out){
  return life(read,out.focus).state==Life::Present;
 }
 template<class Read> Frame sample(Read read,Target focus,bool reveal,int radius=5,const Anchor&prior={}){
- Frame out;out.radius=std::clamp(radius,5,24);out.side=2*out.radius+1;out.cells.resize(out.side*out.side);out.tiles.resize(out.side*out.side);out.shade.resize(out.side*out.side);GameView<Read> g(read);out.center=anchor(read,focus,prior);if(!out.center.located)return out;
+ Frame out;out.radius=std::clamp(radius,5,24);out.side=2*out.radius+1;out.cells.resize(out.side*out.side);out.tiles.resize(out.side*out.side);out.shade.resize(out.side*out.side);GameView<Read> g(read);out.reveal=reveal;out.fogEnabled=!reveal&&nativeFog(g);out.center=anchor(read,focus,prior);if(!out.center.located)return out;
  out.bounds=mapbounds::sample(read);if(!out.bounds.valid())return {};
  int fx=out.center.x,fy=out.center.y;
  out.focusCx=fx/256;out.focusCy=fy/256;
@@ -123,7 +128,7 @@ template<class Read> Frame sample(Read read,Target focus,bool reveal,int radius=
    else if(g.template get<uint8_t>(overlayTypes[overlay]+0x2A9)){t.overlayLight=out.light;t.overlayLight.intensity=1000;}
    else if(g.template get<uint8_t>(overlayTypes[overlay]+0x2A8))t.overlayLight=lighting::cell(read,p,out.light,lighting::Layer::Object,false);
   }
-  out.cells[(y+out.radius)*out.side+x+out.radius]=0xff000000u|radar::terrainColor(g.template get<int>(p+0xEC,-1),g.template get<int8_t>(p+0x11B),!reveal&&fog!=-1);
+  out.cells[(y+out.radius)*out.side+x+out.radius]=0xff000000u|radar::terrainColor(g.template get<int>(p+0xEC,-1),g.template get<int8_t>(p+0x11B),out.fogEnabled&&fog!=-1);
  }
  for(auto p:g.vec(0xA8EC78)){Target t{p,g.template get<uint32_t>(p+0x10)};if(!valid(g,t))continue;
   int x=g.template get<int>(p+0x9C,-1),y=g.template get<int>(p+0xA0,-1);if(x<0||y<0)continue;int cx=x/256-out.cx,cy=y/256-out.cy;if(cx<-out.radius||cx>out.radius||cy<-out.radius||cy>out.radius||!out.cells[(cy+out.radius)*out.side+cx+out.radius])continue;

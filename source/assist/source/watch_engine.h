@@ -194,7 +194,7 @@ void drawView(Graphics&g,const View&view){
  }
  // Match the game's alpha buffer after composing all world pixels, before
  // drawing the watch UI. This also covers raised TMP edges and tall actors.
- if constexpr(HasShroud<Assets>::value){if(!view.reveal&&
+ if constexpr(HasShroud<Assets>::value){if(!frame.reveal&&
     !shroudRaster.apply(frame,cameraX,cameraY,Width,Height,canvas.color,
                        [&](bool fog,int index,external::voxel::Image&image){return assets.shroud(fog,index,image);})){std::fill(canvas.color.begin(),canvas.color.end(),0xff000000u);}}
  // Camera limits constrain its center, not drawable map scenery. Surface
