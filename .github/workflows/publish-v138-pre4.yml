@@ -1,0 +1,104 @@
+name: Publish RA2 Toolbox 1.0.38-pre.4
+on:
+  push:
+    branches: [codex/camera-v138-pre2]
+    paths: ['.github/workflows/publish-v138-pre4.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: publish-v138-pre4
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      actions: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      BUILD_SHA: f2789d9fc35da991e1717c56a7b37cd72db4510e
+      BUILD_RUN: '40150636419'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Require successful validation of these exact sources
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          gh api "repos/$GH_REPO/actions/runs/$BUILD_RUN" > /tmp/build-run.json
+          gh api "repos/$GH_REPO/actions/runs/$BUILD_RUN/jobs?per_page=100" > /tmp/build-jobs.json
+          python3 - <<'PY'
+          import json,os
+          r=json.load(open('/tmp/build-run.json'))
+          assert r['head_sha']==os.environ['BUILD_SHA']
+          assert r['status']=='completed' and r['conclusion']=='success'
+          assert r['path']=='.github/workflows/validate-v138-pre2.yml'
+          assert r['repository']['full_name']==os.environ['GH_REPO']
+          j=json.load(open('/tmp/build-jobs.json'))
+          assert {x['name'] for x in j['jobs']}=={'build','windows-ui'}
+          assert all(x['head_sha']==os.environ['BUILD_SHA'] and x['status']=='completed' and x['conclusion']=='success' for x in j['jobs'])
+          PY
+          git fetch --depth=1 origin "$BUILD_SHA"
+          git diff --exit-code "$BUILD_SHA" HEAD -- source .github/workflows/validate-v138-pre2.yml
+          gh run download "$BUILD_RUN" --name camera138pre4-binaries --dir "$RUNNER_TEMP/camera138pre4-binaries"
+          gh run download "$BUILD_RUN" --name camera138pre4-windows-settings --dir "$RUNNER_TEMP/camera138pre4-windows-settings"
+          cp "$RUNNER_TEMP/camera138pre4-binaries/RA2Toolbox.exe" "$RUNNER_TEMP/camera138pre4-binaries/GameRuntime.dll" "$RUNNER_TEMP/camera138pre4-binaries/WINDOWS_BUILD_ARTIFACTS.json" source/
+          cp "$RUNNER_TEMP/camera138pre4-windows-settings/WINDOWS_SETTINGS_SMOKE.json" source/
+          python3 source/tools/verify_windows_outputs.py
+          python3 source/tools/package_pre1384.py
+          python3 - <<'PY'
+          import os,pathlib
+          p=pathlib.Path('packages/v1.0.38-pre.4/RELEASE_NOTES.md')
+          body=p.read_text()
+          base='https://github.com/'+os.environ['GH_REPO']+'/blob/v1.0.38-pre.4/'
+          body=body.replace('](../../',']('+base)
+          pathlib.Path('/tmp/release-notes.md').write_text(body)
+          PY
+      - name: Publish and verify preview release
+        run: |
+          set -euo pipefail
+          tag=v1.0.38-pre.4
+          if gh release view "$tag" --json isDraft > /tmp/release-state.json 2>/dev/null; then
+            python3 - <<'PY'
+          import json
+          assert json.load(open('/tmp/release-state.json'))['isDraft'],'Refusing to replace an already-published release'
+          PY
+          else
+            gh release create "$tag" --target "$GITHUB_SHA" --draft --prerelease --title 'RA2 Toolbox 1.0.38-pre.4 — 原版光照、Bib 與工廠生產部件修復' --notes-file /tmp/release-notes.md
+          fi
+          if gh api "repos/$GH_REPO/git/ref/tags/$tag" > /tmp/tag-ref.json 2>/dev/null; then
+            test "$(gh api "repos/$GH_REPO/commits/$tag" --jq .sha)" = "$GITHUB_SHA"
+          fi
+          gh release edit "$tag" --target "$GITHUB_SHA" --title 'RA2 Toolbox 1.0.38-pre.4 — 原版光照、Bib 與工廠生產部件修復' --notes-file /tmp/release-notes.md
+          gh release upload "$tag" dist/v1.0.38-pre.4/RA2-Toolbox-v1.0.38-pre.4-Update.zip dist/v1.0.38-pre.4/RA2-Toolbox-v1.0.38-pre.4-Source.zip dist/v1.0.38-pre.4/release-manifest.json --clobber
+          mkdir remote-check
+          gh release download "$tag" --pattern '*.zip' --pattern release-manifest.json --dir remote-check
+          python3 - <<'PY'
+          import hashlib,json,pathlib,zipfile
+          manifest=json.load(open('dist/v1.0.38-pre.4/release-manifest.json'))
+          for item in manifest['assets']:
+              data=(pathlib.Path('remote-check')/item['name']).read_bytes()
+              assert len(data)==item['bytes'] and hashlib.sha256(data).hexdigest()==item['sha256']
+          assert pathlib.Path('remote-check/release-manifest.json').read_bytes()==pathlib.Path('dist/v1.0.38-pre.4/release-manifest.json').read_bytes()
+          with zipfile.ZipFile('remote-check/RA2-Toolbox-v1.0.38-pre.4-Update.zip') as z:
+              assert set(z.namelist())=={'RA2Toolbox.exe','GameRuntime.dll'} and z.testzip() is None
+          PY
+          gh release view "$tag" --json tagName,isDraft,assets > /tmp/release-candidate.json
+          python3 - <<'PY'
+          import json
+          r=json.load(open('/tmp/release-candidate.json'))
+          assert r['tagName']=='v1.0.38-pre.4' and r['isDraft']
+          assert {a['name'] for a in r['assets']}=={'RA2-Toolbox-v1.0.38-pre.4-Update.zip','RA2-Toolbox-v1.0.38-pre.4-Source.zip','release-manifest.json'}
+          PY
+          gh release edit "$tag" --draft=false --prerelease=true --latest=false
+          test "$(gh api "repos/$GH_REPO/commits/$tag" --jq .sha)" = "$GITHUB_SHA"
+          gh release view "$tag" --json url,tagName,isDraft,isPrerelease,assets > published-release.json
+          python3 - <<'PY'
+          import json
+          r=json.load(open('published-release.json'))
+          assert r['tagName']=='v1.0.38-pre.4' and not r['isDraft'] and r['isPrerelease']
+          assert {a['name'] for a in r['assets']}=={'RA2-Toolbox-v1.0.38-pre.4-Update.zip','RA2-Toolbox-v1.0.38-pre.4-Source.zip','release-manifest.json'}
+          PY
+          cat published-release.json >> "$GITHUB_STEP_SUMMARY"
