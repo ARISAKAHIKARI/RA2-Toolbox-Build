@@ -27,26 +27,35 @@ prefix=r'''
 #include <set>
 #include <string>
 #include <iostream>
-using HWND=int;using WPARAM=uintptr_t;using LPARAM=intptr_t;
-constexpr int TRUE=1,BST_CHECKED=1,BST_UNCHECKED=0,BN_CLICKED=0,CBN_SELCHANGE=1,EN_CHANGE=2;
-constexpr int BM_SETCHECK=1,CB_SETCURSEL=2,WM_COMMAND=3;
+using HWND=int;using WPARAM=uintptr_t;using LPARAM=intptr_t;using BOOL=int;
+constexpr int TRUE=1,FALSE=0,BST_CHECKED=1,BST_UNCHECKED=0,BN_CLICKED=0,CBN_SELCHANGE=1,EN_CHANGE=2,EN_KILLFOCUS=3;
+constexpr int BM_SETCHECK=1,CB_SETCURSEL=2,WM_COMMAND=3,BM_GETCHECK=4,EM_SETLIMITTEXT=5;
+constexpr int BS_AUTOCHECKBOX=1,WS_TABSTOP=2,WS_BORDER=4,ES_NUMBER=8,ES_AUTOHSCROLL=16;
 namespace suite {constexpr int ApplyDisplaySetting=83,DisplaySettingsChanged=84,RefreshRateChanged=85;}
 static std::atomic<HWND> displayPanes[3]{};
 static std::atomic<unsigned> commonRefreshRate{0};
 static std::mutex displayMutex;static suite::DisplayState displayState;static bool displayReady=false;
 static std::atomic<int> posted{0},refreshPosts{0};
-static bool PostMessageW(HWND h,int msg,WPARAM,LPARAM){assert(h);assert(msg==83||msg==84||msg==85);if(msg==85){assert(h==7);++refreshPosts;}++posted;return true;}
+static int requestedOption=-1,requestedValue=-1;
+static bool PostMessageW(HWND h,int msg,WPARAM wp,LPARAM lp){assert(h);assert(msg==83||msg==84||msg==85);if(msg==85){assert(h==7);++refreshPosts;}if(msg==83){requestedOption=int(wp);requestedValue=int(lp);}++posted;return true;}
 static bool ready=true,updatingControls=false;static int ui=7,notifications=0,lastID=0,lastNotification=0;
-static std::map<int,int> fields;
+static std::map<int,int> fields;static std::map<int,std::wstring> texts;static std::map<int,bool> available;
+static bool unitSyncMode=false;static int focused=0,statsRate=144;
 struct ControlUpdate {ControlUpdate(){assert(!updatingControls);updatingControls=true;}~ControlUpdate(){updatingControls=false;}};
 static int GetDlgItem(int,int id){return id;}
 static WPARAM MAKEWPARAM(int id,int notification){return id|(notification<<16);}
-static void SendMessageW(int h,int message,WPARAM wp,LPARAM lp){
+static int LOWORD(WPARAM value){return int(value&65535);}static int HIWORD(WPARAM value){return int(value>>16);}
+static int SendMessageW(int h,int message,WPARAM wp,LPARAM lp){
  if(message==WM_COMMAND){assert(!updatingControls&&h==ui);++notifications;lastID=wp&65535;lastNotification=wp>>16;assert(lp==lastID);}
- else {assert(updatingControls);fields[h]=int(wp);}
+ else if(message==BM_GETCHECK)return fields[h];
+ else {assert(updatingControls||unitSyncMode);fields[h]=int(wp);}return 0;
 }
 static int proc(int h,int message,WPARAM wp,LPARAM lp){SendMessageW(h,message,wp,lp);return 0;}
-static void SetWindowTextW(int h,const wchar_t* text){assert(updatingControls);fields[h]=std::stoi(text);}
+static void SetWindowTextW(int h,const wchar_t* text){assert(updatingControls||unitSyncMode);texts[h]=text;if(!texts[h].empty()&&(texts[h][0]==L'-'||(texts[h][0]>=L'0'&&texts[h][0]<=L'9')))fields[h]=std::stoi(text);}
+static int GetFocus(){return focused;}static void EnableWindow(int h,bool on){available[h]=on;}
+static int GetDlgItemInt(int,int h,BOOL* ok,int){*ok=fields.count(h)!=0;return fields[h];}
+static int statsInformationFPS(){return statsRate;}
+namespace modernui {static void heading(int){}static void tip(int,const wchar_t*){}}
 static void publishSuiteDisplay(){}
 static struct {unsigned scrollRefreshHz=0,scrollRefreshMode=0;int sampleIntervalMs=0;} runtimeState,*shared=&runtimeState;
 static struct {int scrollRefreshMode=0;} extra;
@@ -95,15 +104,27 @@ int main(){
  }
  for(int key:{-1,int(DisplayOptionCount)})assert(!requestDisplaySetting(key,0));
  ready=false;int before=notifications;forwardDisplay(ui,Capacity,1);assert(notifications==before);ready=true;
- std::atomic<bool> done{false};std::thread writer([&]{for(int n=1;n<=10000;++n){DisplayState s;s.values.fill(n);s.rateMilli=n;s.gapUs=n;publishDisplaySettings(s);}done=true;});
- do{if(readDisplaySettings(out)){for(auto v:out.values)assert(v==out.rateMilli);assert(out.gapUs==out.rateMilli);}}while(!done);
+ // The shipped statistics pane preserves the manual value, disables only its
+ // editor in auto mode, and reports the local monitor target independently of
+ // the assist pane's monitor. Notifications still route to the single owner.
+ DisplayState config;config.values[InfoFPS]=144;config.values[InfoAdaptive]=1;config.infoRate=165;publishDisplaySettings(config);
+ unitSyncMode=true;int anonymous=10000;createUnitSettings([&](const wchar_t*,const wchar_t* text,int,int,int,int,int,int id){int h=id?id:++anonymous;texts[h]=text;return h;});
+ assert(fields[613]==1&&fields[609]==144&&!available[609]&&texts[614]==L"当前：144 Hz");
+ statsRate=240;syncUnitInformationRate();assert(texts[614]==L"当前：240 Hz"&&fields[609]==144);
+ config.values[InfoAdaptive]=0;config.infoRate=144;publishDisplaySettings(config);syncUnitSettings();assert(fields[613]==0&&available[609]&&fields[609]==144);
+ focused=609;fields[609]=120;syncUnitSettings();assert(fields[609]==120);syncUnitSettings(true);assert(fields[609]==144);focused=0;unitSyncMode=false;
+ fields[613]=1;assert(unitSettingCommand(MAKEWPARAM(613,BN_CLICKED))&&requestedOption==InfoAdaptive&&requestedValue==1);
+ assert(!unitSettingCommand(MAKEWPARAM(614,BN_CLICKED)));
+ int ratePosts=posted;config.infoRate=240;publishDisplaySettings(config);assert(posted==ratePosts+2);publishDisplaySettings(config);assert(posted==ratePosts+2);
+ std::atomic<bool> done{false};std::thread writer([&]{for(int n=1;n<=10000;++n){DisplayState s;s.values.fill(n);s.rateMilli=n;s.gapUs=n;s.infoRate=n;publishDisplaySettings(s);}done=true;});
+ do{if(readDisplaySettings(out)){if(out.rateMilli){for(auto v:out.values)assert(v==out.rateMilli);assert(out.gapUs==out.rateMilli&&out.infoRate==out.rateMilli);}}}while(!done);
  writer.join();assert(readDisplaySettings(out)&&out.rateMilli==10000);int count=posted;publishDisplaySettings(out);assert(posted==count);
- std::cout<<"PASS 13 routed setting IDs: valid endpoints, invalid edits, owner-thread notifications and not-ready suppression\n";
+ std::cout<<"PASS 14 routed setting IDs: valid endpoints, invalid edits, owner-thread notifications and not-ready suppression; adaptive/manual controls, local rate readback and retained manual target\n";
  std::cout<<"PASS 10000 cross-thread state publications: coherent snapshots and unchanged-state notification coalescing\n";
 }
 '''
 with tempfile.TemporaryDirectory(prefix='suite-display-') as temp:
     cpp=Path(temp)/'test.cpp';exe=Path(temp)/'test'
-    cpp.write_text(prefix+'\nnamespace suite {\n'+bus+'\nvoid registerDisplayPane(int module,HWND pane){'+register+'}\n}\n'+sync+update+'\nstatic int forwardDisplay(int w,WPARAM wp,LPARAM lp){'+forward+'}\n'+suffix)
+    cpp.write_text(prefix+'\nnamespace suite {\n'+bus+'\nvoid registerDisplayPane(int module,HWND pane){'+register+'}\n}\n'+sync+update+'\nstatic int forwardDisplay(int w,WPARAM wp,LPARAM lp){'+forward+'}\n#include "../../unit_monitor/source/display_settings_ui.h"\n'+suffix)
     subprocess.run(['g++','-std=c++17','-O2','-pthread','-I'+str(root/'suite/source'),str(cpp),'-o',str(exe)],check=True)
     subprocess.run([str(exe)],check=True)

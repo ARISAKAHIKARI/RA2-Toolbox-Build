@@ -14,7 +14,7 @@ source = Path(__file__).resolve().parents[1] / 'source'
 main = (source / 'main.cpp').read_text()
 layout = main.split('struct PageControl {', 1)[1].split('static void bindSuper()', 1)[0]
 layout = 'struct PageControl {' + layout
-create = main.split('switch(msg){case WM_CREATE:{', 1)[1].split('\n case WM_SIZE:', 1)[0]
+create = main.split('switch(msg){case WM_CREATE:{', 1)[1].split('\n case ', 1)[0]
 assert create.rstrip().endswith('return 0;}')
 labels = main.split('static const wchar_t* labels[]=', 1)[1].split(';', 1)[0]
 status = 'static void updateModeStatus(DWORD now){' + main.split('static void updateModeStatus(DWORD now){', 1)[1].split('static void updatePlayerTestUI()', 1)[0]
@@ -60,6 +60,7 @@ static HWND ui,repairCheck,repairEdit,keys[12],check[7],rateEdit,marginEdit,swLi
 static AdditionalSettings extra;static HWND extraControls[ExtraControlCount];
 static int labelScalePercent=100,constructionScalePercent=100;static bool minimapEnabled=false;static int minimapMode=0,minimapScale=200,minimapPosition=0,minimapX=20,minimapY=60,minimapAlignX=0,minimapAlignY=0;static uint32_t computeRequested=compute::Default;
 static unsigned schedulerTarget=0,megaQueueMode=0,objectQueueMode=0;static HFONT font;static int scrollY,repairMs=2000,fps=60,topMargin=20,doubleMs=350,toastMs=6000;
+static bool infoAdaptive=false;static int informationFPS(){return infoAdaptive?144:fps;}
 static DWORD GetTickCount(){return 1606;}
 static bool commandFresh(DWORD){return true;}
 static unsigned infantryEntryResultMatch=0;static std::wstring infantryEntryResult;

@@ -33,6 +33,9 @@ static WORD idleAircraftKey=MAKEWORD('P',6);
 namespace minimap {static void hide(){}}static void syncAdditional(){}
 static int labelScalePercent=100,constructionScalePercent=100;
 static int ui=1,fps=60,topMargin=20,repairMs=2000,doubleMs=350,toastMs=6000;
+static bool infoAdaptive=false;static int infoMonitorHz=165;static unsigned infoSyncs=0;
+static int informationFPS(){return infoAdaptive?infoMonitorHz:fps;}
+static void syncInformationRate(bool force=false){assert(force);++infoSyncs;}
 static unsigned settingsRevision=1,paintRevision=0,saves=0,registrations=0,syncs=0,timerMs=0,timers=0,binds=0;
 static struct{int status=1,swCount=1;struct{char id[8]="SW";}supers[1];}snap;
 static int swList=410;
@@ -172,6 +175,13 @@ int main(){
  fields[310]=144;assert(autoSettingChanged(310,EN_CHANGE));assert(fps==144&&saves==0&&autoSavePending&&timerMs==300&&syncs==1);
  fields[311]=42;autoSettingChanged(311,EN_CHANGE);assert(topMargin==42&&saves==0);flushAutoSettings();assert(saves==1&&!autoSavePending);flushAutoSettings();assert(saves==1);
  fields[310]=0;autoSettingChanged(310,EN_CHANGE);assert(fps==144&&!autoSavePending);
+ unsigned rateSyncs=infoSyncs;fields[9160]=BST_CHECKED;
+ assert(autoSettingChanged(9160,BN_CLICKED)&&infoAdaptive&&fps==144&&informationFPS()==165&&infoSyncs==rateSyncs+1&&autoSavePending);
+ infoMonitorHz=240;assert(informationFPS()==240&&fps==144);
+ fields[9160]=BST_UNCHECKED;assert(autoSettingChanged(9160,BN_CLICKED)&&!infoAdaptive&&informationFPS()==144&&infoSyncs==rateSyncs+2);
+ ready=false;fields[9160]=BST_CHECKED;assert(!autoSettingChanged(9160,BN_CLICKED)&&!infoAdaptive);ready=true;
+ updatingControls=true;assert(!autoSettingChanged(9160,BN_CLICKED)&&!infoAdaptive);updatingControls=false;
+ assert(!autoSettingChanged(9160,EN_CHANGE)&&!infoAdaptive);flushAutoSettings();
  fields[701]=400;autoSettingChanged(701,EN_CHANGE);assert(extra.loadRadius==400);fields.erase(701);
  fields[200]='A';autoSettingChanged(200,EN_CHANGE);assert(hotkeys[0]=='A'); // another incomplete numeric field cannot block a key
  fields[201]='A';autoSettingChanged(201,EN_CHANGE);assert(hotkeys[1]==0&&fields[201]==0);
@@ -280,7 +290,7 @@ assert 'L"BUTTON",L"绑定' not in main
 for module in ('assist','unit_monitor'):
  src=(root/module/'source/main.cpp').read_text()
  assert 'external::ReadSession' in src and 'external::ReadScope' not in src
-print('PASS: three refresh modes, rate bounds, persistence and legacy migration; shipped settings handler applies/flushes valid edits, preserves conflicting keys, ignores programmatic updates, saves quotas/custom keys; independent overlays and common read leases')
+print('PASS: information adaptive/manual notifications retain the manual rate; refresh mode bounds, persistence and legacy migration; shipped settings handler applies/flushes valid edits, preserves conflicting keys, ignores programmatic updates, saves quotas/custom keys; independent overlays and common read leases')
 
 # Hook permissions are linked only after explicit, valid user activation.
 assert (main+(root/'assist/source/hotkey_host.h').read_text()).count('if(csMode){hookAutoCS=true;SendMessageW(hookChecks[3],BM_SETCHECK,BST_CHECKED,0);}')>=2

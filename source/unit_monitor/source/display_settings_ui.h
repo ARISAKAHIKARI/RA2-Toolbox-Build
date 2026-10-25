@@ -1,5 +1,7 @@
 #ifdef RA2_UNIFIED
-static bool syncingUnitSettings=false;static HWND unitSettingControls[suite::DisplayOptionCount]{};
+static bool syncingUnitSettings=false;static HWND unitSettingControls[suite::DisplayOptionCount]{},unitInfoRateStatus;
+static int statsInformationFPS();
+static void syncUnitInformationRate(){if(unitInfoRateStatus)SetWindowTextW(unitInfoRateStatus,(L"当前："+std::to_wstring(statsInformationFPS())+L" Hz").c_str());}
 static void syncUnitSettings(bool force=false){
  suite::DisplayState state;if(!suite::readDisplaySettings(state))return;
  syncingUnitSettings=true;
@@ -8,7 +10,10 @@ static void syncUnitSettings(bool force=false){
   if(suite::displaySpecs[i].control==suite::DisplayControl::Check)SendMessageW(control,BM_SETCHECK,state.values[i]?BST_CHECKED:BST_UNCHECKED,0);
   else if(force||GetFocus()!=control)SetWindowTextW(control,std::to_wstring(state.values[i]).c_str());
  }
- EnableWindow(unitSettingControls[suite::AllTransports],state.values[suite::Capacity]!=0);syncingUnitSettings=false;
+ EnableWindow(unitSettingControls[suite::AllTransports],state.values[suite::Capacity]!=0);
+ EnableWindow(unitSettingControls[suite::InfoFPS],state.values[suite::InfoAdaptive]==0);
+ syncUnitInformationRate();
+ syncingUnitSettings=false;
 }
 template<class Create> static void createUnitSettings(Create ctl){
  auto title=ctl(L"STATIC",L"单位状态",0,354,16,326,28,0);modernui::heading(title);
@@ -31,7 +36,12 @@ template<class Create> static void createUnitSettings(Create ctl){
   auto h=ctl(L"EDIT",L"",WS_BORDER|ES_NUMBER|ES_AUTOHSCROLL|WS_TABSTOP,538,y,74,26,600+option);unitSettingControls[option]=h;SendMessageW(h,EM_SETLIMITTEXT,3,0);EnableWindow(h,FALSE);
   ctl(L"STATIC",unit,0,624,y+3,56,23,0);
  };
- number(suite::LabelScale,L"状态文字缩放",420,L"%");number(suite::InfoFPS,L"信息刷新率",462,L"Hz");
+ number(suite::LabelScale,L"状态文字缩放",420,L"%");
+ toggle(suite::InfoAdaptive,L"自适应屏幕刷新率",462);
+ number(suite::InfoFPS,L"手动信息刷新率",500,L"Hz");
+ unitInfoRateStatus=ctl(L"STATIC",L"当前：— Hz",0,354,534,326,23,614);
+ modernui::tip(unitSettingControls[suite::InfoAdaptive],L"跟随游戏所在屏幕的名义刷新率；未运行游戏时使用工具箱所在屏幕。最高 500 Hz，读取失败时使用 60 Hz。");
+ modernui::tip(unitSettingControls[suite::InfoFPS],L"手动目标为 5–500 Hz。启用自适应时保留此值，关闭自适应后恢复使用。");
  syncUnitSettings();
 }
 static bool unitSettingCommand(WPARAM wp){

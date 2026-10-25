@@ -13,6 +13,7 @@ static void changedSetting(){
 static bool autoSettingChanged(int id,int notification){
  if(!ready||updatingControls)return false;
  const bool edit=notification==EN_CHANGE,select=notification==CBN_SELCHANGE;
+ if(id==9160&&notification==BN_CLICKED){infoAdaptive=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;syncInformationRate(true);changedSetting();return true;}
  if(id>=9000&&id<9000+compute::Count&&select){int mode=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));uint32_t bit=1u<<(id-9000);
   if(mode==1)computeRequested|=bit;else computeRequested&=~bit;changedSetting();syncAdditional();notify(L"计算模式已自动保存，下一局生效；当前对局继续使用原设置。");return true;
  }
@@ -101,7 +102,7 @@ static bool autoSettingChanged(int id,int notification){
  case 471:numeric=&toastMs;lo=500;hi=60000;break;case 701:numeric=&extra.loadRadius;lo=1;hi=512;break;
  case 710:numeric=&extra.defaults.first;hi=512;break;case 711:numeric=&extra.defaults.second;hi=512;break;
  case 712:numeric=&extra.defaults.maximum;hi=512;break;}
- if(numeric&&edit){if(number(lo,hi,*numeric)){if(id==310)clockState(foregroundGame()&&snap.status==1&&enabled,fps);if(id==444)typeTap.clear();changedSetting();if(id==887)syncAdditional();}return true;}
+ if(numeric&&edit){if(number(lo,hi,*numeric)){if(id==310)syncInformationRate(true);if(id==444)typeTap.clear();changedSetting();if(id==887)syncAdditional();}return true;}
  if(id==714&&edit){if(!quotaID().empty())readTargetQuota();return true;}
  if((id==715&&notification==BN_CLICKED)||(id>=716&&id<=718&&edit)){
   auto type=quotaID();if(type.empty()){setStatus(L"请先选择类型或输入有效的对象 ID。");return true;}

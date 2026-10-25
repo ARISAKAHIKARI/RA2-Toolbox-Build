@@ -28,6 +28,8 @@
 #endif
 #include "tab_control.h"
 #include "../../shared/source/overlay_recovery.h"
+#include "../../shared/source/monitor_refresh.h"
+#include "frame_clock.h"
 #include "../../external_reader/source/game_asset_files.h"
 using namespace Gdiplus;
 static HWND ui,overlay,stats,bStart,bDemo,cBuildings,cOthers,eTop,eLeft,cTab,tabModeBox,visibilityLabel;static HFONT font;
@@ -58,6 +60,29 @@ static void statsVisible(bool value){
 static bool tabEnabled=true,renderDirty=true,gameActive=false;
 static tabui::Mode tabMode=tabui::Mode::TapOrHold;static tabui::Controller tabs;static tabui::Fade fade;
 static overlayui::Recovery overlayRecovery;
+static constexpr UINT StatsFrameMessage=WM_APP+10;
+static umframe::Clock statsFrameClock;
+static monitorrefresh::Tracker statsRefreshMonitor;
+static int statsEffectiveFPS=60;
+static int statsInformationFPS(){return statsEffectiveFPS;}
+#ifdef RA2_UNIFIED
+static void syncUnitInformationRate();
+#endif
+static void refreshInformationRate(DWORD now){
+ int rate=60;
+#ifdef RA2_UNIFIED
+ suite::DisplayState state;
+ if(suite::readDisplaySettings(state)){
+  HWND fallback=suite::parent();if(!fallback)fallback=ui;
+  rate=state.values[suite::InfoAdaptive]?statsRefreshMonitor.update(demo?nullptr:game,fallback,now):std::clamp(state.values[suite::InfoFPS],5,500);
+ }
+#endif
+ if(rate!=statsEffectiveFPS){statsEffectiveFPS=rate;
+#ifdef RA2_UNIFIED
+  syncUnitInformationRate();
+#endif
+ }
+}
 struct UnitSurface {
  HDC dc=nullptr;HBITMAP bitmap=nullptr,old=nullptr;void* bits=nullptr;int w=0,h=0;
  void clear(){if(dc){SelectObject(dc,old);DeleteObject(bitmap);DeleteDC(dc);}dc=nullptr;bitmap=old=nullptr;bits=nullptr;w=h=0;}
@@ -91,6 +116,7 @@ static void visibilityStatus(const std::wstring& text){
 }
 static void toggleOverlay(){tabui::toggleDisplay(!tabEnabled,tabs.visible(),hidden,manualVisible);renderDirty=true;}
 static void detach(){
+ statsFrameClock.state(false,statsInformationFPS());
  overlayRecovery.suspend();
  statsVisible(false);
  sampler.reset();assetMatch=0;assetFiles.clear();cameoCatalog.clear();reader.close();
@@ -231,9 +257,10 @@ static void demoData(){
  // Repeat a retirement example every 20 seconds; columns compact automatically.
  if((GetTickCount()-demoStart)/1000%20>=12){snap->players[1]=snap->players[2];snap->playerCount=2;}
 }
-static void tick(){
- pollTab();
+static void tick(bool displayFrame=false){
  DWORD now=GetTickCount();
+ const bool controlStep=!displayFrame||!statsFrameClock.running();
+ if(controlStep){pollTab();refreshInformationRate(now);}
  if(now-lastData>=250){lastData=now;
   if(enabled&&demo){demoData();renderDirty=true;setStatus(L"布局演示：模拟数量与玩家退场；点击演示按钮退出");}
   else if(enabled){
@@ -282,6 +309,7 @@ static void tick(){
  }
  bool active=enabled&&(demo||(battlefield&&foregroundGame()&&snap->status==1&&now-lastGood<3000));
  if(!active){
+  statsFrameClock.state(false,statsInformationFPS());
   overlayRecovery.suspend();
   visibilityStatus(!enabled?L"覆盖层已暂停":!foregroundGame()?L"覆盖层隐藏：游戏未在前台":snap->status!=1||now-lastGood>=3000?L"覆盖层等待有效游戏数据":!displayState.readable?L"覆盖层隐藏：菜单状态读取失败":L"覆盖层隐藏：菜单/对话框/非战场 · tactical="+std::to_wstring(displayState.tactical)+L" dialog="+std::to_wstring(displayState.specialDialog)+L" windows="+std::to_wstring(displayState.dialogCount));
   statsVisible(false);gameActive=false;tabs.loseFocus();fade.hide();paintedAlpha=-1;ShowWindow(overlay,SW_HIDE);return;}
@@ -289,7 +317,12 @@ static void tick(){
  gameActive=true;
  bool desired=tabui::displayRequested(hidden,demo||!tabEnabled,manualVisible,tabs.visible());fade.target(desired,now);
  visibilityStatus(desired?(manualVisible?L"覆盖层已请求显示：手动开启":!tabEnabled?L"覆盖层已请求显示：常驻模式":L"覆盖层已请求显示：Tab/演示"):hidden?L"覆盖层手动隐藏：按钮或 Ctrl+Alt+H 开启":L"覆盖层等待 Tab：也可用按钮或 Ctrl+Alt+H");
- int alpha=fade.value(now);if(!desired)overlayRecovery.suspend();if(!desired&&alpha==0){statsVisible(false);ShowWindow(overlay,SW_HIDE);paintedAlpha=0;return;}
+ int alpha=fade.value(now);if(!desired)overlayRecovery.suspend();
+ statsFrameClock.state(desired||alpha>0,statsInformationFPS());
+ if(!desired&&alpha==0){statsVisible(false);ShowWindow(overlay,SW_HIDE);paintedAlpha=0;return;}
+ // Controls and sampling remain responsive at 16/250 ms. Only the coalesced
+ // presentation message consumes completed pixels and advances visible fades.
+ if(!displayFrame)return;
  RECT r{};POINT pt{};
  if(demo){MONITORINFO mi{sizeof mi};GetMonitorInfoW(MonitorFromWindow(ui,MONITOR_DEFAULTTONEAREST),&mi);r.right=mi.rcMonitor.right-mi.rcMonitor.left;r.bottom=mi.rcMonitor.bottom-mi.rcMonitor.top;pt={mi.rcMonitor.left,mi.rcMonitor.top};}
  else {GetClientRect(game,&r);ClientToScreen(game,&pt);}
@@ -315,7 +348,7 @@ static LRESULT CALLBACK overlayProc(HWND w,UINT m,WPARAM a,LPARAM b){if(m==WM_NC
 static LRESULT CALLBACK proc(HWND w,UINT m,WPARAM a,LPARAM b){
 #ifdef RA2_UNIFIED
  if(suite::layoutMessage(w,m,b))return 0;
- if(m==suite::DisplaySettingsChanged){syncUnitSettings();return 0;}
+ if(m==suite::DisplaySettingsChanged){refreshInformationRate(GetTickCount());syncUnitSettings();tick();return 0;}
  if(m==suite::ModuleEnable){enabled=bool(a);if(!enabled)detach();else lastSearch=0;buttonLabel();tick();return 0;}
  if(m==WM_CLOSE&&a!=suite::CloseToken){suite::requestClose();return 0;}
 #endif
@@ -346,13 +379,16 @@ static LRESULT CALLBACK proc(HWND w,UINT m,WPARAM a,LPARAM b){
   createUnitSettings(ctl);
 #endif
   EnableWindow(tabModeBox,tabEnabled);controlsReady=true;modernui::styleChildren(w);consoleScale(consoleDpi);
-  if(!RegisterHotKey(w,1,MOD_CONTROL|MOD_ALT|MOD_NOREPEAT,'H'))visibilityStatus(L"备用快捷键注册失败；请用显示按钮或常驻模式");RegisterHotKey(w,2,MOD_CONTROL|MOD_ALT|MOD_NOREPEAT,VK_RIGHT);RegisterHotKey(w,3,MOD_CONTROL|MOD_ALT|MOD_NOREPEAT,VK_LEFT);SetTimer(w,1,16,nullptr);return 0;}
+  if(!RegisterHotKey(w,1,MOD_CONTROL|MOD_ALT|MOD_NOREPEAT,'H'))visibilityStatus(L"备用快捷键注册失败；请用显示按钮或常驻模式");RegisterHotKey(w,2,MOD_CONTROL|MOD_ALT|MOD_NOREPEAT,VK_RIGHT);RegisterHotKey(w,3,MOD_CONTROL|MOD_ALT|MOD_NOREPEAT,VK_LEFT);statsFrameClock.start(w,StatsFrameMessage);SetTimer(w,1,16,nullptr);return 0;}
  case WM_DPICHANGED:consoleScale(HIWORD(a));if(auto rect=(RECT*)b)SetWindowPos(w,nullptr,rect->left,rect->top,rect->right-rect->left,rect->bottom-rect->top,SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS);return 0;
  case WM_SIZE:layoutConsole();return 0;
  case WM_MOUSEWHEEL:consoleY-=GET_WHEEL_DELTA_WPARAM(a)/WHEEL_DELTA*modernui::scale(60,consoleDpi);layoutConsole();return 0;
  case WM_HSCROLL:case WM_VSCROLL:{int bar=m==WM_HSCROLL?SB_HORZ:SB_VERT;SCROLLINFO si{sizeof si,SIF_ALL};GetScrollInfo(w,bar,&si);int next=si.nPos;switch(LOWORD(a)){case SB_LINEUP:next-=modernui::scale(28,consoleDpi);break;case SB_LINEDOWN:next+=modernui::scale(28,consoleDpi);break;case SB_PAGEUP:next-=si.nPage;break;case SB_PAGEDOWN:next+=si.nPage;break;case SB_THUMBTRACK:case SB_THUMBPOSITION:next=si.nTrackPos;break;case SB_TOP:next=0;break;case SB_BOTTOM:next=si.nMax;break;}(bar==SB_HORZ?consoleX:consoleY)=next;layoutConsole();return 0;}
  case WM_ERASEBKGND:return 1;
- case WM_TIMER:case WM_APP+9:tick();return 0;
+ case WM_DISPLAYCHANGE:statsRefreshMonitor.invalidate();tick();return 0;
+ case StatsFrameMessage:tick(true);statsFrameClock.completed();return 0;
+ case WM_TIMER:tick(!statsFrameClock.running());return 0;
+ case WM_APP+9:tick();return 0;
  case WM_COMMAND:
 #ifdef RA2_UNIFIED
  if(controlsReady&&unitSettingCommand(a))return 0;
@@ -370,7 +406,7 @@ static LRESULT CALLBACK proc(HWND w,UINT m,WPARAM a,LPARAM b){
  case WM_CTLCOLORSTATIC:case WM_CTLCOLORBTN:SetBkMode((HDC)a,OPAQUE);SetTextColor((HDC)a,modernui::Text);SetBkColor((HDC)a,modernui::Background);SetDCBrushColor((HDC)a,modernui::Background);return (LRESULT)GetStockObject(DC_BRUSH);
  case WM_DRAWITEM:{auto d=(DRAWITEMSTRUCT*)b;HBRUSH br=CreateSolidBrush((d->itemState&ODS_SELECTED)?RGB(47,76,99):RGB(31,48,68));FillRect(d->hDC,&d->rcItem,br);DeleteObject(br);SetBkMode(d->hDC,TRANSPARENT);SetTextColor(d->hDC,RGB(223,237,251));SelectObject(d->hDC,font);wchar_t t[50];GetWindowTextW(d->hwndItem,t,50);DrawTextW(d->hDC,t,-1,&d->rcItem,DT_CENTER|DT_VCENTER|DT_SINGLELINE);return TRUE;}
  case WM_PAINT:{PAINTSTRUCT ps;HDC dc=BeginPaint(w,&ps);RECT r;GetClientRect(w,&r);HBRUSH br=CreateSolidBrush(modernui::Background);FillRect(dc,&r,br);DeleteObject(br);SetBkMode(dc,TRANSPARENT);SetTextColor(dc,RGB(110,210,248));SelectObject(dc,font);TextOutW(dc,modernui::scale(14,consoleDpi)-consoleX,modernui::scale(12,consoleDpi)-consoleY,L"单位统计",lstrlenW(L"单位统计"));SetTextColor(dc,RGB(148,166,188));TextOutW(dc,modernui::scale(14,consoleDpi)-consoleX,modernui::scale(32,consoleDpi)-consoleY,L"玩家兵力与单位状态",lstrlenW(L"玩家兵力与单位状态"));EndPaint(w,&ps);return 0;}
- case WM_DESTROY:renderWorker.shutdown();surface.clear();KillTimer(w,1);UnregisterHotKey(w,1);UnregisterHotKey(w,2);UnregisterHotKey(w,3);detach();DeleteObject(font);PostQuitMessage(0);return 0;}
+ case WM_DESTROY:statsFrameClock.shutdown();renderWorker.shutdown();surface.clear();KillTimer(w,1);UnregisterHotKey(w,1);UnregisterHotKey(w,2);UnregisterHotKey(w,3);detach();DeleteObject(font);PostQuitMessage(0);return 0;}
  return DefWindowProcW(w,m,a,b);
 }
 int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR,int){

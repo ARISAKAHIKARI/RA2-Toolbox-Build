@@ -1,7 +1,7 @@
 """Run the shipped Windows UI and real INI APIs; no game process is required."""
 import ctypes as C
 from ctypes import wintypes as W
-import json, os, pathlib, shutil, subprocess, sys, tempfile, time
+import json, os, pathlib, re, shutil, subprocess, sys, tempfile, time
 
 u=C.WinDLL('user32',use_last_error=True)
 CB=C.WINFUNCTYPE(W.BOOL,W.HWND,W.LPARAM)
@@ -22,6 +22,35 @@ u.PostMessageW.argtypes=[W.HWND,W.UINT,W.WPARAM,W.LPARAM]
 k=C.WinDLL('kernel32',use_last_error=True)
 k.GetPrivateProfileIntW.argtypes=[W.LPCWSTR,W.LPCWSTR,C.c_int,W.LPCWSTR]
 k.GetPrivateProfileIntW.restype=W.UINT
+
+class MonitorInfo(C.Structure):
+    _fields_=[('cbSize',W.DWORD),('rcMonitor',W.RECT),('rcWork',W.RECT),
+              ('dwFlags',W.DWORD),('szDevice',W.WCHAR*32)]
+class DevMode(C.Structure):
+    # DEVMODEW's display/printer union is 16 bytes with DWORD alignment.
+    _fields_=[('dmDeviceName',W.WCHAR*32),('dmSpecVersion',W.WORD),
+              ('dmDriverVersion',W.WORD),('dmSize',W.WORD),('dmDriverExtra',W.WORD),
+              ('dmFields',W.DWORD),('displayUnion',W.DWORD*4),
+              ('dmColor',C.c_short),('dmDuplex',C.c_short),('dmYResolution',C.c_short),
+              ('dmTTOption',C.c_short),('dmCollate',C.c_short),('dmFormName',W.WCHAR*32),
+              ('dmLogPixels',W.WORD),('dmBitsPerPel',W.DWORD),('dmPelsWidth',W.DWORD),
+              ('dmPelsHeight',W.DWORD),('dmDisplayFlags',W.DWORD),('dmDisplayFrequency',W.DWORD),
+              ('dmICMMethod',W.DWORD),('dmICMIntent',W.DWORD),('dmMediaType',W.DWORD),
+              ('dmDitherType',W.DWORD),('dmReserved1',W.DWORD),('dmReserved2',W.DWORD),
+              ('dmPanningWidth',W.DWORD),('dmPanningHeight',W.DWORD)]
+u.MonitorFromWindow.argtypes=[W.HWND,W.DWORD];u.MonitorFromWindow.restype=W.HANDLE
+u.GetMonitorInfoW.argtypes=[W.HANDLE,C.POINTER(MonitorInfo)];u.GetMonitorInfoW.restype=W.BOOL
+u.EnumDisplaySettingsExW.argtypes=[W.LPCWSTR,W.DWORD,C.POINTER(DevMode),W.DWORD]
+u.EnumDisplaySettingsExW.restype=W.BOOL
+
+def native_monitor_hz(root):
+    assert C.sizeof(DevMode)==220,C.sizeof(DevMode)
+    monitor=u.MonitorFromWindow(root,2)
+    info=MonitorInfo();info.cbSize=C.sizeof(info)
+    mode=DevMode();mode.dmSize=C.sizeof(mode)
+    if monitor and u.GetMonitorInfoW(monitor,C.byref(info)) and u.EnumDisplaySettingsExW(info.szDevice,0xFFFFFFFF,C.byref(mode),0):
+        if mode.dmFields&0x400000 and mode.dmDisplayFrequency>=5:return min(500,mode.dmDisplayFrequency)
+    return 60
 
 def text(h,cls=False):
     b=C.create_unicode_buffer(500)
@@ -44,6 +73,10 @@ def control_text(h):
     b=C.create_unicode_buffer(100)
     send(h,0xD,len(b),C.addressof(b))
     return b.value
+def information_rate(root):
+    h=child(root,614,'RA2UnitMonitorUI')
+    m=re.fullmatch(r'当前：(\d+) Hz',control_text(h)) if h else None
+    return int(m.group(1)) if m else 0
 def windows(parent=None):
     result=[]
     @CB
@@ -80,6 +113,7 @@ def launch(folder):
     frozen=until(lambda:child(root,605),'visible frozen control')
     danger=until(lambda:child(root,612),'visible dangerous cargo control')
     until(lambda:u.IsWindowEnabled(frozen) and u.IsWindowEnabled(danger),'display owner ready')
+    until(lambda:child(root,613,'RA2UnitMonitorUI') and information_rate(root)>0,'information refresh controls ready')
     time.sleep(.3)
     return p,root,frozen,danger
 def close(p,root):
@@ -108,6 +142,14 @@ def scenario(folder):
             h=child(root,id)
             click(root,h,1)
             assert ini(folder,'Display',key)==1,(key,'not saved on')
+        manual=child(root,609,'RA2UnitMonitorUI');adaptive=child(root,613,'RA2UnitMonitorUI')
+        assert manual and adaptive and u.IsWindowEnabled(manual) and check(adaptive)==0
+        set_control_text(manual,'144')
+        until(lambda:ini(folder,'Display','FPS')==144 and information_rate(root)==144,'manual information rate saved and active')
+        expected_monitor_hz=native_monitor_hz(root)
+        click(root,adaptive,1)
+        until(lambda:ini(folder,'Display','AdaptiveFPS')==1 and not u.IsWindowEnabled(manual) and information_rate(root)==expected_monitor_hz,'adaptive information rate matches native monitor')
+        assert ini(folder,'Display','FPS')==144 and control_text(manual)=='144','adaptive mode overwrote manual target'
         # Real minimap mode selection persists through the same owner notification.
         mode=child(root,9065,'RA2Assist010');assert mode and send(mode,0x147)==0
         send(mode,0x14E,1);send(u.GetParent(mode),0x111,9065|(1<<16),mode)
@@ -122,22 +164,33 @@ def scenario(folder):
         # Change an unrelated tactical setting: it must not reset these values.
         h=child(root,702,'RA2Assist010');click(root,h,1)
         assert ini(folder,'Display','Frozen')==ini(folder,'Display','DangerPassengers')==1
+        assert ini(folder,'Display','AdaptiveFPS')==1 and ini(folder,'Display','FPS')==144
         close(p,root)
         p,root,f,d=launch(folder)
         for id,key in keys.items():
             h=child(root,id)
             assert check(h)==1,(key,'restart lost saved on')
+        manual=child(root,609,'RA2UnitMonitorUI');adaptive=child(root,613,'RA2UnitMonitorUI')
+        assert check(adaptive)==1 and not u.IsWindowEnabled(manual) and control_text(manual)=='144','adaptive state lost on restart'
+        until(lambda:information_rate(root)==native_monitor_hz(root),'adaptive monitor rate restored after restart')
+        click(root,adaptive,0)
+        until(lambda:ini(folder,'Display','AdaptiveFPS')==0 and u.IsWindowEnabled(manual) and information_rate(root)==144,'manual target restored after disabling adaptive')
         assert send(child(root,9065,'RA2Assist010'),0x147)==1,'real minimap mode lost on restart'
         assert ini(folder,'Display','MinimapScale')==1000,'1000 percent minimap lost on restart'
         assert control_text(child(root,831,'RA2Assist010'))=='1000','1000 percent minimap control lost on restart'
         assert send(child(root,9100,'RA2Assist010'),0x147)==2 and send(child(root,9101,'RA2Assist010'),0x147)==1,'minimap alignment lost on restart'
         mode=child(root,9065,'RA2Assist010');send(mode,0x14E,0);send(u.GetParent(mode),0x111,9065|(1<<16),mode)
         # Switch off and exit immediately, exercising pending autosave at shutdown.
+        set_control_text(manual,'240')
         for id in [604]+[id for id in keys if id!=604]:send(child(root,id),0xF5)
         close(p,root)
         p,root,f,d=launch(folder)
         for id,key in keys.items():
             assert check(child(root,id))==0 and ini(folder,'Display',key)==0,(key,'restart lost saved off')
+        manual=child(root,609,'RA2UnitMonitorUI');adaptive=child(root,613,'RA2UnitMonitorUI')
+        assert check(adaptive)==0 and u.IsWindowEnabled(manual) and control_text(manual)=='240'
+        assert ini(folder,'Display','AdaptiveFPS')==0 and ini(folder,'Display','FPS')==240
+        until(lambda:information_rate(root)==240,'manual information rate restored after restart')
         assert send(child(root,9065,'RA2Assist010'),0x147)==0 and ini(folder,'Display','MinimapMode')==0
         assert ini(folder,'Cooperative','AdvancedEnter')==1,'first-use defaults overwrote existing settings'
         # The shipped statistics renderer must finish on its worker and publish a
@@ -162,9 +215,11 @@ if __name__=='__main__':
         folder=pathlib.Path(t)
         for name in ('RA2Toolbox.exe','GameRuntime.dll'):shutil.copy2(source/name,folder/name)
         scenario(folder)
-    result={'status':'PASS','version':'1.0.38-pre.6','runs':3,'display_switches':9,
+    result={'status':'PASS','version':'1.0.38-pre.7','runs':3,'display_switches':10,
             'checks':['all fresh UI switches off','user hotkeys','cross-pane edits',
                       'real Win32 INI writes','restart on','restart off',
+                      'information adaptive rate matches native monitor','adaptive mode retains manual Hz and disables its editor',
+                      'adaptive on/off persistence and manual target restoration',
                       'minimap diagram/scene mode and alignment restart','1000 percent minimap save/restart and control readback',
                       'asynchronous statistics demo surface and shutdown','immediate exit','existing settings preserved'],
             'game_tested':False,'multiplayer_tested':False}

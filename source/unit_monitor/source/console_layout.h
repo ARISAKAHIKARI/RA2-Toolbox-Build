@@ -5,6 +5,7 @@ static unsigned consoleDpi=96;static int consoleX=0,consoleY=0;static bool conso
 static void layoutConsole(){
  if(!controlsReady||consoleArranging)return;consoleArranging=true;RECT client{};GetClientRect(ui,&client);
  auto px=[](int n){return modernui::scale(n,consoleDpi);};int width=px(700),height=px(440);
+ for(const auto&c:consoleControls){width=std::max(width,px(c.rect.left+c.rect.right+20));height=std::max(height,px(c.rect.top+c.rect.bottom+12));}
  consoleX=std::clamp(consoleX,0,std::max(0,width-int(client.right)));consoleY=std::clamp(consoleY,0,std::max(0,height-int(client.bottom)));
  HDWP batch=BeginDeferWindowPos(int(consoleControls.size()));
  const UINT flags=SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS|SWP_NOREDRAW;
