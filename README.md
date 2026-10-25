@@ -1,3 +1,15 @@
+# RA2 Toolbox 1.0.38-pre.3
+
+修復實景小地圖消失、建造／出售與爆炸動畫、地塊遮擋建築及陰影重複疊黑；覆蓋層背景合成並保留同局素材快取。小地圖支援最高 1000% 及水平／垂直對齊。
+
+**攝像機角度和固定 2:1 投影沒有調整。** 本次修改光照、深度、錨點及布局。
+
+[下載 1.0.38-pre.3](https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/releases/tag/v1.0.38-pre.3) · [發布說明](packages/v1.0.38-pre.3/RELEASE_NOTES.md) · [完整特性樹](docs/FEATURES-1.0.38-pre.3.md) · [修復證據](source/research/2026-10-25-renderfix3-async-native-depth.md)
+
+EXE／DLL 檔案版本 **1.0.38.3**，Assist **72**。更新包僅含配套 EXE/DLL，源碼另附；完全退出遊戲與工具後同時更新，保留已有配置與資源。發布門檻包括自動回歸、Windows 控制項保存／重啟與非同步渲染退出；完整遊戲動畫、各 MOD 畫面、FPS 和雙機聯機仍未驗證。
+
+## 上一個預覽版
+
 # RA2 Toolbox 1.0.38-pre.2
 
 副相机新增 VXL 法线／VPL 光照、SHP／TMP 逐像素深度、建筑遮挡、阴影和实际建筑附加动画；小地图支持示意／实景。统一覆盖层层级，敌方标识按两格聚类，建造和统计图标共用游戏已解析字段、内存 INI 与 MIX 资源解析。

@@ -40,6 +40,10 @@ def set_control_text(h,value):
     readback=C.create_unicode_buffer(len(value)+20)
     send(h,0xD,len(readback),C.addressof(readback))
     assert readback.value==value,('control text mismatch',u.GetDlgCtrlID(h),readback.value,value)
+def control_text(h):
+    b=C.create_unicode_buffer(100)
+    send(h,0xD,len(b),C.addressof(b))
+    return b.value
 def windows(parent=None):
     result=[]
     @CB
@@ -125,6 +129,7 @@ def scenario(folder):
             assert check(h)==1,(key,'restart lost saved on')
         assert send(child(root,9065,'RA2Assist010'),0x147)==1,'real minimap mode lost on restart'
         assert ini(folder,'Display','MinimapScale')==1000,'1000 percent minimap lost on restart'
+        assert control_text(child(root,831,'RA2Assist010'))=='1000','1000 percent minimap control lost on restart'
         assert send(child(root,9100,'RA2Assist010'),0x147)==2 and send(child(root,9101,'RA2Assist010'),0x147)==1,'minimap alignment lost on restart'
         mode=child(root,9065,'RA2Assist010');send(mode,0x14E,0);send(u.GetParent(mode),0x111,9065|(1<<16),mode)
         # Switch off and exit immediately, exercising pending autosave at shutdown.
@@ -157,10 +162,10 @@ if __name__=='__main__':
         folder=pathlib.Path(t)
         for name in ('RA2Toolbox.exe','GameRuntime.dll'):shutil.copy2(source/name,folder/name)
         scenario(folder)
-    result={'status':'PASS','version':'1.0.38-pre.2','runs':3,'display_switches':9,
+    result={'status':'PASS','version':'1.0.38-pre.3','runs':3,'display_switches':9,
             'checks':['all fresh UI switches off','user hotkeys','cross-pane edits',
                       'real Win32 INI writes','restart on','restart off',
-                      'minimap diagram/scene mode and alignment restart','1000 percent minimap save/restart',
+                      'minimap diagram/scene mode and alignment restart','1000 percent minimap save/restart and control readback',
                       'asynchronous statistics demo surface and shutdown','immediate exit','existing settings preserved'],
             'game_tested':False,'multiplayer_tested':False}
     print(json.dumps(result,ensure_ascii=False))

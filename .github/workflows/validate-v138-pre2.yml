@@ -1,4 +1,4 @@
-name: Validate RA2 Toolbox 1.0.38-pre.2
+name: Validate RA2 Toolbox 1.0.38-pre.3
 on:
   push:
     branches: [codex/camera-v138-pre2, codex/building-animation-fix]
@@ -54,7 +54,7 @@ jobs:
         run: python3 source/tools/verify_windows_outputs.py
       - uses: actions/upload-artifact@v4
         with:
-          name: camera138pre2-binaries
+          name: camera138pre3-binaries
           path: |
             source/RA2Toolbox.exe
             source/GameRuntime.dll
@@ -70,7 +70,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
-          name: camera138pre2-binaries
+          name: camera138pre3-binaries
           path: source
       - name: Real overlay window stacking
         run: .\\source\\overlay-stack-test.exe
@@ -80,5 +80,5 @@ jobs:
         run: python source/tools/windows_settings_smoke.py
       - uses: actions/upload-artifact@v4
         with:
-          name: camera138pre2-windows-settings
+          name: camera138pre3-windows-settings
           path: source/WINDOWS_SETTINGS_SMOKE.json
