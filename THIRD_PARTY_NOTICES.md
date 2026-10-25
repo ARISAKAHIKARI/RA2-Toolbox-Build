@@ -18,10 +18,6 @@ Ares 原始声明要求的鸣谢：
 
 > This product includes software developed by the Ares Contributors.
 
-## 文档结构参考
-
-- [springy — A-small-C4](https://github.com/A-small-C4/springy)：项目简介、环境、构建、配置、目录和鸣谢的组织方式参考。它不是本项目的运行依赖或注入器。[上游 GPL v3](https://github.com/A-small-C4/springy/blob/main/LICENSE.md)。
-- [VERA20K — YuriPlanet 及贡献者；ARISAKAHIKARI 仓库](https://github.com/ARISAKAHIKARI/vera20k)：项目目标、下载、设置、编译和贡献说明的组织方式参考。原项目的名称和版权保留其上游归属。[上游 GPL v3](https://github.com/ARISAKAHIKARI/vera20k/blob/main/LICENSE-GPL)。
 
 ## 构建与研究工具
 
