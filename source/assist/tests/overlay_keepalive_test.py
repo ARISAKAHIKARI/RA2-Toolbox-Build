@@ -68,10 +68,9 @@ inline HDWP DeferWindowPos(HDWP batch,HWND w,HWND after,int x,int y,int width,in
  assert(batch&&!(flags&SWP_SHOWWINDOW));batch->moves.push_back({w,after,x,y,width,height,flags});return batch;
 }
 inline BOOL EndDeferWindowPos(HDWP batch){
- // Real Windows gate 40157058311 rejected the mixed-owner repair with error
- // 87. Model that boundary failure before any movement, not a success stub.
- DWORD owner=0;for(auto m:batch->moves){DWORD next=GetWindowThreadProcessId(m.window,nullptr);if(owner&&next!=owner){++rejectedBatches;delete batch;return FALSE;}owner=next;}
- ++batches;for(auto m:batch->moves)SetWindowPos(m.window,m.after,m.x,m.y,m.w,m.h,m.flags);delete batch;return TRUE;
+ // Real Windows also rejected the single-owner batch in run 40157687203.
+ // No group repair may depend on deferred success, regardless of owner IDs.
+ ++batches;++rejectedBatches;delete batch;return FALSE;
 }
 inline void ShowWindow(HWND h,int command){assert(command==SW_HIDE);windows[h].visible=false;}
 inline HINSTANCE GetModuleHandleW(void*){return reinterpret_cast<HINSTANCE>(1);}inline BOOL RegisterClassW(WNDCLASSW*){return TRUE;}
@@ -117,16 +116,18 @@ static void stackCase(DWORD statsThread){
  clockValue+=500;SetWindowPos(game,HWND_TOPMOST,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE);assert(higher(game,cursor));
  placeOne(stats,Layer::Statistics);
  for(auto w:{world,stats,map,watch,cursor})assert(IsWindowVisible(w)&&higher(w,game)&&"repair must lift the whole visible overlay group above the promoted game");
- assert(ordered());int before=batches;for(int i=0;i<100;++i)placeOne(stats,Layer::Statistics);assert(batches==before);
+ assert(ordered());int before=batches,statsPlaces=windows[stats].places;std::vector<int> otherPlaces;
+ for(auto w:{world,map,watch,cursor})otherPlaces.push_back(windows[w].places);
+ for(int i=0;i<100;++i)placeOne(stats,Layer::Statistics);assert(batches==before&&windows[stats].places==statsPlaces+100);
+ size_t other=0;for(auto w:{world,map,watch,cursor})assert(windows[w].places==otherPlaces[other++]);
  // Repeated game promotions recover without moving the pointer or pressing Tab.
  for(int n=0;n<5;++n){clockValue+=1000;SetWindowPos(game,HWND_TOPMOST,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE);placeOne(watch,Layer::Watch);assert(ordered()&&higher(world,game));}
  ShowWindow(map,SW_HIDE);clockValue+=1000;SetWindowPos(game,HWND_TOPMOST,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE);placeOne(stats,Layer::Statistics);
  assert(!IsWindowVisible(map)&&higher(world,game)&&higher(cursor,watch)&&higher(watch,stats)&&higher(stats,world));
  // No caller requests a hidden panel; a group repair must never show it.
  auto hiddenPlaces=windows[map].places;placeOne(world,Layer::World);assert(!IsWindowVisible(map)&&windows[map].places==hiddenPlaces);
- assert(rejectedBatches==initialRejected&&"mixed-owner groups must avoid the rejected deferred API path");
- assert(statsThread==1?batches>initialBatches:batches==initialBatches);
- std::cout<<"PASS group keepalive ("<<(statsThread==1?"single-owner batch":"mixed-owner ordered chain")<<"): promoted game, stable layer order, repeated focus returns, throttled no-op checks, hidden panels stay hidden"<<std::endl;
+ assert(rejectedBatches==initialRejected&&batches==initialBatches&&"all owner groups must avoid the rejected deferred API path");
+ std::cout<<"PASS group keepalive ("<<(statsThread==1?"single-owner ordered chain":"mixed-owner ordered chain")<<"): promoted game, stable layer order, repeated focus returns, throttled per-window calls, hidden panels stay hidden"<<std::endl;
  for(auto w:{world,stats,map,watch,cursor}){forget(w);windows.erase(w);order.erase(std::remove(order.begin(),order.end(),w),order.end());}
 }
 static void minimapCase(){

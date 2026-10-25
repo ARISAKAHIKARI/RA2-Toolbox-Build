@@ -24,11 +24,11 @@ pre.13 已加入 `overlayui::Recovery`：正常每秒重新上傳／置位，失
 
 - 正常 `place()` 仍按原有 Layer 錨點處理請求視窗的位置與尺寸。
 - 共用 `keepAbove()` 在目前前台 root HWND 改變時立即檢查桌面實際順序；同一前台每 250 ms 至多檢查一次。只有已註冊、目前可見且屬本程序的覆蓋層實際落在該前台 HWND 後面時，才修復整組。
-- 修復將目前可見的覆蓋層依 Layer／同層 HWND 順序放回 topmost band。同一 UI thread 持有的整組使用 `DeferWindowPos` 批次；混合 UI owners 使用由高到低的個別 `SetWindowPos` anchor 鏈。兩條路徑均不改位置尺寸、不帶 SHOWWINDOW、不啟用視窗，故不會復活使用者關閉的面板。registry mutex 在呼叫 Win32 前已釋放，另用非阻塞 atomic guard 避免位置回呼重入修復。
+- 修復將目前可見的覆蓋層依 Layer／同層 HWND 順序放回 topmost band。所有 UI owner 組合統一使用由高到低的個別 `SetWindowPos` anchor 鏈，不再依賴 deferred API。它不改位置尺寸、不帶 SHOWWINDOW、不啟用視窗，故不會復活使用者關閉的面板。registry mutex 在呼叫 Win32 前已釋放，另用非阻塞 atomic guard 避免位置回呼重入修復。
 - 小地圖接入既有 Recovery，包含隱藏時 suspend、同幾何每秒保活，以及重新符合顯示條件時立即恢復。
 - 原有 foreground、菜單／非戰場、聊天、功能開關與主動關閉准入保留。保活沒有修改 Tab 顯示意圖、註冊全域置頂定時器、模擬 Tab 或發送遊戲命令；呼叫端先決定此時是否允許顯示。
 
-兩條路徑皆採用最高層 HWND_TOPMOST、其餘逐個以緊鄰高層 HWND 作 anchor 的明確順序。[Microsoft DeferWindowPos](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-deferwindowpos) 明載同一批次的視窗必須具有相同 parent；該條件不能當成跨 UI thread 批次一定成功的證據。依 [EndDeferWindowPos](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-enddeferwindowpos) 文件會發生位置訊息回呼，因此不在 registry lock 內執行。個別鏈使用 [SetWindowPos](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-setwindowpos) 的明確 insert-after 語義；mixed-owner API 失敗的實測與更正如下。
+當前修復採用最高層 HWND_TOPMOST、其餘逐個以緊鄰高層 HWND 作 anchor 的明確順序，使用 [SetWindowPos](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-setwindowpos) 的 insert-after 語義。[Microsoft DeferWindowPos](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-deferwindowpos) 雖明載同一批次的視窗必須具有相同 parent，滿足此項不能當成實際呼叫一定成功的證據；[EndDeferWindowPos](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-enddeferwindowpos) 也可能回傳失敗。兩次真 Windows 結果及放棄 deferred 路徑的原因如下。
 
 ## 回歸與反向證明
 
@@ -41,7 +41,7 @@ pre.13 已加入 `overlayui::Recovery`：正常每秒重新上傳／置位，失
 
 修復後兩組通過，涵蓋五次反覆提升遊戲、靜止游標、無 Tab 操作、內部層級保持、不必要批次抑制、隱藏面板不復活，以及小地圖在失焦、功能關閉、聊天和 renderStatus 非戰場期間持續隱藏，重新符合條件後自動恢復。
 
-`source/assist/tests/overlay_stack_windows.cpp` 擴大實際 Windows HWND 門檻：統計視窗由另一個 UI thread 持有，其 WM_WINDOWPOSCHANGED 回呼會取 registry mutex；四次提升真實 game fixture HWND，檢查共用修復恢復全組高於 game、跨執行緒回呼不在鎖內阻塞、內部層級、前台不被激活與隱藏面板保留。第二 owner 結束後再提升一次 game，檢查同 owner 的批次分支。測試向共用檢查函式傳入受控 game HWND，沒有搶走 CI 桌面的真正前台。Windows 執行結果以本版 Actions／發布證據為準；此紀錄不先宣稱該門檻已通過。
+`source/assist/tests/overlay_stack_windows.cpp` 擴大實際 Windows HWND 門檻：統計視窗由另一個 UI thread 持有，其 WM_WINDOWPOSCHANGED 回呼會取 registry mutex；四次提升真實 game fixture HWND，檢查共用修復恢復全組高於 game、跨執行緒回呼不在鎖內阻塞、內部層級、前台不被激活與隱藏面板保留。第二 owner 結束後再提升一次 game，以相同斷言驗證同 owner 組合。測試向共用檢查函式傳入受控 game HWND，沒有搶走 CI 桌面的真正前台。Windows 執行結果以本版 Actions／發布證據為準；此紀錄不先宣稱整個門檻已通過。
 
 以上不能證明實際 DirectDraw/DWM 裝置丟失、所有平台宿主的前台判定或真實 Alt-Tab 畫面已驗收。沒有改動渲染亮度、資源選取、攝像機投影、追蹤目標生命週期或遊戲命令路徑。
 
@@ -63,7 +63,7 @@ fixture 現在保留原有第二 UI thread、回呼取 registry mutex、四次 g
 
 為了立即取得這項門檻的結果，發布驗證把它拆成平行的 `overlay-build`／`overlay-windows`，主成品仍由 `build`／`windows-ui` 驗證。發布器要求同一 SHA 的四個 job 全部成功；確切 Windows 結果以 `release-manifest.json` 指向的最終 Actions run 為準，首輪卡住的成品不能被拿來發布。
 
-## 真 Windows 定位：混合 UI owners 的 deferred 修復失敗
+## 第一次真 Windows 定位與已放棄的 owner 分流假設
 
 加入明確失敗輸出後，Actions `40157058311` 的 `overlay-windows` job `121061004171` 到達 `promoted-game-recovery`，在第 0 次呼叫回報：
 
@@ -74,9 +74,21 @@ phase=keep-above-batch statistics=message-loop iteration=0
 
 這次是 production `keepAbove()` 的批次路徑回傳失敗，並非 watchdog 證實的死鎖。相同執行中，先前個別 `place()` 的跨 owner `SetWindowPos` 和重複內部層序檢查已通過。以上直接支持「本測試的 mixed-owner deferred 修復不可用」，不把它擴大解讀成所有 Windows 版本都禁止任何跨 thread deferred 呼叫；官方文件沒有明載這種普遍限制，也未提供此執行中是哪個 User32 子呼叫產生 87 的堆疊。
 
-最小修正依 `GetWindowThreadProcessId` 檢查可見組的 owner IDs。同 owner 繼續使用原批次；mixed owners 在鎖外依相同排序逐個 `SetWindowPos`，每次成功後才以前一個高層 HWND 作下一個 anchor，任一呼叫失敗仍回傳 FALSE。250 ms 節流、atomic 重入 guard、逐個 HWND 身分／可見性重查及全部 NOACTIVATE／NOOWNERZORDER／NOMOVE／NOSIZE／NOSENDCHANGING flags 保留，沒有 SHOWWINDOW。
+當時的中間版依 `GetWindowThreadProcessId` 檢查可見組的 owner IDs，讓同 owner 保留原批次、mixed owners 改為鎖外個別鏈。這是基於第一次失敗範圍的暫時假設，已由下面第二次 Windows 結果證明不足；不代表當前實作。
 
-Portable double 現在具有獨立 thread IDs，並在 mixed-owner deferred group 回傳 FALSE，避免再次以永遠成功的 stub 掩蓋 API 邊界。使用修正前 header 執行新測試：single-owner case 通過，mixed-owner `place()` 斷言失敗；同一測試配合修正後 production header，single-owner batch、mixed-owner ordered chain 及 minimap lifecycle 三組全部通過。兩種組合均驗證五次重複遊戲提升、層序、隱藏面板與不必要重排抑制。真 HWND fixture 保留原跨 owner 斷言，再加同 owner 分支；修復後的 Windows 成功仍須以後續 CI 結果確認。
+當時的 portable double 加入獨立 thread IDs，並拒絕 mixed-owner deferred group。修正前 header 在 mixed-owner case 失敗，owner 分流中間版通過；Windows fixture 同時新增同 owner 場景，因此能繼續揭露該假設的缺口。
+
+## 第二次真 Windows 結果：統一使用 ordered SetWindowPos
+
+提交 `5f396fea` 的 Actions `40157687203`／`overlay-windows` job `121062714627` 中，四次 mixed-owner ordered chain 全部成功，`opaque-and-hidden-panels`、`stale-handle`、`close-statistics`、`wait-statistics-exit` 也全部完成。隨後的新增 `single-owner-batch` 在 line 77 呼叫 `keepAbove(game)` 仍回傳 error 87。
+
+這項對照證據否定「只要同 owner，deferred 修復就可靠」的假設。它同時提供個別高到低 anchor 鏈在真 Windows 上完成混合 owner 全部恢復、顯隱、層序與正常關閉檢查的證據。此輪不繼續推測 deferred API 內部的唯一失敗成因，改為所有 visible group 統一走已驗證的 ordered `SetWindowPos` 路徑。
+
+當前 production 已完全移除 deferred 分支。每次成功置位後才更新下一個 anchor，任一呼叫失敗仍回傳 FALSE；250 ms 節流、atomic 重入 guard、鎖外 User32 回呼、逐個 HWND 身分／可見性重查及 NOACTIVATE／NOOWNERZORDER／NOMOVE／NOSIZE／NOSENDCHANGING flags 都保留，沒有 SHOWWINDOW。
+
+Portable double 的 `EndDeferWindowPos` 現在對任何 owner 組合一律回傳 FALSE。用 owner 分流中間版 header 執行新測試，首先在 single-owner `place()` 斷言失敗；改用當前統一 ordered production header，single-owner chain、mixed-owner chain 與 minimap lifecycle 三組全部通過。另對 100 次相同時刻的 statistics place 計數：statistics 只增加正常請求的 100 次，其餘四個 HWND 的 places 完全不變，直接驗證沒有額外整組重排。
+
+真 Windows fixture 保留兩種 owner 場景全部 CHECK，沒有把同 owner 場景跳過或將 API 失敗改成可接受。當前統一方案的完整 Windows gate 仍待下一輪 CI；不能把第二次 run 的 mixed-owner 局部成功寫成整個 gate 已通過。
 
 ## 排除與未決事項
 
