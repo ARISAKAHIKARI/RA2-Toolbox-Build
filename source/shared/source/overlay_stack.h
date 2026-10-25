@@ -5,6 +5,7 @@
 #include <windows.h>
 #include <cstdint>
 #include <algorithm>
+#include <atomic>
 #include <mutex>
 #include <vector>
 namespace overlaystack {
@@ -26,12 +27,46 @@ inline HWND above(HWND window,Layer layer){
  }
  return anchor;
 }
-// Each owner thread moves only its own window. The nearest higher registered
-// surface is the insertion anchor; no cross-thread callbacks under a lock,
-// activation, timer, or competing HWND_TOPMOST repair loop is required.
+// A fullscreen game can promote itself above the entire group while every
+// overlay retains WS_VISIBLE. Inserting behind a stale higher-layer anchor
+// cannot recover that group, even when each owner repeats its usual repair.
+// Check the actual desktop order and restore only the already-visible group.
+inline std::atomic_flag repairing=ATOMIC_FLAG_INIT;
+inline DWORD checkedAt=0;inline HWND checkedForeground=nullptr;inline bool checked=false;
+inline BOOL keepAbove(HWND foreground){
+ if(!foreground||!IsWindow(foreground)||repairing.test_and_set())return TRUE;
+ struct Release{~Release(){repairing.clear();}} release;
+ HWND root=GetAncestor(foreground,GA_ROOT);if(root)foreground=root;
+ DWORD now=GetTickCount();if(checked&&foreground==checkedForeground&&DWORD(now-checkedAt)<250)return TRUE;
+ checked=true;checkedAt=now;checkedForeground=foreground;
+ std::vector<Entry> visible;
+ {std::lock_guard<std::mutex> lock(mutex);for(const auto&e:entries)if(own(e.window)&&IsWindowVisible(e.window))visible.push_back(e);}
+ if(visible.empty()||std::any_of(visible.begin(),visible.end(),[&](const Entry&e){return e.window==foreground;}))return TRUE;
+ bool behind=false,obscured=false;int scanned=0;
+ for(HWND w=GetTopWindow(nullptr);w&&scanned++<4096;w=GetWindow(w,GW_HWNDNEXT)){
+  if(w==foreground){behind=true;continue;}
+  if(behind&&std::any_of(visible.begin(),visible.end(),[&](const Entry&e){return e.window==w;})){obscured=true;break;}
+ }
+ if(!obscured)return TRUE;
+ std::sort(visible.begin(),visible.end(),[](const Entry&a,const Entry&b){return a.layer!=b.layer?int(a.layer)>int(b.layer):uintptr_t(a.window)>uintptr_t(b.window);});
+ // Keep all User32 callbacks outside the registry mutex. Real Windows rejected
+ // deferred repairs even with one UI owner. Individual calls preserve the
+ // same highest-to-lowest anchor chain without relying on deferred support.
+ // No SHOWWINDOW flag can revive a hidden panel.
+ constexpr UINT flags=SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE|SWP_NOOWNERZORDER|SWP_NOSENDCHANGING;
+ HWND anchor=HWND_TOPMOST;
+ for(const auto&e:visible)if(own(e.window)&&IsWindowVisible(e.window)){
+  if(!SetWindowPos(e.window,anchor,0,0,0,0,flags))return FALSE;
+  anchor=e.window;
+ }
+ return TRUE;
+}
+// Normal placement changes only the requesting owner's geometry. Visibility
+// and foreground eligibility remain the caller's responsibility.
 inline BOOL place(HWND window,Layer layer,int x,int y,int w,int h,UINT flags){
  if(!own(window))return FALSE;HWND anchor=above(window,layer);
- return SetWindowPos(window,anchor,x,y,w,h,(flags&~SWP_NOZORDER)|SWP_NOACTIVATE|SWP_NOOWNERZORDER);
+ if(!SetWindowPos(window,anchor,x,y,w,h,(flags&~SWP_NOZORDER)|SWP_NOACTIVATE|SWP_NOOWNERZORDER))return FALSE;
+ return keepAbove(GetForegroundWindow());
 }
 inline void forget(HWND window){
  std::lock_guard<std::mutex> lock(mutex);

@@ -12,15 +12,16 @@ int main(int argc,char**){
  assert(!b.usable(71,73,2,true)&&b.usable(71,73,2,false));
  assert(!b.usable(8,133)&&b.usable(9,133));
  assert(!b.usable(135,12)&&b.usable(134,12));
- // Exact native camera limits, including a view larger than the whole map.
- for(auto map:{b,Bounds{32,64,5,8,12,16}})for(int w:{320,640,1600})for(int h:{256,512,1000})for(int x:{-10000,0,10000})for(int y:{-10000,0,10000}){
+ // Native camera limits for odd/even viewports, plus the explicit midpoint
+ // remedy when the viewport is larger than the whole available camera area.
+ for(auto map:{b,Bounds{32,64,5,8,12,16}})for(int w:{319,320,639,640,1599,1600})for(int h:{255,256,511,512,999,1000})for(int x:{-10000,0,10000})for(int y:{-10000,0,10000}){
   assist::smallcamera::Geometry g{map.width,map.left,map.top,map.columns,map.rows,w,h};assist::smallcamera::Point p{x,y};assist::smallcamera::clamp(g,p);
   double xx=x,yy=y;assert(map.clampCamera(xx,yy,w,h)&&xx==p.x&&yy==p.y);
  }
  Bounds small{32,64,5,8,12,16};double x=100000,y=-100000;assert(small.clampCamera(x,y,1600,1000));
- auto area=small.screen();assert(x==std::trunc((area.left+area.right)/2)&&y==std::trunc((area.top+area.bottom)/2));
- std::vector<uint32_t> pixels(100*100,0xffffffff);small.clip(pixels,100,100,50,0,.01,.05);
- assert(pixels[0]==0xff080c08&&pixels[60*100+47]==0xffffffff&&pixels.back()==0xff080c08);
+ auto area=small.cameraExtent();assert(x==std::trunc((area.left+area.right)/2)&&y==std::trunc((area.top+area.bottom)/2));
+ // Camera extents are scroll limits; legal non-usable cells remain drawable.
+ assert(b.legal(68,73)&&!b.usable(68,73));
  // Bounds change independently of match/cell identity. A torn/failed read
  // must not construct a valid hybrid rectangle or silently widen the map.
  std::array<int32_t,6> first{{131,146,3,5,124,135}},next=first;int reads=0;
@@ -28,5 +29,5 @@ int main(int argc,char**){
  assert(external::mapbounds::sample(read)==b);reads=0;next[2]=4;assert(!external::mapbounds::sample(read).valid());
  auto fail=[](uint32_t,void*,size_t){return false;};assert(!external::mapbounds::sample(fail).valid());
  assert(!(Bounds{131,146,3,5,130,135}).valid());
- std::cout<<"PASS live map bounds, height/slope edge, camera clamp, small-map margins and torn rectangle rejection\n";
+ std::cout<<"PASS live map bounds, height/slope edge, camera clamp, small-map camera midpoint and torn rectangle rejection\n";
 }

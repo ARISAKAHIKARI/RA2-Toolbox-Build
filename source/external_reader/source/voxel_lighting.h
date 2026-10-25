@@ -4,6 +4,7 @@
 #include <cmath>
 #include <cstdint>
 #include <cstring>
+#include <utility>
 #include <vector>
 namespace external { namespace voxel {
 // Native YR 1.001: 754C00 rotates (-sqrt(.5),-sqrt(.5),0) about Y;
@@ -464,13 +465,33 @@ inline bool normalVector(unsigned mode,unsigned index,std::array<float,3>&out){
 }
 class Vpl {
  std::vector<std::array<uint8_t,256>> pages_;
+ uint64_t signature_=0;
+ void replace(std::vector<std::array<uint8_t,256>> pages){
+  uint64_t hash=14695981039346656037ull;auto fold=[&](uint8_t byte){hash=(hash^byte)*1099511628211ull;};
+  uint32_t count=uint32_t(pages.size());for(unsigned i=0;i<4;++i)fold(uint8_t(count>>(i*8)));
+  for(const auto&page:pages)for(uint8_t color:page)fold(color);
+  pages_=std::move(pages);signature_=hash?hash:1;
+ }
 public:
  bool load(const std::vector<uint8_t>&bytes){
-  pages_.clear();if(bytes.size()<784)return false;uint32_t count=0;std::memcpy(&count,bytes.data()+8,4);
+  pages_.clear();signature_=0;if(bytes.size()<784)return false;uint32_t count=0;std::memcpy(&count,bytes.data()+8,4);
   if(!count||count>256||bytes.size()<784+size_t(count)*256)return false;
-  pages_.resize(count);for(size_t i=0;i<count;++i)std::memcpy(pages_[i].data(),bytes.data()+784+i*256,256);return true;
+  std::vector<std::array<uint8_t,256>> pages(count);for(size_t i=0;i<count;++i)std::memcpy(pages[i].data(),bytes.data()+784+i*256,256);
+  replace(std::move(pages));return true;
+ }
+ template<class Read>bool capture(Read read){
+  // 753B70 / 758A30 load the VPL pages unchanged into the fixed 32-page
+  // buffer at B41178, then publish the header count at B2FB58. The palette
+  // header's reserved word is uninitialized and is not a validity signal.
+  uint32_t count=0,after=0;if(!read(0xB2FB58,&count,4)||!count||count>32)return false;
+  std::vector<std::array<uint8_t,256>> pages(count),check(count);size_t bytes=size_t(count)*256;
+  if(!read(0xB41178,pages.data(),bytes)||!read(0xB2FB58,&after,4)||after!=count||
+     !read(0xB41178,check.data(),bytes)||!read(0xB2FB58,&after,4)||after!=count||pages!=check)return false;
+  // A failed or racing capture keeps the previous coherent file/native table.
+  replace(std::move(pages));return true;
  }
  bool ready()const{return !pages_.empty();}
+ uint64_t signature()const{return signature_;}
  uint8_t map(unsigned page,uint8_t color)const{return pages_.empty()?color:pages_[std::min<size_t>(page,pages_.size()-1)][color];}
 };
 }}

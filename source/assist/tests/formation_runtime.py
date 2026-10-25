@@ -16,6 +16,34 @@ def message(m,kind,key=0,repeat=False,x=100,y=100):
  if kind in (0x201,0x202,0x204,0x205,0x200):lp=x|(y<<16)
  m.queryPoint=(x,y);m.queryCell=(20+(x-100)//30,30+(y-100)//30)
  m.u.mem_write(m.msg,struct.pack('<7I',1,kind,key,lp,m.clock,0,0));m.run(m.entry,(0,1,m.msg));return m.r(m.msg+4),state(m)
+
+def geometry(preview):
+ return frozenset((slot.x,slot.y,slot.z) for slot in preview.slots[:preview.count] if slot.valid)
+
+# Shape changes solve immediately while the pointer and clock stand still.
+# Distinct keys and a shared-key cycle must change positions, not only labels.
+for mode in (0,3):
+ for shared_key in (False,True):
+  m=setup(mode,25);s=state(m);keys=[90]*6 if shared_key else [90,88,67,86,66,78];s.formationPolicy.keys[:]=keys;save(m,s)
+  m.held_keys.add(18);message(m,0x104,18);initial=state(m).formationPreview;shapes={0:geometry(initial)};clock=m.clock
+  assert len(shapes[0])==25
+  for shape in (1,2,3,4,5,0):
+   previous=state(m).formationPreview;kind,s=message(m,0x104,keys[shape]);preview=s.formationPreview;points=geometry(preview)
+   assert kind==0 and preview.active and not preview.dragging and preview.shape==shape
+   assert m.clock==clock and preview.tick==initial.tick and preview.revision>previous.revision
+   assert (preview.ax,preview.ay,preview.facing)==(initial.ax,initial.ay,initial.facing)
+   assert len(points)==25 and points!=geometry(previous), ('stationary-shape-geometry',mode,shared_key,shape)
+   if shape==0:assert points==shapes[0], 'cycling back restores the initial geometry'
+   else:
+    assert points not in shapes.values(), ('distinct-shape-geometry',mode,shared_key,shape)
+    shapes[shape]=points
+   before=bytes(preview.slots);kind,s=message(m,0x104,keys[shape],True)
+   assert kind==0 and s.formationPreview.shape==shape and bytes(s.formationPreview.slots)==before
+   assert message(m,0x105,keys[shape])[0]==0
+  assert len(shapes)==6 and count(m)==0 and not m.codeWrites
+  message(m,0x100,27)
+  rows.append({'case':f'{mode}_{shared_key}_stationary_six_shape_geometry_cycle','status':'PASS'});print('PASS',mode,shared_key,'stationary six-shape geometry and repeat suppression',flush=True)
+
 for mode in (0,3):
  for case in ('click','cycle','escape','chat','focus','disabled','duplicate_up','double_alt','custom_double_alt','policy_in_flight','advanced_frame'):
   m=setup(mode);m.held_keys.add(18);kind,s=message(m,0x104,18);assert kind==0 and s.formationPreview.active,(case,kind,s.data.status,s.formationPreview.active)
@@ -63,7 +91,7 @@ for mode in (0,3):
 for mode in (0,3):
  for manual in (False,True):
   m=setup(mode,16);m.held_keys.add(18);message(m,0x104,18);before=bytes(state(m).formationPreview.slots)
-  message(m,0x104,67);assert before==bytes(state(m).formationPreview.slots), 'zero-length preview stays compact until drag';message(m,0x105,67)
+  message(m,0x104,67);assert before!=bytes(state(m).formationPreview.slots), 'shape selection updates the zero-drag preview';message(m,0x105,67)
   message(m,0x104,90);message(m,0x105,90);message(m,0x204);m.clock+=20;message(m,0x200,x=420,y=260);_,s=message(m,0x205,x=420,y=260)
   assert not s.formationPreview.active and s.formationAccepted==16
   # Input exits immediately, submission drains through the normal gateway.
@@ -138,21 +166,26 @@ for mode in (0,3):
    unit=next(p for p in m.units if m.r(p+0x10)==uid);m.w(unit+0xac,2);m.w(unit+0x5a4,m.r(m.cells+(cell//1000*512+cell%1000)*4));m.w(unit+0x9c,cell%1000*256+128);m.w(unit+0xa0,cell//1000*256+128)
   s=tick(m);assert count(m)==old+4 and s.formationJobs==0,('continuation-facing-detour',mode,step,count(m),s.formationJobs)
  rows.append({'case':f'{mode}_directed_layout_then_two_direct_continuations','status':'PASS'})
-# Click commits the compact preview verbatim, including per-member assignment.
+# Click commits the newly selected shape verbatim, including per-member assignment.
 for mode in (0,3):
  for button in (1,2):
   for shape in range(6):
-   m=setup(mode,9);s=state(m);s.formationPolicy.mouse=button;s.formationPolicy.keys[:]=[90,88,67,86,66,78];save(m,s)
-   m.held_keys.add(18);message(m,0x104,18);message(m,0x104,[90,88,67,86,66,78][shape]);message(m,0x105,[90,88,67,86,66,78][shape])
+   m=setup(mode,25);s=state(m);s.formationPolicy.mouse=button;keys=[90,88,67,86,66,78];s.formationPolicy.keys[:]=keys;save(m,s)
+   m.held_keys.add(18);message(m,0x104,18)
+   message(m,0x104,keys[(shape+5)%6]);message(m,0x105,keys[(shape+5)%6]);previous=state(m).formationPreview
+   message(m,0x104,keys[shape]);message(m,0x105,keys[shape])
    preview=state(m).formationPreview;before=bytes(preview.slots)
+   assert preview.shape==shape and not preview.dragging and geometry(preview)!=geometry(previous)
+   assert preview.tick==previous.tick and len(geometry(preview))==25
    destinations={preview.units[n].id:preview.slots[n].y//256*1000+preview.slots[n].x//256 for n in range(preview.count)}
    # Units move after sampling: a click must not run assignment again.
    for n,unit in enumerate(m.units):m.w(unit+0x9c,(25-n)*256+128)
    down,up=(0x201,0x202) if button==1 else (0x204,0x205)
-   message(m,down);m.clock+=20;message(m,0x200,x=103,y=102);_,s=message(m,up,x=101,y=100)
+   _,s=message(m,down);assert bytes(s.formationPreview.slots)==before and not s.formationPreview.dragging
+   m.clock+=20;message(m,0x200,x=103,y=102);_,s=message(m,up,x=101,y=100)
    assert bytes(s.formationPreview.slots)==before and not s.formationPreview.dragging
-   tick(m);assert count(m)==9
-   actual={struct.unpack_from('<I',packets(m),n*111+7)[0]:struct.unpack_from('<I',packets(m),n*111+19)[0] for n in range(9)}
+   tick(m);assert count(m)==25
+   actual={struct.unpack_from('<I',packets(m),n*111+7)[0]:struct.unpack_from('<I',packets(m),n*111+19)[0] for n in range(25)}
    assert actual==destinations,(mode,button,shape,actual,destinations)
    rows.append({'case':f'{mode}_{button}_{shape}_zero_drag_preview_exact_commit','status':'PASS'})
   m=setup(mode,9);s=state(m);s.formationPolicy.mouse=button;save(m,s);m.held_keys.add(18);message(m,0x104,18)

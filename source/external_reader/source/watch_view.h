@@ -50,7 +50,7 @@ template<class Read> bool refresh(Read read,Frame&out){
   a.layer=std::clamp(g.template get<int>(p+0x94,2),0,4);a.onBridge=g.template get<uint8_t>(p+0x8C)!=0;a.x=g.template get<int>(p+0x9C,-1);a.y=g.template get<int>(p+0xA0,-1);a.z=g.template get<int>(p+0xA4);
   int cx=a.x/256-out.cx+out.radius,cy=a.y/256-out.cy+out.radius;
   if(a.x<0||a.y<0||cx<0||cy<0||cx>=out.side||cy>=out.side||!out.cells[cy*out.side+cx])return false;
-  a.light=a.kind==4?lighting::at(read,a.x,a.y,a.z,out.light,true):lighting::object(read,a.type,a.owner,a.kind,a.x,a.y,a.z,out.light);
+  a.light=a.kind==4?lighting::terrainObject(read,a.type,a.x,a.y,a.z,out.light):lighting::object(read,a.type,a.owner,a.kind,a.x,a.y,a.z,out.light);
  }
  out.passengers.clear();out.dangerous=false;passengers::contents(read,out.focus.pointer,out.passengers,out.dangerous);
  return valid(g,out.focus);
@@ -73,7 +73,9 @@ template<class Read> Frame sample(Read read,Target focus,bool reveal,int radius=
  out.cx=int(std::floor((sum+difference)/2));out.cy=int(std::floor((sum-difference)/2));
  for(int y=-out.radius;y<=out.radius;++y)for(int x=-out.radius;x<=out.radius;++x){int cx=out.cx+x,cy=out.cy+y;if(!out.bounds.legal(cx,cy)||cy*512+cx>=count)continue;
   uint32_t p=g.template get<uint32_t>(cells+uint32_t(cy*512+cx)*4);if(p<0x10000||g.template get<int16_t>(p+0x24)!=cx||g.template get<int16_t>(p+0x26)!=cy)continue;
-  if(!out.bounds.usable(cx,cy,g.template get<int8_t>(p+0x11B),g.template get<uint8_t>(p+0x11C)!=0))continue;
+  // Native tactical drawing gates cells with CoordinatesLegal, not the
+  // narrower movement/usable rectangle. Its border scenery fills the view
+  // above a camera-clamped target and is cropped only by the viewport.
   bool seen=g.template get<int8_t>(p+0x120)==-1,fog=g.template get<int8_t>(p+0x121)!=-1;if(!reveal&&!seen)continue;
   auto&t=out.tiles[(y+out.radius)*out.side+x+out.radius];t.level=g.template get<int8_t>(p+0x11B);t.sub=g.template get<uint8_t>(p+0x11A);
   t.light=lighting::cell(read,p,out.light,lighting::Layer::Terrain);t.overlayLight=t.light;
@@ -97,7 +99,7 @@ template<class Read> Frame sample(Read read,Target focus,bool reveal,int radius=
  // Trees and static terrain are ObjectClass instances, outside TechnoClass::Array.
  for(auto p:g.vec(0xA8E988)){if(g.template get<uint32_t>(p)!=0x7F522C||g.template get<uint8_t>(p+0xCD)||g.template get<int>(p+0x6C)<=0)continue;
   int x=g.template get<int>(p+0x9C,-1),y=g.template get<int>(p+0xA0,-1);if(x<0||y<0)continue;int cx=x/256-out.cx,cy=y/256-out.cy;if(cx<-out.radius||cx>out.radius||cy<-out.radius||cy>out.radius||!out.cells[(cy+out.radius)*out.side+cx+out.radius])continue;
-  Actor a;a.target={p,g.template get<uint32_t>(p+0x10)};a.x=x;a.y=y;a.z=g.template get<int>(p+0xA4);a.type=g.template get<uint32_t>(p+0xC8);a.kind=4;a.stage=g.template get<int>(p+0xAC);a.color=0xff83a95bu;a.light=lighting::at(read,a.x,a.y,a.z,out.light,true);out.actors.push_back(a);
+  Actor a;a.target={p,g.template get<uint32_t>(p+0x10)};a.x=x;a.y=y;a.z=g.template get<int>(p+0xA4);a.type=g.template get<uint32_t>(p+0xC8);a.kind=4;a.stage=g.template get<int>(p+0xAC);a.color=0xff83a95bu;a.light=lighting::terrainObject(read,a.type,a.x,a.y,a.z,out.light);out.actors.push_back(a);
  }
  size_t bodies=out.actors.size();for(size_t i=0;i<bodies;++i){auto body=out.actors[i];if(body.kind!=3)continue;
   for(const auto&state:animations::attached(read,body.target.pointer,body.target.id)){Actor a;a.target={state.object,state.id};a.parent=body.target;a.onBridge=body.onBridge;a.type=state.type;a.owner=state.owner;a.x=state.x;a.y=state.y;a.z=state.z;a.kind=5;a.pose.frame=state.frame;a.drawZ=state.zAdjust;a.sort=state.sort;a.layer=state.layer;a.light=lighting::animation(read,a.target.pointer,a.type,a.x,a.y,a.z,out.light);out.actors.push_back(a);}

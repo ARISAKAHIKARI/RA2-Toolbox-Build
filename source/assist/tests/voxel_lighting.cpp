@@ -30,7 +30,37 @@ static void lowerLeftIsLit(const Image&image){
  for(int y=0;y<image.height;++y)for(int x=0;x<image.width;++x){auto p=image.pixels[size_t(y)*image.width+x];if(!p)continue;int sx=x+image.x;if(sx<-1){left+=p&255;++nl;}else if(sx>1){right+=p&255;++nr;}}
  assert(nl>25&&nr>25);assert(left/nl>1.5*right/nr);
 }
+static void captureVpl(){
+ uint32_t count=32;std::vector<uint8_t> pages(count*256);for(size_t i=0;i<pages.size();++i)pages[i]=uint8_t(i*13+i/256);
+ int reads=0,countReads=0,tableReads=0,failRead=0,racingCount=0;bool racingTable=false;
+ auto read=[&](uint32_t at,void*out,size_t size){
+  if(++reads==failRead)return false;
+  if(at==0xB2FB58&&size==4){uint32_t value=count+(++countReads==racingCount?1:0);memcpy(out,&value,4);return true;}
+  if(at==0xB41178&&size==size_t(count)*256&&size<=pages.size()){
+   memcpy(out,pages.data(),size);if(++tableReads==2&&racingTable)static_cast<uint8_t*>(out)[17]^=1;return true;
+  }
+  return false;
+ };
+ Vpl live;auto capture=[&]{reads=countReads=tableReads=0;return live.capture(read);};
+ assert(!live.ready()&&live.signature()==0&&capture()&&live.ready());
+ assert(reads==5&&tableReads==2);for(unsigned page=0;page<32;++page)for(unsigned color=0;color<256;++color)assert(live.map(page,uint8_t(color))==pages[page*256+color]);
+ uint64_t signature=live.signature();assert(signature&&capture()&&live.signature()==signature);
+ std::vector<uint8_t> bytes(784+pages.size());memcpy(bytes.data()+8,&count,4);memcpy(bytes.data()+784,pages.data(),pages.size());
+ Vpl file;assert(file.load(bytes)&&file.signature()==signature);
+ for(int failure=1;failure<=5;++failure){failRead=failure;assert(!capture()&&live.signature()==signature&&live.map(17,23)==pages[17*256+23]);}failRead=0;
+ for(int header:{2,3}){racingCount=header;assert(!capture()&&live.signature()==signature);}racingCount=0;
+ racingTable=true;assert(!capture()&&live.signature()==signature);racingTable=false;
+ for(uint32_t invalid:{0u,33u,256u,0xffffffffu}){count=invalid;assert(!capture()&&tableReads==0&&live.signature()==signature);}count=32;
+ pages[17*256+23]^=1;assert(capture()&&live.signature()!=signature&&live.map(17,23)==pages[17*256+23]);signature=live.signature();
+ count=1;assert(capture()&&live.signature()!=signature&&live.map(31,23)==pages[23]);
+ // An intentionally black custom table is valid; failed file loads still
+ // clear their destination, while failed live snapshots retain valid data.
+ std::fill(pages.begin(),pages.end(),0);assert(capture()&&live.ready()&&live.map(0,23)==0);
+ assert(!file.load({})&&!file.ready()&&!file.signature());
+ std::cout<<"PASS live VPL byte mapping, source-independent signature, 32-page bounds, read failure and concurrent-change retention\n";
+}
 int main(int argc,char**argv){
+ captureVpl();
  std::ofstream dump;if(argc==3&&std::string(argv[1])=="--dump-pages")dump.open(argv[2],std::ios::binary);
  unsigned comparisons=0;
  for(unsigned mode=1;mode<=4;++mode)for(unsigned facing=0;facing<32;++facing){

@@ -1,0 +1,285 @@
+{
+  "supported_executable_sha256": "7b8a068535d6af06845edf95ae829b113d00c02909330e16f197426cd7db94b6",
+  "capture_stage_executed": "02-on",
+  "scope": "Execute the original tactical terrain gate and camera clamp on controlled inputs.\n\nThe 6D521C gate and its 568300 CoordinatesLegal callee run unchanged. Cell\nlookup (5657A0) and draw (47EC90) are boundary doubles that record invocation.\n578540 independently classifies gameplay usability; it is not substituted into\nthe gate. This proves admission to drawing, not final pixels or full visibility.\n6D8640 is compared with the compiled production clamp for ordinary viewports.\nThe tool's midpoint behavior on an undersized map is a separately named policy.\nPrivate capture bytes, palettes and images are never written to the report.\n",
+  "code_sha256": {
+    "CoordinatesLegal": {
+      "begin": "00568300",
+      "end_exclusive": "00568345",
+      "sha256": "2d858a3388f6b00cd9628edc11f921741ac4b80138cca9019be10344bb9d198a"
+    },
+    "IsWithinUsableArea": {
+      "begin": "00578540",
+      "end_exclusive": "005785F0",
+      "sha256": "ad10c678abeea65ab41d65f1c7602c10b05e4e591d08ac312235240fbd5e8e37"
+    },
+    "tactical_terrain_gate": {
+      "begin": "006D521C",
+      "end_exclusive": "006D526A",
+      "sha256": "5dbf1c34c1358b595de6d764959c1850dc34d6265525a0d2a481f67814ec83fd"
+    },
+    "camera_clamp": {
+      "begin": "006D8640",
+      "end_exclusive": "006D86FE",
+      "sha256": "030210ee27fee1606fcc8842ab97fee50b649efd244f0d1f7dde5bf4cc2a9bab"
+    }
+  },
+  "render_gate": {
+    "cases": 7932,
+    "mismatches": 0,
+    "categories": {
+      "physical_illegal_not_drawn": 7110,
+      "legal_outside_usable_drawn": 458,
+      "legal_usable_drawn": 364
+    },
+    "examples": [
+      {
+        "bounds": [
+          131,
+          146,
+          3,
+          5,
+          124,
+          135
+        ],
+        "cell": [
+          1,
+          131
+        ],
+        "level": 0,
+        "slope": 0,
+        "coordinates_legal": true,
+        "gameplay_usable": false,
+        "draw_called": true
+      },
+      {
+        "bounds": [
+          131,
+          146,
+          3,
+          5,
+          124,
+          135
+        ],
+        "cell": [
+          5,
+          131
+        ],
+        "level": 0,
+        "slope": 0,
+        "coordinates_legal": true,
+        "gameplay_usable": false,
+        "draw_called": true
+      },
+      {
+        "bounds": [
+          131,
+          146,
+          3,
+          5,
+          124,
+          135
+        ],
+        "cell": [
+          6,
+          131
+        ],
+        "level": 0,
+        "slope": 0,
+        "coordinates_legal": true,
+        "gameplay_usable": false,
+        "draw_called": true
+      },
+      {
+        "bounds": [
+          64,
+          64,
+          2,
+          2,
+          60,
+          56
+        ],
+        "cell": [
+          1,
+          64
+        ],
+        "level": 0,
+        "slope": 0,
+        "coordinates_legal": true,
+        "gameplay_usable": false,
+        "draw_called": true
+      },
+      {
+        "bounds": [
+          64,
+          64,
+          2,
+          2,
+          60,
+          56
+        ],
+        "cell": [
+          3,
+          64
+        ],
+        "level": 0,
+        "slope": 0,
+        "coordinates_legal": true,
+        "gameplay_usable": false,
+        "draw_called": true
+      },
+      {
+        "bounds": [
+          64,
+          64,
+          2,
+          2,
+          60,
+          56
+        ],
+        "cell": [
+          4,
+          64
+        ],
+        "level": 0,
+        "slope": 0,
+        "coordinates_legal": true,
+        "gameplay_usable": false,
+        "draw_called": true
+      },
+      {
+        "bounds": [
+          64,
+          64,
+          12,
+          15,
+          24,
+          20
+        ],
+        "cell": [
+          1,
+          64
+        ],
+        "level": 0,
+        "slope": 0,
+        "coordinates_legal": true,
+        "gameplay_usable": false,
+        "draw_called": true
+      },
+      {
+        "bounds": [
+          64,
+          64,
+          12,
+          15,
+          24,
+          20
+        ],
+        "cell": [
+          23,
+          64
+        ],
+        "level": 0,
+        "slope": 0,
+        "coordinates_legal": true,
+        "gameplay_usable": false,
+        "draw_called": true
+      },
+      {
+        "bounds": [
+          64,
+          64,
+          12,
+          15,
+          24,
+          20
+        ],
+        "cell": [
+          24,
+          64
+        ],
+        "level": 0,
+        "slope": 0,
+        "coordinates_legal": true,
+        "gameplay_usable": false,
+        "draw_called": true
+      },
+      {
+        "bounds": [
+          32,
+          64,
+          0,
+          0,
+          32,
+          64
+        ],
+        "cell": [
+          1,
+          32
+        ],
+        "level": 0,
+        "slope": 1,
+        "coordinates_legal": true,
+        "gameplay_usable": false,
+        "draw_called": true
+      },
+      {
+        "bounds": [
+          32,
+          64,
+          0,
+          0,
+          32,
+          64
+        ],
+        "cell": [
+          17,
+          16
+        ],
+        "level": 0,
+        "slope": 1,
+        "coordinates_legal": true,
+        "gameplay_usable": false,
+        "draw_called": true
+      },
+      {
+        "bounds": [
+          32,
+          64,
+          0,
+          0,
+          32,
+          64
+        ],
+        "cell": [
+          32,
+          1
+        ],
+        "level": 0,
+        "slope": 1,
+        "coordinates_legal": true,
+        "gameplay_usable": false,
+        "draw_called": true
+      }
+    ],
+    "lookup_boundary": "005657A0",
+    "draw_boundary": "0047EC90",
+    "usable_predicate_is_not_called_by_gate": true
+  },
+  "camera_native_comparison": {
+    "cases": 1458,
+    "odd_viewport_cases": 567,
+    "mismatches": 0,
+    "undersized_viewport_combinations_excluded": 2
+  },
+  "tool_midpoint_policy": {
+    "cases": 12,
+    "mismatches": 0,
+    "native_equivalence_claimed": false,
+    "rule": "Use truncated midpoint only for an inverted per-axis camera range; otherwise clamp."
+  },
+  "compiled_production_header": "external_reader/source/map_bounds.h",
+  "game_tested": false,
+  "full_pixel_renderer_tested": false,
+  "multiplayer_tested": false
+}

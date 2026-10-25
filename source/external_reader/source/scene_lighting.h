@@ -85,6 +85,22 @@ template<class Read>State at(Read read,int x,int y,int z,const State&fallback,bo
  if(!terrain&&p&&read(p+0x140,&flags,4)&&(flags&0x80)&&read(p+0x11B,&level,1)&&read(0x89E7C0,&height,4)&&height>0&&height<=1024&&z>=(int(level)+4)*height-1)layer=Layer::Bridge;
  return cell(read,p,fallback,layer,localTint);
 }
+template<class Read>bool spawnsTiberium(Read read,uint32_t type){
+ uint8_t value=0;return type>=0x10000&&type<=0xfffffd4eu&&read(type+0x2B1,&value,1)&&value;
+}
+// 71C280/71C40F: ore-producing terrain uses the global resource drawer and
+// object intensity. Ordinary trees use the cell's ISO drawer/terrain intensity.
+// The original resource drawer is a plain ConvertClass, with no RGB tint.
+template<class Read>State terrainObject(Read read,uint32_t type,int x,int y,int z,const State&fallback){
+ if(!spawnsTiberium(read,type))return at(read,x,y,z,fallback,true);
+ State out=cell(read,cellAt(read,x,y),fallback,Layer::Object,false);out.tint={{1000,1000,1000}};
+ uint32_t convert=0,vtable=0;int shades=0;
+ if(read(0x87F6BC,&convert,4)&&convert>=0x10000&&convert<=0xfffffe4fu){
+  if(read(convert,&vtable,4)&&vtable==0x7ED0A4)converterTint(read,convert,out.tint);
+  if(read(convert+0x16C,&shades,4)&&shades==1)out.intensity=1000;
+ }
+ return out;
+}
 template<class Read>State object(Read read,uint32_t type,uint32_t owner,int kind,int x,int y,int z,const State&fallback){
  uint8_t terrainPalette=0,voxel=0;
  if(type>=0x10000&&type<=0xfffffdc9u)read(type+0x236,&voxel,1);
@@ -92,6 +108,17 @@ template<class Read>State object(Read read,uint32_t type,uint32_t owner,int kind
   return at(read,x,y,z,fallback,true); // 705EC1: also replaces ExtraLight with cell terrain intensity.
  State out=at(read,x,y,z,fallback,false,false);
  converterTint(read,objectConverter(read,type,owner),out.tint);
+ if(kind==0||kind==2){
+  // Unit::Draw 73D0C3 adds ExtraUnitLight before selecting VXL or SHP.
+  // Aircraft::Draw 414925 uses its separate ExtraAircraftLight. Rules parsing
+  // stores config*1000 as signed integers, despite public float declarations.
+  uint32_t rules=0,after=0,offset=kind==2?0x17D4:0x17DC;int32_t extra=0;
+  if(read(0x8871E0,&rules,4)&&rules>=0x10000&&uint64_t(rules)+offset+4<=0x100000000ull&&read(rules+offset,&extra,4)&&
+     read(0x8871E0,&after,4)&&after==rules){
+   int64_t base=out.intensity<0?int64_t(out.ambient)*10:out.intensity;
+   out.intensity=int(std::clamp<int64_t>(base+extra,0,2000)); // presentation range; negative is not fallback ambient
+  }
+ }
  if(kind==3&&type>=0x10000&&type<=0xffffeab6u){int16_t extra=0;if(read(type+0x1548,&extra,2))out.intensity=(out.intensity<0?out.ambient*10:out.intensity)+extra;}
  return out;
 }

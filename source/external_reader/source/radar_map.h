@@ -44,10 +44,12 @@ public:
   if(!pending_){pointers_.resize(g.count);if(!read_(g.cells,pointers_.data(),pointers_.size()*4)){reset();return false;}
    pending_=std::make_shared<Terrain>();pending_->geo=g;pending_->colors.resize(512*512);if(real){pending_->art.resize(512*512);tileTypes_=view_.vec(0xA8ED28,65536);overlayTypes_=view_.vec(0xA83D80);}cursor_=0;}
   size_t end=std::min(pointers_.size(),cursor_+size_t(std::clamp(budget,1,16384)));
+  // Retain drawable physical cells around the usable rectangle. Native radar
+  // projection/canvas cropping and live camera limits define the visible view.
   for(;cursor_<end;++cursor_){int x=int(cursor_%512),y=int(cursor_/512);if(!g.legal(x,y))continue;uint32_t p=pointers_[cursor_];
    if(p<0x10000)continue;std::array<uint8_t,0x148> cell{};if(!read_(p,cell.data(),cell.size()))continue;
    int16_t cx=0,cy=0;int land=-1;std::memcpy(&cx,cell.data()+0x24,2);std::memcpy(&cy,cell.data()+0x26,2);std::memcpy(&land,cell.data()+0xEC,4);
-   if(cx!=x||cy!=y||!g.bounds.usable(x,y,int8_t(cell[0x11B]),cell[0x11C]!=0))continue;int visibility=int8_t(cell[0x120]),fog=int8_t(cell[0x121]);if(!reveal&&visibility!=-1)continue;
+   if(cx!=x||cy!=y)continue;int visibility=int8_t(cell[0x120]),fog=int8_t(cell[0x121]);if(!reveal&&visibility!=-1)continue;
    uint32_t color=terrainColor(land,cell[0x11B],!reveal&&fog!=-1);
    if(reveal==2&&(visibility!=-1||fog!=-1))color=(color>>1)&0x7F7F7F;
    pending_->colors[cursor_]=color;
