@@ -1,13 +1,10 @@
 #include "../../external_reader/source/camera_repair.h"
 #include "../../external_reader/source/camera_raster.h"
-#include <cassert>
 #include <iostream>
 #include <cstring>
-// The Windows CRT may report assert failures through a dialog without writing
-// the failed expression to Actions logs. Keep the condition and fail fast with
-// a useful line number on both supported CI runners.
-#undef assert
-#define assert(condition) do { if (!(condition)) { \
+// Keep checks and their setup calls active in optimized Windows fixtures.
+// Report the failing condition directly in Actions logs.
+#define CHECK(condition) do { if (!(condition)) { \
  std::cerr << "FAIL repair_visuals.cpp:" << __LINE__ << ": " << #condition << std::endl; \
  return 1; \
 } } while (false)
@@ -33,35 +30,35 @@ int main(){
  auto read=[&](uint32_t p,void*out,size_t n){return m(p,out,n);};repairvisuals::Sprite sample;
  m.put(object,0x7E3EBCu);m.put(object+0x10,42u);m.put(object+0x6E8,uint8_t(1));m.put(object+0x9C,300*256+128);m.put(object+0xA0,200*256+128);m.put(object+0xA4,208);
  m.put(0x89DDC8,shp);m.put(0x87F6C8,convert);m.put(0xA8ED84,100);m.put(0xA8EB60,1);
- assert(repairvisuals::sample(read,object,42,sample));assert(sample.x==300*256&&sample.y==200*256&&sample.z==208&&sample.frame==0&&sample.tick==100);
- assert(!repairvisuals::sample(read,object,43,sample));m.put(object+0x6E8,uint8_t(0));assert(!repairvisuals::sample(read,object,42,sample));m.put(object+0x6E8,uint8_t(1));
- m.put(object+0x3CD,uint8_t(1));assert(!repairvisuals::sample(read,object,42,sample));m.put(object+0x3CD,uint8_t(0));
- assert(!repairvisuals::sample(read,0xFFFFFFF0,42,sample));m.blocked=object+0x9C;assert(!repairvisuals::sample(read,object,42,sample));m.blocked=0;
- int idReads=0;auto reused=[&](uint32_t p,void*out,size_t n){bool ok=read(p,out,n);if(p==object+0x10&&++idReads==1)m.put(object+0x10,43u);return ok;};assert(!repairvisuals::sample(reused,object,42,sample));m.put(object+0x10,42u);
- for(int speed=0;speed<7;++speed){int period=std::max(2,(112/(speed+1))/4);for(int tick=0;tick<period*3;++tick)assert(repairvisuals::animationFrame(tick,speed)==(tick%period)*6/(period-1));}
- assert(repairvisuals::animationFrame(-1,1)==-1&&repairvisuals::animationFrame(1,-1)==-1&&repairvisuals::animationFrame(1,7)==-1);
+ CHECK(repairvisuals::sample(read,object,42,sample));CHECK(sample.x==300*256&&sample.y==200*256&&sample.z==208&&sample.frame==0&&sample.tick==100);
+ CHECK(!repairvisuals::sample(read,object,43,sample));m.put(object+0x6E8,uint8_t(0));CHECK(!repairvisuals::sample(read,object,42,sample));m.put(object+0x6E8,uint8_t(1));
+ m.put(object+0x3CD,uint8_t(1));CHECK(!repairvisuals::sample(read,object,42,sample));m.put(object+0x3CD,uint8_t(0));
+ CHECK(!repairvisuals::sample(read,0xFFFFFFF0,42,sample));m.blocked=object+0x9C;CHECK(!repairvisuals::sample(read,object,42,sample));m.blocked=0;
+ int idReads=0;auto reused=[&](uint32_t p,void*out,size_t n){bool ok=read(p,out,n);if(p==object+0x10&&++idReads==1)m.put(object+0x10,43u);return ok;};CHECK(!repairvisuals::sample(reused,object,42,sample));m.put(object+0x10,42u);
+ for(int speed=0;speed<7;++speed){int period=std::max(2,(112/(speed+1))/4);for(int tick=0;tick<period*3;++tick)CHECK(repairvisuals::animationFrame(tick,speed)==(tick%period)*6/(period-1));}
+ CHECK(repairvisuals::animationFrame(-1,1)==-1&&repairvisuals::animationFrame(1,-1)==-1&&repairvisuals::animationFrame(1,7)==-1);
  m.put(convert,0x7E5358u);m.put(convert+4,2);m.put(convert+0x16C,1);m.put(convert+0x174,0x70000u);
  for(int i=1;i<256;++i)m.put(0x70000+i*2,uint16_t(0xF800u|((i&63)<<5)|31));
  auto bytes=shape();memcpy(m.bytes.data()+shp,bytes.data(),bytes.size());Context context{m};context.files.bytes=bytes;
- repairvisuals::Assets assets;assert(repairvisuals::sample(read,object,42,sample));sample.frame=3;
- auto image=assets.image(context,sample);assert(image&&image->x==-1&&image->y==-1&&image->width==2&&image->height==2&&image->pixels[0]>>24==255&&image->indices[0]==4&&!image->writeDepth&&std::isnan(image->depth[0]));
- int shapes=m.shapeReads,palettes=m.paletteReads;for(int i=0;i<100;++i)assert(assets.image(context,sample)==image);assert(m.shapeReads==shapes&&m.paletteReads==palettes&&context.files.calls==0);
+ repairvisuals::Assets assets;CHECK(repairvisuals::sample(read,object,42,sample));sample.frame=3;
+ auto image=assets.image(context,sample);CHECK(image&&image->x==-1&&image->y==-1&&image->width==2&&image->height==2&&image->pixels[0]>>24==255&&image->indices[0]==4&&!image->writeDepth&&std::isnan(image->depth[0]));
+ int shapes=m.shapeReads,palettes=m.paletteReads;for(int i=0;i<100;++i)CHECK(assets.image(context,sample)==image);CHECK(m.shapeReads==shapes&&m.paletteReads==palettes&&context.files.calls==0);
  // One mouse palette snapshot serves all active repair icons at this tick.
- sample.frame=6;assert(assets.image(context,sample)&&m.paletteReads==palettes);
- ++sample.tick;assert(assets.image(context,sample)&&m.paletteReads==palettes+1);
+ sample.frame=6;CHECK(assets.image(context,sample)&&m.paletteReads==palettes);
+ ++sample.tick;CHECK(assets.image(context,sample)&&m.paletteReads==palettes+1);
  // A cached status image draws above arbitrary world depth, with its own
  // one-shade palette. It neither writes world depth nor inherits dark tint.
- sample.frame=3;image=assets.image(context,sample);camera::Surface canvas;assert(canvas.reset(8,8,0xff123456));canvas.depth.assign(64,1e6f);camera::Light neutral(lighting::State{});
- canvas.blit(*image,4,4,1,1,0,{});assert(canvas.color[3*8+3]==image->pixels[0]&&canvas.depth[3*8+3]==1e6f);
+ sample.frame=3;image=assets.image(context,sample);camera::Surface canvas;CHECK(canvas.reset(8,8,0xff123456));canvas.depth.assign(64,1e6f);camera::Light neutral(lighting::State{});
+ canvas.blit(*image,4,4,1,1,0,{});CHECK(canvas.color[3*8+3]==image->pixels[0]&&canvas.depth[3*8+3]==1e6f);
  // Shared fake asset backends used by renderer fixtures need no new methods.
- struct Fake{} fake;assert(!assets.image(fake,sample));
+ struct Fake{} fake;CHECK(!assets.image(fake,sample));
  // A missing loaded SHP reference falls back to the real global filename,
  // while missing assets remain retryable and never cache a successful blank.
- assets.reset();m.put(shp,uint16_t(65535));m.put(shp+12,0u);context.files.available=false;assert(!assets.image(context,sample));context.files.available=true;image=assets.image(context,sample);assert(image&&context.files.calls>=2);
+ assets.reset();m.put(shp,uint16_t(65535));m.put(shp+12,0u);context.files.available=false;CHECK(!assets.image(context,sample));context.files.available=true;image=assets.image(context,sample);CHECK(image&&context.files.calls>=2);
  // Palette/identity changes invalidate the seven poses without changing
  // the source game SHP or leaking previous colors into the next context.
- uint32_t previous=image->pixels[0];m.put(0x70000+4*2,uint16_t(0x07E0));++sample.tick;image=assets.image(context,sample);assert(image&&image->pixels[0]!=previous);
- ++context.generation;int disk=context.files.calls;assert(assets.image(context,sample)&&context.files.calls==disk+1);
- m.put(convert+0x16C,53);++sample.tick;assert(!assets.image(context,sample));m.put(convert+0x16C,1);
+ uint32_t previous=image->pixels[0];m.put(0x70000+4*2,uint16_t(0x07E0));++sample.tick;image=assets.image(context,sample);CHECK(image&&image->pixels[0]!=previous);
+ ++context.generation;int disk=context.files.calls;CHECK(assets.image(context,sample)&&context.files.calls==disk+1);
+ m.put(convert+0x16C,53);++sample.tick;CHECK(!assets.image(context,sample));m.put(convert+0x16C,1);
  std::cout<<"PASS native repair flag/identity/center, seven speed-dependent frames, one-shade mouse palette, shared pose cache, memory/disk recovery, fake-backend compatibility and final no-depth status compositing\n";
 }

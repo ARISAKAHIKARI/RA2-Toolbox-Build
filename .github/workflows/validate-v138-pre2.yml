@@ -89,17 +89,21 @@ jobs:
         run: '"$ZIG" c++ -target x86-windows-gnu -std=c++17 -O2 -municode source/tests/process_discovery_windows.cpp -o source/process-discovery-test.exe -luser32'
       - name: Build renderer and formation numerical fixtures with the release compiler
         run: |
-          "$ZIG" c++ -target x86-windows-gnu -std=c++17 -O2 source/assist/tests/voxel_lighting.cpp -o source/voxel-lighting-test.exe
-          "$ZIG" c++ -target x86-windows-gnu -std=c++17 -O2 source/assist/tests/voxel_preview.cpp -o source/voxel-preview-test.exe
-          "$ZIG" c++ -target x86-windows-gnu -std=c++17 -O2 source/assist/tests/building_components.cpp -o source/building-components-test.exe
-          "$ZIG" c++ -target x86-windows-gnu -std=c++17 -O2 source/assist/tests/map_bounds.cpp -o source/map-bounds-test.exe
-          "$ZIG" c++ -target x86-windows-gnu -std=c++17 -O2 source/assist/tests/scene_lighting.cpp -o source/scene-lighting-test.exe
-          "$ZIG" c++ -target x86-windows-gnu -std=c++17 -O2 source/assist/tests/formation.cpp -o source/formation-test.exe
-          "$ZIG" c++ -target x86-windows-gnu -std=c++17 -O2 source/assist/tests/garrison_frame.cpp -o source/garrison-frame-test.exe
-          "$ZIG" c++ -target x86-windows-gnu -std=c++17 -O2 source/assist/tests/radar_boundary.cpp -o source/radar-boundary-test.exe
-          "$ZIG" c++ -target x86-windows-gnu -std=c++17 -O2 source/assist/tests/native_canvas.cpp -o source/native-canvas-test.exe
-          "$ZIG" c++ -target x86-windows-gnu -std=c++17 -O2 source/assist/tests/repair_visuals.cpp -o source/repair-visuals-test.exe
-          "$ZIG" c++ -target x86-windows-gnu -std=c++17 -O2 source/assist/tests/projectile_visuals.cpp -o source/projectile-visuals-test.exe
+          # The fixtures use assert for checks and some read/setup calls.
+          # Zig's optimized Windows compile must not omit those expressions.
+          printf '#include <cassert>\n#ifdef NDEBUG\n#error Windows numerical assertions are disabled\n#endif\n' |
+            "$ZIG" c++ -target x86-windows-gnu -std=c++17 -O2 -UNDEBUG -x c++ -fsyntax-only -
+          "$ZIG" c++ -target x86-windows-gnu -std=c++17 -O2 -UNDEBUG source/assist/tests/voxel_lighting.cpp -o source/voxel-lighting-test.exe
+          "$ZIG" c++ -target x86-windows-gnu -std=c++17 -O2 -UNDEBUG source/assist/tests/voxel_preview.cpp -o source/voxel-preview-test.exe
+          "$ZIG" c++ -target x86-windows-gnu -std=c++17 -O2 -UNDEBUG source/assist/tests/building_components.cpp -o source/building-components-test.exe
+          "$ZIG" c++ -target x86-windows-gnu -std=c++17 -O2 -UNDEBUG source/assist/tests/map_bounds.cpp -o source/map-bounds-test.exe
+          "$ZIG" c++ -target x86-windows-gnu -std=c++17 -O2 -UNDEBUG source/assist/tests/scene_lighting.cpp -o source/scene-lighting-test.exe
+          "$ZIG" c++ -target x86-windows-gnu -std=c++17 -O2 -UNDEBUG source/assist/tests/formation.cpp -o source/formation-test.exe
+          "$ZIG" c++ -target x86-windows-gnu -std=c++17 -O2 -UNDEBUG source/assist/tests/garrison_frame.cpp -o source/garrison-frame-test.exe
+          "$ZIG" c++ -target x86-windows-gnu -std=c++17 -O2 -UNDEBUG source/assist/tests/radar_boundary.cpp -o source/radar-boundary-test.exe
+          "$ZIG" c++ -target x86-windows-gnu -std=c++17 -O2 -UNDEBUG source/assist/tests/native_canvas.cpp -o source/native-canvas-test.exe
+          "$ZIG" c++ -target x86-windows-gnu -std=c++17 -O2 -UNDEBUG source/assist/tests/repair_visuals.cpp -o source/repair-visuals-test.exe
+          "$ZIG" c++ -target x86-windows-gnu -std=c++17 -O2 -UNDEBUG source/assist/tests/projectile_visuals.cpp -o source/projectile-visuals-test.exe
       - name: Validate final PE files and bridge ABI
         run: python3 source/tools/verify_windows_outputs.py
       - uses: actions/upload-artifact@v4
