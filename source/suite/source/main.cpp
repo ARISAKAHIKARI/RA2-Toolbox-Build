@@ -30,7 +30,7 @@ static std::atomic<HWND> displayPanes[3]{};
 static std::atomic<unsigned> commonRefreshRate{0};
 static std::mutex displayMutex;static suite::DisplayState displayState;static bool displayReady=false;
 static const wchar_t* names[]={L"画面设置",L"单位统计",L"战术控制",L"战场信息",L"实验功能"};
-static const wchar_t* moduleNames[]={L"画面刷新",L"游戏内单位统计",L"游戏内战术与信息"};
+static const wchar_t* moduleNames[]={L"画面刷新",L"游戏内单位统计",L"战术／游戏内信息"};
 static const wchar_t* configKeys[]={L"Cursor",L"Units",L"Assist"};
 namespace suite {
  HWND parent(){return frame;}

@@ -9,6 +9,7 @@ static HWND dragWindow=nullptr;static HMONITOR dragMonitor=nullptr;static RECT d
 static POINT dragCursor{},dragGroup{},dragCurrent{},dragOffsets[3]{};
 static int dragWidth=0,dragHeight=0,dragCount=0;
 static bool dragging=false;
+static bool paintingVerified=false;
 static void cancelDrag(){
  if(!dragging)return;HWND held=dragWindow;dragging=false;dragWindow=nullptr;dragMonitor=nullptr;
  if(GetCapture()==held)ReleaseCapture();
@@ -110,7 +111,11 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
  if(msg==WM_LBUTTONUP||msg==WM_RBUTTONUP||msg==WM_LBUTTONDBLCLK||msg==WM_RBUTTONDBLCLK||msg==WM_MOUSEMOVE)return 0;
  if(msg==WM_ERASEBKGND)return 1;
  if(msg==WM_PAINT){PAINTSTRUCT ps{};HDC dc=BeginPaint(w,&ps);RECT r{};GetClientRect(w,&r);
-  if((second?secondaryUsable():usable())&&watchhost::views[slot].shown){auto&buffer=second?secondaryBuffers[slot]:buffers[slot];HDC mem=buffer.acquire(dc,r.right,r.bottom);if(mem){
+  // The owner already read and verified the tactical display immediately
+  // before a synchronous UpdateWindow. An unrelated WM_PAINT still checks
+  // the live display gate before it can draw a stale game scene.
+  bool eligible=paintingVerified?(second?extra.watchSecondary:enabled&&extra.watchEnabled&&foregroundGame()&&!snap.chat):(second?secondaryUsable():usable());
+  if(eligible&&watchhost::views[slot].shown){auto&buffer=second?secondaryBuffers[slot]:buffers[slot];HDC mem=buffer.acquire(dc,r.right,r.bottom);if(mem){
     {Graphics g(mem);g.ScaleTransform(float(r.right)/watchhost::Width,float(r.bottom)/watchhost::Height);watchhost::drawView(g,watchhost::views[slot]);}buffer.present(dc);
   }}EndPaint(w,&ps);return 0;
  }return DefWindowProcW(w,msg,wp,lp);
@@ -124,14 +129,14 @@ static void placePanel(int slot,bool second,int x,int y,int w,int h){
  RECT old{};GetWindowRect(window,&old);bool changed=old.left!=x||old.top!=y||old.right-old.left!=w||old.bottom-old.top!=h;
  bool repair=keep.due(GetTickCount(),true,{uintptr_t(game),pid,displayMatch(),w,h},IsWindowVisible(window)!=FALSE);
  if(changed||repair)keep.submitted(overlaystack::place(window,overlaystack::Layer::Watch,x,y,w,h,SWP_NOACTIVATE|SWP_SHOWWINDOW)!=FALSE);
- if(changed||repair||revision!=view.revision){revision=view.revision;InvalidateRect(window,nullptr,FALSE);UpdateWindow(window);}
+ if(changed||repair||revision!=view.revision){revision=view.revision;InvalidateRect(window,nullptr,FALSE);paintingVerified=true;UpdateWindow(window);paintingVerified=false;}
 }
-static void update(POINT origin,const RECT&client){
- if(usable()&&client.right>0&&client.bottom>0&&snap.width>0&&snap.height>0){
+static void update(POINT origin,const RECT&client,bool verifiedBattlefield){
+ if(verifiedBattlefield&&enabled&&extra.watchEnabled&&foregroundGame()&&!snap.chat&&client.right>0&&client.bottom>0&&snap.width>0&&snap.height>0){
   for(int i=0;i<3;++i){auto b=watchhost::views[i].box;placePanel(i,false,origin.x+int(int64_t(b.x)*client.right/snap.width),origin.y+int(int64_t(b.y)*client.bottom/snap.height),int(int64_t(b.w)*client.right/snap.width),int(int64_t(b.h)*client.bottom/snap.height));}
  }else hidePrimary();
  auto target=extra.watchSecondary?secondaryMonitor.get(game,ui,GetTickCount()):secondarydisplay::Target{};
- if(!secondaryUsable()||!target.available()){hideSecondary();return;}
+ if(!verifiedBattlefield||!extra.watchSecondary||!target.available()){hideSecondary();return;}
  if(dragging){
   int count=0;for(int i=0;i<3;++i)if(watchhost::views[i].shown){++count;if(!secondaryWindows[i]||!IsWindowVisible(secondaryWindows[i])){count=-10;break;}}
   if(count==dragCount&&target.monitor==dragMonitor&&target.work.left==dragWork.left&&target.work.top==dragWork.top&&

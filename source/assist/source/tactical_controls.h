@@ -71,7 +71,7 @@ note(L"启用超级武器后，使用游戏内目标光标选择位置。",26);
 
 heading(2,902,L"自动化与目标设置",L"调整自动任务的频率、范围及参与单位。操作说明会显示在底部状态栏。");
 toggle(799,L"生产预定",extra.constructionQueue);next();
-note(L"在建造侧栏预定后续生产，队列提醒与地图信息在“战场信息”设置。",44);
+note(L"建筑/防御各预定 5 项，步兵/载具各 30 项；可建造单位接连进入原生队列。",44);
 number(817,L"建筑预定面板缩放 / %",constructionScalePercent,L"50–250 · 默认 100");
 repairEdit=number(312,L"自动维修间隔 / 毫秒",repairMs,L"500–30000");
 toggle(780,L"允许维修通常不可维修的建筑",repairUnrepairable);next();
@@ -171,7 +171,7 @@ label(L"副屏小地图位置 X / Y",20,260);edit(9166,std::to_wstring(minimapSe
 number(9168,L"副屏小地图宽度 / 像素",minimapSecondaryWidth,L"160–4096 · 默认 320");
 note(L"位置 0 为左／上，10000 为右／下；副屏小地图顶部可拖动，左上角或右下角可等比调整大小。副屏设置与游戏内小地图分开保存。",60);
 label(L"小地图画面",20,260);choices(combo(9065),{L"示意",L"实景"},minimapMode);next();
-number(831,L"小地图缩放 / %",minimapScale,L"10–200 · 默认 200");
+number(831,L"小地图缩放 / %",minimapScale,L"10–200 · 默认 25");
 note(L"实景模式 100% 对应地图原生像素大小；显示区域不足时等比适配。",36);
 label(L"战术小地图位置",20,260);choices(combo(850),{L"原雷达左侧",L"画面左上",L"画面左下",L"自定义坐标"},minimapPosition);next();
 label(L"自定义位置 X / Y",20,260);edit(851,std::to_wstring(minimapX),290,100,true);edit(852,std::to_wstring(minimapY),405,100,true);next();

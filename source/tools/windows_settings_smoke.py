@@ -168,6 +168,7 @@ def scenario(folder):
             assert h and send(h,0x402)==expected,(id,send(h,0x402) if h else None,expected)
         production=child(root,799,'RA2Assist010');dodge=child(root,885,'RA2Assist010')
         assert production and dodge
+        assert control_text(child(root,831,'RA2Assist010'))=='25' and ini(folder,'Display','MinimapScale')==25,'fresh minimap scale default'
         for navigation,title,production_shown,dodge_shown in [
                 (202,'战术控制',True,False),(203,'战场信息',False,False),
                 (204,'实验功能',False,True),(202,'战术控制',True,False)]:
@@ -254,6 +255,7 @@ def scenario(folder):
         mode=child(root,9065,'RA2Assist010');send(mode,0x14E,0);send(u.GetParent(mode),0x111,9065|(1<<16),mode)
         # Switch off and exit immediately, exercising pending autosave at shutdown.
         set_control_text(manual,'240')
+        set_control_text(child(root,831,'RA2Assist010'),'25')
         for id,section,key,initial,_ in assist_layout:set_control_text(child(root,id,'RA2Assist010'),str(initial))
         for id,key,initial,_ in stats_layout:set_control_text(child(root,id,'RA2UnitMonitorUI'),str(initial))
         for id in [604]+[id for id in keys if id!=604]:send(child(root,id),0xF5)
@@ -275,6 +277,7 @@ def scenario(folder):
         assert ini(folder,'Display','AdaptiveFPS')==0 and ini(folder,'Display','FPS')==240
         until(lambda:information_rate(root)==240,'manual information rate restored after restart')
         assert send(child(root,9065,'RA2Assist010'),0x147)==0 and ini(folder,'Display','MinimapMode')==0
+        assert ini(folder,'Display','MinimapScale')==25 and control_text(child(root,831,'RA2Assist010'))=='25','minimap scale reset lost on restart'
         assert ini(folder,'Cooperative','AdvancedEnter')==1,'first-use defaults overwrote existing settings'
         # The shipped statistics renderer must finish on its worker and publish a
         # real layered surface. Keep it active through shutdown to cover ownership.
@@ -299,14 +302,14 @@ if __name__=='__main__':
         folder=pathlib.Path(t)
         for name in ('RA2Toolbox.exe','GameRuntime.dll'):shutil.copy2(source/name,folder/name)
         scenario(folder)
-    result={'status':'PASS','version':'1.0.38-pre.11','runs':3,'display_switches':13,
+    result={'status':'PASS','version':'1.0.38-pre.12','runs':3,'display_switches':13,
             'checks':['all fresh UI switches off','user hotkeys','cross-pane edits',
                       'real Win32 INI writes','restart on','restart off','independent secondary map/statistics/watch toggles and restart',
                       'real pane navigation for production and experimental controls',
                       'independent secondary placement and map width persistence across restarts',
                       'information adaptive rate matches native monitor','adaptive mode retains manual Hz and disables its editor',
                       'adaptive on/off persistence and manual target restoration',
-                      'minimap diagram/scene mode and alignment restart','10 percent minimap save/restart and control readback',
+                      'minimap diagram/scene mode and alignment restart','25 percent fresh default and 10 percent minimap save/restart',
                       'asynchronous statistics demo surface and shutdown','immediate exit','existing settings preserved'],
             'game_tested':False,'multiplayer_tested':False}
     print(json.dumps(result,ensure_ascii=False))

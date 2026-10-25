@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <cstring>
 #include <unordered_map>
+#include <unordered_set>
 #include <array>
 #include "process_connection.h"
 namespace external {
@@ -23,6 +24,9 @@ struct ReaderDiagnostics {
 class ProcessReader : public ReaderDiagnostics {
  std::shared_ptr<const ProcessConnection> connection_;
  HANDLE query_{};std::unordered_map<uint32_t,std::array<unsigned char,4096>> pages_;
+ // A partly unreadable page cannot fill the cache. Retry its fields directly
+ // for this sample instead of repeating the failing 4 KiB read for each one.
+ std::unordered_set<uint32_t> failedPages_;
 public:
  ProcessReader()=default;ProcessReader(const ProcessReader&)=delete;
  ProcessReader& operator=(const ProcessReader&)=delete;
@@ -42,7 +46,7 @@ public:
  uint64_t generation()const{return connection_?connection_->generation:0;}
  std::shared_ptr<const ProcessConnection> connectionIdentity()const{return connection_;}
  bool imagePath(wchar_t*out,DWORD*size)const{return connection_&&QueryFullProcessImageNameW(connection_->handle,0,out,size);}
- void begin(){pages_.clear();reads=errors=pageHits=pageMisses=pageFallbacks=0;lastReadError=0;lastFailedAddress=0;lastFailedSize=0;lastBytesRead=0;lastRegionState=lastRegionProtect=0;lastRegionQueried=false;lastRegionQueryError=0;}
+ void begin(){pages_.clear();failedPages_.clear();reads=errors=pageHits=pageMisses=pageFallbacks=0;lastReadError=0;lastFailedAddress=0;lastFailedSize=0;lastBytesRead=0;lastRegionState=lastRegionProtect=0;lastRegionQueried=false;lastRegionQueryError=0;}
  bool read(uint32_t address,void*out,size_t size){
   if(!canRead()||!out||address<0x10000||!size||size>4*1024*1024||uint64_t(address)+size>0x80000000ull){
    ++errors;lastReadError=!valid()?ERROR_INVALID_HANDLE:!canRead()?ERROR_ACCESS_DENIED:ERROR_INVALID_PARAMETER;
@@ -52,10 +56,11 @@ public:
   if(size<=4096&&(address&4095)+size<=4096){
    auto it=pages_.find(page);if(it!=pages_.end()){++pageHits;std::memcpy(out,it->second.data()+(address&4095),size);return true;}
    ++pageMisses;
-   if(pages_.size()<8192){std::array<unsigned char,4096> bytes;SIZE_T got=0;++reads;
+   if(pages_.size()<8192&&!failedPages_.count(page)){std::array<unsigned char,4096> bytes;SIZE_T got=0;++reads;
     if(ReadProcessMemory(connection_->handle,(void*)(uintptr_t)page,bytes.data(),bytes.size(),&got)&&got==bytes.size()){
      auto result=pages_.emplace(page,std::move(bytes));std::memcpy(out,result.first->second.data()+(address&4095),size);return true;
     }
+    if(failedPages_.size()<8192)failedPages_.insert(page);
    }
   }
   if(size<=4096&&(address&4095)+size<=4096)++pageFallbacks;

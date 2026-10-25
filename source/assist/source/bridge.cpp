@@ -813,7 +813,11 @@ static void command(uint32_t house,DWORD now){uint32_t req=sh->request;if(req==s
   else {const auto&t=snap.types[arg];int tab=typeTab(arg);uint32_t offset=t.kind==3?0x53AC:t.kind==16?0x53B0:t.kind==40?(t.naval?0x53B8:0x53B4):t.kind==7?(tab==1?0x53CC:0x53BC):0;
    uint32_t factory=offset?get<uint32_t>(house+offset):0;
    if(!offset||tab<0||tab>3||!hasCameo(t.kind,t.index)||call<int>(0x4F7870,house,(void*)(uintptr_t)typePointers[arg],false,true)<=0)result=-9;
-   else if(factory>=0x10000&&(get<uint32_t>(factory+0x6C)!=house||get<uint32_t>(factory+0x58)||get<int>(factory+0x50)>0))result=-9;
+   else if(factory>=0x10000&&(get<uint32_t>(factory+0x6C)!=house||
+      (t.kind==7&&(get<uint32_t>(factory+0x58)||get<int>(factory+0x50)>0))))result=-9;
+   // FactoryClass +0x50 contains QueuedObjects.Count and +0x58 the active
+   // Object. Units may join the native queue while a product is in progress;
+   // buildings still wait for an empty factory and placement.
    else if(!techFactory(typePointers[arg],house))result=-9;
    else if(nativeProduceEvent(house,t,true)){n=1;if(t.kind==7)watchReservedSidebar(house,t.index,tab,0,now);}else result=-6;
   }

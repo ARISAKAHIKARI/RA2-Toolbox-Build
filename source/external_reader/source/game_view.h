@@ -13,10 +13,16 @@ public:
  explicit constexpr GameView(Read r):read_(r){}
  template<class T>T get(uint32_t a,T fallback={})const{T v{};return a>=0x10000&&read_(a,&v,sizeof v)?v:fallback;}
  bool bytes(uint32_t a,void*p,size_t n)const{return a>=0x10000&&read_(a,p,n);}
+ bool vecChecked(uint32_t a,std::vector<uint32_t>&out,int maximum=16384)const{
+  out.clear();uint32_t p=0;int cap=-1,n=-1;
+  if(!bytes(a+4,&p,sizeof p)||!bytes(a+8,&cap,sizeof cap)||!bytes(a+16,&n,sizeof n)||
+     n<0||n>maximum||cap<n||cap>65536||(n&&p<0x10000))return false;
+  if(!n)return true;
+  std::vector<uint32_t> values(size_t(n),0);if(!bytes(p,values.data(),values.size()*4))return false;
+  out=std::move(values);return true;
+ }
  std::vector<uint32_t> vec(uint32_t a,int maximum=16384)const{
-  uint32_t p=get<uint32_t>(a+4);int cap=get<int>(a+8,-1),n=get<int>(a+16,-1);
-  if(n<0||n>maximum||cap<n||cap>65536||(n&&p<0x10000))return {};
-  std::vector<uint32_t> out(size_t(n),0);if(n&&!bytes(p,out.data(),size_t(n)*4))out.clear();return out;
+  std::vector<uint32_t> out;vecChecked(a,out,maximum);return out;
  }
  int kind(uint32_t p)const{uint32_t v=get<uint32_t>(p);return v==0x7F5C70?2:v==0x7EB058?1:v==0x7E3EBC?3:v==0x7E22A4?0:-1;}
  uint32_t type(uint32_t p,int k)const{return k>=0?get<uint32_t>(p+(k==3?0x520:k==1?0x6C0:0x6C4)):0;}

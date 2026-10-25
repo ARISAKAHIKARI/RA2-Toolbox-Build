@@ -26,7 +26,7 @@ struct Marker {double u=0,v=0;uint32_t color=0;bool building=false;uint32_t obje
 struct CellArt {uint32_t cell=0,type=0,overlayType=0,overlaySourceType=0;int16_t overlay=-1;uint8_t sub=0;int8_t level=0;uint8_t overlayFrame=0;};
 struct Scene {int width=0,height=0;std::vector<uint32_t> pixels;};
 struct Terrain {Geometry geo;std::vector<uint32_t> colors;std::vector<CellArt> art;bool reveal=false;};
-struct Frame {std::shared_ptr<const Terrain> terrain;std::vector<Marker> markers;std::shared_ptr<const Scene> scene,map;uint32_t tick=0;int frame=-1;std::vector<repairvisuals::Sprite> repairs;};
+struct Frame {std::shared_ptr<const Terrain> terrain;std::vector<Marker> markers;std::shared_ptr<const Scene> scene,map;uint32_t tick=0;int frame=-1;bool markerScanValid=false;std::vector<repairvisuals::Sprite> repairs;};
 inline uint32_t terrainColor(int land,int level,bool fog){
  static constexpr uint32_t colors[]={0x66794b,0x85836c,0x285e86,0x70756d,0x999684,0xb7a843,0xb4a47c,0x77734d,0xb4cbd0,0x77766b,0x55584f,0x58703d};
  if(land<0||land>=12)return 0x44483a;uint32_t c=colors[land];int shade=std::clamp(level,0,14)*2;
@@ -67,7 +67,9 @@ public:
  }
  Frame snapshot(uint32_t now)const{
   GameView<Read> live(read_);Frame out;out.terrain=terrain_;out.tick=now;out.frame=lastFrame_;if(!terrain_)return out;
-  for(uint32_t p:view_.vec(0xA8EC78)){int kind=view_.kind(p);if(!view_.live(p)||(kind!=3&&get<uint32_t>(p+0x11C))||get<int>(p+0x220)!=0)continue;
+  std::vector<uint32_t> bodies;out.markerScanValid=view_.vecChecked(0xA8EC78,bodies);
+  if(!out.markerScanValid)return out;
+  for(uint32_t p:bodies){int kind=view_.kind(p);if(!view_.live(p)||(kind!=3&&get<uint32_t>(p+0x11C))||get<int>(p+0x220)!=0)continue;
    int x=get<int>(p+0x9C,-1),y=get<int>(p+0xA0,-1);if(x<0||y<0||x>=512*256||y>=512*256)continue;int cx=x/256,cy=y/256;
    if(!geo_.legal(cx,cy)||!terrain_->colors[cy*512+cx])continue;uint32_t owner=get<uint32_t>(p+0x21C);uint8_t rgb[3]{};if(owner<0x10000||!read_(owner+22265,rgb,3))continue;
    Marker m;geo_.project(double(x)/256,double(y)/256,m.u,m.v);if(m.u<0||m.u>=1||m.v<0||m.v>=1)continue;

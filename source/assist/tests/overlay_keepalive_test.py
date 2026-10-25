@@ -88,14 +88,14 @@ prefix = r'''
 #include "../source/radar_layout.h"
 static bool higher(HWND a,HWND b){for(HWND w:GetTopWindow(nullptr)?order:std::vector<HWND>{}){if(w==a)return true;if(w==b)return false;}return false;}
 static HWND game,ui;static DWORD pid=2;static bool focused=true,enabled=true,minimapEnabled=true,minimapSecondary=false,secondAvailable=false,battlefieldVisible=true;
-static int minimapMode=0,minimapScale=200,minimapPosition=1,minimapX=0,minimapY=0,minimapAlignX=0,minimapAlignY=0,fps=60;
+static int minimapMode=0,minimapScale=25,minimapPosition=1,minimapX=0,minimapY=0,minimapAlignX=0,minimapAlignY=0,fps=60;
 static int minimapSecondaryX=10000,minimapSecondaryY=10000,minimapSecondaryWidth=320;
 static int effectiveInfoFPS=144;
 static int informationFPS(){return effectiveInfoFPS;}
 static struct{int width=800,height=600,renderStatus=1,chat=0,cameraX=0,cameraY=0;uint32_t match=1;}snap;
 static struct{uint32_t renderReveal=0,mapStrategy=0;}extra;static radarlayout::Box aircraftButtonBox;
 static bool foregroundGame(){return focused;}static uint32_t commandEpoch=1;static uint32_t commandMatch(){return commandEpoch;}static uint32_t displayMatch(){return snap.match;}
-static struct{bool readFresh(uint32_t,void*,size_t){return true;}}externalReader;
+static struct{int reads=0;bool readFresh(uint32_t,void*,size_t){++reads;return true;}}externalReader;
 using HMONITOR=void*;static RECT secondWork{-1920,-100,0,940};
 namespace secondarydisplay {struct Target{HMONITOR monitor=nullptr;RECT work{};bool available()const{return monitor&&work.right>work.left&&work.bottom>work.top;}};struct Monitor{void invalidate(){}Target get(HWND,HWND,DWORD){return secondAvailable?Target{reinterpret_cast<void*>(2),secondWork}:Target{};}};}
 namespace external{namespace display{struct State{bool visible()const{return battlefieldVisible;}};template<class F>State inspect(F){return {};}}namespace mapbounds{struct NativeViewport{double width=0,height=0;};}namespace radar{
@@ -146,34 +146,34 @@ static void stackCase(DWORD statsThread){
 }
 static void minimapCase(){
  game=makeWindow(2);windows[game]={true,2,{0,0,800,600}};foreground=game;clockValue+=2000;
- POINT origin{};RECT client{0,0,800,600};minimap::update(origin,client);HWND window=minimap::window;assert(IsWindowVisible(window));
- int paints=windows[window].paints;clockValue+=25;minimap::update(origin,client);
+ POINT origin{};RECT client{0,0,800,600};minimap::update(origin,client,battlefieldVisible);HWND window=minimap::window;assert(IsWindowVisible(window)&&externalReader.reads==0&&"minimap must reuse the owner display gate");
+ int paints=windows[window].paints;clockValue+=25;minimap::update(origin,client,battlefieldVisible);
  assert(windows[window].paints==paints&&"an unchanged map/camera should not repaint");
- ++snap.cameraX;minimap::update(origin,client);
+ ++snap.cameraX;minimap::update(origin,client,battlefieldVisible);
  assert(windows[window].paints==paints+1&&"camera motion repaints once");
  assert(minimap::worker.rate==144&&fps==60);effectiveInfoFPS=240;
- int placed=windows[window].places;clockValue+=1000;minimap::update(origin,client);assert(minimap::worker.rate==240);
+ int placed=windows[window].places;clockValue+=1000;minimap::update(origin,client,battlefieldVisible);assert(minimap::worker.rate==240);
  assert(windows[window].places>placed&&"unchanged visible minimap must periodically repair its z-order");
- SetWindowPos(game,HWND_TOPMOST,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE);clockValue+=1000;minimap::update(origin,client);assert(higher(window,game));
+ SetWindowPos(game,HWND_TOPMOST,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE);clockValue+=1000;minimap::update(origin,client,battlefieldVisible);assert(higher(window,game));
  for(int phase=0;phase<4;++phase){
   focused=phase!=0;minimapEnabled=phase!=1;snap.chat=phase==2;snap.renderStatus=phase==3?0:1;
-  minimap::update(origin,client);assert(!IsWindowVisible(window)&&minimap::worker.paused);placed=windows[window].places;
-  clockValue+=3000;minimap::update(origin,client);assert(!IsWindowVisible(window)&&windows[window].places==placed);
-  focused=minimapEnabled=true;snap.chat=0;snap.renderStatus=1;minimap::update(origin,client);assert(IsWindowVisible(window)&&higher(window,game));
+  minimap::update(origin,client,battlefieldVisible);assert(!IsWindowVisible(window)&&minimap::worker.paused);placed=windows[window].places;
+  clockValue+=3000;minimap::update(origin,client,battlefieldVisible);assert(!IsWindowVisible(window)&&windows[window].places==placed);
+  focused=minimapEnabled=true;snap.chat=0;snap.renderStatus=1;minimap::update(origin,client,battlefieldVisible);assert(IsWindowVisible(window)&&higher(window,game));
  }
  // A single published frame drives both windows. The secondary copy remains
  // eligible when the game client is unavailable, foreground lost, chat shown,
  // primary hidden, or the assist module paused. No screen means no worker.
  minimapSecondary=secondAvailable=true;minimapEnabled=enabled=focused=false;snap.chat=1;
- auto sharedFrame=minimap::worker.latest;minimap::update({},{});assert(!IsWindowVisible(window)&&IsWindowVisible(minimap::secondaryWindow)&&!minimap::worker.paused&&minimap::frame==sharedFrame);
+ auto sharedFrame=minimap::worker.latest;minimap::update({},{},battlefieldVisible);assert(!IsWindowVisible(window)&&IsWindowVisible(minimap::secondaryWindow)&&!minimap::worker.paused&&minimap::frame==sharedFrame);
  auto second=minimap::secondaryWindow;auto rectangle=windows[second].rect;assert(rectangle.left>=secondWork.left&&rectangle.right<=secondWork.right&&rectangle.top>=secondWork.top&&rectangle.bottom<=secondWork.bottom);
- paints=windows[second].paints;clockValue+=25;minimap::update({},{});
+ paints=windows[second].paints;clockValue+=25;minimap::update({},{},battlefieldVisible);
  assert(windows[second].paints==paints&&"unchanged secondary map should not repaint");
- ++snap.cameraY;minimap::update({},{});assert(windows[second].paints==paints+1);
- ++commandEpoch;minimap::update({},{});assert(minimap::frame==sharedFrame);
- secondAvailable=false;minimap::update({},{});assert(!IsWindowVisible(second)&&minimap::worker.paused);
- secondAvailable=true;minimap::update({},{});assert(IsWindowVisible(second)&&!minimap::worker.paused);
- battlefieldVisible=false;minimap::update({},{});assert(!IsWindowVisible(second)&&minimap::worker.paused);battlefieldVisible=true;
+ ++snap.cameraY;minimap::update({},{},battlefieldVisible);assert(windows[second].paints==paints+1);
+ ++commandEpoch;minimap::update({},{},battlefieldVisible);assert(minimap::frame==sharedFrame);
+ secondAvailable=false;minimap::update({},{},battlefieldVisible);assert(!IsWindowVisible(second)&&minimap::worker.paused);
+ secondAvailable=true;minimap::update({},{},battlefieldVisible);assert(IsWindowVisible(second)&&!minimap::worker.paused);
+ battlefieldVisible=false;minimap::update({},{},battlefieldVisible);assert(!IsWindowVisible(second)&&minimap::worker.paused);battlefieldVisible=true;
  std::cout<<"PASS production minimap lifecycle: unchanged-geometry keepalive, game promotion, focus/disable/chat/non-battlefield hiding and automatic eligible return without Tab\n";
 }
 int main(){@CASES@}
@@ -187,7 +187,7 @@ code = code.replace('@MINIMAP_PRIMARY@', function(minimap, 'static void hidePrim
 code = code.replace('@MINIMAP_SECONDARY@', function(minimap, 'static void hideSecondary()'))
 code = code.replace('@MINIMAP_PLACE@', function(minimap, 'static void placePanel(bool second,int x,int y,int width,int height)'))
 code = code.replace('@MINIMAP_HIDE@', function(minimap, 'static void hide()'))
-code = code.replace('@MINIMAP_UPDATE@', function(minimap, 'static void update(POINT origin,const RECT&client)'))
+code = code.replace('@MINIMAP_UPDATE@', function(minimap, 'static void update(POINT origin,const RECT&client,bool verifiedBattlefield)'))
 cases = {'all': 'stackCase(1);stackCase(2);minimapCase();', 'stack': 'stackCase(1);stackCase(2);', 'minimap': 'minimapCase();'}[args.only]
 with tempfile.TemporaryDirectory() as tmp:
     temp = Path(tmp)

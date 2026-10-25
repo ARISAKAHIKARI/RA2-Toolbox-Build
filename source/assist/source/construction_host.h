@@ -19,6 +19,33 @@ static int typeIndex(int index){return index&65535;}
 static uint32_t typeArray(int index){switch(absKind(index)){case 7:return 0xA83C68;case 16:return 0xA8E348;case 40:return 0xA83CE0;case 3:return 0xA8B218;default:return 0;}}
 static uint32_t typePointer(int index){uint32_t a=typeArray(index),v=get<uint32_t>(a+4);int count=get<int>(a+16,-1),i=typeIndex(index);return a&&v>=0x10000&&count>0&&count<=4096&&i<count?get<uint32_t>(v+i*4):0;}
 static uint32_t factoryOffset(int index,int tab){int kind=absKind(index);return kind==3?0x53AC:kind==16?0x53B0:kind==40?(get<uint8_t>(typePointer(index)+0xCCE)?0x53B8:0x53B4):(tab?0x53CC:0x53BC);}
+static constexpr uint32_t unitOffsets[]={0x53B0,0x53B4,0x53B8,0x53AC};
+struct UnitQueueBudget {uint32_t factory=0;int observed=0,pending=0,lastIssuedFrame=-1;};
+static UnitQueueBudget unitBudgets[4];static uint32_t unitBudgetMatch=0,unitBudgetHouse=0;
+static void resetUnitBudgets(){for(auto&lane:unitBudgets)lane={};unitBudgetMatch=unitBudgetHouse=0;}
+static int unitLane(int index){uint32_t offset=factoryOffset(index,3);for(int i=0;i<4;++i)if(unitOffsets[i]==offset)return i;return -1;}
+static bool unitRoom(int lane){
+ if(lane<0||lane>=4)return false;
+ if(unitBudgetMatch!=commandMatch()||unitBudgetHouse!=house){resetUnitBudgets();unitBudgetMatch=commandMatch();unitBudgetHouse=house;}
+ uint32_t f=0;if(!externalReader.readFresh(house+unitOffsets[lane],&f,4))return false;
+ int occupancy=0;
+ if(f){uint32_t owner=0,product=0,after=0;int queued=-1;
+  if(f<0x10000||!externalReader.readFresh(f+0x6C,&owner,4)||owner!=house||
+     !externalReader.readFresh(f+0x50,&queued,4)||queued<0||queued>100000||
+     !externalReader.readFresh(f+0x58,&product,4)||
+     !externalReader.readFresh(house+unitOffsets[lane],&after,4)||after!=f)return false;
+  occupancy=queued+(product?1:0);
+ }
+ auto&budget=unitBudgets[lane];uint32_t previousFactory=budget.factory;bool replaced=previousFactory!=f;
+ if(replaced)budget.factory=f;
+ // ACK means the original event was appended, not that the next engine
+ // frame has already moved it into FactoryClass::QueuedObjects. Hold those
+ // unobserved events against capacity until the native count catches up.
+ if(!replaced||(!previousFactory&&f))budget.pending=std::max(0,budget.pending-std::max(0,occupancy-budget.observed));
+ budget.observed=occupancy;
+ int frame=get<int>(0xA8ED84,-1);
+ return frame>=0&&frame!=budget.lastIssuedFrame&&occupancy+budget.pending<construction::UnitCapacity;
+}
 static uint32_t factory(int tab){return get<uint32_t>(house+(tab?0x53CC:0x53BC));}
 static uint32_t product(int tab){uint32_t f=factory(tab);return f>=0x10000&&get<uint32_t>(f+0x6C)==house?get<uint32_t>(f+0x58):0;}
 static bool nativeCameo(int index,int tab){uint32_t strip=0x87F7E8+0x1544+tab*3988;int n=get<int>(strip+84,-1);if(n<0||n>75)return false;for(int i=0;i<n;++i)if(get<int>(strip+88+i*52)==typeIndex(index)&&get<int>(strip+92+i*52)==absKind(index))return true;return false;}
@@ -33,13 +60,16 @@ static void queueLog(int tab,const wchar_t*reason){const auto&b=books[tab];criti
 static bool placed(uint32_t p){return !get<uint8_t>(p+0x81,1)&&get<uint8_t>(p+0x90)&&get<uint8_t>(p+0x74);}
 static void hide(){publishReservationPolicy({});geometryReady=false;nativeFrame={};nativeAt=0;if(window)ShowWindow(window,SW_HIDE);}
 static void cancel(int tab){auto&b=books[tab];for(int i=0;i<commandQueue.size;)if((commandQueue.slots[i].command==ProduceReserved||commandQueue.slots[i].command==ProduceDeferred)&&commandQueue.slots[i].token==b.token)commandQueue.discard(i);else ++i;b={};}
-static void reset(){for(int tab=0;tab<4;++tab){cancel(tab);current[tab]=currentID[tab]=0;}choices.clear();activeTab=selectedTab=lastNativeTab=-1;refreshed=0;hide();}
+static void reset(){for(int tab=0;tab<4;++tab){cancel(tab);current[tab]=currentID[tab]=0;}resetUnitBudgets();choices.clear();activeTab=selectedTab=lastNativeTab=-1;refreshed=0;hide();}
 static int typeSlot(int index){for(int i=0;i<snap.typeCount;++i)if(snap.types[i].kind==absKind(index)&&snap.types[i].index==typeIndex(index))return i;return -1;}
 static std::wstring nameOf(int index){int slot=typeSlot(index);return slot>=0?std::wstring((const wchar_t*)snap.types[slot].name):L"未知类型";}
 static void result(int status,int count,uint32_t id,uint32_t token){for(int tab=0;tab<4;++tab){auto&b=books[tab];if(b.id!=id||b.token!=token||!token||b.stage!=1)continue;
- if(status>0&&count>0&&tab>=2){b.consume(0,0);if(b.items.empty())cancel(tab);else b.retry=GetTickCount()+100;queueLog(tab,L"accepted-unit-production");}
+ if(status>0&&count>0&&tab>=2){if(b.unitLane>=0&&b.unitLane<4&&unitBudgetMatch==b.match&&unitBudgetHouse==b.house){
+   ++unitBudgets[b.unitLane].pending;unitBudgets[b.unitLane].lastIssuedFrame=get<int>(0xA8ED84,-1);
+  }
+  b.consume(0,0);if(b.items.empty())cancel(tab);else{b.streaming=true;b.retry=GetTickCount();}queueLog(tab,L"accepted-unit-production");}
  else if(status>0&&count>0){b.stage=2;b.sent=GetTickCount();queueLog(tab,L"accepted-awaiting-product");}
- else if(status==-9){b.stage=0;b.retry=GetTickCount()+1000;if(b.attempts==1)queueLog(tab,L"waiting-native-prerequisite-or-factory");}
+ else if(status==-9){b.stage=0;b.streaming=false;b.retry=GetTickCount()+1000;if(b.attempts==1)queueLog(tab,L"waiting-native-prerequisite-or-factory");}
  else if((status==-6||status==-7||status==-3)&&b.attempts<3){b.stage=0;b.retry=GetTickCount()+250;}
  else{queueLog(tab,L"submission-rejected");cancel(tab);notify(L"预定未提交，已取消后续预定；原版生产不受影响。");}break;
 }}
@@ -59,12 +89,17 @@ static void collectChoices(){
  choices.clear();if(activeTab<0||activeTab>3)return;
  auto read=[](uint32_t at,void*out,size_t n){return externalReader.readFresh(at,out,n);};construction::Catalogue<decltype(read)> catalogue(read);
  bool previewReady=loadForecast(catalogue);auto&b=books[activeTab];
- for(int slot=0;slot<snap.typeCount;++slot){const auto&t=snap.types[slot];int index=encode(t.kind,t.index);uint32_t type=typePointer(index);if(type<0x10000)continue;
+ uint32_t strip=0x87F7E8+0x1544+activeTab*3988;int count=get<int>(strip+84,-1),cameos[75*13]{};
+ bool nativeReady=count>=0&&count<=75&&(!count||read(strip+88,cameos,size_t(count)*52))&&get<int>(strip+84,-1)==count;
+ auto nativeHere=[&](int kind,int index){if(!nativeReady)return false;for(int i=0;i<count;++i)if(cameos[i*13]==index&&cameos[i*13+1]==kind)return true;return false;};
+ for(int slot=0;slot<snap.typeCount;++slot){const auto&t=snap.types[slot];
+  if((activeTab<2&&t.kind!=7)||(activeTab==2&&t.kind!=16)||(activeTab==3&&t.kind!=3&&t.kind!=40))continue;
+  int index=encode(t.kind,t.index);uint32_t type=typePointer(index);if(type<0x10000)continue;
   int tab=t.kind==7?(get<int>(type+0xE08,-1)==5?1:0):t.kind==16?2:(t.kind==40||t.kind==3)?3:-1;
-  if(tab!=activeTab)continue;bool native=nativeCameo(index,tab);
+  if(tab!=activeTab)continue;bool native=nativeHere(t.kind,t.index);
   bool queued=std::find(b.items.begin(),b.items.end(),index)!=b.items.end();
   bool future=previewReady&&catalogue.possible(type,t.kind,t.naval!=0)&&!catalogue.possible(type,t.kind,t.naval!=0,false);
-  if(queued||(!native&&future)||(native&&tab<2&&current[tab]&&get<int>(factory(tab)+0x24)==54))choices.push_back({slot,index,tab,type,!native});
+  if(queued||(!native&&future)||(native&&(tab>=2||(current[tab]&&get<int>(factory(tab)+0x24)==54))))choices.push_back({slot,index,tab,type,!native});
  }
 }
 static void resizePanel(){
@@ -97,7 +132,8 @@ static void reserveChoice(Choice c,bool fromNative=false,bool nativeCaptured=fal
  if((p&&(p!=current[activeTab]||identity!=currentID[activeTab]))||get<uint32_t>(0xA83D4C)!=house)return;
  if(!b.items.empty()&&(b.match!=commandMatch()||b.house!=house||(b.source&&p&&b.id!=identity))){cancel(activeTab);return;}
  refreshChoices();bool valid=fromNative&&nativeCameo(c.index,c.tab)&&typeSlot(c.index)==c.slot;for(const auto&choice:choices)if(choice.index==c.index&&choice.type==c.type)valid=true;if(!valid)return;
- if(!b.add(c.index)){notify(L"本类预定已满（5 项）；右键叠放区取消最上层，Shift＋右键清空。");return;}
+ if(!b.add(c.index,activeTab>=2?construction::UnitCapacity:construction::Capacity)){
+  notify(activeTab>=2?L"本类预定已满（30 项）；右键叠放区取消最上层，Shift＋右键清空。":L"本类预定已满（5 项）；右键叠放区取消最上层，Shift＋右键清空。");return;}
  if(b.items.size()==1){b.match=commandMatch();b.house=house;b.source=p;b.id=identity;}
  if(!fromNative||nativeCaptured)requestReservationSound();
  queueLog(activeTab,fromNative?L"reserved-native-click":L"reserved-extra-panel");
@@ -112,7 +148,7 @@ static void removeItem(int tab,int item,bool all=false){
  const size_t before=b.items.size();bool locked=false;if(b.stage){locked=true;for(int i=0;i<commandQueue.size;++i)if((commandQueue.slots[i].command==ProduceReserved||commandQueue.slots[i].command==ProduceDeferred)&&commandQueue.slots[i].token==b.token)locked=false;}
  if(all){if(locked)b.items.resize(1);else cancel(tab);}
  else if(item==0&&locked){notify(L"这一项已进入原版提交，待生产确认后可在原生侧栏取消。");return;}
- else if(item==0&&b.stage){for(int i=0;i<commandQueue.size;)if((commandQueue.slots[i].command==ProduceReserved||commandQueue.slots[i].command==ProduceDeferred)&&commandQueue.slots[i].token==b.token)commandQueue.discard(i);else ++i;b.stage=b.attempts=0;b.token=b.sent=b.retry=0;b.items.erase(b.items.begin());if(b.items.empty())cancel(tab);}
+ else if(item==0&&b.stage){for(int i=0;i<commandQueue.size;)if((commandQueue.slots[i].command==ProduceReserved||commandQueue.slots[i].command==ProduceDeferred)&&commandQueue.slots[i].token==b.token)commandQueue.discard(i);else ++i;b.stage=b.attempts=0;b.unitLane=-1;b.token=b.sent=b.retry=0;b.items.erase(b.items.begin());if(b.items.empty())cancel(tab);}
  else{b.items.erase(b.items.begin()+item);if(b.items.empty())cancel(tab);}
  if(b.items.size()<before)requestReservationSound();
  queueLog(tab,all?L"user-cleared-reservations":L"user-canceled-reservation");refreshChoices();if(window)InvalidateRect(window,nullptr,FALSE);
@@ -188,9 +224,10 @@ static asyncwork::Latest<PaintRequest,Painted> paintWorker([](const PaintRequest
    SetTextColor(dc,tab==activeTab?RGB(220,246,247):RGB(143,162,179));DrawTextW(dc,tabs[tab],-1,&r,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
   }
   const auto&b=request.book;
-  // Paint oldest first so the newest reservation remains on top.
-  for(int i=0;i<int(b.items.size());++i){int y=construction::StackTop+i*construction::StackStep;
-   painter.panelBox(dc,painter.rect(5,y,139,y+48),i==hoverQueue?RGB(35,55,70):RGB(26,40,54),i==hoverQueue?RGB(97,190,199):RGB(53,75,94));
+  // Keep the visible stack at five rows, even when the unit FIFO holds 30.
+  // The latest reservations remain visible and its last row can be canceled.
+  for(int row=0,start=b.visibleStart();row<int(b.items.size())-start;++row){int i=start+row,y=construction::StackTop+row*construction::StackStep;
+   painter.panelBox(dc,painter.rect(5,y,139,y+48),row==hoverQueue?RGB(35,55,70):RGB(26,40,54),row==hoverQueue?RGB(97,190,199):RGB(53,75,94));
    painter.paintIcon(dc,b.items[i],42,y,false);RECT number=painter.rect(10,y+3,34,y+22);SetTextColor(dc,RGB(147,220,224));
    std::wstring label=std::to_wstring(i+1);DrawTextW(dc,label.c_str(),-1,&number,DT_CENTER|DT_SINGLELINE|DT_VCENTER);
    if(i==0&&b.stage)for(int dot=0;dot<3;++dot){RECT r=painter.rect(112+dot*5,y+10,115+dot*5,y+13);HBRUSH h=CreateSolidBrush(RGB(229,186,100));FillRect(dc,&r,h);DeleteObject(h);}
@@ -201,13 +238,18 @@ static asyncwork::Latest<PaintRequest,Painted> paintWorker([](const PaintRequest
    MoveToEx(dc,layout.x(67),layout.y(40),nullptr);LineTo(dc,layout.x(77),layout.y(40));
    MoveToEx(dc,layout.x(72),layout.y(35),nullptr);LineTo(dc,layout.x(72),layout.y(45));SelectObject(dc,old);DeleteObject(plus);
   }
-  for(int i=0;i<construction::Capacity;++i){RECT dot=painter.rect(55+i*7,layout.stackBottom()+3,59+i*7,layout.stackBottom()+5);HBRUSH h=CreateSolidBrush(i<int(b.items.size())?RGB(105,196,197):RGB(47,65,82));FillRect(dc,&dot,h);DeleteObject(h);}
+  if(activeTab>=2&& !b.items.empty()){
+   int row=std::min(int(b.items.size()),construction::Capacity)-1,y=construction::StackTop+row*construction::StackStep;
+   RECT counter=painter.rect(104,y+28,138,y+46);SetTextColor(dc,b.stage?RGB(229,186,100):RGB(147,220,224));
+   std::wstring label=std::to_wstring(b.items.size())+L"/30";DrawTextW(dc,label.c_str(),-1,&counter,DT_CENTER|DT_SINGLELINE|DT_VCENTER);
+  }else for(int i=0;i<construction::Capacity;++i){RECT dot=painter.rect(55+i*7,layout.stackBottom()+3,59+i*7,layout.stackBottom()+5);HBRUSH h=CreateSolidBrush(i<int(b.items.size())?RGB(105,196,197):RGB(47,65,82));FillRect(dc,&dot,h);DeleteObject(h);}
   for(int n=scroll;n<int(choices.size())&&n<scroll+layout.rows*2;++n){const auto&c=choices[n];auto found=request.types.find(c.index);if(found==request.types.end())continue;
    const auto&t=found->second;int x=(n-scroll)%2*72+6,y=(n-scroll)/2*66+layout.headerHeight();
    painter.panelBox(dc,painter.rect(x-3,y-1,x+63,y+65),n==hoverChoice?RGB(36,56,72):RGB(23,36,49),n==hoverChoice?RGB(109,200,205):RGB(43,62,80));
    painter.paintIcon(dc,c.index,x,y,c.future);
    RECT name=painter.rect(x-3,y+48,x+63,y+64);SetTextColor(dc,c.future?RGB(131,146,157):RGB(217,229,237));DrawTextW(dc,(const wchar_t*)t.name,-1,&name,DT_CENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
-   std::wstring numbers;for(int i=0;i<int(b.items.size());++i)if(b.items[i]==c.index){if(!numbers.empty())numbers+=L" ";numbers+=std::to_wstring(i+1);}
+   std::wstring numbers;int occurrences=0;for(int i=0;i<int(b.items.size());++i)if(b.items[i]==c.index){++occurrences;if(activeTab<2){if(!numbers.empty())numbers+=L" ";numbers+=std::to_wstring(i+1);}}
+   if(activeTab>=2&&occurrences)numbers=L"×"+std::to_wstring(occurrences);
    if(!numbers.empty()){RECT badge=painter.rect(x,y+30,x+60,y+48);HBRUSH tag=CreateSolidBrush(RGB(29,89,99));FillRect(dc,&badge,tag);DeleteObject(tag);SetTextColor(dc,RGB(208,247,240));DrawTextW(dc,numbers.c_str(),-1,&badge,DT_CENTER|DT_VCENTER|DT_SINGLELINE);}
   }SelectObject(dc,previous);GdiFlush();
  memcpy(out->pixels.data(),bits,out->pixels.size()*4);SelectObject(dc,old);DeleteObject(font);DeleteObject(bitmap);DeleteDC(dc);return out;
@@ -233,7 +275,8 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
   PaintRequest request{pid,commandMatch(),GetTickCount(),activeTab,scroll,hoverChoice,hoverQueue,int(client.right),int(client.bottom),layout,books[activeTab],choices,{},{},{}};
   GetObjectW(panelFont?panelFont:font,sizeof request.font,&request.font);
   auto add=[&](int index){int slot=typeSlot(index);if(slot>=0){request.types[index]=snap.types[slot];request.pointers[index]=typePointer(index);}};
-  for(int index:request.book.items)add(index);for(int n=scroll;n<int(choices.size())&&n<scroll+layout.rows*2;++n)add(choices[n].index);
+  for(int i=request.book.visibleStart();i<int(request.book.items.size());++i)add(request.book.items[i]);
+  for(int n=scroll;n<int(choices.size())&&n<scroll+layout.rows*2;++n)add(choices[n].index);
   paintWorker.submit(std::move(request));auto completed=paintWorker.get();
   if(completed&&completed->request.pid==pid&&completed->request.match==commandMatch()&&completed->request.width==client.right&&completed->request.height==client.bottom&&completed->request.activeTab==activeTab&&completed->request.scroll==scroll){
    BITMAPINFO info{};info.bmiHeader.biSize=sizeof(BITMAPINFOHEADER);info.bmiHeader.biWidth=client.right;info.bmiHeader.biHeight=-client.bottom;info.bmiHeader.biPlanes=1;info.bmiHeader.biBitCount=32;
@@ -250,7 +293,9 @@ static void service(){
  const auto&bindings=nativekeyhost::current();
  for(int tab=0;tab<4;++tab){bool down=bindings.held(nativekeys::Command(tab),keys);if(extra.constructionQueue&&usable()&&down&&!previous[tab])requested=tab;previous[tab]=down;}
  if(requested>=0){selectedTab=requested;activeTab=requested;lastNativeTab=get<int>(0x87F7E8+0x539C,-1);scroll=0;refreshed=0;}
- consumeNativeClick();uint32_t now=GetTickCount();if(refreshed&&uint32_t(now-refreshed)<100)return;refreshed=now;
+ consumeNativeClick();uint32_t now=GetTickCount();bool streaming=false;
+ for(int tab=2;tab<4;++tab){const auto&b=books[tab];if(b.streaming&&!b.items.empty()&&!b.stage&&int32_t(now-b.retry)>=0)streaming=true;}
+ if(refreshed&&uint32_t(now-refreshed)<100&&!streaming)return;refreshed=now;
  if(!extra.constructionQueue){reset();return;}if(!displayReady()){hide();return;}
  house=get<uint32_t>(0xA83D4C);if(house<0x10000){hide();return;}
  if(lastPID!=pid){reset();lastPID=pid;wchar_t image[32768]{};DWORD length=32768;if(externalReader.imagePath(image,&length))icons.open(image,std::filesystem::path(root)/L"cache"/L"icons");}
@@ -272,11 +317,19 @@ static void service(){
   if(b.stage==2){if(uint32_t(now-b.sent)>5000){queueLog(tab,L"acceptance-observation-timeout");cancel(tab);notify(L"预定已提交但尚未观察到生产，已停止跟踪，避免重复下单。");}continue;}
   if(b.stage==1){if(uint32_t(now-b.sent)>15000){queueLog(tab,L"submission-timeout");cancel(tab);notify(L"预定请求等待超时，已取消后续预定。");}continue;}
   if(!b.source){
-   if(int32_t(now-b.retry)<0||current[tab]||!nativeCameo(b.head(),tab))continue;
-   if(!b.afterPlacement(get<int>(0xA8ED84,-1),true))continue;
+   if(int32_t(now-b.retry)<0)continue;
+   if(!nativeCameo(b.head(),tab)){b.streaming=false;continue;}
+   if(tab<2){if(current[tab]||!b.afterPlacement(get<int>(0xA8ED84,-1),true))continue;}
+   else{b.unitLane=unitLane(b.head());if(!unitRoom(b.unitLane)){
+    if(b.unitLane<0||unitBudgets[b.unitLane].observed+unitBudgets[b.unitLane].pending>=construction::UnitCapacity)b.streaming=false;
+    continue;
+   }}
    int slot=typeSlot(b.head());if(slot<0){cancel(tab);continue;}
    if(!b.token){if(!++nextToken)++nextToken;b.token=nextToken;}
-   if(queueCommand(ProduceDeferred,slot,0,b.match,0,0,b.token)){b.stage=1;b.sent=now;++b.attempts;}continue;
+   if(queueCommand(ProduceDeferred,slot,0,b.match,0,0,b.token)){
+    b.stage=1;b.sent=now;++b.attempts;
+    if(tab>=2)unitBudgets[b.unitLane].lastIssuedFrame=get<int>(0xA8ED84,-1);
+   }continue;
   }
   uint8_t state[0x220]{};if(!externalReader.readFresh(b.source,state,sizeof state))continue;
   uint32_t sourceID=0,owner=0;int health=0;memcpy(&sourceID,state+0x10,4);memcpy(&owner,state+0x21C,4);memcpy(&health,state+0x6C,4);
@@ -304,6 +357,7 @@ static void service(){
  activeTab=selectedTab>=0?selectedTab:nativeTab;
  if(activeTab<0||activeTab>3){hide();return;}
  bool context=current[0]||current[1];for(const auto&b:books)context=context||!b.items.empty();
+ if(!context&&activeTab>=2){int visible=get<int>(0x87F7E8+0x1544+activeTab*3988+84,-1);context=visible>0&&visible<=75;}
  if(!context){hide();return;}
 
  RECT client{};POINT origin{};int width=get<int>(0x8A00A4),height=get<int>(0x8A00A8);

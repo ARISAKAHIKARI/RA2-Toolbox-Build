@@ -90,12 +90,22 @@ static void refreshInformationRate(DWORD now){
 }
 struct UnitSurface {
  HDC dc=nullptr;HBITMAP bitmap=nullptr,old=nullptr;void* bits=nullptr;int w=0,h=0;
- void clear(){if(dc){SelectObject(dc,old);DeleteObject(bitmap);DeleteDC(dc);}dc=nullptr;bitmap=old=nullptr;bits=nullptr;w=h=0;}
+ void clear(){
+  if(dc){if(old&&reinterpret_cast<HGDIOBJ>(old)!=HGDI_ERROR)SelectObject(dc,old);DeleteDC(dc);}
+  if(bitmap)DeleteObject(bitmap);
+  dc=nullptr;bitmap=old=nullptr;bits=nullptr;w=h=0;
+ }
  bool ensure(int width,int height){if(dc&&w==width&&h==height)return true;clear();
+  if(width<1||height<1||uint64_t(width)*height>16ull*1024*1024)return false;
   BITMAPINFO bi{};bi.bmiHeader.biSize=sizeof(BITMAPINFOHEADER);bi.bmiHeader.biWidth=width;bi.bmiHeader.biHeight=-height;bi.bmiHeader.biPlanes=1;bi.bmiHeader.biBitCount=32;
-  HDC screen=GetDC(nullptr);dc=CreateCompatibleDC(screen);bitmap=CreateDIBSection(screen,&bi,DIB_RGB_COLORS,&bits,nullptr,0);ReleaseDC(nullptr,screen);
-  if(!dc||!bitmap||!bits){if(bitmap)DeleteObject(bitmap);if(dc)DeleteDC(dc);dc=nullptr;bitmap=nullptr;bits=nullptr;return false;}
-  old=(HBITMAP)SelectObject(dc,bitmap);w=width;h=height;return true;
+  HDC screen=GetDC(nullptr);if(!screen)return false;
+  dc=CreateCompatibleDC(screen);
+  if(dc)bitmap=CreateDIBSection(screen,&bi,DIB_RGB_COLORS,&bits,nullptr,0);
+  ReleaseDC(nullptr,screen);
+  if(!dc||!bitmap||!bits){clear();return false;}
+  old=(HBITMAP)SelectObject(dc,bitmap);
+  if(!old||reinterpret_cast<HGDIOBJ>(old)==HGDI_ERROR){old=nullptr;clear();return false;}
+  w=width;h=height;return true;
  }
 } surface,secondarySurface;
 static int paintedAlpha=-1;static POINT paintedOrigin{LONG_MIN,LONG_MIN};
@@ -447,7 +457,7 @@ static void buttonLabel(){
 #ifdef RA2_UNIFIED
  suite::reportEnabled(1,enabled);
 #endif
- SetWindowTextW(bStart,enabled?L"暂停显示":L"继续显示");SetWindowTextW(bDemo,demo?L"退出演示":L"布局演示");}
+ SetWindowTextW(bStart,enabled?L"暂停游戏内":L"继续游戏内");SetWindowTextW(bDemo,demo?L"退出演示":L"布局演示");}
 static void beginSecondaryDrag(){
  if(!secondaryEnabled||!secondaryActive||!secondarySurface.dc||!game)return;
  auto target=secondaryMonitor.get(game,ui,GetTickCount());if(!target.available())return;
@@ -508,7 +518,8 @@ static LRESULT CALLBACK proc(HWND w,UINT m,WPARAM a,LPARAM b){
   ui=w;consoleDpi=modernui::windowDpi(w);
   font=modernui::makeFont();
   auto ctl=[&](const wchar_t* cls,const wchar_t* title,DWORD style,int x,int y,int cw,int ch,int id){HWND c=CreateWindowW(cls,title,WS_CHILD|WS_VISIBLE|style,x,y,cw,ch,w,(HMENU)(INT_PTR)id,nullptr,nullptr);SendMessageW(c,WM_SETFONT,(WPARAM)font,TRUE);consoleControls.push_back({c,{x,y,cw,ch}});return c;};
-  bStart=ctl(L"BUTTON",L"暂停显示",BS_OWNERDRAW,14,54,94,26,100);bDemo=ctl(L"BUTTON",L"布局演示",BS_OWNERDRAW,116,54,94,26,101);ctl(L"BUTTON",L"重新连接",BS_OWNERDRAW,218,54,94,26,102);
+  bStart=ctl(L"BUTTON",L"暂停游戏内",BS_OWNERDRAW,14,54,94,26,100);bDemo=ctl(L"BUTTON",L"布局演示",BS_OWNERDRAW,116,54,94,26,101);ctl(L"BUTTON",L"重新连接",BS_OWNERDRAW,218,54,94,26,102);
+  modernui::tip(bStart,L"只暂停游戏内单位统计，副屏统计窗口由下方开关独立控制。");
   cBuildings=ctl(L"BUTTON",L"显示建筑",BS_AUTOCHECKBOX,14,89,144,21,103);cOthers=ctl(L"BUTTON",L"其他玩家",BS_AUTOCHECKBOX,168,89,144,21,104);
   SendMessageW(cBuildings,BM_SETCHECK,buildings?BST_CHECKED:BST_UNCHECKED,0);SendMessageW(cOthers,BM_SETCHECK,showOthers?BST_CHECKED:BST_UNCHECKED,0);
   ctl(L"STATIC",L"上边距",0,14,119,48,20,107);eTop=ctl(L"EDIT",std::to_wstring(topMargin).c_str(),WS_BORDER|ES_NUMBER|ES_AUTOHSCROLL,64,116,52,23,108);

@@ -25,7 +25,7 @@ constexpr int FALSE=0,EN_CHANGE=1,CBN_SELCHANGE=2,BN_CLICKED=3,HKM_GETHOTKEY=4,H
 static bool ready=true,updatingControls=false,enabled=true,autoSaveOK=true;
 struct ControlUpdate{bool old=updatingControls;ControlUpdate(){updatingControls=true;}~ControlUpdate(){updatingControls=old;}};
 static bool hookAdvanced=false,hookSmartUnload=false;static HWND hookChecks[4]={800,801,802,803};
-static uint32_t computeRequested=compute::Default;static bool minimapEnabled=false,minimapSecondary=false;static int minimapMode=0,minimapScale=200,advancedRangeCells=2,minimapPosition=0,minimapX=20,minimapY=60,minimapAlignX=0,minimapAlignY=0;
+static uint32_t computeRequested=compute::Default;static bool minimapEnabled=false,minimapSecondary=false;static int minimapMode=0,minimapScale=25,advancedRangeCells=2,minimapPosition=0,minimapX=20,minimapY=60,minimapAlignX=0,minimapAlignY=0;
 static int minimapSecondaryX=10000,minimapSecondaryY=10000,minimapSecondaryWidth=320;
 constexpr unsigned HOTKEYF_CONTROL=2,HOTKEYF_ALT=4;
 constexpr WORD MAKEWORD(unsigned a,unsigned b){return WORD((a&255)|(b<<8));}
@@ -98,6 +98,7 @@ feature_save=io.split('static bool saveAdditionalSettings(){',1)[1].split(' writ
 prefix+="\nstatic void loadFeatureTypes(){"+feature_load+"}\nstatic void saveFeatureTypes(){"+feature_save+"}\n"
 suffix=r''' 
 int main(){
+ assert(minimapScale==25);
  assert(!extra.viewZoomEnabled&&extra.viewZoomPercent==100);
  assert(extra.dodgeMode==0);
  profile[L"Enabled"]=profile[L"HoldEnabled"]=1;profile[L"HoldKey"]='B';

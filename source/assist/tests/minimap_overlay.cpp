@@ -58,7 +58,16 @@ using namespace external::radar;Memory m;constexpr uint32_t cells=0x100000,cell=
  m.set(Map+0xFC,0);m.set(Map+0x100,0);m.set(Map+0x104,4);m.set(Map+0x108,4);
  m.set(0xA83D4C,house);m.set(0xA8ED84,10);m.set<uint8_t>(0xA8E9A0,1);m.set<uint8_t>(0xA8E378,1);m.set(0xA8EDA0,0);m.set(0xA8ED8C,0);
  m.zero(cells,4096*4);m.set(cells+(3*512+3)*4,cell);m.zero(cell,0x148);m.set<int16_t>(cell+0x24,3);m.set<int16_t>(cell+0x26,3);m.set(cell+0xEC,2);m.set<int8_t>(cell+0x120,-1);m.set<int8_t>(cell+0x121,-1);
+ constexpr uint32_t actors=0x410000,actor=0x420000,type=0x430000;
+ m.zero(0xA8EC78,20);m.set(0xA8EC78+4,actors);m.set(0xA8EC78+8,1);m.set(0xA8EC78+16,1);m.set(actors,actor);
+ m.zero(actor,0x800);m.set(actor,0x7E3EBCu);m.set<int>(actor+0x6C,100);m.set<uint8_t>(actor+0x74,1);m.set<uint8_t>(actor+0x90,1);
+ m.set(actor+0x21C,house);m.set(actor+0x520,type);m.set(actor+0x9C,3*256+128);m.set(actor+0xA0,3*256+128);m.set(actor+0x10,7);
+ m.zero(house+22265,3);m.set<uint8_t>(house+22265,200);
  Sampler<Read> sampler(Read{&m});assert(sampler.step(false,2048));assert(!sampler.snapshot(1).terrain);assert(sampler.step(false,2048));auto a=sampler.snapshot(2);assert(a.terrain&&a.terrain->colors[3*512+3]==terrainColor(2,0,false));
+ assert(a.markerScanValid&&a.markers.size()==1);
+ m.bytes.erase(actors);auto failedBodyRead=sampler.snapshot(3);assert(!failedBodyRead.markerScanValid&&failedBodyRead.markers.empty());
+ m.set(actors,actor);m.bytes.erase(0xA8EC78+16);auto failedHeaderRead=sampler.snapshot(4);assert(!failedHeaderRead.markerScanValid&&failedHeaderRead.markers.empty());
+ m.set(0xA8EC78+16,0);auto empty=sampler.snapshot(5);assert(empty.markerScanValid&&empty.markers.empty());
  double u,v;a.terrain->geo.project(3.5,3.5,u,v);assert(u==.5&&v==.375);std::vector<uint32_t> pixels;raster(*a.terrain,80,80,pixels);assert(pixels[30*80+40]==terrainColor(2,0,false));
  DiagramRenderer diagram;auto scaled=diagram.render(a.terrain,80,80);assert(scaled&&scaled->pixels==pixels);
  for(int i=0;i<100;++i)assert(diagram.render(a.terrain,80,80)==scaled);
@@ -68,6 +77,8 @@ using namespace external::radar;Memory m;constexpr uint32_t cells=0x100000,cell=
  assert(scaled->pixels==pixels);diagram.reset();assert(diagram.render(a.terrain,80,80)!=scaled);
  assert(!diagram.render(a.terrain,0,80)&&!diagram.render(a.terrain,2049,80));
  PublicationContext context{house,cells,a.frame+1,true,a.terrain->geo.bounds};assert(freshMarkers(a,context));
+ auto published=publicationContext(Read{&m});assert(published.readable&&sameWorld(a,published));
+ m.bytes.erase(0xA8ED84);published=publicationContext(Read{&m});assert(!published.readable&&!sameWorld(a,published));m.set(0xA8ED84,10);
  context.frame=a.frame+120;assert(sameWorld(a,context)&&!freshMarkers(a,context)); // slow rendering is not a map change
  context.frame=a.frame-1;assert(!sameWorld(a,context));context.frame=a.frame+120;
  context.house+=0x10000;assert(!sameWorld(a,context));context.house=house;context.cells+=4;assert(!sameWorld(a,context));context.cells=cells;

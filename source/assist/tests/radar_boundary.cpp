@@ -32,5 +32,11 @@ int main(int argc,char**){
  double u,v;g.project(x+.5,y+.5,u,v);assert(u*viewport.width==at.x+30&&v*viewport.height+15==at.y+15);
  auto flat=frame.terrain->art[y*512+x];flat.level=0;mapbounds::TileOrigin other;assert(g.tileOrigin(x,y,flat.level,other)&&at.y==other.y+15);
  auto original=g.nativeViewport();for(int level:{-1,0,2,6,14}){mapbounds::TileOrigin edge;assert(g.tileOrigin(x,y,level,edge));auto current=g.nativeViewport();assert(current.width==original.width&&current.height==original.height);}
+ // A physically valid edge cell that remains shrouded is excluded in native
+ // fog mode; explicit reveal displays it. This is separate from usable bounds.
+ put(cell+0x120,int8_t(-2));assert(sampler.step(0,4096,true));auto masked=sampler.snapshot(2);
+ assert(masked.terrain&&masked.terrain->colors[y*512+x]==0);
+ assert(sampler.step(1,4096,true));auto unmasked=sampler.snapshot(3);
+ assert(unmasked.terrain&&unmasked.terrain->colors[y*512+x]==radar::terrainColor(2,-1,false));
  std::cout<<"PASS signed south-edge height, native TMP origin/900-pixel footprint, exact fractional viewport with ceil backing, physical legal border retention and stable navigation domain\n";
 }

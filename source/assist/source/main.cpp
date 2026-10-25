@@ -66,7 +66,7 @@ extern "C" __declspec(dllexport) const MappingPrefixValue AssistHostMappingPrefi
 namespace minimap {static void hide();static void clear();static void destroy();}
 namespace watchwindows {static void hide();}
 static uint32_t computeRequested=compute::Default;
-static bool minimapEnabled=false,minimapSecondary=false;static int minimapMode=0,minimapScale=200,minimapPosition=0,minimapX=20,minimapY=60,minimapAlignX=0,minimapAlignY=0;
+static bool minimapEnabled=false,minimapSecondary=false;static int minimapMode=0,minimapScale=25,minimapPosition=0,minimapX=20,minimapY=60,minimapAlignX=0,minimapAlignY=0;
 static int minimapSecondaryX=10000,minimapSecondaryY=10000,minimapSecondaryWidth=320;
 static WORD socialKeys[9]{}; // Cheer, taunts 1..8; empty by default.
 static WORD idleAircraftKey=MAKEWORD('P',HOTKEYF_CONTROL|HOTKEYF_ALT);
@@ -523,7 +523,10 @@ static void send(int command,int arg=0,int arg2=0,int retries=0,bool fromQueue=f
  }
  if(snap.status<0){notify(L"游戏操作暂不可用，本次指令未执行。");return;}
  readSnapshot();now=GetTickCount();
- if(typeIndexedCommand(command,arg)&&intentTypes!=typeListHash(snap.types,snap.typeCount)){notify(L"单位清单已改变，请重新选择后提交。");return;}
+ if(typeIndexedCommand(command,arg)&&intentTypes!=typeListHash(snap.types,snap.typeCount)){
+  if(fromQueue&&(command==ProduceReserved||command==ProduceDeferred))constructionResult(-13,0,uint32_t(arg2),requestToken);
+  else notify(L"单位清单已改变，请重新选择后提交。");return;
+ }
  if(shared&&lastData&&incoming.status<0){notify(commandWaitReason());return;}
  bool connected=shared&&delivery::bridgeReady(incoming.status,commandFresh(now),incoming.chat,shared->request==shared->ack);
  // Mode syncing must not enqueue automatically every 50ms.
@@ -1004,7 +1007,12 @@ static void readSnapshot(){
   snap.bridgeStatus=incoming.status;
   snap.commandStatus=incoming.commandStatus;
   if(first)diag(L"command bridge status="+std::to_wstring(incoming.status));
-  if(incoming.status<0){bridgeBlocked=true;commandQueue.clear();hasSelection=false;}else bridgeAttempts=0;break;
+  if(incoming.status<0){
+   bridgeBlocked=true;std::vector<delivery::Item> canceledReservations;
+   for(int i=0;i<commandQueue.size;++i)if(commandQueue.slots[i].command==ProduceReserved||commandQueue.slots[i].command==ProduceDeferred)canceledReservations.push_back(commandQueue.slots[i]);
+   commandQueue.clear();for(const auto&it:canceledReservations)constructionResult(-13,0,uint32_t(it.arg2),it.token);
+   hasSelection=false;
+  }else bridgeAttempts=0;break;
  }
  mergeExternal();
 }
@@ -1109,7 +1117,9 @@ static asyncwork::Latest<Job,Frame> worker([](const Job&j)->std::shared_ptr<cons
  Bitmap bm(j.w,j.h,j.w*4,PixelFormat32bppPARGB,reinterpret_cast<BYTE*>(out->pixels.data()));{Graphics g(&bm);j.draw(g);}return out;
 });
 static std::shared_ptr<const Frame> displayed;
-static void invalidate(){worker.invalidate();displayed.reset();}
+static bool active=false;
+static void submit(Job input){active=true;worker.submit(std::move(input));}
+static void invalidate(){if(!active)return;active=false;worker.invalidate();displayed.reset();}
 static void present(){auto frame=worker.get();if(!frame||frame==displayed||frame->pid!=pid||frame->match!=snap.match||DWORD(GetTickCount()-frame->tick)>500)return;
  RECT client{};GetClientRect(game,&client);if(client.right!=frame->clientW||client.bottom!=frame->clientH)return;
  if(!surface.resize(frame->w,frame->h))return;memcpy(surface.bits,frame->pixels.data(),frame->pixels.size()*4);
@@ -1123,7 +1133,7 @@ static void paint(){
  if(!battlefield||snap.renderStatus!=1){worldrender::invalidate();overlayRecovery.suspend();ShowWindow(overlay,SW_HIDE);hideAircraftButton();minimap::hide();watchwindows::hide();hideConstruction();clearPassengerDisplay();return;}
  const DWORD renderNow=sampleRenderClock(shared);
  RECT r{};GetClientRect(game,&r);POINT origin{};ClientToScreen(game,&origin);
- minimap::update(origin,r);watchhost::update(renderNow);watchwindows::update(origin,r);
+ minimap::update(origin,r,battlefield);watchhost::update(renderNow);watchwindows::update(origin,r,battlefield);
  if(!enabled||!foregroundGame()||snap.chat){worldrender::invalidate();overlayRecovery.suspend();ShowWindow(overlay,SW_HIDE);hideAircraftButton();hideConstruction();clearPassengerDisplay();return;}
  DWORD now=sampleClock(shared);int labelCount=motion.render(renderNow,labelViews);
  const auto&statusFrame=externalSampler.unitStatuses();
@@ -1215,7 +1225,7 @@ static void paint(){
   if(summary){std::wstring text=L"载员 "+std::to_wstring(used)+L" / "+std::to_wstring(capacity)+L" · 剩余 "+std::to_wstring(std::max(0,capacity-used));SolidBrush bg(Color(150,13,21,31));g.FillRectangle(&bg,panelX,y,panelW,26.f);drawText(g,text,panelX+10,y+4,13,Color::White);y+=30;}
   if(hasToast){SolidBrush bg(Color(155,13,21,31));g.FillRectangle(&bg,panelX,y,panelW,27.f);drawText(g,toast,panelX+10,y+4,12,Color(255,220,233,247));y+=31;}
  };
- worldrender::worker.submit({pid,snap.match,GetTickCount(),w,h,physicalW,physicalH,origin,std::move(draw)});
+ worldrender::submit({pid,snap.match,GetTickCount(),w,h,physicalW,physicalH,origin,std::move(draw)});
 
 }
 #include "frame_clock.h"
@@ -1344,7 +1354,14 @@ static void result(){if(!shared)return;uint32_t a=shared->ack;if(a==ack)return;M
 static void serviceCommandQueue(DWORD now){
  if(!shared||!enabled)return;
  bool revealQueued=commandQueue.has(RevealMap);
+ std::vector<delivery::Item> expiredReservations;
+ for(int i=0;i<commandQueue.size;++i){const auto&it=commandQueue.slots[i];
+  if((it.command==ProduceReserved||it.command==ProduceDeferred)&&
+     (it.pid!=pid||uint32_t(now-it.created)>delivery::MaxAgeMs||
+      (commandMatch()!=0&&it.match!=delivery::UnknownMatch&&it.match!=commandMatch())))expiredReservations.push_back(it);
+ }
  int expired=commandQueue.expire(now,pid,commandMatch(),commandMatch()!=0);
+ for(const auto&it:expiredReservations)constructionResult(-13,0,uint32_t(it.arg2),it.token);
  if(revealQueued&&!commandQueue.has(RevealMap)&&extra.mapStrategy==3&&autoRevealDone!=commandMatch()&&
     (shared->request==shared->ack||shared->command!=RevealMap))autoRevealMatch=0;
  if(expired){diag(L"discarded stale queued commands="+std::to_wstring(expired));notify(L"等待的命令已过期或对局改变，已取消，避免误操作。");}
@@ -1352,7 +1369,10 @@ static void serviceCommandQueue(DWORD now){
  if(commandQueue.peek(now,pid,commandMatch(),commandMatch()!=0,queued)&&commandFocus()&&
     delivery::bridgeReady(incoming.status,commandFresh(now),incoming.chat,shared->request==shared->ack)){
   commandQueue.consume();
-  if(typeIndexedCommand(queued.command,queued.arg)&&queued.typeHash!=typeListHash(snap.types,snap.typeCount))notify(L"单位清单已改变，旧的待处理指令已取消。");
+  if(typeIndexedCommand(queued.command,queued.arg)&&queued.typeHash!=typeListHash(snap.types,snap.typeCount)){
+   if(queued.command==ProduceReserved||queued.command==ProduceDeferred)constructionResult(-13,0,uint32_t(queued.arg2),queued.token);
+   else notify(L"单位清单已改变，旧的待处理指令已取消。");
+  }
   else send(queued.command,queued.arg,queued.arg2,queued.retries,true,queued.token);
  }
  static DWORD waitLoggedAt=0;

@@ -9,6 +9,8 @@ prefix=prefix.replace('int mapStrategy=0;', 'int mapStrategy=0,watchSecondaryX=1
 prefix=prefix.replace('static bool foregroundGame(){return true;}','static bool focused=true;static bool foregroundGame(){return focused;}')
 prefix=prefix.replace('struct Graphics {','struct Graphics {Graphics(void* =nullptr){}void ScaleTransform(float,float){}')
 prefix=prefix.replace('static struct {bool read(uint32_t p,void*out,size_t n){','static struct {bool readFresh(uint32_t p,void*out,size_t n){return read(p,out,n);}bool read(uint32_t p,void*out,size_t n){')
+prefix=prefix.replace('static uint32_t blockedAddress=0,', 'static uint32_t displayGateReads=0;static uint32_t blockedAddress=0,')
+prefix=prefix.replace('bool readFresh(uint32_t p,void*out,size_t n){if(p==0xA8EB44', 'bool readFresh(uint32_t p,void*out,size_t n){if(p==0xA8E378)++displayGateReads;if(p==0xA8EB44')
 prefix+=r'''
 // Execute the production async host as well as the window handlers. Only the
 // external memory/assets and Win32/GDI boundaries are replaced here.
@@ -88,17 +90,18 @@ int main(){
  battlefield(true);auto put=[](uint32_t p,auto v){memcpy(memory.data()+p,&v,sizeof v);};
  uint32_t p=0x10000;put(p,0x7F5C70u);put(p+0x10,42u);put(p+0x6C,100);put(p+0x74,uint8_t(1));put(p+0x90,uint8_t(1));put(p+0x9C,40*256);put(p+0xA0,30*256);put(p+0xA4,208);put(0xB0CD48,.144337567);
  for(int i=0;i<3;++i){watchhost::tracks[i].target={p,42};watchhost::views[i].shown=true;watchhost::views[i].frame.focus={p,42};}watchhost::arrange();
- RECT client{0,0,1600,1200};POINT origin{100,200};watchwindows::update(origin,client);assert(win.size()==3&&synchronousPaints==3);for(auto w:watchwindows::windows){assert(win[w].visible&&win[w].raises==1&&win[w].invalidations==1);}
+ RECT client{0,0,1600,1200};POINT origin{100,200};int beforeGate=displayGateReads;watchwindows::update(origin,client,true);assert(displayGateReads==beforeGate&&"the verified display cycle must not read the same gate per watch window");assert(win.size()==3&&synchronousPaints==3);for(auto w:watchwindows::windows){assert(win[w].visible&&win[w].raises==1&&win[w].invalidations==1);}
  watchhost::views[0].pixels=std::make_shared<std::vector<uint32_t>>(640*512,0xffabcdef);drawnSources.clear();watchwindows::proc(watchwindows::windows[0],WM_PAINT,0,0);assert(drawnSources.size()==1&&drawnSources[0]==std::make_pair(640,512)&&presentedInterpolation==InterpolationModeNearestNeighbor&&presentedPixelOffset==PixelOffsetModeHalf);
+ battlefield(false);beforeGate=displayGateReads;int beforeDraws=draws;watchwindows::proc(watchwindows::windows[0],WM_PAINT,0,0);assert(displayGateReads>beforeGate&&draws==beforeDraws&&"an unrelated paint must still check the live menu state");battlefield(true);
  Graphics clipping;watchwindows::occlude(clipping);assert(excluded.size()==3);for(int i=0;i<3;++i){auto b=watchhost::views[i].box;assert(excluded[i].x==b.x-1&&excluded[i].y==b.y-1&&excluded[i].w==b.w+2&&excluded[i].h==b.h+2);}
- int paints=synchronousPaints;for(int n=0;n<100;++n){for(auto&v:watchhost::views)++v.revision;watchwindows::update(origin,client);}assert(synchronousPaints==paints+300);
+ int paints=synchronousPaints;beforeGate=displayGateReads;for(int n=0;n<100;++n){for(auto&v:watchhost::views)++v.revision;watchwindows::update(origin,client,true);}assert(synchronousPaints==paints+300&&displayGateReads==beforeGate&&"verified repaint must not reread the tactical gate for each window");
  HWND middle=watchwindows::windows[1];auto box=watchhost::views[1].box;assert(win[middle].rect.left==100+box.x*2&&win[middle].rect.top==200+box.y*2);
  assert(watchwindows::proc(middle,WM_MOUSEACTIVATE,0,0)==MA_NOACTIVATE);watchwindows::proc(middle,WM_LBUTTONDOWN,0,0);assert(wakes==1&&shared->cameraSeq==2&&shared->cameraMatch==1&&shared->cameraTargetX==300&&shared->cameraTargetY==1020);
  watchwindows::proc(middle,WM_LBUTTONUP,0,0);assert(wakes==1);watchwindows::proc(middle,WM_RBUTTONDOWN,0,0);assert(watchhost::tracks[1]);
  for(int scenario=0;scenario<4;++scenario){battlefield(scenario!=0);focused=scenario!=1;fresh=scenario!=2;snap.chat=scenario==3;watchwindows::proc(middle,WM_LBUTTONDOWN,0,0);assert(wakes==1);}battlefield(true);focused=fresh=true;snap.chat=0;
- clockValue+=999;watchwindows::update(origin,client);assert(win[middle].raises==1);++clockValue;watchwindows::update(origin,client);assert(win[middle].raises==2&&win[middle].invalidations==102);
- battlefield(false);watchwindows::update(origin,client);for(auto w:watchwindows::windows)assert(!win[w].visible);clockValue+=2000;watchwindows::update(origin,client);assert(win[middle].raises==2);battlefield(true);watchwindows::update(origin,client);assert(win[middle].visible&&win[middle].raises==3);
- watchwindows::proc(middle,WM_RBUTTONDOWN,MK_SHIFT,0);assert(!watchhost::tracks[1]&&!watchhost::views[1].shown&&!win[middle].visible&&watchhost::tracks[0]&&watchhost::tracks[2]);clockValue+=1000;watchwindows::update(origin,client);assert(!win[middle].visible);
+ clockValue+=999;watchwindows::update(origin,client,true);assert(win[middle].raises==1);++clockValue;watchwindows::update(origin,client,true);assert(win[middle].raises==2&&win[middle].invalidations==102);
+ battlefield(false);watchwindows::update(origin,client,false);for(auto w:watchwindows::windows)assert(!win[w].visible);clockValue+=2000;watchwindows::update(origin,client,false);assert(win[middle].raises==2);battlefield(true);watchwindows::update(origin,client,true);assert(win[middle].visible&&win[middle].raises==3);
+ watchwindows::proc(middle,WM_RBUTTONDOWN,MK_SHIFT,0);assert(!watchhost::tracks[1]&&!watchhost::views[1].shown&&!win[middle].visible&&watchhost::tracks[0]&&watchhost::tracks[2]);clockValue+=1000;watchwindows::update(origin,client,true);assert(!win[middle].visible);
  // A garrison already found beyond the bounded discovery batch must remain
  // navigable. Reusing its verified spatial host avoids restarting at the
  // first 64 buildings on every click.
@@ -121,30 +124,30 @@ int main(){
  // display, assist master, foreground and chat gates are independently off.
  put(p+0x6C,100);for(int i=0;i<3;++i){watchhost::tracks[i].target={p,42};watchhost::views[i].shown=true;watchhost::views[i].pixels=watchhost::views[0].pixels;}
  auto sharedPixels=watchhost::views[0].pixels;extra.watchEnabled=false;extra.watchSecondary=true;enabled=false;focused=false;snap.chat=1;secondAvailable=true;
- watchwindows::update({},{});for(auto w:watchwindows::windows)assert(!win[w].visible);
+ watchwindows::update({},{},true);for(auto w:watchwindows::windows)assert(!win[w].visible);
  for(auto w:watchwindows::secondaryWindows){auto r=win[w].rect;assert(win[w].visible&&r.left>=secondWork.left&&r.right<=secondWork.right&&r.top>=secondWork.top&&r.bottom<=secondWork.bottom);}
  auto first=win[watchwindows::secondaryWindows[0]].rect,last=win[watchwindows::secondaryWindows[2]].rect;
  assert(first.right==secondWork.right-12&&first.top==secondWork.top+12);
- extra.watchSecondaryX=0;extra.watchSecondaryY=10000;watchwindows::update({},{});
+ extra.watchSecondaryX=0;extra.watchSecondaryY=10000;watchwindows::update({},{},true);
  first=win[watchwindows::secondaryWindows[0]].rect;last=win[watchwindows::secondaryWindows[2]].rect;
  assert(first.left==secondWork.left+12&&last.bottom==secondWork.bottom-12);
  for(auto w:watchwindows::secondaryWindows){auto r=win[w].rect;assert(r.left>=secondWork.left&&r.right<=secondWork.right&&r.top>=secondWork.top&&r.bottom<=secondWork.bottom);}
- extra.watchSecondaryX=50000;extra.watchSecondaryY=-5;watchwindows::update({},{});
+ extra.watchSecondaryX=50000;extra.watchSecondaryY=-5;watchwindows::update({},{},true);
  first=win[watchwindows::secondaryWindows[0]].rect;assert(first.right==secondWork.right-12&&first.top==secondWork.top+12);
- secondWork={-90,0,30,30};extra.watchSecondaryX=50;extra.watchSecondaryY=50;watchwindows::invalidateDisplays();watchwindows::update({},{});
+ secondWork={-90,0,30,30};extra.watchSecondaryX=50;extra.watchSecondaryY=50;watchwindows::invalidateDisplays();watchwindows::update({},{},true);
  for(auto w:watchwindows::secondaryWindows){auto r=win[w].rect;assert(win[w].visible&&r.left>=secondWork.left&&r.right<=secondWork.right&&r.top>=secondWork.top&&r.bottom<=secondWork.bottom);}
- secondWork={-1920,-100,0,940};extra.watchSecondaryX=10000;extra.watchSecondaryY=0;watchwindows::invalidateDisplays();watchwindows::update({},{});
+ secondWork={-1920,-100,0,940};extra.watchSecondaryX=10000;extra.watchSecondaryY=0;watchwindows::invalidateDisplays();watchwindows::update({},{},true);
  first=win[watchwindows::secondaryWindows[0]].rect;cursor={first.left+8,first.top+8};
  int beforeDragWakes=wakes;watchwindows::proc(watchwindows::secondaryWindows[0],WM_LBUTTONDOWN,0,8<<16);
  assert(captured==watchwindows::secondaryWindows[0]&&watchwindows::dragging&&wakes==beforeDragWakes);
  cursor.x-=180;cursor.y+=65;watchwindows::proc(watchwindows::secondaryWindows[0],WM_MOUSEMOVE,MK_LBUTTON,0);
  first=win[watchwindows::secondaryWindows[0]].rect;last=win[watchwindows::secondaryWindows[2]].rect;
  assert(first.left<secondWork.right-12-(first.right-first.left)&&first.top>secondWork.top+12&&last.bottom<=secondWork.bottom-12);
- watchwindows::update({},{});assert(win[watchwindows::secondaryWindows[0]].rect.left==first.left&&win[watchwindows::secondaryWindows[0]].rect.top==first.top&&"frame update must not snap a held drag back");
+ watchwindows::update({},{},true);assert(win[watchwindows::secondaryWindows[0]].rect.left==first.left&&win[watchwindows::secondaryWindows[0]].rect.top==first.top&&"frame update must not snap a held drag back");
  watchwindows::proc(watchwindows::secondaryWindows[0],WM_LBUTTONUP,0,0);
  assert(!watchwindows::dragging&&!captured&&extra.watchSecondaryX<10000&&extra.watchSecondaryY>0&&settingsWrites==1&&syncedPositions==1);
  first=win[watchwindows::secondaryWindows[0]].rect;
- watchwindows::update({},{});for(auto w:watchwindows::secondaryWindows){auto r=win[w].rect;assert(r.left>=secondWork.left&&r.right<=secondWork.right&&r.top>=secondWork.top&&r.bottom<=secondWork.bottom);}
+ watchwindows::update({},{},true);for(auto w:watchwindows::secondaryWindows){auto r=win[w].rect;assert(r.left>=secondWork.left&&r.right<=secondWork.right&&r.top>=secondWork.top&&r.bottom<=secondWork.bottom);}
  auto settled=win[watchwindows::secondaryWindows[0]].rect;
  assert(settled.left>=first.left-1&&settled.left<=first.left+1&&settled.top>=first.top-1&&settled.top<=first.top+1&&"release should not visibly snap the dragged group");
  watchwindows::proc(watchwindows::secondaryWindows[0],WM_LBUTTONDOWN,0,8<<16);
@@ -156,8 +159,8 @@ int main(){
  cursor={hover.left+5,hover.top+5};watchwindows::proc(watchwindows::secondaryWindows[0],WM_SETCURSOR,0,0);assert(lastCursor==reinterpret_cast<void*>(98));
  cursor={hover.left+5,hover.top+50};watchwindows::proc(watchwindows::secondaryWindows[0],WM_SETCURSOR,0,0);assert(lastCursor==reinterpret_cast<void*>(99));
  excluded.clear();watchwindows::occlude(clipping);assert(excluded.empty());
- secondAvailable=false;watchwindows::update({},{});for(auto w:watchwindows::secondaryWindows)assert(!win[w].visible);
- secondAvailable=true;secondWork={1920,0,3200,900};watchwindows::invalidateDisplays();watchwindows::update({},{});for(auto w:watchwindows::secondaryWindows)assert(win[w].visible&&win[w].rect.left>=1920);
+ secondAvailable=false;watchwindows::update({},{},true);for(auto w:watchwindows::secondaryWindows)assert(!win[w].visible);
+ secondAvailable=true;secondWork={1920,0,3200,900};watchwindows::invalidateDisplays();watchwindows::update({},{},true);for(auto w:watchwindows::secondaryWindows)assert(win[w].visible&&win[w].rect.left>=1920);
  watchwindows::proc(watchwindows::secondaryWindows[1],WM_RBUTTONDOWN,MK_SHIFT,0);assert(!watchhost::tracks[1]&&!watchhost::views[1].shown&&!win[watchwindows::secondaryWindows[1]].visible);
  watchwindows::destroy();assert(win.empty());
  std::cout<<"PASS production window handlers: one-click native-camera mailbox, independent Shift-right-close, no activation, physical scaling, one-second reassertion, menu/focus/chat gating and destroy\n";

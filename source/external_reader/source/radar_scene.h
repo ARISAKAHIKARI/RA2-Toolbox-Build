@@ -82,11 +82,13 @@ public:
    for(;cursor_<end;++cursor_){size_t index=cells_[cursor_];int x=int(index%512),y=int(index/512);const auto&cell=terrain.art[index];
     mapbounds::TileOrigin origin;if(!geo.tileOrigin(x,y,int(cell.level),origin))continue;float px=float(origin.x+30),py=float(origin.y+15),base=float((x+y)*15);
     auto&paint=prepared_[cursor_];if(!probeChanged_)paint=prepare(index);
-    auto&tile=tiles_[{cell.type,cell.sub}];
-    if(!tile.ready&&cell.type&&paletteReady&&loads<64&&(!tile.retry||int32_t(frame.tick-tile.retry)>=0)){++loads;tile.ready=assets.tile(cell.type,cell.sub,palette,tile.image);if(tile.ready){auto n=camera::pixels(tile.image);if(staticPixels+n<=16*1024*1024)staticPixels+=n;else{tile.ready=false;tile.image={};}}tile.retry=frame.tick+2000;}
-    if(!tile.ready&&cell.type&&paletteReady&&loads>=64&&!tile.retry)break;
-    if(tile.ready)pending_.blit(tile.image,px,py,1,1,base,paint.light,0);
-    else{if(cell.type)pendingIncomplete_=true;pending_.diamond(px,py,1,1,base,0xff000000u|terrain.colors[index],paint.light);}
+    if(cell.type){
+     auto&tile=tiles_[{cell.type,cell.sub}];
+     if(!tile.ready&&paletteReady&&loads<64&&(!tile.retry||int32_t(frame.tick-tile.retry)>=0)){++loads;tile.ready=assets.tile(cell.type,cell.sub,palette,tile.image);if(tile.ready){auto n=camera::pixels(tile.image);if(staticPixels+n<=16*1024*1024)staticPixels+=n;else{tile.ready=false;tile.image={};}}tile.retry=frame.tick+2000;}
+     if(!tile.ready&&paletteReady&&loads>=64&&!tile.retry)break;
+     if(tile.ready)pending_.blit(tile.image,px,py,1,1,base,paint.light,0);
+     else{pendingIncomplete_=true;pending_.diamond(px,py,1,1,base,0xff000000u|terrain.colors[index],paint.light);}
+    } // A cell without a resolved tile has no ground sprite to paint.
     if(cell.overlayType){auto&overlay=overlays_[{cell.overlayType,cell.overlayFrame}];
      if(!overlay.ready&&loads<64&&(!overlay.retry||int32_t(frame.tick-overlay.retry)>=0)){++loads;overlay.ready=assets.overlay(cell.overlayType,game.template get<uint32_t>(cell.overlayType+0xA4),cell.overlayFrame,overlay.image);if(overlay.ready){auto n=camera::pixels(overlay.image);if(staticPixels+n<=16*1024*1024)staticPixels+=n;else{overlay.ready=false;overlay.image={};}}overlay.retry=frame.tick+2000;}
      if(!overlay.ready&&loads>=64&&!overlay.retry)break;

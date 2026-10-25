@@ -29,20 +29,23 @@ class Worker {
     if(ok&&(r.mode==1||frame!=previousFrame||sampler.revision()!=previousRevision)){
      auto data=sampler.snapshot(GetTickCount());data.map=diagram.render(data.terrain,r.width,r.height);auto fresh=[&](uint32_t p,void*out,size_t n){return reader.readFresh(p,out,n);};
      auto sampled=external::radar::publicationContext(fresh);
-     if(external::radar::sameWorld(data,sampled)){
-      if(!external::radar::freshMarkers(data,sampled)){data.markers.clear();data.repairs.clear();}
+     const bool same=external::radar::sameWorld(data,sampled);
+     // Sampling may span several game ticks. Keep the last complete image
+     // until this world's markers are fresh instead of publishing a frame in
+     // which every unit vanishes for one paint.
+     if(same&&data.markerScanValid&&external::radar::freshMarkers(data,sampled)){
       // Publish terrain immediately; retain the last completed scene while the
       // next one loads. Initial MIX scans must not keep the whole window hidden.
       {std::lock_guard<std::mutex> lock(mutex);if(token==generation){if(r.mode==1&&latest&&latest->scene&&latest->terrain->reveal==data.terrain->reveal&&latest->terrain->geo.same(data.terrain->geo)&&latest->scene->width==r.width&&latest->scene->height==r.height)data.scene=latest->scene;latest=std::make_shared<external::radar::Frame>(data);}}
-      if(r.mode==1){assets.identity(r.pid,r.match);auto scene=renderer.render(data,r.width,r.height,external::SharedReadView{&reader},assets);if(scene)data.scene=std::move(scene);else if(renderer.capacityExceeded())data.scene.reset();}
+      if(r.mode==1){assets.identity(r.pid,r.match);auto scene=renderer.render(data,r.width,r.height,external::SharedReadView{&reader},assets);if(scene)data.scene=std::move(scene);}
       next=std::make_shared<external::radar::Frame>(std::move(data));
-     }else{std::lock_guard<std::mutex> lock(mutex);if(token==generation)latest.reset();}
+     }else if(!same&&sampled.readable){std::lock_guard<std::mutex> lock(mutex);if(token==generation)latest.reset();}
      previousFrame=frame;previousRevision=sampler.revision();
     }
     if(!ok){std::lock_guard<std::mutex> lock(mutex);if(token==generation)latest.reset();}
    }else{std::lock_guard<std::mutex> lock(mutex);if(token==generation)latest.reset();}
    auto fresh=[&](uint32_t p,void*out,size_t n){return reader.readFresh(p,out,n);};auto completed=external::radar::publicationContext(fresh);
-   {std::unique_lock<std::mutex> lock(mutex);if(token==generation&&next){if(external::radar::sameWorld(*next,completed))latest=std::move(next);else latest.reset();}cv.wait_for(lock,std::chrono::microseconds(monitorrefresh::periodMicros(r.rate)),[&]{return stop||paused||generation!=token||request.rate!=r.rate;});if(stop)return;}
+   {std::unique_lock<std::mutex> lock(mutex);if(token==generation&&next){if(external::radar::sameWorld(*next,completed))latest=std::move(next);else if(completed.readable)latest.reset();}cv.wait_for(lock,std::chrono::microseconds(monitorrefresh::periodMicros(r.rate)),[&]{return stop||paused||generation!=token||request.rate!=r.rate;});if(stop)return;}
   }
  }
 public:
@@ -196,8 +199,8 @@ static void placePanel(bool second,int x,int y,int width,int height){
   if(InvalidateRect(panel,nullptr,FALSE)){UpdateWindow(panel);gate.committed(frame,snap.cameraX,snap.cameraY,snap.width,snap.height,minimapMode);}
  }
 }
-static void update(POINT origin,const RECT&client){
- bool valid=pid&&snap.renderStatus==1&&snap.width>=320&&snap.height>=200&&external::display::inspect([](uint32_t p,void*out,size_t n){return externalReader.readFresh(p,out,n);}).visible();
+static void update(POINT origin,const RECT&client,bool verifiedBattlefield){
+ bool valid=verifiedBattlefield&&pid&&snap.renderStatus==1&&snap.width>=320&&snap.height>=200;
  bool primary=valid&&enabled&&minimapEnabled&&foregroundGame()&&!snap.chat&&client.right>=320&&client.bottom>=200;
  auto target=minimapSecondary?secondaryMonitor.get(game,ui,GetTickCount()):secondarydisplay::Target{};
  bool secondary=valid&&minimapSecondary&&target.available();

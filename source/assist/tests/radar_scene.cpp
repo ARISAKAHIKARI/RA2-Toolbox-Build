@@ -38,6 +38,21 @@ int main(){
  std::shared_ptr<const Scene> scene=renderer.render(frame,128,64,read,assets);
  for(int i=0;i<80&&!scene;++i)scene=renderer.render(frame,128,64,read,assets);
  assert(scene&&scene->width==128&&scene->height==64&&assets.loads==1);int loads=assets.loads;
+ // A legal southern border cell may sit outside the gameplay area. Preserve
+ // its actual TMP when resolved, but never synthesize a ground diamond when
+ // the sampler has no tile for that cell (type 0).
+ {
+  constexpr int edgeX=95,edgeY=96;const size_t edge=size_t(edgeY)*512+edgeX;
+  auto south=std::make_shared<Terrain>(*terrain);south->geo.bounds.rows=62;
+  assert(south->geo.legal(edgeX,edgeY)&&!south->geo.bounds.usable(edgeX,edgeY));
+  south->colors.assign(512*512,0);south->art.assign(512*512,{});south->colors[edge]=0x996633;
+  Assets edgeAssets;SceneRenderer<Assets> edgeRenderer;Frame edgeFrame;edgeFrame.terrain=south;edgeFrame.tick=100;
+  auto missing=edgeRenderer.render(edgeFrame,128,64,read,edgeAssets);
+  assert(missing&&edgeAssets.loads==0&&std::all_of(missing->pixels.begin(),missing->pixels.end(),[](uint32_t p){return p==0xff080c08;}));
+  auto resolved=std::make_shared<Terrain>(*south);resolved->art[edge].type=1;edgeFrame.terrain=resolved;
+  auto drawn=edgeRenderer.render(edgeFrame,128,64,read,edgeAssets);
+  assert(drawn&&edgeAssets.loads==1&&drawn->pixels[63*128+63]!=0xff080c08);
+ }
  Marker m;m.u=m.v=.5;m.x=m.y=64*256+128;m.object=0x10000;m.type=0x20000;m.id=1;m.kind=2;frame.markers={m};
  scene=renderer.render(frame,128,64,read,assets);assert(scene&&std::find(scene->pixels.begin(),scene->pixels.end(),0xff00aa00)!=scene->pixels.end()&&assets.loads==loads);
  auto old=scene;auto replacement=std::make_shared<Terrain>(*terrain);frame.terrain=replacement;scene=renderer.render(frame,128,64,read,assets);assert(scene&&old->pixels.size()==128*64); // completed background stays visible while refreshing

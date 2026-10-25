@@ -4,7 +4,7 @@
 #include <cstdint>
 #include "../../shared/source/viewport_scale.h"
 namespace assist { namespace construction {
-constexpr int Capacity=5,PanelWidth=144,MaxHeaderHeight=178,SectionGap=10,RowHeight=66,PanelOpacity=236;
+constexpr int Capacity=5,UnitCapacity=30,PanelWidth=144,MaxHeaderHeight=178,SectionGap=10,RowHeight=66,PanelOpacity=236;
 constexpr int StackTop=24,StackStep=24,StackHeight=48;
 inline bool prerequisite(int index,const std::vector<int>&owned,const std::vector<int>*groups,int future=-1){
  auto has=[&](int n){return n>=0&&n<int(owned.size())&&(owned[n]>0||n==future);};
@@ -23,10 +23,11 @@ inline bool countryAllowed(uint32_t owner,uint32_t required,uint32_t forbidden,i
 }
 struct Book {
  uint32_t match=0,house=0,source=0,id=0,token=0,sent=0,retry=0,missing=0;
- int stage=0,attempts=0,placedFrame=-1;std::vector<int> items;
- bool add(int index){if(index<0||items.size()>=Capacity)return false;items.push_back(index);return true;}
+ int stage=0,attempts=0,placedFrame=-1,unitLane=-1;bool streaming=false;std::vector<int> items;
+ bool add(int index,int limit=Capacity){if(index<0||limit<1||items.size()>=size_t(limit))return false;items.push_back(index);return true;}
+ int visibleStart()const{return std::max(0,int(items.size())-Capacity);}
  int head()const{return items.empty()?-1:items.front();}
- void consume(uint32_t p,uint32_t identity){items.erase(items.begin());source=p;id=identity;stage=attempts=0;sent=retry=missing=token=0;placedFrame=-1;}
+ void consume(uint32_t p,uint32_t identity){items.erase(items.begin());source=p;id=identity;stage=attempts=0;sent=retry=missing=token=0;placedFrame=unitLane=-1;}
  bool afterPlacement(int frame,bool ready){if(!ready||frame<0){placedFrame=-1;return false;}if(placedFrame<0||frame<placedFrame){placedFrame=frame;return false;}return frame>placedFrame;}
 };
 // All geometry is in game pixels. Convert both painting AND hit testing with
