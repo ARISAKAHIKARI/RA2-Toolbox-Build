@@ -15,10 +15,10 @@ static struct {int chat=0,renderStatus=1,width=800,height=600;}snap;
 static std::vector<uint8_t> memory(0x1800000);
 static uint32_t blockedAddress=0,staleLifeAddress=0,occupantDiscoveryReads=0;
 static struct {bool readFresh(uint32_t p,void*out,size_t n){if(p==0xA8EB44&&n==4)++occupantDiscoveryReads;if(p==blockedAddress||uint64_t(p)+n>memory.size())return false;memcpy(out,memory.data()+p,n);return true;}bool read(uint32_t p,void*out,size_t n){if(!readFresh(p,out,n))return false;if(p==staleLifeAddress)memset(out,0,n);return true;}}externalReader;
-struct Color {template<class... T>Color(T...){}};struct SolidBrush {SolidBrush(Color){}};struct Pen {Pen(Color,float){}};struct PointF {float x,y;};struct RectF {float x,y,w,h;RectF(float a,float b,float c,float d):x(a),y(b),w(c),h(d){}};struct Bitmap {Bitmap(int,int,int,int,BYTE*){}};
-struct ColorMatrix {float m[5][5]{};};static ColorMatrix drawnMatrix;static std::vector<RectF> drawnRects,drawnEllipses;static std::vector<float> drawnGains;static std::vector<RectF> excluded;struct ImageAttributes {void SetColorMatrix(ColorMatrix*m){drawnMatrix=*m;}};
-constexpr int PixelFormat32bppPARGB=1,CombineModeIntersect=1,CombineModeExclude=3,UnitPixel=2;
-struct Graphics {int Save(){return 0;}void Restore(int){}void SetClip(RectF r,int mode){if(mode==CombineModeExclude)excluded.push_back(r);}void TranslateTransform(float,float){}void FillRectangle(SolidBrush*,float,float,float,float){}void DrawRectangle(Pen*,float,float,float,float){}void FillPolygon(SolidBrush*,PointF*,int){}void DrawEllipse(Pen*,float x,float y,float w,float h){drawnEllipses.emplace_back(x,y,w,h);}void DrawImage(Bitmap*,RectF rect,float,float,float,float,int,ImageAttributes*){++draws;drawnRects.push_back(rect);drawnGains.push_back(drawnMatrix.m[0][0]);}};
+struct Color {template<class... T>Color(T...){}};struct SolidBrush {SolidBrush(Color){}};struct Pen {Pen(Color,float){}};struct PointF {float x,y;};struct RectF {float x,y,w,h;RectF(float a,float b,float c,float d):x(a),y(b),w(c),h(d){}};struct Bitmap {int width,height;Bitmap(int w,int h,int,int,BYTE*):width(w),height(h){}};
+struct ColorMatrix {float m[5][5]{};};static int presentedInterpolation=-1,presentedPixelOffset=-1;static std::vector<std::pair<int,int>> drawnSources;static ColorMatrix drawnMatrix;static std::vector<RectF> drawnRects,drawnEllipses;static std::vector<float> drawnGains;static std::vector<RectF> excluded;struct ImageAttributes {void SetColorMatrix(ColorMatrix*m){drawnMatrix=*m;}};
+constexpr int PixelFormat32bppPARGB=1,CombineModeIntersect=1,CombineModeExclude=3,UnitPixel=2,InterpolationModeNearestNeighbor=5,PixelOffsetModeHalf=4;
+struct Graphics {int Save(){return 0;}void Restore(int){}void SetClip(RectF r,int mode){if(mode==CombineModeExclude)excluded.push_back(r);}void TranslateTransform(float,float){}void SetInterpolationMode(int value){presentedInterpolation=value;}void SetPixelOffsetMode(int value){presentedPixelOffset=value;}void FillRectangle(SolidBrush*,float,float,float,float){}void DrawRectangle(Pen*,float,float,float,float){}void FillPolygon(SolidBrush*,PointF*,int){}void DrawEllipse(Pen*,float x,float y,float w,float h){drawnEllipses.emplace_back(x,y,w,h);}void DrawImage(Bitmap*bitmap,RectF rect,float,float,float,float,int,ImageAttributes*){++draws;drawnSources.emplace_back(bitmap->width,bitmap->height);drawnRects.push_back(rect);drawnGains.push_back(drawnMatrix.m[0][0]);}};
 namespace gameassets {
  static bool partial=false;
  static uint64_t assetGeneration=1;static uint32_t forcedColor=0;
@@ -63,12 +63,12 @@ int main(){
  for(int i=0;i<24;++i){clockValue+=50;engine.update(clockValue);}
  assert(engine.views[0].frame.actors.size()==300);assert(engine.actorArt.size()==300);
  for(const auto&a:engine.views[0].frame.actors){auto it=engine.images.find(engine.imageKey(a));assert(it!=engine.images.end());assert(it->second.ready==(a.target.id!=1));}
- Graphics g;engine.drawView(g,engine.views[0]);assert(draws==1&&engine.views[0].raster.color.size()==320*256); // no schematic marker for failed asset
+ Graphics g;engine.drawView(g,engine.views[0]);assert(draws==1&&engine.views[0].raster.color.size()==640*512); // no schematic marker for failed asset
  int before=captures,oldRenders=renders;put(actors[1]+0x388,uint16_t(32768));put(actors[1]+0x3A0,uint16_t(49152));clockValue+=50;engine.update(clockValue);assert(captures==before&&renders>oldRenders);
  auto a=std::find_if(engine.views[0].frame.actors.begin(),engine.views[0].frame.actors.end(),[](auto&a){return a.target.id==2;});assert(a!=engine.views[0].frame.actors.end());assert(engine.images.at(engine.imageKey(*a)).image.pixels[0]==0xff001018);
  // All 299 valid models turn together: the 16-item work budget must retain
  // the previous real image for actors whose new pose is still waiting.
- for(auto p:actors)put(p+0x388,uint16_t(2048));clockValue+=50;engine.update(clockValue);draws=0;engine.drawView(g,engine.views[0]);assert(draws==1&&engine.views[0].raster.color.size()==320*256);assert(engine.images.size()<=600);
+ for(auto p:actors)put(p+0x388,uint16_t(2048));clockValue+=50;engine.update(clockValue);draws=0;engine.drawView(g,engine.views[0]);assert(draws==1&&engine.views[0].raster.color.size()==640*512);assert(engine.images.size()<=600);
  assert(tileCalls==0&&engine.tiles.empty()); // no transparent success cache before palette arrives
  put(0xABBED0+9,uint8_t(32));clockValue+=50;engine.update(clockValue);assert(tileCalls==1&&engine.tiles.begin()->second.ready&&engine.tiles.begin()->second.image.pixels[0]!=0);
  // A live lighting change affects every cached actor without any recapture.
@@ -108,15 +108,15 @@ int main(){
  // One composed canvas keeps native-height positioning and pixel depth.
  f.focus=actor.target;f.center.target=actor.target;overlay.image.width=overlay.image.height=8;overlay.image.pixels.assign(64,0xffabcdef);
  auto&actorImage=engine.images[engine.imageKey(actor)];actorImage.ready=true;actorImage.image=overlay.image;actorImage.image.pixels.assign(64,0xff204080);
- drawnRects.clear();engine.drawView(g,engine.views[0]);assert(drawnRects.size()==1&&drawnRects[0].w==320);
- auto&canvas=engine.views[0].raster;assert(canvas.color[114*320+161]==external::camera::lit(0xffabcdef,0,false,f.tiles[4].overlayLight));
- assert(canvas.color[129*320+161]==external::camera::lit(0xff204080,0,false,actor.light));
+ drawnRects.clear();engine.drawView(g,engine.views[0]);assert(drawnRects.size()==1&&drawnRects[0].w==640);
+ auto&canvas=engine.views[0].raster;assert(canvas.color[228*640+322]==external::camera::lit(0xffabcdef,0,false,f.tiles[4].overlayLight));
+ assert(canvas.color[258*640+322]==external::camera::lit(0xff204080,0,false,actor.light));
  // Two overlapping standing shapes contain nearer and farther pixels within
  // the same row. Whole-image ordering cannot produce this split result.
  f.tiles[4].overlayType=0;actor.light={};f.actors={actor};auto second=actor;second.target={0xeeee,999};second.type=0xaaaa;second.kind=4;second.light={};f.actors.push_back(second);
  auto&firstImage=engine.images[engine.imageKey(actor)];firstImage.ready=true;firstImage.image={};firstImage.image.width=4;firstImage.image.height=2;firstImage.image.pixels.assign(8,0xffe04020);firstImage.image.depth={5,5,1,1,5,5,1,1};
  auto&secondImage=engine.images[engine.imageKey(second)];secondImage.ready=true;secondImage.image=firstImage.image;secondImage.image.pixels.assign(8,0xff20b0e0);secondImage.image.depth.assign(8,3);
- engine.drawView(g,engine.views[0]);assert(canvas.color[128*320+160]==0xffe04020&&canvas.color[128*320+161]==0xff20b0e0);
+ engine.drawView(g,engine.views[0]);assert(canvas.color[256*640+321]==0xffe04020&&canvas.color[256*640+323]==0xff20b0e0);
  auto read=[](uint32_t p,void*out,size_t n){return externalReader.read(p,out,n);};put(0x900140,0x80u);put(0x9102A8,uint8_t(1));assert(external::watch::overlayOffset(read,0x900000,0x910000,1,9)==-43);put(0x900140,0u);assert(external::watch::overlayOffset(read,0x900000,0x910000,239,0)==-27);
  // Same type/owner and body frame may have independent factory door/roof
  // states. Share source bytes while retaining separate rendered poses.
@@ -137,8 +137,8 @@ int main(){
  watchengine::Renderer<decltype(externalReader),Backend>::View edge;edge.shown=true;edge.frame=external::watch::sample(read,{actors[0],1},true,20);
  assert(edge.frame.focus&&edge.frame.cameraY==2296&&edge.frame.bounds.usable(69,73));
  drawnEllipses.clear();engine.drawView(g,edge);assert(drawnEllipses.size()==1);
- assert(drawnEllipses[0].x+10==160&&drawnEllipses[0].y+5==52.5f);
- for(int y=0;y<40;++y)for(int x=32;x<288;++x)assert(edge.raster.color[y*320+x]!=0xff080c08u&&"legal border scenery must fill the viewport above the playable edge");
+ assert(drawnEllipses[0].x+20==320&&drawnEllipses[0].y+10==105.f);
+ for(int y=0;y<80;++y)for(int x=64;x<576;++x)assert(edge.raster.color[y*640+x]!=0xff080c08u&&"legal border scenery must fill the viewport above the playable edge");
  // VPL content changes the asset revision without changing actor or pose.
  // Evict both retained headings and their source art, then stay cached again.
  {

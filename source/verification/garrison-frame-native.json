@@ -1,0 +1,72 @@
+{
+  "scope": "Replay original Building::GetCurrentFrame for occupied buildings.\n\nUses the private, validity-checked supported capture, original x86 frame logic,\noriginal virtual occupant-count/type accessors and health-ratio function. Only\nsynthetic object/type fields and rule thresholds change. No game update, SHP\nrasterizer, Windows composition or multiplayer runs; no private bytes escape.\n",
+  "supported_executable_sha256": "7b8a068535d6af06845edf95ae829b113d00c02909330e16f197426cd7db94b6",
+  "native_frame_cases": 5760,
+  "mismatches": 0,
+  "native_normal_image_dispatch_cases": 9,
+  "stages": {
+    "01-off": {
+      "native_frame_cases": 1920,
+      "mismatches": 0,
+      "native_normal_image_dispatch_cases": 3,
+      "captured_occupiable_buildings": [
+        {
+          "type": "CAFARM01",
+          "occupants": 0,
+          "health": 400,
+          "tech_level": -1
+        }
+      ],
+      "code_sha256": {
+        "0043EF90-0043F174": "d0737717f60aec8c22c00e7fc6ef28fac09aff34aaa686c50265e41b20d69b14",
+        "004581F0-004581F7": "564ebb84ca6e79155f5bcbd5917cd3a80cf9908a34c6d218597ad274f50c971f",
+        "005F5C60-005F5C80": "095a50e9e65fad30ddd3ce677f851db5066fd7a8a020e3b2df16bd35d632b953",
+        "006F3270-006F3278": "b7655f4aae69b7187b779cdc966f345e6a878c6ce4f756b676a079015b791f42",
+        "004513D0-00451400": "c3b6d7d39bdac9290442e06ce829181565ca8ee25130bd7b8857b09082faa818"
+      }
+    },
+    "02-on": {
+      "native_frame_cases": 1920,
+      "mismatches": 0,
+      "native_normal_image_dispatch_cases": 3,
+      "captured_occupiable_buildings": [
+        {
+          "type": "CAFARM01",
+          "occupants": 0,
+          "health": 400,
+          "tech_level": -1
+        }
+      ],
+      "code_sha256": {
+        "0043EF90-0043F174": "d0737717f60aec8c22c00e7fc6ef28fac09aff34aaa686c50265e41b20d69b14",
+        "004581F0-004581F7": "564ebb84ca6e79155f5bcbd5917cd3a80cf9908a34c6d218597ad274f50c971f",
+        "005F5C60-005F5C80": "095a50e9e65fad30ddd3ce677f851db5066fd7a8a020e3b2df16bd35d632b953",
+        "006F3270-006F3278": "b7655f4aae69b7187b779cdc966f345e6a878c6ce4f756b676a079015b791f42",
+        "004513D0-00451400": "c3b6d7d39bdac9290442e06ce829181565ca8ee25130bd7b8857b09082faa818"
+      }
+    },
+    "03-off": {
+      "native_frame_cases": 1920,
+      "mismatches": 0,
+      "native_normal_image_dispatch_cases": 3,
+      "captured_occupiable_buildings": [
+        {
+          "type": "CAFARM01",
+          "occupants": 0,
+          "health": 400,
+          "tech_level": -1
+        }
+      ],
+      "code_sha256": {
+        "0043EF90-0043F174": "d0737717f60aec8c22c00e7fc6ef28fac09aff34aaa686c50265e41b20d69b14",
+        "004581F0-004581F7": "564ebb84ca6e79155f5bcbd5917cd3a80cf9908a34c6d218597ad274f50c971f",
+        "005F5C60-005F5C80": "095a50e9e65fad30ddd3ce677f851db5066fd7a8a020e3b2df16bd35d632b953",
+        "006F3270-006F3278": "b7655f4aae69b7187b779cdc966f345e6a878c6ce4f756b676a079015b791f42",
+        "004513D0-00451400": "c3b6d7d39bdac9290442e06ce829181565ca8ee25130bd7b8857b09082faa818"
+      }
+    }
+  },
+  "game_tested": false,
+  "windows_rendering_tested": false,
+  "multiplayer_tested": false
+}

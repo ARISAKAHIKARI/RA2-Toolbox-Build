@@ -5,6 +5,8 @@
 #include "building_animations.h"
 #include "map_bounds.h"
 #include "art_variants.h"
+#include "repair_visuals.h"
+#include "projectile_visuals.h"
 #include <memory>
 #include <array>
 // Read-only YRpp MapClass/CellClass/RadarClass model. Projection matches
@@ -16,13 +18,15 @@ struct Geometry {
  bool valid()const{return bounds.valid()&&bounds.width==width&&bounds.height==height&&cells>=0x10000&&count>0&&count<=512*512&&rw>0&&rw<=4096&&rh>0&&rh<=4096&&std::isfinite(factor)&&factor>0.01f&&factor<32&&std::abs(int64_t(offsetX))<=1024&&std::abs(int64_t(offsetY))<=1024&&house>=0x10000;}
  bool same(const Geometry&o)const{return width==o.width&&height==o.height&&offsetX==o.offsetX&&offsetY==o.offsetY&&rw==o.rw&&rh==o.rh&&factor==o.factor&&cells==o.cells&&house==o.house&&count==o.count&&bounds==o.bounds;}
  bool legal(int x,int y)const{return bounds.legal(x,y);}
+ mapbounds::NativeViewport nativeViewport()const{return valid()?mapbounds::nativeViewport(rw,rh,factor):mapbounds::NativeViewport{};}
+ bool tileOrigin(int x,int y,int level,mapbounds::TileOrigin&out)const{if(!bounds.tileOrigin(x,y,level,out))return false;out.x+=offsetX*30;out.y-=offsetY*15;return true;}
  void project(double x,double y,double&u,double&v)const{u=(x-y+offsetX)*factor/rw;v=(x+y-offsetY)*factor/rh;}
 };
 struct Marker {double u=0,v=0;uint32_t color=0;bool building=false;uint32_t object=0,id=0,type=0,owner=0,parent=0,parentId=0;int x=0,y=0,z=0,kind=-1,drawZ=0,sort=0,layer=2;bool normalLight=false,onBridge=false;visual::Pose pose;};
-struct CellArt {uint32_t cell=0,type=0,overlayType=0,overlaySourceType=0;int16_t overlay=-1;uint8_t sub=0,level=0,overlayFrame=0;};
+struct CellArt {uint32_t cell=0,type=0,overlayType=0,overlaySourceType=0;int16_t overlay=-1;uint8_t sub=0;int8_t level=0;uint8_t overlayFrame=0;};
 struct Scene {int width=0,height=0;std::vector<uint32_t> pixels;};
 struct Terrain {Geometry geo;std::vector<uint32_t> colors;std::vector<CellArt> art;bool reveal=false;};
-struct Frame {std::shared_ptr<const Terrain> terrain;std::vector<Marker> markers;std::shared_ptr<const Scene> scene,map;uint32_t tick=0;int frame=-1;};
+struct Frame {std::shared_ptr<const Terrain> terrain;std::vector<Marker> markers;std::shared_ptr<const Scene> scene,map;uint32_t tick=0;int frame=-1;std::vector<repairvisuals::Sprite> repairs;};
 inline uint32_t terrainColor(int land,int level,bool fog){
  static constexpr uint32_t colors[]={0x66794b,0x85836c,0x285e86,0x70756d,0x999684,0xb7a843,0xb4a47c,0x77734d,0xb4cbd0,0x77766b,0x55584f,0x58703d};
  if(land<0||land>=12)return 0x44483a;uint32_t c=colors[land];int shade=std::clamp(level,0,14)*2;
@@ -55,9 +59,9 @@ public:
    if(p<0x10000)continue;std::array<uint8_t,0x148> cell{};if(!read_(p,cell.data(),cell.size()))continue;
    int16_t cx=0,cy=0;int land=-1;std::memcpy(&cx,cell.data()+0x24,2);std::memcpy(&cy,cell.data()+0x26,2);std::memcpy(&land,cell.data()+0xEC,4);
    if(cx!=x||cy!=y)continue;int visibility=int8_t(cell[0x120]),fog=int8_t(cell[0x121]);if(!reveal&&visibility!=-1)continue;
-   uint32_t color=terrainColor(land,cell[0x11B],!reveal&&fog!=-1);
+   uint32_t color=terrainColor(land,int8_t(cell[0x11B]),!reveal&&fog!=-1);
    pending_->colors[cursor_]=color;
-   if(real&&!pending_->art.empty()){auto&a=pending_->art[cursor_];a.cell=p;a.sub=cell[0x11A];a.level=cell[0x11B];a.overlayFrame=cell[0x11E];int tile=-1,overlay=-1;uint32_t flags=0;memcpy(&flags,cell.data()+0x140,4);memcpy(&tile,cell.data()+0x38,4);memcpy(&overlay,cell.data()+0x44,4);if(tile==65535){tile=get<int>(0xAA10B0,-1);a.sub=0;}if(tile>=0&&size_t(tile)<tileTypes_.size())a.type=artvariants::tile(read_,tileTypes_[tile],a.sub,x,y,flags);if(overlay>=0&&size_t(overlay)<overlayTypes_.size()){a.overlay=int16_t(overlay);a.overlaySourceType=overlayTypes_[overlay];int drawOverlay=artvariants::overlay(read_,overlayTypes_,resourcePools_,overlay,x,y,cell[0x11C]);a.overlayType=overlayTypes_[drawOverlay];}}
+   if(real&&!pending_->art.empty()){auto&a=pending_->art[cursor_];a.cell=p;a.sub=cell[0x11A];a.level=int8_t(cell[0x11B]);a.overlayFrame=cell[0x11E];int tile=-1,overlay=-1;uint32_t flags=0;memcpy(&flags,cell.data()+0x140,4);memcpy(&tile,cell.data()+0x38,4);memcpy(&overlay,cell.data()+0x44,4);if(tile==65535){tile=get<int>(0xAA10B0,-1);a.sub=0;}if(tile>=0&&size_t(tile)<tileTypes_.size())a.type=artvariants::tile(read_,tileTypes_[tile],a.sub,x,y,flags);if(overlay>=0&&size_t(overlay)<overlayTypes_.size()){a.overlay=int16_t(overlay);a.overlaySourceType=overlayTypes_[overlay];int drawOverlay=artvariants::overlay(read_,overlayTypes_,resourcePools_,overlay,x,y,cell[0x11C]);a.overlayType=overlayTypes_[drawOverlay];}}
   }
   if(cursor_==pointers_.size()){terrain_=pending_;pending_.reset();++revision_;}return true;
  }
@@ -81,6 +85,14 @@ public:
    for(auto p:view_.vec(0xA8E988)){if(get<uint32_t>(p)!=0x7F522C||get<uint8_t>(p+0xCD)||get<int>(p+0x6C)<=0)continue;
     Marker m;m.object=p;m.id=get<uint32_t>(p+0x10);m.type=get<uint32_t>(p+0xC8);m.x=get<int>(p+0x9C,-1);m.y=get<int>(p+0xA0,-1);m.z=get<int>(p+0xA4);m.kind=4;m.pose.frame=get<int>(p+0xAC);
     if(m.x<0||m.y<0||m.x>=512*256||m.y>=512*256||!terrain_->colors[(m.y/256)*512+m.x/256])continue;
+    geo_.project(double(m.x)/256,double(m.y)/256,m.u,m.v);if(m.u>=0&&m.u<1&&m.v>=0&&m.v<1)out.markers.push_back(m);
+   }
+  }
+  if(!terrain_->art.empty()){
+   for(const auto&m:out.markers)if(m.kind==3){repairvisuals::Sprite sprite;if(repairvisuals::sample(read_,m.object,m.id,sprite))out.repairs.push_back(sprite);}
+   for(const auto&s:projectiles::all(read_)){
+    int cx=s.x/256,cy=s.y/256;if(!geo_.legal(cx,cy)||!terrain_->colors[cy*512+cx])continue;
+    Marker m;m.object=s.object;m.id=s.id;m.type=s.type;m.owner=s.owner;m.x=s.x;m.y=s.y;m.z=s.z;m.kind=projectiles::Kind;m.pose=s.pose;m.drawZ=s.drawZ;m.sort=s.sort;m.layer=s.layer;m.onBridge=s.onBridge;
     geo_.project(double(m.x)/256,double(m.y)/256,m.u,m.v);if(m.u>=0&&m.u<1&&m.v>=0&&m.v<1)out.markers.push_back(m);
    }
   }

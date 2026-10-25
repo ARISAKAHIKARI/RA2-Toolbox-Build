@@ -1,0 +1,129 @@
+{
+  "supported_executable_sha256": "7B8A068535D6AF06845EDF95AE829B113D00C02909330E16F197426CD7DB94B6",
+  "scope": "original coordinate arithmetic and TMP row-offset table; not full native scene rendering",
+  "stages": [
+    {
+      "stage": "01-off",
+      "native_origin_cases": 120,
+      "zero_mismatches": true,
+      "signed_height_values": [
+        -128,
+        -1,
+        0,
+        1,
+        2,
+        6,
+        14,
+        127
+      ],
+      "native_tmp_plane": {
+        "nonempty_rows": 29,
+        "pixels": 900,
+        "row_widths_match_production_formula": true
+      },
+      "code_ranges": [
+        {
+          "start": "0x6d1f10",
+          "end": "0x6d1f9b",
+          "sha256": "64585b9abffcc2237ff47b2921fb822b81deed7b054540e6c564c12eea96ad88"
+        },
+        {
+          "start": "0x6d51f6",
+          "end": "0x6d5226",
+          "sha256": "09f6f1817dc00a8c44dca668b1b78ea20b346834473f2e6f28a0a941bcfc3913"
+        },
+        {
+          "start": "0x480409",
+          "end": "0x480430",
+          "sha256": "b54a3c2d8c8951c90f6540e63b094eec4eb3209a55aab5f5ed0ba28b50d9b379"
+        }
+      ]
+    },
+    {
+      "stage": "02-on",
+      "native_origin_cases": 120,
+      "zero_mismatches": true,
+      "signed_height_values": [
+        -128,
+        -1,
+        0,
+        1,
+        2,
+        6,
+        14,
+        127
+      ],
+      "native_tmp_plane": {
+        "nonempty_rows": 29,
+        "pixels": 900,
+        "row_widths_match_production_formula": true
+      },
+      "code_ranges": [
+        {
+          "start": "0x6d1f10",
+          "end": "0x6d1f9b",
+          "sha256": "64585b9abffcc2237ff47b2921fb822b81deed7b054540e6c564c12eea96ad88"
+        },
+        {
+          "start": "0x6d51f6",
+          "end": "0x6d5226",
+          "sha256": "09f6f1817dc00a8c44dca668b1b78ea20b346834473f2e6f28a0a941bcfc3913"
+        },
+        {
+          "start": "0x480409",
+          "end": "0x480430",
+          "sha256": "b54a3c2d8c8951c90f6540e63b094eec4eb3209a55aab5f5ed0ba28b50d9b379"
+        }
+      ]
+    },
+    {
+      "stage": "03-off",
+      "native_origin_cases": 120,
+      "zero_mismatches": true,
+      "signed_height_values": [
+        -128,
+        -1,
+        0,
+        1,
+        2,
+        6,
+        14,
+        127
+      ],
+      "native_tmp_plane": {
+        "nonempty_rows": 29,
+        "pixels": 900,
+        "row_widths_match_production_formula": true
+      },
+      "code_ranges": [
+        {
+          "start": "0x6d1f10",
+          "end": "0x6d1f9b",
+          "sha256": "64585b9abffcc2237ff47b2921fb822b81deed7b054540e6c564c12eea96ad88"
+        },
+        {
+          "start": "0x6d51f6",
+          "end": "0x6d5226",
+          "sha256": "09f6f1817dc00a8c44dca668b1b78ea20b346834473f2e6f28a0a941bcfc3913"
+        },
+        {
+          "start": "0x480409",
+          "end": "0x480430",
+          "sha256": "b54a3c2d8c8951c90f6540e63b094eec4eb3209a55aab5f5ed0ba28b50d9b379"
+        }
+      ]
+    }
+  ],
+  "captured_nominal_south_coverage": {
+    "stage": "01-off",
+    "source": "valid captured cell coordinates and signed levels; nominal 900-pixel TMP footprint only",
+    "legal_cells_read": 38106,
+    "exact_radar_span_y": 4140.000041127205,
+    "south_bottom_min": 4110,
+    "south_bottom_max": 4184,
+    "unsupported_columns": 0,
+    "columns_whose_nominal_edge_is_above_viewport_bottom": 1440,
+    "limitations": "Excludes TMP extra images, source-index transparency, objects and the actual rasterizer; this envelope is diagnostic, never a global crop/mask."
+  },
+  "conclusion": "Existing half-cell center plus (-30,-15) TMP image origin matches the native terrain caller. Level is signed. Physical map legality remains separate from camera/usable extents."
+}

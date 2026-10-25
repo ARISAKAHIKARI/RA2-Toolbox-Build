@@ -9,6 +9,7 @@
 #include "building_components.h"
 #include "scene_lighting.h"
 #include "sprite_names.h"
+#include "projectile_visuals.h"
 #include <cstdio>
 #include <cstdlib>
 #include <memory>
@@ -121,6 +122,11 @@ double conditionYellow(){
  metadata();auto value=rulesINI.get("AUDIOVISUAL","CONDITIONYELLOW");char*end=nullptr;double threshold=strtod(value.c_str(),&end);if(end&&*end=='%')threshold/=100.;
  return value.empty()||!std::isfinite(threshold)||threshold<0||threshold>1?.5:threshold;
 }
+double conditionRed(){
+ double live=0;uint32_t rules=word(0x8871E0);if(rules>=0x10000&&rules<=0xffffe8f0u&&read(rules+0x1708,&live,sizeof live)&&std::isfinite(live)&&live>=0&&live<=1)return live;
+ metadata();auto value=rulesINI.get("AUDIOVISUAL","CONDITIONRED");char*end=nullptr;double threshold=strtod(value.c_str(),&end);if(end&&*end=='%')threshold/=100.;
+ bool parsed=end&&end!=value.c_str()&&(!*end||(*end=='%'&&!end[1]));return !parsed||!std::isfinite(threshold)||threshold<0||threshold>1?.25:threshold;
+}
 int buildingFrame(uint32_t object,uint32_t type){
  int frame=int32_t(word(object+0xF8)),state=int32_t(word(object+0x534));
  if(word(type+0x16BF)&255)return int32_t(word(object+0x618));
@@ -131,6 +137,7 @@ int buildingFrame(uint32_t object,uint32_t type){
   if(mission==19)frame=start+count-frame-1;
   return frame>=0&&frame<8192?frame:-1;
  }
+ if(word(type+0x157B)&255)return external::buildings::occupiedFrame(read,object,type,conditionYellow(),conditionRed());
  int strength=int32_t(word(type+0xA0)),health=int32_t(word(object+0x6C));if(strength<=0||health<=0)return 0;
  return std::clamp(frame,0,8191)+(double(health)/strength<=conditionYellow()?1:0);
 }
@@ -211,6 +218,39 @@ bool captureAnimation(uint32_t p,uint32_t type,uint32_t id,uint32_t parent,uint3
  if(!external::animations::capture(read,p,parent,parentId,after)||after.id!=id||after.type!=type||after.owner!=state.owner){failure="animation-changed";return false;}
  failure.clear();out=std::move(next);return true;
 }
+bool captureProjectile(uint32_t p,uint32_t type,uint32_t id,ActorArt&out){
+ external::projectiles::State state;if(!external::projectiles::capture(read,p,state)||state.type!=type||state.id!=id){failure="projectile-identity";return false;}
+ ActorArt next;next.kind=external::projectiles::Kind;next.type=type;next.voxel=state.voxel;next.flat=state.voxel?state.flat:true;next.shadow=state.shadow&&!state.voxel;next.pointer=word(type+0xA4);
+ // Resource/ANIM drawers are plain ConvertClass. Their native neutral row
+ // is authoritative; +188 belongs only to LightConvertClass, never these.
+ bool colors=convertPalette(state.converter,next.colors);
+ if(!colors&&state.palette==external::projectiles::SchemePalette){
+  uint32_t items=word(0xB054D4),scheme=0,again=0;int count=int(word(0xB054E0));uint8_t raw[768]{};
+  if(items>=0x10000&&state.colorIndex>=0&&state.colorIndex<count&&count<=512&&uint64_t(items)+uint64_t(count)*4<=0x100000000ull&&
+     read(items+state.colorIndex*4,&scheme,4)&&scheme>=0x10000&&uint64_t(scheme)+772<=0x100000000ull&&read(scheme+4,raw,sizeof raw)&&
+     read(items+state.colorIndex*4,&again,4)&&again==scheme&&word(scheme+0x30C)==state.converter){
+   for(int i=0;i<256;++i)next.colors[i]=0xff000000u|(uint32_t(raw[i*3])<<16)|(uint32_t(raw[i*3+1])<<8)|raw[i*3+2];next.colors[0]=0;colors=true;
+  }
+ }
+ if(!colors&&word(state.converter)==0x7E5358&&word(state.converter+4)==2){
+  int shades=int(word(state.converter+0x16C));uint32_t palette=word(state.converter+0x174);uint16_t raw[256]{};
+  if(shades>=1&&shades<=256&&palette>=0x10000&&uint64_t(palette)+sizeof raw<=0x100000000ull&&read(palette,raw,sizeof raw)&&word(state.converter+0x174)==palette){
+   for(int i=0;i<256;++i){unsigned c=raw[i],r=(c>>11)&31,g=(c>>5)&63,b=c&31;next.colors[i]=0xff000000u|(((r<<3)|(r>>2))<<16)|(((g<<2)|(g>>4))<<8)|(b<<3)|(b>>2);}next.colors[0]=0;colors=true;
+  }
+ }
+ if(!colors&&state.palette!=external::projectiles::SchemePalette)colors=paletteFile(state.palette==external::projectiles::AnimationPalette?"ANIM.PAL":"PALETTE.PAL",next.colors);
+ if(!colors){failure="projectile-palette";return false;}
+ if(state.voxel){
+  bool loaded=external::voxel::capturePart(read,word(type+0xB0),word(type+0xB4),next.model);
+  if(!loaded){std::vector<uint8_t>v,h;auto stem=imageName(type);loaded=!stem.empty()&&files.load(stem+".VXL",v)&&files.load(stem+".HVA",h)&&external::assets::vxl(v,h,next.model);}
+  if(!loaded){failure="projectile-voxel";return false;}
+ }else{
+  bool loaded=shapeBytes(type,next.pointer,next.shape,next.filename);if(!loaded)next.filename=external::assets::shapeName(read,next.pointer);
+  if(!loaded){external::voxel::Image check;std::string reason;if(!external::voxel::sprite(read,next.pointer,next.colors,check,state.pose.frame,&reason,255)){failure="projectile-sprite:"+reason;return false;}}
+ }
+ external::projectiles::State after;if(!external::projectiles::capture(read,p,after)||after.type!=state.type||after.id!=state.id||after.converter!=state.converter||after.palette!=state.palette){failure="projectile-changed";return false;}
+ failure.clear();out=std::move(next);return true;
+}
 bool captureActor(uint32_t p,uint32_t type,uint32_t id,ActorArt&out){
  failure.clear();if(word(p+0x10)!=id){failure="actor-identity";return false;}ActorArt next;external::GameView game(read);next.kind=game.kind(p);next.type=type;uint32_t owner=word(p+0x21C);
  metadata();next.shadow=!rulesINI.yes(text(type+0x24,24),"NOSHADOW");next.flat=artYes(type,"FLAT");
@@ -264,11 +304,17 @@ bool captureActor(uint32_t p,uint32_t type,uint32_t id,ActorArt&out){
 }
 bool renderActor(const ActorArt&art,const external::visual::Pose&pose,external::voxel::Image&out){
  auto angle=external::visual::radians(pose.body),turret=external::visual::radians(pose.turret);
- if(art.voxel){vpl();if(!external::voxel::render(art.model,angle,art.colors,out,turret,art.turretOffset,&voxelLight,255))return false;
+ if(art.voxel){vpl();bool projectile=art.kind==external::projectiles::Kind;
+  if(projectile&&!voxelLight.ready()){failure="projectile-vpl-unavailable";return false;}
+  if(!external::voxel::render(art.model,angle,art.colors,out,projectile?std::numeric_limits<double>::quiet_NaN():turret,art.turretOffset,&voxelLight,255,projectile?external::visual::radians(pose.turret):0,projectile))return false;
   // The model Z buffer resolves faces inside the cached voxel only. The game
   // submits that cached image through the same standing shape Z test as SHP.
   // Orthographic model depth is not in the terrain/BUILDNGZ buffer's units.
-  out.depth.clear();out.writeDepth=false;
+  out.depth.clear();out.writeDepth=false;if(projectile){out.flat=art.flat;
+   // 46B1A5/490B90: non-flat projectile flags 0800 select a blitter
+   // without a Z read or write. Flat 2800 keeps the ground Z read.
+   if(!art.flat)out.depth.assign(out.pixels.size(),std::numeric_limits<float>::quiet_NaN());
+  }
   if(art.shadow){auto ground=art.model;for(auto&face:ground.faces)for(auto&p:face.p)p.z=0;external::voxel::Image shadow;
    if(external::voxel::render(ground,angle,art.colors,shadow,turret,art.turretOffset,nullptr,255)){shadow.x+=3;shadow.shadow=true;shadow.flat=true;shadow.writeDepth=false;shadow.depthBias=2;shadow.depth.clear();out.attachments.push_back(std::move(shadow));}}
   return true;
@@ -301,7 +347,8 @@ bool renderActor(const ActorArt&art,const external::visual::Pose&pose,external::
   if(decode(bytes,at,displayed+n/2,part,why)){part.y+=art.drawY;part.shadow=true;part.flat=true;part.writeDepth=write;image.shadowsAfter=art.kind==3||write;part.depthBias=shadowBias;image.attachments.push_back(std::move(part));}};
  // DrawObject's shadow branch recomputes its ground plane independently of
  // NormalZAdjust and the -20/-40 production-body adjustment (706469/70653E).
- shadow(*shape,pointer,frame,out,art.kind==3,art.kind==3?2.f:out.depthBias+(art.kind==5?0:2));
+ if(art.kind==external::projectiles::Kind){if(art.shadow){auto ground=out;ground.attachments.clear();ground.shadow=true;ground.flat=true;ground.writeDepth=false;ground.depthBias=-20;ground.airborneShadow=true;out.attachments.push_back(std::move(ground));}}
+ else shadow(*shape,pointer,frame,out,art.kind==3,art.kind==3?2.f:out.depthBias+(art.kind==5?0:2));
  auto component=[&](external::buildings::Part index,int displayed,float depthBias,bool write){const auto&part=art.buildingParts[index];if(!part.pointer||displayed<0)return;
   external::voxel::Image image;if(!decode(part.shape,part.pointer,displayed,image,why)){failure="building-part/decode:"+part.filename+" frame="+std::to_string(displayed)+" "+why;complete=false;return;}
   image.y+=art.drawY;image.objectPalette=true;image.flat=true;image.writeDepth=write;image.depthBias=depthBias;

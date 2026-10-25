@@ -6,6 +6,14 @@
 
 | 主题 | 新笔记 | 关键词 |
 | --- | --- | --- |
+| VERA20K 原尺寸渲染与状态绘制参考 | [pre.9 研究](2026-10-25-vera20k-rendering-reference.md) | vera20k GPU scaled_copy RenderZPolicy GPLv3 |
+| 弹体采样与共享资产渲染集成 | [pre.9 研究](2026-10-25-projectile-renderer.md) | projectile SHP VXL pitch diffuse Inviso readonly |
+| 弹体原版选帧、色盘、层级及专用VXL | [pre.9 研究](2026-10-25-projectile-native.md) | Bullet damage 468090 468B90 753C80 758670 |
+| 维修扳手原版状态图标与专用色盘 | [pre.9 研究](2026-10-25-native-repair-wrench.md) | 6F5253 89DDC8 87F6C8 WRENCH no-Z |
+| 民房驻军、受损状态和实际主体帧 | [pre.9 研究](2026-10-25-garrison-building-appearance.md) | 43EF90 CanBeOccupied Occupants ConditionRed 5760 |
+| 小地图有符号高度、原生相位与精确范围 | [pre.9 研究](2026-10-25-minimap-south-boundary.md) | 480416 signed Level exact span backing 360 |
+| 实景小地图分页原图、局部更新、面积缩放与预算 | [pre.9 研究](2026-10-25-native-minimap-composition.md) | NativeCanvas copy-on-write dirty area prefix capacity |
+| 原尺寸观察窗、一次呈现缩放与动态效果集成 | [pre.9 研究](2026-10-25-watch-native-presentation.md) | 640x512 scale1 nearest final presentation repair projectile |
 | 入舱／駐軍後跟蹤身份與空間宿主、持續取樣與即時生命週期 | [pre.8 觀察窗入駐跟蹤](2026-10-25-watch-passenger-spatial-host.md) | Transporter Occupants 688 694 readFresh spatial anchor |
 | 礦石資源池及坡面圖案、TMP 位置表與損壞變體鏈 | [pre.8 礦石與地形變體](2026-10-25-resource-and-tmp-variants.md) | 47F871 B0F4E8 E0 E8 EC 2F0 2BC 8505 |
 | 步兵獨立額外亮度與 FA2 HDM 光照沙盒對照 | [pre.8 步兵光照](2026-10-25-fa2-infantry-lighting.md) | ExtraInfantryLight 17D8 519457 66B6FF VPL FA2 sandbox |

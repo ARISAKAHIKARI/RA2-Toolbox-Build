@@ -5,6 +5,7 @@
 #include "../../external_reader/source/scene_lighting.h"
 #include "label_motion.h"
 #include "../../external_reader/source/camera_raster.h"
+#include "../../external_reader/source/camera_repair.h"
 #include <memory>
 #include <tuple>
 #include <functional>
@@ -33,10 +34,13 @@ ImageKey imageKey(const external::watch::Actor&a){return {a.type,a.owner,a.kind,
 std::map<std::pair<uint32_t,uint32_t>,Cached> tiles,overlays;
 std::array<uint32_t,256> terrainPalette{};
 external::lighting::State sceneLight;
+external::repairvisuals::Assets repairAssets;
 uint64_t serial=0;DWORD process=0;uint32_t epoch=0;bool shown=false;
 uint32_t controlRevision=0;bool haveControls=false;
-static constexpr int Width=external::watch::NativeViewWidth/2,Height=external::watch::NativeViewHeight/2;
-void reset(){for(auto&t:tracks)t={};for(auto&v:views)v={};automatic={};autoSuppressed=false;haveControls=false;images.clear();displayed.clear();actorArt.clear();actorCursor=0;diagnosticAt=0;tiles.clear();overlays.clear();terrainPalette={};shown=false;}
+// Depth, shadows and sprite coverage are resolved at native game pixels.
+// The immutable result is reduced only when the actual window is presented.
+static constexpr int Width=external::watch::NativeViewWidth,Height=external::watch::NativeViewHeight;
+void reset(){for(auto&t:tracks)t={};for(auto&v:views)v={};automatic={};autoSuppressed=false;haveControls=false;images.clear();displayed.clear();actorArt.clear();actorCursor=0;diagnosticAt=0;tiles.clear();overlays.clear();terrainPalette={};repairAssets.reset();shown=false;}
 void syncTracks(uint32_t revision,const std::array<external::watch::Track,3>&next,bool suppress){
  // Pending snapshots may predate the worker's death/succession decision. Only
  // a new user control revision can replace that authoritative tracking state.
@@ -90,7 +94,7 @@ void refreshAssets(external::watch::Frame&frame,DWORD now){
    auto&source=actorArt[artKey(a)];
    if(!source.ready&&(!source.retry||int32_t(now-source.retry)>=0)){
     source.retry=now+2000;typename Assets::ActorArt art;
-    if((a.kind==5?assets.captureAnimation(a.target.pointer,a.type,a.target.id,a.parent.pointer,a.parent.id,art):assets.captureActor(a.target.pointer,a.type,a.target.id,art))&&faces+art.model.faces.size()<=4*1024*1024&&artBytes+Assets::cost(art)<=128*1024*1024){faces+=art.model.faces.size();artBytes+=Assets::cost(art);source.art=std::move(art);source.ready=true;}source.issue=source.ready?"":assets.failure;
+    if((a.kind==external::projectiles::Kind?external::projectiles::captureArt(assets,a.target.pointer,a.type,a.target.id,art):a.kind==5?assets.captureAnimation(a.target.pointer,a.type,a.target.id,a.parent.pointer,a.parent.id,art):assets.captureActor(a.target.pointer,a.type,a.target.id,art))&&faces+art.model.faces.size()<=4*1024*1024&&artBytes+Assets::cost(art)<=128*1024*1024){faces+=art.model.faces.size();artBytes+=Assets::cost(art);source.art=std::move(art);source.ready=true;}source.issue=source.ready?"":assets.failure;
    }
    if(source.ready)ok=assets.renderActor(source.art,a.pose,image);else assets.failure=source.issue;
   }
@@ -145,7 +149,7 @@ void drawView(Graphics&g,const View&view){
  SolidBrush bg(Color(255,8,12,8));g.FillRectangle(&bg,0.f,0.f,float(Width),float(Height));
  // Overscan the diamond map in world space and crop only at the rectangular
  // viewport. There is no separate title, status/footer or fixed 11x11 diamond.
- const float ox=Width/2.f,oy=Height/2.f,scale=.5f;int side=frame.side,radius=frame.radius,centerLevel=frame.tiles[radius*side+radius].level;
+ const float ox=Width/2.f,oy=Height/2.f,scale=1.f;int side=frame.side,radius=frame.radius,centerLevel=frame.tiles[radius*side+radius].level;
  auto position=[&](const external::watch::Actor&a){auto i=view.positions.find(a.target.id);if(i!=view.positions.end())return std::pair<float,float>{i->second.x,i->second.y};return std::pair<float,float>{float((int64_t(a.x)-a.y)*30/256),float((int64_t(a.x)+a.y)*15/256-external::screenHeight(a.z,frame.zScale)+external::camera::anchorY(a.kind))};};
  float cameraX=(frame.cx-frame.cy)*30.f,cameraY=(frame.cx+frame.cy+1)*15.f-centerLevel*15.f;
  if(frame.cameraReady){cameraX=float(frame.cameraX);cameraY=float(frame.cameraY);}
@@ -177,13 +181,20 @@ void drawView(Graphics&g,const View&view){
     float(std::max(0,external::screenHeight(a.z,frame.zScale)-(frame.tiles[cy*side+cx].level+(a.onBridge?4:0))*15)));
   if(a.target==frame.center.target){focusX=x;focusY=y;}
  }
+ // Repair wrenches are native status sprites, not AnimClass world objects.
+ // Their cursor palette and no-Z draw follow all terrain/unit composition.
+ for(const auto&sprite:frame.repairs)if(auto image=repairAssets.image(assets,sprite)){
+  float x=ox+((int64_t(sprite.x)-sprite.y)*30.f/256-cameraX)*scale;
+  float y=oy+((int64_t(sprite.x)+sprite.y)*15.f/256-external::screenHeight(sprite.z,frame.zScale)-cameraY)*scale;
+  canvas.blit(*image,x,y,scale,scale,0,external::lighting::State{});
+ }
  // Camera limits constrain its center, not drawable map scenery. Surface
  // rasterization already clips the scene to this rectangular viewport.
  if(!canvas.color.empty()){Bitmap bitmap(Width,Height,Width*4,PixelFormat32bppPARGB,reinterpret_cast<BYTE*>(canvas.color.data()));
   g.DrawImage(&bitmap,RectF(0,0,float(Width),float(Height)),0.f,0.f,float(Width),float(Height),UnitPixel,nullptr);}
- if(focusX>-100){Pen ring(Color(255,255,224,111),1.3f);g.DrawEllipse(&ring,focusX-10,focusY-5,20.f,10.f);}
+ if(focusX>-100){Pen ring(Color(255,255,224,111),2.6f);g.DrawEllipse(&ring,focusX-20,focusY-10,40.f,20.f);}
 
- Pen border(Color(255,frame.dangerous?255:105,frame.dangerous?167:195,frame.dangerous?62:225),3.f);g.DrawRectangle(&border,1.5f,1.5f,float(Width-3),float(Height-3));g.Restore(state);
+ Pen border(Color(255,frame.dangerous?255:105,frame.dangerous?167:195,frame.dangerous?62:225),6.f);g.DrawRectangle(&border,3.f,3.f,float(Width-6),float(Height-6));g.Restore(state);
 }
 };
 }

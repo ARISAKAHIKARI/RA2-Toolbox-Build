@@ -242,6 +242,20 @@ int main(int argc,char**argv){
  // Standalone warhead/explosion art uses ANIM.PAL, with no building slot.
  disk["ANIM.PAL"]=pal;disk["EXPLODE.SHP"]=shp;memcpy(memory.data()+animType+0x24,"EXPLODE",8);memory[anim+0x118]=0;
  assert(gameassets::captureAnimation(anim,animType,502,0,0,art)&&art.filename=="EXPLODE.SHP");ap.frame=0;assert(gameassets::renderActor(art,ap,image));
+ // Garrisoned civilian houses change the body SHP frame immediately; they
+ // keep the same source art/palette. No synthetic animation is needed.
+ constexpr uint32_t civic=0x2E0000,civicType=0x2E8000;
+ word(memory,civic,0x7E3EBC);word(memory,civic+0x10,901);word(memory,civic+0x520,civicType);word(memory,civic+0x21C,house);word(memory,civic+0x6C,100);word(memory,civic+0x534,1);memory[civic+0x6E4]=1;
+ word(memory,civicType+0xA0,100);word(memory,civicType+0x634,uint32_t(-1));memory[civicType+0x157B]=1;memcpy(memory.data()+civicType+0x24,"CIVHOUSE",9);memcpy(memory.data()+civicType+0xDD0,"CUSTOM",7);
+ disk["CIVHOUSE.SHP"]=partShape(8,0,120);double red=.25;memcpy(memory.data()+runtimeRules+0x1708,&red,8);clockValue+=6000;gameassets::update();
+ gameassets::ActorArt civicArt;assert(gameassets::captureActor(civic,civicType,901,civicArt)&&civicArt.filename=="CIVHOUSE.SHP");auto civicColors=civicArt.colors;
+ external::visual::Pose civicPose;for(int count:{0,1,3,0}){word(memory,civic+0x694,count);gameassets::buildingPose(civic,civicType,civicPose);assert(civicPose.frame==(count?2:0));assert(gameassets::renderActor(civicArt,civicPose,image)&&image.indices[0]==120+civicPose.frame&&civicArt.colors==civicColors);}
+ word(memory,civic+0x694,1);word(memory,civic+0x6C,40);gameassets::buildingPose(civic,civicType,civicPose);assert(civicPose.frame==2&&gameassets::renderActor(civicArt,civicPose,image)&&image.indices[0]==122);
+ word(memory,civic+0x6C,25);gameassets::buildingPose(civic,civicType,civicPose);assert(civicPose.frame==1&&gameassets::renderActor(civicArt,civicPose,image)&&image.indices[0]==121);
+ word(memory,civicType+0x634,1);gameassets::buildingPose(civic,civicType,civicPose);assert(civicPose.frame==3&&gameassets::renderActor(civicArt,civicPose,image)&&image.indices[0]==123);
+ word(memory,civicType+0x634,uint32_t(-1));word(memory,civic+0x6C,30);red=.4;memcpy(memory.data()+runtimeRules+0x1708,&red,8);gameassets::buildingPose(civic,civicType,civicPose);assert(civicPose.frame==1);
+ red=.25;memcpy(memory.data()+runtimeRules+0x1708,&red,8);gameassets::buildingPose(civic,civicType,civicPose);assert(civicPose.frame==2);
+ std::cout<<"PASS garrison entry/exit body frames, unchanged source palette, civilian/buildable damage states and live ConditionRed\n";
  // TerrainPalette is a runtime building flag, independent of INI fallback.
  // Give ISO art a distinct color so an accidental unit/custom palette fails.
  disk["ISOTEM.PAL"]=std::vector<uint8_t>(768,17);clockValue+=6000;gameassets::update();
@@ -295,6 +309,59 @@ int main(int argc,char**argv){
  liveVpl(3);clockValue+=1001;lighting.update();checkVoxel(3);
  word(memory,0xB2FB58,0);lighting.identity(pid+1,7);assert(!lighting.voxelLight.ready());imagePathAvailable=true;
  std::cout<<"PASS production VPL memory priority, missing-resource retry, live/file recovery, pose revision invalidation and stable-source caching\n";
+ // Bullet visuals are neither Techno health objects nor ordinary unit art.
+ // Exercise production capture/render using live SHP, plain converters and
+ // the real VXL/HVA decoder with synthetic memory (no private game art).
+ constexpr uint32_t shot=0x700000,shotType=0x701000,shotShape=0x702000,shotConvert=0x704000,shotColors=0x705000,animShotConvert=0x706000,animShotColors=0x707000;
+ word(memory,shot,external::projectiles::Vtable);word(memory,shot+0x10,9001);word(memory,shot+0xAC,shotType);word(memory,shotType,external::projectiles::TypeVtable);
+ memory[shot+0x90]=1;word(memory,shot+0x94,2);word(memory,shot+0x9C,25600);word(memory,shot+0xA0,25600);word(memory,shot+0xA4,416);memory[shotType+0x2A1]=1;
+ memcpy(memory.data()+shotType+0x24,"TESTPROJECTILE",15);word(memory,shotType+0xA4,shotShape);auto projectileShp=partShape(32,0,100);memcpy(memory.data()+shotShape,projectileShp.data(),projectileShp.size());
+ auto plain=[&](uint32_t drawer,uint32_t palette,uint16_t color){word(memory,drawer,0x7E5358);word(memory,drawer+4,2);word(memory,drawer+0x16C,53);word(memory,drawer+0x174,palette);for(int i=0;i<256;++i)half(memory,palette+i*2,color);};
+ plain(shotConvert,shotColors,0xF800);plain(animShotConvert,animShotColors,0x07E0);word(memory,0x87F6C4,shotConvert);word(memory,0x87F6C0,animShotConvert);memory[shotType+0x29A]=1;
+ external::projectiles::State projectile;assert(external::projectiles::capture(gameassets::context.read,shot,projectile));
+ word(memory,shot+0x6C,0);assert(gameassets::captureProjectile(shot,shotType,9001,art)&&art.kind==6&&!art.voxel&&art.flat&&art.colors[100]==0xffff0000);
+ assert(gameassets::renderActor(art,projectile.pose,image)&&image.pixels[0]==0xffff0000&&image.attachments.size()==1&&image.attachments[0].shadow&&image.attachments[0].airborneShadow);
+ assert(image.attachments[0].pixels==image.pixels&&"projectile shadows reuse this frame, not half-SHP shadow frames");
+ memory[shotType+0x2A8]=1;assert(external::projectiles::capture(gameassets::context.read,shot,projectile)&&gameassets::captureProjectile(shot,shotType,9001,art));
+ assert(gameassets::renderActor(art,projectile.pose,image)&&image.pixels[0]==0xff00ff00&&"AnimPalette must precede FirersPalette");
+ // Missing live resource drawer falls back to PALETTE.PAL, not UNIT*.PAL.
+ memory[shotType+0x2A8]=0;word(memory,0x87F6C4,0);disk["PALETTE.PAL"]=std::vector<uint8_t>(768,13);clockValue+=6000;gameassets::update();
+ assert(gameassets::captureProjectile(shot,shotType,9001,art)&&art.colors[100]==0xff343434);word(memory,0x87F6C4,shotConvert);
+ // Minimal one-voxel VXL and HVA: all faces share a real raw normal index.
+ constexpr uint32_t bulletVxl=0x710000,bulletTail=0x711000,bulletBody=0x712000,bulletHva=0x713000,bulletMatrix=0x714000,bulletItems=0x715000,bulletScheme=0x716000,bulletDrawer=0x717000,bulletPalette=0x718000;
+ word(memory,bulletVxl+4,1);word(memory,bulletVxl+8,1);word(memory,bulletVxl+12,13);word(memory,bulletVxl+20,bulletTail);word(memory,bulletVxl+24,bulletBody);
+ word(memory,bulletTail,bulletBody);word(memory,bulletTail+4,bulletBody+4);word(memory,bulletTail+8,bulletBody+8);word(memory,bulletBody,0);word(memory,bulletBody+4,4);
+ memory[bulletBody+8]=0;memory[bulletBody+9]=1;memory[bulletBody+10]=5;memory[bulletBody+11]=0;memory[bulletBody+12]=1;
+ for(int i=0;i<8;++i){float bounds[3]={float((i&1)?8:0),float((i&2)?2:0),float((i&4)?2:0)};memcpy(memory.data()+bulletTail+0x40+i*12,bounds,sizeof bounds);}
+ memory[bulletTail+0xA0]=memory[bulletTail+0xA1]=memory[bulletTail+0xA2]=1;memory[bulletTail+0xA3]=4;
+ word(memory,bulletHva+4,1);word(memory,bulletHva+8,1);word(memory,bulletHva+12,bulletMatrix);float matrix[12]={1,0,0,0,0,1,0,0,0,0,1,0};memcpy(memory.data()+bulletMatrix,matrix,sizeof matrix);
+ memory[shotType+0x236]=1;word(memory,shotType+0xB0,bulletVxl);word(memory,shotType+0xB4,bulletHva);word(memory,shotType+0x2D4,0);
+ word(memory,0xB054D4,bulletItems);word(memory,0xB054E0,1);word(memory,bulletItems,bulletScheme);word(memory,bulletScheme+0x30C,bulletDrawer);word(memory,bulletDrawer,0x7ED0A4);word(memory,bulletDrawer+0x188,bulletPalette);
+ for(int i=1;i<256;++i){memory[bulletPalette+i*3]=uint8_t(i);memory[bulletScheme+4+i*3]=uint8_t(i);}
+ word(memory,0xB2FB58,32);for(int page=0;page<32;++page)std::fill(memory.begin()+0xB41178+page*256,memory.begin()+0xB41178+(page+1)*256,uint8_t(page+40));clockValue+=1001;gameassets::update();
+ for(auto velocity:std::vector<std::array<double,3>>{{1,0,0},{1,2,3},{-2,1,-3}}){memcpy(memory.data()+shot+0xE8,velocity.data(),24);assert(external::projectiles::capture(gameassets::context.read,shot,projectile));
+  assert(gameassets::captureProjectile(shot,shotType,9001,art)&&art.voxel&&art.model.faces.size()==6&&!art.shadow);
+  auto nativeLight=external::voxel::nativeVoxelLight(external::visual::radians(projectile.pose.body),external::visual::radians(projectile.pose.turret));
+  unsigned expected=external::voxel::nativeProjectilePage(external::voxel::Normals4[0],nativeLight)+40;
+  assert(gameassets::renderActor(art,projectile.pose,image)&&!image.indices.empty()&&image.depth.size()==image.pixels.size());
+  for(auto depth:image.depth)assert(std::isnan(depth));
+  for(auto index:image.indices)assert(!index||index==expected);
+  assert(std::any_of(image.pixels.begin(),image.pixels.end(),[](auto color){return color!=0;}));
+  external::camera::Surface blocked;blocked.reset(64,64,0xff888888);std::fill(blocked.depth.begin(),blocked.depth.end(),1e20f);blocked.blit(image,32,32,1,1,0,{});
+  assert(std::any_of(blocked.color.begin(),blocked.color.end(),[](auto color){return color!=0xff888888;})&&"non-flat VXL projectile does not read scene Z");
+  for(auto depth:blocked.depth)assert(depth==1e20f);
+ }
+ memory[shotType+0x2F7]=1;assert(external::projectiles::capture(gameassets::context.read,shot,projectile)&&projectile.layer==1);
+ assert(gameassets::captureProjectile(shot,shotType,9001,art)&&gameassets::renderActor(art,projectile.pose,image)&&image.flat&&image.depth.empty()&&!image.writeDepth);
+ external::camera::Surface flatBlocked;flatBlocked.reset(64,64,0xff888888);std::fill(flatBlocked.depth.begin(),flatBlocked.depth.end(),1e20f);flatBlocked.blit(image,32,32,1,1,0,{});
+ for(auto color:flatBlocked.color)assert(color==0xff888888&&"Flat VXL projectile retains the native read-only scene Z test");
+ memory[shotType+0x2F7]=0;assert(external::projectiles::capture(gameassets::context.read,shot,projectile)&&projectile.layer==3);
+ // Missing VPL must not substitute the vehicle Lambert approximation for
+ // the distinct projectile selector. Source readiness will trigger retry.
+ word(memory,0xB2FB58,0);disk.erase("VOXELS.VPL");gameassets::context.identity(pid+4,99);
+ assert(gameassets::captureProjectile(shot,shotType,9001,art)&&!gameassets::renderActor(art,projectile.pose,image)&&gameassets::failure=="projectile-vpl-unavailable");
+ memory[shotType+0x29E]=1;assert(!gameassets::captureProjectile(shot,shotType,9001,art));
+ std::cout<<"PASS production projectile SHP -> fixed-1000 plain/ANIM palette -> same-frame shadow, PALETTE.PAL fallback, VXL/HVA capture -> quantized yaw/pitch -> projectile diffuse VPL pixels\n";
 }
 '''
 with tempfile.TemporaryDirectory() as tmp:

@@ -1,6 +1,7 @@
 #include "../../external_reader/source/radar_scene.h"
 #include <cassert>
 #include <iostream>
+#include <functional>
 struct Assets {
  struct ActorArt {int id=0;bool anim=false;};struct Files {uint64_t value=1;uint64_t revision(){return value;}}files;int loads=0,captures=0,renders=0;std::set<int> seen;std::map<int,std::set<int>> frames;std::set<std::pair<int,int>> buildingPoses;bool small=false,partial=false;
  uint32_t forcedColor=0,overlayColor=0;
@@ -13,7 +14,22 @@ struct Assets {
  void buildingPose(uint32_t p,uint32_t t,external::visual::Pose&pose){pose.frame=buildingFrame(p,t);}
  bool captureActor(uint32_t,uint32_t,uint32_t id,ActorArt&a){++captures;a.id=id;return true;}
  bool captureAnimation(uint32_t,uint32_t,uint32_t id,uint32_t,uint32_t,ActorArt&a){a.id=id;a.anim=true;return true;}
- bool renderActor(const ActorArt&a,const external::visual::Pose&pose,external::voxel::Image&i){++renders;seen.insert(a.id);frames[a.id].insert(pose.frame);if(pose.buildingFlags)buildingPoses.emplace(pose.buildingFlags,pose.doorFrame);i.width=i.height=small?8:60;i.x=i.y=-i.width/2;i.pixels.assign(i.width*i.height,forcedColor?forcedColor:(a.anim?0xffaaff00:0xff00aa00));i.depth.assign(i.width*i.height,a.anim?100:5);i.writeDepth=false;i.incomplete=partial;return true;}
+ bool renderActor(const ActorArt&a,const external::visual::Pose&pose,external::voxel::Image&i){++renders;seen.insert(a.id);frames[a.id].insert(pose.frame);if(pose.buildingFlags)buildingPoses.emplace(pose.buildingFlags,pose.doorFrame);i.width=small?8:60;i.height=small?8:180;i.x=-i.width/2;i.y=-i.height/2;i.pixels.assign(i.width*i.height,forcedColor?forcedColor:(a.anim?0xffaaff00:0xff00aa00));i.depth.assign(i.width*i.height,a.anim?100:5);i.writeDepth=false;i.incomplete=partial;return true;}
+};
+
+struct PatternAssets:Assets {
+ bool tile(uint32_t,unsigned,const std::array<uint32_t,256>&,external::voxel::Image&i){++loads;i.width=60;i.height=30;i.x=-30;i.y=-15;i.pixels.resize(1800);i.depth.assign(1800,0);for(int y=0;y<30;++y)for(int x=0;x<60;++x)i.pixels[y*60+x]=((x+y)&1)?0xffffffff:0xff000000;return true;}
+};
+struct WideAssets:Assets {
+ int tileWidth=384;bool largeActor=false;
+ bool tile(uint32_t type,unsigned,const std::array<uint32_t,256>&,external::voxel::Image&i){++loads;i.width=tileWidth;i.height=1;i.x=-tileWidth/2;i.y=0;i.pixels.assign(tileWidth,type==1?0xffa03020:0xff2040a0);i.depth.assign(tileWidth,0);return true;}
+ bool renderActor(const ActorArt&a,const external::visual::Pose&pose,external::voxel::Image&i){bool ok=Assets::renderActor(a,pose,i);i.width=largeActor?1024:60;i.height=largeActor?128:30;i.x=-i.width/2;i.y=-i.height/2;i.pixels.assign(i.width*i.height,0xff00aa00);i.depth.assign(i.pixels.size(),5);return ok;}
+};
+struct EffectsAssets:Assets {
+ struct Files{uint64_t value=1;bool load(const char*,std::vector<uint8_t>&){return false;}}files;
+ std::function<bool(uint32_t,void*,size_t)> read=[](uint32_t,void*,size_t){return false;};int projectiles=0;
+ uint64_t revision(){return files.value;}
+ bool captureProjectile(uint32_t,uint32_t,uint32_t id,ActorArt&a){++projectiles;a.id=id;return true;}
 };
 int main(){
  using namespace external::radar;Assets assets;SceneRenderer<Assets> renderer;auto read=[](uint32_t,void*,size_t){return false;};
@@ -106,6 +122,58 @@ int main(){
   memory[source+0x2A8]=1;lightRenderer.reset();bright=lightRenderer.render(lit,128,64,bytes,lightAssets);assert(bright&&std::find(bright->pixels.begin(),bright->pixels.end(),lightAssets.overlayColor)!=bright->pixels.end());
   put(cell+0x140,0x80u);lightRenderer.reset();auto bridge=lightRenderer.render(lit,128,64,bytes,lightAssets);external::lighting::State bridgeLight;bridgeLight.intensity=500;uint32_t expected=external::camera::lit(lightAssets.overlayColor,0,false,bridgeLight);assert(bridge&&std::find(bridge->pixels.begin(),bridge->pixels.end(),expected)!=bridge->pixels.end());
  }
- std::cout<<"PASS scene publication, native animation frame-zero/advance, independent door/roof cache, shared source art, fair retained poses, ground/air layers, shroud policy, resource/wall/bridge light, resize and reset\n";
+
+ // The production renderer composes the source checkerboard at native size
+ // before one final filter. Per-sprite low-resolution nearest selection would
+ // produce a solid black or white pixel instead of the exact 50% average.
+ {
+  PatternAssets pattern;SceneRenderer<PatternAssets> nativeRenderer;Frame f;f.terrain=terrain;f.tick=100;
+  auto image=nativeRenderer.render(f,128,64,read,pattern);assert(image&&image->pixels[32*128+64]==0xff808080);
+  auto stats=nativeRenderer.nativeStats();assert(stats.width==3840&&stats.height==1920&&stats.cells==1&&stats.pages<8);
+  // Output resizing and identical immutable sampling banks retain native
+  // color/Z pages and source art; only final presentation is regenerated.
+  auto same=std::make_shared<Terrain>(*terrain);f.terrain=same;nativeRenderer.render(f,128,64,read,pattern);
+  auto unchanged=nativeRenderer.nativeStats();assert(unchanged.cells==stats.cells&&unchanged.presents==stats.presents&&pattern.loads==1);
+  auto resized=nativeRenderer.render(f,512,256,read,pattern);auto after=nativeRenderer.nativeStats();assert(resized&&after.cells==stats.cells&&after.presents==stats.presents+1&&pattern.loads==1);
+  assert(nativeRenderer.render(f,512,256,read,pattern)==resized); // unchanged no-actor scene is shared, not copied
+ }
+ // Constrained budgets exercise the exact production convergence path. An
+ // old native bank can be released while its small published Scene survives;
+ // pending work then resumes, without switching to scaled source rendering.
+ {
+  WideAssets wide;SceneRenderer<WideAssets> limited(8);Frame f;f.terrain=terrain;f.tick=100;
+  auto oldScene=limited.render(f,128,64,read,wide);assert(oldScene&&limited.nativeStats().pages==4);
+  auto changed=std::make_shared<Terrain>(*terrain);changed->art[64*512+64].type=2;f.terrain=changed;
+  assert(!limited.render(f,128,64,read,wide)&&!limited.capacityExceeded());assert(oldScene->pixels.size()==128*64);
+  auto complete=limited.render(f,128,64,read,wide);assert(complete&&!limited.capacityExceeded()&&limited.nativeStats().pages==4&&limited.nativeStats().resident==4);
+  wide.largeActor=true;f.markers={m};auto overloaded=limited.render(f,128,64,read,wide);assert(!overloaded&&limited.capacityExceeded());int rendered=wide.renders;
+  f.markers.clear();assert(limited.render(f,128,64,read,wide)&&!limited.capacityExceeded());
+  wide.largeActor=false;f.markers={m};++f.markers[0].pose.frame;auto recovered=limited.render(f,128,64,read,wide);assert(recovered&&!limited.capacityExceeded()&&wide.renders==rendered+1);
+  // A single source plane beyond the configured resident budget is an
+  // explicit blocked result, not endless reallocation/retry of the same cell.
+  WideAssets huge;huge.tileWidth=1000;SceneRenderer<WideAssets> blocked(8);f.markers.clear();f.terrain=terrain;
+  assert(!blocked.render(f,128,64,read,huge)&&blocked.capacityExceeded()&&blocked.nativeStats().resident==0);int loadsBefore=huge.loads;
+  for(int i=0;i<20;++i)assert(!blocked.render(f,128,64,read,huge)&&blocked.capacityExceeded());assert(huge.loads==loadsBefore);
+  auto empty=std::make_shared<Terrain>(*terrain);empty->colors[64*512+64]=0;f.terrain=empty;assert(blocked.render(f,128,64,read,huge)&&!blocked.capacityExceeded());
+ }
+ // Projectiles use their dedicated capture/light path. Repair cursor sprites
+ // compose last, ignore arbitrary world depth, and disappear immediately.
+ {
+  EffectsAssets effects;SceneRenderer<EffectsAssets> effectsRenderer;Frame f;f.terrain=terrain;f.tick=100;
+  auto bullet=m;bullet.kind=6;bullet.id=777;effects.forcedColor=0xff0000ff;f.markers={bullet};
+  auto image=effectsRenderer.render(f,128,64,read,effects);assert(image&&effects.projectiles==1&&effects.captures==0&&image->pixels[32*128+64]==0xff0000ff);
+  std::vector<uint8_t> memory(0x80000);auto put=[&](uint32_t at,auto value){memcpy(memory.data()+at,&value,sizeof value);};
+  constexpr uint32_t shape=0x60000,converter=0x50000,palette=0x70000;
+  put(converter,0x7E5358u);put(converter+4,2);put(converter+0x16C,1);put(converter+0x174,palette);put(palette+2,uint16_t(0xF800));put(palette+4,uint16_t(0x07E0));
+  put(shape+2,uint16_t(60));put(shape+4,uint16_t(60));put(shape+6,uint16_t(7));
+  for(int frame=0;frame<7;++frame){uint32_t header=shape+8+frame*24,offset=8+7*24+frame*3600;put(header+4,uint16_t(60));put(header+6,uint16_t(60));put(header+20,offset);std::fill(memory.begin()+shape+offset,memory.begin()+shape+offset+3600,uint8_t(frame%2+1));}
+  effects.read=[&](uint32_t at,void*out,size_t n){if(uint64_t(at)+n>memory.size())return false;memcpy(out,memory.data()+at,n);return true;};
+  external::repairvisuals::Sprite repair;repair.x=m.x;repair.y=m.y;repair.shape=shape;repair.converter=converter;repair.frame=0;repair.tick=1;f.repairs={repair};
+  image=effectsRenderer.render(f,128,64,read,effects);assert(image&&image->pixels[32*128+64]==0xffff0000);
+  ++f.repairs[0].tick;f.repairs[0].frame=1;image=effectsRenderer.render(f,128,64,read,effects);assert(image&&image->pixels[32*128+64]==0xff00ff00);
+  f.repairs.clear();image=effectsRenderer.render(f,128,64,read,effects);assert(image&&image->pixels[32*128+64]==0xff0000ff);
+  f.markers.clear();image=effectsRenderer.render(f,128,64,read,effects);assert(image&&std::find(image->pixels.begin(),image->pixels.end(),0xff0000ff)==image->pixels.end());
+ }
+ std::cout<<"PASS scene publication, native animation frame-zero/advance, independent door/roof cache, shared source art, fair retained poses, ground/air layers, shroud policy, resource/wall/bridge light, native area presentation/cache/budget recovery, projectile/repair effects, resize and reset\n";
 }
 

@@ -23,7 +23,7 @@ int main(){
   watchhost::tracks[i].target={p,uint32_t(i+1)};
  }
  vec(0xA8EC78,0x190000,actors);watchhost::process=pid;watchhost::epoch=1;watchhost::controls=1;
- watchhost::update(clockValue);assert(awaitResult(watchhost::controls));
+ watchhost::update(clockValue);auto nativeResult=awaitResult(watchhost::controls);assert(nativeResult);for(const auto&v:nativeResult->views)assert(v.pixels&&v.pixels->size()==640*512);
  // A NEW completion can still contain older lifecycle evidence: stop a job
  // after sampling/drawing, confirm death on the foreground path, then let
  // that old job finish. Pointer-based one-time consumption alone cannot

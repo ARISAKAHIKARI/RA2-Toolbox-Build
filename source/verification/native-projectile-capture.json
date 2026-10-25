@@ -1,0 +1,5658 @@
+{
+  "supported_executable_sha256": "7b8a068535d6af06845edf95ae829b113d00c02909330e16f197426cd7db94b6",
+  "scope": "Audit original Bullet Draw_It selection, frame, transform and palette paths.\n\nThe private supported-game capture contains no live bullets. Constructed Bullet\nand BulletType layouts run the captured original x86 and retain native math,\nMapClass ground queries and virtual GetImage/GetAnimFrame/GetHeight/GetZ calls.\nOnly the terminal SHP/VXL draw boundaries are intercepted. No live game,\nframebuffer, projectile physics or multiplayer test is performed. Output is\nsanitized decisions, counters and code hashes; no art or executable bytes.\n",
+  "stages": {
+    "01-off": {
+      "captured_live_bullets": 0,
+      "fixture": "synthetic Bullet and copied BulletType; terminal draw intercepted",
+      "frame_cases": 768,
+      "palette_shadow_bright_cases": 48,
+      "shp_draw_parameter_cases": [
+        {
+          "anim_palette": false,
+          "firers_palette": false,
+          "inherited_color": -1,
+          "shadow": false,
+          "bright": false,
+          "draws": 1,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": null,
+          "shadow_remap": null
+        },
+        {
+          "anim_palette": false,
+          "firers_palette": false,
+          "inherited_color": -1,
+          "shadow": false,
+          "bright": true,
+          "draws": 1,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": null,
+          "shadow_remap": null
+        },
+        {
+          "anim_palette": false,
+          "firers_palette": false,
+          "inherited_color": -1,
+          "shadow": true,
+          "bright": false,
+          "draws": 2,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": 0,
+          "shadow_remap": 0
+        },
+        {
+          "anim_palette": false,
+          "firers_palette": false,
+          "inherited_color": -1,
+          "shadow": true,
+          "bright": true,
+          "draws": 2,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": 0,
+          "shadow_remap": 0
+        },
+        {
+          "anim_palette": false,
+          "firers_palette": false,
+          "inherited_color": 0,
+          "shadow": false,
+          "bright": false,
+          "draws": 1,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": null,
+          "shadow_remap": null
+        },
+        {
+          "anim_palette": false,
+          "firers_palette": false,
+          "inherited_color": 0,
+          "shadow": false,
+          "bright": true,
+          "draws": 1,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": null,
+          "shadow_remap": null
+        },
+        {
+          "anim_palette": false,
+          "firers_palette": false,
+          "inherited_color": 0,
+          "shadow": true,
+          "bright": false,
+          "draws": 2,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": 0,
+          "shadow_remap": 0
+        },
+        {
+          "anim_palette": false,
+          "firers_palette": false,
+          "inherited_color": 0,
+          "shadow": true,
+          "bright": true,
+          "draws": 2,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": 0,
+          "shadow_remap": 0
+        },
+        {
+          "anim_palette": false,
+          "firers_palette": false,
+          "inherited_color": 1,
+          "shadow": false,
+          "bright": false,
+          "draws": 1,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": null,
+          "shadow_remap": null
+        },
+        {
+          "anim_palette": false,
+          "firers_palette": false,
+          "inherited_color": 1,
+          "shadow": false,
+          "bright": true,
+          "draws": 1,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": null,
+          "shadow_remap": null
+        },
+        {
+          "anim_palette": false,
+          "firers_palette": false,
+          "inherited_color": 1,
+          "shadow": true,
+          "bright": false,
+          "draws": 2,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": 0,
+          "shadow_remap": 0
+        },
+        {
+          "anim_palette": false,
+          "firers_palette": false,
+          "inherited_color": 1,
+          "shadow": true,
+          "bright": true,
+          "draws": 2,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": 0,
+          "shadow_remap": 0
+        },
+        {
+          "anim_palette": false,
+          "firers_palette": true,
+          "inherited_color": -1,
+          "shadow": false,
+          "bright": false,
+          "draws": 1,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": null,
+          "shadow_remap": null
+        },
+        {
+          "anim_palette": false,
+          "firers_palette": true,
+          "inherited_color": -1,
+          "shadow": false,
+          "bright": true,
+          "draws": 1,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": null,
+          "shadow_remap": null
+        },
+        {
+          "anim_palette": false,
+          "firers_palette": true,
+          "inherited_color": -1,
+          "shadow": true,
+          "bright": false,
+          "draws": 2,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": 0,
+          "shadow_remap": 0
+        },
+        {
+          "anim_palette": false,
+          "firers_palette": true,
+          "inherited_color": -1,
+          "shadow": true,
+          "bright": true,
+          "draws": 2,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": 0,
+          "shadow_remap": 0
+        },
+        {
+          "anim_palette": false,
+          "firers_palette": true,
+          "inherited_color": 0,
+          "shadow": false,
+          "bright": false,
+          "draws": 1,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": null,
+          "shadow_remap": null
+        },
+        {
+          "anim_palette": false,
+          "firers_palette": true,
+          "inherited_color": 0,
+          "shadow": false,
+          "bright": true,
+          "draws": 1,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": null,
+          "shadow_remap": null
+        },
+        {
+          "anim_palette": false,
+          "firers_palette": true,
+          "inherited_color": 0,
+          "shadow": true,
+          "bright": false,
+          "draws": 2,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": 0,
+          "shadow_remap": 0
+        },
+        {
+          "anim_palette": false,
+          "firers_palette": true,
+          "inherited_color": 0,
+          "shadow": true,
+          "bright": true,
+          "draws": 2,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": 0,
+          "shadow_remap": 0
+        },
+        {
+          "anim_palette": false,
+          "firers_palette": true,
+          "inherited_color": 1,
+          "shadow": false,
+          "bright": false,
+          "draws": 1,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": null,
+          "shadow_remap": null
+        },
+        {
+          "anim_palette": false,
+          "firers_palette": true,
+          "inherited_color": 1,
+          "shadow": false,
+          "bright": true,
+          "draws": 1,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": null,
+          "shadow_remap": null
+        },
+        {
+          "anim_palette": false,
+          "firers_palette": true,
+          "inherited_color": 1,
+          "shadow": true,
+          "bright": false,
+          "draws": 2,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": 0,
+          "shadow_remap": 0
+        },
+        {
+          "anim_palette": false,
+          "firers_palette": true,
+          "inherited_color": 1,
+          "shadow": true,
+          "bright": true,
+          "draws": 2,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": 0,
+          "shadow_remap": 0
+        },
+        {
+          "anim_palette": true,
+          "firers_palette": false,
+          "inherited_color": -1,
+          "shadow": false,
+          "bright": false,
+          "draws": 1,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": null,
+          "shadow_remap": null
+        },
+        {
+          "anim_palette": true,
+          "firers_palette": false,
+          "inherited_color": -1,
+          "shadow": false,
+          "bright": true,
+          "draws": 1,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": null,
+          "shadow_remap": null
+        },
+        {
+          "anim_palette": true,
+          "firers_palette": false,
+          "inherited_color": -1,
+          "shadow": true,
+          "bright": false,
+          "draws": 2,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": 0,
+          "shadow_remap": 0
+        },
+        {
+          "anim_palette": true,
+          "firers_palette": false,
+          "inherited_color": -1,
+          "shadow": true,
+          "bright": true,
+          "draws": 2,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": 0,
+          "shadow_remap": 0
+        },
+        {
+          "anim_palette": true,
+          "firers_palette": false,
+          "inherited_color": 0,
+          "shadow": false,
+          "bright": false,
+          "draws": 1,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": null,
+          "shadow_remap": null
+        },
+        {
+          "anim_palette": true,
+          "firers_palette": false,
+          "inherited_color": 0,
+          "shadow": false,
+          "bright": true,
+          "draws": 1,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": null,
+          "shadow_remap": null
+        },
+        {
+          "anim_palette": true,
+          "firers_palette": false,
+          "inherited_color": 0,
+          "shadow": true,
+          "bright": false,
+          "draws": 2,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": 0,
+          "shadow_remap": 0
+        },
+        {
+          "anim_palette": true,
+          "firers_palette": false,
+          "inherited_color": 0,
+          "shadow": true,
+          "bright": true,
+          "draws": 2,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": 0,
+          "shadow_remap": 0
+        },
+        {
+          "anim_palette": true,
+          "firers_palette": false,
+          "inherited_color": 1,
+          "shadow": false,
+          "bright": false,
+          "draws": 1,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": null,
+          "shadow_remap": null
+        },
+        {
+          "anim_palette": true,
+          "firers_palette": false,
+          "inherited_color": 1,
+          "shadow": false,
+          "bright": true,
+          "draws": 1,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": null,
+          "shadow_remap": null
+        },
+        {
+          "anim_palette": true,
+          "firers_palette": false,
+          "inherited_color": 1,
+          "shadow": true,
+          "bright": false,
+          "draws": 2,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": 0,
+          "shadow_remap": 0
+        },
+        {
+          "anim_palette": true,
+          "firers_palette": false,
+          "inherited_color": 1,
+          "shadow": true,
+          "bright": true,
+          "draws": 2,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": 0,
+          "shadow_remap": 0
+        },
+        {
+          "anim_palette": true,
+          "firers_palette": true,
+          "inherited_color": -1,
+          "shadow": false,
+          "bright": false,
+          "draws": 1,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": null,
+          "shadow_remap": null
+        },
+        {
+          "anim_palette": true,
+          "firers_palette": true,
+          "inherited_color": -1,
+          "shadow": false,
+          "bright": true,
+          "draws": 1,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": null,
+          "shadow_remap": null
+        },
+        {
+          "anim_palette": true,
+          "firers_palette": true,
+          "inherited_color": -1,
+          "shadow": true,
+          "bright": false,
+          "draws": 2,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": 0,
+          "shadow_remap": 0
+        },
+        {
+          "anim_palette": true,
+          "firers_palette": true,
+          "inherited_color": -1,
+          "shadow": true,
+          "bright": true,
+          "draws": 2,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": 0,
+          "shadow_remap": 0
+        },
+        {
+          "anim_palette": true,
+          "firers_palette": true,
+          "inherited_color": 0,
+          "shadow": false,
+          "bright": false,
+          "draws": 1,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": null,
+          "shadow_remap": null
+        },
+        {
+          "anim_palette": true,
+          "firers_palette": true,
+          "inherited_color": 0,
+          "shadow": false,
+          "bright": true,
+          "draws": 1,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": null,
+          "shadow_remap": null
+        },
+        {
+          "anim_palette": true,
+          "firers_palette": true,
+          "inherited_color": 0,
+          "shadow": true,
+          "bright": false,
+          "draws": 2,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": 0,
+          "shadow_remap": 0
+        },
+        {
+          "anim_palette": true,
+          "firers_palette": true,
+          "inherited_color": 0,
+          "shadow": true,
+          "bright": true,
+          "draws": 2,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": 0,
+          "shadow_remap": 0
+        },
+        {
+          "anim_palette": true,
+          "firers_palette": true,
+          "inherited_color": 1,
+          "shadow": false,
+          "bright": false,
+          "draws": 1,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": null,
+          "shadow_remap": null
+        },
+        {
+          "anim_palette": true,
+          "firers_palette": true,
+          "inherited_color": 1,
+          "shadow": false,
+          "bright": true,
+          "draws": 1,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": null,
+          "shadow_remap": null
+        },
+        {
+          "anim_palette": true,
+          "firers_palette": true,
+          "inherited_color": 1,
+          "shadow": true,
+          "bright": false,
+          "draws": 2,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": 0,
+          "shadow_remap": 0
+        },
+        {
+          "anim_palette": true,
+          "firers_palette": true,
+          "inherited_color": 1,
+          "shadow": true,
+          "bright": true,
+          "draws": 2,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": 0,
+          "shadow_remap": 0
+        }
+      ],
+      "damage_is_not_lifecycle_cases": 12,
+      "visibility_cases": [
+        {
+          "invisible_type": false,
+          "spawn_next_anim": false,
+          "voxel": false,
+          "draw": true
+        },
+        {
+          "invisible_type": false,
+          "spawn_next_anim": false,
+          "voxel": true,
+          "draw": true
+        },
+        {
+          "invisible_type": false,
+          "spawn_next_anim": true,
+          "voxel": false,
+          "draw": false
+        },
+        {
+          "invisible_type": false,
+          "spawn_next_anim": true,
+          "voxel": true,
+          "draw": false
+        },
+        {
+          "invisible_type": true,
+          "spawn_next_anim": false,
+          "voxel": false,
+          "draw": false
+        },
+        {
+          "invisible_type": true,
+          "spawn_next_anim": false,
+          "voxel": true,
+          "draw": false
+        },
+        {
+          "invisible_type": true,
+          "spawn_next_anim": true,
+          "voxel": false,
+          "draw": false
+        },
+        {
+          "invisible_type": true,
+          "spawn_next_anim": true,
+          "voxel": true,
+          "draw": false
+        }
+      ],
+      "vxl_orientation_cases": [
+        {
+          "direction": 0,
+          "slope": -3,
+          "native_yaw": -0.0,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 0,
+          "slope": -1,
+          "native_yaw": -0.0,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 0,
+          "slope": 0,
+          "native_yaw": -0.0,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 0,
+          "slope": 1,
+          "native_yaw": -0.0,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 0,
+          "slope": 3,
+          "native_yaw": -0.0,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 1,
+          "slope": -3,
+          "native_yaw": -0.19634953141212463,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 1,
+          "slope": -1,
+          "native_yaw": -0.19634953141212463,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 1,
+          "slope": 0,
+          "native_yaw": -0.19634953141212463,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 1,
+          "slope": 1,
+          "native_yaw": -0.19634953141212463,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 1,
+          "slope": 3,
+          "native_yaw": -0.19634953141212463,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 2,
+          "slope": -3,
+          "native_yaw": -0.39269906282424927,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 2,
+          "slope": -1,
+          "native_yaw": -0.39269906282424927,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 2,
+          "slope": 0,
+          "native_yaw": -0.39269906282424927,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 2,
+          "slope": 1,
+          "native_yaw": -0.39269906282424927,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 2,
+          "slope": 3,
+          "native_yaw": -0.39269906282424927,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 3,
+          "slope": -3,
+          "native_yaw": -0.5890485644340515,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 3,
+          "slope": -1,
+          "native_yaw": -0.5890485644340515,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 3,
+          "slope": 0,
+          "native_yaw": -0.5890485644340515,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 3,
+          "slope": 1,
+          "native_yaw": -0.5890485644340515,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 3,
+          "slope": 3,
+          "native_yaw": -0.5890485644340515,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 4,
+          "slope": -3,
+          "native_yaw": -0.7853981256484985,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 4,
+          "slope": -1,
+          "native_yaw": -0.7853981256484985,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 4,
+          "slope": 0,
+          "native_yaw": -0.7853981256484985,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 4,
+          "slope": 1,
+          "native_yaw": -0.7853981256484985,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 4,
+          "slope": 3,
+          "native_yaw": -0.7853981256484985,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 5,
+          "slope": -3,
+          "native_yaw": -0.9817476868629456,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 5,
+          "slope": -1,
+          "native_yaw": -0.9817476868629456,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 5,
+          "slope": 0,
+          "native_yaw": -0.9817476868629456,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 5,
+          "slope": 1,
+          "native_yaw": -0.9817476868629456,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 5,
+          "slope": 3,
+          "native_yaw": -0.9817476868629456,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 6,
+          "slope": -3,
+          "native_yaw": -1.178097128868103,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 6,
+          "slope": -1,
+          "native_yaw": -1.178097128868103,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 6,
+          "slope": 0,
+          "native_yaw": -1.178097128868103,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 6,
+          "slope": 1,
+          "native_yaw": -1.178097128868103,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 6,
+          "slope": 3,
+          "native_yaw": -1.178097128868103,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 7,
+          "slope": -3,
+          "native_yaw": -1.3744467496871948,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 7,
+          "slope": -1,
+          "native_yaw": -1.3744467496871948,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 7,
+          "slope": 0,
+          "native_yaw": -1.3744467496871948,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 7,
+          "slope": 1,
+          "native_yaw": -1.3744467496871948,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 7,
+          "slope": 3,
+          "native_yaw": -1.3744467496871948,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 8,
+          "slope": -3,
+          "native_yaw": -1.570796251296997,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 8,
+          "slope": -1,
+          "native_yaw": -1.570796251296997,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 8,
+          "slope": 0,
+          "native_yaw": -1.570796251296997,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 8,
+          "slope": 1,
+          "native_yaw": -1.570796251296997,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 8,
+          "slope": 3,
+          "native_yaw": -1.570796251296997,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 9,
+          "slope": -3,
+          "native_yaw": -1.7671457529067993,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 9,
+          "slope": -1,
+          "native_yaw": -1.7671457529067993,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 9,
+          "slope": 0,
+          "native_yaw": -1.7671457529067993,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 9,
+          "slope": 1,
+          "native_yaw": -1.7671457529067993,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 9,
+          "slope": 3,
+          "native_yaw": -1.7671457529067993,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 10,
+          "slope": -3,
+          "native_yaw": -1.9634953737258911,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 10,
+          "slope": -1,
+          "native_yaw": -1.9634953737258911,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 10,
+          "slope": 0,
+          "native_yaw": -1.9634953737258911,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 10,
+          "slope": 1,
+          "native_yaw": -1.9634953737258911,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 10,
+          "slope": 3,
+          "native_yaw": -1.9634953737258911,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 11,
+          "slope": -3,
+          "native_yaw": -2.1598448753356934,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 11,
+          "slope": -1,
+          "native_yaw": -2.1598448753356934,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 11,
+          "slope": 0,
+          "native_yaw": -2.1598448753356934,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 11,
+          "slope": 1,
+          "native_yaw": -2.1598448753356934,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 11,
+          "slope": 3,
+          "native_yaw": -2.1598448753356934,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 12,
+          "slope": -3,
+          "native_yaw": -2.356194257736206,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 12,
+          "slope": -1,
+          "native_yaw": -2.356194257736206,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 12,
+          "slope": 0,
+          "native_yaw": -2.356194257736206,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 12,
+          "slope": 1,
+          "native_yaw": -2.356194257736206,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 12,
+          "slope": 3,
+          "native_yaw": -2.356194257736206,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 13,
+          "slope": -3,
+          "native_yaw": -2.552543878555298,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 13,
+          "slope": -1,
+          "native_yaw": -2.552543878555298,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 13,
+          "slope": 0,
+          "native_yaw": -2.552543878555298,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 13,
+          "slope": 1,
+          "native_yaw": -2.552543878555298,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 13,
+          "slope": 3,
+          "native_yaw": -2.552543878555298,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 14,
+          "slope": -3,
+          "native_yaw": -2.7488934993743896,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 14,
+          "slope": -1,
+          "native_yaw": -2.7488934993743896,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 14,
+          "slope": 0,
+          "native_yaw": -2.7488934993743896,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 14,
+          "slope": 1,
+          "native_yaw": -2.7488934993743896,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 14,
+          "slope": 3,
+          "native_yaw": -2.7488934993743896,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 15,
+          "slope": -3,
+          "native_yaw": -2.9452428817749023,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 15,
+          "slope": -1,
+          "native_yaw": -2.9452428817749023,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 15,
+          "slope": 0,
+          "native_yaw": -2.9452428817749023,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 15,
+          "slope": 1,
+          "native_yaw": -2.9452428817749023,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 15,
+          "slope": 3,
+          "native_yaw": -2.9452428817749023,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 16,
+          "slope": -3,
+          "native_yaw": -3.141592502593994,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 16,
+          "slope": -1,
+          "native_yaw": -3.141592502593994,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 16,
+          "slope": 0,
+          "native_yaw": -3.141592502593994,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 16,
+          "slope": 1,
+          "native_yaw": -3.141592502593994,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 16,
+          "slope": 3,
+          "native_yaw": -3.141592502593994,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 17,
+          "slope": -3,
+          "native_yaw": -3.337942123413086,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 17,
+          "slope": -1,
+          "native_yaw": -3.337942123413086,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 17,
+          "slope": 0,
+          "native_yaw": -3.337942123413086,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 17,
+          "slope": 1,
+          "native_yaw": -3.337942123413086,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 17,
+          "slope": 3,
+          "native_yaw": -3.337942123413086,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 18,
+          "slope": -3,
+          "native_yaw": -3.5342915058135986,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 18,
+          "slope": -1,
+          "native_yaw": -3.5342915058135986,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 18,
+          "slope": 0,
+          "native_yaw": -3.5342915058135986,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 18,
+          "slope": 1,
+          "native_yaw": -3.5342915058135986,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 18,
+          "slope": 3,
+          "native_yaw": -3.5342915058135986,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 19,
+          "slope": -3,
+          "native_yaw": -3.7306411266326904,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 19,
+          "slope": -1,
+          "native_yaw": -3.7306411266326904,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 19,
+          "slope": 0,
+          "native_yaw": -3.7306411266326904,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 19,
+          "slope": 1,
+          "native_yaw": -3.7306411266326904,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 19,
+          "slope": 3,
+          "native_yaw": -3.7306411266326904,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 20,
+          "slope": -3,
+          "native_yaw": -3.9269907474517822,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 20,
+          "slope": -1,
+          "native_yaw": -3.9269907474517822,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 20,
+          "slope": 0,
+          "native_yaw": -3.9269907474517822,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 20,
+          "slope": 1,
+          "native_yaw": -3.9269907474517822,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 20,
+          "slope": 3,
+          "native_yaw": -3.9269907474517822,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 21,
+          "slope": -3,
+          "native_yaw": -4.123340129852295,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 21,
+          "slope": -1,
+          "native_yaw": -4.123340129852295,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 21,
+          "slope": 0,
+          "native_yaw": -4.123340129852295,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 21,
+          "slope": 1,
+          "native_yaw": -4.123340129852295,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 21,
+          "slope": 3,
+          "native_yaw": -4.123340129852295,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 22,
+          "slope": -3,
+          "native_yaw": -4.319689750671387,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 22,
+          "slope": -1,
+          "native_yaw": -4.319689750671387,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 22,
+          "slope": 0,
+          "native_yaw": -4.319689750671387,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 22,
+          "slope": 1,
+          "native_yaw": -4.319689750671387,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 22,
+          "slope": 3,
+          "native_yaw": -4.319689750671387,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 23,
+          "slope": -3,
+          "native_yaw": -4.5160393714904785,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 23,
+          "slope": -1,
+          "native_yaw": -4.5160393714904785,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 23,
+          "slope": 0,
+          "native_yaw": -4.5160393714904785,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 23,
+          "slope": 1,
+          "native_yaw": -4.5160393714904785,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 23,
+          "slope": 3,
+          "native_yaw": -4.5160393714904785,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 24,
+          "slope": -3,
+          "native_yaw": 1.570796251296997,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 24,
+          "slope": -1,
+          "native_yaw": 1.570796251296997,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 24,
+          "slope": 0,
+          "native_yaw": 1.570796251296997,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 24,
+          "slope": 1,
+          "native_yaw": 1.570796251296997,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 24,
+          "slope": 3,
+          "native_yaw": 1.570796251296997,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 25,
+          "slope": -3,
+          "native_yaw": 1.3744467496871948,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 25,
+          "slope": -1,
+          "native_yaw": 1.3744467496871948,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 25,
+          "slope": 0,
+          "native_yaw": 1.3744467496871948,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 25,
+          "slope": 1,
+          "native_yaw": 1.3744467496871948,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 25,
+          "slope": 3,
+          "native_yaw": 1.3744467496871948,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 26,
+          "slope": -3,
+          "native_yaw": 1.178097128868103,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 26,
+          "slope": -1,
+          "native_yaw": 1.178097128868103,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 26,
+          "slope": 0,
+          "native_yaw": 1.178097128868103,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 26,
+          "slope": 1,
+          "native_yaw": 1.178097128868103,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 26,
+          "slope": 3,
+          "native_yaw": 1.178097128868103,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 27,
+          "slope": -3,
+          "native_yaw": 0.9817476868629456,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 27,
+          "slope": -1,
+          "native_yaw": 0.9817476868629456,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 27,
+          "slope": 0,
+          "native_yaw": 0.9817476868629456,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 27,
+          "slope": 1,
+          "native_yaw": 0.9817476868629456,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 27,
+          "slope": 3,
+          "native_yaw": 0.9817476868629456,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 28,
+          "slope": -3,
+          "native_yaw": 0.7853981256484985,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 28,
+          "slope": -1,
+          "native_yaw": 0.7853981256484985,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 28,
+          "slope": 0,
+          "native_yaw": 0.7853981256484985,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 28,
+          "slope": 1,
+          "native_yaw": 0.7853981256484985,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 28,
+          "slope": 3,
+          "native_yaw": 0.7853981256484985,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 29,
+          "slope": -3,
+          "native_yaw": 0.5890485644340515,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 29,
+          "slope": -1,
+          "native_yaw": 0.5890485644340515,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 29,
+          "slope": 0,
+          "native_yaw": 0.5890485644340515,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 29,
+          "slope": 1,
+          "native_yaw": 0.5890485644340515,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 29,
+          "slope": 3,
+          "native_yaw": 0.5890485644340515,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 30,
+          "slope": -3,
+          "native_yaw": 0.39269906282424927,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 30,
+          "slope": -1,
+          "native_yaw": 0.39269906282424927,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 30,
+          "slope": 0,
+          "native_yaw": 0.39269906282424927,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 30,
+          "slope": 1,
+          "native_yaw": 0.39269906282424927,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 30,
+          "slope": 3,
+          "native_yaw": 0.39269906282424927,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 31,
+          "slope": -3,
+          "native_yaw": 0.19634953141212463,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 31,
+          "slope": -1,
+          "native_yaw": 0.19634953141212463,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 31,
+          "slope": 0,
+          "native_yaw": 0.19634953141212463,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 31,
+          "slope": 1,
+          "native_yaw": 0.19634953141212463,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 31,
+          "slope": 3,
+          "native_yaw": 0.19634953141212463,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        }
+      ],
+      "native_projectile_diffuse": {
+        "original_setup_calls": 160,
+        "normal_type": 4,
+        "normal_page_checks": 39680,
+        "special_indices_page": 16,
+        "production_normal_page_checks": 39680,
+        "production_page_mismatches": 0,
+        "diffuse_only": true,
+        "specular_term": false
+      },
+      "vxl_palette_flat_cases": [
+        {
+          "color_scheme_index": 0,
+          "flat": false,
+          "flags": 2048,
+          "mode": 2,
+          "brightness": 1000
+        },
+        {
+          "color_scheme_index": 0,
+          "flat": true,
+          "flags": 10240,
+          "mode": 0,
+          "brightness": 1000
+        },
+        {
+          "color_scheme_index": 1,
+          "flat": false,
+          "flags": 2048,
+          "mode": 2,
+          "brightness": 1000
+        },
+        {
+          "color_scheme_index": 1,
+          "flat": true,
+          "flags": 10240,
+          "mode": 0,
+          "brightness": 1000
+        },
+        {
+          "color_scheme_index": 2,
+          "flat": false,
+          "flags": 2048,
+          "mode": 2,
+          "brightness": 1000
+        },
+        {
+          "color_scheme_index": 2,
+          "flat": true,
+          "flags": 10240,
+          "mode": 0,
+          "brightness": 1000
+        }
+      ],
+      "native_layer_cases": 1792,
+      "cached_layer_ignored": [
+        {
+          "cached_layer": 0,
+          "flat_values_checked": 256
+        },
+        {
+          "cached_layer": 1,
+          "flat_values_checked": 256
+        },
+        {
+          "cached_layer": 2,
+          "flat_values_checked": 256
+        },
+        {
+          "cached_layer": 3,
+          "flat_values_checked": 256
+        },
+        {
+          "cached_layer": 4,
+          "flat_values_checked": 256
+        },
+        {
+          "cached_layer": 4294967295,
+          "flat_values_checked": 256
+        },
+        {
+          "cached_layer": 2147483647,
+          "flat_values_checked": 256
+        }
+      ],
+      "native_z_test": [
+        {
+          "kind": "plain_vxl_nonflat",
+          "flags": 2048,
+          "native_pixel_function": "00493DF0",
+          "z_test": false,
+          "strict_z_compare": false,
+          "z_write": false,
+          "cases": 5
+        },
+        {
+          "kind": "plain_vxl_flat",
+          "flags": 10240,
+          "native_pixel_function": "00494B60",
+          "z_test": true,
+          "strict_z_compare": true,
+          "z_write": false,
+          "cases": 5
+        },
+        {
+          "kind": "rle_shp",
+          "flags": 11776,
+          "native_pixel_function": "00497FD0",
+          "z_test": true,
+          "strict_z_compare": true,
+          "z_write": false,
+          "cases": 5
+        }
+      ],
+      "code_sha256": {
+        "004664C0-0046655E": "25de260843e71315b0b7d6d59ecb9e83bc2acab2da103bd44a6d40fa45223442",
+        "00468000-00468089": "f808d9543b06100f768d03fc2840f43536552abf4dbfbfe906c1dd1fe2eff4d2",
+        "00468090-00468429": "9fc1b9fb28317e8a58bcddca011e9b840873b4de37441c426ce63030ee89cb39",
+        "0046B0C0-0046B258": "03671651c3bfacabe0ce779df5c695b5d304d1c803c794f858601ad2e74e4451",
+        "00753C80-00753CFB": "145e42426bd3ca52204f633aede2c6e12f48c065abb1e2d055a2fd8c2e48a1fa",
+        "00758670-007586E8": "c25ae5d69fb854827c85169a78a9832b886c72048052027eb0e4fad9c3d4e72a",
+        "00468B90-00468BA6": "26e47c2aad5ee64af51366bf26e2b489d2e5e7e7002cdd2c08e4dbe6554ec6db",
+        "00493DF0-00493E90": "78743d55cdb34e3d7caad4f4150a53dde5e2cebb4276dd0bfec5db4164012395",
+        "00494B60-00494C3A": "bbc9ec690d67fc873603433540efd6a58c93c63571eee3aa16e09809773343bd",
+        "00497FD0-00498150": "cadcedb1fd341f360cf669616657978a10a747fa9182e9a99d0fbeb3e147f452"
+      }
+    },
+    "02-on": {
+      "captured_live_bullets": 0,
+      "fixture": "synthetic Bullet and copied BulletType; terminal draw intercepted",
+      "frame_cases": 768,
+      "palette_shadow_bright_cases": 48,
+      "shp_draw_parameter_cases": [
+        {
+          "anim_palette": false,
+          "firers_palette": false,
+          "inherited_color": -1,
+          "shadow": false,
+          "bright": false,
+          "draws": 1,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": null,
+          "shadow_remap": null
+        },
+        {
+          "anim_palette": false,
+          "firers_palette": false,
+          "inherited_color": -1,
+          "shadow": false,
+          "bright": true,
+          "draws": 1,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": null,
+          "shadow_remap": null
+        },
+        {
+          "anim_palette": false,
+          "firers_palette": false,
+          "inherited_color": -1,
+          "shadow": true,
+          "bright": false,
+          "draws": 2,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": 0,
+          "shadow_remap": 0
+        },
+        {
+          "anim_palette": false,
+          "firers_palette": false,
+          "inherited_color": -1,
+          "shadow": true,
+          "bright": true,
+          "draws": 2,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": 0,
+          "shadow_remap": 0
+        },
+        {
+          "anim_palette": false,
+          "firers_palette": false,
+          "inherited_color": 0,
+          "shadow": false,
+          "bright": false,
+          "draws": 1,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": null,
+          "shadow_remap": null
+        },
+        {
+          "anim_palette": false,
+          "firers_palette": false,
+          "inherited_color": 0,
+          "shadow": false,
+          "bright": true,
+          "draws": 1,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": null,
+          "shadow_remap": null
+        },
+        {
+          "anim_palette": false,
+          "firers_palette": false,
+          "inherited_color": 0,
+          "shadow": true,
+          "bright": false,
+          "draws": 2,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": 0,
+          "shadow_remap": 0
+        },
+        {
+          "anim_palette": false,
+          "firers_palette": false,
+          "inherited_color": 0,
+          "shadow": true,
+          "bright": true,
+          "draws": 2,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": 0,
+          "shadow_remap": 0
+        },
+        {
+          "anim_palette": false,
+          "firers_palette": false,
+          "inherited_color": 1,
+          "shadow": false,
+          "bright": false,
+          "draws": 1,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": null,
+          "shadow_remap": null
+        },
+        {
+          "anim_palette": false,
+          "firers_palette": false,
+          "inherited_color": 1,
+          "shadow": false,
+          "bright": true,
+          "draws": 1,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": null,
+          "shadow_remap": null
+        },
+        {
+          "anim_palette": false,
+          "firers_palette": false,
+          "inherited_color": 1,
+          "shadow": true,
+          "bright": false,
+          "draws": 2,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": 0,
+          "shadow_remap": 0
+        },
+        {
+          "anim_palette": false,
+          "firers_palette": false,
+          "inherited_color": 1,
+          "shadow": true,
+          "bright": true,
+          "draws": 2,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": 0,
+          "shadow_remap": 0
+        },
+        {
+          "anim_palette": false,
+          "firers_palette": true,
+          "inherited_color": -1,
+          "shadow": false,
+          "bright": false,
+          "draws": 1,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": null,
+          "shadow_remap": null
+        },
+        {
+          "anim_palette": false,
+          "firers_palette": true,
+          "inherited_color": -1,
+          "shadow": false,
+          "bright": true,
+          "draws": 1,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": null,
+          "shadow_remap": null
+        },
+        {
+          "anim_palette": false,
+          "firers_palette": true,
+          "inherited_color": -1,
+          "shadow": true,
+          "bright": false,
+          "draws": 2,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": 0,
+          "shadow_remap": 0
+        },
+        {
+          "anim_palette": false,
+          "firers_palette": true,
+          "inherited_color": -1,
+          "shadow": true,
+          "bright": true,
+          "draws": 2,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": 0,
+          "shadow_remap": 0
+        },
+        {
+          "anim_palette": false,
+          "firers_palette": true,
+          "inherited_color": 0,
+          "shadow": false,
+          "bright": false,
+          "draws": 1,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": null,
+          "shadow_remap": null
+        },
+        {
+          "anim_palette": false,
+          "firers_palette": true,
+          "inherited_color": 0,
+          "shadow": false,
+          "bright": true,
+          "draws": 1,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": null,
+          "shadow_remap": null
+        },
+        {
+          "anim_palette": false,
+          "firers_palette": true,
+          "inherited_color": 0,
+          "shadow": true,
+          "bright": false,
+          "draws": 2,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": 0,
+          "shadow_remap": 0
+        },
+        {
+          "anim_palette": false,
+          "firers_palette": true,
+          "inherited_color": 0,
+          "shadow": true,
+          "bright": true,
+          "draws": 2,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": 0,
+          "shadow_remap": 0
+        },
+        {
+          "anim_palette": false,
+          "firers_palette": true,
+          "inherited_color": 1,
+          "shadow": false,
+          "bright": false,
+          "draws": 1,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": null,
+          "shadow_remap": null
+        },
+        {
+          "anim_palette": false,
+          "firers_palette": true,
+          "inherited_color": 1,
+          "shadow": false,
+          "bright": true,
+          "draws": 1,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": null,
+          "shadow_remap": null
+        },
+        {
+          "anim_palette": false,
+          "firers_palette": true,
+          "inherited_color": 1,
+          "shadow": true,
+          "bright": false,
+          "draws": 2,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": 0,
+          "shadow_remap": 0
+        },
+        {
+          "anim_palette": false,
+          "firers_palette": true,
+          "inherited_color": 1,
+          "shadow": true,
+          "bright": true,
+          "draws": 2,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": 0,
+          "shadow_remap": 0
+        },
+        {
+          "anim_palette": true,
+          "firers_palette": false,
+          "inherited_color": -1,
+          "shadow": false,
+          "bright": false,
+          "draws": 1,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": null,
+          "shadow_remap": null
+        },
+        {
+          "anim_palette": true,
+          "firers_palette": false,
+          "inherited_color": -1,
+          "shadow": false,
+          "bright": true,
+          "draws": 1,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": null,
+          "shadow_remap": null
+        },
+        {
+          "anim_palette": true,
+          "firers_palette": false,
+          "inherited_color": -1,
+          "shadow": true,
+          "bright": false,
+          "draws": 2,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": 0,
+          "shadow_remap": 0
+        },
+        {
+          "anim_palette": true,
+          "firers_palette": false,
+          "inherited_color": -1,
+          "shadow": true,
+          "bright": true,
+          "draws": 2,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": 0,
+          "shadow_remap": 0
+        },
+        {
+          "anim_palette": true,
+          "firers_palette": false,
+          "inherited_color": 0,
+          "shadow": false,
+          "bright": false,
+          "draws": 1,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": null,
+          "shadow_remap": null
+        },
+        {
+          "anim_palette": true,
+          "firers_palette": false,
+          "inherited_color": 0,
+          "shadow": false,
+          "bright": true,
+          "draws": 1,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": null,
+          "shadow_remap": null
+        },
+        {
+          "anim_palette": true,
+          "firers_palette": false,
+          "inherited_color": 0,
+          "shadow": true,
+          "bright": false,
+          "draws": 2,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": 0,
+          "shadow_remap": 0
+        },
+        {
+          "anim_palette": true,
+          "firers_palette": false,
+          "inherited_color": 0,
+          "shadow": true,
+          "bright": true,
+          "draws": 2,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": 0,
+          "shadow_remap": 0
+        },
+        {
+          "anim_palette": true,
+          "firers_palette": false,
+          "inherited_color": 1,
+          "shadow": false,
+          "bright": false,
+          "draws": 1,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": null,
+          "shadow_remap": null
+        },
+        {
+          "anim_palette": true,
+          "firers_palette": false,
+          "inherited_color": 1,
+          "shadow": false,
+          "bright": true,
+          "draws": 1,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": null,
+          "shadow_remap": null
+        },
+        {
+          "anim_palette": true,
+          "firers_palette": false,
+          "inherited_color": 1,
+          "shadow": true,
+          "bright": false,
+          "draws": 2,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": 0,
+          "shadow_remap": 0
+        },
+        {
+          "anim_palette": true,
+          "firers_palette": false,
+          "inherited_color": 1,
+          "shadow": true,
+          "bright": true,
+          "draws": 2,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": 0,
+          "shadow_remap": 0
+        },
+        {
+          "anim_palette": true,
+          "firers_palette": true,
+          "inherited_color": -1,
+          "shadow": false,
+          "bright": false,
+          "draws": 1,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": null,
+          "shadow_remap": null
+        },
+        {
+          "anim_palette": true,
+          "firers_palette": true,
+          "inherited_color": -1,
+          "shadow": false,
+          "bright": true,
+          "draws": 1,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": null,
+          "shadow_remap": null
+        },
+        {
+          "anim_palette": true,
+          "firers_palette": true,
+          "inherited_color": -1,
+          "shadow": true,
+          "bright": false,
+          "draws": 2,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": 0,
+          "shadow_remap": 0
+        },
+        {
+          "anim_palette": true,
+          "firers_palette": true,
+          "inherited_color": -1,
+          "shadow": true,
+          "bright": true,
+          "draws": 2,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": 0,
+          "shadow_remap": 0
+        },
+        {
+          "anim_palette": true,
+          "firers_palette": true,
+          "inherited_color": 0,
+          "shadow": false,
+          "bright": false,
+          "draws": 1,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": null,
+          "shadow_remap": null
+        },
+        {
+          "anim_palette": true,
+          "firers_palette": true,
+          "inherited_color": 0,
+          "shadow": false,
+          "bright": true,
+          "draws": 1,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": null,
+          "shadow_remap": null
+        },
+        {
+          "anim_palette": true,
+          "firers_palette": true,
+          "inherited_color": 0,
+          "shadow": true,
+          "bright": false,
+          "draws": 2,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": 0,
+          "shadow_remap": 0
+        },
+        {
+          "anim_palette": true,
+          "firers_palette": true,
+          "inherited_color": 0,
+          "shadow": true,
+          "bright": true,
+          "draws": 2,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": 0,
+          "shadow_remap": 0
+        },
+        {
+          "anim_palette": true,
+          "firers_palette": true,
+          "inherited_color": 1,
+          "shadow": false,
+          "bright": false,
+          "draws": 1,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": null,
+          "shadow_remap": null
+        },
+        {
+          "anim_palette": true,
+          "firers_palette": true,
+          "inherited_color": 1,
+          "shadow": false,
+          "bright": true,
+          "draws": 1,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": null,
+          "shadow_remap": null
+        },
+        {
+          "anim_palette": true,
+          "firers_palette": true,
+          "inherited_color": 1,
+          "shadow": true,
+          "bright": false,
+          "draws": 2,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": 0,
+          "shadow_remap": 0
+        },
+        {
+          "anim_palette": true,
+          "firers_palette": true,
+          "inherited_color": 1,
+          "shadow": true,
+          "bright": true,
+          "draws": 2,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": 0,
+          "shadow_remap": 0
+        }
+      ],
+      "damage_is_not_lifecycle_cases": 12,
+      "visibility_cases": [
+        {
+          "invisible_type": false,
+          "spawn_next_anim": false,
+          "voxel": false,
+          "draw": true
+        },
+        {
+          "invisible_type": false,
+          "spawn_next_anim": false,
+          "voxel": true,
+          "draw": true
+        },
+        {
+          "invisible_type": false,
+          "spawn_next_anim": true,
+          "voxel": false,
+          "draw": false
+        },
+        {
+          "invisible_type": false,
+          "spawn_next_anim": true,
+          "voxel": true,
+          "draw": false
+        },
+        {
+          "invisible_type": true,
+          "spawn_next_anim": false,
+          "voxel": false,
+          "draw": false
+        },
+        {
+          "invisible_type": true,
+          "spawn_next_anim": false,
+          "voxel": true,
+          "draw": false
+        },
+        {
+          "invisible_type": true,
+          "spawn_next_anim": true,
+          "voxel": false,
+          "draw": false
+        },
+        {
+          "invisible_type": true,
+          "spawn_next_anim": true,
+          "voxel": true,
+          "draw": false
+        }
+      ],
+      "vxl_orientation_cases": [
+        {
+          "direction": 0,
+          "slope": -3,
+          "native_yaw": -0.0,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 0,
+          "slope": -1,
+          "native_yaw": -0.0,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 0,
+          "slope": 0,
+          "native_yaw": -0.0,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 0,
+          "slope": 1,
+          "native_yaw": -0.0,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 0,
+          "slope": 3,
+          "native_yaw": -0.0,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 1,
+          "slope": -3,
+          "native_yaw": -0.19634953141212463,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 1,
+          "slope": -1,
+          "native_yaw": -0.19634953141212463,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 1,
+          "slope": 0,
+          "native_yaw": -0.19634953141212463,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 1,
+          "slope": 1,
+          "native_yaw": -0.19634953141212463,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 1,
+          "slope": 3,
+          "native_yaw": -0.19634953141212463,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 2,
+          "slope": -3,
+          "native_yaw": -0.39269906282424927,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 2,
+          "slope": -1,
+          "native_yaw": -0.39269906282424927,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 2,
+          "slope": 0,
+          "native_yaw": -0.39269906282424927,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 2,
+          "slope": 1,
+          "native_yaw": -0.39269906282424927,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 2,
+          "slope": 3,
+          "native_yaw": -0.39269906282424927,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 3,
+          "slope": -3,
+          "native_yaw": -0.5890485644340515,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 3,
+          "slope": -1,
+          "native_yaw": -0.5890485644340515,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 3,
+          "slope": 0,
+          "native_yaw": -0.5890485644340515,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 3,
+          "slope": 1,
+          "native_yaw": -0.5890485644340515,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 3,
+          "slope": 3,
+          "native_yaw": -0.5890485644340515,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 4,
+          "slope": -3,
+          "native_yaw": -0.7853981256484985,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 4,
+          "slope": -1,
+          "native_yaw": -0.7853981256484985,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 4,
+          "slope": 0,
+          "native_yaw": -0.7853981256484985,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 4,
+          "slope": 1,
+          "native_yaw": -0.7853981256484985,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 4,
+          "slope": 3,
+          "native_yaw": -0.7853981256484985,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 5,
+          "slope": -3,
+          "native_yaw": -0.9817476868629456,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 5,
+          "slope": -1,
+          "native_yaw": -0.9817476868629456,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 5,
+          "slope": 0,
+          "native_yaw": -0.9817476868629456,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 5,
+          "slope": 1,
+          "native_yaw": -0.9817476868629456,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 5,
+          "slope": 3,
+          "native_yaw": -0.9817476868629456,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 6,
+          "slope": -3,
+          "native_yaw": -1.178097128868103,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 6,
+          "slope": -1,
+          "native_yaw": -1.178097128868103,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 6,
+          "slope": 0,
+          "native_yaw": -1.178097128868103,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 6,
+          "slope": 1,
+          "native_yaw": -1.178097128868103,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 6,
+          "slope": 3,
+          "native_yaw": -1.178097128868103,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 7,
+          "slope": -3,
+          "native_yaw": -1.3744467496871948,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 7,
+          "slope": -1,
+          "native_yaw": -1.3744467496871948,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 7,
+          "slope": 0,
+          "native_yaw": -1.3744467496871948,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 7,
+          "slope": 1,
+          "native_yaw": -1.3744467496871948,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 7,
+          "slope": 3,
+          "native_yaw": -1.3744467496871948,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 8,
+          "slope": -3,
+          "native_yaw": -1.570796251296997,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 8,
+          "slope": -1,
+          "native_yaw": -1.570796251296997,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 8,
+          "slope": 0,
+          "native_yaw": -1.570796251296997,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 8,
+          "slope": 1,
+          "native_yaw": -1.570796251296997,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 8,
+          "slope": 3,
+          "native_yaw": -1.570796251296997,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 9,
+          "slope": -3,
+          "native_yaw": -1.7671457529067993,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 9,
+          "slope": -1,
+          "native_yaw": -1.7671457529067993,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 9,
+          "slope": 0,
+          "native_yaw": -1.7671457529067993,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 9,
+          "slope": 1,
+          "native_yaw": -1.7671457529067993,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 9,
+          "slope": 3,
+          "native_yaw": -1.7671457529067993,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 10,
+          "slope": -3,
+          "native_yaw": -1.9634953737258911,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 10,
+          "slope": -1,
+          "native_yaw": -1.9634953737258911,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 10,
+          "slope": 0,
+          "native_yaw": -1.9634953737258911,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 10,
+          "slope": 1,
+          "native_yaw": -1.9634953737258911,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 10,
+          "slope": 3,
+          "native_yaw": -1.9634953737258911,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 11,
+          "slope": -3,
+          "native_yaw": -2.1598448753356934,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 11,
+          "slope": -1,
+          "native_yaw": -2.1598448753356934,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 11,
+          "slope": 0,
+          "native_yaw": -2.1598448753356934,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 11,
+          "slope": 1,
+          "native_yaw": -2.1598448753356934,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 11,
+          "slope": 3,
+          "native_yaw": -2.1598448753356934,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 12,
+          "slope": -3,
+          "native_yaw": -2.356194257736206,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 12,
+          "slope": -1,
+          "native_yaw": -2.356194257736206,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 12,
+          "slope": 0,
+          "native_yaw": -2.356194257736206,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 12,
+          "slope": 1,
+          "native_yaw": -2.356194257736206,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 12,
+          "slope": 3,
+          "native_yaw": -2.356194257736206,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 13,
+          "slope": -3,
+          "native_yaw": -2.552543878555298,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 13,
+          "slope": -1,
+          "native_yaw": -2.552543878555298,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 13,
+          "slope": 0,
+          "native_yaw": -2.552543878555298,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 13,
+          "slope": 1,
+          "native_yaw": -2.552543878555298,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 13,
+          "slope": 3,
+          "native_yaw": -2.552543878555298,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 14,
+          "slope": -3,
+          "native_yaw": -2.7488934993743896,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 14,
+          "slope": -1,
+          "native_yaw": -2.7488934993743896,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 14,
+          "slope": 0,
+          "native_yaw": -2.7488934993743896,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 14,
+          "slope": 1,
+          "native_yaw": -2.7488934993743896,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 14,
+          "slope": 3,
+          "native_yaw": -2.7488934993743896,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 15,
+          "slope": -3,
+          "native_yaw": -2.9452428817749023,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 15,
+          "slope": -1,
+          "native_yaw": -2.9452428817749023,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 15,
+          "slope": 0,
+          "native_yaw": -2.9452428817749023,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 15,
+          "slope": 1,
+          "native_yaw": -2.9452428817749023,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 15,
+          "slope": 3,
+          "native_yaw": -2.9452428817749023,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 16,
+          "slope": -3,
+          "native_yaw": -3.141592502593994,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 16,
+          "slope": -1,
+          "native_yaw": -3.141592502593994,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 16,
+          "slope": 0,
+          "native_yaw": -3.141592502593994,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 16,
+          "slope": 1,
+          "native_yaw": -3.141592502593994,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 16,
+          "slope": 3,
+          "native_yaw": -3.141592502593994,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 17,
+          "slope": -3,
+          "native_yaw": -3.337942123413086,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 17,
+          "slope": -1,
+          "native_yaw": -3.337942123413086,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 17,
+          "slope": 0,
+          "native_yaw": -3.337942123413086,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 17,
+          "slope": 1,
+          "native_yaw": -3.337942123413086,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 17,
+          "slope": 3,
+          "native_yaw": -3.337942123413086,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 18,
+          "slope": -3,
+          "native_yaw": -3.5342915058135986,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 18,
+          "slope": -1,
+          "native_yaw": -3.5342915058135986,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 18,
+          "slope": 0,
+          "native_yaw": -3.5342915058135986,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 18,
+          "slope": 1,
+          "native_yaw": -3.5342915058135986,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 18,
+          "slope": 3,
+          "native_yaw": -3.5342915058135986,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 19,
+          "slope": -3,
+          "native_yaw": -3.7306411266326904,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 19,
+          "slope": -1,
+          "native_yaw": -3.7306411266326904,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 19,
+          "slope": 0,
+          "native_yaw": -3.7306411266326904,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 19,
+          "slope": 1,
+          "native_yaw": -3.7306411266326904,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 19,
+          "slope": 3,
+          "native_yaw": -3.7306411266326904,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 20,
+          "slope": -3,
+          "native_yaw": -3.9269907474517822,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 20,
+          "slope": -1,
+          "native_yaw": -3.9269907474517822,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 20,
+          "slope": 0,
+          "native_yaw": -3.9269907474517822,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 20,
+          "slope": 1,
+          "native_yaw": -3.9269907474517822,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 20,
+          "slope": 3,
+          "native_yaw": -3.9269907474517822,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 21,
+          "slope": -3,
+          "native_yaw": -4.123340129852295,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 21,
+          "slope": -1,
+          "native_yaw": -4.123340129852295,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 21,
+          "slope": 0,
+          "native_yaw": -4.123340129852295,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 21,
+          "slope": 1,
+          "native_yaw": -4.123340129852295,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 21,
+          "slope": 3,
+          "native_yaw": -4.123340129852295,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 22,
+          "slope": -3,
+          "native_yaw": -4.319689750671387,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 22,
+          "slope": -1,
+          "native_yaw": -4.319689750671387,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 22,
+          "slope": 0,
+          "native_yaw": -4.319689750671387,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 22,
+          "slope": 1,
+          "native_yaw": -4.319689750671387,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 22,
+          "slope": 3,
+          "native_yaw": -4.319689750671387,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 23,
+          "slope": -3,
+          "native_yaw": -4.5160393714904785,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 23,
+          "slope": -1,
+          "native_yaw": -4.5160393714904785,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 23,
+          "slope": 0,
+          "native_yaw": -4.5160393714904785,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 23,
+          "slope": 1,
+          "native_yaw": -4.5160393714904785,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 23,
+          "slope": 3,
+          "native_yaw": -4.5160393714904785,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 24,
+          "slope": -3,
+          "native_yaw": 1.570796251296997,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 24,
+          "slope": -1,
+          "native_yaw": 1.570796251296997,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 24,
+          "slope": 0,
+          "native_yaw": 1.570796251296997,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 24,
+          "slope": 1,
+          "native_yaw": 1.570796251296997,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 24,
+          "slope": 3,
+          "native_yaw": 1.570796251296997,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 25,
+          "slope": -3,
+          "native_yaw": 1.3744467496871948,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 25,
+          "slope": -1,
+          "native_yaw": 1.3744467496871948,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 25,
+          "slope": 0,
+          "native_yaw": 1.3744467496871948,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 25,
+          "slope": 1,
+          "native_yaw": 1.3744467496871948,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 25,
+          "slope": 3,
+          "native_yaw": 1.3744467496871948,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 26,
+          "slope": -3,
+          "native_yaw": 1.178097128868103,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 26,
+          "slope": -1,
+          "native_yaw": 1.178097128868103,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 26,
+          "slope": 0,
+          "native_yaw": 1.178097128868103,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 26,
+          "slope": 1,
+          "native_yaw": 1.178097128868103,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 26,
+          "slope": 3,
+          "native_yaw": 1.178097128868103,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 27,
+          "slope": -3,
+          "native_yaw": 0.9817476868629456,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 27,
+          "slope": -1,
+          "native_yaw": 0.9817476868629456,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 27,
+          "slope": 0,
+          "native_yaw": 0.9817476868629456,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 27,
+          "slope": 1,
+          "native_yaw": 0.9817476868629456,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 27,
+          "slope": 3,
+          "native_yaw": 0.9817476868629456,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 28,
+          "slope": -3,
+          "native_yaw": 0.7853981256484985,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 28,
+          "slope": -1,
+          "native_yaw": 0.7853981256484985,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 28,
+          "slope": 0,
+          "native_yaw": 0.7853981256484985,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 28,
+          "slope": 1,
+          "native_yaw": 0.7853981256484985,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 28,
+          "slope": 3,
+          "native_yaw": 0.7853981256484985,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 29,
+          "slope": -3,
+          "native_yaw": 0.5890485644340515,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 29,
+          "slope": -1,
+          "native_yaw": 0.5890485644340515,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 29,
+          "slope": 0,
+          "native_yaw": 0.5890485644340515,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 29,
+          "slope": 1,
+          "native_yaw": 0.5890485644340515,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 29,
+          "slope": 3,
+          "native_yaw": 0.5890485644340515,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 30,
+          "slope": -3,
+          "native_yaw": 0.39269906282424927,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 30,
+          "slope": -1,
+          "native_yaw": 0.39269906282424927,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 30,
+          "slope": 0,
+          "native_yaw": 0.39269906282424927,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 30,
+          "slope": 1,
+          "native_yaw": 0.39269906282424927,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 30,
+          "slope": 3,
+          "native_yaw": 0.39269906282424927,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 31,
+          "slope": -3,
+          "native_yaw": 0.19634953141212463,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 31,
+          "slope": -1,
+          "native_yaw": 0.19634953141212463,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 31,
+          "slope": 0,
+          "native_yaw": 0.19634953141212463,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 31,
+          "slope": 1,
+          "native_yaw": 0.19634953141212463,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 31,
+          "slope": 3,
+          "native_yaw": 0.19634953141212463,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        }
+      ],
+      "native_projectile_diffuse": {
+        "original_setup_calls": 160,
+        "normal_type": 4,
+        "normal_page_checks": 39680,
+        "special_indices_page": 16,
+        "production_normal_page_checks": 39680,
+        "production_page_mismatches": 0,
+        "diffuse_only": true,
+        "specular_term": false
+      },
+      "vxl_palette_flat_cases": [
+        {
+          "color_scheme_index": 0,
+          "flat": false,
+          "flags": 2048,
+          "mode": 2,
+          "brightness": 1000
+        },
+        {
+          "color_scheme_index": 0,
+          "flat": true,
+          "flags": 10240,
+          "mode": 0,
+          "brightness": 1000
+        },
+        {
+          "color_scheme_index": 1,
+          "flat": false,
+          "flags": 2048,
+          "mode": 2,
+          "brightness": 1000
+        },
+        {
+          "color_scheme_index": 1,
+          "flat": true,
+          "flags": 10240,
+          "mode": 0,
+          "brightness": 1000
+        },
+        {
+          "color_scheme_index": 2,
+          "flat": false,
+          "flags": 2048,
+          "mode": 2,
+          "brightness": 1000
+        },
+        {
+          "color_scheme_index": 2,
+          "flat": true,
+          "flags": 10240,
+          "mode": 0,
+          "brightness": 1000
+        }
+      ],
+      "native_layer_cases": 1792,
+      "cached_layer_ignored": [
+        {
+          "cached_layer": 0,
+          "flat_values_checked": 256
+        },
+        {
+          "cached_layer": 1,
+          "flat_values_checked": 256
+        },
+        {
+          "cached_layer": 2,
+          "flat_values_checked": 256
+        },
+        {
+          "cached_layer": 3,
+          "flat_values_checked": 256
+        },
+        {
+          "cached_layer": 4,
+          "flat_values_checked": 256
+        },
+        {
+          "cached_layer": 4294967295,
+          "flat_values_checked": 256
+        },
+        {
+          "cached_layer": 2147483647,
+          "flat_values_checked": 256
+        }
+      ],
+      "native_z_test": [
+        {
+          "kind": "plain_vxl_nonflat",
+          "flags": 2048,
+          "native_pixel_function": "00493DF0",
+          "z_test": false,
+          "strict_z_compare": false,
+          "z_write": false,
+          "cases": 5
+        },
+        {
+          "kind": "plain_vxl_flat",
+          "flags": 10240,
+          "native_pixel_function": "00494B60",
+          "z_test": true,
+          "strict_z_compare": true,
+          "z_write": false,
+          "cases": 5
+        },
+        {
+          "kind": "rle_shp",
+          "flags": 11776,
+          "native_pixel_function": "00497FD0",
+          "z_test": true,
+          "strict_z_compare": true,
+          "z_write": false,
+          "cases": 5
+        }
+      ],
+      "code_sha256": {
+        "004664C0-0046655E": "25de260843e71315b0b7d6d59ecb9e83bc2acab2da103bd44a6d40fa45223442",
+        "00468000-00468089": "f808d9543b06100f768d03fc2840f43536552abf4dbfbfe906c1dd1fe2eff4d2",
+        "00468090-00468429": "9fc1b9fb28317e8a58bcddca011e9b840873b4de37441c426ce63030ee89cb39",
+        "0046B0C0-0046B258": "03671651c3bfacabe0ce779df5c695b5d304d1c803c794f858601ad2e74e4451",
+        "00753C80-00753CFB": "145e42426bd3ca52204f633aede2c6e12f48c065abb1e2d055a2fd8c2e48a1fa",
+        "00758670-007586E8": "c25ae5d69fb854827c85169a78a9832b886c72048052027eb0e4fad9c3d4e72a",
+        "00468B90-00468BA6": "26e47c2aad5ee64af51366bf26e2b489d2e5e7e7002cdd2c08e4dbe6554ec6db",
+        "00493DF0-00493E90": "78743d55cdb34e3d7caad4f4150a53dde5e2cebb4276dd0bfec5db4164012395",
+        "00494B60-00494C3A": "bbc9ec690d67fc873603433540efd6a58c93c63571eee3aa16e09809773343bd",
+        "00497FD0-00498150": "cadcedb1fd341f360cf669616657978a10a747fa9182e9a99d0fbeb3e147f452"
+      }
+    },
+    "03-off": {
+      "captured_live_bullets": 0,
+      "fixture": "synthetic Bullet and copied BulletType; terminal draw intercepted",
+      "frame_cases": 768,
+      "palette_shadow_bright_cases": 48,
+      "shp_draw_parameter_cases": [
+        {
+          "anim_palette": false,
+          "firers_palette": false,
+          "inherited_color": -1,
+          "shadow": false,
+          "bright": false,
+          "draws": 1,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": null,
+          "shadow_remap": null
+        },
+        {
+          "anim_palette": false,
+          "firers_palette": false,
+          "inherited_color": -1,
+          "shadow": false,
+          "bright": true,
+          "draws": 1,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": null,
+          "shadow_remap": null
+        },
+        {
+          "anim_palette": false,
+          "firers_palette": false,
+          "inherited_color": -1,
+          "shadow": true,
+          "bright": false,
+          "draws": 2,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": 0,
+          "shadow_remap": 0
+        },
+        {
+          "anim_palette": false,
+          "firers_palette": false,
+          "inherited_color": -1,
+          "shadow": true,
+          "bright": true,
+          "draws": 2,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": 0,
+          "shadow_remap": 0
+        },
+        {
+          "anim_palette": false,
+          "firers_palette": false,
+          "inherited_color": 0,
+          "shadow": false,
+          "bright": false,
+          "draws": 1,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": null,
+          "shadow_remap": null
+        },
+        {
+          "anim_palette": false,
+          "firers_palette": false,
+          "inherited_color": 0,
+          "shadow": false,
+          "bright": true,
+          "draws": 1,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": null,
+          "shadow_remap": null
+        },
+        {
+          "anim_palette": false,
+          "firers_palette": false,
+          "inherited_color": 0,
+          "shadow": true,
+          "bright": false,
+          "draws": 2,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": 0,
+          "shadow_remap": 0
+        },
+        {
+          "anim_palette": false,
+          "firers_palette": false,
+          "inherited_color": 0,
+          "shadow": true,
+          "bright": true,
+          "draws": 2,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": 0,
+          "shadow_remap": 0
+        },
+        {
+          "anim_palette": false,
+          "firers_palette": false,
+          "inherited_color": 1,
+          "shadow": false,
+          "bright": false,
+          "draws": 1,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": null,
+          "shadow_remap": null
+        },
+        {
+          "anim_palette": false,
+          "firers_palette": false,
+          "inherited_color": 1,
+          "shadow": false,
+          "bright": true,
+          "draws": 1,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": null,
+          "shadow_remap": null
+        },
+        {
+          "anim_palette": false,
+          "firers_palette": false,
+          "inherited_color": 1,
+          "shadow": true,
+          "bright": false,
+          "draws": 2,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": 0,
+          "shadow_remap": 0
+        },
+        {
+          "anim_palette": false,
+          "firers_palette": false,
+          "inherited_color": 1,
+          "shadow": true,
+          "bright": true,
+          "draws": 2,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": 0,
+          "shadow_remap": 0
+        },
+        {
+          "anim_palette": false,
+          "firers_palette": true,
+          "inherited_color": -1,
+          "shadow": false,
+          "bright": false,
+          "draws": 1,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": null,
+          "shadow_remap": null
+        },
+        {
+          "anim_palette": false,
+          "firers_palette": true,
+          "inherited_color": -1,
+          "shadow": false,
+          "bright": true,
+          "draws": 1,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": null,
+          "shadow_remap": null
+        },
+        {
+          "anim_palette": false,
+          "firers_palette": true,
+          "inherited_color": -1,
+          "shadow": true,
+          "bright": false,
+          "draws": 2,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": 0,
+          "shadow_remap": 0
+        },
+        {
+          "anim_palette": false,
+          "firers_palette": true,
+          "inherited_color": -1,
+          "shadow": true,
+          "bright": true,
+          "draws": 2,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": 0,
+          "shadow_remap": 0
+        },
+        {
+          "anim_palette": false,
+          "firers_palette": true,
+          "inherited_color": 0,
+          "shadow": false,
+          "bright": false,
+          "draws": 1,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": null,
+          "shadow_remap": null
+        },
+        {
+          "anim_palette": false,
+          "firers_palette": true,
+          "inherited_color": 0,
+          "shadow": false,
+          "bright": true,
+          "draws": 1,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": null,
+          "shadow_remap": null
+        },
+        {
+          "anim_palette": false,
+          "firers_palette": true,
+          "inherited_color": 0,
+          "shadow": true,
+          "bright": false,
+          "draws": 2,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": 0,
+          "shadow_remap": 0
+        },
+        {
+          "anim_palette": false,
+          "firers_palette": true,
+          "inherited_color": 0,
+          "shadow": true,
+          "bright": true,
+          "draws": 2,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": 0,
+          "shadow_remap": 0
+        },
+        {
+          "anim_palette": false,
+          "firers_palette": true,
+          "inherited_color": 1,
+          "shadow": false,
+          "bright": false,
+          "draws": 1,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": null,
+          "shadow_remap": null
+        },
+        {
+          "anim_palette": false,
+          "firers_palette": true,
+          "inherited_color": 1,
+          "shadow": false,
+          "bright": true,
+          "draws": 1,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": null,
+          "shadow_remap": null
+        },
+        {
+          "anim_palette": false,
+          "firers_palette": true,
+          "inherited_color": 1,
+          "shadow": true,
+          "bright": false,
+          "draws": 2,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": 0,
+          "shadow_remap": 0
+        },
+        {
+          "anim_palette": false,
+          "firers_palette": true,
+          "inherited_color": 1,
+          "shadow": true,
+          "bright": true,
+          "draws": 2,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": 0,
+          "shadow_remap": 0
+        },
+        {
+          "anim_palette": true,
+          "firers_palette": false,
+          "inherited_color": -1,
+          "shadow": false,
+          "bright": false,
+          "draws": 1,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": null,
+          "shadow_remap": null
+        },
+        {
+          "anim_palette": true,
+          "firers_palette": false,
+          "inherited_color": -1,
+          "shadow": false,
+          "bright": true,
+          "draws": 1,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": null,
+          "shadow_remap": null
+        },
+        {
+          "anim_palette": true,
+          "firers_palette": false,
+          "inherited_color": -1,
+          "shadow": true,
+          "bright": false,
+          "draws": 2,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": 0,
+          "shadow_remap": 0
+        },
+        {
+          "anim_palette": true,
+          "firers_palette": false,
+          "inherited_color": -1,
+          "shadow": true,
+          "bright": true,
+          "draws": 2,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": 0,
+          "shadow_remap": 0
+        },
+        {
+          "anim_palette": true,
+          "firers_palette": false,
+          "inherited_color": 0,
+          "shadow": false,
+          "bright": false,
+          "draws": 1,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": null,
+          "shadow_remap": null
+        },
+        {
+          "anim_palette": true,
+          "firers_palette": false,
+          "inherited_color": 0,
+          "shadow": false,
+          "bright": true,
+          "draws": 1,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": null,
+          "shadow_remap": null
+        },
+        {
+          "anim_palette": true,
+          "firers_palette": false,
+          "inherited_color": 0,
+          "shadow": true,
+          "bright": false,
+          "draws": 2,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": 0,
+          "shadow_remap": 0
+        },
+        {
+          "anim_palette": true,
+          "firers_palette": false,
+          "inherited_color": 0,
+          "shadow": true,
+          "bright": true,
+          "draws": 2,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": 0,
+          "shadow_remap": 0
+        },
+        {
+          "anim_palette": true,
+          "firers_palette": false,
+          "inherited_color": 1,
+          "shadow": false,
+          "bright": false,
+          "draws": 1,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": null,
+          "shadow_remap": null
+        },
+        {
+          "anim_palette": true,
+          "firers_palette": false,
+          "inherited_color": 1,
+          "shadow": false,
+          "bright": true,
+          "draws": 1,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": null,
+          "shadow_remap": null
+        },
+        {
+          "anim_palette": true,
+          "firers_palette": false,
+          "inherited_color": 1,
+          "shadow": true,
+          "bright": false,
+          "draws": 2,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": 0,
+          "shadow_remap": 0
+        },
+        {
+          "anim_palette": true,
+          "firers_palette": false,
+          "inherited_color": 1,
+          "shadow": true,
+          "bright": true,
+          "draws": 2,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": 0,
+          "shadow_remap": 0
+        },
+        {
+          "anim_palette": true,
+          "firers_palette": true,
+          "inherited_color": -1,
+          "shadow": false,
+          "bright": false,
+          "draws": 1,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": null,
+          "shadow_remap": null
+        },
+        {
+          "anim_palette": true,
+          "firers_palette": true,
+          "inherited_color": -1,
+          "shadow": false,
+          "bright": true,
+          "draws": 1,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": null,
+          "shadow_remap": null
+        },
+        {
+          "anim_palette": true,
+          "firers_palette": true,
+          "inherited_color": -1,
+          "shadow": true,
+          "bright": false,
+          "draws": 2,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": 0,
+          "shadow_remap": 0
+        },
+        {
+          "anim_palette": true,
+          "firers_palette": true,
+          "inherited_color": -1,
+          "shadow": true,
+          "bright": true,
+          "draws": 2,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": 0,
+          "shadow_remap": 0
+        },
+        {
+          "anim_palette": true,
+          "firers_palette": true,
+          "inherited_color": 0,
+          "shadow": false,
+          "bright": false,
+          "draws": 1,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": null,
+          "shadow_remap": null
+        },
+        {
+          "anim_palette": true,
+          "firers_palette": true,
+          "inherited_color": 0,
+          "shadow": false,
+          "bright": true,
+          "draws": 1,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": null,
+          "shadow_remap": null
+        },
+        {
+          "anim_palette": true,
+          "firers_palette": true,
+          "inherited_color": 0,
+          "shadow": true,
+          "bright": false,
+          "draws": 2,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": 0,
+          "shadow_remap": 0
+        },
+        {
+          "anim_palette": true,
+          "firers_palette": true,
+          "inherited_color": 0,
+          "shadow": true,
+          "bright": true,
+          "draws": 2,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": 0,
+          "shadow_remap": 0
+        },
+        {
+          "anim_palette": true,
+          "firers_palette": true,
+          "inherited_color": 1,
+          "shadow": false,
+          "bright": false,
+          "draws": 1,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": null,
+          "shadow_remap": null
+        },
+        {
+          "anim_palette": true,
+          "firers_palette": true,
+          "inherited_color": 1,
+          "shadow": false,
+          "bright": true,
+          "draws": 1,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": null,
+          "shadow_remap": null
+        },
+        {
+          "anim_palette": true,
+          "firers_palette": true,
+          "inherited_color": 1,
+          "shadow": true,
+          "bright": false,
+          "draws": 2,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": 0,
+          "shadow_remap": 0
+        },
+        {
+          "anim_palette": true,
+          "firers_palette": true,
+          "inherited_color": 1,
+          "shadow": true,
+          "bright": true,
+          "draws": 2,
+          "body_gradient": 0,
+          "body_remap": 0,
+          "shadow_gradient": 0,
+          "shadow_remap": 0
+        }
+      ],
+      "damage_is_not_lifecycle_cases": 12,
+      "visibility_cases": [
+        {
+          "invisible_type": false,
+          "spawn_next_anim": false,
+          "voxel": false,
+          "draw": true
+        },
+        {
+          "invisible_type": false,
+          "spawn_next_anim": false,
+          "voxel": true,
+          "draw": true
+        },
+        {
+          "invisible_type": false,
+          "spawn_next_anim": true,
+          "voxel": false,
+          "draw": false
+        },
+        {
+          "invisible_type": false,
+          "spawn_next_anim": true,
+          "voxel": true,
+          "draw": false
+        },
+        {
+          "invisible_type": true,
+          "spawn_next_anim": false,
+          "voxel": false,
+          "draw": false
+        },
+        {
+          "invisible_type": true,
+          "spawn_next_anim": false,
+          "voxel": true,
+          "draw": false
+        },
+        {
+          "invisible_type": true,
+          "spawn_next_anim": true,
+          "voxel": false,
+          "draw": false
+        },
+        {
+          "invisible_type": true,
+          "spawn_next_anim": true,
+          "voxel": true,
+          "draw": false
+        }
+      ],
+      "vxl_orientation_cases": [
+        {
+          "direction": 0,
+          "slope": -3,
+          "native_yaw": -0.0,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 0,
+          "slope": -1,
+          "native_yaw": -0.0,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 0,
+          "slope": 0,
+          "native_yaw": -0.0,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 0,
+          "slope": 1,
+          "native_yaw": -0.0,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 0,
+          "slope": 3,
+          "native_yaw": -0.0,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 1,
+          "slope": -3,
+          "native_yaw": -0.19634953141212463,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 1,
+          "slope": -1,
+          "native_yaw": -0.19634953141212463,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 1,
+          "slope": 0,
+          "native_yaw": -0.19634953141212463,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 1,
+          "slope": 1,
+          "native_yaw": -0.19634953141212463,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 1,
+          "slope": 3,
+          "native_yaw": -0.19634953141212463,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 2,
+          "slope": -3,
+          "native_yaw": -0.39269906282424927,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 2,
+          "slope": -1,
+          "native_yaw": -0.39269906282424927,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 2,
+          "slope": 0,
+          "native_yaw": -0.39269906282424927,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 2,
+          "slope": 1,
+          "native_yaw": -0.39269906282424927,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 2,
+          "slope": 3,
+          "native_yaw": -0.39269906282424927,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 3,
+          "slope": -3,
+          "native_yaw": -0.5890485644340515,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 3,
+          "slope": -1,
+          "native_yaw": -0.5890485644340515,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 3,
+          "slope": 0,
+          "native_yaw": -0.5890485644340515,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 3,
+          "slope": 1,
+          "native_yaw": -0.5890485644340515,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 3,
+          "slope": 3,
+          "native_yaw": -0.5890485644340515,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 4,
+          "slope": -3,
+          "native_yaw": -0.7853981256484985,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 4,
+          "slope": -1,
+          "native_yaw": -0.7853981256484985,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 4,
+          "slope": 0,
+          "native_yaw": -0.7853981256484985,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 4,
+          "slope": 1,
+          "native_yaw": -0.7853981256484985,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 4,
+          "slope": 3,
+          "native_yaw": -0.7853981256484985,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 5,
+          "slope": -3,
+          "native_yaw": -0.9817476868629456,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 5,
+          "slope": -1,
+          "native_yaw": -0.9817476868629456,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 5,
+          "slope": 0,
+          "native_yaw": -0.9817476868629456,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 5,
+          "slope": 1,
+          "native_yaw": -0.9817476868629456,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 5,
+          "slope": 3,
+          "native_yaw": -0.9817476868629456,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 6,
+          "slope": -3,
+          "native_yaw": -1.178097128868103,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 6,
+          "slope": -1,
+          "native_yaw": -1.178097128868103,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 6,
+          "slope": 0,
+          "native_yaw": -1.178097128868103,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 6,
+          "slope": 1,
+          "native_yaw": -1.178097128868103,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 6,
+          "slope": 3,
+          "native_yaw": -1.178097128868103,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 7,
+          "slope": -3,
+          "native_yaw": -1.3744467496871948,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 7,
+          "slope": -1,
+          "native_yaw": -1.3744467496871948,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 7,
+          "slope": 0,
+          "native_yaw": -1.3744467496871948,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 7,
+          "slope": 1,
+          "native_yaw": -1.3744467496871948,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 7,
+          "slope": 3,
+          "native_yaw": -1.3744467496871948,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 8,
+          "slope": -3,
+          "native_yaw": -1.570796251296997,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 8,
+          "slope": -1,
+          "native_yaw": -1.570796251296997,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 8,
+          "slope": 0,
+          "native_yaw": -1.570796251296997,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 8,
+          "slope": 1,
+          "native_yaw": -1.570796251296997,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 8,
+          "slope": 3,
+          "native_yaw": -1.570796251296997,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 9,
+          "slope": -3,
+          "native_yaw": -1.7671457529067993,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 9,
+          "slope": -1,
+          "native_yaw": -1.7671457529067993,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 9,
+          "slope": 0,
+          "native_yaw": -1.7671457529067993,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 9,
+          "slope": 1,
+          "native_yaw": -1.7671457529067993,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 9,
+          "slope": 3,
+          "native_yaw": -1.7671457529067993,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 10,
+          "slope": -3,
+          "native_yaw": -1.9634953737258911,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 10,
+          "slope": -1,
+          "native_yaw": -1.9634953737258911,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 10,
+          "slope": 0,
+          "native_yaw": -1.9634953737258911,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 10,
+          "slope": 1,
+          "native_yaw": -1.9634953737258911,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 10,
+          "slope": 3,
+          "native_yaw": -1.9634953737258911,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 11,
+          "slope": -3,
+          "native_yaw": -2.1598448753356934,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 11,
+          "slope": -1,
+          "native_yaw": -2.1598448753356934,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 11,
+          "slope": 0,
+          "native_yaw": -2.1598448753356934,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 11,
+          "slope": 1,
+          "native_yaw": -2.1598448753356934,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 11,
+          "slope": 3,
+          "native_yaw": -2.1598448753356934,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 12,
+          "slope": -3,
+          "native_yaw": -2.356194257736206,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 12,
+          "slope": -1,
+          "native_yaw": -2.356194257736206,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 12,
+          "slope": 0,
+          "native_yaw": -2.356194257736206,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 12,
+          "slope": 1,
+          "native_yaw": -2.356194257736206,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 12,
+          "slope": 3,
+          "native_yaw": -2.356194257736206,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 13,
+          "slope": -3,
+          "native_yaw": -2.552543878555298,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 13,
+          "slope": -1,
+          "native_yaw": -2.552543878555298,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 13,
+          "slope": 0,
+          "native_yaw": -2.552543878555298,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 13,
+          "slope": 1,
+          "native_yaw": -2.552543878555298,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 13,
+          "slope": 3,
+          "native_yaw": -2.552543878555298,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 14,
+          "slope": -3,
+          "native_yaw": -2.7488934993743896,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 14,
+          "slope": -1,
+          "native_yaw": -2.7488934993743896,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 14,
+          "slope": 0,
+          "native_yaw": -2.7488934993743896,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 14,
+          "slope": 1,
+          "native_yaw": -2.7488934993743896,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 14,
+          "slope": 3,
+          "native_yaw": -2.7488934993743896,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 15,
+          "slope": -3,
+          "native_yaw": -2.9452428817749023,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 15,
+          "slope": -1,
+          "native_yaw": -2.9452428817749023,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 15,
+          "slope": 0,
+          "native_yaw": -2.9452428817749023,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 15,
+          "slope": 1,
+          "native_yaw": -2.9452428817749023,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 15,
+          "slope": 3,
+          "native_yaw": -2.9452428817749023,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 16,
+          "slope": -3,
+          "native_yaw": -3.141592502593994,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 16,
+          "slope": -1,
+          "native_yaw": -3.141592502593994,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 16,
+          "slope": 0,
+          "native_yaw": -3.141592502593994,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 16,
+          "slope": 1,
+          "native_yaw": -3.141592502593994,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 16,
+          "slope": 3,
+          "native_yaw": -3.141592502593994,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 17,
+          "slope": -3,
+          "native_yaw": -3.337942123413086,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 17,
+          "slope": -1,
+          "native_yaw": -3.337942123413086,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 17,
+          "slope": 0,
+          "native_yaw": -3.337942123413086,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 17,
+          "slope": 1,
+          "native_yaw": -3.337942123413086,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 17,
+          "slope": 3,
+          "native_yaw": -3.337942123413086,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 18,
+          "slope": -3,
+          "native_yaw": -3.5342915058135986,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 18,
+          "slope": -1,
+          "native_yaw": -3.5342915058135986,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 18,
+          "slope": 0,
+          "native_yaw": -3.5342915058135986,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 18,
+          "slope": 1,
+          "native_yaw": -3.5342915058135986,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 18,
+          "slope": 3,
+          "native_yaw": -3.5342915058135986,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 19,
+          "slope": -3,
+          "native_yaw": -3.7306411266326904,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 19,
+          "slope": -1,
+          "native_yaw": -3.7306411266326904,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 19,
+          "slope": 0,
+          "native_yaw": -3.7306411266326904,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 19,
+          "slope": 1,
+          "native_yaw": -3.7306411266326904,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 19,
+          "slope": 3,
+          "native_yaw": -3.7306411266326904,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 20,
+          "slope": -3,
+          "native_yaw": -3.9269907474517822,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 20,
+          "slope": -1,
+          "native_yaw": -3.9269907474517822,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 20,
+          "slope": 0,
+          "native_yaw": -3.9269907474517822,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 20,
+          "slope": 1,
+          "native_yaw": -3.9269907474517822,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 20,
+          "slope": 3,
+          "native_yaw": -3.9269907474517822,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 21,
+          "slope": -3,
+          "native_yaw": -4.123340129852295,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 21,
+          "slope": -1,
+          "native_yaw": -4.123340129852295,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 21,
+          "slope": 0,
+          "native_yaw": -4.123340129852295,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 21,
+          "slope": 1,
+          "native_yaw": -4.123340129852295,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 21,
+          "slope": 3,
+          "native_yaw": -4.123340129852295,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 22,
+          "slope": -3,
+          "native_yaw": -4.319689750671387,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 22,
+          "slope": -1,
+          "native_yaw": -4.319689750671387,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 22,
+          "slope": 0,
+          "native_yaw": -4.319689750671387,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 22,
+          "slope": 1,
+          "native_yaw": -4.319689750671387,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 22,
+          "slope": 3,
+          "native_yaw": -4.319689750671387,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 23,
+          "slope": -3,
+          "native_yaw": -4.5160393714904785,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 23,
+          "slope": -1,
+          "native_yaw": -4.5160393714904785,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 23,
+          "slope": 0,
+          "native_yaw": -4.5160393714904785,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 23,
+          "slope": 1,
+          "native_yaw": -4.5160393714904785,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 23,
+          "slope": 3,
+          "native_yaw": -4.5160393714904785,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 24,
+          "slope": -3,
+          "native_yaw": 1.570796251296997,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 24,
+          "slope": -1,
+          "native_yaw": 1.570796251296997,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 24,
+          "slope": 0,
+          "native_yaw": 1.570796251296997,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 24,
+          "slope": 1,
+          "native_yaw": 1.570796251296997,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 24,
+          "slope": 3,
+          "native_yaw": 1.570796251296997,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 25,
+          "slope": -3,
+          "native_yaw": 1.3744467496871948,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 25,
+          "slope": -1,
+          "native_yaw": 1.3744467496871948,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 25,
+          "slope": 0,
+          "native_yaw": 1.3744467496871948,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 25,
+          "slope": 1,
+          "native_yaw": 1.3744467496871948,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 25,
+          "slope": 3,
+          "native_yaw": 1.3744467496871948,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 26,
+          "slope": -3,
+          "native_yaw": 1.178097128868103,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 26,
+          "slope": -1,
+          "native_yaw": 1.178097128868103,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 26,
+          "slope": 0,
+          "native_yaw": 1.178097128868103,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 26,
+          "slope": 1,
+          "native_yaw": 1.178097128868103,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 26,
+          "slope": 3,
+          "native_yaw": 1.178097128868103,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 27,
+          "slope": -3,
+          "native_yaw": 0.9817476868629456,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 27,
+          "slope": -1,
+          "native_yaw": 0.9817476868629456,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 27,
+          "slope": 0,
+          "native_yaw": 0.9817476868629456,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 27,
+          "slope": 1,
+          "native_yaw": 0.9817476868629456,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 27,
+          "slope": 3,
+          "native_yaw": 0.9817476868629456,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 28,
+          "slope": -3,
+          "native_yaw": 0.7853981256484985,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 28,
+          "slope": -1,
+          "native_yaw": 0.7853981256484985,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 28,
+          "slope": 0,
+          "native_yaw": 0.7853981256484985,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 28,
+          "slope": 1,
+          "native_yaw": 0.7853981256484985,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 28,
+          "slope": 3,
+          "native_yaw": 0.7853981256484985,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 29,
+          "slope": -3,
+          "native_yaw": 0.5890485644340515,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 29,
+          "slope": -1,
+          "native_yaw": 0.5890485644340515,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 29,
+          "slope": 0,
+          "native_yaw": 0.5890485644340515,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 29,
+          "slope": 1,
+          "native_yaw": 0.5890485644340515,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 29,
+          "slope": 3,
+          "native_yaw": 0.5890485644340515,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 30,
+          "slope": -3,
+          "native_yaw": 0.39269906282424927,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 30,
+          "slope": -1,
+          "native_yaw": 0.39269906282424927,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 30,
+          "slope": 0,
+          "native_yaw": 0.39269906282424927,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 30,
+          "slope": 1,
+          "native_yaw": 0.39269906282424927,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 30,
+          "slope": 3,
+          "native_yaw": 0.39269906282424927,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 31,
+          "slope": -3,
+          "native_yaw": 0.19634953141212463,
+          "native_pitch": 1.178097128868103,
+          "hva_frame": 0
+        },
+        {
+          "direction": 31,
+          "slope": -1,
+          "native_yaw": 0.19634953141212463,
+          "native_pitch": 0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 31,
+          "slope": 0,
+          "native_yaw": 0.19634953141212463,
+          "native_pitch": 0.0,
+          "hva_frame": 0
+        },
+        {
+          "direction": 31,
+          "slope": 1,
+          "native_yaw": 0.19634953141212463,
+          "native_pitch": -0.7853981256484985,
+          "hva_frame": 0
+        },
+        {
+          "direction": 31,
+          "slope": 3,
+          "native_yaw": 0.19634953141212463,
+          "native_pitch": -1.178097128868103,
+          "hva_frame": 0
+        }
+      ],
+      "native_projectile_diffuse": {
+        "original_setup_calls": 160,
+        "normal_type": 4,
+        "normal_page_checks": 39680,
+        "special_indices_page": 16,
+        "production_normal_page_checks": 39680,
+        "production_page_mismatches": 0,
+        "diffuse_only": true,
+        "specular_term": false
+      },
+      "vxl_palette_flat_cases": [
+        {
+          "color_scheme_index": 0,
+          "flat": false,
+          "flags": 2048,
+          "mode": 2,
+          "brightness": 1000
+        },
+        {
+          "color_scheme_index": 0,
+          "flat": true,
+          "flags": 10240,
+          "mode": 0,
+          "brightness": 1000
+        },
+        {
+          "color_scheme_index": 1,
+          "flat": false,
+          "flags": 2048,
+          "mode": 2,
+          "brightness": 1000
+        },
+        {
+          "color_scheme_index": 1,
+          "flat": true,
+          "flags": 10240,
+          "mode": 0,
+          "brightness": 1000
+        },
+        {
+          "color_scheme_index": 2,
+          "flat": false,
+          "flags": 2048,
+          "mode": 2,
+          "brightness": 1000
+        },
+        {
+          "color_scheme_index": 2,
+          "flat": true,
+          "flags": 10240,
+          "mode": 0,
+          "brightness": 1000
+        }
+      ],
+      "native_layer_cases": 1792,
+      "cached_layer_ignored": [
+        {
+          "cached_layer": 0,
+          "flat_values_checked": 256
+        },
+        {
+          "cached_layer": 1,
+          "flat_values_checked": 256
+        },
+        {
+          "cached_layer": 2,
+          "flat_values_checked": 256
+        },
+        {
+          "cached_layer": 3,
+          "flat_values_checked": 256
+        },
+        {
+          "cached_layer": 4,
+          "flat_values_checked": 256
+        },
+        {
+          "cached_layer": 4294967295,
+          "flat_values_checked": 256
+        },
+        {
+          "cached_layer": 2147483647,
+          "flat_values_checked": 256
+        }
+      ],
+      "native_z_test": [
+        {
+          "kind": "plain_vxl_nonflat",
+          "flags": 2048,
+          "native_pixel_function": "00493DF0",
+          "z_test": false,
+          "strict_z_compare": false,
+          "z_write": false,
+          "cases": 5
+        },
+        {
+          "kind": "plain_vxl_flat",
+          "flags": 10240,
+          "native_pixel_function": "00494B60",
+          "z_test": true,
+          "strict_z_compare": true,
+          "z_write": false,
+          "cases": 5
+        },
+        {
+          "kind": "rle_shp",
+          "flags": 11776,
+          "native_pixel_function": "00497FD0",
+          "z_test": true,
+          "strict_z_compare": true,
+          "z_write": false,
+          "cases": 5
+        }
+      ],
+      "code_sha256": {
+        "004664C0-0046655E": "25de260843e71315b0b7d6d59ecb9e83bc2acab2da103bd44a6d40fa45223442",
+        "00468000-00468089": "f808d9543b06100f768d03fc2840f43536552abf4dbfbfe906c1dd1fe2eff4d2",
+        "00468090-00468429": "9fc1b9fb28317e8a58bcddca011e9b840873b4de37441c426ce63030ee89cb39",
+        "0046B0C0-0046B258": "03671651c3bfacabe0ce779df5c695b5d304d1c803c794f858601ad2e74e4451",
+        "00753C80-00753CFB": "145e42426bd3ca52204f633aede2c6e12f48c065abb1e2d055a2fd8c2e48a1fa",
+        "00758670-007586E8": "c25ae5d69fb854827c85169a78a9832b886c72048052027eb0e4fad9c3d4e72a",
+        "00468B90-00468BA6": "26e47c2aad5ee64af51366bf26e2b489d2e5e7e7002cdd2c08e4dbe6554ec6db",
+        "00493DF0-00493E90": "78743d55cdb34e3d7caad4f4150a53dde5e2cebb4276dd0bfec5db4164012395",
+        "00494B60-00494C3A": "bbc9ec690d67fc873603433540efd6a58c93c63571eee3aa16e09809773343bd",
+        "00497FD0-00498150": "cadcedb1fd341f360cf669616657978a10a747fa9182e9a99d0fbeb3e147f452"
+      }
+    }
+  },
+  "game_tested": false,
+  "windows_rendering_tested": false,
+  "multiplayer_tested": false
+}

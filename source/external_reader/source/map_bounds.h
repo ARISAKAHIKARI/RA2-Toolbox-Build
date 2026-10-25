@@ -6,6 +6,20 @@
 
 namespace external { namespace mapbounds {
 constexpr uint32_t Map=0x87F7E8;
+// The native radar stores a flat projection span. A backing bitmap rounds up
+// to integer pixels; presentation must retain the exact span so the rounded
+// last row/column does not become an extra strip of map background.
+struct NativeViewport {
+ double width=0,height=0;
+ bool valid()const{return std::isfinite(width)&&std::isfinite(height)&&width>0&&height>0&&width<=32768&&height<=32768;}
+ int backingWidth()const{return valid()?int(std::ceil(width)):0;}
+ int backingHeight()const{return valid()?int(std::ceil(height)):0;}
+};
+inline NativeViewport nativeViewport(int radarWidth,int radarHeight,double factor){
+ if(radarWidth<=0||radarHeight<=0||!std::isfinite(factor)||factor<=0)return {};
+ NativeViewport out{radarWidth*30./factor,radarHeight*15./factor};return out.valid()?out:NativeViewport{};
+}
+struct TileOrigin {int x=0,y=0;};
 // MapRect dimensions and the LIVE VisibleRect. Scenario triggers change the
 // latter without replacing the cell array or advancing to a new match.
 struct Bounds {
@@ -15,6 +29,11 @@ struct Bounds {
  bool operator!=(const Bounds&o)const{return !(*this==o);}
  // MapClass::CoordinatesLegal (568300), plus safe external-array limits.
  bool legal(int x,int y)const{return valid()&&x>0&&y>0&&x<512&&y<512&&x+y>width&&x-y<width&&y-x<width&&x+y<=width+2*height;}
+ // Native 6D51F6/6D5215 supplies the TMP's left/top, not its center;
+ // 480416 sign-extends Level and 48042E subtracts Level*15 from Y.
+ bool tileOrigin(int x,int y,int level,TileOrigin&out)const{
+  if(!legal(x,y)||level<-128||level>127)return false;out={(x-y)*30-30,(x+y-level)*15};return true;
+ }
  // MapClass::IsWithinUsableArea(CellClass*,true), 578540. This is a
  // gameplay-area predicate, NOT the tactical renderer's cell/pixel mask.
  // Raised cells and the top-edge slope byte follow the native predicate.

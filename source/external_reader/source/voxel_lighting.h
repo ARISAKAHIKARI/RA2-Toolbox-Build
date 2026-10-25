@@ -52,7 +52,7 @@ inline float nativeVoxelSqrt(double value){
  return nativeStoredFloat(std::sqrt(double(rounded)));
 }
 struct VoxelLight {std::array<float,3> source{},halfway{};};
-inline VoxelLight nativeVoxelLight(double previewAngle){
+inline VoxelLight nativeVoxelLight(double previewAngle,double pitch=0){
  // Dir::GetRadian<32>() has the opposite sign from visual_pose::radians().
  // Keep the public camera/facing convention and only convert for lighting.
  auto sc=nativeVoxelSinCos(-previewAngle);double s=sc[0],c=sc[1];
@@ -61,6 +61,13 @@ inline VoxelLight nativeVoxelLight(double previewAngle){
   draw[i]=nativeStoredFloat(NativeVoxelView[i]*c+NativeVoxelView[i+1]*s);
   draw[i+1]=nativeStoredFloat(-NativeVoxelView[i]*s+NativeVoxelView[i+1]*c);
   draw[i+2]=NativeVoxelView[i+2];
+ }
+ // Bullet::Draw adds a local Y rotation after yaw. Vehicle callers keep
+ // pitch=0; raw VXL normal indices stay in model coordinates for VPL lookup.
+ if(pitch!=0){auto rotation=nativeVoxelSinCos(pitch);double sine=rotation[0],cosine=rotation[1];
+  for(unsigned row=0;row<3;++row){unsigned i=row*3;float x=draw[i],z=draw[i+2];
+   draw[i]=nativeStoredFloat(double(x)*cosine-double(z)*sine);
+   draw[i+2]=nativeStoredFloat(double(x)*sine+double(z)*cosine);}
  }
  VoxelLight out;
  for(unsigned i=0;i<3;++i)out.source[i]=nativeStoredFloat(
@@ -77,6 +84,12 @@ inline unsigned nativeVoxelPage(const std::array<float,3>&normal,const VoxelLigh
  double h=double(normal[0])*light.halfway[0]+double(normal[1])*light.halfway[1]+double(normal[2])*light.halfway[2];
  float specular=nativeStoredFloat(h/(3.-3.*h+h));
  return unsigned(std::clamp((std::max(0.,diffuse)+std::max(0.f,specular))*16.,0.,255.));
+}
+// 753C80 -> 758670: projectiles use diffuse only. The vehicle path
+// 753D00 -> 7586F0 adds a separate specular term and is not interchangeable.
+inline unsigned nativeProjectilePage(const std::array<float,3>&normal,const VoxelLight&light){
+ double dot=double(normal[2])*light.source[2]+double(normal[1])*light.source[1]+double(normal[0])*light.source[0];
+ return dot<0?0u:unsigned(int(dot*16.))&255u;
 }
 inline std::array<float,3> nativeVoxelWorldLight(){
  auto light=nativeVoxelLight(0).source;

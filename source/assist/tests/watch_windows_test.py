@@ -77,6 +77,7 @@ int main(){
  uint32_t p=0x10000;put(p,0x7F5C70u);put(p+0x10,42u);put(p+0x6C,100);put(p+0x74,uint8_t(1));put(p+0x90,uint8_t(1));put(p+0x9C,40*256);put(p+0xA0,30*256);put(p+0xA4,208);put(0xB0CD48,.144337567);
  for(int i=0;i<3;++i){watchhost::tracks[i].target={p,42};watchhost::views[i].shown=true;watchhost::views[i].frame.focus={p,42};}watchhost::arrange();
  RECT client{0,0,1600,1200};POINT origin{100,200};watchwindows::update(origin,client);assert(win.size()==3&&synchronousPaints==3);for(auto w:watchwindows::windows){assert(win[w].visible&&win[w].raises==1&&win[w].invalidations==1);}
+ watchhost::views[0].pixels=std::make_shared<std::vector<uint32_t>>(640*512,0xffabcdef);drawnSources.clear();watchwindows::proc(watchwindows::windows[0],WM_PAINT,0,0);assert(drawnSources.size()==1&&drawnSources[0]==std::make_pair(640,512)&&presentedInterpolation==InterpolationModeNearestNeighbor&&presentedPixelOffset==PixelOffsetModeHalf);
  Graphics clipping;watchwindows::occlude(clipping);assert(excluded.size()==3);for(int i=0;i<3;++i){auto b=watchhost::views[i].box;assert(excluded[i].x==b.x-1&&excluded[i].y==b.y-1&&excluded[i].w==b.w+2&&excluded[i].h==b.h+2);}
  int paints=synchronousPaints;for(int n=0;n<100;++n){for(auto&v:watchhost::views)++v.revision;watchwindows::update(origin,client);}assert(synchronousPaints==paints+300);
  HWND middle=watchwindows::windows[1];auto box=watchhost::views[1].box;assert(win[middle].rect.left==100+box.x*2&&win[middle].rect.top==200+box.y*2);

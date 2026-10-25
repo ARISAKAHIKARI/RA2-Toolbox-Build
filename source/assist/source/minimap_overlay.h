@@ -27,11 +27,11 @@ class Worker {
      auto data=sampler.snapshot(GetTickCount());data.map=diagram.render(data.terrain,r.width,r.height);auto fresh=[&](uint32_t p,void*out,size_t n){return reader.readFresh(p,out,n);};
      auto sampled=external::radar::publicationContext(fresh);
      if(external::radar::sameWorld(data,sampled)){
-      if(!external::radar::freshMarkers(data,sampled))data.markers.clear();
+      if(!external::radar::freshMarkers(data,sampled)){data.markers.clear();data.repairs.clear();}
       // Publish terrain immediately; retain the last completed scene while the
       // next one loads. Initial MIX scans must not keep the whole window hidden.
       {std::lock_guard<std::mutex> lock(mutex);if(token==generation){if(r.mode==1&&latest&&latest->scene&&latest->terrain->reveal==data.terrain->reveal&&latest->terrain->geo.same(data.terrain->geo)&&latest->scene->width==r.width&&latest->scene->height==r.height)data.scene=latest->scene;latest=std::make_shared<external::radar::Frame>(data);}}
-      if(r.mode==1){assets.identity(r.pid,r.match);auto scene=renderer.render(data,r.width,r.height,external::SharedReadView{&reader},assets);if(scene)data.scene=std::move(scene);}
+      if(r.mode==1){assets.identity(r.pid,r.match);auto scene=renderer.render(data,r.width,r.height,external::SharedReadView{&reader},assets);if(scene)data.scene=std::move(scene);else if(renderer.capacityExceeded())data.scene.reset();}
       next=std::make_shared<external::radar::Frame>(std::move(data));
      }else{std::lock_guard<std::mutex> lock(mutex);if(token==generation)latest.reset();}
      previousFrame=frame;previousRevision=sampler.revision();

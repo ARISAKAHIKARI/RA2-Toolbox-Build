@@ -46,7 +46,7 @@ public:
  }
  void blit(const voxel::Image&i,float ax,float ay,float sx,float sy,float base,const lighting::State&light,float lift=1,float shadowDrop=0){
   if(i.width<=0||i.height<=0||i.pixels.size()!=size_t(i.width)*i.height||!std::isfinite(ax)||!std::isfinite(ay)||!std::isfinite(sx)||!std::isfinite(sy)||sx<=0||sy<=0||sx>8||sy>8)return;
-  for(const auto&part:i.attachments)if(part.shadow&&!i.shadowsAfter)blit(part,ax,ay+shadowDrop*sy,sx,sy,base,light,lift);
+  for(const auto&part:i.attachments)if(part.shadow&&!i.shadowsAfter&&(!part.airborneShadow||shadowDrop>0))blit(part,ax,ay+shadowDrop*sy,sx,sy,base,light,lift);
   float left=ax+i.x*sx,top=ay+i.y*sy;
   int x0=std::clamp(int(std::floor(std::clamp(left,-1e7f,1e7f))),0,width_),y0=std::clamp(int(std::floor(std::clamp(top,-1e7f,1e7f))),0,height_);
   int x1=std::clamp(int(std::ceil(std::clamp(left+i.width*sx,-1e7f,1e7f))),0,width_),y1=std::clamp(int(std::ceil(std::clamp(top+i.height*sy,-1e7f,1e7f))),0,height_);
@@ -68,7 +68,7 @@ public:
     if(useZ&&i.writeDepth)depth[to]=z;
    }
   }
-  for(const auto&part:i.attachments)if(!part.shadow||i.shadowsAfter)blit(part,ax,ay+(part.shadow?shadowDrop*sy:0),sx,sy,base,light,lift);
+  for(const auto&part:i.attachments)if((!part.shadow||i.shadowsAfter)&&(!part.airborneShadow||shadowDrop>0))blit(part,ax,ay+(part.shadow?shadowDrop*sy:0),sx,sy,base,light,lift);
  }
 };
 }}

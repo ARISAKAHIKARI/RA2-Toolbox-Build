@@ -10,6 +10,20 @@ enum Part { Bib, Deploy, RoofDeploy, UnderDoor, UnderRoofDoor, Door, PartCount }
 inline constexpr uint32_t partOffsets[PartCount]={0x1518,0x14E4,0x14FC,0x14EC,0x1504,0x150C};
 enum Flag { Constructed=1, Unloading=2, Roof=4, Damaged=8 };
 struct State {int flags=0,doorFrame=-1;};
+// Building::GetCurrentFrame 43F02C..43F0BC. The occupied appearance is a
+// different frame of the same body SHP, not an AnimClass or another image.
+template<class Read>int occupiedFrame(Read read,uint32_t object,uint32_t type,double conditionYellow,double conditionRed){
+ int count=0,health=0,strength=0,tech=0;
+ if(object<0x10000||object>0xfffff968u||type<0x10000||type>0xfffff9c8u||
+    !read(object+0x694,&count,4)||!read(object+0x6C,&health,4)||!read(type+0xA0,&strength,4)||
+    !read(type+0x634,&tech,4)||health<0||strength<=0)return -1;
+ int frame=count>0?2:0;double ratio=double(health)/strength;
+ if(ratio<=conditionRed||(tech>0&&ratio<=conditionYellow))++frame;
+ // Vanilla civilian art has no separate damaged/occupied frame. The native
+ // branch maps that combination back to damaged-empty when TechLevel=-1.
+ if(tech==-1&&frame==3)frame=1;
+ return frame;
+}
 template<class Read>bool buildup(const GameView<Read>&g,uint32_t object){
  // Building::GetImage (4513D0) keeps make art until ActuallyPlacedOnMap.
  return g.template get<int>(object+0x534)==0||!g.template get<uint8_t>(object+0x6E4);

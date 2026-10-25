@@ -1,7 +1,7 @@
 #include "../../shared/source/latest_worker.h"
 #include "watch_engine.h"
 namespace watchhost {
-static constexpr int Width=320,Height=256;
+static constexpr int Width=external::watch::NativeViewWidth,Height=external::watch::NativeViewHeight;
 struct View {external::watch::Frame frame;external::watch::Box box;bool shown=false;uint32_t revision=0;std::shared_ptr<const std::vector<uint32_t>> pixels;};
 static View views[3];static external::watch::Track tracks[3];static bool autoSuppressed=false,shown=false;
 static uint32_t process=0,epoch=0,controls=0;static uint8_t trackingOptions=0xff;
@@ -69,7 +69,7 @@ static void update(uint32_t now){
  arrange();
  Request r{pid,epoch,now,controls,snap.width,snap.height,bool(extra.renderReveal||extra.mapStrategy==3),bool(extra.watchDanger),autoSuppressed,{}};std::copy(std::begin(tracks),std::end(tracks),r.tracks.begin());worker.submit(std::move(r));
 }
-static void drawView(Graphics&g,const View&v){if(!v.shown||!v.pixels)return;Bitmap bm(Width,Height,Width*4,PixelFormat32bppPARGB,reinterpret_cast<BYTE*>(const_cast<uint32_t*>(v.pixels->data())));g.DrawImage(&bm,RectF(0,0,float(Width),float(Height)),0.f,0.f,float(Width),float(Height),UnitPixel,nullptr);}
+static void drawView(Graphics&g,const View&v){if(!v.shown||!v.pixels)return;Bitmap bm(Width,Height,Width*4,PixelFormat32bppPARGB,reinterpret_cast<BYTE*>(const_cast<uint32_t*>(v.pixels->data())));g.SetInterpolationMode(InterpolationModeNearestNeighbor);g.SetPixelOffsetMode(PixelOffsetModeHalf);g.DrawImage(&bm,RectF(0,0,float(Width),float(Height)),0.f,0.f,float(Width),float(Height),UnitPixel,nullptr);}
 static void shutdown(){worker.shutdown();}
 }
 

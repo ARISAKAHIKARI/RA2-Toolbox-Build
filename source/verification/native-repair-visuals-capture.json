@@ -1,0 +1,243 @@
+{
+  "supported_executable_sha256": "7b8a068535d6af06845edf95ae829b113d00c02909330e16f197426cd7db94b6",
+  "scope": "Original repair-wrench DrawExtras selection, animation and status draw ABI.\n\nInput is a private supported capture. The original Building center, Map lookup,\nGameOptions::GetAnimSpeed and Tactical projection execute unchanged. Only the\nIsShrouded result and final DrawSHP boundary are controlled. Output contains\ncounts, hashes, frame choices and aggregate properties, never game art or dumps.\nRepair flags are controlled: no repairing building was present in this capture.\nThis does not prove live Windows visuals, multiplayer or every DrawExtras path.\n",
+  "stages": {
+    "01-off": {
+      "capture_actual_repairing_buildings": 0,
+      "resource": "WRENCH.SHP",
+      "shape_capture": {
+        "status": "unloaded_reference",
+        "filename": "WRENCH.SHP"
+      },
+      "draw_flags": "0E00",
+      "draw_intensity": 1000,
+      "palette": "MOUSE_PAL",
+      "palette_shades": 1,
+      "tested_buildings": [
+        {
+          "type": "CABHUT",
+          "original_frame_position_draw_cases": 142,
+          "controlled_repair_sinking_shroud_gates": 8,
+          "native_center_delta": [
+            -128,
+            -128,
+            0
+          ],
+          "frames_seen": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ]
+        },
+        {
+          "type": "CAOILD",
+          "original_frame_position_draw_cases": 142,
+          "controlled_repair_sinking_shroud_gates": 8,
+          "native_center_delta": [
+            -128,
+            -128,
+            0
+          ],
+          "frames_seen": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ]
+        },
+        {
+          "type": "CAAIRP",
+          "original_frame_position_draw_cases": 142,
+          "controlled_repair_sinking_shroud_gates": 8,
+          "native_center_delta": [
+            -128,
+            -128,
+            0
+          ],
+          "frames_seen": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ]
+        }
+      ],
+      "code_sha256": {
+        "006F5190-006F51B0": "5701231d68ef961d8bfc588c4aaa19dc780b1f7100866141653dc5d12860c8e7",
+        "006F5253-006F5347": "a123089ce413891490ca529f4874cc7fb662b61a0a6c2329b6723e60b97de6f2",
+        "00459EF0-00459F1B": "8b57ece16fea95a1895caa2e8df6be2f2ee7fbfb57edadb12beb56ff1cdcdb3a",
+        "005FB2E0-005FB306": "3c9e60f4a9ab09aaf3339d37e9f5aeafd9835e51678255af5a43d8320ee4683e",
+        "0045E98D-0045E9A3": "f08b1f5052aa0f16ecac64a84f72dc56e4408931d43e9ebbb54e717dcb56e89c"
+      }
+    },
+    "02-on": {
+      "capture_actual_repairing_buildings": 0,
+      "resource": "WRENCH.SHP",
+      "shape_capture": {
+        "status": "unloaded_reference",
+        "filename": "WRENCH.SHP"
+      },
+      "draw_flags": "0E00",
+      "draw_intensity": 1000,
+      "palette": "MOUSE_PAL",
+      "palette_shades": 1,
+      "tested_buildings": [
+        {
+          "type": "CABHUT",
+          "original_frame_position_draw_cases": 142,
+          "controlled_repair_sinking_shroud_gates": 8,
+          "native_center_delta": [
+            -128,
+            -128,
+            0
+          ],
+          "frames_seen": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ]
+        },
+        {
+          "type": "CAOILD",
+          "original_frame_position_draw_cases": 142,
+          "controlled_repair_sinking_shroud_gates": 8,
+          "native_center_delta": [
+            -128,
+            -128,
+            0
+          ],
+          "frames_seen": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ]
+        },
+        {
+          "type": "CAAIRP",
+          "original_frame_position_draw_cases": 142,
+          "controlled_repair_sinking_shroud_gates": 8,
+          "native_center_delta": [
+            -128,
+            -128,
+            0
+          ],
+          "frames_seen": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ]
+        }
+      ],
+      "code_sha256": {
+        "006F5190-006F51B0": "5701231d68ef961d8bfc588c4aaa19dc780b1f7100866141653dc5d12860c8e7",
+        "006F5253-006F5347": "a123089ce413891490ca529f4874cc7fb662b61a0a6c2329b6723e60b97de6f2",
+        "00459EF0-00459F1B": "8b57ece16fea95a1895caa2e8df6be2f2ee7fbfb57edadb12beb56ff1cdcdb3a",
+        "005FB2E0-005FB306": "3c9e60f4a9ab09aaf3339d37e9f5aeafd9835e51678255af5a43d8320ee4683e",
+        "0045E98D-0045E9A3": "f08b1f5052aa0f16ecac64a84f72dc56e4408931d43e9ebbb54e717dcb56e89c"
+      }
+    },
+    "03-off": {
+      "capture_actual_repairing_buildings": 0,
+      "resource": "WRENCH.SHP",
+      "shape_capture": {
+        "status": "unloaded_reference",
+        "filename": "WRENCH.SHP"
+      },
+      "draw_flags": "0E00",
+      "draw_intensity": 1000,
+      "palette": "MOUSE_PAL",
+      "palette_shades": 1,
+      "tested_buildings": [
+        {
+          "type": "CABHUT",
+          "original_frame_position_draw_cases": 142,
+          "controlled_repair_sinking_shroud_gates": 8,
+          "native_center_delta": [
+            -128,
+            -128,
+            0
+          ],
+          "frames_seen": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ]
+        },
+        {
+          "type": "CAOILD",
+          "original_frame_position_draw_cases": 142,
+          "controlled_repair_sinking_shroud_gates": 8,
+          "native_center_delta": [
+            -128,
+            -128,
+            0
+          ],
+          "frames_seen": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ]
+        },
+        {
+          "type": "CAAIRP",
+          "original_frame_position_draw_cases": 142,
+          "controlled_repair_sinking_shroud_gates": 8,
+          "native_center_delta": [
+            -128,
+            -128,
+            0
+          ],
+          "frames_seen": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ]
+        }
+      ],
+      "code_sha256": {
+        "006F5190-006F51B0": "5701231d68ef961d8bfc588c4aaa19dc780b1f7100866141653dc5d12860c8e7",
+        "006F5253-006F5347": "a123089ce413891490ca529f4874cc7fb662b61a0a6c2329b6723e60b97de6f2",
+        "00459EF0-00459F1B": "8b57ece16fea95a1895caa2e8df6be2f2ee7fbfb57edadb12beb56ff1cdcdb3a",
+        "005FB2E0-005FB306": "3c9e60f4a9ab09aaf3339d37e9f5aeafd9835e51678255af5a43d8320ee4683e",
+        "0045E98D-0045E9A3": "f08b1f5052aa0f16ecac64a84f72dc56e4408931d43e9ebbb54e717dcb56e89c"
+      }
+    }
+  },
+  "game_tested": false,
+  "windows_rendering_tested": false,
+  "multiplayer_tested": false
+}

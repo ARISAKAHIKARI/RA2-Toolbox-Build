@@ -1,17 +1,23 @@
 # RA2 Toolbox 1.0.38-pre.8
 
-本版修正步兵進建築／載具後觀察窗停止更新，以及小地圖黑幕、步兵額外亮度、礦石與地形圖案變體。
+修复步兵进入建筑或载具后观察窗停止更新，并改进黑幕显示、步兵亮度和矿石／地形图案。
 
-- 小地圖黑幕跟隨既有選項；主畫面使用半透明黑幕時，小地圖直接不畫黑幕。切回原生模式會淘汰舊背景，已解碼素材仍可重用。
-- 步兵補算遊戲實際設定的 `ExtraInfantryLight`。FA2 HDM 光照沙盒與原版指令均已核對；戰車保留原版受光方向與 VPL 流程，這輪沒有找到新的確定壓暗原因，仍待使用者當前畫面的對齊驗收。
-- 礦石依同類資源池、格子位置及坡面選擇圖像；部分 TMP 地形依原版變體鏈和位置表選圖，不再始終顯示基圖。
-- 跟蹤保留原步兵身份，入駐後使用經成員關係核實的載具／建築作取景中心，場景繼續更新，離開後重新跟回步兵。入駐關係暫不可讀時，保留取景中心並繼續更新周邊場景。
-- 永久清除跟蹤前，使用獨立即時讀取核對生命／身份；短暫失讀或渲染快取不作死亡證據。前台跟蹤變更同步推進控制版本，拒絕尚未完成的舊背景結果。
+## 本次更新
 
-## 驗證與限制
+- 观察窗在步兵入驻后继续跟随载具或建筑，离开后跟回原步兵。
+- 修复跟踪窗口误清除和旧异步结果回流；限制未知宿主的搜索量。
+- 小地图黑幕跟随现有选项，半透明模式下不绘制黑幕。
+- 补算步兵的额外亮度；补齐矿石图案池和部分 TMP 地形变体。
 
-發佈須通過配套 Windows EXE／DLL 構建、版本及通訊結構檢查、Windows 設定保存／重啟和覆蓋層測試，以及本版相關 portable 回歸。確切來源提交、驗證 Actions run、各檔案 SHA-256 由 `release-manifest.json` 記錄。
+本版已通过 48 项回归及 Windows 构建、覆盖层、设置保存与重启检查。坦克剩余偏暗仍需实景对齐。
 
-原版指令的受控執行、模擬讀取與 Windows 視窗 fixture，均不等於已通過完整遊戲畫面或雙機聯機驗收。本次未宣稱已在使用者機器上完成實景驗收。
+## 下载与更新
 
-更新包只包含 `RA2Toolbox.exe` 與 `GameRuntime.dll`；源碼另包提供。請成套更新兩個檔案。
+- [更新包](https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/releases/download/v1.0.38-pre.8/RA2-Toolbox-v1.0.38-pre.8-Update.zip)：RA2Toolbox.exe 和 GameRuntime.dll，请成套替换。
+- [源代码](https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/releases/download/v1.0.38-pre.8/RA2-Toolbox-v1.0.38-pre.8-Source.zip)：对应版本的源码、构建脚本和研究材料。
+
+更新前退出游戏与工具箱，保留原 INI、assets 和 cache。构建来源和文件校验值见 release-manifest.json。
+
+## 许可与鸣谢
+
+本项目采用 GPL v3，第三方代码和资料保留原有版权与许可。感谢 YRpp、Phobos、Ares、ccmaps-net 和 FA2sp 提供的接口与渲染参考；项目介绍和完整声明见[仓库主页](https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build)。

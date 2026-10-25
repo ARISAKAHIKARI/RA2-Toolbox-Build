@@ -12,7 +12,10 @@ namespace external { namespace watch {
 constexpr int NativeViewWidth=640,NativeViewHeight=512;
 struct Actor {visual::Pose pose;Target target;uint32_t type=0,owner=0,color=0;int x=0,y=0,z=0,kind=-1,health=0,stage=0,drawZ=0,sort=0,layer=2;Target parent;bool onBridge=false;uint16_t name[40]{};lighting::State light;};
 struct Tile {uint32_t image=0,overlay=0,type=0,overlayType=0;int sub=0,level=0,overlayFrame=0,overlayY=0;bool bridge=false;lighting::State light,overlayLight;};
-struct Frame {Target focus;Anchor center;int cx=0,cy=0,focusCx=0,focusCy=0;int radius=5,side=11;std::vector<uint32_t> cells=std::vector<uint32_t>(121);std::vector<Tile> tiles=std::vector<Tile>(121);std::vector<Actor> actors;std::vector<passengers::Group> passengers;bool dangerous=false,cameraReady=false;lighting::State light;double zScale=Projection{}.zScale,cameraX=0,cameraY=0;mapbounds::Bounds bounds;};
+struct Frame {Target focus;Anchor center;int cx=0,cy=0,focusCx=0,focusCy=0;int radius=5,side=11;std::vector<uint32_t> cells=std::vector<uint32_t>(121);std::vector<Tile> tiles=std::vector<Tile>(121);std::vector<Actor> actors;std::vector<passengers::Group> passengers;bool dangerous=false,cameraReady=false;lighting::State light;double zScale=Projection{}.zScale,cameraX=0,cameraY=0;mapbounds::Bounds bounds;std::vector<repairvisuals::Sprite> repairs;};
+template<class Read>void repairSprites(Read read,Frame&out){
+ out.repairs.clear();for(const auto&a:out.actors)if(a.kind==3){repairvisuals::Sprite sprite;if(repairvisuals::sample(read,a.target.pointer,a.target.id,sprite))out.repairs.push_back(sprite);}
+}
 template<class Read>int overlayOffset(Read read,uint32_t cell,uint32_t type,int index,int frame){
  GameView<Read> g(read);int offset=0;
  // Native OverlayType::GetOffset (5FDCC0), then Cell::GetOverlayOffset (480110).
@@ -45,6 +48,9 @@ template<class Read> bool refresh(Read read,Frame&out){
  auto light=lighting::sample(read);double zScale=projectionZScale(read);
  if(light!=out.light||zScale!=out.zScale)return false;
  for(auto&a:out.actors){uint32_t p=a.target.pointer;
+  if(a.kind==projectiles::Kind){projectiles::State s;if(!projectiles::capture(read,p,s)||s.id!=a.target.id||s.type!=a.type)return false;
+   a.owner=s.owner;a.x=s.x;a.y=s.y;a.z=s.z;a.pose=s.pose;a.drawZ=s.drawZ;a.sort=s.sort;a.layer=s.layer;a.onBridge=s.onBridge;a.light=projectiles::light(read,s);
+   int cx=a.x/256-out.cx+out.radius,cy=a.y/256-out.cy+out.radius;if(cx<0||cy<0||cx>=out.side||cy>=out.side||!out.cells[cy*out.side+cx])return false;continue;}
   if(a.kind==5){animations::State state;if(!animations::capture(read,p,a.parent.pointer,a.parent.id,state)||state.type!=a.type||state.id!=a.target.id)return false;a.x=state.x;a.y=state.y;a.z=state.z;a.pose.frame=state.frame;a.drawZ=state.zAdjust;a.sort=state.sort;a.layer=state.layer;a.onBridge=g.template get<uint8_t>(state.parent+0x8C)!=0;a.light=lighting::animation(read,a.target.pointer,a.type,a.x,a.y,a.z,out.light);continue;}
   if(a.kind==4){if(g.template get<uint32_t>(p)!=0x7F522C||g.template get<uint32_t>(p+0x10)!=a.target.id||g.template get<uint8_t>(p+0xCD)||g.template get<int>(p+0x6C)<=0||g.template get<uint32_t>(p+0xC8)!=a.type)return false;a.stage=g.template get<int>(p+0xAC);}
   else{if(!valid(g,a.target)||g.kind(p)!=a.kind||g.type(p,a.kind)!=a.type||g.template get<uint32_t>(p+0x21C)!=a.owner)return false;a.health=g.template get<int>(p+0x6C);a.pose=visual::pose(g,p,a.type,a.kind,g.template get<int>(0xA8ED84));}
@@ -57,6 +63,7 @@ template<class Read> bool refresh(Read read,Frame&out){
  out.cameraY=(int64_t(fx)+fy)*15./256-screenHeight(center.z,out.zScale)+camera::anchorY(center.kind);
  out.bounds.clampCamera(out.cameraX,out.cameraY,NativeViewWidth,NativeViewHeight);
  out.passengers.clear();out.dangerous=false;passengers::contents(read,out.focus.pointer,out.passengers,out.dangerous);
+ repairSprites(read,out);
  return life(read,out.focus).state==Life::Present;
 }
 template<class Read> Frame sample(Read read,Target focus,bool reveal,int radius=5,const Anchor&prior={}){
@@ -114,6 +121,11 @@ template<class Read> Frame sample(Read read,Target focus,bool reveal,int radius=
   if(cx<0||cy<0||cx>=out.side||cy>=out.side||!out.cells[cy*out.side+cx])continue;
   Actor a;a.target={state.object,state.id};a.type=state.type;a.owner=state.owner;a.x=state.x;a.y=state.y;a.z=state.z;a.kind=5;a.pose.frame=state.frame;a.drawZ=state.zAdjust;a.sort=state.sort;a.layer=state.layer;a.light=lighting::animation(read,a.target.pointer,a.type,a.x,a.y,a.z,out.light);out.actors.push_back(a);
  }
+ for(const auto&s:projectiles::all(read)){
+  int cx=s.x/256-out.cx+out.radius,cy=s.y/256-out.cy+out.radius;if(cx<0||cy<0||cx>=out.side||cy>=out.side||!out.cells[cy*out.side+cx])continue;
+  Actor a;a.target={s.object,s.id};a.type=s.type;a.owner=s.owner;a.x=s.x;a.y=s.y;a.z=s.z;a.kind=projectiles::Kind;a.pose=s.pose;a.drawZ=s.drawZ;a.sort=s.sort;a.layer=s.layer;a.onBridge=s.onBridge;a.light=projectiles::light(read,s);out.actors.push_back(a);
+ }
+ repairSprites(read,out);
  if(life(read,focus).state!=Life::Present||mapbounds::sample(read)!=out.bounds)return {};std::stable_sort(out.actors.begin(),out.actors.end(),[](const Actor&a,const Actor&b){return int64_t(a.x)+a.y<int64_t(b.x)+b.y;});return out;
 }
 }}
