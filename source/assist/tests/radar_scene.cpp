@@ -33,7 +33,7 @@ struct EffectsAssets:Assets {
 };
 int main(){
  using namespace external::radar;Assets assets;SceneRenderer<Assets> renderer;auto read=[](uint32_t,void*,size_t){return false;};
- auto terrain=std::make_shared<Terrain>();terrain->geo={64,64,64,64,128,128,1,0x10000,0x20000,512*512,{64,64,0,0,64,64}};terrain->colors.resize(512*512);terrain->art.resize(512*512);
+ auto terrain=std::make_shared<Terrain>();terrain->geo={64,64,64,64,128,128,1,0x10000,0x20000,512*512,{64,64,0,0,64,64},128,128};terrain->colors.resize(512*512);terrain->art.resize(512*512);
  terrain->colors[64*512+64]=0xa03020;terrain->art[64*512+64].type=1;Frame frame;frame.terrain=terrain;frame.tick=100;
  std::shared_ptr<const Scene> scene=renderer.render(frame,128,64,read,assets);
  for(int i=0;i<80&&!scene;++i)scene=renderer.render(frame,128,64,read,assets);

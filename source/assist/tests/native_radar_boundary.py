@@ -42,7 +42,7 @@ def verify(path,stage,portable):
 def south_inventory(path):
  c=Capture(path,'01-off');m=0x87F7E8;width,height=struct.unpack('<ii',c.read(m+0xF4,8));factor=struct.unpack('<f',c.read(m+0x1488,4))[0]
  ox,oy,rw,rh=[c.signed(m+off) for off in (0x1490,0x1498,0x14A4,0x14A8)];span_x=rw*30./factor;span_y=rh*15./factor;edge=[None]*math.ceil(span_x)
- items=c.word(m+0x13C);accepted=0
+ raw_w,raw_h=c.signed(m+0x1240),c.signed(m+0x1244);items=c.word(m+0x13C);accepted=0;nominal_crossing=0;fallback_crossing=0
  for y in range(512):
   for x in range(512):
    if not(x>0 and y>0 and abs(x-y)<width and x+y>width and x+y<=width+2*height):continue
@@ -52,6 +52,12 @@ def south_inventory(path):
     level=struct.unpack('<b',c.read(cell+0x11B,1))[0]
    except AssertionError:continue
    accepted+=1;center_x=(x-y+ox)*30;center_y=(x+y+1-level-oy)*15
+   flat_x,flat_y=x-y+ox,x+y-oy;tile_top=(flat_y-level)*15;tile_left=flat_x*30-30
+   if level==2 and tile_top<raw_h*15<tile_top+30 and tile_left<raw_w*30 and tile_left+60>0:
+    # A candidate has nominal TMP pixels on both sides of the bottom edge,
+    # yet the original flat 2x1 Radar fill gate excludes its source cell.
+    assert flat_y>=raw_h and not(flat_x+2>0 and flat_x<raw_w and 0<=flat_y<raw_h)
+    nominal_crossing+=1;fallback_crossing+=c.signed(cell+0x38)==65535
    for j in range(60):
     column=center_x-30+j
     if 0<=column<len(edge):
@@ -59,6 +65,8 @@ def south_inventory(path):
      if edge[column] is None or bottom>edge[column]:edge[column]=bottom
  known=[v for v in edge if v is not None]
  return {'stage':'01-off','source':'valid captured cell coordinates and signed levels; nominal 900-pixel TMP footprint only','legal_cells_read':accepted,'exact_radar_span_y':span_y,
+  'raw_radar_dimensions':[raw_w,raw_h], 'level2_nominal_bottom_crossings_with_horizontal_overlap':nominal_crossing,
+  'crossings_rejected_by_flat_rect':nominal_crossing,'fallback_tile_crossings':fallback_crossing,
   'south_bottom_min':min(known),'south_bottom_max':max(known),'unsupported_columns':sum(v is None for v in edge),
   'columns_whose_nominal_edge_is_above_viewport_bottom':sum(v is not None and v<span_y for v in edge),
   'limitations':'Excludes TMP extra images, source-index transparency, objects and the actual rasterizer; this envelope is diagnostic, never a global crop/mask.'}

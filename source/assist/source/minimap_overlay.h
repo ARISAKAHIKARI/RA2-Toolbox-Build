@@ -39,13 +39,14 @@ class Worker {
       {std::lock_guard<std::mutex> lock(mutex);if(token==generation){if(r.mode==1&&latest&&latest->scene&&latest->terrain->reveal==data.terrain->reveal&&latest->terrain->geo.same(data.terrain->geo)&&latest->scene->width==r.width&&latest->scene->height==r.height)data.scene=latest->scene;latest=std::make_shared<external::radar::Frame>(data);}}
       if(r.mode==1){assets.identity(r.pid,r.match);auto scene=renderer.render(data,r.width,r.height,external::SharedReadView{&reader},assets);if(scene)data.scene=std::move(scene);}
       next=std::make_shared<external::radar::Frame>(std::move(data));
-     }else if(!same&&sampled.readable){std::lock_guard<std::mutex> lock(mutex);if(token==generation)latest.reset();}
+     }else if(!same&&sampled.readable){std::lock_guard<std::mutex> lock(mutex);if(token==generation&&latest&&!external::radar::sameWorld(*latest,sampled))latest.reset();}
      previousFrame=frame;previousRevision=sampler.revision();
     }
-    if(!ok){std::lock_guard<std::mutex> lock(mutex);if(token==generation)latest.reset();}
+    if(!ok){auto fresh=[&](uint32_t p,void*out,size_t n){return reader.readFresh(p,out,n);};auto observed=external::radar::publicationContext(fresh);
+     if(observed.readable){std::lock_guard<std::mutex> lock(mutex);if(token==generation&&latest&&!external::radar::sameWorld(*latest,observed))latest.reset();}}
    }else{std::lock_guard<std::mutex> lock(mutex);if(token==generation)latest.reset();}
    auto fresh=[&](uint32_t p,void*out,size_t n){return reader.readFresh(p,out,n);};auto completed=external::radar::publicationContext(fresh);
-   {std::unique_lock<std::mutex> lock(mutex);if(token==generation&&next){if(external::radar::sameWorld(*next,completed))latest=std::move(next);else if(completed.readable)latest.reset();}cv.wait_for(lock,std::chrono::microseconds(monitorrefresh::periodMicros(r.rate)),[&]{return stop||paused||generation!=token||request.rate!=r.rate;});if(stop)return;}
+   {std::unique_lock<std::mutex> lock(mutex);if(token==generation&&next){if(external::radar::sameWorld(*next,completed))latest=std::move(next);else if(completed.readable&&latest&&!external::radar::sameWorld(*latest,completed))latest.reset();}cv.wait_for(lock,std::chrono::microseconds(monitorrefresh::periodMicros(r.rate)),[&]{return stop||paused||generation!=token||request.rate!=r.rate;});if(stop)return;}
   }
  }
 public:
@@ -71,7 +72,7 @@ static SecondaryEdit secondaryEdit=SecondaryEdit::None;
 static POINT secondaryStartCursor{};static RECT secondaryStartRect{};
 static int secondaryRequestedWidth=320;
 static double secondaryAspect(){
- double rw=lastGeometry.valid()?lastGeometry.rw:1,rh=lastGeometry.valid()?lastGeometry.rh:1;
+ double rw=lastGeometry.valid()?lastGeometry.rawWidth:1,rh=lastGeometry.valid()?lastGeometry.rawHeight:1;
  if(minimapMode==1)rw*=2;return rw/rh;
 }
 static void finishSecondaryEdit(){
@@ -176,8 +177,8 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
     if(image->width==mw&&image->height==mh)SetDIBitsToDevice(mem,1,1,mw,mh,0,0,0,mh,image->pixels.data(),&info,DIB_RGB_COLORS);
     else {SetStretchBltMode(mem,HALFTONE);SetBrushOrgEx(mem,0,0,nullptr);StretchDIBits(mem,1,1,mw,mh,0,0,image->width,image->height,image->pixels.data(),&info,DIB_RGB_COLORS,SRCCOPY);}
     if(!real)for(const auto&m:frame->markers){int x=1+int(m.u*mw),y=1+int(m.v*mh),radius=m.building?2:1;RECT mark{std::max(1,x-radius),std::max(1,y-radius),std::min(width-1,x+radius+1),std::min(height-1,y+radius+1)};HBRUSH b=CreateSolidBrush(RGB(m.color>>16,(m.color>>8)&255,m.color&255));FillRect(mem,&mark,b);DeleteObject(b);}
-    const auto&g=frame->terrain->geo;double left=(snap.cameraX/30.0+g.offsetX)*g.factor/g.rw,top=(snap.cameraY/15.0-g.offsetY)*g.factor/g.rh;
-    double right=left+std::max(0,snap.width-160)/30.0*g.factor/g.rw,bottom=top+snap.height/15.0*g.factor/g.rh;
+    const auto&g=frame->terrain->geo;double left=(snap.cameraX/30.0+g.offsetX)/g.rawWidth,top=(snap.cameraY/15.0-g.offsetY)/g.rawHeight;
+    double right=left+std::max(0,snap.width-160)/30.0/g.rawWidth,bottom=top+snap.height/15.0/g.rawHeight;
     RECT view{1+int(std::clamp(left,0.,1.)*(mw-1)),1+int(std::clamp(top,0.,1.)*(mh-1)),1+int(std::clamp(right,0.,1.)*(mw-1)),1+int(std::clamp(bottom,0.,1.)*(mh-1))};
     HBRUSH white=CreateSolidBrush(RGB(230,234,205));if(view.right>view.left&&view.bottom>view.top)FrameRect(mem,&view,white);DeleteObject(white);
     HBRUSH border=CreateSolidBrush(RGB(157,161,115));FrameRect(mem,&r,border);DeleteObject(border);buffer.present(dc);
@@ -206,7 +207,7 @@ static void update(POINT origin,const RECT&client,bool verifiedBattlefield){
  bool secondary=valid&&minimapSecondary&&target.available();
  if(!primary)hidePrimary();if(!secondary)hideSecondary();if(!primary&&!secondary){worker.pause();frame.reset();return;}
  auto latest=worker.get();if(latest&&latest->terrain)lastGeometry=latest->terrain->geo;
- double rw=lastGeometry.valid()?lastGeometry.rw:1,rh=lastGeometry.valid()?lastGeometry.rh:1;if(minimapMode==1)rw*=2;double aspect=rw/rh;
+ double rw=lastGeometry.valid()?lastGeometry.rawWidth:1,rh=lastGeometry.valid()?lastGeometry.rawHeight:1;if(minimapMode==1)rw*=2;double aspect=rw/rh;
  auto native=minimapMode==1?lastGeometry.nativeViewport():external::mapbounds::NativeViewport{};
  auto layout=primary?radarlayout::place(snap.width,snap.height,client.right,client.bottom,minimapScale,minimapPosition,minimapX,minimapY,aircraftButtonBox,aspect,minimapAlignX,minimapAlignY,native.width,native.height):radarlayout::Layout{};
  if(primary&&!layout.valid){primary=false;hidePrimary();}

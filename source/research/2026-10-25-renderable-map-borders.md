@@ -4,7 +4,7 @@
 
 使用者指出：原版仍繪製活動邊界周圍的地形，坦克不能越過玩法邊界，攝像機也不能無限向上移動；這種場景應讓受限攝像機中的跟蹤單位偏離中心，而不是把邊界以上全部清黑。使用者提供的小窗／原版兩張對照是實機觀察，不假設它們與私人 capture 為同一對局。
 
-調查前檢索 `INDEX.md`、[pre.5 地圖邊界筆記](2026-10-25-live-map-boundaries.md) 與同一持久 SQLite v40 的 MapRect／VisibleRect／`568300`／`578540` 紀錄。pre.5 的 31,640 組原指令對照證明了兩個 predicate 的公式，**沒有證明較窄的 usable predicate 應用於地形繪圖**。當時進一步把它當作畫面遮罩，導致合法邊緣地形被丟棄；本次撤回這個推論及對應裁切。
+調查前檢索 `INDEX.md`、pre.5 地圖邊界筆記（持久 SQLite） 與同一持久 SQLite v40 的 MapRect／VisibleRect／`568300`／`578540` 紀錄。pre.5 的 31,640 組原指令對照證明了兩個 predicate 的公式，**沒有證明較窄的 usable predicate 應用於地形繪圖**。當時進一步把它當作畫面遮罩，導致合法邊緣地形被丟棄；本次撤回這個推論及對應裁切。
 
 支援的原版映像 SHA-256：`7b8a068535d6af06845edf95ae829b113d00c02909330e16f197426cd7db94b6`。原指令取自既有私人 capture 的 `02-on` 有效區段；不公開 EXE、記憶體、遊戲素材或使用者截圖。
 
@@ -62,3 +62,7 @@ VisibleRect 是原版欄位名稱，不表示其每一條邊可以直接套成�
 不是提高相機位置上限、強制目標永遠居中、忽略劇情觸發，亦不需要修改單位可走區域。這次修正的是取樣／繪圖與相機限位的職責；**沒有調整相機角度、朝向、固定 2:1 投影或光源方向**。
 
 完整 Windows 遊戲中的同地點、全部斜坡與 MOD 特殊地圖、FPS 及雙機聯機尚未完成新版本實機驗收。原版 gate replay、相機座標對照和本工具 canvas 測試各自的證據範圍分開保留。
+
+
+## pre.12 Radar 適用範圍更正
+上述 0x6D5226 CoordinatesLegal 是 Tactical 地形入口。RadarClass::SetVisibleRect 0x654490 使用 mode1 usable 決定 raw 矩形；初始 FillTerrainColors 0x654EA0 逐個 physical Cell 作 flat 2x1/raw 矩形交集，增量更新 0x655250 才逐格 usable。MapClass::SetVisibleRect 0x567230 在交集後把 live Rect 強制向內保留左2、上2、右2、南6；外部已讀到規範化後的 Rect，不可二次內縮。詳見 repo 2026-10-25-minimap-bottom-pixels-pre12.md 與受控測試 native_visible_inset.py。

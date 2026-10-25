@@ -67,7 +67,7 @@ int main(int argc,char**argv){
   s.put(0xA8ED2C,0x14000u);s.put(0xA8ED30,1);s.put(0xA8ED38,1);s.put(0x14000,Fixture::Tile);
   s.put(0xA83D84,0x15000u);s.put(0xA83D88,20);s.put(0xA83D90,20);for(int n=0;n<20;++n)s.put(0x15000+n*4,s.types[n]);
   s.put(radar::Map+0xF4,64);s.put(radar::Map+0xF8,64);s.put(radar::Map+0x104,64);s.put(radar::Map+0x108,64);
-  s.put(radar::Map+0x13C,Cells);s.put(radar::Map+0x140,32768);s.put(radar::Map+0x1488,1.f);s.put(radar::Map+0x1490,64);s.put(radar::Map+0x1498,64);s.put(radar::Map+0x14A4,128);s.put(radar::Map+0x14A8,128);
+  s.put(radar::Map+0x13C,Cells);s.put(radar::Map+0x140,32768);s.put(radar::Map+0x1488,1.f);s.put(radar::Map+0x1490,64);s.put(radar::Map+0x1498,64);s.put(radar::Map+0x14A4,128);s.put(radar::Map+0x14A8,128);s.put(radar::Map+0x1240,128);s.put(radar::Map+0x1244,128);
   s.put(0xA83D4C,0x90000u);s.put(0xA8ED84,1);s.put(0xA8E9A0,uint8_t(1));s.put(0xA8E378,uint8_t(1));
   s.put(Object,0x7F5C70u);s.put(Object+0x10,1u);s.put(Object+0x6C,100);s.put(Object+0x74,uint8_t(1));s.put(Object+0x90,uint8_t(1));s.put(Object+0x9C,40*256+128);s.put(Object+0xA0,42*256+128);
   for(int n=0;n<2;++n){auto p=Cell+n*0x200;s.put(Cells+(42*512+40+n)*4,p);s.put(p+0x24,int16_t(40+n));s.put(p+0x26,int16_t(42));s.put(p+0x120,int8_t(-1));s.put(p+0x121,int8_t(-1));s.put(p+0x11E,uint8_t(7));}

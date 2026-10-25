@@ -47,7 +47,7 @@ struct TestCondition {
   assert(changed());return true;
  }
 };
-static int samplerResets=0,sceneResets=0,diagramResets=0;static bool capacityFailure=false,markerFresh=true,markerScanValid=true,contextReadable=true;static int actorCount=1;
+static int samplerResets=0,sceneResets=0,diagramResets=0;static bool capacityFailure=false,markerFresh=true,markerScanValid=true,contextReadable=true,stepOk=true,worldSame=true;static int actorCount=1;
 namespace external {
 struct ReadSession {void close(){}bool open(DWORD){return true;}void begin(){}bool readFresh(uint32_t,void*,size_t){return true;}template<class T>T get(uint32_t,T){return 1;}};
 struct SharedReadView{ReadSession*reader;};
@@ -59,10 +59,10 @@ struct Image{int width=320,height=160,units=0;};
 struct Frame {std::shared_ptr<Terrain>terrain=std::make_shared<Terrain>();std::shared_ptr<Image>map,scene;std::vector<int>markers,repairs;bool markerScanValid=false;};
 template<class Assets>struct SceneRenderer {bool capacityExceeded()const{return capacityFailure;}void reset(){++sceneResets;}template<class Read>auto render(const Frame&frame,int w,int h,Read,Assets&){if(capacityFailure)return std::shared_ptr<Image>{};return std::make_shared<Image>(Image{w,h,int(frame.markers.size())});}};
 struct DiagramRenderer {void reset(){++diagramResets;}auto render(std::shared_ptr<Terrain>,int w,int h){return std::make_shared<Image>(Image{w,h});}};
-template<class Read>struct Sampler {explicit Sampler(Read){}void reset(){++samplerResets;}bool step(uint32_t,int,bool){return true;}unsigned revision(){return 1;}Frame snapshot(DWORD){Frame frame;frame.markerScanValid=markerScanValid;if(markerScanValid&&actorCount)frame.markers.push_back(17);return frame;}};
+template<class Read>struct Sampler {explicit Sampler(Read){}void reset(){++samplerResets;}bool step(uint32_t,int,bool){return stepOk;}unsigned revision(){return 1;}Frame snapshot(DWORD){Frame frame;frame.markerScanValid=markerScanValid;if(markerScanValid&&actorCount)frame.markers.push_back(17);return frame;}};
 struct PublicationContext{bool readable=true;};
 template<class Read>PublicationContext publicationContext(Read){return {contextReadable};}
-inline bool sameWorld(const Frame&,PublicationContext context){return context.readable;}inline bool freshMarkers(const Frame&,PublicationContext){return markerFresh;}
+inline bool sameWorld(const Frame&,PublicationContext context){return context.readable&&worldSame;}inline bool freshMarkers(const Frame&,PublicationContext){return markerFresh;}
 }
 }
 namespace minimap {
@@ -111,7 +111,11 @@ int main(){
  contextReadable=false;minimap::Worker transient;transient.set({2,3,60,0,1,320,160});transient.latest=cached;
  atWait=[&](uint64_t){assert(transient.get()==cached&&"unreadable publication context must not erase the last known world");transient.shutdown();};
  transient.run();contextReadable=true;
- std::cout<<"PASS production minimap worker: rate updates, stale/failed scans and unreadable context retain units, verified empty removes actors, capacity retry, recovery and shutdown\n";
+ stepOk=false;worldSame=true;minimap::Worker lostStep;minimap::Request failedRequest{2,3,60,0,1,320,160};lostStep.set(failedRequest);lostStep.latest=cached;
+ int failedWaits=0;atWait=[&](uint64_t){if(failedWaits++==0){assert(lostStep.get()==cached&&"transient terrain/read failure retains the verified image");worldSame=false;failedRequest.rate=61;lostStep.set(failedRequest);}
+  else{assert(!lostStep.get()&&"confirmed world change clears the stale image");lostStep.shutdown();}};
+ lostStep.run();assert(failedWaits==2);stepOk=true;worldSame=true;
+ std::cout<<"PASS production minimap worker: rate updates, transient sampling/context failure retains units, verified world/empty change clears, capacity retry and recovery\n";
 }
 '''
 code = prefix.replace('@PERIOD@', 'inline uint64_t periodMicros(' + period) + worker + suffix

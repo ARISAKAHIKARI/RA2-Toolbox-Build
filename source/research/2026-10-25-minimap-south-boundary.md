@@ -1,5 +1,7 @@
 # 实景小地图下边界：有符号高度、原生像素相位与输出范围
 
+> pre.12 更正：下文以生成雷達尺寸／倍率反推的「精確跨度」不是原版 RGB 底圖的整數准入邊界。原版 `Map+0x1240/+0x1244` 直接保存 raw 寬高，`FillTerrainColors @0x654EA0` 先以未扣 Level 的平面 2×1 格子和 raw 矩形求交。這會排除原先被 Level 抬入南緣的格；顯式無黑幕時另限制揭露至 live usable 範圍。完整調查與測試見 [pre.12 南緣更正](2026-10-25-minimap-bottom-pixels-pre12.md)。pre.6 的 physical-legal 繪圖入口是 Tactical，不能代替 Radar 初始底色准入。
+
 ## 问题和证据范围
 
 用户截图中，实景小地图水池附近的下边界露出交替三角形深色区域。调查基于 `v1.0.38-pre.8` 提交 `070f19e91cee76629cbaa4a45f66ee310da3e7b5` 的现行代码；先查阅研究 INDEX、持久 SQLite v44，以及 pre.5 地图边界、pre.6 可绘制边缘更正等条目。不能再把玩法 usable 区或相机限位当作地形绘图遮罩。

@@ -6,9 +6,9 @@
 
 namespace external { namespace mapbounds {
 constexpr uint32_t Map=0x87F7E8;
-// The native radar stores a flat projection span. A backing bitmap rounds up
-// to integer pixels; presentation must retain the exact span so the rounded
-// last row/column does not become an extra strip of map background.
+// Exact source-plane span with an integer backing allocation. The production
+// radar passes its raw RGB dimensions directly through Geometry; the helper
+// below estimates a span from a generated radar size only for diagnostics.
 struct NativeViewport {
  double width=0,height=0;
  bool valid()const{return std::isfinite(width)&&std::isfinite(height)&&width>0&&height>0&&width<=32768&&height<=32768;}

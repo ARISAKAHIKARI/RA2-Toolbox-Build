@@ -26,7 +26,7 @@ int main(){
  auto techno=[&](uint32_t p,uint32_t vt,uint32_t id,int x,int y){put(p,vt);put(p+0x10,id);put(p+0x6C,100);put(p+0x74,uint8_t(1));put(p+0x90,uint8_t(1));put(p+0x9C,x*256+128);put(p+0xA0,y*256+128);put(p+0x21C,0x180000u);put(p+(vt==0x7E3EBC?0x520:0x6C4),0x800000u+p);};
  techno(focus,0x7F5C70,41,64,64);techno(building,0x7E3EBC,42,65,64);vec(0xA8EC78,0x190000,{focus,building});
  put(external::radar::Map+0xF4,64);put(external::radar::Map+0xF8,64);put(external::radar::Map+0x104,64);put(external::radar::Map+0x108,64);put(external::radar::Map+0x13C,cells);put(external::radar::Map+0x140,512*512);
- put(external::radar::Map+0x1488,1.f);put(external::radar::Map+0x1490,64);put(external::radar::Map+0x1498,64);put(external::radar::Map+0x14A4,128);put(external::radar::Map+0x14A8,128);
+ put(external::radar::Map+0x1488,1.f);put(external::radar::Map+0x1490,64);put(external::radar::Map+0x1498,64);put(external::radar::Map+0x14A4,128);put(external::radar::Map+0x14A8,128);put(external::radar::Map+0x1240,128);put(external::radar::Map+0x1244,128);
  put(0xA83D4C,0x180000u);put(0x180000+22265,uint32_t(0x004020d0));put(0xA8E9A0,uint8_t(1));put(0xA8E378,uint8_t(1));put(0xA8ED84,100);put(0xA8EB60,1);
  uint32_t cell=0x400000;for(int y=40;y<=90;++y)for(int x=40;x<=90;++x){put(cells+(y*512+x)*4,cell);put(cell+0x24,int16_t(x));put(cell+0x26,int16_t(y));put(cell+0x38,-1);put(cell+0x44,-1);put(cell+0x120,int8_t(-1));put(cell+0x121,int8_t(-1));cell+=0x150;}
  // A real memory SHP with seven poses and a one-shade cursor converter.

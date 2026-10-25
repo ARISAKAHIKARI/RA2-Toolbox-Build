@@ -119,6 +119,13 @@
     "source": "valid captured cell coordinates and signed levels; nominal 900-pixel TMP footprint only",
     "legal_cells_read": 38106,
     "exact_radar_span_y": 4140.000041127205,
+    "raw_radar_dimensions": [
+      248,
+      276
+    ],
+    "level2_nominal_bottom_crossings_with_horizontal_overlap": 99,
+    "crossings_rejected_by_flat_rect": 99,
+    "fallback_tile_crossings": 71,
     "south_bottom_min": 4110,
     "south_bottom_max": 4184,
     "unsupported_columns": 0,

@@ -99,7 +99,7 @@ static struct{int reads=0;bool readFresh(uint32_t,void*,size_t){++reads;return t
 using HMONITOR=void*;static RECT secondWork{-1920,-100,0,940};
 namespace secondarydisplay {struct Target{HMONITOR monitor=nullptr;RECT work{};bool available()const{return monitor&&work.right>work.left&&work.bottom>work.top;}};struct Monitor{void invalidate(){}Target get(HWND,HWND,DWORD){return secondAvailable?Target{reinterpret_cast<void*>(2),secondWork}:Target{};}};}
 namespace external{namespace display{struct State{bool visible()const{return battlefieldVisible;}};template<class F>State inspect(F){return {};}}namespace mapbounds{struct NativeViewport{double width=0,height=0;};}namespace radar{
-struct Geometry{double rw=100,rh=100,factor=10;bool valid()const{return true;}mapbounds::NativeViewport nativeViewport()const{return {rw*30/factor,rh*15/factor};}};struct Terrain{Geometry geo;};struct Frame{std::shared_ptr<Terrain>terrain=std::make_shared<Terrain>();};
+struct Geometry{double rawWidth=10,rawHeight=10;bool valid()const{return true;}mapbounds::NativeViewport nativeViewport()const{return {rawWidth*30,rawHeight*15};}};struct Terrain{Geometry geo;};struct Frame{std::shared_ptr<Terrain>terrain=std::make_shared<Terrain>();};
 }}
 namespace minimap{
 struct Request{DWORD pid;uint32_t match;int rate;uint32_t reveal;int mode,width,height;};

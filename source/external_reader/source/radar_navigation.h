@@ -5,9 +5,9 @@ namespace external { namespace radar {
 // projection used by the terrain and camera rectangle. Native positioning
 // accepts the center and subtracts the viewport half-size itself.
 inline bool navigate(const Geometry&g,int px,int py,int width,int height,int viewWidth,int viewHeight,int&x,int&y){
- if(width<=2||height<=2||viewWidth<=0||viewHeight<=0||!g.bounds.valid()||g.rw<=0||g.rh<=0||!std::isfinite(g.factor)||g.factor<=0)return false;
+ if(width<=2||height<=2||viewWidth<=0||viewHeight<=0||!g.valid())return false;
  double u=std::clamp(double(px-1)/(width-2),0.,1.),v=std::clamp(double(py-1)/(height-2),0.,1.);
- double sx=(u*g.rw/g.factor-g.offsetX)*30,sy=(v*g.rh/g.factor+g.offsetY)*15;
+ double sx=(u*g.rawWidth-g.offsetX)*30,sy=(v*g.rawHeight+g.offsetY)*15;
  if(!std::isfinite(sx)||!std::isfinite(sy)||std::abs(sx)>100000||std::abs(sy)>100000)return false;
  if(!g.bounds.clampCamera(sx,sy,viewWidth,viewHeight))return false;
  x=int(std::lround(sx));y=int(std::lround(sy));return true;
