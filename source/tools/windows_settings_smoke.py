@@ -142,6 +142,14 @@ def scenario(folder):
             h=child(root,id)
             click(root,h,1)
             assert ini(folder,'Display',key)==1,(key,'not saved on')
+        secondary=[(9162,'Display','MinimapSecondary'),(9163,'Watch','SecondaryEnabled')]
+        for id,section,key in secondary:
+            h=child(root,id,'RA2Assist010');assert h and check(h)==0
+            click(root,h,1);assert ini(folder,section,key)==1
+        secondary_stats=child(root,120,'RA2UnitMonitorUI');assert secondary_stats and check(secondary_stats)==0
+        click(root,secondary_stats,1)
+        assert k.GetPrivateProfileIntW('overlay','secondaryEnabled',999,str(folder/'settings.ini'))==1
+        assert ini(folder,'Display','MinimapZoom')==0 and ini(folder,'Watch','Enabled')==0,'secondary enabled primary overlay'
         manual=child(root,609,'RA2UnitMonitorUI');adaptive=child(root,613,'RA2UnitMonitorUI')
         assert manual and adaptive and u.IsWindowEnabled(manual) and check(adaptive)==0
         set_control_text(manual,'144')
@@ -171,6 +179,9 @@ def scenario(folder):
             h=child(root,id)
             assert check(h)==1,(key,'restart lost saved on')
         manual=child(root,609,'RA2UnitMonitorUI');adaptive=child(root,613,'RA2UnitMonitorUI')
+        for id,section,key in secondary:
+            assert check(child(root,id,'RA2Assist010'))==1 and ini(folder,section,key)==1
+        assert check(child(root,120,'RA2UnitMonitorUI'))==1 and k.GetPrivateProfileIntW('overlay','secondaryEnabled',999,str(folder/'settings.ini'))==1
         assert check(adaptive)==1 and not u.IsWindowEnabled(manual) and control_text(manual)=='144','adaptive state lost on restart'
         until(lambda:information_rate(root)==native_monitor_hz(root),'adaptive monitor rate restored after restart')
         click(root,adaptive,0)
@@ -183,11 +194,16 @@ def scenario(folder):
         # Switch off and exit immediately, exercising pending autosave at shutdown.
         set_control_text(manual,'240')
         for id in [604]+[id for id in keys if id!=604]:send(child(root,id),0xF5)
+        for id,_,_ in secondary:send(child(root,id,'RA2Assist010'),0xF5)
+        send(child(root,120,'RA2UnitMonitorUI'),0xF5)
         close(p,root)
         p,root,f,d=launch(folder)
         for id,key in keys.items():
             assert check(child(root,id))==0 and ini(folder,'Display',key)==0,(key,'restart lost saved off')
         manual=child(root,609,'RA2UnitMonitorUI');adaptive=child(root,613,'RA2UnitMonitorUI')
+        for id,section,key in secondary:
+            assert check(child(root,id,'RA2Assist010'))==0 and ini(folder,section,key)==0
+        assert check(child(root,120,'RA2UnitMonitorUI'))==0 and k.GetPrivateProfileIntW('overlay','secondaryEnabled',999,str(folder/'settings.ini'))==0
         assert check(adaptive)==0 and u.IsWindowEnabled(manual) and control_text(manual)=='240'
         assert ini(folder,'Display','AdaptiveFPS')==0 and ini(folder,'Display','FPS')==240
         until(lambda:information_rate(root)==240,'manual information rate restored after restart')
@@ -215,9 +231,9 @@ if __name__=='__main__':
         folder=pathlib.Path(t)
         for name in ('RA2Toolbox.exe','GameRuntime.dll'):shutil.copy2(source/name,folder/name)
         scenario(folder)
-    result={'status':'PASS','version':'1.0.38-pre.9','runs':3,'display_switches':10,
+    result={'status':'PASS','version':'1.0.38-pre.10','runs':3,'display_switches':13,
             'checks':['all fresh UI switches off','user hotkeys','cross-pane edits',
-                      'real Win32 INI writes','restart on','restart off',
+                      'real Win32 INI writes','restart on','restart off','independent secondary map/statistics/watch toggles and restart',
                       'information adaptive rate matches native monitor','adaptive mode retains manual Hz and disables its editor',
                       'adaptive on/off persistence and manual target restoration',
                       'minimap diagram/scene mode and alignment restart','1000 percent minimap save/restart and control readback',

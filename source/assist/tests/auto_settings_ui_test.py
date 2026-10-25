@@ -25,12 +25,12 @@ constexpr int FALSE=0,EN_CHANGE=1,CBN_SELCHANGE=2,BN_CLICKED=3,HKM_GETHOTKEY=4,H
 static bool ready=true,updatingControls=false,enabled=true,autoSaveOK=true;
 struct ControlUpdate{bool old=updatingControls;ControlUpdate(){updatingControls=true;}~ControlUpdate(){updatingControls=old;}};
 static bool hookAdvanced=false,hookSmartUnload=false;static HWND hookChecks[4]={800,801,802,803};
-static uint32_t computeRequested=compute::Default;static bool minimapEnabled=false;static int minimapMode=0,minimapScale=200,advancedRangeCells=2,minimapPosition=0,minimapX=20,minimapY=60,minimapAlignX=0,minimapAlignY=0;
+static uint32_t computeRequested=compute::Default;static bool minimapEnabled=false,minimapSecondary=false;static int minimapMode=0,minimapScale=200,advancedRangeCells=2,minimapPosition=0,minimapX=20,minimapY=60,minimapAlignX=0,minimapAlignY=0;
 constexpr unsigned HOTKEYF_CONTROL=2,HOTKEYF_ALT=4;
 constexpr WORD MAKEWORD(unsigned a,unsigned b){return WORD((a&255)|(b<<8));}
 static WORD socialKeys[9]{};static bool autoRevealNewMatch=false;static unsigned autoRevealMatch=0,autoRevealDone=0,autoRevealRetry=0;
 static WORD idleAircraftKey=MAKEWORD('P',6);
-namespace minimap {static void hide(){}}static void syncAdditional(){}
+namespace minimap {static void hide(){}static void hidePrimary(){}}static void syncAdditional(){}
 static int labelScalePercent=100,constructionScalePercent=100;
 static int ui=1,fps=60,topMargin=20,repairMs=2000,doubleMs=350,toastMs=6000;
 static bool infoAdaptive=false;static int infoMonitorHz=165;static unsigned infoSyncs=0;
@@ -112,6 +112,9 @@ int main(){
  for(int legacy:{0,1}){profile.erase(L"MagnetronGlobal");profile.erase(L"MagnetronDrop");profile[L"Magnetron"]=legacy;loadFeatureTypes();assert(compute::inside(computeRequested,compute::MagnetronGlobal)==bool(legacy)&&compute::inside(computeRequested,compute::MagnetronDrop)==bool(legacy));}
  profile[L"MagnetronGlobal"]=0;profile[L"MagnetronDrop"]=1;profile[L"Magnetron"]=0;loadFeatureTypes();assert(!compute::inside(computeRequested,compute::MagnetronGlobal)&&compute::inside(computeRequested,compute::MagnetronDrop));
 
+ minimapEnabled=extra.watchEnabled=false;fields[9162]=fields[9163]=1;assert(autoSettingChanged(9162,BN_CLICKED)&&minimapSecondary);assert(autoSettingChanged(9163,BN_CLICKED)&&extra.watchSecondary);
+ assert(!minimapEnabled&&!extra.watchEnabled);saveFeatureTypes();minimapSecondary=extra.watchSecondary=false;loadFeatureTypes();assert(minimapSecondary&&extra.watchSecondary);
+ for(int id:{9162,9163}){fields[id]=0;assert(autoSettingChanged(id,BN_CLICKED));}assert(!minimapSecondary&&!extra.watchSecondary);
  fields[830]=1;assert(autoSettingChanged(830,BN_CLICKED)&&minimapEnabled);
  for(int n:{100,200,400,1000}){fields[831]=n;assert(autoSettingChanged(831,EN_CHANGE)&&minimapScale==n);}fields[831]=1001;autoSettingChanged(831,EN_CHANGE);assert(minimapScale==1000);
  for(int mode:{0,1,2,3}){fields[850]=mode;assert(autoSettingChanged(850,CBN_SELCHANGE)&&minimapPosition==mode);}
@@ -304,7 +307,8 @@ assert 'external::discovery::resolveYrppWindow(reader,pid,nullptr,&foundThread)'
 assert 'static BOOL CALLBACK findWindow(' not in cursor
 print('PASS: explicit feature/permission linkage, invalid-key isolation, shared cursor discovery and host ACK single-writer contract')
 
-assert 'if(!enabled||!foregroundGame()||snap.renderStatus!=1||snap.chat){overlayRecovery.suspend();ShowWindow(overlay,SW_HIDE);' in main
+assert 'if(snap.renderStatus!=1){overlayRecovery.suspend();ShowWindow(overlay,SW_HIDE);hideAircraftButton();minimap::hide();watchwindows::hide();' in main
+assert 'else if(!foregroundGame()||snap.chat){overlayRecovery.suspend();ShowWindow(overlay,SW_HIDE);hideAircraftButton();minimap::hidePrimary();watchwindows::hidePrimary();' in main
 assert 'snap.renderStatus=externalValid&&d.renderStatus==1?1:0;' in main
 monitor=(root/'unit_monitor/source/main.cpp').read_text() if (root/'unit_monitor/source/main.cpp').exists() else (root.parent/'unit_monitor/source/main.cpp').read_text()
 assert 'external::display::inspect' in monitor and 'battlefield&&foregroundGame()' in monitor
