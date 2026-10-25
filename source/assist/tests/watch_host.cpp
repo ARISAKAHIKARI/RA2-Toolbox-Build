@@ -65,6 +65,11 @@ int main(){
  assert(engine.views[0].frame.actors.size()==300);assert(engine.actorArt.size()==300);
  for(const auto&a:engine.views[0].frame.actors){auto it=engine.images.find(engine.imageKey(a));assert(it!=engine.images.end());assert(it->second.ready==(a.target.id!=1));}
  Graphics g;engine.drawView(g,engine.views[0]);assert(draws==1&&shroudLoads>0&&engine.views[0].raster.color.size()==640*512); // no schematic marker for failed asset
+ auto&firstMask=engine.views[0].shroudRaster;assert(firstMask.builds()==1&&firstMask.hits()==0);
+ auto&changedImage=engine.images.at(engine.imageKey(engine.views[0].frame.actors[1])).image;
+ uint32_t previousPixel=changedImage.pixels[0];changedImage.pixels[0]^=0x00010101u;
+ engine.drawView(g,engine.views[0]);assert(firstMask.builds()==1&&firstMask.hits()==1);
+ changedImage.pixels[0]=previousPixel; // Same mask is applied to recomposed actor art.
  int before=captures,oldRenders=renders;put(actors[1]+0x388,uint16_t(32768));put(actors[1]+0x3A0,uint16_t(49152));clockValue+=50;engine.update(clockValue);assert(captures==before&&renders>oldRenders);
  auto a=std::find_if(engine.views[0].frame.actors.begin(),engine.views[0].frame.actors.end(),[](auto&a){return a.target.id==2;});assert(a!=engine.views[0].frame.actors.end());assert(engine.images.at(engine.imageKey(*a)).image.pixels[0]==0xff001018);
  // All 299 valid models turn together: the 16-item work budget must retain
@@ -78,6 +83,10 @@ int main(){
  // Three windows share every model/pose cache, with independent centered boxes.
  before=captures;engine.tracks[1].target={actors[1],2};engine.tracks[2].target={actors[2],3};clockValue+=50;engine.update(clockValue);
  assert(captures==before&&engine.actorArt.size()==300);for(auto&v:engine.views)assert(v.shown&&v.frame.actors.size()==300);
+ for(auto&v:engine.views)engine.drawView(g,v);
+ assert(engine.views[1].shroudRaster.builds()==1&&engine.views[2].shroudRaster.builds()==1);
+ auto firstViewBuilds=engine.views[0].shroudRaster.builds(),firstViewHits=engine.views[0].shroudRaster.hits();
+ engine.drawView(g,engine.views[0]);assert(engine.views[0].shroudRaster.builds()==firstViewBuilds&&engine.views[0].shroudRaster.hits()==firstViewHits+1);
  assert(engine.views[0].box.y<engine.views[1].box.y&&engine.views[1].box.y<engine.views[2].box.y);
  // Alternate a temporarily unreadable third focus at the overlay cadence.
  // Its last complete scene and all three boxes must survive every failed read.

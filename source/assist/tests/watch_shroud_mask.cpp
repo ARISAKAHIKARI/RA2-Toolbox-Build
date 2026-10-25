@@ -20,18 +20,27 @@ int main(){
  assert(pixels[256*640+304]==0xff614120u);
  assert(pixels[256*640+335]==0xff000000u);
  assert(pixels[226*640+304]==0xff030201u);
- assert(loads==2);
+ assert(loads==2&&raster.builds()==1&&raster.hits()==0);
  pixels.assign(640*512,0xffc08040u);
- assert(raster.apply(frame,0,600,640,512,pixels,load)&&loads==2);
+ assert(raster.apply(frame,0,600,640,512,pixels,load)&&loads==2&&raster.builds()==1&&raster.hits()==1);
+ assert(pixels[256*640+304]==0xff614120u); // Reapply to a freshly composed image.
  // Camera movement translates the same native mask with the composed world.
  pixels.assign(640*512,0xffc08040u);
  assert(raster.apply(frame,60,600,640,512,pixels,load));
- assert(pixels[256*640+304]==0xff030201u);
+ assert(pixels[256*640+304]==0xff030201u&&raster.builds()==2);
  // Fog is optional, while unexplored shroud and its edge sprite remain.
- frame.fogEnabled=false;watch::shroudmask::Raster noFog;int fogLoads=0;
+ frame.fogEnabled=false;int fogLoads=0;
  pixels.assign(640*512,0xffc08040u);
- assert(noFog.apply(frame,0,600,640,512,pixels,[&](bool fog,int f,voxel::Image&out){fogLoads+=fog;out=image(f);return true;}));
- assert(fogLoads==0&&pixels[256*640+304]==0xffc08040u&&pixels[256*640+335]==0xff030201u);
+ assert(raster.apply(frame,0,600,640,512,pixels,[&](bool fog,int f,voxel::Image&out){fogLoads+=fog;out=image(f);return true;}));
+ assert(fogLoads==0&&raster.builds()==3&&pixels[256*640+304]==0xffc08040u&&pixels[256*640+335]==0xff030201u);
+ // Cell edge changes invalidate the cache even with the same camera.
+ frame.shade[4].shroud=-1;pixels.assign(640*512,0xffc08040u);
+ assert(raster.apply(frame,0,600,640,512,pixels,load));
+ assert(raster.builds()==4&&pixels[256*640+335]==0xffc08040u);
+ frame.shade[4].shroud=46;frame.fogEnabled=true;pixels.assign(640*512,0xffc08040u);
+ assert(raster.apply(frame,0,600,640,512,pixels,load));
+ assert(raster.builds()==5&&loads==3&&pixels[256*640+304]==0xff614120u);
+ raster.reset();assert(raster.builds()==0&&raster.hits()==0);
  // A corrupt or unreadable mask cannot publish uncovered terrain.
  watch::shroudmask::Raster missing;pixels.assign(640*512,0xffc08040u);
  assert(!missing.apply(frame,0,600,640,512,pixels,[](bool,int,voxel::Image&){return false;}));
