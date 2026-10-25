@@ -3,6 +3,14 @@
 #include <cassert>
 #include <iostream>
 #include <cstring>
+// The Windows CRT may report assert failures through a dialog without writing
+// the failed expression to Actions logs. Keep the condition and fail fast with
+// a useful line number on both supported CI runners.
+#undef assert
+#define assert(condition) do { if (!(condition)) { \
+ std::cerr << "FAIL repair_visuals.cpp:" << __LINE__ << ": " << #condition << std::endl; \
+ return 1; \
+} } while (false)
 struct Memory {
  std::vector<uint8_t> bytes=std::vector<uint8_t>(0xC00000);uint32_t blocked=0;int shapeReads=0,paletteReads=0;
  bool operator()(uint32_t p,void*out,size_t n){if(p==blocked||uint64_t(p)+n>bytes.size())return false;if(p==0x60000)++shapeReads;if(p==0x70000)++paletteReads;memcpy(out,bytes.data()+p,n);return true;}
