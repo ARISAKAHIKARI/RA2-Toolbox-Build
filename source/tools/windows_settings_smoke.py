@@ -10,7 +10,6 @@ u.EnumChildWindows.argtypes=[W.HWND,CB,W.LPARAM]
 u.GetWindowThreadProcessId.argtypes=[W.HWND,C.POINTER(W.DWORD)]
 u.GetClassNameW.argtypes=[W.HWND,W.LPWSTR,C.c_int]
 u.GetWindowTextW.argtypes=[W.HWND,W.LPWSTR,C.c_int]
-u.SetWindowTextW.argtypes=[W.HWND,W.LPCWSTR];u.SetWindowTextW.restype=W.BOOL
 u.IsWindowVisible.argtypes=[W.HWND];u.IsWindowVisible.restype=W.BOOL
 u.GetWindowRect.argtypes=[W.HWND,C.POINTER(W.RECT)];u.GetWindowRect.restype=W.BOOL
 u.GetDlgCtrlID.argtypes=[W.HWND]
@@ -33,6 +32,14 @@ def send(h,m,w=0,l=0):
     if not u.SendMessageTimeoutW(h,m,w,l,2,5000,C.byref(result)):
         raise RuntimeError(f'message timeout {text(h)} {m:x}: {C.get_last_error()}')
     return result.value
+def set_control_text(h,value):
+    # SetWindowText only changes controls in the calling process. System text
+    # messages marshal the buffer to the actual edit control in the host.
+    b=C.create_unicode_buffer(value)
+    assert send(h,0xC,0,C.addressof(b)),('WM_SETTEXT failed',u.GetDlgCtrlID(h))
+    readback=C.create_unicode_buffer(len(value)+20)
+    send(h,0xD,len(readback),C.addressof(readback))
+    assert readback.value==value,('control text mismatch',u.GetDlgCtrlID(h),readback.value,value)
 def windows(parent=None):
     result=[]
     @CB
@@ -106,7 +113,7 @@ def scenario(folder):
             send(h,0x14E,value);send(u.GetParent(h),0x111,id|(1<<16),h)
             until(lambda:ini(folder,'Display',key)==value,key+' saved')
         scale=child(root,831,'RA2Assist010');assert scale
-        u.SetWindowTextW(scale,'1000');send(u.GetParent(scale),0x111,831|(0x300<<16),scale)
+        set_control_text(scale,'1000')
         until(lambda:ini(folder,'Display','MinimapScale')==1000,'1000 percent minimap saved')
         # Change an unrelated tactical setting: it must not reset these values.
         h=child(root,702,'RA2Assist010');click(root,h,1)
@@ -138,6 +145,9 @@ def scenario(folder):
             time.sleep(.05)
         assert p.poll() is None,'renderer terminated the host'
         close(p,root)
+    except Exception:
+        print('UI failure diagnostics:',{f.name:f.read_text(errors='replace')[-4000:] for f in folder.glob('*.log')})
+        raise
     finally:
         if p.poll() is None:p.kill();p.wait()
 
