@@ -58,7 +58,7 @@ static HWND ui,repairCheck,repairEdit,keys[12],check[7],rateEdit,marginEdit,swLi
  hookChecks[4],ejectCheck,ejectKeyEdit,magnetronCheck,magnetronKeyEdit,oreCheck,oreStatus,detailCheck,toastEdit,
  csHoldCheck,csHoldEdit,anywhereCheck,statusLabel,schedulerEntryCombo,megaQueueCombo,objectQueueCombo;
 static AdditionalSettings extra;static HWND extraControls[ExtraControlCount];
-static int labelScalePercent=100,constructionScalePercent=100;static bool minimapEnabled=false,minimapSecondary=false;static int minimapMode=0,minimapScale=25,minimapPosition=0,minimapX=20,minimapY=60,minimapAlignX=0,minimapAlignY=0;
+static int labelScalePercent=100,constructionScalePercent=100;static bool minimapEnabled=false,minimapSecondary=false;static int minimapMode=0,minimapScale=10,minimapPosition=0,minimapX=20,minimapY=60,minimapAlignX=0,minimapAlignY=0;
 static int minimapSecondaryX=10000,minimapSecondaryY=10000,minimapSecondaryWidth=320;static uint32_t computeRequested=compute::Default;
 static unsigned schedulerTarget=0,megaQueueMode=0,objectQueueMode=0;static HFONT font;static int scrollY,repairMs=2000,fps=60,topMargin=20,doubleMs=350,toastMs=6000;
 static bool infoAdaptive=false;static int informationFPS(){return infoAdaptive?144:fps;}

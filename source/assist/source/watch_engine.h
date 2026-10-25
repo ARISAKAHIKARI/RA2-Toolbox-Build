@@ -6,10 +6,13 @@
 #include "label_motion.h"
 #include "../../external_reader/source/camera_raster.h"
 #include "../../external_reader/source/camera_repair.h"
+#include "../../external_reader/source/watch_shroud_mask.h"
 #include <memory>
 #include <tuple>
 #include <functional>
 namespace watchengine {
+template<class T,class=void>struct HasShroud:std::false_type{};
+template<class T>struct HasShroud<T,std::void_t<decltype(std::declval<T&>().shroud(false,0,std::declval<external::voxel::Image&>()))>>:std::true_type{};
 template<class Reader,class Assets>class Renderer {
 public:
  Reader& reader;Assets& assets;std::function<bool(uint32_t,void*,size_t)> read;
@@ -35,12 +38,13 @@ std::map<std::pair<uint32_t,uint32_t>,Cached> tiles,overlays;
 std::array<uint32_t,256> terrainPalette{};
 external::lighting::State sceneLight;
 external::repairvisuals::Assets repairAssets;
+external::watch::shroudmask::Raster shroudRaster;
 uint64_t serial=0;DWORD process=0;uint32_t epoch=0;bool shown=false;
 uint32_t controlRevision=0;bool haveControls=false;
 // Depth, shadows and sprite coverage are resolved at native game pixels.
 // The immutable result is reduced only when the actual window is presented.
 static constexpr int Width=external::watch::NativeViewWidth,Height=external::watch::NativeViewHeight;
-void reset(){for(auto&t:tracks)t={};for(auto&v:views)v={};automatic={};autoSuppressed=false;haveControls=false;images.clear();displayed.clear();actorArt.clear();actorCursor=0;diagnosticAt=0;tiles.clear();overlays.clear();terrainPalette={};repairAssets.reset();shown=false;}
+void reset(){for(auto&t:tracks)t={};for(auto&v:views)v={};automatic={};autoSuppressed=false;haveControls=false;images.clear();displayed.clear();actorArt.clear();actorCursor=0;diagnosticAt=0;tiles.clear();overlays.clear();terrainPalette={};repairAssets.reset();shroudRaster.reset();shown=false;}
 void syncTracks(uint32_t revision,const std::array<external::watch::Track,3>&next,bool suppress){
  // Pending snapshots may predate the worker's death/succession decision. Only
  // a new user control revision can replace that authoritative tracking state.
@@ -50,7 +54,7 @@ void syncTracks(uint32_t revision,const std::array<external::watch::Track,3>&nex
 void arrange(){bool visible[3]{};external::watch::Box boxes[3]{};bool wasShown=shown;shown=false;for(int i=0;i<3;++i)shown|=visible[i]=views[i].shown;external::watch::arrange(visible,width,height,boxes);bool changed=wasShown!=shown;for(int i=0;i<3;++i){auto&a=views[i].box;auto b=boxes[i];changed|=a.x!=b.x||a.y!=b.y||a.w!=b.w||a.h!=b.h;a=b;}(void)changed;}
 void refreshAssets(external::watch::Frame&frame,DWORD now){
  assets.identity(process,epoch);
- if(assetRevision!=assets.revision()){assetRevision=assets.revision();images.clear();displayed.clear();actorArt.clear();tiles.clear();overlays.clear();terrainPalette={};actorCursor=0;}
+ if(assetRevision!=assets.revision()){assetRevision=assets.revision();images.clear();displayed.clear();actorArt.clear();tiles.clear();overlays.clear();terrainPalette={};shroudRaster.reset();actorCursor=0;}
  sceneLight=frame.light;
  std::array<uint32_t,256> palette{};if((external::terrain::palette(read,0xABBED0,palette)||assets.palette(true,palette))&&palette!=terrainPalette){terrainPalette=palette;tiles.clear();overlays.clear();for(auto it=images.begin();it!=images.end();)if(std::get<2>(it->first)==4)it=images.erase(it);else ++it;}
  bool paletteReady=std::any_of(terrainPalette.begin(),terrainPalette.end(),[](uint32_t c){return c!=0;});std::string paletteIssue=paletteReady?"":assets.failure;
@@ -188,6 +192,11 @@ void drawView(Graphics&g,const View&view){
   float y=oy+((int64_t(sprite.x)+sprite.y)*15.f/256-external::screenHeight(sprite.z,frame.zScale)-cameraY)*scale;
   canvas.blit(*image,x,y,scale,scale,0,external::lighting::State{});
  }
+ // Match the game's alpha buffer after composing all world pixels, before
+ // drawing the watch UI. This also covers raised TMP edges and tall actors.
+ if constexpr(HasShroud<Assets>::value){if(!view.reveal&&
+    !shroudRaster.apply(frame,cameraX,cameraY,Width,Height,canvas.color,
+                       [&](bool fog,int index,external::voxel::Image&image){return assets.shroud(fog,index,image);})){std::fill(canvas.color.begin(),canvas.color.end(),0xff000000u);}}
  // Camera limits constrain its center, not drawable map scenery. Surface
  // rasterization already clips the scene to this rectangular viewport.
  if(!canvas.color.empty()){Bitmap bitmap(Width,Height,Width*4,PixelFormat32bppPARGB,reinterpret_cast<BYTE*>(canvas.color.data()));

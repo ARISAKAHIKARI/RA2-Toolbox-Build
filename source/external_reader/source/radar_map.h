@@ -7,6 +7,7 @@
 #include "art_variants.h"
 #include "repair_visuals.h"
 #include "projectile_visuals.h"
+#include "radar_shroud_selector.h"
 #include <memory>
 #include <array>
 // Read-only YRpp MapClass/CellClass/RadarClass model. Projection matches
@@ -24,12 +25,23 @@ struct Geometry {
   return left<rawWidth&&left+2>0&&top>=0&&top<rawHeight;}
  mapbounds::NativeViewport nativeViewport()const{return valid()?mapbounds::NativeViewport{rawWidth*30.,rawHeight*15.}:mapbounds::NativeViewport{};}
  bool tileOrigin(int x,int y,int level,mapbounds::TileOrigin&out)const{if(!bounds.tileOrigin(x,y,level,out))return false;out.x+=offsetX*30;out.y-=offsetY*15;return true;}
+ // Cell::DrawShroud places its 60x30 SHP on the flat cell footprint. Raised
+ // terrain moves the TMP art, but never the shroud/fog mask.
+ bool shroudOrigin(int x,int y,mapbounds::TileOrigin&out)const{return tileOrigin(x,y,0,out);}
  void project(double x,double y,double&u,double&v)const{u=(x-y+offsetX)/rawWidth;v=(x+y-offsetY)/rawHeight;}
 };
 struct Marker {double u=0,v=0;uint32_t color=0;bool building=false;uint32_t object=0,id=0,type=0,owner=0,parent=0,parentId=0;int x=0,y=0,z=0,kind=-1,drawZ=0,sort=0,layer=2;bool normalLight=false,onBridge=false;visual::Pose pose;};
 struct CellArt {uint32_t cell=0,type=0,overlayType=0,overlaySourceType=0;int16_t overlay=-1;uint8_t sub=0;int8_t level=0;uint8_t overlayFrame=0;};
 struct Scene {int width=0,height=0;std::vector<uint32_t> pixels;};
-struct Terrain {Geometry geo;std::vector<uint32_t> colors;std::vector<CellArt> art;bool reveal=false;};
+// The game stores the selected shroud/fog SHP frame at each Cell. -1 selects
+// clear frame 0, -2 selects opaque frame 15; other values select edge frames.
+// Preserve those values so the native-sized scene can cover protruding TMP
+// pixels at the projected cell position after the terrain is composed.
+// 127 marks an absent/invalid physical Cell, distinct from a valid, opaque -2.
+struct ShroudFrames {int8_t shroud=127,fog=127;
+ bool operator==(const ShroudFrames&o)const{return shroud==o.shroud&&fog==o.fog;}
+};
+struct Terrain {Geometry geo;std::vector<uint32_t> colors,baseColors;std::vector<CellArt> art;std::vector<ShroudFrames> shade;bool reveal=false;};
 struct Frame {std::shared_ptr<const Terrain> terrain;std::vector<Marker> markers;std::shared_ptr<const Scene> scene,map;uint32_t tick=0;int frame=-1;bool markerScanValid=false;std::vector<repairvisuals::Sprite> repairs;};
 inline uint32_t terrainColor(int land,int level,bool fog){
  static constexpr uint32_t colors[]={0x66794b,0x85836c,0x285e86,0x70756d,0x999684,0xb7a843,0xb4a47c,0x77734d,0xb4cbd0,0x77766b,0x55584f,0x58703d};
@@ -39,10 +51,32 @@ inline uint32_t terrainColor(int land,int level,bool fog){
 template<class Read> class Sampler {
  Read read_;GameView<Read> view_;Geometry geo_{};std::vector<uint32_t> pointers_;std::shared_ptr<Terrain> pending_;std::shared_ptr<const Terrain> terrain_;
  std::vector<uint32_t> tileTypes_,overlayTypes_;std::vector<artvariants::Pool> resourcePools_;size_t cursor_=0;int lastFrame_=-1;uint32_t reveal_=0;unsigned revision_=0;
+ struct MaskBits {uint8_t state=0,shroud=0,fog=0;}; // state: unknown, verified, unavailable
+ std::vector<MaskBits> maskBits_;std::array<int8_t,256> frameLookup_{};
  template<class T>T get(uint32_t a,T fallback={})const{return view_.template get<T>(a,fallback);}
+ bool maskBits(int x,int y,shroudselector::Bits&out){
+  if(!geo_.legal(x,y))return false;size_t i=size_t(y)*512+x;
+  if(i>=pointers_.size())return false;
+  auto&bits=maskBits_[i];if(!bits.state){
+   bits.state=2;uint32_t p=pointers_[i];if(p>=0x10000){
+    // One page-cached read replaces three remote field calls for a neighbor.
+    std::array<uint8_t,0x11D> field{};
+    if(read_(p+0x24,field.data(),field.size())){
+     int16_t xy[2]{};std::memcpy(xy,field.data(),sizeof xy);
+     if(xy[0]==x&&xy[1]==y)bits={1,field[0x108],field[0x11C]};
+    }
+   }
+  }
+  if(bits.state!=1)return false;out={bits.shroud,bits.fog};return true;
+ }
+ int8_t maskFrame(int x,int y,bool fog){
+  // Tactical's cached +0x120/+0x121 can be stale offscreen; the selector
+  // reads the same live neighbor bits through one cached accessor per cell.
+  return shroudselector::frame(x,y,fog,frameLookup_,[&](int xx,int yy,shroudselector::Bits&out){return maskBits(xx,yy,out);});
+ }
 public:
  explicit Sampler(Read r):read_(r),view_(r){}
- void reset(){geo_={};pointers_.clear();pending_.reset();terrain_.reset();cursor_=0;lastFrame_=-1;++revision_;}
+ void reset(){geo_={};pointers_.clear();maskBits_.clear();pending_.reset();terrain_.reset();cursor_=0;lastFrame_=-1;++revision_;}
  unsigned revision()const{return revision_;}
  bool step(uint32_t reveal,int budget=4096,bool real=false){
   // These are preview pixels, not the game's half-opacity shroud blitter.
@@ -54,8 +88,9 @@ public:
   int frame=get<int>(0xA8ED84,-1);if(!g.valid()||frame<0||get<uint8_t>(0xA8E9A0)!=1 ){reset();return false;}
   if(!display::inspect(read_).visible())return false;
   if(!g.same(geo_)||frame<lastFrame_||reveal_!=reveal){reset();geo_=g;reveal_=reveal;}lastFrame_=frame;
-  if(!pending_){pointers_.resize(g.count);if(!read_(g.cells,pointers_.data(),pointers_.size()*4)){reset();return false;}
-   pending_=std::make_shared<Terrain>();pending_->geo=g;pending_->reveal=bool(reveal);pending_->colors.resize(512*512);if(real){pending_->art.resize(512*512);tileTypes_=view_.vec(0xA8ED28,65536);overlayTypes_=view_.vec(0xA83D80);resourcePools_=artvariants::pools(read_,overlayTypes_);}cursor_=0;}
+  if(!pending_){pointers_.resize(g.count);if(!read_(g.cells,pointers_.data(),pointers_.size()*4)||(!reveal&&!shroudselector::readLookup(read_,frameLookup_))){reset();return false;}
+   if(!reveal)maskBits_.resize(512*512);
+   pending_=std::make_shared<Terrain>();pending_->geo=g;pending_->reveal=bool(reveal);pending_->colors.resize(512*512);pending_->shade.resize(512*512);if(real){pending_->baseColors.resize(512*512);pending_->art.resize(512*512);tileTypes_=view_.vec(0xA8ED28,65536);overlayTypes_=view_.vec(0xA83D80);resourcePools_=artvariants::pools(read_,overlayTypes_);}cursor_=0;}
   size_t end=std::min(pointers_.size(),cursor_+size_t(std::clamp(budget,1,16384)));
   // Initial native radar fill accepts physical cells whose flat 2x1 footprint
   // intersects its raw RGB backing. This gate precedes signed Level/TMP art;
@@ -63,13 +98,21 @@ public:
   for(;cursor_<end;++cursor_){int x=int(cursor_%512),y=int(cursor_/512);if(!g.legal(x,y)||!g.flatVisible(x,y))continue;uint32_t p=pointers_[cursor_];
    if(p<0x10000)continue;std::array<uint8_t,0x148> cell{};if(!read_(p,cell.data(),cell.size()))continue;
    int16_t cx=0,cy=0;int land=-1;std::memcpy(&cx,cell.data()+0x24,2);std::memcpy(&cy,cell.data()+0x26,2);std::memcpy(&land,cell.data()+0xEC,4);
-   if(cx!=x||cy!=y||(reveal&&!g.bounds.usable(x,y,int8_t(cell[0x11B]),cell[0x11C]!=0)))continue;
-   int visibility=int8_t(cell[0x120]),fog=int8_t(cell[0x121]);if(!reveal&&visibility!=-1)continue;
-   uint32_t color=terrainColor(land,int8_t(cell[0x11B]),!reveal&&fog!=-1);
+   if(cx!=x||cy!=y)continue;
+   if(!reveal)maskBits_[cursor_]={1,cell[0x12C],cell[0x140]};
+   int level=int8_t(cell[0x11B]);if(real)pending_->baseColors[cursor_]=terrainColor(land,level,false);
+   if(reveal&&!g.bounds.usable(x,y,level,cell[0x11C]!=0))continue;
+   int8_t shroud=reveal?-1:maskFrame(x,y,false),fog=reveal?-1:maskFrame(x,y,true);
+   if(shroud<-2||shroud>46||fog<-2||fog>46)continue;
+   pending_->shade[cursor_]={shroud,fog};
+   // A partial shroud frame still reveals part of this cell. Keep its source
+   // pixels; the composed scene is clipped by the frame's screen-space mask.
+   if(!reveal&&shroud==-2)continue;
+   uint32_t color=terrainColor(land,level,!real&&!reveal&&fog!=-1);
    pending_->colors[cursor_]=color;
    if(real&&!pending_->art.empty()){auto&a=pending_->art[cursor_];a.cell=p;a.sub=cell[0x11A];a.level=int8_t(cell[0x11B]);a.overlayFrame=cell[0x11E];int tile=-1,overlay=-1;uint32_t flags=0;memcpy(&flags,cell.data()+0x140,4);memcpy(&tile,cell.data()+0x38,4);memcpy(&overlay,cell.data()+0x44,4);if(tile==65535){tile=get<int>(0xAA10B0,-1);a.sub=0;}if(tile>=0&&size_t(tile)<tileTypes_.size())a.type=artvariants::tile(read_,tileTypes_[tile],a.sub,x,y,flags);if(overlay>=0&&size_t(overlay)<overlayTypes_.size()){a.overlay=int16_t(overlay);a.overlaySourceType=overlayTypes_[overlay];int drawOverlay=artvariants::overlay(read_,overlayTypes_,resourcePools_,overlay,x,y,cell[0x11C]);a.overlayType=overlayTypes_[drawOverlay];}}
   }
-  if(cursor_==pointers_.size()){terrain_=pending_;pending_.reset();++revision_;}return true;
+  if(cursor_==pointers_.size()){terrain_=pending_;pending_.reset();maskBits_.clear();++revision_;}return true;
  }
  Frame snapshot(uint32_t now)const{
   GameView<Read> live(read_);Frame out;out.terrain=terrain_;out.tick=now;out.frame=lastFrame_;if(!terrain_)return out;

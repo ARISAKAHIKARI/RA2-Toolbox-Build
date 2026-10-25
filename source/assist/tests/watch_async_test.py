@@ -19,7 +19,7 @@ int main(){
  std::vector<uint32_t> actors;
  for(int i=0;i<3;++i){uint32_t p=0x10000+i*0x1000,t=0x800000+i*0x2000,c=0x400000+i*0x150;int x=30+i,y=30;actors.push_back(p);
   put(p,0x7F5C70u);put(p+0x10,uint32_t(i+1));put(p+0x6C,100);put(p+0x74,uint8_t(1));put(p+0x90,uint8_t(1));put(p+0x6C4,t);put(p+0x21C,0x180000u);put(p+0x9C,x*256+128);put(p+0xA0,y*256+128);put(t+0xB0,1u);put(t+0xCA1,uint8_t(1));
-  put(cells+(y*512+x)*4,c);put(c+0x24,int16_t(x));put(c+0x26,int16_t(y));put(c+0x120,int8_t(-1));put(c+0x121,int8_t(-1));
+  put(cells+(y*512+x)*4,c);put(c+0x24,int16_t(x));put(c+0x26,int16_t(y));put(c+0x120,int8_t(-1));put(c+0x121,int8_t(-1));put(c+0x12C,uint8_t(0x10));put(c+0x140,uint8_t(1));
   watchhost::tracks[i].target={p,uint32_t(i+1)};
  }
  vec(0xA8EC78,0x190000,actors);watchhost::process=pid;watchhost::epoch=1;watchhost::controls=1;

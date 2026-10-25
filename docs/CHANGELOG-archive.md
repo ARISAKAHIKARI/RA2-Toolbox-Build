@@ -1,3 +1,11 @@
+# RA2 Toolbox 1.0.38
+
+[下载正式版](https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/releases/tag/v1.0.38) · [发布说明](../packages/v1.0.38/RELEASE_NOTES.md) · [功能说明](../docs/FEATURES-1.0.38.md)
+
+正式版整合实景小地图的原尺寸绘制、原版 SHROUD／FOG 探索边缘及右下底色、单位跟踪和可调整的副屏窗口，补齐驻军外观、矿石／地形图案、维修扳手和可见抛射体。生产预定最多向步兵和载具队列各提交 30 项，小地图缩放 5%～200%，新配置默认 10%。更新包提供配套 EXE／DLL，源码与校验信息单独提供。
+
+## 历史预览版本
+
 # RA2 Toolbox 1.0.38-pre.7
 
 資訊刷新率新增自適應螢幕選項，按遊戲所在螢幕的目前 Hz 設定顯示節拍，支援跨螢幕及同螢幕模式變化。保留手動 5–500 Hz 和原數值，切換模式即時生效、自動保存，界面顯示目前有效 Hz。
@@ -68,13 +76,13 @@ EXE 与 Runtime 文件版本 **1.0.38.2**，Assist **72**。关闭游戏与工�
 
 渲染仍属预览：施工、闸门、废墟等特殊建筑主体帧和部分 MOD 效果尚未完整复刻；自动回归及 Windows 窗口测试不代表已完成游戏画面、性能或联机验证。gamemd-ares.exe 原已在共用识别名单中，本版补充真实 Windows 进程发现测试；命令桥仍需通过实际映像特征检查。
 
-## 当前正式版：1.0.37
+## 上一正式版：1.0.37
 
 [正式版下载](https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/releases/tag/v1.0.37) · [新增／修复与完整特性树](https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/blob/v1.0.37/packages/v1.0.37/RELEASE_NOTES.md)
 
 修复冷冻时间、危险载员等设置保存与恢复，改进敌方标识和载员提示跟随，增加 MIX 图标读取；保留直接模式、科技加强与仅光标高刷。配置和快捷键采用用户预设，首次功能开关全关，更新保留已有配置。
 
-## 历史预览版本
+## 更早的预览版本
 
 # RA2 Toolbox 1.0.38-pre.1
 

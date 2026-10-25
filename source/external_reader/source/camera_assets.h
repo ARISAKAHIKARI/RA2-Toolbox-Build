@@ -1,6 +1,7 @@
 #pragma once
 #include "game_asset_files.h"
 #include "asset_decode.h"
+#include "radar_shroud_assets.h"
 #include "visual_pose.h"
 #include "art_metadata.h"
 #include "cameo_catalog.h"
@@ -160,6 +161,18 @@ bool tile(uint32_t type,unsigned sub,const std::array<uint32_t,256>&pal,external
  if(!filename.empty()&&files.load(filename,bytes)&&external::assets::tmp(std::move(bytes),sub,pal,out,&reason))return true;
  if(external::terrain::tile(read,word(type+0xA4),sub,pal,out,&reason)){failure.clear();return true;}
  failure="tile-not-found:"+filename+" memory="+reason;return false;
+}
+bool shroud(bool fog,int frame,external::voxel::Image&out){
+ if(frame<0||frame>46)return false;
+ // The game can load these shapes directly from a modded MIX even when the
+ // external archive index has not found that archive yet. Prefer its current
+ // decoded resource; the disk lookup covers the unloaded-reference case.
+ uint32_t loaded=word(fog?0x89E760:0x89E794);
+ if(external::shroudassets::loaded(read,loaded,frame,out))return true;
+ if(fog&&external::shroudassets::loaded(read,word(0x89E790),frame,out))return true;
+ std::vector<uint8_t> bytes;
+ if(files.load(fog?"FOG.SHP":"SHROUD.SHP",bytes)&&external::shroudassets::archived(std::move(bytes),frame,out))return true;
+ failure=fog?"fog-shape-unavailable":"shroud-shape-unavailable";return false;
 }
 bool actor(uint32_t p,uint32_t type,uint32_t id,double angle,external::voxel::Image&out){
  if(word(p+0x10)!=id)return false;uint32_t owner=word(p+0x21C);std::array<uint32_t,256> pal{};

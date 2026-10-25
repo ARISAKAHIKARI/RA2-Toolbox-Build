@@ -88,7 +88,7 @@ prefix = r'''
 #include "../source/radar_layout.h"
 static bool higher(HWND a,HWND b){for(HWND w:GetTopWindow(nullptr)?order:std::vector<HWND>{}){if(w==a)return true;if(w==b)return false;}return false;}
 static HWND game,ui;static DWORD pid=2;static bool focused=true,enabled=true,minimapEnabled=true,minimapSecondary=false,secondAvailable=false,battlefieldVisible=true;
-static int minimapMode=0,minimapScale=25,minimapPosition=1,minimapX=0,minimapY=0,minimapAlignX=0,minimapAlignY=0,fps=60;
+static int minimapMode=0,minimapScale=10,minimapPosition=1,minimapX=0,minimapY=0,minimapAlignX=0,minimapAlignY=0,fps=60;
 static int minimapSecondaryX=10000,minimapSecondaryY=10000,minimapSecondaryWidth=320;
 static int effectiveInfoFPS=144;
 static int informationFPS(){return effectiveInfoFPS;}

@@ -3879,7 +3879,7 @@
       "toggle": false,
       "checked": false,
       "class": "EDIT",
-      "text": "25"
+      "text": "10"
     },
     {
       "id": 0,
@@ -3891,7 +3891,7 @@
       "toggle": false,
       "checked": false,
       "class": "STATIC",
-      "text": "10–200 · 默认 25"
+      "text": "5–200 · 默认 10"
     },
     {
       "id": 0,

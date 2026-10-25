@@ -8,11 +8,13 @@
 #include "scene_order.h"
 #include "art_variants.h"
 #include "watch_focus.h"
+#include "radar_shroud_selector.h"
+#include <unordered_map>
 namespace external { namespace watch {
 constexpr int NativeViewWidth=640,NativeViewHeight=512;
 struct Actor {visual::Pose pose;Target target;uint32_t type=0,owner=0,color=0;int x=0,y=0,z=0,kind=-1,health=0,stage=0,drawZ=0,sort=0,layer=2;Target parent;bool onBridge=false;uint16_t name[40]{};lighting::State light;};
 struct Tile {uint32_t image=0,overlay=0,type=0,overlayType=0;int sub=0,level=0,overlayFrame=0,overlayY=0;bool bridge=false;lighting::State light,overlayLight;};
-struct Frame {Target focus;Anchor center;int cx=0,cy=0,focusCx=0,focusCy=0;int radius=5,side=11;std::vector<uint32_t> cells=std::vector<uint32_t>(121);std::vector<Tile> tiles=std::vector<Tile>(121);std::vector<Actor> actors;std::vector<passengers::Group> passengers;bool dangerous=false,cameraReady=false;lighting::State light;double zScale=Projection{}.zScale,cameraX=0,cameraY=0;mapbounds::Bounds bounds;std::vector<repairvisuals::Sprite> repairs;};
+struct Frame {Target focus;Anchor center;int cx=0,cy=0,focusCx=0,focusCy=0;int radius=5,side=11;std::vector<uint32_t> cells=std::vector<uint32_t>(121);std::vector<Tile> tiles=std::vector<Tile>(121);std::vector<radar::ShroudFrames> shade=std::vector<radar::ShroudFrames>(121);std::vector<Actor> actors;std::vector<passengers::Group> passengers;bool dangerous=false,cameraReady=false;lighting::State light;double zScale=Projection{}.zScale,cameraX=0,cameraY=0;mapbounds::Bounds bounds;std::vector<repairvisuals::Sprite> repairs;};
 template<class Read>void repairSprites(Read read,Frame&out){
  out.repairs.clear();for(const auto&a:out.actors)if(a.kind==3){repairvisuals::Sprite sprite;if(repairvisuals::sample(read,a.target.pointer,a.target.id,sprite))out.repairs.push_back(sprite);}
 }
@@ -67,11 +69,26 @@ template<class Read> bool refresh(Read read,Frame&out){
  return life(read,out.focus).state==Life::Present;
 }
 template<class Read> Frame sample(Read read,Target focus,bool reveal,int radius=5,const Anchor&prior={}){
- Frame out;out.radius=std::clamp(radius,5,24);out.side=2*out.radius+1;out.cells.resize(out.side*out.side);out.tiles.resize(out.side*out.side);GameView<Read> g(read);out.center=anchor(read,focus,prior);if(!out.center.located)return out;
+ Frame out;out.radius=std::clamp(radius,5,24);out.side=2*out.radius+1;out.cells.resize(out.side*out.side);out.tiles.resize(out.side*out.side);out.shade.resize(out.side*out.side);GameView<Read> g(read);out.center=anchor(read,focus,prior);if(!out.center.located)return out;
  out.bounds=mapbounds::sample(read);if(!out.bounds.valid())return {};
  int fx=out.center.x,fy=out.center.y;
  out.focusCx=fx/256;out.focusCy=fy/256;
  uint32_t cells=g.template get<uint32_t>(radar::Map+0x13C);int count=g.template get<int>(radar::Map+0x140);if(cells<0x10000||count<1||count>512*512)return {};
+ std::array<int8_t,256> frameLookup{};
+ if(!reveal&&!shroudselector::readLookup(read,frameLookup))return {};
+ struct State {uint8_t status=0;shroudselector::Bits bits;};
+ std::unordered_map<int,State> states;states.reserve(size_t(out.side+2)*(out.side+2));
+ auto fetch=[&](int x,int y,shroudselector::Bits&bits){
+  if(!out.bounds.legal(x,y)||y*512+x>=count)return false;
+  auto&stored=states[y*512+x];if(!stored.status){
+   stored.status=2;uint32_t cell=g.template get<uint32_t>(cells+uint32_t(y*512+x)*4);
+   if(cell>=0x10000&&g.template get<int16_t>(cell+0x24)==x&&g.template get<int16_t>(cell+0x26)==y){
+    std::array<uint8_t,0x15> values{};
+    if(read(cell+0x12C,values.data(),values.size())){stored.bits={values[0],values[0x14]};stored.status=1;}
+   }
+  }
+  if(stored.status!=1)return false;bits=stored.bits;return true;
+ };
  auto tileTypes=g.vec(0xA8ED28,65536),overlayTypes=g.vec(0xA83D80);auto resourcePools=artvariants::pools(read,overlayTypes);
  out.focus=focus;out.light=lighting::sample(read);out.zScale=projectionZScale(read);passengers::contents(read,focus.pointer,out.passengers,out.dangerous);
  // Inventory follows the clamped camera, not the unclamped target cell. At
@@ -87,7 +104,15 @@ template<class Read> Frame sample(Read read,Target focus,bool reveal,int radius=
   // Native tactical drawing gates cells with CoordinatesLegal, not the
   // narrower movement/usable rectangle. Its border scenery fills the view
   // above a camera-clamped target and is cropped only by the viewport.
-  bool seen=g.template get<int8_t>(p+0x120)==-1,fog=g.template get<int8_t>(p+0x121)!=-1;if(!reveal&&!seen)continue;
+  shroudselector::Bits verified{};
+  if(!reveal&&!fetch(cx,cy,verified))return {};
+  int8_t shroud=reveal?-1:shroudselector::frame(cx,cy,false,frameLookup,fetch);
+  int8_t fog=reveal?-1:shroudselector::frame(cx,cy,true,frameLookup,fetch);
+  if(!reveal&&(shroud<-2||shroud>46||fog<-2||fog>46))continue;
+  out.shade[(y+out.radius)*out.side+x+out.radius]=reveal?radar::ShroudFrames{-1,-1}:radar::ShroudFrames{shroud,fog};
+  // Native edge frames expose only part of a cell; compose their mask after
+  // all terrain and objects, at the flat cell's position without Level.
+  if(!reveal&&shroud==-2)continue;
   auto&t=out.tiles[(y+out.radius)*out.side+x+out.radius];t.level=g.template get<int8_t>(p+0x11B);t.sub=g.template get<uint8_t>(p+0x11A);
   t.light=lighting::cell(read,p,out.light,lighting::Layer::Terrain);t.overlayLight=t.light;
   int type=g.template get<int>(p+0x38,-1);if(type==65535){type=g.template get<int>(0xAA10B0,-1);t.sub=0;}
@@ -98,7 +123,7 @@ template<class Read> Frame sample(Read read,Target focus,bool reveal,int radius=
    else if(g.template get<uint8_t>(overlayTypes[overlay]+0x2A9)){t.overlayLight=out.light;t.overlayLight.intensity=1000;}
    else if(g.template get<uint8_t>(overlayTypes[overlay]+0x2A8))t.overlayLight=lighting::cell(read,p,out.light,lighting::Layer::Object,false);
   }
-  out.cells[(y+out.radius)*out.side+x+out.radius]=0xff000000u|radar::terrainColor(g.template get<int>(p+0xEC,-1),g.template get<uint8_t>(p+0x11B),!reveal&&fog);
+  out.cells[(y+out.radius)*out.side+x+out.radius]=0xff000000u|radar::terrainColor(g.template get<int>(p+0xEC,-1),g.template get<int8_t>(p+0x11B),!reveal&&fog!=-1);
  }
  for(auto p:g.vec(0xA8EC78)){Target t{p,g.template get<uint32_t>(p+0x10)};if(!valid(g,t))continue;
   int x=g.template get<int>(p+0x9C,-1),y=g.template get<int>(p+0xA0,-1);if(x<0||y<0)continue;int cx=x/256-out.cx,cy=y/256-out.cy;if(cx<-out.radius||cx>out.radius||cy<-out.radius||cy>out.radius||!out.cells[(cy+out.radius)*out.side+cx+out.radius])continue;

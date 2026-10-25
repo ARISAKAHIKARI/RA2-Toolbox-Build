@@ -1,0 +1,100 @@
+{
+  "supported_executable_sha256": "7B8A068535D6AF06845EDF95AE829B113D00C02909330E16F197426CD7DB94B6",
+  "evidence": "original captured Cell flags and cached frames, selector reconstructed from original 0x6D8700 instructions; no original selector execution",
+  "scoped_limit": "Capture is independent of the user screenshot. Cache agreement does not prove future/offscreen cache freshness. Renderer pixel composition requires separate validation.",
+  "stages": [
+    {
+      "stage": "01-off",
+      "valid_cells": 38106,
+      "modes": [
+        {
+          "mode": "shroud",
+          "eligible_cells": 37008,
+          "expected_counts": {
+            "opaque": 36887,
+            "edge": 48,
+            "clear": 73
+          },
+          "cached_matches": 37008,
+          "cached_mismatches": 0
+        },
+        {
+          "mode": "fog",
+          "eligible_cells": 37008,
+          "expected_counts": {
+            "opaque": 36887,
+            "edge": 48,
+            "clear": 73
+          },
+          "cached_matches": 37008,
+          "cached_mismatches": 0
+        }
+      ],
+      "selector_code_sha256": "a07fef937b48f09b6c6c7f43a7fd592b7b4b0171f9ab195ecd8ebaf659db3464",
+      "cell_draw_code_sha256": "b34d3c732dd7d8af77f3071af5c69cb69ec7b02a8b9e8b0f3ba7946b19864e96",
+      "lookup_table_sha256": "2a5a40e39bae9655c359008c5894a2c1082e012ff04cdd78ebc168644546f8f1"
+    },
+    {
+      "stage": "02-on",
+      "valid_cells": 38106,
+      "modes": [
+        {
+          "mode": "shroud",
+          "eligible_cells": 37008,
+          "expected_counts": {
+            "opaque": 36769,
+            "edge": 72,
+            "clear": 167
+          },
+          "cached_matches": 37008,
+          "cached_mismatches": 0
+        },
+        {
+          "mode": "fog",
+          "eligible_cells": 37008,
+          "expected_counts": {
+            "opaque": 36769,
+            "edge": 72,
+            "clear": 167
+          },
+          "cached_matches": 37005,
+          "cached_mismatches": 3
+        }
+      ],
+      "selector_code_sha256": "a07fef937b48f09b6c6c7f43a7fd592b7b4b0171f9ab195ecd8ebaf659db3464",
+      "cell_draw_code_sha256": "b34d3c732dd7d8af77f3071af5c69cb69ec7b02a8b9e8b0f3ba7946b19864e96",
+      "lookup_table_sha256": "2a5a40e39bae9655c359008c5894a2c1082e012ff04cdd78ebc168644546f8f1"
+    },
+    {
+      "stage": "03-off",
+      "valid_cells": 38106,
+      "modes": [
+        {
+          "mode": "shroud",
+          "eligible_cells": 37008,
+          "expected_counts": {
+            "opaque": 36769,
+            "edge": 72,
+            "clear": 167
+          },
+          "cached_matches": 37008,
+          "cached_mismatches": 0
+        },
+        {
+          "mode": "fog",
+          "eligible_cells": 37008,
+          "expected_counts": {
+            "opaque": 36769,
+            "edge": 72,
+            "clear": 167
+          },
+          "cached_matches": 37005,
+          "cached_mismatches": 3
+        }
+      ],
+      "selector_code_sha256": "a07fef937b48f09b6c6c7f43a7fd592b7b4b0171f9ab195ecd8ebaf659db3464",
+      "cell_draw_code_sha256": "b34d3c732dd7d8af77f3071af5c69cb69ec7b02a8b9e8b0f3ba7946b19864e96",
+      "lookup_table_sha256": "2a5a40e39bae9655c359008c5894a2c1082e012ff04cdd78ebc168644546f8f1"
+    }
+  ]
+}

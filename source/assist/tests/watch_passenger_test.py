@@ -16,7 +16,7 @@ int main(){
  vec(0xA8EC78,0x190000,{infantry,carrier,nearby,building});vec(0xA8EB40,0x195000,{building});
  put(external::radar::Map+0xF4,32);put(external::radar::Map+0xF8,64);put(external::radar::Map+0x104,32);put(external::radar::Map+0x108,64);
  put(external::radar::Map+0x13C,cells);put(external::radar::Map+0x140,512*512);put(0xA8ED84,1);
- uint32_t cell=0x400000;for(int y=10;y<=50;++y)for(int x=10;x<=50;++x){put(cells+(y*512+x)*4,cell);put(cell+0x24,int16_t(x));put(cell+0x26,int16_t(y));put(cell+0x120,int8_t(-1));put(cell+0x121,int8_t(-1));cell+=0x150;}
+ uint32_t cell=0x400000;for(int y=10;y<=50;++y)for(int x=10;x<=50;++x){put(cells+(y*512+x)*4,cell);put(cell+0x24,int16_t(x));put(cell+0x26,int16_t(y));put(cell+0x120,int8_t(-1));put(cell+0x121,int8_t(-1));put(cell+0x12C,uint8_t(0x10));put(cell+0x140,uint8_t(1));cell+=0x150;}
  external::watch::Target tracked{infantry,11};engine.process=pid;engine.epoch=1;engine.tracks[0].target=tracked;engine.tracks[0].members={tracked};
  engine.update(clockValue);assert(engine.views[0].frame.focus==tracked&&engine.views[0].frame.center.target==tracked);
  auto assertUpdated=[&](external::watch::Target spatial){auto&view=engine.views[0];assert(engine.tracks[0].target==tracked&&engine.tracks[0].members.size()==1&&view.shown&&view.tick==clockValue&&view.frame.focus==tracked&&view.frame.center.target==spatial);

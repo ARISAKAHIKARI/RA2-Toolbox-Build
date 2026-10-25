@@ -168,7 +168,7 @@ def scenario(folder):
             assert h and send(h,0x402)==expected,(id,send(h,0x402) if h else None,expected)
         production=child(root,799,'RA2Assist010');dodge=child(root,885,'RA2Assist010')
         assert production and dodge
-        assert control_text(child(root,831,'RA2Assist010'))=='25' and ini(folder,'Display','MinimapScale')==25,'fresh minimap scale default'
+        assert control_text(child(root,831,'RA2Assist010'))=='10' and ini(folder,'Display','MinimapScale')==10,'fresh minimap scale default'
         for navigation,title,production_shown,dodge_shown in [
                 (202,'战术控制',True,False),(203,'战场信息',False,False),
                 (204,'实验功能',False,True),(202,'战术控制',True,False)]:
@@ -225,8 +225,8 @@ def scenario(folder):
             send(h,0x14E,value);send(u.GetParent(h),0x111,id|(1<<16),h)
             until(lambda:ini(folder,'Display',key)==value,key+' saved')
         scale=child(root,831,'RA2Assist010');assert scale
-        set_control_text(scale,'10')
-        until(lambda:ini(folder,'Display','MinimapScale')==10,'10 percent minimap saved')
+        set_control_text(scale,'5')
+        until(lambda:ini(folder,'Display','MinimapScale')==5,'5 percent minimap saved')
         # Change an unrelated tactical setting: it must not reset these values.
         h=child(root,702,'RA2Assist010');click(root,h,1,persisted=lambda:ini(folder,'Cooperative','AdvancedEnter'),label='advanced enter')
         assert ini(folder,'Display','Frozen')==ini(folder,'Display','DangerPassengers')==1
@@ -249,8 +249,8 @@ def scenario(folder):
         click(root,adaptive,0,owner_id=9160,persisted=lambda:ini(folder,'Display','AdaptiveFPS'),label='adaptive information rate')
         until(lambda:ini(folder,'Display','AdaptiveFPS')==0 and u.IsWindowEnabled(manual) and information_rate(root)==144,'manual target restored after disabling adaptive')
         assert send(child(root,9065,'RA2Assist010'),0x147)==1,'real minimap mode lost on restart'
-        assert ini(folder,'Display','MinimapScale')==10,'10 percent minimap lost on restart'
-        assert control_text(child(root,831,'RA2Assist010'))=='10','10 percent minimap control lost on restart'
+        assert ini(folder,'Display','MinimapScale')==5,'5 percent minimap lost on restart'
+        assert control_text(child(root,831,'RA2Assist010'))=='5','5 percent minimap control lost on restart'
         assert send(child(root,9100,'RA2Assist010'),0x147)==2 and send(child(root,9101,'RA2Assist010'),0x147)==1,'minimap alignment lost on restart'
         mode=child(root,9065,'RA2Assist010');send(mode,0x14E,0);send(u.GetParent(mode),0x111,9065|(1<<16),mode)
         # Switch off and exit immediately, exercising pending autosave at shutdown.
@@ -277,7 +277,7 @@ def scenario(folder):
         assert ini(folder,'Display','AdaptiveFPS')==0 and ini(folder,'Display','FPS')==240
         until(lambda:information_rate(root)==240,'manual information rate restored after restart')
         assert send(child(root,9065,'RA2Assist010'),0x147)==0 and ini(folder,'Display','MinimapMode')==0
-        assert ini(folder,'Display','MinimapScale')==25 and control_text(child(root,831,'RA2Assist010'))=='25','minimap scale reset lost on restart'
+        assert ini(folder,'Display','MinimapScale')==25 and control_text(child(root,831,'RA2Assist010'))=='25','saved minimap scale lost on restart'
         assert ini(folder,'Cooperative','AdvancedEnter')==1,'first-use defaults overwrote existing settings'
         # The shipped statistics renderer must finish on its worker and publish a
         # real layered surface. Keep it active through shutdown to cover ownership.
@@ -302,7 +302,7 @@ if __name__=='__main__':
         folder=pathlib.Path(t)
         for name in ('RA2Toolbox.exe','GameRuntime.dll'):shutil.copy2(source/name,folder/name)
         scenario(folder)
-    result={'status':'PASS','version':'1.0.38-pre.12','runs':3,'display_switches':13,
+    result={'status':'PASS','version':'1.0.38','runs':3,'display_switches':13,
             'checks':['all fresh UI switches off','user hotkeys','cross-pane edits',
                       'real Win32 INI writes','restart on','restart off','independent secondary map/statistics/watch toggles and restart',
                       'real pane navigation for production and experimental controls',

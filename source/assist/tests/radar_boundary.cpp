@@ -20,7 +20,7 @@ int main(int argc,char**){
  // move the TMP down by 15, not up by 255*15.
  constexpr uint32_t cell=0x200000,cells=0x100000,house=0x300000;constexpr int x=5,y=5;
  put(radar::Map+0xF4,4);put(radar::Map+0xF8,4);put(radar::Map+0x104,4);put(radar::Map+0x108,4);put(radar::Map+0x13C,cells);put(radar::Map+0x140,4096);put(radar::Map+0x1488,1.f);put(radar::Map+0x1490,4);put(radar::Map+0x1498,4);put(radar::Map+0x14A4,8);put(radar::Map+0x14A8,8);put(radar::Map+0x1240,8);put(radar::Map+0x1244,8);
- put(0xA83D4C,house);put(0xA8ED84,1);put(0xA8E9A0,uint8_t(1));put(0xA8E378,uint8_t(1));put(cells+(y*512+x)*4,cell);put(cell+0x24,int16_t(x));put(cell+0x26,int16_t(y));put(cell+0x11B,int8_t(-1));put(cell+0x120,int8_t(-1));put(cell+0x121,int8_t(-1));put(cell+0xEC,2);
+ put(0xA83D4C,house);put(0xA8ED84,1);put(0xA8E9A0,uint8_t(1));put(0xA8E378,uint8_t(1));put(cells+(y*512+x)*4,cell);put(cell+0x24,int16_t(x));put(cell+0x26,int16_t(y));put(cell+0x11B,int8_t(-1));put(cell+0x12C,uint8_t(0x10));put(cell+0x140,uint8_t(0x01));put(cell+0xEC,2);
  radar::Sampler<decltype(&read)> sampler(&read);assert(sampler.step(1,4096,true));auto frame=sampler.snapshot(1);assert(frame.terrain&&frame.terrain->art[y*512+x].level==-1);
  assert(frame.terrain->colors[y*512+x]==radar::terrainColor(2,-1,false));const auto&g=frame.terrain->geo;auto viewport=g.nativeViewport();assert(viewport.width==240&&viewport.height==120);mapbounds::TileOrigin at;assert(g.tileOrigin(x,y,frame.terrain->art[y*512+x].level,at)&&at.x==90&&at.y==105);
  // Native TMP plane: 29 nonempty rows/900 pixels. Preserve its actual
@@ -34,7 +34,7 @@ int main(int argc,char**){
  auto original=g.nativeViewport();for(int level:{-1,0,2,6,14}){mapbounds::TileOrigin edge;assert(g.tileOrigin(x,y,level,edge));auto current=g.nativeViewport();assert(current.width==original.width&&current.height==original.height);}
  // A physically valid edge cell that remains shrouded is excluded in native
  // fog mode; explicit reveal displays it. This is separate from usable bounds.
- put(cell+0x120,int8_t(-2));assert(sampler.step(0,4096,true));auto masked=sampler.snapshot(2);
+ put(cell+0x12C,uint8_t(0));assert(sampler.step(0,4096,true));auto masked=sampler.snapshot(2);
  assert(masked.terrain&&masked.terrain->colors[y*512+x]==0);
  assert(sampler.step(1,4096,true));auto unmasked=sampler.snapshot(3);
  assert(unmasked.terrain&&unmasked.terrain->colors[y*512+x]==radar::terrainColor(2,-1,false));
@@ -66,11 +66,14 @@ int main(int argc,char**){
  for(size_t i=0;i<probes.size();++i){const auto&q=probes[i];uint32_t p=firstBorderCell+uint32_t(i)*0x1000;
   assert(liveBounds.legal(q.x,q.y)&&liveBounds.usable(q.x,q.y,q.level)==q.playable);
   put(borderCells+(q.y*512+q.x)*4,p);put(p+0x24,int16_t(q.x));put(p+0x26,int16_t(q.y));
-  put(p+0x11B,int8_t(q.level));put(p+0x120,int8_t(-1));put(p+0x121,int8_t(-1));put(p+0xEC,2);
+  put(p+0x11B,int8_t(q.level));put(p+0x12C,uint8_t(0x10));put(p+0x140,uint8_t(0x01));put(p+0xEC,2);
  }
  radar::Sampler<decltype(&read)> revealed(&read);for(int n=0;n<64;++n)assert(revealed.step(1,4096,true));
  auto clipped=revealed.snapshot(4);assert(clipped.terrain);
- for(const auto&q:probes)assert((clipped.terrain->colors[q.y*512+q.x]!=0)==(q.playable&&q.insideRaw));
+ for(const auto&q:probes){
+  assert((clipped.terrain->colors[q.y*512+q.x]!=0)==(q.playable&&q.insideRaw));
+  assert((clipped.terrain->baseColors[q.y*512+q.x]!=0)==q.insideRaw);
+ }
  // Initial native radar fill may still contain explored physical edge cells;
  // the extra playfield mask belongs specifically to explicit unmask/reveal.
  radar::Sampler<decltype(&read)> native(&read);for(int n=0;n<64;++n)assert(native.step(0,4096,true));
@@ -78,7 +81,7 @@ int main(int argc,char**){
  for(const auto&q:probes)assert((explored.terrain->colors[q.y*512+q.x]!=0)==q.insideRaw);
  // A shrouded, nonusable edge remains hidden in both modes, even though the
  // native RGB backing may contain its terrain color before the fog pass.
- put(firstBorderCell+4*0x1000+0x120,int8_t(-2));
+ put(firstBorderCell+4*0x1000+0x12C,uint8_t(0));
  radar::Sampler<decltype(&read)> fogged(&read);for(int n=0;n<64;++n)assert(fogged.step(0,4096,true));
  assert(fogged.snapshot(6).terrain->colors[32*512+31]==0);
  std::cout<<"PASS signed south-edge TMP, native raw 2x1 flat clip and exact backing dimensions, four-side playfield reveal, explored/shrouded border policy\n";

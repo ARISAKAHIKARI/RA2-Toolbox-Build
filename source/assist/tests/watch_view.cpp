@@ -18,11 +18,18 @@ int main(){
  uint32_t cells=alloc(512*512*4);write(radar::Map+0x13C,cells);write(radar::Map+0x140,512*512);
  write(radar::Map+0xF4,32);write(radar::Map+0xF8,64);write(radar::Map+0x104,32);write(radar::Map+0x108,64);
  write(0xB0CD48,.144337567);write(0x89E7C0,104);
- for(int y=25;y<=35;++y)for(int x=15;x<=25;++x){uint32_t p=alloc(0x148);write(cells+(y*512+x)*4,p);write(p+0x24,int16_t(x));write(p+0x26,int16_t(y));write(p+0x120,int8_t(-1));write(p+0x121,int8_t(-1));}
+ for(int y=25;y<=35;++y)for(int x=15;x<=25;++x){uint32_t p=alloc(0x148);write(cells+(y*512+x)*4,p);write(p+0x24,int16_t(x));write(p+0x26,int16_t(y));write(p+0x120,int8_t(-1));write(p+0x121,int8_t(-1));write(p+0x12C,uint8_t(0x10));write(p+0x140,uint8_t(1));}
  auto frame=watch::sample(read,ta,false);assert(frame.focus==ta&&frame.cx==20&&frame.cy==30&&frame.dangerous&&frame.passengers.size()==1&&frame.actors.size()==2);
  auto cellIn=[&](const watch::Frame&f,int x,int y){int ix=x-f.cx+f.radius,iy=y-f.cy+f.radius;return ix<0||iy<0||ix>=f.side||iy>=f.side?0u:f.cells[iy*f.side+ix];};
  assert(std::all_of(std::begin(frame.cells),std::end(frame.cells),[](auto c){return c!=0;}));
- uint32_t center=0;read(cells+(30*512+20)*4,&center,4);write(center+0x120,int8_t(0));frame=watch::sample(read,ta,false);assert(frame.cells[60]==0&&frame.actors.size()==1);frame=watch::sample(read,ta,true);assert(frame.cells[60]&&frame.actors.size()==2);
+ uint32_t center=0;read(cells+(30*512+20)*4,&center,4);
+ // Cached draw-frame bytes can disagree with the live neighbor flags; derive
+ // the mask from the native lookup, including an edge frame past 15.
+ write(0x7F4194+255,int8_t(46));write(center+0x120,int8_t(-2));write(center+0x121,int8_t(-2));write(center+0x12C,uint8_t(0x18));
+ frame=watch::sample(read,ta,false);assert(frame.cells[60]&&frame.actors.size()==2&&frame.shade[60]==(radar::ShroudFrames{46,-1}));
+ write(center+0x12C,uint8_t(0));frame=watch::sample(read,ta,false);assert(frame.cells[60]==0&&frame.actors.size()==1&&frame.shade[60].shroud==-2);
+ write(0x7F4194+255,int8_t(127));frame=watch::sample(read,ta,false);assert(!frame.focus);write(0x7F4194+255,int8_t(46));
+ frame=watch::sample(read,ta,true);assert(frame.cells[60]&&frame.actors.size()==2&&frame.shade[60]==(radar::ShroudFrames{-1,-1}));
  // Stable identities: a recycled address must not inherit the pinned unit.
  write(a+0x10,99u);assert(!watch::choose(read,ta,{},true));assert(!watch::sample(read,ta,true).focus);write(a+0x10,10u);
  write(cargo+0x30,cargo);assert(!watch::choose(read,{},ta,true));write(cargo+0x30,0u);

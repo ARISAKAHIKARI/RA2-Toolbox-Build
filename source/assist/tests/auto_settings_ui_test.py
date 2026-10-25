@@ -25,7 +25,7 @@ constexpr int FALSE=0,EN_CHANGE=1,CBN_SELCHANGE=2,BN_CLICKED=3,HKM_GETHOTKEY=4,H
 static bool ready=true,updatingControls=false,enabled=true,autoSaveOK=true;
 struct ControlUpdate{bool old=updatingControls;ControlUpdate(){updatingControls=true;}~ControlUpdate(){updatingControls=old;}};
 static bool hookAdvanced=false,hookSmartUnload=false;static HWND hookChecks[4]={800,801,802,803};
-static uint32_t computeRequested=compute::Default;static bool minimapEnabled=false,minimapSecondary=false;static int minimapMode=0,minimapScale=25,advancedRangeCells=2,minimapPosition=0,minimapX=20,minimapY=60,minimapAlignX=0,minimapAlignY=0;
+static uint32_t computeRequested=compute::Default;static bool minimapEnabled=false,minimapSecondary=false;static int minimapMode=0,minimapScale=10,advancedRangeCells=2,minimapPosition=0,minimapX=20,minimapY=60,minimapAlignX=0,minimapAlignY=0;
 static int minimapSecondaryX=10000,minimapSecondaryY=10000,minimapSecondaryWidth=320;
 constexpr unsigned HOTKEYF_CONTROL=2,HOTKEYF_ALT=4;
 constexpr WORD MAKEWORD(unsigned a,unsigned b){return WORD((a&255)|(b<<8));}
@@ -98,11 +98,12 @@ feature_save=io.split('static bool saveAdditionalSettings(){',1)[1].split(' writ
 prefix+="\nstatic void loadFeatureTypes(){"+feature_load+"}\nstatic void saveFeatureTypes(){"+feature_save+"}\n"
 suffix=r''' 
 int main(){
- assert(minimapScale==25);
+ assert(minimapScale==10);
  assert(!extra.viewZoomEnabled&&extra.viewZoomPercent==100);
  assert(extra.dodgeMode==0);
  profile[L"Enabled"]=profile[L"HoldEnabled"]=1;profile[L"HoldKey"]='B';
  extra.burstEnabled=extra.burstHoldEnabled=true;extra.burstKey='B';loadFeatureTypes();
+ assert(minimapScale==10); // an INI without MinimapScale takes the new default
  assert(!extra.burstEnabled&&!extra.burstHoldEnabled&&!extra.burstKey);
  saveFeatureTypes();assert(burstWrites.size()==3&&!burstWrites[L"Enabled"]&&!burstWrites[L"HoldEnabled"]&&!burstWrites[L"HoldKey"]);
  for(int id:{882,883,884})assert(!autoSettingChanged(id,BN_CLICKED));
@@ -131,10 +132,12 @@ int main(){
  assert(extra.watchSecondaryX==10000&&extra.watchSecondaryY==0&&minimapSecondaryX==0&&minimapSecondaryY==10000&&minimapSecondaryWidth==4096);
  profile[L"SecondaryX"]=10000;profile[L"SecondaryY"]=0;profile[L"MinimapSecondaryX"]=10000;profile[L"MinimapSecondaryY"]=10000;profile[L"MinimapSecondaryWidth"]=320;loadFeatureTypes();
  fields[830]=1;assert(autoSettingChanged(830,BN_CLICKED)&&minimapEnabled);
- for(int n:{10,50,100,200}){fields[831]=n;assert(autoSettingChanged(831,EN_CHANGE)&&minimapScale==n);}
- for(int bad:{9,201}){fields[831]=bad;autoSettingChanged(831,EN_CHANGE);assert(minimapScale==200);}
+ for(int n:{5,9,10,25,50,100,200}){fields[831]=n;assert(autoSettingChanged(831,EN_CHANGE)&&minimapScale==n);}
+ for(int bad:{4,201}){fields[831]=bad;autoSettingChanged(831,EN_CHANGE);assert(minimapScale==200);}
  profile[L"MinimapScale"]=1000;loadFeatureTypes();assert(minimapScale==200);
- profile[L"MinimapScale"]=9;loadFeatureTypes();assert(minimapScale==10);
+ profile[L"MinimapScale"]=4;loadFeatureTypes();assert(minimapScale==5);
+ profile[L"MinimapScale"]=9;loadFeatureTypes();assert(minimapScale==9);
+ profile[L"MinimapScale"]=25;loadFeatureTypes();assert(minimapScale==25);
  profile[L"MinimapScale"]=200;loadFeatureTypes();
  for(int mode:{0,1,2,3}){fields[850]=mode;assert(autoSettingChanged(850,CBN_SELCHANGE)&&minimapPosition==mode);}
  for(int n:{0,1}){fields[9065]=n;assert(autoSettingChanged(9065,CBN_SELCHANGE)&&minimapMode==n);}fields[9065]=2;autoSettingChanged(9065,CBN_SELCHANGE);assert(minimapMode==1);

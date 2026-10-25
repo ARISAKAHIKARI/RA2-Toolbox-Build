@@ -98,7 +98,7 @@ static bool autoSettingChanged(int id,int notification){
   if(!ok||value<lo||value>hi){setStatus(L"此项有效范围："+std::to_wstring(lo)+L"–"+std::to_wstring(hi)+L"；输入有效值后自动生效。");return false;}
   target=value;return true;};
  int* numeric=nullptr;int lo=0,hi=0;
- switch(id){case 851:numeric=&minimapX;hi=32768;break;case 852:numeric=&minimapY;hi=32768;break;case 831:numeric=&minimapScale;lo=10;hi=200;break;
+ switch(id){case 851:numeric=&minimapX;hi=32768;break;case 852:numeric=&minimapY;hi=32768;break;case 831:numeric=&minimapScale;lo=5;hi=200;break;
  case 9164:numeric=&extra.watchSecondaryX;hi=10000;break;case 9165:numeric=&extra.watchSecondaryY;hi=10000;break;
  case 9166:numeric=&minimapSecondaryX;hi=10000;break;case 9167:numeric=&minimapSecondaryY;hi=10000;break;
  case 9168:numeric=&minimapSecondaryWidth;lo=160;hi=4096;break;

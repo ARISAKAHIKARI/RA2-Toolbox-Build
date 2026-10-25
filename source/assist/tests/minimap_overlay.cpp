@@ -8,7 +8,8 @@
 #include "../../external_reader/source/radar_publication.h"
 struct Memory {
  std::map<uint32_t,uint8_t> bytes;
- bool operator()(uint32_t at,void*out,size_t n)const{auto*p=(uint8_t*)out;for(size_t i=0;i<n;++i){auto it=bytes.find(at+i);if(it==bytes.end())return false;p[i]=it->second;}return true;}
+ mutable size_t neighborReads=0;
+ bool operator()(uint32_t at,void*out,size_t n)const{if(n==0x11D)++neighborReads;auto*p=(uint8_t*)out;for(size_t i=0;i<n;++i){auto it=bytes.find(at+i);if(it==bytes.end())return false;p[i]=it->second;}return true;}
  template<class T>void set(uint32_t at,T v){auto*p=(uint8_t*)&v;for(size_t i=0;i<sizeof v;++i)bytes[at+i]=p[i];}
  void zero(uint32_t at,int n){for(int i=0;i<n;++i)bytes[at+i]=0;}
 };
@@ -20,12 +21,18 @@ int main(){
  assert(native.valid()&&native.width==240&&native.height==120);
  auto real=[&](int scale,int cw=1920,int ch=1080){return radarlayout::place(1920,1080,cw,ch,scale,1,0,0,{},2,0,0,native.width,native.height);};
  auto actual=real(100);assert(actual.valid&&actual.destination.w==242&&actual.destination.h==122);
+ actual=real(5);assert(actual.valid&&actual.destination.w==14&&actual.destination.h==8);
+ auto boundedReal=real(4);assert(boundedReal.valid&&boundedReal.destination.w==actual.destination.w&&boundedReal.destination.h==actual.destination.h);
  actual=real(10);assert(actual.valid&&actual.destination.w==26&&actual.destination.h==14);
  actual=real(200);assert(actual.valid&&actual.destination.w==482&&actual.destination.h==242);
  actual=real(100,3840,2160);assert(actual.valid&&actual.destination.w==482&&actual.destination.h==242);
  actual=real(100,3840,1080);assert(actual.valid&&actual.destination.w==242&&actual.destination.h==122);
  auto diagramLayout=radarlayout::place(1920,1080,1920,1080,100,1,0,0,{});
  assert(diagramLayout.valid&&diagramLayout.destination.w==162&&diagramLayout.destination.h==142);
+ diagramLayout=radarlayout::place(1920,1080,1920,1080,5,1,0,0,{});
+ assert(diagramLayout.valid&&diagramLayout.destination.w==10&&diagramLayout.destination.h==9);
+ auto boundedDiagram=radarlayout::place(1920,1080,1920,1080,4,1,0,0,{});
+ assert(boundedDiagram.valid&&boundedDiagram.destination.w==diagramLayout.destination.w&&boundedDiagram.destination.h==diagramLayout.destination.h);
  diagramLayout=radarlayout::place(1920,1080,1920,1080,10,1,0,0,{});
  assert(diagramLayout.valid&&diagramLayout.destination.w==18&&diagramLayout.destination.h==16);
  auto fractional=radarlayout::place(1920,1080,1920,1080,100,1,0,0,{},2,0,0,240.01,120.01);
@@ -54,21 +61,49 @@ int main(){
    assert(custom.destination.y==300+(full.destination.h-custom.destination.h)*ay/2);}
  }
 using namespace external::radar;Memory m;constexpr uint32_t cells=0x100000,cell=0x200000,house=0x300000;
+ // The original 8-neighbor bit order is shared by the large radar and the
+ // watch window. Exercise every selector index for both shroud and fog.
+ std::array<int8_t,256> lookup{};for(int i=0;i<256;++i)lookup[i]=int8_t(i%47);
+ constexpr struct {int dx,dy,bit;} around[]={{-1,-1,64},{0,-1,128},{1,-1,1},{-1,0,32},
+                                             {1,0,2},{-1,1,16},{0,1,8},{1,1,4}};
+ for(int mask=0;mask<256;++mask){
+  auto flags=[&](int xx,int yy,external::shroudselector::Bits&out){
+   if(xx==8&&yy==8){out={0x08,0x02};return true;}
+   for(const auto&n:around)if(xx==8+n.dx&&yy==8+n.dy){out={uint8_t(mask&n.bit?0:0x08),uint8_t(mask&n.bit?0:0x02)};return true;}
+   return false;
+  };
+  assert(external::shroudselector::frame(8,8,false,lookup,flags)==lookup[mask]);
+  assert(external::shroudselector::frame(8,8,true,lookup,flags)==lookup[mask]);
+ }
  m.set(Map+0xF4,4);m.set(Map+0xF8,4);m.set(Map+0x13C,cells);m.set(Map+0x140,4096);m.set(Map+0x1488,10.f);m.set(Map+0x1490,4);m.set(Map+0x1498,4);m.set(Map+0x14A4,80);m.set(Map+0x14A8,80);m.set(Map+0x1240,8);m.set(Map+0x1244,8);
  m.set(Map+0xFC,0);m.set(Map+0x100,0);m.set(Map+0x104,4);m.set(Map+0x108,4);
  m.set(0xA83D4C,house);m.set(0xA8ED84,10);m.set<uint8_t>(0xA8E9A0,1);m.set<uint8_t>(0xA8E378,1);m.set(0xA8EDA0,0);m.set(0xA8ED8C,0);
- m.zero(cells,4096*4);m.set(cells+(3*512+3)*4,cell);m.zero(cell,0x148);m.set<int16_t>(cell+0x24,3);m.set<int16_t>(cell+0x26,3);m.set(cell+0xEC,2);m.set<int8_t>(cell+0x120,-1);m.set<int8_t>(cell+0x121,-1);
+ m.zero(cells,4096*4);m.zero(0x7F4194,256);m.set<int8_t>(0x7F4194+255,46);m.set<int8_t>(0x7F4194+253,4);
+ m.set(cells+(3*512+3)*4,cell);m.zero(cell,0x148);m.set<int16_t>(cell+0x24,3);m.set<int16_t>(cell+0x26,3);m.set(cell+0xEC,2);m.set<uint8_t>(cell+0x12C,0x10);m.set<uint8_t>(cell+0x140,0x01);
  constexpr uint32_t actors=0x410000,actor=0x420000,type=0x430000;
  m.zero(0xA8EC78,20);m.set(0xA8EC78+4,actors);m.set(0xA8EC78+8,1);m.set(0xA8EC78+16,1);m.set(actors,actor);
  m.zero(actor,0x800);m.set(actor,0x7E3EBCu);m.set<int>(actor+0x6C,100);m.set<uint8_t>(actor+0x74,1);m.set<uint8_t>(actor+0x90,1);
  m.set(actor+0x21C,house);m.set(actor+0x520,type);m.set(actor+0x9C,3*256+128);m.set(actor+0xA0,3*256+128);m.set(actor+0x10,7);
  m.zero(house+22265,3);m.set<uint8_t>(house+22265,200);
  Sampler<Read> sampler(Read{&m});assert(sampler.step(false,2048));assert(!sampler.snapshot(1).terrain);assert(sampler.step(false,2048));auto a=sampler.snapshot(2);assert(a.terrain&&a.terrain->colors[3*512+3]==terrainColor(2,0,false));
+ assert((a.terrain->shade.size()==512*512&&a.terrain->shade[3*512+3]==ShroudFrames{-1,-1}));
+ assert((a.terrain->shade[3*512+2]==ShroudFrames{}));
  assert(a.markerScanValid&&a.markers.size()==1);
  m.bytes.erase(actors);auto failedBodyRead=sampler.snapshot(3);assert(!failedBodyRead.markerScanValid&&failedBodyRead.markers.empty());
  m.set(actors,actor);m.bytes.erase(0xA8EC78+16);auto failedHeaderRead=sampler.snapshot(4);assert(!failedHeaderRead.markerScanValid&&failedHeaderRead.markers.empty());
  m.set(0xA8EC78+16,0);auto empty=sampler.snapshot(5);assert(empty.markerScanValid&&empty.markers.empty());
  double u,v;a.terrain->geo.project(3.5,3.5,u,v);assert(u==.5&&v==.375);std::vector<uint32_t> pixels;raster(*a.terrain,80,80,pixels);assert(pixels[30*80+40]==terrainColor(2,0,false));
+ external::mapbounds::TileOrigin terrainPos{},shroudPos{};
+ assert(a.terrain->geo.tileOrigin(3,3,2,terrainPos)&&a.terrain->geo.shroudOrigin(3,3,shroudPos));
+ assert(terrainPos.x==90&&shroudPos.x==90&&terrainPos.y==0&&shroudPos.y==30);
+ // Radar marker projection, source-canvas coordinates and the native flat
+ // shroud SHP must share one origin. No blanket 30px/15px translation is due.
+ for(auto [cx,cy]:{std::pair{2,3},std::pair{3,2},std::pair{3,3}}){
+  assert(a.terrain->geo.shroudOrigin(cx,cy,shroudPos));
+  a.terrain->geo.project(cx+.5,cy+.5,u,v);
+  assert(std::abs(u*a.terrain->geo.rawWidth*30-(shroudPos.x+30))<1e-9);
+  assert(std::abs(v*a.terrain->geo.rawHeight*15-(shroudPos.y+15))<1e-9);
+ }
  DiagramRenderer diagram;auto scaled=diagram.render(a.terrain,80,80);assert(scaled&&scaled->pixels==pixels);
  for(int i=0;i<100;++i)assert(diagram.render(a.terrain,80,80)==scaled);
  auto larger=diagram.render(a.terrain,1600,800);assert(larger!=scaled&&larger->pixels.size()==1600*800);
@@ -93,8 +128,10 @@ using namespace external::radar;Memory m;constexpr uint32_t cells=0x100000,cell=
  assert(smoothColor(mix,3.5,3.5)==0x010101);assert(smoothColor(mix,4.,3.5)==0x808080);
  mix.colors[3*512+4]=0;assert(smoothColor(mix,4.,3.5)==0x080c08);assert(smoothColor(mix,3.9,3.5)==0x010101);
  // Never expose a partially refreshed terrain bank; old immutable bank survives.
- m.set<int8_t>(cell+0x120,-2);sampler.step(false,2048);assert(sampler.snapshot(3).terrain==a.terrain);sampler.step(false,2048);assert(sampler.snapshot(4).terrain->colors[3*512+3]==0);assert(a.terrain->colors[3*512+3]!=0);
- sampler.step(true,4096);assert(sampler.snapshot(5).terrain->colors[3*512+3]!=0);
+ // Tactical's cached draw frame can stay clear offscreen. The minimap
+ // recomputes from live neighbor bits, so changing +0x12C must hide it.
+ m.set<int8_t>(cell+0x120,-1);m.set<uint8_t>(cell+0x12C,0);sampler.step(false,2048);assert(sampler.snapshot(3).terrain==a.terrain);sampler.step(false,2048);assert((sampler.snapshot(4).terrain->colors[3*512+3]==0&&sampler.snapshot(4).terrain->shade[3*512+3]==ShroudFrames{-2,-1}));assert(a.terrain->colors[3*512+3]!=0);
+ sampler.step(true,4096);assert((sampler.snapshot(5).terrain->colors[3*512+3]!=0&&sampler.snapshot(5).terrain->shade[3*512+3]==ShroudFrames{-1,-1}));
  // A half-transparent main viewport means an unmasked minimap, exactly like
  // transparent/direct display. No extra darkening belongs in its terrain bank.
  for(uint32_t reveal:{1u,2u,3u}){
@@ -102,10 +139,26 @@ using namespace external::radar;Memory m;constexpr uint32_t cells=0x100000,cell=
   assert(revealed.terrain&&revealed.terrain->colors[3*512+3]==terrainColor(2,0,false));
   assert(revealed.terrain->art[3*512+3].cell==cell);
  }
- m.set<int8_t>(cell+0x120,-1);m.set<int8_t>(cell+0x121,0);
- assert(sampler.step(0,4096));assert(sampler.snapshot(5).terrain->colors[3*512+3]==terrainColor(2,0,true));
- assert(sampler.step(2,4096));assert(sampler.snapshot(5).terrain->colors[3*512+3]==terrainColor(2,0,false));
- m.set<int8_t>(cell+0x120,-2);m.set<int8_t>(cell+0x121,-1);
+ m.set<uint8_t>(cell+0x12C,0x10);m.set<uint8_t>(cell+0x140,0x02);
+ assert(sampler.step(0,4096));assert((sampler.snapshot(5).terrain->colors[3*512+3]==terrainColor(2,0,true)&&sampler.snapshot(5).terrain->shade[3*512+3]==ShroudFrames{-1,46}));
+ assert(sampler.step(2,4096));assert((sampler.snapshot(5).terrain->colors[3*512+3]==terrainColor(2,0,false)&&sampler.snapshot(5).terrain->shade[3*512+3]==ShroudFrames{-1,-1}));
+ // Native nonzero edge frames cover only part of a cell. The previous
+ // equality-to--1 gate discarded all such cells and their ground sprites.
+ constexpr uint32_t neighbor=0x250000;
+ m.set(cells+(3*512+4)*4,neighbor);m.zero(neighbor,0x148);m.set<int16_t>(neighbor+0x24,4);m.set<int16_t>(neighbor+0x26,3);
+ m.set<uint8_t>(neighbor+0x12C,0x08);m.set<uint8_t>(neighbor+0x140,0);
+ m.set<uint8_t>(cell+0x12C,0x08);m.set<uint8_t>(cell+0x140,0x02);
+ m.neighborReads=0;
+ assert(sampler.step(0,4096,true));auto edge=sampler.snapshot(5);
+ assert((edge.terrain->shade[3*512+3]==ShroudFrames{4,46}));
+ assert(m.neighborReads==1); // east flags prefetched once, then cached
+ assert(edge.terrain->colors[3*512+3]==terrainColor(2,0,false)); // post-mask fog in real mode
+ assert(edge.terrain->art[3*512+3].cell==cell);
+ // A corrupted selector table is rejected instead of becoming a clear pixel.
+ m.set<int8_t>(0x7F4194+255,127);sampler.reset();assert(!sampler.step(0,4096,true));
+ m.set<int8_t>(0x7F4194+255,46);
+ assert(sampler.step(1,4096,true));assert(sampler.snapshot(5).terrain->art[3*512+3].cell==cell);
+ m.set<uint8_t>(cell+0x12C,0);m.set<uint8_t>(cell+0x140,0x01);
  assert(sampler.step(0,4096));assert(sampler.snapshot(5).terrain->colors[3*512+3]==0);
  assert(sampler.step(1,4096));
  // Trigger-driven playfield changes need no new cell array/house/tick.
@@ -129,7 +182,7 @@ using namespace external::radar;Memory m;constexpr uint32_t cells=0x100000,cell=
  m.set(0xA83D4C,house+0x10000);sampler.step(true,1);assert(!sampler.snapshot(8).terrain);m.set(0xA8ED8C,1);assert(!sampler.step(true));assert(!sampler.snapshot(9).terrain);m.set(0xA8ED8C,0);
  m.set(Map+0x1488,std::numeric_limits<float>::quiet_NaN());assert(!sampler.step(true));m.set(Map+0x1488,10.f);m.set(Map+0x140,999999);assert(!sampler.step(true));
  raster(*a.terrain,-1,80,pixels);assert(pixels.empty());int count=0;
- for(int gw:{800,1920,2560,3840})for(int gh:{600,1080,1440,2160})for(int cw:{640,1920,3840})for(int ch:{480,1080,2160})for(int scale:{10,50,100,200})for(int mode:{0,1,2,3})for(int coord:{0,300,32768})for(bool plane:{false,true}){
+ for(int gw:{800,1920,2560,3840})for(int gh:{600,1080,1440,2160})for(int cw:{640,1920,3840})for(int ch:{480,1080,2160})for(int scale:{5,10,50,100,200})for(int mode:{0,1,2,3})for(int coord:{0,300,32768})for(bool plane:{false,true}){
   auto aircraft=plane?radarlayout::aircraft(gw,gh,cw,ch):radarlayout::Box{};auto layout=radarlayout::place(gw,gh,cw,ch,scale,mode,coord,coord,aircraft);assert(layout.valid);auto b=layout.destination;
   assert(b.x>=0&&b.y>=0&&b.x+b.w<=cw&&b.y+b.h<=ch);assert(!radarlayout::overlap(b,aircraft)&&!radarlayout::overlap(b,layout.source));++count;
  }

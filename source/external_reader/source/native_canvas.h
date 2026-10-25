@@ -105,6 +105,23 @@ public:
  NativeCanvas fork()const{NativeCanvas out=*this;out.dynamic_=true;out.failed_=false;out.dirty_.clear();out.dirtyRects_.clear();return out;}
  uint32_t pixel(int x,int y)const{if(x<0||y<0||x>=width_||y>=height_)return background_;auto p=pages_.find(key(x/PageSize,y/PageSize));return p==pages_.end()?background_:p->second->surface.color[size_t(y%PageSize)*PageSize+x%PageSize];}
  float depth(int x,int y)const{if(x<0||y<0||x>=width_||y>=height_)return -std::numeric_limits<float>::infinity();auto p=pages_.find(key(x/PageSize,y/PageSize));return p==pages_.end()?-std::numeric_limits<float>::infinity():p->second->surface.depth[size_t(y%PageSize)*PageSize+x%PageSize];}
+ // RadarClass::FillTerrainColors first paints each admitted cell's flat 2x1
+ // RGB footprint. The full-size TMP can then sit above that ground color.
+ // During an incremental scene build other TMPs may already overlap this
+ // rectangle; fill only untouched canvas pixels so they retain their art.
+ void underlayRect(int x0,int y0,int x1,int y1,uint32_t rgb){
+  x0=std::clamp(x0,0,width_);x1=std::clamp(x1,0,width_);
+  y0=std::clamp(y0,0,height_);y1=std::clamp(y1,0,height_);
+  if(x0>=x1||y0>=y1)return;
+  rgb=0xff000000u|(rgb&0xffffffu);
+  paint(x0,y0,x1,y1,[&](Surface&s,int pageX,int pageY){
+   for(int y=std::max(y0,pageY);y<std::min(y1,pageY+PageSize);++y)
+    for(int x=std::max(x0,pageX);x<std::min(x1,pageX+PageSize);++x){
+     size_t index=size_t(y-pageY)*PageSize+x-pageX;
+     if(s.color[index]==background_&&s.depth[index]==-std::numeric_limits<float>::infinity())s.color[index]=rgb;
+    }
+  });
+ }
  void diamond(float ax,float ay,float sx,float sy,float base,uint32_t color,const lighting::State&light){
   if(!std::isfinite(ax)||!std::isfinite(ay)||sx!=1||sy!=1)return;
   paint(int(std::floor(ax-30)),int(std::floor(ay-15)),int(std::ceil(ax+30)),int(std::ceil(ay+15)),[&](Surface&s,int x,int y){s.diamond(ax-x,ay-y,1,1,base,color,light);});

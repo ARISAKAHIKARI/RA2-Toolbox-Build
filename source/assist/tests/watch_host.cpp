@@ -8,7 +8,7 @@
 #include <cassert>
 #include <iostream>
 using DWORD=uint32_t;using BYTE=uint8_t;
-static DWORD clockValue=1000,pid=7,paintRevision=0;static bool enabled=true;static int captures=0,renders=0,draws=0,tileCalls=0;
+static DWORD clockValue=1000,pid=7,paintRevision=0;static bool enabled=true;static int captures=0,renders=0,draws=0,tileCalls=0,shroudLoads=0;
 static DWORD GetTickCount(){return clockValue;}static uint32_t commandEpoch=1,displayEpoch=1;static bool secondAvailable=false;static uint32_t commandMatch(){return commandEpoch;}static uint32_t displayMatch(){return displayEpoch;}static bool secondaryDisplayAvailable(){return secondAvailable;}static bool foregroundGame(){return true;}static bool formationInputOwns(){return false;}static void notify(const std::wstring&){}static void critical(const std::wstring&){}
 static struct {bool watchEnabled=true,watchSecondary=false,watchDanger=false,renderReveal=false;int mapStrategy=0;uint32_t watchKeys[3]={87,87,86};}extra;
 static struct {int chat=0,renderStatus=1,width=800,height=600;}snap;
@@ -44,6 +44,7 @@ struct Backend {
  bool palette(bool b,std::array<uint32_t,256>&p){return gameassets::palette(b,p);}
  bool tile(uint32_t t,unsigned s,const std::array<uint32_t,256>&p,external::voxel::Image&i){return gameassets::tile(t,s,p,i);}
  bool overlay(uint32_t t,uint32_t p,int f,external::voxel::Image&i,bool b=false){return gameassets::overlay(t,p,f,i,b);}
+ bool shroud(bool,int f,external::voxel::Image&i){++shroudLoads;i.canvasWidth=60;i.canvasHeight=30;i.width=60;i.height=30;i.x=-30;i.y=-15;i.indices.assign(1800,f==15?2:127);return true;}
  bool captureActor(uint32_t p,uint32_t t,uint32_t id,ActorArt&a){return gameassets::captureActor(p,t,id,a);}
  bool captureAnimation(uint32_t p,uint32_t t,uint32_t id,uint32_t b,uint32_t bid,ActorArt&a){return gameassets::captureAnimation(p,t,id,b,bid,a);}
  bool renderActor(const ActorArt&a,const external::visual::Pose&p,external::voxel::Image&i){return gameassets::renderActor(a,p,i);}
@@ -57,13 +58,13 @@ int main(){
  auto vec=[&](uint32_t p,uint32_t storage,const std::vector<uint32_t>&items){put(p+4,storage);put(p+8,int(items.size()));put(p+16,int(items.size()));memcpy(memory.data()+storage,items.data(),items.size()*4);};
  constexpr uint32_t cells=0x200000;put(external::radar::Map+0x13C,cells);put(external::radar::Map+0x140,512*512);uint32_t cell=0x400000;
  put(external::radar::Map+0xF4,32);put(external::radar::Map+0xF8,64);put(external::radar::Map+0x104,32);put(external::radar::Map+0x108,64);
- for(int y=10;y<=50;++y)for(int x=10;x<=50;++x){put(cells+(y*512+x)*4,cell);put(cell+0x24,int16_t(x));put(cell+0x26,int16_t(y));put(cell+0x120,int8_t(-1));put(cell+0x121,int8_t(-1));cell+=0x150;}
+ for(int y=10;y<=50;++y)for(int x=10;x<=50;++x){put(cells+(y*512+x)*4,cell);put(cell+0x24,int16_t(x));put(cell+0x26,int16_t(y));put(cell+0x120,int8_t(-1));put(cell+0x121,int8_t(-1));put(cell+0x12C,uint8_t(0x10));put(cell+0x140,uint8_t(1));cell+=0x150;}
  std::vector<uint32_t> actors;for(int i=0;i<300;++i){uint32_t p=0x10000+i*0x800,t=0x800000+i*0x2000;actors.push_back(p);put(p,0x7F5C70u);put(p+0x10,i+1);put(p+0x6C,100);put(p+0x74,uint8_t(1));put(p+0x90,uint8_t(1));put(p+0x6C4,t);put(p+0x21C,0x180000u);put(p+0x9C,(30+i%20)*256+128);put(p+0xA0,(30+i/20)*256+128);put(p+0x83,uint8_t(i==0));put(t+0xB0,1u);put(t+0xCA1,uint8_t(1));put(p+0x388,uint16_t(i*1024));put(p+0x3A0,uint16_t(16384));}
  vec(0xA8EC78,0x190000,actors);vec(0xA8ED28,0x1A0000,{0xF00000});engine.process=pid;engine.epoch=1;engine.tracks[0].target={actors[0],1};
  for(int i=0;i<24;++i){clockValue+=50;engine.update(clockValue);}
  assert(engine.views[0].frame.actors.size()==300);assert(engine.actorArt.size()==300);
  for(const auto&a:engine.views[0].frame.actors){auto it=engine.images.find(engine.imageKey(a));assert(it!=engine.images.end());assert(it->second.ready==(a.target.id!=1));}
- Graphics g;engine.drawView(g,engine.views[0]);assert(draws==1&&engine.views[0].raster.color.size()==640*512); // no schematic marker for failed asset
+ Graphics g;engine.drawView(g,engine.views[0]);assert(draws==1&&shroudLoads>0&&engine.views[0].raster.color.size()==640*512); // no schematic marker for failed asset
  int before=captures,oldRenders=renders;put(actors[1]+0x388,uint16_t(32768));put(actors[1]+0x3A0,uint16_t(49152));clockValue+=50;engine.update(clockValue);assert(captures==before&&renders>oldRenders);
  auto a=std::find_if(engine.views[0].frame.actors.begin(),engine.views[0].frame.actors.end(),[](auto&a){return a.target.id==2;});assert(a!=engine.views[0].frame.actors.end());assert(engine.images.at(engine.imageKey(*a)).image.pixels[0]==0xff001018);
  // All 299 valid models turn together: the 16-item work budget must retain
@@ -103,11 +104,12 @@ int main(){
  assert(paintRevision==priorPaint); // camera animation does not reraster the unrelated full-screen overlay
  // Elevated overlay and an actor on that tile share the native height basis.
  put(0xB0CD48,.144337567);clockValue+=50;engine.update(clockValue);assert(engine.views[0].frame.zScale==.144337567);
- auto actor=engine.views[0].frame.actors[1];auto&f=engine.views[0].frame;f.radius=1;f.side=3;f.cx=actor.x/256;f.cy=actor.y/256;actor.x=f.cx*256+128;actor.y=f.cy*256+128;actor.z=208;actor.light.intensity=1200;f.actors={actor};engine.views[0].positions.clear();f.cells.assign(9,0);f.cells[4]=0xff112233;f.tiles.assign(9,{});f.tiles[4].level=2;f.tiles[4].overlayType=0xdead;f.tiles[4].overlayY=-31;f.tiles[4].overlayLight.intensity=1500;
+ auto actor=engine.views[0].frame.actors[1];auto&f=engine.views[0].frame;f.radius=1;f.side=3;f.cx=actor.x/256;f.cy=actor.y/256;actor.x=f.cx*256+128;actor.y=f.cy*256+128;actor.z=208;actor.light.intensity=1200;f.actors={actor};engine.views[0].positions.clear();f.cells.assign(9,0);f.cells[4]=0xff112233;f.tiles.assign(9,{});f.shade.assign(9,{});f.shade[4]={-1,-1};f.tiles[4].level=2;f.tiles[4].overlayType=0xdead;f.tiles[4].overlayY=-31;f.tiles[4].overlayLight.intensity=1500;
  auto&overlay=engine.overlays[{0xdead,0}];overlay.ready=true;overlay.image.width=overlay.image.height=1;overlay.image.pixels={0xffabcdef};
  // One composed canvas keeps native-height positioning and pixel depth.
  f.focus=actor.target;f.center.target=actor.target;overlay.image.width=overlay.image.height=8;overlay.image.pixels.assign(64,0xffabcdef);
  auto&actorImage=engine.images[engine.imageKey(actor)];actorImage.ready=true;actorImage.image=overlay.image;actorImage.image.pixels.assign(64,0xff204080);
+ engine.views[0].reveal=true; // The following independent Z tests use hand-built one-cell art.
  drawnRects.clear();engine.drawView(g,engine.views[0]);assert(drawnRects.size()==1&&drawnRects[0].w==640);
  auto&canvas=engine.views[0].raster;assert(canvas.color[228*640+322]==external::camera::lit(0xffabcdef,0,false,f.tiles[4].overlayLight));
  assert(canvas.color[258*640+322]==external::camera::lit(0xff204080,0,false,actor.light));

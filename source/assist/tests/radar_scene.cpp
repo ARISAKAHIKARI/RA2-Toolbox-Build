@@ -4,10 +4,18 @@
 #include <functional>
 struct Assets {
  struct ActorArt {int id=0;bool anim=false;};struct Files {uint64_t value=1;uint64_t revision(){return value;}}files;int loads=0,captures=0,renders=0;std::set<int> seen;std::map<int,std::set<int>> frames;std::set<std::pair<int,int>> buildingPoses;bool small=false,partial=false;
- uint32_t forcedColor=0,overlayColor=0;
+ uint32_t forcedColor=0,overlayColor=0;bool denyShroud=false;
  uint64_t revision(){return files.revision();}
  static size_t cost(const ActorArt&){return sizeof(ActorArt);}
  bool palette(bool,std::array<uint32_t,256>&p){p.fill(0xffffffff);return true;}
+ bool shroud(bool fog,int frame,external::voxel::Image&i){
+  if(denyShroud)return false;
+  i={};i.canvasWidth=60;i.canvasHeight=30;i.width=60;i.height=30;i.x=-30;i.y=-15;
+  i.indices.assign(1800,0xfe);i.pixels.assign(1800,0);
+  for(int y=0;y<30;++y)for(int x=0;x<60;++x)if(std::abs(x-29.5)/30.+std::abs(y-14.5)/15.<1.)
+   i.indices[y*60+x]=uint8_t(fog?64:frame==15?2:127);
+  return true;
+ }
  bool tile(uint32_t,unsigned,const std::array<uint32_t,256>&,external::voxel::Image&i){++loads;i.width=60;i.height=30;i.x=-30;i.y=-15;i.pixels.assign(1800,0xffa03020);i.depth.assign(1800,0);return true;}
  bool overlay(uint32_t,uint32_t,int,external::voxel::Image&i,bool=false){if(!overlayColor)return false;i.width=i.height=60;i.x=i.y=-30;i.pixels.assign(3600,overlayColor);i.writeDepth=false;return true;}
  int buildingFrame(uint32_t,uint32_t){return 0;}
@@ -38,6 +46,23 @@ int main(){
  std::shared_ptr<const Scene> scene=renderer.render(frame,128,64,read,assets);
  for(int i=0;i<80&&!scene;++i)scene=renderer.render(frame,128,64,read,assets);
  assert(scene&&scene->width==128&&scene->height==64&&assets.loads==1);int loads=assets.loads;
+ // An actor sprite can extend beyond the explored terrain tile. Native SHP
+ // alpha must clip the final world composition, including that foreground
+ // spill; an unreadable mask must never publish a newly unmasked scene.
+ {
+  auto native=std::make_shared<Terrain>(*terrain);native->shade.resize(512*512);
+  native->shade[64*512+64]={-1,-1};native->shade[64*512+65]={-2,-2};
+  Marker unit;unit.x=unit.y=64*256+128;unit.object=0x10000;unit.id=1;unit.type=0x20000;unit.kind=2;
+  Frame f;f.terrain=native;f.markers={unit};f.tick=100;
+  Assets maskAssets;SceneRenderer<Assets> maskRenderer;
+  auto shaded=maskRenderer.render(f,128,64,read,maskAssets);assert(shaded);
+  auto reveal=std::make_shared<Terrain>(*native);reveal->reveal=true;f.terrain=reveal;
+  SceneRenderer<Assets> revealRenderer;auto open=revealRenderer.render(f,128,64,read,maskAssets);assert(open);
+  auto green=[](const std::shared_ptr<const Scene>&s){return std::count(s->pixels.begin(),s->pixels.end(),0xff00aa00u);};
+  assert(green(open)>green(shaded));
+  maskAssets.denyShroud=true;SceneRenderer<Assets> invalidMask;
+  f.terrain=native;assert(!invalidMask.render(f,128,64,read,maskAssets));
+ }
  // A legal southern border cell may sit outside the gameplay area. Preserve
  // its actual TMP when resolved, but never synthesize a ground diamond when
  // the sampler has no tile for that cell (type 0).
@@ -48,10 +73,50 @@ int main(){
   south->colors.assign(512*512,0);south->art.assign(512*512,{});south->colors[edge]=0x996633;
   Assets edgeAssets;SceneRenderer<Assets> edgeRenderer;Frame edgeFrame;edgeFrame.terrain=south;edgeFrame.tick=100;
   auto missing=edgeRenderer.render(edgeFrame,128,64,read,edgeAssets);
-  assert(missing&&edgeAssets.loads==0&&std::all_of(missing->pixels.begin(),missing->pixels.end(),[](uint32_t p){return p==0xff080c08;}));
+  assert(missing&&edgeAssets.loads==0);
+  // The native radar's flat RGB backing remains even when a TMP is missing;
+  // no extra diamond or scene art is synthesized for that unresolved type.
+  assert(missing->pixels[63*128+63]!=0xff080c08&&missing->pixels[62*128+63]==0xff080c08);
   auto resolved=std::make_shared<Terrain>(*south);resolved->art[edge].type=1;edgeFrame.terrain=resolved;
   auto drawn=edgeRenderer.render(edgeFrame,128,64,read,edgeAssets);
   assert(drawn&&edgeAssets.loads==1&&drawn->pixels[63*128+63]!=0xff080c08);
+ }
+ // The raw eastern/southern 2x1 admission rectangle reaches the source
+ // canvas border even when a raised TMP ends 30px left and 15px above it.
+ // Filling the cell's flat backing eliminates the repeated black teeth in a
+ // fully revealed real-scene map without moving TMP art or extending raw bounds.
+ {
+  auto border=std::make_shared<Terrain>();border->geo={8,8,6,7,8,8,1,0x10000,0x20000,512*512,{8,8,0,0,8,8},8,8};
+  border->reveal=true;border->colors.resize(512*512);border->art.resize(512*512);
+  constexpr int bx=7,by=7;size_t index=by*512+bx;
+  assert(border->geo.valid()&&border->geo.legal(bx,by)&&border->geo.flatVisible(bx,by));
+  border->colors[index]=0x6699bb;border->art[index].type=1;border->art[index].level=2;
+  Frame edgeFrame;edgeFrame.terrain=border;edgeFrame.tick=100;
+  Assets edgeAssets;SceneRenderer<Assets> edgeRenderer;
+  auto image=edgeRenderer.render(edgeFrame,240,120,read,edgeAssets);
+  assert(image&&image->pixels[90*240+180]==0xffa03020);
+  assert(image->pixels[119*240+239]==0xff6699bb);
+  assert(image->pixels[119*240+179]==0xff080c08);
+  auto overlap=std::make_shared<Terrain>(*border);size_t prior=6*512+7;
+  overlap->colors[prior]=0x224466;overlap->art[prior].type=1;
+  overlap->art[prior].level=0;overlap->art[index].type=0;
+  edgeFrame.terrain=overlap;edgeRenderer.reset();image=edgeRenderer.render(edgeFrame,240,120,read,edgeAssets);
+  assert(image&&image->pixels[110*240+220]==0xffa03020); // later RGB fill cannot erase an earlier TMP
+  // The live usable area stops before the native raw backing. Its legal
+  // exterior may supply only RadarColor: no TMP, overlays or actors leak out.
+  auto fringe=std::make_shared<Terrain>(*border);fringe->geo.bounds.columns=4;fringe->geo.bounds.rows=1;
+  assert(fringe->geo.legal(bx,by)&&!fringe->geo.bounds.usable(bx,by,2));
+  fringe->colors[index]=0;fringe->baseColors.resize(512*512);
+  fringe->baseColors[index]=0x6699bb;fringe->art[index].type=1;
+  edgeFrame.terrain=fringe;edgeRenderer.reset();int oldLoads=edgeAssets.loads;
+  image=edgeRenderer.render(edgeFrame,240,120,read,edgeAssets);
+  assert(image&&image->pixels[119*240+239]==0xff6699bb);
+  assert(image->pixels[90*240+180]==0xff080c08&&edgeAssets.loads==oldLoads);
+  // Only the native RGB bank changed. Reusing the old composed background
+  // would leave the previous border color visible indefinitely.
+  auto changed=std::make_shared<Terrain>(*fringe);changed->baseColors[index]=0x997744;
+  edgeFrame.terrain=changed;image=edgeRenderer.render(edgeFrame,240,120,read,edgeAssets);
+  assert(image&&image->pixels[119*240+239]==0xff997744&&edgeAssets.loads==oldLoads);
  }
  Marker m;m.u=m.v=.5;m.x=m.y=64*256+128;m.object=0x10000;m.type=0x20000;m.id=1;m.kind=2;frame.markers={m};
  scene=renderer.render(frame,128,64,read,assets);assert(scene&&std::find(scene->pixels.begin(),scene->pixels.end(),0xff00aa00)!=scene->pixels.end()&&assets.loads==loads);

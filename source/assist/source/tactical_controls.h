@@ -171,7 +171,7 @@ label(L"副屏小地图位置 X / Y",20,260);edit(9166,std::to_wstring(minimapSe
 number(9168,L"副屏小地图宽度 / 像素",minimapSecondaryWidth,L"160–4096 · 默认 320");
 note(L"位置 0 为左／上，10000 为右／下；副屏小地图顶部可拖动，左上角或右下角可等比调整大小。副屏设置与游戏内小地图分开保存。",60);
 label(L"小地图画面",20,260);choices(combo(9065),{L"示意",L"实景"},minimapMode);next();
-number(831,L"小地图缩放 / %",minimapScale,L"10–200 · 默认 25");
+number(831,L"小地图缩放 / %",minimapScale,L"5–200 · 默认 10");
 note(L"实景模式 100% 对应地图原生像素大小；显示区域不足时等比适配。",36);
 label(L"战术小地图位置",20,260);choices(combo(850),{L"原雷达左侧",L"画面左上",L"画面左下",L"自定义坐标"},minimapPosition);next();
 label(L"自定义位置 X / Y",20,260);edit(851,std::to_wstring(minimapX),290,100,true);edit(852,std::to_wstring(minimapY),405,100,true);next();

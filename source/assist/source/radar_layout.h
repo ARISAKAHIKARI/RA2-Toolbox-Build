@@ -27,13 +27,13 @@ inline Layout place(int gw,int gh,int cw,int ch,int scale,int mode,int userX,int
   // A real-scene 100% is one source-world pixel per game pixel, not 100% of
   // the original 160x140 radar box. Fit only after selecting that baseline.
   double clientScale=std::min(double(cw)/gw,double(ch)/gh);
-  double contentW=std::ceil(nativeWidth*clientScale*std::clamp(scale,10,200)/100.);
-  double contentH=std::ceil(nativeHeight*clientScale*std::clamp(scale,10,200)/100.);
+  double contentW=std::ceil(nativeWidth*clientScale*std::clamp(scale,5,200)/100.);
+  double contentH=std::ceil(nativeHeight*clientScale*std::clamp(scale,5,200)/100.);
   double fit=std::min({1.,double(availableW-2)/contentW,double(availableH-2)/contentH,2048./contentW,2048./contentH});
   w=std::max(3,int(contentW*fit)+2);h=std::max(3,int(contentH*fit)+2);
  }else{
-  w=int(int64_t(sw)*std::clamp(scale,10,200)/100)+2;
-  h=int(int64_t(sh)*std::clamp(scale,10,200)/100)+2;
+  w=int(int64_t(sw)*std::clamp(scale,5,200)/100)+2;
+  h=int(int64_t(sh)*std::clamp(scale,5,200)/100)+2;
   double fit=std::min(1.0,std::min(double(availableW)/w,double(availableH)/h));
   w=std::max(3,int(w*fit));h=std::max(3,int(h*fit));
  }

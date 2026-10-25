@@ -3,6 +3,7 @@
 #include "watch_view.h"
 #include "camera_raster.h"
 #include "native_canvas.h"
+#include "radar_shroud_mask.h"
 #include "camera_repair.h"
 #include <map>
 #include <tuple>
@@ -22,17 +23,18 @@ template<class Assets>class SceneRenderer {
  std::shared_ptr<const Terrain> building_,complete_,blocked_;bool dynamicFailure_=false;
  struct Paint {lighting::State light,overlayLight;int overlayOffset=0;bool bridge=false;uint64_t signature=0;};
  std::shared_ptr<camera::NativeCanvas::Budget> nativeBudget_=std::make_shared<camera::NativeCanvas::Budget>();
- camera::NativeCanvas pending_,background_;std::shared_ptr<const Scene> baseScene_;
- std::vector<size_t> cells_;std::vector<Paint> prepared_;std::vector<uint64_t> painted_;size_t cursor_=0;
+ camera::NativeCanvas pending_,background_;std::shared_ptr<const Scene> baseScene_,maskedBaseScene_;
+ shroudmask::Raster mask_;std::shared_ptr<const Terrain> maskSource_;bool maskFog_=false;
+ std::vector<size_t> cells_,baseCells_;std::vector<Paint> prepared_;std::vector<uint64_t> painted_;size_t cursor_=0,baseCursor_=0;
  bool probing_=false,probeChanged_=false,pendingIncomplete_=false,backgroundIncomplete_=false;uint32_t backgroundRetry_=0;int width_=0,height_=0;double spanX_=0,spanY_=0;uint64_t revision_=0;
  lighting::State backgroundLight_;uint64_t nativeCells_=0,basePresents_=0;
  static uint64_t mix(uint64_t h,uint64_t v){return (h^v)*1099511628211ull;}
  static uint64_t lightKey(uint64_t h,const lighting::State&s){h=mix(h,uint32_t(s.ambient));h=mix(h,uint32_t(s.intensity));for(int c:s.tint)h=mix(h,uint32_t(c));return h;}
  static bool sameSource(const Terrain&a,const Terrain&b){
-  if(!a.geo.same(b.geo)||a.reveal!=b.reveal||a.colors!=b.colors||a.art.size()!=b.art.size())return false;
+  if(!a.geo.same(b.geo)||a.reveal!=b.reveal||a.colors!=b.colors||a.baseColors!=b.baseColors||a.shade!=b.shade||a.art.size()!=b.art.size())return false;
   for(size_t n=0;n<a.art.size();++n){const auto&x=a.art[n];const auto&y=b.art[n];if(x.cell!=y.cell||x.type!=y.type||x.overlayType!=y.overlayType||x.overlaySourceType!=y.overlaySourceType||x.overlay!=y.overlay||x.sub!=y.sub||x.level!=y.level||x.overlayFrame!=y.overlayFrame)return false;}return true;
  }
- void clearBackground(){building_.reset();complete_.reset();blocked_.reset();dynamicFailure_=false;pending_={};background_={};baseScene_.reset();cells_.clear();prepared_.clear();painted_.clear();cursor_=0;probing_=probeChanged_=pendingIncomplete_=backgroundIncomplete_=false;backgroundRetry_=0;}
+ void clearBackground(){building_.reset();complete_.reset();blocked_.reset();dynamicFailure_=false;pending_={};background_={};baseScene_.reset();maskedBaseScene_.reset();maskSource_.reset();mask_={};cells_.clear();baseCells_.clear();prepared_.clear();painted_.clear();cursor_=baseCursor_=0;probing_=probeChanged_=pendingIncomplete_=backgroundIncomplete_=false;backgroundRetry_=0;}
 
 public:
  explicit SceneRenderer(size_t pages=camera::NativeCanvas::MaximumPages){nativeBudget_->maximum=std::clamp<size_t>(pages,1,camera::NativeCanvas::MaximumPages);}
@@ -43,7 +45,7 @@ public:
  template<class Read>std::shared_ptr<const Scene> render(const Frame&frame,int width,int height,Read read,Assets&assets){
   if(!frame.terrain||!frame.terrain->geo.valid()||frame.terrain->art.size()!=512*512||width<3||height<3||width>2048||height>2048)return {};
   if(revision_!=assets.revision()){reset();revision_=assets.revision();}
-  if(width!=width_||height!=height_){width_=width;height_=height;baseScene_.reset();}
+  if(width!=width_||height!=height_){width_=width;height_=height;baseScene_.reset();maskedBaseScene_.reset();maskSource_.reset();}
   const auto&domain=frame.terrain->geo;auto viewport=domain.nativeViewport();double exactX=viewport.width,exactY=viewport.height;
   if(!std::isfinite(exactX)||!std::isfinite(exactY)||exactX<=0||exactY<=0||exactX>camera::NativeCanvas::MaximumDimension||exactY>camera::NativeCanvas::MaximumDimension)return {};
   // Pixel storage is rounded outwards; the final filter still uses the exact
@@ -54,8 +56,11 @@ public:
   if(blocked_){if(blocked_==frame.terrain||sameSource(*blocked_,*frame.terrain)){blocked_=frame.terrain;return {};}blocked_.reset();}
   lighting::State scene=lighting::sample(read);GameView<Read> game(read);
   if(!building_&&(complete_!=frame.terrain||backgroundLight_!=scene||(backgroundIncomplete_&&int32_t(frame.tick-backgroundRetry_)>=0))){
-   building_=frame.terrain;cursor_=0;cells_.clear();prepared_.clear();probeChanged_=pendingIncomplete_=false;
+   building_=frame.terrain;cursor_=baseCursor_=0;cells_.clear();baseCells_.clear();prepared_.clear();probeChanged_=pendingIncomplete_=false;
    for(size_t n=0;n<building_->colors.size();++n)if(building_->colors[n])cells_.push_back(n);
+   if(building_->reveal&&building_->baseColors.size()==building_->colors.size())
+    for(size_t n=0;n<building_->baseColors.size();++n)
+     if(building_->baseColors[n]&&!building_->colors[n])baseCells_.push_back(n);
    std::stable_sort(cells_.begin(),cells_.end(),[](size_t a,size_t b){return a%512+a/512<b%512+b/512;});
    // New sampling banks commonly contain identical terrain. Compare evaluated
    // per-cell lighting before deciding to rebuild millions of native pixels.
@@ -74,20 +79,37 @@ public:
   if(building_&&probing_){size_t end=std::min(cells_.size(),cursor_+size_t(4096));for(;cursor_<end;++cursor_){prepared_[cursor_]=prepare(cells_[cursor_]);probeChanged_|=prepared_[cursor_].signature!=painted_[cursor_];}
    if(cursor_==cells_.size()){
     if(!probeChanged_){complete_=building_;building_.reset();backgroundLight_=scene;cursor_=0;prepared_.clear();}
-    else{probing_=false;cursor_=0;if(!pending_.reset(nativeWidth,nativeHeight,nativeBudget_))return {};}
+    else{probing_=false;cursor_=baseCursor_=0;if(!pending_.reset(nativeWidth,nativeHeight,nativeBudget_))return {};}
    }
   }
   if(building_&&!probing_){
-   const auto&terrain=*building_;const auto&geo=terrain.geo;std::array<uint32_t,256> palette{};bool paletteReady=assets.palette(true,palette);int loads=0;size_t end=std::min(cells_.size(),cursor_+size_t(4096));
-   for(;cursor_<end;++cursor_){size_t index=cells_[cursor_];int x=int(index%512),y=int(index/512);const auto&cell=terrain.art[index];
+   const auto&terrain=*building_;const auto&geo=terrain.geo;
+   // Native radar RGB exists for the full legal/raw backing, including the
+   // inward playfield margin. Reveal paints that coarse backing at the fringe
+   // while still excluding nonusable TMPs, overlays, objects and effects.
+   size_t baseEnd=std::min(baseCells_.size(),baseCursor_+size_t(4096));
+   for(;baseCursor_<baseEnd;++baseCursor_){size_t index=baseCells_[baseCursor_];int x=int(index%512),y=int(index/512);
+    int flatX=x-y+geo.offsetX,flatY=x+y-geo.offsetY;
+    pending_.underlayRect(flatX*30,flatY*15,(flatX+2)*30,(flatY+1)*15,terrain.baseColors[index]);
+    if(pending_.failed())break;
+   }
+   if(baseCursor_<baseCells_.size()&&!pending_.failed())return {};
+   std::array<uint32_t,256> palette{};bool paletteReady=assets.palette(true,palette);int loads=0;size_t end=std::min(cells_.size(),cursor_+size_t(4096));
+   for(;cursor_<end&&!pending_.failed();++cursor_){size_t index=cells_[cursor_];int x=int(index%512),y=int(index/512);const auto&cell=terrain.art[index];
     mapbounds::TileOrigin origin;if(!geo.tileOrigin(x,y,int(cell.level),origin))continue;float px=float(origin.x+30),py=float(origin.y+15),base=float((x+y)*15);
+    // The original radar has a flat 2x1 RGB cell footprint beneath its
+    // scene. A TMP diamond (especially on a raised edge) does not cover that
+    // whole footprint; keep its native ground color in the uncovered pixels.
+    int flatX=x-y+geo.offsetX,flatY=x+y-geo.offsetY;
+    uint32_t baseColor=terrain.baseColors.size()==terrain.colors.size()&&terrain.baseColors[index]?terrain.baseColors[index]:terrain.colors[index];
+    pending_.underlayRect(flatX*30,flatY*15,(flatX+2)*30,(flatY+1)*15,baseColor);
     auto&paint=prepared_[cursor_];if(!probeChanged_)paint=prepare(index);
     if(cell.type){
      auto&tile=tiles_[{cell.type,cell.sub}];
      if(!tile.ready&&paletteReady&&loads<64&&(!tile.retry||int32_t(frame.tick-tile.retry)>=0)){++loads;tile.ready=assets.tile(cell.type,cell.sub,palette,tile.image);if(tile.ready){auto n=camera::pixels(tile.image);if(staticPixels+n<=16*1024*1024)staticPixels+=n;else{tile.ready=false;tile.image={};}}tile.retry=frame.tick+2000;}
      if(!tile.ready&&paletteReady&&loads>=64&&!tile.retry)break;
      if(tile.ready)pending_.blit(tile.image,px,py,1,1,base,paint.light,0);
-     else{pendingIncomplete_=true;pending_.diamond(px,py,1,1,base,0xff000000u|terrain.colors[index],paint.light);}
+     else{pendingIncomplete_=true;pending_.diamond(px,py,1,1,base,0xff000000u|baseColor,paint.light);}
     } // A cell without a resolved tile has no ground sprite to paint.
     if(cell.overlayType){auto&overlay=overlays_[{cell.overlayType,cell.overlayFrame}];
      if(!overlay.ready&&loads<64&&(!overlay.retry||int32_t(frame.tick-overlay.retry)>=0)){++loads;overlay.ready=assets.overlay(cell.overlayType,game.template get<uint32_t>(cell.overlayType+0xA4),cell.overlayFrame,overlay.image);if(overlay.ready){auto n=camera::pixels(overlay.image);if(staticPixels+n<=16*1024*1024)staticPixels+=n;else{overlay.ready=false;overlay.image={};}}overlay.retry=frame.tick+2000;}
@@ -99,14 +121,29 @@ public:
    if(pending_.failed()){
     // Release the old native bank before retrying the current cell. The worker
     // may keep its last small published scene; never silently minify sources.
-    if(background_.pageCount()){background_={};complete_.reset();baseScene_.reset();pending_.clearFailure();}
-    else{blocked_=building_;building_.reset();pending_={};prepared_.clear();cells_.clear();cursor_=0;complete_.reset();baseScene_.reset();}
+    if(background_.pageCount()){background_={};complete_.reset();baseScene_.reset();maskedBaseScene_.reset();maskSource_.reset();pending_.clearFailure();}
+    else{blocked_=building_;building_.reset();pending_={};prepared_.clear();cells_.clear();baseCells_.clear();cursor_=baseCursor_=0;complete_.reset();baseScene_.reset();maskedBaseScene_.reset();maskSource_.reset();}
     return {};
    }
-   if(cursor_==cells_.size()){background_=std::move(pending_);background_.clean();painted_.resize(prepared_.size());for(size_t n=0;n<prepared_.size();++n)painted_[n]=prepared_[n].signature;prepared_.clear();complete_=building_;building_.reset();backgroundLight_=scene;backgroundIncomplete_=pendingIncomplete_;backgroundRetry_=frame.tick+2000;baseScene_.reset();}
+   if(cursor_==cells_.size()){background_=std::move(pending_);background_.clean();painted_.resize(prepared_.size());for(size_t n=0;n<prepared_.size();++n)painted_[n]=prepared_[n].signature;prepared_.clear();complete_=building_;building_.reset();backgroundLight_=scene;backgroundIncomplete_=pendingIncomplete_;backgroundRetry_=frame.tick+2000;baseScene_.reset();maskedBaseScene_.reset();}
   }
   if(!complete_)return {};
   if(!baseScene_){auto base=std::make_shared<Scene>();base->width=width;base->height=height;if(!background_.present(width,height,base->pixels,spanX_,spanY_))return {};baseScene_=std::move(base);++basePresents_;}
+  // Native Cell::DrawShroud places 60x30 alpha sprites on the flat cell
+  // projection, after the world is drawn. Cache their final-presentation mask
+  // separately from the original-size terrain so units and repairs cannot
+  // escape into unseen neighboring cells. All frames use their raw SHP bytes.
+  const bool masked=!complete_->reveal&&complete_->shade.size()==512*512;
+  uint32_t options=game.template get<uint32_t>(0xA8B230);
+  bool fog=masked&&options>=0x10000&&(game.template get<uint8_t>(options+1)&0x10)&&
+   game.template get<uint8_t>(complete_->geo.house+0x1F5)==0;
+  if(masked&&(maskSource_!=complete_||maskFog_!=fog||mask_.width!=width||mask_.height!=height)){
+   bool same=maskSource_&&maskFog_==fog&&mask_.width==width&&mask_.height==height&&sameSource(*maskSource_,*complete_);
+   if(!same){if(!mask_.build(*complete_,width,height,spanX_,spanY_,fog,
+     [&](bool isFog,int index,voxel::Image&out){return assets.shroud(isFog,index,out);}))return {};
+    maskedBaseScene_.reset();}
+   maskSource_=complete_;maskFog_=fog;
+  }
   auto view=background_.fork();const auto&geo=frame.terrain->geo;int work=0;size_t pixels=0;std::vector<const Marker*> fallbacks;
   auto markers=frame.markers;for(auto&m:markers)if(m.kind==3)assets.buildingPose(m.object,m.type,m.pose);
   std::map<ObjectKey,ImageKey> visible;std::set<ImageKey> wanted;std::set<ArtKey> artWanted;
@@ -154,10 +191,15 @@ public:
   // canvas crop the image. Camera movement limits are not a pixel mask.
   if(tiles_.size()>4096)tiles_.clear();if(overlays_.size()>4096)overlays_.clear();
   if(view.failed()){dynamicFailure_=true;return {};}
-  if(!view.dirtyPages()&&fallbacks.empty())return baseScene_;
+  if(!view.dirtyPages()&&fallbacks.empty()){
+   if(!masked)return baseScene_;
+   if(!maskedBaseScene_){auto out=std::make_shared<Scene>(*baseScene_);mask_.apply(out->pixels);maskedBaseScene_=std::move(out);}
+   return maskedBaseScene_;
+  }
   auto out=std::make_shared<Scene>(*baseScene_);if(!view.presentDirty(width,height,out->pixels,spanX_,spanY_)){dynamicFailure_=true;return {};}
   // Missing-art dots are presentation annotations, not minified game sprites.
   for(const auto*m:fallbacks){int x=int(((double(m->x)-m->y)*30/256.+geo.offsetX*30)*width/spanX_),y=int(((double(m->x)+m->y)*15/256.-geo.offsetY*15)*height/spanY_);for(int yy=std::max(0,y-1);yy<std::min(height,y+2);++yy)for(int xx=std::max(0,x-1);xx<std::min(width,x+2);++xx)out->pixels[size_t(yy)*width+xx]=0xff000000u|m->color;}
+  if(masked)mask_.apply(out->pixels);
   return out;
  }
 };
