@@ -215,7 +215,7 @@ if __name__=='__main__':
         folder=pathlib.Path(t)
         for name in ('RA2Toolbox.exe','GameRuntime.dll'):shutil.copy2(source/name,folder/name)
         scenario(folder)
-    result={'status':'PASS','version':'1.0.38-pre.7','runs':3,'display_switches':10,
+    result={'status':'PASS','version':'1.0.38-pre.8','runs':3,'display_switches':10,
             'checks':['all fresh UI switches off','user hotkeys','cross-pane edits',
                       'real Win32 INI writes','restart on','restart off',
                       'information adaptive rate matches native monitor','adaptive mode retains manual Hz and disables its editor',
@@ -225,3 +225,4 @@ if __name__=='__main__':
             'game_tested':False,'multiplayer_tested':False}
     print(json.dumps(result,ensure_ascii=False))
     (source/'WINDOWS_SETTINGS_SMOKE.json').write_text(json.dumps(result,ensure_ascii=False,indent=2)+'\n')
+

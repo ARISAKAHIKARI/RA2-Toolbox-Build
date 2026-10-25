@@ -54,7 +54,7 @@ struct SharedReadView{ReadSession*reader;};
 namespace cameraassets {template<class Read>struct Context{explicit Context(Read&){}void identity(DWORD,uint32_t){}};}
 namespace radar {
 struct Geometry {bool same(const Geometry&)const{return true;}};
-struct Terrain{Geometry geo;};
+struct Terrain{Geometry geo;bool reveal=false;};
 struct Image{int width=320,height=160;};
 struct Frame {std::shared_ptr<Terrain>terrain=std::make_shared<Terrain>();std::shared_ptr<Image>map,scene;std::vector<int>markers;};
 template<class Assets>struct SceneRenderer {void reset(){++sceneResets;}template<class Read>auto render(const Frame&,int w,int h,Read,Assets&){return std::make_shared<Image>(Image{w,h});}};
@@ -95,3 +95,4 @@ with tempfile.TemporaryDirectory(prefix='minimap-rate-') as temp:
     (path / 'test.cpp').write_text(code)
     subprocess.run(['g++', '-std=c++17', '-O2', '-pthread', str(path / 'test.cpp'), '-o', str(path / 'test')], check=True)
     subprocess.run([str(path / 'test')], check=True)
+

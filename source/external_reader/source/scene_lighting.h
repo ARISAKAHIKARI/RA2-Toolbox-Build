@@ -108,11 +108,12 @@ template<class Read>State object(Read read,uint32_t type,uint32_t owner,int kind
   return at(read,x,y,z,fallback,true); // 705EC1: also replaces ExtraLight with cell terrain intensity.
  State out=at(read,x,y,z,fallback,false,false);
  converterTint(read,objectConverter(read,type,owner),out.tint);
- if(kind==0||kind==2){
+ if(kind>=0&&kind<=2){
   // Unit::Draw 73D0C3 adds ExtraUnitLight before selecting VXL or SHP.
-  // Aircraft::Draw 414925 uses its separate ExtraAircraftLight. Rules parsing
-  // stores config*1000 as signed integers, despite public float declarations.
-  uint32_t rules=0,after=0,offset=kind==2?0x17D4:0x17DC;int32_t extra=0;
+  // Infantry::Draw 519457 and Aircraft::Draw 414925 use separate fields.
+  // Rules parsing stores config*1000 as signed integers, despite public
+  // float declarations. Never infer one class's light from another class.
+  uint32_t rules=0,after=0,offset=kind==2?0x17D4:(kind==1?0x17D8:0x17DC);int32_t extra=0;
   if(read(0x8871E0,&rules,4)&&rules>=0x10000&&uint64_t(rules)+offset+4<=0x100000000ull&&read(rules+offset,&extra,4)&&
      read(0x8871E0,&after,4)&&after==rules){
    int64_t base=out.intensity<0?int64_t(out.ambient)*10:out.intensity;

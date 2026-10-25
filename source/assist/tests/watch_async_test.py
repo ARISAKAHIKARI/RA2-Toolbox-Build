@@ -24,6 +24,23 @@ int main(){
  }
  vec(0xA8EC78,0x190000,actors);watchhost::process=pid;watchhost::epoch=1;watchhost::controls=1;
  watchhost::update(clockValue);assert(awaitResult(watchhost::controls));
+ // A NEW completion can still contain older lifecycle evidence: stop a job
+ // after sampling/drawing, confirm death on the foreground path, then let
+ // that old job finish. Pointer-based one-time consumption alone cannot
+ // reject it; the foreground identity change must invalidate its epoch.
+ watchtest::holdFresh();auto beforeForeground=watchhost::worker.get();
+ watchhost::update(clockValue+=1);assert(watchtest::awaitFresh());
+ put(actors[0]+0x6C,0);auto freshFollow=[](uint32_t p,void*out,size_t n){return externalReader.readFresh(p,out,n);};
+ auto oldControl=watchhost::controls;assert(watchhost::followTracks(freshFollow,0));
+ assert(watchhost::controls==oldControl+1&&!watchhost::tracks[0]&&!watchhost::views[0].shown&&!watchhost::worker.get());
+ watchtest::hold();watchhost::update(clockValue+=1);watchtest::releaseFresh();assert(watchtest::awaitEntry());
+ assert(!watchhost::worker.get()&&!watchhost::tracks[0]); // obsolete job was discarded, replacement is still blocked
+ watchtest::release();auto afterForeground=awaitResult(watchhost::controls,beforeForeground);
+ assert(afterForeground&&!afterForeground->tracks[0]&&!afterForeground->views[0].shown&&afterForeground->views[1].shown&&afterForeground->views[2].shown);
+ // Restore the slot through an explicit user pin, preserving the remainder
+ // of the delayed-worker regression below.
+ put(actors[0]+0x6C,100);vec(0xA8ECB8,0x191000,{actors[0]});watchhost::pin(extra.watchKeys[0]);
+ watchhost::update(clockValue+=1);assert(awaitResult(watchhost::controls));
  watchtest::hold();watchhost::update(clockValue+=10);assert(watchtest::awaitEntry());
  external::watch::Box boxes[3];for(int i=0;i<3;++i){assert(watchhost::views[i].shown);boxes[i]=watchhost::views[i].box;}
  // A boundary trigger can fire after cached sampling, without a control or
@@ -54,7 +71,7 @@ int main(){
  extra.watchDanger=true;watchhost::update(clockValue+=1);extra.watchDanger=false;watchhost::update(clockValue+=1);extra.watchDanger=true;watchhost::update(clockValue+=1);
  watchtest::release();auto resumed=awaitResult(watchhost::controls);assert(resumed&&!resumed->suppressed);
  watchtest::release();watchhost::shutdown();
- std::cout<<"PASS real async host: uncached boundary publication gate with unchanged control/frame, stable three-window layout during delayed renders, one-time result consumption, death and close while a job is blocked, obsolete completion rejection, auto-tracking toggle reset\n";
+ std::cout<<"PASS real async host: foreground-confirmed death rejects newly completed stale jobs, uncached boundary publication gate with unchanged control/frame, stable three-window layout during delayed renders, one-time result consumption, death and close while a job is blocked, obsolete completion rejection, auto-tracking toggle reset\n";
 }
 '''
 

@@ -119,7 +119,8 @@ void update(uint32_t now){
  if(!active){for(auto&v:views)v.shown=false;shown=false;return;}
  int frame=0;read(0xA8ED84,&frame,4);bool reveal=revealMap;
  external::watch::Frame resources;resources.tiles.clear();resources.actors.clear();bool haveManual=false;
- for(auto&t:tracks){bool had=bool(t);external::watch::follow(read,t);if(had&&!t)autoSuppressed=true;haveManual|=bool(t);}
+ auto lifeRead=[this](uint32_t p,void*out,size_t n){return reader.readFresh(p,out,n);};
+ for(auto&t:tracks){bool had=bool(t);external::watch::follow(lifeRead,t);if(had&&!t)autoSuppressed=true;haveManual|=bool(t);}
  if(!haveManual&&!autoSuppressed)automatic=external::watch::choose(read,{},automatic,danger);else automatic={};
  for(int i=0;i<3;++i){auto&v=views[i];auto target=tracks[i]?tracks[i].target:i==0?automatic:external::watch::Target{};
   bool targetChanged=!(target==v.frame.focus);
@@ -131,7 +132,7 @@ void update(uint32_t now){
   if(target){
    external::watch::Frame next;
    if(!targetChanged&&frame==v.sampleFrame&&reveal==v.reveal){next=v.frame;sampled=external::watch::refresh(read,next);}
-   if(!sampled){next=external::watch::sample(read,target,reveal,20);sampled=next.focus==target;}
+   if(!sampled){auto center=v.frame.center;if(tracks[i]&&tracks[i].located)center={tracks[i].spatial,tracks[i].x,tracks[i].y,tracks[i].z,true,tracks[i].spatialKind,tracks[i].discoveryFrame,tracks[i].searched,tracks[i].discoveryCursor};next=external::watch::sample(read,target,reveal,20,center);sampled=next.focus==target;}
    if(sampled){v.frame=std::move(next);v.sampleFrame=frame;v.reveal=reveal;for(auto&a:v.frame.actors)if(a.kind==3)assets.buildingPose(a.target.pointer,a.type,a.pose);updateMotion(v,now,frame);++v.revision;}
   }else{v.positions.clear();if(v.motion)v.motion->clear();}
   if(v.shown&&v.frame.focus){resources.light=v.frame.light;resources.tiles.insert(resources.tiles.end(),v.frame.tiles.begin(),v.frame.tiles.end());resources.actors.insert(resources.actors.end(),v.frame.actors.begin(),v.frame.actors.end());}
@@ -150,7 +151,7 @@ void drawView(Graphics&g,const View&view){
  if(frame.cameraReady){cameraX=float(frame.cameraX);cameraY=float(frame.cameraY);}
  // The camera and units use the same interpolated position. Crossing a cell
  // boundary must not jump the entire second view by one tile.
- for(const auto&a:frame.actors)if(a.target==frame.focus){auto p=position(a);cameraX=p.first;cameraY=p.second;break;}
+ for(const auto&a:frame.actors)if(a.target==frame.center.target){auto p=position(a);cameraX=p.first;cameraY=p.second;break;}
  // Follow the LIVE native visible rectangle, including mission-trigger
  // changes. Small maps settle at their midpoint instead of alternating ends.
  double boundedX=cameraX,boundedY=cameraY;
@@ -174,7 +175,7 @@ void drawView(Graphics&g,const View&view){
   auto found=images.find(imageKey(a));if(found==images.end()||!found->second.ready){auto old=displayed.find({a.target.pointer,a.target.id});if(old!=displayed.end())found=images.find(old->second);}
   if(found!=images.end()&&found->second.ready)canvas.blit(found->second.image,x,y,scale,scale,float((int64_t(a.x)+a.y)*15/256.)-15+external::camera::anchorY(a.kind)-a.drawZ+(a.onBridge?60:0),a.light,a.kind==4?12:(a.kind==3||a.kind==5)?2:1,
     float(std::max(0,external::screenHeight(a.z,frame.zScale)-(frame.tiles[cy*side+cx].level+(a.onBridge?4:0))*15)));
-  if(a.target==frame.focus){focusX=x;focusY=y;}
+  if(a.target==frame.center.target){focusX=x;focusY=y;}
  }
  // Camera limits constrain its center, not drawable map scenery. Surface
  // rasterization already clips the scene to this rectangular viewport.
@@ -186,3 +187,4 @@ void drawView(Graphics&g,const View&view){
 }
 };
 }
+

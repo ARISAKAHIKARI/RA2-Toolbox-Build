@@ -27,7 +27,7 @@ public:
   if(width!=width_||height!=height_){building_.reset();complete_.reset();pending_={};background_={};cells_.clear();cursor_=0;width_=width;height_=height;}
   // A trigger can shrink/expand VisibleRect while the cell pointer, match and
   // output size stay unchanged. Never carry an old-domain background forward.
-  if((complete_&&!complete_->geo.same(frame.terrain->geo))||(building_&&!building_->geo.same(frame.terrain->geo))){building_.reset();complete_.reset();pending_={};background_={};cells_.clear();cursor_=0;}
+  if((complete_&&(!complete_->geo.same(frame.terrain->geo)||complete_->reveal!=frame.terrain->reveal))||(building_&&(!building_->geo.same(frame.terrain->geo)||building_->reveal!=frame.terrain->reveal))){building_.reset();complete_.reset();pending_={};background_={};cells_.clear();cursor_=0;}
   if(!building_&&complete_!=frame.terrain){building_=frame.terrain;cursor_=0;pending_.reset(width,height);cells_.clear();for(size_t n=0;n<building_->colors.size();++n)if(building_->colors[n])cells_.push_back(n);std::stable_sort(cells_.begin(),cells_.end(),[](size_t a,size_t b){return a%512+a/512<b%512+b/512;});}
   size_t staticPixels=0;for(const auto&i:tiles_)staticPixels+=camera::pixels(i.second.image);for(const auto&i:overlays_)staticPixels+=camera::pixels(i.second.image);
   lighting::State scene=lighting::sample(read);GameView<Read> game(read);
@@ -47,7 +47,9 @@ public:
     if(cell.overlayType){auto&overlay=overlays_[{cell.overlayType,cell.overlayFrame}];
      if(!overlay.ready&&loads<64&&(!overlay.retry||int32_t(frame.tick-overlay.retry)>=0)){++loads;overlay.ready=assets.overlay(cell.overlayType,game.template get<uint32_t>(cell.overlayType+0xA4),cell.overlayFrame,overlay.image);if(overlay.ready){auto n=camera::pixels(overlay.image);if(staticPixels+n<=16*1024*1024)staticPixels+=n;else{overlay.ready=false;overlay.image={};}}overlay.retry=frame.tick+2000;}
      if(!overlay.ready&&loads>=64&&!overlay.retry)break;
-     if(overlay.ready){int offset=watch::overlayOffset(read,cell.cell,cell.overlayType,cell.overlay,cell.overlayFrame);auto olight=light;if(game.template get<uint32_t>(cell.cell+0x140)&0x80)olight=lighting::cell(read,cell.cell,scene,lighting::Layer::Bridge);
+     if(overlay.ready){uint32_t source=cell.overlaySourceType?cell.overlaySourceType:cell.overlayType;int offset=watch::overlayOffset(read,cell.cell,source,cell.overlay,cell.overlayFrame);auto olight=light;if(game.template get<uint32_t>(cell.cell+0x140)&0x80)olight=lighting::cell(read,cell.cell,scene,lighting::Layer::Bridge);
+      else if(game.template get<uint8_t>(source+0x2A9)){olight=scene;olight.intensity=1000;}
+      else if(game.template get<uint8_t>(source+0x2A8))olight=lighting::cell(read,cell.cell,scene,lighting::Layer::Object,false);
       pending_.blit(overlay.image,px,py+offset*scale.second,scale.first,scale.second,base+((game.template get<uint32_t>(cell.cell+0x140)&0x80)?60:0),olight,2);}
     }
    }

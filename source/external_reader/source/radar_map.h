@@ -4,6 +4,7 @@
 #include "visual_pose.h"
 #include "building_animations.h"
 #include "map_bounds.h"
+#include "art_variants.h"
 #include <memory>
 #include <array>
 // Read-only YRpp MapClass/CellClass/RadarClass model. Projection matches
@@ -18,9 +19,9 @@ struct Geometry {
  void project(double x,double y,double&u,double&v)const{u=(x-y+offsetX)*factor/rw;v=(x+y-offsetY)*factor/rh;}
 };
 struct Marker {double u=0,v=0;uint32_t color=0;bool building=false;uint32_t object=0,id=0,type=0,owner=0,parent=0,parentId=0;int x=0,y=0,z=0,kind=-1,drawZ=0,sort=0,layer=2;bool normalLight=false,onBridge=false;visual::Pose pose;};
-struct CellArt {uint32_t cell=0,type=0,overlayType=0;int16_t overlay=-1;uint8_t sub=0,level=0,overlayFrame=0;};
+struct CellArt {uint32_t cell=0,type=0,overlayType=0,overlaySourceType=0;int16_t overlay=-1;uint8_t sub=0,level=0,overlayFrame=0;};
 struct Scene {int width=0,height=0;std::vector<uint32_t> pixels;};
-struct Terrain {Geometry geo;std::vector<uint32_t> colors;std::vector<CellArt> art;};
+struct Terrain {Geometry geo;std::vector<uint32_t> colors;std::vector<CellArt> art;bool reveal=false;};
 struct Frame {std::shared_ptr<const Terrain> terrain;std::vector<Marker> markers;std::shared_ptr<const Scene> scene,map;uint32_t tick=0;int frame=-1;};
 inline uint32_t terrainColor(int land,int level,bool fog){
  static constexpr uint32_t colors[]={0x66794b,0x85836c,0x285e86,0x70756d,0x999684,0xb7a843,0xb4a47c,0x77734d,0xb4cbd0,0x77766b,0x55584f,0x58703d};
@@ -29,20 +30,24 @@ inline uint32_t terrainColor(int land,int level,bool fog){
 }
 template<class Read> class Sampler {
  Read read_;GameView<Read> view_;Geometry geo_{};std::vector<uint32_t> pointers_;std::shared_ptr<Terrain> pending_;std::shared_ptr<const Terrain> terrain_;
- std::vector<uint32_t> tileTypes_,overlayTypes_;size_t cursor_=0;int lastFrame_=-1;uint32_t reveal_=0;unsigned revision_=0;
+ std::vector<uint32_t> tileTypes_,overlayTypes_;std::vector<artvariants::Pool> resourcePools_;size_t cursor_=0;int lastFrame_=-1;uint32_t reveal_=0;unsigned revision_=0;
  template<class T>T get(uint32_t a,T fallback={})const{return view_.template get<T>(a,fallback);}
 public:
  explicit Sampler(Read r):read_(r),view_(r){}
  void reset(){geo_={};pointers_.clear();pending_.reset();terrain_.reset();cursor_=0;lastFrame_=-1;++revision_;}
  unsigned revision()const{return revision_;}
  bool step(uint32_t reveal,int budget=4096,bool real=false){
+  // These are preview pixels, not the game's half-opacity shroud blitter.
+  // Every display override exposes the unmasked minimap; native mode alone
+  // follows the explored/fog cells. Keep this policy in the immutable bank.
+  reveal=reveal?1u:0u;
   Geometry g;g.bounds=mapbounds::sample(read_);g.width=g.bounds.width;g.height=g.bounds.height;g.cells=get<uint32_t>(Map+0x13C);g.count=get<int>(Map+0x140);
   g.factor=get<float>(Map+0x1488);g.offsetX=get<int>(Map+0x1490);g.offsetY=get<int>(Map+0x1498);g.rw=get<int>(Map+0x14A4);g.rh=get<int>(Map+0x14A8);g.house=get<uint32_t>(0xA83D4C);
   int frame=get<int>(0xA8ED84,-1);if(!g.valid()||frame<0||get<uint8_t>(0xA8E9A0)!=1 ){reset();return false;}
   if(!display::inspect(read_).visible())return false;
   if(!g.same(geo_)||frame<lastFrame_||reveal_!=reveal){reset();geo_=g;reveal_=reveal;}lastFrame_=frame;
   if(!pending_){pointers_.resize(g.count);if(!read_(g.cells,pointers_.data(),pointers_.size()*4)){reset();return false;}
-   pending_=std::make_shared<Terrain>();pending_->geo=g;pending_->colors.resize(512*512);if(real){pending_->art.resize(512*512);tileTypes_=view_.vec(0xA8ED28,65536);overlayTypes_=view_.vec(0xA83D80);}cursor_=0;}
+   pending_=std::make_shared<Terrain>();pending_->geo=g;pending_->reveal=bool(reveal);pending_->colors.resize(512*512);if(real){pending_->art.resize(512*512);tileTypes_=view_.vec(0xA8ED28,65536);overlayTypes_=view_.vec(0xA83D80);resourcePools_=artvariants::pools(read_,overlayTypes_);}cursor_=0;}
   size_t end=std::min(pointers_.size(),cursor_+size_t(std::clamp(budget,1,16384)));
   // Retain drawable physical cells around the usable rectangle. Native radar
   // projection/canvas cropping and live camera limits define the visible view.
@@ -51,9 +56,8 @@ public:
    int16_t cx=0,cy=0;int land=-1;std::memcpy(&cx,cell.data()+0x24,2);std::memcpy(&cy,cell.data()+0x26,2);std::memcpy(&land,cell.data()+0xEC,4);
    if(cx!=x||cy!=y)continue;int visibility=int8_t(cell[0x120]),fog=int8_t(cell[0x121]);if(!reveal&&visibility!=-1)continue;
    uint32_t color=terrainColor(land,cell[0x11B],!reveal&&fog!=-1);
-   if(reveal==2&&(visibility!=-1||fog!=-1))color=(color>>1)&0x7F7F7F;
    pending_->colors[cursor_]=color;
-   if(real&&!pending_->art.empty()){auto&a=pending_->art[cursor_];a.cell=p;a.sub=cell[0x11A];a.level=cell[0x11B];a.overlayFrame=cell[0x11E];int tile=-1,overlay=-1;memcpy(&tile,cell.data()+0x38,4);memcpy(&overlay,cell.data()+0x44,4);if(tile==65535){tile=get<int>(0xAA10B0,-1);a.sub=0;}if(tile>=0&&size_t(tile)<tileTypes_.size())a.type=tileTypes_[tile];if(overlay>=0&&size_t(overlay)<overlayTypes_.size()){a.overlay=int16_t(overlay);a.overlayType=overlayTypes_[overlay];}}
+   if(real&&!pending_->art.empty()){auto&a=pending_->art[cursor_];a.cell=p;a.sub=cell[0x11A];a.level=cell[0x11B];a.overlayFrame=cell[0x11E];int tile=-1,overlay=-1;uint32_t flags=0;memcpy(&flags,cell.data()+0x140,4);memcpy(&tile,cell.data()+0x38,4);memcpy(&overlay,cell.data()+0x44,4);if(tile==65535){tile=get<int>(0xAA10B0,-1);a.sub=0;}if(tile>=0&&size_t(tile)<tileTypes_.size())a.type=artvariants::tile(read_,tileTypes_[tile],a.sub,x,y,flags);if(overlay>=0&&size_t(overlay)<overlayTypes_.size()){a.overlay=int16_t(overlay);a.overlaySourceType=overlayTypes_[overlay];int drawOverlay=artvariants::overlay(read_,overlayTypes_,resourcePools_,overlay,x,y,cell[0x11C]);a.overlayType=overlayTypes_[drawOverlay];}}
   }
   if(cursor_==pointers_.size()){terrain_=pending_;pending_.reset();++revision_;}return true;
  }
@@ -115,3 +119,4 @@ public:
  }
 };
 }}
+

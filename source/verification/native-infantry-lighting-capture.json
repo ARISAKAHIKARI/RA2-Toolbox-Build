@@ -1,0 +1,4380 @@
+{
+  "supported_executable_sha256": "7b8a068535d6af06845edf95ae829b113d00c02909330e16f197426cd7db94b6",
+  "scope": "Verify ExtraInfantryLight using captured original x86, then production C++.\n\nInput is a private supported-game capture. Only type names, aggregate brightness\nvalues and code hashes are emitted. Ground Infantry::Draw selection and push\nslices execute unchanged. INI tests seed ReadDouble's x87 return, retaining the\noriginal multiply/_ftol/store. This is not a live game, complete drawing path,\nWindows visual comparison or multiplayer test. Airborne/bridge/cloak/flash\nspecial cases are not claimed by this ordinary-ground fixture.\n",
+  "stages": {
+    "01-off": {
+      "runtime_signed_integer_offset": "17D8",
+      "rules_scaling_cases": [
+        {
+          "config_double": 0.2,
+          "stored_signed_integer": 200
+        },
+        {
+          "config_double": 0,
+          "stored_signed_integer": 0
+        },
+        {
+          "config_double": -0.2,
+          "stored_signed_integer": -200
+        },
+        {
+          "config_double": 0.75,
+          "stored_signed_integer": 750
+        },
+        {
+          "config_double": -2,
+          "stored_signed_integer": -2000
+        },
+        {
+          "config_double": 4,
+          "stored_signed_integer": 4000
+        }
+      ],
+      "native_ground_infantry_cases": 156,
+      "skipped_bridge_or_structure_infantry": 0,
+      "infantry": [
+        {
+          "type": "COW",
+          "cell_object_intensity": 1056,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1056,
+              "native_unclamped_intensity": 1056,
+              "native_pushed_intensity": 1056
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1256,
+              "native_unclamped_intensity": 1256,
+              "native_pushed_intensity": 1256
+            },
+            {
+              "extra": -200,
+              "production_intensity": 856,
+              "native_unclamped_intensity": 856,
+              "native_pushed_intensity": 856
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1656,
+              "native_unclamped_intensity": 1656,
+              "native_pushed_intensity": 1656
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -944,
+              "native_pushed_intensity": -944
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5056,
+              "native_pushed_intensity": 5056
+            }
+          ]
+        },
+        {
+          "type": "COW",
+          "cell_object_intensity": 1056,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1056,
+              "native_unclamped_intensity": 1056,
+              "native_pushed_intensity": 1056
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1256,
+              "native_unclamped_intensity": 1256,
+              "native_pushed_intensity": 1256
+            },
+            {
+              "extra": -200,
+              "production_intensity": 856,
+              "native_unclamped_intensity": 856,
+              "native_pushed_intensity": 856
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1656,
+              "native_unclamped_intensity": 1656,
+              "native_pushed_intensity": 1656
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -944,
+              "native_pushed_intensity": -944
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5056,
+              "native_pushed_intensity": 5056
+            }
+          ]
+        },
+        {
+          "type": "COW",
+          "cell_object_intensity": 1056,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1056,
+              "native_unclamped_intensity": 1056,
+              "native_pushed_intensity": 1056
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1256,
+              "native_unclamped_intensity": 1256,
+              "native_pushed_intensity": 1256
+            },
+            {
+              "extra": -200,
+              "production_intensity": 856,
+              "native_unclamped_intensity": 856,
+              "native_pushed_intensity": 856
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1656,
+              "native_unclamped_intensity": 1656,
+              "native_pushed_intensity": 1656
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -944,
+              "native_pushed_intensity": -944
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5056,
+              "native_pushed_intensity": 5056
+            }
+          ]
+        },
+        {
+          "type": "DOG",
+          "cell_object_intensity": 1056,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1056,
+              "native_unclamped_intensity": 1056,
+              "native_pushed_intensity": 1056
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1256,
+              "native_unclamped_intensity": 1256,
+              "native_pushed_intensity": 1256
+            },
+            {
+              "extra": -200,
+              "production_intensity": 856,
+              "native_unclamped_intensity": 856,
+              "native_pushed_intensity": 856
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1656,
+              "native_unclamped_intensity": 1656,
+              "native_pushed_intensity": 1656
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -944,
+              "native_pushed_intensity": -944
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5056,
+              "native_pushed_intensity": 5056
+            }
+          ]
+        },
+        {
+          "type": "COW",
+          "cell_object_intensity": 1056,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1056,
+              "native_unclamped_intensity": 1056,
+              "native_pushed_intensity": 1056
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1256,
+              "native_unclamped_intensity": 1256,
+              "native_pushed_intensity": 1256
+            },
+            {
+              "extra": -200,
+              "production_intensity": 856,
+              "native_unclamped_intensity": 856,
+              "native_pushed_intensity": 856
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1656,
+              "native_unclamped_intensity": 1656,
+              "native_pushed_intensity": 1656
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -944,
+              "native_pushed_intensity": -944
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5056,
+              "native_pushed_intensity": 5056
+            }
+          ]
+        },
+        {
+          "type": "CTECH",
+          "cell_object_intensity": 1056,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1056,
+              "native_unclamped_intensity": 1056,
+              "native_pushed_intensity": 1056
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1256,
+              "native_unclamped_intensity": 1256,
+              "native_pushed_intensity": 1256
+            },
+            {
+              "extra": -200,
+              "production_intensity": 856,
+              "native_unclamped_intensity": 856,
+              "native_pushed_intensity": 856
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1656,
+              "native_unclamped_intensity": 1656,
+              "native_pushed_intensity": 1656
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -944,
+              "native_pushed_intensity": -944
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5056,
+              "native_pushed_intensity": 5056
+            }
+          ]
+        },
+        {
+          "type": "JOSH",
+          "cell_object_intensity": 1056,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1056,
+              "native_unclamped_intensity": 1056,
+              "native_pushed_intensity": 1056
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1256,
+              "native_unclamped_intensity": 1256,
+              "native_pushed_intensity": 1256
+            },
+            {
+              "extra": -200,
+              "production_intensity": 856,
+              "native_unclamped_intensity": 856,
+              "native_pushed_intensity": 856
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1656,
+              "native_unclamped_intensity": 1656,
+              "native_pushed_intensity": 1656
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -944,
+              "native_pushed_intensity": -944
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5056,
+              "native_pushed_intensity": 5056
+            }
+          ]
+        },
+        {
+          "type": "JOSH",
+          "cell_object_intensity": 1056,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1056,
+              "native_unclamped_intensity": 1056,
+              "native_pushed_intensity": 1056
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1256,
+              "native_unclamped_intensity": 1256,
+              "native_pushed_intensity": 1256
+            },
+            {
+              "extra": -200,
+              "production_intensity": 856,
+              "native_unclamped_intensity": 856,
+              "native_pushed_intensity": 856
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1656,
+              "native_unclamped_intensity": 1656,
+              "native_pushed_intensity": 1656
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -944,
+              "native_pushed_intensity": -944
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5056,
+              "native_pushed_intensity": 5056
+            }
+          ]
+        },
+        {
+          "type": "JOSH",
+          "cell_object_intensity": 1056,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1056,
+              "native_unclamped_intensity": 1056,
+              "native_pushed_intensity": 1056
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1256,
+              "native_unclamped_intensity": 1256,
+              "native_pushed_intensity": 1256
+            },
+            {
+              "extra": -200,
+              "production_intensity": 856,
+              "native_unclamped_intensity": 856,
+              "native_pushed_intensity": 856
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1656,
+              "native_unclamped_intensity": 1656,
+              "native_pushed_intensity": 1656
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -944,
+              "native_pushed_intensity": -944
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5056,
+              "native_pushed_intensity": 5056
+            }
+          ]
+        },
+        {
+          "type": "JOSH",
+          "cell_object_intensity": 1056,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1056,
+              "native_unclamped_intensity": 1056,
+              "native_pushed_intensity": 1056
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1256,
+              "native_unclamped_intensity": 1256,
+              "native_pushed_intensity": 1256
+            },
+            {
+              "extra": -200,
+              "production_intensity": 856,
+              "native_unclamped_intensity": 856,
+              "native_pushed_intensity": 856
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1656,
+              "native_unclamped_intensity": 1656,
+              "native_pushed_intensity": 1656
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -944,
+              "native_pushed_intensity": -944
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5056,
+              "native_pushed_intensity": 5056
+            }
+          ]
+        },
+        {
+          "type": "ALL",
+          "cell_object_intensity": 1056,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1056,
+              "native_unclamped_intensity": 1056,
+              "native_pushed_intensity": 1056
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1256,
+              "native_unclamped_intensity": 1256,
+              "native_pushed_intensity": 1256
+            },
+            {
+              "extra": -200,
+              "production_intensity": 856,
+              "native_unclamped_intensity": 856,
+              "native_pushed_intensity": 856
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1656,
+              "native_unclamped_intensity": 1656,
+              "native_pushed_intensity": 1656
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -944,
+              "native_pushed_intensity": -944
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5056,
+              "native_pushed_intensity": 5056
+            }
+          ]
+        },
+        {
+          "type": "JOSH",
+          "cell_object_intensity": 1056,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1056,
+              "native_unclamped_intensity": 1056,
+              "native_pushed_intensity": 1056
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1256,
+              "native_unclamped_intensity": 1256,
+              "native_pushed_intensity": 1256
+            },
+            {
+              "extra": -200,
+              "production_intensity": 856,
+              "native_unclamped_intensity": 856,
+              "native_pushed_intensity": 856
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1656,
+              "native_unclamped_intensity": 1656,
+              "native_pushed_intensity": 1656
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -944,
+              "native_pushed_intensity": -944
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5056,
+              "native_pushed_intensity": 5056
+            }
+          ]
+        },
+        {
+          "type": "JOSH",
+          "cell_object_intensity": 1056,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1056,
+              "native_unclamped_intensity": 1056,
+              "native_pushed_intensity": 1056
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1256,
+              "native_unclamped_intensity": 1256,
+              "native_pushed_intensity": 1256
+            },
+            {
+              "extra": -200,
+              "production_intensity": 856,
+              "native_unclamped_intensity": 856,
+              "native_pushed_intensity": 856
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1656,
+              "native_unclamped_intensity": 1656,
+              "native_pushed_intensity": 1656
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -944,
+              "native_pushed_intensity": -944
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5056,
+              "native_pushed_intensity": 5056
+            }
+          ]
+        },
+        {
+          "type": "JOSH",
+          "cell_object_intensity": 1056,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1056,
+              "native_unclamped_intensity": 1056,
+              "native_pushed_intensity": 1056
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1256,
+              "native_unclamped_intensity": 1256,
+              "native_pushed_intensity": 1256
+            },
+            {
+              "extra": -200,
+              "production_intensity": 856,
+              "native_unclamped_intensity": 856,
+              "native_pushed_intensity": 856
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1656,
+              "native_unclamped_intensity": 1656,
+              "native_pushed_intensity": 1656
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -944,
+              "native_pushed_intensity": -944
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5056,
+              "native_pushed_intensity": 5056
+            }
+          ]
+        },
+        {
+          "type": "JOSH",
+          "cell_object_intensity": 1168,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1168,
+              "native_unclamped_intensity": 1168,
+              "native_pushed_intensity": 1168
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1368,
+              "native_unclamped_intensity": 1368,
+              "native_pushed_intensity": 1368
+            },
+            {
+              "extra": -200,
+              "production_intensity": 968,
+              "native_unclamped_intensity": 968,
+              "native_pushed_intensity": 968
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1768,
+              "native_unclamped_intensity": 1768,
+              "native_pushed_intensity": 1768
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -832,
+              "native_pushed_intensity": -832
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5168,
+              "native_pushed_intensity": 5168
+            }
+          ]
+        },
+        {
+          "type": "JOSH",
+          "cell_object_intensity": 1168,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1168,
+              "native_unclamped_intensity": 1168,
+              "native_pushed_intensity": 1168
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1368,
+              "native_unclamped_intensity": 1368,
+              "native_pushed_intensity": 1368
+            },
+            {
+              "extra": -200,
+              "production_intensity": 968,
+              "native_unclamped_intensity": 968,
+              "native_pushed_intensity": 968
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1768,
+              "native_unclamped_intensity": 1768,
+              "native_pushed_intensity": 1768
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -832,
+              "native_pushed_intensity": -832
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5168,
+              "native_pushed_intensity": 5168
+            }
+          ]
+        },
+        {
+          "type": "JOSH",
+          "cell_object_intensity": 1056,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1056,
+              "native_unclamped_intensity": 1056,
+              "native_pushed_intensity": 1056
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1256,
+              "native_unclamped_intensity": 1256,
+              "native_pushed_intensity": 1256
+            },
+            {
+              "extra": -200,
+              "production_intensity": 856,
+              "native_unclamped_intensity": 856,
+              "native_pushed_intensity": 856
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1656,
+              "native_unclamped_intensity": 1656,
+              "native_pushed_intensity": 1656
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -944,
+              "native_pushed_intensity": -944
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5056,
+              "native_pushed_intensity": 5056
+            }
+          ]
+        },
+        {
+          "type": "ALL",
+          "cell_object_intensity": 1056,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1056,
+              "native_unclamped_intensity": 1056,
+              "native_pushed_intensity": 1056
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1256,
+              "native_unclamped_intensity": 1256,
+              "native_pushed_intensity": 1256
+            },
+            {
+              "extra": -200,
+              "production_intensity": 856,
+              "native_unclamped_intensity": 856,
+              "native_pushed_intensity": 856
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1656,
+              "native_unclamped_intensity": 1656,
+              "native_pushed_intensity": 1656
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -944,
+              "native_pushed_intensity": -944
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5056,
+              "native_pushed_intensity": 5056
+            }
+          ]
+        },
+        {
+          "type": "ALL",
+          "cell_object_intensity": 1056,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1056,
+              "native_unclamped_intensity": 1056,
+              "native_pushed_intensity": 1056
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1256,
+              "native_unclamped_intensity": 1256,
+              "native_pushed_intensity": 1256
+            },
+            {
+              "extra": -200,
+              "production_intensity": 856,
+              "native_unclamped_intensity": 856,
+              "native_pushed_intensity": 856
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1656,
+              "native_unclamped_intensity": 1656,
+              "native_pushed_intensity": 1656
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -944,
+              "native_pushed_intensity": -944
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5056,
+              "native_pushed_intensity": 5056
+            }
+          ]
+        },
+        {
+          "type": "JOSH",
+          "cell_object_intensity": 1056,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1056,
+              "native_unclamped_intensity": 1056,
+              "native_pushed_intensity": 1056
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1256,
+              "native_unclamped_intensity": 1256,
+              "native_pushed_intensity": 1256
+            },
+            {
+              "extra": -200,
+              "production_intensity": 856,
+              "native_unclamped_intensity": 856,
+              "native_pushed_intensity": 856
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1656,
+              "native_unclamped_intensity": 1656,
+              "native_pushed_intensity": 1656
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -944,
+              "native_pushed_intensity": -944
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5056,
+              "native_pushed_intensity": 5056
+            }
+          ]
+        },
+        {
+          "type": "JOSH",
+          "cell_object_intensity": 1056,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1056,
+              "native_unclamped_intensity": 1056,
+              "native_pushed_intensity": 1056
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1256,
+              "native_unclamped_intensity": 1256,
+              "native_pushed_intensity": 1256
+            },
+            {
+              "extra": -200,
+              "production_intensity": 856,
+              "native_unclamped_intensity": 856,
+              "native_pushed_intensity": 856
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1656,
+              "native_unclamped_intensity": 1656,
+              "native_pushed_intensity": 1656
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -944,
+              "native_pushed_intensity": -944
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5056,
+              "native_pushed_intensity": 5056
+            }
+          ]
+        },
+        {
+          "type": "ALL",
+          "cell_object_intensity": 1056,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1056,
+              "native_unclamped_intensity": 1056,
+              "native_pushed_intensity": 1056
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1256,
+              "native_unclamped_intensity": 1256,
+              "native_pushed_intensity": 1256
+            },
+            {
+              "extra": -200,
+              "production_intensity": 856,
+              "native_unclamped_intensity": 856,
+              "native_pushed_intensity": 856
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1656,
+              "native_unclamped_intensity": 1656,
+              "native_pushed_intensity": 1656
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -944,
+              "native_pushed_intensity": -944
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5056,
+              "native_pushed_intensity": 5056
+            }
+          ]
+        },
+        {
+          "type": "JOSH",
+          "cell_object_intensity": 1056,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1056,
+              "native_unclamped_intensity": 1056,
+              "native_pushed_intensity": 1056
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1256,
+              "native_unclamped_intensity": 1256,
+              "native_pushed_intensity": 1256
+            },
+            {
+              "extra": -200,
+              "production_intensity": 856,
+              "native_unclamped_intensity": 856,
+              "native_pushed_intensity": 856
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1656,
+              "native_unclamped_intensity": 1656,
+              "native_pushed_intensity": 1656
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -944,
+              "native_pushed_intensity": -944
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5056,
+              "native_pushed_intensity": 5056
+            }
+          ]
+        },
+        {
+          "type": "ALL",
+          "cell_object_intensity": 1056,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1056,
+              "native_unclamped_intensity": 1056,
+              "native_pushed_intensity": 1056
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1256,
+              "native_unclamped_intensity": 1256,
+              "native_pushed_intensity": 1256
+            },
+            {
+              "extra": -200,
+              "production_intensity": 856,
+              "native_unclamped_intensity": 856,
+              "native_pushed_intensity": 856
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1656,
+              "native_unclamped_intensity": 1656,
+              "native_pushed_intensity": 1656
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -944,
+              "native_pushed_intensity": -944
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5056,
+              "native_pushed_intensity": 5056
+            }
+          ]
+        },
+        {
+          "type": "JOSH",
+          "cell_object_intensity": 1056,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1056,
+              "native_unclamped_intensity": 1056,
+              "native_pushed_intensity": 1056
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1256,
+              "native_unclamped_intensity": 1256,
+              "native_pushed_intensity": 1256
+            },
+            {
+              "extra": -200,
+              "production_intensity": 856,
+              "native_unclamped_intensity": 856,
+              "native_pushed_intensity": 856
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1656,
+              "native_unclamped_intensity": 1656,
+              "native_pushed_intensity": 1656
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -944,
+              "native_pushed_intensity": -944
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5056,
+              "native_pushed_intensity": 5056
+            }
+          ]
+        },
+        {
+          "type": "ALL",
+          "cell_object_intensity": 1056,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1056,
+              "native_unclamped_intensity": 1056,
+              "native_pushed_intensity": 1056
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1256,
+              "native_unclamped_intensity": 1256,
+              "native_pushed_intensity": 1256
+            },
+            {
+              "extra": -200,
+              "production_intensity": 856,
+              "native_unclamped_intensity": 856,
+              "native_pushed_intensity": 856
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1656,
+              "native_unclamped_intensity": 1656,
+              "native_pushed_intensity": 1656
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -944,
+              "native_pushed_intensity": -944
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5056,
+              "native_pushed_intensity": 5056
+            }
+          ]
+        }
+      ],
+      "code_sha256": {
+        "0066B6E7-0066B705": "f6604a4f5f4dbfa066a6b55d6000340afae1de945a79f3bc53fba380cf72ce5d",
+        "0051933B-0051945D": "079654ac2eec753b14c8b3f4477ae1c33542f9d6e84f1e680c136e4b8e213ea3",
+        "0051958A-005195E8": "29284f829cfd1d1ee6d9e5f02d46e676c939baf919de2b2f0b4069c22d6ea86a"
+      }
+    },
+    "02-on": {
+      "runtime_signed_integer_offset": "17D8",
+      "rules_scaling_cases": [
+        {
+          "config_double": 0.2,
+          "stored_signed_integer": 200
+        },
+        {
+          "config_double": 0,
+          "stored_signed_integer": 0
+        },
+        {
+          "config_double": -0.2,
+          "stored_signed_integer": -200
+        },
+        {
+          "config_double": 0.75,
+          "stored_signed_integer": 750
+        },
+        {
+          "config_double": -2,
+          "stored_signed_integer": -2000
+        },
+        {
+          "config_double": 4,
+          "stored_signed_integer": 4000
+        }
+      ],
+      "native_ground_infantry_cases": 186,
+      "skipped_bridge_or_structure_infantry": 0,
+      "infantry": [
+        {
+          "type": "COW",
+          "cell_object_intensity": 1056,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1056,
+              "native_unclamped_intensity": 1056,
+              "native_pushed_intensity": 1056
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1256,
+              "native_unclamped_intensity": 1256,
+              "native_pushed_intensity": 1256
+            },
+            {
+              "extra": -200,
+              "production_intensity": 856,
+              "native_unclamped_intensity": 856,
+              "native_pushed_intensity": 856
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1656,
+              "native_unclamped_intensity": 1656,
+              "native_pushed_intensity": 1656
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -944,
+              "native_pushed_intensity": -944
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5056,
+              "native_pushed_intensity": 5056
+            }
+          ]
+        },
+        {
+          "type": "COW",
+          "cell_object_intensity": 1056,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1056,
+              "native_unclamped_intensity": 1056,
+              "native_pushed_intensity": 1056
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1256,
+              "native_unclamped_intensity": 1256,
+              "native_pushed_intensity": 1256
+            },
+            {
+              "extra": -200,
+              "production_intensity": 856,
+              "native_unclamped_intensity": 856,
+              "native_pushed_intensity": 856
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1656,
+              "native_unclamped_intensity": 1656,
+              "native_pushed_intensity": 1656
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -944,
+              "native_pushed_intensity": -944
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5056,
+              "native_pushed_intensity": 5056
+            }
+          ]
+        },
+        {
+          "type": "COW",
+          "cell_object_intensity": 1056,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1056,
+              "native_unclamped_intensity": 1056,
+              "native_pushed_intensity": 1056
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1256,
+              "native_unclamped_intensity": 1256,
+              "native_pushed_intensity": 1256
+            },
+            {
+              "extra": -200,
+              "production_intensity": 856,
+              "native_unclamped_intensity": 856,
+              "native_pushed_intensity": 856
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1656,
+              "native_unclamped_intensity": 1656,
+              "native_pushed_intensity": 1656
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -944,
+              "native_pushed_intensity": -944
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5056,
+              "native_pushed_intensity": 5056
+            }
+          ]
+        },
+        {
+          "type": "DOG",
+          "cell_object_intensity": 1056,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1056,
+              "native_unclamped_intensity": 1056,
+              "native_pushed_intensity": 1056
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1256,
+              "native_unclamped_intensity": 1256,
+              "native_pushed_intensity": 1256
+            },
+            {
+              "extra": -200,
+              "production_intensity": 856,
+              "native_unclamped_intensity": 856,
+              "native_pushed_intensity": 856
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1656,
+              "native_unclamped_intensity": 1656,
+              "native_pushed_intensity": 1656
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -944,
+              "native_pushed_intensity": -944
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5056,
+              "native_pushed_intensity": 5056
+            }
+          ]
+        },
+        {
+          "type": "COW",
+          "cell_object_intensity": 1056,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1056,
+              "native_unclamped_intensity": 1056,
+              "native_pushed_intensity": 1056
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1256,
+              "native_unclamped_intensity": 1256,
+              "native_pushed_intensity": 1256
+            },
+            {
+              "extra": -200,
+              "production_intensity": 856,
+              "native_unclamped_intensity": 856,
+              "native_pushed_intensity": 856
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1656,
+              "native_unclamped_intensity": 1656,
+              "native_pushed_intensity": 1656
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -944,
+              "native_pushed_intensity": -944
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5056,
+              "native_pushed_intensity": 5056
+            }
+          ]
+        },
+        {
+          "type": "CTECH",
+          "cell_object_intensity": 1056,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1056,
+              "native_unclamped_intensity": 1056,
+              "native_pushed_intensity": 1056
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1256,
+              "native_unclamped_intensity": 1256,
+              "native_pushed_intensity": 1256
+            },
+            {
+              "extra": -200,
+              "production_intensity": 856,
+              "native_unclamped_intensity": 856,
+              "native_pushed_intensity": 856
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1656,
+              "native_unclamped_intensity": 1656,
+              "native_pushed_intensity": 1656
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -944,
+              "native_pushed_intensity": -944
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5056,
+              "native_pushed_intensity": 5056
+            }
+          ]
+        },
+        {
+          "type": "JOSH",
+          "cell_object_intensity": 1056,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1056,
+              "native_unclamped_intensity": 1056,
+              "native_pushed_intensity": 1056
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1256,
+              "native_unclamped_intensity": 1256,
+              "native_pushed_intensity": 1256
+            },
+            {
+              "extra": -200,
+              "production_intensity": 856,
+              "native_unclamped_intensity": 856,
+              "native_pushed_intensity": 856
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1656,
+              "native_unclamped_intensity": 1656,
+              "native_pushed_intensity": 1656
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -944,
+              "native_pushed_intensity": -944
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5056,
+              "native_pushed_intensity": 5056
+            }
+          ]
+        },
+        {
+          "type": "JOSH",
+          "cell_object_intensity": 1056,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1056,
+              "native_unclamped_intensity": 1056,
+              "native_pushed_intensity": 1056
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1256,
+              "native_unclamped_intensity": 1256,
+              "native_pushed_intensity": 1256
+            },
+            {
+              "extra": -200,
+              "production_intensity": 856,
+              "native_unclamped_intensity": 856,
+              "native_pushed_intensity": 856
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1656,
+              "native_unclamped_intensity": 1656,
+              "native_pushed_intensity": 1656
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -944,
+              "native_pushed_intensity": -944
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5056,
+              "native_pushed_intensity": 5056
+            }
+          ]
+        },
+        {
+          "type": "JOSH",
+          "cell_object_intensity": 1056,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1056,
+              "native_unclamped_intensity": 1056,
+              "native_pushed_intensity": 1056
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1256,
+              "native_unclamped_intensity": 1256,
+              "native_pushed_intensity": 1256
+            },
+            {
+              "extra": -200,
+              "production_intensity": 856,
+              "native_unclamped_intensity": 856,
+              "native_pushed_intensity": 856
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1656,
+              "native_unclamped_intensity": 1656,
+              "native_pushed_intensity": 1656
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -944,
+              "native_pushed_intensity": -944
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5056,
+              "native_pushed_intensity": 5056
+            }
+          ]
+        },
+        {
+          "type": "JOSH",
+          "cell_object_intensity": 1056,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1056,
+              "native_unclamped_intensity": 1056,
+              "native_pushed_intensity": 1056
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1256,
+              "native_unclamped_intensity": 1256,
+              "native_pushed_intensity": 1256
+            },
+            {
+              "extra": -200,
+              "production_intensity": 856,
+              "native_unclamped_intensity": 856,
+              "native_pushed_intensity": 856
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1656,
+              "native_unclamped_intensity": 1656,
+              "native_pushed_intensity": 1656
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -944,
+              "native_pushed_intensity": -944
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5056,
+              "native_pushed_intensity": 5056
+            }
+          ]
+        },
+        {
+          "type": "ALL",
+          "cell_object_intensity": 1056,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1056,
+              "native_unclamped_intensity": 1056,
+              "native_pushed_intensity": 1056
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1256,
+              "native_unclamped_intensity": 1256,
+              "native_pushed_intensity": 1256
+            },
+            {
+              "extra": -200,
+              "production_intensity": 856,
+              "native_unclamped_intensity": 856,
+              "native_pushed_intensity": 856
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1656,
+              "native_unclamped_intensity": 1656,
+              "native_pushed_intensity": 1656
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -944,
+              "native_pushed_intensity": -944
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5056,
+              "native_pushed_intensity": 5056
+            }
+          ]
+        },
+        {
+          "type": "JOSH",
+          "cell_object_intensity": 1056,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1056,
+              "native_unclamped_intensity": 1056,
+              "native_pushed_intensity": 1056
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1256,
+              "native_unclamped_intensity": 1256,
+              "native_pushed_intensity": 1256
+            },
+            {
+              "extra": -200,
+              "production_intensity": 856,
+              "native_unclamped_intensity": 856,
+              "native_pushed_intensity": 856
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1656,
+              "native_unclamped_intensity": 1656,
+              "native_pushed_intensity": 1656
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -944,
+              "native_pushed_intensity": -944
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5056,
+              "native_pushed_intensity": 5056
+            }
+          ]
+        },
+        {
+          "type": "JOSH",
+          "cell_object_intensity": 1056,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1056,
+              "native_unclamped_intensity": 1056,
+              "native_pushed_intensity": 1056
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1256,
+              "native_unclamped_intensity": 1256,
+              "native_pushed_intensity": 1256
+            },
+            {
+              "extra": -200,
+              "production_intensity": 856,
+              "native_unclamped_intensity": 856,
+              "native_pushed_intensity": 856
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1656,
+              "native_unclamped_intensity": 1656,
+              "native_pushed_intensity": 1656
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -944,
+              "native_pushed_intensity": -944
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5056,
+              "native_pushed_intensity": 5056
+            }
+          ]
+        },
+        {
+          "type": "JOSH",
+          "cell_object_intensity": 1056,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1056,
+              "native_unclamped_intensity": 1056,
+              "native_pushed_intensity": 1056
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1256,
+              "native_unclamped_intensity": 1256,
+              "native_pushed_intensity": 1256
+            },
+            {
+              "extra": -200,
+              "production_intensity": 856,
+              "native_unclamped_intensity": 856,
+              "native_pushed_intensity": 856
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1656,
+              "native_unclamped_intensity": 1656,
+              "native_pushed_intensity": 1656
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -944,
+              "native_pushed_intensity": -944
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5056,
+              "native_pushed_intensity": 5056
+            }
+          ]
+        },
+        {
+          "type": "JOSH",
+          "cell_object_intensity": 1168,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1168,
+              "native_unclamped_intensity": 1168,
+              "native_pushed_intensity": 1168
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1368,
+              "native_unclamped_intensity": 1368,
+              "native_pushed_intensity": 1368
+            },
+            {
+              "extra": -200,
+              "production_intensity": 968,
+              "native_unclamped_intensity": 968,
+              "native_pushed_intensity": 968
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1768,
+              "native_unclamped_intensity": 1768,
+              "native_pushed_intensity": 1768
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -832,
+              "native_pushed_intensity": -832
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5168,
+              "native_pushed_intensity": 5168
+            }
+          ]
+        },
+        {
+          "type": "JOSH",
+          "cell_object_intensity": 1168,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1168,
+              "native_unclamped_intensity": 1168,
+              "native_pushed_intensity": 1168
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1368,
+              "native_unclamped_intensity": 1368,
+              "native_pushed_intensity": 1368
+            },
+            {
+              "extra": -200,
+              "production_intensity": 968,
+              "native_unclamped_intensity": 968,
+              "native_pushed_intensity": 968
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1768,
+              "native_unclamped_intensity": 1768,
+              "native_pushed_intensity": 1768
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -832,
+              "native_pushed_intensity": -832
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5168,
+              "native_pushed_intensity": 5168
+            }
+          ]
+        },
+        {
+          "type": "JOSH",
+          "cell_object_intensity": 1056,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1056,
+              "native_unclamped_intensity": 1056,
+              "native_pushed_intensity": 1056
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1256,
+              "native_unclamped_intensity": 1256,
+              "native_pushed_intensity": 1256
+            },
+            {
+              "extra": -200,
+              "production_intensity": 856,
+              "native_unclamped_intensity": 856,
+              "native_pushed_intensity": 856
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1656,
+              "native_unclamped_intensity": 1656,
+              "native_pushed_intensity": 1656
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -944,
+              "native_pushed_intensity": -944
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5056,
+              "native_pushed_intensity": 5056
+            }
+          ]
+        },
+        {
+          "type": "ALL",
+          "cell_object_intensity": 1056,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1056,
+              "native_unclamped_intensity": 1056,
+              "native_pushed_intensity": 1056
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1256,
+              "native_unclamped_intensity": 1256,
+              "native_pushed_intensity": 1256
+            },
+            {
+              "extra": -200,
+              "production_intensity": 856,
+              "native_unclamped_intensity": 856,
+              "native_pushed_intensity": 856
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1656,
+              "native_unclamped_intensity": 1656,
+              "native_pushed_intensity": 1656
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -944,
+              "native_pushed_intensity": -944
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5056,
+              "native_pushed_intensity": 5056
+            }
+          ]
+        },
+        {
+          "type": "ALL",
+          "cell_object_intensity": 1056,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1056,
+              "native_unclamped_intensity": 1056,
+              "native_pushed_intensity": 1056
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1256,
+              "native_unclamped_intensity": 1256,
+              "native_pushed_intensity": 1256
+            },
+            {
+              "extra": -200,
+              "production_intensity": 856,
+              "native_unclamped_intensity": 856,
+              "native_pushed_intensity": 856
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1656,
+              "native_unclamped_intensity": 1656,
+              "native_pushed_intensity": 1656
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -944,
+              "native_pushed_intensity": -944
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5056,
+              "native_pushed_intensity": 5056
+            }
+          ]
+        },
+        {
+          "type": "JOSH",
+          "cell_object_intensity": 1056,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1056,
+              "native_unclamped_intensity": 1056,
+              "native_pushed_intensity": 1056
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1256,
+              "native_unclamped_intensity": 1256,
+              "native_pushed_intensity": 1256
+            },
+            {
+              "extra": -200,
+              "production_intensity": 856,
+              "native_unclamped_intensity": 856,
+              "native_pushed_intensity": 856
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1656,
+              "native_unclamped_intensity": 1656,
+              "native_pushed_intensity": 1656
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -944,
+              "native_pushed_intensity": -944
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5056,
+              "native_pushed_intensity": 5056
+            }
+          ]
+        },
+        {
+          "type": "JOSH",
+          "cell_object_intensity": 1056,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1056,
+              "native_unclamped_intensity": 1056,
+              "native_pushed_intensity": 1056
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1256,
+              "native_unclamped_intensity": 1256,
+              "native_pushed_intensity": 1256
+            },
+            {
+              "extra": -200,
+              "production_intensity": 856,
+              "native_unclamped_intensity": 856,
+              "native_pushed_intensity": 856
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1656,
+              "native_unclamped_intensity": 1656,
+              "native_pushed_intensity": 1656
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -944,
+              "native_pushed_intensity": -944
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5056,
+              "native_pushed_intensity": 5056
+            }
+          ]
+        },
+        {
+          "type": "ALL",
+          "cell_object_intensity": 1056,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1056,
+              "native_unclamped_intensity": 1056,
+              "native_pushed_intensity": 1056
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1256,
+              "native_unclamped_intensity": 1256,
+              "native_pushed_intensity": 1256
+            },
+            {
+              "extra": -200,
+              "production_intensity": 856,
+              "native_unclamped_intensity": 856,
+              "native_pushed_intensity": 856
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1656,
+              "native_unclamped_intensity": 1656,
+              "native_pushed_intensity": 1656
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -944,
+              "native_pushed_intensity": -944
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5056,
+              "native_pushed_intensity": 5056
+            }
+          ]
+        },
+        {
+          "type": "JOSH",
+          "cell_object_intensity": 1056,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1056,
+              "native_unclamped_intensity": 1056,
+              "native_pushed_intensity": 1056
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1256,
+              "native_unclamped_intensity": 1256,
+              "native_pushed_intensity": 1256
+            },
+            {
+              "extra": -200,
+              "production_intensity": 856,
+              "native_unclamped_intensity": 856,
+              "native_pushed_intensity": 856
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1656,
+              "native_unclamped_intensity": 1656,
+              "native_pushed_intensity": 1656
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -944,
+              "native_pushed_intensity": -944
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5056,
+              "native_pushed_intensity": 5056
+            }
+          ]
+        },
+        {
+          "type": "ALL",
+          "cell_object_intensity": 1056,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1056,
+              "native_unclamped_intensity": 1056,
+              "native_pushed_intensity": 1056
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1256,
+              "native_unclamped_intensity": 1256,
+              "native_pushed_intensity": 1256
+            },
+            {
+              "extra": -200,
+              "production_intensity": 856,
+              "native_unclamped_intensity": 856,
+              "native_pushed_intensity": 856
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1656,
+              "native_unclamped_intensity": 1656,
+              "native_pushed_intensity": 1656
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -944,
+              "native_pushed_intensity": -944
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5056,
+              "native_pushed_intensity": 5056
+            }
+          ]
+        },
+        {
+          "type": "JOSH",
+          "cell_object_intensity": 1056,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1056,
+              "native_unclamped_intensity": 1056,
+              "native_pushed_intensity": 1056
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1256,
+              "native_unclamped_intensity": 1256,
+              "native_pushed_intensity": 1256
+            },
+            {
+              "extra": -200,
+              "production_intensity": 856,
+              "native_unclamped_intensity": 856,
+              "native_pushed_intensity": 856
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1656,
+              "native_unclamped_intensity": 1656,
+              "native_pushed_intensity": 1656
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -944,
+              "native_pushed_intensity": -944
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5056,
+              "native_pushed_intensity": 5056
+            }
+          ]
+        },
+        {
+          "type": "ALL",
+          "cell_object_intensity": 1056,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1056,
+              "native_unclamped_intensity": 1056,
+              "native_pushed_intensity": 1056
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1256,
+              "native_unclamped_intensity": 1256,
+              "native_pushed_intensity": 1256
+            },
+            {
+              "extra": -200,
+              "production_intensity": 856,
+              "native_unclamped_intensity": 856,
+              "native_pushed_intensity": 856
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1656,
+              "native_unclamped_intensity": 1656,
+              "native_pushed_intensity": 1656
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -944,
+              "native_pushed_intensity": -944
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5056,
+              "native_pushed_intensity": 5056
+            }
+          ]
+        },
+        {
+          "type": "SLAV",
+          "cell_object_intensity": 1056,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1056,
+              "native_unclamped_intensity": 1056,
+              "native_pushed_intensity": 1056
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1256,
+              "native_unclamped_intensity": 1256,
+              "native_pushed_intensity": 1256
+            },
+            {
+              "extra": -200,
+              "production_intensity": 856,
+              "native_unclamped_intensity": 856,
+              "native_pushed_intensity": 856
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1656,
+              "native_unclamped_intensity": 1656,
+              "native_pushed_intensity": 1656
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -944,
+              "native_pushed_intensity": -944
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5056,
+              "native_pushed_intensity": 5056
+            }
+          ]
+        },
+        {
+          "type": "SLAV",
+          "cell_object_intensity": 1056,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1056,
+              "native_unclamped_intensity": 1056,
+              "native_pushed_intensity": 1056
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1256,
+              "native_unclamped_intensity": 1256,
+              "native_pushed_intensity": 1256
+            },
+            {
+              "extra": -200,
+              "production_intensity": 856,
+              "native_unclamped_intensity": 856,
+              "native_pushed_intensity": 856
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1656,
+              "native_unclamped_intensity": 1656,
+              "native_pushed_intensity": 1656
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -944,
+              "native_pushed_intensity": -944
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5056,
+              "native_pushed_intensity": 5056
+            }
+          ]
+        },
+        {
+          "type": "SLAV",
+          "cell_object_intensity": 1056,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1056,
+              "native_unclamped_intensity": 1056,
+              "native_pushed_intensity": 1056
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1256,
+              "native_unclamped_intensity": 1256,
+              "native_pushed_intensity": 1256
+            },
+            {
+              "extra": -200,
+              "production_intensity": 856,
+              "native_unclamped_intensity": 856,
+              "native_pushed_intensity": 856
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1656,
+              "native_unclamped_intensity": 1656,
+              "native_pushed_intensity": 1656
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -944,
+              "native_pushed_intensity": -944
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5056,
+              "native_pushed_intensity": 5056
+            }
+          ]
+        },
+        {
+          "type": "SLAV",
+          "cell_object_intensity": 1056,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1056,
+              "native_unclamped_intensity": 1056,
+              "native_pushed_intensity": 1056
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1256,
+              "native_unclamped_intensity": 1256,
+              "native_pushed_intensity": 1256
+            },
+            {
+              "extra": -200,
+              "production_intensity": 856,
+              "native_unclamped_intensity": 856,
+              "native_pushed_intensity": 856
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1656,
+              "native_unclamped_intensity": 1656,
+              "native_pushed_intensity": 1656
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -944,
+              "native_pushed_intensity": -944
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5056,
+              "native_pushed_intensity": 5056
+            }
+          ]
+        },
+        {
+          "type": "SLAV",
+          "cell_object_intensity": 1056,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1056,
+              "native_unclamped_intensity": 1056,
+              "native_pushed_intensity": 1056
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1256,
+              "native_unclamped_intensity": 1256,
+              "native_pushed_intensity": 1256
+            },
+            {
+              "extra": -200,
+              "production_intensity": 856,
+              "native_unclamped_intensity": 856,
+              "native_pushed_intensity": 856
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1656,
+              "native_unclamped_intensity": 1656,
+              "native_pushed_intensity": 1656
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -944,
+              "native_pushed_intensity": -944
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5056,
+              "native_pushed_intensity": 5056
+            }
+          ]
+        }
+      ],
+      "code_sha256": {
+        "0066B6E7-0066B705": "f6604a4f5f4dbfa066a6b55d6000340afae1de945a79f3bc53fba380cf72ce5d",
+        "0051933B-0051945D": "079654ac2eec753b14c8b3f4477ae1c33542f9d6e84f1e680c136e4b8e213ea3",
+        "0051958A-005195E8": "29284f829cfd1d1ee6d9e5f02d46e676c939baf919de2b2f0b4069c22d6ea86a"
+      }
+    },
+    "03-off": {
+      "runtime_signed_integer_offset": "17D8",
+      "rules_scaling_cases": [
+        {
+          "config_double": 0.2,
+          "stored_signed_integer": 200
+        },
+        {
+          "config_double": 0,
+          "stored_signed_integer": 0
+        },
+        {
+          "config_double": -0.2,
+          "stored_signed_integer": -200
+        },
+        {
+          "config_double": 0.75,
+          "stored_signed_integer": 750
+        },
+        {
+          "config_double": -2,
+          "stored_signed_integer": -2000
+        },
+        {
+          "config_double": 4,
+          "stored_signed_integer": 4000
+        }
+      ],
+      "native_ground_infantry_cases": 252,
+      "skipped_bridge_or_structure_infantry": 0,
+      "infantry": [
+        {
+          "type": "COW",
+          "cell_object_intensity": 1056,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1056,
+              "native_unclamped_intensity": 1056,
+              "native_pushed_intensity": 1056
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1256,
+              "native_unclamped_intensity": 1256,
+              "native_pushed_intensity": 1256
+            },
+            {
+              "extra": -200,
+              "production_intensity": 856,
+              "native_unclamped_intensity": 856,
+              "native_pushed_intensity": 856
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1656,
+              "native_unclamped_intensity": 1656,
+              "native_pushed_intensity": 1656
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -944,
+              "native_pushed_intensity": -944
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5056,
+              "native_pushed_intensity": 5056
+            }
+          ]
+        },
+        {
+          "type": "COW",
+          "cell_object_intensity": 1056,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1056,
+              "native_unclamped_intensity": 1056,
+              "native_pushed_intensity": 1056
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1256,
+              "native_unclamped_intensity": 1256,
+              "native_pushed_intensity": 1256
+            },
+            {
+              "extra": -200,
+              "production_intensity": 856,
+              "native_unclamped_intensity": 856,
+              "native_pushed_intensity": 856
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1656,
+              "native_unclamped_intensity": 1656,
+              "native_pushed_intensity": 1656
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -944,
+              "native_pushed_intensity": -944
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5056,
+              "native_pushed_intensity": 5056
+            }
+          ]
+        },
+        {
+          "type": "COW",
+          "cell_object_intensity": 1056,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1056,
+              "native_unclamped_intensity": 1056,
+              "native_pushed_intensity": 1056
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1256,
+              "native_unclamped_intensity": 1256,
+              "native_pushed_intensity": 1256
+            },
+            {
+              "extra": -200,
+              "production_intensity": 856,
+              "native_unclamped_intensity": 856,
+              "native_pushed_intensity": 856
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1656,
+              "native_unclamped_intensity": 1656,
+              "native_pushed_intensity": 1656
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -944,
+              "native_pushed_intensity": -944
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5056,
+              "native_pushed_intensity": 5056
+            }
+          ]
+        },
+        {
+          "type": "DOG",
+          "cell_object_intensity": 1056,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1056,
+              "native_unclamped_intensity": 1056,
+              "native_pushed_intensity": 1056
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1256,
+              "native_unclamped_intensity": 1256,
+              "native_pushed_intensity": 1256
+            },
+            {
+              "extra": -200,
+              "production_intensity": 856,
+              "native_unclamped_intensity": 856,
+              "native_pushed_intensity": 856
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1656,
+              "native_unclamped_intensity": 1656,
+              "native_pushed_intensity": 1656
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -944,
+              "native_pushed_intensity": -944
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5056,
+              "native_pushed_intensity": 5056
+            }
+          ]
+        },
+        {
+          "type": "COW",
+          "cell_object_intensity": 1056,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1056,
+              "native_unclamped_intensity": 1056,
+              "native_pushed_intensity": 1056
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1256,
+              "native_unclamped_intensity": 1256,
+              "native_pushed_intensity": 1256
+            },
+            {
+              "extra": -200,
+              "production_intensity": 856,
+              "native_unclamped_intensity": 856,
+              "native_pushed_intensity": 856
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1656,
+              "native_unclamped_intensity": 1656,
+              "native_pushed_intensity": 1656
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -944,
+              "native_pushed_intensity": -944
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5056,
+              "native_pushed_intensity": 5056
+            }
+          ]
+        },
+        {
+          "type": "CTECH",
+          "cell_object_intensity": 1056,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1056,
+              "native_unclamped_intensity": 1056,
+              "native_pushed_intensity": 1056
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1256,
+              "native_unclamped_intensity": 1256,
+              "native_pushed_intensity": 1256
+            },
+            {
+              "extra": -200,
+              "production_intensity": 856,
+              "native_unclamped_intensity": 856,
+              "native_pushed_intensity": 856
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1656,
+              "native_unclamped_intensity": 1656,
+              "native_pushed_intensity": 1656
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -944,
+              "native_pushed_intensity": -944
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5056,
+              "native_pushed_intensity": 5056
+            }
+          ]
+        },
+        {
+          "type": "JOSH",
+          "cell_object_intensity": 1056,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1056,
+              "native_unclamped_intensity": 1056,
+              "native_pushed_intensity": 1056
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1256,
+              "native_unclamped_intensity": 1256,
+              "native_pushed_intensity": 1256
+            },
+            {
+              "extra": -200,
+              "production_intensity": 856,
+              "native_unclamped_intensity": 856,
+              "native_pushed_intensity": 856
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1656,
+              "native_unclamped_intensity": 1656,
+              "native_pushed_intensity": 1656
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -944,
+              "native_pushed_intensity": -944
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5056,
+              "native_pushed_intensity": 5056
+            }
+          ]
+        },
+        {
+          "type": "JOSH",
+          "cell_object_intensity": 1056,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1056,
+              "native_unclamped_intensity": 1056,
+              "native_pushed_intensity": 1056
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1256,
+              "native_unclamped_intensity": 1256,
+              "native_pushed_intensity": 1256
+            },
+            {
+              "extra": -200,
+              "production_intensity": 856,
+              "native_unclamped_intensity": 856,
+              "native_pushed_intensity": 856
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1656,
+              "native_unclamped_intensity": 1656,
+              "native_pushed_intensity": 1656
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -944,
+              "native_pushed_intensity": -944
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5056,
+              "native_pushed_intensity": 5056
+            }
+          ]
+        },
+        {
+          "type": "JOSH",
+          "cell_object_intensity": 1056,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1056,
+              "native_unclamped_intensity": 1056,
+              "native_pushed_intensity": 1056
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1256,
+              "native_unclamped_intensity": 1256,
+              "native_pushed_intensity": 1256
+            },
+            {
+              "extra": -200,
+              "production_intensity": 856,
+              "native_unclamped_intensity": 856,
+              "native_pushed_intensity": 856
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1656,
+              "native_unclamped_intensity": 1656,
+              "native_pushed_intensity": 1656
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -944,
+              "native_pushed_intensity": -944
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5056,
+              "native_pushed_intensity": 5056
+            }
+          ]
+        },
+        {
+          "type": "JOSH",
+          "cell_object_intensity": 1056,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1056,
+              "native_unclamped_intensity": 1056,
+              "native_pushed_intensity": 1056
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1256,
+              "native_unclamped_intensity": 1256,
+              "native_pushed_intensity": 1256
+            },
+            {
+              "extra": -200,
+              "production_intensity": 856,
+              "native_unclamped_intensity": 856,
+              "native_pushed_intensity": 856
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1656,
+              "native_unclamped_intensity": 1656,
+              "native_pushed_intensity": 1656
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -944,
+              "native_pushed_intensity": -944
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5056,
+              "native_pushed_intensity": 5056
+            }
+          ]
+        },
+        {
+          "type": "ALL",
+          "cell_object_intensity": 1056,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1056,
+              "native_unclamped_intensity": 1056,
+              "native_pushed_intensity": 1056
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1256,
+              "native_unclamped_intensity": 1256,
+              "native_pushed_intensity": 1256
+            },
+            {
+              "extra": -200,
+              "production_intensity": 856,
+              "native_unclamped_intensity": 856,
+              "native_pushed_intensity": 856
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1656,
+              "native_unclamped_intensity": 1656,
+              "native_pushed_intensity": 1656
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -944,
+              "native_pushed_intensity": -944
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5056,
+              "native_pushed_intensity": 5056
+            }
+          ]
+        },
+        {
+          "type": "JOSH",
+          "cell_object_intensity": 1056,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1056,
+              "native_unclamped_intensity": 1056,
+              "native_pushed_intensity": 1056
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1256,
+              "native_unclamped_intensity": 1256,
+              "native_pushed_intensity": 1256
+            },
+            {
+              "extra": -200,
+              "production_intensity": 856,
+              "native_unclamped_intensity": 856,
+              "native_pushed_intensity": 856
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1656,
+              "native_unclamped_intensity": 1656,
+              "native_pushed_intensity": 1656
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -944,
+              "native_pushed_intensity": -944
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5056,
+              "native_pushed_intensity": 5056
+            }
+          ]
+        },
+        {
+          "type": "JOSH",
+          "cell_object_intensity": 1056,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1056,
+              "native_unclamped_intensity": 1056,
+              "native_pushed_intensity": 1056
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1256,
+              "native_unclamped_intensity": 1256,
+              "native_pushed_intensity": 1256
+            },
+            {
+              "extra": -200,
+              "production_intensity": 856,
+              "native_unclamped_intensity": 856,
+              "native_pushed_intensity": 856
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1656,
+              "native_unclamped_intensity": 1656,
+              "native_pushed_intensity": 1656
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -944,
+              "native_pushed_intensity": -944
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5056,
+              "native_pushed_intensity": 5056
+            }
+          ]
+        },
+        {
+          "type": "JOSH",
+          "cell_object_intensity": 1056,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1056,
+              "native_unclamped_intensity": 1056,
+              "native_pushed_intensity": 1056
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1256,
+              "native_unclamped_intensity": 1256,
+              "native_pushed_intensity": 1256
+            },
+            {
+              "extra": -200,
+              "production_intensity": 856,
+              "native_unclamped_intensity": 856,
+              "native_pushed_intensity": 856
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1656,
+              "native_unclamped_intensity": 1656,
+              "native_pushed_intensity": 1656
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -944,
+              "native_pushed_intensity": -944
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5056,
+              "native_pushed_intensity": 5056
+            }
+          ]
+        },
+        {
+          "type": "JOSH",
+          "cell_object_intensity": 1168,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1168,
+              "native_unclamped_intensity": 1168,
+              "native_pushed_intensity": 1168
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1368,
+              "native_unclamped_intensity": 1368,
+              "native_pushed_intensity": 1368
+            },
+            {
+              "extra": -200,
+              "production_intensity": 968,
+              "native_unclamped_intensity": 968,
+              "native_pushed_intensity": 968
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1768,
+              "native_unclamped_intensity": 1768,
+              "native_pushed_intensity": 1768
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -832,
+              "native_pushed_intensity": -832
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5168,
+              "native_pushed_intensity": 5168
+            }
+          ]
+        },
+        {
+          "type": "JOSH",
+          "cell_object_intensity": 1168,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1168,
+              "native_unclamped_intensity": 1168,
+              "native_pushed_intensity": 1168
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1368,
+              "native_unclamped_intensity": 1368,
+              "native_pushed_intensity": 1368
+            },
+            {
+              "extra": -200,
+              "production_intensity": 968,
+              "native_unclamped_intensity": 968,
+              "native_pushed_intensity": 968
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1768,
+              "native_unclamped_intensity": 1768,
+              "native_pushed_intensity": 1768
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -832,
+              "native_pushed_intensity": -832
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5168,
+              "native_pushed_intensity": 5168
+            }
+          ]
+        },
+        {
+          "type": "JOSH",
+          "cell_object_intensity": 1056,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1056,
+              "native_unclamped_intensity": 1056,
+              "native_pushed_intensity": 1056
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1256,
+              "native_unclamped_intensity": 1256,
+              "native_pushed_intensity": 1256
+            },
+            {
+              "extra": -200,
+              "production_intensity": 856,
+              "native_unclamped_intensity": 856,
+              "native_pushed_intensity": 856
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1656,
+              "native_unclamped_intensity": 1656,
+              "native_pushed_intensity": 1656
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -944,
+              "native_pushed_intensity": -944
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5056,
+              "native_pushed_intensity": 5056
+            }
+          ]
+        },
+        {
+          "type": "ALL",
+          "cell_object_intensity": 1056,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1056,
+              "native_unclamped_intensity": 1056,
+              "native_pushed_intensity": 1056
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1256,
+              "native_unclamped_intensity": 1256,
+              "native_pushed_intensity": 1256
+            },
+            {
+              "extra": -200,
+              "production_intensity": 856,
+              "native_unclamped_intensity": 856,
+              "native_pushed_intensity": 856
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1656,
+              "native_unclamped_intensity": 1656,
+              "native_pushed_intensity": 1656
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -944,
+              "native_pushed_intensity": -944
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5056,
+              "native_pushed_intensity": 5056
+            }
+          ]
+        },
+        {
+          "type": "ALL",
+          "cell_object_intensity": 1056,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1056,
+              "native_unclamped_intensity": 1056,
+              "native_pushed_intensity": 1056
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1256,
+              "native_unclamped_intensity": 1256,
+              "native_pushed_intensity": 1256
+            },
+            {
+              "extra": -200,
+              "production_intensity": 856,
+              "native_unclamped_intensity": 856,
+              "native_pushed_intensity": 856
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1656,
+              "native_unclamped_intensity": 1656,
+              "native_pushed_intensity": 1656
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -944,
+              "native_pushed_intensity": -944
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5056,
+              "native_pushed_intensity": 5056
+            }
+          ]
+        },
+        {
+          "type": "JOSH",
+          "cell_object_intensity": 1056,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1056,
+              "native_unclamped_intensity": 1056,
+              "native_pushed_intensity": 1056
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1256,
+              "native_unclamped_intensity": 1256,
+              "native_pushed_intensity": 1256
+            },
+            {
+              "extra": -200,
+              "production_intensity": 856,
+              "native_unclamped_intensity": 856,
+              "native_pushed_intensity": 856
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1656,
+              "native_unclamped_intensity": 1656,
+              "native_pushed_intensity": 1656
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -944,
+              "native_pushed_intensity": -944
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5056,
+              "native_pushed_intensity": 5056
+            }
+          ]
+        },
+        {
+          "type": "JOSH",
+          "cell_object_intensity": 1056,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1056,
+              "native_unclamped_intensity": 1056,
+              "native_pushed_intensity": 1056
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1256,
+              "native_unclamped_intensity": 1256,
+              "native_pushed_intensity": 1256
+            },
+            {
+              "extra": -200,
+              "production_intensity": 856,
+              "native_unclamped_intensity": 856,
+              "native_pushed_intensity": 856
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1656,
+              "native_unclamped_intensity": 1656,
+              "native_pushed_intensity": 1656
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -944,
+              "native_pushed_intensity": -944
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5056,
+              "native_pushed_intensity": 5056
+            }
+          ]
+        },
+        {
+          "type": "ALL",
+          "cell_object_intensity": 1056,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1056,
+              "native_unclamped_intensity": 1056,
+              "native_pushed_intensity": 1056
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1256,
+              "native_unclamped_intensity": 1256,
+              "native_pushed_intensity": 1256
+            },
+            {
+              "extra": -200,
+              "production_intensity": 856,
+              "native_unclamped_intensity": 856,
+              "native_pushed_intensity": 856
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1656,
+              "native_unclamped_intensity": 1656,
+              "native_pushed_intensity": 1656
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -944,
+              "native_pushed_intensity": -944
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5056,
+              "native_pushed_intensity": 5056
+            }
+          ]
+        },
+        {
+          "type": "JOSH",
+          "cell_object_intensity": 1056,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1056,
+              "native_unclamped_intensity": 1056,
+              "native_pushed_intensity": 1056
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1256,
+              "native_unclamped_intensity": 1256,
+              "native_pushed_intensity": 1256
+            },
+            {
+              "extra": -200,
+              "production_intensity": 856,
+              "native_unclamped_intensity": 856,
+              "native_pushed_intensity": 856
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1656,
+              "native_unclamped_intensity": 1656,
+              "native_pushed_intensity": 1656
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -944,
+              "native_pushed_intensity": -944
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5056,
+              "native_pushed_intensity": 5056
+            }
+          ]
+        },
+        {
+          "type": "ALL",
+          "cell_object_intensity": 1056,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1056,
+              "native_unclamped_intensity": 1056,
+              "native_pushed_intensity": 1056
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1256,
+              "native_unclamped_intensity": 1256,
+              "native_pushed_intensity": 1256
+            },
+            {
+              "extra": -200,
+              "production_intensity": 856,
+              "native_unclamped_intensity": 856,
+              "native_pushed_intensity": 856
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1656,
+              "native_unclamped_intensity": 1656,
+              "native_pushed_intensity": 1656
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -944,
+              "native_pushed_intensity": -944
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5056,
+              "native_pushed_intensity": 5056
+            }
+          ]
+        },
+        {
+          "type": "JOSH",
+          "cell_object_intensity": 1056,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1056,
+              "native_unclamped_intensity": 1056,
+              "native_pushed_intensity": 1056
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1256,
+              "native_unclamped_intensity": 1256,
+              "native_pushed_intensity": 1256
+            },
+            {
+              "extra": -200,
+              "production_intensity": 856,
+              "native_unclamped_intensity": 856,
+              "native_pushed_intensity": 856
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1656,
+              "native_unclamped_intensity": 1656,
+              "native_pushed_intensity": 1656
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -944,
+              "native_pushed_intensity": -944
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5056,
+              "native_pushed_intensity": 5056
+            }
+          ]
+        },
+        {
+          "type": "ALL",
+          "cell_object_intensity": 1056,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1056,
+              "native_unclamped_intensity": 1056,
+              "native_pushed_intensity": 1056
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1256,
+              "native_unclamped_intensity": 1256,
+              "native_pushed_intensity": 1256
+            },
+            {
+              "extra": -200,
+              "production_intensity": 856,
+              "native_unclamped_intensity": 856,
+              "native_pushed_intensity": 856
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1656,
+              "native_unclamped_intensity": 1656,
+              "native_pushed_intensity": 1656
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -944,
+              "native_pushed_intensity": -944
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5056,
+              "native_pushed_intensity": 5056
+            }
+          ]
+        },
+        {
+          "type": "SLAV",
+          "cell_object_intensity": 1056,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1056,
+              "native_unclamped_intensity": 1056,
+              "native_pushed_intensity": 1056
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1256,
+              "native_unclamped_intensity": 1256,
+              "native_pushed_intensity": 1256
+            },
+            {
+              "extra": -200,
+              "production_intensity": 856,
+              "native_unclamped_intensity": 856,
+              "native_pushed_intensity": 856
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1656,
+              "native_unclamped_intensity": 1656,
+              "native_pushed_intensity": 1656
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -944,
+              "native_pushed_intensity": -944
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5056,
+              "native_pushed_intensity": 5056
+            }
+          ]
+        },
+        {
+          "type": "SLAV",
+          "cell_object_intensity": 1056,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1056,
+              "native_unclamped_intensity": 1056,
+              "native_pushed_intensity": 1056
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1256,
+              "native_unclamped_intensity": 1256,
+              "native_pushed_intensity": 1256
+            },
+            {
+              "extra": -200,
+              "production_intensity": 856,
+              "native_unclamped_intensity": 856,
+              "native_pushed_intensity": 856
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1656,
+              "native_unclamped_intensity": 1656,
+              "native_pushed_intensity": 1656
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -944,
+              "native_pushed_intensity": -944
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5056,
+              "native_pushed_intensity": 5056
+            }
+          ]
+        },
+        {
+          "type": "SLAV",
+          "cell_object_intensity": 1056,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1056,
+              "native_unclamped_intensity": 1056,
+              "native_pushed_intensity": 1056
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1256,
+              "native_unclamped_intensity": 1256,
+              "native_pushed_intensity": 1256
+            },
+            {
+              "extra": -200,
+              "production_intensity": 856,
+              "native_unclamped_intensity": 856,
+              "native_pushed_intensity": 856
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1656,
+              "native_unclamped_intensity": 1656,
+              "native_pushed_intensity": 1656
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -944,
+              "native_pushed_intensity": -944
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5056,
+              "native_pushed_intensity": 5056
+            }
+          ]
+        },
+        {
+          "type": "SLAV",
+          "cell_object_intensity": 1056,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1056,
+              "native_unclamped_intensity": 1056,
+              "native_pushed_intensity": 1056
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1256,
+              "native_unclamped_intensity": 1256,
+              "native_pushed_intensity": 1256
+            },
+            {
+              "extra": -200,
+              "production_intensity": 856,
+              "native_unclamped_intensity": 856,
+              "native_pushed_intensity": 856
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1656,
+              "native_unclamped_intensity": 1656,
+              "native_pushed_intensity": 1656
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -944,
+              "native_pushed_intensity": -944
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5056,
+              "native_pushed_intensity": 5056
+            }
+          ]
+        },
+        {
+          "type": "SLAV",
+          "cell_object_intensity": 1056,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1056,
+              "native_unclamped_intensity": 1056,
+              "native_pushed_intensity": 1056
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1256,
+              "native_unclamped_intensity": 1256,
+              "native_pushed_intensity": 1256
+            },
+            {
+              "extra": -200,
+              "production_intensity": 856,
+              "native_unclamped_intensity": 856,
+              "native_pushed_intensity": 856
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1656,
+              "native_unclamped_intensity": 1656,
+              "native_pushed_intensity": 1656
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -944,
+              "native_pushed_intensity": -944
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5056,
+              "native_pushed_intensity": 5056
+            }
+          ]
+        },
+        {
+          "type": "SLAV",
+          "cell_object_intensity": 1056,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1056,
+              "native_unclamped_intensity": 1056,
+              "native_pushed_intensity": 1056
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1256,
+              "native_unclamped_intensity": 1256,
+              "native_pushed_intensity": 1256
+            },
+            {
+              "extra": -200,
+              "production_intensity": 856,
+              "native_unclamped_intensity": 856,
+              "native_pushed_intensity": 856
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1656,
+              "native_unclamped_intensity": 1656,
+              "native_pushed_intensity": 1656
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -944,
+              "native_pushed_intensity": -944
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5056,
+              "native_pushed_intensity": 5056
+            }
+          ]
+        },
+        {
+          "type": "SLAV",
+          "cell_object_intensity": 1056,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1056,
+              "native_unclamped_intensity": 1056,
+              "native_pushed_intensity": 1056
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1256,
+              "native_unclamped_intensity": 1256,
+              "native_pushed_intensity": 1256
+            },
+            {
+              "extra": -200,
+              "production_intensity": 856,
+              "native_unclamped_intensity": 856,
+              "native_pushed_intensity": 856
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1656,
+              "native_unclamped_intensity": 1656,
+              "native_pushed_intensity": 1656
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -944,
+              "native_pushed_intensity": -944
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5056,
+              "native_pushed_intensity": 5056
+            }
+          ]
+        },
+        {
+          "type": "SLAV",
+          "cell_object_intensity": 1056,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1056,
+              "native_unclamped_intensity": 1056,
+              "native_pushed_intensity": 1056
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1256,
+              "native_unclamped_intensity": 1256,
+              "native_pushed_intensity": 1256
+            },
+            {
+              "extra": -200,
+              "production_intensity": 856,
+              "native_unclamped_intensity": 856,
+              "native_pushed_intensity": 856
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1656,
+              "native_unclamped_intensity": 1656,
+              "native_pushed_intensity": 1656
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -944,
+              "native_pushed_intensity": -944
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5056,
+              "native_pushed_intensity": 5056
+            }
+          ]
+        },
+        {
+          "type": "SLAV",
+          "cell_object_intensity": 1056,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1056,
+              "native_unclamped_intensity": 1056,
+              "native_pushed_intensity": 1056
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1256,
+              "native_unclamped_intensity": 1256,
+              "native_pushed_intensity": 1256
+            },
+            {
+              "extra": -200,
+              "production_intensity": 856,
+              "native_unclamped_intensity": 856,
+              "native_pushed_intensity": 856
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1656,
+              "native_unclamped_intensity": 1656,
+              "native_pushed_intensity": 1656
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -944,
+              "native_pushed_intensity": -944
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5056,
+              "native_pushed_intensity": 5056
+            }
+          ]
+        },
+        {
+          "type": "SLAV",
+          "cell_object_intensity": 1056,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1056,
+              "native_unclamped_intensity": 1056,
+              "native_pushed_intensity": 1056
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1256,
+              "native_unclamped_intensity": 1256,
+              "native_pushed_intensity": 1256
+            },
+            {
+              "extra": -200,
+              "production_intensity": 856,
+              "native_unclamped_intensity": 856,
+              "native_pushed_intensity": 856
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1656,
+              "native_unclamped_intensity": 1656,
+              "native_pushed_intensity": 1656
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -944,
+              "native_pushed_intensity": -944
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5056,
+              "native_pushed_intensity": 5056
+            }
+          ]
+        },
+        {
+          "type": "E2",
+          "cell_object_intensity": 1140,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1140,
+              "native_unclamped_intensity": 1140,
+              "native_pushed_intensity": 1140
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1340,
+              "native_unclamped_intensity": 1340,
+              "native_pushed_intensity": 1340
+            },
+            {
+              "extra": -200,
+              "production_intensity": 940,
+              "native_unclamped_intensity": 940,
+              "native_pushed_intensity": 940
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1740,
+              "native_unclamped_intensity": 1740,
+              "native_pushed_intensity": 1740
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -860,
+              "native_pushed_intensity": -860
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5140,
+              "native_pushed_intensity": 5140
+            }
+          ]
+        },
+        {
+          "type": "E2",
+          "cell_object_intensity": 1140,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1140,
+              "native_unclamped_intensity": 1140,
+              "native_pushed_intensity": 1140
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1340,
+              "native_unclamped_intensity": 1340,
+              "native_pushed_intensity": 1340
+            },
+            {
+              "extra": -200,
+              "production_intensity": 940,
+              "native_unclamped_intensity": 940,
+              "native_pushed_intensity": 940
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1740,
+              "native_unclamped_intensity": 1740,
+              "native_pushed_intensity": 1740
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -860,
+              "native_pushed_intensity": -860
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5140,
+              "native_pushed_intensity": 5140
+            }
+          ]
+        },
+        {
+          "type": "E2",
+          "cell_object_intensity": 1140,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1140,
+              "native_unclamped_intensity": 1140,
+              "native_pushed_intensity": 1140
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1340,
+              "native_unclamped_intensity": 1340,
+              "native_pushed_intensity": 1340
+            },
+            {
+              "extra": -200,
+              "production_intensity": 940,
+              "native_unclamped_intensity": 940,
+              "native_pushed_intensity": 940
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1740,
+              "native_unclamped_intensity": 1740,
+              "native_pushed_intensity": 1740
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -860,
+              "native_pushed_intensity": -860
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5140,
+              "native_pushed_intensity": 5140
+            }
+          ]
+        },
+        {
+          "type": "E2",
+          "cell_object_intensity": 1140,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1140,
+              "native_unclamped_intensity": 1140,
+              "native_pushed_intensity": 1140
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1340,
+              "native_unclamped_intensity": 1340,
+              "native_pushed_intensity": 1340
+            },
+            {
+              "extra": -200,
+              "production_intensity": 940,
+              "native_unclamped_intensity": 940,
+              "native_pushed_intensity": 940
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1740,
+              "native_unclamped_intensity": 1740,
+              "native_pushed_intensity": 1740
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -860,
+              "native_pushed_intensity": -860
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5140,
+              "native_pushed_intensity": 5140
+            }
+          ]
+        },
+        {
+          "type": "FLAKT",
+          "cell_object_intensity": 1140,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1140,
+              "native_unclamped_intensity": 1140,
+              "native_pushed_intensity": 1140
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1340,
+              "native_unclamped_intensity": 1340,
+              "native_pushed_intensity": 1340
+            },
+            {
+              "extra": -200,
+              "production_intensity": 940,
+              "native_unclamped_intensity": 940,
+              "native_pushed_intensity": 940
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1740,
+              "native_unclamped_intensity": 1740,
+              "native_pushed_intensity": 1740
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -860,
+              "native_pushed_intensity": -860
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5140,
+              "native_pushed_intensity": 5140
+            }
+          ]
+        },
+        {
+          "type": "FLAKT",
+          "cell_object_intensity": 1140,
+          "captured_extra_infantry_light": 200,
+          "cases": [
+            {
+              "extra": 0,
+              "production_intensity": 1140,
+              "native_unclamped_intensity": 1140,
+              "native_pushed_intensity": 1140
+            },
+            {
+              "extra": 200,
+              "production_intensity": 1340,
+              "native_unclamped_intensity": 1340,
+              "native_pushed_intensity": 1340
+            },
+            {
+              "extra": -200,
+              "production_intensity": 940,
+              "native_unclamped_intensity": 940,
+              "native_pushed_intensity": 940
+            },
+            {
+              "extra": 600,
+              "production_intensity": 1740,
+              "native_unclamped_intensity": 1740,
+              "native_pushed_intensity": 1740
+            },
+            {
+              "extra": -2000,
+              "production_intensity": 0,
+              "native_unclamped_intensity": -860,
+              "native_pushed_intensity": -860
+            },
+            {
+              "extra": 4000,
+              "production_intensity": 2000,
+              "native_unclamped_intensity": 5140,
+              "native_pushed_intensity": 5140
+            }
+          ]
+        }
+      ],
+      "code_sha256": {
+        "0066B6E7-0066B705": "f6604a4f5f4dbfa066a6b55d6000340afae1de945a79f3bc53fba380cf72ce5d",
+        "0051933B-0051945D": "079654ac2eec753b14c8b3f4477ae1c33542f9d6e84f1e680c136e4b8e213ea3",
+        "0051958A-005195E8": "29284f829cfd1d1ee6d9e5f02d46e676c939baf919de2b2f0b4069c22d6ea86a"
+      }
+    }
+  },
+  "game_tested": false,
+  "windows_rendering_tested": false,
+  "multiplayer_tested": false
+}

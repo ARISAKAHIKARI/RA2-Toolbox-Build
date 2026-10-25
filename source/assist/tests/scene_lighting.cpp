@@ -125,13 +125,25 @@ int main(){
  }put(rules+0x17DC,200);
  assert(external::lighting::object(read,type,house,3,640,896,208,State{})==beforeBuilding);
  assert(animation(read,anim,animType,640,896,208,State{})==beforeAnimation&&terrainObject(read,type,640,896,208,State{})==beforeMine);
- assert(external::lighting::object(read,type,house,1,640,896,208,State{}).intensity==1056); // no unverified class-wide extrapolation
- auto missingRules=[&](uint32_t p,void*out,size_t n){return p!=rules+0x17D4&&p!=rules+0x17DC&&read(p,out,n);};
- for(int kind:{0,2})assert(external::lighting::object(missingRules,type,house,kind,640,896,208,State{}).intensity==1056);
+ // Infantry::Draw 519457 independently adds the runtime signed integer at
+ // Rules+17D8. It must not reuse either the vehicle or aircraft field.
+ put(rules+0x17D4,350);put(rules+0x17DC,650);
+ for(int extra:{0,200,-200,600,-2000,4000}){put(rules+0x17D8,extra);
+  auto infantry=external::lighting::object(read,type,house,1,640,896,208,State{});
+  assert(infantry.intensity==std::clamp(1056+extra,0,2000)&&"Infantry must include its own live ExtraInfantryLight");
+  assert(external::lighting::object(read,type,house,2,640,896,208,State{}).intensity==1406);
+  assert(external::lighting::object(read,type,house,0,640,896,208,State{}).intensity==1706);
+ }
+ put(rules+0x17D8,200);auto infantry=external::lighting::object(read,type,house,1,640,896,208,State{});
+ assert(external::camera::lit(0xff808080,48,true,infantry)==0xffa1a1a1);
+ assert(external::camera::lit(0xff808080,240,true,infantry)==0xff808080); // fullbright index remains intact
+ auto missingRules=[&](uint32_t p,void*out,size_t n){return p!=rules+0x17D4&&p!=rules+0x17D8&&p!=rules+0x17DC&&read(p,out,n);};
+ for(int kind:{0,1,2})assert(external::lighting::object(missingRules,type,house,kind,640,896,208,State{}).intensity==1056);
  int ruleReads=0;auto changingRules=[&](uint32_t p,void*out,size_t n){bool ok=read(p,out,n);if(p==0x8871E0&&++ruleReads==1)put(0x8871E0,0u);return ok;};
- for(int kind:{0,2}){ruleReads=0;put(0x8871E0,rules);assert(external::lighting::object(changingRules,type,house,kind,640,896,208,State{}).intensity==1056);}
- put(0x8871E0,0xfffffff0u);for(int kind:{0,2})assert(external::lighting::object(read,type,house,kind,640,896,208,State{}).intensity==1056);
+ for(int kind:{0,1,2}){ruleReads=0;put(0x8871E0,rules);assert(external::lighting::object(changingRules,type,house,kind,640,896,208,State{}).intensity==1056);}
+ put(0x8871E0,0xfffffff0u);for(int kind:{0,1,2})assert(external::lighting::object(read,type,house,kind,640,896,208,State{}).intensity==1056);
  std::cout<<"PASS ambient, normal/tinted converter, map changes, bounded reads, owner/custom vs terrain RGB, animation source/NormalLight, opaque final pixels and live lighting updates\n";
  std::cout<<"PASS ore-mine global converter/object brightness, neutral plain-converter tint, native zero intensity and independent ISO tree lighting\n";
- std::cout<<"PASS live signed ExtraUnitLight/ExtraAircraftLight, voxel/SHP Unit dispatch, final pixel brightness, failed/racing rules fallback and unrelated-class isolation\n";
+ std::cout<<"PASS independent signed ExtraUnitLight/ExtraInfantryLight/ExtraAircraftLight, voxel/SHP Unit dispatch, final pixel brightness, failed/racing rules fallback and unrelated-class isolation\n";
 }
+

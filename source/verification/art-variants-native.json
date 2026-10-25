@@ -1,0 +1,125 @@
+{
+  "supported_executable_sha256": "7b8a068535d6af06845edf95ae829b113d00c02909330e16f197426cd7db94b6",
+  "scope": "Compare production resource/TMP selection with captured original x86.\n\nPrivate capture bytes remain local. The replay executes the original resource\nlookup, flat/slope pool selection, TMP coordinate selection and linked-variant\ndispatch. Synthetic cells/types/tables and a GetImage boundary isolate these\ndecisions; no game update, original rasterizer, Windows or multiplayer runs.\n",
+  "cases": 8505,
+  "mismatches": 0,
+  "stages": {
+    "01-off": {
+      "cases": 2835,
+      "mismatches": 0,
+      "resource_pools": [
+        {
+          "name": "Riparius",
+          "first_type": "TIB01",
+          "flat": 12,
+          "slopes": 8
+        },
+        {
+          "name": "Cruentus",
+          "first_type": "GEM01",
+          "flat": 12,
+          "slopes": 0
+        },
+        {
+          "name": "Vinifera",
+          "first_type": "TIB2_01",
+          "flat": 12,
+          "slopes": 8
+        },
+        {
+          "name": "Aboreus",
+          "first_type": "TIB3_01",
+          "flat": 12,
+          "slopes": 8
+        }
+      ],
+      "code_sha256": {
+        "005FDD20-005FDDDE": "edf5348132a35eb58ca33b1d0998e5380047f60139c5f8dca3f62ac8afcb4709",
+        "0047F871-0047F900": "ac2095094e4da8804a1291296ce3a1014c9ff90173cf5d34a3a9588b98487ad1",
+        "00480389-00480403": "5537a8eacc73b43e955452e4929dedf542a97ac0aff3526563b14fb7e51751e9",
+        "004814F0-0048166A": "919b165e437eee742eaa80f9e2c8dd1291a89d36bb718e96bc758033c021c424",
+        "005471F0-00547224": "e5070f7d3abdb0e45e4727ce0a3b301c42e5356657b067ebd8f139f2ad248e76",
+        "00547D15-00547D68": "cb4d087a47da6fe030bee592114a2bd3aead6f86229617e6d18a07e502c62f8d"
+      }
+    },
+    "02-on": {
+      "cases": 2835,
+      "mismatches": 0,
+      "resource_pools": [
+        {
+          "name": "Riparius",
+          "first_type": "TIB01",
+          "flat": 12,
+          "slopes": 8
+        },
+        {
+          "name": "Cruentus",
+          "first_type": "GEM01",
+          "flat": 12,
+          "slopes": 0
+        },
+        {
+          "name": "Vinifera",
+          "first_type": "TIB2_01",
+          "flat": 12,
+          "slopes": 8
+        },
+        {
+          "name": "Aboreus",
+          "first_type": "TIB3_01",
+          "flat": 12,
+          "slopes": 8
+        }
+      ],
+      "code_sha256": {
+        "005FDD20-005FDDDE": "edf5348132a35eb58ca33b1d0998e5380047f60139c5f8dca3f62ac8afcb4709",
+        "0047F871-0047F900": "ac2095094e4da8804a1291296ce3a1014c9ff90173cf5d34a3a9588b98487ad1",
+        "00480389-00480403": "5537a8eacc73b43e955452e4929dedf542a97ac0aff3526563b14fb7e51751e9",
+        "004814F0-0048166A": "919b165e437eee742eaa80f9e2c8dd1291a89d36bb718e96bc758033c021c424",
+        "005471F0-00547224": "e5070f7d3abdb0e45e4727ce0a3b301c42e5356657b067ebd8f139f2ad248e76",
+        "00547D15-00547D68": "cb4d087a47da6fe030bee592114a2bd3aead6f86229617e6d18a07e502c62f8d"
+      }
+    },
+    "03-off": {
+      "cases": 2835,
+      "mismatches": 0,
+      "resource_pools": [
+        {
+          "name": "Riparius",
+          "first_type": "TIB01",
+          "flat": 12,
+          "slopes": 8
+        },
+        {
+          "name": "Cruentus",
+          "first_type": "GEM01",
+          "flat": 12,
+          "slopes": 0
+        },
+        {
+          "name": "Vinifera",
+          "first_type": "TIB2_01",
+          "flat": 12,
+          "slopes": 8
+        },
+        {
+          "name": "Aboreus",
+          "first_type": "TIB3_01",
+          "flat": 12,
+          "slopes": 8
+        }
+      ],
+      "code_sha256": {
+        "005FDD20-005FDDDE": "edf5348132a35eb58ca33b1d0998e5380047f60139c5f8dca3f62ac8afcb4709",
+        "0047F871-0047F900": "ac2095094e4da8804a1291296ce3a1014c9ff90173cf5d34a3a9588b98487ad1",
+        "00480389-00480403": "5537a8eacc73b43e955452e4929dedf542a97ac0aff3526563b14fb7e51751e9",
+        "004814F0-0048166A": "919b165e437eee742eaa80f9e2c8dd1291a89d36bb718e96bc758033c021c424",
+        "005471F0-00547224": "e5070f7d3abdb0e45e4727ce0a3b301c42e5356657b067ebd8f139f2ad248e76",
+        "00547D15-00547D68": "cb4d087a47da6fe030bee592114a2bd3aead6f86229617e6d18a07e502c62f8d"
+      }
+    }
+  },
+  "game_tested": false,
+  "windows_rendering_tested": false,
+  "multiplayer_tested": false
+}

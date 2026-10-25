@@ -12,6 +12,18 @@ int main(){
  auto a=unit(0,30*256,30*256),b=unit(1,34*256,30*256),c=unit(2,35*256,30*256),unselected=unit(3,30*256+1,30*256);
  vec(0xA8EC78,0x200000,{a.pointer,b.pointer,c.pointer,unselected.pointer});vec(0xA8ECB8,0x210000,{a.pointer,b.pointer,c.pointer});put(unselected.pointer+0x431,uint8_t(1));
  auto captured=capture(read);assert(captured.target==a&&captured.members.size()==3); // hovered outsider cannot change group
+ // A successfully returned but inconsistent terminal value must not delete
+ // the slot. Both observations use the read supplied by the production host.
+ for(uint32_t offset:{0u,0x10u,0x6Cu,0x74u}){
+  auto uncertain=captured;int hits=0;auto torn=[&](uint32_t p,void*out,size_t n){if(!read(p,out,n))return false;if(p==a.pointer+offset&&++hits==1)memset(out,0,n);return true;};
+  follow(torn,uncertain);assert(uncertain.target==a);
+ }
+ put(a.pointer,0x700000u);auto unsupported=captured;follow(read,unsupported);assert(unsupported.target==a);put(a.pointer,0x7F5C70u);
+ // A dead focus plus an unreadable surviving group member is not an empty
+ // cohort. Retain the slot until the nearest-successor decision is knowable.
+ auto uncertain=captured;uncertain.members={a,b};put(a.pointer+0x6C,0);
+ auto lostSuccessor=[&](uint32_t p,void*out,size_t n){return p!=b.pointer+0x74&&read(p,out,n);};
+ follow(lostSuccessor,uncertain);assert(uncertain.target==a);follow(read,uncertain);assert(uncertain.target==b);put(a.pointer+0x6C,100);
  // Every life field must have been read before absence becomes death. Failed
  // reads of the less prominent flags used to look like a dead focus.
  for(uint32_t offset:{0u,0x10u,0x6Cu,0x74u,0x81u,0x90u,0x11Cu,0x220u}){
@@ -45,3 +57,4 @@ int main(){
  put(c.pointer+0x6C,0);assert(!camera(read,c,800,600,x,y));
  std::cout<<"PASS same-key allocation without borrowing, stable original cohort, nearest succession, inclusive five-cell radius, pointer reuse, transport, centered stack and live-height camera\n";
 }
+

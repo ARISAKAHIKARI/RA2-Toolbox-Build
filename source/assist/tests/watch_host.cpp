@@ -13,8 +13,8 @@ static DWORD GetTickCount(){return clockValue;}static uint32_t commandMatch(){re
 static struct {bool watchEnabled=true,watchDanger=false,renderReveal=false;int mapStrategy=0;uint32_t watchKeys[3]={87,87,86};}extra;
 static struct {int chat=0,renderStatus=1,width=800,height=600;}snap;
 static std::vector<uint8_t> memory(0x1800000);
-static uint32_t blockedAddress=0;
-static struct {bool read(uint32_t p,void*out,size_t n){if(p==blockedAddress||uint64_t(p)+n>memory.size())return false;memcpy(out,memory.data()+p,n);return true;}}externalReader;
+static uint32_t blockedAddress=0,staleLifeAddress=0,occupantDiscoveryReads=0;
+static struct {bool readFresh(uint32_t p,void*out,size_t n){if(p==0xA8EB44&&n==4)++occupantDiscoveryReads;if(p==blockedAddress||uint64_t(p)+n>memory.size())return false;memcpy(out,memory.data()+p,n);return true;}bool read(uint32_t p,void*out,size_t n){if(!readFresh(p,out,n))return false;if(p==staleLifeAddress)memset(out,0,n);return true;}}externalReader;
 struct Color {template<class... T>Color(T...){}};struct SolidBrush {SolidBrush(Color){}};struct Pen {Pen(Color,float){}};struct PointF {float x,y;};struct RectF {float x,y,w,h;RectF(float a,float b,float c,float d):x(a),y(b),w(c),h(d){}};struct Bitmap {Bitmap(int,int,int,int,BYTE*){}};
 struct ColorMatrix {float m[5][5]{};};static ColorMatrix drawnMatrix;static std::vector<RectF> drawnRects,drawnEllipses;static std::vector<float> drawnGains;static std::vector<RectF> excluded;struct ImageAttributes {void SetColorMatrix(ColorMatrix*m){drawnMatrix=*m;}};
 constexpr int PixelFormat32bppPARGB=1,CombineModeIntersect=1,CombineModeExclude=3,UnitPixel=2;
@@ -106,7 +106,7 @@ int main(){
  auto actor=engine.views[0].frame.actors[1];auto&f=engine.views[0].frame;f.radius=1;f.side=3;f.cx=actor.x/256;f.cy=actor.y/256;actor.x=f.cx*256+128;actor.y=f.cy*256+128;actor.z=208;actor.light.intensity=1200;f.actors={actor};engine.views[0].positions.clear();f.cells.assign(9,0);f.cells[4]=0xff112233;f.tiles.assign(9,{});f.tiles[4].level=2;f.tiles[4].overlayType=0xdead;f.tiles[4].overlayY=-31;f.tiles[4].overlayLight.intensity=1500;
  auto&overlay=engine.overlays[{0xdead,0}];overlay.ready=true;overlay.image.width=overlay.image.height=1;overlay.image.pixels={0xffabcdef};
  // One composed canvas keeps native-height positioning and pixel depth.
- f.focus=actor.target;overlay.image.width=overlay.image.height=8;overlay.image.pixels.assign(64,0xffabcdef);
+ f.focus=actor.target;f.center.target=actor.target;overlay.image.width=overlay.image.height=8;overlay.image.pixels.assign(64,0xffabcdef);
  auto&actorImage=engine.images[engine.imageKey(actor)];actorImage.ready=true;actorImage.image=overlay.image;actorImage.image.pixels.assign(64,0xff204080);
  drawnRects.clear();engine.drawView(g,engine.views[0]);assert(drawnRects.size()==1&&drawnRects[0].w==320);
  auto&canvas=engine.views[0].raster;assert(canvas.color[114*320+161]==external::camera::lit(0xffabcdef,0,false,f.tiles[4].overlayLight));
@@ -160,3 +160,4 @@ int main(){
  engine.enabled=false;clockValue+=50;engine.update(clockValue);assert(!engine.shown);engine.reset();assert(engine.images.empty()&&engine.actorArt.empty());
  std::cout<<"PASS 300 unique types, retained poses, independent door/roof frames, cache transitions, clamped off-center focus with drawable border scenery and reset\n";
 }
+

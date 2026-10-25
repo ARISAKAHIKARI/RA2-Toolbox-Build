@@ -34,7 +34,7 @@ struct ReadSession {
   if(p==mapbounds::Map+0xF4&&n==sizeof bounds){if(!haveBounds){if(!externalReader.read(p,bounds.data(),n))return false;haveBounds=true;}memcpy(out,bounds.data(),n);return true;}
   return externalReader.read(p,out,n);
  }
- bool readFresh(uint32_t p,void*out,size_t n){watchtest::fresh();return externalReader.read(p,out,n);}
+ bool readFresh(uint32_t p,void*out,size_t n){if(p==mapbounds::Map+0xF4&&n==sizeof bounds)watchtest::fresh();return externalReader.readFresh(p,out,n);}
 };
 struct SharedReadView {ReadSession*reader;bool operator()(uint32_t p,void*out,size_t n)const{return reader->read(p,out,n);}};
 namespace cameraassets {template<class Reader>struct Context:Backend {
@@ -86,6 +86,23 @@ int main(){
  clockValue+=999;watchwindows::update(origin,client);assert(win[middle].raises==1);++clockValue;watchwindows::update(origin,client);assert(win[middle].raises==2&&win[middle].invalidations==102);
  battlefield(false);watchwindows::update(origin,client);for(auto w:watchwindows::windows)assert(!win[w].visible);clockValue+=2000;watchwindows::update(origin,client);assert(win[middle].raises==2);battlefield(true);watchwindows::update(origin,client);assert(win[middle].visible&&win[middle].raises==3);
  watchwindows::proc(middle,WM_RBUTTONDOWN,MK_SHIFT,0);assert(!watchhost::tracks[1]&&!watchhost::views[1].shown&&!win[middle].visible&&watchhost::tracks[0]&&watchhost::tracks[2]);clockValue+=1000;watchwindows::update(origin,client);assert(!win[middle].visible);
+ // A garrison already found beyond the bounded discovery batch must remain
+ // navigable. Reusing its verified spatial host avoids restarting at the
+ // first 64 buildings on every click.
+ put(p,0x7EB058u);put(p+0x81,uint8_t(1));put(p+0x90,uint8_t(0));
+ constexpr uint32_t buildingItems=0x1C0000,occupantItems=0x1D0000;uint32_t host=0;
+ put(0xA8EB40+4,buildingItems);put(0xA8EB40+8,100);put(0xA8EB40+16,100);
+ for(int i=0;i<100;++i){uint32_t building=0x300000+i*0x800;put(buildingItems+i*4,building);put(building,0x7E3EBCu);put(building+0x10,uint32_t(i+100));put(building+0x6C,100);put(building+0x74,uint8_t(1));put(building+0x90,uint8_t(1));if(i==70)host=building;}
+ put(host+0x9C,45*256);put(host+0xA0,35*256);put(host+0x688,occupantItems);put(host+0x68C,1);put(host+0x694,1);put(occupantItems,p);
+ auto&garrison=watchhost::tracks[0];garrison.spatial={host,170};garrison.located=true;garrison.spatialKind=3;
+ int beforeGarrisonWakes=wakes;watchwindows::proc(watchwindows::windows[0],WM_LBUTTONDOWN,0,0);
+ assert(wakes==beforeGarrisonWakes+1&&shared->cameraTargetX==300&&shared->cameraTargetY==1200);
+ // Navigation's fresh lifecycle decision must be committed even though no
+ // camera move is sent. A delayed worker completion uses the prior control
+ // revision and cannot restore this cleared slot.
+ auto beforeControl=watchhost::controls;int beforeWakes=wakes;put(p+0x6C,0);
+ watchwindows::proc(watchwindows::windows[0],WM_LBUTTONDOWN,0,0);
+ assert(!watchhost::tracks[0]&&!watchhost::views[0].shown&&watchhost::controls==beforeControl+1&&wakes==beforeWakes);
  watchwindows::proc(watchwindows::windows[0],WM_SETCURSOR,0,0);assert(cursors==1);watchwindows::destroy();assert(win.empty());
  std::cout<<"PASS production window handlers: one-click native-camera mailbox, independent Shift-right-close, no activation, physical scaling, one-second reassertion, menu/focus/chat gating and destroy\n";
 }
@@ -95,3 +112,4 @@ if __name__=='__main__':
   cpp=Path(tmp)/'watch.cpp';exe=Path(tmp)/'watch';cpp.write_text(prefix+shim)
   subprocess.run(['g++','-std=c++17','-O1','-pthread','-I'+str(root/'assist/tests'),str(cpp),'-o',str(exe)],check=True)
   subprocess.run([str(exe)],check=True)
+

@@ -3,12 +3,12 @@
 #include <iostream>
 struct Assets {
  struct ActorArt {int id=0;bool anim=false;};struct Files {uint64_t value=1;uint64_t revision(){return value;}}files;int loads=0,captures=0,renders=0;std::set<int> seen;std::map<int,std::set<int>> frames;std::set<std::pair<int,int>> buildingPoses;bool small=false,partial=false;
- uint32_t forcedColor=0;
+ uint32_t forcedColor=0,overlayColor=0;
  uint64_t revision(){return files.revision();}
  static size_t cost(const ActorArt&){return sizeof(ActorArt);}
  bool palette(bool,std::array<uint32_t,256>&p){p.fill(0xffffffff);return true;}
  bool tile(uint32_t,unsigned,const std::array<uint32_t,256>&,external::voxel::Image&i){++loads;i.width=60;i.height=30;i.x=-30;i.y=-15;i.pixels.assign(1800,0xffa03020);i.depth.assign(1800,0);return true;}
- bool overlay(uint32_t,uint32_t,int,external::voxel::Image&,bool=false){return false;}
+ bool overlay(uint32_t,uint32_t,int,external::voxel::Image&i,bool=false){if(!overlayColor)return false;i.width=i.height=60;i.x=i.y=-30;i.pixels.assign(3600,overlayColor);i.writeDepth=false;return true;}
  int buildingFrame(uint32_t,uint32_t){return 0;}
  void buildingPose(uint32_t p,uint32_t t,external::visual::Pose&pose){pose.frame=buildingFrame(p,t);}
  bool captureActor(uint32_t,uint32_t,uint32_t id,ActorArt&a){++captures;a.id=id;return true;}
@@ -78,5 +78,34 @@ int main(){
   for(int n=0;n<20;++n)recoveredRenderer.render(recovery,128,64,read,recoveredAssets);
   assert(recoveredAssets.captures==oldCaptures&&recoveredAssets.renders==oldRendered);
  }
- std::cout<<"PASS scene publication, native animation frame-zero/advance, independent door/roof cache, shared source art, fair retained poses, ground/air layers, resize and reset\n";
+ // A shroud-policy change invalidates the completed background even though
+ // projection, house, output size and all source art remain identical.
+ // Make the replacement larger than one sampling/render budget: its first
+ // unfinished pass must not publish pixels from the old reveal setting.
+ {
+  Assets policyAssets;SceneRenderer<Assets> policyRenderer;Frame policy;policy.tick=100;
+  auto unmasked=std::make_shared<Terrain>(*terrain);unmasked->reveal=true;policy.terrain=unmasked;
+  auto shown=policyRenderer.render(policy,128,64,read,policyAssets);assert(shown);int loaded=policyAssets.loads;
+  auto native=std::make_shared<Terrain>(*unmasked);native->reveal=false;
+  for(size_t i=0;i<4097;++i)native->colors[i]=0x446644;
+  policy.terrain=native;auto pending=policyRenderer.render(policy,128,64,read,policyAssets);assert(!pending);
+  auto masked=policyRenderer.render(policy,128,64,read,policyAssets);assert(masked);
+  assert(policyAssets.loads==loaded); // policy changes keep decoded art warm
+  policy.terrain=unmasked;shown=policyRenderer.render(policy,128,64,read,policyAssets);assert(shown&&policyAssets.loads==loaded);
+ }
+ // Native resource/wall lighting is selected by the stored overlay type,
+ // while the pooled sprite has its own type/cache key. Terrain is dark here.
+ {
+  std::vector<uint8_t> memory(0x40000);auto put=[&](uint32_t p,auto v){memcpy(memory.data()+p,&v,sizeof v);};
+  auto bytes=[&](uint32_t p,void*out,size_t n){if(uint64_t(p)+n>memory.size())return false;memcpy(out,memory.data()+p,n);return true;};
+  constexpr uint32_t cell=0x10000,source=0x20000,draw=0x30000;put(cell+0x104,65536u);put(cell+0x10A,int16_t(1000));put(cell+0x10C,int16_t(0));put(cell+0x10E,int16_t(500));
+  auto lightTerrain=std::make_shared<Terrain>(*terrain);auto&art=lightTerrain->art[64*512+64];art.cell=cell;art.overlayType=draw;art.overlaySourceType=source;
+  Assets lightAssets;lightAssets.overlayColor=0xffc08040;Frame lit;lit.terrain=lightTerrain;lit.tick=100;SceneRenderer<Assets> lightRenderer;
+  memory[source+0x2A9]=1;auto bright=lightRenderer.render(lit,128,64,bytes,lightAssets);assert(bright&&std::find(bright->pixels.begin(),bright->pixels.end(),lightAssets.overlayColor)!=bright->pixels.end());
+  memory[source+0x2A9]=0;memory[draw+0x2A9]=1;lightRenderer.reset();auto dark=lightRenderer.render(lit,128,64,bytes,lightAssets);assert(dark&&std::find(dark->pixels.begin(),dark->pixels.end(),lightAssets.overlayColor)==dark->pixels.end());
+  memory[source+0x2A8]=1;lightRenderer.reset();bright=lightRenderer.render(lit,128,64,bytes,lightAssets);assert(bright&&std::find(bright->pixels.begin(),bright->pixels.end(),lightAssets.overlayColor)!=bright->pixels.end());
+  put(cell+0x140,0x80u);lightRenderer.reset();auto bridge=lightRenderer.render(lit,128,64,bytes,lightAssets);external::lighting::State bridgeLight;bridgeLight.intensity=500;uint32_t expected=external::camera::lit(lightAssets.overlayColor,0,false,bridgeLight);assert(bridge&&std::find(bridge->pixels.begin(),bridge->pixels.end(),expected)!=bridge->pixels.end());
+ }
+ std::cout<<"PASS scene publication, native animation frame-zero/advance, independent door/roof cache, shared source art, fair retained poses, ground/air layers, shroud policy, resource/wall/bridge light, resize and reset\n";
 }
+

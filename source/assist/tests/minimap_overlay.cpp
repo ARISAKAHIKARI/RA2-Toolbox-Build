@@ -55,6 +55,19 @@ using namespace external::radar;Memory m;constexpr uint32_t cells=0x100000,cell=
  // Never expose a partially refreshed terrain bank; old immutable bank survives.
  m.set<int8_t>(cell+0x120,-2);sampler.step(false,2048);assert(sampler.snapshot(3).terrain==a.terrain);sampler.step(false,2048);assert(sampler.snapshot(4).terrain->colors[3*512+3]==0);assert(a.terrain->colors[3*512+3]!=0);
  sampler.step(true,4096);assert(sampler.snapshot(5).terrain->colors[3*512+3]!=0);
+ // A half-transparent main viewport means an unmasked minimap, exactly like
+ // transparent/direct display. No extra darkening belongs in its terrain bank.
+ for(uint32_t reveal:{1u,2u,3u}){
+  assert(sampler.step(reveal,4096,true));auto revealed=sampler.snapshot(5);
+  assert(revealed.terrain&&revealed.terrain->colors[3*512+3]==terrainColor(2,0,false));
+  assert(revealed.terrain->art[3*512+3].cell==cell);
+ }
+ m.set<int8_t>(cell+0x120,-1);m.set<int8_t>(cell+0x121,0);
+ assert(sampler.step(0,4096));assert(sampler.snapshot(5).terrain->colors[3*512+3]==terrainColor(2,0,true));
+ assert(sampler.step(2,4096));assert(sampler.snapshot(5).terrain->colors[3*512+3]==terrainColor(2,0,false));
+ m.set<int8_t>(cell+0x120,-2);m.set<int8_t>(cell+0x121,-1);
+ assert(sampler.step(0,4096));assert(sampler.snapshot(5).terrain->colors[3*512+3]==0);
+ assert(sampler.step(1,4096));
  // Trigger-driven camera-domain change needs no new cell array/house/tick.
  // A legal border tile remains drawable even when it becomes non-usable.
  auto beforeCrop=sampler.snapshot(5);m.set(Map+0x100,1);m.set(Map+0x108,3);
@@ -79,3 +92,4 @@ using namespace external::radar;Memory m;constexpr uint32_t cells=0x100000,cell=
  }
  std::cout<<"PASS: independent map projection/raster, atomic terrain banks, shroud/reveal, new round/house/menu resets, invalid geometry; "<<count<<" layout combinations\n";
 }
+

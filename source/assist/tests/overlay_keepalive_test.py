@@ -90,7 +90,7 @@ static int minimapMode=0,minimapScale=200,minimapPosition=1,minimapX=0,minimapY=
 static int effectiveInfoFPS=144;
 static int informationFPS(){return effectiveInfoFPS;}
 static struct{int width=800,height=600,renderStatus=1,chat=0;uint32_t match=1;}snap;
-static struct{uint32_t renderReveal=0;}extra;static radarlayout::Box aircraftButtonBox;
+static struct{uint32_t renderReveal=0,mapStrategy=0;}extra;static radarlayout::Box aircraftButtonBox;
 static bool foregroundGame(){return focused;}static uint32_t commandMatch(){return snap.match;}
 namespace external{namespace radar{
 struct Geometry{double rw=100,rh=100;bool valid()const{return true;}};struct Terrain{Geometry geo;};struct Frame{std::shared_ptr<Terrain>terrain=std::make_shared<Terrain>();};

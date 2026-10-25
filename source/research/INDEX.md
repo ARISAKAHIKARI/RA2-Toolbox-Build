@@ -6,6 +6,10 @@
 
 | 主题 | 新笔记 | 关键词 |
 | --- | --- | --- |
+| 入舱／駐軍後跟蹤身份與空間宿主、持續取樣與即時生命週期 | [pre.8 觀察窗入駐跟蹤](2026-10-25-watch-passenger-spatial-host.md) | Transporter Occupants 688 694 readFresh spatial anchor |
+| 礦石資源池及坡面圖案、TMP 位置表與損壞變體鏈 | [pre.8 礦石與地形變體](2026-10-25-resource-and-tmp-variants.md) | 47F871 B0F4E8 E0 E8 EC 2F0 2BC 8505 |
+| 步兵獨立額外亮度與 FA2 HDM 光照沙盒對照 | [pre.8 步兵光照](2026-10-25-fa2-infantry-lighting.md) | ExtraInfantryLight 17D8 519457 66B6FF VPL FA2 sandbox |
+| 小地圖黑幕跟隨顯示選項、半透明模式無黑幕與背景失效 | [pre.8 小地圖黑幕策略](2026-10-25-minimap-shroud-policy.md) | reveal half-opacity native fog immutable bank cache policy |
 | 靜止切換隊形保留種類、按下／放開原樣提交預覽 | [pre.6 隊形切換](2026-10-25-formation-shape-switch.md) | click stretch shape spacing formationSwitch frozen preview slots |
 | 可繪製邊緣與玩法範圍分離、相機限位後偏心跟蹤 | [pre.6 邊界更正](2026-10-25-renderable-map-borders.md) | 6D521C 568300 6D8640 drawable usable viewport 7932 1458 |
 | 切回遊戲後整組覆蓋層恢復與小地圖週期保活 | [pre.6 覆蓋層保活](2026-10-25-overlay-focus-keepalive.md) | Z-order WS_VISIBLE SetWindowPos DeferWindowPos Recovery foreground Tab |
@@ -68,3 +72,4 @@
 
 
 - [1.0.37 正式版设置持久化、默认值与显示调查](2026-10-24-stable-settings-137.md)
+

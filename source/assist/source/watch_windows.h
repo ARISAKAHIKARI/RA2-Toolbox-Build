@@ -18,8 +18,9 @@ static void navigate(int slot){
  if(slot<0||slot>=3||!usable()||!shared||!commandFresh(GetTickCount()))return;
  auto fresh=[](uint32_t p,void*out,size_t n){return externalReader.readFresh(p,out,n);};
  auto&track=watchhost::tracks[slot];external::watch::Target target;
- if(track){external::watch::follow(fresh,track);target=track.target;}else target=watchhost::views[slot].frame.focus;
- int x,y;if(!external::watch::camera(fresh,target,snap.width,snap.height,x,y))return;
+ if(track){watchhost::followTracks(fresh,slot);target=track.target;}else target=watchhost::views[slot].frame.focus;
+ auto center=track?external::watch::Anchor{track.spatial,track.x,track.y,track.z,track.located,track.spatialKind,track.discoveryFrame,track.searched,track.discoveryCursor}:watchhost::views[slot].frame.center;
+ int x,y;if(!external::watch::camera(fresh,target,snap.width,snap.height,x,y,center))return;
  InterlockedIncrement(&shared->cameraSeq);shared->cameraMatch=commandMatch();shared->cameraTick=sampleClock(shared);shared->cameraTargetX=x;shared->cameraTargetY=y;MemoryBarrier();InterlockedIncrement(&shared->cameraSeq);wakeGame();
 }
 static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){

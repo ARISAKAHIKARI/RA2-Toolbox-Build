@@ -1,0 +1,82 @@
+{
+  "supported_executable_sha256": "7B8A068535D6AF06845EDF95AE829B113D00C02909330E16F197426CD7DB94B6",
+  "evidence": "original x86 field-selection slices with synthetic vector memory; captured header inventory",
+  "stages": [
+    {
+      "stage": "01-off",
+      "controlled_slice_cases": 11,
+      "live_buildings": 48,
+      "valid_occupant_headers": 48,
+      "nonempty_occupant_vectors": 0,
+      "code_ranges": [
+        {
+          "start": "0x458098",
+          "end": "0x4580b4",
+          "sha256": "e052d1190fbcee42972f1d2ab69996c714abd9b143418ea896d8ecc4624427d5"
+        },
+        {
+          "start": "0x458704",
+          "end": "0x458716",
+          "sha256": "5df734cfad68361c0abeb96cd82eef2d1c86ab5154d77c4c4a484ab0e39bf89d"
+        },
+        {
+          "start": "0x4581f0",
+          "end": "0x4581f6",
+          "sha256": "6c59a72206552155395a9b7898fa01e54483f630c4aaf92bfa720573cf730d5d"
+        }
+      ]
+    },
+    {
+      "stage": "02-on",
+      "controlled_slice_cases": 11,
+      "live_buildings": 53,
+      "valid_occupant_headers": 53,
+      "nonempty_occupant_vectors": 0,
+      "code_ranges": [
+        {
+          "start": "0x458098",
+          "end": "0x4580b4",
+          "sha256": "e052d1190fbcee42972f1d2ab69996c714abd9b143418ea896d8ecc4624427d5"
+        },
+        {
+          "start": "0x458704",
+          "end": "0x458716",
+          "sha256": "5df734cfad68361c0abeb96cd82eef2d1c86ab5154d77c4c4a484ab0e39bf89d"
+        },
+        {
+          "start": "0x4581f0",
+          "end": "0x4581f6",
+          "sha256": "6c59a72206552155395a9b7898fa01e54483f630c4aaf92bfa720573cf730d5d"
+        }
+      ]
+    },
+    {
+      "stage": "03-off",
+      "controlled_slice_cases": 11,
+      "live_buildings": 57,
+      "valid_occupant_headers": 57,
+      "nonempty_occupant_vectors": 0,
+      "code_ranges": [
+        {
+          "start": "0x458098",
+          "end": "0x4580b4",
+          "sha256": "e052d1190fbcee42972f1d2ab69996c714abd9b143418ea896d8ecc4624427d5"
+        },
+        {
+          "start": "0x458704",
+          "end": "0x458716",
+          "sha256": "5df734cfad68361c0abeb96cd82eef2d1c86ab5154d77c4c4a484ab0e39bf89d"
+        },
+        {
+          "start": "0x4581f0",
+          "end": "0x4581f6",
+          "sha256": "6c59a72206552155395a9b7898fa01e54483f630c4aaf92bfa720573cf730d5d"
+        }
+      ]
+    }
+  ],
+  "limitations": [
+    "No captured building has occupants in these stages.",
+    "No full game garrison entry/exit, rasterizer, Win32 composition or multiplayer execution."
+  ]
+}

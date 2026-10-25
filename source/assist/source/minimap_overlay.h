@@ -30,7 +30,7 @@ class Worker {
       if(!external::radar::freshMarkers(data,sampled))data.markers.clear();
       // Publish terrain immediately; retain the last completed scene while the
       // next one loads. Initial MIX scans must not keep the whole window hidden.
-      {std::lock_guard<std::mutex> lock(mutex);if(token==generation){if(r.mode==1&&latest&&latest->scene&&latest->terrain->geo.same(data.terrain->geo)&&latest->scene->width==r.width&&latest->scene->height==r.height)data.scene=latest->scene;latest=std::make_shared<external::radar::Frame>(data);}}
+      {std::lock_guard<std::mutex> lock(mutex);if(token==generation){if(r.mode==1&&latest&&latest->scene&&latest->terrain->reveal==data.terrain->reveal&&latest->terrain->geo.same(data.terrain->geo)&&latest->scene->width==r.width&&latest->scene->height==r.height)data.scene=latest->scene;latest=std::make_shared<external::radar::Frame>(data);}}
       if(r.mode==1){assets.identity(r.pid,r.match);auto scene=renderer.render(data,r.width,r.height,external::SharedReadView{&reader},assets);if(scene)data.scene=std::move(scene);}
       next=std::make_shared<external::radar::Frame>(std::move(data));
      }else{std::lock_guard<std::mutex> lock(mutex);if(token==generation)latest.reset();}
@@ -101,7 +101,7 @@ static void update(POINT origin,const RECT&client){
  double rw=lastGeometry.valid()?lastGeometry.rw:1,rh=lastGeometry.valid()?lastGeometry.rh:1;if(minimapMode==1)rw*=2;
  auto layout=radarlayout::place(snap.width,snap.height,client.right,client.bottom,minimapScale,minimapPosition,minimapX,minimapY,aircraftButtonBox,rw/rh,minimapAlignX,minimapAlignY);
  if(!layout.valid){hide();return;}auto destination=layout.destination;
- worker.set({pid,snap.match,informationFPS(),extra.renderReveal,minimapMode,std::min(2048,destination.w-2),std::min(2048,destination.h-2)});
+ worker.set({pid,snap.match,informationFPS(),uint32_t(extra.renderReveal||extra.mapStrategy==3),minimapMode,std::min(2048,destination.w-2),std::min(2048,destination.h-2)});
  frame=worker.get();if(!frame||!frame->terrain){cancelDrag();if(window)ShowWindow(window,SW_HIDE);return;}if(dragging&&dragMatch!=commandMatch())cancelDrag();
  if(!window){WNDCLASSW cls{};cls.lpfnWndProc=proc;cls.hInstance=GetModuleHandleW(nullptr);cls.lpszClassName=L"RA2DataRadar127";cls.hCursor=nullptr;RegisterClassW(&cls);window=CreateWindowExW(WS_EX_TOOLWINDOW|WS_EX_NOACTIVATE|WS_EX_TOPMOST|WS_EX_LAYERED,cls.lpszClassName,L"战术小地图",WS_POPUP,0,0,1,1,nullptr,nullptr,cls.hInstance,nullptr);if(window)SetLayeredWindowAttributes(window,0,255,LWA_ALPHA);}
  if(!window)return;RECT old{};GetWindowRect(window,&old);int x=origin.x+destination.x,y=origin.y+destination.y;
@@ -110,3 +110,4 @@ static void update(POINT origin,const RECT&client){
  InvalidateRect(window,nullptr,FALSE);UpdateWindow(window);
 }
 }
+

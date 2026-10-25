@@ -6,12 +6,13 @@
 #include "projection.h"
 #include "building_animations.h"
 #include "scene_order.h"
+#include "art_variants.h"
+#include "watch_focus.h"
 namespace external { namespace watch {
 constexpr int NativeViewWidth=640,NativeViewHeight=512;
-struct Target {uint32_t pointer=0,id=0;bool operator==(const Target&o)const{return pointer==o.pointer&&id==o.id;}explicit operator bool()const{return pointer&&id;}};
 struct Actor {visual::Pose pose;Target target;uint32_t type=0,owner=0,color=0;int x=0,y=0,z=0,kind=-1,health=0,stage=0,drawZ=0,sort=0,layer=2;Target parent;bool onBridge=false;uint16_t name[40]{};lighting::State light;};
 struct Tile {uint32_t image=0,overlay=0,type=0,overlayType=0;int sub=0,level=0,overlayFrame=0,overlayY=0;bool bridge=false;lighting::State light,overlayLight;};
-struct Frame {Target focus;int cx=0,cy=0,focusCx=0,focusCy=0;int radius=5,side=11;std::vector<uint32_t> cells=std::vector<uint32_t>(121);std::vector<Tile> tiles=std::vector<Tile>(121);std::vector<Actor> actors;std::vector<passengers::Group> passengers;bool dangerous=false,cameraReady=false;lighting::State light;double zScale=Projection{}.zScale,cameraX=0,cameraY=0;mapbounds::Bounds bounds;};
+struct Frame {Target focus;Anchor center;int cx=0,cy=0,focusCx=0,focusCy=0;int radius=5,side=11;std::vector<uint32_t> cells=std::vector<uint32_t>(121);std::vector<Tile> tiles=std::vector<Tile>(121);std::vector<Actor> actors;std::vector<passengers::Group> passengers;bool dangerous=false,cameraReady=false;lighting::State light;double zScale=Projection{}.zScale,cameraX=0,cameraY=0;mapbounds::Bounds bounds;};
 template<class Read>int overlayOffset(Read read,uint32_t cell,uint32_t type,int index,int frame){
  GameView<Read> g(read);int offset=0;
  // Native OverlayType::GetOffset (5FDCC0), then Cell::GetOverlayOffset (480110).
@@ -38,9 +39,9 @@ template<class Read> Target choose(Read read,Target pinned,Target prior,bool aut
 // reusing the unchanged terrain/object inventory. No independent millisecond
 // throttle: simulation changes still take the complete sampling path below.
 template<class Read> bool refresh(Read read,Frame&out){
- GameView<Read> g(read);if(!valid(g,out.focus)||mapbounds::sample(read)!=out.bounds)return false;
- int fx=g.template get<int>(out.focus.pointer+0x9C,-1),fy=g.template get<int>(out.focus.pointer+0xA0,-1);
- if(fx<0||fy<0||fx/256!=out.focusCx||fy/256!=out.focusCy)return false;
+ GameView<Read> g(read);auto center=anchor(read,out.focus,out.center);if(!center.located||mapbounds::sample(read)!=out.bounds)return false;
+ int fx=center.x,fy=center.y;
+ if(!(center.target==out.center.target)||fx/256!=out.focusCx||fy/256!=out.focusCy)return false;
  auto light=lighting::sample(read);double zScale=projectionZScale(read);
  if(light!=out.light||zScale!=out.zScale)return false;
  for(auto&a:out.actors){uint32_t p=a.target.pointer;
@@ -52,22 +53,25 @@ template<class Read> bool refresh(Read read,Frame&out){
   if(a.x<0||a.y<0||cx<0||cy<0||cx>=out.side||cy>=out.side||!out.cells[cy*out.side+cx])return false;
   a.light=a.kind==4?lighting::terrainObject(read,a.type,a.x,a.y,a.z,out.light):lighting::object(read,a.type,a.owner,a.kind,a.x,a.y,a.z,out.light);
  }
+ out.center=center;out.cameraX=(int64_t(fx)-fy)*30./256;
+ out.cameraY=(int64_t(fx)+fy)*15./256-screenHeight(center.z,out.zScale)+camera::anchorY(center.kind);
+ out.bounds.clampCamera(out.cameraX,out.cameraY,NativeViewWidth,NativeViewHeight);
  out.passengers.clear();out.dangerous=false;passengers::contents(read,out.focus.pointer,out.passengers,out.dangerous);
- return valid(g,out.focus);
+ return life(read,out.focus).state==Life::Present;
 }
-template<class Read> Frame sample(Read read,Target focus,bool reveal,int radius=5){
- Frame out;out.radius=std::clamp(radius,5,24);out.side=2*out.radius+1;out.cells.resize(out.side*out.side);out.tiles.resize(out.side*out.side);GameView<Read> g(read);if(!valid(g,focus))return out;
+template<class Read> Frame sample(Read read,Target focus,bool reveal,int radius=5,const Anchor&prior={}){
+ Frame out;out.radius=std::clamp(radius,5,24);out.side=2*out.radius+1;out.cells.resize(out.side*out.side);out.tiles.resize(out.side*out.side);GameView<Read> g(read);out.center=anchor(read,focus,prior);if(!out.center.located)return out;
  out.bounds=mapbounds::sample(read);if(!out.bounds.valid())return {};
- int fx=g.template get<int>(focus.pointer+0x9C,-1),fy=g.template get<int>(focus.pointer+0xA0,-1);if(fx<0||fy<0||fx>=512*256||fy>=512*256)return {};
+ int fx=out.center.x,fy=out.center.y;
  out.focusCx=fx/256;out.focusCy=fy/256;
  uint32_t cells=g.template get<uint32_t>(radar::Map+0x13C);int count=g.template get<int>(radar::Map+0x140);if(cells<0x10000||count<1||count>512*512)return {};
- auto tileTypes=g.vec(0xA8ED28,65536),overlayTypes=g.vec(0xA83D80);
+ auto tileTypes=g.vec(0xA8ED28,65536),overlayTypes=g.vec(0xA83D80);auto resourcePools=artvariants::pools(read,overlayTypes);
  out.focus=focus;out.light=lighting::sample(read);out.zScale=projectionZScale(read);passengers::contents(read,focus.pointer,out.passengers,out.dangerous);
  // Inventory follows the clamped camera, not the unclamped target cell. At
  // map corners those centers can differ by >20 cells on one diagonal.
  uint32_t focusCell=lighting::cellAt(read,fx,fy);int ground=focusCell?g.template get<int8_t>(focusCell+0x11B):0;
  out.cameraX=(int64_t(fx)-fy)*30./256;
- out.cameraY=(int64_t(fx)+fy)*15./256-screenHeight(g.template get<int>(focus.pointer+0xA4),out.zScale)+camera::anchorY(g.kind(focus.pointer));
+ out.cameraY=(int64_t(fx)+fy)*15./256-screenHeight(out.center.z,out.zScale)+camera::anchorY(out.center.kind);
  out.bounds.clampCamera(out.cameraX,out.cameraY,NativeViewWidth,NativeViewHeight);out.cameraReady=true;
  double difference=out.cameraX/30,sum=out.cameraY/15+ground;
  out.cx=int(std::floor((sum+difference)/2));out.cy=int(std::floor((sum-difference)/2));
@@ -80,12 +84,12 @@ template<class Read> Frame sample(Read read,Target focus,bool reveal,int radius=
   auto&t=out.tiles[(y+out.radius)*out.side+x+out.radius];t.level=g.template get<int8_t>(p+0x11B);t.sub=g.template get<uint8_t>(p+0x11A);
   t.light=lighting::cell(read,p,out.light,lighting::Layer::Terrain);t.overlayLight=t.light;
   int type=g.template get<int>(p+0x38,-1);if(type==65535){type=g.template get<int>(0xAA10B0,-1);t.sub=0;}
-  if(type>=0&&size_t(type)<tileTypes.size()){t.type=tileTypes[type];t.image=g.template get<uint32_t>(t.type+0xA4); }
-  int overlay=g.template get<int>(p+0x44,-1);if(overlay>=0&&size_t(overlay)<overlayTypes.size()){t.overlayType=overlayTypes[overlay];t.overlay=g.template get<uint32_t>(t.overlayType+0xA4);t.overlayFrame=g.template get<uint8_t>(p+0x11E);}
-  if(t.overlayType){t.overlayY=overlayOffset(read,p,t.overlayType,overlay,t.overlayFrame);
+  if(type>=0&&size_t(type)<tileTypes.size()){t.type=artvariants::tile(read,tileTypes[type],unsigned(t.sub),cx,cy,g.template get<uint32_t>(p+0x140));t.image=g.template get<uint32_t>(t.type+0xA4); }
+  int overlay=g.template get<int>(p+0x44,-1),drawOverlay=artvariants::overlay(read,overlayTypes,resourcePools,overlay,cx,cy,g.template get<uint8_t>(p+0x11C));if(drawOverlay>=0&&size_t(drawOverlay)<overlayTypes.size()){t.overlayType=overlayTypes[drawOverlay];t.overlay=g.template get<uint32_t>(t.overlayType+0xA4);t.overlayFrame=g.template get<uint8_t>(p+0x11E);}
+  if(t.overlayType){t.overlayY=overlayOffset(read,p,overlayTypes[overlay],overlay,t.overlayFrame);
    if(g.template get<uint32_t>(p+0x140)&0x80){t.bridge=true;t.overlayLight=lighting::cell(read,p,out.light,lighting::Layer::Bridge);}
-   else if(g.template get<uint8_t>(t.overlayType+0x2A9)){t.overlayLight=out.light;t.overlayLight.intensity=1000;}
-   else if(g.template get<uint8_t>(t.overlayType+0x2A8))t.overlayLight=lighting::cell(read,p,out.light,lighting::Layer::Object,false);
+   else if(g.template get<uint8_t>(overlayTypes[overlay]+0x2A9)){t.overlayLight=out.light;t.overlayLight.intensity=1000;}
+   else if(g.template get<uint8_t>(overlayTypes[overlay]+0x2A8))t.overlayLight=lighting::cell(read,p,out.light,lighting::Layer::Object,false);
   }
   out.cells[(y+out.radius)*out.side+x+out.radius]=0xff000000u|radar::terrainColor(g.template get<int>(p+0xEC,-1),g.template get<uint8_t>(p+0x11B),!reveal&&fog);
  }
@@ -110,6 +114,6 @@ template<class Read> Frame sample(Read read,Target focus,bool reveal,int radius=
   if(cx<0||cy<0||cx>=out.side||cy>=out.side||!out.cells[cy*out.side+cx])continue;
   Actor a;a.target={state.object,state.id};a.type=state.type;a.owner=state.owner;a.x=state.x;a.y=state.y;a.z=state.z;a.kind=5;a.pose.frame=state.frame;a.drawZ=state.zAdjust;a.sort=state.sort;a.layer=state.layer;a.light=lighting::animation(read,a.target.pointer,a.type,a.x,a.y,a.z,out.light);out.actors.push_back(a);
  }
- if(!valid(g,focus)||mapbounds::sample(read)!=out.bounds)return {};std::stable_sort(out.actors.begin(),out.actors.end(),[](const Actor&a,const Actor&b){return int64_t(a.x)+a.y<int64_t(b.x)+b.y;});return out;
+ if(life(read,focus).state!=Life::Present||mapbounds::sample(read)!=out.bounds)return {};std::stable_sort(out.actors.begin(),out.actors.end(),[](const Actor&a,const Actor&b){return int64_t(a.x)+a.y<int64_t(b.x)+b.y;});return out;
 }
 }}
