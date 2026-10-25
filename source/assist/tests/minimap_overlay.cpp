@@ -27,6 +27,7 @@ int main(){
  }
 using namespace external::radar;Memory m;constexpr uint32_t cells=0x100000,cell=0x200000,house=0x300000;
  m.set(Map+0xF4,4);m.set(Map+0xF8,4);m.set(Map+0x13C,cells);m.set(Map+0x140,4096);m.set(Map+0x1488,10.f);m.set(Map+0x1490,4);m.set(Map+0x1498,4);m.set(Map+0x14A4,80);m.set(Map+0x14A8,80);
+ m.set(Map+0xFC,0);m.set(Map+0x100,0);m.set(Map+0x104,4);m.set(Map+0x108,4);
  m.set(0xA83D4C,house);m.set(0xA8ED84,10);m.set<uint8_t>(0xA8E9A0,1);m.set<uint8_t>(0xA8E378,1);m.set(0xA8EDA0,0);m.set(0xA8ED8C,0);
  m.zero(cells,4096*4);m.set(cells+(3*512+3)*4,cell);m.zero(cell,0x148);m.set<int16_t>(cell+0x24,3);m.set<int16_t>(cell+0x26,3);m.set(cell+0xEC,2);m.set<int8_t>(cell+0x120,-1);m.set<int8_t>(cell+0x121,-1);
  Sampler<Read> sampler(Read{&m});assert(sampler.step(false,2048));assert(!sampler.snapshot(1).terrain);assert(sampler.step(false,2048));auto a=sampler.snapshot(2);assert(a.terrain&&a.terrain->colors[3*512+3]==terrainColor(2,0,false));
@@ -38,14 +39,14 @@ using namespace external::radar;Memory m;constexpr uint32_t cells=0x100000,cell=
  auto changedDiagram=diagram.render(changedTerrain,80,80);assert(changedDiagram!=scaled&&changedDiagram->pixels!=scaled->pixels);
  assert(scaled->pixels==pixels);diagram.reset();assert(diagram.render(a.terrain,80,80)!=scaled);
  assert(!diagram.render(a.terrain,0,80)&&!diagram.render(a.terrain,2049,80));
- PublicationContext context{house,cells,a.frame+1,true};assert(freshMarkers(a,context));
+ PublicationContext context{house,cells,a.frame+1,true,a.terrain->geo.bounds};assert(freshMarkers(a,context));
  context.frame=a.frame+120;assert(sameWorld(a,context)&&!freshMarkers(a,context)); // slow rendering is not a map change
  context.frame=a.frame-1;assert(!sameWorld(a,context));context.frame=a.frame+120;
  context.house+=0x10000;assert(!sameWorld(a,context));context.house=house;context.cells+=4;assert(!sameWorld(a,context));context.cells=cells;
  context.active=false;assert(!sameWorld(a,context));
  int nx=0,ny=0;assert(navigate(a.terrain->geo,41,31,82,82,120,80,nx,ny));assert(nx==0&&ny==105);
  assert(navigate(a.terrain->geo,81,61,162,162,120,80,nx,ny)&&nx==0&&ny==105);
- assert(navigate(a.terrain->geo,-50,999,82,82,120,80,nx,ny)&&nx==-120&&ny==180);
+ assert(navigate(a.terrain->geo,-50,999,82,82,120,80,nx,ny)&&nx==-60&&ny==180);
  assert(!navigate(a.terrain->geo,1,1,2,82,120,80,nx,ny));
  // Interpolate known cells without bleeding visible colors into black shroud.
  Terrain mix=*a.terrain;mix.colors[3*512+3]=0x010101;mix.colors[3*512+4]=0xffffff;
@@ -54,6 +55,13 @@ using namespace external::radar;Memory m;constexpr uint32_t cells=0x100000,cell=
  // Never expose a partially refreshed terrain bank; old immutable bank survives.
  m.set<int8_t>(cell+0x120,-2);sampler.step(false,2048);assert(sampler.snapshot(3).terrain==a.terrain);sampler.step(false,2048);assert(sampler.snapshot(4).terrain->colors[3*512+3]==0);assert(a.terrain->colors[3*512+3]!=0);
  sampler.step(true,4096);assert(sampler.snapshot(5).terrain->colors[3*512+3]!=0);
+ // Trigger-driven crop does not need a new cell array, house or game tick.
+ auto beforeCrop=sampler.snapshot(5);m.set(Map+0x100,1);m.set(Map+0x108,3);
+ assert(!sameWorld(beforeCrop,publicationContext(Read{&m})));
+ sampler.step(true,2048);assert(!sampler.snapshot(5).terrain);sampler.step(true,2048);
+ auto cropped=sampler.snapshot(5);assert(cropped.terrain&&cropped.terrain->colors[3*512+3]==0&&cropped.terrain->geo.bounds.top==1);
+ m.set(Map+0x100,0);m.set(Map+0x108,4);sampler.step(true,4096);
+ assert(sampler.snapshot(5).terrain->colors[3*512+3]!=0);
  m.set(0xA8ED84,1);sampler.step(true,1);assert(!sampler.snapshot(6).terrain);sampler.step(true,4096);assert(sampler.snapshot(7).terrain);
  m.set(0xA83D4C,house+0x10000);sampler.step(true,1);assert(!sampler.snapshot(8).terrain);m.set(0xA8ED8C,1);assert(!sampler.step(true));assert(!sampler.snapshot(9).terrain);m.set(0xA8ED8C,0);
  m.set(Map+0x1488,std::numeric_limits<float>::quiet_NaN());assert(!sampler.step(true));m.set(Map+0x1488,10.f);m.set(Map+0x140,999999);assert(!sampler.step(true));

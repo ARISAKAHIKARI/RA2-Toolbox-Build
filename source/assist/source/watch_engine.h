@@ -1,3 +1,4 @@
+#pragma once
 #include "../../external_reader/source/watch_slots.h"
 #include "../../external_reader/source/voxel_preview.h"
 #include "../../external_reader/source/terrain_preview.h"
@@ -33,8 +34,15 @@ std::map<std::pair<uint32_t,uint32_t>,Cached> tiles,overlays;
 std::array<uint32_t,256> terrainPalette{};
 external::lighting::State sceneLight;
 uint64_t serial=0;DWORD process=0;uint32_t epoch=0;bool shown=false;
-static constexpr int Width=320,Height=256;
-void reset(){for(auto&t:tracks)t={};for(auto&v:views)v={};automatic={};autoSuppressed=false;images.clear();displayed.clear();actorArt.clear();actorCursor=0;diagnosticAt=0;tiles.clear();overlays.clear();terrainPalette={};shown=false;}
+uint32_t controlRevision=0;bool haveControls=false;
+static constexpr int Width=external::watch::NativeViewWidth/2,Height=external::watch::NativeViewHeight/2;
+void reset(){for(auto&t:tracks)t={};for(auto&v:views)v={};automatic={};autoSuppressed=false;haveControls=false;images.clear();displayed.clear();actorArt.clear();actorCursor=0;diagnosticAt=0;tiles.clear();overlays.clear();terrainPalette={};shown=false;}
+void syncTracks(uint32_t revision,const std::array<external::watch::Track,3>&next,bool suppress){
+ // Pending snapshots may predate the worker's death/succession decision. Only
+ // a new user control revision can replace that authoritative tracking state.
+ if(haveControls&&controlRevision==revision)return;
+ std::copy(next.begin(),next.end(),tracks);autoSuppressed=suppress;controlRevision=revision;haveControls=true;
+}
 void arrange(){bool visible[3]{};external::watch::Box boxes[3]{};bool wasShown=shown;shown=false;for(int i=0;i<3;++i)shown|=visible[i]=views[i].shown;external::watch::arrange(visible,width,height,boxes);bool changed=wasShown!=shown;for(int i=0;i<3;++i){auto&a=views[i].box;auto b=boxes[i];changed|=a.x!=b.x||a.y!=b.y||a.w!=b.w||a.h!=b.h;a=b;}(void)changed;}
 void refreshAssets(external::watch::Frame&frame,DWORD now){
  assets.identity(process,epoch);
@@ -115,10 +123,18 @@ void update(uint32_t now){
  if(!haveManual&&!autoSuppressed)automatic=external::watch::choose(read,{},automatic,danger);else automatic={};
  for(int i=0;i<3;++i){auto&v=views[i];auto target=tracks[i]?tracks[i].target:i==0?automatic:external::watch::Target{};
   bool targetChanged=!(target==v.frame.focus);
-  if(targetChanged||frame!=v.sampleFrame||reveal!=v.reveal||!external::watch::refresh(read,v.frame))v.frame=external::watch::sample(read,target,reveal,20);
-  if(targetChanged&&v.motion)v.motion->clear();v.sampleFrame=frame;v.reveal=reveal;v.shown=bool(v.frame.focus);
-  if(v.shown){for(auto&a:v.frame.actors)if(a.kind==3)assets.buildingPose(a.target.pointer,a.type,a.pose);updateMotion(v,now,frame);++v.revision;}else{v.positions.clear();if(v.motion)v.motion->clear();}
-  if(v.shown){resources.light=v.frame.light;resources.tiles.insert(resources.tiles.end(),v.frame.tiles.begin(),v.frame.tiles.end());resources.actors.insert(resources.actors.end(),v.frame.actors.begin(),v.frame.actors.end());}
+  if(targetChanged){v.frame={};v.positions.clear();if(v.motion)v.motion->clear();v.sampleFrame=-1;}
+  // Window occupancy follows the tracking lifetime, not whether this one read
+  // produced a picture. Commit only a complete candidate; refresh can mutate
+  // actors before discovering that a later read requires a full resample.
+  v.shown=bool(target);bool sampled=false;
+  if(target){
+   external::watch::Frame next;
+   if(!targetChanged&&frame==v.sampleFrame&&reveal==v.reveal){next=v.frame;sampled=external::watch::refresh(read,next);}
+   if(!sampled){next=external::watch::sample(read,target,reveal,20);sampled=next.focus==target;}
+   if(sampled){v.frame=std::move(next);v.sampleFrame=frame;v.reveal=reveal;for(auto&a:v.frame.actors)if(a.kind==3)assets.buildingPose(a.target.pointer,a.type,a.pose);updateMotion(v,now,frame);++v.revision;}
+  }else{v.positions.clear();if(v.motion)v.motion->clear();}
+  if(v.shown&&v.frame.focus){resources.light=v.frame.light;resources.tiles.insert(resources.tiles.end(),v.frame.tiles.begin(),v.frame.tiles.end());resources.actors.insert(resources.actors.end(),v.frame.actors.begin(),v.frame.actors.end());}
  }
  arrange();if(shown)refreshAssets(resources,now);
 }
@@ -131,9 +147,14 @@ void drawView(Graphics&g,const View&view){
  const float ox=Width/2.f,oy=Height/2.f,scale=.5f;int side=frame.side,radius=frame.radius,centerLevel=frame.tiles[radius*side+radius].level;
  auto position=[&](const external::watch::Actor&a){auto i=view.positions.find(a.target.id);if(i!=view.positions.end())return std::pair<float,float>{i->second.x,i->second.y};return std::pair<float,float>{float((int64_t(a.x)-a.y)*30/256),float((int64_t(a.x)+a.y)*15/256-external::screenHeight(a.z,frame.zScale)+external::camera::anchorY(a.kind))};};
  float cameraX=(frame.cx-frame.cy)*30.f,cameraY=(frame.cx+frame.cy+1)*15.f-centerLevel*15.f;
+ if(frame.cameraReady){cameraX=float(frame.cameraX);cameraY=float(frame.cameraY);}
  // The camera and units use the same interpolated position. Crossing a cell
  // boundary must not jump the entire second view by one tile.
  for(const auto&a:frame.actors)if(a.target==frame.focus){auto p=position(a);cameraX=p.first;cameraY=p.second;break;}
+ // Follow the LIVE native visible rectangle, including mission-trigger
+ // changes. Small maps settle at their midpoint instead of alternating ends.
+ double boundedX=cameraX,boundedY=cameraY;
+ if(frame.bounds.clampCamera(boundedX,boundedY,Width/scale,Height/scale)){cameraX=float(boundedX);cameraY=float(boundedY);}
  auto&canvas=view.raster;canvas.reset(Width,Height);
  std::vector<int> tileOrder;tileOrder.reserve(side*side);for(int n=0;n<side*side;++n)if(frame.cells[n])tileOrder.push_back(n);
  std::stable_sort(tileOrder.begin(),tileOrder.end(),[&](int a,int b){return a%side+a/side<b%side+b/side;});
@@ -155,6 +176,7 @@ void drawView(Graphics&g,const View&view){
     float(std::max(0,external::screenHeight(a.z,frame.zScale)-(frame.tiles[cy*side+cx].level+(a.onBridge?4:0))*15)));
   if(a.target==frame.focus){focusX=x;focusY=y;}
  }
+ frame.bounds.clip(canvas.color,Width,Height,ox-cameraX*scale,oy-cameraY*scale,scale,scale);
  if(!canvas.color.empty()){Bitmap bitmap(Width,Height,Width*4,PixelFormat32bppPARGB,reinterpret_cast<BYTE*>(canvas.color.data()));
   g.DrawImage(&bitmap,RectF(0,0,float(Width),float(Height)),0.f,0.f,float(Width),float(Height),UnitPixel,nullptr);}
  if(focusX>-100){Pen ring(Color(255,255,224,111),1.3f);g.DrawEllipse(&ring,focusX-10,focusY-5,20.f,10.f);}

@@ -22,6 +22,27 @@ template<class Read>bool converterTint(Read read,uint32_t convert,std::array<int
  uint8_t again=2;if(!read(at,after.data(),12)||after!=current||!read(convert+0x1B0,&again,1)||again!=tinted)return false;
  out=current;return true;
 }
+// 705D70: ordinary SHP and VXL use their owner's ColorScheme, including a
+// type-specific CustomPalette vector. A cell's LightConvert is terrain art;
+// its RGB tint must not leak onto these objects.
+template<class Read>uint32_t schemeConverter(Read read,uint32_t vector,int index){
+ if(vector<0x10000||vector>0xffffffebu||index<0||index>=512)return 0;
+ uint32_t items=0,scheme=0,convert=0,again=0;int count=0,after=0;
+ if(!read(vector+4,&items,4)||!read(vector+16,&count,4)||count<=index||count>512||items<0x10000||
+    uint64_t(items)+uint64_t(count)*4>0x100000000ull||!read(items+uint32_t(index)*4,&scheme,4)||scheme<0x10000||scheme>0xfffffcefu||
+    !read(scheme+0x30C,&convert,4)||convert<0x10000||convert>0xfffffe4fu)return 0;
+ if(!read(vector+4,&again,4)||again!=items||!read(vector+16,&after,4)||after!=count||
+    !read(items+uint32_t(index)*4,&again,4)||again!=scheme||!read(scheme+0x30C,&again,4)||again!=convert)return 0;
+ return convert;
+}
+template<class Read>uint32_t objectConverter(Read read,uint32_t type,uint32_t owner){
+ if(type<0x10000||type>0xfffff20bu||owner<0x10000||owner>0xfffe9fa7u)return 0;
+ uint32_t vector=0,after=0;int index=-1,again=-1;
+ if(!read(type+0xDF0,&vector,4)||!read(owner+0x16054,&index,4))return 0;
+ uint32_t convert=schemeConverter(read,vector?vector:0xB054D0,index);
+ if(!read(type+0xDF0,&after,4)||after!=vector||!read(owner+0x16054,&again,4)||again!=index)return 0;
+ return convert;
+}
 template<class Read>State sample(Read read){
  State out;auto word=[&](uint32_t p){uint32_t v=0;read(p,&v,4);return v;};
  uint32_t scenario=word(0xA8B230);if(scenario<0x10000||scenario>0xffffc000)return out;
@@ -58,15 +79,50 @@ template<class Read>uint32_t cellAt(Read read,int x,int y){
  if(!read(0x87F7E8+0x13C,&items,4)||items<0x10000||!read(0x87F7E8+0x140,&count,4)||count<=index||count>512*512||uint64_t(items)+index*4+4>0x100000000ull||!read(items+index*4,&p,4)||p<0x10000||p>0xfffffe00)return 0;
  int16_t coordinates[2]{};return read(p+0x24,coordinates,4)&&coordinates[0]==cx&&coordinates[1]==cy?p:0;
 }
-template<class Read>State at(Read read,int x,int y,int z,const State&fallback,bool terrain=false){
+template<class Read>State at(Read read,int x,int y,int z,const State&fallback,bool terrain=false,bool localTint=true){
  uint32_t p=cellAt(read,x,y);Layer layer=terrain?Layer::Terrain:Layer::Object;
  uint32_t flags=0;int8_t level=0;int height=0;
  if(!terrain&&p&&read(p+0x140,&flags,4)&&(flags&0x80)&&read(p+0x11B,&level,1)&&read(0x89E7C0,&height,4)&&height>0&&height<=1024&&z>=(int(level)+4)*height-1)layer=Layer::Bridge;
- return cell(read,p,fallback,layer);
+ return cell(read,p,fallback,layer,localTint);
 }
-// Reference transform for premultiplied pixels (also used by pixel tests).
-// GDI+ applies the equivalent diagonal RGB matrix at presentation time, leaving
-// cached poses and alpha untouched when a map trigger changes the lighting.
+template<class Read>State object(Read read,uint32_t type,uint32_t owner,int kind,int x,int y,int z,const State&fallback){
+ uint8_t terrainPalette=0,voxel=0;
+ if(type>=0x10000&&type<=0xfffffdc9u)read(type+0x236,&voxel,1);
+ if(kind==3&&!voxel&&type>=0x10000&&type<=0xffffe8fcu&&read(type+0x1702,&terrainPalette,1)&&terrainPalette)
+  return at(read,x,y,z,fallback,true); // 705EC1: also replaces ExtraLight with cell terrain intensity.
+ State out=at(read,x,y,z,fallback,false,false);
+ converterTint(read,objectConverter(read,type,owner),out.tint);
+ if(kind==3&&type>=0x10000&&type<=0xffffeab6u){int16_t extra=0;if(read(type+0x1548,&extra,2))out.intensity=(out.intensity<0?out.ambient*10:out.intensity)+extra;}
+ return out;
+}
+struct AnimationLightSource {uint32_t converter=0;Layer layer=Layer::Object;bool ownIntensity=false,tintable=false;};
+// 423114..423358. Building animations already retain the selected converter
+// and brightness in +D4/+FC. UseNormalLight changes intensity to 1000; it does
+// not discard the chosen converter's RGB (including temporary map lighting).
+template<class Read>AnimationLightSource animationSource(Read read,uint32_t object,uint32_t type,uint32_t cellPointer){
+ AnimationLightSource out;if(object<0x10000||object>0xfffffe68u||type<0x10000||type>0xfffffc9du)return out;
+ uint8_t veins=0,useCell=0,alt=0;read(type+0x355,&veins,1);read(object+0x196,&useCell,1);read(type+0x361,&alt,1);
+ if(veins){uint32_t owner=0;int index=-1;out.layer=Layer::Terrain;out.tintable=true;
+  if(read(0xA83D4C,&owner,4)&&owner>=0x10000&&owner<=0xfffe9fa7u&&read(owner+0x16054,&index,4))out.converter=schemeConverter(read,0xB054D0,index);
+ }else if(useCell){out.layer=Layer::Terrain;out.tintable=true;if(cellPointer>=0x10000&&cellPointer<=0xffffffc8u)read(cellPointer+0x34,&out.converter,4);
+ }else if(read(object+0xD4,&out.converter,4)&&out.converter){out.ownIntensity=true;out.tintable=true;
+ }else if(alt){out.tintable=true;out.converter=schemeConverter(read,0xB054D0,0);
+ }else read(0x87F6C0,&out.converter,4); // ANIM ConvertClass has no LightConvert RGB fields.
+ return out;
+}
+template<class Read>State animation(Read read,uint32_t object,uint32_t type,int x,int y,int z,const State&fallback){
+ (void)z;uint32_t p=cellAt(read,x,y);auto source=animationSource(read,object,type,p);
+ State out=cell(read,p,fallback,source.layer,false);
+ if(source.ownIntensity){int intensity=-1;if(read(object+0xFC,&intensity,4)&&intensity>=0&&intensity<=2000)out.intensity=intensity;}
+ if(source.tintable)converterTint(read,source.converter,out.tint);else out.tint={{1000,1000,1000}};
+ uint8_t normal=0;if(type>=0x10000&&type<=0xfffffca2u&&read(type+0x35D,&normal,1)&&normal)out.intensity=1000;
+ // A one-shade (UI/AltPalette) converter ignores the per-pixel brightness.
+ int shades=0;if(source.converter>=0x10000&&source.converter<=0xfffffe90u&&read(source.converter+0x16C,&shades,4)&&shades==1)out.intensity=1000;
+ return out;
+}
+// Linear reference transform used by pixel tests. The camera compositor uses
+// its quantized Light transform at presentation time; neither transform bakes
+// changing map tint into cached poses or changes their alpha.
 inline uint32_t pixel(uint32_t p,const State&s){
  auto g=s.gains();unsigned a=p>>24;uint32_t out=a<<24;
  for(int n=0;n<3;++n){int shift=16-n*8;unsigned c=unsigned(std::clamp(float((p>>shift)&255)*g[n],0.f,float(a)));out|=c<<shift;}return out;

@@ -1,0 +1,12 @@
+{
+  "supported_exe_sha256": "7b8a068535d6af06845edf95ae829b113d00c02909330e16f197426cd7db94b6",
+  "native_code_sha256": {
+    "0x568300": "2d858a3388f6b00cd9628edc11f921741ac4b80138cca9019be10344bb9d198a",
+    "0x578540": "ad10c678abeea65ab41d65f1c7602c10b05e4e591d08ac312235240fbd5e8e37"
+  },
+  "cases": 31640,
+  "mismatches": 0,
+  "evidence": "original native CoordinatesLegal and IsWithinUsableArea machine code; controlled memory",
+  "game_tested": false,
+  "multiplayer_tested": false
+}

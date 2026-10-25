@@ -22,9 +22,12 @@ template<class Assets>class SceneRenderer {
 public:
  void reset(){tiles_.clear();overlays_.clear();art_.clear();sprites_.clear();displayed_.clear();actorCursor_=0;building_.reset();complete_.reset();pending_={};background_={};cells_.clear();cursor_=0;width_=height_=0;revision_=0;}
  template<class Read>std::shared_ptr<const Scene> render(const Frame&frame,int width,int height,Read read,Assets&assets){
-  if(!frame.terrain||frame.terrain->art.size()!=512*512||width<3||height<3||width>2048||height>2048)return {};
+  if(!frame.terrain||!frame.terrain->geo.valid()||frame.terrain->art.size()!=512*512||width<3||height<3||width>2048||height>2048)return {};
   if(revision_!=assets.revision()){reset();revision_=assets.revision();}
   if(width!=width_||height!=height_){building_.reset();complete_.reset();pending_={};background_={};cells_.clear();cursor_=0;width_=width;height_=height;}
+  // A trigger can shrink/expand VisibleRect while the cell pointer, match and
+  // output size stay unchanged. Never carry an old-domain background forward.
+  if((complete_&&!complete_->geo.same(frame.terrain->geo))||(building_&&!building_->geo.same(frame.terrain->geo))){building_.reset();complete_.reset();pending_={};background_={};cells_.clear();cursor_=0;}
   if(!building_&&complete_!=frame.terrain){building_=frame.terrain;cursor_=0;pending_.reset(width,height);cells_.clear();for(size_t n=0;n<building_->colors.size();++n)if(building_->colors[n])cells_.push_back(n);std::stable_sort(cells_.begin(),cells_.end(),[](size_t a,size_t b){return a%512+a/512<b%512+b/512;});}
   size_t staticPixels=0;for(const auto&i:tiles_)staticPixels+=camera::pixels(i.second.image);for(const auto&i:overlays_)staticPixels+=camera::pixels(i.second.image);
   lighting::State scene=lighting::sample(read);GameView<Read> game(read);
@@ -83,10 +86,11 @@ public:
   for(const auto*marker:order){const auto&m=*marker;if(m.x<0||m.y<0||m.x>=512*256||m.y>=512*256)continue;
    auto found=sprites_.find(imageKey(m));if(found==sprites_.end()||!found->second.ready){auto old=displayed_.find({m.object,m.id});if(old!=displayed_.end())found=sprites_.find(old->second);}
    float px=float(m.u*width),py=float(m.v*height)+(camera::anchorY(m.kind)-screenHeight(m.z,projectionZScale(read)))*scale.second;
-   if(found!=sprites_.end()&&found->second.ready){auto light=m.normalLight?lighting::State{}:lighting::at(read,m.x,m.y,m.z,scene,m.kind==4);uint32_t cell=frame.terrain->art[(m.y/256)*512+m.x/256].cell;if(m.kind==3)light.intensity=(light.intensity<0?light.ambient*10:light.intensity)+game.template get<int16_t>(m.type+0x1548);bool bridge=m.onBridge;int level=game.template get<uint8_t>(cell+0x11B);
+   if(found!=sprites_.end()&&found->second.ready){auto light=m.kind==5?lighting::animation(read,m.object,m.type,m.x,m.y,m.z,scene):m.kind==4?lighting::at(read,m.x,m.y,m.z,scene,true):lighting::object(read,m.type,m.owner,m.kind,m.x,m.y,m.z,scene);uint32_t cell=frame.terrain->art[(m.y/256)*512+m.x/256].cell;bool bridge=m.onBridge;int level=game.template get<uint8_t>(cell+0x11B);
     view.blit(found->second.image,px,py,scale.first,scale.second,float((int64_t(m.x)+m.y)*15/256.)-15+camera::anchorY(m.kind)-m.drawZ+(bridge?60:0),light,m.kind==4?12:(m.kind==3||m.kind==5)?2:1,float(std::max(0,screenHeight(m.z,projectionZScale(read))-(level+(bridge?4:0))*15)));}
    else if(m.kind<4){int x=int(m.u*width),y=int(m.v*height);for(int yy=std::max(0,y-1);yy<std::min(height,y+2);++yy)for(int xx=std::max(0,x-1);xx<std::min(width,x+2);++xx)view.color[size_t(yy)*width+xx]=0xff000000u|m.color;}
   }
+  geo.bounds.clip(view.color,width,height,double(geo.offsetX)*geo.factor*width/geo.rw,-double(geo.offsetY)*geo.factor*height/geo.rh,scale.first,scale.second);
   if(tiles_.size()>4096)tiles_.clear();if(overlays_.size()>4096)overlays_.clear();
   auto out=std::make_shared<Scene>();out->width=width;out->height=height;out->pixels=std::move(view.color);return out;
  }

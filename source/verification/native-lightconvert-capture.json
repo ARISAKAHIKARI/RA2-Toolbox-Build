@@ -1,0 +1,2910 @@
+{
+  "supported_executable_sha256": "7B8A068535D6AF06845EDF95AE829B113D00C02909330E16F197426CD7DB94B6",
+  "purpose": "Numerical read-only lighting audit; no production changes or screenshot claims",
+  "stages": [
+    {
+      "stage": "01-off",
+      "native_lut_regenerations": 21,
+      "lut_words_per_regeneration": 13568,
+      "native_pixel_cases": 480,
+      "selector_cases": 65280,
+      "selector_mismatches": 0,
+      "native_format": "RGB565; comparisons expand with bit replication",
+      "shades": 53,
+      "neutral_row": 26,
+      "unlit_indices": [
+        240,
+        241,
+        242,
+        243,
+        244,
+        245,
+        246,
+        247,
+        248,
+        249,
+        250,
+        251,
+        252,
+        253,
+        254
+      ],
+      "alpha_buffer_range": [
+        2,
+        127
+      ],
+      "alpha_buffer_neutral_127_count": 67990,
+      "alpha_buffer_above_127_count": 0,
+      "live_objects": [
+        {
+          "type": "CABHUT",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CABHUT",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CAOILD",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CAAIRP",
+          "kind": "building",
+          "cell_intensity": 1168,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CAFARM02",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CAFARM01",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CAMISC01",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CAAIRP",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CABHUT",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CABHUT",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CABHUT",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CABHUT",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CAOILD",
+          "kind": "building",
+          "cell_intensity": 1168,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CAOILD",
+          "kind": "building",
+          "cell_intensity": 1168,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CAOUTP",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CAOILD",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CABHUT",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CABHUT",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CABHUT",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CABHUT",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CABHUT",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CABHUT",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CABHUT",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CABHUT",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CABHUT",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CABHUT",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CABHUT",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CABHUT",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CABHUT",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CABHUT",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CAOILD",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CAOILD",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CAOILD",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CAOILD",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CAOILD",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CAOILD",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CAOILD",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CAOILD",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "AMCV",
+          "kind": "vehicle",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "NACNST",
+          "kind": "building",
+          "cell_intensity": 1140,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "YACNST",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "YAPOWR",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "NAPOWR",
+          "kind": "building",
+          "cell_intensity": 1140,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "NAHAND",
+          "kind": "building",
+          "cell_intensity": 1140,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "YABRCK",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "NAREFN",
+          "kind": "building",
+          "cell_intensity": 1140,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "NALASR",
+          "kind": "building",
+          "cell_intensity": 1140,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "HARV",
+          "kind": "vehicle",
+          "cell_intensity": 1168,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "SMIN",
+          "kind": "vehicle",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        }
+      ],
+      "palette_unweighted_deltas": {
+        "0": {
+          "native_row_at_alpha_127": 0,
+          "current_level_63": 0,
+          "mean_current_minus_native_channel": 8.496732,
+          "mean_current_minus_native_luma": 8.938205,
+          "min_channel_delta": 0,
+          "max_channel_delta": 252,
+          "darker_channels": 0,
+          "equal_channels": 729,
+          "brighter_channels": 36
+        },
+        "500": {
+          "native_row_at_alpha_127": 12,
+          "current_level_63": 15,
+          "mean_current_minus_native_channel": 4.064052,
+          "mean_current_minus_native_luma": 3.384006,
+          "min_channel_delta": -6,
+          "max_channel_delta": 10,
+          "darker_channels": 32,
+          "equal_channels": 84,
+          "brighter_channels": 649
+        },
+        "1000": {
+          "native_row_at_alpha_127": 26,
+          "current_level_63": 31,
+          "mean_current_minus_native_channel": 1.721569,
+          "mean_current_minus_native_luma": 1.757351,
+          "min_channel_delta": -6,
+          "max_channel_delta": 8,
+          "darker_channels": 169,
+          "equal_channels": 102,
+          "brighter_channels": 494
+        },
+        "1056": {
+          "native_row_at_alpha_127": 27,
+          "current_level_63": 32,
+          "mean_current_minus_native_channel": -0.113725,
+          "mean_current_minus_native_luma": -0.311995,
+          "min_channel_delta": -9,
+          "max_channel_delta": 7,
+          "darker_channels": 203,
+          "equal_channels": 371,
+          "brighter_channels": 191
+        },
+        "1140": {
+          "native_row_at_alpha_127": 29,
+          "current_level_63": 35,
+          "mean_current_minus_native_channel": 1.29281,
+          "mean_current_minus_native_luma": 1.146371,
+          "min_channel_delta": -6,
+          "max_channel_delta": 7,
+          "darker_channels": 89,
+          "equal_channels": 283,
+          "brighter_channels": 393
+        },
+        "1168": {
+          "native_row_at_alpha_127": 30,
+          "current_level_63": 36,
+          "mean_current_minus_native_channel": 0.70719,
+          "mean_current_minus_native_luma": 0.62064,
+          "min_channel_delta": -6,
+          "max_channel_delta": 7,
+          "darker_channels": 166,
+          "equal_channels": 280,
+          "brighter_channels": 319
+        },
+        "1500": {
+          "native_row_at_alpha_127": 39,
+          "current_level_63": 46,
+          "mean_current_minus_native_channel": -0.248366,
+          "mean_current_minus_native_luma": -0.421002,
+          "min_channel_delta": -8,
+          "max_channel_delta": 7,
+          "darker_channels": 233,
+          "equal_channels": 342,
+          "brighter_channels": 190
+        },
+        "2000": {
+          "native_row_at_alpha_127": 52,
+          "current_level_63": 62,
+          "mean_current_minus_native_channel": 1.517647,
+          "mean_current_minus_native_luma": 1.077857,
+          "min_channel_delta": -6,
+          "max_channel_delta": 8,
+          "darker_channels": 38,
+          "equal_channels": 381,
+          "brighter_channels": 346
+        }
+      },
+      "neutral_gray_example": {
+        "raw": [
+          120,
+          120,
+          120
+        ],
+        "current": [
+          120,
+          120,
+          120
+        ],
+        "native_565_word": 29614,
+        "native_rgb8": [
+          115,
+          117,
+          115
+        ]
+      },
+      "controlled_source_selections": [
+        {
+          "kind": "shp_building",
+          "custom": false,
+          "terrain_palette": false,
+          "converter": "owner_scheme",
+          "intensity": 1150
+        },
+        {
+          "kind": "voxel",
+          "custom": false,
+          "terrain_palette": false,
+          "converter": "owner_scheme"
+        },
+        {
+          "kind": "shp_building",
+          "custom": false,
+          "terrain_palette": true,
+          "converter": "cell_terrain",
+          "intensity": 850
+        },
+        {
+          "kind": "voxel",
+          "custom": false,
+          "terrain_palette": true,
+          "converter": "owner_scheme"
+        },
+        {
+          "kind": "shp_building",
+          "custom": true,
+          "terrain_palette": false,
+          "converter": "type_custom_scheme",
+          "intensity": 1150
+        },
+        {
+          "kind": "voxel",
+          "custom": true,
+          "terrain_palette": false,
+          "converter": "type_custom_scheme"
+        },
+        {
+          "kind": "shp_building",
+          "custom": true,
+          "terrain_palette": true,
+          "converter": "cell_terrain",
+          "intensity": 850
+        },
+        {
+          "kind": "voxel",
+          "custom": true,
+          "terrain_palette": true,
+          "converter": "type_custom_scheme"
+        },
+        {
+          "kind": "animation",
+          "branch": "veins",
+          "normal_light": false,
+          "converter": "owner_scheme",
+          "intensity": 850
+        },
+        {
+          "kind": "animation",
+          "branch": "veins",
+          "normal_light": true,
+          "converter": "owner_scheme",
+          "intensity": 1000
+        },
+        {
+          "kind": "animation",
+          "branch": "cell",
+          "normal_light": false,
+          "converter": "cell_terrain",
+          "intensity": 850
+        },
+        {
+          "kind": "animation",
+          "branch": "cell",
+          "normal_light": true,
+          "converter": "cell_terrain",
+          "intensity": 1000
+        },
+        {
+          "kind": "animation",
+          "branch": "assigned",
+          "normal_light": false,
+          "converter": "type_custom_scheme",
+          "intensity": 1320
+        },
+        {
+          "kind": "animation",
+          "branch": "assigned",
+          "normal_light": true,
+          "converter": "type_custom_scheme",
+          "intensity": 1000
+        },
+        {
+          "kind": "animation",
+          "branch": "default",
+          "normal_light": false,
+          "converter": "anim_plain",
+          "intensity": 1150
+        },
+        {
+          "kind": "animation",
+          "branch": "default",
+          "normal_light": true,
+          "converter": "anim_plain",
+          "intensity": 1000
+        },
+        {
+          "kind": "animation",
+          "branch": "alternate",
+          "normal_light": false,
+          "converter": "owner_scheme",
+          "intensity": 1150
+        },
+        {
+          "kind": "animation",
+          "branch": "alternate",
+          "normal_light": true,
+          "converter": "owner_scheme",
+          "intensity": 1000
+        }
+      ],
+      "native_vpl_index_cases": 8192,
+      "code_hashes": {
+        "00556090..005564FC": "0fbfc140557f2f595ae4d10231c6c868e8d811d9fe864172985585ab370a1b55",
+        "004990E0..0049927F": "d33441a0fd95a818a7d510d429af2ec39d359f4688fb1381f477e2065288a4bd",
+        "00490E50..00491050": "372e5c043c0e085f8908f609affb82e5e6b1d9d68cb4664395cd8da9af6b3354",
+        "00705D70..00705E00": "abdecb6ae72cf6f9ea0c9b417ef9c4ff21bb4b9b111e761a516e6f9414f76c2e",
+        "00705EC1..00705F89": "508a2dda9b7c86704ffca08309c1f086df5fd539feb8f7c39dbc9eba25e8beef",
+        "0070718F..0070719C": "31b449ebc2df186d4049850eda082bd18d9664686c9d9454840e328614eb1c50",
+        "00423114..00423358": "3f468b6e618ef2bb7ce10c2298986f74999ea9ed987399f072aa88f38e63a7e7",
+        "007576B9..007576F8": "6a4ce2f58df6ea4c5a3c7428847b0099c0e7090f833c92f34bbf650fc78e1fa3"
+      }
+    },
+    {
+      "stage": "02-on",
+      "native_lut_regenerations": 21,
+      "lut_words_per_regeneration": 13568,
+      "native_pixel_cases": 480,
+      "selector_cases": 65280,
+      "selector_mismatches": 0,
+      "native_format": "RGB565; comparisons expand with bit replication",
+      "shades": 53,
+      "neutral_row": 26,
+      "unlit_indices": [
+        240,
+        241,
+        242,
+        243,
+        244,
+        245,
+        246,
+        247,
+        248,
+        249,
+        250,
+        251,
+        252,
+        253,
+        254
+      ],
+      "alpha_buffer_range": [
+        2,
+        127
+      ],
+      "alpha_buffer_neutral_127_count": 146792,
+      "alpha_buffer_above_127_count": 0,
+      "live_objects": [
+        {
+          "type": "CABHUT",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CABHUT",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CAOILD",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CAAIRP",
+          "kind": "building",
+          "cell_intensity": 1168,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CAFARM02",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CAFARM01",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CAMISC01",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CAAIRP",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CABHUT",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CABHUT",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CABHUT",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CABHUT",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CAOILD",
+          "kind": "building",
+          "cell_intensity": 1168,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CAOILD",
+          "kind": "building",
+          "cell_intensity": 1168,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CAOUTP",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CAOILD",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CABHUT",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CABHUT",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CABHUT",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CABHUT",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CABHUT",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CABHUT",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CABHUT",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CABHUT",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CABHUT",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CABHUT",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CABHUT",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CABHUT",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CABHUT",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CABHUT",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CAOILD",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CAOILD",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CAOILD",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CAOILD",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CAOILD",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CAOILD",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CAOILD",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CAOILD",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "NACNST",
+          "kind": "building",
+          "cell_intensity": 1140,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "YACNST",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "YAPOWR",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "NAPOWR",
+          "kind": "building",
+          "cell_intensity": 1140,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "NAHAND",
+          "kind": "building",
+          "cell_intensity": 1140,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "YABRCK",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "NAREFN",
+          "kind": "building",
+          "cell_intensity": 1140,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "NALASR",
+          "kind": "building",
+          "cell_intensity": 1140,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "YAGGUN",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "HARV",
+          "kind": "vehicle",
+          "cell_intensity": 1140,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "NAWEAP",
+          "kind": "building",
+          "cell_intensity": 1140,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "YAREFN",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "GACNST",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "GAPOWR",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "NALASR",
+          "kind": "building",
+          "cell_intensity": 1140,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        }
+      ],
+      "palette_unweighted_deltas": {
+        "0": {
+          "native_row_at_alpha_127": 0,
+          "current_level_63": 0,
+          "mean_current_minus_native_channel": 8.496732,
+          "mean_current_minus_native_luma": 8.938205,
+          "min_channel_delta": 0,
+          "max_channel_delta": 252,
+          "darker_channels": 0,
+          "equal_channels": 729,
+          "brighter_channels": 36
+        },
+        "500": {
+          "native_row_at_alpha_127": 12,
+          "current_level_63": 15,
+          "mean_current_minus_native_channel": 4.064052,
+          "mean_current_minus_native_luma": 3.384006,
+          "min_channel_delta": -6,
+          "max_channel_delta": 10,
+          "darker_channels": 32,
+          "equal_channels": 84,
+          "brighter_channels": 649
+        },
+        "1000": {
+          "native_row_at_alpha_127": 26,
+          "current_level_63": 31,
+          "mean_current_minus_native_channel": 1.721569,
+          "mean_current_minus_native_luma": 1.757351,
+          "min_channel_delta": -6,
+          "max_channel_delta": 8,
+          "darker_channels": 169,
+          "equal_channels": 102,
+          "brighter_channels": 494
+        },
+        "1056": {
+          "native_row_at_alpha_127": 27,
+          "current_level_63": 32,
+          "mean_current_minus_native_channel": -0.113725,
+          "mean_current_minus_native_luma": -0.311995,
+          "min_channel_delta": -9,
+          "max_channel_delta": 7,
+          "darker_channels": 203,
+          "equal_channels": 371,
+          "brighter_channels": 191
+        },
+        "1140": {
+          "native_row_at_alpha_127": 29,
+          "current_level_63": 35,
+          "mean_current_minus_native_channel": 1.29281,
+          "mean_current_minus_native_luma": 1.146371,
+          "min_channel_delta": -6,
+          "max_channel_delta": 7,
+          "darker_channels": 89,
+          "equal_channels": 283,
+          "brighter_channels": 393
+        },
+        "1168": {
+          "native_row_at_alpha_127": 30,
+          "current_level_63": 36,
+          "mean_current_minus_native_channel": 0.70719,
+          "mean_current_minus_native_luma": 0.62064,
+          "min_channel_delta": -6,
+          "max_channel_delta": 7,
+          "darker_channels": 166,
+          "equal_channels": 280,
+          "brighter_channels": 319
+        },
+        "1500": {
+          "native_row_at_alpha_127": 39,
+          "current_level_63": 46,
+          "mean_current_minus_native_channel": -0.248366,
+          "mean_current_minus_native_luma": -0.421002,
+          "min_channel_delta": -8,
+          "max_channel_delta": 7,
+          "darker_channels": 233,
+          "equal_channels": 342,
+          "brighter_channels": 190
+        },
+        "2000": {
+          "native_row_at_alpha_127": 52,
+          "current_level_63": 62,
+          "mean_current_minus_native_channel": 1.517647,
+          "mean_current_minus_native_luma": 1.077857,
+          "min_channel_delta": -6,
+          "max_channel_delta": 8,
+          "darker_channels": 38,
+          "equal_channels": 381,
+          "brighter_channels": 346
+        }
+      },
+      "neutral_gray_example": {
+        "raw": [
+          120,
+          120,
+          120
+        ],
+        "current": [
+          120,
+          120,
+          120
+        ],
+        "native_565_word": 29614,
+        "native_rgb8": [
+          115,
+          117,
+          115
+        ]
+      },
+      "controlled_source_selections": [
+        {
+          "kind": "shp_building",
+          "custom": false,
+          "terrain_palette": false,
+          "converter": "owner_scheme",
+          "intensity": 1150
+        },
+        {
+          "kind": "voxel",
+          "custom": false,
+          "terrain_palette": false,
+          "converter": "owner_scheme"
+        },
+        {
+          "kind": "shp_building",
+          "custom": false,
+          "terrain_palette": true,
+          "converter": "cell_terrain",
+          "intensity": 850
+        },
+        {
+          "kind": "voxel",
+          "custom": false,
+          "terrain_palette": true,
+          "converter": "owner_scheme"
+        },
+        {
+          "kind": "shp_building",
+          "custom": true,
+          "terrain_palette": false,
+          "converter": "type_custom_scheme",
+          "intensity": 1150
+        },
+        {
+          "kind": "voxel",
+          "custom": true,
+          "terrain_palette": false,
+          "converter": "type_custom_scheme"
+        },
+        {
+          "kind": "shp_building",
+          "custom": true,
+          "terrain_palette": true,
+          "converter": "cell_terrain",
+          "intensity": 850
+        },
+        {
+          "kind": "voxel",
+          "custom": true,
+          "terrain_palette": true,
+          "converter": "type_custom_scheme"
+        },
+        {
+          "kind": "animation",
+          "branch": "veins",
+          "normal_light": false,
+          "converter": "owner_scheme",
+          "intensity": 850
+        },
+        {
+          "kind": "animation",
+          "branch": "veins",
+          "normal_light": true,
+          "converter": "owner_scheme",
+          "intensity": 1000
+        },
+        {
+          "kind": "animation",
+          "branch": "cell",
+          "normal_light": false,
+          "converter": "cell_terrain",
+          "intensity": 850
+        },
+        {
+          "kind": "animation",
+          "branch": "cell",
+          "normal_light": true,
+          "converter": "cell_terrain",
+          "intensity": 1000
+        },
+        {
+          "kind": "animation",
+          "branch": "assigned",
+          "normal_light": false,
+          "converter": "type_custom_scheme",
+          "intensity": 1320
+        },
+        {
+          "kind": "animation",
+          "branch": "assigned",
+          "normal_light": true,
+          "converter": "type_custom_scheme",
+          "intensity": 1000
+        },
+        {
+          "kind": "animation",
+          "branch": "default",
+          "normal_light": false,
+          "converter": "anim_plain",
+          "intensity": 1150
+        },
+        {
+          "kind": "animation",
+          "branch": "default",
+          "normal_light": true,
+          "converter": "anim_plain",
+          "intensity": 1000
+        },
+        {
+          "kind": "animation",
+          "branch": "alternate",
+          "normal_light": false,
+          "converter": "owner_scheme",
+          "intensity": 1150
+        },
+        {
+          "kind": "animation",
+          "branch": "alternate",
+          "normal_light": true,
+          "converter": "owner_scheme",
+          "intensity": 1000
+        }
+      ],
+      "native_vpl_index_cases": 8192,
+      "code_hashes": {
+        "00556090..005564FC": "0fbfc140557f2f595ae4d10231c6c868e8d811d9fe864172985585ab370a1b55",
+        "004990E0..0049927F": "d33441a0fd95a818a7d510d429af2ec39d359f4688fb1381f477e2065288a4bd",
+        "00490E50..00491050": "372e5c043c0e085f8908f609affb82e5e6b1d9d68cb4664395cd8da9af6b3354",
+        "00705D70..00705E00": "abdecb6ae72cf6f9ea0c9b417ef9c4ff21bb4b9b111e761a516e6f9414f76c2e",
+        "00705EC1..00705F89": "508a2dda9b7c86704ffca08309c1f086df5fd539feb8f7c39dbc9eba25e8beef",
+        "0070718F..0070719C": "31b449ebc2df186d4049850eda082bd18d9664686c9d9454840e328614eb1c50",
+        "00423114..00423358": "3f468b6e618ef2bb7ce10c2298986f74999ea9ed987399f072aa88f38e63a7e7",
+        "007576B9..007576F8": "6a4ce2f58df6ea4c5a3c7428847b0099c0e7090f833c92f34bbf650fc78e1fa3"
+      }
+    },
+    {
+      "stage": "03-off",
+      "native_lut_regenerations": 21,
+      "lut_words_per_regeneration": 13568,
+      "native_pixel_cases": 480,
+      "selector_cases": 65280,
+      "selector_mismatches": 0,
+      "native_format": "RGB565; comparisons expand with bit replication",
+      "shades": 53,
+      "neutral_row": 26,
+      "unlit_indices": [
+        240,
+        241,
+        242,
+        243,
+        244,
+        245,
+        246,
+        247,
+        248,
+        249,
+        250,
+        251,
+        252,
+        253,
+        254
+      ],
+      "alpha_buffer_range": [
+        2,
+        127
+      ],
+      "alpha_buffer_neutral_127_count": 22879,
+      "alpha_buffer_above_127_count": 0,
+      "live_objects": [
+        {
+          "type": "CABHUT",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CABHUT",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CAOILD",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CAAIRP",
+          "kind": "building",
+          "cell_intensity": 1168,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CAFARM02",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CAFARM01",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CAMISC01",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CAAIRP",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CABHUT",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CABHUT",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CABHUT",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CABHUT",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CAOILD",
+          "kind": "building",
+          "cell_intensity": 1168,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CAOILD",
+          "kind": "building",
+          "cell_intensity": 1168,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CAOUTP",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CAOILD",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CABHUT",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CABHUT",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CABHUT",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CABHUT",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CABHUT",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CABHUT",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CABHUT",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CABHUT",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CABHUT",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CABHUT",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CABHUT",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CABHUT",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CABHUT",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CABHUT",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CAOILD",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CAOILD",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CAOILD",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CAOILD",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CAOILD",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CAOILD",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CAOILD",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "CAOILD",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "NACNST",
+          "kind": "building",
+          "cell_intensity": 1140,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "YACNST",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "YAPOWR",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "NAPOWR",
+          "kind": "building",
+          "cell_intensity": 1140,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "NAHAND",
+          "kind": "building",
+          "cell_intensity": 1140,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "YABRCK",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "NAREFN",
+          "kind": "building",
+          "cell_intensity": 1140,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "NALASR",
+          "kind": "building",
+          "cell_intensity": 1140,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "YAGGUN",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "HARV",
+          "kind": "vehicle",
+          "cell_intensity": 1168,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "NAWEAP",
+          "kind": "building",
+          "cell_intensity": 1140,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "YAREFN",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "GACNST",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "GAPOWR",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "NALASR",
+          "kind": "building",
+          "cell_intensity": 1140,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "HARV",
+          "kind": "vehicle",
+          "cell_intensity": 1140,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "NAFLAK",
+          "kind": "building",
+          "cell_intensity": 1140,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "NATBNK",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        {
+          "type": "YAREFN",
+          "kind": "building",
+          "cell_intensity": 1056,
+          "extra_light": 0,
+          "flashing": false,
+          "converter_shades": 53,
+          "converter_rgb": [
+            1000,
+            1000,
+            1000
+          ]
+        }
+      ],
+      "palette_unweighted_deltas": {
+        "0": {
+          "native_row_at_alpha_127": 0,
+          "current_level_63": 0,
+          "mean_current_minus_native_channel": 8.496732,
+          "mean_current_minus_native_luma": 8.938205,
+          "min_channel_delta": 0,
+          "max_channel_delta": 252,
+          "darker_channels": 0,
+          "equal_channels": 729,
+          "brighter_channels": 36
+        },
+        "500": {
+          "native_row_at_alpha_127": 12,
+          "current_level_63": 15,
+          "mean_current_minus_native_channel": 4.064052,
+          "mean_current_minus_native_luma": 3.384006,
+          "min_channel_delta": -6,
+          "max_channel_delta": 10,
+          "darker_channels": 32,
+          "equal_channels": 84,
+          "brighter_channels": 649
+        },
+        "1000": {
+          "native_row_at_alpha_127": 26,
+          "current_level_63": 31,
+          "mean_current_minus_native_channel": 1.721569,
+          "mean_current_minus_native_luma": 1.757351,
+          "min_channel_delta": -6,
+          "max_channel_delta": 8,
+          "darker_channels": 169,
+          "equal_channels": 102,
+          "brighter_channels": 494
+        },
+        "1056": {
+          "native_row_at_alpha_127": 27,
+          "current_level_63": 32,
+          "mean_current_minus_native_channel": -0.113725,
+          "mean_current_minus_native_luma": -0.311995,
+          "min_channel_delta": -9,
+          "max_channel_delta": 7,
+          "darker_channels": 203,
+          "equal_channels": 371,
+          "brighter_channels": 191
+        },
+        "1140": {
+          "native_row_at_alpha_127": 29,
+          "current_level_63": 35,
+          "mean_current_minus_native_channel": 1.29281,
+          "mean_current_minus_native_luma": 1.146371,
+          "min_channel_delta": -6,
+          "max_channel_delta": 7,
+          "darker_channels": 89,
+          "equal_channels": 283,
+          "brighter_channels": 393
+        },
+        "1168": {
+          "native_row_at_alpha_127": 30,
+          "current_level_63": 36,
+          "mean_current_minus_native_channel": 0.70719,
+          "mean_current_minus_native_luma": 0.62064,
+          "min_channel_delta": -6,
+          "max_channel_delta": 7,
+          "darker_channels": 166,
+          "equal_channels": 280,
+          "brighter_channels": 319
+        },
+        "1500": {
+          "native_row_at_alpha_127": 39,
+          "current_level_63": 46,
+          "mean_current_minus_native_channel": -0.248366,
+          "mean_current_minus_native_luma": -0.421002,
+          "min_channel_delta": -8,
+          "max_channel_delta": 7,
+          "darker_channels": 233,
+          "equal_channels": 342,
+          "brighter_channels": 190
+        },
+        "2000": {
+          "native_row_at_alpha_127": 52,
+          "current_level_63": 62,
+          "mean_current_minus_native_channel": 1.517647,
+          "mean_current_minus_native_luma": 1.077857,
+          "min_channel_delta": -6,
+          "max_channel_delta": 8,
+          "darker_channels": 38,
+          "equal_channels": 381,
+          "brighter_channels": 346
+        }
+      },
+      "neutral_gray_example": {
+        "raw": [
+          120,
+          120,
+          120
+        ],
+        "current": [
+          120,
+          120,
+          120
+        ],
+        "native_565_word": 29614,
+        "native_rgb8": [
+          115,
+          117,
+          115
+        ]
+      },
+      "controlled_source_selections": [
+        {
+          "kind": "shp_building",
+          "custom": false,
+          "terrain_palette": false,
+          "converter": "owner_scheme",
+          "intensity": 1150
+        },
+        {
+          "kind": "voxel",
+          "custom": false,
+          "terrain_palette": false,
+          "converter": "owner_scheme"
+        },
+        {
+          "kind": "shp_building",
+          "custom": false,
+          "terrain_palette": true,
+          "converter": "cell_terrain",
+          "intensity": 850
+        },
+        {
+          "kind": "voxel",
+          "custom": false,
+          "terrain_palette": true,
+          "converter": "owner_scheme"
+        },
+        {
+          "kind": "shp_building",
+          "custom": true,
+          "terrain_palette": false,
+          "converter": "type_custom_scheme",
+          "intensity": 1150
+        },
+        {
+          "kind": "voxel",
+          "custom": true,
+          "terrain_palette": false,
+          "converter": "type_custom_scheme"
+        },
+        {
+          "kind": "shp_building",
+          "custom": true,
+          "terrain_palette": true,
+          "converter": "cell_terrain",
+          "intensity": 850
+        },
+        {
+          "kind": "voxel",
+          "custom": true,
+          "terrain_palette": true,
+          "converter": "type_custom_scheme"
+        },
+        {
+          "kind": "animation",
+          "branch": "veins",
+          "normal_light": false,
+          "converter": "owner_scheme",
+          "intensity": 850
+        },
+        {
+          "kind": "animation",
+          "branch": "veins",
+          "normal_light": true,
+          "converter": "owner_scheme",
+          "intensity": 1000
+        },
+        {
+          "kind": "animation",
+          "branch": "cell",
+          "normal_light": false,
+          "converter": "cell_terrain",
+          "intensity": 850
+        },
+        {
+          "kind": "animation",
+          "branch": "cell",
+          "normal_light": true,
+          "converter": "cell_terrain",
+          "intensity": 1000
+        },
+        {
+          "kind": "animation",
+          "branch": "assigned",
+          "normal_light": false,
+          "converter": "type_custom_scheme",
+          "intensity": 1320
+        },
+        {
+          "kind": "animation",
+          "branch": "assigned",
+          "normal_light": true,
+          "converter": "type_custom_scheme",
+          "intensity": 1000
+        },
+        {
+          "kind": "animation",
+          "branch": "default",
+          "normal_light": false,
+          "converter": "anim_plain",
+          "intensity": 1150
+        },
+        {
+          "kind": "animation",
+          "branch": "default",
+          "normal_light": true,
+          "converter": "anim_plain",
+          "intensity": 1000
+        },
+        {
+          "kind": "animation",
+          "branch": "alternate",
+          "normal_light": false,
+          "converter": "owner_scheme",
+          "intensity": 1150
+        },
+        {
+          "kind": "animation",
+          "branch": "alternate",
+          "normal_light": true,
+          "converter": "owner_scheme",
+          "intensity": 1000
+        }
+      ],
+      "native_vpl_index_cases": 8192,
+      "code_hashes": {
+        "00556090..005564FC": "0fbfc140557f2f595ae4d10231c6c868e8d811d9fe864172985585ab370a1b55",
+        "004990E0..0049927F": "d33441a0fd95a818a7d510d429af2ec39d359f4688fb1381f477e2065288a4bd",
+        "00490E50..00491050": "372e5c043c0e085f8908f609affb82e5e6b1d9d68cb4664395cd8da9af6b3354",
+        "00705D70..00705E00": "abdecb6ae72cf6f9ea0c9b417ef9c4ff21bb4b9b111e761a516e6f9414f76c2e",
+        "00705EC1..00705F89": "508a2dda9b7c86704ffca08309c1f086df5fd539feb8f7c39dbc9eba25e8beef",
+        "0070718F..0070719C": "31b449ebc2df186d4049850eda082bd18d9664686c9d9454840e328614eb1c50",
+        "00423114..00423358": "3f468b6e618ef2bb7ce10c2298986f74999ea9ed987399f072aa88f38e63a7e7",
+        "007576B9..007576F8": "6a4ce2f58df6ea4c5a3c7428847b0099c0e7090f833c92f34bbf650fc78e1fa3"
+      }
+    }
+  ]
+}

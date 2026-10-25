@@ -8,6 +8,42 @@ prefix=(root/'assist/tests/watch_host.cpp').read_text().split('int main(){',1)[0
 prefix=prefix.replace('static bool foregroundGame(){return true;}','static bool focused=true;static bool foregroundGame(){return focused;}')
 prefix=prefix.replace('struct Graphics {','struct Graphics {Graphics(void* =nullptr){}void ScaleTransform(float,float){}')
 prefix=prefix.replace('static struct {bool read(uint32_t p,void*out,size_t n){','static struct {bool readFresh(uint32_t p,void*out,size_t n){return read(p,out,n);}bool read(uint32_t p,void*out,size_t n){')
+prefix+=r'''
+// Execute the production async host as well as the window handlers. Only the
+// external memory/assets and Win32/GDI boundaries are replaced here.
+#include <mutex>
+#include <condition_variable>
+#include <chrono>
+namespace watchtest {
+static std::mutex gate;static std::condition_variable changed;static bool held=false,entered=false;
+static bool freshHeld=false,freshEntered=false;
+static void hold(){std::lock_guard<std::mutex> lock(gate);held=true;entered=false;}
+static void release(){std::lock_guard<std::mutex> lock(gate);held=false;changed.notify_all();}
+static bool awaitEntry(){std::unique_lock<std::mutex> lock(gate);return changed.wait_for(lock,std::chrono::seconds(5),[]{return entered;});}
+static void open(){std::unique_lock<std::mutex> lock(gate);if(held){entered=true;changed.notify_all();changed.wait(lock,[]{return !held;});}}
+static void holdFresh(){std::lock_guard<std::mutex> lock(gate);freshHeld=true;freshEntered=false;}
+static void releaseFresh(){std::lock_guard<std::mutex> lock(gate);freshHeld=false;changed.notify_all();}
+static bool awaitFresh(){std::unique_lock<std::mutex> lock(gate);return changed.wait_for(lock,std::chrono::seconds(5),[]{return freshEntered;});}
+static void fresh(){std::unique_lock<std::mutex> lock(gate);if(freshHeld){freshEntered=true;changed.notify_all();changed.wait(lock,[]{return !freshHeld;});}}
+}
+namespace external {
+struct ReadSession {
+ std::array<int32_t,6> bounds{};bool haveBounds=false;
+ bool open(uint32_t){watchtest::open();return true;}void close(){}void begin(){haveBounds=false;}
+ bool read(uint32_t p,void*out,size_t n){
+  if(p==mapbounds::Map+0xF4&&n==sizeof bounds){if(!haveBounds){if(!externalReader.read(p,bounds.data(),n))return false;haveBounds=true;}memcpy(out,bounds.data(),n);return true;}
+  return externalReader.read(p,out,n);
+ }
+ bool readFresh(uint32_t p,void*out,size_t n){watchtest::fresh();return externalReader.read(p,out,n);}
+};
+struct SharedReadView {ReadSession*reader;bool operator()(uint32_t p,void*out,size_t n)const{return reader->read(p,out,n);}};
+namespace cameraassets {template<class Reader>struct Context:Backend {
+ explicit Context(Reader&){}struct Files{size_t count(){return 1;}}files;
+ std::string text(uint32_t p,int n){return gameassets::text(p,n);}
+};}
+}
+#include "../source/watch_host.h"
+'''
 shim=r'''
 #include "../../shared/source/overlay_recovery.h"
 using namespace assist;
@@ -32,6 +68,7 @@ static int GetModuleHandleW(void*){return 1;}static void RegisterClassW(WNDCLASS
 static HWND CreateWindowExW(int,const wchar_t*,const wchar_t*,int,int,int,int,int,void*,void*,int,void*data){HWND w=reinterpret_cast<HWND>(nextWindow++);CREATESTRUCTW c{data};windowProc(w,WM_NCCREATE,0,reinterpret_cast<LPARAM>(&c));return w;}
 static void SetLayeredWindowAttributes(HWND,int,int,int){}static void GetWindowRect(HWND w,RECT*r){*r=win[w].rect;}static bool IsWindowVisible(HWND w){return win[w].visible;}
 static bool SetWindowPos(HWND w,HWND,int x,int y,int width,int height,int flags){assert(flags&SWP_NOACTIVATE);win[w].rect={x,y,x+width,y+height};win[w].visible=true;++win[w].raises;return true;}
+namespace overlaystack {enum class Layer{Watch};static bool place(HWND w,Layer,int x,int y,int width,int height,int flags){return SetWindowPos(w,HWND_TOPMOST,x,y,width,height,flags);}}
 static void InvalidateRect(HWND w,void*,bool){++win[w].invalidations;}
 static int synchronousPaints=0;static void UpdateWindow(HWND w){++synchronousPaints;windowProc(w,WM_PAINT,0,0);}
 #include "../source/watch_windows.h"
@@ -53,7 +90,8 @@ int main(){
  std::cout<<"PASS production window handlers: one-click native-camera mailbox, independent Shift-right-close, no activation, physical scaling, one-second reassertion, menu/focus/chat gating and destroy\n";
 }
 '''
-with tempfile.TemporaryDirectory() as tmp:
- cpp=Path(tmp)/'watch.cpp';exe=Path(tmp)/'watch';cpp.write_text(prefix+shim)
- subprocess.run(['g++','-std=c++17','-O1','-I'+str(root/'assist/tests'),str(cpp),'-o',str(exe)],check=True)
- subprocess.run([str(exe)],check=True)
+if __name__=='__main__':
+ with tempfile.TemporaryDirectory() as tmp:
+  cpp=Path(tmp)/'watch.cpp';exe=Path(tmp)/'watch';cpp.write_text(prefix+shim)
+  subprocess.run(['g++','-std=c++17','-O1','-pthread','-I'+str(root/'assist/tests'),str(cpp),'-o',str(exe)],check=True)
+  subprocess.run([str(exe)],check=True)

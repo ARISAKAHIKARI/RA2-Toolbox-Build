@@ -16,7 +16,7 @@ struct Assets {
 };
 int main(){
  using namespace external::radar;Assets assets;SceneRenderer<Assets> renderer;auto read=[](uint32_t,void*,size_t){return false;};
- auto terrain=std::make_shared<Terrain>();terrain->geo={64,64,64,64,128,128,1,0x10000,0x20000,512*512};terrain->colors.resize(512*512);terrain->art.resize(512*512);
+ auto terrain=std::make_shared<Terrain>();terrain->geo={64,64,64,64,128,128,1,0x10000,0x20000,512*512,{64,64,0,0,64,64}};terrain->colors.resize(512*512);terrain->art.resize(512*512);
  terrain->colors[64*512+64]=0xa03020;terrain->art[64*512+64].type=1;Frame frame;frame.terrain=terrain;frame.tick=100;
  std::shared_ptr<const Scene> scene=renderer.render(frame,128,64,read,assets);
  for(int i=0;i<80&&!scene;++i)scene=renderer.render(frame,128,64,read,assets);
@@ -53,5 +53,10 @@ int main(){
  scene=renderer.render(frame,128,64,read,assets);assert(scene&&assets.captures==captures+1&&assets.buildingPoses.count({3,2})&&assets.buildingPoses.count({3,6}));
  frame.markers[0].pose.buildingFlags=7;scene=renderer.render(frame,128,64,read,assets);assert(assets.captures==captures+1&&assets.buildingPoses.count({7,2}));
  frame.markers[0].pose.doorFrame=7;assets.partial=true;scene=renderer.render(frame,128,64,read,assets);assert(std::find(scene->pixels.begin(),scene->pixels.end(),0xff00aa00)!=scene->pixels.end());int renders=assets.renders;assets.partial=false;frame.tick+=50;scene=renderer.render(frame,128,64,read,assets);assert(assets.renders==renders);frame.tick+=2000;scene=renderer.render(frame,128,64,read,assets);assert(assets.renders==renders+1&&assets.captures==captures+1);
+ // Same-size trigger crop: no old terrain/objects may leak through while the
+ // renderer switches coordinate domains. Expanding restores cached tile art.
+ frame.markers.clear();auto crop=std::make_shared<Terrain>(*terrain);crop->geo.bounds.left=40;crop->geo.bounds.columns=24;crop->colors[64*512+64]=0;frame.terrain=crop;
+ scene=renderer.render(frame,128,64,read,assets);assert(scene&&std::all_of(scene->pixels.begin(),scene->pixels.end(),[](uint32_t p){return p==0xff080c08;}));
+ frame.terrain=terrain;scene=renderer.render(frame,128,64,read,assets);assert(scene&&std::find(scene->pixels.begin(),scene->pixels.end(),0xffa03020)!=scene->pixels.end());
  std::cout<<"PASS scene publication, native animation frame-zero/advance, independent door/roof cache, shared source art, fair retained poses, ground/air layers, resize and reset\n";
 }
