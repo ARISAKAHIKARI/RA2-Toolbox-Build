@@ -120,11 +120,43 @@ def close(p,root):
     u.PostMessageW(root,0x10,0,0)
     p.wait(timeout=20)
     assert p.returncode==0,p.returncode
-def click(root,h,expected):
+def click(root,h,expected,*,owner_id=None,persisted=None,label='checkbox'):
+    assert h and u.IsWindowEnabled(h),('control not ready',label,h)
+    assert check(h)!=expected,('control already at requested value',label,expected)
+    owner=child(root,owner_id,'RA2Assist010') if owner_id is not None else None
+    if owner_id is not None:assert owner,('missing setting owner',label,owner_id)
     send(h,0xF5) # BM_CLICK: actual styled button notification path
-    until(lambda:check(h)==expected,'checkbox value')
-    time.sleep(.6) # cover autosave debounce and asynchronous state publication
-    assert check(h)==expected,('value bounced',u.GetDlgCtrlID(h))
+    until(lambda:check(h)==expected,label+' checkbox value')
+    # Shared display edits are posted to another UI thread, then saved by a
+    # debounced WM_TIMER. A local checkmark is not an owner/disk acknowledgement.
+    # Send exactly one click: a lost edit must fail, never be retried into passing.
+    if owner is not None:
+        until(lambda:check(owner)==expected,label+' owner accepted edit')
+    if persisted is not None:
+        until(lambda:persisted()==expected,label+' persisted value')
+    assert check(h)==expected,('value bounced',label,u.GetDlgCtrlID(h))
+    if owner is not None:assert check(owner)==expected,('owner value bounced',label)
+
+def failure_diagnostics(folder,root):
+    def attempt(fn):
+        try:return fn()
+        except Exception as error:return {'error':repr(error)}
+    def control(id,parentclass):
+        h=child(root,id,parentclass)
+        return {'hwnd':h,'checked':check(h),'enabled':bool(u.IsWindowEnabled(h))} if h else None
+    def read_file(path):
+        raw=path.read_bytes()
+        encoding='utf-16' if raw.startswith((b'\xff\xfe',b'\xfe\xff')) else 'utf-8-sig'
+        return raw.decode(encoding,errors='replace')[-4000:]
+    details={'EnemyMarkers':{
+        'checkbox601':attempt(lambda:control(601,'RA2UnitMonitorUI')),
+        'owner785':attempt(lambda:control(785,'RA2Assist010')),
+        'ini':attempt(lambda:ini(folder,'Display','EnemyMarkers'))},
+        'files':{path.name:attempt(lambda path=path:read_file(path))
+                 for pattern in ('*.log','*.ini') for path in folder.glob(pattern)}}
+    # Windows runners may use cp1252 stdout. ASCII JSON preserves every code
+    # point without allowing diagnostics to replace the original assertion.
+    print('UI failure diagnostics:',json.dumps(details,ensure_ascii=True),flush=True)
 def scenario(folder):
     p,root,f,d=launch(folder)
     try:
@@ -138,16 +170,19 @@ def scenario(folder):
         keys={601:'EnemyMarkers',602:'Iron',603:'Capacity',604:'AllTransports',
               605:'Frozen',606:'ParasiteMarker',607:'CrateBuffMarkers',
               611:'PassengerBubbles',612:'DangerPassengers'}
+        owners={601:785,602:301,603:300,604:303,605:723,606:892,607:893,611:897,612:898}
         for id,key in keys.items():
-            h=child(root,id)
-            click(root,h,1)
+            h=child(root,id,'RA2UnitMonitorUI')
+            click(root,h,1,owner_id=owners[id],
+                  persisted=lambda key=key:ini(folder,'Display',key),label=key)
             assert ini(folder,'Display',key)==1,(key,'not saved on')
         secondary=[(9162,'Display','MinimapSecondary'),(9163,'Watch','SecondaryEnabled')]
         for id,section,key in secondary:
             h=child(root,id,'RA2Assist010');assert h and check(h)==0
-            click(root,h,1);assert ini(folder,section,key)==1
+            click(root,h,1,persisted=lambda section=section,key=key:ini(folder,section,key),label=key)
+            assert ini(folder,section,key)==1
         secondary_stats=child(root,120,'RA2UnitMonitorUI');assert secondary_stats and check(secondary_stats)==0
-        click(root,secondary_stats,1)
+        click(root,secondary_stats,1,persisted=lambda:k.GetPrivateProfileIntW('overlay','secondaryEnabled',999,str(folder/'settings.ini')),label='secondary statistics')
         assert k.GetPrivateProfileIntW('overlay','secondaryEnabled',999,str(folder/'settings.ini'))==1
         assert ini(folder,'Display','MinimapZoom')==0 and ini(folder,'Watch','Enabled')==0,'secondary enabled primary overlay'
         manual=child(root,609,'RA2UnitMonitorUI');adaptive=child(root,613,'RA2UnitMonitorUI')
@@ -155,7 +190,7 @@ def scenario(folder):
         set_control_text(manual,'144')
         until(lambda:ini(folder,'Display','FPS')==144 and information_rate(root)==144,'manual information rate saved and active')
         expected_monitor_hz=native_monitor_hz(root)
-        click(root,adaptive,1)
+        click(root,adaptive,1,owner_id=9160,persisted=lambda:ini(folder,'Display','AdaptiveFPS'),label='adaptive information rate')
         until(lambda:ini(folder,'Display','AdaptiveFPS')==1 and not u.IsWindowEnabled(manual) and information_rate(root)==expected_monitor_hz,'adaptive information rate matches native monitor')
         assert ini(folder,'Display','FPS')==144 and control_text(manual)=='144','adaptive mode overwrote manual target'
         # Real minimap mode selection persists through the same owner notification.
@@ -170,7 +205,7 @@ def scenario(folder):
         set_control_text(scale,'1000')
         until(lambda:ini(folder,'Display','MinimapScale')==1000,'1000 percent minimap saved')
         # Change an unrelated tactical setting: it must not reset these values.
-        h=child(root,702,'RA2Assist010');click(root,h,1)
+        h=child(root,702,'RA2Assist010');click(root,h,1,persisted=lambda:ini(folder,'Cooperative','AdvancedEnter'),label='advanced enter')
         assert ini(folder,'Display','Frozen')==ini(folder,'Display','DangerPassengers')==1
         assert ini(folder,'Display','AdaptiveFPS')==1 and ini(folder,'Display','FPS')==144
         close(p,root)
@@ -184,7 +219,7 @@ def scenario(folder):
         assert check(child(root,120,'RA2UnitMonitorUI'))==1 and k.GetPrivateProfileIntW('overlay','secondaryEnabled',999,str(folder/'settings.ini'))==1
         assert check(adaptive)==1 and not u.IsWindowEnabled(manual) and control_text(manual)=='144','adaptive state lost on restart'
         until(lambda:information_rate(root)==native_monitor_hz(root),'adaptive monitor rate restored after restart')
-        click(root,adaptive,0)
+        click(root,adaptive,0,owner_id=9160,persisted=lambda:ini(folder,'Display','AdaptiveFPS'),label='adaptive information rate')
         until(lambda:ini(folder,'Display','AdaptiveFPS')==0 and u.IsWindowEnabled(manual) and information_rate(root)==144,'manual target restored after disabling adaptive')
         assert send(child(root,9065,'RA2Assist010'),0x147)==1,'real minimap mode lost on restart'
         assert ini(folder,'Display','MinimapScale')==1000,'1000 percent minimap lost on restart'
@@ -220,7 +255,8 @@ def scenario(folder):
         assert p.poll() is None,'renderer terminated the host'
         close(p,root)
     except Exception:
-        print('UI failure diagnostics:',{f.name:f.read_text(errors='replace')[-4000:] for f in folder.glob('*.log')})
+        try:failure_diagnostics(folder,root)
+        except Exception as error:print('UI diagnostics failed:',ascii(error),flush=True)
         raise
     finally:
         if p.poll() is None:p.kill();p.wait()
