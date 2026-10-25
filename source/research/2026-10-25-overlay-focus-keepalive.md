@@ -45,6 +45,24 @@ pre.13 已加入 `overlayui::Recovery`：正常每秒重新上傳／置位，失
 
 以上不能證明實際 DirectDraw/DWM 裝置丟失、所有平台宿主的前台判定或真實 Alt-Tab 畫面已驗收。沒有改動渲染亮度、資源選取、攝像機投影、追蹤目標生命週期或遊戲命令路徑。
 
+## pre.6 首輪 Windows fixture 等待設計與驗證界線
+
+首輪 pre.6 Actions `40155817238` 已建置成功，但 Windows job `121058491758` 停在 `Real overlay window stacking` 超過數分鐘。當時尚無階段日誌或執行緒堆疊，不能確定卡在初始化、位置批次、關閉或 assert 的 CRT 對話框，也不能據此宣稱 production `EndDeferWindowPos` 已被證明死鎖。
+
+審查確認 fixture 的主執行緒已建立 HWND，卻以不派送訊息的 `WaitForSingleObject(ready)` 等第二個 UI thread，並在 `PostMessage(WM_CLOSE)` 後直接 `join()`。這不符合 [Microsoft Creating Windows in Threads](https://learn.microsoft.com/en-us/windows/win32/procthread/creating-windows-in-threads) 要求的窗口 owner 等待模型：另一個 owner 在建立、改變或銷毀視窗時可能同步傳送訊息，形成等待循環。production registry mutex 的 snapshot 仍在批次呼叫前釋放；本次先修正已確認不適當的 fixture 等待方式，保留跨 owner 批次本身供後續檢驗。
+
+fixture 現在保留原有第二 UI thread、回呼取 registry mutex、四次 game 提升、全組層序、隱藏面板及 stale HWND 檢查，另作以下更正：
+
+- ready 與 shutdown 使用有界 `MsgWaitForMultipleObjectsEx`／`PeekMessage` 訊息泵；各最多等待 5 秒。關閉時先等實際 native thread HANDLE 成為 signaled，再 `join()`。
+- 260 ms 保活間隔也派送訊息，避免讓窗口 owner 在測試延遲期間停止處理同步通知。
+- 每階段輸出立即 flush 的 checkpoint。位置呼叫、統計視窗 owner 狀態和迴圈序號也保留在 atomic 診斷欄位。
+- 所有 `assert` 改成不可因 `NDEBUG` 消失的 `CHECK`，失敗時列印 expression、行號及階段後 `ExitProcess(2)`，避免 CRT assert UI 把失敗表現成長時間無輸出。
+- 不持有 HWND 的獨立 watchdog 最多等待 20 秒；卡在同步 User32 呼叫時也能輸出最後階段並 `TerminateProcess(..., 124)`，讓 CI 明確失敗。
+
+這次只更正 fixture 與診斷，沒有放寬層序斷言、移除跨執行緒覆蓋或改成非同步置位以避開被測路徑。編輯時本地沒有 Windows runtime，仍須由下一輪 Windows CI 驗證；不能把等待模型修正或 Linux 原始碼檢查寫成 Windows gate 已通過。
+
+為了立即取得這項門檻的結果，發布驗證把它拆成平行的 `overlay-build`／`overlay-windows`，主成品仍由 `build`／`windows-ui` 驗證。發布器要求同一 SHA 的四個 job 全部成功；確切 Windows 結果以 `release-manifest.json` 指向的最終 Actions run 為準，首輪卡住的成品不能被拿來發布。
+
 ## 排除與未決事項
 
 - `tabui::Controller::loseFocus()` 已只清除按住狀態，保留 latched 顯示選擇；本次沒有證據要求重新設計 Tab 語意。

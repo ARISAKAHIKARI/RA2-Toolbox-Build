@@ -1,6 +1,6 @@
 {
   "supported_executable_sha256": "7b8a068535d6af06845edf95ae829b113d00c02909330e16f197426cd7db94b6",
-  "scope": "Audit loaded VPL, original indexed voxel raster and fresh/cached blitters.\n\nThe input is a private supported-game capture. Only counts, hashes, bounds and\nmean RGB are emitted. Captured model/palette/table bytes travel to a temporary\nproduction C++ probe through stdin and are never written as output artifacts.\nThe raster comparison uses body models and the same raw owner palette; it is\nbefore scene LightConvert, ABuffer, clipping and shadows. Separate one-pixel\ntests execute both original scalar blitter paths against the captured LUT.\nNo live game, Windows display, complete scene compositor or multiplayer runs.\n",
+  "scope": "Audit loaded VPL, original indexed voxel raster and fresh/cached blitters.\n\nThe input is a private supported-game capture. Only counts, hashes, bounds and\nmean RGB are emitted. Captured model/palette/table bytes travel to a temporary\nproduction C++ probe through stdin and are never written as output artifacts.\nThe raster comparison uses body models and the same raw owner palette; it is\nbefore scene LightConvert, ABuffer, clipping and shadows. Separate one-pixel\ntests execute both original scalar blitter paths against the captured LUT.\nUnit brightness/base/dispatch uses captured ground units. Aircraft tests cover\nonly its separate additive-rule and push slices with a controlled altitude term.\nNo live game, Windows display, complete scene compositor or multiplayer runs.\n",
   "stages": {
     "00-clean": {
       "pages": 32,
@@ -82,7 +82,14 @@
     "004958D0-004959B1": "05febacbb85ffa09913fbcb004cb65901c67a24f566f17677af463874b927ec1",
     "00497FD0-00498150": "cadcedb1fd341f360cf669616657978a10a747fa9182e9a99d0fbeb3e147f452",
     "004990E0-0049927F": "d33441a0fd95a818a7d510d429af2ec39d359f4688fb1381f477e2065288a4bd",
-    "00490B90-00490E50": "f8e0f197c5907ab1f7f8989dba4374396bae9ecf32c7ad21b16efb63c197b69b"
+    "00490B90-00490E50": "f8e0f197c5907ab1f7f8989dba4374396bae9ecf32c7ad21b16efb63c197b69b",
+    "0066B69E-0066B6BC": "6fddfcb9486e403a5ef184e8fb70f97125fe587ec8bb58f31eb6aa5b66ed405e",
+    "0073CF70-0073D0DB": "2ab42261a92d67567a02d274bb436f2c841785847ebf3bfbd3e13cfde65e3482",
+    "0073D30E-0073D395": "503da8f382ac5df806c103a4735ab18790d94294efc55e5fd928a55ec7843e62",
+    "0070676F-007067E4": "9184f6930496ce2c3d4ae52940a26ab0781d7cd1c5ffdd4e9cd15109f0627b15",
+    "0066B730-0066B754": "3997deec7324abd9a54c32b06134dce00887a124c4c9525c0a8491e993f490c7",
+    "00414925-0041493E": "7cc190dff469b248976e271fcb81b6a29c6ad53311d1dc5ee51c5686118f620e",
+    "00414987-004149DD": "2562a2df4ef491437686eca87dd8dc372ef16620aeb7912c3752f19104d0da52"
   },
   "synthetic_loader": [
     {
@@ -739,5 +746,521 @@
       }
     }
   ],
+  "unit_lighting": {
+    "rules_global": "008871E0",
+    "runtime_signed_integer_offsets": {
+      "unit": "17D4",
+      "aircraft": "17DC"
+    },
+    "multiplier": 1000.0,
+    "native_scaling_cases": [
+      {
+        "field": "ExtraUnitLight",
+        "config_double": 0.2,
+        "stored_signed_integer": 200
+      },
+      {
+        "field": "ExtraUnitLight",
+        "config_double": 0,
+        "stored_signed_integer": 0
+      },
+      {
+        "field": "ExtraUnitLight",
+        "config_double": -0.2,
+        "stored_signed_integer": -200
+      },
+      {
+        "field": "ExtraUnitLight",
+        "config_double": 0.75,
+        "stored_signed_integer": 750
+      },
+      {
+        "field": "ExtraUnitLight",
+        "config_double": -2,
+        "stored_signed_integer": -2000
+      },
+      {
+        "field": "ExtraUnitLight",
+        "config_double": 4,
+        "stored_signed_integer": 4000
+      },
+      {
+        "field": "ExtraAircraftLight",
+        "config_double": 0.2,
+        "stored_signed_integer": 200
+      },
+      {
+        "field": "ExtraAircraftLight",
+        "config_double": 0,
+        "stored_signed_integer": 0
+      },
+      {
+        "field": "ExtraAircraftLight",
+        "config_double": -0.2,
+        "stored_signed_integer": -200
+      },
+      {
+        "field": "ExtraAircraftLight",
+        "config_double": 0.75,
+        "stored_signed_integer": 750
+      },
+      {
+        "field": "ExtraAircraftLight",
+        "config_double": -2,
+        "stored_signed_integer": -2000
+      },
+      {
+        "field": "ExtraAircraftLight",
+        "config_double": 4,
+        "stored_signed_integer": 4000
+      }
+    ],
+    "units": [
+      {
+        "type": "AMCV",
+        "cell_object_intensity": 1056,
+        "captured_extra_unit_light": 200,
+        "cases": [
+          {
+            "extra": 0,
+            "native_unclamped_intensity": 1056,
+            "production_intensity": 1056,
+            "dispatch": [
+              {
+                "kind": "shp_unit",
+                "native_intensity": 1056
+              },
+              {
+                "kind": "voxel",
+                "native_intensity": 1056
+              }
+            ]
+          },
+          {
+            "extra": 200,
+            "native_unclamped_intensity": 1256,
+            "production_intensity": 1256,
+            "dispatch": [
+              {
+                "kind": "shp_unit",
+                "native_intensity": 1256
+              },
+              {
+                "kind": "voxel",
+                "native_intensity": 1256
+              }
+            ]
+          },
+          {
+            "extra": -200,
+            "native_unclamped_intensity": 856,
+            "production_intensity": 856,
+            "dispatch": [
+              {
+                "kind": "shp_unit",
+                "native_intensity": 856
+              },
+              {
+                "kind": "voxel",
+                "native_intensity": 856
+              }
+            ]
+          },
+          {
+            "extra": 600,
+            "native_unclamped_intensity": 1656,
+            "production_intensity": 1656,
+            "dispatch": [
+              {
+                "kind": "shp_unit",
+                "native_intensity": 1656
+              },
+              {
+                "kind": "voxel",
+                "native_intensity": 1656
+              }
+            ]
+          },
+          {
+            "extra": -2000,
+            "native_unclamped_intensity": -944,
+            "production_intensity": 0,
+            "dispatch": [
+              {
+                "kind": "shp_unit",
+                "native_intensity": -944
+              },
+              {
+                "kind": "voxel",
+                "native_intensity": -944
+              }
+            ]
+          },
+          {
+            "extra": 4000,
+            "native_unclamped_intensity": 5056,
+            "production_intensity": 2000,
+            "dispatch": [
+              {
+                "kind": "shp_unit",
+                "native_intensity": 5056
+              },
+              {
+                "kind": "voxel",
+                "native_intensity": 5056
+              }
+            ]
+          }
+        ],
+        "aircraft_additive_cases": [
+          {
+            "controlled_base_intensity": 1056,
+            "controlled_altitude_term": 0,
+            "extra": 0,
+            "native_unclamped_intensity": 1056,
+            "native_pushed_intensity": 1056,
+            "production_intensity": 1056
+          },
+          {
+            "controlled_base_intensity": 1056,
+            "controlled_altitude_term": 0,
+            "extra": 200,
+            "native_unclamped_intensity": 1256,
+            "native_pushed_intensity": 1256,
+            "production_intensity": 1256
+          },
+          {
+            "controlled_base_intensity": 1056,
+            "controlled_altitude_term": 0,
+            "extra": -200,
+            "native_unclamped_intensity": 856,
+            "native_pushed_intensity": 856,
+            "production_intensity": 856
+          },
+          {
+            "controlled_base_intensity": 1056,
+            "controlled_altitude_term": 0,
+            "extra": 600,
+            "native_unclamped_intensity": 1656,
+            "native_pushed_intensity": 1656,
+            "production_intensity": 1656
+          },
+          {
+            "controlled_base_intensity": 1056,
+            "controlled_altitude_term": 0,
+            "extra": -2000,
+            "native_unclamped_intensity": -944,
+            "native_pushed_intensity": -944,
+            "production_intensity": 0
+          },
+          {
+            "controlled_base_intensity": 1056,
+            "controlled_altitude_term": 0,
+            "extra": 4000,
+            "native_unclamped_intensity": 5056,
+            "native_pushed_intensity": 5056,
+            "production_intensity": 2000
+          }
+        ]
+      },
+      {
+        "type": "HARV",
+        "cell_object_intensity": 1168,
+        "captured_extra_unit_light": 200,
+        "cases": [
+          {
+            "extra": 0,
+            "native_unclamped_intensity": 1168,
+            "production_intensity": 1168,
+            "dispatch": [
+              {
+                "kind": "shp_unit",
+                "native_intensity": 1168
+              },
+              {
+                "kind": "voxel",
+                "native_intensity": 1168
+              }
+            ]
+          },
+          {
+            "extra": 200,
+            "native_unclamped_intensity": 1368,
+            "production_intensity": 1368,
+            "dispatch": [
+              {
+                "kind": "shp_unit",
+                "native_intensity": 1368
+              },
+              {
+                "kind": "voxel",
+                "native_intensity": 1368
+              }
+            ]
+          },
+          {
+            "extra": -200,
+            "native_unclamped_intensity": 968,
+            "production_intensity": 968,
+            "dispatch": [
+              {
+                "kind": "shp_unit",
+                "native_intensity": 968
+              },
+              {
+                "kind": "voxel",
+                "native_intensity": 968
+              }
+            ]
+          },
+          {
+            "extra": 600,
+            "native_unclamped_intensity": 1768,
+            "production_intensity": 1768,
+            "dispatch": [
+              {
+                "kind": "shp_unit",
+                "native_intensity": 1768
+              },
+              {
+                "kind": "voxel",
+                "native_intensity": 1768
+              }
+            ]
+          },
+          {
+            "extra": -2000,
+            "native_unclamped_intensity": -832,
+            "production_intensity": 0,
+            "dispatch": [
+              {
+                "kind": "shp_unit",
+                "native_intensity": -832
+              },
+              {
+                "kind": "voxel",
+                "native_intensity": -832
+              }
+            ]
+          },
+          {
+            "extra": 4000,
+            "native_unclamped_intensity": 5168,
+            "production_intensity": 2000,
+            "dispatch": [
+              {
+                "kind": "shp_unit",
+                "native_intensity": 5168
+              },
+              {
+                "kind": "voxel",
+                "native_intensity": 5168
+              }
+            ]
+          }
+        ],
+        "aircraft_additive_cases": [
+          {
+            "controlled_base_intensity": 1168,
+            "controlled_altitude_term": 0,
+            "extra": 0,
+            "native_unclamped_intensity": 1168,
+            "native_pushed_intensity": 1168,
+            "production_intensity": 1168
+          },
+          {
+            "controlled_base_intensity": 1168,
+            "controlled_altitude_term": 0,
+            "extra": 200,
+            "native_unclamped_intensity": 1368,
+            "native_pushed_intensity": 1368,
+            "production_intensity": 1368
+          },
+          {
+            "controlled_base_intensity": 1168,
+            "controlled_altitude_term": 0,
+            "extra": -200,
+            "native_unclamped_intensity": 968,
+            "native_pushed_intensity": 968,
+            "production_intensity": 968
+          },
+          {
+            "controlled_base_intensity": 1168,
+            "controlled_altitude_term": 0,
+            "extra": 600,
+            "native_unclamped_intensity": 1768,
+            "native_pushed_intensity": 1768,
+            "production_intensity": 1768
+          },
+          {
+            "controlled_base_intensity": 1168,
+            "controlled_altitude_term": 0,
+            "extra": -2000,
+            "native_unclamped_intensity": -832,
+            "native_pushed_intensity": -832,
+            "production_intensity": 0
+          },
+          {
+            "controlled_base_intensity": 1168,
+            "controlled_altitude_term": 0,
+            "extra": 4000,
+            "native_unclamped_intensity": 5168,
+            "native_pushed_intensity": 5168,
+            "production_intensity": 2000
+          }
+        ]
+      },
+      {
+        "type": "SMIN",
+        "cell_object_intensity": 1056,
+        "captured_extra_unit_light": 200,
+        "cases": [
+          {
+            "extra": 0,
+            "native_unclamped_intensity": 1056,
+            "production_intensity": 1056,
+            "dispatch": [
+              {
+                "kind": "shp_unit",
+                "native_intensity": 1056
+              },
+              {
+                "kind": "voxel",
+                "native_intensity": 1056
+              }
+            ]
+          },
+          {
+            "extra": 200,
+            "native_unclamped_intensity": 1256,
+            "production_intensity": 1256,
+            "dispatch": [
+              {
+                "kind": "shp_unit",
+                "native_intensity": 1256
+              },
+              {
+                "kind": "voxel",
+                "native_intensity": 1256
+              }
+            ]
+          },
+          {
+            "extra": -200,
+            "native_unclamped_intensity": 856,
+            "production_intensity": 856,
+            "dispatch": [
+              {
+                "kind": "shp_unit",
+                "native_intensity": 856
+              },
+              {
+                "kind": "voxel",
+                "native_intensity": 856
+              }
+            ]
+          },
+          {
+            "extra": 600,
+            "native_unclamped_intensity": 1656,
+            "production_intensity": 1656,
+            "dispatch": [
+              {
+                "kind": "shp_unit",
+                "native_intensity": 1656
+              },
+              {
+                "kind": "voxel",
+                "native_intensity": 1656
+              }
+            ]
+          },
+          {
+            "extra": -2000,
+            "native_unclamped_intensity": -944,
+            "production_intensity": 0,
+            "dispatch": [
+              {
+                "kind": "shp_unit",
+                "native_intensity": -944
+              },
+              {
+                "kind": "voxel",
+                "native_intensity": -944
+              }
+            ]
+          },
+          {
+            "extra": 4000,
+            "native_unclamped_intensity": 5056,
+            "production_intensity": 2000,
+            "dispatch": [
+              {
+                "kind": "shp_unit",
+                "native_intensity": 5056
+              },
+              {
+                "kind": "voxel",
+                "native_intensity": 5056
+              }
+            ]
+          }
+        ],
+        "aircraft_additive_cases": [
+          {
+            "controlled_base_intensity": 1056,
+            "controlled_altitude_term": 0,
+            "extra": 0,
+            "native_unclamped_intensity": 1056,
+            "native_pushed_intensity": 1056,
+            "production_intensity": 1056
+          },
+          {
+            "controlled_base_intensity": 1056,
+            "controlled_altitude_term": 0,
+            "extra": 200,
+            "native_unclamped_intensity": 1256,
+            "native_pushed_intensity": 1256,
+            "production_intensity": 1256
+          },
+          {
+            "controlled_base_intensity": 1056,
+            "controlled_altitude_term": 0,
+            "extra": -200,
+            "native_unclamped_intensity": 856,
+            "native_pushed_intensity": 856,
+            "production_intensity": 856
+          },
+          {
+            "controlled_base_intensity": 1056,
+            "controlled_altitude_term": 0,
+            "extra": 600,
+            "native_unclamped_intensity": 1656,
+            "native_pushed_intensity": 1656,
+            "production_intensity": 1656
+          },
+          {
+            "controlled_base_intensity": 1056,
+            "controlled_altitude_term": 0,
+            "extra": -2000,
+            "native_unclamped_intensity": -944,
+            "native_pushed_intensity": -944,
+            "production_intensity": 0
+          },
+          {
+            "controlled_base_intensity": 1056,
+            "controlled_altitude_term": 0,
+            "extra": 4000,
+            "native_unclamped_intensity": 5056,
+            "native_pushed_intensity": 5056,
+            "production_intensity": 2000
+          }
+        ]
+      }
+    ],
+    "native_brightness_cases": 18,
+    "native_dispatch_cases": 36,
+    "native_aircraft_additive_cases": 18
+  },
   "scalar_pixel_cases": 4800
 }

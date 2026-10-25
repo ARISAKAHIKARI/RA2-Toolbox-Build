@@ -1,18 +1,83 @@
-# VXL 仍偏暗：原生 VPL 來源與快取恢復
+# VXL 仍偏暗：原生額外亮度與 VPL 快取恢復
 
 ## 問題、結論與範圍
 
 使用者實測 pre.5 後回報 SHP 亮度已改善，但 VXL 戰車仍偏暗。先前 pre.4 的受光方向已獲實機確認，本輪不修改光源方向、相機角度、投影、法線選頁或全局亮度。
 
-已證實一個可以重現的來源缺口：`captureActor` 能從遊戲記憶體取得 VXL/HVA，但 `Context::vpl` 只嘗試從檔案讀 `VOXELS.VPL`；失敗仍記下檔案 revision，後續一直使用近似 Lambert 回退。原版已載入的 VPL 就在固定記憶體緩衝，外部 renderer 卻沒有讀取它。即使之後取得正確表，舊的 asset revision 也沒有包含 VPL 內容，已快取姿態不會因此更新。
+這次找到兩項獨立缺口。**直接影響正常車輛亮度的是漏讀 `ExtraUnitLight`**：原版 Unit::Draw 會在 cell object brightness 後加上 Rules 的此欄位，捕獲值為 200。AMCV／HARV／SMIN 的原版實際傳入亮度因此是 1256／1368／1256，舊 helper 卻是 1056／1168／1056。Aircraft::Draw 也有自己獨立的 `ExtraAircraftLight` 加法；本輪補上已驗證的加成，沒有擴改飛行高度計算。
 
-此次補上原生表優先、檔案回退、失敗重試及姿態失效。這是有紅綠回歸的來源／快取修復；**沒有直接觀察到使用者 pre.5 執行時的 VPL readiness，因此不能宣稱它是新截圖偏暗的唯一原因，也不能把它寫成已通過新版本實機畫面驗收。**
+另一項是 VPL 來源／快取缺口：`captureActor` 能從遊戲記憶體取得 VXL/HVA，但 `Context::vpl` 只嘗試從檔案讀 `VOXELS.VPL`；失敗仍記下檔案 revision，後續一直使用近似 Lambert 回退。原版已載入的 VPL 就在固定記憶體緩衝，外部 renderer 卻沒有讀取它。即使之後取得正確表，舊的 asset revision 也沒有包含 VPL 內容，已快取姿態不會因此更新。
+
+此次補上原生設定的額外亮度，以及原生 VPL 優先、檔案回退、失敗重試和姿態失效，各有紅綠回歸。**沒有直接觀察到使用者 pre.5 執行時的 VPL readiness，因此不能宣稱 missing VPL 是新截圖偏暗的唯一原因，也不能把受控驗證寫成已通過新版本實機畫面驗收。**
 
 支援映像 SHA-256：
 
 `7B8A068535D6AF06845EDF95AE829B113D00C02909330E16F197426CD7DB94B6`
 
 映像基址 `0x400000`。私人 capture 為 `RA2Master-Capture-20261025-003340-3568` 的 `00-clean`、`01-off`、`02-on`、`03-off`。調查前已查閱研究 INDEX、SQLite notebook、[voxel 光源方向](2026-10-25-native-voxel-light-direction.md)與[物件 LightConvert 來源](2026-10-25-native-object-lighting-source.md)。公開輸出只有統計、地址、hash 與測試程式，不含原 EXE、dump、VPL、模型、palette 或 framebuffer。
+
+## 原版實際送入的額外亮度
+
+### 欄位是已縮放的 signed integer
+
+| 地址／欄位 | 已確認用途 |
+|---|---|
+| `[0x8871E0]` | RulesClass 全局指標 |
+| Rules `+0x17D4` | ExtraUnitLight，執行期為 signed 32-bit integer |
+| Rules `+0x17DC` | ExtraAircraftLight，執行期為 signed 32-bit integer |
+| `0x83A250`、`0x83A228` | 原始 INI key 字串 `ExtraUnitLight`、`ExtraAircraftLight` |
+| `0x66B69E..0x66B6B6` | 讀 ExtraUnitLight double，乘 `[0x7E4658]` 的 double 1000，呼叫 `_ftol`，將 EAX 寫入 `+0x17D4` |
+| `0x66B730..0x66B74E` | ExtraAircraftLight 採相同縮放，將 EAX 寫入 `+0x17DC` |
+
+Pinned [YRpp RulesClass.h](https://github.com/Phobos-developers/YRpp/blob/d9795546950fcc75a94325ffc83b44d16ec34ce2/RulesClass.h) 把這些欄位宣告為 float，但支援映像的實際載入、加法指令與 capture 都是整數。不能因 header 名稱或型別把 raw integer 200 當成 IEEE float。
+
+新增 probe 只替身 INI ReadDouble 的返回值：把指定 double 放到 x87，再執行原版的乘法、`_ftol` 和寫入，未重造解析器。兩個欄位各測 `0.2、0、-0.2、0.75、-2、4`，共 12 例，得到 `200、0、-200、750、-2000、4000`。因此 production 必須讀當前 signed integer，不能固定加 200，也不能再次乘 1000。
+
+### UnitClass：SHP 與 VXL 都使用同一項加成
+
+`0x73D0C3..0x73D0D7` 在讀到 cell object brightness 後，無條件把 `Rules+0x17D4` 加到 EBP，並保存到 stack。之後 `0x73D317` 才檢查 `Type+0x236`：
+
+- VXL 分支 `0x73D32D` push EBP，`0x73D359` 呼叫 virtual `+0x554`。
+- SHP Unit 分支 `0x73D363` 同樣 push EBP，`0x73D38F` 呼叫 virtual `+0x558`。
+
+這是 UnitClass 的規則，不能限於 voxel flag。Buildings 和建築動畫有各自的來源，不應拿此欄位套到它們。
+
+以 `01-off` 中三個普通車輛的真實 virtual `+0x1B8` 取得 cell 座標，再執行原版 `0x73CF70..0x73D0DB`，包含原版 map 查詢，結果如下：
+
+| 捕獲單位 | Cell object brightness | 捕獲 ExtraUnitLight | 原版傳入亮度 | 修正後 helper |
+|---|---:|---:|---:|---:|
+| AMCV | 1056 | 200 | 1256 | 1256 |
+| HARV | 1168 | 200 | 1368 | 1368 |
+| SMIN | 1056 | 200 | 1256 | 1256 |
+
+每個單位再交叉 extra=`0、200、-200、600、-2000、4000`，合計 18 組 base+extra 原指令回放。`0x70676F..0x7067E4` 的 VXL wrapper 在這些普通狀態下保持傳入值。另對兩種 Type voxel flag 執行原版 dispatch，於真正 SHP／VXL draw 入口檢查 brightness stack argument，共 36 次，數值一致；draw 本身在此邊界停止。
+
+這找到了前面「相同 brightness 下 scalar 都正確」未涵蓋的差異：**舊 helper 使用的 brightness 本來就少了原版規則加成**。它不是相機、VPL normal-page 或 palette 中的另一層全局乘法。
+
+### Aircraft：只修獨立加法，保留高度計算的驗證界線
+
+`0x414925` 讀 Rules 指標，`0x41492A` 讀 `+0x17DC`，`0x414936` 加到 EBX；`0x41493C` 再加 ESI 的高度項。`0x414996` push EBX，後續 `0x4149D7` 呼叫 virtual `+0x510`，進入 VXL draw wrapper。
+
+Probe 用三個捕獲 cell 的 base 值和六個正／負／零 extra，控制高度項為零，執行原版 `0x414925..0x41493E` 與 `0x414987..0x414997` 的加法／入棧 slice，共 18 例。production 的 kind=0 使用獨立 `+0x17DC`，與這些受控值一致。這裡使用合成 object layout，沒有聲稱是完整 Aircraft::Draw 或捕獲中某架飛機的全流程回放。
+
+原版高度項的反組譯另顯示：virtual `+0x1C8` 取得距地高度，除以 `2*[0x889EC8]`，再乘 Scenario Level；普通 Level 來自 `+0x3544`，storm 分支來自 `+0x355C`。此 capture 的高度步長為 104、兩個 Level 為 28／0。距地高度不是直接使用 world Z。本輪沒有完整驗證高空／橋／特殊天候路徑，因此不修改既有高度近似，也不宣稱全高度亮度已逐位元符合原版。
+
+### Production 邊界與特殊效果
+
+`scene_lighting::object` 僅在 kind=2 讀 `+0x17D4`、kind=0 讀 `+0x17DC`；以 64-bit 檢查指標範圍與相加，前後 Rules 指標一致才採用。指標失效、欄位失讀或 Rules 換局時保留原 cell／fallback brightness，不代入猜測的 200。
+
+原版 Unit::Draw 的加法本身沒有飽和。工具維持既有 0..2000 呈現範圍；負結果需要歸零，避免被 `State::intensity<0` 的 fallback sentinel 誤當成 ambient。測試把 raw native 加法結果和呈現範圍分開保存，沒有把這個範圍描述成 Unit::Draw 內部的運算。
+
+獨立審查另核對下游 RLE：`0x4990EE..0x4990F8` 將負 brightness 歸零，`0x499104..0x499125` 計算 `(261*brightness)>>11` 並限制 shade 到 254。以 `01-off` 中首個 `ColorScheme+0x310>1` 的 converter，呼叫 `Native.call(0x490E50, converter, [0x6800])` 選 blitter，再使用既有 `assist/tests/native_lightconvert_capture.py::Native.pixel(blitter, value, 127, 48)`：`-2000/-944/-1/0` 四值皆輸出黑，`1999/2000/5056` 三值輸出同一最高階 RGB565。這七個已執行的邊界檢查與後文 4,800 次矩陣分開計數，支持正常下游呈現的飽和處理；沒有把原始 Unit 加法說成有 clamp。
+
+以下特殊狀態仍是既存未模型化路徑，本輪不擴大修改：
+
+- SHP `0x706328`／VXL `0x706780` 呼叫 virtual `+0x464`。普通 Unit 實作 `0x70D190` 在 `Object+0xF0` bit 1 未設時保持傳入值；設置時會依亮度改為 2000 或 500。
+- Virtual `+0x160` 的計時狀態可能啟用 `0x70E380`／`0x70E4B0` 效果。三個 `01-off` 樣本沒有啟用，所以前述 wrapper 回放保持原值。
+- SHP 的非 clearly-visible disguise 特殊分支可能以 cell terrain brightness 覆蓋先前加成。一般 SHP Unit 的分流證據不等於此例外已模型化。
+- Infantry 有獨立欄位和 drawing 路徑；本輪未外推套用 Unit／Aircraft 的設定。
+
+Building 的 ExtraLight、建築動畫 assigned converter／intensity、礦柱的 object intensity 來源均維持原規則，portable regression 明確檢查這些結果不受兩個新欄位影響。
 
 ## 原版 VPL 載入與讀取
 
@@ -94,12 +159,18 @@ Fresh draw 的 8 個 stack 參數為 destination、indexed source、count、Z le
 
 ## 測試、紅綠證據與重現
 
-新增 [native probe](../assist/tests/native_voxel_vpl_capture.py) 與 [數值結果](../verification/native-voxel-vpl-capture.json)；production portable 回歸在 [voxel_lighting.cpp](../assist/tests/voxel_lighting.cpp) 和 [game_assets_host_test.py](../assist/tests/game_assets_host_test.py)。
+新增 [native probe](../assist/tests/native_voxel_vpl_capture.py) 與 [數值結果](../verification/native-voxel-vpl-capture.json)；production portable 回歸在 [scene_lighting.cpp](../assist/tests/scene_lighting.cpp)、[voxel_lighting.cpp](../assist/tests/voxel_lighting.cpp) 和 [game_assets_host_test.py](../assist/tests/game_assets_host_test.py)。
 
 | 驗證 | 實際結果 |
 |---|---|
 | 舊 production host：記憶體 VPL 已就緒、檔案缺失後恢復 | 新 assertion 失敗，SIGABRT；修復後通過 |
 | 僅依 files revision 的中間版本：imagePath=false、跨 match 都 revision=0 | 新 assertion 失敗，SIGABRT；直接 identity reset 後通過 |
+| 舊 object helper：Unit 1056＋Rules 200 | 新 1256 assertion 失敗；讀 live ExtraUnitLight 後通過 |
+| 僅修 Unit 的中間版本：Aircraft 獨立設定 | 新 assertion 失敗；讀 live ExtraAircraftLight 後通過 |
+| 正／負／零規則、兩種 Unit art、欄位隔離、失讀／換指標、最終 gray pixel | 通過；building／animation／礦柱保持原值 |
+| 原版 Rules scaled-integer 寫入 | Unit／Aircraft 各 6 例，共 12 例 |
+| Unit base+extra／VXL wrapper／SHP-VXL dispatch | 18／18／36 例，普通 capture 狀態 |
+| Aircraft extra 加法與 brightness 入棧 | 18 例，高度項受控為零，非完整 aircraft draw |
 | 原生 32 頁 capture、全部 index 對應、檔案／原生 signature 相等 | 通過 |
 | 五處 read 失敗、兩處 count race、table race、count 0/33/256/MAX | 全部拒絕並保留有效表 |
 | 原生優先、file→native、missing→loose file、同 file revision 表變動 | 真實 production renderActor 的 index 與 RGB 通過 |
@@ -111,10 +182,12 @@ Fresh draw 的 8 個 stack 參數為 destination、indexed source、count、Z le
 ```sh
 g++ -std=c++17 -O2 source/assist/tests/voxel_lighting.cpp -o /tmp/voxel-lighting
 /tmp/voxel-lighting
+g++ -std=c++17 -O2 source/assist/tests/scene_lighting.cpp -o /tmp/scene-lighting
+/tmp/scene-lighting
 python3 source/assist/tests/game_assets_host_test.py
 PYTHONPATH=/path/to/native-deps:source/assist/tests \
   python3 source/assist/tests/native_voxel_vpl_capture.py \
   /path/to/private-capture --output /path/to/native-voxel-vpl-capture.json
 ```
 
-紅例 log 保留於工作環境 `/tmp/ra2-vpl-pre6-red.log`、`/tmp/ra2-vpl-identity-red.log`，綠例 `/tmp/ra2-vpl-pre6-green.log`。原始像素和先期探索 probe 只留私人工作目錄，未列入發佈。全量 build／Windows gates 由主代理另行執行，portable 與原版受控執行不等於使用者新版本的實機驗收。
+紅例 log 保留於工作環境 `/tmp/ra2-vpl-pre6-red.log`、`/tmp/ra2-vpl-identity-red.log`、`/tmp/ra2-unit-light-red.log`、`/tmp/ra2-aircraft-light-red.log`，綠例 `/tmp/ra2-vpl-pre6-green.log`、`/tmp/ra2-unit-light-green.log`。原始像素和先期探索 probe 只留私人工作目錄，未列入發佈。全量 build／Windows gates 由主代理另行執行，portable 與原版受控執行不等於使用者新版本的實機驗收。

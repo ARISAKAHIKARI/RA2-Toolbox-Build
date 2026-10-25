@@ -102,6 +102,36 @@ int main(){
  assert(!spawnsTiberium(read,0xfffffff0u)&&!spawnsTiberium(read,0));
  put(type+0x2B1,uint8_t(1));put(plainConvert,0x7ED0A4u);assert((terrainObject(read,type,640,896,208,State{}).tint==std::array<int,3>{200,200,200}));
  put(plainConvert+0x16C,1);assert(terrainObject(read,type,640,896,208,State{}).intensity==1000);
+ // Unit::Draw 73D0C3 adds the runtime integer ExtraUnitLight before its
+ // voxel/SHP dispatch. Rules parsing scales the configured double by 1000.
+ constexpr uint32_t rules=0x300000;put(0x8871E0,rules);put(type+0xDF0,0u);put(c+0x140,0u);put(c+0x10A,int16_t(1056));
+ auto beforeBuilding=external::lighting::object(read,type,house,3,640,896,208,State{});
+ auto beforeAnimation=animation(read,anim,animType,640,896,208,State{});
+ auto beforeMine=terrainObject(read,type,640,896,208,State{});
+ put(rules+0x17D4,200);
+ for(uint8_t voxel:{0,1}){put(type+0x236,voxel);auto unit=external::lighting::object(read,type,house,2,640,896,208,State{});
+  assert(unit.intensity==1256&&"Unit brightness must include live ExtraUnitLight before voxel/SHP dispatch");
+  assert(unit.tint==State{}.tint&&external::camera::lit(0xff808080,48,true,unit)==0xffa1a1a1);
+ }
+ for(int extra:{0,200,-200,600,-2000,4000}){put(rules+0x17D4,extra);auto unit=external::lighting::object(read,type,house,2,640,896,208,State{});
+  assert(unit.intensity==std::clamp(1056+extra,0,2000));
+  if(extra==-2000)assert(external::camera::lit(0xff808080,48,true,unit)==0xff000000); // never reinterpret negative native light as fallback ambient
+ }
+ put(rules+0x17D4,200);put(type+0x236,uint8_t(0));
+ for(int extra:{0,200,-200,600,-2000,4000}){put(rules+0x17DC,extra);
+  auto aircraft=external::lighting::object(read,type,house,0,640,896,208,State{});
+  assert(aircraft.intensity==std::clamp(1056+extra,0,2000)&&"Aircraft must use its own live ExtraAircraftLight field");
+  assert(external::lighting::object(read,type,house,2,640,896,208,State{}).intensity==1256);
+ }put(rules+0x17DC,200);
+ assert(external::lighting::object(read,type,house,3,640,896,208,State{})==beforeBuilding);
+ assert(animation(read,anim,animType,640,896,208,State{})==beforeAnimation&&terrainObject(read,type,640,896,208,State{})==beforeMine);
+ assert(external::lighting::object(read,type,house,1,640,896,208,State{}).intensity==1056); // no unverified class-wide extrapolation
+ auto missingRules=[&](uint32_t p,void*out,size_t n){return p!=rules+0x17D4&&p!=rules+0x17DC&&read(p,out,n);};
+ for(int kind:{0,2})assert(external::lighting::object(missingRules,type,house,kind,640,896,208,State{}).intensity==1056);
+ int ruleReads=0;auto changingRules=[&](uint32_t p,void*out,size_t n){bool ok=read(p,out,n);if(p==0x8871E0&&++ruleReads==1)put(0x8871E0,0u);return ok;};
+ for(int kind:{0,2}){ruleReads=0;put(0x8871E0,rules);assert(external::lighting::object(changingRules,type,house,kind,640,896,208,State{}).intensity==1056);}
+ put(0x8871E0,0xfffffff0u);for(int kind:{0,2})assert(external::lighting::object(read,type,house,kind,640,896,208,State{}).intensity==1056);
  std::cout<<"PASS ambient, normal/tinted converter, map changes, bounded reads, owner/custom vs terrain RGB, animation source/NormalLight, opaque final pixels and live lighting updates\n";
  std::cout<<"PASS ore-mine global converter/object brightness, neutral plain-converter tint, native zero intensity and independent ISO tree lighting\n";
+ std::cout<<"PASS live signed ExtraUnitLight/ExtraAircraftLight, voxel/SHP Unit dispatch, final pixel brightness, failed/racing rules fallback and unrelated-class isolation\n";
 }

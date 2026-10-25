@@ -6,6 +6,8 @@ production C++ probe through stdin and are never written as output artifacts.
 The raster comparison uses body models and the same raw owner palette; it is
 before scene LightConvert, ABuffer, clipping and shadows. Separate one-pixel
 tests execute both original scalar blitter paths against the captured LUT.
+Unit brightness/base/dispatch uses captured ground units. Aircraft tests cover
+only its separate additive-rule and push slices with a controlled altitude term.
 No live game, Windows display, complete scene compositor or multiplayer runs.
 """
 from collections import Counter
@@ -21,8 +23,10 @@ import tempfile
 from native_bib_capture import Capture, SUPPORTED_SHA
 from native_lightconvert_capture import Native
 from unicorn import UC_HOOK_CODE
-from unicorn.x86_const import (UC_X86_REG_EAX, UC_X86_REG_ECX, UC_X86_REG_EDX,
-                               UC_X86_REG_EIP, UC_X86_REG_ESP, UC_X86_REG_FPCW)
+from unicorn.x86_const import (UC_X86_REG_EAX, UC_X86_REG_EBX, UC_X86_REG_EBP,
+                               UC_X86_REG_ECX, UC_X86_REG_EDX, UC_X86_REG_EDI,
+                               UC_X86_REG_ESI, UC_X86_REG_EIP, UC_X86_REG_ESP,
+                               UC_X86_REG_FPCW)
 
 
 CPP = r'''
@@ -54,12 +58,36 @@ int main(){
 }
 '''
 
+CPP_LIGHT = r'''
+#include "source/external_reader/source/scene_lighting.h"
+#include <cassert>
+#include <iostream>
+#include <map>
+#include <vector>
+int main(){
+ auto word=[](){uint32_t n=0;std::cin.read(reinterpret_cast<char*>(&n),4);return n;};
+ uint32_t type=word(),owner=word(),x=word(),y=word(),z=word(),rules=word(),count=word();std::map<uint32_t,std::vector<uint8_t>> memory;
+ for(unsigned i=0;i<count;++i){auto at=word(),size=word();auto&bytes=memory[at];bytes.resize(size);std::cin.read(reinterpret_cast<char*>(bytes.data()),size);}assert(std::cin);
+ auto read=[&](uint32_t at,void*out,size_t n){auto i=memory.upper_bound(at);if(i==memory.begin())return false;--i;
+  if(uint64_t(at)-i->first+n>i->second.size())return false;memcpy(out,i->second.data()+at-i->first,n);return true;};
+ for(int kind:{2,0})for(int extra:{0,200,-200,600,-2000,4000}){
+  memcpy(memory.at(rules+(kind==2?0x17D4:0x17DC)).data(),&extra,4);
+  auto light=external::lighting::object(read,type,owner,kind,x,y,z,{});
+  std::cout<<"{\"kind\":"<<kind<<",\"extra\":"<<extra<<",\"production_intensity\":"<<light.intensity<<"}\n";
+ }
+}
+'''
+
 
 def code_hashes(capture):
     ranges = ((0x753B70, 0x753BCB), (0x758A30, 0x758AC3),
               (0x753D00, 0x754610), (0x494B60, 0x494C3A),
               (0x4958D0, 0x4959B1), (0x497FD0, 0x498150),
-              (0x4990E0, 0x49927F), (0x490B90, 0x490E50))
+              (0x4990E0, 0x49927F), (0x490B90, 0x490E50),
+              (0x66B69E, 0x66B6BC), (0x73CF70, 0x73D0DB),
+              (0x73D30E, 0x73D395), (0x70676F, 0x7067E4),
+              (0x66B730, 0x66B754), (0x414925, 0x41493E),
+              (0x414987, 0x4149DD))
     return {f'{a:08X}-{b:08X}': hashlib.sha256(capture.read(a, b-a)).hexdigest()
             for a, b in ranges}
 
@@ -220,6 +248,138 @@ def raster_comparison(capture, executable):
     return rows
 
 
+def unit_lighting(capture, executable):
+    """Original Unit brightness/dispatch, with final draw boundaries stopped."""
+    n, rows = Native(capture), []
+    rules = capture.word(0x8871E0)
+    assert capture.name(0x83A250, 32) == 'ExtraUnitLight'
+    multiplier = struct.unpack('<d', capture.read(0x7E4658, 8))[0]
+    assert multiplier == 1000
+    scaling = []
+    # Seed the return value of INI ReadDouble on x87, then run unchanged
+    # multiply/_ftol/store instructions. This does not emulate an INI parser.
+    seed, number = 0x72000200, 0x71009010
+    n.u.mem_write(seed, b'\xdb\xe3\xdd\x05'+struct.pack('<I', number))
+    for name, offset, start, end in (('ExtraUnitLight', 0x17D4, 0x66B6AB, 0x66B6BC),
+                                      ('ExtraAircraftLight', 0x17DC, 0x66B73D, 0x66B754)):
+        for config in (0.2, 0, -0.2, 0.75, -2, 4):
+            n.u.mem_write(number, struct.pack('<d', config))
+            n.u.emu_start(seed, seed+8, count=2)
+            n.u.reg_write(UC_X86_REG_ESP, 0x70008000)
+            n.u.reg_write(UC_X86_REG_ESI, rules)
+            n.u.reg_write(UC_X86_REG_FPCW, 0xE7F)
+            n.u.emu_start(start, end, count=1000)
+            stored = struct.unpack('<i', n.u.mem_read(rules+offset, 4))[0]
+            assert stored == int(config*1000)
+            scaling.append({'field': name, 'config_double': config, 'stored_signed_integer': stored})
+    for unit in capture.vector(0xA8EC78):
+        if capture.word(unit) != 0x7F5C70:
+            continue
+        typ, owner = capture.word(unit+0x6C4), capture.word(unit+0x21C)
+        x, y, z = struct.unpack('<3i', capture.read(unit+0x9C, 12))
+        items = capture.word(0x87F7E8+0x13C)
+        cell_slot = items+(y//256*512+x//256)*4
+        cell = capture.word(cell_slot)
+        vector = capture.word(typ+0xDF0) or 0xB054D0
+        scheme_slot = capture.word(vector+4)+capture.word(owner+0x16054)*4
+        scheme = capture.word(scheme_slot)
+        convert = capture.word(scheme+0x30C)
+        spans = [(typ, 0xE00), (owner+0x16054, 4), (0x87F7E8+0x13C, 8),
+                 (cell_slot, 4), (cell, 0x150), (0x89E7C0, 4), (vector, 20),
+                 (scheme_slot, 4), (scheme+0x30C, 4), (convert, 0x1B4),
+                 (0x8871E0, 4), (rules+0x17D4, 4), (rules+0x17DC, 4)]
+        data = struct.pack('<7I', typ, owner, x, y, z, rules, len(spans))
+        for address, size in spans:
+            data += struct.pack('<2I', address, size)+capture.read(address, size)
+        result = subprocess.run([str(executable)], input=data, check=True, capture_output=True)
+        portable_rows = [json.loads(line) for line in result.stdout.splitlines()]
+        production = {r['extra']: r['production_intensity'] for r in portable_rows if r['kind'] == 2}
+        coords = n.call(capture.word(capture.word(unit)+0x1B8), unit, [0x71008000])
+        coords = bytes(n.u.mem_read(coords, 4))
+        assert capture.read(unit+0x684, 1) == b'\xff'
+        original_voxel = capture.read(typ+0x236, 1)
+        captured_extra = capture.signed(rules+0x17D4)
+        row = {'type': capture.name(typ+0x24, 24), 'cell_object_intensity':
+               struct.unpack('<h', capture.read(cell+0x10A, 2))[0],
+               'captured_extra_unit_light': captured_extra, 'cases': [], 'aircraft_additive_cases': []}
+        for extra, portable in production.items():
+            n.write(rules+0x17D4, extra)
+            n.u.mem_write(0x70008010, coords)
+            n.u.reg_write(UC_X86_REG_ESP, 0x70008000)
+            n.u.reg_write(UC_X86_REG_ESI, unit)
+            n.u.reg_write(UC_X86_REG_FPCW, 0xE7F)
+            n.u.emu_start(0x73CF70, 0x73D0DB, count=100000)
+            native = struct.unpack('<i', struct.pack('<I', n.u.reg_read(UC_X86_REG_EBP)))[0]
+            assert portable == max(0, min(2000, native))
+            # The actual voxel wrapper's normal-unit modifier preserves the
+            # incoming value; flash/cloak states are not synthesized here.
+            n.u.reg_write(UC_X86_REG_ESP, 0x70008000)
+            n.u.reg_write(UC_X86_REG_EBP, unit)
+            n.u.reg_write(UC_X86_REG_EAX, 0x71009000)
+            n.write(0x70008070, native)
+            n.u.emu_start(0x70676F, 0x7067E4, count=100000)
+            assert n.u.reg_read(UC_X86_REG_EDI) == native & 0xFFFFFFFF
+            dispatched = []
+
+            def boundary(u, address, _size, _data):
+                sp = u.reg_read(UC_X86_REG_ESP)
+                actual = struct.unpack('<i', u.mem_read(sp+0x1C, 4))[0]
+                assert actual == native and u.reg_read(UC_X86_REG_ECX) == unit
+                dispatched.append({'kind': 'voxel' if address == 0x73B470 else 'shp_unit',
+                                   'native_intensity': actual})
+                u.reg_write(UC_X86_REG_ESP, sp+4+0x20)
+                u.reg_write(UC_X86_REG_EIP, n.read(sp))
+
+            hooks = [n.u.hook_add(UC_HOOK_CODE, boundary, begin=fn, end=fn)
+                     for fn in (0x73B470, 0x73C5F0)]
+            try:
+                for voxel in (0, 1):
+                    n.u.mem_write(typ+0x236, bytes([voxel]))
+                    for reg, value in ((UC_X86_REG_ESP, 0x70008000), (UC_X86_REG_ESI, unit),
+                                       (UC_X86_REG_EDI, typ), (UC_X86_REG_EBP, native & 0xFFFFFFFF),
+                                       (UC_X86_REG_EBX, 0x71009100)):
+                        n.u.reg_write(reg, value)
+                    n.u.emu_start(0x73D30E, 0x73D395, count=10000)
+            finally:
+                for hook in hooks:
+                    n.u.hook_del(hook)
+                n.u.mem_write(typ+0x236, original_voxel)
+            assert [r['kind'] for r in dispatched] == ['shp_unit', 'voxel']
+            row['cases'].append({'extra': extra, 'native_unclamped_intensity': native,
+                                 'production_intensity': portable, 'dispatch': dispatched})
+        # A synthetic object supplies only the layout read by these slices.
+        # No aircraft locomotor, height calculation or full draw is executed.
+        aircraft, aircraft_type, aircraft_vtable = 0x7100B000, 0x7100C000, 0x7100D000
+        n.write(aircraft, aircraft_vtable)
+        n.write(aircraft+0x6C4, aircraft_type)
+        n.write(aircraft_vtable+0x510, 0x4DAF10)
+        for portable in portable_rows:
+            if portable['kind'] != 0:
+                continue
+            extra, base = portable['extra'], row['cell_object_intensity']
+            n.write(rules+0x17DC, extra)
+            for reg, value in ((UC_X86_REG_ESP, 0x70008000), (UC_X86_REG_EBP, aircraft),
+                               (UC_X86_REG_EBX, base), (UC_X86_REG_ESI, 0)):
+                n.u.reg_write(reg, value)
+            n.u.emu_start(0x414925, 0x41493E, count=100)
+            native = struct.unpack('<i', struct.pack('<I', n.u.reg_read(UC_X86_REG_EBX)))[0]
+            assert native == base+extra
+            assert portable['production_intensity'] == max(0, min(2000, native))
+            n.u.emu_start(0x414987, 0x414997, count=100)
+            pushed = struct.unpack('<i', n.u.mem_read(n.u.reg_read(UC_X86_REG_ESP), 4))[0]
+            assert pushed == native
+            row['aircraft_additive_cases'].append({'controlled_base_intensity': base,
+                    'controlled_altitude_term': 0, 'extra': extra,
+                    'native_unclamped_intensity': native, 'native_pushed_intensity': pushed,
+                    'production_intensity': portable['production_intensity']})
+        rows.append(row)
+    return {'rules_global': '008871E0', 'runtime_signed_integer_offsets': {'unit': '17D4', 'aircraft': '17DC'},
+            'multiplier': multiplier, 'native_scaling_cases': scaling, 'units': rows,
+            'native_brightness_cases': sum(len(r['cases']) for r in rows),
+            'native_dispatch_cases': sum(len(r['cases'])*2 for r in rows),
+            'native_aircraft_additive_cases': sum(len(r['aircraft_additive_cases']) for r in rows)}
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('capture')
@@ -254,12 +414,20 @@ def main():
                 subprocess.run(['g++', '-std=c++17', '-O2', '-I'+str(root),
                                 str(source), '-o', str(executable)], check=True)
                 result['body_raster_comparisons'] = raster_comparison(capture, executable)
+                light_source, light_executable = path/'light.cpp', path/'light'
+                light_source.write_text(CPP_LIGHT)
+                subprocess.run(['g++', '-std=c++17', '-O2', '-I'+str(root),
+                                str(light_source), '-o', str(light_executable)], check=True)
+                result['unit_lighting'] = unit_lighting(capture, light_executable)
     result['scalar_pixel_cases'] = sum(s.get('scalar_blitters', {}).get('scalar_pixel_cases', 0)
                                        for s in result['stages'].values())
     Path(args.output).write_text(json.dumps(result, indent=2)+'\n')
     print(f"PASS 4 stable loaded VPL snapshots; 3 original synthetic loader cases; "
           f"{result['scalar_pixel_cases']} fresh/cached scalar pixel cases; "
-          f"{len(result['body_raster_comparisons'])} body raster aggregate comparisons")
+          f"{len(result['body_raster_comparisons'])} body raster aggregate comparisons; "
+          f"{result['unit_lighting']['native_brightness_cases']} Unit brightness / "
+          f"{result['unit_lighting']['native_dispatch_cases']} voxel-SHP dispatch / "
+          f"{result['unit_lighting']['native_aircraft_additive_cases']} Aircraft additive cases")
 
 
 if __name__ == '__main__':

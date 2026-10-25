@@ -10,6 +10,34 @@ concurrency:
   group: validate-v138-pre2
   cancel-in-progress: true
 jobs:
+  overlay-build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build focused overlay recovery fixture
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 https://ziglang.org/download/0.13.0/zig-linux-x86_64-0.13.0.tar.xz -o /tmp/zig-overlay.tar.xz
+          echo 'd45312e61ebcc48032b77bc4cf7fd6915c11fa16e4aad116b66c9468211230ea  /tmp/zig-overlay.tar.xz' | sha256sum -c -
+          tar -xf /tmp/zig-overlay.tar.xz -C /tmp
+          /tmp/zig-linux-x86_64-0.13.0/zig c++ -target x86-windows-gnu -std=c++17 -O2 source/assist/tests/overlay_stack_windows.cpp -o source/overlay-stack-test.exe -luser32
+      - uses: actions/upload-artifact@v4
+        with:
+          name: camera138pre6-overlay
+          path: source/overlay-stack-test.exe
+          retention-days: 7
+  overlay-windows:
+    needs: overlay-build
+    runs-on: windows-2022
+    timeout-minutes: 2
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: camera138pre6-overlay
+          path: source
+      - name: Real overlay window stacking with bounded owner-thread waits
+        run: .\\source\\overlay-stack-test.exe
   build:
     runs-on: ubuntu-24.04
     timeout-minutes: 50
@@ -50,8 +78,6 @@ jobs:
           echo "ZIG=/tmp/zig-linux-x86_64-0.13.0/zig" >> "$GITHUB_ENV"
       - name: Build matching EXE and Runtime
         run: bash source/build-zig.sh
-      - name: Build overlay stacking fixture
-        run: '"$ZIG" c++ -target x86-windows-gnu -std=c++17 -O2 source/assist/tests/overlay_stack_windows.cpp -o source/overlay-stack-test.exe -luser32'
       - name: Build process discovery fixture
         run: '"$ZIG" c++ -target x86-windows-gnu -std=c++17 -O2 -municode source/tests/process_discovery_windows.cpp -o source/process-discovery-test.exe -luser32'
       - name: Build renderer and formation numerical fixtures with the release compiler
@@ -70,7 +96,6 @@ jobs:
           path: |
             source/RA2Toolbox.exe
             source/GameRuntime.dll
-            source/overlay-stack-test.exe
             source/process-discovery-test.exe
             source/voxel-lighting-test.exe
             source/voxel-preview-test.exe
@@ -90,8 +115,6 @@ jobs:
         with:
           name: camera138pre6-binaries
           path: source
-      - name: Real overlay window stacking
-        run: .\\source\\overlay-stack-test.exe
       - name: Real Ares and spawn process discovery
         run: .\\source\\process-discovery-test.exe
       - name: Renderer, map bounds and formation geometry on Windows x86
