@@ -69,7 +69,15 @@ int main(){
  // Wait for the actual owner thread to exit while servicing this thread's
  // windows. join() is safe only after its native handle is already signaled.
  checkpoint("wait-statistics-exit");CHECK(waitPumping(static_cast<HANDLE>(statisticsOwner.native_handle()),5000)==WAIT_OBJECT_0);statisticsOwner.join();
+ // Removing the second owner leaves a real single-owner group. Keep the
+ // deferred path covered as well as the mixed-owner ordered recovery above.
+ checkpoint("single-owner-batch");
+ for(auto w:{world,map,cursor})CHECK(GetWindowThreadProcessId(w,nullptr)==GetCurrentThreadId());
+ CHECK(SetWindowPos(game,HWND_TOPMOST,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE));CHECK(higher(game,cursor));CHECK(waitPumping(nullptr,260)==WAIT_TIMEOUT);
+ phase="single-owner-keep-above-batch";CHECK(keepAbove(game));
+ for(auto w:{world,map,cursor})CHECK(IsWindowVisible(w)&&higher(w,game));
+ CHECK(higher(cursor,map)&&higher(map,world)&&GetForegroundWindow()==foreground);
  checkpoint("destroy-main-windows");for(auto w:{world,map,cursor,game}){forget(w);CHECK(DestroyWindow(w));}
  checkpoint("complete");CHECK(SetEvent(finished));watchdog.join();CloseHandle(finished);
- std::cout<<"PASS real HWND stacking, four promoted-game recoveries, cross-owner-thread position callbacks outside the registry lock, no activation, hidden-panel preservation, stale handles and opaque clipping; no actual game/Alt-Tab/DWM visual claim\n";
+ std::cout<<"PASS real HWND stacking, four mixed-owner promoted-game recoveries, single-owner deferred recovery, cross-owner-thread position callbacks outside the registry lock, no activation, hidden-panel preservation, stale handles and opaque clipping; no actual game/Alt-Tab/DWM visual claim\n";
 }

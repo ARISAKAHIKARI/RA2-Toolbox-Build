@@ -42,12 +42,12 @@ constexpr int WS_EX_TOOLWINDOW=1,WS_EX_NOACTIVATE=2,WS_EX_TOPMOST=4,WS_EX_LAYERE
 #define HWND_TOPMOST reinterpret_cast<HWND>(intptr_t(-1))
 struct POINT{LONG x=0,y=0;};struct RECT{LONG left=0,top=0,right=0,bottom=0;};
 struct WNDCLASSW{LRESULT(*lpfnWndProc)(HWND,UINT,WPARAM,LPARAM)=nullptr;HINSTANCE hInstance=nullptr;const wchar_t*lpszClassName=nullptr;void*hCursor=nullptr;};
-struct Window{bool visible=false;DWORD pid=1;RECT rect{};int places=0,paints=0;};
+struct Window{bool visible=false;DWORD pid=1;RECT rect{};int places=0,paints=0;DWORD thread=1;};
 inline std::map<HWND,Window> windows;inline std::vector<HWND> order;inline uintptr_t serial=100;inline HWND foreground=nullptr;
-inline DWORD clockValue=1000;inline int batches=0;inline bool failBatch=false;
-inline HWND makeWindow(DWORD pid=1){HWND h=reinterpret_cast<HWND>(++serial);windows[h].pid=pid;order.insert(order.begin(),h);return h;}
+inline DWORD clockValue=1000;inline int batches=0,rejectedBatches=0;inline bool failBatch=false;
+inline HWND makeWindow(DWORD pid=1,DWORD thread=1){HWND h=reinterpret_cast<HWND>(++serial);windows[h].pid=pid;windows[h].thread=thread;order.insert(order.begin(),h);return h;}
 inline BOOL IsWindow(HWND h){return windows.count(h);}inline BOOL IsWindowVisible(HWND h){return IsWindow(h)&&windows[h].visible;}
-inline DWORD GetCurrentProcessId(){return 1;}inline DWORD GetWindowThreadProcessId(HWND h,DWORD*p){*p=IsWindow(h)?windows[h].pid:0;return *p?1:0;}
+inline DWORD GetCurrentProcessId(){return 1;}inline DWORD GetWindowThreadProcessId(HWND h,DWORD*p){if(p)*p=IsWindow(h)?windows[h].pid:0;return IsWindow(h)?windows[h].thread:0;}
 inline DWORD GetTickCount(){return clockValue;}inline HWND GetForegroundWindow(){return foreground;}inline HWND GetAncestor(HWND h,UINT){return h;}
 inline HWND GetTopWindow(HWND){return order.empty()?nullptr:order.front();}
 inline HWND GetWindow(HWND h,UINT what){assert(what==GW_HWNDNEXT);auto i=std::find(order.begin(),order.end(),h);return i!=order.end()&&++i!=order.end()?*i:nullptr;}
@@ -67,7 +67,12 @@ inline HDWP BeginDeferWindowPos(int){return failBatch?nullptr:new Deferred;}
 inline HDWP DeferWindowPos(HDWP batch,HWND w,HWND after,int x,int y,int width,int height,UINT flags){
  assert(batch&&!(flags&SWP_SHOWWINDOW));batch->moves.push_back({w,after,x,y,width,height,flags});return batch;
 }
-inline BOOL EndDeferWindowPos(HDWP batch){++batches;for(auto m:batch->moves)SetWindowPos(m.window,m.after,m.x,m.y,m.w,m.h,m.flags);delete batch;return TRUE;}
+inline BOOL EndDeferWindowPos(HDWP batch){
+ // Real Windows gate 40157058311 rejected the mixed-owner repair with error
+ // 87. Model that boundary failure before any movement, not a success stub.
+ DWORD owner=0;for(auto m:batch->moves){DWORD next=GetWindowThreadProcessId(m.window,nullptr);if(owner&&next!=owner){++rejectedBatches;delete batch;return FALSE;}owner=next;}
+ ++batches;for(auto m:batch->moves)SetWindowPos(m.window,m.after,m.x,m.y,m.w,m.h,m.flags);delete batch;return TRUE;
+}
 inline void ShowWindow(HWND h,int command){assert(command==SW_HIDE);windows[h].visible=false;}
 inline HINSTANCE GetModuleHandleW(void*){return reinterpret_cast<HINSTANCE>(1);}inline BOOL RegisterClassW(WNDCLASSW*){return TRUE;}
 inline HWND CreateWindowExW(int,const wchar_t*,const wchar_t*,int,int,int,int,int,HWND,void*,HINSTANCE,void*){return makeWindow();}
@@ -101,9 +106,10 @@ static void cancelDrag(){dragging=false;dragMatch=0;}static LRESULT proc(HWND,UI
 '''
 
 scenario = r'''
-static void stackCase(){
+static void stackCase(DWORD statsThread){
  using namespace overlaystack;game=makeWindow(2);windows[game]={true,2,{0,0,800,600}};foreground=game;
- HWND world=makeWindow(),stats=makeWindow(),map=makeWindow(),watch=makeWindow(),cursor=makeWindow();
+ HWND world=makeWindow(),stats=makeWindow(1,statsThread),map=makeWindow(),watch=makeWindow(),cursor=makeWindow();
+ int initialBatches=batches,initialRejected=rejectedBatches;
  auto placeOne=[&](HWND w,Layer l){assert(place(w,l,10,20,200,100,SWP_SHOWWINDOW));};
  placeOne(world,Layer::World);placeOne(map,Layer::Minimap);placeOne(cursor,Layer::Cursor);placeOne(stats,Layer::Statistics);placeOne(watch,Layer::Watch);
  auto ordered=[&]{return higher(cursor,watch)&&higher(watch,map)&&higher(map,stats)&&higher(stats,world);};assert(ordered());
@@ -118,7 +124,9 @@ static void stackCase(){
  assert(!IsWindowVisible(map)&&higher(world,game)&&higher(cursor,watch)&&higher(watch,stats)&&higher(stats,world));
  // No caller requests a hidden panel; a group repair must never show it.
  auto hiddenPlaces=windows[map].places;placeOne(world,Layer::World);assert(!IsWindowVisible(map)&&windows[map].places==hiddenPlaces);
- std::cout<<"PASS group keepalive: promoted game above still-visible anchors, stable layer order, repeated focus returns, throttled no-op checks, hidden panels stay hidden\n";
+ assert(rejectedBatches==initialRejected&&"mixed-owner groups must avoid the rejected deferred API path");
+ assert(statsThread==1?batches>initialBatches:batches==initialBatches);
+ std::cout<<"PASS group keepalive ("<<(statsThread==1?"single-owner batch":"mixed-owner ordered chain")<<"): promoted game, stable layer order, repeated focus returns, throttled no-op checks, hidden panels stay hidden"<<std::endl;
  for(auto w:{world,stats,map,watch,cursor}){forget(w);windows.erase(w);order.erase(std::remove(order.begin(),order.end(),w),order.end());}
 }
 static void minimapCase(){
@@ -142,7 +150,7 @@ minimap = args.minimap_header.read_text()
 code = prefix.replace('@STACK_HEADER@', json.dumps(str(args.stack_header.resolve())))
 code = code.replace('@MINIMAP_HIDE@', function(minimap, 'static void hide()'))
 code = code.replace('@MINIMAP_UPDATE@', function(minimap, 'static void update(POINT origin,const RECT&client)'))
-cases = {'all': 'stackCase();minimapCase();', 'stack': 'stackCase();', 'minimap': 'minimapCase();'}[args.only]
+cases = {'all': 'stackCase(1);stackCase(2);minimapCase();', 'stack': 'stackCase(1);stackCase(2);', 'minimap': 'minimapCase();'}[args.only]
 with tempfile.TemporaryDirectory() as tmp:
     temp = Path(tmp)
     (temp / 'windows.h').write_text(windows)

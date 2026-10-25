@@ -49,12 +49,24 @@ inline BOOL keepAbove(HWND foreground){
  }
  if(!obscured)return TRUE;
  std::sort(visible.begin(),visible.end(),[](const Entry&a,const Entry&b){return a.layer!=b.layer?int(a.layer)>int(b.layer):uintptr_t(a.window)>uintptr_t(b.window);});
- // Do not hold the registry mutex across Win32 callbacks. A batch preserves
- // the common layer order; no SHOWWINDOW flag can revive a user-hidden panel.
- HDWP batch=BeginDeferWindowPos(int(visible.size()));if(!batch)return FALSE;
+ // Keep all User32 callbacks outside the registry mutex. Real Windows rejects
+ // a deferred group spanning our two UI owners (error 87); use the same
+ // highest-to-lowest anchor chain with individual calls for that case.
+ // Neither path includes SHOWWINDOW, so a hidden panel stays hidden.
+ constexpr UINT flags=SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE|SWP_NOOWNERZORDER|SWP_NOSENDCHANGING;
+ DWORD owner=GetWindowThreadProcessId(visible.front().window,nullptr);
+ bool mixed=std::any_of(visible.begin(),visible.end(),[&](const Entry&e){return GetWindowThreadProcessId(e.window,nullptr)!=owner;});
  HWND anchor=HWND_TOPMOST;
+ if(mixed){
+  for(const auto&e:visible)if(own(e.window)&&IsWindowVisible(e.window)){
+   if(!SetWindowPos(e.window,anchor,0,0,0,0,flags))return FALSE;
+   anchor=e.window;
+  }
+  return TRUE;
+ }
+ HDWP batch=BeginDeferWindowPos(int(visible.size()));if(!batch)return FALSE;
  for(const auto&e:visible)if(own(e.window)&&IsWindowVisible(e.window)){
-  batch=DeferWindowPos(batch,e.window,anchor,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE|SWP_NOOWNERZORDER|SWP_NOSENDCHANGING);
+  batch=DeferWindowPos(batch,e.window,anchor,0,0,0,0,flags);
   if(!batch)return FALSE;
   anchor=e.window;
  }
