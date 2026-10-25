@@ -4,6 +4,7 @@
 #include "../../external_reader/source/radar_map.h"
 #include "../../external_reader/source/camera_assets.h"
 #include "../../external_reader/source/radar_scene.h"
+#include "../../external_reader/source/radar_publication.h"
 #include <thread>
 #include <mutex>
 #include <condition_variable>
@@ -13,23 +14,37 @@ struct Request {DWORD pid=0;uint32_t match=0;int rate=60;uint32_t reveal=0;int m
 // Separate task cache, shared central read-only connection. Terrain traversal
 // never blocks the UI or the game thread. Publish complete immutable frames.
 class Worker {
- std::mutex mutex;std::condition_variable cv;std::thread thread;bool stop=false;Request request{};uint64_t generation=0;
+ std::mutex mutex;std::condition_variable cv;std::thread thread;bool stop=false,paused=false;Request request{};uint64_t generation=0;
  std::shared_ptr<const external::radar::Frame> latest;
  void run(){
-  external::ReadSession reader;external::cameraassets::Context<external::ReadSession> assets(reader);external::radar::SceneRenderer<decltype(assets)> renderer;external::radar::Sampler<external::SharedReadView> sampler(external::SharedReadView{&reader});uint64_t active=~uint64_t(0);int previousFrame=-1;unsigned previousRevision=0;
-  for(;;){Request r;uint64_t token;{std::unique_lock<std::mutex> lock(mutex);cv.wait(lock,[&]{return stop||request.pid;});if(stop)return;r=request;token=generation;}
-   if(token!=active){reader.close();sampler.reset();renderer.reset();active=token;previousFrame=-1;previousRevision=0;}
+  external::ReadSession reader;external::cameraassets::Context<external::ReadSession> assets(reader);external::radar::SceneRenderer<decltype(assets)> renderer;external::radar::DiagramRenderer diagram;external::radar::Sampler<external::SharedReadView> sampler(external::SharedReadView{&reader});uint64_t active=~uint64_t(0);int previousFrame=-1;unsigned previousRevision=0;Request activeRequest{};
+  for(;;){Request r;uint64_t token;{std::unique_lock<std::mutex> lock(mutex);cv.wait(lock,[&]{return stop||(!paused&&request.pid);});if(stop)return;r=request;token=generation;}
+   if(token!=active){if(r.pid!=activeRequest.pid||r.match!=activeRequest.match){reader.close();sampler.reset();renderer.reset();diagram.reset();}else if(r.mode!=activeRequest.mode)sampler.reset();activeRequest=r;active=token;previousFrame=-1;previousRevision=0;}
    std::shared_ptr<const external::radar::Frame> next;
    if(reader.open(r.pid)){reader.begin();bool ok=sampler.step(r.reveal,4096,r.mode==1);int frame=reader.get<int>(0xA8ED84,-1);
-    if(ok&&(r.mode==1||frame!=previousFrame||sampler.revision()!=previousRevision)){auto data=sampler.snapshot(GetTickCount());if(data.terrain&&r.mode==1){assets.identity(r.pid,r.match);data.scene=renderer.render(data,r.width,r.height,external::SharedReadView{&reader},assets);}if(data.terrain)next=std::make_shared<external::radar::Frame>(std::move(data));else {std::lock_guard<std::mutex> lock(mutex);if(token==generation)latest.reset();}previousFrame=frame;previousRevision=sampler.revision();}
+    if(ok&&(r.mode==1||frame!=previousFrame||sampler.revision()!=previousRevision)){
+     auto data=sampler.snapshot(GetTickCount());data.map=diagram.render(data.terrain,r.width,r.height);auto fresh=[&](uint32_t p,void*out,size_t n){return reader.readFresh(p,out,n);};
+     auto sampled=external::radar::publicationContext(fresh);
+     if(external::radar::sameWorld(data,sampled)){
+      if(!external::radar::freshMarkers(data,sampled))data.markers.clear();
+      // Publish terrain immediately; retain the last completed scene while the
+      // next one loads. Initial MIX scans must not keep the whole window hidden.
+      {std::lock_guard<std::mutex> lock(mutex);if(token==generation){if(r.mode==1&&latest&&latest->scene&&latest->terrain->geo.same(data.terrain->geo)&&latest->scene->width==r.width&&latest->scene->height==r.height)data.scene=latest->scene;latest=std::make_shared<external::radar::Frame>(data);}}
+      if(r.mode==1){assets.identity(r.pid,r.match);auto scene=renderer.render(data,r.width,r.height,external::SharedReadView{&reader},assets);if(scene)data.scene=std::move(scene);}
+      next=std::make_shared<external::radar::Frame>(std::move(data));
+     }else{std::lock_guard<std::mutex> lock(mutex);if(token==generation)latest.reset();}
+     previousFrame=frame;previousRevision=sampler.revision();
+    }
     if(!ok){std::lock_guard<std::mutex> lock(mutex);if(token==generation)latest.reset();}
    }else{std::lock_guard<std::mutex> lock(mutex);if(token==generation)latest.reset();}
-   {std::unique_lock<std::mutex> lock(mutex);if(token==generation&&next){uint32_t house=0;int endFrame=-1;bool consistent=reader.readFresh(0xA83D4C,&house,4)&&reader.readFresh(0xA8ED84,&endFrame,4)&&house==next->terrain->geo.house&&endFrame>=next->frame&&endFrame-next->frame<=2;if(consistent)latest=std::move(next);else latest.reset();}cv.wait_for(lock,std::chrono::milliseconds(std::max(2,1000/std::clamp(r.rate,5,500))),[&]{return stop||generation!=token;});if(stop)return;}
+   auto fresh=[&](uint32_t p,void*out,size_t n){return reader.readFresh(p,out,n);};auto completed=external::radar::publicationContext(fresh);
+   {std::unique_lock<std::mutex> lock(mutex);if(token==generation&&next){if(external::radar::sameWorld(*next,completed))latest=std::move(next);else latest.reset();}cv.wait_for(lock,std::chrono::milliseconds(std::max(2,1000/std::clamp(r.rate,5,500))),[&]{return stop||paused||generation!=token;});if(stop)return;}
   }
  }
 public:
  ~Worker(){shutdown();}
- void set(Request r){std::lock_guard<std::mutex> lock(mutex);if(r.pid!=request.pid||r.match!=request.match||r.reveal!=request.reveal||r.mode!=request.mode||r.width!=request.width||r.height!=request.height){++generation;latest.reset();}request=r;if(r.pid&&!thread.joinable()){stop=false;thread=std::thread([this]{run();});}cv.notify_one();}
+ void set(Request r){std::lock_guard<std::mutex> lock(mutex);if(r.pid!=request.pid||r.match!=request.match||r.reveal!=request.reveal||r.mode!=request.mode||r.width!=request.width||r.height!=request.height){++generation;latest.reset();}request=r;paused=false;if(r.pid&&!thread.joinable()){stop=false;thread=std::thread([this]{run();});}cv.notify_one();}
+ void pause(){std::lock_guard<std::mutex> lock(mutex);paused=true;cv.notify_one();}
  std::shared_ptr<const external::radar::Frame> get(){std::lock_guard<std::mutex> lock(mutex);return latest;}
  void shutdown(){{std::lock_guard<std::mutex> lock(mutex);stop=true;request={};latest.reset();++generation;cv.notify_one();}if(thread.joinable())thread.join();}
 };
@@ -38,13 +53,13 @@ static Worker worker;static HWND window;static std::shared_ptr<const external::r
 static std::shared_ptr<const external::radar::Terrain> paintedTerrain;static std::vector<uint32_t> pixels;static int imageW,imageH;
 static external::radar::Geometry lastGeometry;static bool dragging=false;static uint32_t dragMatch=0;
 static void cancelDrag(){dragging=false;dragMatch=0;if(window&&GetCapture()==window)ReleaseCapture();}
-static void hide(){cancelDrag();worker.set({});frame.reset();if(window)ShowWindow(window,SW_HIDE);}
+static void hide(){cancelDrag();worker.pause();frame.reset();if(window)ShowWindow(window,SW_HIDE);}
 static void navigate(HWND w,LPARAM lp){
  DWORD now=GetTickCount();if(!shared||!enabled||!minimapEnabled||!foregroundGame()||snap.chat||!commandFresh(now)||!frame||!frame->terrain||DWORD(now-frame->tick)>500||dragMatch!=commandMatch()){cancelDrag();return;}
  RECT r{};GetClientRect(w,&r);int x=0,y=0;if(!external::radar::navigate(frame->terrain->geo,short(LOWORD(lp)),short(HIWORD(lp)),r.right,r.bottom,std::max(1,snap.width-160),snap.height,x,y))return;
  InterlockedIncrement(&shared->cameraSeq);shared->cameraMatch=commandMatch();shared->cameraTick=sampleClock(shared);shared->cameraTargetX=x;shared->cameraTargetY=y;MemoryBarrier();InterlockedIncrement(&shared->cameraSeq);
 }
-static void clear(){hide();lastGeometry={};paintBuffer.clear();paintedTerrain.reset();pixels.clear();imageW=imageH=0;}
+static void clear(){hide();worker.set({});lastGeometry={};paintBuffer.clear();paintedTerrain.reset();pixels.clear();imageW=imageH=0;}
 static void destroy(){clear();worker.shutdown();if(window)DestroyWindow(window);window=nullptr;}
 static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
  if(msg==WM_NCHITTEST)return HTCLIENT;
@@ -64,7 +79,7 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
  if(msg==WM_PAINT){PAINTSTRUCT ps{};HDC dc=BeginPaint(w,&ps);RECT r{};GetClientRect(w,&r);int width=r.right,height=r.bottom;
   if(frame&&frame->terrain&&width>2&&height>2){int mw=width-2,mh=height-2;
    bool real=minimapMode==1&&frame->scene&&frame->scene->width==mw&&frame->scene->height==mh;
-   if(!real&&(paintedTerrain!=frame->terrain||imageW!=mw||imageH!=mh)){external::radar::raster(*frame->terrain,mw,mh,pixels);paintedTerrain=frame->terrain;imageW=mw;imageH=mh;}
+   if(!real&&(paintedTerrain!=frame->terrain||imageW!=mw||imageH!=mh)){if(frame->map&&frame->map->width==mw&&frame->map->height==mh)pixels=frame->map->pixels;else pixels.clear();paintedTerrain=frame->terrain;imageW=mw;imageH=mh;}
    HDC mem=paintBuffer.acquire(dc,width,height);
    const auto&image=real?frame->scene->pixels:pixels;
    if(mem&&!image.empty()){BITMAPINFO info{};info.bmiHeader.biSize=sizeof(BITMAPINFOHEADER);info.bmiHeader.biWidth=mw;info.bmiHeader.biHeight=-mh;info.bmiHeader.biPlanes=1;info.bmiHeader.biBitCount=32;info.bmiHeader.biCompression=BI_RGB;
@@ -81,12 +96,11 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
 }
 static void update(POINT origin,const RECT&client){
  if(!minimapEnabled||!enabled||!foregroundGame()||snap.renderStatus!=1||snap.chat||!pid||snap.width<320||snap.height<200||client.right<320||client.bottom<200){hide();return;}
- auto layout=radarlayout::place(snap.width,snap.height,client.right,client.bottom,minimapScale,minimapPosition,minimapX,minimapY,aircraftButtonBox);
- if(!layout.valid){hide();return;}auto destination=layout.destination;
  auto latest=worker.get();if(latest&&latest->terrain)lastGeometry=latest->terrain->geo;
  double rw=lastGeometry.valid()?lastGeometry.rw:1,rh=lastGeometry.valid()?lastGeometry.rh:1;if(minimapMode==1)rw*=2;
- double fit=std::min(double(destination.w-2)/rw,double(destination.h-2)/rh);fit=std::min(fit,std::min(1024./rw,1024./rh));destination.w=std::max(3,int(rw*fit)+2);destination.h=std::max(3,int(rh*fit)+2);
- worker.set({pid,snap.match,fps,extra.renderReveal,minimapMode,std::min(1024,destination.w-2),std::min(1024,destination.h-2)});
+ auto layout=radarlayout::place(snap.width,snap.height,client.right,client.bottom,minimapScale,minimapPosition,minimapX,minimapY,aircraftButtonBox,rw/rh,minimapAlignX,minimapAlignY);
+ if(!layout.valid){hide();return;}auto destination=layout.destination;
+ worker.set({pid,snap.match,fps,extra.renderReveal,minimapMode,std::min(2048,destination.w-2),std::min(2048,destination.h-2)});
  frame=worker.get();if(!frame||!frame->terrain){cancelDrag();if(window)ShowWindow(window,SW_HIDE);return;}if(dragging&&dragMatch!=commandMatch())cancelDrag();
  if(!window){WNDCLASSW cls{};cls.lpfnWndProc=proc;cls.hInstance=GetModuleHandleW(nullptr);cls.lpszClassName=L"RA2DataRadar127";cls.hCursor=nullptr;RegisterClassW(&cls);window=CreateWindowExW(WS_EX_TOOLWINDOW|WS_EX_NOACTIVATE|WS_EX_TOPMOST|WS_EX_LAYERED,cls.lpszClassName,L"战术小地图",WS_POPUP,0,0,1,1,nullptr,nullptr,cls.hInstance,nullptr);if(window)SetLayeredWindowAttributes(window,0,255,LWA_ALPHA);}
  if(!window)return;RECT old{};GetWindowRect(window,&old);int x=origin.x+destination.x,y=origin.y+destination.y;

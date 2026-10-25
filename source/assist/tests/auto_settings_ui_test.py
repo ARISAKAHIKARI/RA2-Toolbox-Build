@@ -25,7 +25,7 @@ constexpr int FALSE=0,EN_CHANGE=1,CBN_SELCHANGE=2,BN_CLICKED=3,HKM_GETHOTKEY=4,H
 static bool ready=true,updatingControls=false,enabled=true,autoSaveOK=true;
 struct ControlUpdate{bool old=updatingControls;ControlUpdate(){updatingControls=true;}~ControlUpdate(){updatingControls=old;}};
 static bool hookAdvanced=false,hookSmartUnload=false;static HWND hookChecks[4]={800,801,802,803};
-static uint32_t computeRequested=compute::Default;static bool minimapEnabled=false;static int minimapMode=0,minimapScale=200,advancedRangeCells=2,minimapPosition=0,minimapX=20,minimapY=60;
+static uint32_t computeRequested=compute::Default;static bool minimapEnabled=false;static int minimapMode=0,minimapScale=200,advancedRangeCells=2,minimapPosition=0,minimapX=20,minimapY=60,minimapAlignX=0,minimapAlignY=0;
 constexpr unsigned HOTKEYF_CONTROL=2,HOTKEYF_ALT=4;
 constexpr WORD MAKEWORD(unsigned a,unsigned b){return WORD((a&255)|(b<<8));}
 static WORD socialKeys[9]{};static bool autoRevealNewMatch=false;static unsigned autoRevealMatch=0,autoRevealDone=0,autoRevealRetry=0;
@@ -110,12 +110,15 @@ int main(){
  profile[L"MagnetronGlobal"]=0;profile[L"MagnetronDrop"]=1;profile[L"Magnetron"]=0;loadFeatureTypes();assert(!compute::inside(computeRequested,compute::MagnetronGlobal)&&compute::inside(computeRequested,compute::MagnetronDrop));
 
  fields[830]=1;assert(autoSettingChanged(830,BN_CLICKED)&&minimapEnabled);
- for(int n:{100,200,400}){fields[831]=n;assert(autoSettingChanged(831,EN_CHANGE)&&minimapScale==n);}fields[831]=401;autoSettingChanged(831,EN_CHANGE);assert(minimapScale==400);
+ for(int n:{100,200,400,1000}){fields[831]=n;assert(autoSettingChanged(831,EN_CHANGE)&&minimapScale==n);}fields[831]=1001;autoSettingChanged(831,EN_CHANGE);assert(minimapScale==1000);
  for(int mode:{0,1,2,3}){fields[850]=mode;assert(autoSettingChanged(850,CBN_SELCHANGE)&&minimapPosition==mode);}
  for(int n:{0,1}){fields[9065]=n;assert(autoSettingChanged(9065,CBN_SELCHANGE)&&minimapMode==n);}fields[9065]=2;autoSettingChanged(9065,CBN_SELCHANGE);assert(minimapMode==1);
  fields[850]=4;autoSettingChanged(850,CBN_SELCHANGE);assert(minimapPosition==3);
  for(int id:{851,852})for(int n:{0,20,32768}){fields[id]=n;assert(autoSettingChanged(id,EN_CHANGE)&&(id==851?minimapX:minimapY)==n);}
  fields[851]=32769;autoSettingChanged(851,EN_CHANGE);assert(minimapX==32768);
+ for(int id:{9100,9101})for(int n:{0,1,2}){fields[id]=n;assert(autoSettingChanged(id,CBN_SELCHANGE)&&(id==9100?minimapAlignX:minimapAlignY)==n);}
+ saveFeatureTypes();minimapAlignX=minimapAlignY=0;loadFeatureTypes();assert(minimapAlignX==2&&minimapAlignY==2);
+ fields[9100]=3;autoSettingChanged(9100,CBN_SELCHANGE);assert(minimapAlignX==2);
  fields[853]=MAKEWORD('N',6);assert(autoSettingChanged(853,EN_CHANGE)&&idleAircraftKey==MAKEWORD('N',6));
  hotkeys[0]='X';fields[853]='X';autoSettingChanged(853,EN_CHANGE);assert(minimapMode==1&&idleAircraftKey==MAKEWORD('N',6));hotkeys[0]=0;
  saveFeatureTypes();minimapMode=0;idleAircraftKey=0;minimapPosition=minimapX=minimapY=0;loadFeatureTypes();

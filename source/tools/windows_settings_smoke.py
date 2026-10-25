@@ -10,6 +10,8 @@ u.EnumChildWindows.argtypes=[W.HWND,CB,W.LPARAM]
 u.GetWindowThreadProcessId.argtypes=[W.HWND,C.POINTER(W.DWORD)]
 u.GetClassNameW.argtypes=[W.HWND,W.LPWSTR,C.c_int]
 u.GetWindowTextW.argtypes=[W.HWND,W.LPWSTR,C.c_int]
+u.IsWindowVisible.argtypes=[W.HWND];u.IsWindowVisible.restype=W.BOOL
+u.GetWindowRect.argtypes=[W.HWND,C.POINTER(W.RECT)];u.GetWindowRect.restype=W.BOOL
 u.GetDlgCtrlID.argtypes=[W.HWND]
 u.GetParent.argtypes=[W.HWND];u.GetParent.restype=W.HWND
 u.IsWindowEnabled.argtypes=[W.HWND];u.IsWindowEnabled.restype=W.BOOL
@@ -30,6 +32,18 @@ def send(h,m,w=0,l=0):
     if not u.SendMessageTimeoutW(h,m,w,l,2,5000,C.byref(result)):
         raise RuntimeError(f'message timeout {text(h)} {m:x}: {C.get_last_error()}')
     return result.value
+def set_control_text(h,value):
+    # SetWindowText only changes controls in the calling process. System text
+    # messages marshal the buffer to the actual edit control in the host.
+    b=C.create_unicode_buffer(value)
+    assert send(h,0xC,0,C.addressof(b)),('WM_SETTEXT failed',u.GetDlgCtrlID(h))
+    readback=C.create_unicode_buffer(len(value)+20)
+    send(h,0xD,len(readback),C.addressof(readback))
+    assert readback.value==value,('control text mismatch',u.GetDlgCtrlID(h),readback.value,value)
+def control_text(h):
+    b=C.create_unicode_buffer(100)
+    send(h,0xD,len(b),C.addressof(b))
+    return b.value
 def windows(parent=None):
     result=[]
     @CB
@@ -49,6 +63,12 @@ def root_for(pid):
     for h in windows():
         n=W.DWORD();u.GetWindowThreadProcessId(h,C.byref(n))
         if n.value==pid and text(h,True)=='RA2Toolbox020':return h
+def stats_surface(pid):
+    for h in windows():
+        n=W.DWORD();u.GetWindowThreadProcessId(h,C.byref(n))
+        if n.value!=pid or text(h,True)!='RA2UnitTransparentOverlay' or not u.IsWindowVisible(h):continue
+        r=W.RECT()
+        if u.GetWindowRect(h,C.byref(r)) and r.right-r.left>100 and r.bottom-r.top>100:return h
 def child(root,id,parentclass=None):
     return next((h for h in windows(root) if u.GetDlgCtrlID(h)==id and
         (parentclass is None or text(u.GetParent(h),True)==parentclass)),None)
@@ -92,6 +112,13 @@ def scenario(folder):
         mode=child(root,9065,'RA2Assist010');assert mode and send(mode,0x147)==0
         send(mode,0x14E,1);send(u.GetParent(mode),0x111,9065|(1<<16),mode)
         until(lambda:ini(folder,'Display','MinimapMode')==1,'real minimap mode saved')
+        for id,key,value in [(9100,'MinimapAlignX',2),(9101,'MinimapAlignY',1)]:
+            h=child(root,id,'RA2Assist010');assert h and send(h,0x147)==0
+            send(h,0x14E,value);send(u.GetParent(h),0x111,id|(1<<16),h)
+            until(lambda:ini(folder,'Display',key)==value,key+' saved')
+        scale=child(root,831,'RA2Assist010');assert scale
+        set_control_text(scale,'1000')
+        until(lambda:ini(folder,'Display','MinimapScale')==1000,'1000 percent minimap saved')
         # Change an unrelated tactical setting: it must not reset these values.
         h=child(root,702,'RA2Assist010');click(root,h,1)
         assert ini(folder,'Display','Frozen')==ini(folder,'Display','DangerPassengers')==1
@@ -101,6 +128,9 @@ def scenario(folder):
             h=child(root,id)
             assert check(h)==1,(key,'restart lost saved on')
         assert send(child(root,9065,'RA2Assist010'),0x147)==1,'real minimap mode lost on restart'
+        assert ini(folder,'Display','MinimapScale')==1000,'1000 percent minimap lost on restart'
+        assert control_text(child(root,831,'RA2Assist010'))=='1000','1000 percent minimap control lost on restart'
+        assert send(child(root,9100,'RA2Assist010'),0x147)==2 and send(child(root,9101,'RA2Assist010'),0x147)==1,'minimap alignment lost on restart'
         mode=child(root,9065,'RA2Assist010');send(mode,0x14E,0);send(u.GetParent(mode),0x111,9065|(1<<16),mode)
         # Switch off and exit immediately, exercising pending autosave at shutdown.
         for id in [604]+[id for id in keys if id!=604]:send(child(root,id),0xF5)
@@ -110,7 +140,19 @@ def scenario(folder):
             assert check(child(root,id))==0 and ini(folder,'Display',key)==0,(key,'restart lost saved off')
         assert send(child(root,9065,'RA2Assist010'),0x147)==0 and ini(folder,'Display','MinimapMode')==0
         assert ini(folder,'Cooperative','AdvancedEnter')==1,'first-use defaults overwrote existing settings'
+        # The shipped statistics renderer must finish on its worker and publish a
+        # real layered surface. Keep it active through shutdown to cover ownership.
+        demo=child(root,101,'RA2UnitMonitorUI');assert demo
+        send(demo,0xF5)
+        until(lambda:stats_surface(p.pid),'asynchronous statistics demo surface')
+        for _ in range(10):
+            send(root,0);send(u.GetParent(demo),0)
+            time.sleep(.05)
+        assert p.poll() is None,'renderer terminated the host'
         close(p,root)
+    except Exception:
+        print('UI failure diagnostics:',{f.name:f.read_text(errors='replace')[-4000:] for f in folder.glob('*.log')})
+        raise
     finally:
         if p.poll() is None:p.kill();p.wait()
 
@@ -120,10 +162,11 @@ if __name__=='__main__':
         folder=pathlib.Path(t)
         for name in ('RA2Toolbox.exe','GameRuntime.dll'):shutil.copy2(source/name,folder/name)
         scenario(folder)
-    result={'status':'PASS','version':'1.0.38-pre.2','runs':3,'display_switches':9,
+    result={'status':'PASS','version':'1.0.38-pre.3','runs':3,'display_switches':9,
             'checks':['all fresh UI switches off','user hotkeys','cross-pane edits',
                       'real Win32 INI writes','restart on','restart off',
-                      'minimap diagram/scene mode restart','immediate exit','existing settings preserved'],
+                      'minimap diagram/scene mode and alignment restart','1000 percent minimap save/restart and control readback',
+                      'asynchronous statistics demo surface and shutdown','immediate exit','existing settings preserved'],
             'game_tested':False,'multiplayer_tested':False}
     print(json.dumps(result,ensure_ascii=False))
     (source/'WINDOWS_SETTINGS_SMOKE.json').write_text(json.dumps(result,ensure_ascii=False,indent=2)+'\n')

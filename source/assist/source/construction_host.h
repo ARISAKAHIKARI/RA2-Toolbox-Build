@@ -144,25 +144,74 @@ static std::vector<construction::NativeBadge> nativeBadges(){
   if(mask)out.push_back({c.x,c.y+c.h-16,c.w,16,mask});}
  return out;
 }
-static RECT rect(int x,int y,int r,int bottom){return {layout.x(x),layout.y(y),layout.x(r),layout.y(bottom)};}
-static void paintIcon(HDC dc,int index,int x,int y,bool gray){
- int slot=typeSlot(index);if(slot<0)return;const auto&t=snap.types[slot];
- uint32_t ptr=typePointer(index);
- um::Type type{};type.category=t.kind==7?3:t.kind==16?1:t.kind==40?2:0;memcpy(type.id,t.id,24);type.id[23]=0;if(ptr>=0x10000)externalReader.readFresh(ptr+1750,type.cameo,24);type.cameo[24]=0;type.ptr=ptr;gameassets::resolveCameo(type);
- static um::Snapshot palette{};palette.paletteReady=0;bool ready=icons.restore(type,palette);
- if(!ready&&ptr>=0x10000){static uint8_t buffer[32+256*1024];auto read=[](uint32_t at,void*out,size_t size){return externalReader.readFresh(at,out,size);};auto resolve=[](uint32_t){return 0u;};if(um::readCameo(read,resolve,type,buffer,sizeof buffer,gameassets::cameo)&&um::readCameoPalette(read,palette,gameassets::cameo)){ready=true;icons.remember(type,palette);}}
+static external::ReadSession paintReader;static external::cameraassets::Context<external::ReadSession> paintAssets(paintReader);
+static bool loadPanelAsset(const char*n,std::vector<uint8_t>&b){return paintAssets.cameo(n,b);}
+struct PaintRequest {uint32_t pid,match,tick;int activeTab,scroll,hoverChoice,hoverQueue,width,height;construction::Layout layout;construction::Book book;std::vector<Choice> choices;std::map<int,assist::Type> types;std::map<int,uint32_t> pointers;LOGFONTW font{};};
+struct Painted {PaintRequest request;std::vector<uint32_t> pixels;};
+struct PanelPainter {
+ const PaintRequest&request;construction::Layout layout;external::ReadSession&externalReader;external::cameraassets::Context<external::ReadSession>&assets;
+RECT rect(int x,int y,int r,int bottom){return {layout.x(x),layout.y(y),layout.x(r),layout.y(bottom)};}
+void paintIcon(HDC dc,int index,int x,int y,bool gray){
+ auto found=request.types.find(index);if(found==request.types.end())return;const auto&t=found->second;
+ uint32_t ptr=request.pointers.at(index);
+ um::Type type{};type.category=t.kind==7?3:t.kind==16?1:t.kind==40?2:0;memcpy(type.id,t.id,24);type.id[23]=0;if(ptr>=0x10000)externalReader.readFresh(ptr+1750,type.cameo,24);type.cameo[24]=0;type.ptr=ptr;assets.resolveCameo(type);
+ static thread_local um::Snapshot palette{};palette.paletteReady=0;bool ready=icons.restore(type,palette);
+ if(!ready&&ptr>=0x10000){static thread_local uint8_t buffer[32+256*1024];auto read=[&](uint32_t at,void*out,size_t size){return externalReader.readFresh(at,out,size);};auto resolve=[](uint32_t){return 0u;};if(um::readCameo(read,resolve,type,buffer,sizeof buffer,loadPanelAsset)&&um::readCameoPalette(read,palette,loadPanelAsset)){ready=true;icons.remember(type,palette);}}
  RECT icon=rect(x,y,x+60,y+48);
  if(ready){uint32_t pixels[60*48];for(int i=0;i<60*48;++i){uint32_t color=palette.palette[type.icon[i]];if(gray){unsigned value=(((color>>16)&255)*3+((color>>8)&255)*6+(color&255))/10;color=(value<<16)|(value<<8)|value;}pixels[i]=color&0xFFFFFF;}
   BITMAPINFO info{};info.bmiHeader.biSize=sizeof(BITMAPINFOHEADER);info.bmiHeader.biWidth=60;info.bmiHeader.biHeight=-48;info.bmiHeader.biPlanes=1;info.bmiHeader.biBitCount=32;
   SetStretchBltMode(dc,COLORONCOLOR);StretchDIBits(dc,icon.left,icon.top,icon.right-icon.left,icon.bottom-icon.top,0,0,60,48,pixels,&info,DIB_RGB_COLORS,SRCCOPY);
  }else{HBRUSH empty=CreateSolidBrush(gray?RGB(35,42,50):RGB(40,61,79));FillRect(dc,&icon,empty);DeleteObject(empty);SetTextColor(dc,RGB(217,229,237));DrawTextW(dc,(const wchar_t*)t.name,-1,&icon,DT_CENTER|DT_VCENTER|DT_WORDBREAK);}
 }
-static void panelBox(HDC dc,RECT r,COLORREF fill,COLORREF edge,int radius=4){
+void panelBox(HDC dc,RECT r,COLORREF fill,COLORREF edge,int radius=4){
  HBRUSH brush=CreateSolidBrush(fill);HPEN pen=CreatePen(PS_SOLID,std::max(1,layout.x(1)),edge);
  auto oldBrush=SelectObject(dc,brush),oldPen=SelectObject(dc,pen);
  RoundRect(dc,r.left,r.top,r.right,r.bottom,layout.x(radius),layout.y(radius));
  SelectObject(dc,oldPen);SelectObject(dc,oldBrush);DeleteObject(pen);DeleteObject(brush);
 }
+};
+static asyncwork::Latest<PaintRequest,Painted> paintWorker([](const PaintRequest&request)->std::shared_ptr<const Painted>{
+ if(!paintReader.open(request.pid))return {};paintReader.begin();paintAssets.identity(request.pid,request.match);
+ int width=request.width,height=request.height;if(width<1||height<1||uint64_t(width)*height>4*1024*1024)return {};
+ auto out=std::make_shared<Painted>();out->request=request;out->pixels.resize(size_t(width)*height);
+ BITMAPINFO info{};info.bmiHeader.biSize=sizeof(BITMAPINFOHEADER);info.bmiHeader.biWidth=width;info.bmiHeader.biHeight=-height;info.bmiHeader.biPlanes=1;info.bmiHeader.biBitCount=32;
+ void*bits=nullptr;HDC dc=CreateCompatibleDC(nullptr);HBITMAP bitmap=CreateDIBSection(dc,&info,DIB_RGB_COLORS,&bits,nullptr,0);if(!dc||!bitmap){if(bitmap)DeleteObject(bitmap);if(dc)DeleteDC(dc);return {};}
+ auto old=SelectObject(dc,bitmap);HFONT font=CreateFontIndirectW(&request.font);RECT client{0,0,width,height};auto layout=request.layout;const auto&choices=request.choices;int activeTab=request.activeTab,scroll=request.scroll,hoverChoice=request.hoverChoice,hoverQueue=request.hoverQueue;
+ PanelPainter painter{request,layout,paintReader,paintAssets};
+  HBRUSH background=CreateSolidBrush(RGB(17,26,37));FillRect(dc,&client,background);DeleteObject(background);
+  painter.panelBox(dc,client,RGB(17,26,37),RGB(58,75,94),8);
+  auto previous=SelectObject(dc,font);SetBkMode(dc,TRANSPARENT);
+  const wchar_t* tabs[]={L"建筑",L"防御",L"步兵",L"载具"};
+  for(int tab=0;tab<4;++tab){
+   RECT r=painter.rect(tab*36+2,2,(tab+1)*36-2,21);
+   if(tab==activeTab)painter.panelBox(dc,r,RGB(35,60,76),RGB(70,145,164));
+   SetTextColor(dc,tab==activeTab?RGB(220,246,247):RGB(143,162,179));DrawTextW(dc,tabs[tab],-1,&r,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+  }
+  const auto&b=request.book;
+  // Paint oldest first so the newest reservation remains on top.
+  for(int i=0;i<int(b.items.size());++i){int y=construction::StackTop+i*construction::StackStep;
+   painter.panelBox(dc,painter.rect(5,y,139,y+48),i==hoverQueue?RGB(35,55,70):RGB(26,40,54),i==hoverQueue?RGB(97,190,199):RGB(53,75,94));
+   painter.paintIcon(dc,b.items[i],42,y,false);RECT number=painter.rect(10,y+3,34,y+22);SetTextColor(dc,RGB(147,220,224));
+   std::wstring label=std::to_wstring(i+1);DrawTextW(dc,label.c_str(),-1,&number,DT_CENTER|DT_SINGLELINE|DT_VCENTER);
+   if(i==0&&b.stage)for(int dot=0;dot<3;++dot){RECT r=painter.rect(112+dot*5,y+10,115+dot*5,y+13);HBRUSH h=CreateSolidBrush(RGB(229,186,100));FillRect(dc,&r,h);DeleteObject(h);}
+  }
+  if(b.items.empty()){
+   painter.panelBox(dc,painter.rect(5,26,139,54),RGB(20,32,44),RGB(43,62,80));
+   HPEN plus=CreatePen(PS_SOLID,std::max(1,layout.x(1)),RGB(104,133,153));auto old=SelectObject(dc,plus);
+   MoveToEx(dc,layout.x(67),layout.y(40),nullptr);LineTo(dc,layout.x(77),layout.y(40));
+   MoveToEx(dc,layout.x(72),layout.y(35),nullptr);LineTo(dc,layout.x(72),layout.y(45));SelectObject(dc,old);DeleteObject(plus);
+  }
+  for(int i=0;i<construction::Capacity;++i){RECT dot=painter.rect(55+i*7,layout.stackBottom()+3,59+i*7,layout.stackBottom()+5);HBRUSH h=CreateSolidBrush(i<int(b.items.size())?RGB(105,196,197):RGB(47,65,82));FillRect(dc,&dot,h);DeleteObject(h);}
+  for(int n=scroll;n<int(choices.size())&&n<scroll+layout.rows*2;++n){const auto&c=choices[n];auto found=request.types.find(c.index);if(found==request.types.end())continue;
+   const auto&t=found->second;int x=(n-scroll)%2*72+6,y=(n-scroll)/2*66+layout.headerHeight();
+   painter.panelBox(dc,painter.rect(x-3,y-1,x+63,y+65),n==hoverChoice?RGB(36,56,72):RGB(23,36,49),n==hoverChoice?RGB(109,200,205):RGB(43,62,80));
+   painter.paintIcon(dc,c.index,x,y,c.future);
+   RECT name=painter.rect(x-3,y+48,x+63,y+64);SetTextColor(dc,c.future?RGB(131,146,157):RGB(217,229,237));DrawTextW(dc,(const wchar_t*)t.name,-1,&name,DT_CENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+   std::wstring numbers;for(int i=0;i<int(b.items.size());++i)if(b.items[i]==c.index){if(!numbers.empty())numbers+=L" ";numbers+=std::to_wstring(i+1);}
+   if(!numbers.empty()){RECT badge=painter.rect(x,y+30,x+60,y+48);HBRUSH tag=CreateSolidBrush(RGB(29,89,99));FillRect(dc,&badge,tag);DeleteObject(tag);SetTextColor(dc,RGB(208,247,240));DrawTextW(dc,numbers.c_str(),-1,&badge,DT_CENTER|DT_VCENTER|DT_SINGLELINE);}
+  }SelectObject(dc,previous);GdiFlush();
+ memcpy(out->pixels.data(),bits,out->pixels.size()*4);SelectObject(dc,old);DeleteObject(font);DeleteObject(bitmap);DeleteDC(dc);return out;
+});
 static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
  if(msg==WM_MOUSEACTIVATE)return MA_NOACTIVATE;if(msg==WM_ERASEBKGND)return 1;
  if(msg==WM_MOUSEMOVE&&geometryReady){
@@ -181,40 +230,16 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
  }
  if(msg==WM_PAINT){PAINTSTRUCT ps{};HDC target=BeginPaint(w,&ps);RECT client{};GetClientRect(w,&client);
   if(!geometryReady||activeTab<0||activeTab>3){EndPaint(w,&ps);return 0;}
-  HDC dc=panelBuffer.acquire(target,client.right-client.left,client.bottom-client.top);
-  if(!dc){EndPaint(w,&ps);return 0;}
-  HBRUSH background=CreateSolidBrush(RGB(17,26,37));FillRect(dc,&client,background);DeleteObject(background);
-  panelBox(dc,client,RGB(17,26,37),RGB(58,75,94),8);
-  auto previous=SelectObject(dc,panelFont?panelFont:font);SetBkMode(dc,TRANSPARENT);
-  const wchar_t* tabs[]={L"建筑",L"防御",L"步兵",L"载具"};
-  for(int tab=0;tab<4;++tab){
-   RECT r=rect(tab*36+2,2,(tab+1)*36-2,21);
-   if(tab==activeTab)panelBox(dc,r,RGB(35,60,76),RGB(70,145,164));
-   SetTextColor(dc,tab==activeTab?RGB(220,246,247):RGB(143,162,179));DrawTextW(dc,tabs[tab],-1,&r,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
-  }
-  const auto&b=books[activeTab];
-  // Paint oldest first so the newest reservation remains on top.
-  for(int i=0;i<int(b.items.size());++i){int y=construction::StackTop+i*construction::StackStep;
-   panelBox(dc,rect(5,y,139,y+48),i==hoverQueue?RGB(35,55,70):RGB(26,40,54),i==hoverQueue?RGB(97,190,199):RGB(53,75,94));
-   paintIcon(dc,b.items[i],42,y,false);RECT number=rect(10,y+3,34,y+22);SetTextColor(dc,RGB(147,220,224));
-   std::wstring label=std::to_wstring(i+1);DrawTextW(dc,label.c_str(),-1,&number,DT_CENTER|DT_SINGLELINE|DT_VCENTER);
-   if(i==0&&b.stage)for(int dot=0;dot<3;++dot){RECT r=rect(112+dot*5,y+10,115+dot*5,y+13);HBRUSH h=CreateSolidBrush(RGB(229,186,100));FillRect(dc,&r,h);DeleteObject(h);}
-  }
-  if(b.items.empty()){
-   panelBox(dc,rect(5,26,139,54),RGB(20,32,44),RGB(43,62,80));
-   HPEN plus=CreatePen(PS_SOLID,std::max(1,layout.x(1)),RGB(104,133,153));auto old=SelectObject(dc,plus);
-   MoveToEx(dc,layout.x(67),layout.y(40),nullptr);LineTo(dc,layout.x(77),layout.y(40));
-   MoveToEx(dc,layout.x(72),layout.y(35),nullptr);LineTo(dc,layout.x(72),layout.y(45));SelectObject(dc,old);DeleteObject(plus);
-  }
-  for(int i=0;i<construction::Capacity;++i){RECT dot=rect(55+i*7,layout.stackBottom()+3,59+i*7,layout.stackBottom()+5);HBRUSH h=CreateSolidBrush(i<int(b.items.size())?RGB(105,196,197):RGB(47,65,82));FillRect(dc,&dot,h);DeleteObject(h);}
-  for(int n=scroll;n<int(choices.size())&&n<scroll+layout.rows*2;++n){const auto&c=choices[n];if(c.slot<0||c.slot>=snap.typeCount||encode(snap.types[c.slot].kind,snap.types[c.slot].index)!=c.index)continue;
-   const auto&t=snap.types[c.slot];int x=(n-scroll)%2*72+6,y=(n-scroll)/2*66+layout.headerHeight();
-   panelBox(dc,rect(x-3,y-1,x+63,y+65),n==hoverChoice?RGB(36,56,72):RGB(23,36,49),n==hoverChoice?RGB(109,200,205):RGB(43,62,80));
-   paintIcon(dc,c.index,x,y,c.future);
-   RECT name=rect(x-3,y+48,x+63,y+64);SetTextColor(dc,c.future?RGB(131,146,157):RGB(217,229,237));DrawTextW(dc,(const wchar_t*)t.name,-1,&name,DT_CENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
-   std::wstring numbers;for(int i=0;i<int(b.items.size());++i)if(b.items[i]==c.index){if(!numbers.empty())numbers+=L" ";numbers+=std::to_wstring(i+1);}
-   if(!numbers.empty()){RECT badge=rect(x,y+30,x+60,y+48);HBRUSH tag=CreateSolidBrush(RGB(29,89,99));FillRect(dc,&badge,tag);DeleteObject(tag);SetTextColor(dc,RGB(208,247,240));DrawTextW(dc,numbers.c_str(),-1,&badge,DT_CENTER|DT_VCENTER|DT_SINGLELINE);}
-  }SelectObject(dc,previous);panelBuffer.present(target);EndPaint(w,&ps);return 0;
+  PaintRequest request{pid,commandMatch(),GetTickCount(),activeTab,scroll,hoverChoice,hoverQueue,int(client.right),int(client.bottom),layout,books[activeTab],choices,{},{},{}};
+  GetObjectW(panelFont?panelFont:font,sizeof request.font,&request.font);
+  auto add=[&](int index){int slot=typeSlot(index);if(slot>=0){request.types[index]=snap.types[slot];request.pointers[index]=typePointer(index);}};
+  for(int index:request.book.items)add(index);for(int n=scroll;n<int(choices.size())&&n<scroll+layout.rows*2;++n)add(choices[n].index);
+  paintWorker.submit(std::move(request));auto completed=paintWorker.get();
+  if(completed&&completed->request.pid==pid&&completed->request.match==commandMatch()&&completed->request.width==client.right&&completed->request.height==client.bottom&&completed->request.activeTab==activeTab&&completed->request.scroll==scroll){
+   BITMAPINFO info{};info.bmiHeader.biSize=sizeof(BITMAPINFOHEADER);info.bmiHeader.biWidth=client.right;info.bmiHeader.biHeight=-client.bottom;info.bmiHeader.biPlanes=1;info.bmiHeader.biBitCount=32;
+   SetDIBitsToDevice(target,0,0,client.right,client.bottom,0,0,0,client.bottom,completed->pixels.data(),&info,DIB_RGB_COLORS);
+  }else{HBRUSH background=CreateSolidBrush(RGB(17,26,37));FillRect(target,&client,background);DeleteObject(background);}
+  EndPaint(w,&ps);return 0;
  }
  return DefWindowProcW(w,msg,wp,lp);
 }
@@ -292,6 +317,6 @@ static void service(){
  if(!window){WNDCLASSW cls{};cls.hInstance=GetModuleHandleW(nullptr);cls.lpfnWndProc=proc;cls.lpszClassName=L"RA2ConstructionReserve110";cls.hCursor=LoadCursorW(nullptr,IDC_HAND);RegisterClassW(&cls);window=CreateWindowExW(WS_EX_TOOLWINDOW|WS_EX_NOACTIVATE|WS_EX_TOPMOST|WS_EX_LAYERED,cls.lpszClassName,L"建筑预定",WS_POPUP,0,0,layout.width(),layout.height(),nullptr,nullptr,cls.hInstance,nullptr);if(window)SetLayeredWindowAttributes(window,0,construction::PanelOpacity,LWA_ALPHA);}
  if(window){geometryReady=true;resizePanel();InvalidateRect(window,nullptr,FALSE);}
 }
-static void destroy(){if(window)DestroyWindow(window);window=nullptr;panelBuffer.clear();if(panelFont)DeleteObject(panelFont);panelFont=nullptr;fontHeight=0;reset();}
+static void destroy(){paintWorker.shutdown();if(window)DestroyWindow(window);window=nullptr;panelBuffer.clear();if(panelFont)DeleteObject(panelFont);panelFont=nullptr;fontHeight=0;reset();}
 }
 

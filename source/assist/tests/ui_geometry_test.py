@@ -58,7 +58,7 @@ static HWND ui,repairCheck,repairEdit,keys[12],check[7],rateEdit,marginEdit,swLi
  hookChecks[4],ejectCheck,ejectKeyEdit,magnetronCheck,magnetronKeyEdit,oreCheck,oreStatus,detailCheck,toastEdit,
  csHoldCheck,csHoldEdit,anywhereCheck,statusLabel,schedulerEntryCombo,megaQueueCombo,objectQueueCombo;
 static AdditionalSettings extra;static HWND extraControls[ExtraControlCount];
-static int labelScalePercent=100,constructionScalePercent=100;static bool minimapEnabled=false;static int minimapMode=0,minimapScale=200,minimapPosition=0,minimapX=20,minimapY=60;static uint32_t computeRequested=compute::Default;
+static int labelScalePercent=100,constructionScalePercent=100;static bool minimapEnabled=false;static int minimapMode=0,minimapScale=200,minimapPosition=0,minimapX=20,minimapY=60,minimapAlignX=0,minimapAlignY=0;static uint32_t computeRequested=compute::Default;
 static unsigned schedulerTarget=0,megaQueueMode=0,objectQueueMode=0;static HFONT font;static int scrollY,repairMs=2000,fps=60,topMargin=20,doubleMs=350,toastMs=6000;
 static DWORD GetTickCount(){return 1606;}
 static bool commandFresh(DWORD){return true;}

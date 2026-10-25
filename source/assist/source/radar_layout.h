@@ -11,21 +11,26 @@ inline Box aircraft(int gw,int gh,int cw,int ch){
  return {std::max(0,int(int64_t(gw-160)*cw/gw)-w-6),std::clamp(int(int64_t(12)*ch/gh),0,ch-h),w,h};
 }
 struct Layout {Box source,destination;bool valid=false;};
-inline Layout place(int gw,int gh,int cw,int ch,int scale,int mode,int userX,int userY,Box plane){
+inline Layout place(int gw,int gh,int cw,int ch,int scale,int mode,int userX,int userY,Box plane,double aspect=0,int alignX=0,int alignY=0){
  Layout result;if(gw<320||gh<200||cw<320||ch<200)return result;
  const int sw=std::max(1,int(int64_t(160)*cw/gw)),sh=std::max(1,int(int64_t(140)*ch/gh));
  result.source={cw-sw,0,sw,sh};
  const int gap=std::max(6,int(int64_t(10)*cw/gw)),pad=2;
  const int top=plane.w>0?plane.y+plane.h+gap:std::max(gap,int(int64_t(40)*ch/gh));
- int w=int(int64_t(sw)*std::clamp(scale,100,400)/100)+2,h=int(int64_t(sh)*std::clamp(scale,100,400)/100)+2;
+ int w=int(int64_t(sw)*std::clamp(scale,100,1000)/100)+2,h=int(int64_t(sh)*std::clamp(scale,100,1000)/100)+2;
  // There is always a fallback slot left of radar and below the aircraft button.
  const int availableW=cw-sw-gap-pad,availableH=ch-top-pad;
  if(availableW<3||availableH<3)return result;
  double fit=std::min(1.0,std::min(double(availableW)/w,double(availableH)/h));
  w=std::max(3,int(w*fit));h=std::max(3,int(h*fit));
+ int boxW=w,boxH=h;
+ // Fit the real map BEFORE anchoring and collision avoidance. Resizing an
+ // already positioned square leaves a large gap below a wide minimap.
+ if(aspect>0&&aspect<1024){double innerW=std::min(2048.,double(w-2)),innerH=std::min(2048.,double(h-2));
+  innerW=std::min(innerW,innerH*aspect);innerH=innerW/aspect;w=std::max(3,int(innerW)+2);h=std::max(3,int(innerH)+2);}
  int x=cw-sw-gap-w,y=top;
  if(mode==1){x=gap;y=gap;}else if(mode==2){x=gap;y=ch-h-gap;}
- else if(mode==3){x=int(int64_t(std::clamp(userX,0,32768))*cw/gw);y=int(int64_t(std::clamp(userY,0,32768))*ch/gh);}
+ else if(mode==3){x=int(int64_t(std::clamp(userX,0,32768))*cw/gw)+(boxW-w)*std::clamp(alignX,0,2)/2;y=int(int64_t(std::clamp(userY,0,32768))*ch/gh)+(boxH-h)*std::clamp(alignY,0,2)/2;}
  x=std::clamp(x,pad,cw-w-pad);y=std::clamp(y,pad,ch-h-pad);
  int xs[7]={x,pad,cw-w-pad,result.source.x-w-gap,result.source.x+sw+gap,plane.x-w-gap,plane.x+plane.w+gap};
  int ys[7]={y,pad,ch-h-pad,result.source.y-h-gap,result.source.y+sh+gap,plane.y-h-gap,plane.y+plane.h+gap};

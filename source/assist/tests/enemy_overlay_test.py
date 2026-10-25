@@ -26,7 +26,8 @@ static int allocations=0;
 struct Bitmap{int w,h;Bitmap(int a,int b,int):w(a),h(b){++allocations;}int GetWidth(){return w;}int GetHeight(){return h;}};
 struct FontFamily{FontFamily(const wchar_t*){}};
 struct StringFormat{void SetFormatFlags(int){}};
-struct GraphicsPath{void AddString(const wchar_t*,int,FontFamily*,int,float,PointF,StringFormat*){}};
+static std::wstring rasterText;
+struct GraphicsPath{void AddString(const wchar_t*s,int,FontFamily*,int,float,PointF,StringFormat*){rasterText=s;}};
 struct Call{int kind;float x,y,w,h;ARGB color;};
 struct Graphics{std::vector<Call> calls;Graphics(Bitmap*){}void Clear(Color){}void SetSmoothingMode(int){}
  void DrawRectangle(Pen*p,float x,float y,float w,float h){calls.push_back({1,x,y,w,h,p->color.v});}
@@ -46,14 +47,14 @@ int main(){
  visual::LabelView v{};v.id=1;v.x=100.25f;v.y=80.5f;Graphics g(nullptr);
  drawEnemyMarker(g,m,v,2.f,1.5f);assert(allocations==1&&g.calls.size()==3&&g.calls[0].kind==1&&g.calls[1].color==m.color);
  assert(g.calls[0].x==193.5f&&g.calls[0].y==113.75f&&g.calls[2].x==208.5f&&g.calls[2].y==124.75f);
- assert(enemyRasters.begin()->second.text==L"犀牛坦克");
+ assert(rasterText==L"犀牛坦克");
  drawEnemyMarker(g,m,v,2.f,1.5f);m.id=2;v.id=2;drawEnemyMarker(g,m,v,1,1);assert(allocations==1); // shared type/owner raster, not one bitmap per unit
  m.kind=2;g.calls.clear();drawEnemyMarker(g,m,v,1,1);assert(g.calls[0].kind==2&&g.calls[1].color==m.color);
- m.owner+=0x10000;m.player=2;drawEnemyMarker(g,m,v,1,1);assert(allocations==2&&enemyRasters.size()==2);
- for(auto&ch:m.name)ch=u'长';drawEnemyMarker(g,m,v,1,1);auto&cached=enemyRasters[enemyRasterKey(m)];assert(cached.text.size()==18&&cached.image->GetWidth()<=280);
- m.quantity=3;drawEnemyMarker(g,m,v,1,1);assert(enemyRasters[enemyRasterKey(m)].text.find(L" ×3")!=std::wstring::npos);
+ m.owner+=0x10000;m.player=2;drawEnemyMarker(g,m,v,1,1);assert(allocations==2);
+ for(auto&ch:m.name)ch=u'长';drawEnemyMarker(g,m,v,1,1);assert(rasterText.size()==18&&g.calls.back().w<=280);
+ m.quantity=3;drawEnemyMarker(g,m,v,1,1);assert(rasterText.find(L" ×3")!=std::wstring::npos);
  int oldAllocations=allocations;m.quantity=7;drawEnemyMarker(g,m,v,1,1);assert(allocations==oldAllocations+1);m.quantity=3;drawEnemyMarker(g,m,v,1,1);assert(allocations==oldAllocations+1);m.quantity=1;
- for(auto&ch:m.name)ch=0;m.name[0]=10;drawEnemyMarker(g,m,v,1,1);assert(enemyRasters[enemyRasterKey(m)].text==L"单位");
+ for(auto&ch:m.name)ch=0;m.name[0]=10;drawEnemyMarker(g,m,v,1,1);assert(rasterText==L"单位");
 }
 '''
 with tempfile.TemporaryDirectory(prefix='enemy-draw-') as temp:
@@ -69,7 +70,7 @@ assert 'enemyMarkers' not in io.split('static uint32_t additionalFlags(){',1)[1]
 assert '!snap.crateCount&&!enemyCount' in main
 assert 'memcmp(drawnEnemyViews,enemyViews' in main and 'memcmp(drawnEnemies,enemyFrame.items' in main
 assert 'g.SetClip(RectF(0,0,enemyFrame.width*sx,enemyFrame.height*sy)' in main and 'g.Restore(enemyClip)' in main
-assert 'if(!battlefield||snap.renderStatus!=1){overlayRecovery.suspend();ShowWindow(overlay,SW_HIDE);' in main
+assert 'if(!battlefield||snap.renderStatus!=1){worldrender::invalidate();overlayRecovery.suspend();ShowWindow(overlay,SW_HIDE);' in main
 sampler=(R/'external_reader/source/tactical_sampler.h').read_text()
 assert 'enemies::latest(read_,at,out,n,0)' in sampler
 assert 'reader->readFresh(p,out,n)' in (R/'external_reader/source/shared_reader.h').read_text()

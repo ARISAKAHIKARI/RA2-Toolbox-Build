@@ -64,7 +64,7 @@ extern "C" __declspec(dllexport) const MappingPrefixValue AssistHostMappingPrefi
 namespace minimap {static void hide();static void clear();static void destroy();}
 namespace watchwindows {static void hide();}
 static uint32_t computeRequested=compute::Default;
-static bool minimapEnabled=false;static int minimapMode=0,minimapScale=200,minimapPosition=0,minimapX=20,minimapY=60;
+static bool minimapEnabled=false;static int minimapMode=0,minimapScale=200,minimapPosition=0,minimapX=20,minimapY=60,minimapAlignX=0,minimapAlignY=0;
 static WORD socialKeys[9]{}; // Cheer, taunts 1..8; empty by default.
 static WORD idleAircraftKey=MAKEWORD('P',HOTKEYF_CONTROL|HOTKEYF_ALT);
 static void hideAircraftButton();static void destroyAircraftButton();
@@ -981,6 +981,7 @@ static void readSnapshot(){
 }
 struct TextRaster{std::wstring text;float size;ARGB color;std::unique_ptr<Bitmap> image;};static std::vector<TextRaster> textRasters;
 static void drawText(Graphics&g,const std::wstring&s,float x,float y,float size,Color color){
+ static thread_local std::vector<TextRaster> textRasters;
  if(s.empty())return;for(auto&r:textRasters)if(r.text==s&&r.size==size&&r.color==color.GetValue()){g.DrawImage(r.image.get(),x-4,y-4,float(r.image->GetWidth()),float(r.image->GetHeight()));return;}
  if(textRasters.size()>=256)textRasters.clear();int w=std::max(16,int(s.size()*size+12)),h=int(size*2.2f+12);
  auto bitmap=std::make_unique<Bitmap>(w,h,PixelFormat32bppPARGB);{Graphics raster(bitmap.get());raster.Clear(Color(0,0,0,0));raster.SetSmoothingMode(SmoothingModeAntiAlias);
@@ -989,12 +990,14 @@ static void drawText(Graphics&g,const std::wstring&s,float x,float y,float size,
 }
 struct GlyphRaster {wchar_t ch;ARGB color;float advance;std::unique_ptr<Bitmap> image;};static std::vector<GlyphRaster> glyphRasters;
 static const GlyphRaster& glyph(wchar_t ch,Color color){
+ static thread_local std::vector<GlyphRaster> glyphRasters;
  for(auto&r:glyphRasters)if(r.ch==ch&&r.color==color.GetValue())return r;
  auto bm=std::make_unique<Bitmap>(25,34,PixelFormat32bppPARGB);{Graphics g(bm.get());g.Clear(Color(0,0,0,0));g.SetSmoothingMode(SmoothingModeAntiAlias);
  FontFamily family(L"Microsoft YaHei UI");GraphicsPath p;StringFormat fmt;fmt.SetFormatFlags(StringFormatFlagsNoWrap);p.AddString(&ch,1,&family,FontStyleBold,13,PointF(4,4),&fmt);Pen edge(Color(235,5,9,16),3);edge.SetLineJoin(LineJoinRound);g.DrawPath(&edge,&p);SolidBrush brush(color);g.FillPath(&brush,&p);}
  glyphRasters.push_back({ch,color.GetValue(),ch==L' '?4.f:ch<128?7.5f:13.f,std::move(bm)});return glyphRasters.back();
 }
-static void drawLabel(Graphics&g,const visual::LabelView&l,float sx,float sy){
+static void drawLabel(Graphics&g,const visual::LabelView&l,float sx,float sy,int labelScalePercent){
+ static thread_local std::unordered_map<uint32_t,LabelRaster> labelRasters;if(labelRasters.size()>4096)labelRasters.clear();
  const float zoom=viewport::factor(labelScalePercent);
  if(l.advanced){SolidBrush red(l.advanced==2?Color(255,255,190,45):Color(255,255,0,0));PointF mark[]={{l.x*sx-3*zoom,l.y*sy-7*zoom},{l.x*sx+3*zoom,l.y*sy-7*zoom},{l.x*sx,l.y*sy-3*zoom}};g.FillPolygon(&red,mark,3);}
  auto&r=labelRasters[l.id];ARGB owner=l.ownerColor?l.ownerColor:0xffeeeeeeu;
@@ -1016,6 +1019,7 @@ static void drawLabel(Graphics&g,const visual::LabelView&l,float sx,float sy){
 #include "passenger_draw.h"
 #include "watch_host.h"
 static void drawEnemyMarker(Graphics&g,const external::enemies::Marker&m,const visual::LabelView&v,float sx,float sy){
+ static thread_local std::map<EnemyRasterKey,EnemyRaster> enemyRasters;if(enemyRasters.size()>4096)enemyRasters.clear();
  float x=v.x*sx,y=v.y*sy;Pen edge(Color(245,5,9,16),4.f),mark(Color(m.color),2.f);
  if(m.kind==3){g.DrawRectangle(&edge,x-7,y-7,14.f,14.f);g.DrawRectangle(&mark,x-7,y-7,14.f,14.f);}
  else{PointF points[]={{x,y-7},{x+7,y},{x,y+7},{x-7,y}};g.DrawPolygon(&edge,points,4);g.DrawPolygon(&mark,points,4);}
@@ -1067,11 +1071,27 @@ static void destroyConstruction(){buildreserve::destroy();}
 static void constructionResult(int r,int n,uint32_t id,uint32_t token){buildreserve::result(r,n,id,token);}
 struct Surface{HDC dc{};HBITMAP bitmap{},old{};BYTE*bits{};int w{},h{};~Surface(){clear();}void clear(){if(dc){SelectObject(dc,old);DeleteObject(bitmap);DeleteDC(dc);}dc=nullptr;bitmap=nullptr;bits=nullptr;w=h=0;}bool resize(int x,int y){if(x==w&&y==h&&dc)return true;clear();if(x<1||y<1||x>8192||y>8192)return false;BITMAPINFO bi{};bi.bmiHeader.biSize=sizeof(BITMAPINFOHEADER);bi.bmiHeader.biWidth=x;bi.bmiHeader.biHeight=-y;bi.bmiHeader.biPlanes=1;bi.bmiHeader.biBitCount=32;HDC screen=GetDC(nullptr);dc=CreateCompatibleDC(screen);bitmap=CreateDIBSection(screen,&bi,DIB_RGB_COLORS,(void**)&bits,nullptr,0);ReleaseDC(nullptr,screen);if(!bitmap||!dc){clear();return false;}old=(HBITMAP)SelectObject(dc,bitmap);w=x;h=y;return true;}};static Surface surface;
 #include "watch_windows.h"
+namespace worldrender {
+struct Job {uint32_t pid,match,tick;int w,h,clientW,clientH;POINT origin;std::function<void(Graphics&)> draw;};
+struct Frame {uint32_t pid,match,tick;int w,h,clientW,clientH;POINT origin;std::vector<uint32_t> pixels;};
+static asyncwork::Latest<Job,Frame> worker([](const Job&j)->std::shared_ptr<const Frame>{
+ if(j.w<1||j.h<1||j.w>8192||j.h>8192||uint64_t(j.w)*j.h>16*1024*1024)return {};
+ auto out=std::make_shared<Frame>();out->pid=j.pid;out->match=j.match;out->tick=j.tick;out->w=j.w;out->h=j.h;out->clientW=j.clientW;out->clientH=j.clientH;out->origin=j.origin;out->pixels.resize(size_t(j.w)*j.h);
+ Bitmap bm(j.w,j.h,j.w*4,PixelFormat32bppPARGB,reinterpret_cast<BYTE*>(out->pixels.data()));{Graphics g(&bm);j.draw(g);}return out;
+});
+static std::shared_ptr<const Frame> displayed;
+static void invalidate(){worker.invalidate();displayed.reset();}
+static void present(){auto frame=worker.get();if(!frame||frame==displayed||frame->pid!=pid||frame->match!=snap.match||DWORD(GetTickCount()-frame->tick)>500)return;
+ RECT client{};GetClientRect(game,&client);if(client.right!=frame->clientW||client.bottom!=frame->clientH)return;
+ if(!surface.resize(frame->w,frame->h))return;memcpy(surface.bits,frame->pixels.data(),frame->pixels.size()*4);
+ POINT origin=frame->origin,zero{};SIZE size{frame->w,frame->h};BLENDFUNCTION blend{AC_SRC_OVER,0,255,AC_SRC_ALPHA};bool ok=UpdateLayeredWindow(overlay,nullptr,&origin,&size,surface.dc,&zero,0,&blend,ULW_ALPHA)!=0;overlayRecovery.submitted(ok);if(ok){displayed=frame;++displayCounters.uploads;overlaystack::place(overlay,overlaystack::Layer::World,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE|SWP_SHOWWINDOW);}
+}
+}
 static void paint(){
  ++displayCounters.paints;
  if(foregroundGame())sampleExternal(GetTickCount()); // Display cadence is independent of 16 ms command servicing.
  bool battlefield=foregroundGame()&&external::display::inspect([](uint32_t at,void*out,size_t n){return externalReader.readFresh(at,out,n);}).visible();
- if(!battlefield||snap.renderStatus!=1){overlayRecovery.suspend();ShowWindow(overlay,SW_HIDE);hideAircraftButton();minimap::hide();watchwindows::hide();hideConstruction();clearPassengerDisplay();return;}
+ if(!battlefield||snap.renderStatus!=1){worldrender::invalidate();overlayRecovery.suspend();ShowWindow(overlay,SW_HIDE);hideAircraftButton();minimap::hide();watchwindows::hide();hideConstruction();clearPassengerDisplay();return;}
  DWORD now=sampleClock(shared),renderNow=sampleRenderClock(shared);int labelCount=motion.render(renderNow,labelViews);
  const auto&statusFrame=externalSampler.unitStatuses();
  int statusCount=statusOptions()&&externalData&&external::status::fresh(statusFrame,externalData->match,renderNow)?std::min(statusFrame.count,statusMotion.render(renderNow,statusViews)):0;
@@ -1095,7 +1115,8 @@ static void paint(){
  bool tabPhase=(renderNow/400)%2==0;bool spiderPhase=(renderNow/650)%2==0;
  bool panel=SendMessageW(check[6],BM_GETCHECK,0,0)==BST_CHECKED;
  bool hasToast=panel&&now<toastUntil;bool summary=panel&&snap.transports;
- if(!formationhost::visible()&&!labelCount&&!hasToast&&!summary&&!snap.threatCount&&!snap.crateCount&&!enemyCount&&!statusCount&&!idleTabs&&passengerBubbles.empty()&&airLines.empty()&&nativeBadges.empty()){overlayRecovery.suspend();ShowWindow(overlay,SW_HIDE);return;}
+ worldrender::present();
+ if(!formationhost::visible()&&!labelCount&&!hasToast&&!summary&&!snap.threatCount&&!snap.crateCount&&!enemyCount&&!statusCount&&!idleTabs&&passengerBubbles.empty()&&airLines.empty()&&nativeBadges.empty()){worldrender::invalidate();overlayRecovery.suspend();ShowWindow(overlay,SW_HIDE);return;}
  viewport::Scale view;if(!view.set(snap.width,snap.height,r.right,r.bottom)){ShowWindow(overlay,SW_HIDE);return;}
  const int physicalW=r.right,physicalH=r.bottom;r.right=view.gameWidth;r.bottom=view.gameHeight;
  const float sx=1,sy=1; // Positions, glyphs, icons and bounds share game-pixel space.
@@ -1128,17 +1149,21 @@ static void paint(){
  changed=changed||drawnStatusCount!=statusCount||drawnStatusWidth!=statusFrame.width||drawnStatusHeight!=statusFrame.height||memcmp(drawnStatusViews,statusViews,sizeof(visual::LabelView)*statusCount)||memcmp(drawnStatuses,statusFrame.items,sizeof(external::status::Marker)*statusCount);
  origin.x+=view.left(left);origin.y+=view.top(up);
  changed=overlayRecovery.due(GetTickCount(),true,{uintptr_t(game),pid,snap.match,physicalW,physicalH},IsWindowVisible(overlay)!=0)||changed;
- if(!changed){RECT shown{};GetWindowRect(overlay,&shown);if(shown.left!=origin.x||shown.top!=origin.y||!IsWindowVisible(overlay))overlaystack::place(overlay,overlaystack::Layer::World,origin.x,origin.y,0,0,SWP_NOSIZE|SWP_NOACTIVATE|SWP_SHOWWINDOW);return;}
- int w=((view.width(right-left)+65)/64)*64,h=((view.height(bottom-up)+33)/32)*32;if(!surface.resize(w,h))return;
+ if(!changed){if(!worldrender::displayed)return;RECT shown{};GetWindowRect(overlay,&shown);if(shown.left!=origin.x||shown.top!=origin.y||!IsWindowVisible(overlay))overlaystack::place(overlay,overlaystack::Layer::World,origin.x,origin.y,0,0,SWP_NOSIZE|SWP_NOACTIVATE|SWP_SHOWWINDOW);return;}
+ int w=((view.width(right-left)+65)/64)*64,h=((view.height(bottom-up)+33)/32)*32;
  drawn.transports=snap.transports;drawn.used=snap.used;drawn.capacity=snap.capacity;drawn.threatCount=snap.threatCount;drawn.crateCount=snap.crateCount;memcpy(drawn.threats,snap.threats,sizeof(Threat)*snap.threatCount);memcpy(drawn.crates,snap.crates,sizeof(CrateMark)*snap.crateCount);drawnCount=labelCount;memcpy(drawnViews,labelViews,sizeof(visual::LabelView)*labelCount);oldW=physicalW;oldH=physicalH;oldMargin=topMargin;revision=paintRevision;lastPanel=panel;lastSummary=summary;lastToast=hasToast;oldToast=toast;
  drawnEnemyCount=enemyCount;drawnEnemyWidth=enemyFrame.width;drawnEnemyHeight=enemyFrame.height;memcpy(drawnEnemies,enemyFrame.items,sizeof(external::enemies::Marker)*enemyCount);memcpy(drawnEnemyViews,enemyViews,sizeof(visual::LabelView)*enemyCount);
  drawnStatusCount=statusCount;drawnStatusWidth=statusFrame.width;drawnStatusHeight=statusFrame.height;memcpy(drawnStatuses,statusFrame.items,sizeof(external::status::Marker)*statusCount);memcpy(drawnStatusViews,statusViews,sizeof(visual::LabelView)*statusCount);
  drawnSpiderPhase=spiderPhase;drawnPassengers=passengerBubbles;drawn.width=snap.width;drawn.height=snap.height;drawnShapeRevision=sidebarShapes.revision;drawnAirLines=airLines;drawnBadges=nativeBadges;drawnIdleTabs=idleTabs;drawnTabPhase=tabPhase;
- memset(surface.bits,0,size_t(surface.w)*surface.h*4);
- {Bitmap bm(surface.w,surface.h,surface.w*4,PixelFormat32bppPARGB,surface.bits);Graphics g(&bm);g.SetSmoothingMode(SmoothingModeAntiAlias);g.ScaleTransform(view.x,view.y);g.TranslateTransform(-float(left),-float(up));
+ auto labels=std::vector<visual::LabelView>(labelViews,labelViews+labelCount),enemies=std::vector<visual::LabelView>(enemyViews,enemyViews+enemyCount),statuses=std::vector<visual::LabelView>(statusViews,statusViews+statusCount);
+ auto threats=std::vector<Threat>(snap.threats,snap.threats+snap.threatCount);auto crates=std::vector<CrateMark>(snap.crates,snap.crates+snap.crateCount);
+ std::array<external::sidebar::Frame,4> shapes; // immutable sidebar SHP pixels
+ for(int i=0;i<4;++i)if(idleTabs&(1u<<i))shapes[i]=sidebarShapes.frames[i];
+ auto draw=[=,labelViews=std::move(labels),enemyViews=std::move(enemies),statusViews=std::move(statuses),formation=formationhost::drawing(),used=snap.used,capacity=snap.capacity,toast=toast,labelScale=labelScalePercent](Graphics&g) mutable {
+ g.SetSmoothingMode(SmoothingModeAntiAlias);g.ScaleTransform(view.x,view.y);g.TranslateTransform(-float(left),-float(up));
   for(const auto&b:opaquePanels)g.SetClip(RectF(float(b.left),float(b.top),float(b.right-b.left),float(b.bottom-b.top)),CombineModeExclude);
   if(idleTabs&&tabPhase){auto state=g.Save();g.SetInterpolationMode(InterpolationModeNearestNeighbor);g.SetPixelOffsetMode(PixelOffsetModeHalf);
-   for(int i=0;i<4;++i)if(idleTabs&(1u<<i)){auto&f=sidebarShapes.frames[i];Bitmap shape(f.width,f.height,f.width*4,PixelFormat32bppPARGB,reinterpret_cast<BYTE*>(f.pixels.data()));g.DrawImage(&shape,RectF(f.x*sx,f.y*sy,f.width*sx,f.height*sy));}g.Restore(state);
+   for(int i=0;i<4;++i)if(idleTabs&(1u<<i)){auto&f=shapes[i];Bitmap shape(f.width,f.height,f.width*4,PixelFormat32bppPARGB,reinterpret_cast<BYTE*>(f.pixels.data()));g.DrawImage(&shape,RectF(f.x*sx,f.y*sy,f.width*sx,f.height*sy));}g.Restore(state);
   }
   for(const auto&b:nativeBadges){SolidBrush tag(Color(230,97,67,14));g.FillRectangle(&tag,b.x*sx,b.y*sy,b.w*sx,b.h*sy);
    std::wstring numbers;for(int i=0;i<construction::Capacity;++i)if(b.positions&(1<<i))numbers+=std::to_wstring(i+1);
@@ -1147,19 +1172,20 @@ static void paint(){
   for(int i=0;i<enemyCount;++i){const auto&v=enemyViews[i];if(external::enemies::onScreen(v.x,v.y,enemyFrame.width,enemyFrame.height))drawEnemyMarker(g,enemyFrame.items[i],v,sx,sy);}g.Restore(enemyClip);
   Pen flightPen(Color(210,130,235,160),1.5f);flightPen.SetEndCap(LineCapArrowAnchor);for(auto l:airLines){g.DrawLine(&flightPen,float(l.x)*sx,float(l.y)*sy,float(l.tx)*sx,float(l.ty)*sy);g.DrawEllipse(&flightPen,float(l.tx)*sx-3,float(l.ty)*sy-3,6.f,6.f);}
   Pen threatPen(Color(185,245,114,223),1.6f);threatPen.SetEndCap(LineCapArrowAnchor);
-  for(int i=0;i<snap.threatCount;++i){auto&t=snap.threats[i];float x=t.x*sx,y=t.y*sy,tx=t.tx*sx,ty=t.ty*sy;g.DrawLine(&threatPen,x,y,tx,ty);g.DrawEllipse(&threatPen,tx-7,ty-7,14.f,14.f);}
+  for(int i=0;i<threats.size();++i){auto&t=threats[i];float x=t.x*sx,y=t.y*sy,tx=t.tx*sx,ty=t.ty*sy;g.DrawLine(&threatPen,x,y,tx,ty);g.DrawEllipse(&threatPen,tx-7,ty-7,14.f,14.f);}
   Pen cratePen(Color(245,255,205,82),2.f);
-  for(int i=0;i<snap.crateCount;++i){auto&c=snap.crates[i];float x=c.x*sx,y=c.y*sy;g.DrawRectangle(&cratePen,x-10,y-9,20.f,18.f);std::wstring text=c.preview<0?L"随机箱":std::wstring(L"预设 · ")+crateName(c.preview);drawText(g,text,x-text.size()*6,y-29,12,Color(255,255,216,117));}
+  for(int i=0;i<crates.size();++i){auto&c=crates[i];float x=c.x*sx,y=c.y*sy;g.DrawRectangle(&cratePen,x-10,y-9,20.f,18.f);std::wstring text=c.preview<0?L"随机箱":std::wstring(L"预设 · ")+crateName(c.preview);drawText(g,text,x-text.size()*6,y-29,12,Color(255,255,216,117));}
   auto statusClip=g.Save();g.SetClip(RectF(0,0,float(statusFrame.width),float(statusFrame.height)),CombineModeIntersect);
   for(int i=0;i<statusCount;++i)drawUnitStatus(g,statusFrame.items[i],statusViews[i],spiderPhase);g.Restore(statusClip);
-  for(int i=0;i<labelCount;++i)drawLabel(g,labelViews[i],sx,sy);
+  for(int i=0;i<labelCount;++i)drawLabel(g,labelViews[i],sx,sy,labelScale);
   for(const auto&b:passengerBubbles)drawPassengerBubble(g,b);
-  formationhost::draw(g);
+  formationhost::draw(g,formation);
   float y=top;
-  if(summary){std::wstring text=L"载员 "+std::to_wstring(snap.used)+L" / "+std::to_wstring(snap.capacity)+L" · 剩余 "+std::to_wstring(std::max(0,snap.capacity-snap.used));SolidBrush bg(Color(150,13,21,31));g.FillRectangle(&bg,panelX,y,panelW,26.f);drawText(g,text,panelX+10,y+4,13,Color::White);y+=30;}
+  if(summary){std::wstring text=L"载员 "+std::to_wstring(used)+L" / "+std::to_wstring(capacity)+L" · 剩余 "+std::to_wstring(std::max(0,capacity-used));SolidBrush bg(Color(150,13,21,31));g.FillRectangle(&bg,panelX,y,panelW,26.f);drawText(g,text,panelX+10,y+4,13,Color::White);y+=30;}
   if(hasToast){SolidBrush bg(Color(155,13,21,31));g.FillRectangle(&bg,panelX,y,panelW,27.f);drawText(g,toast,panelX+10,y+4,12,Color(255,220,233,247));y+=31;}
- }
- SIZE size{surface.w,surface.h};POINT zero{};BLENDFUNCTION blend{AC_SRC_OVER,0,255,AC_SRC_ALPHA};bool uploaded=UpdateLayeredWindow(overlay,nullptr,&origin,&size,surface.dc,&zero,0,&blend,ULW_ALPHA)!=0;overlayRecovery.submitted(uploaded);if(uploaded)++displayCounters.uploads;overlaystack::place(overlay,overlaystack::Layer::World,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE|SWP_SHOWWINDOW);
+ };
+ worldrender::worker.submit({pid,snap.match,GetTickCount(),w,h,physicalW,physicalH,origin,std::move(draw)});
+
 }
 #include "frame_clock.h"
 static WORD binding(const char*id){for(auto&b:swBindings)if(b.id==id)return b.key;return 0;}
@@ -1733,7 +1759,7 @@ if(id==991){wchar_t query[128]{};GetWindowTextW(featureSearch,query,128);std::ws
 #ifdef RA2_UNIFIED
  if(wp!=suite::CloseToken){suite::requestClose();return 0;}
 #endif
- flushAutoSettings();DestroyWindow(w);return 0;case WM_DESTROY:watchwindows::destroy();minimap::destroy();destroyAircraftButton();destroyConstruction();KillTimer(w,AutoSaveTimer);save();stopClock();KillTimer(w,1);KillTimer(w,2);detach();for(int id:registeredKeyIDs)UnregisterHotKey(w,id);registeredKeyIDs.clear();PostQuitMessage(0);return 0;}return DefWindowProcW(w,msg,wp,lp);}
+ flushAutoSettings();DestroyWindow(w);return 0;case WM_DESTROY:worldrender::worker.shutdown();formationhost::shutdown();watchhost::shutdown();watchwindows::destroy();minimap::destroy();destroyAircraftButton();destroyConstruction();KillTimer(w,AutoSaveTimer);save();stopClock();KillTimer(w,1);KillTimer(w,2);detach();for(int id:registeredKeyIDs)UnregisterHotKey(w,id);registeredKeyIDs.clear();PostQuitMessage(0);return 0;}return DefWindowProcW(w,msg,wp,lp);}
 int WINAPI wWinMain(HINSTANCE h,HINSTANCE,LPWSTR,int show){SetProcessDPIAware();HANDLE single=CreateMutexW(nullptr,FALSE,L"Local\\RA2Assist_v013_Host");if(GetLastError()==ERROR_ALREADY_EXISTS){MessageBoxW(nullptr,L"战术助手已在运行。",L"尤里战术助手",MB_OK);return 0;}
  wchar_t p[2048];GetModuleFileNameW(nullptr,p,2048);root=p;root.resize(root.find_last_of(L"\\/"));autolog::initialize(root);autolog::write(L"host-start criticalLog=automatic rotation=2MiB+2 backups; verbose Debug.Diagnostics is independent");loadAdditionalSettings();
  megaQueueMode=value(L"Orders",L"MegaMissionBackend",0)==1?1u:0u;

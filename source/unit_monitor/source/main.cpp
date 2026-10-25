@@ -1,3 +1,4 @@
+#include "../../shared/source/latest_worker.h"
 #include "../../shared/source/modern_ui.h"
 #include "../../shared/source/overlay_stack.h"
 #include "../../shared/source/release_version.h"
@@ -121,6 +122,7 @@ static void text(Graphics& g,const std::wstring& s,float x,float y,float size,Co
 struct CachedIconBitmap {uint64_t hash=0;uint32_t pixels[um::IW*um::IH]{};std::unique_ptr<Bitmap> image;};
 static std::map<std::string,std::unique_ptr<CachedIconBitmap>> iconImages;
 static void drawIcon(Graphics& g,const um::Type& t,const um::Snapshot& s,float x,float y,float w,float h,uint32_t col){
+ static thread_local std::map<std::string,std::unique_ptr<CachedIconBitmap>> iconImages;
  if(t.iconReady&&s.paletteReady){
   auto&images=iconImages;
   const auto key=um::iconcache::key(t);uint64_t hash=um::iconcache::hash(s.palette,sizeof s.palette,um::iconcache::hash(t.icon,sizeof t.icon));
@@ -132,9 +134,12 @@ static void drawIcon(Graphics& g,const um::Type& t,const um::Snapshot& s,float x
  else {Pen p(color(col),1.5f);g.DrawRectangle(&p,x+2,y+2,w-4,h-4);std::wstring id;for(char c:t.id){if(!c)break;id+=wchar_t((unsigned char)c);}text(g,id.substr(0,8),x+4,y+h/3,10,Color::White);}
  Pen border(color(col),1.5f);g.DrawRectangle(&border,x,y,w,h);
 }
-static void render(int width,int height,POINT origin,int gameWidth,int gameHeight){
- if(width<100||height<100||width>16384||height>16384)return;
- viewport::Scale view;if(!view.set(gameWidth,gameHeight,width,height))return;
+struct RenderRequest {int width,height,gameWidth,gameHeight,leftMargin,topMargin,scalePercent,page;bool showOthers,buildings,demo;uint32_t pid,match,tick;std::shared_ptr<const um::Snapshot> snap;};
+struct RenderFrame {RenderRequest request;int width,height;std::vector<uint32_t> pixels;};
+static std::shared_ptr<const RenderFrame> renderPixels(const RenderRequest&r){
+ auto snap=r.snap;int width=r.width,height=r.height,gameWidth=r.gameWidth,gameHeight=r.gameHeight,leftMargin=r.leftMargin,topMargin=r.topMargin,scalePercent=r.scalePercent,page=r.page;bool showOthers=r.showOthers,buildings=r.buildings,demo=r.demo;
+ if(width<100||height<100||width>16384||height>16384)return {};
+ viewport::Scale view;if(!view.set(gameWidth,gameHeight,width,height))return {};
  // Scale content around the existing margin anchor; fit all player columns.
  int players=0;for(int i=0;i<snap->playerCount;++i)if(showOthers||snap->players[i].local)++players;
  float anchorX=float(std::clamp(leftMargin,0,std::max(0,gameWidth-100))),anchorY=float(std::clamp(topMargin,0,std::max(0,gameHeight-100)));
@@ -153,7 +158,8 @@ static void render(int width,int height,POINT origin,int gameWidth,int gameHeigh
  width=std::min(viewportW,std::max(1,int(croppedW+2)));height=std::min(viewportH,std::max(1,int(croppedH+2)));
  if(demo){width=viewportW;height=viewportH;}
  width=view.width(width);height=view.height(height);
- if(!surface.ensure(width,height))return;void* bits=surface.bits;memset(bits,0,size_t(width)*height*4);
+ if(width<1||height<1||uint64_t(width)*height>16*1024*1024)return {};
+ auto result=std::make_shared<RenderFrame>();result->request=r;result->width=width;result->height=height;result->pixels.resize(size_t(width)*height);void*bits=result->pixels.data();
  {Bitmap bm(width,height,width*4,PixelFormat32bppPARGB,(BYTE*)bits);Graphics g(&bm);g.SetSmoothingMode(SmoothingModeAntiAlias);g.SetCompositingMode(CompositingModeSourceOver);
  g.ScaleTransform(view.x,view.y);g.TranslateTransform(left-6,top-6);
  float cursorX=6.f;
@@ -193,9 +199,17 @@ static void render(int width,int height,POINT origin,int gameWidth,int gameHeigh
  g.ResetTransform();
  if(demo)text(g,L"布局演示 · 模拟数据 · Ctrl+Alt+H 隐藏",8,height-32,14,Color(255,238,215,135));
  }
- renderDirty=false;paintedAlpha=-1;
+ return result;
 }
-static void present(POINT origin,int alpha,bool repair=false){
+static asyncwork::Latest<RenderRequest,RenderFrame> renderWorker(renderPixels);
+static std::shared_ptr<const RenderFrame> renderedFrame;
+static void render(int width,int height,POINT,int gameWidth,int gameHeight){
+ renderWorker.submit({width,height,gameWidth,gameHeight,leftMargin,topMargin,scalePercent,page,showOthers,buildings,demo,pid,oldMatch,GetTickCount(),std::make_shared<um::Snapshot>(*snap)});renderDirty=false;
+}
+static void present(POINT origin,int alpha,int width,int height,int gameWidth,int gameHeight,bool repair=false){
+ auto completed=renderWorker.get();if(completed&&completed!=renderedFrame){const auto&r=completed->request;
+  if(r.pid==pid&&r.match==oldMatch&&r.width==width&&r.height==height&&r.gameWidth==gameWidth&&r.gameHeight==gameHeight&&r.page==page&&r.scalePercent==scalePercent&&r.leftMargin==leftMargin&&r.topMargin==topMargin&&r.showOthers==showOthers&&r.buildings==buildings&&r.demo==demo&&DWORD(GetTickCount()-r.tick)<1000&&surface.ensure(completed->width,completed->height)){memcpy(surface.bits,completed->pixels.data(),completed->pixels.size()*4);renderedFrame=std::move(completed);paintedAlpha=-1;}}
+
  if(!surface.dc||alpha<=0){statsVisible(false);ShowWindow(overlay,SW_HIDE);paintedAlpha=0;return;}
  statsVisible(true);
  if(repair||alpha!=paintedAlpha||origin.x!=paintedOrigin.x||origin.y!=paintedOrigin.y||!IsWindowVisible(overlay)){
@@ -288,7 +302,7 @@ static void tick(){
  bool repair=overlayRecovery.due(now,desired&&alpha>0,{uintptr_t(game),pid,snap->match,r.right,r.bottom},IsWindowVisible(overlay)!=0);
  if(repair)renderDirty=true;
  if(renderDirty||!surface.dc)render(r.right,r.bottom,pt,gameWidth,gameHeight);
- present(pt,alpha,repair);
+ present(pt,alpha,r.right,r.bottom,gameWidth,gameHeight,repair);
 }
 static void buttonLabel(){
 #ifdef RA2_UNIFIED
@@ -356,7 +370,7 @@ static LRESULT CALLBACK proc(HWND w,UINT m,WPARAM a,LPARAM b){
  case WM_CTLCOLORSTATIC:case WM_CTLCOLORBTN:SetBkMode((HDC)a,OPAQUE);SetTextColor((HDC)a,modernui::Text);SetBkColor((HDC)a,modernui::Background);SetDCBrushColor((HDC)a,modernui::Background);return (LRESULT)GetStockObject(DC_BRUSH);
  case WM_DRAWITEM:{auto d=(DRAWITEMSTRUCT*)b;HBRUSH br=CreateSolidBrush((d->itemState&ODS_SELECTED)?RGB(47,76,99):RGB(31,48,68));FillRect(d->hDC,&d->rcItem,br);DeleteObject(br);SetBkMode(d->hDC,TRANSPARENT);SetTextColor(d->hDC,RGB(223,237,251));SelectObject(d->hDC,font);wchar_t t[50];GetWindowTextW(d->hwndItem,t,50);DrawTextW(d->hDC,t,-1,&d->rcItem,DT_CENTER|DT_VCENTER|DT_SINGLELINE);return TRUE;}
  case WM_PAINT:{PAINTSTRUCT ps;HDC dc=BeginPaint(w,&ps);RECT r;GetClientRect(w,&r);HBRUSH br=CreateSolidBrush(modernui::Background);FillRect(dc,&r,br);DeleteObject(br);SetBkMode(dc,TRANSPARENT);SetTextColor(dc,RGB(110,210,248));SelectObject(dc,font);TextOutW(dc,modernui::scale(14,consoleDpi)-consoleX,modernui::scale(12,consoleDpi)-consoleY,L"单位统计",lstrlenW(L"单位统计"));SetTextColor(dc,RGB(148,166,188));TextOutW(dc,modernui::scale(14,consoleDpi)-consoleX,modernui::scale(32,consoleDpi)-consoleY,L"玩家兵力与单位状态",lstrlenW(L"玩家兵力与单位状态"));EndPaint(w,&ps);return 0;}
- case WM_DESTROY:surface.clear();KillTimer(w,1);UnregisterHotKey(w,1);UnregisterHotKey(w,2);UnregisterHotKey(w,3);detach();DeleteObject(font);PostQuitMessage(0);return 0;}
+ case WM_DESTROY:renderWorker.shutdown();surface.clear();KillTimer(w,1);UnregisterHotKey(w,1);UnregisterHotKey(w,2);UnregisterHotKey(w,3);detach();DeleteObject(font);PostQuitMessage(0);return 0;}
  return DefWindowProcW(w,m,a,b);
 }
 int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR,int){

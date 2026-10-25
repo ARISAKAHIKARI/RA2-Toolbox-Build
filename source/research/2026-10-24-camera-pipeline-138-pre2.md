@@ -1,5 +1,7 @@
 # pre.2 副相机、实景小地图与覆盖层实现
 
+**后续更正**：建筑槽动画通常 OwnerObject=0、坐标为绝对值；显示帧使用 Value+Start。参见 [RenderFix2 实证](2026-10-24-native-animation-alignment-lighting.md)，本篇旧动画判定不再作为实现依据。
+
 日期：2026-10-24。实现进入集成验证；尚无游戏实机画面、真实 FPS 或联机验证。
 
 ## 证据

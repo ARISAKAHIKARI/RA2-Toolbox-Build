@@ -29,6 +29,7 @@ static bool autoSettingChanged(int id,int notification){
  if((id==897||id==898||id==899)&&notification==BN_CLICKED){bool on=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;if(id==897)extra.passengerBubbles=on;else if(id==898)extra.dangerPassengers=on;else extra.magnetronDrop=on;changedSetting();syncAdditional();return true;}
  if(id==9065&&select){int next=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));if(next>=0&&next<=1){minimapMode=next;changedSetting();}return true;}
  if(id==850&&select){int next=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));if(next>=0&&next<=3){minimapPosition=next;changedSetting();}return true;}
+ if((id==9100||id==9101)&&select){int next=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));if(next>=0&&next<=2){(id==9100?minimapAlignX:minimapAlignY)=next;changedSetting();}return true;}
  if(id==830&&notification==BN_CLICKED){minimapEnabled=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;if(!minimapEnabled)minimap::hide();changedSetting();return true;}
  if((id==9090&&notification==BN_CLICKED)||(id==9091&&select)||(id==9092&&notification==BN_CLICKED)){
   extra.viewZoomEnabled=false;extra.viewZoomPercent=100;SendMessageW(GetDlgItem(ui,9090),BM_SETCHECK,BST_UNCHECKED,0);SendMessageW(GetDlgItem(ui,9091),CB_SETCURSEL,2,0);syncAdditional();return true;
@@ -86,7 +87,7 @@ static bool autoSettingChanged(int id,int notification){
   if(!ok||value<lo||value>hi){setStatus(L"此项有效范围："+std::to_wstring(lo)+L"–"+std::to_wstring(hi)+L"；输入有效值后自动生效。");return false;}
   target=value;return true;};
  int* numeric=nullptr;int lo=0,hi=0;
- switch(id){case 851:numeric=&minimapX;hi=32768;break;case 852:numeric=&minimapY;hi=32768;break;case 831:numeric=&minimapScale;lo=100;hi=400;break;case 310:numeric=&fps;lo=5;hi=500;break;case 311:numeric=&topMargin;hi=4096;break;
+ switch(id){case 851:numeric=&minimapX;hi=32768;break;case 852:numeric=&minimapY;hi=32768;break;case 831:numeric=&minimapScale;lo=100;hi=1000;break;case 310:numeric=&fps;lo=5;hi=500;break;case 311:numeric=&topMargin;hi=4096;break;
  case 816:numeric=&labelScalePercent;lo=50;hi=250;break;
  case 817:numeric=&constructionScalePercent;lo=50;hi=250;break;
  case 797:numeric=&shiftClickGap;lo=0;hi=250;break;

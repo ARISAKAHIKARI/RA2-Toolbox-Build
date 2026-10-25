@@ -163,10 +163,12 @@ toastEdit=number(471,L"战术提示时长 / 毫秒",toastMs,L"500–60000");
 number(817,L"建筑预定面板缩放 / %",constructionScalePercent,L"50–250 · 默认 100");
 toggle(830,L"战术小地图",minimapEnabled);next();
 label(L"小地图画面",20,260);choices(combo(9065),{L"示意",L"实景"},minimapMode);next();
-number(831,L"小地图缩放 / %",minimapScale,L"100–400 · 默认 200");
+number(831,L"小地图缩放 / %",minimapScale,L"100–1000 · 默认 200");
 label(L"战术小地图位置",20,260);choices(combo(850),{L"原雷达左侧",L"画面左上",L"画面左下",L"自定义坐标"},minimapPosition);next();
 label(L"自定义位置 X / Y",20,260);edit(851,std::to_wstring(minimapX),290,100,true);edit(852,std::to_wstring(minimapY),405,100,true);next();
-note(L"坐标从游戏画面左上角计算；自动避开原雷达和飞机按钮。左击或拖动小地图可移动主视角。",44);
+label(L"自定义水平对齐",20,260);choices(combo(9100),{L"靠左",L"居中",L"靠右"},minimapAlignX);next();
+label(L"自定义垂直对齐",20,260);choices(combo(9101),{L"靠上",L"居中",L"靠下"},minimapAlignY);next();
+note(L"自定义坐标是布局框左上角，对齐决定地图在框内的位置。左上／左下预设按地图实际尺寸贴边；自动避开原雷达和飞机按钮。左击或拖动可移动主视角。",60);
 detailCheck=toggle(481,L"显示运行耗时",showDetails);next();
 
 heading(4,904,L"高级与实验性设置",L"实验性功能尚未完成联机验证，可能导致不同步或掉线。建议单独测试。");

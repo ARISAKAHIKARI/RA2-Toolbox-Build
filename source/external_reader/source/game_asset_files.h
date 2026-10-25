@@ -3,6 +3,8 @@
 #include <windows.h>
 namespace external { namespace assets {
 class Files {
+ struct Cached {std::vector<uint8_t> bytes;uint64_t used=0;};
+ std::map<std::string,Cached> cache;size_t cachedBytes=0;uint64_t clock=0;
  std::wstring root;Directory directory;uint32_t last=0,epoch=0,process=0;uint64_t fingerprint=0;
  uint64_t size(const std::string&nm)const{if(!safe(nm))return 0;WIN32_FILE_ATTRIBUTE_DATA a{};std::wstring p=root+std::wstring(nm.begin(),nm.end());if(!GetFileAttributesExW(p.c_str(),GetFileExInfoStandard,&a)||(a.dwFileAttributes&FILE_ATTRIBUTE_DIRECTORY))return 0;return (uint64_t(a.nFileSizeHigh)<<32)|a.nFileSizeLow;}
  bool read(const std::string&nm,uint64_t offset,void*out,size_t n)const{
@@ -10,7 +12,7 @@ class Files {
   LARGE_INTEGER pos;pos.QuadPart=offset;DWORD got=0;bool ok=SetFilePointerEx(f,pos,nullptr,FILE_BEGIN)&&ReadFile(f,out,DWORD(n),&got,nullptr)&&got==n;CloseHandle(f);return ok;
  }
 public:
- void clear(){root.clear();directory.clear();last=epoch=process=0;fingerprint=0;}
+ void clear(){root.clear();directory.clear();cache.clear();cachedBytes=0;last=epoch=process=0;fingerprint=0;}
  template<class Reader>void update(Reader&r,uint32_t pid,uint32_t match){
   uint32_t now=GetTickCount();if(pid==process&&match==epoch&&last&&uint32_t(now-last)<5000)return;
   if(pid!=process||match!=epoch)clear();process=pid;epoch=match;last=now;
@@ -25,10 +27,15 @@ public:
   std::vector<Slice> files;for(const auto&s:stamps){fold(s.slice.file.c_str(),s.slice.file.size()+1);fold(&s.slice.size,sizeof s.slice.size);fold(&s.time,sizeof s.time);files.push_back(s.slice);}
   for(const auto&i:decoded){fold(i.name.c_str(),i.name.size()+1);uint32_t count=uint32_t(i.entries.size());fold(&count,sizeof count);fold(i.entries.data(),i.entries.size()*sizeof(Entry));}
   if(next==fingerprint&&directory.count())return;
-  directory.build(std::move(files),std::move(decoded),[&](auto&nm,uint64_t at,void*out,size_t n){return read(nm,at,out,n);});fingerprint=next;
+  cache.clear();cachedBytes=0;directory.build(std::move(files),std::move(decoded),[&](auto&nm,uint64_t at,void*out,size_t n){return read(nm,at,out,n);});fingerprint=next;
  }
  size_t count()const{return directory.count();}
  uint64_t revision()const{return fingerprint^uint64_t(process)<<32^epoch;}
- bool load(const std::string&nm,std::vector<uint8_t>&out){if(root.empty())return false;return directory.load(nm,out,[&](auto&file,uint64_t at,void*p,size_t n){return read(file,at,p,n);},size(nm));}
+ bool load(const std::string&nm,std::vector<uint8_t>&out){if(root.empty())return false;auto key=name(nm);auto loose=size(nm);auto found=cache.find(key);if(!loose&&found!=cache.end()){found->second.used=++clock;out=found->second.bytes;return true;}
+  if(!directory.load(nm,out,[&](auto&file,uint64_t at,void*p,size_t n){return read(file,at,p,n);},loose))return false;
+  if(loose)return true; // Loose mod overrides can appear/change independently of MIX stamps.
+  constexpr size_t Budget=64*1024*1024;while(cachedBytes+out.size()>Budget&&!cache.empty()){auto old=cache.begin();for(auto i=cache.begin();i!=cache.end();++i)if(i->second.used<old->second.used)old=i;cachedBytes-=old->second.bytes.size();cache.erase(old);}
+  if(out.size()<=Budget){cache.emplace(key,Cached{out,++clock});cachedBytes+=out.size();}return true;
+ }
 };
 }}

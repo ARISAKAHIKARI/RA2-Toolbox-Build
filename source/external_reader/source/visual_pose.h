@@ -46,6 +46,7 @@ template<class Read>Pose pose(GameView<Read>&g,uint32_t p,uint32_t type,int kind
   else if(stand>0)out.frame=g.template get<int>(type+0xE28)+dir*stand;
   else out.frame=g.template get<int>(type+0xE2C)+dir*std::max(0,walk)+std::max(0,g.template get<int>(p+0x538))%std::max(1,walk);
  }
+ if(kind==3&&g.template get<int>(p+0x534)==0)out.variant=-2;
  if(out.frame<0||out.frame>=8192)out.frame=-1;return out;
 }
 }}

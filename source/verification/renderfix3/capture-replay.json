@@ -1,0 +1,60 @@
+{
+  "scope": "Replay private RA2Master game snapshots without distributing their contents.\nThe game memory and validity masks are real; only unavailable Win32 disk I/O is\nstubbed. This verifies production readers, SHP decode and CPU scene composition,\nnot Windows presentation or pixel equality with the running game.\n",
+  "game_exe_sha256": "7B8A068535D6AF06845EDF95AE829B113D00C02909330E16F197426CD7DB94B6",
+  "results": [
+    {
+      "stage": "01-off",
+      "restored_body_pixels": 0,
+      "slots": 39,
+      "captured": 39,
+      "old_parent_rejections": 39,
+      "decoded": 0,
+      "unloaded_shape_references": 39,
+      "opaque_pixels": 0,
+      "visible_anims": 0,
+      "painted_pixels": 0,
+      "radar_markers": 84,
+      "scene_ready": true,
+      "types": 15,
+      "min_object_intensity": 1056,
+      "max_object_intensity": 1168,
+      "palette_peak": 0
+    },
+    {
+      "stage": "02-on",
+      "restored_body_pixels": 6258,
+      "slots": 43,
+      "captured": 43,
+      "old_parent_rejections": 43,
+      "decoded": 2,
+      "unloaded_shape_references": 41,
+      "opaque_pixels": 3261,
+      "visible_anims": 2,
+      "painted_pixels": 1079,
+      "radar_markers": 88,
+      "scene_ready": true,
+      "types": 19,
+      "min_object_intensity": 1056,
+      "max_object_intensity": 1168,
+      "palette_peak": 252
+    },
+    {
+      "stage": "03-off",
+      "restored_body_pixels": 6258,
+      "slots": 44,
+      "captured": 44,
+      "old_parent_rejections": 44,
+      "decoded": 2,
+      "unloaded_shape_references": 42,
+      "opaque_pixels": 3261,
+      "visible_anims": 2,
+      "painted_pixels": 793,
+      "radar_markers": 90,
+      "scene_ready": true,
+      "types": 19,
+      "min_object_intensity": 1056,
+      "max_object_intensity": 1168,
+      "palette_peak": 252
+    }
+  ]
+}
