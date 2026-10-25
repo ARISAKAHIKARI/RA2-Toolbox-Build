@@ -16,8 +16,11 @@ int main(){
  watch::Target ta{a,10},tb{b,11};assert(watch::choose(read,{}, {},true)==ta);assert(watch::choose(read,tb,ta,true)==tb);assert(!watch::choose(read,{},ta,false));
  assert(watch::manual(read)==tb);write(a+0x431,uint8_t(1));assert(watch::manual(read)==ta);write(a+0x431,uint8_t(0));
  uint32_t cells=alloc(512*512*4);write(radar::Map+0x13C,cells);write(radar::Map+0x140,512*512);
+ write(radar::Map+0xF4,32);write(radar::Map+0xF8,64);write(radar::Map+0x104,32);write(radar::Map+0x108,64);
+ write(0xB0CD48,.144337567);write(0x89E7C0,104);
  for(int y=25;y<=35;++y)for(int x=15;x<=25;++x){uint32_t p=alloc(0x148);write(cells+(y*512+x)*4,p);write(p+0x24,int16_t(x));write(p+0x26,int16_t(y));write(p+0x120,int8_t(-1));write(p+0x121,int8_t(-1));}
  auto frame=watch::sample(read,ta,false);assert(frame.focus==ta&&frame.cx==20&&frame.cy==30&&frame.dangerous&&frame.passengers.size()==1&&frame.actors.size()==2);
+ auto cellIn=[&](const watch::Frame&f,int x,int y){int ix=x-f.cx+f.radius,iy=y-f.cy+f.radius;return ix<0||iy<0||ix>=f.side||iy>=f.side?0u:f.cells[iy*f.side+ix];};
  assert(std::all_of(std::begin(frame.cells),std::end(frame.cells),[](auto c){return c!=0;}));
  uint32_t center=0;read(cells+(30*512+20)*4,&center,4);write(center+0x120,int8_t(0));frame=watch::sample(read,ta,false);assert(frame.cells[60]==0&&frame.actors.size()==1);frame=watch::sample(read,ta,true);assert(frame.cells[60]&&frame.actors.size()==2);
  // Stable identities: a recycled address must not inherit the pinned unit.
@@ -29,10 +32,36 @@ int main(){
  uint32_t tileType=alloc(0x400),overlayType=alloc(0x400),tree=alloc(0x100),treeType=alloc(0x400);
  vec(0xA8ED28,{tileType});vec(0xA83D80,{overlayType});write(tileType+0xA4,0x30000u);write(overlayType+0xA4,0x31000u);
  write(center+0x38,0);write(center+0x11A,uint8_t(2));write(center+0x11B,uint8_t(3));write(center+0x44,0);write(center+0x11E,uint8_t(1));
+ write(a+0xA4,312); // Put the focus on its level-3 terrain, not below that floor.
  write(tree,0x7F522Cu);write(tree+0x10,20u);write(tree+0x6C,100);write(tree+0x9C,20*256+128);write(tree+0xA0,30*256+128);write(tree+0xC8,treeType);write(tree+0xAC,1);vec(0xA8E988,{tree});
  frame=watch::sample(read,ta,true);assert(frame.tiles[60].image==0x30000&&frame.tiles[60].sub==2&&frame.tiles[60].level==3&&frame.tiles[60].overlay==0x31000&&frame.tiles[60].overlayFrame==1);
  assert(frame.actors.size()==3&&std::any_of(frame.actors.begin(),frame.actors.end(),[&](const auto&a){return a.kind==4&&a.stage==1&&a.type==treeType;}));
  write(tree+0xCD,uint8_t(1));assert(watch::sample(read,ta,true).actors.size()==2);
+ // A mission trigger changes only VisibleRect, with the same cells, focus,
+ // frame counter and match. The next refresh must reject the old domain.
+ write(radar::Map+0x100,9);write(radar::Map+0x108,55);
+ assert(!watch::refresh(read,frame));auto reduced=watch::sample(read,ta,true);
+ assert(reduced.focus==ta&&!cellIn(reduced,20,30)&&reduced.bounds.top==9);
+ write(radar::Map+0x100,0);write(radar::Map+0x108,64);
+ auto expanded=watch::sample(read,ta,true);assert(cellIn(expanded,20,30)&&expanded.bounds!=reduced.bounds);
+ // A readable but physically out-of-map cell must stay hidden even in reveal.
+ write(radar::Map+0xF4,60);write(radar::Map+0x104,60);
+ auto outside=watch::sample(read,ta,true);assert(outside.focus==ta&&!cellIn(outside,20,30));
+ // Native camera clamping at a map corner moves the view away from its
+ // target. Sample around that clamped center, otherwise 12 visible cells in
+ // this case fall outside the old target-centered radius-20 inventory.
+ write(radar::Map+0xF4,131);write(radar::Map+0xF8,146);write(radar::Map+0xFC,3);write(radar::Map+0x100,5);write(radar::Map+0x104,124);write(radar::Map+0x108,135);
+ write(a+0x9C,9*256+128);write(a+0xA0,133*256+128);write(a+0xA4,0);
+ for(int y=100;y<=170;++y)for(int x=1;x<=60;++x){uint32_t p=alloc(0x148);write(cells+(y*512+x)*4,p);write(p+0x24,int16_t(x));write(p+0x26,int16_t(y));write(p+0x120,int8_t(-1));write(p+0x121,int8_t(-1));}
+ auto corner=watch::sample(read,ta,true,20);assert(corner.focus==ta&&corner.focusCx==9&&corner.focusCy==133&&corner.cameraX==-3430&&corner.cameraY==2296);
+ int beyondOldInventory=0;
+ for(int y=100;y<=170;++y)for(int x=1;x<=60;++x){double px=160+((x-y)*30-corner.cameraX)*.5,py=128+((x+y+1)*15-corner.cameraY)*.5;
+  if(!corner.bounds.usable(x,y)||px<0||px>=320||py<0||py>=256)continue;
+  int ix=x-corner.cx+corner.radius,iy=y-corner.cy+corner.radius;
+  assert(ix>=0&&ix<corner.side&&iy>=0&&iy<corner.side&&corner.cells[iy*corner.side+ix]);
+  if(std::abs(x-corner.focusCx)>20||std::abs(y-corner.focusCy)>20)++beyondOldInventory;
+ }
+ assert(beyondOldInventory==12&&watch::refresh(read,corner));
  write(radar::Map+0x140,512*512+1);assert(!watch::sample(read,ta,true).focus);
  std::cout<<"PASS automatic dangerous carrier, hover/selection pin, 121 cells, range edge, fog, passengers/cloak exclusion, dead/recycled target, corrupt list and map bounds\n";
 }

@@ -13,7 +13,8 @@ static DWORD GetTickCount(){return clockValue;}static uint32_t commandMatch(){re
 static struct {bool watchEnabled=true,watchDanger=false,renderReveal=false;int mapStrategy=0;uint32_t watchKeys[3]={87,87,86};}extra;
 static struct {int chat=0,renderStatus=1,width=800,height=600;}snap;
 static std::vector<uint8_t> memory(0x1800000);
-static struct {bool read(uint32_t p,void*out,size_t n){if(uint64_t(p)+n>memory.size())return false;memcpy(out,memory.data()+p,n);return true;}}externalReader;
+static uint32_t blockedAddress=0;
+static struct {bool read(uint32_t p,void*out,size_t n){if(p==blockedAddress||uint64_t(p)+n>memory.size())return false;memcpy(out,memory.data()+p,n);return true;}}externalReader;
 struct Color {template<class... T>Color(T...){}};struct SolidBrush {SolidBrush(Color){}};struct Pen {Pen(Color,float){}};struct PointF {float x,y;};struct RectF {float x,y,w,h;RectF(float a,float b,float c,float d):x(a),y(b),w(c),h(d){}};struct Bitmap {Bitmap(int,int,int,int,BYTE*){}};
 struct ColorMatrix {float m[5][5]{};};static ColorMatrix drawnMatrix;static std::vector<RectF> drawnRects;static std::vector<float> drawnGains;static std::vector<RectF> excluded;struct ImageAttributes {void SetColorMatrix(ColorMatrix*m){drawnMatrix=*m;}};
 constexpr int PixelFormat32bppPARGB=1,CombineModeIntersect=1,CombineModeExclude=3,UnitPixel=2;
@@ -54,6 +55,7 @@ int main(){
  auto put=[](uint32_t p,auto v){memcpy(memory.data()+p,&v,sizeof v);};
  auto vec=[&](uint32_t p,uint32_t storage,const std::vector<uint32_t>&items){put(p+4,storage);put(p+8,int(items.size()));put(p+16,int(items.size()));memcpy(memory.data()+storage,items.data(),items.size()*4);};
  constexpr uint32_t cells=0x200000;put(external::radar::Map+0x13C,cells);put(external::radar::Map+0x140,512*512);uint32_t cell=0x400000;
+ put(external::radar::Map+0xF4,32);put(external::radar::Map+0xF8,64);put(external::radar::Map+0x104,32);put(external::radar::Map+0x108,64);
  for(int y=10;y<=50;++y)for(int x=10;x<=50;++x){put(cells+(y*512+x)*4,cell);put(cell+0x24,int16_t(x));put(cell+0x26,int16_t(y));put(cell+0x120,int8_t(-1));put(cell+0x121,int8_t(-1));cell+=0x150;}
  std::vector<uint32_t> actors;for(int i=0;i<300;++i){uint32_t p=0x10000+i*0x800,t=0x800000+i*0x2000;actors.push_back(p);put(p,0x7F5C70u);put(p+0x10,i+1);put(p+0x6C,100);put(p+0x74,uint8_t(1));put(p+0x90,uint8_t(1));put(p+0x6C4,t);put(p+0x21C,0x180000u);put(p+0x9C,(30+i%20)*256+128);put(p+0xA0,(30+i/20)*256+128);put(p+0x83,uint8_t(i==0));put(t+0xB0,1u);put(t+0xCA1,uint8_t(1));put(p+0x388,uint16_t(i*1024));put(p+0x3A0,uint16_t(16384));}
  vec(0xA8EC78,0x190000,actors);vec(0xA8ED28,0x1A0000,{0xF00000});engine.process=pid;engine.epoch=1;engine.tracks[0].target={actors[0],1};
@@ -75,6 +77,22 @@ int main(){
  before=captures;engine.tracks[1].target={actors[1],2};engine.tracks[2].target={actors[2],3};clockValue+=50;engine.update(clockValue);
  assert(captures==before&&engine.actorArt.size()==300);for(auto&v:engine.views)assert(v.shown&&v.frame.actors.size()==300);
  assert(engine.views[0].box.y<engine.views[1].box.y&&engine.views[1].box.y<engine.views[2].box.y);
+ // Alternate a temporarily unreadable third focus at the overlay cadence.
+ // Its last complete scene and all three boxes must survive every failed read.
+ std::array<external::watch::Track,3> requestedTracks;std::copy(std::begin(engine.tracks),std::end(engine.tracks),requestedTracks.begin());engine.syncTracks(42,requestedTracks,true);
+ external::watch::Box stableBoxes[3];for(int i=0;i<3;++i)stableBoxes[i]=engine.views[i].box;
+ for(int n=0;n<120;++n){
+  blockedAddress=n%2?actors[2]+0x74:0;put(0xA8ED84,100+n);auto priorFocus=engine.views[2].frame.focus;auto priorTick=engine.views[2].tick;
+  engine.update(clockValue+=2);for(int i=0;i<3;++i){auto b=engine.views[i].box,s=stableBoxes[i];assert(engine.tracks[i]&&engine.views[i].shown&&b.x==s.x&&b.y==s.y&&b.w==s.w&&b.h==s.h);}
+  assert(engine.views[2].frame.focus==priorFocus);if(blockedAddress)assert(engine.views[2].tick==priorTick);else assert(engine.views[2].tick==clockValue);
+ }
+ blockedAddress=external::radar::Map+0x13C;put(0xA8ED84,500);engine.update(clockValue+=2);for(auto&v:engine.views)assert(v.shown&&v.frame.focus);blockedAddress=0;
+ // A transport/cloak transition retains occupancy, while actual death removes
+ // the slot exactly once. Older queued UI snapshots cannot revive that slot.
+ put(actors[2]+0x11C,0x170000u);engine.update(clockValue+=2);assert(engine.views[2].shown&&engine.tracks[2]);put(actors[2]+0x11C,0u);
+ put(actors[2]+0x6C,0);engine.update(clockValue+=2);assert(!engine.tracks[2]&&!engine.views[2].shown&&engine.views[0].box.w==320);
+ put(actors[2]+0x6C,100);for(int n=0;n<4;++n){engine.syncTracks(42,requestedTracks,true);engine.update(clockValue+=2);assert(!engine.tracks[2]&&!engine.views[2].shown);}
+ engine.syncTracks(43,requestedTracks,true);engine.update(clockValue+=2);assert(engine.tracks[2]&&engine.views[2].shown);
  engine.tracks[1]={};engine.views[1]={};engine.arrange();assert(!engine.tracks[1]&&!engine.views[1].shown&&engine.views[0].shown&&engine.views[2].shown);
  assert(engine.views[0].box.w==320&&engine.views[2].box.y-engine.views[0].box.y==264);
  engine.tracks[2]={};engine.views[2]={};engine.arrange();

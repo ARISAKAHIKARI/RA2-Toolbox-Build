@@ -1,0 +1,382 @@
+{
+  "scope": "Screenshot diagnosis only; no post-fix live-game validation",
+  "image_sha256": "f0580947799b630f14cbf5ba775ef95f35d8188a8bf2167f2a94b413ff972539",
+  "is_original_reference_image": true,
+  "image_size": [
+    920,
+    564
+  ],
+  "screenshot_build_version": "unknown",
+  "alignment_method": "2:1 integer nearest-sample search; Pearson correlation after Gaussian sigma=1.3 high-pass",
+  "top_windows_alignment_accepted": true,
+  "top_regions": {
+    "power": {
+      "region_xyxy_exclusive": [
+        42,
+        82,
+        109,
+        139
+      ],
+      "native_x": {
+        "watch_multiplier": 2,
+        "offset": 282
+      },
+      "native_y": {
+        "watch_multiplier": 2,
+        "offset": -61
+      },
+      "high_pass_correlation": 0.9606010027628493,
+      "next_candidate_correlation": 0.5004319742829979,
+      "correlation_margin": 0.4601690284798514,
+      "accepted": true
+    },
+    "radar": {
+      "region_xyxy_exclusive": [
+        116,
+        102,
+        170,
+        152
+      ],
+      "native_x": {
+        "watch_multiplier": 2,
+        "offset": 282
+      },
+      "native_y": {
+        "watch_multiplier": 2,
+        "offset": -61
+      },
+      "high_pass_correlation": 0.9375322870101204,
+      "next_candidate_correlation": 0.5578840236704036,
+      "correlation_margin": 0.3796482633397168,
+      "accepted": true
+    },
+    "factory": {
+      "region_xyxy_exclusive": [
+        127,
+        144,
+        217,
+        208
+      ],
+      "native_x": {
+        "watch_multiplier": 2,
+        "offset": 282
+      },
+      "native_y": {
+        "watch_multiplier": 2,
+        "offset": -61
+      },
+      "high_pass_correlation": 0.950646176612389,
+      "next_candidate_correlation": 0.5803057774379933,
+      "correlation_margin": 0.37034039917439576,
+      "accepted": true
+    },
+    "barracks": {
+      "region_xyxy_exclusive": [
+        44,
+        168,
+        113,
+        224
+      ],
+      "native_x": {
+        "watch_multiplier": 2,
+        "offset": 282
+      },
+      "native_y": {
+        "watch_multiplier": 2,
+        "offset": -61
+      },
+      "high_pass_correlation": 0.974075361442773,
+      "next_candidate_correlation": 0.5069578003312321,
+      "correlation_margin": 0.4671175611115409,
+      "accepted": true
+    }
+  },
+  "bottom_factory": {
+    "region_xyxy_exclusive": [
+      45,
+      304,
+      145,
+      360
+    ],
+    "native_x": {
+      "watch_multiplier": 2,
+      "offset": 432
+    },
+    "native_y": {
+      "watch_multiplier": 2,
+      "offset": -379
+    },
+    "high_pass_correlation": 0.9874706828851234,
+    "next_candidate_correlation": 0.5856098553477612,
+    "correlation_margin": 0.4018608275373622,
+    "accepted": true
+  },
+  "neutral_bright_statistics": {
+    "selection": "native min(R,G,B) >= 160 and max(R,G,B)-min(R,G,B) <= 8",
+    "samples_before_region_overlap_deduplication": 1482,
+    "unique_pixels": 1429,
+    "channel_order": "RGB",
+    "preview_divided_by_native_median": [
+      0.7878787878787878,
+      0.8161434977578476,
+      0.9747474747474747
+    ],
+    "preview_divided_by_native_quartiles": [
+      [
+        0.7663551401869159,
+        0.8104265402843602,
+        0.9485981308411215
+      ],
+      [
+        0.794392523364486,
+        0.8186046511627907,
+        0.9813084112149533
+      ]
+    ],
+    "repeated_native_colors": [
+      {
+        "region": "power",
+        "native_rgb": [
+          222,
+          223,
+          222
+        ],
+        "preview_modes": [
+          {
+            "rgb": [
+              175,
+              182,
+              217
+            ],
+            "count": 31
+          }
+        ]
+      },
+      {
+        "region": "power",
+        "native_rgb": [
+          214,
+          215,
+          214
+        ],
+        "preview_modes": [
+          {
+            "rgb": [
+              170,
+              176,
+              210
+            ],
+            "count": 49
+          },
+          {
+            "rgb": [
+              164,
+              171,
+              203
+            ],
+            "count": 2
+          }
+        ]
+      },
+      {
+        "region": "radar",
+        "native_rgb": [
+          222,
+          223,
+          222
+        ],
+        "preview_modes": [
+          {
+            "rgb": [
+              175,
+              182,
+              217
+            ],
+            "count": 35
+          },
+          {
+            "rgb": [
+              170,
+              176,
+              210
+            ],
+            "count": 5
+          },
+          {
+            "rgb": [
+              164,
+              136,
+              148
+            ],
+            "count": 4
+          }
+        ]
+      },
+      {
+        "region": "radar",
+        "native_rgb": [
+          214,
+          215,
+          214
+        ],
+        "preview_modes": [
+          {
+            "rgb": [
+              170,
+              176,
+              210
+            ],
+            "count": 61
+          },
+          {
+            "rgb": [
+              175,
+              182,
+              217
+            ],
+            "count": 4
+          },
+          {
+            "rgb": [
+              156,
+              162,
+              193
+            ],
+            "count": 1
+          }
+        ]
+      },
+      {
+        "region": "factory",
+        "native_rgb": [
+          222,
+          223,
+          222
+        ],
+        "preview_modes": [
+          {
+            "rgb": [
+              175,
+              182,
+              217
+            ],
+            "count": 34
+          }
+        ]
+      },
+      {
+        "region": "factory",
+        "native_rgb": [
+          214,
+          215,
+          214
+        ],
+        "preview_modes": [
+          {
+            "rgb": [
+              170,
+              176,
+              210
+            ],
+            "count": 91
+          },
+          {
+            "rgb": [
+              255,
+              224,
+              111
+            ],
+            "count": 1
+          }
+        ]
+      },
+      {
+        "region": "barracks",
+        "native_rgb": [
+          222,
+          223,
+          222
+        ],
+        "preview_modes": [
+          {
+            "rgb": [
+              175,
+              182,
+              217
+            ],
+            "count": 122
+          }
+        ]
+      },
+      {
+        "region": "barracks",
+        "native_rgb": [
+          214,
+          215,
+          214
+        ],
+        "preview_modes": [
+          {
+            "rgb": [
+              170,
+              176,
+              210
+            ],
+            "count": 52
+          }
+        ]
+      }
+    ],
+    "sample_pixels_zero_based": [
+      {
+        "region": "factory",
+        "watch_xy": [
+          184,
+          185
+        ],
+        "native_xy": [
+          650,
+          309
+        ],
+        "watch_rgb": [
+          175,
+          182,
+          217
+        ],
+        "native_rgb": [
+          222,
+          223,
+          222
+        ]
+      },
+      {
+        "region": "barracks",
+        "watch_xy": [
+          81,
+          195
+        ],
+        "native_xy": [
+          444,
+          329
+        ],
+        "watch_rgb": [
+          175,
+          182,
+          217
+        ],
+        "native_rgb": [
+          222,
+          223,
+          222
+        ]
+      }
+    ]
+  },
+  "factory_cross_window": {
+    "top_x_minus_bottom_x": 75,
+    "top_y_minus_bottom_y": -159,
+    "total_pixels": 5600,
+    "exact_rgb_matches": 5556,
+    "mean_absolute_channel_difference": 1.0450595238095237
+  }
+}

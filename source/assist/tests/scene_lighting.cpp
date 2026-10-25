@@ -1,5 +1,6 @@
 #include "../../external_reader/source/scene_lighting.h"
 #include "../../external_reader/source/projection.h"
+#include "../../external_reader/source/camera_raster.h"
 #include <vector>
 #include <cassert>
 #include <iostream>
@@ -40,5 +41,55 @@ int main(){
  put(0xB0CD48,.144337567);assert(external::projectionZScale(read)==.144337567);
  assert(external::screenHeight(104,external::projectionZScale(read))==15&&external::screenHeight(728,external::projectionZScale(read))==106);
  put(0xB0CD48,0.);assert(external::projectionZScale(read)>0);put(0xB0CD48,10.);assert(external::projectionZScale(read)<1);
- std::cout<<"PASS ambient, normal/tinted converter, map changes, bounded reads, palette-independent RGB, premultiplied alpha and neutral fallback\n";
+ // The snow terrain drawer can be blue while a building/vehicle's owner
+ // drawer is neutral. Native 705D70/705EC1/70718F select them independently.
+ constexpr uint32_t house=0x200000,type=0x220000,scheme=0x240000,convert=0x250000,
+  customVector=0x260000,customScheme=0x270000,customConvert=0x280000,customItems=0x290000,
+  anim=0x2A0000,animType=0x2B0000,plainConvert=0x2C0000,uiScheme=0x2D0000,uiConvert=0x2E0000;
+ put(c+0x26,int16_t(3));put(c+0x10A,int16_t(1000));put(c+0x10C,int16_t(900));
+ put(0x23198,800);put(0x2319C,830);put(0x231A0,1000);
+ put(house+0x16054,1);put(0x20004,scheme);put(scheme+0x30C,convert);put(scheme+0x310,53);put(convert+0x16C,53);
+ for(int off:{0x198,0x19C,0x1A0})put(convert+off,1000);
+ assert(objectConverter(read,type,house)==convert);
+ auto vehicle=external::lighting::object(read,type,house,2,640,896,208,State{});
+ auto building=external::lighting::object(read,type,house,3,640,896,208,State{});
+ assert(vehicle.intensity==1000&&building==vehicle&&building.tint==State{}.tint);
+ auto snow=at(read,640,896,208,State{},true);assert(snow.intensity==900&&(snow.tint==std::array<int,3>{800,830,1000}));
+ // A real opaque source pixel stays independent of a dark or white canvas.
+ external::voxel::Image gray;gray.width=gray.height=1;gray.pixels={0xffd6d7d6};gray.indices={48};gray.objectPalette=true;
+ external::camera::Surface black,white;assert(black.reset(1,1,0xff000000)&&white.reset(1,1,0xffffffff));
+ black.blit(gray,0,0,1,1,0,building);white.blit(gray,0,0,1,1,0,building);
+ assert(black.color[0]==gray.pixels[0]&&white.color[0]==gray.pixels[0]);
+ assert(external::camera::lit(gray.pixels[0],48,true,at(read,640,896,208,State{}))!=black.color[0]);
+ put(type+0x1548,int16_t(100));building=external::lighting::object(read,type,house,3,640,896,208,State{});assert(building.intensity==1100);
+ assert(external::lighting::object(read,type,house,2,640,896,624,State{}).intensity==1350); // existing bridge intensity remains separate
+ // Temporary lighting is read every sample, without recoloring cached art.
+ put(convert+0x1A4,1200);put(convert+0x1A8,500);put(convert+0x1AC,800);put(convert+0x1B0,uint8_t(1));
+ assert((external::lighting::object(read,type,house,2,640,896,208,State{}).tint==std::array<int,3>{1200,500,800}));
+ assert(gray.pixels[0]==0xffd6d7d6);put(convert+0x1B0,uint8_t(0));
+ // CustomPalette's vector supplies the tint as well as the raw palette.
+ put(type+0xDF0,customVector);put(customVector+4,customItems);put(customVector+16,2);put(customItems+4,customScheme);put(customScheme+0x30C,customConvert);put(customConvert+0x16C,53);
+ put(customConvert+0x198,900);put(customConvert+0x19C,1100);put(customConvert+0x1A0,700);
+ auto custom=external::lighting::object(read,type,house,3,640,896,208,State{});assert(custom.intensity==1100&&(custom.tint==std::array<int,3>{900,1100,700}));
+ put(type+0x1702,uint8_t(1));auto isoBuilding=external::lighting::object(read,type,house,3,640,896,208,State{});assert(isoBuilding==snow); // native overrides ExtraLight
+ put(type+0x236,uint8_t(1));assert(external::lighting::object(read,type,house,3,640,896,208,State{})==custom); // voxel still uses owner/custom scheme
+ put(type+0x1702,uint8_t(0));put(type+0x236,uint8_t(0));
+ put(customVector+16,513);assert(objectConverter(read,type,house)==0);assert(external::lighting::object(read,type,house,3,640,896,208,State{}).tint==State{}.tint);put(customVector+16,2);
+ int indexReads=0;auto ownerRace=[&](uint32_t p,void*out,size_t n){bool ok=read(p,out,n);if(p==house+0x16054&&++indexReads==1)put(house+0x16054,0);return ok;};
+ assert(objectConverter(ownerRace,type,house)==0);put(house+0x16054,1);
+ assert(objectConverter(read,0xfffffff0u,house)==0&&objectConverter(read,type,0xfffffff0u)==0);
+ // Native 423114: assigned building light, explicit cell light, ordinary
+ // ANIM, AltPalette and IsVeins are distinct branches. NormalLight only
+ // overrides brightness, preserving the selected drawer's current RGB.
+ put(anim+0xD4,customConvert);put(anim+0xFC,1320);
+ auto animLight=animation(read,anim,animType,640,896,208,State{});assert(animLight.intensity==1320&&animLight.tint==custom.tint);
+ put(animType+0x35D,uint8_t(1));animLight=animation(read,anim,animType,640,896,208,State{});assert(animLight.intensity==1000&&animLight.tint==custom.tint);
+ put(anim+0x196,uint8_t(1));animLight=animation(read,anim,animType,640,896,208,State{});assert(animLight.intensity==1000&&animLight.tint==snow.tint);
+ put(animType+0x35D,uint8_t(0));assert(animation(read,anim,animType,640,896,208,State{})==snow);
+ put(0xA83D4C,house);put(animType+0x355,uint8_t(1));animLight=animation(read,anim,animType,640,896,208,State{});assert(animLight.intensity==900&&animLight.tint==State{}.tint);
+ put(animType+0x355,uint8_t(0));put(anim+0x196,uint8_t(0));put(anim+0xD4,0u);put(0x87F6C0,plainConvert);put(plainConvert+0x16C,53);
+ assert(animation(read,anim,animType,640,896,208,State{})==vehicle); // plain Convert has no RGB fields
+ put(0x20000,uiScheme);put(uiScheme+0x30C,uiConvert);put(uiConvert+0x16C,1);for(int off:{0x198,0x19C,0x1A0})put(uiConvert+off,1000);
+ put(animType+0x361,uint8_t(1));put(c+0x10A,int16_t(800));assert(animation(read,anim,animType,640,896,208,State{}).intensity==1000);
+ std::cout<<"PASS ambient, normal/tinted converter, map changes, bounded reads, owner/custom vs terrain RGB, animation source/NormalLight, opaque final pixels and live lighting updates\n";
 }

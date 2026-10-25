@@ -125,6 +125,24 @@ int main(int argc,char**argv){
  auto states=external::animations::attached(gameassets::context.read,building,501);assert(states.size()==1&&states[0].frame==5&&states[0].x==26112);
  assert(gameassets::captureAnimation(anim,animType,502,building,501,art));assert(art.kind==5&&art.filename=="CTOILD_A.SHP");
  external::visual::Pose ap;ap.frame=states[0].frame;assert(gameassets::renderActor(art,ap,image));assert(image.pixels[0]==external::voxel::premultiply(art.colors[8],1,255));
+ // The animation's assigned LightConvert supplies both palette and tint.
+ // A parent's generic unit palette must not replace its actual custom drawer.
+ constexpr uint32_t animConvert=0x1C0000,animPalette=0x1C1000,cellConvert=0x1C2000,cellPalette=0x1C3000,lightCell=0x2F0000;
+ word(memory,anim+0xD4,animConvert);word(memory,anim+0xFC,1320);word(memory,animConvert,0x7ED0A4);word(memory,animConvert+0x188,animPalette);word(memory,animConvert+0x16C,53);
+ for(int i=1;i<256;++i){memory[animPalette+i*3]=208;memory[animPalette+i*3+1]=216;memory[animPalette+i*3+2]=224;}
+ for(int off:{0x198,0x19C,0x1A0})word(memory,animConvert+off,1000);
+ assert(gameassets::captureAnimation(anim,animType,502,building,501,art)&&art.colors[8]==0xffd0d8e0);assert(gameassets::renderActor(art,ap,image)&&image.pixels[0]==art.colors[8]);
+ auto assignedLight=external::lighting::animation(gameassets::context.read,anim,animType,26112,21760,208,{});assert(assignedLight.intensity==1320&&assignedLight.tint==external::lighting::State{}.tint);
+ // An explicit UseCellLightConvert animation uses the terrain palette/tint;
+ // NormalLight leaves that tint in place and only fixes intensity to 1000.
+ word(memory,0x87F7E8+0x13C,0x1E0000);word(memory,0x87F7E8+0x140,512*512);word(memory,0x1E0000+4*(85*512+102),lightCell);half(memory,lightCell+0x24,102);half(memory,lightCell+0x26,85);
+ word(memory,lightCell+0x34,cellConvert);word(memory,lightCell+0x104,65536);half(memory,lightCell+0x10A,1056);half(memory,lightCell+0x10C,900);half(memory,lightCell+0x10E,1056);
+ word(memory,cellConvert,0x7ED0A4);word(memory,cellConvert+0x188,cellPalette);word(memory,cellConvert+0x16C,53);word(memory,cellConvert+0x198,750);word(memory,cellConvert+0x19C,800);word(memory,cellConvert+0x1A0,1000);
+ for(int i=1;i<256;++i){memory[cellPalette+i*3]=160;memory[cellPalette+i*3+1]=180;memory[cellPalette+i*3+2]=200;}
+ memory[anim+0x196]=1;memory[animType+0x35D]=1;
+ assert(gameassets::captureAnimation(anim,animType,502,building,501,art)&&art.colors[8]==0xffa0b4c8);
+ auto cellLight=external::lighting::animation(gameassets::context.read,anim,animType,26112,21760,208,{});assert(cellLight.intensity==1000&&(cellLight.tint==std::array<int,3>{750,800,1000}));
+ memory[anim+0x196]=memory[animType+0x35D]=0;word(memory,anim+0xD4,0);assert(gameassets::captureAnimation(anim,animType,502,building,501,art));
  assert(!image.writeDepth&&image.pixels[0]>>24==255);memory[anim+0x11A]=1;word(memory,anim+0x11C,9);word(memory,anim+0xAC,0);word(memory,animType+0x2B4,0);
  states=external::animations::attached(gameassets::context.read,building,501);assert(states.size()==1&&states[0].frame==0);ap.frame=0;assert(gameassets::renderActor(art,ap,image)&&image.pixels[0]!=0);
  // A detached/reused pointer cannot load using a stale parent association.
@@ -205,6 +223,12 @@ int main(int argc,char**argv){
  // Standalone warhead/explosion art uses ANIM.PAL, with no building slot.
  disk["ANIM.PAL"]=pal;disk["EXPLODE.SHP"]=shp;memcpy(memory.data()+animType+0x24,"EXPLODE",8);memory[anim+0x118]=0;
  assert(gameassets::captureAnimation(anim,animType,502,0,0,art)&&art.filename=="EXPLODE.SHP");ap.frame=0;assert(gameassets::renderActor(art,ap,image));
+ // TerrainPalette is a runtime building flag, independent of INI fallback.
+ // Give ISO art a distinct color so an accidental unit/custom palette fails.
+ disk["ISOTEM.PAL"]=std::vector<uint8_t>(768,17);clockValue+=6000;gameassets::update();
+ word(memory,factory+0x534,1);word(memory,factory+0xAC,0);memory[factory+0x6E4]=1;memory[factoryType+0x1702]=1;
+ assert(gameassets::captureActor(factory,factoryType,701,art)&&art.colors[3]==0xff444444);
+ memory[factoryType+0x1702]=0;assert(gameassets::captureActor(factory,factoryType,701,art)&&art.colors[3]!=0xff444444);
  // No selected bit, memory SHP, VXL, palette or live MIX index was supplied.
  assert(memory[p+0x83]==0);disk.clear();clockValue+=6000;gameassets::update();assert(!gameassets::tile(tileType,0,colors,image));assert(gameassets::failure.find("tile-not-found:CLEAR01.TEM")==0);
  std::cout<<"PASS production file discovery, nested base/override fallback, unloaded unselected infantry at eight headings, TMP pixels and missing-resource diagnostic\n";

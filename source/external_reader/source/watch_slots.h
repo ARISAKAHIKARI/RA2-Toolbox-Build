@@ -23,12 +23,17 @@ template<class Read> Track capture(Read read){
 // death, and pointer reuse must never follow the unrelated replacement object.
 template<class Read> void follow(Read read,Track&track){
  if(!track)return;GameView<Read> g(read);Target t=track.target;
- uint32_t identityRead=0;int healthRead=0;
- if(!read(t.pointer+0x10,&identityRead,4)||!read(t.pointer+0x6C,&healthRead,4))return;
- bool identity=g.kind(t.pointer)>=0&&g.template get<uint32_t>(t.pointer+0x10)==t.id;
- if(identity&&g.template get<int>(t.pointer+0x6C)>0&&(g.template get<uint8_t>(t.pointer+0x81)||g.template get<uint32_t>(t.pointer+0x11C)||g.template get<int>(t.pointer+0x220)!=0))return;
- bool alive=identity&&g.template get<int>(t.pointer+0x6C)>0&&g.template get<uint8_t>(t.pointer+0x74)&&g.template get<uint8_t>(t.pointer+0x90);
- if(alive){if(valid(g,t))track.located=locate(g,t,track.x,track.y,track.z)||track.located;return;}
+ uint32_t identityRead=0,vtable=0;int health=0;
+ if(!read(t.pointer,&vtable,4)||!read(t.pointer+0x10,&identityRead,4)||!read(t.pointer+0x6C,&health,4))return;
+ bool identity=identityRead==t.id&&(vtable==0x7F5C70||vtable==0x7EB058||vtable==0x7E3EBC||vtable==0x7E22A4);
+ if(identity&&health>0){
+  uint8_t alive=0,limbo=0,onMap=0;uint32_t transport=0;int cloak=0;
+  // Failed reads are unknown, not false life flags. Off-map, transport,
+  // cloak and limbo can all temporarily prevent drawing without ending a track.
+  if(!read(t.pointer+0x74,&alive,1)||!read(t.pointer+0x81,&limbo,1)||!read(t.pointer+0x90,&onMap,1)||!read(t.pointer+0x11C,&transport,4)||!read(t.pointer+0x220,&cloak,4))return;
+  if(limbo||transport||cloak)return;
+  if(alive){if(onMap)track.located=locate(g,t,track.x,track.y,track.z)||track.located;return;}
+ }
  // Prefer the final same-object coordinates; use the last sample after free.
  if(identity)track.located=locate(g,t,track.x,track.y,track.z)||track.located;
  Target nearest;int64_t best=int64_t(5*256)*(5*256);int nx=0,ny=0,nz=0;

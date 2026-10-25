@@ -3,6 +3,7 @@
 #include "display_state.h"
 #include "visual_pose.h"
 #include "building_animations.h"
+#include "map_bounds.h"
 #include <memory>
 #include <array>
 // Read-only YRpp MapClass/CellClass/RadarClass model. Projection matches
@@ -10,10 +11,10 @@
 namespace external { namespace radar {
 constexpr uint32_t Map=0x87F7E8;
 struct Geometry {
- int width=0,height=0,offsetX=0,offsetY=0,rw=0,rh=0;float factor=0;uint32_t cells=0,house=0;int count=0;
- bool valid()const{return width>0&&width<=256&&height>0&&height<=256&&cells>=0x10000&&count>0&&count<=512*512&&rw>0&&rw<=4096&&rh>0&&rh<=4096&&std::isfinite(factor)&&factor>0.01f&&factor<32&&std::abs(int64_t(offsetX))<=1024&&std::abs(int64_t(offsetY))<=1024&&house>=0x10000;}
- bool same(const Geometry&o)const{return width==o.width&&height==o.height&&offsetX==o.offsetX&&offsetY==o.offsetY&&rw==o.rw&&rh==o.rh&&factor==o.factor&&cells==o.cells&&house==o.house&&count==o.count;}
- bool legal(int x,int y)const{return x>0&&y>0&&x<512&&y<512&&x+y>width&&x-y<width&&y-x<width&&x+y<=width+2*height;}
+ int width=0,height=0,offsetX=0,offsetY=0,rw=0,rh=0;float factor=0;uint32_t cells=0,house=0;int count=0;mapbounds::Bounds bounds;
+ bool valid()const{return bounds.valid()&&bounds.width==width&&bounds.height==height&&cells>=0x10000&&count>0&&count<=512*512&&rw>0&&rw<=4096&&rh>0&&rh<=4096&&std::isfinite(factor)&&factor>0.01f&&factor<32&&std::abs(int64_t(offsetX))<=1024&&std::abs(int64_t(offsetY))<=1024&&house>=0x10000;}
+ bool same(const Geometry&o)const{return width==o.width&&height==o.height&&offsetX==o.offsetX&&offsetY==o.offsetY&&rw==o.rw&&rh==o.rh&&factor==o.factor&&cells==o.cells&&house==o.house&&count==o.count&&bounds==o.bounds;}
+ bool legal(int x,int y)const{return bounds.legal(x,y);}
  void project(double x,double y,double&u,double&v)const{u=(x-y+offsetX)*factor/rw;v=(x+y-offsetY)*factor/rh;}
 };
 struct Marker {double u=0,v=0;uint32_t color=0;bool building=false;uint32_t object=0,id=0,type=0,owner=0,parent=0,parentId=0;int x=0,y=0,z=0,kind=-1,drawZ=0,sort=0,layer=2;bool normalLight=false,onBridge=false;visual::Pose pose;};
@@ -35,7 +36,7 @@ public:
  void reset(){geo_={};pointers_.clear();pending_.reset();terrain_.reset();cursor_=0;lastFrame_=-1;++revision_;}
  unsigned revision()const{return revision_;}
  bool step(uint32_t reveal,int budget=4096,bool real=false){
-  Geometry g;g.width=get<int>(Map+0xF4);g.height=get<int>(Map+0xF8);g.cells=get<uint32_t>(Map+0x13C);g.count=get<int>(Map+0x140);
+  Geometry g;g.bounds=mapbounds::sample(read_);g.width=g.bounds.width;g.height=g.bounds.height;g.cells=get<uint32_t>(Map+0x13C);g.count=get<int>(Map+0x140);
   g.factor=get<float>(Map+0x1488);g.offsetX=get<int>(Map+0x1490);g.offsetY=get<int>(Map+0x1498);g.rw=get<int>(Map+0x14A4);g.rh=get<int>(Map+0x14A8);g.house=get<uint32_t>(0xA83D4C);
   int frame=get<int>(0xA8ED84,-1);if(!g.valid()||frame<0||get<uint8_t>(0xA8E9A0)!=1 ){reset();return false;}
   if(!display::inspect(read_).visible())return false;
@@ -46,7 +47,7 @@ public:
   for(;cursor_<end;++cursor_){int x=int(cursor_%512),y=int(cursor_/512);if(!g.legal(x,y))continue;uint32_t p=pointers_[cursor_];
    if(p<0x10000)continue;std::array<uint8_t,0x148> cell{};if(!read_(p,cell.data(),cell.size()))continue;
    int16_t cx=0,cy=0;int land=-1;std::memcpy(&cx,cell.data()+0x24,2);std::memcpy(&cy,cell.data()+0x26,2);std::memcpy(&land,cell.data()+0xEC,4);
-   if(cx!=x||cy!=y)continue;int visibility=int8_t(cell[0x120]),fog=int8_t(cell[0x121]);if(!reveal&&visibility!=-1)continue;
+   if(cx!=x||cy!=y||!g.bounds.usable(x,y,int8_t(cell[0x11B]),cell[0x11C]!=0))continue;int visibility=int8_t(cell[0x120]),fog=int8_t(cell[0x121]);if(!reveal&&visibility!=-1)continue;
    uint32_t color=terrainColor(land,cell[0x11B],!reveal&&fog!=-1);
    if(reveal==2&&(visibility!=-1||fog!=-1))color=(color>>1)&0x7F7F7F;
    pending_->colors[cursor_]=color;

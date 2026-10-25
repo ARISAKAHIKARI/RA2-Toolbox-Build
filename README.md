@@ -1,3 +1,15 @@
+# RA2 Toolbox 1.0.38-pre.5
+
+修正建築與坦克誤套地表色調造成偏藍偏暗、三個跟蹤窗在讀取延遲時反覆切換排版，以及小窗／小地圖缺少即時可視邊界。支援地圖觸發縮界／擴界後更新取樣、相機位置限制和背景快取。
+
+**保留已修正的坦克光源方向；攝像機角度與固定 2:1 投影沒有調整。** 不透明像素仍為 alpha 255，修正色調來源而不增加全局亮度。
+
+[下載 1.0.38-pre.5](https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/releases/tag/v1.0.38-pre.5) · [發布說明](packages/v1.0.38-pre.5/RELEASE_NOTES.md) · [完整特性樹](docs/FEATURES-1.0.38-pre.5.md) · [亮度診斷](source/research/2026-10-25-preview-brightness-diagnosis.md)
+
+EXE／DLL 檔案版本 **1.0.38.5**，Assist **72**。更新包僅含配套 EXE／DLL，源碼另附；退出遊戲與工具後成套更新，保留配置與資源。發布門檻為 40 項 portable 回歸與 Windows 構建／視窗／設定驗證；原版地圖邊界受控對照 31,640 組零差異。完整遊戲實景、FPS 與雙機聯機仍未驗收。
+
+## 上一個預覽版
+
 # RA2 Toolbox 1.0.38-pre.4
 
 對齊原版畫面左下來光的 VXL 光照，校正模型局部座標；補入建築 Bib、工廠生產基底、屋頂底層與門，依原版狀態及過渡計時器選幀。

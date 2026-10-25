@@ -7,6 +7,7 @@
 #include "shape_depth.h"
 #include "building_animations.h"
 #include "building_components.h"
+#include "scene_lighting.h"
 #include "sprite_names.h"
 #include <cstdio>
 #include <cstdlib>
@@ -45,6 +46,15 @@ std::string imageName(uint32_t type){auto stem=artName(type),image=artINI.get(st
 std::string artValue(uint32_t type,const std::string&key){auto image=imageName(type),value=artINI.get(image,key);return value.empty()?artINI.get(artName(type),key):value;}
 bool artYes(uint32_t type,const std::string&key){auto v=external::assets::name(artValue(type,key));return v=="YES"||v=="TRUE"||v=="1";}
 bool paletteFile(const std::string&name,std::array<uint32_t,256>&out){std::vector<uint8_t>b;if(!files.load(name,b)){failure="palette-not-found:"+name;return false;}if(!external::assets::pal(b,out)){failure="palette-format:"+name;return false;}return true;}
+bool convertPalette(uint32_t convert,std::array<uint32_t,256>&out){
+ // Only LightConvert owns UsedPalette1 (+188). Plain ANIM ConvertClass ends
+ // earlier; treating its following allocation as RGB would read unrelated data.
+ if(convert<0x10000||convert>0xfffffe74u||word(convert)!=0x7ED0A4)return false;
+ uint32_t pointer=word(convert+0x188);uint8_t colors[768]{};
+ if(pointer<0x10000||uint64_t(pointer)+sizeof colors>0x100000000ull||!read(pointer,colors,sizeof colors)||
+    pointer!=word(convert+0x188)||std::all_of(colors,colors+sizeof colors,[](uint8_t c){return c==0;}))return false;
+ for(int i=0;i<256;++i)out[i]=0xff000000u|(uint32_t(colors[i*3])<<16)|(uint32_t(colors[i*3+1])<<8)|colors[i*3+2];out[0]=0;return true;
+}
 bool palette(bool iso,std::array<uint32_t,256>&out){if(iso&&external::terrain::palette(read,0xABBED0,out))return true;std::vector<uint8_t> bytes;std::string n=iso?theater(68,10):"UNIT"+theater(78,3);if(n.empty()){failure="palette-theater-name";return false;}n+=".PAL";if(!files.load(n,bytes)){failure="palette-not-found:"+n;return false;}if(!external::assets::pal(bytes,out)){failure="palette-format:"+n;return false;}return true;}
 std::vector<std::string> spriteNames(uint32_t type,uint32_t pointer,bool overlay=false,bool buildingPart=false,uint32_t parentType=0){
  auto live=external::assets::shapeName(read,pointer);auto stem=imageName(type);
@@ -155,10 +165,12 @@ bool captureAnimation(uint32_t p,uint32_t type,uint32_t id,uint32_t parent,uint3
  next.drawY=int32_t(word(type+0x344));if(std::abs(int64_t(next.drawY))>4096)return false;
  bool loaded=shapeBytes(type,next.pointer,next.shape,next.filename,false,true,word(parent+0x520));
  if(!loaded)next.filename=external::assets::shapeName(read,next.pointer);
- auto custom=text(p+0xDC,32);if(custom.empty())custom=artValue(type,"PALETTE");bool colors=false;
- if(!custom.empty()){custom=external::assets::name(custom);colors=custom.size()>4&&custom.substr(custom.size()-4)==".PAL"?paletteFile(custom,next.colors):(paletteFile(custom+theater(78,3)+".PAL",next.colors)||paletteFile(custom+".PAL",next.colors));}
- else if((word(p+0x118)&255)||(word(type+0x361)&255))colors=spritePalette(word(parent+0x520),"",false,state.owner,next.colors);
- else colors=paletteFile("ANIM.PAL",next.colors);
+ auto source=external::lighting::animationSource(read,p,type,external::lighting::cellAt(read,state.x,state.y));
+ bool colors=source.tintable&&convertPalette(source.converter,next.colors);
+ auto custom=text(p+0xDC,32);if(custom.empty())custom=artValue(type,"PALETTE");
+ if(!colors&&!custom.empty()){custom=external::assets::name(custom);colors=custom.size()>4&&custom.substr(custom.size()-4)==".PAL"?paletteFile(custom,next.colors):(paletteFile(custom+theater(78,3)+".PAL",next.colors)||paletteFile(custom+".PAL",next.colors));}
+ else if(!colors&&parent>=0x10000&&(word(p+0x118)&255))colors=spritePalette(word(parent+0x520),"",false,state.owner,next.colors);
+ else if(!colors)colors=paletteFile("ANIM.PAL",next.colors);
  if(!colors)return false;
  // A theater SHP already loaded by the engine remains usable when its archive
  // cannot be resolved on disk. Frame zero is valid.
@@ -212,7 +224,8 @@ bool captureActor(uint32_t p,uint32_t type,uint32_t id,ActorArt&out){
    for(const auto&name:names)if(files.load(name,next.shape)){filename=name;loaded=true;break;}
   }else loaded=shapeBytes(type,next.pointer,next.shape,filename,false,next.kind==3);next.filename=filename;
   if(!loaded)filename=external::assets::shapeName(read,next.pointer);
-  if(!spritePalette(type,filename,false,owner,next.colors))return false;
+  bool terrainPalette=next.kind==3&&(word(type+0x1702)&255);
+  if(terrainPalette?!palette(true,next.colors):!spritePalette(type,filename,false,owner,next.colors))return false;
   if(!loaded){external::voxel::Image check;if(!external::voxel::sprite(read,next.pointer,next.colors,check)){failure="sprite-not-found/unloaded:"+(filename.empty()?stem:filename);return false;}}
  }
  if(next.kind==3)captureBuildingParts(type,next);

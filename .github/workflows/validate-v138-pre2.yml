@@ -1,7 +1,7 @@
-name: Validate RA2 Toolbox 1.0.38-pre.4
+name: Validate RA2 Toolbox 1.0.38-pre.5
 on:
   push:
-    branches: [codex/camera-v138-pre2, codex/building-animation-fix, codex/lighting-bib-v138-pre4]
+    branches: [codex/camera-v138-pre2, codex/building-animation-fix, codex/lighting-bib-v138-pre4, codex/preview-corrections-v138-pre5]
     paths: ['source/**', '.github/workflows/validate-v138-pre2.yml']
   workflow_dispatch:
 permissions:
@@ -25,7 +25,9 @@ jobs:
           python3 source/assist/tests/ui_geometry_test.py
           python3 source/assist/tests/enemy_overlay_test.py
           python3 source/assist/tests/game_assets_host_test.py
-          for test in label_motion passenger_motion pacing enemy_markers enemy_clusters watch_view watch_host watch_slots visual_pose voxel_preview game_assets live_ini cameo_catalog camera_raster building_animations building_components voxel_lighting radar_scene minimap_overlay formation_host sprite_formats terrain_preview scene_lighting command_delivery direct_modes; do
+          python3 source/assist/tests/watch_windows_test.py
+          python3 source/assist/tests/watch_async_test.py
+          for test in label_motion passenger_motion pacing enemy_markers enemy_clusters watch_view watch_host watch_slots visual_pose voxel_preview game_assets live_ini cameo_catalog camera_raster building_animations building_components voxel_lighting radar_scene minimap_overlay map_bounds formation_host sprite_formats terrain_preview scene_lighting command_delivery direct_modes; do
             g++ -std=c++17 -O2 "source/assist/tests/$test.cpp" -o "/tmp/$test"
             "/tmp/$test"
           done
@@ -55,11 +57,13 @@ jobs:
           "$ZIG" c++ -target x86-windows-gnu -std=c++17 -O2 source/assist/tests/voxel_lighting.cpp -o source/voxel-lighting-test.exe
           "$ZIG" c++ -target x86-windows-gnu -std=c++17 -O2 source/assist/tests/voxel_preview.cpp -o source/voxel-preview-test.exe
           "$ZIG" c++ -target x86-windows-gnu -std=c++17 -O2 source/assist/tests/building_components.cpp -o source/building-components-test.exe
+          "$ZIG" c++ -target x86-windows-gnu -std=c++17 -O2 source/assist/tests/map_bounds.cpp -o source/map-bounds-test.exe
+          "$ZIG" c++ -target x86-windows-gnu -std=c++17 -O2 source/assist/tests/scene_lighting.cpp -o source/scene-lighting-test.exe
       - name: Validate final PE files and bridge ABI
         run: python3 source/tools/verify_windows_outputs.py
       - uses: actions/upload-artifact@v4
         with:
-          name: camera138pre4-binaries
+          name: camera138pre5-binaries
           path: |
             source/RA2Toolbox.exe
             source/GameRuntime.dll
@@ -68,6 +72,8 @@ jobs:
             source/voxel-lighting-test.exe
             source/voxel-preview-test.exe
             source/building-components-test.exe
+            source/map-bounds-test.exe
+            source/scene-lighting-test.exe
             source/WINDOWS_BUILD_ARTIFACTS.json
           retention-days: 7
   windows-ui:
@@ -78,13 +84,13 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
-          name: camera138pre4-binaries
+          name: camera138pre5-binaries
           path: source
       - name: Real overlay window stacking
         run: .\\source\\overlay-stack-test.exe
       - name: Real Ares and spawn process discovery
         run: .\\source\\process-discovery-test.exe
-      - name: Native light pages, model coordinates and building timers on Windows x86
+      - name: Native light pages, model coordinates, object tint and map bounds on Windows x86
         run: |
           .\source\voxel-lighting-test.exe
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -92,9 +98,13 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           .\source\building-components-test.exe
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          .\source\map-bounds-test.exe
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          .\source\scene-lighting-test.exe
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Real styled controls, INI persistence and restart
         run: python source/tools/windows_settings_smoke.py
       - uses: actions/upload-artifact@v4
         with:
-          name: camera138pre4-windows-settings
+          name: camera138pre5-windows-settings
           path: source/WINDOWS_SETTINGS_SMOKE.json

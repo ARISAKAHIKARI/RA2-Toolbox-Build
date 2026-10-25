@@ -12,6 +12,15 @@ int main(){
  auto a=unit(0,30*256,30*256),b=unit(1,34*256,30*256),c=unit(2,35*256,30*256),unselected=unit(3,30*256+1,30*256);
  vec(0xA8EC78,0x200000,{a.pointer,b.pointer,c.pointer,unselected.pointer});vec(0xA8ECB8,0x210000,{a.pointer,b.pointer,c.pointer});put(unselected.pointer+0x431,uint8_t(1));
  auto captured=capture(read);assert(captured.target==a&&captured.members.size()==3); // hovered outsider cannot change group
+ // Every life field must have been read before absence becomes death. Failed
+ // reads of the less prominent flags used to look like a dead focus.
+ for(uint32_t offset:{0u,0x10u,0x6Cu,0x74u,0x81u,0x90u,0x11Cu,0x220u}){
+  auto uncertain=captured;auto unavailable=[&](uint32_t p,void*out,size_t n){return p!=a.pointer+offset&&read(p,out,n);};
+  follow(unavailable,uncertain);assert(uncertain.target==a&&uncertain.members==captured.members);
+ }
+ put(a.pointer+0x90,uint8_t(0));auto offMap=captured;follow(read,offMap);assert(offMap.target==a);
+ put(a.pointer+0x74,uint8_t(0));follow(read,offMap);assert(offMap.target==b); // confirmed dead, even when also off-map
+ put(a.pointer+0x74,uint8_t(1));put(a.pointer+0x90,uint8_t(1));
  uint32_t keys[3]={87,86,87};Track slots[3];int slot=-1;
  assert(firstBinding(keys,0)&&firstBinding(keys,1)&&!firstBinding(keys,2));
  assert(add(slots,keys,87,captured,slot)==AddResult::Added&&slot==0);

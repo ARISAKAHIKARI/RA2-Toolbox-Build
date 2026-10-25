@@ -63,7 +63,7 @@ void update(const formation::Preview&next,const external::Projection&projection)
    if(!roomForImage(rendered.pixels.size())){++missing;continue;}it=c.views.emplace(facing,std::make_shared<external::voxel::Image>(std::move(rendered))).first;++revision;
   }
   auto image=it->second;c.viewUsed[facing]=++useSerial;
-  visuals.push_back({x,y,image,external::lighting::at(read,s.x,s.y,s.z,sceneLight)});
+  visuals.push_back({x,y,image,external::lighting::object(read,u.type,std::get<1>(key),u.kind,s.x,s.y,s.z,sceneLight)});
  }
  std::sort(visuals.begin(),visuals.end(),[](const Visual&a,const Visual&b){return a.y<b.y;});
  uint64_t hash=(uint64_t(revision)<<32)^uint64_t(facing+1)*1099511628211ull^uint64_t(next.shape+1)*16777619ull^missing;for(const auto&v:visuals){hash=(hash^uint32_t(v.x))*1099511628211ull;hash=(hash^uint32_t(v.y))*1099511628211ull;hash=(hash^uintptr_t(v.image.get()))*1099511628211ull;hash=(hash^uint32_t(v.light.intensity))*1099511628211ull;for(int c:v.light.tint)hash=(hash^uint32_t(c))*1099511628211ull;}if(hash!=visualSignature){visualSignature=hash;++paintRevision;}
