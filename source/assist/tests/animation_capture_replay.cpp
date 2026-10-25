@@ -38,7 +38,7 @@ int main(int argc,char**argv){
   std::set<uint32_t> pointers;for(uint32_t offset:{0x55Cu,0x5C8u})for(int i=0;i<(offset==0x55C?21:8);++i)if(auto a=g.get<uint32_t>(b+offset+i*4))pointers.insert(a);
   slots+=int(pointers.size());auto states=animations::attached(read,b,id);captured+=int(states.size());
   camera::Surface surface;surface.reset(384,320);cameraassets::Context<Reader>::ActorArt body;voxel::Image bodyImage;
-  bool bodyReady=assets.captureActor(b,type,id,body);visual::Pose pose;pose.frame=assets.buildingFrame(b,type);if(bodyReady)bodyReady=assets.renderActor(body,pose,bodyImage);
+  bool bodyReady=assets.captureActor(b,type,id,body);visual::Pose pose;assets.buildingPose(b,type,pose);if(bodyReady)bodyReady=assets.renderActor(body,pose,bodyImage);
   int bx=g.get<int>(b+0x9C),by=g.get<int>(b+0xA0),bz=g.get<int>(b+0xA4);auto baseline=float((int64_t(bx)+by)*15/256.);
   auto bodyLight=lighting::at(read,bx,by,bz,sceneLight);if(bodyLight.intensity>=0){minIntensity=std::min(minIntensity,bodyLight.intensity);maxIntensity=std::max(maxIntensity,bodyLight.intensity);}
   if(bodyReady)for(auto p:body.colors)for(int shift:{0,8,16})palettePeak=std::max(palettePeak,(p>>shift)&255u);

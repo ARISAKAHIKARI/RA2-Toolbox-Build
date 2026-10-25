@@ -162,7 +162,7 @@ if __name__=='__main__':
         folder=pathlib.Path(t)
         for name in ('RA2Toolbox.exe','GameRuntime.dll'):shutil.copy2(source/name,folder/name)
         scenario(folder)
-    result={'status':'PASS','version':'1.0.38-pre.3','runs':3,'display_switches':9,
+    result={'status':'PASS','version':'1.0.38-pre.4','runs':3,'display_switches':9,
             'checks':['all fresh UI switches off','user hotkeys','cross-pane edits',
                       'real Win32 INI writes','restart on','restart off',
                       'minimap diagram/scene mode and alignment restart','1000 percent minimap save/restart and control readback',

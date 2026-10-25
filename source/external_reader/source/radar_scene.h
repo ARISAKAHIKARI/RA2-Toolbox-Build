@@ -9,10 +9,10 @@ namespace external { namespace radar {
 template<class Assets>class SceneRenderer {
  struct Cached {voxel::Image image;bool ready=false;uint32_t retry=0;};
  using ArtKey=std::tuple<uint32_t,uint32_t,int,int>;
- using ImageKey=std::tuple<uint32_t,uint32_t,int,int,int,int,int>;
+ using ImageKey=std::tuple<uint32_t,uint32_t,int,int,int,int,int,int,int>;
  using ObjectKey=std::pair<uint32_t,uint32_t>;
  static ArtKey artKey(const Marker&m){return {m.type,m.owner,m.kind,m.pose.variant};}
- static ImageKey imageKey(const Marker&m){return {m.type,m.owner,m.kind,m.pose.body,m.pose.turret,m.pose.frame,m.pose.variant};}
+ static ImageKey imageKey(const Marker&m){return {m.type,m.owner,m.kind,m.pose.body,m.pose.turret,m.pose.frame,m.pose.variant,m.pose.buildingFlags,m.pose.doorFrame};}
  std::map<std::pair<uint32_t,unsigned>,Cached> tiles_,overlays_;
  std::map<ArtKey,typename Assets::ActorArt> art_;
  std::map<ImageKey,Cached> sprites_;
@@ -52,7 +52,7 @@ public:
   }
   if(!complete_)return {};
   camera::Surface view=background_;const auto&geo=frame.terrain->geo;auto scale=gain(geo);int work=0;size_t pixels=0;
-  auto markers=frame.markers;for(auto&m:markers)if(m.kind==3)m.pose.frame=assets.buildingFrame(m.object,m.type);
+  auto markers=frame.markers;for(auto&m:markers)if(m.kind==3)assets.buildingPose(m.object,m.type,m.pose);
   std::map<ObjectKey,ImageKey> visible;std::set<ImageKey> wanted;std::set<ArtKey> artWanted;
   for(const auto&m:markers){auto key=imageKey(m);visible[{m.object,m.id}]=key;wanted.insert(key);artWanted.insert(artKey(m));}
   for(auto i=displayed_.begin();i!=displayed_.end();){auto current=visible.find(i->first);
@@ -66,13 +66,14 @@ public:
   // Rotate the decode budget independently of draw order. Moving units at the
   // start of the map must not starve an oil pump or construction-yard anim.
   for(size_t scanned=0;scanned<markers.size()&&work<8;++scanned){const auto&m=markers[actorCursor_++%markers.size()];auto&cached=sprites_[imageKey(m)];
-   if(cached.ready||(cached.retry&&int32_t(frame.tick-cached.retry)<0))continue;
+   if((cached.ready&&!cached.image.incomplete)||(cached.retry&&int32_t(frame.tick-cached.retry)<0))continue;
    ++work;voxel::Image image;bool ready=false;auto source=art_.find(artKey(m));
    if(m.kind==4)ready=assets.overlay(m.type,game.template get<uint32_t>(m.type+0xA4),m.pose.frame,image,true);
    else{if(source==art_.end()){typename Assets::ActorArt art;if((m.kind==5?assets.captureAnimation(m.object,m.type,m.id,m.parent,m.parentId,art):assets.captureActor(m.object,m.type,m.id,art))&&artBytes+Assets::cost(art)<=128*1024*1024){artBytes+=Assets::cost(art);source=art_.emplace(artKey(m),std::move(art)).first;}}
     if(source!=art_.end())ready=assets.renderActor(source->second,m.pose,image);}
-   if(ready&&pixels+camera::pixels(image)<=8*1024*1024){camera::opaque(image);pixels+=camera::pixels(image);cached.image=std::move(image);cached.ready=true;}
-   cached.retry=cached.ready?0:frame.tick+2000;
+   size_t previous=camera::pixels(cached.image),next=camera::pixels(image);
+   if(ready&&pixels-previous+next<=8*1024*1024){camera::opaque(image);pixels=pixels-previous+next;cached.image=std::move(image);cached.ready=true;}
+   cached.retry=cached.ready&&!cached.image.incomplete?0:frame.tick+2000;
   }
   for(const auto&m:markers){auto key=imageKey(m);auto i=sprites_.find(key);if(i!=sprites_.end()&&i->second.ready)displayed_[{m.object,m.id}]=key;}
   std::vector<const Marker*> order;for(const auto&m:markers)order.push_back(&m);

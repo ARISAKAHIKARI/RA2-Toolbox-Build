@@ -53,8 +53,13 @@ bool FindNextFileW(HANDLE h,WIN32_FIND_DATAW*out){auto&s=*static_cast<Search*>(h
 HANDLE FindFirstFileW(const wchar_t*,WIN32_FIND_DATAW*out){auto*s=new Search;for(auto&[n,b]:disk)if(n.size()>=4&&n.substr(n.size()-4)==".MIX")s->names.push_back(n);if(FindNextFileW(s,out))return s;delete s;return INVALID_HANDLE_VALUE;}
 bool FindClose(HANDLE h){delete static_cast<Search*>(h);return true;}
 #include "source/assist/source/game_assets_host.h"
+#include "source/external_reader/source/camera_raster.h"
 static void word(std::vector<uint8_t>&b,size_t at,uint32_t v){memcpy(b.data()+at,&v,4);}
 static void half(std::vector<uint8_t>&b,size_t at,uint16_t v){memcpy(b.data()+at,&v,2);}
+static std::vector<uint8_t> partShape(int frames,int x,int firstColor){
+ std::vector<uint8_t> b(8+frames*25);half(b,2,2);half(b,4,2);half(b,6,frames);
+ for(int f=0;f<frames;++f){int at=8+f*24;half(b,at,1+x);half(b,at+2,1);half(b,at+4,1);half(b,at+6,1);word(b,at+20,8+frames*24+f);b[8+frames*24+f]=uint8_t(firstColor+f);}return b;
+}
 static std::vector<uint8_t> mix(const std::map<std::string,std::vector<uint8_t>>&files){
  size_t head=10+12*files.size(),size=0;for(auto&[n,b]:files)size+=b.size();std::vector<uint8_t> out(head+size);half(out,4,files.size());word(out,6,size);size_t slot=10,at=0;
  for(auto&[n,b]:files){word(out,slot,external::assets::hash(n));word(out,slot+4,at);word(out,slot+8,b.size());memcpy(out.data()+head+at,b.data(),b.size());slot+=12;at+=b.size();}return out;
@@ -70,7 +75,7 @@ int main(int argc,char**argv){
  for(int i=1;i<256;++i){pal[i*3]=i%64;pal[i*3+1]=(i*2)%64;pal[i*3+2]=(i*3)%64;}
  std::vector<uint8_t> customPal(768,12),theaterPal(768,22);for(int i=1;i<256;++i){customPal[i*3]=i%64;customPal[i*3+1]=(i*2)%64;customPal[i*3+2]=(i*3)%64;}
  std::string artText="[LONGINFANTRY]\nPalette=custom\n[NAWALL]\nNewTheater=yes\n";
- std::string rulesText="[ORE]\nTiberium=yes\n";
+ std::string rulesText="[ORE]\nTiberium=yes\n[NAWEAP]\nNoShadow=yes\n";
  disk["ECACHEMD98.MIX"]=mix({{"ARTMD.INI",{artText.begin(),artText.end()}},{"RULESMD.INI",{rulesText.begin(),rulesText.end()}},{"CUSTOMTEM.PAL",customPal},{"TEMPERAT.PAL",theaterPal},{"NTWALL.SHP",shp},{"ORE.SHP",shp}});
  constexpr uint32_t p=0x10000,t=0x20000,house=0x30000,tileType=0x40000,sequence=0x50000;
  word(memory,p,0x7EB058);word(memory,p+0x10,42);word(memory,p+0x6C0,t);word(memory,p+0x21C,house);memcpy(memory.data()+t+0x24,"E1",3);memcpy(memory.data()+t+0x1F8,"LONGINFANTRY",13);
@@ -100,7 +105,7 @@ int main(int argc,char**argv){
  memcpy(memory.data()+0x7E1B78+78,"TEM",4);memcpy(memory.data()+0x7E1B78+68,"ISOTEM",7);memory[0x7E1B78+86]='T';
  // Real art through an unloaded GENERICMD archive and RULES -> ART Image aliases.
  if(argc>1){std::ifstream f(argv[1],std::ios::binary);std::vector<uint8_t> real((std::istreambuf_iterator<char>(f)),{});assert(real.size()>32);
-  std::string rules="[E1]\nImage=ALIAS\n[ORE]\nTiberium=yes\n",artText="[ALIAS]\nImage=LIVEYURI\n[LIVEYURI]\nPalette=custom\n";
+  std::string rules="[E1]\nImage=ALIAS\n[ORE]\nTiberium=yes\n[NAWEAP]\nNoShadow=yes\n",artText="[ALIAS]\nImage=LIVEYURI\n[LIVEYURI]\nPalette=custom\n";
   disk["RULESMD.INI"]={rules.begin(),rules.end()};disk["ARTMD.INI"]={artText.begin(),artText.end()};
   disk["RA2MD.MIX"]=mix({{"GENERICMD.MIX",mix({{"LIVEYURI.SHP",real},{"UNITTEM.PAL",pal},{"ISOTEM.PAL",pal}})}});
   memset(memory.data()+t+0x1F8,0,25);clockValue+=6000;gameassets::update();assert(gameassets::captureActor(p,t,42,art));assert(art.filename=="LIVEYURI.SHP");
@@ -137,6 +142,66 @@ int main(int argc,char**argv){
  ap.frame=gameassets::buildingFrame(building,buildingType);assert(ap.frame==3&&gameassets::renderActor(art,ap,image));
  word(memory,building+0xAC,19);assert(gameassets::buildingFrame(building,buildingType)==8);ap.frame=8;assert(gameassets::renderActor(art,ap,image));
  assert(external::visual::pose(game,building,buildingType,3,0).variant==-2);
+ // Independent factory parts are SHPReference fields, not AnimClass slots.
+ // All six references deliberately remain unloaded; actual file discovery and
+ // per-part filenames must supply their bytes without substituting the body.
+ constexpr uint32_t factory=0x100000,factoryType=0x108000,links=0x110000,unit=0x118000,unitType=0x120000,runtimeRules=0x128000;
+ word(memory,factory,0x7E3EBC);word(memory,factory+0x10,701);word(memory,factory+0x520,factoryType);word(memory,factory+0x21C,house);word(memory,factory+0x6C,100);word(memory,factory+0x534,1);memory[factory+0x6E4]=1;word(memory,factoryType+0xA0,100);memory[factoryType+0x237]=1;
+ memcpy(memory.data()+factoryType+0x24,"NAWEAP",7);memcpy(memory.data()+factoryType+0xDD0,"CUSTOM",7);disk["NTWEAP.SHP"]=partShape(4,0,3);
+ const char* names[]={"NGWEAPBB.SHP","NGWEAP_2.SHP","NGWEAP_4.SHP","NGWEAP_1.SHP","NGWEAP_3.SHP","NGWEAPDO.SHP"};const int xs[]={3,0,0,6,6,9};
+ size_t partBytes=0;
+ for(int i=0;i<external::buildings::PartCount;++i){uint32_t reference=0x130000+i*0x1000;half(memory,reference,65535);word(memory,reference+8,reference+0x100);memcpy(memory.data()+reference+0x100,names[i],strlen(names[i])+1);word(memory,factoryType+external::buildings::partOffsets[i],reference);disk[names[i]]=partShape(32,xs[i],20+i*32);partBytes+=disk[names[i]].size();}
+ disk["CTOILDMK.SHP"]=shp;memcpy(memory.data()+factoryType+0xE5C,"CAOILDMK",9);word(memory,factoryType+0xF08,12);
+ clockValue+=6000;gameassets::update();
+ word(memory,0x8871E0,runtimeRules);double yellow=.5;memcpy(memory.data()+runtimeRules+0x1700,&yellow,8);
+ gameassets::ActorArt factoryArt;assert(gameassets::captureActor(factory,factoryType,701,factoryArt)&&factoryArt.filename=="NTWEAP.SHP"&&!factoryArt.shadow);
+ for(int i=0;i<external::buildings::PartCount;++i)assert(factoryArt.buildingParts[i].filename==names[i]&&!factoryArt.buildingParts[i].shape.empty());
+ assert(gameassets::artBytes(factoryArt)>=factoryArt.shape.size()+partBytes);
+ external::visual::Pose fp;gameassets::buildingPose(factory,factoryType,fp);assert(fp.frame==0&&fp.doorFrame==-1&&fp.variant==-1);
+ assert(gameassets::renderActor(factoryArt,fp,image)&&image.attachments.size()==1);assert(image.attachments[0].flat&&image.attachments[0].writeDepth&&image.attachments[0].depthBias==1&&image.attachments[0].indices[0]==20);
+ auto beyond=fp;beyond.frame=20;assert(gameassets::renderActor(factoryArt,beyond,image)&&image.indices[0]==5&&image.attachments[0].indices[0]==40); // all bodies clamp at half, Bib keeps GetCurrentFrame
+ word(memory,factory+0x6C,50);gameassets::buildingPose(factory,factoryType,fp);assert(fp.frame==1);assert(gameassets::renderActor(factoryArt,fp,image)&&image.indices[0]==4&&image.attachments[0].indices[0]==21); // equality is damaged for body and Bib
+ word(memory,factory+0x6C,100);word(memory,factory+0xAC,16);word(memory,factoryType+0xF00,8);word(memory,factory+0x358,90);word(memory,factory+0x360,20);word(memory,factory+0x364,20);memory[factory+0x368]=memory[factory+0x369]=1;word(memory,0xA8ED84,100);
+ gameassets::buildingPose(factory,factoryType,fp);assert(fp.doorFrame==4&&gameassets::renderActor(factoryArt,fp,image));assert(image.indices[0]==52&&image.depthBias==20&&image.attachments.size()==3);
+ beyond=fp;beyond.frame=20;assert(gameassets::renderActor(factoryArt,beyond,image)&&image.indices[0]==68&&image.attachments[0].indices[0]==40);assert(gameassets::renderActor(factoryArt,fp,image));
+ assert(image.attachments[0].indices[0]==20&&image.attachments[1].indices[0]==116&&image.attachments[2].indices[0]==184);assert(image.attachments[1].flat&&image.attachments[1].writeDepth&&image.attachments[1].depthBias==0);assert(image.attachments[2].flat&&!image.attachments[2].writeDepth&&image.attachments[2].depthBias==5);
+ external::camera::Surface composite;assert(composite.reset(24,12));composite.blit(image,3,3,1,1,30,{},2);
+ for(const auto&part:image.attachments)assert(composite.color[3*24+3+part.x]==part.pixels[0]);assert(composite.color[3*24+3]==image.pixels[0]);
+ auto doorPixel=image.attachments[2].pixels[0];word(memory,0xA8ED84,105);gameassets::buildingPose(factory,factoryType,fp);assert(fp.doorFrame==6&&gameassets::renderActor(factoryArt,fp,image)&&image.attachments[2].pixels[0]!=doorPixel); // body stays frame zero while the real door moves
+ word(memory,factory+0xE4,links);word(memory,factory+0xE8,1);word(memory,links,unit);word(memory,unit,0x7F5C70);word(memory,unit+0x6C4,unitType);memory[unitType+0xD94]=1;
+ word(memory,factory+0x6C,50);memory[factoryType+0x1700]=1;gameassets::buildingPose(factory,factoryType,fp);assert(fp.doorFrame==14&&gameassets::renderActor(factoryArt,fp,image));assert(image.indices[0]==85&&image.depthBias==40&&image.attachments[1].indices[0]==149&&image.attachments[2].indices[0]==194);
+ // Building shadow depth is independent of the production body's +40 plane.
+ // Native DrawObject draws each shadow after its color, even for a door which
+ // does not write depth. Offset the roof shadow beyond the body to exercise a
+ // foreground depth edge, rather than merely checking stored metadata.
+ auto shadowArt=factoryArt;shadowArt.shadow=true;half(shadowArt.buildingParts[external::buildings::RoofDeploy].shape,8+(fp.frame+16)*24,2);
+ assert(gameassets::renderActor(shadowArt,fp,image)&&image.attachments.size()==4&&image.shadowsAfter);assert(image.attachments[0].shadow&&image.attachments[0].depthBias==2);
+ for(size_t i=1;i<image.attachments.size();++i){const auto&part=image.attachments[i];assert(part.attachments.size()==1&&part.attachments[0].shadow&&part.attachments[0].depthBias==2&&part.shadowsAfter);assert(part.attachments[0].writeDepth==part.writeDepth);}
+ assert(composite.reset(24,12));composite.color[3*24+4]=0xffe0c080;composite.depth[3*24+4]=25;composite.blit(image,3,3,1,1,30,{},2);assert(composite.color[3*24+3]==image.pixels[0]&&composite.color[3*24+4]==0xffe0c080);
+ const auto&doorImage=image.attachments.back();uint32_t halfDoor=(doorImage.pixels[0]&0xff000000u)|((doorImage.pixels[0]&0xfefefeu)>>1);assert(composite.color[3*24+12]==halfDoor);
+ // With only process memory available, an unloaded Bib must not hide the
+ // already decoded factory. Cached partial art becomes complete when the
+ // engine later populates that same SHPReference; no synthetic frame advance.
+ auto partialArt=factoryArt;auto&bib=partialArt.buildingParts[external::buildings::Bib];bib.shape.clear();assert(gameassets::renderActor(partialArt,fp,image)&&image.incomplete&&image.attachments.size()==2&&image.indices[0]==85);
+ constexpr uint32_t loadedBib=0x1A0000;memcpy(memory.data()+loadedBib,disk[names[0]].data(),disk[names[0]].size());word(memory,bib.pointer+12,loadedBib);assert(gameassets::renderActor(partialArt,fp,image)&&!image.incomplete&&image.attachments.size()==3);word(memory,bib.pointer+12,0);
+ word(memory,factory+0xAC,0);gameassets::buildingPose(factory,factoryType,fp);assert(gameassets::renderActor(factoryArt,fp,image)&&image.indices[0]==4&&image.attachments.size()==1); // never loop idle factories through production art
+ // Construction and early placement both use make art. Only BState controls
+ // vanilla Bib visibility; ActuallyPlacedOnMap independently selects GetImage.
+ word(memory,factory+0x534,0);word(memory,factory+0xF8,3);gameassets::buildingPose(factory,factoryType,fp);assert(fp.variant==-2&&gameassets::captureActor(factory,factoryType,701,art)&&art.filename=="CTOILDMK.SHP");assert(gameassets::renderActor(art,fp,image)&&image.attachments.empty());
+ word(memory,factory+0x534,1);memory[factory+0x6E4]=0;gameassets::buildingPose(factory,factoryType,fp);assert(fp.variant==-2&&gameassets::captureActor(factory,factoryType,701,art)&&art.filename=="CTOILDMK.SHP");
+ memory[factory+0x6E4]=1;word(memory,factory+0xF8,0);gameassets::buildingPose(factory,factoryType,fp);assert(fp.variant==-1&&gameassets::captureActor(factory,factoryType,701,art)&&art.filename=="NTWEAP.SHP"&&gameassets::renderActor(art,fp,image));
+ // A naval yard's base is its normal body. Its production is slot 8 and must
+ // keep native Value+Start, independent of all optional factory-door pointers.
+ constexpr uint32_t yard=0x180000,yardType=0x188000,yardAnim=0x190000,yardAnimType=0x198000;
+ word(memory,yard,0x7E3EBC);word(memory,yard+0x10,801);word(memory,yard+0x520,yardType);word(memory,yard+0x21C,house);word(memory,yard+0x6C,100);word(memory,yard+0x534,1);memory[yard+0x6E4]=1;word(memory,yardType+0xA0,100);memcpy(memory.data()+yardType+0x24,"GAYARD",7);memcpy(memory.data()+yardType+0xDD0,"CUSTOM",7);memory[yardType+0x237]=1;disk["GTYARD.SHP"]=partShape(4,0,7);disk["GTYARD_D.SHP"]=partShape(32,6,30);
+ word(memory,yard+0x55C+8*4,yardAnim);word(memory,yardAnim,0x7E3354);word(memory,yardAnim+0x10,802);word(memory,yardAnim+0xC8,yardAnimType);memory[yardAnim+0x90]=1;memory[yardAnim+0x118]=1;word(memory,yardAnim+0x9C,26112);word(memory,yardAnim+0xA0,21760);word(memory,yardAnimType+0x364,2);word(memory,yardAnimType+0x2B4,2);word(memory,yardAnim+0xAC,3);memcpy(memory.data()+yardAnimType+0x24,"GAYARD_D",9);
+ assert(gameassets::captureActor(yard,yardType,801,art)&&art.filename=="GTYARD.SHP");gameassets::buildingPose(yard,yardType,fp);assert(gameassets::renderActor(art,fp,image));for(const auto&part:art.buildingParts)assert(!part.pointer);auto yardBase=image;
+ states=external::animations::attached(gameassets::context.read,yard,801);assert(states.size()==1&&states[0].frame==5);assert(gameassets::captureAnimation(yardAnim,yardAnimType,802,yard,801,art)&&art.filename=="GTYARD_D.SHP");fp={};fp.frame=states[0].frame;assert(gameassets::renderActor(art,fp,image)&&image.indices[0]==35);
+ word(memory,yardAnim+0xAC,4);states=external::animations::attached(gameassets::context.read,yard,801);fp.frame=states[0].frame;assert(gameassets::renderActor(art,fp,image)&&image.indices[0]==36);
+ word(memory,yardAnim+0xAC,0);word(memory,yardAnimType+0x2B4,0);states=external::animations::attached(gameassets::context.read,yard,801);fp.frame=states[0].frame;assert(fp.frame==0&&gameassets::renderActor(art,fp,image)&&image.indices[0]==30);
+ assert(composite.reset(24,12));composite.blit(yardBase,3,3,1,1,30,{},2);auto basePixel=composite.color[3*24+3];composite.blit(image,3,3,1,1,30,{},2);assert(composite.color[3*24+3]==basePixel&&composite.color[3*24+9]==image.pixels[0]);
+ word(memory,yard+0x55C+8*4,0);assert(!gameassets::captureAnimation(yardAnim,yardAnimType,802,yard,801,art));word(memory,yard+0x55C+8*4,yardAnim);word(memory,yard+0x10,803);assert(!gameassets::captureAnimation(yardAnim,yardAnimType,802,yard,801,art));
+ std::cout<<"PASS production asset pipeline: unloaded Bib/factory parts, normal/roof unload, native door and damage frames, composition, construction gate, naval base and production slot\n";
  // Standalone warhead/explosion art uses ANIM.PAL, with no building slot.
  disk["ANIM.PAL"]=pal;disk["EXPLODE.SHP"]=shp;memcpy(memory.data()+animType+0x24,"EXPLODE",8);memory[anim+0x118]=0;
  assert(gameassets::captureAnimation(anim,animType,502,0,0,art)&&art.filename=="EXPLODE.SHP");ap.frame=0;assert(gameassets::renderActor(art,ap,image));

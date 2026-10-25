@@ -2,16 +2,17 @@
 #include <cassert>
 #include <iostream>
 struct Assets {
- struct ActorArt {int id=0;bool anim=false;};struct Files {uint64_t value=1;uint64_t revision(){return value;}}files;int loads=0;std::set<int> seen;bool small=false;
+ struct ActorArt {int id=0;bool anim=false;};struct Files {uint64_t value=1;uint64_t revision(){return value;}}files;int loads=0,captures=0,renders=0;std::set<int> seen;std::map<int,std::set<int>> frames;std::set<std::pair<int,int>> buildingPoses;bool small=false,partial=false;
  uint64_t revision(){return files.revision();}
  static size_t cost(const ActorArt&){return sizeof(ActorArt);}
  bool palette(bool,std::array<uint32_t,256>&p){p.fill(0xffffffff);return true;}
  bool tile(uint32_t,unsigned,const std::array<uint32_t,256>&,external::voxel::Image&i){++loads;i.width=60;i.height=30;i.x=-30;i.y=-15;i.pixels.assign(1800,0xffa03020);i.depth.assign(1800,0);return true;}
  bool overlay(uint32_t,uint32_t,int,external::voxel::Image&,bool=false){return false;}
  int buildingFrame(uint32_t,uint32_t){return 0;}
- bool captureActor(uint32_t,uint32_t,uint32_t id,ActorArt&a){a.id=id;return true;}
+ void buildingPose(uint32_t p,uint32_t t,external::visual::Pose&pose){pose.frame=buildingFrame(p,t);}
+ bool captureActor(uint32_t,uint32_t,uint32_t id,ActorArt&a){++captures;a.id=id;return true;}
  bool captureAnimation(uint32_t,uint32_t,uint32_t id,uint32_t,uint32_t,ActorArt&a){a.id=id;a.anim=true;return true;}
- bool renderActor(const ActorArt&a,const external::visual::Pose&,external::voxel::Image&i){seen.insert(a.id);i.width=i.height=small?8:60;i.x=i.y=-i.width/2;i.pixels.assign(i.width*i.height,a.anim?0xffaaff00:0xff00aa00);i.depth.assign(i.width*i.height,a.anim?100:5);i.writeDepth=false;return true;}
+ bool renderActor(const ActorArt&a,const external::visual::Pose&pose,external::voxel::Image&i){++renders;seen.insert(a.id);frames[a.id].insert(pose.frame);if(pose.buildingFlags)buildingPoses.emplace(pose.buildingFlags,pose.doorFrame);i.width=i.height=small?8:60;i.x=i.y=-i.width/2;i.pixels.assign(i.width*i.height,a.anim?0xffaaff00:0xff00aa00);i.depth.assign(i.width*i.height,a.anim?100:5);i.writeDepth=false;i.incomplete=partial;return true;}
 };
 int main(){
  using namespace external::radar;Assets assets;SceneRenderer<Assets> renderer;auto read=[](uint32_t,void*,size_t){return false;};
@@ -35,6 +36,7 @@ int main(){
  assert(assets.seen.size()==33&&assets.seen.count(99));
  assert(std::find(scene->pixels.begin(),scene->pixels.end(),0xffaaff00)!=scene->pixels.end());
  for(int tick=0;tick<4;++tick){for(auto&marker:frame.markers)++marker.pose.frame;frame.tick+=16;scene=renderer.render(frame,1024,512,read,assets);assert(std::find(scene->pixels.begin(),scene->pixels.end(),0xffaaff00)!=scene->pixels.end());} // last good anim stays visible under budget
+ assert(assets.frames[99].count(0)&&assets.frames[99].count(1));
  // A body later in XY order must not paint over its attached animation.
  renderer.reset();assets.small=false;frame.markers={m,pump};frame.markers[0].u=frame.markers[0].v=.5;frame.markers[0].kind=3;frame.markers[1].u=frame.markers[1].v=.5;frame.markers[1].x=m.x-1;frame.markers[1].y=m.y-1;
  scene=renderer.render(frame,128,64,read,assets);assert(scene->pixels[32*128+64]==0xffaaff00);
@@ -47,5 +49,9 @@ int main(){
  frame.markers={front,pump};scene=renderer.render(frame,128,64,read,assets);assert(scene->pixels[32*128+64]==0xff00aa00);
  frame.markers[0].x=m.x-256;frame.markers[0].y=m.y-256;scene=renderer.render(frame,128,64,read,assets);assert(scene->pixels[32*128+64]==0xffaaff00);
  frame.markers[0]=front;frame.markers[1].layer=3;scene=renderer.render(frame,128,64,read,assets);assert(scene->pixels[32*128+64]==0xffaaff00);
- std::cout<<"PASS complete scene publication, frame-zero anims, fair retained poses, native ground/air layers and YSort foreground occlusion, removal, resize and theater/resource reset\n";
+ renderer.reset();auto fa=m;fa.kind=3;fa.pose.buildingFlags=3;fa.pose.doorFrame=2;fa.u=.3;auto fb=fa;fb.id=2;fb.object+=0x1000;fb.u=.7;fb.pose.doorFrame=6;frame.markers={fa,fb};int captures=assets.captures;
+ scene=renderer.render(frame,128,64,read,assets);assert(scene&&assets.captures==captures+1&&assets.buildingPoses.count({3,2})&&assets.buildingPoses.count({3,6}));
+ frame.markers[0].pose.buildingFlags=7;scene=renderer.render(frame,128,64,read,assets);assert(assets.captures==captures+1&&assets.buildingPoses.count({7,2}));
+ frame.markers[0].pose.doorFrame=7;assets.partial=true;scene=renderer.render(frame,128,64,read,assets);assert(std::find(scene->pixels.begin(),scene->pixels.end(),0xff00aa00)!=scene->pixels.end());int renders=assets.renders;assets.partial=false;frame.tick+=50;scene=renderer.render(frame,128,64,read,assets);assert(assets.renders==renders);frame.tick+=2000;scene=renderer.render(frame,128,64,read,assets);assert(assets.renders==renders+1&&assets.captures==captures+1);
+ std::cout<<"PASS scene publication, native animation frame-zero/advance, independent door/roof cache, shared source art, fair retained poses, ground/air layers, resize and reset\n";
 }

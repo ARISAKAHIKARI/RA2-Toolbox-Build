@@ -1,3 +1,15 @@
+# RA2 Toolbox 1.0.38-pre.4
+
+對齊原版畫面左下來光的 VXL 光照，校正模型局部座標；補入建築 Bib、工廠生產基底、屋頂底層與門，依原版狀態及過渡計時器選幀。
+
+**攝像機角度和固定 2:1 投影沒有調整。** 光源是方向參數，沒有有限距離的高度；SHP 沿用素材內已繪製的明暗。
+
+[下載 1.0.38-pre.4](https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/releases/tag/v1.0.38-pre.4) · [發布說明](packages/v1.0.38-pre.4/RELEASE_NOTES.md) · [完整特性樹](docs/FEATURES-1.0.38-pre.4.md) · [建築原版對照](source/research/2026-10-25-native-building-components.md)
+
+EXE／DLL 檔案版本 **1.0.38.4**，Assist **72**。更新包僅含配套 EXE/DLL，源碼另附；退出遊戲與工具後成套更新，保留配置和資源。發布要求受控回歸、原版指令對照及 Windows 驗證；完整遊戲畫面、所有 MOD 生產動畫、FPS 和雙機聯機仍未驗收。
+
+## 上一個預覽版
+
 # RA2 Toolbox 1.0.38-pre.3
 
 修復實景小地圖消失、建造／出售與爆炸動畫、地塊遮擋建築及陰影重複疊黑；覆蓋層背景合成並保留同局素材快取。小地圖支援最高 1000% 及水平／垂直對齊。

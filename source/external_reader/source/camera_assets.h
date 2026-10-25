@@ -6,6 +6,7 @@
 #include "cameo_catalog.h"
 #include "shape_depth.h"
 #include "building_animations.h"
+#include "building_components.h"
 #include "sprite_names.h"
 #include <cstdio>
 #include <cstdlib>
@@ -75,6 +76,11 @@ bool spritePalette(uint32_t type,const std::string&file,bool overlay,uint32_t ow
  if(!iso&&!overlay&&owner>=0x10000){uint8_t rgb[3]{};if(read(owner+22265,rgb,3))for(int i=16;i<32;++i){unsigned f=unsigned(8+i-16);out[i]=0xff000000u|((unsigned(rgb[0])*f/23)<<16)|((unsigned(rgb[1])*f/23)<<8)|(unsigned(rgb[2])*f/23);}}
  return true;
 }
+double conditionYellow(){
+ double live=0;uint32_t rules=word(0x8871E0);if(rules>=0x10000&&read(rules+0x1700,&live,sizeof live)&&std::isfinite(live)&&live>=0&&live<=1)return live;
+ metadata();auto value=rulesINI.get("AUDIOVISUAL","CONDITIONYELLOW");char*end=nullptr;double threshold=strtod(value.c_str(),&end);if(end&&*end=='%')threshold/=100.;
+ return value.empty()||!std::isfinite(threshold)||threshold<0||threshold>1?.5:threshold;
+}
 int buildingFrame(uint32_t object,uint32_t type){
  int frame=int32_t(word(object+0xF8)),state=int32_t(word(object+0x534));
  if(word(type+0x16BF)&255)return int32_t(word(object+0x618));
@@ -85,10 +91,13 @@ int buildingFrame(uint32_t object,uint32_t type){
   if(mission==19)frame=start+count-frame-1;
   return frame>=0&&frame<8192?frame:-1;
  }
- metadata();int strength=int32_t(word(type+0xA0)),health=int32_t(word(object+0x6C));if(strength<=0||health<=0)return 0;
- auto value=rulesINI.get("AUDIOVISUAL","CONDITIONYELLOW");char*end=nullptr;double threshold=strtod(value.c_str(),&end);if(end&&*end=='%')threshold/=100.;
- if(value.empty()||!std::isfinite(threshold)||threshold<0||threshold>1)threshold=.5;
- return std::clamp(frame,0,8191)+(health<double(strength)*threshold?1:0);
+ int strength=int32_t(word(type+0xA0)),health=int32_t(word(object+0x6C));if(strength<=0||health<=0)return 0;
+ return std::clamp(frame,0,8191)+(double(health)/strength<=conditionYellow()?1:0);
+}
+void buildingPose(uint32_t object,uint32_t type,external::visual::Pose&pose){
+ pose.frame=buildingFrame(object,type);auto state=external::buildings::state(read,object,type,conditionYellow());
+ pose.buildingFlags=state.flags;pose.doorFrame=state.doorFrame;
+ external::GameView game(read);if(external::buildings::buildup(game,object))pose.variant=-2;else if(pose.variant==-2)pose.variant=-1;
 }
 bool overlay(uint32_t type,uint32_t pointer,int frame,external::voxel::Image&out,bool terrain=false){std::vector<uint8_t>bytes;std::string file;bool disk=shapeBytes(type,pointer,bytes,file,!terrain);std::array<uint32_t,256>pal{};if(!spritePalette(type,file,true,0,pal,terrain))return false;
  std::string why;bool ok=disk?external::voxel::sprite(external::assets::Memory{std::move(bytes)},external::assets::Memory::Base,pal,out,frame,&why):external::voxel::sprite(read,pointer,pal,out,frame,&why);if(!ok)failure="overlay-frame/decode:"+file+" frame="+std::to_string(frame)+" "+why;
@@ -119,14 +128,26 @@ bool actor(uint32_t p,uint32_t type,uint32_t id,double angle,external::voxel::Im
 }
 // Observation assets are retained separately from rendered headings: turning a
 // unit must not reopen/redecode its VXL/HVA files every overlay frame.
+struct BuildingPart {uint32_t pointer=0;std::vector<uint8_t> shape;std::string filename;};
 struct ActorArt {
  external::voxel::Model model;std::vector<uint8_t> shape;std::array<uint32_t,256> colors{};
  std::string filename;
  uint32_t pointer=0,type=0;float turretOffset=0;bool voxel=false;int kind=-1,fw=1,fh=1,moveX=0,moveY=0,drawY=0,zAdjust=0;bool flat=false,shadow=true;
  std::shared_ptr<const external::voxel::Image> depthMask;bool depthMaskBiased=false;
+ std::array<BuildingPart,external::buildings::PartCount> buildingParts;
 };
-static size_t cost(const ActorArt&a){return a.shape.size()+a.model.faces.size()*sizeof(external::voxel::Face);}
+static size_t cost(const ActorArt&a){size_t n=a.shape.size()+a.model.faces.size()*sizeof(external::voxel::Face);for(const auto&part:a.buildingParts)n+=part.shape.size();return n;}
 static int integer(const std::string&s,int fallback=0){if(s.empty())return fallback;char*end=nullptr;long n=strtol(s.c_str(),&end,10);return end!=s.c_str()&&!*end?int(std::clamp(n,-8192l,8192l)):fallback;}
+void captureBuildingParts(uint32_t type,ActorArt&art){
+ for(int i=0;i<external::buildings::PartCount;++i){auto&part=art.buildingParts[i];part.pointer=word(type+external::buildings::partOffsets[i]);if(part.pointer<0x10000){part.pointer=0;continue;}
+  auto live=external::assets::shapeName(read,part.pointer);auto stem=i==external::buildings::Bib?artValue(type,"BIBSHAPE"):std::string{};
+  if(stem.size()>4&&external::assets::name(stem.substr(stem.size()-4))==".SHP")stem.resize(stem.size()-4);
+  // A body Image name is not a fallback for a factory door. Loaded parts can
+  // decode directly from memory; unloaded references retain their real name.
+  auto names=external::assets::spriteNames(stem,live,theater(78,3),theater(86,1),(word(type+0x22C)&255)!=0,(word(type+0x237)&255)!=0,false,true);
+  part.filename=live;for(const auto&name:names)if(files.load(name,part.shape)){part.filename=name;break;}
+ }
+}
 bool captureAnimation(uint32_t p,uint32_t type,uint32_t id,uint32_t parent,uint32_t parentId,ActorArt&out){
  external::animations::State state;
  if(!external::animations::capture(read,p,parent,parentId,state)||state.id!=id||state.type!=type){failure="animation-identity/slot";return false;}
@@ -184,7 +205,7 @@ bool captureActor(uint32_t p,uint32_t type,uint32_t id,ActorArt&out){
    }
   }else{part("TUR",type+0xB8,true);part("BARL",type+0xC0,true);}
  }else{
-  bool buildup=next.kind==3&&word(p+0x534)==0;
+  bool buildup=next.kind==3&&external::buildings::buildup(game,p);
   next.pointer=word(type+(buildup?0xE00:0xA4));std::string filename;bool loaded=false;
   if(buildup){auto stem=text(type+0xE5C,16);if(stem.empty())stem=artValue(type,"Buildup");
    auto names=external::assets::spriteNames(stem,external::assets::shapeName(read,next.pointer),theater(78,3),theater(86,1),(word(type+0x22C)&255)!=0,(word(type+0x237)&255)!=0,false,true);
@@ -194,6 +215,7 @@ bool captureActor(uint32_t p,uint32_t type,uint32_t id,ActorArt&out){
   if(!spritePalette(type,filename,false,owner,next.colors))return false;
   if(!loaded){external::voxel::Image check;if(!external::voxel::sprite(read,next.pointer,next.colors,check)){failure="sprite-not-found/unloaded:"+(filename.empty()?stem:filename);return false;}}
  }
+ if(next.kind==3)captureBuildingParts(type,next);
  if(word(p+0x10)!=id||word(p+0x21C)!=owner)return false;out=std::move(next);return true;
 }
 bool renderActor(const ActorArt&art,const external::visual::Pose&pose,external::voxel::Image&out){
@@ -208,14 +230,47 @@ bool renderActor(const ActorArt&art,const external::visual::Pose&pose,external::
   return true;
  }
  if(pose.frame<0){failure="sprite-sequence";return false;}
- auto bytes=[&](uint32_t at,void*p,size_t n){if(at<external::assets::Memory::Base||uint64_t(at-external::assets::Memory::Base)+n>art.shape.size())return false;memcpy(p,art.shape.data()+at-external::assets::Memory::Base,n);return true;};
- std::string why;auto decode=[&](int frame,external::voxel::Image&image){return !art.shape.empty()?external::voxel::sprite(bytes,external::assets::Memory::Base,art.colors,image,frame,&why,255):external::voxel::sprite(read,art.pointer,art.colors,image,frame,&why,255);};
- if(!decode(pose.frame,out)){failure="sprite-frame/decode:"+art.filename+" frame="+std::to_string(pose.frame)+" "+why;return false;}
- out.y+=art.drawY;out.objectPalette=true;out.flat=art.flat;out.writeDepth=art.kind==3;out.depthBias=-float(art.zAdjust);
+ auto decode=[&](const std::vector<uint8_t>&shape,uint32_t pointer,int frame,external::voxel::Image&image,std::string&why){
+  auto bytes=[&](uint32_t at,void*p,size_t n){if(at<external::assets::Memory::Base||uint64_t(at-external::assets::Memory::Base)+n>shape.size())return false;memcpy(p,shape.data()+at-external::assets::Memory::Base,n);return true;};
+  return !shape.empty()?external::voxel::sprite(bytes,external::assets::Memory::Base,art.colors,image,frame,&why,255):external::voxel::sprite(read,pointer,art.colors,image,frame,&why,255);
+ };
+ auto frames=[&](const std::vector<uint8_t>&shape,uint32_t pointer){uint8_t head[8]{};if(!shape.empty()){if(shape.size()<8)return 0;memcpy(head,shape.data(),8);}
+  else{if(pointer<0x10000||!read(pointer,head,8))return 0;if(external::voxel::u16(head)==65535){pointer=word(pointer+12);if(pointer<0x10000||!read(pointer,head,8))return 0;}}
+  return external::voxel::u16(head)==0?int(external::voxel::u16(head+6)):0;};
+ const auto*shape=&art.shape;uint32_t pointer=art.pointer;std::string filename=art.filename;int frame=pose.frame;float bias=-float(art.zAdjust);
+ bool unloading=art.kind==3&&(pose.buildingFlags&external::buildings::Unloading),roof=(pose.buildingFlags&external::buildings::Roof)!=0;
+ if(unloading){const auto&part=art.buildingParts[roof?external::buildings::RoofDeploy:external::buildings::Deploy];if(part.pointer){shape=&part.shape;pointer=part.pointer;filename=part.filename;bias=roof?40.f:20.f;}}
+ // 43D7A7 clamps every main building shape, including make art, to half the
+ // selected SHP's frame count. Bib receives the original GetCurrentFrame.
+ if(art.kind==3){int n=frames(*shape,pointer);if(n>0)frame=std::min(frame,n/2);}
+ bool complete=true;std::string why;if(!decode(*shape,pointer,frame,out,why)){
+  failure="sprite-frame/decode:"+filename+" frame="+std::to_string(frame)+" "+why;
+  if(shape==&art.shape)return false;
+  // A demand-loaded production SHP may be unavailable while the body is
+  // already readable. Retain that body and retry the incomplete composition.
+  complete=false;shape=&art.shape;pointer=art.pointer;frame=pose.frame;bias=-float(art.zAdjust);int n=frames(*shape,pointer);if(n>0)frame=std::min(frame,n/2);
+  if(!decode(*shape,pointer,frame,out,why))return false;
+ }
+ out.y+=art.drawY;out.objectPalette=true;out.flat=art.flat;out.writeDepth=art.kind==3;out.depthBias=bias;
  if(art.kind==3&&!out.flat&&art.depthMask)external::camera::buildingDepth(out,*art.depthMask,art.fw,art.fh,art.moveX,art.moveY,art.depthMaskBiased);
- uint8_t header[8]{};bool head=!art.shape.empty()?bytes(external::assets::Memory::Base,header,8):read(art.pointer,header,8);int frames=head?external::voxel::u16(header+6):0;
- if(art.shadow&&frames>=2&&pose.frame<frames/2){external::voxel::Image shadow;if(decode(pose.frame+frames/2,shadow)){shadow.y+=art.drawY;shadow.shadow=true;shadow.flat=true;shadow.writeDepth=art.kind==3&&!art.flat;out.shadowsAfter=shadow.writeDepth;shadow.depthBias=out.depthBias+(art.kind==3?1:art.kind==5?0:2);out.attachments.push_back(std::move(shadow));}}
- return true;
+ auto shadow=[&](const std::vector<uint8_t>&bytes,uint32_t at,int displayed,external::voxel::Image&image,bool write,float shadowBias){int n=frames(bytes,at);if(!art.shadow||n<2||displayed<0||displayed>=n/2)return;external::voxel::Image part;
+  if(decode(bytes,at,displayed+n/2,part,why)){part.y+=art.drawY;part.shadow=true;part.flat=true;part.writeDepth=write;image.shadowsAfter=art.kind==3||write;part.depthBias=shadowBias;image.attachments.push_back(std::move(part));}};
+ // DrawObject's shadow branch recomputes its ground plane independently of
+ // NormalZAdjust and the -20/-40 production-body adjustment (706469/70653E).
+ shadow(*shape,pointer,frame,out,art.kind==3,art.kind==3?2.f:out.depthBias+(art.kind==5?0:2));
+ auto component=[&](external::buildings::Part index,int displayed,float depthBias,bool write){const auto&part=art.buildingParts[index];if(!part.pointer||displayed<0)return;
+  external::voxel::Image image;if(!decode(part.shape,part.pointer,displayed,image,why)){failure="building-part/decode:"+part.filename+" frame="+std::to_string(displayed)+" "+why;complete=false;return;}
+  image.y+=art.drawY;image.objectPalette=true;image.flat=true;image.writeDepth=write;image.depthBias=depthBias;
+  shadow(part.shape,part.pointer,displayed,image,write,2);out.attachments.push_back(std::move(image));
+ };
+ if(art.kind==3){
+  // Native order: body (43D85F), Bib (43D8E9), UnderDoor/UnderRoof
+  // (43D9C9/43DA67), Door (43DF3F). All three extras use the ground gradient;
+  // only the standing body uses BUILDNGZ. Their own state supplies the frame.
+  if(pose.buildingFlags&external::buildings::Constructed)component(external::buildings::Bib,pose.frame,1,true);
+  if(unloading){component(roof?external::buildings::UnderRoofDoor:external::buildings::UnderDoor,(pose.buildingFlags&external::buildings::Damaged)?1:0,0,true);component(external::buildings::Door,pose.doorFrame,5,false);}
+ }
+ out.incomplete=!complete;return true;
 }
 
 

@@ -11,10 +11,12 @@ int main(){
  auto glow=back;glow.objectPalette=true;glow.indices.assign(16,245);glow.depth.assign(16,5);light.intensity=0;s.blit(glow,0,0,1,1,10,light);assert(s.color[0]==0xff008000);glow.indices.assign(16,20);s.blit(glow,4,0,1,1,10,light);assert(s.color[4]==0xff000000);
  light.intensity=1000;assert(camera::lit(0xff804020,1,false,light)==0xff804020);light.intensity=800;assert(camera::lit(0xff804020,1,false,light)!=0xff663319); // actual 63-step light ramp
  voxel::Vpl vpl;std::vector<uint8_t> bytes(784+32*256);bytes[8]=32;for(int page=0;page<32;++page)for(int c=0;c<256;++c)bytes[784+page*256+c]=uint8_t((c+page)%256);
- assert(vpl.load(bytes)&&vpl.map(16,5)==21&&vpl.map(255,5)==36);voxel::Model model;voxel::Face face;face.p[0]={0,0,0};face.p[1]={8,0,0};face.p[2]={8,8,0};face.p[3]={0,8,0};face.normal={1,0,0};face.normalIndex=0;face.hasNormal=true;face.color=5;model.faces.push_back(face);
+ assert(vpl.load(bytes)&&vpl.map(16,5)==21&&vpl.map(255,5)==36);voxel::Model model;voxel::Face face;face.p[0]={0,0,0};face.p[1]={8,0,0};face.p[2]={8,8,0};face.p[3]={0,8,0};face.normal={1,0,0};face.normalType=4;face.normalIndex=2;face.hasNormal=true;face.color=5;model.faces.push_back(face);
  std::array<uint32_t,256> colors{};for(unsigned i=0;i<256;++i)colors[i]=0xff000000u|i*0x010101;
  voxel::Image facingA,facingB;assert(voxel::render(model,0,colors,facingA,0,0,&vpl,255));assert(voxel::render(model,1.57079632679,colors,facingB,0,0,&vpl,255));
- auto index=[](const voxel::Image&i){for(size_t n=0;n<i.pixels.size();++n)if(i.pixels[n]>>24)return i.indices[n];return uint8_t(0);};assert(index(facingA)!=index(facingB));
+ // Native golden mode 4, normal 2: facings 8/16 select pages 0/12.
+ // Mode 0 is invalid and must not be used to test whether facing affects VPL.
+ auto index=[](const voxel::Image&i){for(size_t n=0;n<i.pixels.size();++n)if(i.pixels[n]>>24)return i.indices[n];return uint8_t(0);};assert(index(facingA)==5&&index(facingB)==17);
  model.faces[0].normalType=4;model.faces[0].normalIndex=1;assert(voxel::render(model,0,colors,facingA,0,0,&vpl,255));
  model.faces[0].normal={0,0,-1};assert(voxel::render(model,0,colors,facingB,0,0,&vpl,255));assert(facingA.pixels==facingB.pixels); // HVA/scale normal cannot change a VPL page
  bytes.resize(800);assert(!vpl.load(bytes));

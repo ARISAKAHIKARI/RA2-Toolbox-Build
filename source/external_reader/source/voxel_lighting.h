@@ -1,10 +1,87 @@
 #pragma once
 #include <array>
 #include <algorithm>
+#include <cmath>
 #include <cstdint>
 #include <cstring>
 #include <vector>
 namespace external { namespace voxel {
+// Native YR 1.001: 754C00 rotates (-sqrt(.5),-sqrt(.5),0) about Y;
+// 753D00 transforms that view-space source by the transposed draw matrix.
+// These values were checked in four valid/stable captures. They are direction
+// vectors, not a light position or a configurable physical sun height.
+inline constexpr std::array<float,3> NativeLightSource{{-.49999943375587463f,-.7071059942245483f,.49999943375587463f}};
+inline constexpr std::array<float,9> NativeVoxelView{{
+ .7081906199455261f,.706021249294281f,0,
+ -.3531669080257416f,.35425207018852234f,.865897536277771f,
+ .6113420128822327f,-.6132205128669739f,.5002213716506958f
+}};
+// The game's _ftol leaves x87 in round-toward-zero mode. Preserve its stored
+// floats without changing the host thread's floating-point environment.
+inline float nativeStoredFloat(double value){
+ float out=float(value);
+ if((value>0&&double(out)>value)||(value<0&&double(out)<value))out=std::nextafter(out,0.f);
+ return out;
+}
+// 4CACB0/4CAD00 use an 8192-entry sine table and an asymmetric negative-angle
+// index calculation. Reconstruct the mathematical table rather than shipping
+// data from the game. This matters at VPL page boundaries when a unit turns.
+inline std::array<float,2> nativeVoxelSinCos(double angle){
+ constexpr double Tau=6.28318530717958647692;
+ if(!std::isfinite(angle))return {{0,1}};
+ if(std::abs(angle)>1024)angle=std::remainder(angle,Tau);
+ double stored=nativeStoredFloat(angle);
+ int n=int(stored*2607.594482421875),index=n/2;
+ index%=8192;if(index<0)index+=8192;
+ if((n&1)&&index<8191)++index;
+ float sine=nativeStoredFloat(std::sin(index*(Tau/8192)));
+ int cosineIndex=n/2;
+ cosineIndex%=8192;if(cosineIndex<0)cosineIndex+=8192;
+ cosineIndex+=2048;if((n&1)&&cosineIndex<10239)++cosineIndex;
+ float cosine=nativeStoredFloat(std::sin(cosineIndex*(Tau/8192)));
+ return {{sine,cosine}};
+}
+// 4CAC40 discards ten mantissa bits before looking up the square root. Its
+// table entries are truncated floats, which can select a different VPL page
+// from a fully precise std::sqrt even with the same normal and light.
+inline float nativeVoxelSqrt(double value){
+ if(!(value>0)||!std::isfinite(value))return 0;
+ float rounded=nativeStoredFloat(value);uint32_t bits=0;std::memcpy(&bits,&rounded,4);
+ bits&=~uint32_t(1023);std::memcpy(&rounded,&bits,4);
+ return nativeStoredFloat(std::sqrt(double(rounded)));
+}
+struct VoxelLight {std::array<float,3> source{},halfway{};};
+inline VoxelLight nativeVoxelLight(double previewAngle){
+ // Dir::GetRadian<32>() has the opposite sign from visual_pose::radians().
+ // Keep the public camera/facing convention and only convert for lighting.
+ auto sc=nativeVoxelSinCos(-previewAngle);double s=sc[0],c=sc[1];
+ std::array<float,9> draw{};
+ for(unsigned row=0;row<3;++row){auto i=row*3;
+  draw[i]=nativeStoredFloat(NativeVoxelView[i]*c+NativeVoxelView[i+1]*s);
+  draw[i+1]=nativeStoredFloat(-NativeVoxelView[i]*s+NativeVoxelView[i+1]*c);
+  draw[i+2]=NativeVoxelView[i+2];
+ }
+ VoxelLight out;
+ for(unsigned i=0;i<3;++i)out.source[i]=nativeStoredFloat(
+  double(draw[i+3])*NativeLightSource[1]+double(draw[i+6])*NativeLightSource[2]+double(draw[i])*NativeLightSource[0]);
+ // The original secondary vector is (0,0,1), independently of body facing.
+ // Phobos' optional fixed lighting removes it; vanilla YR retains it.
+ auto sum=out.source;sum[2]=nativeStoredFloat(double(sum[2])+1);
+ float length=nativeVoxelSqrt(double(sum[2])*sum[2]+double(sum[0])*sum[0]+double(sum[1])*sum[1]);
+ for(unsigned i=0;i<3;++i)out.halfway[i]=length>0?nativeStoredFloat(double(sum[i])/length):sum[i];
+ return out;
+}
+inline unsigned nativeVoxelPage(const std::array<float,3>&normal,const VoxelLight&light){
+ double diffuse=double(normal[2])*light.source[2]+double(normal[1])*light.source[1]+double(normal[0])*light.source[0];
+ double h=double(normal[0])*light.halfway[0]+double(normal[1])*light.halfway[1]+double(normal[2])*light.halfway[2];
+ float specular=nativeStoredFloat(h/(3.-3.*h+h));
+ return unsigned(std::clamp((std::max(0.,diffuse)+std::max(0.f,specular))*16.,0.,255.));
+}
+inline std::array<float,3> nativeVoxelWorldLight(){
+ auto light=nativeVoxelLight(0).source;
+ // Native world Y is the opposite of the preview's isometric Y.
+ light[1]=-light[1];return light;
+}
 // VXL format lookup data (NormalsMode 1..4), cross-checked against the
 // public format tables in ccmaps-net 56712d7c. No game assets are embedded.
 inline constexpr std::array<std::array<float,3>,16> Normals1{{
@@ -371,7 +448,7 @@ inline constexpr std::array<std::array<float,3>,245> Normals4{{
  {{0.518246000f,-0.284891010f,0.806385990f}},
  {{0.493451000f,-0.066532999f,0.867224990f}},
  {{-0.328188000f,0.140251000f,0.934143010f}},
- {{0.328188000f,0.140251000f,0.934143010f}},
+ {{-0.328188000f,0.140251000f,0.934143010f}},
  {{-0.328188000f,0.140251000f,0.934143010f}},
  {{-0.328188000f,0.140251000f,0.934143010f}},
  {{-0.328188000f,0.140251000f,0.934143010f}}
