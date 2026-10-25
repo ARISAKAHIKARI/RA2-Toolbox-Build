@@ -23,6 +23,18 @@ private:
  std::shared_ptr<Budget> budget_;std::map<uint32_t,std::shared_ptr<Page>> pages_;std::set<uint32_t> dirty_;std::vector<std::array<int,4>> dirtyRects_;
  static uint32_t key(int x,int y){return uint32_t(y)*256u+uint32_t(x);}
  static int pageX(uint32_t k){return int(k%256u);}static int pageY(uint32_t k){return int(k/256u);}
+ // Exact-size presentation needs neither an area prefix nor per-pixel page
+ // lookups. Keep the filter's opaque RGB contract, including sparse pages and
+ // source surfaces with a non-opaque background.
+ void nativeRow(int y,int first,int last,uint32_t*out)const{
+  for(int x=first;x<last;){int end=std::min(last,(x/PageSize+1)*PageSize);
+   auto page=pages_.find(key(x/PageSize,y/PageSize));
+   if(page==pages_.end())std::fill(out+x,out+end,0xff000000u|(background_&0xffffffu));
+   else{const auto*source=page->second->surface.color.data()+size_t(y%PageSize)*PageSize+x%PageSize;
+    for(int n=x;n<end;++n)out[n]=0xff000000u|(source[n-x]&0xffffffu);
+   }x=end;
+  }
+ }
  bool room()const{return budget_&&budget_->pages<(dynamic_?budget_->maximum:budget_->maximum-std::min(DynamicReserve,budget_->maximum/4));}
  bool ensure(int x0,int y0,int x1,int y1){
   x0=std::clamp(x0,0,width_);x1=std::clamp(x1,0,width_);y0=std::clamp(y0,0,height_);y1=std::clamp(y1,0,height_);if(x0>=x1||y0>=y1)return true;
@@ -106,17 +118,23 @@ public:
  bool present(int width,int height,std::vector<uint32_t>&out,double spanX=-1,double spanY=-1)const{
   if(failed_||width<1||height<1||width>2048||height>2048||width_<1||height_<1)return false;
   if(spanX<=0)spanX=width_;if(spanY<=0)spanY=height_;if(spanX>width_||spanY>height_||!std::isfinite(spanX)||!std::isfinite(spanY))return false;
+  if(spanX==width&&spanY==height){out.resize(size_t(width)*height);for(int y=0;y<height;++y)nativeRow(y,0,width,out.data()+size_t(y)*width);return true;}
   out.resize(size_t(width)*height);Filter filter(*this);double sx=spanX/width,sy=spanY/height;
   for(int y=0;y<height;++y)for(int x=0;x<width;++x)out[size_t(y)*width+x]=filter.pixel(x*sx,y*sy,(x+1)*sx,(y+1)*sy);return true;
  }
  bool presentDirty(int width,int height,std::vector<uint32_t>&out,double spanX=-1,double spanY=-1)const{
   if(failed_||width<1||height<1||width>2048||height>2048||out.size()!=size_t(width)*height)return false;
   if(spanX<=0)spanX=width_;if(spanY<=0)spanY=height_;if(spanX>width_||spanY>height_||!std::isfinite(spanX)||!std::isfinite(spanY))return false;
+  if(dirtyRects_.empty())return true;
+  bool exact=spanX==width&&spanY==height;
   std::vector<std::vector<std::pair<int,int>>> rows(height);double sx=spanX/width,sy=spanY/height;
   for(const auto&r:dirtyRects_){int x0=std::clamp(int(std::floor(r[0]/sx)),0,width),x1=std::clamp(int(std::ceil(r[2]/sx)),0,width);
    int y0=std::clamp(int(std::floor(r[1]/sy)),0,height),y1=std::clamp(int(std::ceil(r[3]/sy)),0,height);for(int y=y0;y<y1;++y)rows[y].emplace_back(x0,x1);}
   Filter filter(*this);
-  for(int y=0;y<height;++y){auto&spans=rows[y];std::sort(spans.begin(),spans.end());int last=0;for(auto span:spans){int from=std::max(last,span.first);for(int x=from;x<span.second;++x)out[size_t(y)*width+x]=filter.pixel(x*sx,y*sy,(x+1)*sx,(y+1)*sy);last=std::max(last,span.second);}}
+  for(int y=0;y<height;++y){auto&spans=rows[y];std::sort(spans.begin(),spans.end());int last=0;for(auto span:spans){int from=std::max(last,span.first);
+   if(exact)nativeRow(y,from,span.second,out.data()+size_t(y)*width);
+   else for(int x=from;x<span.second;++x)out[size_t(y)*width+x]=filter.pixel(x*sx,y*sy,(x+1)*sx,(y+1)*sy);
+   last=std::max(last,span.second);}}
   return true;
  }
 };

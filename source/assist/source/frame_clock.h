@@ -28,7 +28,7 @@ static DWORD WINAPI frameClock(void*){
   }else inputDue=now;
   LARGE_INTEGER due;due.QuadPart=-LONGLONG(step.wait);
   if(!SetWaitableTimer(timer,&due,0,nullptr,nullptr,FALSE))break;
-  DWORD result=WaitForMultipleObjects(3,waits,FALSE,INFINITE);if(result==WAIT_OBJECT_0)break;
+  DWORD result=WaitForMultipleObjects(3,waits,FALSE,INFINITE);if(result==WAIT_OBJECT_0||result==WAIT_FAILED)break;
  }
  CancelWaitableTimer(timer);CloseHandle(timer);return 0;
 }
@@ -38,5 +38,22 @@ static void clockState(bool active,int rate){
  changed|=InterlockedExchange(&clockRate,rate)!=rate;
  if(changed&&clockChanged)SetEvent(clockChanged);
 }
-static void startClock(){clockStop=CreateEventW(nullptr,TRUE,FALSE,nullptr);clockChanged=CreateEventW(nullptr,FALSE,FALSE,nullptr);clockThread=CreateThread(nullptr,0,frameClock,nullptr,0,nullptr);}
-static void stopClock(){if(clockStop)SetEvent(clockStop);if(clockThread){WaitForSingleObject(clockThread,1000);CloseHandle(clockThread);}if(clockStop)CloseHandle(clockStop);if(clockChanged)CloseHandle(clockChanged);clockThread=clockStop=clockChanged=nullptr;}
+static void startClock(){
+ clockStop=CreateEventW(nullptr,TRUE,FALSE,nullptr);
+ clockChanged=CreateEventW(nullptr,FALSE,FALSE,nullptr);
+ if(clockStop&&clockChanged)clockThread=CreateThread(nullptr,0,frameClock,nullptr,0,nullptr);
+ if(!clockThread){
+  if(clockStop)CloseHandle(clockStop);
+  if(clockChanged)CloseHandle(clockChanged);
+  clockStop=clockChanged=nullptr;
+ }
+}
+static void stopClock(){
+ if(clockStop)SetEvent(clockStop);
+ // The worker owns its wait array and may still be reading both events.
+ // It never waits for the UI thread, so joining it cannot deadlock the owner.
+ if(clockThread){WaitForSingleObject(clockThread,INFINITE);CloseHandle(clockThread);}
+ if(clockStop)CloseHandle(clockStop);
+ if(clockChanged)CloseHandle(clockChanged);
+ clockThread=clockStop=clockChanged=nullptr;
+}

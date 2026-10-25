@@ -1,7 +1,7 @@
-name: Validate RA2 Toolbox 1.0.38-pre.10
+name: Validate RA2 Toolbox 1.0.38-pre.11
 on:
   push:
-    branches: [codex/camera-v138-pre2, codex/building-animation-fix, codex/lighting-bib-v138-pre4, codex/preview-corrections-v138-pre5, codex/formation-switch-v138-pre6, codex/info-adaptive-v138-pre7, codex/minimap-watch-v138-pre8, codex/scene-effects-v138-pre9, codex/secondary-displays-v138-pre10]
+    branches: [codex/camera-v138-pre2, codex/building-animation-fix, codex/lighting-bib-v138-pre4, codex/preview-corrections-v138-pre5, codex/formation-switch-v138-pre6, codex/info-adaptive-v138-pre7, codex/minimap-watch-v138-pre8, codex/scene-effects-v138-pre9, codex/secondary-displays-v138-pre10, codex/project-consistency-v138-pre11]
     paths: ['source/**', '.github/workflows/validate-v138-pre2.yml']
   workflow_dispatch:
 permissions:
@@ -22,10 +22,13 @@ jobs:
           echo 'd45312e61ebcc48032b77bc4cf7fd6915c11fa16e4aad116b66c9468211230ea  /tmp/zig-overlay.tar.xz' | sha256sum -c -
           tar -xf /tmp/zig-overlay.tar.xz -C /tmp
           /tmp/zig-linux-x86_64-0.13.0/zig c++ -target x86-windows-gnu -std=c++17 -O2 source/assist/tests/overlay_stack_windows.cpp -o source/overlay-stack-test.exe -luser32
+          /tmp/zig-linux-x86_64-0.13.0/zig c++ -target x86-windows-gnu -std=c++17 -O2 source/assist/tests/frame_clock_shutdown_windows.cpp -o source/frame-clock-shutdown-test.exe -luser32
       - uses: actions/upload-artifact@v4
         with:
-          name: camera138pre10-overlay
-          path: source/overlay-stack-test.exe
+          name: camera138pre11-overlay
+          path: |
+            source/overlay-stack-test.exe
+            source/frame-clock-shutdown-test.exe
           retention-days: 7
   overlay-windows:
     needs: overlay-build
@@ -34,10 +37,12 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
-          name: camera138pre10-overlay
+          name: camera138pre11-overlay
           path: source
       - name: Real overlay window stacking with bounded owner-thread waits
         run: .\\source\\overlay-stack-test.exe
+      - name: Clock shutdown waits for its worker before closing event handles
+        run: .\\source\\frame-clock-shutdown-test.exe
   build:
     runs-on: ubuntu-24.04
     timeout-minutes: 50
@@ -65,7 +70,8 @@ jobs:
           python3 source/assist/tests/monitor_refresh_test.py
           python3 source/assist/tests/information_refresh_test.py
           python3 source/assist/tests/minimap_rate_test.py
-          for test in label_motion passenger_motion pacing enemy_markers enemy_clusters watch_view watch_host watch_slots visual_pose voxel_preview game_assets live_ini cameo_catalog camera_raster building_animations building_components voxel_lighting radar_scene minimap_overlay map_bounds formation formation_host sprite_formats terrain_preview art_variants garrison_frame radar_boundary native_canvas repair_visuals projectile_visuals scene_lighting command_delivery direct_modes; do
+          python3 source/assist/tests/secondary_radar_drag_test.py
+          for test in label_motion passenger_motion pacing enemy_markers enemy_clusters watch_view watch_host watch_slots visual_pose voxel_preview game_assets live_ini cameo_catalog camera_raster building_animations building_components voxel_lighting radar_paint_gate secondary_radar_layout radar_scene minimap_overlay map_bounds formation formation_host sprite_formats terrain_preview art_variants garrison_frame radar_boundary native_canvas repair_visuals projectile_visuals scene_lighting command_delivery direct_modes; do
             g++ -std=c++17 -O2 "source/assist/tests/$test.cpp" -o "/tmp/$test"
             "/tmp/$test"
           done
@@ -111,7 +117,7 @@ jobs:
         run: python3 source/tools/verify_windows_outputs.py
       - uses: actions/upload-artifact@v4
         with:
-          name: camera138pre10-binaries
+          name: camera138pre11-binaries
           path: |
             source/RA2Toolbox.exe
             source/GameRuntime.dll
@@ -137,7 +143,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
-          name: camera138pre10-binaries
+          name: camera138pre11-binaries
           path: source
       - name: Real Ares and spawn process discovery
         run: .\\source\\process-discovery-test.exe
@@ -171,6 +177,6 @@ jobs:
         run: python source/tools/windows_settings_smoke.py
       - uses: actions/upload-artifact@v4
         with:
-          name: camera138pre10-windows-settings
+          name: camera138pre11-windows-settings
           path: source/WINDOWS_SETTINGS_SMOKE.json
 

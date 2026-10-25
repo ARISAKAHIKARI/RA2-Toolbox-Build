@@ -14,6 +14,34 @@ struct Memory {
 };
 struct Read{Memory*m;bool operator()(uint32_t p,void*out,size_t n)const{return (*m)(p,out,n);}};
 int main(){
+ // Real-scene scale uses the native 30/15 projection span. Diagram mode
+ // continues using the original 160x140 radar-box percentage.
+ auto native=external::mapbounds::nativeViewport(80,80,10);
+ assert(native.valid()&&native.width==240&&native.height==120);
+ auto real=[&](int scale,int cw=1920,int ch=1080){return radarlayout::place(1920,1080,cw,ch,scale,1,0,0,{},2,0,0,native.width,native.height);};
+ auto actual=real(100);assert(actual.valid&&actual.destination.w==242&&actual.destination.h==122);
+ actual=real(10);assert(actual.valid&&actual.destination.w==26&&actual.destination.h==14);
+ actual=real(200);assert(actual.valid&&actual.destination.w==482&&actual.destination.h==242);
+ actual=real(100,3840,2160);assert(actual.valid&&actual.destination.w==482&&actual.destination.h==242);
+ actual=real(100,3840,1080);assert(actual.valid&&actual.destination.w==242&&actual.destination.h==122);
+ auto diagramLayout=radarlayout::place(1920,1080,1920,1080,100,1,0,0,{});
+ assert(diagramLayout.valid&&diagramLayout.destination.w==162&&diagramLayout.destination.h==142);
+ diagramLayout=radarlayout::place(1920,1080,1920,1080,10,1,0,0,{});
+ assert(diagramLayout.valid&&diagramLayout.destination.w==18&&diagramLayout.destination.h==16);
+ auto fractional=radarlayout::place(1920,1080,1920,1080,100,1,0,0,{},2,0,0,240.01,120.01);
+ assert(fractional.valid&&fractional.destination.w==243&&fractional.destination.h==123);
+ fractional=radarlayout::place(1920,1080,1920,1080,200,1,0,0,{},2,0,0,240.01,120.01);
+ assert(fractional.valid&&fractional.destination.w==483&&fractional.destination.h==243);
+ auto large=radarlayout::place(1920,1080,1920,1080,200,1,0,0,{},2,0,0,native.width,native.height);
+ assert(large.valid&&large.destination.w<=1920&&large.destination.h<=1080);
+ auto capped=radarlayout::place(8000,6000,8000,6000,100,1,0,0,{},2,0,0,5000,2000);
+ assert(capped.valid&&capped.destination.w==2050&&capped.destination.h<=2050);
+ for(int mode=0;mode<=3;++mode){
+  auto plane=radarlayout::aircraft(1920,1080,640,480);
+  auto fit=radarlayout::place(1920,1080,640,480,200,mode,300,300,plane,2,1,2,5000,2500);
+  assert(fit.valid&&fit.destination.x>=0&&fit.destination.y>=0&&fit.destination.x+fit.destination.w<=640&&fit.destination.y+fit.destination.h<=480);
+  assert(!radarlayout::overlap(fit.destination,fit.source)&&!radarlayout::overlap(fit.destination,plane));
+ }
  // Actual aspect ratio participates in placement, not a later resize.
  for(double aspect:{.25,.5,1.,2.,4.}){
   auto plane=radarlayout::aircraft(1920,1080,1920,1080);
@@ -86,7 +114,7 @@ using namespace external::radar;Memory m;constexpr uint32_t cells=0x100000,cell=
  m.set(0xA83D4C,house+0x10000);sampler.step(true,1);assert(!sampler.snapshot(8).terrain);m.set(0xA8ED8C,1);assert(!sampler.step(true));assert(!sampler.snapshot(9).terrain);m.set(0xA8ED8C,0);
  m.set(Map+0x1488,std::numeric_limits<float>::quiet_NaN());assert(!sampler.step(true));m.set(Map+0x1488,10.f);m.set(Map+0x140,999999);assert(!sampler.step(true));
  raster(*a.terrain,-1,80,pixels);assert(pixels.empty());int count=0;
- for(int gw:{800,1920,2560,3840})for(int gh:{600,1080,1440,2160})for(int cw:{640,1920,3840})for(int ch:{480,1080,2160})for(int scale:{100,200,400,1000})for(int mode:{0,1,2,3})for(int coord:{0,300,32768})for(bool plane:{false,true}){
+ for(int gw:{800,1920,2560,3840})for(int gh:{600,1080,1440,2160})for(int cw:{640,1920,3840})for(int ch:{480,1080,2160})for(int scale:{10,50,100,200})for(int mode:{0,1,2,3})for(int coord:{0,300,32768})for(bool plane:{false,true}){
   auto aircraft=plane?radarlayout::aircraft(gw,gh,cw,ch):radarlayout::Box{};auto layout=radarlayout::place(gw,gh,cw,ch,scale,mode,coord,coord,aircraft);assert(layout.valid);auto b=layout.destination;
   assert(b.x>=0&&b.y>=0&&b.x+b.w<=cw&&b.y+b.h<=ch);assert(!radarlayout::overlap(b,aircraft)&&!radarlayout::overlap(b,layout.source));++count;
  }

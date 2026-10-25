@@ -1,3 +1,4 @@
+#include <utility>
 // UI changes apply immediately. Only disk writes are debounced; runtime
 // revision changes must not wait for the profile file to be flushed.
 static constexpr UINT_PTR AutoSaveTimer=3901;
@@ -9,6 +10,14 @@ static void flushAutoSettings(){
 static void changedSetting(){
  ++settingsRevision;++paintRevision;autoSavePending=true;
  SetTimer(ui,AutoSaveTimer,300,nullptr);syncTypeConfig();
+}
+static void syncSecondaryLayoutControls(){
+ ControlUpdate guard;
+ const std::pair<int,int> fields[]={
+  {9164,extra.watchSecondaryX},{9165,extra.watchSecondaryY},
+  {9166,minimapSecondaryX},{9167,minimapSecondaryY},{9168,minimapSecondaryWidth}
+ };
+ for(auto[id,value]:fields)if(HWND control=GetDlgItem(ui,id))SetWindowTextW(control,std::to_wstring(value).c_str());
 }
 static bool autoSettingChanged(int id,int notification){
  if(!ready||updatingControls)return false;
@@ -41,7 +50,7 @@ static bool autoSettingChanged(int id,int notification){
  if(id==9097&&notification==BN_CLICKED){extra.techEnhance=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();syncAdditional();return true;}
  if(id==810&&notification==BN_CLICKED){extra.c4Test=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;pointerMatches.clear();changedSetting();return true;}
  if(id==811&&edit){extra.c4Key=uint32_t(SendMessageW(GetDlgItem(ui,id),HKM_GETHOTKEY,0,0));changedSetting();return true;}
- if(id==812&&select){int selected=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));extra.c4Mouse=selected==5?6:selected;changedSetting();return true;}
+ if(id==812&&select){int selected=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));if(selected>=0&&selected<=5){extra.c4Mouse=selected==5?6:selected;changedSetting();}return true;}
  if(id==808&&select){int strategy=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));if(strategy<0||strategy>4)return true;
   extra.mapStrategy=strategy;extra.renderReveal=strategy==1?2:strategy==2?1:strategy==4?3:0;extra.experimentalReveal=strategy==3;autoRevealNewMatch=strategy==3;
   for(int i=0;i<commandQueue.size;)if(commandQueue.slots[i].command==RevealMap)commandQueue.discard(i);else ++i;
@@ -62,12 +71,12 @@ static bool autoSettingChanged(int id,int notification){
  if(id==804&&notification==BN_CLICKED){extra.antiTheft=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();return true;}
  if(id==803&&select){int mode=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));if(mode>=0&&mode<=3){extra.airWaypoints=mode==1;extra.nativeAirWaypoints=mode==2;airway::reset();pointerMatches.clear();changedSetting();syncAdditional();}return true;}
  if(id==894&&edit){extra.airPathKey=uint32_t(SendMessageW(GetDlgItem(ui,id),HKM_GETHOTKEY,0,0));airway::reset();pointerMatches.clear();changedSetting();syncAdditional();return true;}
- if(id==802&&select){advancedTargetPriority=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));changedSetting();return true;}
+ if(id==802&&select){int priority=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));if(priority>=0&&priority<=1){advancedTargetPriority=priority;changedSetting();}return true;}
  if(id==799&&notification==BN_CLICKED){extra.constructionQueue=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();return true;}
  if(id>=9070&&id<=9075&&notification==BN_CLICKED){uint32_t bit=1u<<(id-9070);if(SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED)extra.productionReminderMask|=bit;else extra.productionReminderMask&=~bit;changedSetting();return true;}
  if(id==798&&notification==BN_CLICKED){extra.idleAircraft=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();return true;}
  if(id==795&&notification==BN_CLICKED){shiftClickEnabled=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();return true;}
- if(id==796&&select){shiftClickMode=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));changedSetting();return true;}
+ if(id==796&&select){int mode=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));if(mode>=0&&mode<=2){shiftClickMode=mode;changedSetting();}return true;}
  if(id==789&&edit){extra.sellKey=uint32_t(SendMessageW(GetDlgItem(ui,id),HKM_GETHOTKEY,0,0));ControlUpdate guard;SendMessageW(extraControls[SellPreset],CB_SETCURSEL,holdPreset(extra.sellKey),0);SendMessageW(extraControls[SellCustom],HKM_SETHOTKEY,extra.sellKey,0);changedSetting();return true;}
  if(id==788&&notification==BN_CLICKED){extra.overrideNative=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();return true;}
  if(id==786&&notification==BN_CLICKED){extra.allHotkeys=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;typeTap.clear();registerKeys();changedSetting();return true;}
@@ -89,7 +98,11 @@ static bool autoSettingChanged(int id,int notification){
   if(!ok||value<lo||value>hi){setStatus(L"此项有效范围："+std::to_wstring(lo)+L"–"+std::to_wstring(hi)+L"；输入有效值后自动生效。");return false;}
   target=value;return true;};
  int* numeric=nullptr;int lo=0,hi=0;
- switch(id){case 851:numeric=&minimapX;hi=32768;break;case 852:numeric=&minimapY;hi=32768;break;case 831:numeric=&minimapScale;lo=100;hi=1000;break;case 310:numeric=&fps;lo=5;hi=500;break;case 311:numeric=&topMargin;hi=4096;break;
+ switch(id){case 851:numeric=&minimapX;hi=32768;break;case 852:numeric=&minimapY;hi=32768;break;case 831:numeric=&minimapScale;lo=10;hi=200;break;
+ case 9164:numeric=&extra.watchSecondaryX;hi=10000;break;case 9165:numeric=&extra.watchSecondaryY;hi=10000;break;
+ case 9166:numeric=&minimapSecondaryX;hi=10000;break;case 9167:numeric=&minimapSecondaryY;hi=10000;break;
+ case 9168:numeric=&minimapSecondaryWidth;lo=160;hi=4096;break;
+ case 310:numeric=&fps;lo=5;hi=500;break;case 311:numeric=&topMargin;hi=4096;break;
  case 816:numeric=&labelScalePercent;lo=50;hi=250;break;
  case 817:numeric=&constructionScalePercent;lo=50;hi=250;break;
  case 797:numeric=&shiftClickGap;lo=0;hi=250;break;
@@ -116,7 +129,7 @@ static bool autoSettingChanged(int id,int notification){
   if(SendMessageW(extraControls[QuotaOverride],BM_GETCHECK,0,0)==BST_CHECKED)targetQuotas[type]=q;else targetQuotas.erase(type);
   changedSetting();return true;
  }
- if(id==700&&select){extra.loadMode=int(SendMessageW(extraControls[LoadLogic],CB_GETCURSEL,0,0))==1;changedSetting();return true;}
+ if(id==700&&select){int mode=int(SendMessageW(extraControls[LoadLogic],CB_GETCURSEL,0,0));if(mode>=0&&mode<=1){extra.loadMode=mode==1;changedSetting();}return true;}
  if((id==703||id==706||id==708)&&select||(id==704||id==707||id==709)&&edit){
   // Validate only this binding, so a partially typed number elsewhere cannot
   // block a key change. A custom key also selects its custom preset.

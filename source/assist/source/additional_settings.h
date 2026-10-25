@@ -19,7 +19,7 @@ struct AdditionalSettings {
  uint32_t productionReminderMask=0; // buildings, defenses, infantry, vehicles, ships, aircraft
  uint32_t airPathKey=0;
  bool parasiteMarker=false,crateBuffMarkers=false;
- bool watchEnabled=false,watchSecondary=false,watchDanger=false;uint32_t watchKeys[3]={'W'|(6<<8),'W'|(6<<8),'W'|(6<<8)};
+ bool watchEnabled=false,watchSecondary=false,watchDanger=false;int watchSecondaryX=10000,watchSecondaryY=0;uint32_t watchKeys[3]={'W'|(6<<8),'W'|(6<<8),'W'|(6<<8)};
  bool passengerBubbles=false,dangerPassengers=false,magnetronDrop=false;
  bool dodgeEnabled=false;int dodgeMode=0;
  bool burstEnabled=false,burstHoldEnabled=false;uint32_t burstKey=0; // Reserved for configuration compatibility.

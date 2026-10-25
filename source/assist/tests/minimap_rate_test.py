@@ -69,6 +69,12 @@ namespace minimap {
 suffix = r'''
 }
 int main(){
+ minimap::Worker preview;minimap::Request previewRequest{2,3,60,0,1,320,160};preview.set(previewRequest);
+ auto cached=std::make_shared<external::radar::Frame>();preview.latest=cached;
+ auto prior=preview.generation;previewRequest.width=600;preview.set(previewRequest);
+ assert(preview.generation==prior+1&&preview.get()==cached&&"resizing retains the last verified image until its replacement is ready");
+ previewRequest.match=4;preview.set(previewRequest);
+ assert(!preview.get()&&"new match discards the old image");preview.shutdown();
  minimap::Worker worker;minimap::Request request{2,3,5,0,1,320,160};worker.set(request);
  auto generation=worker.generation;int waits=0;
  atWait=[&](uint64_t micros){

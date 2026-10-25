@@ -5,6 +5,7 @@ from pathlib import Path
 import subprocess,tempfile
 root=Path(__file__).resolve().parents[2]
 prefix=(root/'assist/tests/watch_host.cpp').read_text().split('int main(){',1)[0]
+prefix=prefix.replace('int mapStrategy=0;', 'int mapStrategy=0,watchSecondaryX=10000,watchSecondaryY=0;')
 prefix=prefix.replace('static bool foregroundGame(){return true;}','static bool focused=true;static bool foregroundGame(){return focused;}')
 prefix=prefix.replace('struct Graphics {','struct Graphics {Graphics(void* =nullptr){}void ScaleTransform(float,float){}')
 prefix=prefix.replace('static struct {bool read(uint32_t p,void*out,size_t n){','static struct {bool readFresh(uint32_t p,void*out,size_t n){return read(p,out,n);}bool read(uint32_t p,void*out,size_t n){')
@@ -50,24 +51,31 @@ using namespace assist;
 using HWND=void*;using HDC=void*;using HBITMAP=void*;using HGDIOBJ=void*;using LONG=long;using LONG_PTR=intptr_t;using UINT=unsigned;using WPARAM=uintptr_t;using LPARAM=intptr_t;using LRESULT=intptr_t;
 #define CALLBACK
 constexpr int FALSE=0,TRUE=1,SW_HIDE=0,GWLP_USERDATA=1,HTCLIENT=1,MA_NOACTIVATE=3,SRCCOPY=1;
-constexpr UINT WM_NCCREATE=0x81,WM_NCHITTEST=0x84,WM_MOUSEACTIVATE=0x21,WM_SETCURSOR=0x20,WM_LBUTTONDOWN=0x201,WM_RBUTTONDOWN=0x204,WM_LBUTTONUP=0x202,WM_RBUTTONUP=0x205,WM_LBUTTONDBLCLK=0x203,WM_RBUTTONDBLCLK=0x206,WM_MOUSEMOVE=0x200,WM_ERASEBKGND=0x14,WM_PAINT=0xf;
-constexpr int MK_SHIFT=4,WS_EX_TOOLWINDOW=1,WS_EX_NOACTIVATE=2,WS_EX_TOPMOST=4,WS_EX_LAYERED=8,WS_POPUP=1,LWA_ALPHA=2,SWP_NOACTIVATE=1,SWP_SHOWWINDOW=2;
+constexpr UINT WM_NCCREATE=0x81,WM_NCHITTEST=0x84,WM_MOUSEACTIVATE=0x21,WM_SETCURSOR=0x20,WM_LBUTTONDOWN=0x201,WM_RBUTTONDOWN=0x204,WM_LBUTTONUP=0x202,WM_RBUTTONUP=0x205,WM_LBUTTONDBLCLK=0x203,WM_RBUTTONDBLCLK=0x206,WM_MOUSEMOVE=0x200,WM_ERASEBKGND=0x14,WM_PAINT=0xf,WM_CAPTURECHANGED=0x215,WM_CANCELMODE=0x1f;
+constexpr int MK_SHIFT=4,MK_LBUTTON=1,WS_EX_TOOLWINDOW=1,WS_EX_NOACTIVATE=2,WS_EX_TOPMOST=4,WS_EX_LAYERED=8,WS_POPUP=1,LWA_ALPHA=2,SWP_NOACTIVATE=1,SWP_SHOWWINDOW=2,SWP_NOSIZE=4,SWP_NOZORDER=8;
 #define HWND_TOPMOST reinterpret_cast<HWND>(1)
 #define HGDI_ERROR reinterpret_cast<HGDIOBJ>(-1)
 
 struct POINT{int x,y;};struct RECT{int left=0,top=0,right=0,bottom=0;};struct PAINTSTRUCT{};struct CREATESTRUCTW{void*lpCreateParams;};
+static unsigned HIWORD(LPARAM value){return (unsigned(value)>>16)&0xffffu;}
 using Proc=LRESULT(*)(HWND,UINT,WPARAM,LPARAM);struct WNDCLASSW{Proc lpfnWndProc;int hInstance;const wchar_t*lpszClassName;};
 struct Window {RECT rect;LONG_PTR data=0;bool visible=false;int raises=0,invalidations=0;};static std::map<HWND,Window>win;static HWND game=reinterpret_cast<HWND>(7),ui=reinterpret_cast<HWND>(8);static uintptr_t nextWindow=20;static Proc windowProc;static bool fresh=true;static int wakes=0,cursors=0;
 static void battlefield(bool active){memory[0xA8E378]=active;}
+static int settingsWrites=0,syncedPositions=0;
+static void changedSetting(){++settingsWrites;}
+static void syncSecondaryLayoutControls(){++syncedPositions;}
 static struct {volatile LONG cameraSeq=0;uint32_t cameraMatch=0,cameraTick=0;int cameraTargetX=0,cameraTargetY=0;}mailbox;static auto*shared=&mailbox;
 static bool commandFresh(uint32_t){return fresh;}static uint32_t sampleClock(decltype(shared)){return clockValue;}static void wakeGame(){++wakes;}static void MemoryBarrier(){}static void InterlockedIncrement(volatile LONG*p){++*p;}
 static HDC CreateCompatibleDC(HDC){return reinterpret_cast<HDC>(1);}static HBITMAP CreateCompatibleBitmap(HDC,int,int){return reinterpret_cast<HBITMAP>(2);}static HGDIOBJ SelectObject(HDC,HGDIOBJ){return reinterpret_cast<HGDIOBJ>(3);}static void DeleteObject(HGDIOBJ){}static void DeleteDC(HDC){}static bool BitBlt(HDC,int,int,int,int,HDC,int,int,int){return true;}
-static void ShowWindow(HWND w,int){win[w].visible=false;}static void DestroyWindow(HWND w){win.erase(w);}static void*lastCursor=nullptr;static void SetCursor(void*p){lastCursor=p;++cursors;}static constexpr int IDC_ARROW=32512;static void*LoadCursorW(void*,int){return reinterpret_cast<void*>(99);}static LONG_PTR SetWindowLongPtrW(HWND w,int,LONG_PTR data){return win[w].data=data;}static LONG_PTR GetWindowLongPtrW(HWND w,int){return win[w].data;}
+static HWND captured=nullptr;static POINT cursor{};static bool GetCursorPos(POINT*p){*p=cursor;return true;}
+static HWND GetCapture(){return captured;}static HWND SetCapture(HWND w){auto prior=captured;captured=w;return prior;}static bool ReleaseCapture(){captured=nullptr;return true;}
+static void ShowWindow(HWND w,int){win[w].visible=false;}static void DestroyWindow(HWND w){win.erase(w);}static void*lastCursor=nullptr;static void SetCursor(void*p){lastCursor=p;++cursors;}static constexpr int IDC_ARROW=32512,IDC_SIZEALL=32646;static void*LoadCursorW(void*,int name){return reinterpret_cast<void*>(name==IDC_SIZEALL?98:99);}static LONG_PTR SetWindowLongPtrW(HWND w,int,LONG_PTR data){return win[w].data=data;}static LONG_PTR GetWindowLongPtrW(HWND w,int){return win[w].data;}
 static LRESULT DefWindowProcW(HWND,UINT,WPARAM,LPARAM){return 0;}static HDC BeginPaint(HWND,PAINTSTRUCT*){return reinterpret_cast<HDC>(1);}static void EndPaint(HWND,PAINTSTRUCT*){}static void GetClientRect(HWND w,RECT*r){*r={0,0,win[w].rect.right-win[w].rect.left,win[w].rect.bottom-win[w].rect.top};}
+static bool ScreenToClient(HWND w,POINT*p){p->x-=win[w].rect.left;p->y-=win[w].rect.top;return true;}
 static int GetModuleHandleW(void*){return 1;}static void RegisterClassW(WNDCLASSW*c){windowProc=c->lpfnWndProc;}
 static HWND CreateWindowExW(int,const wchar_t*,const wchar_t*,int,int,int,int,int,void*,void*,int,void*data){HWND w=reinterpret_cast<HWND>(nextWindow++);CREATESTRUCTW c{data};windowProc(w,WM_NCCREATE,0,reinterpret_cast<LPARAM>(&c));return w;}
-static void SetLayeredWindowAttributes(HWND,int,int,int){}static void GetWindowRect(HWND w,RECT*r){*r=win[w].rect;}static bool IsWindowVisible(HWND w){return win[w].visible;}
-static bool SetWindowPos(HWND w,HWND,int x,int y,int width,int height,int flags){assert(flags&SWP_NOACTIVATE);win[w].rect={x,y,x+width,y+height};win[w].visible=true;++win[w].raises;return true;}
+static void SetLayeredWindowAttributes(HWND,int,int,int){}static bool GetWindowRect(HWND w,RECT*r){*r=win[w].rect;return true;}static bool IsWindowVisible(HWND w){return win[w].visible;}
+static bool SetWindowPos(HWND w,HWND,int x,int y,int width,int height,int flags){assert(flags&SWP_NOACTIVATE);auto&v=win[w];if(flags&SWP_NOSIZE){width=v.rect.right-v.rect.left;height=v.rect.bottom-v.rect.top;}v.rect={x,y,x+width,y+height};if(flags&SWP_SHOWWINDOW)v.visible=true;if(!(flags&SWP_NOZORDER))++v.raises;return true;}
 namespace overlaystack {enum class Layer{Watch};static bool place(HWND w,Layer,int x,int y,int width,int height,int flags){return SetWindowPos(w,HWND_TOPMOST,x,y,width,height,flags);}}
 static void InvalidateRect(HWND w,void*,bool){++win[w].invalidations;}
 static int synchronousPaints=0;static void UpdateWindow(HWND w){++synchronousPaints;windowProc(w,WM_PAINT,0,0);}
@@ -115,9 +123,38 @@ int main(){
  auto sharedPixels=watchhost::views[0].pixels;extra.watchEnabled=false;extra.watchSecondary=true;enabled=false;focused=false;snap.chat=1;secondAvailable=true;
  watchwindows::update({},{});for(auto w:watchwindows::windows)assert(!win[w].visible);
  for(auto w:watchwindows::secondaryWindows){auto r=win[w].rect;assert(win[w].visible&&r.left>=secondWork.left&&r.right<=secondWork.right&&r.top>=secondWork.top&&r.bottom<=secondWork.bottom);}
+ auto first=win[watchwindows::secondaryWindows[0]].rect,last=win[watchwindows::secondaryWindows[2]].rect;
+ assert(first.right==secondWork.right-12&&first.top==secondWork.top+12);
+ extra.watchSecondaryX=0;extra.watchSecondaryY=10000;watchwindows::update({},{});
+ first=win[watchwindows::secondaryWindows[0]].rect;last=win[watchwindows::secondaryWindows[2]].rect;
+ assert(first.left==secondWork.left+12&&last.bottom==secondWork.bottom-12);
+ for(auto w:watchwindows::secondaryWindows){auto r=win[w].rect;assert(r.left>=secondWork.left&&r.right<=secondWork.right&&r.top>=secondWork.top&&r.bottom<=secondWork.bottom);}
+ extra.watchSecondaryX=50000;extra.watchSecondaryY=-5;watchwindows::update({},{});
+ first=win[watchwindows::secondaryWindows[0]].rect;assert(first.right==secondWork.right-12&&first.top==secondWork.top+12);
+ secondWork={-90,0,30,30};extra.watchSecondaryX=50;extra.watchSecondaryY=50;watchwindows::invalidateDisplays();watchwindows::update({},{});
+ for(auto w:watchwindows::secondaryWindows){auto r=win[w].rect;assert(win[w].visible&&r.left>=secondWork.left&&r.right<=secondWork.right&&r.top>=secondWork.top&&r.bottom<=secondWork.bottom);}
+ secondWork={-1920,-100,0,940};extra.watchSecondaryX=10000;extra.watchSecondaryY=0;watchwindows::invalidateDisplays();watchwindows::update({},{});
+ first=win[watchwindows::secondaryWindows[0]].rect;cursor={first.left+8,first.top+8};
+ int beforeDragWakes=wakes;watchwindows::proc(watchwindows::secondaryWindows[0],WM_LBUTTONDOWN,0,8<<16);
+ assert(captured==watchwindows::secondaryWindows[0]&&watchwindows::dragging&&wakes==beforeDragWakes);
+ cursor.x-=180;cursor.y+=65;watchwindows::proc(watchwindows::secondaryWindows[0],WM_MOUSEMOVE,MK_LBUTTON,0);
+ first=win[watchwindows::secondaryWindows[0]].rect;last=win[watchwindows::secondaryWindows[2]].rect;
+ assert(first.left<secondWork.right-12-(first.right-first.left)&&first.top>secondWork.top+12&&last.bottom<=secondWork.bottom-12);
+ watchwindows::update({},{});assert(win[watchwindows::secondaryWindows[0]].rect.left==first.left&&win[watchwindows::secondaryWindows[0]].rect.top==first.top&&"frame update must not snap a held drag back");
+ watchwindows::proc(watchwindows::secondaryWindows[0],WM_LBUTTONUP,0,0);
+ assert(!watchwindows::dragging&&!captured&&extra.watchSecondaryX<10000&&extra.watchSecondaryY>0&&settingsWrites==1&&syncedPositions==1);
+ first=win[watchwindows::secondaryWindows[0]].rect;
+ watchwindows::update({},{});for(auto w:watchwindows::secondaryWindows){auto r=win[w].rect;assert(r.left>=secondWork.left&&r.right<=secondWork.right&&r.top>=secondWork.top&&r.bottom<=secondWork.bottom);}
+ auto settled=win[watchwindows::secondaryWindows[0]].rect;
+ assert(settled.left>=first.left-1&&settled.left<=first.left+1&&settled.top>=first.top-1&&settled.top<=first.top+1&&"release should not visibly snap the dragged group");
+ watchwindows::proc(watchwindows::secondaryWindows[0],WM_LBUTTONDOWN,0,8<<16);
+ watchwindows::proc(watchwindows::secondaryWindows[0],WM_LBUTTONUP,0,0);
+ assert(settingsWrites==1&&"a stationary grab should not save");
  for(const auto&v:watchhost::views)assert(v.pixels==sharedPixels);
- int passiveWakes=wakes;watchwindows::proc(watchwindows::secondaryWindows[0],WM_LBUTTONDOWN,0,0);assert(wakes==passiveWakes);
- watchwindows::proc(watchwindows::secondaryWindows[0],WM_SETCURSOR,0,0);assert(lastCursor==reinterpret_cast<void*>(99));
+ int passiveWakes=wakes;watchwindows::proc(watchwindows::secondaryWindows[0],WM_LBUTTONDOWN,0,40<<16);assert(wakes==passiveWakes);
+ auto hover=win[watchwindows::secondaryWindows[0]].rect;
+ cursor={hover.left+5,hover.top+5};watchwindows::proc(watchwindows::secondaryWindows[0],WM_SETCURSOR,0,0);assert(lastCursor==reinterpret_cast<void*>(98));
+ cursor={hover.left+5,hover.top+50};watchwindows::proc(watchwindows::secondaryWindows[0],WM_SETCURSOR,0,0);assert(lastCursor==reinterpret_cast<void*>(99));
  excluded.clear();watchwindows::occlude(clipping);assert(excluded.empty());
  secondAvailable=false;watchwindows::update({},{});for(auto w:watchwindows::secondaryWindows)assert(!win[w].visible);
  secondAvailable=true;secondWork={1920,0,3200,900};watchwindows::invalidateDisplays();watchwindows::update({},{});for(auto w:watchwindows::secondaryWindows)assert(win[w].visible&&win[w].rect.left>=1920);

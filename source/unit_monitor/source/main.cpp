@@ -17,6 +17,7 @@
 #include <vector>
 #include <memory>
 #include <cstdio>
+#include <cstdint>
 #include "core.h"
 #include "../../shared/source/viewport_scale.h"
 #include "sampler.h"
@@ -39,6 +40,7 @@ static std::unique_ptr<um::Sampler<external::SharedReadView,external::NoResolve>
 static std::unique_ptr<um::Snapshot> snap(new um::Snapshot{}),incoming(new um::Snapshot{});
 static HWND game;static DWORD pid,threadId;static bool enabled=true,demo=false,showOthers=true,buildings=false,hidden=false,manualVisible=false;
 static int topMargin=20,leftMargin=6,scalePercent=100;static bool controlsReady=false;
+static int secondaryX=0,secondaryY=0;
 static int page=0;static DWORD lastSearch=0,lastGood=0;static std::wstring root,status;static FILE* logfile;
 #include "../../external_reader/source/cameo_catalog.h"
 static external::assets::Files assetFiles;static uint32_t assetMatch=0;
@@ -112,7 +114,19 @@ static bool changed(const um::Snapshot& a,const um::Snapshot& b){
 static void log(const wchar_t* msg){if(logfile){fwprintf(logfile,L"[%lu] %ls\n",GetTickCount(),msg);fflush(logfile);}}
 static std::wstring path(const wchar_t* f){return root+L"\\"+f;}
 static void setStatus(const std::wstring& s){if(status!=s){status=s;SetWindowTextW(stats,s.c_str());log(s.c_str());}}
-static void save(){WritePrivateProfileStringW(L"overlay",L"secondaryEnabled",secondaryEnabled?L"1":L"0",path(L"settings.ini").c_str());WritePrivateProfileStringW(L"overlay",L"scalePercent",std::to_wstring(scalePercent).c_str(),path(L"settings.ini").c_str());WritePrivateProfileStringW(L"overlay",L"tabEnabled",tabEnabled?L"1":L"0",path(L"settings.ini").c_str());WritePrivateProfileStringW(L"overlay",L"tabMode",std::to_wstring(int(tabMode)).c_str(),path(L"settings.ini").c_str());WritePrivateProfileStringW(L"overlay",L"topMargin",std::to_wstring(topMargin).c_str(),path(L"settings.ini").c_str());WritePrivateProfileStringW(L"overlay",L"leftMargin",std::to_wstring(leftMargin).c_str(),path(L"settings.ini").c_str());WritePrivateProfileStringW(L"overlay",L"buildings",buildings?L"1":L"0",path(L"settings.ini").c_str());WritePrivateProfileStringW(L"overlay",L"otherPlayers",showOthers?L"1":L"0",path(L"settings.ini").c_str());}
+static void save(){
+ const auto ini=path(L"settings.ini");
+ WritePrivateProfileStringW(L"overlay",L"secondaryEnabled",secondaryEnabled?L"1":L"0",ini.c_str());
+ WritePrivateProfileStringW(L"overlay",L"secondaryX",std::to_wstring(secondaryX).c_str(),ini.c_str());
+ WritePrivateProfileStringW(L"overlay",L"secondaryY",std::to_wstring(secondaryY).c_str(),ini.c_str());
+ WritePrivateProfileStringW(L"overlay",L"scalePercent",std::to_wstring(scalePercent).c_str(),ini.c_str());
+ WritePrivateProfileStringW(L"overlay",L"tabEnabled",tabEnabled?L"1":L"0",ini.c_str());
+ WritePrivateProfileStringW(L"overlay",L"tabMode",std::to_wstring(int(tabMode)).c_str(),ini.c_str());
+ WritePrivateProfileStringW(L"overlay",L"topMargin",std::to_wstring(topMargin).c_str(),ini.c_str());
+ WritePrivateProfileStringW(L"overlay",L"leftMargin",std::to_wstring(leftMargin).c_str(),ini.c_str());
+ WritePrivateProfileStringW(L"overlay",L"buildings",buildings?L"1":L"0",ini.c_str());
+ WritePrivateProfileStringW(L"overlay",L"otherPlayers",showOthers?L"1":L"0",ini.c_str());
+}
 static void visibilityStatus(const std::wstring& text){
  static std::wstring previous;if(previous==text)return;previous=text;
  if(visibilityLabel)SetWindowTextW(visibilityLabel,text.c_str());log(text.c_str());
@@ -236,6 +250,41 @@ static asyncwork::Latest<RenderRequest,RenderFrame> secondaryRenderWorker(render
 static std::shared_ptr<const RenderFrame> secondaryRenderedFrame;
 static POINT secondaryOrigin{LONG_MIN,LONG_MIN};static int secondaryWidth=0,secondaryHeight=0;
 static bool secondaryUploaded=false;static DWORD secondaryLastSubmit=0;
+static POINT secondaryPosition(const RECT&work,int width,int height,int x,int y){
+ int roomX=std::max(0,int(work.right-work.left)-width),roomY=std::max(0,int(work.bottom-work.top)-height);
+ return {LONG(int64_t(work.left)+int64_t(roomX)*std::clamp(x,0,10000)/10000),
+         LONG(int64_t(work.top)+int64_t(roomY)*std::clamp(y,0,10000)/10000)};
+}
+static int secondaryTravelUnit(int desired,int low,int room){
+ if(room<=0)return 0;
+ int distance=std::clamp(int64_t(desired)-low,int64_t(0),int64_t(room));
+ return int((int64_t(distance)*10000+room/2)/room);
+}
+struct SecondaryDrag {
+ bool active=false,changed=false;
+ POINT cursor{},origin{};RECT work{};int x=0,y=0,width=0,height=0;
+};
+struct SecondaryDragSettings {int x=0,y=0;};
+static SecondaryDragSettings secondaryDragSettings(const SecondaryDrag&drag,POINT cursor){
+ SecondaryDragSettings result{drag.x,drag.y};
+ int workWidth=int(drag.work.right-drag.work.left),workHeight=int(drag.work.bottom-drag.work.top);
+ if(workWidth<=0||workHeight<=0)return result;
+ int targetX=int(std::clamp(int64_t(drag.origin.x)+cursor.x-drag.cursor.x,
+                             int64_t(drag.work.left),int64_t(drag.work.right-drag.width)));
+ int targetY=int(std::clamp(int64_t(drag.origin.y)+cursor.y-drag.cursor.y,
+                             int64_t(drag.work.top),int64_t(drag.work.bottom-drag.height)));
+ result.x=secondaryTravelUnit(targetX,drag.work.left,workWidth-drag.width);
+ result.y=secondaryTravelUnit(targetY,drag.work.top,workHeight-drag.height);
+ return result;
+}
+static SecondaryDrag secondaryDrag;static bool syncingSecondaryDragControls=false;
+static void finishSecondaryDrag();
+static void paintSecondaryDragGrip(UnitSurface&surface){
+ if(!surface.bits||surface.w<48||surface.h<24)return;
+ auto* pixels=static_cast<uint32_t*>(surface.bits);
+ for(int y=2;y<7;++y)for(int x=8;x<80&&x<surface.w-4;++x)
+  pixels[size_t(y)*surface.w+x]=0xff6488a4u;
+}
 static void resetSecondary(){
  secondaryRecovery.suspend();secondaryRenderWorker.invalidate();secondaryRenderedFrame.reset();secondarySurface.clear();
  secondaryActive=false;secondaryDirty=true;secondaryUploaded=false;secondaryLastSubmit=0;secondaryWidth=secondaryHeight=0;secondaryOrigin={LONG_MIN,LONG_MIN};
@@ -250,9 +299,8 @@ static bool updateSecondary(DWORD now,bool battlefield,bool displayFrame){
  // Leave the right-hand 40% available for the independent minimap/tracking windows.
  int width=int(target.work.right-target.work.left)*3/5,height=int(target.work.bottom-target.work.top);
  if(width<100||height<100){resetSecondary();return false;}
- POINT origin{target.work.left,target.work.top};
- if(width!=secondaryWidth||height!=secondaryHeight||origin.x!=secondaryOrigin.x||origin.y!=secondaryOrigin.y){
-  resetSecondary();secondaryWidth=width;secondaryHeight=height;secondaryOrigin=origin;
+ if(width!=secondaryWidth||height!=secondaryHeight){
+  resetSecondary();secondaryWidth=width;secondaryHeight=height;
  }
  secondaryActive=true;if(!displayFrame)return true;
  if(secondaryDirty||(!secondaryRenderedFrame&&DWORD(now-secondaryLastSubmit)>=250)){
@@ -260,8 +308,20 @@ static bool updateSecondary(DWORD now,bool battlefield,bool displayFrame){
  }
  auto completed=secondaryRenderWorker.get();if(completed&&completed!=secondaryRenderedFrame){const auto&r=completed->request;
   if(r.pid==pid&&r.match==oldMatch&&r.width==width&&r.height==height&&r.page==page&&r.scalePercent==scalePercent&&r.leftMargin==leftMargin&&r.topMargin==topMargin&&r.showOthers==showOthers&&r.buildings==buildings&&r.demo==demo&&DWORD(now-r.tick)<1000&&secondarySurface.ensure(completed->width,completed->height)){
-   memcpy(secondarySurface.bits,completed->pixels.data(),completed->pixels.size()*4);secondaryRenderedFrame=std::move(completed);secondaryUploaded=false;
+   memcpy(secondarySurface.bits,completed->pixels.data(),completed->pixels.size()*4);
+   paintSecondaryDragGrip(secondarySurface);
+   secondaryRenderedFrame=std::move(completed);secondaryUploaded=false;
   }
+ }
+ if(secondaryDrag.active&&secondarySurface.dc&&
+    (secondarySurface.w!=secondaryDrag.width||secondarySurface.h!=secondaryDrag.height))finishSecondaryDrag();
+ // Actual layered pixels are cropped to occupied statistics columns/rows.
+ // Anchor that visible surface, not its larger rendering budget, to the work area.
+ int shownWidth=secondarySurface.dc?secondarySurface.w:width;
+ int shownHeight=secondarySurface.dc?secondarySurface.h:height;
+ POINT origin=secondaryPosition(target.work,shownWidth,shownHeight,secondaryX,secondaryY);
+ if(origin.x!=secondaryOrigin.x||origin.y!=secondaryOrigin.y){
+  secondaryOrigin=origin;secondaryUploaded=false;
  }
  bool repair=secondaryRecovery.due(now,true,{uintptr_t(game),pid,snap->match,width,height},IsWindowVisible(secondaryOverlay)!=0);
  if(secondarySurface.dc&&(!secondaryUploaded||repair||!IsWindowVisible(secondaryOverlay))){
@@ -388,7 +448,52 @@ static void buttonLabel(){
  suite::reportEnabled(1,enabled);
 #endif
  SetWindowTextW(bStart,enabled?L"暂停显示":L"继续显示");SetWindowTextW(bDemo,demo?L"退出演示":L"布局演示");}
-static LRESULT CALLBACK overlayProc(HWND w,UINT m,WPARAM a,LPARAM b){if(m==WM_NCHITTEST)return HTTRANSPARENT;if(m==WM_MOUSEACTIVATE)return MA_NOACTIVATE;if(m==WM_ERASEBKGND)return 1;return DefWindowProcW(w,m,a,b);}
+static void beginSecondaryDrag(){
+ if(!secondaryEnabled||!secondaryActive||!secondarySurface.dc||!game)return;
+ auto target=secondaryMonitor.get(game,ui,GetTickCount());if(!target.available())return;
+ POINT cursor{};RECT bounds{};
+ if(!GetCursorPos(&cursor)||!GetWindowRect(secondaryOverlay,&bounds))return;
+ secondaryDrag={};secondaryDrag.active=true;
+ secondaryDrag.cursor=cursor;secondaryDrag.origin={bounds.left,bounds.top};
+ secondaryDrag.work=target.work;secondaryDrag.x=secondaryX;secondaryDrag.y=secondaryY;
+ secondaryDrag.width=bounds.right-bounds.left;secondaryDrag.height=bounds.bottom-bounds.top;
+ SetCapture(secondaryOverlay);
+ if(GetCapture()!=secondaryOverlay)secondaryDrag.active=false;
+}
+static void moveSecondaryDrag(){
+ if(!secondaryDrag.active||GetCapture()!=secondaryOverlay)return;
+ POINT cursor{};if(!GetCursorPos(&cursor))return;
+ auto desired=secondaryDragSettings(secondaryDrag,cursor);
+ if(desired.x==secondaryX&&desired.y==secondaryY)return;
+ secondaryX=desired.x;secondaryY=desired.y;
+ secondaryDrag.changed=true;tick(true);
+}
+static void finishSecondaryDrag(){
+ if(!secondaryDrag.active)return;
+ bool changed=secondaryDrag.changed;secondaryDrag.active=false;
+ if(GetCapture()==secondaryOverlay)ReleaseCapture();
+ if(changed){
+  syncingSecondaryDragControls=true;
+  SetDlgItemInt(ui,121,secondaryX,FALSE);SetDlgItemInt(ui,122,secondaryY,FALSE);
+  syncingSecondaryDragControls=false;
+  save();
+ }
+}
+static LRESULT CALLBACK overlayProc(HWND w,UINT m,WPARAM a,LPARAM b){
+ if(m==WM_NCHITTEST)return w==secondaryOverlay?HTCLIENT:HTTRANSPARENT;
+ if(m==WM_MOUSEACTIVATE)return MA_NOACTIVATE;
+ if(w==secondaryOverlay){
+  if(m==WM_SETCURSOR){
+   SetCursor(LoadCursorW(nullptr,IDC_SIZEALL));return TRUE;
+  }
+  if(m==WM_LBUTTONDOWN){beginSecondaryDrag();return 0;}
+  if(m==WM_MOUSEMOVE){if(a&MK_LBUTTON)moveSecondaryDrag();else finishSecondaryDrag();return 0;}
+  if(m==WM_LBUTTONUP){moveSecondaryDrag();finishSecondaryDrag();return 0;}
+  if(m==WM_CAPTURECHANGED||m==WM_CANCELMODE){finishSecondaryDrag();return 0;}
+ }
+ if(m==WM_ERASEBKGND)return 1;
+ return DefWindowProcW(w,m,a,b);
+}
 #include "display_settings_ui.h"
 #include "console_layout.h"
 static LRESULT CALLBACK proc(HWND w,UINT m,WPARAM a,LPARAM b){
@@ -422,7 +527,14 @@ static LRESULT CALLBACK proc(HWND w,UINT m,WPARAM a,LPARAM b){
   modernui::tip(GetDlgItem(w,118),L"调整游戏内统计覆盖层的大小，范围 50–250%，默认 100%，即时生效。");
   modernui::tip(GetDlgItem(w,116),L"显示或隐藏游戏内统计覆盖层；快捷键 Ctrl+Alt+H。");
   cSecondary=ctl(L"BUTTON",L"第二显示器显示单位统计",BS_AUTOCHECKBOX|WS_TABSTOP,14,395,298,26,120);SendMessageW(cSecondary,BM_SETCHECK,secondaryEnabled?BST_CHECKED:BST_UNCHECKED,0);
-  modernui::tip(cSecondary,L"在游戏所在屏幕之外的显示器常驻显示；独立于暂停、Tab 和游戏覆盖层显隐。没有第二显示器时自动隐藏。");
+  modernui::tip(cSecondary,L"在另一块屏幕独立显示，拖动统计画面移动位置；没有第二显示器时自动隐藏。");
+  ctl(L"STATIC",L"副屏水平位置",0,14,433,116,22,124);
+  ctl(L"EDIT",std::to_wstring(secondaryX).c_str(),WS_BORDER|ES_NUMBER|ES_AUTOHSCROLL,132,430,55,24,121);
+  ctl(L"STATIC",L"垂直",0,196,433,55,22,125);
+  ctl(L"EDIT",std::to_wstring(secondaryY).c_str(),WS_BORDER|ES_NUMBER|ES_AUTOHSCROLL,252,430,55,24,122);
+  for(int id:{121,122})SendDlgItemMessageW(w,id,EM_SETLIMITTEXT,5,0);
+  modernui::tip(GetDlgItem(w,121),L"位置按副屏可移动区域的万分比计算：0 为最左，10000 为最右。也可以直接拖动副屏统计窗口。");
+  modernui::tip(GetDlgItem(w,122),L"位置按副屏可移动区域计算：0 为顶部，10000 为底部；拖动副屏统计窗口也会自动保存。");
 #ifdef RA2_UNIFIED
   createUnitSettings(ctl);
 #endif
@@ -433,7 +545,7 @@ static LRESULT CALLBACK proc(HWND w,UINT m,WPARAM a,LPARAM b){
  case WM_MOUSEWHEEL:consoleY-=GET_WHEEL_DELTA_WPARAM(a)/WHEEL_DELTA*modernui::scale(60,consoleDpi);layoutConsole();return 0;
  case WM_HSCROLL:case WM_VSCROLL:{int bar=m==WM_HSCROLL?SB_HORZ:SB_VERT;SCROLLINFO si{sizeof si,SIF_ALL};GetScrollInfo(w,bar,&si);int next=si.nPos;switch(LOWORD(a)){case SB_LINEUP:next-=modernui::scale(28,consoleDpi);break;case SB_LINEDOWN:next+=modernui::scale(28,consoleDpi);break;case SB_PAGEUP:next-=si.nPage;break;case SB_PAGEDOWN:next+=si.nPage;break;case SB_THUMBTRACK:case SB_THUMBPOSITION:next=si.nTrackPos;break;case SB_TOP:next=0;break;case SB_BOTTOM:next=si.nMax;break;}(bar==SB_HORZ?consoleX:consoleY)=next;layoutConsole();return 0;}
  case WM_ERASEBKGND:return 1;
- case WM_DISPLAYCHANGE:statsRefreshMonitor.invalidate();secondaryMonitor.invalidate();resetSecondary();tick();return 0;
+ case WM_DISPLAYCHANGE:finishSecondaryDrag();statsRefreshMonitor.invalidate();secondaryMonitor.invalidate();resetSecondary();tick();return 0;
  case StatsFrameMessage:tick(true);statsFrameClock.completed();return 0;
  case WM_TIMER:tick(!statsFrameClock.running());return 0;
  case WM_APP+9:tick();return 0;
@@ -449,12 +561,25 @@ static LRESULT CALLBACK proc(HWND w,UINT m,WPARAM a,LPARAM b){
  if(controlsReady&&HIWORD(a)==EN_CHANGE&&(LOWORD(a)==108||LOWORD(a)==110)){
   BOOL ok=FALSE;UINT value=GetDlgItemInt(w,LOWORD(a),&ok,FALSE);
   if(ok&&value<=4096){if(LOWORD(a)==108)topMargin=int(value);else leftMargin=int(value);save();renderDirty=secondaryDirty=true;tick();}return 0;
+ }
+ if(controlsReady&&HIWORD(a)==EN_CHANGE&&LOWORD(a)>=121&&LOWORD(a)<=122){
+  if(syncingSecondaryDragControls)return 0;
+  const int id=LOWORD(a);BOOL ok=FALSE;UINT value=GetDlgItemInt(w,id,&ok,FALSE);
+  int& setting=id==121?secondaryX:secondaryY;
+  if(ok&&value<=10000&&setting!=int(value)){
+   setting=int(value);save();tick();
+  }return 0;
+ }
+ if(controlsReady&&HIWORD(a)==EN_KILLFOCUS&&LOWORD(a)>=121&&LOWORD(a)<=122){
+  int id=LOWORD(a);UINT value=id==121?secondaryX:secondaryY;
+  syncingSecondaryDragControls=true;SetDlgItemInt(w,id,value,FALSE);syncingSecondaryDragControls=false;
+  return 0;
  }if(HIWORD(a)==BN_CLICKED){switch(LOWORD(a)){case 100:enabled=!enabled;if(!enabled&&!secondaryEnabled)detach();else if(enabled)lastSearch=0;break;case 101:demo=!demo;demoStart=GetTickCount();enabled=true;hidden=false;manualVisible=false;if(!demo)memset(snap.get(),0,sizeof(*snap));break;case 102:detach();status.clear();lastSearch=0;break;case 103:buildings=SendMessageW(cBuildings,BM_GETCHECK,0,0)==BST_CHECKED;save();break;case 104:showOthers=SendMessageW(cOthers,BM_GETCHECK,0,0)==BST_CHECKED;save();break;case 113:tabEnabled=SendMessageW(cTab,BM_GETCHECK,0,0)!=BST_CHECKED;tabs.reset();hidden=false;manualVisible=false;EnableWindow(tabModeBox,tabEnabled);save();break;case 116:toggleOverlay();break;case 120:secondaryEnabled=SendMessageW(cSecondary,BM_GETCHECK,0,0)==BST_CHECKED;secondaryMonitor.invalidate();resetSecondary();if(!enabled&&!secondaryEnabled)detach();else lastSearch=0;save();break;}renderDirty=secondaryDirty=true;buttonLabel();tick();}return 0;
  case WM_HOTKEY:if(a==1){toggleOverlay();}else if(a==2)page++;else if(a==3)page=std::max(0,page-1);renderDirty=secondaryDirty=true;tick();return 0;
  case WM_CTLCOLORSTATIC:case WM_CTLCOLORBTN:SetBkMode((HDC)a,OPAQUE);SetTextColor((HDC)a,modernui::Text);SetBkColor((HDC)a,modernui::Background);SetDCBrushColor((HDC)a,modernui::Background);return (LRESULT)GetStockObject(DC_BRUSH);
  case WM_DRAWITEM:{auto d=(DRAWITEMSTRUCT*)b;HBRUSH br=CreateSolidBrush((d->itemState&ODS_SELECTED)?RGB(47,76,99):RGB(31,48,68));FillRect(d->hDC,&d->rcItem,br);DeleteObject(br);SetBkMode(d->hDC,TRANSPARENT);SetTextColor(d->hDC,RGB(223,237,251));SelectObject(d->hDC,font);wchar_t t[50];GetWindowTextW(d->hwndItem,t,50);DrawTextW(d->hDC,t,-1,&d->rcItem,DT_CENTER|DT_VCENTER|DT_SINGLELINE);return TRUE;}
  case WM_PAINT:{PAINTSTRUCT ps;HDC dc=BeginPaint(w,&ps);RECT r;GetClientRect(w,&r);HBRUSH br=CreateSolidBrush(modernui::Background);FillRect(dc,&r,br);DeleteObject(br);SetBkMode(dc,TRANSPARENT);SetTextColor(dc,RGB(110,210,248));SelectObject(dc,font);TextOutW(dc,modernui::scale(14,consoleDpi)-consoleX,modernui::scale(12,consoleDpi)-consoleY,L"单位统计",lstrlenW(L"单位统计"));SetTextColor(dc,RGB(148,166,188));TextOutW(dc,modernui::scale(14,consoleDpi)-consoleX,modernui::scale(32,consoleDpi)-consoleY,L"玩家兵力与单位状态",lstrlenW(L"玩家兵力与单位状态"));EndPaint(w,&ps);return 0;}
- case WM_DESTROY:statsFrameClock.shutdown();renderWorker.shutdown();secondaryRenderWorker.shutdown();surface.clear();secondarySurface.clear();KillTimer(w,1);UnregisterHotKey(w,1);UnregisterHotKey(w,2);UnregisterHotKey(w,3);detach();DeleteObject(font);PostQuitMessage(0);return 0;}
+ case WM_DESTROY:finishSecondaryDrag();statsFrameClock.shutdown();renderWorker.shutdown();secondaryRenderWorker.shutdown();surface.clear();secondarySurface.clear();KillTimer(w,1);UnregisterHotKey(w,1);UnregisterHotKey(w,2);UnregisterHotKey(w,3);detach();DeleteObject(font);PostQuitMessage(0);return 0;}
  return DefWindowProcW(w,m,a,b);
 }
 int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR,int){
@@ -463,6 +588,8 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR,int){
  topMargin=std::clamp(int(GetPrivateProfileIntW(L"overlay",L"topMargin",20,path(L"settings.ini").c_str())),0,4096);leftMargin=std::clamp(int(GetPrivateProfileIntW(L"overlay",L"leftMargin",6,path(L"settings.ini").c_str())),0,4096);
  scalePercent=viewport::percent(int(GetPrivateProfileIntW(L"overlay",L"scalePercent",100,path(L"settings.ini").c_str())));
  secondaryEnabled=GetPrivateProfileIntW(L"overlay",L"secondaryEnabled",0,path(L"settings.ini").c_str())!=0;
+ secondaryX=std::clamp(int(GetPrivateProfileIntW(L"overlay",L"secondaryX",0,path(L"settings.ini").c_str())),0,10000);
+ secondaryY=std::clamp(int(GetPrivateProfileIntW(L"overlay",L"secondaryY",0,path(L"settings.ini").c_str())),0,10000);
  buildings=GetPrivateProfileIntW(L"overlay",L"buildings",0,path(L"settings.ini").c_str())!=0;showOthers=GetPrivateProfileIntW(L"overlay",L"otherPlayers",0,path(L"settings.ini").c_str())!=0;
 #ifdef RA2_UNIFIED
  enabled=suite::enabled(1);
@@ -471,7 +598,7 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR,int){
  ULONG_PTR token;GdiplusStartupInput start;if(GdiplusStartup(&token,&start,nullptr)!=Ok)return 2;
  WNDCLASSW wc{};wc.hInstance=inst;wc.lpfnWndProc=overlayProc;wc.lpszClassName=L"RA2UnitTransparentOverlay";RegisterClassW(&wc);
  overlay=CreateWindowExW(WS_EX_LAYERED|WS_EX_TRANSPARENT|WS_EX_TOOLWINDOW|WS_EX_NOACTIVATE|WS_EX_TOPMOST,wc.lpszClassName,L"",WS_POPUP,0,0,1,1,nullptr,nullptr,inst,nullptr);
- secondaryOverlay=CreateWindowExW(WS_EX_LAYERED|WS_EX_TRANSPARENT|WS_EX_TOOLWINDOW|WS_EX_NOACTIVATE|WS_EX_TOPMOST,wc.lpszClassName,L"第二显示器单位统计",WS_POPUP,0,0,1,1,nullptr,nullptr,inst,nullptr);
+ secondaryOverlay=CreateWindowExW(WS_EX_LAYERED|WS_EX_TOOLWINDOW|WS_EX_NOACTIVATE|WS_EX_TOPMOST,wc.lpszClassName,L"第二显示器单位统计",WS_POPUP,0,0,1,1,nullptr,nullptr,inst,nullptr);
  wc.lpfnWndProc=proc;wc.lpszClassName=L"RA2UnitMonitorUI";wc.hCursor=LoadCursorW(nullptr,IDC_ARROW);wc.hIcon=LoadIconW(nullptr,IDI_APPLICATION);RegisterClassW(&wc);
  RECT r{0,0,700,440};AdjustWindowRect(&r,WS_OVERLAPPEDWINDOW|WS_CLIPCHILDREN|WS_VSCROLL|WS_HSCROLL,FALSE);
  ui=CreateWindowW(wc.lpszClassName,L"单位统计 v" RA2_RELEASE_VERSION_W,WS_OVERLAPPEDWINDOW|WS_CLIPCHILDREN|WS_VSCROLL|WS_HSCROLL,CW_USEDEFAULT,CW_USEDEFAULT,r.right-r.left,r.bottom-r.top,nullptr,nullptr,inst,nullptr);

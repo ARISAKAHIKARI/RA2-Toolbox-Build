@@ -5,13 +5,21 @@ namespace watchwindows {
 static HWND windows[3]{},secondaryWindows[3]{};static construction::PanelBuffer buffers[3],secondaryBuffers[3];
 static overlayui::Recovery recovery[3],secondaryRecovery[3];static uint32_t revisions[3]{},secondaryRevisions[3]{};
 static secondarydisplay::Monitor secondaryMonitor;
+static HWND dragWindow=nullptr;static HMONITOR dragMonitor=nullptr;static RECT dragWork{};
+static POINT dragCursor{},dragGroup{},dragCurrent{},dragOffsets[3]{};
+static int dragWidth=0,dragHeight=0,dragCount=0;
+static bool dragging=false;
+static void cancelDrag(){
+ if(!dragging)return;HWND held=dragWindow;dragging=false;dragWindow=nullptr;dragMonitor=nullptr;
+ if(GetCapture()==held)ReleaseCapture();
+}
 static bool battlefield(){return pid&&snap.renderStatus==1&&external::display::inspect([](uint32_t p,void*out,size_t n){return externalReader.readFresh(p,out,n);}).visible();}
 static bool usable(){return enabled&&extra.watchEnabled&&foregroundGame()&&!snap.chat&&battlefield();}
 static bool secondaryUsable(){return extra.watchSecondary&&battlefield();}
 static void hidePrimary(){for(int i=0;i<3;++i){recovery[i].suspend();if(windows[i])ShowWindow(windows[i],SW_HIDE);}}
-static void hideSecondary(){for(int i=0;i<3;++i){secondaryRecovery[i].suspend();if(secondaryWindows[i])ShowWindow(secondaryWindows[i],SW_HIDE);}}
+static void hideSecondary(){cancelDrag();for(int i=0;i<3;++i){secondaryRecovery[i].suspend();if(secondaryWindows[i])ShowWindow(secondaryWindows[i],SW_HIDE);}}
 static void hide(){hidePrimary();hideSecondary();}
-static void invalidateDisplays(){secondaryMonitor.invalidate();}
+static void invalidateDisplays(){cancelDrag();secondaryMonitor.invalidate();}
 static void destroy(){hide();for(int i=0;i<3;++i){if(windows[i])DestroyWindow(windows[i]);if(secondaryWindows[i])DestroyWindow(secondaryWindows[i]);windows[i]=secondaryWindows[i]=nullptr;buffers[i].clear();secondaryBuffers[i].clear();}watchhost::reset();}
 static void occlude(Graphics&g){
  for(int i=0;i<3;++i)if(windows[i]&&IsWindowVisible(windows[i])&&watchhost::views[i].shown){auto b=watchhost::views[i].box;g.SetClip(RectF(float(b.x-1),float(b.y-1),float(b.w+2),float(b.h+2)),CombineModeExclude);}
@@ -25,6 +33,52 @@ static void navigate(int slot){
  int x,y;if(!external::watch::camera(fresh,target,snap.width,snap.height,x,y,center))return;
  InterlockedIncrement(&shared->cameraSeq);shared->cameraMatch=commandMatch();shared->cameraTick=sampleClock(shared);shared->cameraTargetX=x;shared->cameraTargetY=y;MemoryBarrier();InterlockedIncrement(&shared->cameraSeq);wakeGame();
 }
+static bool beginDrag(HWND w){
+ if(!secondaryUsable())return false;
+ auto target=secondaryMonitor.get(game,ui,GetTickCount());if(!target.available())return false;
+ RECT group{target.work.right,target.work.bottom,target.work.left,target.work.top};int count=0,expected=0;
+ for(const auto&view:watchhost::views)expected+=view.shown;
+ for(int i=0;i<3;++i)if(watchhost::views[i].shown&&secondaryWindows[i]&&IsWindowVisible(secondaryWindows[i])){
+  RECT r{};if(!GetWindowRect(secondaryWindows[i],&r))return false;
+  group.left=std::min(group.left,r.left);group.top=std::min(group.top,r.top);
+  group.right=std::max(group.right,r.right);group.bottom=std::max(group.bottom,r.bottom);++count;
+ }
+ if(count!=expected||!count||group.right-group.left>target.work.right-target.work.left||
+    group.bottom-group.top>target.work.bottom-target.work.top||!GetCursorPos(&dragCursor))return false;
+ for(int i=0;i<3;++i)if(watchhost::views[i].shown){RECT r{};GetWindowRect(secondaryWindows[i],&r);dragOffsets[i]={r.left-group.left,r.top-group.top};}
+ dragMonitor=target.monitor;dragWork=target.work;dragWindow=w;dragGroup=dragCurrent={group.left,group.top};
+ dragWidth=group.right-group.left;dragHeight=group.bottom-group.top;dragCount=count;dragging=true;SetCapture(w);
+ if(GetCapture()!=w){cancelDrag();return false;}return true;
+}
+static void moveDrag(){
+ if(!dragging)return;
+ POINT cursor{};if(!GetCursorPos(&cursor))return;
+ int workW=dragWork.right-dragWork.left,workH=dragWork.bottom-dragWork.top;
+ int margin=std::min({12,(workW-1)/2,(workH-dragCount)/2});
+ int minX=dragWork.left+margin,maxX=dragWork.right-margin-dragWidth;
+ int minY=dragWork.top+margin,maxY=dragWork.bottom-margin-dragHeight;
+ int x=int(std::clamp(int64_t(dragGroup.x)+int64_t(cursor.x)-dragCursor.x,int64_t(minX),int64_t(std::max(minX,maxX))));
+ int y=int(std::clamp(int64_t(dragGroup.y)+int64_t(cursor.y)-dragCursor.y,int64_t(minY),int64_t(std::max(minY,maxY))));
+ if(x==dragCurrent.x&&y==dragCurrent.y)return;
+ bool placed=true;
+ for(int i=0;i<3;++i)if(watchhost::views[i].shown&&secondaryWindows[i])
+  placed=SetWindowPos(secondaryWindows[i],nullptr,x+dragOffsets[i].x,y+dragOffsets[i].y,0,0,SWP_NOSIZE|SWP_NOZORDER|SWP_NOACTIVATE)!=FALSE&&placed;
+ if(!placed){cancelDrag();return;}
+ dragCurrent={x,y};
+}
+static void finishDrag(){
+ if(!dragging)return;moveDrag();if(!dragging)return;
+ if(dragCurrent.x==dragGroup.x&&dragCurrent.y==dragGroup.y){cancelDrag();return;}
+ int workW=dragWork.right-dragWork.left,workH=dragWork.bottom-dragWork.top;
+ int margin=std::min({12,(workW-1)/2,(workH-dragCount)/2});
+ int freeX=workW-2*margin-dragWidth,freeY=workH-2*margin-dragHeight;
+ int x=freeX>0?int((int64_t(dragCurrent.x-dragWork.left-margin)*10000+freeX/2)/freeX):extra.watchSecondaryX;
+ int y=freeY>0?int((int64_t(dragCurrent.y-dragWork.top-margin)*10000+freeY/2)/freeY):extra.watchSecondaryY;
+ x=std::clamp(x,0,10000);y=std::clamp(y,0,10000);
+ bool changed=x!=extra.watchSecondaryX||y!=extra.watchSecondaryY;
+ extra.watchSecondaryX=x;extra.watchSecondaryY=y;cancelDrag();
+ if(changed){changedSetting();syncSecondaryLayoutControls();}
+}
 static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
  if(msg==WM_NCCREATE){auto*create=reinterpret_cast<CREATESTRUCTW*>(lp);SetWindowLongPtrW(w,GWLP_USERDATA,reinterpret_cast<LONG_PTR>(create->lpCreateParams));return TRUE;}
  int panel=int(GetWindowLongPtrW(w,GWLP_USERDATA))-1,slot=panel%3;bool second=panel>=3;
@@ -32,7 +86,12 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
  if(msg==WM_NCHITTEST)return HTCLIENT;
  if(msg==WM_MOUSEACTIVATE)return MA_NOACTIVATE;
  if(msg==WM_SETCURSOR){
-  if(second){SetCursor(LoadCursorW(nullptr,IDC_ARROW));return TRUE;}
+  if(second){
+   POINT cursor{};RECT bounds{};GetClientRect(w,&bounds);
+   bool inHandle=GetCursorPos(&cursor)&&ScreenToClient(w,&cursor)&&
+       cursor.x>=0&&cursor.x<bounds.right&&cursor.y>=0&&cursor.y<22;
+   SetCursor(LoadCursorW(nullptr,(inHandle||(dragging&&dragWindow==w))?IDC_SIZEALL:IDC_ARROW));return TRUE;
+  }
 #ifdef RA2_UNIFIED
   if(!suite::hardwareCursorActive())SetCursor(nullptr);
 #else
@@ -40,8 +99,14 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
 #endif
   return TRUE;
  }
- if(msg==WM_LBUTTONDOWN){navigate(slot);return 0;}
- if(msg==WM_RBUTTONDOWN){if((wp&MK_SHIFT)&&(second?secondaryUsable():usable())){watchhost::close(slot);if(windows[slot])ShowWindow(windows[slot],SW_HIDE);if(secondaryWindows[slot])ShowWindow(secondaryWindows[slot],SW_HIDE);recovery[slot].suspend();secondaryRecovery[slot].suspend();}return 0;}
+ if(msg==WM_LBUTTONDOWN){
+  if(second&&short(HIWORD(lp))>=0&&short(HIWORD(lp))<22&&beginDrag(w))return 0;
+  navigate(slot);return 0;
+ }
+ if(second&&msg==WM_MOUSEMOVE&&dragging&&dragWindow==w){if(!(wp&MK_LBUTTON))cancelDrag();else moveDrag();return 0;}
+ if(second&&msg==WM_LBUTTONUP&&dragging&&dragWindow==w){finishDrag();return 0;}
+ if(second&&(msg==WM_CAPTURECHANGED||msg==WM_CANCELMODE)){cancelDrag();return 0;}
+ if(msg==WM_RBUTTONDOWN){if(second&&dragging)cancelDrag();if((wp&MK_SHIFT)&&(second?secondaryUsable():usable())){watchhost::close(slot);if(windows[slot])ShowWindow(windows[slot],SW_HIDE);if(secondaryWindows[slot])ShowWindow(secondaryWindows[slot],SW_HIDE);recovery[slot].suspend();secondaryRecovery[slot].suspend();}return 0;}
  if(msg==WM_LBUTTONUP||msg==WM_RBUTTONUP||msg==WM_LBUTTONDBLCLK||msg==WM_RBUTTONDBLCLK||msg==WM_MOUSEMOVE)return 0;
  if(msg==WM_ERASEBKGND)return 1;
  if(msg==WM_PAINT){PAINTSTRUCT ps{};HDC dc=BeginPaint(w,&ps);RECT r{};GetClientRect(w,&r);
@@ -67,12 +132,30 @@ static void update(POINT origin,const RECT&client){
  }else hidePrimary();
  auto target=extra.watchSecondary?secondaryMonitor.get(game,ui,GetTickCount()):secondarydisplay::Target{};
  if(!secondaryUsable()||!target.available()){hideSecondary();return;}
+ if(dragging){
+  int count=0;for(int i=0;i<3;++i)if(watchhost::views[i].shown){++count;if(!secondaryWindows[i]||!IsWindowVisible(secondaryWindows[i])){count=-10;break;}}
+  if(count==dragCount&&target.monitor==dragMonitor&&target.work.left==dragWork.left&&target.work.top==dragWork.top&&
+     target.work.right==dragWork.right&&target.work.bottom==dragWork.bottom)return;
+  cancelDrag();
+ }
  int count=0;for(const auto&view:watchhost::views)count+=view.shown;
  if(!count){hideSecondary();return;}
- const int margin=12,gap=8,workW=target.work.right-target.work.left,workH=target.work.bottom-target.work.top;
- const int availableW=std::max(1,workW*2/5-margin*2),availableH=std::max(1,workH*2/3-margin*2);
- int width=std::max(1,std::min({640,availableW,int(int64_t(std::max(1,availableH-(count-1)*gap))*watchhost::Width/(count*watchhost::Height))}));
- int height=std::max(1,int(int64_t(width)*watchhost::Height/watchhost::Width)),row=0;
- for(int i=0;i<3;++i){if(watchhost::views[i].shown){placePanel(i,true,target.work.right-margin-width,target.work.top+margin+row*(height+gap),width,height);++row;}else placePanel(i,true,0,0,0,0);}
+ const int workW=target.work.right-target.work.left,workH=target.work.bottom-target.work.top;
+ if(workW<1||workH<count){hideSecondary();return;}
+ const int margin=std::min({12,(workW-1)/2,(workH-count)/2});
+ const int usableW=workW-2*margin,usableH=workH-2*margin;
+ const int availableW=std::max(1,std::min(workW*2/5-2*margin,usableW));
+ const int availableH=std::max(count,std::min(workH*2/3-2*margin,usableH));
+ const int gap=count>1?std::min(8,(availableH-count)/(count-1)):0;
+ const int contentH=availableH-(count-1)*gap;
+ const int width=std::max(1,std::min({640,availableW,int(int64_t(contentH)*watchhost::Width/(count*watchhost::Height))}));
+ const int height=std::max(1,std::min(int(int64_t(width)*watchhost::Height/watchhost::Width),contentH/count));
+ const int groupH=count*height+(count-1)*gap;
+ // Ten-thousandths travel across the free work area, so 10000/0 preserves the
+ // existing upper-right placement and all three panels remain on-screen.
+ const int x=target.work.left+margin+int(int64_t(usableW-width)*std::clamp(extra.watchSecondaryX,0,10000)/10000);
+ const int y=target.work.top+margin+int(int64_t(usableH-groupH)*std::clamp(extra.watchSecondaryY,0,10000)/10000);
+ int row=0;
+ for(int i=0;i<3;++i){if(watchhost::views[i].shown){placePanel(i,true,x,y+row*(height+gap),width,height);++row;}else placePanel(i,true,0,0,0,0);}
 }
 }

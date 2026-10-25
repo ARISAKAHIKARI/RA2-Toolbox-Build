@@ -65,7 +65,9 @@ struct ExactRecovery {bool due(DWORD,bool,RecoveryKey,bool shown){return !shown;
 static ExactRecovery secondaryRecovery,overlayRecovery;
 struct UnitSurface {HDC dc=nullptr;int w=0,h=0;std::vector<uint32_t>data;void*bits=nullptr;void clear(){dc=nullptr;w=h=0;data.clear();bits=nullptr;}bool ensure(int width,int height){w=width;h=height;data.resize(size_t(w)*h);bits=data.data();dc=handle(30);return true;}} surface,secondarySurface;
 static bool enabled=false,demo=false,secondaryEnabled=true,secondaryActive=false,secondaryDirty=true,renderDirty=true,gameActive=false,showOthers=true,buildings=false,hidden=true,manualVisible=false,tabEnabled=true;
-static int page=0,scalePercent=100,leftMargin=6,topMargin=20,paintedAlpha=-1;static DWORD lastSearch=0,lastGood=1000,lastData=0,oldMatch=7;
+static int page=0,scalePercent=100,leftMargin=6,topMargin=20,paintedAlpha=-1;
+static int secondaryX=0,secondaryY=0;
+static DWORD lastSearch=0,lastGood=1000,lastData=0,oldMatch=7;
 static bool changed(const um::Snapshot&a,const um::Snapshot&b){return a.status!=b.status||a.match!=b.match||a.playerCount!=b.playerCount;}
 static std::wstring status;static void setStatus(const std::wstring&s){status=s;}static void visibilityStatus(const std::wstring&){}
 static void log(const wchar_t*){}static void pollTab(){}static void refreshInformationRate(DWORD){}static void demoData(){}
@@ -84,6 +86,8 @@ static std::shared_ptr<const RenderFrame> secondaryRenderedFrame;
 static POINT secondaryOrigin{-2147483647,-2147483647};static int secondaryWidth=0,secondaryHeight=0;
 static bool secondaryUploaded=false;static DWORD secondaryLastSubmit=0;
 '''
+placement=source[source.index('static POINT secondaryPosition('):source.index('static SecondaryDrag secondaryDrag;')]
+drag_host='static SecondaryDrag secondaryDrag;\nstatic void resetSecondary();\nstatic void finishSecondaryDrag(){secondaryDrag.active=false;}\n'
 post=r'''
 static void detach(){resetSecondary();game=nullptr;pid=threadId=0;sampler.reset();*snap={};snap->status=0;lastGood=0;}
 static void attach(){if(!processAlive)return;game=handle(1);pid=10;threadId=11;sampler=std::make_unique<Sampler>();}
@@ -97,9 +101,32 @@ int main(){
  tick(false);assert(samples==1&&statsFrameClock.active&&primaryRenders==0&&!visible[overlay]);
  ++now;tick(true);assert(uploads==1&&visible[secondaryOverlay]&&!visible[overlay]&&!primaryReportedVisible);
  assert(uploadedOrigin.x==-1600&&uploadedOrigin.y==-100&&secondaryWidth==960&&secondaryHeight==900);
+ UnitSurface grip;assert(grip.ensure(96,56));paintSecondaryDragGrip(grip);
+ auto* gripPixels=static_cast<uint32_t*>(grip.bits);
+ assert(gripPixels[3*96+8]==0xff6488a4u);
  assert(secondaryRenderedFrame->request.snap->match==7&&secondaryRenderedFrame->request.width==960);
  const unsigned queued=secondaryRenderWorker.submitted;for(int n=0;n<100;++n){++now;tick(true);}assert(secondaryRenderWorker.submitted==queued&&uploads==1);
  now=1300;tick(false);assert(samples==2&&secondaryActive&&statsFrameClock.active);
+ // Coordinates anchor the actually displayed sparse frame (12 x 9), not the
+ // requested 960 x 900 rendering budget. Right/bottom means actual edges.
+ secondaryX=10000;secondaryY=10000;++now;tick(true);
+ assert(secondaryWidth==960&&secondaryHeight==900&&uploadedOrigin.x==-12&&uploadedOrigin.y==791);
+ assert(uploadedOrigin.x+uploadedSize.cx<=secondarydisplay::selected.work.right&&
+        uploadedOrigin.y+uploadedSize.cy<=secondarydisplay::selected.work.bottom);
+ unsigned movedSubmit=secondaryRenderWorker.submitted,movedUploads=uploads;
+ secondaryX=secondaryY=0;++now;tick(true);
+ assert(uploadedOrigin.x==-1600&&uploadedOrigin.y==-100&&uploads==movedUploads+1);
+ assert(secondaryRenderWorker.submitted==movedSubmit&&"position-only edits reuse completed pixels");
+ SecondaryDrag sample;sample.active=true;sample.work={-1600,-100,0,800};
+ sample.cursor={100,100};sample.origin={-1600,-100};sample.x=sample.y=0;sample.width=12;sample.height=9;
+ auto farCorner=secondaryDragSettings(sample,{5000,5000});
+ assert(farCorner.x==10000&&farCorner.y==10000);
+ auto actualCorner=secondaryPosition(sample.work,12,9,farCorner.x,farCorner.y);
+ assert(actualCorner.x==-12&&actualCorner.y==791);
+ sample.x=sample.y=10000;sample.origin={-12,791};
+ auto back=secondaryDragSettings(sample,{-5000,-5000});assert(back.x==0&&back.y==0);
+ auto bounded=secondaryPosition(sample.work,12,9,12000,-10);
+ assert(bounded.x==-12&&bounded.y==-100);
  // Primary can independently appear and disappear without changing the copy.
  enabled=true;focused=true;hidden=false;++now;tick(true);assert(primaryRenders&&primaryPresents&&visible[overlay]&&visible[secondaryOverlay]&&primaryReportedVisible);
  enabled=false;focused=false;hidden=true;++now;tick(true);assert(!visible[overlay]&&visible[secondaryOverlay]&&!primaryReportedVisible&&statsFrameClock.active);
@@ -115,11 +142,15 @@ int main(){
  unsigned count=samples;now=1900;tick(false);assert(samples==count);
  secondaryEnabled=true;now=2200;tick(true);assert(samples==count+1&&visible[secondaryOverlay]);
  processAlive=false;now=2500;tick(true);assert(!visible[secondaryOverlay]&&!secondaryRenderedFrame&&!statsFrameClock.active);
- std::cout<<"PASS production secondary statistics: primary pause/Tab/foreground independence, one sampler, bounded rendering, negative monitor coordinates and 60% work area, menu/round/process invalidation and hotplug recovery\n";
+ std::cout<<"PASS production secondary statistics: primary pause/Tab/foreground independence, one sampler, sparse-frame edge anchors, permyriad drag bounds, visible grip, movement without rerender, menu/round/process invalidation and hotplug recovery\n";
 }
 '''
 with tempfile.TemporaryDirectory(prefix='secondary-stats-') as directory:
  temp=Path(directory);cpp=temp/'main.cpp';exe=temp/'test'
- cpp.write_text(prefix+render_structs+host+function('static void resetSecondary(){')+function('static bool updateSecondary(DWORD now,bool battlefield,bool displayFrame)')+post+function('static void tick(bool displayFrame=false)')+scenario)
+ cpp.write_text(prefix+render_structs+host+placement+drag_host+
+                function('static void paintSecondaryDragGrip(UnitSurface&surface)')+
+                function('static void resetSecondary(){')+
+                function('static bool updateSecondary(DWORD now,bool battlefield,bool displayFrame)')+
+                post+function('static void tick(bool displayFrame=false)')+scenario)
  subprocess.run(['g++','-std=c++17','-O2','-Wall','-Wextra','-Wno-misleading-indentation','-Wno-missing-field-initializers',str(cpp),'-o',str(exe)],check=True)
  subprocess.run([str(exe)],check=True)

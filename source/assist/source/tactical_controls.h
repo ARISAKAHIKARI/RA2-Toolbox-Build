@@ -70,6 +70,9 @@ swList=combo(410,20,315,260);swHotkey=key(411,0,345,280);next();
 note(L"启用超级武器后，使用游戏内目标光标选择位置。",26);
 
 heading(2,902,L"自动化与目标设置",L"调整自动任务的频率、范围及参与单位。操作说明会显示在底部状态栏。");
+toggle(799,L"生产预定",extra.constructionQueue);next();
+note(L"在建造侧栏预定后续生产，队列提醒与地图信息在“战场信息”设置。",44);
+number(817,L"建筑预定面板缩放 / %",constructionScalePercent,L"50–250 · 默认 100");
 repairEdit=number(312,L"自动维修间隔 / 毫秒",repairMs,L"500–30000");
 toggle(780,L"允许维修通常不可维修的建筑",repairUnrepairable);next();
 oreCheck=toggle(470,L"矿车自动卸矿",oreMode);next();
@@ -83,8 +86,6 @@ number(818,L"高级移动攻击额外索敌距离 / 格",advancedRangeCells,L"0�
 label(L"高级移动攻击目标优先级",20,260);choices(combo(802),{L"单位价值优先",L"弹头伤害比例优先"},advancedTargetPriority);next();
 note(L"索敌范围为单位射程加额外距离；忽略伤害比例不超过 2% 的目标。",44);
 toggle(804,L"防御建筑优先攻击渗透单位",extra.antiTheft);next();
-toggle(885,L"自动躲弹（实验性）",extra.dodgeEnabled,20,280);choices(combo(895,310,305,180),{L"顺向移动 2 格",L"原版散开（Scatter）"},extra.dodgeMode);next();
-note(L"对己方可移动地面单位预判敌机攻击与逼近碾压，短距离躲避。支持类型清单，不保证躲过追踪弹或瞬时伤害。",60);
 toggle(880,L"防空火控",extra.missileDefense);next();
 label(L"目标范围",20,260);choices(combo(9040),{L"仅导弹类",L"所有敌方空中单位"},extra.missileScope);next();
 label(L"火力分配",20,260);choices(combo(9041),{L"智能分配（血量与伤害）",L"平均分配"},extra.missileAllocation);next();
@@ -123,8 +124,6 @@ label(L"黑幕绘制方式",20,260);choices(combo(808),{L"关闭",L"受控模式
 note(L"半透明与不渲染仅改变显示；地图全开在对局就绪后自动执行，可能导致联机不同步。",44);
 item(L"STATIC",L"地图显示：关闭",20,605,809);next();
 #endif
-toggle(799,L"生产预定",extra.constructionQueue);next();
-
 const wchar_t* displayNames[]={L"载具载员与容量",L"铁幕 / 力场剩余时间",L"生产队列空闲提醒",L"显示未选中的载具",L"敌方索敌显示",L"箱子信息",L"战术文字提示"};
 const wchar_t* displayIni[]={L"Capacity",L"Iron",L"Production",L"AllTransports",L"Psychic",L"Crates",L"TextPanel"};
 #ifdef RA2_UNIFIED
@@ -148,6 +147,8 @@ const wchar_t* lineNames[]={L"队列提醒：建筑",L"队列提醒：防御",L"
 for(int i=0;i<6;++i){toggle(9070+i,lineNames[i],(extra.productionReminderMask&(1u<<i))!=0);next();}
 toggle(9060,L"游戏内小窗跟踪",extra.watchEnabled);next();
 toggle(9163,L"第二显示器显示小窗跟踪",extra.watchSecondary);next();
+label(L"副屏跟踪组位置 X / Y",20,260);edit(9164,std::to_wstring(extra.watchSecondaryX),290,90,true);edit(9165,std::to_wstring(extra.watchSecondaryY),405,90,true);next();
+note(L"位置范围 0–10000：0 为左／上，10000 为右／下；在副屏小窗顶部拖动可整体移动三个窗口。",44);
 toggle(9061,L"自动跟随危险载员的敌方载具",extra.watchDanger);next();
 for(int n=0;n<3;++n){const wchar_t* names[]={L"跟踪窗口 1 快捷键",L"跟踪窗口 2 快捷键",L"跟踪窗口 3 快捷键"};label(names[n],20,306);key(9062+n,extra.watchKeys[n]);next();}
 note(L"同键每按一次添加一个窗口，只使用该键绑定的空位。左击跳转；Shift＋右击关闭。组内目标死亡时，接替原选中组中距它 5 格内的最近单位。",44);
@@ -164,12 +165,14 @@ number(816,L"载员与状态文字缩放 / %",labelScalePercent,L"50–250 · �
 #endif
 marginEdit=number(311,L"文字提示上边距 / 像素",topMargin,L"0–4096");
 toastEdit=number(471,L"战术提示时长 / 毫秒",toastMs,L"500–60000");
-number(817,L"建筑预定面板缩放 / %",constructionScalePercent,L"50–250 · 默认 100");
 toggle(830,L"游戏内战术小地图",minimapEnabled);next();
 toggle(9162,L"第二显示器显示小地图",minimapSecondary);next();
-note(L"副屏独立显示，不依赖游戏内开关。自动选择游戏所在屏幕之外的显示器；没有副屏时自动隐藏。",44);
+label(L"副屏小地图位置 X / Y",20,260);edit(9166,std::to_wstring(minimapSecondaryX),290,90,true);edit(9167,std::to_wstring(minimapSecondaryY),405,90,true);next();
+number(9168,L"副屏小地图宽度 / 像素",minimapSecondaryWidth,L"160–4096 · 默认 320");
+note(L"位置 0 为左／上，10000 为右／下；副屏小地图顶部可拖动，左上角或右下角可等比调整大小。副屏设置与游戏内小地图分开保存。",60);
 label(L"小地图画面",20,260);choices(combo(9065),{L"示意",L"实景"},minimapMode);next();
-number(831,L"小地图缩放 / %",minimapScale,L"100–1000 · 默认 200");
+number(831,L"小地图缩放 / %",minimapScale,L"10–200 · 默认 200");
+note(L"实景模式 100% 对应地图原生像素大小；显示区域不足时等比适配。",36);
 label(L"战术小地图位置",20,260);choices(combo(850),{L"原雷达左侧",L"画面左上",L"画面左下",L"自定义坐标"},minimapPosition);next();
 label(L"自定义位置 X / Y",20,260);edit(851,std::to_wstring(minimapX),290,100,true);edit(852,std::to_wstring(minimapY),405,100,true);next();
 label(L"自定义水平对齐",20,260);choices(combo(9100),{L"靠左",L"居中",L"靠右"},minimapAlignX);next();
@@ -178,6 +181,8 @@ note(L"自定义坐标是布局框左上角，对齐决定地图在框内的位�
 detailCheck=toggle(481,L"显示运行耗时",showDetails);next();
 
 heading(4,904,L"高级与实验性设置",L"实验性功能尚未完成联机验证，可能导致不同步或掉线。建议单独测试。");
+toggle(885,L"自动躲弹（实验性）",extra.dodgeEnabled,20,280);choices(combo(895,310,305,180),{L"顺向移动 2 格",L"原版散开（Scatter）"},extra.dodgeMode);next();
+note(L"对己方可移动地面单位预判敌机攻击与逼近碾压，短距离躲避。支持类型清单，不保证躲过追踪弹或瞬时伤害。",60);
 button(9094,L"Sticky 驻守（实验性／支持联机进入）",20,306);key(9095,extra.stickyKey);next();note(L"所选地面单位进入 Sticky=6；默认 Ctrl+Alt+S，可改组合或双击。联机仅支持同步进入，重复键不重发，退出尚未实现。单机可再次按键或手动下令解除；实际进入后显示金色标记。");
 csCheck=toggle(446,L"自动移动攻击（CS）",csMode,20,306);csKeyEdit=key(447,csKey);next();
 csHoldCheck=toggle(473,L"按键移动攻击（CS）",csHoldEnabled,20,210);csHoldEdit=key(474,csHoldKey,240,258,true);mouse(pointerinput::MouseCS);next();

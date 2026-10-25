@@ -166,6 +166,16 @@ def scenario(folder):
         for id,expected in {200:1618,209:593,210:599,451:580,9051:32786,9057:67,9058:66}.items():
             h=child(root,id,'RA2Assist010')
             assert h and send(h,0x402)==expected,(id,send(h,0x402) if h else None,expected)
+        production=child(root,799,'RA2Assist010');dodge=child(root,885,'RA2Assist010')
+        assert production and dodge
+        for navigation,title,production_shown,dodge_shown in [
+                (202,'战术控制',True,False),(203,'战场信息',False,False),
+                (204,'实验功能',False,True),(202,'战术控制',True,False)]:
+            send(child(root,navigation,'RA2Toolbox020'),0xF5)
+            until(lambda:title==text(child(root,989,'RA2Assist010')) and
+                  bool(u.IsWindowVisible(production))==production_shown and
+                  bool(u.IsWindowVisible(dodge))==dodge_shown,
+                  'production/experimental controls in '+title)
         # Both checkboxes and the remaining shared display checkboxes use the same owner.
         keys={601:'EnemyMarkers',602:'Iron',603:'Capacity',604:'AllTransports',
               605:'Frozen',606:'ParasiteMarker',607:'CrateBuffMarkers',
@@ -184,6 +194,18 @@ def scenario(folder):
         secondary_stats=child(root,120,'RA2UnitMonitorUI');assert secondary_stats and check(secondary_stats)==0
         click(root,secondary_stats,1,persisted=lambda:k.GetPrivateProfileIntW('overlay','secondaryEnabled',999,str(folder/'settings.ini')),label='secondary statistics')
         assert k.GetPrivateProfileIntW('overlay','secondaryEnabled',999,str(folder/'settings.ini'))==1
+        assist_layout=[(9164,'Watch','SecondaryX',10000,5000),(9165,'Watch','SecondaryY',0,3000),
+                       (9166,'Display','MinimapSecondaryX',10000,2000),(9167,'Display','MinimapSecondaryY',10000,8000),
+                       (9168,'Display','MinimapSecondaryWidth',320,960)]
+        stats_layout=[(121,'secondaryX',0,10000),(122,'secondaryY',0,10000)]
+        for id,section,key,initial,adjusted in assist_layout:
+            h=child(root,id,'RA2Assist010');assert h and control_text(h)==str(initial),(id,'secondary layout default')
+            set_control_text(h,str(adjusted))
+            until(lambda section=section,key=key,adjusted=adjusted:ini(folder,section,key)==adjusted,key+' saved')
+        for id,key,initial,adjusted in stats_layout:
+            h=child(root,id,'RA2UnitMonitorUI');assert h and control_text(h)==str(initial),(id,'secondary statistics layout default')
+            set_control_text(h,str(adjusted))
+            until(lambda key=key,adjusted=adjusted:k.GetPrivateProfileIntW('overlay',key,999,str(folder/'settings.ini'))==adjusted,key+' saved')
         assert ini(folder,'Display','MinimapZoom')==0 and ini(folder,'Watch','Enabled')==0,'secondary enabled primary overlay'
         manual=child(root,609,'RA2UnitMonitorUI');adaptive=child(root,613,'RA2UnitMonitorUI')
         assert manual and adaptive and u.IsWindowEnabled(manual) and check(adaptive)==0
@@ -202,8 +224,8 @@ def scenario(folder):
             send(h,0x14E,value);send(u.GetParent(h),0x111,id|(1<<16),h)
             until(lambda:ini(folder,'Display',key)==value,key+' saved')
         scale=child(root,831,'RA2Assist010');assert scale
-        set_control_text(scale,'1000')
-        until(lambda:ini(folder,'Display','MinimapScale')==1000,'1000 percent minimap saved')
+        set_control_text(scale,'10')
+        until(lambda:ini(folder,'Display','MinimapScale')==10,'10 percent minimap saved')
         # Change an unrelated tactical setting: it must not reset these values.
         h=child(root,702,'RA2Assist010');click(root,h,1,persisted=lambda:ini(folder,'Cooperative','AdvancedEnter'),label='advanced enter')
         assert ini(folder,'Display','Frozen')==ini(folder,'Display','DangerPassengers')==1
@@ -217,17 +239,23 @@ def scenario(folder):
         for id,section,key in secondary:
             assert check(child(root,id,'RA2Assist010'))==1 and ini(folder,section,key)==1
         assert check(child(root,120,'RA2UnitMonitorUI'))==1 and k.GetPrivateProfileIntW('overlay','secondaryEnabled',999,str(folder/'settings.ini'))==1
+        for id,section,key,_,adjusted in assist_layout:
+            assert control_text(child(root,id,'RA2Assist010'))==str(adjusted) and ini(folder,section,key)==adjusted,(key,'secondary layout restart')
+        for id,key,_,adjusted in stats_layout:
+            assert control_text(child(root,id,'RA2UnitMonitorUI'))==str(adjusted) and k.GetPrivateProfileIntW('overlay',key,999,str(folder/'settings.ini'))==adjusted,(key,'secondary statistics layout restart')
         assert check(adaptive)==1 and not u.IsWindowEnabled(manual) and control_text(manual)=='144','adaptive state lost on restart'
         until(lambda:information_rate(root)==native_monitor_hz(root),'adaptive monitor rate restored after restart')
         click(root,adaptive,0,owner_id=9160,persisted=lambda:ini(folder,'Display','AdaptiveFPS'),label='adaptive information rate')
         until(lambda:ini(folder,'Display','AdaptiveFPS')==0 and u.IsWindowEnabled(manual) and information_rate(root)==144,'manual target restored after disabling adaptive')
         assert send(child(root,9065,'RA2Assist010'),0x147)==1,'real minimap mode lost on restart'
-        assert ini(folder,'Display','MinimapScale')==1000,'1000 percent minimap lost on restart'
-        assert control_text(child(root,831,'RA2Assist010'))=='1000','1000 percent minimap control lost on restart'
+        assert ini(folder,'Display','MinimapScale')==10,'10 percent minimap lost on restart'
+        assert control_text(child(root,831,'RA2Assist010'))=='10','10 percent minimap control lost on restart'
         assert send(child(root,9100,'RA2Assist010'),0x147)==2 and send(child(root,9101,'RA2Assist010'),0x147)==1,'minimap alignment lost on restart'
         mode=child(root,9065,'RA2Assist010');send(mode,0x14E,0);send(u.GetParent(mode),0x111,9065|(1<<16),mode)
         # Switch off and exit immediately, exercising pending autosave at shutdown.
         set_control_text(manual,'240')
+        for id,section,key,initial,_ in assist_layout:set_control_text(child(root,id,'RA2Assist010'),str(initial))
+        for id,key,initial,_ in stats_layout:set_control_text(child(root,id,'RA2UnitMonitorUI'),str(initial))
         for id in [604]+[id for id in keys if id!=604]:send(child(root,id),0xF5)
         for id,_,_ in secondary:send(child(root,id,'RA2Assist010'),0xF5)
         send(child(root,120,'RA2UnitMonitorUI'),0xF5)
@@ -239,6 +267,10 @@ def scenario(folder):
         for id,section,key in secondary:
             assert check(child(root,id,'RA2Assist010'))==0 and ini(folder,section,key)==0
         assert check(child(root,120,'RA2UnitMonitorUI'))==0 and k.GetPrivateProfileIntW('overlay','secondaryEnabled',999,str(folder/'settings.ini'))==0
+        for id,section,key,initial,_ in assist_layout:
+            assert control_text(child(root,id,'RA2Assist010'))==str(initial) and ini(folder,section,key)==initial,(key,'secondary layout reset')
+        for id,key,initial,_ in stats_layout:
+            assert control_text(child(root,id,'RA2UnitMonitorUI'))==str(initial) and k.GetPrivateProfileIntW('overlay',key,999,str(folder/'settings.ini'))==initial,(key,'secondary statistics layout reset')
         assert check(adaptive)==0 and u.IsWindowEnabled(manual) and control_text(manual)=='240'
         assert ini(folder,'Display','AdaptiveFPS')==0 and ini(folder,'Display','FPS')==240
         until(lambda:information_rate(root)==240,'manual information rate restored after restart')
@@ -267,12 +299,14 @@ if __name__=='__main__':
         folder=pathlib.Path(t)
         for name in ('RA2Toolbox.exe','GameRuntime.dll'):shutil.copy2(source/name,folder/name)
         scenario(folder)
-    result={'status':'PASS','version':'1.0.38-pre.10','runs':3,'display_switches':13,
+    result={'status':'PASS','version':'1.0.38-pre.11','runs':3,'display_switches':13,
             'checks':['all fresh UI switches off','user hotkeys','cross-pane edits',
                       'real Win32 INI writes','restart on','restart off','independent secondary map/statistics/watch toggles and restart',
+                      'real pane navigation for production and experimental controls',
+                      'independent secondary placement and map width persistence across restarts',
                       'information adaptive rate matches native monitor','adaptive mode retains manual Hz and disables its editor',
                       'adaptive on/off persistence and manual target restoration',
-                      'minimap diagram/scene mode and alignment restart','1000 percent minimap save/restart and control readback',
+                      'minimap diagram/scene mode and alignment restart','10 percent minimap save/restart and control readback',
                       'asynchronous statistics demo surface and shutdown','immediate exit','existing settings preserved'],
             'game_tested':False,'multiplayer_tested':False}
     print(json.dumps(result,ensure_ascii=False))

@@ -58,7 +58,8 @@ static HWND ui,repairCheck,repairEdit,keys[12],check[7],rateEdit,marginEdit,swLi
  hookChecks[4],ejectCheck,ejectKeyEdit,magnetronCheck,magnetronKeyEdit,oreCheck,oreStatus,detailCheck,toastEdit,
  csHoldCheck,csHoldEdit,anywhereCheck,statusLabel,schedulerEntryCombo,megaQueueCombo,objectQueueCombo;
 static AdditionalSettings extra;static HWND extraControls[ExtraControlCount];
-static int labelScalePercent=100,constructionScalePercent=100;static bool minimapEnabled=false,minimapSecondary=false;static int minimapMode=0,minimapScale=200,minimapPosition=0,minimapX=20,minimapY=60,minimapAlignX=0,minimapAlignY=0;static uint32_t computeRequested=compute::Default;
+static int labelScalePercent=100,constructionScalePercent=100;static bool minimapEnabled=false,minimapSecondary=false;static int minimapMode=0,minimapScale=200,minimapPosition=0,minimapX=20,minimapY=60,minimapAlignX=0,minimapAlignY=0;
+static int minimapSecondaryX=10000,minimapSecondaryY=10000,minimapSecondaryWidth=320;static uint32_t computeRequested=compute::Default;
 static unsigned schedulerTarget=0,megaQueueMode=0,objectQueueMode=0;static HFONT font;static int scrollY,repairMs=2000,fps=60,topMargin=20,doubleMs=350,toastMs=6000;
 static bool infoAdaptive=false;static int informationFPS(){return infoAdaptive?144:fps;}
 static DWORD GetTickCount(){return 1606;}
@@ -131,8 +132,10 @@ int main(){
  for(int id:{861,862,863,864})assert(!windows[at(id).hwnd].enabled);
  for(int id:{861})assert(!windows[at(id).hwnd].checked);
  for(int id:{803,894,866})assert(at(id).rect.y>at(901).rect.y&&at(id).rect.y<at(902).rect.y);
- for(int id:{808,809,799})assert(at(id).page==1);
- for(int id:{420,860})assert(at(id).page==2);
+ for(int id:{808,809})assert(at(id).page==1);
+ for(int id:{799,817})assert(at(id).page==0&&at(id).rect.y>at(902).rect.y&&at(id).rect.y<at(905).rect.y);
+ for(int id:{885,895,420,860})assert(at(id).page==2);
+ assert(at(885).rect.y>at(904).rect.y&&at(885).rect.y<at(9094).rect.y);
  for(int id:{803,808})assert(windows[at(id).hwnd].enabled&&windows[at(id).hwnd].text.find(L"测试")==std::wstring::npos&&windows[at(id).hwnd].text.find(L"实验")==std::wstring::npos);
  extra.airWaypoints=false;extra.nativeAirWaypoints=extra.renderReveal=true;snap.nativeAirStatus=snap.renderRevealStatus=1;updateModeStatus(2800);
  assert(windows[at(866).hwnd].text==L"飞机路径点：原生模式"&&windows[at(809).hwnd].text==L"地图显示：已启用");

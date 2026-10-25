@@ -26,6 +26,7 @@ static bool ready=true,updatingControls=false,enabled=true,autoSaveOK=true;
 struct ControlUpdate{bool old=updatingControls;ControlUpdate(){updatingControls=true;}~ControlUpdate(){updatingControls=old;}};
 static bool hookAdvanced=false,hookSmartUnload=false;static HWND hookChecks[4]={800,801,802,803};
 static uint32_t computeRequested=compute::Default;static bool minimapEnabled=false,minimapSecondary=false;static int minimapMode=0,minimapScale=200,advancedRangeCells=2,minimapPosition=0,minimapX=20,minimapY=60,minimapAlignX=0,minimapAlignY=0;
+static int minimapSecondaryX=10000,minimapSecondaryY=10000,minimapSecondaryWidth=320;
 constexpr unsigned HOTKEYF_CONTROL=2,HOTKEYF_ALT=4;
 constexpr WORD MAKEWORD(unsigned a,unsigned b){return WORD((a&255)|(b<<8));}
 static WORD socialKeys[9]{};static bool autoRevealNewMatch=false;static unsigned autoRevealMatch=0,autoRevealDone=0,autoRevealRetry=0;
@@ -69,6 +70,7 @@ static bool foregroundGame(){return true;}
 static void clockState(bool,int){}
 static HWND GetDlgItem(int,int id){return id;}
 static int GetDlgItemInt(int,int id,BOOL*ok,int){*ok=fields.count(id);return *ok?fields[id]:0;}
+static BOOL SetWindowTextW(int id,const wchar_t*value){fields[id]=int(std::wcstol(value,nullptr,10));return 1;}
 static int SendMessageW(int id,int msg,unsigned value,int){if(msg==HKM_SETHOTKEY||msg==CB_SETCURSEL||msg==BM_SETCHECK){fields[id]=value;return 0;}return fields[id];}
 static bool keyConflict(WORD next,const std::string&,bool){if(extra.allHotkeys||!next)return false;for(auto k:hotkeys)if(k==next)return true;for(auto k:{csKey,advancedKey,unloadKey,ejectKey,csHoldKey,magnetronKey,idleAircraftKey})if(k==next)return true;return false;}
 static std::string quotaID(){return selectedID;}
@@ -115,8 +117,24 @@ int main(){
  minimapEnabled=extra.watchEnabled=false;fields[9162]=fields[9163]=1;assert(autoSettingChanged(9162,BN_CLICKED)&&minimapSecondary);assert(autoSettingChanged(9163,BN_CLICKED)&&extra.watchSecondary);
  assert(!minimapEnabled&&!extra.watchEnabled);saveFeatureTypes();minimapSecondary=extra.watchSecondary=false;loadFeatureTypes();assert(minimapSecondary&&extra.watchSecondary);
  for(int id:{9162,9163}){fields[id]=0;assert(autoSettingChanged(id,BN_CLICKED));}assert(!minimapSecondary&&!extra.watchSecondary);
+ assert(extra.watchSecondaryX==10000&&extra.watchSecondaryY==0&&minimapSecondaryX==10000&&minimapSecondaryY==10000&&minimapSecondaryWidth==320);
+ for(auto setting:{std::pair<int,int>{9164,0},{9165,9000},{9166,3000},{9167,6500},{9168,1200}}){fields[setting.first]=setting.second;assert(autoSettingChanged(setting.first,EN_CHANGE));}
+ assert(extra.watchSecondaryX==0&&extra.watchSecondaryY==9000&&minimapSecondaryX==3000&&minimapSecondaryY==6500&&minimapSecondaryWidth==1200);
+ saveFeatureTypes();extra.watchSecondaryX=extra.watchSecondaryY=0;minimapSecondaryX=minimapSecondaryY=minimapSecondaryWidth=0;loadFeatureTypes();
+ assert(extra.watchSecondaryX==0&&extra.watchSecondaryY==9000&&minimapSecondaryX==3000&&minimapSecondaryY==6500&&minimapSecondaryWidth==1200);
+ auto previousRevision=settingsRevision;auto previousTimers=timers;
+ for(int id:{9164,9165,9166,9167})for(int bad:{-1,10001}){fields[id]=bad;autoSettingChanged(id,EN_CHANGE);}
+ for(int bad:{159,4097}){fields[9168]=bad;autoSettingChanged(9168,EN_CHANGE);}
+ assert(settingsRevision==previousRevision&&timers==previousTimers&&extra.watchSecondaryX==0&&extra.watchSecondaryY==9000&&minimapSecondaryX==3000&&minimapSecondaryY==6500&&minimapSecondaryWidth==1200);
+ profile[L"SecondaryX"]=10005;profile[L"SecondaryY"]=-4;profile[L"MinimapSecondaryX"]=-5;profile[L"MinimapSecondaryY"]=10010;profile[L"MinimapSecondaryWidth"]=9999;loadFeatureTypes();
+ assert(extra.watchSecondaryX==10000&&extra.watchSecondaryY==0&&minimapSecondaryX==0&&minimapSecondaryY==10000&&minimapSecondaryWidth==4096);
+ profile[L"SecondaryX"]=10000;profile[L"SecondaryY"]=0;profile[L"MinimapSecondaryX"]=10000;profile[L"MinimapSecondaryY"]=10000;profile[L"MinimapSecondaryWidth"]=320;loadFeatureTypes();
  fields[830]=1;assert(autoSettingChanged(830,BN_CLICKED)&&minimapEnabled);
- for(int n:{100,200,400,1000}){fields[831]=n;assert(autoSettingChanged(831,EN_CHANGE)&&minimapScale==n);}fields[831]=1001;autoSettingChanged(831,EN_CHANGE);assert(minimapScale==1000);
+ for(int n:{10,50,100,200}){fields[831]=n;assert(autoSettingChanged(831,EN_CHANGE)&&minimapScale==n);}
+ for(int bad:{9,201}){fields[831]=bad;autoSettingChanged(831,EN_CHANGE);assert(minimapScale==200);}
+ profile[L"MinimapScale"]=1000;loadFeatureTypes();assert(minimapScale==200);
+ profile[L"MinimapScale"]=9;loadFeatureTypes();assert(minimapScale==10);
+ profile[L"MinimapScale"]=200;loadFeatureTypes();
  for(int mode:{0,1,2,3}){fields[850]=mode;assert(autoSettingChanged(850,CBN_SELCHANGE)&&minimapPosition==mode);}
  for(int n:{0,1}){fields[9065]=n;assert(autoSettingChanged(9065,CBN_SELCHANGE)&&minimapMode==n);}fields[9065]=2;autoSettingChanged(9065,CBN_SELCHANGE);assert(minimapMode==1);
  fields[850]=4;autoSettingChanged(850,CBN_SELCHANGE);assert(minimapPosition==3);
@@ -260,6 +278,19 @@ int main(){
  updatingControls=true;fields[200]='Z';assert(!autoSettingChanged(200,EN_CHANGE));assert(hotkeys[0]=='A');updatingControls=false;
  ready=false;assert(!autoSettingChanged(310,EN_CHANGE));ready=true;
  fields[700]=1;autoSettingChanged(700,CBN_SELCHANGE);assert(extra.loadMode==1);
+ fields[796]=2;assert(autoSettingChanged(796,CBN_SELCHANGE)&&shiftClickMode==2);
+ fields[802]=1;assert(autoSettingChanged(802,CBN_SELCHANGE)&&advancedTargetPriority==1);
+ fields[812]=5;assert(autoSettingChanged(812,CBN_SELCHANGE)&&extra.c4Mouse==6);
+ // Transient empty selections must retain runtime settings and never queue a
+ // write that would overwrite the preceding valid choice.
+ for(const auto& [id,max]:{std::pair<int,int>{700,1},{796,2},{802,1},{812,5}}){
+  for(int invalid:{-1,max+1}){
+   autoSavePending=false;unsigned beforeRevision=settingsRevision,beforePaint=paintRevision,beforeTimers=timers;
+   fields[id]=invalid;assert(autoSettingChanged(id,CBN_SELCHANGE));
+   assert(extra.loadMode==1&&shiftClickMode==2&&advancedTargetPriority==1&&extra.c4Mouse==6);
+   assert(!autoSavePending&&settingsRevision==beforeRevision&&paintRevision==beforePaint&&timers==beforeTimers);
+  }
+ }
  fields[704]='G';autoSettingChanged(704,EN_CHANGE);assert(extra.enterKey=='G'&&fields[703]==4);
  fields[707]='K';autoSettingChanged(707,EN_CHANGE);assert(extra.airKey1=='K');fields[709]='K';autoSettingChanged(709,EN_CHANGE);assert(extra.airKey2==0&&fields[708]==0);
  fields[716]=4;fields[717]=5;fields[718]=6;autoSettingChanged(716,EN_CHANGE);assert(targetQuotas.at("TANK").first==4&&fields[715]==1);

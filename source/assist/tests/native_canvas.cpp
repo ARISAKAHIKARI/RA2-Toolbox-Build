@@ -21,18 +21,28 @@ int main(){
  flat.diamond(128,128,1,1,300,0xff804020,light);native.diamond(128,128,1,1,300,0xff804020,light);
  for(int y=0;y<170;++y)for(int x=0;x<315;++x){assert(native.pixel(x,y)==flat.color[size_t(y)*315+x]);assert(native.depth(x,y)==flat.depth[size_t(y)*315+x]);}
  assert(native.pageCount()<=6);native.clean();
+ std::vector<uint32_t> nativePixels;assert(native.present(315,170,nativePixels,315,170));
+ for(size_t p=0;p<nativePixels.size();++p)assert(nativePixels[p]==(0xff000000u|(flat.color[p]&0xffffffu)));
+ auto untouched=nativePixels;assert(native.presentDirty(315,170,untouched,315,170)&&untouched==nativePixels);
  std::vector<uint32_t> filtered;assert(native.present(73,29,filtered,314.25,169.0625));
  for(int y=0;y<29;++y)for(int x=0;x<73;++x)assert(filtered[size_t(y)*73+x]==reference(flat,x*314.25/73,y*169.0625/29,(x+1)*314.25/73,(y+1)*169.0625/29));
  // Only the touched native page is copied; unrelated color/Z pages remain
  // shared. Refiltering its global footprint has no seams at page boundaries.
  auto fork=native.fork();auto before=native.residentPages();voxel::Image dot;dot.width=dot.height=1;dot.pixels={0xffff0000};dot.depth={1000};
  fork.blit(dot,127,127,1,1,0,light);assert(fork.dirtyPages()==1&&fork.residentPages()==before+1);assert(native.pixel(127,127)!=fork.pixel(127,127));
+ fork.blit(dot,128,128,1,1,0,light);fork.blit(dot,314,169,1,1,0,light);
+ auto nativePartial=nativePixels;assert(fork.presentDirty(315,170,nativePartial,315,170));
+ for(int y=0;y<170;++y)for(int x=0;x<315;++x)assert(nativePartial[size_t(y)*315+x]==(0xff000000u|(fork.pixel(x,y)&0xffffffu)));
  auto partial=filtered;assert(fork.presentDirty(73,29,partial,314.25,169.0625));std::vector<uint32_t> whole;assert(fork.present(73,29,whole,314.25,169.0625));assert(partial==whole);
+ camera::NativeCanvas translucent;assert(translucent.reset(258,130,{},0x7f2163a4u));translucent.blit(dot,127,127,1,1,0,light);
+ assert(translucent.present(258,130,whole,258,130));
+ assert(whole[0]==0xff2163a4u&&whole[size_t(129)*258+257]==0xff2163a4u&&whole[127*258+126]==0xff2163a4u);
+ assert(whole[size_t(127)*258+127]==(0xff000000u|(translucent.pixel(127,127)&0xffffffu)));
  // A large native plane is sparse and still retains unit source pixels.
  camera::NativeCanvas large;assert(large.reset(8192,4096));large.blit(dot,4096,2048,1,1,0,light);assert(large.pageCount()==1&&large.pixel(4096,2048)==0xffff0000);
  assert(large.present(512,256,whole));assert(whole[128*512+256]!=0xff080c08);
  auto budget=std::make_shared<camera::NativeCanvas::Budget>();budget->maximum=3;camera::NativeCanvas bounded;assert(bounded.reset(1024,1024,budget));
  voxel::Image huge;huge.width=huge.height=600;huge.pixels.assign(600*600,0xffffffff);bounded.blit(huge,0,0,1,1,0,light);assert(bounded.failed()&&budget->pages<=3&&!bounded.present(32,32,whole));assert(bounded.pixel(0,0)==0xff080c08); // no partial scaled replacement
  bounded={};assert(budget->pages==0);assert(!large.reset(32769,1));
- std::cout<<"PASS native 1:1 color/depth/shadow equivalence across page seams, exact fractional-viewport area filter, copy-on-write dirty presentation, large sparse planes and bounded failure\n";
+ std::cout<<"PASS native 1:1 color/depth/shadow equivalence across page seams, opaque exact-size presentation, sparse/dirty rows, fractional-viewport area filter, copy-on-write presentation, large sparse planes and bounded failure\n";
 }

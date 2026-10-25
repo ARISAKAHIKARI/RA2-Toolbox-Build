@@ -4,6 +4,7 @@ static void loadAdditionalSettings(){
  extra.placementImplementation=std::clamp(value(L"Experimental",L"PlacementImplementation",0),0,1);
  extra.stickyKey=value(L"Hotkeys",L"StickyGuard",extra.stickyKey)&65535;
  extra.watchSecondary=value(L"Watch",L"SecondaryEnabled",0)!=0;
+ extra.watchSecondaryX=std::clamp(value(L"Watch",L"SecondaryX",10000),0,10000);extra.watchSecondaryY=std::clamp(value(L"Watch",L"SecondaryY",0),0,10000);
  extra.watchEnabled=value(L"Watch",L"Enabled",0)!=0;extra.watchDanger=value(L"Watch",L"DangerCarriers",0)!=0;for(int n=0;n<3;++n){const wchar_t* keys[]={L"PinKey",L"PinKey2",L"PinKey3"};extra.watchKeys[n]=value(L"Watch",keys[n],n?extra.watchKeys[0]:extra.watchKeys[n])&65535;}
  extra.formationEnabled=value(L"Formation",L"Enabled",0)!=0;extra.formationHold=value(L"Formation",L"HoldKey",18)&65535;extra.formationMouse=value(L"Formation",L"MouseButton",2)==1?1:2;
  const wchar_t* shapeKeys[]={L"RectangleKey",L"DispersedKey",L"CircleKey",L"FanKey",L"SquareKey",L"FrameKey"};for(int n=0;n<6;++n)extra.formationKeys[n]=value(L"Formation",shapeKeys[n],extra.formationKeys[n])&65535;
@@ -15,7 +16,9 @@ static void loadAdditionalSettings(){
  minimapAlignX=std::clamp(value(L"Display",L"MinimapAlignX",0),0,2);minimapAlignY=std::clamp(value(L"Display",L"MinimapAlignY",0),0,2);
  minimapMode=std::clamp(value(L"Display",L"MinimapMode",0),0,1);
  minimapSecondary=value(L"Display",L"MinimapSecondary",0)!=0;
- minimapEnabled=value(L"Display",L"MinimapZoom",0)!=0;minimapScale=std::clamp(value(L"Display",L"MinimapScale",200),100,1000);
+ minimapSecondaryX=std::clamp(value(L"Display",L"MinimapSecondaryX",10000),0,10000);minimapSecondaryY=std::clamp(value(L"Display",L"MinimapSecondaryY",10000),0,10000);
+ minimapSecondaryWidth=std::clamp(value(L"Display",L"MinimapSecondaryWidth",320),160,4096);
+ minimapEnabled=value(L"Display",L"MinimapZoom",0)!=0;minimapScale=std::clamp(value(L"Display",L"MinimapScale",200),10,200);
  for(int i=0;i<featuretypes::Count;++i){auto&f=featureTypes.filters[i];std::wstring custom=std::wstring(featuretypes::key(i))+L"Custom";wchar_t text[13000]{};
   GetPrivateProfileStringW(L"FeatureTypes",featuretypes::key(i),featuretypes::initial(i),text,13000,path(L"Assist.ini").c_str());featureTypeText[i]=text;
   oreconfig::parse(featureTypeText[i],f.ids,f.count);f.custom=value(L"FeatureTypes",custom.c_str(),0)!=0;
@@ -72,6 +75,7 @@ static bool saveAdditionalSettings(){
  write(L"Experimental",L"TechEnhance",extra.techEnhance);write(L"Experimental",L"PlacementImplementation",extra.placementImplementation);
  write(L"Hotkeys",L"StickyGuard",extra.stickyKey);
  write(L"Watch",L"SecondaryEnabled",extra.watchSecondary);
+ write(L"Watch",L"SecondaryX",extra.watchSecondaryX);write(L"Watch",L"SecondaryY",extra.watchSecondaryY);
  write(L"Watch",L"Enabled",extra.watchEnabled);write(L"Watch",L"DangerCarriers",extra.watchDanger);for(int n=0;n<3;++n){const wchar_t* keys[]={L"PinKey",L"PinKey2",L"PinKey3"};write(L"Watch",keys[n],extra.watchKeys[n]);}
  write(L"Formation",L"Enabled",extra.formationEnabled);write(L"Formation",L"HoldKey",extra.formationHold);write(L"Formation",L"MouseButton",extra.formationMouse);
  const wchar_t* shapeKeys[]={L"RectangleKey",L"DispersedKey",L"CircleKey",L"FanKey",L"SquareKey",L"FrameKey"};for(int n=0;n<6;++n)write(L"Formation",shapeKeys[n],extra.formationKeys[n]);
@@ -84,6 +88,7 @@ static bool saveAdditionalSettings(){
  write(L"Display",L"MinimapAlignX",minimapAlignX);write(L"Display",L"MinimapAlignY",minimapAlignY);
  write(L"Display",L"MinimapMode",minimapMode);
  write(L"Display",L"MinimapSecondary",minimapSecondary);
+ write(L"Display",L"MinimapSecondaryX",minimapSecondaryX);write(L"Display",L"MinimapSecondaryY",minimapSecondaryY);write(L"Display",L"MinimapSecondaryWidth",minimapSecondaryWidth);
  write(L"Display",L"MinimapZoom",minimapEnabled);write(L"Display",L"MinimapScale",minimapScale);
  for(int i=0;i<featuretypes::Count;++i){std::wstring custom=std::wstring(featuretypes::key(i))+L"Custom";
   write(L"FeatureTypes",custom.c_str(),featureTypes.filters[i].custom);
