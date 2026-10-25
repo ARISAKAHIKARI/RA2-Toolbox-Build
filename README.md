@@ -24,13 +24,6 @@
 
 从[发布页面](https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/releases)选择最新版本：
 
-- **Update.zip**：包含配套的 `RA2Toolbox.exe` 和 `GameRuntime.dll`。
-- **Source.zip**：对应版本的源代码、构建脚本、许可和研究文档。
-
-已有安装请退出游戏和工具箱，再一起替换 EXE／DLL，保留原来的 INI、`assets/` 和 `cache/`。
-
-首次安装需要基础资源目录。可用 [1.0.36 Windows 完整包](https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/releases/download/v1.0.36/RA2-Toolbox-v1.0.36-Windows.zip)建立目录，再覆盖最新更新包。随后运行 `RA2Toolbox.exe`，按界面提示选择游戏目录并连接游戏。
-
 ## 设置
 
 界面分为画面设置、单位统计、战术控制、战场信息、实验功能五个面板。快捷键和鼠标键在对应功能中配置，修改后即时保存。
@@ -80,7 +73,7 @@ python3 source/tools/verify_windows_outputs.py
 
 感谢 [YRpp](https://github.com/Phobos-developers/YRpp)、[Phobos](https://github.com/Phobos-developers/Phobos)、[Ares](https://github.com/Ares-Developers/Ares)、[ccmaps-net](https://github.com/zzattack/ccmaps-net) 和 [FA2sp／HDM Edition](https://github.com/handama/FA2sp) 提供的接口资料、资源格式和渲染参考。
 
-本页的组织方式参考 [springy](https://github.com/A-small-C4/springy) 与 [VERA20K](https://github.com/ARISAKAHIKARI/vera20k)。具体用途、原作者和第三方许可见 [第三方声明](THIRD_PARTY_NOTICES.md)。
+具体用途、原作者和第三方许可见 [第三方声明](THIRD_PARTY_NOTICES.md)。
 
 ## 许可
 
