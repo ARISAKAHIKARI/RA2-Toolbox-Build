@@ -9,8 +9,8 @@
 #include <iostream>
 using DWORD=uint32_t;using BYTE=uint8_t;
 static DWORD clockValue=1000,pid=7,paintRevision=0;static bool enabled=true;static int captures=0,renders=0,draws=0,tileCalls=0;
-static DWORD GetTickCount(){return clockValue;}static uint32_t commandMatch(){return 1;}static bool foregroundGame(){return true;}static bool formationInputOwns(){return false;}static void notify(const std::wstring&){}static void critical(const std::wstring&){}
-static struct {bool watchEnabled=true,watchDanger=false,renderReveal=false;int mapStrategy=0;uint32_t watchKeys[3]={87,87,86};}extra;
+static DWORD GetTickCount(){return clockValue;}static uint32_t commandEpoch=1,displayEpoch=1;static bool secondAvailable=false;static uint32_t commandMatch(){return commandEpoch;}static uint32_t displayMatch(){return displayEpoch;}static bool secondaryDisplayAvailable(){return secondAvailable;}static bool foregroundGame(){return true;}static bool formationInputOwns(){return false;}static void notify(const std::wstring&){}static void critical(const std::wstring&){}
+static struct {bool watchEnabled=true,watchSecondary=false,watchDanger=false,renderReveal=false;int mapStrategy=0;uint32_t watchKeys[3]={87,87,86};}extra;
 static struct {int chat=0,renderStatus=1,width=800,height=600;}snap;
 static std::vector<uint8_t> memory(0x1800000);
 static uint32_t blockedAddress=0,staleLifeAddress=0,occupantDiscoveryReads=0;

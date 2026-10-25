@@ -57,12 +57,12 @@ constexpr int MK_SHIFT=4,WS_EX_TOOLWINDOW=1,WS_EX_NOACTIVATE=2,WS_EX_TOPMOST=4,W
 
 struct POINT{int x,y;};struct RECT{int left=0,top=0,right=0,bottom=0;};struct PAINTSTRUCT{};struct CREATESTRUCTW{void*lpCreateParams;};
 using Proc=LRESULT(*)(HWND,UINT,WPARAM,LPARAM);struct WNDCLASSW{Proc lpfnWndProc;int hInstance;const wchar_t*lpszClassName;};
-struct Window {RECT rect;LONG_PTR data=0;bool visible=false;int raises=0,invalidations=0;};static std::map<HWND,Window>win;static HWND game=reinterpret_cast<HWND>(7);static uintptr_t nextWindow=20;static Proc windowProc;static bool fresh=true;static int wakes=0,cursors=0;
+struct Window {RECT rect;LONG_PTR data=0;bool visible=false;int raises=0,invalidations=0;};static std::map<HWND,Window>win;static HWND game=reinterpret_cast<HWND>(7),ui=reinterpret_cast<HWND>(8);static uintptr_t nextWindow=20;static Proc windowProc;static bool fresh=true;static int wakes=0,cursors=0;
 static void battlefield(bool active){memory[0xA8E378]=active;}
 static struct {volatile LONG cameraSeq=0;uint32_t cameraMatch=0,cameraTick=0;int cameraTargetX=0,cameraTargetY=0;}mailbox;static auto*shared=&mailbox;
 static bool commandFresh(uint32_t){return fresh;}static uint32_t sampleClock(decltype(shared)){return clockValue;}static void wakeGame(){++wakes;}static void MemoryBarrier(){}static void InterlockedIncrement(volatile LONG*p){++*p;}
 static HDC CreateCompatibleDC(HDC){return reinterpret_cast<HDC>(1);}static HBITMAP CreateCompatibleBitmap(HDC,int,int){return reinterpret_cast<HBITMAP>(2);}static HGDIOBJ SelectObject(HDC,HGDIOBJ){return reinterpret_cast<HGDIOBJ>(3);}static void DeleteObject(HGDIOBJ){}static void DeleteDC(HDC){}static bool BitBlt(HDC,int,int,int,int,HDC,int,int,int){return true;}
-static void ShowWindow(HWND w,int){win[w].visible=false;}static void DestroyWindow(HWND w){win.erase(w);}static void SetCursor(void*){++cursors;}static LONG_PTR SetWindowLongPtrW(HWND w,int,LONG_PTR data){return win[w].data=data;}static LONG_PTR GetWindowLongPtrW(HWND w,int){return win[w].data;}
+static void ShowWindow(HWND w,int){win[w].visible=false;}static void DestroyWindow(HWND w){win.erase(w);}static void*lastCursor=nullptr;static void SetCursor(void*p){lastCursor=p;++cursors;}static constexpr int IDC_ARROW=32512;static void*LoadCursorW(void*,int){return reinterpret_cast<void*>(99);}static LONG_PTR SetWindowLongPtrW(HWND w,int,LONG_PTR data){return win[w].data=data;}static LONG_PTR GetWindowLongPtrW(HWND w,int){return win[w].data;}
 static LRESULT DefWindowProcW(HWND,UINT,WPARAM,LPARAM){return 0;}static HDC BeginPaint(HWND,PAINTSTRUCT*){return reinterpret_cast<HDC>(1);}static void EndPaint(HWND,PAINTSTRUCT*){}static void GetClientRect(HWND w,RECT*r){*r={0,0,win[w].rect.right-win[w].rect.left,win[w].rect.bottom-win[w].rect.top};}
 static int GetModuleHandleW(void*){return 1;}static void RegisterClassW(WNDCLASSW*c){windowProc=c->lpfnWndProc;}
 static HWND CreateWindowExW(int,const wchar_t*,const wchar_t*,int,int,int,int,int,void*,void*,int,void*data){HWND w=reinterpret_cast<HWND>(nextWindow++);CREATESTRUCTW c{data};windowProc(w,WM_NCCREATE,0,reinterpret_cast<LPARAM>(&c));return w;}
@@ -71,6 +71,10 @@ static bool SetWindowPos(HWND w,HWND,int x,int y,int width,int height,int flags)
 namespace overlaystack {enum class Layer{Watch};static bool place(HWND w,Layer,int x,int y,int width,int height,int flags){return SetWindowPos(w,HWND_TOPMOST,x,y,width,height,flags);}}
 static void InvalidateRect(HWND w,void*,bool){++win[w].invalidations;}
 static int synchronousPaints=0;static void UpdateWindow(HWND w){++synchronousPaints;windowProc(w,WM_PAINT,0,0);}
+#define RA2_SECONDARY_DISPLAY_H
+using HMONITOR=void*;
+static RECT secondWork{-1920,-100,0,940};
+namespace secondarydisplay {struct Target{HMONITOR monitor=nullptr;RECT work{};bool available()const{return monitor&&work.right>work.left&&work.bottom>work.top;}};struct Monitor{void invalidate(){}Target get(HWND,HWND,DWORD){return secondAvailable?Target{reinterpret_cast<void*>(2),secondWork}:Target{};}};}
 #include "../source/watch_windows.h"
 int main(){
  battlefield(true);auto put=[](uint32_t p,auto v){memcpy(memory.data()+p,&v,sizeof v);};
@@ -104,7 +108,21 @@ int main(){
  auto beforeControl=watchhost::controls;int beforeWakes=wakes;put(p+0x6C,0);
  watchwindows::proc(watchwindows::windows[0],WM_LBUTTONDOWN,0,0);
  assert(!watchhost::tracks[0]&&!watchhost::views[0].shown&&watchhost::controls==beforeControl+1&&wakes==beforeWakes);
- watchwindows::proc(watchwindows::windows[0],WM_SETCURSOR,0,0);assert(cursors==1);watchwindows::destroy();assert(win.empty());
+ watchwindows::proc(watchwindows::windows[0],WM_SETCURSOR,0,0);assert(cursors==1);
+ // Secondary copies share the same immutable pixels and pins while the game
+ // display, assist master, foreground and chat gates are independently off.
+ put(p+0x6C,100);for(int i=0;i<3;++i){watchhost::tracks[i].target={p,42};watchhost::views[i].shown=true;watchhost::views[i].pixels=watchhost::views[0].pixels;}
+ auto sharedPixels=watchhost::views[0].pixels;extra.watchEnabled=false;extra.watchSecondary=true;enabled=false;focused=false;snap.chat=1;secondAvailable=true;
+ watchwindows::update({},{});for(auto w:watchwindows::windows)assert(!win[w].visible);
+ for(auto w:watchwindows::secondaryWindows){auto r=win[w].rect;assert(win[w].visible&&r.left>=secondWork.left&&r.right<=secondWork.right&&r.top>=secondWork.top&&r.bottom<=secondWork.bottom);}
+ for(const auto&v:watchhost::views)assert(v.pixels==sharedPixels);
+ int passiveWakes=wakes;watchwindows::proc(watchwindows::secondaryWindows[0],WM_LBUTTONDOWN,0,0);assert(wakes==passiveWakes);
+ watchwindows::proc(watchwindows::secondaryWindows[0],WM_SETCURSOR,0,0);assert(lastCursor==reinterpret_cast<void*>(99));
+ excluded.clear();watchwindows::occlude(clipping);assert(excluded.empty());
+ secondAvailable=false;watchwindows::update({},{});for(auto w:watchwindows::secondaryWindows)assert(!win[w].visible);
+ secondAvailable=true;secondWork={1920,0,3200,900};watchwindows::invalidateDisplays();watchwindows::update({},{});for(auto w:watchwindows::secondaryWindows)assert(win[w].visible&&win[w].rect.left>=1920);
+ watchwindows::proc(watchwindows::secondaryWindows[1],WM_RBUTTONDOWN,MK_SHIFT,0);assert(!watchhost::tracks[1]&&!watchhost::views[1].shown&&!win[watchwindows::secondaryWindows[1]].visible);
+ watchwindows::destroy();assert(win.empty());
  std::cout<<"PASS production window handlers: one-click native-camera mailbox, independent Shift-right-close, no activation, physical scaling, one-second reassertion, menu/focus/chat gating and destroy\n";
 }
 '''

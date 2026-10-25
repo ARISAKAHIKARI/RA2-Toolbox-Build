@@ -85,23 +85,29 @@ prefix = r'''
 #include "../../shared/source/overlay_recovery.h"
 #include "../source/radar_layout.h"
 static bool higher(HWND a,HWND b){for(HWND w:GetTopWindow(nullptr)?order:std::vector<HWND>{}){if(w==a)return true;if(w==b)return false;}return false;}
-static HWND game;static DWORD pid=2;static bool focused=true,enabled=true,minimapEnabled=true;
+static HWND game,ui;static DWORD pid=2;static bool focused=true,enabled=true,minimapEnabled=true,minimapSecondary=false,secondAvailable=false,battlefieldVisible=true;
 static int minimapMode=0,minimapScale=200,minimapPosition=1,minimapX=0,minimapY=0,minimapAlignX=0,minimapAlignY=0,fps=60;
 static int effectiveInfoFPS=144;
 static int informationFPS(){return effectiveInfoFPS;}
 static struct{int width=800,height=600,renderStatus=1,chat=0;uint32_t match=1;}snap;
 static struct{uint32_t renderReveal=0,mapStrategy=0;}extra;static radarlayout::Box aircraftButtonBox;
-static bool foregroundGame(){return focused;}static uint32_t commandMatch(){return snap.match;}
-namespace external{namespace radar{
+static bool foregroundGame(){return focused;}static uint32_t commandEpoch=1;static uint32_t commandMatch(){return commandEpoch;}static uint32_t displayMatch(){return snap.match;}
+static struct{bool readFresh(uint32_t,void*,size_t){return true;}}externalReader;
+using HMONITOR=void*;static RECT secondWork{-1920,-100,0,940};
+namespace secondarydisplay {struct Target{HMONITOR monitor=nullptr;RECT work{};bool available()const{return monitor&&work.right>work.left&&work.bottom>work.top;}};struct Monitor{void invalidate(){}Target get(HWND,HWND,DWORD){return secondAvailable?Target{reinterpret_cast<void*>(2),secondWork}:Target{};}};}
+namespace external{namespace display{struct State{bool visible()const{return battlefieldVisible;}};template<class F>State inspect(F){return {};}}namespace radar{
 struct Geometry{double rw=100,rh=100;bool valid()const{return true;}};struct Terrain{Geometry geo;};struct Frame{std::shared_ptr<Terrain>terrain=std::make_shared<Terrain>();};
 }}
 namespace minimap{
 struct Request{DWORD pid;uint32_t match;int rate;uint32_t reveal;int mode,width,height;};
 struct Worker{std::shared_ptr<const external::radar::Frame>latest=std::make_shared<external::radar::Frame>();bool paused=false;int rate=0;void set(Request r){paused=false;rate=r.rate;}void pause(){paused=true;}auto get(){return latest;}};
-static Worker worker;static HWND window;static std::shared_ptr<const external::radar::Frame>frame;static external::radar::Geometry lastGeometry;
-static bool dragging=false;static uint32_t dragMatch=0;static overlayui::Recovery recovery;
+static Worker worker;static HWND window,secondaryWindow;static secondarydisplay::Monitor secondaryMonitor;static std::shared_ptr<const external::radar::Frame>frame;static external::radar::Geometry lastGeometry;
+static bool dragging=false;static uint32_t dragMatch=0;static HWND dragWindow;static overlayui::Recovery recovery,secondaryRecovery;
 static void cancelDrag(){dragging=false;dragMatch=0;}static LRESULT proc(HWND,UINT,WPARAM,LPARAM){return 0;}
+@MINIMAP_PRIMARY@
+@MINIMAP_SECONDARY@
 @MINIMAP_HIDE@
+@MINIMAP_PLACE@
 @MINIMAP_UPDATE@
 }
 '''
@@ -145,6 +151,16 @@ static void minimapCase(){
   clockValue+=3000;minimap::update(origin,client);assert(!IsWindowVisible(window)&&windows[window].places==placed);
   focused=minimapEnabled=true;snap.chat=0;snap.renderStatus=1;minimap::update(origin,client);assert(IsWindowVisible(window)&&higher(window,game));
  }
+ // A single published frame drives both windows. The secondary copy remains
+ // eligible when the game client is unavailable, foreground lost, chat shown,
+ // primary hidden, or the assist module paused. No screen means no worker.
+ minimapSecondary=secondAvailable=true;minimapEnabled=enabled=focused=false;snap.chat=1;
+ auto sharedFrame=minimap::worker.latest;minimap::update({},{});assert(!IsWindowVisible(window)&&IsWindowVisible(minimap::secondaryWindow)&&!minimap::worker.paused&&minimap::frame==sharedFrame);
+ auto second=minimap::secondaryWindow;auto rectangle=windows[second].rect;assert(rectangle.left>=secondWork.left&&rectangle.right<=secondWork.right&&rectangle.top>=secondWork.top&&rectangle.bottom<=secondWork.bottom);
+ ++commandEpoch;minimap::update({},{});assert(minimap::frame==sharedFrame);
+ secondAvailable=false;minimap::update({},{});assert(!IsWindowVisible(second)&&minimap::worker.paused);
+ secondAvailable=true;minimap::update({},{});assert(IsWindowVisible(second)&&!minimap::worker.paused);
+ battlefieldVisible=false;minimap::update({},{});assert(!IsWindowVisible(second)&&minimap::worker.paused);battlefieldVisible=true;
  std::cout<<"PASS production minimap lifecycle: unchanged-geometry keepalive, game promotion, focus/disable/chat/non-battlefield hiding and automatic eligible return without Tab\n";
 }
 int main(){@CASES@}
@@ -152,6 +168,9 @@ int main(){@CASES@}
 
 minimap = args.minimap_header.read_text()
 code = prefix.replace('@STACK_HEADER@', json.dumps(str(args.stack_header.resolve())))
+code = code.replace('@MINIMAP_PRIMARY@', function(minimap, 'static void hidePrimary()'))
+code = code.replace('@MINIMAP_SECONDARY@', function(minimap, 'static void hideSecondary()'))
+code = code.replace('@MINIMAP_PLACE@', function(minimap, 'static void placePanel(bool second,int x,int y,int width,int height)'))
 code = code.replace('@MINIMAP_HIDE@', function(minimap, 'static void hide()'))
 code = code.replace('@MINIMAP_UPDATE@', function(minimap, 'static void update(POINT origin,const RECT&client)'))
 cases = {'all': 'stackCase(1);stackCase(2);minimapCase();', 'stack': 'stackCase(1);stackCase(2);', 'minimap': 'minimapCase();'}[args.only]

@@ -70,7 +70,17 @@ int main(){
  // rapid toggles replace pending jobs, the worker must receive the reset.
  extra.watchDanger=true;watchhost::update(clockValue+=1);extra.watchDanger=false;watchhost::update(clockValue+=1);extra.watchDanger=true;watchhost::update(clockValue+=1);
  watchtest::release();auto resumed=awaitResult(watchhost::controls);assert(resumed&&!resumed->suppressed);
- watchtest::release();watchhost::shutdown();
+ watchtest::release();
+ // Display lifetime follows the reader's stable world identity, independent
+ // of the bridge command namespace and primary overlay/master toggles.
+ extra.watchSecondary=true;extra.watchEnabled=false;enabled=false;focused=false;snap.chat=1;secondAvailable=true;
+ auto secondaryEpoch=watchhost::epoch,secondaryControl=watchhost::controls;auto secondaryTrack=watchhost::tracks[2].target;++commandEpoch;
+ watchhost::update(clockValue+=1);assert(watchhost::epoch==secondaryEpoch&&watchhost::tracks[2].target==secondaryTrack);
+ auto secondaryFrame=awaitResult(watchhost::controls);assert(secondaryFrame&&secondaryFrame->views[2].shown);
+ secondAvailable=false;watchhost::update(clockValue+=1);assert(watchhost::suspended&&!watchhost::views[2].shown&&watchhost::tracks[2].target==secondaryTrack&&!watchhost::worker.get());
+ auto idleControls=watchhost::controls;watchhost::suspend();assert(watchhost::controls==idleControls);
+ secondAvailable=true;watchhost::update(clockValue+=1);assert(!watchhost::suspended&&watchhost::epoch==secondaryEpoch&&watchhost::tracks[2].target==secondaryTrack);assert(awaitResult(watchhost::controls));
+ watchhost::shutdown();
  std::cout<<"PASS real async host: foreground-confirmed death rejects newly completed stale jobs, uncached boundary publication gate with unchanged control/frame, stable three-window layout during delayed renders, one-time result consumption, death and close while a job is blocked, obsolete completion rejection, auto-tracking toggle reset\n";
 }
 '''

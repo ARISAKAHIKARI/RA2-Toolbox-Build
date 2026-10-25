@@ -31,6 +31,7 @@ def function(text, signature):
 
 source = args.main.read_text()
 rate = function(source, 'static int informationFPS()')
+eligibility = function(source, 'static bool displayFrameRequested()')
 sync = function(source, 'static void syncInformationRate(bool force=false)')
 # Share the tested Win32 boundary instead of maintaining a second model of
 # monitor/device selection. literal_eval never runs that script or its CLI.
@@ -46,7 +47,7 @@ prefix = r'''
 static HWND game=handle(10),ui=handle(20),rateEdit=handle(310);
 static bool infoAdaptive=false,enabled=true,focused=true,haveStatus=true;
 static int fps=120,paintRevision=0,clockRate=0;
-static bool clockActive=false;
+static bool clockActive=false,secondaryAvailable=false;
 static unsigned clockCalls=0,publishes=0,enableCalls=0,textCalls=0,tickCalls=0,controlCalls=0;
 static DWORD clockNow=0;
 static struct {int renderStatus=1;} snap;
@@ -58,6 +59,8 @@ namespace suite {static HWND frame=handle(30);static HWND parent(){return frame;
 #endif
 static DWORD GetTickCount(){++tickCalls;return clockNow;}
 static bool foregroundGame(){return focused;}
+static bool secondaryDisplayAvailable(){return secondaryAvailable;}
+@ELIGIBILITY@
 static void clockState(bool active,int hz){++clockCalls;clockActive=active;clockRate=hz;}
 static void EnableWindow(HWND h,bool on){assert(h==rateEdit&&h);++enableCalls;available[h]=on;}
 static HWND GetDlgItem(HWND window,int id){assert(window==ui&&id==9161);++controlCalls;return haveStatus?handle(id):nullptr;}
@@ -114,6 +117,9 @@ int main(){
  // Clock eligibility still follows foreground, rendering and module state.
  focused=false;syncInformationRate();assert(!clockActive&&clockRate==240);
  focused=true;enabled=false;syncInformationRate();assert(!clockActive);
+ secondaryAvailable=true;focused=false;syncInformationRate();assert(clockActive&&clockRate==240);
+ snap.renderStatus=0;syncInformationRate();assert(!clockActive);
+ snap.renderStatus=1;secondaryAvailable=false;syncInformationRate();assert(!clockActive);focused=true;
  enabled=true;snap.renderStatus=0;syncInformationRate();assert(!clockActive);
  snap.renderStatus=1;syncInformationRate();assert(clockActive);
  assert(publishes==oldPublish);
@@ -157,7 +163,7 @@ int main(){
 with tempfile.TemporaryDirectory() as directory:
     temp = Path(directory)
     (temp / 'windows.h').write_text(windows)
-    code = prefix.replace('@HEADER@', json.dumps(str(args.header.resolve()))).replace('@RATE@', rate).replace('@SYNC@', sync) + scenario
+    code = prefix.replace('@HEADER@', json.dumps(str(args.header.resolve()))).replace('@RATE@', rate).replace('@SYNC@', sync).replace('@ELIGIBILITY@', eligibility) + scenario
     (temp / 'test.cpp').write_text(code)
     for unified in (False, True):
         binary = temp / ('suite' if unified else 'standalone')

@@ -29,10 +29,11 @@
 #include "tab_control.h"
 #include "../../shared/source/overlay_recovery.h"
 #include "../../shared/source/monitor_refresh.h"
+#include "../../shared/source/secondary_display.h"
 #include "frame_clock.h"
 #include "../../external_reader/source/game_asset_files.h"
 using namespace Gdiplus;
-static HWND ui,overlay,stats,bStart,bDemo,cBuildings,cOthers,eTop,eLeft,cTab,tabModeBox,visibilityLabel;static HFONT font;
+static HWND ui,overlay,secondaryOverlay,stats,bStart,bDemo,cBuildings,cOthers,eTop,eLeft,cTab,cSecondary,tabModeBox,visibilityLabel;static HFONT font;
 static external::ReadSession reader;static um::IconCache& iconCache=um::sharedIconCache();
 static std::unique_ptr<um::Sampler<external::SharedReadView,external::NoResolve>> sampler;
 static std::unique_ptr<um::Snapshot> snap(new um::Snapshot{}),incoming(new um::Snapshot{});
@@ -57,9 +58,11 @@ static void statsVisible(bool value){
  suite::setStatsVisible(value);
 #endif
 }
-static bool tabEnabled=true,renderDirty=true,gameActive=false;
+static bool tabEnabled=true,renderDirty=true,secondaryDirty=true,gameActive=false,secondaryEnabled=false,secondaryActive=false;
+static secondarydisplay::Monitor secondaryMonitor;
+static void resetSecondary();
 static tabui::Mode tabMode=tabui::Mode::TapOrHold;static tabui::Controller tabs;static tabui::Fade fade;
-static overlayui::Recovery overlayRecovery;
+static overlayui::Recovery overlayRecovery,secondaryRecovery;
 static constexpr UINT StatsFrameMessage=WM_APP+10;
 static umframe::Clock statsFrameClock;
 static monitorrefresh::Tracker statsRefreshMonitor;
@@ -92,7 +95,7 @@ struct UnitSurface {
   if(!dc||!bitmap||!bits){if(bitmap)DeleteObject(bitmap);if(dc)DeleteDC(dc);dc=nullptr;bitmap=nullptr;bits=nullptr;return false;}
   old=(HBITMAP)SelectObject(dc,bitmap);w=width;h=height;return true;
  }
-} surface;
+} surface,secondarySurface;
 static int paintedAlpha=-1;static POINT paintedOrigin{LONG_MIN,LONG_MIN};
 static bool foregroundGame(){DWORD foreground=0;GetWindowThreadProcessId(GetForegroundWindow(),&foreground);return game&&IsWindow(game)&&!IsIconic(game)&&foreground==pid;}
 static bool tabEligible(){return tabEnabled&&enabled&&gameActive&&!demo&&snap->status==1&&!snap->chatActive&&DWORD(GetTickCount()-snap->tick)<2000&&foregroundGame();}
@@ -100,7 +103,7 @@ static void pollTab(){
  static bool previous=false;bool down=(GetAsyncKeyState(VK_TAB)&0x8000)!=0;
  bool modified=((GetAsyncKeyState(VK_MENU)|GetAsyncKeyState(VK_CONTROL)|GetAsyncKeyState(VK_SHIFT)|GetAsyncKeyState(VK_LWIN)|GetAsyncKeyState(VK_RWIN))&0x8000)!=0;
  if(!tabEligible()||modified){tabs.loseFocus();previous=down;return;}
- if(down!=previous){previous=down;if(tabs.event(down,tabEligible(),modified,false,GetTickCount())){if(down){hidden=false;manualVisible=false;}renderDirty=true;}}
+ if(down!=previous){previous=down;if(tabs.event(down,tabEligible(),modified,false,GetTickCount())){if(down){hidden=false;manualVisible=false;}renderDirty=secondaryDirty=true;}}
 }
 static bool changed(const um::Snapshot& a,const um::Snapshot& b){
  return a.match!=b.match||a.status!=b.status||a.typeCount!=b.typeCount||a.playerCount!=b.playerCount||a.paletteReady!=b.paletteReady||
@@ -109,18 +112,18 @@ static bool changed(const um::Snapshot& a,const um::Snapshot& b){
 static void log(const wchar_t* msg){if(logfile){fwprintf(logfile,L"[%lu] %ls\n",GetTickCount(),msg);fflush(logfile);}}
 static std::wstring path(const wchar_t* f){return root+L"\\"+f;}
 static void setStatus(const std::wstring& s){if(status!=s){status=s;SetWindowTextW(stats,s.c_str());log(s.c_str());}}
-static void save(){WritePrivateProfileStringW(L"overlay",L"scalePercent",std::to_wstring(scalePercent).c_str(),path(L"settings.ini").c_str());WritePrivateProfileStringW(L"overlay",L"tabEnabled",tabEnabled?L"1":L"0",path(L"settings.ini").c_str());WritePrivateProfileStringW(L"overlay",L"tabMode",std::to_wstring(int(tabMode)).c_str(),path(L"settings.ini").c_str());WritePrivateProfileStringW(L"overlay",L"topMargin",std::to_wstring(topMargin).c_str(),path(L"settings.ini").c_str());WritePrivateProfileStringW(L"overlay",L"leftMargin",std::to_wstring(leftMargin).c_str(),path(L"settings.ini").c_str());WritePrivateProfileStringW(L"overlay",L"buildings",buildings?L"1":L"0",path(L"settings.ini").c_str());WritePrivateProfileStringW(L"overlay",L"otherPlayers",showOthers?L"1":L"0",path(L"settings.ini").c_str());}
+static void save(){WritePrivateProfileStringW(L"overlay",L"secondaryEnabled",secondaryEnabled?L"1":L"0",path(L"settings.ini").c_str());WritePrivateProfileStringW(L"overlay",L"scalePercent",std::to_wstring(scalePercent).c_str(),path(L"settings.ini").c_str());WritePrivateProfileStringW(L"overlay",L"tabEnabled",tabEnabled?L"1":L"0",path(L"settings.ini").c_str());WritePrivateProfileStringW(L"overlay",L"tabMode",std::to_wstring(int(tabMode)).c_str(),path(L"settings.ini").c_str());WritePrivateProfileStringW(L"overlay",L"topMargin",std::to_wstring(topMargin).c_str(),path(L"settings.ini").c_str());WritePrivateProfileStringW(L"overlay",L"leftMargin",std::to_wstring(leftMargin).c_str(),path(L"settings.ini").c_str());WritePrivateProfileStringW(L"overlay",L"buildings",buildings?L"1":L"0",path(L"settings.ini").c_str());WritePrivateProfileStringW(L"overlay",L"otherPlayers",showOthers?L"1":L"0",path(L"settings.ini").c_str());}
 static void visibilityStatus(const std::wstring& text){
  static std::wstring previous;if(previous==text)return;previous=text;
  if(visibilityLabel)SetWindowTextW(visibilityLabel,text.c_str());log(text.c_str());
 }
-static void toggleOverlay(){tabui::toggleDisplay(!tabEnabled,tabs.visible(),hidden,manualVisible);renderDirty=true;}
+static void toggleOverlay(){tabui::toggleDisplay(!tabEnabled,tabs.visible(),hidden,manualVisible);renderDirty=secondaryDirty=true;}
 static void detach(){
  statsFrameClock.state(false,statsInformationFPS());
  overlayRecovery.suspend();
- statsVisible(false);
+ statsVisible(false);resetSecondary();
  sampler.reset();assetMatch=0;assetFiles.clear();cameoCatalog.clear();reader.close();
- game=nullptr;pid=0;threadId=0;lastGood=0;oldMatch=0;page=0;gameActive=false;tabs.reset();fade.hide();renderDirty=true;paintedAlpha=-1;surface.clear();memset(snap.get(),0,sizeof(*snap));memset(incoming.get(),0,sizeof(*incoming));ShowWindow(overlay,SW_HIDE);
+ game=nullptr;pid=0;threadId=0;lastGood=0;oldMatch=0;page=0;gameActive=false;tabs.reset();fade.hide();renderDirty=secondaryDirty=true;paintedAlpha=-1;surface.clear();memset(snap.get(),0,sizeof(*snap));memset(incoming.get(),0,sizeof(*incoming));ShowWindow(overlay,SW_HIDE);
 }
 static bool attach(){
  auto scan=external::discovery::scan();
@@ -229,6 +232,46 @@ static std::shared_ptr<const RenderFrame> renderPixels(const RenderRequest&r){
 }
 static asyncwork::Latest<RenderRequest,RenderFrame> renderWorker(renderPixels);
 static std::shared_ptr<const RenderFrame> renderedFrame;
+static asyncwork::Latest<RenderRequest,RenderFrame> secondaryRenderWorker(renderPixels);
+static std::shared_ptr<const RenderFrame> secondaryRenderedFrame;
+static POINT secondaryOrigin{LONG_MIN,LONG_MIN};static int secondaryWidth=0,secondaryHeight=0;
+static bool secondaryUploaded=false;static DWORD secondaryLastSubmit=0;
+static void resetSecondary(){
+ secondaryRecovery.suspend();secondaryRenderWorker.invalidate();secondaryRenderedFrame.reset();secondarySurface.clear();
+ secondaryActive=false;secondaryDirty=true;secondaryUploaded=false;secondaryLastSubmit=0;secondaryWidth=secondaryHeight=0;secondaryOrigin={LONG_MIN,LONG_MIN};
+ if(secondaryOverlay)ShowWindow(secondaryOverlay,SW_HIDE);
+}
+static bool updateSecondary(DWORD now,bool battlefield,bool displayFrame){
+ // This display has its own user switch. Foreground, primary overlay pause,
+ // Tab and Ctrl+Alt+H only govern the game's copy of the statistics.
+ bool valid=secondaryEnabled&&game&&IsWindow(game)&&(demo||(battlefield&&reader.valid()&&snap->status==1&&lastGood&&DWORD(now-lastGood)<3000));
+ auto target=valid?secondaryMonitor.get(game,ui,now):secondarydisplay::Target{};
+ if(!valid||!target.available()||!secondaryOverlay){if(secondaryActive||secondarySurface.dc)resetSecondary();return false;}
+ // Leave the right-hand 40% available for the independent minimap/tracking windows.
+ int width=int(target.work.right-target.work.left)*3/5,height=int(target.work.bottom-target.work.top);
+ if(width<100||height<100){resetSecondary();return false;}
+ POINT origin{target.work.left,target.work.top};
+ if(width!=secondaryWidth||height!=secondaryHeight||origin.x!=secondaryOrigin.x||origin.y!=secondaryOrigin.y){
+  resetSecondary();secondaryWidth=width;secondaryHeight=height;secondaryOrigin=origin;
+ }
+ secondaryActive=true;if(!displayFrame)return true;
+ if(secondaryDirty||(!secondaryRenderedFrame&&DWORD(now-secondaryLastSubmit)>=250)){
+  secondaryRenderWorker.submit({width,height,width,height,leftMargin,topMargin,scalePercent,page,showOthers,buildings,demo,pid,oldMatch,now,std::make_shared<um::Snapshot>(*snap)});secondaryDirty=false;secondaryLastSubmit=now;
+ }
+ auto completed=secondaryRenderWorker.get();if(completed&&completed!=secondaryRenderedFrame){const auto&r=completed->request;
+  if(r.pid==pid&&r.match==oldMatch&&r.width==width&&r.height==height&&r.page==page&&r.scalePercent==scalePercent&&r.leftMargin==leftMargin&&r.topMargin==topMargin&&r.showOthers==showOthers&&r.buildings==buildings&&r.demo==demo&&DWORD(now-r.tick)<1000&&secondarySurface.ensure(completed->width,completed->height)){
+   memcpy(secondarySurface.bits,completed->pixels.data(),completed->pixels.size()*4);secondaryRenderedFrame=std::move(completed);secondaryUploaded=false;
+  }
+ }
+ bool repair=secondaryRecovery.due(now,true,{uintptr_t(game),pid,snap->match,width,height},IsWindowVisible(secondaryOverlay)!=0);
+ if(secondarySurface.dc&&(!secondaryUploaded||repair||!IsWindowVisible(secondaryOverlay))){
+  SIZE size{secondarySurface.w,secondarySurface.h};POINT zero{};BLENDFUNCTION blend{AC_SRC_OVER,0,255,AC_SRC_ALPHA};
+  secondaryUploaded=UpdateLayeredWindow(secondaryOverlay,nullptr,&origin,&size,secondarySurface.dc,&zero,0,&blend,ULW_ALPHA)!=0;
+  secondaryRecovery.submitted(secondaryUploaded);
+  if(secondaryUploaded)overlaystack::place(secondaryOverlay,overlaystack::Layer::Statistics,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE|SWP_SHOWWINDOW);
+ }
+ return true;
+}
 static void render(int width,int height,POINT,int gameWidth,int gameHeight){
  renderWorker.submit({width,height,gameWidth,gameHeight,leftMargin,topMargin,scalePercent,page,showOthers,buildings,demo,pid,oldMatch,GetTickCount(),std::make_shared<um::Snapshot>(*snap)});renderDirty=false;
 }
@@ -262,15 +305,15 @@ static void tick(bool displayFrame=false){
  const bool controlStep=!displayFrame||!statsFrameClock.running();
  if(controlStep){pollTab();refreshInformationRate(now);}
  if(now-lastData>=250){lastData=now;
-  if(enabled&&demo){demoData();renderDirty=true;setStatus(L"布局演示：模拟数量与玩家退场；点击演示按钮退出");}
-  else if(enabled){
+  if((enabled||secondaryEnabled)&&demo){demoData();renderDirty=secondaryDirty=true;setStatus(L"布局演示：模拟数量与玩家退场；点击演示按钮退出");}
+  else if(enabled||secondaryEnabled){
    if(pid&&!reader.alive()){
     detach();setStatus(L"游戏进程已退出，等待重新连接…");
    }else if(pid){
     DWORD actualPid=0,actualThread=game?GetWindowThreadProcessId(game,&actualPid):0;
     HWND fallback=actualPid==pid&&actualThread==threadId?game:nullptr;DWORD nextThread=0;
     HWND next=external::discovery::resolveYrppWindow(reader,pid,fallback,&nextThread);
-    if(next!=game||nextThread!=threadId){game=next;threadId=nextThread;tabs.loseFocus();fade.hide();surface.clear();renderDirty=true;paintedAlpha=-1;if(!game)lastSearch=now-1500;}
+    if(next!=game||nextThread!=threadId){game=next;threadId=nextThread;tabs.loseFocus();fade.hide();surface.clear();renderDirty=secondaryDirty=true;paintedAlpha=-1;if(!game)lastSearch=now-1500;}
    }
    if(pid&&!game&&now-lastSearch>=1500){
     lastSearch=now;auto found=external::discovery::scan(pid);
@@ -279,15 +322,15 @@ static void tick(bool displayFrame=false){
    if(!pid&&now-lastSearch>=1500){lastSearch=now;attach();}
    if(sampler){reader.begin();*incoming=sampler->sample(now,true);
      if(incoming->typeCount>=0&&incoming->typeCount<=um::MaxTypes&&incoming->playerCount>=0&&incoming->playerCount<=um::MaxPlayers){
-      renderDirty=renderDirty||changed(*snap,*incoming);std::swap(snap,incoming);if(snap->status==1&&now-snap->tick<2000)lastGood=now;
+      const bool dataChanged=changed(*snap,*incoming);renderDirty=renderDirty||dataChanged;secondaryDirty=secondaryDirty||dataChanged;std::swap(snap,incoming);if(snap->status==1&&now-snap->tick<2000)lastGood=now;
       if(snap->status!=1||oldMatch!=snap->match){
        if(snap->status==1){oldMatch=snap->match;
         // Keep the user's latched/manual visibility through loading and rounds.
         // loseFocus below releases a held Tab without changing that choice.
         log((L"单位统计采样代次 "+std::to_wstring(oldMatch)+L"，重建玩家列表与画面").c_str());}
        else lastGood=0;
-       page=0;tabs.loseFocus();fade.hide();paintedAlpha=-1;renderDirty=true;surface.clear();
-       statsVisible(false);ShowWindow(overlay,SW_HIDE);
+       page=0;tabs.loseFocus();fade.hide();paintedAlpha=-1;renderDirty=secondaryDirty=true;surface.clear();
+       statsVisible(false);ShowWindow(overlay,SW_HIDE);resetSecondary();
       }
      }
     if(snap->status<0)setStatus(L"此 EXE 的数据布局不受支持，已停止采集");
@@ -304,21 +347,24 @@ static void tick(bool displayFrame=false){
   }
  }
  bool battlefield=false;external::display::State displayState;
- if(enabled&&!demo&&foregroundGame()&&reader.valid()){
+ if((enabled||secondaryEnabled)&&!demo&&(secondaryEnabled||foregroundGame())&&reader.valid()){
   displayState=external::display::inspect([&](uint32_t p,void*out,size_t n){return reader.readFresh(p,out,n);});battlefield=displayState.visible();
  }
+ const bool secondaryShowing=updateSecondary(now,battlefield,displayFrame);
  bool active=enabled&&(demo||(battlefield&&foregroundGame()&&snap->status==1&&now-lastGood<3000));
  if(!active){
-  statsFrameClock.state(false,statsInformationFPS());
+  statsFrameClock.state(secondaryShowing,statsInformationFPS());
   overlayRecovery.suspend();
-  visibilityStatus(!enabled?L"覆盖层已暂停":!foregroundGame()?L"覆盖层隐藏：游戏未在前台":snap->status!=1||now-lastGood>=3000?L"覆盖层等待有效游戏数据":!displayState.readable?L"覆盖层隐藏：菜单状态读取失败":L"覆盖层隐藏：菜单/对话框/非战场 · tactical="+std::to_wstring(displayState.tactical)+L" dialog="+std::to_wstring(displayState.specialDialog)+L" windows="+std::to_wstring(displayState.dialogCount));
+  std::wstring reason=!enabled?L"覆盖层已暂停":!foregroundGame()?L"覆盖层隐藏：游戏未在前台":snap->status!=1||now-lastGood>=3000?L"覆盖层等待有效游戏数据":!displayState.readable?L"覆盖层隐藏：菜单状态读取失败":L"覆盖层隐藏：菜单/对话框/非战场 · tactical="+std::to_wstring(displayState.tactical)+L" dialog="+std::to_wstring(displayState.specialDialog)+L" windows="+std::to_wstring(displayState.dialogCount);
+  if(secondaryShowing)reason+=L" · 副屏仍在显示";
+  visibilityStatus(reason);
   statsVisible(false);gameActive=false;tabs.loseFocus();fade.hide();paintedAlpha=-1;ShowWindow(overlay,SW_HIDE);return;}
- if(!gameActive){renderDirty=true;paintedAlpha=-1;overlaystack::place(overlay,overlaystack::Layer::Statistics,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE);}
+ if(!gameActive){renderDirty=secondaryDirty=true;paintedAlpha=-1;overlaystack::place(overlay,overlaystack::Layer::Statistics,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE);}
  gameActive=true;
  bool desired=tabui::displayRequested(hidden,demo||!tabEnabled,manualVisible,tabs.visible());fade.target(desired,now);
  visibilityStatus(desired?(manualVisible?L"覆盖层已请求显示：手动开启":!tabEnabled?L"覆盖层已请求显示：常驻模式":L"覆盖层已请求显示：Tab/演示"):hidden?L"覆盖层手动隐藏：按钮或 Ctrl+Alt+H 开启":L"覆盖层等待 Tab：也可用按钮或 Ctrl+Alt+H");
  int alpha=fade.value(now);if(!desired)overlayRecovery.suspend();
- statsFrameClock.state(desired||alpha>0,statsInformationFPS());
+ statsFrameClock.state(desired||alpha>0||secondaryShowing,statsInformationFPS());
  if(!desired&&alpha==0){statsVisible(false);ShowWindow(overlay,SW_HIDE);paintedAlpha=0;return;}
  // Controls and sampling remain responsive at 16/250 ms. Only the coalesced
  // presentation message consumes completed pixels and advances visible fades.
@@ -330,10 +376,10 @@ static void tick(bool displayFrame=false){
  if(!demo&&(!reader.readFresh(0x8A00A4,&gameWidth,4)||!reader.readFresh(0x8A00A8,&gameHeight,4))){statsVisible(false);ShowWindow(overlay,SW_HIDE);return;}
  viewport::Scale view;if(!view.set(gameWidth,gameHeight,r.right,r.bottom)){statsVisible(false);ShowWindow(overlay,SW_HIDE);return;}
  static int previousW=0,previousH=0,previousGW=0,previousGH=0;
- if(previousW!=r.right||previousH!=r.bottom||previousGW!=gameWidth||previousGH!=gameHeight){previousW=r.right;previousH=r.bottom;previousGW=gameWidth;previousGH=gameHeight;renderDirty=true;
+ if(previousW!=r.right||previousH!=r.bottom||previousGW!=gameWidth||previousGH!=gameHeight){previousW=r.right;previousH=r.bottom;previousGW=gameWidth;previousGH=gameHeight;renderDirty=secondaryDirty=true;
  log((L"Overlay geometry game="+std::to_wstring(gameWidth)+L"x"+std::to_wstring(gameHeight)+L" client="+std::to_wstring(r.right)+L"x"+std::to_wstring(r.bottom)).c_str());}
  bool repair=overlayRecovery.due(now,desired&&alpha>0,{uintptr_t(game),pid,snap->match,r.right,r.bottom},IsWindowVisible(overlay)!=0);
- if(repair)renderDirty=true;
+ if(repair)renderDirty=secondaryDirty=true;
  if(renderDirty||!surface.dc)render(r.right,r.bottom,pt,gameWidth,gameHeight);
  present(pt,alpha,r.right,r.bottom,gameWidth,gameHeight,repair);
 }
@@ -349,7 +395,7 @@ static LRESULT CALLBACK proc(HWND w,UINT m,WPARAM a,LPARAM b){
 #ifdef RA2_UNIFIED
  if(suite::layoutMessage(w,m,b))return 0;
  if(m==suite::DisplaySettingsChanged){refreshInformationRate(GetTickCount());syncUnitSettings();tick();return 0;}
- if(m==suite::ModuleEnable){enabled=bool(a);if(!enabled)detach();else lastSearch=0;buttonLabel();tick();return 0;}
+ if(m==suite::ModuleEnable){enabled=bool(a);if(!enabled&&!secondaryEnabled)detach();else if(enabled)lastSearch=0;buttonLabel();tick();return 0;}
  if(m==WM_CLOSE&&a!=suite::CloseToken){suite::requestClose();return 0;}
 #endif
  if(m==modernui::DpiMessage){consoleScale(unsigned(a));return 0;}
@@ -375,6 +421,8 @@ static LRESULT CALLBACK proc(HWND w,UINT m,WPARAM a,LPARAM b){
   SendDlgItemMessageW(w,118,EM_SETLIMITTEXT,3,0);
   modernui::tip(GetDlgItem(w,118),L"调整游戏内统计覆盖层的大小，范围 50–250%，默认 100%，即时生效。");
   modernui::tip(GetDlgItem(w,116),L"显示或隐藏游戏内统计覆盖层；快捷键 Ctrl+Alt+H。");
+  cSecondary=ctl(L"BUTTON",L"第二显示器显示单位统计",BS_AUTOCHECKBOX|WS_TABSTOP,14,395,298,26,120);SendMessageW(cSecondary,BM_SETCHECK,secondaryEnabled?BST_CHECKED:BST_UNCHECKED,0);
+  modernui::tip(cSecondary,L"在游戏所在屏幕之外的显示器常驻显示；独立于暂停、Tab 和游戏覆盖层显隐。没有第二显示器时自动隐藏。");
 #ifdef RA2_UNIFIED
   createUnitSettings(ctl);
 #endif
@@ -385,7 +433,7 @@ static LRESULT CALLBACK proc(HWND w,UINT m,WPARAM a,LPARAM b){
  case WM_MOUSEWHEEL:consoleY-=GET_WHEEL_DELTA_WPARAM(a)/WHEEL_DELTA*modernui::scale(60,consoleDpi);layoutConsole();return 0;
  case WM_HSCROLL:case WM_VSCROLL:{int bar=m==WM_HSCROLL?SB_HORZ:SB_VERT;SCROLLINFO si{sizeof si,SIF_ALL};GetScrollInfo(w,bar,&si);int next=si.nPos;switch(LOWORD(a)){case SB_LINEUP:next-=modernui::scale(28,consoleDpi);break;case SB_LINEDOWN:next+=modernui::scale(28,consoleDpi);break;case SB_PAGEUP:next-=si.nPage;break;case SB_PAGEDOWN:next+=si.nPage;break;case SB_THUMBTRACK:case SB_THUMBPOSITION:next=si.nTrackPos;break;case SB_TOP:next=0;break;case SB_BOTTOM:next=si.nMax;break;}(bar==SB_HORZ?consoleX:consoleY)=next;layoutConsole();return 0;}
  case WM_ERASEBKGND:return 1;
- case WM_DISPLAYCHANGE:statsRefreshMonitor.invalidate();tick();return 0;
+ case WM_DISPLAYCHANGE:statsRefreshMonitor.invalidate();secondaryMonitor.invalidate();resetSecondary();tick();return 0;
  case StatsFrameMessage:tick(true);statsFrameClock.completed();return 0;
  case WM_TIMER:tick(!statsFrameClock.running());return 0;
  case WM_APP+9:tick();return 0;
@@ -396,17 +444,17 @@ static LRESULT CALLBACK proc(HWND w,UINT m,WPARAM a,LPARAM b){
  if(controlsReady&&LOWORD(a)==114&&HIWORD(a)==CBN_SELCHANGE){tabMode=tabui::Mode(SendMessageW(tabModeBox,CB_GETCURSEL,0,0));tabs.mode(tabMode);save();tick();return 0;}
  if(controlsReady&&HIWORD(a)==EN_CHANGE&&LOWORD(a)==118){
   BOOL ok=FALSE;int value=int(GetDlgItemInt(w,118,&ok,FALSE));
-  if(ok&&value>=viewport::MinPercent&&value<=viewport::MaxPercent){scalePercent=value;save();renderDirty=true;tick();}return 0;
+  if(ok&&value>=viewport::MinPercent&&value<=viewport::MaxPercent){scalePercent=value;save();renderDirty=secondaryDirty=true;tick();}return 0;
  }
  if(controlsReady&&HIWORD(a)==EN_CHANGE&&(LOWORD(a)==108||LOWORD(a)==110)){
   BOOL ok=FALSE;UINT value=GetDlgItemInt(w,LOWORD(a),&ok,FALSE);
-  if(ok&&value<=4096){if(LOWORD(a)==108)topMargin=int(value);else leftMargin=int(value);save();renderDirty=true;tick();}return 0;
- }if(HIWORD(a)==BN_CLICKED){switch(LOWORD(a)){case 100:enabled=!enabled;if(!enabled)detach();else lastSearch=0;break;case 101:demo=!demo;demoStart=GetTickCount();enabled=true;hidden=false;manualVisible=false;if(!demo)memset(snap.get(),0,sizeof(*snap));break;case 102:detach();status.clear();lastSearch=0;break;case 103:buildings=SendMessageW(cBuildings,BM_GETCHECK,0,0)==BST_CHECKED;save();break;case 104:showOthers=SendMessageW(cOthers,BM_GETCHECK,0,0)==BST_CHECKED;save();break;case 113:tabEnabled=SendMessageW(cTab,BM_GETCHECK,0,0)!=BST_CHECKED;tabs.reset();hidden=false;manualVisible=false;EnableWindow(tabModeBox,tabEnabled);save();break;case 116:toggleOverlay();break;}renderDirty=true;buttonLabel();tick();}return 0;
- case WM_HOTKEY:if(a==1){toggleOverlay();}else if(a==2)page++;else if(a==3)page=std::max(0,page-1);renderDirty=true;tick();return 0;
+  if(ok&&value<=4096){if(LOWORD(a)==108)topMargin=int(value);else leftMargin=int(value);save();renderDirty=secondaryDirty=true;tick();}return 0;
+ }if(HIWORD(a)==BN_CLICKED){switch(LOWORD(a)){case 100:enabled=!enabled;if(!enabled&&!secondaryEnabled)detach();else if(enabled)lastSearch=0;break;case 101:demo=!demo;demoStart=GetTickCount();enabled=true;hidden=false;manualVisible=false;if(!demo)memset(snap.get(),0,sizeof(*snap));break;case 102:detach();status.clear();lastSearch=0;break;case 103:buildings=SendMessageW(cBuildings,BM_GETCHECK,0,0)==BST_CHECKED;save();break;case 104:showOthers=SendMessageW(cOthers,BM_GETCHECK,0,0)==BST_CHECKED;save();break;case 113:tabEnabled=SendMessageW(cTab,BM_GETCHECK,0,0)!=BST_CHECKED;tabs.reset();hidden=false;manualVisible=false;EnableWindow(tabModeBox,tabEnabled);save();break;case 116:toggleOverlay();break;case 120:secondaryEnabled=SendMessageW(cSecondary,BM_GETCHECK,0,0)==BST_CHECKED;secondaryMonitor.invalidate();resetSecondary();if(!enabled&&!secondaryEnabled)detach();else lastSearch=0;save();break;}renderDirty=secondaryDirty=true;buttonLabel();tick();}return 0;
+ case WM_HOTKEY:if(a==1){toggleOverlay();}else if(a==2)page++;else if(a==3)page=std::max(0,page-1);renderDirty=secondaryDirty=true;tick();return 0;
  case WM_CTLCOLORSTATIC:case WM_CTLCOLORBTN:SetBkMode((HDC)a,OPAQUE);SetTextColor((HDC)a,modernui::Text);SetBkColor((HDC)a,modernui::Background);SetDCBrushColor((HDC)a,modernui::Background);return (LRESULT)GetStockObject(DC_BRUSH);
  case WM_DRAWITEM:{auto d=(DRAWITEMSTRUCT*)b;HBRUSH br=CreateSolidBrush((d->itemState&ODS_SELECTED)?RGB(47,76,99):RGB(31,48,68));FillRect(d->hDC,&d->rcItem,br);DeleteObject(br);SetBkMode(d->hDC,TRANSPARENT);SetTextColor(d->hDC,RGB(223,237,251));SelectObject(d->hDC,font);wchar_t t[50];GetWindowTextW(d->hwndItem,t,50);DrawTextW(d->hDC,t,-1,&d->rcItem,DT_CENTER|DT_VCENTER|DT_SINGLELINE);return TRUE;}
  case WM_PAINT:{PAINTSTRUCT ps;HDC dc=BeginPaint(w,&ps);RECT r;GetClientRect(w,&r);HBRUSH br=CreateSolidBrush(modernui::Background);FillRect(dc,&r,br);DeleteObject(br);SetBkMode(dc,TRANSPARENT);SetTextColor(dc,RGB(110,210,248));SelectObject(dc,font);TextOutW(dc,modernui::scale(14,consoleDpi)-consoleX,modernui::scale(12,consoleDpi)-consoleY,L"单位统计",lstrlenW(L"单位统计"));SetTextColor(dc,RGB(148,166,188));TextOutW(dc,modernui::scale(14,consoleDpi)-consoleX,modernui::scale(32,consoleDpi)-consoleY,L"玩家兵力与单位状态",lstrlenW(L"玩家兵力与单位状态"));EndPaint(w,&ps);return 0;}
- case WM_DESTROY:statsFrameClock.shutdown();renderWorker.shutdown();surface.clear();KillTimer(w,1);UnregisterHotKey(w,1);UnregisterHotKey(w,2);UnregisterHotKey(w,3);detach();DeleteObject(font);PostQuitMessage(0);return 0;}
+ case WM_DESTROY:statsFrameClock.shutdown();renderWorker.shutdown();secondaryRenderWorker.shutdown();surface.clear();secondarySurface.clear();KillTimer(w,1);UnregisterHotKey(w,1);UnregisterHotKey(w,2);UnregisterHotKey(w,3);detach();DeleteObject(font);PostQuitMessage(0);return 0;}
  return DefWindowProcW(w,m,a,b);
 }
 int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR,int){
@@ -414,6 +462,7 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR,int){
  SetProcessDPIAware();wchar_t fn[2048];GetModuleFileNameW(nullptr,fn,2048);root=fn;root=root.substr(0,root.find_last_of(L"\\/"));logfile=_wfopen(path(L"UnitMonitor.log").c_str(),L"w, ccs=UTF-8");
  topMargin=std::clamp(int(GetPrivateProfileIntW(L"overlay",L"topMargin",20,path(L"settings.ini").c_str())),0,4096);leftMargin=std::clamp(int(GetPrivateProfileIntW(L"overlay",L"leftMargin",6,path(L"settings.ini").c_str())),0,4096);
  scalePercent=viewport::percent(int(GetPrivateProfileIntW(L"overlay",L"scalePercent",100,path(L"settings.ini").c_str())));
+ secondaryEnabled=GetPrivateProfileIntW(L"overlay",L"secondaryEnabled",0,path(L"settings.ini").c_str())!=0;
  buildings=GetPrivateProfileIntW(L"overlay",L"buildings",0,path(L"settings.ini").c_str())!=0;showOthers=GetPrivateProfileIntW(L"overlay",L"otherPlayers",0,path(L"settings.ini").c_str())!=0;
 #ifdef RA2_UNIFIED
  enabled=suite::enabled(1);
@@ -422,6 +471,7 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR,int){
  ULONG_PTR token;GdiplusStartupInput start;if(GdiplusStartup(&token,&start,nullptr)!=Ok)return 2;
  WNDCLASSW wc{};wc.hInstance=inst;wc.lpfnWndProc=overlayProc;wc.lpszClassName=L"RA2UnitTransparentOverlay";RegisterClassW(&wc);
  overlay=CreateWindowExW(WS_EX_LAYERED|WS_EX_TRANSPARENT|WS_EX_TOOLWINDOW|WS_EX_NOACTIVATE|WS_EX_TOPMOST,wc.lpszClassName,L"",WS_POPUP,0,0,1,1,nullptr,nullptr,inst,nullptr);
+ secondaryOverlay=CreateWindowExW(WS_EX_LAYERED|WS_EX_TRANSPARENT|WS_EX_TOOLWINDOW|WS_EX_NOACTIVATE|WS_EX_TOPMOST,wc.lpszClassName,L"第二显示器单位统计",WS_POPUP,0,0,1,1,nullptr,nullptr,inst,nullptr);
  wc.lpfnWndProc=proc;wc.lpszClassName=L"RA2UnitMonitorUI";wc.hCursor=LoadCursorW(nullptr,IDC_ARROW);wc.hIcon=LoadIconW(nullptr,IDI_APPLICATION);RegisterClassW(&wc);
  RECT r{0,0,700,440};AdjustWindowRect(&r,WS_OVERLAPPEDWINDOW|WS_CLIPCHILDREN|WS_VSCROLL|WS_HSCROLL,FALSE);
  ui=CreateWindowW(wc.lpszClassName,L"单位统计 v" RA2_RELEASE_VERSION_W,WS_OVERLAPPEDWINDOW|WS_CLIPCHILDREN|WS_VSCROLL|WS_HSCROLL,CW_USEDEFAULT,CW_USEDEFAULT,r.right-r.left,r.bottom-r.top,nullptr,nullptr,inst,nullptr);
@@ -432,6 +482,6 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR,int){
 #endif
  buttonLabel();
 
- MSG msg;while(GetMessageW(&msg,nullptr,0,0)>0){TranslateMessage(&msg);DispatchMessageW(&msg);}DestroyWindow(overlay);iconImages.clear();GdiplusShutdown(token);if(logfile)fclose(logfile);CloseHandle(mutex);return 0;
+ MSG msg;while(GetMessageW(&msg,nullptr,0,0)>0){TranslateMessage(&msg);DispatchMessageW(&msg);}DestroyWindow(overlay);DestroyWindow(secondaryOverlay);iconImages.clear();GdiplusShutdown(token);if(logfile)fclose(logfile);CloseHandle(mutex);return 0;
 }
 

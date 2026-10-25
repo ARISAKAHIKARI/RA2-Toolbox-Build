@@ -3,7 +3,7 @@
 namespace watchhost {
 static constexpr int Width=external::watch::NativeViewWidth,Height=external::watch::NativeViewHeight;
 struct View {external::watch::Frame frame;external::watch::Box box;bool shown=false;uint32_t revision=0;std::shared_ptr<const std::vector<uint32_t>> pixels;};
-static View views[3];static external::watch::Track tracks[3];static bool autoSuppressed=false,shown=false;
+static View views[3];static external::watch::Track tracks[3];static bool autoSuppressed=false,shown=false,suspended=false;
 static uint32_t process=0,epoch=0,controls=0;static uint8_t trackingOptions=0xff;
 struct Request {uint32_t pid,match,tick,control;int width,height;bool reveal,danger,suppressed;std::array<external::watch::Track,3> tracks;};
 struct Result {uint32_t pid,match,control,tick;std::array<external::watch::Track,3> tracks;bool suppressed=false;std::string diagnostic;std::array<View,3> views;};
@@ -44,11 +44,13 @@ template<class Read>static bool followTracks(Read read,int slot=-1){
  if(changed){worker.invalidate();++controls;applied.reset();arrange();++paintRevision;}
  return changed;
 }
-static void reset(){worker.invalidate();applied.reset();++controls;for(auto&t:tracks)t={};for(auto&v:views)v={};autoSuppressed=false;shown=false;}
+static void reset(){suspended=false;worker.invalidate();applied.reset();++controls;for(auto&t:tracks)t={};for(auto&v:views)v={};autoSuppressed=false;shown=false;}
+static void suspend(){if(suspended)return;suspended=true;worker.invalidate();applied.reset();++controls;for(auto&v:views)v.shown=false;shown=false;}
 static void close(int slot){if(slot<0||slot>=3)return;worker.invalidate();++controls;tracks[slot]={};views[slot]={};autoSuppressed=true;arrange();++paintRevision;}
 static void pin(uint32_t key){
- if(!enabled||!extra.watchEnabled||!foregroundGame()||snap.chat||formationInputOwns())return;
- if(process!=pid||epoch!=commandMatch()){reset();process=pid;epoch=commandMatch();}
+ if((!enabled||!extra.watchEnabled)&&!extra.watchSecondary)return;
+ if(!foregroundGame()||snap.chat||formationInputOwns())return;
+ if(process!=pid||epoch!=displayMatch()){reset();process=pid;epoch=displayMatch();}
  auto read=[](uint32_t p,void*out,size_t n){return externalReader.readFresh(p,out,n);};followTracks(read);
  int slot=-1;auto result=external::watch::add(tracks,extra.watchKeys,key,external::watch::capture(read),slot);using R=external::watch::AddResult;
  if(result==R::NoTarget){notify(L"请先选中单位，或将鼠标放到单位上。");return;}
@@ -57,11 +59,14 @@ static void pin(uint32_t key){
  worker.invalidate();++controls;autoSuppressed=true;++paintRevision;notify(L"已添加跟踪窗口 "+std::to_wstring(slot+1)+L"；左击跳转，Shift＋右击关闭。");
 }
 static void update(uint32_t now){
- if(process!=pid||epoch!=commandMatch()){reset();process=pid;epoch=commandMatch();}
- uint8_t options=uint8_t(bool(extra.watchEnabled))|(uint8_t(bool(extra.watchDanger))<<1);
+ if(process!=pid||epoch!=displayMatch()){reset();process=pid;epoch=displayMatch();}
+ bool primary=enabled&&extra.watchEnabled&&foregroundGame()&&!snap.chat;
+ bool secondary=extra.watchSecondary&&secondaryDisplayAvailable();
+ uint8_t options=uint8_t(primary||secondary)|(uint8_t(bool(extra.watchDanger))<<1);
  if(options!=trackingOptions){trackingOptions=options;worker.invalidate();++controls;}
- if(!extra.watchEnabled||!extra.watchDanger)autoSuppressed=false;
- if(!enabled||!extra.watchEnabled||snap.chat||snap.renderStatus!=1||snap.width<360||snap.height<320){worker.invalidate();for(auto&v:views)v.shown=false;shown=false;return;}
+ if((!primary&&!secondary)||!extra.watchDanger)autoSuppressed=false;
+ if((!primary&&!secondary)||snap.renderStatus!=1||snap.width<360||snap.height<320){suspend();return;}
+ suspended=false;
  // Asset decoding can take longer than an overlay interval. Keep the current
  // panels until an accepted result changes their lifetime, and consume each
  // immutable result once rather than replaying its old tracking decisions.

@@ -34,7 +34,7 @@ static DWORD WINAPI frameClock(void*){
 }
 static void clockState(bool active,int rate){
  bool changed=InterlockedExchange(&clockActive,active)!=active;
- changed|=InterlockedExchange(&inputClockActive,active&&shiftClickEnabled&&shiftClickMode!=2)!=(active&&shiftClickEnabled&&shiftClickMode!=2);
+ changed|=InterlockedExchange(&inputClockActive,active&&enabled&&foregroundGame()&&shiftClickEnabled&&shiftClickMode!=2)!=(active&&enabled&&foregroundGame()&&shiftClickEnabled&&shiftClickMode!=2);
  changed|=InterlockedExchange(&clockRate,rate)!=rate;
  if(changed&&clockChanged)SetEvent(clockChanged);
 }

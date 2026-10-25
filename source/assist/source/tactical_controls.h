@@ -146,7 +146,8 @@ toggle(893,L"箱子强化标志",extra.crateBuffMarkers);next();
 #endif
 const wchar_t* lineNames[]={L"队列提醒：建筑",L"队列提醒：防御",L"队列提醒：步兵",L"队列提醒：载具",L"队列提醒：舰船",L"队列提醒：飞机"};
 for(int i=0;i<6;++i){toggle(9070+i,lineNames[i],(extra.productionReminderMask&(1u<<i))!=0);next();}
-toggle(9060,L"左中局部观察窗",extra.watchEnabled);next();
+toggle(9060,L"游戏内小窗跟踪",extra.watchEnabled);next();
+toggle(9163,L"第二显示器显示小窗跟踪",extra.watchSecondary);next();
 toggle(9061,L"自动跟随危险载员的敌方载具",extra.watchDanger);next();
 for(int n=0;n<3;++n){const wchar_t* names[]={L"跟踪窗口 1 快捷键",L"跟踪窗口 2 快捷键",L"跟踪窗口 3 快捷键"};label(names[n],20,306);key(9062+n,extra.watchKeys[n]);next();}
 note(L"同键每按一次添加一个窗口，只使用该键绑定的空位。左击跳转；Shift＋右击关闭。组内目标死亡时，接替原选中组中距它 5 格内的最近单位。",44);
@@ -164,7 +165,9 @@ number(816,L"载员与状态文字缩放 / %",labelScalePercent,L"50–250 · �
 marginEdit=number(311,L"文字提示上边距 / 像素",topMargin,L"0–4096");
 toastEdit=number(471,L"战术提示时长 / 毫秒",toastMs,L"500–60000");
 number(817,L"建筑预定面板缩放 / %",constructionScalePercent,L"50–250 · 默认 100");
-toggle(830,L"战术小地图",minimapEnabled);next();
+toggle(830,L"游戏内战术小地图",minimapEnabled);next();
+toggle(9162,L"第二显示器显示小地图",minimapSecondary);next();
+note(L"副屏独立显示，不依赖游戏内开关。自动选择游戏所在屏幕之外的显示器；没有副屏时自动隐藏。",44);
 label(L"小地图画面",20,260);choices(combo(9065),{L"示意",L"实景"},minimapMode);next();
 number(831,L"小地图缩放 / %",minimapScale,L"100–1000 · 默认 200");
 label(L"战术小地图位置",20,260);choices(combo(850),{L"原雷达左侧",L"画面左上",L"画面左下",L"自定义坐标"},minimapPosition);next();

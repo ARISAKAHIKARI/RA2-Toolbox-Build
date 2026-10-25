@@ -31,7 +31,8 @@ static bool autoSettingChanged(int id,int notification){
  if(id==9065&&select){int next=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));if(next>=0&&next<=1){minimapMode=next;changedSetting();}return true;}
  if(id==850&&select){int next=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));if(next>=0&&next<=3){minimapPosition=next;changedSetting();}return true;}
  if((id==9100||id==9101)&&select){int next=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));if(next>=0&&next<=2){(id==9100?minimapAlignX:minimapAlignY)=next;changedSetting();}return true;}
- if(id==830&&notification==BN_CLICKED){minimapEnabled=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;if(!minimapEnabled)minimap::hide();changedSetting();return true;}
+ if((id==9162||id==9163)&&notification==BN_CLICKED){(id==9162?minimapSecondary:extra.watchSecondary)=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;registerKeys();syncInformationRate(true);changedSetting();return true;}
+ if(id==830&&notification==BN_CLICKED){minimapEnabled=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;if(!minimapEnabled)minimap::hidePrimary();changedSetting();return true;}
  if((id==9090&&notification==BN_CLICKED)||(id==9091&&select)||(id==9092&&notification==BN_CLICKED)){
   extra.viewZoomEnabled=false;extra.viewZoomPercent=100;SendMessageW(GetDlgItem(ui,9090),BM_SETCHECK,BST_UNCHECKED,0);SendMessageW(GetDlgItem(ui,9091),CB_SETCURSEL,2,0);syncAdditional();return true;
  }
