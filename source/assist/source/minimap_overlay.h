@@ -49,11 +49,11 @@ public:
  void shutdown(){{std::lock_guard<std::mutex> lock(mutex);stop=true;request={};latest.reset();++generation;cv.notify_one();}if(thread.joinable())thread.join();}
 };
 static assist::construction::PanelBuffer paintBuffer;
-static Worker worker;static HWND window;static std::shared_ptr<const external::radar::Frame> frame;
+static Worker worker;static HWND window;static std::shared_ptr<const external::radar::Frame> frame;static overlayui::Recovery recovery;
 static std::shared_ptr<const external::radar::Terrain> paintedTerrain;static std::vector<uint32_t> pixels;static int imageW,imageH;
 static external::radar::Geometry lastGeometry;static bool dragging=false;static uint32_t dragMatch=0;
 static void cancelDrag(){dragging=false;dragMatch=0;if(window&&GetCapture()==window)ReleaseCapture();}
-static void hide(){cancelDrag();worker.pause();frame.reset();if(window)ShowWindow(window,SW_HIDE);}
+static void hide(){cancelDrag();recovery.suspend();worker.pause();frame.reset();if(window)ShowWindow(window,SW_HIDE);}
 static void navigate(HWND w,LPARAM lp){
  DWORD now=GetTickCount();if(!shared||!enabled||!minimapEnabled||!foregroundGame()||snap.chat||!commandFresh(now)||!frame||!frame->terrain||DWORD(now-frame->tick)>500||dragMatch!=commandMatch()){cancelDrag();return;}
  RECT r{};GetClientRect(w,&r);int x=0,y=0;if(!external::radar::navigate(frame->terrain->geo,short(LOWORD(lp)),short(HIWORD(lp)),r.right,r.bottom,std::max(1,snap.width-160),snap.height,x,y))return;
@@ -104,7 +104,8 @@ static void update(POINT origin,const RECT&client){
  frame=worker.get();if(!frame||!frame->terrain){cancelDrag();if(window)ShowWindow(window,SW_HIDE);return;}if(dragging&&dragMatch!=commandMatch())cancelDrag();
  if(!window){WNDCLASSW cls{};cls.lpfnWndProc=proc;cls.hInstance=GetModuleHandleW(nullptr);cls.lpszClassName=L"RA2DataRadar127";cls.hCursor=nullptr;RegisterClassW(&cls);window=CreateWindowExW(WS_EX_TOOLWINDOW|WS_EX_NOACTIVATE|WS_EX_TOPMOST|WS_EX_LAYERED,cls.lpszClassName,L"战术小地图",WS_POPUP,0,0,1,1,nullptr,nullptr,cls.hInstance,nullptr);if(window)SetLayeredWindowAttributes(window,0,255,LWA_ALPHA);}
  if(!window)return;RECT old{};GetWindowRect(window,&old);int x=origin.x+destination.x,y=origin.y+destination.y;
- if(!IsWindowVisible(window)||old.left!=x||old.top!=y||old.right-old.left!=destination.w||old.bottom-old.top!=destination.h)overlaystack::place(window,overlaystack::Layer::Minimap,x,y,destination.w,destination.h,SWP_NOACTIVATE|SWP_SHOWWINDOW);
+ bool repair=recovery.due(GetTickCount(),true,{uintptr_t(game),pid,snap.match,destination.w,destination.h},IsWindowVisible(window)!=FALSE);
+ if(repair||old.left!=x||old.top!=y||old.right-old.left!=destination.w||old.bottom-old.top!=destination.h)recovery.submitted(overlaystack::place(window,overlaystack::Layer::Minimap,x,y,destination.w,destination.h,SWP_NOACTIVATE|SWP_SHOWWINDOW)!=FALSE);
  InvalidateRect(window,nullptr,FALSE);UpdateWindow(window);
 }
 }

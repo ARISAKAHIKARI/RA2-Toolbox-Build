@@ -23,11 +23,11 @@ inline double dragFacing(double x,double y,double fallback){return x||y?std::ata
 inline void layout(int count,int shape,double stretch,bool click,Point*out){
  count=std::clamp(count,0,Maximum);shape=std::clamp(shape,0,Shapes-1);stretch=click?0:std::clamp(stretch,0.,1.);
  if(!count)return;
- // A click keeps the compact footprint (including a hollow frame's hole).
- // Distances are world cells; dragged dispersed mode adds one empty cell.
- double spacing=(!click&&shape==1)?2.:1.;
- int base=std::max(1,int(std::ceil(std::sqrt(count*(click||shape==4?1.:std::sqrt(2.))))));
- int columns=click?base:std::clamp(int(std::lround(base+(count-base)*stretch)),1,count);
+ // A click previews the selected shape at rest; only a drag stretches it.
+ // Distances are world cells; dispersed mode adds one empty cell.
+ double spacing=shape==1?2.:1.;
+ int base=std::max(1,int(std::ceil(std::sqrt(count*(shape==4?1.:std::sqrt(2.))))));
+ int columns=std::clamp(int(std::lround(base+(count-base)*stretch)),1,count);
  if(shape==5){
   // At rest, occupied border area : hollow area is approximately 3:1.
   // Increasing the square footprint with a fixed member count thins the
@@ -42,7 +42,7 @@ inline void layout(int count,int shape,double stretch,bool click,Point*out){
     if(segment==0)q={-half+at,-half};else if(segment==1)q={half,-half+at};else if(segment==2)q={half-at,half};else q={-half,half-at};out[n++]=q;
    }
   }
- }else if(click||shape<2||shape==4){int rows=(count+columns-1)/columns;
+ }else if(shape<2||shape==4){int rows=(count+columns-1)/columns;
   for(int n=0;n<count;++n){int row=n/columns,width=std::min(columns,count-row*columns);out[n]={(n%columns-(width-1)*.5)*spacing,(row-(rows-1)*.5)*spacing};}
  }else if(shape==2){
   // Hexagonal rings keep the centre filled, instead of a hollow circle.

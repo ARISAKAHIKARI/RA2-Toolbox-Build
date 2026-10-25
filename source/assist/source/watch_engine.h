@@ -176,7 +176,8 @@ void drawView(Graphics&g,const View&view){
     float(std::max(0,external::screenHeight(a.z,frame.zScale)-(frame.tiles[cy*side+cx].level+(a.onBridge?4:0))*15)));
   if(a.target==frame.focus){focusX=x;focusY=y;}
  }
- frame.bounds.clip(canvas.color,Width,Height,ox-cameraX*scale,oy-cameraY*scale,scale,scale);
+ // Camera limits constrain its center, not drawable map scenery. Surface
+ // rasterization already clips the scene to this rectangular viewport.
  if(!canvas.color.empty()){Bitmap bitmap(Width,Height,Width*4,PixelFormat32bppPARGB,reinterpret_cast<BYTE*>(canvas.color.data()));
   g.DrawImage(&bitmap,RectF(0,0,float(Width),float(Height)),0.f,0.f,float(Width),float(Height),UnitPixel,nullptr);}
  if(focusX>-100){Pen ring(Color(255,255,224,111),1.3f);g.DrawEllipse(&ring,focusX-10,focusY-5,20.f,10.f);}

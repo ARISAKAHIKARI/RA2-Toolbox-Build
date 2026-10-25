@@ -3,6 +3,7 @@
 #include <iostream>
 struct Assets {
  struct ActorArt {int id=0;bool anim=false;};struct Files {uint64_t value=1;uint64_t revision(){return value;}}files;int loads=0,captures=0,renders=0;std::set<int> seen;std::map<int,std::set<int>> frames;std::set<std::pair<int,int>> buildingPoses;bool small=false,partial=false;
+ uint32_t forcedColor=0;
  uint64_t revision(){return files.revision();}
  static size_t cost(const ActorArt&){return sizeof(ActorArt);}
  bool palette(bool,std::array<uint32_t,256>&p){p.fill(0xffffffff);return true;}
@@ -12,7 +13,7 @@ struct Assets {
  void buildingPose(uint32_t p,uint32_t t,external::visual::Pose&pose){pose.frame=buildingFrame(p,t);}
  bool captureActor(uint32_t,uint32_t,uint32_t id,ActorArt&a){++captures;a.id=id;return true;}
  bool captureAnimation(uint32_t,uint32_t,uint32_t id,uint32_t,uint32_t,ActorArt&a){a.id=id;a.anim=true;return true;}
- bool renderActor(const ActorArt&a,const external::visual::Pose&pose,external::voxel::Image&i){++renders;seen.insert(a.id);frames[a.id].insert(pose.frame);if(pose.buildingFlags)buildingPoses.emplace(pose.buildingFlags,pose.doorFrame);i.width=i.height=small?8:60;i.x=i.y=-i.width/2;i.pixels.assign(i.width*i.height,a.anim?0xffaaff00:0xff00aa00);i.depth.assign(i.width*i.height,a.anim?100:5);i.writeDepth=false;i.incomplete=partial;return true;}
+ bool renderActor(const ActorArt&a,const external::visual::Pose&pose,external::voxel::Image&i){++renders;seen.insert(a.id);frames[a.id].insert(pose.frame);if(pose.buildingFlags)buildingPoses.emplace(pose.buildingFlags,pose.doorFrame);i.width=i.height=small?8:60;i.x=i.y=-i.width/2;i.pixels.assign(i.width*i.height,forcedColor?forcedColor:(a.anim?0xffaaff00:0xff00aa00));i.depth.assign(i.width*i.height,a.anim?100:5);i.writeDepth=false;i.incomplete=partial;return true;}
 };
 int main(){
  using namespace external::radar;Assets assets;SceneRenderer<Assets> renderer;auto read=[](uint32_t,void*,size_t){return false;};
@@ -58,5 +59,24 @@ int main(){
  frame.markers.clear();auto crop=std::make_shared<Terrain>(*terrain);crop->geo.bounds.left=40;crop->geo.bounds.columns=24;crop->colors[64*512+64]=0;frame.terrain=crop;
  scene=renderer.render(frame,128,64,read,assets);assert(scene&&std::all_of(scene->pixels.begin(),scene->pixels.end(),[](uint32_t p){return p==0xff080c08;}));
  frame.terrain=terrain;scene=renderer.render(frame,128,64,read,assets);assert(scene&&std::find(scene->pixels.begin(),scene->pixels.end(),0xffa03020)!=scene->pixels.end());
+ // Restoring VPL changes the asset revision while actor identity/pose stay
+ // fixed. Both previously cached headings must use the recovered source.
+ {
+  Assets recoveredAssets;SceneRenderer<Assets> recoveredRenderer;Frame recovery;recovery.terrain=terrain;recovery.tick=100;recovery.markers={m};
+  recoveredAssets.forcedColor=0xff102030;auto restored=recoveredRenderer.render(recovery,128,64,read,recoveredAssets);
+  assert(restored&&restored->pixels[32*128+64]==0xff102030);
+  recovery.markers[0].pose.body=1;recoveredRenderer.render(recovery,128,64,read,recoveredAssets);
+  recovery.markers[0].pose.body=0;recoveredRenderer.render(recovery,128,64,read,recoveredAssets);
+  int oldCaptures=recoveredAssets.captures,oldRendered=recoveredAssets.renders;
+  recoveredAssets.forcedColor=0xffa0b0c0;restored=recoveredRenderer.render(recovery,128,64,read,recoveredAssets);
+  assert(recoveredAssets.captures==oldCaptures&&recoveredAssets.renders==oldRendered&&restored->pixels[32*128+64]==0xff102030);
+  ++recoveredAssets.files.value;restored=recoveredRenderer.render(recovery,128,64,read,recoveredAssets);
+  assert(restored&&recoveredAssets.captures==oldCaptures+1&&recoveredAssets.renders==oldRendered+1&&restored->pixels[32*128+64]==0xffa0b0c0);
+  recovery.markers[0].pose.body=1;restored=recoveredRenderer.render(recovery,128,64,read,recoveredAssets);
+  assert(restored&&recoveredAssets.captures==oldCaptures+1&&recoveredAssets.renders==oldRendered+2&&restored->pixels[32*128+64]==0xffa0b0c0);
+  oldCaptures=recoveredAssets.captures;oldRendered=recoveredAssets.renders;
+  for(int n=0;n<20;++n)recoveredRenderer.render(recovery,128,64,read,recoveredAssets);
+  assert(recoveredAssets.captures==oldCaptures&&recoveredAssets.renders==oldRendered);
+ }
  std::cout<<"PASS scene publication, native animation frame-zero/advance, independent door/roof cache, shared source art, fair retained poses, ground/air layers, resize and reset\n";
 }

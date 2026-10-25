@@ -91,5 +91,17 @@ int main(){
  assert(animation(read,anim,animType,640,896,208,State{})==vehicle); // plain Convert has no RGB fields
  put(0x20000,uiScheme);put(uiScheme+0x30C,uiConvert);put(uiConvert+0x16C,1);for(int off:{0x198,0x19C,0x1A0})put(uiConvert+off,1000);
  put(animType+0x361,uint8_t(1));put(c+0x10A,int16_t(800));assert(animation(read,anim,animType,640,896,208,State{}).intensity==1000);
+ // SpawnsTiberium terrain (ore mines) uses object brightness and its global
+ // plain converter, unlike trees. Fake adjacent RGB must never be read as tint.
+ put(0x87F6BC,plainConvert);put(plainConvert,0x7E5358u);put(plainConvert+0x16C,53);
+ put(plainConvert+0x1B0,uint8_t(0));for(int off:{0x198,0x19C,0x1A0})put(plainConvert+off,200);
+ put(c+0x10A,int16_t(1100));put(c+0x10C,int16_t(825));put(type+0x2B1,uint8_t(1));
+ auto mine=terrainObject(read,type,640,896,624,snow);assert(mine.intensity==1100&&mine.tint==State{}.tint);
+ put(c+0x10A,int16_t(0));assert(terrainObject(read,type,640,896,208,snow).intensity==0);put(c+0x10A,int16_t(1100));
+ put(type+0x2B1,uint8_t(0));auto tree=terrainObject(read,type,640,896,208,State{});assert(tree.intensity==825&&tree.tint==snow.tint);
+ assert(!spawnsTiberium(read,0xfffffff0u)&&!spawnsTiberium(read,0));
+ put(type+0x2B1,uint8_t(1));put(plainConvert,0x7ED0A4u);assert((terrainObject(read,type,640,896,208,State{}).tint==std::array<int,3>{200,200,200}));
+ put(plainConvert+0x16C,1);assert(terrainObject(read,type,640,896,208,State{}).intensity==1000);
  std::cout<<"PASS ambient, normal/tinted converter, map changes, bounded reads, owner/custom vs terrain RGB, animation source/NormalLight, opaque final pixels and live lighting updates\n";
+ std::cout<<"PASS ore-mine global converter/object brightness, neutral plain-converter tint, native zero intensity and independent ISO tree lighting\n";
 }

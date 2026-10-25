@@ -22,12 +22,15 @@ public:
  struct Read {Reader*reader;bool operator()(uint32_t p,void*out,size_t n)const{return reader->readFresh(p,out,n);}};
  Read read;
  explicit Context(Reader&r):reader_(r),read{&r},artINI(read,external::assets::LiveINI::ArtObject),rulesINI(read,external::assets::LiveINI::RulesPointer,true),cameoCatalog(read){}
- void identity(uint32_t process,uint32_t match){process_=process;match_=match;update();}
+ void identity(uint32_t process,uint32_t match){
+  if(process_!=process||match_!=match){voxelLight={};voxelChecked=voxelNative=false;voxelRevision=~uint64_t(0);}
+  process_=process;match_=match;update();
+ }
 
 external::assets::Files files;
 std::string failure;
-void update(){files.update(reader_,process_,match_);}
-uint64_t revision(){return files.revision()^(uint64_t(word(0x822CF8)+1)*0x9e3779b97f4a7c15ull);}
+void update(){files.update(reader_,process_,match_);vpl();}
+uint64_t revision(){return files.revision()^(uint64_t(word(0x822CF8)+1)*0x9e3779b97f4a7c15ull)^voxelLight.signature();}
 bool cameo(const char*name,std::vector<uint8_t>&out){update();return files.load(name,out);}
 uint32_t word(uint32_t p){uint32_t v=0;read(p,&v,4);return v;}
 std::string text(uint32_t p,unsigned n){return external::assets::text(read,p,n);}
@@ -35,8 +38,18 @@ std::string theater(int field,int size){unsigned n=word(0x822CF8);return n<6?tex
 external::assets::EffectiveINI<Read> artINI,rulesINI;uint64_t iniRevision=~uint64_t(0);
  std::shared_ptr<const external::voxel::Image> buildingMask;bool buildingMaskBiased=false;uint64_t maskRevision=~uint64_t(0);
  external::assets::RuntimeCameos<Read> cameoCatalog;external::voxel::Vpl voxelLight;uint64_t voxelRevision=~uint64_t(0);
+ uint32_t voxelCheck=0;bool voxelChecked=false,voxelNative=false;
  void resolveCameo(um::Type&t){update();auto file=cameoCatalog.resolve([&](const char*n,std::vector<uint8_t>&b){return files.load(n,b);},files.revision(),files.revision()^(GetTickCount64()/5000),t.id,text(t.ptr+0x1F8,25),t.cameo);memset(t.cameo,0,sizeof t.cameo);if(file.size()<sizeof t.cameo)memcpy(t.cameo,file.data(),file.size());}
- void vpl(){if(voxelRevision==files.revision())return;voxelRevision=files.revision();std::vector<uint8_t>b;files.load("VOXELS.VPL",b);voxelLight.load(b);}
+ void vpl(){
+  auto revision=files.revision();if(voxelRevision!=revision){voxelRevision=revision;voxelLight={};voxelChecked=voxelNative=false;}
+  uint32_t now=GetTickCount();if(voxelChecked&&uint32_t(now-voxelCheck)<1000)return;voxelCheck=now;voxelChecked=true;
+  // Prefer the table actually used by the game, including modded archives
+  // unavailable to the external file reader. Poll from update(), so cached
+  // poses also recover after an initially missing table and change revision.
+  if(voxelLight.capture(read)){voxelNative=true;return;}
+  if(voxelLight.ready())return;
+  std::vector<uint8_t>b;if(files.load("VOXELS.VPL",b))voxelLight.load(b);
+ }
 void metadata(){uint64_t revision=files.revision();uint64_t generation=revision^(GetTickCount64()/5000);artINI.generation(generation);rulesINI.generation(generation);if(revision==iniRevision)return;iniRevision=revision;artINI.clear();rulesINI.clear();std::vector<uint8_t>b;
  if(files.load("ARTMD.INI",b)||files.load("ART.INI",b))artINI.parse(b);
  if(files.load("RULESMD.INI",b)||files.load("RULES.INI",b))rulesINI.parse(b);
@@ -55,6 +68,17 @@ bool convertPalette(uint32_t convert,std::array<uint32_t,256>&out){
     pointer!=word(convert+0x188)||std::all_of(colors,colors+sizeof colors,[](uint8_t c){return c==0;}))return false;
  for(int i=0;i<256;++i)out[i]=0xff000000u|(uint32_t(colors[i*3])<<16)|(uint32_t(colors[i*3+1])<<8)|colors[i*3+2];out[0]=0;return true;
 }
+bool convertedPalette(uint32_t convert,std::array<uint32_t,256>&out){
+ // Plain ConvertClass retains the rendered middle palette, not raw RGB.
+ // 71C294 uses this resource drawer even when the map theater is temperate.
+ if(convert<0x10000||convert>0xfffffe87u||word(convert)!=0x7E5358||word(convert+4)!=2)return false;
+ int shades=int(word(convert+0x16C));uint32_t pointer=word(convert+0x174);uint16_t colors[256]{};
+ if(shades<1||shades>256||pointer<0x10000||uint64_t(pointer)+sizeof colors>0x100000000ull||!read(pointer,colors,sizeof colors)||
+    pointer!=word(convert+0x174)||word(convert)!=0x7E5358||word(convert+4)!=2||std::all_of(colors,colors+256,[](uint16_t c){return c==0;}))return false;
+ for(int i=0;i<256;++i){unsigned c=colors[i],r=(c>>11)&31,g=(c>>5)&63,b=c&31;
+  out[i]=0xff000000u|(((r<<3)|(r>>2))<<16)|(((g<<2)|(g>>4))<<8)|(b<<3)|(b>>2);
+ }out[0]=0;return true;
+}
 bool palette(bool iso,std::array<uint32_t,256>&out){if(iso&&external::terrain::palette(read,0xABBED0,out))return true;std::vector<uint8_t> bytes;std::string n=iso?theater(68,10):"UNIT"+theater(78,3);if(n.empty()){failure="palette-theater-name";return false;}n+=".PAL";if(!files.load(n,bytes)){failure="palette-not-found:"+n;return false;}if(!external::assets::pal(bytes,out)){failure="palette-format:"+n;return false;}return true;}
 std::vector<std::string> spriteNames(uint32_t type,uint32_t pointer,bool overlay=false,bool buildingPart=false,uint32_t parentType=0){
  auto live=external::assets::shapeName(read,pointer);auto stem=imageName(type);
@@ -69,6 +93,12 @@ bool shapeBytes(uint32_t type,uint32_t pointer,std::vector<uint8_t>&bytes,std::s
  file.clear();failure="sprite-not-found:"+artName(type);for(const auto&n:names)failure+=" "+n;return false;
 }
 bool spritePalette(uint32_t type,const std::string&file,bool overlay,uint32_t owner,std::array<uint32_t,256>&out,bool terrain=false){
+ if(terrain&&external::lighting::spawnsTiberium(read,type)){
+  uint32_t convert=word(0x87F6BC);if(convertPalette(convert,out)||convertedPalette(convert,out))return true;
+  // Original bootstrap 52BFCE/52C1EA loads UNITSNO.PAL then aliases its
+  // converter for SpawnsTiberium. This is separate from ore/gem overlays.
+  return paletteFile("UNITSNO.PAL",out);
+ }
  metadata();auto custom=artValue(type,"PALETTE");if(!overlay&&!terrain&&custom.empty())custom=text(type+0xDD0,32);
  auto id=text(type+0x24,24);bool resource=overlay&&(rulesINI.yes(id,"TIBERIUM")||rulesINI.yes(id,"ISVEINS")||rulesINI.yes(id,"ISVEINHOLEMONSTER"));
  bool seasonal=file.size()>4&&external::assets::name(file.substr(file.size()-4))!=".SHP";
@@ -111,6 +141,7 @@ void buildingPose(uint32_t object,uint32_t type,external::visual::Pose&pose){
 }
 bool overlay(uint32_t type,uint32_t pointer,int frame,external::voxel::Image&out,bool terrain=false){std::vector<uint8_t>bytes;std::string file;bool disk=shapeBytes(type,pointer,bytes,file,!terrain);std::array<uint32_t,256>pal{};if(!spritePalette(type,file,true,0,pal,terrain))return false;
  std::string why;bool ok=disk?external::voxel::sprite(external::assets::Memory{std::move(bytes)},external::assets::Memory::Base,pal,out,frame,&why):external::voxel::sprite(read,pointer,pal,out,frame,&why);if(!ok)failure="overlay-frame/decode:"+file+" frame="+std::to_string(frame)+" "+why;
+ if(ok&&terrain&&external::lighting::spawnsTiberium(read,type))out.y-=16; // Native 71C2A9 / 71C438.
  if(ok&&!terrain){out.flat=(word(type+0x2B3)&255)!=0;bool wall=(word(type+0x2A8)&255)!=0,rock=(word(type+0x2B5)&255)!=0;out.depthBias=out.flat?-1.f:(wall||rock)?0.f:15.f;out.writeDepth=(word(type+0x2AD)&255)==0;}
  return ok;}
 bool sprite(uint32_t type,uint32_t pointer,const std::array<uint32_t,256>&pal,int frame,external::voxel::Image&out){

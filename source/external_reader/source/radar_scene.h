@@ -86,11 +86,12 @@ public:
   for(const auto*marker:order){const auto&m=*marker;if(m.x<0||m.y<0||m.x>=512*256||m.y>=512*256)continue;
    auto found=sprites_.find(imageKey(m));if(found==sprites_.end()||!found->second.ready){auto old=displayed_.find({m.object,m.id});if(old!=displayed_.end())found=sprites_.find(old->second);}
    float px=float(m.u*width),py=float(m.v*height)+(camera::anchorY(m.kind)-screenHeight(m.z,projectionZScale(read)))*scale.second;
-   if(found!=sprites_.end()&&found->second.ready){auto light=m.kind==5?lighting::animation(read,m.object,m.type,m.x,m.y,m.z,scene):m.kind==4?lighting::at(read,m.x,m.y,m.z,scene,true):lighting::object(read,m.type,m.owner,m.kind,m.x,m.y,m.z,scene);uint32_t cell=frame.terrain->art[(m.y/256)*512+m.x/256].cell;bool bridge=m.onBridge;int level=game.template get<uint8_t>(cell+0x11B);
+   if(found!=sprites_.end()&&found->second.ready){auto light=m.kind==5?lighting::animation(read,m.object,m.type,m.x,m.y,m.z,scene):m.kind==4?lighting::terrainObject(read,m.type,m.x,m.y,m.z,scene):lighting::object(read,m.type,m.owner,m.kind,m.x,m.y,m.z,scene);uint32_t cell=frame.terrain->art[(m.y/256)*512+m.x/256].cell;bool bridge=m.onBridge;int level=game.template get<uint8_t>(cell+0x11B);
     view.blit(found->second.image,px,py,scale.first,scale.second,float((int64_t(m.x)+m.y)*15/256.)-15+camera::anchorY(m.kind)-m.drawZ+(bridge?60:0),light,m.kind==4?12:(m.kind==3||m.kind==5)?2:1,float(std::max(0,screenHeight(m.z,projectionZScale(read))-(level+(bridge?4:0))*15)));}
    else if(m.kind<4){int x=int(m.u*width),y=int(m.v*height);for(int yy=std::max(0,y-1);yy<std::min(height,y+2);++yy)for(int xx=std::max(0,x-1);xx<std::min(width,x+2);++xx)view.color[size_t(yy)*width+xx]=0xff000000u|m.color;}
   }
-  geo.bounds.clip(view.color,width,height,double(geo.offsetX)*geo.factor*width/geo.rw,-double(geo.offsetY)*geo.factor*height/geo.rh,scale.first,scale.second);
+  // Keep physical border scenery; the native radar projection and output
+  // canvas crop the image. Camera movement limits are not a pixel mask.
   if(tiles_.size()>4096)tiles_.clear();if(overlays_.size()>4096)overlays_.clear();
   auto out=std::make_shared<Scene>();out->width=width;out->height=height;out->pixels=std::move(view.color);return out;
  }

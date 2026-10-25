@@ -55,13 +55,20 @@ using namespace external::radar;Memory m;constexpr uint32_t cells=0x100000,cell=
  // Never expose a partially refreshed terrain bank; old immutable bank survives.
  m.set<int8_t>(cell+0x120,-2);sampler.step(false,2048);assert(sampler.snapshot(3).terrain==a.terrain);sampler.step(false,2048);assert(sampler.snapshot(4).terrain->colors[3*512+3]==0);assert(a.terrain->colors[3*512+3]!=0);
  sampler.step(true,4096);assert(sampler.snapshot(5).terrain->colors[3*512+3]!=0);
- // Trigger-driven crop does not need a new cell array, house or game tick.
+ // Trigger-driven camera-domain change needs no new cell array/house/tick.
+ // A legal border tile remains drawable even when it becomes non-usable.
  auto beforeCrop=sampler.snapshot(5);m.set(Map+0x100,1);m.set(Map+0x108,3);
  assert(!sameWorld(beforeCrop,publicationContext(Read{&m})));
  sampler.step(true,2048);assert(!sampler.snapshot(5).terrain);sampler.step(true,2048);
- auto cropped=sampler.snapshot(5);assert(cropped.terrain&&cropped.terrain->colors[3*512+3]==0&&cropped.terrain->geo.bounds.top==1);
- m.set(Map+0x100,0);m.set(Map+0x108,4);sampler.step(true,4096);
- assert(sampler.snapshot(5).terrain->colors[3*512+3]!=0);
+ auto cropped=sampler.snapshot(5);assert(cropped.terrain&&cropped.terrain->colors[3*512+3]!=0&&cropped.terrain->geo.bounds.top==1);
+ // The native radar also updates projection after SetVisibleRect. Accept its
+ // new offset/size, keep physical border cells and discard the old raster.
+ m.set(Map+0x1498,6);m.set(Map+0x14A8,60);sampler.step(true,2048);assert(!sampler.snapshot(5).terrain);sampler.step(true,2048);
+ auto shifted=sampler.snapshot(5);assert(shifted.terrain&&shifted.terrain->colors[3*512+3]!=0);
+ shifted.terrain->geo.project(3.5,3.5,u,v);assert(u==.5&&v==1./6);
+ auto shiftedDiagram=diagram.render(shifted.terrain,80,60);assert(shiftedDiagram&&shiftedDiagram->pixels[10*80+40]==terrainColor(2,0,false));
+ m.set(Map+0x100,0);m.set(Map+0x108,4);m.set(Map+0x1498,4);m.set(Map+0x14A8,80);sampler.step(true,4096);
+ auto restored=sampler.snapshot(5);assert(restored.terrain->colors[3*512+3]!=0);restored.terrain->geo.project(3.5,3.5,u,v);assert(u==.5&&v==.375);
  m.set(0xA8ED84,1);sampler.step(true,1);assert(!sampler.snapshot(6).terrain);sampler.step(true,4096);assert(sampler.snapshot(7).terrain);
  m.set(0xA83D4C,house+0x10000);sampler.step(true,1);assert(!sampler.snapshot(8).terrain);m.set(0xA8ED8C,1);assert(!sampler.step(true));assert(!sampler.snapshot(9).terrain);m.set(0xA8ED8C,0);
  m.set(Map+0x1488,std::numeric_limits<float>::quiet_NaN());assert(!sampler.step(true));m.set(Map+0x1488,10.f);m.set(Map+0x140,999999);assert(!sampler.step(true));

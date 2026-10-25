@@ -1,0 +1,743 @@
+{
+  "supported_executable_sha256": "7b8a068535d6af06845edf95ae829b113d00c02909330e16f197426cd7db94b6",
+  "scope": "Audit loaded VPL, original indexed voxel raster and fresh/cached blitters.\n\nThe input is a private supported-game capture. Only counts, hashes, bounds and\nmean RGB are emitted. Captured model/palette/table bytes travel to a temporary\nproduction C++ probe through stdin and are never written as output artifacts.\nThe raster comparison uses body models and the same raw owner palette; it is\nbefore scene LightConvert, ABuffer, clipping and shadows. Separate one-pixel\ntests execute both original scalar blitter paths against the captured LUT.\nNo live game, Windows display, complete scene compositor or multiplayer runs.\n",
+  "stages": {
+    "00-clean": {
+      "pages": 32,
+      "bytes_valid_and_stable": 8192,
+      "table_sha256": "d4aca52746acb55d9893a3c2c347ddd8b506447e3945c9c0ff2e3cfba1f81bf0"
+    },
+    "01-off": {
+      "pages": 32,
+      "bytes_valid_and_stable": 8192,
+      "table_sha256": "d4aca52746acb55d9893a3c2c347ddd8b506447e3945c9c0ff2e3cfba1f81bf0",
+      "scalar_blitters": {
+        "scalar_pixel_cases": 1600,
+        "mismatches": 0,
+        "selected": [
+          {
+            "flags": "2800",
+            "fresh": "00494B60",
+            "cached": "00497FD0"
+          },
+          {
+            "flags": "6800",
+            "fresh": "004958D0",
+            "cached": "004990E0"
+          }
+        ]
+      }
+    },
+    "02-on": {
+      "pages": 32,
+      "bytes_valid_and_stable": 8192,
+      "table_sha256": "d4aca52746acb55d9893a3c2c347ddd8b506447e3945c9c0ff2e3cfba1f81bf0",
+      "scalar_blitters": {
+        "scalar_pixel_cases": 1600,
+        "mismatches": 0,
+        "selected": [
+          {
+            "flags": "2800",
+            "fresh": "00494B60",
+            "cached": "00497FD0"
+          },
+          {
+            "flags": "6800",
+            "fresh": "004958D0",
+            "cached": "004990E0"
+          }
+        ]
+      }
+    },
+    "03-off": {
+      "pages": 32,
+      "bytes_valid_and_stable": 8192,
+      "table_sha256": "d4aca52746acb55d9893a3c2c347ddd8b506447e3945c9c0ff2e3cfba1f81bf0",
+      "scalar_blitters": {
+        "scalar_pixel_cases": 1600,
+        "mismatches": 0,
+        "selected": [
+          {
+            "flags": "2800",
+            "fresh": "00494B60",
+            "cached": "00497FD0"
+          },
+          {
+            "flags": "6800",
+            "fresh": "004958D0",
+            "cached": "004990E0"
+          }
+        ]
+      }
+    }
+  },
+  "game_tested": false,
+  "windows_rendering_tested": false,
+  "multiplayer_tested": false,
+  "code_sha256": {
+    "00753B70-00753BCB": "eb72ac22516c4eac64a7a6ad6a11d0e69995ab8066b3b640d50aa58a2172e9d3",
+    "00758A30-00758AC3": "0ada789286c20643521fd28b79bdc0a4695f5fa1b7a9c2321d6aff5d7e2c8dbf",
+    "00753D00-00754610": "868184a597b112b74a30754d49899360fab0e26480b9f86cea1912352da18881",
+    "00494B60-00494C3A": "bbc9ec690d67fc873603433540efd6a58c93c63571eee3aa16e09809773343bd",
+    "004958D0-004959B1": "05febacbb85ffa09913fbcb004cb65901c67a24f566f17677af463874b927ec1",
+    "00497FD0-00498150": "cadcedb1fd341f360cf669616657978a10a747fa9182e9a99d0fbeb3e147f452",
+    "004990E0-0049927F": "d33441a0fd95a818a7d510d429af2ec39d359f4688fb1381f477e2065288a4bd",
+    "00490B90-00490E50": "f8e0f197c5907ab1f7f8989dba4374396bae9ecf32c7ad21b16efb63c197b69b"
+  },
+  "synthetic_loader": [
+    {
+      "pages": 1,
+      "read_lengths": [
+        16,
+        768,
+        256
+      ],
+      "mapping_unchanged": true
+    },
+    {
+      "pages": 16,
+      "read_lengths": [
+        16,
+        768,
+        4096
+      ],
+      "mapping_unchanged": true
+    },
+    {
+      "pages": 32,
+      "read_lengths": [
+        16,
+        768,
+        8192
+      ],
+      "mapping_unchanged": true
+    }
+  ],
+  "body_raster_comparisons": [
+    {
+      "type": "AMCV",
+      "facing": 0,
+      "native_indexed_raw_palette": {
+        "bounds": [
+          -40,
+          -50,
+          82,
+          73
+        ],
+        "opaque_pixels": 1917,
+        "mean_rgb": [
+          54.929577464788736,
+          57.929577464788736,
+          68.14919144496609
+        ]
+      },
+      "production_vpl": {
+        "facing": 0,
+        "vpl": true,
+        "opaque_pixels": 1972,
+        "opaque_zero_index": 0,
+        "bounds": [
+          -36,
+          -36,
+          73,
+          52
+        ],
+        "mean_rgb": [
+          55.4503,
+          58.5974,
+          69.3408
+        ]
+      },
+      "production_fallback": {
+        "facing": 0,
+        "vpl": false,
+        "opaque_pixels": 1972,
+        "opaque_zero_index": 0,
+        "bounds": [
+          -36,
+          -36,
+          73,
+          52
+        ],
+        "mean_rgb": [
+          58.5674,
+          61.7196,
+          74.571
+        ]
+      }
+    },
+    {
+      "type": "AMCV",
+      "facing": 8,
+      "native_indexed_raw_palette": {
+        "bounds": [
+          -40,
+          -49,
+          82,
+          73
+        ],
+        "opaque_pixels": 2117,
+        "mean_rgb": [
+          85.17713745866793,
+          88.91213982050071,
+          106.26499763816722
+        ]
+      },
+      "production_vpl": {
+        "facing": 8,
+        "vpl": true,
+        "opaque_pixels": 2169,
+        "opaque_zero_index": 0,
+        "bounds": [
+          -36,
+          -40,
+          72,
+          57
+        ],
+        "mean_rgb": [
+          87.9096,
+          91.4311,
+          109.189
+        ]
+      },
+      "production_fallback": {
+        "facing": 8,
+        "vpl": false,
+        "opaque_pixels": 2169,
+        "opaque_zero_index": 0,
+        "bounds": [
+          -36,
+          -40,
+          72,
+          57
+        ],
+        "mean_rgb": [
+          75.7174,
+          78.9705,
+          93.9318
+        ]
+      }
+    },
+    {
+      "type": "AMCV",
+      "facing": 16,
+      "native_indexed_raw_palette": {
+        "bounds": [
+          -42,
+          -49,
+          82,
+          73
+        ],
+        "opaque_pixels": 2118,
+        "mean_rgb": [
+          64.7417374881964,
+          67.42020774315392,
+          78.38668555240793
+        ]
+      },
+      "production_vpl": {
+        "facing": 16,
+        "vpl": true,
+        "opaque_pixels": 2176,
+        "opaque_zero_index": 0,
+        "bounds": [
+          -36,
+          -40,
+          73,
+          57
+        ],
+        "mean_rgb": [
+          65.9481,
+          68.5997,
+          80.1062
+        ]
+      },
+      "production_fallback": {
+        "facing": 16,
+        "vpl": false,
+        "opaque_pixels": 2176,
+        "opaque_zero_index": 0,
+        "bounds": [
+          -36,
+          -40,
+          73,
+          57
+        ],
+        "mean_rgb": [
+          65.8465,
+          68.5377,
+          80.8359
+        ]
+      }
+    },
+    {
+      "type": "AMCV",
+      "facing": 24,
+      "native_indexed_raw_palette": {
+        "bounds": [
+          -42,
+          -50,
+          82,
+          73
+        ],
+        "opaque_pixels": 1921,
+        "mean_rgb": [
+          88.71733472149921,
+          92.8875585632483,
+          107.2337324310255
+        ]
+      },
+      "production_vpl": {
+        "facing": 24,
+        "vpl": true,
+        "opaque_pixels": 1979,
+        "opaque_zero_index": 0,
+        "bounds": [
+          -35,
+          -36,
+          72,
+          52
+        ],
+        "mean_rgb": [
+          90.95,
+          95.1572,
+          109.474
+        ]
+      },
+      "production_fallback": {
+        "facing": 24,
+        "vpl": false,
+        "opaque_pixels": 1979,
+        "opaque_zero_index": 0,
+        "bounds": [
+          -35,
+          -36,
+          72,
+          52
+        ],
+        "mean_rgb": [
+          78.2911,
+          82.1723,
+          97.1511
+        ]
+      }
+    },
+    {
+      "type": "HARV",
+      "facing": 0,
+      "native_indexed_raw_palette": {
+        "bounds": [
+          -34,
+          -41,
+          70,
+          61
+        ],
+        "opaque_pixels": 1311,
+        "mean_rgb": [
+          90.12509534706331,
+          80.76506483600305,
+          62.12890922959573
+        ]
+      },
+      "production_vpl": {
+        "facing": 0,
+        "vpl": true,
+        "opaque_pixels": 1350,
+        "opaque_zero_index": 0,
+        "bounds": [
+          -29,
+          -26,
+          62,
+          39
+        ],
+        "mean_rgb": [
+          89.9319,
+          80.7533,
+          61.9919
+        ]
+      },
+      "production_fallback": {
+        "facing": 0,
+        "vpl": false,
+        "opaque_pixels": 1350,
+        "opaque_zero_index": 0,
+        "bounds": [
+          -29,
+          -26,
+          62,
+          39
+        ],
+        "mean_rgb": [
+          91.5889,
+          82.1119,
+          63.1674
+        ]
+      }
+    },
+    {
+      "type": "HARV",
+      "facing": 8,
+      "native_indexed_raw_palette": {
+        "bounds": [
+          -34,
+          -40,
+          70,
+          61
+        ],
+        "opaque_pixels": 1493,
+        "mean_rgb": [
+          104.30341594105828,
+          93.41393168117884,
+          82.86336235766912
+        ]
+      },
+      "production_vpl": {
+        "facing": 8,
+        "vpl": true,
+        "opaque_pixels": 1549,
+        "opaque_zero_index": 0,
+        "bounds": [
+          -29,
+          -37,
+          61,
+          53
+        ],
+        "mean_rgb": [
+          105.718,
+          95.2182,
+          84.7159
+        ]
+      },
+      "production_fallback": {
+        "facing": 8,
+        "vpl": false,
+        "opaque_pixels": 1549,
+        "opaque_zero_index": 0,
+        "bounds": [
+          -29,
+          -37,
+          61,
+          53
+        ],
+        "mean_rgb": [
+          98.2163,
+          86.8715,
+          77.1207
+        ]
+      }
+    },
+    {
+      "type": "HARV",
+      "facing": 16,
+      "native_indexed_raw_palette": {
+        "bounds": [
+          -36,
+          -40,
+          70,
+          61
+        ],
+        "opaque_pixels": 1512,
+        "mean_rgb": [
+          86.89219576719577,
+          76.7308201058201,
+          66.88161375661376
+        ]
+      },
+      "production_vpl": {
+        "facing": 16,
+        "vpl": true,
+        "opaque_pixels": 1545,
+        "opaque_zero_index": 0,
+        "bounds": [
+          -32,
+          -37,
+          62,
+          52
+        ],
+        "mean_rgb": [
+          88.4628,
+          78.767,
+          69.3042
+        ]
+      },
+      "production_fallback": {
+        "facing": 16,
+        "vpl": false,
+        "opaque_pixels": 1545,
+        "opaque_zero_index": 0,
+        "bounds": [
+          -32,
+          -37,
+          62,
+          52
+        ],
+        "mean_rgb": [
+          86.6531,
+          76.0324,
+          66.7845
+        ]
+      }
+    },
+    {
+      "type": "HARV",
+      "facing": 24,
+      "native_indexed_raw_palette": {
+        "bounds": [
+          -36,
+          -42,
+          70,
+          61
+        ],
+        "opaque_pixels": 1333,
+        "mean_rgb": [
+          103.192048012003,
+          93.00525131282821,
+          75.93398349587397
+        ]
+      },
+      "production_vpl": {
+        "facing": 24,
+        "vpl": true,
+        "opaque_pixels": 1367,
+        "opaque_zero_index": 0,
+        "bounds": [
+          -31,
+          -27,
+          61,
+          40
+        ],
+        "mean_rgb": [
+          105.363,
+          95.3833,
+          77.4257
+        ]
+      },
+      "production_fallback": {
+        "facing": 24,
+        "vpl": false,
+        "opaque_pixels": 1367,
+        "opaque_zero_index": 0,
+        "bounds": [
+          -31,
+          -27,
+          61,
+          40
+        ],
+        "mean_rgb": [
+          101.613,
+          90.8998,
+          72.9898
+        ]
+      }
+    },
+    {
+      "type": "SMIN",
+      "facing": 0,
+      "native_indexed_raw_palette": {
+        "bounds": [
+          -46,
+          -50,
+          92,
+          76
+        ],
+        "opaque_pixels": 2660,
+        "mean_rgb": [
+          75.94699248120301,
+          66.24097744360903,
+          65.65751879699248
+        ]
+      },
+      "production_vpl": {
+        "facing": 0,
+        "vpl": true,
+        "opaque_pixels": 2720,
+        "opaque_zero_index": 0,
+        "bounds": [
+          -39,
+          -42,
+          79,
+          62
+        ],
+        "mean_rgb": [
+          76.5055,
+          66.204,
+          66.9294
+        ]
+      },
+      "production_fallback": {
+        "facing": 0,
+        "vpl": false,
+        "opaque_pixels": 2720,
+        "opaque_zero_index": 0,
+        "bounds": [
+          -39,
+          -42,
+          79,
+          62
+        ],
+        "mean_rgb": [
+          76.5772,
+          66.1842,
+          65.1724
+        ]
+      }
+    },
+    {
+      "type": "SMIN",
+      "facing": 8,
+      "native_indexed_raw_palette": {
+        "bounds": [
+          -46,
+          -51,
+          92,
+          76
+        ],
+        "opaque_pixels": 2733,
+        "mean_rgb": [
+          86.75484815221368,
+          76.12184412733261,
+          70.33955360409806
+        ]
+      },
+      "production_vpl": {
+        "facing": 8,
+        "vpl": true,
+        "opaque_pixels": 2775,
+        "opaque_zero_index": 0,
+        "bounds": [
+          -39,
+          -40,
+          79,
+          61
+        ],
+        "mean_rgb": [
+          87.7449,
+          76.8753,
+          71.2757
+        ]
+      },
+      "production_fallback": {
+        "facing": 8,
+        "vpl": false,
+        "opaque_pixels": 2775,
+        "opaque_zero_index": 0,
+        "bounds": [
+          -39,
+          -40,
+          79,
+          61
+        ],
+        "mean_rgb": [
+          85.129,
+          74.8764,
+          69.0389
+        ]
+      }
+    },
+    {
+      "type": "SMIN",
+      "facing": 16,
+      "native_indexed_raw_palette": {
+        "bounds": [
+          -46,
+          -51,
+          92,
+          76
+        ],
+        "opaque_pixels": 2728,
+        "mean_rgb": [
+          82.6367302052786,
+          71.4358504398827,
+          70.90982404692082
+        ]
+      },
+      "production_vpl": {
+        "facing": 16,
+        "vpl": true,
+        "opaque_pixels": 2769,
+        "opaque_zero_index": 0,
+        "bounds": [
+          -39,
+          -41,
+          79,
+          62
+        ],
+        "mean_rgb": [
+          85.7046,
+          73.9437,
+          74.5316
+        ]
+      },
+      "production_fallback": {
+        "facing": 16,
+        "vpl": false,
+        "opaque_pixels": 2769,
+        "opaque_zero_index": 0,
+        "bounds": [
+          -39,
+          -41,
+          79,
+          62
+        ],
+        "mean_rgb": [
+          84.6602,
+          72.8122,
+          71.2369
+        ]
+      }
+    },
+    {
+      "type": "SMIN",
+      "facing": 24,
+      "native_indexed_raw_palette": {
+        "bounds": [
+          -46,
+          -50,
+          92,
+          76
+        ],
+        "opaque_pixels": 2727,
+        "mean_rgb": [
+          88.48074807480748,
+          77.82434910157683,
+          75.64283094976165
+        ]
+      },
+      "production_vpl": {
+        "facing": 24,
+        "vpl": true,
+        "opaque_pixels": 2772,
+        "opaque_zero_index": 0,
+        "bounds": [
+          -39,
+          -40,
+          79,
+          60
+        ],
+        "mean_rgb": [
+          89.847,
+          78.6328,
+          77.5148
+        ]
+      },
+      "production_fallback": {
+        "facing": 24,
+        "vpl": false,
+        "opaque_pixels": 2772,
+        "opaque_zero_index": 0,
+        "bounds": [
+          -39,
+          -40,
+          79,
+          60
+        ],
+        "mean_rgb": [
+          86.399,
+          75.6685,
+          73.3568
+        ]
+      }
+    }
+  ],
+  "scalar_pixel_cases": 4800
+}

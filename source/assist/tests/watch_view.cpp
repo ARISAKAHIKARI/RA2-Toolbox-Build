@@ -40,8 +40,8 @@ int main(){
  // A mission trigger changes only VisibleRect, with the same cells, focus,
  // frame counter and match. The next refresh must reject the old domain.
  write(radar::Map+0x100,9);write(radar::Map+0x108,55);
- assert(!watch::refresh(read,frame));auto reduced=watch::sample(read,ta,true);
- assert(reduced.focus==ta&&!cellIn(reduced,20,30)&&reduced.bounds.top==9);
+ assert(!watch::refresh(read,frame));auto reduced=watch::sample(read,ta,true,20);
+ assert(reduced.focus==ta&&cellIn(reduced,20,30)&&reduced.bounds.top==9&&"camera bounds must not discard drawable non-usable border cells");
  write(radar::Map+0x100,0);write(radar::Map+0x108,64);
  auto expanded=watch::sample(read,ta,true);assert(cellIn(expanded,20,30)&&expanded.bounds!=reduced.bounds);
  // A readable but physically out-of-map cell must stay hidden even in reveal.
@@ -56,12 +56,21 @@ int main(){
  auto corner=watch::sample(read,ta,true,20);assert(corner.focus==ta&&corner.focusCx==9&&corner.focusCy==133&&corner.cameraX==-3430&&corner.cameraY==2296);
  int beyondOldInventory=0;
  for(int y=100;y<=170;++y)for(int x=1;x<=60;++x){double px=160+((x-y)*30-corner.cameraX)*.5,py=128+((x+y+1)*15-corner.cameraY)*.5;
-  if(!corner.bounds.usable(x,y)||px<0||px>=320||py<0||py>=256)continue;
+  if(!corner.bounds.legal(x,y)||px<0||px>=320||py<0||py>=256)continue;
   int ix=x-corner.cx+corner.radius,iy=y-corner.cy+corner.radius;
   assert(ix>=0&&ix<corner.side&&iy>=0&&iy<corner.side&&corner.cells[iy*corner.side+ix]);
   if(std::abs(x-corner.focusCx)>20||std::abs(y-corner.focusCy)>20)++beyondOldInventory;
  }
- assert(beyondOldInventory==12&&watch::refresh(read,corner));
+ assert(beyondOldInventory>=12&&watch::refresh(read,corner));
+ // The top playable edge is below the camera viewport edge. Render legal
+ // scenery in that margin while the focus stays above the clamped camera center.
+ write(a+0x9C,69*256+128);write(a+0xA0,73*256+128);
+ for(int y=45;y<=105;++y)for(int x=40;x<=100;++x){uint32_t p=alloc(0x148);write(cells+(y*512+x)*4,p);write(p+0x24,int16_t(x));write(p+0x26,int16_t(y));write(p+0x120,int8_t(-1));write(p+0x121,int8_t(-1));}
+ auto topEdge=watch::sample(read,ta,true,20);assert(topEdge.cameraY==2296&&topEdge.bounds.usable(69,73));
+ double focusY=128+((69+73+1)*15-topEdge.cameraY)*.5;assert(focusY>0&&focusY<128);
+ int renderedMargin=0;for(int y=45;y<=105;++y)for(int x=40;x<=100;++x){double px=160+((x-y)*30-topEdge.cameraX)*.5,py=128+((x+y+1)*15-topEdge.cameraY)*.5;
+  if(px<0||px>=320||py<0||py>=256||!topEdge.bounds.legal(x,y))continue;assert(cellIn(topEdge,x,y));if(!topEdge.bounds.usable(x,y))++renderedMargin;
+ }assert(renderedMargin>0&&"drawable edge scenery must fill the margin above the playable boundary");
  write(radar::Map+0x140,512*512+1);assert(!watch::sample(read,ta,true).focus);
  std::cout<<"PASS automatic dangerous carrier, hover/selection pin, 121 cells, range edge, fog, passengers/cloak exclusion, dead/recycled target, corrupt list and map bounds\n";
 }

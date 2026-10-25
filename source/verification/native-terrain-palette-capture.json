@@ -1,0 +1,149 @@
+{
+  "supported_executable_sha256": "7b8a068535d6af06845edf95ae829b113d00c02909330e16f197426cd7db94b6",
+  "scope": "Verify ore-mine terrain palette/light/position branches in original x86 code.\n\nInput is a private capture accepted by native_bib_capture.Capture. The output\ncontains code hashes, source choices and aggregate counters, not game assets,\nraw palettes, executable bytes or a framebuffer. Selection slices execute\nunchanged; bootstrap file/allocator/Convert construction boundaries are doubled.\nNo live game, rasterizer, Windows display or multiplayer update is executed.\n",
+  "native_selection_cases": 144,
+  "selection_mismatches": 0,
+  "stages": {
+    "01-off": {
+      "theater": 0,
+      "ore_mines": {
+        "TIBTRE01": 5,
+        "TIBTRE02": 8,
+        "TIBTRE03": 5
+      },
+      "types": {
+        "TIBTRE01": {
+          "spawns_tiberium": 1,
+          "animated": 1,
+          "frames": 22
+        },
+        "TIBTRE02": {
+          "spawns_tiberium": 1,
+          "animated": 1,
+          "frames": 22
+        },
+        "TIBTRE03": {
+          "spawns_tiberium": 1,
+          "animated": 1,
+          "frames": 22
+        }
+      },
+      "resource_converter": {
+        "vtable": "007E5358",
+        "bytes_per_pixel": 2,
+        "shade_count": 53,
+        "same_as_unit_converter": true,
+        "middle_rgb565_sha256": "ba38449979d26e231c6906ff37e4703f92712a5965aa4ad450447bd219b9c739"
+      },
+      "native_selection_cases": 48,
+      "selection_mismatches": 0,
+      "bootstrap": {
+        "file": "UNITSNO.PAL",
+        "shade_count": 53,
+        "expanded_synthetic_channels": 768,
+        "resource_aliases_unit_converter": true
+      },
+      "code_sha256": {
+        "0071C1B0-0071C35D": "e6b0e2da1828e7063088f7c7ab6fd03a65ba82fbb78e774e9281e3f488339ca5",
+        "0071C360-0071C4CD": "45d3903cb79907aacf948e9532a5238f25477d5abe0b0201f31846ca6df456b9",
+        "0052BFCE-0052C082": "299454489e60389cae293b983d2d2a8c0a41c5156df9e9320788a770fb1eec07",
+        "0052C1EA-0052C200": "03dbcf033bdd93ffdf68c3150b2ff88f9c3979758279e62b746a4c3aeda96c9a"
+      }
+    },
+    "02-on": {
+      "theater": 0,
+      "ore_mines": {
+        "TIBTRE01": 5,
+        "TIBTRE02": 8,
+        "TIBTRE03": 5
+      },
+      "types": {
+        "TIBTRE01": {
+          "spawns_tiberium": 1,
+          "animated": 1,
+          "frames": 22
+        },
+        "TIBTRE02": {
+          "spawns_tiberium": 1,
+          "animated": 1,
+          "frames": 22
+        },
+        "TIBTRE03": {
+          "spawns_tiberium": 1,
+          "animated": 1,
+          "frames": 22
+        }
+      },
+      "resource_converter": {
+        "vtable": "007E5358",
+        "bytes_per_pixel": 2,
+        "shade_count": 53,
+        "same_as_unit_converter": true,
+        "middle_rgb565_sha256": "ba38449979d26e231c6906ff37e4703f92712a5965aa4ad450447bd219b9c739"
+      },
+      "native_selection_cases": 48,
+      "selection_mismatches": 0,
+      "bootstrap": {
+        "file": "UNITSNO.PAL",
+        "shade_count": 53,
+        "expanded_synthetic_channels": 768,
+        "resource_aliases_unit_converter": true
+      },
+      "code_sha256": {
+        "0071C1B0-0071C35D": "e6b0e2da1828e7063088f7c7ab6fd03a65ba82fbb78e774e9281e3f488339ca5",
+        "0071C360-0071C4CD": "45d3903cb79907aacf948e9532a5238f25477d5abe0b0201f31846ca6df456b9",
+        "0052BFCE-0052C082": "299454489e60389cae293b983d2d2a8c0a41c5156df9e9320788a770fb1eec07",
+        "0052C1EA-0052C200": "03dbcf033bdd93ffdf68c3150b2ff88f9c3979758279e62b746a4c3aeda96c9a"
+      }
+    },
+    "03-off": {
+      "theater": 0,
+      "ore_mines": {
+        "TIBTRE01": 5,
+        "TIBTRE02": 8,
+        "TIBTRE03": 5
+      },
+      "types": {
+        "TIBTRE01": {
+          "spawns_tiberium": 1,
+          "animated": 1,
+          "frames": 22
+        },
+        "TIBTRE02": {
+          "spawns_tiberium": 1,
+          "animated": 1,
+          "frames": 22
+        },
+        "TIBTRE03": {
+          "spawns_tiberium": 1,
+          "animated": 1,
+          "frames": 22
+        }
+      },
+      "resource_converter": {
+        "vtable": "007E5358",
+        "bytes_per_pixel": 2,
+        "shade_count": 53,
+        "same_as_unit_converter": true,
+        "middle_rgb565_sha256": "ba38449979d26e231c6906ff37e4703f92712a5965aa4ad450447bd219b9c739"
+      },
+      "native_selection_cases": 48,
+      "selection_mismatches": 0,
+      "bootstrap": {
+        "file": "UNITSNO.PAL",
+        "shade_count": 53,
+        "expanded_synthetic_channels": 768,
+        "resource_aliases_unit_converter": true
+      },
+      "code_sha256": {
+        "0071C1B0-0071C35D": "e6b0e2da1828e7063088f7c7ab6fd03a65ba82fbb78e774e9281e3f488339ca5",
+        "0071C360-0071C4CD": "45d3903cb79907aacf948e9532a5238f25477d5abe0b0201f31846ca6df456b9",
+        "0052BFCE-0052C082": "299454489e60389cae293b983d2d2a8c0a41c5156df9e9320788a770fb1eec07",
+        "0052C1EA-0052C200": "03dbcf033bdd93ffdf68c3150b2ff88f9c3979758279e62b746a4c3aeda96c9a"
+      }
+    }
+  },
+  "game_tested": false,
+  "windows_rendering_tested": false,
+  "multiplayer_tested": false
+}

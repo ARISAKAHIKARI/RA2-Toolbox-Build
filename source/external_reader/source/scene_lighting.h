@@ -85,6 +85,22 @@ template<class Read>State at(Read read,int x,int y,int z,const State&fallback,bo
  if(!terrain&&p&&read(p+0x140,&flags,4)&&(flags&0x80)&&read(p+0x11B,&level,1)&&read(0x89E7C0,&height,4)&&height>0&&height<=1024&&z>=(int(level)+4)*height-1)layer=Layer::Bridge;
  return cell(read,p,fallback,layer,localTint);
 }
+template<class Read>bool spawnsTiberium(Read read,uint32_t type){
+ uint8_t value=0;return type>=0x10000&&type<=0xfffffd4eu&&read(type+0x2B1,&value,1)&&value;
+}
+// 71C280/71C40F: ore-producing terrain uses the global resource drawer and
+// object intensity. Ordinary trees use the cell's ISO drawer/terrain intensity.
+// The original resource drawer is a plain ConvertClass, with no RGB tint.
+template<class Read>State terrainObject(Read read,uint32_t type,int x,int y,int z,const State&fallback){
+ if(!spawnsTiberium(read,type))return at(read,x,y,z,fallback,true);
+ State out=cell(read,cellAt(read,x,y),fallback,Layer::Object,false);out.tint={{1000,1000,1000}};
+ uint32_t convert=0,vtable=0;int shades=0;
+ if(read(0x87F6BC,&convert,4)&&convert>=0x10000&&convert<=0xfffffe4fu){
+  if(read(convert,&vtable,4)&&vtable==0x7ED0A4)converterTint(read,convert,out.tint);
+  if(read(convert+0x16C,&shades,4)&&shades==1)out.intensity=1000;
+ }
+ return out;
+}
 template<class Read>State object(Read read,uint32_t type,uint32_t owner,int kind,int x,int y,int z,const State&fallback){
  uint8_t terrainPalette=0,voxel=0;
  if(type>=0x10000&&type<=0xfffffdc9u)read(type+0x236,&voxel,1);

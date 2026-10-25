@@ -34,9 +34,9 @@ body=r'''
 static std::map<std::string,std::vector<uint8_t>> disk;
 static int fileReads=0;
 static std::vector<uint8_t> memory(0x1000000);
-static DWORD clockValue=1000,pid=1;static uint32_t commandMatch(){return 1;}
+static DWORD clockValue=1000,pid=1;static bool imagePathAvailable=true;static uint32_t commandMatch(){return 1;}
 namespace external {struct ReadSession {
- bool imagePath(wchar_t*p,DWORD*n){std::wcscpy(p,L"C:\\Game\\gamemd.exe");*n=std::wcslen(p);return true;}
+ bool imagePath(wchar_t*p,DWORD*n){if(!imagePathAvailable)return false;std::wcscpy(p,L"C:\\Game\\gamemd.exe");*n=std::wcslen(p);return true;}
  bool readFresh(uint32_t p,void*out,size_t n){if(uint64_t(p)+n>memory.size())return false;memcpy(out,memory.data()+p,n);return true;}
 };}
 static external::ReadSession externalReader;
@@ -103,6 +103,25 @@ int main(int argc,char**argv){
  clockValue+=6000;gameassets::update();assert(gameassets::overlay(tree,0,0,image,true));assert(image.pixels[0]==external::voxel::premultiply(0xff0c1824u,1));
  assert(gameassets::overlay(ore,0,0,image));assert(image.pixels[0]==external::voxel::premultiply(0xff585858u,1));
  memcpy(memory.data()+0x7E1B78+78,"TEM",4);memcpy(memory.data()+0x7E1B78+68,"ISOTEM",7);memory[0x7E1B78+86]='T';
+ // Native Terrain.Draw selects the resource converter for SpawnsTiberium,
+ // not an ISO palette inferred from the current theater or SHP extension.
+ // The ID intentionally is not TIBTRE*: the runtime flag owns this rule.
+ constexpr uint32_t mine=0x2B8000,mineConvert=0x2C0000,minePalette=0x2C2000;
+ memcpy(memory.data()+mine+0x24,"OREMINE",8);memory[mine+0x22C]=1;memory[mine+0x2B1]=1;
+ disk["OREMINE.SNO"]=shp;disk["OREMINE.TEM"]=shp;disk["ISOSNO.PAL"]=std::vector<uint8_t>(768,17);disk["UNITSNO.PAL"]=std::vector<uint8_t>(768,29);
+ word(memory,0x87F6BC,mineConvert);word(memory,mineConvert,0x7E5358);word(memory,mineConvert+4,2);word(memory,mineConvert+0x16C,53);word(memory,mineConvert+0x174,minePalette);
+ for(int i=0;i<256;++i)half(memory,minePalette+i*2,0xBDF7);half(memory,minePalette+3*2,0xF800);
+ memcpy(memory.data()+0x7E1B78+78,"SNO",4);memcpy(memory.data()+0x7E1B78+68,"ISOSNO",7);clockValue+=6000;gameassets::update();
+ assert(gameassets::overlay(mine,0,0,image,true)&&image.pixels[0]==external::voxel::premultiply(0xFFFF0000u,1)&&"ore mine must use the native resource converter, not ISO colors");int mineY=image.y;
+ memory[mine+0x2B1]=0;assert(gameassets::overlay(mine,0,0,image,true)&&image.pixels[0]==external::voxel::premultiply(0xFF444444u,1)&&image.y==mineY+16);
+ memory[mine+0x2B1]=1;memcpy(memory.data()+0x7E1B78+78,"TEM",4);memcpy(memory.data()+0x7E1B78+68,"ISOTEM",7);
+ assert(gameassets::overlay(mine,0,0,image,true)&&image.pixels[0]==external::voxel::premultiply(0xFFFF0000u,1)&&image.y==mineY);
+ // Plain ConvertClass has no +188 raw-palette field. If its live table is
+ // unavailable, use the original initialization's UNITSNO file as fallback.
+ word(memory,mineConvert+0x174,0);assert(gameassets::overlay(mine,0,0,image,true)&&image.pixels[0]==external::voxel::premultiply(0xFF747474u,1)&&image.y==mineY);
+ word(memory,mineConvert+0x174,minePalette);word(memory,mineConvert+4,1);assert(gameassets::overlay(mine,0,0,image,true)&&image.pixels[0]==external::voxel::premultiply(0xFF747474u,1));
+ word(memory,mineConvert+4,2);word(memory,0x87F6BC,0);assert(gameassets::overlay(mine,0,0,image,true)&&image.pixels[0]==external::voxel::premultiply(0xFF747474u,1));
+ std::cout<<"PASS runtime SpawnsTiberium resource palette, ISO tree separation, native -16 offset, theater independence and safe palette fallback\n";
  // Real art through an unloaded GENERICMD archive and RULES -> ART Image aliases.
  if(argc>1){std::ifstream f(argv[1],std::ios::binary);std::vector<uint8_t> real((std::istreambuf_iterator<char>(f)),{});assert(real.size()>32);
   std::string rules="[E1]\nImage=ALIAS\n[ORE]\nTiberium=yes\n[NAWEAP]\nNoShadow=yes\n",artText="[ALIAS]\nImage=LIVEYURI\n[LIVEYURI]\nPalette=custom\n";
@@ -232,6 +251,50 @@ int main(int argc,char**argv){
  // No selected bit, memory SHP, VXL, palette or live MIX index was supplied.
  assert(memory[p+0x83]==0);disk.clear();clockValue+=6000;gameassets::update();assert(!gameassets::tile(tileType,0,colors,image));assert(gameassets::failure.find("tile-not-found:CLEAR01.TEM")==0);
  std::cout<<"PASS production file discovery, nested base/override fallback, unloaded unselected infantry at eight headings, TMP pixels and missing-resource diagnostic\n";
+ // VXL geometry can already be captured from memory when VOXELS.VPL cannot
+ // be opened from disk. The original renderer's loaded table remains the
+ // authoritative color mapping, including after a cached fallback pose.
+ gameassets::Context lighting(externalReader);lighting.identity(pid,2);
+ v.model.faces[0].normalType=4;v.model.faces[0].normalIndex=0;v.model.faces[0].hasNormal=true;
+ v.colors[1]=0xff303030;v.colors[2]=0xff4080c0;v.colors[3]=0xffc04080;v.colors[7]=0xff80c040;
+ auto checkVoxel=[&](uint8_t index){assert(lighting.renderActor(v,{},image));unsigned covered=0;
+  for(size_t i=0;i<image.pixels.size();++i)if(image.pixels[i]){++covered;assert(image.indices[i]==index&&image.pixels[i]==v.colors[index]);}
+  assert(covered>10);
+ };
+ auto liveVpl=[&](uint8_t index){word(memory,0xB2FB58,32);std::fill(memory.begin()+0xB41178,memory.begin()+0xB43178,index);};
+ auto fileVpl=[&](uint8_t index){std::vector<uint8_t>b(784+32*256,index);word(b,8,32);disk["VOXELS.VPL"]=std::move(b);};
+ assert(!lighting.voxelLight.ready()&&lighting.renderActor(v,{},image));
+ uint64_t missingRevision=lighting.revision(),vplFileRevision=lighting.files.revision();
+ liveVpl(7);clockValue+=1001;lighting.update();
+ assert(lighting.voxelLight.ready()&&"loaded native VPL must recover from an earlier missing-file fallback");
+ assert(lighting.files.revision()==vplFileRevision&&lighting.revision()!=missingRevision);checkVoxel(7);
+ uint64_t liveRevision=lighting.revision();fileVpl(2);reads=fileReads;
+ clockValue+=1001;lighting.update();checkVoxel(7);assert(lighting.revision()==liveRevision&&fileReads==reads);
+ // A live mapping change must expire old pose pixels even with identical
+ // file metadata, unit identity, heading, and normal index.
+ liveVpl(3);clockValue+=1001;lighting.update();assert(lighting.revision()!=liveRevision);checkVoxel(3);liveRevision=lighting.revision();
+ for(int i=0;i<32;++i){lighting.update();checkVoxel(3);}assert(lighting.revision()==liveRevision&&fileReads==reads);
+ // A transient invalid read keeps the last coherent table. A new match
+ // clears that snapshot and can use the independent file fallback.
+ word(memory,0xB2FB58,33);clockValue+=1001;lighting.update();assert(lighting.revision()==liveRevision);checkVoxel(3);
+ word(memory,0xB2FB58,0);lighting.identity(pid,3);checkVoxel(2);vplFileRevision=lighting.files.revision();
+ liveVpl(7);clockValue+=1001;lighting.update();assert(lighting.files.revision()==vplFileRevision);checkVoxel(7);
+ // A loose VPL can appear without any MIX stamp or directory revision.
+ word(memory,0xB2FB58,0);disk.erase("VOXELS.VPL");lighting.identity(pid,4);assert(!lighting.voxelLight.ready());
+ missingRevision=lighting.revision();vplFileRevision=lighting.files.revision();fileVpl(2);clockValue+=1001;lighting.update();
+ assert(lighting.files.revision()==vplFileRevision&&lighting.revision()!=missingRevision);checkVoxel(2);reads=fileReads;
+ clockValue+=1001;lighting.update();checkVoxel(2);assert(fileReads==reads);
+ // Both sources already exist at attach time: use the engine table directly.
+ liveVpl(7);lighting.identity(pid,5);checkVoxel(7);assert(fileReads==reads);
+ // File discovery can be unavailable while native memory remains readable.
+ // Its revision is then zero in both matches, so identity must clear VPL
+ // independently before a new process/match can inherit an old snapshot.
+ imagePathAvailable=false;lighting.identity(pid,6);assert(lighting.files.revision()==0);checkVoxel(7);
+ word(memory,0xB2FB58,0);lighting.identity(pid,7);
+ assert(!lighting.voxelLight.ready()&&"match identity must clear VPL even when file discovery has revision zero");
+ liveVpl(3);clockValue+=1001;lighting.update();checkVoxel(3);
+ word(memory,0xB2FB58,0);lighting.identity(pid+1,7);assert(!lighting.voxelLight.ready());imagePathAvailable=true;
+ std::cout<<"PASS production VPL memory priority, missing-resource retry, live/file recovery, pose revision invalidation and stable-source caching\n";
 }
 '''
 with tempfile.TemporaryDirectory() as tmp:

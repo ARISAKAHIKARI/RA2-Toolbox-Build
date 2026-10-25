@@ -16,12 +16,13 @@ static std::vector<uint8_t> memory(0x1800000);
 static uint32_t blockedAddress=0;
 static struct {bool read(uint32_t p,void*out,size_t n){if(p==blockedAddress||uint64_t(p)+n>memory.size())return false;memcpy(out,memory.data()+p,n);return true;}}externalReader;
 struct Color {template<class... T>Color(T...){}};struct SolidBrush {SolidBrush(Color){}};struct Pen {Pen(Color,float){}};struct PointF {float x,y;};struct RectF {float x,y,w,h;RectF(float a,float b,float c,float d):x(a),y(b),w(c),h(d){}};struct Bitmap {Bitmap(int,int,int,int,BYTE*){}};
-struct ColorMatrix {float m[5][5]{};};static ColorMatrix drawnMatrix;static std::vector<RectF> drawnRects;static std::vector<float> drawnGains;static std::vector<RectF> excluded;struct ImageAttributes {void SetColorMatrix(ColorMatrix*m){drawnMatrix=*m;}};
+struct ColorMatrix {float m[5][5]{};};static ColorMatrix drawnMatrix;static std::vector<RectF> drawnRects,drawnEllipses;static std::vector<float> drawnGains;static std::vector<RectF> excluded;struct ImageAttributes {void SetColorMatrix(ColorMatrix*m){drawnMatrix=*m;}};
 constexpr int PixelFormat32bppPARGB=1,CombineModeIntersect=1,CombineModeExclude=3,UnitPixel=2;
-struct Graphics {int Save(){return 0;}void Restore(int){}void SetClip(RectF r,int mode){if(mode==CombineModeExclude)excluded.push_back(r);}void TranslateTransform(float,float){}void FillRectangle(SolidBrush*,float,float,float,float){}void DrawRectangle(Pen*,float,float,float,float){}void FillPolygon(SolidBrush*,PointF*,int){}void DrawEllipse(Pen*,float,float,float,float){}void DrawImage(Bitmap*,RectF rect,float,float,float,float,int,ImageAttributes*){++draws;drawnRects.push_back(rect);drawnGains.push_back(drawnMatrix.m[0][0]);}};
+struct Graphics {int Save(){return 0;}void Restore(int){}void SetClip(RectF r,int mode){if(mode==CombineModeExclude)excluded.push_back(r);}void TranslateTransform(float,float){}void FillRectangle(SolidBrush*,float,float,float,float){}void DrawRectangle(Pen*,float,float,float,float){}void FillPolygon(SolidBrush*,PointF*,int){}void DrawEllipse(Pen*,float x,float y,float w,float h){drawnEllipses.emplace_back(x,y,w,h);}void DrawImage(Bitmap*,RectF rect,float,float,float,float,int,ImageAttributes*){++draws;drawnRects.push_back(rect);drawnGains.push_back(drawnMatrix.m[0][0]);}};
 namespace gameassets {
  static bool partial=false;
- static uint64_t revision(){return 1;}
+ static uint64_t assetGeneration=1;static uint32_t forcedColor=0;
+ static uint64_t revision(){return assetGeneration;}
  static std::wstring lightingStatus(){return L"test";}
  static std::string failure;
  struct ActorArt {external::voxel::Model model;int marker=0;};
@@ -34,7 +35,7 @@ namespace gameassets {
  static bool captureAnimation(uint32_t,uint32_t,uint32_t,uint32_t,uint32_t,ActorArt&){return false;}
  static bool captureActor(uint32_t,uint32_t,uint32_t id,ActorArt&art){++captures;if(id==1)return false;art.marker=id;return true;}
  static size_t artBytes(const ActorArt&a){return a.model.faces.size()*sizeof(external::voxel::Face);}
- static bool renderActor(const ActorArt&,const external::visual::Pose&pose,external::voxel::Image&image){++renders;image.width=image.height=2;image.incomplete=partial;uint32_t color=pose.buildingFlags||pose.doorFrame>=0?uint32_t(0xff000000|pose.buildingFlags<<8|(pose.doorFrame+1)):uint32_t(0xff000000|pose.body<<8|pose.turret);image.pixels.assign(4,color);return true;}
+ static bool renderActor(const ActorArt&,const external::visual::Pose&pose,external::voxel::Image&image){++renders;image.width=image.height=2;image.incomplete=partial;uint32_t color=pose.buildingFlags||pose.doorFrame>=0?uint32_t(0xff000000|pose.buildingFlags<<8|(pose.doorFrame+1)):uint32_t(0xff000000|pose.body<<8|pose.turret);image.pixels.assign(4,forcedColor?forcedColor:color);return true;}
 }
 #include "../source/watch_engine.h"
 struct Backend {
@@ -127,6 +128,35 @@ int main(){
  factories.actors[0].pose.variant=-1;engine.refreshAssets(factories,clockValue+=50);assert(captures==before+1&&std::get<6>(engine.displayed.at({0x160000,2001}))==-1);
  factories.actors[0].pose.doorFrame=7;gameassets::partial=true;engine.refreshAssets(factories,clockValue+=50);auto incomplete=engine.imageKey(factories.actors[0]);assert(engine.images.at(incomplete).ready&&engine.images.at(incomplete).image.incomplete&&engine.displayed.at({0x160000,2001})==incomplete);
  oldRenders=renders;before=captures;gameassets::partial=false;engine.refreshAssets(factories,clockValue+=50);assert(renders==oldRenders);engine.refreshAssets(factories,clockValue+=2000);assert(renders==oldRenders+1&&captures==before&&!engine.images.at(incomplete).image.incomplete);
+ // A unit at the top playable edge remains above the clamped camera center.
+ // Render the legal scenery beyond the usable boundary through the actual
+ // sampler and canvas: the first rows must not become an artificial black band.
+ put(external::radar::Map+0xF4,131);put(external::radar::Map+0xF8,146);put(external::radar::Map+0xFC,3);put(external::radar::Map+0x100,5);put(external::radar::Map+0x104,124);put(external::radar::Map+0x108,135);
+ put(actors[0]+0x9C,69*256+128);put(actors[0]+0xA0,73*256+128);put(actors[0]+0xA4,0);vec(0xA8EC78,0x190000,{actors[0]});
+ cell=0xD00000;for(int y=45;y<=105;++y)for(int x=40;x<=100;++x){put(cells+(y*512+x)*4,cell);put(cell+0x24,int16_t(x));put(cell+0x26,int16_t(y));put(cell+0x38,-1);put(cell+0x44,-1);put(cell+0xEC,2);put(cell+0x10C,uint16_t(1000));put(cell+0x120,int8_t(-1));put(cell+0x121,int8_t(-1));cell+=0x150;}
+ watchengine::Renderer<decltype(externalReader),Backend>::View edge;edge.shown=true;edge.frame=external::watch::sample(read,{actors[0],1},true,20);
+ assert(edge.frame.focus&&edge.frame.cameraY==2296&&edge.frame.bounds.usable(69,73));
+ drawnEllipses.clear();engine.drawView(g,edge);assert(drawnEllipses.size()==1);
+ assert(drawnEllipses[0].x+10==160&&drawnEllipses[0].y+5==52.5f);
+ for(int y=0;y<40;++y)for(int x=32;x<288;++x)assert(edge.raster.color[y*320+x]!=0xff080c08u&&"legal border scenery must fill the viewport above the playable edge");
+ // VPL content changes the asset revision without changing actor or pose.
+ // Evict both retained headings and their source art, then stay cached again.
+ {
+  engine.reset();external::watch::Frame recovery;recovery.tiles.clear();external::watch::Actor cachedActor;
+  cachedActor.kind=2;cachedActor.type=0x20000;cachedActor.owner=0x180000;cachedActor.target={0x10000,2};recovery.actors={cachedActor};
+  gameassets::forcedColor=0xff102030;engine.refreshAssets(recovery,clockValue);auto original=engine.imageKey(recovery.actors[0]);
+  recovery.actors[0].pose.body=1;engine.refreshAssets(recovery,clockValue+=10);auto other=engine.imageKey(recovery.actors[0]);
+  assert(engine.images.size()==2&&engine.actorArt.size()==1);
+  recovery.actors[0].pose.body=0;engine.refreshAssets(recovery,clockValue+=10);int oldCaptures=captures,oldRendered=renders;
+  gameassets::forcedColor=0xffa0b0c0;engine.refreshAssets(recovery,clockValue+=10);
+  assert(captures==oldCaptures&&renders==oldRendered&&engine.images.at(original).image.pixels[0]==0xff102030);
+  ++gameassets::assetGeneration;engine.refreshAssets(recovery,clockValue+=10);
+  assert(captures==oldCaptures+1&&renders==oldRendered+1&&engine.images.size()==1&&!engine.images.count(other));
+  assert(engine.actorArt.size()==1&&engine.displayed.size()==1&&engine.displayed.at({0x10000,2})==original);
+  assert(engine.images.at(original).image.pixels[0]==0xffa0b0c0);oldCaptures=captures;oldRendered=renders;
+  for(int n=0;n<20;++n)engine.refreshAssets(recovery,clockValue);
+  assert(captures==oldCaptures&&renders==oldRendered);gameassets::forcedColor=0;
+ }
  engine.enabled=false;clockValue+=50;engine.update(clockValue);assert(!engine.shown);engine.reset();assert(engine.images.empty()&&engine.actorArt.empty());
- std::cout<<"PASS 300 unique types, fair retained poses, shared assets with independent door/roof frames, buildup/body cache transition, body/turret invalidation and reset\n";
+ std::cout<<"PASS 300 unique types, retained poses, independent door/roof frames, cache transitions, clamped off-center focus with drawable border scenery and reset\n";
 }
