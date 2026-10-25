@@ -29,7 +29,6 @@ Ares 原始声明要求的鸣谢：
 - [Python](https://www.python.org/) 和 C++ 编译器：构建校验及回归测试工具。
 - [Unicorn](https://github.com/unicorn-engine/unicorn) 与 [Capstone](https://github.com/capstone-engine/capstone)：用于原版指令的受控执行和反汇编研究，不是运行工具箱的必要组件。
 
-这些工具及其附带组件的许可由各自上游提供，源码包不把它们重新授权为本项目代码。
 
 ## 游戏内容
 
