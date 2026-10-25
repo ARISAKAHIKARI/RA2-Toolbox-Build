@@ -23,9 +23,9 @@ Ares 原始声明要求的鸣谢：
 
 - [Zig](https://ziglang.org/)：固定使用 0.13.0 编译 Windows x86 程序，使用其随附的 C／C++ 工具链。
 - [Python](https://www.python.org/) 和 C++ 编译器：构建校验及回归测试工具。
-- [Unicorn](https://github.com/unicorn-engine/unicorn) 与 [Capstone](https://github.com/capstone-engine/capstone)：用于原版指令的受控执行和反汇编研究，不是运行工具箱的必要组件。
+- [Unicorn](https://github.com/unicorn-engine/unicorn) 与 [Capstone](https://github.com/capstone-engine/capstone)：用于原版指令的受控执行和反汇编研究。
 
 
 ## 游戏内容
 
-Command & Conquer、Red Alert 及游戏内容的相关权利归 Electronic Arts 和其他原权利人所有。工具箱的 GPL v3 许可不覆盖游戏可执行文件、美术、声音或用户自己的 MOD 资源。
+Command & Conquer、Red Alert 及游戏内容的相关权利归 Electronic Arts 和其他原权利人所有。
