@@ -91,8 +91,8 @@ jobs:
         run: |
           # The fixtures use assert for checks and some read/setup calls.
           # Zig's optimized Windows compile must not omit those expressions.
-          printf '#include <cassert>\n#ifdef NDEBUG\n#error Windows numerical assertions are disabled\n#endif\n' |
-            "$ZIG" c++ -target x86-windows-gnu -std=c++17 -O2 -UNDEBUG -x c++ -fsyntax-only -
+          printf '#include <cassert>\n#ifdef NDEBUG\n#error Windows numerical assertions are disabled\n#endif\n' > /tmp/windows-numerical-assert-probe.cpp
+          "$ZIG" c++ -target x86-windows-gnu -std=c++17 -O2 -UNDEBUG -c /tmp/windows-numerical-assert-probe.cpp -o /tmp/windows-numerical-assert-probe.o
           "$ZIG" c++ -target x86-windows-gnu -std=c++17 -O2 -UNDEBUG source/assist/tests/voxel_lighting.cpp -o source/voxel-lighting-test.exe
           "$ZIG" c++ -target x86-windows-gnu -std=c++17 -O2 -UNDEBUG source/assist/tests/voxel_preview.cpp -o source/voxel-preview-test.exe
           "$ZIG" c++ -target x86-windows-gnu -std=c++17 -O2 -UNDEBUG source/assist/tests/building_components.cpp -o source/building-components-test.exe
