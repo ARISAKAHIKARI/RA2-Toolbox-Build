@@ -19,6 +19,7 @@ struct ColorMatrix {float m[5][5]{};};static ColorMatrix drawnMatrix;static std:
 constexpr int PixelFormat32bppPARGB=1,CombineModeIntersect=1,CombineModeExclude=3,UnitPixel=2;
 struct Graphics {int Save(){return 0;}void Restore(int){}void SetClip(RectF r,int mode){if(mode==CombineModeExclude)excluded.push_back(r);}void TranslateTransform(float,float){}void FillRectangle(SolidBrush*,float,float,float,float){}void DrawRectangle(Pen*,float,float,float,float){}void FillPolygon(SolidBrush*,PointF*,int){}void DrawEllipse(Pen*,float,float,float,float){}void DrawImage(Bitmap*,RectF rect,float,float,float,float,int,ImageAttributes*){++draws;drawnRects.push_back(rect);drawnGains.push_back(drawnMatrix.m[0][0]);}};
 namespace gameassets {
+ static bool partial=false;
  static uint64_t revision(){return 1;}
  static std::wstring lightingStatus(){return L"test";}
  static std::string failure;
@@ -32,7 +33,7 @@ namespace gameassets {
  static bool captureAnimation(uint32_t,uint32_t,uint32_t,uint32_t,uint32_t,ActorArt&){return false;}
  static bool captureActor(uint32_t,uint32_t,uint32_t id,ActorArt&art){++captures;if(id==1)return false;art.marker=id;return true;}
  static size_t artBytes(const ActorArt&a){return a.model.faces.size()*sizeof(external::voxel::Face);}
- static bool renderActor(const ActorArt&,const external::visual::Pose&pose,external::voxel::Image&image){++renders;image.width=image.height=2;image.pixels.assign(4,uint32_t(0xff000000|pose.body<<8|pose.turret));return true;}
+ static bool renderActor(const ActorArt&,const external::visual::Pose&pose,external::voxel::Image&image){++renders;image.width=image.height=2;image.incomplete=partial;uint32_t color=pose.buildingFlags||pose.doorFrame>=0?uint32_t(0xff000000|pose.buildingFlags<<8|(pose.doorFrame+1)):uint32_t(0xff000000|pose.body<<8|pose.turret);image.pixels.assign(4,color);return true;}
 }
 #include "../source/watch_engine.h"
 struct Backend {
@@ -45,6 +46,7 @@ struct Backend {
  bool captureAnimation(uint32_t p,uint32_t t,uint32_t id,uint32_t b,uint32_t bid,ActorArt&a){return gameassets::captureAnimation(p,t,id,b,bid,a);}
  bool renderActor(const ActorArt&a,const external::visual::Pose&p,external::voxel::Image&i){return gameassets::renderActor(a,p,i);}
  int buildingFrame(uint32_t p,uint32_t t){return gameassets::buildingFrame(p,t);}
+ void buildingPose(uint32_t p,uint32_t t,external::visual::Pose&pose){pose.frame=buildingFrame(p,t);}
  static size_t cost(const ActorArt&a){return gameassets::artBytes(a);}
 } backend;
 static watchengine::Renderer<decltype(externalReader),Backend> engine(externalReader,backend);
@@ -97,6 +99,16 @@ int main(){
  auto&secondImage=engine.images[engine.imageKey(second)];secondImage.ready=true;secondImage.image=firstImage.image;secondImage.image.pixels.assign(8,0xff20b0e0);secondImage.image.depth.assign(8,3);
  engine.drawView(g,engine.views[0]);assert(canvas.color[128*320+160]==0xffe04020&&canvas.color[128*320+161]==0xff20b0e0);
  auto read=[](uint32_t p,void*out,size_t n){return externalReader.read(p,out,n);};put(0x900140,0x80u);put(0x9102A8,uint8_t(1));assert(external::watch::overlayOffset(read,0x900000,0x910000,1,9)==-43);put(0x900140,0u);assert(external::watch::overlayOffset(read,0x900000,0x910000,239,0)==-27);
+ // Same type/owner and body frame may have independent factory door/roof
+ // states. Share source bytes while retaining separate rendered poses.
+ external::watch::Frame factories;factories.tiles.clear();external::watch::Actor fa;fa.kind=3;fa.type=0xB00000;fa.owner=0x180000;fa.target={0x160000,2001};fa.pose.buildingFlags=3;fa.pose.doorFrame=2;auto fb=fa;fb.target={0x161000,2002};fb.pose.doorFrame=6;factories.actors={fa,fb};
+ before=captures;oldRenders=renders;engine.refreshAssets(factories,clockValue+=50);assert(captures==before+1&&renders==oldRenders+2);assert(engine.imageKey(fa)!=engine.imageKey(fb));assert(engine.images.at(engine.imageKey(fa)).image.pixels!=engine.images.at(engine.imageKey(fb)).image.pixels);
+ before=captures;oldRenders=renders;engine.refreshAssets(factories,clockValue+=50);assert(captures==before&&renders==oldRenders);
+ factories.actors[0].pose.buildingFlags=7;engine.refreshAssets(factories,clockValue+=50);assert(captures==before&&renders==oldRenders+1);
+ factories.actors[0].pose.variant=-2;engine.refreshAssets(factories,clockValue+=50);assert(captures==before+1&&std::get<6>(engine.displayed.at({0x160000,2001}))==-2);
+ factories.actors[0].pose.variant=-1;engine.refreshAssets(factories,clockValue+=50);assert(captures==before+1&&std::get<6>(engine.displayed.at({0x160000,2001}))==-1);
+ factories.actors[0].pose.doorFrame=7;gameassets::partial=true;engine.refreshAssets(factories,clockValue+=50);auto incomplete=engine.imageKey(factories.actors[0]);assert(engine.images.at(incomplete).ready&&engine.images.at(incomplete).image.incomplete&&engine.displayed.at({0x160000,2001})==incomplete);
+ oldRenders=renders;before=captures;gameassets::partial=false;engine.refreshAssets(factories,clockValue+=50);assert(renders==oldRenders);engine.refreshAssets(factories,clockValue+=2000);assert(renders==oldRenders+1&&captures==before&&!engine.images.at(incomplete).image.incomplete);
  engine.enabled=false;clockValue+=50;engine.update(clockValue);assert(!engine.shown);engine.reset();assert(engine.images.empty()&&engine.actorArt.empty());
- std::cout<<"PASS 300 unique types regardless of selection, failed-focus fairness, actual-image-only drawing, body/turret cache invalidation without asset reload, reset\n";
+ std::cout<<"PASS 300 unique types, fair retained poses, shared assets with independent door/roof frames, buildup/body cache transition, body/turret invalidation and reset\n";
 }

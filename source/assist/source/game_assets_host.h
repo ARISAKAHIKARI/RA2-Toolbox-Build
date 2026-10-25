@@ -12,6 +12,7 @@ static void resolveCameo(um::Type&t){update();context.resolveCameo(t);}
 static std::string text(uint32_t p,unsigned n){return context.text(p,n);}
 static bool palette(bool iso,std::array<uint32_t,256>&p){return context.palette(iso,p);}
 static int buildingFrame(uint32_t p,uint32_t t){return context.buildingFrame(p,t);}
+static void buildingPose(uint32_t p,uint32_t t,external::visual::Pose&pose){context.buildingPose(p,t,pose);}
 static bool overlay(uint32_t t,uint32_t p,int f,external::voxel::Image&i,bool terrain=false){return context.overlay(t,p,f,i,terrain);}
 static bool sprite(uint32_t t,uint32_t p,const std::array<uint32_t,256>&c,int f,external::voxel::Image&i){return context.sprite(t,p,c,f,i);}
 static bool tile(uint32_t t,unsigned s,const std::array<uint32_t,256>&p,external::voxel::Image&i){return context.tile(t,s,p,i);}

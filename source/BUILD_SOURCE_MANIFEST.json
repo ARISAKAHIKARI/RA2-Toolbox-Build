@@ -1,12 +1,12 @@
 {
-  "name": "RA2 Toolbox 1.0.37-pre.5",
-  "version": "1.0.37-pre.5",
+  "name": "RA2 Toolbox 1.0.38-pre.4",
+  "version": "1.0.38-pre.4",
   "compiled_game_binary_included": false,
-  "source": "Published v1.0.37-zoom.1 plus plain-left manual ownership, formation follow-up and encrypted/nested MIX fixes",
+  "source": "Published v1.0.38-pre.3 plus native voxel lighting/model coordinates and independent building components",
   "resources": "Update package reuses existing assets/profiles/preprocessing runtime/engine",
   "resources_legacy_reuse": true,
-  "build_protocol": 65,
-  "validation": "REVIEW-1.0.37-pre.5.md and verification/review-137-pre5; controlled x86 + portable + PE/ABI; no live game or netplay certification",
+  "build_protocol": 72,
+  "validation": "packages/v1.0.38-pre.4/RELEASE_NOTES.md; research/2026-10-25-native-voxel-light-direction.md; research/2026-10-25-native-building-components.md; release-manifest.json records exact Windows validation run and paired artifact hashes",
   "build_requirement": "Zig 0.13.0, x86 Windows target; build EXE and GameRuntime.dll together",
   "settings": {
     "Orders.MegaMissionBackend": "0=constructor; 1=high-level MP; SP uses constructor/DoList centrally",
@@ -16,7 +16,7 @@
   "entry_manager_api": 3,
   "package_type": "Paired Windows x86 EXE/DLL update plus separate tracked-source archive",
   "runtime_transport_protocol": 4,
-  "game_code_patching": "Retains existing experimental hooks; pre.5 adds no gameplay code patches",
+  "game_code_patching": "Existing experimental hooks retained; pre.4 rendering changes are external and add no game code patches",
   "input_entry": "Manager WH_GETMESSAGE / WH_CALLWNDPROCRET only; features have no independent hooks",
   "symbolic_original_interfaces": [
     "DisplayClass::ProcessClickCoords (0x692300), normal query call",
@@ -30,9 +30,9 @@
     "TacticalClass::SetTacticalPosition (0x6D6000), native camera update",
     "GScreenClass::Render (0x4F4480), native composition and presentation"
   ],
-  "release_status": "1.0.37-pre.5 prerelease; paired EXE and DLL required",
+  "release_status": "1.0.38-pre.4 prerelease; paired EXE and DLL required",
   "technology_experiment": "Native AddCameo + two local UI CanBuild limit-only callsite wrappers; native factories/events unchanged; no live purchase/netplay certification",
   "calculation_locations": "Thirteen tactical decision families selectable; native queries/events always GameRuntime; statistics/reservations/display external.",
-  "player_control": "Experimental shared control/enemy Sell retained; current-player switching disabled",
-  "refresh_experiment": "Cursor, cursor + scrolling, all and forced native refresh retained; CnC-DDraw experimental view zoom retained"
+  "player_control": "Experimental shared control retained; current-player switching and enemy-building Sell disabled",
+  "refresh_experiment": "Cursor high refresh enabled; scene/forced refresh and view zoom entries disabled"
 }

@@ -1,5 +1,6 @@
 #pragma once
 #include "game_view.h"
+#include "building_components.h"
 namespace external { namespace visual {
 constexpr double Pi=3.14159265358979323846;
 // FacingClass::Current (4C93D0): interpolate the signed shortest turn using
@@ -17,7 +18,7 @@ inline unsigned bucket(uint16_t raw){return ((unsigned(raw)+1024)>>11)&31;}
 // isometric projection with this positive world-space angle, not its inverse.
 inline double radians(unsigned direction){return (int(direction)-8)*(2*Pi/32);}
 inline unsigned previewBody(int heading){return unsigned(8+heading)&31;}
-struct Pose {uint8_t body=0,turret=0;int frame=0,variant=-1;};
+struct Pose {uint8_t body=0,turret=0;int frame=0,variant=-1,buildingFlags=0,doorFrame=-1;};
 template<class Read>int infantryFrame(GameView<Read>&g,uint32_t type,int sequence,int stage,unsigned body){
  uint32_t list=g.template get<uint32_t>(type+0xE3C);if(sequence<0||sequence>=42||list<0x10000)return -1;
  uint32_t s=list+uint32_t(sequence)*36;int start=g.template get<int>(s,-1),count=g.template get<int>(s+4),stride=g.template get<int>(s+8);
@@ -46,7 +47,7 @@ template<class Read>Pose pose(GameView<Read>&g,uint32_t p,uint32_t type,int kind
   else if(stand>0)out.frame=g.template get<int>(type+0xE28)+dir*stand;
   else out.frame=g.template get<int>(type+0xE2C)+dir*std::max(0,walk)+std::max(0,g.template get<int>(p+0x538))%std::max(1,walk);
  }
- if(kind==3&&g.template get<int>(p+0x534)==0)out.variant=-2;
+ if(kind==3&&buildings::buildup(g,p))out.variant=-2;
  if(out.frame<0||out.frame>=8192)out.frame=-1;return out;
 }
 }}

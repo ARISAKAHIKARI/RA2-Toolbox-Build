@@ -21,14 +21,14 @@ View views[external::watch::MaximumWindows];
 external::watch::Target automatic;bool autoSuppressed=false;
 struct Cached {external::voxel::Image image;DWORD retry=0;uint64_t used=0;bool ready=false;std::string issue;};
 using ArtKey=std::tuple<uint32_t,uint32_t,int,int>;
-using ImageKey=std::tuple<uint32_t,uint32_t,int,int,int,int,int>;
+using ImageKey=std::tuple<uint32_t,uint32_t,int,int,int,int,int,int,int>;
 struct ArtCached {typename Assets::ActorArt art;DWORD retry=0;bool ready=false;std::string issue;};
 std::map<ArtKey,ArtCached> actorArt;
 std::map<ImageKey,Cached> images;
 std::map<std::pair<uint32_t,uint32_t>,ImageKey> displayed;
 size_t actorCursor=0;DWORD diagnosticAt=0;uint64_t assetRevision=0;
 ArtKey artKey(const external::watch::Actor&a){return {a.type,a.owner,a.kind,a.pose.variant};}
-ImageKey imageKey(const external::watch::Actor&a){return {a.type,a.owner,a.kind,a.kind==4?0:a.pose.body,a.kind==4?0:a.pose.turret,a.kind==4?a.stage:a.pose.frame,a.pose.variant};}
+ImageKey imageKey(const external::watch::Actor&a){return {a.type,a.owner,a.kind,a.kind==4?0:a.pose.body,a.kind==4?0:a.pose.turret,a.kind==4?a.stage:a.pose.frame,a.pose.variant,a.pose.buildingFlags,a.pose.doorFrame};}
 std::map<std::pair<uint32_t,uint32_t>,Cached> tiles,overlays;
 std::array<uint32_t,256> terrainPalette{};
 external::lighting::State sceneLight;
@@ -74,7 +74,7 @@ void refreshAssets(external::watch::Frame&frame,DWORD now){
  int work=0;DWORD started=GetTickCount();size_t n=frame.actors.size();
  for(size_t scanned=0;scanned<n;++scanned){
   const auto&a=frame.actors[actorCursor++%n];auto&c=images[imageKey(a)];c.used=++serial;
-  if(c.ready||(c.retry&&int32_t(now-c.retry)<0))continue;
+  if((c.ready&&!c.image.incomplete)||(c.retry&&int32_t(now-c.retry)<0))continue;
   if(work>=16||(work&&DWORD(GetTickCount()-started)>=6))break;
   ++work;external::voxel::Image image;bool ok=false;
   if(a.kind==4){uint32_t shp=0;read(a.type+0xA4,&shp,4);ok=assets.overlay(a.type,shp,a.stage,image,true);}
@@ -86,9 +86,10 @@ void refreshAssets(external::watch::Frame&frame,DWORD now){
    }
    if(source.ready)ok=assets.renderActor(source.art,a.pose,image);else assets.failure=source.issue;
   }
-  c.issue=ok?"":assets.failure;c.retry=ok?0:now+2000;if(!ok)continue;
-  if(pixels+external::camera::pixels(image)>32*1024*1024){c.retry=now+2000;continue;}
-  pixels+=image.pixels.size();
+  c.issue=ok&&!image.incomplete?"":assets.failure;c.retry=ok&&!image.incomplete?0:now+2000;if(!ok)continue;
+  size_t previous=external::camera::pixels(c.image),next=external::camera::pixels(image);
+  if(pixels-previous+next>32*1024*1024){c.retry=now+2000;continue;}
+  pixels=pixels-previous+next;
   external::camera::opaque(image);
   c.image=std::move(image);c.ready=true;
  }
@@ -116,7 +117,7 @@ void update(uint32_t now){
   bool targetChanged=!(target==v.frame.focus);
   if(targetChanged||frame!=v.sampleFrame||reveal!=v.reveal||!external::watch::refresh(read,v.frame))v.frame=external::watch::sample(read,target,reveal,20);
   if(targetChanged&&v.motion)v.motion->clear();v.sampleFrame=frame;v.reveal=reveal;v.shown=bool(v.frame.focus);
-  if(v.shown){for(auto&a:v.frame.actors)if(a.kind==3)a.pose.frame=assets.buildingFrame(a.target.pointer,a.type);updateMotion(v,now,frame);++v.revision;}else{v.positions.clear();if(v.motion)v.motion->clear();}
+  if(v.shown){for(auto&a:v.frame.actors)if(a.kind==3)assets.buildingPose(a.target.pointer,a.type,a.pose);updateMotion(v,now,frame);++v.revision;}else{v.positions.clear();if(v.motion)v.motion->clear();}
   if(v.shown){resources.light=v.frame.light;resources.tiles.insert(resources.tiles.end(),v.frame.tiles.begin(),v.frame.tiles.end());resources.actors.insert(resources.actors.end(),v.frame.actors.begin(),v.frame.actors.end());}
  }
  arrange();if(shown)refreshAssets(resources,now);
