@@ -23,7 +23,7 @@ static void servicePointer(){
  if(ack!=box.ack){ack=box.ack;MemoryBarrier();
   if(box.intent.operation==pointerinput::C4Test){
    infantryEntryResultMatch=box.intent.match;
-   infantryEntryResult=L"命令已入队 "+std::to_wstring(std::max(0,box.accepted))+L" 个";
+   infantryEntryResult=std::wstring(pointerinput::entryLabel((box.intent.bindings&pointerinput::EntrySabotage)?1:0))+L"：命令已入队 "+std::to_wstring(std::max(0,box.accepted))+L" 个";
    if(box.result==-8)infantryEntryResult+=L"；未点中建筑";
    else if(box.result==-4)infantryEntryResult+=L"；点击位置或对象已变化";
    else if(box.result==-7)infantryEntryResult+=L"；输入已过期或被新操作取消";
@@ -73,7 +73,7 @@ static void servicePointer(){
   bindings,saleEnabled,extra.allHotkeys,routes);
  if(airway::active()&&!airway::ended&&airway::selectedAircraft()&&airway::held(e.keys)&&(e.operation==4||e.operation==6||e.operation==7)){routes[0]={pointerinput::AirWaypoint,e.operation==4?uint32_t(pointerinput::RightClick):uint32_t(pointerinput::LeftClick)};routeCount=1;}
  if(extra.c4Test&&extra.c4Mouse&&uint32_t(e.operation==7?6:e.operation)==extra.c4Mouse&&pointerinput::matchesHold(e.keys,extra.c4Key,pointerinput::Enhanced)){
-  pointerinput::MouseRoute test{pointerinput::C4Test,pointerinput::PerFeatureMouse|(extra.c4Mouse==4?uint32_t(pointerinput::RightClick):extra.c4Mouse==6?uint32_t(pointerinput::LeftClick):0)};
+  pointerinput::MouseRoute test{pointerinput::C4Test,pointerinput::PerFeatureMouse|(extra.c4Mode==1?uint32_t(pointerinput::EntrySabotage):0)|(extra.c4Mouse==4?uint32_t(pointerinput::RightClick):extra.c4Mouse==6?uint32_t(pointerinput::LeftClick):0)};
   if(extra.allHotkeys&&routeCount&&routes[0].operation!=pointerinput::FollowNative)routes[routeCount++]=test;else{routes[0]=test;routeCount=1;}
  }
  if(playertest::Available&&extra.controlAll&&e.keys[VK_MENU]&&!e.keys[VK_CONTROL]&&(e.operation==7||e.operation==6||e.operation==4)){routes[0]={e.operation==4?pointerinput::PlayerOrder:pointerinput::PlayerSelect,(e.keys[VK_SHIFT]?uint32_t(pointerinput::Shift):0)};routeCount=1;}
@@ -109,5 +109,6 @@ static void servicePointer(){
  pointerMatches.begin(in,routes,routeCount,settingsRevision);pointerMatches.cooperativeBefore=shared->cooperativeRequest.serial;
  box.intent=pointerMatches.next();MemoryBarrier();InterlockedIncrement((volatile LONG*)&box.request);wakeGame();
 }
+
 
 

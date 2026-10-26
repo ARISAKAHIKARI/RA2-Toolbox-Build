@@ -29,12 +29,14 @@ static void loadAdditionalSettings(){
  extra.burstEnabled=extra.burstHoldEnabled=false;extra.burstKey=0; // Retired: ignore old INI values.
  extra.missileScope=std::clamp(value(L"MissileDefense",L"TargetScope",0),0,1);extra.missileAllocation=std::clamp(value(L"MissileDefense",L"Allocation",0),0,1);extra.magnetronGlobal=value(L"Magnetron",L"Global",0)!=0;
  extra.missileDefense=value(L"MissileDefense",L"Enabled",0)!=0;extra.missileScanHz=std::clamp(value(L"MissileDefense",L"ScanHz",10),1,60);
+ extra.missileReserve=value(L"MissileDefense",L"SleepReserve",1)!=0;extra.lowDamageFilter=value(L"Combat",L"FilterLowDamage",0)!=0;extra.lowDamageNetwork=value(L"Combat",L"NativeFilterInMultiplayer",0)!=0;
  extra.antiTheft=value(L"Modes",L"AntiTheft",0)!=0;
  extra.scrollRefreshMode=0; // only cursor refresh is available in this release
 #ifndef RA2_UNIFIED
  extra.scrollRefreshHz=std::clamp(value(L"Experimental",L"ScrollRefreshHz",120),30,500);
 #endif
  extra.c4Test=value(L"Experimental",L"InfantryC4",0)!=0;
+ extra.c4Mode=uint32_t(std::clamp(value(L"Experimental",L"InfantryEntryMode",0),0,1));
  extra.c4Key=value(L"Experimental",L"C4HoldKey",'C'|(4<<8));extra.c4Mouse=std::clamp(value(L"Experimental",L"C4Mouse",1),0,6);if(extra.c4Mouse==5)extra.c4Mouse=1;
  for(int i=0;i<9;++i)socialKeys[i]=WORD(value(L"Hotkeys",i?(L"Taunt"+std::to_wstring(i)).c_str():L"Cheer",0)&65535);
  extra.mapStrategy=std::clamp(value(L"Display",L"ShroudStrategy",value(L"Experimental",L"RenderReveal",0)?2:0),0,4);
@@ -101,12 +103,13 @@ static bool saveAdditionalSettings(){
  write(L"BurstRefresh",L"Enabled",0);write(L"BurstRefresh",L"HoldEnabled",0);write(L"BurstRefresh",L"HoldKey",0);
  write(L"MissileDefense",L"TargetScope",extra.missileScope);write(L"MissileDefense",L"Allocation",extra.missileAllocation);write(L"Magnetron",L"Global",extra.magnetronGlobal);
  write(L"MissileDefense",L"Enabled",extra.missileDefense);write(L"MissileDefense",L"ScanHz",extra.missileScanHz);
+ write(L"MissileDefense",L"SleepReserve",extra.missileReserve);write(L"Combat",L"FilterLowDamage",extra.lowDamageFilter);write(L"Combat",L"NativeFilterInMultiplayer",extra.lowDamageNetwork);
  write(L"Modes",L"AntiTheft",extra.antiTheft);WritePrivateProfileStringW(L"Experimental",L"RevealMap",nullptr,path(L"Assist.ini").c_str());
  write(L"Experimental",L"RefreshStrategy",extra.scrollRefreshMode);
 #ifndef RA2_UNIFIED
  write(L"Experimental",L"ScrollRefreshHz",extra.scrollRefreshHz);
 #endif
- write(L"Experimental",L"InfantryC4",extra.c4Test);write(L"Experimental",L"C4HoldKey",extra.c4Key);write(L"Experimental",L"C4Mouse",extra.c4Mouse);
+ write(L"Experimental",L"InfantryC4",extra.c4Test);write(L"Experimental",L"C4HoldKey",extra.c4Key);write(L"Experimental",L"C4Mouse",extra.c4Mouse);write(L"Experimental",L"InfantryEntryMode",extra.c4Mode);
  write(L"Experimental",L"RenderReveal",extra.renderReveal);write(L"Experimental",L"NativeAirWaypoints",extra.nativeAirWaypoints);write(L"Aircraft",L"ZWaypoints",extra.airWaypoints);write(L"Aircraft",L"WaypointMode",airpathpolicy::mode(extra.airWaypoints,extra.nativeAirWaypoints,extra.nativeAirNetwork));write(L"Aircraft",L"WaypointHoldKey",extra.airPathKey);write(L"Production",L"ReserveNext",extra.constructionQueue);write(L"Production",L"ReminderLines",extra.productionReminderMask);write(L"Display",L"EnemyMarkers",extra.enemyMarkers);write(L"Display",L"IdleAircraftIndicator",extra.idleAircraft);
  write(L"Display",L"ParasiteMarker",extra.parasiteMarker);write(L"Display",L"CrateBuffMarkers",extra.crateBuffMarkers);
  write(L"Hotkeys",L"ExecuteAllMatches",extra.allHotkeys);write(L"Mouse",L"OverrideNative",extra.overrideNative);
@@ -154,7 +157,7 @@ static void syncAdditional(){
  shared->placementImplementation=extra.placementImplementation;shared->techEnhance=extra.techEnhance;
  shared->nativeAirNetwork=extra.nativeAirNetwork;
  InterlockedIncrement(&shared->formationPolicySeq);shared->formationPolicy.enabled=extra.formationEnabled;shared->formationPolicy.hold=extra.formationHold;shared->formationPolicy.mouse=extra.formationMouse;memcpy(shared->formationPolicy.keys,extra.formationKeys,sizeof extra.formationKeys);MemoryBarrier();InterlockedIncrement(&shared->formationPolicySeq);
- syncRefreshRate();shared->magnetronDrop=extra.magnetronDrop;shared->dodgeEnabled=extra.dodgeEnabled;shared->dodgeMode=extra.dodgeMode;shared->burstEnabled=shared->burstHoldEnabled=shared->burstHeld=0;shared->missileScope=extra.missileScope;shared->missileAllocation=extra.missileAllocation;shared->magnetronGlobal=extra.magnetronGlobal;shared->missileEnabled=extra.missileDefense;shared->missileScanHz=extra.missileScanHz;shared->controlAll=extra.controlAll;shared->switchPlayerEnabled=extra.switchPlayerEnabled;shared->computeRequested=computeRequested;shared->advancedScanHz=advancedScanHz;shared->advancedPriority=advancedTargetPriority;shared->c4Test=extra.c4Test;shared->renderReveal=extra.renderReveal;shared->loadMode=extra.loadMode;shared->loadRadius=extra.loadRadius;shared->enterKey=extra.enterKey;shared->airKey1=extra.airKey1;shared->airKey2=extra.airKey2;
+ shared->missileReserve=extra.missileReserve;shared->lowDamageFilter=extra.lowDamageFilter;shared->lowDamageNetwork=extra.lowDamageNetwork;syncRefreshRate();shared->magnetronDrop=extra.magnetronDrop;shared->dodgeEnabled=extra.dodgeEnabled;shared->dodgeMode=extra.dodgeMode;shared->burstEnabled=shared->burstHoldEnabled=shared->burstHeld=0;shared->missileScope=extra.missileScope;shared->missileAllocation=extra.missileAllocation;shared->magnetronGlobal=extra.magnetronGlobal;shared->missileEnabled=extra.missileDefense;shared->missileScanHz=extra.missileScanHz;shared->controlAll=extra.controlAll;shared->switchPlayerEnabled=extra.switchPlayerEnabled;shared->computeRequested=computeRequested;shared->advancedScanHz=advancedScanHz;shared->advancedPriority=advancedTargetPriority;shared->c4Test=extra.c4Test;shared->renderReveal=extra.renderReveal;shared->loadMode=extra.loadMode;shared->loadRadius=extra.loadRadius;shared->enterKey=extra.enterKey;shared->airKey1=extra.airKey1;shared->airKey2=extra.airKey2;
  static uint32_t publishedSettings=~0u;
  if(!shared->quotaConfigSeq||publishedSettings!=settingsRevision){publishedSettings=settingsRevision;
   InterlockedIncrement(&shared->quotaConfigSeq);auto&c=shared->quotaConfig;c.defaults=extra.defaults;c.count=0;

@@ -4,6 +4,9 @@
 extern "C" int __cdecl GuardedRiskAction(unsigned,unsigned,unsigned);
 static bool riskControlActive;
 static bool riskPlacementActive=false,riskAirActive=false,riskRenderActive=false,riskC4Active=false;
+static bool riskLowDamageActive=false;
+static bool riskLowDamageAllHouses=false;
+static const double lowDamageThreshold=0.02;
 static bool riskRenderRedrawPending=false;
 static bool riskContextReady(bool captured=false){
  if((!captured&&!gameentry::active(gameentry::Client::Assist))||fault||!lastHouse||!get<bool>(0xA8E9A0))return false;
@@ -335,6 +338,31 @@ static __declspec(naked) void riskControlOwnerEntry(){__asm {
  sete al
  ret
 }}
+// Keep the native x87 pop/condition path, correcting only the automatic
+// acquisition threshold for the local House. Explicit Attack does not use it.
+static __declspec(naked) void riskLowDamageEntry(){__asm {
+ pushfd
+ push eax
+ cmp byte ptr [riskLowDamageActive],0
+ je original
+ cmp byte ptr [riskLowDamageAllHouses],0
+ jne filtered
+ mov eax,[edi+21Ch]
+ cmp eax,dword ptr ds:[0A83D4Ch]
+ jne original
+filtered:
+ pop eax
+ popfd
+ fcomp qword ptr [lowDamageThreshold]
+ push 6F7D4Ah
+ ret
+original:
+ pop eax
+ popfd
+ fcomp dword ptr ds:[7F4E38h]
+ push 6F7D4Ah
+ ret
+}}
 struct RiskSite {uint32_t address;unsigned size;uint8_t before[16],after[16];};
 static RiskSite riskSites[]={
  {experimentalpatch::Placement,5,{0xA1,0x4C,0x3D,0xA8,0},{}},
@@ -345,10 +373,11 @@ static RiskSite riskSites[]={
  {experimentalpatch::C4Execution,6,{0x8A,0x81,0xC2,0x0E,0,0},{}},
  {experimentalpatch::TechDraw,5,{0xE8,0x99,0xE0,0xE4,0xFF},{}},
  {experimentalpatch::TechPrune,5,{0xE8,0xEA,0xD0,0xE4,0xFF},{}},
- {experimentalpatch::C4Movement,6,{0x8A,0x81,0xC2,0x0E,0,0},{}}
+ {experimentalpatch::C4Movement,6,{0x8A,0x81,0xC2,0x0E,0,0},{}},
+ {experimentalpatch::LowDamage,6,{0xD8,0x1D,0x38,0x4E,0x7F,0},{}}
 };
 static void prepareRiskSites(){static bool ready=false;if(ready)return;ready=true;
- const uint32_t targets[]={uint32_t(uintptr_t(&riskPlacementEntry)),uint32_t(uintptr_t(&riskAirTypeEntry)),uint32_t(uintptr_t(&riskAirArrivalEntry)),uint32_t(uintptr_t(&riskShroudEntry)),uint32_t(uintptr_t(&riskFogEntry)),uint32_t(uintptr_t(&riskC4Entry)),uint32_t(uintptr_t(&riskTechEntry)),uint32_t(uintptr_t(&riskTechEntry)),uint32_t(uintptr_t(&riskC4MovementEntry))};
+ const uint32_t targets[]={uint32_t(uintptr_t(&riskPlacementEntry)),uint32_t(uintptr_t(&riskAirTypeEntry)),uint32_t(uintptr_t(&riskAirArrivalEntry)),uint32_t(uintptr_t(&riskShroudEntry)),uint32_t(uintptr_t(&riskFogEntry)),uint32_t(uintptr_t(&riskC4Entry)),uint32_t(uintptr_t(&riskTechEntry)),uint32_t(uintptr_t(&riskTechEntry)),uint32_t(uintptr_t(&riskC4MovementEntry)),uint32_t(uintptr_t(&riskLowDamageEntry))};
  for(unsigned i=0;i<sizeof(riskSites)/sizeof(riskSites[0]);++i){auto&s=riskSites[i];
   if(s.size==4)memcpy(s.after,&targets[i],4);
   else{memset(s.after,0x90,s.size);s.after[0]=experimentalpatch::callSite(s.address)?0xE8:0xE9;uint32_t offset=targets[i]-s.address-5;memcpy(s.after+1,&offset,4);}
@@ -419,7 +448,7 @@ static void restoreSmallMapCamera(),restoreHighScroll();
 static void restorePlacement(){
  restoreSmallMapCamera();restoreHighScroll();
  const bool wasRendered=riskRenderActive;
- riskPlacementActive=riskAirActive=riskRenderActive=riskC4Active=false;prepareRiskSites();
+ riskPlacementActive=riskAirActive=riskRenderActive=riskC4Active=riskLowDamageActive=riskLowDamageAllHouses=false;prepareRiskSites();
  controlSitesTick(false);
  bool directPlace=directGroupRestore(directpatch::Group::Placement);
  bool directMap=directGroupRestore(directpatch::Group::Map);
@@ -430,6 +459,7 @@ static void restorePlacement(){
  snap.renderRevealStatus=shroud&&fog&&directMap?0:-2;
  bool c4Arrival=restoreRiskSite(riskSites[5]),c4Movement=restoreRiskSite(riskSites[8]);
  snap.c4TestStatus=c4Arrival&&c4Movement?0:-2;
+ if(sh)sh->lowDamageStatus=restoreRiskSite(riskSites[9])?0:-2;
  // Stop/host exit still needs one native redraw after restoring the leaves.
  // A destroyed, changed, paused or faulted world must never be called here.
  riskRenderRedrawPending=riskRenderRedrawPending||wasRendered;
@@ -445,9 +475,15 @@ static bool redrawRevealTest(){
 }
 static void placementTick(){
  prepareRiskSites();
+ riskLowDamageActive=false;
+ bool lowRequested=sh->lowDamageFilter&&(eventdelivery::isSingleplayer(get<int>(0xA8B238))||sh->lowDamageNetwork);
+ bool lowOK=lowRequested?installRiskSite(riskSites[9]):restoreRiskSite(riskSites[9]);
+ riskLowDamageActive=lowRequested&&lowOK;
+ riskLowDamageAllHouses=riskLowDamageActive&&eventdelivery::isMultiplayer(get<int>(0xA8B238));
+ sh->lowDamageStatus=!lowOK?-2:!sh->lowDamageFilter?0:riskLowDamageActive?1:2;
  static uint32_t priorStrategy=0;
  bool priorRender=riskRenderActive;controlSitesTick(sh->controlAll!=0);
- // Infantry entry is now an ordinary planning event. Never install either
+ // Infantry entry uses ordinary task/planning events. Never install either
  // capability override, including when an older configuration enables C4Test.
  riskC4Active=false;
  {bool a=restoreRiskSite(riskSites[5]),b=restoreRiskSite(riskSites[8]);snap.c4TestStatus=!a||!b?-2:sh->c4Test?1:0;}

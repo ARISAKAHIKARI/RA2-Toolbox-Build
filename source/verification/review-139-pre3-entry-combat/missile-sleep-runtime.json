@@ -1,0 +1,168 @@
+{
+  "scope": "Compiled fire-control Sleep/Attack/Guard transitions and native constructors.\n\nWorld, range and event consumption are controlled fixtures, not a real game,\nprojectile hit certification or network delivery test.\n",
+  "dll_sha256": "712bc93f269555bed113a319cfb544ed41cf0eed7e3d0eb6c440d2fc36b22e7e",
+  "game_tested": false,
+  "multiplayer_tested": false,
+  "results": [
+    {
+      "case": "0_False_approach",
+      "status": "PASS"
+    },
+    {
+      "case": "0_False_cooldown",
+      "status": "PASS"
+    },
+    {
+      "case": "0_False_shot_reserve",
+      "status": "PASS"
+    },
+    {
+      "case": "0_False_gone",
+      "status": "PASS"
+    },
+    {
+      "case": "0_False_disable",
+      "status": "PASS"
+    },
+    {
+      "case": "0_False_manual",
+      "status": "PASS"
+    },
+    {
+      "case": "0_False_hold_retry",
+      "status": "PASS"
+    },
+    {
+      "case": "0_False_burst_release",
+      "status": "PASS"
+    },
+    {
+      "case": "0_False_low_damage",
+      "status": "PASS"
+    },
+    {
+      "case": "0_False_legacy",
+      "status": "PASS"
+    },
+    {
+      "case": "0_True_approach",
+      "status": "PASS"
+    },
+    {
+      "case": "0_True_cooldown",
+      "status": "PASS"
+    },
+    {
+      "case": "0_True_shot_reserve",
+      "status": "PASS"
+    },
+    {
+      "case": "0_True_gone",
+      "status": "PASS"
+    },
+    {
+      "case": "0_True_disable",
+      "status": "PASS"
+    },
+    {
+      "case": "0_True_manual",
+      "status": "PASS"
+    },
+    {
+      "case": "0_True_hold_retry",
+      "status": "PASS"
+    },
+    {
+      "case": "0_True_burst_release",
+      "status": "PASS"
+    },
+    {
+      "case": "0_True_low_damage",
+      "status": "PASS"
+    },
+    {
+      "case": "0_True_legacy",
+      "status": "PASS"
+    },
+    {
+      "case": "3_False_approach",
+      "status": "PASS"
+    },
+    {
+      "case": "3_False_cooldown",
+      "status": "PASS"
+    },
+    {
+      "case": "3_False_shot_reserve",
+      "status": "PASS"
+    },
+    {
+      "case": "3_False_gone",
+      "status": "PASS"
+    },
+    {
+      "case": "3_False_disable",
+      "status": "PASS"
+    },
+    {
+      "case": "3_False_manual",
+      "status": "PASS"
+    },
+    {
+      "case": "3_False_hold_retry",
+      "status": "PASS"
+    },
+    {
+      "case": "3_False_burst_release",
+      "status": "PASS"
+    },
+    {
+      "case": "3_False_low_damage",
+      "status": "PASS"
+    },
+    {
+      "case": "3_False_legacy",
+      "status": "PASS"
+    },
+    {
+      "case": "3_True_approach",
+      "status": "PASS"
+    },
+    {
+      "case": "3_True_cooldown",
+      "status": "PASS"
+    },
+    {
+      "case": "3_True_shot_reserve",
+      "status": "PASS"
+    },
+    {
+      "case": "3_True_gone",
+      "status": "PASS"
+    },
+    {
+      "case": "3_True_disable",
+      "status": "PASS"
+    },
+    {
+      "case": "3_True_manual",
+      "status": "PASS"
+    },
+    {
+      "case": "3_True_hold_retry",
+      "status": "PASS"
+    },
+    {
+      "case": "3_True_burst_release",
+      "status": "PASS"
+    },
+    {
+      "case": "3_True_low_damage",
+      "status": "PASS"
+    },
+    {
+      "case": "3_True_legacy",
+      "status": "PASS"
+    }
+  ]
+}

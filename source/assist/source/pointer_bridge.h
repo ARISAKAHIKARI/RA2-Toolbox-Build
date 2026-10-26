@@ -2,11 +2,6 @@
 // Original click, mission constructor and received-event functions stay intact.
 #include "input_feedback.h"
 static uint32_t pointerFeedback=0;
-static bool pointerCommitPending=false;static uint32_t pointerCommitMatch=0,pointerCommitHouse=0;
-static bool pointerCommit(){
- intent::EventOrder o{};o.domain=vanilla::Domain::NoOptions;o.player=get<int>(lastHouse+0x30);o.eventKind=vanilla::EventType::PlanCommit;
- return submitConstructed(o);
-}
 static uint32_t pointerSeen,pointerCancelSeen,pointerTarget,pointerTargetID,pointerCell;
 static int pointerGroundZ;static int pointerAt;static bool pointerActive;
 static uint32_t pointerTokens[pointerinput::MaxSources];
@@ -14,7 +9,7 @@ static uint8_t pointerDone[pointerinput::MaxSources],pointerBatchFollow[pointeri
 static uint32_t pointerBatchTickets[pointerinput::MaxSources],pointerBatchRequest;static bool pointerBatchValid;
 static pointerinput::Intent pointerBatchCapture;
 static void resetPointerInput(){
- pointerCommitPending=false;pointerFeedback=0;pointerBatchValid=false;pointerBatchRequest=0;pointerActive=false;pointerSeen=pointerCancelSeen=pointerTarget=pointerTargetID=pointerCell=0;pointerAt=0;
+ pointerFeedback=0;pointerBatchValid=false;pointerBatchRequest=0;pointerActive=false;pointerSeen=pointerCancelSeen=pointerTarget=pointerTargetID=pointerCell=0;pointerAt=0;
  memset(pointerTokens,0,sizeof pointerTokens);memset(pointerDone,0,sizeof pointerDone);
 }
 static void pointerFinish(int result){
@@ -60,27 +55,21 @@ static bool pointerLocation(const pointerinput::Intent&i){
  }
  pointerGroundZ=coord.z;pointerCell=uint32_t(cell.y*1000+cell.x);pointerTarget=object;pointerTargetID=object?get<uint32_t>(object+0x10):0;return true;
 }
-static bool pointerAppendEntry(uint32_t p,int mission,uint32_t building){
- // Explicit user experiment: serialize a planning order without normal
+static bool pointerEntryOrder(uint32_t p,int mission,uint32_t cell,bool planning){
+ // Explicit user experiment: serialize a cell-destination order without normal
  // mission feasibility, allegiance, immobilization or automation arbitration.
  // The unified constructor/queue still owns packet format and transport.
  uint32_t id=get<uint32_t>(p+0x10);DWORD now=sampleClock(sh);int frame=get<int>(0xA8ED84);
- auto order=intent::mega(get<int>(lastHouse+0x30),id,mission,mission==7?0:building,mission==7?0:0x34,building,0x34,0,0);
- order.appendWaypoint=true;if(!submitConstructed(order))return false;
+ auto order=intent::mega(get<int>(lastHouse+0x30),id,mission,0,0,cell,0x0B,0,0);
+ order.appendWaypoint=planning;if(!submitConstructed(order))return false;
  showOrderLines(p);releaseAutoOwner(id);actorFrameArbiter.begin(match,frame);
  actorFrameArbiter.record(id,manualVersions.get(id),taskarbiter::Owner::Generic);
- gateway::Receipt receipt{};gateway::Intent intent{match,now,id,building,manualVersions.get(id)};
+ gateway::Receipt receipt{};gateway::Intent intent{match,now,id,0,manualVersions.get(id)};
  gateway::planned(receipt,missionObserver.allocateSerial(),intent);gateway::submitted(receipt,now);
  recordReceipt(receipt);actorLeaseArbiter.record(match,frame,id,p,manualVersions.get(id),taskarbiter::Owner::Generic,receipt.serial);
  return true;
 }
 static void pointerTick(){
- // Retry only the unsent commit, never duplicate an accepted planning node.
- if(pointerCommitPending){
-  if(pointerCommitMatch!=match||pointerCommitHouse!=lastHouse)pointerCommitPending=false;
-  else if(get<bool>(0x87F7E8+0x11B3))pointerCommitPending=false;
-  else if(!nativeReady()||!pointerCommit())return;else pointerCommitPending=false;
- }
  auto&b=sh->pointer;uint32_t request=b.request;MemoryBarrier();
  if(pointerCancelSeen!=b.cancelSerial){pointerCancelSeen=b.cancelSerial;
   if(pointerActive&&pointerSeen==request&&request!=b.ack)pointerFinish(-7);
@@ -100,7 +89,7 @@ static void pointerTick(){
    bool location=continuation?(tactical>=0x10000&&i.width==get<int>(0x8A00A4)&&i.height==get<int>(0x8A00A8)&&i.cameraX==get<int>(tactical+0xB0)&&i.cameraY==get<int>(tactical+0xB4)):pointerLocation(i);
    // Z sets DisplayClass::PlanningMode. AirWaypoint only records a validated
    // point for the host; rejecting it here would reject its own activation key.
-   // C4Test appends native planning nodes; Z release owns their commit.
+   // Forced entry appends only while Z is held; native Z release owns commit.
    // Other orders keep the exclusion; never change native PlanningMode here.
    const bool nativePlanningBlocked=get<bool>(0x87F7E8+0x11B3)&&i.operation!=pointerinput::AirWaypoint&&i.operation!=pointerinput::C4Test;
    if((shiftUnsupported&&i.operation!=pointerinput::PlayerSelect&&i.operation!=pointerinput::PlayerOrder&&i.operation!=pointerinput::C4Test)||nativePlanningBlocked||!location){pointerFinish(-4);return;}
@@ -114,7 +103,7 @@ static void pointerTick(){
      if(i.operation==pointerinput::FollowNative&&(i.bindings&pointerinput::LeftClick)&&pointerTarget&&own(pointerTarget,lastHouse)&&!(i.bindings&pointerinput::NativeForced)){
       unsigned action=0;if(!GuardedEnterAction(get<uint32_t>(get<uint32_t>(p)+0x74),p,pointerTarget,&action)||action==0||action==2||action==7||action==8||action==30||action==31||action==32){pointerTokens[n]=manualVersions.get(i.sources[n].id);continue;}
      }
-     cancelNative(p,!(i.operation==pointerinput::FollowNative&&(i.bindings&pointerinput::RightClick)));
+     cancelNative(p,i.operation!=pointerinput::C4Test&&!(i.operation==pointerinput::FollowNative&&(i.bindings&pointerinput::RightClick)));
      if(i.operation==pointerinput::FollowNative)observeNativeOreIntent(p,pointerTarget,pointerCell,i.bindings);
     }pointerTokens[n]=manualVersions.get(i.sources[n].id);}
    else if(pointerBatchTickets[n]){actorLeaseArbiter.release(match,i.sources[n].id,pointerBatchTickets[n]);pointerBatchTickets[n]=0;}
@@ -168,17 +157,14 @@ static void pointerTick(){
   if(!p||p!=i.sources[n].pointer||!own(p,lastHouse)||(i.operation!=pointerinput::C4Test&&(get<bool>(p+0x1C8)||get<uint32_t>(p+0x11C)))||
      (!follow&&manualVersions.get(i.sources[n].id)!=pointerTokens[n])){pointerDone[n]=1;continue;}
   if(i.operation==pointerinput::C4Test){
-   // Native append/commit only. No C4 capability or destination-feasibility
+   // Native events only. No C4 capability or destination-feasibility
    // preflight here and no local capability patch after event delivery.
    if(!sh->c4Test||kind(p)!=1){pointerDone[n]=1;continue;}
-   const bool editing=get<bool>(0x87F7E8+0x11B3);const int cost=editing?1:2;
-   if(submitted+cost>limit||outgoingRoom()<cost){++remaining;continue;}
-   uint32_t type=typeOf(p,1);
-   int mission=get<bool>(type+0xEC3)?8:get<bool>(type+0xEBE)?7:get<bool>(type+0xEC2)?17:7;
-   if(pointerAppendEntry(p,mission,pointerTargetID)){
+   const bool editing=get<bool>(0x87F7E8+0x11B3);
+   if(submitted>=limit||outgoingRoom()<1){++remaining;continue;}
+   int mission=pointerinput::entryMission(i.bindings);
+   if(pointerEntryOrder(p,mission,pointerCell,editing)){
     ++b.accepted;if(!pointerFeedback)pointerFeedback=p;++submitted;pointerDone[n]=1;
-    if(!editing){pointerCommitPending=true;pointerCommitMatch=match;pointerCommitHouse=lastHouse;
-     if(pointerCommit()){pointerCommitPending=false;++submitted;}else return;}
    }else ++remaining;
    continue;
   }

@@ -14,7 +14,7 @@ struct AdditionalSettings {
 #ifndef RA2_UNIFIED
  int scrollRefreshHz=120; // standalone assist only
 #endif
- bool c4Test=false;uint32_t c4Key='C'|(4<<8),c4Mouse=1;
+ bool c4Test=false;uint32_t c4Key='C'|(4<<8),c4Mouse=1,c4Mode=0;
  uint32_t renderReveal=0;int mapStrategy=0;bool experimentalReveal=false,antiTheft=false,nativeAirWaypoints=false;
  bool enemyMarkers=false,idleAircraft=false,constructionQueue=false,airWaypoints=false;
  uint32_t productionReminderMask=0; // buildings, defenses, infantry, vehicles, ships, aircraft
@@ -26,6 +26,7 @@ struct AdditionalSettings {
  bool dodgeEnabled=false;int dodgeMode=0;
  bool burstEnabled=false,burstHoldEnabled=false;uint32_t burstKey=0; // Reserved for configuration compatibility.
  bool missileDefense=false;int missileScanHz=10,missileScope=0,missileAllocation=0;bool magnetronGlobal=false;
+ bool missileReserve=true,lowDamageFilter=false,lowDamageNetwork=false;
  bool allHotkeys=false,overrideNative=false;
  int loadMode=0,loadRadius=30;
  uint32_t mouseButtons[pointerinput::MouseCount]={1,1,1,1,1,1,1,2,3,3}; // 0=off, 1=middle, 2/3=side, 4=right

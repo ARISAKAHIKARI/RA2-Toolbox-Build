@@ -1,0 +1,960 @@
+{
+  "scope": "Compiled manager-owned acquisition-threshold adapter, original x87 compare.\n\nSynthetic objects/Win32. Executes the comparison and original branch, not full\ntarget search, combat, explicit attack behavior or live multiplayer.\n",
+  "dll_sha256": "712bc93f269555bed113a319cfb544ed41cf0eed7e3d0eb6c440d2fc36b22e7e",
+  "game_tested": false,
+  "multiplayer_tested": false,
+  "results": [
+    {
+      "session": 0,
+      "network_opt_in": 0,
+      "own": true,
+      "verses": 0.0,
+      "rejected_at_gate": true,
+      "status": "PASS"
+    },
+    {
+      "session": 0,
+      "network_opt_in": 0,
+      "own": true,
+      "verses": 0.01,
+      "rejected_at_gate": true,
+      "status": "PASS"
+    },
+    {
+      "session": 0,
+      "network_opt_in": 0,
+      "own": true,
+      "verses": 0.019999,
+      "rejected_at_gate": true,
+      "status": "PASS"
+    },
+    {
+      "session": 0,
+      "network_opt_in": 0,
+      "own": true,
+      "verses": 0.02,
+      "rejected_at_gate": true,
+      "status": "PASS"
+    },
+    {
+      "session": 0,
+      "network_opt_in": 0,
+      "own": true,
+      "verses": 0.020001,
+      "rejected_at_gate": false,
+      "status": "PASS"
+    },
+    {
+      "session": 0,
+      "network_opt_in": 0,
+      "own": true,
+      "verses": 1.0,
+      "rejected_at_gate": false,
+      "status": "PASS"
+    },
+    {
+      "session": 0,
+      "network_opt_in": 0,
+      "own": true,
+      "verses": "NaN",
+      "rejected_at_gate": true,
+      "status": "PASS"
+    },
+    {
+      "session": 0,
+      "network_opt_in": 0,
+      "own": false,
+      "verses": 0.0,
+      "rejected_at_gate": true,
+      "status": "PASS"
+    },
+    {
+      "session": 0,
+      "network_opt_in": 0,
+      "own": false,
+      "verses": 0.01,
+      "rejected_at_gate": true,
+      "status": "PASS"
+    },
+    {
+      "session": 0,
+      "network_opt_in": 0,
+      "own": false,
+      "verses": 0.019999,
+      "rejected_at_gate": true,
+      "status": "PASS"
+    },
+    {
+      "session": 0,
+      "network_opt_in": 0,
+      "own": false,
+      "verses": 0.02,
+      "rejected_at_gate": false,
+      "status": "PASS"
+    },
+    {
+      "session": 0,
+      "network_opt_in": 0,
+      "own": false,
+      "verses": 0.020001,
+      "rejected_at_gate": false,
+      "status": "PASS"
+    },
+    {
+      "session": 0,
+      "network_opt_in": 0,
+      "own": false,
+      "verses": 1.0,
+      "rejected_at_gate": false,
+      "status": "PASS"
+    },
+    {
+      "session": 0,
+      "network_opt_in": 0,
+      "own": false,
+      "verses": "NaN",
+      "rejected_at_gate": true,
+      "status": "PASS"
+    },
+    {
+      "session": 0,
+      "network_opt_in": 0,
+      "case": "disable_restores_original_no_event",
+      "status": "PASS"
+    },
+    {
+      "session": 0,
+      "network_opt_in": 1,
+      "own": true,
+      "verses": 0.0,
+      "rejected_at_gate": true,
+      "status": "PASS"
+    },
+    {
+      "session": 0,
+      "network_opt_in": 1,
+      "own": true,
+      "verses": 0.01,
+      "rejected_at_gate": true,
+      "status": "PASS"
+    },
+    {
+      "session": 0,
+      "network_opt_in": 1,
+      "own": true,
+      "verses": 0.019999,
+      "rejected_at_gate": true,
+      "status": "PASS"
+    },
+    {
+      "session": 0,
+      "network_opt_in": 1,
+      "own": true,
+      "verses": 0.02,
+      "rejected_at_gate": true,
+      "status": "PASS"
+    },
+    {
+      "session": 0,
+      "network_opt_in": 1,
+      "own": true,
+      "verses": 0.020001,
+      "rejected_at_gate": false,
+      "status": "PASS"
+    },
+    {
+      "session": 0,
+      "network_opt_in": 1,
+      "own": true,
+      "verses": 1.0,
+      "rejected_at_gate": false,
+      "status": "PASS"
+    },
+    {
+      "session": 0,
+      "network_opt_in": 1,
+      "own": true,
+      "verses": "NaN",
+      "rejected_at_gate": true,
+      "status": "PASS"
+    },
+    {
+      "session": 0,
+      "network_opt_in": 1,
+      "own": false,
+      "verses": 0.0,
+      "rejected_at_gate": true,
+      "status": "PASS"
+    },
+    {
+      "session": 0,
+      "network_opt_in": 1,
+      "own": false,
+      "verses": 0.01,
+      "rejected_at_gate": true,
+      "status": "PASS"
+    },
+    {
+      "session": 0,
+      "network_opt_in": 1,
+      "own": false,
+      "verses": 0.019999,
+      "rejected_at_gate": true,
+      "status": "PASS"
+    },
+    {
+      "session": 0,
+      "network_opt_in": 1,
+      "own": false,
+      "verses": 0.02,
+      "rejected_at_gate": false,
+      "status": "PASS"
+    },
+    {
+      "session": 0,
+      "network_opt_in": 1,
+      "own": false,
+      "verses": 0.020001,
+      "rejected_at_gate": false,
+      "status": "PASS"
+    },
+    {
+      "session": 0,
+      "network_opt_in": 1,
+      "own": false,
+      "verses": 1.0,
+      "rejected_at_gate": false,
+      "status": "PASS"
+    },
+    {
+      "session": 0,
+      "network_opt_in": 1,
+      "own": false,
+      "verses": "NaN",
+      "rejected_at_gate": true,
+      "status": "PASS"
+    },
+    {
+      "session": 0,
+      "network_opt_in": 1,
+      "case": "disable_restores_original_no_event",
+      "status": "PASS"
+    },
+    {
+      "session": 5,
+      "network_opt_in": 0,
+      "own": true,
+      "verses": 0.0,
+      "rejected_at_gate": true,
+      "status": "PASS"
+    },
+    {
+      "session": 5,
+      "network_opt_in": 0,
+      "own": true,
+      "verses": 0.01,
+      "rejected_at_gate": true,
+      "status": "PASS"
+    },
+    {
+      "session": 5,
+      "network_opt_in": 0,
+      "own": true,
+      "verses": 0.019999,
+      "rejected_at_gate": true,
+      "status": "PASS"
+    },
+    {
+      "session": 5,
+      "network_opt_in": 0,
+      "own": true,
+      "verses": 0.02,
+      "rejected_at_gate": true,
+      "status": "PASS"
+    },
+    {
+      "session": 5,
+      "network_opt_in": 0,
+      "own": true,
+      "verses": 0.020001,
+      "rejected_at_gate": false,
+      "status": "PASS"
+    },
+    {
+      "session": 5,
+      "network_opt_in": 0,
+      "own": true,
+      "verses": 1.0,
+      "rejected_at_gate": false,
+      "status": "PASS"
+    },
+    {
+      "session": 5,
+      "network_opt_in": 0,
+      "own": true,
+      "verses": "NaN",
+      "rejected_at_gate": true,
+      "status": "PASS"
+    },
+    {
+      "session": 5,
+      "network_opt_in": 0,
+      "own": false,
+      "verses": 0.0,
+      "rejected_at_gate": true,
+      "status": "PASS"
+    },
+    {
+      "session": 5,
+      "network_opt_in": 0,
+      "own": false,
+      "verses": 0.01,
+      "rejected_at_gate": true,
+      "status": "PASS"
+    },
+    {
+      "session": 5,
+      "network_opt_in": 0,
+      "own": false,
+      "verses": 0.019999,
+      "rejected_at_gate": true,
+      "status": "PASS"
+    },
+    {
+      "session": 5,
+      "network_opt_in": 0,
+      "own": false,
+      "verses": 0.02,
+      "rejected_at_gate": false,
+      "status": "PASS"
+    },
+    {
+      "session": 5,
+      "network_opt_in": 0,
+      "own": false,
+      "verses": 0.020001,
+      "rejected_at_gate": false,
+      "status": "PASS"
+    },
+    {
+      "session": 5,
+      "network_opt_in": 0,
+      "own": false,
+      "verses": 1.0,
+      "rejected_at_gate": false,
+      "status": "PASS"
+    },
+    {
+      "session": 5,
+      "network_opt_in": 0,
+      "own": false,
+      "verses": "NaN",
+      "rejected_at_gate": true,
+      "status": "PASS"
+    },
+    {
+      "session": 5,
+      "network_opt_in": 0,
+      "case": "disable_restores_original_no_event",
+      "status": "PASS"
+    },
+    {
+      "session": 5,
+      "network_opt_in": 1,
+      "own": true,
+      "verses": 0.0,
+      "rejected_at_gate": true,
+      "status": "PASS"
+    },
+    {
+      "session": 5,
+      "network_opt_in": 1,
+      "own": true,
+      "verses": 0.01,
+      "rejected_at_gate": true,
+      "status": "PASS"
+    },
+    {
+      "session": 5,
+      "network_opt_in": 1,
+      "own": true,
+      "verses": 0.019999,
+      "rejected_at_gate": true,
+      "status": "PASS"
+    },
+    {
+      "session": 5,
+      "network_opt_in": 1,
+      "own": true,
+      "verses": 0.02,
+      "rejected_at_gate": true,
+      "status": "PASS"
+    },
+    {
+      "session": 5,
+      "network_opt_in": 1,
+      "own": true,
+      "verses": 0.020001,
+      "rejected_at_gate": false,
+      "status": "PASS"
+    },
+    {
+      "session": 5,
+      "network_opt_in": 1,
+      "own": true,
+      "verses": 1.0,
+      "rejected_at_gate": false,
+      "status": "PASS"
+    },
+    {
+      "session": 5,
+      "network_opt_in": 1,
+      "own": true,
+      "verses": "NaN",
+      "rejected_at_gate": true,
+      "status": "PASS"
+    },
+    {
+      "session": 5,
+      "network_opt_in": 1,
+      "own": false,
+      "verses": 0.0,
+      "rejected_at_gate": true,
+      "status": "PASS"
+    },
+    {
+      "session": 5,
+      "network_opt_in": 1,
+      "own": false,
+      "verses": 0.01,
+      "rejected_at_gate": true,
+      "status": "PASS"
+    },
+    {
+      "session": 5,
+      "network_opt_in": 1,
+      "own": false,
+      "verses": 0.019999,
+      "rejected_at_gate": true,
+      "status": "PASS"
+    },
+    {
+      "session": 5,
+      "network_opt_in": 1,
+      "own": false,
+      "verses": 0.02,
+      "rejected_at_gate": false,
+      "status": "PASS"
+    },
+    {
+      "session": 5,
+      "network_opt_in": 1,
+      "own": false,
+      "verses": 0.020001,
+      "rejected_at_gate": false,
+      "status": "PASS"
+    },
+    {
+      "session": 5,
+      "network_opt_in": 1,
+      "own": false,
+      "verses": 1.0,
+      "rejected_at_gate": false,
+      "status": "PASS"
+    },
+    {
+      "session": 5,
+      "network_opt_in": 1,
+      "own": false,
+      "verses": "NaN",
+      "rejected_at_gate": true,
+      "status": "PASS"
+    },
+    {
+      "session": 5,
+      "network_opt_in": 1,
+      "case": "disable_restores_original_no_event",
+      "status": "PASS"
+    },
+    {
+      "session": 3,
+      "network_opt_in": 0,
+      "own": true,
+      "verses": 0.0,
+      "rejected_at_gate": true,
+      "status": "PASS"
+    },
+    {
+      "session": 3,
+      "network_opt_in": 0,
+      "own": true,
+      "verses": 0.01,
+      "rejected_at_gate": true,
+      "status": "PASS"
+    },
+    {
+      "session": 3,
+      "network_opt_in": 0,
+      "own": true,
+      "verses": 0.019999,
+      "rejected_at_gate": true,
+      "status": "PASS"
+    },
+    {
+      "session": 3,
+      "network_opt_in": 0,
+      "own": true,
+      "verses": 0.02,
+      "rejected_at_gate": false,
+      "status": "PASS"
+    },
+    {
+      "session": 3,
+      "network_opt_in": 0,
+      "own": true,
+      "verses": 0.020001,
+      "rejected_at_gate": false,
+      "status": "PASS"
+    },
+    {
+      "session": 3,
+      "network_opt_in": 0,
+      "own": true,
+      "verses": 1.0,
+      "rejected_at_gate": false,
+      "status": "PASS"
+    },
+    {
+      "session": 3,
+      "network_opt_in": 0,
+      "own": true,
+      "verses": "NaN",
+      "rejected_at_gate": true,
+      "status": "PASS"
+    },
+    {
+      "session": 3,
+      "network_opt_in": 0,
+      "own": false,
+      "verses": 0.0,
+      "rejected_at_gate": true,
+      "status": "PASS"
+    },
+    {
+      "session": 3,
+      "network_opt_in": 0,
+      "own": false,
+      "verses": 0.01,
+      "rejected_at_gate": true,
+      "status": "PASS"
+    },
+    {
+      "session": 3,
+      "network_opt_in": 0,
+      "own": false,
+      "verses": 0.019999,
+      "rejected_at_gate": true,
+      "status": "PASS"
+    },
+    {
+      "session": 3,
+      "network_opt_in": 0,
+      "own": false,
+      "verses": 0.02,
+      "rejected_at_gate": false,
+      "status": "PASS"
+    },
+    {
+      "session": 3,
+      "network_opt_in": 0,
+      "own": false,
+      "verses": 0.020001,
+      "rejected_at_gate": false,
+      "status": "PASS"
+    },
+    {
+      "session": 3,
+      "network_opt_in": 0,
+      "own": false,
+      "verses": 1.0,
+      "rejected_at_gate": false,
+      "status": "PASS"
+    },
+    {
+      "session": 3,
+      "network_opt_in": 0,
+      "own": false,
+      "verses": "NaN",
+      "rejected_at_gate": true,
+      "status": "PASS"
+    },
+    {
+      "session": 3,
+      "network_opt_in": 0,
+      "case": "disable_restores_original_no_event",
+      "status": "PASS"
+    },
+    {
+      "session": 3,
+      "network_opt_in": 1,
+      "own": true,
+      "verses": 0.0,
+      "rejected_at_gate": true,
+      "status": "PASS"
+    },
+    {
+      "session": 3,
+      "network_opt_in": 1,
+      "own": true,
+      "verses": 0.01,
+      "rejected_at_gate": true,
+      "status": "PASS"
+    },
+    {
+      "session": 3,
+      "network_opt_in": 1,
+      "own": true,
+      "verses": 0.019999,
+      "rejected_at_gate": true,
+      "status": "PASS"
+    },
+    {
+      "session": 3,
+      "network_opt_in": 1,
+      "own": true,
+      "verses": 0.02,
+      "rejected_at_gate": true,
+      "status": "PASS"
+    },
+    {
+      "session": 3,
+      "network_opt_in": 1,
+      "own": true,
+      "verses": 0.020001,
+      "rejected_at_gate": false,
+      "status": "PASS"
+    },
+    {
+      "session": 3,
+      "network_opt_in": 1,
+      "own": true,
+      "verses": 1.0,
+      "rejected_at_gate": false,
+      "status": "PASS"
+    },
+    {
+      "session": 3,
+      "network_opt_in": 1,
+      "own": true,
+      "verses": "NaN",
+      "rejected_at_gate": true,
+      "status": "PASS"
+    },
+    {
+      "session": 3,
+      "network_opt_in": 1,
+      "own": false,
+      "verses": 0.0,
+      "rejected_at_gate": true,
+      "status": "PASS"
+    },
+    {
+      "session": 3,
+      "network_opt_in": 1,
+      "own": false,
+      "verses": 0.01,
+      "rejected_at_gate": true,
+      "status": "PASS"
+    },
+    {
+      "session": 3,
+      "network_opt_in": 1,
+      "own": false,
+      "verses": 0.019999,
+      "rejected_at_gate": true,
+      "status": "PASS"
+    },
+    {
+      "session": 3,
+      "network_opt_in": 1,
+      "own": false,
+      "verses": 0.02,
+      "rejected_at_gate": true,
+      "status": "PASS"
+    },
+    {
+      "session": 3,
+      "network_opt_in": 1,
+      "own": false,
+      "verses": 0.020001,
+      "rejected_at_gate": false,
+      "status": "PASS"
+    },
+    {
+      "session": 3,
+      "network_opt_in": 1,
+      "own": false,
+      "verses": 1.0,
+      "rejected_at_gate": false,
+      "status": "PASS"
+    },
+    {
+      "session": 3,
+      "network_opt_in": 1,
+      "own": false,
+      "verses": "NaN",
+      "rejected_at_gate": true,
+      "status": "PASS"
+    },
+    {
+      "session": 3,
+      "network_opt_in": 1,
+      "case": "disable_restores_original_no_event",
+      "status": "PASS"
+    },
+    {
+      "session": 4,
+      "network_opt_in": 0,
+      "own": true,
+      "verses": 0.0,
+      "rejected_at_gate": true,
+      "status": "PASS"
+    },
+    {
+      "session": 4,
+      "network_opt_in": 0,
+      "own": true,
+      "verses": 0.01,
+      "rejected_at_gate": true,
+      "status": "PASS"
+    },
+    {
+      "session": 4,
+      "network_opt_in": 0,
+      "own": true,
+      "verses": 0.019999,
+      "rejected_at_gate": true,
+      "status": "PASS"
+    },
+    {
+      "session": 4,
+      "network_opt_in": 0,
+      "own": true,
+      "verses": 0.02,
+      "rejected_at_gate": false,
+      "status": "PASS"
+    },
+    {
+      "session": 4,
+      "network_opt_in": 0,
+      "own": true,
+      "verses": 0.020001,
+      "rejected_at_gate": false,
+      "status": "PASS"
+    },
+    {
+      "session": 4,
+      "network_opt_in": 0,
+      "own": true,
+      "verses": 1.0,
+      "rejected_at_gate": false,
+      "status": "PASS"
+    },
+    {
+      "session": 4,
+      "network_opt_in": 0,
+      "own": true,
+      "verses": "NaN",
+      "rejected_at_gate": true,
+      "status": "PASS"
+    },
+    {
+      "session": 4,
+      "network_opt_in": 0,
+      "own": false,
+      "verses": 0.0,
+      "rejected_at_gate": true,
+      "status": "PASS"
+    },
+    {
+      "session": 4,
+      "network_opt_in": 0,
+      "own": false,
+      "verses": 0.01,
+      "rejected_at_gate": true,
+      "status": "PASS"
+    },
+    {
+      "session": 4,
+      "network_opt_in": 0,
+      "own": false,
+      "verses": 0.019999,
+      "rejected_at_gate": true,
+      "status": "PASS"
+    },
+    {
+      "session": 4,
+      "network_opt_in": 0,
+      "own": false,
+      "verses": 0.02,
+      "rejected_at_gate": false,
+      "status": "PASS"
+    },
+    {
+      "session": 4,
+      "network_opt_in": 0,
+      "own": false,
+      "verses": 0.020001,
+      "rejected_at_gate": false,
+      "status": "PASS"
+    },
+    {
+      "session": 4,
+      "network_opt_in": 0,
+      "own": false,
+      "verses": 1.0,
+      "rejected_at_gate": false,
+      "status": "PASS"
+    },
+    {
+      "session": 4,
+      "network_opt_in": 0,
+      "own": false,
+      "verses": "NaN",
+      "rejected_at_gate": true,
+      "status": "PASS"
+    },
+    {
+      "session": 4,
+      "network_opt_in": 0,
+      "case": "disable_restores_original_no_event",
+      "status": "PASS"
+    },
+    {
+      "session": 4,
+      "network_opt_in": 1,
+      "own": true,
+      "verses": 0.0,
+      "rejected_at_gate": true,
+      "status": "PASS"
+    },
+    {
+      "session": 4,
+      "network_opt_in": 1,
+      "own": true,
+      "verses": 0.01,
+      "rejected_at_gate": true,
+      "status": "PASS"
+    },
+    {
+      "session": 4,
+      "network_opt_in": 1,
+      "own": true,
+      "verses": 0.019999,
+      "rejected_at_gate": true,
+      "status": "PASS"
+    },
+    {
+      "session": 4,
+      "network_opt_in": 1,
+      "own": true,
+      "verses": 0.02,
+      "rejected_at_gate": true,
+      "status": "PASS"
+    },
+    {
+      "session": 4,
+      "network_opt_in": 1,
+      "own": true,
+      "verses": 0.020001,
+      "rejected_at_gate": false,
+      "status": "PASS"
+    },
+    {
+      "session": 4,
+      "network_opt_in": 1,
+      "own": true,
+      "verses": 1.0,
+      "rejected_at_gate": false,
+      "status": "PASS"
+    },
+    {
+      "session": 4,
+      "network_opt_in": 1,
+      "own": true,
+      "verses": "NaN",
+      "rejected_at_gate": true,
+      "status": "PASS"
+    },
+    {
+      "session": 4,
+      "network_opt_in": 1,
+      "own": false,
+      "verses": 0.0,
+      "rejected_at_gate": true,
+      "status": "PASS"
+    },
+    {
+      "session": 4,
+      "network_opt_in": 1,
+      "own": false,
+      "verses": 0.01,
+      "rejected_at_gate": true,
+      "status": "PASS"
+    },
+    {
+      "session": 4,
+      "network_opt_in": 1,
+      "own": false,
+      "verses": 0.019999,
+      "rejected_at_gate": true,
+      "status": "PASS"
+    },
+    {
+      "session": 4,
+      "network_opt_in": 1,
+      "own": false,
+      "verses": 0.02,
+      "rejected_at_gate": true,
+      "status": "PASS"
+    },
+    {
+      "session": 4,
+      "network_opt_in": 1,
+      "own": false,
+      "verses": 0.020001,
+      "rejected_at_gate": false,
+      "status": "PASS"
+    },
+    {
+      "session": 4,
+      "network_opt_in": 1,
+      "own": false,
+      "verses": 1.0,
+      "rejected_at_gate": false,
+      "status": "PASS"
+    },
+    {
+      "session": 4,
+      "network_opt_in": 1,
+      "own": false,
+      "verses": "NaN",
+      "rejected_at_gate": true,
+      "status": "PASS"
+    },
+    {
+      "session": 4,
+      "network_opt_in": 1,
+      "case": "disable_restores_original_no_event",
+      "status": "PASS"
+    },
+    {
+      "case": "site_conflict_preserved",
+      "status": "PASS"
+    },
+    {
+      "case": "context_conflict_preserved",
+      "status": "PASS"
+    }
+  ]
+}

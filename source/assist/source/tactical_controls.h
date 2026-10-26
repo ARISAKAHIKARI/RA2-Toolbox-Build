@@ -89,8 +89,13 @@ toggle(804,L"防御建筑优先攻击渗透单位",extra.antiTheft);next();
 toggle(880,L"防空火控",extra.missileDefense);next();
 label(L"目标范围",20,260);choices(combo(9040),{L"仅导弹类",L"所有敌方空中单位"},extra.missileScope);next();
 label(L"火力分配",20,260);choices(combo(9041),{L"智能分配（血量与伤害）",L"平均分配"},extra.missileAllocation);next();
+toggle(9181,L"提前休眠留枪",extra.missileReserve);next();
 number(881,L"火控检测频率 / 次每秒",extra.missileScanHz,L"1–60 · 默认 10");
-note(L"智能分配以预计 120% 血量为覆盖线，优先补足近处火力。建筑为射程外 4 格内的空中目标预留火力；战车、步兵用原版攻击命令接近，最多 60 帧、离起点 4 格。手动移动和队形优先，无后续目标时正常开火。",44);
+note(L"智能分配以预计 120% 血量为覆盖线。提前休眠留枪：建筑、战车、步兵先 Sleep 等待已分配目标进入原生射程，冷却或多余火力继续等待；无候选时恢复 Guard。关闭留枪则沿用原版攻击接近。手动命令和队形优先。",60);
+toggle(9182,L"过滤低伤害自动目标",extra.lowDamageFilter);next();
+toggle(9183,L"联机也修改原生索敌（实验性）",extra.lowDamageNetwork);next();
+note(L"忽略实际所选武器对目标护甲伤害倍率不超过 2% 的自动索敌候选，保留手动点名。单机过滤己方原生索敌；联机默认仅过滤工具命令。联机原生实验影响全部阵营，所有端需一致启用，仍未实测。",60);
+item(L"STATIC",L"低伤害过滤：关闭",20,605,9184);next();
 
 // One visible Auto CS switch represents the previous two enable flags.
 hookChecks[3]=placedControl({-3,{0,0,1,1}},L"BUTTON",L"",466,BS_AUTOCHECKBOX);
@@ -210,6 +215,8 @@ anywhereCheck=toggle(476,L"随处建造（实验性）",buildAnywhereMode);next(
 label(L"建造方式",20,180);choices(combo(9096,220,405,180),{L"受控模式（默认）",L"直接模式"},extra.placementImplementation);next();
 item(L"STATIC",L"功能状态：等待连接",20,605,807,0,44);next(44);
 toggle(810,L"步兵强制进入建筑（实验性）",extra.c4Test,20,280);key(811,extra.c4Key,310,188,true);choices(combo(812,510,115,180),{L"停用",L"中键",L"侧键 1",L"侧键 2",L"右键",L"左键"},extra.c4Mouse==6?5:extra.c4Mouse);next();
+label(L"进入实现",20,260);choices(combo(9180),{L"占领任务＋建筑格",L"爆破任务＋建筑格"},extra.c4Mode);next();
+note(L"两种实现均向被点击的建筑占地格下令。默认占领任务；普通点击直接提交，按住游戏路径点键时追加。建筑被坦克覆盖时从同格查找。实际能否进入由原版判定。",60);
 item(L"STATIC",L"步兵强制进入建筑：关闭",20,605,813);next();
 toggle(9097,L"科技加强（实验性）",extra.techEnhance);next();
 note(L"开放奶牛、电影英雄等隐藏类型；关闭后恢复本功能修改的科技等级。可能影响联机同步。",44);

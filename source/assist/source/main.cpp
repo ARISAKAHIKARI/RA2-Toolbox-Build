@@ -1417,6 +1417,7 @@ static void updateModeStatus(DWORD now){
  }
  SetWindowTextW(GetDlgItem(ui,888),!extra.scrollRefreshMode?L"高刷策略：仅光标（沿用光标页设置）":shared&&shared->scrollRefreshStatus<0?L"高刷策略：接口不兼容，保持原版画面刷新":shared&&shared->scrollRefreshStatus==1?(extra.scrollRefreshMode==3?L"高刷策略：强制高刷 · 实验性功能已启用":extra.scrollRefreshMode==2?L"高刷策略：全部 · 实验性功能已启用":L"高刷策略：光标＋拖屏 · 实验性功能已启用"):L"高刷策略：等待游戏前台就绪");
  if(shared&&shared->scrollRefreshStatus==1&&shared->scrollRefreshRateMilli){wchar_t label[160];swprintf(label,160,L"%s · 绘制调用 %.1f Hz（非屏幕 FPS） · 最长间隔 %.1f ms",extra.scrollRefreshMode==3?L"强制高刷":extra.scrollRefreshMode==2?L"全部（实验性）":L"光标＋拖屏（实验性）",shared->scrollRefreshRateMilli/1000.0,shared->scrollRefreshMaxGapUs/1000.0);SetWindowTextW(GetDlgItem(ui,888),label);}
+ SetWindowTextW(GetDlgItem(ui,9184),!extra.lowDamageFilter?L"低伤害过滤：关闭":shared&&shared->lowDamageStatus==1?L"低伤害过滤：原生索敌及工具自动命令":shared&&shared->lowDamageStatus==2?L"低伤害过滤：联机仅工具自动命令":L"低伤害过滤：等待就绪或补丁冲突");
  SetWindowTextW(GetDlgItem(ui,813),(L"步兵强制进入建筑："+(extra.c4Test&&snap.c4TestStatus==1&&!phase&&infantryEntryResultMatch==commandMatch()&&!infantryEntryResult.empty()?infantryEntryResult:riskText(extra.c4Test,snap.c4TestStatus))).c_str());
  std::wstring progress=snap.techOpen==2?L"经典兼容 · 生产进度：":L"生产进度：";uint32_t owner=0;
  if(techMode&&commandFresh(now)&&externalReader.readFresh(0xA83D4C,&owner,4)&&owner>=0x10000){

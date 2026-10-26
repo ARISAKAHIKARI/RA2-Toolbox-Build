@@ -6,10 +6,11 @@
 // Game-thread-only ownership bookkeeping, NOT a stop-the-world x86 patcher.
 // A stale/foreign site is sticky: never overwrite it on retries or detach.
 namespace assist { namespace hookregistry {
-enum class Owner : uint8_t { Frame, CS, Cursor, NativeEvent, FootClick, Decide, MouseUp, Placement, Sidebar, NativeAir, RenderMask, C4Test, PlayerControl, Camera, Unknown };
+enum class Owner : uint8_t { Frame, CS, Cursor, NativeEvent, FootClick, Decide, MouseUp, Placement, Sidebar, NativeAir, RenderMask, C4Test, PlayerControl, Camera, Combat, Unknown };
 inline Owner ownerAt(uint32_t a){
  if(auto s=directpatch::find(a))return s->group==directpatch::Group::Map?Owner::RenderMask:Owner::Placement;
  switch(a){
+ case 0x006F7D44:return Owner::Combat;
  case 0x0055D360: return Owner::Frame;
  case 0x00646E90: return Owner::CS;
  case 0x00731BF0: return Owner::Cursor;
@@ -49,6 +50,7 @@ inline bool knownOriginal(uint32_t at,const uint8_t* bytes,unsigned size){
  static const uint8_t shroud[]={0x8B,0x45,0x10,0x53,0x56};
  static const uint8_t fog[]={0x8B,0x44,0x24,0x38,0x53};
  static const uint8_t c4[]={0x8A,0x81,0xC2,0x0E,0,0};
+ static const uint8_t lowDamage[]={0xD8,0x1D,0x38,0x4E,0x7F,0};
  static const uint8_t scrolling[]={0x8B,0x44,0x24,0x08,0x8A,0x4C,0x24,0x0C};
  static const uint8_t camera[]={0xA1,0xE4,0xF8,0x87,0};
  static const uint8_t controlEntries[3][5]={{0xA1,0x38,0xB2,0xA8,0},{0xE9,0xFB,0x2A,0x67,0},{0xE9,0x8B,0x2C,0x67,0}};
@@ -57,6 +59,7 @@ inline bool knownOriginal(uint32_t at,const uint8_t* bytes,unsigned size){
  static const uint8_t sidebarRefresh[]={0xE8,0xEA,0xD0,0xE4,0xFF};
  static const uint8_t masterEnum[]={0x6A,1,0x6A,0,0x8B},masterPrune[]={0x0F,0x85,0xDA,2,0,0};
  switch(at){
+ case 0x006F7D44:signature=lowDamage;expected=sizeof lowDamage;break;
  case 0x44574A:case 0x445795:case 0x4457D0:case 0x445810:signature=masterEnum;expected=5;break;
  case 0x6AA788:signature=masterPrune;expected=6;break;
  case 0x0055D360:signature=frame;expected=sizeof frame;break;
@@ -126,3 +129,4 @@ template<unsigned Capacity=64> struct Registry {
  // No reset: a foreign patch survives match changes and failed restores.
 };
 }}
+
