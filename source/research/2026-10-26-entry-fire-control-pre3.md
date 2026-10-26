@@ -102,3 +102,14 @@ jne   reject
 最终 DLL SHA-256：`712bc93f269555bed113a319cfb544ed41cf0eed7e3d0eb6c440d2fc36b22e7e`。最终 DLL 的强制进入141项、任务模式100项、火控40项、低伤害适配器122项全部通过；另有原版建筑格动作/目的地37项、两组 portable 算法/补丁归属测试通过。最终 Host/Runtime 为 IPC 76，Shared 4165672 字节，PE32、版本、依赖和清单检查通过。火控40项包含 Sleep 未被观察到生效后的超时重试，以及异步结果返回前开始连发时延后自动 Guard。
 
 测试夹具对 Aircraft::IsInAir 使用明确替身，并初始化独立的空玩家节点列表，避免读取捕获源进程的指针。事件构造器和被测 Runtime 仍执行真实指令；以上结果不包含完整游戏寻路、弹体命中或真实联机认证。
+
+## MegaMission 构造后进入 OutList 的检查
+
+针对“MegaMission 到 OutList 有什么校验”，复查同一支持样本的 `QueueMegaMission=646E90..646F5F` 和 `EventClass` 构造器 `4C6860..4C68DA`，并先检索 INDEX 与 notebook 的 646E90/OutList 既有记录。本次证据是捕获有效指令的静态控制流复查；没有新增实机或网络测试。
+
+- QueueMegaMission 从当前 House 的 `+30` 读取玩家索引，调用构造器填写事件。构造器对 player<0 的输入设 EventType=0、House=FF；正常分支写 EventType=04、Planning=0、当前 Frame 及任务/引用字段。它不解析引用对应对象，也不检查任务编号是否适合该单位。
+- 构造器返回后 `646EF5..646EFF` 仅判断 OutList count（`A802C8`）是否 >=128；满则返回 false。没有 C4、Engineer、射程、可进入建筑、任务 readiness 等语义判断，也没有同步摘要比对。
+- 有空位则复制111字节事件到 `A802D4 + tail*111`，通过 `7E1530` 回调取时间并写 `A83A54 + tail*4`，随后 count+1、tail=(tail+1)&127，返回 true。这里假定原版内部指针和队列结构有效；不要把缺少防御性检查理解成允许传坏指针。
+- 工具网关另有会话/对局、所属方/对象、参数引用、聊天/新鲜度、时钟入口等检查；OutList 采用112条保留阈值及每帧24条工具预算。这些是工具自身保护，不能当作原版 QueueMegaMission 的校验。
+
+结论：这一级主要决定事件是否能进入发送队列，不能据此保证各端执行时会接受任务。普通步兵 Sabotage 的 C4 门槛、Sticky 的 readiness、完整寻路等在后续路径仍可生效。若统一接管，应明确是本机发送端的 MegaMission，而非所有构造器调用或接收后的模拟分支；原生规划内部本机 DoList 事件需另行区分。
