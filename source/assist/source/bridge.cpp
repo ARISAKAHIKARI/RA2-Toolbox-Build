@@ -649,6 +649,7 @@ static bool nativeObjectUnhooked(){return nativeObjectSignature();}
 #include "cooperative_bridge.h"
 #include "pointer_bridge.h"
 #include "sticky_bridge.h"
+#include "selected_mode_bridge.h"
 // Reserve a share for other active task families, then let a lone family use
 // the remaining capacity. All sends still obey the shared 24-event frame cap.
 static int recurringBudget(EventLane lane){
@@ -775,6 +776,7 @@ static void command(uint32_t house,DWORD now){uint32_t req=sh->request;if(req==s
  else if(c==SelectVariant){n=selectVariant(house,sh->arg2!=0);if(n<0){result=n;n=0;}}
  else if(c==SmartUnload){int sent=smartUnload(house);if(sent<0)result=sent;else n=sent;}
  else if(c==StickyGuard){n=stickyCommand(house);if(n<0){result=n;n=0;}}
+ else if(selectedmode::index(c)>=0){n=selectedModeCommand(house,selectedmode::mission(selectedmode::index(c)));if(n<0){result=n;n=0;}}
  else if(c==CancelAdvanced){Vec v=vec(0xA8ECB8);for(int i=0;i<v.count;++i){uint32_t p=item(v,i);if(p&&own(p,house)){cancelAutomatic(p);++n;}}}
  else if(c==AutoBoard){result=autoLoad(house);n=snap.loadIssued;if(result==-30){loadAckRequest=req;loadAckPending=true;return;}}
  else if(c>=CombatSelection&&c<=DamagedSelection)n=selectFilter(house,c);
@@ -1126,5 +1128,6 @@ extern "C" void AssistRuntimeWatchdog(){
  gameentry::Scope entry(gameentry::Client::Assist);if(!entry)return;
  GuardedAssistTick(); // stop/dead-controller branch only; never normal work
 }
+
 
 

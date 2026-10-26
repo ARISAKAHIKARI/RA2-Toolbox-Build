@@ -1,0 +1,855 @@
+{
+  "scope": "Inventory captured MissionClass dispatcher, four class vtables and flags.\n\nExecutes only the original base empty handlers and AttackMove normalization.\nThe table is evidence of dispatch, not proof of every mission's full gameplay.\nRequires the owner's private .mem/.valid capture, never distributed here.\n",
+  "supported_exe_sha256": "7b8a068535d6af06845edf95ae829b113d00c02909330e16f197426cd7db94b6",
+  "game_tested": false,
+  "multiplayer_tested": false,
+  "inventory": [
+    {
+      "mission": 0,
+      "name": "Sleep",
+      "dispatcher_branch": "0x5b30c8",
+      "vtable_slot": "0x204",
+      "handlers": {
+        "Unit": "0x5b2e10",
+        "Infantry": "0x5b2e10",
+        "Building": "0x5b2e10",
+        "Aircraft": "0x5b2e10"
+      },
+      "flags": {
+        "NoThreat": 0,
+        "Zombie": 1,
+        "Recruitable": 0,
+        "Paralyzed": 0,
+        "Retaliate": 0,
+        "Scatter": 0
+      }
+    },
+    {
+      "mission": 1,
+      "name": "Attack",
+      "dispatcher_branch": "0x5b3172",
+      "vtable_slot": "0x210",
+      "handlers": {
+        "Unit": "0x7447a0",
+        "Infantry": "0x51f3e0",
+        "Building": "0x44acf0",
+        "Aircraft": "0x417fe0"
+      },
+      "flags": {
+        "NoThreat": 0,
+        "Zombie": 0,
+        "Recruitable": 1,
+        "Paralyzed": 0,
+        "Retaliate": 1,
+        "Scatter": 0
+      }
+    },
+    {
+      "mission": 2,
+      "name": "Move",
+      "dispatcher_branch": "0x5b334e",
+      "vtable_slot": "0x22c",
+      "handlers": {
+        "Unit": "0x740a90",
+        "Infantry": "0x51f660",
+        "Building": "0x5b2eb0",
+        "Aircraft": "0x4166c0"
+      },
+      "flags": {
+        "NoThreat": 0,
+        "Zombie": 0,
+        "Recruitable": 1,
+        "Paralyzed": 0,
+        "Retaliate": 1,
+        "Scatter": 1
+      }
+    },
+    {
+      "mission": 3,
+      "name": "QMove",
+      "dispatcher_branch": "0x5b34c4",
+      "vtable_slot": "0x204",
+      "handlers": {
+        "Unit": "0x5b2e10",
+        "Infantry": "0x5b2e10",
+        "Building": "0x5b2e10",
+        "Aircraft": "0x5b2e10"
+      },
+      "flags": {
+        "NoThreat": 0,
+        "Zombie": 0,
+        "Recruitable": 1,
+        "Paralyzed": 0,
+        "Retaliate": 1,
+        "Scatter": 1
+      }
+    },
+    {
+      "mission": 4,
+      "name": "Retreat",
+      "dispatcher_branch": "0x5b3194",
+      "vtable_slot": "0x230",
+      "handlers": {
+        "Unit": "0x4da2c0",
+        "Infantry": "0x4da2c0",
+        "Building": "0x5b2ec0",
+        "Aircraft": "0x415a50"
+      },
+      "flags": {
+        "NoThreat": 0,
+        "Zombie": 0,
+        "Recruitable": 0,
+        "Paralyzed": 0,
+        "Retaliate": 0,
+        "Scatter": 1
+      }
+    },
+    {
+      "mission": 5,
+      "name": "Guard",
+      "dispatcher_branch": "0x5b32e8",
+      "vtable_slot": "0x21c",
+      "handlers": {
+        "Unit": "0x740810",
+        "Infantry": "0x51f620",
+        "Building": "0x4496b0",
+        "Aircraft": "0x41a5c0"
+      },
+      "flags": {
+        "NoThreat": 0,
+        "Zombie": 0,
+        "Recruitable": 1,
+        "Paralyzed": 0,
+        "Retaliate": 1,
+        "Scatter": 1
+      }
+    },
+    {
+      "mission": 6,
+      "name": "Sticky",
+      "dispatcher_branch": "0x5b3480",
+      "vtable_slot": "0x21c",
+      "handlers": {
+        "Unit": "0x740810",
+        "Infantry": "0x51f620",
+        "Building": "0x4496b0",
+        "Aircraft": "0x41a5c0"
+      },
+      "flags": {
+        "NoThreat": 0,
+        "Zombie": 0,
+        "Recruitable": 0,
+        "Paralyzed": 1,
+        "Retaliate": 1,
+        "Scatter": 0
+      }
+    },
+    {
+      "mission": 7,
+      "name": "Enter",
+      "dispatcher_branch": "0x5b310c",
+      "vtable_slot": "0x240",
+      "handlers": {
+        "Unit": "0x4d9290",
+        "Infantry": "0x4d9290",
+        "Building": "0x5b2f00",
+        "Aircraft": "0x419c80"
+      },
+      "flags": {
+        "NoThreat": 0,
+        "Zombie": 0,
+        "Recruitable": 0,
+        "Paralyzed": 0,
+        "Retaliate": 0,
+        "Scatter": 1
+      }
+    },
+    {
+      "mission": 8,
+      "name": "Capture",
+      "dispatcher_branch": "0x5b330a",
+      "vtable_slot": "0x214",
+      "handlers": {
+        "Unit": "0x4d4b20",
+        "Infantry": "0x4d4b20",
+        "Building": "0x44b760",
+        "Aircraft": "0x4d4b20"
+      },
+      "flags": {
+        "NoThreat": 0,
+        "Zombie": 0,
+        "Recruitable": 0,
+        "Paralyzed": 0,
+        "Retaliate": 0,
+        "Scatter": 0
+      }
+    },
+    {
+      "mission": 9,
+      "name": "Eaten",
+      "dispatcher_branch": "0x5b332c",
+      "vtable_slot": "0x218",
+      "handlers": {
+        "Unit": "0x4d4cb0",
+        "Infantry": "0x4d4cb0",
+        "Building": "0x5b2e60",
+        "Aircraft": "0x4d4cb0"
+      },
+      "flags": {
+        "NoThreat": 0,
+        "Zombie": 0,
+        "Recruitable": 0,
+        "Paralyzed": 0,
+        "Retaliate": 0,
+        "Scatter": 1
+      }
+    },
+    {
+      "mission": 10,
+      "name": "Harvest",
+      "dispatcher_branch": "0x5b31b6",
+      "vtable_slot": "0x224",
+      "handlers": {
+        "Unit": "0x73e5e0",
+        "Infantry": "0x522e70",
+        "Building": "0x44b770",
+        "Aircraft": "0x5b2e90"
+      },
+      "flags": {
+        "NoThreat": 0,
+        "Zombie": 0,
+        "Recruitable": 0,
+        "Paralyzed": 0,
+        "Retaliate": 0,
+        "Scatter": 0
+      }
+    },
+    {
+      "mission": 11,
+      "name": "AreaGuard",
+      "dispatcher_branch": "0x5b31d8",
+      "vtable_slot": "0x220",
+      "handlers": {
+        "Unit": "0x744100",
+        "Infantry": "0x51f640",
+        "Building": "0x449a40",
+        "Aircraft": "0x41a940"
+      },
+      "flags": {
+        "NoThreat": 0,
+        "Zombie": 0,
+        "Recruitable": 1,
+        "Paralyzed": 0,
+        "Retaliate": 1,
+        "Scatter": 1
+      }
+    },
+    {
+      "mission": 12,
+      "name": "Return",
+      "dispatcher_branch": "0x5b31fa",
+      "vtable_slot": "0x234",
+      "handlers": {
+        "Unit": "0x5b2ed0",
+        "Infantry": "0x5b2ed0",
+        "Building": "0x5b2ed0",
+        "Aircraft": "0x5b2ed0"
+      },
+      "flags": {
+        "NoThreat": 0,
+        "Zombie": 0,
+        "Recruitable": 1,
+        "Paralyzed": 0,
+        "Retaliate": 1,
+        "Scatter": 1
+      }
+    },
+    {
+      "mission": 13,
+      "name": "Stop",
+      "dispatcher_branch": "0x5b321c",
+      "vtable_slot": "0x238",
+      "handlers": {
+        "Unit": "0x5b2ee0",
+        "Infantry": "0x5b2ee0",
+        "Building": "0x5b2ee0",
+        "Aircraft": "0x5b2ee0"
+      },
+      "flags": {
+        "NoThreat": 0,
+        "Zombie": 0,
+        "Recruitable": 1,
+        "Paralyzed": 0,
+        "Retaliate": 1,
+        "Scatter": 1
+      }
+    },
+    {
+      "mission": 14,
+      "name": "Ambush",
+      "dispatcher_branch": "0x5b323e",
+      "vtable_slot": "0x20c",
+      "handlers": {
+        "Unit": "0x5b2e30",
+        "Infantry": "0x5b2e30",
+        "Building": "0x5b2e30",
+        "Aircraft": "0x5b2e30"
+      },
+      "flags": {
+        "NoThreat": 0,
+        "Zombie": 0,
+        "Recruitable": 1,
+        "Paralyzed": 0,
+        "Retaliate": 1,
+        "Scatter": 1
+      }
+    },
+    {
+      "mission": 15,
+      "name": "Hunt",
+      "dispatcher_branch": "0x5b3370",
+      "vtable_slot": "0x228",
+      "handlers": {
+        "Unit": "0x73efc0",
+        "Infantry": "0x51f540",
+        "Building": "0x5b2ea0",
+        "Aircraft": "0x414a80"
+      },
+      "flags": {
+        "NoThreat": 0,
+        "Zombie": 0,
+        "Recruitable": 0,
+        "Paralyzed": 0,
+        "Retaliate": 0,
+        "Scatter": 1
+      }
+    },
+    {
+      "mission": 16,
+      "name": "Unload",
+      "dispatcher_branch": "0x5b3260",
+      "vtable_slot": "0x23c",
+      "handlers": {
+        "Unit": "0x73d630",
+        "Infantry": "0x51f6e0",
+        "Building": "0x44d880",
+        "Aircraft": "0x4151e0"
+      },
+      "flags": {
+        "NoThreat": 0,
+        "Zombie": 0,
+        "Recruitable": 0,
+        "Paralyzed": 0,
+        "Retaliate": 0,
+        "Scatter": 0
+      }
+    },
+    {
+      "mission": 17,
+      "name": "Sabotage",
+      "dispatcher_branch": "0x5b34a2",
+      "vtable_slot": "0x214",
+      "handlers": {
+        "Unit": "0x4d4b20",
+        "Infantry": "0x4d4b20",
+        "Building": "0x44b760",
+        "Aircraft": "0x4d4b20"
+      },
+      "flags": {
+        "NoThreat": 0,
+        "Zombie": 0,
+        "Recruitable": 0,
+        "Paralyzed": 0,
+        "Retaliate": 1,
+        "Scatter": 1
+      }
+    },
+    {
+      "mission": 18,
+      "name": "Construction",
+      "dispatcher_branch": "0x5b312e",
+      "vtable_slot": "0x244",
+      "handlers": {
+        "Unit": "0x5b2f10",
+        "Infantry": "0x5b2f10",
+        "Building": "0x449a50",
+        "Aircraft": "0x5b2f10"
+      },
+      "flags": {
+        "NoThreat": 0,
+        "Zombie": 0,
+        "Recruitable": 0,
+        "Paralyzed": 0,
+        "Retaliate": 0,
+        "Scatter": 0
+      }
+    },
+    {
+      "mission": 19,
+      "name": "Selling",
+      "dispatcher_branch": "0x5b3150",
+      "vtable_slot": "0x248",
+      "handlers": {
+        "Unit": "0x5b2f20",
+        "Infantry": "0x5b2f20",
+        "Building": "0x449c30",
+        "Aircraft": "0x5b2f20"
+      },
+      "flags": {
+        "NoThreat": 1,
+        "Zombie": 0,
+        "Recruitable": 0,
+        "Paralyzed": 0,
+        "Retaliate": 0,
+        "Scatter": 0
+      }
+    },
+    {
+      "mission": 20,
+      "name": "Repair",
+      "dispatcher_branch": "0x5b3282",
+      "vtable_slot": "0x24c",
+      "handlers": {
+        "Unit": "0x740ef0",
+        "Infantry": "0x5b2f30",
+        "Building": "0x44b780",
+        "Aircraft": "0x5b2f30"
+      },
+      "flags": {
+        "NoThreat": 0,
+        "Zombie": 0,
+        "Recruitable": 1,
+        "Paralyzed": 0,
+        "Retaliate": 1,
+        "Scatter": 1
+      }
+    },
+    {
+      "mission": 21,
+      "name": "Rescue",
+      "dispatcher_branch": "0x5b3392",
+      "vtable_slot": "0x258",
+      "handlers": {
+        "Unit": "0x4ddf90",
+        "Infantry": "0x4ddf90",
+        "Building": "0x5b2f60",
+        "Aircraft": "0x4ddf90"
+      },
+      "flags": {
+        "NoThreat": 0,
+        "Zombie": 0,
+        "Recruitable": 1,
+        "Paralyzed": 0,
+        "Retaliate": 1,
+        "Scatter": 1
+      }
+    },
+    {
+      "mission": 22,
+      "name": "Missile",
+      "dispatcher_branch": "0x5b32c6",
+      "vtable_slot": "0x250",
+      "handlers": {
+        "Unit": "0x5b2f40",
+        "Infantry": "0x5b2f40",
+        "Building": "0x44c980",
+        "Aircraft": "0x5b2f40"
+      },
+      "flags": {
+        "NoThreat": 0,
+        "Zombie": 0,
+        "Recruitable": 1,
+        "Paralyzed": 0,
+        "Retaliate": 1,
+        "Scatter": 1
+      }
+    },
+    {
+      "mission": 23,
+      "name": "Harmless",
+      "dispatcher_branch": "0x5b30ea",
+      "vtable_slot": "0x208",
+      "handlers": {
+        "Unit": "0x5b2e20",
+        "Infantry": "0x5b2e20",
+        "Building": "0x5b2e20",
+        "Aircraft": "0x5b2e20"
+      },
+      "flags": {
+        "NoThreat": 1,
+        "Zombie": 0,
+        "Recruitable": 0,
+        "Paralyzed": 0,
+        "Retaliate": 0,
+        "Scatter": 1
+      }
+    },
+    {
+      "mission": 24,
+      "name": "Open",
+      "dispatcher_branch": "0x5b32a4",
+      "vtable_slot": "0x254",
+      "handlers": {
+        "Unit": "0x5b2f50",
+        "Infantry": "0x5b2f50",
+        "Building": "0x44e440",
+        "Aircraft": "0x5b2f50"
+      },
+      "flags": {
+        "NoThreat": 0,
+        "Zombie": 0,
+        "Recruitable": 1,
+        "Paralyzed": 0,
+        "Retaliate": 1,
+        "Scatter": 1
+      }
+    },
+    {
+      "mission": 25,
+      "name": "Patrol",
+      "dispatcher_branch": "0x5b33b4",
+      "vtable_slot": "0x25c",
+      "handlers": {
+        "Unit": "0x740b10",
+        "Infantry": "0x4d4280",
+        "Building": "0x5b2f70",
+        "Aircraft": "0x417300"
+      },
+      "flags": {
+        "NoThreat": 0,
+        "Zombie": 0,
+        "Recruitable": 1,
+        "Paralyzed": 0,
+        "Retaliate": 1,
+        "Scatter": 1
+      }
+    },
+    {
+      "mission": 26,
+      "name": "ParadropApproach",
+      "dispatcher_branch": "0x5b33d6",
+      "vtable_slot": "0x260",
+      "handlers": {
+        "Unit": "0x5b2f80",
+        "Infantry": "0x5b2f80",
+        "Building": "0x5b2f80",
+        "Aircraft": "0x4158e0"
+      },
+      "flags": {
+        "NoThreat": 0,
+        "Zombie": 0,
+        "Recruitable": 1,
+        "Paralyzed": 0,
+        "Retaliate": 1,
+        "Scatter": 1
+      }
+    },
+    {
+      "mission": 27,
+      "name": "ParadropOverfly",
+      "dispatcher_branch": "0x5b33f8",
+      "vtable_slot": "0x264",
+      "handlers": {
+        "Unit": "0x5b2f90",
+        "Infantry": "0x5b2f90",
+        "Building": "0x5b2f90",
+        "Aircraft": "0x415960"
+      },
+      "flags": {
+        "NoThreat": 0,
+        "Zombie": 0,
+        "Recruitable": 1,
+        "Paralyzed": 0,
+        "Retaliate": 1,
+        "Scatter": 1
+      }
+    },
+    {
+      "mission": 28,
+      "name": "Wait",
+      "dispatcher_branch": "0x5b345e",
+      "vtable_slot": "0x268",
+      "handlers": {
+        "Unit": "0x5b2fa0",
+        "Infantry": "0x5b2fa0",
+        "Building": "0x5b2fa0",
+        "Aircraft": "0x5b2fa0"
+      },
+      "flags": {
+        "NoThreat": 0,
+        "Zombie": 0,
+        "Recruitable": 1,
+        "Paralyzed": 0,
+        "Retaliate": 1,
+        "Scatter": 1
+      }
+    },
+    {
+      "mission": 29,
+      "name": "AttackMove",
+      "dispatcher_branch": "0x5b34c4",
+      "vtable_slot": "0x204",
+      "handlers": {
+        "Unit": "0x5b2e10",
+        "Infantry": "0x5b2e10",
+        "Building": "0x5b2e10",
+        "Aircraft": "0x5b2e10"
+      },
+      "flags": {
+        "NoThreat": 0,
+        "Zombie": 0,
+        "Recruitable": 1,
+        "Paralyzed": 0,
+        "Retaliate": 1,
+        "Scatter": 1
+      }
+    },
+    {
+      "mission": 30,
+      "name": "SpyplaneApproach",
+      "dispatcher_branch": "0x5b341a",
+      "vtable_slot": "0x26c",
+      "handlers": {
+        "Unit": "0x5b2fb0",
+        "Infantry": "0x5b2fb0",
+        "Building": "0x5b2fb0",
+        "Aircraft": "0x4155f0"
+      },
+      "flags": {
+        "NoThreat": 0,
+        "Zombie": 0,
+        "Recruitable": 1,
+        "Paralyzed": 0,
+        "Retaliate": 1,
+        "Scatter": 1
+      }
+    },
+    {
+      "mission": 31,
+      "name": "SpyplaneOverfly",
+      "dispatcher_branch": "0x5b343c",
+      "vtable_slot": "0x270",
+      "handlers": {
+        "Unit": "0x5b2fc0",
+        "Infantry": "0x5b2fc0",
+        "Building": "0x5b2fc0",
+        "Aircraft": "0x4157c0"
+      },
+      "flags": {
+        "NoThreat": 0,
+        "Zombie": 0,
+        "Recruitable": 1,
+        "Paralyzed": 0,
+        "Retaliate": 1,
+        "Scatter": 1
+      }
+    }
+  ],
+  "base_handler_checks": [
+    {
+      "address": "0x5b2e10",
+      "return": 450,
+      "object_unchanged": true,
+      "status": "PASS"
+    },
+    {
+      "address": "0x5b2e20",
+      "return": 450,
+      "object_unchanged": true,
+      "status": "PASS"
+    },
+    {
+      "address": "0x5b2e30",
+      "return": 450,
+      "object_unchanged": true,
+      "status": "PASS"
+    },
+    {
+      "address": "0x5b2e40",
+      "return": 450,
+      "object_unchanged": true,
+      "status": "PASS"
+    },
+    {
+      "address": "0x5b2e50",
+      "return": 450,
+      "object_unchanged": true,
+      "status": "PASS"
+    },
+    {
+      "address": "0x5b2e60",
+      "return": 450,
+      "object_unchanged": true,
+      "status": "PASS"
+    },
+    {
+      "address": "0x5b2e70",
+      "return": 450,
+      "object_unchanged": true,
+      "status": "PASS"
+    },
+    {
+      "address": "0x5b2e80",
+      "return": 450,
+      "object_unchanged": true,
+      "status": "PASS"
+    },
+    {
+      "address": "0x5b2e90",
+      "return": 450,
+      "object_unchanged": true,
+      "status": "PASS"
+    },
+    {
+      "address": "0x5b2ea0",
+      "return": 450,
+      "object_unchanged": true,
+      "status": "PASS"
+    },
+    {
+      "address": "0x5b2eb0",
+      "return": 450,
+      "object_unchanged": true,
+      "status": "PASS"
+    },
+    {
+      "address": "0x5b2ec0",
+      "return": 450,
+      "object_unchanged": true,
+      "status": "PASS"
+    },
+    {
+      "address": "0x5b2ed0",
+      "return": 450,
+      "object_unchanged": true,
+      "status": "PASS"
+    },
+    {
+      "address": "0x5b2ee0",
+      "return": 450,
+      "object_unchanged": true,
+      "status": "PASS"
+    },
+    {
+      "address": "0x5b2ef0",
+      "return": 450,
+      "object_unchanged": true,
+      "status": "PASS"
+    },
+    {
+      "address": "0x5b2f00",
+      "return": 450,
+      "object_unchanged": true,
+      "status": "PASS"
+    },
+    {
+      "address": "0x5b2f10",
+      "return": 450,
+      "object_unchanged": true,
+      "status": "PASS"
+    },
+    {
+      "address": "0x5b2f20",
+      "return": 450,
+      "object_unchanged": true,
+      "status": "PASS"
+    },
+    {
+      "address": "0x5b2f30",
+      "return": 450,
+      "object_unchanged": true,
+      "status": "PASS"
+    },
+    {
+      "address": "0x5b2f40",
+      "return": 450,
+      "object_unchanged": true,
+      "status": "PASS"
+    },
+    {
+      "address": "0x5b2f50",
+      "return": 450,
+      "object_unchanged": true,
+      "status": "PASS"
+    },
+    {
+      "address": "0x5b2f60",
+      "return": 450,
+      "object_unchanged": true,
+      "status": "PASS"
+    },
+    {
+      "address": "0x5b2f70",
+      "return": 450,
+      "object_unchanged": true,
+      "status": "PASS"
+    },
+    {
+      "address": "0x5b2f80",
+      "return": 450,
+      "object_unchanged": true,
+      "status": "PASS"
+    },
+    {
+      "address": "0x5b2f90",
+      "return": 450,
+      "object_unchanged": true,
+      "status": "PASS"
+    },
+    {
+      "address": "0x5b2fa0",
+      "return": 450,
+      "object_unchanged": true,
+      "status": "PASS"
+    },
+    {
+      "address": "0x5b2fb0",
+      "return": 450,
+      "object_unchanged": true,
+      "status": "PASS"
+    },
+    {
+      "address": "0x5b2fc0",
+      "return": 450,
+      "object_unchanged": true,
+      "status": "PASS"
+    }
+  ],
+  "normalization_checks": [
+    {
+      "mission": 0,
+      "target_present": false,
+      "supports_attack_move": false,
+      "normalized_mission": 0,
+      "status": "PASS"
+    },
+    {
+      "mission": 5,
+      "target_present": false,
+      "supports_attack_move": false,
+      "normalized_mission": 5,
+      "status": "PASS"
+    },
+    {
+      "mission": 23,
+      "target_present": false,
+      "supports_attack_move": false,
+      "normalized_mission": 23,
+      "status": "PASS"
+    },
+    {
+      "mission": 29,
+      "target_present": false,
+      "supports_attack_move": false,
+      "normalized_mission": 2,
+      "status": "PASS"
+    },
+    {
+      "mission": 29,
+      "target_present": true,
+      "supports_attack_move": false,
+      "normalized_mission": 1,
+      "status": "PASS"
+    }
+  ]
+}

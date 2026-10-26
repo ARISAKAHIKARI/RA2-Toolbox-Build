@@ -3,6 +3,7 @@ static void loadAdditionalSettings(){
  extra.techEnhance=value(L"Experimental",L"TechEnhance",0)!=0;
  extra.placementImplementation=std::clamp(value(L"Experimental",L"PlacementImplementation",0),0,1);
  extra.stickyKey=value(L"Hotkeys",L"StickyGuard",extra.stickyKey)&65535;
+ for(int i=0;i<selectedmode::Count;++i)extra.missionModeKeys[i]=value(L"Hotkeys",selectedmode::setting(i),0)&65535;
  extra.watchSecondary=value(L"Watch",L"SecondaryEnabled",0)!=0;
  extra.watchSecondaryX=std::clamp(value(L"Watch",L"SecondaryX",10000),0,10000);extra.watchSecondaryY=std::clamp(value(L"Watch",L"SecondaryY",0),0,10000);
  extra.watchEnabled=value(L"Watch",L"Enabled",0)!=0;extra.watchDanger=value(L"Watch",L"DangerCarriers",0)!=0;for(int n=0;n<3;++n){const wchar_t* keys[]={L"PinKey",L"PinKey2",L"PinKey3"};extra.watchKeys[n]=value(L"Watch",keys[n],n?extra.watchKeys[0]:extra.watchKeys[n])&65535;}
@@ -74,6 +75,7 @@ static bool saveAdditionalSettings(){
  write(L"ViewZoom",L"Enabled",0);write(L"ViewZoom",L"Percent",100);
  write(L"Experimental",L"TechEnhance",extra.techEnhance);write(L"Experimental",L"PlacementImplementation",extra.placementImplementation);
  write(L"Hotkeys",L"StickyGuard",extra.stickyKey);
+ for(int i=0;i<selectedmode::Count;++i)write(L"Hotkeys",selectedmode::setting(i),extra.missionModeKeys[i]);
  write(L"Watch",L"SecondaryEnabled",extra.watchSecondary);
  write(L"Watch",L"SecondaryX",extra.watchSecondaryX);write(L"Watch",L"SecondaryY",extra.watchSecondaryY);
  write(L"Watch",L"Enabled",extra.watchEnabled);write(L"Watch",L"DangerCarriers",extra.watchDanger);for(int n=0;n<3;++n){const wchar_t* keys[]={L"PinKey",L"PinKey2",L"PinKey3"};write(L"Watch",keys[n],extra.watchKeys[n]);}

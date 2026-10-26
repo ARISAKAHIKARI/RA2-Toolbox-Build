@@ -63,6 +63,10 @@ static bool autoSettingChanged(int id,int notification){
  if((id==9060||id==9061)&&notification==BN_CLICKED){(id==9060?extra.watchEnabled:extra.watchDanger)=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;registerKeys();changedSetting();return true;}
  if(id==9095&&edit){extra.stickyKey=uint32_t(SendMessageW(GetDlgItem(ui,id),HKM_GETHOTKEY,0,0));registerKeys();changedSetting();return true;}
  if(id==9094&&notification==BN_CLICKED){send(StickyGuard);return true;}
+ if(id>=9170&&id<9170+2*selectedmode::Count){int index=(id-9170)/2;
+  if((id-9170)%2&&edit){extra.missionModeKeys[index]=uint32_t(SendMessageW(GetDlgItem(ui,id),HKM_GETHOTKEY,0,0));registerKeys();changedSetting();return true;}
+  if(!((id-9170)%2)&&notification==BN_CLICKED){send(selectedmode::command(index));return true;}
+ }
  if(id>=9062&&id<=9064&&edit){extra.watchKeys[id-9062]=uint32_t(SendMessageW(GetDlgItem(ui,id),HKM_GETHOTKEY,0,0));registerKeys();changedSetting();return true;}
  if(id==9056&&select){int v=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));if(v==0||v==1){extra.formationMouse=v==1?1:2;changedSetting();syncAdditional();}return true;}
  if(id==9050&&notification==BN_CLICKED){extra.formationEnabled=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();syncAdditional();return true;}

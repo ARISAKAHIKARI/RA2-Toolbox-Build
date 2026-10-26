@@ -6,6 +6,7 @@ static void executeHotkey(WPARAM wp,bool fanout){
   save();syncAdditional();notify(L"视角缩放请求："+std::to_wstring(extra.viewZoomPercent)+L"%");return;
  }
  if(wp==1723){send(StickyGuard);return;}
+ if(wp>=1724&&wp<1724+selectedmode::Count){send(selectedmode::command(int(wp-1724)));return;}
  if(wp>=1730&&wp<=1732){watchhost::pin(extra.watchKeys[wp-1730]);return;}
  if(wp>=1710&&wp<=1718){send(wp==1710?Cheer:Taunt,int(wp-1710));return;}
  if(wp==1701){selectNextIdleAircraft();return;}
@@ -50,4 +51,5 @@ static void handleHotkey(WPARAM id,LPARAM event){
  if(!hotkeyPending.add(selected,GetTickCount(),commandMatch()))notify(L"快捷键请求队列已满，本次组合未提交。");
  serviceHotkeyBatch();
 }
+
 

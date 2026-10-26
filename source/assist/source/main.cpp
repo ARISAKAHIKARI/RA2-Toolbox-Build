@@ -393,6 +393,7 @@ static void registerKeys(){for(int id:registeredKeyIDs)UnregisterHotKey(ui,id);r
  if(hookAutoCS&&LOBYTE(csKey)&&!registerKey(1699,csKey))++failures;
  if(extra.viewZoomEnabled){for(int i=0;i<3;++i)if(!registerKey(1720+i,WORD((i==0?VK_OEM_MINUS:i==1?VK_OEM_PLUS:VK_BACK)|(6<<8))))++failures;}
  if(LOBYTE(extra.stickyKey)&&!registerKey(1723,WORD(extra.stickyKey)))++failures;
+ for(int i=0;i<selectedmode::Count;++i)if(LOBYTE(extra.missionModeKeys[i])&&!registerKey(1724+i,WORD(extra.missionModeKeys[i])))++failures;
  if(extra.watchEnabled||extra.watchSecondary)for(int i=0;i<3;++i)if(external::watch::firstBinding(extra.watchKeys,i)&&!registerKey(1730+i,WORD(extra.watchKeys[i])))++failures;
  if(LOBYTE(idleAircraftKey)&&!registerKey(1701,idleAircraftKey))++failures;
  for(int i=0;i<9;++i)if(LOBYTE(socialKeys[i])&&!registerKey(1710+i,socialKeys[i]))++failures;
@@ -1309,6 +1310,8 @@ static void result(){if(!shared)return;uint32_t a=shared->ack;if(a==ack)return;M
  diag(L"ack command="+std::to_wstring(c)+L" result="+std::to_wstring(r)+L" count="+std::to_wstring(n)+L" ack="+std::to_wstring(a));
  if(c==AirPathMove){airPathResult(r,n,uint32_t(shared->arg),shared->requestToken);return;}
  if(c==StickyGuard&&r==-40){notify(L"当前会话不支持 Sticky 指令。");return;}
+ if(selectedmode::index(c)>=0&&r==-40){notify(L"当前会话不支持任务模式指令。");return;}
+ if(selectedmode::index(c)>=0&&r==-41){notify(L"所选单位仍处于 Sticky，普通任务模式不能保证解除。");return;}
  if(c==ProduceReserved||c==ProduceDeferred){constructionResult(r,n,uint32_t(shared->arg2),shared->requestToken);return;}
  // A newer selection (e.g. a double-tap upgrade) supersedes this ACK.
  // Do not overwrite it with a retry of the older single-tap request.
@@ -1347,6 +1350,7 @@ static void result(){if(!shared)return;uint32_t a=shared->ack;if(a==ack)return;M
  else if(c==SelectSuper||c==SelectIron||c==SelectChrono)notify(L"已选择超级武器，请在地图上选择目标。");
  else if(c==SmartUnload)notify(n?L"已安排卸载 "+std::to_wstring(n)+L" 辆载具。":L"没有可卸载的已选载具。");
  else if(c==StickyGuard)notify(eventdelivery::isMultiplayer(snap.session)?L"Sticky 同步请求已入队："+std::to_wstring(n)+L" 个单位；联机退出尚未实现。":L"已切换 Sticky 驻守："+std::to_wstring(n)+L" 个单位；手动下令解除。");
+ else if(selectedmode::index(c)>=0)notify(n?std::wstring(selectedmode::label(selectedmode::index(c)))+L"请求已入队："+std::to_wstring(n)+L" 个单位；实际执行以游戏为准。":L"没有可下令的己方地面单位。");
  else if(c==CancelAdvanced)notify(L"已取消所选单位的自动任务。");
  else if(c==AutoBoard){if(!snap.loadUnits)notify(L"请先框选要装车的步兵或载具。");else if(!snap.loadVehicles)notify(L"所选或附近没有可用的己方运输车辆。");else notify(L"装车指令已提交 "+std::to_wstring(n)+L" 个；已在途中 "+std::to_wstring(snap.loadWaiting)+L" 个；未分配 "+std::to_wstring(snap.loadUnassigned)+L" 个。"+(r==2?L"已自动排队，无需重复按键。":L""));}
  else notify(n?L"已选择 / 定位 "+std::to_wstring(n)+L" 个单位。":L"没有符合条件的己方单位。");

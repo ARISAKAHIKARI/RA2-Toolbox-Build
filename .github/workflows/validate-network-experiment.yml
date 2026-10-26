@@ -1,4 +1,4 @@
-name: Build network experiments 1.0.39-pre.1
+name: Build network experiments 1.0.39-pre.2
 on:
   push:
     branches: [experiment/network-events-20261026]
@@ -35,10 +35,11 @@ jobs:
           }
       - uses: actions/upload-artifact@v4
         with:
-          name: RA2-Toolbox-1.0.39-pre.1-network-experiments
+          name: RA2-Toolbox-1.0.39-pre.2-network-experiments
           retention-days: 14
           if-no-files-found: error
           path: |
             source/RA2Toolbox.exe
             source/GameRuntime.dll
             source/research/2026-10-26-network-event-audit.md
+            source/research/2026-10-26-selected-mission-modes.md
