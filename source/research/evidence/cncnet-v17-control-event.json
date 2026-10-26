@@ -1,0 +1,348 @@
+{
+  "scope": "Official v0.0.0.17 normal versus Hardened on-disk PE metadata and narrow static disassembly only. No DLL execution, no runtime instrumentation, no patches installed or modified.",
+  "evidence_levels": {
+    "binary_fact": "Direct bytes, section entries, exports and static instruction control flow in the hash-pinned DLL.",
+    "source_mapping": "Interpretation of documented game fields and build lifecycle using the release-pinned public source.",
+    "conditional_inference": "Expected behavior if this binary is loaded normally, its initialization succeeds, and the relevant game hook executes.",
+    "not_established": "User's loaded DLL/build, actual live bytes and execution, install order, observed failure mode, network desync causal chain, or how another trainer operates."
+  },
+  "binaries": {
+    "normal": {
+      "path": "CnCNet-Spawner.dll",
+      "size": 233472,
+      "sha256": "58f198973bd0fd3b0e1b2c42fc6c545efe1fd399680abc2e8d6e9e189751614d"
+    },
+    "hardened": {
+      "path": "CnCNet-Spawner.dll",
+      "size": 417792,
+      "sha256": "62466e9e534ceb15c5d71fb05c62ad98a2b2b4903c569ed0c82189ef86ea3b7d"
+    }
+  },
+  "metadata_counts": {
+    "normal": {
+      "hooks": 196,
+      "patches": 49
+    },
+    "hardened": {
+      "hooks": 213,
+      "patches": 95
+    },
+    "added_hooks": 17,
+    "added_patches": 46,
+    "removed_hooks": 0,
+    "removed_patches": 0,
+    "comparison_key": "hooks: address,size,name; patches: address,size. Counts do not establish identical bodies or initialized pData for shared entries."
+  },
+  "13_site_intersection": {
+    "normal": [],
+    "hardened": [
+      {
+        "target": "ControlHouse",
+        "target_hex": "0x0050B6F0",
+        "family": "patch",
+        "entry": {
+          "address": 5289712,
+          "address_hex": "0x0050B6F0",
+          "size": 5,
+          "data_va_hex": "0x10073CC8",
+          "file_backed_data": false,
+          "data_hex": null
+        }
+      }
+    ],
+    "limitation": "Declared .syhks00/.patch physical intervals only; not exhaustive dynamic writes or semantic interference. One unrelated added hook has declared size 0, so its actual overwrite length is not inferred."
+  },
+  "control_house": {
+    "level": "binary_fact + source_mapping",
+    "game_interval_inclusive": [
+      "0x0050B6F0",
+      "0x0050B6F4"
+    ],
+    "patch_entry": {
+      "rva": "0x00076408",
+      "preferred_va": "0x10076408",
+      "file_offset": "0x00063408",
+      "size": 12,
+      "bytes": "f0b6500005000000c83c0710"
+    },
+    "patch_data_preferred_va": "0x10073CC8",
+    "patch_data_on_disk": "Not file-backed; initialized at DLL attach by RVA 0x1350.",
+    "initializer": {
+      "rva": "0x00001350",
+      "preferred_va": "0x10001350",
+      "file_offset": "0x00000750",
+      "size": 31,
+      "bytes": "51b850ec00108904248b0424050b49afffc605c83c0710e9a3c93c071059c3"
+    },
+    "initializer_pointer_in_crt_array": {
+      "rva": "0x0002823C",
+      "preferred_va": "0x1002823C",
+      "file_offset": "0x00026C3C",
+      "size": 4,
+      "bytes": "50130010"
+    },
+    "initialized_bytes_at_preferred_base_only": "e95b35b00f",
+    "relocation_formula": "E9 + uint32(loaded_DLL_base + 0xEC50 - 0x50B6F5)",
+    "target": {
+      "rva": "0x0000EC50",
+      "preferred_va": "0x1000EC50",
+      "file_offset": "0x0000E050",
+      "size": 44,
+      "bytes": "a134790310833800740a3b0d4c3da8000f94c0c380b9ec01000000750c80b9ed01000000750332c0c3b001c3"
+    },
+    "target_semantics": "If Session.GameMode != Campaign(0), return this == HouseClass::CurrentPlayer. Otherwise return this.IsHumanPlayer || this.IsInPlayerControl. Matches release YRpp IsControlledByCurrentPlayer inline implementation.",
+    "session_pointer": {
+      "storage": {
+        "rva": "0x00037934",
+        "preferred_va": "0x10037934",
+        "file_offset": "0x00036134",
+        "size": 4,
+        "bytes": "38b2a800"
+      },
+      "value": "0x00A8B238"
+    },
+    "toolbox_comparison": "Same 5-byte ControlHouse site as product 4f724877 and main 9c6509. Toolbox helper returns EAX=1 unconditionally. Different implementations cannot simultaneously occupy this one entry without explicit compatibility handling.",
+    "expected_toolbox_guard": "pre6 knownOriginal accepts A138B2A800 or two fixed old E9 forwarders only; it does not generally accept arbitrary DLL detours. The initialized bytes at this DLL's preferred base are not in that set.",
+    "not_established": "Whether this DLL is installed in the user's game or whether any overlap actually produced disconnection."
+  },
+  "initialization_and_application": {
+    "level": "binary_fact + source_mapping; execution conditional on normal load and hook reachability",
+    "chain_rvas": [
+      "0xFF6A PE entry",
+      "0xFE31 outer reason dispatch",
+      "0xFC1D CRT reason dispatch",
+      "0xFC70 process attach",
+      "0xFCF7 call initializer-array walker 0x1A2CE",
+      "0x2823C array item -> initializer 0x1350",
+      "game 0x7CD810 ExeRun hook -> DLL export RVA0x16A0",
+      ".patch loop -> VirtualProtect / memcpy / restore / FlushInstructionCache"
+    ],
+    "initializer_array_range": {
+      "start_preferred_va": "0x100281A4",
+      "end_exclusive_preferred_va": "0x10028258"
+    },
+    "source_gate": "Main.Hook.cpp ExeRun calls Main::ExeRun without a session, Spawner::Enabled or per-patch switch. Main::ExeRun immediately calls Patch::ApplyStatic. Patch loop stops at offset0 or section VirtualSize, with no original-byte comparison.",
+    "normal_success_condition": "CRT attach succeeds, the DLL is retained and Syringe's ExeRun game hook is installed and reached. Later foreign overwrites are outside this static proof."
+  },
+  "event_controlling_house_validation": {
+    "level": "binary_fact + source_mapping",
+    "export": "KD873HWYFB7DN36G67DUY4BGT32GD",
+    "export_rva": "0x0000EEE0",
+    "registered_sites": [
+      {
+        "address": 5008725,
+        "address_hex": "0x004C6D55",
+        "size": 6,
+        "name": "KD873HWYFB7DN36G67DUY4BGT32GD"
+      },
+      {
+        "address": 5011140,
+        "address_hex": "0x004C76C4",
+        "size": 6,
+        "name": "KD873HWYFB7DN36G67DUY4BGT32GD"
+      },
+      {
+        "address": 5009874,
+        "address_hex": "0x004C71D2",
+        "size": 5,
+        "name": "KD873HWYFB7DN36G67DUY4BGT32GD"
+      },
+      {
+        "address": 5010643,
+        "address_hex": "0x004C74D3",
+        "size": 6,
+        "name": "KD873HWYFB7DN36G67DUY4BGT32GD"
+      },
+      {
+        "address": 5009178,
+        "address_hex": "0x004C6F1A",
+        "size": 6,
+        "name": "KD873HWYFB7DN36G67DUY4BGT32GD"
+      },
+      {
+        "address": 5009812,
+        "address_hex": "0x004C7194",
+        "size": 6,
+        "name": "KD873HWYFB7DN36G67DUY4BGT32GD"
+      },
+      {
+        "address": 5008632,
+        "address_hex": "0x004C6CF8",
+        "size": 6,
+        "name": "KD873HWYFB7DN36G67DUY4BGT32GD"
+      },
+      {
+        "address": 5008818,
+        "address_hex": "0x004C6DB2",
+        "size": 6,
+        "name": "KD873HWYFB7DN36G67DUY4BGT32GD"
+      },
+      {
+        "address": 5011553,
+        "address_hex": "0x004C7861",
+        "size": 6,
+        "name": "KD873HWYFB7DN36G67DUY4BGT32GD"
+      },
+      {
+        "address": 5009114,
+        "address_hex": "0x004C6EDA",
+        "size": 6,
+        "name": "KD873HWYFB7DN36G67DUY4BGT32GD"
+      }
+    ],
+    "condition": "Take object pointer from captured EAX and event pointer from captured ESI. Null object returns 0x4C8109. Else call native 0x6339B0 GetControllingHouse; compare result to signed event byte +2 (EventClass.HouseIndex). Match returns0; mismatch returns0x4C8109.",
+    "wrapper": {
+      "rva": "0x0000ED80",
+      "preferred_va": "0x1000ED80",
+      "file_offset": "0x0000E180",
+      "size": 22,
+      "bytes": "558bec51894dfc598be55db8b0396300ffe08be55dc3"
+    },
+    "implementation": {
+      "rva": "0x0000EEE0",
+      "preferred_va": "0x1000EEE0",
+      "file_offset": "0x0000E2E0",
+      "size": 47,
+      "bytes": "8b442404568b48248b700c85c97419e88cfeffff0fbe4e02ba09814c0033f63bc10f44d68bc25ec3b809814c005ec3"
+    },
+    "caution": "The checked value is GetControllingHouse(), not a direct immutable Owner field; Toolbox's 0x6339BA call hook lies inside that native routine. Return0x4C8109 is a changed continuation, not proof of disconnect or a complete event-rejection call graph."
+  },
+  "secondary_owner_validation": {
+    "level": "binary_fact with partial field mapping",
+    "export": "B63N75N698FNE63JF87EN",
+    "export_rva": "0x0000EF10",
+    "registered_site": "0x004C782B size6",
+    "condition_raw": "From captured EAX follow +0x38 then +0x28 to a house-like object. Select its +0x30 index or CurrentPlayer+0x30 according to the same campaign/current-player predicate. Compare to signed captured-ESI+2; return0 on match,0x4C8109 on mismatch/null intermediate.",
+    "caution": "Intermediate +0x38/+0x28 object identities were not fully mapped; report the observed raw dataflow only."
+  },
+  "house_id_check": {
+    "level": "binary_fact; packet-field interpretation intentionally incomplete",
+    "capture": {
+      "game_hook": "0x0064A0E4 size5",
+      "export": "DJJ83UN78EG23K69NR47DH",
+      "export_rva": "0x0000EE20",
+      "operation": "Store captured EDX in DLL global preferred-VA0x10073C60; return0."
+    },
+    "check": {
+      "game_hook": "0x0064BE75 size8",
+      "export": "B8DM32NIB8J4ND8DNBNTIBIE",
+      "export_rva": "0x0000EE30",
+      "operation": "Compare the saved integer with signed byte [captured ESP+0x3E]. Equal returns0. Unequal logs a forged-house-ID message and returns0x64C370."
+    },
+    "diagnostic_string": {
+      "region": {
+        "rva": "0x00032FC0",
+        "preferred_va": "0x10032FC0",
+        "file_offset": "0x000319C0",
+        "size": 52,
+        "bytes": "466f7267656420686f7573652049442064657465637465642e2045787065637465643a2025642c2041637475616c3a2025640a00"
+      },
+      "text": "Forged house ID detected. Expected: %d, Actual: %d\n"
+    },
+    "caution": "No complete packet/stack layout mapping was performed. This check is not a CRC/hash equality check; its presence does not establish that it fired in the user's session."
+  },
+  "sources": {
+    "patch_layout": "https://github.com/CnCNet/yrpp-spawner/blob/fbe8d7d2620584d04ba14fa3580943bfa1448d40/src/Utilities/Patch.h#L25-L35",
+    "patch_apply": "https://github.com/CnCNet/yrpp-spawner/blob/fbe8d7d2620584d04ba14fa3580943bfa1448d40/src/Utilities/Patch.cpp#L42-L68",
+    "exe_run_hook": "https://github.com/CnCNet/yrpp-spawner/blob/fbe8d7d2620584d04ba14fa3580943bfa1448d40/src/Main.Hook.cpp#L23-L35",
+    "exe_run": "https://github.com/CnCNet/yrpp-spawner/blob/fbe8d7d2620584d04ba14fa3580943bfa1448d40/src/Main.cpp#L30-L35",
+    "private_build_import": "https://github.com/CnCNet/yrpp-spawner/blob/fbe8d7d2620584d04ba14fa3580943bfa1448d40/Spawner.vcxproj#L104-L105",
+    "syringe_layout": "https://github.com/Phobos-developers/YRpp/blob/b22f1860dd7b100cad57123d4ca5d459b9020d88/Syringe.h#L117-L135",
+    "hook_layout": "https://github.com/Phobos-developers/YRpp/blob/b22f1860dd7b100cad57123d4ca5d459b9020d88/Syringe.h#L254-L286",
+    "house_control": "https://github.com/Phobos-developers/YRpp/blob/b22f1860dd7b100cad57123d4ca5d459b9020d88/HouseClass.h#L500-L506",
+    "current_player": "https://github.com/Phobos-developers/YRpp/blob/b22f1860dd7b100cad57123d4ca5d459b9020d88/HouseClass.h#L172",
+    "get_controlling_house": "https://github.com/Phobos-developers/YRpp/blob/b22f1860dd7b100cad57123d4ca5d459b9020d88/TechnoClass.h#L497-L499",
+    "event_house": "https://github.com/Phobos-developers/YRpp/blob/b22f1860dd7b100cad57123d4ca5d459b9020d88/EventClass.h#L154-L157",
+    "session": "https://github.com/Phobos-developers/YRpp/blob/b22f1860dd7b100cad57123d4ca5d459b9020d88/SessionClass.h#L58-L80"
+  },
+  "disassembly": {
+    "path": "hardened-control-event-evidence.asm",
+    "sha256": "9175446abe07541f1f562a9c579e1f1fa841733fdb4c3044e34a95df597b3a34",
+    "ranges": {
+      "control_patch_initializer": {
+        "rva": "0x00001350",
+        "preferred_va": "0x10001350",
+        "file_offset": "0x00000750",
+        "size": 31,
+        "bytes": "51b850ec00108904248b0424050b49afffc605c83c0710e9a3c93c071059c3"
+      },
+      "control_patch_target": {
+        "rva": "0x0000EC50",
+        "preferred_va": "0x1000EC50",
+        "file_offset": "0x0000E050",
+        "size": 44,
+        "bytes": "a134790310833800740a3b0d4c3da8000f94c0c380b9ec01000000750c80b9ed01000000750332c0c3b001c3"
+      },
+      "dllmain": {
+        "rva": "0x00001680",
+        "preferred_va": "0x10001680",
+        "file_offset": "0x00000A80",
+        "size": 19,
+        "bytes": "837c24080175098b442404a3e43f0610b001c2"
+      },
+      "exe_run_patch_apply_loop": {
+        "rva": "0x000016A0",
+        "preferred_va": "0x100016A0",
+        "file_offset": "0x00000AA0",
+        "size": 220,
+        "bytes": "83ec08a1e43f06105689442404578b703c33ff03f033c0663b46060f83b30000005333db550fb76e1483c51803eb6a0803ee5568f02e0310e8637e010083c40c85c074160fb746064783c3283bf87cd55d5b5f33c05e83c408c38b450c8b4d0803442410894c241485c97e668b35448002108d7804bdfcffffff2be80f1f40008b5ffc85db744b8d442410506a40ff3753ffd6ff37ff770453e82212010083c40c8d44241050ff742414ff3753ffd68b37ff1524800210565350ff15288002108b354480021083c70c8d042f3b4424147cae5d5b5f33c05e83c408c3"
+      },
+      "crt_reason_dispatch": {
+        "rva": "0x0000FC1D",
+        "preferred_va": "0x1000FC1D",
+        "file_offset": "0x0000F01D",
+        "size": 81,
+        "bytes": "558bec8b450c83e800743383e801742083e801741183e801740533c040eb30e8f0fcffffeb05e8cafcffff0fb6c0eb1fff7510ff7508e81800000059eb10837d10000f95c00fb6c050e80f010000595dc2"
+      },
+      "crt_process_attach": {
+        "rva": "0x0000FC70",
+        "preferred_va": "0x1000FC70",
+        "file_offset": "0x0000F070",
+        "size": 266,
+        "bytes": "6a1068e03a0310e8d40700006a00e81ffdffff5984c00f84d4000000e816fcffff8845e3b301885de7c745fc00000000833d50360610000f85c5000000c7055036061001000000e848fcffff84c0744de8a9080000e863080000e87c080000686c820210685c820210e81ba60000595985c07529e8f0fbffff84c07420685882021068a4810210e8d2a500005959c705503606100200000032db885de7c745fcfeffffffe83d00000084db7543e8460800008bf0833e00741f56e833fdffff5984c07414ff750c6a02ff75088b368bceff159c810210ffd6ff057436061033c040eb0f8a5de7ff75e3e89bfdffff59c333c08b4df064890d00000000595f5e5bc9c36a07e8b7050000cc"
+      },
+      "crt_outer_attach_dispatch": {
+        "rva": "0x0000FE31",
+        "preferred_va": "0x1000FE31",
+        "file_offset": "0x0000F231",
+        "size": 120,
+        "bytes": "6a0c68283b0310e8130600008b7d0c85ff750f393d743606107f0733c0e9dc000000c745fc0000000083ff01740a83ff0274058b5d10eb318b5d105357ff7508e8c90000008bf08975e485f60f84a30000005357ff7508e890fdffff8bf08975e485f60f848c0000005357ff7508e8dc17ffff8bf08975e4"
+      },
+      "pe_entrypoint": {
+        "rva": "0x0000FF6A",
+        "preferred_va": "0x1000FF6A",
+        "file_offset": "0x0000F36A",
+        "size": 33,
+        "bytes": "558bec837d0c017505e86a050000ff7510ff750cff7508e8abfeffff83c40c5dc2"
+      },
+      "initializer_array_iterator": {
+        "rva": "0x0001A2CE",
+        "preferred_va": "0x1001A2CE",
+        "file_offset": "0x000196CE",
+        "size": 43,
+        "bytes": "8bff558bec568b75083b750c741a578b3e85ff740a8bcfff159c810210ffd783c6043b750c75e85f5e5dc3"
+      },
+      "native_get_controlling_house_wrapper": {
+        "rva": "0x0000ED80",
+        "preferred_va": "0x1000ED80",
+        "file_offset": "0x0000E180",
+        "size": 22,
+        "bytes": "558bec51894dfc598be55db8b0396300ffe08be55dc3"
+      },
+      "event_owner_checks": {
+        "rva": "0x0000EEE0",
+        "preferred_va": "0x1000EEE0",
+        "file_offset": "0x0000E2E0",
+        "size": 167,
+        "bytes": "8b442404568b48248b700c85c97419e88cfeffff0fbe4e02ba09814c0033f63bc10f44d68bc25ec3b809814c005ec3cc8b442404568b700c8b402485c074618b483885c9745aa1347903108b4928833800741d3b0d4c3da80074278b5130b809814c000fbe4e0233f63bd10f44c65ec380b9ec01000000750980b9ed0100000074d9a14c3da80085c074d00fbe4e0233f68b50303bd1b809814c000f44c65ec3b809814c005ec3"
+      },
+      "house_id_capture_and_check": {
+        "rva": "0x0000EE20",
+        "preferred_va": "0x1000EE20",
+        "file_offset": "0x0000E220",
+        "size": 61,
+        "bytes": "8b4424048b401ca3603c071033c0c3cc8b4424048b0d603c07108b40140fbe403e3bc87415505168c02f0310e85ff2ffff83c40cb870c36400c333c0c3"
+      }
+    }
+  }
+}

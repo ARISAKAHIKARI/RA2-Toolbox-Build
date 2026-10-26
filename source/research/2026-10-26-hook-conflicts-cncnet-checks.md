@@ -100,3 +100,10 @@ DXMainClient/Online/CnCNetGameCheck.cs 在IsInGame時定期列舉進程，以進
 4. 保持ControlAll開啟，固定兩個Owner選項關閉，對NativeMegaGateway開／關做新程序、新對局對照。
 
 本輪只記錄兼容性與診斷發現，沒有更改產品行為、沒有繞過／停用平台驗證，也沒有宣稱聯機問題已修復。
+
+
+## 同日追加：官方 Hardened 二進位已有正面重疊證據
+
+上述「公開來源沒有13站點直接交集」只描述當時的公開源碼掃描。本輪後續下載並靜態分析官方 CnCNetYR-Hardened v0.0.0.17，已確認其.patch有50B6F0/5，CRT初始化器生成跳向DLL自己的ControlledByCurrentPlayer實作；普通版無該項。Hardened另有事件控制者與House ID驗證。這是實際二進位的新證據，不能繼續寫成只知道README宣稱有驗證。
+
+仍未對上使用者當時載入的DLL／站點bytes，且1.0.37同樣使用50B6F0，因此不能僅憑這筆重疊確認版本回歸或掉線原因。詳見 [Hardened二進位研究](2026-10-26-cncnet-hardened-binary-audit.md)。全圖採集則是Skirmish，不能代表通過多人特殊格檢查；詳見 [全圖與原版檢查](2026-10-26-trainer-map-cheatcheck.md)。

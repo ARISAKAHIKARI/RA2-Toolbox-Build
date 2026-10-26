@@ -1,0 +1,204 @@
+{
+  "question": "Does the captured RA2Master map feature disable the original multiplayer special-cell shroud checks?",
+  "evidence_level": "user-captured snapshots; native static disassembly; public upstream source; no multiplayer replay",
+  "archive": "RA2Master-Capture-20261025-002452-24508.zip",
+  "archive_sha256": "effd9473f9d6489cbf637d706dcdd1745aedffb43a4ce40f3fa66b2f0e7aff12",
+  "supported_original_exe_sha256": "7b8a068535d6af06845edf95ae829b113d00c02909330e16f197426cd7db94b6",
+  "observed_feature": "map",
+  "image_base": "0x400000",
+  "stages": [
+    {
+      "stage": "00-clean",
+      "image_sha256": "be4c916fbc8a3fffde39ea1010a6b405711086b6d3120d4dc66ca9f50676efab",
+      "session_type": 5,
+      "session_type_name": "Skirmish",
+      "session_valid_and_stable": true,
+      "frame": 1004,
+      "listed_platform_modules": [],
+      "current_house": "heap not captured in clean stage"
+    },
+    {
+      "stage": "01-off",
+      "image_sha256": "1c784ddc7064de68936dc61c79792d3bf8545c01e699eff813e57e727ecfc86c",
+      "session_type": 5,
+      "session_type_name": "Skirmish",
+      "session_valid_and_stable": true,
+      "frame": 1856,
+      "listed_platform_modules": [],
+      "current_house": {
+        "vtable": "0x7ea8a0",
+        "house_index": 0,
+        "visionary_plus_240": 0,
+        "map_is_clear_plus_241": 0,
+        "spysat_active_plus_577a": 0,
+        "heap_validated": true,
+        "heap_stability_mask_available": false
+      }
+    },
+    {
+      "stage": "02-on",
+      "image_sha256": "62a6109e710cbb1d4b114780111c9aa01656b68a00d3af922332ab5a0a85f754",
+      "session_type": 5,
+      "session_type_name": "Skirmish",
+      "session_valid_and_stable": true,
+      "frame": 2763,
+      "listed_platform_modules": [],
+      "current_house": {
+        "vtable": "0x7ea8a0",
+        "house_index": 0,
+        "visionary_plus_240": 0,
+        "map_is_clear_plus_241": 0,
+        "spysat_active_plus_577a": 0,
+        "heap_validated": true,
+        "heap_stability_mask_available": false
+      }
+    },
+    {
+      "stage": "03-off",
+      "image_sha256": "6d44f7d326d4c188a7dd34ab2d0c2ceceb8a15f29fcb4d7dccd586f85108fcee",
+      "session_type": 5,
+      "session_type_name": "Skirmish",
+      "session_valid_and_stable": true,
+      "frame": 3474,
+      "listed_platform_modules": [],
+      "current_house": {
+        "vtable": "0x7ea8a0",
+        "house_index": 0,
+        "visionary_plus_240": 0,
+        "map_is_clear_plus_241": 0,
+        "spysat_active_plus_577a": 0,
+        "heap_validated": true,
+        "heap_stability_mask_available": false
+      }
+    }
+  ],
+  "patches": [
+    {
+      "address": "0x508e60",
+      "length": 2,
+      "meaning": "radar power path",
+      "bytes_by_stage": {
+        "00-clean": "7d25",
+        "01-off": "7d25",
+        "02-on": "eb25",
+        "03-off": "7d25"
+      },
+      "all_valid_and_stable": true
+    },
+    {
+      "address": "0x508eba",
+      "length": 2,
+      "meaning": "radar building type gate",
+      "bytes_by_stage": {
+        "00-clean": "744c",
+        "01-off": "744c",
+        "02-on": "9090",
+        "03-off": "744c"
+      },
+      "all_valid_and_stable": true
+    },
+    {
+      "address": "0x508f8f",
+      "length": 2,
+      "meaning": "SpySat building type gate",
+      "bytes_by_stage": {
+        "00-clean": "7465",
+        "01-off": "7465",
+        "02-on": "9090",
+        "03-off": "7465"
+      },
+      "all_valid_and_stable": true
+    },
+    {
+      "address": "0x577b3a",
+      "length": 2,
+      "meaning": "ResetShroud cell-loop entry",
+      "bytes_by_stage": {
+        "00-clean": "7439",
+        "01-off": "7439",
+        "02-on": "eb39",
+        "03-off": "7539"
+      },
+      "all_valid_and_stable": true
+    },
+    {
+      "address": "0x6d88fc",
+      "length": 2,
+      "meaning": "shroud frame selection",
+      "bytes_by_stage": {
+        "00-clean": "7505",
+        "01-off": "7505",
+        "02-on": "eb05",
+        "03-off": "7505"
+      },
+      "all_valid_and_stable": true
+    },
+    {
+      "address": "0x6378e0",
+      "length": 5,
+      "meaning": "unaligned write across original instruction; persists after disable",
+      "bytes_by_stage": {
+        "00-clean": "4cac0085c9",
+        "01-off": "4cac0085c9",
+        "02-on": "e8ab38edff",
+        "03-off": "e8ab38edff"
+      },
+      "all_valid_and_stable": true
+    }
+  ],
+  "unchanged_ranges": [
+    {
+      "address": "0x5c0e30",
+      "length": 3,
+      "meaning": "MPGameMode SkipCheatCheck returns false",
+      "all_four_equal": true,
+      "all_valid_and_stable": true,
+      "clean_block_sha256": "01cb47d078b4841b8408ec4fe278efa83115c6f6e101972987507d2b2b57dcf0"
+    },
+    {
+      "address": "0x7ee184",
+      "length": 8,
+      "meaning": "MPGameMode vtable slot +4 points to 5C0E30",
+      "all_four_equal": true,
+      "all_valid_and_stable": true,
+      "clean_block_sha256": "10835c1151a0342a48d5e91b50cbcdbae7aa48796dbeb503ec748299b6e9fc75"
+    },
+    {
+      "address": "0x55ddaa",
+      "length": 106,
+      "meaning": "main-loop multiplayer special-cell check",
+      "all_four_equal": true,
+      "all_valid_and_stable": true,
+      "clean_block_sha256": "f69a3cb564ad9769ad79f6842df506dc1ce665b6b42943475fc6da9e6b6a9aba"
+    },
+    {
+      "address": "0x4f883e",
+      "length": 226,
+      "meaning": "House AI multiplayer special-cell check",
+      "all_four_equal": true,
+      "all_valid_and_stable": true,
+      "clean_block_sha256": "395c1c3eceeb8c9a9524a0e4648382fd9ca74e2af08e24cf99a4fd24b0bd52e1"
+    },
+    {
+      "address": "0x577d90",
+      "length": 405,
+      "meaning": "native Reveal including three-cell exclusion",
+      "all_four_equal": true,
+      "all_valid_and_stable": true,
+      "clean_block_sha256": "347797ce002504168d3658bd3441f49a19400caa17b84ba836cfb67ccdba457c"
+    }
+  ],
+  "native_semantics": {
+    "check_gates": "SessionType in {3,4}, nonnull MPGameMode, virtual slot +4 returns false; both original check routines reject type 5 before reading cells",
+    "check_input": "Cell+0x130 != 1 or Cell+0x12C & 0x18 != 0; affects Scenario RNG at Scenario+0x218 through 0x65C7E0",
+    "shroud_display": "0x6D8700 initializes EDI=-1. In mode 0, 0x6D88FC decides whether to set EDI=-2 for fully shrouded cells. Changed branch leaves -1, and cells lacking bit 8 return it through 0x6D8AD4 without writing exploration flags.",
+    "potential_spysat_path": "Removing the 0x508F8F type gate can reach 0x509064 call 0x577D90 when remaining building conditions and SpySatActive transition are satisfied. This call changes House and Cell state; not proof that it ran in these snapshots.",
+    "house_snapshots": "Visionary, MapIsClear and SpySatActive are zero in captured off/on/off CurrentHouse; no heap in initial clean snapshot.",
+    "limits": [
+      "No trace of transient writes between snapshots.",
+      "Snapshot comparisons do not prove multiplayer or CnCNet compatibility.",
+      "CurrentHouse fields do not establish all cells or houses are unchanged.",
+      "Listed modules are not proof against manual mapping."
+    ]
+  }
+}
