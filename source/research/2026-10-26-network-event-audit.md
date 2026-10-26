@@ -134,7 +134,7 @@ Unit::AssignDestination=741970 的前缀在 **Type+D6A BalloonHover=true**、新
 
 ## 测试与未决
 
-- `assist/tests/network_state_capture.py`：39 个原版捕获指令用例，包括完整帧摘要与独立公式对照、FrameInfo 比较、内部规划到 DoList、Sticky 排队、BalloonHover 条件分支、Ctrl+Alt 分派及重复进入门槛。
+- `assist/tests/network_state_capture.py`：47 个原版捕获指令用例，包括完整帧摘要与独立公式对照、FrameInfo 比较、内部规划到 DoList、Sticky 排队、BalloonHover 条件分支、Ctrl+Alt 分派及重复进入门槛。
 - `assist/tests/air_network_runtime.py`：24 个编译后 Runtime 用例，覆盖会话、两种联机实验、入口返回、补丁切换/关闭恢复，不把安装成功称为飞行成功。
 - `assist/tests/air_waypoint_host_test.py`：主机记录、按键、取消、到点继续以及实验模式输入所有权；自定义键回退。
 - `assist/tests/sticky_guard_runtime.py`：34 个 Sticky 现有行为回归。
@@ -143,6 +143,32 @@ Unit::AssignDestination=741970 的前缀在 **Type+D6A BalloonHover=true**、新
 
 未决：真实双机测试；原生下单实验能否在实际飞机上完整续飞；原生全模式不同步触发条件；Sticky 通用可逆事件组合；Ctrl+Alt 在已有规划等不同状态中的完整寻路/到达效果；平台额外校验与发送周期。
 
+
+## Sleep、Harmless 与火力分配
+
+本次额外核对 MissionControl 数组 A8E3A8（每项 20h）、原版任务 AI 5B3060、Sleep 处理器 5B2E10、Harmless 处理器 5B2E20、QueueMission/Unit readiness。当前捕获的实际配置如下；MOD 可以改变这些规则，不能只看任务名字。
+
+| 属性 | Sleep=0 | Harmless=23 | Sticky=6 对照 |
+| --- | --- | --- | --- |
+| Zombie（抑制一类原版自主任务切换） | 是 | 否 | 否 |
+| Retaliate（原版反击许可） | 否 | 否 | 是 |
+| Scatter（自动散开许可） | 否 | 是 | 否 |
+| NoThreat（候选目标的威胁筛选标志） | 否 | 是 | 否 |
+| Recruitable（AI 招募许可） | 否 | 否 | 否 |
+| Paralyzed（任务控制标志，非无敌） | 否 | 否 | 是 |
+| 普通空闲战车接收新 Attack/Move/Guard 后退出 | 本次受控测试可退出 | 本次受控测试可退出 | readiness 直接拒绝 |
+
+两个处理器都只返回 450；原版任务 AI 把它写入 UpdateTimer，当前任务不改变。把帧推进到 10000 再执行该 AI，仍保持对应任务。因此 **450 是下一次任务处理的间隔，不是450帧后自动醒来**。正常退出依靠后来收到的新任务经过 readiness 和 NextMission；特殊运动、装载、受控、MOD等状态可以增加条件，不能承诺所有单位立即切换。
+
+Retaliate=no 只限制受击反击，不能单独推出不会主动寻敌。Sleep 用于留枪时，目标入射程仍需分配器明确发送 Attack；不会仅因目标进入射程而按450帧计时自动醒来。
+
+NoThreat 并非“不怕攻击”。CanAutoTargetObject=6F7CA0 在 6F7DFF..6F7E0B 检查候选目标自己的 MissionControl+4，为真会跳过该候选；手动攻击、范围伤害、已发射弹体不因此消失。因此 Harmless 不仅影响己方开火，还可能改变敌方原版自动选敌，且允许散开，不宜直接当作精确站位留枪。
+
+Sleep 更适合作为可解除的短时留枪候选：通常抑制自主战斗/反击/自动散开，目标真正进入原生射程后发 Attack，取消或无合适目标时明确发 Guard。不要仅停止分配器扫描，也不要把键盘 S 的 Idle 事件等同于明确 Guard；必须确认恢复命令已提交/被观察，尊重玩家手动任务。它不提高伤害、不清武器冷却、不追回已出膛弹体，也不保证接收命令前已经停止开火。
+
+当前 missile_bridge.h 已部分这样实现：防御建筑等待尚未入射程的分配目标时使用 Sleep；移动单位使用 Attack 接敌，不发送 Sleep 或 Sticky。关闭功能时使用 Guard 释放自己控制的任务。把移动单位也改为留枪会带来不接近目标、漏拦截的取舍，应作为独立策略研究，设最大保留时长、紧急目标唤醒、手动优先和失效恢复。
+
+本次新增 8 个原版受控用例：Sleep/Harmless 各两次任务 AI 调度仍保持任务，外加各自转 Attack/Move/Guard 的 6 次原版排队/切换，均通过。未验证完整实机受击、寻敌、散开和所有 MOD 行为。
 
 ## 后续 Sticky 候选（假说，不作为已验证功能）
 
@@ -155,3 +181,4 @@ Unit::AssignDestination=741970 的前缀在 **Type+D6A BalloonHover=true**、新
 | 可恢复的替代任务 | 新需求可考虑 Sleep/Harmless/Ambush 等而非 Sticky=6；已有受控任务切换证据 | 是替代设计，不会自动解救已经 Sticky 的单位；实机停火/寻敌行为另测 |
 
 研究优先级：先追同步 Scatter/Idle 及 Radio 入口，再查临时覆盖。原有类型已满足 BalloonHover 的条件路径可以单独验证，但单端修改 BalloonHover 会令接收端模拟分叉，不能作为通用联机修复。
+

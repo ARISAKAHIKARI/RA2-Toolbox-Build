@@ -242,6 +242,26 @@ for explored in (0,1):
             assert ends==[0x51c37d if engineer else 0x51c41c]*32
             rows.append({'case':'ctrl_alt_repeated_building_gate','mission':11,'engineer':engineer,'repetitions':32,'admitted_at_this_gate':bool(engineer),'status':'PASS'})
 
+for mission in (0,23):
+    q=Probe();q.w(S,0x7f5c70);q.w(S+0xac,mission);q.w(S+0xb4,-1);q.w(S+0x6c,100);q.b(S+0x90,1)
+    q.stubs[0x5f3e70]=lambda:q.ret() # unrelated object bookkeeping
+    for frame in (100,10000):
+        q.w(0xa8ed84,frame);q.run(0x5b3060,S)
+        assert q.r(S+0xac)==mission and q.r(S+0xd0)==450
+    flags=list(q.u.mem_read(0xa8e3a8+mission*32+4,6))
+    rows.append({'case':'passive_native_mission_tick','mission':mission,'flags_NoThreat_Zombie_Recruitable_Paralyzed_Retaliate_Scatter':flags,'timer_duration':450,'after_time_current_unchanged':True,'status':'PASS'})
+    for requested in (1,2,5):
+        q=Probe();q.w(S,0x7f5c70);q.w(S+0xac,mission);q.w(S+0xb4,-1)
+        q.w(S+0x674,S+0x2000);q.w(S+0x2000,S+0x3000);q.w(S+0x3000+0x80,S+0xf0000)
+        q.stubs[S+0xf0000]=lambda:q.ret(0,4)
+        q.stubs[0x4a51d0]=lambda:q.ret(1)
+        q.stubs[0x65ad40]=lambda:q.ret(0,4)
+        q.stubs[0x565730]=lambda:q.ret(S+0x4000,4)
+        q.stubs[0x47c520]=lambda:q.ret(0)
+        q.w(0xa8ed84,100);q.run(0x5b35e0,S,(requested,1))
+        assert q.r(S+0xac)==requested and q.r(S+0xb4)==MASK,(mission,requested,q.r(S+0xac))
+        rows.append({'case':'passive_native_order_exit','before':mission,'requested':requested,'after':q.r(S+0xac),'status':'PASS'})
+
 out={'scope':__doc__,'supported_executable_sha256':'7b8a068535d6af06845edf95ae829b113d00c02909330e16f197426cd7db94b6',
      'capture_image_sha256':hashlib.sha256(image).hexdigest(),'game_tested':False,'multiplayer_tested':False,'results':rows,
      'native_code_sha256':{f'{lo:08X}-{hi:08X}':hashlib.sha256(image[lo-BASE:hi-BASE]).hexdigest() for lo,hi in [(0x64dab0,0x64de7d),(0x65c780,0x65c7d1),(0x741970,0x741a80),(0x700600,0x7008a6)]}}

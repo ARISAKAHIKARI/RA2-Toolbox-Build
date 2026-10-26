@@ -305,6 +305,78 @@
       "action": 51,
       "name": "PatrolWaypoint",
       "status": "PASS"
+    },
+    {
+      "case": "passive_native_mission_tick",
+      "mission": 0,
+      "flags_NoThreat_Zombie_Recruitable_Paralyzed_Retaliate_Scatter": [
+        0,
+        1,
+        0,
+        0,
+        0,
+        0
+      ],
+      "timer_duration": 450,
+      "after_time_current_unchanged": true,
+      "status": "PASS"
+    },
+    {
+      "case": "passive_native_order_exit",
+      "before": 0,
+      "requested": 1,
+      "after": 1,
+      "status": "PASS"
+    },
+    {
+      "case": "passive_native_order_exit",
+      "before": 0,
+      "requested": 2,
+      "after": 2,
+      "status": "PASS"
+    },
+    {
+      "case": "passive_native_order_exit",
+      "before": 0,
+      "requested": 5,
+      "after": 5,
+      "status": "PASS"
+    },
+    {
+      "case": "passive_native_mission_tick",
+      "mission": 23,
+      "flags_NoThreat_Zombie_Recruitable_Paralyzed_Retaliate_Scatter": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "timer_duration": 450,
+      "after_time_current_unchanged": true,
+      "status": "PASS"
+    },
+    {
+      "case": "passive_native_order_exit",
+      "before": 23,
+      "requested": 1,
+      "after": 1,
+      "status": "PASS"
+    },
+    {
+      "case": "passive_native_order_exit",
+      "before": 23,
+      "requested": 2,
+      "after": 2,
+      "status": "PASS"
+    },
+    {
+      "case": "passive_native_order_exit",
+      "before": 23,
+      "requested": 5,
+      "after": 5,
+      "status": "PASS"
     }
   ],
   "native_code_sha256": {
