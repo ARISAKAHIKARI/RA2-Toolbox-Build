@@ -6,6 +6,7 @@
 
 | 主题 | 新笔记 | 关键词 |
 | --- | --- | --- |
+| CnCNet Hardened 原理：程式碼／資料完整性、地圖規則封包CRC、事件拒絕及原版OOS分離 | [反作弊原理](2026-10-26-cncnet-anticheat-principles.md) | EA00 EB60 E530 401000 7E1000 E5E0 E690 E2E0 E3F0 WOLGameID EEE0 EF10 HouseIndex |
 | 修改大師全圖的顯示／SpySat路徑、Skirmish採集與原版特殊格檢查 | [全圖與地圖檢查](2026-10-26-trainer-map-cheatcheck.md) | 6D88FC 577B3A 577D90 5C0E30 SkipCheatCheck Scenario RNG Session5 Phobos2115 |
 | 官方CnCNet v17 Hardened實際DLL：ControlHouse同址與額外House驗證 | [Hardened二進位](2026-10-26-cncnet-hardened-binary-audit.md) | 50B6F0 EC50 EEE0 64BE75 .patch .syhks00 6D88FE SHROUD FOG |
 | Hook 衝突、回復殘留／UI遮蔽與 CnCNet 額外檢查 | [Hook與平台檢查](2026-10-26-hook-conflicts-cncnet-checks.md) | HookRegistry partial restore NativeMegaGateway CnCNet hardened verification FileHash ProcessKill |
@@ -100,3 +101,4 @@
 
 
 - [2026-10-26：对手建筑变卖实验与所属方自毁事件](2026-10-26-enemy-sell-pre4.md)：Sell=0x16、实际Owner编号、默认关闭及旧配置迁移；Destruct=0x08、Exit/AboutToExit/RemovePlayer区别；4FC980标志与定时器、4FC6D0销毁后继及联机证据边界。
+

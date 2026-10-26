@@ -1,0 +1,184 @@
+{
+  "scope": "Five map/shroud helpers in official v0.0.0.17 Hardened; comparison to stable original-game code and product pre6 late rendering hooks. Static read-only analysis, no execution or product/anti-cheat modifications.",
+  "spawner_commit": "fbe8d7d2620584d04ba14fa3580943bfa1448d40",
+  "yrpp_commit": "b22f1860dd7b100cad57123d4ca5d459b9020d88",
+  "toolbox_product_commit": "4f7248771754318706b5fd3cbd4ac63bf93ed8d7",
+  "hardened_sha256": "62466e9e534ceb15c5d71fb05c62ad98a2b2b4903c569ed0c82189ef86ea3b7d",
+  "original_capture_sha256": "be4c916fbc8a3fffde39ea1010a6b405711086b6d3120d4dc66ca9f50676efab",
+  "original_capture_limitation": "Clean Skirmish image with no loaded CnCNet-Spawner module. Used only as original-code reference, not a Hardened runtime observation or multiplayer acceptance test.",
+  "native_spans": {
+    "shroud_resource_prefix_and_late_site": {
+      "start": "0x0047EFE0",
+      "end_exclusive": "0x0047F04B",
+      "valid_and_stable": true,
+      "bytes": "558bec83ec34a0c5e7890084c0752932d2b918ce8100c605c5e7890001e8ae50130032d2b910ce8100a394e78900e89d501300a390e78900a130b2a8008b08f6c510740b8b0d90e78900894dfceb098b1594e789008955fc8b45105356578d4dcc50518b4dfce895f72100"
+    },
+    "fog_resource_prefix_and_late_site": {
+      "start": "0x0047F250",
+      "end_exclusive": "0x0047F28D",
+      "valid_and_stable": true,
+      "bytes": "a0c6e7890083ec2c84c0751832d2b910ce8100c605c6e7890001e8414e1300a360e789008b442438535556578d4c242c50518b0d60e78900e853f52100"
+    },
+    "draw_shroud_caller_and_cache_writes": {
+      "start": "0x004801F0",
+      "end_exclusive": "0x0048029C",
+      "valid_and_stable": true,
+      "bytes": "5355568bf18b0d24738800578d7e246a0057e8f98425008886200100000fbec083f8fe7507b80f000000eb0783f8ff750233c08b5c24188b6c24145053558bcee8abedffff8b0d247388006a0157e8bd8425008886210100008b0d30b2a8008b11f6c610743f8b154c3da8008a8af501000084c9752f0fbec083f8fe7516b80f0000008bce505355e8d3efffff5f5e5d5bc2080083f8ff750233c05053558bcee8bbefffff5f5e5d5bc20800"
+    },
+    "is_location_shrouded_tail": {
+      "start": "0x0058647A",
+      "end_exclusive": "0x00586495",
+      "valid_and_stable": true,
+      "bytes": "f6802c010000087509b0015e83c408c2040032c05e83c408c20400"
+    },
+    "occlusion_relocated_instructions_and_register_liveness": {
+      "start": "0x006D88F4",
+      "end_exclusive": "0x006D8ADD",
+      "valid_and_stable": true,
+      "bytes": "8b802c010000a8187505bffeffffffbb0800000084c30f84c4010000668b16668b4602664a66486689542418668944241a8b4c24188d542418894c241852b9e8f78700e864cee8ff84982c0100007505bd40000000668b4e02668b066649668944241866894c241a8b5424188d442418b9e8f78700508954241ce82dcee8ff84982c010000750681cd80000000668b0e668b56026641664a66894c24188d4c2418668954241a8b44241851b9e8f787008944241ce8f3cde8ff84982c010000750383cd01668b16668b4602664a668944241a66895424188b4c24188d542418894c241852b9e8f78700e8becde8ff84982c010000750383cd20668b06668b4e02664066894c241a66894424188b5424188d442418b9e8f78700508954241ce889cde8ff84982c010000750383cd02668b0e668b56026649664266894c24188d4c2418668954241a8b44241851b9e8f787008944241ce852cde8ff84982c010000750383cd10668b4602668b1666406689542418668944241a8b4c24188d542418894c241852b9e8f78700e81dcde8ff84982c01000075020beb668b06668b4e0266406641668944241866894c241a8b5424188d44241850b9e8f787008954241ce8e7cce8ff8a882c01000084cb750383cd040fbe8594417f005f5e5d5bc208008bc75f5e5d5bc20800"
+    }
+  },
+  "dll_spans": {
+    "map_initializer_group": {
+      "rva": "0x00001380",
+      "size": 80,
+      "preferred_va": "0x10001380",
+      "bytes": "b8b0ec00102df6ef4700a39d340610c3b8e0ec00102d63f24700a3bd340610c3b800ed00102d7f645800a3a5340610c3b830ed00102d03896d00a3ad340610c3b850ed00102d08896d00a3b5340610c3"
+    },
+    "embedded_shroud_loader": {
+      "rva": "0x0000ECB0",
+      "size": 39,
+      "preferred_va": "0x1000ECB0",
+      "bytes": "a178330610c600018b0d80330610c701e8d804108b1570330610c702607e0310b818f04700ffe0"
+    },
+    "embedded_fog_loader": {
+      "rva": "0x0000ECE0",
+      "size": 27,
+      "preferred_va": "0x1000ECE0",
+      "bytes": "a178330610c600018b0d90330610c701607e0310b874f24700ffe0"
+    },
+    "is_location_shrouded_relocation": {
+      "rva": "0x0000ED00",
+      "size": 35,
+      "preferred_va": "0x1000ED00",
+      "bytes": "f6802c01000008750db0015e83c408ba89645800ffe232c05e83c408ba89645800ffe2"
+    },
+    "occlusion_fallthrough_relocation": {
+      "rva": "0x0000ED30",
+      "size": 17,
+      "preferred_va": "0x1000ED30",
+      "bytes": "bffeffffffbb08000000ba08896d00ffe2"
+    },
+    "occlusion_taken_branch_relocation": {
+      "rva": "0x0000ED50",
+      "size": 12,
+      "preferred_va": "0x1000ED50",
+      "bytes": "bb08000000ba08896d00ffe2"
+    }
+  },
+  "pointer_storage_values": {
+    "0x10063370": "0x0089E790",
+    "0x10063378": "0x0089E7C5",
+    "0x10063380": "0x0089E794",
+    "0x10063390": "0x0089E760"
+  },
+  "hardened_map_patch_entries": [
+    {
+      "address": 4715102,
+      "address_hex": "0x0047F25E",
+      "size": 5,
+      "data_va_hex": "0x100634BC",
+      "file_backed_data": true,
+      "data_hex": "e900000000"
+    },
+    {
+      "address": 7178499,
+      "address_hex": "0x006D8903",
+      "size": 5,
+      "data_va_hex": "0x100634B4",
+      "file_backed_data": true,
+      "data_hex": "e900000000"
+    },
+    {
+      "address": 7178494,
+      "address_hex": "0x006D88FE",
+      "size": 5,
+      "data_va_hex": "0x100634AC",
+      "file_backed_data": true,
+      "data_hex": "e900000000"
+    },
+    {
+      "address": 5792890,
+      "address_hex": "0x0058647A",
+      "size": 5,
+      "data_va_hex": "0x100634A4",
+      "file_backed_data": true,
+      "data_hex": "e900000000"
+    },
+    {
+      "address": 4714481,
+      "address_hex": "0x0047EFF1",
+      "size": 5,
+      "data_va_hex": "0x1006349C",
+      "file_backed_data": true,
+      "data_hex": "e900000000"
+    }
+  ],
+  "observed_semantics": {
+    "resource_replacement": "47EFF1 bypasses external SHROUD.SHP and FOG.SHP loads, assigns embedded resource pointers, then returns to47F018. 47F25E similarly assigns embedded FOG and returns to47F274. There is no resource checksum or failure branch in these two helpers.",
+    "existing_visibility_predicate": "58647A->ED00 copies original test [EAX+12C]&8, both AL results, ESI restore, stack adjustment and function return. It is not a new detection predicate. EDX is used as a volatile return-address scratch register.",
+    "existing_occlusion_setup": "6D88FE->ED30 and6D8903->ED50 copy original EDI=-2 / EBX=8 setup and continue6D8908. The branch predicate6D88FA/6D88FC remains native. On the return branch EDX is not read; on the other branch DX is overwritten before use and EDX is fully overwritten at6D8929. These helpers introduce no new semantic eligibility test.",
+    "bounded_absence": "No call to a checksum scanner, logger, network sender, reporter, or termination routine in these five complete helper bodies. This does not exclude such checks elsewhere in the DLL or client.",
+    "intent_inference": "Replacing external shapes with bundled bytes removes those external resource contents from this drawing path; relocating existing instructions is consistent with hardening. The private authorial intent and full protection strategy are not proven by these fragments."
+  },
+  "render_interaction": {
+    "shroud": "480202 GetOcclusion ->480207 Cell.Visibility cache ->480230 call47EFE0 ->native lazy init/47EFF1 Hardened embedded resource helper ->47F018 choose shape into EBP-4 ->47F038 Toolbox render hook.",
+    "fog": "After shroud returns,48023E GetOcclusion ->480243 Cell.Foggedness cache ->optional480278/480290 call47F250 ->47F25E Hardened embedded resource helper ->47F274 Toolbox render hook.",
+    "half_renderer_inputs": "halfShroud obtains shroud shape from context-4(EBP-4), fog shape from89E760; both are initialized before the hook. Pixel writes target alpha render buffer87E8A4, not Cell flags in this helper.",
+    "two_site_declared_interval_overlaps": {
+      "0x0047F038": [],
+      "0x0047F274": []
+    },
+    "six_guard_declared_interval_overlaps": {
+      "0x0047EFE0": [],
+      "0x0047F03D": [],
+      "0x0047F247": [],
+      "0x0047F255": [],
+      "0x0047F279": [],
+      "0x0047F4FB": []
+    },
+    "limit": "Sequential composition and no declared physical overlap do not establish full binary compatibility, absence of other code-integrity checks, or multiplayer safety."
+  },
+  "flag_asymmetry": {
+    "fact": "Native shroud gate reads/sets89E7C5; native fog gate reads/sets89E7C6. Both hardened resource helpers set89E7C5 via the same pointer storage10063378.",
+    "bounded_effect": "If89E7C6 stays0, fog calls re-enter its short pointer-assignment helper. In the inspected direct caller4801F0, shroud always runs before fog, so this fact alone does not show uninitialized shroud resources.",
+    "direct_call_candidates": {
+      "0x0047EFE0": [
+        "0x00480230"
+      ],
+      "0x0047F250": [
+        "0x00480278",
+        "0x00480290"
+      ],
+      "0x004801F0": [
+        "0x006D3716",
+        "0x006D751A"
+      ]
+    },
+    "limit": "Indirect callers, runtime rewrites and exact session initialization were not exhaustively proven. Do not call this a crash/disconnect root cause."
+  },
+  "toolbox_local_sources": {
+    "late_hooks": "audit/pre6/source/assist/source/placement_bridge.h:152-228",
+    "render_dispatch": "audit/pre6/source/assist/source/placement_bridge.h:30-45",
+    "half_renderer": "audit/pre6/source/assist/source/shroud_render_bridge.h:4-35",
+    "sites": "audit/conflict/pre6/source/shared/source/experimental_patch_policy.h:8",
+    "context_guards": "audit/conflict/pre6/source/shared/source/patch_context.h:78-83"
+  },
+  "source_refs": [
+    "https://github.com/Phobos-developers/YRpp/blob/b22f1860dd7b100cad57123d4ca5d459b9020d88/CellClass.h#L471-L488",
+    "https://github.com/Phobos-developers/YRpp/blob/b22f1860dd7b100cad57123d4ca5d459b9020d88/GeneralDefinitions.h#L730-L742",
+    "https://github.com/Phobos-developers/YRpp/blob/b22f1860dd7b100cad57123d4ca5d459b9020d88/MapClass.h#L250-L251",
+    "https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/blob/4f7248771754318706b5fd3cbd4ac63bf93ed8d7/source/assist/source/placement_bridge.h#L152-L228",
+    "https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/blob/4f7248771754318706b5fd3cbd4ac63bf93ed8d7/source/assist/source/shroud_render_bridge.h#L4-L35"
+  ]
+}

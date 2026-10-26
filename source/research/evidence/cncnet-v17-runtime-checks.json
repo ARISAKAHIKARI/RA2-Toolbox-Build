@@ -1,0 +1,280 @@
+{
+  "scope": "Read-only static analysis of official released Hardened DLL. No execution, injection, patches, evasion experiments, or live-match attribution. Product/UI restoration remains paused.",
+  "version": "v0.0.0.17",
+  "hardened_sha256": "62466e9e534ceb15c5d71fb05c62ad98a2b2b4903c569ed0c82189ef86ea3b7d",
+  "normal_sha256": "58f198973bd0fd3b0e1b2c42fc6c545efe1fd399680abc2e8d6e9e189751614d",
+  "source_commit": "fbe8d7d2620584d04ba14fa3580943bfa1448d40",
+  "yrpp_commit": "b22f1860dd7b100cad57123d4ca5d459b9020d88",
+  "original_exe_sha256": "7b8a068535d6af06845edf95ae829b113d00c02909330e16f197426cd7db94b6",
+  "private_original_evidence": "Local loaded-image capture used only for instruction semantics and valid/stable checks. Do not publish the private image or raw dumps.",
+  "source_headers": [
+    {
+      "name": "BuildingTypeClass.h",
+      "path": "audit/anticheat-binaries/remaining-sources/BuildingTypeClass.h",
+      "blob_sha": "74545e1cbf7a547ab83bfb14adcbcd08b771877a",
+      "url": "https://github.com/Phobos-developers/YRpp/blob/b22f1860dd7b100cad57123d4ca5d459b9020d88/BuildingTypeClass.h"
+    },
+    {
+      "name": "DisplayClass.h",
+      "path": "audit/anticheat-binaries/remaining-sources/DisplayClass.h",
+      "blob_sha": "9bcbda03f2d386f0e93349bd59eef167f43c08f3",
+      "url": "https://github.com/Phobos-developers/YRpp/blob/b22f1860dd7b100cad57123d4ca5d459b9020d88/DisplayClass.h"
+    },
+    {
+      "name": "ObjectTypeClass.h",
+      "path": "audit/anticheat-binaries/remaining-sources/ObjectTypeClass.h",
+      "blob_sha": "43e7e1ae7cb82039edbe5b8d783bb9719c005906",
+      "url": "https://github.com/Phobos-developers/YRpp/blob/b22f1860dd7b100cad57123d4ca5d459b9020d88/ObjectTypeClass.h"
+    },
+    {
+      "name": "RadarClass.h",
+      "path": "audit/anticheat-binaries/remaining-sources/RadarClass.h",
+      "blob_sha": "2c2c64bea713a2b7507e94847117a6402d730d1e",
+      "url": "https://github.com/Phobos-developers/YRpp/blob/b22f1860dd7b100cad57123d4ca5d459b9020d88/RadarClass.h"
+    },
+    {
+      "name": "CCFileClass.h",
+      "path": "audit/anticheat-binaries/remaining-sources/CCFileClass.h",
+      "blob_sha": "285d4b08658d3f377666e7d66823b1e02777dcb2",
+      "url": "https://github.com/Phobos-developers/YRpp/blob/b22f1860dd7b100cad57123d4ca5d459b9020d88/CCFileClass.h"
+    },
+    {
+      "name": "ScenarioClass.h",
+      "path": "audit/anticheat-binaries/remaining-sources/ScenarioClass.h",
+      "blob_sha": "65aa1ea0f1da0a130836f7077a1d90b92105cbf6",
+      "url": "https://github.com/Phobos-developers/YRpp/blob/b22f1860dd7b100cad57123d4ca5d459b9020d88/ScenarioClass.h"
+    },
+    {
+      "name": "Unsorted.h",
+      "path": "audit/anticheat-binaries/remaining-sources/Unsorted.h",
+      "blob_sha": "9e53cfc4e10330d10d9c28f49ba78882cf2a2f03",
+      "url": "https://github.com/Phobos-developers/YRpp/blob/b22f1860dd7b100cad57123d4ca5d459b9020d88/Unsorted.h"
+    },
+    {
+      "name": "NetHack.cpp",
+      "path": "audit/anticheat-binaries/remaining-sources/NetHack.cpp",
+      "blob_sha": "0b3c037804d734463bf985630803e8ab9594c0d7",
+      "url": "https://github.com/CnCNet/yrpp-spawner/blob/fbe8d7d2620584d04ba14fa3580943bfa1448d40/src/Spawner/NetHack.cpp"
+    },
+    {
+      "name": "Spawner.Hook.cpp",
+      "path": "audit/anticheat-binaries/remaining-sources/Spawner.Hook.cpp",
+      "blob_sha": "6d2f4ee93a9c19052ac8f56eb0160ccd44b98800",
+      "url": "https://github.com/CnCNet/yrpp-spawner/blob/fbe8d7d2620584d04ba14fa3580943bfa1448d40/src/Spawner/Spawner.Hook.cpp"
+    },
+    {
+      "name": "Spawner.h",
+      "path": "audit/anticheat-binaries/remaining-sources/Spawner.h",
+      "url": "https://github.com/CnCNet/yrpp-spawner/blob/fbe8d7d2620584d04ba14fa3580943bfa1448d40/src/Spawner/Spawner.h"
+    }
+  ],
+  "findings": [
+    {
+      "id": "runtime-code-integrity",
+      "confidence": "confirmed-static",
+      "category": "runtime code memory CRC",
+      "baseline": {
+        "routine_rva": "0xEA00",
+        "start": "0x00401000",
+        "end_exclusive": "0x007E1000",
+        "block_bytes": 16384,
+        "blocks": 248,
+        "total_bytes": 4063232,
+        "table_rva": "0x73880",
+        "initialization": [
+          {
+            "game_site": "0x00683E94",
+            "helper_rva": "0xEB40",
+            "context": "ScenarioClass::StartScenario (entry 0x683AB0) successful return epilogue. Calls EA00, reproduces epilogue, returns true."
+          },
+          {
+            "game_site": "0x0067E6E0",
+            "helper_rva": "0xEAF0",
+            "context": "ScenarioClass::LoadGame (entry 0x67E440) completion logging point. Original log string is LOADING GAME [%s] - Complete. Restores original log then tail-calls EA00."
+          }
+        ],
+        "xrefs": "Full public DLL text disassembly found direct EA00 references only in EAF0 tail jump and EB40 call; there is no EA00 call in the scan routine."
+      },
+      "verification": {
+        "game_site": "0x0055D8B4",
+        "routine_rva": "0xEB60",
+        "enabled": "Session.GameMode is LAN (3) or Internet (4).",
+        "index_rva": "0x73D34",
+        "algorithm": "If 8-bit index >=248 reset to 0; compute CRC of start+index*16384 for 16384 bytes; compare against corresponding saved CRC; on match advance index by 1.",
+        "cadence": "One block each time the patched original main-loop call site is reached in an eligible mode. Original surrounding gameplay-state branches can skip the site. 248 eligible invocations complete a round; no wall-clock timing inferred.",
+        "on_mismatch": "Call shared fatal routine RVA E530.",
+        "continuation": "After validation tail-calls original 0x55DEE0 through wrapper E950.",
+        "baseline_not_recreated_here": true
+      },
+      "extent": "Includes original game .text (0x401000..0x7E038D) plus alignment padding before.rdata at0x7E1000. All13 toolbox hook ranges in static-metadata.json and both drawing call-site hooks0x47F038/0x47F274 fall fully inside this checked extent.",
+      "limitations": "Static reachability proves a real integrity mechanism in this release. Does not prove which runtime DLL the user used, which baseline bytes were captured in their match, or what caused their synchronization-error UI."
+    },
+    {
+      "id": "fatal-path",
+      "confidence": "confirmed-static",
+      "category": "failure disposition",
+      "routine_rva": "0xE530",
+      "behavior": "Replaces ESP and other registers with caller-supplied marker combinations, clears EDI, assigns EBP=EDI, and performs JMP EBP to address zero. This is an intentional invalid control transfer, not a normal return/log-only branch.",
+      "limitations": "No conclusion here about downstream Windows exception handling, crash dialog text, exit code, or whether a client presents a disconnect. It is not proof of the original FRAMEINFO synchronization-error path."
+    },
+    {
+      "id": "building-type-integrity",
+      "confidence": "confirmed-static",
+      "category": "selected runtime data checks",
+      "snapshot_rva": "0xE5E0",
+      "snapshot_sites": [
+        {
+          "game_site": "0x00679AA7",
+          "helper_rva": "0xE670",
+          "context": "Immediately after loop calling BuildingTypeClass virtual LoadFromINI (vtable+0x64)."
+        },
+        {
+          "game_site": "0x0067E6DA",
+          "helper_rva": "0xE680",
+          "context": "LoadGame successful completion."
+        }
+      ],
+      "scan_game_site": "0x0055DE9A",
+      "scan_rva": "0xE690",
+      "enabled": "Comparison in E690 runs only for LAN (3) or Internet (4). E5E0 also allows additional configuration-dependent snapshot cases; no claim that snapshots are exclusively multiplayer.",
+      "count": "min(BuildingTypeClass::Array.Count,4096)",
+      "fields": [
+        {
+          "offset": "0xEB4",
+          "name": "Adjacent",
+          "native_ini_read": "0x45FFAF..0x45FFC7",
+          "key_string_va": "0x81AE40"
+        },
+        {
+          "offset": "0x170C",
+          "name": "PsychicDetectionRadius",
+          "native_ini_read": "0x460C2C..0x460C4C",
+          "key_string_va": "0x81A960"
+        },
+        {
+          "offset": "0x157A",
+          "name": "ClickRepairable",
+          "native_ini_read": "0x4600B1..0x4600CB",
+          "key_string_va": "0x81ADCC"
+        }
+      ],
+      "proof": "Pinned YRpp BuildingTypeClass layout cross-checked against original INI-reading instructions and actual key strings. Original code/string bytes used in this check had valid/stable mask values all1.",
+      "on_mismatch": "Any checked field differs from its snapshot -> shared fatal routine E530.",
+      "limitations": "This specifically checks three BuildingType fields; it is not evidence of blanket validation of all unit stats, money, or every object field."
+    },
+    {
+      "id": "current-house-integrity",
+      "confidence": "confirmed-static",
+      "category": "selected runtime data checks",
+      "routine_rva": "0xE690",
+      "enabled": "LAN (3) or Internet (4).",
+      "checks": [
+        "First eligible invocation saves HouseClass::CurrentPlayer pointer (game0xA83D4C); subsequent invocations compare the pointer against that saved value, mismatch -> E530.",
+        "Separately, if CurrentFrame(game0xA8ED84)>100, CurrentPlayer is non-null, CurrentPlayer equals HouseClass::Observer (game0xAC1198 via DLL pointer atRVA37AA0), and CurrentPlayer.Defeated at+0x1F5 is false, -> E530."
+      ],
+      "limitations": "Does not compare every House flag and is not a blanket assertion that any observer-flag change is fatal."
+    },
+    {
+      "id": "production-legality",
+      "confidence": "confirmed-static",
+      "category": "command validation",
+      "game_site": "0x004FA35D",
+      "routine_rva": "0xEE60",
+      "behavior": "Checks captured production type index (EBP) for negativity. Negative -> log invalid Heap ID and return ProdFailType::Illegal(2) through original0x4FA4A0 epilogue. Otherwise calls ObjectTypeClass::GetTechnoType(AbstractType,index) at0x48DCD0, then HouseClass::CanBuild(type,false,true) at0x4F7870. A result other than CanBuildResult::Buildable(1) -> log illegal production and same Illegal(2) return. Success resumes0x4FA36D.",
+      "limitations": "Only an explicit negative-index check is established in this hook. No extra upper-bound check proven here. Rejection is not the shared fatal path or a demonstrated synchronization error."
+    },
+    {
+      "id": "placement-legality",
+      "confidence": "confirmed-static",
+      "category": "command validation",
+      "game_site": "0x004FB203",
+      "routine_rva": "0xEFE0",
+      "related_patch": "0x004A8EC3 replaces original conditional jump with6NOP",
+      "behavior": "For a human house, or in Campaign for IsInPlayerControl house, only Building objects invoke DisplayClass::PassesProximityCheck(type,house index,non-null foundation marker,placement cell) at0x4A8EB0. If false, constructs normal placement coordinates and returns0x4FB35F, the original placement-failure branch. The related patch removes original current-house-only early success, so the native proximity rule can run for other houses.",
+      "limitations": "The observed failure branch refuses placement; no E530 call. No inference that all building placement restrictions are new or unique to Hardened."
+    },
+    {
+      "id": "remote-exit",
+      "confidence": "confirmed-static",
+      "category": "network event result handling",
+      "game_site": "0x0064C850",
+      "routine_rva": "0xEF90",
+      "behavior": "If captured House pointer is non-null and IsHumanPlayer at+0x1EC is true, logs Remote EXIT and invokes HouseClass::FlagToDie(0x4FC980). For non-human houses retains original behavior: CountOtherUndefeatedHumanHouses(0x5E2BA0)==0 -> FlagToDie. Continues0x64C862.",
+      "limitations": "This is forced-defeat semantics for a remote EXIT, not a process scan, code checksum, or proof that the player was detected cheating."
+    },
+    {
+      "id": "radar-state-relocation",
+      "confidence": "confirmed-static",
+      "category": "state storage relocation",
+      "helper_rvas": "0xE7C0..0xE90C",
+      "patch_count": 21,
+      "original_field": "RadarClass+0x14B0, absolute0x880C98 for RadarClass::Instance at0x87F7E8",
+      "official_field_name": "unknown_14B0",
+      "new_storage_rva": "0x73D28",
+      "behavior": "All21 original sites were individually compared. Helpers reproduce original load/store/address-of/compare operations and continuations, replacing original field storage with one DLL-owned DWORD.",
+      "inference": "Moving storage makes changes to the former fixed data address no longer change this state. That purpose is an inference; these helper bodies do not themselves compute CRC or report detection."
+    },
+    {
+      "id": "file-derived-packet-validation",
+      "confidence": "confirmed-static",
+      "category": "map/rules content linked to packet decoding and payload CRC",
+      "activation": {
+        "game_hook": "0x006BD7C5",
+        "export": "WinMain_SpawnerInit",
+        "hardened_export_rva": "0xCE40",
+        "public_source": "Spawner.Hook.cpp31-53 installs NetHack::SendTo and NetHack::RecvFrom at game0x7B3D75/0x7B3EEC. Spawner.h28-32 makes Enabled a constexpr true for IS_HARDENED_VER and IS_CNCNET_YR_VER. Actual Hardened initializer contains the corresponding unconditional patch-writing sequence.",
+        "hardened_installation": "RVA D0DB/D12A construct calls to E2E0/E3F0 and write them at the two game UDP call sites.",
+        "normal_installation": "Normal DLL RVA D03B/D08A select RVA8090/8190 for the same call sites."
+      },
+      "content_source": {
+        "game_site": "0x006867AA",
+        "helper_rva": "0xEA90",
+        "enabled": "Only LAN(3)/Internet(4) perform the added content setup; original log call is preserved in every mode.",
+        "context": "Original Read_Scenario_INI entry0x686730; patched call originally logs Read_Scenario_INI - Filename is %s and its second argument is the scenario filename.",
+        "helper": "RVA E970 constructs CCFileClass via0x4739F0, calls Exists via0x473C50, GetFileSize via0x473C00, allocates a buffer, reads through0x473B10, and if read length equals file size calculates CRC with E2A0. Otherwise it returns its prior accumulator unchanged.",
+        "inputs": [
+          "Scenario file content, starting with zero CRC accumulator",
+          "RULESMD.INI content, continuing from the scenario content CRC",
+          "Game::Network::WOLGameID atgame0xB779D4, documented by pinnedYRpp Unsorted.h81"
+        ],
+        "result": "EA90 stores the derived32-bit value in DLL globalRVA73D2C. A separate value atRVA73D30 comes from WOLGameID and is used for session identification and memory-CRC initialization.",
+        "important_distinction": "WOLGameID is not Game::Seed (which pinnedUnsorted.h60 locates at0xA8ED94), and these values are not the simulation RNG state.",
+        "saved_game_path": "RVA EAF0, reached by LoadGame completion, updates session-derived state and the existing packet-derived value, then invokes the code-memory baseline routine. It does not call E970 to re-read both files."
+      },
+      "send": {
+        "rva": "0xE2E0",
+        "content_use": "E326 reads the file-derived32-bit value fromRVA73D2C. The send body transforms payload bytes using this repeated value and calculates a CRC of the original payload.",
+        "envelope": "The body sends an8-byte prefix plus the transformed payload through the sendto import. It preserves the normal peer-index mapping and optional tunnel routing behavior.",
+        "classification": "Content-dependent packet transformation plus payload integrity check. Do not describe this as cryptographic authentication or proof of an official signed-map whitelist."
+      },
+      "receive": {
+        "rva": "0xE3F0",
+        "validation": "Receives into an internal buffer; checks minimum packet size and the tunnel/session identifier as applicable. E465 reads the same file-derived value, reverses the transformation, and E49D..E4C4 recalculates the payload CRC and compares it with the prefix.",
+        "failure": "A mismatching payload CRC branches atE4C8 toE523, which returns-1. No call toE530 occurs on this rejection path.",
+        "consequence": "The receiving network path rejects the packet. Differing file/session-derived values between peers can therefore produce decode/CRC rejection, subject to the observed conditions.",
+        "limits": "No direct call to the original synchronization-error dialog or forced-fatal routine is established here. No live attribution of the user session."
+      },
+      "normal_comparison": {
+        "primary_source": "Pinned public NetHack.cpp34-155 provides peer IP/port mapping, a direct send/recv path without a tunnel, or a4-byte tunnel-routing prefix.",
+        "normal_binary": "RVA8090..818D and8190..829E independently match that behavior: direct imports or raw memcpy with4-byte prefix. No file-derived payload transformation or added payload CRC appears in these function bodies.",
+        "hardened_binary": "E2E0..E52D adds the content-derived transformation and8-byte prefix with payload CRC to the installed packet path.",
+        "diff_scope": "This changes bodies selected by common initialization hooks, so counting only17 extra .syhks00 entries and46 .patch entries does not describe every Hardened behavior difference."
+      },
+      "limits": [
+        "This is separate from the launcher client SHA1 file-mismatch check and separate from FRAMEINFO simulation-state CRC.",
+        "The observed inputs are map/rules file contents at scenario loading, not ShroudCounter or MapIsClear values produced by in-game reveal calls.",
+        "Finding this mechanism does not establish that modifying map visibility necessarily changes the file-derived value.",
+        "Failure to read a file in E970 keeps the previous accumulator; the inspected helper has no signed official-content allowlist comparison or direct mismatch dialog.",
+        "This is a static comparison of two specific official released DLLs, not a live test of the user environment or a completeness claim about all anti-cheat."
+      ]
+    }
+  ],
+  "not_claimed": [
+    "No live confirmation that the user's local client loads this exact Hardened DLL.",
+    "No attribution of their specific Out of sync/Synchronization error to this fatal path.",
+    "No timing or modification advice for bypassing integrity checks.",
+    "No blanket claim that no other anti-cheat mechanism exists.",
+    "No execution or alteration of the released DLL."
+  ],
+  "scope_completion": "Core assigned pathways analyzed and cross-checked. Other small data/string/branch patches have not all received semantic classification; no assertion of exhaustive anti-cheat coverage. Stop here pending any concrete follow-up question."
+}

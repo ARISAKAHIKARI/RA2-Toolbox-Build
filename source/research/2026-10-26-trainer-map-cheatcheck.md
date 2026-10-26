@@ -8,6 +8,13 @@
 
 顯示未探索格與寫入探索狀態是不同操作。6D88FC 的分支能改變黑幕幀選擇而不直接寫 Cell 探索旗標；但整組功能另放寬 SpySat 判斷，具備走到原生 Reveal 的條件路徑，不能概括為在所有情況下只改繪圖。
 
+
+## 使用者後續更正：全圖穩定基線撤回
+
+使用者在本輪明確更正：「我搞錯了，1.0.37和修改大師地圖全開，其實也都會掉綫」。這是使用者對實機結果的修正，尚未附同次對局的雙端日誌、精確功能模式與平台模組雜湊。今後不能把1.0.37或修改大師當成「全圖不掉線」的穩定對照，也不能僅因最新版失步就指認新增Hook或CnCNet額外檢查為必要原因。
+
+此更正限定於使用者這次明確提及的「地圖全開」；不能自動擴張為ControlAll-only在各版本都掉線，也不取消先前恢復「允許地圖全開」開關與快捷鍵的要求。前文靜態／快照事實仍成立，變動的是實機穩定性的比較前提。
+
 ## 樣本與驗證方式
 
 - 採集：`RA2Master-Capture-20261025-002452-24508.zip`，SHA-256 `effd9473f9d6489cbf637d706dcdd1745aedffb43a4ce40f3fa66b2f0e7aff12`。
@@ -91,3 +98,4 @@
 ### 型別／欄位來源
 
 YRpp固定 `d9795546950fcc75a94325ffc83b44d16ec34ce2` 的 [GameMode](https://github.com/Phobos-developers/YRpp/blob/d9795546950fcc75a94325ffc83b44d16ec34ce2/GeneralDefinitions.h)、SessionClass.h、HouseClass.h、MapClass.h、CellClass.h、Randomizer.h、ScenarioClass.h；spawner release所用YRpp另固定為b22f1860dd7b100cad57123d4ca5d459b9020d88，兩者來源用途分開記錄。
+

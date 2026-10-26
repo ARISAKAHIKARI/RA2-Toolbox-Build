@@ -1,5 +1,7 @@
 # CnCNet v0.0.0.17 Hardened：ControlHouse 重疊與額外 House 驗證
 
+> **後續補充（同日）：** 已追出執行期程式碼 CRC→致命異常、三個 BuildingType 欄位與 CurrentPlayer 檢查、地圖／規則內容衍生的封包驗證；也完成以下事件 continuation 的來源與失敗語義。詳見 [反作弊原理](2026-10-26-cncnet-anticheat-principles.md)。本文保留前輪 PE／同址覆寫證據，以下先前未知項由新研究補足。
+
 本次只讀分析證實兩件事：**官方 Hardened DLL 的 `0x50B6F0` 五位元組 patch 與 Toolbox 的 ControlHouse 入口完全重疊；Hardened 另有普通版沒有的 House／控制者驗證程式。** 這些是固定版本二進位中的事實，尚未對應使用者實際載入的版本，也不構成即時掉線原因的證明。
 
 本次分析使用官方發布包，發布標籤固定為 `fbe8d7d2620584d04ba14fa3580943bfa1448d40`，YRpp gitlink 為 `b22f1860dd7b100cad57123d4ca5d459b9020d88`。Hardened 由公開工程匯入 Private/SpawnerPrivate.props，公開 gitlink 為 `b8821e2f897a72e8872b7fa4e823200e9e825644`；沒有讀取私有原始碼。
@@ -60,13 +62,13 @@ Hardened 新增的 `KD873HWYFB7DN36G67DUY4BGT32GD` export 位於 RVA `0xEEE0`，
 
 原生 `0x6339B0` 是 [TechnoClass::GetControllingHouse](https://github.com/Phobos-developers/YRpp/blob/b22f1860dd7b100cad57123d4ca5d459b9020d88/TechnoClass.h#L497-L499)，event `+2` 是 [EventClass::HouseIndex](https://github.com/Phobos-developers/YRpp/blob/b22f1860dd7b100cad57123d4ca5d459b9020d88/EventClass.h#L154-L157)。這是額外 House 驗證的直接證據。
 
-不能把此檢查說成不可受 Toolbox 影響的原始 Owner 檢查：Toolbox 的 `0x6339BA` hook 正位於 `GetControllingHouse()` 中。也沒有在本次狹窄分析中完整追蹤 `0x4C8109` 後續處理，所以應陳述「不匹配改走該 continuation」，不能直接陳述「因此掉線」。另一新增 export RVA `0xEF10` 也比較 House index 與 event `+2`，但中間 `+0x38/+0x28` 欄位未完整映射，JSON 保留原始資料流。
+不能把此檢查說成不可受 Toolbox 影響的原始 Owner 檢查：Toolbox 的 `0x6339BA` hook 正位於 `GetControllingHouse()` 中。後續已確認 `0x4C8109` 是 dispatcher 一般返回，caller 仍消耗事件，直接效果為拒絕當次動作，並不直接走原版同步錯誤。完整證據見 [事件流程](evidence/cncnet-v17-event-flow.json)。另一新增 export RVA `0xEF10` 現已映射為 Detonate 事件驗證：`ObjectClass::AttachedBomb(+0x38)` → `BombClass::OwnerHouse(+0x28)`；LAN／Internet 下比較炸彈施放方 House index 與事件 `+2`，失配同樣回 `0x4C8109`。它的身分來源與目標的 GetControllingHouse 不同，詳見後續事件流程證據。
 
 ## 4. 額外 House ID 檢查，與 CRC 分開
 
 Hardened 在 `0x64A0E4` 新增 hook（export RVA `0xEE20`），保存 captured EDX。`0x64BE75` 的新增 hook（export RVA `0xEE30`）比較該值與 signed byte `[captured ESP+0x3E]`；相等返回0，不等記錄包含「Forged house ID detected」的訊息並返回 `0x64C370`。
 
-這足以確認額外 House ID 檢查存在。來源 EDX 與 stack `+0x3E` 尚未完整映射成封包欄位，因此本報告保留原始條件。這段是整數／House 身份比較，不能與地圖合法性、全圖繪製或遊戲 CRC 一致性混為同一項檢測。
+這足以確認額外 House ID 檢查存在。後續已將來源 EDX 閉環到接收連線建立時綁定的 HouseIndex，stack `+0x3E` 為解壓後 EventClass.HouseIndex；`0x64C370` 返回已接受前綴數量並停止當次解碼，前綴不回滾。完整證據見 [事件流程](evidence/cncnet-v17-event-flow.json)。這段是整數／House 身份比較，不能與地圖合法性、全圖繪製或遊戲 CRC 一致性混為同一項檢測。
 
 ## 5. 地圖特殊格修復與 Hardened 繪圖差異
 
@@ -78,11 +80,11 @@ Hardened新增五個map/shroud helper：
 | --- | --- | --- |
 | 47EFF1 | ECB0 | 令SHROUD/FOG指標指向DLL內嵌SHP，續行47F018 |
 | 47F25E | ECE0 | 更換FOG指標，續行47F274 |
-| 58647A | ED00 | 讀Cell+12C的0x08探索位，返回是否遮蔽，續行586489 |
+| 58647A | ED00 | 搬移原有Cell+12C的0x08判斷與epilogue，直接返回；無新增判斷 |
 | 6D88FE | ED30 | 設EDI=-2、EBX=8，續行6D8908 |
 | 6D8903 | ED50 | 設EBX=8，續行6D8908 |
 
-兩份內嵌SHP均為60×30、96幀；SHROUD第15幀為900個值2與900個FE，FOG為900個值66與900個FE。完整窄helper未見CRC比較、網路發送、上報或退出呼叫。能支持資源／可見性接管，不能稱為「發現全圖即踢人」的證據；不排除DLL其他位置另有檢查。
+兩份內嵌SHP均為60×30、96幀；SHROUD第15幀為900個值2與900個FE，FOG為900個值66與900個FE。完整窄helper未見CRC比較、網路發送、上報或退出呼叫。原版逐條對照現已確認：前兩段改用內嵌資源，後三段保持原有語義而搬移指令；這五段本身不是「發現全圖即踢人」流程。另已在DLL其他入口確認程式碼／資料完整性比較及致命失敗路徑，詳見 [反作弊原理](2026-10-26-cncnet-anticheat-principles.md)。
 
 五個trainer全圖覆寫區間（508E60/2、508EBA/2、508F8F/2、577B3A/2、6D88FC/2）與兩DLL表中的區間沒有直接相交，但 **6D88FC後的+2及+7已被Hardened改寫**。本產品direct_patch_policy.h明確比對其後12bytes原始上下文，所以在這些外部補丁仍生效的前提下，該固定上下文不再匹配；這是源碼／bytes層面的預期拒絕，不是實測掉線。也不能由兩bytes不相交推論整個功能相容。
 
@@ -97,3 +99,4 @@ Hardened新增五個map/shroud helper：
 持久證據：[ControlHouse／事件驗證](evidence/cncnet-v17-control-event.json)、[map/shroud](evidence/cncnet-v17-map-shroud.json)。其中保留精確RVA／VA／file offset、狹窄機器碼與來源；不提交官方DLL、PDB或使用者原始遊戲映像。完整PE表與objdump材料只用於本輪只讀核對。
 
 前次 [公開來源與Hook管理審計](2026-10-26-hook-conflicts-cncnet-checks.md) 的「公開來源未見13站點交集」仍限定於當時掃描範圍；本輪實際Hardened二進位已提供該公開掃描未涵蓋的50B6F0重疊證據。
+

@@ -107,3 +107,12 @@ DXMainClient/Online/CnCNetGameCheck.cs 在IsInGame時定期列舉進程，以進
 上述「公開來源沒有13站點直接交集」只描述當時的公開源碼掃描。本輪後續下載並靜態分析官方 CnCNetYR-Hardened v0.0.0.17，已確認其.patch有50B6F0/5，CRT初始化器生成跳向DLL自己的ControlledByCurrentPlayer實作；普通版無該項。Hardened另有事件控制者與House ID驗證。這是實際二進位的新證據，不能繼續寫成只知道README宣稱有驗證。
 
 仍未對上使用者當時載入的DLL／站點bytes，且1.0.37同樣使用50B6F0，因此不能僅憑這筆重疊確認版本回歸或掉線原因。詳見 [Hardened二進位研究](2026-10-26-cncnet-hardened-binary-audit.md)。全圖採集則是Skirmish，不能代表通過多人特殊格檢查；詳見 [全圖與原版檢查](2026-10-26-trainer-map-cheatcheck.md)。
+
+## 同日進一步追蹤：已證實的多層驗證原理
+
+後續 [反作弊原理](2026-10-26-cncnet-anticheat-principles.md) 已由官方 Hardened 實際指令確認：遊戲程式區 `[0x401000,0x7E1000)` 以 248×16KiB 建立執行期 CRC 基準並輪流重驗；失配進 DLL E530 非法控制轉移。這補足本文早期公開來源無法確認是否檢查 Hook bytes 的限制。三個 BuildingType 欄位、CurrentPlayer 指標與具體 Observer/Defeated 條件也受檢。
+
+地圖／RULESMD.INI 內容與 WOLGameID 另外影響 payload 處理與接收 CRC；失敗返回 -1 拒收。事件端則分別拒絕目標控制權不符的動作、提前停止 HouseIndex 失配的壓縮解碼。上述與 client 磁碟 SHA-1、外部程序 Kill 及原版 FrameInfo CRC/OOS 均分層記錄，不能混稱為同一種掉線。
+
+使用者後續更正 1.0.37 及修改大師的全圖也會掉線，該兩項已不作穩定全圖基線；此更正沒有自動決定 ControlAll 單獨測試的版本結果。本輪仍未建立使用者故障的現場因果。
+
