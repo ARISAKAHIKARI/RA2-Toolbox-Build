@@ -1,0 +1,122 @@
+{
+  "scope": "Run the original DoList scheduler with two logical senders and synthetic Houses.\n\nUsage: same_house_dolist_order_capture.py GAME_FIXTURE --output REPORT.json\nBoth commands address the same unit in the same frame, with different Move\ndestinations. Respond is a capture-only sink: no mission execution, world tick,\npacket transport, production DLL or real multiplayer game is executed.\n",
+  "game_fixture_sha256": "2fcb478cb2e0de00b1af1a6c82e9b55e56e0b555f20f3c0a018e8aaddc58b0c8",
+  "supported_source_exe_sha256": "7b8a068535d6af06845edf95ae829b113d00c02909330e16f197426cd7db94b6",
+  "game_tested": false,
+  "multiplayer_tested": false,
+  "conclusion": "Two senders sharing one event House retain endpoint-specific insertion order. Distinct sender House tags produce identical Respond order despite reversed insertion order.",
+  "results": [
+    {
+      "preserve_owner": false,
+      "local_sender": 0,
+      "dolist_sender_insertion_order": [
+        0,
+        1
+      ],
+      "response_order": [
+        {
+          "house": 0,
+          "kind": 4,
+          "frame": 1234,
+          "source": 101,
+          "mission": 2,
+          "destination": 100
+        },
+        {
+          "house": 1,
+          "kind": 4,
+          "frame": 1234,
+          "source": 101,
+          "mission": 2,
+          "destination": 101
+        }
+      ],
+      "both_executed_flags_set": true,
+      "status": "PASS"
+    },
+    {
+      "preserve_owner": false,
+      "local_sender": 1,
+      "dolist_sender_insertion_order": [
+        1,
+        0
+      ],
+      "response_order": [
+        {
+          "house": 0,
+          "kind": 4,
+          "frame": 1234,
+          "source": 101,
+          "mission": 2,
+          "destination": 100
+        },
+        {
+          "house": 1,
+          "kind": 4,
+          "frame": 1234,
+          "source": 101,
+          "mission": 2,
+          "destination": 101
+        }
+      ],
+      "both_executed_flags_set": true,
+      "status": "PASS"
+    },
+    {
+      "preserve_owner": true,
+      "local_sender": 0,
+      "dolist_sender_insertion_order": [
+        0,
+        1
+      ],
+      "response_order": [
+        {
+          "house": 1,
+          "kind": 4,
+          "frame": 1234,
+          "source": 101,
+          "mission": 2,
+          "destination": 100
+        },
+        {
+          "house": 1,
+          "kind": 4,
+          "frame": 1234,
+          "source": 101,
+          "mission": 2,
+          "destination": 101
+        }
+      ],
+      "both_executed_flags_set": true,
+      "status": "PASS"
+    },
+    {
+      "preserve_owner": true,
+      "local_sender": 1,
+      "dolist_sender_insertion_order": [
+        1,
+        0
+      ],
+      "response_order": [
+        {
+          "house": 1,
+          "kind": 4,
+          "frame": 1234,
+          "source": 101,
+          "mission": 2,
+          "destination": 101
+        },
+        {
+          "house": 1,
+          "kind": 4,
+          "frame": 1234,
+          "source": 101,
+          "mission": 2,
+          "destination": 100
+        }
+      ],
+      "both_executed_flags_set": true,
+      "status": "PASS"
+    }
+  ]
+}

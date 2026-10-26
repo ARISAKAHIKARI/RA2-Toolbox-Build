@@ -1,0 +1,153 @@
+{
+  "scope": "Native MegaMission dictionary collision across two senders and a third decoder.\nOffline synthetic senders/receiver. Foreign House preservation and forced\nencoder cache misses are modeled using the prior probe's interceptions.\nNo DLL, socket, task effects, or actual multiplayer clients are executed.\n",
+  "game_fixture_sha256": "2fcb478cb2e0de00b1af1a6c82e9b55e56e0b555f20f3c0a018e8aaddc58b0c8",
+  "supported_source_exe_sha256": "7b8a068535d6af06845edf95ae829b113d00c02909330e16f197426cd7db94b6",
+  "game_tested": false,
+  "multiplayer_tested": false,
+  "results": [
+    {
+      "protocol": 1,
+      "foreign_sender_intervenes": false,
+      "real_house1_sender_first_packet_lengths": [
+        44
+      ],
+      "foreign_house1_sender_packet_lengths": [],
+      "real_house1_sender_cached_packet_lengths": [
+        39
+      ],
+      "receiver_house1_slot0_after_real_sender": {
+        "slot": 0,
+        "house": 1,
+        "count": 2,
+        "ids": [
+          201,
+          202
+        ]
+      },
+      "receiver_house1_slot0_after_foreign_sender": null,
+      "real_sender_local_source_ids": [
+        201,
+        202
+      ],
+      "third_receiver_decoded_source_ids": [
+        201,
+        202
+      ],
+      "source_id_mismatch": false,
+      "status": "PASS"
+    },
+    {
+      "protocol": 1,
+      "foreign_sender_intervenes": true,
+      "real_house1_sender_first_packet_lengths": [
+        44
+      ],
+      "foreign_house1_sender_packet_lengths": [
+        44
+      ],
+      "real_house1_sender_cached_packet_lengths": [
+        39
+      ],
+      "receiver_house1_slot0_after_real_sender": {
+        "slot": 0,
+        "house": 1,
+        "count": 2,
+        "ids": [
+          201,
+          202
+        ]
+      },
+      "receiver_house1_slot0_after_foreign_sender": {
+        "slot": 0,
+        "house": 1,
+        "count": 2,
+        "ids": [
+          101,
+          102
+        ]
+      },
+      "real_sender_local_source_ids": [
+        201,
+        202
+      ],
+      "third_receiver_decoded_source_ids": [
+        101,
+        102
+      ],
+      "source_id_mismatch": true,
+      "status": "PASS"
+    },
+    {
+      "protocol": 2,
+      "foreign_sender_intervenes": false,
+      "real_house1_sender_first_packet_lengths": [
+        44
+      ],
+      "foreign_house1_sender_packet_lengths": [],
+      "real_house1_sender_cached_packet_lengths": [
+        39
+      ],
+      "receiver_house1_slot0_after_real_sender": {
+        "slot": 0,
+        "house": 1,
+        "count": 2,
+        "ids": [
+          201,
+          202
+        ]
+      },
+      "receiver_house1_slot0_after_foreign_sender": null,
+      "real_sender_local_source_ids": [
+        201,
+        202
+      ],
+      "third_receiver_decoded_source_ids": [
+        201,
+        202
+      ],
+      "source_id_mismatch": false,
+      "status": "PASS"
+    },
+    {
+      "protocol": 2,
+      "foreign_sender_intervenes": true,
+      "real_house1_sender_first_packet_lengths": [
+        44
+      ],
+      "foreign_house1_sender_packet_lengths": [
+        44
+      ],
+      "real_house1_sender_cached_packet_lengths": [
+        39
+      ],
+      "receiver_house1_slot0_after_real_sender": {
+        "slot": 0,
+        "house": 1,
+        "count": 2,
+        "ids": [
+          201,
+          202
+        ]
+      },
+      "receiver_house1_slot0_after_foreign_sender": {
+        "slot": 0,
+        "house": 1,
+        "count": 2,
+        "ids": [
+          101,
+          102
+        ]
+      },
+      "real_sender_local_source_ids": [
+        201,
+        202
+      ],
+      "third_receiver_decoded_source_ids": [
+        101,
+        102
+      ],
+      "source_id_mismatch": true,
+      "status": "PASS"
+    }
+  ]
+}
