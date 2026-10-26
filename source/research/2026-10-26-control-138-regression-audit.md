@@ -1,8 +1,54 @@
-# 跨玩家控制：1.0.38 與 pre.6 回歸審計
+# 跨玩家控制：1.0.37／1.0.38 與 pre.6 回歸審計
 
 問題：使用者回報 1.0.38 正式版控制全部敵方單位不斷線，本次版本會斷線；之後補充未開「命令使用單位所屬方」。這是回歸觀察，不能用舊版本來就存在的風險替代新舊比較，也不能把需要額外開關的模型直接當成使用者根因。
 
 基線為 GitHub v1.0.38，commit `9c6509a2a6cf88f95af14834acbd90d0e2d36da1`；受查產品為 1.0.39-pre.6，產品 commit `4f7248771754318706b5fd3cbd4ac63bf93ed8d7`，最終 DLL SHA-256 `24c405af124ec60c88b92c47b0cbaca9ab02ba1ed7530f5631f442520f43a08c`。原版 EXE SHA-256 `7b8a068535d6af06845edf95ae829b113d00c02909330e16f197426cd7db94b6`；私有映像重建 PE fixture SHA-256 `2fcb478cb2e0de00b1af1a6c82e9b55e56e0b555f20f3c0a018e8aaddc58b0c8`。不提交私有程式或映像。本輪未修改產品、未重新編譯，也沒有真實 Windows／雙機聯機測試。
+
+## 2026-10-26 補充：以 1.0.37 為穩定基線核對 Hook 時機
+
+使用者本輪明確指出 **1.0.37 的「控制全部」不掉線**，追問後續改動與 Hook 時機。此實機觀察作為回歸基準；以下是本輪獨立的 Git 原始碼比較，不把先前僅以 1.0.38 為基準的有限測試當作已完成新舊雙機對照。
+
+### 比較對象與方法
+
+- v1.0.37：`17cabb0930fc990ae02bf99f81e486007ec19aa0`。
+- v1.0.38：`9c6509a2a6cf88f95af14834acbd90d0e2d36da1`。
+- pre.6 產品：`4f7248771754318706b5fd3cbd4ac63bf93ed8d7`；研究分支檢查點：`e49d6c0451f913b62cc72bf83fab34ac1b794df4`。
+- 讀取三個版本的 Git tree/blob，對照控制／輸入／事件／共用管理器的 24 個檔案；另讀完整 `bridge.cpp`、`placement_bridge.h` 與新增 gateway/owner 實作。
+- 本輪沒有取得使用者正在運行的 DLL 雜湊，沒有執行舊 DLL、新 DLL、原版遊戲或雙機。既有支援 EXE 雜湊見本文前文；不新增未驗證的支援二進位範圍。
+- 可重查的完整 blob 證據：[control-137-source-diff.json](evidence/control-137-source-diff.json)。
+
+### 已確認：正式 1.0.37 → 1.0.38 的控制路徑沒有改動
+
+24 個檔案的 Git blob 全部相同。其中 `placement_bridge.h` 的共同 blob 為 `8afee361a52ba3353f34490c6713d13453f2dd34`，涵蓋三處控制站點、原始簽名、thunk、整組安裝／恢復與 `placementTick`。兩處 owner 查詢先安裝，最後安裝共用 predicate；恢復逆序。已登記且字節相符時不重寫。
+
+`bridge.cpp` 唯一差異是 Produce 指令的工廠佔用前置檢查：單位可加入原生生產佇列，建築仍要求工廠空閒。該差異沒有改 `tick`、`consumeSubmittedIntents`、`dispatchFromTrigger`、`nativeMission` 或 `enqueue`。因此不能將正式 37→38 的回歸直接描述為「改了控制 Hook 的時間／執行緒／安裝順序」。
+
+### 已確認：共用執行緒入口直到 pre.6 仍相同
+
+| 檔案 | 三版本共同 blob |
+| --- | --- |
+| game_runtime/source/runtime.cpp | `37cd9c02b7ccc64c05794ced58d31e8bf15199be` |
+| shared/source/game_entry_manager.cpp | `77049b91f958dbc3bd22c0648b9db6bfe699b139` |
+| shared/source/game_entry_client.h | `11d35c32795a6e2e5e73747e272f05b384ddd55c` |
+
+正常維護仍由遊戲視窗執行緒的 `WH_GETMESSAGE` 進入同一 GameEntryManager 租約，`dispatchFromTrigger` 只接受 Message，保留防重入；沒有新增模擬幀 detour。`restoreFrameDriver` 為空，`maintainScheduler` 固定 Message。讀取 frame 值不等同在模擬幀邊界執行。
+
+安裝時機與 Hook 生效範圍必須分開：`0x50B6F0` 是常駐共用 `ControlledByPlayer` 入口，並非只在一次點擊期間生效。此設計在 1.0.33 已存在，1.0.37 亦相同；它是未完成完整雙機驗證的舊風險，不能冒充本輪新增回歸原因。
+
+### pre.6 的實際新增差異與適用條件
+
+三個獨立 UI 項目為「命令使用單位所屬方（實驗性）」`ControlCommandOwner=0`、「保留事件所屬方（實驗性）」`NetworkHousePreserve=0`、「原生 MegaMission 統一仲裁」`NativeMegaGateway=1`。口述「保留單位命令所屬方」不能自動視為兩個獨立開關都已確認。
+
+`placementTick` 新增 `!sh->controlCommandOwner || (...ready...)`。Owner=0 時短路為 true，不會新增前台／聊天／網路 Ready 的控制組卸載門檻。Owner=1 才有這項裝卸時序差異。
+
+預設 gateway 仍是需要單獨隔離的新路徑，不能以 Owner=0 宣稱回復舊版 Hook 集合。位置為 `0x646F4E`，原版 OutList 事件、時間戳、計數和尾指標已成功更新之後。靜態核對 pushfd/pushad、16-byte 對齊的 FXSAVE/FXRSTOR、actor 引數位置與重放 epilogue，未找到明確的棧／暫存器錯誤；沿 `cancelNative(object,false)` 檢查正常取消鏈，未發現直接寫遊戲物件或再入事件佇列的路徑。己方 actor 可更新工具仲裁；Owner=0 的外方 actor 在 House/Owner 檢查跳過。這些是源碼核對，沒有新原版反彙編或執行結果，不能據此保證實機穩定。
+
+### 結論與下一個可區分的對照
+
+- 本輪沒有找到可確診使用者掉線的新增程式錯誤，不能說「已確認 Hook 時機錯誤」。
+- 若兩項所屬方選項都關閉，不能拿本文先前兩個需要實際保留外方 House 的缺陷解釋該場景。
+- 控制／發送新增路徑隔離仍應保持 `ControlAll=1`，並將 `ControlCommandOwner=0`、`NetworkHousePreserve=0`、`NativeMegaGateway=0`，從新遊戲程序／新對局開始；其餘條件固定。這只隔離相關路徑，不宣稱整個產品等同 1.0.37。
+- 後續真正的回歸判定必須用已知穩定舊 DLL 與故障 DLL 做同配置的實際對照，先核對運行檔雜湊；有限 gateway 開／關案例不能代替舊／新版本測試。
 
 ## 已核對的新舊差異
 

@@ -1,0 +1,205 @@
+{
+  "scope": "Git object identity and source inspection; no executable or multiplayer execution in this review",
+  "baseline": "v1.0.37",
+  "baseline_commit": "17cabb0930fc990ae02bf99f81e486007ec19aa0",
+  "stable_commit": "9c6509a2a6cf88f95af14834acbd90d0e2d36da1",
+  "experimental_product_commit": "4f7248771754318706b5fd3cbd4ac63bf93ed8d7",
+  "experimental_review_commit": "e49d6c0451f913b62cc72bf83fab34ac1b794df4",
+  "comparison_method": "GitHub recursive Git trees plus exact contents for bridge.cpp and placement/owner/gateway source",
+  "real_game_tested": false,
+  "real_netplay_tested": false,
+  "old_release_dll_executed": false,
+  "files": [
+    {
+      "path": "source/assist/source/placement_bridge.h",
+      "v137_blob": "8afee361a52ba3353f34490c6713d13453f2dd34",
+      "v138_blob": "8afee361a52ba3353f34490c6713d13453f2dd34",
+      "pre6_blob": "aa358e9dd5ba7e6df63d7be84a6a18984365f98e",
+      "v137_v138_equal": true
+    },
+    {
+      "path": "source/assist/source/player_test_bridge.h",
+      "v137_blob": "59efb766127715f624ff1461475b993fea451902",
+      "v138_blob": "59efb766127715f624ff1461475b993fea451902",
+      "pre6_blob": "5acdae02f63713a27d041132aa9422b90672edd9",
+      "v137_v138_equal": true
+    },
+    {
+      "path": "source/assist/source/player_test_policy.h",
+      "v137_blob": "68194f88a74648447d7b340fa4f63d130f935a5b",
+      "v138_blob": "68194f88a74648447d7b340fa4f63d130f935a5b",
+      "pre6_blob": "ea57f5fef8420a9396d5d2bd25e8b659fbea14eb",
+      "v137_v138_equal": true
+    },
+    {
+      "path": "source/assist/source/pointer_bridge.h",
+      "v137_blob": "6454d95db6e3fe5c851a5d80eea0d5830c183c21",
+      "v138_blob": "6454d95db6e3fe5c851a5d80eea0d5830c183c21",
+      "pre6_blob": "223086f6320984373462847f1c70d05b025257ca",
+      "v137_v138_equal": true
+    },
+    {
+      "path": "source/assist/source/pointer_host.h",
+      "v137_blob": "4a2f9d9794eb957f7b8794915c60521b05ad2eb2",
+      "v138_blob": "4a2f9d9794eb957f7b8794915c60521b05ad2eb2",
+      "pre6_blob": "22dbfeb547e6316d4baa54794cd47339a2214eed",
+      "v137_v138_equal": true
+    },
+    {
+      "path": "source/assist/source/pointer_intent.h",
+      "v137_blob": "ad8ea83ca00a8cae1aa2ef7174e806920717fa72",
+      "v138_blob": "ad8ea83ca00a8cae1aa2ef7174e806920717fa72",
+      "pre6_blob": "ed243fab92f447bb89ae8fd7ca8cd04c355281d2",
+      "v137_v138_equal": true
+    },
+    {
+      "path": "source/assist/source/hook_registry.h",
+      "v137_blob": "753dd554ffd4b46762820f3f822184331d5af8d7",
+      "v138_blob": "753dd554ffd4b46762820f3f822184331d5af8d7",
+      "pre6_blob": "6bfc2770971802a534f39ad4924618a92834b790",
+      "v137_v138_equal": true
+    },
+    {
+      "path": "source/assist/source/input_patch.h",
+      "v137_blob": "2bd67b27cf432e041bc34b649c7ec6f134368706",
+      "v138_blob": "2bd67b27cf432e041bc34b649c7ec6f134368706",
+      "pre6_blob": "2bd67b27cf432e041bc34b649c7ec6f134368706",
+      "v137_v138_equal": true
+    },
+    {
+      "path": "source/assist/source/native_input_hooks.h",
+      "v137_blob": "9baaecba1983eae67b4d125750e112338c0d801e",
+      "v138_blob": "9baaecba1983eae67b4d125750e112338c0d801e",
+      "pre6_blob": "9baaecba1983eae67b4d125750e112338c0d801e",
+      "v137_v138_equal": true
+    },
+    {
+      "path": "source/assist/source/native_message_policy.h",
+      "v137_blob": "87b770e6e214eecfa65261aad7fc8d835e36ceda",
+      "v138_blob": "87b770e6e214eecfa65261aad7fc8d835e36ceda",
+      "pre6_blob": "87b770e6e214eecfa65261aad7fc8d835e36ceda",
+      "v137_v138_equal": true
+    },
+    {
+      "path": "source/assist/source/dispatch_router.h",
+      "v137_blob": "219f5f4969c445279c31816aba3e8425aed520a7",
+      "v138_blob": "219f5f4969c445279c31816aba3e8425aed520a7",
+      "pre6_blob": "219f5f4969c445279c31816aba3e8425aed520a7",
+      "v137_v138_equal": true
+    },
+    {
+      "path": "source/assist/source/scheduler_policy.h",
+      "v137_blob": "be76b62c4a374bc963cf0ed7b7a6d7d048ab6ac6",
+      "v138_blob": "be76b62c4a374bc963cf0ed7b7a6d7d048ab6ac6",
+      "pre6_blob": "be76b62c4a374bc963cf0ed7b7a6d7d048ab6ac6",
+      "v137_v138_equal": true
+    },
+    {
+      "path": "source/assist/source/event_delivery.h",
+      "v137_blob": "81bff2e3ed239441191f3699a565676431dc0f3e",
+      "v138_blob": "81bff2e3ed239441191f3699a565676431dc0f3e",
+      "pre6_blob": "81bff2e3ed239441191f3699a565676431dc0f3e",
+      "v137_v138_equal": true
+    },
+    {
+      "path": "source/assist/source/outgoing_batch.h",
+      "v137_blob": "5b5d192d88b9599b5c27d355c4b1b331cf5ecc65",
+      "v138_blob": "5b5d192d88b9599b5c27d355c4b1b331cf5ecc65",
+      "pre6_blob": "5b5d192d88b9599b5c27d355c4b1b331cf5ecc65",
+      "v137_v138_equal": true
+    },
+    {
+      "path": "source/assist/source/constructor_adapter.h",
+      "v137_blob": "a82a09b29bd2d9bdf9df5d2c9aa9b8ca8f087a9c",
+      "v138_blob": "a82a09b29bd2d9bdf9df5d2c9aa9b8ca8f087a9c",
+      "pre6_blob": "9d9e9ee549444e10915a9b7637b7e54c245499f6",
+      "v137_v138_equal": true
+    },
+    {
+      "path": "source/assist/source/command_intent.h",
+      "v137_blob": "0163631b59954167e64b4dd389cc1c2f29ed1533",
+      "v138_blob": "0163631b59954167e64b4dd389cc1c2f29ed1533",
+      "pre6_blob": "0163631b59954167e64b4dd389cc1c2f29ed1533",
+      "v137_v138_equal": true
+    },
+    {
+      "path": "source/assist/source/order_policy.h",
+      "v137_blob": "3ff5959ff4fb564b96932a83540326e805ffb0f8",
+      "v138_blob": "3ff5959ff4fb564b96932a83540326e805ffb0f8",
+      "pre6_blob": "3ff5959ff4fb564b96932a83540326e805ffb0f8",
+      "v137_v138_equal": true
+    },
+    {
+      "path": "source/assist/source/guard.cpp",
+      "v137_blob": "21d5b606ca8a7fdeda87d1d97696907c478b9cdc",
+      "v138_blob": "21d5b606ca8a7fdeda87d1d97696907c478b9cdc",
+      "pre6_blob": "e886b8566e8ab137de9e589b078e12933e1bc01a",
+      "v137_v138_equal": true
+    },
+    {
+      "path": "source/game_runtime/source/runtime.cpp",
+      "v137_blob": "37cd9c02b7ccc64c05794ced58d31e8bf15199be",
+      "v138_blob": "37cd9c02b7ccc64c05794ced58d31e8bf15199be",
+      "pre6_blob": "37cd9c02b7ccc64c05794ced58d31e8bf15199be",
+      "v137_v138_equal": true
+    },
+    {
+      "path": "source/shared/source/game_entry_manager.cpp",
+      "v137_blob": "77049b91f958dbc3bd22c0648b9db6bfe699b139",
+      "v138_blob": "77049b91f958dbc3bd22c0648b9db6bfe699b139",
+      "pre6_blob": "77049b91f958dbc3bd22c0648b9db6bfe699b139",
+      "v137_v138_equal": true
+    },
+    {
+      "path": "source/shared/source/game_entry_client.h",
+      "v137_blob": "11d35c32795a6e2e5e73747e272f05b384ddd55c",
+      "v138_blob": "11d35c32795a6e2e5e73747e272f05b384ddd55c",
+      "pre6_blob": "11d35c32795a6e2e5e73747e272f05b384ddd55c",
+      "v137_v138_equal": true
+    },
+    {
+      "path": "source/shared/source/experimental_patch_policy.h",
+      "v137_blob": "3f4f4421cd09a1fa2bfa7831d542fff592d640dd",
+      "v138_blob": "3f4f4421cd09a1fa2bfa7831d542fff592d640dd",
+      "pre6_blob": "84b4ca4bf04d604275eb45a09c01859a13cb3092",
+      "v137_v138_equal": true
+    },
+    {
+      "path": "source/shared/source/patch_context.h",
+      "v137_blob": "fb8694223817d7ed4657dcbbd2dc874b9f097727",
+      "v138_blob": "fb8694223817d7ed4657dcbbd2dc874b9f097727",
+      "pre6_blob": "a47411af224ab8afd4730194969dd003ab3e85a8",
+      "v137_v138_equal": true
+    },
+    {
+      "path": "source/shared/source/runtime_fp_scope.h",
+      "v137_blob": "0d0130d27994c52c0140fddcb877062a83415588",
+      "v138_blob": "0d0130d27994c52c0140fddcb877062a83415588",
+      "pre6_blob": "0d0130d27994c52c0140fddcb877062a83415588",
+      "v137_v138_equal": true
+    }
+  ],
+  "bridge_change": {
+    "v137_blob": "d16a52a2620f8c232127f023105b96d45fe54d94",
+    "v138_blob": "8578d95b4022f7931fb9e22a7f1e6634c85db469",
+    "summary": "Only command(Produce) factory occupancy eligibility changed: units may join native queues; buildings still require an empty factory. Dispatcher, tick, control installation and enqueue blocks are unchanged."
+  },
+  "control_sites": [
+    "0x50B6F0",
+    "0x6339BA",
+    "0x637E40"
+  ],
+  "defaults": {
+    "ControlCommandOwner": 0,
+    "NetworkHousePreserve": 0,
+    "NativeMegaGateway": 1
+  },
+  "findings": [
+    "No source change in 24 control, dispatch, event and shared entry files from v1.0.37 to v1.0.38.",
+    "runtime.cpp, game_entry_manager.cpp and game_entry_client.h remain identical through pre6.",
+    "Owner-disabled short-circuits ownerGuardReady to true; new foreground/chat uninstall condition does not apply.",
+    "NativeMegaGateway is a real default-enabled new hook at 0x646F4E after successful native OutList append.",
+    "Static gateway stack/epilogue and cancelNative(false) call-chain review found no concrete ABI error or direct simulation-memory write; this is not a runtime proof.",
+    "User-observed desynchronization with both owner options disabled remains unresolved; old shared predicate risk is not evidence of a newly introduced regression."
+  ]
+}
