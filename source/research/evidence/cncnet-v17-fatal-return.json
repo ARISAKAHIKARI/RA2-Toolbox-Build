@@ -1,0 +1,318 @@
+{
+  "scope": "Bounded static audit of direct E530 callers in official CnCNetYR-Hardened v0.0.0.17. No target execution/modification, no bypass implementation, no exception-handler recovery test.",
+  "input": {
+    "path": "/workspace/scratch/a40dd1306431/audit/anticheat-binaries/CnCNet-Spawner-CnCNetYR-Hardened-v0.0.0.17/CnCNet-Spawner.dll",
+    "sha256": "62466e9e534ceb15c5d71fb05c62ad98a2b2b4903c569ed0c82189ef86ea3b7d",
+    "image_base": "0x10000000",
+    "size": 417792
+  },
+  "prior_condition_semantics": {
+    "path": "/workspace/scratch/a40dd1306431/audit/anticheat-binaries/hardened-remaining-analysis.json",
+    "sha256": "679dad34e0cca19a2b2950aca43c8a9e7198a1a0c681c711f6440fec67f28bed",
+    "use": "Names for previously established integrity conditions; this audit does not expand their original-game reverse engineering."
+  },
+  "direct_call_search": {
+    "range": {
+      "section": ".text",
+      "rva": "0x00001000",
+      "raw_size": 157184
+    },
+    "method": "Scan E8/E9 rel32 candidates, then verify all four in bounded instruction disassembly.",
+    "call_count": 4,
+    "direct_tail_jump_count": 0,
+    "limitation": "Does not establish absence of computed/indirect transfers or later dynamic rewriting."
+  },
+  "fatal_routine": {
+    "region": {
+      "rva": "0x0000E530",
+      "preferred_va": "0x1000E530",
+      "file_offset": "0x0000D930",
+      "size": 30,
+      "sha256": "f7f32f91d4c2a04f6b662c5842ca1d9f56bc54840b89960b16d19c9c0628f7cf",
+      "bytes": "33e40b25b47d03100be20be10b25b87d031033ff0bec03cd0bc58befffe5"
+    },
+    "semantics": [
+      "S = global[RVA37DB4] OR incomingEDX OR incomingECX OR global[RVA37DB8].",
+      "ESP=S; EDI=0; temporary T=oldEBP OR S; ECX=(oldECX+T) modulo2^32; EAX=oldEAX OR T; EBP=0.",
+      "JMP EBP transfers control to zero; no return instruction exists in this body."
+    ],
+    "distinction": "The helper body deliberately does not return normally. That does not prove its callers were compiled with a noreturn declaration: all four observed CALLs retain meaningful fallthrough and caller cleanup.",
+    "abi": "The body deliberately violates ordinary returning-function preservation of ESP/EBP/EDI. ECX and EAX are also modified. Restoring only an instruction pointer cannot reconstruct the caller state.",
+    "exception_delivery_limit": "A manufactured ESP is not a valid-stack guarantee. These constants are potential signature evidence if captured in a crash context; no guarantee Windows will deliver a usable handler, dialog, stack walk, or recoverable context."
+  },
+  "callers": [
+    {
+      "id": "building_type_fields",
+      "call": {
+        "rva": "0x0000E70B",
+        "preferred_va": "0x1000E70B",
+        "file_offset": "0x0000DB0B",
+        "size": 5,
+        "sha256": "5ef569c4a9facea02a592a98dc30961880c837a6350f05033b7085eedffa5958",
+        "bytes": "e820feffff"
+      },
+      "fallthrough_rva": "0x0000E710",
+      "marker_inputs": {
+        "global_RVA37DB4": "0x00A00000",
+        "EDX": "0x00000020",
+        "ECX": "0x00080000",
+        "global_RVA37DB8": "0x00000200"
+      },
+      "manufactured_ESP": "0x00A80220",
+      "marker_instruction_regions": [
+        {
+          "rva": "0x0000E6ED",
+          "preferred_va": "0x1000E6ED",
+          "file_offset": "0x0000DAED",
+          "size": 5,
+          "sha256": "ca079f834997f17f23a724a45f4bcbe549a7c9a31aa8a3efcf6c6c5adefbe34d",
+          "bytes": "ba20000000"
+        },
+        {
+          "rva": "0x0000E6F2",
+          "preferred_va": "0x1000E6F2",
+          "file_offset": "0x0000DAF2",
+          "size": 10,
+          "sha256": "3ba3728b4f63d36d39cb8660ce08af5f21a9efbcacd5b34349a0ee1b708c3b3c",
+          "bytes": "c705b47d03100000a000"
+        },
+        {
+          "rva": "0x0000E6FC",
+          "preferred_va": "0x1000E6FC",
+          "file_offset": "0x0000DAFC",
+          "size": 5,
+          "sha256": "3a3f026cdb4fe7f5017412b5f090a8e1e50f1211209df25548efca88d09aa2f5",
+          "bytes": "b900000800"
+        },
+        {
+          "rva": "0x0000E701",
+          "preferred_va": "0x1000E701",
+          "file_offset": "0x0000DB01",
+          "size": 10,
+          "sha256": "acf19febaeeaf4a920ac242e8fb0de71800186fea66c57b74513fcfe9c1ecaf3",
+          "bytes": "c705b87d031000020000"
+        }
+      ],
+      "fallthrough": "E710 increments EDI (type index), advances ESI (snapshot cursor) by12, then loops or proceeds to CurrentPlayer checks.",
+      "caller_stack_contract": "Caller E690 has saved EBX,ESI,EDI on its real stack; all remain live across this call. It has not saved EBP locally. EDI is required for correct loop indexing.",
+      "EIP_only_after_damage": "After E530 has run, EDI=0 destroys the loop index; ESP no longer names the saved-register frame, and EBP=0 is not restored by E690's local epilogue.",
+      "hypothetical_return_before_damage": "If control returns before E530 changes any state, a normal return balances the single CALL-pushed return address. This caller supplied no additional stack arguments to this routine. The shown fallthrough exists and does not inspect E530's EAX result or condition flags."
+    },
+    {
+      "id": "current_player_pointer",
+      "call": {
+        "rva": "0x0000E764",
+        "preferred_va": "0x1000E764",
+        "file_offset": "0x0000DB64",
+        "size": 5,
+        "sha256": "6bff12cda0b84e3c517a46524c908a8e74c379d5fbe397114e93b4f344959b9e",
+        "bytes": "e8c7fdffff"
+      },
+      "fallthrough_rva": "0x0000E769",
+      "marker_inputs": {
+        "global_RVA37DB4": "0x000000A0",
+        "EDX": "0x000A0000",
+        "ECX": "0x00800000",
+        "global_RVA37DB8": "0x00000D00"
+      },
+      "manufactured_ESP": "0x008A0DA0",
+      "marker_instruction_regions": [
+        {
+          "rva": "0x0000E746",
+          "preferred_va": "0x1000E746",
+          "file_offset": "0x0000DB46",
+          "size": 5,
+          "sha256": "219ba4d987d0ee3e1b2ebb3d41869ecef049c02446d2c2745a9829f5f72d8410",
+          "bytes": "ba00000a00"
+        },
+        {
+          "rva": "0x0000E74B",
+          "preferred_va": "0x1000E74B",
+          "file_offset": "0x0000DB4B",
+          "size": 10,
+          "sha256": "295663c4b06086ab28649c155f88538b9ae53143b1f3a7fe783ae0760b3d909a",
+          "bytes": "c705b47d0310a0000000"
+        },
+        {
+          "rva": "0x0000E755",
+          "preferred_va": "0x1000E755",
+          "file_offset": "0x0000DB55",
+          "size": 5,
+          "sha256": "308cf880d1e8f8f8d80740b41d6e87409b481ce5cd535d52f5e97b570bf10e8b",
+          "bytes": "b900008000"
+        },
+        {
+          "rva": "0x0000E75A",
+          "preferred_va": "0x1000E75A",
+          "file_offset": "0x0000DB5A",
+          "size": 10,
+          "sha256": "92c38e6ac34ba637ea892a8500f902d2ba921c6f0980c5ad0a3ded2127562415",
+          "bytes": "c705b87d0310000d0000"
+        }
+      ],
+      "fallthrough": "E769 continues with the frame/current-player/observer/Defeated checks; those may reach the second failure call atE7AC. Otherwise it reaches the ordinary original-game call atE7B1.",
+      "caller_stack_contract": "Same E690 stack frame with saved EBX,ESI,EDI and no local EBP save; no stack arguments are supplied to E530.",
+      "EIP_only_after_damage": "Changing only EIP leaves the corrupted ESP for any subsequent call and pop/ret, plus EBP=0; it also does not remove the subsequent independent observer check.",
+      "hypothetical_return_before_damage": "If control returns before E530 changes any state, a normal return balances the single CALL-pushed return address. This caller supplied no additional stack arguments to this routine. The shown fallthrough exists and does not inspect E530's EAX result or condition flags."
+    },
+    {
+      "id": "observer_not_defeated",
+      "call": {
+        "rva": "0x0000E7AC",
+        "preferred_va": "0x1000E7AC",
+        "file_offset": "0x0000DBAC",
+        "size": 5,
+        "sha256": "03b7e19d279321d022706a177275331c429a43e6e3115c52ad852893edbba94b",
+        "bytes": "e87ffdffff"
+      },
+      "fallthrough_rva": "0x0000E7B1",
+      "marker_inputs": {
+        "global_RVA37DB4": "0x00840000",
+        "EDX": "0x00000010",
+        "ECX": "0x0000112D",
+        "global_RVA37DB8": "0x00002010"
+      },
+      "manufactured_ESP": "0x0084313D",
+      "marker_instruction_regions": [
+        {
+          "rva": "0x0000E78E",
+          "preferred_va": "0x1000E78E",
+          "file_offset": "0x0000DB8E",
+          "size": 5,
+          "sha256": "972e7398ee8f347603939e10eb0acf9cb5b278a2f8f151cf4d51e10a4043405a",
+          "bytes": "ba10000000"
+        },
+        {
+          "rva": "0x0000E793",
+          "preferred_va": "0x1000E793",
+          "file_offset": "0x0000DB93",
+          "size": 10,
+          "sha256": "9c88de1ccc896ca64490c5b10c4654bfa89c7b129fca3df4b40d2925e1753edc",
+          "bytes": "c705b47d031000008400"
+        },
+        {
+          "rva": "0x0000E79D",
+          "preferred_va": "0x1000E79D",
+          "file_offset": "0x0000DB9D",
+          "size": 5,
+          "sha256": "2b9e2515f5ea6b89ac90272464371d1ab12ad2cf0f1dce484394819d8ed08a9b",
+          "bytes": "b92d110000"
+        },
+        {
+          "rva": "0x0000E7A2",
+          "preferred_va": "0x1000E7A2",
+          "file_offset": "0x0000DBA2",
+          "size": 10,
+          "sha256": "aa7e3f27cb11e67344b93a81a8cff068e3c60c2aa434b91936c2c5d633261887",
+          "bytes": "c705b87d031010200000"
+        }
+      ],
+      "fallthrough": "E7B1 loads original-game address55E160 into EAX, calls it, then pops EDI,ESI,EBX and returns.",
+      "caller_stack_contract": "Same E690 frame; ordinary native call plus standard epilogue follow immediately, with no missing caller stack-argument cleanup.",
+      "EIP_only_after_damage": "The immediate CALL would push its return address through the manufactured ESP, and the later POP/RET sequence would read from that wrong stack; EIP alone cannot make this a normal return.",
+      "hypothetical_return_before_damage": "If control returns before E530 changes any state, a normal return balances the single CALL-pushed return address. This caller supplied no additional stack arguments to this routine. The shown fallthrough exists and does not inspect E530's EAX result or condition flags."
+    },
+    {
+      "id": "original_text_crc",
+      "call": {
+        "rva": "0x0000EC2F",
+        "preferred_va": "0x1000EC2F",
+        "file_offset": "0x0000E02F",
+        "size": 5,
+        "sha256": "4c245c6b817ec4eff86112bb49e3b62d9e4dd14741e4a7b1602961fc3d78db36",
+        "bytes": "e8fcf8ffff"
+      },
+      "fallthrough_rva": "0x0000EC34",
+      "marker_inputs": {
+        "global_RVA37DB4": "0x002801B1",
+        "EDX": "0x0000B100",
+        "ECX": "0x0080B008",
+        "global_RVA37DB8": "0x00001200"
+      },
+      "manufactured_ESP": "0x00A8B3B9",
+      "marker_instruction_regions": [
+        {
+          "rva": "0x0000EC11",
+          "preferred_va": "0x1000EC11",
+          "file_offset": "0x0000E011",
+          "size": 5,
+          "sha256": "d36c6135f6dbf70930586729ddf8e5b5003fac1b4239b7c2f629ac8eb9500d90",
+          "bytes": "ba00b10000"
+        },
+        {
+          "rva": "0x0000EC16",
+          "preferred_va": "0x1000EC16",
+          "file_offset": "0x0000E016",
+          "size": 10,
+          "sha256": "7d9ede8c8062084a23a4e8a7e1658e8bf60119d736e2e060c3a82dbc2ef68bc3",
+          "bytes": "c705b47d0310b1012800"
+        },
+        {
+          "rva": "0x0000EC20",
+          "preferred_va": "0x1000EC20",
+          "file_offset": "0x0000E020",
+          "size": 5,
+          "sha256": "31bd562fdb562fbba82660d0762c0f9308c0c0ca2008bc449a9af774a5f4c70e",
+          "bytes": "b908b08000"
+        },
+        {
+          "rva": "0x0000EC25",
+          "preferred_va": "0x1000EC25",
+          "file_offset": "0x0000E025",
+          "size": 10,
+          "sha256": "c6c61f43db67ab8bc4cbb41aec8a3d1639a2236bff2115cf28f5fcb989e6b966",
+          "bytes": "c705b87d031000120000"
+        }
+      ],
+      "fallthrough": "EC34 reloads the scan index into BL; EC3A increments it and writes it back; EC42 pops EBX, EC43 reloads saved ECX, EC46 removes the scratch slot, EC49 tail-jumps toE950 which forwards to original55DEE0.",
+      "caller_stack_contract": "EB60 has already popped EDI,ESI,EBP before this call, but saved EBX and an incoming-ECX scratch slot still remain on the real stack. Proper return is needed for their recovery; no stack arguments are supplied to E530.",
+      "EIP_only_after_damage": "ESP now points outside that real frame, so POP EBX and the saved-ECX load cannot restore the intended values. EBP and EDI were already restored before the call, then destroyed by E530, with no later restoration in this caller.",
+      "hypothetical_return_before_damage": "If control returns before E530 changes any state, a normal return balances the single CALL-pushed return address. This caller supplied no additional stack arguments to this routine. The shown fallthrough exists and does not inspect E530's EAX result or condition flags."
+    }
+  ],
+  "conclusions": {
+    "before_damage": "The four callsites retain normal continuation code, and no additional E530 stack-argument cleanup is required. A purely hypothetical return before any destructive instructions preserves the caller frame; this local ABI observation is not proof of a supported or safe game continuation.",
+    "after_damage_EIP_only": "E530 has replaced ESP, zeroed EDI and EBP, and changed ECX/EAX before its final invalid jump. Advancing only EIP to a caller continuation leaves wrong stack and nonvolatile register state; the documented loops, CALLs, POPs and return paths do not repair it.",
+    "not_repaired_by_return": "An early return would not restore altered game code/data, refresh integrity baselines, repair network/event identity checks, roll back simulation state, or establish multiplayer synchronization. Subsequent independent checks remain present.",
+    "noreturn_claim": "No evidence here supports claiming the compiler removed all post-call continuations due to noreturn optimization.",
+    "not_established": "User's loaded binary, live fault/exception context, whether any of these four branches fired, or whether returning from one would recover the observed user failure."
+  },
+  "disassembly": {
+    "path": "/workspace/scratch/a40dd1306431/audit/anticheat-binaries/fatal-return-evidence.asm",
+    "sha256": "61afe62e69170f1724375af2853b018427ed96aec35d7ab38f1d9af65289a58e",
+    "regions": {
+      "fatal_routine": {
+        "rva": "0x0000E530",
+        "preferred_va": "0x1000E530",
+        "file_offset": "0x0000D930",
+        "size": 30,
+        "sha256": "f7f32f91d4c2a04f6b662c5842ca1d9f56bc54840b89960b16d19c9c0628f7cf",
+        "bytes": "33e40b25b47d03100be20be10b25b87d031033ff0bec03cd0bc58befffe5"
+      },
+      "building_and_house_callers": {
+        "rva": "0x0000E690",
+        "preferred_va": "0x1000E690",
+        "file_offset": "0x0000DA90",
+        "size": 300,
+        "sha256": "745ad99a8e5634b40cd6b1df51686d6e1c5a93668a161f4d55c6a4e64a01e06e",
+        "bytes": "a1347903105356578b0083f803740983f8040f85090100008b1d783ca800b8001000003bd80f4fd833ff85db7e5fb86c3ca800be887806108b008b0cb88b46f83b81b40e000075158b46fc3b810c170000750a8a063a817a1500007423ba20000000c705b47d03100000a000b900000800c705b87d031000020000e820feffff4783c60cb86c3ca8003bfb7cab803d243d0710007513c605243d071001a14c3da800a3203d0710eb30a1203d07103b054c3da8007423ba00000a00c705b47d0310a0000000b900008000c705b87d0310000d0000e8c7fdffff833d84eda800647e3f8b0d4c3da80085c97435a1a07a03103b08752c80b9f5010000007523ba10000000c705b47d031000008400b92d110000c705b87d031010200000e87ffdffffb860e15500ffd05f5e5bc3"
+      },
+      "text_crc_caller_and_cleanup": {
+        "rva": "0x0000EB60",
+        "preferred_va": "0x1000EB60",
+        "file_offset": "0x0000DF60",
+        "size": 238,
+        "sha256": "ddbe120fe55adad621ad16ea7bd9d5b6b5530d8348bd87e26ba285a8d0c33638",
+        "bytes": "51a134790310890c248b0083f803740983f8040f85ca000000538a1d343d071080fbf8720832db881d343d0710a1303d071055560fb6ebf7d08bf5c1e60e5781c600104000bf00100000660f1f4400000fb60e8d76040fb6d033d1c1e808330495b4f781000fb656fd0fb6c833d1c1e808330495b4f781000fb656fe0fb6c833d1c1e808330495b4f781000fb656ff0fb6c833d1c1e808330495b4f7810083ef0175ad5ff7d03904ad803807105e5d7429ba00b10000c705b47d0310b1012800b908b08000c705b87d031000120000e8fcf8ffff8a1d343d0710fec3881d343d07105b8b0c2483c404e902fdffff"
+      },
+      "original_main_loop_forwarder": {
+        "rva": "0x0000E950",
+        "preferred_va": "0x1000E950",
+        "file_offset": "0x0000DD50",
+        "size": 21,
+        "sha256": "0f316717314dd2a2ec250a7f77869a01d4dd03e304a173df047922e4faedf390",
+        "bytes": "558bec51894dfc8be55db8e0de5500ffe08be55dc3"
+      }
+    }
+  }
+}

@@ -198,3 +198,42 @@ Toolbox 的兩個晚段繪製 Hook 在資源準備與原版 Cell cache 更新之
 只讀重現腳本與有限 objdump 片段保留在工作資料；本次持久化只含研究文字與精簡衍生證據，不提交官方 DLL、PDB、使用者 EXE 或 raw memory dump。沒有實機 Windows／多人驗證，沒有改寫反作弊、產品邏輯或發布新版本。
 
 其餘少量字串、資料與跳轉 patch 尚未逐項完成語義分類；本報告記錄已閉環的主要機制，不宣稱是 Hardened 所有反作弊行為的完整清單。
+
+## 10. 故意異常的可恢復性：破壞前與破壞後須分開
+
+使用者後續詢問是否能旁路掉 Hardened 製造的異常。本次只讀追蹤 E530 的直接呼叫者與 Windows 例外上下文語義，沒有修改 DLL、寫入遊戲或實作／執行旁路。
+
+### 10.1 四個已找到的直接呼叫者都有正常後續流程
+
+| DLL call RVA | 原因 | call 之後已存在的流程 |
+| --- | --- | --- |
+| E70B | BuildingType 三欄位之一不符 | 續行 E710，增加迴圈索引與快照指標，繼續下一個類型 |
+| E764 | CurrentPlayer 與保存指標不符 | 續行 E769，進行後續幀數／Observer 條件檢查 |
+| E7AC | 已列明的 Observer／Defeated 條件 | 續行 E7B1，呼叫原版 55E160 並恢復保存的暫存器、返回 |
+| EC2F | 程式碼區塊 CRC 不符 | 續行 EC34，更新掃描索引，恢復保存狀態，尾跳原有主迴圈函式 |
+
+因此不能把此版本描述成「呼叫 E530 後，編譯器已移除所有正常返回路徑」。這四處均有實際可反組譯的後續；呼叫前的故障標記透過暫存器與 DLL 全域值傳遞，未見需要額外清理的 stack 參數。
+
+**在 E530 尚未破壞上下文，且原有堆疊、非揮發暫存器與呼叫約定均保持的假設下，靜態控制流支持回到這些後續的可能性。** 這項結論不等於已在 Windows 上驗證，也不能證明其餘檢查、對端行為或遊戲狀態一致性都會正常。
+
+### 10.2 事後「吞掉例外」無法自動還原
+
+E530 的原有指令會先清空／重組 ESP，清零 EDI，改寫 EBP、ECX、EAX，最後以已清零的 EBP 跳到地址零。到例外真正發生時，原有上下文已有資訊丟失。
+
+Microsoft 將 EXCEPTION_POINTERS.ContextRecord 定義為「例外發生時」的處理器狀態；它不會自動提供較早、尚未執行破壞指令時的快照。VEH 可以觀察或處理例外，但其註冊與呼叫機制本身不保證能重建先前的暫存器與有效 stack。
+
+因此僅要求繼續執行，會嘗試使用原有故障上下文；僅變更指令位置，也沒有修復堆疊與活躍暫存器。具體例子是第一個 caller 的後續依賴 EDI 迴圈索引，而 E530 已把它清零；資料檢查尾端與程式碼掃描尾端均依賴有效 stack 來恢復保存狀態。
+
+四個 caller 所設定的值經 OR 後，分別使 ESP 變為：E70B→`0x00A80220`、E764→`0x008A0DA0`、E7AC→`0x0084313D`、EC2F→`0x00A8B3B9`。這些是實際指令可推導的候選崩潰辨識值；只有在現場上下文確實保留它們時才有辨識意義，不能保證例外派送成功。
+
+本次沒有取得實機例外記錄，也未驗證這個錯誤 ESP 下 Windows／既有 handler 的實際派送順序。不能宣稱我們的 handler 一定能被呼叫，更不能宣稱可以用通用的忽略 access violation 規則安全恢復。
+
+### 10.3 能解決的範圍
+
+只處理 E530 所代表的本機故障動作，不會改變已存在的 CRC／資料差異。未變更的檢查還可能再次觀察同一差異；資料檢查在後續有效呼叫再次比較，程式碼掃描在輪巡回該區塊時再次比較。
+
+它也不會改變另一條 payload CRC 拒收路徑、HouseIndex／目標控制權事件拒絕、客戶端 Process.Kill，或原版 FrameInfo 狀態摘要。即使單獨處理了本機故意異常，仍不能承諾全圖／控制全部的聯機一致性。
+
+所以本輪結論是：**有條件地處理破壞前的故障動作具有靜態控制流可行性；對破壞後例外做一般性吞錯，沒有安全恢復的證據；完整聯機相容性仍未實測。**
+
+證據：[故障呼叫與返回流程](evidence/cncnet-v17-fatal-return.json)。Windows 語義來源：[EXCEPTION_POINTERS](https://learn.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-exception_pointers)、[Exception Dispatching](https://learn.microsoft.com/en-us/windows/win32/debug/exception-dispatching)、[Vectored Exception Handling](https://learn.microsoft.com/en-us/windows/win32/debug/vectored-exception-handling)。以上 Windows 文件只支持例外處理機制與上下文定義，不作為本 DLL 可安全恢復的實測證據。
