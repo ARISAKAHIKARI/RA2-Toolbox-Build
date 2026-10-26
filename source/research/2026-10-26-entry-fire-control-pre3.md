@@ -113,3 +113,15 @@ jne   reject
 - 工具网关另有会话/对局、所属方/对象、参数引用、聊天/新鲜度、时钟入口等检查；OutList 采用112条保留阈值及每帧24条工具预算。这些是工具自身保护，不能当作原版 QueueMegaMission 的校验。
 
 结论：这一级主要决定事件是否能进入发送队列，不能据此保证各端执行时会接受任务。普通步兵 Sabotage 的 C4 门槛、Sticky 的 readiness、完整寻路等在后续路径仍可生效。若统一接管，应明确是本机发送端的 MegaMission，而非所有构造器调用或接收后的模拟分支；原生规划内部本机 DoList 事件需另行区分。
+
+## 负玩家编号与观战的区别
+
+问题：player<0 是否表示观战，删除判断能否让观战发送可被其他端执行的 MegaMission？本次先查 INDEX/direct-orders-1 和 notebook；基于同一支持样本静态复查，未进行观战实机网络测试。
+
+构造器中的负数是传入玩家索引小于0（如-1）；负数分支写 EventType=0、House=FF，不能命名为观战分支。项目 `player_test_bridge.h::playableHouse` 另以 House==[AC1198] 或玩家节点 +6B==-1 且节点 +6F==House+30 识别观战。节点 +6B 和事件 HouseIndex 不是同一字段。上游 YRpp HouseClass.h 也独立声明 Observer 与 ArrayIndex（https://github.com/Phobos-developers/YRpp/blob/master/HouseClass.h）。本轮没有确认当前平台观战者的实际 House 数值，不能声称所有观战都是-1或都具有某个非负编号。
+
+接收器 `4C6CB0` 在 `4C6CC4` 将 Event+2 有符号扩展，`4C6CCA` 使用该数值访问 HouseArray.Items[index]，随后分派事件类型。因此若强行构造 EventType=4、House=-1，进入这里时会读取数组前一个位置；具体可能被更早调度跳过或发生非法读取，没有依据断言一定崩溃。原版 DoList `64C4DC..64C550` 遍历实际 House，检查 +1EC/+1ED 并比较事件 House 与 House+30。删除构造器判断不会创建合法的负编号 House。
+
+对方“收到”须区分：本机 OutList 追加、网络发送/对端接收、进入 DoList 同帧调度、执行器实际处理。现有普通 Move/Attack 的受控执行证据（direct-orders-1）只覆盖最后一级，分别使用有效 House0/House1 都到达任务/目标/目的地调用；不涵盖观战传输。Sell 则在 4C6F3B..4C6F48 检查事件 House 与实际 Owner 编号相等。不能据此推断平台一定放行或一定拒绝观战命令。
+
+结论：不能以移除 player<0 判断实现观战控制；应先确认观战实际 House 编号、输入/发送门槛、网络节点映射和对端 DoList 交付。合法非负 House 的观战情况本来就不会触发此负数分支。本轮仅记录研究结论，没有修改产品准入或构造器。
