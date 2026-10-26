@@ -42,7 +42,7 @@ static std::wstring controlHelp(int id,const std::wstring& label){
  case 476:case 9096:return L"随处建造：受控模式仅放宽己方建筑距离；直接模式同时放宽距离和可见性入口。仍有地形、占用等原版条件。联机效果待实测。";
  case 810:case 811:case 812:case 813:return L"默认 Alt+C 加中键点建筑，追加进入路径点；未按住游戏路径点键时自动提交。提交前不检查进入能力，实际执行由游戏判定。工程师、间谍和原生 C4 单位保留各自任务；普通步兵不增加 C4 能力。";
  case 808:case 809:return L"地图全开：受控模式调整黑幕显示；原生揭示在每局就绪后揭示地图；直接模式调整雷达、间谍卫星与重罩入口。关闭后恢复本工具补丁，但已经探索的地图未必重新隐藏。";
- case 803:case 894:case 866:return L"飞机路径点：留空跟随游戏当前路径点按键；自定义键使用兼容路径点。按住并点击地面记录，松键执行。原生优先在单机使用原生规划，联机自动使用兼容路径点。";
+ case 803:case 894:case 866:return L"飞机路径点：留空跟随游戏路径点键，自定义键使用兼容模式。原生优先仅单机使用原生规划。联机实验可选：原生下单只放开入口，保留原版到达逻辑；完整原生还推进本机到达任务，可能不同步。两种实验均待实机验证。";
 
  case 799:return L"生产预定：建筑、防御各 5 项；步兵、载具（含飞机和船）各 30 项。可建造的单位会接连提交到原生生产队列；原生队列满时保留待提交项。正在建造或已预定的前置科技可解锁灰色预定。右键退顶层，Shift＋右键清空。";
  case 870:return L"喝彩：配置的快捷键替代原生按键，通过游戏原版喝彩事件发送；保留冷却，聊天与菜单中不接管。";
@@ -82,3 +82,4 @@ static std::wstring controlHelp(int id,const std::wstring& label){
  return label;
 }
 static void updateHoverHelp(){} // Per-control native tooltips own hover help.
+

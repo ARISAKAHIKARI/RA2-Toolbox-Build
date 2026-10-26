@@ -35,9 +35,9 @@ extern "C" int __cdecl AssistRiskAction(unsigned op,unsigned object,unsigned hou
  if(op==3)return sh->renderReveal==2?halfShroud(object,house!=0):1;
  if(op==0)return riskPlacementActive&&(sh->flags&BuildAnywhere)&&house==get<uint32_t>(lastHouse+0x30)&&object>=0x10000&&
    call<int>(get<uint32_t>(get<uint32_t>(object)+0x2C),object)==7;
- if(!riskAirActive||!airpathpolicy::native(get<int>(0xA8B238),(sh->flags&NativeAirWaypoints)!=0))return 0;
+ if(!riskAirActive||!airpathpolicy::native(get<int>(0xA8B238),(sh->flags&NativeAirWaypoints)!=0,sh->nativeAirNetwork))return 0;
  if(op==1)return 1; // AircraftType::CanUseWaypoint, the native UI gate.
- if(op!=2||!own(object,lastHouse)||kind(object)!=0||get<uint32_t>(object+0x5D4)||
+ if(op!=2||!airpathpolicy::arrival(get<int>(0xA8B238),true,sh->nativeAirNetwork)||!own(object,lastHouse)||kind(object)!=0||get<uint32_t>(object+0x5D4)||
     get<uint32_t>(object+0x294)||get<uint8_t>(object+0x6CA))return 0;
  // YRpp TechnoClass::TryNextPlanningTokenNode: native planning owns its tokens
  // and event construction. No external queue, mission/target write, OutList
@@ -477,13 +477,15 @@ static void placementTick(){
   if((sh->flags&BuildAnywhere)&&sh->placementImplementation==0&&directOff){riskPlacementActive=installRiskSite(riskSites[0]);snap.placementStatus=riskPlacementActive?1:-2;}
   else{riskPlacementActive=false;bool off=restoreRiskSite(riskSites[0]);snap.placementStatus=off&&directOff?0:-2;}
  }
- if(airpathpolicy::native(get<int>(0xA8B238),(sh->flags&NativeAirWaypoints)!=0)){
+ if(airpathpolicy::native(get<int>(0xA8B238),(sh->flags&NativeAirWaypoints)!=0,sh->nativeAirNetwork)){
+  const bool advance=airpathpolicy::arrival(get<int>(0xA8B238),true,sh->nativeAirNetwork);
   static const uint8_t nextSignature[]={0x81,0xEC,0xE0,0,0,0,0x53,0x56,0x8B,0xF1};uint8_t actual[sizeof nextSignature]{};
-  bool supported=read(0x6385C0,actual,sizeof actual)&&!memcmp(actual,nextSignature,sizeof actual);
+  bool supported=!advance||(read(0x6385C0,actual,sizeof actual)&&!memcmp(actual,nextSignature,sizeof actual));
   // Behavior first, frontend last. Partial installation rolls back as a group.
-  riskAirActive=supported&&installRiskSite(riskSites[2])&&installRiskSite(riskSites[1]);
+  riskAirActive=supported&&(advance?installRiskSite(riskSites[2]):restoreRiskSite(riskSites[2]))&&installRiskSite(riskSites[1]);
   if(!riskAirActive){restoreRiskSite(riskSites[1]);restoreRiskSite(riskSites[2]);}
-  snap.nativeAirStatus=riskAirActive?1:supported?-2:-1;
+  snap.nativeAirStatus=riskAirActive?(airpathpolicy::multiplayer(get<int>(0xA8B238))?(advance?4:3):1):supported?-2:-1;
  }else{riskAirActive=false;bool a=restoreRiskSite(riskSites[1]),b=restoreRiskSite(riskSites[2]);
   snap.nativeAirStatus=a&&b?((sh->flags&NativeAirWaypoints)&&airpathpolicy::events(get<int>(0xA8B238),false,true)?2:0):-2;}
 }
+

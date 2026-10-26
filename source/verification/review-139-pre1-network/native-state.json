@@ -1,0 +1,316 @@
+{
+  "scope": "Run captured native CRC, Ctrl+Alt action and Sticky transition prefixes.\n\nRequires the owner's private .mem/.valid capture, never shipped with this test.\nCRC executes the original full computation; only its logging sink is mocked.\nInput and mission probes use synthetic object/map/keyboard queries. They do not\nprove complete pathfinding, arrival effects, Windows input or live netplay.\n",
+  "supported_executable_sha256": "7b8a068535d6af06845edf95ae829b113d00c02909330e16f197426cd7db94b6",
+  "capture_image_sha256": "94ac595e7a6fef82839b7959f3f926a52708fc857fbc65aa9ff88428dff3f4bd",
+  "game_tested": false,
+  "multiplayer_tested": false,
+  "results": [
+    {
+      "case": "baseline",
+      "native_crc": 863614368,
+      "oracle_crc": 863614368,
+      "status": "PASS"
+    },
+    {
+      "case": "x_small",
+      "native_crc": 863614368,
+      "oracle_crc": 863614368,
+      "status": "PASS"
+    },
+    {
+      "case": "x_step",
+      "native_crc": 863614914,
+      "oracle_crc": 863614914,
+      "status": "PASS"
+    },
+    {
+      "case": "z",
+      "native_crc": 863614368,
+      "oracle_crc": 863614368,
+      "status": "PASS"
+    },
+    {
+      "case": "health",
+      "native_crc": 863614368,
+      "oracle_crc": 863614368,
+      "status": "PASS"
+    },
+    {
+      "case": "money",
+      "native_crc": 863614368,
+      "oracle_crc": 863614368,
+      "status": "PASS"
+    },
+    {
+      "case": "mission",
+      "native_crc": 863614368,
+      "oracle_crc": 863614368,
+      "status": "PASS"
+    },
+    {
+      "case": "techlevel",
+      "native_crc": 863614368,
+      "oracle_crc": 863614368,
+      "status": "PASS"
+    },
+    {
+      "case": "map_clear",
+      "native_crc": 863614496,
+      "oracle_crc": 863614496,
+      "status": "PASS"
+    },
+    {
+      "case": "direction",
+      "native_crc": 863614880,
+      "oracle_crc": 863614880,
+      "status": "PASS"
+    },
+    {
+      "case": "random",
+      "native_crc": 846705879,
+      "oracle_crc": 846705879,
+      "status": "PASS"
+    },
+    {
+      "case": "order",
+      "native_crc": 1228589473,
+      "oracle_crc": 1228589473,
+      "status": "PASS"
+    },
+    {
+      "case": "count",
+      "native_crc": 3167709857,
+      "oracle_crc": 3167709857,
+      "status": "PASS"
+    },
+    {
+      "case": "sticky_native_queue",
+      "requested": 1,
+      "start": 0,
+      "current": 6,
+      "queued": 1,
+      "ready": false,
+      "status": "PASS"
+    },
+    {
+      "case": "sticky_native_queue",
+      "requested": 1,
+      "start": 1,
+      "current": 6,
+      "queued": 1,
+      "ready": false,
+      "status": "PASS"
+    },
+    {
+      "case": "sticky_native_queue",
+      "requested": 2,
+      "start": 0,
+      "current": 6,
+      "queued": 2,
+      "ready": false,
+      "status": "PASS"
+    },
+    {
+      "case": "sticky_native_queue",
+      "requested": 2,
+      "start": 1,
+      "current": 6,
+      "queued": 2,
+      "ready": false,
+      "status": "PASS"
+    },
+    {
+      "case": "sticky_native_queue",
+      "requested": 5,
+      "start": 0,
+      "current": 6,
+      "queued": 5,
+      "ready": false,
+      "status": "PASS"
+    },
+    {
+      "case": "sticky_native_queue",
+      "requested": 5,
+      "start": 1,
+      "current": 6,
+      "queued": 5,
+      "ready": false,
+      "status": "PASS"
+    },
+    {
+      "case": "sticky_native_queue",
+      "requested": 7,
+      "start": 0,
+      "current": 6,
+      "queued": 7,
+      "ready": false,
+      "status": "PASS"
+    },
+    {
+      "case": "sticky_native_queue",
+      "requested": 7,
+      "start": 1,
+      "current": 6,
+      "queued": 7,
+      "ready": false,
+      "status": "PASS"
+    },
+    {
+      "case": "sticky_native_queue",
+      "requested": 11,
+      "start": 0,
+      "current": 6,
+      "queued": 11,
+      "ready": false,
+      "status": "PASS"
+    },
+    {
+      "case": "sticky_native_queue",
+      "requested": 11,
+      "start": 1,
+      "current": 6,
+      "queued": 11,
+      "ready": false,
+      "status": "PASS"
+    },
+    {
+      "case": "sticky_native_queue",
+      "requested": 13,
+      "start": 0,
+      "current": 6,
+      "queued": 13,
+      "ready": false,
+      "status": "PASS"
+    },
+    {
+      "case": "sticky_native_queue",
+      "requested": 13,
+      "start": 1,
+      "current": 6,
+      "queued": 13,
+      "ready": false,
+      "status": "PASS"
+    },
+    {
+      "case": "sticky_native_queue",
+      "requested": 28,
+      "start": 0,
+      "current": 6,
+      "queued": 28,
+      "ready": false,
+      "status": "PASS"
+    },
+    {
+      "case": "sticky_native_queue",
+      "requested": 28,
+      "start": 1,
+      "current": 6,
+      "queued": 28,
+      "ready": false,
+      "status": "PASS"
+    },
+    {
+      "case": "sticky_native_queue",
+      "requested": 29,
+      "start": 0,
+      "current": 6,
+      "queued": 29,
+      "ready": false,
+      "status": "PASS"
+    },
+    {
+      "case": "sticky_native_queue",
+      "requested": 29,
+      "start": 1,
+      "current": 6,
+      "queued": 29,
+      "ready": false,
+      "status": "PASS"
+    },
+    {
+      "case": "sticky_destination_prefix",
+      "BalloonHover": 0,
+      "current_mission": 6,
+      "force_mission_called": false,
+      "unexecuted_body": [
+        "remaining_destination_body"
+      ],
+      "status": "PASS"
+    },
+    {
+      "case": "sticky_destination_prefix",
+      "BalloonHover": 1,
+      "current_mission": 1,
+      "force_mission_called": true,
+      "unexecuted_body": [],
+      "status": "PASS"
+    },
+    {
+      "case": "native_planning_drain_MP",
+      "DoList_added": 1,
+      "OutList_added": 0,
+      "scheduled_frame": 101,
+      "status": "PASS"
+    },
+    {
+      "case": "native_FrameInfo_compare",
+      "Frame": 101,
+      "Delay": 5,
+      "compared_ring_index": 96,
+      "mismatch_branch": false,
+      "status": "PASS"
+    },
+    {
+      "case": "native_FrameInfo_compare",
+      "Frame": 101,
+      "Delay": 5,
+      "compared_ring_index": 96,
+      "mismatch_branch": true,
+      "status": "PASS"
+    },
+    {
+      "case": "ctrl_alt_native_cell_action",
+      "cell_query_result": 0,
+      "action": 26,
+      "name": "GuardArea",
+      "status": "PASS"
+    },
+    {
+      "case": "ctrl_alt_native_click_dispatch",
+      "repetitions": 32,
+      "mission": 11,
+      "target": "cell",
+      "destination": "none",
+      "status": "PASS"
+    },
+    {
+      "case": "ctrl_alt_repeated_building_gate",
+      "mission": 11,
+      "engineer": 0,
+      "repetitions": 32,
+      "admitted_at_this_gate": false,
+      "status": "PASS"
+    },
+    {
+      "case": "ctrl_alt_repeated_building_gate",
+      "mission": 11,
+      "engineer": 1,
+      "repetitions": 32,
+      "admitted_at_this_gate": true,
+      "status": "PASS"
+    },
+    {
+      "case": "ctrl_alt_native_cell_action",
+      "cell_query_result": 1,
+      "action": 51,
+      "name": "PatrolWaypoint",
+      "status": "PASS"
+    }
+  ],
+  "native_code_sha256": {
+    "0064DAB0-0064DE7D": "f925002b9edd974aea308a050a35f2a760261b7216bc493d2d24fcd64152093c",
+    "0065C780-0065C7D1": "cf081827914bebb075b66d2c900d946c68af2028ffc8d9a5c3f86b55e18eec6d",
+    "00741970-00741A80": "3c8b43532c3a4bd59be3f013eab84d3e7189a938e6245cacb8cf7e5ff55847b0",
+    "00700600-007008A6": "adbfc44f03c19cca16b29b23b89bc13b2b4f9a911a34fe89c97fd4432be93675"
+  }
+}

@@ -1,0 +1,167 @@
+{
+  "scope": "Compiled Runtime patch ownership for SP and two MP aircraft experiments.\n\nSynthetic Win32/world; native capture fixture. Verifies installed addresses,\nmode changes, UI gate result and rollback. No movement or netplay certification.\n",
+  "game_tested": false,
+  "multiplayer_tested": false,
+  "results": [
+    {
+      "session": 0,
+      "experiment": 0,
+      "frontend_patch": true,
+      "arrival_patch": true,
+      "status": "PASS"
+    },
+    {
+      "session": 0,
+      "experiment": 1,
+      "frontend_patch": true,
+      "arrival_patch": true,
+      "status": "PASS"
+    },
+    {
+      "session": 0,
+      "experiment": 2,
+      "frontend_patch": true,
+      "arrival_patch": true,
+      "status": "PASS"
+    },
+    {
+      "session": 0,
+      "experiment": 1,
+      "frontend_patch": true,
+      "arrival_patch": true,
+      "status": "PASS"
+    },
+    {
+      "session": 0,
+      "experiment": 0,
+      "frontend_patch": true,
+      "arrival_patch": true,
+      "status": "PASS"
+    },
+    {
+      "session": 0,
+      "case": "disable_restores_both_sites",
+      "status": "PASS"
+    },
+    {
+      "session": 5,
+      "experiment": 0,
+      "frontend_patch": true,
+      "arrival_patch": true,
+      "status": "PASS"
+    },
+    {
+      "session": 5,
+      "experiment": 1,
+      "frontend_patch": true,
+      "arrival_patch": true,
+      "status": "PASS"
+    },
+    {
+      "session": 5,
+      "experiment": 2,
+      "frontend_patch": true,
+      "arrival_patch": true,
+      "status": "PASS"
+    },
+    {
+      "session": 5,
+      "experiment": 1,
+      "frontend_patch": true,
+      "arrival_patch": true,
+      "status": "PASS"
+    },
+    {
+      "session": 5,
+      "experiment": 0,
+      "frontend_patch": true,
+      "arrival_patch": true,
+      "status": "PASS"
+    },
+    {
+      "session": 5,
+      "case": "disable_restores_both_sites",
+      "status": "PASS"
+    },
+    {
+      "session": 3,
+      "experiment": 0,
+      "frontend_patch": false,
+      "arrival_patch": false,
+      "status": "PASS"
+    },
+    {
+      "session": 3,
+      "experiment": 1,
+      "frontend_patch": true,
+      "arrival_patch": false,
+      "status": "PASS"
+    },
+    {
+      "session": 3,
+      "experiment": 2,
+      "frontend_patch": true,
+      "arrival_patch": true,
+      "status": "PASS"
+    },
+    {
+      "session": 3,
+      "experiment": 1,
+      "frontend_patch": true,
+      "arrival_patch": false,
+      "status": "PASS"
+    },
+    {
+      "session": 3,
+      "experiment": 0,
+      "frontend_patch": false,
+      "arrival_patch": false,
+      "status": "PASS"
+    },
+    {
+      "session": 3,
+      "case": "disable_restores_both_sites",
+      "status": "PASS"
+    },
+    {
+      "session": 4,
+      "experiment": 0,
+      "frontend_patch": false,
+      "arrival_patch": false,
+      "status": "PASS"
+    },
+    {
+      "session": 4,
+      "experiment": 1,
+      "frontend_patch": true,
+      "arrival_patch": false,
+      "status": "PASS"
+    },
+    {
+      "session": 4,
+      "experiment": 2,
+      "frontend_patch": true,
+      "arrival_patch": true,
+      "status": "PASS"
+    },
+    {
+      "session": 4,
+      "experiment": 1,
+      "frontend_patch": true,
+      "arrival_patch": false,
+      "status": "PASS"
+    },
+    {
+      "session": 4,
+      "experiment": 0,
+      "frontend_patch": false,
+      "arrival_patch": false,
+      "status": "PASS"
+    },
+    {
+      "session": 4,
+      "case": "disable_restores_both_sites",
+      "status": "PASS"
+    }
+  ]
+}

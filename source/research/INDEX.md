@@ -84,3 +84,6 @@
 
 - [1.0.37 正式版设置持久化、默认值与显示调查](2026-10-24-stable-settings-137.md)
 
+
+- [2026-10-26：联机事件、原版每帧摘要与飞机联机实验](2026-10-26-network-event-audit.md)：基线 v1.0.38，原版64DAB0的ROL+加法摘要、科技limitOnly路径、FrameInfo历史比较、原生规划本机DoList、Sticky的BalloonHover条件路径和Ctrl+Alt重复门槛测试。
+

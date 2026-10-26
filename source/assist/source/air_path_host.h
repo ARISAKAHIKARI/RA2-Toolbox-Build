@@ -4,8 +4,8 @@ struct Point {uint32_t cell=0;int z=0;};
 struct Job {uint32_t id=0,pointer=0,token=0,match=0;std::deque<Point> points;int stage=0,attempts=0,x=0,y=0,z=0,previousX=0,previousY=0;bool selected=false,observedMove=false,previousValid=false;DWORD sent=0,progress=0,firstIssued=0;int64_t nearest=INT64_MAX;};
 struct Line {int x,y,tx,ty;};
 static std::vector<Job> jobs;static size_t cursor=0;static bool ended=false;static DWORD sampled=0;
-static bool native(){return airpathpolicy::native(snap.session,extra.nativeAirWaypoints&&!extra.airPathKey);}
-static bool active(){return airpathpolicy::events(snap.session,extra.airWaypoints||(extra.nativeAirWaypoints&&extra.airPathKey),extra.nativeAirWaypoints&&!extra.airPathKey);}
+static bool native(){return airpathpolicy::native(snap.session,extra.nativeAirWaypoints&&!extra.airPathKey,extra.nativeAirNetwork);}
+static bool active(){return airpathpolicy::events(snap.session,extra.airWaypoints||(extra.nativeAirWaypoints&&extra.airPathKey),extra.nativeAirWaypoints&&!extra.airPathKey,extra.nativeAirNetwork);}
 template<class K>static bool held(const K&keys){return extra.airPathKey?pointerinput::matchesHold(keys,extra.airPathKey,pointerinput::Enhanced):nativekeyhost::current().held(nativekeys::Planning,keys);}
 static bool held(){uint8_t keys[256]{};nativekeyhost::down(keys);return held(keys);}
 static void reset(){for(int n=0;n<commandQueue.size;)if(commandQueue.slots[n].command==AirPathMove)commandQueue.discard(n);else ++n;jobs.clear();cursor=0;ended=false;sampled=0;}
@@ -89,3 +89,4 @@ static std::vector<Line> lines(){std::vector<Line> out;if(!active())return out;e
   for(auto point:j.points){int tx=0,ty=0;external::project(projection,int(point.cell%1000)*256+128,int(point.cell/1000)*256+128,point.z,tx,ty);out.push_back({x,y,tx,ty});x=tx;y=ty;if(out.size()>=256)return out;}
  }return out;}
 }
+

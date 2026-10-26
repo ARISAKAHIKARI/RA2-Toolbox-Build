@@ -1,0 +1,20 @@
+[
+  {
+    "file": "RA2Toolbox.exe",
+    "machine": "x86",
+    "format": "PE32",
+    "version": "1.0.39-pre.1",
+    "sha256": "71d419338a2f4abfef1b595dca4b15639197beaaed03582351218bfd69a2aa88",
+    "size": 5577728
+  },
+  {
+    "file": "GameRuntime.dll",
+    "machine": "x86",
+    "format": "PE32",
+    "version": "1.0.39-pre.1",
+    "sha256": "5a46547eb8068584ef8dedbb310a00a9b3e05947ba012c6026d8c13bdd654489",
+    "size": 4874752,
+    "protocol": 73,
+    "shared_size": 4165144
+  }
+]

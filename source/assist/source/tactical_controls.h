@@ -58,9 +58,9 @@ label(L"队形按住键",20,306);key(9051,extra.formationHold,345,280,true);next
 {const wchar_t* names[]={L"矩形横队",L"分散横队",L"圆形聚集",L"扇形（60°）",L"正方形聚集",L"空心框聚集"};const int ids[]={9052,9053,9054,9055,9057,9058};for(int n=0;n<6;++n){label(names[n],20,306);key(ids[n],extra.formationKeys[n]);next();}}
 note(L"按住队形键或双击 Alt 进入，点按提交当前预览；拖动方向决定朝向。形状可共用键，每敲一次切换，长按不重复。Esc 取消。提交后退出预览；成员不变时后续移动保持队形。",44);
 note(L"正方形默认 B，空心框默认 N。框形未拖动时边框面积与中空面积约 3∶1，拖到最大变成单层边框；其余形状拖到最大为一横排。",44);
-label(L"飞机路径点",20,260);choices(combo(803),{L"关闭",L"兼容路径点",L"原生优先"},extra.nativeAirWaypoints?2:extra.airWaypoints?1:0);next();
+label(L"飞机路径点",20,260);choices(combo(803),{L"关闭",L"兼容路径点",L"原生优先",L"原生下单（联机实验）",L"完整原生（联机实验）"},airpathpolicy::mode(extra.airWaypoints,extra.nativeAirWaypoints,extra.nativeAirNetwork));next();
 label(L"路径点按住键",20,306);{auto h=key(894,extra.airPathKey);modernui::holdKey(h);}next();
-note(L"留空跟随游戏当前的路径点按键；自定义按键使用兼容路径点。原生优先在单机使用原生规划，联机自动使用兼容路径点。",44);
+note(L"留空跟随游戏路径点键；自定义键使用兼容路径点。原生优先在联机使用兼容模式。原生下单只放宽入口，可能不续飞；完整原生另改本机到达任务，可能不同步。",60);
 item(L"STATIC",L"飞机路径点：关闭",20,605,866);next();
 toggle(795,L"Shift 五连点",shiftClickEnabled,20,270);choices(combo(796),{L"自动兼容",L"始终追加四次点击",L"不追加点击"},shiftClickMode);next();
 number(797,L"连续点击间隔 / 毫秒",shiftClickGap,L"0–250");
@@ -242,4 +242,5 @@ note(L"兼容模式需重启游戏和工具箱后生效。通常保持标准模�
 // it is not presented as an adjustable option.
 schedulerEntryCombo=placedControl({-3,{0,0,1,1}},L"COMBOBOX",L"",760,CBS_DROPDOWNLIST);
 choices(schedulerEntryCombo,{L"自动"},0);EnableWindow(schedulerEntryCombo,FALSE);ShowWindow(schedulerEntryCombo,SW_HIDE);
+
 

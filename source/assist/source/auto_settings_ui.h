@@ -69,7 +69,7 @@ static bool autoSettingChanged(int id,int notification){
  if(((id>=9051&&id<=9055)||id==9057||id==9058)&&edit){uint32_t k=uint32_t(SendMessageW(GetDlgItem(ui,id),HKM_GETHOTKEY,0,0));if(id==9051)extra.formationHold=k;else extra.formationKeys[id>=9057?id-9053:id-9052]=k;changedSetting();syncAdditional();return true;}
  if(id==880&&notification==BN_CLICKED){extra.missileDefense=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();syncAdditional();return true;}
  if(id==804&&notification==BN_CLICKED){extra.antiTheft=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();return true;}
- if(id==803&&select){int mode=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));if(mode>=0&&mode<=3){extra.airWaypoints=mode==1;extra.nativeAirWaypoints=mode==2;airway::reset();pointerMatches.clear();changedSetting();syncAdditional();}return true;}
+ if(id==803&&select){int mode=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));if(mode>=0&&mode<=4){extra.airWaypoints=mode==1;extra.nativeAirWaypoints=mode>=2;extra.nativeAirNetwork=mode>=3?uint32_t(mode-2):0;airway::reset();pointerMatches.clear();changedSetting();syncAdditional();}return true;}
  if(id==894&&edit){extra.airPathKey=uint32_t(SendMessageW(GetDlgItem(ui,id),HKM_GETHOTKEY,0,0));airway::reset();pointerMatches.clear();changedSetting();syncAdditional();return true;}
  if(id==802&&select){int priority=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));if(priority>=0&&priority<=1){advancedTargetPriority=priority;changedSetting();}return true;}
  if(id==799&&notification==BN_CLICKED){extra.constructionQueue=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();return true;}
@@ -183,5 +183,6 @@ static bool autoSettingChanged(int id,int notification){
   bindType(false);return true;}
  return false;
 }
+
 
 

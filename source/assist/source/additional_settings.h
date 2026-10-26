@@ -18,6 +18,7 @@ struct AdditionalSettings {
  bool enemyMarkers=false,idleAircraft=false,constructionQueue=false,airWaypoints=false;
  uint32_t productionReminderMask=0; // buildings, defenses, infantry, vehicles, ships, aircraft
  uint32_t airPathKey=0;
+ uint32_t nativeAirNetwork=0; // 0=compatibility, 1=UI gate experiment, 2=full native experiment
  bool parasiteMarker=false,crateBuffMarkers=false;
  bool watchEnabled=false,watchSecondary=false,watchDanger=false;int watchSecondaryX=10000,watchSecondaryY=0;uint32_t watchKeys[3]={'W'|(6<<8),'W'|(6<<8),'W'|(6<<8)};
  bool passengerBubbles=false,dangerPassengers=false,magnetronDrop=false;
@@ -36,5 +37,6 @@ enum ExtraControl {LoadLogic,LoadRadius,EnterEnabled,EnterPreset,EnterCustom,Air
 inline int holdPreset(uint32_t key){return !key?0:key==18?1:key==17?2:key==16?3:4;}
 inline uint32_t presetKey(int preset,uint32_t custom){return preset==0?0:preset==1?18:preset==2?17:preset==3?16:custom;}
 }
+
 
 

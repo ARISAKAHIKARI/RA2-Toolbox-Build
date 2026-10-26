@@ -44,7 +44,7 @@ constexpr uint32_t air=0x40000,house=0x10000;
 static void position(uint32_t cell){put<int>(air+0x9c,int(cell%1000)*256+128);put<int>(air+0xa0,int(cell/1000)*256+128);put<int>(air+0xa4,512);}
 static pointerinput::Intent input;static pointerinput::Mailbox box;
 static void initialize(int mode){
- airway::reset();memory.clear();commandQueue.size=0;epoch=8;snap.session=mode;extra.nativeAirWaypoints=true;extra.airWaypoints=false;
+ airway::reset();memory.clear();commandQueue.size=0;epoch=8;snap.session=mode;extra.nativeAirWaypoints=true;extra.airWaypoints=false;extra.nativeAirNetwork=0;extra.airPathKey=0;
  held['Z']=true;enabled=fresh=true;lastNotice.clear();input={};box={};
  put<uint32_t>(0xa83d4c,house);put<uint32_t>(air,0x7e22a4);put<uint32_t>(air+0x10,40);put<uint32_t>(air+0x21c,house);
  put<int>(air+0x6c,100);put<uint8_t>(air+0x6ca,0);put<uint8_t>(air+0x83,1);put<int>(air+0xac,5);put<uint32_t>(air+0x2b4,0);position(10010);
@@ -90,6 +90,18 @@ int main(){for(int mode:{3,4}){
  assert(airway::jobs.empty());
 }
  initialize(5);assert(airway::native()&&!airway::active());capture(30020,1);assert(airway::jobs.empty());
+ for(int mode:{3,4})for(unsigned experiment:{1u,2u}){
+  initialize(mode);extra.nativeAirNetwork=experiment;
+  assert(airway::native()&&!airway::active());capture(30020,1);held['Z']=false;airway::service();
+  assert(airway::jobs.empty()&&commandQueue.size==0); // native click has one owner
+  assert(airpathpolicy::arrival(mode,true,experiment)==(experiment==2));
+  extra.airPathKey='P';assert(!airway::native()&&airway::active()); // explicit custom key remains compatible
+ }
+ for(int session:{1,2,6})for(unsigned experiment:{0u,1u,2u,3u}){
+  assert(!airpathpolicy::native(session,true,experiment));
+  assert(!airpathpolicy::arrival(session,true,experiment));
+  assert(!airpathpolicy::events(session,true,true,experiment));
+ }
 }
 '''
 with tempfile.TemporaryDirectory() as d:
@@ -97,3 +109,4 @@ with tempfile.TemporaryDirectory() as d:
  subprocess.run(['g++', '-std=c++17', '-O2', '-I', str(r/'assist/source'), str(p), '-o', str(exe)], check=True)
  subprocess.run([str(exe)], check=True)
 print('PASS: shipped host records ordered points, waits for Z release and observed arrival, preserves newest token, reports rejection, cancels attack/stop/new-match, retains SP native mode')
+
