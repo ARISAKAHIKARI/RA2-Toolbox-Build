@@ -13,6 +13,13 @@ static bool playableHouse(uint32_t house){
  for(int n=0;n<nodes.count;++n){uint32_t node=item(nodes,n);if(node>=0x10000&&get<int>(node+0x6B)==-1&&get<int>(node+0x6F)==index)spectator=true;}
  return playertest::eligible(index,passive,spectator,ended[0]||ended[1]||ended[3],id);
 }
+static bool enemyBuildingSellAllowed(uint32_t object){
+ // This changes only which manual Sell requests the toolbox may construct.
+ // It does not change ownership, CurrentPlayer or any receiver-side check.
+ return playertest::SellAvailable&&sh&&(sh->flags&SellEnemy)&&lastHouse&&
+  object&&worldObjects.contains(object)&&kind(object)==3&&nativeEnemy(object,lastHouse)&&
+  playableHouse(get<uint32_t>(object+0x21C));
+}
 static bool authorizePlayerOrder(const intent::EventOrder&o,OrderAuthority authority){
  if(!lastHouse||o.player<0||o.player>=32)return false;
  if(authority==OrderAuthority::Local)return o.player==get<int>(lastHouse+0x30);
@@ -22,7 +29,7 @@ static bool authorizePlayerOrder(const intent::EventOrder&o,OrderAuthority autho
  else if(authority==OrderAuthority::SellPlayerTest){if(!playertest::SellAvailable||!(sh->flags&SellEnemy)||o.domain!=vanilla::Domain::Object||o.eventKind!=0x16)return false;}
  else return false;
  uint32_t object=worldByID(uint32_t(o.a));if(!object||!live(object)||o.tagA!=0x34)return false;
- if(authority==OrderAuthority::SellPlayerTest&&kind(object)!=3)return false;
+ if(authority==OrderAuthority::SellPlayerTest&&!enemyBuildingSellAllowed(object))return false;
  uint32_t house=get<uint32_t>(object+0x21C);
  return playableHouse(house)&&o.player==get<int>(house+0x30);
 }
@@ -93,3 +100,4 @@ static void publishPlayers(){
   auto&info=sh->players[sh->playerCount++];info={};info.pointer=p;info.id=get<uint32_t>(p+0x10);info.index=get<int>(p+0x30);info.human=get<bool>(p+0x1ED);read(p+90154,info.name,40);info.name[20]=0;
  }
 }
+

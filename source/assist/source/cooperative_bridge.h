@@ -64,7 +64,7 @@ static bool vehicleSellCell(uint32_t p){
 static bool sellAllowed(uint32_t p){
  if(!nativeReady()||!p||!live(p))return false;
  int k=kind(p);uint32_t owner=get<uint32_t>(p+0x21C);bool drained=get<uint32_t>(p+0x1D0)!=0;
- if(owner!=lastHouse)return playertest::SellAvailable&&k==3&&(sh->flags&SellEnemy)&&playableHouse(owner);
+ if(owner!=lastHouse)return enemyBuildingSellAllowed(p);
  if(drained&&!(sh->flags&SellDrained))return false;
  if(k==2)return featureObjectAllowed(featuretypes::SellVehicle,p)&&owner>=0x10000&&(sh->flags&SellVehicles)&&vehicleSellCell(p);
  if(k!=3)return false;
@@ -208,4 +208,5 @@ static void cooperativeTick(uint32_t house,int frame,DWORD now){
  }
  if(cooperativeAt>=sh->cooperativeCount){MemoryBarrier();sh->cooperativeAck=plan;notifyHost();}
 }
+
 

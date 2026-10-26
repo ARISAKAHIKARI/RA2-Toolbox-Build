@@ -236,7 +236,8 @@ EnableWindow(toggle(861,L"切换操控方（暂不可用）",false),FALSE);next(
 EnableWindow(combo(862,20,305,240),FALSE);EnableWindow(button(863,L"切换至所选玩家",340,285),FALSE);next();
 EnableWindow(button(864,L"恢复原操控方",20,285),FALSE);next();
 
-extraControls[SellEnemyEnabled]=HWND{};extra.sellEnemy=false;
+extraControls[SellEnemyEnabled]=toggle(722,L"变卖对手建筑（实验性）",extra.sellEnemy);next();
+note(L"默认关闭；默认 Ctrl＋鼠标侧键 2，沿用“出售被吸取目标”的键鼠配置。仅对手建筑，请求入队不代表已变卖；联机效果待实测。",65);
 
 toggle(788,L"优先执行增强指令",extra.overrideNative);next();
 note(L"用于增强操作与普通地面命令冲突的情况；仅对支持的鼠标操作生效。",44);

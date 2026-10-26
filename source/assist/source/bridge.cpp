@@ -68,7 +68,7 @@ static volatile LONG schedulerBusy;
 static volatile LONG hostWorkPending; // one coalesced grant from the Runtime host-message ingress
 static volatile LONG messageGameThread; // Thread confirmed by WH_GETMESSAGE for this game window.
 
-static bool playableHouse(uint32_t);static bool playerContextChanged;static void playerMaintenance();static void restorePlayerContext();static void publishPlayers();
+static bool playableHouse(uint32_t);static bool enemyBuildingSellAllowed(uint32_t);static bool playerContextChanged;static void playerMaintenance();static void restorePlayerContext();static void publishPlayers();
 enum class OrderAuthority { Local, PlayerTest, SellPlayerTest };
 static bool authorizePlayerOrder(const intent::EventOrder&,OrderAuthority);
 static void resetRuntimePlanner();static void resetLoadCalculation();
@@ -497,7 +497,7 @@ static bool nativeObjectEvent(int houseIndex,int eventType,uint32_t objectId,Ord
  if(!eventdelivery::mayQueue(mode)){++snap.commandRejected;return false;}
  const bool mp=eventdelivery::isMultiplayer(mode);
  auto reject=orderpolicy::objectEvent(eventType,object!=0,object&&live(object),
-  uint32_t(houseIndex)==localIndex||(playertest::SellAvailable&&authority==OrderAuthority::SellPlayerTest&&sh&&(sh->flags&SellEnemy)&&eventType==0x16&&object&&kind(object)==3&&playableHouse(owner)),uint32_t(houseIndex)==ownerIndex,mp);
+  uint32_t(houseIndex)==localIndex||(authority==OrderAuthority::SellPlayerTest&&eventType==0x16&&enemyBuildingSellAllowed(object)),uint32_t(houseIndex)==ownerIndex,mp);
  if(reject!=orderpolicy::Reject::None||(eventType==0x07&&kind(object)!=1&&kind(object)!=2)){++snap.commandRejected;return false;}
  const uint32_t submittedAt=sampleClock(sh);
  const gateway::Context ctx{match,submittedAt,sh&&(!sh->stop||missileCleanup)&&!fault&&snap.status==1,
