@@ -1,0 +1,57 @@
+{
+  "scope": "Isolate native 64DAB0 inputs; no rendering, world tick or netplay is run.\n\nRequires the owner's private capture archive and the sibling native CRC fixture.\nThe two draw-site mutations test whether the checksum reads those code bytes;\nneither their jump targets nor the production rendering hooks are executed.\n",
+  "supported_executable_sha256": "7b8a068535d6af06845edf95ae829b113d00c02909330e16f197426cd7db94b6",
+  "capture_image_sha256": "94ac595e7a6fef82839b7959f3f926a52708fc857fbc65aa9ff88428dff3f4bd",
+  "evidence": "Complete captured native ComputeGameCRC and RNG with fresh identical world/RNG initialization per case; original logger only mocked.",
+  "game_tested": false,
+  "multiplayer_tested": false,
+  "limitations": [
+    "No native draw function, patched jump target or halfShroud implementation is executed.",
+    "Code-site mutations isolate whether ComputeGameCRC scans these code bytes; they do not validate hooks or rendering side effects.",
+    "No world tick, platform integrity check, packet send/receive or real multiplayer test."
+  ],
+  "results": [
+    {
+      "case": "baseline_alpha_0",
+      "native_crc": 863614368,
+      "oracle_crc": 863614368,
+      "status": "PASS",
+      "equals_baseline": true
+    },
+    {
+      "case": "half_alpha_64",
+      "native_crc": 863614368,
+      "oracle_crc": 863614368,
+      "status": "PASS",
+      "equals_baseline": true
+    },
+    {
+      "case": "clear_alpha_127",
+      "native_crc": 863614368,
+      "oracle_crc": 863614368,
+      "status": "PASS",
+      "equals_baseline": true
+    },
+    {
+      "case": "shroud_site_patched",
+      "native_crc": 863614368,
+      "oracle_crc": 863614368,
+      "status": "PASS",
+      "equals_baseline": true
+    },
+    {
+      "case": "both_draw_sites_patched",
+      "native_crc": 863614368,
+      "oracle_crc": 863614368,
+      "status": "PASS",
+      "equals_baseline": true
+    },
+    {
+      "case": "house_MapIsClear_1",
+      "native_crc": 863614496,
+      "oracle_crc": 863614496,
+      "status": "PASS",
+      "equals_baseline": false
+    }
+  ]
+}
