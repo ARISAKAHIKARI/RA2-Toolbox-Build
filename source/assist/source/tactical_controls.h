@@ -233,8 +233,12 @@ toggle(860,L"操控其他玩家单位（实验性）",extra.controlAll);next();
 
 item(L"STATIC",L"跨玩家操控：等待连接",20,605,865);next();
 EnableWindow(toggle(861,L"切换操控方（暂不可用）",false),FALSE);next();
+label(L"目标所属方（请明确选择）");next();
 EnableWindow(combo(862,20,305,240),FALSE);EnableWindow(button(863,L"切换至所选玩家",340,285),FALSE);next();
 EnableWindow(button(864,L"恢复原操控方",20,285),FALSE);next();
+EnableWindow(button(9185,L"自毁所选所属方（实验性）"),FALSE);next();
+note(L"点击一次提交整方自毁请求，影响该方全部单位和建筑。联机仅允许明确选择当前本方：原版联机发送会改写为本方，暂不支持自毁其他所属方。单机可选择其他有效所属方。请求入队不代表已完成自毁。",65);
+item(L"STATIC",L"自毁：请明确选择所属方；联机仅支持当前本方。",20,605,9186,0,52);next(52);
 
 extraControls[SellEnemyEnabled]=toggle(722,L"变卖对手建筑（实验性）",extra.sellEnemy);next();
 note(L"默认关闭；默认 Ctrl＋鼠标侧键 2，沿用“出售被吸取目标”的键鼠配置。仅对手建筑，请求入队不代表已变卖；联机效果待实测。",65);

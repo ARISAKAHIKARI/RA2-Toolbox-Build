@@ -5,6 +5,8 @@ namespace assist { namespace playertest {
 constexpr bool Available=true;
 // Explicit enemy-building sale experiment; off until opted in by the user.
 constexpr bool SellAvailable=true;
+// One explicit button request, never a persistent automatic capability.
+constexpr bool DestructAvailable=true;
 // Player-context replacement is independent of manual event submission.
 // Keep the crashing path disabled, including stale shared-memory requests.
 constexpr bool SwitchAvailable=false;

@@ -1,0 +1,26 @@
+{
+  "inputs": {
+    "game": "2fcb478cb2e0de00b1af1a6c82e9b55e56e0b555f20f3c0a018e8aaddc58b0c8",
+    "GameRuntime.dll": "3917e6daf62f7af2d8d15adca7168f440056873a11eb1fed5e97ea2654792717"
+  },
+  "filter": "configured_right_sell",
+  "scope": "actual DLL/original constructors; synthetic world and Win32, no real network",
+  "results": [
+    {
+      "name": "configured_right_sell_later_once_0",
+      "status": "PASS"
+    },
+    {
+      "name": "configured_right_sell_later_once_5",
+      "status": "PASS"
+    },
+    {
+      "name": "configured_right_sell_later_once_3",
+      "status": "PASS"
+    },
+    {
+      "name": "configured_right_sell_later_once_4",
+      "status": "PASS"
+    }
+  ]
+}

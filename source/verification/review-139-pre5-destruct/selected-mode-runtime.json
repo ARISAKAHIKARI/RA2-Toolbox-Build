@@ -1,0 +1,532 @@
+{
+  "scope": "Execute compiled selected-mode commands and original Event constructors.\n\nSynthetic world and Win32. Checks serialization, session routing, stale input,\nselection filters, repeated sets and Sticky isolation; events are not consumed\nby a running game. Does not certify combat behavior or live multiplayer.\n",
+  "dll_sha256": "3917e6daf62f7af2d8d15adca7168f440056873a11eb1fed5e97ea2654792717",
+  "game_tested": false,
+  "multiplayer_tested": false,
+  "results": [
+    {
+      "session": 0,
+      "case": "explicit_tool_button_without_game_foreground",
+      "mission": 0,
+      "status": "PASS"
+    },
+    {
+      "session": 0,
+      "case": "explicit_tool_button_without_game_foreground",
+      "mission": 5,
+      "status": "PASS"
+    },
+    {
+      "session": 0,
+      "case": "explicit_tool_button_without_game_foreground",
+      "mission": 23,
+      "status": "PASS"
+    },
+    {
+      "session": 0,
+      "case": "repeat_set_and_no_local_execution",
+      "mission": 0,
+      "status": "PASS"
+    },
+    {
+      "session": 0,
+      "case": "repeat_set_and_no_local_execution",
+      "mission": 5,
+      "status": "PASS"
+    },
+    {
+      "session": 0,
+      "case": "repeat_set_and_no_local_execution",
+      "mission": 23,
+      "status": "PASS"
+    },
+    {
+      "session": 0,
+      "case": "sleep_harmless_guard_order",
+      "status": "PASS"
+    },
+    {
+      "session": 0,
+      "case": "foreign",
+      "status": "PASS"
+    },
+    {
+      "session": 0,
+      "case": "dead",
+      "status": "PASS"
+    },
+    {
+      "session": 0,
+      "case": "loaded",
+      "status": "PASS"
+    },
+    {
+      "session": 0,
+      "case": "temporal",
+      "status": "PASS"
+    },
+    {
+      "session": 0,
+      "case": "deactivated",
+      "status": "PASS"
+    },
+    {
+      "session": 0,
+      "case": "building",
+      "status": "PASS"
+    },
+    {
+      "session": 0,
+      "case": "aircraft",
+      "status": "PASS"
+    },
+    {
+      "session": 0,
+      "case": "not_in_world",
+      "status": "PASS"
+    },
+    {
+      "session": 0,
+      "case": "sticky_current",
+      "status": "PASS"
+    },
+    {
+      "session": 0,
+      "case": "sticky_queued",
+      "status": "PASS"
+    },
+    {
+      "session": 0,
+      "case": "empty",
+      "status": "PASS"
+    },
+    {
+      "session": 0,
+      "case": "full_queue",
+      "status": "PASS"
+    },
+    {
+      "session": 0,
+      "case": "stale_match",
+      "status": "PASS"
+    },
+    {
+      "session": 0,
+      "case": "expired",
+      "status": "PASS"
+    },
+    {
+      "session": 0,
+      "case": "chat",
+      "status": "PASS"
+    },
+    {
+      "session": 0,
+      "case": "unsupported",
+      "status": "PASS"
+    },
+    {
+      "session": 0,
+      "case": "last_queue_slot_reports_partial_acceptance",
+      "status": "PASS"
+    },
+    {
+      "session": 0,
+      "case": "tool_owned_sticky_preserved",
+      "status": "PASS"
+    },
+    {
+      "session": 5,
+      "case": "explicit_tool_button_without_game_foreground",
+      "mission": 0,
+      "status": "PASS"
+    },
+    {
+      "session": 5,
+      "case": "explicit_tool_button_without_game_foreground",
+      "mission": 5,
+      "status": "PASS"
+    },
+    {
+      "session": 5,
+      "case": "explicit_tool_button_without_game_foreground",
+      "mission": 23,
+      "status": "PASS"
+    },
+    {
+      "session": 5,
+      "case": "repeat_set_and_no_local_execution",
+      "mission": 0,
+      "status": "PASS"
+    },
+    {
+      "session": 5,
+      "case": "repeat_set_and_no_local_execution",
+      "mission": 5,
+      "status": "PASS"
+    },
+    {
+      "session": 5,
+      "case": "repeat_set_and_no_local_execution",
+      "mission": 23,
+      "status": "PASS"
+    },
+    {
+      "session": 5,
+      "case": "sleep_harmless_guard_order",
+      "status": "PASS"
+    },
+    {
+      "session": 5,
+      "case": "foreign",
+      "status": "PASS"
+    },
+    {
+      "session": 5,
+      "case": "dead",
+      "status": "PASS"
+    },
+    {
+      "session": 5,
+      "case": "loaded",
+      "status": "PASS"
+    },
+    {
+      "session": 5,
+      "case": "temporal",
+      "status": "PASS"
+    },
+    {
+      "session": 5,
+      "case": "deactivated",
+      "status": "PASS"
+    },
+    {
+      "session": 5,
+      "case": "building",
+      "status": "PASS"
+    },
+    {
+      "session": 5,
+      "case": "aircraft",
+      "status": "PASS"
+    },
+    {
+      "session": 5,
+      "case": "not_in_world",
+      "status": "PASS"
+    },
+    {
+      "session": 5,
+      "case": "sticky_current",
+      "status": "PASS"
+    },
+    {
+      "session": 5,
+      "case": "sticky_queued",
+      "status": "PASS"
+    },
+    {
+      "session": 5,
+      "case": "empty",
+      "status": "PASS"
+    },
+    {
+      "session": 5,
+      "case": "full_queue",
+      "status": "PASS"
+    },
+    {
+      "session": 5,
+      "case": "stale_match",
+      "status": "PASS"
+    },
+    {
+      "session": 5,
+      "case": "expired",
+      "status": "PASS"
+    },
+    {
+      "session": 5,
+      "case": "chat",
+      "status": "PASS"
+    },
+    {
+      "session": 5,
+      "case": "unsupported",
+      "status": "PASS"
+    },
+    {
+      "session": 5,
+      "case": "last_queue_slot_reports_partial_acceptance",
+      "status": "PASS"
+    },
+    {
+      "session": 5,
+      "case": "tool_owned_sticky_preserved",
+      "status": "PASS"
+    },
+    {
+      "session": 3,
+      "case": "explicit_tool_button_without_game_foreground",
+      "mission": 0,
+      "status": "PASS"
+    },
+    {
+      "session": 3,
+      "case": "explicit_tool_button_without_game_foreground",
+      "mission": 5,
+      "status": "PASS"
+    },
+    {
+      "session": 3,
+      "case": "explicit_tool_button_without_game_foreground",
+      "mission": 23,
+      "status": "PASS"
+    },
+    {
+      "session": 3,
+      "case": "repeat_set_and_no_local_execution",
+      "mission": 0,
+      "status": "PASS"
+    },
+    {
+      "session": 3,
+      "case": "repeat_set_and_no_local_execution",
+      "mission": 5,
+      "status": "PASS"
+    },
+    {
+      "session": 3,
+      "case": "repeat_set_and_no_local_execution",
+      "mission": 23,
+      "status": "PASS"
+    },
+    {
+      "session": 3,
+      "case": "sleep_harmless_guard_order",
+      "status": "PASS"
+    },
+    {
+      "session": 3,
+      "case": "foreign",
+      "status": "PASS"
+    },
+    {
+      "session": 3,
+      "case": "dead",
+      "status": "PASS"
+    },
+    {
+      "session": 3,
+      "case": "loaded",
+      "status": "PASS"
+    },
+    {
+      "session": 3,
+      "case": "temporal",
+      "status": "PASS"
+    },
+    {
+      "session": 3,
+      "case": "deactivated",
+      "status": "PASS"
+    },
+    {
+      "session": 3,
+      "case": "building",
+      "status": "PASS"
+    },
+    {
+      "session": 3,
+      "case": "aircraft",
+      "status": "PASS"
+    },
+    {
+      "session": 3,
+      "case": "not_in_world",
+      "status": "PASS"
+    },
+    {
+      "session": 3,
+      "case": "sticky_current",
+      "status": "PASS"
+    },
+    {
+      "session": 3,
+      "case": "sticky_queued",
+      "status": "PASS"
+    },
+    {
+      "session": 3,
+      "case": "empty",
+      "status": "PASS"
+    },
+    {
+      "session": 3,
+      "case": "full_queue",
+      "status": "PASS"
+    },
+    {
+      "session": 3,
+      "case": "stale_match",
+      "status": "PASS"
+    },
+    {
+      "session": 3,
+      "case": "expired",
+      "status": "PASS"
+    },
+    {
+      "session": 3,
+      "case": "chat",
+      "status": "PASS"
+    },
+    {
+      "session": 3,
+      "case": "unsupported",
+      "status": "PASS"
+    },
+    {
+      "session": 3,
+      "case": "last_queue_slot_reports_partial_acceptance",
+      "status": "PASS"
+    },
+    {
+      "session": 3,
+      "case": "tool_owned_sticky_preserved",
+      "status": "PASS"
+    },
+    {
+      "session": 4,
+      "case": "explicit_tool_button_without_game_foreground",
+      "mission": 0,
+      "status": "PASS"
+    },
+    {
+      "session": 4,
+      "case": "explicit_tool_button_without_game_foreground",
+      "mission": 5,
+      "status": "PASS"
+    },
+    {
+      "session": 4,
+      "case": "explicit_tool_button_without_game_foreground",
+      "mission": 23,
+      "status": "PASS"
+    },
+    {
+      "session": 4,
+      "case": "repeat_set_and_no_local_execution",
+      "mission": 0,
+      "status": "PASS"
+    },
+    {
+      "session": 4,
+      "case": "repeat_set_and_no_local_execution",
+      "mission": 5,
+      "status": "PASS"
+    },
+    {
+      "session": 4,
+      "case": "repeat_set_and_no_local_execution",
+      "mission": 23,
+      "status": "PASS"
+    },
+    {
+      "session": 4,
+      "case": "sleep_harmless_guard_order",
+      "status": "PASS"
+    },
+    {
+      "session": 4,
+      "case": "foreign",
+      "status": "PASS"
+    },
+    {
+      "session": 4,
+      "case": "dead",
+      "status": "PASS"
+    },
+    {
+      "session": 4,
+      "case": "loaded",
+      "status": "PASS"
+    },
+    {
+      "session": 4,
+      "case": "temporal",
+      "status": "PASS"
+    },
+    {
+      "session": 4,
+      "case": "deactivated",
+      "status": "PASS"
+    },
+    {
+      "session": 4,
+      "case": "building",
+      "status": "PASS"
+    },
+    {
+      "session": 4,
+      "case": "aircraft",
+      "status": "PASS"
+    },
+    {
+      "session": 4,
+      "case": "not_in_world",
+      "status": "PASS"
+    },
+    {
+      "session": 4,
+      "case": "sticky_current",
+      "status": "PASS"
+    },
+    {
+      "session": 4,
+      "case": "sticky_queued",
+      "status": "PASS"
+    },
+    {
+      "session": 4,
+      "case": "empty",
+      "status": "PASS"
+    },
+    {
+      "session": 4,
+      "case": "full_queue",
+      "status": "PASS"
+    },
+    {
+      "session": 4,
+      "case": "stale_match",
+      "status": "PASS"
+    },
+    {
+      "session": 4,
+      "case": "expired",
+      "status": "PASS"
+    },
+    {
+      "session": 4,
+      "case": "chat",
+      "status": "PASS"
+    },
+    {
+      "session": 4,
+      "case": "unsupported",
+      "status": "PASS"
+    },
+    {
+      "session": 4,
+      "case": "last_queue_slot_reports_partial_acceptance",
+      "status": "PASS"
+    },
+    {
+      "session": 4,
+      "case": "tool_owned_sticky_preserved",
+      "status": "PASS"
+    }
+  ]
+}

@@ -45,3 +45,8 @@ Sell事件类型为0x16，不是MegaMission，也不是Selling任务19。原版�
 `assist/tests/destruct_receiver_probe.py` 的20项受控原版执行全部通过：16项覆盖事件House0/1、CurrentPlayer0/1、合成Observer指针及四种House初始状态；两项Exit确认不调用4FC980；两个负玩家编号构造例得到Empty/FF，不送执行器。测试实际运行构造器、事件接收器和完整4FC980标志/定时器函数，未运行完整DestroyAll。结果见同验证目录的destruct-receiver-native.json。
 
 结论：**就已执行的接收分支而言，合法的事件House字段能改变被标记结束的所属方，且没有比较它必须等于本机CurrentPlayer/Observer。**这支持“其他House的Destruct能被原版执行器理解”，不证明事件头与真实发送节点不一致时平台会转发、纳入DoList并在所有端执行。真实观战按钮链及联网传播仍待验证。本版只加入对手建筑变卖实验，没有新增针对整个所属方的自毁按钮或绕过平台网络处理。
+
+
+## 后续更正（pre.5）
+
+[自毁按钮与发送器研究](2026-10-26-destruct-button-pre5.md)已确认：支持样本原版联网发送器在protocol0/1/2均把OutList事件House覆盖为CurrentHouse，再复制本机DoList/序列化。因此本篇foreignHouse构造、入队与直接接收器测试仍成立，但不足以实现原版联网跨所属方变卖；改写后会碰到Sell的Owner比较而被拒绝。Destruct则会误作用于本方，pre.5已专门阻止联机其他所属方的自毁提交。

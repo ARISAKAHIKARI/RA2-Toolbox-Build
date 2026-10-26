@@ -101,6 +101,9 @@ struct LabelRaster {std::wstring text;ARGB color{};float width{};int used{},capa
 static visual::Motion statusMotion;static visual::LabelView statusViews[MaxLabels];static Snapshot statusSample;
 static_assert(external::status::Maximum<=MaxLabels,"Unit status markers share the existing Motion capacity");
 static assist::PlayerTestInfo playerChoices[32]{};static int playerChoiceCount;static uint32_t playerChoicesMatch;
+static DWORD playerChoicesTick,playerChoicesPid;static std::wstring destructPendingTarget;
+static int playerChoicesCurrent=-1;static bool destructForeignNoticeShown;
+static constexpr const wchar_t* DestructForeignNotice=L"原版联机发送会改写为本方，暂不支持自毁其他所属方。";
 static uint64_t techAcknowledgedHash=0;static bool techMode;static bool autoRevealNewMatch=false;static uint32_t autoRevealMatch=0,autoRevealRetry=0,autoRevealDone=0,autoRevealPID=0;
 static uint32_t schedulerMode=0,schedulerTarget=0,megaQueueMode=0,objectQueueMode=0;
 static HWND schedulerEntryCombo,megaQueueCombo,objectQueueCombo;
@@ -506,6 +509,12 @@ static bool queueCommand(int c,int arg,int arg2,uint32_t match,int retries=0,DWO
 }
 static void send(int command,int arg=0,int arg2=0,int retries=0,bool fromQueue=false,uint32_t requestToken=0){
  if(!enabled){notify(L"战术控制已暂停，请先启用后再发送指令。");return;}
+ // Whole-House destruction is an immediate explicit button action. Never
+ // carry it across a reconnect, busy bridge or deferred command queue.
+ if(command==DestructPlayer&&(!shared||!game||!pid||!IsWindow(game)||!commandFresh(GetTickCount())||
+    !commandFocus()||incoming.chat||shared->request!=shared->ack||shared->ack!=ack||commandQueue.size||fromQueue||retries)){
+  notify(L"自毁请求未提交：请等待当前对局和命令连接就绪后重新点击。");return;
+ }
  const uint64_t intentTypes=typeListHash(snap.types,snap.typeCount);
  if(command==OpenTech)arg2=techImplementation;
  if(command==RevealMap&&!extra.experimentalReveal){notify(L"请在黑幕绘制方式中选择自动全图。");return;}
@@ -524,6 +533,17 @@ static void send(int command,int arg=0,int arg2=0,int retries=0,bool fromQueue=f
  }
  if(snap.status<0){notify(L"游戏操作暂不可用，本次指令未执行。");return;}
  readSnapshot();now=GetTickCount();
+ if(command==DestructPlayer&&(playerChoicesPid!=pid||playerChoicesMatch!=commandMatch())){
+  notify(L"自毁请求未提交：对局已改变，请重新选择所属方。");return;
+ }
+ if(command==DestructPlayer){
+  // The native multiplayer sender rewrites the event House to the local
+  // player. Refuse a foreign target here; Runtime rechecks at final enqueue.
+  long seq=shared->seq;if(seq&1){notify(L"所属方列表正在更新，本次自毁请求未提交。");return;}
+  MemoryBarrier();int session=shared->data.session,current=shared->playerCurrent;MemoryBarrier();
+  if(seq!=shared->seq){notify(L"所属方列表正在更新，本次自毁请求未提交。");return;}
+  if(eventdelivery::isMultiplayer(session)&&(current<0||requestToken!=uint32_t(current))){notify(DestructForeignNotice);return;}
+ }
  if(typeIndexedCommand(command,arg)&&intentTypes!=typeListHash(snap.types,snap.typeCount)){
   if(fromQueue&&(command==ProduceReserved||command==ProduceDeferred))constructionResult(-13,0,uint32_t(arg2),requestToken);
   else notify(L"单位清单已改变，请重新选择后提交。");return;
@@ -533,6 +553,7 @@ static void send(int command,int arg=0,int arg2=0,int retries=0,bool fromQueue=f
  // Mode syncing must not enqueue automatically every 50ms.
  // Explicit gameplay commands are staged while the match is loading or bridge is busy.
  if(!connected||(!fromQueue&&commandQueue.size&&userCommand(command))){
+  if(command==DestructPlayer){notify(L"自毁请求未提交：游戏状态已改变，请重新选择所属方后点击。");return;}
   if(userCommand(command)&&queueCommand(command,arg,arg2,commandMatch(),retries,0,requestToken)){
    logCommandWait();notify(L"指令已排队，尚未提交。"+commandWaitReason());return;
   }
@@ -1308,6 +1329,19 @@ static std::wstring submitDiagnostic(){
 }
 static void result(){if(!shared)return;uint32_t a=shared->ack;if(a==ack)return;MemoryBarrier();ack=a;commandLatency=sentAt?DWORD(GetTickCount()-sentAt):0;int r=shared->result,n=shared->count,c=shared->command;
  diag(L"ack command="+std::to_wstring(c)+L" result="+std::to_wstring(r)+L" count="+std::to_wstring(n)+L" ack="+std::to_wstring(a));
+ if(c==DestructPlayer){
+  std::wstring message;
+  if(r>0&&n==1)message=L"自毁请求已入队："+destructPendingTarget+L"；实际执行以游戏为准。";
+  else if(r==-42)message=std::wstring(L"自毁请求未入队：")+DestructForeignNotice;
+  else if(r==-4||r==-7)message=L"自毁请求未入队：所选所属方已失效或对局已改变，请重新选择。";
+  else if(r==-8)message=L"自毁请求未入队：请先关闭游戏聊天输入框。";
+  else if(r==-6)message=L"自毁请求未入队：事件队列已满或提交失败，请稍后重新点击。";
+  else if(r==-12)message=L"自毁请求未入队：当前游戏版本不支持此事件入口。";
+  else message=L"自毁请求未入队；请确认当前对局与所选所属方仍有效。";
+  if(r==-10||r==-15){critical(L"Destruct command exception result="+std::to_wstring(r));logBridgeHealth(true);}
+  if(r==-6)critical(L"Destruct submission failed: "+submitDiagnostic());
+  SetWindowTextW(GetDlgItem(ui,9186),message.c_str());notify(message);return;
+ }
  if(c==AirPathMove){airPathResult(r,n,uint32_t(shared->arg),shared->requestToken);return;}
  if(c==StickyGuard&&r==-40){notify(L"当前会话不支持 Sticky 指令。");return;}
  if(selectedmode::index(c)>=0&&r==-40){notify(L"当前会话不支持任务模式指令。");return;}
@@ -1447,21 +1481,38 @@ static void updateModeStatus(DWORD now){
  if(phase)oreText+=L" · "+std::wstring(phaseText);else if(snap.oreManual)oreText+=L" · 手动接管 "+std::to_wstring(snap.oreManual);
  static std::wstring oldOreText;if(oreText!=oldOreText){oldOreText=oreText;SetWindowTextW(oreStatus,oreText.c_str());}
 }
-static void updatePlayerTestUI(){
+static void updatePlayerTestUI(bool force=false){
  if(!playertest::Available)return;
- static DWORD last=0;DWORD now=GetTickCount();if(DWORD(now-last)<200)return;last=now;
- if(!shared||!commandFresh(GetTickCount()))return;
+ const DWORD now=GetTickCount();
+ const bool ready=enabled&&game&&pid&&shared&&commandFresh(now)&&!incoming.chat;
+ const bool idle=ready&&shared->request==shared->ack&&shared->ack==ack&&!commandQueue.size;
+ const int row=int(SendDlgItemMessageW(ui,862,CB_GETCURSEL,0,0));
+ const bool cached=ready&&playerChoicesTick&&DWORD(now-playerChoicesTick)<500&&playerChoicesPid==pid&&playerChoicesMatch==commandMatch();
+ const bool cachedAllowed=row>=0&&row<playerChoiceCount&&(!eventdelivery::isMultiplayer(incoming.session)||playerChoices[row].index==playerChoicesCurrent);
+ EnableWindow(GetDlgItem(ui,862),idle&&cached&&playerChoiceCount>0);
+ EnableWindow(GetDlgItem(ui,9185),idle&&cached&&cachedAllowed);
+ if(!ready){playerChoicesTick=0;return;}
+ static DWORD last=0;if(!force&&DWORD(now-last)<200)return;last=now;
+ playerChoicesTick=0;EnableWindow(GetDlgItem(ui,862),FALSE);EnableWindow(GetDlgItem(ui,9185),FALSE);
  PlayerTestInfo list[32]{};int count=0,current=-1,status=0;uint32_t epoch=0;
  long before=shared->seq;if(before&1)return;MemoryBarrier();count=shared->playerCount;
  if(count<0||count>32)return;memcpy(list,shared->players,size_t(count)*sizeof(list[0]));current=shared->playerCurrent;status=shared->playerControlStatus;epoch=shared->data.match;
  MemoryBarrier();if(before!=shared->seq)return;
- bool changed=count!=playerChoiceCount||epoch!=playerChoicesMatch||memcmp(list,playerChoices,size_t(count)*sizeof(list[0]));
- if(changed){int old=int(SendDlgItemMessageW(ui,862,CB_GETCURSEL,0,0));uint32_t selected=old>=0&&old<playerChoiceCount?playerChoices[old].pointer:0;
-  SendDlgItemMessageW(ui,862,CB_RESETCONTENT,0,0);int chosen=0;
-  for(int i=0;i<count;++i){std::wstring label=L"玩家 "+std::to_wstring(list[i].index+1)+L" · "+(list[i].human?L"人类":L"AI")+L" · "+std::wstring((wchar_t*)list[i].name);
-   SendDlgItemMessageW(ui,862,CB_ADDSTRING,0,(LPARAM)label.c_str());if(list[i].pointer==selected)chosen=i;}
+ bool changed=count!=playerChoiceCount||current!=playerChoicesCurrent||pid!=playerChoicesPid||epoch!=playerChoicesMatch||memcmp(list,playerChoices,size_t(count)*sizeof(list[0]));
+ if(changed){int old=int(SendDlgItemMessageW(ui,862,CB_GETCURSEL,0,0));
+  PlayerTestInfo selected{};if(pid==playerChoicesPid&&epoch==playerChoicesMatch&&old>=0&&old<playerChoiceCount)selected=playerChoices[old];
+  SendDlgItemMessageW(ui,862,CB_RESETCONTENT,0,0);int chosen=-1;
+  for(int i=0;i<count;++i){list[i].name[20]=0;std::wstring label=L"所属方 #"+std::to_wstring(list[i].index)+L" · "+std::wstring((wchar_t*)list[i].name)+L" · "+(list[i].human?L"人类":L"AI")+(list[i].index==current?L" · 当前本方":L"");
+   SendDlgItemMessageW(ui,862,CB_ADDSTRING,0,(LPARAM)label.c_str());if(list[i].pointer==selected.pointer&&list[i].id==selected.id&&list[i].index==selected.index)chosen=i;}
   memcpy(playerChoices,list,sizeof list);playerChoiceCount=count;playerChoicesMatch=epoch;SendDlgItemMessageW(ui,862,CB_SETCURSEL,chosen,0);
  }
+ playerChoicesTick=now;playerChoicesPid=pid;playerChoicesCurrent=current;
+ const int selected=int(SendDlgItemMessageW(ui,862,CB_GETCURSEL,0,0));
+ const bool foreign=selected>=0&&selected<count&&eventdelivery::isMultiplayer(incoming.session)&&list[selected].index!=current;
+ EnableWindow(GetDlgItem(ui,862),idle&&epoch==commandMatch()&&count>0);
+ EnableWindow(GetDlgItem(ui,9185),idle&&epoch==commandMatch()&&selected>=0&&selected<count&&!foreign);
+ if(foreign){SetWindowTextW(GetDlgItem(ui,9186),DestructForeignNotice);destructForeignNoticeShown=true;}
+ else if(destructForeignNoticeShown){SetWindowTextW(GetDlgItem(ui,9186),L"自毁：联机仅支持当前本方；单机可明确选择其他有效所属方。");destructForeignNoticeShown=false;}
  std::wstring label=L"跨玩家操控：";label+=!extra.controlAll?L"关闭":status==1?L"已启用（实验性）":status<0?L"此版本不兼容，未启用":L"等待生效";
  label+=L" · 当前玩家 "+std::to_wstring(current+1);SetWindowTextW(GetDlgItem(ui,865),label.c_str());
 }
@@ -1744,6 +1795,23 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
  case WM_TIMER:if(wp==2){updateHoverHelp();return 0;}if(wp==AutoSaveTimer){flushAutoSettings();return 0;}tick();return 0;
  case WM_HOTKEY:if(!readOnlyWatchHotkey(wp,lp))handleHotkey(wp,lp);return 0;
  case WM_COMMAND:{int id=LOWORD(wp);
+ if(id==862&&HIWORD(wp)==CBN_SELCHANGE){if(!updatingControls)updatePlayerTestUI(true);return 0;}
+ if(id==9185&&HIWORD(wp)==BN_CLICKED){
+  if(updatingControls)return 0;
+  updatePlayerTestUI(true);
+  int row=int(SendDlgItemMessageW(w,862,CB_GETCURSEL,0,0));
+  if(!enabled||!shared||!commandFresh(GetTickCount())||incoming.chat||shared->request!=shared->ack||shared->ack!=ack||commandQueue.size){notify(L"请等待当前对局就绪及上一条指令处理完成，再提交自毁请求。");return 0;}
+  if(!playerChoicesTick||DWORD(GetTickCount()-playerChoicesTick)>=500||playerChoicesPid!=pid||playerChoicesMatch!=commandMatch()||row<0||row>=playerChoiceCount){notify(L"请先从最新列表明确选择一个所属方；自毁将作用于该方全部单位和建筑。");return 0;}
+  const auto selected=playerChoices[row];
+  if(eventdelivery::isMultiplayer(incoming.session)&&selected.index!=playerChoicesCurrent){notify(DestructForeignNotice);return 0;}
+  destructPendingTarget=L"所属方 #"+std::to_wstring(selected.index)+L" · "+std::wstring((wchar_t*)selected.name);
+  uint32_t before=shared->request;
+  send(DestructPlayer,int(selected.pointer),int(selected.id),0,false,uint32_t(selected.index));
+  if(shared&&shared->request!=before&&shared->command==DestructPlayer){
+   SetWindowTextW(GetDlgItem(w,9186),(L"等待自毁请求入队回执："+destructPendingTarget).c_str());
+   EnableWindow(GetDlgItem(w,9185),FALSE);EnableWindow(GetDlgItem(w,862),FALSE);
+  }return 0;
+ }
  if(id==863||id==864){
   if(!playertest::SwitchAvailable){notify(L"切换操控方暂不可用。");return 0;}
   if(!shared||!commandFresh(GetTickCount())||shared->request!=shared->ack){notify(L"请等待游戏就绪后再切换。");return 0;}

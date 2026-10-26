@@ -20,7 +20,7 @@
 #include "burst_compute.h"
 #include "dodge_compute.h"
 namespace assist {
-constexpr uint32_t Magic=0x41533130, Version=76;
+constexpr uint32_t Magic=0x41533130, Version=77;
 // Both binaries derive the namespace from the protocol version. Do not maintain
 // a separate literal in the host: a valid ABI with a different name never connects.
 struct MappingPrefixValue {
@@ -32,7 +32,9 @@ inline void mappingName(wchar_t*out,uint32_t pid){const wchar_t*s=MappingPrefix.
 
 constexpr uint32_t DataMessage=0x8002, WakeTag=0x41533230;
 constexpr int MaxLabels=2048, MaxSW=32, MaxTypes=512, MaxThreats=128, MaxCrates=256, MaxCrateResults=16;
-enum Command { None, Repair, CombatSelection, EmptyTransports, DamagedSelection, IdleHarvester, IdleEngineer, IdleTransport, ClearBeacons, RevealMap, OpenTech, SelectSuper, Produce, SelectIron, SelectChrono, AutoBoard, SelectType, SmartUnload, CancelAdvanced, SelectVariant, ProduceReserved, AirPathMove, CancelTechProduction, SwitchPlayer, RestorePlayer, Cheer, Taunt, ProduceDeferred, StickyGuard, SetSleep, SetGuard, SetHarmless };
+enum Command { None, Repair, CombatSelection, EmptyTransports, DamagedSelection, IdleHarvester, IdleEngineer, IdleTransport, ClearBeacons, RevealMap, OpenTech, SelectSuper, Produce, SelectIron, SelectChrono, AutoBoard, SelectType, SmartUnload, CancelAdvanced, SelectVariant, ProduceReserved, AirPathMove, CancelTechProduction, SwitchPlayer, RestorePlayer, Cheer, Taunt, ProduceDeferred, StickyGuard, SetSleep, SetGuard, SetHarmless, DestructPlayer };
+// DestructPlayer: arg=House pointer, arg2=House UniqueID, requestToken=House
+// array index. Standard requestMatch/requestTick and ack/result apply.
 namespace selectedmode {
 constexpr int Count=3;
 constexpr int command(int index){return index>=0&&index<Count?SetSleep+index:None;}

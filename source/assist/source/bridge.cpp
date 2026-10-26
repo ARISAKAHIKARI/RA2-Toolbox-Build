@@ -69,7 +69,7 @@ static volatile LONG hostWorkPending; // one coalesced grant from the Runtime ho
 static volatile LONG messageGameThread; // Thread confirmed by WH_GETMESSAGE for this game window.
 
 static bool playableHouse(uint32_t);static bool enemyBuildingSellAllowed(uint32_t);static bool playerContextChanged;static void playerMaintenance();static void restorePlayerContext();static void publishPlayers();
-enum class OrderAuthority { Local, PlayerTest, SellPlayerTest };
+enum class OrderAuthority { Local, PlayerTest, SellPlayerTest, DestructPlayerTest };
 static bool authorizePlayerOrder(const intent::EventOrder&,OrderAuthority);
 static void resetRuntimePlanner();static void resetLoadCalculation();
 static uint64_t catalogueHash;static DWORD catalogueAt;static bool catalogueReady,catalogueDirty;
@@ -264,6 +264,16 @@ static bool enqueue(Event&e){
  // The native timer is an external call boundary. Recheck identity/frame before
  // copying the packet; never route a constructed event into a changed session.
  if(!simulationReady()||get<bool>(0xA8BC60+25)){++snap.commandRejected;return false;}
+ if(e.kind==vanilla::EventType::Destruct){
+  // NoOptions carries only a House index. Keep the explicit pointer/ID/index
+  // request valid across the external clock callback before final delivery.
+  intent::EventOrder verify{};verify.domain=vanilla::Domain::NoOptions;
+  verify.eventKind=vanilla::EventType::Destruct;verify.player=e.house;
+  if(!authorizePlayerOrder(verify,OrderAuthority::DestructPlayerTest)){
+   if(snap.lastSubmitError!=42)snap.lastSubmitError=1;
+   ++snap.commandRejected;return false;
+  }
+ }
  constexpr uint32_t p=0xA802C8;
  int count=get<int>(p),tail=get<int>(p+8);
  if(eventdelivery::isMultiplayer(get<int>(0xA8B238))&&queueAvailable(count,tail)){
@@ -762,7 +772,7 @@ static int namedSuper(uint32_t house,int command){const char* id=command==Select
  for(int i=0;i<v.count;++i){uint32_t p=item(v,i);if(!p)continue;uint32_t t=get<uint32_t>(p+0x28);if(t&&sameid((const char*)(t+0x24),id))return superSelect(house,i);}return -4;
 }
 #include "social_bridge.h"
-static void command(uint32_t house,DWORD now){uint32_t req=sh->request;if(req==sh->ack||(repairAckPending&&req==repairAckRequest)||(loadAckPending&&req==loadAckRequest))return;MemoryBarrier();int c=sh->command,arg=sh->arg;int result=1,n=0;
+static void command(uint32_t house,DWORD now){uint32_t req=sh->request;if(req==sh->ack||(pendingAckReady&&req==pendingAck)||(repairAckPending&&req==repairAckRequest)||(loadAckPending&&req==loadAckRequest))return;MemoryBarrier();int c=sh->command,arg=sh->arg;int result=1,n=0;
  if(sh->requestMatch!=match||DWORD(now-sh->requestTick)>3500){result=-7;}
  else if((enhancementChangedCatalogue||sh->requestTypeHash)&&typeIndexedCommand(c,arg)&&sh->requestTypeHash!=typeListHash(snap.types,snap.typeCount)){result=-7;}
  else if(get<bool>(0xA8BC60+25)){result=-8;}
@@ -771,6 +781,7 @@ static void command(uint32_t house,DWORD now){uint32_t req=sh->request;if(req==s
   if(n>0||n==-30){repairAckRequest=req;repairAckPending=true;repairAckStarted=now;sh->result=1;sh->count=0;return;}
  }
  else if(c==Cheer||c==Taunt){result=socialCommand(house,c,arg,now);n=result>0;}
+ else if(c==DestructPlayer){result=destructPlayerCommand(uint32_t(arg),uint32_t(sh->arg2),sh->requestToken);n=result>0?1:0;}
  else if(c==SwitchPlayer||c==RestorePlayer){result=-4;n=0;} // unavailable in this release, including stale commands
  else if(c==SelectType){n=selectType(house,arg,sh->arg2!=0);if(n<0){result=n;n=0;}}
  else if(c==SelectVariant){n=selectVariant(house,sh->arg2!=0);if(n<0){result=n;n=0;}}

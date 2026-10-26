@@ -20,8 +20,30 @@ static bool enemyBuildingSellAllowed(uint32_t object){
   object&&worldObjects.contains(object)&&kind(object)==3&&nativeEnemy(object,lastHouse)&&
   playableHouse(get<uint32_t>(object+0x21C));
 }
+static int destructPlayerTarget(uint32_t house,uint32_t expectedID,uint32_t expectedIndex){
+ if(!playertest::DestructAvailable||!lastHouse||!playableHouse(lastHouse)||
+    !house||!playableHouse(house)||get<bool>(house+0x1F7))return -4;
+ Vec houses=vec(0xA80228,32);
+ if(expectedIndex>=uint32_t(houses.count)||item(houses,int(expectedIndex))!=house||
+    get<uint32_t>(house+0x10)!=expectedID||get<int>(house+0x30)!=int(expectedIndex))return -7;
+ // Native multiplayer compression (64B9D4) replaces the event House with
+ // CurrentHouse. A foreign Destruct would therefore destroy the local House.
+ if(eventdelivery::isMultiplayer(get<int>(0xA8B238))&&house!=lastHouse)return -42;
+ return 1;
+}
 static bool authorizePlayerOrder(const intent::EventOrder&o,OrderAuthority authority){
  if(!lastHouse||o.player<0||o.player>=32)return false;
+ if(o.domain==vanilla::Domain::NoOptions&&o.eventKind==vanilla::EventType::Destruct){
+  // An explicit, current one-shot request is the only Destruct authorization,
+  // even for the local House. Other automatic/local senders cannot opt in.
+  if(authority!=OrderAuthority::DestructPlayerTest||!sh||sh->stop||sh->command!=DestructPlayer||
+     sh->request==sh->ack||sh->requestMatch!=match||DWORD(sampleClock(sh)-sh->requestTick)>3500||
+     DWORD(sampleClock(sh)-sh->heartbeat)>=3000||sh->requestToken!=uint32_t(o.player))return false;
+  int valid=destructPlayerTarget(uint32_t(sh->arg),uint32_t(sh->arg2),sh->requestToken);
+  if(valid==-42)snap.lastSubmitError=42;
+  return valid>0;
+ }
+ if(authority==OrderAuthority::DestructPlayerTest)return false;
  if(authority==OrderAuthority::Local)return o.player==get<int>(lastHouse+0x30);
  if(!playertest::Available)return false;
  if(!sh||sh->stop||DWORD(sampleClock(sh)-sh->heartbeat)>=3000)return false;
@@ -32,6 +54,19 @@ static bool authorizePlayerOrder(const intent::EventOrder&o,OrderAuthority autho
  if(authority==OrderAuthority::SellPlayerTest&&!enemyBuildingSellAllowed(object))return false;
  uint32_t house=get<uint32_t>(object+0x21C);
  return playableHouse(house)&&o.player==get<int>(house+0x30);
+}
+static int destructPlayerCommand(uint32_t house,uint32_t expectedID,uint32_t expectedIndex){
+ snap.lastSubmitError=0;
+ if(!gameentry::active(gameentry::Client::Assist)||!simulationReady())return -3;
+ int valid=destructPlayerTarget(house,expectedID,expectedIndex);
+ if(valid<0){if(valid==-42)snap.lastSubmitError=42;return valid;}
+ static const uint8_t ctor[]={0x53,0x8B,0x5C,0x24,0x0C,0x8B,0xC3,0x56};
+ if(memcmp((void*)0x4C66C0,ctor,sizeof ctor))return -12;
+ intent::EventOrder event{};event.domain=vanilla::Domain::NoOptions;
+ event.eventKind=vanilla::EventType::Destruct;event.player=int(expectedIndex);
+ // The receiver owns all effects. This path only appends the vanilla event;
+ // a successful return means queued, not that the House was destroyed.
+ return submitConstructed(event,OrderAuthority::DestructPlayerTest)?1:snap.lastSubmitError==42?-42:-6;
 }
 static bool samePlayerWorld(){
  // Readiness can drop temporarily in menus; it is not a world identity.
