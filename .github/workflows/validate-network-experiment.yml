@@ -1,4 +1,4 @@
-name: Build network experiments 1.0.39-pre.5
+name: Build network experiments 1.0.39-pre.6
 on:
   push:
     branches: [experiment/network-events-20261026]
@@ -35,7 +35,7 @@ jobs:
           }
       - uses: actions/upload-artifact@v4
         with:
-          name: RA2-Toolbox-1.0.39-pre.5-network-experiments
+          name: RA2-Toolbox-1.0.39-pre.6-network-experiments
           retention-days: 14
           if-no-files-found: error
           path: |
@@ -46,3 +46,4 @@ jobs:
             source/research/2026-10-26-entry-fire-control-pre3.md
             source/research/2026-10-26-enemy-sell-pre4.md
             source/research/2026-10-26-destruct-button-pre5.md
+            source/research/2026-10-26-network-house-preserve-pre6.md

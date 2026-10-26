@@ -1,0 +1,729 @@
+{
+  "scope": "Compiled Destruct command, original NoOptions constructor and partial receiver.\n\nSynthetic world/Win32. Queue tests execute the actual DLL and native 4C66C0;\nseparate receiver tests consume its packet through 4C6CB0 and complete 4FC980.\nMP permits only the current House: foreign requests must fail before constructing\nanything, because the native network packer replaces Event.House with the sender.\nNo full DoList scheduler, House AI/DestroyAll, damage, victory, observer UI or\nremote transport runs. Queued does not mean destroyed or network accepted.\n",
+  "dll_sha256": "24c405af124ec60c88b92c47b0cbaca9ab02ba1ed7530f5631f442520f43a08c",
+  "game_fixture_sha256": "2fcb478cb2e0de00b1af1a6c82e9b55e56e0b555f20f3c0a018e8aaddc58b0c8",
+  "game_tested": false,
+  "multiplayer_tested": false,
+  "results": [
+    {
+      "case": "queue_0_enemy",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_0_own_index_zero",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_0_allied",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_0_tool_foreground",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_0_repeat_request",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_0_null_pointer",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_0_missing_house",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_0_stale_id",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_0_wrong_index",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_0_negative_index",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_0_oversized_index",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_0_reordered_array",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_0_neutral",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_0_special",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_0_passive",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_0_observer",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_0_observer_node",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_0_defeated",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_0_game_over",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_0_winner",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_0_loser",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_0_stale_match",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_0_expired",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_0_chat",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_0_queue_full",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_0_bad_tail",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_0_constructor_mismatch",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_0_already_acked",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_5_enemy",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_5_own_index_zero",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_5_allied",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_5_tool_foreground",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_5_repeat_request",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_5_null_pointer",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_5_missing_house",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_5_stale_id",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_5_wrong_index",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_5_negative_index",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_5_oversized_index",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_5_reordered_array",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_5_neutral",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_5_special",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_5_passive",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_5_observer",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_5_observer_node",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_5_defeated",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_5_game_over",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_5_winner",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_5_loser",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_5_stale_match",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_5_expired",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_5_chat",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_5_queue_full",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_5_bad_tail",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_5_constructor_mismatch",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_5_already_acked",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_3_enemy",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_3_own_index_zero",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_3_allied",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_3_tool_foreground",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_3_repeat_request",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_3_null_pointer",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_3_missing_house",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_3_stale_id",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_3_wrong_index",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_3_negative_index",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_3_oversized_index",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_3_reordered_array",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_3_neutral",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_3_special",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_3_passive",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_3_observer",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_3_observer_node",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_3_defeated",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_3_game_over",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_3_winner",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_3_loser",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_3_stale_match",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_3_expired",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_3_chat",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_3_queue_full",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_3_bad_tail",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_3_constructor_mismatch",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_3_already_acked",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_4_enemy",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_4_own_index_zero",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_4_allied",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_4_tool_foreground",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_4_repeat_request",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_4_null_pointer",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_4_missing_house",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_4_stale_id",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_4_wrong_index",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_4_negative_index",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_4_oversized_index",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_4_reordered_array",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_4_neutral",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_4_special",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_4_passive",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_4_observer",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_4_observer_node",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_4_defeated",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_4_game_over",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_4_winner",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_4_loser",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_4_stale_match",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_4_expired",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_4_chat",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_4_queue_full",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_4_bad_tail",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_4_constructor_mismatch",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_4_already_acked",
+      "status": "PASS"
+    },
+    {
+      "case": "pending_0_paused",
+      "status": "PASS"
+    },
+    {
+      "case": "pending_0_menu",
+      "status": "PASS"
+    },
+    {
+      "case": "pending_0_dialog",
+      "status": "PASS"
+    },
+    {
+      "case": "pending_0_inactive_tactical",
+      "status": "PASS"
+    },
+    {
+      "case": "pending_0_unsupported_session",
+      "status": "PASS"
+    },
+    {
+      "case": "pending_0_expired_while_paused",
+      "status": "PASS"
+    },
+    {
+      "case": "pending_0_id_changed_while_paused",
+      "status": "PASS"
+    },
+    {
+      "case": "pending_0_target_removed_while_paused",
+      "status": "PASS"
+    },
+    {
+      "case": "pending_0_new_match",
+      "status": "PASS"
+    },
+    {
+      "case": "pending_5_paused",
+      "status": "PASS"
+    },
+    {
+      "case": "pending_5_menu",
+      "status": "PASS"
+    },
+    {
+      "case": "pending_5_dialog",
+      "status": "PASS"
+    },
+    {
+      "case": "pending_5_inactive_tactical",
+      "status": "PASS"
+    },
+    {
+      "case": "pending_5_unsupported_session",
+      "status": "PASS"
+    },
+    {
+      "case": "pending_5_expired_while_paused",
+      "status": "PASS"
+    },
+    {
+      "case": "pending_5_id_changed_while_paused",
+      "status": "PASS"
+    },
+    {
+      "case": "pending_5_target_removed_while_paused",
+      "status": "PASS"
+    },
+    {
+      "case": "pending_5_new_match",
+      "status": "PASS"
+    },
+    {
+      "case": "pending_3_paused",
+      "status": "PASS"
+    },
+    {
+      "case": "pending_3_menu",
+      "status": "PASS"
+    },
+    {
+      "case": "pending_3_dialog",
+      "status": "PASS"
+    },
+    {
+      "case": "pending_3_inactive_tactical",
+      "status": "PASS"
+    },
+    {
+      "case": "pending_3_unsupported_session",
+      "status": "PASS"
+    },
+    {
+      "case": "pending_3_expired_while_paused",
+      "status": "PASS"
+    },
+    {
+      "case": "pending_3_id_changed_while_paused",
+      "status": "PASS"
+    },
+    {
+      "case": "pending_3_target_removed_while_paused",
+      "status": "PASS"
+    },
+    {
+      "case": "pending_3_new_match",
+      "status": "PASS"
+    },
+    {
+      "case": "pending_4_paused",
+      "status": "PASS"
+    },
+    {
+      "case": "pending_4_menu",
+      "status": "PASS"
+    },
+    {
+      "case": "pending_4_dialog",
+      "status": "PASS"
+    },
+    {
+      "case": "pending_4_inactive_tactical",
+      "status": "PASS"
+    },
+    {
+      "case": "pending_4_unsupported_session",
+      "status": "PASS"
+    },
+    {
+      "case": "pending_4_expired_while_paused",
+      "status": "PASS"
+    },
+    {
+      "case": "pending_4_id_changed_while_paused",
+      "status": "PASS"
+    },
+    {
+      "case": "pending_4_target_removed_while_paused",
+      "status": "PASS"
+    },
+    {
+      "case": "pending_4_new_match",
+      "status": "PASS"
+    },
+    {
+      "case": "timing_boundary_0_target_id",
+      "status": "PASS"
+    },
+    {
+      "case": "timing_boundary_0_array_slot",
+      "status": "PASS"
+    },
+    {
+      "case": "timing_boundary_0_target_index",
+      "status": "PASS"
+    },
+    {
+      "case": "timing_boundary_0_target_winner",
+      "status": "PASS"
+    },
+    {
+      "case": "timing_boundary_0_current_player",
+      "status": "PASS"
+    },
+    {
+      "case": "timing_boundary_0_request_match",
+      "status": "PASS"
+    },
+    {
+      "case": "timing_boundary_0_request_token",
+      "status": "PASS"
+    },
+    {
+      "case": "timing_boundary_0_request_expired",
+      "status": "PASS"
+    },
+    {
+      "case": "timing_boundary_0_request_ack",
+      "status": "PASS"
+    },
+    {
+      "case": "timing_boundary_0_request_command",
+      "status": "PASS"
+    },
+    {
+      "case": "timing_boundary_3_target_id",
+      "status": "PASS"
+    },
+    {
+      "case": "timing_boundary_3_array_slot",
+      "status": "PASS"
+    },
+    {
+      "case": "timing_boundary_3_target_index",
+      "status": "PASS"
+    },
+    {
+      "case": "timing_boundary_3_target_winner",
+      "status": "PASS"
+    },
+    {
+      "case": "timing_boundary_3_current_player",
+      "status": "PASS"
+    },
+    {
+      "case": "timing_boundary_3_request_match",
+      "status": "PASS"
+    },
+    {
+      "case": "timing_boundary_3_request_token",
+      "status": "PASS"
+    },
+    {
+      "case": "timing_boundary_3_request_expired",
+      "status": "PASS"
+    },
+    {
+      "case": "timing_boundary_3_request_ack",
+      "status": "PASS"
+    },
+    {
+      "case": "timing_boundary_3_request_command",
+      "status": "PASS"
+    },
+    {
+      "case": "receiver_0_house_0_active",
+      "status": "PASS"
+    },
+    {
+      "case": "receiver_0_house_0_game_over",
+      "status": "PASS"
+    },
+    {
+      "case": "receiver_0_house_0_winner",
+      "status": "PASS"
+    },
+    {
+      "case": "receiver_0_house_0_loser",
+      "status": "PASS"
+    },
+    {
+      "case": "receiver_0_house_1_active",
+      "status": "PASS"
+    },
+    {
+      "case": "receiver_0_house_1_game_over",
+      "status": "PASS"
+    },
+    {
+      "case": "receiver_0_house_1_winner",
+      "status": "PASS"
+    },
+    {
+      "case": "receiver_0_house_1_loser",
+      "status": "PASS"
+    },
+    {
+      "case": "receiver_3_house_0_active",
+      "status": "PASS"
+    },
+    {
+      "case": "receiver_3_house_0_game_over",
+      "status": "PASS"
+    },
+    {
+      "case": "receiver_3_house_0_winner",
+      "status": "PASS"
+    },
+    {
+      "case": "receiver_3_house_0_loser",
+      "status": "PASS"
+    }
+  ]
+}

@@ -1,0 +1,337 @@
+{
+  "scope": "Compiled success adapter with original QueueMegaMission/constructor/OutList.\nSynthetic Win32 and world; manager installation and capture lease are real DLL\npaths. No receiver, simulation mission execution, or multiplayer certification.\n",
+  "dll_sha256": "24c405af124ec60c88b92c47b0cbaca9ab02ba1ed7530f5631f442520f43a08c",
+  "game_fixture_sha256": "2fcb478cb2e0de00b1af1a6c82e9b55e56e0b555f20f3c0a018e8aaddc58b0c8",
+  "game_tested": false,
+  "multiplayer_tested": false,
+  "results": [
+    {
+      "case": "original_success_session_0_mission_0",
+      "status": "PASS"
+    },
+    {
+      "case": "original_success_session_0_mission_1",
+      "status": "PASS"
+    },
+    {
+      "case": "original_success_session_0_mission_2",
+      "status": "PASS"
+    },
+    {
+      "case": "original_success_session_0_mission_5",
+      "status": "PASS"
+    },
+    {
+      "case": "original_success_session_0_mission_6",
+      "status": "PASS"
+    },
+    {
+      "case": "original_success_session_0_mission_7",
+      "status": "PASS"
+    },
+    {
+      "case": "original_success_session_0_mission_8",
+      "status": "PASS"
+    },
+    {
+      "case": "original_success_session_0_mission_9",
+      "status": "PASS"
+    },
+    {
+      "case": "original_success_session_0_mission_10",
+      "status": "PASS"
+    },
+    {
+      "case": "original_success_session_0_mission_12",
+      "status": "PASS"
+    },
+    {
+      "case": "original_success_session_0_mission_13",
+      "status": "PASS"
+    },
+    {
+      "case": "original_success_session_0_mission_16",
+      "status": "PASS"
+    },
+    {
+      "case": "original_success_session_0_mission_23",
+      "status": "PASS"
+    },
+    {
+      "case": "original_success_session_0_mission_29",
+      "status": "PASS"
+    },
+    {
+      "case": "original_success_session_5_mission_0",
+      "status": "PASS"
+    },
+    {
+      "case": "original_success_session_5_mission_1",
+      "status": "PASS"
+    },
+    {
+      "case": "original_success_session_5_mission_2",
+      "status": "PASS"
+    },
+    {
+      "case": "original_success_session_5_mission_5",
+      "status": "PASS"
+    },
+    {
+      "case": "original_success_session_5_mission_6",
+      "status": "PASS"
+    },
+    {
+      "case": "original_success_session_5_mission_7",
+      "status": "PASS"
+    },
+    {
+      "case": "original_success_session_5_mission_8",
+      "status": "PASS"
+    },
+    {
+      "case": "original_success_session_5_mission_9",
+      "status": "PASS"
+    },
+    {
+      "case": "original_success_session_5_mission_10",
+      "status": "PASS"
+    },
+    {
+      "case": "original_success_session_5_mission_12",
+      "status": "PASS"
+    },
+    {
+      "case": "original_success_session_5_mission_13",
+      "status": "PASS"
+    },
+    {
+      "case": "original_success_session_5_mission_16",
+      "status": "PASS"
+    },
+    {
+      "case": "original_success_session_5_mission_23",
+      "status": "PASS"
+    },
+    {
+      "case": "original_success_session_5_mission_29",
+      "status": "PASS"
+    },
+    {
+      "case": "original_success_session_3_mission_0",
+      "status": "PASS"
+    },
+    {
+      "case": "original_success_session_3_mission_1",
+      "status": "PASS"
+    },
+    {
+      "case": "original_success_session_3_mission_2",
+      "status": "PASS"
+    },
+    {
+      "case": "original_success_session_3_mission_5",
+      "status": "PASS"
+    },
+    {
+      "case": "original_success_session_3_mission_6",
+      "status": "PASS"
+    },
+    {
+      "case": "original_success_session_3_mission_7",
+      "status": "PASS"
+    },
+    {
+      "case": "original_success_session_3_mission_8",
+      "status": "PASS"
+    },
+    {
+      "case": "original_success_session_3_mission_9",
+      "status": "PASS"
+    },
+    {
+      "case": "original_success_session_3_mission_10",
+      "status": "PASS"
+    },
+    {
+      "case": "original_success_session_3_mission_12",
+      "status": "PASS"
+    },
+    {
+      "case": "original_success_session_3_mission_13",
+      "status": "PASS"
+    },
+    {
+      "case": "original_success_session_3_mission_16",
+      "status": "PASS"
+    },
+    {
+      "case": "original_success_session_3_mission_23",
+      "status": "PASS"
+    },
+    {
+      "case": "original_success_session_3_mission_29",
+      "status": "PASS"
+    },
+    {
+      "case": "original_success_session_4_mission_0",
+      "status": "PASS"
+    },
+    {
+      "case": "original_success_session_4_mission_1",
+      "status": "PASS"
+    },
+    {
+      "case": "original_success_session_4_mission_2",
+      "status": "PASS"
+    },
+    {
+      "case": "original_success_session_4_mission_5",
+      "status": "PASS"
+    },
+    {
+      "case": "original_success_session_4_mission_6",
+      "status": "PASS"
+    },
+    {
+      "case": "original_success_session_4_mission_7",
+      "status": "PASS"
+    },
+    {
+      "case": "original_success_session_4_mission_8",
+      "status": "PASS"
+    },
+    {
+      "case": "original_success_session_4_mission_9",
+      "status": "PASS"
+    },
+    {
+      "case": "original_success_session_4_mission_10",
+      "status": "PASS"
+    },
+    {
+      "case": "original_success_session_4_mission_12",
+      "status": "PASS"
+    },
+    {
+      "case": "original_success_session_4_mission_13",
+      "status": "PASS"
+    },
+    {
+      "case": "original_success_session_4_mission_16",
+      "status": "PASS"
+    },
+    {
+      "case": "original_success_session_4_mission_23",
+      "status": "PASS"
+    },
+    {
+      "case": "original_success_session_4_mission_29",
+      "status": "PASS"
+    },
+    {
+      "case": "native_input_survives_off",
+      "status": "PASS"
+    },
+    {
+      "case": "native_input_survives_expired_heartbeat",
+      "status": "PASS"
+    },
+    {
+      "case": "native_input_survives_wrong_thread",
+      "status": "PASS"
+    },
+    {
+      "case": "native_input_survives_foreign_actor",
+      "status": "PASS"
+    },
+    {
+      "case": "native_input_survives_dead_actor",
+      "status": "PASS"
+    },
+    {
+      "case": "native_input_survives_unknown_actor",
+      "status": "PASS"
+    },
+    {
+      "case": "native_input_survives_unknown_mission",
+      "status": "PASS"
+    },
+    {
+      "case": "native_input_survives_constructor_slot_mismatch",
+      "status": "PASS"
+    },
+    {
+      "case": "native_capacity_and_wrap_112",
+      "status": "PASS"
+    },
+    {
+      "case": "native_capacity_and_wrap_126",
+      "status": "PASS"
+    },
+    {
+      "case": "native_capacity_and_wrap_127",
+      "status": "PASS"
+    },
+    {
+      "case": "native_capacity_and_wrap_128",
+      "status": "PASS"
+    },
+    {
+      "case": "repeated_same_frame_manual_orders_are_never_throttled",
+      "status": "PASS"
+    },
+    {
+      "case": "manual_version_and_explicit_mining_resume",
+      "status": "PASS"
+    },
+    {
+      "case": "own_native_backend_bypasses_duplicate_manual_arbitration",
+      "status": "PASS"
+    },
+    {
+      "case": "native_manual_supersedes_existing_auto_lease_and_loading_reservation",
+      "status": "PASS"
+    },
+    {
+      "case": "manual_claim_and_lease_block_later_autoload",
+      "status": "PASS"
+    },
+    {
+      "case": "signature_or_context_conflict_646f4e",
+      "status": "PASS"
+    },
+    {
+      "case": "signature_or_context_conflict_646e90",
+      "status": "PASS"
+    },
+    {
+      "case": "signature_or_context_conflict_646eeb",
+      "status": "PASS"
+    },
+    {
+      "case": "signature_or_context_conflict_646ef5",
+      "status": "PASS"
+    },
+    {
+      "case": "signature_or_context_conflict_646f30",
+      "status": "PASS"
+    },
+    {
+      "case": "signature_or_context_conflict_646f43",
+      "status": "PASS"
+    },
+    {
+      "case": "signature_or_context_conflict_646f55",
+      "status": "PASS"
+    },
+    {
+      "case": "toggle_restores_original_epilogue",
+      "status": "PASS"
+    },
+    {
+      "case": "full_native_function_abi_matches_vanilla_registers_flags_x87_sse",
+      "status": "PASS"
+    }
+  ]
+}

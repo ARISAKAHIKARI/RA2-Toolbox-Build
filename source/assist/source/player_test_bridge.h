@@ -26,9 +26,12 @@ static int destructPlayerTarget(uint32_t house,uint32_t expectedID,uint32_t expe
  Vec houses=vec(0xA80228,32);
  if(expectedIndex>=uint32_t(houses.count)||item(houses,int(expectedIndex))!=house||
     get<uint32_t>(house+0x10)!=expectedID||get<int>(house+0x30)!=int(expectedIndex))return -7;
- // Native multiplayer compression (64B9D4) replaces the event House with
- // CurrentHouse. A foreign Destruct would therefore destroy the local House.
- if(eventdelivery::isMultiplayer(get<int>(0xA8B238))&&house!=lastHouse)return -42;
+ // The unadapted native sender replaces House with CurrentHouse. Foreign
+ // Destruct is admitted only while the complete managed preservation group is ready.
+ if(eventdelivery::isMultiplayer(get<int>(0xA8B238))&&house!=lastHouse){
+  if(!networkHousePreserveReady())return -42;
+  if(!networkSenderHouse(int(expectedIndex)))return -4;
+ }
  return 1;
 }
 static bool authorizePlayerOrder(const intent::EventOrder&o,OrderAuthority authority){
@@ -53,7 +56,11 @@ static bool authorizePlayerOrder(const intent::EventOrder&o,OrderAuthority autho
  uint32_t object=worldByID(uint32_t(o.a));if(!object||!live(object)||o.tagA!=0x34)return false;
  if(authority==OrderAuthority::SellPlayerTest&&!enemyBuildingSellAllowed(object))return false;
  uint32_t house=get<uint32_t>(object+0x21C);
- return playableHouse(house)&&o.player==get<int>(house+0x30);
+ if(!playableHouse(house)||o.player!=get<int>(house+0x30))return false;
+ if(authority==OrderAuthority::PlayerTest&&sh->controlCommandOwner&&house!=lastHouse&&!controlCommandOwnerReady(house)){
+  snap.lastSubmitError=42;++sh->controlCommandOwnerRejected;return false;
+ }
+ return true;
 }
 static int destructPlayerCommand(uint32_t house,uint32_t expectedID,uint32_t expectedIndex){
  snap.lastSubmitError=0;

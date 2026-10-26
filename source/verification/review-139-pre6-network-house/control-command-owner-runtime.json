@@ -1,0 +1,381 @@
+{
+  "scope": "Final DLL native Mega/F owner gates through native sender and decoder.\nSynthetic Win32/world and capture-only transport. Original constructors, native\nOutList writers, 649CA0/64B660 and 64BDD0 run. Planning tests retain original\nClickedMission construction with one unrelated movement-query boundary stub.\nNo event effects, real network peer, or complete game scheduler are simulated.\n",
+  "dll_sha256": "24c405af124ec60c88b92c47b0cbaca9ab02ba1ed7530f5631f442520f43a08c",
+  "game_fixture_sha256": "2fcb478cb2e0de00b1af1a6c82e9b55e56e0b555f20f3c0a018e8aaddc58b0c8",
+  "game_tested": false,
+  "multiplayer_tested": false,
+  "results": [
+    {
+      "case": "native_owner_roundtrip_session_3_protocol_0_kind_4",
+      "status": "PASS",
+      "source_owner": 1,
+      "outlist_house": 1,
+      "local_dolist_house": 1,
+      "remote_decoded_house": 1,
+      "native_kind": 4
+    },
+    {
+      "case": "native_owner_roundtrip_session_3_protocol_0_kind_5",
+      "status": "PASS",
+      "source_owner": 1,
+      "outlist_house": 1,
+      "local_dolist_house": 1,
+      "remote_decoded_house": 1,
+      "native_kind": 5
+    },
+    {
+      "case": "native_owner_roundtrip_session_3_protocol_1_kind_4",
+      "status": "PASS",
+      "source_owner": 1,
+      "outlist_house": 1,
+      "local_dolist_house": 1,
+      "remote_decoded_house": 1,
+      "native_kind": 4
+    },
+    {
+      "case": "native_owner_roundtrip_session_3_protocol_1_kind_5",
+      "status": "PASS",
+      "source_owner": 1,
+      "outlist_house": 1,
+      "local_dolist_house": 1,
+      "remote_decoded_house": 1,
+      "native_kind": 5
+    },
+    {
+      "case": "native_owner_roundtrip_session_3_protocol_2_kind_4",
+      "status": "PASS",
+      "source_owner": 1,
+      "outlist_house": 1,
+      "local_dolist_house": 1,
+      "remote_decoded_house": 1,
+      "native_kind": 4
+    },
+    {
+      "case": "native_owner_roundtrip_session_3_protocol_2_kind_5",
+      "status": "PASS",
+      "source_owner": 1,
+      "outlist_house": 1,
+      "local_dolist_house": 1,
+      "remote_decoded_house": 1,
+      "native_kind": 5
+    },
+    {
+      "case": "native_owner_roundtrip_session_4_protocol_0_kind_4",
+      "status": "PASS",
+      "source_owner": 1,
+      "outlist_house": 1,
+      "local_dolist_house": 1,
+      "remote_decoded_house": 1,
+      "native_kind": 4
+    },
+    {
+      "case": "native_owner_roundtrip_session_4_protocol_0_kind_5",
+      "status": "PASS",
+      "source_owner": 1,
+      "outlist_house": 1,
+      "local_dolist_house": 1,
+      "remote_decoded_house": 1,
+      "native_kind": 5
+    },
+    {
+      "case": "native_owner_roundtrip_session_4_protocol_1_kind_4",
+      "status": "PASS",
+      "source_owner": 1,
+      "outlist_house": 1,
+      "local_dolist_house": 1,
+      "remote_decoded_house": 1,
+      "native_kind": 4
+    },
+    {
+      "case": "native_owner_roundtrip_session_4_protocol_1_kind_5",
+      "status": "PASS",
+      "source_owner": 1,
+      "outlist_house": 1,
+      "local_dolist_house": 1,
+      "remote_decoded_house": 1,
+      "native_kind": 5
+    },
+    {
+      "case": "native_owner_roundtrip_session_4_protocol_2_kind_4",
+      "status": "PASS",
+      "source_owner": 1,
+      "outlist_house": 1,
+      "local_dolist_house": 1,
+      "remote_decoded_house": 1,
+      "native_kind": 4
+    },
+    {
+      "case": "native_owner_roundtrip_session_4_protocol_2_kind_5",
+      "status": "PASS",
+      "source_owner": 1,
+      "outlist_house": 1,
+      "local_dolist_house": 1,
+      "remote_decoded_house": 1,
+      "native_kind": 5
+    },
+    {
+      "case": "mixed_selection_keeps_actor_order_protocol_0",
+      "status": "PASS",
+      "house_order": [
+        0,
+        1,
+        0,
+        1,
+        0
+      ],
+      "event_order_preserved": true
+    },
+    {
+      "case": "mixed_selection_keeps_actor_order_protocol_1",
+      "status": "PASS",
+      "house_order": [
+        0,
+        1,
+        0,
+        1,
+        0
+      ],
+      "event_order_preserved": true
+    },
+    {
+      "case": "mixed_selection_keeps_actor_order_protocol_2",
+      "status": "PASS",
+      "house_order": [
+        0,
+        1,
+        0,
+        1,
+        0
+      ],
+      "event_order_preserved": true
+    },
+    {
+      "case": "singleplayer_native_owner_session_0_kind_4",
+      "status": "PASS"
+    },
+    {
+      "case": "singleplayer_native_owner_session_0_kind_5",
+      "status": "PASS"
+    },
+    {
+      "case": "singleplayer_native_owner_session_5_kind_4",
+      "status": "PASS"
+    },
+    {
+      "case": "singleplayer_native_owner_session_5_kind_5",
+      "status": "PASS"
+    },
+    {
+      "case": "foreign_fail_closed_network_off_kind_4",
+      "status": "PASS"
+    },
+    {
+      "case": "foreign_fail_closed_network_off_kind_5",
+      "status": "PASS"
+    },
+    {
+      "case": "foreign_fail_closed_control_off_kind_4",
+      "status": "PASS"
+    },
+    {
+      "case": "foreign_fail_closed_control_off_kind_5",
+      "status": "PASS"
+    },
+    {
+      "case": "foreign_fail_closed_heartbeat_kind_4",
+      "status": "PASS"
+    },
+    {
+      "case": "foreign_fail_closed_heartbeat_kind_5",
+      "status": "PASS"
+    },
+    {
+      "case": "foreign_fail_closed_foreground_kind_4",
+      "status": "PASS"
+    },
+    {
+      "case": "foreign_fail_closed_foreground_kind_5",
+      "status": "PASS"
+    },
+    {
+      "case": "foreign_fail_closed_chat_kind_4",
+      "status": "PASS"
+    },
+    {
+      "case": "foreign_fail_closed_chat_kind_5",
+      "status": "PASS"
+    },
+    {
+      "case": "foreign_fail_closed_wrong_thread_kind_4",
+      "status": "PASS"
+    },
+    {
+      "case": "foreign_fail_closed_wrong_thread_kind_5",
+      "status": "PASS"
+    },
+    {
+      "case": "foreign_fail_closed_owner_ai_kind_4",
+      "status": "PASS"
+    },
+    {
+      "case": "foreign_fail_closed_owner_ai_kind_5",
+      "status": "PASS"
+    },
+    {
+      "case": "foreign_fail_closed_owner_observer_kind_4",
+      "status": "PASS"
+    },
+    {
+      "case": "foreign_fail_closed_owner_observer_kind_5",
+      "status": "PASS"
+    },
+    {
+      "case": "foreign_fail_closed_owner_defeated_kind_4",
+      "status": "PASS"
+    },
+    {
+      "case": "foreign_fail_closed_owner_defeated_kind_5",
+      "status": "PASS"
+    },
+    {
+      "case": "foreign_fail_closed_owner_index_kind_4",
+      "status": "PASS"
+    },
+    {
+      "case": "foreign_fail_closed_owner_index_kind_5",
+      "status": "PASS"
+    },
+    {
+      "case": "foreign_fail_closed_owner_slot_kind_4",
+      "status": "PASS"
+    },
+    {
+      "case": "foreign_fail_closed_owner_slot_kind_5",
+      "status": "PASS"
+    },
+    {
+      "case": "foreign_fail_closed_source_dead_kind_4",
+      "status": "PASS"
+    },
+    {
+      "case": "foreign_fail_closed_source_dead_kind_5",
+      "status": "PASS"
+    },
+    {
+      "case": "foreign_fail_closed_source_invalid_kind_4",
+      "status": "PASS"
+    },
+    {
+      "case": "foreign_fail_closed_source_invalid_kind_5",
+      "status": "PASS"
+    },
+    {
+      "case": "foreign_fail_closed_object_gate_lost_kind_4",
+      "status": "PASS"
+    },
+    {
+      "case": "foreign_fail_closed_object_gate_lost_kind_5",
+      "status": "PASS"
+    },
+    {
+      "case": "foreign_fail_closed_native_gate_lost_kind_4",
+      "status": "PASS"
+    },
+    {
+      "case": "foreign_fail_closed_native_gate_lost_kind_5",
+      "status": "PASS"
+    },
+    {
+      "case": "foreign_fail_closed_invalid_ring_kind_4",
+      "status": "PASS"
+    },
+    {
+      "case": "foreign_fail_closed_invalid_ring_kind_5",
+      "status": "PASS"
+    },
+    {
+      "case": "own_commands_survive_missing_foreign_transport_kind_4",
+      "status": "PASS"
+    },
+    {
+      "case": "original_full_queue_false_kind_4",
+      "status": "PASS"
+    },
+    {
+      "case": "independent_option_off_preserves_original_kind_4",
+      "status": "PASS"
+    },
+    {
+      "case": "owner_option_independent_of_manual_gateway_kind_4",
+      "status": "PASS"
+    },
+    {
+      "case": "own_commands_survive_missing_foreign_transport_kind_5",
+      "status": "PASS"
+    },
+    {
+      "case": "original_full_queue_false_kind_5",
+      "status": "PASS"
+    },
+    {
+      "case": "independent_option_off_preserves_original_kind_5",
+      "status": "PASS"
+    },
+    {
+      "case": "owner_option_independent_of_manual_gateway_kind_5",
+      "status": "PASS"
+    },
+    {
+      "case": "native_planning_own_kept",
+      "status": "PASS"
+    },
+    {
+      "case": "native_planning_foreign_rejected",
+      "status": "PASS"
+    },
+    {
+      "case": "toggle_off_before_maintenance_rejects_foreign_keeps_own_kind_4",
+      "status": "PASS"
+    },
+    {
+      "case": "current_house_changed_before_maintenance_rejects_stale_own_kind_4",
+      "status": "PASS"
+    },
+    {
+      "case": "toggle_off_before_maintenance_rejects_foreign_keeps_own_kind_5",
+      "status": "PASS"
+    },
+    {
+      "case": "current_house_changed_before_maintenance_rejects_stale_own_kind_5",
+      "status": "PASS"
+    },
+    {
+      "case": "toggle_off_before_maintenance_rejects_foreign_planning_keeps_own",
+      "status": "PASS"
+    },
+    {
+      "case": "tool_alt_player_order_accepted",
+      "status": "PASS"
+    },
+    {
+      "case": "tool_alt_player_order_network_off",
+      "status": "PASS"
+    },
+    {
+      "case": "tool_alt_player_order_owner_changes_during_clock",
+      "status": "PASS"
+    },
+    {
+      "case": "owner_option_restore_preserves_gateway",
+      "status": "PASS"
+    },
+    {
+      "case": "own_native_abi_unchanged_kind_4",
+      "status": "PASS"
+    },
+    {
+      "case": "own_native_abi_unchanged_kind_5",
+      "status": "PASS"
+    }
+  ]
+}

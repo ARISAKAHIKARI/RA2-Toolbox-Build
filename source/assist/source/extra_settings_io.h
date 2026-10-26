@@ -1,6 +1,10 @@
 static void loadAdditionalSettings(){
  extra.viewZoomEnabled=false;extra.viewZoomPercent=100; // temporarily unavailable, including saved settings
  extra.techEnhance=value(L"Experimental",L"TechEnhance",0)!=0;
+ extra.networkHousePreserve=value(L"Experimental",L"NetworkHousePreserve",0)!=0;
+ extra.nativeSellCursor=value(L"Experimental",L"NativeSellCursor",0)!=0;
+ extra.nativeMegaGateway=value(L"Experimental",L"NativeMegaGateway",1)!=0;
+ extra.controlCommandOwner=value(L"Experimental",L"ControlCommandOwner",0)!=0;
  extra.placementImplementation=std::clamp(value(L"Experimental",L"PlacementImplementation",0),0,1);
  extra.stickyKey=value(L"Hotkeys",L"StickyGuard",extra.stickyKey)&65535;
  for(int i=0;i<selectedmode::Count;++i)extra.missionModeKeys[i]=value(L"Hotkeys",selectedmode::setting(i),0)&65535;
@@ -76,6 +80,9 @@ static void loadAdditionalSettings(){
 static bool saveAdditionalSettings(){
  write(L"ViewZoom",L"Enabled",0);write(L"ViewZoom",L"Percent",100);
  write(L"Experimental",L"TechEnhance",extra.techEnhance);write(L"Experimental",L"PlacementImplementation",extra.placementImplementation);
+ write(L"Experimental",L"NetworkHousePreserve",extra.networkHousePreserve);write(L"Experimental",L"NativeSellCursor",extra.nativeSellCursor);
+ write(L"Experimental",L"NativeMegaGateway",extra.nativeMegaGateway);
+ write(L"Experimental",L"ControlCommandOwner",extra.controlCommandOwner);
  write(L"Hotkeys",L"StickyGuard",extra.stickyKey);
  for(int i=0;i<selectedmode::Count;++i)write(L"Hotkeys",selectedmode::setting(i),extra.missionModeKeys[i]);
  write(L"Watch",L"SecondaryEnabled",extra.watchSecondary);
@@ -156,6 +163,9 @@ static void syncAdditional(){
  extra.viewZoomEnabled=false;extra.viewZoomPercent=100;shared->viewZoomPercent=100;
  shared->placementImplementation=extra.placementImplementation;shared->techEnhance=extra.techEnhance;
  shared->nativeAirNetwork=extra.nativeAirNetwork;
+ shared->networkHousePreserve=extra.networkHousePreserve;shared->nativeSellCursor=extra.nativeSellCursor;
+ shared->nativeMegaGateway=extra.nativeMegaGateway;
+ shared->controlCommandOwner=extra.controlCommandOwner;
  InterlockedIncrement(&shared->formationPolicySeq);shared->formationPolicy.enabled=extra.formationEnabled;shared->formationPolicy.hold=extra.formationHold;shared->formationPolicy.mouse=extra.formationMouse;memcpy(shared->formationPolicy.keys,extra.formationKeys,sizeof extra.formationKeys);MemoryBarrier();InterlockedIncrement(&shared->formationPolicySeq);
  shared->missileReserve=extra.missileReserve;shared->lowDamageFilter=extra.lowDamageFilter;shared->lowDamageNetwork=extra.lowDamageNetwork;syncRefreshRate();shared->magnetronDrop=extra.magnetronDrop;shared->dodgeEnabled=extra.dodgeEnabled;shared->dodgeMode=extra.dodgeMode;shared->burstEnabled=shared->burstHoldEnabled=shared->burstHeld=0;shared->missileScope=extra.missileScope;shared->missileAllocation=extra.missileAllocation;shared->magnetronGlobal=extra.magnetronGlobal;shared->missileEnabled=extra.missileDefense;shared->missileScanHz=extra.missileScanHz;shared->controlAll=extra.controlAll;shared->switchPlayerEnabled=extra.switchPlayerEnabled;shared->computeRequested=computeRequested;shared->advancedScanHz=advancedScanHz;shared->advancedPriority=advancedTargetPriority;shared->c4Test=extra.c4Test;shared->renderReveal=extra.renderReveal;shared->loadMode=extra.loadMode;shared->loadRadius=extra.loadRadius;shared->enterKey=extra.enterKey;shared->airKey1=extra.airKey1;shared->airKey2=extra.airKey2;
  static uint32_t publishedSettings=~0u;

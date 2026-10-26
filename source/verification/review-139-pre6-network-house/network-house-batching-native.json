@@ -1,0 +1,2272 @@
+{
+  "scope": "Offline native sender experiment; no network and no simulation receiver.\n\nCompare unmodified sender, unconditional NOP of two House writes, and a\nUnicorn-only candidate that retains House only for Sell/Destruct and splits\ncompressed batches at changes in effective House. This is not product code.\nProtocol 0 wire events are parsed as 111-byte records; protocol 1/2 use the\noriginal 64BDD0 decoder. No full transport receive, scheduler or effects run.\n",
+  "game_fixture_sha256": "2fcb478cb2e0de00b1af1a6c82e9b55e56e0b555f20f3c0a018e8aaddc58b0c8",
+  "results": [
+    {
+      "case": "mixed_protocol_0_vanilla_head_0",
+      "status": "PASS",
+      "packet_lengths": [
+        777
+      ],
+      "headers": [
+        {
+          "house": 0,
+          "frame": 1239,
+          "crc": "78563412",
+          "word_0b": 1,
+          "byte_0d": 5
+        }
+      ],
+      "out_remaining": 0,
+      "out_head": 6,
+      "local_records": [
+        {
+          "kind": 22,
+          "house": 0,
+          "frame": 1239,
+          "id": 101
+        },
+        {
+          "kind": 8,
+          "house": 0,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 22,
+          "house": 0,
+          "frame": 1239,
+          "id": 102
+        },
+        {
+          "kind": 8,
+          "house": 0,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 22,
+          "house": 0,
+          "frame": 1239,
+          "id": 103
+        },
+        {
+          "kind": 8,
+          "house": 0,
+          "frame": 1239,
+          "id": null
+        }
+      ],
+      "decoded_records": [
+        {
+          "kind": 28,
+          "house": 0,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 22,
+          "house": 0,
+          "frame": 1239,
+          "id": 101
+        },
+        {
+          "kind": 8,
+          "house": 0,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 22,
+          "house": 0,
+          "frame": 1239,
+          "id": 102
+        },
+        {
+          "kind": 8,
+          "house": 0,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 22,
+          "house": 0,
+          "frame": 1239,
+          "id": 103
+        },
+        {
+          "kind": 8,
+          "house": 0,
+          "frame": 1239,
+          "id": null
+        }
+      ],
+      "local_remote_house_match": true
+    },
+    {
+      "case": "mixed_protocol_0_vanilla_head_126",
+      "status": "PASS",
+      "packet_lengths": [
+        777
+      ],
+      "headers": [
+        {
+          "house": 0,
+          "frame": 1239,
+          "crc": "78563412",
+          "word_0b": 1,
+          "byte_0d": 5
+        }
+      ],
+      "out_remaining": 0,
+      "out_head": 4,
+      "local_records": [
+        {
+          "kind": 22,
+          "house": 0,
+          "frame": 1239,
+          "id": 101
+        },
+        {
+          "kind": 8,
+          "house": 0,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 22,
+          "house": 0,
+          "frame": 1239,
+          "id": 102
+        },
+        {
+          "kind": 8,
+          "house": 0,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 22,
+          "house": 0,
+          "frame": 1239,
+          "id": 103
+        },
+        {
+          "kind": 8,
+          "house": 0,
+          "frame": 1239,
+          "id": null
+        }
+      ],
+      "decoded_records": [
+        {
+          "kind": 28,
+          "house": 0,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 22,
+          "house": 0,
+          "frame": 1239,
+          "id": 101
+        },
+        {
+          "kind": 8,
+          "house": 0,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 22,
+          "house": 0,
+          "frame": 1239,
+          "id": 102
+        },
+        {
+          "kind": 8,
+          "house": 0,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 22,
+          "house": 0,
+          "frame": 1239,
+          "id": 103
+        },
+        {
+          "kind": 8,
+          "house": 0,
+          "frame": 1239,
+          "id": null
+        }
+      ],
+      "local_remote_house_match": true
+    },
+    {
+      "case": "mixed_protocol_0_nop_head_0",
+      "status": "PASS",
+      "packet_lengths": [
+        777
+      ],
+      "headers": [
+        {
+          "house": 0,
+          "frame": 1239,
+          "crc": "78563412",
+          "word_0b": 1,
+          "byte_0d": 5
+        }
+      ],
+      "out_remaining": 0,
+      "out_head": 6,
+      "local_records": [
+        {
+          "kind": 22,
+          "house": 0,
+          "frame": 1239,
+          "id": 101
+        },
+        {
+          "kind": 8,
+          "house": 1,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 22,
+          "house": 1,
+          "frame": 1239,
+          "id": 102
+        },
+        {
+          "kind": 8,
+          "house": 0,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 22,
+          "house": 1,
+          "frame": 1239,
+          "id": 103
+        },
+        {
+          "kind": 8,
+          "house": 1,
+          "frame": 1239,
+          "id": null
+        }
+      ],
+      "decoded_records": [
+        {
+          "kind": 28,
+          "house": 0,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 22,
+          "house": 0,
+          "frame": 1239,
+          "id": 101
+        },
+        {
+          "kind": 8,
+          "house": 1,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 22,
+          "house": 1,
+          "frame": 1239,
+          "id": 102
+        },
+        {
+          "kind": 8,
+          "house": 0,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 22,
+          "house": 1,
+          "frame": 1239,
+          "id": 103
+        },
+        {
+          "kind": 8,
+          "house": 1,
+          "frame": 1239,
+          "id": null
+        }
+      ],
+      "local_remote_house_match": true
+    },
+    {
+      "case": "mixed_protocol_0_nop_head_126",
+      "status": "PASS",
+      "packet_lengths": [
+        777
+      ],
+      "headers": [
+        {
+          "house": 0,
+          "frame": 1239,
+          "crc": "78563412",
+          "word_0b": 1,
+          "byte_0d": 5
+        }
+      ],
+      "out_remaining": 0,
+      "out_head": 4,
+      "local_records": [
+        {
+          "kind": 22,
+          "house": 0,
+          "frame": 1239,
+          "id": 101
+        },
+        {
+          "kind": 8,
+          "house": 1,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 22,
+          "house": 1,
+          "frame": 1239,
+          "id": 102
+        },
+        {
+          "kind": 8,
+          "house": 0,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 22,
+          "house": 1,
+          "frame": 1239,
+          "id": 103
+        },
+        {
+          "kind": 8,
+          "house": 1,
+          "frame": 1239,
+          "id": null
+        }
+      ],
+      "decoded_records": [
+        {
+          "kind": 28,
+          "house": 0,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 22,
+          "house": 0,
+          "frame": 1239,
+          "id": 101
+        },
+        {
+          "kind": 8,
+          "house": 1,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 22,
+          "house": 1,
+          "frame": 1239,
+          "id": 102
+        },
+        {
+          "kind": 8,
+          "house": 0,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 22,
+          "house": 1,
+          "frame": 1239,
+          "id": 103
+        },
+        {
+          "kind": 8,
+          "house": 1,
+          "frame": 1239,
+          "id": null
+        }
+      ],
+      "local_remote_house_match": true
+    },
+    {
+      "case": "mixed_protocol_0_candidate_head_0",
+      "status": "PASS",
+      "packet_lengths": [
+        777
+      ],
+      "headers": [
+        {
+          "house": 0,
+          "frame": 1239,
+          "crc": "78563412",
+          "word_0b": 1,
+          "byte_0d": 5
+        }
+      ],
+      "out_remaining": 0,
+      "out_head": 6,
+      "local_records": [
+        {
+          "kind": 22,
+          "house": 0,
+          "frame": 1239,
+          "id": 101
+        },
+        {
+          "kind": 8,
+          "house": 1,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 22,
+          "house": 1,
+          "frame": 1239,
+          "id": 102
+        },
+        {
+          "kind": 8,
+          "house": 0,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 22,
+          "house": 1,
+          "frame": 1239,
+          "id": 103
+        },
+        {
+          "kind": 8,
+          "house": 1,
+          "frame": 1239,
+          "id": null
+        }
+      ],
+      "decoded_records": [
+        {
+          "kind": 28,
+          "house": 0,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 22,
+          "house": 0,
+          "frame": 1239,
+          "id": 101
+        },
+        {
+          "kind": 8,
+          "house": 1,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 22,
+          "house": 1,
+          "frame": 1239,
+          "id": 102
+        },
+        {
+          "kind": 8,
+          "house": 0,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 22,
+          "house": 1,
+          "frame": 1239,
+          "id": 103
+        },
+        {
+          "kind": 8,
+          "house": 1,
+          "frame": 1239,
+          "id": null
+        }
+      ],
+      "local_remote_house_match": true
+    },
+    {
+      "case": "mixed_protocol_0_candidate_head_126",
+      "status": "PASS",
+      "packet_lengths": [
+        777
+      ],
+      "headers": [
+        {
+          "house": 0,
+          "frame": 1239,
+          "crc": "78563412",
+          "word_0b": 1,
+          "byte_0d": 5
+        }
+      ],
+      "out_remaining": 0,
+      "out_head": 4,
+      "local_records": [
+        {
+          "kind": 22,
+          "house": 0,
+          "frame": 1239,
+          "id": 101
+        },
+        {
+          "kind": 8,
+          "house": 1,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 22,
+          "house": 1,
+          "frame": 1239,
+          "id": 102
+        },
+        {
+          "kind": 8,
+          "house": 0,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 22,
+          "house": 1,
+          "frame": 1239,
+          "id": 103
+        },
+        {
+          "kind": 8,
+          "house": 1,
+          "frame": 1239,
+          "id": null
+        }
+      ],
+      "decoded_records": [
+        {
+          "kind": 28,
+          "house": 0,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 22,
+          "house": 0,
+          "frame": 1239,
+          "id": 101
+        },
+        {
+          "kind": 8,
+          "house": 1,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 22,
+          "house": 1,
+          "frame": 1239,
+          "id": 102
+        },
+        {
+          "kind": 8,
+          "house": 0,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 22,
+          "house": 1,
+          "frame": 1239,
+          "id": 103
+        },
+        {
+          "kind": 8,
+          "house": 1,
+          "frame": 1239,
+          "id": null
+        }
+      ],
+      "local_remote_house_match": true
+    },
+    {
+      "case": "own_equivalence_protocol_0_nop",
+      "status": "PASS",
+      "exact_wire_local_and_decode_equivalence": true
+    },
+    {
+      "case": "own_equivalence_protocol_0_candidate",
+      "status": "PASS",
+      "exact_wire_local_and_decode_equivalence": true
+    },
+    {
+      "case": "insufficient_capacity_protocol_0_vanilla",
+      "status": "PASS",
+      "stopped_at_first_send": true,
+      "packet_lengths": [
+        111
+      ],
+      "headers": [
+        {
+          "house": 0,
+          "frame": 1239,
+          "crc": "78563412",
+          "word_0b": 1,
+          "byte_0d": 5
+        }
+      ],
+      "out_remaining": 1,
+      "out_head": 0,
+      "local_records": []
+    },
+    {
+      "case": "insufficient_capacity_protocol_0_nop",
+      "status": "PASS",
+      "stopped_at_first_send": true,
+      "packet_lengths": [
+        111
+      ],
+      "headers": [
+        {
+          "house": 0,
+          "frame": 1239,
+          "crc": "78563412",
+          "word_0b": 1,
+          "byte_0d": 5
+        }
+      ],
+      "out_remaining": 1,
+      "out_head": 0,
+      "local_records": []
+    },
+    {
+      "case": "insufficient_capacity_protocol_0_candidate",
+      "status": "PASS",
+      "stopped_at_first_send": true,
+      "packet_lengths": [
+        111
+      ],
+      "headers": [
+        {
+          "house": 0,
+          "frame": 1239,
+          "crc": "78563412",
+          "word_0b": 1,
+          "byte_0d": 5
+        }
+      ],
+      "out_remaining": 1,
+      "out_head": 0,
+      "local_records": []
+    },
+    {
+      "case": "local_dolist_pressure_protocol_0_vanilla",
+      "status": "PASS",
+      "no_outlist_consumption": true,
+      "packet_lengths": [
+        111
+      ]
+    },
+    {
+      "case": "local_dolist_pressure_protocol_0_candidate",
+      "status": "PASS",
+      "no_outlist_consumption": true,
+      "packet_lengths": [
+        111
+      ]
+    },
+    {
+      "case": "mixed_protocol_1_vanilla_head_0",
+      "status": "PASS",
+      "packet_lengths": [
+        35
+      ],
+      "headers": [
+        {
+          "house": 0,
+          "frame": 1239,
+          "crc": "78563412",
+          "word_0b": 1,
+          "byte_0d": 5
+        }
+      ],
+      "out_remaining": 0,
+      "out_head": 6,
+      "local_records": [
+        {
+          "kind": 22,
+          "house": 0,
+          "frame": 1239,
+          "id": 101
+        },
+        {
+          "kind": 8,
+          "house": 0,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 22,
+          "house": 0,
+          "frame": 1239,
+          "id": 102
+        },
+        {
+          "kind": 8,
+          "house": 0,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 22,
+          "house": 0,
+          "frame": 1239,
+          "id": 103
+        },
+        {
+          "kind": 8,
+          "house": 0,
+          "frame": 1239,
+          "id": null
+        }
+      ],
+      "decoded_records": [
+        {
+          "kind": 28,
+          "house": 0,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 22,
+          "house": 0,
+          "frame": 1239,
+          "id": 101
+        },
+        {
+          "kind": 8,
+          "house": 0,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 22,
+          "house": 0,
+          "frame": 1239,
+          "id": 102
+        },
+        {
+          "kind": 8,
+          "house": 0,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 22,
+          "house": 0,
+          "frame": 1239,
+          "id": 103
+        },
+        {
+          "kind": 8,
+          "house": 0,
+          "frame": 1239,
+          "id": null
+        }
+      ],
+      "local_remote_house_match": true
+    },
+    {
+      "case": "mixed_protocol_1_vanilla_head_126",
+      "status": "PASS",
+      "packet_lengths": [
+        35
+      ],
+      "headers": [
+        {
+          "house": 0,
+          "frame": 1239,
+          "crc": "78563412",
+          "word_0b": 1,
+          "byte_0d": 5
+        }
+      ],
+      "out_remaining": 0,
+      "out_head": 4,
+      "local_records": [
+        {
+          "kind": 22,
+          "house": 0,
+          "frame": 1239,
+          "id": 101
+        },
+        {
+          "kind": 8,
+          "house": 0,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 22,
+          "house": 0,
+          "frame": 1239,
+          "id": 102
+        },
+        {
+          "kind": 8,
+          "house": 0,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 22,
+          "house": 0,
+          "frame": 1239,
+          "id": 103
+        },
+        {
+          "kind": 8,
+          "house": 0,
+          "frame": 1239,
+          "id": null
+        }
+      ],
+      "decoded_records": [
+        {
+          "kind": 28,
+          "house": 0,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 22,
+          "house": 0,
+          "frame": 1239,
+          "id": 101
+        },
+        {
+          "kind": 8,
+          "house": 0,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 22,
+          "house": 0,
+          "frame": 1239,
+          "id": 102
+        },
+        {
+          "kind": 8,
+          "house": 0,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 22,
+          "house": 0,
+          "frame": 1239,
+          "id": 103
+        },
+        {
+          "kind": 8,
+          "house": 0,
+          "frame": 1239,
+          "id": null
+        }
+      ],
+      "local_remote_house_match": true
+    },
+    {
+      "case": "mixed_protocol_1_nop_head_0",
+      "status": "PASS",
+      "packet_lengths": [
+        35
+      ],
+      "headers": [
+        {
+          "house": 0,
+          "frame": 1239,
+          "crc": "78563412",
+          "word_0b": 1,
+          "byte_0d": 5
+        }
+      ],
+      "out_remaining": 0,
+      "out_head": 6,
+      "local_records": [
+        {
+          "kind": 22,
+          "house": 0,
+          "frame": 1239,
+          "id": 101
+        },
+        {
+          "kind": 8,
+          "house": 1,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 22,
+          "house": 1,
+          "frame": 1239,
+          "id": 102
+        },
+        {
+          "kind": 8,
+          "house": 0,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 22,
+          "house": 1,
+          "frame": 1239,
+          "id": 103
+        },
+        {
+          "kind": 8,
+          "house": 1,
+          "frame": 1239,
+          "id": null
+        }
+      ],
+      "decoded_records": [
+        {
+          "kind": 28,
+          "house": 0,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 22,
+          "house": 0,
+          "frame": 1239,
+          "id": 101
+        },
+        {
+          "kind": 8,
+          "house": 0,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 22,
+          "house": 0,
+          "frame": 1239,
+          "id": 102
+        },
+        {
+          "kind": 8,
+          "house": 0,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 22,
+          "house": 0,
+          "frame": 1239,
+          "id": 103
+        },
+        {
+          "kind": 8,
+          "house": 0,
+          "frame": 1239,
+          "id": null
+        }
+      ],
+      "local_remote_house_match": false
+    },
+    {
+      "case": "mixed_protocol_1_nop_head_126",
+      "status": "PASS",
+      "packet_lengths": [
+        35
+      ],
+      "headers": [
+        {
+          "house": 0,
+          "frame": 1239,
+          "crc": "78563412",
+          "word_0b": 1,
+          "byte_0d": 5
+        }
+      ],
+      "out_remaining": 0,
+      "out_head": 4,
+      "local_records": [
+        {
+          "kind": 22,
+          "house": 0,
+          "frame": 1239,
+          "id": 101
+        },
+        {
+          "kind": 8,
+          "house": 1,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 22,
+          "house": 1,
+          "frame": 1239,
+          "id": 102
+        },
+        {
+          "kind": 8,
+          "house": 0,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 22,
+          "house": 1,
+          "frame": 1239,
+          "id": 103
+        },
+        {
+          "kind": 8,
+          "house": 1,
+          "frame": 1239,
+          "id": null
+        }
+      ],
+      "decoded_records": [
+        {
+          "kind": 28,
+          "house": 0,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 22,
+          "house": 0,
+          "frame": 1239,
+          "id": 101
+        },
+        {
+          "kind": 8,
+          "house": 0,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 22,
+          "house": 0,
+          "frame": 1239,
+          "id": 102
+        },
+        {
+          "kind": 8,
+          "house": 0,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 22,
+          "house": 0,
+          "frame": 1239,
+          "id": 103
+        },
+        {
+          "kind": 8,
+          "house": 0,
+          "frame": 1239,
+          "id": null
+        }
+      ],
+      "local_remote_house_match": false
+    },
+    {
+      "case": "mixed_protocol_1_candidate_head_0",
+      "status": "PASS",
+      "packet_lengths": [
+        20,
+        21,
+        15,
+        21
+      ],
+      "headers": [
+        {
+          "house": 0,
+          "frame": 1239,
+          "crc": "78563412",
+          "word_0b": 1,
+          "byte_0d": 5
+        },
+        {
+          "house": 1,
+          "frame": 1239,
+          "crc": "78563412",
+          "word_0b": 1,
+          "byte_0d": 5
+        },
+        {
+          "house": 0,
+          "frame": 1239,
+          "crc": "78563412",
+          "word_0b": 1,
+          "byte_0d": 5
+        },
+        {
+          "house": 1,
+          "frame": 1239,
+          "crc": "78563412",
+          "word_0b": 1,
+          "byte_0d": 5
+        }
+      ],
+      "out_remaining": 0,
+      "out_head": 6,
+      "local_records": [
+        {
+          "kind": 22,
+          "house": 0,
+          "frame": 1239,
+          "id": 101
+        },
+        {
+          "kind": 8,
+          "house": 1,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 22,
+          "house": 1,
+          "frame": 1239,
+          "id": 102
+        },
+        {
+          "kind": 8,
+          "house": 0,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 22,
+          "house": 1,
+          "frame": 1239,
+          "id": 103
+        },
+        {
+          "kind": 8,
+          "house": 1,
+          "frame": 1239,
+          "id": null
+        }
+      ],
+      "decoded_records": [
+        {
+          "kind": 28,
+          "house": 0,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 22,
+          "house": 0,
+          "frame": 1239,
+          "id": 101
+        },
+        {
+          "kind": 28,
+          "house": 1,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 8,
+          "house": 1,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 22,
+          "house": 1,
+          "frame": 1239,
+          "id": 102
+        },
+        {
+          "kind": 28,
+          "house": 0,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 8,
+          "house": 0,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 28,
+          "house": 1,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 22,
+          "house": 1,
+          "frame": 1239,
+          "id": 103
+        },
+        {
+          "kind": 8,
+          "house": 1,
+          "frame": 1239,
+          "id": null
+        }
+      ],
+      "local_remote_house_match": true
+    },
+    {
+      "case": "mixed_protocol_1_candidate_head_126",
+      "status": "PASS",
+      "packet_lengths": [
+        20,
+        21,
+        15,
+        21
+      ],
+      "headers": [
+        {
+          "house": 0,
+          "frame": 1239,
+          "crc": "78563412",
+          "word_0b": 1,
+          "byte_0d": 5
+        },
+        {
+          "house": 1,
+          "frame": 1239,
+          "crc": "78563412",
+          "word_0b": 1,
+          "byte_0d": 5
+        },
+        {
+          "house": 0,
+          "frame": 1239,
+          "crc": "78563412",
+          "word_0b": 1,
+          "byte_0d": 5
+        },
+        {
+          "house": 1,
+          "frame": 1239,
+          "crc": "78563412",
+          "word_0b": 1,
+          "byte_0d": 5
+        }
+      ],
+      "out_remaining": 0,
+      "out_head": 4,
+      "local_records": [
+        {
+          "kind": 22,
+          "house": 0,
+          "frame": 1239,
+          "id": 101
+        },
+        {
+          "kind": 8,
+          "house": 1,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 22,
+          "house": 1,
+          "frame": 1239,
+          "id": 102
+        },
+        {
+          "kind": 8,
+          "house": 0,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 22,
+          "house": 1,
+          "frame": 1239,
+          "id": 103
+        },
+        {
+          "kind": 8,
+          "house": 1,
+          "frame": 1239,
+          "id": null
+        }
+      ],
+      "decoded_records": [
+        {
+          "kind": 28,
+          "house": 0,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 22,
+          "house": 0,
+          "frame": 1239,
+          "id": 101
+        },
+        {
+          "kind": 28,
+          "house": 1,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 8,
+          "house": 1,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 22,
+          "house": 1,
+          "frame": 1239,
+          "id": 102
+        },
+        {
+          "kind": 28,
+          "house": 0,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 8,
+          "house": 0,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 28,
+          "house": 1,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 22,
+          "house": 1,
+          "frame": 1239,
+          "id": 103
+        },
+        {
+          "kind": 8,
+          "house": 1,
+          "frame": 1239,
+          "id": null
+        }
+      ],
+      "local_remote_house_match": true
+    },
+    {
+      "case": "own_equivalence_protocol_1_nop",
+      "status": "PASS",
+      "exact_wire_local_and_decode_equivalence": true
+    },
+    {
+      "case": "own_equivalence_protocol_1_candidate",
+      "status": "PASS",
+      "exact_wire_local_and_decode_equivalence": true
+    },
+    {
+      "case": "insufficient_capacity_protocol_1_vanilla",
+      "status": "PASS",
+      "stopped_at_first_send": true,
+      "packet_lengths": [
+        14
+      ],
+      "headers": [
+        {
+          "house": 0,
+          "frame": 1239,
+          "crc": "78563412",
+          "word_0b": 1,
+          "byte_0d": 5
+        }
+      ],
+      "out_remaining": 1,
+      "out_head": 0,
+      "local_records": []
+    },
+    {
+      "case": "insufficient_capacity_protocol_1_nop",
+      "status": "PASS",
+      "stopped_at_first_send": true,
+      "packet_lengths": [
+        14
+      ],
+      "headers": [
+        {
+          "house": 0,
+          "frame": 1239,
+          "crc": "78563412",
+          "word_0b": 1,
+          "byte_0d": 5
+        }
+      ],
+      "out_remaining": 1,
+      "out_head": 0,
+      "local_records": []
+    },
+    {
+      "case": "insufficient_capacity_protocol_1_candidate",
+      "status": "PASS",
+      "stopped_at_first_send": true,
+      "packet_lengths": [
+        14
+      ],
+      "headers": [
+        {
+          "house": 1,
+          "frame": 1239,
+          "crc": "78563412",
+          "word_0b": 1,
+          "byte_0d": 5
+        }
+      ],
+      "out_remaining": 1,
+      "out_head": 0,
+      "local_records": []
+    },
+    {
+      "case": "local_dolist_pressure_protocol_1_vanilla",
+      "status": "PASS",
+      "no_outlist_consumption": true,
+      "packet_lengths": [
+        14
+      ]
+    },
+    {
+      "case": "local_dolist_pressure_protocol_1_candidate",
+      "status": "PASS",
+      "no_outlist_consumption": true,
+      "packet_lengths": [
+        14
+      ]
+    },
+    {
+      "case": "mixed_protocol_2_vanilla_head_0",
+      "status": "PASS",
+      "packet_lengths": [
+        35
+      ],
+      "headers": [
+        {
+          "house": 0,
+          "frame": 1239,
+          "crc": "78563412",
+          "word_0b": 1,
+          "byte_0d": 5
+        }
+      ],
+      "out_remaining": 0,
+      "out_head": 6,
+      "local_records": [
+        {
+          "kind": 22,
+          "house": 0,
+          "frame": 1239,
+          "id": 101
+        },
+        {
+          "kind": 8,
+          "house": 0,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 22,
+          "house": 0,
+          "frame": 1239,
+          "id": 102
+        },
+        {
+          "kind": 8,
+          "house": 0,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 22,
+          "house": 0,
+          "frame": 1239,
+          "id": 103
+        },
+        {
+          "kind": 8,
+          "house": 0,
+          "frame": 1239,
+          "id": null
+        }
+      ],
+      "decoded_records": [
+        {
+          "kind": 28,
+          "house": 0,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 22,
+          "house": 0,
+          "frame": 1239,
+          "id": 101
+        },
+        {
+          "kind": 8,
+          "house": 0,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 22,
+          "house": 0,
+          "frame": 1239,
+          "id": 102
+        },
+        {
+          "kind": 8,
+          "house": 0,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 22,
+          "house": 0,
+          "frame": 1239,
+          "id": 103
+        },
+        {
+          "kind": 8,
+          "house": 0,
+          "frame": 1239,
+          "id": null
+        }
+      ],
+      "local_remote_house_match": true
+    },
+    {
+      "case": "mixed_protocol_2_vanilla_head_126",
+      "status": "PASS",
+      "packet_lengths": [
+        35
+      ],
+      "headers": [
+        {
+          "house": 0,
+          "frame": 1239,
+          "crc": "78563412",
+          "word_0b": 1,
+          "byte_0d": 5
+        }
+      ],
+      "out_remaining": 0,
+      "out_head": 4,
+      "local_records": [
+        {
+          "kind": 22,
+          "house": 0,
+          "frame": 1239,
+          "id": 101
+        },
+        {
+          "kind": 8,
+          "house": 0,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 22,
+          "house": 0,
+          "frame": 1239,
+          "id": 102
+        },
+        {
+          "kind": 8,
+          "house": 0,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 22,
+          "house": 0,
+          "frame": 1239,
+          "id": 103
+        },
+        {
+          "kind": 8,
+          "house": 0,
+          "frame": 1239,
+          "id": null
+        }
+      ],
+      "decoded_records": [
+        {
+          "kind": 28,
+          "house": 0,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 22,
+          "house": 0,
+          "frame": 1239,
+          "id": 101
+        },
+        {
+          "kind": 8,
+          "house": 0,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 22,
+          "house": 0,
+          "frame": 1239,
+          "id": 102
+        },
+        {
+          "kind": 8,
+          "house": 0,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 22,
+          "house": 0,
+          "frame": 1239,
+          "id": 103
+        },
+        {
+          "kind": 8,
+          "house": 0,
+          "frame": 1239,
+          "id": null
+        }
+      ],
+      "local_remote_house_match": true
+    },
+    {
+      "case": "mixed_protocol_2_nop_head_0",
+      "status": "PASS",
+      "packet_lengths": [
+        35
+      ],
+      "headers": [
+        {
+          "house": 0,
+          "frame": 1239,
+          "crc": "78563412",
+          "word_0b": 1,
+          "byte_0d": 5
+        }
+      ],
+      "out_remaining": 0,
+      "out_head": 6,
+      "local_records": [
+        {
+          "kind": 22,
+          "house": 0,
+          "frame": 1239,
+          "id": 101
+        },
+        {
+          "kind": 8,
+          "house": 1,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 22,
+          "house": 1,
+          "frame": 1239,
+          "id": 102
+        },
+        {
+          "kind": 8,
+          "house": 0,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 22,
+          "house": 1,
+          "frame": 1239,
+          "id": 103
+        },
+        {
+          "kind": 8,
+          "house": 1,
+          "frame": 1239,
+          "id": null
+        }
+      ],
+      "decoded_records": [
+        {
+          "kind": 28,
+          "house": 0,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 22,
+          "house": 0,
+          "frame": 1239,
+          "id": 101
+        },
+        {
+          "kind": 8,
+          "house": 0,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 22,
+          "house": 0,
+          "frame": 1239,
+          "id": 102
+        },
+        {
+          "kind": 8,
+          "house": 0,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 22,
+          "house": 0,
+          "frame": 1239,
+          "id": 103
+        },
+        {
+          "kind": 8,
+          "house": 0,
+          "frame": 1239,
+          "id": null
+        }
+      ],
+      "local_remote_house_match": false
+    },
+    {
+      "case": "mixed_protocol_2_nop_head_126",
+      "status": "PASS",
+      "packet_lengths": [
+        35
+      ],
+      "headers": [
+        {
+          "house": 0,
+          "frame": 1239,
+          "crc": "78563412",
+          "word_0b": 1,
+          "byte_0d": 5
+        }
+      ],
+      "out_remaining": 0,
+      "out_head": 4,
+      "local_records": [
+        {
+          "kind": 22,
+          "house": 0,
+          "frame": 1239,
+          "id": 101
+        },
+        {
+          "kind": 8,
+          "house": 1,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 22,
+          "house": 1,
+          "frame": 1239,
+          "id": 102
+        },
+        {
+          "kind": 8,
+          "house": 0,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 22,
+          "house": 1,
+          "frame": 1239,
+          "id": 103
+        },
+        {
+          "kind": 8,
+          "house": 1,
+          "frame": 1239,
+          "id": null
+        }
+      ],
+      "decoded_records": [
+        {
+          "kind": 28,
+          "house": 0,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 22,
+          "house": 0,
+          "frame": 1239,
+          "id": 101
+        },
+        {
+          "kind": 8,
+          "house": 0,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 22,
+          "house": 0,
+          "frame": 1239,
+          "id": 102
+        },
+        {
+          "kind": 8,
+          "house": 0,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 22,
+          "house": 0,
+          "frame": 1239,
+          "id": 103
+        },
+        {
+          "kind": 8,
+          "house": 0,
+          "frame": 1239,
+          "id": null
+        }
+      ],
+      "local_remote_house_match": false
+    },
+    {
+      "case": "mixed_protocol_2_candidate_head_0",
+      "status": "PASS",
+      "packet_lengths": [
+        20,
+        21,
+        15,
+        21
+      ],
+      "headers": [
+        {
+          "house": 0,
+          "frame": 1239,
+          "crc": "78563412",
+          "word_0b": 1,
+          "byte_0d": 5
+        },
+        {
+          "house": 1,
+          "frame": 1239,
+          "crc": "78563412",
+          "word_0b": 1,
+          "byte_0d": 5
+        },
+        {
+          "house": 0,
+          "frame": 1239,
+          "crc": "78563412",
+          "word_0b": 1,
+          "byte_0d": 5
+        },
+        {
+          "house": 1,
+          "frame": 1239,
+          "crc": "78563412",
+          "word_0b": 1,
+          "byte_0d": 5
+        }
+      ],
+      "out_remaining": 0,
+      "out_head": 6,
+      "local_records": [
+        {
+          "kind": 22,
+          "house": 0,
+          "frame": 1239,
+          "id": 101
+        },
+        {
+          "kind": 8,
+          "house": 1,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 22,
+          "house": 1,
+          "frame": 1239,
+          "id": 102
+        },
+        {
+          "kind": 8,
+          "house": 0,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 22,
+          "house": 1,
+          "frame": 1239,
+          "id": 103
+        },
+        {
+          "kind": 8,
+          "house": 1,
+          "frame": 1239,
+          "id": null
+        }
+      ],
+      "decoded_records": [
+        {
+          "kind": 28,
+          "house": 0,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 22,
+          "house": 0,
+          "frame": 1239,
+          "id": 101
+        },
+        {
+          "kind": 28,
+          "house": 1,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 8,
+          "house": 1,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 22,
+          "house": 1,
+          "frame": 1239,
+          "id": 102
+        },
+        {
+          "kind": 28,
+          "house": 0,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 8,
+          "house": 0,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 28,
+          "house": 1,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 22,
+          "house": 1,
+          "frame": 1239,
+          "id": 103
+        },
+        {
+          "kind": 8,
+          "house": 1,
+          "frame": 1239,
+          "id": null
+        }
+      ],
+      "local_remote_house_match": true
+    },
+    {
+      "case": "mixed_protocol_2_candidate_head_126",
+      "status": "PASS",
+      "packet_lengths": [
+        20,
+        21,
+        15,
+        21
+      ],
+      "headers": [
+        {
+          "house": 0,
+          "frame": 1239,
+          "crc": "78563412",
+          "word_0b": 1,
+          "byte_0d": 5
+        },
+        {
+          "house": 1,
+          "frame": 1239,
+          "crc": "78563412",
+          "word_0b": 1,
+          "byte_0d": 5
+        },
+        {
+          "house": 0,
+          "frame": 1239,
+          "crc": "78563412",
+          "word_0b": 1,
+          "byte_0d": 5
+        },
+        {
+          "house": 1,
+          "frame": 1239,
+          "crc": "78563412",
+          "word_0b": 1,
+          "byte_0d": 5
+        }
+      ],
+      "out_remaining": 0,
+      "out_head": 4,
+      "local_records": [
+        {
+          "kind": 22,
+          "house": 0,
+          "frame": 1239,
+          "id": 101
+        },
+        {
+          "kind": 8,
+          "house": 1,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 22,
+          "house": 1,
+          "frame": 1239,
+          "id": 102
+        },
+        {
+          "kind": 8,
+          "house": 0,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 22,
+          "house": 1,
+          "frame": 1239,
+          "id": 103
+        },
+        {
+          "kind": 8,
+          "house": 1,
+          "frame": 1239,
+          "id": null
+        }
+      ],
+      "decoded_records": [
+        {
+          "kind": 28,
+          "house": 0,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 22,
+          "house": 0,
+          "frame": 1239,
+          "id": 101
+        },
+        {
+          "kind": 28,
+          "house": 1,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 8,
+          "house": 1,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 22,
+          "house": 1,
+          "frame": 1239,
+          "id": 102
+        },
+        {
+          "kind": 28,
+          "house": 0,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 8,
+          "house": 0,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 28,
+          "house": 1,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 22,
+          "house": 1,
+          "frame": 1239,
+          "id": 103
+        },
+        {
+          "kind": 8,
+          "house": 1,
+          "frame": 1239,
+          "id": null
+        }
+      ],
+      "local_remote_house_match": true
+    },
+    {
+      "case": "own_equivalence_protocol_2_nop",
+      "status": "PASS",
+      "exact_wire_local_and_decode_equivalence": true
+    },
+    {
+      "case": "own_equivalence_protocol_2_candidate",
+      "status": "PASS",
+      "exact_wire_local_and_decode_equivalence": true
+    },
+    {
+      "case": "insufficient_capacity_protocol_2_vanilla",
+      "status": "PASS",
+      "stopped_at_first_send": true,
+      "packet_lengths": [
+        14
+      ],
+      "headers": [
+        {
+          "house": 0,
+          "frame": 1239,
+          "crc": "78563412",
+          "word_0b": 1,
+          "byte_0d": 5
+        }
+      ],
+      "out_remaining": 1,
+      "out_head": 0,
+      "local_records": []
+    },
+    {
+      "case": "insufficient_capacity_protocol_2_nop",
+      "status": "PASS",
+      "stopped_at_first_send": true,
+      "packet_lengths": [
+        14
+      ],
+      "headers": [
+        {
+          "house": 0,
+          "frame": 1239,
+          "crc": "78563412",
+          "word_0b": 1,
+          "byte_0d": 5
+        }
+      ],
+      "out_remaining": 1,
+      "out_head": 0,
+      "local_records": []
+    },
+    {
+      "case": "insufficient_capacity_protocol_2_candidate",
+      "status": "PASS",
+      "stopped_at_first_send": true,
+      "packet_lengths": [
+        14
+      ],
+      "headers": [
+        {
+          "house": 1,
+          "frame": 1239,
+          "crc": "78563412",
+          "word_0b": 1,
+          "byte_0d": 5
+        }
+      ],
+      "out_remaining": 1,
+      "out_head": 0,
+      "local_records": []
+    },
+    {
+      "case": "local_dolist_pressure_protocol_2_vanilla",
+      "status": "PASS",
+      "no_outlist_consumption": true,
+      "packet_lengths": [
+        14
+      ]
+    },
+    {
+      "case": "local_dolist_pressure_protocol_2_candidate",
+      "status": "PASS",
+      "no_outlist_consumption": true,
+      "packet_lengths": [
+        14
+      ]
+    },
+    {
+      "case": "non_whitelisted_event_protocol_1",
+      "status": "PASS",
+      "only_sell_destruct_retain_foreign_house": true,
+      "packet_houses": [
+        1,
+        0,
+        1,
+        0
+      ]
+    },
+    {
+      "case": "non_whitelisted_event_protocol_2",
+      "status": "PASS",
+      "only_sell_destruct_retain_foreign_house": true,
+      "packet_houses": [
+        1,
+        0,
+        1,
+        0
+      ]
+    }
+  ]
+}

@@ -78,3 +78,19 @@ extern "C" int GuardedViewResize(unsigned enableZoom,int width,int height){
  __try {((void(__cdecl*)())enableZoom)();return ((bool(__fastcall*)(int,int))0x560BF0)(width,height)?1:0;}
  __except(AssistExceptionFilter(_exception_info(),12)){return -1;}
 }
+
+
+// Native sender callback: the outer wrapper owns one capture lease across all
+// original packing/timing/transport calls; cleanup runs before releasing it.
+extern "C" int __cdecl AssistNetworkSend(unsigned,unsigned,int,int,int);
+extern "C" void __cdecl AssistNetworkSenderAbort();
+extern "C" int __cdecl GuardedNetworkSend(unsigned transport,unsigned buffer,int capacity,int delay,int serial){
+ const unsigned long savedError=GetLastError();
+ unsigned token=BeginAssistCapture();if(!token){SetLastError(savedError);return 0;}
+ int result=0;
+ __try {
+  __try {result=AssistNetworkSend(transport,buffer,capacity,delay,serial);}
+  __except(AssistExceptionFilter(_exception_info(),13)){AssistNetworkSenderAbort();}
+ }__finally {EndAssistCapture(token);SetLastError(savedError);}
+ return result;
+}

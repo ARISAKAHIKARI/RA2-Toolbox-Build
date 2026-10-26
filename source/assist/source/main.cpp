@@ -103,7 +103,7 @@ static_assert(external::status::Maximum<=MaxLabels,"Unit status markers share th
 static assist::PlayerTestInfo playerChoices[32]{};static int playerChoiceCount;static uint32_t playerChoicesMatch;
 static DWORD playerChoicesTick,playerChoicesPid;static std::wstring destructPendingTarget;
 static int playerChoicesCurrent=-1;static bool destructForeignNoticeShown;
-static constexpr const wchar_t* DestructForeignNotice=L"原版联机发送会改写为本方，暂不支持自毁其他所属方。";
+static constexpr const wchar_t* DestructForeignNotice=L"联机跨所属方自毁需要“保留事件所属方”已启用；当前关闭、恢复中或不可用，本次不会发送。";
 static uint64_t techAcknowledgedHash=0;static bool techMode;static bool autoRevealNewMatch=false;static uint32_t autoRevealMatch=0,autoRevealRetry=0,autoRevealDone=0,autoRevealPID=0;
 static uint32_t schedulerMode=0,schedulerTarget=0,megaQueueMode=0,objectQueueMode=0;
 static HWND schedulerEntryCombo,megaQueueCombo,objectQueueCombo;
@@ -467,6 +467,7 @@ static uint32_t displayMatch(){return externalData&&externalData->status==1?exte
 static bool uninitializedBridgeTimedOut(){return shared&&!commandMatch()&&attachAt&&DWORD(GetTickCount()-attachAt)>8000&&(!lastData||DWORD(GetTickCount()-lastData)>8000)&&shared->request==shared->ack;}
 static bool commandChannelReady(){return controllink::ready(commandLink());}
 static bool commandFresh(DWORD now){return commandChannelReady()&&DWORD(now-lastData)<1500;}
+static bool networkHouseReady(){return extra.networkHousePreserve&&shared&&shared->networkHousePreserve&&shared->networkHouseStatus==1;}
 static std::wstring commandWaitReason(){
  if(!shared)return bridgeFailure.empty()?L"正在连接游戏，指令尚未提交。":bridgeFailure;
  const auto health=gameinput::health(hook);
@@ -537,12 +538,12 @@ static void send(int command,int arg=0,int arg2=0,int retries=0,bool fromQueue=f
   notify(L"自毁请求未提交：对局已改变，请重新选择所属方。");return;
  }
  if(command==DestructPlayer){
-  // The native multiplayer sender rewrites the event House to the local
-  // player. Refuse a foreign target here; Runtime rechecks at final enqueue.
+  // Without the complete active adapter, native multiplayer sending rewrites
+  // the event House. Runtime rechecks adapter availability at final enqueue.
   long seq=shared->seq;if(seq&1){notify(L"所属方列表正在更新，本次自毁请求未提交。");return;}
-  MemoryBarrier();int session=shared->data.session,current=shared->playerCurrent;MemoryBarrier();
+  MemoryBarrier();int session=shared->data.session,current=shared->playerCurrent;bool preserve=networkHouseReady();MemoryBarrier();
   if(seq!=shared->seq){notify(L"所属方列表正在更新，本次自毁请求未提交。");return;}
-  if(eventdelivery::isMultiplayer(session)&&(current<0||requestToken!=uint32_t(current))){notify(DestructForeignNotice);return;}
+  if(eventdelivery::isMultiplayer(session)&&(current<0||(requestToken!=uint32_t(current)&&!preserve))){notify(DestructForeignNotice);return;}
  }
  if(typeIndexedCommand(command,arg)&&intentTypes!=typeListHash(snap.types,snap.typeCount)){
   if(fromQueue&&(command==ProduceReserved||command==ProduceDeferred))constructionResult(-13,0,uint32_t(arg2),requestToken);
@@ -713,6 +714,8 @@ static void servicePlanner(){
 }
 struct RetiredBridge {Shared*state;HANDLE mapping;HMODULE module;gameinput::Subscription hook;HWND window;DWORD lastWake;DWORD thread;std::shared_ptr<const external::ProcessConnection> process;};
 static std::vector<RetiredBridge> retiredBridges;
+static bool bridgeClosePending=false;
+static constexpr UINT_PTR BridgeCloseTimer=3902;
 static void wakeRetiredBridge(RetiredBridge&r){
  // HWND destruction does not destroy a thread's message queue. Wake that
  // queue directly so the existing hook can acknowledge its own stop.
@@ -1452,6 +1455,25 @@ static void updateModeStatus(DWORD now){
  SetWindowTextW(GetDlgItem(ui,888),!extra.scrollRefreshMode?L"高刷策略：仅光标（沿用光标页设置）":shared&&shared->scrollRefreshStatus<0?L"高刷策略：接口不兼容，保持原版画面刷新":shared&&shared->scrollRefreshStatus==1?(extra.scrollRefreshMode==3?L"高刷策略：强制高刷 · 实验性功能已启用":extra.scrollRefreshMode==2?L"高刷策略：全部 · 实验性功能已启用":L"高刷策略：光标＋拖屏 · 实验性功能已启用"):L"高刷策略：等待游戏前台就绪");
  if(shared&&shared->scrollRefreshStatus==1&&shared->scrollRefreshRateMilli){wchar_t label[160];swprintf(label,160,L"%s · 绘制调用 %.1f Hz（非屏幕 FPS） · 最长间隔 %.1f ms",extra.scrollRefreshMode==3?L"强制高刷":extra.scrollRefreshMode==2?L"全部（实验性）":L"光标＋拖屏（实验性）",shared->scrollRefreshRateMilli/1000.0,shared->scrollRefreshMaxGapUs/1000.0);SetWindowTextW(GetDlgItem(ui,888),label);}
  SetWindowTextW(GetDlgItem(ui,9184),!extra.lowDamageFilter?L"低伤害过滤：关闭":shared&&shared->lowDamageStatus==1?L"低伤害过滤：原生索敌及工具自动命令":shared&&shared->lowDamageStatus==2?L"低伤害过滤：联机仅工具自动命令":L"低伤害过滤：等待就绪或补丁冲突");
+ {
+  const bool fresh=shared&&commandFresh(now);
+  auto stateText=[&](bool requested,int state){return !fresh?(requested?L"等待对局及连接就绪":L"关闭"):
+   state<0?L"不可用，请检查游戏版本或功能冲突":state==2?L"正在处理待发事件并恢复":
+   state==1?(requested?L"已启用（实验性）":L"正在关闭"):requested?L"等待适配启用":L"关闭";};
+  std::wstring network=L"事件所属方保留：";network+=stateText(extra.networkHousePreserve,shared?shared->networkHouseStatus:0);
+  SetWindowTextW(GetDlgItem(ui,9188),network.c_str());
+  std::wstring sell=L"原生变卖光标：";
+  if(fresh&&extra.nativeSellCursor&&eventdelivery::isMultiplayer(incoming.session)&&!networkHouseReady()&&shared->nativeSellCursorStatus==0)sell+=L"等待事件所属方保留已启用";
+  else sell+=stateText(extra.nativeSellCursor,shared?shared->nativeSellCursorStatus:0);
+  SetWindowTextW(GetDlgItem(ui,9190),sell.c_str());
+  std::wstring mega=L"原生命令仲裁：";mega+=stateText(extra.nativeMegaGateway,shared?shared->nativeMegaGatewayStatus:0);
+  SetWindowTextW(GetDlgItem(ui,9192),mega.c_str());
+  std::wstring owner=L"控制命令所属方：";
+  if(extra.controlCommandOwner&&!extra.controlAll)owner+=L"等待开启跨玩家操控";
+  else if(fresh&&extra.controlCommandOwner&&eventdelivery::isMultiplayer(incoming.session)&&!networkHouseReady())owner+=L"等待事件所属方保留已启用";
+  else owner+=stateText(extra.controlCommandOwner,shared?shared->controlCommandOwnerStatus:0);
+  SetWindowTextW(GetDlgItem(ui,9194),owner.c_str());
+ }
  SetWindowTextW(GetDlgItem(ui,813),(L"步兵强制进入建筑："+(extra.c4Test&&snap.c4TestStatus==1&&!phase&&infantryEntryResultMatch==commandMatch()&&!infantryEntryResult.empty()?infantryEntryResult:riskText(extra.c4Test,snap.c4TestStatus))).c_str());
  std::wstring progress=snap.techOpen==2?L"经典兼容 · 生产进度：":L"生产进度：";uint32_t owner=0;
  if(techMode&&commandFresh(now)&&externalReader.readFresh(0xA83D4C,&owner,4)&&owner>=0x10000){
@@ -1488,7 +1510,7 @@ static void updatePlayerTestUI(bool force=false){
  const bool idle=ready&&shared->request==shared->ack&&shared->ack==ack&&!commandQueue.size;
  const int row=int(SendDlgItemMessageW(ui,862,CB_GETCURSEL,0,0));
  const bool cached=ready&&playerChoicesTick&&DWORD(now-playerChoicesTick)<500&&playerChoicesPid==pid&&playerChoicesMatch==commandMatch();
- const bool cachedAllowed=row>=0&&row<playerChoiceCount&&(!eventdelivery::isMultiplayer(incoming.session)||playerChoices[row].index==playerChoicesCurrent);
+ const bool cachedAllowed=row>=0&&row<playerChoiceCount&&(!eventdelivery::isMultiplayer(incoming.session)||(playerChoicesCurrent>=0&&(playerChoices[row].index==playerChoicesCurrent||networkHouseReady())));
  EnableWindow(GetDlgItem(ui,862),idle&&cached&&playerChoiceCount>0);
  EnableWindow(GetDlgItem(ui,9185),idle&&cached&&cachedAllowed);
  if(!ready){playerChoicesTick=0;return;}
@@ -1508,11 +1530,11 @@ static void updatePlayerTestUI(bool force=false){
  }
  playerChoicesTick=now;playerChoicesPid=pid;playerChoicesCurrent=current;
  const int selected=int(SendDlgItemMessageW(ui,862,CB_GETCURSEL,0,0));
- const bool foreign=selected>=0&&selected<count&&eventdelivery::isMultiplayer(incoming.session)&&list[selected].index!=current;
+ const bool foreign=selected>=0&&selected<count&&eventdelivery::isMultiplayer(incoming.session)&&(current<0||(list[selected].index!=current&&!networkHouseReady()));
  EnableWindow(GetDlgItem(ui,862),idle&&epoch==commandMatch()&&count>0);
  EnableWindow(GetDlgItem(ui,9185),idle&&epoch==commandMatch()&&selected>=0&&selected<count&&!foreign);
  if(foreign){SetWindowTextW(GetDlgItem(ui,9186),DestructForeignNotice);destructForeignNoticeShown=true;}
- else if(destructForeignNoticeShown){SetWindowTextW(GetDlgItem(ui,9186),L"自毁：联机仅支持当前本方；单机可明确选择其他有效所属方。");destructForeignNoticeShown=false;}
+ else if(destructForeignNoticeShown){SetWindowTextW(GetDlgItem(ui,9186),L"自毁：所选所属方可提交实验请求；已入队不代表已自毁。");destructForeignNoticeShown=false;}
  std::wstring label=L"跨玩家操控：";label+=!extra.controlAll?L"关闭":status==1?L"已启用（实验性）":status<0?L"此版本不兼容，未启用":L"等待生效";
  label+=L" · 当前玩家 "+std::to_wstring(current+1);SetWindowTextW(GetDlgItem(ui,865),label.c_str());
 }
@@ -1748,7 +1770,23 @@ static void bindSuper(){std::string id=selectedSuperID();if(id.empty()){notify(L
 #include "pointer_host.h"
 #include "hotkey_host.h"
 #include "auto_settings_ui.h"
+static_assert(BridgeCloseTimer!=AutoSaveTimer&&BridgeCloseTimer!=1&&BridgeCloseTimer!=2,"distinct close cleanup timer");
 static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
+ if(bridgeClosePending){
+  if(msg==WM_TIMER&&wp==BridgeCloseTimer){
+   reapBridges();
+   if(retiredBridges.empty()){KillTimer(w,BridgeCloseTimer);DestroyWindow(w);}
+   return 0;
+  }
+  // Retired subscriptions keep the Runtime awake; stop all new Host work
+  // while the sender restores its patches and acknowledges detach.
+  if(msg==WM_TIMER||msg==WM_COMMAND||msg==WM_HOTKEY||msg==FrameMessage||
+     msg==InputMessage||msg==ControlMessage||msg==DataMessage)return 0;
+#ifdef RA2_UNIFIED
+  if(msg==suite::ModuleEnable||msg==suite::ApplyDisplaySetting||
+     msg==suite::RefreshRateChanged||msg==suite::DisplaySettingsChanged)return 0;
+#endif
+ }
 #ifdef RA2_UNIFIED
  if(suite::layoutMessage(w,msg,lp))return 0;
  if(msg==suite::SelectCategory){int page=std::clamp(int(wp),0,2);if(activePage!=page){activePage=page;scrollY=scrollX=0;SetWindowTextW(GetDlgItem(w,989),page==0?L"战术控制":page==1?L"战场信息":L"实验功能");layoutPanel();}return 0;}
@@ -1803,7 +1841,7 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
   if(!enabled||!shared||!commandFresh(GetTickCount())||incoming.chat||shared->request!=shared->ack||shared->ack!=ack||commandQueue.size){notify(L"请等待当前对局就绪及上一条指令处理完成，再提交自毁请求。");return 0;}
   if(!playerChoicesTick||DWORD(GetTickCount()-playerChoicesTick)>=500||playerChoicesPid!=pid||playerChoicesMatch!=commandMatch()||row<0||row>=playerChoiceCount){notify(L"请先从最新列表明确选择一个所属方；自毁将作用于该方全部单位和建筑。");return 0;}
   const auto selected=playerChoices[row];
-  if(eventdelivery::isMultiplayer(incoming.session)&&selected.index!=playerChoicesCurrent){notify(DestructForeignNotice);return 0;}
+  if(eventdelivery::isMultiplayer(incoming.session)&&(playerChoicesCurrent<0||(selected.index!=playerChoicesCurrent&&!networkHouseReady()))){notify(DestructForeignNotice);return 0;}
   destructPendingTarget=L"所属方 #"+std::to_wstring(selected.index)+L" · "+std::wstring((wchar_t*)selected.name);
   uint32_t before=shared->request;
   send(DestructPlayer,int(selected.pointer),int(selected.id),0,false,uint32_t(selected.index));
@@ -1952,7 +1990,18 @@ if(id==991){wchar_t query[128]{};GetWindowTextW(featureSearch,query,128);std::ws
 #ifdef RA2_UNIFIED
  if(wp!=suite::CloseToken){suite::requestClose();return 0;}
 #endif
- flushAutoSettings();DestroyWindow(w);return 0;case WM_DESTROY:worldrender::worker.shutdown();formationhost::shutdown();watchhost::shutdown();watchwindows::destroy();minimap::destroy();destroyAircraftButton();destroyConstruction();KillTimer(w,AutoSaveTimer);save();stopClock();KillTimer(w,1);KillTimer(w,2);detach();for(int id:registeredKeyIDs)UnregisterHotKey(w,id);registeredKeyIDs.clear();PostQuitMessage(0);return 0;}return DefWindowProcW(w,msg,wp,lp);}
+ if(!bridgeClosePending){
+  bridgeClosePending=true;flushAutoSettings();stopClock();KillTimer(w,1);KillTimer(w,2);
+  for(int id:registeredKeyIDs)UnregisterHotKey(w,id);registeredKeyIDs.clear();
+  detach();
+ }
+ if(retiredBridges.empty()){DestroyWindow(w);return 0;}
+ // The suite waits for this pane's thread before destroying the parent. Keep
+ // both windows alive; a time limit must not force removal of a blocked gate.
+ setStatus(L"正在恢复游戏并退出；若持续等待，请退出游戏后完成清理。");
+ SetWindowTextW(GetAncestor(w,GA_ROOT),L"红警工具箱 · 正在恢复游戏；若持续等待，请退出游戏");
+ SetTimer(w,BridgeCloseTimer,100,nullptr);return 0;
+ case WM_DESTROY:worldrender::worker.shutdown();formationhost::shutdown();watchhost::shutdown();watchwindows::destroy();minimap::destroy();destroyAircraftButton();destroyConstruction();KillTimer(w,AutoSaveTimer);KillTimer(w,BridgeCloseTimer);save();stopClock();KillTimer(w,1);KillTimer(w,2);detach();for(int id:registeredKeyIDs)UnregisterHotKey(w,id);registeredKeyIDs.clear();PostQuitMessage(0);return 0;}return DefWindowProcW(w,msg,wp,lp);}
 int WINAPI wWinMain(HINSTANCE h,HINSTANCE,LPWSTR,int show){SetProcessDPIAware();HANDLE single=CreateMutexW(nullptr,FALSE,L"Local\\RA2Assist_v013_Host");if(GetLastError()==ERROR_ALREADY_EXISTS){MessageBoxW(nullptr,L"战术助手已在运行。",L"尤里战术助手",MB_OK);return 0;}
  wchar_t p[2048];GetModuleFileNameW(nullptr,p,2048);root=p;root.resize(root.find_last_of(L"\\/"));autolog::initialize(root);autolog::write(L"host-start criticalLog=automatic rotation=2MiB+2 backups; verbose Debug.Diagnostics is independent");loadAdditionalSettings();
  megaQueueMode=value(L"Orders",L"MegaMissionBackend",0)==1?1u:0u;

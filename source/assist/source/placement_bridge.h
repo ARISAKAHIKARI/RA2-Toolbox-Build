@@ -25,15 +25,22 @@ static bool riskReady(bool captured=false){
 }
 #include "shroud_render_bridge.h"
 static int smallMapCameraAction(uint32_t),highScrollAction(uint32_t);
+static int nativeSellCursorAction(unsigned,uint32_t,uint32_t);static int nativeMegaGatewayAction(unsigned,uint32_t,uint32_t);
+static int controlCommandOwnerAction(unsigned,uint32_t,uint32_t);static int controlObjectOwnerAction(unsigned,uint32_t,uint32_t);
 extern "C" int __cdecl AssistRiskAction(unsigned op,unsigned object,unsigned house){
  // Only GuardedRiskAction calls this helper, after obtaining a Capture lease.
  // Keep live world checks, but don't re-enter Validate on every drawn cell.
+ if(op==13)return controlCommandOwnerAction(op,object,house);
+ if(op==14)return controlObjectOwnerAction(op,object,house);
  if(op==8)return riskReady(true)?highScrollAction(object):0;
  if(op==7)return riskReady(true)?smallMapCameraAction(object):0;
  if(op==5)return techGate(object,house);
  if(op==3&&(!riskRenderActive||!sh||!sh->renderReveal))return 0;
  if(!riskReady(true)){if(op==3)riskRenderRedrawPending=true;return 0;}
- if(op==6)return riskControlActive&&sh->controlAll&&playableHouse(house);
+ if(op==9||op==10)return nativeSellCursorAction(op,object,house);
+ if(op==11)return nativeMegaGatewayAction(op,object,house);
+ if(op==6)return riskControlActive&&sh->controlAll&&playableHouse(house)&&
+  (!sh->controlCommandOwner||house==lastHouse||controlCommandOwnerReady(house));
  if(op==4)return 0; // retired: preserve native movement and C4 capability checks
  if(op==3)return sh->renderReveal==2?halfShroud(object,house!=0):1;
  if(op==0)return riskPlacementActive&&(sh->flags&BuildAnywhere)&&house==get<uint32_t>(lastHouse+0x30)&&object>=0x10000&&
@@ -482,7 +489,10 @@ static void placementTick(){
  riskLowDamageAllHouses=riskLowDamageActive&&eventdelivery::isMultiplayer(get<int>(0xA8B238));
  sh->lowDamageStatus=!lowOK?-2:!sh->lowDamageFilter?0:riskLowDamageActive?1:2;
  static uint32_t priorStrategy=0;
- bool priorRender=riskRenderActive;controlSitesTick(sh->controlAll!=0);
+ bool priorRender=riskRenderActive;
+ const bool ownerGuardReady=!sh->controlCommandOwner||(controlCommandOwnerReady(lastHouse)&&
+  (!eventdelivery::isMultiplayer(get<int>(0xA8B238))||networkHousePreserveReady()));
+ controlSitesTick(sh->controlAll!=0&&ownerGuardReady);
  // Infantry entry uses ordinary task/planning events. Never install either
  // capability override, including when an older configuration enables C4Test.
  riskC4Active=false;

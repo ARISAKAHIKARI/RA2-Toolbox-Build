@@ -8,6 +8,9 @@ struct AdditionalSettings {
  uint32_t missionModeKeys[3]{}; // Sleep, Guard, Harmless; empty by default
  bool formationEnabled=false;uint32_t formationHold=18,formationKeys[6]={'Z','X','C','V','B','N'},formationMouse=2;
  bool controlAll=false,switchPlayerEnabled=false;
+ bool controlCommandOwner=false;
+ bool networkHousePreserve=false,nativeSellCursor=false;
+ bool nativeMegaGateway=true;
  bool techEnhance=false;int placementImplementation=0;
  bool viewZoomEnabled=false;int viewZoomPercent=100;
  int scrollRefreshMode=0; // cursor / scrolling / scene / forced redraw

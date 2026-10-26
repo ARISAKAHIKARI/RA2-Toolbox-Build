@@ -1,0 +1,389 @@
+{
+  "scope": "Compiled enemy-building Sell opt-in, original packet constructor and receiver gate.\n\nSynthetic world/Win32 and click coordinates. Original receiver is executed with\nobject lookup/old-planning cleanup and final Sell call mocked. This does not run\nthe complete DoList scheduler, refunds, building removal, or remote transport;\nqueue acceptance does not certify enemy AI or multiplayer execution.\n",
+  "dll_sha256": "24c405af124ec60c88b92c47b0cbaca9ab02ba1ed7530f5631f442520f43a08c",
+  "game_fixture_sha256": "2fcb478cb2e0de00b1af1a6c82e9b55e56e0b555f20f3c0a018e8aaddc58b0c8",
+  "game_tested": false,
+  "multiplayer_tested": false,
+  "results": [
+    {
+      "case": "queue_0_enemy",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_0_default_off",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_0_no_modifier",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_0_per_feature",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_0_wrong_button",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_0_native_backend_requested",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_0_allied",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_0_own",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_0_neutral",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_0_passive",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_0_observer",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_0_observer_node",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_0_defeated",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_0_invalid_owner",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_0_invalid_index",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_0_wrong_kind",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_0_dead",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_0_stale",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_0_chat",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_0_queue_full",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_0_repeat_request",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_5_enemy",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_5_default_off",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_5_no_modifier",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_5_per_feature",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_5_wrong_button",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_5_native_backend_requested",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_5_allied",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_5_own",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_5_neutral",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_5_passive",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_5_observer",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_5_observer_node",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_5_defeated",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_5_invalid_owner",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_5_invalid_index",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_5_wrong_kind",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_5_dead",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_5_stale",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_5_chat",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_5_queue_full",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_5_repeat_request",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_3_enemy",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_3_default_off",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_3_no_modifier",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_3_per_feature",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_3_wrong_button",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_3_native_backend_requested",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_3_allied",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_3_own",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_3_neutral",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_3_passive",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_3_observer",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_3_observer_node",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_3_defeated",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_3_invalid_owner",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_3_invalid_index",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_3_wrong_kind",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_3_dead",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_3_stale",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_3_chat",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_3_queue_full",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_3_repeat_request",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_4_enemy",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_4_default_off",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_4_no_modifier",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_4_per_feature",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_4_wrong_button",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_4_native_backend_requested",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_4_allied",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_4_own",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_4_neutral",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_4_passive",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_4_observer",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_4_observer_node",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_4_defeated",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_4_invalid_owner",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_4_invalid_index",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_4_wrong_kind",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_4_dead",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_4_stale",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_4_chat",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_4_queue_full",
+      "status": "PASS"
+    },
+    {
+      "case": "queue_4_repeat_request",
+      "status": "PASS"
+    },
+    {
+      "case": "receiver_0_owner_match",
+      "status": "PASS"
+    },
+    {
+      "case": "receiver_0_owner_mismatch",
+      "status": "PASS"
+    },
+    {
+      "case": "receiver_0_not_alive",
+      "status": "PASS"
+    },
+    {
+      "case": "receiver_0_not_building",
+      "status": "PASS"
+    },
+    {
+      "case": "receiver_3_owner_match",
+      "status": "PASS"
+    },
+    {
+      "case": "receiver_3_owner_mismatch",
+      "status": "PASS"
+    },
+    {
+      "case": "receiver_3_not_alive",
+      "status": "PASS"
+    },
+    {
+      "case": "receiver_3_not_building",
+      "status": "PASS"
+    },
+    {
+      "case": "native_scheduler_house_gate_current_0_human_0",
+      "status": "PASS"
+    },
+    {
+      "case": "native_scheduler_house_gate_current_0_human_1",
+      "status": "PASS"
+    },
+    {
+      "case": "native_scheduler_house_gate_current_1_human_0",
+      "status": "PASS"
+    }
+  ]
+}

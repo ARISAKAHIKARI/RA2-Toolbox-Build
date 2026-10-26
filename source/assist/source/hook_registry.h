@@ -6,10 +6,23 @@
 // Game-thread-only ownership bookkeeping, NOT a stop-the-world x86 patcher.
 // A stale/foreign site is sticky: never overwrite it on retries or detach.
 namespace assist { namespace hookregistry {
-enum class Owner : uint8_t { Frame, CS, Cursor, NativeEvent, FootClick, Decide, MouseUp, Placement, Sidebar, NativeAir, RenderMask, C4Test, PlayerControl, Camera, Combat, Unknown };
+enum class Owner : uint8_t { Frame, CS, Cursor, NativeEvent, FootClick, Decide, MouseUp, Placement, Sidebar, NativeAir, RenderMask, C4Test, PlayerControl, Camera, Combat, NetworkTransport, NativeSell, NativeMega, ControlCommand, Unknown };
 inline Owner ownerAt(uint32_t a){
  if(auto s=directpatch::find(a))return s->group==directpatch::Group::Map?Owner::RenderMask:Owner::Placement;
  switch(a){
+ case 0x00646EF5:return Owner::ControlCommand;
+ case 0x00646FD2:return Owner::ControlCommand;
+ case 0x006FFC93:return Owner::ControlCommand;
+ case 0x006FFE2B:return Owner::ControlCommand;
+
+ case 0x00649CA0:return Owner::NetworkTransport;
+ case 0x00649E1E:return Owner::NetworkTransport;
+ case 0x0064B9D4:return Owner::NetworkTransport;
+ case 0x0064B660:return Owner::NetworkTransport;
+ case 0x0064B4EA:return Owner::NetworkTransport;
+ case 0x006929E5:return Owner::NativeSell;
+ case 0x004AC179:return Owner::NativeSell;
+ case 0x00646F4E:return Owner::NativeMega;
  case 0x006F7D44:return Owner::Combat;
  case 0x0055D360: return Owner::Frame;
  case 0x00646E90: return Owner::CS;
@@ -36,6 +49,18 @@ inline bool knownOriginal(uint32_t at,const uint8_t* bytes,unsigned size){
  if(!bytes)return false;
  if(directpatch::find(at))return directpatch::original(at,bytes,size);
  const uint8_t*signature=nullptr;unsigned expected=0;
+ static const uint8_t pre6NetworkSend[]={0x83,0xEC,0x1C,0x53,0x55};
+ static const uint8_t pre6NetworkPlainHouse[]={0x88,0x8C,0x40,0xD6,0x02,0xA8,0x00};
+ static const uint8_t pre6NetworkCompressedHouse[]={0x88,0x8C,0x40,0xD6,0x02,0xA8,0x00};
+ static const uint8_t pre6NetworkPack[]={0x81,0xEC,0x94,0x00,0x00,0x00};
+ static const uint8_t pre6NetworkDictionary[]={0x8B,0xCA,0xC7,0x44,0x24,0x10,0x00,0x00,0x00,0x00};
+ static const uint8_t pre6NativeSellCursor[]={0xE8,0x06,0x8D,0xE7,0xFF};
+ static const uint8_t pre6NativeSellOwner[]={0x8B,0x0D,0x4C,0x3D,0xA8,0x00,0x8B,0x51,0x30};
+ static const uint8_t pre6NativeMegaSuccess[]={0xB0,0x01,0x5F,0x5E,0x83,0xC4,0x70};
+ static const uint8_t pre6ControlMegaOwner[]={0x81,0x3D,0xC8,0x02,0xA8,0x00,0x80,0x00,0x00,0x00};
+ static const uint8_t pre6ControlMegaFOwner[]={0x81,0x3D,0xC8,0x02,0xA8,0x00,0x80,0x00,0x00,0x00};
+ static const uint8_t pre6ControlPlanningOwner[]={0x83,0xEC,0x70,0xB9,0x1B,0x00,0x00,0x00};
+ static const uint8_t pre6ControlObjectOwner[]={0x8B,0x42,0x30,0x51,0x50};
  static const uint8_t frame[]={0xA0,0xA0,0xE9,0xA8,0x00};
  static const uint8_t cs[]={0x83,0xEC,0x70,0x32,0xC0};
  static const uint8_t cursor[]={0x51,0xA0,0x58,0xFE,0xB0,0x00};
@@ -59,6 +84,19 @@ inline bool knownOriginal(uint32_t at,const uint8_t* bytes,unsigned size){
  static const uint8_t sidebarRefresh[]={0xE8,0xEA,0xD0,0xE4,0xFF};
  static const uint8_t masterEnum[]={0x6A,1,0x6A,0,0x8B},masterPrune[]={0x0F,0x85,0xDA,2,0,0};
  switch(at){
+ case 0x00646EF5:signature=pre6ControlMegaOwner;expected=sizeof pre6ControlMegaOwner;break;
+ case 0x00646FD2:signature=pre6ControlMegaFOwner;expected=sizeof pre6ControlMegaFOwner;break;
+ case 0x006FFC93:signature=pre6ControlPlanningOwner;expected=sizeof pre6ControlPlanningOwner;break;
+ case 0x006FFE2B:signature=pre6ControlObjectOwner;expected=sizeof pre6ControlObjectOwner;break;
+
+ case 0x00649CA0:signature=pre6NetworkSend;expected=sizeof pre6NetworkSend;break;
+ case 0x00649E1E:signature=pre6NetworkPlainHouse;expected=sizeof pre6NetworkPlainHouse;break;
+ case 0x0064B9D4:signature=pre6NetworkCompressedHouse;expected=sizeof pre6NetworkCompressedHouse;break;
+ case 0x0064B660:signature=pre6NetworkPack;expected=sizeof pre6NetworkPack;break;
+ case 0x0064B4EA:signature=pre6NetworkDictionary;expected=sizeof pre6NetworkDictionary;break;
+ case 0x006929E5:signature=pre6NativeSellCursor;expected=sizeof pre6NativeSellCursor;break;
+ case 0x004AC179:signature=pre6NativeSellOwner;expected=sizeof pre6NativeSellOwner;break;
+ case 0x00646F4E:signature=pre6NativeMegaSuccess;expected=sizeof pre6NativeMegaSuccess;break;
  case 0x006F7D44:signature=lowDamage;expected=sizeof lowDamage;break;
  case 0x44574A:case 0x445795:case 0x4457D0:case 0x445810:signature=masterEnum;expected=5;break;
  case 0x6AA788:signature=masterPrune;expected=6;break;

@@ -1,0 +1,1634 @@
+{
+  "scope": "Offline generic House batching plus native MegaMission cache-miss experiment.\n\nRuns native sender/packer/decoder with modeled interception only. No real\ntransport, event effects or House scheduling. AI Houses may be skipped by the\nunmodified scheduler; serialization equality is not live execution evidence.\n",
+  "game_fixture_sha256": "2fcb478cb2e0de00b1af1a6c82e9b55e56e0b555f20f3c0a018e8aaddc58b0c8",
+  "results": [
+    {
+      "case": "negative_protocol_1_same_list_0_1_0",
+      "status": "PASS",
+      "expected_divergence_without_cache_fix": true,
+      "decoder_instruction_budget_exhausted": true,
+      "stopped_at": "0x64c2a5",
+      "packet_lengths": [
+        44,
+        39,
+        39
+      ]
+    },
+    {
+      "case": "fixed_protocol_1_same_list_0_1_0",
+      "status": "PASS",
+      "all_event_bytes_equal_except_native_cache_slot_0d": true,
+      "modeled_query_misses": 3,
+      "packet_lengths": [
+        44,
+        44,
+        44
+      ],
+      "raw_cache_slot_pairs": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          1
+        ],
+        [
+          0,
+          1
+        ],
+        [
+          0,
+          2
+        ],
+        [
+          0,
+          2
+        ]
+      ],
+      "packet_houses": [
+        0,
+        1,
+        0
+      ],
+      "records": [
+        {
+          "kind": 4,
+          "house": 0,
+          "frame": 1239,
+          "id": 101
+        },
+        {
+          "kind": 4,
+          "house": 0,
+          "frame": 1239,
+          "id": 102
+        },
+        {
+          "kind": 4,
+          "house": 1,
+          "frame": 1239,
+          "id": 101
+        },
+        {
+          "kind": 4,
+          "house": 1,
+          "frame": 1239,
+          "id": 102
+        },
+        {
+          "kind": 4,
+          "house": 0,
+          "frame": 1239,
+          "id": 101
+        },
+        {
+          "kind": 4,
+          "house": 0,
+          "frame": 1239,
+          "id": 102
+        }
+      ]
+    },
+    {
+      "case": "negative_protocol_1_different_groups",
+      "status": "PASS",
+      "expected_divergence_without_cache_fix": false,
+      "differences": [],
+      "packet_lengths": [
+        49,
+        44,
+        39,
+        39
+      ]
+    },
+    {
+      "case": "fixed_protocol_1_different_groups",
+      "status": "PASS",
+      "all_event_bytes_equal_except_native_cache_slot_0d": true,
+      "modeled_query_misses": 6,
+      "packet_lengths": [
+        49,
+        44,
+        49,
+        44
+      ],
+      "raw_cache_slot_pairs": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          1
+        ],
+        [
+          0,
+          1
+        ],
+        [
+          0,
+          2
+        ],
+        [
+          0,
+          2
+        ],
+        [
+          0,
+          2
+        ],
+        [
+          0,
+          3
+        ],
+        [
+          0,
+          3
+        ]
+      ],
+      "packet_houses": [
+        0,
+        1,
+        0,
+        1
+      ],
+      "records": [
+        {
+          "kind": 4,
+          "house": 0,
+          "frame": 1239,
+          "id": 201
+        },
+        {
+          "kind": 4,
+          "house": 0,
+          "frame": 1239,
+          "id": 202
+        },
+        {
+          "kind": 4,
+          "house": 0,
+          "frame": 1239,
+          "id": 203
+        },
+        {
+          "kind": 4,
+          "house": 1,
+          "frame": 1239,
+          "id": 301
+        },
+        {
+          "kind": 4,
+          "house": 1,
+          "frame": 1239,
+          "id": 302
+        },
+        {
+          "kind": 4,
+          "house": 0,
+          "frame": 1239,
+          "id": 201
+        },
+        {
+          "kind": 4,
+          "house": 0,
+          "frame": 1239,
+          "id": 202
+        },
+        {
+          "kind": 4,
+          "house": 0,
+          "frame": 1239,
+          "id": 203
+        },
+        {
+          "kind": 4,
+          "house": 1,
+          "frame": 1239,
+          "id": 301
+        },
+        {
+          "kind": 4,
+          "house": 1,
+          "frame": 1239,
+          "id": 302
+        }
+      ]
+    },
+    {
+      "case": "negative_protocol_1_sell_destruct_between",
+      "status": "PASS",
+      "expected_divergence_without_cache_fix": true,
+      "decoder_instruction_budget_exhausted": true,
+      "stopped_at": "0x64c2aa",
+      "packet_lengths": [
+        44,
+        45,
+        40
+      ]
+    },
+    {
+      "case": "fixed_protocol_1_sell_destruct_between",
+      "status": "PASS",
+      "all_event_bytes_equal_except_native_cache_slot_0d": true,
+      "modeled_query_misses": 3,
+      "packet_lengths": [
+        44,
+        50,
+        45
+      ],
+      "raw_cache_slot_pairs": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          1
+        ],
+        [
+          0,
+          1
+        ],
+        [
+          0,
+          2
+        ],
+        [
+          0,
+          2
+        ]
+      ],
+      "packet_houses": [
+        0,
+        1,
+        0
+      ],
+      "records": [
+        {
+          "kind": 4,
+          "house": 0,
+          "frame": 1239,
+          "id": 401
+        },
+        {
+          "kind": 4,
+          "house": 0,
+          "frame": 1239,
+          "id": 402
+        },
+        {
+          "kind": 22,
+          "house": 1,
+          "frame": 1239,
+          "id": 501
+        },
+        {
+          "kind": 4,
+          "house": 1,
+          "frame": 1239,
+          "id": 401
+        },
+        {
+          "kind": 4,
+          "house": 1,
+          "frame": 1239,
+          "id": 402
+        },
+        {
+          "kind": 8,
+          "house": 0,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 4,
+          "house": 0,
+          "frame": 1239,
+          "id": 401
+        },
+        {
+          "kind": 4,
+          "house": 0,
+          "frame": 1239,
+          "id": 402
+        }
+      ]
+    },
+    {
+      "case": "sustained_protocol_1_repeated_20_frames",
+      "status": "PASS",
+      "all_event_bytes_equal_except_native_cache_slot_0d": true,
+      "rounds": [
+        {
+          "turn": 0,
+          "variant": "generic_nocache",
+          "packets": 3,
+          "local_count": 6,
+          "remote_count": 6,
+          "houses": [
+            0,
+            1,
+            0
+          ]
+        },
+        {
+          "turn": 1,
+          "variant": "generic_nocache",
+          "packets": 3,
+          "local_count": 6,
+          "remote_count": 6,
+          "houses": [
+            0,
+            1,
+            0
+          ]
+        },
+        {
+          "turn": 2,
+          "variant": "generic_nocache",
+          "packets": 3,
+          "local_count": 6,
+          "remote_count": 6,
+          "houses": [
+            0,
+            1,
+            0
+          ]
+        },
+        {
+          "turn": 3,
+          "variant": "generic_nocache",
+          "packets": 3,
+          "local_count": 6,
+          "remote_count": 6,
+          "houses": [
+            0,
+            1,
+            0
+          ]
+        },
+        {
+          "turn": 4,
+          "variant": "generic_nocache",
+          "packets": 3,
+          "local_count": 6,
+          "remote_count": 6,
+          "houses": [
+            0,
+            1,
+            0
+          ]
+        },
+        {
+          "turn": 5,
+          "variant": "generic_nocache",
+          "packets": 3,
+          "local_count": 6,
+          "remote_count": 6,
+          "houses": [
+            0,
+            1,
+            0
+          ]
+        },
+        {
+          "turn": 6,
+          "variant": "generic_nocache",
+          "packets": 3,
+          "local_count": 6,
+          "remote_count": 6,
+          "houses": [
+            0,
+            1,
+            0
+          ]
+        },
+        {
+          "turn": 7,
+          "variant": "generic_nocache",
+          "packets": 3,
+          "local_count": 6,
+          "remote_count": 6,
+          "houses": [
+            0,
+            1,
+            0
+          ]
+        },
+        {
+          "turn": 8,
+          "variant": "generic_nocache",
+          "packets": 3,
+          "local_count": 6,
+          "remote_count": 6,
+          "houses": [
+            0,
+            1,
+            0
+          ]
+        },
+        {
+          "turn": 9,
+          "variant": "generic_nocache",
+          "packets": 3,
+          "local_count": 6,
+          "remote_count": 6,
+          "houses": [
+            0,
+            1,
+            0
+          ]
+        },
+        {
+          "turn": 10,
+          "variant": "generic_nocache",
+          "packets": 3,
+          "local_count": 6,
+          "remote_count": 6,
+          "houses": [
+            0,
+            1,
+            0
+          ]
+        },
+        {
+          "turn": 11,
+          "variant": "generic_nocache",
+          "packets": 3,
+          "local_count": 6,
+          "remote_count": 6,
+          "houses": [
+            0,
+            1,
+            0
+          ]
+        },
+        {
+          "turn": 12,
+          "variant": "generic_nocache",
+          "packets": 3,
+          "local_count": 6,
+          "remote_count": 6,
+          "houses": [
+            0,
+            1,
+            0
+          ]
+        },
+        {
+          "turn": 13,
+          "variant": "generic_nocache",
+          "packets": 3,
+          "local_count": 6,
+          "remote_count": 6,
+          "houses": [
+            0,
+            1,
+            0
+          ]
+        },
+        {
+          "turn": 14,
+          "variant": "generic_nocache",
+          "packets": 3,
+          "local_count": 6,
+          "remote_count": 6,
+          "houses": [
+            0,
+            1,
+            0
+          ]
+        },
+        {
+          "turn": 15,
+          "variant": "generic_nocache",
+          "packets": 3,
+          "local_count": 6,
+          "remote_count": 6,
+          "houses": [
+            0,
+            1,
+            0
+          ]
+        },
+        {
+          "turn": 16,
+          "variant": "generic_nocache",
+          "packets": 3,
+          "local_count": 6,
+          "remote_count": 6,
+          "houses": [
+            0,
+            1,
+            0
+          ]
+        },
+        {
+          "turn": 17,
+          "variant": "generic_nocache",
+          "packets": 3,
+          "local_count": 6,
+          "remote_count": 6,
+          "houses": [
+            0,
+            1,
+            0
+          ]
+        },
+        {
+          "turn": 18,
+          "variant": "generic_nocache",
+          "packets": 3,
+          "local_count": 6,
+          "remote_count": 6,
+          "houses": [
+            0,
+            1,
+            0
+          ]
+        },
+        {
+          "turn": 19,
+          "variant": "generic_nocache",
+          "packets": 3,
+          "local_count": 6,
+          "remote_count": 6,
+          "houses": [
+            0,
+            1,
+            0
+          ]
+        }
+      ],
+      "modeled_query_misses": 60
+    },
+    {
+      "case": "sustained_protocol_1_on_off_on",
+      "status": "PASS",
+      "all_event_bytes_equal_except_native_cache_slot_0d": true,
+      "rounds": [
+        {
+          "turn": 0,
+          "variant": "generic_nocache",
+          "packets": 3,
+          "local_count": 6,
+          "remote_count": 6,
+          "houses": [
+            0,
+            1,
+            0
+          ]
+        },
+        {
+          "turn": 1,
+          "variant": "vanilla",
+          "packets": 1,
+          "local_count": 6,
+          "remote_count": 6,
+          "houses": [
+            0
+          ]
+        },
+        {
+          "turn": 2,
+          "variant": "vanilla",
+          "packets": 1,
+          "local_count": 6,
+          "remote_count": 6,
+          "houses": [
+            0
+          ]
+        },
+        {
+          "turn": 3,
+          "variant": "generic_nocache",
+          "packets": 3,
+          "local_count": 6,
+          "remote_count": 6,
+          "houses": [
+            0,
+            1,
+            0
+          ]
+        },
+        {
+          "turn": 4,
+          "variant": "vanilla",
+          "packets": 1,
+          "local_count": 6,
+          "remote_count": 6,
+          "houses": [
+            0
+          ]
+        },
+        {
+          "turn": 5,
+          "variant": "generic_nocache",
+          "packets": 3,
+          "local_count": 6,
+          "remote_count": 6,
+          "houses": [
+            0,
+            1,
+            0
+          ]
+        }
+      ],
+      "modeled_query_misses": 9
+    },
+    {
+      "case": "original_cache_metadata_protocol_1",
+      "status": "PASS",
+      "original_sender_also_has_cache_slot_metadata_difference": [
+        {
+          "index": 3,
+          "offsets": [
+            13
+          ],
+          "local": 0,
+          "remote": 1
+        },
+        {
+          "index": 4,
+          "offsets": [
+            13
+          ],
+          "local": 0,
+          "remote": 1
+        }
+      ]
+    },
+    {
+      "case": "toggle_without_invalidation_protocol_1",
+      "status": "PASS",
+      "expected_stale_foreign_dictionary_after_disable": true,
+      "decoder_instruction_budget_exhausted": true
+    },
+    {
+      "case": "toggle_with_sender_invalidation_protocol_1",
+      "status": "PASS",
+      "sender_counts_invalidated_before_disable": true,
+      "all_event_bytes_equal_except_native_cache_slot_0d": true,
+      "rounds": [
+        {
+          "turn": 0,
+          "enabled": true,
+          "house": 1,
+          "event_count": 2
+        },
+        {
+          "turn": 1,
+          "enabled": false,
+          "house": 0,
+          "event_count": 2
+        },
+        {
+          "turn": 2,
+          "enabled": true,
+          "house": 1,
+          "event_count": 2
+        },
+        {
+          "turn": 3,
+          "enabled": false,
+          "house": 0,
+          "event_count": 2
+        },
+        {
+          "turn": 4,
+          "enabled": true,
+          "house": 1,
+          "event_count": 2
+        },
+        {
+          "turn": 5,
+          "enabled": false,
+          "house": 0,
+          "event_count": 2
+        },
+        {
+          "turn": 6,
+          "enabled": true,
+          "house": 1,
+          "event_count": 2
+        },
+        {
+          "turn": 7,
+          "enabled": false,
+          "house": 0,
+          "event_count": 2
+        },
+        {
+          "turn": 8,
+          "enabled": true,
+          "house": 1,
+          "event_count": 2
+        },
+        {
+          "turn": 9,
+          "enabled": false,
+          "house": 0,
+          "event_count": 2
+        }
+      ]
+    },
+    {
+      "case": "mega_capacity_39_protocol_1",
+      "status": "PASS",
+      "capacity": 39,
+      "packet_lengths": [
+        39,
+        39,
+        39,
+        39,
+        39,
+        39
+      ],
+      "event_order_and_all_fields_except_cache_slot_equal": true,
+      "ring_head_after": 4
+    },
+    {
+      "case": "mega_capacity_43_protocol_1",
+      "status": "PASS",
+      "capacity": 43,
+      "packet_lengths": [
+        39,
+        39,
+        39,
+        39,
+        39,
+        39
+      ],
+      "event_order_and_all_fields_except_cache_slot_equal": true,
+      "ring_head_after": 4
+    },
+    {
+      "case": "mega_capacity_44_protocol_1",
+      "status": "PASS",
+      "capacity": 44,
+      "packet_lengths": [
+        44,
+        44,
+        44
+      ],
+      "event_order_and_all_fields_except_cache_slot_equal": true,
+      "ring_head_after": 4
+    },
+    {
+      "case": "mega_capacity_49_protocol_1",
+      "status": "PASS",
+      "capacity": 49,
+      "packet_lengths": [
+        44,
+        44,
+        44
+      ],
+      "event_order_and_all_fields_except_cache_slot_equal": true,
+      "ring_head_after": 4
+    },
+    {
+      "case": "mega_insufficient_capacity_protocol_1",
+      "status": "PASS",
+      "capacity": 38,
+      "no_outlist_or_local_dolist_consumption": true,
+      "stopped_at_first_send": true
+    },
+    {
+      "case": "mega_reference_fields_protocol_1",
+      "status": "PASS",
+      "attack_and_nonzero_target_destination_nearest_references_equal": true
+    },
+    {
+      "case": "negative_protocol_2_same_list_0_1_0",
+      "status": "PASS",
+      "expected_divergence_without_cache_fix": true,
+      "decoder_instruction_budget_exhausted": true,
+      "stopped_at": "0x64c2a5",
+      "packet_lengths": [
+        44,
+        39,
+        39
+      ]
+    },
+    {
+      "case": "fixed_protocol_2_same_list_0_1_0",
+      "status": "PASS",
+      "all_event_bytes_equal_except_native_cache_slot_0d": true,
+      "modeled_query_misses": 3,
+      "packet_lengths": [
+        44,
+        44,
+        44
+      ],
+      "raw_cache_slot_pairs": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          1
+        ],
+        [
+          0,
+          1
+        ],
+        [
+          0,
+          2
+        ],
+        [
+          0,
+          2
+        ]
+      ],
+      "packet_houses": [
+        0,
+        1,
+        0
+      ],
+      "records": [
+        {
+          "kind": 4,
+          "house": 0,
+          "frame": 1239,
+          "id": 101
+        },
+        {
+          "kind": 4,
+          "house": 0,
+          "frame": 1239,
+          "id": 102
+        },
+        {
+          "kind": 4,
+          "house": 1,
+          "frame": 1239,
+          "id": 101
+        },
+        {
+          "kind": 4,
+          "house": 1,
+          "frame": 1239,
+          "id": 102
+        },
+        {
+          "kind": 4,
+          "house": 0,
+          "frame": 1239,
+          "id": 101
+        },
+        {
+          "kind": 4,
+          "house": 0,
+          "frame": 1239,
+          "id": 102
+        }
+      ]
+    },
+    {
+      "case": "negative_protocol_2_different_groups",
+      "status": "PASS",
+      "expected_divergence_without_cache_fix": false,
+      "differences": [],
+      "packet_lengths": [
+        49,
+        44,
+        39,
+        39
+      ]
+    },
+    {
+      "case": "fixed_protocol_2_different_groups",
+      "status": "PASS",
+      "all_event_bytes_equal_except_native_cache_slot_0d": true,
+      "modeled_query_misses": 6,
+      "packet_lengths": [
+        49,
+        44,
+        49,
+        44
+      ],
+      "raw_cache_slot_pairs": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          1
+        ],
+        [
+          0,
+          1
+        ],
+        [
+          0,
+          2
+        ],
+        [
+          0,
+          2
+        ],
+        [
+          0,
+          2
+        ],
+        [
+          0,
+          3
+        ],
+        [
+          0,
+          3
+        ]
+      ],
+      "packet_houses": [
+        0,
+        1,
+        0,
+        1
+      ],
+      "records": [
+        {
+          "kind": 4,
+          "house": 0,
+          "frame": 1239,
+          "id": 201
+        },
+        {
+          "kind": 4,
+          "house": 0,
+          "frame": 1239,
+          "id": 202
+        },
+        {
+          "kind": 4,
+          "house": 0,
+          "frame": 1239,
+          "id": 203
+        },
+        {
+          "kind": 4,
+          "house": 1,
+          "frame": 1239,
+          "id": 301
+        },
+        {
+          "kind": 4,
+          "house": 1,
+          "frame": 1239,
+          "id": 302
+        },
+        {
+          "kind": 4,
+          "house": 0,
+          "frame": 1239,
+          "id": 201
+        },
+        {
+          "kind": 4,
+          "house": 0,
+          "frame": 1239,
+          "id": 202
+        },
+        {
+          "kind": 4,
+          "house": 0,
+          "frame": 1239,
+          "id": 203
+        },
+        {
+          "kind": 4,
+          "house": 1,
+          "frame": 1239,
+          "id": 301
+        },
+        {
+          "kind": 4,
+          "house": 1,
+          "frame": 1239,
+          "id": 302
+        }
+      ]
+    },
+    {
+      "case": "negative_protocol_2_sell_destruct_between",
+      "status": "PASS",
+      "expected_divergence_without_cache_fix": true,
+      "decoder_instruction_budget_exhausted": true,
+      "stopped_at": "0x64c2aa",
+      "packet_lengths": [
+        44,
+        45,
+        40
+      ]
+    },
+    {
+      "case": "fixed_protocol_2_sell_destruct_between",
+      "status": "PASS",
+      "all_event_bytes_equal_except_native_cache_slot_0d": true,
+      "modeled_query_misses": 3,
+      "packet_lengths": [
+        44,
+        50,
+        45
+      ],
+      "raw_cache_slot_pairs": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          1
+        ],
+        [
+          0,
+          1
+        ],
+        [
+          0,
+          2
+        ],
+        [
+          0,
+          2
+        ]
+      ],
+      "packet_houses": [
+        0,
+        1,
+        0
+      ],
+      "records": [
+        {
+          "kind": 4,
+          "house": 0,
+          "frame": 1239,
+          "id": 401
+        },
+        {
+          "kind": 4,
+          "house": 0,
+          "frame": 1239,
+          "id": 402
+        },
+        {
+          "kind": 22,
+          "house": 1,
+          "frame": 1239,
+          "id": 501
+        },
+        {
+          "kind": 4,
+          "house": 1,
+          "frame": 1239,
+          "id": 401
+        },
+        {
+          "kind": 4,
+          "house": 1,
+          "frame": 1239,
+          "id": 402
+        },
+        {
+          "kind": 8,
+          "house": 0,
+          "frame": 1239,
+          "id": null
+        },
+        {
+          "kind": 4,
+          "house": 0,
+          "frame": 1239,
+          "id": 401
+        },
+        {
+          "kind": 4,
+          "house": 0,
+          "frame": 1239,
+          "id": 402
+        }
+      ]
+    },
+    {
+      "case": "sustained_protocol_2_repeated_20_frames",
+      "status": "PASS",
+      "all_event_bytes_equal_except_native_cache_slot_0d": true,
+      "rounds": [
+        {
+          "turn": 0,
+          "variant": "generic_nocache",
+          "packets": 3,
+          "local_count": 6,
+          "remote_count": 6,
+          "houses": [
+            0,
+            1,
+            0
+          ]
+        },
+        {
+          "turn": 1,
+          "variant": "generic_nocache",
+          "packets": 3,
+          "local_count": 6,
+          "remote_count": 6,
+          "houses": [
+            0,
+            1,
+            0
+          ]
+        },
+        {
+          "turn": 2,
+          "variant": "generic_nocache",
+          "packets": 3,
+          "local_count": 6,
+          "remote_count": 6,
+          "houses": [
+            0,
+            1,
+            0
+          ]
+        },
+        {
+          "turn": 3,
+          "variant": "generic_nocache",
+          "packets": 3,
+          "local_count": 6,
+          "remote_count": 6,
+          "houses": [
+            0,
+            1,
+            0
+          ]
+        },
+        {
+          "turn": 4,
+          "variant": "generic_nocache",
+          "packets": 3,
+          "local_count": 6,
+          "remote_count": 6,
+          "houses": [
+            0,
+            1,
+            0
+          ]
+        },
+        {
+          "turn": 5,
+          "variant": "generic_nocache",
+          "packets": 3,
+          "local_count": 6,
+          "remote_count": 6,
+          "houses": [
+            0,
+            1,
+            0
+          ]
+        },
+        {
+          "turn": 6,
+          "variant": "generic_nocache",
+          "packets": 3,
+          "local_count": 6,
+          "remote_count": 6,
+          "houses": [
+            0,
+            1,
+            0
+          ]
+        },
+        {
+          "turn": 7,
+          "variant": "generic_nocache",
+          "packets": 3,
+          "local_count": 6,
+          "remote_count": 6,
+          "houses": [
+            0,
+            1,
+            0
+          ]
+        },
+        {
+          "turn": 8,
+          "variant": "generic_nocache",
+          "packets": 3,
+          "local_count": 6,
+          "remote_count": 6,
+          "houses": [
+            0,
+            1,
+            0
+          ]
+        },
+        {
+          "turn": 9,
+          "variant": "generic_nocache",
+          "packets": 3,
+          "local_count": 6,
+          "remote_count": 6,
+          "houses": [
+            0,
+            1,
+            0
+          ]
+        },
+        {
+          "turn": 10,
+          "variant": "generic_nocache",
+          "packets": 3,
+          "local_count": 6,
+          "remote_count": 6,
+          "houses": [
+            0,
+            1,
+            0
+          ]
+        },
+        {
+          "turn": 11,
+          "variant": "generic_nocache",
+          "packets": 3,
+          "local_count": 6,
+          "remote_count": 6,
+          "houses": [
+            0,
+            1,
+            0
+          ]
+        },
+        {
+          "turn": 12,
+          "variant": "generic_nocache",
+          "packets": 3,
+          "local_count": 6,
+          "remote_count": 6,
+          "houses": [
+            0,
+            1,
+            0
+          ]
+        },
+        {
+          "turn": 13,
+          "variant": "generic_nocache",
+          "packets": 3,
+          "local_count": 6,
+          "remote_count": 6,
+          "houses": [
+            0,
+            1,
+            0
+          ]
+        },
+        {
+          "turn": 14,
+          "variant": "generic_nocache",
+          "packets": 3,
+          "local_count": 6,
+          "remote_count": 6,
+          "houses": [
+            0,
+            1,
+            0
+          ]
+        },
+        {
+          "turn": 15,
+          "variant": "generic_nocache",
+          "packets": 3,
+          "local_count": 6,
+          "remote_count": 6,
+          "houses": [
+            0,
+            1,
+            0
+          ]
+        },
+        {
+          "turn": 16,
+          "variant": "generic_nocache",
+          "packets": 3,
+          "local_count": 6,
+          "remote_count": 6,
+          "houses": [
+            0,
+            1,
+            0
+          ]
+        },
+        {
+          "turn": 17,
+          "variant": "generic_nocache",
+          "packets": 3,
+          "local_count": 6,
+          "remote_count": 6,
+          "houses": [
+            0,
+            1,
+            0
+          ]
+        },
+        {
+          "turn": 18,
+          "variant": "generic_nocache",
+          "packets": 3,
+          "local_count": 6,
+          "remote_count": 6,
+          "houses": [
+            0,
+            1,
+            0
+          ]
+        },
+        {
+          "turn": 19,
+          "variant": "generic_nocache",
+          "packets": 3,
+          "local_count": 6,
+          "remote_count": 6,
+          "houses": [
+            0,
+            1,
+            0
+          ]
+        }
+      ],
+      "modeled_query_misses": 60
+    },
+    {
+      "case": "sustained_protocol_2_on_off_on",
+      "status": "PASS",
+      "all_event_bytes_equal_except_native_cache_slot_0d": true,
+      "rounds": [
+        {
+          "turn": 0,
+          "variant": "generic_nocache",
+          "packets": 3,
+          "local_count": 6,
+          "remote_count": 6,
+          "houses": [
+            0,
+            1,
+            0
+          ]
+        },
+        {
+          "turn": 1,
+          "variant": "vanilla",
+          "packets": 1,
+          "local_count": 6,
+          "remote_count": 6,
+          "houses": [
+            0
+          ]
+        },
+        {
+          "turn": 2,
+          "variant": "vanilla",
+          "packets": 1,
+          "local_count": 6,
+          "remote_count": 6,
+          "houses": [
+            0
+          ]
+        },
+        {
+          "turn": 3,
+          "variant": "generic_nocache",
+          "packets": 3,
+          "local_count": 6,
+          "remote_count": 6,
+          "houses": [
+            0,
+            1,
+            0
+          ]
+        },
+        {
+          "turn": 4,
+          "variant": "vanilla",
+          "packets": 1,
+          "local_count": 6,
+          "remote_count": 6,
+          "houses": [
+            0
+          ]
+        },
+        {
+          "turn": 5,
+          "variant": "generic_nocache",
+          "packets": 3,
+          "local_count": 6,
+          "remote_count": 6,
+          "houses": [
+            0,
+            1,
+            0
+          ]
+        }
+      ],
+      "modeled_query_misses": 9
+    },
+    {
+      "case": "original_cache_metadata_protocol_2",
+      "status": "PASS",
+      "original_sender_also_has_cache_slot_metadata_difference": [
+        {
+          "index": 3,
+          "offsets": [
+            13
+          ],
+          "local": 0,
+          "remote": 1
+        },
+        {
+          "index": 4,
+          "offsets": [
+            13
+          ],
+          "local": 0,
+          "remote": 1
+        }
+      ]
+    },
+    {
+      "case": "toggle_without_invalidation_protocol_2",
+      "status": "PASS",
+      "expected_stale_foreign_dictionary_after_disable": true,
+      "decoder_instruction_budget_exhausted": true
+    },
+    {
+      "case": "toggle_with_sender_invalidation_protocol_2",
+      "status": "PASS",
+      "sender_counts_invalidated_before_disable": true,
+      "all_event_bytes_equal_except_native_cache_slot_0d": true,
+      "rounds": [
+        {
+          "turn": 0,
+          "enabled": true,
+          "house": 1,
+          "event_count": 2
+        },
+        {
+          "turn": 1,
+          "enabled": false,
+          "house": 0,
+          "event_count": 2
+        },
+        {
+          "turn": 2,
+          "enabled": true,
+          "house": 1,
+          "event_count": 2
+        },
+        {
+          "turn": 3,
+          "enabled": false,
+          "house": 0,
+          "event_count": 2
+        },
+        {
+          "turn": 4,
+          "enabled": true,
+          "house": 1,
+          "event_count": 2
+        },
+        {
+          "turn": 5,
+          "enabled": false,
+          "house": 0,
+          "event_count": 2
+        },
+        {
+          "turn": 6,
+          "enabled": true,
+          "house": 1,
+          "event_count": 2
+        },
+        {
+          "turn": 7,
+          "enabled": false,
+          "house": 0,
+          "event_count": 2
+        },
+        {
+          "turn": 8,
+          "enabled": true,
+          "house": 1,
+          "event_count": 2
+        },
+        {
+          "turn": 9,
+          "enabled": false,
+          "house": 0,
+          "event_count": 2
+        }
+      ]
+    },
+    {
+      "case": "mega_capacity_39_protocol_2",
+      "status": "PASS",
+      "capacity": 39,
+      "packet_lengths": [
+        39,
+        39,
+        39,
+        39,
+        39,
+        39
+      ],
+      "event_order_and_all_fields_except_cache_slot_equal": true,
+      "ring_head_after": 4
+    },
+    {
+      "case": "mega_capacity_43_protocol_2",
+      "status": "PASS",
+      "capacity": 43,
+      "packet_lengths": [
+        39,
+        39,
+        39,
+        39,
+        39,
+        39
+      ],
+      "event_order_and_all_fields_except_cache_slot_equal": true,
+      "ring_head_after": 4
+    },
+    {
+      "case": "mega_capacity_44_protocol_2",
+      "status": "PASS",
+      "capacity": 44,
+      "packet_lengths": [
+        44,
+        44,
+        44
+      ],
+      "event_order_and_all_fields_except_cache_slot_equal": true,
+      "ring_head_after": 4
+    },
+    {
+      "case": "mega_capacity_49_protocol_2",
+      "status": "PASS",
+      "capacity": 49,
+      "packet_lengths": [
+        44,
+        44,
+        44
+      ],
+      "event_order_and_all_fields_except_cache_slot_equal": true,
+      "ring_head_after": 4
+    },
+    {
+      "case": "mega_insufficient_capacity_protocol_2",
+      "status": "PASS",
+      "capacity": 38,
+      "no_outlist_or_local_dolist_consumption": true,
+      "stopped_at_first_send": true
+    },
+    {
+      "case": "mega_reference_fields_protocol_2",
+      "status": "PASS",
+      "attack_and_nonzero_target_destination_nearest_references_equal": true
+    }
+  ]
+}
