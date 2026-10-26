@@ -1,0 +1,118 @@
+{
+  "scope": "Pinned public-source explanation plus read-only PE descriptor and file-backed patch-byte crosscheck; no new execution, no actual user deployment identification, no direct cause established.",
+  "source": {
+    "repository": "CnCNet/yrpp-spawner",
+    "commit": "fbe8d7d2620584d04ba14fa3580943bfa1448d40",
+    "path": "src/Misc/Bugfixes.Desyncs.cpp",
+    "git_blob_sha": "8ee8797aa94a5f2f5d16a65c0d49e2fb5ce7b7f3"
+  },
+  "input_metadata_sha256": "1e4a5e3c824a708598cabc33cd46058d7c77528b03820a76a522c1054d7e8606",
+  "samples": {
+    "normal": {
+      "sha256": "58f198973bd0fd3b0e1b2c42fc6c545efe1fd399680abc2e8d6e9e189751614d",
+      "size": 233472,
+      "hooks": [
+        {
+          "address": 7401955,
+          "address_hex": "0x0070F1E3",
+          "size": 8,
+          "name": "TechnoClass_DrawBehind_InvisibleDesyncFix"
+        },
+        {
+          "address": 4867104,
+          "address_hex": "0x004A4420",
+          "size": 9,
+          "name": "SetVideoMode_RepairFPState"
+        },
+        {
+          "address": 5616865,
+          "address_hex": "0x0055B4E1",
+          "size": 5,
+          "name": "LogicClass_Update_RepairFPState"
+        }
+      ],
+      "patches": [
+        {
+          "address": 4278259,
+          "address_hex": "0x004147F3",
+          "size": 6,
+          "data_va_hex": "0x1002E81C",
+          "file_backed_data": true,
+          "data_hex": "e808fb1d0090",
+          "decoded_call_target_hex": "0x005F4300"
+        },
+        {
+          "address": 4278443,
+          "address_hex": "0x004148AB",
+          "size": 6,
+          "data_va_hex": "0x1002E824",
+          "file_backed_data": true,
+          "data_hex": "e850fa1d0090",
+          "decoded_call_target_hex": "0x005F4300"
+        },
+        {
+          "address": 4278229,
+          "address_hex": "0x004147D5",
+          "size": 6,
+          "data_va_hex": "0x1002E82C",
+          "file_backed_data": true,
+          "data_hex": "e826fb1d0090",
+          "decoded_call_target_hex": "0x005F4300"
+        }
+      ]
+    },
+    "hardened": {
+      "sha256": "62466e9e534ceb15c5d71fb05c62ad98a2b2b4903c569ed0c82189ef86ea3b7d",
+      "size": 417792,
+      "hooks": [
+        {
+          "address": 7401955,
+          "address_hex": "0x0070F1E3",
+          "size": 8,
+          "name": "TechnoClass_DrawBehind_InvisibleDesyncFix"
+        },
+        {
+          "address": 4867104,
+          "address_hex": "0x004A4420",
+          "size": 9,
+          "name": "SetVideoMode_RepairFPState"
+        },
+        {
+          "address": 5616865,
+          "address_hex": "0x0055B4E1",
+          "size": 5,
+          "name": "LogicClass_Update_RepairFPState"
+        }
+      ],
+      "patches": [
+        {
+          "address": 4278259,
+          "address_hex": "0x004147F3",
+          "size": 6,
+          "data_va_hex": "0x1002F8AC",
+          "file_backed_data": true,
+          "data_hex": "e808fb1d0090",
+          "decoded_call_target_hex": "0x005F4300"
+        },
+        {
+          "address": 4278443,
+          "address_hex": "0x004148AB",
+          "size": 6,
+          "data_va_hex": "0x1002F8B4",
+          "file_backed_data": true,
+          "data_hex": "e850fa1d0090",
+          "decoded_call_target_hex": "0x005F4300"
+        },
+        {
+          "address": 4278229,
+          "address_hex": "0x004147D5",
+          "size": 6,
+          "data_va_hex": "0x1002F8BC",
+          "file_backed_data": true,
+          "data_hex": "e826fb1d0090",
+          "decoded_call_target_hex": "0x005F4300"
+        }
+      ]
+    }
+  }
+}
