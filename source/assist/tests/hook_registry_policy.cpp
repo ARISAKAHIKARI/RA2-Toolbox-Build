@@ -3,6 +3,10 @@
 #include <iostream>
 using namespace assist::hookregistry;
 int main(){
+ assert(NoInlineGamePatches);
+ assert(!mayApplyPatch(Transition::Install));
+ assert(mayApplyPatch(Transition::Restore));
+ assert(!mayApplyPatch(Transition::Deny));
  Registry<> reg;
  const uint8_t sidebar[]={0xE8,0x99,0xE0,0xE4,0xFF};
  const uint8_t refresh[]={0xE8,0xEA,0xD0,0xE4,0xFF};
