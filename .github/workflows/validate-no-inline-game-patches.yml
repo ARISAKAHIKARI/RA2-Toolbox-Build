@@ -50,6 +50,14 @@ jobs:
             if($LASTEXITCODE -ne 0){throw "Test failed: $name"}
           }
 
+      - name: Verify strict manager rejects all code writes
+        shell: pwsh
+        run: |
+          & $env:ZIG_EXE c++ -target x86-windows-gnu -std=c++17 -O2 -Isource/assist/tests/mocks source/assist/tests/strict_code_write_policy.cpp -o strict-code-write-test.exe
+          if($LASTEXITCODE -ne 0){throw "Strict manager test compilation failed"}
+          .\strict-code-write-test.exe | Tee-Object -FilePath source/no-inline-tests.log -Append
+          if($LASTEXITCODE -ne 0){throw "Strict manager test failed"}
+
       - name: Build Win32 binaries
         working-directory: source
         shell: pwsh
@@ -64,7 +72,7 @@ jobs:
             if(!(Test-Path $p)){throw "Missing $p"}
             $files += [ordered]@{name=$p;bytes=(Get-Item $p).Length;sha256=(Get-FileHash $p -Algorithm SHA256).Hash.ToLowerInvariant()}
           }
-          [ordered]@{commit=$env:GITHUB_SHA;branch=$env:GITHUB_REF_NAME;run=$env:GITHUB_RUN_ID;configuration='no-inline-game-patches';live_game_verified=$false;files=$files} | ConvertTo-Json -Depth 5 | Set-Content -Encoding utf8 no-inline-build.json
+          [ordered]@{commit=$env:GITHUB_SHA;branch=$env:GITHUB_REF_NAME;run=$env:GITHUB_RUN_ID;configuration='strict-no-game-code-writes';code_install_allowed=$false;code_restore_allowed=$false;runtime_protocol=5;entry_protocol=4;live_game_verified=$false;files=$files} | ConvertTo-Json -Depth 5 | Set-Content -Encoding utf8 no-inline-build.json
 
       - name: Upload successful experimental binaries
         if: success()
@@ -90,3 +98,4 @@ jobs:
             source/no-inline-build.json
             source/research/2026-10-27-no-inline-readonly-observer.md
             source/research/2026-10-27-no-inline-work-budget.md
+            source/research/2026-10-27-strict-no-code-write.md

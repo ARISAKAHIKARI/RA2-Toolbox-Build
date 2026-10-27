@@ -38,26 +38,30 @@ static unsigned checks=0;
 #define CHECK(x) do{++checks;if(!(x)){std::fprintf(stderr,"FAIL line %d: %s\n",__LINE__,#x);std::exit(1);}}while(0)
 static bool has(int id,const wchar_t*s){return texts[id].find(s)!=std::wstring::npos;}
 int main(){
- for(int id:{476,860,9183,9187,9189,9193,9096})pageControls.push_back({id,L"original"});
+ const int unavailable[]={476,860,9183,9187,9189,9193,9096};
+ const int pending[]={100,459,455,458,477,9042,702,705,719,720,721,9050,799,470,804};
+ for(int id:unavailable)pageControls.push_back({id,L"original"});
+ for(int id:pending){pageControls.push_back({id,L"original"});enabled[id]=true;}
  create();
- for(const auto&p:pageControls){CHECK(!enabled[p.hwnd]);CHECK(p.help.find(L"不可用")!=std::wstring::npos);}
+ for(int id:unavailable){CHECK(!enabled[id]);for(const auto&p:pageControls)if(p.hwnd==id)CHECK(p.help.find(L"未实现")!=std::wstring::npos);}
+ for(int id:pending){CHECK(enabled[id]);CHECK(has(id,L"待实测"));for(const auto&p:pageControls)if(p.hwnd==id)CHECK(p.help.find(L"验证未完成")!=std::wstring::npos);}
+ CHECK(has(420,L"待审计"));CHECK(has(454,L"替代未实现"));CHECK(has(902,L"未完成"));
  CHECK(has(9192,L"等待"));
  fresh=true;data.nativeMegaGatewayStatus=1;data.nativeMegaGatewayAccepted=8;data.nativeMegaGatewaySkipped=3;
  SetWindowTextW(9192,L"legacy arbitration enabled");
- CHECK(has(9192,L"候选 8"));CHECK(has(9192,L"未判定区间 3"));CHECK(has(9192,L"不接管自动任务"));CHECK(has(9192,L"按帧采样"));
- for(int id:{807,865,9188,9190,9194}){SetWindowTextW(id,L"waiting");CHECK(has(id,L"此分支不可用"));}
+ CHECK(has(9192,L"候选 8"));CHECK(has(9192,L"未判定区间 3"));CHECK(has(9192,L"不接管自动任务"));CHECK(has(9192,L"按帧采样"));CHECK(has(9192,L"未实现"));
+ for(int id:{807,865,9188,9190,9194}){SetWindowTextW(id,L"waiting");CHECK(has(id,L"此分支不可用"));CHECK(has(id,L"未实现"));}
  data.nativeMegaGatewayStatus=-4;SetWindowTextW(9192,L"");CHECK(has(9192,L"LAN / Internet"));
  data.nativeMegaGatewayStatus=-3;SetWindowTextW(9192,L"");CHECK(has(9192,L"采样失败"));
  extra.nativeMegaGateway=false;SetWindowTextW(9192,L"");CHECK(has(9192,L"关闭"));
  extra.nativeMegaGateway=true;shared=nullptr;SetWindowTextW(9192,L"");CHECK(has(9192,L"等待"));shared=&data;
- // No-code-patch is not no-data-write: do not falsely claim native reveal is disabled.
- for(int mode:{1,2,4}){extra.mapStrategy=mode;SetWindowTextW(809,L"old misleading text");CHECK(has(809,L"此分支不可用"));}
+ for(int mode:{1,2,4}){extra.mapStrategy=mode;SetWindowTextW(809,L"old misleading text");CHECK(has(809,L"此分支不可用"));CHECK(has(809,L"未实现"));}
  extra.mapStrategy=3;SetWindowTextW(809,L"");CHECK(has(809,L"等待执行")&&has(809,L"修改探索数据")&&has(809,L"同步风险"));
  autoRevealDone=42;SetWindowTextW(809,L"");CHECK(has(809,L"已执行"));
  autoRevealDone=41;SetWindowTextW(809,L"");CHECK(!has(809,L"已执行"));
  extra.mapStrategy=0;SetWindowTextW(809,L"");CHECK(has(809,L"关闭"));
- extra.airWaypoints=true;SetWindowTextW(866,L"");CHECK(has(866,L"兼容事件模式")&&!has(866,L"不可用"));
- extra.airWaypoints=false;extra.nativeAirWaypoints=true;SetWindowTextW(866,L"");CHECK(has(866,L"不可用"));
+ extra.airWaypoints=true;SetWindowTextW(866,L"");CHECK(has(866,L"兼容事件模式")&&!has(866,L"不可用"));CHECK(has(866,L"待实测"));
+ extra.airWaypoints=false;extra.nativeAirWaypoints=true;SetWindowTextW(866,L"");CHECK(has(866,L"不可用")&&has(866,L"未实现"));
  extra.airPathKey=90;SetWindowTextW(866,L"");CHECK(has(866,L"兼容事件模式"));
  extra.airPathKey=0;airway::selectedNative=false;SetWindowTextW(866,L"");CHECK(has(866,L"兼容事件模式"));
  extra.nativeAirWaypoints=false;SetWindowTextW(866,L"");CHECK(has(866,L"关闭"));
@@ -69,8 +73,8 @@ int main(){
  data.techEnhanceStatus=0;SetWindowTextW(9098,L"");CHECK(has(9098,L"关闭"));
  shared=nullptr;extra.techEnhance=true;extra.mapStrategy=3;extra.airWaypoints=true;
  for(int id:{809,866,9098}){SetWindowTextW(id,L"");CHECK(has(id,L"等待"));}shared=&data;
- snap.hookConflicts=1;SetWindowTextW(865,L"real conflict");CHECK(texts[865]==L"real conflict");snap.hookConflicts=0;
- snap.hookInstalled=1;SetWindowTextW(9192,L"residual patch");CHECK(texts[9192]==L"residual patch");snap.hookInstalled=0;
+ snap.hookConflicts=1;SetWindowTextW(865,L"real conflict");CHECK(has(865,L"real conflict")&&has(865,L"重启游戏"));snap.hookConflicts=0;
+ snap.hookInstalled=1;SetWindowTextW(9192,L"residual patch");CHECK(has(9192,L"residual patch")&&has(9192,L"不会写回代码"));snap.hookInstalled=0;
  auto h=hooks[9192];h.callback(9192,WM_NCDESTROY,0,0,h.id,h.data);CHECK(!hooks.count(9192));
- std::printf("PASS: %u UI-policy checks; patch/data/event distinctions, diagnostic-only labels, real conflicts retained\n",checks);
+ std::printf("PASS: %u UI-policy checks; unfinished/pending labels; patch/data/event distinctions; restart instead of restoring code\n",checks);
 }

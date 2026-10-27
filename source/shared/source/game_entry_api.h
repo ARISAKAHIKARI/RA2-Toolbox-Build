@@ -2,7 +2,9 @@
 #include <stdint.h>
 // One ABI, one exported function, one instance in the target process.
 namespace gameentry {
-constexpr uint32_t Version=3;
+// v4 is the strict no-code-write ABI. Do not mix with an older Runtime.
+constexpr uint32_t Version=4;
+inline constexpr bool CodeWritesAllowed=false;
 enum class Operation:uint32_t {Enter,Leave,Patch,Inspect,MarkConflict,Capture,Validate};
 enum class Client:uint32_t {Assist=1,Cursor=2,Monitor=3};
 enum class Result:int32_t {Ok=1,Busy=-1,WrongThread=-2,WrongOwner=-3,Invalid=-4,PatchDenied=-5,SystemFailure=-6};
