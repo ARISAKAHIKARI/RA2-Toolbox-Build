@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verify PE32 architecture, ABI exports, dependency closure and release version."""
+"""Verify PE32 architecture, strict code-write policy, ABI and dependencies."""
 from pathlib import Path
 import hashlib
 import json
@@ -12,7 +12,7 @@ from pe32_image import Image
 
 ROOT = Path(__file__).resolve().parent.parent
 NAMES = ('RA2Toolbox.exe','GameRuntime.dll')
-HOOKS = {'GameRuntime.dll':('GameRuntimeHook','GameRuntimePostHook','GameRuntimeInfo','AssistProtocolInfo','AssistMappingPrefix','ManageGameEntry','GameEntryManagerInfo')}
+HOOKS = {'GameRuntime.dll':('GameRuntimeHook','GameRuntimePostHook','GameRuntimeInfo','AssistProtocolInfo','AssistMappingPrefix','ManageGameEntry','GameEntryManagerInfo','GameCodeWritePolicyInfo')}
 SYSTEM = {'kernel32.dll', 'user32.dll', 'gdi32.dll', 'winmm.dll', 'gdiplus.dll',
           'comctl32.dll', 'shell32.dll', 'ole32.dll', 'comdlg32.dll', 'advapi32.dll',
           'msvcrt.dll', 'ucrtbase.dll', 'ntdll.dll', 'version.dll', 'ws2_32.dll',
@@ -22,8 +22,6 @@ SYSTEM = {'kernel32.dll', 'user32.dll', 'gdi32.dll', 'winmm.dll', 'gdiplus.dll',
 def verify_host_manifest(pe):
     # GetWindowSubclass is imported by name. Windows needs the v6 activation
     # dependency in CREATEPROCESS_MANIFEST_RESOURCE_ID (1), before main runs.
-    # A declaration in an unused module manifest or arbitrary .rsrc text is
-    # insufficient. Check every language of the final executable's resource.
     leaves = pe.resource_blobs(24, 1)
     if not leaves:
         raise ValueError('EXE process manifest resource RT_MANIFEST/1 missing')
@@ -93,10 +91,13 @@ def verify(root):
             if bridge.at_rva(bridge.exports()['AssistMappingPrefix'], len(marker)) != marker:
                 raise ValueError('incorrect exported mapping namespace')
             manager = images['GameRuntime.dll']
-            if struct.unpack('<II',manager.at_rva(manager.exports()['GameEntryManagerInfo'],8)) != (3,108):
-                raise ValueError('entry manager API mismatch')
-            if struct.unpack('<II', manager.at_rva(manager.exports()['GameRuntimeInfo'],8)) != (4,176):
-                raise ValueError('Runtime diagnostic transport ABI mismatch')
+            if struct.unpack('<II',manager.at_rva(manager.exports()['GameEntryManagerInfo'],8)) != (4,108):
+                raise ValueError('strict entry manager API mismatch')
+            if struct.unpack('<II', manager.at_rva(manager.exports()['GameRuntimeInfo'],8)) != (5,176):
+                raise ValueError('strict Runtime diagnostic transport ABI mismatch')
+            code_policy = struct.unpack('<III', manager.at_rva(manager.exports()['GameCodeWritePolicyInfo'],12))
+            if code_policy != (1,0,0):
+                raise ValueError('strict code-write policy mismatch: installation/restoration must both be disabled')
             start=manager.optional+manager.u16(manager.nt+20)
             for symbol in ('GameRuntimeHook','GameRuntimePostHook'):
                 rva=manager.exports()[symbol]
@@ -106,8 +107,10 @@ def verify(root):
                 if manager.exports().get(symbol+'@12',rva)!=rva:
                     raise ValueError('stdcall hook alias mismatch: '+symbol)
                 recs['GameRuntime.dll'][symbol+'_rva']=hex(rva)
-            recs['GameRuntime.dll']['runtime_protocol']=4
+            recs['GameRuntime.dll']['runtime_protocol']=5
             recs['GameRuntime.dll']['runtime_control_bytes']=176
+            recs['GameRuntime.dll']['entry_protocol']=4
+            recs['GameRuntime.dll']['code_write_policy']={'version':1,'install':False,'restore':False}
             resource = host.resource_bytes()
             if '1.0.39.6'.encode('utf-16le') not in resource:
                 raise ValueError('EXE version resource mismatch')
@@ -130,14 +133,14 @@ def main():
         print('BUILD NOT VERIFIED:\n' + '\n'.join(errors))
         return 1
     (ROOT / 'BUILD-VERIFIED-v130.tag').write_text(
-        'v1.0.39-pre.6 SingleRuntime: PE32/ABI/import/version checks passed\n'
+        'Strict no-game-code-writes: PE32/ABI/policy/import/version checks passed\n'
         'Game runtime and multiplayer not tested\n', encoding='utf-8')
     (ROOT / 'WINDOWS_BUILD_ARTIFACTS.json').write_text(json.dumps({
-        'label': '1.0.39-pre.6 SingleRuntime', 'file_version': '1.0.39.6',
+        'label': 'strict-no-game-code-writes', 'file_version': '1.0.39.6',
         'verified': recs, 'runtime_tested': False, 'multiplayer_tested': False,
         'dependency_check': 'two project binaries import Windows system DLLs only',
     }, ensure_ascii=False, indent=2), encoding='utf-8')
-    print('PASS: 2 current PE32 x86 outputs; hooks exported; ABI/Shared size match; version 1.0.39.6')
+    print('PASS: 2 current PE32 x86 outputs; strict entry/transport ABI and code-write policy verified')
     print('PASS: no unbundled third-party or compiler-runtime DLL dependencies')
     print('PASS: actual EXE RT_MANIFEST/1 enables x86 Common Controls 6 for subclass helper imports')
     print('NOTE: static validation does not execute the Windows loader or the game')
@@ -146,7 +149,3 @@ def main():
 
 if __name__ == '__main__':
     sys.exit(main())
-
-
-
-
