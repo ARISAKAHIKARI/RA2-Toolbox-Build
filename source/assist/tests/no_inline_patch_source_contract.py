@@ -28,7 +28,6 @@ for root in roots:
             "VirtualProtect(",
             "WriteProcessMemory(",
             "FlushInstructionCache(",
-            "PAGE_EXECUTE_READWRITE",
             "writeInputCodeGuarded(",
             "makeInputTrampoline(",
         )
