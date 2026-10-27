@@ -1,0 +1,22 @@
+name: Validate rendering upgrade experiment
+on:
+  push:
+    branches: [experiment/render-upgrade-v139pre6-20261028]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: render-upgrade-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  source-snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Archive exact private source for validation
+        run: git archive --format=zip HEAD -o render-source.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: render-upgrade-source
+          path: render-source.zip
+          retention-days: 7
