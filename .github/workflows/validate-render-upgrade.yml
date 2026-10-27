@@ -2,6 +2,7 @@ name: Validate rendering upgrade experiment
 on:
   push:
     branches: [experiment/render-upgrade-v139pre6-20261028]
+    paths: ['source/**', '.github/workflows/validate-render-upgrade.yml']
   workflow_dispatch:
 permissions:
   contents: read
@@ -9,14 +10,115 @@ concurrency:
   group: render-upgrade-${{ github.ref }}
   cancel-in-progress: true
 jobs:
-  source-snapshot:
+  integrate:
+    if: github.ref == 'refs/heads/experiment/render-upgrade-v139pre6-20261028'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      source_sha: ${{ steps.commit.outputs.sha }}
     steps:
       - uses: actions/checkout@v4
-      - name: Archive exact private source for validation
-        run: git archive --format=zip HEAD -o render-source.zip
-      - uses: actions/upload-artifact@v4
+      - name: Materialize reviewed integration once
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ ! -f source/tools/render_upgrade_integrated.tag ]; then
+            python source/tools/materialize_render_upgrade.py
+            printf 'Feature base 47f0e6382da9964b7a337c9c1365de4d846b9092; canonical integration materialized.\n' > source/tools/render_upgrade_integrated.tag
+          fi
+          python source/tools/validate_render_upgrade.py
+      - name: Compile and run portable rendering regressions
+        shell: bash
+        run: |
+          set -euo pipefail
+          for name in render_upgrade render_upgrade_scene radar_scene radar_shroud_mask native_canvas; do
+            g++ -std=c++17 -O2 source/assist/tests/$name.cpp -o /tmp/$name-test
+            /tmp/$name-test
+          done
+      - name: Commit ordinary integration sources on this experimental branch
+        id: commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add source/assist/source/extra_settings_io.h source/assist/source/main.cpp source/assist/source/tactical_controls.h source/external_reader/source/native_canvas.h source/external_reader/source/radar_scene.h source/external_reader/source/radar_shroud_mask.h source/shared/source/overlay_stack.h source/unit_monitor/source/main.cpp source/tools/render_upgrade_integrated.tag
+          if ! git diff --cached --quiet; then
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git commit -m 'Wire native-viewport rendering and shared world/statistics compositor'
+            git push origin HEAD:refs/heads/experiment/render-upgrade-v139pre6-20261028
+          fi
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+  windows-x86:
+    needs: integrate
+    runs-on: windows-2022
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
         with:
-          name: render-upgrade-source
-          path: render-source.zip
-          retention-days: 7
+          ref: ${{ needs.integrate.outputs.source_sha }}
+      - name: Install Zig 0.13.0
+        shell: pwsh
+        run: |
+          $ProgressPreference='SilentlyContinue'
+          Invoke-WebRequest 'https://ziglang.org/download/0.13.0/zig-windows-x86_64-0.13.0.zip' -OutFile zig.zip
+          Expand-Archive zig.zip zig
+          $zig=(Resolve-Path 'zig/zig-windows-x86_64-0.13.0/zig.exe').Path
+          if((& $zig version) -ne '0.13.0'){throw 'Unexpected Zig version'}
+          Add-Content $env:GITHUB_ENV "ZIG_EXE=$zig"
+      - name: Verify integration and native-crop regressions
+        shell: pwsh
+        run: |
+          python source/tools/validate_render_upgrade.py
+          if($LASTEXITCODE -ne 0){throw 'Render integration contract failed'}
+          foreach($name in 'render_upgrade','render_upgrade_scene','radar_scene','radar_shroud_mask','native_canvas'){
+            & $env:ZIG_EXE c++ -target x86-windows-gnu -std=c++17 -O2 "source/assist/tests/$name.cpp" -o "$name-test.exe"
+            if($LASTEXITCODE -ne 0){throw "Test compile failed: $name"}
+            & ".\$name-test.exe" | Tee-Object -FilePath source/render-tests.log -Append
+            if($LASTEXITCODE -ne 0){throw "Test failed: $name"}
+          }
+      - name: Test actual passive compositor window
+        shell: pwsh
+        run: |
+          & $env:ZIG_EXE c++ -target x86-windows-gnu -std=c++17 -O2 source/assist/tests/overlay_compositor_windows.cpp -o compositor-test.exe -lgdi32 -luser32
+          if($LASTEXITCODE -ne 0){throw 'Compositor smoke compilation failed'}
+          .\compositor-test.exe | Tee-Object -FilePath source/render-tests.log -Append
+          if($LASTEXITCODE -ne 0){throw 'Compositor smoke failed'}
+      - name: Build feature-line Win32 binaries
+        working-directory: source
+        shell: pwsh
+        run: |
+          $env:RA2_NO_PAUSE='1'
+          cmd /d /c 'call BUILD_ZIG.cmd > build-render-upgrade.log 2>&1'
+          $status=$LASTEXITCODE
+          Get-Content build-render-upgrade.log -Tail 100
+          if($status -ne 0){throw "Build failed: $status"}
+          $files=@()
+          foreach($p in 'RA2Toolbox.exe','GameRuntime.dll'){
+            if(!(Test-Path $p)){throw "Missing $p"}
+            $files += [ordered]@{name=$p;bytes=(Get-Item $p).Length;sha256=(Get-FileHash $p -Algorithm SHA256).Hash.ToLowerInvariant()}
+          }
+          $commit=(git rev-parse HEAD).Trim()
+          [ordered]@{commit=$commit;base='47f0e6382da9964b7a337c9c1365de4d846b9092';branch='experiment/render-upgrade-v139pre6-20261028';run=$env:GITHUB_RUN_ID;configuration='render-upgrade-v139pre6';merged_layers=@('native-viewport-scene','world-information','primary-statistics');live_game_verified=$false;multiplayer_verified=$false;files=$files} | ConvertTo-Json -Depth 6 | Set-Content -Encoding utf8 render-build.json
+      - name: Upload successful experimental binaries
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: RA2-Toolbox-render-upgrade-experiment
+          if-no-files-found: error
+          retention-days: 14
+          path: |
+            source/RA2Toolbox.exe
+            source/GameRuntime.dll
+      - name: Upload diagnostics separately
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: RA2-render-upgrade-diagnostics
+          if-no-files-found: warn
+          retention-days: 14
+          path: |
+            source/build-render-upgrade.log
+            source/render-tests.log
+            source/render-build.json
+            source/research/2026-10-28-render-upgrade.md
