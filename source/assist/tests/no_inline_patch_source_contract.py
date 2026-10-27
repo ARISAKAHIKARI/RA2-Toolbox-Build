@@ -9,6 +9,7 @@ r = registry.read_text(encoding="utf-8")
 
 assert "constexpr bool NoInlineGamePatches = true;" in r
 assert "inline bool mayApplyPatch(Transition transition)" in r
+assert "return transition==Transition::Restore || (!NoInlineGamePatches && transition==Transition::Install);" in r
 assert "transition==Transition::Restore" in r
 assert "mayApplyPatch(transition)" in m
 assert m.index("mayApplyPatch(transition)") < m.index("if(transition==assist::hookregistry::Transition::Install)")
