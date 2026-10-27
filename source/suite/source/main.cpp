@@ -92,11 +92,11 @@ static DWORD WINAPI run(LPVOID arg){int i=int((uintptr_t)arg);LPWSTR cmd=const_c
 }
 static LRESULT CALLBACK proc(HWND w,UINT m,WPARAM wp,LPARAM lp){switch(m){
  case WM_CREATE:{frame=w;consoleDpi=modernui::windowDpi(w);auto ctl=[&](const wchar_t* cls,const wchar_t* text,DWORD style,int id){auto c=CreateWindowW(cls,text,WS_CHILD|WS_VISIBLE|style,0,0,1,1,w,(HMENU)(INT_PTR)id,instance,nullptr);SendMessageW(c,WM_SETFONT,(WPARAM)font,TRUE);modernui::style(c);return c;};
-  heading=ctl(L"STATIC",L"红警工具箱",0,0);modernui::heading(heading);
-  subtitle=ctl(L"STATIC",L"v" RA2_RELEASE_VERSION_W,0,0);switchLabel=ctl(L"STATIC",L"功能开关",0,0);
+  heading=ctl(L"STATIC",L"红警工具箱 · 无游戏代码补丁实验版",0,0);modernui::heading(heading);
+  subtitle=ctl(L"STATIC",L"无 inline Hook 实验 · v" RA2_RELEASE_VERSION_W,0,0);switchLabel=ctl(L"STATIC",L"功能开关",0,0);
   for(int i=0;i<5;++i)nav[i]=ctl(L"BUTTON",names[i],BS_PUSHBUTTON|WS_TABSTOP,200+i);
   for(int i=0;i<3;++i){checks[i]=ctl(L"BUTTON",moduleNames[i],BS_AUTOCHECKBOX|WS_TABSTOP,100+i);SendMessageW(checks[i],BM_SETCHECK,active[i]?BST_CHECKED:BST_UNCHECKED,0);}
-  footer=ctl(L"STATIC",L"设置自动保存 · 切换界面不影响已开启的功能",0,0);SetTimer(w,1,100,nullptr);applyDpi(consoleDpi);layout();return 0;}
+  footer=ctl(L"STATIC",L"实验版：依赖游戏代码补丁的功能不可用；原生事件功能仍需实机验证",0,0);SetTimer(w,1,100,nullptr);applyDpi(consoleDpi);layout();return 0;}
  case PaneReady:{int i=int(wp);if(i>=0&&i<3){panes[i]=(HWND)lp;layout();PostMessageW(panes[i],suite::ModuleEnable,active[i],0);if(closePhase==2)PostMessageW(panes[i],WM_CLOSE,suite::CloseToken,0);}return 0;}
  case EnabledChanged:{int i=int(wp);if(i>=0&&i<3){SendMessageW(checks[i],BM_SETCHECK,lp?BST_CHECKED:BST_UNCHECKED,0);save();}return 0;}
  case WM_COMMAND:if(LOWORD(wp)>=200&&LOWORD(wp)<=204&&HIWORD(wp)==BN_CLICKED){selected=LOWORD(wp)-200;WritePrivateProfileStringW(L"UI",L"Page",std::to_wstring(selected).c_str(),config.c_str());layout();return 0;}if(LOWORD(wp)>=100&&LOWORD(wp)<103&&HIWORD(wp)==BN_CLICKED){int i=LOWORD(wp)-100;active[i]=SendMessageW(checks[i],BM_GETCHECK,0,0)==BST_CHECKED;save();if(panes[i])PostMessageW(panes[i],suite::ModuleEnable,active[i],0);return 0;}break;
@@ -106,7 +106,7 @@ static LRESULT CALLBACK proc(HWND w,UINT m,WPARAM wp,LPARAM lp){switch(m){
  case WM_GETMINMAXINFO:((MINMAXINFO*)lp)->ptMinTrackSize={modernui::scale(760,consoleDpi),modernui::scale(620,consoleDpi)};return 0;
  case WM_DPICHANGED:{applyDpi(HIWORD(wp));auto r=(RECT*)lp;SetWindowPos(w,nullptr,r->left,r->top,r->right-r->left,r->bottom-r->top,SWP_NOZORDER|SWP_NOACTIVATE);layout();return 0;}
  case WM_CLOSE:if(!closePhase){closePhase=1;closeAsked=false;SetWindowTextW(frame,L"红警工具箱 · 正在准备退出…");}return 0;
- case CloseDecision:if(closePhase==1){if(wp)shutdown();else{closePhase=0;SetWindowTextW(frame,L"红警工具箱 v" RA2_RELEASE_VERSION_W);}}return 0;
+ case CloseDecision:if(closePhase==1){if(wp)shutdown();else{closePhase=0;SetWindowTextW(frame,L"红警工具箱 · 无游戏代码补丁实验版 v" RA2_RELEASE_VERSION_W);}}return 0;
  case WM_TIMER:{
   if(closePhase==1&&!closeAsked){if(panes[0]){closeAsked=true;PostMessageW(panes[0],suite::CloseCheck,0,0);}else if(done(0))shutdown();}
   if(closePhase==2&&done(0)&&done(1)&&done(2)){DestroyWindow(w);return 0;}
