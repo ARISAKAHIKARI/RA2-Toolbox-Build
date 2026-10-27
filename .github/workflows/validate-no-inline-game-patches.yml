@@ -43,7 +43,7 @@ jobs:
       - name: Compile and run policy and observer tests
         shell: pwsh
         run: |
-          foreach($name in 'hook_registry_policy','outlist_observer','outlist_observer_runtime','no_inline_status_ui','repair_delivery','no_inline_work_budget'){
+          foreach($name in 'hook_registry_policy','strict_code_write_manager','outlist_observer','outlist_observer_runtime','no_inline_status_ui','repair_delivery','no_inline_work_budget'){
             & $env:ZIG_EXE c++ -target x86-windows-gnu -std=c++17 -O2 "source/assist/tests/$name.cpp" -o "$name-test.exe"
             if($LASTEXITCODE -ne 0){throw "Test compilation failed: $name"}
             & ".\$name-test.exe" | Tee-Object -FilePath source/no-inline-tests.log -Append
@@ -99,3 +99,4 @@ jobs:
             source/research/2026-10-27-no-inline-readonly-observer.md
             source/research/2026-10-27-no-inline-work-budget.md
             source/research/2026-10-27-strict-no-code-write.md
+            source/research/2026-10-27-strict-policy-consistency.md

@@ -5,8 +5,9 @@ using namespace assist::hookregistry;
 int main(){
  assert(NoInlineGamePatches);
  assert(!mayApplyPatch(Transition::Install));
- assert(mayApplyPatch(Transition::Restore));
+ assert(!mayApplyPatch(Transition::Restore));
  assert(!mayApplyPatch(Transition::Deny));
+ // This is a metadata model only; commit() below never touches game memory.
  Registry<> reg;
  const uint8_t sidebar[]={0xE8,0x99,0xE0,0xE4,0xFF};
  const uint8_t refresh[]={0xE8,0xEA,0xD0,0xE4,0xFF};
@@ -22,12 +23,13 @@ int main(){
  assert(ownerAt(0x646E90)==Owner::CS);
  assert(ownerAt(0xDEADBEEF)==Owner::Unknown);
  assert(reg.proposal(0x646E90,orig,patch,5)==Transition::Install);
- assert(reg.proposal(0x646E90,patch,orig,5)==Transition::Deny); // cannot restore foreign/unowned bytes
+ assert(reg.proposal(0x646E90,patch,orig,5)==Transition::Deny);
  assert(reg.proposal(0x646E90,unknown,orig,5)==Transition::Deny);
  reg.commit(0x646E90,orig,patch,5,Transition::Install);
  assert(reg.installed()==1);
  assert(reg.proposal(0x646E90,patch,orig,5)==Transition::Restore);
- assert(reg.proposal(0x646E90,orig,patch,5)==Transition::Deny); // no install while active
+ assert(!mayApplyPatch(reg.proposal(0x646E90,patch,orig,5)));
+ assert(reg.proposal(0x646E90,orig,patch,5)==Transition::Deny);
  reg.commit(0x646E90,patch,orig,5,Transition::Restore);
  assert(reg.installed()==0);
  assert(reg.proposal(0x646E90,orig,patch,5)==Transition::Install);
@@ -42,7 +44,6 @@ int main(){
  assert(reg.conflicts()==1);
  assert(reg.proposal(0x646E90,patch,orig,5)==Transition::Deny);
  assert(reg.proposal(0x646E90,orig,patch,5)==Transition::Deny);
- // Separate code patches have separate owners; stale address is not writable.
  const uint8_t orig2[]={0x81,0xEC,0xF8,0,0,0};
  const uint8_t patch2[]={0xE9,1,2,3,4,0x90};
  assert(reg.proposal(0x4D74E0,orig2,patch2,6)==Transition::Install);
@@ -52,8 +53,8 @@ int main(){
  const uint8_t frame[]={0xA0,0xA0,0xE9,0xA8,0};
  assert(reg.proposal(0x55D360,frame,patch,5)==Transition::Install);
  assert(reg.proposal(0x55D360,unknown,patch,5)==Transition::Deny);
- reg.markConflict(0x55D360); // a third party changed the site before our first write
+ reg.markConflict(0x55D360);
  assert(reg.conflict(0x55D360));
  assert(reg.proposal(0x55D360,frame,patch,5)==Transition::Deny);
- puts("PASS: owned patch install/restore, sticky conflict, known original signatures and per-site isolation");
+ puts("PASS: all patch writes denied, ownership metadata/conflicts remain diagnostic only");
 }
