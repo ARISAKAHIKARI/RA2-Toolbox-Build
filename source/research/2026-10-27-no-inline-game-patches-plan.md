@@ -68,7 +68,7 @@
 - `source/shared/source/game_entry_manager.cpp` 在任何記憶體寫入之前檢查該策略：新 `Install` 一律回 `PatchDenied`；Registry 明確持有的 `Restore` 仍可執行；`Deny` 仍拒絕。這樣不會因為「全面禁止 Patch」而同時禁止既有補丁正常清理。
 - `source/assist/tests/hook_registry_policy.cpp` 新增 Install 拒絕、Restore 允許的策略斷言。
 - 新增 `source/assist/tests/no_inline_patch_source_contract.py`，要求遊戲可執行記憶體寫入 API 僅出現在共用管理器，並核對裝車／維修使用原生事件入口。
-- 新增 `.github/workflows/validate-no-inline-game-patches.yml`，準備執行來源契約、Registry 單元測試及 Win32 構建。CI 尚未取得結果，因此不宣稱已編譯通過。
+- 新增 `.github/workflows/validate-no-inline-game-patches.yml`，執行來源契約及 Win32 構建。Registry 測試源碼已補上策略斷言，但目前 CI 不單獨編譯這個測試檔。CI 尚未取得最終結果，因此不宣稱已編譯通過。
 
 ### 第一批候選功能的現有實作審計
 
