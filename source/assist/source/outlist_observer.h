@@ -22,6 +22,20 @@ inline bool valid(const Identity&i){return i.match&&i.scenario&&i.house&&i.house
  (i.session==3||i.session==4)&&i.houseIndex>=0&&i.houseIndex<32;}
 inline bool sameIdentity(const Identity&a,const Identity&b){return a.match==b.match&&
  a.scenario==b.scenario&&a.house==b.house&&a.houseID==b.houseID&&a.session==b.session&&a.houseIndex==b.houseIndex;}
+// At most one bulk snapshot attempt per identity/simulation frame. This is
+// telemetry throttling, NOT a simulation scheduler or an input acceptance test.
+// Failed bulk reads consume the attempt too, avoiding retry storms. Changed
+// contexts or a frame rollback may establish a new baseline immediately.
+class SampleCadence {
+ Identity identity{};int32_t frame=-1;bool have=false;
+public:
+ void clear(){have=false;frame=-1;identity={};}
+ bool admit(const Identity&i,int32_t f){
+  if(!valid(i)||f<0){clear();return false;}
+  if(have&&sameIdentity(identity,i)&&frame==f)return false;
+  identity=i;frame=f;have=true;return true;
+ }
+};
 struct Snapshot {
  Ring ring{};Identity identity{};int32_t frame=-1;uint32_t toolSerial=0;bool complete=false;
  uint8_t events[Capacity][EventBytes]{};uint32_t timings[Capacity]{};
