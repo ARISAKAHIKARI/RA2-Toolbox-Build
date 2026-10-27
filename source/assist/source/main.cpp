@@ -41,6 +41,7 @@
 #include "../../shared/source/overlay_recovery.h"
 #include "../../shared/source/monitor_refresh.h"
 #include "../../shared/source/secondary_display.h"
+#include "../../shared/source/feature_availability.h"
 #include "type_catalog.h"
 #include "external_planner.h"
 #include "clock_ms.h"
@@ -1434,12 +1435,12 @@ static void updateModeStatus(DWORD now){
  int phase=!enabled?1:!game?2:snap.status<0?3:(snap.status!=1||(shared&&commandMatch()&&snap.commandStatus!=1))?4:0;
  static int oldPhase=-1;static DWORD last; if(phase==oldPhase&&DWORD(now-last)<200)return;oldPhase=phase;last=now;publishSuiteDisplay();
  auto riskText=[&](bool wanted,int state)->std::wstring{if(state==-2)return L"启用或关闭失败，请查看日志";if(state==-1)return L"不支持此游戏版本";if(!wanted)return state==1?L"等待恢复":L"关闭";return phase?L"等待游戏就绪":state==1?L"已启用（实验性）":L"等待生效";};
- std::wstring enhancement=L"科技加强：";enhancement+=!extra.techEnhance?L"关闭":!shared||phase?L"等待游戏就绪":shared->techEnhanceStatus<0?L"部分字段不兼容或已被修改，请查看日志":shared->techEnhanceStatus==1?L"已启用（"+std::to_wstring(shared->techEnhanceCount)+L" 项）":L"等待生效";SetWindowTextW(GetDlgItem(ui,9098),enhancement.c_str());
- std::wstring riskStatus=L"随处建造："+riskText(buildAnywhereMode,snap.placementStatus);
- std::wstring airStatus=L"飞机路径点：";airStatus+=!(extra.airWaypoints||extra.nativeAirWaypoints)?L"关闭":phase?L"等待游戏就绪":extra.airWaypoints||extra.airPathKey||!airway::native()?L"兼容模式":snap.nativeAirStatus==-2?L"启用或关闭失败，请查看日志":snap.nativeAirStatus==-1?L"不支持此游戏版本":snap.nativeAirStatus==3?L"原生下单联机实验":snap.nativeAirStatus==4?L"完整原生联机实验":snap.nativeAirStatus==1?L"原生模式":L"等待生效";
+ std::wstring enhancement=L"科技加强：";enhancement+=!extra.techEnhance?L"关闭":featureavailability::NoInlineGamePatches?L"无补丁实验版不可用（依赖代码补丁）":!shared||phase?L"等待游戏就绪":shared->techEnhanceStatus<0?L"部分字段不兼容或已被修改，请查看日志":shared->techEnhanceStatus==1?L"已启用（"+std::to_wstring(shared->techEnhanceCount)+L" 项）":L"等待生效";SetWindowTextW(GetDlgItem(ui,9098),enhancement.c_str());
+ std::wstring riskStatus=L"随处建造："+(featureavailability::NoInlineGamePatches&&buildAnywhereMode?std::wstring(L"无补丁实验版不可用（依赖代码补丁）"):riskText(buildAnywhereMode,snap.placementStatus));
+ std::wstring airStatus=L"飞机路径点：";airStatus+=!(extra.airWaypoints||extra.nativeAirWaypoints)?L"关闭":featureavailability::NoInlineGamePatches?L"无补丁实验版不可用（依赖代码补丁）":phase?L"等待游戏就绪":extra.airWaypoints||extra.airPathKey||!airway::native()?L"兼容模式":snap.nativeAirStatus==-2?L"启用或关闭失败，请查看日志":snap.nativeAirStatus==-1?L"不支持此游戏版本":snap.nativeAirStatus==3?L"原生下单联机实验":snap.nativeAirStatus==4?L"完整原生联机实验":snap.nativeAirStatus==1?L"原生模式":L"等待生效";
  SetWindowTextW(GetDlgItem(ui,866),airStatus.c_str());
  SetWindowTextW(GetDlgItem(ui,807),riskStatus.c_str());
- std::wstring renderText=extra.mapStrategy?L"地图显示（实验性）：":L"地图显示：";renderText+=extra.mapStrategy==3?(autoRevealDone&&autoRevealDone==commandMatch()?L"自动地图全开已执行":L"等待自动地图全开"):snap.renderRevealStatus==-2?L"启用或关闭失败，请查看日志":!extra.renderReveal?L"关闭":phase?L"等待游戏就绪":snap.renderRevealStatus==1?L"已启用":L"等待生效";
+ std::wstring renderText=extra.mapStrategy?L"地图显示（实验性）：":L"地图显示：";renderText+=featureavailability::NoInlineGamePatches&&(extra.mapStrategy||extra.renderReveal)?L"无补丁实验版不可用（地图补丁已禁用；原生揭示另有联机风险）":extra.mapStrategy==3?(autoRevealDone&&autoRevealDone==commandMatch()?L"自动地图全开已执行":L"等待自动地图全开"):snap.renderRevealStatus==-2?L"启用或关闭失败，请查看日志":!extra.renderReveal?L"关闭":phase?L"等待游戏就绪":snap.renderRevealStatus==1?L"已启用":L"等待生效";
  SetWindowTextW(GetDlgItem(ui,809),renderText.c_str());
  {int z=shared?shared->viewZoomStatus:viewzoom::Waiting;std::wstring text=L"视角缩放：";
   if(!shared)text+=extra.viewZoomEnabled?L"等待连接":L"关闭";
@@ -1460,18 +1461,19 @@ static void updateModeStatus(DWORD now){
   auto stateText=[&](bool requested,int state){return !fresh?(requested?L"等待对局及连接就绪":L"关闭"):
    state<0?L"不可用，请检查游戏版本或功能冲突":state==2?L"正在处理待发事件并恢复":
    state==1?(requested?L"已启用（实验性）":L"正在关闭"):requested?L"等待适配启用":L"关闭";};
-  std::wstring network=L"事件所属方保留：";network+=stateText(extra.networkHousePreserve,shared?shared->networkHouseStatus:0);
+  std::wstring network=L"事件所属方保留：";network+=featureavailability::NoInlineGamePatches&&extra.networkHousePreserve?L"无补丁实验版不可用（依赖代码补丁）":stateText(extra.networkHousePreserve,shared?shared->networkHouseStatus:0);
   SetWindowTextW(GetDlgItem(ui,9188),network.c_str());
   std::wstring sell=L"原生变卖光标：";
-  if(fresh&&extra.nativeSellCursor&&eventdelivery::isMultiplayer(incoming.session)&&!networkHouseReady()&&shared->nativeSellCursorStatus==0)sell+=L"等待事件所属方保留已启用";
+  if(featureavailability::NoInlineGamePatches&&extra.nativeSellCursor)sell+=L"无补丁实验版不可用（依赖代码补丁）";
+  else if(fresh&&extra.nativeSellCursor&&eventdelivery::isMultiplayer(incoming.session)&&!networkHouseReady()&&shared->nativeSellCursorStatus==0)sell+=L"等待事件所属方保留已启用";
   else sell+=stateText(extra.nativeSellCursor,shared?shared->nativeSellCursorStatus:0);
   SetWindowTextW(GetDlgItem(ui,9190),sell.c_str());
-  std::wstring mega=L"原生命令仲裁：";mega+=stateText(extra.nativeMegaGateway,shared?shared->nativeMegaGatewayStatus:0);
+  std::wstring mega=L"原生命令仲裁：";mega+=featureavailability::NoInlineGamePatches&&extra.nativeMegaGateway?L"无补丁实验版不可用（观察入口依赖代码补丁）":stateText(extra.nativeMegaGateway,shared?shared->nativeMegaGatewayStatus:0);
   SetWindowTextW(GetDlgItem(ui,9192),mega.c_str());
   std::wstring owner=L"控制命令所属方：";
   if(extra.controlCommandOwner&&!extra.controlAll)owner+=L"等待开启跨玩家操控";
   else if(fresh&&extra.controlCommandOwner&&eventdelivery::isMultiplayer(incoming.session)&&!networkHouseReady())owner+=L"等待事件所属方保留已启用";
-  else owner+=stateText(extra.controlCommandOwner,shared?shared->controlCommandOwnerStatus:0);
+  else owner+=featureavailability::NoInlineGamePatches&&extra.controlCommandOwner?L"无补丁实验版不可用（依赖代码补丁）":stateText(extra.controlCommandOwner,shared?shared->controlCommandOwnerStatus:0);
   SetWindowTextW(GetDlgItem(ui,9194),owner.c_str());
  }
  SetWindowTextW(GetDlgItem(ui,813),(L"步兵强制进入建筑："+(extra.c4Test&&snap.c4TestStatus==1&&!phase&&infantryEntryResultMatch==commandMatch()&&!infantryEntryResult.empty()?infantryEntryResult:riskText(extra.c4Test,snap.c4TestStatus))).c_str());
@@ -1535,7 +1537,7 @@ static void updatePlayerTestUI(bool force=false){
  EnableWindow(GetDlgItem(ui,9185),idle&&epoch==commandMatch()&&selected>=0&&selected<count&&!foreign);
  if(foreign){SetWindowTextW(GetDlgItem(ui,9186),DestructForeignNotice);destructForeignNoticeShown=true;}
  else if(destructForeignNoticeShown){SetWindowTextW(GetDlgItem(ui,9186),L"自毁：所选所属方可提交实验请求；已入队不代表已自毁。");destructForeignNoticeShown=false;}
- std::wstring label=L"跨玩家操控：";label+=!extra.controlAll?L"关闭":status==1?L"已启用（实验性）":status<0?L"此版本不兼容，未启用":L"等待生效";
+ std::wstring label=L"跨玩家操控：";label+=!extra.controlAll?L"关闭":featureavailability::NoInlineGamePatches?L"无补丁实验版不可用（依赖代码补丁）":status==1?L"已启用（实验性）":status<0?L"此版本不兼容，未启用":L"等待生效";
  label+=L" · 当前玩家 "+std::to_wstring(current+1);SetWindowTextW(GetDlgItem(ui,865),label.c_str());
 }
 #include "shift_click_host.h"
