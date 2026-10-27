@@ -133,6 +133,14 @@ struct Slot {
  uint8_t size=0;bool active=false,conflict=false;
 };
 enum class Transition : uint8_t { Deny, Install, Restore };
+// This branch is intentionally strict: never install a new inline patch into
+// the game image. Restoring a patch already owned by this registry remains
+// allowed so an experiment can shut down cleanly. Do not carry this policy to
+// the release branch without an explicit compatibility decision.
+constexpr bool NoInlineGamePatches = true;
+inline bool mayApplyPatch(Transition transition){
+ return transition==Transition::Restore || (!NoInlineGamePatches && transition==Transition::Install);
+}
 template<unsigned Capacity=64> struct Registry {
  static constexpr unsigned CapacityLimit=Capacity;
  Slot slots[Capacity]{};unsigned used=0;
