@@ -62,4 +62,15 @@ ore = (source / "assist/source/external_orders_bridge.h").read_text(encoding="ut
 assert "nativeMission(house,o.unit,o.mission,o.target,o.destination,o.destinationTag" in ore
 assert "gameentry::patch(" not in autoload
 assert "gameentry::patch(" not in ore
+# UI status paths must not claim patch-backed features are active in this branch.
+availability = (source / "shared/source/feature_availability.h").read_text(encoding="utf-8")
+host = (source / "assist/source/main.cpp").read_text(encoding="utf-8")
+assert "inline constexpr bool NoInlineGamePatches=true;" in availability
+for token in (
+    'featureavailability::NoInlineGamePatches?L"无补丁实验版不可用',
+    'featureavailability::NoInlineGamePatches&&(extra.mapStrategy||extra.renderReveal)?L"无补丁实验版不可用',
+    'featureavailability::NoInlineGamePatches&&extra.controlAll?L"无补丁实验版不可用',
+    'featureavailability::NoInlineGamePatches&&extra.nativeMegaGateway?L"无补丁实验版不可用',
+):
+    assert token in host, f"missing honest no-inline status path: {token}"
 print("PASS: no-inline patch gate, sole executable writer, native-event migration candidates")
