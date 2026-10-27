@@ -36,6 +36,7 @@ static Result applyPatch(const Request&r){
  if(slot>=0&&patchModules[slot]&&patchModules[slot]!=r.module)return Result::WrongOwner;
  const auto transition=patches.proposal(r.address,r.before,r.after,r.length);
  if(transition==assist::hookregistry::Transition::Deny)return Result::PatchDenied;
+ if(!assist::hookregistry::mayApplyPatch(transition))return Result::PatchDenied;
  if(transition==assist::hookregistry::Transition::Install){
   // Entry bytes alone do not establish the adapter's stack/continuation ABI.
   // Restoration must remain possible after a dependency changes.
