@@ -37,7 +37,7 @@ jobs:
       - name: Compile and run patch-registry policy test
         shell: pwsh
         run: |
-          & $env:ZIG_EXE c++ -target x86_64-windows-gnu -std=c++17 -O2 source/assist/tests/hook_registry_policy.cpp -o no-inline-policy-test.exe
+          & $env:ZIG_EXE c++ -target x86-windows-gnu -std=c++17 -O2 source/assist/tests/hook_registry_policy.cpp -o no-inline-policy-test.exe
           if($LASTEXITCODE -ne 0){throw "Policy test compilation failed"}
           .\no-inline-policy-test.exe
           if($LASTEXITCODE -ne 0){throw "Policy test failed"}
