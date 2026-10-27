@@ -69,7 +69,7 @@ assert "inline constexpr bool NoInlineGamePatches=true;" in availability
 for token in (
     'featureavailability::NoInlineGamePatches?L"无补丁实验版不可用',
     'featureavailability::NoInlineGamePatches&&(extra.mapStrategy||extra.renderReveal)?L"无补丁实验版不可用',
-    'featureavailability::NoInlineGamePatches&&extra.controlAll?L"无补丁实验版不可用',
+    '!extra.controlAll?L"关闭":featureavailability::NoInlineGamePatches?L"无补丁实验版不可用',
     'featureavailability::NoInlineGamePatches&&extra.nativeMegaGateway?L"无补丁实验版不可用',
 ):
     assert token in host, f"missing honest no-inline status path: {token}"
