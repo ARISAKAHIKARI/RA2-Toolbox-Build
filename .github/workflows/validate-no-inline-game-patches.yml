@@ -1,0 +1,70 @@
+name: Validate no-inline-game-patches experiment
+
+on:
+  push:
+    branches: [experiment/no-inline-game-patches-20261027]
+    paths:
+      - "source/**"
+      - ".github/workflows/validate-no-inline-game-patches.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows-x86:
+    runs-on: windows-2022
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Zig 0.13.0
+        shell: pwsh
+        run: |
+          $ProgressPreference='SilentlyContinue'
+          Invoke-WebRequest 'https://ziglang.org/download/0.13.0/zig-windows-x86_64-0.13.0.zip' -OutFile zig.zip
+          Expand-Archive zig.zip zig
+          $zig=(Resolve-Path 'zig/zig-windows-x86_64-0.13.0/zig.exe').Path
+          if((& $zig version) -ne '0.13.0'){throw 'Unexpected Zig version'}
+          Add-Content $env:GITHUB_ENV "ZIG_EXE=$zig"
+
+      - name: Enforce no-inline source contract
+        shell: pwsh
+        run: |
+          python source/assist/tests/no_inline_patch_source_contract.py
+          if($LASTEXITCODE -ne 0){throw "No-inline source contract failed"}
+
+      - name: Compile and run patch-registry policy test
+        shell: pwsh
+        run: |
+          & $env:ZIG_EXE c++ -target x86_64-windows-gnu -std=c++17 -O2 source/assist/tests/hook_registry_policy.cpp -o no-inline-policy-test.exe
+          if($LASTEXITCODE -ne 0){throw "Policy test compilation failed"}
+          .\no-inline-policy-test.exe
+          if($LASTEXITCODE -ne 0){throw "Policy test failed"}
+
+      - name: Build Win32 binaries
+        working-directory: source
+        shell: pwsh
+        run: |
+          $env:RA2_NO_PAUSE='1'
+          cmd /d /c "call BUILD_ZIG.cmd > build-no-inline.log 2>&1"
+          $status=$LASTEXITCODE
+          Get-Content build-no-inline.log -Tail 80
+          if($status -ne 0){throw "Build failed: $status"}
+          foreach($p in 'RA2Toolbox.exe','GameRuntime.dll'){
+            if(!(Test-Path $p)){throw "Missing $p"}
+          }
+
+      - name: Upload experimental binaries and audit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: RA2-Toolbox-no-inline-game-patches-experiment
+          retention-days: 14
+          if-no-files-found: warn
+          path: |
+            source/RA2Toolbox.exe
+            source/GameRuntime.dll
+            source/build-no-inline.log
+            source/research/2026-10-27-no-inline-game-patches-plan.md
+            source/assist/tests/no_inline_patch_source_contract.py
