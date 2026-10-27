@@ -1,5 +1,7 @@
 #pragma once
 namespace featureavailability {
+// Experimental branch policy: UI must not claim patch-backed features are active.
+inline constexpr bool NoInlineGamePatches=true;
 // v1.0.38-pre.1: retain the controls and implementation for later evaluation.
 inline constexpr bool SceneRefresh=false,ViewZoom=false;
 inline constexpr int refreshMode(int requested){return SceneRefresh&&requested>=0&&requested<=3?requested:0;}
