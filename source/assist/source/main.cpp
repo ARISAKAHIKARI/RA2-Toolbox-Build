@@ -1,5 +1,6 @@
 #include "../../shared/source/modern_ui.h"
 #include "../../shared/source/overlay_stack.h"
+#include "../../shared/source/overlay_compositor.h"
 #include "../../shared/source/release_version.h"
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
@@ -63,9 +64,11 @@
 using namespace assist;using namespace Gdiplus;
 extern "C" __declspec(dllexport) const uint32_t AssistHostProtocolInfo[2]={Version,sizeof(Shared)};
 extern "C" __declspec(dllexport) const MappingPrefixValue AssistHostMappingPrefix{};
+namespace renderupgrade {static void stop();static void shutdown();}
 namespace minimap {static void hide();static void clear();static void destroy();}
 namespace watchwindows {static void hide();}
 static uint32_t computeRequested=compute::Default;
+static bool renderUpgradeEnabled=false,unifiedOverlayEnabled=false;static int renderUpgradeLayer=0;
 static bool minimapEnabled=false,minimapSecondary=false;static int minimapMode=0,minimapScale=10,minimapPosition=0,minimapX=20,minimapY=60,minimapAlignX=0,minimapAlignY=0;
 static int minimapSecondaryX=10000,minimapSecondaryY=10000,minimapSecondaryWidth=320;
 static WORD socialKeys[9]{}; // Cheer, taunts 1..8; empty by default.
@@ -76,6 +79,7 @@ static void serviceAirPath();static void resetAirPath();static void airPathResul
 static void serviceConstruction();static void hideConstruction();static void resetConstruction();static void destroyConstruction();static void constructionResult(int,int,uint32_t,uint32_t);
 static HWND ui,overlay,statusLabel,swList,techList,techSearch,swHotkey,rateEdit,marginEdit,check[7],keys[12],repairCheck,repairEdit;
 static HFONT font,titleFont;static HBRUSH bgBrush,editBrush;static HWND game;static DWORD pid,gameThread;static HANDLE mapping,gameProcess;static HMODULE module;static gameinput::Subscription hook;static Shared*shared;
+static void hideWorldOverlay(){overlaycompositor::host().hide(overlaycompositor::World);if(overlay)ShowWindow(overlay,SW_HIDE);}
 static uint32_t lastReceiptWrite=0,lastReceiptMatch=0;
 static Snapshot snap{},incoming{};static uint32_t ack,notice,oldMatch,snapshotSeq=~0u;static std::wstring root,statusText,toast;static DWORD toastUntil,lastFind,lastData,lastPulse;static int fps=visual::DefaultFPS,topMargin=20,repairMs=2000;static bool enabled=true,ready,techEnabled;static std::vector<int> techIndices;static std::wstring lastSearch;
 static bool infoAdaptive=false;
@@ -743,14 +747,14 @@ static void releaseBridge(){
  else{if(hook)gameinput::release(gameentry::Client::Assist,hook);if(shared)UnmapViewOfFile(shared);if(mapping)CloseHandle(mapping);}
  hook=0;shared=nullptr;mapping=nullptr;module=nullptr;lastData=attachAt=lastPulse=0;incoming={};snapshotSeq=~0u;lastReceiptWrite=lastReceiptMatch=0;reapBridges();
 }
-static void detach(){clearPassengerDisplay();watchwindows::hide();minimap::clear();hideAircraftButton();resetConstruction();resetAirPath();hotkeyPending.clear();pointerMatches.clear();
+static void detach(){renderupgrade::stop();clearPassengerDisplay();watchwindows::hide();minimap::clear();hideAircraftButton();resetConstruction();resetAirPath();hotkeyPending.clear();pointerMatches.clear();
  tacticalPlanner.reset();submittedPlan.clear();worldRevision=-1;plannerAck=0;hasSelection=false;selectionAck=0;
  DWORD exitCode=0;bool exitKnown=gameProcess&&GetExitCodeProcess(gameProcess,&exitCode);
  critical(L"detach pid="+std::to_wstring(pid)+L" processExitCode="+(exitKnown?hex32(exitCode):L"unavailable")+
   L" stillActive="+std::to_wstring(exitKnown&&exitCode==STILL_ACTIVE));commandQueue.clear();inFlightMatch=0;inFlightRetries=0;sentAt=0;lastStallLog=0;typeTap.clear();
  releaseBridge();externalData=nullptr;externalSampler.reset();externalReader.close();externalAt=0;
  bridgeAttempts=0;bridgeBlocked=false;bridgeRetryAt=0;bridgeFailure.clear();
- if(gameProcess)CloseHandle(gameProcess);gameProcess=nullptr;lastProcessCheck=0;game=nullptr;pid=0;gameThread=0;snap={};overlayRecovery.suspend();motion.clear();statusMotion.clear();labelRasters.clear();clearEnemyDisplay();ShowWindow(overlay,SW_HIDE);
+ if(gameProcess)CloseHandle(gameProcess);gameProcess=nullptr;lastProcessCheck=0;game=nullptr;pid=0;gameThread=0;snap={};overlayRecovery.suspend();motion.clear();statusMotion.clear();labelRasters.clear();clearEnemyDisplay();hideWorldOverlay();
 }
 static bool boundGameAlive(){
  if(!game||!IsWindow(game))return false;
@@ -1107,6 +1111,7 @@ static void resetAirPath(){airway::reset();}
 static void airPathResult(int r,int n,uint32_t id,uint32_t token){airway::result(r,n,id,token);}
 #include "aircraft_indicator.h"
 #include "minimap_overlay.h"
+#include "render_upgrade_host.h"
 static void requestReservationSound(){
  // Best-effort UI feedback must never occupy or delay a production order.
  if(!shared||!commandFresh(GetTickCount())||shared->uiSoundRequest!=shared->uiSoundAck)return;
@@ -1134,32 +1139,56 @@ static void constructionResult(int r,int n,uint32_t id,uint32_t token){buildrese
 struct Surface{HDC dc{};HBITMAP bitmap{},old{};BYTE*bits{};int w{},h{};~Surface(){clear();}void clear(){if(dc){if(old&&old!=HGDI_ERROR)SelectObject(dc,old);DeleteDC(dc);}if(bitmap)DeleteObject(bitmap);dc=nullptr;bitmap=old=nullptr;bits=nullptr;w=h=0;}bool resize(int x,int y){if(x==w&&y==h&&dc)return true;clear();if(x<1||y<1||x>8192||y>8192)return false;BITMAPINFO bi{};bi.bmiHeader.biSize=sizeof(BITMAPINFOHEADER);bi.bmiHeader.biWidth=x;bi.bmiHeader.biHeight=-y;bi.bmiHeader.biPlanes=1;bi.bmiHeader.biBitCount=32;HDC screen=GetDC(nullptr);dc=CreateCompatibleDC(screen);bitmap=CreateDIBSection(screen,&bi,DIB_RGB_COLORS,(void**)&bits,nullptr,0);ReleaseDC(nullptr,screen);if(!bitmap||!dc){clear();return false;}old=(HBITMAP)SelectObject(dc,bitmap);if(!old||old==HGDI_ERROR){clear();return false;}w=x;h=y;return true;}};static Surface surface;
 #include "watch_windows.h"
 namespace worldrender {
-struct Job {uint32_t pid,match,tick;int w,h,clientW,clientH;POINT origin;std::function<void(Graphics&)> draw;};
-struct Frame {uint32_t pid,match,tick;int w,h,clientW,clientH;POINT origin;std::vector<uint32_t> pixels;};
+struct Job {uint32_t pid,match,tick;int w,h,clientW,clientH;POINT origin;std::function<void(Graphics&)> draw;overlaycompositor::Context context;POINT relative{};};
+struct Frame {uint32_t pid,match,tick;int w,h,clientW,clientH;POINT origin;std::vector<uint32_t> pixels;overlaycompositor::Context context;POINT relative{};};
 static asyncwork::Latest<Job,Frame> worker([](const Job&j)->std::shared_ptr<const Frame>{
  if(j.w<1||j.h<1||j.w>8192||j.h>8192||uint64_t(j.w)*j.h>16*1024*1024)return {};
- auto out=std::make_shared<Frame>();out->pid=j.pid;out->match=j.match;out->tick=j.tick;out->w=j.w;out->h=j.h;out->clientW=j.clientW;out->clientH=j.clientH;out->origin=j.origin;out->pixels.resize(size_t(j.w)*j.h);
+ auto out=std::make_shared<Frame>();out->pid=j.pid;out->match=j.match;out->tick=j.tick;out->w=j.w;out->h=j.h;out->clientW=j.clientW;out->clientH=j.clientH;out->origin=j.origin;out->context=j.context;out->relative=j.relative;out->pixels.resize(size_t(j.w)*j.h);
  Bitmap bm(j.w,j.h,j.w*4,PixelFormat32bppPARGB,reinterpret_cast<BYTE*>(out->pixels.data()));{Graphics g(&bm);j.draw(g);}return out;
 });
 static std::shared_ptr<const Frame> displayed;
 static bool active=false;
-static void submit(Job input){active=true;worker.submit(std::move(input));}
-static void invalidate(){if(!active)return;active=false;worker.invalidate();displayed.reset();}
-static void present(){auto frame=worker.get();if(!frame||frame==displayed||frame->pid!=pid||frame->match!=snap.match||DWORD(GetTickCount()-frame->tick)>500)return;
+static void submit(Job input){
+ active=true;input.context=overlaycompositor::host().capture(uintptr_t(game),pid);
+ if(input.context.token&&(input.context.cameraX!=snap.cameraX||input.context.cameraY!=snap.cameraY))input.context.token=0;
+ POINT origin{};ClientToScreen(game,&origin);input.relative={input.origin.x-origin.x,input.origin.y-origin.y};
+ worker.submit(std::move(input));
+}
+static void invalidate(){overlaycompositor::host().hide(overlaycompositor::World);if(!active)return;active=false;worker.invalidate();displayed.reset();}
+static void present(){auto frame=worker.get();
+ auto context=overlaycompositor::host().capture(uintptr_t(game),pid);
+ if(context.token&&IsWindowVisible(overlay))ShowWindow(overlay,SW_HIDE);
+ if(!frame||frame->pid!=pid||frame->match!=snap.match){overlaycompositor::host().hide(overlaycompositor::World);return;}
  RECT client{};GetClientRect(game,&client);if(client.right!=frame->clientW||client.bottom!=frame->clientH)return;
+ if(context.token){
+  // Immutable pixels are shared with the single compositor; no extra HWND is
+  // shown for labels, passenger bubbles, timers, formation or world markers.
+  auto pixels=std::shared_ptr<const std::vector<uint32_t>>(frame,&frame->pixels);
+  if(frame->context.token!=context.token||frame->context.cameraX!=context.cameraX||frame->context.cameraY!=context.cameraY){overlaycompositor::host().hide(overlaycompositor::World);return;}
+  overlaycompositor::host().publish({overlaycompositor::World,10,frame->context,{frame->relative.x,frame->relative.y,frame->w,frame->h},true,255,std::move(pixels)});
+  if(IsWindowVisible(overlay))ShowWindow(overlay,SW_HIDE);
+  displayed=frame;return;
+ }
+ overlaycompositor::host().hide(overlaycompositor::World);
+ if((frame==displayed&&IsWindowVisible(overlay))||DWORD(GetTickCount()-frame->tick)>500)return;
  if(!surface.resize(frame->w,frame->h))return;memcpy(surface.bits,frame->pixels.data(),frame->pixels.size()*4);
- POINT origin=frame->origin,zero{};SIZE size{frame->w,frame->h};BLENDFUNCTION blend{AC_SRC_OVER,0,255,AC_SRC_ALPHA};bool ok=UpdateLayeredWindow(overlay,nullptr,&origin,&size,surface.dc,&zero,0,&blend,ULW_ALPHA)!=0;overlayRecovery.submitted(ok);if(ok){displayed=frame;++displayCounters.uploads;overlaystack::place(overlay,overlaystack::Layer::World,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE|SWP_SHOWWINDOW);}
+ POINT origin{};ClientToScreen(game,&origin);origin.x+=frame->relative.x;origin.y+=frame->relative.y;POINT zero{};
+ SIZE size{frame->w,frame->h};BLENDFUNCTION blend{AC_SRC_OVER,0,255,AC_SRC_ALPHA};
+ bool ok=UpdateLayeredWindow(overlay,nullptr,&origin,&size,surface.dc,&zero,0,&blend,ULW_ALPHA)!=0;
+ overlayRecovery.submitted(ok);if(ok){displayed=frame;++displayCounters.uploads;overlaystack::place(overlay,overlaystack::Layer::World,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE|SWP_SHOWWINDOW);}
 }
 }
 static void paint(){
  ++displayCounters.paints;
  if(enabled||secondaryDisplayRequested())sampleExternal(GetTickCount()); // Display cadence is independent of command servicing.
  bool battlefield=external::display::inspect([](uint32_t at,void*out,size_t n){return externalReader.readFresh(at,out,n);}).visible();
- if(!battlefield||snap.renderStatus!=1){worldrender::invalidate();overlayRecovery.suspend();ShowWindow(overlay,SW_HIDE);hideAircraftButton();minimap::hide();watchwindows::hide();hideConstruction();clearPassengerDisplay();return;}
+ if(!battlefield||snap.renderStatus!=1){renderupgrade::stop();worldrender::invalidate();overlayRecovery.suspend();hideWorldOverlay();hideAircraftButton();minimap::hide();watchwindows::hide();hideConstruction();clearPassengerDisplay();return;}
  const DWORD renderNow=sampleRenderClock(shared);
  RECT r{};GetClientRect(game,&r);POINT origin{};ClientToScreen(game,&origin);
+ renderupgrade::update(origin,r,battlefield);
+ {static uint64_t prior=0;auto c=overlaycompositor::host().capture(uintptr_t(game),pid);if(prior!=c.token){prior=c.token;++paintRevision;}}
  minimap::update(origin,r,battlefield);watchhost::update(renderNow);watchwindows::update(origin,r,battlefield);
- if(!enabled||!foregroundGame()||snap.chat){worldrender::invalidate();overlayRecovery.suspend();ShowWindow(overlay,SW_HIDE);hideAircraftButton();hideConstruction();clearPassengerDisplay();return;}
+ if(!enabled||!foregroundGame()||snap.chat){worldrender::invalidate();overlayRecovery.suspend();hideWorldOverlay();hideAircraftButton();hideConstruction();clearPassengerDisplay();return;}
  DWORD now=sampleClock(shared);int labelCount=motion.render(renderNow,labelViews);
  const auto&statusFrame=externalSampler.unitStatuses();
  int statusCount=statusOptions()&&externalData&&external::status::fresh(statusFrame,externalData->match,renderNow)?std::min(statusFrame.count,statusMotion.render(renderNow,statusViews)):0;
@@ -1182,8 +1211,8 @@ static void paint(){
  bool panel=SendMessageW(check[6],BM_GETCHECK,0,0)==BST_CHECKED;
  bool hasToast=panel&&now<toastUntil;bool summary=panel&&snap.transports;
  worldrender::present();
- if(!formationhost::visible()&&!labelCount&&!hasToast&&!summary&&!snap.threatCount&&!snap.crateCount&&!enemyCount&&!statusCount&&!idleTabs&&passengerBubbles.empty()&&airLines.empty()&&nativeBadges.empty()){worldrender::invalidate();overlayRecovery.suspend();ShowWindow(overlay,SW_HIDE);return;}
- viewport::Scale view;if(!view.set(snap.width,snap.height,r.right,r.bottom)){ShowWindow(overlay,SW_HIDE);return;}
+ if(!formationhost::visible()&&!labelCount&&!hasToast&&!summary&&!snap.threatCount&&!snap.crateCount&&!enemyCount&&!statusCount&&!idleTabs&&passengerBubbles.empty()&&airLines.empty()&&nativeBadges.empty()){worldrender::invalidate();overlayRecovery.suspend();hideWorldOverlay();return;}
+ viewport::Scale view;if(!view.set(snap.width,snap.height,r.right,r.bottom)){hideWorldOverlay();return;}
  const int physicalW=r.right,physicalH=r.bottom;r.right=view.gameWidth;r.bottom=view.gameHeight;
  const float sx=1,sy=1; // Positions, glyphs, icons and bounds share game-pixel space.
  float top=float(std::clamp(topMargin,0,std::max(0,int(r.bottom)-90)));
@@ -1202,7 +1231,7 @@ static void paint(){
  for(int i=0;i<snap.threatCount;++i){auto&t=snap.threats[i];include(std::min(t.x,t.tx)*sx-10,std::min(t.y,t.ty)*sy-10,std::abs(t.x-t.tx)*sx+20,std::abs(t.y-t.ty)*sy+20);}
  for(int i=0;i<statusCount;++i){const auto&v=statusViews[i];const auto&m=statusFrame.items[i];auto b=statusbadges::bounds(v.x,v.y,m.buffs,m.parasite!=0);include(b.x,b.y,b.w,b.h);}
  for(int i=0;i<enemyCount;++i){const auto&v=enemyViews[i];if(external::enemies::onScreen(v.x,v.y,enemyFrame.width,enemyFrame.height))include(v.x*sx-10,v.y*sy-12,300,54);}
- if(right<=left||bottom<=up){ShowWindow(overlay,SW_HIDE);return;}
+ if(right<=left||bottom<=up){hideWorldOverlay();return;}
  static Snapshot drawn{};static visual::LabelView drawnViews[MaxLabels];static int drawnCount;static bool lastToast,lastPanel,lastSummary;static std::wstring oldToast;static int oldW,oldH,oldMargin;static uint32_t revision;
  static external::enemies::Marker drawnEnemies[external::enemies::Maximum];static visual::LabelView drawnEnemyViews[MaxLabels];static int drawnEnemyCount,drawnEnemyWidth,drawnEnemyHeight;
  static external::status::Marker drawnStatuses[external::status::Maximum];static visual::LabelView drawnStatusViews[MaxLabels];static int drawnStatusCount,drawnStatusWidth,drawnStatusHeight;
@@ -1215,7 +1244,7 @@ static void paint(){
  changed=changed||drawnStatusCount!=statusCount||drawnStatusWidth!=statusFrame.width||drawnStatusHeight!=statusFrame.height||memcmp(drawnStatusViews,statusViews,sizeof(visual::LabelView)*statusCount)||memcmp(drawnStatuses,statusFrame.items,sizeof(external::status::Marker)*statusCount);
  origin.x+=view.left(left);origin.y+=view.top(up);
  changed=overlayRecovery.due(GetTickCount(),true,{uintptr_t(game),pid,snap.match,physicalW,physicalH},IsWindowVisible(overlay)!=0)||changed;
- if(!changed){if(!worldrender::displayed)return;RECT shown{};GetWindowRect(overlay,&shown);if(shown.left!=origin.x||shown.top!=origin.y||!IsWindowVisible(overlay))overlaystack::place(overlay,overlaystack::Layer::World,origin.x,origin.y,0,0,SWP_NOSIZE|SWP_NOACTIVATE|SWP_SHOWWINDOW);return;}
+ if(!changed){if(overlaycompositor::host().capture(uintptr_t(game),pid).token)return;if(!worldrender::displayed)return;RECT shown{};GetWindowRect(overlay,&shown);if(shown.left!=origin.x||shown.top!=origin.y||!IsWindowVisible(overlay))overlaystack::place(overlay,overlaystack::Layer::World,origin.x,origin.y,0,0,SWP_NOSIZE|SWP_NOACTIVATE|SWP_SHOWWINDOW);return;}
  int w=((view.width(right-left)+65)/64)*64,h=((view.height(bottom-up)+33)/32)*32;
  drawn.transports=snap.transports;drawn.used=snap.used;drawn.capacity=snap.capacity;drawn.threatCount=snap.threatCount;drawn.crateCount=snap.crateCount;memcpy(drawn.threats,snap.threats,sizeof(Threat)*snap.threatCount);memcpy(drawn.crates,snap.crates,sizeof(CrateMark)*snap.crateCount);drawnCount=labelCount;memcpy(drawnViews,labelViews,sizeof(visual::LabelView)*labelCount);oldW=physicalW;oldH=physicalH;oldMargin=topMargin;revision=paintRevision;lastPanel=panel;lastSummary=summary;lastToast=hasToast;oldToast=toast;
  drawnEnemyCount=enemyCount;drawnEnemyWidth=enemyFrame.width;drawnEnemyHeight=enemyFrame.height;memcpy(drawnEnemies,enemyFrame.items,sizeof(external::enemies::Marker)*enemyCount);memcpy(drawnEnemyViews,enemyViews,sizeof(visual::LabelView)*enemyCount);
@@ -1577,7 +1606,7 @@ static void pauseAssistControls(){
  if(!secondaryDisplayRequested()){detach();clockState(false,informationFPS());registerKeys();setStatus(L"已暂停。");return;}
  commandQueue.clear();sentAt=0;inFlightMatch=0;inFlightRetries=0;hotkeyPending.clear();pointerMatches.clear();
  resetConstruction();resetAirPath();releaseBridge();
- worldrender::invalidate();overlayRecovery.suspend();ShowWindow(overlay,SW_HIDE);hideAircraftButton();hideConstruction();
+ worldrender::invalidate();overlayRecovery.suspend();hideWorldOverlay();hideAircraftButton();hideConstruction();
  minimap::hidePrimary();watchwindows::hidePrimary();clearPassengerDisplay();
  sampleExternal(GetTickCount());registerKeys();clockState(displayFrameRequested(),informationFPS());
  setStatus(L"战术控制已暂停，副屏信息继续显示。");
@@ -1675,15 +1704,15 @@ static void tick(){reapBridges();logBridgeHealth();DWORD now=GetTickCount();stat
  }
  if(lastData&&snap.inputPatchMask!=lastLoggedPatchMask){lastLoggedPatchMask=snap.inputPatchMask;diag(L"hook patches installed mask="+std::to_wstring(lastLoggedPatchMask));}
  clockState(displayFrameRequested(),informationFPS());
- if(snap.renderStatus!=1){overlayRecovery.suspend();ShowWindow(overlay,SW_HIDE);hideAircraftButton();minimap::hide();watchwindows::hide();hideConstruction();}
- else if(!foregroundGame()||snap.chat){overlayRecovery.suspend();ShowWindow(overlay,SW_HIDE);hideAircraftButton();minimap::hidePrimary();watchwindows::hidePrimary();hideConstruction();}
- if(snap.status==-2){setStatus(L"游戏操作异常，指令功能已暂停；信息显示仍可使用。");if(snap.renderStatus!=1)ShowWindow(overlay,SW_HIDE);return;}
- if(snap.status==-1){setStatus(L"当前游戏版本不兼容，指令功能已暂停；信息显示仍可使用。");if(snap.renderStatus!=1)ShowWindow(overlay,SW_HIDE);return;}
+ if(snap.renderStatus!=1){overlayRecovery.suspend();hideWorldOverlay();hideAircraftButton();minimap::hide();watchwindows::hide();hideConstruction();}
+ else if(!foregroundGame()||snap.chat){overlayRecovery.suspend();hideWorldOverlay();hideAircraftButton();minimap::hidePrimary();watchwindows::hidePrimary();hideConstruction();}
+ if(snap.status==-2){setStatus(L"游戏操作异常，指令功能已暂停；信息显示仍可使用。");if(snap.renderStatus!=1)hideWorldOverlay();return;}
+ if(snap.status==-1){setStatus(L"当前游戏版本不兼容，指令功能已暂停；信息显示仍可使用。");if(snap.renderStatus!=1)hideWorldOverlay();return;}
  if(snap.status!=1){
   if(int32_t(now-toastUntil)>=0){const auto p=externalSampler.probe();
    setStatus(L"正在读取当前对局；若长时间未恢复，请查看日志。");
   }
-  ShowWindow(overlay,SW_HIDE);return;
+  hideWorldOverlay();return;
  }
  if(snap.bridgeStatus==1&&snap.readStatus!=1&&int32_t(now-toastUntil)>=0){
   const auto p=externalSampler.probe();
@@ -1833,6 +1862,14 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
  case WM_TIMER:if(wp==2){updateHoverHelp();return 0;}if(wp==AutoSaveTimer){flushAutoSettings();return 0;}tick();return 0;
  case WM_HOTKEY:if(!readOnlyWatchHotkey(wp,lp))handleHotkey(wp,lp);return 0;
  case WM_COMMAND:{int id=LOWORD(wp);
+ if(id==9300||id==9301||id==9302){
+  if(updatingControls)return 0;
+  if(id==9302){if(HIWORD(wp)!=CBN_SELCHANGE)return 0;renderUpgradeLayer=std::clamp(int(SendDlgItemMessageW(w,id,CB_GETCURSEL,0,0)),0,1);}
+  else{if(HIWORD(wp)!=BN_CLICKED)return 0;bool on=SendDlgItemMessageW(w,id,BM_GETCHECK,0,0)==BST_CHECKED;if(id==9300)renderUpgradeEnabled=on;else unifiedOverlayEnabled=on;}
+  renderupgrade::stop();++paintRevision;changedSetting();paint();
+  if(!renderUpgradeEnabled)SetWindowTextW(GetDlgItem(w,9303),unifiedOverlayEnabled?L"统一覆盖层：世界信息＋主屏统计；交互窗口尚未合并":L"渲染升级：关闭");
+  return 0;
+ }
  if(id==862&&HIWORD(wp)==CBN_SELCHANGE){if(!updatingControls)updatePlayerTestUI(true);return 0;}
  if(id==9185&&HIWORD(wp)==BN_CLICKED){
   if(updatingControls)return 0;
@@ -2001,7 +2038,7 @@ if(id==991){wchar_t query[128]{};GetWindowTextW(featureSearch,query,128);std::ws
  setStatus(L"正在恢复游戏并退出；若持续等待，请退出游戏后完成清理。");
  SetWindowTextW(GetAncestor(w,GA_ROOT),L"红警工具箱 · 正在恢复游戏；若持续等待，请退出游戏");
  SetTimer(w,BridgeCloseTimer,100,nullptr);return 0;
- case WM_DESTROY:worldrender::worker.shutdown();formationhost::shutdown();watchhost::shutdown();watchwindows::destroy();minimap::destroy();destroyAircraftButton();destroyConstruction();KillTimer(w,AutoSaveTimer);KillTimer(w,BridgeCloseTimer);save();stopClock();KillTimer(w,1);KillTimer(w,2);detach();for(int id:registeredKeyIDs)UnregisterHotKey(w,id);registeredKeyIDs.clear();PostQuitMessage(0);return 0;}return DefWindowProcW(w,msg,wp,lp);}
+ case WM_DESTROY:renderupgrade::shutdown();worldrender::worker.shutdown();formationhost::shutdown();watchhost::shutdown();watchwindows::destroy();minimap::destroy();destroyAircraftButton();destroyConstruction();KillTimer(w,AutoSaveTimer);KillTimer(w,BridgeCloseTimer);save();stopClock();KillTimer(w,1);KillTimer(w,2);detach();for(int id:registeredKeyIDs)UnregisterHotKey(w,id);registeredKeyIDs.clear();PostQuitMessage(0);return 0;}return DefWindowProcW(w,msg,wp,lp);}
 int WINAPI wWinMain(HINSTANCE h,HINSTANCE,LPWSTR,int show){SetProcessDPIAware();HANDLE single=CreateMutexW(nullptr,FALSE,L"Local\\RA2Assist_v013_Host");if(GetLastError()==ERROR_ALREADY_EXISTS){MessageBoxW(nullptr,L"战术助手已在运行。",L"尤里战术助手",MB_OK);return 0;}
  wchar_t p[2048];GetModuleFileNameW(nullptr,p,2048);root=p;root.resize(root.find_last_of(L"\\/"));autolog::initialize(root);autolog::write(L"host-start criticalLog=automatic rotation=2MiB+2 backups; verbose Debug.Diagnostics is independent");loadAdditionalSettings();
  megaQueueMode=value(L"Orders",L"MegaMissionBackend",0)==1?1u:0u;

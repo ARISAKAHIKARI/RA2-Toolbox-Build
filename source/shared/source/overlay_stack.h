@@ -9,7 +9,7 @@
 #include <mutex>
 #include <vector>
 namespace overlaystack {
-enum class Layer:int {World=10,Statistics=20,Minimap=30,Watch=40,Aircraft=50,Construction=60,Diagnostics=80,Cursor=100};
+enum class Layer:int {World=10,Statistics=20,Minimap=30,Watch=40,Aircraft=50,Construction=60,Diagnostics=80,Cursor=100,RenderUpgrade=90};
 struct Entry {HWND window=nullptr;Layer layer=Layer::World;};
 inline std::mutex mutex;
 inline std::vector<Entry> entries;

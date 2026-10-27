@@ -170,6 +170,11 @@ number(816,L"载员与状态文字缩放 / %",labelScalePercent,L"50–250 · �
 #endif
 marginEdit=number(311,L"文字提示上边距 / 像素",topMargin,L"0–4096");
 toastEdit=number(471,L"战术提示时长 / 毫秒",toastMs,L"500–60000");
+toggle(9300,L"渲染升级（全视口 · 实验性）",renderUpgradeEnabled);next();
+label(L"渲染层级",20,260);choices(combo(9302),{L"信息覆盖层顶部（光标保留）",L"信息层下方"},renderUpgradeLayer);next();
+toggle(9301,L"统一覆盖层（世界信息＋主屏统计）",unifiedOverlayEnabled);next();
+note(L"渲染升级自动使用统一画布，只读重绘原生视口，不改变视野或游戏代码。镜头移动或素材未就绪时回退原画面。交互小地图、副相机、光标和副屏尚未合并；原生选择框、特效还原及实机联机验证未完成。",88);
+item(L"STATIC",L"渲染升级：实验性，默认关闭",20,605,9303,0,48);next(48);
 toggle(830,L"游戏内战术小地图",minimapEnabled);next();
 toggle(9162,L"第二显示器显示小地图",minimapSecondary);next();
 label(L"副屏小地图位置 X / Y",20,260);edit(9166,std::to_wstring(minimapSecondaryX),290,90,true);edit(9167,std::to_wstring(minimapSecondaryY),405,90,true);next();

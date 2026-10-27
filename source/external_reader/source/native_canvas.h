@@ -132,6 +132,36 @@ public:
   if(!std::isfinite(left)||!std::isfinite(top)||!std::isfinite(right)||!std::isfinite(bottom))return;
   paint(int(std::floor(std::clamp(left,-1e7f,1e7f))),int(std::floor(std::clamp(top,-1e7f,1e7f))),int(std::ceil(std::clamp(right,-1e7f,1e7f))),int(std::ceil(std::clamp(bottom,-1e7f,1e7f))),[&](Surface&s,int x,int y){s.blit(image,ax-x,ay-y,1,1,base,light,lift,shadowDrop);});
  }
+ // Crop a native-pixel scene BEFORE presentation scaling. This is deliberately
+ // independent of the radar's whole-map downscale. Outside backing falls back
+ // to the underlying game through transparent pixels instead of stretching.
+ bool presentRegion(int width,int height,std::vector<uint32_t>&out,
+                    double x,double y,double spanX,double spanY)const{
+  if(failed_||width<1||height<1||width>8192||height>8192||
+     uint64_t(width)*height>16*1024*1024||!std::isfinite(x)||!std::isfinite(y)||
+     !std::isfinite(spanX)||!std::isfinite(spanY)||spanX<=0||spanY<=0||
+     std::abs(x)>1e7||std::abs(y)>1e7||spanX>32768||spanY>32768)return false;
+  out.assign(size_t(width)*height,0);
+  const double sx=spanX/width,sy=spanY/height;
+  if(sx==1&&sy==1&&std::floor(x)==x&&std::floor(y)==y){
+   // Contiguous page runs, not per-pixel map lookups, in the native case.
+   for(int dy=0;dy<height;++dy){int yy=int(y)+dy;if(yy<0||yy>=height_)continue;
+    int lo=std::max(0,-int(x)),hi=std::min(width,width_-int(x));
+    for(int dx=lo;dx<hi;){int xx=int(x)+dx,end=std::min(hi,dx+PageSize-xx%PageSize);
+     auto page=pages_.find(key(xx/PageSize,yy/PageSize));auto*dest=out.data()+size_t(dy)*width+dx;
+     if(page==pages_.end())std::fill(dest,dest+end-dx,background_);
+     else std::copy_n(page->second->surface.color.data()+size_t(yy%PageSize)*PageSize+xx%PageSize,end-dx,dest);
+     dx=end;
+    }
+   }return true;
+  }
+  Filter filter(*this);
+  for(int dy=0;dy<height;++dy)for(int dx=0;dx<width;++dx){
+   double l=x+dx*sx,t=y+dy*sy,r=l+sx,b=t+sy;
+   if(r<=0||b<=0||l>=width_||t>=height_)continue;
+   out[size_t(dy)*width+dx]=filter.pixel(l,t,r,b);
+  }return true;
+ }
  bool present(int width,int height,std::vector<uint32_t>&out,double spanX=-1,double spanY=-1)const{
   if(failed_||width<1||height<1||width>2048||height>2048||width_<1||height_<1)return false;
   if(spanX<=0)spanX=width_;if(spanY<=0)spanY=height_;if(spanX>width_||spanY>height_||!std::isfinite(spanX)||!std::isfinite(spanY))return false;

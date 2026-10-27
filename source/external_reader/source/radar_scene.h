@@ -9,6 +9,7 @@
 #include <tuple>
 #include <set>
 namespace external { namespace radar {
+struct SceneRegion {double x=0,y=0,width=0,height=0;bool active=false;};
 template<class Assets>class SceneRenderer {
  struct Cached {voxel::Image image;bool ready=false;uint32_t retry=0;};
  using ArtKey=std::tuple<uint32_t,uint32_t,int,int>;
@@ -27,7 +28,7 @@ template<class Assets>class SceneRenderer {
  shroudmask::Raster mask_;std::shared_ptr<const Terrain> maskSource_;bool maskFog_=false;
  std::vector<size_t> cells_,baseCells_;std::vector<Paint> prepared_;std::vector<uint64_t> painted_;size_t cursor_=0,baseCursor_=0;
  bool probing_=false,probeChanged_=false,pendingIncomplete_=false,backgroundIncomplete_=false;uint32_t backgroundRetry_=0;int width_=0,height_=0;double spanX_=0,spanY_=0;uint64_t revision_=0;
- lighting::State backgroundLight_;uint64_t nativeCells_=0,basePresents_=0;
+ lighting::State backgroundLight_;uint64_t nativeCells_=0,basePresents_=0;SceneRegion region_{};
  static uint64_t mix(uint64_t h,uint64_t v){return (h^v)*1099511628211ull;}
  static uint64_t lightKey(uint64_t h,const lighting::State&s){h=mix(h,uint32_t(s.ambient));h=mix(h,uint32_t(s.intensity));for(int c:s.tint)h=mix(h,uint32_t(c));return h;}
  static bool sameSource(const Terrain&a,const Terrain&b){
@@ -42,10 +43,11 @@ public:
  struct NativeStats {int width,height;size_t pages,resident;uint64_t cells,presents;};
  NativeStats nativeStats()const{return {background_.width(),background_.height(),background_.pageCount(),nativeBudget_->pages,nativeCells_,basePresents_};}
  void reset(){tiles_.clear();overlays_.clear();art_.clear();sprites_.clear();displayed_.clear();actorCursor_=0;repairAssets_.reset();clearBackground();width_=height_=0;spanX_=spanY_=0;revision_=0;nativeCells_=basePresents_=0;}
- template<class Read>std::shared_ptr<const Scene> render(const Frame&frame,int width,int height,Read read,Assets&assets){
-  if(!frame.terrain||!frame.terrain->geo.valid()||frame.terrain->art.size()!=512*512||width<3||height<3||width>2048||height>2048)return {};
+ template<class Read>std::shared_ptr<const Scene> render(const Frame&frame,int width,int height,Read read,Assets&assets,SceneRegion region={}){
+  if(!frame.terrain||!frame.terrain->geo.valid()||frame.terrain->art.size()!=512*512||width<3||height<3||width>(region.active?8192:2048)||height>(region.active?8192:2048)||uint64_t(width)*height>16*1024*1024)return {};
   if(revision_!=assets.revision()){reset();revision_=assets.revision();}
-  if(width!=width_||height!=height_){width_=width;height_=height;baseScene_.reset();maskedBaseScene_.reset();maskSource_.reset();}
+  if(region.active&&(!std::isfinite(region.x)||!std::isfinite(region.y)||!std::isfinite(region.width)||!std::isfinite(region.height)||region.width<=0||region.height<=0||std::abs(region.x)>1e7||std::abs(region.y)>1e7||region.width>32768||region.height>32768))return {};
+  if(width!=width_||height!=height_||region.x!=region_.x||region.y!=region_.y||region.width!=region_.width||region.height!=region_.height||region.active!=region_.active){width_=width;height_=height;region_=region;baseScene_.reset();maskedBaseScene_.reset();maskSource_.reset();}
   const auto&domain=frame.terrain->geo;auto viewport=domain.nativeViewport();double exactX=viewport.width,exactY=viewport.height;
   if(!std::isfinite(exactX)||!std::isfinite(exactY)||exactX<=0||exactY<=0||exactX>camera::NativeCanvas::MaximumDimension||exactY>camera::NativeCanvas::MaximumDimension)return {};
   // Pixel storage is rounded outwards; the final filter still uses the exact
@@ -128,7 +130,7 @@ public:
    if(cursor_==cells_.size()){background_=std::move(pending_);background_.clean();painted_.resize(prepared_.size());for(size_t n=0;n<prepared_.size();++n)painted_[n]=prepared_[n].signature;prepared_.clear();complete_=building_;building_.reset();backgroundLight_=scene;backgroundIncomplete_=pendingIncomplete_;backgroundRetry_=frame.tick+2000;baseScene_.reset();maskedBaseScene_.reset();}
   }
   if(!complete_)return {};
-  if(!baseScene_){auto base=std::make_shared<Scene>();base->width=width;base->height=height;if(!background_.present(width,height,base->pixels,spanX_,spanY_))return {};baseScene_=std::move(base);++basePresents_;}
+  if(!baseScene_){auto base=std::make_shared<Scene>();base->width=width;base->height=height;if(!(region.active?background_.presentRegion(width,height,base->pixels,region.x,region.y,region.width,region.height):background_.present(width,height,base->pixels,spanX_,spanY_)))return {};baseScene_=std::move(base);++basePresents_;}
   // Native Cell::DrawShroud places 60x30 alpha sprites on the flat cell
   // projection, after the world is drawn. Cache their final-presentation mask
   // separately from the original-size terrain so units and repairs cannot
@@ -139,13 +141,18 @@ public:
    game.template get<uint8_t>(complete_->geo.house+0x1F5)==0;
   if(masked&&(maskSource_!=complete_||maskFog_!=fog||mask_.width!=width||mask_.height!=height)){
    bool same=maskSource_&&maskFog_==fog&&mask_.width==width&&mask_.height==height&&sameSource(*maskSource_,*complete_);
-   if(!same){if(!mask_.build(*complete_,width,height,spanX_,spanY_,fog,
-     [&](bool isFog,int index,voxel::Image&out){return assets.shroud(isFog,index,out);}))return {};
+   if(!same){if(!mask_.build(*complete_,width,height,region.active?region.width:spanX_,region.active?region.height:spanY_,fog,
+     [&](bool isFog,int index,voxel::Image&out){return assets.shroud(isFog,index,out);},region.active?region.x:0,region.active?region.y:0))return {};
     maskedBaseScene_.reset();}
    maskSource_=complete_;maskFog_=fog;
   }
   auto view=background_.fork();const auto&geo=frame.terrain->geo;int work=0;size_t pixels=0;std::vector<const Marker*> fallbacks;
-  auto markers=frame.markers;for(auto&m:markers)if(m.kind==3)assets.buildingPose(m.object,m.type,m.pose);
+  auto markers=frame.markers;
+  if(region.active)markers.erase(std::remove_if(markers.begin(),markers.end(),[&](const Marker&m){
+   double x=(double(m.x)-m.y)*30/256.+geo.offsetX*30,y=(double(m.x)+m.y)*15/256.-geo.offsetY*15-screenHeight(m.z,projectionZScale(read));
+   return x<region.x-512||x>region.x+region.width+512||y<region.y-512||y>region.y+region.height+512;
+  }),markers.end());
+  for(auto&m:markers)if(m.kind==3)assets.buildingPose(m.object,m.type,m.pose);
   std::map<ObjectKey,ImageKey> visible;std::set<ImageKey> wanted;std::set<ArtKey> artWanted;
   for(const auto&m:markers){auto key=imageKey(m);visible[{m.object,m.id}]=key;wanted.insert(key);artWanted.insert(artKey(m));}
   for(auto i=displayed_.begin();i!=displayed_.end();){auto current=visible.find(i->first);
@@ -196,9 +203,9 @@ public:
    if(!maskedBaseScene_){auto out=std::make_shared<Scene>(*baseScene_);mask_.apply(out->pixels);maskedBaseScene_=std::move(out);}
    return maskedBaseScene_;
   }
-  auto out=std::make_shared<Scene>(*baseScene_);if(!view.presentDirty(width,height,out->pixels,spanX_,spanY_)){dynamicFailure_=true;return {};}
+  auto out=std::make_shared<Scene>(*baseScene_);if(!(region.active?view.presentRegion(width,height,out->pixels,region.x,region.y,region.width,region.height):view.presentDirty(width,height,out->pixels,spanX_,spanY_))){dynamicFailure_=true;return {};}
   // Missing-art dots are presentation annotations, not minified game sprites.
-  for(const auto*m:fallbacks){int x=int(((double(m->x)-m->y)*30/256.+geo.offsetX*30)*width/spanX_),y=int(((double(m->x)+m->y)*15/256.-geo.offsetY*15)*height/spanY_);for(int yy=std::max(0,y-1);yy<std::min(height,y+2);++yy)for(int xx=std::max(0,x-1);xx<std::min(width,x+2);++xx)out->pixels[size_t(yy)*width+xx]=0xff000000u|m->color;}
+  for(const auto*m:fallbacks){int x=int(((double(m->x)-m->y)*30/256.+geo.offsetX*30-(region.active?region.x:0))*width/(region.active?region.width:spanX_)),y=int(((double(m->x)+m->y)*15/256.-geo.offsetY*15-(region.active?region.y:0))*height/(region.active?region.height:spanY_));for(int yy=std::max(0,y-1);yy<std::min(height,y+2);++yy)for(int xx=std::max(0,x-1);xx<std::min(width,x+2);++xx)out->pixels[size_t(yy)*width+xx]=0xff000000u|m->color;}
   if(masked)mask_.apply(out->pixels);
   return out;
  }

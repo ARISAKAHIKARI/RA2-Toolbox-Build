@@ -1,6 +1,7 @@
 #include "../../shared/source/latest_worker.h"
 #include "../../shared/source/modern_ui.h"
 #include "../../shared/source/overlay_stack.h"
+#include "../../shared/source/overlay_compositor.h"
 #include "../../shared/source/release_version.h"
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
@@ -35,6 +36,7 @@
 #include "../../external_reader/source/game_asset_files.h"
 using namespace Gdiplus;
 static HWND ui,overlay,secondaryOverlay,stats,bStart,bDemo,cBuildings,cOthers,eTop,eLeft,cTab,cSecondary,tabModeBox,visibilityLabel;static HFONT font;
+static void hidePrimaryStats(){overlaycompositor::host().hide(overlaycompositor::Statistics);if(overlay)ShowWindow(overlay,SW_HIDE);}
 static external::ReadSession reader;static um::IconCache& iconCache=um::sharedIconCache();
 static std::unique_ptr<um::Sampler<external::SharedReadView,external::NoResolve>> sampler;
 static std::unique_ptr<um::Snapshot> snap(new um::Snapshot{}),incoming(new um::Snapshot{});
@@ -147,7 +149,7 @@ static void detach(){
  overlayRecovery.suspend();
  statsVisible(false);resetSecondary();
  sampler.reset();assetMatch=0;assetFiles.clear();cameoCatalog.clear();reader.close();
- game=nullptr;pid=0;threadId=0;lastGood=0;oldMatch=0;page=0;gameActive=false;tabs.reset();fade.hide();renderDirty=secondaryDirty=true;paintedAlpha=-1;surface.clear();memset(snap.get(),0,sizeof(*snap));memset(incoming.get(),0,sizeof(*incoming));ShowWindow(overlay,SW_HIDE);
+ game=nullptr;pid=0;threadId=0;lastGood=0;oldMatch=0;page=0;gameActive=false;tabs.reset();fade.hide();renderDirty=secondaryDirty=true;paintedAlpha=-1;surface.clear();memset(snap.get(),0,sizeof(*snap));memset(incoming.get(),0,sizeof(*incoming));hidePrimaryStats();
 }
 static bool attach(){
  auto scan=external::discovery::scan();
@@ -349,8 +351,21 @@ static void present(POINT origin,int alpha,int width,int height,int gameWidth,in
  auto completed=renderWorker.get();if(completed&&completed!=renderedFrame){const auto&r=completed->request;
   if(r.pid==pid&&r.match==oldMatch&&r.width==width&&r.height==height&&r.gameWidth==gameWidth&&r.gameHeight==gameHeight&&r.page==page&&r.scalePercent==scalePercent&&r.leftMargin==leftMargin&&r.topMargin==topMargin&&r.showOthers==showOthers&&r.buildings==buildings&&r.demo==demo&&DWORD(GetTickCount()-r.tick)<1000&&surface.ensure(completed->width,completed->height)){memcpy(surface.bits,completed->pixels.data(),completed->pixels.size()*4);renderedFrame=std::move(completed);paintedAlpha=-1;}}
 
- if(!surface.dc||alpha<=0){statsVisible(false);ShowWindow(overlay,SW_HIDE);paintedAlpha=0;return;}
+ if(!surface.dc||alpha<=0){statsVisible(false);hidePrimaryStats();paintedAlpha=0;return;}
  statsVisible(true);
+ const auto context=!demo?overlaycompositor::host().capture(uintptr_t(game),pid):overlaycompositor::Context{};
+ if(context.token){
+  static uint64_t priorToken=0;static DWORD changedAt=0;
+  if(priorToken!=context.token){priorToken=context.token;changedAt=GetTickCount();renderDirty=true;}
+  // A new match/viewport may not reuse a bitmap sampled before it existed.
+  if(renderedFrame&&renderedFrame->request.snap&&int32_t(renderedFrame->request.snap->tick-changedAt)>=0){
+   POINT base{};ClientToScreen(game,&base);
+   auto pixels=std::shared_ptr<const std::vector<uint32_t>>(renderedFrame,&renderedFrame->pixels);
+   overlaycompositor::host().publish({overlaycompositor::Statistics,20,context,{origin.x-base.x,origin.y-base.y,surface.w,surface.h},false,BYTE(alpha),std::move(pixels)});
+  }else overlaycompositor::host().hide(overlaycompositor::Statistics);
+  if(IsWindowVisible(overlay))ShowWindow(overlay,SW_HIDE);paintedAlpha=-1;return;
+ }
+ overlaycompositor::host().hide(overlaycompositor::Statistics);
  if(repair||alpha!=paintedAlpha||origin.x!=paintedOrigin.x||origin.y!=paintedOrigin.y||!IsWindowVisible(overlay)){
   SIZE size{surface.w,surface.h};POINT zero{};BLENDFUNCTION blend{AC_SRC_OVER,0,BYTE(alpha),AC_SRC_ALPHA};
   bool uploaded=UpdateLayeredWindow(overlay,nullptr,&origin,&size,surface.dc,&zero,0,&blend,ULW_ALPHA)!=0;
@@ -400,7 +415,7 @@ static void tick(bool displayFrame=false){
         log((L"单位统计采样代次 "+std::to_wstring(oldMatch)+L"，重建玩家列表与画面").c_str());}
        else lastGood=0;
        page=0;tabs.loseFocus();fade.hide();paintedAlpha=-1;renderDirty=secondaryDirty=true;surface.clear();
-       statsVisible(false);ShowWindow(overlay,SW_HIDE);resetSecondary();
+       statsVisible(false);hidePrimaryStats();resetSecondary();
       }
      }
     if(snap->status<0)setStatus(L"此 EXE 的数据布局不受支持，已停止采集");
@@ -428,14 +443,14 @@ static void tick(bool displayFrame=false){
   std::wstring reason=!enabled?L"覆盖层已暂停":!foregroundGame()?L"覆盖层隐藏：游戏未在前台":snap->status!=1||now-lastGood>=3000?L"覆盖层等待有效游戏数据":!displayState.readable?L"覆盖层隐藏：菜单状态读取失败":L"覆盖层隐藏：菜单/对话框/非战场 · tactical="+std::to_wstring(displayState.tactical)+L" dialog="+std::to_wstring(displayState.specialDialog)+L" windows="+std::to_wstring(displayState.dialogCount);
   if(secondaryShowing)reason+=L" · 副屏仍在显示";
   visibilityStatus(reason);
-  statsVisible(false);gameActive=false;tabs.loseFocus();fade.hide();paintedAlpha=-1;ShowWindow(overlay,SW_HIDE);return;}
+  statsVisible(false);gameActive=false;tabs.loseFocus();fade.hide();paintedAlpha=-1;hidePrimaryStats();return;}
  if(!gameActive){renderDirty=secondaryDirty=true;paintedAlpha=-1;overlaystack::place(overlay,overlaystack::Layer::Statistics,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE);}
  gameActive=true;
  bool desired=tabui::displayRequested(hidden,demo||!tabEnabled,manualVisible,tabs.visible());fade.target(desired,now);
  visibilityStatus(desired?(manualVisible?L"覆盖层已请求显示：手动开启":!tabEnabled?L"覆盖层已请求显示：常驻模式":L"覆盖层已请求显示：Tab/演示"):hidden?L"覆盖层手动隐藏：按钮或 Ctrl+Alt+H 开启":L"覆盖层等待 Tab：也可用按钮或 Ctrl+Alt+H");
  int alpha=fade.value(now);if(!desired)overlayRecovery.suspend();
  statsFrameClock.state(desired||alpha>0||secondaryShowing,statsInformationFPS());
- if(!desired&&alpha==0){statsVisible(false);ShowWindow(overlay,SW_HIDE);paintedAlpha=0;return;}
+ if(!desired&&alpha==0){statsVisible(false);hidePrimaryStats();paintedAlpha=0;return;}
  // Controls and sampling remain responsive at 16/250 ms. Only the coalesced
  // presentation message consumes completed pixels and advances visible fades.
  if(!displayFrame)return;
@@ -443,8 +458,8 @@ static void tick(bool displayFrame=false){
  if(demo){MONITORINFO mi{sizeof mi};GetMonitorInfoW(MonitorFromWindow(ui,MONITOR_DEFAULTTONEAREST),&mi);r.right=mi.rcMonitor.right-mi.rcMonitor.left;r.bottom=mi.rcMonitor.bottom-mi.rcMonitor.top;pt={mi.rcMonitor.left,mi.rcMonitor.top};}
  else {GetClientRect(game,&r);ClientToScreen(game,&pt);}
  int gameWidth=r.right,gameHeight=r.bottom;
- if(!demo&&(!reader.readFresh(0x8A00A4,&gameWidth,4)||!reader.readFresh(0x8A00A8,&gameHeight,4))){statsVisible(false);ShowWindow(overlay,SW_HIDE);return;}
- viewport::Scale view;if(!view.set(gameWidth,gameHeight,r.right,r.bottom)){statsVisible(false);ShowWindow(overlay,SW_HIDE);return;}
+ if(!demo&&(!reader.readFresh(0x8A00A4,&gameWidth,4)||!reader.readFresh(0x8A00A8,&gameHeight,4))){statsVisible(false);hidePrimaryStats();return;}
+ viewport::Scale view;if(!view.set(gameWidth,gameHeight,r.right,r.bottom)){statsVisible(false);hidePrimaryStats();return;}
  static int previousW=0,previousH=0,previousGW=0,previousGH=0;
  if(previousW!=r.right||previousH!=r.bottom||previousGW!=gameWidth||previousGH!=gameHeight){previousW=r.right;previousH=r.bottom;previousGW=gameWidth;previousGH=gameHeight;renderDirty=secondaryDirty=true;
  log((L"Overlay geometry game="+std::to_wstring(gameWidth)+L"x"+std::to_wstring(gameHeight)+L" client="+std::to_wstring(r.right)+L"x"+std::to_wstring(r.bottom)).c_str());}

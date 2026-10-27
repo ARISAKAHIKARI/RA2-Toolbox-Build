@@ -15,8 +15,8 @@ struct Raster {
   return image.canvasWidth==60&&image.canvasHeight==30&&image.width>0&&image.height>0&&
    image.width<=60&&image.height<=30&&image.indices.size()==size_t(image.width)*image.height;
  }
- template<class Load> bool build(const Terrain&terrain,int w,int h,double spanX,double spanY,bool fog,Load load){
-  if(terrain.reveal||!terrain.geo.valid()||terrain.shade.size()!=512*512||w<1||h<1||w>2048||h>2048||
+ template<class Load> bool build(const Terrain&terrain,int w,int h,double spanX,double spanY,bool fog,Load load,double originX=0,double originY=0){
+  if(terrain.reveal||!terrain.geo.valid()||terrain.shade.size()!=512*512||w<1||h<1||w>8192||h>8192||uint64_t(w)*h>16*1024*1024||!std::isfinite(originX)||!std::isfinite(originY)||
      !std::isfinite(spanX)||!std::isfinite(spanY)||spanX<=0||spanY<=0)return false;
   std::array<std::array<voxel::Image,47>,2> images;
   std::array<std::array<bool,47>,2> needed{};
@@ -47,7 +47,7 @@ struct Raster {
    if(!g.shroudOrigin(x,y,origin))continue;
    // voxel::sprite stores the frame crop relative to its native centre.
    const double centerX=origin.x+30,centerY=origin.y+15;
-   const double left=centerX+image.x,top=centerY+image.y;
+   const double left=centerX+image.x-originX,top=centerY+image.y-originY;
    int x0=std::clamp(int(std::floor(left*w/spanX)),0,w),x1=std::clamp(int(std::ceil((left+image.width)*w/spanX)),0,w);
    int y0=std::clamp(int(std::floor(top*h/spanY)),0,h),y1=std::clamp(int(std::ceil((top+image.height)*h/spanY)),0,h);
    for(int py=y0;py<y1;++py)for(int px=x0;px<x1;++px)for(int sy=0;sy<samplesY;++sy)for(int sx=0;sx<samplesX;++sx){
@@ -66,7 +66,7 @@ struct Raster {
  void apply(std::vector<uint32_t>&pixels)const{
   if(pixels.size()!=alpha.size())return;
   for(size_t n=0;n<pixels.size();++n){unsigned a=alpha[n];if(a>=127)continue;
-   uint32_t p=pixels[n],v=0xff000000u;
+   uint32_t p=pixels[n];if(!(p>>24))continue;uint32_t v=p&0xff000000u;
    for(int shift:{0,8,16})v|=uint32_t((((p>>shift)&255u)*a+63)/127)<<shift;
    pixels[n]=v;
   }
