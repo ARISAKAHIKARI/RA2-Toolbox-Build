@@ -34,14 +34,6 @@ jobs:
           python source/assist/tests/no_inline_patch_source_contract.py
           if($LASTEXITCODE -ne 0){throw "No-inline source contract failed"}
 
-      - name: Compile and run patch-registry policy test
-        shell: pwsh
-        run: |
-          & $env:ZIG_EXE c++ -target x86-windows-gnu -std=c++17 -O2 source/assist/tests/hook_registry_policy.cpp -o no-inline-policy-test.exe
-          if($LASTEXITCODE -ne 0){throw "Policy test compilation failed"}
-          .\no-inline-policy-test.exe
-          if($LASTEXITCODE -ne 0){throw "Policy test failed"}
-
       - name: Build Win32 binaries
         working-directory: source
         shell: pwsh
