@@ -19,7 +19,7 @@ assert "FlushInstructionCache(GetCurrentProcess(),site,r.length)" in m
 
 # The only permitted writer of game-image executable bytes in these runtime
 # sources is the common GameEntryManager. Other source files must not bypass it.
-roots = [source / "assist/source", source / "shared/source", source / "game_runtime/source"]
+roots = [source / "assist/source", source / "shared/source", source / "game_runtime/source",\n         source / "external_reader/source", source / "cursor/source",\n         source / "unit_monitor/source", source / "suite/source"]
 for root in roots:
     for path in root.rglob("*"):
         if path.suffix not in {".h", ".hpp", ".cpp", ".c"} or path == manager:
@@ -43,4 +43,15 @@ bridge = (source / "assist/source/bridge.cpp").read_text(encoding="utf-8")
 assert "static bool repairEvent(" in bridge and "nativeObjectEvent(" in bridge
 assert "repairEvent(house,id)" in bridge
 assert "Unified game-thread command gateway" in bridge
+
+# First migration wave must continue to use the shared native event gateway.
+autoload = (source / "assist/source/autoload_bridge.h").read_text(encoding="utf-8")
+assert "return nativeMission(house,infantry,7,0,vehicle,0x34" in autoload
+assert "nativeMission(" in autoload and "submitConstructed(" not in autoload
+assert "static bool repairEvent(uint32_t house,uint32_t id){return nativeObjectEvent(get<int>(house+0x30),0x15,id);}" in bridge
+assert "repairEvent(house,id)" in bridge
+ore = (source / "assist/source/external_orders_bridge.h").read_text(encoding="utf-8")
+assert "nativeMission(house,o.unit,o.mission,o.target,o.destination,o.destinationTag" in ore
+assert "gameentry::patch(" not in autoload
+assert "gameentry::patch(" not in ore
 print("PASS: no-inline patch gate, sole executable writer, native-event migration candidates")
