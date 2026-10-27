@@ -103,3 +103,5 @@
 
 - [2026-10-26：对手建筑变卖实验与所属方自毁事件](2026-10-26-enemy-sell-pre4.md)：Sell=0x16、实际Owner编号、默认关闭及旧配置迁移；Destruct=0x08、Exit/AboutToExit/RemovePlayer区别；4FC980标志与定时器、4FC6D0销毁后继及联机证据边界。
 
+
+- [2026-10-27：無遊戲程式碼段補丁實驗分支](2026-10-27-no-inline-game-patches-plan.md)：區分 DLL 注入、WH_GETMESSAGE、inline patch 與原生事件提交；對零 inline patch 的功能分級與改造順序。
