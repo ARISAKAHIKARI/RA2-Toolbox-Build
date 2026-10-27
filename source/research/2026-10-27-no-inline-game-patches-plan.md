@@ -77,3 +77,22 @@
 - **礦車倒礦**：`external_orders_bridge.h` 將 Planner 產生的礦車任務交由 `nativeMission`，`EventLane::Planning` 和共享預算限制每幀提交量；該路徑不需要獨立安裝遊戲入口補丁。
 - 這三項已經採用共用原生事件入口，第一階段主要工作是由全域管理器硬性阻止其他功能的 inline patch 安裝，確保它們可在無新增程式碼補丁的實驗模式下單獨運行，而不是為了「重寫」而改動它們成熟的事件邏輯。
 - **尚未完成的驗證**：沒有本輪 Windows 編譯結果、沒有實際啟動後的站點位元組掃描，也沒有雙機測試。全域禁止補丁會讓控制全部、繪製迷霧、直接全圖、原生飛機路徑點等依賴補丁的功能回報不可用；這是嚴格實驗模式的預期降級，不是已修復這些功能。
+
+
+### 第二輪：原生事件路徑與降級行為（2026-10-27）
+
+#### 原生事件路徑確認
+
+- `submitConstructed()` 將語義事件轉成 `Event`，經 `enqueue()` 按會話選擇單機 DoList 或多人 OutList；它本身不需要對遊戲 EXE 安裝 inline Hook。
+- 自動裝車經 `autoload_bridge.h::enterEvent()` 提交 mission 7 的原生 Enter 事件。
+- 自動維修經 `repairEvent()` 提交原生 Repair 事件（0x15）。
+- 礦車計畫經 `external_orders_bridge.h` 的 Planner 任務提交 `nativeMission()`，最後進入共用命令閘道。
+- 上述路徑有源碼契約測試，確認相關功能檔不直接呼叫 `gameentry::patch`。
+
+#### 已知降級／不可宣稱的部分
+
+- `NativeMegaGateway` 位於原生 MegaMission 成功加入 OutList 之後，負責觀察人工命令並更新工具內部的租約、預約、礦車暫停狀態。無 inline patch 模式會阻止它安裝，因此不能保證自動任務在所有情況下都會像原版／原完整工具一樣讓權給人工命令。
+- 目前控制全部、黑幕／迷霧繪製、直接全圖、原生飛機路徑點、部分放置／科技適配等功能，仍依賴 inline patch；在此分支中應視為不可用或實驗性降級，不應只看 UI 勾選就認為生效。
+- 全域管理器保護已阻止新安裝，但尚未增加所有功能統一的「無 inline patch」能力標籤／UI 提示；各功能的狀態碼仍需逐一核對，避免開關看似開啟但實際安裝被拒。
+- CI 在 commit `8092748069f61c028386647b28c9ff8b92bd2c5e` 已通過來源契約與 Win32 構建；更早的 commit `4acd236ce236cca4ab8c22b9f5c5018083fdafa6` 也通過過 Registry policy 單元測試與構建。工作流已恢復該單元測試，等待最新 commit 結果。
+- 目前沒有雙機測試證據。不能將「沒有 inline patch」等同「聯機一定穩定」。
