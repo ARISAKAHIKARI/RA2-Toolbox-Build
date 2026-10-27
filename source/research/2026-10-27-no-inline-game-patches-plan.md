@@ -58,3 +58,22 @@
 ## 現階段結論
 
 可以建立一條以「不改寫遊戲可執行程式碼」為預設的新實驗分支。原生事件提交本身不要求改寫事件構造器的機器碼；但目前若干功能的入口、條件放寬及繪製效果確實依賴 inline patch，不能保證全部功能原樣保留。第一步應先盤點與分級，再分批移除，而非直接全局刪掉所有 Hook。
+
+
+## 實施進度更新（2026-10-27）
+
+### 已落地的第一道保護
+
+- `source/assist/source/hook_registry.h` 增加 `NoInlineGamePatches=true` 及 `mayApplyPatch(Transition)`。
+- `source/shared/source/game_entry_manager.cpp` 在任何記憶體寫入之前檢查該策略：新 `Install` 一律回 `PatchDenied`；Registry 明確持有的 `Restore` 仍可執行；`Deny` 仍拒絕。這樣不會因為「全面禁止 Patch」而同時禁止既有補丁正常清理。
+- `source/assist/tests/hook_registry_policy.cpp` 新增 Install 拒絕、Restore 允許的策略斷言。
+- 新增 `source/assist/tests/no_inline_patch_source_contract.py`，要求遊戲可執行記憶體寫入 API 僅出現在共用管理器，並核對裝車／維修使用原生事件入口。
+- 新增 `.github/workflows/validate-no-inline-game-patches.yml`，準備執行來源契約、Registry 單元測試及 Win32 構建。CI 尚未取得結果，因此不宣稱已編譯通過。
+
+### 第一批候選功能的現有實作審計
+
+- **自動裝車**：`autoload_bridge.h` 的 `enterEvent` 呼叫 `nativeMission(..., mission=7, target=vehicle)`，由共同命令閘道提交事件；此檔沒有自己的遊戲程式碼寫入器。
+- **自動維修**：`repairEvent` 呼叫 `nativeObjectEvent(..., EventType::Repair)`，再由共同構造／入隊路徑處理；修理排程本身不需專屬 inline Hook。
+- **礦車倒礦**：`external_orders_bridge.h` 將 Planner 產生的礦車任務交由 `nativeMission`，`EventLane::Planning` 和共享預算限制每幀提交量；該路徑不需要獨立安裝遊戲入口補丁。
+- 這三項已經採用共用原生事件入口，第一階段主要工作是由全域管理器硬性阻止其他功能的 inline patch 安裝，確保它們可在無新增程式碼補丁的實驗模式下單獨運行，而不是為了「重寫」而改動它們成熟的事件邏輯。
+- **尚未完成的驗證**：沒有本輪 Windows 編譯結果、沒有實際啟動後的站點位元組掃描，也沒有雙機測試。全域禁止補丁會讓控制全部、繪製迷霧、直接全圖、原生飛機路徑點等依賴補丁的功能回報不可用；這是嚴格實驗模式的預期降級，不是已修復這些功能。
