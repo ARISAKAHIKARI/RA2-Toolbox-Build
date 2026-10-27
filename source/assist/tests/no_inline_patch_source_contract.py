@@ -19,7 +19,15 @@ assert "FlushInstructionCache(GetCurrentProcess(),site,r.length)" in m
 
 # The only permitted writer of game-image executable bytes in these runtime
 # sources is the common GameEntryManager. Other source files must not bypass it.
-roots = [source / "assist/source", source / "shared/source", source / "game_runtime/source",\n         source / "external_reader/source", source / "cursor/source",\n         source / "unit_monitor/source", source / "suite/source"]
+roots = [
+    source / "assist/source",
+    source / "shared/source",
+    source / "game_runtime/source",
+    source / "external_reader/source",
+    source / "cursor/source",
+    source / "unit_monitor/source",
+    source / "suite/source",
+]
 for root in roots:
     for path in root.rglob("*"):
         if path.suffix not in {".h", ".hpp", ".cpp", ".c"} or path == manager:
