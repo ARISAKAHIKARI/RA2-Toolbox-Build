@@ -1,6 +1,6 @@
 #include "../source/hook_registry.h"
 #include <cassert>
-#include <iostream>
+#include <cstdio>
 using namespace assist::hookregistry;
 int main(){
  assert(NoInlineGamePatches);
@@ -55,5 +55,5 @@ int main(){
  reg.markConflict(0x55D360); // a third party changed the site before our first write
  assert(reg.conflict(0x55D360));
  assert(reg.proposal(0x55D360,frame,patch,5)==Transition::Deny);
- std::cout<<"PASS: owned patch install/restore, sticky conflict, known original signatures and per-site isolation\n";
+ puts("PASS: owned patch install/restore, sticky conflict, known original signatures and per-site isolation");
 }
