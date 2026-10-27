@@ -11,6 +11,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: no-inline-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   windows-x86:
     runs-on: windows-2022
@@ -28,19 +32,23 @@ jobs:
           if((& $zig version) -ne '0.13.0'){throw 'Unexpected Zig version'}
           Add-Content $env:GITHUB_ENV "ZIG_EXE=$zig"
 
-      - name: Enforce no-inline source contract
+      - name: Enforce source contracts
         shell: pwsh
         run: |
           python source/assist/tests/no_inline_patch_source_contract.py
           if($LASTEXITCODE -ne 0){throw "No-inline source contract failed"}
+          python source/assist/tests/no_inline_observer_contract.py
+          if($LASTEXITCODE -ne 0){throw "Read-only observer contract failed"}
 
-      - name: Compile and run patch-registry policy test
+      - name: Compile and run policy and observer tests
         shell: pwsh
         run: |
-          & $env:ZIG_EXE c++ -target x86-windows-gnu -std=c++17 -O2 source/assist/tests/hook_registry_policy.cpp -o no-inline-policy-test.exe
-          if($LASTEXITCODE -ne 0){throw "Policy test compilation failed"}
-          .\no-inline-policy-test.exe
-          if($LASTEXITCODE -ne 0){throw "Policy test failed"}
+          foreach($name in 'hook_registry_policy','outlist_observer','outlist_observer_runtime','no_inline_status_ui'){
+            & $env:ZIG_EXE c++ -target x86-windows-gnu -std=c++17 -O2 "source/assist/tests/$name.cpp" -o "$name-test.exe"
+            if($LASTEXITCODE -ne 0){throw "Test compilation failed: $name"}
+            & ".\$name-test.exe" | Tee-Object -FilePath source/no-inline-tests.log -Append
+            if($LASTEXITCODE -ne 0){throw "Test failed: $name"}
+          }
 
       - name: Build Win32 binaries
         working-directory: source
@@ -55,16 +63,25 @@ jobs:
             if(!(Test-Path $p)){throw "Missing $p"}
           }
 
-      - name: Upload experimental binaries and audit
-        if: always()
+      - name: Upload successful experimental binaries
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: RA2-Toolbox-no-inline-game-patches-experiment
           retention-days: 14
-          if-no-files-found: warn
+          if-no-files-found: error
           path: |
             source/RA2Toolbox.exe
             source/GameRuntime.dll
+
+      - name: Upload diagnostics separately
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: RA2-no-inline-diagnostics
+          retention-days: 14
+          if-no-files-found: warn
+          path: |
             source/build-no-inline.log
-            source/research/2026-10-27-no-inline-game-patches-plan.md
-            source/assist/tests/no_inline_patch_source_contract.py
+            source/no-inline-tests.log
+            source/research/2026-10-27-no-inline-readonly-observer.md
