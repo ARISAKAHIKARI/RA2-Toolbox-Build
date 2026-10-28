@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 #include "voxel_lighting.h"
+#include "resolution_sampling.h"
 namespace external { namespace voxel {
 // Read-only in-memory VXL/HVA capture. Never calls the game renderer. Layout
 // evidence: YRpp + native 755DB0/7563A8, 5BD5C0/5BD730 and 705D70.
@@ -81,7 +82,7 @@ struct Screen {float x,y,z;};
 inline Screen project(Vec p){return {float((p.x-p.y)*0.70710678118),float((p.x+p.y)*0.35355339059-p.z*0.86602540378),float((p.x+p.y)*0.61237243569+p.z*.5)};}
 inline uint32_t premultiply(uint32_t c,float light,unsigned alpha=124){unsigned r=unsigned(std::clamp(((c>>16)&255)*light,0.f,255.f)),g=unsigned(std::clamp(((c>>8)&255)*light,0.f,255.f)),b=unsigned(std::clamp((c&255)*light,0.f,255.f));return (alpha<<24)|((r*alpha/255)<<16)|((g*alpha/255)<<8)|(b*alpha/255);}
 inline bool render(const Model&model,double angle,const std::array<uint32_t,256>&pal,Image&out,double turretAngle=std::numeric_limits<double>::quiet_NaN(),float turretOffset=0,const Vpl*vpl=nullptr,unsigned alpha=124,double pitch=0,bool projectile=false,int rasterScale=1){
- out={};if((rasterScale!=1&&rasterScale!=2)||model.faces.empty()||model.faces.size()>MaxFaces||!std::isfinite(angle))return false;
+ out={};if(rasterScale<1||rasterScale>resolutionsampling::MaxRasterScale||model.faces.empty()||model.faces.size()>MaxFaces||!std::isfinite(angle))return false;
  const auto bodyLight=nativeVoxelLight(angle,pitch),turretLight=std::isfinite(turretAngle)?nativeVoxelLight(turretAngle,pitch):bodyLight;
  const auto worldLight=nativeVoxelWorldLight();
  std::array<std::array<uint8_t,256>,5> bodyPages,turretPages;std::array<bool,5> bodyPagesReady{},turretPagesReady{};
@@ -95,8 +96,9 @@ inline bool render(const Model&model,double angle,const std::array<uint32_t,256>
  auto worldPoint=[&](const Face&f,Vec p){return posePoint(f,pitched(p),angle,turretAngle,turretOffset);};
  float minX=0,minY=0,maxX=0,maxY=0;for(const auto&f:model.faces)for(auto p:f.p){auto s=project(worldPoint(f,p));if(!finite(s.x)||!finite(s.y)||!finite(s.z))return false;minX=std::min(minX,s.x);minY=std::min(minY,s.y);maxX=std::max(maxX,s.x);maxY=std::max(maxY,s.y);}
  int left=int(std::floor(minX))-1,top=int(std::floor(minY))-1,w=int(std::ceil(maxX))-left+2,h=int(std::ceil(maxY))-top+2;if(w<1||h<1||w>512||h>512)return false;
- // Rasterize the original VXL faces at 2x; these are new geometry samples,
- // not duplicated native pixels. World depth stays in native units.
+ // Rasterize the original VXL faces at the presentation's required sample
+ // density. These are new geometry samples; world depth stays in native units.
+ if(uint64_t(w)*rasterScale>resolutionsampling::MaxDimension||uint64_t(h)*rasterScale>resolutionsampling::MaxDimension||uint64_t(w)*h*rasterScale*rasterScale>resolutionsampling::MaxPixels)return false;
  left*=rasterScale;top*=rasterScale;w*=rasterScale;h*=rasterScale;
  out.rasterScale=rasterScale;out.width=w;out.height=h;out.x=left;out.y=top;out.depthBottom=(int(std::ceil(maxY))-1)*rasterScale;out.pixels.assign(size_t(w)*h,0);out.depth.assign(size_t(w)*h,-std::numeric_limits<float>::infinity());out.indices.assign(size_t(w)*h,0);out.objectPalette=true;
  auto edge=[](Screen a,Screen b,float x,float y){return (x-a.x)*(b.y-a.y)-(y-a.y)*(b.x-a.x);};

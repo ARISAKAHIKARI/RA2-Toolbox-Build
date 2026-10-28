@@ -3,23 +3,25 @@
 #include "scene_lighting.h"
 #include "scene_order.h"
 #include "pixel_upgrade.h"
+#include "color_precision.h"
 namespace external { namespace camera {
 struct Light {
- float gains[3]{};explicit Light(const lighting::State&state){
+ float gains[3]{};colorprecision::Mode precision=colorprecision::Mode::NativeSteps;
+ explicit Light(const lighting::State&state,colorprecision::Mode mode=colorprecision::Mode::NativeSteps):precision(mode){
   int brightness=std::clamp(state.intensity<0?state.ambient*10:state.intensity,0,2000);
-  int shade=std::min(254,(261*brightness)>>11),level=std::min(62,127*shade*62/32258);
-  for(int c=0;c<3;++c)gains[c]=level/31.f*std::clamp(state.tint[c],0,2000)/1000.f;
+  for(int c=0;c<3;++c)gains[c]=colorprecision::gain(brightness,state.tint[c],mode);
  }
  uint32_t apply(uint32_t pixel,uint8_t index,bool object)const{
   if(object&&index>=240&&index<=254)return pixel;uint32_t result=pixel&0xff000000u;unsigned alpha=pixel>>24;
-  for(int c=0;c<3;++c){int shift=16-c*8;result|=unsigned(std::clamp(((pixel>>shift)&255)*gains[c],0.f,float(alpha)))<<shift;}return result;
+  for(int c=0;c<3;++c){int shift=16-c*8;float value=std::clamp(((pixel>>shift)&255)*gains[c],0.f,float(alpha));
+   unsigned channel=precision==colorprecision::Mode::SmoothRGB?unsigned(std::floor(value+.5f)):unsigned(value);result|=channel<<shift;}return result;
  }
 };
-inline uint32_t lit(uint32_t pixel,uint8_t index,bool object,const lighting::State&state){return Light(state).apply(pixel,index,object);}
+inline uint32_t lit(uint32_t pixel,uint8_t index,bool object,const lighting::State&state,colorprecision::Mode mode=colorprecision::Mode::NativeSteps){return Light(state,mode).apply(pixel,index,object);}
 // Presentation-only opacity. Shared camera poses stay opaque; translucent
 // previews retain premultiplied RGB and the same indexed lighting rules.
-inline void previewPixels(const voxel::Image&image,const lighting::State&state,unsigned opacity,std::vector<uint32_t>&out){
- Light light(state);opacity=std::min(255u,opacity);out.resize(image.pixels.size());bool indexed=image.indices.size()==out.size();
+inline void previewPixels(const voxel::Image&image,const lighting::State&state,unsigned opacity,std::vector<uint32_t>&out,colorprecision::Mode mode=colorprecision::Mode::NativeSteps){
+ Light light(state,mode);opacity=std::min(255u,opacity);out.resize(image.pixels.size());bool indexed=image.indices.size()==out.size();
  for(size_t i=0;i<out.size();++i){uint32_t p=light.apply(image.pixels[i],indexed?image.indices[i]:0,image.objectPalette),v=0;
   for(int shift:{0,8,16,24})v|=((((p>>shift)&255)*opacity+127)/255)<<shift;out[i]=v;}
 }
@@ -30,6 +32,7 @@ inline void opaque(voxel::Image&i){
 }
 class Surface {
  int width_=0,height_=0;
+ colorprecision::Mode precision_=colorprecision::Mode::NativeSteps;
 public:
  std::vector<uint32_t> color;std::vector<float> depth;
  bool reset(int w,int h,uint32_t background=0xff080c08u){
@@ -37,8 +40,10 @@ public:
   width_=w;height_=h;color.assign(size_t(w)*h,background);depth.assign(color.size(),-std::numeric_limits<float>::infinity());return true;
  }
  int width()const{return width_;}int height()const{return height_;}
+ void precision(colorprecision::Mode mode){precision_=mode==colorprecision::Mode::SmoothRGB?mode:colorprecision::Mode::NativeSteps;}
+ colorprecision::Mode precision()const{return precision_;}
  void diamond(float ax,float ay,float sx,float sy,float base,uint32_t c,const lighting::State&light){
-  c=lit(c,0,false,light);
+  c=lit(c,0,false,light,precision_);
   for(int y=std::max(0,int(std::floor(ay-15*sy)));y<std::min(height_,int(std::ceil(ay+15*sy)));++y)
    for(int x=std::max(0,int(std::floor(ax-30*sx)));x<std::min(width_,int(std::ceil(ax+30*sx)));++x){
     float dx=(x+.5f-ax)/(30*sx),dy=(y+.5f-ay)/(15*sy);if(std::abs(dx)+std::abs(dy)>1)continue;
@@ -46,22 +51,22 @@ public:
    }
  }
  void blit(const voxel::Image&i,float ax,float ay,float sx,float sy,float base,const lighting::State&light,float lift=1,float shadowDrop=0,bool smooth=false){
-  if(i.width<=0||i.height<=0||i.rasterScale<1||i.rasterScale>2||i.pixels.size()!=size_t(i.width)*i.height||!std::isfinite(ax)||!std::isfinite(ay)||!std::isfinite(sx)||!std::isfinite(sy)||sx<=0||sy<=0||sx>8||sy>8)return;
+  if(i.width<=0||i.height<=0||i.width>resolutionsampling::MaxDimension||i.height>resolutionsampling::MaxDimension||uint64_t(i.width)*i.height>resolutionsampling::MaxPixels||i.rasterScale<1||i.rasterScale>resolutionsampling::MaxRasterScale||i.pixels.size()!=size_t(i.width)*i.height||!std::isfinite(ax)||!std::isfinite(ay)||!std::isfinite(sx)||!std::isfinite(sy)||sx<=0||sy<=0||sx>8||sy>8)return;
   for(const auto&part:i.attachments)if(part.shadow&&!i.shadowsAfter&&(!part.airborneShadow||shadowDrop>0))blit(part,ax,ay+shadowDrop*sy,sx,sy,base,light,lift,0,smooth);
   float pxScale=sx/i.rasterScale,pyScale=sy/i.rasterScale;
   float left=ax+i.x*pxScale,top=ay+i.y*pyScale;
   int x0=std::clamp(int(std::floor(std::clamp(left,-1e7f,1e7f))),0,width_),y0=std::clamp(int(std::floor(std::clamp(top,-1e7f,1e7f))),0,height_);
   int x1=std::clamp(int(std::ceil(std::clamp(left+i.width*pxScale,-1e7f,1e7f))),0,width_),y1=std::clamp(int(std::ceil(std::clamp(top+i.height*pyScale,-1e7f,1e7f))),0,height_);
-  Light transform(light);bool zData=i.depth.size()==i.pixels.size(),indexed=i.indices.size()==i.pixels.size();
+  Light transform(light,precision_);bool zData=i.depth.size()==i.pixels.size(),indexed=i.indices.size()==i.pixels.size();
   auto colorAt=[&](int x,int y){if(x<0||y<0||x>=i.width||y>=i.height)return uint32_t(0);size_t at=size_t(y)*i.width+x;return transform.apply(i.pixels[at],indexed?i.indices[at]:0,i.objectPalette);};
   for(int y=y0;y<y1;++y){int sourceY=int(std::floor((y+.5f-top)/pyScale));if(sourceY<0||sourceY>=i.height)continue;
    for(int x=x0;x<x1;++x){int sourceX=int(std::floor((x+.5f-left)/pxScale));if(sourceX<0||sourceX>=i.width)continue;
     size_t from=size_t(sourceY)*i.width+sourceX,to=size_t(y)*width_+x;uint32_t p=i.pixels[from];
-    bool sampled=smooth&&(!i.shadow||i.rasterScale==2)&&(pxScale!=1||pyScale!=1);
+    bool sampled=smooth&&(!i.shadow||i.rasterScale>1)&&(pxScale!=1||pyScale!=1);
     if(sampled){
      double fx=(x+.5-left)/pxScale-.5,fy=(y+.5-top)/pyScale-.5;int ix=int(std::floor(fx)),iy=int(std::floor(fy));fx-=ix;fy-=iy;
      uint32_t a=colorAt(ix,iy),b=colorAt(ix+1,iy),c=colorAt(ix,iy+1),d=colorAt(ix+1,iy+1);
-     if(i.rasterScale==2&&pxScale<=1&&pyScale<=1){
+     if(i.rasterScale>1&&pxScale<=1&&pyScale<=1){
       // Actual supersampled geometry: preserve fractional coverage at its
       // silhouette. The SHP path below keeps cutout boundaries conservative.
       p=0;for(int shift:{0,8,16,24}){double v=(1-fy)*((1-fx)*((a>>shift)&255)+fx*((b>>shift)&255))+fy*((1-fx)*((c>>shift)&255)+fx*((d>>shift)&255));p|=unsigned(std::lround(v))<<shift;}

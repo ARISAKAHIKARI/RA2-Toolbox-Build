@@ -10,7 +10,7 @@ class ViewportCanvas {
 public:
  void reset(){surface_={};baseDepth_.clear();key_=0;ready_=dirty_=false;}
  bool prepare(const NativeCanvas&background,const std::vector<uint32_t>&pixels,int w,int h,
-              double x,double y,double spanX,double spanY,uint64_t key){
+              double x,double y,double spanX,double spanY,uint64_t key,colorprecision::Mode precision=colorprecision::Mode::NativeSteps){
   ready_=false;dirty_=false;
   if(w<1||h<1||w>8192||h>8192||uint64_t(w)*h>16*1024*1024||pixels.size()!=size_t(w)*h||
      !std::isfinite(x)||!std::isfinite(y)||!std::isfinite(spanX)||!std::isfinite(spanY)||
@@ -23,6 +23,7 @@ public:
     for(int xx=0;xx<w;++xx){int ix=std::clamp(int(std::floor(x+(xx+.5)*spanX/w))-x0,0,nw-1);baseDepth_[size_t(yy)*w+xx]=source[size_t(iy)*nw+ix];}
    }key_=key;x_=x;y_=y;sx_=w/spanX;sy_=h/spanY;
   }
+  surface_.precision(precision);
   backingW_=background.width();backingH_=background.height();surface_.color=pixels;surface_.depth=baseDepth_;ready_=true;return true;
  }
  void blit(const voxel::Image&i,float ax,float ay,float,float,float base,const lighting::State&light,float lift=1,float shadowDrop=0){

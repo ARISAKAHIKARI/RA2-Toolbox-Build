@@ -6,6 +6,7 @@
 
 | 主题 | 新笔记 | 关键词 |
 | --- | --- | --- |
+| 实际游戏视口／目标像素比例与光照前 RGB 颜色精度 | [自适应采样与颜色精度](2026-10-28-adaptive-color-precision.md) | actual ratio 1.5x 3x 4x RGB888 continuous light RGB565 source palette |
 | 素材高刷现场光照、同地址运行时色表变化与逐素材失效 | [现场光照与色表刷新](2026-10-28-live-light-palette-refresh.md) | live palette RGB565 LightConvert same-frame lighting content cache |
 | 渲染升级目标像素深度合成、VXL 2× 几何与已观察状态素材高刷 | [精细场景与素材高刷](2026-10-28-material-refresh-detail.md) | device pixels 256 facings observed interpolation SHP alpha pause teleport cache |
 | 普通 CnCNet 無額外反作弊的掉線排查：原版同步、ControlAll新增路徑與可見性／浮點修復 | [普通版不同步排查](2026-10-27-cncnet-ordinary-desync-triage.md) | native events OOS NativeMegaGateway MapIsClear 4147D5 70F1E3 MXCSR RecalcAttributes |

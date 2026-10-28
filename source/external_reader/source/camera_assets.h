@@ -12,6 +12,7 @@
 #include "sprite_names.h"
 #include "projectile_visuals.h"
 #include "live_palette_cache.h"
+#include "palette_recovery.h"
 #include <map>
 #include <tuple>
 #include <cstdio>
@@ -24,12 +25,17 @@ namespace external { namespace cameraassets {
 template<class Reader>class Context {
  Reader&reader_;uint32_t process_=0,match_=0;
  bool lastPaletteLive_=false,terrainPaletteLive_=false,presentation_=false,presentationVplFresh_=false;
+ bool colorPrecision_=false;
  int detail_=0;
+ resolutionsampling::Selection resolution_;
  pixelupgrade::PaletteRange paletteRange_=pixelupgrade::PaletteRange::OriginalDAC;
 public:
  struct Read {Reader*reader;bool operator()(uint32_t p,void*out,size_t n)const{return reader->readFresh(p,out,n);}};
  Read read;
+ void presentationColorPrecision(bool enabled){colorPrecision_=enabled;}
  void presentationDetail(int detail){detail_=std::clamp(detail,0,1);}
+ bool presentationResolution(int sourceWidth,int sourceHeight,int targetWidth,int targetHeight){resolution_=resolutionsampling::choose(sourceWidth,sourceHeight,targetWidth,targetHeight);return resolution_.valid;}
+ int presentationRasterScale()const{return detail_?(resolution_.valid?resolution_.rasterScale:0):1;}
  void presentationPalette(pixelupgrade::PaletteRange mode){paletteRange_=mode;}
  explicit Context(Reader&r):reader_(r),read{&r},artINI(read,external::assets::LiveINI::ArtObject),rulesINI(read,external::assets::LiveINI::RulesPointer,true),cameoCatalog(read){}
  void identity(uint32_t process,uint32_t match){
@@ -41,7 +47,7 @@ external::assets::Files files;
 std::string failure;
 void update(){files.update(reader_,process_,match_);vpl();}
 uint64_t revision(){return files.revision()^(uint64_t(word(0x822CF8)+1)*0x9e3779b97f4a7c15ull)^
-    (paletteRange_==pixelupgrade::PaletteRange::FullRGB?0x45e391acbbdb1891ull:0)^(detail_?0x312df964ba273d19ull:0);}
+    (paletteRange_==pixelupgrade::PaletteRange::FullRGB?0x45e391acbbdb1891ull:0)^(detail_?0x312df964ba273d19ull:0)^(detail_?uint64_t(presentationRasterScale())*0xf7e71b69894eb76bull:0)^(colorPrecision_?0x5a730c99b194d6e3ull:0);}
 uint64_t voxelLightingRevision()const{return voxelLight.signature();}
 bool cameo(const char*name,std::vector<uint8_t>&out){update();return files.load(name,out);}
 uint32_t word(uint32_t p){uint32_t v=0;read(p,&v,4);return v;}
@@ -73,6 +79,15 @@ std::string imageName(uint32_t type){auto stem=artName(type),image=artINI.get(st
 std::string artValue(uint32_t type,const std::string&key){auto image=imageName(type),value=artINI.get(image,key);return value.empty()?artINI.get(artName(type),key):value;}
 bool artYes(uint32_t type,const std::string&key){auto v=external::assets::name(artValue(type,key));return v=="YES"||v=="TRUE"||v=="1";}
 bool paletteFile(const std::string&name,std::array<uint32_t,256>&out){lastPaletteLive_=false;std::vector<uint8_t>b;if(!files.load(name,b)){failure="palette-not-found:"+name;return false;}if(!external::assets::pal(b,out,paletteRange_)){failure="palette-format:"+name;return false;}return true;}
+void recoverPalettePrecision(const char*source,std::array<uint32_t,256>&live){
+ if(!colorPrecision_||paletteRange_!=pixelupgrade::PaletteRange::FullRGB)return;
+ // Reading the optional original PAL must not turn this authoritative live
+ // drawer into a file fallback or replace its useful diagnostics on failure.
+ const bool provenance=lastPaletteLive_;const std::string previousFailure=failure;
+ std::array<uint32_t,256> candidate{};
+ if(paletteFile(source,candidate))external::paletterecovery::promote(live,candidate);
+ lastPaletteLive_=provenance;failure=previousFailure;
+}
 bool convertPalette(uint32_t convert,std::array<uint32_t,256>&out){
  // Only LightConvert owns UsedPalette1 (+188). Plain ANIM ConvertClass ends
  // earlier; treating its following allocation as RGB would read unrelated data.
@@ -109,7 +124,8 @@ bool shapeBytes(uint32_t type,uint32_t pointer,std::vector<uint8_t>&bytes,std::s
 bool spritePalette(uint32_t type,const std::string&file,bool overlay,uint32_t owner,std::array<uint32_t,256>&out,bool terrain=false){
  lastPaletteLive_=false;
  if(terrain&&external::lighting::spawnsTiberium(read,type)){
-  uint32_t convert=word(0x87F6BC);if(convertPalette(convert,out)||convertedPalette(convert,out))return true;
+  uint32_t convert=word(0x87F6BC);if(convertPalette(convert,out))return true;
+  if(convertedPalette(convert,out)){recoverPalettePrecision("UNITSNO.PAL",out);return true;}
   // Original bootstrap 52BFCE/52C1EA loads UNITSNO.PAL then aliases its
   // converter for SpawnsTiberium. This is separate from ore/gem overlays.
   return paletteFile("UNITSNO.PAL",out);
@@ -281,6 +297,7 @@ bool projectilePalette(const external::projectiles::State&state,std::array<uint3
   int shades=int(word(state.converter+0x16C));uint32_t palette=word(state.converter+0x174);uint16_t raw[256]{};
   if(shades>=1&&shades<=256&&palette>=0x10000&&uint64_t(palette)+sizeof raw<=0x100000000ull&&read(palette,raw,sizeof raw)&&word(state.converter+0x174)==palette){
    for(int i=0;i<256;++i){unsigned c=raw[i],r=(c>>11)&31,g=(c>>5)&63,b=c&31;out[i]=0xff000000u|(((r<<3)|(r>>2))<<16)|(((g<<2)|(g>>4))<<8)|(b<<3)|(b>>2);}out[0]=0;lastPaletteLive_=true;colors=true;
+   if(state.palette!=external::projectiles::SchemePalette)recoverPalettePrecision(state.palette==external::projectiles::AnimationPalette?"ANIM.PAL":"PALETTE.PAL",out);
   }
  }
  if(!colors&&state.palette!=external::projectiles::SchemePalette)colors=paletteFile(state.palette==external::projectiles::AnimationPalette?"ANIM.PAL":"PALETTE.PAL",out);
@@ -376,10 +393,11 @@ bool refreshActorPalette(ActorArt&art,bool&changed){
 bool renderActor(const ActorArt&art,const external::visual::Pose&pose,external::voxel::Image&out){
  auto angle=external::visual::fineRadians(pose.bodyFine,pose.body),turret=external::visual::fineRadians(pose.turretFine,pose.turret);
  if(art.voxel){
+  const int rasterScale=presentationRasterScale();if(!rasterScale){failure="voxel-presentation-resolution-unsupported";return false;}
   if(presentation_&&!presentationVplFresh_){failure="voxel-current-vpl-unavailable";return false;}
   if(!presentation_)vpl();bool projectile=art.kind==external::projectiles::Kind;
   if(projectile&&!voxelLight.ready()){failure="projectile-vpl-unavailable";return false;}
-  if(!external::voxel::render(art.model,angle,art.colors,out,projectile?std::numeric_limits<double>::quiet_NaN():turret,art.turretOffset,&voxelLight,255,projectile?turret:0,projectile,detail_?2:1))return false;
+  if(!external::voxel::render(art.model,angle,art.colors,out,projectile?std::numeric_limits<double>::quiet_NaN():turret,art.turretOffset,&voxelLight,255,projectile?turret:0,projectile,rasterScale))return false;
   // The model Z buffer resolves faces inside the cached voxel only. The game
   // submits that cached image through the same standing shape Z test as SHP.
   // Orthographic model depth is not in the terrain/BUILDNGZ buffer's units.
@@ -389,7 +407,7 @@ bool renderActor(const ActorArt&art,const external::visual::Pose&pose,external::
    if(!art.flat)out.depth.assign(out.pixels.size(),std::numeric_limits<float>::quiet_NaN());
   }
   if(art.shadow){auto ground=art.model;for(auto&face:ground.faces)for(auto&p:face.p)p.z=0;external::voxel::Image shadow;
-   if(external::voxel::render(ground,angle,art.colors,shadow,turret,art.turretOffset,nullptr,255,0,false,detail_?2:1)){shadow.x+=3*shadow.rasterScale;shadow.shadow=true;shadow.flat=true;shadow.writeDepth=false;shadow.depthBias=2;std::vector<float>().swap(shadow.depth);out.attachments.push_back(std::move(shadow));}}
+   if(external::voxel::render(ground,angle,art.colors,shadow,turret,art.turretOffset,nullptr,255,0,false,rasterScale)){shadow.x+=3*shadow.rasterScale;shadow.shadow=true;shadow.flat=true;shadow.writeDepth=false;shadow.depthBias=2;std::vector<float>().swap(shadow.depth);out.attachments.push_back(std::move(shadow));}}
   return true;
  }
  if(pose.frame<0){failure="sprite-sequence";return false;}

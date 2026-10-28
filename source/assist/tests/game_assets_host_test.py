@@ -82,6 +82,21 @@ int main(int argc,char**argv){
  memcpy(memory.data()+tileType+0x2F5,"CLEAR01.TEM",12);memcpy(memory.data()+0x7E1B78+68,"ISOTEM",7);memcpy(memory.data()+0x7E1B78+78,"TEM",4);memcpy(memory.data()+0x7E1B78+48,"TEMPERAT",9);memory[0x7E1B78+86]='T';
  word(memory,t+0xE3C,sequence);word(memory,sequence+4,1);word(memory,sequence+8,1);const int dirs[32]={7,7,6,6,6,6,5,5,5,5,4,4,4,4,3,3,3,3,2,2,2,2,1,1,1,1,0,0,0,0,7,7};for(int i=0;i<32;++i)word(memory,0x7EAEFC+i*4,dirs[i]);word(memory,sequence+36,8);word(memory,sequence+40,2);word(memory,sequence+44,2);
  gameassets::update();assert(gameassets::files.count()>=5);
+ // The production Context derives voxel sample density from the observed
+ // source/target pixels, and keys geometry only by the chosen raster scale.
+ {
+  gameassets::Context resolution(externalReader);resolution.identity(pid,41);resolution.presentationDetail(1);
+  assert(resolution.presentationResolution(100,80,100,80)&&resolution.presentationRasterScale()==1);auto oneRevision=resolution.revision();
+  assert(resolution.presentationResolution(100,80,110,88)&&resolution.presentationRasterScale()==2);auto twoRevision=resolution.revision();assert(twoRevision!=oneRevision);
+  assert(resolution.presentationResolution(100,80,150,120)&&resolution.presentationRasterScale()==2&&resolution.revision()==twoRevision);
+  assert(resolution.presentationResolution(100,80,300,240)&&resolution.presentationRasterScale()==3&&resolution.revision()!=twoRevision);
+  assert(!resolution.presentationResolution(0,80,100,80)&&resolution.presentationRasterScale()==0);
+  assert(!resolution.presentationResolution(100,80,401,320)&&resolution.presentationRasterScale()==0);
+  resolution.presentationDetail(0);auto nativeRevision=resolution.revision();assert(resolution.presentationRasterScale()==1);
+  assert(resolution.presentationResolution(100,80,300,240)&&resolution.presentationRasterScale()==1&&resolution.revision()==nativeRevision);
+  assert(!resolution.presentationResolution(100,80,-1,80)&&resolution.presentationRasterScale()==1&&resolution.revision()==nativeRevision);
+ }
+ std::cout<<"PASS production Context observed-resolution raster selection, same-scale revision reuse, unsupported-ratio fallback and native-detail isolation\n";
  gameassets::ActorArt art;assert(gameassets::captureActor(p,t,42,art));assert(!art.voxel&&!art.shape.empty());assert(art.colors[3]==0xff0c1824u);
  external::GameView game(gameassets::context.read);external::voxel::Image image;
  for(int heading=0;heading<32;heading+=4){external::visual::Pose pose;pose.frame=external::visual::previewFrame(game,t,1,heading);assert(gameassets::renderActor(art,pose,image));assert(image.width==4&&image.height==3&&std::count_if(image.pixels.begin(),image.pixels.end(),[](auto c){return c!=0;})==12);assert(pose.frame==dirs[(8+heading)&31]);assert(image.pixels[0]==external::voxel::premultiply(art.colors[3+pose.frame],1,255));}
@@ -355,6 +370,45 @@ int main(int argc,char**argv){
  // Missing live resource drawer falls back to PALETTE.PAL, not UNIT*.PAL.
  memory[shotType+0x2A8]=0;word(memory,0x87F6C4,0);disk["PALETTE.PAL"]=std::vector<uint8_t>(768,13);clockValue+=6000;gameassets::update();
  assert(gameassets::captureProjectile(shot,shotType,9001,art)&&art.colors[100]==0xff343434);word(memory,0x87F6C4,shotConvert);
+ // Optional precision uses a known source PAL only when all nontransparent
+ // entries reproduce the authoritative live RGB565 codes. It is never a
+ // blanket RGB stretch or a substitute for a changed mod/runtime palette.
+ {
+  auto oldProjectilePal=disk["PALETTE.PAL"];auto oldMinePal=disk.find("UNITSNO.PAL");bool hadMinePal=oldMinePal!=disk.end();std::vector<uint8_t> oldMineBytes=hadMinePal?oldMinePal->second:std::vector<uint8_t>{};
+  auto oldAnimPal=disk.find("ANIM.PAL");bool hadAnimPal=oldAnimPal!=disk.end();std::vector<uint8_t> oldAnimBytes=hadAnimPal?oldAnimPal->second:std::vector<uint8_t>{};
+  std::vector<uint8_t> oldShot(memory.begin()+shotColors,memory.begin()+shotColors+512),oldMine(memory.begin()+minePalette,memory.begin()+minePalette+512),oldAnim(memory.begin()+animShotColors,memory.begin()+animShotColors+512);
+  std::vector<uint8_t> precisionPal(768);for(int i=0;i<256;++i){precisionPal[i*3]=i%64;precisionPal[i*3+1]=(i*3)%64;precisionPal[i*3+2]=(i*7)%64;}
+  std::array<uint32_t,256> sourceColors{},expandedColors{},recovered{};assert(external::assets::pal(precisionPal,sourceColors,external::pixelupgrade::PaletteRange::FullRGB));
+  auto expand565=[](uint16_t c){unsigned r=(c>>11)&31,g=(c>>5)&63,b=c&31;return 0xff000000u|(((r<<3)|(r>>2))<<16)|(((g<<2)|(g>>4))<<8)|(b<<3)|(b>>2);};
+  for(int i=0;i<256;++i){uint16_t code=external::paletterecovery::rgb565(sourceColors[i]);half(memory,shotColors+i*2,code);half(memory,minePalette+i*2,code);half(memory,animShotColors+i*2,code);expandedColors[i]=expand565(code);}expandedColors[0]=0;
+  assert(sourceColors!=expandedColors);disk["PALETTE.PAL"]=disk["UNITSNO.PAL"]=disk["ANIM.PAL"]=precisionPal;word(memory,0x87F6BC,mineConvert);
+  gameassets::Context precise(externalReader);precise.identity(pid,31);precise.presentationPalette(external::pixelupgrade::PaletteRange::FullRGB);
+  assert(external::projectiles::capture(precise.read,shot,projectile));
+  assert(precise.projectilePalette(projectile,recovered)&&recovered==expandedColors&&"precision defaults off");
+  auto beforePrecision=precise.revision();precise.presentationColorPrecision(true);assert(precise.revision()!=beforePrecision);
+  assert(precise.projectilePalette(projectile,recovered)&&recovered==sourceColors);
+  assert(precise.spritePalette(mine,"OREMINE.TEM",false,0,recovered,true)&&recovered==sourceColors);
+  auto rawState=projectile;rawState.converter=animConvert;std::array<uint32_t,256> rawColors{};assert(precise.convertPalette(animConvert,rawColors));
+  assert(precise.projectilePalette(rawState,recovered)&&recovered==rawColors&&recovered[8]==0xff5a8cbe&&"already-live RGB888 is neither source-replaced nor stretched");
+  gameassets::ActorArt preciseArt;assert(precise.captureProjectile(shot,shotType,9001,preciseArt)&&preciseArt.paletteLive&&preciseArt.colors==sourceColors);
+  auto precisionShape=preciseArt.shape.data();auto precisionPaletteRevision=preciseArt.paletteRevision;
+  uint16_t changedCode=external::paletterecovery::rgb565(sourceColors[174])^0x8000;half(memory,shotColors+174*2,changedCode);auto changedColors=expandedColors;changedColors[174]=expand565(changedCode);
+  assert(precise.refreshActorPalette(preciseArt,paletteChanged)&&paletteChanged&&preciseArt.colors==changedColors&&preciseArt.paletteLive);
+  assert(preciseArt.shape.data()==precisionShape&&preciseArt.paletteRevision==precisionPaletteRevision+1&&"a live palette mutation keeps source geometry");
+  assert(precise.projectilePalette(projectile,recovered)&&recovered==changedColors&&"one mismatched entry rejects the entire source candidate");
+  half(memory,shotColors+174*2,external::paletterecovery::rgb565(sourceColors[174]));
+  assert(precise.refreshActorPalette(preciseArt,paletteChanged)&&paletteChanged&&preciseArt.colors==sourceColors);
+  disk["PALETTE.PAL"][174*3]^=16;precise.identity(pid,33);assert(precise.projectilePalette(projectile,recovered)&&recovered==expandedColors&&"mismatched source file cannot replace live RGB565");
+  disk["PALETTE.PAL"]=precisionPal;precise.identity(pid,34);
+  memory[shotType+0x2A8]=1;assert(external::projectiles::capture(precise.read,shot,projectile));assert(precise.projectilePalette(projectile,recovered)&&recovered==sourceColors);memory[shotType+0x2A8]=0;
+  precise.presentationPalette(external::pixelupgrade::PaletteRange::OriginalDAC);assert(external::projectiles::capture(precise.read,shot,projectile));
+  assert(precise.projectilePalette(projectile,recovered)&&recovered==expandedColors&&"original DAC range never silently promotes precision");
+  precise.presentationPalette(external::pixelupgrade::PaletteRange::FullRGB);disk.erase("PALETTE.PAL");precise.identity(pid,32);precise.failure="live-diagnostic";
+  assert(precise.projectilePalette(projectile,recovered)&&recovered==expandedColors&&precise.failure=="live-diagnostic"&&"missing optional PAL preserves live data and diagnostics");
+  disk["PALETTE.PAL"]=oldProjectilePal;if(hadMinePal)disk["UNITSNO.PAL"]=oldMineBytes;else disk.erase("UNITSNO.PAL");if(hadAnimPal)disk["ANIM.PAL"]=oldAnimBytes;else disk.erase("ANIM.PAL");
+  memcpy(memory.data()+shotColors,oldShot.data(),512);memcpy(memory.data()+minePalette,oldMine.data(),512);memcpy(memory.data()+animShotColors,oldAnim.data(),512);word(memory,0x87F6BC,0);
+ }
+ std::cout<<"PASS optional source-PAL RGB565 precision, live mutation and missing/mismatched-source safety, source provenance and geometry retention\n";
  // Minimal one-voxel VXL and HVA: all faces share a real raw normal index.
  constexpr uint32_t bulletVxl=0x710000,bulletTail=0x711000,bulletBody=0x712000,bulletHva=0x713000,bulletMatrix=0x714000,bulletItems=0x715000,bulletScheme=0x716000,bulletDrawer=0x717000,bulletPalette=0x718000;
  word(memory,bulletVxl+4,1);word(memory,bulletVxl+8,1);word(memory,bulletVxl+12,13);word(memory,bulletVxl+20,bulletTail);word(memory,bulletVxl+24,bulletBody);

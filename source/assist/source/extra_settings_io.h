@@ -1,4 +1,5 @@
 static void loadAdditionalSettings(){
+ renderColorPrecision=std::clamp(value(L"Display",L"RenderColorPrecision",1),0,1);
  renderMaterialRefresh=value(L"Display",L"RenderMaterialRefresh",1)!=0;
  renderSceneDetail=std::clamp(value(L"Display",L"RenderSceneDetail",1),0,1);
  renderUpgradeEnabled=value(L"Display",L"RenderUpgrade",0)!=0;
@@ -109,6 +110,7 @@ static bool saveAdditionalSettings(){
  write(L"Display",L"UnifiedOverlay",unifiedOverlayEnabled);
  write(L"Display",L"RenderUpgradeLayer",renderUpgradeLayer);
  write(L"Display",L"RenderPaletteRange",renderPaletteRange);
+ write(L"Display",L"RenderColorPrecision",renderColorPrecision);
  write(L"Display",L"RenderPixelScale",renderPixelScale);
  write(L"Display",L"RenderMaterialRefresh",renderMaterialRefresh);
  write(L"Display",L"RenderSceneDetail",renderSceneDetail);

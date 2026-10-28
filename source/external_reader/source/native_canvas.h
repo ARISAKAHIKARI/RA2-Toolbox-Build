@@ -20,6 +20,7 @@ private:
   Page(const Page&p):budget(p.budget),surface(p.surface){++budget->pages;}
   ~Page(){--budget->pages;}
  };
+ colorprecision::Mode precision_=colorprecision::Mode::NativeSteps;
  int width_=0,height_=0;uint32_t background_=0xff080c08;bool failed_=false,dynamic_=false;
  std::shared_ptr<Budget> budget_;std::map<uint32_t,std::shared_ptr<Page>> pages_;std::set<uint32_t> dirty_;std::vector<std::array<int,4>> dirtyRects_;
  static uint32_t key(int x,int y){return uint32_t(y)*256u+uint32_t(x);}
@@ -46,7 +47,7 @@ private:
  }
  template<class Draw>void paint(int x0,int y0,int x1,int y1,Draw draw){
   x0=std::clamp(x0,0,width_);x1=std::clamp(x1,0,width_);y0=std::clamp(y0,0,height_);y1=std::clamp(y1,0,height_);if(x0>=x1||y0>=y1||!ensure(x0,y0,x1,y1))return;
-  for(int y=y0/PageSize;y<=(y1-1)/PageSize;++y)for(int x=x0/PageSize;x<=(x1-1)/PageSize;++x){uint32_t k=key(x,y);draw(pages_.find(k)->second->surface,x*PageSize,y*PageSize);dirty_.insert(k);}
+  for(int y=y0/PageSize;y<=(y1-1)/PageSize;++y)for(int x=x0/PageSize;x<=(x1-1)/PageSize;++x){uint32_t k=key(x,y);auto&surface=pages_.find(k)->second->surface;surface.precision(precision_);draw(surface,x*PageSize,y*PageSize);dirty_.insert(k);}
   dirtyRects_.push_back({x0,y0,x1,y1});
  }
  static void imageBounds(const voxel::Image&i,float ax,float ay,float shadowDrop,float&x0,float&y0,float&x1,float&y1){
@@ -100,6 +101,7 @@ public:
   pages_.clear();dirty_.clear();dirtyRects_.clear();failed_=dynamic_=false;width_=height_=0;background_=background;budget_=budget?std::move(budget):std::make_shared<Budget>();
   if(width<1||height<1||width>MaximumDimension||height>MaximumDimension||!budget_->maximum)return false;width_=width;height_=height;return true;
  }
+ void precision(colorprecision::Mode mode){precision_=mode;}
  int width()const{return width_;}int height()const{return height_;}bool failed()const{return failed_;}void clearFailure(){failed_=false;}
  size_t pageCount()const{return pages_.size();}size_t dirtyPages()const{return dirty_.size();}size_t residentPages()const{return budget_?budget_->pages:0;}
  void clean(){dirty_.clear();dirtyRects_.clear();}
@@ -156,7 +158,17 @@ public:
      std::abs(x)>1e7||std::abs(y)>1e7||spanX>32768||spanY>32768)return false;
   out.assign(size_t(width)*height,0);
   const double sx=spanX/width,sy=spanY/height;
-  if(pixelScaleMode==3&&sx>=.495&&sy>=.495&&sx<.995&&sy<.995){
+  if(pixelScaleMode==1&&sx<=1&&sy<=1&&(sx<1||sy<1)){
+   // Fetch only source centers actually sampled. A fractional crop can span
+   // 8193 cells while its 8192 output centers still touch at most 8192 cells.
+   const int x0=int(std::floor(x+.5*sx)),y0=int(std::floor(y+.5*sy));
+   const int w=int(std::floor(x+(width-.5)*sx))-x0+1,h=int(std::floor(y+(height-.5)*sy))-y0+1;
+   std::vector<uint32_t> source;if(!presentRegion(w,h,source,x0,y0,w,h,0))return false;
+   auto fetch=[&](int px,int py)->uint32_t{int xx=px-x0,yy=py-y0;return xx>=0&&yy>=0&&xx<w&&yy<h?source[size_t(yy)*w+xx]:0;};
+   return pixelupgrade::sampleNearest(fetch,x,y,spanX,spanY,width,height,out);
+  }
+  if((pixelScaleMode==3||pixelScaleMode==2)&&sx>=.25&&sy>=.25&&sx<=1&&sy<=1&&(sx<1||sy<1)&&
+     !(pixelScaleMode==2&&sx==.5&&sy==.5&&!(width&1)&&!(height&1)&&std::floor(x)==x&&std::floor(y)==y)){
    // Fractional physical-pixel output (e.g. 2560x1440 -> 3840x2160).
    // Prefetch a one-pixel halo in native coordinates ONCE, not 4-8 map
    // lookups for each physical output pixel. No source camera/logic zoom.
@@ -182,7 +194,7 @@ public:
   // Apply edge-aware 2x only for an ACTUAL 2:1 integer presentation ratio.
   // Do not zoom the camera, change target coordinates or interpolate shroud
   // across different visibility cells. At 1:1 keep exact native pixels.
-  if(pixelScaleMode>=1&&pixelScaleMode<=2&&sx==.5&&sy==.5&&
+  if(pixelScaleMode>=1&&pixelScaleMode<=2&&sx==.5&&sy==.5&&!(width&1)&&!(height&1)&&
      std::floor(x)==x&&std::floor(y)==y){
    // Prefetch one native pixel halo using page-row copies. A direct pixel()
    // call for all five neighborhood samples would repeat millions of map

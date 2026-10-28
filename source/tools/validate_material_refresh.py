@@ -30,5 +30,5 @@ assert 'bool liveVoxels=true' in scene and 'if(liveVoxels)' in scene
 assert 'voxel-current-vpl-unavailable' in (root/'external_reader/source/camera_assets.h').read_text(encoding='utf-8')
 assets=(root/'external_reader/source/camera_assets.h').read_text(encoding='utf-8')
 assert 'refreshActorPalette(ActorArt&art,bool&changed)' in assets and 'refreshOverlayPalette(' in assets
-assert 'fineRadians(pose.bodyFine' in assets and 'detail_?2:1' in assets
+assert 'fineRadians(pose.bodyFine' in assets and 'presentationRasterScale()' in assets
 print('PASS: observed material timeline and device-pixel detail integrated; 5–500 Hz target, persistent options, epoch invalidation, final visibility mask; no game-write APIs')

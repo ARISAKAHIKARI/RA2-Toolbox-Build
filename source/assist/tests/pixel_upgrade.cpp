@@ -3,6 +3,7 @@
 #include <cassert>
 #include <cstdio>
 #include <algorithm>
+#include <limits>
 #include <vector>
 int main(){
  using namespace external::pixelupgrade;
@@ -30,8 +31,7 @@ int main(){
  for(auto p:b)assert((p>>24)==255u);
  b=block(0,W,W,K,K,TwoX::EdgeBlend);
  for(auto p:b)assert(!p);
- // The original native-pixel canvas preserves 1:1 exact colors when scaled
- // mode is requested but the output is not actually 2x.
+ // The native-pixel canvas preserves 1:1 exact colors in every scale mode.
  external::camera::NativeCanvas canvas;
  assert(canvas.reset(3,3));
  canvas.underlayRect(0,0,3,3,0);
@@ -71,7 +71,47 @@ int main(){
  // Any transparent outside-backing region stays transparent.
  assert(fractional.presentRegion(6,6,restored,-4,-4,4,4,3));
  for(auto p:restored)assert(p==0);
+ // Nearest uses the actual pixel centers at fractional and integer ratios.
+ // Each source column is distinguishable, so a hidden fixed-2x intermediate
+ // or box-filter fallback changes this expected 1.5x/3x/4x placement.
+ external::camera::NativeCanvas gradient;assert(gradient.reset(4,4));
+ const uint32_t shades[]={0xff202020u,0xff282828u,0xff303030u,0xff383838u};
+ for(int x=0;x<4;++x)gradient.underlayRect(x,0,x+1,4,shades[x]);
+ const std::vector<int> columns15={0,1,1,2,3,3};
+ for(int target:{6,12,16}){
+  const double ratio=target/4.;std::vector<uint32_t> nearest,adaptive,edge;
+  assert(gradient.presentRegion(target,target,nearest,0,0,4,4,1));
+  for(int y=0;y<target;++y)for(int x=0;x<target;++x){int source=target==6?columns15[x]:x/int(ratio);assert(nearest[size_t(y)*target+x]==shades[source]);}
+  assert(gradient.presentRegion(target,target,adaptive,0,0,4,4,3));
+  assert(gradient.presentRegion(target,target,edge,0,0,4,4,2));assert(edge==adaptive);
+  // Low-contrast shading interpolates into RGB values absent from the source
+  // palette. The expected center sample comes from the actual physical ratio.
+  const int probe=target==6?1:target==12?3:4;
+  const uint32_t expected=target==6?0xff242424u:0xff252525u;
+  assert(adaptive[size_t(target/2)*target+probe]==expected);
+  assert(adaptive!=nearest);
+  // A source alpha cutout remains a hard geometric boundary at every ratio.
+  assert(fractional.presentRegion(target,target,adaptive,-1,0,4,4,3));
+  assert(fractional.presentRegion(target,target,nearest,-1,0,4,4,1));
+  for(size_t at=0;at<adaptive.size();++at){assert((adaptive[at]>>24)==(nearest[at]>>24));if(!(adaptive[at]>>24))assert(adaptive[at]==0);}
+ }
+ // Independently scaled axes still use adaptive sampling; a native Y axis
+ // must not send a 1.5x X edge through the softening box-filter fallback.
+ for(unsigned mode:{2u,3u}){assert(fractional.presentRegion(6,4,restored,0,0,4,4,mode));assert(restored[2*6+1]==H);}
+ // Even a small physical upscale must honor the selected sampling algorithm.
+ external::camera::NativeCanvas slight;assert(slight.reset(1001,1));slight.underlayRect(0,0,1,1,0x101010);slight.underlayRect(1,0,1001,1,0xf0f0f0);
+ assert(slight.presentRegion(1001,1,restored,.5,0,1000,1,3));assert(restored[0]==L);
+ // Exact 2x with an odd target is a fractional source crop, not a legal
+ // Scale2x block grid. It uses adaptive sampling instead of failing.
+ assert(gradient.presentRegion(5,5,restored,0,0,2.5,2.5,2));
+ assert(gradient.presentRegion(5,5,original,0,0,2.5,2.5,3));assert(restored==original&&restored.size()==25);
+ // At the maximum output axis, prefetch only centers actually sampled.
+ // A half-pixel crop spans 8193 cells but needs exactly 8192 source centers.
+ external::camera::NativeCanvas maximum;assert(maximum.reset(8192,2));maximum.underlayRect(0,0,8192,2,0x223344);
+ assert(maximum.presentRegion(8192,1,restored,.5,0,8192,.5,1));assert(restored.front()==0xff223344&&restored.back()==0);
  // reject invalid aspect/sampling envelopes.
  assert(!sampleAdaptive([](int,int){return 0xff223344u;},0,0,4,4,3,6,restored));
- std::puts("PASS: atomic DAC/RGB888 palette, 2x nearest and edge blend, transparent borders, native 1:1 fallback, fractional 1.5x and alpha-safe edges");
+ assert(!sampleAdaptive([](int,int){return 0xff223344u;},0,0,4,4,17,16,restored));
+ assert(!sampleNearest([](int,int){return 0xff223344u;},0,0,std::numeric_limits<double>::infinity(),4,6,6,restored));
+ std::puts("PASS: atomic DAC/RGB888 palette; actual 1.5x/3x/4x nearest placement and adaptive RGB shading; native-axis, odd 2x, maximum-axis and alpha boundary guards");
 }

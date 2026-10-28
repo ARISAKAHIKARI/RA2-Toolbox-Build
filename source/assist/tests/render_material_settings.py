@@ -29,15 +29,16 @@ static int value(const wchar_t*,const wchar_t*key,int fallback){auto i=profile.f
 static void write(const wchar_t*,const wchar_t*key,int v){profile[key]=v;}
 '''+globals_+'\nstatic void load(){'+load+'}\nstatic void save(){'+save+'}\nstatic int handle(int id,unsigned wp){int w=1;'+handler+'return -1;}\n'+r'''
 int main(){
- load();assert(!renderUpgradeEnabled&&!renderPhysicalOutput&&renderMaterialRefresh&&renderSceneDetail==1&&renderPixelScale==3);
- for(int detail:{0,1})for(int refresh:{0,1})for(int scale:{0,1,2,3}){
+ load();assert(!renderUpgradeEnabled&&!renderPhysicalOutput&&renderMaterialRefresh&&renderSceneDetail==1&&renderPixelScale==3&&renderColorPrecision==1);
+ for(int color:{0,1})for(int detail:{0,1})for(int refresh:{0,1})for(int scale:{0,1,2,3}){
+  controls[9309]=color;handle(9309,CBN_SELCHANGE<<16);
   controls[9308]=detail;handle(9308,CBN_SELCHANGE<<16);controls[9305]=scale;handle(9305,CBN_SELCHANGE<<16);
   controls[9307]=refresh;handle(9307,BN_CLICKED<<16);
-  assert(renderSceneDetail==detail&&renderPixelScale==scale&&renderMaterialRefresh==bool(refresh));
+  assert(renderSceneDetail==detail&&renderPixelScale==scale&&renderMaterialRefresh==bool(refresh)&&renderColorPrecision==color);
   save();renderSceneDetail=9;renderPixelScale=-1;renderMaterialRefresh=!refresh;load();
-  assert(renderSceneDetail==detail&&renderPixelScale==scale&&renderMaterialRefresh==bool(refresh));
+  assert(renderSceneDetail==detail&&renderPixelScale==scale&&renderMaterialRefresh==bool(refresh)&&renderColorPrecision==color);
  }
- for(int id:{9302,9304,9305,9308})for(int invalid:{-1,4,999}){
+ for(int id:{9302,9304,9305,9308,9309})for(int invalid:{-1,4,999}){
   int revision=paintRevision,count=changes,stopped=stops;controls[id]=invalid;handle(id,CBN_SELCHANGE<<16);
   assert(paintRevision==revision&&changes==count&&stops==stopped);
  }
@@ -51,4 +52,4 @@ with tempfile.TemporaryDirectory() as temp:
     source.write_text(fixture,encoding='utf-8')
     subprocess.run(['g++','-std=c++17','-O2',str(source),'-o',str(binary)],check=True)
     subprocess.run([str(binary)],check=True)
-print('PASS: actual render control events and INI load/save, 16 detail/refresh/scale combinations, adaptive mode 3 retained, invalid/programmatic events ignored')
+print('PASS: actual render control events and INI load/save, 32 color/detail/refresh/scale combinations, adaptive mode 3 retained, invalid/programmatic events ignored')

@@ -35,6 +35,7 @@ template<class Assets>class SceneRenderer {
   for(auto i=displayed_.begin();i!=displayed_.end();)if(artKey(i->second)==key)i=displayed_.erase(i);else ++i;
  }
  std::array<uint32_t,256> terrainPalette_{};bool terrainPaletteReady_=false;
+ colorprecision::Mode precision_=colorprecision::Mode::NativeSteps;
  lighting::State buildingLight_;
  std::map<std::pair<uint32_t,unsigned>,Cached> tiles_,overlays_;
  std::map<ArtKey,typename Assets::ActorArt> art_;
@@ -76,9 +77,11 @@ public:
  struct NativeStats {int width,height;size_t pages,resident;uint64_t cells,presents;};
  NativeStats nativeStats()const{return {background_.width(),background_.height(),background_.pageCount(),nativeBudget_->pages,nativeCells_,basePresents_};}
  void reset(){tiles_.clear();overlays_.clear();art_.clear();sprites_.clear();displayed_.clear();actorCursor_=0;repairAssets_.reset();clearBackground();width_=height_=0;spanX_=spanY_=0;revision_=0;terrainPaletteReady_=false;terrainPalette_={};nativeCells_=basePresents_=0;detailed_.reset();detailKey_=0;}
- template<class Read>std::shared_ptr<const Scene> render(const Frame&frame,int width,int height,Read read,Assets&assets,SceneRegion region={},unsigned pixelScaleMode=0,bool refined=false,bool liveVoxels=true){
+ template<class Read>std::shared_ptr<const Scene> render(const Frame&frame,int width,int height,Read read,Assets&assets,SceneRegion region={},unsigned pixelScaleMode=0,bool refined=false,bool liveVoxels=true,bool highColorPrecision=false){
   materialsReady_=false;
   if(!frame.terrain||!frame.terrain->geo.valid()||frame.terrain->art.size()!=512*512||width<3||height<3||width>(region.active?8192:2048)||height>(region.active?8192:2048)||uint64_t(width)*height>16*1024*1024)return {};
+  const auto precision=highColorPrecision?colorprecision::Mode::SmoothRGB:colorprecision::Mode::NativeSteps;
+  if(precision!=precision_){reset();precision_=precision;}
   beginPalette(assets,0);
   if(revision_!=assets.revision()){reset();revision_=assets.revision();}
   if(region.active&&(!std::isfinite(region.x)||!std::isfinite(region.y)||!std::isfinite(region.width)||!std::isfinite(region.height)||region.width<=0||region.height<=0||std::abs(region.x)>1e7||std::abs(region.y)>1e7||region.width>32768||region.height>32768))return {};
@@ -152,6 +155,7 @@ public:
    }
   }
   if(building_&&!probing_){
+   pending_.precision(precision_);
    const auto&terrain=*building_;const auto&geo=terrain.geo;
    // Native radar RGB exists for the full legal/raw backing, including the
    // inward playfield margin. Reveal paints that coarse backing at the fringe
@@ -217,7 +221,7 @@ public:
    maskSource_=complete_;maskFog_=fog;
   }
   auto view=background_.fork();const bool detail=refined&&region.active;
-  if(detail&&!detailed_.prepare(background_,baseScene_->pixels,width,height,region.x,region.y,region.width,region.height,detailKey_))return {};
+  if(detail&&!detailed_.prepare(background_,baseScene_->pixels,width,height,region.x,region.y,region.width,region.height,detailKey_,precision_))return {};
   auto draw=[&](const voxel::Image&i,float x,float y,float sx,float sy,float z,const lighting::State&light,float lift=1,float drop=0){if(detail)detailed_.blit(i,x,y,sx,sy,z,light,lift,drop);else view.blit(i,x,y,sx,sy,z,light,lift,drop);};
   const auto&geo=frame.terrain->geo;int work=0;size_t pixels=0;std::vector<const Marker*> fallbacks;
   auto markers=frame.markers;

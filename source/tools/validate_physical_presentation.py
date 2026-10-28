@@ -52,7 +52,7 @@ assert "疑似独占/显示模式切换：覆盖层保持" in host
 assert "9306" in main and "renderPhysicalOutput=on" in main
 assert settings.count('L"RenderPhysicalOutput"')==2
 assert "renderPixelScale=std::clamp" in settings and ",0,3)" in settings
-assert "9306" in ui and "自适应 1.25–2×" in ui
+assert "9306" in ui and "自适应 1–4×" in ui
 assert "不使用 NTSC/Bloom" in ui
 assert "physical_presentation_windows" in ci
 assert "physical_presentation;" in ci

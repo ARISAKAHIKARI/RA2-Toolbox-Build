@@ -6,7 +6,7 @@
 #include <cmath>
 #include <vector>
 
-// Presentation-only indexed-art conversion and bounded 2x scaling.
+// Presentation-only indexed-art conversion and bounded physical scaling.
 // Neither path changes the source palette, game memory, SHP indices, lighting
 // tables, simulation, hit-testing, shroud visibility or object ownership.
 namespace external { namespace pixelupgrade {
@@ -88,7 +88,17 @@ inline bool scale2x(const std::vector<uint32_t>&src,int width,int height,
  };
  return sample2x(at,0,0,width*2,height*2,dst,mode);
 }
-// Edge-adaptive fractional resampling for a real physical 1.25x-2x output.
+// Actual crop-to-output nearest sampling, including fractional 1.5x output.
+template<class Fetch>bool sampleNearest(Fetch fetch,double x,double y,double spanX,double spanY,int width,int height,std::vector<uint32_t>&out){
+ if(width<1||height<1||width>8192||height>8192||uint64_t(width)*height>16*1024*1024||
+    !std::isfinite(x)||!std::isfinite(y)||!std::isfinite(spanX)||!std::isfinite(spanY)||
+    std::abs(x)>1e7||std::abs(y)>1e7||spanX<=0||spanY<=0||spanX>32768||spanY>32768)return false;
+ out.resize(size_t(width)*height);
+ for(int yy=0;yy<height;++yy){int sy=int(std::floor(y+(yy+.5)*spanY/height));
+  for(int xx=0;xx<width;++xx)out[size_t(yy)*width+xx]=fetch(int(std::floor(x+(xx+.5)*spanX/width)),sy);
+ }return true;
+}
+// Edge-adaptive fractional resampling for the actual physical 1x-4x output.
 // Four-source premultiplied ARGB sampling, no CRT/NTSC/bloom/blur pipeline.
 // Prefer interpolation ALONG a prominent edge rather than across it.
 inline unsigned colorDistance(uint32_t a,uint32_t b){
@@ -142,8 +152,8 @@ bool sampleAdaptive(Fetch fetch,double originX,double originY,
     !std::isfinite(spanX)||!std::isfinite(spanY)||
     std::abs(originX)>1e7||std::abs(originY)>1e7||
     spanX<=0||spanY<=0||spanX>32768||spanY>32768||
-    width<=spanX||height<=spanY||
-    double(width)/spanX>2.01||double(height)/spanY>2.01)return false;
+    width<spanX||height<spanY||(width==spanX&&height==spanY)||
+    double(width)/spanX>4||double(height)/spanY>4)return false;
  out.resize(size_t(width)*height);
  const double dx=spanX/width,dy=spanY/height;
  for(int y=0;y<height;++y){
