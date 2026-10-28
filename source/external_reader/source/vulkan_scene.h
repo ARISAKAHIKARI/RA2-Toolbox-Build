@@ -66,7 +66,6 @@ class FrameResolve : public Resolve {
   VkPushConstantRange push{VK_SHADER_STAGE_COMPUTE_BIT,0,sizeof(SceneParams)};VkPipelineLayoutCreateInfo pl{VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO};pl.setLayoutCount=1;pl.pSetLayouts=&sceneDescriptorLayout_;pl.pushConstantRangeCount=1;pl.pPushConstantRanges=&push;
   if(vkCreatePipelineLayout_(device_,&pl,nullptr,&scenePipelineLayout_)!=VK_SUCCESS)return fatal("GPU scene pipeline layout failed");
   if(!pipeline(SceneShader,sizeof(SceneShader),scenePipeline_))return false;
-  if(features_.shaderFloat64&&!pipeline(Scene64Shader,sizeof(Scene64Shader),scene64Pipeline_))return false;
   VkDescriptorPoolSize size{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,4};VkDescriptorPoolCreateInfo pool{VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO};pool.maxSets=1;pool.poolSizeCount=1;pool.pPoolSizes=&size;
   if(vkCreateDescriptorPool_(device_,&pool,nullptr,&sceneDescriptorPool_)!=VK_SUCCESS)return fatal("GPU scene descriptor pool failed");
   VkDescriptorSetAllocateInfo alloc{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};alloc.descriptorPool=sceneDescriptorPool_;alloc.descriptorSetCount=1;alloc.pSetLayouts=&sceneDescriptorLayout_;
@@ -109,7 +108,7 @@ public:
    if(t.reconstructionFactor&&(t.reconstructionFactor<2||t.reconstructionFactor>4))return fail("Invalid GPU xBRZ factor");
    const uint64_t f=t.reconstructionFactor?t.reconstructionFactor:1;
    if(uint64_t(t.sourceWidth)*f>8192||uint64_t(t.sourceHeight)*f>8192||uint64_t(t.sourceWidth)*t.sourceHeight*f*f>MaxPixels)return fail("GPU xBRZ dimensions exceeded");
-   if(!t.pixels||t.sourceWidth<1||t.sourceHeight<1||t.sourceWidth>8192||t.sourceHeight>8192||uint64_t(t.sourceWidth)*t.sourceHeight!=t.pixels->size()||t.left<0||t.top<0||t.width<1||t.height<1||int64_t(t.left)+t.width>w||int64_t(t.top)+t.height>h||!std::isfinite(t.sourceX)||!std::isfinite(t.sourceY)||!std::isfinite(t.stepX)||!std::isfinite(t.stepY))return fail("Invalid GPU scene base tile");coordinateCount+=uint64_t(t.width)+t.height;if(coordinateCount>MaxCoordinates)return fail("GPU scene coordinate budget exceeded");tileSources.push_back(colors.size());if(t.reconstructionFactor){needs64=true;auto owner=std::shared_ptr<const void>(t.pixels,t.pixels.get());const uint64_t signature=(uint64_t(t.reconstructionFactor)<<56)|(uint64_t(t.sourceWidth)<<28)|uint64_t(t.sourceHeight);colors.push_back({owner,nullptr,t.pixels->size()*size_t(f)*size_t(f)*4,true,signature});}else colors.push_back(source(t.pixels));
+   if(!t.pixels||t.sourceWidth<1||t.sourceHeight<1||t.sourceWidth>8192||t.sourceHeight>8192||uint64_t(t.sourceWidth)*t.sourceHeight!=t.pixels->size()||t.left<0||t.top<0||t.width<1||t.height<1||int64_t(t.left)+t.width>w||int64_t(t.top)+t.height>h||!std::isfinite(t.sourceX)||!std::isfinite(t.sourceY)||!std::isfinite(t.stepX)||!std::isfinite(t.stepY))return fail("Invalid GPU scene base tile");coordinateCount+=uint64_t(t.width)+t.height;if(coordinateCount>MaxCoordinates)return fail("GPU scene coordinate budget exceeded");tileSources.push_back(colors.size());if(t.reconstructionFactor){auto owner=std::shared_ptr<const void>(t.pixels,t.pixels.get());const uint64_t signature=(uint64_t(t.reconstructionFactor)<<56)|(uint64_t(t.sourceWidth)<<28)|uint64_t(t.sourceHeight);colors.push_back({owner,nullptr,t.pixels->size()*size_t(f)*size_t(f)*4,true,signature});}else colors.push_back(source(t.pixels));
   }
   for(size_t i=0;i<frame.baseTiles.size();++i)for(size_t k=0;k<i;++k){const auto&a=frame.baseTiles[i];const auto&b=frame.baseTiles[k];if(a.left<b.left+b.width&&b.left<a.left+a.width&&a.top<b.top+b.height&&b.top<a.top+a.height)return fail("GPU scene base tiles overlap");}
   if(frame.baseDepth){baseDepth=materials.size();materials.push_back(source(frame.baseDepth));}
@@ -117,7 +116,7 @@ public:
   else if(frame.fogAlpha){fog=materials.size();materials.push_back(source(frame.fogAlpha));}
   uint64_t candidatePixels=0;std::vector<std::array<int,4>> bounds;bounds.reserve(frame.draws.size());
   for(const auto&d:frame.draws){
-   const auto&t=d.source;if((!t.pixels&&!d.gpuRaster)||t.width<1||t.height<1||t.width>8192||t.height>8192||(t.pixels&&uint64_t(t.width)*t.height!=t.pixels->size())||(t.depth&&t.depth->size()!=uint64_t(t.width)*t.height)||(t.indices&&t.indices->size()!=uint64_t(t.width)*t.height)||d.rasterScale<1||d.rasterScale>4||!std::isfinite(d.left)||!std::isfinite(d.top)||!std::isfinite(d.scaleX)||!std::isfinite(d.scaleY)||d.scaleX<=0||d.scaleY<=0||d.scaleX>8||d.scaleY>8||!std::isfinite(d.depthBase)||!std::isfinite(d.lift)||uint32_t(d.sampling)>3)return fail("Invalid GPU scene sprite");
+   const auto&t=d.source;if((!t.pixels&&!d.gpuRaster)||t.width<1||t.height<1||t.width>8192||t.height>8192||uint64_t(t.width)*t.height>MaxPixels||(t.pixels&&uint64_t(t.width)*t.height!=t.pixels->size())||(t.depth&&t.depth->size()!=uint64_t(t.width)*t.height)||(t.indices&&t.indices->size()!=uint64_t(t.width)*t.height)||d.rasterScale<1||d.rasterScale>4||!std::isfinite(d.left)||!std::isfinite(d.top)||!std::isfinite(d.scaleX)||!std::isfinite(d.scaleY)||d.scaleX<=0||d.scaleY<=0||d.scaleX>8||d.scaleY>8||!std::isfinite(d.depthBase)||!std::isfinite(d.lift)||uint32_t(d.sampling)>3)return fail("Invalid GPU scene sprite");
    for(float gain:d.gains)if(!std::isfinite(gain)||gain<0||gain>16)return fail("Invalid GPU scene light");
    std::array<size_t,4> sources{{colors.size(),size_t(-1),size_t(-1),size_t(-1)}};
    if(d.gpuRaster){if(d.gpuRaster->width!=t.width||d.gpuRaster->height!=t.height)return fail("GPU voxel dimensions disagree");auto owner=std::shared_ptr<const void>(d.gpuRaster,d.gpuRaster.get());colors.push_back({owner,nullptr,size_t(t.width)*t.height*4,true,1});sources[2]=materials.size();materials.push_back({owner,nullptr,size_t(t.width)*t.height*4,true,2});}
@@ -129,8 +128,10 @@ public:
    int left=bound(d.left,w,false),top=bound(d.top,h,false),right=bound(d.left+t.width*d.scaleX,w,true),bottom=bound(d.top+t.height*d.scaleY,h,true);bounds.push_back({left,top,right,bottom});candidatePixels+=uint64_t(std::max(0,right-left))*std::max(0,bottom-top);
   }
   if(candidatePixels>128ull*1024*1024)return fail("GPU scene candidate budget exceeded");if(!sceneInitialize())return false;
-  if(needs64&&!features_.shaderFloat64)return fail("GPU scene sampling requires shaderFloat64; CPU fallback");
-  bool rawTiles=false;for(const auto&t:frame.baseTiles)rawTiles|=t.reconstructionFactor!=0;for(const auto&d:frame.draws)rawTiles|=bool(d.reconstructionSource);if(rawTiles&&!verifyXbrz())return false;
+  bool rawTiles=false;for(const auto&t:frame.baseTiles)rawTiles|=t.reconstructionFactor!=0;for(const auto&d:frame.draws)rawTiles|=bool(d.reconstructionSource);
+  if((needs64||rawTiles)&&!features_.shaderFloat64)return fail("GPU scene sampling requires shaderFloat64; CPU fallback");
+  if(needs64&&!scene64Pipeline_&&!pipeline(Scene64Shader,sizeof(Scene64Shader),scene64Pipeline_))return false;
+  if(rawTiles&&!verifyXbrz())return false;
   UploadPlan colorPlan,materialPlan;if(!plan(colors,colorResident_,colorPlan,AtlasBytes)||!plan(materials,materialResident_,materialPlan,MaterialBytes))return false;
   std::vector<gpuxbrz::RawJob>rawJobs;
   for(size_t n=0;n<frame.baseTiles.size();++n){const auto&t=frame.baseTiles[n];if(t.reconstructionFactor&&std::find(colorPlan.dirty.begin(),colorPlan.dirty.end(),tileSources[n])!=colorPlan.dirty.end())rawJobs.push_back({t.pixels,t.sourceWidth,t.sourceHeight,t.reconstructionFactor,colorPlan.offsets[tileSources[n]]});}

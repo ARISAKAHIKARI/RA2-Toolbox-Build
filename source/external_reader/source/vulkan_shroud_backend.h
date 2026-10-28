@@ -19,7 +19,7 @@ class Stage {
  static bool same(const SourceResident&r,const std::shared_ptr<const std::vector<uint8_t>>&p){return r.address==p.get()&&!r.owner.owner_before(p)&&!p.owner_before(r.owner);}
  bool initialize(){
   if(ready_)return true;auto&o=owner_;if(!o.initialize())return false;
-  if(o.properties_.limits.maxPerStageDescriptorStorageBuffers<3||o.properties_.limits.maxDescriptorSetStorageBuffers<3||o.properties_.limits.maxPushConstantsSize<sizeof(Params))return o.fail("GPU shroud storage bindings unavailable");
+  if(o.properties_.limits.maxPerStageDescriptorStorageBuffers<3||o.properties_.limits.maxDescriptorSetStorageBuffers<3||o.properties_.limits.maxPushConstantsSize<sizeof(Params)||o.properties_.limits.maxComputeWorkGroupInvocations<64||o.properties_.limits.maxComputeWorkGroupSize[0]<64||!o.properties_.limits.maxComputeWorkGroupCount[0]||!o.properties_.limits.maxComputeWorkGroupCount[1])return o.fail("GPU shroud storage bindings unavailable");
   VkDescriptorSetLayoutBinding bindings[3]{};for(uint32_t n=0;n<3;++n){bindings[n].binding=n;bindings[n].descriptorType=VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;bindings[n].descriptorCount=1;bindings[n].stageFlags=VK_SHADER_STAGE_COMPUTE_BIT;}
   VkDescriptorSetLayoutCreateInfo ds{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO};ds.bindingCount=3;ds.pBindings=bindings;
   if(o.vkCreateDescriptorSetLayout_(o.device_,&ds,nullptr,&descriptorLayout_)!=VK_SUCCESS)return o.fatal("GPU shroud descriptor layout failed");

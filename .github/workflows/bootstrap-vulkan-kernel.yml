@@ -74,7 +74,7 @@ jobs:
         run: |
           set -euo pipefail
           g++ -std=c++17 -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -c source/third_party/xbrz/xbrz.cpp -o /tmp/xbrz.o
-          for name in vulkan_scene gpu_xbrz gpu_voxel_vulkan gpu_voxel_scene vulkan_shroud; do
+          for name in vulkan_scene gpu_xbrz gpu_voxel_vulkan gpu_voxel_scene vulkan_shroud vulkan_shroud_scene gpu_scene_renderer; do
             g++ -std=c++17 -O1 -g -DRA2_VULKAN_TEST_SOFTWARE -fsanitize=address,undefined -fno-omit-frame-pointer source/assist/tests/$name.cpp /tmp/xbrz.o -ldl -o /tmp/$name-test
             ASAN_OPTIONS=detect_leaks=0 VK_INSTANCE_LAYERS=VK_LAYER_KHRONOS_validation /tmp/$name-test --require 2>&1 | tee "$name.log"
             python3 -c "from pathlib import Path; s=Path('$name.log').read_text(); assert 'Validation Error' not in s and 'VUID-' not in s"

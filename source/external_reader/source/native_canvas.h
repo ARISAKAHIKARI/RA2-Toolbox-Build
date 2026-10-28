@@ -155,6 +155,12 @@ public:
  // Crop a native-pixel scene BEFORE presentation scaling. This is deliberately
  // independent of the radar's whole-map downscale. Outside backing falls back
  // to the underlying game through transparent pixels instead of stretching.
+ bool gpuRegion(int width,int height,double x,double y,double spanX,double spanY,unsigned mode,std::vector<vulkancompute::TileJob>&out)const{
+  if(failed_||(mode!=2&&mode!=3)||width_<1||height_<1)return false;
+  if(!regionCache_)regionCache_=std::make_shared<xbrzadapter::RegionCache>();
+  auto fetch=[&](int px,int py){return pixel(std::clamp(px,0,width_-1),std::clamp(py,0,height_-1));};
+  return regionCache_->gpuRegion(fetch,x,y,spanX,spanY,width,height,out);
+ }
  bool presentRegion(int width,int height,std::vector<uint32_t>&out,
                     double x,double y,double spanX,double spanY,unsigned pixelScaleMode=0)const{
   if(failed_||width_<1||height_<1||width<1||height<1||width>8192||height>8192||
