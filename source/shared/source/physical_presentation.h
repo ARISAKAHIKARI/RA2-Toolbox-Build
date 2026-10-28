@@ -6,6 +6,8 @@
 // Geometry-only policy for physical-pixel presentation. No Win32/game APIs.
 // Windowed 1440p on a 4K monitor is NOT itself a 4K render target.
 // Fullscreen exclusive cannot be proven reliably by HWND styles alone.
+// A suspicious display mode selects client-pixel fallback, never disabling
+// the existing transparent overlay when it is already functioning.
 namespace physicalpresentation {
 enum class Status : uint8_t {
  Ready, NativeResolution, WindowOnly, SuspiciousModeSwitch,
@@ -20,6 +22,9 @@ struct Observation {
  bool coversMonitor=false;
  bool captureFailed=false;
 };
+// Pixel enhancement is a capability choice, NOT a visibility gate.
+// Existing overlays already work in many fullscreen-exclusive installations.
+enum class RenderPath : uint8_t { LegacyClientPixels, EnhancedPhysicalPixels };
 struct Result {
  Status status=Status::InvalidGeometry;
  int width=0,height=0;
@@ -31,6 +36,15 @@ struct Result {
   return status==Status::SuspiciousModeSwitch;
  }
 };
+inline RenderPath renderPath(const Result&result,bool enablePhysical){
+ return enablePhysical&&result.status==Status::Ready?
+        RenderPath::EnhancedPhysicalPixels:RenderPath::LegacyClientPixels;
+}
+// A mode switch or ambiguous DPI may prevent a verified 4K enhancement.
+// It MUST NOT suspend or hide the existing client-sized overlay.
+inline bool keepExistingOverlay(bool featureEnabled,bool existingContextValid){
+ return featureEnabled&&existingContextValid;
+}
 inline Result classify(const Observation&o){
  Result d;d.width=o.clientW;d.height=o.clientH;
  if(o.captureFailed||o.clientW<320||o.clientH<200||
