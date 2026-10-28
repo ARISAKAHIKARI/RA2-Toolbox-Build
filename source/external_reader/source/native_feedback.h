@@ -131,10 +131,17 @@ inline void bolt(Canvas&c,double x0,double y0,double x1,double y1,uint32_t seed,
  double length=std::hypot(x1-x0,y1-y0);if(!std::isfinite(length)||length<.5||length>100000||!std::isfinite(scale)||scale<=0||scale>16)return;
  int n=std::clamp(int(length/12),4,64);double nx=-(y1-y0)/length,ny=(x1-x0)/length;
  uint32_t edge=alternate?0xffb02058u:0xff4058e8u,core=alternate?0xffffd0e0u:0xffe0f8ffu;
+ // Soft premultiplied glow is a presentation-only approximation. Do not
+ // read/advance game RNG, EBolt lifetime, target position or visibility here.
+ // Draw outside-to-inside so shroud clipping still applies to the final layer.
+ uint32_t glow=alternate?0x28220917u:0x280a1425u;
+ const int haloWidth=std::clamp(int(std::lround(7*scale)),1,9);
  for(int strand=0;strand<2;++strand){double ax=x0,ay=y0;
   for(int i=1;i<=n;++i){double t=double(i)/n,jitter=i==n?0:(int(hash(seed^uint32_t(i*131+strand*7919))&65535)-32768)/32768.*std::min(6.*scale,length/10.);
    double bx=x0+(x1-x0)*t+nx*jitter,by=y0+(y1-y0)*t+ny*jitter;
-   c.line(ax,ay,bx,by,edge,std::clamp(int(std::lround(3*scale)),1,9));c.line(ax,ay,bx,by,core);ax=bx;ay=by;
+   c.line(ax,ay,bx,by,glow,haloWidth);
+   c.line(ax,ay,bx,by,edge,std::clamp(int(std::lround(3*scale)),1,9));
+   c.line(ax,ay,bx,by,core);ax=bx;ay=by;
   }
  }
 }
