@@ -144,6 +144,29 @@ public:
      std::abs(x)>1e7||std::abs(y)>1e7||spanX>32768||spanY>32768)return false;
   out.assign(size_t(width)*height,0);
   const double sx=spanX/width,sy=spanY/height;
+  if(pixelScaleMode==3&&sx>=.495&&sy>=.495&&sx<.995&&sy<.995){
+   // Fractional physical-pixel output (e.g. 2560x1440 -> 3840x2160).
+   // Prefetch a one-pixel halo in native coordinates ONCE, not 4-8 map
+   // lookups for each physical output pixel. No source camera/logic zoom.
+   const int x0=int(std::floor(x))-2,y0=int(std::floor(y))-2;
+   const int hw=int(std::ceil(x+spanX))+2-x0;
+   const int hh=int(std::ceil(y+spanY))+2-y0;
+   if(hw>=2&&hh>=2&&hw<=8192&&hh<=8192&&
+      uint64_t(hw)*hh<=16*1024*1024){
+    std::vector<uint32_t> halo;
+    if(presentRegion(hw,hh,halo,x0,y0,hw,hh,0)){
+     auto fetch=[&](int px,int py)->uint32_t{
+      int64_t hx=int64_t(px)-x0,hy=int64_t(py)-y0;
+      return hx>=0&&hy>=0&&hx<hw&&hy<hh?
+        halo[size_t(hy)*hw+size_t(hx)]:0;
+     };
+     if(pixelupgrade::sampleAdaptive(fetch,x,y,spanX,spanY,width,height,out))
+      return true;
+    }
+   }
+   // Incomplete backing/unsupported footprint: use original renderer, not
+   // an incompletely reconstructed frame or a guessed pixel.
+  }
   // Apply edge-aware 2x only for an ACTUAL 2:1 integer presentation ratio.
   // Do not zoom the camera, change target coordinates or interpolate shroud
   // across different visibility cells. At 1:1 keep exact native pixels.
