@@ -2,6 +2,7 @@
 #include "voxel_preview.h"
 #include "scene_lighting.h"
 #include "scene_order.h"
+#include "pixel_upgrade.h"
 namespace external { namespace camera {
 struct Light {
  float gains[3]{};explicit Light(const lighting::State&state){
@@ -32,7 +33,7 @@ class Surface {
 public:
  std::vector<uint32_t> color;std::vector<float> depth;
  bool reset(int w,int h,uint32_t background=0xff080c08u){
-  if(w<=0||h<=0||w>2048||h>2048){width_=height_=0;color.clear();depth.clear();return false;}
+  if(w<=0||h<=0||w>8192||h>8192||uint64_t(w)*h>16*1024*1024){width_=height_=0;color.clear();depth.clear();return false;}
   width_=w;height_=h;color.assign(size_t(w)*h,background);depth.assign(color.size(),-std::numeric_limits<float>::infinity());return true;
  }
  int width()const{return width_;}int height()const{return height_;}
@@ -44,23 +45,36 @@ public:
     size_t at=size_t(y)*width_+x;float z=base+(y+.5f-ay)/sy-14;if(z>=depth[at]){color[at]=c;depth[at]=z;}
    }
  }
- void blit(const voxel::Image&i,float ax,float ay,float sx,float sy,float base,const lighting::State&light,float lift=1,float shadowDrop=0){
-  if(i.width<=0||i.height<=0||i.pixels.size()!=size_t(i.width)*i.height||!std::isfinite(ax)||!std::isfinite(ay)||!std::isfinite(sx)||!std::isfinite(sy)||sx<=0||sy<=0||sx>8||sy>8)return;
-  for(const auto&part:i.attachments)if(part.shadow&&!i.shadowsAfter&&(!part.airborneShadow||shadowDrop>0))blit(part,ax,ay+shadowDrop*sy,sx,sy,base,light,lift);
-  float left=ax+i.x*sx,top=ay+i.y*sy;
+ void blit(const voxel::Image&i,float ax,float ay,float sx,float sy,float base,const lighting::State&light,float lift=1,float shadowDrop=0,bool smooth=false){
+  if(i.width<=0||i.height<=0||i.rasterScale<1||i.rasterScale>2||i.pixels.size()!=size_t(i.width)*i.height||!std::isfinite(ax)||!std::isfinite(ay)||!std::isfinite(sx)||!std::isfinite(sy)||sx<=0||sy<=0||sx>8||sy>8)return;
+  for(const auto&part:i.attachments)if(part.shadow&&!i.shadowsAfter&&(!part.airborneShadow||shadowDrop>0))blit(part,ax,ay+shadowDrop*sy,sx,sy,base,light,lift,0,smooth);
+  float pxScale=sx/i.rasterScale,pyScale=sy/i.rasterScale;
+  float left=ax+i.x*pxScale,top=ay+i.y*pyScale;
   int x0=std::clamp(int(std::floor(std::clamp(left,-1e7f,1e7f))),0,width_),y0=std::clamp(int(std::floor(std::clamp(top,-1e7f,1e7f))),0,height_);
-  int x1=std::clamp(int(std::ceil(std::clamp(left+i.width*sx,-1e7f,1e7f))),0,width_),y1=std::clamp(int(std::ceil(std::clamp(top+i.height*sy,-1e7f,1e7f))),0,height_);
+  int x1=std::clamp(int(std::ceil(std::clamp(left+i.width*pxScale,-1e7f,1e7f))),0,width_),y1=std::clamp(int(std::ceil(std::clamp(top+i.height*pyScale,-1e7f,1e7f))),0,height_);
   Light transform(light);bool zData=i.depth.size()==i.pixels.size(),indexed=i.indices.size()==i.pixels.size();
-  for(int y=y0;y<y1;++y){int sourceY=int(std::floor((y+.5f-top)/sy));if(sourceY<0||sourceY>=i.height)continue;
-   for(int x=x0;x<x1;++x){int sourceX=int(std::floor((x+.5f-left)/sx));if(sourceX<0||sourceX>=i.width)continue;
-    size_t from=size_t(sourceY)*i.width+sourceX,to=size_t(y)*width_+x;uint32_t p=i.pixels[from];if(!(p>>24))continue;
+  auto colorAt=[&](int x,int y){if(x<0||y<0||x>=i.width||y>=i.height)return uint32_t(0);size_t at=size_t(y)*i.width+x;return transform.apply(i.pixels[at],indexed?i.indices[at]:0,i.objectPalette);};
+  for(int y=y0;y<y1;++y){int sourceY=int(std::floor((y+.5f-top)/pyScale));if(sourceY<0||sourceY>=i.height)continue;
+   for(int x=x0;x<x1;++x){int sourceX=int(std::floor((x+.5f-left)/pxScale));if(sourceX<0||sourceX>=i.width)continue;
+    size_t from=size_t(sourceY)*i.width+sourceX,to=size_t(y)*width_+x;uint32_t p=i.pixels[from];
+    bool sampled=smooth&&(!i.shadow||i.rasterScale==2)&&(pxScale!=1||pyScale!=1);
+    if(sampled){
+     double fx=(x+.5-left)/pxScale-.5,fy=(y+.5-top)/pyScale-.5;int ix=int(std::floor(fx)),iy=int(std::floor(fy));fx-=ix;fy-=iy;
+     uint32_t a=colorAt(ix,iy),b=colorAt(ix+1,iy),c=colorAt(ix,iy+1),d=colorAt(ix+1,iy+1);
+     if(i.rasterScale==2&&pxScale<=1&&pyScale<=1){
+      // Actual supersampled geometry: preserve fractional coverage at its
+      // silhouette. The SHP path below keeps cutout boundaries conservative.
+      p=0;for(int shift:{0,8,16,24}){double v=(1-fy)*((1-fx)*((a>>shift)&255)+fx*((b>>shift)&255))+fy*((1-fx)*((c>>shift)&255)+fx*((d>>shift)&255));p|=unsigned(std::lround(v))<<shift;}
+     }else p=pixelupgrade::adaptivePixel(a,b,c,d,fx,fy);
+    }
+    if(!(p>>24))continue;
     float z=base+i.depthBias;bool useZ=true;
     if(zData){if(std::isnan(i.depth[from]))useZ=false;else z+=i.depth[from];}
-    else if(i.flat)z+=i.y+sourceY-14+lift;
-    else{int bottom=i.depthBottom==std::numeric_limits<int>::min()?i.y+i.height-1:i.depthBottom;z+=bottom-14+lift+(bottom-i.y-sourceY)/3;}
+    else if(i.flat)z+=float(i.y+sourceY)/i.rasterScale-14+lift;
+    else{int bottom=i.depthBottom==std::numeric_limits<int>::min()?i.y+i.height-1:i.depthBottom;z+=float(bottom)/i.rasterScale-14+lift+float((bottom-i.y-sourceY)/3)/i.rasterScale;}
     if(useZ&&z<=depth[to])continue;
-    if(i.shadow){uint32_t old=color[to];color[to]=(old&0xff000000u)|((old&0xfefefeu)>>1);}
-    else{p=transform.apply(p,indexed?i.indices[from]:0,i.objectPalette);unsigned a=p>>24;
+    if(i.shadow){uint32_t old=color[to],v=old&0xff000000u;unsigned a=p>>24;for(int shift:{0,8,16})v|=(((old>>shift)&255)*(510-a)/510)<<shift;color[to]=v;}
+    else{if(!sampled)p=transform.apply(p,indexed?i.indices[from]:0,i.objectPalette);unsigned a=p>>24;
      if(a==255)color[to]=p;else{uint32_t old=color[to],out=0xff000000u;for(int shift:{0,8,16})out|=std::min(255u,((p>>shift)&255)+((old>>shift)&255)*(255-a)/255)<<shift;color[to]=out;}
     }
     // Building/terrain shadows write their ground plane. Without this, each
@@ -68,7 +82,7 @@ public:
     if(useZ&&i.writeDepth)depth[to]=z;
    }
   }
-  for(const auto&part:i.attachments)if((!part.shadow||i.shadowsAfter)&&(!part.airborneShadow||shadowDrop>0))blit(part,ax,ay+(part.shadow?shadowDrop*sy:0),sx,sy,base,light,lift);
+  for(const auto&part:i.attachments)if((!part.shadow||i.shadowsAfter)&&(!part.airborneShadow||shadowDrop>0))blit(part,ax,ay+(part.shadow?shadowDrop*sy:0),sx,sy,base,light,lift,0,smooth);
  }
 };
 }}

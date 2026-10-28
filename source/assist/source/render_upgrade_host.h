@@ -5,13 +5,16 @@
 #include "../../external_reader/source/main_viewport.h"
 #include "../../external_reader/source/feedback_scene.h"
 #include "../../external_reader/source/feedback_cursor.h"
+#include "../../external_reader/source/material_motion.h"
+#include <chrono>
 // External read/render only. No Runtime requests or engine draw calls.
 namespace renderupgrade {
-struct Request {uint32_t pid=0,match=0,tick=0;int width=0,height=0;uint32_t reveal=0;int paletteRange=1,pixelScaleMode=0;external::mainview::View view;overlaycompositor::Context context;};
+static double presentationNow(){return std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now().time_since_epoch()).count();}
+struct Request {uint64_t generation=0;bool materialRefresh=true;int detail=1;uint32_t pid=0,match=0,tick=0;int width=0,height=0;uint32_t reveal=0;int paletteRange=1,pixelScaleMode=0;external::mainview::View view;overlaycompositor::Context context;};
 struct Frame {
  Request request;std::shared_ptr<const external::radar::Scene> image;
  std::vector<external::nativefeedback::Object> objects;
- double yellow=.5,red=.25;external::nativefeedback::EffectStatus effects;
+ uint64_t assetRevision=0;double renderMs=0,observationMs=0;int logicFrame=-1;double yellow=.5,red=.25;external::nativefeedback::EffectStatus effects;
 };
 static external::ReadSession reader;
 static external::cameraassets::Context<external::ReadSession> assets(reader);
@@ -19,22 +22,54 @@ static external::radar::SceneRenderer<decltype(assets)> renderer;
 static external::radar::Sampler<external::SharedReadView> sampler(external::SharedReadView{&reader});
 static uint32_t process=0,epoch=0;static bool active=false;static uint32_t submittedAt=0;static uint64_t imageToken=0;
 static std::atomic<int> progress{0};
+static uint64_t generation=1,workerGeneration=0;
+static external::materialmotion::Timeline timeline;
+static int sampledLogicFrame=-1;static bool sampleValid=false;
+static std::shared_ptr<const Frame> heldFrame;static uint64_t heldKey=0;
 static asyncwork::Latest<Request,Frame> worker([](const Request&r)->std::shared_ptr<const Frame>{
- if(process!=r.pid||epoch!=r.match){reader.close();sampler.reset();renderer.reset();process=r.pid;epoch=r.match;}
+ const double started=presentationNow();
+ if(process!=r.pid||epoch!=r.match){reader.close();sampler.reset();renderer.reset();process=r.pid;epoch=r.match;sampleValid=false;timeline.reset();heldFrame.reset();}
+ if(workerGeneration!=r.generation){workerGeneration=r.generation;sampleValid=false;sampledLogicFrame=-1;timeline.reset();heldFrame.reset();}
  if(!reader.open(r.pid)){progress=-1;return {};}
+ assets.identity(r.pid,r.match);
  auto fresh=[](uint32_t p,void*out,size_t n){return reader.readFresh(p,out,n);};
  external::mainview::View before;
  if(!external::mainview::sample(fresh,before)||!external::mainview::sameViewport(before,r.view)||before.frame<r.view.frame){progress=-1;return {};}
- reader.begin();progress=1;
- if(!sampler.step(r.reveal,8192,true))return {};
- auto data=sampler.snapshot(GetTickCount());auto observed=external::radar::publicationContext(fresh);
- if(!data.terrain||!data.markerScanValid||!external::radar::freshMarkers(data,observed))return {};
- assets.identity(r.pid,r.match);
+ progress=1;
+ // Repeated presentation frames reuse one immutable observed bank. Only a
+ // changed logical frame rescans terrain, objects and native animation state.
+ if(!sampleValid||before.frame!=sampledLogicFrame){
+  reader.begin();
+  if(!sampler.step(r.reveal,8192,true))return {};
+  auto raw=sampler.snapshot(GetTickCount());auto observed=external::radar::publicationContext(fresh);
+  if(!raw.terrain||!raw.markerScanValid||!external::radar::freshMarkers(raw,observed))return {};
+  for(auto&m:raw.markers)if(m.kind==3)assets.buildingPose(m.object,m.type,m.pose);
+  raw.posesPrepared=true;
+  external::mainview::View captured;
+  if(!external::mainview::sample(fresh,captured)||captured.frame!=before.frame||!external::mainview::sameViewport(before,captured))return {};
+  timeline.observe(raw,presentationNow());sampledLogicFrame=before.frame;sampleValid=true;
+ }
+ auto data=timeline.sample(presentationNow(),r.materialRefresh,r.detail!=0);
+ if(!data.terrain)return {};
+ data.tick=GetTickCount(); // presentation retry deadlines keep running while paused
+ assets.presentationDetail(r.detail);
  assets.presentationPalette(r.paletteRange==1?external::pixelupgrade::PaletteRange::FullRGB:external::pixelupgrade::PaletteRange::OriginalDAC);
+ const uint64_t assetRevision=assets.revision();
+ uint64_t key=external::materialmotion::presentationKey(data);
+ if(heldFrame&&heldFrame->assetRevision==assetRevision&&heldKey==key&&heldFrame->request.generation==r.generation&&heldFrame->request.width==r.width&&heldFrame->request.height==r.height&&
+    heldFrame->request.paletteRange==r.paletteRange&&heldFrame->request.pixelScaleMode==r.pixelScaleMode&&heldFrame->request.detail==r.detail&&
+    heldFrame->request.context.token==r.context.token&&external::mainview::sameViewport(heldFrame->request.view,r.view)){
+  if(!external::radar::sameWorld(data,external::radar::publicationContext(fresh)))return {};
+  auto reused=std::make_shared<Frame>(*heldFrame);reused->request=r;reused->renderMs=presentationNow()-started;return reused;
+ }
+
+ // In-between poses still use CURRENT visibility and an immutable current
+ // object list. Removed/hidden actors are never resurrected by the timeline.
+
  auto crop=external::mainview::crop(r.view,data.terrain->geo.offsetX,data.terrain->geo.offsetY);
- auto scene=renderer.render(data,r.width,r.height,external::SharedReadView{&reader},assets,{crop.x,crop.y,crop.width,crop.height,true},unsigned(r.pixelScaleMode));
+ auto scene=renderer.render(data,r.width,r.height,external::SharedReadView{&reader},assets,{crop.x,crop.y,crop.width,crop.height,true},unsigned(r.pixelScaleMode),r.detail!=0);
  if(!scene)return {};
- auto out=std::make_shared<Frame>();out->request=r;
+ auto out=std::make_shared<Frame>();out->request=r;out->assetRevision=assetRevision;out->logicFrame=data.frame;out->observationMs=timeline.interval();
  const double zscale=external::projectionZScale(fresh);
  out->objects=external::nativefeedback::objectGeometry(renderer,data,r.view,r.width,r.height,zscale);
  out->yellow=assets.conditionYellow();out->red=assets.conditionRed();
@@ -50,10 +85,10 @@ static asyncwork::Latest<Request,Frame> worker([](const Request&r)->std::shared_
  external::mainview::View after;
  if(!external::mainview::sample(fresh,after)||!external::mainview::sameViewport(before,after)||after.frame<before.frame||
    !external::radar::sameWorld(data,external::radar::publicationContext(fresh)))return {};
- out->image=std::move(scene);progress=2;return out;
+ out->image=std::move(scene);out->renderMs=presentationNow()-started;if(renderer.materialsReady()){heldFrame=out;heldKey=key;}else heldFrame.reset();progress=2;return out;
 });
 #include "render_feedback_host.h"
-static void suspend(){if(active){active=false;worker.invalidate();}feedback::hide();imageToken=0;overlaycompositor::host().hide(overlaycompositor::RenderUpgrade);}
+static void suspend(){if(active){active=false;++generation;worker.invalidate();}feedback::hide();imageToken=0;overlaycompositor::host().hide(overlaycompositor::RenderUpgrade);}
 static void stop(){suspend();overlaycompositor::host().suspend();}
 static void shutdown(){stop();worker.shutdown();feedback::shutdown();overlaycompositor::host().shutdown();}
 static void update(POINT origin,const RECT&client,bool battlefield){
@@ -100,12 +135,13 @@ static void update(POINT origin,const RECT&client,bool battlefield){
  // their original nearest/area behavior.
  const int effectiveScale=renderPath==physicalpresentation::RenderPath::EnhancedPhysicalPixels&&
    renderPixelScale==0?3:renderPixelScale;
- Request request{pid,displayMatch(),GetTickCount(),right-left,bottom-top,
+ Request request{generation,renderMaterialRefresh,renderSceneDetail,pid,displayMatch(),GetTickCount(),right-left,bottom-top,
   uint32_t(extra.renderReveal||extra.mapStrategy==3),
   renderPaletteRange,effectiveScale,view,context};
  auto result=worker.get();
  const bool fresh=result&&result->image&&result->request.pid==request.pid&&result->request.match==request.match&&
   result->request.context.token==context.token&&result->request.reveal==request.reveal&&
+  result->request.generation==request.generation&&result->request.materialRefresh==request.materialRefresh&&result->request.detail==request.detail&&
   result->request.paletteRange==request.paletteRange&&result->request.pixelScaleMode==request.pixelScaleMode&&
   result->request.width==request.width&&result->request.height==request.height&&
   external::mainview::sameViewport(result->request.view,view)&&view.frame>=result->request.view.frame&&
@@ -119,7 +155,7 @@ static void update(POINT origin,const RECT&client,bool battlefield){
    {left,top,request.width,request.height},true,255,std::move(pixels)});imageToken=context.token;
  }else{layers.clear();imageToken=0;if(!fresh)feedback::hide();}
  overlaycompositor::host().replaceGroup({overlaycompositor::RenderUpgrade,feedback::SelectionLayer,feedback::CursorLayer},std::move(layers));
- const uint32_t now=GetTickCount();if(DWORD(now-submittedAt)>=uint32_t(1000/std::clamp(informationFPS(),5,120))){submittedAt=now;worker.submit(std::move(request));}
+ const uint32_t now=GetTickCount();if(DWORD(now-submittedAt)>=external::materialmotion::refreshPeriod(informationFPS(),renderMaterialRefresh)){submittedAt=now;worker.submit(std::move(request));}
  std::wstring status;
  if(!fresh)status=L"渲染升级：采样/素材或视角变化，暂用原画面";
  else if(!feedbackReady)status=L"渲染升级：等待有效光标或选择状态，暂用原画面";
@@ -152,7 +188,10 @@ static void update(POINT origin,const RECT&client,bool battlefield){
     status+=request.pixelScaleMode==1?L" · 2× 最近邻":L" · 2× 轮廓插值";
    else status+=L" · 非 2:1 输出，按原有采样";
   }
-  status+=L" · 电弧含柔光近似；激光/波纹/粒子待补，实机待测";
+  if(renderSceneDetail)status+=L" · VXL 2× 几何/256 向＋目标像素合成";
+  if(renderMaterialRefresh)status+=L" · 素材高刷目标 "+std::to_wstring(informationFPS())+L" Hz";
+  status+=L" · 本帧 "+std::to_wstring(int(std::lround(result->renderMs)))+L" ms";
+  status+=L" · 电弧近似；激光/波纹/粒子待补，实机待测";
  }
  SetWindowTextW(GetDlgItem(ui,9303),status.c_str());
 }

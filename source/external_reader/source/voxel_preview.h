@@ -15,7 +15,7 @@ constexpr size_t MaxBytes=8*1024*1024,MaxVoxels=100000,MaxFaces=150000;
 struct Vec {float x=0,y=0,z=0;};
 struct Face {Vec p[4],normal{};uint8_t color=0,normalIndex=255,normalType=0;bool turret=false,hasNormal=false;};
 struct Model {std::vector<Face> faces;};
-struct Image {int canvasWidth=0,canvasHeight=0;int width=0,height=0,x=0,y=0,depthBottom=std::numeric_limits<int>::min();std::vector<uint32_t> pixels;std::vector<float> depth;std::vector<uint8_t> indices;bool objectPalette=false,flat=false,writeDepth=true,shadow=false,shadowsAfter=false,incomplete=false,airborneShadow=false;float depthBias=0;std::vector<Image> attachments;};
+struct Image {int rasterScale=1;int canvasWidth=0,canvasHeight=0;int width=0,height=0,x=0,y=0,depthBottom=std::numeric_limits<int>::min();std::vector<uint32_t> pixels;std::vector<float> depth;std::vector<uint8_t> indices;bool objectPalette=false,flat=false,writeDepth=true,shadow=false,shadowsAfter=false,incomplete=false,airborneShadow=false;float depthBias=0;std::vector<Image> attachments;};
 struct Library {uint32_t failed=0,headers=0,tailers=0,size=0,head=0,tail=0,body=0;};
 struct Tail {uint32_t start,end,data;float multiplier,matrix[12],bounds[24];uint8_t size[3],normal;};
 static_assert(sizeof(Tail)==164,"VXL memory tailer stride");
@@ -80,8 +80,8 @@ inline Vec posePoint(const Face&face,Vec point,double bodyAngle,double turretAng
 struct Screen {float x,y,z;};
 inline Screen project(Vec p){return {float((p.x-p.y)*0.70710678118),float((p.x+p.y)*0.35355339059-p.z*0.86602540378),float((p.x+p.y)*0.61237243569+p.z*.5)};}
 inline uint32_t premultiply(uint32_t c,float light,unsigned alpha=124){unsigned r=unsigned(std::clamp(((c>>16)&255)*light,0.f,255.f)),g=unsigned(std::clamp(((c>>8)&255)*light,0.f,255.f)),b=unsigned(std::clamp((c&255)*light,0.f,255.f));return (alpha<<24)|((r*alpha/255)<<16)|((g*alpha/255)<<8)|(b*alpha/255);}
-inline bool render(const Model&model,double angle,const std::array<uint32_t,256>&pal,Image&out,double turretAngle=std::numeric_limits<double>::quiet_NaN(),float turretOffset=0,const Vpl*vpl=nullptr,unsigned alpha=124,double pitch=0,bool projectile=false){
- out={};if(model.faces.empty()||model.faces.size()>MaxFaces||!std::isfinite(angle))return false;
+inline bool render(const Model&model,double angle,const std::array<uint32_t,256>&pal,Image&out,double turretAngle=std::numeric_limits<double>::quiet_NaN(),float turretOffset=0,const Vpl*vpl=nullptr,unsigned alpha=124,double pitch=0,bool projectile=false,int rasterScale=1){
+ out={};if((rasterScale!=1&&rasterScale!=2)||model.faces.empty()||model.faces.size()>MaxFaces||!std::isfinite(angle))return false;
  const auto bodyLight=nativeVoxelLight(angle,pitch),turretLight=std::isfinite(turretAngle)?nativeVoxelLight(turretAngle,pitch):bodyLight;
  const auto worldLight=nativeVoxelWorldLight();
  std::array<std::array<uint8_t,256>,5> bodyPages,turretPages;std::array<bool,5> bodyPagesReady{},turretPagesReady{};
@@ -95,9 +95,12 @@ inline bool render(const Model&model,double angle,const std::array<uint32_t,256>
  auto worldPoint=[&](const Face&f,Vec p){return posePoint(f,pitched(p),angle,turretAngle,turretOffset);};
  float minX=0,minY=0,maxX=0,maxY=0;for(const auto&f:model.faces)for(auto p:f.p){auto s=project(worldPoint(f,p));if(!finite(s.x)||!finite(s.y)||!finite(s.z))return false;minX=std::min(minX,s.x);minY=std::min(minY,s.y);maxX=std::max(maxX,s.x);maxY=std::max(maxY,s.y);}
  int left=int(std::floor(minX))-1,top=int(std::floor(minY))-1,w=int(std::ceil(maxX))-left+2,h=int(std::ceil(maxY))-top+2;if(w<1||h<1||w>512||h>512)return false;
- out.width=w;out.height=h;out.x=left;out.y=top;out.depthBottom=int(std::ceil(maxY))-1;out.pixels.assign(size_t(w)*h,0);out.depth.assign(size_t(w)*h,-std::numeric_limits<float>::infinity());out.indices.assign(size_t(w)*h,0);out.objectPalette=true;
+ // Rasterize the original VXL faces at 2x; these are new geometry samples,
+ // not duplicated native pixels. World depth stays in native units.
+ left*=rasterScale;top*=rasterScale;w*=rasterScale;h*=rasterScale;
+ out.rasterScale=rasterScale;out.width=w;out.height=h;out.x=left;out.y=top;out.depthBottom=(int(std::ceil(maxY))-1)*rasterScale;out.pixels.assign(size_t(w)*h,0);out.depth.assign(size_t(w)*h,-std::numeric_limits<float>::infinity());out.indices.assign(size_t(w)*h,0);out.objectPalette=true;
  auto edge=[](Screen a,Screen b,float x,float y){return (x-a.x)*(b.y-a.y)-(y-a.y)*(b.x-a.x);};
- for(const auto&f:model.faces){Screen s[4];Vec world[4];for(int c=0;c<4;++c){world[c]=worldPoint(f,f.p[c]);s[c]=project(world[c]);s[c].x-=left;s[c].y-=top;}
+ for(const auto&f:model.faces){Screen s[4];Vec world[4];for(int c=0;c<4;++c){world[c]=worldPoint(f,f.p[c]);s[c]=project(world[c]);s[c].x=s[c].x*rasterScale-left;s[c].y=s[c].y*rasterScale-top;}
   Vec a{world[1].x-world[0].x,world[1].y-world[0].y,world[1].z-world[0].z},b{world[2].x-world[0].x,world[2].y-world[0].y,world[2].z-world[0].z};Vec normal{a.y*b.z-a.z*b.y,a.z*b.x-a.x*b.z,a.x*b.y-a.y*b.x};float len=std::sqrt(normal.x*normal.x+normal.y*normal.y+normal.z*normal.z);
   uint8_t index=f.color;float light=1;
   if(vpl&&vpl->ready()&&(f.hasNormal||f.normalIndex>=253)){

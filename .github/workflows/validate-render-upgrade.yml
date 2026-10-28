@@ -32,14 +32,18 @@ jobs:
           python source/tools/validate_native_feedback.py
           python source/tools/validate_pixel_upgrade.py
           python source/tools/validate_physical_presentation.py
+          python source/tools/validate_material_refresh.py
       - name: Compile and run portable rendering regressions
         shell: bash
         run: |
           set -euo pipefail
-          for name in render_upgrade render_upgrade_scene radar_scene radar_shroud_mask native_canvas native_feedback native_feedback_scene pixel_upgrade physical_presentation; do
+          for name in render_upgrade render_upgrade_scene radar_scene radar_shroud_mask native_canvas native_feedback native_feedback_scene pixel_upgrade material_motion material_scene viewport_detail physical_presentation; do
             g++ -std=c++17 -O2 source/assist/tests/$name.cpp -o /tmp/$name-test
             /tmp/$name-test
           done
+      - name: Verify settings persistence
+        shell: bash
+        run: python source/assist/tests/render_material_settings.py
       - name: Verify same-frame indexed art AB and produce copyright-free demo
         shell: bash
         run: |
@@ -98,7 +102,7 @@ jobs:
           if($LASTEXITCODE -ne 0){throw 'Physical output integration contract failed'}
           python source/assist/tests/shp_palette_ab.py
           if($LASTEXITCODE -ne 0){throw 'Single SHP frame AB PNG regression failed'}
-          foreach($name in 'render_upgrade','render_upgrade_scene','radar_scene','radar_shroud_mask','native_canvas','native_feedback','native_feedback_scene','pixel_upgrade','physical_presentation'){
+          foreach($name in 'render_upgrade','render_upgrade_scene','radar_scene','radar_shroud_mask','native_canvas','native_feedback','native_feedback_scene','pixel_upgrade','material_motion','material_scene','viewport_detail','physical_presentation'){
             & $env:ZIG_EXE c++ -target x86-windows-gnu -std=c++17 -O2 "source/assist/tests/$name.cpp" -o "$name-test.exe"
             if($LASTEXITCODE -ne 0){throw "Test compile failed: $name"}
             & ".\$name-test.exe" | Tee-Object -FilePath source/render-tests.log -Append
@@ -128,7 +132,7 @@ jobs:
             $files += [ordered]@{name=$p;bytes=(Get-Item $p).Length;sha256=(Get-FileHash $p -Algorithm SHA256).Hash.ToLowerInvariant()}
           }
           $commit=(git rev-parse HEAD).Trim()
-          [ordered]@{commit=$commit;base='47f0e6382da9964b7a337c9c1365de4d846b9092';branch='experiment/render-upgrade-v139pre6-20261028';run=$env:GITHUB_RUN_ID;configuration='render-native-feedback-v139pre6';merged_layers=@('native-viewport-scene','world-information','primary-statistics','selection-feedback','native-software-cursor');electric_bolts='approximate-visual-reconstruction';indexed_palette_24bit='opt-in-full-range';scale_2x='nearest-or-edge-blend';physical_output='opt-in-full-monitor-verified';fractional_1_5x='edge-adaptive';exclusive_fullscreen='suspected-mode-change-disable-not-verified';xbrz_integrated=$false;all_native_effects_complete=$false;live_game_verified=$false;multiplayer_verified=$false;files=$files} | ConvertTo-Json -Depth 6 | Set-Content -Encoding utf8 render-build.json
+          [ordered]@{commit=$commit;base='47f0e6382da9964b7a337c9c1365de4d846b9092';branch='experiment/render-upgrade-v139pre6-20261028';run=$env:GITHUB_RUN_ID;configuration='render-native-feedback-v139pre6';merged_layers=@('native-viewport-scene','world-information','primary-statistics','selection-feedback','native-software-cursor');electric_bolts='approximate-visual-reconstruction';indexed_palette_24bit='opt-in-full-range';scale_2x='nearest-or-edge-blend';physical_output='opt-in-full-monitor-verified';fractional_1_5x='edge-adaptive';exclusive_fullscreen='suspected-mode-change-disable-not-verified';material_refresh='observed-state-interpolation-target-5-to-500Hz';voxel_detail='2x-geometry-256-directions';scene_composition='target-pixel-depth';game_clock_changed=$false;xbrz_integrated=$false;all_native_effects_complete=$false;live_game_verified=$false;multiplayer_verified=$false;files=$files} | ConvertTo-Json -Depth 6 | Set-Content -Encoding utf8 render-build.json
       - name: Upload successful experimental binaries
         if: success()
         uses: actions/upload-artifact@v4

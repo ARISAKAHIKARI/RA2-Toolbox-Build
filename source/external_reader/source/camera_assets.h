@@ -20,10 +20,12 @@ namespace external { namespace cameraassets {
 // observation windows and real-scene minimap without sharing mutable readers.
 template<class Reader>class Context {
  Reader&reader_;uint32_t process_=0,match_=0;
+ int detail_=0;
  pixelupgrade::PaletteRange paletteRange_=pixelupgrade::PaletteRange::OriginalDAC;
 public:
  struct Read {Reader*reader;bool operator()(uint32_t p,void*out,size_t n)const{return reader->readFresh(p,out,n);}};
  Read read;
+ void presentationDetail(int detail){detail_=std::clamp(detail,0,1);}
  void presentationPalette(pixelupgrade::PaletteRange mode){paletteRange_=mode;}
  explicit Context(Reader&r):reader_(r),read{&r},artINI(read,external::assets::LiveINI::ArtObject),rulesINI(read,external::assets::LiveINI::RulesPointer,true),cameoCatalog(read){}
  void identity(uint32_t process,uint32_t match){
@@ -35,7 +37,7 @@ external::assets::Files files;
 std::string failure;
 void update(){files.update(reader_,process_,match_);vpl();}
 uint64_t revision(){return files.revision()^(uint64_t(word(0x822CF8)+1)*0x9e3779b97f4a7c15ull)^voxelLight.signature()^
-    (paletteRange_==pixelupgrade::PaletteRange::FullRGB?0x45e391acbbdb1891ull:0);}
+    (paletteRange_==pixelupgrade::PaletteRange::FullRGB?0x45e391acbbdb1891ull:0)^(detail_?0x312df964ba273d19ull:0);}
 bool cameo(const char*name,std::vector<uint8_t>&out){update();return files.load(name,out);}
 uint32_t word(uint32_t p){uint32_t v=0;read(p,&v,4);return v;}
 std::string text(uint32_t p,unsigned n){return external::assets::text(read,p,n);}
@@ -319,20 +321,20 @@ bool captureActor(uint32_t p,uint32_t type,uint32_t id,ActorArt&out){
  if(word(p+0x10)!=id||word(p+0x21C)!=owner)return false;out=std::move(next);return true;
 }
 bool renderActor(const ActorArt&art,const external::visual::Pose&pose,external::voxel::Image&out){
- auto angle=external::visual::radians(pose.body),turret=external::visual::radians(pose.turret);
+ auto angle=external::visual::fineRadians(pose.bodyFine,pose.body),turret=external::visual::fineRadians(pose.turretFine,pose.turret);
  if(art.voxel){vpl();bool projectile=art.kind==external::projectiles::Kind;
   if(projectile&&!voxelLight.ready()){failure="projectile-vpl-unavailable";return false;}
-  if(!external::voxel::render(art.model,angle,art.colors,out,projectile?std::numeric_limits<double>::quiet_NaN():turret,art.turretOffset,&voxelLight,255,projectile?external::visual::radians(pose.turret):0,projectile))return false;
+  if(!external::voxel::render(art.model,angle,art.colors,out,projectile?std::numeric_limits<double>::quiet_NaN():turret,art.turretOffset,&voxelLight,255,projectile?turret:0,projectile,detail_?2:1))return false;
   // The model Z buffer resolves faces inside the cached voxel only. The game
   // submits that cached image through the same standing shape Z test as SHP.
   // Orthographic model depth is not in the terrain/BUILDNGZ buffer's units.
-  out.depth.clear();out.writeDepth=false;if(projectile){out.flat=art.flat;
+  std::vector<float>().swap(out.depth);out.writeDepth=false;if(projectile){out.flat=art.flat;
    // 46B1A5/490B90: non-flat projectile flags 0800 select a blitter
    // without a Z read or write. Flat 2800 keeps the ground Z read.
    if(!art.flat)out.depth.assign(out.pixels.size(),std::numeric_limits<float>::quiet_NaN());
   }
   if(art.shadow){auto ground=art.model;for(auto&face:ground.faces)for(auto&p:face.p)p.z=0;external::voxel::Image shadow;
-   if(external::voxel::render(ground,angle,art.colors,shadow,turret,art.turretOffset,nullptr,255)){shadow.x+=3;shadow.shadow=true;shadow.flat=true;shadow.writeDepth=false;shadow.depthBias=2;shadow.depth.clear();out.attachments.push_back(std::move(shadow));}}
+   if(external::voxel::render(ground,angle,art.colors,shadow,turret,art.turretOffset,nullptr,255,0,false,detail_?2:1)){shadow.x+=3*shadow.rasterScale;shadow.shadow=true;shadow.flat=true;shadow.writeDepth=false;shadow.depthBias=2;std::vector<float>().swap(shadow.depth);out.attachments.push_back(std::move(shadow));}}
   return true;
  }
  if(pose.frame<0){failure="sprite-sequence";return false;}

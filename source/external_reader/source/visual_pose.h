@@ -18,7 +18,14 @@ inline unsigned bucket(uint16_t raw){return ((unsigned(raw)+1024)>>11)&31;}
 // isometric projection with this positive world-space angle, not its inverse.
 inline double radians(unsigned direction){return (int(direction)-8)*(2*Pi/32);}
 inline unsigned previewBody(int heading){return unsigned(8+heading)&31;}
-struct Pose {uint8_t body=0,turret=0;int frame=0,variant=-1,buildingFlags=0,doorFrame=-1;};
+struct Pose {
+ uint8_t body=0,turret=0;int frame=0,variant=-1,buildingFlags=0,doorFrame=-1;
+ // Presentation metadata, never written to the engine. Fine angles are 1/256
+ // turns; raw facing retains the already verified FacingClass::Current value.
+ int bodyFine=-1,turretFine=-1,frameFrom=-1,frameWeight=255;
+ uint16_t rawBody=0,rawTurret=0;bool rawFacing=false,voxel=false;
+};
+inline double fineRadians(int fine,unsigned fallback){return fine>=0?(double(fine)-64)*(2*Pi/256):radians(fallback);}
 template<class Read>int infantryFrame(GameView<Read>&g,uint32_t type,int sequence,int stage,unsigned body){
  uint32_t list=g.template get<uint32_t>(type+0xE3C);if(sequence<0||sequence>=42||list<0x10000)return -1;
  uint32_t s=list+uint32_t(sequence)*36;int start=g.template get<int>(s,-1),count=g.template get<int>(s+4),stride=g.template get<int>(s+8);
@@ -33,7 +40,8 @@ template<class Read>int previewFrame(GameView<Read>&g,uint32_t type,int kind,int
  return 0;
 }
 template<class Read>Pose pose(GameView<Read>&g,uint32_t p,uint32_t type,int kind,int frame){
- Pose out;out.body=bucket(facing(g,p+0x388,frame));out.turret=g.template get<uint8_t>(type+0xCA1)?bucket(facing(g,p+0x3A0,frame)):out.body;
+ Pose out;out.voxel=kind!=1&&g.template get<uint32_t>(type+0xB0)!=0;out.rawBody=facing(g,p+0x388,frame);out.rawTurret=g.template get<uint8_t>(type+0xCA1)?facing(g,p+0x3A0,frame):out.rawBody;out.rawFacing=true;
+ out.body=bucket(out.rawBody);out.turret=bucket(out.rawTurret);
  if(g.template get<int>(type+0x808)>0&&!g.template get<uint8_t>(type+0xCD5)){int variant=g.template get<int>(p+0x124,-1);if(variant>=0&&variant<18)out.variant=variant;}
  if(kind==1){
   int sequence=g.template get<int>(p+0x6C4);if(sequence==-1)sequence=0;

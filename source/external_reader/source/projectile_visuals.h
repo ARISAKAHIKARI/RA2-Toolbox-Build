@@ -38,6 +38,7 @@ template<class Read>bool capture(Read read,uint32_t p,State&out){
  if((voxel||!noRotate)&&(!read(p+0xE8,velocity,sizeof velocity)||std::any_of(velocity,velocity+3,[](double n){return !std::isfinite(n)||std::abs(n)>1e6;})))return false;
  State s;s.object=p;s.id=id;s.type=type;s.x=location[0];s.y=location[1];s.z=location[2];s.layer=flat?1:3;s.voxel=voxel!=0;s.flat=flat!=0;s.shadow=shadow!=0;s.onBridge=bridge!=0;s.drawZ=s.voxel?0:-30;
  read(p+0xB0,&s.firer,4);if(pointer(s.firer,0x220))read(s.firer+0x21C,&s.owner,4);
+ s.pose.voxel=s.voxel;
  if(s.voxel){s.pose.body=uint8_t(direction(-velocity[1],velocity[0]));
   s.pose.turret=uint8_t(direction(velocity[2],voxel::nativeVoxelSqrt(velocity[0]*velocity[0]+velocity[1]*velocity[1])));s.pose.frame=0;
  }else{s.pose.frame=noRotate?0:int((28-direction(-velocity[1],velocity[0]))&31);if(animLow||animHigh)s.pose.frame=frame;}

@@ -5,6 +5,8 @@
 #include "native_canvas.h"
 #include "radar_shroud_mask.h"
 #include "camera_repair.h"
+#include "viewport_canvas.h"
+#include "material_blend.h"
 #include <map>
 #include <tuple>
 #include <set>
@@ -13,18 +15,18 @@ struct SceneRegion {double x=0,y=0,width=0,height=0;bool active=false;};
 template<class Assets>class SceneRenderer {
  struct Cached {voxel::Image image;bool ready=false;uint32_t retry=0;};
  using ArtKey=std::tuple<uint32_t,uint32_t,int,int>;
- using ImageKey=std::tuple<uint32_t,uint32_t,int,int,int,int,int,int,int>;
+ using ImageKey=std::tuple<uint32_t,uint32_t,int,int,int,int,int,int,int,int,int>;
  using ObjectKey=std::pair<uint32_t,uint32_t>;
  static ArtKey artKey(const Marker&m){return {m.type,m.owner,m.kind,m.pose.variant};}
- static ImageKey imageKey(const Marker&m){return {m.type,m.owner,m.kind,m.pose.body,m.pose.turret,m.pose.frame,m.pose.variant,m.pose.buildingFlags,m.pose.doorFrame};}
+ static ImageKey imageKey(const Marker&m){return {m.type,m.owner,m.kind,m.pose.body,m.pose.turret,m.pose.frame,m.pose.variant,m.pose.buildingFlags,m.pose.doorFrame,m.pose.bodyFine,m.pose.turretFine};}
  std::map<std::pair<uint32_t,unsigned>,Cached> tiles_,overlays_;
  std::map<ArtKey,typename Assets::ActorArt> art_;
  std::map<ImageKey,Cached> sprites_;
  std::map<ObjectKey,ImageKey> displayed_;size_t actorCursor_=0;repairvisuals::Assets repairAssets_;
- std::shared_ptr<const Terrain> building_,complete_,blocked_;bool dynamicFailure_=false;
+ std::shared_ptr<const Terrain> building_,complete_,blocked_;bool dynamicFailure_=false,materialsReady_=false;
  struct Paint {lighting::State light,overlayLight;int overlayOffset=0;bool bridge=false;uint64_t signature=0;};
  std::shared_ptr<camera::NativeCanvas::Budget> nativeBudget_=std::make_shared<camera::NativeCanvas::Budget>();
- camera::NativeCanvas pending_,background_;std::shared_ptr<const Scene> baseScene_,maskedBaseScene_;
+ camera::NativeCanvas pending_,background_;camera::ViewportCanvas detailed_;uint64_t detailKey_=0;std::shared_ptr<const Scene> baseScene_,maskedBaseScene_;
  shroudmask::Raster mask_;std::shared_ptr<const Terrain> maskSource_;bool maskFog_=false;
  std::vector<size_t> cells_,baseCells_;std::vector<Paint> prepared_;std::vector<uint64_t> painted_;size_t cursor_=0,baseCursor_=0;
  bool probing_=false,probeChanged_=false,pendingIncomplete_=false,backgroundIncomplete_=false;uint32_t backgroundRetry_=0;int width_=0,height_=0;double spanX_=0,spanY_=0;uint64_t revision_=0;
@@ -39,13 +41,14 @@ template<class Assets>class SceneRenderer {
 
 public:
  explicit SceneRenderer(size_t pages=camera::NativeCanvas::MaximumPages){nativeBudget_->maximum=std::clamp<size_t>(pages,1,camera::NativeCanvas::MaximumPages);}
+ bool materialsReady()const{return materialsReady_;}
  bool capacityExceeded()const{return bool(blocked_)||dynamicFailure_;}
  // Read-only metadata from the sprite actually displayed; no second decode.
  bool feedbackBounds(const Marker&m,int&x,int&y,int&w,int&h)const{
   auto found=sprites_.find(imageKey(m));
   if(found==sprites_.end()||!found->second.ready){auto old=displayed_.find({m.object,m.id});if(old!=displayed_.end())found=sprites_.find(old->second);}
   if(found==sprites_.end()||!found->second.ready)return false;
-  const auto&i=found->second.image;x=i.x;y=i.y;w=i.width;h=i.height;
+  const auto&i=found->second.image;x=int(std::floor(double(i.x)/i.rasterScale));y=int(std::floor(double(i.y)/i.rasterScale));w=int(std::ceil(double(i.x+i.width)/i.rasterScale))-x;h=int(std::ceil(double(i.y+i.height)/i.rasterScale))-y;
   return w>0&&h>0&&w<=2048&&h<=2048;
  }
  bool feedbackVisibility(const std::vector<uint8_t>*&out)const{
@@ -55,8 +58,9 @@ public:
  }
  struct NativeStats {int width,height;size_t pages,resident;uint64_t cells,presents;};
  NativeStats nativeStats()const{return {background_.width(),background_.height(),background_.pageCount(),nativeBudget_->pages,nativeCells_,basePresents_};}
- void reset(){tiles_.clear();overlays_.clear();art_.clear();sprites_.clear();displayed_.clear();actorCursor_=0;repairAssets_.reset();clearBackground();width_=height_=0;spanX_=spanY_=0;revision_=0;nativeCells_=basePresents_=0;}
- template<class Read>std::shared_ptr<const Scene> render(const Frame&frame,int width,int height,Read read,Assets&assets,SceneRegion region={},unsigned pixelScaleMode=0){
+ void reset(){tiles_.clear();overlays_.clear();art_.clear();sprites_.clear();displayed_.clear();actorCursor_=0;repairAssets_.reset();clearBackground();width_=height_=0;spanX_=spanY_=0;revision_=0;nativeCells_=basePresents_=0;detailed_.reset();detailKey_=0;}
+ template<class Read>std::shared_ptr<const Scene> render(const Frame&frame,int width,int height,Read read,Assets&assets,SceneRegion region={},unsigned pixelScaleMode=0,bool refined=false){
+  materialsReady_=false;
   if(!frame.terrain||!frame.terrain->geo.valid()||frame.terrain->art.size()!=512*512||width<3||height<3||width>(region.active?8192:2048)||height>(region.active?8192:2048)||uint64_t(width)*height>16*1024*1024)return {};
   if(revision_!=assets.revision()){reset();revision_=assets.revision();}
   if(region.active&&(!std::isfinite(region.x)||!std::isfinite(region.y)||!std::isfinite(region.width)||!std::isfinite(region.height)||region.width<=0||region.height<=0||std::abs(region.x)>1e7||std::abs(region.y)>1e7||region.width>32768||region.height>32768))return {};
@@ -143,7 +147,7 @@ public:
    if(cursor_==cells_.size()){background_=std::move(pending_);background_.clean();painted_.resize(prepared_.size());for(size_t n=0;n<prepared_.size();++n)painted_[n]=prepared_[n].signature;prepared_.clear();complete_=building_;building_.reset();backgroundLight_=scene;backgroundIncomplete_=pendingIncomplete_;backgroundRetry_=frame.tick+2000;baseScene_.reset();maskedBaseScene_.reset();}
   }
   if(!complete_)return {};
-  if(!baseScene_){auto base=std::make_shared<Scene>();base->width=width;base->height=height;if(!(region.active?background_.presentRegion(width,height,base->pixels,region.x,region.y,region.width,region.height,pixelScaleMode):background_.present(width,height,base->pixels,spanX_,spanY_)))return {};baseScene_=std::move(base);++basePresents_;}
+  if(!baseScene_){auto base=std::make_shared<Scene>();base->width=width;base->height=height;if(!(region.active?background_.presentRegion(width,height,base->pixels,region.x,region.y,region.width,region.height,pixelScaleMode):background_.present(width,height,base->pixels,spanX_,spanY_)))return {};baseScene_=std::move(base);++basePresents_;++detailKey_;}
   // Native Cell::DrawShroud places 60x30 alpha sprites on the flat cell
   // projection, after the world is drawn. Cache their final-presentation mask
   // separately from the original-size terrain so units and repairs cannot
@@ -159,15 +163,18 @@ public:
     maskedBaseScene_.reset();}
    maskSource_=complete_;maskFog_=fog;
   }
-  auto view=background_.fork();const auto&geo=frame.terrain->geo;int work=0;size_t pixels=0;std::vector<const Marker*> fallbacks;
+  auto view=background_.fork();const bool detail=refined&&region.active;
+  if(detail&&!detailed_.prepare(background_,baseScene_->pixels,width,height,region.x,region.y,region.width,region.height,detailKey_))return {};
+  auto draw=[&](const voxel::Image&i,float x,float y,float sx,float sy,float z,const lighting::State&light,float lift=1,float drop=0){if(detail)detailed_.blit(i,x,y,sx,sy,z,light,lift,drop);else view.blit(i,x,y,sx,sy,z,light,lift,drop);};
+  const auto&geo=frame.terrain->geo;int work=0;size_t pixels=0;std::vector<const Marker*> fallbacks;
   auto markers=frame.markers;
   if(region.active)markers.erase(std::remove_if(markers.begin(),markers.end(),[&](const Marker&m){
    double x=(double(m.x)-m.y)*30/256.+geo.offsetX*30,y=(double(m.x)+m.y)*15/256.-geo.offsetY*15-screenHeight(m.z,projectionZScale(read));
    return x<region.x-512||x>region.x+region.width+512||y<region.y-512||y>region.y+region.height+512;
   }),markers.end());
-  for(auto&m:markers)if(m.kind==3)assets.buildingPose(m.object,m.type,m.pose);
+  for(auto&m:markers)if(m.kind==3&&!frame.posesPrepared)assets.buildingPose(m.object,m.type,m.pose);
   std::map<ObjectKey,ImageKey> visible;std::set<ImageKey> wanted;std::set<ArtKey> artWanted;
-  for(const auto&m:markers){auto key=imageKey(m);visible[{m.object,m.id}]=key;wanted.insert(key);artWanted.insert(artKey(m));}
+  for(const auto&m:markers){auto key=imageKey(m);if(m.pose.frameFrom>=0){auto previous=m;previous.pose.frame=m.pose.frameFrom;wanted.insert(imageKey(previous));}visible[{m.object,m.id}]=key;wanted.insert(key);artWanted.insert(artKey(m));}
   for(auto i=displayed_.begin();i!=displayed_.end();){auto current=visible.find(i->first);
    if(current==visible.end()||std::get<0>(current->second)!=std::get<0>(i->second)||std::get<1>(current->second)!=std::get<1>(i->second)||std::get<2>(current->second)!=std::get<2>(i->second)||std::get<6>(current->second)!=std::get<6>(i->second))i=displayed_.erase(i);
    else{wanted.insert(i->second);++i;}}
@@ -178,7 +185,9 @@ public:
   if(artBytes>96*1024*1024){for(auto i=art_.begin();i!=art_.end()&&artBytes>64*1024*1024;)if(!artWanted.count(i->first)){artBytes-=Assets::cost(i->second);i=art_.erase(i);}else ++i;}
   // Rotate the decode budget independently of draw order. Moving units at the
   // start of the map must not starve an oil pump or construction-yard anim.
-  for(size_t scanned=0;scanned<markers.size()&&work<8;++scanned){const auto&m=markers[actorCursor_++%markers.size()];auto&cached=sprites_[imageKey(m)];
+  std::vector<Marker> decodeMarkers=markers;
+  for(const auto&m:markers)if(m.pose.frameFrom>=0){auto prior=m;prior.pose.frame=m.pose.frameFrom;prior.pose.frameFrom=-1;decodeMarkers.push_back(prior);}
+  for(size_t scanned=0;scanned<decodeMarkers.size()&&work<8;++scanned){const auto&m=decodeMarkers[actorCursor_++%decodeMarkers.size()];auto&cached=sprites_[imageKey(m)];
    if((cached.ready&&!cached.image.incomplete)||(cached.retry&&int32_t(frame.tick-cached.retry)<0))continue;
    ++work;voxel::Image image;bool ready=false;auto source=art_.find(artKey(m));
    if(m.kind==4)ready=assets.overlay(m.type,game.template get<uint32_t>(m.type+0xA4),m.pose.frame,image,true);
@@ -189,6 +198,8 @@ public:
    cached.retry=cached.ready&&!cached.image.incomplete?0:frame.tick+2000;
   }
   for(const auto&m:markers){auto key=imageKey(m);auto i=sprites_.find(key);if(i!=sprites_.end()&&i->second.ready)displayed_[{m.object,m.id}]=key;}
+  materialsReady_=!backgroundIncomplete_&&!building_;
+  for(const auto&m:decodeMarkers){auto found=sprites_.find(imageKey(m));materialsReady_&=found!=sprites_.end()&&found->second.ready&&!found->second.image.incomplete;}
   std::vector<const Marker*> order;for(const auto&m:markers)order.push_back(&m);
   // Native ground animations share object order (Layer, GetYSort). A blanket
   // final animation pass incorrectly paints pumps/fire over foreground units.
@@ -196,8 +207,14 @@ public:
   for(const auto*marker:order){const auto&m=*marker;if(m.x<0||m.y<0||m.x>=512*256||m.y>=512*256)continue;
    auto found=sprites_.find(imageKey(m));if(found==sprites_.end()||!found->second.ready){auto old=displayed_.find({m.object,m.id});if(old!=displayed_.end())found=sprites_.find(old->second);}
    float px=float((double(m.x)-m.y)*30/256.+geo.offsetX*30),py=float((double(m.x)+m.y)*15/256.-geo.offsetY*15+camera::anchorY(m.kind)-screenHeight(m.z,projectionZScale(read)));
-   if(found!=sprites_.end()&&found->second.ready){auto light=m.kind==6?projectiles::light(read,uint32_t(m.pose.variant)):m.kind==5?lighting::animation(read,m.object,m.type,m.x,m.y,m.z,scene):m.kind==4?lighting::terrainObject(read,m.type,m.x,m.y,m.z,scene):lighting::object(read,m.type,m.owner,m.kind,m.x,m.y,m.z,scene);uint32_t cell=frame.terrain->art[(m.y/256)*512+m.x/256].cell;bool bridge=m.onBridge;int level=game.template get<int8_t>(cell+0x11B);
-    view.blit(found->second.image,px,py,1,1,float((int64_t(m.x)+m.y)*15/256.)-15+camera::anchorY(m.kind)-m.drawZ+(bridge?60:0),light,m.kind==4?12:(m.kind==3||m.kind==5)?2:1,float(std::max(0,screenHeight(m.z,projectionZScale(read))-(level+(bridge?4:0))*15)));}
+   if(found!=sprites_.end()&&found->second.ready){
+    const voxel::Image*image=&found->second.image;voxel::Image blended;
+    const float lift=m.kind==4?12:(m.kind==3||m.kind==5)?2:1;
+    if(m.pose.frameFrom>=0&&found==sprites_.find(imageKey(m))){auto prior=m;prior.pose.frame=m.pose.frameFrom;auto old=sprites_.find(imageKey(prior));
+     if(old!=sprites_.end()&&old->second.ready&&materialblend::image(old->second.image,*image,unsigned(m.pose.frameWeight),lift,blended))image=&blended;
+    }
+    auto light=m.kind==6?projectiles::light(read,uint32_t(m.pose.variant)):m.kind==5?lighting::animation(read,m.object,m.type,m.x,m.y,m.z,scene):m.kind==4?lighting::terrainObject(read,m.type,m.x,m.y,m.z,scene):lighting::object(read,m.type,m.owner,m.kind,m.x,m.y,m.z,scene);uint32_t cell=frame.terrain->art[(m.y/256)*512+m.x/256].cell;bool bridge=m.onBridge;int level=game.template get<int8_t>(cell+0x11B);
+    draw(*image,px,py,1,1,float((int64_t(m.x)+m.y)*15/256.)-15+camera::anchorY(m.kind)-m.drawZ+(bridge?60:0),light,m.kind==4?12:(m.kind==3||m.kind==5)?2:1,float(std::max(0,screenHeight(m.z,projectionZScale(read))-(level+(bridge?4:0))*15)));}
    else if(m.kind<4)fallbacks.push_back(&m);
   }
   // Native status sprites use their cursor palette and are drawn after all
@@ -205,18 +222,18 @@ public:
   const lighting::State statusLight;
   for(const auto&sprite:frame.repairs)if(const auto*image=repairAssets_.image(assets,sprite)){
    float x=float((double(sprite.x)-sprite.y)*30/256.+geo.offsetX*30),y=float((double(sprite.x)+sprite.y)*15/256.-geo.offsetY*15-screenHeight(sprite.z,projectionZScale(read)));
-   view.blit(*image,x,y,1,1,0,statusLight);
+   draw(*image,x,y,1,1,0,statusLight);
   }
   // Keep physical border scenery; the native radar projection and output
   // canvas crop the image. Camera movement limits are not a pixel mask.
   if(tiles_.size()>4096)tiles_.clear();if(overlays_.size()>4096)overlays_.clear();
   if(view.failed()){dynamicFailure_=true;return {};}
-  if(!view.dirtyPages()&&fallbacks.empty()){
+  if((detail?!detailed_.dirty():!view.dirtyPages())&&fallbacks.empty()){
    if(!masked)return baseScene_;
    if(!maskedBaseScene_){auto out=std::make_shared<Scene>(*baseScene_);mask_.apply(out->pixels);maskedBaseScene_=std::move(out);}
    return maskedBaseScene_;
   }
-  auto out=std::make_shared<Scene>(*baseScene_);if(!(region.active?view.presentRegion(width,height,out->pixels,region.x,region.y,region.width,region.height,pixelScaleMode):view.presentDirty(width,height,out->pixels,spanX_,spanY_))){dynamicFailure_=true;return {};}
+  auto out=std::make_shared<Scene>();out->width=width;out->height=height;if(!detail)out->pixels=baseScene_->pixels;if(!(detail?detailed_.finish(out->pixels,true):region.active?view.presentRegion(width,height,out->pixels,region.x,region.y,region.width,region.height,pixelScaleMode):view.presentDirty(width,height,out->pixels,spanX_,spanY_))){dynamicFailure_=true;return {};}
   // Missing-art dots are presentation annotations, not minified game sprites.
   for(const auto*m:fallbacks){int x=int(((double(m->x)-m->y)*30/256.+geo.offsetX*30-(region.active?region.x:0))*width/(region.active?region.width:spanX_)),y=int(((double(m->x)+m->y)*15/256.-geo.offsetY*15-(region.active?region.y:0))*height/(region.active?region.height:spanY_));for(int yy=std::max(0,y-1);yy<std::min(height,y+2);++yy)for(int xx=std::max(0,x-1);xx<std::min(width,x+2);++xx)out->pixels[size_t(yy)*width+xx]=0xff000000u|m->color;}
   if(masked)mask_.apply(out->pixels);

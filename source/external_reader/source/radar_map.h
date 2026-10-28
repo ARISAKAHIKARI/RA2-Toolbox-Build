@@ -42,7 +42,7 @@ struct ShroudFrames {int8_t shroud=127,fog=127;
  bool operator==(const ShroudFrames&o)const{return shroud==o.shroud&&fog==o.fog;}
 };
 struct Terrain {Geometry geo;std::vector<uint32_t> colors,baseColors;std::vector<CellArt> art;std::vector<ShroudFrames> shade;bool reveal=false;};
-struct Frame {std::shared_ptr<const Terrain> terrain;std::vector<Marker> markers;std::shared_ptr<const Scene> scene,map;uint32_t tick=0;int frame=-1;bool markerScanValid=false;std::vector<repairvisuals::Sprite> repairs;};
+struct Frame {std::shared_ptr<const Terrain> terrain;std::vector<Marker> markers;std::shared_ptr<const Scene> scene,map;uint32_t tick=0;int frame=-1;bool markerScanValid=false,posesPrepared=false;std::vector<repairvisuals::Sprite> repairs;};
 inline uint32_t terrainColor(int land,int level,bool fog){
  static constexpr uint32_t colors[]={0x66794b,0x85836c,0x285e86,0x70756d,0x999684,0xb7a843,0xb4a47c,0x77734d,0xb4cbd0,0x77766b,0x55584f,0x58703d};
  if(land<0||land>=12)return 0x44483a;uint32_t c=colors[land];int shade=std::clamp(level,0,14)*2;

@@ -50,7 +50,7 @@ private:
   dirtyRects_.push_back({x0,y0,x1,y1});
  }
  static void imageBounds(const voxel::Image&i,float ax,float ay,float shadowDrop,float&x0,float&y0,float&x1,float&y1){
-  if(i.width>0&&i.height>0){x0=std::min(x0,ax+i.x);y0=std::min(y0,ay+i.y);x1=std::max(x1,ax+i.x+i.width);y1=std::max(y1,ay+i.y+i.height);}
+  if(i.width>0&&i.height>0){x0=std::min(x0,ax+float(i.x)/i.rasterScale);y0=std::min(y0,ay+float(i.y)/i.rasterScale);x1=std::max(x1,ax+float(i.x+i.width)/i.rasterScale);y1=std::max(y1,ay+float(i.y+i.height)/i.rasterScale);}
   for(const auto&p:i.attachments)imageBounds(p,ax,ay+(p.shadow?shadowDrop:0),0,x0,y0,x1,y1);
  }
  // Bounded per-presentation summed-area cache. It accelerates exact box-area
@@ -106,6 +106,18 @@ public:
  NativeCanvas fork()const{NativeCanvas out=*this;out.dynamic_=true;out.failed_=false;out.dirty_.clear();out.dirtyRects_.clear();return out;}
  uint32_t pixel(int x,int y)const{if(x<0||y<0||x>=width_||y>=height_)return background_;auto p=pages_.find(key(x/PageSize,y/PageSize));return p==pages_.end()?background_:p->second->surface.color[size_t(y%PageSize)*PageSize+x%PageSize];}
  float depth(int x,int y)const{if(x<0||y<0||x>=width_||y>=height_)return -std::numeric_limits<float>::infinity();auto p=pages_.find(key(x/PageSize,y/PageSize));return p==pages_.end()?-std::numeric_limits<float>::infinity():p->second->surface.depth[size_t(y%PageSize)*PageSize+x%PageSize];}
+ bool depthRegion(int x,int y,int w,int h,std::vector<float>&out)const{
+  if(w<1||h<1||w>8192||h>8192||uint64_t(w)*h>16*1024*1024)return false;
+  out.assign(size_t(w)*h,-std::numeric_limits<float>::infinity());
+  for(int dy=0;dy<h;++dy){int yy=y+dy;if(yy<0||yy>=height_)continue;
+   int lo=std::max(0,-x),hi=std::min(w,width_-x);
+   for(int dx=lo;dx<hi;){int xx=x+dx,end=std::min(hi,dx+PageSize-xx%PageSize);
+    auto page=pages_.find(key(xx/PageSize,yy/PageSize));
+    if(page!=pages_.end())std::copy_n(page->second->surface.depth.data()+size_t(yy%PageSize)*PageSize+xx%PageSize,end-dx,out.data()+size_t(dy)*w+dx);
+    dx=end;
+   }
+  }return true;
+ }
  // RadarClass::FillTerrainColors first paints each admitted cell's flat 2x1
  // RGB footprint. The full-size TMP can then sit above that ground color.
  // During an incremental scene build other TMPs may already overlap this
