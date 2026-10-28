@@ -95,7 +95,7 @@ static void update(POINT origin,const RECT&client,bool battlefield){
   else if(request.width==2*request.view.width&&request.height==2*request.view.height)
    status+=renderPixelScale==1?L" · 2× 最近邻候选":L" · 2× 轮廓插值候选";
   else status+=L" · 非 2:1 输出，回退原有采样";
-  status+=L" · 电弧近似；激光/波纹/粒子待补，实机待测";
+  status+=L" · 电弧含柔光近似；激光/波纹/粒子待补，实机待测";
  }
  SetWindowTextW(GetDlgItem(ui,9303),status.c_str());
 }
