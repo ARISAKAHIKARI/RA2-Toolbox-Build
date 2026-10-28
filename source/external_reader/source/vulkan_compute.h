@@ -5,6 +5,7 @@
 #include "vulkan_bilinear_spirv.h"
 #include <algorithm>
 #include <array>
+#include <atomic>
 #include <chrono>
 #include <cmath>
 #include <cstdint>
@@ -55,6 +56,7 @@ class Resolve {
  Buffer atlas_,coordinates_,output_,upload_,readback_;
  std::vector<Tile> tiles_;uint64_t serial_=0;bool tried_=false,disabled_=false,inFlight_=false;
  Diagnostics diagnostics_;
+ static std::atomic<bool>& quarantined(){static std::atomic<bool> value{false};return value;}
 #define RA2_VK_GLOBAL(F) PFN_##F F##_=nullptr;
  RA2_VK_GLOBAL(vkGetInstanceProcAddr) RA2_VK_GLOBAL(vkCreateInstance)
 #define RA2_VK_INSTANCE_FUNCTIONS(X) \
@@ -79,7 +81,9 @@ class Resolve {
  void destroy(Buffer& b){if(!device_)return;if(b.mapped&&vkUnmapMemory_)vkUnmapMemory_(device_,b.memory);if(b.buffer&&vkDestroyBuffer_)vkDestroyBuffer_(device_,b.buffer,nullptr);if(b.memory&&vkFreeMemory_)vkFreeMemory_(device_,b.memory,nullptr);b={};}
  void close(){
   // A timed-out queue may still reference every allocation. Never destroy or
-  // unload that live device. Quarantine this single bounded backend until exit;
+  // unload that live device. Quarantine this single bounded backend until exit; a process-wide sticky flag blocks
+  // subsequent backend initialization after such a timeout, including worker
+  // restart or UI toggles.
   // CPU fallback remains usable without waiting indefinitely on a broken driver.
   if(inFlight_&&vkGetFenceStatus_&&vkGetFenceStatus_(device_,fence_)!=VK_SUCCESS)return;
   inFlight_=false;
@@ -123,6 +127,7 @@ class Resolve {
  }
  bool flush(Buffer& b){if(b.coherent)return true;VkMappedMemoryRange range{VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE};range.memory=b.memory;range.size=VK_WHOLE_SIZE;return vkFlushMappedMemoryRanges_(device_,1,&range)==VK_SUCCESS;}
  bool initialize(){
+  if(quarantined().load(std::memory_order_relaxed))return fatal("Vulkan disabled after driver timeout; restart required");
   if(tried_)return !disabled_&&device_;tried_=true;
 #ifdef _WIN32
   // Search only the Windows system directory: never load a game-local DLL.
@@ -227,7 +232,7 @@ public:
   if(repack){retained=active;dirty.clear();uint32_t offset=0;for(size_t a=0;a<active.size();++a){active[a].offset=offset;retained[a].offset=offset;offset+=active[a].count;dirty.push_back(a);}}
   const VkDeviceSize outputBytes=VkDeviceSize(width)*height*4,coordinateBytes=coordinateCount*sizeof(Coordinate);
   VkDeviceSize uploadBytes=0;for(size_t a:dirty)uploadBytes+=VkDeviceSize(active[a].count)*4;
-  if(!buffer(coordinates_,coordinateBytes,VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,true)||!buffer(output_,outputBytes,VK_BUFFER_USAGE_STORAGE_BUFFER_BIT|VK_BUFFER_USAGE_TRANSFER_SRC_BIT|VK_BUFFER_USAGE_TRANSFER_DST_BIT,false)||!buffer(readback_,outputBytes,VK_BUFFER_USAGE_TRANSFER_DST_BIT,true)||(uploadBytes&&!buffer(upload_,uploadBytes,VK_BUFFER_USAGE_TRANSFER_SRC_BIT,true)))return false;
+  if(!buffer(coordinates_,coordinateBytes,VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,true)||!buffer(output_,outputBytes,VK_BUFFER_USAGE_STORAGE_BUFFER_BIT|VK_BUFFER_USAGE_TRANSFER_SRC_BIT|VK_BUFFER_USAGE_TRANSFER_DST_BIT,false)||!buffer(readback_,outputBytes,VK_BUFFER_USAGE_TRANSFER_DST_BIT,true)||(uploadBytes&&!buffer(upload_,uploadBytes,VK_BUFFER_USAGE_TRANSFER_SRC_BIT,true)))return fatal("Vulkan frame buffer allocation failed; CPU fallback");
   std::vector<Dispatch> dispatches;dispatches.reserve(jobs.size());auto* coords=static_cast<Coordinate*>(coordinates_.mapped);uint32_t next=0;
   for(size_t i=0;i<jobs.size();++i){const auto&j=jobs[i];Params p{active[indices[i]].offset,uint32_t(j.sourceWidth),uint32_t(width),uint32_t(j.left),uint32_t(j.top),uint32_t(j.width),uint32_t(j.height),next,0};
    for(int x=0;x<j.width;++x)coords[next++]=coordinate(j.sourceX+x*j.stepX,j.sourceWidth);p.yOffset=next;
@@ -259,7 +264,7 @@ public:
   // A bounded wait prevents a driver stall from blocking scene publication.
   // This is a safety ceiling, not a promised frame budget or measured latency.
   VkResult waited=vkWaitForFences_(device_,1,&fence_,VK_TRUE,100000000ull);
-  if(waited!=VK_SUCCESS)return fatal(waited==VK_TIMEOUT?"Vulkan compute timed out; CPU fallback":"Vulkan device lost; CPU fallback");inFlight_=false;
+  if(waited!=VK_SUCCESS){quarantined().store(true,std::memory_order_relaxed);return fatal(waited==VK_TIMEOUT?"Vulkan compute timed out; CPU fallback":"Vulkan device lost; CPU fallback");}inFlight_=false;
   if(!readback_.coherent){VkMappedMemoryRange range{VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE};range.memory=readback_.memory;range.size=VK_WHOLE_SIZE;if(vkInvalidateMappedMemoryRanges_(device_,1,&range)!=VK_SUCCESS)return fatal("Vulkan readback invalidation failed");}
   out.resize(size_t(width)*height);std::memcpy(out.data(),readback_.mapped,size_t(outputBytes));tiles_=std::move(retained);
   ++diagnostics_.frames;diagnostics_.uploads=copies.size();diagnostics_.uploadedBytes=uploadBytes;diagnostics_.dispatches=dispatches.size();diagnostics_.readbacks=1;diagnostics_.reason.clear();diagnostics_.milliseconds=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-started).count();return true;

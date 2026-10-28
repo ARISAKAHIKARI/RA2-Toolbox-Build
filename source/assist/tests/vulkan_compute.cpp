@@ -19,8 +19,9 @@ int main(int argc,char**argv){
  auto first=image(79,63,random),second=image(113,91,random);
  TileJob a{first,79,63,0,0,127,95,-1.4,.013,79./127,63./95},b{second,113,91,127,0,129,95,.503,91.2,113./129,-91./95};
  std::vector<TileJob> jobs{a,b};
+ std::cerr<<"BEGIN first Vulkan render"<<std::endl;
  if(!gpu.render(256,95,jobs,output)){
-  std::cout<<"VULKAN_UNAVAILABLE "<<gpu.diagnostics().reason<<"\n";return required?1:0;
+  std::cout<<"VULKAN_UNAVAILABLE "<<gpu.diagnostics().reason<<std::endl;return required?1:0;
  }
  uint64_t checked=0,frames=0;
  auto check=[&](){for(const auto&j:jobs)for(int y=0;y<j.height;++y)for(int x=0;x<j.width;++x){uint32_t actual=output[size_t(j.top+y)*256+j.left+x];assert(actual==expected(j,x,y));unsigned alpha=actual>>24;assert((actual&255)<=alpha&&((actual>>8)&255)<=alpha&&((actual>>16)&255)<=alpha);++checked;}assert(gpu.diagnostics().readbacks==1&&gpu.diagnostics().dispatches==jobs.size());++frames;};
