@@ -1,5 +1,6 @@
 #pragma once
 #include "camera_raster.h"
+#include "pixel_upgrade.h"
 #include <map>
 #include <memory>
 #include <set>
@@ -136,13 +137,25 @@ public:
  // independent of the radar's whole-map downscale. Outside backing falls back
  // to the underlying game through transparent pixels instead of stretching.
  bool presentRegion(int width,int height,std::vector<uint32_t>&out,
-                    double x,double y,double spanX,double spanY)const{
+                    double x,double y,double spanX,double spanY,unsigned pixelScaleMode=0)const{
   if(failed_||width<1||height<1||width>8192||height>8192||
      uint64_t(width)*height>16*1024*1024||!std::isfinite(x)||!std::isfinite(y)||
      !std::isfinite(spanX)||!std::isfinite(spanY)||spanX<=0||spanY<=0||
      std::abs(x)>1e7||std::abs(y)>1e7||spanX>32768||spanY>32768)return false;
   out.assign(size_t(width)*height,0);
   const double sx=spanX/width,sy=spanY/height;
+  // Apply edge-aware 2x only for an ACTUAL 2:1 integer presentation ratio.
+  // Do not zoom the camera, change target coordinates or interpolate shroud
+  // across different visibility cells. At 1:1 keep exact native pixels.
+  if(pixelScaleMode>=1&&pixelScaleMode<=2&&sx==.5&&sy==.5&&
+     std::floor(x)==x&&std::floor(y)==y){
+   const auto fetch=[&](int px,int py)->uint32_t{
+    if(px<0||py<0||px>=width_||py>=height_)return 0;
+    return pixel(px,py);
+   };
+   return pixelupgrade::sample2x(fetch,int(x),int(y),width,height,out,
+     pixelScaleMode==1?pixelupgrade::TwoX::Nearest:pixelupgrade::TwoX::EdgeBlend);
+  }
   if(sx==1&&sy==1&&std::floor(x)==x&&std::floor(y)==y){
    // Contiguous page runs, not per-pixel map lookups, in the native case.
    for(int dy=0;dy<height;++dy){int yy=int(y)+dy;if(yy<0||yy>=height_)continue;
