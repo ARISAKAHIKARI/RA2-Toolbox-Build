@@ -38,3 +38,26 @@
 ## 下一步
 
 优先对真实 SHP/VXL/电弧与阴影截帧做 SSIM/边缘与色差对比，同时测量 2560×1440 全视口 CPU 耗时；评估正版 xBRZ 的稳定许可集成和离线缓存。之后逐一补激光与粒子特效对应的可验证读取资料。
+
+## A/B 同源同帧对照（已接入工具和 CI）
+
+渲染分支新增纯本地、不访问游戏进程的 `source/tools/shp_palette_ab.py`。对**同一份 SHP 文件、同一个帧号、同一个 PAL 文件**只解码一次索引像素，再在相同裁剪锚点计算 DAC(6-bit×4) 与 RGB888(6-bit→8-bit)，以及由这**同一 RGB888 索引图**生成最近邻与轮廓条件半混色的严格 2× 像素图。两次对照无时间推进、无相机位置变化、无切换设置时的跨帧误差。
+
+Windows 上在仓库根目录执行（请指向自己的游戏安装资源，勿上传版权素材）：
+
+```powershell
+py source/tools/shp_palette_ab.py --shp "D:\\assets\\unit.shp" --pal "D:\\assets\\unit.pal" --frame 0 --out "D:\\RA2_AB"
+```
+
+没有实际素材时运行验证用的版权无关合成图案：
+
+```powershell
+py source/tools/shp_palette_ab.py --demo --out "D:\\RA2_AB_demo"
+```
+
+输出 `01_dac_1x.png` / `02_rgb888_1x.png`、`03_palette_diff_x64.png`（每通道差值扩大 64 倍，仅用于看差异）、`04_nearest_2x.png` / `05_edgeblend_2x.png`，以及 `06_palette_AB_same_frame.png`、`07_upscale_AB_same_pixels.png` 两张同尺度左右对比图。 `AB_manifest.json` 内含原始素材 SHA-256、帧号、原始画布大小、裁剪偏移、各对照输入一致性证明，以及差异数量/强度。图片保留透明 Alpha；拼接图使用棋盘底色，只用于预览。
+
+注意：这是**单个原始 SHP 帧+指定 PAL**的可复现色彩/放大效果测试。只有用户提供对应的 `.SHP`、`.PAL` 才能得到真实单位素材差异。它不包含 VXL/TMP、玩家色 remap、运行时 `CustomPalette`、`LightConvert`、现场光照与动画叠加；也不等同于同一游戏现场全视口的双版本截图。不能据此宣称完整游戏视觉等价或联机已验证。
+
+CI 在 Linux/Windows 使用不含版权素材的构造 SHP 自动测试 RLE 行、透明索引、色盘满量程、不同分辨率、PNG CRC 和同帧记录，并提供合成预览图 Artifacts。用户实战素材的校验可用同一命令重现，不需要改游戏代码段。
+
