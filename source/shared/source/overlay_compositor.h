@@ -10,6 +10,8 @@
 #include <chrono>
 #include <cstring>
 #include "overlay_composition.h"
+#include "overlay_group.h"
+#include <atomic>
 #include "overlay_stack.h"
 // One EXE-owned passive window for multiple logical layers. No game hooks,
 // engine functions, screen capture, window activation or input forwarding.
@@ -99,6 +101,25 @@ public:
   if(context.cameraX!=cameraX||context.cameraY!=cameraY)++revision;
   context={generation,window,pid,match,width,height,cameraX,cameraY};enabled=active;heartbeat=GetTickCount64();rate=hz;
   if(active&&!thread.joinable())thread=std::thread([this]{run();});cv.notify_one();return active?context:Context{};
+ }
+ // A single lock publishes/removes a complete scene/input group.
+ bool replaceGroup(const std::vector<uint64_t>&ids,std::vector<Surface>layers){
+  std::lock_guard<std::mutex>lock(mutex);
+  if(!overlaycomposition::groupIds(ids)||!enabled||error)return false;
+  if(!overlaycomposition::groupValid(ids,layers,context)){
+   bool changed=false;for(auto id:ids)changed|=nodes.erase(id)!=0;
+   if(changed){++revision;cv.notify_one();}return false;
+  }
+  bool changed=false;const auto now=GetTickCount64();
+  for(auto id:ids){
+   auto next=std::find_if(layers.begin(),layers.end(),[&](const Surface&s){return s.id==id;});
+   if(next==layers.end()){changed|=nodes.erase(id)!=0;continue;}
+   auto&node=nodes[id];const auto&old=node.surface;
+   changed|=old.pixels!=next->pixels||old.rect!=next->rect||old.order!=next->order||old.opacity!=next->opacity||old.cameraBound!=next->cameraBound||
+    old.context.token!=next->context.token||old.context.cameraX!=next->context.cameraX||old.context.cameraY!=next->context.cameraY;
+   node={std::move(*next),now};
+  }
+  if(changed){++revision;cv.notify_one();}return true;
  }
  Context capture(uintptr_t window,uint32_t pid){std::lock_guard<std::mutex>lock(mutex);return enabled&&!error&&context.window==window&&context.pid==pid?context:Context{};}
  // true = compositor owns presentation, including deliberately rejected stale

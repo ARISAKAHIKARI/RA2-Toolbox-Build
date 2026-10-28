@@ -40,6 +40,19 @@ template<class Assets>class SceneRenderer {
 public:
  explicit SceneRenderer(size_t pages=camera::NativeCanvas::MaximumPages){nativeBudget_->maximum=std::clamp<size_t>(pages,1,camera::NativeCanvas::MaximumPages);}
  bool capacityExceeded()const{return bool(blocked_)||dynamicFailure_;}
+ // Read-only metadata from the sprite actually displayed; no second decode.
+ bool feedbackBounds(const Marker&m,int&x,int&y,int&w,int&h)const{
+  auto found=sprites_.find(imageKey(m));
+  if(found==sprites_.end()||!found->second.ready){auto old=displayed_.find({m.object,m.id});if(old!=displayed_.end())found=sprites_.find(old->second);}
+  if(found==sprites_.end()||!found->second.ready)return false;
+  const auto&i=found->second.image;x=i.x;y=i.y;w=i.width;h=i.height;
+  return w>0&&h>0&&w<=2048&&h<=2048;
+ }
+ bool feedbackVisibility(const std::vector<uint8_t>*&out)const{
+  out=nullptr;if(!complete_)return false;if(complete_->reveal)return true;
+  if(maskSource_!=complete_||mask_.width!=width_||mask_.height!=height_||mask_.alpha.size()!=size_t(width_)*height_)return false;
+  out=&mask_.alpha;return true;
+ }
  struct NativeStats {int width,height;size_t pages,resident;uint64_t cells,presents;};
  NativeStats nativeStats()const{return {background_.width(),background_.height(),background_.pageCount(),nativeBudget_->pages,nativeCells_,basePresents_};}
  void reset(){tiles_.clear();overlays_.clear();art_.clear();sprites_.clear();displayed_.clear();actorCursor_=0;repairAssets_.reset();clearBackground();width_=height_=0;spanX_=spanY_=0;revision_=0;nativeCells_=basePresents_=0;}
