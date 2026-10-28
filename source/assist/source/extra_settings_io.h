@@ -2,6 +2,8 @@ static void loadAdditionalSettings(){
  renderUpgradeEnabled=value(L"Display",L"RenderUpgrade",0)!=0;
  unifiedOverlayEnabled=value(L"Display",L"UnifiedOverlay",0)!=0;
  renderUpgradeLayer=std::clamp(value(L"Display",L"RenderUpgradeLayer",0),0,1);
+ renderPaletteRange=std::clamp(value(L"Display",L"RenderPaletteRange",1),0,1);
+ renderPixelScale=std::clamp(value(L"Display",L"RenderPixelScale",0),0,2);
  extra.viewZoomEnabled=false;extra.viewZoomPercent=100; // temporarily unavailable, including saved settings
  extra.techEnhance=value(L"Experimental",L"TechEnhance",0)!=0;
  extra.networkHousePreserve=value(L"Experimental",L"NetworkHousePreserve",0)!=0;
@@ -103,6 +105,8 @@ static bool saveAdditionalSettings(){
  write(L"Display",L"RenderUpgrade",renderUpgradeEnabled);
  write(L"Display",L"UnifiedOverlay",unifiedOverlayEnabled);
  write(L"Display",L"RenderUpgradeLayer",renderUpgradeLayer);
+ write(L"Display",L"RenderPaletteRange",renderPaletteRange);
+ write(L"Display",L"RenderPixelScale",renderPixelScale);
  write(L"Display",L"MinimapMode",minimapMode);
  write(L"Display",L"MinimapSecondary",minimapSecondary);
  write(L"Display",L"MinimapSecondaryX",minimapSecondaryX);write(L"Display",L"MinimapSecondaryY",minimapSecondaryY);write(L"Display",L"MinimapSecondaryWidth",minimapSecondaryWidth);
