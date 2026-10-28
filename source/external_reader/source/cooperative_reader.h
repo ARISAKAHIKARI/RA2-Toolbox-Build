@@ -2,14 +2,15 @@
 #include "game_view.h"
 #include "projection.h"
 #include "../../assist/source/cooperative_plan.h"
+#include "cooperative_damage.h"
 #include <unordered_map>
 namespace external {
 template<class Read,class Quotas> assist::cooperative::Input cooperativeInput(Read read,const assist::cooperative::Request&r,Quotas quota){
- using namespace assist;cooperative::Input out;out.mode=r.mode;out.clicked=r.target;if(!cooperative::valid(r))return out;
+ using namespace assist;cooperative::Input out;out.mode=r.mode;out.clicked=r.target;out.centerX=r.cameraX;out.centerY=r.cameraY;if(!cooperative::valid(r))return out;
  GameView<Read> game(read);uint32_t house=game.template get<uint32_t>(0xA83D4C);int frame=game.template get<int>(0xA8ED84,-1);
  if(house<0x10000||frame<0||!game.template get<uint8_t>(0xA8E9A0))return out;
  auto all=game.vec(0xA8EC78);std::unordered_map<uint32_t,uint32_t> byID;byID.reserve(all.size());for(uint32_t p:all){uint32_t id=game.template get<uint32_t>(p+0x10);if(id)byID.emplace(id,p);}
- auto clicked=byID.find(r.target);if(clicked==byID.end()||game.type(clicked->second,game.kind(clicked->second))!=r.type)return out;
+ auto clicked=byID.find(r.target);if(clicked==byID.end()||game.type(clicked->second,game.kind(clicked->second))!=r.type||(cooperative::damageMode(r.mode)&&r.centerObject!=clicked->second))return out;
  // Freeze the screen bounds at click time, before the user scrolls again.
  Projection projection;projection.width=r.viewWidth;projection.height=r.viewHeight;projection.cameraX=r.cameraX;projection.cameraY=r.cameraY;projection.zScale=game.template get<double>(0xB0CD48,0.0866025403784);
  std::vector<uint32_t> sources,targets;std::vector<planner::Actor> sourceCombat,targetCombat;
@@ -28,7 +29,10 @@ template<class Read,class Quotas> assist::cooperative::Input cooperativeInput(Re
  for(uint32_t p:all){if(!game.live(p))continue;int k=game.kind(p);uint32_t t=game.type(p,k);
   if(r.mode==cooperative::Enter){if(t!=r.type||k!=game.kind(clicked->second)||!game.capacity(p).maximum)continue;}
   else if(!game.enemy(p,house))continue;
-  int sx,sy;if(!project(projection,game.template get<int>(p+0x9C),game.template get<int>(p+0xA0),game.template get<int>(p+0xA4),sx,sy)||sx<0||sy<0||sx>=projection.width||sy>=projection.height)continue;
+  if(r.mode==cooperative::AirSingle){if(p!=clicked->second)continue;}
+  else if(r.mode==cooperative::AirDamage){auto combat=game.combat(p,frame,false);
+   if(k!=2||(combat.flags&(planner::Airborne|planner::Manipulated))||cooperative::distance(r.cameraX,r.cameraY,combat.x,combat.y)>int64_t(cooperative::DamageRadius)*cooperative::DamageRadius)continue;
+  }else {int sx,sy;if(!project(projection,game.template get<int>(p+0x9C),game.template get<int>(p+0xA0),game.template get<int>(p+0xA4),sx,sy)||sx<0||sy<0||sx>=projection.width||sy>=projection.height)continue;}
   candidates.push_back(p);
  }
  // A busy screen is bounded without depending on engine vector ordering.
@@ -46,10 +50,15 @@ template<class Read,class Quotas> assist::cooperative::Input cooperativeInput(Re
   if(r.mode==cooperative::Enter){auto c=game.capacity(p);target.used=c.used;target.free=std::max(0,c.maximum-c.used);
    target.free=std::max(0,target.free-incoming[p]);
   }
-  out.targets.push_back(target);targets.push_back(p);targetCombat.push_back(game.combat(p,frame,false));
+  auto combat=game.combat(p,frame,false);target.hp=game.template get<int>(p+0x6C);target.kind=k;target.enemy=game.enemy(p,house);target.airborne=(combat.flags&planner::Airborne)!=0;
+  out.targets.push_back(target);targets.push_back(p);targetCombat.push_back(combat);
  }
  out.compatible.resize(sources.size()*targets.size());
- for(size_t i=0;i<sources.size();++i)for(size_t j=0;j<targets.size();++j)out.compatible[i*targets.size()+j]=r.mode==cooperative::Enter?game.entryCompatible(sources[i],targets[j],house):planner::compatibleTarget(sourceCombat[i],targetCombat[j],false);
+ if(cooperative::damageMode(r.mode))out.expectedDamage.resize(sources.size()*targets.size());
+ for(size_t i=0;i<sources.size();++i)for(size_t j=0;j<targets.size();++j){size_t at=i*targets.size()+j;
+  out.compatible[at]=r.mode==cooperative::Enter?game.entryCompatible(sources[i],targets[j],house):planner::compatibleTarget(sourceCombat[i],targetCombat[j],false);
+  if(cooperative::damageMode(r.mode)){auto estimate=cooperativedamage::estimate(game,sources[i],targets[j],sourceCombat[i],targetCombat[j]);out.expectedDamage[at]=estimate.damage;out.compatible[at]=out.compatible[at]&&cooperative::validDamage(estimate.damage);}
+ }
  // House changes invalidate this whole read; commands will also be checked late.
  if(house!=game.template get<uint32_t>(0xA83D4C))return cooperative::Input{};
  return out;

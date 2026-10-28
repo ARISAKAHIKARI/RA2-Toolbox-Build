@@ -75,6 +75,7 @@ static void loadAdditionalSettings(){
 
  extra.loadMode=std::clamp(value(L"AutoLoad",L"Logic",0),0,1);extra.loadRadius=std::clamp(value(L"AutoLoad",L"RangeCells",30),1,512);
  extra.enter=value(L"Cooperative",L"AdvancedEnter",0)!=0;extra.air=value(L"Cooperative",L"AircraftSpread",0)!=0;
+ extra.aircraftAllocationPolicy=std::clamp(value(L"Cooperative",L"AircraftAllocationPolicy",0),0,2);
  extra.enterKey=value(L"Cooperative",L"EnterHoldKey",18)&65535;extra.airKey1=value(L"Cooperative",L"AirHoldKey1",17)&65535;extra.airKey2=value(L"Cooperative",L"AirHoldKey2",0)&65535;
 
  extra.diskKey=value(L"SpecialClick",L"DiskHoldKey",17)&65535;extra.sellKey=value(L"SpecialClick",L"SellHoldKey",17)&65535;
@@ -141,7 +142,7 @@ static bool saveAdditionalSettings(){
  for(int i=0;i<pointerinput::MouseCount;++i)write(L"Mouse",pointerinput::mouseSetting(i),extra.mouseButtons[i]);
 
  write(L"AutoLoad",L"Logic",extra.loadMode);write(L"AutoLoad",L"RangeCells",extra.loadRadius);
- write(L"Cooperative",L"AdvancedEnter",extra.enter);write(L"Cooperative",L"AircraftSpread",extra.air);write(L"Cooperative",L"EnterHoldKey",extra.enterKey);write(L"Cooperative",L"AirHoldKey1",extra.airKey1);write(L"Cooperative",L"AirHoldKey2",extra.airKey2);
+ write(L"Cooperative",L"AircraftAllocationPolicy",extra.aircraftAllocationPolicy);write(L"Cooperative",L"AdvancedEnter",extra.enter);write(L"Cooperative",L"AircraftSpread",extra.air);write(L"Cooperative",L"EnterHoldKey",extra.enterKey);write(L"Cooperative",L"AirHoldKey1",extra.airKey1);write(L"Cooperative",L"AirHoldKey2",extra.airKey2);
  write(L"SpecialClick",L"DiskHoldKey",extra.diskKey);write(L"SpecialClick",L"SellHoldKey",extra.sellKey);
  write(L"SpecialClick",L"DiskPrimary",extra.disk);write(L"SpecialClick",L"SellDrained",extra.sellDrained);write(L"SpecialClick",L"SellVehicles",extra.sellVehicles);write(L"SpecialClick",L"SellEnemyBuildings",playertest::SellAvailable&&extra.sellEnemy);
  write(L"Experimental",L"PlayerCommandOptionsVersion",1);write(L"Experimental",L"EnemyBuildingSellOptInVersion",1);write(L"Experimental",L"ControlAll",playertest::Available&&extra.controlAll);write(L"Experimental",L"SwitchPlayerEnabled",0);
@@ -157,7 +158,7 @@ static void readTargetQuota(){ControlUpdate guard;auto id=quotaID();if(id.empty(
 }
 static bool extraNumber(int control,int minimum,int maximum,int&out){BOOL ok;int n=GetDlgItemInt(ui,700+control,&ok,FALSE);if(!ok||n<minimum||n>maximum)return false;out=n;return true;}
 static bool readAdditionalControls(){
- AdditionalSettings next=extra;next.loadMode=SendMessageW(extraControls[LoadLogic],CB_GETCURSEL,0,0)==1?1:0;
+ AdditionalSettings next=extra;next.aircraftAllocationPolicy=std::clamp(int(SendMessageW(extraControls[AircraftPolicy],CB_GETCURSEL,0,0)),0,2);next.loadMode=SendMessageW(extraControls[LoadLogic],CB_GETCURSEL,0,0)==1?1:0;
  if(!extraNumber(LoadRadius,1,512,next.loadRadius)||!extraNumber(DefaultFirst,0,512,next.defaults.first)||!extraNumber(DefaultSecond,0,512,next.defaults.second)||!extraNumber(DefaultMaximum,0,512,next.defaults.maximum)){notify(L"请输入有效的范围（1–512）和受击数（0–512）。");return false;}
  auto binding=[](int preset,int custom){return presetKey(int(SendMessageW(extraControls[preset],CB_GETCURSEL,0,0)),uint32_t(SendMessageW(extraControls[custom],HKM_GETHOTKEY,0,0)));};
  next.enterKey=binding(EnterPreset,EnterCustom);next.airKey1=binding(AirPreset1,AirCustom1);next.airKey2=binding(AirPreset2,AirCustom2);
@@ -185,7 +186,7 @@ static void syncAdditional(){
  shared->nativeMegaGateway=extra.nativeMegaGateway;
  shared->controlCommandOwner=extra.controlCommandOwner;
  InterlockedIncrement(&shared->formationPolicySeq);shared->formationPolicy.enabled=extra.formationEnabled;shared->formationPolicy.hold=extra.formationHold;shared->formationPolicy.mouse=extra.formationMouse;memcpy(shared->formationPolicy.keys,extra.formationKeys,sizeof extra.formationKeys);MemoryBarrier();InterlockedIncrement(&shared->formationPolicySeq);
- shared->missileReserve=extra.missileReserve;shared->lowDamageFilter=extra.lowDamageFilter;shared->lowDamageNetwork=extra.lowDamageNetwork;syncRefreshRate();shared->magnetronDrop=extra.magnetronDrop;shared->dodgeEnabled=extra.dodgeEnabled;shared->dodgeMode=extra.dodgeMode;shared->burstEnabled=shared->burstHoldEnabled=shared->burstHeld=0;shared->missileScope=extra.missileScope;shared->missileAllocation=extra.missileAllocation;shared->magnetronGlobal=extra.magnetronGlobal;shared->missileEnabled=extra.missileDefense;shared->missileScanHz=extra.missileScanHz;shared->controlAll=extra.controlAll;shared->switchPlayerEnabled=extra.switchPlayerEnabled;shared->computeRequested=computeRequested;shared->advancedScanHz=advancedScanHz;shared->advancedPriority=advancedTargetPriority;shared->c4Test=extra.c4Test;shared->renderReveal=extra.renderReveal;shared->loadMode=extra.loadMode;shared->loadRadius=extra.loadRadius;shared->enterKey=extra.enterKey;shared->airKey1=extra.airKey1;shared->airKey2=extra.airKey2;
+ shared->missileReserve=extra.missileReserve;shared->lowDamageFilter=extra.lowDamageFilter;shared->lowDamageNetwork=extra.lowDamageNetwork;syncRefreshRate();shared->magnetronDrop=extra.magnetronDrop;shared->dodgeEnabled=extra.dodgeEnabled;shared->dodgeMode=extra.dodgeMode;shared->burstEnabled=shared->burstHoldEnabled=shared->burstHeld=0;shared->missileScope=extra.missileScope;shared->missileAllocation=extra.missileAllocation;shared->magnetronGlobal=extra.magnetronGlobal;shared->missileEnabled=extra.missileDefense;shared->missileScanHz=extra.missileScanHz;shared->controlAll=extra.controlAll;shared->switchPlayerEnabled=extra.switchPlayerEnabled;shared->computeRequested=computeRequested;shared->advancedScanHz=advancedScanHz;shared->advancedPriority=advancedTargetPriority;shared->c4Test=extra.c4Test;shared->renderReveal=extra.renderReveal;shared->loadMode=extra.loadMode;shared->loadRadius=extra.loadRadius;shared->enterKey=extra.enterKey;shared->airKey1=extra.airKey1;shared->airKey2=extra.airKey2;shared->aircraftAllocationPolicy=extra.aircraftAllocationPolicy;
  static uint32_t publishedSettings=~0u;
  if(!shared->quotaConfigSeq||publishedSettings!=settingsRevision){publishedSettings=settingsRevision;
   InterlockedIncrement(&shared->quotaConfigSeq);auto&c=shared->quotaConfig;c.defaults=extra.defaults;c.count=0;
@@ -204,9 +205,13 @@ static void serviceCooperative(){
  uint32_t receipt=shared->cooperativeAck;
  if(receipt!=cooperativeReceipt){
   MemoryBarrier();cooperativeReceipt=receipt;
-  for(size_t i=0;i<submittedCooperative.size()&&i<cooperative::MaxSources;++i)
+  for(size_t i=0;i<submittedCooperative.size()&&i<cooperative::MaxSources;++i){
    if(shared->cooperativeAcceptedBits[i/32]&(uint32_t(1)<<(i%32)))acceptedCooperative.push_back(submittedCooperative[i]);
-  retryCooperative=shared->cooperativeResult==-7&&
+   if(i<size_t(std::max(0,shared->cooperativeProcessed)))processedCooperative.push_back(submittedCooperative[i]);
+  }
+  if(cooperative::damageMode(cooperativePending.mode))retryCooperative=(shared->cooperativeResult==-7||(shared->cooperativeResult==1&&shared->cooperativeRejected>0))&&
+   cooperative::retrySourcePool(cooperativePending,cooperativeSourcePool,processedCooperative)&&freshness::intentAlive(cooperativePending.tick,now);
+  else retryCooperative=shared->cooperativeResult==-7&&
    cooperative::retryRemaining(cooperativePending,submittedCooperative.data(),int(submittedCooperative.size()),shared->cooperativeProcessed)&&
    freshness::intentAlive(cooperativePending.tick,now);
   submittedCooperative.clear();
@@ -219,7 +224,7 @@ static void serviceCooperative(){
  if(seq!=shared->cooperativeSeq)return;
  if(request.count>cooperative::MaxSources&&request.serial!=cooperativeDelivered){cooperativeDelivered=request.serial;retryCooperative=false;notify(L"选区超过 512 个，增强请求未提交。");return;}
  bool retry=retryCooperative&&request.serial==cooperativePending.serial&&request.match==cooperativePending.match;
- if(retry)request=cooperativePending;else {retryCooperative=false;acceptedCooperative.clear();}
+ if(retry)request=cooperativePending;else {retryCooperative=false;acceptedCooperative.clear();processedCooperative.clear();cooperativeSourcePool=request;}
  if(!cooperative::valid(request)||(!retry&&request.serial==cooperativeDelivered)||request.match!=snap.match||DWORD(now-request.tick)<8)return;
  if(!freshness::intentAlive(request.tick,now)){
   cooperativeDelivered=request.serial;retryCooperative=false;notify(L"协同请求已超时，请重新下令。");return;
@@ -233,8 +238,7 @@ static void serviceCooperative(){
  if(!externalReader.readFresh(0xA83D4C,&houseBefore,sizeof houseBefore)||houseBefore<0x10000||
     !externalReader.readFresh(0xA8ED84,&frameBefore,sizeof frameBefore)||frameBefore<0)return;
  auto input=external::cooperativeInput(external::SharedReadView{&externalReader},request,[](uint32_t type){char id[24]{};externalReader.read(type+0x24,id,23);auto found=targetQuotas.find(id);return found==targetQuotas.end()?extra.defaults:found->second;});
- if(retry&&request.mode!=cooperative::Enter)for(auto&t:input.targets)
-  for(const auto&o:acceptedCooperative)if(o.target==t.id&&o.type==t.type)++t.prior;
+ if(retry)cooperative::reserveAccepted(input,acceptedCooperative);
  // Apply host filters before allocation so excluded sources never reserve capacity.
  const auto sourceFeature=request.mode==cooperative::Enter?featuretypes::EnterSource:featuretypes::Aircraft;
  auto permitted=[&](featuretypes::Feature f,uint32_t type){char id[24]{};return !featureTypes.filters[f].custom||(type>=0x10000&&externalReader.read(type+0x24,id,23)&&featuretypes::allowed(featureTypes,f,id));};
@@ -247,7 +251,7 @@ static void serviceCooperative(){
     !freshness::valid(request.match,snap.match,acquired,frameBefore,GetTickCount(),frameAfter,freshness::Cooperative)||
     !freshness::intentAlive(request.tick,GetTickCount())||shared->cooperativeRequest.serial!=request.serial||shared->cooperativeSeq!=seq){wakeGame();return;}
  cooperativeDelivered=request.serial;retryCooperative=false;
- if(assignments.empty()){notify(L"屏幕内没有可分配的同类空位或有效敌方目标。");return;}
+ if(assignments.empty()){notify(cooperative::damageMode(request.mode)?L"预计伤害已足额，或没有有效的可分配目标。":L"屏幕内没有可分配的同类空位或有效敌方目标。");return;}
  cooperativePending=request;submittedCooperative=assignments;
  memcpy(shared->cooperativeOrders,assignments.data(),assignments.size()*sizeof(cooperative::Assignment));
  shared->cooperativeCount=int(assignments.size());shared->cooperativeMode=request.mode;shared->cooperativeSerial=request.serial;

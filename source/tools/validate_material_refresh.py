@@ -23,7 +23,7 @@ for key in ('RenderMaterialRefresh','RenderSceneDetail'):
 main=(root/'assist/source/main.cpp').read_text(encoding='utf-8')
 assert 'renderPixelScale=std::clamp(choice,0,3)' in main
 scene=(root/'external_reader/source/radar_scene.h').read_text(encoding='utf-8')
-assert 'materialblend::image(' in scene and 'detailed_.prepare(' in scene and 'if(masked)mask_.apply(out->pixels)' in scene
+assert 'materialblend::image(' in scene and 'detailed_.prepareTerrain(' in scene and 'if(masked)mask_.apply(out->pixels)' in scene
 assert 'frame.posesPrepared' in scene
 assert 'refreshPalette(assets,' in scene and 'invalidateArt(key)' in scene
 assert 'bool liveVoxels=true' in scene and 'if(liveVoxels)' in scene

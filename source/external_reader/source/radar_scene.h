@@ -48,7 +48,7 @@ template<class Assets>class SceneRenderer {
  shroudmask::Raster mask_;std::shared_ptr<const Terrain> maskSource_;bool maskFog_=false;
  std::vector<size_t> cells_,baseCells_;std::vector<Paint> prepared_;std::vector<uint64_t> painted_;size_t cursor_=0,baseCursor_=0;
  bool bankSameSource_=false,probing_=false,probeChanged_=false,pendingIncomplete_=false,backgroundIncomplete_=false;uint32_t backgroundRetry_=0;int width_=0,height_=0;double spanX_=0,spanY_=0;uint64_t revision_=0;
- lighting::State backgroundLight_;uint64_t nativeCells_=0,basePresents_=0;SceneRegion region_{};unsigned pixelScaleMode_=0;
+ lighting::State backgroundLight_;uint64_t nativeCells_=0,basePresents_=0;SceneRegion region_{};unsigned pixelScaleMode_=0;bool detailedBase_=false;
  static uint64_t mix(uint64_t h,uint64_t v){return (h^v)*1099511628211ull;}
  static uint64_t lightKey(uint64_t h,const lighting::State&s){h=mix(h,uint32_t(s.ambient));h=mix(h,uint32_t(s.intensity));for(int c:s.tint)h=mix(h,uint32_t(c));return h;}
  static bool sameSource(const Terrain&a,const Terrain&b){
@@ -80,12 +80,13 @@ public:
  template<class Read>std::shared_ptr<const Scene> render(const Frame&frame,int width,int height,Read read,Assets&assets,SceneRegion region={},unsigned pixelScaleMode=0,bool refined=false,bool liveVoxels=true,bool highColorPrecision=false){
   materialsReady_=false;
   if(!frame.terrain||!frame.terrain->geo.valid()||frame.terrain->art.size()!=512*512||width<3||height<3||width>(region.active?8192:2048)||height>(region.active?8192:2048)||uint64_t(width)*height>16*1024*1024)return {};
+  const bool detail=refined&&region.active;
   const auto precision=highColorPrecision?colorprecision::Mode::SmoothRGB:colorprecision::Mode::NativeSteps;
   if(precision!=precision_){reset();precision_=precision;}
   beginPalette(assets,0);
   if(revision_!=assets.revision()){reset();revision_=assets.revision();}
   if(region.active&&(!std::isfinite(region.x)||!std::isfinite(region.y)||!std::isfinite(region.width)||!std::isfinite(region.height)||region.width<=0||region.height<=0||std::abs(region.x)>1e7||std::abs(region.y)>1e7||region.width>32768||region.height>32768))return {};
-  if(width!=width_||height!=height_||region.x!=region_.x||region.y!=region_.y||region.width!=region_.width||region.height!=region_.height||region.active!=region_.active||pixelScaleMode!=pixelScaleMode_){width_=width;height_=height;region_=region;pixelScaleMode_=pixelScaleMode;baseScene_.reset();maskedBaseScene_.reset();maskSource_.reset();}
+  if(width!=width_||height!=height_||region.x!=region_.x||region.y!=region_.y||region.width!=region_.width||region.height!=region_.height||region.active!=region_.active||pixelScaleMode!=pixelScaleMode_||detail!=detailedBase_){width_=width;height_=height;region_=region;pixelScaleMode_=pixelScaleMode;detailedBase_=detail;baseScene_.reset();maskedBaseScene_.reset();maskSource_.reset();}
   const auto&domain=frame.terrain->geo;auto viewport=domain.nativeViewport();double exactX=viewport.width,exactY=viewport.height;
   if(!std::isfinite(exactX)||!std::isfinite(exactY)||exactX<=0||exactY<=0||exactX>camera::NativeCanvas::MaximumDimension||exactY>camera::NativeCanvas::MaximumDimension)return {};
   // Pixel storage is rounded outwards; the final filter still uses the exact
@@ -135,8 +136,12 @@ public:
   auto verifyVisible=[&](){
    if(!region.active||!evaluatedTerrain||painted_.size()!=cells_.size())return false;
    double haloX=512,haloY=512;
-   auto extent=[&](const auto&cache){for(const auto&item:cache)if(item.second.ready){const auto&i=item.second.image;
-    haloX=std::max(haloX,double(std::max(std::abs(i.x),std::abs(i.x+i.width))));haloY=std::max(haloY,double(std::max(std::abs(i.y),std::abs(i.y+i.height)))+64.);}};
+   auto imageExtent=[&](auto&&self,const voxel::Image&i,unsigned nesting)->void{if(nesting>16||i.rasterScale<1)return;
+    haloX=std::max({haloX,std::abs(double(i.x)/i.rasterScale),std::abs((double(i.x)+i.width)/i.rasterScale)});
+    haloY=std::max({haloY,std::abs(double(i.y)/i.rasterScale)+64.,std::abs((double(i.y)+i.height)/i.rasterScale)+64.});
+    for(const auto&part:i.attachments)self(self,part,nesting+1);
+   };
+   auto extent=[&](const auto&cache){for(const auto&item:cache)if(item.second.ready)imageExtent(imageExtent,item.second.image,0);};
    extent(tiles_);extent(overlays_);
    for(size_t n=0;n<cells_.size();++n){size_t index=cells_[n];const auto&cell=evaluatedTerrain->art[index];mapbounds::TileOrigin origin;
     if(!evaluatedTerrain->geo.tileOrigin(int(index%512),int(index/512),int(cell.level),origin))continue;
@@ -204,7 +209,43 @@ public:
   if(committed&&region.active&&!verifyVisible())return {};
   // An incomplete bank may only reuse a synchronously validated crop.
   if(!complete_||(building_&&!visibleVerified))return {};
-  if(!baseScene_){auto base=std::make_shared<Scene>();base->width=width;base->height=height;if(!(region.active?background_.presentRegion(width,height,base->pixels,region.x,region.y,region.width,region.height,pixelScaleMode):background_.present(width,height,base->pixels,spanX_,spanY_)))return {};baseScene_=std::move(base);++basePresents_;++detailKey_;}
+  if(detail){
+   // Start from an empty target viewport, not a rescaled completed native
+   // scene. Repainting onto that scene would apply overlay shadows twice.
+   if(!baseScene_)++detailKey_;bool rebuild=false;
+   if(!detailed_.prepareTerrain(background_,baseScene_?&baseScene_->pixels:nullptr,width,height,region.x,region.y,region.width,region.height,detailKey_,precision_,pixelScaleMode,rebuild))return {};
+   if(rebuild){
+    const auto&terrain=*complete_;const auto&geo=terrain.geo;int loads=0;bool ready=true;
+    for(size_t index:baseCells_){int x=int(index%512),y=int(index/512),flatX=x-y+geo.offsetX,flatY=x+y-geo.offsetY;
+     if(!detailed_.underlayRect(flatX*30,flatY*15,(flatX+2)*30,(flatY+1)*15,terrain.baseColors[index]))return {};
+    }
+    for(size_t index:cells_){int x=int(index%512),y=int(index/512);const auto&cell=terrain.art[index];mapbounds::TileOrigin origin;
+     if(!geo.tileOrigin(x,y,int(cell.level),origin))continue;float px=float(origin.x+30),py=float(origin.y+15),base=float((x+y)*15);
+     int flatX=x-y+geo.offsetX,flatY=x+y-geo.offsetY;
+     bool underlay=detailed_.visible(flatX*30,flatY*15,(flatX+2)*30,(flatY+1)*15);
+     auto tile=tiles_.find({cell.type,cell.sub}),overlay=overlays_.find({cell.overlayType,cell.overlayFrame});
+     // Known source bounds include cropped extra images and all attachments.
+     // Only uncached sources use their decoder's full legal anchor envelope.
+     bool tileVisible=cell.type&&(tile!=tiles_.end()&&tile->second.ready?detailed_.visible(tile->second.image,px,py):detailed_.visible(px-512,py-512,px+512,py+512));
+     bool overlayCandidate=cell.overlayType&&(overlay!=overlays_.end()&&overlay->second.ready?detailed_.visibleShifted(overlay->second.image,px,py,-64,0):detailed_.visible(px-6144,py-6208,px+6144,py+6144));
+     if(!underlay&&!tileVisible&&!overlayCandidate)continue;
+     Paint paint=prepare(index);
+     if(cell.overlayType&&overlay!=overlays_.end()&&overlay->second.ready)overlayCandidate=detailed_.visible(overlay->second.image,px,py+paint.overlayOffset);
+     uint32_t baseColor=terrain.baseColors.size()==terrain.colors.size()&&terrain.baseColors[index]?terrain.baseColors[index]:terrain.colors[index];
+     if(underlay&&!detailed_.underlayRect(flatX*30,flatY*15,(flatX+2)*30,(flatY+1)*15,baseColor))return {};
+     if(tileVisible){auto&cached=tiles_[{cell.type,cell.sub}];
+      if(!cached.ready&&paletteReady&&loads<64&&(!cached.retry||int32_t(frame.tick-cached.retry)>=0)){++loads;cached.ready=assets.tile(cell.type,cell.sub,liveTerrainPalette,cached.image);if(cached.ready){auto n=camera::pixels(cached.image);if(staticPixels+n<=16*1024*1024)staticPixels+=n;else{cached.ready=false;cached.image={};}}cached.retry=frame.tick+2000;}
+      if(!cached.ready)ready=false;else if(!detailed_.terrainBlit(cached.image,px,py,base,paint.light,0))return {};
+     }
+     if(overlayCandidate){auto&cached=overlays_[{cell.overlayType,cell.overlayFrame}];
+      if(!cached.ready&&loads<64&&(!cached.retry||int32_t(frame.tick-cached.retry)>=0)){++loads;cached.ready=assets.overlay(cell.overlayType,game.template get<uint32_t>(cell.overlayType+0xA4),cell.overlayFrame,cached.image);if(cached.ready){auto n=camera::pixels(cached.image);if(staticPixels+n<=16*1024*1024)staticPixels+=n;else{cached.ready=false;cached.image={};}}cached.retry=frame.tick+2000;}
+      if(!cached.ready)ready=false;else if(!detailed_.terrainBlit(cached.image,px,py+paint.overlayOffset,base+(paint.bridge?60:0),paint.overlayLight,2))return {};
+     }
+    }
+    if(!ready||!verifyVisible())return {};
+    auto base=std::make_shared<Scene>();base->width=width;base->height=height;if(!detailed_.commitTerrain(base->pixels))return {};baseScene_=std::move(base);maskedBaseScene_.reset();++basePresents_;
+   }
+  }else if(!baseScene_){auto base=std::make_shared<Scene>();base->width=width;base->height=height;if(!(region.active?background_.presentRegion(width,height,base->pixels,region.x,region.y,region.width,region.height,pixelScaleMode):background_.present(width,height,base->pixels,spanX_,spanY_)))return {};baseScene_=std::move(base);++basePresents_;++detailKey_;}
   // Native Cell::DrawShroud places 60x30 alpha sprites on the flat cell
   // projection, after the world is drawn. Cache their final-presentation mask
   // separately from the original-size terrain so units and repairs cannot
@@ -220,8 +261,7 @@ public:
     maskedBaseScene_.reset();}
    maskSource_=complete_;maskFog_=fog;
   }
-  auto view=background_.fork();const bool detail=refined&&region.active;
-  if(detail&&!detailed_.prepare(background_,baseScene_->pixels,width,height,region.x,region.y,region.width,region.height,detailKey_,precision_))return {};
+  auto view=background_.fork();
   auto draw=[&](const voxel::Image&i,float x,float y,float sx,float sy,float z,const lighting::State&light,float lift=1,float drop=0){if(detail)detailed_.blit(i,x,y,sx,sy,z,light,lift,drop);else view.blit(i,x,y,sx,sy,z,light,lift,drop);};
   const auto&geo=frame.terrain->geo;int work=0;size_t pixels=0;std::vector<const Marker*> fallbacks;
   auto markers=frame.markers;

@@ -167,8 +167,8 @@ static bool formationHotkey(WORD);
 static AdditionalSettings extra;static HWND extraControls[ExtraControlCount];
 static std::unordered_map<std::string,cooperative::Quota> targetQuotas;static std::vector<std::string> quotaTypeIDs;
 static uint32_t cooperativeDelivered=0,cooperativeReceipt=0;
-static cooperative::Request cooperativePending{};
-static std::vector<cooperative::Assignment> submittedCooperative,acceptedCooperative;
+static cooperative::Request cooperativePending{},cooperativeSourcePool{};
+static std::vector<cooperative::Assignment> submittedCooperative,acceptedCooperative,processedCooperative;
 static bool retryCooperative=false;
 static bool saveAdditionalSettings();static uint32_t additionalFlags();static void syncAdditional();static void serviceCooperative();static void servicePointer();static void fillExtraTypes(bool force);
 static void changedSetting();static void syncSecondaryLayoutControls();
@@ -742,7 +742,7 @@ static void reapBridges(){DWORD now=GetTickCount();for(size_t i=0;i<retiredBridg
 static void releaseBridge(){
  commandcursor::clear();
  if(hook)logBridgeHealth(true); // preserve the last IPC evidence before unmapping
- tacticalPlanner.reset();submittedPlan.clear();worldRevision=-1;plannerAck=0;hasSelection=false;selectionAck=0;cooperativeDelivered=cooperativeReceipt=0;retryCooperative=false;submittedCooperative.clear();acceptedCooperative.clear();
+ tacticalPlanner.reset();submittedPlan.clear();worldRevision=-1;plannerAck=0;hasSelection=false;selectionAck=0;cooperativeDelivered=cooperativeReceipt=0;retryCooperative=false;submittedCooperative.clear();acceptedCooperative.clear();processedCooperative.clear();cooperativeSourcePool={};
  if(shared&&hook){shared->stop=1;wakeGame();retiredBridges.push_back({shared,mapping,module,hook,game,GetTickCount(),gameThread,externalReader.connectionIdentity()});}
  else{if(hook)gameinput::release(gameentry::Client::Assist,hook);if(shared)UnmapViewOfFile(shared);if(mapping)CloseHandle(mapping);}
  hook=0;shared=nullptr;mapping=nullptr;module=nullptr;lastData=attachAt=lastPulse=0;incoming={};snapshotSeq=~0u;lastReceiptWrite=lastReceiptMatch=0;reapBridges();

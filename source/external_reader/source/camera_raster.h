@@ -7,12 +7,21 @@
 namespace external { namespace camera {
 struct Light {
  float gains[3]{};colorprecision::Mode precision=colorprecision::Mode::NativeSteps;
+ static bool emissive(uint8_t index,bool object){return object&&index>=240&&index<=254;}
  explicit Light(const lighting::State&state,colorprecision::Mode mode=colorprecision::Mode::NativeSteps):precision(mode){
   int brightness=std::clamp(state.intensity<0?state.ambient*10:state.intensity,0,2000);
   for(int c=0;c<3;++c)gains[c]=colorprecision::gain(brightness,state.tint[c],mode);
  }
+ // Keep a sample's light contribution unclipped until reconstruction has
+ // combined it with its neighbors. Alpha is coverage, not a light channel.
+ std::array<double,4> evaluate(uint32_t pixel,uint8_t index,bool object)const{
+  const bool fullbright=emissive(index,object);
+  return {{double((pixel>>16)&255)*(fullbright?1.:gains[0]),
+           double((pixel>>8)&255)*(fullbright?1.:gains[1]),
+           double(pixel&255)*(fullbright?1.:gains[2]),double(pixel>>24)}};
+ }
  uint32_t apply(uint32_t pixel,uint8_t index,bool object)const{
-  if(object&&index>=240&&index<=254)return pixel;uint32_t result=pixel&0xff000000u;unsigned alpha=pixel>>24;
+  if(emissive(index,object))return pixel;uint32_t result=pixel&0xff000000u;unsigned alpha=pixel>>24;
   for(int c=0;c<3;++c){int shift=16-c*8;float value=std::clamp(((pixel>>shift)&255)*gains[c],0.f,float(alpha));
    unsigned channel=precision==colorprecision::Mode::SmoothRGB?unsigned(std::floor(value+.5f)):unsigned(value);result|=channel<<shift;}return result;
  }
@@ -62,15 +71,29 @@ public:
   for(int y=y0;y<y1;++y){int sourceY=int(std::floor((y+.5f-top)/pyScale));if(sourceY<0||sourceY>=i.height)continue;
    for(int x=x0;x<x1;++x){int sourceX=int(std::floor((x+.5f-left)/pxScale));if(sourceX<0||sourceX>=i.width)continue;
     size_t from=size_t(sourceY)*i.width+sourceX,to=size_t(y)*width_+x;uint32_t p=i.pixels[from];
+    std::array<double,4> filtered{};bool preciseSample=false;
     bool sampled=smooth&&(!i.shadow||i.rasterScale>1)&&(pxScale!=1||pyScale!=1);
     if(sampled){
      double fx=(x+.5-left)/pxScale-.5,fy=(y+.5-top)/pyScale-.5;int ix=int(std::floor(fx)),iy=int(std::floor(fy));fx-=ix;fy-=iy;
-     uint32_t a=colorAt(ix,iy),b=colorAt(ix+1,iy),c=colorAt(ix,iy+1),d=colorAt(ix+1,iy+1);
-     if(i.rasterScale>1&&pxScale<=1&&pyScale<=1){
+     const bool resolve=i.rasterScale>1&&pxScale<=1&&pyScale<=1;
+     if(precision_==colorprecision::Mode::SmoothRGB&&!i.shadow){
+      std::array<uint32_t,4> raw{};std::array<uint8_t,4> indices{};
+      for(int n=0;n<4;++n){int xx=ix+(n&1),yy=iy+(n>>1);if(xx>=0&&yy>=0&&xx<i.width&&yy<i.height){size_t at=size_t(yy)*i.width+xx;raw[n]=i.pixels[at];if(indexed)indices[n]=i.indices[at];}}
+      auto weights=resolve?pixelupgrade::bilinearWeights(fx,fy):pixelupgrade::adaptiveWeights(raw[0],raw[1],raw[2],raw[3],fx,fy);
+      // A SHP's emissive index is a material boundary, even when its source
+      // RGB matches an ordinary index. True VXL coverage still resolves by
+      // area; each contribution below retains its own lighting semantics.
+      if(!resolve){bool first=Light::emissive(indices[0],i.objectPalette);for(int n=1;n<4;++n)if(Light::emissive(indices[n],i.objectPalette)!=first){weights=pixelupgrade::nearestWeights(fx,fy);break;}}
+      for(int n=0;n<4;++n)if(weights[n]){auto value=transform.evaluate(raw[n],indices[n],i.objectPalette);for(int c=0;c<4;++c)filtered[c]+=weights[n]*value[c];}
+      p=uint32_t(std::clamp(std::floor(filtered[3]+.5),0.,255.))<<24;preciseSample=true;
+     }else{
+      uint32_t a=colorAt(ix,iy),b=colorAt(ix+1,iy),c=colorAt(ix,iy+1),d=colorAt(ix+1,iy+1);
+      if(resolve){
       // Actual supersampled geometry: preserve fractional coverage at its
       // silhouette. The SHP path below keeps cutout boundaries conservative.
       p=0;for(int shift:{0,8,16,24}){double v=(1-fy)*((1-fx)*((a>>shift)&255)+fx*((b>>shift)&255))+fy*((1-fx)*((c>>shift)&255)+fx*((d>>shift)&255));p|=unsigned(std::lround(v))<<shift;}
-     }else p=pixelupgrade::adaptivePixel(a,b,c,d,fx,fy);
+      }else p=pixelupgrade::adaptivePixel(a,b,c,d,fx,fy);
+     }
     }
     if(!(p>>24))continue;
     float z=base+i.depthBias;bool useZ=true;
@@ -79,6 +102,10 @@ public:
     else{int bottom=i.depthBottom==std::numeric_limits<int>::min()?i.y+i.height-1:i.depthBottom;z+=float(bottom)/i.rasterScale-14+lift+float((bottom-i.y-sourceY)/3)/i.rasterScale;}
     if(useZ&&z<=depth[to])continue;
     if(i.shadow){uint32_t old=color[to],v=old&0xff000000u;unsigned a=p>>24;for(int shift:{0,8,16})v|=(((old>>shift)&255)*(510-a)/510)<<shift;color[to]=v;}
+    else if(preciseSample){
+     const double alpha=std::clamp(filtered[3],0.,255.);uint32_t out=0xff000000u,old=color[to];
+     for(int c=0;c<3;++c){int shift=16-c*8;double value=std::clamp(filtered[c],0.,alpha)+((old>>shift)&255)*(255-alpha)/255.;out|=uint32_t(std::clamp(std::floor(value+.5),0.,255.))<<shift;}color[to]=out;
+    }
     else{if(!sampled)p=transform.apply(p,indexed?i.indices[from]:0,i.objectPalette);unsigned a=p>>24;
      if(a==255)color[to]=p;else{uint32_t old=color[to],out=0xff000000u;for(int shift:{0,8,16})out|=std::min(255u,((p>>shift)&255)+((old>>shift)&255)*(255-a)/255)<<shift;color[to]=out;}
     }

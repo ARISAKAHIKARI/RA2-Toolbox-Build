@@ -8,6 +8,7 @@ prefix=r'''
 #include "compute_policy.h"
 #include "ore_type_config.h"
 #include "feature_type_config.h"
+#include "protocol.h"
 #include <cwchar>
 #include <cassert>
 #include <algorithm>
@@ -27,11 +28,13 @@ struct ControlUpdate{bool old=updatingControls;ControlUpdate(){updatingControls=
 static bool hookAdvanced=false,hookSmartUnload=false;static HWND hookChecks[4]={800,801,802,803};
 static uint32_t computeRequested=compute::Default;static bool minimapEnabled=false,minimapSecondary=false;static int minimapMode=0,minimapScale=10,advancedRangeCells=2,minimapPosition=0,minimapX=20,minimapY=60,minimapAlignX=0,minimapAlignY=0;
 static int minimapSecondaryX=10000,minimapSecondaryY=10000,minimapSecondaryWidth=320;
+static bool renderUpgradeEnabled=false,unifiedOverlayEnabled=false,renderMaterialRefresh=true,renderPhysicalOutput=false;
+static int renderColorPrecision=1,renderSceneDetail=1,renderUpgradeLayer=0,renderPaletteRange=1,renderPixelScale=3;
 constexpr unsigned HOTKEYF_CONTROL=2,HOTKEYF_ALT=4;
 constexpr WORD MAKEWORD(unsigned a,unsigned b){return WORD((a&255)|(b<<8));}
 static WORD socialKeys[9]{};static bool autoRevealNewMatch=false;static unsigned autoRevealMatch=0,autoRevealDone=0,autoRevealRetry=0;
 static WORD idleAircraftKey=MAKEWORD('P',6);
-namespace minimap {static void hide(){}static void hidePrimary(){}}static void syncAdditional(){}
+namespace minimap {static void hide(){}static void hidePrimary(){}}static unsigned additionalSyncs=0;static void syncAdditional(){++additionalSyncs;}
 static int labelScalePercent=100,constructionScalePercent=100;
 static int ui=1,fps=60,topMargin=20,repairMs=2000,doubleMs=350,toastMs=6000;
 static bool infoAdaptive=false;static int infoMonitorHz=165;static unsigned infoSyncs=0;
@@ -51,7 +54,8 @@ static AdditionalSettings extra;
 static int advancedScanHz=10,advancedTargetPriority=0,shiftClickMode=0,shiftClickGap=0;static bool shiftClickEnabled=false;
 namespace airway{static unsigned resets=0;static void reset(){++resets;}}
 static struct{unsigned clears=0;void clear(){++clears;}}pointerMatches;
-static constexpr int RevealMap=9,StickyGuard=28;
+static struct{void clear(){}}infantryEntryResult;
+static void updatePlayerTestUI(bool){}
 static void send(int){}
 static struct{struct Slot{int command;};Slot slots[8]{};int size=0;void discard(int i){for(int j=i+1;j<size;++j)slots[j-1]=slots[j];--size;}}commandQueue;
 
@@ -80,6 +84,8 @@ static void bindSuper(){++binds;}
 static void bindType(bool){++binds;}
 '''
 io=(root/'assist/source/extra_settings_io.h').read_text()
+aircraft_load='extra.aircraftAllocationPolicy='+io.split('extra.aircraftAllocationPolicy=',1)[1].split(';',1)[0]+';'
+aircraft_save='write(L"Cooperative",L"AircraftAllocationPolicy",'+io.split('write(L"Cooperative",L"AircraftAllocationPolicy",',1)[1].split(';',1)[0]+';'
 load_mouse=' extra.antiTheft='+io.split(' extra.antiTheft=',1)[1].split(' extra.loadMode=',1)[0]
 save_mouse=' write(L"Modes",L"AntiTheft"'+io.split(' write(L"Modes",L"AntiTheft"',1)[1].split(' write(L"AutoLoad"',1)[0]
 prefix+=r'''
@@ -93,6 +99,7 @@ static int value(const wchar_t*,const wchar_t* key,int fallback){auto it=profile
 static std::map<std::wstring,int> burstWrites;
 static void write(const wchar_t* section,const wchar_t* key,int v){profile[key]=v;if(std::wstring(section)==L"BurstRefresh")burstWrites[key]=v;}
 '''+"\nstatic void loadMouse(){"+load_mouse+"}\nstatic void saveMouse(){"+save_mouse+"}\n"
+prefix+="\nstatic void loadAircraftPolicy(){"+aircraft_load+"}\nstatic void saveAircraftPolicy(){"+aircraft_save+"}\n"
 feature_load=io.split('static void loadAdditionalSettings(){',1)[1].split(' extra.antiTheft=',1)[0]
 feature_save=io.split('static bool saveAdditionalSettings(){',1)[1].split(' write(L"Modes",L"AntiTheft"',1)[0]
 prefix+="\nstatic void loadFeatureTypes(){"+feature_load+"}\nstatic void saveFeatureTypes(){"+feature_save+"}\n"
@@ -172,9 +179,22 @@ int main(){
   editText=L"BAD/ID";autoSettingChanged(editor,EN_CHANGE);assert(featureTypes.filters[f].count==2&&featureTypeText[f]==L"UNIT_A,unit_b");
   editText=L"";autoSettingChanged(editor,EN_CHANGE);assert(!featuretypes::allowed(featureTypes,f,"UNIT_A"));assert(!memcmp(&other,&featureTypes.filters[(f+1)%featuretypes::Count],sizeof other));
  }
+ // Run the shipped dropdown handler and production profile expressions.
+ // Selecting a strategy never enables aircraft control by itself.
+ assert(extra.aircraftAllocationPolicy==0&&!extra.air);extra.aircraftAllocationPolicy=1;profile.erase(L"AircraftAllocationPolicy");loadAircraftPolicy();assert(extra.aircraftAllocationPolicy==0);
+ for(int policy:{1,2,0}){
+  unsigned beforeSync=additionalSyncs,beforeRevision=settingsRevision,beforeClear=pointerMatches.clears;
+  fields[9195]=policy;assert(autoSettingChanged(9195,CBN_SELCHANGE)&&extra.aircraftAllocationPolicy==policy&&!extra.air&&autoSavePending);
+  assert(additionalSyncs==beforeSync+1&&settingsRevision==beforeRevision+1&&pointerMatches.clears==beforeClear+1);
+  saveAircraftPolicy();extra.aircraftAllocationPolicy=(policy+1)%3;loadAircraftPolicy();assert(extra.aircraftAllocationPolicy==policy&&profile[L"AircraftAllocationPolicy"]==policy);
+ }
+ for(int invalid:{-1,3}){autoSavePending=false;unsigned beforeRevision=settingsRevision,beforeSync=additionalSyncs;fields[9195]=invalid;assert(autoSettingChanged(9195,CBN_SELCHANGE));assert(extra.aircraftAllocationPolicy==0&&!autoSavePending&&settingsRevision==beforeRevision&&additionalSyncs==beforeSync);}
+ profile[L"AircraftAllocationPolicy"]=9;loadAircraftPolicy();assert(extra.aircraftAllocationPolicy==2);profile[L"AircraftAllocationPolicy"]=-9;loadAircraftPolicy();assert(extra.aircraftAllocationPolicy==0);saveAircraftPolicy();
+ pointerMatches.clears=0;
  autoSavePending=false;timers=saves=syncs=0;timerMs=0;settingsRevision=1;paintRevision=0;
 
  for(int i=0;i<ExtraControlCount;++i)extraControls[i]=700+i;
+ extraControls[AircraftPolicy]=9195;
  assert(!extra.passengerBubbles&&!extra.dangerPassengers&&!extra.magnetronDrop);
  for(auto option:{std::pair<int,bool*>{897,&extra.passengerBubbles},{898,&extra.dangerPassengers},{899,&extra.magnetronDrop}}){
   for(bool on:{false,true}){fields[option.first]=on;autoSettingChanged(option.first,BN_CLICKED);assert(*option.second==on&&autoSavePending);saveFeatureTypes();saveMouse();*option.second=!on;loadMouse();assert(*option.second==on);}
@@ -267,7 +287,7 @@ int main(){
  fields[808]=0;autoSettingChanged(808,CBN_SELCHANGE);assert(!extra.renderReveal);saveFeatureTypes();saveMouse();loadMouse();assert(!extra.renderReveal);
  fields[803]=2;autoSettingChanged(803,CBN_SELCHANGE);assert(extra.nativeAirWaypoints&&airway::resets==1&&pointerMatches.clears==1);
  fields[803]=0;autoSettingChanged(803,CBN_SELCHANGE);assert(!extra.nativeAirWaypoints&&airway::resets==2&&pointerMatches.clears==2);
- for(int mode:{0,1,2,3}){fields[803]=mode;autoSettingChanged(803,CBN_SELCHANGE);assert(extra.airWaypoints==(mode==1)&&extra.nativeAirWaypoints==(mode==2));saveMouse();extra.airWaypoints=extra.nativeAirWaypoints=false;loadMouse();assert(extra.airWaypoints==(mode==1)&&extra.nativeAirWaypoints==(mode==2));}
+ for(int mode:{0,1,2,3,4}){fields[803]=mode;autoSettingChanged(803,CBN_SELCHANGE);assert(extra.airWaypoints==(mode==1)&&extra.nativeAirWaypoints==(mode>=2)&&extra.nativeAirNetwork==unsigned(mode>=3?mode-2:0));saveMouse();extra.airWaypoints=extra.nativeAirWaypoints=false;extra.nativeAirNetwork=0;loadMouse();assert(extra.airWaypoints==(mode==1)&&extra.nativeAirWaypoints==(mode>=2)&&extra.nativeAirNetwork==unsigned(mode>=3?mode-2:0));}
  for(unsigned key:{0u,unsigned(MAKEWORD('W',2)),0u}){fields[894]=key;autoSettingChanged(894,EN_CHANGE);assert(extra.airPathKey==key);saveMouse();extra.airPathKey=123;loadMouse();assert(extra.airPathKey==key);}
  fields[787]=60;autoSettingChanged(787,EN_CHANGE);assert(advancedScanHz==60);fields[787]=61;autoSettingChanged(787,EN_CHANGE);assert(advancedScanHz==60);
  assert(!extra.experimentalReveal);profile[L"RevealMap"]=1;loadMouse();assert(!extra.experimentalReveal);
@@ -301,13 +321,13 @@ int main(){
  fields.erase(716);fields[715]=0;autoSettingChanged(715,BN_CLICKED);assert(targetQuotas.empty());
  fields[724]='V';autoSettingChanged(724,EN_CHANGE);assert(extra.variantKey=='V');
  autoSettingChanged(441,EN_CHANGE);autoSettingChanged(411,EN_CHANGE);assert(binds==2);
- // Manual control remains available; removed sale UI messages cannot enable sale.
+ // Manual control and the separate enemy-sale availability gate stay independent.
  extra.controlAll=extra.sellEnemy=false;fields[860]=BST_CHECKED;
  assert(autoSettingChanged(860,BN_CLICKED)&&extra.controlAll&&!extra.sellEnemy);
- fields[722]=BST_CHECKED;assert(autoSettingChanged(722,BN_CLICKED)&&extra.controlAll&&!extra.sellEnemy);
- fields[860]=BST_UNCHECKED;assert(autoSettingChanged(860,BN_CLICKED)&&!extra.controlAll&&!extra.sellEnemy);
+ fields[722]=BST_CHECKED;assert(autoSettingChanged(722,BN_CLICKED)&&extra.controlAll&&extra.sellEnemy==playertest::SellAvailable);
+ fields[860]=BST_UNCHECKED;assert(autoSettingChanged(860,BN_CLICKED)&&!extra.controlAll&&extra.sellEnemy==playertest::SellAvailable);
  extra.switchPlayerEnabled=true;fields[861]=BST_CHECKED;
- assert(autoSettingChanged(861,BN_CLICKED)&&!extra.switchPlayerEnabled&&!extra.sellEnemy);
+ assert(autoSettingChanged(861,BN_CLICKED)&&!extra.switchPlayerEnabled&&extra.sellEnemy==playertest::SellAvailable);
  assert(fields[861]==BST_UNCHECKED);
  fields[722]=BST_UNCHECKED;assert(autoSettingChanged(722,BN_CLICKED)&&!extra.sellEnemy);
  autoSaveOK=false;flushAutoSettings();assert(lastMessage.find(L"自动保存失败")!=std::wstring::npos);
@@ -322,7 +342,8 @@ main=(root/'assist/source/main.cpp').read_text()
 extra=(root/'assist/source/extra_controls.h').read_text()
 assert 'statsVisible()' not in main
 assert 'snap.renderStatus!=1' in main.split('static void paint(){')[1].split('DWORD now=')[0]
-assert 'flushAutoSettings();DestroyWindow(w)' in main
+close=main.split('case WM_CLOSE:',1)[1].split('case WM_DESTROY:',1)[0]
+assert close.index('flushAutoSettings();')<close.index('DestroyWindow(w)')
 assert 'L"BUTTON",L"保存' not in main+extra
 assert 'L"BUTTON",L"绑定' not in main
 for module in ('assist','unit_monitor'):
@@ -342,8 +363,8 @@ assert 'external::discovery::resolveYrppWindow(reader,pid,nullptr,&foundThread)'
 assert 'static BOOL CALLBACK findWindow(' not in cursor
 print('PASS: explicit feature/permission linkage, invalid-key isolation, shared cursor discovery and host ACK single-writer contract')
 
-assert 'if(snap.renderStatus!=1){overlayRecovery.suspend();ShowWindow(overlay,SW_HIDE);hideAircraftButton();minimap::hide();watchwindows::hide();' in main
-assert 'else if(!foregroundGame()||snap.chat){overlayRecovery.suspend();ShowWindow(overlay,SW_HIDE);hideAircraftButton();minimap::hidePrimary();watchwindows::hidePrimary();' in main
+assert 'if(snap.renderStatus!=1){overlayRecovery.suspend();hideWorldOverlay();hideAircraftButton();minimap::hide();watchwindows::hide();' in main
+assert 'else if(!foregroundGame()||snap.chat){overlayRecovery.suspend();hideWorldOverlay();hideAircraftButton();minimap::hidePrimary();watchwindows::hidePrimary();' in main
 assert 'snap.renderStatus=externalValid&&d.renderStatus==1?1:0;' in main
 monitor=(root/'unit_monitor/source/main.cpp').read_text() if (root/'unit_monitor/source/main.cpp').exists() else (root.parent/'unit_monitor/source/main.cpp').read_text()
 assert 'external::display::inspect' in monitor and 'battlefield&&foregroundGame()' in monitor
@@ -365,6 +386,13 @@ print('PASS parasite/crate badges default off; independent controls 892/893 appl
 assert 'value(L"Dodge",L"Logic",0)' in (root/'assist/source/extra_settings_io.h').read_text()
 assert 'write(L"Dodge",L"Logic",extra.dodgeMode)' in (root/'assist/source/extra_settings_io.h').read_text()
 print("PASS reverse-dodge default, both live choices, invalid selection and persistence key")
+
+tactical=(root/'assist/source/tactical_controls.h').read_text()
+assert 'extraControls[AircraftPolicy]=combo(9195)' in tactical
+assert 'L"按数量配额（原模式 1 / 2）",L"5格战车 · 预计伤害 120%",L"单目标 120% · 派出后取消选中"' in tactical
+assert 'AircraftAllocationPolicy=0' in (root/'defaults/Assist.ini').read_text()
+assert 'AircraftAllocationPolicy=0' in (root/'shared/source/initial_profiles.h').read_text()
+print('PASS aircraft allocation strategies: legacy default, all three choices, immediate sync, autosave, invalid-selection isolation and production INI roundtrips')
 
 print('PASS passenger inspection, persistent dangerous cargo and independent magnetron drop: UI toggle, autosave, persisted off/on roundtrips')
 

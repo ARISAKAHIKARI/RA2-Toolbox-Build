@@ -468,7 +468,7 @@ static void showOrderLines(uint32_t object){
 static bool nativeMission(uint32_t house,uint32_t id,int mission,uint32_t target,
                           uint32_t dest,int destTag,uint32_t nearest=0,int nearestTag=0,
                           taskarbiter::Owner owner=taskarbiter::Owner::Generic,uint32_t* receiptID=nullptr,
-                          int targetTag=-1,OrderAuthority authority=OrderAuthority::Local,bool appendWaypoint=false){
+                          int targetTag=-1,OrderAuthority authority=OrderAuthority::Local,bool appendWaypoint=false,bool cooperativeTakeover=false){
  const bool foreign=authority==OrderAuthority::PlayerTest&&sh&&sh->controlAll&&playableHouse(house);
  if(!id||!house||(house!=lastHouse&&!foreign)||!eventdelivery::mayQueue(get<int>(0xA8B238))||!loadInterfaces())return false;
  const uint8_t resolvedTargetTag=targetTag>=0?uint8_t(targetTag):(target?0x34:0);
@@ -489,8 +489,12 @@ static bool nativeMission(uint32_t house,uint32_t id,int mission,uint32_t target
  if(reject!=orderpolicy::Reject::None){++snap.commandRejected;return false;}
  const int frame=get<int>(0xA8ED84);
  actorFrameArbiter.begin(match,frame);
+ // An explicitly captured limited aircraft click must leave failed/unused
+ // actors alone. Replace old autonomous ownership only AFTER the new event
+ // physically queues; early cancelNative would change every candidate.
+ const bool takeover=cooperativeTakeover&&owner==taskarbiter::Owner::Cooperative&&authority==OrderAuthority::Local&&house==lastHouse&&mission==1&&!appendWaypoint;
  if(!actorFrameArbiter.canIssue(id,manualVersions.get(id))||
-    !actorLeaseArbiter.canIssue(match,frame,id,object,manualVersions.get(id),owner)){
+    (!actorLeaseArbiter.canIssue(match,frame,id,object,manualVersions.get(id),owner)&&!(takeover&&actorLeaseArbiter.find(id)>=0))){
   ++snap.commandRejected;return false;
  }
  gateway::MissionState before{};
@@ -506,7 +510,9 @@ static bool nativeMission(uint32_t house,uint32_t id,int mission,uint32_t target
  uint32_t ticket=missionObserver.record(match,id,destTag==0x34?dest:target,mission,
                              frame,submittedAt,before,owner);
  taskarbiter::Lease superseded{};
- actorLeaseArbiter.record(match,frame,id,object,manualVersions.get(id),owner,ticket,&superseded);
+ if(takeover){int old=actorLeaseArbiter.find(id);if(old>=0){superseded=actorLeaseArbiter.leases[old];actorLeaseArbiter.remove(old);}
+  actorLeaseArbiter.record(match,frame,id,object,manualVersions.get(id),owner,ticket);
+ }else actorLeaseArbiter.record(match,frame,id,object,manualVersions.get(id),owner,ticket,&superseded);
  if(superseded.serial)cancelReceiptTicket(superseded.match,superseded.serial);
  if(receiptID)*receiptID=ticket;
  if(!ticket)++snap.receiptDropped;

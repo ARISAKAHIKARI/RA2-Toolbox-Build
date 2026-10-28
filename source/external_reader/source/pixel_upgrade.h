@@ -107,16 +107,29 @@ inline unsigned colorDistance(uint32_t a,uint32_t b){
  const int db=int(channel(a,0))-int(channel(b,0));
  return unsigned(dr*dr+2*dg*dg+db*db);
 }
-inline uint32_t adaptivePixel(uint32_t ul,uint32_t ur,uint32_t dl,uint32_t dr,
-                              double fx,double fy){
- if(!std::isfinite(fx)||!std::isfinite(fy))return 0;
+using SampleWeights=std::array<double,4>;
+inline SampleWeights nearestWeights(double fx,double fy){
+ if(!std::isfinite(fx)||!std::isfinite(fy))return {};
  fx=std::clamp(fx,0.,1.);fy=std::clamp(fy,0.,1.);
- const uint32_t nearest=fy<.5?(fx<.5?ul:ur):(fx<.5?dl:dr);
+ SampleWeights weights{};weights[(fy<.5?0:2)+(fx<.5?0:1)]=1.;return weights;
+}
+inline SampleWeights bilinearWeights(double fx,double fy){
+ if(!std::isfinite(fx)||!std::isfinite(fy))return {};
+ fx=std::clamp(fx,0.,1.);fy=std::clamp(fy,0.,1.);
+ return {{(1-fx)*(1-fy),fx*(1-fy),(1-fx)*fy,fx*fy}};
+}
+// Keep the reconstruction decision separate from color evaluation. A caller
+// with live lighting can use unlit art as the guide, then apply these weights
+// to unquantized light contributions instead of making edges depend on light.
+inline SampleWeights adaptiveWeights(uint32_t ul,uint32_t ur,uint32_t dl,uint32_t dr,
+                                     double fx,double fy){
+ if(!std::isfinite(fx)||!std::isfinite(fy))return {};
+ fx=std::clamp(fx,0.,1.);fy=std::clamp(fy,0.,1.);
  // Transparency is a geometric boundary. Do not blur opaque actors into
  // missing tiles, shroud or source-crop transparent margins.
  const unsigned a0=ul>>24,a1=ur>>24,a2=dl>>24,a3=dr>>24;
- if(a0!=a1||a0!=a2||a0!=a3)return nearest;
- if(a0==0)return 0;
+ if(a0!=a1||a0!=a2||a0!=a3)return nearestWeights(fx,fy);
+ if(a0==0)return {};
  const unsigned gx=colorDistance(ul,ur)+colorDistance(dl,dr);
  const unsigned gy=colorDistance(ul,dl)+colorDistance(ur,dr);
  // Strong vertical edge: prefer one column and interpolate down that edge.
@@ -127,9 +140,13 @@ inline uint32_t adaptivePixel(uint32_t ul,uint32_t ur,uint32_t dl,uint32_t dr,
  else if(gx+gy>16000){
   const unsigned same0=colorDistance(ul,dr),same1=colorDistance(ur,dl);
   if(uint64_t(std::min(same0,same1))*2<uint64_t(std::max(same0,same1)))
-   return nearest;
+   return nearestWeights(fx,fy);
  }
- const double weights[4]={(1-fx)*(1-fy),fx*(1-fy),(1-fx)*fy,fx*fy};
+ return bilinearWeights(fx,fy);
+}
+inline uint32_t adaptivePixel(uint32_t ul,uint32_t ur,uint32_t dl,uint32_t dr,
+                              double fx,double fy){
+ const auto weights=adaptiveWeights(ul,ur,dl,dr,fx,fy);
  uint32_t result=0;
  for(int sh:{0,8,16,24}){
   double v=weights[0]*channel(ul,sh)+weights[1]*channel(ur,sh)+

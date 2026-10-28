@@ -18,7 +18,7 @@ assert 'result->request.colorPrecision==request.colorPrecision' in host
 assert 'true,r.colorPrecision!=0)' in host
 scene = (root/'external_reader/source/radar_scene.h').read_text(encoding='utf-8')
 assert 'if(precision!=precision_){reset();precision_=precision;}' in scene
-assert 'pending_.precision(precision_)' in scene and 'detailKey_,precision_)' in scene
+assert 'pending_.precision(precision_)' in scene and 'detailKey_,precision_,pixelScaleMode,rebuild)' in scene
 canvas = (root/'external_reader/source/native_canvas.h').read_text(encoding='utf-8')
 assert 'surface.precision(precision_)' in canvas
 settings = (root/'assist/source/extra_settings_io.h').read_text(encoding='utf-8')

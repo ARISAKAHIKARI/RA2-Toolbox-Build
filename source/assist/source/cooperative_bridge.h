@@ -3,9 +3,12 @@
 #include "../../external_reader/source/game_view.h"
 #include "business_effects.h"
 #include "../../external_reader/source/cooperative_reader.h"
+#include "aircraft_selection_bridge.h"
+extern "C" int GuardedCombatWeapon(unsigned,unsigned,unsigned*,int*,int*,int*);
 struct LocalRawRead {bool operator()(uint32_t a,void*out,size_t n)const{if(a<0x10000||uint64_t(a)+n>=0x80000000ull)return false;memcpy(out,(const void*)(uintptr_t)a,n);return true;}};
 static external::GameView<LocalRawRead> clickView(LocalRawRead{});
 static uint32_t clickSerial,cooperativePlanSeen;static int cooperativeAt;
+static uint32_t singleDamageSerial=0,singleDamageMatch=0;static double singleDamageCommitted=0;
 struct EnterReservation {uint32_t id,target,type,token;int frame,slots;};
 static EnterReservation entryReservations[cooperative::MaxSources];static int entryReservationCount;
 struct CooperativeEffect {uint32_t actor=0,target=0,ticket=0,match=0,actorPointer=0,targetPointer=0,beforeTarget=0,queuedAt=0;int frame=0,mission=0,rearmStart=-1;bool acquired=false;};
@@ -57,6 +60,15 @@ static void supersedeCooperativeEffect(uint32_t actor,uint32_t session){
  }
 }
 static bool airUnit(uint32_t p){int k=kind(p);return featureObjectAllowed(featuretypes::Aircraft,p)&&(k==0||(k==2&&(get<bool>(p+0x134)||get<int>(p+0x94)==3||get<bool>(p+0x84)||get<bool>(p+0x8D))));}
+static bool cooperativeSingleInput(uint32_t bindings){return sh&&(sh->flags&AircraftSpread)&&sh->aircraftAllocationPolicy==2&&(bindings&(pointerinput::AirFirst|pointerinput::AirSecond));}
+// Called only AFTER an accepted single-target Attack. Keep the just-created
+// Cooperative token/lease/receipt; cancelNative/cancelOreJob would invalidate
+// that new ownership or locally release Sticky. Unsent aircraft never enter.
+static void finishSingleCooperative(uint32_t p){
+ uint32_t id=get<uint32_t>(p+0x10);pauseGlobalMagnetron(p);pauseMissileForManual(id,p);cancelBurst(id);cancelDodge(id);cancelLoadingJobs(p);
+ int i=orderIndex(p);if(i>=0)removeOrder(i);
+ for(i=0;i<unloadCount;)if(unloadPassengers[i].p==p||unloadPassengers[i].carrier==p){finishUnloadFollowup(unloadPassengers[i],get<int>(0xA8ED84));unloadPassengers[i]=unloadPassengers[--unloadCount];}else ++i;
+}
 static bool vehicleSellCell(uint32_t p){
  uint32_t cell=readMapCell(get<int>(p+0x9C)/256,get<int>(p+0xA0)/256);if(!cell)return false;
  for(uint32_t q=get<uint32_t>(cell+0xE4),n=0;q>=0x10000&&n<256;++n){if(!worldObjects.contains(q))return false;if(kind(q)==3)return true;uint32_t next=get<uint32_t>(q+0x30);if(next==q)return false;q=next;}return false;
@@ -80,9 +92,11 @@ static bool newCooperative(uint32_t p,uint32_t target,int mode){
  if(same)for(int i=0;i<r.count;++i)if(r.sources[i].id==id){same=false;break;}
  if(same&&r.count>=cooperative::MaxSources)return false;
  if(!manualVersions.trackable(id))return false;
- cancelNative(p);InterlockedIncrement(&sh->cooperativeSeq);
+ if(mode!=cooperative::AirSingle)cancelNative(p);InterlockedIncrement(&sh->cooperativeSeq);
  if(!same){memset(&r,0,sizeof r);r.serial=++clickSerial;if(!r.serial)r.serial=++clickSerial;r.match=match;r.target=targetID;r.type=typeOf(target,kind(target));r.mode=mode;r.frame=frame;
-  uint32_t tactical=get<uint32_t>(0x887324);if(tactical>=0x10000){r.cameraX=get<int>(tactical+0xB0);r.cameraY=get<int>(tactical+0xB4);}
+  r.centerObject=target;
+  if(cooperative::damageMode(mode)){r.cameraX=get<int>(target+0x9C);r.cameraY=get<int>(target+0xA0);}
+  else {uint32_t tactical=get<uint32_t>(0x887324);if(tactical>=0x10000){r.cameraX=get<int>(tactical+0xB0);r.cameraY=get<int>(tactical+0xB4);}}
   int width=get<int>(0xB0CE30),height=get<int>(0xB0CE34);r.viewWidth=width>0&&width<=32768?width:get<int>(0x8A00A4);r.viewHeight=height>0&&height<=32768?height:get<int>(0x8A00A8);
  }
  r.tick=now;r.sources[r.count++]={id,manualVersions.get(id)};MemoryBarrier();InterlockedIncrement(&sh->cooperativeSeq);notifyHost();return true;
@@ -104,7 +118,7 @@ static int cooperativeInput(uint32_t p,uint32_t target,uint32_t bindings){
   }
  } if((sh->flags&AircraftSpread)&&airUnit(p)&&nativeEnemy(target,lastHouse)){
   int mode=(bindings&pointerinput::AirSecond)?cooperative::AirSecond:(bindings&pointerinput::AirFirst)?cooperative::AirFirst:0;
-  if(mode)return newCooperative(p,target,mode)?1:0;
+  if(mode){if(sh->aircraftAllocationPolicy==1)mode=cooperative::AirDamage;else if(sh->aircraftAllocationPolicy==2)mode=cooperative::AirSingle;return newCooperative(p,target,mode)?1:0;}
  }
  return 0;
 }
@@ -117,7 +131,7 @@ static void cancelCooperativePlan(int result){
  sh->cooperativeResult=result;MemoryBarrier();sh->cooperativeAck=sh->cooperativePlan;
 }
 static void resetRuntimeCooperative();
-static void resetCooperativeState(){resetRuntimeCooperative();entryReservationCount=cooperativeEffectCount=0;cooperativeAt=0;cooperativePlanSeen=0;}
+static void resetCooperativeState(){resetRuntimeCooperative();singleDamageSerial=singleDamageMatch=0;singleDamageCommitted=0;entryReservationCount=cooperativeEffectCount=0;cooperativeAt=0;cooperativePlanSeen=0;}
 static void restoreClickHooks(){}
 static void clickHooksTick(uint32_t flags){sh->clickHookStatus=(flags&SpecialClickFlags)?1:0;}
 static int entryReserved(uint32_t target,uint32_t ignore,uint32_t house){
@@ -129,7 +143,8 @@ static int entryReserved(uint32_t target,uint32_t ignore,uint32_t house){
  for(int i=0;i<entryReservationCount;++i){auto&r=entryReservations[i];uint32_t p=worldByID(r.id);if(r.target==get<uint32_t>(target+0x10)&&r.id!=ignore&&p&&clickView.entryDestination(p)!=target&&!(facility&&clickView.radioLinked(target,p)))reserved+=r.slots;}
  return reserved;
 }
-static int admitCooperative(const cooperative::Assignment&o,bool enter,uint32_t house,int frame,DWORD now){
+static int admitCooperative(const cooperative::Assignment&o,int mode,uint32_t house,int frame,DWORD now){
+ const bool enter=mode==cooperative::Enter;
  if(!nativeReady()||get<bool>(0xA8BC60+25)||!(sh->flags&(enter?AdvancedEnter:AircraftSpread)))return -1;
 uint32_t p=worldByID(o.id),t=worldByID(o.target);bool valid=p&&t&&own(p,house)&&live(t)&&typeOf(t,kind(t))==o.type&&manualVersions.get(o.id)==o.token&&!get<bool>(p+0x1C8)&&!get<uint32_t>(p+0x11C);
   int slots=0,mission=enter?7:1;
@@ -142,12 +157,30 @@ uint32_t p=worldByID(o.id),t=worldByID(o.target);bool valid=p&&t&&own(p,house)&&
     // building destination, establishes radio and queues Mission::Enter=7.
     // SetDestination in the received Enter event owns that same handshake.
     if(!bunker&&action==11)mission=9;}
-  }else if(valid){valid=airUnit(p)&&nativeEnemy(t,house);if(valid){planner::Actor source{},target{};rawCombatInfo(p,typeOf(p,kind(p)),kind(p),source,true);rawCombatInfo(t,o.type,kind(t),target,false);valid=planner::compatibleTarget(source,target,false);}}
+  }else if(valid){valid=airUnit(p)&&nativeEnemy(t,house);if(valid){planner::Actor source{},target{};rawCombatInfo(p,typeOf(p,kind(p)),kind(p),source,true);rawCombatInfo(t,o.type,kind(t),target,false);valid=planner::compatibleTarget(source,target,false);
+    if(valid&&cooperative::damageMode(mode)){const auto&r=sh->cooperativeRequest;uint32_t center=worldByID(r.target);
+     valid=cooperative::validDamage(o.expectedDamage)&&center&&center==r.centerObject&&typeOf(center,kind(center))==r.type;
+     if(valid&&mode==cooperative::AirDamage)valid=kind(t)==2&&!(target.flags&(planner::Airborne|planner::Manipulated))&&cooperative::distance(r.cameraX,r.cameraY,get<int>(t+0x9C),get<int>(t+0xA0))<=int64_t(cooperative::DamageRadius)*cooperative::DamageRadius;
+     if(valid&&mode==cooperative::AirSingle){
+      if(singleDamageSerial!=r.serial||singleDamageMatch!=r.match){singleDamageSerial=r.serial;singleDamageMatch=r.match;singleDamageCommitted=0;}
+      valid=o.target==r.target&&!stickyOwns(p)&&singleDamageCommitted*5<double(get<int>(t+0x6C))*6&&dispatchedAircraftSelectionReady(p);
+     }
+     if(valid){auto s=clickView.combat(p,frame,true),v=clickView.combat(t,frame,false);auto estimated=external::cooperativedamage::estimate(clickView,p,t,s,v);
+      uint32_t selectedWeapon=0;int slot=-1,close=0,air=0;
+      // The external selector is the existing supported policy. Confirm its
+      // actual native slot/weapon immediately before issuing; unsupported MOD
+      // selectors or a changed weapon/ammo/modifier fail closed, never budget
+      // a different live weapon as if the original estimate were still valid.
+      valid=cooperative::validDamage(estimated.damage)&&estimated.damage==o.expectedDamage&&GuardedCombatWeapon(p,t,&selectedWeapon,&slot,&close,&air)>0&&selectedWeapon==estimated.weapon&&slot==estimated.slot;
+     }
+    }
+   }}
   if(!valid)return -1;
 
   uint32_t ticket=0;uint32_t beforeTarget=get<uint32_t>(p+0x2B4);
   int beforeRearm=get<int>(p+0x2EC);
-  if(!nativeMission(house,o.id,mission,enter?0:o.target,enter?o.target:0,enter?0x34:0,0,0,taskarbiter::Owner::Cooperative,&ticket))return 0;
+  if(!nativeMission(house,o.id,mission,enter?0:o.target,enter?o.target:0,enter?0x34:0,0,0,taskarbiter::Owner::Cooperative,&ticket,-1,OrderAuthority::Local,false,mode==cooperative::AirSingle))return 0;
+  if(mode==cooperative::AirSingle){singleDamageCommitted+=o.expectedDamage;finishSingleCooperative(p);if(worldByID(o.id)==p&&get<uint32_t>(p+0x10)==o.id)deselectDispatchedAircraft(p);}
   // Preserve raw native event encoding, add only read-only effect observations.
   supersedeCooperativeEffect(o.id,match);
   if(ticket&&cooperativeEffectCount<cooperative::MaxSources&&(mission==1||mission==7||mission==2)){
@@ -158,9 +191,9 @@ uint32_t p=worldByID(o.id),t=worldByID(o.target);bool valid=p&&t&&own(p,house)&&
   if(enter)entryReservations[entryReservationCount++]={o.id,o.target,o.type,o.token,frame,slots};
  consumePlanning(1);return 1;
 }
-static std::vector<cooperative::Assignment> runtimeCoopOrders,runtimeCoopAccepted;
+static std::vector<cooperative::Assignment> runtimeCoopOrders,runtimeCoopAccepted,runtimeCoopProcessed;
 static cooperative::Request runtimeCoopRequest;static size_t runtimeCoopAt;static DWORD runtimeCoopTick;static int runtimeCoopFrame;static bool runtimeCoopPending;
-static void resetRuntimeCooperative(){runtimeCoopOrders.clear();runtimeCoopAccepted.clear();runtimeCoopRequest={};runtimeCoopAt=0;runtimeCoopPending=false;}
+static void resetRuntimeCooperative(){runtimeCoopOrders.clear();runtimeCoopAccepted.clear();runtimeCoopProcessed.clear();runtimeCoopRequest={};runtimeCoopAt=0;runtimeCoopPending=false;}
 static void runtimeCooperativeTick(uint32_t house,int frame,DWORD now){
  const auto&request=sh->cooperativeRequest;
  bool internal=compute::inside(sh->computeApplied,request.mode==cooperative::Enter?compute::Enter:compute::Aircraft);
@@ -169,23 +202,28 @@ static void runtimeCooperativeTick(uint32_t house,int frame,DWORD now){
  }
  if(request.serial!=runtimeCoopRequest.serial){resetRuntimeCooperative();runtimeCoopRequest=request;sh->runtimeCoopAccepted=sh->runtimeCoopRejected=0;runtimeCoopPending=true;}
  if(!runtimeCoopPending)return;
- bool recalc=runtimeCoopOrders.empty()||!freshness::valid(runtimeCoopRequest.match,match,runtimeCoopTick,runtimeCoopFrame,now,frame,freshness::Cooperative);
+ bool recalc=runtimeCoopOrders.empty()||(cooperative::damageMode(request.mode)&&frame!=runtimeCoopFrame)||!freshness::valid(runtimeCoopRequest.match,match,runtimeCoopTick,runtimeCoopFrame,now,frame,freshness::Cooperative);
  if(recalc){
   auto remaining=runtimeCoopRequest;
-  if(!runtimeCoopOrders.empty()&&!cooperative::retryRemaining(remaining,runtimeCoopOrders.data(),int(runtimeCoopOrders.size()),int(runtimeCoopAt))){runtimeCoopPending=false;sh->runtimeCoopDone=request.serial;return;}
+  bool hasRemaining=cooperative::damageMode(request.mode)?cooperative::retrySourcePool(remaining,runtimeCoopRequest,runtimeCoopProcessed):runtimeCoopOrders.empty()||cooperative::retryRemaining(remaining,runtimeCoopOrders.data(),int(runtimeCoopOrders.size()),int(runtimeCoopAt));
+  if(!hasRemaining){runtimeCoopPending=false;sh->runtimeCoopDone=request.serial;return;}
   static compute::QuotaConfig quotas;long seq=sh->quotaConfigSeq;if(seq&1)return;MemoryBarrier();memcpy(&quotas,&sh->quotaConfig,sizeof quotas);MemoryBarrier();if(seq!=sh->quotaConfigSeq||quotas.count<0||quotas.count>512)return;
   auto input=external::cooperativeInput(LocalRawRead{},remaining,[&](uint32_t type){const char*id=(const char*)(uintptr_t)(type+0x24);for(int i=0;i<quotas.count;++i)if(sameid(id,quotas.entries[i].id))return quotas.entries[i].quota;return quotas.defaults;});
   auto feature=request.mode==cooperative::Enter?featuretypes::EnterSource:featuretypes::Aircraft;
   for(size_t i=0;i<input.units.size();++i)for(size_t j=0;j<input.targets.size();++j)if(!featureTypeAllowed(feature,input.units[i].type)||(request.mode==cooperative::Enter&&!featureTypeAllowed(featuretypes::EnterTarget,input.targets[j].type)))input.compatible[i*input.targets.size()+j]=0;
-  if(request.mode!=cooperative::Enter)for(auto&t:input.targets)for(const auto&o:runtimeCoopAccepted)if(o.target==t.id&&o.type==t.type)++t.prior;
+  cooperative::reserveAccepted(input,runtimeCoopAccepted);
   runtimeCoopOrders=cooperative::allocate(input);runtimeCoopAt=0;runtimeCoopTick=now;runtimeCoopFrame=frame;
  }
  while(runtimeCoopAt<runtimeCoopOrders.size()&&planningRoom(1)>0&&outgoingRoom()>0){
   if(!freshness::valid(request.match,match,runtimeCoopTick,runtimeCoopFrame,sampleClock(sh),get<int>(0xA8ED84),freshness::Cooperative))return;
-  const auto&o=runtimeCoopOrders[runtimeCoopAt];int accepted=admitCooperative(o,request.mode==cooperative::Enter,house,frame,now);if(!accepted)return;
-  if(accepted>0){runtimeCoopAccepted.push_back(o);++sh->runtimeCoopAccepted;}else ++sh->runtimeCoopRejected;++runtimeCoopAt;
+  const auto&o=runtimeCoopOrders[runtimeCoopAt];int accepted=admitCooperative(o,request.mode,house,frame,now);if(!accepted)return;
+  runtimeCoopProcessed.push_back(o);if(accepted>0){runtimeCoopAccepted.push_back(o);++sh->runtimeCoopAccepted;}else ++sh->runtimeCoopRejected;++runtimeCoopAt;
  }
- if(runtimeCoopAt>=runtimeCoopOrders.size()){runtimeCoopPending=false;MemoryBarrier();sh->runtimeCoopDone=request.serial;notifyHost();}
+ if(runtimeCoopAt>=runtimeCoopOrders.size()){
+  cooperative::Request remaining;
+  if(cooperative::damageMode(request.mode)&&!runtimeCoopOrders.empty()&&cooperative::retrySourcePool(remaining,runtimeCoopRequest,runtimeCoopProcessed)){runtimeCoopOrders.clear();runtimeCoopAt=0;return;}
+  runtimeCoopPending=false;MemoryBarrier();sh->runtimeCoopDone=request.serial;notifyHost();
+ }
 }
 static void cooperativeTick(uint32_t house,int frame,DWORD now){
  observeCooperativeEffects(house,frame);
@@ -199,9 +237,9 @@ static void cooperativeTick(uint32_t house,int frame,DWORD now){
  bool enter=sh->cooperativeMode==cooperative::Enter;
  auto fresh=[&](){return freshness::valid(sh->cooperativeMatch,match,sh->cooperativeTick,sh->cooperativeFrame,sampleClock(sh),get<int>(0xA8ED84),freshness::Cooperative);};
  auto expire=[&](){sh->cooperativeResult=-7;sh->cooperativeRejected+=sh->cooperativeCount-cooperativeAt;cooperativeAt=sh->cooperativeCount;};
- if(compute::inside(sh->computeApplied,enter?compute::Enter:compute::Aircraft)||!nativeReady()||sh->cooperativeSerial!=sh->cooperativeRequest.serial||sh->cooperativeMode!=sh->cooperativeRequest.mode||sh->cooperativeMode<cooperative::Enter||sh->cooperativeMode>cooperative::AirSecond||sh->cooperativeRequest.match!=match||!freshness::intentAlive(sh->cooperativeRequest.tick,now)||sh->cooperativeCount<0||sh->cooperativeCount>cooperative::MaxSources||!(sh->flags&(enter?AdvancedEnter:AircraftSpread))){sh->cooperativeResult=-4;sh->cooperativeRejected+=sh->cooperativeCount-cooperativeAt;cooperativeAt=sh->cooperativeCount;}
+ if(compute::inside(sh->computeApplied,enter?compute::Enter:compute::Aircraft)||!nativeReady()||sh->cooperativeSerial!=sh->cooperativeRequest.serial||sh->cooperativeMode!=sh->cooperativeRequest.mode||sh->cooperativeMode<cooperative::Enter||sh->cooperativeMode>cooperative::AirSingle||sh->cooperativeRequest.match!=match||!freshness::intentAlive(sh->cooperativeRequest.tick,now)||sh->cooperativeCount<0||sh->cooperativeCount>cooperative::MaxSources||!(sh->flags&(enter?AdvancedEnter:AircraftSpread))){sh->cooperativeResult=-4;sh->cooperativeRejected+=sh->cooperativeCount-cooperativeAt;cooperativeAt=sh->cooperativeCount;}
  if(cooperativeAt<sh->cooperativeCount&&!fresh())expire();
- while(cooperativeAt<sh->cooperativeCount&&planningRoom(1)>0&&outgoingRoom()>0){if(!fresh()){expire();break;}int admitted=admitCooperative(sh->cooperativeOrders[cooperativeAt],enter,house,frame,now);
+ while(cooperativeAt<sh->cooperativeCount&&planningRoom(1)>0&&outgoingRoom()>0){if(!fresh()){expire();break;}int admitted=admitCooperative(sh->cooperativeOrders[cooperativeAt],sh->cooperativeMode,house,frame,now);
   if(!admitted)break;
   if(admitted<0){++sh->cooperativeRejected;++cooperativeAt;sh->cooperativeProcessed=cooperativeAt;continue;}
   sh->cooperativeAcceptedBits[cooperativeAt/32]|=uint32_t(1)<<(cooperativeAt%32);++sh->cooperativeAccepted;++cooperativeAt;sh->cooperativeProcessed=cooperativeAt;

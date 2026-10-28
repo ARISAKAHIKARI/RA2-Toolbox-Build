@@ -46,6 +46,8 @@ magnetronCheck=toggle(477,L"磁电轮换攻击",magnetronMode,20,210);magnetronK
 extraControls[EnterEnabled]=toggle(702,L"高级进驻",extra.enter,20,210);holdPresetControl(EnterPreset,EnterCustom,extra.enterKey);mouse(pointerinput::MouseEnter);next();
 extraControls[AirEnabled]=toggle(705,L"飞机分配攻击 · 1",extra.air,20,210);holdPresetControl(AirPreset1,AirCustom1,extra.airKey1);mouse(pointerinput::MouseAirFirst);next();
 label(L"飞机分配攻击 · 2",20,210);holdPresetControl(AirPreset2,AirCustom2,extra.airKey2);mouse(pointerinput::MouseAirSecond);next();
+label(L"飞机分配策略（1 / 2 共用）",20,260);extraControls[AircraftPolicy]=combo(9195);choices(extraControls[AircraftPolicy],{L"按数量配额（原模式 1 / 2）",L"5格战车 · 预计伤害 120%",L"单目标 120% · 派出后取消选中"},extra.aircraftAllocationPolicy);next();
+note(L"5格策略只选点选中心5格圆形内敌方战车（含边界），预计有效伤害足额后改分；没有其他未覆盖的可攻击目标时才追加。单目标策略达到生命值120%即停，仅成功提交的飞机取消选中，未派出飞机保持任务和选中；左/右键须开启“优先执行增强指令”接管原点击，独占中键/侧键可用。单目标不支持Shift排队（按住Shift时不派出）。预计伤害不保证实际命中。",76);
 extraControls[DiskEnabled]=toggle(719,L"飞碟主武器攻击",extra.disk,20,210);holdPresetControl(DiskPreset,DiskCustom,extra.diskKey);mouse(pointerinput::MouseDisk);next();
 extraControls[SellDrainedEnabled]=toggle(720,L"出售被吸取目标",extra.sellDrained,20,210);holdPresetControl(SellPreset,SellCustom,extra.sellKey);mouse(pointerinput::MouseSellDrained);next();
 extraControls[SellVehiclesEnabled]=toggle(721,L"出售战车",extra.sellVehicles,20,210);key(789,extra.sellKey,240,258,true);mouse(pointerinput::MouseSellVehicle);next();

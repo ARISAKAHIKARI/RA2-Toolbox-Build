@@ -83,6 +83,7 @@ static void pointerTick(){
      (next&&!continuation)||(next&&start)||DWORD(now-i.tick)>((continuation||i.operation==pointerinput::C4Test)?1500u:150u)||frame<i.frame||frame-i.frame>((continuation||i.operation==pointerinput::C4Test)?90:8)||
      i.count<0||i.count>pointerinput::MaxSources||i.operation<1||i.operation>9){pointerFinish(-7);return;}
   if(!continuation)pointerBatchValid=false;
+  if(cooperativeSingleInput(i.bindings)&&(i.bindings&pointerinput::Shift)){pointerFinish(-4);return;}
   if(i.operation!=pointerinput::Cancel){
    bool shiftUnsupported=(i.bindings&pointerinput::Shift)&&(i.operation==pointerinput::FollowNative||(i.bindings&pointerinput::RightClick)||!(i.bindings&(pointerinput::Advanced|pointerinput::Magnetron|pointerinput::CS|pointerinput::Enter|pointerinput::AirFirst|pointerinput::AirSecond)));
    uint32_t tactical=get<uint32_t>(0x887324);
@@ -103,7 +104,7 @@ static void pointerTick(){
      if(i.operation==pointerinput::FollowNative&&(i.bindings&pointerinput::LeftClick)&&pointerTarget&&own(pointerTarget,lastHouse)&&!(i.bindings&pointerinput::NativeForced)){
       unsigned action=0;if(!GuardedEnterAction(get<uint32_t>(get<uint32_t>(p)+0x74),p,pointerTarget,&action)||action==0||action==2||action==7||action==8||action==30||action==31||action==32){pointerTokens[n]=manualVersions.get(i.sources[n].id);continue;}
      }
-     cancelNative(p,i.operation!=pointerinput::C4Test&&!(i.operation==pointerinput::FollowNative&&(i.bindings&pointerinput::RightClick)));
+     if(!cooperativeSingleInput(i.bindings))cancelNative(p,i.operation!=pointerinput::C4Test&&!(i.operation==pointerinput::FollowNative&&(i.bindings&pointerinput::RightClick)));
      if(i.operation==pointerinput::FollowNative)observeNativeOreIntent(p,pointerTarget,pointerCell,i.bindings);
     }pointerTokens[n]=manualVersions.get(i.sources[n].id);}
    else if(pointerBatchTickets[n]){actorLeaseArbiter.release(match,i.sources[n].id,pointerBatchTickets[n]);pointerBatchTickets[n]=0;}
@@ -144,6 +145,10 @@ static void pointerTick(){
  bool suppressed=blocked.match==i.match&&blocked.x==i.x&&blocked.y==i.y&&
   ((i.bindings&pointerinput::RightClick)?blocked.physical==4:(i.bindings&pointerinput::LeftClick)?blocked.physical==6:false)&&
   (int32_t(i.tick-blocked.tick)>=-150&&int32_t(i.tick-blocked.tick)<=150);
+ const bool singleCooperative=cooperativeSingleInput(i.bindings);
+ // A native click already delivered to the whole group cannot be turned into
+ // a subset afterwards. Exclusive middle/side inputs need no native suppression.
+ if(singleCooperative&&((i.bindings&(pointerinput::RightClick|pointerinput::LeftClick))&&!suppressed||!pointerTarget)){pointerFinish(-4);return;}
  bool follow=!suppressed&&(i.operation==pointerinput::FollowNative||(i.bindings&pointerinput::RightClick));
  while(examined++<i.count){int n=pointerAt++;if(pointerAt>=i.count)pointerAt=0;if(pointerDone[n])continue;
   uint32_t p=worldByID(i.sources[n].id);
@@ -178,7 +183,7 @@ static void pointerTick(){
    bool mag=(i.bindings&pointerinput::Magnetron)&&(sh->flags&MagnetronInput)&&rawMagnetron(p);
    bool advanced=(i.bindings&pointerinput::Advanced)&&(sh->flags&AdvancedInput)&&featureObjectAllowed(featuretypes::AdvancedAttack,p);
    bool cs=i.operation==pointerinput::AttackMove||((i.bindings&pointerinput::CS)&&csAllowedFor(p,true));
-   if(!result&&!(i.bindings&pointerinput::Shift)&&(mag||advanced||cs)&&(kind(p)==1||kind(p)==2)&&nativeEnemy(pointerTarget,lastHouse)&&rawArmed(p)){
+   if(!singleCooperative&&!result&&!(i.bindings&pointerinput::Shift)&&(mag||advanced||cs)&&(kind(p)==1||kind(p)==2)&&nativeEnemy(pointerTarget,lastHouse)&&rawArmed(p)){
     if((i.bindings&pointerinput::LeftClick)&&!suppressed){
      if(get<uint32_t>(p+0x2B4)!=pointerTarget||(get<int>(p+0xAC)!=1&&get<int>(p+0xB4)!=1)){++remaining;continue;}
      result=1;nativeObserved=true;
