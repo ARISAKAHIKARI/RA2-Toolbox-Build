@@ -1,0 +1,57 @@
+#version 450
+#ifndef VOXEL_PASS
+#define VOXEL_PASS 0
+#endif
+// Exact ordering of the existing float barycentric rasterizer. Each triangle
+// is independent until uint atomics select maximum Z and earliest equal-Z
+// triangle. These three passes require only Vulkan 1.0 storage-buffer atomics.
+layout(local_size_x=64,local_size_y=1,local_size_z=1) in;
+struct Triangle { vec4 a; vec4 b; vec4 c; uvec4 material; };
+layout(set=0,binding=0,std430) readonly buffer Triangles { Triangle value[]; } triangles;
+layout(set=0,binding=1,std430) buffer Depths { uint value[]; } depths;
+layout(set=0,binding=2,std430) buffer Winners { uint value[]; } winners;
+layout(set=0,binding=3,std430) buffer Colors { uint value[]; } colors;
+layout(set=0,binding=4,std430) buffer Indices { uint value[]; } indices;
+layout(push_constant) uniform Params {
+ uint triangleOffset,triangleCount,depthOffset,winnerOffset,colorOffset,indexOffset,width,height;
+} p;
+float edge(vec4 a,vec4 b,vec2 point){
+ precise float dx=point.x-a.x,dy=point.y-a.y,bx=b.x-a.x,by=b.y-a.y;
+ precise float first=dx*by,second=dy*bx,result=first-second;
+ return result;
+}
+uint orderedDepth(float z){
+ // IEEE -0 and +0 compare equal in the CPU's strict z> test.
+ if(z==0.0)z=0.0;
+ uint bits=floatBitsToUint(z);
+ return (bits&0x80000000u)!=0u?~bits:(bits^0x80000000u);
+}
+void main(){
+#if VOXEL_PASS == 2
+ uint at=gl_GlobalInvocationID.x;if(at>=p.width*p.height)return;
+ uint winner=winners.value[p.winnerOffset+at];
+ uint color=0u,index=0u;
+ if(winner<p.triangleCount){uvec4 material=triangles.value[p.triangleOffset+winner].material;color=material.x;index=material.y;}
+ colors.value[p.colorOffset+at]=color;indices.value[p.indexOffset+at]=index;
+#else
+ uint id=gl_GlobalInvocationID.x;if(id>=p.triangleCount)return;
+ Triangle t=triangles.value[p.triangleOffset+id];
+ precise float area=edge(t.a,t.b,t.c.xy);if(abs(area)<0.000001)return;
+ ivec2 lo=max(ivec2(0),ivec2(floor(min(t.a.xy,min(t.b.xy,t.c.xy)))));
+ ivec2 hi=min(ivec2(p.width,p.height)-ivec2(1),ivec2(ceil(max(t.a.xy,max(t.b.xy,t.c.xy)))));
+ for(int y=lo.y;y<=hi.y;++y)for(int x=lo.x;x<=hi.x;++x){
+  vec2 point=vec2(x,y)+vec2(0.5);
+  precise float a=edge(t.b,t.c,point)/area,b=edge(t.c,t.a,point)/area;
+  precise float first=1.0-a,c=first-b;
+  if(a < -0.0001||b < -0.0001||c < -0.0001)continue;
+  precise float za=a*t.a.z,zb=b*t.b.z,zc=c*t.c.z;
+  precise float ab=za+zb,z=ab+zc;
+  uint at=uint(y)*p.width+uint(x),key=orderedDepth(z);
+#if VOXEL_PASS == 0
+  atomicMax(depths.value[p.depthOffset+at],key);
+#else
+  if(depths.value[p.depthOffset+at]==key)atomicMin(winners.value[p.winnerOffset+at],id);
+#endif
+ }
+#endif
+}
