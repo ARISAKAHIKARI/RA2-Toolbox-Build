@@ -45,5 +45,33 @@ int main(){
  assert(canvas.presentRegion(6,6,unchanged,-1,-1,3,3,2));
  assert(unchanged[0]==0); // no invented pixel outside the native backing
  assert(!canvas.presentRegion(8192,8192,scaled,0,0,4096,4096,2));
- std::puts("PASS: atomic DAC/RGB888 palette, 2x nearest and edge blend, transparent borders, native 1:1 fallback");
+ // Fractional 1.5x interpolation: a hard vertical silhouette must not
+ // blur across the edge, while uniform shading remains constant.
+ const uint32_t L=0xff101010u,H=0xfff0f0f0u;
+ assert(adaptivePixel(L,H,L,H,.4,.7)==L);
+ assert(adaptivePixel(L,H,L,H,.6,.2)==H);
+ assert(adaptivePixel(L,L,L,L,.35,.65)==L);
+ assert(adaptivePixel(0,H,0,H,.2,.6)==0);
+ assert(adaptivePixel(0,H,0,H,.8,.6)==H);
+ // A real physical 3840/2560=1.5x case at small but identical ratios.
+ external::camera::NativeCanvas fractional;
+ assert(fractional.reset(4,4));
+ fractional.underlayRect(0,0,2,4,0x101010);
+ fractional.underlayRect(2,0,4,4,0xf0f0f0);
+ std::vector<uint32_t> restored,original;
+ assert(fractional.presentRegion(6,6,restored,0,0,4,4,3));
+ assert(fractional.presentRegion(6,6,original,0,0,4,4,0));
+ assert(restored.size()==36&&restored[2*6+0]==L&&restored[2*6+5]==H);
+ assert(restored!=original); // original box filter softens a hard edge
+ for(uint32_t p:restored)assert((p>>24)==255);
+ // Upscale decision must leave exact native 1:1 untouched.
+ assert(fractional.presentRegion(4,4,original,0,0,4,4,0));
+ assert(fractional.presentRegion(4,4,restored,0,0,4,4,3));
+ assert(restored==original);
+ // Any transparent outside-backing region stays transparent.
+ assert(fractional.presentRegion(6,6,restored,-4,-4,4,4,3));
+ for(auto p:restored)assert(p==0);
+ // reject invalid aspect/sampling envelopes.
+ assert(!sampleAdaptive([](int,int){return 0xff223344u;},0,0,4,4,3,6,restored));
+ std::puts("PASS: atomic DAC/RGB888 palette, 2x nearest and edge blend, transparent borders, native 1:1 fallback, fractional 1.5x and alpha-safe edges");
 }
