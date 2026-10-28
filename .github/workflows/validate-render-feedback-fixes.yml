@@ -76,7 +76,7 @@ jobs:
         shell: pwsh
         run: |
           foreach($name in 'overlay_compositor_windows','native_feedback_windows','physical_presentation_windows','overlay_stack_windows'){
-            & $env:ZIG_EXE c++ -target x86-windows-gnu -std=c++17 -O2 "source/assist/tests/$name.cpp" -o "$name-test.exe" -lgdi32 -luser32
+            & $env:ZIG_EXE c++ -target x86-windows-gnu -std=c++17 -O2 -UNDEBUG "source/assist/tests/$name.cpp" -o "$name-test.exe" -lgdi32 -luser32
             if($LASTEXITCODE -ne 0){throw "Compilation failed: $name"}
             & ".\$name-test.exe"
             if($LASTEXITCODE -ne 0){throw "Test failed: $name"}
@@ -84,10 +84,10 @@ jobs:
       - name: Stable publication and cursor regressions
         shell: pwsh
         run: |
-          & $env:ZIG_EXE c++ -target x86-windows-gnu -std=c++17 -O2 -c source/third_party/xbrz/xbrz.cpp -o xbrz-test.o
+          & $env:ZIG_EXE c++ -target x86-windows-gnu -std=c++17 -O2 -UNDEBUG -c source/third_party/xbrz/xbrz.cpp -o xbrz-test.o
           if($LASTEXITCODE -ne 0){throw 'xBRZ compilation failed'}
           foreach($name in 'render_presentation','render_feedback_host','render_scroll','overlay_incremental','overlay_present_rate','native_order_feedback','world_presentation','live_shroud_scene','terrain_coverage','voxel_posture','xbrz_bilinear','vulkan_compute','vulkan_region'){
-            & $env:ZIG_EXE c++ -target x86-windows-gnu -std=c++17 -O2 "source/assist/tests/$name.cpp" xbrz-test.o -o "$name-test.exe"
+            & $env:ZIG_EXE c++ -target x86-windows-gnu -std=c++17 -O2 -UNDEBUG "source/assist/tests/$name.cpp" xbrz-test.o -o "$name-test.exe"
             if($LASTEXITCODE -ne 0){throw "Compilation failed: $name"}
             & ".\$name-test.exe"
             if($LASTEXITCODE -ne 0){throw "Test failed: $name"}

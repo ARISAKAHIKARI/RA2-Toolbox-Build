@@ -65,3 +65,5 @@ worker 开始工作时采用当前相机，在世界身份和投影不变的前�
 ## 验证记录
 
 汇总见 [render-feedback-performance.json](evidence/render-feedback-performance.json)。GPU集成前的CPU portable回归 **42/42通过**，另有强制纯量缩放、进程读取、素材、原子相机、保活和呈现频率夹具。Windows compositor/stack等已交叉编译；本记录不提前宣称正在进行的新构建CI执行通过。后续 GPU 阶段另立笔记与验证，不以本次CPU结果替代其实际dispatch或回读测试。
+
+首轮主集成 Windows CI `40736169061` 在 `live_shroud_scene` 失败。Zig 0.13 的 Win32 `-O2` 默认定义 `NDEBUG`，夹具中的 assert 准备步骤被跳过；同轮增量测试甚至报告 0 次重画，不能把其 PASS 文案当作断言已执行。所有 Windows 测试编译现在明确加 `-UNDEBUG`，产品构建选项不变，并重跑完整检查；另修正该夹具在 32 位平台的 uint64 打印格式。Linux g++ 测试的断言原本已启用，此前的 42 项结果不受这项测试建置问题影响。

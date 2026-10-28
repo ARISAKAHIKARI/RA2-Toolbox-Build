@@ -110,6 +110,6 @@ int main(){
  uint32_t changedCell=0;assert(bytes(Cells+(80*512+86)*4,&changedCell,4));put(changedCell+0x12C,uint8_t(0));
  assert(live.capture(LiveRead{},large->geo,3300,500,900,450,dense2)&&!dense1.sameMask(dense2));
  advanceDuringMask=true;assert(!live.capture(LiveRead{},large->geo,3300,500,900,450,dense2));put(0xA8ED84,13);
- std::printf("visibility crop cells=%zu freshCalls=%zu freshPages=%zu bytes=%zu; terrain sources=%zu/%zu pages=%zu\n",dense1.cells.size(),io.calls,io.pages,io.bytes,limited.cells,allSources,limited.pages);
+ std::printf("visibility crop cells=%zu freshCalls=%zu freshPages=%zu bytes=%zu; terrain sources=%llu/%zu pages=%zu\n",dense1.cells.size(),io.calls,io.pages,io.bytes,static_cast<unsigned long long>(limited.cells),allSources,limited.pages);
  std::puts("PASS: hidden raised TMP destination masking, immediate live shroud updates without terrain rebuild, failed lookup rejection, sparse crop sampling and actual SHP boundary intersections");
 }
