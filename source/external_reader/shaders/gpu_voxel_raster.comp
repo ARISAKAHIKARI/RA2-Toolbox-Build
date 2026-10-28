@@ -8,10 +8,11 @@
 layout(local_size_x=64,local_size_y=1,local_size_z=1) in;
 struct Triangle { vec4 a; vec4 b; vec4 c; uvec4 material; };
 layout(set=0,binding=0,std430) readonly buffer Triangles { Triangle value[]; } triangles;
-layout(set=0,binding=1,std430) buffer Depths { uint value[]; } depths;
-layout(set=0,binding=2,std430) buffer Winners { uint value[]; } winners;
-layout(set=0,binding=3,std430) buffer Colors { uint value[]; } colors;
-layout(set=0,binding=4,std430) buffer Indices { uint value[]; } indices;
+// Depth and winner regions share one scratch buffer, so the pass needs only
+// four storage bindings (the Vulkan 1.0 minimum per compute stage).
+layout(set=0,binding=1,std430) buffer Scratch { uint value[]; } scratch;
+layout(set=0,binding=2,std430) buffer Colors { uint value[]; } colors;
+layout(set=0,binding=3,std430) buffer Indices { uint value[]; } indices;
 layout(push_constant) uniform Params {
  uint triangleOffset,triangleCount,depthOffset,winnerOffset,colorOffset,indexOffset,width,height;
 } p;
@@ -29,7 +30,7 @@ uint orderedDepth(float z){
 void main(){
 #if VOXEL_PASS == 2
  uint at=gl_GlobalInvocationID.x;if(at>=p.width*p.height)return;
- uint winner=winners.value[p.winnerOffset+at];
+ uint winner=scratch.value[p.winnerOffset+at];
  uint color=0u,index=0u;
  if(winner<p.triangleCount){uvec4 material=triangles.value[p.triangleOffset+winner].material;color=material.x;index=material.y;}
  colors.value[p.colorOffset+at]=color;indices.value[p.indexOffset+at]=index;
@@ -48,9 +49,9 @@ void main(){
   precise float ab=za+zb,z=ab+zc;
   uint at=uint(y)*p.width+uint(x),key=orderedDepth(z);
 #if VOXEL_PASS == 0
-  atomicMax(depths.value[p.depthOffset+at],key);
+  atomicMax(scratch.value[p.depthOffset+at],key);
 #else
-  if(depths.value[p.depthOffset+at]==key)atomicMin(winners.value[p.winnerOffset+at],id);
+  if(scratch.value[p.depthOffset+at]==key)atomicMin(scratch.value[p.winnerOffset+at],id);
 #endif
  }
 #endif
