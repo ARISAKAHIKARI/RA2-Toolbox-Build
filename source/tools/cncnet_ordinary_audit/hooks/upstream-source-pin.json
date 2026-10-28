@@ -1,0 +1,284 @@
+{
+  "repository": "CnCNet/yrpp-spawner",
+  "commit": "fbe8d7d2620584d04ba14fa3580943bfa1448d40",
+  "tree": "0a1f3074b95213b5a36b7938e2b711950f179513",
+  "scope": "All public src blobs and four root build/README/gitmodule files; private and YRpp submodule contents excluded",
+  "files": [
+    {
+      "path": ".gitmodules",
+      "git_blob_sha": "f7c3973d4bf87e52804dd4f1ea2c1c34aaa8157e"
+    },
+    {
+      "path": "README.md",
+      "git_blob_sha": "72fab775005240b2f031623a3092d8191f979147"
+    },
+    {
+      "path": "Spawner.props",
+      "git_blob_sha": "56a861542d22362e530cf68e28bb22da7edf5646"
+    },
+    {
+      "path": "Spawner.vcxproj",
+      "git_blob_sha": "5a109174248cbb754444a822679b78ad70976d6b"
+    },
+    {
+      "path": "src/CnCNetYR/AppIcon.cpp",
+      "git_blob_sha": "41ae36964da82880207aee4af50f6f6fec717df3"
+    },
+    {
+      "path": "src/CnCNetYR/Misc.cpp",
+      "git_blob_sha": "738e43478bbfcf52ee93fdab45c4318e18fa1f03"
+    },
+    {
+      "path": "src/CnCNetYR/OpenTopCloak.cpp",
+      "git_blob_sha": "fb4f4cfb15bbd8692b190557cfc05fb01772796d"
+    },
+    {
+      "path": "src/CnCNetYR/Ra2Mode.cpp",
+      "git_blob_sha": "299fd667d042ce7577f266bbc66d285b11f6dac2"
+    },
+    {
+      "path": "src/CnCNetYR/Ra2Mode.h",
+      "git_blob_sha": "0f614d6648ec7e301a0fcf1dcc86a91f8975c3b3"
+    },
+    {
+      "path": "src/Ext/Event/Body.cpp",
+      "git_blob_sha": "ee753c3fb5265d4ddd917507b7ff67339420ce5a"
+    },
+    {
+      "path": "src/Ext/Event/Body.h",
+      "git_blob_sha": "d375e301d76ff1599352c7ba2f2061e60681b7b1"
+    },
+    {
+      "path": "src/Ext/INIClass/Body.cpp",
+      "git_blob_sha": "c9581545741f199a0aed7254ed0a7403b9d62895"
+    },
+    {
+      "path": "src/Ext/INIClass/Body.h",
+      "git_blob_sha": "b09f3f63b30a602655030e9feef421f8bf80d334"
+    },
+    {
+      "path": "src/Main.Config.cpp",
+      "git_blob_sha": "14d0a501ddb17c90dec91cda32beda479d7db601"
+    },
+    {
+      "path": "src/Main.Config.h",
+      "git_blob_sha": "ba431e7f813eceee92133189fd6ed8633960376a"
+    },
+    {
+      "path": "src/Main.Ext.cpp",
+      "git_blob_sha": "5d97bc01e4434442803286f75536df4a960d39ba"
+    },
+    {
+      "path": "src/Main.Hook.cpp",
+      "git_blob_sha": "c0e0be77f35d5f46c5a40f408a0b7f8e6835bc6f"
+    },
+    {
+      "path": "src/Main.cpp",
+      "git_blob_sha": "7f64c2ee1bd422be13c88a3ea0328f9e33630fcd"
+    },
+    {
+      "path": "src/Main.h",
+      "git_blob_sha": "dce17322ab5ebaf05dfc1704b5708844459becce"
+    },
+    {
+      "path": "src/Misc/Blowfish/Hooks.Blowfish.cpp",
+      "git_blob_sha": "fe4abb2e559bdae9130c1453f0c42e8cdf532073"
+    },
+    {
+      "path": "src/Misc/Blowfish/blowfish.cpp",
+      "git_blob_sha": "711e4910fdd31516e4aacd77472a1eb028e4e1a0"
+    },
+    {
+      "path": "src/Misc/Blowfish/blowfish.h",
+      "git_blob_sha": "636e8d545de099b2fe664290d81869a331e97a70"
+    },
+    {
+      "path": "src/Misc/Bugfixes.ClampTacticalPos.cpp",
+      "git_blob_sha": "3fb3ffb3b9c1a58e84f4c1913a5a3d366dacafdd"
+    },
+    {
+      "path": "src/Misc/Bugfixes.CommonCrashes.cpp",
+      "git_blob_sha": "8d05030f0edcdd80c5fcd0fab8312827e95371ea"
+    },
+    {
+      "path": "src/Misc/Bugfixes.Desyncs.cpp",
+      "git_blob_sha": "8ee8797aa94a5f2f5d16a65c0d49e2fb5ce7b7f3"
+    },
+    {
+      "path": "src/Misc/Bugfixes.Desyncs.h",
+      "git_blob_sha": "d0859bb6da8696b63ccb003abe6a0b23fded0cb6"
+    },
+    {
+      "path": "src/Misc/Bugfixes.ExceptionCatch.cpp",
+      "git_blob_sha": "a2907f499553f98514d7298684637d42e452ae79"
+    },
+    {
+      "path": "src/Misc/Bugfixes.IsoMapPack5Limit.cpp",
+      "git_blob_sha": "3b31289d23e6fcf3fd69b34237946d6c9d99c065"
+    },
+    {
+      "path": "src/Misc/Bugfixes.LocalInterfaces.cpp",
+      "git_blob_sha": "bbed1f9aaa887299dfe275bc548ff373477e28d3"
+    },
+    {
+      "path": "src/Misc/Bugfixes.cpp",
+      "git_blob_sha": "ee44fbf154374ed3d0726eba53d1eed106eefc47"
+    },
+    {
+      "path": "src/Misc/CopyProtection.cpp",
+      "git_blob_sha": "7a062158f232468c7b368a1cd3c432511cccb12f"
+    },
+    {
+      "path": "src/Misc/DisableEdgeScrolling.cpp",
+      "git_blob_sha": "0c2673b85fe752bf6faba902c912973da0b37e35"
+    },
+    {
+      "path": "src/Misc/GameSpeed.cpp",
+      "git_blob_sha": "6c9173883c67795cc42603ca24b2146fbf9b12b3"
+    },
+    {
+      "path": "src/Misc/InGameChat.cpp",
+      "git_blob_sha": "39c1eb7e0b428b3383c87691feb9a8593b6ea60c"
+    },
+    {
+      "path": "src/Misc/MPDebug.cpp",
+      "git_blob_sha": "8dd105570e73460a6975dcf8f8d7020a5d0e00df"
+    },
+    {
+      "path": "src/Misc/NoCD.cpp",
+      "git_blob_sha": "598d82e8f2abfd620073458409fb522ca0563747"
+    },
+    {
+      "path": "src/Misc/Observers.Visibility.cpp",
+      "git_blob_sha": "539dafd666b1158a4b2d9e3cb8af379953769b9a"
+    },
+    {
+      "path": "src/Misc/Observers.cpp",
+      "git_blob_sha": "67cdf461b3a2cf70e22fc97d514f0cf77c37e797"
+    },
+    {
+      "path": "src/Misc/QuickExit.cpp",
+      "git_blob_sha": "9dbae39cbd5683f567e16fb1d0d5bc9526b0a0e7"
+    },
+    {
+      "path": "src/Misc/SavedGamesInSubdir.cpp",
+      "git_blob_sha": "790731959c500df5acb74c05d39606310834dbbd"
+    },
+    {
+      "path": "src/Misc/SilentCheer.cpp",
+      "git_blob_sha": "49ef03775f306d926161fed1dc375aba2fca8191"
+    },
+    {
+      "path": "src/Misc/SkipCreateAppMutex.cpp",
+      "git_blob_sha": "ed6197cc8135ce6dee021e3edddec4be4cc0a3b5"
+    },
+    {
+      "path": "src/Misc/SkipScoreScreen.cpp",
+      "git_blob_sha": "24aff17914b422174ab19de2a48720689f8ed23d"
+    },
+    {
+      "path": "src/Misc/VideoMode.cpp",
+      "git_blob_sha": "762307ef8bb684acc64a7cf6fd356862d0aa0f56"
+    },
+    {
+      "path": "src/Spawner/CustomMixes.cpp",
+      "git_blob_sha": "9b085781a1118f2f22fa3ad4d848c828b59397c8"
+    },
+    {
+      "path": "src/Spawner/NetHack.cpp",
+      "git_blob_sha": "0b3c037804d734463bf985630803e8ab9594c0d7"
+    },
+    {
+      "path": "src/Spawner/NetHack.h",
+      "git_blob_sha": "69ec0c1378001404a1c0714d3d74c420aadd48d0"
+    },
+    {
+      "path": "src/Spawner/ProtocolZero.Hook.cpp",
+      "git_blob_sha": "9c82c6e543f24a4409691ce1cbeae78405d41fdc"
+    },
+    {
+      "path": "src/Spawner/ProtocolZero.LatencyLevel.cpp",
+      "git_blob_sha": "081c26d46cb67801aa3820e4c8333852b13f6655"
+    },
+    {
+      "path": "src/Spawner/ProtocolZero.LatencyLevel.h",
+      "git_blob_sha": "8dd0b524df4682a3d25ea82240b79898420de21f"
+    },
+    {
+      "path": "src/Spawner/ProtocolZero.cpp",
+      "git_blob_sha": "34f5be690223ea8a97e602499264a006b433e775"
+    },
+    {
+      "path": "src/Spawner/ProtocolZero.h",
+      "git_blob_sha": "b2d7dc1986aa8c8fadf1a3b58fe68d993931fb19"
+    },
+    {
+      "path": "src/Spawner/QuickMatch.cpp",
+      "git_blob_sha": "f6203b5ef816b0ff5c624388a7428cef24c2088b"
+    },
+    {
+      "path": "src/Spawner/RandomMap.cpp",
+      "git_blob_sha": "3f7f5d317ebce9c7ecc356b80e852678c6d701ec"
+    },
+    {
+      "path": "src/Spawner/Spawner.Config.cpp",
+      "git_blob_sha": "33004f979761f15d7cd6a92076f57c2c514b402a"
+    },
+    {
+      "path": "src/Spawner/Spawner.Config.h",
+      "git_blob_sha": "f7834af82a1fcfabf894e822834ed0bd4284239e"
+    },
+    {
+      "path": "src/Spawner/Spawner.Hook.cpp",
+      "git_blob_sha": "6d2f4ee93a9c19052ac8f56eb0160ccd44b98800"
+    },
+    {
+      "path": "src/Spawner/Spawner.cpp",
+      "git_blob_sha": "ef23ac0c077424c287d813906ce921e10aad2e4a"
+    },
+    {
+      "path": "src/Spawner/Spawner.h",
+      "git_blob_sha": "5317554d7056f9dfc70cc787e9f97eb38e82d37d"
+    },
+    {
+      "path": "src/Spawner/Statistics.cpp",
+      "git_blob_sha": "c993cac9518cd66737514e64597037f8852e59fb"
+    },
+    {
+      "path": "src/UI/Hooks.SaveButton.cpp",
+      "git_blob_sha": "ca72cabfb075233dd214ca971360ae57469f26e3"
+    },
+    {
+      "path": "src/Utilities/Debug.cpp",
+      "git_blob_sha": "240c86f455546d9e110c4d6af6dcf04290d112f6"
+    },
+    {
+      "path": "src/Utilities/Debug.h",
+      "git_blob_sha": "a125c9ef223fafacbd495be0d2fcdf265feff6fa"
+    },
+    {
+      "path": "src/Utilities/DumperTypes.h",
+      "git_blob_sha": "2b44508bf3d7761796df6acfaebc0d4b6f59be9b"
+    },
+    {
+      "path": "src/Utilities/Macro.h",
+      "git_blob_sha": "cace4481da00445682df029c96b9c3e9e522fcfe"
+    },
+    {
+      "path": "src/Utilities/Patch.cpp",
+      "git_blob_sha": "f3444392bfade410a631c9100f0991818b494e20"
+    },
+    {
+      "path": "src/Utilities/Patch.h",
+      "git_blob_sha": "dfcc9734324d60cde06072dd6757104d689c511f"
+    },
+    {
+      "path": "src/version.h",
+      "git_blob_sha": "e2f7f841a028e3ddf9e5eb32376d0e4c1aeaf13c"
+    },
+    {
+      "path": "src/version.rc",
+      "git_blob_sha": "0776932f668da666d626b0337f9bf29f356fc7b5"
+    }
+  ]
+}

@@ -1,0 +1,273 @@
+{
+  "scope": "Execute actual ordinary v17 FP repair helpers and supplied Runtime callbacks.\n\nControlled x86/Win32 fixture; no actual Syringe scheduling, driver or multiplayer.\nThe ordinary rate-limited logging counter is set to its natural cap (10) because\nthis fixture does not initialize ordinary CRT logging. Repair code is unmodified.\n",
+  "ordinary_sha256": "58f198973bd0fd3b0e1b2c42fc6c545efe1fd399680abc2e8d6e9e189751614d",
+  "runtime_sha256": "eba0ce9f13376aa193942a4765b07fc28e2f63d7a577bed9450325d8e951f4f7",
+  "game_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+  "real_multiplayer": false,
+  "results": [
+    {
+      "ordinary_export": "SetVideoMode_RepairFPState",
+      "ordinary_rva": "0x35b0",
+      "incoming_mxcsr": "0x1f80",
+      "expected_mxcsr": "0x1f80",
+      "order": "ordinary_then_runtime",
+      "callback_inside_mxcsr": "0x1f80",
+      "chained_mxcsr": "0x1f80",
+      "x87_control_restored": true,
+      "status": "PASS"
+    },
+    {
+      "ordinary_export": "SetVideoMode_RepairFPState",
+      "ordinary_rva": "0x35b0",
+      "incoming_mxcsr": "0x1f80",
+      "expected_mxcsr": "0x1f80",
+      "order": "runtime_then_ordinary",
+      "callback_inside_mxcsr": "0x1f80",
+      "chained_mxcsr": "0x1f80",
+      "x87_control_restored": true,
+      "status": "PASS"
+    },
+    {
+      "ordinary_export": "SetVideoMode_RepairFPState",
+      "ordinary_rva": "0x35b0",
+      "incoming_mxcsr": "0x1fa0",
+      "expected_mxcsr": "0x1fa0",
+      "order": "ordinary_then_runtime",
+      "callback_inside_mxcsr": "0x1f80",
+      "chained_mxcsr": "0x1fa0",
+      "x87_control_restored": true,
+      "status": "PASS"
+    },
+    {
+      "ordinary_export": "SetVideoMode_RepairFPState",
+      "ordinary_rva": "0x35b0",
+      "incoming_mxcsr": "0x1fa0",
+      "expected_mxcsr": "0x1fa0",
+      "order": "runtime_then_ordinary",
+      "callback_inside_mxcsr": "0x1f80",
+      "chained_mxcsr": "0x1fa0",
+      "x87_control_restored": true,
+      "status": "PASS"
+    },
+    {
+      "ordinary_export": "SetVideoMode_RepairFPState",
+      "ordinary_rva": "0x35b0",
+      "incoming_mxcsr": "0x3f80",
+      "expected_mxcsr": "0x1f80",
+      "order": "ordinary_then_runtime",
+      "callback_inside_mxcsr": "0x1f80",
+      "chained_mxcsr": "0x1f80",
+      "x87_control_restored": true,
+      "status": "PASS"
+    },
+    {
+      "ordinary_export": "SetVideoMode_RepairFPState",
+      "ordinary_rva": "0x35b0",
+      "incoming_mxcsr": "0x3f80",
+      "expected_mxcsr": "0x1f80",
+      "order": "runtime_then_ordinary",
+      "callback_inside_mxcsr": "0x1f80",
+      "chained_mxcsr": "0x3f80",
+      "x87_control_restored": true,
+      "status": "PASS"
+    },
+    {
+      "ordinary_export": "SetVideoMode_RepairFPState",
+      "ordinary_rva": "0x35b0",
+      "incoming_mxcsr": "0x5f80",
+      "expected_mxcsr": "0x1f80",
+      "order": "ordinary_then_runtime",
+      "callback_inside_mxcsr": "0x1f80",
+      "chained_mxcsr": "0x1f80",
+      "x87_control_restored": true,
+      "status": "PASS"
+    },
+    {
+      "ordinary_export": "SetVideoMode_RepairFPState",
+      "ordinary_rva": "0x35b0",
+      "incoming_mxcsr": "0x5f80",
+      "expected_mxcsr": "0x1f80",
+      "order": "runtime_then_ordinary",
+      "callback_inside_mxcsr": "0x1f80",
+      "chained_mxcsr": "0x5f80",
+      "x87_control_restored": true,
+      "status": "PASS"
+    },
+    {
+      "ordinary_export": "SetVideoMode_RepairFPState",
+      "ordinary_rva": "0x35b0",
+      "incoming_mxcsr": "0x7fa0",
+      "expected_mxcsr": "0x1f80",
+      "order": "ordinary_then_runtime",
+      "callback_inside_mxcsr": "0x1f80",
+      "chained_mxcsr": "0x1f80",
+      "x87_control_restored": true,
+      "status": "PASS"
+    },
+    {
+      "ordinary_export": "SetVideoMode_RepairFPState",
+      "ordinary_rva": "0x35b0",
+      "incoming_mxcsr": "0x7fa0",
+      "expected_mxcsr": "0x1f80",
+      "order": "runtime_then_ordinary",
+      "callback_inside_mxcsr": "0x1f80",
+      "chained_mxcsr": "0x7fa0",
+      "x87_control_restored": true,
+      "status": "PASS"
+    },
+    {
+      "ordinary_export": "SetVideoMode_RepairFPState",
+      "ordinary_rva": "0x35b0",
+      "incoming_mxcsr": "0x9fc0",
+      "expected_mxcsr": "0x1f80",
+      "order": "ordinary_then_runtime",
+      "callback_inside_mxcsr": "0x1f80",
+      "chained_mxcsr": "0x1f80",
+      "x87_control_restored": true,
+      "status": "PASS"
+    },
+    {
+      "ordinary_export": "SetVideoMode_RepairFPState",
+      "ordinary_rva": "0x35b0",
+      "incoming_mxcsr": "0x9fc0",
+      "expected_mxcsr": "0x1f80",
+      "order": "runtime_then_ordinary",
+      "callback_inside_mxcsr": "0x1f80",
+      "chained_mxcsr": "0x9fc0",
+      "x87_control_restored": true,
+      "status": "PASS"
+    },
+    {
+      "ordinary_export": "LogicClass_Update_RepairFPState",
+      "ordinary_rva": "0x3600",
+      "incoming_mxcsr": "0x1f80",
+      "expected_mxcsr": "0x1f80",
+      "order": "ordinary_then_runtime",
+      "callback_inside_mxcsr": "0x1f80",
+      "chained_mxcsr": "0x1f80",
+      "x87_control_restored": true,
+      "status": "PASS"
+    },
+    {
+      "ordinary_export": "LogicClass_Update_RepairFPState",
+      "ordinary_rva": "0x3600",
+      "incoming_mxcsr": "0x1f80",
+      "expected_mxcsr": "0x1f80",
+      "order": "runtime_then_ordinary",
+      "callback_inside_mxcsr": "0x1f80",
+      "chained_mxcsr": "0x1f80",
+      "x87_control_restored": true,
+      "status": "PASS"
+    },
+    {
+      "ordinary_export": "LogicClass_Update_RepairFPState",
+      "ordinary_rva": "0x3600",
+      "incoming_mxcsr": "0x1fa0",
+      "expected_mxcsr": "0x1fa0",
+      "order": "ordinary_then_runtime",
+      "callback_inside_mxcsr": "0x1f80",
+      "chained_mxcsr": "0x1fa0",
+      "x87_control_restored": true,
+      "status": "PASS"
+    },
+    {
+      "ordinary_export": "LogicClass_Update_RepairFPState",
+      "ordinary_rva": "0x3600",
+      "incoming_mxcsr": "0x1fa0",
+      "expected_mxcsr": "0x1fa0",
+      "order": "runtime_then_ordinary",
+      "callback_inside_mxcsr": "0x1f80",
+      "chained_mxcsr": "0x1fa0",
+      "x87_control_restored": true,
+      "status": "PASS"
+    },
+    {
+      "ordinary_export": "LogicClass_Update_RepairFPState",
+      "ordinary_rva": "0x3600",
+      "incoming_mxcsr": "0x3f80",
+      "expected_mxcsr": "0x1f80",
+      "order": "ordinary_then_runtime",
+      "callback_inside_mxcsr": "0x1f80",
+      "chained_mxcsr": "0x1f80",
+      "x87_control_restored": true,
+      "status": "PASS"
+    },
+    {
+      "ordinary_export": "LogicClass_Update_RepairFPState",
+      "ordinary_rva": "0x3600",
+      "incoming_mxcsr": "0x3f80",
+      "expected_mxcsr": "0x1f80",
+      "order": "runtime_then_ordinary",
+      "callback_inside_mxcsr": "0x1f80",
+      "chained_mxcsr": "0x3f80",
+      "x87_control_restored": true,
+      "status": "PASS"
+    },
+    {
+      "ordinary_export": "LogicClass_Update_RepairFPState",
+      "ordinary_rva": "0x3600",
+      "incoming_mxcsr": "0x5f80",
+      "expected_mxcsr": "0x1f80",
+      "order": "ordinary_then_runtime",
+      "callback_inside_mxcsr": "0x1f80",
+      "chained_mxcsr": "0x1f80",
+      "x87_control_restored": true,
+      "status": "PASS"
+    },
+    {
+      "ordinary_export": "LogicClass_Update_RepairFPState",
+      "ordinary_rva": "0x3600",
+      "incoming_mxcsr": "0x5f80",
+      "expected_mxcsr": "0x1f80",
+      "order": "runtime_then_ordinary",
+      "callback_inside_mxcsr": "0x1f80",
+      "chained_mxcsr": "0x5f80",
+      "x87_control_restored": true,
+      "status": "PASS"
+    },
+    {
+      "ordinary_export": "LogicClass_Update_RepairFPState",
+      "ordinary_rva": "0x3600",
+      "incoming_mxcsr": "0x7fa0",
+      "expected_mxcsr": "0x1f80",
+      "order": "ordinary_then_runtime",
+      "callback_inside_mxcsr": "0x1f80",
+      "chained_mxcsr": "0x1f80",
+      "x87_control_restored": true,
+      "status": "PASS"
+    },
+    {
+      "ordinary_export": "LogicClass_Update_RepairFPState",
+      "ordinary_rva": "0x3600",
+      "incoming_mxcsr": "0x7fa0",
+      "expected_mxcsr": "0x1f80",
+      "order": "runtime_then_ordinary",
+      "callback_inside_mxcsr": "0x1f80",
+      "chained_mxcsr": "0x7fa0",
+      "x87_control_restored": true,
+      "status": "PASS"
+    },
+    {
+      "ordinary_export": "LogicClass_Update_RepairFPState",
+      "ordinary_rva": "0x3600",
+      "incoming_mxcsr": "0x9fc0",
+      "expected_mxcsr": "0x1f80",
+      "order": "ordinary_then_runtime",
+      "callback_inside_mxcsr": "0x1f80",
+      "chained_mxcsr": "0x1f80",
+      "x87_control_restored": true,
+      "status": "PASS"
+    },
+    {
+      "ordinary_export": "LogicClass_Update_RepairFPState",
+      "ordinary_rva": "0x3600",
+      "incoming_mxcsr": "0x9fc0",
+      "expected_mxcsr": "0x1f80",
+      "order": "runtime_then_ordinary",
+      "callback_inside_mxcsr": "0x1f80",
+      "chained_mxcsr": "0x9fc0",
+      "x87_control_restored": true,
+      "status": "PASS"
+    }
+  ]
+}

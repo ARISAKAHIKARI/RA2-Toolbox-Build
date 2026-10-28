@@ -1,0 +1,110 @@
+{
+  "scope": "Current released DLL sender thunks against a second native sender and third decoder.\n\nSynthetic Win32/world. Executes real released NetworkHousePreserve machine code,\noriginal constructors, sender, compressor and decoder. Does not map the Spawner\nmodule, run sockets, dispatch missions or prove actual multiplayer OOS.\n",
+  "status": "PASS",
+  "preflight": {
+    "source": "0x64b9f7"
+  },
+  "game_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+  "GameRuntime.dll_sha256": "eba0ce9f13376aa193942a4765b07fc28e2f63d7a577bed9450325d8e951f4f7",
+  "spawner_module_mapped": false,
+  "real_network": false,
+  "mission_execution": false,
+  "results": [
+    {
+      "protocol": 1,
+      "foreign_sender_intervenes": false,
+      "network_house_preserve": true,
+      "actual_modified_sender_sites": 5,
+      "first_native_packet_lengths": [
+        44
+      ],
+      "foreign_packet_lengths": [],
+      "cached_native_packet_lengths": [
+        39
+      ],
+      "native_sender_local_source_ids": [
+        201,
+        202
+      ],
+      "third_receiver_source_ids": [
+        201,
+        202
+      ],
+      "source_substitution": false,
+      "status": "PASS"
+    },
+    {
+      "protocol": 1,
+      "foreign_sender_intervenes": true,
+      "network_house_preserve": true,
+      "actual_modified_sender_sites": 5,
+      "first_native_packet_lengths": [
+        44
+      ],
+      "foreign_packet_lengths": [
+        44
+      ],
+      "cached_native_packet_lengths": [
+        39
+      ],
+      "native_sender_local_source_ids": [
+        201,
+        202
+      ],
+      "third_receiver_source_ids": [
+        101,
+        102
+      ],
+      "source_substitution": true,
+      "status": "PASS"
+    },
+    {
+      "protocol": 2,
+      "foreign_sender_intervenes": false,
+      "network_house_preserve": true,
+      "actual_modified_sender_sites": 5,
+      "first_native_packet_lengths": [
+        44
+      ],
+      "foreign_packet_lengths": [],
+      "cached_native_packet_lengths": [
+        39
+      ],
+      "native_sender_local_source_ids": [
+        201,
+        202
+      ],
+      "third_receiver_source_ids": [
+        201,
+        202
+      ],
+      "source_substitution": false,
+      "status": "PASS"
+    },
+    {
+      "protocol": 2,
+      "foreign_sender_intervenes": true,
+      "network_house_preserve": true,
+      "actual_modified_sender_sites": 5,
+      "first_native_packet_lengths": [
+        44
+      ],
+      "foreign_packet_lengths": [
+        44
+      ],
+      "cached_native_packet_lengths": [
+        39
+      ],
+      "native_sender_local_source_ids": [
+        201,
+        202
+      ],
+      "third_receiver_source_ids": [
+        101,
+        102
+      ],
+      "source_substitution": true,
+      "status": "PASS"
+    }
+  ]
+}

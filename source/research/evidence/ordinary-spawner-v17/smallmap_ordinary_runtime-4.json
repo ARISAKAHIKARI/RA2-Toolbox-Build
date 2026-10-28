@@ -1,0 +1,79 @@
+{
+  "scope": "Actual ordinary v17 clamp plus supplied Runtime under controlled x86/Win32.\n\nMaps the official ordinary DLL with PE relocations and executes its replacement\nclamp. Does not load Syringe, a Windows graphics device or multiplayer peers.\n",
+  "runtime_sha256": "eba0ce9f13376aa193942a4765b07fc28e2f63d7a577bed9450325d8e951f4f7",
+  "ordinary_sha256": "58f198973bd0fd3b0e1b2c42fc6c545efe1fd399680abc2e8d6e9e189751614d",
+  "game_sha256": "c287d62a4d6a25b547e9339d071dd6e03adcf545699062e478aaeee38c60e89a",
+  "real_multiplayer": false,
+  "results": [
+    {
+      "initial_small": false,
+      "ordinary_base": "0x18000000",
+      "ordinary_clamp_rva": "0x2a50",
+      "stages": [
+        {
+          "stage": "initial",
+          "small": false,
+          "hook_conflicts": 0,
+          "hook_installed": 0
+        },
+        {
+          "stage": "small",
+          "small": true,
+          "hook_conflicts": 1,
+          "hook_installed": 0
+        },
+        {
+          "stage": "large",
+          "small": false,
+          "hook_conflicts": 1,
+          "hook_installed": 0
+        },
+        {
+          "stage": "small_again",
+          "small": true,
+          "hook_conflicts": 1,
+          "hook_installed": 0
+        }
+      ],
+      "clamp_calls": 36,
+      "site_writes": 0,
+      "stop_preserves_ordinary_patch": true,
+      "status": "PASS"
+    },
+    {
+      "initial_small": true,
+      "ordinary_base": "0x18000000",
+      "ordinary_clamp_rva": "0x2a50",
+      "stages": [
+        {
+          "stage": "initial",
+          "small": true,
+          "hook_conflicts": 1,
+          "hook_installed": 0
+        },
+        {
+          "stage": "small",
+          "small": true,
+          "hook_conflicts": 1,
+          "hook_installed": 0
+        },
+        {
+          "stage": "large",
+          "small": false,
+          "hook_conflicts": 1,
+          "hook_installed": 0
+        },
+        {
+          "stage": "small_again",
+          "small": true,
+          "hook_conflicts": 1,
+          "hook_installed": 0
+        }
+      ],
+      "clamp_calls": 36,
+      "site_writes": 0,
+      "stop_preserves_ordinary_patch": true,
+      "status": "PASS"
+    }
+  ]
+}

@@ -1,0 +1,182 @@
+{
+  "scope": "Bounded ordinary-v17 event-size hooks with the released Toolbox sender.\n\nActual ordinary DLL exports supply extended-event sizes; a modeled Syringe\nREGISTERS bridge invokes those exports and applies their register/continuation\nresults. Real game constructors/sender/codec and actual Toolbox thunks run.\nSynthetic Win32/world/capture-only transport; not full Spawner initialization,\nProtocolZero timing/sockets, event effects or real multiplayer validation.\n",
+  "status": "PASS",
+  "preflight": {
+    "source": "0x64b9f7"
+  },
+  "ordinary_dll_sha256": "58f198973bd0fd3b0e1b2c42fc6c545efe1fd399680abc2e8d6e9e189751614d",
+  "GameRuntime.dll_sha256": "eba0ce9f13376aa193942a4765b07fc28e2f63d7a577bed9450325d8e951f4f7",
+  "game_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+  "full_spawner_initialized": false,
+  "real_transport": false,
+  "results": [
+    {
+      "session": 3,
+      "wire_protocol": 2,
+      "network_house_preserve": false,
+      "mixed_native_mega_and_timing": false,
+      "received_kinds": [
+        48
+      ],
+      "timing_payload": [
+        9,
+        2
+      ],
+      "event_bytes": 111,
+      "ordinary_size_export_calls": {
+        "sub_64B660_GetEventSize": 1,
+        "sub_64BDD0_GetEventSize1": 2,
+        "sub_64BDD0_GetEventSize2": 1
+      },
+      "status": "PASS"
+    },
+    {
+      "session": 3,
+      "wire_protocol": 2,
+      "network_house_preserve": false,
+      "mixed_native_mega_and_timing": true,
+      "received_kinds": [
+        4,
+        48,
+        4
+      ],
+      "timing_payload": [
+        9,
+        2
+      ],
+      "event_bytes": 111,
+      "ordinary_size_export_calls": {
+        "sub_64B660_GetEventSize": 3,
+        "sub_64BDD0_GetEventSize1": 4,
+        "sub_64BDD0_GetEventSize2": 3
+      },
+      "status": "PASS"
+    },
+    {
+      "session": 3,
+      "wire_protocol": 2,
+      "network_house_preserve": true,
+      "mixed_native_mega_and_timing": false,
+      "received_kinds": [
+        48
+      ],
+      "timing_payload": [
+        9,
+        2
+      ],
+      "event_bytes": 111,
+      "ordinary_size_export_calls": {
+        "sub_64B660_GetEventSize": 1,
+        "sub_64BDD0_GetEventSize1": 2,
+        "sub_64BDD0_GetEventSize2": 1
+      },
+      "status": "PASS"
+    },
+    {
+      "session": 3,
+      "wire_protocol": 2,
+      "network_house_preserve": true,
+      "mixed_native_mega_and_timing": true,
+      "received_kinds": [
+        4,
+        48,
+        4
+      ],
+      "timing_payload": [
+        9,
+        2
+      ],
+      "event_bytes": 111,
+      "ordinary_size_export_calls": {
+        "sub_64B660_GetEventSize": 3,
+        "sub_64BDD0_GetEventSize1": 4,
+        "sub_64BDD0_GetEventSize2": 3
+      },
+      "status": "PASS"
+    },
+    {
+      "session": 4,
+      "wire_protocol": 2,
+      "network_house_preserve": false,
+      "mixed_native_mega_and_timing": false,
+      "received_kinds": [
+        48
+      ],
+      "timing_payload": [
+        9,
+        2
+      ],
+      "event_bytes": 111,
+      "ordinary_size_export_calls": {
+        "sub_64B660_GetEventSize": 1,
+        "sub_64BDD0_GetEventSize1": 2,
+        "sub_64BDD0_GetEventSize2": 1
+      },
+      "status": "PASS"
+    },
+    {
+      "session": 4,
+      "wire_protocol": 2,
+      "network_house_preserve": false,
+      "mixed_native_mega_and_timing": true,
+      "received_kinds": [
+        4,
+        48,
+        4
+      ],
+      "timing_payload": [
+        9,
+        2
+      ],
+      "event_bytes": 111,
+      "ordinary_size_export_calls": {
+        "sub_64B660_GetEventSize": 3,
+        "sub_64BDD0_GetEventSize1": 4,
+        "sub_64BDD0_GetEventSize2": 3
+      },
+      "status": "PASS"
+    },
+    {
+      "session": 4,
+      "wire_protocol": 2,
+      "network_house_preserve": true,
+      "mixed_native_mega_and_timing": false,
+      "received_kinds": [
+        48
+      ],
+      "timing_payload": [
+        9,
+        2
+      ],
+      "event_bytes": 111,
+      "ordinary_size_export_calls": {
+        "sub_64B660_GetEventSize": 1,
+        "sub_64BDD0_GetEventSize1": 2,
+        "sub_64BDD0_GetEventSize2": 1
+      },
+      "status": "PASS"
+    },
+    {
+      "session": 4,
+      "wire_protocol": 2,
+      "network_house_preserve": true,
+      "mixed_native_mega_and_timing": true,
+      "received_kinds": [
+        4,
+        48,
+        4
+      ],
+      "timing_payload": [
+        9,
+        2
+      ],
+      "event_bytes": 111,
+      "ordinary_size_export_calls": {
+        "sub_64B660_GetEventSize": 3,
+        "sub_64BDD0_GetEventSize1": 4,
+        "sub_64BDD0_GetEventSize2": 3
+      },
+      "status": "PASS"
+    }
+  ]
+}

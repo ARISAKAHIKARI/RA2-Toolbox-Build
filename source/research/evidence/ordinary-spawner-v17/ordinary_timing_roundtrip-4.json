@@ -1,0 +1,30 @@
+{
+  "scope": "Bounded ordinary-v17 event-size hooks with the released Toolbox sender.\n\nActual ordinary DLL exports supply extended-event sizes; a modeled Syringe\nREGISTERS bridge invokes those exports and applies their register/continuation\nresults. Real game constructors/sender/codec and actual Toolbox thunks run.\nSynthetic Win32/world/capture-only transport; not full Spawner initialization,\nProtocolZero timing/sockets, event effects or real multiplayer validation.\n",
+  "status": "BLOCKED",
+  "reason": "Engine fixture changes required native sender continuation; no instruction replacement performed.",
+  "game_sha256": "c287d62a4d6a25b547e9339d071dd6e03adcf545699062e478aaeee38c60e89a",
+  "GameRuntime.dll_sha256": "eba0ce9f13376aa193942a4765b07fc28e2f63d7a577bed9450325d8e951f4f7",
+  "ordinary_dll_sha256": "58f198973bd0fd3b0e1b2c42fc6c545efe1fd399680abc2e8d6e9e189751614d",
+  "preflight": {
+    "source": "0x64b9f7",
+    "branch_target": "0xb7e637",
+    "target_section": ".p_text",
+    "target_section_virtual_start": "0xb7a000",
+    "target_section_virtual_end": "0xb7e3cc",
+    "section_alignment": "0x1000",
+    "file_alignment": "0x1000",
+    "target_section_raw_start": "0x47e000",
+    "target_section_raw_end": "0x483000",
+    "target_section_raw_size": "0x5000",
+    "target_file_offset": "0x482637",
+    "pefile_target_file_offset": "0x482637",
+    "target_in_raw_padding": true,
+    "checked_target_bytes": 32,
+    "target_disk_all_zero": true,
+    "target_memory_all_zero": true,
+    "decoded_instruction": "JMP",
+    "required_native_instruction_matches": false
+  },
+  "planned_cases": 8,
+  "results": []
+}

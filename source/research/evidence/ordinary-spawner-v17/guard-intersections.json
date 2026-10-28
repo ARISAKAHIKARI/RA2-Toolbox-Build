@@ -1,0 +1,1330 @@
+{
+  "scope": "Additional static signature/context/body-hash and known vtable-slot guard ranges. Actual patch-site before-byte checks are covered separately by physical-site inventory.",
+  "ordinary_sha256": "58f198973bd0fd3b0e1b2c42fc6c545efe1fd399680abc2e8d6e9e189751614d",
+  "ordinary_hook_count": 196,
+  "ordinary_patch_count": 49,
+  "descriptor_coverage_method": {
+    "interval_rule": "Half-open address ranges use coverage_size when present, otherwise size; nonpositive unresolved coverage is rejected.",
+    "zero_declared_size_policy": "Conservative source-skipped-block envelope from hook address to callback return location. This is not an assertion that the loader overwrites 25 bytes.",
+    "zero_declared_size_hooks": [
+      {
+        "address": 4424458,
+        "address_hex": "0x43830a",
+        "size": 0,
+        "declared_size": 0,
+        "coverage_size": 25,
+        "name": "BlowStraw_Key_BlowfishEngine_Allocation",
+        "coverage_end_hex": "0x438323",
+        "coverage_reason": "Conservative complete callback-skipped source block; actual loader overwrite length is not established.",
+        "coverage_source": "src/Misc/Blowfish/Hooks.Blowfish.cpp",
+        "coverage_source_commit": "fbe8d7d2620584d04ba14fa3580943bfa1448d40",
+        "coverage_callback_return_hex": "0x438323"
+      },
+      {
+        "address": 4424154,
+        "address_hex": "0x4381da",
+        "size": 0,
+        "declared_size": 0,
+        "coverage_size": 25,
+        "name": "BlowPipe_Key_BlowfishEngine_Allocation",
+        "coverage_end_hex": "0x4381f3",
+        "coverage_reason": "Conservative complete callback-skipped source block; actual loader overwrite length is not established.",
+        "coverage_source": "src/Misc/Blowfish/Hooks.Blowfish.cpp",
+        "coverage_source_commit": "fbe8d7d2620584d04ba14fa3580943bfa1448d40",
+        "coverage_callback_return_hex": "0x4381f3"
+      }
+    ]
+  },
+  "verified_upstream_source_pin": {
+    "repository": "CnCNet/yrpp-spawner",
+    "commit": "fbe8d7d2620584d04ba14fa3580943bfa1448d40",
+    "tree": "0a1f3074b95213b5a36b7938e2b711950f179513",
+    "verified_blobs": 69,
+    "source_pin_sha256": "28e9717e2eedd47145bd89e6c1a37b5b6b62cae041c5b300520cecc41c956e3b"
+  },
+  "declared_guard_count": 155,
+  "unique_address_size_ranges": 151,
+  "family_counts": {
+    "startup": 21,
+    "patchcontext": 73,
+    "direct-context": 7,
+    "manual-guard": 30,
+    "network-context": 8,
+    "vtable-slot": 16
+  },
+  "source_sha256": {
+    "assist/source/signatures.h": "054757060d10fe067ec81880a8f584c53d6e1537c1fcc2695b267b9e68ecdd93",
+    "shared/source/patch_context.h": "01b82baa0a5777d836c18d616d08f3dace59bdfa2f3e03f0ea89998d3ce18082",
+    "shared/source/direct_patch_policy.h": "0e28d97bd65e5b37e290af17a23d8c598be88de9fc1d8a30ee935e89227ef1c5",
+    "assist/source/network_sender_bridge.h": "1850823e5bbc07fc6021015015fcb6cd95485c933205229727ac4fabf4f5dcfb",
+    "assist/source/aircraft_selection_bridge.h": "e78280019a8fed6b47fded7369cce61b471a01c251e323ae9f015491008ae8b4",
+    "assist/source/input_feedback.h": "81776c9c95fadcb147b5bbc157e45ced1d7f77a8a5dc95f94cee4f93d558ea32",
+    "assist/source/bridge.cpp": "18f517b994b483dfd6ace00d654355fc3972e4fd4174a43636b0812253d2cae2",
+    "assist/source/scroll_refresh_bridge.h": "aefbf159aeaad90f23d5e040a8ffe2e8d7ce325cc8deea0e6187c782c0278c70",
+    "assist/source/view_zoom_bridge.h": "7506d234e0a547d8767040fcbcf68294d2dc760ed8e57b61bd1b1870c9140858",
+    "assist/source/sticky_bridge.h": "a39a00b16194cca74defca0712b163a407c85747d1d6ef907991c042a814ce49",
+    "assist/source/placement_bridge.h": "f50f9788ffefaa8163b0c224af5c9fa1c623bc469aa7f1d86d2007557abb06df",
+    "assist/source/social_bridge.h": "9bd2b149f853c2d9528d47cd6637b6af999ec37039ae08c2d219cc07c8d0efda",
+    "assist/source/native_sell_cursor_bridge.h": "aaef381a68cfc9cc2b31144d18bb478a4d0125af74db66fe6d925ce51b94f37d",
+    "cursor/source/hide.cpp": "1b73593be67e107504a4725e28cdb66570c3fdd3047fefe4816a8201cd6840f4",
+    "assist/source/native_hotkeys.h": "48a5a5a686cc247280e92ecda131cd650178907bd231dd21c383f929ffc6feb6"
+  },
+  "guards": [
+    {
+      "family": "startup",
+      "site": 0,
+      "address": 6989312,
+      "size": 8,
+      "enabled": "startup-required",
+      "address_hex": "0x006AA600"
+    },
+    {
+      "family": "startup",
+      "site": 0,
+      "address": 6995040,
+      "size": 8,
+      "enabled": "startup-required",
+      "address_hex": "0x006ABC60"
+    },
+    {
+      "family": "startup",
+      "site": 0,
+      "address": 6256896,
+      "size": 8,
+      "enabled": "startup-required",
+      "address_hex": "0x005F7900"
+    },
+    {
+      "family": "startup",
+      "site": 0,
+      "address": 5208176,
+      "size": 8,
+      "enabled": "startup-required",
+      "address_hex": "0x004F7870"
+    },
+    {
+      "family": "startup",
+      "site": 0,
+      "address": 5734528,
+      "size": 8,
+      "enabled": "startup-required",
+      "address_hex": "0x00578080"
+    },
+    {
+      "family": "startup",
+      "site": 0,
+      "address": 5006816,
+      "size": 8,
+      "enabled": "startup-required",
+      "address_hex": "0x004C65E0"
+    },
+    {
+      "family": "startup",
+      "site": 0,
+      "address": 5007456,
+      "size": 8,
+      "enabled": "startup-required",
+      "address_hex": "0x004C6860"
+    },
+    {
+      "family": "startup",
+      "site": 0,
+      "address": 5007728,
+      "size": 8,
+      "enabled": "startup-required",
+      "address_hex": "0x004C6970"
+    },
+    {
+      "family": "startup",
+      "site": 0,
+      "address": 4396048,
+      "size": 8,
+      "enabled": "startup-required",
+      "address_hex": "0x00431410"
+    },
+    {
+      "family": "startup",
+      "site": 0,
+      "address": 5733776,
+      "size": 8,
+      "enabled": "startup-required",
+      "address_hex": "0x00577D90"
+    },
+    {
+      "family": "startup",
+      "site": 0,
+      "address": 6972160,
+      "size": 8,
+      "enabled": "startup-required",
+      "address_hex": "0x006A6300"
+    },
+    {
+      "family": "startup",
+      "site": 0,
+      "address": 7127904,
+      "size": 8,
+      "enabled": "startup-required",
+      "address_hex": "0x006CC360"
+    },
+    {
+      "family": "startup",
+      "site": 0,
+      "address": 5008224,
+      "size": 8,
+      "enabled": "startup-required",
+      "address_hex": "0x004C6B60"
+    },
+    {
+      "family": "startup",
+      "site": 0,
+      "address": 4885488,
+      "size": 8,
+      "enabled": "startup-required",
+      "address_hex": "0x004A8BF0"
+    },
+    {
+      "family": "startup",
+      "site": 0,
+      "address": 4901056,
+      "size": 8,
+      "enabled": "startup-required",
+      "address_hex": "0x004AC8C0"
+    },
+    {
+      "family": "startup",
+      "site": 0,
+      "address": 4900448,
+      "size": 8,
+      "enabled": "startup-required",
+      "address_hex": "0x004AC660"
+    },
+    {
+      "family": "startup",
+      "site": 0,
+      "address": 4775056,
+      "size": 8,
+      "enabled": "startup-required",
+      "address_hex": "0x0048DC90"
+    },
+    {
+      "family": "startup",
+      "site": 0,
+      "address": 7323552,
+      "size": 8,
+      "enabled": "startup-required",
+      "address_hex": "0x006FBFA0"
+    },
+    {
+      "family": "startup",
+      "site": 0,
+      "address": 7152672,
+      "size": 8,
+      "enabled": "startup-required",
+      "address_hex": "0x006D2420"
+    },
+    {
+      "family": "startup",
+      "site": 0,
+      "address": 7151936,
+      "size": 8,
+      "enabled": "startup-required",
+      "address_hex": "0x006D2140"
+    },
+    {
+      "family": "startup",
+      "site": 0,
+      "address": 4666464,
+      "size": 8,
+      "enabled": "startup-required",
+      "address_hex": "0x00473460"
+    },
+    {
+      "family": "patchcontext",
+      "site": 7339563,
+      "address": 7339520,
+      "size": 16,
+      "enabled": "feature-specific",
+      "address_hex": "0x006FFE00"
+    },
+    {
+      "family": "patchcontext",
+      "site": 7339563,
+      "address": 7339553,
+      "size": 10,
+      "enabled": "feature-specific",
+      "address_hex": "0x006FFE21"
+    },
+    {
+      "family": "patchcontext",
+      "site": 7339563,
+      "address": 7339568,
+      "size": 14,
+      "enabled": "feature-specific",
+      "address_hex": "0x006FFE30"
+    },
+    {
+      "family": "patchcontext",
+      "site": 7339563,
+      "address": 7339595,
+      "size": 7,
+      "enabled": "feature-specific",
+      "address_hex": "0x006FFE4B"
+    },
+    {
+      "family": "patchcontext",
+      "site": 6582005,
+      "address": 6581904,
+      "size": 16,
+      "enabled": "feature-specific",
+      "address_hex": "0x00646E90"
+    },
+    {
+      "family": "patchcontext",
+      "site": 6582005,
+      "address": 6581995,
+      "size": 10,
+      "enabled": "feature-specific",
+      "address_hex": "0x00646EEB"
+    },
+    {
+      "family": "patchcontext",
+      "site": 6582005,
+      "address": 6582015,
+      "size": 16,
+      "enabled": "feature-specific",
+      "address_hex": "0x00646EFF"
+    },
+    {
+      "family": "patchcontext",
+      "site": 6582005,
+      "address": 6582104,
+      "size": 10,
+      "enabled": "feature-specific",
+      "address_hex": "0x00646F58"
+    },
+    {
+      "family": "patchcontext",
+      "site": 6582226,
+      "address": 6582128,
+      "size": 16,
+      "enabled": "feature-specific",
+      "address_hex": "0x00646F70"
+    },
+    {
+      "family": "patchcontext",
+      "site": 6582226,
+      "address": 6582216,
+      "size": 10,
+      "enabled": "feature-specific",
+      "address_hex": "0x00646FC8"
+    },
+    {
+      "family": "patchcontext",
+      "site": 6582226,
+      "address": 6582236,
+      "size": 16,
+      "enabled": "feature-specific",
+      "address_hex": "0x00646FDC"
+    },
+    {
+      "family": "patchcontext",
+      "site": 6582226,
+      "address": 6582325,
+      "size": 10,
+      "enabled": "feature-specific",
+      "address_hex": "0x00647035"
+    },
+    {
+      "family": "patchcontext",
+      "site": 7339155,
+      "address": 7339136,
+      "size": 14,
+      "enabled": "feature-specific",
+      "address_hex": "0x006FFC80"
+    },
+    {
+      "family": "patchcontext",
+      "site": 7339155,
+      "address": 7339150,
+      "size": 5,
+      "enabled": "feature-specific",
+      "address_hex": "0x006FFC8E"
+    },
+    {
+      "family": "patchcontext",
+      "site": 7339155,
+      "address": 7339163,
+      "size": 14,
+      "enabled": "feature-specific",
+      "address_hex": "0x006FFC9B"
+    },
+    {
+      "family": "patchcontext",
+      "site": 7339155,
+      "address": 7339177,
+      "size": 5,
+      "enabled": "feature-specific",
+      "address_hex": "0x006FFCA9"
+    },
+    {
+      "family": "patchcontext",
+      "site": 7339155,
+      "address": 7339182,
+      "size": 15,
+      "enabled": "feature-specific",
+      "address_hex": "0x006FFCAE"
+    },
+    {
+      "family": "patchcontext",
+      "site": 6593696,
+      "address": 6593701,
+      "size": 16,
+      "enabled": "feature-specific",
+      "address_hex": "0x00649CA5"
+    },
+    {
+      "family": "patchcontext",
+      "site": 6593696,
+      "address": 6593856,
+      "size": 10,
+      "enabled": "feature-specific",
+      "address_hex": "0x00649D40"
+    },
+    {
+      "family": "patchcontext",
+      "site": 6593696,
+      "address": 6593938,
+      "size": 12,
+      "enabled": "feature-specific",
+      "address_hex": "0x00649D92"
+    },
+    {
+      "family": "patchcontext",
+      "site": 6594078,
+      "address": 6594063,
+      "size": 15,
+      "enabled": "feature-specific",
+      "address_hex": "0x00649E0F"
+    },
+    {
+      "family": "patchcontext",
+      "site": 6594078,
+      "address": 6594085,
+      "size": 16,
+      "enabled": "feature-specific",
+      "address_hex": "0x00649E25"
+    },
+    {
+      "family": "patchcontext",
+      "site": 6601172,
+      "address": 6601145,
+      "size": 13,
+      "enabled": "feature-specific",
+      "address_hex": "0x0064B9B9"
+    },
+    {
+      "family": "patchcontext",
+      "site": 6601172,
+      "address": 6601158,
+      "size": 14,
+      "enabled": "feature-specific",
+      "address_hex": "0x0064B9C6"
+    },
+    {
+      "family": "patchcontext",
+      "site": 6601172,
+      "address": 6601179,
+      "size": 16,
+      "enabled": "feature-specific",
+      "address_hex": "0x0064B9DB"
+    },
+    {
+      "family": "patchcontext",
+      "site": 6600288,
+      "address": 6600294,
+      "size": 16,
+      "enabled": "feature-specific",
+      "address_hex": "0x0064B666"
+    },
+    {
+      "family": "patchcontext",
+      "site": 6600288,
+      "address": 6600334,
+      "size": 16,
+      "enabled": "feature-specific",
+      "address_hex": "0x0064B68E"
+    },
+    {
+      "family": "patchcontext",
+      "site": 6600288,
+      "address": 6600355,
+      "size": 16,
+      "enabled": "feature-specific",
+      "address_hex": "0x0064B6A3"
+    },
+    {
+      "family": "patchcontext",
+      "site": 6599914,
+      "address": 6599888,
+      "size": 16,
+      "enabled": "feature-specific",
+      "address_hex": "0x0064B4D0"
+    },
+    {
+      "family": "patchcontext",
+      "site": 6599914,
+      "address": 6599904,
+      "size": 10,
+      "enabled": "feature-specific",
+      "address_hex": "0x0064B4E0"
+    },
+    {
+      "family": "patchcontext",
+      "site": 6599914,
+      "address": 6600017,
+      "size": 16,
+      "enabled": "feature-specific",
+      "address_hex": "0x0064B551"
+    },
+    {
+      "family": "patchcontext",
+      "site": 6892005,
+      "address": 6891996,
+      "size": 9,
+      "enabled": "feature-specific",
+      "address_hex": "0x006929DC"
+    },
+    {
+      "family": "patchcontext",
+      "site": 6892005,
+      "address": 6892010,
+      "size": 16,
+      "enabled": "feature-specific",
+      "address_hex": "0x006929EA"
+    },
+    {
+      "family": "patchcontext",
+      "site": 4899193,
+      "address": 4899181,
+      "size": 12,
+      "enabled": "feature-specific",
+      "address_hex": "0x004AC16D"
+    },
+    {
+      "family": "patchcontext",
+      "site": 4899193,
+      "address": 4899202,
+      "size": 10,
+      "enabled": "feature-specific",
+      "address_hex": "0x004AC182"
+    },
+    {
+      "family": "patchcontext",
+      "site": 4899193,
+      "address": 4899212,
+      "size": 10,
+      "enabled": "feature-specific",
+      "address_hex": "0x004AC18C"
+    },
+    {
+      "family": "patchcontext",
+      "site": 6582094,
+      "address": 6581904,
+      "size": 16,
+      "enabled": "feature-specific",
+      "address_hex": "0x00646E90"
+    },
+    {
+      "family": "patchcontext",
+      "site": 6582094,
+      "address": 6581995,
+      "size": 10,
+      "enabled": "feature-specific",
+      "address_hex": "0x00646EEB"
+    },
+    {
+      "family": "patchcontext",
+      "site": 6582094,
+      "address": 6582064,
+      "size": 14,
+      "enabled": "feature-specific",
+      "address_hex": "0x00646F30"
+    },
+    {
+      "family": "patchcontext",
+      "site": 6582094,
+      "address": 6582083,
+      "size": 11,
+      "enabled": "feature-specific",
+      "address_hex": "0x00646F43"
+    },
+    {
+      "family": "patchcontext",
+      "site": 6582094,
+      "address": 6582101,
+      "size": 13,
+      "enabled": "feature-specific",
+      "address_hex": "0x00646F55"
+    },
+    {
+      "family": "patchcontext",
+      "site": 7306564,
+      "address": 7306400,
+      "size": 16,
+      "enabled": "feature-specific",
+      "address_hex": "0x006F7CA0"
+    },
+    {
+      "family": "patchcontext",
+      "site": 7306564,
+      "address": 7306551,
+      "size": 13,
+      "enabled": "feature-specific",
+      "address_hex": "0x006F7D37"
+    },
+    {
+      "family": "patchcontext",
+      "site": 7306564,
+      "address": 7306570,
+      "size": 11,
+      "enabled": "feature-specific",
+      "address_hex": "0x006F7D4A"
+    },
+    {
+      "family": "patchcontext",
+      "site": 7306564,
+      "address": 8343096,
+      "size": 4,
+      "enabled": "feature-specific",
+      "address_hex": "0x007F4E38"
+    },
+    {
+      "family": "patchcontext",
+      "site": 4478794,
+      "address": 4478799,
+      "size": 16,
+      "enabled": "feature-specific",
+      "address_hex": "0x0044574F"
+    },
+    {
+      "family": "patchcontext",
+      "site": 4478869,
+      "address": 4478874,
+      "size": 10,
+      "enabled": "feature-specific",
+      "address_hex": "0x0044579A"
+    },
+    {
+      "family": "patchcontext",
+      "site": 4478928,
+      "address": 4478933,
+      "size": 16,
+      "enabled": "feature-specific",
+      "address_hex": "0x004457D5"
+    },
+    {
+      "family": "patchcontext",
+      "site": 4478992,
+      "address": 4478997,
+      "size": 16,
+      "enabled": "feature-specific",
+      "address_hex": "0x00445815"
+    },
+    {
+      "family": "patchcontext",
+      "site": 6989704,
+      "address": 6989697,
+      "size": 7,
+      "enabled": "feature-specific",
+      "address_hex": "0x006AA781"
+    },
+    {
+      "family": "patchcontext",
+      "site": 5289712,
+      "address": 5289721,
+      "size": 16,
+      "enabled": "feature-specific",
+      "address_hex": "0x0050B6F9"
+    },
+    {
+      "family": "patchcontext",
+      "site": 5289712,
+      "address": 5289737,
+      "size": 13,
+      "enabled": "feature-specific",
+      "address_hex": "0x0050B709"
+    },
+    {
+      "family": "patchcontext",
+      "site": 6502842,
+      "address": 6502832,
+      "size": 10,
+      "enabled": "feature-specific",
+      "address_hex": "0x006339B0"
+    },
+    {
+      "family": "patchcontext",
+      "site": 6502842,
+      "address": 6502847,
+      "size": 13,
+      "enabled": "feature-specific",
+      "address_hex": "0x006339BF"
+    },
+    {
+      "family": "patchcontext",
+      "site": 6520384,
+      "address": 6520375,
+      "size": 9,
+      "enabled": "feature-specific",
+      "address_hex": "0x00637E37"
+    },
+    {
+      "family": "patchcontext",
+      "site": 6520384,
+      "address": 6520389,
+      "size": 13,
+      "enabled": "feature-specific",
+      "address_hex": "0x00637E45"
+    },
+    {
+      "family": "patchcontext",
+      "site": 5358379,
+      "address": 5358368,
+      "size": 5,
+      "enabled": "feature-specific",
+      "address_hex": "0x0051C320"
+    },
+    {
+      "family": "patchcontext",
+      "site": 5358379,
+      "address": 5358385,
+      "size": 4,
+      "enabled": "feature-specific",
+      "address_hex": "0x0051C331"
+    },
+    {
+      "family": "patchcontext",
+      "site": 5350616,
+      "address": 5350601,
+      "size": 9,
+      "enabled": "feature-specific",
+      "address_hex": "0x0051A4C9"
+    },
+    {
+      "family": "patchcontext",
+      "site": 5350616,
+      "address": 5350622,
+      "size": 8,
+      "enabled": "feature-specific",
+      "address_hex": "0x0051A4DE"
+    },
+    {
+      "family": "patchcontext",
+      "site": 4886192,
+      "address": 4886197,
+      "size": 7,
+      "enabled": "feature-specific",
+      "address_hex": "0x004A8EB5"
+    },
+    {
+      "family": "patchcontext",
+      "site": 4886192,
+      "address": 4886624,
+      "size": 6,
+      "enabled": "feature-specific",
+      "address_hex": "0x004A9060"
+    },
+    {
+      "family": "patchcontext",
+      "site": 4287158,
+      "address": 4287168,
+      "size": 13,
+      "enabled": "feature-specific",
+      "address_hex": "0x00416AC0"
+    },
+    {
+      "family": "patchcontext",
+      "site": 4714552,
+      "address": 4714464,
+      "size": 6,
+      "enabled": "feature-specific",
+      "address_hex": "0x0047EFE0"
+    },
+    {
+      "family": "patchcontext",
+      "site": 4714552,
+      "address": 4714557,
+      "size": 6,
+      "enabled": "feature-specific",
+      "address_hex": "0x0047F03D"
+    },
+    {
+      "family": "patchcontext",
+      "site": 4714552,
+      "address": 4715079,
+      "size": 6,
+      "enabled": "feature-specific",
+      "address_hex": "0x0047F247"
+    },
+    {
+      "family": "patchcontext",
+      "site": 4715124,
+      "address": 4715093,
+      "size": 3,
+      "enabled": "feature-specific",
+      "address_hex": "0x0047F255"
+    },
+    {
+      "family": "patchcontext",
+      "site": 4715124,
+      "address": 4715129,
+      "size": 9,
+      "enabled": "feature-specific",
+      "address_hex": "0x0047F279"
+    },
+    {
+      "family": "patchcontext",
+      "site": 4715124,
+      "address": 4715771,
+      "size": 6,
+      "enabled": "feature-specific",
+      "address_hex": "0x0047F4FB"
+    },
+    {
+      "family": "patchcontext",
+      "site": 6985682,
+      "address": 6985667,
+      "size": 15,
+      "enabled": "feature-specific",
+      "address_hex": "0x006A97C3"
+    },
+    {
+      "family": "patchcontext",
+      "site": 6989697,
+      "address": 6989687,
+      "size": 10,
+      "enabled": "feature-specific",
+      "address_hex": "0x006AA777"
+    },
+    {
+      "family": "patchcontext",
+      "site": 6985682,
+      "address": 5208176,
+      "size": 8,
+      "enabled": "feature-specific",
+      "address_hex": "0x004F7870"
+    },
+    {
+      "family": "patchcontext",
+      "site": 6989697,
+      "address": 5208176,
+      "size": 8,
+      "enabled": "feature-specific",
+      "address_hex": "0x004F7870"
+    },
+    {
+      "family": "direct-context",
+      "site": 5279328,
+      "address": 5279330,
+      "size": 12,
+      "enabled": "feature-specific",
+      "address_hex": "0x00508E62"
+    },
+    {
+      "family": "direct-context",
+      "site": 5279418,
+      "address": 5279420,
+      "size": 12,
+      "enabled": "feature-specific",
+      "address_hex": "0x00508EBC"
+    },
+    {
+      "family": "direct-context",
+      "site": 5279631,
+      "address": 5279633,
+      "size": 12,
+      "enabled": "feature-specific",
+      "address_hex": "0x00508F91"
+    },
+    {
+      "family": "direct-context",
+      "site": 5733178,
+      "address": 5733180,
+      "size": 12,
+      "enabled": "feature-specific",
+      "address_hex": "0x00577B3C"
+    },
+    {
+      "family": "direct-context",
+      "site": 7178492,
+      "address": 7178494,
+      "size": 12,
+      "enabled": "feature-specific",
+      "address_hex": "0x006D88FE"
+    },
+    {
+      "family": "direct-context",
+      "site": 4886211,
+      "address": 4886217,
+      "size": 12,
+      "enabled": "feature-specific",
+      "address_hex": "0x004A8EC9"
+    },
+    {
+      "family": "direct-context",
+      "site": 4886926,
+      "address": 4886928,
+      "size": 12,
+      "enabled": "feature-specific",
+      "address_hex": "0x004A9190"
+    },
+    {
+      "family": "manual-guard",
+      "label": "scroll hash",
+      "address": 4888648,
+      "size": 70,
+      "enabled": "legacy-disabled-SceneRefresh",
+      "address_hex": "0x004A9848"
+    },
+    {
+      "family": "manual-guard",
+      "label": "clamp hash",
+      "address": 7177797,
+      "size": 185,
+      "enabled": "feature-specific",
+      "address_hex": "0x006D8645"
+    },
+    {
+      "family": "manual-guard",
+      "label": "zoom hash",
+      "address": 5639152,
+      "size": 1418,
+      "enabled": "legacy-disabled-ViewZoom",
+      "address_hex": "0x00560BF0"
+    },
+    {
+      "family": "manual-guard",
+      "label": "Deselect hash",
+      "address": 6243488,
+      "size": 123,
+      "enabled": "feature-specific",
+      "address_hex": "0x005F44A0"
+    },
+    {
+      "family": "manual-guard",
+      "label": "FindIndex hash",
+      "address": 4247296,
+      "size": 38,
+      "enabled": "feature-specific",
+      "address_hex": "0x0040CF00"
+    },
+    {
+      "family": "manual-guard",
+      "label": "Current object getter hash",
+      "address": 4909840,
+      "size": 23,
+      "enabled": "feature-specific",
+      "address_hex": "0x004AEB10"
+    },
+    {
+      "family": "manual-guard",
+      "label": "Current object setter hash",
+      "address": 4909872,
+      "size": 24,
+      "enabled": "feature-specific",
+      "address_hex": "0x004AEB30"
+    },
+    {
+      "family": "manual-guard",
+      "label": "nativeMega prologue",
+      "address": 6581909,
+      "size": 19,
+      "enabled": "feature-specific",
+      "address_hex": "0x00646E95"
+    },
+    {
+      "family": "manual-guard",
+      "label": "nativeMega ctorcall",
+      "address": 6582000,
+      "size": 5,
+      "enabled": "feature-specific",
+      "address_hex": "0x00646EF0"
+    },
+    {
+      "family": "manual-guard",
+      "label": "nativeMega queuecopy",
+      "address": 6582038,
+      "size": 7,
+      "enabled": "feature-specific",
+      "address_hex": "0x00646F16"
+    },
+    {
+      "family": "manual-guard",
+      "label": "nativeMega timer",
+      "address": 6582048,
+      "size": 6,
+      "enabled": "feature-specific",
+      "address_hex": "0x00646F20"
+    },
+    {
+      "family": "manual-guard",
+      "label": "nativeMega return",
+      "address": 6582101,
+      "size": 3,
+      "enabled": "feature-specific",
+      "address_hex": "0x00646F55"
+    },
+    {
+      "family": "manual-guard",
+      "label": "nativeMega entry original",
+      "address": 6581904,
+      "size": 5,
+      "enabled": "feature-specific",
+      "address_hex": "0x00646E90"
+    },
+    {
+      "family": "manual-guard",
+      "label": "nativeObject signature",
+      "address": 7339520,
+      "size": 5,
+      "enabled": "feature-specific",
+      "address_hex": "0x006FFE00"
+    },
+    {
+      "family": "manual-guard",
+      "label": "orderlines",
+      "address": 7393616,
+      "size": 37,
+      "enabled": "feature-specific",
+      "address_hex": "0x0070D150"
+    },
+    {
+      "family": "manual-guard",
+      "label": "GUIBuildSound",
+      "address": 7670048,
+      "size": 10,
+      "enabled": "feature-specific",
+      "address_hex": "0x00750920"
+    },
+    {
+      "family": "manual-guard",
+      "label": "canSell",
+      "address": 4494528,
+      "size": 8,
+      "enabled": "feature-specific",
+      "address_hex": "0x004494C0"
+    },
+    {
+      "family": "manual-guard",
+      "label": "Sticky ForceMission",
+      "address": 5976016,
+      "size": 10,
+      "enabled": "feature-specific",
+      "address_hex": "0x005B2FD0"
+    },
+    {
+      "family": "manual-guard",
+      "label": "Sticky NextMission",
+      "address": 5977456,
+      "size": 10,
+      "enabled": "feature-specific",
+      "address_hex": "0x005B3570"
+    },
+    {
+      "family": "manual-guard",
+      "label": "render-head",
+      "address": 5194880,
+      "size": 9,
+      "enabled": "legacy-disabled-SceneRefresh",
+      "address_hex": "0x004F4480"
+    },
+    {
+      "family": "manual-guard",
+      "label": "setPosition",
+      "address": 7168000,
+      "size": 9,
+      "enabled": "feature-specific",
+      "address_hex": "0x006D6000"
+    },
+    {
+      "family": "manual-guard",
+      "label": "edge scroll",
+      "address": 6892384,
+      "size": 9,
+      "enabled": "legacy-disabled-SceneRefresh",
+      "address_hex": "0x00692B60"
+    },
+    {
+      "family": "manual-guard",
+      "label": "drag scroll",
+      "address": 6894656,
+      "size": 9,
+      "enabled": "legacy-disabled-SceneRefresh",
+      "address_hex": "0x00693440"
+    },
+    {
+      "family": "manual-guard",
+      "label": "FlagRedraw",
+      "address": 5194480,
+      "size": 46,
+      "enabled": "legacy-disabled-SceneRefresh",
+      "address_hex": "0x004F42F0"
+    },
+    {
+      "family": "manual-guard",
+      "label": "AllCheer ctor",
+      "address": 5007040,
+      "size": 8,
+      "enabled": "feature-specific",
+      "address_hex": "0x004C66C0"
+    },
+    {
+      "family": "manual-guard",
+      "label": "Taunt Execute",
+      "address": 5464912,
+      "size": 11,
+      "enabled": "feature-specific",
+      "address_hex": "0x00536350"
+    },
+    {
+      "family": "manual-guard",
+      "label": "Tactical coordinate",
+      "address": 7153552,
+      "size": 9,
+      "enabled": "feature-specific",
+      "address_hex": "0x006D2790"
+    },
+    {
+      "family": "manual-guard",
+      "label": "advance mission",
+      "address": 6522304,
+      "size": 10,
+      "enabled": "feature-specific",
+      "address_hex": "0x006385C0"
+    },
+    {
+      "family": "manual-guard",
+      "label": "cursor Mix Offset prologue",
+      "address": 5981232,
+      "size": 9,
+      "enabled": "feature-specific",
+      "address_hex": "0x005B4430"
+    },
+    {
+      "family": "manual-guard",
+      "label": "ControlHouse tail native/forwarded",
+      "address": 5289717,
+      "size": 4,
+      "enabled": "feature-specific",
+      "address_hex": "0x0050B6F5"
+    },
+    {
+      "family": "network-context",
+      "address": 6593701,
+      "size": 6,
+      "enabled": "feature-specific",
+      "address_hex": "0x00649CA5"
+    },
+    {
+      "family": "network-context",
+      "address": 6593856,
+      "size": 12,
+      "enabled": "feature-specific",
+      "address_hex": "0x00649D40"
+    },
+    {
+      "family": "network-context",
+      "address": 6593933,
+      "size": 7,
+      "enabled": "feature-specific",
+      "address_hex": "0x00649D8D"
+    },
+    {
+      "family": "network-context",
+      "address": 6594544,
+      "size": 12,
+      "enabled": "feature-specific",
+      "address_hex": "0x00649FF0"
+    },
+    {
+      "family": "network-context",
+      "address": 6600294,
+      "size": 7,
+      "enabled": "feature-specific",
+      "address_hex": "0x0064B666"
+    },
+    {
+      "family": "network-context",
+      "address": 6600017,
+      "size": 10,
+      "enabled": "feature-specific",
+      "address_hex": "0x0064B551"
+    },
+    {
+      "family": "network-context",
+      "address": 6602192,
+      "size": 9,
+      "enabled": "feature-specific",
+      "address_hex": "0x0064BDD0"
+    },
+    {
+      "family": "network-context",
+      "address": 6602290,
+      "size": 10,
+      "enabled": "feature-specific",
+      "address_hex": "0x0064BE32"
+    },
+    {
+      "family": "vtable-slot",
+      "label": "aircraft local voice",
+      "address": 8267256,
+      "size": 4,
+      "enabled": "feature-specific",
+      "address_hex": "0x007E25F8"
+    },
+    {
+      "family": "vtable-slot",
+      "label": "aircraft local voice",
+      "address": 8267260,
+      "size": 4,
+      "enabled": "feature-specific",
+      "address_hex": "0x007E25FC"
+    },
+    {
+      "family": "vtable-slot",
+      "label": "aircraft local voice",
+      "address": 8267276,
+      "size": 4,
+      "enabled": "feature-specific",
+      "address_hex": "0x007E260C"
+    },
+    {
+      "family": "vtable-slot",
+      "label": "aircraft local voice",
+      "address": 8267284,
+      "size": 4,
+      "enabled": "feature-specific",
+      "address_hex": "0x007E2614"
+    },
+    {
+      "family": "vtable-slot",
+      "label": "infantry local voice",
+      "address": 8303532,
+      "size": 4,
+      "enabled": "feature-specific",
+      "address_hex": "0x007EB3AC"
+    },
+    {
+      "family": "vtable-slot",
+      "label": "infantry local voice",
+      "address": 8303536,
+      "size": 4,
+      "enabled": "feature-specific",
+      "address_hex": "0x007EB3B0"
+    },
+    {
+      "family": "vtable-slot",
+      "label": "infantry local voice",
+      "address": 8303552,
+      "size": 4,
+      "enabled": "feature-specific",
+      "address_hex": "0x007EB3C0"
+    },
+    {
+      "family": "vtable-slot",
+      "label": "infantry local voice",
+      "address": 8303560,
+      "size": 4,
+      "enabled": "feature-specific",
+      "address_hex": "0x007EB3C8"
+    },
+    {
+      "family": "vtable-slot",
+      "label": "unit local voice",
+      "address": 8347588,
+      "size": 4,
+      "enabled": "feature-specific",
+      "address_hex": "0x007F5FC4"
+    },
+    {
+      "family": "vtable-slot",
+      "label": "unit local voice",
+      "address": 8347592,
+      "size": 4,
+      "enabled": "feature-specific",
+      "address_hex": "0x007F5FC8"
+    },
+    {
+      "family": "vtable-slot",
+      "label": "unit local voice",
+      "address": 8347608,
+      "size": 4,
+      "enabled": "feature-specific",
+      "address_hex": "0x007F5FD8"
+    },
+    {
+      "family": "vtable-slot",
+      "label": "unit local voice",
+      "address": 8347616,
+      "size": 4,
+      "enabled": "feature-specific",
+      "address_hex": "0x007F5FE0"
+    },
+    {
+      "family": "vtable-slot",
+      "label": "aircraft Deselect",
+      "address": 8266740,
+      "size": 4,
+      "enabled": "feature-specific",
+      "address_hex": "0x007E23F4"
+    },
+    {
+      "family": "vtable-slot",
+      "label": "unit Deselect",
+      "address": 8347072,
+      "size": 4,
+      "enabled": "feature-specific",
+      "address_hex": "0x007F5DC0"
+    },
+    {
+      "family": "vtable-slot",
+      "label": "vector FindIndex",
+      "address": 8277876,
+      "size": 4,
+      "enabled": "feature-specific",
+      "address_hex": "0x007E4F74"
+    },
+    {
+      "family": "vtable-slot",
+      "label": "building CanSell",
+      "address": 8273748,
+      "size": 4,
+      "enabled": "feature-specific",
+      "address_hex": "0x007E3F54"
+    }
+  ],
+  "descriptor_intersections": [],
+  "dynamic_public_write_count": 75,
+  "dynamic_public_write_source": "dynamic-write-intersections.json",
+  "upstream_source_sha256": {
+    "src/CnCNetYR/Ra2Mode.cpp": "3e66181c74e91724e0cd07f58d9852d339dbd6c34835342ef7c6d878f5c94a00",
+    "src/Main.Config.cpp": "e40548909b18744b58bd369825c0bd5072eb98f421352ab0748b1619f4d33677",
+    "src/Misc/NoCD.cpp": "437637943197505aef2c91bfbf81c3b3a8e772b62bb5cfc6a6045cca966633ba",
+    "src/Misc/VideoMode.cpp": "6e1d0152bf41914e3f8217aee0984c890e7923994afc862f155d6d8d388aa0a4",
+    "src/Spawner/Spawner.Hook.cpp": "13dcb034f7ac26c5dbbcd92227fbda5aad1fd46eaa35472177c4a338ecd49c77"
+  },
+  "dynamic_source_sha256": "923ca95349c59f4c2b6da29840da6e26c63aa300c9bf29c760af0dbeea6f1166",
+  "dynamic_public_write_intersections": [],
+  "known_separate_install_conflict": {
+    "site": "0x006D8640",
+    "name": "CameraClamp",
+    "note": "The body hash begins at site+5 and deliberately excludes the five-byte install site; zero additional-context intersections must not be presented as zero patch-install collisions."
+  },
+  "limitations": [
+    "Intersects on-disk ordinary DLL registered hook/patch ranges with explicit coverage_size overrides for the two zero-declared-size callbacks; their 25-byte source-skipped envelopes do not establish actual loader overwrite lengths or live activation.",
+    "Dynamically selected CommandClass GetName six-byte leaf shape and cursor file-object vtable pointer validation cannot all be resolved statically without the live objects; failure skips that optional read/resource operation, not all Assist startup.",
+    "The native MegaMission timer slot only requires executable committed callback memory; it does not require the original timer function pointer.",
+    "No user base EXE memory, full initialization, live Windows execution, real-game rendering or multiplayer session was tested here.",
+    "In particular the v17 CameraClamp install collision is independent of this zero-intersection additional-context result."
+  ]
+}

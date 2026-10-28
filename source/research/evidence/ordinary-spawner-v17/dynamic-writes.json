@@ -1,0 +1,694 @@
+{
+  "upstream_commit": "fbe8d7d2620584d04ba14fa3580943bfa1448d40",
+  "ordinary_sha256": "58f198973bd0fd3b0e1b2c42fc6c545efe1fd399680abc2e8d6e9e189751614d",
+  "toolbox_code_commit": "b372ace50101e0099a5e9533c50470b4cabb1536",
+  "toolbox_release_commit": "5508c80f7b81abad4fc51847eb7f3530acddc9af",
+  "scope": "All literal-address Patch::Apply calls outside Utilities; includes conditional RA2-mode and configuration branches, not proof of execution",
+  "calls": [
+    {
+      "path": "CnCNetYR/Ra2Mode.cpp",
+      "line": 45,
+      "api": "RAW",
+      "address_expression": "0x849F48",
+      "address": 8691528,
+      "address_hex": "0x849f48",
+      "size": 12
+    },
+    {
+      "path": "CnCNetYR/Ra2Mode.cpp",
+      "line": 48,
+      "api": "RAW",
+      "address_expression": "0x732C59",
+      "address": 7547993,
+      "address_hex": "0x732c59",
+      "size": 1
+    },
+    {
+      "path": "CnCNetYR/Ra2Mode.cpp",
+      "line": 49,
+      "api": "RAW",
+      "address_expression": "0x732C30",
+      "address": 7547952,
+      "address_hex": "0x732c30",
+      "size": 5
+    },
+    {
+      "path": "CnCNetYR/Ra2Mode.cpp",
+      "line": 52,
+      "api": "LJMP",
+      "address_expression": "0x6FC05D",
+      "address": 7323741,
+      "address_hex": "0x6fc05d",
+      "size": 5
+    },
+    {
+      "path": "CnCNetYR/Ra2Mode.cpp",
+      "line": 57,
+      "api": "LJMP",
+      "address_expression": "0x51D77A",
+      "address": 5363578,
+      "address_hex": "0x51d77a",
+      "size": 5
+    },
+    {
+      "path": "CnCNetYR/Ra2Mode.cpp",
+      "line": 60,
+      "api": "LJMP",
+      "address_expression": "0x4F8EEE",
+      "address": 5213934,
+      "address_hex": "0x4f8eee",
+      "size": 5
+    },
+    {
+      "path": "CnCNetYR/Ra2Mode.cpp",
+      "line": 61,
+      "api": "LJMP",
+      "address_expression": "0x4F8CEC",
+      "address": 5213420,
+      "address_hex": "0x4f8cec",
+      "size": 5
+    },
+    {
+      "path": "CnCNetYR/Ra2Mode.cpp",
+      "line": 64,
+      "api": "LJMP",
+      "address_expression": "0x553686",
+      "address": 5584518,
+      "address_hex": "0x553686",
+      "size": 5
+    },
+    {
+      "path": "CnCNetYR/Ra2Mode.cpp",
+      "line": 85,
+      "api": "CALL",
+      "address_expression": "0x45591E",
+      "address": 4544798,
+      "address_hex": "0x45591e",
+      "size": 5
+    },
+    {
+      "path": "CnCNetYR/Ra2Mode.cpp",
+      "line": 86,
+      "api": "CALL",
+      "address_expression": "0x4557B7",
+      "address": 4544439,
+      "address_hex": "0x4557b7",
+      "size": 5
+    },
+    {
+      "path": "CnCNetYR/Ra2Mode.cpp",
+      "line": 88,
+      "api": "RAW",
+      "address_expression": "0x455980",
+      "address": 4544896,
+      "address_hex": "0x455980",
+      "size": 3
+    },
+    {
+      "path": "CnCNetYR/Ra2Mode.cpp",
+      "line": 89,
+      "api": "RAW",
+      "address_expression": "0x455A80",
+      "address": 4545152,
+      "address_hex": "0x455a80",
+      "size": 3
+    },
+    {
+      "path": "CnCNetYR/Ra2Mode.cpp",
+      "line": 93,
+      "api": "RAW",
+      "address_expression": "0x4717DC",
+      "address": 4659164,
+      "address_hex": "0x4717dc",
+      "size": 4
+    },
+    {
+      "path": "CnCNetYR/Ra2Mode.cpp",
+      "line": 102,
+      "api": "LJMP",
+      "address_expression": "0x61EC64",
+      "address": 6417508,
+      "address_hex": "0x61ec64",
+      "size": 5
+    },
+    {
+      "path": "CnCNetYR/Ra2Mode.cpp",
+      "line": 103,
+      "api": "OFFSET",
+      "address_expression": "0x61E8AB + 1",
+      "address": 6416556,
+      "address_hex": "0x61e8ac",
+      "size": 4
+    },
+    {
+      "path": "CnCNetYR/Ra2Mode.cpp",
+      "line": 104,
+      "api": "OFFSET",
+      "address_expression": "0x61E8B0 + 2",
+      "address": 6416562,
+      "address_hex": "0x61e8b2",
+      "size": 4
+    },
+    {
+      "path": "CnCNetYR/Ra2Mode.cpp",
+      "line": 107,
+      "api": "LJMP",
+      "address_expression": "0x620A89",
+      "address": 6425225,
+      "address_hex": "0x620a89",
+      "size": 5
+    },
+    {
+      "path": "CnCNetYR/Ra2Mode.cpp",
+      "line": 108,
+      "api": "LJMP",
+      "address_expression": "0x620B06",
+      "address": 6425350,
+      "address_hex": "0x620b06",
+      "size": 5
+    },
+    {
+      "path": "CnCNetYR/Ra2Mode.cpp",
+      "line": 109,
+      "api": "LJMP",
+      "address_expression": "0x620B7D",
+      "address": 6425469,
+      "address_hex": "0x620b7d",
+      "size": 5
+    },
+    {
+      "path": "CnCNetYR/Ra2Mode.cpp",
+      "line": 110,
+      "api": "RAW",
+      "address_expression": "0x620A29",
+      "address": 6425129,
+      "address_hex": "0x620a29",
+      "size": 7
+    },
+    {
+      "path": "CnCNetYR/Ra2Mode.cpp",
+      "line": 119,
+      "api": "LJMP",
+      "address_expression": "0x5301BA",
+      "address": 5439930,
+      "address_hex": "0x5301ba",
+      "size": 5
+    },
+    {
+      "path": "CnCNetYR/Ra2Mode.cpp",
+      "line": 122,
+      "api": "LJMP",
+      "address_expression": "0x530680",
+      "address": 5441152,
+      "address_hex": "0x530680",
+      "size": 5
+    },
+    {
+      "path": "CnCNetYR/Ra2Mode.cpp",
+      "line": 123,
+      "api": "LJMP",
+      "address_expression": "0x5316C9",
+      "address": 5445321,
+      "address_hex": "0x5316c9",
+      "size": 5
+    },
+    {
+      "path": "CnCNetYR/Ra2Mode.cpp",
+      "line": 126,
+      "api": "LJMP",
+      "address_expression": "0x530E8B",
+      "address": 5443211,
+      "address_hex": "0x530e8b",
+      "size": 5
+    },
+    {
+      "path": "CnCNetYR/Ra2Mode.cpp",
+      "line": 130,
+      "api": "RAW",
+      "address_expression": "0x826638",
+      "address": 8545848,
+      "address_hex": "0x826638",
+      "size": 12
+    },
+    {
+      "path": "CnCNetYR/Ra2Mode.cpp",
+      "line": 131,
+      "api": "RAW",
+      "address_expression": "0x826644",
+      "address": 8545860,
+      "address_hex": "0x826644",
+      "size": 10
+    },
+    {
+      "path": "CnCNetYR/Ra2Mode.cpp",
+      "line": 133,
+      "api": "RAW",
+      "address_expression": "0x8298B8",
+      "address": 8558776,
+      "address_hex": "0x8298b8",
+      "size": 11
+    },
+    {
+      "path": "CnCNetYR/Ra2Mode.cpp",
+      "line": 134,
+      "api": "RAW",
+      "address_expression": "0x8298C4",
+      "address": 8558788,
+      "address_hex": "0x8298c4",
+      "size": 9
+    },
+    {
+      "path": "CnCNetYR/Ra2Mode.cpp",
+      "line": 138,
+      "api": "RAW",
+      "address_expression": "0x816280",
+      "address": 8479360,
+      "address_hex": "0x816280",
+      "size": 10
+    },
+    {
+      "path": "CnCNetYR/Ra2Mode.cpp",
+      "line": 139,
+      "api": "RAW",
+      "address_expression": "0x81C24C",
+      "address": 8503884,
+      "address_hex": "0x81c24c",
+      "size": 10
+    },
+    {
+      "path": "CnCNetYR/Ra2Mode.cpp",
+      "line": 140,
+      "api": "RAW",
+      "address_expression": "0x81C284",
+      "address": 8503940,
+      "address_hex": "0x81c284",
+      "size": 10
+    },
+    {
+      "path": "CnCNetYR/Ra2Mode.cpp",
+      "line": 141,
+      "api": "RAW",
+      "address_expression": "0x81C210",
+      "address": 8503824,
+      "address_hex": "0x81c210",
+      "size": 15
+    },
+    {
+      "path": "CnCNetYR/Ra2Mode.cpp",
+      "line": 142,
+      "api": "RAW",
+      "address_expression": "0x81C2EC",
+      "address": 8504044,
+      "address_hex": "0x81c2ec",
+      "size": 13
+    },
+    {
+      "path": "CnCNetYR/Ra2Mode.cpp",
+      "line": 143,
+      "api": "RAW",
+      "address_expression": "0x82679C",
+      "address": 8546204,
+      "address_hex": "0x82679c",
+      "size": 10
+    },
+    {
+      "path": "CnCNetYR/Ra2Mode.cpp",
+      "line": 145,
+      "api": "RAW",
+      "address_expression": "0x825D94",
+      "address": 8543636,
+      "address_hex": "0x825d94",
+      "size": 10
+    },
+    {
+      "path": "CnCNetYR/Ra2Mode.cpp",
+      "line": 146,
+      "api": "RAW",
+      "address_expression": "0x825DF0",
+      "address": 8543728,
+      "address_hex": "0x825df0",
+      "size": 8
+    },
+    {
+      "path": "CnCNetYR/Ra2Mode.cpp",
+      "line": 147,
+      "api": "RAW",
+      "address_expression": "0x825E50",
+      "address": 8543824,
+      "address_hex": "0x825e50",
+      "size": 10
+    },
+    {
+      "path": "CnCNetYR/Ra2Mode.cpp",
+      "line": 148,
+      "api": "RAW",
+      "address_expression": "0x826198",
+      "address": 8544664,
+      "address_hex": "0x826198",
+      "size": 11
+    },
+    {
+      "path": "CnCNetYR/Ra2Mode.cpp",
+      "line": 149,
+      "api": "RAW",
+      "address_expression": "0x82621C",
+      "address": 8544796,
+      "address_hex": "0x82621c",
+      "size": 7
+    },
+    {
+      "path": "CnCNetYR/Ra2Mode.cpp",
+      "line": 150,
+      "api": "RAW",
+      "address_expression": "0x830370",
+      "address": 8586096,
+      "address_hex": "0x830370",
+      "size": 11
+    },
+    {
+      "path": "CnCNetYR/Ra2Mode.cpp",
+      "line": 151,
+      "api": "RAW",
+      "address_expression": "0x830A18",
+      "address": 8587800,
+      "address_hex": "0x830a18",
+      "size": 12
+    },
+    {
+      "path": "CnCNetYR/Ra2Mode.cpp",
+      "line": 152,
+      "api": "RAW",
+      "address_expression": "0x839724",
+      "address": 8623908,
+      "address_hex": "0x839724",
+      "size": 12
+    },
+    {
+      "path": "CnCNetYR/Ra2Mode.cpp",
+      "line": 153,
+      "api": "RAW",
+      "address_expression": "0x842194",
+      "address": 8659348,
+      "address_hex": "0x842194",
+      "size": 13
+    },
+    {
+      "path": "Main.Config.cpp",
+      "line": 92,
+      "api": "RAW",
+      "address_expression": "0x777CC0",
+      "address": 7830720,
+      "address_hex": "0x777cc0",
+      "size": 5
+    },
+    {
+      "path": "Misc/NoCD.cpp",
+      "line": 34,
+      "api": "RAW",
+      "address_expression": "0x4A80D0",
+      "address": 4882640,
+      "address_hex": "0x4a80d0",
+      "size": 6
+    },
+    {
+      "path": "Misc/NoCD.cpp",
+      "line": 40,
+      "api": "RAW",
+      "address_expression": "0x4790E0",
+      "address": 4690144,
+      "address_hex": "0x4790e0",
+      "size": 5
+    },
+    {
+      "path": "Misc/NoCD.cpp",
+      "line": 46,
+      "api": "RAW",
+      "address_expression": "0x479110",
+      "address": 4690192,
+      "address_hex": "0x479110",
+      "size": 5
+    },
+    {
+      "path": "Misc/NoCD.cpp",
+      "line": 53,
+      "api": "LJMP",
+      "address_expression": "0x47AE26",
+      "address": 4697638,
+      "address_hex": "0x47ae26",
+      "size": 5
+    },
+    {
+      "path": "Misc/NoCD.cpp",
+      "line": 54,
+      "api": "LJMP",
+      "address_expression": "0x47B020",
+      "address": 4698144,
+      "address_hex": "0x47b020",
+      "size": 5
+    },
+    {
+      "path": "Misc/NoCD.cpp",
+      "line": 58,
+      "api": "LJMP",
+      "address_expression": "0x530BF8",
+      "address": 5442552,
+      "address_hex": "0x530bf8",
+      "size": 5
+    },
+    {
+      "path": "Misc/NoCD.cpp",
+      "line": 59,
+      "api": "LJMP",
+      "address_expression": "0x530B67",
+      "address": 5442407,
+      "address_hex": "0x530b67",
+      "size": 5
+    },
+    {
+      "path": "Misc/NoCD.cpp",
+      "line": 60,
+      "api": "RAW",
+      "address_expression": "0x531289",
+      "address": 5444233,
+      "address_hex": "0x531289",
+      "size": 3
+    },
+    {
+      "path": "Misc/VideoMode.cpp",
+      "line": 31,
+      "api": "LJMP",
+      "address_expression": "0x56017A",
+      "address": 5636474,
+      "address_hex": "0x56017a",
+      "size": 5
+    },
+    {
+      "path": "Misc/VideoMode.cpp",
+      "line": 34,
+      "api": "LJMP",
+      "address_expression": "0x5601E3",
+      "address": 5636579,
+      "address_hex": "0x5601e3",
+      "size": 5
+    },
+    {
+      "path": "Misc/VideoMode.cpp",
+      "line": 37,
+      "api": "TYPED<WORD>",
+      "address_expression": "0x72ECA6",
+      "address": 7531686,
+      "address_hex": "0x72eca6",
+      "size": 2
+    },
+    {
+      "path": "Misc/VideoMode.cpp",
+      "line": 41,
+      "api": "RAW",
+      "address_expression": "0x4BB1FE",
+      "address": 4960766,
+      "address_hex": "0x4bb1fe",
+      "size": 1
+    },
+    {
+      "path": "Misc/VideoMode.cpp",
+      "line": 44,
+      "api": "LJMP",
+      "address_expression": "0x7782B7",
+      "address": 7832247,
+      "address_hex": "0x7782b7",
+      "size": 5
+    },
+    {
+      "path": "Misc/VideoMode.cpp",
+      "line": 45,
+      "api": "LJMP",
+      "address_expression": "0x52FF4A",
+      "address": 5439306,
+      "address_hex": "0x52ff4a",
+      "size": 5
+    },
+    {
+      "path": "Spawner/Spawner.Hook.cpp",
+      "line": 38,
+      "api": "CALL",
+      "address_expression": "0x48CDD3",
+      "address": 4771283,
+      "address_hex": "0x48cdd3",
+      "size": 5
+    },
+    {
+      "path": "Spawner/Spawner.Hook.cpp",
+      "line": 39,
+      "api": "CALL",
+      "address_expression": "0x48CFAA",
+      "address": 4771754,
+      "address_hex": "0x48cfaa",
+      "size": 5
+    },
+    {
+      "path": "Spawner/Spawner.Hook.cpp",
+      "line": 42,
+      "api": "CALL",
+      "address_expression": "0x68745E",
+      "address": 6845534,
+      "address_hex": "0x68745e",
+      "size": 5
+    },
+    {
+      "path": "Spawner/Spawner.Hook.cpp",
+      "line": 43,
+      "api": "CALL",
+      "address_expression": "0x68ACFF",
+      "address": 6860031,
+      "address_hex": "0x68acff",
+      "size": 5
+    },
+    {
+      "path": "Spawner/Spawner.Hook.cpp",
+      "line": 45,
+      "api": "LJMP",
+      "address_expression": "0x5D74A0",
+      "address": 6124704,
+      "address_hex": "0x5d74a0",
+      "size": 5
+    },
+    {
+      "path": "Spawner/Spawner.Hook.cpp",
+      "line": 46,
+      "api": "LJMP",
+      "address_expression": "0x501721",
+      "address": 5248801,
+      "address_hex": "0x501721",
+      "size": 5
+    },
+    {
+      "path": "Spawner/Spawner.Hook.cpp",
+      "line": 51,
+      "api": "CALL",
+      "address_expression": "0x7B3D75",
+      "address": 8076661,
+      "address_hex": "0x7b3d75",
+      "size": 5
+    },
+    {
+      "path": "Spawner/Spawner.Hook.cpp",
+      "line": 52,
+      "api": "CALL",
+      "address_expression": "0x7B3EEC",
+      "address": 8077036,
+      "address_hex": "0x7b3eec",
+      "size": 5
+    },
+    {
+      "path": "Spawner/Spawner.Hook.cpp",
+      "line": 56,
+      "api": "LJMP",
+      "address_expression": "0x52CB50",
+      "address": 5426000,
+      "address_hex": "0x52cb50",
+      "size": 5
+    },
+    {
+      "path": "Spawner/Spawner.Hook.cpp",
+      "line": 57,
+      "api": "LJMP",
+      "address_expression": "0x52C5E0",
+      "address": 5424608,
+      "address_hex": "0x52c5e0",
+      "size": 5
+    },
+    {
+      "path": "Spawner/Spawner.Hook.cpp",
+      "line": 61,
+      "api": "LJMP",
+      "address_expression": "0x553321",
+      "address": 5583649,
+      "address_hex": "0x553321",
+      "size": 5
+    },
+    {
+      "path": "Spawner/Spawner.Hook.cpp",
+      "line": 62,
+      "api": "LJMP",
+      "address_expression": "0x55D0DF",
+      "address": 5624031,
+      "address_hex": "0x55d0df",
+      "size": 5
+    },
+    {
+      "path": "Spawner/Spawner.Hook.cpp",
+      "line": 66,
+      "api": "TYPED<int>",
+      "address_expression": "0x6843C7",
+      "address": 6833095,
+      "address_hex": "0x6843c7",
+      "size": 4
+    },
+    {
+      "path": "Spawner/Spawner.Hook.cpp",
+      "line": 69,
+      "api": "LJMP",
+      "address_expression": "0x658117",
+      "address": 6652183,
+      "address_hex": "0x658117",
+      "size": 5
+    },
+    {
+      "path": "Spawner/Spawner.Hook.cpp",
+      "line": 72,
+      "api": "LJMP",
+      "address_expression": "0x6D1639",
+      "address": 7149113,
+      "address_hex": "0x6d1639",
+      "size": 5
+    },
+    {
+      "path": "Spawner/Spawner.Hook.cpp",
+      "line": 75,
+      "api": "LJMP",
+      "address_expression": "0x4F1993",
+      "address": 5183891,
+      "address_hex": "0x4f1993",
+      "size": 5
+    },
+    {
+      "path": "Spawner/Spawner.Hook.cpp",
+      "line": 78,
+      "api": "LJMP",
+      "address_expression": "0x699AD9",
+      "address": 6920921,
+      "address_hex": "0x699ad9",
+      "size": 5
+    }
+  ],
+  "unresolved": [],
+  "toolbox_write_intersections": [],
+  "verified_upstream_source_pin": {
+    "repository": "CnCNet/yrpp-spawner",
+    "commit": "fbe8d7d2620584d04ba14fa3580943bfa1448d40",
+    "tree": "0a1f3074b95213b5a36b7938e2b711950f179513",
+    "verified_blobs": 69,
+    "source_pin_sha256": "28e9717e2eedd47145bd89e6c1a37b5b6b62cae041c5b300520cecc41c956e3b"
+  },
+  "toolbox_release_runtime_sha256": "eba0ce9f13376aa193942a4765b07fc28e2f63d7a577bed9450325d8e951f4f7"
+}
