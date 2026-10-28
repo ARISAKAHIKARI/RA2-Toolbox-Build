@@ -56,8 +56,8 @@ int main(){
  // A real physical 3840/2560=1.5x case at small but identical ratios.
  external::camera::NativeCanvas fractional;
  assert(fractional.reset(4,4));
- fractional.underlayRect(0,0,2,4,0x101010);
- fractional.underlayRect(2,0,4,4,0xf0f0f0);
+ fractional.underlayRect(0,0,1,4,0x101010);
+ fractional.underlayRect(1,0,4,4,0xf0f0f0); // source edge is at 1: output x=1.5, not pixel-aligned
  std::vector<uint32_t> restored,original;
  assert(fractional.presentRegion(6,6,restored,0,0,4,4,3));
  assert(fractional.presentRegion(6,6,original,0,0,4,4,0));
