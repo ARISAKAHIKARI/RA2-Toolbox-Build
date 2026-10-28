@@ -86,10 +86,17 @@ static void update(POINT origin,const RECT&client,bool battlefield){
  }else{layers.clear();imageToken=0;if(!fresh)feedback::hide();}
  overlaycompositor::host().replaceGroup({overlaycompositor::RenderUpgrade,feedback::SelectionLayer,feedback::CursorLayer},std::move(layers));
  const uint32_t now=GetTickCount();if(DWORD(now-submittedAt)>=uint32_t(1000/std::clamp(informationFPS(),5,120))){submittedAt=now;worker.submit(std::move(request));}
- const wchar_t*status=!fresh?L"渲染升级：采样/素材或视角变化，暂用原画面":!feedbackReady?L"渲染升级：等待有效光标或选择状态，暂用原画面":
-  (renderPixelScale && request.width==2*request.view.width && request.height==2*request.view.height ?
-   L"渲染升级：24-bit 色盘 / 2x 轮廓插值 · 电弧近似；其他特效待补，实机待测" :
-   L"渲染升级：24-bit 色盘 · 2x 插值仅在真实双倍输出时启用；电弧近似，其他特效待补");
- SetWindowTextW(GetDlgItem(ui,9303),status);
+ std::wstring status;
+ if(!fresh)status=L"渲染升级：采样/素材或视角变化，暂用原画面";
+ else if(!feedbackReady)status=L"渲染升级：等待有效光标或选择状态，暂用原画面";
+ else{
+  status=renderPaletteRange==1?L"渲染升级：RGB888 全范围色盘":L"渲染升级：原生 DAC 色盘";
+  if(renderPixelScale==0)status+=L" · 原有采样";
+  else if(request.width==2*request.view.width&&request.height==2*request.view.height)
+   status+=renderPixelScale==1?L" · 2× 最近邻候选":L" · 2× 轮廓插值候选";
+  else status+=L" · 非 2:1 输出，回退原有采样";
+  status+=L" · 电弧近似；激光/波纹/粒子待补，实机待测";
+ }
+ SetWindowTextW(GetDlgItem(ui,9303),status.c_str());
 }
 }
