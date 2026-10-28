@@ -19,7 +19,7 @@ inline Result inspect(HWND game,int gameW,int gameH,POINT clientOrigin,const REC
  }
  HMONITOR monitor=MonitorFromWindow(game,MONITOR_DEFAULTTONEAREST);
  MONITORINFOEXW info{};info.cbSize=sizeof(info);
- if(!monitor||!GetMonitorInfoW(monitor,&info)){
+ if(!monitor||!GetMonitorInfoW(monitor,reinterpret_cast<LPMONITORINFO>(&info))){
   o.captureFailed=true;return classify(o);
  }
  o.monitorW=info.rcMonitor.right-info.rcMonitor.left;
