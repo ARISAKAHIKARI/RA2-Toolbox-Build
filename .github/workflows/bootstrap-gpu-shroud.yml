@@ -1,0 +1,22 @@
+name: Bootstrap integer GPU shroud kernel
+on:
+  push:
+    branches: [codex/vulkan-shroud-kernel-bootstrap-20261029]
+permissions:
+  contents: read
+jobs:
+  kernel:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile integer Vulkan 1.0 native shroud shader
+        run: |
+          sudo apt-get update && sudo apt-get install -y glslang-tools spirv-tools
+          python3 source/tools/build_gpu_shroud.py --output generated/gpu_shroud_spirv.h | tee generated-shroud.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gpu-shroud-kernel
+          if-no-files-found: error
+          path: |
+            generated/gpu_shroud_spirv.h
+            generated-shroud.json
