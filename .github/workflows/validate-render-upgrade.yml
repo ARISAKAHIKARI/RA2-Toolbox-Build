@@ -39,6 +39,21 @@ jobs:
             g++ -std=c++17 -O2 source/assist/tests/$name.cpp -o /tmp/$name-test
             /tmp/$name-test
           done
+      - name: Verify same-frame indexed art AB and produce copyright-free demo
+        shell: bash
+        run: |
+          set -euo pipefail
+          python source/assist/tests/shp_palette_ab.py
+          python source/tools/shp_palette_ab.py --demo --out source/ab-demo
+      - name: Upload A/B demonstration images and matching-frame report
+        uses: actions/upload-artifact@v4
+        with:
+          name: RA2-Palette-2x-AB-synthetic-reference
+          retention-days: 14
+          if-no-files-found: error
+          path: |
+            source/ab-demo/*.png
+            source/ab-demo/AB_manifest.json
       - name: Commit ordinary integration sources on this experimental branch
         id: commit
         shell: bash
@@ -78,6 +93,8 @@ jobs:
           if($LASTEXITCODE -ne 0){throw 'Native feedback contract failed'}
           python source/tools/validate_pixel_upgrade.py
           if($LASTEXITCODE -ne 0){throw 'RGB888 and 2x integration contract failed'}
+          python source/assist/tests/shp_palette_ab.py
+          if($LASTEXITCODE -ne 0){throw 'Single SHP frame AB PNG regression failed'}
           foreach($name in 'render_upgrade','render_upgrade_scene','radar_scene','radar_shroud_mask','native_canvas','native_feedback','native_feedback_scene','pixel_upgrade'){
             & $env:ZIG_EXE c++ -target x86-windows-gnu -std=c++17 -O2 "source/assist/tests/$name.cpp" -o "$name-test.exe"
             if($LASTEXITCODE -ne 0){throw "Test compile failed: $name"}
