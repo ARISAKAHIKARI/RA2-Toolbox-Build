@@ -1,6 +1,7 @@
 #include "../../external_reader/source/vulkan_compute.h"
 #include <cassert>
 #include <iostream>
+#include <new>
 #include <random>
 #include <string>
 using namespace external::vulkancompute;
@@ -35,10 +36,19 @@ int main(int argc,char**argv){
  jobs[0].pixels=image(79,63,random);first.reset();
  assert(gpu.render(256,95,jobs,output));check();assert(gpu.diagnostics().uploads==1&&gpu.diagnostics().uploadedBytes==79*63*4);
  for(int n=0;n<8;++n){jobs[0].pixels=image(79,63,random);assert(gpu.render(256,95,jobs,output));check();assert(gpu.diagnostics().uploads==1);}
+ // Force the identical vector object address to be reused by a NEW shared
+ // ownership identity. A raw-address-only GPU cache would reuse stale pixels.
+ alignas(std::vector<uint32_t>) unsigned char storage[sizeof(std::vector<uint32_t>)];
+ auto reused=[&](){auto source=image(79,63,random);auto* value=new(storage) std::vector<uint32_t>(*source);return std::shared_ptr<const std::vector<uint32_t>>(value,[](const std::vector<uint32_t>*p){const_cast<std::vector<uint32_t>*>(p)->~vector();});};
+ jobs[0].pixels=reused();const void* address=jobs[0].pixels.get();
+ assert(gpu.render(256,95,jobs,output));check();assert(gpu.diagnostics().uploads==1);
+ jobs[0].pixels.reset();jobs[0].pixels=reused();assert(jobs[0].pixels.get()==address);
+ assert(gpu.render(256,95,jobs,output));check();assert(gpu.diagnostics().uploads==1);
  const auto previous=output;auto invalid=jobs;invalid[1].left=126;assert(!gpu.render(256,95,invalid,output)&&output==previous);
  invalid=jobs;invalid[0].stepX=std::numeric_limits<double>::infinity();assert(!gpu.render(256,95,invalid,output)&&output==previous);
  invalid=jobs;invalid[0].sourceWidth=80;assert(!gpu.render(256,95,invalid,output)&&output==previous);
  // Rejected input does not poison the initialized backend.
  assert(gpu.render(256,95,jobs,output));check();assert(gpu.diagnostics().uploads==0);
+ invalid.clear();jobs[0].pixels.reset();
  std::cout<<"PASS Vulkan actual compute frames="<<frames<<" exact_Q8_pixels="<<checked<<" warm_uploads=0 final_readbacks=1 software="<<gpu.diagnostics().softwareDevice<<" device="<<gpu.diagnostics().device<<" last_frame_ms="<<gpu.diagnostics().milliseconds<<"\n";
 }

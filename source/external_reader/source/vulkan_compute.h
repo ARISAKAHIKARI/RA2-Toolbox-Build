@@ -35,6 +35,11 @@ struct Diagnostics {
  std::string device,reason;
 };
 class Resolve {
+#ifdef RA2_VULKAN_TEST_SOFTWARE
+ static constexpr bool AllowSoftware=true;
+#else
+ static constexpr bool AllowSoftware=false;
+#endif
  static constexpr VkDeviceSize AtlasBytes=96ull*1024*1024;
  static constexpr uint64_t MaxPixels=16ull*1024*1024,MaxCoordinates=4ull*1024*1024;
  struct Buffer {VkBuffer buffer=VK_NULL_HANDLE;VkDeviceMemory memory=VK_NULL_HANDLE;VkDeviceSize size=0;void* mapped=nullptr;bool coherent=false;};
@@ -153,6 +158,7 @@ class Resolve {
   int best=-1;
   for(auto candidate:devices){
    VkPhysicalDeviceProperties props{};vkGetPhysicalDeviceProperties_(candidate,&props);
+   if(props.deviceType==VK_PHYSICAL_DEVICE_TYPE_CPU&&!AllowSoftware)continue;
    if(props.limits.maxStorageBufferRange<AtlasBytes||props.limits.maxPushConstantsSize<sizeof(Params)||props.limits.maxComputeWorkGroupInvocations<64||props.limits.maxComputeWorkGroupSize[0]<8||props.limits.maxComputeWorkGroupSize[1]<8)continue;
    uint32_t n=0;vkGetPhysicalDeviceQueueFamilyProperties_(candidate,&n,nullptr);if(!n||n>1024)continue;
    std::vector<VkQueueFamilyProperties> queues(n);vkGetPhysicalDeviceQueueFamilyProperties_(candidate,&n,queues.data());
@@ -263,7 +269,10 @@ public:
   if(vkQueueSubmit_(queue_,1,&submit,fence_)!=VK_SUCCESS)return fatal("Vulkan queue submission failed");inFlight_=true;
   // A bounded wait prevents a driver stall from blocking scene publication.
   // This is a safety ceiling, not a promised frame budget or measured latency.
-  VkResult waited=vkWaitForFences_(device_,1,&fence_,VK_TRUE,100000000ull);
+  // Software Vulkan exists only in the explicit CI build; shader JIT is not
+  // hardware performance evidence and gets a separate test-only wait budget.
+  const uint64_t waitBudget=AllowSoftware&&diagnostics_.softwareDevice?10000000000ull:100000000ull;
+  VkResult waited=vkWaitForFences_(device_,1,&fence_,VK_TRUE,waitBudget);
   if(waited!=VK_SUCCESS){quarantined().store(true,std::memory_order_relaxed);return fatal(waited==VK_TIMEOUT?"Vulkan compute timed out; CPU fallback":"Vulkan device lost; CPU fallback");}inFlight_=false;
   if(!readback_.coherent){VkMappedMemoryRange range{VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE};range.memory=readback_.memory;range.size=VK_WHOLE_SIZE;if(vkInvalidateMappedMemoryRanges_(device_,1,&range)!=VK_SUCCESS)return fatal("Vulkan readback invalidation failed");}
   out.resize(size_t(width)*height);std::memcpy(out.data(),readback_.mapped,size_t(outputBytes));tiles_=std::move(retained);

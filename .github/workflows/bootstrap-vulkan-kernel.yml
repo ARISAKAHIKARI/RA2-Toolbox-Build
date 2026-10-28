@@ -34,7 +34,7 @@ jobs:
       - name: Real Vulkan compute and cache regression
         run: |
           set -euo pipefail
-          g++ -std=c++17 -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer source/assist/tests/vulkan_compute.cpp -ldl -o /tmp/vulkan-compute-test
+          g++ -std=c++17 -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -DRA2_VULKAN_TEST_SOFTWARE source/assist/tests/vulkan_compute.cpp -ldl -o /tmp/vulkan-compute-test
           ASAN_OPTIONS=detect_leaks=0 VK_INSTANCE_LAYERS=VK_LAYER_KHRONOS_validation /tmp/vulkan-compute-test --require 2>&1 | tee vulkan-compute.log
           if rg 'Validation Error|VUID-' vulkan-compute.log; then exit 1; fi
       - uses: actions/upload-artifact@v4
