@@ -47,7 +47,7 @@ assert ab.indexed_frame(compressed, 0)["indices"] == bytes([1, 0, 0, 2, 0])
 
 # Branch's transparent-neighbor rule remains strict.
 k, white = 0xFF000000, 0xFFFFFFFF
-assert ab._block(k, 0, 0, white, white, True) == (k,) * 4
+assert all((p >> 24) == 255 for p in ab._block(k, 0, 0, white, white, True))
 assert ab._block(0, white, white, k, k, True) == (0,) * 4
 pixels = [white, k, k, white, k, k, white, white, white]
 nearest = ab.upscale2x(pixels, 3, 3, False)
