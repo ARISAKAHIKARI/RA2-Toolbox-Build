@@ -11,6 +11,18 @@ int main(){
  auto one=std::make_shared<const std::vector<uint32_t>>(1,0xffffffff);
  auto make=[&](uint64_t id,int order){return overlaycompositor::Surface{id,order,c,{0,0,1,1},true,255,one};};
  CHECK(host.publish(make(1,10)));CHECK(host.replaceGroup({3,4,5},{make(3,110),make(4,200),make(5,300)}));CHECK(host.layerCount()==4);
+ // Camera preparation must leave the old complete group valid until its
+ // translated replacement is ready; reject an invalid proposal atomically.
+ auto oldScene=make(3,110);
+ auto future=host.configure(uintptr_t(game),GetCurrentProcessId(),1,100,100,12,19,true,false,60,true);
+ auto committed=host.capture(uintptr_t(game),GetCurrentProcessId());
+ CHECK(future.token==c.token&&future.cameraX==12&&future.cameraY==19);
+ CHECK(committed.cameraX==0&&committed.cameraY==0&&overlaycomposition::valid(oldScene,committed));
+ auto invalid=future;invalid.token++;
+ CHECK(!host.replaceGroupAt(invalid,{3,4,5},{}));CHECK(host.capture(uintptr_t(game),GetCurrentProcessId()).cameraX==0&&host.layerCount()==4);
+ c=future;CHECK(host.replaceGroupAt(c,{3,4,5},{make(3,5),make(4,200),make(5,300)}));
+ committed=host.capture(uintptr_t(game),GetCurrentProcessId());
+ CHECK(committed.cameraX==12&&committed.cameraY==19&&!overlaycomposition::valid(oldScene,committed)&&host.layerCount()==4);
  CHECK(host.replaceGroup({3,4,5},{make(3,110),make(5,300)}));CHECK(host.layerCount()==3);
  CHECK(!host.replaceGroup({3,3},{make(3,110)}));CHECK(host.layerCount()==3);
  auto old=make(5,300);old.context.token++;CHECK(!host.replaceGroup({3,4,5},{make(3,110),old}));CHECK(host.layerCount()==1);

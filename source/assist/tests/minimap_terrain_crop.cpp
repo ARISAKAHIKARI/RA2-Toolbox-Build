@@ -83,9 +83,12 @@ int main(){
   int x=0,y=0,dx=0,dy=0;
   assert(radar::navigate(g,40,20,82,42,640,480,x,y));
   assert(radar::navigate(diagramOnly.terrain->geo,40,20,82,42,640,480,dx,dy)&&x==dx&&y==dy);
-  // A fully covered source remains absent under the existing native shroud
-  // policy, even when its raised/extra pixels could enter the crop.
-  auto masked=sample(q,false,true);assert(masked.terrain&&masked.terrain->art[64*512+64].sourceColor==0);
+  // Terrain SOURCE art remains available when its flat source is covered:
+  // raised/extra pixels can enter a clear neighbor. Actor/diagram admission
+  // stays hidden and the final DESTINATION mask still covers unknown pixels.
+  auto masked=sample(q,false,true);assert(masked.terrain&&masked.terrain->art[64*512+64].sourceColor!=0&&masked.terrain->colors[64*512+64]==0);
+  radar::SceneRenderer<Assets> maskedRenderer;auto hidden=maskedRenderer.render(masked,240,120,&read,assets);
+  assert(hidden&&std::find(hidden->pixels.begin(),hidden->pixels.end(),0xffa03020u)==hidden->pixels.end());
   ++cases;
  }
  // Conservative collection is bounded and still rejects physical illegality.

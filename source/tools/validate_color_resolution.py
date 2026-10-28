@@ -15,7 +15,7 @@ assert 'presentationResolution(r.view.width,r.view.height,r.width,r.height)' in 
 assert host.index('assets.presentationResolution(') < host.index('const uint64_t assetRevision=assets.revision()')
 assert 'presentationColorPrecision(r.colorPrecision!=0)' in host
 policy=(root/'assist/source/render_presentation.h').read_text(encoding='utf-8')
-assert 'renderpresentation::usable(*result,request,GetTickCount())' in host
+assert 'renderpresentation::scrollUsable(*result,request,GetTickCount(),shift)' in host
 assert 'a.colorPrecision==b.colorPrecision' in policy
 assert 'true,r.colorPrecision!=0)' in host
 scene = (root/'external_reader/source/radar_scene.h').read_text(encoding='utf-8')

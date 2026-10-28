@@ -9,6 +9,7 @@
 #include <vector>
 #include "voxel_lighting.h"
 #include "resolution_sampling.h"
+#include "voxel_posture.h"
 namespace external { namespace voxel {
 // Read-only in-memory VXL/HVA capture. Never calls the game renderer. Layout
 // evidence: YRpp + native 755DB0/7563A8, 5BD5C0/5BD730 and 705D70.
@@ -78,12 +79,32 @@ inline Vec posePoint(const Face&face,Vec point,double bodyAngle,double turretAng
  if(!face.turret||!std::isfinite(turretAngle))return rotate(point,bodyAngle);
  point=rotate(point,turretAngle);auto pivot=rotate({turretOffset,0,0},bodyAngle);point.x+=pivot.x;point.y+=pivot.y;return point;
 }
+inline Vec posturePoint(const voxelposture::Matrix&matrix,Vec point,bool direction=false){
+ // capturePart already mirrored native model Y after HVA. Re-enter native
+ // world coordinates for the live locomotor matrix, then restore that mirror.
+ Vec native{point.x,-point.y,point.z};
+ auto at=[&](int row){return matrix[row*4]*native.x+matrix[row*4+1]*native.y+matrix[row*4+2]*native.z+(direction?0:matrix[row*4+3]);};
+ return {at(0),-at(1),at(2)};
+}
+inline VoxelLight postureLight(double angle,const voxelposture::Matrix&world){
+ voxelposture::Matrix view{{NativeVoxelView[0],NativeVoxelView[1],NativeVoxelView[2],0,
+  NativeVoxelView[3],NativeVoxelView[4],NativeVoxelView[5],0,NativeVoxelView[6],NativeVoxelView[7],NativeVoxelView[8],0}};
+ auto draw=voxelposture::multiply(voxelposture::multiply(view,world),voxelposture::yaw(-angle,true));
+ VoxelLight out;for(unsigned i=0;i<3;++i)out.source[i]=nativeStoredFloat(
+  double(draw[i])*NativeLightSource[0]+double(draw[i+4])*NativeLightSource[1]+double(draw[i+8])*NativeLightSource[2]);
+ auto sum=out.source;sum[2]=nativeStoredFloat(double(sum[2])+1);
+ float length=nativeVoxelSqrt(double(sum[2])*sum[2]+double(sum[0])*sum[0]+double(sum[1])*sum[1]);
+ for(unsigned i=0;i<3;++i)out.halfway[i]=length>0?nativeStoredFloat(double(sum[i])/length):sum[i];return out;
+}
 struct Screen {float x,y,z;};
 inline Screen project(Vec p){return {float((p.x-p.y)*0.70710678118),float((p.x+p.y)*0.35355339059-p.z*0.86602540378),float((p.x+p.y)*0.61237243569+p.z*.5)};}
 inline uint32_t premultiply(uint32_t c,float light,unsigned alpha=124){unsigned r=unsigned(std::clamp(((c>>16)&255)*light,0.f,255.f)),g=unsigned(std::clamp(((c>>8)&255)*light,0.f,255.f)),b=unsigned(std::clamp((c&255)*light,0.f,255.f));return (alpha<<24)|((r*alpha/255)<<16)|((g*alpha/255)<<8)|(b*alpha/255);}
-inline bool render(const Model&model,double angle,const std::array<uint32_t,256>&pal,Image&out,double turretAngle=std::numeric_limits<double>::quiet_NaN(),float turretOffset=0,const Vpl*vpl=nullptr,unsigned alpha=124,double pitch=0,bool projectile=false,int rasterScale=1){
- out={};if(rasterScale<1||rasterScale>resolutionsampling::MaxRasterScale||model.faces.empty()||model.faces.size()>MaxFaces||!std::isfinite(angle))return false;
- const auto bodyLight=nativeVoxelLight(angle,pitch),turretLight=std::isfinite(turretAngle)?nativeVoxelLight(turretAngle,pitch):bodyLight;
+inline bool render(const Model&model,double angle,const std::array<uint32_t,256>&pal,Image&out,double turretAngle=std::numeric_limits<double>::quiet_NaN(),float turretOffset=0,const Vpl*vpl=nullptr,unsigned alpha=124,double pitch=0,bool projectile=false,int rasterScale=1,const voxelposture::State*posture=nullptr){
+ out={};if(rasterScale<1||rasterScale>resolutionsampling::MaxRasterScale||model.faces.empty()||model.faces.size()>MaxFaces||!std::isfinite(angle)||(posture&&!posture->available))return false;
+ const bool tilted=posture&&posture->active&&!projectile;
+ const auto geometryWorld=tilted?voxelposture::world(*posture,angle,false):voxelposture::identity();
+ const auto lightWorld=tilted?voxelposture::world(*posture,angle,true):voxelposture::identity();
+ const auto bodyLight=tilted?postureLight(angle,lightWorld):nativeVoxelLight(angle,pitch),turretLight=std::isfinite(turretAngle)?(tilted?postureLight(turretAngle,lightWorld):nativeVoxelLight(turretAngle,pitch)):bodyLight;
  const auto worldLight=nativeVoxelWorldLight();
  std::array<std::array<uint8_t,256>,5> bodyPages,turretPages;std::array<bool,5> bodyPagesReady{},turretPagesReady{};
  auto pageFor=[&](const Face&face)->unsigned{
@@ -93,7 +114,7 @@ inline bool render(const Model&model,double angle,const std::array<uint32_t,256>
   return pages[face.normalIndex];
  };
  auto pitched=[&](Vec p){if(pitch==0)return p;double c=std::cos(pitch),s=std::sin(pitch);return Vec{float(p.x*c+p.z*s),p.y,float(-p.x*s+p.z*c)};};
- auto worldPoint=[&](const Face&f,Vec p){return posePoint(f,pitched(p),angle,turretAngle,turretOffset);};
+ auto worldPoint=[&](const Face&f,Vec p){auto point=posePoint(f,pitched(p),angle,turretAngle,turretOffset);return tilted?posturePoint(geometryWorld,point):point;};
  float minX=0,minY=0,maxX=0,maxY=0;for(const auto&f:model.faces)for(auto p:f.p){auto s=project(worldPoint(f,p));if(!finite(s.x)||!finite(s.y)||!finite(s.z))return false;minX=std::min(minX,s.x);minY=std::min(minY,s.y);maxX=std::max(maxX,s.x);maxY=std::max(maxY,s.y);}
  int left=int(std::floor(minX))-1,top=int(std::floor(minY))-1,w=int(std::ceil(maxX))-left+2,h=int(std::ceil(maxY))-top+2;if(w<1||h<1||w>512||h>512)return false;
  // Rasterize the original VXL faces at the presentation's required sample
@@ -112,6 +133,7 @@ inline bool render(const Model&model,double angle,const std::array<uint32_t,256>
    index=vpl->map(pageFor(f),index);
   }else{
    Vec n=f.hasNormal?rotate(pitched(f.normal),f.turret&&std::isfinite(turretAngle)?turretAngle:angle):normal;
+   if(tilted&&f.hasNormal)n=posturePoint(geometryWorld,n,true);
    float length=std::sqrt(n.x*n.x+n.y*n.y+n.z*n.z);
    float diffuse=length>1e-6f?std::max(0.f,(n.x*worldLight[0]+n.y*worldLight[1]+n.z*worldLight[2])/length):0;
    light=.8f+1.3f*diffuse;

@@ -4,10 +4,12 @@ static void loadAdditionalSettings(){
  renderSceneDetail=std::clamp(value(L"Display",L"RenderSceneDetail",1),0,1);
  renderUpgradeEnabled=value(L"Display",L"RenderUpgrade",0)!=0;
  unifiedOverlayEnabled=value(L"Display",L"UnifiedOverlay",0)!=0;
- renderUpgradeLayer=std::clamp(value(L"Display",L"RenderUpgradeLayer",0),0,1);
+ renderUpgradeLayer=std::clamp(value(L"Display",L"RenderUpgradeLayer",1),0,1);
+ renderUpgradeLayer=1; // Migrate the old opaque-on-top mode; information and input feedback must remain visible.
  renderPaletteRange=std::clamp(value(L"Display",L"RenderPaletteRange",1),0,1);
  renderPixelScale=std::clamp(value(L"Display",L"RenderPixelScale",3),0,3);
  renderPhysicalOutput=value(L"Display",L"RenderPhysicalOutput",0)!=0;
+ renderVulkanEnabled=value(L"Display",L"RenderVulkan",0)!=0;
  extra.viewZoomEnabled=false;extra.viewZoomPercent=100; // temporarily unavailable, including saved settings
  extra.techEnhance=value(L"Experimental",L"TechEnhance",0)!=0;
  extra.networkHousePreserve=value(L"Experimental",L"NetworkHousePreserve",0)!=0;
@@ -116,6 +118,7 @@ static bool saveAdditionalSettings(){
  write(L"Display",L"RenderMaterialRefresh",renderMaterialRefresh);
  write(L"Display",L"RenderSceneDetail",renderSceneDetail);
  write(L"Display",L"RenderPhysicalOutput",renderPhysicalOutput);
+ write(L"Display",L"RenderVulkan",renderVulkanEnabled);
  write(L"Display",L"MinimapMode",minimapMode);
  write(L"Display",L"MinimapSecondary",minimapSecondary);
  write(L"Display",L"MinimapSecondaryX",minimapSecondaryX);write(L"Display",L"MinimapSecondaryY",minimapSecondaryY);write(L"Display",L"MinimapSecondaryWidth",minimapSecondaryWidth);

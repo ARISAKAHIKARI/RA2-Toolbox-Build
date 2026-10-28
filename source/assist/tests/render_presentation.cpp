@@ -11,7 +11,7 @@ struct Request {
  int width=4,height=3;uint32_t reveal=0;int paletteRange=1,pixelScaleMode=3;
  external::mainview::View view{0x10000,0x20000,0x30000,50,100,200,800,600,0,0,640,600};
  overlaycomposition::Context context{9,101,77,8,4,3,100,200};
- bool fail=false;int sequence=0;
+ bool fail=false;int sequence=0;bool gpu=false;
 };
 struct Frame {Request request;std::shared_ptr<const std::vector<uint32_t>> image;uint32_t sampledTick=0,completedTick=0;};
 template<class F>void eventually(F fn){const auto end=std::chrono::steady_clock::now()+std::chrono::seconds(3);while(!fn()){assert(std::chrono::steady_clock::now()<end);std::this_thread::yield();}}
@@ -33,6 +33,7 @@ int main(){
  changed=request;changed.generation++;assert(!usable(frame,changed,1450));
  changed=request;changed.reveal++;assert(!usable(frame,changed,1450));
  changed=request;changed.colorPrecision=0;assert(!usable(frame,changed,1450));
+ changed=request;changed.gpu=true;assert(!usable(frame,changed,1450));
  changed=request;changed.width++;assert(!usable(frame,changed,1450));
  assert(sampleAdvance(100,100,100)&&sampleAdvance(100,101,103));
  assert(!sampleAdvance(100,100,103)&&!sampleAdvance(100,99,100)&&!sampleAdvance(100,101,100));

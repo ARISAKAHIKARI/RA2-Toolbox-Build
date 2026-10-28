@@ -10,6 +10,13 @@ int main(){
  std::thread watchdog([done]{if(WaitForSingleObject(done,20000)!=WAIT_OBJECT_0)TerminateProcess(GetCurrentProcess(),124);});
  WNDCLASSW cls{};cls.hInstance=GetModuleHandleW(nullptr);cls.lpfnWndProc=DefWindowProcW;cls.lpszClassName=L"RenderUpgradeTestGame";RegisterClassW(&cls);
  HWND game=CreateWindowExW(WS_EX_NOACTIVATE,cls.lpszClassName,L"",WS_POPUP,20,20,320,200,nullptr,nullptr,cls.hInstance,nullptr);CHECK(game);
+ // Query the real target HWND's current monitor mode without changing it.
+ // An absent target is an explicitly unknown frequency, never a guessed 60.
+ overlaypresentrate::Monitor monitorRate;const int knownHz=monitorRate.update(game,GetTickCount());
+ CHECK(knownHz==0||(knownHz>=5&&knownHz<=500));
+ CHECK(overlaypresentrate::limit(500,knownHz)==(knownHz?knownHz:500));
+ CHECK(overlaypresentrate::limit(30,knownHz)<=30);
+ CHECK(monitorRate.update(nullptr,GetTickCount())==0&&overlaypresentrate::limit(500,monitorRate.rate())==500);
  HWND prior=GetForegroundWindow();
  overlaycompositor::Host host;auto c=host.configure(uintptr_t(game),GetCurrentProcessId(),1,320,200,10,20,true,true,60);
  CHECK(c.token);for(int i=0;i<200&&!host.window()&&!host.lastError();++i)pump(5);CHECK(host.window()&&host.lastError()==0);
@@ -26,5 +33,5 @@ int main(){
  CHECK(!host.publish({1,10,changed,{0,0,32,20},true,255,pixels}));
  host.shutdown();CHECK(!host.window());DestroyWindow(game);
  SetEvent(done);watchdog.join();CloseHandle(done);
- std::puts("PASS: one actual passive HWND; multiple logical surfaces; epoch reset; stale frame rejection; suspend/shutdown; no focus activation");
+ std::puts("PASS: real monitor upload cap and unknown fallback; one actual passive HWND; multiple logical surfaces; epoch reset; stale frame rejection; suspend/shutdown; no focus activation");
 }

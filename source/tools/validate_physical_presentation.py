@@ -53,7 +53,8 @@ assert "9306" in main and "renderPhysicalOutput=on" in main
 assert settings.count('L"RenderPhysicalOutput"')==2
 assert "renderPixelScale=std::clamp" in settings and ",0,3)" in settings
 assert "9306" in ui and "自适应 1–4×" in ui
-assert "不使用 NTSC/Bloom" in ui
+assert "SHP/TMP 使用 xBRZ 1.9 原版算法" in ui
+assert "VXL 按实际输出比例重新采样几何" in ui
 assert "physical_presentation_windows" in ci
 assert "physical_presentation;" in ci
 print("PASS: physical 1.5x output requires matched monitor; exclusive/DPI switch retains client-sized overlays; no monitor/game-code mutation; CI wired")

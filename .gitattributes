@@ -1,2 +1,4 @@
 # Preserve the official xBRZ archive byte for byte on every checkout platform.
 source/third_party/xbrz/* -text
+# Preserve official Khronos header/license Git blob bytes across checkouts.
+source/third_party/vulkan/** -text

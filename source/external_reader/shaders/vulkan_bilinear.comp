@@ -1,0 +1,27 @@
+#version 450
+// Standard Q8 bilinear interpolation of premultiplied ARGB8. Positive weights
+// are shared by all channels; one final rounding preserves PARGB invariants.
+layout(local_size_x=8,local_size_y=8,local_size_z=1) in;
+layout(set=0,binding=0,std430) readonly buffer Atlas { uint pixels[]; } atlas;
+layout(set=0,binding=1,std430) readonly buffer Coordinates { uvec4 value[]; } coordinates;
+layout(set=0,binding=2,std430) writeonly buffer Output { uint pixels[]; } outputImage;
+layout(push_constant) uniform Params {
+ uint atlasOffset,sourceWidth,outputWidth,left,top,width,height,xOffset,yOffset;
+} p;
+void main(){
+ uvec2 xy=gl_GlobalInvocationID.xy;
+ if(xy.x>=p.width||xy.y>=p.height)return;
+ uvec4 cx=coordinates.value[p.xOffset+xy.x],cy=coordinates.value[p.yOffset+xy.y];
+ uint a=atlas.pixels[p.atlasOffset+cy.x*p.sourceWidth+cx.x];
+ uint b=atlas.pixels[p.atlasOffset+cy.x*p.sourceWidth+cx.y];
+ uint c=atlas.pixels[p.atlasOffset+cy.y*p.sourceWidth+cx.x];
+ uint d=atlas.pixels[p.atlasOffset+cy.y*p.sourceWidth+cx.y];
+ uint result=0;
+ for(uint shift=0;shift<32;shift+=8){
+  uint upper=((a>>shift)&255)*(256-cx.z)+((b>>shift)&255)*cx.z;
+  uint lower=((c>>shift)&255)*(256-cx.z)+((d>>shift)&255)*cx.z;
+  uint channel=(upper*(256-cy.z)+lower*cy.z+32768)>>16;
+  result|=channel<<shift;
+ }
+ outputImage.pixels[(p.top+xy.y)*p.outputWidth+p.left+xy.x]=result;
+}

@@ -39,7 +39,7 @@ int main(){
  WNDCLASSW cls{};cls.hInstance=GetModuleHandleW(nullptr);cls.lpfnWndProc=proc;cls.lpszClassName=L"RA2OverlayStackFixture";CHECK(RegisterClassW(&cls));
  auto create=[&](){auto w=CreateWindowExW(WS_EX_TOPMOST|WS_EX_NOACTIVATE,cls.lpszClassName,L"",WS_POPUP,10,20,800,600,nullptr,nullptr,cls.hInstance,nullptr);CHECK(w);return w;};
  checkpoint("create-main-windows");
- HWND game=create(),world=create(),map=create(),watch=create(),cursor=create();std::atomic<HWND> statsHandle{nullptr};
+ HWND game=create(),scene=create(),world=create(),map=create(),watch=create(),cursor=create();std::atomic<HWND> statsHandle{nullptr};
  HANDLE ready=CreateEventW(nullptr,TRUE,FALSE,nullptr);CHECK(ready);
  checkpoint("start-statistics-owner");
  std::thread statisticsOwner([&]{statisticsThread=GetCurrentThreadId();statisticsPhase="create-window";statsHandle=create();statisticsPhase="ready";CHECK(SetEvent(ready));statisticsPhase="message-loop";MSG msg;BOOL result;while((result=GetMessageW(&msg,nullptr,0,0))>0){TranslateMessage(&msg);DispatchMessageW(&msg);}CHECK(result==0);statisticsPhase="thread-return";});
@@ -48,22 +48,22 @@ int main(){
  checkpoint("show-and-place");
  ShowWindow(game,SW_SHOWNOACTIVATE);
  using namespace overlaystack;auto put=[&](HWND w,Layer l){phase=l==Layer::Statistics?"place-statistics":l==Layer::World?"place-world":l==Layer::Minimap?"place-minimap":l==Layer::Watch?"place-watch":"place-cursor";CHECK(place(w,l,110,140,200,100,SWP_SHOWWINDOW));};
- put(world,Layer::World);put(map,Layer::Minimap);put(cursor,Layer::Cursor);put(stats,Layer::Statistics);put(watch,Layer::Watch);
+ put(world,Layer::World);put(map,Layer::Minimap);put(cursor,Layer::Cursor);put(stats,Layer::Statistics);put(watch,Layer::Watch);put(scene,Layer::RenderUpgrade);
  checkpoint("repeat-stacking");
- for(int i=0;i<100;++i){iteration=i;put(world,Layer::World);put(stats,Layer::Statistics);put(map,Layer::Minimap);CHECK(higher(cursor,watch)&&higher(watch,map)&&higher(map,stats)&&higher(stats,world));}iteration=-1;
+ for(int i=0;i<100;++i){iteration=i;put(world,Layer::World);put(stats,Layer::Statistics);put(map,Layer::Minimap);CHECK(higher(cursor,watch)&&higher(watch,map)&&higher(map,stats)&&higher(stats,world)&&higher(world,scene));}iteration=-1;
  // Promote a real topmost game HWND while all surfaces remain WS_VISIBLE.
  // Pass that controlled foreground candidate to the production group check;
  // the fixture does not seize the runner's actual desktop foreground.
  checkpoint("promoted-game-recovery");HWND foreground=GetForegroundWindow();unsigned callbacks=positionCallbacks;
  for(int i=0;i<4;++i){iteration=i;phase="promote-game";CHECK(SetWindowPos(game,HWND_TOPMOST,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE));CHECK(higher(game,cursor));phase="recovery-interval";CHECK(waitPumping(nullptr,260)==WAIT_TIMEOUT);phase="keep-above-ordered";CHECK(keepAbove(game));
-  for(auto w:{world,stats,map,watch,cursor})CHECK(IsWindowVisible(w)&&higher(w,game));
-  CHECK(higher(cursor,watch)&&higher(watch,map)&&higher(map,stats)&&higher(stats,world));
+  for(auto w:{scene,world,stats,map,watch,cursor})CHECK(IsWindowVisible(w)&&higher(w,game));
+  CHECK(higher(cursor,watch)&&higher(watch,map)&&higher(map,stats)&&higher(stats,world)&&higher(world,scene));
  }
  iteration=-1;CHECK(positionCallbacks>callbacks&&GetForegroundWindow()==foreground);
  checkpoint("opaque-and-hidden-panels");
  auto boxes=opaqueBoxes(game,800,600);CHECK(boxes.size()==2);for(auto r:boxes)CHECK(r.left==99&&r.top==119&&r.right==301&&r.bottom==221);
  ShowWindow(map,SW_HIDE);CHECK(SetWindowPos(game,HWND_TOPMOST,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE));CHECK(waitPumping(nullptr,260)==WAIT_TIMEOUT);phase="keep-hidden-above-ordered";CHECK(keepAbove(game));
- CHECK(!IsWindowVisible(map)&&higher(world,game)&&opaqueBoxes(game,800,600).size()==1);put(map,Layer::Minimap);CHECK(higher(watch,map)&&higher(map,world));
+ CHECK(!IsWindowVisible(map)&&higher(world,scene)&&higher(scene,game)&&opaqueBoxes(game,800,600).size()==1);put(map,Layer::Minimap);CHECK(higher(watch,map)&&higher(map,world));
  checkpoint("stale-handle");CHECK(DestroyWindow(watch));put(world,Layer::World);CHECK(opaqueBoxes(game,800,600).size()==1);
  checkpoint("close-statistics");CHECK(PostMessageW(stats,WM_CLOSE,0,0));
  // Wait for the actual owner thread to exit while servicing this thread's
@@ -72,12 +72,12 @@ int main(){
  // Removing the second owner leaves a real single-owner group. The ordered
  // recovery must work for both owner configurations with the same checks.
  checkpoint("single-owner-recovery");
- for(auto w:{world,map,cursor})CHECK(GetWindowThreadProcessId(w,nullptr)==GetCurrentThreadId());
+ for(auto w:{scene,world,map,cursor})CHECK(GetWindowThreadProcessId(w,nullptr)==GetCurrentThreadId());
  CHECK(SetWindowPos(game,HWND_TOPMOST,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE));CHECK(higher(game,cursor));CHECK(waitPumping(nullptr,260)==WAIT_TIMEOUT);
  phase="single-owner-keep-above";CHECK(keepAbove(game));
- for(auto w:{world,map,cursor})CHECK(IsWindowVisible(w)&&higher(w,game));
- CHECK(higher(cursor,map)&&higher(map,world)&&GetForegroundWindow()==foreground);
- checkpoint("destroy-main-windows");for(auto w:{world,map,cursor,game}){forget(w);CHECK(DestroyWindow(w));}
+ for(auto w:{scene,world,map,cursor})CHECK(IsWindowVisible(w)&&higher(w,game));
+ CHECK(higher(cursor,map)&&higher(map,world)&&higher(world,scene)&&GetForegroundWindow()==foreground);
+ checkpoint("destroy-main-windows");for(auto w:{scene,world,map,cursor,game}){forget(w);CHECK(DestroyWindow(w));}
  checkpoint("complete");CHECK(SetEvent(finished));watchdog.join();CloseHandle(finished);
  std::cout<<"PASS real HWND stacking, four mixed-owner promoted-game recoveries, single-owner ordered recovery, cross-owner-thread position callbacks outside the registry lock, no activation, hidden-panel preservation, stale handles and opaque clipping; no actual game/Alt-Tab/DWM visual claim\n";
 }

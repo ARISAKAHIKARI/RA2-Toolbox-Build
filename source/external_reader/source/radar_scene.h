@@ -4,6 +4,8 @@
 #include "camera_raster.h"
 #include "native_canvas.h"
 #include "radar_shroud_mask.h"
+#include "radar_live_shroud.h"
+#include "terrain_coverage.h"
 #include "camera_repair.h"
 #include "viewport_canvas.h"
 #include "material_blend.h"
@@ -15,10 +17,10 @@ struct SceneRegion {double x=0,y=0,width=0,height=0;bool active=false;};
 template<class Assets>class SceneRenderer {
  struct Cached {voxel::Image image;bool ready=false;uint32_t retry=0;};
  using ArtKey=std::tuple<uint32_t,uint32_t,int,int,uint32_t,uint32_t>;
- using ImageKey=std::tuple<uint32_t,uint32_t,int,int,int,int,int,int,int,int,int,uint32_t,uint32_t>;
+ using ImageKey=std::tuple<uint32_t,uint32_t,int,int,int,int,int,int,int,int,int,uint32_t,uint32_t,uint64_t>;
  using ObjectKey=std::pair<uint32_t,uint32_t>;
  static ArtKey artKey(const Marker&m){return {m.type,m.owner,m.kind,m.pose.variant,m.kind>=5?m.object:0,m.kind>=5?m.id:0};}
- static ImageKey imageKey(const Marker&m){return {m.type,m.owner,m.kind,m.pose.body,m.pose.turret,m.pose.frame,m.pose.variant,m.pose.buildingFlags,m.pose.doorFrame,m.pose.bodyFine,m.pose.turretFine,m.kind>=5?m.object:0,m.kind>=5?m.id:0};}
+ static ImageKey imageKey(const Marker&m){return {m.type,m.owner,m.kind,m.pose.body,m.pose.turret,m.pose.frame,m.pose.variant,m.pose.buildingFlags,m.pose.doorFrame,m.pose.bodyFine,m.pose.turretFine,m.kind>=5?m.object:0,m.kind>=5?m.id:0,voxelposture::signature(m.pose.posture)};}
  static ArtKey artKey(const ImageKey&k){return {std::get<0>(k),std::get<1>(k),std::get<2>(k),std::get<6>(k),std::get<11>(k),std::get<12>(k)};}
  template<class A>static auto voxelArt(const A&a,int)->decltype(bool(a.voxel)){return a.voxel;}
  template<class A>static bool voxelArt(const A&,long){return false;}
@@ -30,6 +32,8 @@ template<class Assets>class SceneRenderer {
  template<class A>static bool refreshPalette(A&,typename A::ActorArt&,bool&changed,long){changed=false;return true;}
  template<class A>static auto refreshOverlay(A&a,uint32_t t,uint32_t p,int f,bool terrain,bool&changed,int)->decltype(a.refreshOverlayPalette(t,p,f,terrain,changed),bool()){return a.refreshOverlayPalette(t,p,f,terrain,changed);}
  template<class A>static bool refreshOverlay(A&,uint32_t,uint32_t,int,bool,bool&changed,long){changed=false;return true;}
+ template<class Read>static auto currentVisibility(Read read,int)->decltype(read.fresh(0,nullptr,0),bool()){return true;}
+ template<class Read>static bool currentVisibility(Read,long){return false;}
  void invalidateArt(const ArtKey&key){
   for(auto i=sprites_.begin();i!=sprites_.end();)if(artKey(i->first)==key)i=sprites_.erase(i);else ++i;
   for(auto i=displayed_.begin();i!=displayed_.end();)if(artKey(i->second)==key)i=displayed_.erase(i);else ++i;
@@ -46,16 +50,23 @@ template<class Assets>class SceneRenderer {
  std::shared_ptr<camera::NativeCanvas::Budget> nativeBudget_=std::make_shared<camera::NativeCanvas::Budget>();
  camera::NativeCanvas pending_,background_;camera::ViewportCanvas detailed_;uint64_t detailKey_=0;std::shared_ptr<const Scene> baseScene_,maskedBaseScene_;
  shroudmask::Raster mask_;std::shared_ptr<const Terrain> maskSource_;bool maskFog_=false;
+ shroudmask::Live liveMasks_;shroudmask::Snapshot liveMaskSnapshot_;bool liveMaskValid_=false;
+ terraincoverage::Region coverage_;bool coverageLocal_=false;
  std::vector<size_t> cells_,baseCells_;std::vector<Paint> prepared_;std::vector<uint64_t> painted_;size_t cursor_=0,baseCursor_=0;
  bool bankSameSource_=false,probing_=false,probeChanged_=false,pendingIncomplete_=false,backgroundIncomplete_=false;uint32_t backgroundRetry_=0;int width_=0,height_=0;double spanX_=0,spanY_=0;uint64_t revision_=0;
  lighting::State backgroundLight_;uint64_t nativeCells_=0,basePresents_=0;SceneRegion region_{};unsigned pixelScaleMode_=0;bool detailedBase_=false;
  static uint64_t mix(uint64_t h,uint64_t v){return (h^v)*1099511628211ull;}
  static uint64_t lightKey(uint64_t h,const lighting::State&s){h=mix(h,uint32_t(s.ambient));h=mix(h,uint32_t(s.intensity));for(int c:s.tint)h=mix(h,uint32_t(c));return h;}
- static bool sameSource(const Terrain&a,const Terrain&b){
-  if(!a.geo.same(b.geo)||a.reveal!=b.reveal||a.colors!=b.colors||a.baseColors!=b.baseColors||a.shade!=b.shade||a.art.size()!=b.art.size())return false;
-  for(size_t n=0;n<a.art.size();++n){const auto&x=a.art[n];const auto&y=b.art[n];if(x.cell!=y.cell||x.type!=y.type||x.overlayType!=y.overlayType||x.overlaySourceType!=y.overlaySourceType||x.overlay!=y.overlay||x.sub!=y.sub||x.level!=y.level||x.overlayFrame!=y.overlayFrame||x.sourceColor!=y.sourceColor)return false;}return true;
+ static bool sameSource(const Terrain&a,const Terrain&b,bool local=false){
+  if(!a.geo.same(b.geo)||a.reveal!=b.reveal||a.colors.size()!=b.colors.size()||a.baseColors!=b.baseColors||a.art.size()!=b.art.size())return false;
+  // Exploration belongs to the destination mask and actor admission. It must
+  // not rebuild static TMP pages/xBRZ caches when their source art is intact.
+  for(size_t n=0;n<a.art.size();++n){const auto&x=a.art[n];const auto&y=b.art[n];if(x.cell!=y.cell||x.type!=y.type||x.overlayType!=y.overlayType||x.overlaySourceType!=y.overlaySourceType||x.overlay!=y.overlay||x.sub!=y.sub||x.level!=y.level||x.overlayFrame!=y.overlayFrame||x.sourceColor!=y.sourceColor)return false;
+   if(!local&&x.sourceHidden!=y.sourceHidden)return false;
+   if(!x.sourceColor&&n<a.colors.size()&&a.colors[n]!=b.colors[n])return false;
+  }return true;
  }
- void clearBackground(){building_.reset();complete_.reset();blocked_.reset();dynamicFailure_=false;pending_={};background_={};baseScene_.reset();maskedBaseScene_.reset();maskSource_.reset();mask_={};cells_.clear();baseCells_.clear();prepared_.clear();painted_.clear();cursor_=baseCursor_=0;probing_=probeChanged_=pendingIncomplete_=backgroundIncomplete_=false;backgroundRetry_=0;}
+ void clearBackground(){building_.reset();complete_.reset();blocked_.reset();dynamicFailure_=false;pending_={};background_={};baseScene_.reset();maskedBaseScene_.reset();maskSource_.reset();mask_={};liveMaskValid_=false;cells_.clear();baseCells_.clear();prepared_.clear();painted_.clear();cursor_=baseCursor_=0;probing_=probeChanged_=pendingIncomplete_=backgroundIncomplete_=false;backgroundRetry_=0;}
 
 public:
  explicit SceneRenderer(size_t pages=camera::NativeCanvas::MaximumPages){nativeBudget_->maximum=std::clamp<size_t>(pages,1,camera::NativeCanvas::MaximumPages);}
@@ -76,7 +87,7 @@ public:
  }
  struct NativeStats {int width,height;size_t pages,resident;uint64_t cells,presents;};
  NativeStats nativeStats()const{return {background_.width(),background_.height(),background_.pageCount(),nativeBudget_->pages,nativeCells_,basePresents_};}
- void reset(){tiles_.clear();overlays_.clear();art_.clear();sprites_.clear();displayed_.clear();actorCursor_=0;repairAssets_.reset();clearBackground();width_=height_=0;spanX_=spanY_=0;revision_=0;terrainPaletteReady_=false;terrainPalette_={};nativeCells_=basePresents_=0;detailed_.reset();detailKey_=0;}
+ void reset(){tiles_.clear();overlays_.clear();art_.clear();sprites_.clear();displayed_.clear();actorCursor_=0;repairAssets_.reset();clearBackground();coverage_={};coverageLocal_=false;width_=height_=0;spanX_=spanY_=0;revision_=0;terrainPaletteReady_=false;terrainPalette_={};nativeCells_=basePresents_=0;detailed_.reset();detailKey_=0;}
  template<class Read>std::shared_ptr<const Scene> render(const Frame&frame,int width,int height,Read read,Assets&assets,SceneRegion region={},unsigned pixelScaleMode=0,bool refined=false,bool liveVoxels=true,bool highColorPrecision=false){
   materialsReady_=false;
   if(!frame.terrain||!frame.terrain->geo.valid()||frame.terrain->art.size()!=512*512||width<3||height<3||width>(region.active?8192:2048)||height>(region.active?8192:2048)||uint64_t(width)*height>16*1024*1024)return {};
@@ -93,8 +104,14 @@ public:
   // native viewport. No ceil-induced pixel row becomes part of the view.
   int nativeWidth=viewport.backingWidth(),nativeHeight=viewport.backingHeight();
   if((complete_&&(!complete_->geo.same(domain)||complete_->reveal!=frame.terrain->reveal))||(building_&&(!building_->geo.same(domain)||building_->reveal!=frame.terrain->reveal))||exactX!=spanX_||exactY!=spanY_)clearBackground();
+  if(region.active){
+   if(!coverageLocal_||!coverage_.contains(region.x,region.y,region.width,region.height,nativeWidth,nativeHeight)){
+    clearBackground();coverage_=terraincoverage::Region::plan(region.x,region.y,region.width,region.height,nativeWidth,nativeHeight);coverageLocal_=true;
+    if(!coverage_.ready)return {};
+   }
+  }else if(coverageLocal_){clearBackground();coverage_={};coverageLocal_=false;}
   spanX_=exactX;spanY_=exactY;dynamicFailure_=false;
-  if(blocked_){if(blocked_==frame.terrain||sameSource(*blocked_,*frame.terrain)){blocked_=frame.terrain;return {};}blocked_.reset();}
+  if(blocked_){if(blocked_==frame.terrain||sameSource(*blocked_,*frame.terrain,region.active)){blocked_=frame.terrain;return {};}blocked_.reset();}
   lighting::State scene=lighting::sample(read);GameView<Read> game(read);
   std::array<uint32_t,256> liveTerrainPalette{};const bool paletteReady=assets.palette(true,liveTerrainPalette);
   if(!paletteReady&&terrainPaletteReady_)return {};
@@ -109,12 +126,19 @@ public:
   if(building_&&buildingLight_!=scene){building_.reset();pending_={};prepared_.clear();cursor_=baseCursor_=0;}
 
   if(!building_){
-   building_=frame.terrain;buildingLight_=scene;bankSameSource_=complete_&&(complete_==building_||sameSource(*complete_,*building_));cursor_=baseCursor_=0;prepared_.clear();probeChanged_=pendingIncomplete_=false;
+   building_=frame.terrain;buildingLight_=scene;bankSameSource_=complete_&&(complete_==building_||sameSource(*complete_,*building_,region.active));cursor_=baseCursor_=0;prepared_.clear();probeChanged_=pendingIncomplete_=false;
    if(!bankSameSource_){cells_.clear();baseCells_.clear();
-   for(size_t n=0;n<building_->colors.size();++n)if(building_->colors[n]||building_->art[n].sourceColor)cells_.push_back(n);
+   for(size_t n=0;n<building_->colors.size();++n)if(building_->colors[n]||(building_->art[n].sourceColor&&(region.active||!building_->art[n].sourceHidden))){
+    if(region.active){int x=int(n%512),y=int(n/512);mapbounds::TileOrigin origin;
+     if(!building_->geo.tileOrigin(x,y,building_->art[n].level,origin)||
+       (!coverage_.tile(origin.x,origin.y)&&!coverage_.rgb((x-y+building_->geo.offsetX)*30,(x+y-building_->geo.offsetY)*15)))continue;
+    }
+    cells_.push_back(n);
+   }
    if(building_->reveal&&building_->baseColors.size()==building_->colors.size())
     for(size_t n=0;n<building_->baseColors.size();++n)
-     if(building_->baseColors[n]&&!building_->colors[n]&&!building_->art[n].sourceColor)baseCells_.push_back(n);
+     if(building_->baseColors[n]&&!building_->colors[n]&&!building_->art[n].sourceColor&&
+       (!region.active||coverage_.rgb((int(n%512)-int(n/512)+building_->geo.offsetX)*30,(int(n%512)+int(n/512)-building_->geo.offsetY)*15)))baseCells_.push_back(n);
    std::stable_sort(cells_.begin(),cells_.end(),[](size_t a,size_t b){return a%512+a/512<b%512+b/512;});}
    // New sampling banks commonly contain identical terrain. Compare evaluated
    // per-cell lighting before deciding to rebuild millions of native pixels.
@@ -180,16 +204,16 @@ public:
     // whole footprint; keep its native ground color in the uncovered pixels.
     int flatX=x-y+geo.offsetX,flatY=x+y-geo.offsetY;
     uint32_t baseColor=terrain.baseColors.size()==terrain.colors.size()&&terrain.baseColors[index]?terrain.baseColors[index]:cell.sourceColor?cell.sourceColor:terrain.colors[index];
-    pending_.underlayRect(flatX*30,flatY*15,(flatX+2)*30,(flatY+1)*15,baseColor);
+    if(!coverageLocal_||coverage_.rgb(flatX*30,flatY*15))pending_.underlayRect(flatX*30,flatY*15,(flatX+2)*30,(flatY+1)*15,baseColor);
     auto&paint=prepared_[cursor_];if(!probeChanged_)paint=prepare(index);
-    if(cell.type){
+    if(cell.type&&(!coverageLocal_||coverage_.tile(origin.x,origin.y))){
      auto&tile=tiles_[{cell.type,cell.sub}];
      if(!tile.ready&&paletteReady&&loads<64&&(!tile.retry||int32_t(frame.tick-tile.retry)>=0)){++loads;tile.ready=assets.tile(cell.type,cell.sub,palette,tile.image);if(tile.ready){auto n=camera::pixels(tile.image);if(staticPixels+n<=16*1024*1024)staticPixels+=n;else{tile.ready=false;tile.image={};}}tile.retry=frame.tick+2000;}
      if(!tile.ready&&paletteReady&&loads>=64&&!tile.retry)break;
      if(tile.ready)pending_.blit(tile.image,px,py,1,1,base,paint.light,0);
      else{pendingIncomplete_=true;pending_.diamond(px,py,1,1,base,0xff000000u|baseColor,paint.light);}
     } // A cell without a resolved tile has no ground sprite to paint.
-    if(cell.overlayType){auto&overlay=overlays_[{cell.overlayType,cell.overlayFrame}];
+    if(cell.overlayType&&(!coverageLocal_||coverage_.tile(origin.x,origin.y))){auto&overlay=overlays_[{cell.overlayType,cell.overlayFrame}];
      if(!overlay.ready&&loads<64&&(!overlay.retry||int32_t(frame.tick-overlay.retry)>=0)){++loads;overlay.ready=assets.overlay(cell.overlayType,game.template get<uint32_t>(cell.overlayType+0xA4),cell.overlayFrame,overlay.image);if(overlay.ready){auto n=camera::pixels(overlay.image);if(staticPixels+n<=16*1024*1024)staticPixels+=n;else{overlay.ready=false;overlay.image={};}}overlay.retry=frame.tick+2000;}
      if(!overlay.ready&&loads>=64&&!overlay.retry)break;
      if(overlay.ready)pending_.blit(overlay.image,px,py+paint.overlayOffset,1,1,base+(paint.bridge?60:0),paint.overlayLight,2);else pendingIncomplete_=true;
@@ -230,8 +254,19 @@ public:
   uint32_t options=game.template get<uint32_t>(0xA8B230);
   bool fog=masked&&options>=0x10000&&(game.template get<uint8_t>(options+1)&0x10)&&
    game.template get<uint8_t>(complete_->geo.house+0x1F5)==0;
-  if(masked&&(maskSource_!=complete_||maskFog_!=fog||mask_.width!=width||mask_.height!=height)){
-   bool same=maskSource_&&maskFog_==fog&&mask_.width==width&&mask_.height==height&&sameSource(*maskSource_,*complete_);
+  if(masked&&region.active&&currentVisibility(read,0)){
+   shroudmask::Snapshot current;
+   if(!liveMasks_.capture(read,complete_->geo,region.x,region.y,region.width,region.height,current))return {};
+   fog=current.fog;
+   if(!liveMaskValid_||!maskSource_||mask_.width!=width||mask_.height!=height||!liveMaskSnapshot_.sameMask(current)){
+    if(!mask_.build(current.geo,current.cells,width,height,region.width,region.height,fog,
+      [&](bool isFog,int index,voxel::Image&out){return assets.shroud(isFog,index,out);},region.x,region.y))return {};
+    maskedBaseScene_.reset();
+   }
+   liveMaskSnapshot_=std::move(current);liveMaskValid_=true;maskSource_=complete_;maskFog_=fog;
+  }else if(masked&&(maskSource_!=complete_||maskFog_!=fog||mask_.width!=width||mask_.height!=height)){
+   bool same=maskSource_&&maskFog_==fog&&mask_.width==width&&mask_.height==height&&
+    maskSource_->geo.same(complete_->geo)&&maskSource_->shade==complete_->shade;
    if(!same){if(!mask_.build(*complete_,width,height,region.active?region.width:spanX_,region.active?region.height:spanY_,fog,
      [&](bool isFog,int index,voxel::Image&out){return assets.shroud(isFog,index,out);},region.active?region.x:0,region.active?region.y:0))return {};
     maskedBaseScene_.reset();}

@@ -1,6 +1,7 @@
 #include "../source/render_presentation.h"
 #include "../../shared/source/latest_worker.h"
 #include "../../external_reader/source/feedback_cursor.h"
+#include "../../external_reader/source/feedback_orders.h"
 #include "../../external_reader/source/voxel_preview.h"
 #include <cassert>
 #include <cstdio>

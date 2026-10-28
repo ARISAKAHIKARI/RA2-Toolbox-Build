@@ -1,0 +1,123 @@
+name: Validate rendering feedback, visibility and performance
+on:
+  push:
+    branches: [codex/fix-render-feedback-20261029]
+    paths: ['source/**', '.github/workflows/validate-render-feedback-fixes.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: render-feedback-fixes-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  vulkan-compute:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install software Vulkan and shader validator
+        run: sudo apt-get update && sudo apt-get install -y mesa-vulkan-drivers vulkan-validationlayers glslang-tools spirv-tools
+      - name: Verify generated shader and execute real compute
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 source/tools/build_vulkan_kernel.py --output /tmp/vulkan_bilinear_spirv.h
+          cmp /tmp/vulkan_bilinear_spirv.h source/external_reader/source/vulkan_bilinear_spirv.h
+          g++ -std=c++17 -O2 -DRA2_VULKAN_TEST_SOFTWARE source/assist/tests/vulkan_compute.cpp -ldl -o /tmp/vulkan-compute
+          g++ -std=c++17 -O2 -DRA2_VULKAN_TEST_SOFTWARE source/assist/tests/vulkan_region.cpp source/third_party/xbrz/xbrz.cpp -ldl -o /tmp/vulkan-region
+          VK_INSTANCE_LAYERS=VK_LAYER_KHRONOS_validation /tmp/vulkan-compute --require 2>&1 | tee vulkan-compute.log
+          VK_INSTANCE_LAYERS=VK_LAYER_KHRONOS_validation RA2_TEST_VULKAN_REQUIRED=1 /tmp/vulkan-region 2>&1 | tee vulkan-region.log
+          if rg 'Validation Error|VUID-' vulkan-compute.log vulkan-region.log; then exit 1; fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Vulkan-render-fix2-diagnostics
+          if-no-files-found: warn
+          path: vulkan-*.log
+  portable:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Rendering regressions and integration contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          g++ -std=c++17 -O2 -c source/third_party/xbrz/xbrz.cpp -o /tmp/xbrz.o
+          for name in render_upgrade render_upgrade_scene radar_scene radar_shroud_mask native_canvas native_feedback native_feedback_scene pixel_upgrade xbrz_scaling material_motion material_scene viewport_detail live_palette_cache live_scene_lighting live_voxel_scene watch_live_palette color_precision color_scene palette_recovery resolution_sampling color_reconstruction terrain_viewport minimap_overlay minimap_terrain_crop radar_boundary render_presentation render_feedback_host render_scroll overlay_incremental overlay_present_rate native_order_feedback world_presentation live_shroud_scene terrain_coverage voxel_posture voxel_preview voxel_lighting scene_lighting watch_view watch_host watch_shroud_mask xbrz_bilinear; do
+            g++ -std=c++17 -O2 source/assist/tests/$name.cpp /tmp/xbrz.o -o /tmp/$name-test
+            /tmp/$name-test
+          done
+          for name in render_upgrade native_feedback pixel_upgrade physical_presentation material_refresh color_resolution aircraft_allocation; do
+            python3 source/tools/validate_$name.py
+          done
+          g++ -std=c++17 -O2 -DRA2_XBRZ_SCALAR_ONLY source/assist/tests/xbrz_bilinear.cpp /tmp/xbrz.o -o /tmp/xbrz-bilinear-scalar
+          /tmp/xbrz-bilinear-scalar
+          python3 source/assist/tests/render_presentation_gate.py
+          python3 source/assist/tests/render_material_settings.py
+          python3 source/assist/tests/render_atomic_camera.py
+          python3 source/assist/tests/game_assets_host_test.py
+          python3 source/assist/tests/process_reader_pages_test.py
+          python3 source/assist/tests/overlay_keepalive_test.py
+          python3 source/assist/tests/overlay_present_monitor_test.py
+  windows-x86:
+    runs-on: windows-2022
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Zig 0.13.0
+        shell: pwsh
+        run: |
+          $ProgressPreference='SilentlyContinue'
+          Invoke-WebRequest 'https://ziglang.org/download/0.13.0/zig-windows-x86_64-0.13.0.zip' -OutFile zig.zip
+          Expand-Archive zig.zip zig
+          $zig=(Resolve-Path 'zig/zig-windows-x86_64-0.13.0/zig.exe').Path
+          if((& $zig version) -ne '0.13.0'){throw 'Unexpected Zig version'}
+          Add-Content $env:GITHUB_ENV "ZIG_EXE=$zig"
+      - name: Real passive compositor regressions
+        shell: pwsh
+        run: |
+          foreach($name in 'overlay_compositor_windows','native_feedback_windows','physical_presentation_windows','overlay_stack_windows'){
+            & $env:ZIG_EXE c++ -target x86-windows-gnu -std=c++17 -O2 "source/assist/tests/$name.cpp" -o "$name-test.exe" -lgdi32 -luser32
+            if($LASTEXITCODE -ne 0){throw "Compilation failed: $name"}
+            & ".\$name-test.exe"
+            if($LASTEXITCODE -ne 0){throw "Test failed: $name"}
+          }
+      - name: Stable publication and cursor regressions
+        shell: pwsh
+        run: |
+          & $env:ZIG_EXE c++ -target x86-windows-gnu -std=c++17 -O2 -c source/third_party/xbrz/xbrz.cpp -o xbrz-test.o
+          if($LASTEXITCODE -ne 0){throw 'xBRZ compilation failed'}
+          foreach($name in 'render_presentation','render_feedback_host','render_scroll','overlay_incremental','overlay_present_rate','native_order_feedback','world_presentation','live_shroud_scene','terrain_coverage','voxel_posture','xbrz_bilinear','vulkan_compute','vulkan_region'){
+            & $env:ZIG_EXE c++ -target x86-windows-gnu -std=c++17 -O2 "source/assist/tests/$name.cpp" xbrz-test.o -o "$name-test.exe"
+            if($LASTEXITCODE -ne 0){throw "Compilation failed: $name"}
+            & ".\$name-test.exe"
+            if($LASTEXITCODE -ne 0){throw "Test failed: $name"}
+          }
+      - name: Build and verify Win32 outputs
+        working-directory: source
+        shell: pwsh
+        run: |
+          $env:RA2_NO_PAUSE='1'
+          cmd /d /c 'call BUILD_ZIG.cmd > build-render-feedback.log 2>&1'
+          $status=$LASTEXITCODE
+          Get-Content build-render-feedback.log -Tail 80
+          if($status -ne 0){throw "Build failed: $status"}
+          python tools/verify_windows_outputs.py
+          if($LASTEXITCODE -ne 0){throw 'PE/version/ABI/dependency verification failed'}
+      - name: Upload tested binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: RA2-render-feedback-fix2
+          if-no-files-found: error
+          retention-days: 14
+          path: |
+            source/RA2Toolbox.exe
+            source/GameRuntime.dll
+            source/WINDOWS_BUILD_ARTIFACTS.json
+      - name: Upload build diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: RA2-render-feedback-fix2-diagnostics
+          if-no-files-found: warn
+          retention-days: 14
+          path: source/build-render-feedback.log

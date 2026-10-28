@@ -7,6 +7,10 @@ namespace external { namespace radar { namespace shroudmask {
 // alpha-buffer values (127 clear); 0xFE and other values above 127 skip a
 // pixel. The mask is projected on the flat cell, independently of Level.
 inline int frame(int8_t value){return value==-2?15:value==-1?0:int(value);}
+struct Cell {
+ uint32_t index=0;ShroudFrames shade;
+ bool operator==(const Cell&o)const{return index==o.index&&shade==o.shade;}
+};
 
 struct Raster {
  int width=0,height=0;
@@ -16,13 +20,21 @@ struct Raster {
    image.width<=60&&image.height<=30&&image.indices.size()==size_t(image.width)*image.height;
  }
  template<class Load> bool build(const Terrain&terrain,int w,int h,double spanX,double spanY,bool fog,Load load,double originX=0,double originY=0){
-  if(terrain.reveal||!terrain.geo.valid()||terrain.shade.size()!=512*512||w<1||h<1||w>8192||h>8192||uint64_t(w)*h>16*1024*1024||!std::isfinite(originX)||!std::isfinite(originY)||
+  if(terrain.reveal||terrain.shade.size()!=512*512)return false;
+  std::vector<Cell>cells;
+  for(size_t n=0;n<terrain.shade.size();++n){int x=int(n%512),y=int(n/512);
+   if(terrain.geo.shroudSourceVisible(x,y)&&terrain.shade[n].shroud!=127)cells.push_back({uint32_t(n),terrain.shade[n]});
+  }
+  return build(terrain.geo,cells,w,h,spanX,spanY,fog,load,originX,originY);
+ }
+ template<class Load> bool build(const Geometry&g,const std::vector<Cell>&cells,int w,int h,double spanX,double spanY,bool fog,Load load,double originX=0,double originY=0){
+  if(!g.valid()||w<1||h<1||w>8192||h>8192||uint64_t(w)*h>16*1024*1024||!std::isfinite(originX)||!std::isfinite(originY)||
      !std::isfinite(spanX)||!std::isfinite(spanY)||spanX<=0||spanY<=0)return false;
   std::array<std::array<voxel::Image,47>,2> images;
   std::array<std::array<bool,47>,2> needed{};
-  const auto&g=terrain.geo;
-  for(size_t n=0;n<terrain.shade.size();++n){int x=int(n%512),y=int(n/512);if(!g.legal(x,y)||!g.flatVisible(x,y))continue;
-   auto shade=terrain.shade[n];if(shade.shroud==127)continue;
+  for(const auto&cell:cells){
+   if(cell.index>=512*512||!g.legal(int(cell.index%512),int(cell.index/512)))return false;
+   auto shade=cell.shade;if(shade.shroud==127)continue;
    int a=frame(shade.shroud),b=frame(shade.fog);
    if(a<0||a>=47||b<0||b>=47)return false;
    needed[0][a]=true;if(fog)needed[1][b]=true;
@@ -38,11 +50,11 @@ struct Raster {
   // then stamped in native cell order; the output stores area samples of the
   // original 60x30 source pixels, instead of scaling each sprite in isolation.
   std::vector<uint8_t> surface(size_t(w)*h*samples,2);
-  std::vector<size_t> cells;
-  for(size_t n=0;n<terrain.shade.size();++n){int x=int(n%512),y=int(n/512);if(g.legal(x,y)&&g.flatVisible(x,y)&&terrain.shade[n].shroud!=127)cells.push_back(n);}
-  std::stable_sort(cells.begin(),cells.end(),[](size_t a,size_t b){return a%512+a/512<b%512+b/512;});
-  for(int kind=0;kind<(fog?2:1);++kind)for(size_t n:cells){
-   int x=int(n%512),y=int(n/512),f=frame(kind?terrain.shade[n].fog:terrain.shade[n].shroud);
+  auto ordered=cells;
+  std::stable_sort(ordered.begin(),ordered.end(),[](const Cell&a,const Cell&b){return a.index%512+a.index/512<b.index%512+b.index/512;});
+  for(int kind=0;kind<(fog?2:1);++kind)for(const auto&cell:ordered){
+   if(cell.shade.shroud==127)continue;
+   int x=int(cell.index%512),y=int(cell.index/512),f=frame(kind?cell.shade.fog:cell.shade.shroud);
    const auto&image=images[kind][f];mapbounds::TileOrigin origin;
    if(!g.shroudOrigin(x,y,origin))continue;
    // voxel::sprite stores the frame crop relative to its native centre.

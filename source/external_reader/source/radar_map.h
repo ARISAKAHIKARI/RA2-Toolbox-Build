@@ -40,10 +40,14 @@ struct Geometry {
  // Cell::DrawShroud places its 60x30 SHP on the flat cell footprint. Raised
  // terrain moves the TMP art, but never the shroud/fog mask.
  bool shroudOrigin(int x,int y,mapbounds::TileOrigin&out)const{return tileOrigin(x,y,0,out);}
+ bool shroudSourceVisible(int x,int y)const{
+  mapbounds::TileOrigin at;return shroudOrigin(x,y,at)&&at.x<rawWidth*30ll&&int64_t(at.x)+60>0&&
+   at.y<rawHeight*15ll&&int64_t(at.y)+30>0;
+ }
  void project(double x,double y,double&u,double&v)const{u=(x-y+offsetX)/rawWidth;v=(x+y-offsetY)/rawHeight;}
 };
 struct Marker {double u=0,v=0;uint32_t color=0;bool building=false;uint32_t object=0,id=0,type=0,owner=0,parent=0,parentId=0;int x=0,y=0,z=0,kind=-1,drawZ=0,sort=0,layer=2;bool normalLight=false,onBridge=false;visual::Pose pose;};
-struct CellArt {uint32_t cell=0,type=0,overlayType=0,overlaySourceType=0;int16_t overlay=-1;uint8_t sub=0;int8_t level=0;uint8_t overlayFrame=0;uint32_t sourceColor=0;};
+struct CellArt {uint32_t cell=0,type=0,overlayType=0,overlaySourceType=0;int16_t overlay=-1;uint8_t sub=0;int8_t level=0;uint8_t overlayFrame=0;bool sourceHidden=false;uint32_t sourceColor=0;};
 struct Scene {int width=0,height=0;std::vector<uint32_t> pixels;};
 // The game stores the selected shroud/fog SHP frame at each Cell. -1 selects
 // clear frame 0, -2 selects opaque frame 15; other values select edge frames.
@@ -115,16 +119,21 @@ public:
    int level=int8_t(cell[0x11B]);if(real&&flat)pending_->baseColors[cursor_]=terrainColor(land,level,false);
    bool admitted=flat&&(!reveal||g.bounds.usable(x,y,level,cell[0x11C]!=0));
    bool terrainSource=real&&g.terrainSourceVisible(x,y,level);
-   if(!admitted&&!terrainSource)continue;
+   if(!admitted&&!terrainSource&&(!real||!g.shroudSourceVisible(x,y)))continue;
    int8_t shroud=reveal?-1:maskFrame(x,y,false),fog=reveal?-1:maskFrame(x,y,true);
    if(shroud<-2||shroud>46||fog<-2||fog>46)continue;
    pending_->shade[cursor_]={shroud,fog};
    // A partial shroud frame still reveals part of this cell. Keep its source
    // pixels; the composed scene is clipped by the frame's screen-space mask.
-   if(!reveal&&shroud==-2)continue;
+   // A raised TMP/extra image can enter a clear destination cell even when
+   // its own flat source cell is hidden. Keep TERRAIN source art and let the
+   // final destination mask decide visibility; diagram/actors/overlays retain
+   // their original admission and never acquire that source-only permission.
+   const bool sourceVisible=reveal||shroud!=-2;
+   if(!sourceVisible&&!terrainSource)continue;
    uint32_t color=terrainColor(land,level,!real&&!reveal&&fog!=-1);
-   if(admitted)pending_->colors[cursor_]=color;
-   if(terrainSource&&!pending_->art.empty()){auto&a=pending_->art[cursor_];a.cell=p;a.sourceColor=color;a.sub=cell[0x11A];a.level=int8_t(cell[0x11B]);a.overlayFrame=cell[0x11E];int tile=-1,overlay=-1;uint32_t flags=0;memcpy(&flags,cell.data()+0x140,4);memcpy(&tile,cell.data()+0x38,4);memcpy(&overlay,cell.data()+0x44,4);if(tile==65535){tile=get<int>(0xAA10B0,-1);a.sub=0;}if(tile>=0&&size_t(tile)<tileTypes_.size())a.type=artvariants::tile(read_,tileTypes_[tile],a.sub,x,y,flags);if(admitted&&overlay>=0&&size_t(overlay)<overlayTypes_.size()){a.overlay=int16_t(overlay);a.overlaySourceType=overlayTypes_[overlay];int drawOverlay=artvariants::overlay(read_,overlayTypes_,resourcePools_,overlay,x,y,cell[0x11C]);a.overlayType=overlayTypes_[drawOverlay];}}
+   if(admitted&&sourceVisible)pending_->colors[cursor_]=color;
+   if(terrainSource&&!pending_->art.empty()){auto&a=pending_->art[cursor_];a.cell=p;a.sourceColor=color;a.sourceHidden=!sourceVisible;a.sub=cell[0x11A];a.level=int8_t(cell[0x11B]);a.overlayFrame=cell[0x11E];int tile=-1,overlay=-1;uint32_t flags=0;memcpy(&flags,cell.data()+0x140,4);memcpy(&tile,cell.data()+0x38,4);memcpy(&overlay,cell.data()+0x44,4);if(tile==65535){tile=get<int>(0xAA10B0,-1);a.sub=0;}if(tile>=0&&size_t(tile)<tileTypes_.size())a.type=artvariants::tile(read_,tileTypes_[tile],a.sub,x,y,flags);if(admitted&&overlay>=0&&size_t(overlay)<overlayTypes_.size()){a.overlay=int16_t(overlay);a.overlaySourceType=overlayTypes_[overlay];int drawOverlay=artvariants::overlay(read_,overlayTypes_,resourcePools_,overlay,x,y,cell[0x11C]);a.overlayType=overlayTypes_[drawOverlay];}}
   }
   if(cursor_==pointers_.size()){terrain_=pending_;pending_.reset();maskBits_.clear();++revision_;}return true;
  }

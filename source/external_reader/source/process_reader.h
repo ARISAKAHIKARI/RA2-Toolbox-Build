@@ -6,6 +6,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <array>
+#include <deque>
 #include "process_connection.h"
 namespace external {
 // Read-only handle. No allocation, injection, protection or write API for the game.
@@ -23,7 +24,9 @@ struct ReaderDiagnostics {
 // sessions; only the immutable connection is shared, never cache/diagnostics.
 class ProcessReader : public ReaderDiagnostics {
  std::shared_ptr<const ProcessConnection> connection_;
- HANDLE query_{};std::unordered_map<uint32_t,std::array<unsigned char,4096>> pages_;
+ struct Page {std::array<unsigned char,4096> bytes;uint64_t epoch=0;};
+ HANDLE query_{};std::unordered_map<uint32_t,Page> pages_;std::deque<uint32_t> pageOrder_;
+ uint64_t epoch_=0;size_t pageAllocations_=0;
  // A partly unreadable page cannot fill the cache. Retry its fields directly
  // for this sample instead of repeating the failing 4 KiB read for each one.
  std::unordered_set<uint32_t> failedPages_;
@@ -38,7 +41,7 @@ public:
   if(!connection_&&allowQueryOnly)connection_=acquireConnection(pid,false,lastOpenError);
   return valid();
  }
- void close(){if(query_)CloseHandle(query_);query_=nullptr;connection_.reset();begin();}
+ void close(){if(query_)CloseHandle(query_);query_=nullptr;connection_.reset();pages_.clear();pageOrder_.clear();begin();}
  bool valid()const{return bool(connection_);}
  bool alive()const{return connection_&&connection_->alive();}
  bool canRead()const{return connection_&&connection_->readable;}
@@ -46,7 +49,12 @@ public:
  uint64_t generation()const{return connection_?connection_->generation:0;}
  std::shared_ptr<const ProcessConnection> connectionIdentity()const{return connection_;}
  bool imagePath(wchar_t*out,DWORD*size)const{return connection_&&QueryFullProcessImageNameW(connection_->handle,0,out,size);}
- void begin(){pages_.clear();failedPages_.clear();reads=errors=pageHits=pageMisses=pageFallbacks=0;lastReadError=0;lastFailedAddress=0;lastFailedSize=0;lastBytesRead=0;lastRegionState=lastRegionProtect=0;lastRegionQueried=false;lastRegionQueryError=0;}
+ // Keep address-to-storage bindings between observations, never their old
+ // values. The first access in a new epoch refills the page from the game.
+ // This avoids freeing/allocating thousands of 4 KiB nodes every frame.
+ void begin(){if(!++epoch_){pages_.clear();pageOrder_.clear();epoch_=1;}failedPages_.clear();reads=errors=pageHits=pageMisses=pageFallbacks=0;lastReadError=0;lastFailedAddress=0;lastFailedSize=0;lastBytesRead=0;lastRegionState=lastRegionProtect=0;lastRegionQueried=false;lastRegionQueryError=0;}
+ size_t cachedPageStorage()const{return pages_.size();}
+ size_t pageBufferAllocations()const{return pageAllocations_;}
  bool read(uint32_t address,void*out,size_t size){
   if(!canRead()||!out||address<0x10000||!size||size>4*1024*1024||uint64_t(address)+size>0x80000000ull){
    ++errors;lastReadError=!valid()?ERROR_INVALID_HANDLE:!canRead()?ERROR_ACCESS_DENIED:ERROR_INVALID_PARAMETER;
@@ -54,11 +62,17 @@ public:
   }
   uint32_t page=address&~4095u;
   if(size<=4096&&(address&4095)+size<=4096){
-   auto it=pages_.find(page);if(it!=pages_.end()){++pageHits;std::memcpy(out,it->second.data()+(address&4095),size);return true;}
+   auto it=pages_.find(page);if(it!=pages_.end()&&it->second.epoch==epoch_){++pageHits;std::memcpy(out,it->second.bytes.data()+(address&4095),size);return true;}
    ++pageMisses;
-   if(pages_.size()<8192&&!failedPages_.count(page)){std::array<unsigned char,4096> bytes;SIZE_T got=0;++reads;
-    if(ReadProcessMemory(connection_->handle,(void*)(uintptr_t)page,bytes.data(),bytes.size(),&got)&&got==bytes.size()){
-     auto result=pages_.emplace(page,std::move(bytes));std::memcpy(out,result.first->second.data()+(address&4095),size);return true;
+   if(!failedPages_.count(page)){
+    if(it==pages_.end()){
+     if(pages_.size()==8192){auto node=pages_.extract(pageOrder_.front());pageOrder_.pop_front();node.key()=page;it=pages_.insert(std::move(node)).position;}
+     else{it=pages_.try_emplace(page).first;++pageAllocations_;}
+     pageOrder_.push_back(page);
+    }
+    auto&cached=it->second;cached.epoch=0;SIZE_T got=0;++reads;
+    if(ReadProcessMemory(connection_->handle,(void*)(uintptr_t)page,cached.bytes.data(),cached.bytes.size(),&got)&&got==cached.bytes.size()){
+     cached.epoch=epoch_;std::memcpy(out,cached.bytes.data()+(address&4095),size);return true;
     }
     if(failedPages_.size()<8192)failedPages_.insert(page);
    }

@@ -190,7 +190,10 @@ bool overlay(uint32_t type,uint32_t pointer,int frame,external::voxel::Image&out
  bool paletteLive=lastPaletteLive_,paletteChanged=false;uint64_t paletteRevision=1;
  if(!external::livepalette::refresh(pal,paletteLive,paletteRevision,paletteChanged,[&](external::livepalette::Sample&sample){bool valid=spritePalette(type,file,true,0,sample.colors,terrain);sample.live=lastPaletteLive_;return valid;}))return false;
  overlayPalettes_[{type,terrain}]={file,pal,paletteLive,paletteRevision};
- std::string why;bool ok=disk?external::voxel::sprite(external::assets::Memory{std::move(bytes)},external::assets::Memory::Base,pal,out,frame,&why):external::voxel::sprite(read,pointer,pal,out,frame,&why);if(!ok)failure="overlay-frame/decode:"+file+" frame="+std::to_string(frame)+" "+why;
+ // Scene overlays use indexed cutouts, not the decoder's translucent preview
+ // default. Decode covered pixels opaque before ground composition; trying to
+ // undo premultiplication afterwards also loses original palette precision.
+ std::string why;bool ok=disk?external::voxel::sprite(external::assets::Memory{std::move(bytes)},external::assets::Memory::Base,pal,out,frame,&why,255):external::voxel::sprite(read,pointer,pal,out,frame,&why,255);if(!ok)failure="overlay-frame/decode:"+file+" frame="+std::to_string(frame)+" "+why;
  if(ok&&terrain&&external::lighting::spawnsTiberium(read,type))out.y-=16; // Native 71C2A9 / 71C438.
  if(ok&&!terrain){out.flat=(word(type+0x2B3)&255)!=0;bool wall=(word(type+0x2A8)&255)!=0,rock=(word(type+0x2B5)&255)!=0;out.depthBias=out.flat?-1.f:(wall||rock)?0.f:15.f;out.writeDepth=(word(type+0x2AD)&255)==0;}
  return ok;}
@@ -397,7 +400,8 @@ bool renderActor(const ActorArt&art,const external::visual::Pose&pose,external::
   if(presentation_&&!presentationVplFresh_){failure="voxel-current-vpl-unavailable";return false;}
   if(!presentation_)vpl();bool projectile=art.kind==external::projectiles::Kind;
   if(projectile&&!voxelLight.ready()){failure="projectile-vpl-unavailable";return false;}
-  if(!external::voxel::render(art.model,angle,art.colors,out,projectile?std::numeric_limits<double>::quiet_NaN():turret,art.turretOffset,&voxelLight,255,projectile?turret:0,projectile,rasterScale))return false;
+  if(!pose.posture.available){failure="voxel-current-posture-unavailable";return false;}
+  if(!external::voxel::render(art.model,angle,art.colors,out,projectile?std::numeric_limits<double>::quiet_NaN():turret,art.turretOffset,&voxelLight,255,projectile?turret:0,projectile,rasterScale,&pose.posture))return false;
   // The model Z buffer resolves faces inside the cached voxel only. The game
   // submits that cached image through the same standing shape Z test as SHP.
   // Orthographic model depth is not in the terrain/BUILDNGZ buffer's units.
