@@ -20,3 +20,26 @@ jobs:
           path: |
             generated/vulkan_bilinear_spirv.h
             generated-kernel.json
+
+  compute:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install software Vulkan and shader validator
+        run: sudo apt-get update && sudo apt-get install -y mesa-vulkan-drivers vulkan-validationlayers glslang-tools spirv-tools
+      - name: Regenerate and compare SPIR-V
+        run: |
+          python3 source/tools/build_vulkan_kernel.py --output /tmp/vulkan_bilinear_spirv.h
+          cmp /tmp/vulkan_bilinear_spirv.h source/external_reader/source/vulkan_bilinear_spirv.h
+      - name: Real Vulkan compute and cache regression
+        run: |
+          set -euo pipefail
+          g++ -std=c++17 -O2 source/assist/tests/vulkan_compute.cpp -ldl -o /tmp/vulkan-compute-test
+          VK_INSTANCE_LAYERS=VK_LAYER_KHRONOS_validation /tmp/vulkan-compute-test --require 2>&1 | tee vulkan-compute.log
+          if rg 'Validation Error|VUID-' vulkan-compute.log; then exit 1; fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: vulkan-compute-validation
+          if-no-files-found: warn
+          path: vulkan-compute.log

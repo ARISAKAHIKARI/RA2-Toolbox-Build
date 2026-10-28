@@ -1,0 +1,122 @@
+{
+  "project": "KhronosGroup/Vulkan-Headers",
+  "tag": "v1.3.290",
+  "commit": "b379292b2ab6df5771ba9870d53cf8b2c9295daf",
+  "local_modifications": false,
+  "layout": "include/vulkan headers relocated to this directory; include/vk_video preserved as vk_video; all included upstream file bytes unchanged",
+  "usage": "VK_NO_PROTOTYPES; dynamic Vulkan 1.0 function loading, no Vulkan library link or loader binary bundled",
+  "files": [
+    {
+      "path": "vulkan_core.h",
+      "original_path": "include/vulkan/vulkan_core.h",
+      "git_blob_sha": "62b079c83bb1dc59092cf55287c5f08a7df80ffd",
+      "source_url": "https://github.com/KhronosGroup/Vulkan-Headers/blob/b379292b2ab6df5771ba9870d53cf8b2c9295daf/include/vulkan/vulkan_core.h",
+      "bytes": 1007428,
+      "sha256": "24b258dbfc5f177206fbffcf35f3a87cf756ee6f883167b92ecaeab16a5aa005"
+    },
+    {
+      "path": "vk_platform.h",
+      "original_path": "include/vulkan/vk_platform.h",
+      "git_blob_sha": "0ecd4f64719968f57fabbc40b5d884fb6483fd39",
+      "source_url": "https://github.com/KhronosGroup/Vulkan-Headers/blob/b379292b2ab6df5771ba9870d53cf8b2c9295daf/include/vulkan/vk_platform.h",
+      "bytes": 2828,
+      "sha256": "c4cabbcf699c90cde344095ae54da9435d117951aad114ba3a540c5997d7906f"
+    },
+    {
+      "path": "LICENSE.md",
+      "original_path": "LICENSE.md",
+      "git_blob_sha": "d6a0648b652ade1defb1eb481643d2f8d14828b5",
+      "source_url": "https://github.com/KhronosGroup/Vulkan-Headers/blob/b379292b2ab6df5771ba9870d53cf8b2c9295daf/LICENSE.md",
+      "bytes": 458,
+      "sha256": "ac24e5ea920e4318e4d02c4086ae51f53cfb03feed06c18df1019e7ada1ec7bc"
+    },
+    {
+      "path": "vk_video/vulkan_video_codec_h264std.h",
+      "original_path": "include/vk_video/vulkan_video_codec_h264std.h",
+      "git_blob_sha": "6d27af37b73342388f3281a70c8af34efe1de567",
+      "source_url": "https://github.com/KhronosGroup/Vulkan-Headers/blob/b379292b2ab6df5771ba9870d53cf8b2c9295daf/include/vk_video/vulkan_video_codec_h264std.h",
+      "bytes": 13853,
+      "sha256": "072ee6eac80e73d93bb4bfe0059f99e581fc8b55b1437236185bb4ff377914b1"
+    },
+    {
+      "path": "vk_video/vulkan_video_codec_h264std_encode.h",
+      "original_path": "include/vk_video/vulkan_video_codec_h264std_encode.h",
+      "git_blob_sha": "9e24aa5d991d3b4388b4bd297d66faf46a698f7a",
+      "source_url": "https://github.com/KhronosGroup/Vulkan-Headers/blob/b379292b2ab6df5771ba9870d53cf8b2c9295daf/include/vk_video/vulkan_video_codec_h264std_encode.h",
+      "bytes": 6878,
+      "sha256": "052a6e357be8d88bf4be0db1b3da5a9cc1a6011cf4b3533759ff588e1e26f9f1"
+    },
+    {
+      "path": "vk_video/vulkan_video_codec_h265std.h",
+      "original_path": "include/vk_video/vulkan_video_codec_h265std.h",
+      "git_blob_sha": "d0a1bacbea378c7e0acc1ebcf2596da80525bfe9",
+      "source_url": "https://github.com/KhronosGroup/Vulkan-Headers/blob/b379292b2ab6df5771ba9870d53cf8b2c9295daf/include/vk_video/vulkan_video_codec_h265std.h",
+      "bytes": 23416,
+      "sha256": "0cbdfd6c45ee8ca902e9c961cd7e49a4d601d443ea0ef2a60a8496b127ed397c"
+    },
+    {
+      "path": "vk_video/vulkan_video_codec_h265std_encode.h",
+      "original_path": "include/vk_video/vulkan_video_codec_h265std_encode.h",
+      "git_blob_sha": "ee34491f4e9c0a5fa3740193802ecd437f93473f",
+      "source_url": "https://github.com/KhronosGroup/Vulkan-Headers/blob/b379292b2ab6df5771ba9870d53cf8b2c9295daf/include/vk_video/vulkan_video_codec_h265std_encode.h",
+      "bytes": 7462,
+      "sha256": "7239f9f4e811546639111e562a8be1ec73ad5bef1c23d5fad80889f35e125e9c"
+    },
+    {
+      "path": "vk_video/vulkan_video_codec_h264std_decode.h",
+      "original_path": "include/vk_video/vulkan_video_codec_h264std_decode.h",
+      "git_blob_sha": "439cb885e71b7dcbde9b477b2bfb3fd4613bec10",
+      "source_url": "https://github.com/KhronosGroup/Vulkan-Headers/blob/b379292b2ab6df5771ba9870d53cf8b2c9295daf/include/vk_video/vulkan_video_codec_h264std_decode.h",
+      "bytes": 2722,
+      "sha256": "e1708b3996a740eeedb79f51d0f0e379f9bcae13566538375acaf73301023b58"
+    },
+    {
+      "path": "vk_video/vulkan_video_codec_h265std_decode.h",
+      "original_path": "include/vk_video/vulkan_video_codec_h265std_decode.h",
+      "git_blob_sha": "0178793e5111ac4eea8f26185bea2312ce645dd3",
+      "source_url": "https://github.com/KhronosGroup/Vulkan-Headers/blob/b379292b2ab6df5771ba9870d53cf8b2c9295daf/include/vk_video/vulkan_video_codec_h265std_decode.h",
+      "bytes": 2428,
+      "sha256": "800946aa19d83d305d504e2e4141bc938f989e0cf8872cef97480238eefef1ea"
+    },
+    {
+      "path": "vk_video/vulkan_video_codec_av1std.h",
+      "original_path": "include/vk_video/vulkan_video_codec_av1std.h",
+      "git_blob_sha": "8ce283e8a8a4fab73f1ee57484ede50c08c24b9f",
+      "source_url": "https://github.com/KhronosGroup/Vulkan-Headers/blob/b379292b2ab6df5771ba9870d53cf8b2c9295daf/include/vk_video/vulkan_video_codec_av1std.h",
+      "bytes": 16507,
+      "sha256": "f3ab53dbfdeb36a349f674656d50bd507f2e4b3c883343da74aace0df4f02a02"
+    },
+    {
+      "path": "vk_video/vulkan_video_codec_av1std_decode.h",
+      "original_path": "include/vk_video/vulkan_video_codec_av1std_decode.h",
+      "git_blob_sha": "6b8130cd9fcf71c8488dc00ccb6fa0d981ea3adc",
+      "source_url": "https://github.com/KhronosGroup/Vulkan-Headers/blob/b379292b2ab6df5771ba9870d53cf8b2c9295daf/include/vk_video/vulkan_video_codec_av1std_decode.h",
+      "bytes": 4250,
+      "sha256": "96f923dc01cd3e266c081d88fa020525a20d63ffe4ce09a4c807a04ef3aaf97e"
+    },
+    {
+      "path": "vk_video/vulkan_video_codecs_common.h",
+      "original_path": "include/vk_video/vulkan_video_codecs_common.h",
+      "git_blob_sha": "5e6ef1db48ee560e2004388f95d25c6a5bc6a19b",
+      "source_url": "https://github.com/KhronosGroup/Vulkan-Headers/blob/b379292b2ab6df5771ba9870d53cf8b2c9295daf/include/vk_video/vulkan_video_codecs_common.h",
+      "bytes": 660,
+      "sha256": "78cf3c99d3d57afa7ab1782ec6018b4bcdbe273f2843d76e3375282db875b71e"
+    },
+    {
+      "path": "LICENSES/MIT.txt",
+      "original_path": "LICENSES/MIT.txt",
+      "git_blob_sha": "8495fe9e901b430947d54980af7c77c0bb8a6221",
+      "source_url": "https://github.com/KhronosGroup/Vulkan-Headers/blob/b379292b2ab6df5771ba9870d53cf8b2c9295daf/LICENSES/MIT.txt",
+      "bytes": 1084,
+      "sha256": "1ca3502222d967f3be5751c55f6b7ee735b5383909c3b501495f54b216dbf227"
+    },
+    {
+      "path": "LICENSES/Apache-2.0.txt",
+      "original_path": "LICENSES/Apache-2.0.txt",
+      "git_blob_sha": "d645695673349e3947e8e5ae42332d0ac3164cd7",
+      "source_url": "https://github.com/KhronosGroup/Vulkan-Headers/blob/b379292b2ab6df5771ba9870d53cf8b2c9295daf/LICENSES/Apache-2.0.txt",
+      "bytes": 11358,
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    }
+  ]
+}
