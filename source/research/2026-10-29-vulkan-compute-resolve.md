@@ -32,6 +32,7 @@ fence 超时后禁止继续写入、释放或卸载尚在执行中的资源；�
 - `assist/tests/vulkan_compute.cpp`：真实 Vulkan shader dispatch 与独立 Q8 CPU 参考逐像素对照；premultiplied invariant、稳定 tile 零上传、一素材替换仅上传该素材、强制相同 vector 对象地址但新 ownership 不复用旧内容、每帧只读回一次、不合法尺寸/重叠/NaN 拒绝后仍可继续。
 - 本地 Linux 没有 ICD：验证动态 loader/instance 不可用时干净回退，没有把这次运行记作 GPU 成功。Zig 0.13.0 Win32 x86 交叉编译通过；没有 Windows GPU 设备实测。
 - Bootstrap run `40729123538` 验证 shader 编译与 SPIR-V 校验。第一次实际软件 Vulkan run `40734749488` 提前退出时 segfault；ASan/UBSan run `40735269615` 查明第一帧触发 100ms fence 超时，没有报告宿主越界。这不构成硬件性能结论。Mesa 初次 shader JIT 可能超过硬件保护门限，显式软件测试构建改用 10s 的独立等待预算，产品仍保持 100ms 硬件保护。
-- 软件 Vulkan 实际回归结果待 CI 完成后填入证据；软件成功不等于显卡帧率提升。完整游戏内画面、AMD/NVIDIA/Intel 实机、全场景性能和 GPU 直接呈现仍待验证。
+- 软件 Vulkan run `40735580583`（head `310853a8c6703e5e0addce296f892b82a6cc22e4`）在 Mesa llvmpipe LLVM 20.1.2 下真实执行 61 帧、1,483,520 像素，与独立 Q8 参考逐位一致；稳定上传 0、每帧读回 1，通过强制地址复用。编译启用 ASan/UBSan，未报告宿主内存错误。该 run 的外部 `rg` 日志检查命令缺失，不能把其 job success 单独当作已验证日志过滤器；已将检查换为不依赖 rg 的 Python 断言，最终整合 CI 继续检查 validation/VUID 输出。
+- 软件成功不等于显卡帧率提升。完整游戏内画面、AMD/NVIDIA/Intel 实机、全场景性能和 GPU 直接呈现仍待验证。
 
 本项不新增游戏内存地址、游戏函数调用或写入，不变更 IPC 协议或 CnCNet 逻辑；游戏 PE SHA/原生 ABI 不适用于本次 GPU 适配器。原有坡面/命令线原生证据见各自独立笔记。
