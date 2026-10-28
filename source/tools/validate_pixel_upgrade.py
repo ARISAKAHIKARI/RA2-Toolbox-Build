@@ -27,8 +27,10 @@ assert 'paletteRange_=pixelupgrade::PaletteRange::OriginalDAC' in assets
 assert 'pixelScaleMode==1' in canvas and 'regionCache_->sampleRegion(' in canvas
 assert 'std::shared_ptr<xbrzadapter::RegionCache> regionCache_' in canvas
 assert 'pixelScaleMode!=pixelScaleMode_' in scene
-assert 'result->request.paletteRange==request.paletteRange' in worker
-assert 'result->request.pixelScaleMode==request.pixelScaleMode' in worker
+policy=(root/'assist/source/render_presentation.h').read_text(encoding='utf-8')
+assert 'renderpresentation::usable(*result,request,GetTickCount())' in worker
+assert 'a.paletteRange==b.paletteRange' in policy
+assert 'a.pixelScaleMode==b.pixelScaleMode' in policy
 assert 'assets.presentationPalette(r.paletteRange' in worker
 for key in ('RenderPaletteRange','RenderPixelScale'):
     assert settings.count('L"'+key+'"')==2,key

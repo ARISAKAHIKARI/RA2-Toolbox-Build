@@ -13,7 +13,8 @@ render=(root/'assist/source/render_upgrade_host.h').read_text(encoding='utf-8')
 compositor=(root/'shared/source/overlay_compositor.h').read_text(encoding='utf-8')
 scene=(root/'external_reader/source/radar_scene.h').read_text(encoding='utf-8')
 assert '0xD90' in core and '0x11CF' in core
-assert 'current.same(result->cursor.mouse)' in host
+assert 'current.same(cursor.mouse)' in host and 'cursorCache.capture(cursorRead' in host
+assert 'cursorWorker' not in host and 'cursorCalls>2048' in host
 assert 'GetCursorInfo' in host and 'externalCursor()' in host
 assert 'bool replaceGroup(' in compositor and 'std::lock_guard<std::mutex>lock(mutex);' in compositor
 assert 'bool feedbackBounds(' in scene and 'bool feedbackVisibility(' in scene

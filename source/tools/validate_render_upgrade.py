@@ -12,7 +12,7 @@ for name in new:
         assert forbidden not in code, (name,forbidden)
 main = (root/'assist/source/main.cpp').read_text('utf-8')
 stats = (root/'unit_monitor/source/main.cpp').read_text('utf-8')
-assert 'renderupgrade::update(origin,r,battlefield)' in main
+assert 'renderupgrade::update(origin,r,displayState)' in main
 assert 'renderupgrade::shutdown()' in main
 assert 'overlaycompositor::host().publish({overlaycompositor::World' in main
 assert 'overlaycompositor::host().publish({overlaycompositor::Statistics' in stats

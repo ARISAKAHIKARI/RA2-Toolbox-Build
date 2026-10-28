@@ -11,12 +11,15 @@ for path in ('external_reader/source/material_motion.h','external_reader/source/
         assert token not in code,(path,token)
 host=(root/'assist/source/render_upgrade_host.h').read_text(encoding='utf-8')
 assert 'return unavailable();' in host
-assert 'return {};' not in host.split('static asyncwork::Latest<Request,Frame> worker(',1)[1].split('#include "render_feedback_host.h"',1)[0]
+assert 'auto unavailable=[]()->std::shared_ptr<const Frame>{return {};};' in host
+assert 'renderpresentation::usable(*result,request,GetTickCount())' in host
 assert 'heldFrame' not in host, 'Whole-frame reuse can bypass dynamic lighting and palette updates'
 assert 'reader.begin(); // Explicit fresh page epoch' in host
 assert 'timeline.observe(raw,' in host and 'timeline.sample(' in host
 assert 'before.frame!=sampledLogicFrame' in host and 'refreshPeriod(informationFPS(),renderMaterialRefresh)' in host
-assert 'result->request.generation==request.generation' in host and '++generation;worker.invalidate()' in host
+policy=(root/'assist/source/render_presentation.h').read_text(encoding='utf-8')
+assert 'a.generation==b.generation' in policy and '++generation;worker.invalidate()' in host
+assert 'frame.sampledTick,SampleMaxAge' in policy and 'frame.completedTick,CompletionMaxAge' in policy
 settings=(root/'assist/source/extra_settings_io.h').read_text(encoding='utf-8')
 for key in ('RenderMaterialRefresh','RenderSceneDetail'):
     assert settings.count('L"'+key+'"')==2,key

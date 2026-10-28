@@ -53,7 +53,7 @@ template<class Assets>class SceneRenderer {
  static uint64_t lightKey(uint64_t h,const lighting::State&s){h=mix(h,uint32_t(s.ambient));h=mix(h,uint32_t(s.intensity));for(int c:s.tint)h=mix(h,uint32_t(c));return h;}
  static bool sameSource(const Terrain&a,const Terrain&b){
   if(!a.geo.same(b.geo)||a.reveal!=b.reveal||a.colors!=b.colors||a.baseColors!=b.baseColors||a.shade!=b.shade||a.art.size()!=b.art.size())return false;
-  for(size_t n=0;n<a.art.size();++n){const auto&x=a.art[n];const auto&y=b.art[n];if(x.cell!=y.cell||x.type!=y.type||x.overlayType!=y.overlayType||x.overlaySourceType!=y.overlaySourceType||x.overlay!=y.overlay||x.sub!=y.sub||x.level!=y.level||x.overlayFrame!=y.overlayFrame)return false;}return true;
+  for(size_t n=0;n<a.art.size();++n){const auto&x=a.art[n];const auto&y=b.art[n];if(x.cell!=y.cell||x.type!=y.type||x.overlayType!=y.overlayType||x.overlaySourceType!=y.overlaySourceType||x.overlay!=y.overlay||x.sub!=y.sub||x.level!=y.level||x.overlayFrame!=y.overlayFrame||x.sourceColor!=y.sourceColor)return false;}return true;
  }
  void clearBackground(){building_.reset();complete_.reset();blocked_.reset();dynamicFailure_=false;pending_={};background_={};baseScene_.reset();maskedBaseScene_.reset();maskSource_.reset();mask_={};cells_.clear();baseCells_.clear();prepared_.clear();painted_.clear();cursor_=baseCursor_=0;probing_=probeChanged_=pendingIncomplete_=backgroundIncomplete_=false;backgroundRetry_=0;}
 
@@ -111,10 +111,10 @@ public:
   if(!building_){
    building_=frame.terrain;buildingLight_=scene;bankSameSource_=complete_&&(complete_==building_||sameSource(*complete_,*building_));cursor_=baseCursor_=0;prepared_.clear();probeChanged_=pendingIncomplete_=false;
    if(!bankSameSource_){cells_.clear();baseCells_.clear();
-   for(size_t n=0;n<building_->colors.size();++n)if(building_->colors[n])cells_.push_back(n);
+   for(size_t n=0;n<building_->colors.size();++n)if(building_->colors[n]||building_->art[n].sourceColor)cells_.push_back(n);
    if(building_->reveal&&building_->baseColors.size()==building_->colors.size())
     for(size_t n=0;n<building_->baseColors.size();++n)
-     if(building_->baseColors[n]&&!building_->colors[n])baseCells_.push_back(n);
+     if(building_->baseColors[n]&&!building_->colors[n]&&!building_->art[n].sourceColor)baseCells_.push_back(n);
    std::stable_sort(cells_.begin(),cells_.end(),[](size_t a,size_t b){return a%512+a/512<b%512+b/512;});}
    // New sampling banks commonly contain identical terrain. Compare evaluated
    // per-cell lighting before deciding to rebuild millions of native pixels.
@@ -162,9 +162,9 @@ public:
   if(building_&&!probing_){
    pending_.precision(precision_);
    const auto&terrain=*building_;const auto&geo=terrain.geo;
-   // Native radar RGB exists for the full legal/raw backing, including the
-   // inward playfield margin. Reveal paints that coarse backing at the fringe
-   // while still excluding nonusable TMPs, overlays, objects and effects.
+   // Native radar RGB keeps its original flat/raw admission. TMP sources may
+   // straddle that crop; their decoded pixels are clipped by this same canvas.
+   // Objects, overlays and effects retain the sampler's original admission.
    size_t baseEnd=std::min(baseCells_.size(),baseCursor_+size_t(4096));
    for(;baseCursor_<baseEnd;++baseCursor_){size_t index=baseCells_[baseCursor_];int x=int(index%512),y=int(index/512);
     int flatX=x-y+geo.offsetX,flatY=x+y-geo.offsetY;
@@ -179,7 +179,7 @@ public:
     // scene. A TMP diamond (especially on a raised edge) does not cover that
     // whole footprint; keep its native ground color in the uncovered pixels.
     int flatX=x-y+geo.offsetX,flatY=x+y-geo.offsetY;
-    uint32_t baseColor=terrain.baseColors.size()==terrain.colors.size()&&terrain.baseColors[index]?terrain.baseColors[index]:terrain.colors[index];
+    uint32_t baseColor=terrain.baseColors.size()==terrain.colors.size()&&terrain.baseColors[index]?terrain.baseColors[index]:cell.sourceColor?cell.sourceColor:terrain.colors[index];
     pending_.underlayRect(flatX*30,flatY*15,(flatX+2)*30,(flatY+1)*15,baseColor);
     auto&paint=prepared_[cursor_];if(!probeChanged_)paint=prepare(index);
     if(cell.type){

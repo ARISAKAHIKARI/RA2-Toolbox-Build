@@ -1181,11 +1181,15 @@ static void present(){auto frame=worker.get();
 static void paint(){
  ++displayCounters.paints;
  if(enabled||secondaryDisplayRequested())sampleExternal(GetTickCount()); // Display cadence is independent of command servicing.
- bool battlefield=external::display::inspect([](uint32_t at,void*out,size_t n){return externalReader.readFresh(at,out,n);}).visible();
- if(!battlefield||snap.renderStatus!=1){renderupgrade::stop();worldrender::invalidate();overlayRecovery.suspend();hideWorldOverlay();hideAircraftButton();minimap::hide();watchwindows::hide();hideConstruction();clearPassengerDisplay();return;}
- const DWORD renderNow=sampleRenderClock(shared);
+ const auto displayState=external::display::inspect([](uint32_t at,void*out,size_t n){return externalReader.readFresh(at,out,n);});
  RECT r{};GetClientRect(game,&r);POINT origin{};ClientToScreen(game,&origin);
- renderupgrade::update(origin,r,battlefield);
+ // The scene renderer validates its own live view. An unrelated information
+ // scan can fail for one refresh without invalidating that completed scene.
+ // Pass the readable/hidden distinction through before the legacy UI gates.
+ renderupgrade::update(origin,r,displayState);
+ const bool battlefield=displayState.visible();
+ if(!battlefield||snap.renderStatus!=1){worldrender::invalidate();overlayRecovery.suspend();hideWorldOverlay();hideAircraftButton();minimap::hide();watchwindows::hide();hideConstruction();clearPassengerDisplay();return;}
+ const DWORD renderNow=sampleRenderClock(shared);
  {static uint64_t prior=0;auto c=overlaycompositor::host().capture(uintptr_t(game),pid);if(prior!=c.token){prior=c.token;++paintRevision;}}
  minimap::update(origin,r,battlefield);watchhost::update(renderNow);watchwindows::update(origin,r,battlefield);
  if(!enabled||!foregroundGame()||snap.chat){worldrender::invalidate();overlayRecovery.suspend();hideWorldOverlay();hideAircraftButton();hideConstruction();clearPassengerDisplay();return;}

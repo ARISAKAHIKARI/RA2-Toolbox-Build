@@ -1,0 +1,196 @@
+{
+  "baseline_remote_commit": "19fc6113037d43c3e538018a8ad88dea7358d18f",
+  "baseline_local_commit": "a26b1bc",
+  "portable": [
+    {
+      "name": "render_upgrade",
+      "passed": true,
+      "seconds": 3.221
+    },
+    {
+      "name": "render_upgrade_scene",
+      "passed": true,
+      "seconds": 6.131
+    },
+    {
+      "name": "radar_scene",
+      "passed": true,
+      "seconds": 13.924
+    },
+    {
+      "name": "radar_shroud_mask",
+      "passed": true,
+      "seconds": 1.325
+    },
+    {
+      "name": "native_canvas",
+      "passed": true,
+      "seconds": 2.492
+    },
+    {
+      "name": "native_feedback",
+      "passed": true,
+      "seconds": 1.959
+    },
+    {
+      "name": "native_feedback_scene",
+      "passed": true,
+      "seconds": 8.503
+    },
+    {
+      "name": "pixel_upgrade",
+      "passed": true,
+      "seconds": 3.55
+    },
+    {
+      "name": "xbrz_scaling",
+      "passed": true,
+      "seconds": 2.169
+    },
+    {
+      "name": "material_motion",
+      "passed": true,
+      "seconds": 1.709
+    },
+    {
+      "name": "material_scene",
+      "passed": true,
+      "seconds": 8.008
+    },
+    {
+      "name": "viewport_detail",
+      "passed": true,
+      "seconds": 3.849
+    },
+    {
+      "name": "live_palette_cache",
+      "passed": true,
+      "seconds": 0.62
+    },
+    {
+      "name": "live_scene_lighting",
+      "passed": true,
+      "seconds": 8.852
+    },
+    {
+      "name": "live_voxel_scene",
+      "passed": true,
+      "seconds": 7.639
+    },
+    {
+      "name": "watch_live_palette",
+      "passed": true,
+      "seconds": 12.835
+    },
+    {
+      "name": "color_precision",
+      "passed": true,
+      "seconds": 1.524
+    },
+    {
+      "name": "color_scene",
+      "passed": true,
+      "seconds": 7.285
+    },
+    {
+      "name": "palette_recovery",
+      "passed": true,
+      "seconds": 0.355
+    },
+    {
+      "name": "resolution_sampling",
+      "passed": true,
+      "seconds": 1.814
+    },
+    {
+      "name": "color_reconstruction",
+      "passed": true,
+      "seconds": 1.32
+    },
+    {
+      "name": "terrain_viewport",
+      "passed": true,
+      "seconds": 8.598
+    },
+    {
+      "name": "minimap_overlay",
+      "passed": true,
+      "seconds": 3.393
+    },
+    {
+      "name": "minimap_terrain_crop",
+      "passed": true,
+      "seconds": 8.534
+    },
+    {
+      "name": "radar_boundary",
+      "passed": true,
+      "seconds": 3.058
+    }
+  ],
+  "continuity": [
+    {
+      "name": "render_presentation",
+      "passed": true
+    },
+    {
+      "name": "render_feedback_host",
+      "passed": true
+    }
+  ],
+  "contracts": [
+    {
+      "name": "render_upgrade",
+      "passed": true
+    },
+    {
+      "name": "native_feedback",
+      "passed": true
+    },
+    {
+      "name": "pixel_upgrade",
+      "passed": true
+    },
+    {
+      "name": "physical_presentation",
+      "passed": true
+    },
+    {
+      "name": "material_refresh",
+      "passed": true
+    },
+    {
+      "name": "color_resolution",
+      "passed": true
+    },
+    {
+      "name": "aircraft_allocation",
+      "passed": true
+    },
+    {
+      "name": "render_presentation_gate",
+      "passed": true
+    }
+  ],
+  "minimap_baseline_failure": {
+    "baseline_commit": "a26b1bc",
+    "test": "minimap_terrain_crop.cpp",
+    "result": "EXPECTED_FAILURE",
+    "returncode": -6,
+    "stderr": "minimap_terrain_crop: <fixture-path> int main(): Assertion `(image->pixels[size_t(y)*240+x]==0xffa03020u)==inside' failed.\n",
+    "adaptation": "Removed only new sourceColor/helper observations and load-counter expectation to compile against the old struct; unchanged Sampler->SceneRenderer pixel assertions fail on the first left-edge half tile."
+  },
+  "feedback_baseline_failure": {
+    "test": "current actual feedback regression fixture with only HEAD feedback host plus unused unsafeView=false compatibility declaration",
+    "exit_code": -6,
+    "stdout": "",
+    "stderr": "baseline: <fixture-path> int main(): Assertion `feedback::update(request,frame,0,0,layers)&&layers.size()==1&&layers[0].id==feedback::CursorLayer' failed.\n",
+    "expected_failure": true,
+    "baseline": "HEAD:source/assist/source/render_feedback_host.h",
+    "binary": "<fixture-path>"
+  },
+  "limits": [
+    "Controlled host/read/asset fixtures do not prove live-game, DWM, DirectDraw or multiplayer behavior.",
+    "ASan/UBSan checked new native tests with leak sanitizer disabled because the environment lacks required proc-thread access."
+  ]
+}

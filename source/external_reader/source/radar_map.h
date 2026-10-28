@@ -23,6 +23,18 @@ struct Geometry {
  // integer RGB backing. Level affects TMP pixels later, not cell admission.
  bool flatVisible(int x,int y)const{int64_t left=int64_t(x)-y+offsetX,top=int64_t(x)+y-offsetY;
   return left<rawWidth&&left+2>0&&top>=0&&top<rawHeight;}
+ // The RGB radar footprint is not a TMP sprite's source rectangle. Keep a
+ // bounded source neighborhood, then let NativeCanvas clip the decoded art
+ // to the unchanged raw viewport. terrain::tile accepts at most 512x512,
+ // including its extra image, and the signed Level may shift it vertically.
+ bool terrainSourceCandidate(int x,int y)const{
+  const int64_t px=(int64_t(x)-y+offsetX)*30-30,py=(int64_t(x)+y-offsetY)*15;
+  return px<rawWidth*30ll+512&&px+512>0&&py-127*15<rawHeight*15ll+512&&py+128*15+512>0;
+ }
+ bool terrainSourceVisible(int x,int y,int level)const{
+  mapbounds::TileOrigin at;if(!tileOrigin(x,y,level,at))return false;
+  return at.x<rawWidth*30ll+512&&int64_t(at.x)+512>0&&at.y<rawHeight*15ll+512&&int64_t(at.y)+512>0;
+ }
  mapbounds::NativeViewport nativeViewport()const{return valid()?mapbounds::NativeViewport{rawWidth*30.,rawHeight*15.}:mapbounds::NativeViewport{};}
  bool tileOrigin(int x,int y,int level,mapbounds::TileOrigin&out)const{if(!bounds.tileOrigin(x,y,level,out))return false;out.x+=offsetX*30;out.y-=offsetY*15;return true;}
  // Cell::DrawShroud places its 60x30 SHP on the flat cell footprint. Raised
@@ -31,7 +43,7 @@ struct Geometry {
  void project(double x,double y,double&u,double&v)const{u=(x-y+offsetX)/rawWidth;v=(x+y-offsetY)/rawHeight;}
 };
 struct Marker {double u=0,v=0;uint32_t color=0;bool building=false;uint32_t object=0,id=0,type=0,owner=0,parent=0,parentId=0;int x=0,y=0,z=0,kind=-1,drawZ=0,sort=0,layer=2;bool normalLight=false,onBridge=false;visual::Pose pose;};
-struct CellArt {uint32_t cell=0,type=0,overlayType=0,overlaySourceType=0;int16_t overlay=-1;uint8_t sub=0;int8_t level=0;uint8_t overlayFrame=0;};
+struct CellArt {uint32_t cell=0,type=0,overlayType=0,overlaySourceType=0;int16_t overlay=-1;uint8_t sub=0;int8_t level=0;uint8_t overlayFrame=0;uint32_t sourceColor=0;};
 struct Scene {int width=0,height=0;std::vector<uint32_t> pixels;};
 // The game stores the selected shroud/fog SHP frame at each Cell. -1 selects
 // clear frame 0, -2 selects opaque frame 15; other values select edge frames.
@@ -92,16 +104,18 @@ public:
    if(!reveal)maskBits_.resize(512*512);
    pending_=std::make_shared<Terrain>();pending_->geo=g;pending_->reveal=bool(reveal);pending_->colors.resize(512*512);pending_->shade.resize(512*512);if(real){pending_->baseColors.resize(512*512);pending_->art.resize(512*512);tileTypes_=view_.vec(0xA8ED28,65536);overlayTypes_=view_.vec(0xA83D80);resourcePools_=artvariants::pools(read_,overlayTypes_);}cursor_=0;}
   size_t end=std::min(pointers_.size(),cursor_+size_t(std::clamp(budget,1,16384)));
-  // Initial native radar fill accepts physical cells whose flat 2x1 footprint
-  // intersects its raw RGB backing. This gate precedes signed Level/TMP art;
-  // a raised offscreen southern tile must not re-enter the displayed view.
-  for(;cursor_<end;++cursor_){int x=int(cursor_%512),y=int(cursor_/512);if(!g.legal(x,y)||!g.flatVisible(x,y))continue;uint32_t p=pointers_[cursor_];
+  // Retain the native RGB/diagram/actor admission separately from terrain
+  // sources: an excluded cell's TMP can still intersect the current crop.
+  for(;cursor_<end;++cursor_){int x=int(cursor_%512),y=int(cursor_/512);bool flat=g.flatVisible(x,y);
+   if(!g.legal(x,y)||(!flat&&(!real||!g.terrainSourceCandidate(x,y))))continue;uint32_t p=pointers_[cursor_];
    if(p<0x10000)continue;std::array<uint8_t,0x148> cell{};if(!read_(p,cell.data(),cell.size()))continue;
    int16_t cx=0,cy=0;int land=-1;std::memcpy(&cx,cell.data()+0x24,2);std::memcpy(&cy,cell.data()+0x26,2);std::memcpy(&land,cell.data()+0xEC,4);
    if(cx!=x||cy!=y)continue;
    if(!reveal)maskBits_[cursor_]={1,cell[0x12C],cell[0x140]};
-   int level=int8_t(cell[0x11B]);if(real)pending_->baseColors[cursor_]=terrainColor(land,level,false);
-   if(reveal&&!g.bounds.usable(x,y,level,cell[0x11C]!=0))continue;
+   int level=int8_t(cell[0x11B]);if(real&&flat)pending_->baseColors[cursor_]=terrainColor(land,level,false);
+   bool admitted=flat&&(!reveal||g.bounds.usable(x,y,level,cell[0x11C]!=0));
+   bool terrainSource=real&&g.terrainSourceVisible(x,y,level);
+   if(!admitted&&!terrainSource)continue;
    int8_t shroud=reveal?-1:maskFrame(x,y,false),fog=reveal?-1:maskFrame(x,y,true);
    if(shroud<-2||shroud>46||fog<-2||fog>46)continue;
    pending_->shade[cursor_]={shroud,fog};
@@ -109,8 +123,8 @@ public:
    // pixels; the composed scene is clipped by the frame's screen-space mask.
    if(!reveal&&shroud==-2)continue;
    uint32_t color=terrainColor(land,level,!real&&!reveal&&fog!=-1);
-   pending_->colors[cursor_]=color;
-   if(real&&!pending_->art.empty()){auto&a=pending_->art[cursor_];a.cell=p;a.sub=cell[0x11A];a.level=int8_t(cell[0x11B]);a.overlayFrame=cell[0x11E];int tile=-1,overlay=-1;uint32_t flags=0;memcpy(&flags,cell.data()+0x140,4);memcpy(&tile,cell.data()+0x38,4);memcpy(&overlay,cell.data()+0x44,4);if(tile==65535){tile=get<int>(0xAA10B0,-1);a.sub=0;}if(tile>=0&&size_t(tile)<tileTypes_.size())a.type=artvariants::tile(read_,tileTypes_[tile],a.sub,x,y,flags);if(overlay>=0&&size_t(overlay)<overlayTypes_.size()){a.overlay=int16_t(overlay);a.overlaySourceType=overlayTypes_[overlay];int drawOverlay=artvariants::overlay(read_,overlayTypes_,resourcePools_,overlay,x,y,cell[0x11C]);a.overlayType=overlayTypes_[drawOverlay];}}
+   if(admitted)pending_->colors[cursor_]=color;
+   if(terrainSource&&!pending_->art.empty()){auto&a=pending_->art[cursor_];a.cell=p;a.sourceColor=color;a.sub=cell[0x11A];a.level=int8_t(cell[0x11B]);a.overlayFrame=cell[0x11E];int tile=-1,overlay=-1;uint32_t flags=0;memcpy(&flags,cell.data()+0x140,4);memcpy(&tile,cell.data()+0x38,4);memcpy(&overlay,cell.data()+0x44,4);if(tile==65535){tile=get<int>(0xAA10B0,-1);a.sub=0;}if(tile>=0&&size_t(tile)<tileTypes_.size())a.type=artvariants::tile(read_,tileTypes_[tile],a.sub,x,y,flags);if(admitted&&overlay>=0&&size_t(overlay)<overlayTypes_.size()){a.overlay=int16_t(overlay);a.overlaySourceType=overlayTypes_[overlay];int drawOverlay=artvariants::overlay(read_,overlayTypes_,resourcePools_,overlay,x,y,cell[0x11C]);a.overlayType=overlayTypes_[drawOverlay];}}
   }
   if(cursor_==pointers_.size()){terrain_=pending_;pending_.reset();maskBits_.clear();++revision_;}return true;
  }

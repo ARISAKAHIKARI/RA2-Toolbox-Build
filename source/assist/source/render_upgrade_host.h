@@ -7,6 +7,7 @@
 #include "../../external_reader/source/feedback_cursor.h"
 #include "../../external_reader/source/material_motion.h"
 #include <chrono>
+#include "render_presentation.h"
 // External read/render only. No Runtime requests or engine draw calls.
 namespace renderupgrade {
 static double presentationNow(){return std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now().time_since_epoch()).count();}
@@ -14,7 +15,7 @@ struct Request {uint64_t generation=0;bool materialRefresh=true;int detail=1,col
 struct Frame {
  Request request;std::shared_ptr<const external::radar::Scene> image;
  std::vector<external::nativefeedback::Object> objects;
- uint64_t assetRevision=0;double renderMs=0,observationMs=0;int logicFrame=-1;double yellow=.5,red=.25;external::nativefeedback::EffectStatus effects;
+ uint64_t assetRevision=0;uint32_t sampledTick=0,completedTick=0;double renderMs=0,observationMs=0;int logicFrame=-1;double yellow=.5,red=.25;external::nativefeedback::EffectStatus effects;
 };
 static external::ReadSession reader;
 static external::cameraassets::Context<external::ReadSession> assets(reader);
@@ -25,12 +26,14 @@ static std::atomic<int> progress{0};
 static uint64_t generation=1,workerGeneration=0;
 static external::materialmotion::Timeline timeline;
 static int sampledLogicFrame=-1;static bool sampleValid=false;
+static renderpresentation::ViewLease viewLease;
+static renderpresentation::GroupLease<Request,Frame> groupLease;
+static int verifiedScaleSetting=-1;static bool verifiedPhysicalSetting=false;
 static asyncwork::Latest<Request,Frame> worker([](const Request&r)->std::shared_ptr<const Frame>{
  const double started=presentationNow();
- // Latest intentionally retains old results for null callbacks. Return an
- // explicit empty-image publication instead, so a failed live-light/palette
- // sample withdraws the old opaque scene immediately on the next UI update.
- auto unavailable=[&]()->std::shared_ptr<const Frame>{auto out=std::make_shared<Frame>();out->request=r;return out;};
+ // Failed attempts do not replace a completed image. The UI independently
+ // enforces sample/completion age limits and exact world/view/config identity.
+ auto unavailable=[]()->std::shared_ptr<const Frame>{return {};};
  if(process!=r.pid||epoch!=r.match){reader.close();sampler.reset();renderer.reset();process=r.pid;epoch=r.match;sampleValid=false;timeline.reset();}
  if(workerGeneration!=r.generation){workerGeneration=r.generation;sampleValid=false;sampledLogicFrame=-1;timeline.reset();}
  if(!reader.open(r.pid)){progress=-1;return unavailable();}
@@ -50,12 +53,15 @@ static asyncwork::Latest<Request,Frame> worker([](const Request&r)->std::shared_
   for(auto&m:raw.markers)if(m.kind==3)assets.buildingPose(m.object,m.type,m.pose);
   raw.posesPrepared=true;
   external::mainview::View captured;
-  if(!external::mainview::sample(fresh,captured)||captured.frame!=before.frame||!external::mainview::sameViewport(before,captured))return unavailable();
-  timeline.observe(raw,presentationNow());sampledLogicFrame=before.frame;sampleValid=true;
+  if(!external::mainview::sample(fresh,captured)||!external::mainview::sameViewport(before,captured)||
+    !renderpresentation::sampleAdvance(before.frame,raw.frame,captured.frame)||
+    !external::radar::freshMarkers(raw,external::radar::publicationContext(fresh)))return unavailable();
+  timeline.observe(raw,presentationNow());sampledLogicFrame=raw.frame;sampleValid=true;
  }
  auto data=timeline.sample(presentationNow(),r.materialRefresh,r.detail!=0);
  if(!data.terrain)return unavailable();
- data.tick=GetTickCount(); // presentation retry deadlines keep running while paused
+ const uint32_t sampledTick=GetTickCount();
+ data.tick=sampledTick; // presentation retry deadlines keep running while paused
  assets.presentationDetail(r.detail);
  assets.presentationResolution(r.view.width,r.view.height,r.width,r.height);
  assets.presentationColorPrecision(r.colorPrecision!=0);
@@ -88,20 +94,54 @@ static asyncwork::Latest<Request,Frame> worker([](const Request&r)->std::shared_
  external::mainview::View after;
  if(!external::mainview::sample(fresh,after)||!external::mainview::sameViewport(before,after)||after.frame<before.frame||
    !external::radar::sameWorld(data,external::radar::publicationContext(fresh)))return unavailable();
- out->image=std::move(scene);out->renderMs=presentationNow()-started;progress=2;return out;
+ out->image=std::move(scene);out->sampledTick=sampledTick;out->completedTick=GetTickCount();out->renderMs=presentationNow()-started;progress=2;return out;
 });
 #include "render_feedback_host.h"
-static void suspend(){if(active){active=false;++generation;worker.invalidate();}feedback::hide();imageToken=0;overlaycompositor::host().hide(overlaycompositor::RenderUpgrade);}
+static void suspendScene(){groupLease.reset();if(active){active=false;++generation;worker.invalidate();}feedback::hide();imageToken=0;overlaycompositor::host().hide(overlaycompositor::RenderUpgrade);}
+static void suspend(){viewLease.reset();suspendScene();}
 static void stop(){suspend();overlaycompositor::host().suspend();}
 static void shutdown(){stop();worker.shutdown();feedback::shutdown();overlaycompositor::host().shutdown();}
-static void update(POINT origin,const RECT&client,bool battlefield){
+static void update(POINT origin,const RECT&client,const external::display::State&displayState){
  // The whole tool remains system-DPI aware. A physical-pixel option must
  // explicitly validate monitor geometry instead of assuming a 4K monitor
  // makes a 2K client window magically 4K.
  const bool requested=renderUpgradeEnabled||unifiedOverlayEnabled;
- bool visible=requested&&enabled&&foregroundGame()&&!snap.chat&&battlefield&&snap.renderStatus==1&&pid&&game;
+ const bool visible=requested&&enabled&&foregroundGame()&&!snap.chat&&pid&&game&&
+  (!displayState.readable||displayState.visible());
+ const uint32_t viewNow=GetTickCount(),match=displayMatch();
+ if(!renderUpgradeEnabled)suspendScene();
+ if(!visible){
+  overlaycompositor::host().configure(uintptr_t(game),pid,match,client.right,client.bottom,0,0,false,false,informationFPS());
+  suspend();progress=0;return;
+ }
  external::mainview::View view;
- if(visible&&!external::mainview::sample([](uint32_t p,void*out,size_t n){return externalReader.readFresh(p,out,n);},view))visible=false;
+ if(!displayState.readable||!external::mainview::sample([](uint32_t p,void*out,size_t n){return externalReader.readFresh(p,out,n);},view)){
+  // Unknown is not known-hidden. A short torn read must not toggle the HWND
+  // or invalidate an in-flight job; known menus/focus/world changes do so above.
+  if(viewLease.retain(uintptr_t(game),pid,match,client.right,client.bottom,viewNow)){
+   const auto&prior=viewLease.view();
+   overlaycompositor::host().configure(uintptr_t(game),pid,match,client.right,client.bottom,
+    prior.cameraX,prior.cameraY,true,renderUpgradeEnabled&&renderUpgradeLayer==0,informationFPS());
+   if(renderUpgradeEnabled){
+    auto held=groupLease.frame();
+    if(held){
+     Request current=held->request;current.generation=generation;current.pid=pid;current.match=match;current.view=prior;
+     current.materialRefresh=renderMaterialRefresh;current.detail=renderSceneDetail;current.colorPrecision=renderColorPrecision;
+     current.paletteRange=renderPaletteRange;current.reveal=uint32_t(extra.renderReveal||extra.mapStrategy==3);
+     // Scale-mode changes require a fresh verified request, even during a read gap.
+     if(verifiedScaleSetting!=renderPixelScale||verifiedPhysicalSetting!=renderPhysicalOutput)groupLease.reset();
+     if(groupLease.retain(current,viewNow)){
+      for(auto id:{overlaycompositor::RenderUpgrade,feedback::SelectionLayer,feedback::CursorLayer})
+       overlaycompositor::host().touch(id,uintptr_t(game),pid);
+     }else{groupLease.reset();feedback::hide();imageToken=0;}
+    }
+   }
+   SetWindowTextW(GetDlgItem(ui,9303),L"渲染升级：等待完整视口采样");return;
+  }
+  overlaycompositor::host().configure(uintptr_t(game),pid,match,client.right,client.bottom,0,0,false,false,informationFPS());
+  suspend();progress=0;return;
+ }
+ viewLease.observe(uintptr_t(game),pid,match,client.right,client.bottom,view,viewNow);
  physicalpresentation::Result physical{};
  static physicalpresentation::Result cachedPhysical{};
  static HWND cachedGame=nullptr;
@@ -128,7 +168,7 @@ static void update(POINT origin,const RECT&client,bool battlefield){
  const auto renderPath=physicalpresentation::renderPath(physical,renderPhysicalOutput);
  auto context=overlaycompositor::host().configure(uintptr_t(game),pid,displayMatch(),client.right,client.bottom,
   visible?view.cameraX:0,visible?view.cameraY:0,visible,renderUpgradeEnabled&&renderUpgradeLayer==0,informationFPS());
- if(!visible||!renderUpgradeEnabled){suspend();progress=0;return;}
+ if(!renderUpgradeEnabled){progress=0;return;}
  active=true;
  const int left=int((int64_t(view.x)*client.right)/view.screenW),top=int((int64_t(view.y)*client.bottom)/view.screenH);
  const int right=int((int64_t(view.x+view.width)*client.right+view.screenW-1)/view.screenW);
@@ -138,30 +178,31 @@ static void update(POINT origin,const RECT&client,bool battlefield){
  // their original nearest/area behavior.
  const int effectiveScale=renderPath==physicalpresentation::RenderPath::EnhancedPhysicalPixels&&
    renderPixelScale==0?3:renderPixelScale;
+ verifiedScaleSetting=renderPixelScale;verifiedPhysicalSetting=renderPhysicalOutput;
  Request request{generation,renderMaterialRefresh,renderSceneDetail,renderColorPrecision,pid,displayMatch(),GetTickCount(),right-left,bottom-top,
   uint32_t(extra.renderReveal||extra.mapStrategy==3),
   renderPaletteRange,effectiveScale,view,context};
  auto result=worker.get();
- const bool fresh=result&&result->image&&result->request.pid==request.pid&&result->request.match==request.match&&
-  result->request.context.token==context.token&&result->request.reveal==request.reveal&&
-  result->request.generation==request.generation&&result->request.materialRefresh==request.materialRefresh&&result->request.detail==request.detail&&result->request.colorPrecision==request.colorPrecision&&
-  result->request.paletteRange==request.paletteRange&&result->request.pixelScaleMode==request.pixelScaleMode&&
-  result->request.width==request.width&&result->request.height==request.height&&
-  external::mainview::sameViewport(result->request.view,view)&&view.frame>=result->request.view.frame&&
-  DWORD(GetTickCount()-result->request.tick)<400;
+ const bool fresh=result&&renderpresentation::usable(*result,request,GetTickCount());
  // Gather the required feedback before atomically publishing the opaque scene.
  std::vector<overlaycompositor::Surface> layers;
  bool feedbackReady=fresh&&feedback::update(request,result,left,top,layers);
+ std::shared_ptr<const Frame> presentedFrame=result;bool displaying=false;
  if(fresh&&feedbackReady){
   auto pixels=std::shared_ptr<const std::vector<uint32_t>>(result->image,&result->image->pixels);
   layers.push_back({overlaycompositor::RenderUpgrade,renderUpgradeLayer==0?110:5,result->request.context,
    {left,top,request.width,request.height},true,255,std::move(pixels)});imageToken=context.token;
- }else{layers.clear();imageToken=0;if(!fresh)feedback::hide();}
+  groupLease.publish(request,result,layers,GetTickCount());displaying=true;
+ }else if(!feedback::unsafeView&&groupLease.retain(request,GetTickCount())){
+  // Preserve the last COMPLETE atomic scene/input group across a short torn
+  // cursor/selection read. Failure never refreshes this lease's deadline.
+  layers=groupLease.layers();presentedFrame=groupLease.frame();displaying=true;
+ }else{layers.clear();groupLease.reset();imageToken=0;if(!fresh)feedback::hide();}
  overlaycompositor::host().replaceGroup({overlaycompositor::RenderUpgrade,feedback::SelectionLayer,feedback::CursorLayer},std::move(layers));
  const uint32_t now=GetTickCount();if(DWORD(now-submittedAt)>=external::materialmotion::refreshPeriod(informationFPS(),renderMaterialRefresh)){submittedAt=now;worker.submit(std::move(request));}
  std::wstring status;
- if(!fresh)status=L"渲染升级：采样/素材或视角变化，暂用原画面";
- else if(!feedbackReady)status=L"渲染升级：等待有效光标或选择状态，暂用原画面";
+ if(!displaying&&!fresh)status=L"渲染升级：采样/素材或视角变化，暂用原画面";
+ else if(!displaying&&!feedbackReady)status=L"渲染升级：等待有效光标或选择状态，暂用原画面";
  else{
   status=renderPaletteRange==1?L"渲染升级：RGB888 全范围色盘":L"渲染升级：原生 DAC 色盘";
   if(renderPhysicalOutput){
@@ -194,7 +235,7 @@ static void update(POINT origin,const RECT&client,bool battlefield){
   status+=renderColorPrecision?L" · 连续 RGB 光照":L" · 兼容光照色阶";
   if(renderSceneDetail)status+=L" · 连续地形＋目标像素对象＋VXL 自适应几何/256 向";
   if(renderMaterialRefresh)status+=L" · 素材高刷目标 "+std::to_wstring(informationFPS())+L" Hz";
-  status+=L" · 本帧 "+std::to_wstring(int(std::lround(result->renderMs)))+L" ms";
+  status+=L" · 本帧 "+std::to_wstring(int(std::lround(presentedFrame->renderMs)))+L" ms";
   status+=L" · 电弧近似；激光/波纹/粒子待补，实机待测";
  }
  SetWindowTextW(GetDlgItem(ui,9303),status.c_str());
