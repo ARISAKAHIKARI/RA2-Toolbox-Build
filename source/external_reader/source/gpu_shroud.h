@@ -76,7 +76,7 @@ public:
  void reset(){images_={};}
  template<class Load>bool build(const radar::Geometry&g,const std::vector<radar::shroudmask::Cell>&cells,int w,int h,double spanX,double spanY,bool fog,Load load,std::shared_ptr<const Plan>&out,double originX=0,double originY=0){
   out.reset();if(!g.valid()||w<1||h<1||w>8192||h>8192||uint64_t(w)*h>16*1024*1024||cells.size()>65536||
-   !std::isfinite(originX)||!std::isfinite(originY)||!std::isfinite(spanX)||!std::isfinite(spanY)||spanX<=0||spanY<=0)return false;
+   !std::isfinite(originX)||!std::isfinite(originY)||std::abs(originX)>1e7||std::abs(originY)>1e7||!std::isfinite(spanX)||!std::isfinite(spanY)||spanX<=0||spanY<=0||spanX>32768||spanY>32768)return false;
   std::array<std::array<bool,47>,2> needed{};
   for(const auto&cell:cells){if(cell.index>=512*512||!g.legal(int(cell.index%512),int(cell.index/512)))return false;if(cell.shade.shroud==127)continue;
    int a=radar::shroudmask::frame(cell.shade.shroud),b=radar::shroudmask::frame(cell.shade.fog);if(a<0||a>=47||b<0||b>=47)return false;needed[0][a]=true;if(fog)needed[1][b]=true;

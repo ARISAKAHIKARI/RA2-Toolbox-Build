@@ -63,5 +63,6 @@ int main(int argc,char**argv){
  const auto c=shroudcases::cases().back();std::shared_ptr<const gpushroud::Plan>changed;auto changedLoad=[](bool f,int n,voxel::Image&i){return shroudcases::shape(f,n,i,1);};
  assert(builder.build(g,cells,c.w,c.h,c.spanX,c.spanY,c.fog,changedLoad,changed,c.x,c.y));assert(gpushroud::reference(*changed,expected));assert(rig.execute(stage,changed,actual));assert(actual==expected&&stage.dispatches()==1&&stage.uploads()>0);pixels+=actual.size();++frames;
  assert(rig.submissions==frames&&rig.readbacks==frames);
+ stage.release();stage.release(); // idempotent non-inflight cleanup before owner/dtor
  std::printf("PASS Vulkan native shroud frames=%llu exact_alpha_pixels=%llu warm_dispatches=0 warm_source_uploads=0 one_readback=1 canaries/abandoned_record/changed_source=pass software=%u device=%s\n",(unsigned long long)frames,(unsigned long long)pixels,unsigned(rig.diagnostics().softwareDevice),rig.diagnostics().device.c_str());
 }

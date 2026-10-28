@@ -37,15 +37,20 @@ class Stage {
   if(!o.buffer(alpha_,AlphaWords*4,VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,true,true))return o.fatal("GPU shroud source allocation failed");ready_=true;return true;
  }
  void close(){
-  auto&o=owner_;if(o.inFlight_&&o.vkGetFenceStatus_&&o.vkGetFenceStatus_(o.device_,o.fence_)!=VK_SUCCESS)return;
-  o.destroy(alpha_);o.destroy(metadata_);o.destroy(mask_);
-  if(pipeline_&&o.vkDestroyPipeline_)o.vkDestroyPipeline_(o.device_,pipeline_,nullptr);
-  if(descriptorPool_&&o.vkDestroyDescriptorPool_)o.vkDestroyDescriptorPool_(o.device_,descriptorPool_,nullptr);
-  if(pipelineLayout_&&o.vkDestroyPipelineLayout_)o.vkDestroyPipelineLayout_(o.device_,pipelineLayout_,nullptr);
-  if(descriptorLayout_&&o.vkDestroyDescriptorSetLayout_)o.vkDestroyDescriptorSetLayout_(o.device_,descriptorLayout_,nullptr);
+  auto&o=owner_;if(o.inFlight_&&(!o.vkGetFenceStatus_||o.vkGetFenceStatus_(o.device_,o.fence_)!=VK_SUCCESS))return;
+  if(o.device_){
+   o.destroy(alpha_);o.destroy(metadata_);o.destroy(mask_);
+   if(pipeline_&&o.vkDestroyPipeline_)o.vkDestroyPipeline_(o.device_,pipeline_,nullptr);
+   if(descriptorPool_&&o.vkDestroyDescriptorPool_)o.vkDestroyDescriptorPool_(o.device_,descriptorPool_,nullptr);
+   if(pipelineLayout_&&o.vkDestroyPipelineLayout_)o.vkDestroyPipelineLayout_(o.device_,pipelineLayout_,nullptr);
+   if(descriptorLayout_&&o.vkDestroyDescriptorSetLayout_)o.vkDestroyDescriptorSetLayout_(o.device_,descriptorLayout_,nullptr);
+  }
+  alpha_={};metadata_={};mask_={};pipeline_=VK_NULL_HANDLE;descriptorPool_=VK_NULL_HANDLE;descriptors_=VK_NULL_HANDLE;pipelineLayout_=VK_NULL_HANDLE;descriptorLayout_=VK_NULL_HANDLE;
+  residents_.clear();prepared_.reset();pending_.reset();recorded_.reset();target_=VK_NULL_HANDLE;targetOffset_=0;params_={};ready_=needsRaster_=false;
  }
 public:
  explicit Stage(Owner&o):owner_(o){}Stage(const Stage&)=delete;Stage&operator=(const Stage&)=delete;~Stage(){close();}
+ void release(){close();} // coordinator releases stages before closing their shared device
  uint64_t uploads()const{return uploads_;}uint64_t uploadedBytes()const{return uploadedBytes_;}uint64_t dispatches()const{return dispatches_;}uint64_t copies()const{return copies_;}
  bool prepare(std::shared_ptr<const Plan>plan,VkBuffer target,uint32_t targetOffsetWords,VkDeviceSize targetBytes){
   auto&o=owner_;uploads_=uploadedBytes_=dispatches_=copies_=0;pending_.reset();

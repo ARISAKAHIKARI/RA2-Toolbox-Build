@@ -27,7 +27,9 @@ struct FrameJob {
  int width=0,height=0;
  std::shared_ptr<const std::vector<uint32_t>> basePixels;
  std::vector<TileJob> baseTiles; // alternative GPU resolve; empty when basePixels exists
- std::shared_ptr<const std::vector<float>> baseDepth; // nearest original terrain Z
+ std::shared_ptr<const std::vector<float>> baseDepth; // output Z, or native plane with axis maps below
+ int baseDepthWidth=0,baseDepthHeight=0;
+ std::shared_ptr<const std::vector<uint32_t>> baseDepthXs,baseDepthYs; // O(w+h) nearest lookup
  std::vector<DrawJob> draws; // attachments already flattened in exact painter order
  std::shared_ptr<const gpushroud::Plan> maskPlan; // optional GPU native-mask construction
  std::shared_ptr<const std::vector<uint8_t>> fogAlpha; // native0..127; optional

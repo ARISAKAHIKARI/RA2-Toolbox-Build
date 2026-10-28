@@ -12,7 +12,7 @@ layout(set=0,binding=0,std430) readonly buffer Colors {uint v[];} colors;
 layout(set=0,binding=1,std430) readonly buffer Materials {uint v[];} materials;
 layout(set=0,binding=2,std430) readonly buffer Commands {uint v[];} commands;
 layout(set=0,binding=3,std430) buffer Output {uint v[];} outputImage;
-layout(push_constant) uniform Params {uint width,height,drawsOffset,binsOffset,refsOffset,binColumns,depthOffset,fogOffset,clipLeft,clipTop,clipRight,clipBottom;} p;
+layout(push_constant) uniform Params {uint width,height,drawsOffset,binsOffset,refsOffset,binColumns,depthOffset,fogOffset,clipLeft,clipTop,clipRight,clipBottom,depthWidth,depthXOffset,depthYOffset;} p;
 const uint Missing=0xffffffffu,Stride=28u;
 uint field(uint draw,uint n){return commands.v[p.drawsOffset+draw*Stride+n];}
 float ffield(uint draw,uint n){return uintBitsToFloat(field(draw,n));}
@@ -38,7 +38,7 @@ RVec weights(uint a,uint b,uint c,uint d,Real fx,Real fy,bool adaptive){
 void main(){
  uvec2 at=gl_GlobalInvocationID.xy;if(at.x>=p.width||at.y>=p.height)return;uint outputAt=at.y*p.width+at.x;
  if(at.x<p.clipLeft||at.y<p.clipTop||at.x>=p.clipRight||at.y>=p.clipBottom){outputImage.v[outputAt]=0u;return;}
- uint color=outputImage.v[outputAt];float depth=p.depthOffset==Missing?uintBitsToFloat(0xff800000u):uintBitsToFloat(materials.v[p.depthOffset+outputAt]);
+ uint color=outputImage.v[outputAt];uint depthAt=outputAt;if(p.depthWidth!=0u)depthAt=materials.v[p.depthYOffset+at.y]*p.depthWidth+materials.v[p.depthXOffset+at.x];float depth=uintBitsToFloat(0xff800000u);if(p.depthOffset!=Missing)depth=uintBitsToFloat(materials.v[p.depthOffset+depthAt]);
  uint bin=(at.y/32u)*p.binColumns+at.x/32u,first=commands.v[p.binsOffset+bin*2u],count=commands.v[p.binsOffset+bin*2u+1u];
  for(uint item=0;item<count;++item){uint draw=commands.v[p.refsOffset+first+item];
   if(at.x<field(draw,24)||at.y<field(draw,25)||at.x>=field(draw,26)||at.y>=field(draw,27))continue;

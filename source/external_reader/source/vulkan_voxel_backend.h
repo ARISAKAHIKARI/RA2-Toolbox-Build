@@ -7,6 +7,7 @@ namespace external { namespace gpuvoxel {
 // queue, waits on a fence or reads pixels back to the CPU. All actor results
 // stay in the same color/material atlases consumed by final scene composition.
 class Stage {
+ static constexpr VkDeviceSize TriangleBudget=96ull*1024*1024;
  vulkancompute::Resolve&core_;
  using Buffer=vulkancompute::Resolve::Buffer;
  VkDescriptorSetLayout descriptorLayout_=VK_NULL_HANDLE;
@@ -83,11 +84,11 @@ public:
   }
   // The scratch Z/winner region is reused between sequential actors. It does
   // not grow with the number of actors in a scene or retain completed poses.
-  if(totalTriangles*sizeof(Triangle)>vulkancompute::Resolve::AtlasBytes||maximumPixels*8>128ull*1024*1024)return core_.fail("Vulkan voxel batch budget exceeded");
+  if(totalTriangles*sizeof(Triangle)>TriangleBudget||maximumPixels*8>128ull*1024*1024)return core_.fail("Vulkan voxel batch budget exceeded");
   if(!initialize())return false;
   const VkDeviceSize triangleBytes=std::max<VkDeviceSize>(sizeof(Triangle),totalTriangles*sizeof(Triangle)),scratchBytes=maximumPixels*8;
   if(triangleBytes>core_.properties_.limits.maxStorageBufferRange||scratchBytes>core_.properties_.limits.maxStorageBufferRange||colorBytes>core_.properties_.limits.maxStorageBufferRange||indexBytes>core_.properties_.limits.maxStorageBufferRange)return core_.fail("Vulkan voxel storage range unsupported");
-  if(!core_.buffer(triangles_,triangleBytes,VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,true)||!core_.buffer(scratch_,scratchBytes,VK_BUFFER_USAGE_STORAGE_BUFFER_BIT|VK_BUFFER_USAGE_TRANSFER_DST_BIT,false))return core_.fatal("Vulkan voxel frame allocation failed");
+  if(!core_.buffer(triangles_,triangleBytes,VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,true,true)||!core_.buffer(scratch_,scratchBytes,VK_BUFFER_USAGE_STORAGE_BUFFER_BIT|VK_BUFFER_USAGE_TRANSFER_DST_BIT,false,true))return core_.fatal("Vulkan voxel frame allocation failed");
   auto* destination=static_cast<Triangle*>(triangles_.mapped);uint32_t offset=0;
   for(const auto&job:jobs){const auto&p=*job.raster;const uint32_t pixels=uint32_t(p.width)*p.height;
    if(!p.triangles.empty())std::memcpy(destination+offset,p.triangles.data(),p.triangles.size()*sizeof(Triangle));

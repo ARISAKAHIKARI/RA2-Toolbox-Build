@@ -6,6 +6,10 @@ namespace external { namespace camera {
 // A frame keeps immutable image owners, including their depth/index arrays.
 // The original calls are retained too: unsupported/failed GPU work replays the
 // same Surface::blit operations in this frame, without a GPU image readback.
+struct GpuDepthPlan {
+ int width=0,height=0;
+ std::shared_ptr<const std::vector<uint32_t>> xs,ys;
+};
 class GpuSceneRecord {
  struct Replay {
   std::shared_ptr<const voxel::Image> image;
@@ -67,14 +71,23 @@ class GpuSceneRecord {
    if(!flatten(attachment(part),ax,ay+(part.shadow?shadowDrop*sy:0),sx,sy,base,state,lift,0,smooth,nesting+1))return false;
   return true;
  }
+ static bool validDepth(const vulkancompute::FrameJob&frame){
+  if(!frame.baseDepth)return false;
+  if(frame.baseDepthWidth==0)return frame.baseDepthHeight==0&&frame.baseDepth->size()==size_t(frame.width)*frame.height;
+  if(frame.baseDepthWidth<1||frame.baseDepthHeight<1||frame.baseDepth->size()!=size_t(frame.baseDepthWidth)*frame.baseDepthHeight||!frame.baseDepthXs||!frame.baseDepthYs||frame.baseDepthXs->size()!=size_t(frame.width)||frame.baseDepthYs->size()!=size_t(frame.height))return false;
+  for(uint32_t x:*frame.baseDepthXs)if(x>=uint32_t(frame.baseDepthWidth))return false;
+  for(uint32_t y:*frame.baseDepthYs)if(y>=uint32_t(frame.baseDepthHeight))return false;
+  return true;
+ }
 public:
  void reset(){frame_={};fallbackBase_.reset();cpuBaseFallback_={};replay_.clear();valid_=false;}
  void clear(){reset();litSources_.clear();litPixels_=serial_=0;}
  void begin(int width,int height,std::shared_ptr<const std::vector<uint32_t>>base,std::shared_ptr<const std::vector<float>>depth,colorprecision::Mode precision,
-            std::shared_ptr<const std::vector<vulkancompute::TileJob>>baseTiles={},std::function<bool(std::vector<uint32_t>&)>cpuBaseFallback={}){
+            std::shared_ptr<const std::vector<vulkancompute::TileJob>>baseTiles={},std::function<bool(std::vector<uint32_t>&)>cpuBaseFallback={},GpuDepthPlan depthPlan={}){
   reset();frame_.width=width;frame_.height=height;frame_.basePixels=std::move(base);fallbackBase_=frame_.basePixels;frame_.baseDepth=std::move(depth);precision_=precision;cpuBaseFallback_=std::move(cpuBaseFallback);
+  frame_.baseDepthWidth=depthPlan.width;frame_.baseDepthHeight=depthPlan.height;frame_.baseDepthXs=std::move(depthPlan.xs);frame_.baseDepthYs=std::move(depthPlan.ys);
   if(baseTiles&&!baseTiles->empty()){frame_.baseTiles=*baseTiles;frame_.basePixels.reset();}
-  valid_=((frame_.basePixels&&frame_.basePixels->size()==size_t(width)*height)||!frame_.baseTiles.empty())&&frame_.baseDepth&&frame_.baseDepth->size()==size_t(width)*height;
+  valid_=((frame_.basePixels&&frame_.basePixels->size()==size_t(width)*height)||!frame_.baseTiles.empty())&&validDepth(frame_);
  }
  bool append(const voxel::Image&i,std::shared_ptr<const voxel::Image>owner,float ax,float ay,float sx,float sy,float base,const lighting::State&light,float lift,float drop,bool smooth){
   owner=retain(i,std::move(owner));replay_.push_back({owner,ax,ay,sx,sy,base,lift,drop,light,smooth});
@@ -92,11 +105,18 @@ public:
  const vulkancompute::FrameJob&frame()const{return frame_;}
  bool replay(Surface&surface)const{
   // basePixels stays captured for fallback even when GPU base tiles are used.
-  if(frame_.width<1||frame_.height<1||uint64_t(frame_.width)*frame_.height>16*1024*1024||!frame_.baseDepth||frame_.baseDepth->size()!=size_t(frame_.width)*frame_.height)return false;
+  if(frame_.width<1||frame_.height<1||uint64_t(frame_.width)*frame_.height>16*1024*1024||!validDepth(frame_))return false;
   const std::vector<uint32_t>*base=fallbackBase_.get();std::vector<uint32_t>generated;
   if(!base||base->size()!=size_t(frame_.width)*frame_.height){if(!cpuBaseFallback_||!cpuBaseFallback_(generated)||generated.size()!=size_t(frame_.width)*frame_.height)return false;base=&generated;}
   if(!frame_.baseDepth||!surface.reset(frame_.width,frame_.height))return false;
-  surface.precision(precision_);surface.color=*base;surface.depth=*frame_.baseDepth;
+  surface.precision(precision_);surface.color=*base;
+  if(frame_.baseDepthWidth>0){
+   // The GPU consumes this compact native plane directly. Only an actual CPU
+   // fallback expands it to the output framebuffer's depth layout.
+   for(int y=0;y<frame_.height;++y){size_t row=size_t((*frame_.baseDepthYs)[y])*frame_.baseDepthWidth;
+    for(int x=0;x<frame_.width;++x)surface.depth[size_t(y)*frame_.width+x]=(*frame_.baseDepth)[row+(*frame_.baseDepthXs)[x]];
+   }
+  }else surface.depth=*frame_.baseDepth;
   for(const auto&call:replay_){if(call.image)surface.blit(*call.image,call.ax,call.ay,call.sx,call.sy,call.base,call.light,call.lift,call.drop,call.smooth);
    else for(int y=std::max(0,call.dotY-1);y<std::min(frame_.height,call.dotY+2);++y)for(int x=std::max(0,call.dotX-1);x<std::min(frame_.width,call.dotX+2);++x)surface.color[size_t(y)*frame_.width+x]=call.dot;
   }return !surface.failed();
