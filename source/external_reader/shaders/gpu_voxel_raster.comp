@@ -29,7 +29,8 @@ uint orderedDepth(float z){
 }
 void main(){
 #if VOXEL_PASS == 2
- uint at=gl_GlobalInvocationID.x;if(at>=p.width*p.height)return;
+ uint at=gl_GlobalInvocationID.x+gl_GlobalInvocationID.y*gl_NumWorkGroups.x*64u;
+ if(at>=p.width*p.height)return;
  uint winner=scratch.value[p.winnerOffset+at];
  uint color=0u,index=0u;
  if(winner<p.triangleCount){uvec4 material=triangles.value[p.triangleOffset+winner].material;color=material.x;index=material.y;}
