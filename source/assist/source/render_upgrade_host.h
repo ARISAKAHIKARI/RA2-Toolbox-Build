@@ -6,7 +6,7 @@
 #include "../../external_reader/source/feedback_cursor.h"
 // External read/render only. No Runtime requests or engine draw calls.
 namespace renderupgrade {
-struct Request {uint32_t pid=0,match=0,tick=0;int width=0,height=0;uint32_t reveal=0;external::mainview::View view;overlaycompositor::Context context;};
+struct Request {uint32_t pid=0,match=0,tick=0;int width=0,height=0;uint32_t reveal=0;int paletteRange=1,pixelScaleMode=0;external::mainview::View view;overlaycompositor::Context context;};
 struct Frame {
  Request request;std::shared_ptr<const external::radar::Scene> image;
  std::vector<external::nativefeedback::Object> objects;
@@ -29,8 +29,9 @@ static asyncwork::Latest<Request,Frame> worker([](const Request&r)->std::shared_
  auto data=sampler.snapshot(GetTickCount());auto observed=external::radar::publicationContext(fresh);
  if(!data.terrain||!data.markerScanValid||!external::radar::freshMarkers(data,observed))return {};
  assets.identity(r.pid,r.match);
+ assets.presentationPalette(r.paletteRange==1?external::pixelupgrade::PaletteRange::FullRGB:external::pixelupgrade::PaletteRange::OriginalDAC);
  auto crop=external::mainview::crop(r.view,data.terrain->geo.offsetX,data.terrain->geo.offsetY);
- auto scene=renderer.render(data,r.width,r.height,external::SharedReadView{&reader},assets,{crop.x,crop.y,crop.width,crop.height,true});
+ auto scene=renderer.render(data,r.width,r.height,external::SharedReadView{&reader},assets,{crop.x,crop.y,crop.width,crop.height,true},unsigned(r.pixelScaleMode));
  if(!scene)return {};
  auto out=std::make_shared<Frame>();out->request=r;
  const double zscale=external::projectionZScale(fresh);
@@ -67,10 +68,11 @@ static void update(POINT origin,const RECT&client,bool battlefield){
  const int left=int((int64_t(view.x)*client.right)/view.screenW),top=int((int64_t(view.y)*client.bottom)/view.screenH);
  const int right=int((int64_t(view.x+view.width)*client.right+view.screenW-1)/view.screenW);
  const int bottom=int((int64_t(view.y+view.height)*client.bottom+view.screenH-1)/view.screenH);
- Request request{pid,displayMatch(),GetTickCount(),right-left,bottom-top,uint32_t(extra.renderReveal||extra.mapStrategy==3),view,context};
+ Request request{pid,displayMatch(),GetTickCount(),right-left,bottom-top,uint32_t(extra.renderReveal||extra.mapStrategy==3),renderPaletteRange,renderPixelScale,view,context};
  auto result=worker.get();
  const bool fresh=result&&result->image&&result->request.pid==request.pid&&result->request.match==request.match&&
   result->request.context.token==context.token&&result->request.reveal==request.reveal&&
+  result->request.paletteRange==request.paletteRange&&result->request.pixelScaleMode==request.pixelScaleMode&&
   result->request.width==request.width&&result->request.height==request.height&&
   external::mainview::sameViewport(result->request.view,view)&&view.frame>=result->request.view.frame&&
   DWORD(GetTickCount()-result->request.tick)<400;
@@ -85,7 +87,9 @@ static void update(POINT origin,const RECT&client,bool battlefield){
  overlaycompositor::host().replaceGroup({overlaycompositor::RenderUpgrade,feedback::SelectionLayer,feedback::CursorLayer},std::move(layers));
  const uint32_t now=GetTickCount();if(DWORD(now-submittedAt)>=uint32_t(1000/std::clamp(informationFPS(),5,120))){submittedAt=now;worker.submit(std::move(request));}
  const wchar_t*status=!fresh?L"渲染升级：采样/素材或视角变化，暂用原画面":!feedbackReady?L"渲染升级：等待有效光标或选择状态，暂用原画面":
-  L"渲染升级：框选/选中反馈/原帧光标 · 电弧近似；激光/波纹/粒子待补，实机待测";
+  (renderPixelScale && request.width==2*request.view.width && request.height==2*request.view.height ?
+   L"渲染升级：24-bit 色盘 / 2x 轮廓插值 · 电弧近似；其他特效待补，实机待测" :
+   L"渲染升级：24-bit 色盘 · 2x 插值仅在真实双倍输出时启用；电弧近似，其他特效待补");
  SetWindowTextW(GetDlgItem(ui,9303),status);
 }
 }
