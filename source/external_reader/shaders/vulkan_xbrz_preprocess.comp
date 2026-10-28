@@ -1,0 +1,31 @@
+#version 450
+#extension GL_ARB_gpu_shader_fp64 : require
+#extension GL_GOOGLE_include_directive : require
+#include "vulkan_xbrz_common.glsl"
+layout(local_size_x=8,local_size_y=8,local_size_z=1) in;
+void main(){
+ uvec2 xy=gl_GlobalInvocationID.xy;
+ if(xy.x>p.width||xy.y>p.height)return;
+ ivec2 at=ivec2(xy)-ivec2(1);
+ // Same 4x4 kernel labels as upstream preProcessCorners; unused A/J/M/P
+ // need not be loaded. E is the upper-left pixel touching this lattice corner.
+ uint b=readSource(at+ivec2(0,-1)),c=readSource(at+ivec2(1,-1));
+ uint d=readSource(at+ivec2(-1,0)),e=readSource(at),f=readSource(at+ivec2(1,0)),o=readSource(at+ivec2(2,0));
+ uint g=readSource(at+ivec2(-1,1)),h=readSource(at+ivec2(0,1)),i=readSource(at+ivec2(1,1)),n=readSource(at+ivec2(2,1));
+ uint k=readSource(at+ivec2(0,2)),l=readSource(at+ivec2(1,2));
+ uint result=0u;
+ if(!((e==f&&h==i)||(e==h&&f==i))){
+  precise double hf=distanceARGB(g,e)+distanceARGB(e,c)+distanceARGB(k,i)+distanceARGB(i,o)+4.0LF*distanceARGB(h,f);
+  precise double ei=distanceARGB(d,h)+distanceARGB(h,l)+distanceARGB(b,f)+distanceARGB(f,n)+4.0LF*distanceARGB(e,i);
+  if(hf<ei){
+   uint kind=3.6LF*hf<ei?2u:1u;
+   if(e!=f&&e!=h)result|=kind;
+   if(i!=h&&i!=f)result|=kind<<6;
+  }else if(ei<hf){
+   uint kind=3.6LF*ei<hf?2u:1u;
+   if(h!=e&&h!=i)result|=kind<<4;
+   if(f!=e&&f!=i)result|=kind<<2;
+  }
+ }
+ cornerFlags.value[p.flagsOffset+xy.y*(p.width+1u)+xy.x]=result;
+}

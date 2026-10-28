@@ -13,6 +13,10 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y glslang-tools spirv-tools
       - name: Compile Vulkan 1.0 SPIR-V
         run: python3 source/tools/build_vulkan_kernel.py --output generated/vulkan_bilinear_spirv.h | tee generated-kernel.json
+      - name: Compile complete scene and xBRZ kernels
+        run: |
+          python3 source/tools/build_vulkan_scene.py --output generated/vulkan_scene_spirv.h | tee generated-scene.json
+          python3 source/tools/build_gpu_xbrz.py --output generated/gpu_xbrz_spirv.h | tee generated-xbrz.json
       - uses: actions/upload-artifact@v4
         with:
           name: vulkan-bilinear-kernel
@@ -20,6 +24,10 @@ jobs:
           path: |
             generated/vulkan_bilinear_spirv.h
             generated-kernel.json
+            generated/vulkan_scene_spirv.h
+            generated/gpu_xbrz_spirv.h
+            generated-scene.json
+            generated-xbrz.json
 
   compute:
     runs-on: ubuntu-latest
@@ -36,7 +44,7 @@ jobs:
           set -euo pipefail
           g++ -std=c++17 -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -DRA2_VULKAN_TEST_SOFTWARE source/assist/tests/vulkan_compute.cpp -ldl -o /tmp/vulkan-compute-test
           ASAN_OPTIONS=detect_leaks=0 VK_INSTANCE_LAYERS=VK_LAYER_KHRONOS_validation /tmp/vulkan-compute-test --require 2>&1 | tee vulkan-compute.log
-          if rg 'Validation Error|VUID-' vulkan-compute.log; then exit 1; fi
+          python3 -c "from pathlib import Path; s=Path('vulkan-compute.log').read_text(); assert 'Validation Error' not in s and 'VUID-' not in s"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
