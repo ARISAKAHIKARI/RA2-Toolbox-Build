@@ -149,11 +149,19 @@ public:
   // across different visibility cells. At 1:1 keep exact native pixels.
   if(pixelScaleMode>=1&&pixelScaleMode<=2&&sx==.5&&sy==.5&&
      std::floor(x)==x&&std::floor(y)==y){
+   // Prefetch one native pixel halo using page-row copies. A direct pixel()
+   // call for all five neighborhood samples would repeat millions of map
+   // lookups on a 2560x1440 view and defeat the worker's frame budget.
+   const int sw=width/2,sh=height/2,haloW=sw+2,haloH=sh+2;
+   std::vector<uint32_t> halo;
+   if(!presentRegion(haloW,haloH,halo,x-1,y-1,haloW,haloH,0))return false;
+   const int baseX=int(x),baseY=int(y);
    const auto fetch=[&](int px,int py)->uint32_t{
-    if(px<0||py<0||px>=width_||py>=height_)return 0;
-    return pixel(px,py);
+    int xx=px-baseX+1,yy=py-baseY+1;
+    if(xx<0||yy<0||xx>=haloW||yy>=haloH)return 0;
+    return halo[size_t(yy)*haloW+xx];
    };
-   return pixelupgrade::sample2x(fetch,int(x),int(y),width,height,out,
+   return pixelupgrade::sample2x(fetch,baseX,baseY,width,height,out,
      pixelScaleMode==1?pixelupgrade::TwoX::Nearest:pixelupgrade::TwoX::EdgeBlend);
   }
   if(sx==1&&sy==1&&std::floor(x)==x&&std::floor(y)==y){
