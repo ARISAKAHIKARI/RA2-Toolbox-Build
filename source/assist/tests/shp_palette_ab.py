@@ -20,8 +20,8 @@ assert shape["width"] == 64 and shape["height"] == 48
 assert shape["frame"] == 0 and shape["total_frames"] == 1
 assert len(shape["indices"]) == 64 * 48
 assert ab.indexed_frame(shp, 0)["indices"] == shape["indices"]
-assert ab.decode_pal(pal, False)[1] == 0xFFFCa000
-assert ab.decode_pal(pal, True)[1] == 0xFFFFA204
+assert ab.decode_pal(pal, False)[1] == 0xFFFCA010
+assert ab.decode_pal(pal, True)[1] == 0xFFFFA210
 assert ab.decode_pal(pal, True)[0] == 0
 assert ab.decode_pal(pal, False)[0] == 0
 try:
@@ -36,13 +36,13 @@ except ValueError:
     pass
 
 # RLE row semantics, including an actual transparent run.
-compressed = bytearray(8 + 24 + 2 + 5)
+compressed = bytearray(8 + 24 + 2 + 6)
 struct.pack_into("<4H", compressed, 0, 0, 5, 1, 1)
 struct.pack_into("<hhHHI", compressed, 8, 0, 0, 5, 1, 2)
 struct.pack_into("<I", compressed, 28, 32)
-# uint16(length)=7, color 1, 0 skip 2, color 2
+# uint16(length)=8, color 1, 0 skip 2, color 2, 0 skip 1
 compressed.extend(b"")  # explicit reserved row already allocated above
-compressed[32:] = bytes([7, 0, 1, 0, 2, 2, 0])
+compressed[32:] = bytes([8, 0, 1, 0, 2, 2, 0, 1])
 assert ab.indexed_frame(compressed, 0)["indices"] == bytes([1, 0, 0, 2, 0])
 
 # Branch's transparent-neighbor rule remains strict.
