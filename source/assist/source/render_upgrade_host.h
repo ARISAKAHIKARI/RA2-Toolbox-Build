@@ -2,17 +2,22 @@
 #include "../../shared/source/latest_worker.h"
 #include "../../shared/source/overlay_compositor.h"
 #include "../../external_reader/source/main_viewport.h"
-// Included after the existing minimap pipeline. This is external read/render
-// work only; no Runtime requests, native reveal or engine draw calls.
+#include "../../external_reader/source/feedback_scene.h"
+#include "../../external_reader/source/feedback_cursor.h"
+// External read/render only. No Runtime requests or engine draw calls.
 namespace renderupgrade {
 struct Request {uint32_t pid=0,match=0,tick=0;int width=0,height=0;uint32_t reveal=0;external::mainview::View view;overlaycompositor::Context context;};
-struct Frame {Request request;std::shared_ptr<const external::radar::Scene> image;};
+struct Frame {
+ Request request;std::shared_ptr<const external::radar::Scene> image;
+ std::vector<external::nativefeedback::Object> objects;
+ double yellow=.5,red=.25;external::nativefeedback::EffectStatus effects;
+};
 static external::ReadSession reader;
 static external::cameraassets::Context<external::ReadSession> assets(reader);
 static external::radar::SceneRenderer<decltype(assets)> renderer;
 static external::radar::Sampler<external::SharedReadView> sampler(external::SharedReadView{&reader});
 static uint32_t process=0,epoch=0;static bool active=false;static uint32_t submittedAt=0;static uint64_t imageToken=0;
-static std::atomic<int> progress{0}; // 0 off, 1 sampling/assets, 2 complete, -1 stale/unsupported
+static std::atomic<int> progress{0};
 static asyncwork::Latest<Request,Frame> worker([](const Request&r)->std::shared_ptr<const Frame>{
  if(process!=r.pid||epoch!=r.match){reader.close();sampler.reset();renderer.reset();process=r.pid;epoch=r.match;}
  if(!reader.open(r.pid)){progress=-1;return {};}
@@ -27,14 +32,28 @@ static asyncwork::Latest<Request,Frame> worker([](const Request&r)->std::shared_
  auto crop=external::mainview::crop(r.view,data.terrain->geo.offsetX,data.terrain->geo.offsetY);
  auto scene=renderer.render(data,r.width,r.height,external::SharedReadView{&reader},assets,{crop.x,crop.y,crop.width,crop.height,true});
  if(!scene)return {};
+ auto out=std::make_shared<Frame>();out->request=r;
+ const double zscale=external::projectionZScale(fresh);
+ out->objects=external::nativefeedback::objectGeometry(renderer,data,r.view,r.width,r.height,zscale);
+ out->yellow=assets.conditionYellow();out->red=assets.conditionRed();
+ std::vector<external::nativefeedback::Bolt> bolts;const std::vector<uint8_t>*visibility=nullptr;
+ if(external::nativefeedback::bolts(fresh,bolts)&&renderer.feedbackVisibility(visibility)){
+  out->effects.complete=true;
+  if(!bolts.empty()){
+   auto decorated=std::make_shared<external::radar::Scene>(*scene);
+   out->effects=external::nativefeedback::effects(bolts,*decorated,before,visibility,zscale);
+   if(out->effects.complete)scene=std::move(decorated);
+  }
+ }
  external::mainview::View after;
  if(!external::mainview::sample(fresh,after)||!external::mainview::sameViewport(before,after)||after.frame<before.frame||
    !external::radar::sameWorld(data,external::radar::publicationContext(fresh)))return {};
- auto out=std::make_shared<Frame>();out->request=r;out->image=std::move(scene);progress=2;return out;
+ out->image=std::move(scene);progress=2;return out;
 });
-static void suspend(){if(active){active=false;worker.invalidate();}imageToken=0;overlaycompositor::host().hide(overlaycompositor::RenderUpgrade);}
+#include "render_feedback_host.h"
+static void suspend(){if(active){active=false;worker.invalidate();}feedback::hide();imageToken=0;overlaycompositor::host().hide(overlaycompositor::RenderUpgrade);}
 static void stop(){suspend();overlaycompositor::host().suspend();}
-static void shutdown(){stop();worker.shutdown();overlaycompositor::host().shutdown();}
+static void shutdown(){stop();worker.shutdown();feedback::shutdown();overlaycompositor::host().shutdown();}
 static void update(POINT origin,const RECT&client,bool battlefield){
  (void)origin;
  const bool requested=renderUpgradeEnabled||unifiedOverlayEnabled;
@@ -55,15 +74,18 @@ static void update(POINT origin,const RECT&client,bool battlefield){
   result->request.width==request.width&&result->request.height==request.height&&
   external::mainview::sameViewport(result->request.view,view)&&view.frame>=result->request.view.frame&&
   DWORD(GetTickCount()-result->request.tick)<400;
- if(fresh){
+ // Gather the required feedback before atomically publishing the opaque scene.
+ std::vector<overlaycompositor::Surface> layers;
+ bool feedbackReady=fresh&&feedback::update(request,result,left,top,layers);
+ if(fresh&&feedbackReady){
   auto pixels=std::shared_ptr<const std::vector<uint32_t>>(result->image,&result->image->pixels);
-  overlaycompositor::host().publish({overlaycompositor::RenderUpgrade,renderUpgradeLayer==0?110:5,result->request.context,
+  layers.push_back({overlaycompositor::RenderUpgrade,renderUpgradeLayer==0?110:5,result->request.context,
    {left,top,request.width,request.height},true,255,std::move(pixels)});imageToken=context.token;
- }else{overlaycompositor::host().hide(overlaycompositor::RenderUpgrade);imageToken=0;}
- // At most one replaceable job, paced independently of game-thread execution.
- // Repeated submissions are coalesced by Latest; no accumulated camera backlog.
+ }else{layers.clear();imageToken=0;if(!fresh)feedback::hide();}
+ overlaycompositor::host().replaceGroup({overlaycompositor::RenderUpgrade,feedback::SelectionLayer,feedback::CursorLayer},std::move(layers));
  const uint32_t now=GetTickCount();if(DWORD(now-submittedAt)>=uint32_t(1000/std::clamp(informationFPS(),5,120))){submittedAt=now;worker.submit(std::move(request));}
- const wchar_t*status=fresh?L"渲染升级：主相机视口 · 实验性（细节与联机待实测）":L"渲染升级：采样/素材准备或视角变化，暂用游戏原画面";
+ const wchar_t*status=!fresh?L"渲染升级：采样/素材或视角变化，暂用原画面":!feedbackReady?L"渲染升级：等待有效光标或选择状态，暂用原画面":
+  L"渲染升级：框选/选中反馈/原帧光标 · 电弧近似；激光/波纹/粒子待补，实机待测";
  SetWindowTextW(GetDlgItem(ui,9303),status);
 }
 }

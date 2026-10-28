@@ -27,12 +27,14 @@ jobs:
             python source/tools/materialize_render_upgrade.py
             printf 'Feature base 47f0e6382da9964b7a337c9c1365de4d846b9092; canonical integration materialized.\n' > source/tools/render_upgrade_integrated.tag
           fi
+          python source/tools/materialize_native_feedback.py
           python source/tools/validate_render_upgrade.py
+          python source/tools/validate_native_feedback.py
       - name: Compile and run portable rendering regressions
         shell: bash
         run: |
           set -euo pipefail
-          for name in render_upgrade render_upgrade_scene radar_scene radar_shroud_mask native_canvas; do
+          for name in render_upgrade render_upgrade_scene radar_scene radar_shroud_mask native_canvas native_feedback native_feedback_scene; do
             g++ -std=c++17 -O2 source/assist/tests/$name.cpp -o /tmp/$name-test
             /tmp/$name-test
           done
@@ -41,11 +43,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          git add source/assist/source/extra_settings_io.h source/assist/source/main.cpp source/assist/source/tactical_controls.h source/external_reader/source/native_canvas.h source/external_reader/source/radar_scene.h source/external_reader/source/radar_shroud_mask.h source/shared/source/overlay_stack.h source/unit_monitor/source/main.cpp source/tools/render_upgrade_integrated.tag
+          git add source/assist/source/extra_settings_io.h source/assist/source/main.cpp source/assist/source/tactical_controls.h source/external_reader/source/native_canvas.h source/external_reader/source/radar_scene.h source/external_reader/source/radar_shroud_mask.h source/shared/source/overlay_stack.h source/shared/source/overlay_compositor.h source/unit_monitor/source/main.cpp source/tools/render_upgrade_integrated.tag
           if ! git diff --cached --quiet; then
             git config user.name 'github-actions[bot]'
             git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-            git commit -m 'Wire native-viewport rendering and shared world/statistics compositor'
+            git commit -m 'Integrate native selection, cursor and effect feedback into atomic presentation groups'
             git push origin HEAD:refs/heads/experiment/render-upgrade-v139pre6-20261028
           fi
           echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
@@ -71,19 +73,23 @@ jobs:
         run: |
           python source/tools/validate_render_upgrade.py
           if($LASTEXITCODE -ne 0){throw 'Render integration contract failed'}
-          foreach($name in 'render_upgrade','render_upgrade_scene','radar_scene','radar_shroud_mask','native_canvas'){
+          python source/tools/validate_native_feedback.py
+          if($LASTEXITCODE -ne 0){throw 'Native feedback contract failed'}
+          foreach($name in 'render_upgrade','render_upgrade_scene','radar_scene','radar_shroud_mask','native_canvas','native_feedback','native_feedback_scene'){
             & $env:ZIG_EXE c++ -target x86-windows-gnu -std=c++17 -O2 "source/assist/tests/$name.cpp" -o "$name-test.exe"
             if($LASTEXITCODE -ne 0){throw "Test compile failed: $name"}
             & ".\$name-test.exe" | Tee-Object -FilePath source/render-tests.log -Append
             if($LASTEXITCODE -ne 0){throw "Test failed: $name"}
           }
-      - name: Test actual passive compositor window
+      - name: Test actual passive compositor and atomic feedback group
         shell: pwsh
         run: |
-          & $env:ZIG_EXE c++ -target x86-windows-gnu -std=c++17 -O2 source/assist/tests/overlay_compositor_windows.cpp -o compositor-test.exe -lgdi32 -luser32
-          if($LASTEXITCODE -ne 0){throw 'Compositor smoke compilation failed'}
-          .\compositor-test.exe | Tee-Object -FilePath source/render-tests.log -Append
-          if($LASTEXITCODE -ne 0){throw 'Compositor smoke failed'}
+          foreach($name in 'overlay_compositor_windows','native_feedback_windows'){
+            & $env:ZIG_EXE c++ -target x86-windows-gnu -std=c++17 -O2 "source/assist/tests/$name.cpp" -o "$name-test.exe" -lgdi32 -luser32
+            if($LASTEXITCODE -ne 0){throw "Compositor test compilation failed: $name"}
+            & ".\$name-test.exe" | Tee-Object -FilePath source/render-tests.log -Append
+            if($LASTEXITCODE -ne 0){throw "Compositor test failed: $name"}
+          }
       - name: Build feature-line Win32 binaries
         working-directory: source
         shell: pwsh
@@ -99,7 +105,7 @@ jobs:
             $files += [ordered]@{name=$p;bytes=(Get-Item $p).Length;sha256=(Get-FileHash $p -Algorithm SHA256).Hash.ToLowerInvariant()}
           }
           $commit=(git rev-parse HEAD).Trim()
-          [ordered]@{commit=$commit;base='47f0e6382da9964b7a337c9c1365de4d846b9092';branch='experiment/render-upgrade-v139pre6-20261028';run=$env:GITHUB_RUN_ID;configuration='render-upgrade-v139pre6';merged_layers=@('native-viewport-scene','world-information','primary-statistics');live_game_verified=$false;multiplayer_verified=$false;files=$files} | ConvertTo-Json -Depth 6 | Set-Content -Encoding utf8 render-build.json
+          [ordered]@{commit=$commit;base='47f0e6382da9964b7a337c9c1365de4d846b9092';branch='experiment/render-upgrade-v139pre6-20261028';run=$env:GITHUB_RUN_ID;configuration='render-native-feedback-v139pre6';merged_layers=@('native-viewport-scene','world-information','primary-statistics','selection-feedback','native-software-cursor');electric_bolts='approximate-visual-reconstruction';all_native_effects_complete=$false;live_game_verified=$false;multiplayer_verified=$false;files=$files} | ConvertTo-Json -Depth 6 | Set-Content -Encoding utf8 render-build.json
       - name: Upload successful experimental binaries
         if: success()
         uses: actions/upload-artifact@v4
@@ -122,3 +128,4 @@ jobs:
             source/render-tests.log
             source/render-build.json
             source/research/2026-10-28-render-upgrade.md
+            source/research/2026-10-28-native-render-feedback.md
