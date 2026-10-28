@@ -15,7 +15,10 @@ inline bool tmp(std::vector<uint8_t> bytes,unsigned sub,const std::array<uint32_
  Memory memory{std::move(bytes)};return terrain::tile(memory,Memory::Base,sub,pal,out,reason);
 }
 inline bool shp(std::vector<uint8_t> bytes,int frame,const std::array<uint32_t,256>&pal,voxel::Image&out){Memory m{std::move(bytes)};return voxel::sprite(m,Memory::Base,pal,out,frame);}
-inline bool pal(const std::vector<uint8_t>&bytes,std::array<uint32_t,256>&out,\n                pixelupgrade::PaletteRange range=pixelupgrade::PaletteRange::OriginalDAC){\n return pixelupgrade::decodePalette(bytes.data(),bytes.size(),out,range);\n}
+inline bool pal(const std::vector<uint8_t>&bytes,std::array<uint32_t,256>&out,
+                pixelupgrade::PaletteRange range=pixelupgrade::PaletteRange::OriginalDAC){
+ return pixelupgrade::decodePalette(bytes.data(),bytes.size(),out,range);
+}
 inline bool vxl(const std::vector<uint8_t>&v,const std::vector<uint8_t>&h,voxel::Model&out,float offset=0,float sx=1,float sy=1){
  if(v.size()<802||h.size()<24||memcmp(v.data(),"Voxel Animation",15))return false;unsigned count=word(v.data()+20),bodySize=word(v.data()+28),frames=word(h.data()+16),layers=word(h.data()+20);
  if(!count||count>32||word(v.data()+24)!=count||!frames||frames>4096||layers!=count||uint64_t(802)+count*28+bodySize+count*92>v.size()||uint64_t(24)+layers*16+uint64_t(layers)*frames*48>h.size())return false;
