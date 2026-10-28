@@ -170,5 +170,6 @@ int main(){
  }
  engine.enabled=false;clockValue+=50;engine.update(clockValue);assert(!engine.shown);engine.reset();assert(engine.images.empty()&&engine.actorArt.empty());
  std::cout<<"PASS 300 unique types, retained poses, independent door/roof frames, cache transitions, clamped off-center focus with drawable border scenery and reset\n";
+ return 0;
 }
 

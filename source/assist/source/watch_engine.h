@@ -13,6 +13,16 @@
 namespace watchengine {
 template<class T,class=void>struct HasShroud:std::false_type{};
 template<class T>struct HasShroud<T,std::void_t<decltype(std::declval<T&>().shroud(false,0,std::declval<external::voxel::Image&>()))>>:std::true_type{};
+template<class Assets>auto beginPalettePass(Assets&a,int)->decltype(a.beginPresentation(),void()){a.beginPresentation();}
+template<class Assets>void beginPalettePass(Assets&,long){}
+template<class Assets,class Art>auto refreshPalette(Assets&a,Art&art,bool&changed,int)->decltype(a.refreshActorPalette(art,changed),bool()){return a.refreshActorPalette(art,changed);}
+template<class Assets,class Art>bool refreshPalette(Assets&,Art&,bool&changed,long){changed=false;return true;}
+template<class Assets>auto refreshOverlay(Assets&a,uint32_t t,uint32_t p,int f,bool terrain,bool&changed,int)->decltype(a.refreshOverlayPalette(t,p,f,terrain,changed),bool()){return a.refreshOverlayPalette(t,p,f,terrain,changed);}
+template<class Assets>bool refreshOverlay(Assets&,uint32_t,uint32_t,int,bool,bool&changed,long){changed=false;return true;}
+template<class Art>auto isVoxelArt(const Art&a,int)->decltype(bool(a.voxel)){return bool(a.voxel);}
+template<class Art>bool isVoxelArt(const Art&,long){return false;}
+template<class Art>auto voxelFaces(const Art&a,int)->decltype(a.model.faces.size()){return a.model.faces.size();}
+template<class Art>size_t voxelFaces(const Art&,long){return 0;}
 template<class Reader,class Assets>class Renderer {
 public:
  Reader& reader;Assets& assets;std::function<bool(uint32_t,void*,size_t)> read;
@@ -25,17 +35,22 @@ external::watch::Track tracks[external::watch::MaximumWindows];
 View views[external::watch::MaximumWindows];
 external::watch::Target automatic;bool autoSuppressed=false;
 struct Cached {external::voxel::Image image;DWORD retry=0;uint64_t used=0;bool ready=false;std::string issue;};
-using ArtKey=std::tuple<uint32_t,uint32_t,int,int>;
-using ImageKey=std::tuple<uint32_t,uint32_t,int,int,int,int,int,int,int>;
+using ArtKey=std::tuple<uint32_t,uint32_t,int,int,uint32_t,uint32_t>;
+using ImageKey=std::tuple<uint32_t,uint32_t,int,int,int,int,int,int,int,uint32_t,uint32_t>;
 struct ArtCached {typename Assets::ActorArt art;DWORD retry=0;bool ready=false;std::string issue;};
 std::map<ArtKey,ArtCached> actorArt;
 std::map<ImageKey,Cached> images;
 std::map<std::pair<uint32_t,uint32_t>,ImageKey> displayed;
 size_t actorCursor=0;DWORD diagnosticAt=0;uint64_t assetRevision=0;
-ArtKey artKey(const external::watch::Actor&a){return {a.type,a.owner,a.kind,a.pose.variant};}
-ImageKey imageKey(const external::watch::Actor&a){return {a.type,a.owner,a.kind,a.kind==4?0:a.pose.body,a.kind==4?0:a.pose.turret,a.kind==4?a.stage:a.pose.frame,a.pose.variant,a.pose.buildingFlags,a.pose.doorFrame};}
+ArtKey artKey(const external::watch::Actor&a){return {a.type,a.owner,a.kind,a.pose.variant,a.kind>=5?a.target.pointer:0,a.kind>=5?a.target.id:0};}
+ImageKey imageKey(const external::watch::Actor&a){return {a.type,a.owner,a.kind,a.kind==4?0:a.pose.body,a.kind==4?0:a.pose.turret,a.kind==4?a.stage:a.pose.frame,a.pose.variant,a.pose.buildingFlags,a.pose.doorFrame,a.kind>=5?a.target.pointer:0,a.kind>=5?a.target.id:0};}
+static ArtKey imageArtKey(const ImageKey&k){return {std::get<0>(k),std::get<1>(k),std::get<2>(k),std::get<6>(k),std::get<9>(k),std::get<10>(k)};}
+void discardPaletteImages(const ArtKey&key){
+ for(auto i=images.begin();i!=images.end();)if(imageArtKey(i->first)==key)i=images.erase(i);else ++i;
+ for(auto i=displayed.begin();i!=displayed.end();)if(imageArtKey(i->second)==key)i=displayed.erase(i);else ++i;
+}
 std::map<std::pair<uint32_t,uint32_t>,Cached> tiles,overlays;
-std::array<uint32_t,256> terrainPalette{};
+std::array<uint32_t,256> terrainPalette{};bool terrainPaletteEverReady=false,terrainPaletteUnavailable=false;
 external::lighting::State sceneLight;
 external::repairvisuals::Assets repairAssets;
 uint64_t serial=0;DWORD process=0;uint32_t epoch=0;bool shown=false;
@@ -43,7 +58,7 @@ uint32_t controlRevision=0;bool haveControls=false;
 // Depth, shadows and sprite coverage are resolved at native game pixels.
 // The immutable result is reduced only when the actual window is presented.
 static constexpr int Width=external::watch::NativeViewWidth,Height=external::watch::NativeViewHeight;
-void reset(){for(auto&t:tracks)t={};for(auto&v:views)v={};automatic={};autoSuppressed=false;haveControls=false;images.clear();displayed.clear();actorArt.clear();actorCursor=0;diagnosticAt=0;tiles.clear();overlays.clear();terrainPalette={};repairAssets.reset();shown=false;}
+void reset(){for(auto&t:tracks)t={};for(auto&v:views)v={};automatic={};autoSuppressed=false;haveControls=false;images.clear();displayed.clear();actorArt.clear();actorCursor=0;diagnosticAt=0;tiles.clear();overlays.clear();terrainPalette={};terrainPaletteEverReady=terrainPaletteUnavailable=false;repairAssets.reset();shown=false;}
 void syncTracks(uint32_t revision,const std::array<external::watch::Track,3>&next,bool suppress){
  // Pending snapshots may predate the worker's death/succession decision. Only
  // a new user control revision can replace that authoritative tracking state.
@@ -52,16 +67,45 @@ void syncTracks(uint32_t revision,const std::array<external::watch::Track,3>&nex
 }
 void arrange(){bool visible[3]{};external::watch::Box boxes[3]{};bool wasShown=shown;shown=false;for(int i=0;i<3;++i)shown|=visible[i]=views[i].shown;external::watch::arrange(visible,width,height,boxes);bool changed=wasShown!=shown;for(int i=0;i<3;++i){auto&a=views[i].box;auto b=boxes[i];changed|=a.x!=b.x||a.y!=b.y||a.w!=b.w||a.h!=b.h;a=b;}(void)changed;}
 void refreshAssets(external::watch::Frame&frame,DWORD now){
- assets.identity(process,epoch);
+ assets.identity(process,epoch);beginPalettePass(assets,0);
  if(assetRevision!=assets.revision()){assetRevision=assets.revision();images.clear();displayed.clear();actorArt.clear();tiles.clear();overlays.clear();terrainPalette={};for(auto&view:views)view.shroudRaster.reset();actorCursor=0;}
+ // Only palette-dependent poses are discarded. Keep captured VXL/SHP
+ // geometry, but never display its old colors during an unreadable update.
+ std::set<ArtKey> unavailablePalettes;
+ for(auto&entry:actorArt)if(entry.second.ready){bool changed=false;
+  bool valid=refreshPalette(assets,entry.second.art,changed,0);
+  if(changed||!valid)discardPaletteImages(entry.first);
+  if(!valid)unavailablePalettes.insert(entry.first);
+ }
+ std::set<uint32_t> unavailableOverlays;
+ for(const auto&t:frame.tiles)if(t.overlayType){bool changed=false;uint32_t pointer=0;read(t.overlayType+0xA4,&pointer,4);
+  bool valid=refreshOverlay(assets,t.overlayType,pointer,t.overlayFrame,false,changed,0);
+  if(changed||!valid)for(auto i=overlays.begin();i!=overlays.end();)if(i->first.first==t.overlayType)i=overlays.erase(i);else ++i;
+  if(!valid)unavailableOverlays.insert(t.overlayType);
+ }
+ std::set<uint32_t> unavailableTerrain;
+ for(const auto&a:frame.actors)if(a.kind==4){bool changed=false;uint32_t pointer=0;read(a.type+0xA4,&pointer,4);
+  bool valid=refreshOverlay(assets,a.type,pointer,a.stage,true,changed,0);
+  if(changed||!valid){for(auto i=images.begin();i!=images.end();)if(std::get<0>(i->first)==a.type&&std::get<2>(i->first)==4)i=images.erase(i);else ++i;
+   for(auto i=displayed.begin();i!=displayed.end();)if(std::get<0>(i->second)==a.type&&std::get<2>(i->second)==4)i=displayed.erase(i);else ++i;}
+  if(!valid)unavailableTerrain.insert(a.type);
+ }
  sceneLight=frame.light;
- std::array<uint32_t,256> palette{};if((external::terrain::palette(read,0xABBED0,palette)||assets.palette(true,palette))&&palette!=terrainPalette){terrainPalette=palette;tiles.clear();overlays.clear();for(auto it=images.begin();it!=images.end();)if(std::get<2>(it->first)==4)it=images.erase(it);else ++it;}
+ std::array<uint32_t,256> palette{};bool paletteRead=external::terrain::palette(read,0xABBED0,palette)||assets.palette(true,palette);
+ if(paletteRead){terrainPaletteEverReady=true;terrainPaletteUnavailable=false;
+  if(palette!=terrainPalette){terrainPalette=palette;tiles.clear();overlays.clear();for(auto it=images.begin();it!=images.end();)if(std::get<2>(it->first)==4)it=images.erase(it);else ++it;}
+ }else if(terrainPaletteEverReady){
+  // A previously verified live source disappearing must not silently retain
+  // old colored terrain or certify a coarse placeholder as its replacement.
+  terrainPaletteUnavailable=true;terrainPalette={};tiles.clear();overlays.clear();
+ }
+
  bool paletteReady=std::any_of(terrainPalette.begin(),terrainPalette.end(),[](uint32_t c){return c!=0;});std::string paletteIssue=paletteReady?"":assets.failure;
  auto fetchStatic=[&](auto&cache,bool tmp){
   std::vector<std::pair<uint32_t,uint32_t>> wanted;for(const auto&t:frame.tiles){uint32_t p=tmp?t.type:t.overlayType;if(p)wanted.emplace_back(p,uint32_t(tmp?t.sub:t.overlayFrame));}
   if(cache.size()>2048){for(auto it=cache.begin();it!=cache.end();)if(std::find(wanted.begin(),wanted.end(),it->first)==wanted.end())it=cache.erase(it);else ++it;}
   size_t pixels=0;for(const auto&item:cache)pixels+=external::camera::pixels(item.second.image);if(pixels>3*1024*1024){for(auto i=cache.begin();i!=cache.end()&&pixels>2*1024*1024;)if(std::find(wanted.begin(),wanted.end(),i->first)==wanted.end()){pixels-=external::camera::pixels(i->second.image);i=cache.erase(i);}else ++i;}int work=0;
-  for(auto key:wanted){auto&c=cache[key];if(c.ready||work>=4||(c.retry&&int32_t(now-c.retry)<0))continue;++work;c.retry=now+2000;external::voxel::Image image;
+  for(auto key:wanted){if(!tmp&&unavailableOverlays.count(key.first))continue;auto&c=cache[key];if(c.ready||work>=4||(c.retry&&int32_t(now-c.retry)<0))continue;++work;c.retry=now+2000;external::voxel::Image image;
    uint32_t pointer=0;read(key.first+0xA4,&pointer,4);
    bool ok=tmp?assets.tile(key.first,key.second,terrainPalette,image):assets.overlay(key.first,pointer,int(key.second),image);
    std::string memoryReason;
@@ -86,9 +130,27 @@ void refreshAssets(external::watch::Frame&frame,DWORD now){
  size_t pixels=0,faces=0,artBytes=0;for(const auto&i:images)pixels+=external::camera::pixels(i.second.image);for(const auto&i:actorArt){faces+=i.second.art.model.faces.size();artBytes+=Assets::cost(i.second.art);}
  if(pixels>24*1024*1024){for(auto i=images.begin();i!=images.end()&&pixels>16*1024*1024;)if(!wanted.count(i->first)){pixels-=external::camera::pixels(i->second.image);i=images.erase(i);}else ++i;}
  if(artBytes>96*1024*1024){for(auto i=actorArt.begin();i!=actorArt.end()&&artBytes>64*1024*1024;)if(!artWanted.count(i->first)){artBytes-=Assets::cost(i->second.art);faces-=i->second.art.model.faces.size();i=actorArt.erase(i);}else ++i;}
+ // Cached VXL models are immutable geometry, not prelit pose images. Draw
+ // every visible captured voxel with the current VPL/light on every pass,
+ // independently of the budget for discovering/decoding new assets.
+ std::set<ArtKey> liveVoxelArt;
+ for(const auto&source:actorArt)if(source.second.ready&&isVoxelArt(source.second.art,0))liveVoxelArt.insert(source.first);
+ for(const auto&key:liveVoxelArt)discardPaletteImages(key);
+ pixels=0;for(const auto&i:images)pixels+=external::camera::pixels(i.second.image);
+ std::set<ImageKey> voxelDrawn;size_t liveFaces=0,livePoses=0;
+ for(const auto&a:frame.actors){auto key=artKey(a);if(!liveVoxelArt.count(key)||unavailablePalettes.count(key)||!voxelDrawn.insert(imageKey(a)).second)continue;
+  auto source=actorArt.find(key);size_t facesForPose=voxelFaces(source->second.art,0);
+  // Hard per-presentation work bounds. Old RGBA was already discarded, so
+  // excess actors stay hidden rather than retaining obsolete light/poses.
+  if(livePoses>=256||facesForPose>2*1024*1024-liveFaces)continue;
+  ++livePoses;liveFaces+=facesForPose;external::voxel::Image image;
+  if(!assets.renderActor(source->second.art,a.pose,image))continue;
+  size_t count=external::camera::pixels(image);if(pixels+count>32*1024*1024)continue;
+  pixels+=count;external::camera::opaque(image);auto&c=images[imageKey(a)];c.image=std::move(image);c.ready=true;c.used=++serial;c.issue=c.image.incomplete?assets.failure:"";
+ }
  int work=0;DWORD started=GetTickCount();size_t n=frame.actors.size();
  for(size_t scanned=0;scanned<n;++scanned){
-  const auto&a=frame.actors[actorCursor++%n];auto&c=images[imageKey(a)];c.used=++serial;
+  const auto&a=frame.actors[actorCursor++%n];if(liveVoxelArt.count(artKey(a)))continue;if(unavailablePalettes.count(artKey(a))||(a.kind==4&&unavailableTerrain.count(a.type)))continue;auto&c=images[imageKey(a)];c.used=++serial;
   if((c.ready&&!c.image.incomplete)||(c.retry&&int32_t(now-c.retry)<0))continue;
   if(work>=16||(work&&DWORD(GetTickCount()-started)>=6))break;
   ++work;external::voxel::Image image;bool ok=false;
@@ -149,7 +211,9 @@ void update(uint32_t now){
 void drawView(Graphics&g,const View&view){
  const auto&frame=view.frame;
  if(!view.shown)return;auto state=g.Save();g.SetClip(RectF(0,0,float(Width),float(Height)),CombineModeIntersect);
- SolidBrush bg(Color(255,8,12,8));g.FillRectangle(&bg,0.f,0.f,float(Width),float(Height));
+ SolidBrush bg(terrainPaletteUnavailable?Color(255,0,0,0):Color(255,8,12,8));g.FillRectangle(&bg,0.f,0.f,float(Width),float(Height));
+ if(terrainPaletteUnavailable){view.raster.reset(Width,Height,0xff000000u);g.Restore(state);return;}
+
  // Overscan the diamond map in world space and crop only at the rectangular
  // viewport. There is no separate title, status/footer or fixed 11x11 diamond.
  const float ox=Width/2.f,oy=Height/2.f,scale=1.f;int side=frame.side,radius=frame.radius,centerLevel=frame.tiles[radius*side+radius].level;

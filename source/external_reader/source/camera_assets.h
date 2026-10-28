@@ -11,6 +11,9 @@
 #include "scene_lighting.h"
 #include "sprite_names.h"
 #include "projectile_visuals.h"
+#include "live_palette_cache.h"
+#include <map>
+#include <tuple>
 #include <cstdio>
 #include <cstdlib>
 #include <memory>
@@ -20,6 +23,7 @@ namespace external { namespace cameraassets {
 // observation windows and real-scene minimap without sharing mutable readers.
 template<class Reader>class Context {
  Reader&reader_;uint32_t process_=0,match_=0;
+ bool lastPaletteLive_=false,terrainPaletteLive_=false,presentation_=false,presentationVplFresh_=false;
  int detail_=0;
  pixelupgrade::PaletteRange paletteRange_=pixelupgrade::PaletteRange::OriginalDAC;
 public:
@@ -29,15 +33,16 @@ public:
  void presentationPalette(pixelupgrade::PaletteRange mode){paletteRange_=mode;}
  explicit Context(Reader&r):reader_(r),read{&r},artINI(read,external::assets::LiveINI::ArtObject),rulesINI(read,external::assets::LiveINI::RulesPointer,true),cameoCatalog(read){}
  void identity(uint32_t process,uint32_t match){
-  if(process_!=process||match_!=match){voxelLight={};voxelChecked=voxelNative=false;voxelRevision=~uint64_t(0);}
+  if(process_!=process||match_!=match){overlayPalettes_.clear();terrainPaletteLive_=presentation_=presentationVplFresh_=false;voxelLight={};voxelChecked=voxelNative=false;voxelRevision=~uint64_t(0);}
   process_=process;match_=match;update();
  }
 
 external::assets::Files files;
 std::string failure;
 void update(){files.update(reader_,process_,match_);vpl();}
-uint64_t revision(){return files.revision()^(uint64_t(word(0x822CF8)+1)*0x9e3779b97f4a7c15ull)^voxelLight.signature()^
+uint64_t revision(){return files.revision()^(uint64_t(word(0x822CF8)+1)*0x9e3779b97f4a7c15ull)^
     (paletteRange_==pixelupgrade::PaletteRange::FullRGB?0x45e391acbbdb1891ull:0)^(detail_?0x312df964ba273d19ull:0);}
+uint64_t voxelLightingRevision()const{return voxelLight.signature();}
 bool cameo(const char*name,std::vector<uint8_t>&out){update();return files.load(name,out);}
 uint32_t word(uint32_t p){uint32_t v=0;read(p,&v,4);return v;}
 std::string text(uint32_t p,unsigned n){return external::assets::text(read,p,n);}
@@ -47,13 +52,15 @@ external::assets::EffectiveINI<Read> artINI,rulesINI;uint64_t iniRevision=~uint6
  external::assets::RuntimeCameos<Read> cameoCatalog;external::voxel::Vpl voxelLight;uint64_t voxelRevision=~uint64_t(0);
  uint32_t voxelCheck=0;bool voxelChecked=false,voxelNative=false;
  void resolveCameo(um::Type&t){update();auto file=cameoCatalog.resolve([&](const char*n,std::vector<uint8_t>&b){return files.load(n,b);},files.revision(),files.revision()^(GetTickCount64()/5000),t.id,text(t.ptr+0x1F8,25),t.cameo);memset(t.cameo,0,sizeof t.cameo);if(file.size()<sizeof t.cameo)memcpy(t.cameo,file.data(),file.size());}
- void vpl(){
+ void vpl(bool force=false){
   auto revision=files.revision();if(voxelRevision!=revision){voxelRevision=revision;voxelLight={};voxelChecked=voxelNative=false;}
-  uint32_t now=GetTickCount();if(voxelChecked&&uint32_t(now-voxelCheck)<1000)return;voxelCheck=now;voxelChecked=true;
+  uint32_t now=GetTickCount();if(!force&&voxelChecked&&uint32_t(now-voxelCheck)<1000)return;voxelCheck=now;voxelChecked=true;
+  if(force)presentationVplFresh_=false;
   // Prefer the table actually used by the game, including modded archives
-  // unavailable to the external file reader. Poll from update(), so cached
-  // poses also recover after an initially missing table and change revision.
-  if(voxelLight.capture(read)){voxelNative=true;return;}
+  // unavailable to the external file reader. Legacy users poll from update();
+  // live presentation captures every pass and keeps geometry revision separate.
+  if(voxelLight.capture(read)){voxelNative=true;if(force)presentationVplFresh_=true;return;}
+  if(force)return; // current-presentation VXL never uses stale or guessed light tables
   if(voxelLight.ready())return;
   std::vector<uint8_t>b;if(files.load("VOXELS.VPL",b))voxelLight.load(b);
  }
@@ -65,7 +72,7 @@ std::string artName(uint32_t type){metadata();std::string stem=text(type+0x1F8,2
 std::string imageName(uint32_t type){auto stem=artName(type),image=artINI.get(stem,"IMAGE");return !image.empty()&&external::assets::safe(image)?external::assets::name(image):stem;}
 std::string artValue(uint32_t type,const std::string&key){auto image=imageName(type),value=artINI.get(image,key);return value.empty()?artINI.get(artName(type),key):value;}
 bool artYes(uint32_t type,const std::string&key){auto v=external::assets::name(artValue(type,key));return v=="YES"||v=="TRUE"||v=="1";}
-bool paletteFile(const std::string&name,std::array<uint32_t,256>&out){std::vector<uint8_t>b;if(!files.load(name,b)){failure="palette-not-found:"+name;return false;}if(!external::assets::pal(b,out,paletteRange_)){failure="palette-format:"+name;return false;}return true;}
+bool paletteFile(const std::string&name,std::array<uint32_t,256>&out){lastPaletteLive_=false;std::vector<uint8_t>b;if(!files.load(name,b)){failure="palette-not-found:"+name;return false;}if(!external::assets::pal(b,out,paletteRange_)){failure="palette-format:"+name;return false;}return true;}
 bool convertPalette(uint32_t convert,std::array<uint32_t,256>&out){
  // Only LightConvert owns UsedPalette1 (+188). Plain ANIM ConvertClass ends
  // earlier; treating its following allocation as RGB would read unrelated data.
@@ -73,7 +80,7 @@ bool convertPalette(uint32_t convert,std::array<uint32_t,256>&out){
  uint32_t pointer=word(convert+0x188);uint8_t colors[768]{};
  if(pointer<0x10000||uint64_t(pointer)+sizeof colors>0x100000000ull||!read(pointer,colors,sizeof colors)||
     pointer!=word(convert+0x188)||std::all_of(colors,colors+sizeof colors,[](uint8_t c){return c==0;}))return false;
- for(int i=0;i<256;++i)out[i]=0xff000000u|(uint32_t(colors[i*3])<<16)|(uint32_t(colors[i*3+1])<<8)|colors[i*3+2];out[0]=0;return true;
+ for(int i=0;i<256;++i)out[i]=0xff000000u|(uint32_t(colors[i*3])<<16)|(uint32_t(colors[i*3+1])<<8)|colors[i*3+2];out[0]=0;lastPaletteLive_=true;return true;
 }
 bool convertedPalette(uint32_t convert,std::array<uint32_t,256>&out){
  // Plain ConvertClass retains the rendered middle palette, not raw RGB.
@@ -84,9 +91,9 @@ bool convertedPalette(uint32_t convert,std::array<uint32_t,256>&out){
     pointer!=word(convert+0x174)||word(convert)!=0x7E5358||word(convert+4)!=2||std::all_of(colors,colors+256,[](uint16_t c){return c==0;}))return false;
  for(int i=0;i<256;++i){unsigned c=colors[i],r=(c>>11)&31,g=(c>>5)&63,b=c&31;
   out[i]=0xff000000u|(((r<<3)|(r>>2))<<16)|(((g<<2)|(g>>4))<<8)|(b<<3)|(b>>2);
- }out[0]=0;return true;
+ }out[0]=0;lastPaletteLive_=true;return true;
 }
-bool palette(bool iso,std::array<uint32_t,256>&out){if(iso&&external::terrain::palette(read,0xABBED0,out))return true;std::vector<uint8_t> bytes;std::string n=iso?theater(68,10):"UNIT"+theater(78,3);if(n.empty()){failure="palette-theater-name";return false;}n+=".PAL";if(!files.load(n,bytes)){failure="palette-not-found:"+n;return false;}if(!external::assets::pal(bytes,out,paletteRange_)){failure="palette-format:"+n;return false;}return true;}
+bool palette(bool iso,std::array<uint32_t,256>&out){lastPaletteLive_=false;if(iso&&external::terrain::palette(read,0xABBED0,out)){lastPaletteLive_=true;terrainPaletteLive_=true;return true;}if(iso&&terrainPaletteLive_)return false;std::vector<uint8_t> bytes;std::string n=iso?theater(68,10):"UNIT"+theater(78,3);if(n.empty()){failure="palette-theater-name";return false;}n+=".PAL";if(!files.load(n,bytes)){failure="palette-not-found:"+n;return false;}if(!external::assets::pal(bytes,out,paletteRange_)){failure="palette-format:"+n;return false;}return true;}
 std::vector<std::string> spriteNames(uint32_t type,uint32_t pointer,bool overlay=false,bool buildingPart=false,uint32_t parentType=0){
  auto live=external::assets::shapeName(read,pointer);auto stem=imageName(type);
  bool seasonal=(word(type+0x22C)&255)||artYes(type,"THEATER");
@@ -100,6 +107,7 @@ bool shapeBytes(uint32_t type,uint32_t pointer,std::vector<uint8_t>&bytes,std::s
  file.clear();failure="sprite-not-found:"+artName(type);for(const auto&n:names)failure+=" "+n;return false;
 }
 bool spritePalette(uint32_t type,const std::string&file,bool overlay,uint32_t owner,std::array<uint32_t,256>&out,bool terrain=false){
+ lastPaletteLive_=false;
  if(terrain&&external::lighting::spawnsTiberium(read,type)){
   uint32_t convert=word(0x87F6BC);if(convertPalette(convert,out)||convertedPalette(convert,out))return true;
   // Original bootstrap 52BFCE/52C1EA loads UNITSNO.PAL then aliases its
@@ -112,7 +120,7 @@ bool spritePalette(uint32_t type,const std::string&file,bool overlay,uint32_t ow
  bool iso=artYes(type,"TERRAINPALETTE")||seasonal||terrain;
  // A type-specific live scheme already contains its custom palette and remap.
  // The global unit scheme cannot substitute for a missing custom scheme.
- if(!overlay&&!iso&&(custom.empty()||word(type+0xDF0))&&external::voxel::palette(read,type,owner,out))return true;
+ if(!overlay&&!iso&&(custom.empty()||word(type+0xDF0))&&external::voxel::palette(read,type,owner,out)){lastPaletteLive_=true;return true;}
  bool ok=false;
  if(!custom.empty()){custom=external::assets::name(custom);if(custom.size()>4&&custom.substr(custom.size()-4)==".PAL")ok=paletteFile(custom,out);
   else ok=paletteFile(custom+theater(78,3)+".PAL",out)||paletteFile(custom+".PAL",out);
@@ -152,7 +160,20 @@ void buildingPose(uint32_t object,uint32_t type,external::visual::Pose&pose){
  pose.buildingFlags=state.flags;pose.doorFrame=state.doorFrame;
  external::GameView game(read);if(external::buildings::buildup(game,object))pose.variant=-2;else if(pose.variant==-2)pose.variant=-1;
 }
+struct OverlayPalette {std::string file;std::array<uint32_t,256> colors{};bool live=false;uint64_t revision=1;};
+std::map<std::pair<uint32_t,bool>,OverlayPalette> overlayPalettes_;
+void beginPresentation(){presentation_=true;vpl(true);if(overlayPalettes_.size()>4096)overlayPalettes_.clear();}
+bool refreshOverlayPalette(uint32_t type,uint32_t pointer,int frame,bool terrain,bool&changed){
+ (void)pointer;(void)frame;changed=false;auto found=overlayPalettes_.find({type,terrain});if(found==overlayPalettes_.end())return true;
+ auto&binding=found->second;
+ return external::livepalette::refresh(binding.colors,binding.live,binding.revision,changed,[&](external::livepalette::Sample&sample){
+  bool ok=spritePalette(type,binding.file,true,0,sample.colors,terrain);sample.live=lastPaletteLive_;return ok;
+ });
+}
 bool overlay(uint32_t type,uint32_t pointer,int frame,external::voxel::Image&out,bool terrain=false){std::vector<uint8_t>bytes;std::string file;bool disk=shapeBytes(type,pointer,bytes,file,!terrain);std::array<uint32_t,256>pal{};if(!spritePalette(type,file,true,0,pal,terrain))return false;
+ bool paletteLive=lastPaletteLive_,paletteChanged=false;uint64_t paletteRevision=1;
+ if(!external::livepalette::refresh(pal,paletteLive,paletteRevision,paletteChanged,[&](external::livepalette::Sample&sample){bool valid=spritePalette(type,file,true,0,sample.colors,terrain);sample.live=lastPaletteLive_;return valid;}))return false;
+ overlayPalettes_[{type,terrain}]={file,pal,paletteLive,paletteRevision};
  std::string why;bool ok=disk?external::voxel::sprite(external::assets::Memory{std::move(bytes)},external::assets::Memory::Base,pal,out,frame,&why):external::voxel::sprite(read,pointer,pal,out,frame,&why);if(!ok)failure="overlay-frame/decode:"+file+" frame="+std::to_string(frame)+" "+why;
  if(ok&&terrain&&external::lighting::spawnsTiberium(read,type))out.y-=16; // Native 71C2A9 / 71C438.
  if(ok&&!terrain){out.flat=(word(type+0x2B3)&255)!=0;bool wall=(word(type+0x2A8)&255)!=0,rock=(word(type+0x2B5)&255)!=0;out.depthBias=out.flat?-1.f:(wall||rock)?0.f:15.f;out.writeDepth=(word(type+0x2AD)&255)==0;}
@@ -198,10 +219,12 @@ struct BuildingPart {uint32_t pointer=0;std::vector<uint8_t> shape;std::string f
 struct ActorArt {
  external::voxel::Model model;std::vector<uint8_t> shape;std::array<uint32_t,256> colors{};
  std::string filename;
+ uint32_t object=0,id=0,owner=0,parent=0,parentId=0;bool paletteLive=false;uint64_t paletteRevision=1;std::string paletteFilename;
  uint32_t pointer=0,type=0;float turretOffset=0;bool voxel=false;int kind=-1,fw=1,fh=1,moveX=0,moveY=0,drawY=0,zAdjust=0;bool flat=false,shadow=true;
  std::shared_ptr<const external::voxel::Image> depthMask;bool depthMaskBiased=false;
  std::array<BuildingPart,external::buildings::PartCount> buildingParts;
 };
+static bool liveVoxel(const ActorArt&a){return a.voxel;}
 static size_t cost(const ActorArt&a){size_t n=a.shape.size()+a.model.faces.size()*sizeof(external::voxel::Face);for(const auto&part:a.buildingParts)n+=part.shape.size();return n;}
 static int integer(const std::string&s,int fallback=0){if(s.empty())return fallback;char*end=nullptr;long n=strtol(s.c_str(),&end,10);return end!=s.c_str()&&!*end?int(std::clamp(n,-8192l,8192l)):fallback;}
 void captureBuildingParts(uint32_t type,ActorArt&art){
@@ -214,6 +237,17 @@ void captureBuildingParts(uint32_t type,ActorArt&art){
   part.filename=live;for(const auto&name:names)if(files.load(name,part.shape)){part.filename=name;break;}
  }
 }
+bool animationPalette(uint32_t p,uint32_t type,uint32_t parent,uint32_t owner,int x,int y,std::array<uint32_t,256>&out){
+ lastPaletteLive_=false;
+ auto source=external::lighting::animationSource(read,p,type,external::lighting::cellAt(read,x,y));
+ bool colors=source.tintable&&convertPalette(source.converter,out);
+ auto custom=text(p+0xDC,32);if(custom.empty())custom=artValue(type,"PALETTE");
+ if(!colors&&!custom.empty()){custom=external::assets::name(custom);colors=custom.size()>4&&custom.substr(custom.size()-4)==".PAL"?paletteFile(custom,out):(paletteFile(custom+theater(78,3)+".PAL",out)||paletteFile(custom+".PAL",out));}
+ else if(!colors&&parent>=0x10000&&(word(p+0x118)&255))colors=spritePalette(word(parent+0x520),"",false,owner,out);
+ else if(!colors)colors=paletteFile("ANIM.PAL",out);
+ if(!colors)return false;
+ return true;
+}
 bool captureAnimation(uint32_t p,uint32_t type,uint32_t id,uint32_t parent,uint32_t parentId,ActorArt&out){
  external::animations::State state;
  if(!external::animations::capture(read,p,parent,parentId,state)||state.id!=id||state.type!=type){failure="animation-identity/slot";return false;}
@@ -221,43 +255,45 @@ bool captureAnimation(uint32_t p,uint32_t type,uint32_t id,uint32_t parent,uint3
  next.drawY=int32_t(word(type+0x344));if(std::abs(int64_t(next.drawY))>4096)return false;
  bool loaded=shapeBytes(type,next.pointer,next.shape,next.filename,false,true,word(parent+0x520));
  if(!loaded)next.filename=external::assets::shapeName(read,next.pointer);
- auto source=external::lighting::animationSource(read,p,type,external::lighting::cellAt(read,state.x,state.y));
- bool colors=source.tintable&&convertPalette(source.converter,next.colors);
- auto custom=text(p+0xDC,32);if(custom.empty())custom=artValue(type,"PALETTE");
- if(!colors&&!custom.empty()){custom=external::assets::name(custom);colors=custom.size()>4&&custom.substr(custom.size()-4)==".PAL"?paletteFile(custom,next.colors):(paletteFile(custom+theater(78,3)+".PAL",next.colors)||paletteFile(custom+".PAL",next.colors));}
- else if(!colors&&parent>=0x10000&&(word(p+0x118)&255))colors=spritePalette(word(parent+0x520),"",false,state.owner,next.colors);
- else if(!colors)colors=paletteFile("ANIM.PAL",next.colors);
- if(!colors)return false;
+ if(!animationPalette(p,type,parent,state.owner,state.x,state.y,next.colors))return false;
+ next.object=p;next.id=id;next.owner=state.owner;next.parent=parent;next.parentId=parentId;next.paletteLive=lastPaletteLive_;
  // A theater SHP already loaded by the engine remains usable when its archive
  // cannot be resolved on disk. Frame zero is valid.
  if(!loaded){external::voxel::Image check;std::string why;
   if(!external::voxel::sprite(read,next.pointer,next.colors,check,state.frame,&why,255)){failure="animation-memory:"+why;return false;}}
  external::animations::State after;
  if(!external::animations::capture(read,p,parent,parentId,after)||after.id!=id||after.type!=type||after.owner!=state.owner){failure="animation-changed";return false;}
+ bool paletteChanged=false;if(!refreshActorPalette(next,paletteChanged))return false;
  failure.clear();out=std::move(next);return true;
+}
+bool projectilePalette(const external::projectiles::State&state,std::array<uint32_t,256>&out){
+ lastPaletteLive_=false;
+ bool colors=convertPalette(state.converter,out);
+ if(!colors&&state.palette==external::projectiles::SchemePalette){
+  uint32_t items=word(0xB054D4),scheme=0,again=0;int count=int(word(0xB054E0));uint8_t raw[768]{};
+  if(items>=0x10000&&state.colorIndex>=0&&state.colorIndex<count&&count<=512&&uint64_t(items)+uint64_t(count)*4<=0x100000000ull&&
+     read(items+state.colorIndex*4,&scheme,4)&&scheme>=0x10000&&uint64_t(scheme)+772<=0x100000000ull&&read(scheme+4,raw,sizeof raw)&&
+     read(items+state.colorIndex*4,&again,4)&&again==scheme&&word(scheme+0x30C)==state.converter){
+   for(int i=0;i<256;++i)out[i]=0xff000000u|(uint32_t(raw[i*3])<<16)|(uint32_t(raw[i*3+1])<<8)|raw[i*3+2];out[0]=0;lastPaletteLive_=true;colors=true;
+  }
+ }
+ if(!colors&&word(state.converter)==0x7E5358&&word(state.converter+4)==2){
+  int shades=int(word(state.converter+0x16C));uint32_t palette=word(state.converter+0x174);uint16_t raw[256]{};
+  if(shades>=1&&shades<=256&&palette>=0x10000&&uint64_t(palette)+sizeof raw<=0x100000000ull&&read(palette,raw,sizeof raw)&&word(state.converter+0x174)==palette){
+   for(int i=0;i<256;++i){unsigned c=raw[i],r=(c>>11)&31,g=(c>>5)&63,b=c&31;out[i]=0xff000000u|(((r<<3)|(r>>2))<<16)|(((g<<2)|(g>>4))<<8)|(b<<3)|(b>>2);}out[0]=0;lastPaletteLive_=true;colors=true;
+  }
+ }
+ if(!colors&&state.palette!=external::projectiles::SchemePalette)colors=paletteFile(state.palette==external::projectiles::AnimationPalette?"ANIM.PAL":"PALETTE.PAL",out);
+ if(!colors){failure="projectile-palette";return false;}
+ return true;
 }
 bool captureProjectile(uint32_t p,uint32_t type,uint32_t id,ActorArt&out){
  external::projectiles::State state;if(!external::projectiles::capture(read,p,state)||state.type!=type||state.id!=id){failure="projectile-identity";return false;}
  ActorArt next;next.kind=external::projectiles::Kind;next.type=type;next.voxel=state.voxel;next.flat=state.voxel?state.flat:true;next.shadow=state.shadow&&!state.voxel;next.pointer=word(type+0xA4);
  // Resource/ANIM drawers are plain ConvertClass. Their native neutral row
  // is authoritative; +188 belongs only to LightConvertClass, never these.
- bool colors=convertPalette(state.converter,next.colors);
- if(!colors&&state.palette==external::projectiles::SchemePalette){
-  uint32_t items=word(0xB054D4),scheme=0,again=0;int count=int(word(0xB054E0));uint8_t raw[768]{};
-  if(items>=0x10000&&state.colorIndex>=0&&state.colorIndex<count&&count<=512&&uint64_t(items)+uint64_t(count)*4<=0x100000000ull&&
-     read(items+state.colorIndex*4,&scheme,4)&&scheme>=0x10000&&uint64_t(scheme)+772<=0x100000000ull&&read(scheme+4,raw,sizeof raw)&&
-     read(items+state.colorIndex*4,&again,4)&&again==scheme&&word(scheme+0x30C)==state.converter){
-   for(int i=0;i<256;++i)next.colors[i]=0xff000000u|(uint32_t(raw[i*3])<<16)|(uint32_t(raw[i*3+1])<<8)|raw[i*3+2];next.colors[0]=0;colors=true;
-  }
- }
- if(!colors&&word(state.converter)==0x7E5358&&word(state.converter+4)==2){
-  int shades=int(word(state.converter+0x16C));uint32_t palette=word(state.converter+0x174);uint16_t raw[256]{};
-  if(shades>=1&&shades<=256&&palette>=0x10000&&uint64_t(palette)+sizeof raw<=0x100000000ull&&read(palette,raw,sizeof raw)&&word(state.converter+0x174)==palette){
-   for(int i=0;i<256;++i){unsigned c=raw[i],r=(c>>11)&31,g=(c>>5)&63,b=c&31;next.colors[i]=0xff000000u|(((r<<3)|(r>>2))<<16)|(((g<<2)|(g>>4))<<8)|(b<<3)|(b>>2);}next.colors[0]=0;colors=true;
-  }
- }
- if(!colors&&state.palette!=external::projectiles::SchemePalette)colors=paletteFile(state.palette==external::projectiles::AnimationPalette?"ANIM.PAL":"PALETTE.PAL",next.colors);
- if(!colors){failure="projectile-palette";return false;}
+ if(!projectilePalette(state,next.colors))return false;
+ next.object=p;next.id=id;next.owner=state.owner;next.paletteLive=lastPaletteLive_;
  if(state.voxel){
   bool loaded=external::voxel::capturePart(read,word(type+0xB0),word(type+0xB4),next.model);
   if(!loaded){std::vector<uint8_t>v,h;auto stem=imageName(type);loaded=!stem.empty()&&files.load(stem+".VXL",v)&&files.load(stem+".HVA",h)&&external::assets::vxl(v,h,next.model);}
@@ -267,10 +303,11 @@ bool captureProjectile(uint32_t p,uint32_t type,uint32_t id,ActorArt&out){
   if(!loaded){external::voxel::Image check;std::string reason;if(!external::voxel::sprite(read,next.pointer,next.colors,check,state.pose.frame,&reason,255)){failure="projectile-sprite:"+reason;return false;}}
  }
  external::projectiles::State after;if(!external::projectiles::capture(read,p,after)||after.type!=state.type||after.id!=state.id||after.converter!=state.converter||after.palette!=state.palette){failure="projectile-changed";return false;}
+ bool paletteChanged=false;if(!refreshActorPalette(next,paletteChanged))return false;
  failure.clear();out=std::move(next);return true;
 }
 bool captureActor(uint32_t p,uint32_t type,uint32_t id,ActorArt&out){
- failure.clear();if(word(p+0x10)!=id){failure="actor-identity";return false;}ActorArt next;external::GameView game(read);next.kind=game.kind(p);next.type=type;uint32_t owner=word(p+0x21C);
+ failure.clear();if(word(p+0x10)!=id){failure="actor-identity";return false;}ActorArt next;external::GameView game(read);next.kind=game.kind(p);next.type=type;uint32_t owner=word(p+0x21C);next.object=p;next.id=id;next.owner=owner;
  metadata();next.shadow=!rulesINI.yes(text(type+0x24,24),"NOSHADOW");next.flat=artYes(type,"FLAT");
  if(next.kind==3){
   auto foundation=external::assets::name(artValue(type,"FOUNDATION"));int fw=1,fh=1;
@@ -295,7 +332,7 @@ bool captureActor(uint32_t p,uint32_t type,uint32_t id,ActorArt&out){
   if(ok){for(auto&f:model.faces)f.turret=turret;next.model.faces.insert(next.model.faces.end(),model.faces.begin(),model.faces.end());}return ok;
  };
  if(part("",type+0xB0,false)){
-  if(!spritePalette(type,"",false,owner,next.colors))return false;
+  if(!spritePalette(type,"",false,owner,next.colors))return false;next.paletteLive=lastPaletteLive_;
   next.voxel=true;int offset=int32_t(word(type+0x720));if(offset<-4096||offset>4096)return false;next.turretOffset=float(offset)*12/256*float(sx);
   int variant=-1;if(int(word(type+0x808))>0&&!uint8_t(word(type+0xCD5)))variant=int(word(p+0x124));
   if(variant>=0&&variant<18){
@@ -314,15 +351,33 @@ bool captureActor(uint32_t p,uint32_t type,uint32_t id,ActorArt&out){
   }else loaded=shapeBytes(type,next.pointer,next.shape,filename,false,next.kind==3);next.filename=filename;
   if(!loaded)filename=external::assets::shapeName(read,next.pointer);
   bool terrainPalette=next.kind==3&&(word(type+0x1702)&255);
-  if(terrainPalette?!palette(true,next.colors):!spritePalette(type,filename,false,owner,next.colors))return false;
+  if(terrainPalette?!palette(true,next.colors):!spritePalette(type,filename,false,owner,next.colors))return false;next.paletteFilename=filename;next.paletteLive=lastPaletteLive_;
   if(!loaded){external::voxel::Image check;if(!external::voxel::sprite(read,next.pointer,next.colors,check)){failure="sprite-not-found/unloaded:"+(filename.empty()?stem:filename);return false;}}
  }
  if(next.kind==3)captureBuildingParts(type,next);
- if(word(p+0x10)!=id||word(p+0x21C)!=owner)return false;out=std::move(next);return true;
+ if(word(p+0x10)!=id||word(p+0x21C)!=owner)return false;bool paletteChanged=false;if(!refreshActorPalette(next,paletteChanged))return false;out=std::move(next);return true;
+}
+bool refreshActorPalette(ActorArt&art,bool&changed){
+ return external::livepalette::refresh(art.colors,art.paletteLive,art.paletteRevision,changed,[&](external::livepalette::Sample&sample){
+  bool ok=false;
+  if(art.kind==5){external::animations::State state;
+   if(!external::animations::capture(read,art.object,art.parent,art.parentId,state)||state.id!=art.id||state.type!=art.type||state.owner!=art.owner)return false;
+   ok=animationPalette(art.object,art.type,art.parent,state.owner,state.x,state.y,sample.colors);
+  }else if(art.kind==external::projectiles::Kind){external::projectiles::State state;
+   if(!external::projectiles::capture(read,art.object,state)||state.id!=art.id||state.type!=art.type)return false;
+   ok=projectilePalette(state,sample.colors);
+  }else{
+   bool terrainPalette=art.kind==3&&!art.voxel&&(word(art.type+0x1702)&255);
+   ok=terrainPalette?palette(true,sample.colors):spritePalette(art.type,art.paletteFilename,false,art.owner,sample.colors);
+  }
+  sample.live=lastPaletteLive_;return ok;
+ });
 }
 bool renderActor(const ActorArt&art,const external::visual::Pose&pose,external::voxel::Image&out){
  auto angle=external::visual::fineRadians(pose.bodyFine,pose.body),turret=external::visual::fineRadians(pose.turretFine,pose.turret);
- if(art.voxel){vpl();bool projectile=art.kind==external::projectiles::Kind;
+ if(art.voxel){
+  if(presentation_&&!presentationVplFresh_){failure="voxel-current-vpl-unavailable";return false;}
+  if(!presentation_)vpl();bool projectile=art.kind==external::projectiles::Kind;
   if(projectile&&!voxelLight.ready()){failure="projectile-vpl-unavailable";return false;}
   if(!external::voxel::render(art.model,angle,art.colors,out,projectile?std::numeric_limits<double>::quiet_NaN():turret,art.turretOffset,&voxelLight,255,projectile?turret:0,projectile,detail_?2:1))return false;
   // The model Z buffer resolves faces inside the cached voxel only. The game

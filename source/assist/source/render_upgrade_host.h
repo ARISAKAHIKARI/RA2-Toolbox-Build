@@ -25,50 +25,51 @@ static std::atomic<int> progress{0};
 static uint64_t generation=1,workerGeneration=0;
 static external::materialmotion::Timeline timeline;
 static int sampledLogicFrame=-1;static bool sampleValid=false;
-static std::shared_ptr<const Frame> heldFrame;static uint64_t heldKey=0;
 static asyncwork::Latest<Request,Frame> worker([](const Request&r)->std::shared_ptr<const Frame>{
  const double started=presentationNow();
- if(process!=r.pid||epoch!=r.match){reader.close();sampler.reset();renderer.reset();process=r.pid;epoch=r.match;sampleValid=false;timeline.reset();heldFrame.reset();}
- if(workerGeneration!=r.generation){workerGeneration=r.generation;sampleValid=false;sampledLogicFrame=-1;timeline.reset();heldFrame.reset();}
- if(!reader.open(r.pid)){progress=-1;return {};}
+ // Latest intentionally retains old results for null callbacks. Return an
+ // explicit empty-image publication instead, so a failed live-light/palette
+ // sample withdraws the old opaque scene immediately on the next UI update.
+ auto unavailable=[&]()->std::shared_ptr<const Frame>{auto out=std::make_shared<Frame>();out->request=r;return out;};
+ if(process!=r.pid||epoch!=r.match){reader.close();sampler.reset();renderer.reset();process=r.pid;epoch=r.match;sampleValid=false;timeline.reset();}
+ if(workerGeneration!=r.generation){workerGeneration=r.generation;sampleValid=false;sampledLogicFrame=-1;timeline.reset();}
+ if(!reader.open(r.pid)){progress=-1;return unavailable();}
+ reader.begin(); // Explicit fresh page epoch for every presentation request.
  assets.identity(r.pid,r.match);
  auto fresh=[](uint32_t p,void*out,size_t n){return reader.readFresh(p,out,n);};
  external::mainview::View before;
- if(!external::mainview::sample(fresh,before)||!external::mainview::sameViewport(before,r.view)||before.frame<r.view.frame){progress=-1;return {};}
+ if(!external::mainview::sample(fresh,before)||!external::mainview::sameViewport(before,r.view)||before.frame<r.view.frame){progress=-1;return unavailable();}
  progress=1;
  // Repeated presentation frames reuse one immutable observed bank. Only a
  // changed logical frame rescans terrain, objects and native animation state.
  if(!sampleValid||before.frame!=sampledLogicFrame){
   reader.begin();
-  if(!sampler.step(r.reveal,8192,true))return {};
+  if(!sampler.step(r.reveal,8192,true))return unavailable();
   auto raw=sampler.snapshot(GetTickCount());auto observed=external::radar::publicationContext(fresh);
-  if(!raw.terrain||!raw.markerScanValid||!external::radar::freshMarkers(raw,observed))return {};
+  if(!raw.terrain||!raw.markerScanValid||!external::radar::freshMarkers(raw,observed))return unavailable();
   for(auto&m:raw.markers)if(m.kind==3)assets.buildingPose(m.object,m.type,m.pose);
   raw.posesPrepared=true;
   external::mainview::View captured;
-  if(!external::mainview::sample(fresh,captured)||captured.frame!=before.frame||!external::mainview::sameViewport(before,captured))return {};
+  if(!external::mainview::sample(fresh,captured)||captured.frame!=before.frame||!external::mainview::sameViewport(before,captured))return unavailable();
   timeline.observe(raw,presentationNow());sampledLogicFrame=before.frame;sampleValid=true;
  }
  auto data=timeline.sample(presentationNow(),r.materialRefresh,r.detail!=0);
- if(!data.terrain)return {};
+ if(!data.terrain)return unavailable();
  data.tick=GetTickCount(); // presentation retry deadlines keep running while paused
  assets.presentationDetail(r.detail);
  assets.presentationPalette(r.paletteRange==1?external::pixelupgrade::PaletteRange::FullRGB:external::pixelupgrade::PaletteRange::OriginalDAC);
  const uint64_t assetRevision=assets.revision();
- uint64_t key=external::materialmotion::presentationKey(data);
- if(heldFrame&&heldFrame->assetRevision==assetRevision&&heldKey==key&&heldFrame->request.generation==r.generation&&heldFrame->request.width==r.width&&heldFrame->request.height==r.height&&
-    heldFrame->request.paletteRange==r.paletteRange&&heldFrame->request.pixelScaleMode==r.pixelScaleMode&&heldFrame->request.detail==r.detail&&
-    heldFrame->request.context.token==r.context.token&&external::mainview::sameViewport(heldFrame->request.view,r.view)){
-  if(!external::radar::sameWorld(data,external::radar::publicationContext(fresh)))return {};
-  auto reused=std::make_shared<Frame>(*heldFrame);reused->request=r;reused->renderMs=presentationNow()-started;return reused;
- }
+ // Scene reuse is intentionally limited to geometry/decoded art. Even an
+ // unchanged pose can receive new cell light, converter tint, palette bytes,
+ // animation brightness or effects within this same simulation frame.
+ // Always run the live-light composition pass; no opaque-frame shortcut.
 
  // In-between poses still use CURRENT visibility and an immutable current
  // object list. Removed/hidden actors are never resurrected by the timeline.
 
  auto crop=external::mainview::crop(r.view,data.terrain->geo.offsetX,data.terrain->geo.offsetY);
- auto scene=renderer.render(data,r.width,r.height,external::SharedReadView{&reader},assets,{crop.x,crop.y,crop.width,crop.height,true},unsigned(r.pixelScaleMode),r.detail!=0);
- if(!scene)return {};
+ auto scene=renderer.render(data,r.width,r.height,external::SharedReadView{&reader},assets,{crop.x,crop.y,crop.width,crop.height,true},unsigned(r.pixelScaleMode),r.detail!=0,true);
+ if(!scene)return unavailable();
  auto out=std::make_shared<Frame>();out->request=r;out->assetRevision=assetRevision;out->logicFrame=data.frame;out->observationMs=timeline.interval();
  const double zscale=external::projectionZScale(fresh);
  out->objects=external::nativefeedback::objectGeometry(renderer,data,r.view,r.width,r.height,zscale);
@@ -84,8 +85,8 @@ static asyncwork::Latest<Request,Frame> worker([](const Request&r)->std::shared_
  }
  external::mainview::View after;
  if(!external::mainview::sample(fresh,after)||!external::mainview::sameViewport(before,after)||after.frame<before.frame||
-   !external::radar::sameWorld(data,external::radar::publicationContext(fresh)))return {};
- out->image=std::move(scene);out->renderMs=presentationNow()-started;if(renderer.materialsReady()){heldFrame=out;heldKey=key;}else heldFrame.reset();progress=2;return out;
+   !external::radar::sameWorld(data,external::radar::publicationContext(fresh)))return unavailable();
+ out->image=std::move(scene);out->renderMs=presentationNow()-started;progress=2;return out;
 });
 #include "render_feedback_host.h"
 static void suspend(){if(active){active=false;++generation;worker.invalidate();}feedback::hide();imageToken=0;overlaycompositor::host().hide(overlaycompositor::RenderUpgrade);}

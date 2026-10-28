@@ -113,6 +113,13 @@ int main(int argc,char**argv){
  for(int i=0;i<256;++i)half(memory,minePalette+i*2,0xBDF7);half(memory,minePalette+3*2,0xF800);
  memcpy(memory.data()+0x7E1B78+78,"SNO",4);memcpy(memory.data()+0x7E1B78+68,"ISOSNO",7);clockValue+=6000;gameassets::update();
  assert(gameassets::overlay(mine,0,0,image,true)&&image.pixels[0]==external::voxel::premultiply(0xFFFF0000u,1)&&"ore mine must use the native resource converter, not ISO colors");int mineY=image.y;
+ bool overlayChanged=false;half(memory,minePalette+3*2,0x001f);
+ assert(gameassets::context.refreshOverlayPalette(mine,0,0,true,overlayChanged)&&overlayChanged);
+ assert(gameassets::context.refreshOverlayPalette(mine,0,0,true,overlayChanged)&&!overlayChanged);
+ assert(gameassets::overlay(mine,0,0,image,true)&&image.pixels[0]==external::voxel::premultiply(0xff0000ffu,1));
+ word(memory,mineConvert+0x174,0);assert(!gameassets::context.refreshOverlayPalette(mine,0,0,true,overlayChanged));
+ word(memory,mineConvert+0x174,minePalette);assert(gameassets::context.refreshOverlayPalette(mine,0,0,true,overlayChanged)&&!overlayChanged);
+ half(memory,minePalette+3*2,0xF800);assert(gameassets::overlay(mine,0,0,image,true));
  memory[mine+0x2B1]=0;assert(gameassets::overlay(mine,0,0,image,true)&&image.pixels[0]==external::voxel::premultiply(0xFF444444u,1)&&image.y==mineY+16);
  memory[mine+0x2B1]=1;memcpy(memory.data()+0x7E1B78+78,"TEM",4);memcpy(memory.data()+0x7E1B78+68,"ISOTEM",7);
  assert(gameassets::overlay(mine,0,0,image,true)&&image.pixels[0]==external::voxel::premultiply(0xFFFF0000u,1)&&image.y==mineY);
@@ -151,6 +158,14 @@ int main(int argc,char**argv){
  for(int i=1;i<256;++i){memory[animPalette+i*3]=208;memory[animPalette+i*3+1]=216;memory[animPalette+i*3+2]=224;}
  for(int off:{0x198,0x19C,0x1A0})word(memory,animConvert+off,1000);
  assert(gameassets::captureAnimation(anim,animType,502,building,501,art)&&art.colors[8]==0xffd0d8e0);assert(gameassets::renderActor(art,ap,image)&&image.pixels[0]==art.colors[8]);
+ // Same converter and RGB pointer, changed contents: update palette only.
+ bool paletteChanged=false;auto retainedShape=art.shape.data();auto retainedBytes=art.shape.size();uint64_t paletteRevision=art.paletteRevision;
+ memory[animPalette+8*3]=90;memory[animPalette+8*3+1]=140;memory[animPalette+8*3+2]=190;
+ assert(gameassets::context.refreshActorPalette(art,paletteChanged)&&paletteChanged&&art.colors[8]==0xff5a8cbe&&art.paletteRevision==paletteRevision+1);
+ assert(art.shape.data()==retainedShape&&art.shape.size()==retainedBytes);assert(gameassets::renderActor(art,ap,image)&&image.pixels[0]==0xff5a8cbe);
+ assert(gameassets::context.refreshActorPalette(art,paletteChanged)&&!paletteChanged);
+ word(memory,animConvert,0);auto coherent=art.colors;assert(!gameassets::context.refreshActorPalette(art,paletteChanged)&&art.colors==coherent);
+ word(memory,animConvert,0x7ED0A4);assert(gameassets::context.refreshActorPalette(art,paletteChanged)&&!paletteChanged);
  auto assignedLight=external::lighting::animation(gameassets::context.read,anim,animType,26112,21760,208,{});assert(assignedLight.intensity==1320&&assignedLight.tint==external::lighting::State{}.tint);
  // An explicit UseCellLightConvert animation uses the terrain palette/tint;
  // NormalLight leaves that tint in place and only fixes intensity to 1000.
@@ -278,25 +293,25 @@ int main(int argc,char**argv){
  auto liveVpl=[&](uint8_t index){word(memory,0xB2FB58,32);std::fill(memory.begin()+0xB41178,memory.begin()+0xB43178,index);};
  auto fileVpl=[&](uint8_t index){std::vector<uint8_t>b(784+32*256,index);word(b,8,32);disk["VOXELS.VPL"]=std::move(b);};
  assert(!lighting.voxelLight.ready()&&lighting.renderActor(v,{},image));
- uint64_t missingRevision=lighting.revision(),vplFileRevision=lighting.files.revision();
+ uint64_t geometryRevision=lighting.revision(),missingRevision=lighting.voxelLightingRevision(),vplFileRevision=lighting.files.revision();
  liveVpl(7);clockValue+=1001;lighting.update();
  assert(lighting.voxelLight.ready()&&"loaded native VPL must recover from an earlier missing-file fallback");
- assert(lighting.files.revision()==vplFileRevision&&lighting.revision()!=missingRevision);checkVoxel(7);
- uint64_t liveRevision=lighting.revision();fileVpl(2);reads=fileReads;
- clockValue+=1001;lighting.update();checkVoxel(7);assert(lighting.revision()==liveRevision&&fileReads==reads);
- // A live mapping change must expire old pose pixels even with identical
- // file metadata, unit identity, heading, and normal index.
- liveVpl(3);clockValue+=1001;lighting.update();assert(lighting.revision()!=liveRevision);checkVoxel(3);liveRevision=lighting.revision();
- for(int i=0;i<32;++i){lighting.update();checkVoxel(3);}assert(lighting.revision()==liveRevision&&fileReads==reads);
+ assert(lighting.files.revision()==vplFileRevision&&lighting.voxelLightingRevision()!=missingRevision);checkVoxel(7);
+ uint64_t liveRevision=lighting.voxelLightingRevision();fileVpl(2);reads=fileReads;
+ clockValue+=1001;lighting.update();checkVoxel(7);assert(lighting.voxelLightingRevision()==liveRevision&&fileReads==reads);
+ // A live mapping change alters lighting revision even with identical
+ // geometry metadata, unit identity, heading, and normal index.
+ liveVpl(3);clockValue+=1001;lighting.update();assert(lighting.voxelLightingRevision()!=liveRevision);checkVoxel(3);liveRevision=lighting.voxelLightingRevision();
+ for(int i=0;i<32;++i){lighting.update();checkVoxel(3);}assert(lighting.voxelLightingRevision()==liveRevision&&fileReads==reads);
  // A transient invalid read keeps the last coherent table. A new match
  // clears that snapshot and can use the independent file fallback.
- word(memory,0xB2FB58,33);clockValue+=1001;lighting.update();assert(lighting.revision()==liveRevision);checkVoxel(3);
+ word(memory,0xB2FB58,33);clockValue+=1001;lighting.update();assert(lighting.voxelLightingRevision()==liveRevision);checkVoxel(3);
  word(memory,0xB2FB58,0);lighting.identity(pid,3);checkVoxel(2);vplFileRevision=lighting.files.revision();
  liveVpl(7);clockValue+=1001;lighting.update();assert(lighting.files.revision()==vplFileRevision);checkVoxel(7);
  // A loose VPL can appear without any MIX stamp or directory revision.
  word(memory,0xB2FB58,0);disk.erase("VOXELS.VPL");lighting.identity(pid,4);assert(!lighting.voxelLight.ready());
- missingRevision=lighting.revision();vplFileRevision=lighting.files.revision();fileVpl(2);clockValue+=1001;lighting.update();
- assert(lighting.files.revision()==vplFileRevision&&lighting.revision()!=missingRevision);checkVoxel(2);reads=fileReads;
+ missingRevision=lighting.voxelLightingRevision();vplFileRevision=lighting.files.revision();fileVpl(2);clockValue+=1001;lighting.update();
+ assert(lighting.files.revision()==vplFileRevision&&lighting.voxelLightingRevision()!=missingRevision);checkVoxel(2);reads=fileReads;
  clockValue+=1001;lighting.update();checkVoxel(2);assert(fileReads==reads);
  // Both sources already exist at attach time: use the engine table directly.
  liveVpl(7);lighting.identity(pid,5);checkVoxel(7);assert(fileReads==reads);
@@ -308,7 +323,14 @@ int main(int argc,char**argv){
  assert(!lighting.voxelLight.ready()&&"match identity must clear VPL even when file discovery has revision zero");
  liveVpl(3);clockValue+=1001;lighting.update();checkVoxel(3);
  word(memory,0xB2FB58,0);lighting.identity(pid+1,7);assert(!lighting.voxelLight.ready());imagePathAvailable=true;
- std::cout<<"PASS production VPL memory priority, missing-resource retry, live/file recovery, pose revision invalidation and stable-source caching\n";
+ // Presentation capture is fresh on every pass, with no 1000ms delay;
+ // changed VPL changes raster colors but never invalidates the source geometry.
+ liveVpl(3);lighting.identity(pid+1,8);geometryRevision=lighting.revision();auto retainedModel=v.model.faces.data();
+ lighting.beginPresentation();assert(gameassets::Context::liveVoxel(v));checkVoxel(3);
+ liveVpl(7);lighting.beginPresentation();checkVoxel(7);assert(lighting.revision()==geometryRevision&&v.model.faces.data()==retainedModel);
+ word(memory,0xB2FB58,0);lighting.beginPresentation();assert(!lighting.renderActor(v,{},image)&&lighting.failure=="voxel-current-vpl-unavailable");
+ liveVpl(3);lighting.beginPresentation();checkVoxel(3);assert(lighting.revision()==geometryRevision);
+ std::cout<<"PASS production VPL memory priority, legacy recovery, same-clock live presentation, geometry retention and unavailable-source rejection\n";
  // Bullet visuals are neither Techno health objects nor ordinary unit art.
  // Exercise production capture/render using live SHP, plain converters and
  // the real VXL/HVA decoder with synthetic memory (no private game art).
@@ -322,6 +344,12 @@ int main(int argc,char**argv){
  word(memory,shot+0x6C,0);assert(gameassets::captureProjectile(shot,shotType,9001,art)&&art.kind==6&&!art.voxel&&art.flat&&art.colors[100]==0xffff0000);
  assert(gameassets::renderActor(art,projectile.pose,image)&&image.pixels[0]==0xffff0000&&image.attachments.size()==1&&image.attachments[0].shadow&&image.attachments[0].airborneShadow);
  assert(image.attachments[0].pixels==image.pixels&&"projectile shadows reuse this frame, not half-SHP shadow frames");
+ // Plain converter middle RGB565 table also changes in place.
+ auto projectileShape=art.shape.data();auto projectileGeometry=art.model.faces.size();auto projectileRevision=art.paletteRevision;
+ half(memory,shotColors+100*2,0x001f);assert(gameassets::context.refreshActorPalette(art,paletteChanged)&&paletteChanged&&art.colors[100]==0xff0000ff);
+ assert(art.shape.data()==projectileShape&&art.model.faces.size()==projectileGeometry&&art.paletteRevision==projectileRevision+1);
+ assert(gameassets::renderActor(art,projectile.pose,image)&&image.pixels[0]==0xff0000ff);
+ plain(shotConvert,shotColors,0xF800);
  memory[shotType+0x2A8]=1;assert(external::projectiles::capture(gameassets::context.read,shot,projectile)&&gameassets::captureProjectile(shot,shotType,9001,art));
  assert(gameassets::renderActor(art,projectile.pose,image)&&image.pixels[0]==0xff00ff00&&"AnimPalette must precede FirersPalette");
  // Missing live resource drawer falls back to PALETTE.PAL, not UNIT*.PAL.
@@ -356,11 +384,19 @@ int main(int argc,char**argv){
  external::camera::Surface flatBlocked;flatBlocked.reset(64,64,0xff888888);std::fill(flatBlocked.depth.begin(),flatBlocked.depth.end(),1e20f);flatBlocked.blit(image,32,32,1,1,0,{});
  for(auto color:flatBlocked.color)assert(color==0xff888888&&"Flat VXL projectile retains the native read-only scene Z test");
  memory[shotType+0x2F7]=0;assert(external::projectiles::capture(gameassets::context.read,shot,projectile)&&projectile.layer==3);
+ // Ordinary VXL/SHP ColorScheme raw RGB changes retain model geometry.
+ gameassets::ActorArt ordinary;ordinary.kind=2;ordinary.type=shotType;ordinary.owner=house;ordinary.voxel=true;ordinary.model=v.model;
+ word(memory,house+0x16054,0);assert(gameassets::context.spritePalette(shotType,"",false,house,ordinary.colors));ordinary.paletteLive=true;
+ auto modelFaces=ordinary.model.faces.data();auto modelCount=ordinary.model.faces.size();
+ memory[bulletScheme+4+43*3]=201;memory[bulletScheme+4+43*3+1]=77;memory[bulletScheme+4+43*3+2]=31;
+ assert(gameassets::context.refreshActorPalette(ordinary,paletteChanged)&&paletteChanged&&ordinary.colors[43]==0xffc94d1f);
+ assert(ordinary.model.faces.data()==modelFaces&&ordinary.model.faces.size()==modelCount);
  // Missing VPL must not substitute the vehicle Lambert approximation for
  // the distinct projectile selector. Source readiness will trigger retry.
  word(memory,0xB2FB58,0);disk.erase("VOXELS.VPL");gameassets::context.identity(pid+4,99);
  assert(gameassets::captureProjectile(shot,shotType,9001,art)&&!gameassets::renderActor(art,projectile.pose,image)&&gameassets::failure=="projectile-vpl-unavailable");
  memory[shotType+0x29E]=1;assert(!gameassets::captureProjectile(shot,shotType,9001,art));
+ std::cout<<"PASS live LightConvert/RGB565 palette in-place changes, stable-content reuse, unavailable-source rejection and retained geometry\n";
  std::cout<<"PASS production projectile SHP -> fixed-1000 plain/ANIM palette -> same-frame shadow, PALETTE.PAL fallback, VXL/HVA capture -> quantized yaw/pitch -> projectile diffuse VPL pixels\n";
 }
 '''
