@@ -171,12 +171,12 @@ number(816,L"载员与状态文字缩放 / %",labelScalePercent,L"50–250 · �
 marginEdit=number(311,L"文字提示上边距 / 像素",topMargin,L"0–4096");
 toastEdit=number(471,L"战术提示时长 / 毫秒",toastMs,L"500–60000");
 toggle(9300,L"渲染升级（全视口 · 实验性）",renderUpgradeEnabled);next();
-toggle(9306,L"4K 物理像素重绘（仅无边框全屏 · 实验性）",renderPhysicalOutput);next();
+toggle(9306,L"4K 物理像素增强（独占全屏保留原分辨率 · 实验性）",renderPhysicalOutput);next();
 label(L"渲染层级",20,260);choices(combo(9302),{L"信息覆盖层顶部（光标保留）",L"信息层下方"},renderUpgradeLayer);next();
 toggle(9301,L"统一覆盖层（世界信息＋主屏统计）",unifiedOverlayEnabled);next();
 label(L"256 色素材输出",20,260);choices(combo(9304),{L"原始 DAC（6-bit ×4，对照）",L"完整 24-bit RGB（6-bit→8-bit）"},renderPaletteRange);next();
 label(L"2× 像素插值",20,260);choices(combo(9305),{L"原生比例（4K 模式自动采用自适应）",L"2× 最近邻",L"2× 轮廓插值 / 半混色",L"自适应 1.25–2× 轮廓重建（推荐）"},renderPixelScale);next();
-note(L"4K 模式只在游戏客户区本身覆盖整块物理显示器，且显示模式、DPI、视口比例校验通过时启用。2K 窗口不会假冒 4K 输出；疑似独占/切换显示模式时停用新画面并明确提示。自适应档直接处理 1.5×；不改变战场镜头及鼠标命中。",88);
+note(L"4K 增强仅在游戏客户区覆盖整块物理显示器且 DPI/视口校验通过时生效。独占全屏若切换到 2560×1440，仍使用现有覆盖层按 2560×1440 正常绘制，只停用 4K 增强；不会因为独占就隐藏覆盖层。2K 窗口也不会假冒 4K。自适应档直接处理 1.5×，不改变镜头与鼠标命中。",88);
 note(L"渲染升级自动使用统一画布，只读重绘原生视口，不改变视野或游戏代码。镜头移动或素材未就绪时回退原画面。框选读取原生矩形；选中框按已绘素材边界，血条和原帧软件光标进入统一层；电弧近似重绘。激光/波纹/粒子及完整附加标记待补；xBRZ/hq4x 尚未集成，不使用 NTSC/Bloom。原高刷光标、交互窗口与副屏尚未合并；实机联机验证未完成。",88);
 item(L"STATIC",L"渲染升级：实验性，默认关闭",20,605,9303,0,48);next(48);
 toggle(830,L"游戏内战术小地图",minimapEnabled);next();
