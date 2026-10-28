@@ -30,7 +30,7 @@ uint samplePixel(uint pixel){
  uint samples=p.samplesX*p.samplesY;return (sum+samples/2u)/samples;
 }
 void main(){
- uint word=gl_GlobalInvocationID.x,count=p.width*p.height;
+ uint word=gl_GlobalInvocationID.x+gl_GlobalInvocationID.y*gl_NumWorkGroups.x*64u,count=p.width*p.height;
  if(word>=(count+3u)/4u)return;
  uint packed=0u;
  for(uint n=0u;n<4u;++n){uint pixel=word*4u+n;if(pixel<count)packed|=samplePixel(pixel)<<(n*8u);}
