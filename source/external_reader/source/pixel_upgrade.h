@@ -3,6 +3,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <cmath>
 #include <vector>
 
 // Presentation-only indexed-art conversion and bounded 2x scaling.
@@ -86,5 +87,77 @@ inline bool scale2x(const std::vector<uint32_t>&src,int width,int height,
   return src[size_t(y)*width+x];
  };
  return sample2x(at,0,0,width*2,height*2,dst,mode);
+}
+// Edge-adaptive fractional resampling for a real physical 1.25x-2x output.
+// Four-source premultiplied ARGB sampling, no CRT/NTSC/bloom/blur pipeline.
+// Prefer interpolation ALONG a prominent edge rather than across it.
+inline unsigned colorDistance(uint32_t a,uint32_t b){
+ const int dr=int(channel(a,16))-int(channel(b,16));
+ const int dg=int(channel(a,8))-int(channel(b,8));
+ const int db=int(channel(a,0))-int(channel(b,0));
+ return unsigned(dr*dr+2*dg*dg+db*db);
+}
+inline uint32_t adaptivePixel(uint32_t ul,uint32_t ur,uint32_t dl,uint32_t dr,
+                              double fx,double fy){
+ if(!std::isfinite(fx)||!std::isfinite(fy))return 0;
+ fx=std::clamp(fx,0.,1.);fy=std::clamp(fy,0.,1.);
+ const uint32_t nearest=fy<.5?(fx<.5?ul:ur):(fx<.5?dl:dr);
+ // Transparency is a geometric boundary. Do not blur opaque actors into
+ // missing tiles, shroud or source-crop transparent margins.
+ const unsigned a0=ul>>24,a1=ur>>24,a2=dl>>24,a3=dr>>24;
+ if(a0!=a1||a0!=a2||a0!=a3)return nearest;
+ if(a0==0)return 0;
+ const unsigned gx=colorDistance(ul,ur)+colorDistance(dl,dr);
+ const unsigned gy=colorDistance(ul,dl)+colorDistance(ur,dr);
+ // Strong vertical edge: prefer one column and interpolate down that edge.
+ if(gx>4800&&uint64_t(gx)*10>uint64_t(gy)*17)fx=fx<.5?0.:1.;
+ // Strong horizontal edge: prefer one row and interpolate along that edge.
+ else if(gy>4800&&uint64_t(gy)*10>uint64_t(gx)*17)fy=fy<.5?0.:1.;
+ // Crossing diagonal edges should not erase small unit silhouettes.
+ else if(gx+gy>16000){
+  const unsigned same0=colorDistance(ul,dr),same1=colorDistance(ur,dl);
+  if(uint64_t(std::min(same0,same1))*2<uint64_t(std::max(same0,same1)))
+   return nearest;
+ }
+ const double weights[4]={(1-fx)*(1-fy),fx*(1-fy),(1-fx)*fy,fx*fy};
+ uint32_t result=0;
+ for(int sh:{0,8,16,24}){
+  double v=weights[0]*channel(ul,sh)+weights[1]*channel(ur,sh)+
+           weights[2]*channel(dl,sh)+weights[3]*channel(dr,sh);
+  unsigned rounded=unsigned(std::clamp(std::floor(v+.5),0.,255.));
+  result|=rounded<<sh;
+ }
+ return result;
+}
+// Fetch MUST return transparent 0 outside the underlying native image.
+// Source coordinates refer to the same fixed native camera crop as the
+// original renderer; output width/height are physical device pixels.
+template<class Fetch>
+bool sampleAdaptive(Fetch fetch,double originX,double originY,
+                    double spanX,double spanY,int width,int height,
+                    std::vector<uint32_t>&out){
+ if(width<1||height<1||width>8192||height>8192||
+    uint64_t(width)*height>16*1024*1024||
+    !std::isfinite(originX)||!std::isfinite(originY)||
+    !std::isfinite(spanX)||!std::isfinite(spanY)||
+    std::abs(originX)>1e7||std::abs(originY)>1e7||
+    spanX<=0||spanY<=0||spanX>32768||spanY>32768||
+    width<=spanX||height<=spanY||
+    double(width)/spanX>2.01||double(height)/spanY>2.01)return false;
+ out.resize(size_t(width)*height);
+ const double dx=spanX/width,dy=spanY/height;
+ for(int y=0;y<height;++y){
+  const double py=originY+(y+.5)*dy-.5;
+  const int iy=int(std::floor(py));
+  const double fy=py-iy;
+  for(int x=0;x<width;++x){
+   const double px=originX+(x+.5)*dx-.5;
+   const int ix=int(std::floor(px));
+   const double fx=px-ix;
+   out[size_t(y)*width+x]=adaptivePixel(fetch(ix,iy),fetch(ix+1,iy),
+                           fetch(ix,iy+1),fetch(ix+1,iy+1),fx,fy);
+  }
+ }
+ return true;
 }
 }} // namespace external::pixelupgrade
