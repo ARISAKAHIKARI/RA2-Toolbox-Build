@@ -73,7 +73,7 @@ inline unsigned refreshPeriod(int target,bool highRefresh){return unsigned(1000/
 inline uint64_t presentationKey(const radar::Frame&frame){
  uint64_t h=1469598103934665603ull;auto add=[&](uint64_t v){h=(h^v)*1099511628211ull;};
  add(uint32_t(frame.frame));add(frame.markers.size());
- for(const auto&m:frame.markers){for(uint32_t v:{m.object,m.id,m.type,m.owner,uint32_t(m.x),uint32_t(m.y),uint32_t(m.z),uint32_t(m.pose.frame),uint32_t(m.pose.body),uint32_t(m.pose.turret),uint32_t(m.pose.bodyFine),uint32_t(m.pose.turretFine),uint32_t(m.pose.frameFrom),uint32_t(m.pose.frameWeight)})add(v);}
+ for(const auto&m:frame.markers){for(uint32_t v:{m.object,m.id,m.type,m.owner,uint32_t(m.x),uint32_t(m.y),uint32_t(m.z),uint32_t(m.pose.frame),uint32_t(m.pose.body),uint32_t(m.pose.turret),uint32_t(m.pose.bodyFine),uint32_t(m.pose.turretFine),uint32_t(m.pose.frameFrom),uint32_t(m.pose.frameWeight)})add(v);add(voxelposture::signature(m.pose.posture));}
  return h;
 }
 }}

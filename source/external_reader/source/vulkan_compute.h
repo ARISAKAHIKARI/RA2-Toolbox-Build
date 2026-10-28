@@ -30,9 +30,11 @@ struct TileJob {
  std::shared_ptr<const std::vector<uint32_t>> pixels;
  int sourceWidth=0,sourceHeight=0,left=0,top=0,width=0,height=0;
  double sourceX=0,sourceY=0,stepX=1,stepY=1;
+ int reconstructionFactor=0; // 0: prepared pixels;2..4: raw pixels handled by FrameResolve
 };
 struct Diagnostics {
- uint64_t frames=0,uploadedBytes=0,uploads=0,dispatches=0,readbacks=0;
+ uint64_t frames=0,uploadedBytes=0,uploads=0,dispatches=0,readbacks=0,xbrzBuilds=0;
+ bool xbrzAvailable=false;
  double milliseconds=0;
  bool available=false,softwareDevice=false;
  std::string device,reason;
@@ -47,7 +49,7 @@ protected:
 #else
  static constexpr bool AllowSoftware=false;
 #endif
- static constexpr VkDeviceSize AtlasBytes=96ull*1024*1024;
+ static constexpr VkDeviceSize AtlasBytes=128ull*1024*1024;
  static constexpr uint64_t MaxPixels=16ull*1024*1024,MaxCoordinates=4ull*1024*1024;
  struct Buffer {VkBuffer buffer=VK_NULL_HANDLE;VkDeviceMemory memory=VK_NULL_HANDLE;VkDeviceSize size=0;void* mapped=nullptr;bool coherent=false;};
  struct Tile {std::weak_ptr<const std::vector<uint32_t>> owner;const void* address=nullptr;uint32_t offset=0,count=0;uint64_t used=0;};
@@ -221,6 +223,7 @@ public:
   if(width<1||height<1||width>8192||height>8192||uint64_t(width)*height>MaxPixels||jobs.empty()||jobs.size()>4096)return fail("Invalid Vulkan output dimensions");
   uint64_t coordinateCount=0;
   for(const auto& j:jobs){
+   if(j.reconstructionFactor)return fail("Raw xBRZ work requires FrameResolve");
    if(!j.pixels||j.sourceWidth<1||j.sourceHeight<1||j.sourceWidth>8192||j.sourceHeight>8192||uint64_t(j.sourceWidth)*j.sourceHeight!=j.pixels->size()||j.pixels->size()>AtlasBytes/4||j.width<1||j.height<1||j.left<0||j.top<0||int64_t(j.left)+j.width>width||int64_t(j.top)+j.height>height||!std::isfinite(j.sourceX)||!std::isfinite(j.sourceY)||!std::isfinite(j.stepX)||!std::isfinite(j.stepY)||std::abs(j.sourceX)>1e10||std::abs(j.sourceY)>1e10||std::abs(j.stepX)>1e6||std::abs(j.stepY)>1e6)return fail("Invalid Vulkan tile");
    coordinateCount+=uint64_t(j.width)+j.height;
   }

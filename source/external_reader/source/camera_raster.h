@@ -1,5 +1,6 @@
 #pragma once
 #include "voxel_preview.h"
+#include "gpu_voxel.h"
 #include "scene_lighting.h"
 #include "scene_order.h"
 #include "pixel_upgrade.h"
@@ -35,7 +36,7 @@ inline void previewPixels(const voxel::Image&image,const lighting::State&state,u
  for(size_t i=0;i<out.size();++i){uint32_t p=light.apply(image.pixels[i],indexed?image.indices[i]:0,image.objectPalette),v=0;
   for(int shift:{0,8,16,24})v|=((((p>>shift)&255)*opacity+127)/255)<<shift;out[i]=v;}
 }
-inline size_t pixels(const voxel::Image&i){size_t n=i.pixels.size();for(const auto&part:i.attachments)n+=pixels(part);return n;}
+inline size_t pixels(const voxel::Image&i){size_t n=i.gpuRaster?size_t(std::max(0,i.width))*std::max(0,i.height)+i.gpuRaster->triangles.size()*(sizeof(gpuvoxel::Triangle)/4):i.pixels.size();for(const auto&part:i.attachments)n+=pixels(part);return n;}
 inline void opaque(voxel::Image&i){
  for(auto&p:i.pixels)if(unsigned a=p>>24)p=0xff000000u|(std::min(255u,((p>>16)&255)*255/a)<<16)|(std::min(255u,((p>>8)&255)*255/a)<<8)|std::min(255u,(p&255)*255/a);
  for(auto&part:i.attachments)if(!part.shadow)opaque(part);
@@ -63,6 +64,7 @@ public:
    }
  }
  void blit(const voxel::Image&i,float ax,float ay,float sx,float sy,float base,const lighting::State&light,float lift=1,float shadowDrop=0,bool smooth=false){
+  if(i.gpuRaster){voxel::Image raster;if(!gpuvoxel::materialize(i,raster)){reconstructionFailed_=true;return;}blit(raster,ax,ay,sx,sy,base,light,lift,shadowDrop,smooth);return;}
   if(i.width<=0||i.height<=0||i.width>resolutionsampling::MaxDimension||i.height>resolutionsampling::MaxDimension||uint64_t(i.width)*i.height>resolutionsampling::MaxPixels||i.rasterScale<1||i.rasterScale>resolutionsampling::MaxRasterScale||i.pixels.size()!=size_t(i.width)*i.height||!std::isfinite(ax)||!std::isfinite(ay)||!std::isfinite(sx)||!std::isfinite(sy)||sx<=0||sy<=0||sx>8||sy>8)return;
   for(const auto&part:i.attachments)if(part.shadow&&!i.shadowsAfter&&(!part.airborneShadow||shadowDrop>0))blit(part,ax,ay+shadowDrop*sy,sx,sy,base,light,lift,0,smooth);
   float pxScale=sx/i.rasterScale,pyScale=sy/i.rasterScale;
@@ -113,7 +115,7 @@ public:
      }
     }
     if(!(p>>24))continue;
-    float z=base+i.depthBias;bool useZ=true;
+    float z=base+i.depthBias;bool useZ=!i.skipZ;
     if(zData){if(std::isnan(i.depth[from]))useZ=false;else z+=i.depth[from];}
     else if(i.flat)z+=float(i.y+sourceY)/i.rasterScale-14+lift;
     else{int bottom=i.depthBottom==std::numeric_limits<int>::min()?i.y+i.height-1:i.depthBottom;z+=float(bottom)/i.rasterScale-14+lift+float((bottom-i.y-sourceY)/3)/i.rasterScale;}

@@ -17,6 +17,8 @@ jobs:
         run: |
           python3 source/tools/build_vulkan_scene.py --output generated/vulkan_scene_spirv.h | tee generated-scene.json
           python3 source/tools/build_gpu_xbrz.py --output generated/gpu_xbrz_spirv.h | tee generated-xbrz.json
+          python3 source/tools/build_gpu_voxel_kernels.py --output generated/gpu_voxel_spirv.h | tee generated-voxel.json
+          python3 source/tools/build_gpu_shroud.py --output generated/gpu_shroud_spirv.h | tee generated-shroud.json
       - uses: actions/upload-artifact@v4
         with:
           name: vulkan-bilinear-kernel
@@ -28,6 +30,10 @@ jobs:
             generated/gpu_xbrz_spirv.h
             generated-scene.json
             generated-xbrz.json
+            generated/gpu_voxel_spirv.h
+            generated/gpu_shroud_spirv.h
+            generated-voxel.json
+            generated-shroud.json
 
   compute:
     runs-on: ubuntu-latest
@@ -59,18 +65,28 @@ jobs:
       - name: Install compute tools
         run: sudo apt-get update && sudo apt-get install -y mesa-vulkan-drivers vulkan-validationlayers glslang-tools spirv-tools
       - name: Compile current scene shader
-        run: python3 source/tools/build_vulkan_scene.py --output source/external_reader/source/vulkan_scene_spirv.h
+        run: |
+          python3 source/tools/build_vulkan_scene.py --output source/external_reader/source/vulkan_scene_spirv.h
+          python3 source/tools/build_gpu_xbrz.py --output source/external_reader/source/gpu_xbrz_spirv.h
+          python3 source/tools/build_gpu_voxel_kernels.py --output source/external_reader/source/gpu_voxel_spirv.h
+          python3 source/tools/build_gpu_shroud.py --output source/external_reader/source/gpu_shroud_spirv.h
       - name: Real GPU scene composition against CPU Surface
         run: |
           set -euo pipefail
-          g++ -std=c++17 -O1 -g -DRA2_VULKAN_TEST_SOFTWARE -fsanitize=address,undefined -fno-omit-frame-pointer source/assist/tests/vulkan_scene.cpp source/third_party/xbrz/xbrz.cpp -ldl -o /tmp/vulkan-scene-test
-          ASAN_OPTIONS=detect_leaks=0 VK_INSTANCE_LAYERS=VK_LAYER_KHRONOS_validation /tmp/vulkan-scene-test --require 2>&1 | tee vulkan-scene.log
-          python3 -c "from pathlib import Path; s=Path('vulkan-scene.log').read_text(); assert 'Validation Error' not in s and 'VUID-' not in s"
+          g++ -std=c++17 -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -c source/third_party/xbrz/xbrz.cpp -o /tmp/xbrz.o
+          for name in vulkan_scene gpu_xbrz gpu_voxel_vulkan gpu_voxel_scene vulkan_shroud; do
+            g++ -std=c++17 -O1 -g -DRA2_VULKAN_TEST_SOFTWARE -fsanitize=address,undefined -fno-omit-frame-pointer source/assist/tests/$name.cpp /tmp/xbrz.o -ldl -o /tmp/$name-test
+            ASAN_OPTIONS=detect_leaks=0 VK_INSTANCE_LAYERS=VK_LAYER_KHRONOS_validation /tmp/$name-test --require 2>&1 | tee "$name.log"
+            python3 -c "from pathlib import Path; s=Path('$name.log').read_text(); assert 'Validation Error' not in s and 'VUID-' not in s"
+          done
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: vulkan-scene-validation
           if-no-files-found: warn
           path: |
-            vulkan-scene.log
+            *.log
             source/external_reader/source/vulkan_scene_spirv.h
+            source/external_reader/source/gpu_xbrz_spirv.h
+            source/external_reader/source/gpu_voxel_spirv.h
+            source/external_reader/source/gpu_shroud_spirv.h

@@ -12,6 +12,7 @@ enum class Sampling : uint32_t {Nearest=0,Bilinear=1,Adaptive=2,Reconstructed=3}
 struct DrawJob {
  std::shared_ptr<const gpuvoxel::Prepared> gpuRaster; // optional deferred GPU mesh raster
  Texture source; // original coverage, nearest original depth/index and dimensions
+ std::shared_ptr<const std::vector<uint32_t>> reconstructionSource; // already lit native PARGB for GPU xBRZ
  std::shared_ptr<const std::vector<uint32_t>> reconstructed; // already lit PARGB
  int reconstructedWidth=0,reconstructedHeight=0,reconstructionFactor=0;
  float left=0,top=0,scaleX=1,scaleY=1; // output edges; scale per original raster pixel

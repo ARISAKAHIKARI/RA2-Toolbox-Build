@@ -9,16 +9,19 @@ constexpr uint64_t SelectionLayer=0x52460001,CursorLayer=0x52460002;
 // scene on every cursor animation/action change. The cache avoids pixel decode
 // when only the mouse position changes. No scene-observation delay is added.
 static nf::CursorCache cursorCache;
+static nf::FoundationStencil foundationStencil;
+static std::shared_ptr<const std::vector<overlaycomposition::Rect>> nativeCutouts;
 static uint32_t cursorPID=0,cursorEpoch=0;
 static overlaycompositor::Context selectionContext{};
 static std::vector<nf::Primitive> oldPrimitives;
+static std::vector<nf::Stroke> oldStrokes;
 static std::shared_ptr<const std::vector<uint32_t>> selectionPixels;
 static nf::Rect selectionBounds;
 static bool live=false,unsafeView=false;
 static void hide(){
  overlaycompositor::host().replaceGroup({overlaycompositor::RenderUpgrade,SelectionLayer,CursorLayer},{});
- oldPrimitives.clear();selectionPixels.reset();selectionBounds={};
- cursorCache.clear();live=false;
+ oldPrimitives.clear();oldStrokes.clear();selectionPixels.reset();selectionBounds={};nativeCutouts.reset();
+ cursorCache.clear();foundationStencil.clear();live=false;
 }
 static void shutdown(){hide();}
 static bool externalCursor(){
@@ -28,9 +31,9 @@ static bool externalCursor(){
 }
 static bool update(const Request&r,const std::shared_ptr<const Frame>&scene,int left,int top,std::vector<overlaycompositor::Surface>&layers){
  unsafeView=false;if(!scene)return false;live=true;
- if(cursorPID!=r.pid||cursorEpoch!=r.match){cursorCache.clear();cursorPID=r.pid;cursorEpoch=r.match;}
+ if(cursorPID!=r.pid||cursorEpoch!=r.match){cursorCache.clear();foundationStencil.clear();nativeCutouts.reset();cursorPID=r.pid;cursorEpoch=r.match;}
  if(selectionContext.token!=r.context.token||selectionContext.cameraX!=r.context.cameraX||selectionContext.cameraY!=r.context.cameraY){
-  selectionPixels.reset();oldPrimitives.clear();
+  selectionPixels.reset();oldPrimitives.clear();oldStrokes.clear();nativeCutouts.reset();
  }
  selectionContext=r.context;
  auto read=[](uint32_t p,void*out,size_t n){return externalReader.readFresh(p,out,n);};
@@ -40,17 +43,26 @@ static bool update(const Request&r,const std::shared_ptr<const Frame>&scene,int 
  nf::Band band;std::vector<nf::Selected> selected;
  const bool bandOK=nf::band(read,r.view.tactical,band);
  const bool selectionOK=nf::selected(read,scene->objects,selected);
+ std::vector<nf::Stroke> strokes;std::vector<nf::Rect> cutouts;
+ const bool ordersOK=nf::actionLines(read,r.view,r.width,r.height,strokes);
+ const bool placementOK=foundationStencil.capture(read,r.view,r.width,r.height,cutouts);
  const double sx=double(r.width)/r.view.width,sy=double(r.height)/r.view.height;
  external::mainview::View after;
  if(!external::mainview::sample(read,after))return false;
  if(!external::mainview::sameViewport(before,after)||after.frame<before.frame){unsafeView=true;return false;}
- if(!bandOK||!selectionOK)return false;
+ if(!bandOK||!selectionOK||!ordersOK||!placementOK)return false;
+ if(cutouts.empty())nativeCutouts.reset();
+ else{
+  bool same=nativeCutouts&&nativeCutouts->size()==cutouts.size();
+  if(same)for(size_t n=0;n<cutouts.size();++n){const auto&a=(*nativeCutouts)[n];const auto&b=cutouts[n];if(a.x!=b.x||a.y!=b.y||a.w!=b.w||a.h!=b.h){same=false;break;}}
+  if(!same){auto spans=std::make_shared<std::vector<overlaycomposition::Rect>>();spans->reserve(cutouts.size());for(const auto&r:cutouts)spans->push_back({r.x,r.y,r.w,r.h});nativeCutouts=std::move(spans);}
+ }
  {
   auto primitives=nf::selectionPrimitives(selected,band,{0,0,r.width,r.height},sx,sy,scene->yellow,scene->red);
-  if(primitives.empty()){selectionPixels.reset();oldPrimitives.clear();}
-  else if(!selectionPixels||primitives!=oldPrimitives){
-   nf::Canvas canvas;if(!nf::paint(primitives,canvas,selectionBounds))return false;
-   selectionPixels=std::make_shared<const std::vector<uint32_t>>(std::move(canvas.pixels));oldPrimitives=std::move(primitives);
+  if(primitives.empty()&&strokes.empty()){selectionPixels.reset();oldPrimitives.clear();oldStrokes.clear();}
+  else if(!selectionPixels||primitives!=oldPrimitives||strokes!=oldStrokes){
+   nf::Canvas canvas;if(!nf::paintInteractions(primitives,strokes,canvas,selectionBounds))return false;
+   selectionPixels=std::make_shared<const std::vector<uint32_t>>(std::move(canvas.pixels));oldPrimitives=std::move(primitives);oldStrokes=std::move(strokes);
   }
  }
  if(selectionPixels)layers.push_back({SelectionLayer,200,r.context,{left+selectionBounds.x,top+selectionBounds.y,selectionBounds.w,selectionBounds.h},true,255,selectionPixels});

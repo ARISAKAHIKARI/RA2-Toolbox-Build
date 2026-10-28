@@ -36,14 +36,14 @@ View views[external::watch::MaximumWindows];
 external::watch::Target automatic;bool autoSuppressed=false;
 struct Cached {external::voxel::Image image;DWORD retry=0;uint64_t used=0;bool ready=false;std::string issue;};
 using ArtKey=std::tuple<uint32_t,uint32_t,int,int,uint32_t,uint32_t>;
-using ImageKey=std::tuple<uint32_t,uint32_t,int,int,int,int,int,int,int,uint32_t,uint32_t>;
+using ImageKey=std::tuple<uint32_t,uint32_t,int,int,int,int,int,int,int,uint32_t,uint32_t,uint64_t>;
 struct ArtCached {typename Assets::ActorArt art;DWORD retry=0;bool ready=false;std::string issue;};
 std::map<ArtKey,ArtCached> actorArt;
 std::map<ImageKey,Cached> images;
 std::map<std::pair<uint32_t,uint32_t>,ImageKey> displayed;
 size_t actorCursor=0;DWORD diagnosticAt=0;uint64_t assetRevision=0;
 ArtKey artKey(const external::watch::Actor&a){return {a.type,a.owner,a.kind,a.pose.variant,a.kind>=5?a.target.pointer:0,a.kind>=5?a.target.id:0};}
-ImageKey imageKey(const external::watch::Actor&a){return {a.type,a.owner,a.kind,a.kind==4?0:a.pose.body,a.kind==4?0:a.pose.turret,a.kind==4?a.stage:a.pose.frame,a.pose.variant,a.pose.buildingFlags,a.pose.doorFrame,a.kind>=5?a.target.pointer:0,a.kind>=5?a.target.id:0};}
+ImageKey imageKey(const external::watch::Actor&a){return {a.type,a.owner,a.kind,a.kind==4?0:a.pose.body,a.kind==4?0:a.pose.turret,a.kind==4?a.stage:a.pose.frame,a.pose.variant,a.pose.buildingFlags,a.pose.doorFrame,a.kind>=5?a.target.pointer:0,a.kind>=5?a.target.id:0,external::voxelposture::signature(a.pose.posture)};}
 static ArtKey imageArtKey(const ImageKey&k){return {std::get<0>(k),std::get<1>(k),std::get<2>(k),std::get<6>(k),std::get<9>(k),std::get<10>(k)};}
 void discardPaletteImages(const ArtKey&key){
  for(auto i=images.begin();i!=images.end();)if(imageArtKey(i->first)==key)i=images.erase(i);else ++i;

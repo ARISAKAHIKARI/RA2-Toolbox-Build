@@ -1,0 +1,255 @@
+{
+  "scope": "CPU fixes verified before optional Vulkan integration; controlled fixtures, source review and user screenshot pixel observation, not live-game/DWM/FPS/network proof",
+  "baseline": {
+    "remote": "d8c7633cfb07a070388d8f018656f41bcc2c8bcc",
+    "local": "c277eb99913ada9f6c58f440154a9aaf1f66be87"
+  },
+  "portable": {
+    "passed": 42,
+    "total": 42,
+    "suites": [
+      "render_upgrade",
+      "render_upgrade_scene",
+      "radar_scene",
+      "radar_shroud_mask",
+      "native_canvas",
+      "native_feedback",
+      "native_feedback_scene",
+      "pixel_upgrade",
+      "xbrz_scaling",
+      "material_motion",
+      "material_scene",
+      "viewport_detail",
+      "live_palette_cache",
+      "live_scene_lighting",
+      "live_voxel_scene",
+      "watch_live_palette",
+      "color_precision",
+      "color_scene",
+      "palette_recovery",
+      "resolution_sampling",
+      "color_reconstruction",
+      "terrain_viewport",
+      "minimap_overlay",
+      "minimap_terrain_crop",
+      "radar_boundary",
+      "render_presentation",
+      "render_feedback_host",
+      "render_scroll",
+      "overlay_incremental",
+      "overlay_present_rate",
+      "native_order_feedback",
+      "world_presentation",
+      "live_shroud_scene",
+      "terrain_coverage",
+      "voxel_posture",
+      "voxel_preview",
+      "voxel_lighting",
+      "scene_lighting",
+      "watch_view",
+      "watch_host",
+      "watch_shroud_mask",
+      "xbrz_bilinear"
+    ],
+    "lighting_fixture_correction": "Fixture now uses legal sources within viewport coverage while retaining lighting epoch race assertions."
+  },
+  "focused": {
+    "passed": [
+      "live_scene_lighting",
+      "xbrz_bilinear_scalar",
+      "contract_render_upgrade",
+      "contract_native_feedback",
+      "contract_pixel_upgrade",
+      "contract_physical_presentation",
+      "contract_material_refresh",
+      "contract_color_resolution",
+      "contract_aircraft_allocation",
+      "render_presentation_gate",
+      "render_material_settings",
+      "render_atomic_camera",
+      "game_assets_host_test",
+      "process_reader_pages_test",
+      "overlay_keepalive_test",
+      "overlay_present_monitor_test"
+    ],
+    "prior_contract_failure": {
+      "name": "contract_physical_presentation",
+      "assertion": "Obsolete exact UI phrase 不使用 NTSC/Bloom",
+      "behavior_assertions_before_failure": "passed",
+      "followup": "Updated wording contract rerun passed; new GPU setting handler/INI regression also rerun passed. Full integration CI remains separate."
+    }
+  },
+  "layer_policy": {
+    "scene_surface_order": 5,
+    "compositor_window_layer": 5,
+    "World": 10,
+    "Statistics": 20,
+    "Minimap": 30,
+    "Watch": 40,
+    "Aircraft": 50,
+    "Construction": 60
+  },
+  "composition": {
+    "equivalence_cases": 160,
+    "canvas_pixels": 8294400,
+    "moving_cursor_frames": 30,
+    "recomposed_pixels_per_frame": 1056,
+    "total_recomposed_pixels": 31680,
+    "timing_exclusions": "DIB copies, UpdateLayeredWindow uploads, DWM, game renderer and scheduling; not an FPS guarantee"
+  },
+  "rate": {
+    "policy": "min(requested clamped5..500, confirmed monitorHz); unknown/0/1/error preserves request",
+    "mode_query_ms": 1000,
+    "immediate_invalidation": [
+      "target window change",
+      "monitor change",
+      "WM_DISPLAYCHANGE"
+    ],
+    "game_sampling_cursor_clock": "unchanged"
+  },
+  "world_recovery": {
+    "hidden_legacy_interval_ms": 250,
+    "unified_fixture_duration_s": 20,
+    "unified_periodic_forced_rasters": 0,
+    "legacy_recovery": "retained"
+  },
+  "reader": {
+    "storage_pages_max": 8192,
+    "page_bytes": 4096,
+    "storage_bytes_max": 33554432,
+    "value_lifetime": "per sampling epoch; first access in each epoch rereads remote page",
+    "warm_fixture_epochs": 100,
+    "warm_fixture_pages": 8,
+    "warm_operator_new_count_growth": 0,
+    "partial_reads_and_process_close": "covered"
+  },
+  "scroll": {
+    "source_border_native_pixels": 96,
+    "camera_offsets": 49,
+    "pixel_comparisons": 17150000,
+    "previous_strict_gate_accepts": 1,
+    "new_scroll_gate_accepts": 49,
+    "fourK_source_viewport": [
+      1920,
+      1080
+    ],
+    "fourK_output": [
+      3840,
+      2160
+    ],
+    "fourK_overscan": [
+      4224,
+      2544
+    ],
+    "integer_renderer_crops": 9,
+    "fractional_1_5x_translation_error_max_destination_pixels": 0.5
+  },
+  "scroll_atomic": {
+    "configuration_default": "immediate; compatibility preserved",
+    "render_scene_configuration": "deferCamera true returns desired Context without replacing committed camera",
+    "commit": "replaceGroupAt validates identity/group and adopts desired camera and layers under one mutex",
+    "camera_read_race": "camera-only feedback retry at most once; world or viewport changes rejected"
+  },
+  "scroll_limits": [
+    "Scrolling beyond the rendered border still rejects the stale image and waits for the next valid rendered view.",
+    "Overscan increases raster work (about 29.6% at the documented 4K/2x ratio); output sampling quality/resolution is unchanged.",
+    "Object bounds are translated; scene pixel storage remains shared."
+  ],
+  "shroud": {
+    "screenshot_observation": {
+      "source": "user attached image(20261028-160841).png",
+      "samples": [
+        {
+          "region": [
+            800,
+            760,
+            930,
+            850
+          ],
+          "counts": {
+            "127,123,85": 948,
+            "120,125,117": 678
+          }
+        },
+        {
+          "region": [
+            1150,
+            530,
+            1330,
+            620
+          ],
+          "counts": {
+            "127,123,85": 1133,
+            "110,129,83": 1039,
+            "120,125,117": 338
+          }
+        },
+        {
+          "region": [
+            1280,
+            160,
+            1440,
+            240
+          ],
+          "counts": {
+            "110,129,83": 698,
+            "127,123,85": 574,
+            "120,125,117": 126
+          }
+        }
+      ],
+      "exact_underlay_matches": {
+        "110,129,83": "terrainColor(land=0,level=4,false)",
+        "120,125,117": "terrainColor(land=3,level=4,false)",
+        "127,123,85": "terrainColor(land=7,level=4,false)"
+      },
+      "scope": "screenshot pixel observation identifies coarse terrain underlay colors; production fixture independently demonstrates hidden source TMP cull exposing that underlay"
+    },
+    "old_baseline_negative_control": {
+      "baseline": "c277eb9",
+      "compile_returncode": 0,
+      "returncode": -6,
+      "stdout": "pixel=ff66794b mask=127 sourceLevel=0 destFrame=-1 loads=0\n",
+      "stderr": "probe: <isolated-baseline>/source/assist/tests/live_shroud_scene.cpp:49: int main(): Assertion `image->pixels[pixel]==0xffa03020' failed.\n",
+      "adaptation": "Only new source-metadata observations and later Live/Geometry/coverage sections removed so the old header compiles; production Sampler→SceneRenderer hidden-source pixel assertion unchanged."
+    },
+    "review": {
+      "lighting_fixture": "Uses 4097 legal sources inside viewport coverage to retain >4096 budget crossing; all prior local/global light epoch race assertions remain.",
+      "hidden_sources": "Hidden raised TMP metadata retained; final destination shroud remains authoritative. Ordinary minimap source policy preserved.",
+      "visibility": "Current viewport visibility capture bypasses old terrain bank, with within-capture page cache only. Same logic-frame changes tested.",
+      "coverage": "Local source rasterization bounded to quantized viewport neighborhood; pan within coverage reuses background, leaving scope rebuilds pages while tile asset decode retained.",
+      "remaining_limits": [
+        "Mask presentation still waits for scene worker completion; no independent immediate mask submission.",
+        "Production cross-process reads are bounded consistency checks, not atomic snapshots.",
+        "No real-game Windows visual/performance measurement in these portable fixtures."
+      ]
+    },
+    "regressions_passed": 9,
+    "regressions_total": 9,
+    "fresh_crop_example": {
+      "width": 900,
+      "height": 450,
+      "sources": 496,
+      "fresh_calls": 74,
+      "fresh_pages": 40,
+      "bytes": 1212862,
+      "included_pointer_table_bytes": 1048576
+    },
+    "source_coverage_example": {
+      "rendered_sources": 4624,
+      "all_sources": 32640,
+      "pages": 289
+    }
+  },
+  "windows": "Relevant tests crosscompiled; actual Windows CI execution not claimed by this evidence snapshot.",
+  "sanitizers": "Relevant compositor, scroll, coverage and shroud reports pass ASan/UBSan with detect_leaks=0; no leak-check claim.",
+  "evidence_inputs": [
+    "render-fix2-private/tests/portable.json",
+    "render-fix2-private/tests/cpu-final.json",
+    "fix2-layers-private/validation.json",
+    "fix2-layers-private/presentation-rate-validation.json",
+    "render-fix2-private/scroll-results.json",
+    "fix2-fog-tests/reviewed-regressions.json",
+    "fix2-fog-tests/sanitizer-final.log"
+  ]
+}

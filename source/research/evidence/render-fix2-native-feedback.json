@@ -1,0 +1,795 @@
+{
+  "scope": "Native instruction slices with named boundary doubles plus production passive rendering fixtures, not live-game visual or full placement legality proof.",
+  "actions": [
+    {
+      "sample": 3,
+      "sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+      "cases": [
+        {
+          "case": "unselected",
+          "draws": []
+        },
+        {
+          "case": "option_off",
+          "draws": []
+        },
+        {
+          "case": "move",
+          "draws": [
+            {
+              "source": [
+                1000,
+                2000,
+                0
+              ],
+              "destination": [
+                5000,
+                6000,
+                0
+              ],
+              "rgb": [
+                0,
+                252,
+                0
+              ]
+            }
+          ]
+        },
+        {
+          "case": "attack",
+          "draws": [
+            {
+              "source": [
+                1000,
+                2000,
+                0
+              ],
+              "destination": [
+                3000,
+                4000,
+                0
+              ],
+              "rgb": [
+                248,
+                0,
+                0
+              ]
+            }
+          ]
+        },
+        {
+          "case": "expired",
+          "draws": []
+        },
+        {
+          "case": "paused",
+          "draws": [
+            {
+              "source": [
+                1000,
+                2000,
+                0
+              ],
+              "destination": [
+                5000,
+                6000,
+                0
+              ],
+              "rgb": [
+                0,
+                252,
+                0
+              ]
+            }
+          ]
+        },
+        {
+          "case": "last_navigation_entry",
+          "draws": [
+            {
+              "source": [
+                1000,
+                2000,
+                0
+              ],
+              "destination": [
+                7000,
+                8000,
+                0
+              ],
+              "rgb": [
+                0,
+                252,
+                0
+              ]
+            }
+          ]
+        },
+        {
+          "case": "no_target",
+          "draws": []
+        }
+      ],
+      "ranges": {
+        "0x6d4735": {
+          "end": "0x6d4756",
+          "sha256": "ee61e140cb72657af89bbbe927f22dd4b5dfe867e8ad3152df3d4701e541ac83"
+        },
+        "0x4dc060": {
+          "end": "0x4dc330",
+          "sha256": "c7f89305321bc5edb814fabc5cef2915e491aef93d5203a67f4fa00a5d70f4f6"
+        }
+      }
+    },
+    {
+      "sample": 4,
+      "sha256": "c287d62a4d6a25b547e9339d071dd6e03adcf545699062e478aaeee38c60e89a",
+      "cases": [
+        {
+          "case": "unselected",
+          "draws": []
+        },
+        {
+          "case": "option_off",
+          "draws": []
+        },
+        {
+          "case": "move",
+          "draws": [
+            {
+              "source": [
+                1000,
+                2000,
+                0
+              ],
+              "destination": [
+                5000,
+                6000,
+                0
+              ],
+              "rgb": [
+                0,
+                252,
+                0
+              ]
+            }
+          ]
+        },
+        {
+          "case": "attack",
+          "draws": [
+            {
+              "source": [
+                1000,
+                2000,
+                0
+              ],
+              "destination": [
+                3000,
+                4000,
+                0
+              ],
+              "rgb": [
+                248,
+                0,
+                0
+              ]
+            }
+          ]
+        },
+        {
+          "case": "expired",
+          "draws": []
+        },
+        {
+          "case": "paused",
+          "draws": [
+            {
+              "source": [
+                1000,
+                2000,
+                0
+              ],
+              "destination": [
+                5000,
+                6000,
+                0
+              ],
+              "rgb": [
+                0,
+                252,
+                0
+              ]
+            }
+          ]
+        },
+        {
+          "case": "last_navigation_entry",
+          "draws": [
+            {
+              "source": [
+                1000,
+                2000,
+                0
+              ],
+              "destination": [
+                7000,
+                8000,
+                0
+              ],
+              "rgb": [
+                0,
+                252,
+                0
+              ]
+            }
+          ]
+        },
+        {
+          "case": "no_target",
+          "draws": []
+        }
+      ],
+      "ranges": {
+        "0x6d4735": {
+          "end": "0x6d4756",
+          "sha256": "ee61e140cb72657af89bbbe927f22dd4b5dfe867e8ad3152df3d4701e541ac83"
+        },
+        "0x4dc060": {
+          "end": "0x4dc330",
+          "sha256": "c7f89305321bc5edb814fabc5cef2915e491aef93d5203a67f4fa00a5d70f4f6"
+        }
+      }
+    }
+  ],
+  "placement": [
+    {
+      "sample": 3,
+      "active_draw_status": "PASS",
+      "active_draw_blocker": null,
+      "sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+      "draw_cases": [
+        {
+          "flags": 2,
+          "proximity": 1,
+          "can_exist": 1,
+          "level": 0,
+          "slope": 0,
+          "draws": [
+            {
+              "frame": 0,
+              "point": [
+                130,
+                199
+              ],
+              "flags": "0x10600"
+            }
+          ],
+          "can_exist_calls": 1
+        },
+        {
+          "flags": 2,
+          "proximity": 1,
+          "can_exist": 0,
+          "level": 0,
+          "slope": 0,
+          "draws": [
+            {
+              "frame": 2,
+              "point": [
+                130,
+                199
+              ],
+              "flags": "0x10600"
+            }
+          ],
+          "can_exist_calls": 1
+        },
+        {
+          "flags": 2,
+          "proximity": 0,
+          "can_exist": 1,
+          "level": 0,
+          "slope": 0,
+          "draws": [
+            {
+              "frame": 2,
+              "point": [
+                130,
+                199
+              ],
+              "flags": "0x10600"
+            }
+          ],
+          "can_exist_calls": 0
+        },
+        {
+          "flags": 2,
+          "proximity": 1,
+          "can_exist": 1,
+          "level": 2,
+          "slope": 0,
+          "draws": [
+            {
+              "frame": 0,
+              "point": [
+                130,
+                169
+              ],
+              "flags": "0x10600"
+            }
+          ],
+          "can_exist_calls": 1
+        },
+        {
+          "flags": 2,
+          "proximity": 1,
+          "can_exist": 0,
+          "level": -1,
+          "slope": 1,
+          "draws": [
+            {
+              "frame": 3,
+              "point": [
+                130,
+                214
+              ],
+              "flags": "0x10600"
+            }
+          ],
+          "can_exist_calls": 1
+        },
+        {
+          "flags": 2,
+          "proximity": 1,
+          "can_exist": 0,
+          "level": 2,
+          "slope": 4,
+          "draws": [
+            {
+              "frame": 6,
+              "point": [
+                130,
+                169
+              ],
+              "flags": "0x10600"
+            }
+          ],
+          "can_exist_calls": 1
+        },
+        {
+          "flags": 4,
+          "proximity": 0,
+          "can_exist": 0,
+          "level": 2,
+          "slope": 1,
+          "draws": [
+            {
+              "frame": 1,
+              "point": [
+                130,
+                169
+              ],
+              "flags": "0x10600"
+            }
+          ],
+          "can_exist_calls": 0
+        },
+        {
+          "flags": 0,
+          "proximity": 1,
+          "can_exist": 1,
+          "level": 0,
+          "slope": 0,
+          "draws": [],
+          "can_exist_calls": 0
+        }
+      ],
+      "centered_cases": [
+        {
+          "canvas": [
+            60,
+            30
+          ],
+          "anchor": [
+            130,
+            169
+          ],
+          "frame_crop": [
+            0,
+            0
+          ],
+          "result": [
+            100,
+            154
+          ]
+        },
+        {
+          "canvas": [
+            61,
+            35
+          ],
+          "anchor": [
+            130,
+            169
+          ],
+          "frame_crop": [
+            3,
+            7
+          ],
+          "result": [
+            103,
+            159
+          ]
+        },
+        {
+          "canvas": [
+            60,
+            60
+          ],
+          "anchor": [
+            -20,
+            40
+          ],
+          "frame_crop": [
+            0,
+            31
+          ],
+          "result": [
+            -50,
+            41
+          ]
+        }
+      ],
+      "mark_cases": [
+        {
+          "function": "0x4a95a0",
+          "bit": 2,
+          "mark": 1,
+          "result_flags": 266,
+          "coords": [
+            [
+              70,
+              80
+            ],
+            [
+              70,
+              80
+            ],
+            [
+              71,
+              80
+            ],
+            [
+              71,
+              80
+            ]
+          ]
+        },
+        {
+          "function": "0x4a95a0",
+          "bit": 2,
+          "mark": 0,
+          "result_flags": 264,
+          "coords": [
+            [
+              70,
+              80
+            ],
+            [
+              70,
+              80
+            ],
+            [
+              71,
+              80
+            ],
+            [
+              71,
+              80
+            ]
+          ]
+        },
+        {
+          "function": "0x4a9650",
+          "bit": 4,
+          "mark": 1,
+          "result_flags": 268,
+          "coords": [
+            [
+              70,
+              80
+            ],
+            [
+              70,
+              80
+            ],
+            [
+              71,
+              80
+            ],
+            [
+              71,
+              80
+            ]
+          ]
+        },
+        {
+          "function": "0x4a9650",
+          "bit": 4,
+          "mark": 0,
+          "result_flags": 264,
+          "coords": [
+            [
+              70,
+              80
+            ],
+            [
+              70,
+              80
+            ],
+            [
+              71,
+              80
+            ],
+            [
+              71,
+              80
+            ]
+          ]
+        }
+      ],
+      "ranges": {
+        "0x47ec90": {
+          "end": "0x47efd3",
+          "sha256": "df1cfdc5cc8d4ea3d0a622c2e08705ace81909da5c20525b41112ed831033557"
+        },
+        "0x4a95a0": {
+          "end": "0x4a96f6",
+          "sha256": "424000ecc8a782161028e551b468a9af23fc36b17694ae064322eeac3e165c78"
+        },
+        "0x4af002": {
+          "end": "0x4af080",
+          "sha256": "f6d40e7c70b84269229ff76d0c7b5b4d2f8e7cf69c51be7ed1545ac41f925b69"
+        }
+      }
+    },
+    {
+      "sample": 4,
+      "active_draw_status": "BLOCKED",
+      "active_draw_blocker": {
+        "hook_site": "0x47ED25",
+        "target": "0xb7e623",
+        "target_32_bytes_all_zero": true,
+        "native_bytes_not_restored": true
+      },
+      "sha256": "c287d62a4d6a25b547e9339d071dd6e03adcf545699062e478aaeee38c60e89a",
+      "draw_cases": [
+        {
+          "flags": 4,
+          "proximity": 0,
+          "can_exist": 0,
+          "level": 2,
+          "slope": 1,
+          "draws": [
+            {
+              "frame": 1,
+              "point": [
+                130,
+                169
+              ],
+              "flags": "0x10600"
+            }
+          ],
+          "can_exist_calls": 0
+        },
+        {
+          "flags": 0,
+          "proximity": 1,
+          "can_exist": 1,
+          "level": 0,
+          "slope": 0,
+          "draws": [],
+          "can_exist_calls": 0
+        }
+      ],
+      "centered_cases": [
+        {
+          "canvas": [
+            60,
+            30
+          ],
+          "anchor": [
+            130,
+            169
+          ],
+          "frame_crop": [
+            0,
+            0
+          ],
+          "result": [
+            100,
+            154
+          ]
+        },
+        {
+          "canvas": [
+            61,
+            35
+          ],
+          "anchor": [
+            130,
+            169
+          ],
+          "frame_crop": [
+            3,
+            7
+          ],
+          "result": [
+            103,
+            159
+          ]
+        },
+        {
+          "canvas": [
+            60,
+            60
+          ],
+          "anchor": [
+            -20,
+            40
+          ],
+          "frame_crop": [
+            0,
+            31
+          ],
+          "result": [
+            -50,
+            41
+          ]
+        }
+      ],
+      "mark_cases": [
+        {
+          "function": "0x4a95a0",
+          "bit": 2,
+          "mark": 1,
+          "result_flags": 266,
+          "coords": [
+            [
+              70,
+              80
+            ],
+            [
+              70,
+              80
+            ],
+            [
+              71,
+              80
+            ],
+            [
+              71,
+              80
+            ]
+          ]
+        },
+        {
+          "function": "0x4a95a0",
+          "bit": 2,
+          "mark": 0,
+          "result_flags": 264,
+          "coords": [
+            [
+              70,
+              80
+            ],
+            [
+              70,
+              80
+            ],
+            [
+              71,
+              80
+            ],
+            [
+              71,
+              80
+            ]
+          ]
+        },
+        {
+          "function": "0x4a9650",
+          "bit": 4,
+          "mark": 1,
+          "result_flags": 268,
+          "coords": [
+            [
+              70,
+              80
+            ],
+            [
+              70,
+              80
+            ],
+            [
+              71,
+              80
+            ],
+            [
+              71,
+              80
+            ]
+          ]
+        },
+        {
+          "function": "0x4a9650",
+          "bit": 4,
+          "mark": 0,
+          "result_flags": 264,
+          "coords": [
+            [
+              70,
+              80
+            ],
+            [
+              70,
+              80
+            ],
+            [
+              71,
+              80
+            ],
+            [
+              71,
+              80
+            ]
+          ]
+        }
+      ],
+      "ranges": {
+        "0x47ec90": {
+          "end": "0x47efd3",
+          "sha256": "f313b14b9144e96d79ca52282766f085e7735f4ac8f62eae6c43e78c3bce752a"
+        },
+        "0x4a95a0": {
+          "end": "0x4a96f6",
+          "sha256": "424000ecc8a782161028e551b468a9af23fc36b17694ae064322eeac3e165c78"
+        },
+        "0x4af002": {
+          "end": "0x4af080",
+          "sha256": "f6d40e7c70b84269229ff76d0c7b5b4d2f8e7cf69c51be7ed1545ac41f925b69"
+        }
+      }
+    }
+  ],
+  "production_tests": [
+    {
+      "name": "native_order_feedback",
+      "optimized": "PASS",
+      "asan_ubsan": "PASS",
+      "asan_options": "detect_leaks=0"
+    },
+    {
+      "name": "render_feedback_host",
+      "optimized": "PASS",
+      "asan_ubsan": "PASS",
+      "asan_options": "detect_leaks=0"
+    }
+  ],
+  "source_contract": "validate_native_feedback.py PASS",
+  "limitations": [
+    "Command-line source uses current object position, not full native muzzle/weapon-FLH replay. PlanningToken route editing and all MOD special action lines are not reconstructed.",
+    "Cell line endpoints use grid Level/bridge projection, not every native slope interpolation.",
+    "Placement cutouts preserve native validity/color rather than reimplementing CanThisExistHere.",
+    "SHP alpha masks are cached by shape/frame until identity or feedback reset; no live-game visual acceptance.",
+    "Sample4 active placement replay is explicitly blocked at its existing zero continuation; no native bytes replaced."
+  ],
+  "source_sha256": {
+    "source/external_reader/source/feedback_orders.h": "2e3981a92a6ed95e325050a35b973d8dfebf55ebcb8e6fed7a08b57ffecde8af",
+    "source/assist/source/render_feedback_host.h": "bd3a3d713aeb156e8d8cb5e63c57add52f5a6074a90c6f29ea98d79af0a37c12",
+    "source/assist/tests/native_order_feedback.cpp": "80f0e8fd428c0c01c07f1b4758c62c38694080cdac80796507938910e7490e1e",
+    "source/tools/native_feedback_audit/actions.py": "bc569cc4fa75e4408a6f459ccd0fb84bdf0479e4a6a2b7b60610d062b576e67d",
+    "source/tools/native_feedback_audit/placement.py": "eccedb752dc0cb984a8d9290751003c1f4e5830dba96e32c56e7b3965f473d95"
+  }
+}

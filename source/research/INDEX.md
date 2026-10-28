@@ -6,6 +6,10 @@
 
 | 主题 | 新笔记 | 关键词 |
 | --- | --- | --- |
+| Vulkan GPU 分数倍率解析、弱 ownership atlas 与故障回退 | [Vulkan 计算实验](2026-10-29-vulkan-compute-resolve.md) | Vulkan1.0 Q8 96MiB atlas one readback sticky timeout software CI x86 |
+| 渲染层级、局部合成、页存储复用、原子滚屏与迷雾源/目标分离 | [反馈与性能修复](2026-10-29-render-feedback-performance.md) | layer5 Incremental monitor Hz epoch8192 zero allocations overscan96 atomic camera fresh shroud sourceHidden 1MiB |
+| 普通指令线、真实色表与建筑放置红绿格原生反馈保留 | [原生命令与放置反馈](2026-10-29-native-order-placement-feedback.md) | DrawActionLine 4DC060 7049C0 47EC90 foundation cellsel sparse cutout readonly |
+| 矿石/覆盖图误用alpha124与Drive/Ship原生坡面矩阵 | [覆盖图不透明与VXL坡面](2026-10-29-overlay-opacity-voxel-posture.md) | overlay255 ILoco674 Draw_Matrix 4AFF60 69F670 Ramp Slerp rocking 2688 |
 | 小地图边缘半格 TMP 与渲染升级短暂失败/光标切换闪烁 | [裁剪与连续呈现](2026-10-28-minimap-crop-render-continuity.md) | sourceColor TMP extra signed Level fixed viewport completed sample age feedback cursor grace |
 | 普通 CnCNetYR v17 全补丁／guard、真实相机退让、浮点及事件往返与保留所属方缺陷 | [普通版兼容性复核](2026-10-28-cncnet-ordinary-compatibility.md) | ordinary 6D8640 CameraClamp 39 245 75 151 ProtocolZero 0x30 NetworkHousePreserve BLOCKED |
 | SHP／连续地形改用未修改的上游 xBRZ 1.9 与实际倍率解析 | [xBRZ 集成](2026-10-28-xbrz-integration.md) | xBRZ Zenju GPL alpha premultiplied live light TMP halo seams RGB8 source hashes |

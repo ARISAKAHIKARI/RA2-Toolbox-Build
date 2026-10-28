@@ -35,7 +35,8 @@ int main(){
  memory.put(0x8871E0,rules);memory.put(rules+0x17D4,0);
  auto terrain=std::make_shared<Terrain>();terrain->geo={8,8,6,7,8,8,1,0x10000,owner,512*512,{8,8,0,0,8,8},8,8};terrain->reveal=true;terrain->colors.resize(512*512);terrain->art.resize(512*512);terrain->shade.resize(512*512);terrain->colors[7*512+7]=0x808080;terrain->art[7*512+7].type=1;terrain->art[7*512+7].cell=cell;
  Frame frame;frame.terrain=terrain;frame.frame=42;frame.tick=100;Marker m;m.object=0xa0000;m.id=1;m.type=type;m.owner=owner;m.kind=2;m.x=m.y=7*256;m.layer=3;frame.markers={m};Assets assets;SceneRenderer<Assets> renderer;
- auto draw=[&](){return renderer.render(frame,240,120,memory,assets,{0,0,240,120,true},0,true);};
+ SceneRegion crop{0,0,240,120,true};
+ auto draw=[&](){return renderer.render(frame,240,120,memory,assets,crop,0,true);};
  auto initial=draw();assert(initial);const size_t actor=105*240+180,ground=110*240+190;auto actorColor=initial->pixels[actor],groundColor=initial->pixels[ground];int captures=assets.captures,renders=assets.renders,loads=assets.tiles;
  memory.put(cell+0x10C,int16_t(500));auto local=draw();assert(local&&local->pixels[ground]!=groundColor&&local->pixels[actor]==actorColor);assert(assets.captures==captures&&assets.renders==renders&&assets.tiles==loads);
  memory.put(terrainConvert+0x198,500);auto localTint=draw();assert(localTint&&localTint->pixels[ground]!=local->pixels[ground]);assert(assets.tiles==loads);
@@ -55,7 +56,17 @@ int main(){
  constexpr uint32_t alternate=0x73000;memory.put(alternate+0x1B0,uint8_t(0));memory.put(alternate+0x16C,53);for(int n=0;n<3;++n)memory.put(alternate+0x198+n*4,n==1?400:1000);memory.put(0xa0000+0xD4,alternate);
  auto animationConverter=draw();assert(animationConverter&&animationConverter->pixels[90*240+150]!=animationIntensity->pixels[90*240+150]&&animationConverter->pixels[105*240+180]==animationIntensity->pixels[105*240+180]);assert(assets.captures==animCaptures&&assets.renders==animationRenders);
  // Multi-pass terrain light validation returns no stale lit bank mid-scan.
- auto large=std::make_shared<Terrain>(*terrain);for(int n=0;n<4097;++n)large->colors[n]=0x808080;frame.terrain=large;frame.markers.clear();assert(!draw());assert(draw());
+ // Use actual legal sources inside the main-view coverage. The old fixture
+ // filled 4097 illegal/offscreen array slots, which local coverage correctly
+ // excludes before they can consume a rendering budget.
+ auto large=std::make_shared<Terrain>();large->geo={128,128,128,128,256,256,1,0x10000,owner,512*512,{128,128,0,0,128,128},256,256};large->reveal=true;
+ large->colors.resize(512*512);large->art.resize(512*512);large->shade.resize(512*512);crop={2800,-64,2000,2000,true};
+ auto coverage=terraincoverage::Region::plan(crop.x,crop.y,crop.width,crop.height,7680,3840);int supplied=0;
+ for(int y=1;y<512&&supplied<4097;++y)for(int x=1;x<512&&supplied<4097;++x){mapbounds::TileOrigin at;
+  if(large->geo.tileOrigin(x,y,0,at)&&coverage.tile(at.x,at.y)){large->colors[size_t(y)*512+x]=0x808080;++supplied;}
+ }
+ assert(supplied==4097);large->colors[64*512+65]=0x808080;large->art[64*512+65]=terrain->art[7*512+7];
+ frame.terrain=large;frame.markers.clear();assert(!draw());assert(draw());
  assert(draw()); // visible crop stays available while offscreen probe is partial
  memory.put(scenario+0x352C,50);memory.put(cell+0x10C,int16_t(700));assert(!draw());std::shared_ptr<const Scene> global;for(int n=0;n<6&&!global;++n)global=draw();assert(global);
  memory.put(cell+0x10C,int16_t(600));assert(!draw());memory.put(cell+0x10C,int16_t(650));assert(!draw());assert(!draw()); // reject a bank completed from the previous local-light snapshot

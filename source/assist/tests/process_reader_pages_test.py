@@ -28,19 +28,26 @@ code = r'''
 #include <cstdint>
 #include <cstring>
 #include <iostream>
+#include <cstdlib>
+#include <new>
+static size_t allocationCalls=0;
+void* operator new(size_t n){++allocationCalls;if(void*p=std::malloc(n))return p;throw std::bad_alloc();}
+void operator delete(void*p)noexcept{std::free(p);}
+void operator delete(void*p,size_t)noexcept{std::free(p);}
 #include @READER@
 DWORD fakeLastError=0;
 static bool completePage=false;
+static bool wideRange=false;static uint8_t memoryVersion=0;
 static int pageAttempts=0,fieldAttempts=0;
 BOOL ReadProcessMemory(HANDLE,const void*at,void*out,SIZE_T size,SIZE_T*got){
  const uintptr_t address=reinterpret_cast<uintptr_t>(at);
  if(address==0x12000&&size==4096){++pageAttempts;if(!completePage){*got=2048;fakeLastError=ERROR_PARTIAL_COPY;return FALSE;}}
  else if(size<4096)++fieldAttempts;
- if(address<0x12000||address+size>0x14000||(!completePage&&address+size>0x12800&&address<0x13000)){
+ if(address<0x12000||(!wideRange&&address+size>0x14000)||(!completePage&&address+size>0x12800&&address<0x13000)){
   *got=0;fakeLastError=ERROR_PARTIAL_COPY;return FALSE;
  }
  auto*bytes=static_cast<uint8_t*>(out);
- for(size_t i=0;i<size;++i)bytes[i]=uint8_t(address+i);
+ for(size_t i=0;i<size;++i)bytes[i]=uint8_t(address+i+memoryVersion);
  *got=size;return TRUE;
 }
 int main(){
@@ -65,7 +72,25 @@ int main(){
  completePage=false;reader.begin();assert(!reader.read(0x12ffe,value,sizeof value));
  assert(reader.errors==1&&reader.lastFailedAddress==0x12ffe&&reader.lastRegionQueried);
  assert(reader.read(0x12008,value,sizeof value));assert(value[0]==8);
- std::cout<<"PASS ProcessReader: partial page attempted once per epoch, direct fields remain fresh, recovery and diagnostics\n";
+ // Stable sampling addresses retain their storage, never values from an old
+ // observation. Every first page access after begin still reads game memory.
+ completePage=true;wideRange=true;
+ for(int pass=0;pass<100;++pass){memoryVersion=uint8_t(pass);reader.begin();
+  for(unsigned page=0;page<8;++page){assert(reader.read(0x20000+page*4096+16,value,4));assert(value[0]==uint8_t(16+memoryVersion));}
+  assert(reader.reads==8&&reader.pageMisses==8&&reader.pageHits==0);
+  assert(reader.read(0x20010,value,4));assert(reader.pageHits==1);
+ }
+ const auto allocations=reader.pageBufferAllocations();
+ const auto allAllocations=allocationCalls;
+ for(int pass=0;pass<100;++pass){reader.begin();for(unsigned page=0;page<8;++page)assert(reader.read(0x20000+page*4096+16,value,4));}
+ assert(reader.pageBufferAllocations()==allocations&&allocationCalls==allAllocations);
+ // Address churn rekeys bounded existing storage instead of exceeding 32 MiB.
+ reader.begin();for(unsigned page=0;page<8200;++page)assert(reader.read(0x100000+page*4096+16,value,4));
+ assert(reader.cachedPageStorage()==8192&&reader.pageBufferAllocations()==8192);
+ memoryVersion=201;reader.begin();assert(reader.read(0x100010,value,4)&&value[0]==uint8_t(16+201));
+ assert(reader.pageBufferAllocations()==8192);
+ reader.close();assert(reader.cachedPageStorage()==0&&!reader.read(0x100010,value,4));
+ std::cout<<"PASS ProcessReader: partial-page fallback, fresh epoch values, zero warm page-buffer allocations, bounded address churn and process-close invalidation\n";
 }
 '''.replace('@READER@', json.dumps(str(root / 'external_reader/source/process_reader.h')))
 with tempfile.TemporaryDirectory(prefix='ra2-reader-pages-') as tmp:

@@ -29,7 +29,8 @@ static int value(const wchar_t*,const wchar_t*key,int fallback){auto i=profile.f
 static void write(const wchar_t*,const wchar_t*key,int v){profile[key]=v;}
 '''+globals_+'\nstatic void load(){'+load+'}\nstatic void save(){'+save+'}\nstatic int handle(int id,unsigned wp){int w=1;'+handler+'return -1;}\n'+r'''
 int main(){
- load();assert(!renderUpgradeEnabled&&!renderPhysicalOutput&&renderMaterialRefresh&&renderSceneDetail==1&&renderPixelScale==3&&renderColorPrecision==1);
+ load();assert(!renderUpgradeEnabled&&!renderPhysicalOutput&&!renderVulkanEnabled&&renderMaterialRefresh&&renderSceneDetail==1&&renderPixelScale==3&&renderColorPrecision==1&&renderUpgradeLayer==1);
+ for(int oldLayer:{0,1}){profile[L"RenderUpgradeLayer"]=oldLayer;load();assert(renderUpgradeLayer==1);save();assert(profile[L"RenderUpgradeLayer"]==1);}
  for(int color:{0,1})for(int detail:{0,1})for(int refresh:{0,1})for(int scale:{0,1,2,3}){
   controls[9309]=color;handle(9309,CBN_SELCHANGE<<16);
   controls[9308]=detail;handle(9308,CBN_SELCHANGE<<16);controls[9305]=scale;handle(9305,CBN_SELCHANGE<<16);
@@ -43,7 +44,8 @@ int main(){
   assert(paintRevision==revision&&changes==count&&stops==stopped);
  }
  updatingControls=true;controls[9305]=0;int old=renderPixelScale;handle(9305,CBN_SELCHANGE<<16);assert(renderPixelScale==old);updatingControls=false;
- for(int id:{9300,9301,9306}){controls[id]=1;handle(id,BN_CLICKED<<16);}save();load();assert(renderUpgradeEnabled&&unifiedOverlayEnabled&&renderPhysicalOutput);
+ for(int id:{9300,9301,9306,9310}){controls[id]=1;handle(id,BN_CLICKED<<16);}save();load();assert(renderUpgradeEnabled&&unifiedOverlayEnabled&&renderPhysicalOutput&&renderVulkanEnabled);
+ controls[9310]=0;handle(9310,BN_CLICKED<<16);save();renderVulkanEnabled=true;load();assert(!renderVulkanEnabled);
  profile[L"RenderPixelScale"]=99;profile[L"RenderSceneDetail"]=-1;load();assert(renderPixelScale==3&&renderSceneDetail==0);
 }
 '''

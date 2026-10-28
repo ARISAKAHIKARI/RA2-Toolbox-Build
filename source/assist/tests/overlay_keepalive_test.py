@@ -121,28 +121,28 @@ static void cancelDrag(){dragging=false;dragMatch=0;}static LRESULT proc(HWND,UI
 scenario = r'''
 static void stackCase(DWORD statsThread){
  using namespace overlaystack;game=makeWindow(2);windows[game]={true,2,{0,0,800,600}};foreground=game;
- HWND world=makeWindow(),stats=makeWindow(1,statsThread),map=makeWindow(),watch=makeWindow(),cursor=makeWindow();
+ HWND scene=makeWindow(),world=makeWindow(),stats=makeWindow(1,statsThread),map=makeWindow(),watch=makeWindow(),cursor=makeWindow();
  int initialBatches=batches,initialRejected=rejectedBatches;
  auto placeOne=[&](HWND w,Layer l){assert(place(w,l,10,20,200,100,SWP_SHOWWINDOW));};
- placeOne(world,Layer::World);placeOne(map,Layer::Minimap);placeOne(cursor,Layer::Cursor);placeOne(stats,Layer::Statistics);placeOne(watch,Layer::Watch);
- auto ordered=[&]{return higher(cursor,watch)&&higher(watch,map)&&higher(map,stats)&&higher(stats,world);};assert(ordered());
+ placeOne(world,Layer::World);placeOne(map,Layer::Minimap);placeOne(cursor,Layer::Cursor);placeOne(stats,Layer::Statistics);placeOne(watch,Layer::Watch);placeOne(scene,Layer::RenderUpgrade);
+ auto ordered=[&]{return higher(cursor,watch)&&higher(watch,map)&&higher(map,stats)&&higher(stats,world)&&higher(world,scene);};assert(ordered());
  // Fullscreen focus return may raise the game without clearing WS_VISIBLE.
  clockValue+=500;SetWindowPos(game,HWND_TOPMOST,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE);assert(higher(game,cursor));
  placeOne(stats,Layer::Statistics);
- for(auto w:{world,stats,map,watch,cursor})assert(IsWindowVisible(w)&&higher(w,game)&&"repair must lift the whole visible overlay group above the promoted game");
+ for(auto w:{scene,world,stats,map,watch,cursor})assert(IsWindowVisible(w)&&higher(w,game)&&"repair must lift the whole visible overlay group above the promoted game");
  assert(ordered());int before=batches,statsPlaces=windows[stats].places;std::vector<int> otherPlaces;
- for(auto w:{world,map,watch,cursor})otherPlaces.push_back(windows[w].places);
+ for(auto w:{scene,world,map,watch,cursor})otherPlaces.push_back(windows[w].places);
  for(int i=0;i<100;++i)placeOne(stats,Layer::Statistics);assert(batches==before&&windows[stats].places==statsPlaces+100);
- size_t other=0;for(auto w:{world,map,watch,cursor})assert(windows[w].places==otherPlaces[other++]);
+ size_t other=0;for(auto w:{scene,world,map,watch,cursor})assert(windows[w].places==otherPlaces[other++]);
  // Repeated game promotions recover without moving the pointer or pressing Tab.
  for(int n=0;n<5;++n){clockValue+=1000;SetWindowPos(game,HWND_TOPMOST,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE);placeOne(watch,Layer::Watch);assert(ordered()&&higher(world,game));}
  ShowWindow(map,SW_HIDE);clockValue+=1000;SetWindowPos(game,HWND_TOPMOST,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE);placeOne(stats,Layer::Statistics);
- assert(!IsWindowVisible(map)&&higher(world,game)&&higher(cursor,watch)&&higher(watch,stats)&&higher(stats,world));
+ assert(!IsWindowVisible(map)&&higher(world,scene)&&higher(scene,game)&&higher(cursor,watch)&&higher(watch,stats)&&higher(stats,world));
  // No caller requests a hidden panel; a group repair must never show it.
  auto hiddenPlaces=windows[map].places;placeOne(world,Layer::World);assert(!IsWindowVisible(map)&&windows[map].places==hiddenPlaces);
  assert(rejectedBatches==initialRejected&&batches==initialBatches&&"all owner groups must avoid the rejected deferred API path");
  std::cout<<"PASS group keepalive ("<<(statsThread==1?"single-owner ordered chain":"mixed-owner ordered chain")<<"): promoted game, stable layer order, repeated focus returns, throttled per-window calls, hidden panels stay hidden"<<std::endl;
- for(auto w:{world,stats,map,watch,cursor}){forget(w);windows.erase(w);order.erase(std::remove(order.begin(),order.end(),w),order.end());}
+ for(auto w:{scene,world,stats,map,watch,cursor}){forget(w);windows.erase(w);order.erase(std::remove(order.begin(),order.end(),w),order.end());}
 }
 static void minimapCase(){
  game=makeWindow(2);windows[game]={true,2,{0,0,800,600}};foreground=game;clockValue+=2000;

@@ -75,8 +75,12 @@ int main(int argc,char**argv){
  for(int i=1;i<256;++i){pal[i*3]=i%64;pal[i*3+1]=(i*2)%64;pal[i*3+2]=(i*3)%64;}
  std::vector<uint8_t> customPal(768,12),theaterPal(768,22);for(int i=1;i<256;++i){customPal[i*3]=i%64;customPal[i*3+1]=(i*2)%64;customPal[i*3+2]=(i*3)%64;}
  std::string artText="[LONGINFANTRY]\nPalette=custom\n[NAWALL]\nNewTheater=yes\n";
- std::string rulesText="[ORE]\nTiberium=yes\n[NAWEAP]\nNoShadow=yes\n";
- disk["ECACHEMD98.MIX"]=mix({{"ARTMD.INI",{artText.begin(),artText.end()}},{"RULESMD.INI",{rulesText.begin(),rulesText.end()}},{"CUSTOMTEM.PAL",customPal},{"TEMPERAT.PAL",theaterPal},{"NTWALL.SHP",shp},{"ORE.SHP",shp}});
+ std::string rulesText="[ORE]\nTiberium=yes\n[CUTORE]\nTiberium=yes\n[LIVEORE]\nTiberium=yes\n[NAWEAP]\nNoShadow=yes\n";
+ // A shared indexed cutout travels through both archived and loaded SHP paths.
+ std::vector<uint8_t> oreCutout(8+24+12);half(oreCutout,2,4);half(oreCutout,4,3);half(oreCutout,6,1);
+ half(oreCutout,8+4,4);half(oreCutout,8+6,3);word(oreCutout,8+20,32);
+ const uint8_t orePixels[12]={0,3,3,0,3,3,0,3,0,3,3,0};memcpy(oreCutout.data()+32,orePixels,12);
+ disk["ECACHEMD98.MIX"]=mix({{"CUTORE.SHP",oreCutout},{"CUTDECOR.SHP",oreCutout},{"ARTMD.INI",{artText.begin(),artText.end()}},{"RULESMD.INI",{rulesText.begin(),rulesText.end()}},{"CUSTOMTEM.PAL",customPal},{"TEMPERAT.PAL",theaterPal},{"NTWALL.SHP",shp},{"ORE.SHP",shp}});
  constexpr uint32_t p=0x10000,t=0x20000,house=0x30000,tileType=0x40000,sequence=0x50000;
  word(memory,p,0x7EB058);word(memory,p+0x10,42);word(memory,p+0x6C0,t);word(memory,p+0x21C,house);memcpy(memory.data()+t+0x24,"E1",3);memcpy(memory.data()+t+0x1F8,"LONGINFANTRY",13);
  memcpy(memory.data()+tileType+0x2F5,"CLEAR01.TEM",12);memcpy(memory.data()+0x7E1B78+68,"ISOTEM",7);memcpy(memory.data()+0x7E1B78+78,"TEM",4);memcpy(memory.data()+0x7E1B78+48,"TEMPERAT",9);memory[0x7E1B78+86]='T';
@@ -106,7 +110,27 @@ int main(int argc,char**argv){
  // NewTheater overlay names and resource-specific palettes follow FA2 loading.
  constexpr uint32_t wall=0x60000,ore=0x70000;memcpy(memory.data()+wall+0x24,"NAWALL",7);memcpy(memory.data()+ore+0x24,"ORE",4);
  assert(gameassets::overlay(wall,0,0,image));assert(image.pixels[0]!=0);
- assert(gameassets::overlay(ore,0,0,image));assert(image.pixels[0]==external::voxel::premultiply(0xff585858u,1));
+ assert(gameassets::overlay(ore,0,0,image));assert(image.pixels[0]==external::voxel::premultiply(0xff585858u,1,255));
+ // Resource and ordinary overlay colors are solid over either terrain color, with index zero
+ // still transparent. Use production Context -> decoder -> Surface composition.
+ constexpr uint32_t cutOre=0x72000,liveOre=0x74000,loadedOre=0x76000,cutDecor=0x78000,liveDecor=0x7A000;
+ memcpy(memory.data()+cutOre+0x24,"CUTORE",7);memcpy(memory.data()+liveOre+0x24,"LIVEORE",8);
+ memcpy(memory.data()+cutDecor+0x24,"CUTDECOR",9);memcpy(memory.data()+liveDecor+0x24,"LIVEDECOR",10);
+ memcpy(memory.data()+loadedOre,oreCutout.data(),oreCutout.size());word(memory,liveOre+0xA4,loadedOre);
+ for(auto entry:std::vector<std::array<uint32_t,3>>{{cutOre,0,0xff585858},{liveOre,loadedOre,0xff585858},{cutDecor,0,0xff808080},{liveDecor,loadedOre,0xff808080}}){
+  assert(gameassets::overlay(entry[0],entry[1],0,image));
+  assert(image.width==4&&image.height==3&&image.pixels.size()==12);
+  external::camera::Surface dark,bright;assert(dark.reset(4,3,0xff000000)&&bright.reset(4,3,0xffffffff));
+  dark.blit(image,2,1,1,1,0,{});bright.blit(image,2,1,1,1,0,{});
+  for(size_t n=0;n<image.pixels.size();++n){
+   if(orePixels[n]){assert(image.pixels[n]==entry[2]&&image.indices[n]==3);assert(dark.color[n]==entry[2]&&bright.color[n]==entry[2]);}
+   else{assert(image.pixels[n]==0&&image.indices[n]==0);assert(dark.color[n]==0xff000000&&bright.color[n]==0xffffffff);}
+  }
+ }
+ // Deliberately translucent formation previews still use the decoder default.
+ external::assets::Memory preview{oreCutout};std::array<uint32_t,256> previewPal{};previewPal.fill(0xff585858);
+ assert(external::voxel::sprite(preview,external::assets::Memory::Base,previewPal,image)&&image.pixels[1]>>24==124);
+ std::cout<<"PASS opaque archived/live resource and ordinary overlays, exact palette colors over black/white ground, transparent index-zero cutouts and isolated translucent previews\n";
  // An all-black uninitialized live scheme must not suppress disk palette fallback.
  word(memory,house+0x16054,0);word(memory,0xB054D0+4,0x80000);word(memory,0xB054D0+16,1);word(memory,0x80000,0x90000);
  assert(!external::voxel::palette(gameassets::context.read,t,house,colors));
@@ -115,8 +139,8 @@ int main(int argc,char**argv){
  constexpr uint32_t tree=0xa0000;memcpy(memory.data()+tree+0x24,"TREE",5);memory[tree+0x22c]=1;
  disk["TREE.TEM"]=shp;disk["ISOTEM.PAL"]=pal;
  memcpy(memory.data()+0x7E1B78+78,"SNO",4);memcpy(memory.data()+0x7E1B78+68,"ISOSNO",7);memory[0x7E1B78+86]='A';
- clockValue+=6000;gameassets::update();assert(gameassets::overlay(tree,0,0,image,true));assert(image.pixels[0]==external::voxel::premultiply(0xff0c1824u,1));
- assert(gameassets::overlay(ore,0,0,image));assert(image.pixels[0]==external::voxel::premultiply(0xff585858u,1));
+ clockValue+=6000;gameassets::update();assert(gameassets::overlay(tree,0,0,image,true));assert(image.pixels[0]==external::voxel::premultiply(0xff0c1824u,1,255));
+ assert(gameassets::overlay(ore,0,0,image));assert(image.pixels[0]==external::voxel::premultiply(0xff585858u,1,255));
  memcpy(memory.data()+0x7E1B78+78,"TEM",4);memcpy(memory.data()+0x7E1B78+68,"ISOTEM",7);memory[0x7E1B78+86]='T';
  // Native Terrain.Draw selects the resource converter for SpawnsTiberium,
  // not an ISO palette inferred from the current theater or SHP extension.
@@ -127,22 +151,22 @@ int main(int argc,char**argv){
  word(memory,0x87F6BC,mineConvert);word(memory,mineConvert,0x7E5358);word(memory,mineConvert+4,2);word(memory,mineConvert+0x16C,53);word(memory,mineConvert+0x174,minePalette);
  for(int i=0;i<256;++i)half(memory,minePalette+i*2,0xBDF7);half(memory,minePalette+3*2,0xF800);
  memcpy(memory.data()+0x7E1B78+78,"SNO",4);memcpy(memory.data()+0x7E1B78+68,"ISOSNO",7);clockValue+=6000;gameassets::update();
- assert(gameassets::overlay(mine,0,0,image,true)&&image.pixels[0]==external::voxel::premultiply(0xFFFF0000u,1)&&"ore mine must use the native resource converter, not ISO colors");int mineY=image.y;
+ assert(gameassets::overlay(mine,0,0,image,true)&&image.pixels[0]==external::voxel::premultiply(0xFFFF0000u,1,255)&&"ore mine must use the native resource converter, not ISO colors");int mineY=image.y;
  bool overlayChanged=false;half(memory,minePalette+3*2,0x001f);
  assert(gameassets::context.refreshOverlayPalette(mine,0,0,true,overlayChanged)&&overlayChanged);
  assert(gameassets::context.refreshOverlayPalette(mine,0,0,true,overlayChanged)&&!overlayChanged);
- assert(gameassets::overlay(mine,0,0,image,true)&&image.pixels[0]==external::voxel::premultiply(0xff0000ffu,1));
+ assert(gameassets::overlay(mine,0,0,image,true)&&image.pixels[0]==external::voxel::premultiply(0xff0000ffu,1,255));
  word(memory,mineConvert+0x174,0);assert(!gameassets::context.refreshOverlayPalette(mine,0,0,true,overlayChanged));
  word(memory,mineConvert+0x174,minePalette);assert(gameassets::context.refreshOverlayPalette(mine,0,0,true,overlayChanged)&&!overlayChanged);
  half(memory,minePalette+3*2,0xF800);assert(gameassets::overlay(mine,0,0,image,true));
- memory[mine+0x2B1]=0;assert(gameassets::overlay(mine,0,0,image,true)&&image.pixels[0]==external::voxel::premultiply(0xFF444444u,1)&&image.y==mineY+16);
+ memory[mine+0x2B1]=0;assert(gameassets::overlay(mine,0,0,image,true)&&image.pixels[0]==external::voxel::premultiply(0xFF444444u,1,255)&&image.y==mineY+16);
  memory[mine+0x2B1]=1;memcpy(memory.data()+0x7E1B78+78,"TEM",4);memcpy(memory.data()+0x7E1B78+68,"ISOTEM",7);
- assert(gameassets::overlay(mine,0,0,image,true)&&image.pixels[0]==external::voxel::premultiply(0xFFFF0000u,1)&&image.y==mineY);
+ assert(gameassets::overlay(mine,0,0,image,true)&&image.pixels[0]==external::voxel::premultiply(0xFFFF0000u,1,255)&&image.y==mineY);
  // Plain ConvertClass has no +188 raw-palette field. If its live table is
  // unavailable, use the original initialization's UNITSNO file as fallback.
- word(memory,mineConvert+0x174,0);assert(gameassets::overlay(mine,0,0,image,true)&&image.pixels[0]==external::voxel::premultiply(0xFF747474u,1)&&image.y==mineY);
- word(memory,mineConvert+0x174,minePalette);word(memory,mineConvert+4,1);assert(gameassets::overlay(mine,0,0,image,true)&&image.pixels[0]==external::voxel::premultiply(0xFF747474u,1));
- word(memory,mineConvert+4,2);word(memory,0x87F6BC,0);assert(gameassets::overlay(mine,0,0,image,true)&&image.pixels[0]==external::voxel::premultiply(0xFF747474u,1));
+ word(memory,mineConvert+0x174,0);assert(gameassets::overlay(mine,0,0,image,true)&&image.pixels[0]==external::voxel::premultiply(0xFF747474u,1,255)&&image.y==mineY);
+ word(memory,mineConvert+0x174,minePalette);word(memory,mineConvert+4,1);assert(gameassets::overlay(mine,0,0,image,true)&&image.pixels[0]==external::voxel::premultiply(0xFF747474u,1,255));
+ word(memory,mineConvert+4,2);word(memory,0x87F6BC,0);assert(gameassets::overlay(mine,0,0,image,true)&&image.pixels[0]==external::voxel::premultiply(0xFF747474u,1,255));
  std::cout<<"PASS runtime SpawnsTiberium resource palette, ISO tree separation, native -16 offset, theater independence and safe palette fallback\n";
  // Real art through an unloaded GENERICMD archive and RULES -> ART Image aliases.
  if(argc>1){std::ifstream f(argv[1],std::ios::binary);std::vector<uint8_t> real((std::istreambuf_iterator<char>(f)),{});assert(real.size()>32);
@@ -199,6 +223,18 @@ int main(int argc,char**argv){
  // A voxel still uses 3D depth internally, but not as a terrain depth plane.
  gameassets::ActorArt v;v.voxel=true;v.shadow=false;v.colors.fill(0xff808080);external::voxel::Face face;face.color=1;face.p[0]={0,0,0};face.p[1]={8,0,0};face.p[2]={8,8,0};face.p[3]={0,8,0};v.model.faces.push_back(face);
  assert(gameassets::renderActor(v,{},image)&&image.depth.empty()&&!image.writeDepth&&image.depthBottom!=std::numeric_limits<int>::min());
+ // The full production asset renderer forwards observed native posture,
+ // retaining source geometry while it rerasterizes a changed slope.
+ constexpr uint32_t slopeActor=0x380000,slopeType=0x384000,slopeLoco=0x388000;
+ word(memory,slopeActor,0x7F5C70);word(memory,slopeActor+0x674,slopeLoco);word(memory,slopeType+0xB0,1);
+ word(memory,slopeLoco,0x7E7EB0);word(memory,slopeLoco+8,slopeActor);word(memory,slopeLoco+0x18,1);word(memory,slopeLoco+0x1C,1);
+ half(memory,slopeActor+0x388,8*2048);half(memory,slopeActor+0x38C,8*2048);word(memory,slopeActor+0x390,-1);
+ std::array<float,12> slopeMatrix{{.96f,0,.28f,0,0,1,0,0,-.28f,0,.96f,0}};memcpy(memory.data()+0xB45188+48,slopeMatrix.data(),48);
+ auto liveSlope=external::visual::pose(game,slopeActor,slopeType,2,10);assert(liveSlope.voxel&&liveSlope.posture.active&&liveSlope.posture.available);
+ auto geometryData=v.model.faces.data();auto geometrySize=v.model.faces.size();int slopeFileReads=fileReads;
+ external::voxel::Image flatVoxel,slopedVoxel;assert(gameassets::renderActor(v,{},flatVoxel)&&gameassets::renderActor(v,liveSlope,slopedVoxel));
+ assert(flatVoxel.pixels!=slopedVoxel.pixels&&v.model.faces.data()==geometryData&&v.model.faces.size()==geometrySize&&fileReads==slopeFileReads);
+ std::cout<<"PASS production native Drive posture -> retained VXL model -> changed slope pixels without geometry decode or disk IO\n";
  std::cout<<"PASS production absolute-slot animation -> theater SHP -> Value+Start pixels, power-off first frame, stale slot rejection and voxel scene-depth handoff\n";
  // Successful archived bytes remain resident; repeated frames do no file reads.
  std::vector<uint8_t> bytes;assert(gameassets::files.load("CUSTOMTEM.PAL",bytes));int reads=fileReads;

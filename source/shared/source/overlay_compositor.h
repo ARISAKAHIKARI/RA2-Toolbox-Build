@@ -11,6 +11,7 @@
 #include <cstring>
 #include "overlay_composition.h"
 #include "overlay_group.h"
+#include "overlay_present_monitor.h"
 #include <atomic>
 #include "overlay_stack.h"
 // One EXE-owned passive window for multiple logical layers. No game hooks,
@@ -52,9 +53,9 @@ class Host {
    wc.lpszClassName,L"统一覆盖层 · 渲染实验",WS_POPUP,0,0,1,1,nullptr,nullptr,wc.hInstance,nullptr);
   if(!window){std::lock_guard<std::mutex>lock(mutex);error=GetLastError();return;}
   ownedWindow=window;
-  DIB dib;std::vector<uint32_t> output;uint64_t presented=~uint64_t(0),token=0;bool visible=false;POINT lastOrigin{LONG_MIN,LONG_MIN};bool wasTop=false;
+  DIB dib;overlaycomposition::Incremental composition;overlaypresentrate::Monitor displayRate;uint64_t presented=~uint64_t(0),token=0;bool visible=false,dibNeedsFullCopy=true;POINT lastOrigin{LONG_MIN,LONG_MIN};bool wasTop=false;
   for(;;){
-   MSG message{};while(PeekMessageW(&message,nullptr,0,0,PM_REMOVE)){TranslateMessage(&message);DispatchMessageW(&message);}
+   MSG message{};while(PeekMessageW(&message,nullptr,0,0,PM_REMOVE)){if(message.message==WM_DISPLAYCHANGE)displayRate.invalidate();TranslateMessage(&message);DispatchMessageW(&message);}
    Context current;std::vector<Surface> layers;uint64_t version;bool active,highest;int hz;
    {
     std::unique_lock<std::mutex>lock(mutex);if(stop)break;
@@ -69,42 +70,50 @@ class Host {
    active=active&&fg==current.pid&&target&&IsWindow(target)&&!IsIconic(target)&&GetClientRect(target,&client)&&
     client.right==current.width&&client.bottom==current.height&&ClientToScreen(target,&origin)&&!layers.empty();
    if(!active){if(visible)ShowWindow(window,SW_HIDE);visible=false;presented=version;std::this_thread::sleep_for(std::chrono::milliseconds(8));continue;}
+   // Uploading a full layered HWND faster than its confirmed display mode
+   // cannot reveal more frames. Sampling/command clocks keep their own rate.
+   hz=overlaypresentrate::limit(hz,displayRate.update(target,GetTickCount()));
    bool updated=true;
    if(!visible||version!=presented||token!=current.token){
-    if(!overlaycomposition::compose(current,std::move(layers),output)||!dib.resize(current.width,current.height)){updated=false;}
+    const bool resize=dib.w!=current.width||dib.h!=current.height||!dib.dc;
+    if(!composition.update(current,std::move(layers))||!dib.resize(current.width,current.height)){updated=false;}
     else{
-     {std::lock_guard<std::mutex>lock(mutex);if(!enabled||context.token!=current.token||context.cameraX!=current.cameraX||context.cameraY!=current.cameraY)continue;}
-     memcpy(dib.bits,output.data(),output.size()*4);SIZE size{current.width,current.height};POINT zero{};BLENDFUNCTION blend{AC_SRC_OVER,0,255,AC_SRC_ALPHA};
+     {std::lock_guard<std::mutex>lock(mutex);if(!enabled||context.token!=current.token||context.cameraX!=current.cameraX||context.cameraY!=current.cameraY){dibNeedsFullCopy=true;continue;}}
+     const auto&output=composition.pixels();const auto dirty=resize||dibNeedsFullCopy?overlaycomposition::Rect{0,0,current.width,current.height}:composition.dirty();
+     for(int y=dirty.y;y<dirty.y+dirty.h;++y)memcpy(static_cast<uint32_t*>(dib.bits)+size_t(y)*current.width+dirty.x,output.data()+size_t(y)*current.width+dirty.x,size_t(dirty.w)*4);
+     dibNeedsFullCopy=false;
+     SIZE size{current.width,current.height};POINT zero{};BLENDFUNCTION blend{AC_SRC_OVER,0,255,AC_SRC_ALPHA};
      updated=UpdateLayeredWindow(window,nullptr,&origin,&size,dib.dc,&zero,0,&blend,ULW_ALPHA)!=FALSE;
      if(updated){presented=version;token=current.token;}
     }
    }
    if(updated){
     if(!visible||wasTop!=highest||origin.x!=lastOrigin.x||origin.y!=lastOrigin.y)
-     updated=overlaystack::place(window,highest?overlaystack::Layer::RenderUpgrade:overlaystack::Layer::Statistics,origin.x,origin.y,0,0,SWP_NOSIZE|SWP_SHOWWINDOW)!=FALSE;
+     updated=overlaystack::place(window,overlaystack::Layer::RenderUpgrade,origin.x,origin.y,0,0,SWP_NOSIZE|SWP_SHOWWINDOW)!=FALSE;
     else overlaystack::keepAbove(GetForegroundWindow());
     if(updated){visible=true;lastOrigin=origin;wasTop=highest;}
    }
    {std::lock_guard<std::mutex>lock(mutex);error=updated?0:GetLastError();}
-   std::this_thread::sleep_for(std::chrono::microseconds(1000000/std::clamp(hz,5,500)));
+   std::this_thread::sleep_for(std::chrono::microseconds(overlaypresentrate::periodMicros(hz)));
   }
   overlaystack::forget(window);DestroyWindow(window);ownedWindow=nullptr;
  }
 public:
  ~Host(){shutdown();}
- Context configure(uintptr_t window,uint32_t pid,uint32_t match,int width,int height,int cameraX,int cameraY,bool active,bool highest,int hz){
+ Context configure(uintptr_t window,uint32_t pid,uint32_t match,int width,int height,int cameraX,int cameraY,bool active,bool highest,int hz,bool deferCamera=false){
   std::lock_guard<std::mutex>lock(mutex);if(stop)return {};
   active=active&&window&&pid&&match&&width>0&&height>0&&width<=8192&&height<=8192&&uint64_t(width)*height<=16*1024*1024;
   bool changed=enabled!=active||context.window!=window||context.pid!=pid||context.match!=match||context.width!=width||context.height!=height;
   if(changed){nodes.clear();++generation;++revision;}
   if(top!=highest){top=highest;++revision;}
-  if(context.cameraX!=cameraX||context.cameraY!=cameraY)++revision;
-  context={generation,window,pid,match,width,height,cameraX,cameraY};enabled=active;heartbeat=GetTickCount64();rate=hz;
-  if(active&&!thread.joinable())thread=std::thread([this]{run();});cv.notify_one();return active?context:Context{};
+  const int committedX=deferCamera&&!changed?context.cameraX:cameraX,committedY=deferCamera&&!changed?context.cameraY:cameraY;
+  if(context.cameraX!=committedX||context.cameraY!=committedY)++revision;
+  context={generation,window,pid,match,width,height,committedX,committedY};enabled=active;heartbeat=GetTickCount64();rate=hz;
+  if(active&&!thread.joinable())thread=std::thread([this]{run();});cv.notify_one();
+  auto desired=context;desired.cameraX=cameraX;desired.cameraY=cameraY;return active?desired:Context{};
  }
- // A single lock publishes/removes a complete scene/input group.
- bool replaceGroup(const std::vector<uint64_t>&ids,std::vector<Surface>layers){
-  std::lock_guard<std::mutex>lock(mutex);
+private:
+ bool replaceGroupLocked(const std::vector<uint64_t>&ids,std::vector<Surface>layers){
   if(!overlaycomposition::groupIds(ids)||!enabled||error)return false;
   if(!overlaycomposition::groupValid(ids,layers,context)){
    bool changed=false;for(auto id:ids)changed|=nodes.erase(id)!=0;
@@ -115,11 +124,28 @@ public:
    auto next=std::find_if(layers.begin(),layers.end(),[&](const Surface&s){return s.id==id;});
    if(next==layers.end()){changed|=nodes.erase(id)!=0;continue;}
    auto&node=nodes[id];const auto&old=node.surface;
-   changed|=old.pixels!=next->pixels||old.rect!=next->rect||old.order!=next->order||old.opacity!=next->opacity||old.cameraBound!=next->cameraBound||
+   changed|=old.pixels!=next->pixels||old.rect!=next->rect||old.clip!=next->clip||old.cutouts!=next->cutouts||old.order!=next->order||old.opacity!=next->opacity||old.cameraBound!=next->cameraBound||
     old.context.token!=next->context.token||old.context.cameraX!=next->context.cameraX||old.context.cameraY!=next->context.cameraY;
    node={std::move(*next),now};
   }
   if(changed){++revision;cv.notify_one();}return true;
+ }
+public:
+ // A single lock publishes/removes a complete scene/input group.
+ bool replaceGroup(const std::vector<uint64_t>&ids,std::vector<Surface>layers){
+  std::lock_guard<std::mutex>lock(mutex);return replaceGroupLocked(ids,std::move(layers));
+ }
+ // A scrolling producer prepares pixels and feedback for the desired camera
+ // first. Commit camera and layers together, so the compositor cannot observe
+ // a new camera with only the old camera-bound scene and hide between them.
+ bool replaceGroupAt(const Context&desired,const std::vector<uint64_t>&ids,std::vector<Surface>layers){
+  std::lock_guard<std::mutex>lock(mutex);
+  if(!enabled||error||!overlaycomposition::groupIds(ids)||desired.token!=context.token||desired.window!=context.window||
+    desired.pid!=context.pid||desired.match!=context.match||desired.width!=context.width||desired.height!=context.height||
+    !overlaycomposition::groupValid(ids,layers,desired))return false;
+  const bool cameraChanged=desired.cameraX!=context.cameraX||desired.cameraY!=context.cameraY;
+  context=desired;const bool ok=replaceGroupLocked(ids,std::move(layers));
+  if(cameraChanged){++revision;cv.notify_one();}return ok;
  }
  Context capture(uintptr_t window,uint32_t pid){std::lock_guard<std::mutex>lock(mutex);return enabled&&!error&&context.window==window&&context.pid==pid?context:Context{};}
  // true = compositor owns presentation, including deliberately rejected stale
@@ -128,7 +154,7 @@ public:
   std::lock_guard<std::mutex>lock(mutex);if(!enabled||error)return false;
   if(!overlaycomposition::valid(surface,context))return true;
   auto&i=nodes[surface.id];auto&old=i.surface;
-  bool changed=old.pixels!=surface.pixels||old.rect!=surface.rect||old.order!=surface.order||old.opacity!=surface.opacity||old.context.token!=surface.context.token||old.context.cameraX!=surface.context.cameraX||old.context.cameraY!=surface.context.cameraY;
+  bool changed=old.pixels!=surface.pixels||old.rect!=surface.rect||old.clip!=surface.clip||old.cutouts!=surface.cutouts||old.order!=surface.order||old.opacity!=surface.opacity||old.context.token!=surface.context.token||old.context.cameraX!=surface.context.cameraX||old.context.cameraY!=surface.context.cameraY;
   i={std::move(surface),GetTickCount64()};if(changed){++revision;cv.notify_one();}return true;
  }
  bool touch(uint64_t id,uintptr_t window,uint32_t pid){std::lock_guard<std::mutex>lock(mutex);if(!enabled||context.window!=window||context.pid!=pid)return false;auto i=nodes.find(id);if(i!=nodes.end()&&overlaycomposition::valid(i->second.surface,context)){i->second.lastSeen=GetTickCount64();return true;}return false;}

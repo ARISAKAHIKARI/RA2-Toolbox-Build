@@ -12,7 +12,9 @@ for path in ('external_reader/source/material_motion.h','external_reader/source/
 host=(root/'assist/source/render_upgrade_host.h').read_text(encoding='utf-8')
 assert 'return unavailable();' in host
 assert 'auto unavailable=[]()->std::shared_ptr<const Frame>{return {};};' in host
-assert 'renderpresentation::usable(*result,request,GetTickCount())' in host
+assert 'renderpresentation::scrollUsable(*result,request,GetTickCount(),shift)' in host
+presentation=host.split('auto result=worker.get();',1)[1]
+assert presentation.index('host().replaceGroupAt(')<presentation.index('worker.submit(')<presentation.index('statusCadence.due(')
 assert 'heldFrame' not in host, 'Whole-frame reuse can bypass dynamic lighting and palette updates'
 assert 'reader.begin(); // Explicit fresh page epoch' in host
 assert 'timeline.observe(raw,' in host and 'timeline.sample(' in host
