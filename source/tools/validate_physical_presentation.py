@@ -37,7 +37,14 @@ assert "sampleAdaptive(" in samples and "adaptivePixel(" in samples
 assert "pixelScaleMode==3" in canvas and "pixelupgrade::sampleAdaptive(" in canvas
 assert "renderPhysicalOutput" in host
 assert "physical.status==physicalpresentation::Status::Ready" in host
-assert "if(physicalBlocked)visible=false" in host
+assert "if(physicalBlocked)visible=false" not in host
+assert "physicalpresentation::renderPath(physical,renderPhysicalOutput)" in host
+assert "renderPath==physicalpresentation::RenderPath::EnhancedPhysicalPixels" in host
+assert "疑似独占/显示模式切换：覆盖层保持" in host
+assert "仅停用 4K 增强" in host
+assert "const bool physicalBlocked" not in host
+assert "LegacyClientPixels" in geometry and "EnhancedPhysicalPixels" in geometry
+assert "keepExistingOverlay(" in geometry
 assert "physicalpresentation::inspect(game" in host
 assert "renderPixelScale==0?3:renderPixelScale" in host
 assert "4K 物理重绘已停用" in host and "疑似独占全屏" in host
@@ -48,4 +55,4 @@ assert "9306" in ui and "自适应 1.25–2×" in ui
 assert "不使用 NTSC/Bloom" in ui
 assert "physical_presentation_windows" in ci
 assert "physical_presentation;" in ci
-print("PASS: physical 1.5x output only on matched monitor client; fullscreen/DPI safe fallback; no monitor/game-code mutation; CI wired")
+print("PASS: physical 1.5x output requires matched monitor; exclusive/DPI switch retains client-sized overlays; no monitor/game-code mutation; CI wired")
