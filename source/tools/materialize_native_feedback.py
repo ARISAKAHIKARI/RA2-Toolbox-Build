@@ -55,7 +55,9 @@ p=root/'assist/source/tactical_controls.h'
 text=p.read_text(encoding='utf-8')
 old='交互小地图、副相机、光标和副屏尚未合并；原生选择框、特效还原及实机联机验证未完成。'
 new='框选读取原生矩形；选中框按已绘素材边界，血条和原帧软件光标进入统一层；电弧近似重绘。激光/波纹/粒子及完整附加标记待补。原高刷光标、交互窗口与副屏尚未合并；实机联机验证未完成。'
-if new not in text:
+if '框选读取原生矩形' in text and '电弧近似重绘' in text and '激光/波纹/粒子及完整附加标记待补' in text:
+    pass  # Additional palette/scale help may extend the already-integrated text.
+elif new not in text:
     if text.count(old)!=1:raise SystemExit('Render feedback help marker changed')
     p.write_text(text.replace(old,new),encoding='utf-8')
 print('PASS: materialized scene metadata, atomic layer groups and honest feature help')
