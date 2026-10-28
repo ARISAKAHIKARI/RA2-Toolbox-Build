@@ -1,0 +1,2 @@
+# Preserve the official xBRZ archive byte for byte on every checkout platform.
+source/third_party/xbrz/* -text
