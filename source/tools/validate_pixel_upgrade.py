@@ -34,6 +34,6 @@ for key in ('RenderPaletteRange','RenderPixelScale'):
 for key in ('9304','9305','renderPaletteRange','renderPixelScale'):
     assert key in ui or key in main,key
 assert '24-bit RGB' in ui and '2× 轮廓插值' in ui
-assert 'xBRZ 尚未集成' in ui
+assert 'xBRZ/hq4x 尚未集成' in ui
 assert 'pixel_upgrade.cpp' in (root.parent/'.github/workflows/validate-render-upgrade.yml').read_text(encoding='utf-8') or 'pixel_upgrade' in (root.parent/'.github/workflows/validate-render-upgrade.yml').read_text(encoding='utf-8')
 print('PASS: indexed color 6-to-8bit, optional native 2x scaler, worker and settings wiring; no game patch APIs in new code')
