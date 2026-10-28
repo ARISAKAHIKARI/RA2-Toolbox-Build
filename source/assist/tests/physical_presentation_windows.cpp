@@ -14,8 +14,10 @@ int main(){
  bool ok=GetClientRect(w,&rect)!=FALSE&&ClientToScreen(w,&origin)!=FALSE;
  if(!ok){DestroyWindow(w);return 3;}
  auto result=physicalpresentation::inspect(w,2560,1440,origin,rect);
- if(result.permitted()){
-  DestroyWindow(w);std::puts("FAIL: 420x280 fake window classified as full physical monitor");return 4;
+ if(result.permitted()||
+    physicalpresentation::renderPath(result,true)!=physicalpresentation::RenderPath::LegacyClientPixels||
+    !physicalpresentation::keepExistingOverlay(true,true)){
+  DestroyWindow(w);std::puts("FAIL: non-4K window unexpectedly lost native overlay fallback");return 4;
  }
  DestroyWindow(w);
  std::printf("PASS: monitor/DPI-safe Win32 read-only probe, no 4K claim for small window (status=%d)\n",
