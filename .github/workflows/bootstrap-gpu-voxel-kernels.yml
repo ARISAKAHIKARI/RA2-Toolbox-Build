@@ -20,3 +20,22 @@ jobs:
           path: |
             generated/gpu_voxel_spirv.h
             gpu-voxel-shaders.json
+  raster:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install software Vulkan and official shader tools
+        run: sudo apt-get update && sudo apt-get install -y mesa-vulkan-drivers vulkan-validationlayers glslang-tools spirv-tools
+      - name: Regenerate current kernel and execute real GPU raster
+        run: |
+          set -euo pipefail
+          python3 source/tools/build_gpu_voxel_kernels.py --output source/external_reader/source/gpu_voxel_spirv.h
+          g++ -std=c++17 -O1 -g -UNDEBUG -DRA2_VULKAN_TEST_SOFTWARE -fsanitize=address,undefined -fno-omit-frame-pointer source/assist/tests/gpu_voxel_vulkan.cpp -ldl -o /tmp/gpu-voxel-vulkan
+          ASAN_OPTIONS=detect_leaks=0 VK_INSTANCE_LAYERS=VK_LAYER_KHRONOS_validation /tmp/gpu-voxel-vulkan --require 2>&1 | tee gpu-voxel-raster.log
+          python3 -c 'from pathlib import Path; import re; assert not re.search("Validation Error|VUID-",Path("gpu-voxel-raster.log").read_text()), "Vulkan validation errors"'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: gpu-voxel-raster-validation
+          if-no-files-found: warn
+          path: gpu-voxel-raster.log

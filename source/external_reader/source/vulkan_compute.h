@@ -25,25 +25,31 @@
 #else
 #include <dlfcn.h>
 #endif
-namespace external { namespace vulkancompute {
+namespace external { namespace gpuxbrz {class Stage;} namespace gpuvoxel {class Stage;} namespace gpushroud {class Stage;} namespace vulkancompute {
 struct TileJob {
  std::shared_ptr<const std::vector<uint32_t>> pixels;
  int sourceWidth=0,sourceHeight=0,left=0,top=0,width=0,height=0;
  double sourceX=0,sourceY=0,stepX=1,stepY=1;
+ int reconstructionFactor=0; // 0: prepared pixels;2..4: raw pixels handled by FrameResolve
 };
 struct Diagnostics {
- uint64_t frames=0,uploadedBytes=0,uploads=0,dispatches=0,readbacks=0;
+ uint64_t frames=0,uploadedBytes=0,uploads=0,dispatches=0,readbacks=0,xbrzBuilds=0;
+ bool xbrzAvailable=false;
  double milliseconds=0;
  bool available=false,softwareDevice=false;
  std::string device,reason;
 };
 class Resolve {
+ friend class external::gpuxbrz::Stage;
+ friend class external::gpuvoxel::Stage;
+ friend class external::gpushroud::Stage;
+protected:
 #ifdef RA2_VULKAN_TEST_SOFTWARE
  static constexpr bool AllowSoftware=true;
 #else
  static constexpr bool AllowSoftware=false;
 #endif
- static constexpr VkDeviceSize AtlasBytes=96ull*1024*1024;
+ static constexpr VkDeviceSize AtlasBytes=128ull*1024*1024;
  static constexpr uint64_t MaxPixels=16ull*1024*1024,MaxCoordinates=4ull*1024*1024;
  struct Buffer {VkBuffer buffer=VK_NULL_HANDLE;VkDeviceMemory memory=VK_NULL_HANDLE;VkDeviceSize size=0;void* mapped=nullptr;bool coherent=false;};
  struct Tile {std::weak_ptr<const std::vector<uint32_t>> owner;const void* address=nullptr;uint32_t offset=0,count=0;uint64_t used=0;};
@@ -57,7 +63,7 @@ class Resolve {
 #endif
  VkInstance instance_=VK_NULL_HANDLE;VkPhysicalDevice physical_=VK_NULL_HANDLE;VkDevice device_=VK_NULL_HANDLE;
  VkQueue queue_=VK_NULL_HANDLE;uint32_t queueFamily_=0;
- VkPhysicalDeviceMemoryProperties memory_{};VkPhysicalDeviceProperties properties_{};
+ VkPhysicalDeviceMemoryProperties memory_{};VkPhysicalDeviceProperties properties_{};VkPhysicalDeviceFeatures features_{};
  VkDescriptorSetLayout descriptorLayout_=VK_NULL_HANDLE;VkPipelineLayout pipelineLayout_=VK_NULL_HANDLE;
  VkPipeline pipeline_=VK_NULL_HANDLE;VkDescriptorPool descriptorPool_=VK_NULL_HANDLE;VkDescriptorSet descriptors_=VK_NULL_HANDLE;
  VkCommandPool commandPool_=VK_NULL_HANDLE;VkCommandBuffer command_=VK_NULL_HANDLE;VkFence fence_=VK_NULL_HANDLE;
@@ -69,7 +75,7 @@ class Resolve {
  RA2_VK_GLOBAL(vkGetInstanceProcAddr) RA2_VK_GLOBAL(vkCreateInstance)
 #define RA2_VK_INSTANCE_FUNCTIONS(X) \
  X(vkDestroyInstance) X(vkEnumeratePhysicalDevices) X(vkGetPhysicalDeviceProperties) \
- X(vkGetPhysicalDeviceQueueFamilyProperties) X(vkGetPhysicalDeviceMemoryProperties) X(vkCreateDevice) X(vkGetDeviceProcAddr)
+ X(vkGetPhysicalDeviceQueueFamilyProperties) X(vkGetPhysicalDeviceMemoryProperties) X(vkGetPhysicalDeviceFeatures) X(vkCreateDevice) X(vkGetDeviceProcAddr)
  RA2_VK_INSTANCE_FUNCTIONS(RA2_VK_GLOBAL)
 #define RA2_VK_DEVICE_FUNCTIONS(X) \
  X(vkDestroyDevice) X(vkGetDeviceQueue) X(vkCreateBuffer) X(vkDestroyBuffer) X(vkGetBufferMemoryRequirements) \
@@ -173,8 +179,9 @@ class Resolve {
   if(!physical_)return fatal("No compatible Vulkan compute device");
   diagnostics_.device=properties_.deviceName;diagnostics_.softwareDevice=properties_.deviceType==VK_PHYSICAL_DEVICE_TYPE_CPU;
   vkGetPhysicalDeviceMemoryProperties_(physical_,&memory_);
+  VkPhysicalDeviceFeatures supported{};vkGetPhysicalDeviceFeatures_(physical_,&supported);features_.shaderFloat64=supported.shaderFloat64;
   float priority=1;VkDeviceQueueCreateInfo q{VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO};q.queueFamilyIndex=queueFamily_;q.queueCount=1;q.pQueuePriorities=&priority;
-  VkDeviceCreateInfo d{VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO};d.queueCreateInfoCount=1;d.pQueueCreateInfos=&q;
+  VkDeviceCreateInfo d{VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO};d.queueCreateInfoCount=1;d.pQueueCreateInfos=&q;d.pEnabledFeatures=&features_;
   if(vkCreateDevice_(physical_,&d,nullptr,&device_)!=VK_SUCCESS)return fatal("Vulkan logical device creation failed");
 #define RA2_VK_LOAD_DEVICE(F) F##_=reinterpret_cast<PFN_##F>(vkGetDeviceProcAddr_(device_,#F));if(!F##_)return fatal("Missing Vulkan device function " #F);
   RA2_VK_DEVICE_FUNCTIONS(RA2_VK_LOAD_DEVICE)
@@ -200,7 +207,7 @@ class Resolve {
   VkCommandBufferAllocateInfo ca{VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO};ca.commandPool=commandPool_;ca.level=VK_COMMAND_BUFFER_LEVEL_PRIMARY;ca.commandBufferCount=1;
   if(vkAllocateCommandBuffers_(device_,&ca,&command_)!=VK_SUCCESS)return fatal("Vulkan command allocation failed");
   VkFenceCreateInfo fi{VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};if(vkCreateFence_(device_,&fi,nullptr,&fence_)!=VK_SUCCESS)return fatal("Vulkan fence failed");
-  if(!buffer(atlas_,AtlasBytes,VK_BUFFER_USAGE_STORAGE_BUFFER_BIT|VK_BUFFER_USAGE_TRANSFER_DST_BIT,false,true))return fatal("Vulkan atlas allocation failed");
+  if(!buffer(atlas_,AtlasBytes,VK_BUFFER_USAGE_STORAGE_BUFFER_BIT|VK_BUFFER_USAGE_TRANSFER_DST_BIT|VK_BUFFER_USAGE_TRANSFER_SRC_BIT,false,true))return fatal("Vulkan atlas allocation failed");
   diagnostics_.available=true;diagnostics_.reason.clear();return true;
  }
  static bool same(const Tile& tile,const std::shared_ptr<const std::vector<uint32_t>>& owner){return tile.address==owner.get()&&!tile.owner.owner_before(owner)&&!owner.owner_before(tile.owner);}
@@ -216,6 +223,7 @@ public:
   if(width<1||height<1||width>8192||height>8192||uint64_t(width)*height>MaxPixels||jobs.empty()||jobs.size()>4096)return fail("Invalid Vulkan output dimensions");
   uint64_t coordinateCount=0;
   for(const auto& j:jobs){
+   if(j.reconstructionFactor)return fail("Raw xBRZ work requires FrameResolve");
    if(!j.pixels||j.sourceWidth<1||j.sourceHeight<1||j.sourceWidth>8192||j.sourceHeight>8192||uint64_t(j.sourceWidth)*j.sourceHeight!=j.pixels->size()||j.pixels->size()>AtlasBytes/4||j.width<1||j.height<1||j.left<0||j.top<0||int64_t(j.left)+j.width>width||int64_t(j.top)+j.height>height||!std::isfinite(j.sourceX)||!std::isfinite(j.sourceY)||!std::isfinite(j.stepX)||!std::isfinite(j.stepY)||std::abs(j.sourceX)>1e10||std::abs(j.sourceY)>1e10||std::abs(j.stepX)>1e6||std::abs(j.stepY)>1e6)return fail("Invalid Vulkan tile");
    coordinateCount+=uint64_t(j.width)+j.height;
   }
