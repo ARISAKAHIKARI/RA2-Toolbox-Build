@@ -11,12 +11,16 @@ int main(){
  o.coversMonitor=true;
  auto r=classify(o);
  assert(r.status==Status::Ready&&r.permitted());
+ assert(renderPath(r,true)==RenderPath::EnhancedPhysicalPixels);
+ assert(renderPath(r,false)==RenderPath::LegacyClientPixels);
  assert(r.width==3840&&r.height==2160);
  assert(std::abs(r.scaleX-1.5)<1e-9&&std::abs(r.scaleY-1.5)<1e-9);
  // 4K hardware with only a 1440p client cannot truthfully call its
  // 2K-sized overlay a physical 4K image.
  o.clientW=2560;o.clientH=1440;o.coversMonitor=false;
  assert(classify(o).status==Status::WindowOnly);
+ assert(renderPath(classify(o),true)==RenderPath::LegacyClientPixels);
+ assert(keepExistingOverlay(true,true));
  // Game is 4K already. Do not invent new pixels.
  o.clientW=3840;o.clientH=2160;o.coversMonitor=true;
  o.sourceW=3840;o.sourceH=2160;
@@ -26,8 +30,14 @@ int main(){
  o.sourceW=2560;o.sourceH=1440;
  o.clientW=o.currentW=o.monitorW=2560;
  o.clientH=o.currentH=o.monitorH=1440;
- assert(classify(o).status==Status::SuspiciousModeSwitch);
- assert(!classify(o).permitted());
+ auto exclusive=classify(o);
+ assert(exclusive.status==Status::SuspiciousModeSwitch);
+ assert(!exclusive.permitted()); // not eligible for 4K enhancement
+ assert(exclusive.width==2560&&exclusive.height==1440);
+ assert(renderPath(exclusive,true)==RenderPath::LegacyClientPixels);
+ assert(keepExistingOverlay(true,true)); // old 2560x1440 overlay stays on
+ assert(!keepExistingOverlay(false,true));
+ assert(!keepExistingOverlay(true,false));
  // Avoid false "exclusive confirmed" claims: configured-mode mismatch may
  // have unrelated explanations. Only classified as suspicious.
  o.registryW=2560;o.registryH=1440;
@@ -35,6 +45,8 @@ int main(){
  // System-DPI virtualization vs physical device pixels: fail closed.
  o.monitorW=3840;o.monitorH=2160;
  assert(classify(o).status==Status::AmbiguousDpi);
+ assert(renderPath(classify(o),true)==RenderPath::LegacyClientPixels);
+ assert(keepExistingOverlay(true,true));
  o.monitorW=2560;o.monitorH=1440;
  // Source video aspect differs from physical output; cannot safely position
  // world-space markers/cursor without a known letterbox transform.
@@ -51,5 +63,5 @@ int main(){
  assert(classify(o).status==Status::InvalidGeometry);
  o.captureFailed=true;
  assert(classify(o).status==Status::InvalidGeometry);
- std::puts("PASS: 4K physical 1.5x, window-only fallback, native resolution, suspected exclusive switch, DPI ambiguity, asymmetric viewport and bounds");
+ std::puts("PASS: verified 4K gets 1.5x; fullscreen exclusive and DPI ambiguity KEEP the native 2560x1440 overlay; client fallback, bounds");
 }
