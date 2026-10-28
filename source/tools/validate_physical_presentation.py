@@ -34,7 +34,7 @@ assert "Status::AmbiguousDpi" in geometry and "Status::WindowOnly" in geometry
 assert "EnumDisplaySettingsExW" in probe and "MonitorFromWindow" in probe
 assert "GetMonitorInfoW" in probe and "coversMonitor" in probe
 assert "sampleAdaptive(" in samples and "adaptivePixel(" in samples
-assert "pixelScaleMode==3" in canvas and "pixelupgrade::sampleAdaptive(" in canvas
+assert "pixelScaleMode==3" in canvas and "regionCache_->sampleRegion(" in canvas
 assert "renderPhysicalOutput" in host
 assert "physical.status==physicalpresentation::Status::Ready" in host
 assert "if(physicalBlocked)visible=false" not in host

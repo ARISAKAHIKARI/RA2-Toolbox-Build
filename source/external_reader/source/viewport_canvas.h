@@ -1,9 +1,11 @@
 #pragma once
 #include "native_canvas.h"
 namespace external { namespace camera {
-// Final device-pixel composition for the main camera. The native terrain
-// cache remains available; refined terrain and objects compose directly in
-// the cropped physical viewport, never in an enlarged whole-map allocation.
+// Final device-pixel object composition for the main camera. The default
+// terrain path first reconstructs one continuous, currently lit native crop
+// with xBRZ, then imports its color and nearest native depth here. VXL geometry
+// and SHP actors compose in this cropped physical viewport without another
+// full-scene upscale or an enlarged whole-map allocation.
 class ViewportCanvas {
  Surface surface_;std::vector<float> baseDepth_;uint64_t key_=0;
  double x_=0,y_=0,sx_=1,sy_=1;int backingW_=0,backingH_=0;bool dirty_=false,ready_=false;
@@ -30,8 +32,11 @@ class ViewportCanvas {
  }
  void clipBacking(std::vector<uint32_t>&pixels)const{
   int w=surface_.width(),h=surface_.height();
-  int l=std::clamp(int(std::ceil(-x_*sx_)),0,w),r=std::clamp(int(std::ceil((backingW_-x_)*sx_)),0,w);
-  int t=std::clamp(int(std::ceil(-y_*sy_)),0,h),b=std::clamp(int(std::ceil((backingH_-y_)*sy_)),0,h);
+  // Admission follows output pixel centers, as native source sampling does:
+  // nativeX=x_+(pixel+.5)/sx_. An outward edge-based ceil can paint a center
+  // beyond the legal backing or wrongly erase a legal fractional first one.
+  int l=std::clamp(int(std::ceil(-x_*sx_-.5)),0,w),r=std::clamp(int(std::ceil((backingW_-x_)*sx_-.5)),0,w);
+  int t=std::clamp(int(std::ceil(-y_*sy_-.5)),0,h),b=std::clamp(int(std::ceil((backingH_-y_)*sy_-.5)),0,h);
   if(l==0&&r==w&&t==0&&b==h)return;
   for(int y=0;y<h;++y){auto row=pixels.begin()+size_t(y)*w;if(y<t||y>=b)std::fill_n(row,w,0);else{std::fill(row,row+l,0);std::fill(row+r,row+w,0);}}
  }
@@ -44,7 +49,7 @@ public:
               double x,double y,double spanX,double spanY,uint64_t key,colorprecision::Mode precision,unsigned mode,bool&rebuild){
   ready_=false;dirty_=false;rebuild=true;
   if(w<1||h<1||w>8192||h>8192||uint64_t(w)*h>16*1024*1024||!std::isfinite(x)||!std::isfinite(y)||!std::isfinite(spanX)||!std::isfinite(spanY)||std::abs(x)>1e7||std::abs(y)>1e7||spanX<=0||spanY<=0||spanX>32768||spanY>32768||w/spanX>4||h/spanY>4)return false;
-  bool reuse=terrainCached_&&cached&&cached->size()==size_t(w)*h&&key==key_&&surface_.width()==w&&surface_.height()==h&&x==x_&&y==y_&&sx_==w/spanX&&sy_==h/spanY&&samplingMode_==mode&&surface_.precision()==precision;
+  bool reuse=!surface_.failed()&&terrainCached_&&cached&&cached->size()==size_t(w)*h&&key==key_&&surface_.width()==w&&surface_.height()==h&&x==x_&&y==y_&&sx_==w/spanX&&sy_==h/spanY&&samplingMode_==mode&&surface_.precision()==precision;
   if(reuse){surface_.color=*cached;surface_.depth=baseDepth_;rebuild=false;}
   else{terrainCached_=false;if(!surface_.reset(w,h))return false;baseDepth_.clear();}
   key_=key;x_=x;y_=y;sx_=w/spanX;sy_=h/spanY;samplingMode_=mode;surface_.precision(precision);backingW_=background.width();backingH_=background.height();terrainCommands_=terrainPixels_=0;ready_=true;return true;
@@ -61,16 +66,16 @@ public:
  }
  bool terrainBlit(const voxel::Image&i,float ax,float ay,float base,const lighting::State&light,float lift=1){
   if(!ready_)return false;if(!visible(i,ax,ay))return true;if(!charge(i,ax,ay,0))return false;
-  surface_.blit(i,float((ax-x_)*sx_),float((ay-y_)*sy_),float(sx_),float(sy_),base,light,lift,0,smooth(i));return true;
+  surface_.blit(i,float((ax-x_)*sx_),float((ay-y_)*sy_),float(sx_),float(sy_),base,light,lift,0,smooth(i));return !surface_.failed();
  }
- bool commitTerrain(std::vector<uint32_t>&pixels){if(!ready_)return false;clipBacking(surface_.color);pixels=surface_.color;baseDepth_=surface_.depth;terrainCached_=true;dirty_=false;return true;}
+ bool commitTerrain(std::vector<uint32_t>&pixels){if(!ready_||surface_.failed())return false;clipBacking(surface_.color);pixels=surface_.color;baseDepth_=surface_.depth;terrainCached_=true;dirty_=false;return true;}
  bool prepare(const NativeCanvas&background,const std::vector<uint32_t>&pixels,int w,int h,
               double x,double y,double spanX,double spanY,uint64_t key,colorprecision::Mode precision=colorprecision::Mode::NativeSteps,unsigned mode=0){
   bool wasTerrain=terrainCached_;ready_=false;dirty_=false;terrainCached_=false;samplingMode_=mode;
   if(w<1||h<1||w>8192||h>8192||uint64_t(w)*h>16*1024*1024||pixels.size()!=size_t(w)*h||
      !std::isfinite(x)||!std::isfinite(y)||!std::isfinite(spanX)||!std::isfinite(spanY)||
      std::abs(x)>1e7||std::abs(y)>1e7||spanX<=0||spanY<=0||spanX>32768||spanY>32768)return false;
-  if(wasTerrain||key!=key_||surface_.width()!=w||surface_.height()!=h||x!=x_||y!=y_||sx_!=w/spanX||sy_!=h/spanY){
+  if(surface_.failed()||wasTerrain||key!=key_||surface_.width()!=w||surface_.height()!=h||x!=x_||y!=y_||sx_!=w/spanX||sy_!=h/spanY){
    int x0=int(std::floor(x)),y0=int(std::floor(y)),nw=int(std::ceil(x+spanX))-x0,nh=int(std::ceil(y+spanY))-y0;
    std::vector<float> source;if(!background.depthRegion(x0,y0,nw,nh,source)||!surface_.reset(w,h))return false;
    baseDepth_.resize(size_t(w)*h);
@@ -86,7 +91,7 @@ public:
  }
  bool dirty()const{return dirty_;}
  bool finish(std::vector<uint32_t>&pixels,bool take=false){
-  if(!ready_)return false;if(take){pixels=std::move(surface_.color);ready_=false;}else pixels=surface_.color;
+  if(!ready_||surface_.failed())return false;if(take){pixels=std::move(surface_.color);ready_=false;}else pixels=surface_.color;
   // Protruding sprites may never paint past the legal native backing into a
   // transparent crop margin (the original game must remain visible there).
   clipBacking(pixels);return true;

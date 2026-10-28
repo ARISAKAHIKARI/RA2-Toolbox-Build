@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Rendering upgrade source contracts. Not proof of game visual equivalence."""
 from pathlib import Path
-import re
+import hashlib,json,re
 root=Path(__file__).resolve().parents[1]
 source=(root/'external_reader/source/pixel_upgrade.h').read_text(encoding='utf-8')
 decoder=(root/'external_reader/source/asset_decode.h').read_text(encoding='utf-8')
@@ -24,7 +24,8 @@ assert 'result[0]=0;out=result;return true;' in source
 assert 'enum class TwoX' in source and 'sample2x(' in source
 assert 'PaletteRange range=pixelupgrade::PaletteRange::OriginalDAC' in decoder
 assert 'paletteRange_=pixelupgrade::PaletteRange::OriginalDAC' in assets
-assert 'pixelScaleMode==1?' in canvas and 'sx==.5&&sy==.5' in canvas
+assert 'pixelScaleMode==1' in canvas and 'regionCache_->sampleRegion(' in canvas
+assert 'std::shared_ptr<xbrzadapter::RegionCache> regionCache_' in canvas
 assert 'pixelScaleMode!=pixelScaleMode_' in scene
 assert 'result->request.paletteRange==request.paletteRange' in worker
 assert 'result->request.pixelScaleMode==request.pixelScaleMode' in worker
@@ -33,7 +34,17 @@ for key in ('RenderPaletteRange','RenderPixelScale'):
     assert settings.count('L"'+key+'"')==2,key
 for key in ('9304','9305','renderPaletteRange','renderPixelScale'):
     assert key in ui or key in main,key
-assert '24-bit RGB' in ui and '轮廓插值（实际倍率）' in ui
-assert 'xBRZ/hq4x 尚未集成' in ui
+assert '24-bit RGB' in ui and 'xBRZ（实际倍率）' in ui
+assert 'xBRZ 1.9 原版算法' in ui and 'xBRZ/hq4x 尚未集成' not in ui
+adapter=(root/'external_reader/source/xbrz_adapter.h').read_text(encoding='utf-8')
+assert 'xbrz::scale(' in adapter and 'argbUnbuffered' in adapter
+assert 'class RegionCache' in adapter and 'Tile=256,Halo=3' in adapter
+vendor=root/'third_party/xbrz'
+manifest=json.loads((vendor/'UPSTREAM.json').read_text(encoding='utf-8'))
+assert manifest['version']=='1.9' and manifest['local_modifications'] is False
+assert manifest['archive_sha256']=='b2dff73b3abd24a18a7cde78d5ff5ed8f0922296dce6ed734dce2264cd0a0fc9'
+for entry in manifest['files']:
+    assert hashlib.sha256((vendor/entry['path']).read_bytes()).hexdigest()==entry['sha256'],entry['path']
+assert 'xbrz_scaling' in (root.parent/'.github/workflows/validate-render-upgrade.yml').read_text(encoding='utf-8')
 assert 'pixel_upgrade.cpp' in (root.parent/'.github/workflows/validate-render-upgrade.yml').read_text(encoding='utf-8') or 'pixel_upgrade' in (root.parent/'.github/workflows/validate-render-upgrade.yml').read_text(encoding='utf-8')
-print('PASS: indexed color 6-to-8bit, optional native 2x scaler, worker and settings wiring; no game patch APIs in new code')
+print('PASS: indexed color 6-to-8bit, actual upstream xBRZ, worker and settings wiring; no game patch APIs in new code')

@@ -4,6 +4,7 @@
 #include "scene_order.h"
 #include "pixel_upgrade.h"
 #include "color_precision.h"
+#include "xbrz_adapter.h"
 namespace external { namespace camera {
 struct Light {
  float gains[3]{};colorprecision::Mode precision=colorprecision::Mode::NativeSteps;
@@ -42,15 +43,17 @@ inline void opaque(voxel::Image&i){
 class Surface {
  int width_=0,height_=0;
  colorprecision::Mode precision_=colorprecision::Mode::NativeSteps;
+ xbrzadapter::Cache scaleCache_;bool reconstructionFailed_=false;
 public:
  std::vector<uint32_t> color;std::vector<float> depth;
  bool reset(int w,int h,uint32_t background=0xff080c08u){
   if(w<=0||h<=0||w>8192||h>8192||uint64_t(w)*h>16*1024*1024){width_=height_=0;color.clear();depth.clear();return false;}
-  width_=w;height_=h;color.assign(size_t(w)*h,background);depth.assign(color.size(),-std::numeric_limits<float>::infinity());return true;
+  width_=w;height_=h;reconstructionFailed_=false;color.assign(size_t(w)*h,background);depth.assign(color.size(),-std::numeric_limits<float>::infinity());return true;
  }
  int width()const{return width_;}int height()const{return height_;}
  void precision(colorprecision::Mode mode){precision_=mode==colorprecision::Mode::SmoothRGB?mode:colorprecision::Mode::NativeSteps;}
  colorprecision::Mode precision()const{return precision_;}
+ bool failed()const{return reconstructionFailed_;}
  void diamond(float ax,float ay,float sx,float sy,float base,uint32_t c,const lighting::State&light){
   c=lit(c,0,false,light,precision_);
   for(int y=std::max(0,int(std::floor(ay-15*sy)));y<std::min(height_,int(std::ceil(ay+15*sy)));++y)
@@ -68,12 +71,26 @@ public:
   int x1=std::clamp(int(std::ceil(std::clamp(left+i.width*pxScale,-1e7f,1e7f))),0,width_),y1=std::clamp(int(std::ceil(std::clamp(top+i.height*pyScale,-1e7f,1e7f))),0,height_);
   Light transform(light,precision_);bool zData=i.depth.size()==i.pixels.size(),indexed=i.indices.size()==i.pixels.size();
   auto colorAt=[&](int x,int y){if(x<0||y<0||x>=i.width||y>=i.height)return uint32_t(0);size_t at=size_t(y)*i.width+x;return transform.apply(i.pixels[at],indexed?i.indices[at]:0,i.objectPalette);};
+  // SHP colors enter the unchanged upstream xBRZ scaler AFTER current scene
+  // lighting, remap and emissive evaluation. Never bake a fixed light into art.
+  // Supersampled VXLs retain their real geometry and coverage resolve below.
+  const bool reconstruct=smooth&&!i.shadow&&i.rasterScale==1&&(pxScale>1||pyScale>1)&&x0<x1&&y0<y1;
+  const xbrzadapter::ScaledImage* enlarged=nullptr;
+  if(reconstruct){int f=xbrzadapter::factor(pxScale,pyScale);std::vector<uint32_t> source(i.pixels.size());
+   for(size_t n=0;n<source.size();++n)source[n]=transform.apply(i.pixels[n],indexed?i.indices[n]:0,i.objectPalette);
+   enlarged=scaleCache_.get(source,i.width,i.height,f);if(!enlarged)reconstructionFailed_=true;
+  }
   for(int y=y0;y<y1;++y){int sourceY=int(std::floor((y+.5f-top)/pyScale));if(sourceY<0||sourceY>=i.height)continue;
    for(int x=x0;x<x1;++x){int sourceX=int(std::floor((x+.5f-left)/pxScale));if(sourceX<0||sourceX>=i.width)continue;
     size_t from=size_t(sourceY)*i.width+sourceX,to=size_t(y)*width_+x;uint32_t p=i.pixels[from];
     std::array<double,4> filtered{};bool preciseSample=false;
-    bool sampled=smooth&&(!i.shadow||i.rasterScale>1)&&(pxScale!=1||pyScale!=1);
-    if(sampled){
+    bool sampled=enlarged||(!reconstruct&&smooth&&(!i.shadow||i.rasterScale>1)&&(pxScale!=1||pyScale!=1));
+    if(enlarged){
+     // Source coverage and Z stay native: a filtered transparent neighbor
+     // cannot invent new hit-test/occlusion geometry around a cutout.
+     if(!(p>>24))continue;
+     p=xbrzadapter::sample(*enlarged,(x+.5-left)/pxScale,(y+.5-top)/pyScale);
+    }else if(sampled){
      double fx=(x+.5-left)/pxScale-.5,fy=(y+.5-top)/pyScale-.5;int ix=int(std::floor(fx)),iy=int(std::floor(fy));fx-=ix;fy-=iy;
      const bool resolve=i.rasterScale>1&&pxScale<=1&&pyScale<=1;
      if(precision_==colorprecision::Mode::SmoothRGB&&!i.shadow){

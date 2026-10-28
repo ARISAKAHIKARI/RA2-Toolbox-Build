@@ -209,43 +209,19 @@ public:
   if(committed&&region.active&&!verifyVisible())return {};
   // An incomplete bank may only reuse a synchronously validated crop.
   if(!complete_||(building_&&!visibleVerified))return {};
-  if(detail){
-   // Start from an empty target viewport, not a rescaled completed native
-   // scene. Repainting onto that scene would apply overlay shadows twice.
-   if(!baseScene_)++detailKey_;bool rebuild=false;
-   if(!detailed_.prepareTerrain(background_,baseScene_?&baseScene_->pixels:nullptr,width,height,region.x,region.y,region.width,region.height,detailKey_,precision_,pixelScaleMode,rebuild))return {};
-   if(rebuild){
-    const auto&terrain=*complete_;const auto&geo=terrain.geo;int loads=0;bool ready=true;
-    for(size_t index:baseCells_){int x=int(index%512),y=int(index/512),flatX=x-y+geo.offsetX,flatY=x+y-geo.offsetY;
-     if(!detailed_.underlayRect(flatX*30,flatY*15,(flatX+2)*30,(flatY+1)*15,terrain.baseColors[index]))return {};
-    }
-    for(size_t index:cells_){int x=int(index%512),y=int(index/512);const auto&cell=terrain.art[index];mapbounds::TileOrigin origin;
-     if(!geo.tileOrigin(x,y,int(cell.level),origin))continue;float px=float(origin.x+30),py=float(origin.y+15),base=float((x+y)*15);
-     int flatX=x-y+geo.offsetX,flatY=x+y-geo.offsetY;
-     bool underlay=detailed_.visible(flatX*30,flatY*15,(flatX+2)*30,(flatY+1)*15);
-     auto tile=tiles_.find({cell.type,cell.sub}),overlay=overlays_.find({cell.overlayType,cell.overlayFrame});
-     // Known source bounds include cropped extra images and all attachments.
-     // Only uncached sources use their decoder's full legal anchor envelope.
-     bool tileVisible=cell.type&&(tile!=tiles_.end()&&tile->second.ready?detailed_.visible(tile->second.image,px,py):detailed_.visible(px-512,py-512,px+512,py+512));
-     bool overlayCandidate=cell.overlayType&&(overlay!=overlays_.end()&&overlay->second.ready?detailed_.visibleShifted(overlay->second.image,px,py,-64,0):detailed_.visible(px-6144,py-6208,px+6144,py+6144));
-     if(!underlay&&!tileVisible&&!overlayCandidate)continue;
-     Paint paint=prepare(index);
-     if(cell.overlayType&&overlay!=overlays_.end()&&overlay->second.ready)overlayCandidate=detailed_.visible(overlay->second.image,px,py+paint.overlayOffset);
-     uint32_t baseColor=terrain.baseColors.size()==terrain.colors.size()&&terrain.baseColors[index]?terrain.baseColors[index]:terrain.colors[index];
-     if(underlay&&!detailed_.underlayRect(flatX*30,flatY*15,(flatX+2)*30,(flatY+1)*15,baseColor))return {};
-     if(tileVisible){auto&cached=tiles_[{cell.type,cell.sub}];
-      if(!cached.ready&&paletteReady&&loads<64&&(!cached.retry||int32_t(frame.tick-cached.retry)>=0)){++loads;cached.ready=assets.tile(cell.type,cell.sub,liveTerrainPalette,cached.image);if(cached.ready){auto n=camera::pixels(cached.image);if(staticPixels+n<=16*1024*1024)staticPixels+=n;else{cached.ready=false;cached.image={};}}cached.retry=frame.tick+2000;}
-      if(!cached.ready)ready=false;else if(!detailed_.terrainBlit(cached.image,px,py,base,paint.light,0))return {};
-     }
-     if(overlayCandidate){auto&cached=overlays_[{cell.overlayType,cell.overlayFrame}];
-      if(!cached.ready&&loads<64&&(!cached.retry||int32_t(frame.tick-cached.retry)>=0)){++loads;cached.ready=assets.overlay(cell.overlayType,game.template get<uint32_t>(cell.overlayType+0xA4),cell.overlayFrame,cached.image);if(cached.ready){auto n=camera::pixels(cached.image);if(staticPixels+n<=16*1024*1024)staticPixels+=n;else{cached.ready=false;cached.image={};}}cached.retry=frame.tick+2000;}
-      if(!cached.ready)ready=false;else if(!detailed_.terrainBlit(cached.image,px,py+paint.overlayOffset,base+(paint.bridge?60:0),paint.overlayLight,2))return {};
-     }
-    }
-    if(!ready||!verifyVisible())return {};
-    auto base=std::make_shared<Scene>();base->width=width;base->height=height;if(!detailed_.commitTerrain(base->pixels))return {};baseScene_=std::move(base);maskedBaseScene_.reset();++basePresents_;
-   }
-  }else if(!baseScene_){auto base=std::make_shared<Scene>();base->width=width;base->height=height;if(!(region.active?background_.presentRegion(width,height,base->pixels,region.x,region.y,region.width,region.height,pixelScaleMode):background_.present(width,height,base->pixels,spanX_,spanY_)))return {};baseScene_=std::move(base);++basePresents_;++detailKey_;}
+  // Scale the CURRENT lit terrain as one continuous native RGB backing.
+  // Filtering individual transparent TMP diamonds introduces artificial
+  // image borders at every adjoining tile; presentRegion supplies a source
+  // neighborhood halo across those joins before xBRZ is evaluated.
+  // Native terrain shadows were already composed exactly once above.
+  if(!baseScene_){
+   auto base=std::make_shared<Scene>();base->width=width;base->height=height;
+   if(!(region.active?background_.presentRegion(width,height,base->pixels,region.x,region.y,region.width,region.height,pixelScaleMode):background_.present(width,height,base->pixels,spanX_,spanY_)))return {};
+   baseScene_=std::move(base);++basePresents_;++detailKey_;
+  }
+  // Color reconstruction never interpolates engine Z. Dynamic actors still
+  // compose at target pixels against nearest original terrain depth.
+  if(detail&&!detailed_.prepare(background_,baseScene_->pixels,width,height,region.x,region.y,region.width,region.height,detailKey_,precision_,pixelScaleMode))return {};
   // Native Cell::DrawShroud places 60x30 alpha sprites on the flat cell
   // projection, after the world is drawn. Cache their final-presentation mask
   // separately from the original-size terrain so units and repairs cannot

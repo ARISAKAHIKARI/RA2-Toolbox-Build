@@ -87,5 +87,5 @@ int main(){
 
 with tempfile.TemporaryDirectory() as tmp:
  cpp=Path(tmp)/'watch_async.cpp';exe=Path(tmp)/'watch_async';cpp.write_text(prefix+scenario)
- subprocess.run(['g++','-std=c++17','-O1','-pthread','-I'+str(root/'assist/tests'),str(cpp),'-o',str(exe)],check=True)
+ subprocess.run(['g++','-std=c++17','-O1','-pthread','-I'+str(root/'assist/tests'),str(cpp),str(root/'third_party/xbrz/xbrz.cpp'),'-o',str(exe)],check=True)
  subprocess.run([str(exe)],check=True,timeout=20)

@@ -17,6 +17,8 @@ rem One game runtime; normal CRT initialization.
 if errorlevel 1 goto fail
 "%ZIG%" c++ -target x86-windows-gnu -std=c++17 -O2 -fno-exceptions -fno-rtti -c shared/source/game_entry_manager.cpp -o shared/source/game_entry_manager.o
 if errorlevel 1 goto fail
+"%ZIG%" c++ -target x86-windows-gnu -std=c++17 -O2 -fno-exceptions -fno-rtti -c third_party/xbrz/xbrz.cpp -o third_party/xbrz/xbrz.o
+if errorlevel 1 goto fail
 "%ZIG%" rc /fo suite/source/app.res suite/source/app.rc
 if errorlevel 1 goto fail
 "%ZIG%" c++ -target x86-windows-msvc -O2 -fms-extensions -fno-stack-protector -c assist/source/guard.cpp -o assist/source/guard.o
@@ -37,7 +39,7 @@ if errorlevel 1 goto fail
 if errorlevel 1 goto fail
 "%ZIG%" c++ -target x86-windows-gnu -std=c++17 -O2 -DRA2_UNIFIED -DwWinMain=TacticalEntry -Isuite/source -c assist/source/main.cpp -o suite/source/assist.o
 if errorlevel 1 goto fail
-"%ZIG%" c++ -target x86-windows-gnu -std=c++17 -O2 -municode suite/source/main.cpp suite/source/cursor.o suite/source/unit_monitor.o suite/source/assist.o suite/source/app.res -o RA2Toolbox.exe -Wl,--subsystem,windows -lgdiplus -lcomctl32 -luser32 -lgdi32 -lwinmm -lshell32 -lole32 -lcomdlg32
+"%ZIG%" c++ -target x86-windows-gnu -std=c++17 -O2 -municode suite/source/main.cpp suite/source/cursor.o suite/source/unit_monitor.o suite/source/assist.o third_party/xbrz/xbrz.o suite/source/app.res -o RA2Toolbox.exe -Wl,--subsystem,windows -lgdiplus -lcomctl32 -luser32 -lgdi32 -lwinmm -lshell32 -lole32 -lcomdlg32
 if errorlevel 1 goto fail
 set "RA2_VERIFY_PYTHON=python"
 if exist "runtime\python.exe" set "RA2_VERIFY_PYTHON=runtime\python.exe"

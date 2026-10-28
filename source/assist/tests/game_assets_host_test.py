@@ -457,5 +457,5 @@ int main(int argc,char**argv){
 with tempfile.TemporaryDirectory() as tmp:
  p=Path(tmp);(p/'windows.h').write_text(header);(p/'test.cpp').write_text(body)
  exe=p/'test'
- subprocess.run(['g++','-std=c++17','-O2','-I'+str(p),'-I'+str(root),str(p/'test.cpp'),'-o',str(exe)],check=True)
+ subprocess.run(['g++','-std=c++17','-O2','-I'+str(p),'-I'+str(root),str(p/'test.cpp'),str(root/'source/third_party/xbrz/xbrz.cpp'),'-o',str(exe)],check=True)
  subprocess.run([str(exe),*sys.argv[1:]],check=True)

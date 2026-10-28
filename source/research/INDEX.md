@@ -6,6 +6,7 @@
 
 | 主题 | 新笔记 | 关键词 |
 | --- | --- | --- |
+| SHP／连续地形改用未修改的上游 xBRZ 1.9 与实际倍率解析 | [xBRZ 集成](2026-10-28-xbrz-integration.md) | xBRZ Zenju GPL alpha premultiplied live light TMP halo seams RGB8 source hashes |
 | 光照前原素材判边、浮点重建与最终颜色量化 | [颜色重建精度](2026-10-28-light-aware-reconstruction.md) | unlit edge float light filter RGB8 emissive coverage |
 | 当前视口 TMP／地面覆盖物目标像素颜色与深度合成 | [目标像素地形](2026-10-28-target-terrain-composition.md) | TMP overlay target pixels actual ratio cached terrain depth cliff shadow |
 | 飞机5格战车120%覆盖与单目标限额派出 | [飞机伤害分配策略](2026-10-28-aircraft-damage-allocation.md) | aircraft damage 120% five cells single target accepted reservation IPC80 |

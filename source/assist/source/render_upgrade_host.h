@@ -184,15 +184,15 @@ static void update(POINT origin,const RECT&client,bool battlefield){
     status+=L" · 4K 增强条件未满足：覆盖层保持原客户区 "+
             std::to_wstring(client.right)+L"×"+std::to_wstring(client.bottom);
   }
-  if(request.pixelScaleMode==3)status+=L" · 按实际输出比例重建";
+  if(request.pixelScaleMode==3)status+=L" · 自适应 xBRZ／实际输出比例";
   else if(request.pixelScaleMode==0)status+=L" · 原有面积采样";
   else if(request.pixelScaleMode==1)status+=L" · 按实际比例最近邻";
-  else if(request.pixelScaleMode==2)status+=L" · 按实际比例轮廓插值";
+  else if(request.pixelScaleMode==2)status+=L" · xBRZ／实际输出比例";
   status+=L" · 游戏视口 "+std::to_wstring(request.view.width)+L"×"+std::to_wstring(request.view.height)+
           L" → 输出 "+std::to_wstring(request.width)+L"×"+std::to_wstring(request.height);
 
-  status+=renderColorPrecision?L" · 原素材判边／连续 RGB 光照":L" · 兼容光照色阶";
-  if(renderSceneDetail)status+=L" · TMP/SHP 目标像素＋VXL 自适应几何/256 向";
+  status+=renderColorPrecision?L" · 连续 RGB 光照":L" · 兼容光照色阶";
+  if(renderSceneDetail)status+=L" · 连续地形＋目标像素对象＋VXL 自适应几何/256 向";
   if(renderMaterialRefresh)status+=L" · 素材高刷目标 "+std::to_wstring(informationFPS())+L" Hz";
   status+=L" · 本帧 "+std::to_wstring(int(std::lround(result->renderMs)))+L" ms";
   status+=L" · 电弧近似；激光/波纹/粒子待补，实机待测";

@@ -169,6 +169,6 @@ int main(){
 if __name__=='__main__':
  with tempfile.TemporaryDirectory() as tmp:
   cpp=Path(tmp)/'watch.cpp';exe=Path(tmp)/'watch';cpp.write_text(prefix+shim)
-  subprocess.run(['g++','-std=c++17','-O1','-pthread','-I'+str(root/'assist/tests'),str(cpp),'-o',str(exe)],check=True)
+  subprocess.run(['g++','-std=c++17','-O1','-pthread','-I'+str(root/'assist/tests'),str(cpp),str(root/'third_party/xbrz/xbrz.cpp'),'-o',str(exe)],check=True)
   subprocess.run([str(exe)],check=True)
 

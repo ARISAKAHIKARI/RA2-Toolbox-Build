@@ -23,6 +23,10 @@ private:
  colorprecision::Mode precision_=colorprecision::Mode::NativeSteps;
  int width_=0,height_=0;uint32_t background_=0xff080c08;bool failed_=false,dynamic_=false;
  std::shared_ptr<Budget> budget_;std::map<uint32_t,std::shared_ptr<Page>> pages_;std::set<uint32_t> dirty_;std::vector<std::array<int,4>> dirtyRects_;
+ // Forks share a reconstruction only while their native pixels agree. A
+ // mutating copy drops its own pointer before painting, preserving the parent
+ // revision's immutable tile contents and allowing camera pans to reuse them.
+ mutable std::shared_ptr<xbrzadapter::RegionCache> regionCache_;
  static uint32_t key(int x,int y){return uint32_t(y)*256u+uint32_t(x);}
  static int pageX(uint32_t k){return int(k%256u);}static int pageY(uint32_t k){return int(k/256u);}
  // Exact-size presentation needs neither an area prefix nor per-pixel page
@@ -46,7 +50,8 @@ private:
   }return true;
  }
  template<class Draw>void paint(int x0,int y0,int x1,int y1,Draw draw){
-  x0=std::clamp(x0,0,width_);x1=std::clamp(x1,0,width_);y0=std::clamp(y0,0,height_);y1=std::clamp(y1,0,height_);if(x0>=x1||y0>=y1||!ensure(x0,y0,x1,y1))return;
+  x0=std::clamp(x0,0,width_);x1=std::clamp(x1,0,width_);y0=std::clamp(y0,0,height_);y1=std::clamp(y1,0,height_);if(x0>=x1||y0>=y1)return;
+  regionCache_.reset();if(!ensure(x0,y0,x1,y1))return;
   for(int y=y0/PageSize;y<=(y1-1)/PageSize;++y)for(int x=x0/PageSize;x<=(x1-1)/PageSize;++x){uint32_t k=key(x,y);auto&surface=pages_.find(k)->second->surface;surface.precision(precision_);draw(surface,x*PageSize,y*PageSize);dirty_.insert(k);}
   dirtyRects_.push_back({x0,y0,x1,y1});
  }
@@ -98,10 +103,10 @@ public:
  };
 public:
  bool reset(int width,int height,std::shared_ptr<Budget>budget={},uint32_t background=0xff080c08u){
-  pages_.clear();dirty_.clear();dirtyRects_.clear();failed_=dynamic_=false;width_=height_=0;background_=background;budget_=budget?std::move(budget):std::make_shared<Budget>();
+  regionCache_.reset();pages_.clear();dirty_.clear();dirtyRects_.clear();failed_=dynamic_=false;width_=height_=0;background_=background;budget_=budget?std::move(budget):std::make_shared<Budget>();
   if(width<1||height<1||width>MaximumDimension||height>MaximumDimension||!budget_->maximum)return false;width_=width;height_=height;return true;
  }
- void precision(colorprecision::Mode mode){precision_=mode;}
+ void precision(colorprecision::Mode mode){if(mode!=precision_)regionCache_.reset();precision_=mode;}
  int width()const{return width_;}int height()const{return height_;}bool failed()const{return failed_;}void clearFailure(){failed_=false;}
  size_t pageCount()const{return pages_.size();}size_t dirtyPages()const{return dirty_.size();}size_t residentPages()const{return budget_?budget_->pages:0;}
  void clean(){dirty_.clear();dirtyRects_.clear();}
@@ -152,7 +157,7 @@ public:
  // to the underlying game through transparent pixels instead of stretching.
  bool presentRegion(int width,int height,std::vector<uint32_t>&out,
                     double x,double y,double spanX,double spanY,unsigned pixelScaleMode=0)const{
-  if(failed_||width<1||height<1||width>8192||height>8192||
+  if(failed_||width_<1||height_<1||width<1||height<1||width>8192||height>8192||
      uint64_t(width)*height>16*1024*1024||!std::isfinite(x)||!std::isfinite(y)||
      !std::isfinite(spanX)||!std::isfinite(spanY)||spanX<=0||spanY<=0||
      std::abs(x)>1e7||std::abs(y)>1e7||spanX>32768||spanY>32768)return false;
@@ -167,49 +172,20 @@ public:
    auto fetch=[&](int px,int py)->uint32_t{int xx=px-x0,yy=py-y0;return xx>=0&&yy>=0&&xx<w&&yy<h?source[size_t(yy)*w+xx]:0;};
    return pixelupgrade::sampleNearest(fetch,x,y,spanX,spanY,width,height,out);
   }
-  if((pixelScaleMode==3||pixelScaleMode==2)&&sx>=.25&&sy>=.25&&sx<=1&&sy<=1&&(sx<1||sy<1)&&
-     !(pixelScaleMode==2&&sx==.5&&sy==.5&&!(width&1)&&!(height&1)&&std::floor(x)==x&&std::floor(y)==y)){
-   // Fractional physical-pixel output (e.g. 2560x1440 -> 3840x2160).
-   // Prefetch a one-pixel halo in native coordinates ONCE, not 4-8 map
-   // lookups for each physical output pixel. No source camera/logic zoom.
-   const int x0=int(std::floor(x))-2,y0=int(std::floor(y))-2;
-   const int hw=int(std::ceil(x+spanX))+2-x0;
-   const int hh=int(std::ceil(y+spanY))+2-y0;
-   if(hw>=2&&hh>=2&&hw<=8192&&hh<=8192&&
-      uint64_t(hw)*hh<=16*1024*1024){
-    std::vector<uint32_t> halo;
-    if(presentRegion(hw,hh,halo,x0,y0,hw,hh,0)){
-     auto fetch=[&](int px,int py)->uint32_t{
-      int64_t hx=int64_t(px)-x0,hy=int64_t(py)-y0;
-      return hx>=0&&hy>=0&&hx<hw&&hy<hh?
-        halo[size_t(hy)*hw+size_t(hx)]:0;
-     };
-     if(pixelupgrade::sampleAdaptive(fetch,x,y,spanX,spanY,width,height,out))
-      return true;
-    }
-   }
-   // Incomplete backing/unsupported footprint: use original renderer, not
-   // an incompletely reconstructed frame or a guessed pixel.
-  }
-  // Apply edge-aware 2x only for an ACTUAL 2:1 integer presentation ratio.
-  // Do not zoom the camera, change target coordinates or interpolate shroud
-  // across different visibility cells. At 1:1 keep exact native pixels.
-  if(pixelScaleMode>=1&&pixelScaleMode<=2&&sx==.5&&sy==.5&&!(width&1)&&!(height&1)&&
-     std::floor(x)==x&&std::floor(y)==y){
-   // Prefetch one native pixel halo using page-row copies. A direct pixel()
-   // call for all five neighborhood samples would repeat millions of map
-   // lookups on a 2560x1440 view and defeat the worker's frame budget.
-   const int sw=width/2,sh=height/2,haloW=sw+2,haloH=sh+2;
-   std::vector<uint32_t> halo;
-   if(!presentRegion(haloW,haloH,halo,x-1,y-1,haloW,haloH,0))return false;
-   const int baseX=int(x),baseY=int(y);
-   const auto fetch=[&](int px,int py)->uint32_t{
-    int xx=px-baseX+1,yy=py-baseY+1;
-    if(xx<0||yy<0||xx>=haloW||yy>=haloH)return 0;
-    return halo[size_t(yy)*haloW+xx];
-   };
-   return pixelupgrade::sample2x(fetch,baseX,baseY,width,height,out,
-     pixelScaleMode==1?pixelupgrade::TwoX::Nearest:pixelupgrade::TwoX::EdgeBlend);
+  if((pixelScaleMode==3||pixelScaleMode==2)&&sx>=.25&&sy>=.25&&sx<=1&&sy<=1&&(sx<1||sy<1)){
+   // Scale the current lit, fully composited terrain with a real neighborhood.
+   // Bounded tiles include xBRZ's analysis halo; no independent TMP seams.
+   // Terrain is an opaque framebuffer: extend its edge for the filter, then
+   // clip legal coverage below. Transparent padding would fade its inside rim.
+   auto fetch=[&](int px,int py)->uint32_t{return pixel(std::clamp(px,0,width_-1),std::clamp(py,0,height_-1));};
+   if(!regionCache_)regionCache_=std::make_shared<xbrzadapter::RegionCache>();
+   if(!regionCache_->sampleRegion(fetch,x,y,spanX,spanY,width,height,out))return false;
+   // The underlying game must remain visible outside the legal backing.
+   if(x>=0&&y>=0&&x+spanX<=width_&&y+spanY<=height_)return true;
+   for(int yy=0;yy<height;++yy)for(int xx=0;xx<width;++xx){
+    double px=x+(xx+.5)*sx,py=y+(yy+.5)*sy;
+    if(px<0||py<0||px>=width_||py>=height_)out[size_t(yy)*width+xx]=0;
+   }return true;
   }
   if(sx==1&&sy==1&&std::floor(x)==x&&std::floor(y)==y){
    // Contiguous page runs, not per-pixel map lookups, in the native case.

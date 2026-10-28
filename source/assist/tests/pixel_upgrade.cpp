@@ -5,6 +5,37 @@
 #include <algorithm>
 #include <limits>
 #include <vector>
+// Oracle uses the unchanged upstream scaler on one fully assembled backing,
+// with edge extension matching an opaque framebuffer. It does not reimplement
+// xBRZ's edge rules or depend on the adapter's block/crop sampling code.
+static std::vector<uint32_t> upstreamRegion(const external::camera::NativeCanvas&canvas,int width,int height,
+                                           double x,double y,double spanX,double spanY){
+ const int factor=int(std::ceil(std::max(width/spanX,height/spanY))),halo=3;
+ int sw=canvas.width()+2*halo,sh=canvas.height()+2*halo;
+ std::vector<uint32_t> source(size_t(sw)*sh),scaled(size_t(sw)*sh*factor*factor),out(size_t(width)*height);
+ for(int yy=0;yy<sh;++yy)for(int xx=0;xx<sw;++xx)
+  source[size_t(yy)*sw+xx]=canvas.pixel(std::clamp(xx-halo,0,canvas.width()-1),std::clamp(yy-halo,0,canvas.height()-1));
+ xbrz::scale(factor,source.data(),scaled.data(),sw,sh,xbrz::ColorFormat::argbUnbuffered);
+ const int tw=sw*factor,th=sh*factor;
+ for(int yy=0;yy<height;++yy)for(int xx=0;xx<width;++xx){
+  double nx=x+(xx+.5)*spanX/width,ny=y+(yy+.5)*spanY/height;
+  if(nx<0||ny<0||nx>=canvas.width()||ny>=canvas.height())continue;
+  double px=(nx+halo)*factor-.5,py=(ny+halo)*factor-.5;
+  int ix=int(std::floor(px)),iy=int(std::floor(py));double fx=px-ix,fy=py-iy;
+  auto at=[&](int a,int b){return scaled[size_t(std::clamp(b,0,th-1))*tw+std::clamp(a,0,tw-1)];};
+  uint32_t a=at(ix,iy),b=at(ix+1,iy),c=at(ix,iy+1),d=at(ix+1,iy+1),value=0;
+  for(int shift:{0,8,16,24}){double top=((a>>shift)&255)*(1-fx)+((b>>shift)&255)*fx;
+   double bottom=((c>>shift)&255)*(1-fx)+((d>>shift)&255)*fx;
+   value|=uint32_t(std::floor(top*(1-fy)+bottom*fy+.5))<<shift;
+  }out[size_t(yy)*width+xx]=value;
+ }return out;
+}
+static void matchesUpstream(const std::vector<uint32_t>&actual,const external::camera::NativeCanvas&canvas,
+                            int width,int height,double x,double y,double spanX,double spanY){
+ auto expected=upstreamRegion(canvas,width,height,x,y,spanX,spanY);assert(actual.size()==expected.size());
+ for(size_t n=0;n<actual.size();++n)for(int shift:{0,8,16,24})
+  assert(std::abs(int((actual[n]>>shift)&255)-int((expected[n]>>shift)&255))<=1);
+}
 int main(){
  using namespace external::pixelupgrade;
  std::array<uint32_t,256> pal{};pal.fill(0x12345678);
@@ -41,12 +72,12 @@ int main(){
  assert(canvas.presentRegion(3,3,unchanged,0,0,3,3,2));
  assert(normal==unchanged);
  assert(canvas.presentRegion(6,6,scaled,0,0,3,3,2));
- assert(scaled.size()==36);
+ assert(scaled.size()==36);matchesUpstream(scaled,canvas,6,6,0,0,3,3);
  assert(canvas.presentRegion(6,6,unchanged,-1,-1,3,3,2));
- assert(unchanged[0]==0); // no invented pixel outside the native backing
+ assert(unchanged[0]==0);matchesUpstream(unchanged,canvas,6,6,-1,-1,3,3); // no invented pixel outside the native backing
  assert(!canvas.presentRegion(8192,8192,scaled,0,0,4096,4096,2));
- // Fractional 1.5x interpolation: a hard vertical silhouette must not
- // blur across the edge, while uniform shading remains constant.
+ // Legacy custom helper tests remain as isolated unit coverage. Production
+ // modes 2/3 below are checked against upstream xBRZ rather than these rules.
  const uint32_t L=0xff101010u,H=0xfff0f0f0u;
  assert(adaptivePixel(L,H,L,H,.4,.7)==L);
  assert(adaptivePixel(L,H,L,H,.6,.2)==H);
@@ -62,7 +93,7 @@ int main(){
  assert(fractional.presentRegion(6,6,restored,0,0,4,4,3));
  assert(fractional.presentRegion(6,6,original,0,0,4,4,0));
  assert(restored.size()==36&&restored[2*6+0]==L&&restored[2*6+5]==H);
- assert(restored!=original); // original box filter softens a hard edge
+ matchesUpstream(restored,fractional,6,6,0,0,4,4); // simple patterns may match the box/nearest result
  for(uint32_t p:restored)assert((p>>24)==255);
  // Upscale decision must leave exact native 1:1 untouched.
  assert(fractional.presentRegion(4,4,original,0,0,4,4,0));
@@ -84,34 +115,51 @@ int main(){
   for(int y=0;y<target;++y)for(int x=0;x<target;++x){int source=target==6?columns15[x]:x/int(ratio);assert(nearest[size_t(y)*target+x]==shades[source]);}
   assert(gradient.presentRegion(target,target,adaptive,0,0,4,4,3));
   assert(gradient.presentRegion(target,target,edge,0,0,4,4,2));assert(edge==adaptive);
-  // Low-contrast shading interpolates into RGB values absent from the source
-  // palette. The expected center sample comes from the actual physical ratio.
-  const int probe=target==6?1:target==12?3:4;
-  const uint32_t expected=target==6?0xff242424u:0xff252525u;
-  assert(adaptive[size_t(target/2)*target+probe]==expected);
-  assert(adaptive!=nearest);
+  // A mature pixel-art scaler may preserve a step unchanged. Validate its
+  // identity against upstream rather than requiring invented intermediate RGB.
+  matchesUpstream(adaptive,gradient,target,target,0,0,4,4);
   // A source alpha cutout remains a hard geometric boundary at every ratio.
   assert(fractional.presentRegion(target,target,adaptive,-1,0,4,4,3));
   assert(fractional.presentRegion(target,target,nearest,-1,0,4,4,1));
   for(size_t at=0;at<adaptive.size();++at){assert((adaptive[at]>>24)==(nearest[at]>>24));if(!(adaptive[at]>>24))assert(adaptive[at]==0);}
  }
- // Independently scaled axes still use adaptive sampling; a native Y axis
- // must not send a 1.5x X edge through the softening box-filter fallback.
- for(unsigned mode:{2u,3u}){assert(fractional.presentRegion(6,4,restored,0,0,4,4,mode));assert(restored[2*6+1]==H);}
+ // Independently scaled axes still select the mature scaler even when one
+ // axis remains native. Exact physical crop placement is part of the oracle.
+ for(unsigned mode:{2u,3u}){assert(fractional.presentRegion(6,4,restored,0,0,4,4,mode));matchesUpstream(restored,fractional,6,4,0,0,4,4);}
  // Even a small physical upscale must honor the selected sampling algorithm.
  external::camera::NativeCanvas slight;assert(slight.reset(1001,1));slight.underlayRect(0,0,1,1,0x101010);slight.underlayRect(1,0,1001,1,0xf0f0f0);
- assert(slight.presentRegion(1001,1,restored,.5,0,1000,1,3));assert(restored[0]==L);
- // Exact 2x with an odd target is a fractional source crop, not a legal
- // Scale2x block grid. It uses adaptive sampling instead of failing.
+ assert(slight.presentRegion(1001,1,restored,.5,0,1000,1,3));matchesUpstream(restored,slight,1001,1,.5,0,1000,1);
+ // Exact 2x with an odd target is a fractional source crop. Both saved
+ // reconstruction mode indices use xBRZ and preserve that crop alignment.
  assert(gradient.presentRegion(5,5,restored,0,0,2.5,2.5,2));
- assert(gradient.presentRegion(5,5,original,0,0,2.5,2.5,3));assert(restored==original&&restored.size()==25);
+ assert(gradient.presentRegion(5,5,original,0,0,2.5,2.5,3));assert(restored==original&&restored.size()==25);matchesUpstream(restored,gradient,5,5,0,0,2.5,2.5);
  // At the maximum output axis, prefetch only centers actually sampled.
  // A half-pixel crop spans 8193 cells but needs exactly 8192 source centers.
  external::camera::NativeCanvas maximum;assert(maximum.reset(8192,2));maximum.underlayRect(0,0,8192,2,0x223344);
  assert(maximum.presentRegion(8192,1,restored,.5,0,8192,.5,1));assert(restored.front()==0xff223344&&restored.back()==0);
+ // A terrain cache can be shared by a COW fork while each painted revision
+ // owns its colors. Mutating either copy must detach both page and xBRZ cache.
+ external::camera::NativeCanvas revision;assert(revision.reset(8,8,{},0xff102030));
+ revision.underlayRect(0,0,8,8,0x102030);std::vector<uint32_t> before,after,forkBefore,forkAfter;
+ assert(revision.presentRegion(16,16,before,0,0,8,8,3));auto frozen=revision.fork();
+ external::voxel::Image patch;patch.width=patch.height=3;patch.pixels.assign(9,0xffc03020);patch.depth.assign(9,0);
+ external::lighting::State daylight;revision.blit(patch,2,2,1,1,10,daylight);
+ assert(revision.presentRegion(16,16,after,0,0,8,8,3));assert(after!=before);matchesUpstream(after,revision,16,16,0,0,8,8);
+ assert(frozen.presentRegion(16,16,forkBefore,0,0,8,8,3));assert(forkBefore==before);
+ patch.pixels.assign(9,0xff2050d0);frozen.blit(patch,5,5,1,1,20,daylight);
+ assert(frozen.presentRegion(16,16,forkAfter,0,0,8,8,3));assert(forkAfter!=forkBefore);matchesUpstream(forkAfter,frozen,16,16,0,0,8,8);
+ assert(revision.presentRegion(16,16,restored,0,0,8,8,3));assert(restored==after);
+ // Reset invalidates the old revision. Precision changes preserve existing
+ // pixels while later paint uses the selected quantization and a fresh cache.
+ assert(revision.reset(8,8,{},0xff403020));assert(revision.presentRegion(16,16,restored,0,0,8,8,3));
+ assert(restored!=after);matchesUpstream(restored,revision,16,16,0,0,8,8);
+ revision.precision(external::colorprecision::Mode::SmoothRGB);
+ assert(revision.presentRegion(16,16,after,0,0,8,8,3));assert(after==restored);
+ patch.pixels.assign(9,0xff020202);daylight.intensity=333;revision.blit(patch,1,1,1,1,30,daylight);
+ assert(revision.pixel(1,1)==0xff010101);assert(revision.presentRegion(16,16,restored,0,0,8,8,3));matchesUpstream(restored,revision,16,16,0,0,8,8);
  // reject invalid aspect/sampling envelopes.
  assert(!sampleAdaptive([](int,int){return 0xff223344u;},0,0,4,4,3,6,restored));
  assert(!sampleAdaptive([](int,int){return 0xff223344u;},0,0,4,4,17,16,restored));
  assert(!sampleNearest([](int,int){return 0xff223344u;},0,0,std::numeric_limits<double>::infinity(),4,6,6,restored));
- std::puts("PASS: atomic DAC/RGB888 palette; actual 1.5x/3x/4x nearest placement and adaptive RGB shading; native-axis, odd 2x, maximum-axis and alpha boundary guards");
+ std::puts("PASS: atomic DAC/RGB888 palette and legacy helper units; production xBRZ upstream identity, 1.5x/3x/4x nearest placement, crop/native-axis/odd/maximum-axis/alpha guards and terrain COW/reset/precision invalidation");
 }
