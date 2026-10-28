@@ -47,7 +47,8 @@ assert "LegacyClientPixels" in geometry and "EnhancedPhysicalPixels" in geometry
 assert "keepExistingOverlay(" in geometry
 assert "physicalpresentation::inspect(game" in host
 assert "renderPixelScale==0?3:renderPixelScale" in host
-assert "4K 物理重绘已停用" in host and "疑似独占全屏" in host
+assert "4K 物理重绘已停用" not in host
+assert "疑似独占/显示模式切换：覆盖层保持" in host
 assert "9306" in main and "renderPhysicalOutput=on" in main
 assert settings.count('L"RenderPhysicalOutput"')==2
 assert "renderPixelScale=std::clamp" in settings and ",0,3)" in settings
