@@ -1,0 +1,22 @@
+name: Bootstrap Vulkan compute kernel
+on:
+  push:
+    branches: [codex/vulkan-kernel-bootstrap-20261029]
+permissions:
+  contents: read
+jobs:
+  kernel:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install official shader tools
+        run: sudo apt-get update && sudo apt-get install -y glslang-tools spirv-tools
+      - name: Compile Vulkan 1.0 SPIR-V
+        run: python3 source/tools/build_vulkan_kernel.py --output generated/vulkan_bilinear_spirv.h | tee generated-kernel.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vulkan-bilinear-kernel
+          if-no-files-found: error
+          path: |
+            generated/vulkan_bilinear_spirv.h
+            generated-kernel.json
