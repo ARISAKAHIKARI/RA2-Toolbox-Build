@@ -32,6 +32,14 @@ int main(){
  renderer.reset();CHECK(!renderer.feedbackBounds(m,x,y,w,h));CHECK(!renderer.feedbackVisibility(mask));
  Scene base;base.width=128;base.height=64;base.pixels.assign(128*64,0xff102030);view.width=128;view.height=64;view.cameraY=80;
  std::vector<nativefeedback::Bolt> bolts={{{768,768,0},{1536,768,0},42,false}};
+ // Glow occupies fractional-alpha pixels while retaining an opaque core.
+ nativefeedback::Canvas glow;CHECK(glow.reset(96,64));
+ nativefeedback::bolt(glow,8,32,86,32,42,false,1.0);
+ bool core=false,halo=false;
+ for(uint32_t p:glow.pixels){unsigned a=p>>24;if(a==255)core=true;else if(a>0)halo=true;
+  CHECK(((p>>16)&255)<=a&&((p>>8)&255)<=a&&(p&255)<=a);
+ }
+ CHECK(core&&halo);
  auto decorated=base;auto state=nativefeedback::effects(bolts,decorated,view,nullptr,.08660254);CHECK(state.complete&&state.bolts==1&&decorated.pixels!=base.pixels);
  std::vector<uint8_t>hidden(base.pixels.size(),2);decorated=base;state=nativefeedback::effects(bolts,decorated,view,&hidden,.08660254);CHECK(state.complete&&decorated.pixels==base.pixels);
  hidden.resize(3);decorated=base;state=nativefeedback::effects(bolts,decorated,view,&hidden,.08660254);CHECK(!state.complete&&decorated.pixels==base.pixels);
