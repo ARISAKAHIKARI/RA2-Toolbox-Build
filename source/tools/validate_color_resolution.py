@@ -20,7 +20,15 @@ assert 'a.colorPrecision==b.colorPrecision' in policy
 assert 'true,r.colorPrecision!=0)' in host
 scene = (root/'external_reader/source/radar_scene.h').read_text(encoding='utf-8')
 assert 'if(precision!=precision_){reset();precision_=precision;}' in scene
-assert 'pending_.precision(precision_)' in scene and 'detailKey_,precision_,pixelScaleMode)' in scene
+assert 'pending_.precision(precision_)' in scene
+assert re.search(r'detailKey_,\s*precision_,\s*pixelScaleMode,', scene)
+assert 'baseScene_->pixels.empty()?gpuBaseTiles_:nullptr,cpuBaseFallback_' in scene
+viewport = (root/'external_reader/source/viewport_canvas.h').read_text(encoding='utf-8')
+# The selected precision reaches CPU composition and GPU recording, including
+# raw native terrain plans whose color pixels are generated only on fallback.
+assert 'surface_.precision(precision)' in viewport
+assert 'gpuRecord_.begin(w,h,std::move(basePixels),baseDepth_,precision,' in viewport
+assert '!cpuBaseFallback||!cpuBaseFallback(generatedBase)' in viewport
 canvas = (root/'external_reader/source/native_canvas.h').read_text(encoding='utf-8')
 assert 'surface.precision(precision_)' in canvas
 settings = (root/'assist/source/extra_settings_io.h').read_text(encoding='utf-8')

@@ -5,11 +5,13 @@
 #include <cstdint>
 #include <cstring>
 #include <limits>
+#include <memory>
 #include <string>
 #include <vector>
 #include "voxel_lighting.h"
 #include "resolution_sampling.h"
 #include "voxel_posture.h"
+namespace external { namespace gpuvoxel {struct Prepared;} }
 namespace external { namespace voxel {
 // Read-only in-memory VXL/HVA capture. Never calls the game renderer. Layout
 // evidence: YRpp + native 755DB0/7563A8, 5BD5C0/5BD730 and 705D70.
@@ -17,7 +19,7 @@ constexpr size_t MaxBytes=8*1024*1024,MaxVoxels=100000,MaxFaces=150000;
 struct Vec {float x=0,y=0,z=0;};
 struct Face {Vec p[4],normal{};uint8_t color=0,normalIndex=255,normalType=0;bool turret=false,hasNormal=false;};
 struct Model {std::vector<Face> faces;};
-struct Image {int rasterScale=1;int canvasWidth=0,canvasHeight=0;int width=0,height=0,x=0,y=0,depthBottom=std::numeric_limits<int>::min();std::vector<uint32_t> pixels;std::vector<float> depth;std::vector<uint8_t> indices;bool objectPalette=false,flat=false,writeDepth=true,shadow=false,shadowsAfter=false,incomplete=false,airborneShadow=false;float depthBias=0;std::vector<Image> attachments;};
+struct Image {int rasterScale=1;int canvasWidth=0,canvasHeight=0;int width=0,height=0,x=0,y=0,depthBottom=std::numeric_limits<int>::min();std::vector<uint32_t> pixels;std::vector<float> depth;std::vector<uint8_t> indices;bool objectPalette=false,flat=false,writeDepth=true,shadow=false,shadowsAfter=false,incomplete=false,airborneShadow=false,skipZ=false;float depthBias=0;std::vector<Image> attachments;std::shared_ptr<const gpuvoxel::Prepared> gpuRaster;};
 struct Library {uint32_t failed=0,headers=0,tailers=0,size=0,head=0,tail=0,body=0;};
 struct Tail {uint32_t start,end,data;float multiplier,matrix[12],bounds[24];uint8_t size[3],normal;};
 static_assert(sizeof(Tail)==164,"VXL memory tailer stride");

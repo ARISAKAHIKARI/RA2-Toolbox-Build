@@ -1,6 +1,6 @@
 #pragma once
 #include "../../third_party/xbrz/xbrz.h"
-#include "vulkan_compute.h"
+#include "vulkan_scene.h"
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
@@ -25,7 +25,7 @@
 namespace external { namespace xbrzadapter {
 struct GpuPresentation {
  bool requested=false,attempted=false,used=false;
- std::unique_ptr<vulkancompute::Resolve> resolve;
+ std::unique_ptr<vulkancompute::FrameResolve> resolve;
 };
 inline GpuPresentation&gpuState(){static thread_local GpuPresentation state;return state;}
 inline void gpuPresentation(bool requested){
@@ -145,6 +145,8 @@ class RegionCache {
  struct Span {int tile=0,first=0,last=0;};
  struct Coordinate {int first=0,second=0;uint16_t weight=0;bool centered=false;};
  std::map<Key,Entry> entries_;uint64_t serial_=0,builds_=0,hits_=0;size_t resident_=0;
+ struct RawEntry {std::shared_ptr<const std::vector<uint32_t>> pixels;uint64_t used=0;};
+ std::map<std::pair<int,int>,RawEntry> raw_;size_t rawResident_=0;
  static std::vector<Span> spans(double origin,double step,int count){
   std::vector<Span> result;
   for(int n=0;n<count;++n){int tile=int(std::floor((origin+(n+.5)*step)/Tile));
@@ -174,6 +176,39 @@ class RegionCache {
 public:
  size_t residentPixels()const{return resident_;}size_t entries()const{return entries_.size();}size_t budgetPixels()const{return pixelBudget_;}
  uint64_t builds()const{return builds_;}uint64_t hits()const{return hits_;}
+ void invalidateRegion(int left,int top,int right,int bottom){
+  auto overlaps=[&](int tx,int ty){const int64_t x=int64_t(tx)*Tile-Halo,y=int64_t(ty)*Tile-Halo;
+   return x<right&&x+SourceSize>left&&y<bottom&&y+SourceSize>top;};
+  for(auto i=entries_.begin();i!=entries_.end();)if(overlaps(std::get<0>(i->first),std::get<1>(i->first))){resident_-=i->second.image->pixels.size();i=entries_.erase(i);}else ++i;
+  for(auto i=raw_.begin();i!=raw_.end();)if(overlaps(i->first.first,i->first.second)){rawResident_-=i->second.pixels->size();i=raw_.erase(i);}else ++i;
+ }
+ // Record native source neighborhoods without performing CPU xBRZ or a GPU
+ // readback. The enclosing scene batch reconstructs, resolves and composes
+ // them on the same device before its one final frame readback.
+ template<class Fetch>bool gpuRegion(Fetch fetch,double x,double y,double spanX,double spanY,int w,int h,std::vector<vulkancompute::TileJob>&out){
+  out.clear();
+  if(w<1||h<1||w>8192||h>8192||uint64_t(w)*h>MaxPixels||!std::isfinite(x)||!std::isfinite(y)||std::abs(x)>1e7||std::abs(y)>1e7||!std::isfinite(spanX)||!std::isfinite(spanY)||spanX<=0||spanY<=0||spanX>32768||spanY>32768)return false;
+  const int f=factor(w/spanX,h/spanY);if(!f||w<spanX||h<spanY)return false;
+  const double dx=spanX/w,dy=spanY/h;const auto columns=spans(x,dx,w),rows=spans(y,dy,h);
+  const uint64_t visibleCost=uint64_t(columns.size())*rows.size()*SourceSize*SourceSize*f*f;
+  if(visibleCost>MaximumBudget)return false;
+  struct Patch {Span row,column;std::shared_ptr<const std::vector<uint32_t>> pixels;};
+  std::vector<Patch> patches;std::vector<std::pair<size_t,size_t>> missing;
+  for(size_t r=0;r<rows.size();++r)for(size_t c=0;c<columns.size();++c){auto i=raw_.find({columns[c].tile,rows[r].tile});
+   if(i==raw_.end())missing.emplace_back(r,c);else{i->second.used=++serial_;patches.push_back({rows[r],columns[c],i->second.pixels});}}
+  constexpr size_t RawBudget=8*1024*1024,Cost=size_t(SourceSize)*SourceSize;
+  for(const auto&at:missing){const auto&row=rows[at.first];const auto&column=columns[at.second];
+   while(!raw_.empty()&&rawResident_+Cost>RawBudget){auto i=std::min_element(raw_.begin(),raw_.end(),[](const auto&a,const auto&b){return a.second.used<b.second.used;});rawResident_-=i->second.pixels->size();raw_.erase(i);}
+   auto pixels=std::make_shared<std::vector<uint32_t>>(Cost);const int ox=column.tile*Tile-Halo,oy=row.tile*Tile-Halo;
+   for(int yy=0;yy<SourceSize;++yy)for(int xx=0;xx<SourceSize;++xx)(*pixels)[size_t(yy)*SourceSize+xx]=fetch(ox+xx,oy+yy);
+   rawResident_+=Cost;raw_.emplace(std::make_pair(column.tile,row.tile),RawEntry{pixels,++serial_});patches.push_back({row,column,std::move(pixels)});
+  }
+  out.reserve(patches.size());
+  for(const auto&p:patches){const int ox=p.column.tile*Tile-Halo,oy=p.row.tile*Tile-Halo;
+   out.push_back({p.pixels,SourceSize,SourceSize,p.column.first,p.row.first,p.column.last-p.column.first,p.row.last-p.row.first,
+    (x+(p.column.first+.5)*dx-ox)*f-.5,(y+(p.row.first+.5)*dy-oy)*f-.5,dx*f,dy*f,f});
+  }return !out.empty();
+ }
  template<class Fetch>bool sampleRegion(Fetch fetch,double x,double y,double spanX,double spanY,int w,int h,std::vector<uint32_t>&out){
   if(w<1||h<1||w>8192||h>8192||uint64_t(w)*h>MaxPixels||!std::isfinite(x)||!std::isfinite(y)||std::abs(x)>1e7||std::abs(y)>1e7||!std::isfinite(spanX)||!std::isfinite(spanY)||spanX<=0||spanY<=0||spanX>32768||spanY>32768)return false;
   const int f=factor(w/spanX,h/spanY);if(!f||w<spanX||h<spanY)return false;
@@ -232,7 +267,7 @@ public:
      column.first,row.first,column.last-column.first,row.last-row.first,
      (x+(column.first+.5)*dx-ox)*f-.5,(y+(row.first+.5)*dy-oy)*f-.5,dx*f,dy*f});
    }
-   auto&gpu=gpuState();gpu.attempted=true;if(!gpu.resolve)gpu.resolve=std::make_unique<vulkancompute::Resolve>();
+   auto&gpu=gpuState();gpu.attempted=true;if(!gpu.resolve)gpu.resolve=std::make_unique<vulkancompute::FrameResolve>();
    if(gpu.resolve->render(w,h,jobs,out)){gpu.used=true;return true;}
    // Same-frame fallback uses the already retained tiles. A failed driver
    // cannot publish a partial frame or force duplicate xBRZ reconstruction.

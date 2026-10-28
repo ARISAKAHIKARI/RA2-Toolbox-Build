@@ -1,0 +1,87 @@
+{
+  "date": "2026-10-29",
+  "scope": "Host native terrain dirty-page recomposition and source cache preservation; controlled synthetic production fixtures, not hardware/game FPS proof",
+  "prior_notebook_version": 79,
+  "new_game_addresses_or_calls": false,
+  "engine_pe_sha_abi_offsets": "Not applicable to host cache algorithm; existing material/light sources unchanged",
+  "failure_mode": "A single ore overlayFrame change invalidated the whole native terrain bank before GPU xBRZ could begin",
+  "controlled_profile": {
+    "gpu_execution": false,
+    "fixture": "Synthetic 128x128 legal diamond map,60x30 TMP about900 opaque pixels,one12x12 ore overlayFrame change",
+    "output": [3840, 2160],
+    "native_crop": [1000, 1000, 2560, 1440],
+    "scale": 1.5,
+    "pixel_scale_mode": 3,
+    "timing_scope": "complete CPU SceneRenderer calls including final CPU xBRZ/output, not native35-cell-only timing or game FPS",
+    "old": {
+      "repainted_cells_per_change": 16022,
+      "calls_per_change": 4,
+      "null_returns_per_change": 3,
+      "total_render_ms": [733.940, 713.497, 703.837],
+      "private_log": "render-fix2-private/scene_ore_diamond_profile.jsonl"
+    },
+    "partial": {
+      "repainted_cells_per_change": 35,
+      "calls_per_change": 1,
+      "null_returns_per_change": 0,
+      "total_render_ms": [114.972, 123.827, 104.480],
+      "private_logs": ["render-fix2-private/scene_ore_diamond_profile_partial.jsonl", "render-fix2-private/scene_ore_diamond_profile_partial.steps.log"]
+    },
+    "unchanged_repainted_cells": 0,
+    "limitation": "Small synthetic CPU sample, no broad timing guarantee or user stutter sole-cause proof"
+  },
+  "partial_eligibility": {
+    "main_viewport_only": true,
+    "old_complete_bank_required": true,
+    "unchanged_geometry_source_and_scene_light_required": true,
+    "maximum_overlay_frame_changes": 256,
+    "current_visible_cell_light_offset_bridge_verified": true,
+    "other_changes": "original full rebuild"
+  },
+  "native_pages": {
+    "size": [128, 128],
+    "maximum_dirty_pages": 256,
+    "unchanged_pages_shared": true,
+    "old_bank_immutable_until_commit": true,
+    "replay": "all original-order underlay/TMP/overlay sources intersecting selected complete pages, including attachments and shadows",
+    "target_write_clip": "coverage rounded to native page bounds; conservative source reach unchanged"
+  },
+  "source_cache": {
+    "source_tile_size_with_halo": [262, 262],
+    "invalidated": "only source footprints intersecting complete dirty native pages",
+    "unchanged_owner_preserved": true,
+    "gpu_effect": "unaffected resident texture/xBRZ owners remain reusable"
+  },
+  "tests": {
+    "native_repaint": {
+      "path": "source/assist/tests/native_repaint.cpp",
+      "optimized": "PASS",
+      "asan_ubsan": "PASS; detect_leaks=0, no LSan claim",
+      "oracle": "complete colors and bitwise float Z equal full repaint including deletion, NaN, shadow, underlay and occlusion; original bank unchanged",
+      "old_pages": 18,
+      "additional_replacement_pages": 1,
+      "raw_source_owners_retained_far": 2,
+      "raw_source_owners_invalidated_halo": 4,
+      "other_checks": ["deletion-only empty page dirtiness", "clean/fork gate removal", "page-aligned output coverage", "bounded budget failure preserves source/destination"]
+    },
+    "terrain_partial_scene": {
+      "path": "source/assist/tests/terrain_partial_scene.cpp",
+      "optimized": "PASS",
+      "asan_ubsan": "PASS; O1 AddressSanitizer+UndefinedBehaviorSanitizer,detect_leaks=0, no reports",
+      "partial_banks": 10,
+      "partial_repainted_cells_total": 730,
+      "initial_full_cells_total": 4030,
+      "partial_calls_per_bank": 1,
+      "byte_exact_output_pixels": 8036352,
+      "oracle": "fresh full production SceneRenderer after every partial and full-guard change, native and1.5x output",
+      "cases": ["changed/deleted/attachment-only sprites", "shadow/raisedcliff/actor/baseRGB overlap", "source/sub/level/type/color/overlay descriptors/baseColors guards", "current local/global light and palette full rebuild guards"]
+    }
+  },
+  "limits": [
+    "No actual hardware GPU or live-game FPS measurement",
+    "CPU game reads/validation, decode, pose/VPL and bounded native terrain work remain",
+    "Final GPU-to-CPU RGBA/mask readback and Win32 layered-window presentation remain",
+    "Broad source/light changes or exceeded partial budget retain original full rebuild",
+    "Synthetic profile cannot establish sole cause of user-reported periodic stutter"
+  ]
+}

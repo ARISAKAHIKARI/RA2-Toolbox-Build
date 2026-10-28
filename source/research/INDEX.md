@@ -6,7 +6,12 @@
 
 | 主题 | 新笔记 | 关键词 |
 | --- | --- | --- |
-| Vulkan GPU 分数倍率解析、弱 ownership atlas 与故障回退 | [Vulkan 计算实验](2026-10-29-vulkan-compute-resolve.md) | Vulkan1.0 Q8 96MiB atlas one readback sticky timeout software CI x86 |
+| Vulkan GPU 场景、xBRZ、VXL、迷雾与故障回退 | [Vulkan 计算实验](2026-10-29-vulkan-compute-resolve.md) | Vulkan1.0 native1x xBRZ Float64 VXL 128MiB atlas one readback mask sticky CI x86 |
+| 原版 xBRZ 1.9 两阶段 GPU 重建、原生 SHP 输入与设备自检 | [GPU xBRZ 算法与缓存](2026-10-29-gpu-xbrz.md) | argbUnbuffered2/3/4 preprocess rotations Float64 NoContraction golden 8167384 weak owner fence |
+| 原生 SHROUD/FOG GPU 栅格、整数覆盖及不可变遮罩缓存 | [GPU 原生迷雾](2026-10-29-gpu-native-shroud-raster.md) | SHP127 0xFE area samples bins packed alpha Plan same readback bounded cache |
+| VXL GPU 三角形光栅、确定性深度赢家和整帧缓存 | [GPU VXL 光栅](2026-10-29-gpu-voxel-raster.md) | Prepared64 atomicMax Z atomicMin tie VPL CPU pose deferred raster retained atlas |
+| CnC-DDraw 表面/色盘更新、常驻纹理和最终 GPU 呈现参考 | [DDraw GPU 参考边界](2026-10-29-ddraw-gpu-reference.md) | Flip Blt Unlock palette D3D9 OpenGL persistent texture DirectComposition layered readback |
+| 矿石动画仅重建受影响地形页并保留远处 GPU 素材 | [地形局部重建](2026-10-29-terrain-dirty-recomposition.md) | overlayFrame 128px dirty pages256 native bank COW xBRZ262 halo owner full fallback |
 | 渲染层级、局部合成、页存储复用、原子滚屏与迷雾源/目标分离 | [反馈与性能修复](2026-10-29-render-feedback-performance.md) | layer5 Incremental monitor Hz epoch8192 zero allocations overscan96 atomic camera fresh shroud sourceHidden 1MiB |
 | 普通指令线、真实色表与建筑放置红绿格原生反馈保留 | [原生命令与放置反馈](2026-10-29-native-order-placement-feedback.md) | DrawActionLine 4DC060 7049C0 47EC90 foundation cellsel sparse cutout readonly |
 | 矿石/覆盖图误用alpha124与Drive/Ship原生坡面矩阵 | [覆盖图不透明与VXL坡面](2026-10-29-overlay-opacity-voxel-posture.md) | overlay255 ILoco674 Draw_Matrix 4AFF60 69F670 Ramp Slerp rocking 2688 |

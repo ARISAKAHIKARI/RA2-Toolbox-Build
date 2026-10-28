@@ -28,7 +28,12 @@ for key in ('RenderMaterialRefresh','RenderSceneDetail'):
 main=(root/'assist/source/main.cpp').read_text(encoding='utf-8')
 assert 'renderPixelScale=std::clamp(choice,0,3)' in main
 scene=(root/'external_reader/source/radar_scene.h').read_text(encoding='utf-8')
-assert 'materialblend::image(' in scene and 'detailed_.prepare(' in scene and 'if(masked)mask_.apply(out->pixels)' in scene
+assert 'materialblend::image(' in scene and 'detailed_.prepare(' in scene
+# Visibility is applied once: a successful GPU frame includes its mask;
+# ordinary CPU composition and a failed GPU frame still require CPU masking.
+assert 'if(masked&&(!detail||!detailed_.gpuMasked()))mask_.apply(out->pixels);' in scene
+assert 'masked?maskPixels_:nullptr,masked?gpuMaskPlan_:nullptr,maskReadback' in scene
+assert 'if(!detailed_.gpuMasked()&&!gpushroud::reference(*gpuMaskPlan_,mask_.alpha))return {};' in scene
 assert 'frame.posesPrepared' in scene
 assert 'refreshPalette(assets,' in scene and 'invalidateArt(key)' in scene
 assert 'bool liveVoxels=true' in scene and 'if(liveVoxels)' in scene

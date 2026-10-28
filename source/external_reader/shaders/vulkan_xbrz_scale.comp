@@ -1,0 +1,69 @@
+#version 450
+#extension GL_ARB_gpu_shader_fp64 : require
+#extension GL_GOOGLE_include_directive : require
+#include "vulkan_xbrz_common.glsl"
+layout(local_size_x=8,local_size_y=8,local_size_z=1) in;
+ivec2 rotated(int row,int col,int rotation,int size){
+ for(int r=0;r<rotation;++r){int oldRow=row;row=size-1-col;col=oldRow;}
+ return ivec2(col,row);
+}
+uint kernelAt(uint kernel[9],int row,int col,int rotation){ivec2 at=rotated(row,col,rotation,3);return kernel[at.y*3+at.x];}
+void put(inout uint block[16],int row,int col,int rotation,uint color,uint m,uint n){
+ ivec2 at=rotated(row,col,rotation,int(p.factor));int index=at.y*int(p.factor)+at.x;
+ block[index]=m==n?color:gradientARGB(color,block[index],m,n);
+}
+void rule(inout uint block[16],int kind,int rotation,uint color){
+ if(p.factor==2u){
+  if(kind==0){put(block,1,1,rotation,color,21u,100u);}
+  else if(kind==1){put(block,1,1,rotation,color,1u,2u);}
+  else if(kind==2){put(block,1,0,rotation,color,1u,4u);put(block,1,1,rotation,color,3u,4u);}
+  else if(kind==3){put(block,0,1,rotation,color,1u,4u);put(block,1,1,rotation,color,3u,4u);}
+  else {put(block,1,0,rotation,color,1u,4u);put(block,0,1,rotation,color,1u,4u);put(block,1,1,rotation,color,5u,6u);}
+ }else if(p.factor==3u){
+  if(kind==0){put(block,2,2,rotation,color,45u,100u);}
+  else if(kind==1){put(block,1,2,rotation,color,1u,8u);put(block,2,1,rotation,color,1u,8u);put(block,2,2,rotation,color,7u,8u);}
+  else if(kind==2){put(block,2,0,rotation,color,1u,4u);put(block,1,2,rotation,color,1u,4u);put(block,2,1,rotation,color,3u,4u);put(block,2,2,rotation,color,1u,1u);}
+  else if(kind==3){put(block,0,2,rotation,color,1u,4u);put(block,2,1,rotation,color,1u,4u);put(block,1,2,rotation,color,3u,4u);put(block,2,2,rotation,color,1u,1u);}
+  else {put(block,2,0,rotation,color,1u,4u);put(block,0,2,rotation,color,1u,4u);put(block,2,1,rotation,color,3u,4u);put(block,1,2,rotation,color,3u,4u);put(block,2,2,rotation,color,1u,1u);}
+ }else {
+  if(kind==0){put(block,3,3,rotation,color,68u,100u);put(block,3,2,rotation,color,9u,100u);put(block,2,3,rotation,color,9u,100u);}
+  else if(kind==1){put(block,3,2,rotation,color,1u,2u);put(block,2,3,rotation,color,1u,2u);put(block,3,3,rotation,color,1u,1u);}
+  else if(kind==2){put(block,3,0,rotation,color,1u,4u);put(block,2,2,rotation,color,1u,4u);put(block,3,1,rotation,color,3u,4u);put(block,2,3,rotation,color,3u,4u);put(block,3,2,rotation,color,1u,1u);put(block,3,3,rotation,color,1u,1u);}
+  else if(kind==3){put(block,0,3,rotation,color,1u,4u);put(block,2,2,rotation,color,1u,4u);put(block,1,3,rotation,color,3u,4u);put(block,3,2,rotation,color,3u,4u);put(block,2,3,rotation,color,1u,1u);put(block,3,3,rotation,color,1u,1u);}
+  else {put(block,3,1,rotation,color,3u,4u);put(block,1,3,rotation,color,3u,4u);put(block,3,0,rotation,color,1u,4u);put(block,0,3,rotation,color,1u,4u);put(block,2,2,rotation,color,1u,3u);put(block,3,3,rotation,color,1u,1u);put(block,3,2,rotation,color,1u,1u);put(block,2,3,rotation,color,1u,1u);}
+ }
+}
+void blend(inout uint block[16],uint kernel[9],uint info,int rotation){
+ uint shift=uint(rotation)*2u;
+ uint flags=shift==0u?info:((info<<shift)|(info>>(8u-shift)))&255u;
+ uint bottomR=(flags>>4)&3u;
+ if(bottomR==0u)return;
+ uint b=kernelAt(kernel,0,1,rotation),c=kernelAt(kernel,0,2,rotation),d=kernelAt(kernel,1,0,rotation),e=kernel[4];
+ uint f=kernelAt(kernel,1,2,rotation),g=kernelAt(kernel,2,0,rotation),h=kernelAt(kernel,2,1,rotation),i=kernelAt(kernel,2,2,rotation);
+ bool lineBlend=true;
+ if(bottomR<2u){
+  if(((flags>>2)&3u)!=0u&&!equalColor(e,g))lineBlend=false;
+  else if(((flags>>6)&3u)!=0u&&!equalColor(e,c))lineBlend=false;
+  else if(!equalColor(e,i)&&equalColor(g,h)&&equalColor(h,i)&&equalColor(i,f)&&equalColor(f,c))lineBlend=false;
+ }
+ uint color=distanceARGB(e,f)<=distanceARGB(e,h)?f:h;
+ int kind=0;
+ if(lineBlend){
+  precise double fg=distanceARGB(f,g),hc=distanceARGB(h,c);
+  bool shallow=2.4LF*fg<=hc&&e!=g&&d!=g;
+  bool steep=2.4LF*hc<=fg&&e!=c&&b!=c;
+  kind=shallow?(steep?4:2):(steep?3:1);
+ }
+ rule(block,kind,rotation,color);
+}
+void main(){
+ uvec2 xy=gl_GlobalInvocationID.xy;if(xy.x>=p.width||xy.y>=p.height)return;
+ uint stride=p.width+1u,index=p.flagsOffset+xy.y*stride+xy.x;
+ uint topLeft=cornerFlags.value[index],top=cornerFlags.value[index+1u],left=cornerFlags.value[index+stride],own=cornerFlags.value[index+stride+1u];
+ uint info=((topLeft>>6)&3u)|(((top>>4)&3u)<<2)|((own&3u)<<4)|(((left>>2)&3u)<<6);
+ uint kernel[9];for(int row=0;row<3;++row)for(int col=0;col<3;++col)kernel[row*3+col]=readSource(ivec2(xy)+ivec2(col-1,row-1));
+ uint block[16];for(uint n=0u;n<p.factor*p.factor;++n)block[n]=kernel[4];
+ if(info!=0u)for(int rotation=0;rotation<4;++rotation)blend(block,kernel,info,rotation);
+ for(uint row=0u;row<p.factor;++row)for(uint col=0u;col<p.factor;++col)
+  reconstructed.pixels[p.outputOffset+(xy.y*p.factor+row)*(p.width*p.factor)+xy.x*p.factor+col]=premultiplied(block[row*p.factor+col]);
+}

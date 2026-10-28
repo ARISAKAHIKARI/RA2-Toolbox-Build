@@ -234,6 +234,18 @@ int main(int argc,char**argv){
  auto geometryData=v.model.faces.data();auto geometrySize=v.model.faces.size();int slopeFileReads=fileReads;
  external::voxel::Image flatVoxel,slopedVoxel;assert(gameassets::renderActor(v,{},flatVoxel)&&gameassets::renderActor(v,liveSlope,slopedVoxel));
  assert(flatVoxel.pixels!=slopedVoxel.pixels&&v.model.faces.data()==geometryData&&v.model.faces.size()==geometrySize&&fileReads==slopeFileReads);
+ // GPU mode defers the expensive pixel raster while retaining current native
+ // lighting/posture. The same packet materializes only on CPU fallback.
+ gameassets::context.presentationGPU(true);external::voxel::Image gpuVoxel,materialized;
+ assert(gameassets::renderActor(v,liveSlope,gpuVoxel)&&gpuVoxel.gpuRaster&&gpuVoxel.pixels.empty()&&gpuVoxel.indices.empty()&&gpuVoxel.depth.empty()&&!gpuVoxel.writeDepth);
+ assert(external::camera::pixels(gpuVoxel)>=size_t(gpuVoxel.width)*gpuVoxel.height&&external::gpuvoxel::materialize(gpuVoxel,materialized));
+ assert(materialized.pixels==slopedVoxel.pixels&&materialized.indices==slopedVoxel.indices&&materialized.depth.empty()&&!materialized.gpuRaster&&!materialized.writeDepth);
+ gameassets::context.presentationGPU(false);v.shadow=true;external::voxel::Image cpuShadowed;assert(gameassets::renderActor(v,liveSlope,cpuShadowed));
+ gameassets::context.presentationGPU(true);assert(gameassets::renderActor(v,liveSlope,gpuVoxel)&&gpuVoxel.attachments.size()==1&&gpuVoxel.attachments[0].gpuRaster&&gpuVoxel.attachments[0].shadow);
+ external::camera::Surface cpuFallback,expectedFallback;assert(cpuFallback.reset(128,128)&&expectedFallback.reset(128,128));cpuFallback.blit(gpuVoxel,64,64,1,1,100,{});expectedFallback.blit(cpuShadowed,64,64,1,1,100,{});
+ assert(cpuFallback.color==expectedFallback.color&&cpuFallback.depth==expectedFallback.depth&&v.model.faces.data()==geometryData&&fileReads==slopeFileReads);
+ gameassets::context.presentationGPU(false);v.shadow=false;
+ std::cout<<"PASS production GPU VXL/flattened shadow deferral, current posture/color packet, bounded cache accounting and identical same-frame CPU fallback\n";
  std::cout<<"PASS production native Drive posture -> retained VXL model -> changed slope pixels without geometry decode or disk IO\n";
  std::cout<<"PASS production absolute-slot animation -> theater SHP -> Value+Start pixels, power-off first frame, stale slot rejection and voxel scene-depth handoff\n";
  // Successful archived bytes remain resident; repeated frames do no file reads.
@@ -481,6 +493,31 @@ int main(int argc,char**argv){
  memory[bulletScheme+4+43*3]=201;memory[bulletScheme+4+43*3+1]=77;memory[bulletScheme+4+43*3+2]=31;
  assert(gameassets::context.refreshActorPalette(ordinary,paletteChanged)&&paletteChanged&&ordinary.colors[43]==0xffc94d1f);
  assert(ordinary.model.faces.data()==modelFaces&&ordinary.model.faces.size()==modelCount);
+ // Immutable prepared packets survive per-presentation image invalidation.
+ // Every native VPL capture still runs before the cache lookup.
+ assert(gameassets::captureProjectile(shot,shotType,9001,art)&&art.geometryIdentity);
+ gameassets::context.presentationGPU(true);gameassets::context.beginPresentation();
+ external::voxel::Image cachedGPU;assert(gameassets::renderActor(art,projectile.pose,cachedGPU)&&cachedGPU.gpuRaster);auto firstPacket=cachedGPU.gpuRaster;auto firstBuilds=gameassets::context.gpuPreparedBuilds();
+ for(int repeat=0;repeat<40;++repeat){gameassets::context.beginPresentation();assert(gameassets::renderActor(art,projectile.pose,cachedGPU)&&cachedGPU.gpuRaster==firstPacket);}
+ assert(gameassets::context.gpuPreparedBuilds()==firstBuilds&&gameassets::context.gpuPreparedHits()>=40&&gameassets::context.gpuPreparedCacheBytes()<=64*1024*1024);
+ auto copiedArt=art;auto movedArt=std::move(copiedArt);assert(movedArt.geometryIdentity==art.geometryIdentity&&gameassets::renderActor(movedArt,projectile.pose,cachedGPU)&&cachedGPU.gpuRaster==firstPacket);
+ auto unitArt=art;unitArt.kind=2;unitArt.shadow=true;assert(gameassets::renderActor(unitArt,liveSlope,cachedGPU)&&cachedGPU.attachments.size()==1);
+ auto bodyPacket=cachedGPU.gpuRaster,shadowPacket=cachedGPU.attachments[0].gpuRaster;auto unitBuilds=gameassets::context.gpuPreparedBuilds();
+ for(int repeat=0;repeat<10;++repeat){gameassets::context.beginPresentation();assert(gameassets::renderActor(unitArt,liveSlope,cachedGPU)&&cachedGPU.gpuRaster==bodyPacket&&cachedGPU.attachments[0].gpuRaster==shadowPacket);}
+ assert(gameassets::context.gpuPreparedBuilds()==unitBuilds);auto unitPosture=liveSlope;unitPosture.posture.forwards+=.02f;
+ assert(gameassets::renderActor(unitArt,unitPosture,cachedGPU)&&cachedGPU.gpuRaster!=bodyPacket&&cachedGPU.attachments[0].gpuRaster==shadowPacket);
+ auto originalColor=art.colors[1];art.colors[1]^=0x00010000;assert(gameassets::renderActor(art,projectile.pose,cachedGPU)&&cachedGPU.gpuRaster!=firstPacket);art.colors[1]=originalColor;
+ assert(gameassets::renderActor(art,projectile.pose,cachedGPU)&&cachedGPU.gpuRaster==firstPacket);
+ auto changedPose=projectile.pose;changedPose.body=(changedPose.body+1)&31;changedPose.bodyFine=-1;
+ assert(gameassets::renderActor(art,changedPose,cachedGPU)&&cachedGPU.gpuRaster!=firstPacket);
+ changedPose=projectile.pose;changedPose.posture.sideways+=.01f;assert(gameassets::renderActor(art,changedPose,cachedGPU)&&cachedGPU.gpuRaster!=firstPacket);
+ gameassets::context.presentationDetail(1);assert(gameassets::context.presentationResolution(64,64,128,128));assert(gameassets::renderActor(art,projectile.pose,cachedGPU)&&cachedGPU.gpuRaster!=firstPacket&&cachedGPU.rasterScale==2);gameassets::context.presentationDetail(0);
+ auto previousVPL=gameassets::context.voxelLightingRevision();memory[0xB41178+17]^=1;gameassets::context.beginPresentation();
+ assert(gameassets::context.voxelLightingRevision()!=previousVPL&&gameassets::renderActor(art,projectile.pose,cachedGPU)&&cachedGPU.gpuRaster!=firstPacket);memory[0xB41178+17]^=1;gameassets::context.beginPresentation();
+ auto previousGeometry=art.geometryIdentity;auto previousPacket=cachedGPU.gpuRaster;assert(gameassets::captureProjectile(shot,shotType,9001,art)&&art.geometryIdentity!=previousGeometry);
+ assert(gameassets::renderActor(art,projectile.pose,cachedGPU)&&cachedGPU.gpuRaster!=previousPacket);
+ gameassets::context.presentationGPU(false);
+ std::cout<<"PASS production immutable GPU packet reuse across40 fresh VPL captures; exact palette/pose/posture/raster/VPL invalidation, capture nonce recapture and copy/move identity\n";
  // Missing VPL must not substitute the vehicle Lambert approximation for
  // the distinct projectile selector. Source readiness will trigger retry.
  word(memory,0xB2FB58,0);disk.erase("VOXELS.VPL");gameassets::context.identity(pid+4,99);

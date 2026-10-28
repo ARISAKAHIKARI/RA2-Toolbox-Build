@@ -5,6 +5,7 @@
 #include <memory>
 #include <set>
 #include <array>
+#include <new>
 // Native-pixel composition storage. Source sprites are never individually
 // minified: all depth/shadow/color operations run at one pixel per source pixel.
 namespace external { namespace camera {
@@ -23,6 +24,11 @@ private:
  colorprecision::Mode precision_=colorprecision::Mode::NativeSteps;
  int width_=0,height_=0;uint32_t background_=0xff080c08;bool failed_=false,dynamic_=false;
  std::shared_ptr<Budget> budget_;std::map<uint32_t,std::shared_ptr<Page>> pages_;std::set<uint32_t> dirty_;std::vector<std::array<int,4>> dirtyRects_;
+ // Source discovery remains conservative. Local terrain banks only paint the
+ // page-aligned output neighborhood; repaint jobs further restrict writes to
+ // pages which were explicitly cleared for reconstruction.
+ int paintLeft_=0,paintTop_=0,paintRight_=0,paintBottom_=0;
+ bool repainting_=false;std::set<uint32_t> repaintPages_;
  // Forks share a reconstruction only while their native pixels agree. A
  // mutating copy drops its own pointer before painting, preserving the parent
  // revision's immutable tile contents and allowing camera pans to reuse them.
@@ -44,16 +50,21 @@ private:
  bool room()const{return budget_&&budget_->pages<(dynamic_?budget_->maximum:budget_->maximum-std::min(DynamicReserve,budget_->maximum/4));}
  bool ensure(int x0,int y0,int x1,int y1){
   x0=std::clamp(x0,0,width_);x1=std::clamp(x1,0,width_);y0=std::clamp(y0,0,height_);y1=std::clamp(y1,0,height_);if(x0>=x1||y0>=y1)return true;
-  for(int y=y0/PageSize;y<=(y1-1)/PageSize;++y)for(int x=x0/PageSize;x<=(x1-1)/PageSize;++x){uint32_t k=key(x,y);auto i=pages_.find(k);
+  for(int y=y0/PageSize;y<=(y1-1)/PageSize;++y)for(int x=x0/PageSize;x<=(x1-1)/PageSize;++x){uint32_t k=key(x,y);if(repainting_&&!repaintPages_.count(k))continue;auto i=pages_.find(k);
    if(i==pages_.end()){if(!room()){failed_=true;return false;}auto p=std::make_shared<Page>(budget_);if(background_!=0xff080c08)std::fill(p->surface.color.begin(),p->surface.color.end(),background_);pages_.emplace(k,std::move(p));}
    else if(!i->second.unique()){if(!room()){failed_=true;return false;}i->second=std::make_shared<Page>(*i->second);}
   }return true;
  }
  template<class Draw>void paint(int x0,int y0,int x1,int y1,Draw draw){
-  x0=std::clamp(x0,0,width_);x1=std::clamp(x1,0,width_);y0=std::clamp(y0,0,height_);y1=std::clamp(y1,0,height_);if(x0>=x1||y0>=y1)return;
-  regionCache_.reset();if(!ensure(x0,y0,x1,y1))return;
-  for(int y=y0/PageSize;y<=(y1-1)/PageSize;++y)for(int x=x0/PageSize;x<=(x1-1)/PageSize;++x){uint32_t k=key(x,y);auto&surface=pages_.find(k)->second->surface;surface.precision(precision_);draw(surface,x*PageSize,y*PageSize);dirty_.insert(k);}
-  dirtyRects_.push_back({x0,y0,x1,y1});
+  x0=std::clamp(x0,paintLeft_,paintRight_);x1=std::clamp(x1,paintLeft_,paintRight_);y0=std::clamp(y0,paintTop_,paintBottom_);y1=std::clamp(y1,paintTop_,paintBottom_);if(x0>=x1||y0>=y1||!intersectsRepaint(x0,y0,x1,y1))return;
+  // repaint() already forked and invalidated the complete dirty pages. Keep
+  // unaffected immutable xBRZ/raw tiles alive while reconstructing those pages.
+  if(!repainting_)regionCache_.reset();
+  try{
+   if(!ensure(x0,y0,x1,y1))return;
+   for(int y=y0/PageSize;y<=(y1-1)/PageSize;++y)for(int x=x0/PageSize;x<=(x1-1)/PageSize;++x){uint32_t k=key(x,y);if(repainting_&&!repaintPages_.count(k))continue;auto&surface=pages_.find(k)->second->surface;surface.precision(precision_);draw(surface,x*PageSize,y*PageSize);dirty_.insert(k);}
+   dirtyRects_.push_back({x0,y0,x1,y1});
+  }catch(const std::bad_alloc&){failed_=true;}
  }
  static void imageBounds(const voxel::Image&i,float ax,float ay,float shadowDrop,float&x0,float&y0,float&x1,float&y1){
   if(i.width>0&&i.height>0){x0=std::min(x0,ax+float(i.x)/i.rasterScale);y0=std::min(y0,ay+float(i.y)/i.rasterScale);x1=std::max(x1,ax+float(i.x+i.width)/i.rasterScale);y1=std::max(y1,ay+float(i.y+i.height)/i.rasterScale);}
@@ -103,14 +114,46 @@ public:
  };
 public:
  bool reset(int width,int height,std::shared_ptr<Budget>budget={},uint32_t background=0xff080c08u){
-  regionCache_.reset();pages_.clear();dirty_.clear();dirtyRects_.clear();failed_=dynamic_=false;width_=height_=0;background_=background;budget_=budget?std::move(budget):std::make_shared<Budget>();
-  if(width<1||height<1||width>MaximumDimension||height>MaximumDimension||!budget_->maximum)return false;width_=width;height_=height;return true;
+  regionCache_.reset();pages_.clear();dirty_.clear();dirtyRects_.clear();repaintPages_.clear();repainting_=false;failed_=dynamic_=false;width_=height_=0;paintLeft_=paintTop_=paintRight_=paintBottom_=0;background_=background;budget_=budget?std::move(budget):std::make_shared<Budget>();
+  if(width<1||height<1||width>MaximumDimension||height>MaximumDimension||!budget_->maximum)return false;width_=width;height_=height;paintRight_=width;paintBottom_=height;return true;
  }
  void precision(colorprecision::Mode mode){if(mode!=precision_)regionCache_.reset();precision_=mode;}
  int width()const{return width_;}int height()const{return height_;}bool failed()const{return failed_;}void clearFailure(){failed_=false;}
  size_t pageCount()const{return pages_.size();}size_t dirtyPages()const{return dirty_.size();}size_t residentPages()const{return budget_?budget_->pages:0;}
- void clean(){dirty_.clear();dirtyRects_.clear();}
- NativeCanvas fork()const{NativeCanvas out=*this;out.dynamic_=true;out.failed_=false;out.dirty_.clear();out.dirtyRects_.clear();return out;}
+ void clean(){dirty_.clear();dirtyRects_.clear();repainting_=false;repaintPages_.clear();}
+ NativeCanvas fork()const{NativeCanvas out=*this;out.dynamic_=true;out.failed_=false;out.clean();return out;}
+ void restrictPaint(int left,int top,int right,int bottom){
+  left=std::clamp(left,0,width_);right=std::clamp(right,0,width_);top=std::clamp(top,0,height_);bottom=std::clamp(bottom,0,height_);
+  if(left>=right||top>=bottom){paintLeft_=paintTop_=paintRight_=paintBottom_=0;return;}
+  paintLeft_=left/PageSize*PageSize;paintTop_=top/PageSize*PageSize;
+  paintRight_=std::min(width_,((right+PageSize-1)/PageSize)*PageSize);paintBottom_=std::min(height_,((bottom+PageSize-1)/PageSize)*PageSize);
+ }
+ bool intersectsRepaint(double left,double top,double right,double bottom)const{
+  if(!std::isfinite(left)||!std::isfinite(top)||!std::isfinite(right)||!std::isfinite(bottom))return false;
+  left=std::max(left,double(paintLeft_));top=std::max(top,double(paintTop_));right=std::min(right,double(paintRight_));bottom=std::min(bottom,double(paintBottom_));
+  if(left>=right||top>=bottom)return false;if(!repainting_)return true;
+  for(int y=int(top)/PageSize;y<=int(std::ceil(bottom)-1)/PageSize;++y)for(int x=int(left)/PageSize;x<=int(std::ceil(right)-1)/PageSize;++x)if(repaintPages_.count(key(x,y)))return true;
+  return false;
+ }
+ bool repaint(const NativeCanvas&source,const std::vector<std::array<int,4>>&rectangles){
+  if(this==&source||source.failed_||source.width_<1||source.height_<1||!source.budget_||rectangles.size()>65536)return false;
+  try{
+   NativeCanvas next=source;next.clean();next.dynamic_=true;next.repainting_=true;next.failed_=false;
+   for(const auto&r:rectangles){int left=std::clamp(r[0],source.paintLeft_,source.paintRight_),top=std::clamp(r[1],source.paintTop_,source.paintBottom_);
+    int right=std::clamp(r[2],source.paintLeft_,source.paintRight_),bottom=std::clamp(r[3],source.paintTop_,source.paintBottom_);if(left>=right||top>=bottom)continue;
+    for(int y=top/PageSize;y<=(bottom-1)/PageSize;++y)for(int x=left/PageSize;x<=(right-1)/PageSize;++x){next.repaintPages_.insert(key(x,y));if(next.repaintPages_.size()>DynamicReserve)return false;}
+   }
+   // The old bank remains immutable until publication. Its dirty pages and
+   // their replacements coexist briefly, using the dynamic page reserve.
+   if(next.budget_->pages>next.budget_->maximum||next.repaintPages_.size()>next.budget_->maximum-next.budget_->pages)return false;
+   if(next.regionCache_)next.regionCache_=std::make_shared<xbrzadapter::RegionCache>(*next.regionCache_);
+   for(uint32_t page:next.repaintPages_){next.pages_.erase(page);next.dirty_.insert(page);const int x=pageX(page)*PageSize,y=pageY(page)*PageSize;
+    next.dirtyRects_.push_back({x,y,std::min(x+PageSize,next.width_),std::min(y+PageSize,next.height_)});
+    if(next.regionCache_)next.regionCache_->invalidateRegion(x,y,std::min(x+PageSize,next.width_),std::min(y+PageSize,next.height_));
+   }
+   *this=std::move(next);return true;
+  }catch(const std::bad_alloc&){return false;}
+ }
  uint32_t pixel(int x,int y)const{if(x<0||y<0||x>=width_||y>=height_)return background_;auto p=pages_.find(key(x/PageSize,y/PageSize));return p==pages_.end()?background_:p->second->surface.color[size_t(y%PageSize)*PageSize+x%PageSize];}
  float depth(int x,int y)const{if(x<0||y<0||x>=width_||y>=height_)return -std::numeric_limits<float>::infinity();auto p=pages_.find(key(x/PageSize,y/PageSize));return p==pages_.end()?-std::numeric_limits<float>::infinity():p->second->surface.depth[size_t(y%PageSize)*PageSize+x%PageSize];}
  bool depthRegion(int x,int y,int w,int h,std::vector<float>&out)const{
@@ -155,6 +198,12 @@ public:
  // Crop a native-pixel scene BEFORE presentation scaling. This is deliberately
  // independent of the radar's whole-map downscale. Outside backing falls back
  // to the underlying game through transparent pixels instead of stretching.
+ bool gpuRegion(int width,int height,double x,double y,double spanX,double spanY,unsigned mode,std::vector<vulkancompute::TileJob>&out)const{
+  if(failed_||(mode!=2&&mode!=3)||width_<1||height_<1)return false;
+  if(!regionCache_)regionCache_=std::make_shared<xbrzadapter::RegionCache>();
+  auto fetch=[&](int px,int py){return pixel(std::clamp(px,0,width_-1),std::clamp(py,0,height_-1));};
+  return regionCache_->gpuRegion(fetch,x,y,spanX,spanY,width,height,out);
+ }
  bool presentRegion(int width,int height,std::vector<uint32_t>&out,
                     double x,double y,double spanX,double spanY,unsigned pixelScaleMode=0)const{
   if(failed_||width_<1||height_<1||width<1||height<1||width>8192||height>8192||

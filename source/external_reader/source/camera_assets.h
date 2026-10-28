@@ -13,6 +13,8 @@
 #include "projectile_visuals.h"
 #include "live_palette_cache.h"
 #include "palette_recovery.h"
+#include "gpu_voxel.h"
+#include "gpu_voxel_cache.h"
 #include <map>
 #include <tuple>
 #include <cstdio>
@@ -25,7 +27,10 @@ namespace external { namespace cameraassets {
 template<class Reader>class Context {
  Reader&reader_;uint32_t process_=0,match_=0;
  bool lastPaletteLive_=false,terrainPaletteLive_=false,presentation_=false,presentationVplFresh_=false;
- bool colorPrecision_=false;
+ bool colorPrecision_=false,gpuPresentation_=false;
+ gpuvoxel::PacketCache gpuPackets_;
+ std::shared_ptr<const gpuvoxel::PacketCache::VplSnapshot>gpuVplSnapshot_;
+ uint64_t gpuVplSignature_=0;
  int detail_=0;
  resolutionsampling::Selection resolution_;
  pixelupgrade::PaletteRange paletteRange_=pixelupgrade::PaletteRange::OriginalDAC;
@@ -34,12 +39,17 @@ public:
  Read read;
  void presentationColorPrecision(bool enabled){colorPrecision_=enabled;}
  void presentationDetail(int detail){detail_=std::clamp(detail,0,1);}
+ void presentationGPU(bool enabled){gpuPresentation_=enabled;}
+ bool presentationGPU()const{return gpuPresentation_;}
+ uint64_t gpuPreparedBuilds()const{return gpuPackets_.builds();}
+ uint64_t gpuPreparedHits()const{return gpuPackets_.hits();}
+ size_t gpuPreparedCacheBytes()const{return gpuPackets_.bytes();}
  bool presentationResolution(int sourceWidth,int sourceHeight,int targetWidth,int targetHeight){resolution_=resolutionsampling::choose(sourceWidth,sourceHeight,targetWidth,targetHeight);return resolution_.valid;}
  int presentationRasterScale()const{return detail_?(resolution_.valid?resolution_.rasterScale:0):1;}
  void presentationPalette(pixelupgrade::PaletteRange mode){paletteRange_=mode;}
  explicit Context(Reader&r):reader_(r),read{&r},artINI(read,external::assets::LiveINI::ArtObject),rulesINI(read,external::assets::LiveINI::RulesPointer,true),cameoCatalog(read){}
  void identity(uint32_t process,uint32_t match){
-  if(process_!=process||match_!=match){overlayPalettes_.clear();terrainPaletteLive_=presentation_=presentationVplFresh_=false;voxelLight={};voxelChecked=voxelNative=false;voxelRevision=~uint64_t(0);}
+  if(process_!=process||match_!=match){overlayPalettes_.clear();gpuPackets_.clear();gpuVplSnapshot_.reset();gpuVplSignature_=0;terrainPaletteLive_=presentation_=presentationVplFresh_=false;voxelLight={};voxelChecked=voxelNative=false;voxelRevision=~uint64_t(0);}
   process_=process;match_=match;update();
  }
 
@@ -57,6 +67,14 @@ external::assets::EffectiveINI<Read> artINI,rulesINI;uint64_t iniRevision=~uint6
  std::shared_ptr<const external::voxel::Image> buildingMask;bool buildingMaskBiased=false;uint64_t maskRevision=~uint64_t(0);
  external::assets::RuntimeCameos<Read> cameoCatalog;external::voxel::Vpl voxelLight;uint64_t voxelRevision=~uint64_t(0);
  uint32_t voxelCheck=0;bool voxelChecked=false,voxelNative=false;
+ void gpuVplSnapshot(bool force=false){
+  if(!voxelLight.ready()){gpuVplSnapshot_.reset();gpuVplSignature_=0;return;}
+  if(!force&&gpuVplSnapshot_&&gpuVplSignature_==voxelLight.signature())return;
+  gpuvoxel::PacketCache::VplSnapshot next{};
+  for(unsigned page=0;page<256;++page)for(unsigned index=0;index<256;++index)next[page*256+index]=voxelLight.map(page,uint8_t(index));
+  if(!gpuVplSnapshot_||*gpuVplSnapshot_!=next)gpuVplSnapshot_=std::make_shared<const gpuvoxel::PacketCache::VplSnapshot>(std::move(next));
+  gpuVplSignature_=voxelLight.signature();
+ }
  void resolveCameo(um::Type&t){update();auto file=cameoCatalog.resolve([&](const char*n,std::vector<uint8_t>&b){return files.load(n,b);},files.revision(),files.revision()^(GetTickCount64()/5000),t.id,text(t.ptr+0x1F8,25),t.cameo);memset(t.cameo,0,sizeof t.cameo);if(file.size()<sizeof t.cameo)memcpy(t.cameo,file.data(),file.size());}
  void vpl(bool force=false){
   auto revision=files.revision();if(voxelRevision!=revision){voxelRevision=revision;voxelLight={};voxelChecked=voxelNative=false;}
@@ -65,7 +83,7 @@ external::assets::EffectiveINI<Read> artINI,rulesINI;uint64_t iniRevision=~uint6
   // Prefer the table actually used by the game, including modded archives
   // unavailable to the external file reader. Legacy users poll from update();
   // live presentation captures every pass and keeps geometry revision separate.
-  if(voxelLight.capture(read)){voxelNative=true;if(force)presentationVplFresh_=true;return;}
+  if(voxelLight.capture(read)){voxelNative=true;if(force)presentationVplFresh_=true;if(gpuPresentation_)gpuVplSnapshot(true);return;}
   if(force)return; // current-presentation VXL never uses stale or guessed light tables
   if(voxelLight.ready())return;
   std::vector<uint8_t>b;if(files.load("VOXELS.VPL",b))voxelLight.load(b);
@@ -237,6 +255,9 @@ bool actor(uint32_t p,uint32_t type,uint32_t id,double angle,external::voxel::Im
 struct BuildingPart {uint32_t pointer=0;std::vector<uint8_t> shape;std::string filename;};
 struct ActorArt {
  external::voxel::Model model;std::vector<uint8_t> shape;std::array<uint32_t,256> colors{};
+ // A fresh nonce is assigned only after successful immutable model capture.
+ // Copies/moves preserve it; recapture/replacement always creates a new owner.
+ gpuvoxel::PacketCache::Geometry geometryIdentity;
  std::string filename;
  uint32_t object=0,id=0,owner=0,parent=0,parentId=0;bool paletteLive=false;uint64_t paletteRevision=1;std::string paletteFilename;
  uint32_t pointer=0,type=0;float turretOffset=0;bool voxel=false;int kind=-1,fw=1,fh=1,moveX=0,moveY=0,drawY=0,zAdjust=0;bool flat=false,shadow=true;
@@ -244,6 +265,18 @@ struct ActorArt {
  std::array<BuildingPart,external::buildings::PartCount> buildingParts;
 };
 static bool liveVoxel(const ActorArt&a){return a.voxel;}
+ bool gpuVoxel(const ActorArt&art,double angle,double turret,double pitch,bool projectile,int scale,const voxelposture::State*posture,bool shadow,voxel::Image&out){
+  if(!shadow)gpuVplSnapshot();
+  auto key=gpuvoxel::PacketCache::key(art.geometryIdentity,shadow?std::shared_ptr<const gpuvoxel::PacketCache::VplSnapshot>{}:gpuVplSnapshot_,art.colors,angle,turret,pitch,art.turretOffset,scale,projectile,shadow,posture);
+  auto packet=gpuPackets_.find(key);
+  if(!packet){auto next=std::make_shared<gpuvoxel::Prepared>();
+   if(shadow){auto flattened=art.model;for(auto&face:flattened.faces)for(auto&p:face.p)p.z=0;
+    if(!gpuvoxel::prepare(flattened,angle,art.colors,*next,turret,art.turretOffset,nullptr,255,0,false,scale))return false;
+   }else if(!gpuvoxel::prepare(art.model,angle,art.colors,*next,turret,art.turretOffset,&voxelLight,255,pitch,projectile,scale,posture))return false;
+   packet=next;gpuPackets_.insert(std::move(key),packet);
+  }
+  out={};out.rasterScale=packet->rasterScale;out.width=packet->width;out.height=packet->height;out.x=packet->x;out.y=packet->y;out.depthBottom=packet->depthBottom;out.objectPalette=true;out.gpuRaster=std::move(packet);return true;
+ }
 static size_t cost(const ActorArt&a){size_t n=a.shape.size()+a.model.faces.size()*sizeof(external::voxel::Face);for(const auto&part:a.buildingParts)n+=part.shape.size();return n;}
 static int integer(const std::string&s,int fallback=0){if(s.empty())return fallback;char*end=nullptr;long n=strtol(s.c_str(),&end,10);return end!=s.c_str()&&!*end?int(std::clamp(n,-8192l,8192l)):fallback;}
 void captureBuildingParts(uint32_t type,ActorArt&art){
@@ -324,6 +357,7 @@ bool captureProjectile(uint32_t p,uint32_t type,uint32_t id,ActorArt&out){
  }
  external::projectiles::State after;if(!external::projectiles::capture(read,p,after)||after.type!=state.type||after.id!=state.id||after.converter!=state.converter||after.palette!=state.palette){failure="projectile-changed";return false;}
  bool paletteChanged=false;if(!refreshActorPalette(next,paletteChanged))return false;
+ if(next.voxel)next.geometryIdentity=std::make_shared<const uint8_t>(0);
  failure.clear();out=std::move(next);return true;
 }
 bool captureActor(uint32_t p,uint32_t type,uint32_t id,ActorArt&out){
@@ -375,7 +409,7 @@ bool captureActor(uint32_t p,uint32_t type,uint32_t id,ActorArt&out){
   if(!loaded){external::voxel::Image check;if(!external::voxel::sprite(read,next.pointer,next.colors,check)){failure="sprite-not-found/unloaded:"+(filename.empty()?stem:filename);return false;}}
  }
  if(next.kind==3)captureBuildingParts(type,next);
- if(word(p+0x10)!=id||word(p+0x21C)!=owner)return false;bool paletteChanged=false;if(!refreshActorPalette(next,paletteChanged))return false;out=std::move(next);return true;
+ if(word(p+0x10)!=id||word(p+0x21C)!=owner)return false;bool paletteChanged=false;if(!refreshActorPalette(next,paletteChanged))return false;if(next.voxel)next.geometryIdentity=std::make_shared<const uint8_t>(0);out=std::move(next);return true;
 }
 bool refreshActorPalette(ActorArt&art,bool&changed){
  return external::livepalette::refresh(art.colors,art.paletteLive,art.paletteRevision,changed,[&](external::livepalette::Sample&sample){
@@ -401,17 +435,21 @@ bool renderActor(const ActorArt&art,const external::visual::Pose&pose,external::
   if(!presentation_)vpl();bool projectile=art.kind==external::projectiles::Kind;
   if(projectile&&!voxelLight.ready()){failure="projectile-vpl-unavailable";return false;}
   if(!pose.posture.available){failure="voxel-current-posture-unavailable";return false;}
-  if(!external::voxel::render(art.model,angle,art.colors,out,projectile?std::numeric_limits<double>::quiet_NaN():turret,art.turretOffset,&voxelLight,255,projectile?turret:0,projectile,rasterScale,&pose.posture))return false;
+  if(gpuPresentation_){
+   if(!gpuVoxel(art,angle,projectile?std::numeric_limits<double>::quiet_NaN():turret,projectile?turret:0,projectile,rasterScale,&pose.posture,false,out))return false;
+  }else if(!external::voxel::render(art.model,angle,art.colors,out,projectile?std::numeric_limits<double>::quiet_NaN():turret,art.turretOffset,&voxelLight,255,projectile?turret:0,projectile,rasterScale,&pose.posture))return false;
   // The model Z buffer resolves faces inside the cached voxel only. The game
   // submits that cached image through the same standing shape Z test as SHP.
   // Orthographic model depth is not in the terrain/BUILDNGZ buffer's units.
   std::vector<float>().swap(out.depth);out.writeDepth=false;if(projectile){out.flat=art.flat;
    // 46B1A5/490B90: non-flat projectile flags 0800 select a blitter
    // without a Z read or write. Flat 2800 keeps the ground Z read.
-   if(!art.flat)out.depth.assign(out.pixels.size(),std::numeric_limits<float>::quiet_NaN());
+   if(!art.flat){if(gpuPresentation_)out.skipZ=true;else out.depth.assign(out.pixels.size(),std::numeric_limits<float>::quiet_NaN());}
   }
-  if(art.shadow){auto ground=art.model;for(auto&face:ground.faces)for(auto&p:face.p)p.z=0;external::voxel::Image shadow;
-   if(external::voxel::render(ground,angle,art.colors,shadow,turret,art.turretOffset,nullptr,255,0,false,rasterScale)){shadow.x+=3*shadow.rasterScale;shadow.shadow=true;shadow.flat=true;shadow.writeDepth=false;shadow.depthBias=2;std::vector<float>().swap(shadow.depth);out.attachments.push_back(std::move(shadow));}}
+  if(art.shadow){external::voxel::Image shadow;bool drawn=false;
+   if(gpuPresentation_)drawn=gpuVoxel(art,angle,turret,0,false,rasterScale,nullptr,true,shadow);
+   else{auto ground=art.model;for(auto&face:ground.faces)for(auto&p:face.p)p.z=0;drawn=external::voxel::render(ground,angle,art.colors,shadow,turret,art.turretOffset,nullptr,255,0,false,rasterScale);}
+   if(drawn){shadow.x+=3*shadow.rasterScale;shadow.shadow=true;shadow.flat=true;shadow.writeDepth=false;shadow.depthBias=2;std::vector<float>().swap(shadow.depth);out.attachments.push_back(std::move(shadow));}}
   return true;
  }
  if(pose.frame<0){failure="sprite-sequence";return false;}

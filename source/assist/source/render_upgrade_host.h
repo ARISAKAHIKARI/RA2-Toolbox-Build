@@ -38,7 +38,7 @@ static void statusText(const std::wstring&text){
 }
 static asyncwork::Latest<Request,Frame> worker([](const Request&r)->std::shared_ptr<const Frame>{
  const double started=presentationNow();
- external::xbrzadapter::gpuPresentation(r.gpu);
+ external::xbrzadapter::gpuPresentation(r.gpu&&r.detail!=0);
  // Failed attempts do not replace a completed image. The UI independently
  // enforces sample/completion age limits and exact world/view/config identity.
  auto unavailable=[]()->std::shared_ptr<const Frame>{return {};};
@@ -75,6 +75,9 @@ static asyncwork::Latest<Request,Frame> worker([](const Request&r)->std::shared_
  const uint32_t sampledTick=GetTickCount();
  data.tick=sampledTick; // presentation retry deadlines keep running while paused
  assets.presentationDetail(r.detail);
+ const auto&gpuBackend=external::xbrzadapter::gpuState().resolve;
+ const bool gpuUnavailable=gpuBackend&&!gpuBackend->diagnostics().available&&!gpuBackend->diagnostics().reason.empty();
+ assets.presentationGPU(r.gpu&&r.detail!=0&&!gpuUnavailable);
  assets.presentationResolution(r.view.width,r.view.height,r.width,r.height);
  assets.presentationColorPrecision(r.colorPrecision!=0);
  assets.presentationPalette(r.paletteRange==1?external::pixelupgrade::PaletteRange::FullRGB:external::pixelupgrade::PaletteRange::OriginalDAC);
@@ -284,7 +287,7 @@ static void update(POINT origin,const RECT&client,const external::display::State
   status+=renderColorPrecision?L" · 连续 RGB 光照":L" · 兼容光照色阶";
   if(renderSceneDetail)status+=L" · 连续地形＋目标像素对象＋VXL 自适应几何/256 向";
   if(renderMaterialRefresh)status+=L" · 素材高刷目标 "+std::to_wstring(informationFPS())+L" Hz";
-  if(request.gpu)status+=presentedFrame->gpuUsed?L" · Vulkan GPU 缩放":presentedFrame->gpuAttempted?L" · Vulkan 不可用，CPU 缩放":L" · 本帧无需 GPU 分数缩放";
+  if(request.gpu)status+=request.detail==0?L" · 原生合成对照：CPU":presentedFrame->gpuUsed?L" · Vulkan GPU 场景":L" · Vulkan 未启用或已回退 CPU";
   status+=L" · 本帧 "+std::to_wstring(int(std::lround(presentedFrame->renderMs)))+L" ms";
   status+=L" · 电弧近似；激光/波纹/粒子待补，实机待测";
  }
