@@ -20,3 +20,21 @@ jobs:
           path: |
             generated/gpu_shroud_spirv.h
             generated-shroud.json
+  compute:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install software Vulkan and validation layers
+        run: sudo apt-get update && sudo apt-get install -y mesa-vulkan-drivers vulkan-validationlayers
+      - name: Run real integer shroud raster and persistent cache
+        run: |
+          set -euo pipefail
+          g++ -std=c++17 -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -DRA2_VULKAN_TEST_SOFTWARE source/assist/tests/vulkan_shroud.cpp -ldl -o /tmp/vulkan-shroud
+          VK_INSTANCE_LAYERS=VK_LAYER_KHRONOS_validation ASAN_OPTIONS=detect_leaks=0 /tmp/vulkan-shroud --require 2>&1 | tee vulkan-shroud.log
+          python3 -c 'from pathlib import Path; import re; assert not re.search("Validation Error|VUID-|runtime error:|ERROR: AddressSanitizer",Path("vulkan-shroud.log").read_text())'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: gpu-shroud-validation
+          if-no-files-found: warn
+          path: vulkan-shroud.log
