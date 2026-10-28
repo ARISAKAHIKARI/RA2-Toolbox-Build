@@ -21,7 +21,7 @@ RVec unpackColor(uint pixel){return RVec(Real((pixel>>16)&255u),Real((pixel>>8)&
 uint packColor(RVec value){value=clamp(floor(value+RVec(Real(.5))),RVec(0),RVec(255));return (uint(value.w)<<24)|(uint(value.x)<<16)|(uint(value.y)<<8)|uint(value.z);}
 bool emissive(uint index,uint flags){return (flags&8u)!=0u&&index>=240u&&index<=254u;}
 uint rawAt(uint draw,ivec2 at){ivec2 size=ivec2(field(draw,3),field(draw,4));if(any(lessThan(at,ivec2(0)))||any(greaterThanEqual(at,size)))return 0u;return colors.v[field(draw,0)+uint(at.y)*uint(size.x)+uint(at.x)];}
-uint indexAt(uint draw,ivec2 at){ivec2 size=ivec2(field(draw,3),field(draw,4));uint offset=field(draw,2);if(offset==Missing||any(lessThan(at,ivec2(0)))||any(greaterThanEqual(at,size)))return 0u;return byteAt(offset,uint(at.y)*uint(size.x)+uint(at.x));}
+uint indexAt(uint draw,ivec2 at){ivec2 size=ivec2(field(draw,3),field(draw,4));uint offset=field(draw,2);if(offset==Missing||any(lessThan(at,ivec2(0)))||any(greaterThanEqual(at,size)))return 0u;uint index=uint(at.y)*uint(size.x)+uint(at.x);return (field(draw,9)&64u)!=0u?materials.v[offset+index]:byteAt(offset,index);}
 uint litAt(uint draw,ivec2 at){uint pixel=rawAt(draw,at),flags=field(draw,9);if(emissive(indexAt(draw,at),flags))return pixel;uint result=pixel&0xff000000u;float alpha=float(pixel>>24);for(uint c=0;c<3;++c){uint shift=16u-c*8u;precise float value=clamp(float((pixel>>shift)&255u)*ffield(draw,20u+c),0.,alpha);uint channel=(flags&16u)!=0u?uint(floor(value+.5)):uint(value);result|=channel<<shift;}return result;}
 uint distance(uint a,uint b){ivec3 d=ivec3((a>>16)&255u,(a>>8)&255u,a&255u)-ivec3((b>>16)&255u,(b>>8)&255u,b&255u);return uint(d.x*d.x+2*d.y*d.y+d.z*d.z);}
 RVec weights(uint a,uint b,uint c,uint d,Real fx,Real fy,bool adaptive){
@@ -66,7 +66,7 @@ void main(){
    }else{RVec weight=weights(lit[0],lit[1],lit[2],lit[3],fx,fy,mode==2u);RVec sum=RVec(0);for(int n=0;n<4;++n)sum+=weight[n]*unpackColor(lit[n]);pixel=packColor(sum);}
   }
 #endif
-  if((pixel>>24)==0u)continue;precise float z=ffield(draw,18);bool useZ=true;
+  if((pixel>>24)==0u)continue;precise float z=ffield(draw,18);bool useZ=(flags&32u)==0u;
   if(field(draw,1)!=Missing){float add=uintBitsToFloat(materials.v[field(draw,1)+sourceAt]);if(isnan(add))useZ=false;else z+=add;}
   else if((flags&4u)!=0u){precise float part=float(int(field(draw,12))+original.y)/float(field(draw,11))-14.;z+=part+ffield(draw,19);}
   else{int bottom=int(field(draw,13));precise float part=float(bottom)/float(field(draw,11))-14.;part+=ffield(draw,19);part+=float((bottom-int(field(draw,12))-original.y)/3)/float(field(draw,11));z+=part;}

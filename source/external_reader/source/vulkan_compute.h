@@ -1,6 +1,9 @@
 #pragma once
 // Optional Vulkan 1.0 compute resolve. No game handles, hooks or memory writes.
 // Input tiles are immutable premultiplied ARGB8; only changed tiles are uploaded.
+#ifndef VK_NO_PROTOTYPES
+#define VK_NO_PROTOTYPES
+#endif
 #include "../../third_party/vulkan/vulkan_core.h"
 #include "vulkan_bilinear_spirv.h"
 #include <algorithm>
@@ -22,7 +25,7 @@
 #else
 #include <dlfcn.h>
 #endif
-namespace external { namespace vulkancompute {
+namespace external { namespace gpuxbrz {class Stage;} namespace gpuvoxel {class Stage;} namespace gpushroud {class Stage;} namespace vulkancompute {
 struct TileJob {
  std::shared_ptr<const std::vector<uint32_t>> pixels;
  int sourceWidth=0,sourceHeight=0,left=0,top=0,width=0,height=0;
@@ -35,6 +38,10 @@ struct Diagnostics {
  std::string device,reason;
 };
 class Resolve {
+ friend class external::gpuxbrz::Stage;
+ friend class external::gpuvoxel::Stage;
+ friend class external::gpushroud::Stage;
+protected:
 #ifdef RA2_VULKAN_TEST_SOFTWARE
  static constexpr bool AllowSoftware=true;
 #else
@@ -54,7 +61,7 @@ class Resolve {
 #endif
  VkInstance instance_=VK_NULL_HANDLE;VkPhysicalDevice physical_=VK_NULL_HANDLE;VkDevice device_=VK_NULL_HANDLE;
  VkQueue queue_=VK_NULL_HANDLE;uint32_t queueFamily_=0;
- VkPhysicalDeviceMemoryProperties memory_{};VkPhysicalDeviceProperties properties_{};
+ VkPhysicalDeviceMemoryProperties memory_{};VkPhysicalDeviceProperties properties_{};VkPhysicalDeviceFeatures features_{};
  VkDescriptorSetLayout descriptorLayout_=VK_NULL_HANDLE;VkPipelineLayout pipelineLayout_=VK_NULL_HANDLE;
  VkPipeline pipeline_=VK_NULL_HANDLE;VkDescriptorPool descriptorPool_=VK_NULL_HANDLE;VkDescriptorSet descriptors_=VK_NULL_HANDLE;
  VkCommandPool commandPool_=VK_NULL_HANDLE;VkCommandBuffer command_=VK_NULL_HANDLE;VkFence fence_=VK_NULL_HANDLE;
@@ -66,7 +73,7 @@ class Resolve {
  RA2_VK_GLOBAL(vkGetInstanceProcAddr) RA2_VK_GLOBAL(vkCreateInstance)
 #define RA2_VK_INSTANCE_FUNCTIONS(X) \
  X(vkDestroyInstance) X(vkEnumeratePhysicalDevices) X(vkGetPhysicalDeviceProperties) \
- X(vkGetPhysicalDeviceQueueFamilyProperties) X(vkGetPhysicalDeviceMemoryProperties) X(vkCreateDevice) X(vkGetDeviceProcAddr)
+ X(vkGetPhysicalDeviceQueueFamilyProperties) X(vkGetPhysicalDeviceMemoryProperties) X(vkGetPhysicalDeviceFeatures) X(vkCreateDevice) X(vkGetDeviceProcAddr)
  RA2_VK_INSTANCE_FUNCTIONS(RA2_VK_GLOBAL)
 #define RA2_VK_DEVICE_FUNCTIONS(X) \
  X(vkDestroyDevice) X(vkGetDeviceQueue) X(vkCreateBuffer) X(vkDestroyBuffer) X(vkGetBufferMemoryRequirements) \
@@ -170,8 +177,9 @@ class Resolve {
   if(!physical_)return fatal("No compatible Vulkan compute device");
   diagnostics_.device=properties_.deviceName;diagnostics_.softwareDevice=properties_.deviceType==VK_PHYSICAL_DEVICE_TYPE_CPU;
   vkGetPhysicalDeviceMemoryProperties_(physical_,&memory_);
+  VkPhysicalDeviceFeatures supported{};vkGetPhysicalDeviceFeatures_(physical_,&supported);features_.shaderFloat64=supported.shaderFloat64;
   float priority=1;VkDeviceQueueCreateInfo q{VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO};q.queueFamilyIndex=queueFamily_;q.queueCount=1;q.pQueuePriorities=&priority;
-  VkDeviceCreateInfo d{VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO};d.queueCreateInfoCount=1;d.pQueueCreateInfos=&q;
+  VkDeviceCreateInfo d{VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO};d.queueCreateInfoCount=1;d.pQueueCreateInfos=&q;d.pEnabledFeatures=&features_;
   if(vkCreateDevice_(physical_,&d,nullptr,&device_)!=VK_SUCCESS)return fatal("Vulkan logical device creation failed");
 #define RA2_VK_LOAD_DEVICE(F) F##_=reinterpret_cast<PFN_##F>(vkGetDeviceProcAddr_(device_,#F));if(!F##_)return fatal("Missing Vulkan device function " #F);
   RA2_VK_DEVICE_FUNCTIONS(RA2_VK_LOAD_DEVICE)
@@ -197,7 +205,7 @@ class Resolve {
   VkCommandBufferAllocateInfo ca{VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO};ca.commandPool=commandPool_;ca.level=VK_COMMAND_BUFFER_LEVEL_PRIMARY;ca.commandBufferCount=1;
   if(vkAllocateCommandBuffers_(device_,&ca,&command_)!=VK_SUCCESS)return fatal("Vulkan command allocation failed");
   VkFenceCreateInfo fi{VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};if(vkCreateFence_(device_,&fi,nullptr,&fence_)!=VK_SUCCESS)return fatal("Vulkan fence failed");
-  if(!buffer(atlas_,AtlasBytes,VK_BUFFER_USAGE_STORAGE_BUFFER_BIT|VK_BUFFER_USAGE_TRANSFER_DST_BIT,false,true))return fatal("Vulkan atlas allocation failed");
+  if(!buffer(atlas_,AtlasBytes,VK_BUFFER_USAGE_STORAGE_BUFFER_BIT|VK_BUFFER_USAGE_TRANSFER_DST_BIT|VK_BUFFER_USAGE_TRANSFER_SRC_BIT,false,true))return fatal("Vulkan atlas allocation failed");
   diagnostics_.available=true;diagnostics_.reason.clear();return true;
  }
  static bool same(const Tile& tile,const std::shared_ptr<const std::vector<uint32_t>>& owner){return tile.address==owner.get()&&!tile.owner.owner_before(owner)&&!owner.owner_before(tile.owner);}

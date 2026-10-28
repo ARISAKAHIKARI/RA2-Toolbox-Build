@@ -51,3 +51,26 @@ jobs:
           name: vulkan-compute-validation
           if-no-files-found: warn
           path: vulkan-compute.log
+
+  scene:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install compute tools
+        run: sudo apt-get update && sudo apt-get install -y mesa-vulkan-drivers vulkan-validationlayers glslang-tools spirv-tools
+      - name: Compile current scene shader
+        run: python3 source/tools/build_vulkan_scene.py --output source/external_reader/source/vulkan_scene_spirv.h
+      - name: Real GPU scene composition against CPU Surface
+        run: |
+          set -euo pipefail
+          g++ -std=c++17 -O1 -g -DRA2_VULKAN_TEST_SOFTWARE -fsanitize=address,undefined -fno-omit-frame-pointer source/assist/tests/vulkan_scene.cpp source/third_party/xbrz/xbrz.cpp -ldl -o /tmp/vulkan-scene-test
+          ASAN_OPTIONS=detect_leaks=0 VK_INSTANCE_LAYERS=VK_LAYER_KHRONOS_validation /tmp/vulkan-scene-test --require 2>&1 | tee vulkan-scene.log
+          python3 -c "from pathlib import Path; s=Path('vulkan-scene.log').read_text(); assert 'Validation Error' not in s and 'VUID-' not in s"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: vulkan-scene-validation
+          if-no-files-found: warn
+          path: |
+            vulkan-scene.log
+            source/external_reader/source/vulkan_scene_spirv.h
