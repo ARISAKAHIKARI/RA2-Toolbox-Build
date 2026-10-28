@@ -83,24 +83,14 @@ static void update(POINT origin,const RECT&client,bool battlefield){
   }
   physical=cachedPhysical;
  }
- const bool physicalBlocked=renderPhysicalOutput&&visible&&
-  (physical.status==physicalpresentation::Status::SuspiciousModeSwitch||
-   physical.status==physicalpresentation::Status::AmbiguousDpi||
-   physical.status==physicalpresentation::Status::InvalidGeometry);
- if(physicalBlocked)visible=false;
+ // Physical enhancement eligibility is separate from window visibility.
+ // A classic exclusive 2560x1440 game can still show our established 2K
+ // overlay. Never disable that overlay merely because the monitor switched
+ // out of its configured 4K mode.
+ const auto renderPath=physicalpresentation::renderPath(physical,renderPhysicalOutput);
  auto context=overlaycompositor::host().configure(uintptr_t(game),pid,displayMatch(),client.right,client.bottom,
   visible?view.cameraX:0,visible?view.cameraY:0,visible,renderUpgradeEnabled&&renderUpgradeLayer==0,informationFPS());
- if(!visible||!renderUpgradeEnabled){
-  suspend();progress=0;
-  if(physicalBlocked&&renderUpgradeEnabled&&ui)
-   SetWindowTextW(GetDlgItem(ui,9303),
-    physical.status==physicalpresentation::Status::SuspiciousModeSwitch?
-     L"4K 物理重绘已停用：疑似独占全屏/显示模式切换；请改用 4K 无边框窗口":
-     physical.status==physicalpresentation::Status::AmbiguousDpi?
-     L"4K 物理重绘已停用：显示器物理像素与 DPI 坐标不一致；请检查缩放":
-     L"4K 物理重绘已停用：显示模式或窗口几何信息不可用");
-  return;
- }
+ if(!visible||!renderUpgradeEnabled){suspend();progress=0;return;}
  active=true;
  const int left=int((int64_t(view.x)*client.right)/view.screenW),top=int((int64_t(view.y)*client.bottom)/view.screenH);
  const int right=int((int64_t(view.x+view.width)*client.right+view.screenW-1)/view.screenW);
@@ -108,8 +98,8 @@ static void update(POINT origin,const RECT&client,bool battlefield){
  // "Auto" is deliberately adaptive only when the real monitor/target
  // qualifies as physical output. Existing nonphysical configurations retain
  // their original nearest/area behavior.
- const int effectiveScale=renderPhysicalOutput&&
-   physical.status==physicalpresentation::Status::Ready&&renderPixelScale==0?3:renderPixelScale;
+ const int effectiveScale=renderPath==physicalpresentation::RenderPath::EnhancedPhysicalPixels&&
+   renderPixelScale==0?3:renderPixelScale;
  Request request{pid,displayMatch(),GetTickCount(),right-left,bottom-top,
   uint32_t(extra.renderReveal||extra.mapStrategy==3),
   renderPaletteRange,effectiveScale,view,context};
@@ -142,8 +132,18 @@ static void update(POINT origin,const RECT&client,bool battlefield){
    else if(physical.status==physicalpresentation::Status::NativeResolution)
     status+=L" · 已是物理原生分辨率";
    else if(physical.status==physicalpresentation::Status::WindowOnly)
-    status+=L" · 非全屏物理客户区：仅按实际窗口像素绘制，未启用 4K 重绘";
-   else status+=L" · 物理模式比例未匹配，使用旧渲染采样";
+    status+=L" · 非全屏窗口：按客户区 "+std::to_wstring(client.right)+L"×"+
+            std::to_wstring(client.bottom)+L" 像素绘制，未启用 4K 增强";
+   else if(physical.status==physicalpresentation::Status::SuspiciousModeSwitch)
+    status+=L" · 疑似独占/显示模式切换：覆盖层保持 "+
+            std::to_wstring(client.right)+L"×"+std::to_wstring(client.bottom)+
+            L"，仅停用 4K 增强";
+   else if(physical.status==physicalpresentation::Status::AmbiguousDpi)
+    status+=L" · DPI 坐标未对应：覆盖层仍按 "+
+            std::to_wstring(client.right)+L"×"+std::to_wstring(client.bottom)+L" 绘制";
+   else
+    status+=L" · 4K 增强条件未满足：覆盖层保持原客户区 "+
+            std::to_wstring(client.right)+L"×"+std::to_wstring(client.bottom);
   }
   if(request.pixelScaleMode==3)status+=L" · 自适应 1.25–2× 边缘重建";
   else if(request.pixelScaleMode==0)status+=L" · 原有面积采样";
