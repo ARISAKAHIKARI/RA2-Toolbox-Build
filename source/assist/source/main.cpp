@@ -68,7 +68,7 @@ namespace renderupgrade {static void stop();static void shutdown();}
 namespace minimap {static void hide();static void clear();static void destroy();}
 namespace watchwindows {static void hide();}
 static uint32_t computeRequested=compute::Default;
-static bool renderUpgradeEnabled=false,unifiedOverlayEnabled=false;static int renderUpgradeLayer=0;
+static bool renderUpgradeEnabled=false,unifiedOverlayEnabled=false;static int renderUpgradeLayer=0,renderPaletteRange=1,renderPixelScale=0;
 static bool minimapEnabled=false,minimapSecondary=false;static int minimapMode=0,minimapScale=10,minimapPosition=0,minimapX=20,minimapY=60,minimapAlignX=0,minimapAlignY=0;
 static int minimapSecondaryX=10000,minimapSecondaryY=10000,minimapSecondaryWidth=320;
 static WORD socialKeys[9]{}; // Cheer, taunts 1..8; empty by default.
@@ -1862,9 +1862,9 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
  case WM_TIMER:if(wp==2){updateHoverHelp();return 0;}if(wp==AutoSaveTimer){flushAutoSettings();return 0;}tick();return 0;
  case WM_HOTKEY:if(!readOnlyWatchHotkey(wp,lp))handleHotkey(wp,lp);return 0;
  case WM_COMMAND:{int id=LOWORD(wp);
- if(id==9300||id==9301||id==9302){
+ if(id==9300||id==9301||id==9302||id==9304||id==9305){
   if(updatingControls)return 0;
-  if(id==9302){if(HIWORD(wp)!=CBN_SELCHANGE)return 0;renderUpgradeLayer=std::clamp(int(SendDlgItemMessageW(w,id,CB_GETCURSEL,0,0)),0,1);}
+  if(id==9302||id==9304||id==9305){if(HIWORD(wp)!=CBN_SELCHANGE)return 0;int choice=int(SendDlgItemMessageW(w,id,CB_GETCURSEL,0,0));if(id==9302)renderUpgradeLayer=std::clamp(choice,0,1);else if(id==9304)renderPaletteRange=std::clamp(choice,0,1);else renderPixelScale=std::clamp(choice,0,2);}
   else{if(HIWORD(wp)!=BN_CLICKED)return 0;bool on=SendDlgItemMessageW(w,id,BM_GETCHECK,0,0)==BST_CHECKED;if(id==9300)renderUpgradeEnabled=on;else unifiedOverlayEnabled=on;}
   renderupgrade::stop();++paintRevision;changedSetting();paint();
   if(!renderUpgradeEnabled)SetWindowTextW(GetDlgItem(w,9303),unifiedOverlayEnabled?L"统一覆盖层：世界信息＋主屏统计；交互窗口尚未合并":L"渲染升级：关闭");
