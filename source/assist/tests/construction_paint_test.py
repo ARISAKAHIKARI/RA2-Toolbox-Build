@@ -1,27 +1,27 @@
-"""Execute shipped WM_PAINT/geometry with a GDI model, not a real compositor.
-
-Every visible write is observed. Background/cards/text must remain offscreen
-until a complete frame is copied. The previous host fails this assertion.
+"""Execute production async reservation capture/promotion and WM_PAINT with GDI doubles.
+The worker is controlled; no game or DWM claim. Pending/failure frames must never
+clear the visible surface or expose hit regions for a different tab/scroll/queue.
 """
 from pathlib import Path
-import os
-import subprocess
-import tempfile
+import os,subprocess,tempfile
+root=Path(__file__).resolve().parents[2]
+host=Path(os.environ.get('CONSTRUCTION_HOST',root/'assist/source/construction_host.h')).read_text()
+position=host[host.index('static void resizePanel()'):host.index('static bool usable();')]
+types=host[host.index('struct PaintRequest {'):host.index('struct PanelPainter {')]
+modern='static std::shared_ptr<const Painted> paintedFrame;' in host
+helpers=host[host.index('static std::shared_ptr<const Painted> paintedFrame;' if modern else 'static LRESULT CALLBACK proc('):host.index('static void service()')]
+prefix=r'''
 
-root = Path(__file__).resolve().parents[2]
-host = Path(os.environ.get('CONSTRUCTION_HOST', root / 'assist/source/construction_host.h')).read_text()
-position = host[host.index('static void resizePanel()'):host.index('static bool usable();')]
-rect = host[host.index('static RECT rect('):host.index('static void paintIcon(')]
-panel_box = host[host.index('static void panelBox('):host.index('static LRESULT CALLBACK proc(')]
-proc = host[host.index('static LRESULT CALLBACK proc('):host.index('static void service()')]
-prefix = r'''
 #include "construction_policy.h"
 #include <cassert>
 #include <string>
 #include <iostream>
 #include <cstdint>
+#include <memory>
+#include <map>
+#include <cstring>
 using namespace assist;
-using UINT=unsigned;using WPARAM=uintptr_t;using LPARAM=intptr_t;using LRESULT=intptr_t;
+using DWORD=uint32_t;using UINT=unsigned;using WPARAM=uintptr_t;using LPARAM=intptr_t;using LRESULT=intptr_t;
 #define CALLBACK
 struct RECT{int left=0,top=0,right=0,bottom=0;};struct POINT{int x=0,y=0;};
 struct Window{RECT bounds{};bool visible=false;};using HWND=Window*;
@@ -35,7 +35,8 @@ static bool originReady=true;static POINT origin{10,20};
 static HGDIOBJ HGDI_ERROR=reinterpret_cast<HGDIOBJ>(intptr_t(-1));
 constexpr int WM_MOUSEACTIVATE=1,WM_ERASEBKGND=2,WM_MOUSEWHEEL=3,WM_LBUTTONUP=4,WM_RBUTTONUP=5,WM_PAINT=6,WM_MOUSEMOVE=7,WM_MOUSELEAVE=8;
 constexpr int PS_SOLID=0,TME_LEAVE=2;struct TRACKMOUSEEVENT{size_t cbSize;unsigned flags;HWND hwnd;unsigned hover;};static void TrackMouseEvent(TRACKMOUSEEVENT*){}
-constexpr int MA_NOACTIVATE=3,FALSE=0,MK_SHIFT=4,TRANSPARENT=1,DT_CENTER=1,DT_VCENTER=2,DT_SINGLELINE=4,DT_WORDBREAK=8,DT_END_ELLIPSIS=16;
+constexpr int MA_NOACTIVATE=3,FALSE=0,SW_HIDE=0,MK_SHIFT=4,TRANSPARENT=1,DT_CENTER=1,DT_VCENTER=2,DT_SINGLELINE=4,DT_WORDBREAK=8,DT_END_ELLIPSIS=16;
+struct LOGFONTW{int fields[16]{};};struct BITMAPINFOHEADER{unsigned biSize=0;int biWidth=0,biHeight=0;unsigned short biPlanes=0,biBitCount=0;};struct BITMAPINFO{BITMAPINFOHEADER bmiHeader;};constexpr int DIB_RGB_COLORS=0;
 constexpr int SRCCOPY=1,SWP_NOACTIVATE=1,SWP_SHOWWINDOW=2,SWP_NOOWNERZORDER=4,SWP_NOCOPYBITS=8,SWP_NOZORDER=16;
 static HWND HWND_TOPMOST=nullptr;
 static uint32_t RGB(unsigned r,unsigned g,unsigned b){return r|(g<<8)|(b<<16);}
@@ -63,72 +64,93 @@ static void LineTo(HDC dc,int x,int y){fill(dc,{std::min(x,dc->cursor.x),std::mi
 static void SetBkMode(HDC,int){}static void SetTextColor(HDC dc,uint32_t c){dc->text=c;}
 static void DrawTextW(HDC dc,const wchar_t*t,int,RECT*r,int){if(*t)fill(dc,{r->left+1,r->top+1,r->right-1,std::min(r->bottom,r->top+3)},dc->text);}
 static bool BitBlt(HDC to,int,int,int w,int h,HDC from,int,int,int){
- assert(to==&screen&&from!=&screen&&from->bitmap->w==w&&from->bitmap->h==h);
- assert(from->font==&stockFont);assert(std::find(from->bitmap->pixels.begin(),from->bitmap->pixels.end(),0xDEADBEEF)==from->bitmap->pixels.end());
+ if(fail==6)return false;assert(to==&screen&&from!=&screen&&from->bitmap->w==w&&from->bitmap->h==h);
+ assert(std::find(from->bitmap->pixels.begin(),from->bitmap->pixels.end(),0xDEADBEEF)==from->bitmap->pixels.end());
  to->bitmap->w=w;to->bitmap->h=h;to->bitmap->pixels=from->bitmap->pixels;++blits;return true;
 }
 static HDC BeginPaint(HWND,PAINTSTRUCT*){++paintStarts;return &screen;}static void EndPaint(HWND,PAINTSTRUCT*){++paintEnds;}
-static bool GetClientRect(HWND w,RECT*r){*r={0,0,w->bounds.right-w->bounds.left,w->bounds.bottom-w->bounds.top};return true;}
+static bool GetClientRect(HWND w,RECT*r){if(fail==9)return false;*r={0,0,w->bounds.right-w->bounds.left,w->bounds.bottom-w->bounds.top};return true;}
 static bool ClientToScreen(HWND,POINT*p){*p=origin;return originReady;}
-static bool IsWindowVisible(HWND w){return w->visible;}static bool GetWindowRect(HWND w,RECT*r){*r=w->bounds;return true;}
+static void ShowWindow(HWND w,int){w->visible=false;}static bool IsWindowVisible(HWND w){return w->visible;}static bool GetWindowRect(HWND w,RECT*r){*r=w->bounds;return true;}
 static void SetWindowPos(HWND w,HWND,int x,int y,int width,int height,int flags){++positions;lastFlags=flags;w->bounds={x,y,x+width,y+height};if(flags&SWP_SHOWWINDOW)w->visible=true;}
-static void InvalidateRect(HWND,void*,int){}static LRESULT DefWindowProcW(HWND,UINT,WPARAM,LPARAM){return 0;}
+namespace overlaystack {enum class Layer {Construction};static void place(HWND w,Layer,int x,int y,int width,int height,int flags){SetWindowPos(w,HWND_TOPMOST,x,y,width,height,flags);}}
+static unsigned invalidations=0;static void InvalidateRect(HWND,void*,int){++invalidations;}static LRESULT DefWindowProcW(HWND,UINT,WPARAM,LPARAM){return 0;}
 #include "construction_buffer.h"
 static Window gameObject,panelObject;static HWND game=&gameObject,window=&panelObject;
-static construction::Layout layout;static construction::PanelBuffer panelBuffer;
+static construction::Layout layout;static construction::PanelBuffer panelBuffer,panelSpare;static construction::Layout paintedLayout;static bool paintReady=false;
 static bool geometryReady=true;static int activeTab=0,selectedTab=-1,scroll=0,hoverChoice=-1,hoverQueue=-1;static HFONT panelFont=&testFont,font=&testFont;
 static construction::Book books[4];struct Choice{int slot,index,tab;uint32_t type;bool future;};static std::vector<Choice> choices;
-static struct{int typeCount=8;struct{int kind=7,index=0;wchar_t name[40]=L"Building";}types[8];}snap;
+namespace assist{struct Type{char id[24]{};uint16_t name[40]{};int kind=7,index=0,naval=0,cost=0;};}
+static struct{int typeCount=8;assist::Type types[8];}snap;
 static int encode(int kind,int index){return kind==7?index:(kind<<16)|index;}static void refreshChoices(){}
 static bool usable(){return true;}static void removeTop(bool){}static void removeItem(int,int,bool){}static void reserve(int){}
-'''
-icon = r'''
-static void paintIcon(HDC dc,int index,int x,int y,bool gray){fill(dc,rect(x,y,x+60,y+48),gray?0x808080:0xF00000+index);}
-'''
-suffix = r'''
-int main(){
- Object visible{1};screen.bitmap=&visible;
- for(int n=0;n<8;++n)snap.types[n].index=n;
- assert(layout.set(2560,1440,3840,2160));layout.content(5,8);books[0].items={0,1,2,3,4};
- for(int i=0;i<8;++i)choices.push_back({i,i,0,0,i>4});resizePanel();assert(positions==1&&panelObject.visible);
- // 10 Hz refreshes retain both position and GDI resources. No partial frame
- // is visible even while each background, icon and title is being drawn.
- for(int i=0;i<1000;++i){resizePanel();proc(window,WM_PAINT,0,0);}
- assert((lastFlags&SWP_NOACTIVATE)&&(lastFlags&SWP_NOOWNERZORDER));
- assert(positions==1&&allocations==1&&dcLive==1&&bitmapLive==1&&blits==1000);
- const auto complete=visible.pixels;proc(window,WM_PAINT,0,0);assert(visible.pixels==complete);
- books[0].stage=1;proc(window,WM_PAINT,0,0); // pending state uses same backing store
- assert(allocations==1);
- origin.x+=40;resizePanel();assert(positions==2&&(lastFlags&SWP_NOZORDER));
- int before=positions;originReady=false;resizePanel();assert(positions==before);originReady=true;
- // Hidden/not-ready states never erase the previous complete frame. Reopen
- // restores topmost once. Invalid tabs cannot index outside the queue books.
- geometryReady=false;before=blits;proc(window,WM_PAINT,0,0);resizePanel();assert(blits==before);
- geometryReady=true;activeTab=-1;proc(window,WM_PAINT,0,0);assert(blits==before);activeTab=0;
- panelObject.visible=false;resizePanel();assert(positions==3&&(lastFlags&SWP_SHOWWINDOW));
- // Content and DPI/viewport changes must reallocate once, cover every pixel,
- // and continue sharing Layout's real client transform.
- for(auto dims:std::vector<std::vector<int>>{{2560,1440,3840,2160},{2560,1440,2560,1440},{640,480,640,480}})
- for(int pct:{50,100,150,250})for(int q:{0,1,5}){
-  layout.set(dims[0],dims[1],dims[2],dims[3],pct);layout.content(q,8);books[0].items.resize(q,1);resizePanel();proc(window,WM_PAINT,0,0);
-  assert(visible.w==layout.width()&&visible.h==layout.height()&&dcLive==1&&bitmapLive==1);
- }
- // Allocation/selection failures cannot clear the screen or destroy the
- // previous usable buffer. Recovery retries at the next ordinary paint.
- for(int mode:{1,2,3}){
-  before=blits;auto old=visible.pixels;panelObject.bounds.bottom+=5;fail=mode;proc(window,WM_PAINT,0,0);
-  assert(blits==before&&visible.pixels==old&&dcLive==1&&bitmapLive==1);fail=0;proc(window,WM_PAINT,0,0);assert(blits==before+1);
- }
- assert(proc(window,WM_ERASEBKGND,0,0)==1);assert(paintStarts==paintEnds);
- panelBuffer.clear();assert(dcLive==0&&bitmapLive==0);panelBuffer.clear();
- std::cout<<"PASS: 1000 unchanged refreshes, offscreen-only draws and one complete presentation per paint; no redundant position or allocation\n";
- std::cout<<"PASS: 36 viewport/scale/queue combinations; move/hide/reopen/invalid-tab; DC/bitmap/selection failures and resource cleanup\n";
+
+static uint32_t pid=1,house=0x500000,match=7,now=1000;static bool eligible=true;
+static DWORD GetTickCount(){return now;}static uint32_t commandMatch(){return match;}
+static bool displayReady(){return eligible;}static bool constructionDisplayFresh(){return eligible;}
+static int typeSlot(int index){return index>=0&&index<snap.typeCount?index:-1;}
+static uint32_t typePointer(int index){return 0x600000+uint32_t(index)*0x1000;}
+static void GetObjectW(HFONT,int bytes,void*out){std::memset(out,0,size_t(bytes));}
+static HDC GetDC(HWND){return fail==7?nullptr:&screen;}static void ReleaseDC(HWND,HDC){}
+static bool GdiFlush(){return fail!=5;}
+static UINT SetDIBitsToDevice(HDC to,int,int,int w,int h,int,int,UINT,UINT,const void*data,const BITMAPINFO*,int){
+ assert(to!=&screen);if(fail==4)return 0;assert(to->bitmap->w==w&&to->bitmap->h==h);std::memcpy(to->bitmap->pixels.data(),data,size_t(w)*h*4);return UINT(h);
 }
 '''
+worker=r'''
+struct FakeWorker{unsigned submitted=0,invalidated=0;std::shared_ptr<const Painted> result;std::shared_ptr<PaintRequest> pending;
+ void submit(PaintRequest r){++submitted;pending=std::make_shared<PaintRequest>(std::move(r));}
+ std::shared_ptr<const Painted> get(){return result;}
+ void invalidate(){++invalidated;result.reset();pending.reset();}
+}paintWorker;
+'''
+suffix=r'''
+static void complete(uint32_t color=0xff123456,bool incomplete=false){assert(paintWorker.pending);auto p=std::make_shared<Painted>();p->request=*paintWorker.pending;p->pixels.assign(size_t(p->request.width)*p->request.height,color);p->incomplete=incomplete;paintWorker.result=p;}
+static void paint(){proc(window,WM_PAINT,0,0);assert(paintStarts==paintEnds);}
+int main(){
+ Object visible{1};screen.bitmap=&visible;
+ for(int n=0;n<8;++n){snap.types[n].index=n;snap.types[n].id[0]=char('A'+n);}
+ assert(layout.set(2560,1440,3840,2160));layout.content(5,8);books[0].items={0,1,2,3,4};
+ for(int i=0;i<8;++i)choices.push_back({i,i,0,0x600000u+unsigned(i)*0x1000,i>4});
+ requestPaint();assert(paintWorker.submitted==1);resizePanel();paint();assert(!panelObject.visible&&positions==0&&blits==0);
+ complete();pumpPaint();assert(panelObject.visible&&positions==1&&paintReady&&panelInputReady());paint();assert(blits==1);
+ const auto first=visible.pixels;unsigned submissions=paintWorker.submitted;
+ // Background service/expose events keep one complete front frame, no new
+ // raster, bitmap allocation or layer reordering while the content is stable.
+ for(int i=0;i<1000;++i){now+=100;requestPaint();pumpPaint();resizePanel();paint();}
+ assert(paintWorker.submitted==submissions&&positions==1&&allocations==1&&visible.pixels==first);
+ // A changed tab/scroll/queue cannot erase the old frame; input closes until
+ // the new complete pixels and geometry have both been promoted.
+ activeTab=1;books[1].items={2};layout.content(1,8);requestPaint();assert(!panelInputReady());paint();assert(visible.pixels==first&&positions==1);
+ complete(0xff654321);pumpPaint();assert(panelInputReady()&&positions==2);paint();assert(visible.pixels!=first);
+ fail=9;assert(!panelInputReady());fail=0;assert(panelInputReady());
+ auto before=visible.pixels;int beforePositions=positions;scroll=2;requestPaint();paint();assert(visible.pixels==before&&!panelInputReady());
+ // GDI target/DC/bitmap/selection/upload/flush failures are transactional.
+ complete(0xffaabbcc);for(int mode:{7,4,5}){fail=mode;pumpPaint();paint();assert(visible.pixels==before&&positions==beforePositions&&!panelInputReady());}fail=0;pumpPaint();paint();assert(panelInputReady()&&visible.pixels[0]==0xffaabbcc);
+ // Size failure retains the old buffer and on-screen rectangle.
+ layout.content(5,8);books[1].items={1,2,3,4,5};requestPaint();complete(0xff778899);before=visible.pixels;beforePositions=positions;
+ for(int mode:{1,2,3}){fail=mode;pumpPaint();paint();assert(visible.pixels==before&&positions==beforePositions&&!panelInputReady());}fail=0;pumpPaint();paint();assert(panelInputReady());
+ // Hover-only visual changes do not close an otherwise matching action map.
+ hoverChoice=3;requestPaint();assert(panelInputReady());complete(0xff111222);pumpPaint();paint();assert(visible.pixels[0]==0xff111222);
+ // Missing icons retry at a bounded interval; success becomes fully idle.
+ hoverChoice=4;requestPaint();complete(0xff111222,true);pumpPaint();unsigned count=paintWorker.submitted;now+=999;requestPaint();assert(paintWorker.submitted==count);++now;requestPaint();assert(paintWorker.submitted==count+1);complete();pumpPaint();now+=2000;requestPaint();assert(paintWorker.submitted==count+1);
+ // A lost/failing visible BitBlt retries presentation, not asset raster.
+ fail=6;paint();unsigned inv=invalidations;now+=249;pumpPaint();assert(invalidations==inv);++now;pumpPaint();assert(invalidations==inv+1);fail=0;paint();
+ // Explicit hide/invalidation clears both visual and pending identities.
+ resetPaint();assert(!paintReady&&!panelInputReady()&&paintWorker.invalidated&&dcLive==0&&bitmapLive==0);paint();
+ requestPaint();complete();++match;pumpPaint();assert(!paintReady);--match;pumpPaint();assert(paintReady);
+ ++match;requestPaint();assert(!paintReady&&!panelObject.visible);complete();pumpPaint();assert(paintReady&&panelInputReady());resetPaint();
+ std::cout<<"PASS production reservation async lifecycle:1000 idle updates no reraster/reposition; firstshowaftercomplete; tab/scroll/queue/geometry promoted with pixels; no background-only frames; input map guarded\n";
+ std::cout<<"PASS transactional DC/bitmap/selection/upload/flush failure, bounded missing-icon and BitBlt retries, hover-only interaction, world invalidation and cleanup\n";
+}
+'''
+if not modern:
+    # Run the original shipping WM_PAINT against the same visible-write guard.
+    # A pending first async result must not publish a solid background frame.
+    suffix=r'''
+int main(){Object visible{1};screen.bitmap=&visible;layout.set(2560,1440,3840,2160);layout.content(0,0);resizePanel();proc(window,WM_PAINT,0,0);}
+'''
 with tempfile.TemporaryDirectory() as tmp:
-    cpp = Path(tmp) / 'paint.cpp'
-    exe = Path(tmp) / 'paint'
-    cpp.write_text(prefix + position + rect + icon + panel_box + proc + suffix)
-    subprocess.run(['g++', '-std=c++17', '-O1', '-g', '-fsanitize=address,undefined',
-                    '-I' + str(root / 'assist/source'), str(cpp), '-o', str(exe)], check=True)
-    subprocess.run([str(exe)], check=True, env=dict(os.environ, ASAN_OPTIONS='detect_leaks=0'))
+    cpp=Path(tmp)/'paint.cpp';exe=Path(tmp)/'paint';cpp.write_text(prefix+position+types+worker+helpers+suffix)
+    subprocess.run(['g++','-std=c++17','-O1','-g','-fsanitize=address,undefined','-I'+str(root/'assist/source'),str(cpp),'-o',str(exe)],check=True)
+    subprocess.run([str(exe)],check=True,env=dict(os.environ,ASAN_OPTIONS='detect_leaks=0'))

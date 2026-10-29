@@ -16,9 +16,9 @@ public:
  struct Budget {size_t pages=0;size_t maximum=MaximumPages;};
 private:
  struct Page {
-  std::shared_ptr<Budget> budget;Surface surface;
+  std::shared_ptr<Budget> budget;Surface surface;uint64_t revision=0;
   explicit Page(std::shared_ptr<Budget>b):budget(std::move(b)){++budget->pages;surface.reset(PageSize,PageSize);}
-  Page(const Page&p):budget(p.budget),surface(p.surface){++budget->pages;}
+  Page(const Page&p):budget(p.budget),surface(p.surface),revision(p.revision){++budget->pages;}
   ~Page(){--budget->pages;}
  };
  colorprecision::Mode precision_=colorprecision::Mode::NativeSteps;
@@ -62,7 +62,7 @@ private:
   if(!repainting_)regionCache_.reset();
   try{
    if(!ensure(x0,y0,x1,y1))return;
-   for(int y=y0/PageSize;y<=(y1-1)/PageSize;++y)for(int x=x0/PageSize;x<=(x1-1)/PageSize;++x){uint32_t k=key(x,y);if(repainting_&&!repaintPages_.count(k))continue;auto&surface=pages_.find(k)->second->surface;surface.precision(precision_);draw(surface,x*PageSize,y*PageSize);dirty_.insert(k);}
+   for(int y=y0/PageSize;y<=(y1-1)/PageSize;++y)for(int x=x0/PageSize;x<=(x1-1)/PageSize;++x){uint32_t k=key(x,y);if(repainting_&&!repaintPages_.count(k))continue;auto&page=*pages_.find(k)->second;auto&surface=page.surface;surface.precision(precision_);++page.revision;draw(surface,x*PageSize,y*PageSize);dirty_.insert(k);}
    dirtyRects_.push_back({x0,y0,x1,y1});
   }catch(const std::bad_alloc&){failed_=true;}
  }
@@ -254,6 +254,20 @@ public:
    if(r<=0||b<=0||l>=width_||t>=height_)continue;
    out[size_t(dy)*width+dx]=filter.pixel(l,t,r,b);
   }return true;
+ }
+ // Snapshot aliases remain strong for the synchronous GPU submission only.
+ // A version changes on every native page paint, including in-place writes;
+ // the weak resident cache never pins old pages or exhausts the COW budget.
+ bool areaPlan(int width,int height,gpuarea::Plan&plan,double spanX=-1,double spanY=-1)const{
+  plan={};if(failed_||!width_||!height_)return false;if(spanX<=0)spanX=width_;if(spanY<=0)spanY=height_;
+  plan.nativeWidth=width_;plan.nativeHeight=height_;plan.width=width;plan.height=height;plan.spanX=spanX;plan.spanY=spanY;plan.background=background_;
+  if(pages_.size()>gpuarea::MaximumPages)return false;
+  for(const auto&entry:pages_){const auto&page=entry.second;plan.pages.push_back({uint32_t(pageX(entry.first)),uint32_t(pageY(entry.first)),std::shared_ptr<const std::vector<uint32_t>>(page,&page->surface.color),page->revision});}
+  return gpuarea::valid(plan);
+ }
+ bool presentGPU(int width,int height,std::vector<uint32_t>&out,double spanX=-1,double spanY=-1,
+  std::shared_ptr<const std::vector<uint8_t>>fog={},std::shared_ptr<const gpushroud::Plan>mask={})const{
+  if(!xbrzadapter::gpuAreaAvailable())return false;gpuarea::Plan plan;if(!areaPlan(width,height,plan,spanX,spanY))return false;plan.fog=std::move(fog);plan.mask=std::move(mask);return xbrzadapter::gpuArea(plan,out);
  }
  bool present(int width,int height,std::vector<uint32_t>&out,double spanX=-1,double spanY=-1)const{
   if(failed_||width<1||height<1||width>2048||height>2048||width_<1||height_<1)return false;

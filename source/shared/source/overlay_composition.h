@@ -92,12 +92,15 @@ inline bool compose(const Context&context,std::vector<Surface>layers,std::vector
  order(layers,context);pixels.resize(size_t(context.width)*context.height);
  paint(context,layers,pixels,{0,0,context.width,context.height});return true;
 }
-// Small feedback changes must not scan a full 4K scene. Rebuild the union of
-// the old/new affected destination bounds from all current layers so moving,
-// disappearing, translucent or reordered feedback leaves no trails. Source
-// pixels stay immutable and shared; UpdateLayeredWindow still owns uploading.
+// Small feedback changes must not scan a full 4K scene. Keep distant affected
+// bounds separate: a cursor and a counter at opposite edges must not repaint
+// every pixel between them. Each region is cleared and replayed from all
+// current layers, including overlaps, so alpha/removal/order leave no trails.
+// The region list is bounded; its conservative union remains available to
+// existing callers and is also the fallback for unusually fragmented work.
 class Incremental {
  Context context_{};std::vector<Surface>layers_;std::vector<uint32_t>pixels_;Rect dirty_{};
+ std::vector<Rect>dirtyRegions_;bool collapsed_=false;
  static bool sameBase(const Surface&a,const Surface&b){return a.id==b.id&&a.order==b.order&&a.rect==b.rect&&a.clip==b.clip&&a.opacity==b.opacity&&a.pixels==b.pixels;}
  static bool same(const Surface&a,const Surface&b){return sameBase(a,b)&&a.cutouts==b.cutouts;}
  void holes(const Surface&s,const Context&context){
@@ -107,18 +110,36 @@ class Incremental {
    if(y>=clip.y&&y<clip.y+clip.h&&right>left)include({int(left),int(y),int(right-left),1});
   }
  }
- void include(Rect r){if(r.w<=0||r.h<=0)return;if(dirty_.w<=0||dirty_.h<=0){dirty_=r;return;}
-  int left=std::min(dirty_.x,r.x),top=std::min(dirty_.y,r.y),right=std::max(dirty_.x+dirty_.w,r.x+r.w),bottom=std::max(dirty_.y+dirty_.h,r.y+r.h);dirty_={left,top,right-left,bottom-top};}
+ static Rect unite(const Rect&a,const Rect&b){
+  if(a.w<=0||a.h<=0)return b;if(b.w<=0||b.h<=0)return a;
+  const int left=std::min(a.x,b.x),top=std::min(a.y,b.y),right=std::max(a.x+a.w,b.x+b.w),bottom=std::max(a.y+a.h,b.y+b.h);
+  return {left,top,right-left,bottom-top};
+ }
+ static uint64_t area(const Rect&r){return uint64_t(r.w)*r.h;}
+ void include(Rect r){
+  if(r.w<=0||r.h<=0)return;dirty_=unite(dirty_,r);
+  if(collapsed_){dirtyRegions_[0]=dirty_;return;}
+  for(size_t n=0;n<dirtyRegions_.size();){const auto&old=dirtyRegions_[n];const auto combined=unite(old,r);
+   const bool touching=r.x<=old.x+old.w&&old.x<=r.x+r.w&&r.y<=old.y+old.h&&old.y<=r.y+r.h;
+   // Nearby rectangles only coalesce if the bounding box costs no more than
+   // replaying both. Thin crossing strips therefore stay separate.
+   if(touching&&area(combined)<=area(old)+area(r)){r=combined;dirtyRegions_.erase(dirtyRegions_.begin()+n);n=0;}else ++n;
+  }
+  if(dirtyRegions_.size()==MaximumDirtyRegions){dirtyRegions_.assign(1,dirty_);collapsed_=true;}
+  else dirtyRegions_.push_back(r);
+ }
 public:
+ static constexpr size_t MaximumDirtyRegions=64;
  const std::vector<uint32_t>&pixels()const{return pixels_;}
  Rect dirty()const{return dirty_;}
+ const std::vector<Rect>&dirtyRegions()const{return dirtyRegions_;}
  bool update(const Context&context,std::vector<Surface>layers){
   if(context.width<1||context.height<1||context.width>8192||context.height>8192||uint64_t(context.width)*context.height>16*1024*1024)return false;
-  order(layers,context);dirty_={};
+  order(layers,context);dirty_={};dirtyRegions_.clear();collapsed_=false;
   bool full=context_.token!=context.token||context_.window!=context.window||context_.pid!=context.pid||context_.match!=context.match||context_.width!=context.width||context_.height!=context.height||pixels_.size()!=size_t(context.width)*context.height;
   auto duplicate=[](const std::vector<Surface>&surfaces){for(size_t n=0;n<surfaces.size();++n)for(size_t m=0;m<n;++m)if(surfaces[n].id==surfaces[m].id)return true;return false;};
   full=full||duplicate(layers)||duplicate(layers_);
-  if(full){pixels_.resize(size_t(context.width)*context.height);dirty_={0,0,context.width,context.height};}
+  if(full){pixels_.resize(size_t(context.width)*context.height);include({0,0,context.width,context.height});}
   else{
    for(const auto&old:layers_){auto next=std::find_if(layers.begin(),layers.end(),[&](const Surface&s){return s.id==old.id;});if(next==layers.end()||!same(old,*next)){
     if(next!=layers.end()&&sameBase(old,*next)){holes(old,context_);holes(*next,context);}
@@ -126,7 +147,12 @@ public:
    }}
    for(const auto&next:layers)if(std::none_of(layers_.begin(),layers_.end(),[&](const Surface&s){return s.id==next.id;}))include(bounds(next,context));
   }
-  paint(context,layers,pixels_,dirty_);context_=context;layers_=std::move(layers);return true;
+  // Replaying overlapping strips is safe, but never do more pixel work than
+  // the previous single-union path when several such strips become dense.
+  uint64_t work=0;for(const auto&r:dirtyRegions_)work+=area(r);
+  if(dirtyRegions_.size()>1&&work>=area(dirty_))dirtyRegions_.assign(1,dirty_);
+  for(const auto&r:dirtyRegions_)paint(context,layers,pixels_,r);
+  context_=context;layers_=std::move(layers);return true;
  }
 };
 }

@@ -4,7 +4,7 @@ import subprocess, tempfile
 
 root = Path(__file__).resolve().parents[2]
 source = (root / 'assist/source/minimap_overlay.h').read_text()
-worker = source.split('struct Request {', 1)[1].split('static assist::construction::PanelBuffer', 1)[0]
+worker = source.split('struct Request {', 1)[1].split('static radarpanel::Buffer', 1)[0]
 worker = 'struct Request {' + worker
 # Only thread/CV boundaries are controlled. The production run/set/publication
 # code executes unchanged; opening private state makes generation assertions
@@ -49,6 +49,7 @@ struct TestCondition {
 };
 static int samplerResets=0,sceneResets=0,diagramResets=0;static bool capacityFailure=false,markerFresh=true,markerScanValid=true,contextReadable=true,stepOk=true,worldSame=true;static int actorCount=1;
 namespace external {
+namespace xbrzadapter{inline bool requested=false;inline void gpuPresentation(bool value){requested=value;}}
 struct ReadSession {void close(){}bool open(DWORD){return true;}void begin(){}bool readFresh(uint32_t,void*,size_t){return true;}template<class T>T get(uint32_t,T){return 1;}};
 struct SharedReadView{ReadSession*reader;};
 namespace cameraassets {template<class Read>struct Context{explicit Context(Read&){}void identity(DWORD,uint32_t){}};}
@@ -108,6 +109,11 @@ int main(){
  };
  worker.run();assert(waits==7);
  assert(samplerResets==1&&sceneResets==1&&diagramResets==1);
+ const int gpuSamplers=samplerResets,gpuScenes=sceneResets;minimap::Worker gpuWorker;minimap::Request gpuRequest{2,3,60,0,1,320,160};gpuWorker.set(gpuRequest);int gpuWaits=0;
+ atWait=[&](uint64_t){auto image=gpuWorker.get();assert(image&&image->scene);if(gpuWaits++==0){assert(!external::xbrzadapter::requested);gpuRequest.gpu=true;gpuWorker.set(gpuRequest);assert(!gpuWorker.get());}
+  else if(gpuWaits==2){assert(external::xbrzadapter::requested&&samplerResets==gpuSamplers+1&&sceneResets==gpuScenes+2);gpuRequest.gpu=false;gpuWorker.set(gpuRequest);}
+  else{assert(!external::xbrzadapter::requested&&samplerResets==gpuSamplers+1&&sceneResets==gpuScenes+3);gpuWorker.shutdown();}};
+ gpuWorker.run();assert(gpuWaits==3);
  contextReadable=false;minimap::Worker transient;transient.set({2,3,60,0,1,320,160});transient.latest=cached;
  atWait=[&](uint64_t){assert(transient.get()==cached&&"unreadable publication context must not erase the last known world");transient.shutdown();};
  transient.run();contextReadable=true;

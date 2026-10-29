@@ -9,12 +9,13 @@
 #include "../../shared/source/monitor_refresh.h"
 #include "../../shared/source/secondary_display.h"
 #include "radar_paint_gate.h"
+#include "radar_panel.h"
 #include <thread>
 #include <mutex>
 #include <condition_variable>
 #include <chrono>
 namespace minimap {
-struct Request {DWORD pid=0;uint32_t match=0;int rate=60;uint32_t reveal=0;int mode=0,width=320,height=160;};
+struct Request {DWORD pid=0;uint32_t match=0;int rate=60;uint32_t reveal=0;int mode=0,width=320,height=160;bool gpu=false;};
 // Separate task cache, shared central read-only connection. Terrain traversal
 // never blocks the UI or the game thread. Publish complete immutable frames.
 class Worker {
@@ -23,7 +24,8 @@ class Worker {
  void run(){
   external::ReadSession reader;external::cameraassets::Context<external::ReadSession> assets(reader);external::radar::SceneRenderer<decltype(assets)> renderer;external::radar::DiagramRenderer diagram;external::radar::Sampler<external::SharedReadView> sampler(external::SharedReadView{&reader});uint64_t active=~uint64_t(0);int previousFrame=-1;unsigned previousRevision=0;Request activeRequest{};
   for(;;){Request r;uint64_t token;{std::unique_lock<std::mutex> lock(mutex);cv.wait(lock,[&]{return stop||(!paused&&request.pid);});if(stop)return;r=request;token=generation;}
-   if(token!=active){if(r.pid!=activeRequest.pid||r.match!=activeRequest.match){reader.close();sampler.reset();renderer.reset();diagram.reset();}else if(r.mode!=activeRequest.mode)sampler.reset();activeRequest=r;active=token;previousFrame=-1;previousRevision=0;}
+   if(token!=active){if(r.pid!=activeRequest.pid||r.match!=activeRequest.match){reader.close();sampler.reset();renderer.reset();diagram.reset();}else {if(r.mode!=activeRequest.mode)sampler.reset();if(r.gpu!=activeRequest.gpu)renderer.reset();}activeRequest=r;active=token;previousFrame=-1;previousRevision=0;}
+   external::xbrzadapter::gpuPresentation(r.gpu); // this worker owns its GPU state; native assets stay CPU-prepared
    std::shared_ptr<const external::radar::Frame> next;
    if(reader.open(r.pid)){reader.begin();bool ok=sampler.step(r.reveal,4096,r.mode==1);int frame=reader.get<int>(0xA8ED84,-1);
     if(ok&&(r.mode==1||frame!=previousFrame||sampler.revision()!=previousRevision)){
@@ -51,20 +53,28 @@ class Worker {
  }
 public:
  ~Worker(){shutdown();}
- void set(Request r){std::lock_guard<std::mutex> lock(mutex);bool changed=r.pid!=request.pid||r.match!=request.match||r.reveal!=request.reveal||r.mode!=request.mode||r.width!=request.width||r.height!=request.height;
+ void set(Request r){std::lock_guard<std::mutex> lock(mutex);bool changed=r.pid!=request.pid||r.match!=request.match||r.reveal!=request.reveal||r.mode!=request.mode||r.width!=request.width||r.height!=request.height||r.gpu!=request.gpu;
   if(changed){++generation;
    // A size edit may present the last verified world while the one shared
    // renderer produces the requested dimensions. Identity/mode changes may not.
-   if(r.pid!=request.pid||r.match!=request.match||r.reveal!=request.reveal||r.mode!=request.mode)latest.reset();
+   if(r.pid!=request.pid||r.match!=request.match||r.reveal!=request.reveal||r.mode!=request.mode||r.gpu!=request.gpu)latest.reset();
   }
   request=r;paused=false;if(r.pid&&!thread.joinable()){stop=false;thread=std::thread([this]{run();});}cv.notify_one();}
  void pause(){std::lock_guard<std::mutex> lock(mutex);paused=true;cv.notify_one();}
  std::shared_ptr<const external::radar::Frame> get(){std::lock_guard<std::mutex> lock(mutex);return latest;}
  void shutdown(){{std::lock_guard<std::mutex> lock(mutex);stop=true;request={};latest.reset();++generation;cv.notify_one();}if(thread.joinable())thread.join();}
 };
-static assist::construction::PanelBuffer paintBuffer,secondaryPaintBuffer;
+static radarpanel::Buffer paintBuffer,secondaryPaintBuffer;
 static Worker worker;static HWND window,secondaryWindow;static std::shared_ptr<const external::radar::Frame> frame;static overlayui::Recovery recovery,secondaryRecovery;
 static radargate::PaintGate<external::radar::Frame> primaryPaintGate,secondaryPaintGate;
+struct PresentedWorld {
+ uintptr_t game=0;DWORD pid=0;uint32_t match=0;int mode=0;bool reveal=false,valid=false;external::radar::Geometry geometry;
+ bool same(uintptr_t window,DWORD process,uint32_t epoch,int selectedMode,const external::radar::Frame&value)const{
+  return valid&&value.terrain&&game==window&&pid==process&&match==epoch&&mode==selectedMode&&reveal==value.terrain->reveal&&geometry.same(value.terrain->geo);
+ }
+ void commit(uintptr_t window,DWORD process,uint32_t epoch,int selectedMode,const external::radar::Frame&value){game=window;pid=process;match=epoch;mode=selectedMode;reveal=value.terrain->reveal;geometry=value.terrain->geo;valid=true;}
+};
+static PresentedWorld primaryWorld,secondaryWorld;
 static secondarydisplay::Monitor secondaryMonitor;
 static external::radar::Geometry lastGeometry;static bool dragging=false;static uint32_t dragMatch=0;static HWND dragWindow;
 enum class SecondaryEdit {None,Move,Resize,ResizeUpperLeft};
@@ -139,8 +149,22 @@ static SecondaryEdit secondaryHit(HWND w,int x,int y){
  if(y>=0&&y<18)return SecondaryEdit::Move;
  return SecondaryEdit::None;
 }
-static void clear(){hide();worker.set({});lastGeometry={};paintBuffer.clear();secondaryPaintBuffer.clear();}
+static void clear(){hide();worker.set({});lastGeometry={};primaryWorld={};secondaryWorld={};paintBuffer.clear();secondaryPaintBuffer.clear();}
 static void destroy(){clear();worker.shutdown();if(window)DestroyWindow(window);if(secondaryWindow)DestroyWindow(secondaryWindow);window=secondaryWindow=nullptr;}
+static bool presentation(int width,int height,std::shared_ptr<const external::radar::Scene>&image,radargate::Visual&visual){
+ if(!frame||!frame->terrain||!frame->terrain->geo.valid()||width<3||height<3)return false;
+ bool real=minimapMode==1&&bool(frame->scene);image=real?frame->scene:frame->map;if(!image)return false;
+ const int mw=width-2,mh=height-2;visual={};visual.image=image;visual.width=width;visual.height=height;visual.real=real;
+ if(!real){visual.marks.reserve(frame->markers.size());for(const auto&m:frame->markers){
+  if(!std::isfinite(m.u)||!std::isfinite(m.v)||m.u<0||m.u>=1||m.v<0||m.v>=1)continue;
+  int x=1+int(m.u*mw),y=1+int(m.v*mh),radius=m.building?2:1;
+  radargate::Mark mark{std::max(1,x-radius),std::max(1,y-radius),std::min(width-1,x+radius+1),std::min(height-1,y+radius+1),m.color&0xffffffu};
+  if(mark.right>mark.left&&mark.bottom>mark.top)visual.marks.push_back(mark);
+ }}
+ const auto&g=frame->terrain->geo;double left=(snap.cameraX/30.0+g.offsetX)/g.rawWidth,top=(snap.cameraY/15.0-g.offsetY)/g.rawHeight;
+ double right=left+std::max(0,snap.width-160)/30.0/g.rawWidth,bottom=top+snap.height/15.0/g.rawHeight;
+ visual.view={1+int(std::clamp(left,0.,1.)*(mw-1)),1+int(std::clamp(top,0.,1.)*(mh-1)),1+int(std::clamp(right,0.,1.)*(mw-1)),1+int(std::clamp(bottom,0.,1.)*(mh-1)),0};return true;
+}
 static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
  if(msg==WM_NCHITTEST)return HTCLIENT;
  if(msg==WM_SETCURSOR){
@@ -170,34 +194,38 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
  if(msg==WM_SIZE&&w==secondaryWindow&&secondaryEdit!=SecondaryEdit::None){secondaryPaintGate.invalidate();InvalidateRect(w,nullptr,FALSE);return 0;}
  if(msg==WM_RBUTTONDOWN||msg==WM_RBUTTONUP||msg==WM_LBUTTONDBLCLK)return 0;if(msg==WM_MOUSEACTIVATE)return MA_NOACTIVATE;if(msg==WM_ERASEBKGND)return 1;
  if(msg==WM_PAINT){PAINTSTRUCT ps{};HDC dc=BeginPaint(w,&ps);RECT r{};GetClientRect(w,&r);int width=r.right,height=r.bottom;
-  if(frame&&frame->terrain&&width>2&&height>2){int mw=width-2,mh=height-2;
-   bool real=minimapMode==1&&bool(frame->scene);auto image=real?frame->scene:frame->map;
-   auto&buffer=w==secondaryWindow?secondaryPaintBuffer:paintBuffer;HDC mem=buffer.acquire(dc,width,height);
-   if(mem&&image&&image->width>0&&image->height>0&&!image->pixels.empty()){BITMAPINFO info{};info.bmiHeader.biSize=sizeof(BITMAPINFOHEADER);info.bmiHeader.biWidth=image->width;info.bmiHeader.biHeight=-image->height;info.bmiHeader.biPlanes=1;info.bmiHeader.biBitCount=32;info.bmiHeader.biCompression=BI_RGB;
-    if(image->width==mw&&image->height==mh)SetDIBitsToDevice(mem,1,1,mw,mh,0,0,0,mh,image->pixels.data(),&info,DIB_RGB_COLORS);
-    else {SetStretchBltMode(mem,HALFTONE);SetBrushOrgEx(mem,0,0,nullptr);StretchDIBits(mem,1,1,mw,mh,0,0,image->width,image->height,image->pixels.data(),&info,DIB_RGB_COLORS,SRCCOPY);}
-    if(!real)for(const auto&m:frame->markers){int x=1+int(m.u*mw),y=1+int(m.v*mh),radius=m.building?2:1;RECT mark{std::max(1,x-radius),std::max(1,y-radius),std::min(width-1,x+radius+1),std::min(height-1,y+radius+1)};HBRUSH b=CreateSolidBrush(RGB(m.color>>16,(m.color>>8)&255,m.color&255));FillRect(mem,&mark,b);DeleteObject(b);}
-    const auto&g=frame->terrain->geo;double left=(snap.cameraX/30.0+g.offsetX)/g.rawWidth,top=(snap.cameraY/15.0-g.offsetY)/g.rawHeight;
-    double right=left+std::max(0,snap.width-160)/30.0/g.rawWidth,bottom=top+snap.height/15.0/g.rawHeight;
-    RECT view{1+int(std::clamp(left,0.,1.)*(mw-1)),1+int(std::clamp(top,0.,1.)*(mh-1)),1+int(std::clamp(right,0.,1.)*(mw-1)),1+int(std::clamp(bottom,0.,1.)*(mh-1))};
-    HBRUSH white=CreateSolidBrush(RGB(230,234,205));if(view.right>view.left&&view.bottom>view.top)FrameRect(mem,&view,white);DeleteObject(white);
-    HBRUSH border=CreateSolidBrush(RGB(157,161,115));FrameRect(mem,&r,border);DeleteObject(border);buffer.present(dc);
-   }
-  }EndPaint(w,&ps);return 0;
+  auto&buffer=w==secondaryWindow?secondaryPaintBuffer:paintBuffer;
+  // User resizing can arrive before the next regular update. Stage a whole
+  // replacement first; ordinary exposure only copies the completed front.
+  if(!buffer.ready(width,height)){std::shared_ptr<const external::radar::Scene>image;radargate::Visual visual;
+   if(presentation(width,height,image,visual)&&buffer.stage(dc,*image,visual))buffer.promote();}
+  buffer.present(dc,width,height);EndPaint(w,&ps);return 0;
  }return DefWindowProcW(w,msg,wp,lp);
 }
 static void placePanel(bool second,int x,int y,int width,int height){
  if(second&&secondaryEdit!=SecondaryEdit::None)return;
  auto&panel=second?secondaryWindow:window;auto&keep=second?secondaryRecovery:recovery;
+ auto&buffer=second?secondaryPaintBuffer:paintBuffer;auto&gate=second?secondaryPaintGate:primaryPaintGate;
+ auto&world=second?secondaryWorld:primaryWorld;
  if(!panel){WNDCLASSW cls{};cls.lpfnWndProc=proc;cls.hInstance=GetModuleHandleW(nullptr);cls.lpszClassName=L"RA2DataRadar127";cls.hCursor=nullptr;RegisterClassW(&cls);panel=CreateWindowExW(WS_EX_TOOLWINDOW|WS_EX_NOACTIVATE|WS_EX_TOPMOST|WS_EX_LAYERED,cls.lpszClassName,second?L"第二显示器小地图":L"战术小地图",WS_POPUP,0,0,1,1,nullptr,nullptr,cls.hInstance,nullptr);if(panel)SetLayeredWindowAttributes(panel,0,255,LWA_ALPHA);}
  if(!panel)return;RECT old{};GetWindowRect(panel,&old);
+ bool compatible=frame&&world.same(uintptr_t(game),pid,displayMatch(),minimapMode,*frame);
  bool visible=IsWindowVisible(panel)!=FALSE;
+ // Retention is only for this exact displayed world/reveal policy. A new
+ // worker can publish before the UI observes its intermediate empty state.
+ if(!compatible){if(dragWindow==panel)cancelDrag();if(visible)ShowWindow(panel,SW_HIDE);visible=false;keep.suspend();gate.invalidate();}
  bool repair=keep.due(GetTickCount(),true,{uintptr_t(game),pid,displayMatch(),width,height},visible);
  bool moved=old.left!=x||old.top!=y||old.right-old.left!=width||old.bottom-old.top!=height;
- if(repair||moved)keep.submitted(overlaystack::place(panel,overlaystack::Layer::Minimap,x,y,width,height,SWP_NOACTIVATE|SWP_SHOWWINDOW)!=FALSE);
- auto&gate=second?secondaryPaintGate:primaryPaintGate;
- if(gate.needs(frame,snap.cameraX,snap.cameraY,snap.width,snap.height,minimapMode,repair||moved||!visible)){
-  if(InvalidateRect(panel,nullptr,FALSE)){UpdateWindow(panel);gate.committed(frame,snap.cameraX,snap.cameraY,snap.width,snap.height,minimapMode);}
+ std::shared_ptr<const external::radar::Scene>image;radargate::Visual visual;if(!presentation(width,height,image,visual))return;
+ bool changed=gate.needsVisual(visual)||!buffer.ready(width,height);
+ if(changed){HDC dc=GetDC(panel);bool ready=dc&&buffer.stage(dc,*image,visual);if(dc)ReleaseDC(panel,dc);if(!ready){keep.submitted(false);return;}}
+ if(changed)buffer.promote(); // any synchronous position callback sees the new complete pixels
+ // A complete backing exists before the first SHOWWINDOW or resize. Suppress
+ // positioning-triggered redraw/erasure; WM_PAINT copies the completed front.
+ if(repair||moved||!visible){bool placed=overlaystack::place(panel,overlaystack::Layer::Minimap,x,y,width,height,SWP_NOACTIVATE|SWP_NOREDRAW|SWP_SHOWWINDOW)!=FALSE;keep.submitted(placed);if(!placed)return;}
+ if(changed||repair||moved||!visible||!buffer.painted){buffer.painted=false;
+  if(InvalidateRect(panel,nullptr,FALSE)){UpdateWindow(panel);if(buffer.painted){gate.committedVisual(visual);world.commit(uintptr_t(game),pid,displayMatch(),minimapMode,*frame);}else{keep.submitted(false);if(!compatible)ShowWindow(panel,SW_HIDE);}}
+  else keep.submitted(false);
  }
 }
 static void update(POINT origin,const RECT&client,bool verifiedBattlefield){
@@ -223,7 +251,7 @@ static void update(POINT origin,const RECT&client,bool verifiedBattlefield){
  // smaller game-panel raster into a blurry preview.
  int width=std::max(primary?layout.destination.w:0,secondary?secondaryBox.w:0);
  int height=std::max(primary?layout.destination.h:0,secondary?secondaryBox.h:0);
- worker.set({pid,displayMatch(),informationFPS(),uint32_t(extra.renderReveal||extra.mapStrategy==3),minimapMode,std::min(2048,width-2),std::min(2048,height-2)});
+ worker.set({pid,displayMatch(),informationFPS(),uint32_t(extra.renderReveal||extra.mapStrategy==3),minimapMode,std::min(2048,width-2),std::min(2048,height-2),renderVulkanEnabled});
  frame=worker.get();if(!frame||!frame->terrain){cancelDrag();hidePrimary();hideSecondary();return;}if(dragging&&dragMatch!=commandMatch())cancelDrag();
  if(primary){auto d=layout.destination;placePanel(false,origin.x+d.x,origin.y+d.y,d.w,d.h);}
  if(secondary)placePanel(true,secondaryBox.x,secondaryBox.y,secondaryBox.w,secondaryBox.h);

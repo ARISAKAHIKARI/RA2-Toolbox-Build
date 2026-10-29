@@ -32,6 +32,8 @@ static renderpresentation::ViewLease viewLease;
 static renderpresentation::GroupLease<Request,Frame> groupLease;
 static int verifiedScaleSetting=-1;static bool verifiedPhysicalSetting=false;
 static renderpresentation::StatusCadence statusCadence;
+static renderpresentation::CameraPrefetch cameraPrefetch;
+static double lastCompletedRenderMs=0;
 static std::wstring lastStatusText;
 static void statusText(const std::wstring&text){
  if(lastStatusText==text)return;lastStatusText=text;SetWindowTextW(GetDlgItem(ui,9303),text.c_str());
@@ -42,8 +44,8 @@ static asyncwork::Latest<Request,Frame> worker([](const Request&r)->std::shared_
  // Failed attempts do not replace a completed image. The UI independently
  // enforces sample/completion age limits and exact world/view/config identity.
  auto unavailable=[]()->std::shared_ptr<const Frame>{return {};};
- if(process!=r.pid||epoch!=r.match){reader.close();sampler.reset();renderer.reset();process=r.pid;epoch=r.match;sampleValid=false;timeline.reset();}
- if(workerGeneration!=r.generation){workerGeneration=r.generation;sampleValid=false;sampledLogicFrame=-1;timeline.reset();}
+ if(process!=r.pid||epoch!=r.match){reader.close();sampler.reset();renderer.reset();process=r.pid;epoch=r.match;sampleValid=false;timeline.reset();cameraPrefetch.reset();lastCompletedRenderMs=0;}
+ if(workerGeneration!=r.generation){workerGeneration=r.generation;sampleValid=false;sampledLogicFrame=-1;timeline.reset();cameraPrefetch.reset();lastCompletedRenderMs=0;}
  if(!reader.open(r.pid)){progress=-1;return unavailable();}
  reader.begin(); // Explicit fresh page epoch for every presentation request.
  assets.identity(r.pid,r.match);
@@ -90,30 +92,34 @@ static asyncwork::Latest<Request,Frame> worker([](const Request&r)->std::shared_
  // In-between poses still use CURRENT visibility and an immutable current
  // object list. Removed/hidden actors are never resurrected by the timeline.
 
- auto crop=external::mainview::crop(before,data.terrain->geo.offsetX,data.terrain->geo.offsetY);
  const auto border=renderpresentation::window(r.width,r.height,before.width,before.height);
  if(!border.width||!border.height)return unavailable();
  const double paddingX=double(border.paddingX)*before.width/r.width,paddingY=double(border.paddingY)*before.height/r.height;
+ // Use the SAME pixel budget, biased toward actually observed camera motion.
+ // This changes only the source crop, never the game camera or object state.
+ const auto renderView=cameraPrefetch.center(before,GetTickCount(),lastCompletedRenderMs,paddingX,paddingY);
+ sampledRequest.view=renderView;sampledRequest.context.cameraX=renderView.cameraX;sampledRequest.context.cameraY=renderView.cameraY;
+ auto crop=external::mainview::crop(renderView,data.terrain->geo.offsetX,data.terrain->geo.offsetY);
  auto scene=renderer.render(data,border.width,border.height,external::SharedReadView{&reader},assets,{crop.x-paddingX,crop.y-paddingY,crop.width+2*paddingX,crop.height+2*paddingY,true},unsigned(r.pixelScaleMode),r.detail!=0,true,r.colorPrecision!=0);
  if(!scene)return unavailable();
  auto out=std::make_shared<Frame>();out->request=sampledRequest;out->paddingX=border.paddingX;out->paddingY=border.paddingY;out->assetRevision=assetRevision;out->logicFrame=data.frame;out->observationMs=timeline.interval();
  out->gpuAttempted=external::xbrzadapter::gpuAttempted();out->gpuUsed=external::xbrzadapter::gpuUsed();
  const double zscale=external::projectionZScale(fresh);
- out->objects=external::nativefeedback::objectGeometry(renderer,data,before,r.width,r.height,zscale,border.paddingX,border.paddingY);
+ out->objects=external::nativefeedback::objectGeometry(renderer,data,renderView,r.width,r.height,zscale,border.paddingX,border.paddingY);
  out->yellow=assets.conditionYellow();out->red=assets.conditionRed();
  std::vector<external::nativefeedback::Bolt> bolts;const std::vector<uint8_t>*visibility=nullptr;
  if(external::nativefeedback::bolts(fresh,bolts)&&renderer.feedbackVisibility(visibility)){
   out->effects.complete=true;
   if(!bolts.empty()){
    auto decorated=std::make_shared<external::radar::Scene>(*scene);
-   out->effects=external::nativefeedback::effects(bolts,*decorated,before,visibility,zscale,r.width,r.height,border.paddingX,border.paddingY);
+   out->effects=external::nativefeedback::effects(bolts,*decorated,renderView,visibility,zscale,r.width,r.height,border.paddingX,border.paddingY);
    if(out->effects.complete)scene=std::move(decorated);
   }
  }
  external::mainview::View after;
  if(!external::mainview::sample(fresh,after)||!renderpresentation::sameProjection(before,after)||after.frame<before.frame||
    !external::radar::sameWorld(data,external::radar::publicationContext(fresh)))return unavailable();
- out->image=std::move(scene);out->sampledTick=sampledTick;out->completedTick=GetTickCount();out->renderMs=presentationNow()-started;progress=2;return out;
+ out->image=std::move(scene);out->sampledTick=sampledTick;out->completedTick=GetTickCount();out->renderMs=presentationNow()-started;lastCompletedRenderMs=out->renderMs;progress=2;return out;
 });
 #include "render_feedback_host.h"
 static void suspendScene(){groupLease.reset();if(active){active=false;++generation;worker.invalidate();}feedback::hide();imageToken=0;overlaycompositor::host().hide(overlaycompositor::RenderUpgrade);}

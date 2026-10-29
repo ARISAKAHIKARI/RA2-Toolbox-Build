@@ -35,11 +35,13 @@ inline HWND above(HWND window,Layer layer){
 // Check the actual desktop order and restore only the already-visible group.
 inline std::atomic_flag repairing=ATOMIC_FLAG_INIT;
 inline DWORD checkedAt=0;inline HWND checkedForeground=nullptr;inline bool checked=false;
-inline BOOL keepAbove(HWND foreground){
+inline BOOL keepAbove(HWND foreground,bool force=false){
  if(!foreground||!IsWindow(foreground)||repairing.test_and_set())return TRUE;
  struct Release{~Release(){repairing.clear();}} release;
  HWND root=GetAncestor(foreground,GA_ROOT);if(root)foreground=root;
- DWORD now=GetTickCount();if(checked&&foreground==checkedForeground&&DWORD(now-checkedAt)<250)return TRUE;
+ // A game promoted to the very top can cover the group immediately after a
+ // successful check. Do not leave it there for the old 250ms polling window.
+ DWORD now=GetTickCount();if(!force&&checked&&foreground==checkedForeground&&DWORD(now-checkedAt)<250&&GetTopWindow(nullptr)!=foreground)return TRUE;
  checked=true;checkedAt=now;checkedForeground=foreground;
  std::vector<Entry> visible;
  {std::lock_guard<std::mutex> lock(mutex);for(const auto&e:entries)if(own(e.window)&&IsWindowVisible(e.window))visible.push_back(e);}
@@ -67,8 +69,18 @@ inline BOOL keepAbove(HWND foreground){
 // and foreground eligibility remain the caller's responsibility.
 inline BOOL place(HWND window,Layer layer,int x,int y,int w,int h,UINT flags){
  if(!own(window))return FALSE;HWND anchor=above(window,layer);
+ // Static panels and keepalives should not repeatedly trigger User32 position
+ // callbacks or discard their painted content. Only skip a request whose real
+ // geometry, visibility, topmost state and immediate layer anchor agree.
+ const bool ordered=(GetWindowLongPtrW(window,GWL_EXSTYLE)&WS_EX_TOPMOST)&&
+  (anchor==HWND_TOPMOST?GetTopWindow(nullptr)==window:GetWindow(window,GW_HWNDPREV)==anchor);
+ RECT current{};const bool geometry=GetWindowRect(window,&current)&&
+  ((flags&SWP_NOMOVE)||(current.left==x&&current.top==y))&&
+  ((flags&SWP_NOSIZE)||(current.right-current.left==w&&current.bottom-current.top==h));
+ constexpr UINT ordinary=SWP_NOMOVE|SWP_NOSIZE|SWP_NOZORDER|SWP_NOACTIVATE|SWP_SHOWWINDOW|SWP_NOOWNERZORDER|SWP_NOSENDCHANGING|SWP_NOCOPYBITS;
+ if(!(flags&~ordinary)&&ordered&&geometry&&IsWindowVisible(window))return keepAbove(GetForegroundWindow());
  if(!SetWindowPos(window,anchor,x,y,w,h,(flags&~SWP_NOZORDER)|SWP_NOACTIVATE|SWP_NOOWNERZORDER))return FALSE;
- return keepAbove(GetForegroundWindow());
+ return keepAbove(GetForegroundWindow(),!ordered);
 }
 inline void forget(HWND window){
  std::lock_guard<std::mutex> lock(mutex);

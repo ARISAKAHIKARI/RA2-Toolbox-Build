@@ -199,7 +199,13 @@ public:
  void reset(){terrain_.reset();scene_.reset();}
  std::shared_ptr<const Scene> render(const std::shared_ptr<const Terrain>&terrain,int width,int height){
   if(!terrain||width<1||height<1||width>2048||height>2048)return {};
-  if(terrain_==terrain&&scene_&&scene_->width==width&&scene_->height==height)return scene_;
+  if(terrain_&&scene_&&scene_->width==width&&scene_->height==height&&
+     (terrain_==terrain||(terrain_->reveal==terrain->reveal&&terrain_->geo.same(terrain->geo)&&terrain_->colors==terrain->colors))){
+   // The sampler completes a fresh immutable bank even when its visible RGB
+   // did not change. Compare the original cells, not millions of resampled
+   // output pixels; release the prior bank while retaining the same image.
+   terrain_=terrain;return scene_;
+  }
   auto scene=std::make_shared<Scene>();scene->width=width;scene->height=height;raster(*terrain,width,height,scene->pixels);
   terrain_=terrain;scene_=std::move(scene);return scene_;
  }

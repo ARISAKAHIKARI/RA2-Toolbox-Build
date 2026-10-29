@@ -1,6 +1,7 @@
 #pragma once
 #include "../../third_party/xbrz/xbrz.h"
 #include "vulkan_scene.h"
+#include "vulkan_area.h"
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
@@ -26,6 +27,7 @@ namespace external { namespace xbrzadapter {
 struct GpuPresentation {
  bool requested=false,attempted=false,used=false;
  std::unique_ptr<vulkancompute::FrameResolve> resolve;
+ std::unique_ptr<vulkancompute::AreaResolve> area;
 };
 inline GpuPresentation&gpuState(){static thread_local GpuPresentation state;return state;}
 inline void gpuPresentation(bool requested){
@@ -35,6 +37,12 @@ inline void gpuPresentation(bool requested){
 }
 inline bool gpuAttempted(){return gpuState().attempted;}
 inline bool gpuUsed(){return gpuState().used;}
+inline bool gpuAreaAvailable(){auto&state=gpuState();return state.requested&&(!state.area||state.area->diagnostics().available||state.area->diagnostics().reason.empty());}
+inline void gpuAreaCached(bool used){auto&state=gpuState();if(used&&state.requested){state.attempted=state.used=true;if(state.area)state.area->reused();}}
+inline bool gpuArea(const gpuarea::Plan&plan,std::vector<uint32_t>&out){
+ auto&state=gpuState();if(!state.requested)return false;state.attempted=true;if(!state.area)state.area=std::make_unique<vulkancompute::AreaResolve>();
+ const bool used=state.area->render(plan,out);state.used=state.used||used;return used;
+}
 constexpr size_t MaxPixels=16*1024*1024, CachePixels=4*1024*1024;
 // Standard bilinear resolve with Q8 weights and ONE final rounding. Each axis
 // differs from its real weight by <=1/512; with channels in [0,255], total

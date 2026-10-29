@@ -1,4 +1,5 @@
 #pragma once
+#include <utility>
 // Host-only GDI backing store. WM_PAINT never exposes background clearing or
 // partially drawn cards to the layered window. Keep the allocation between
 // ticks; replace it only after a new size has been allocated successfully.
@@ -10,6 +11,9 @@ public:
  PanelBuffer(const PanelBuffer&)=delete;
  PanelBuffer& operator=(const PanelBuffer&)=delete;
  ~PanelBuffer(){clear();}
+ void swap(PanelBuffer&other)noexcept{
+  using std::swap;swap(memory,other.memory);swap(bitmap,other.bitmap);swap(previous,other.previous);swap(width,other.width);swap(height,other.height);
+ }
  void clear(){
   if(memory){SelectObject(memory,previous);DeleteObject(bitmap);DeleteDC(memory);}
   memory=nullptr;bitmap=nullptr;previous=nullptr;width=height=0;

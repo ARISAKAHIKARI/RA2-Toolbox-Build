@@ -40,6 +40,7 @@
 #include "tech_profile.h"
 #include "../../shared/source/viewport_scale.h"
 #include "../../shared/source/overlay_recovery.h"
+#include "../../shared/source/overlay_display_lease.h"
 #include "../../shared/source/monitor_refresh.h"
 #include "../../shared/source/secondary_display.h"
 #include "type_catalog.h"
@@ -1128,6 +1129,32 @@ static bool takeReservationClick(construction::InputClick&click){
  publishReservationPolicy({}); // close authorization before releasing the input slot
  MemoryBarrier();shared->reserveConsumed=serial;return true;
 }
+static overlaydisplay::ReadLease informationDisplayLease;
+static overlaydisplay::Context passiveProbeContext;
+static uint32_t passiveProbeTick=0;static bool passiveProbeReady=false,passiveProbeEligible=false;
+static overlaydisplay::Context passiveDisplayContext(const RECT&client){
+ return {uintptr_t(game),pid,displayMatch(),int(client.right-client.left),int(client.bottom-client.top),snap.width,snap.height};
+}
+static overlaydisplay::State passiveDisplayState(const external::display::State&state,const RECT&client){
+ const bool eligible=(enabled&&foregroundGame()&&!snap.chat)||secondaryDisplayAvailable();
+ passiveProbeContext=passiveDisplayContext(client);passiveProbeTick=GetTickCount();passiveProbeEligible=eligible;
+ const auto result=informationDisplayLease.inspect(passiveProbeContext,eligible,state.readable,state.visible(),snap.renderStatus==1,passiveProbeTick);
+ passiveProbeReady=result==overlaydisplay::State::Ready;return result;
+}
+static overlaydisplay::State passiveDisplayState(){
+ RECT client{};if(!game||!GetClientRect(game,&client)){passiveProbeReady=false;informationDisplayLease.reset();return overlaydisplay::State::Hidden;}
+ const bool eligible=(enabled&&foregroundGame()&&!snap.chat)||secondaryDisplayAvailable();
+ // Reservation hotkeys, queue lanes and hover/input checks share one good
+ // display observation. Cache neither failed reads nor a HOLD deadline.
+ if(passiveProbeReady&&snap.renderStatus==1&&passiveProbeEligible==eligible&&passiveProbeContext==passiveDisplayContext(client)&&uint32_t(GetTickCount()-passiveProbeTick)<8)return overlaydisplay::State::Ready;
+ return passiveDisplayState(external::display::inspect([](uint32_t at,void*out,size_t n){return externalReader.readFresh(at,out,n);}),client);
+}
+static bool constructionDisplayVisible(){
+ return enabled&&foregroundGame()&&!snap.chat&&passiveDisplayState()!=overlaydisplay::State::Hidden;
+}
+static bool constructionDisplayFresh(){
+ return enabled&&foregroundGame()&&!snap.chat&&passiveDisplayState()==overlaydisplay::State::Ready;
+}
 #include "construction_host.h"
 #include "../../external_reader/source/sidebar_shapes.h"
 static external::sidebar::Cache sidebarShapes;
@@ -1188,8 +1215,15 @@ static void paint(){
  // scan can fail for one refresh without invalidating that completed scene.
  // Pass the readable/hidden distinction through before the legacy UI gates.
  renderupgrade::update(origin,r,displayState);
+ const auto passive=passiveDisplayState(displayState,r);
+ if(passive==overlaydisplay::State::Hidden){worldrender::invalidate();overlayRecovery.suspend();hideWorldOverlay();hideAircraftButton();minimap::hide();watchwindows::hide();hideConstruction();clearPassengerDisplay();return;}
+ if(passive==overlaydisplay::State::Hold){
+  // Retain existing pixels only. Do not rebuild from a failed information
+  // sample, refresh an input authorization, or renew the read-failure lease.
+  if(!enabled||!foregroundGame()||snap.chat){worldrender::invalidate();overlayRecovery.suspend();hideWorldOverlay();hideAircraftButton();minimap::hidePrimary();watchwindows::hidePrimary();hideConstruction();clearPassengerDisplay();return;}
+  overlaycompositor::host().touch(overlaycompositor::World,uintptr_t(game),pid);return;
+ }
  const bool battlefield=displayState.visible();
- if(!battlefield||snap.renderStatus!=1){worldrender::invalidate();overlayRecovery.suspend();hideWorldOverlay();hideAircraftButton();minimap::hide();watchwindows::hide();hideConstruction();clearPassengerDisplay();return;}
  const DWORD renderNow=sampleRenderClock(shared);
  {static worldpresentation::ContextRevision prior;auto c=overlaycompositor::host().capture(uintptr_t(game),pid);
   if(prior.changed(c.token,c.cameraX,c.cameraY,snap.cameraX,snap.cameraY))++paintRevision;}
@@ -1711,15 +1745,16 @@ static void tick(){reapBridges();logBridgeHealth();DWORD now=GetTickCount();stat
  }
  if(lastData&&snap.inputPatchMask!=lastLoggedPatchMask){lastLoggedPatchMask=snap.inputPatchMask;diag(L"hook patches installed mask="+std::to_wstring(lastLoggedPatchMask));}
  clockState(displayFrameRequested(),informationFPS());
- if(snap.renderStatus!=1){overlayRecovery.suspend();hideWorldOverlay();hideAircraftButton();minimap::hide();watchwindows::hide();hideConstruction();}
+ const bool passiveVisible=snap.renderStatus==1||passiveDisplayState()!=overlaydisplay::State::Hidden;
+ if(!passiveVisible){overlayRecovery.suspend();hideWorldOverlay();hideAircraftButton();minimap::hide();watchwindows::hide();hideConstruction();}
  else if(!foregroundGame()||snap.chat){overlayRecovery.suspend();hideWorldOverlay();hideAircraftButton();minimap::hidePrimary();watchwindows::hidePrimary();hideConstruction();}
- if(snap.status==-2){setStatus(L"游戏操作异常，指令功能已暂停；信息显示仍可使用。");if(snap.renderStatus!=1)hideWorldOverlay();return;}
- if(snap.status==-1){setStatus(L"当前游戏版本不兼容，指令功能已暂停；信息显示仍可使用。");if(snap.renderStatus!=1)hideWorldOverlay();return;}
+ if(snap.status==-2){setStatus(L"游戏操作异常，指令功能已暂停；信息显示仍可使用。");if(!passiveVisible)hideWorldOverlay();return;}
+ if(snap.status==-1){setStatus(L"当前游戏版本不兼容，指令功能已暂停；信息显示仍可使用。");if(!passiveVisible)hideWorldOverlay();return;}
  if(snap.status!=1){
   if(int32_t(now-toastUntil)>=0){const auto p=externalSampler.probe();
    setStatus(L"正在读取当前对局；若长时间未恢复，请查看日志。");
   }
-  hideWorldOverlay();return;
+  if(!passiveVisible)hideWorldOverlay();return;
  }
  if(snap.bridgeStatus==1&&snap.readStatus!=1&&int32_t(now-toastUntil)>=0){
   const auto p=externalSampler.probe();

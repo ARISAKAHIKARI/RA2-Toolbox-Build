@@ -1,6 +1,8 @@
 #pragma once
 #include "../../external_reader/source/main_viewport.h"
 #include "../../shared/source/overlay_composition.h"
+#include <algorithm>
+#include <cmath>
 // Publication policy is separate from rendering: a pending/failed attempt is
 // not a new image. Keep the last completed image for a bounded interval, while
 // every successful job still recomposes CURRENT lighting and palette data.
@@ -23,6 +25,32 @@ inline bool sameProjection(external::mainview::View a,const external::mainview::
  a.cameraX=b.cameraX;a.cameraY=b.cameraY;return external::mainview::sameViewport(a,b);
 }
 inline bool recent(uint32_t now,uint32_t tick,uint32_t limit){return uint32_t(now-tick)<limit;}
+// Bias only the source crop inside the existing symmetric overscan. The
+// observations remain actual game cameras; no unit state, game camera or frame
+// time is advanced. A stopped/reversed camera therefore stops/reverses the
+// bias on its very next observation instead of continuing an old velocity.
+class CameraPrefetch {
+ external::mainview::View previous_{};uint32_t tick_=0;bool observed_=false;
+public:
+ void reset(){observed_=false;}
+ external::mainview::View center(const external::mainview::View&actual,uint32_t now,double lastRenderMs,double marginX,double marginY){
+  auto out=actual;
+  if(!actual.valid()||!std::isfinite(lastRenderMs)||lastRenderMs<=0||lastRenderMs>CompletionMaxAge||
+    !std::isfinite(marginX)||!std::isfinite(marginY)||marginX<0||marginY<0){reset();return out;}
+  const uint32_t dt=now-tick_;
+  const int64_t dx=int64_t(actual.cameraX)-previous_.cameraX,dy=int64_t(actual.cameraY)-previous_.cameraY;
+  const bool measured=observed_&&sameProjection(previous_,actual)&&actual.frame>=previous_.frame&&
+   dt>0&&dt<=250&&std::abs(dx)<=4*ScrollBorder&&std::abs(dy)<=4*ScrollBorder;
+  previous_=actual;tick_=now;observed_=true;
+  if(!measured)return out;
+  auto bias=[&](int64_t delta,double margin){
+   const int limit=int(std::floor(std::min(64.,margin*(2./3.))));
+   return int(std::lround(std::clamp(double(delta)*lastRenderMs/dt,-double(limit),double(limit))));
+  };
+  out.cameraX+=bias(dx,marginX);out.cameraY+=bias(dy,marginY);
+  return out.valid()?out:actual;
+ }
+};
 class StatusCadence {
  uint64_t key_=~uint64_t(0);uint32_t tick_=0;
 public:

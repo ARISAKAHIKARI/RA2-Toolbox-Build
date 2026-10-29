@@ -50,7 +50,9 @@ int main(){
  using namespace overlaystack;auto put=[&](HWND w,Layer l){phase=l==Layer::Statistics?"place-statistics":l==Layer::World?"place-world":l==Layer::Minimap?"place-minimap":l==Layer::Watch?"place-watch":"place-cursor";CHECK(place(w,l,110,140,200,100,SWP_SHOWWINDOW));};
  put(world,Layer::World);put(map,Layer::Minimap);put(cursor,Layer::Cursor);put(stats,Layer::Statistics);put(watch,Layer::Watch);put(scene,Layer::RenderUpgrade);
  checkpoint("repeat-stacking");
+ unsigned stableCallbacks=positionCallbacks;
  for(int i=0;i<100;++i){iteration=i;put(world,Layer::World);put(stats,Layer::Statistics);put(map,Layer::Minimap);CHECK(higher(cursor,watch)&&higher(watch,map)&&higher(map,stats)&&higher(stats,world)&&higher(world,scene));}iteration=-1;
+ CHECK(positionCallbacks==stableCallbacks);
  // Promote a real topmost game HWND while all surfaces remain WS_VISIBLE.
  // Pass that controlled foreground candidate to the production group check;
  // the fixture does not seize the runner's actual desktop foreground.
@@ -60,6 +62,11 @@ int main(){
   CHECK(higher(cursor,watch)&&higher(watch,map)&&higher(map,stats)&&higher(stats,world)&&higher(world,scene));
  }
  iteration=-1;CHECK(positionCallbacks>callbacks&&GetForegroundWindow()==foreground);
+ checkpoint("immediate-repromotion");
+ CHECK(SetWindowPos(game,HWND_TOPMOST,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE));CHECK(higher(game,cursor));
+ CHECK(keepAbove(game));for(auto w:{scene,world,stats,map,watch,cursor})CHECK(IsWindowVisible(w)&&higher(w,game));
+ CHECK(SetWindowPos(game,HWND_TOPMOST,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE));put(cursor,Layer::Cursor);
+ for(auto w:{scene,world,stats,map,watch,cursor})CHECK(IsWindowVisible(w)&&higher(w,game));
  checkpoint("opaque-and-hidden-panels");
  auto boxes=opaqueBoxes(game,800,600);CHECK(boxes.size()==2);for(auto r:boxes)CHECK(r.left==99&&r.top==119&&r.right==301&&r.bottom==221);
  ShowWindow(map,SW_HIDE);CHECK(SetWindowPos(game,HWND_TOPMOST,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE));CHECK(waitPumping(nullptr,260)==WAIT_TIMEOUT);phase="keep-hidden-above-ordered";CHECK(keepAbove(game));
@@ -79,5 +86,5 @@ int main(){
  CHECK(higher(cursor,map)&&higher(map,world)&&higher(world,scene)&&GetForegroundWindow()==foreground);
  checkpoint("destroy-main-windows");for(auto w:{scene,world,map,cursor,game}){forget(w);CHECK(DestroyWindow(w));}
  checkpoint("complete");CHECK(SetEvent(finished));watchdog.join();CloseHandle(finished);
- std::cout<<"PASS real HWND stacking, four mixed-owner promoted-game recoveries, single-owner ordered recovery, cross-owner-thread position callbacks outside the registry lock, no activation, hidden-panel preservation, stale handles and opaque clipping; no actual game/Alt-Tab/DWM visual claim\n";
+ std::cout<<"PASS real HWND stacking, stable placement emits zero callbacks, immediate repeat game promotions, mixed/single-owner recoveries, callbacks outside the registry lock, no activation, hidden-panel preservation, stale handles and opaque clipping; no actual game/Alt-Tab/DWM visual claim\n";
 }

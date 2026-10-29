@@ -52,7 +52,7 @@ template<class Assets>class SceneRenderer {
  struct Paint {lighting::State light,overlayLight;int overlayOffset=0;bool bridge=false;uint64_t signature=0;};
  std::shared_ptr<camera::NativeCanvas::Budget> nativeBudget_=std::make_shared<camera::NativeCanvas::Budget>();
  camera::NativeCanvas pending_,background_;camera::ViewportCanvas detailed_;uint64_t detailKey_=0;std::shared_ptr<const Scene> baseScene_,maskedBaseScene_;
- bool gpuMode_=false;
+ bool gpuMode_=false,areaGpuMode_=false,areaCachedGpu_=false;
  std::shared_ptr<const std::vector<vulkancompute::TileJob>> gpuBaseTiles_;
  std::function<bool(std::vector<uint32_t>&)> cpuBaseFallback_;
  shroudmask::Raster mask_;std::shared_ptr<const Terrain> maskSource_;bool maskFog_=false;
@@ -302,11 +302,15 @@ public:
   // image borders at every adjoining tile; presentRegion supplies a source
   // neighborhood halo across those joins before xBRZ is evaluated.
   // Native terrain shadows were already composed exactly once above.
+  const bool areaGpuMode=!region.active&&background_.pageCount()<=gpuarea::MaximumPages&&xbrzadapter::gpuAreaAvailable();
+  if(areaGpuMode!=areaGpuMode_){areaGpuMode_=areaGpuMode;baseScene_.reset();maskedBaseScene_.reset();maskSource_.reset();gpuMaskPlan_.reset();cpuMaskPlan_.reset();maskPixels_.reset();}
   if(!baseScene_){
    auto base=std::make_shared<Scene>();base->width=width;base->height=height;
    gpuBaseTiles_.reset();cpuBaseFallback_={};
    std::vector<vulkancompute::TileJob> jobs;
-   if(gpuMode_&&background_.gpuRegion(width,height,region.x,region.y,region.width,region.height,pixelScaleMode,jobs)){
+   if(areaGpuMode){
+    // Resolve once after native actors, Z and shadows have been composed.
+   }else if(gpuMode_&&background_.gpuRegion(width,height,region.x,region.y,region.width,region.height,pixelScaleMode,jobs)){
     gpuBaseTiles_=std::make_shared<const std::vector<vulkancompute::TileJob>>(std::move(jobs));
     cpuBaseFallback_=[canvas=background_.fork(),base,width,height,region,pixelScaleMode](std::vector<uint32_t>&out){
      if(base->pixels.size()==size_t(width)*height){out=base->pixels;return true;}
@@ -352,10 +356,11 @@ public:
    bool same=maskSource_&&maskFog_==fog&&mask_.width==width&&mask_.height==height&&
     maskSource_->geo.same(complete_->geo)&&maskSource_->shade==complete_->shade;
    if(!same){
-    if(gpuMode_){
+    if(gpuMode_||areaGpuMode){
      if(!gpuMaskBuilder_.build(*complete_,width,height,region.active?region.width:spanX_,region.active?region.height:spanY_,fog,
-       [&](bool isFog,int index,voxel::Image&out){return assets.shroud(isFog,index,out);},gpuMaskPlan_,region.active?region.x:0,region.active?region.y:0))return {};
-     mask_.width=width;mask_.height=height;mask_.alpha.clear();cpuMaskPlan_.reset();
+       [&](bool isFog,int index,voxel::Image&out){return assets.shroud(isFog,index,out);},gpuMaskPlan_,region.active?region.x:0,region.active?region.y:0)){
+      if(gpuMode_)return {};gpuMaskPlan_.reset();if(!mask_.build(*complete_,width,height,spanX_,spanY_,fog,[&](bool isFog,int index,voxel::Image&out){return assets.shroud(isFog,index,out);}))return {};
+     }else{mask_.width=width;mask_.height=height;mask_.alpha.clear();}cpuMaskPlan_.reset();
     }else if(!mask_.build(*complete_,width,height,region.active?region.width:spanX_,region.active?region.height:spanY_,fog,
        [&](bool isFog,int index,voxel::Image&out){return assets.shroud(isFog,index,out);},region.active?region.x:0,region.active?region.y:0))return {};
     maskedBaseScene_.reset();maskPixels_.reset();}
@@ -452,30 +457,40 @@ public:
   // canvas crop the image. Camera movement limits are not a pixel mask.
   if(tiles_.size()>4096)tiles_.clear();if(overlays_.size()>4096)overlays_.clear();
   if(view.failed()){dynamicFailure_=true;return {};}
-  if((detail?(!detailed_.dirty()&&!gpuMode_):!view.dirtyPages())&&fallbacks.empty()){
-   if(!masked)return baseScene_;
-   if(!maskedBaseScene_){auto out=std::make_shared<Scene>(*baseScene_);mask_.apply(out->pixels);maskedBaseScene_=std::move(out);}
-   return maskedBaseScene_;
+  const bool staticView=(detail?(!detailed_.dirty()&&!gpuMode_):!view.dirtyPages())&&fallbacks.empty();
+  if(staticView){
+   if(areaGpuMode){
+    auto cached=masked?maskedBaseScene_:baseScene_;if(cached&&cached->pixels.size()==size_t(width)*height){xbrzadapter::gpuAreaCached(areaCachedGpu_);return cached;}
+   }else{
+    if(!masked)return baseScene_;
+    if(!maskedBaseScene_){auto out=std::make_shared<Scene>(*baseScene_);mask_.apply(out->pixels);maskedBaseScene_=std::move(out);}return maskedBaseScene_;
+   }
   }
   auto dot=[&](const Marker&m){return std::pair<int,int>{int(((double(m.x)-m.y)*30/256.+geo.offsetX*30-(region.active?region.x:0))*width/(region.active?region.width:spanX_)),int(((double(m.x)+m.y)*15/256.-geo.offsetY*15-(region.active?region.y:0))*height/(region.active?region.height:spanY_))};};
-  if(masked&&gpuMode_&&!gpuMaskPlan_&&!maskPixels_)maskPixels_=std::make_shared<const std::vector<uint8_t>>(mask_.alpha);
+  if(masked&&(gpuMode_||areaGpuMode)&&!gpuMaskPlan_&&!maskPixels_)maskPixels_=std::make_shared<const std::vector<uint8_t>>(mask_.alpha);
   auto*maskReadback=masked&&gpuMaskPlan_&&cpuMaskPlan_!=gpuMaskPlan_?&mask_.alpha:nullptr;
-  auto out=std::make_shared<Scene>();out->width=width;out->height=height;if(!detail)out->pixels=baseScene_->pixels;
-  if(!(detail?detailed_.finish(out->pixels,true,masked?maskPixels_:nullptr,masked?gpuMaskPlan_:nullptr,maskReadback):region.active?view.presentRegion(width,height,out->pixels,region.x,region.y,region.width,region.height,pixelScaleMode):view.presentDirty(width,height,out->pixels,spanX_,spanY_))){dynamicFailure_=true;return {};}
-  if(masked&&gpuMaskPlan_&&cpuMaskPlan_!=gpuMaskPlan_){
-   // Unsupported devices replay the same frame on CPU. Materialize the mask
-   // only on this fallback; successful GPU work returns its packed mask with
-   // the final color readback for native feedback, without an extra fence.
-   if(!detailed_.gpuMasked()&&!gpushroud::reference(*gpuMaskPlan_,mask_.alpha))return {};
+  auto out=std::make_shared<Scene>();out->width=width;out->height=height;bool areaUsed=false;
+  if(areaGpuMode){
+   areaUsed=view.presentGPU(width,height,out->pixels,spanX_,spanY_,masked?maskPixels_:nullptr,masked?gpuMaskPlan_:nullptr);
+   if(!areaUsed&&!view.present(width,height,out->pixels,spanX_,spanY_)){dynamicFailure_=true;return {};}
+  }else{
+   if(!detail)out->pixels=baseScene_->pixels;
+   if(!(detail?detailed_.finish(out->pixels,true,masked?maskPixels_:nullptr,masked?gpuMaskPlan_:nullptr,maskReadback):region.active?view.presentRegion(width,height,out->pixels,region.x,region.y,region.width,region.height,pixelScaleMode):view.presentDirty(width,height,out->pixels,spanX_,spanY_))){dynamicFailure_=true;return {};}
+  }
+  if(masked&&gpuMaskPlan_&&cpuMaskPlan_!=gpuMaskPlan_&&(!areaUsed||!fallbacks.empty())){
+   // CPU replay and missing-art dots need a native mask; a successful whole
+   // minimap stays GPU-resident through its mask and returns only final RGBA.
+   if((!detail||!detailed_.gpuMasked())&&!gpushroud::reference(*gpuMaskPlan_,mask_.alpha))return {};
    if(mask_.alpha.size()!=size_t(width)*height)return {};cpuMaskPlan_=gpuMaskPlan_;
   }
   // Missing-art dots are presentation annotations, not minified game sprites.
   for(const auto*m:fallbacks){auto p=dot(*m);for(int yy=std::max(0,p.second-1);yy<std::min(height,p.second+2);++yy)for(int xx=std::max(0,p.first-1);xx<std::min(width,p.first+2);++xx){
    const size_t at=size_t(yy)*width+xx;uint32_t color=0xff000000u|(m->color&0xffffffu);
-   if(masked&&detail&&detailed_.gpuMasked()){unsigned alpha=mask_.alpha[at];if(alpha<127){uint32_t lit=0xff000000u;for(int shift:{0,8,16})lit|=((((color>>shift)&255u)*alpha+63)/127)<<shift;color=lit;}}
+   if(masked&&(areaUsed||(detail&&detailed_.gpuMasked()))){unsigned alpha=mask_.alpha[at];if(alpha<127){uint32_t lit=0xff000000u;for(int shift:{0,8,16})lit|=((((color>>shift)&255u)*alpha+63)/127)<<shift;color=lit;}}
    out->pixels[at]=color;
   }}
-  if(masked&&(!detail||!detailed_.gpuMasked()))mask_.apply(out->pixels);
+  if(masked&&!areaUsed&&(!detail||!detailed_.gpuMasked()))mask_.apply(out->pixels);
+  if(areaGpuMode&&staticView){areaCachedGpu_=areaUsed;if(masked)maskedBaseScene_=out;else baseScene_=out;}
   return out;
  }
 };

@@ -6,6 +6,9 @@
 
 | 主题 | 新笔记 | 关键词 |
 | --- | --- | --- |
+| 覆盖层临时读失败、预定面板完整帧、小地图缓存与拖屏预取 | [宿主闪烁与性能优化](2026-10-29-overlay-panel-render-optimization.md) | ReadLease120ms probe8ms front spare dirty64 prefetch64 same pixels |
+| 原生世界绘制与UI阶段分离、关闭绘制的限制 | [原生绘制停止可行性](2026-10-29-native-render-suppression-feasibility.md) | 4F4480 6D3D10 phase2 feedback 47EC90 A9FAB0 no-code-writes blocked |
+| 小地图分页GPU面积缩小与变化页积分缓存 | [小地图GPU缩小](2026-10-29-minimap-gpu-area.md) | sparse128pages area4x4 prefix Float64 owner one readback CPU fallback |
 | Vulkan GPU 场景、xBRZ、VXL、迷雾与故障回退 | [Vulkan 计算实验](2026-10-29-vulkan-compute-resolve.md) | Vulkan1.0 native1x xBRZ Float64 VXL 128MiB atlas one readback mask sticky CI x86 |
 | 原版 xBRZ 1.9 两阶段 GPU 重建、原生 SHP 输入与设备自检 | [GPU xBRZ 算法与缓存](2026-10-29-gpu-xbrz.md) | argbUnbuffered2/3/4 preprocess rotations Float64 NoContraction golden 8167384 weak owner fence |
 | 原生 SHROUD/FOG GPU 栅格、整数覆盖及不可变遮罩缓存 | [GPU 原生迷雾](2026-10-29-gpu-native-shroud-raster.md) | SHP127 0xFE area samples bins packed alpha Plan same readback bounded cache |
