@@ -30,10 +30,11 @@ public:
  bool observe(const radar::Frame&frame,double now){
   if(!frame.terrain||!frame.markerScanValid||frame.frame<0||!std::isfinite(now))return false;
   if(ready_&&frame.frame==current_.frame)return false;
-  bool continuous=ready_&&frame.frame>current_.frame&&frame.frame-current_.frame<=8&&
+  // Accelerated games can advance many ticks inside one short real-time interval.
+  bool continuous=ready_&&frame.frame>current_.frame&&
    now>observed_&&now-observed_<=250&&frame.terrain->geo.same(current_.terrain->geo)&&
    frame.terrain->reveal==current_.terrain->reveal;
-  prior_.clear();interval_=continuous?std::clamp(now-observed_,4.,100.):0;
+  prior_.clear();interval_=continuous?std::clamp(now-observed_,4.,250.):0;
   if(continuous){previous_=std::move(current_);for(const auto&m:previous_.markers)prior_[{m.object,m.id}]=m;}
   else previous_={};
   current_=frame;observed_=now;ready_=true;return true;

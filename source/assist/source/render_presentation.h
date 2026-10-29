@@ -80,6 +80,10 @@ public:
 inline bool sampleAdvance(int first,int sampled,int last){
  return first>=0&&sampled>=first&&last>=sampled&&int64_t(last)-sampled<=2;
 }
+// For accelerated simulation, use measured wall-time instead of game-frame count.
+inline bool sampleAdvance(int first,int sampled,int last,uint32_t elapsedMs){
+ return first>=0&&sampled>=first&&last>=sampled&&elapsedMs<=120;
+}
 template<class Request>auto gpuFlag(const Request&r,int)->decltype(bool(r.gpu)){return r.gpu;}
 template<class Request>bool gpuFlag(const Request&,long){return false;}
 template<class Request>auto neuralFlag(const Request&r,int)->decltype(bool(r.neural)){return r.neural;}

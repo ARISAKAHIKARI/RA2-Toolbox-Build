@@ -1,5 +1,8 @@
 #include "../../shared/source/key_gesture.h"
 static void loadAdditionalSettings(){
+ // Legacy quality choices remain saved, but never activate automatically.
+ renderExtraQuality=value(L"Display",L"RenderExtraQuality",0)!=0;
+ renderXbrzEnabled=value(L"Display",L"RenderXbrzEnabled",0)!=0;
  renderColorPrecision=std::clamp(value(L"Display",L"RenderColorPrecision",1),0,1);
  renderMaterialRefresh=value(L"Display",L"RenderMaterialRefresh",1)!=0;
  renderSceneDetail=std::clamp(value(L"Display",L"RenderSceneDetail",1),0,1);
@@ -112,6 +115,8 @@ static bool saveAdditionalSettings(){
  write(L"Display",L"MinimapPosition",minimapPosition);write(L"Display",L"MinimapX",minimapX);write(L"Display",L"MinimapY",minimapY);
  write(L"Display",L"MinimapAlignX",minimapAlignX);write(L"Display",L"MinimapAlignY",minimapAlignY);
  write(L"Display",L"RenderUpgrade",renderUpgradeEnabled);
+ write(L"Display",L"RenderExtraQuality",renderExtraQuality);
+ write(L"Display",L"RenderXbrzEnabled",renderXbrzEnabled);
  write(L"Display",L"UnifiedOverlay",unifiedOverlayEnabled);
  write(L"Display",L"RenderUpgradeLayer",renderUpgradeLayer);
  write(L"Display",L"RenderPaletteRange",renderPaletteRange);

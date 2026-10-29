@@ -70,7 +70,7 @@ namespace renderupgrade {static void stop();static void shutdown();}
 namespace minimap {static void hide();static void clear();static void destroy();}
 namespace watchwindows {static void hide();}
 static uint32_t computeRequested=compute::Default;
-static bool renderUpgradeEnabled=false,unifiedOverlayEnabled=false,renderPhysicalOutput=false,renderMaterialRefresh=true,renderVulkanEnabled=false,renderDLSS5Requested=false;static int renderUpgradeLayer=1,renderPaletteRange=1,renderPixelScale=3,renderSceneDetail=1,renderColorPrecision=1;
+static bool renderUpgradeEnabled=false,renderExtraQuality=false,renderXbrzEnabled=false,unifiedOverlayEnabled=false,renderPhysicalOutput=false,renderMaterialRefresh=true,renderVulkanEnabled=false,renderDLSS5Requested=false;static int renderUpgradeLayer=1,renderPaletteRange=1,renderPixelScale=3,renderSceneDetail=1,renderColorPrecision=1;
 static bool minimapEnabled=false,minimapSecondary=false;static int minimapMode=0,minimapScale=10,minimapPosition=0,minimapX=20,minimapY=60,minimapAlignX=0,minimapAlignY=0;
 static int minimapSecondaryX=10000,minimapSecondaryY=10000,minimapSecondaryWidth=320;
 static WORD socialKeys[9]{}; // Cheer, taunts 1..8; empty by default.
@@ -1916,10 +1916,10 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
  case WM_COMMAND:{int id=LOWORD(wp);
  DependencyCommandRefresh dependencyRefresh;
  if(ready&&!updatingControls&&rejectUnavailableSetting(id,HIWORD(wp)))return 0;
- if(id==9300||id==9301||id==9302||id==9304||id==9305||id==9306||id==9307||id==9308||id==9309||id==9310||id==9311){
+ if(id==9300||id==9301||id==9302||id==9304||id==9305||id==9306||id==9307||id==9308||id==9309||id==9310||id==9311||id==9313||id==9314){
   if(updatingControls)return 0;
   if(id==9302||id==9304||id==9305||id==9308||id==9309){if(HIWORD(wp)!=CBN_SELCHANGE)return 0;int choice=int(SendDlgItemMessageW(w,id,CB_GETCURSEL,0,0));if(choice<0||choice>(id==9305?3:1))return 0;if(id==9302)renderUpgradeLayer=std::clamp(choice,0,1);else if(id==9304)renderPaletteRange=std::clamp(choice,0,1);else if(id==9309)renderColorPrecision=std::clamp(choice,0,1);else if(id==9308)renderSceneDetail=std::clamp(choice,0,1);else renderPixelScale=std::clamp(choice,0,3);}
-  else{if(HIWORD(wp)!=BN_CLICKED)return 0;bool on=SendDlgItemMessageW(w,id,BM_GETCHECK,0,0)==BST_CHECKED;if(id==9300)renderUpgradeEnabled=on;else if(id==9306)renderPhysicalOutput=on;else if(id==9307)renderMaterialRefresh=on;else if(id==9310)renderVulkanEnabled=on;else if(id==9311)renderDLSS5Requested=on;else unifiedOverlayEnabled=on;}
+  else{if(HIWORD(wp)!=BN_CLICKED)return 0;bool on=SendDlgItemMessageW(w,id,BM_GETCHECK,0,0)==BST_CHECKED;if(id==9300)renderUpgradeEnabled=on;else if(id==9306)renderPhysicalOutput=on;else if(id==9307)renderMaterialRefresh=on;else if(id==9310)renderVulkanEnabled=on;else if(id==9311)renderDLSS5Requested=on;else if(id==9313)renderExtraQuality=on;else if(id==9314)renderXbrzEnabled=on;else unifiedOverlayEnabled=on;}
   renderupgrade::stop();++paintRevision;changedSetting();paint();
   renderupgrade::updateNeuralStatus(true);
   if(!renderUpgradeEnabled)SetWindowTextW(GetDlgItem(w,9303),unifiedOverlayEnabled?L"统一覆盖层：世界信息＋主屏统计；交互窗口尚未合并":L"渲染升级：关闭");

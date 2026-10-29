@@ -95,8 +95,10 @@ public:
  void reset(){geo_={};pointers_.clear();maskBits_.clear();pending_.reset();terrain_.reset();cursor_=0;lastFrame_=-1;++revision_;}
  unsigned revision()const{return revision_;}
  bool hasTerrain()const{return bool(terrain_);}
+ // Terrain paging is owned by an independent reader/thread; only swap banks here.
+ Frame terrainSnapshot(uint32_t now)const{Frame out;out.terrain=terrain_;out.tick=now;out.frame=lastFrame_;return out;}
  void seedTerrain(const Frame&frame){
-  if(terrain_||!frame.terrain||frame.terrain->art.empty())return;
+  if(!frame.terrain||frame.terrain->art.empty()||terrain_==frame.terrain)return;
   reset();terrain_=frame.terrain;geo_=terrain_->geo;reveal_=terrain_->reveal;lastFrame_=frame.frame;++revision_;
  }
  bool step(uint32_t reveal,int budget=4096,bool real=false){
