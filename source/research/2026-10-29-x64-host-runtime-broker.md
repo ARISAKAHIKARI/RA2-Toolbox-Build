@@ -36,3 +36,5 @@
 - `assist/tests/runtime_broker_*windows.*`：x64 控制器、x86 broker、x86 窗口与严格元数据的测试 DLL；两类 Hook 分别使用 posted／sent 消息验证，并检查卸载、错误身份、重启和宿主死亡。
 
 初始完整 x64 预构建已链接并通过实际三文件 PE 校验。真实 Windows 夹具、最终冻结构建与同提交 CI 结果单独附记；交叉编译和源码审查不等同于真实游戏、所有平台或联机验收。
+
+隔离 Windows broker 验证 run `40822040010`、commit `123923f38b6d3d83539b3d0c05ce7a2da96d9f91` 已实际执行并通过：私有 IPC、错误身份拒绝、两类 Hook 回调及卸载、正常／崩溃重启、版本不匹配和宿主死亡清理。更早一次仅因 PowerShell 未对 `-Wl,--subsystem,windows` 加引号在编译前失败，未将其当成产品运行缺陷。最终主分支 CI 仍会重跑夹具。
