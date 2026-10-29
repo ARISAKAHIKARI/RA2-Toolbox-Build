@@ -1,0 +1,68 @@
+name: Inspect the separate x64 neural helper
+on:
+  push:
+    branches: [codex/neural-helper-probe-20261029]
+    paths: ['.github/workflows/probe-neural-helper.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  helper:
+    runs-on: windows-2022
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 08e0dd9c6012386863965e89e1b698be0fa6f058
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Prepare exact official development SDK, without NR runtime
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force neural-probe | Out-Null
+          $sdk=Join-Path $env:RUNNER_TEMP 'ra2-ngx-helper-probe'
+          python source/tools/fetch_neural_sdk.py --output $sdk --sevenzip 'C:/Program Files/7-Zip/7z.exe' 2>&1 | Tee-Object neural-probe/sdk.log
+          if($LASTEXITCODE -ne 0){throw 'SDK preparation failed'}
+          Add-Content $env:GITHUB_ENV "RA2_NGX_SDK=$sdk"
+          Add-Content $env:GITHUB_ENV "RA2_NEURAL_OUTPUT=$((Join-Path $env:GITHUB_WORKSPACE 'neural-probe/RA2NeuralRenderer.exe'))"
+      - name: Compile and link the actual typed NGX Vulkan NR helper
+        shell: pwsh
+        run: |
+          & cmd /c source\neural_renderer\build-msvc.cmd 2>&1 | Tee-Object neural-probe/build.log
+          if($LASTEXITCODE -ne 0){throw 'MSVC neural helper build failed'}
+      - name: Verify actual PE and explicit non-activation without the runtime
+        shell: pwsh
+        run: |
+          & $env:RA2_NEURAL_OUTPUT --probe 2>&1 | Tee-Object neural-probe/probe.log
+          $code=$LASTEXITCODE
+          if($code -ne 2){throw "Expected unavailable return code2, got $code"}
+          $line=Get-Content neural-probe/probe.log -Raw
+          if($line -notmatch 'status=7 available=0'){throw 'Missing runtime was not reported accurately'}
+          @'
+          import hashlib,json,sys
+          from pathlib import Path
+          sys.path.insert(0,'source/tools')
+          from pe32_image import Image
+          from verify_windows_outputs import verify_worker_manifest,NEURAL_SYSTEM
+          path=Path('neural-probe/RA2NeuralRenderer.exe')
+          data=path.read_bytes()
+          pe=Image(data,allow_x64=True)
+          assert pe.machine==0x8664 and not (pe.characteristics&0x2000)
+          assert not pe.exports()
+          assert '1.0.39.6'.encode('utf-16le') in pe.resource_bytes()
+          imports=pe.imports()
+          assert all(x.lower() in NEURAL_SYSTEM or x.lower().startswith(('api-ms-win-','ext-ms-win-')) for x in imports), imports
+          manifest=verify_worker_manifest(pe,'amd64','x64 neural helper')
+          result={'source_commit':'08e0dd9c6012386863965e89e1b698be0fa6f058','bytes':len(data),'sha256':hashlib.sha256(data).hexdigest(),'machine':pe.architecture,'imports':imports,'manifest':manifest,'missing_runtime_probe':'pass','actual_neural_inference_tested':False}
+          Path('neural-probe/verification.json').write_text(json.dumps(result,indent=2))
+          print(json.dumps(result))
+          '@ | Set-Content -Encoding utf8 neural-probe/verify.py
+          python neural-probe/verify.py
+          if($LASTEXITCODE -ne 0){throw 'Neural PE verification failed'}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Neural-helper-isolated-probe
+          if-no-files-found: error
+          path: neural-probe/*
