@@ -1,0 +1,52 @@
+name: Controlled Windows x64 to x86 broker probe
+on:
+  push:
+    branches: [codex/x64-broker-probe-20261029]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  real-windows-broker:
+    runs-on: windows-2022
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Zig 0.13.0
+        shell: pwsh
+        run: |
+          $ProgressPreference='SilentlyContinue'
+          Invoke-WebRequest 'https://ziglang.org/download/0.13.0/zig-windows-x86_64-0.13.0.zip' -OutFile zig.zip
+          Expand-Archive zig.zip zig
+          $zig=(Resolve-Path 'zig/zig-windows-x86_64-0.13.0/zig.exe').Path
+          if((& $zig version) -ne '0.13.0'){throw 'Unexpected Zig version'}
+          Add-Content $env:GITHUB_ENV "ZIG_EXE=$zig"
+          New-Item -ItemType Directory -Force broker-fixture | Out-Null
+      - name: Compile the production x86 broker and controlled x64 controller
+        shell: pwsh
+        run: |
+          $flags=@('-std=c++17','-O2','-UNDEBUG')
+          & $env:ZIG_EXE rc /fo broker-fixture/broker.res source/runtime_broker/source/app.rc
+          if($LASTEXITCODE -ne 0){throw 'Broker resource compilation failed'}
+          & $env:ZIG_EXE c++ -target x86-windows-gnu @flags -municode source/runtime_broker/source/main.cpp broker-fixture/broker.res -o broker-fixture/GameRuntimeHost32.exe -Wl,--subsystem,windows -lkernel32 -luser32
+          if($LASTEXITCODE -ne 0){throw 'Production broker compilation failed'}
+          & $env:ZIG_EXE c++ -target x86_64-windows-gnu @flags -municode source/assist/tests/runtime_broker_windows.cpp -o broker-fixture/runtime-broker-test.exe -lkernel32 -luser32
+          if($LASTEXITCODE -ne 0){throw 'Controller compilation failed'}
+          & $env:ZIG_EXE c++ -target x86-windows-gnu @flags -municode source/assist/tests/runtime_broker_target_windows.cpp -o broker-fixture/BrokerTarget32.exe -Wl,--subsystem,windows -lkernel32 -luser32
+          if($LASTEXITCODE -ne 0){throw 'Target compilation failed'}
+          & $env:ZIG_EXE c++ -target x86-windows-gnu @flags -shared source/assist/tests/runtime_broker_runtime_windows.cpp source/assist/tests/runtime_broker_runtime_windows.def -o broker-fixture/GameRuntime.dll -lkernel32 -luser32
+          if($LASTEXITCODE -ne 0){throw 'Runtime fixture compilation failed'}
+          & $env:ZIG_EXE c++ -target x86-windows-gnu @flags -DBROKER_FIXTURE_WRONG_VERSION -shared source/assist/tests/runtime_broker_runtime_windows.cpp source/assist/tests/runtime_broker_runtime_windows.def -o broker-fixture/GameRuntimeBad.dll -lkernel32 -luser32
+          if($LASTEXITCODE -ne 0){throw 'Version-negative fixture compilation failed'}
+      - name: Execute real cross-bitness hooks and teardown assertions
+        shell: pwsh
+        run: |
+          & ./broker-fixture/runtime-broker-test.exe 2>&1 | Tee-Object broker-fixture/result.log
+          if($LASTEXITCODE -ne 0){throw 'Controlled cross-bitness regression failed'}
+          if(-not(Select-String -Quiet -Path broker-fixture/result.log -Pattern '^PASS:')){throw 'Fixture PASS marker missing'}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: x64-broker-controlled-diagnostics
+          retention-days: 7
+          if-no-files-found: warn
+          path: broker-fixture/result.log
