@@ -1,0 +1,4 @@
+f21127dad3f954d223b1a1b7d457206ea48e466fea71c99fddd0b8775306d51c  RA2-Toolbox-v1.0.39-pre.7-Hotfix1-Source.zip
+4370600a19c3d7b049a032edef7c197d4d931298d6e38ed17e88fa0a6a78f0ca  RA2-Toolbox-v1.0.39-pre.7-Hotfix1-Update.zip
+9367d473c569fea378987105a843f1237e607f308c9b302d212568c05d8d2bf5  RELEASE_NOTES.md
+ac5c8a060e806de8de5af32224d4a417ea17d9c8b282ca27b4d97b1d56aa3337  release-manifest.json
