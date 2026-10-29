@@ -1,0 +1,150 @@
+name: Publish RA2 Toolbox 1.0.39-pre.7
+on:
+  push:
+    branches: [codex/release-v139-pre7]
+    paths: ['.github/workflows/publish-v139-pre7.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: publish-v139-pre7
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      BUILD_SHA: 7b920372a8eb872bfafc1ba03da15028da425acf
+      BUILD_TREE: 21ccd4b7fbc95dade071a40e5b5da50798b42f15
+      RELEASE_TAG: v1.0.39-pre.7
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify frozen local-build packages without claiming CI success
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --depth=1 origin "$BUILD_SHA"
+          test "$(git rev-parse "$BUILD_SHA^{tree}")" = "$BUILD_TREE"
+          git diff --exit-code "$BUILD_SHA" HEAD -- source packages/v1.0.39-pre.7 README.md AGENTS.md docs LICENSE-GPL THIRD_PARTY_NOTICES.md .gitattributes
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib,subprocess,sys,tempfile,zipfile
+          from pathlib import PurePosixPath
+          repo=pathlib.Path.cwd();dist=repo/'releases/v1.0.39-pre.7'
+          commit=os.environ['BUILD_SHA'];tree=os.environ['BUILD_TREE']
+          assert os.environ['GH_REPO']=='ARISAKAHIKARI/RA2-Toolbox-Build'
+          frozen={
+            'RA2-Toolbox-v1.0.39-pre.7-Update.zip':(2245663,'465c880d4e58d1f0335311b368a64e09314f9210449591dcaef1e5a3dc5c6987'),
+            'RA2-Toolbox-v1.0.39-pre.7-Source.zip':(3431504,'b5152f43065ea69579e1aa4536219b715b591834ea1cb7f21b2e9812b54f1cda'),
+            'release-manifest.json':(26208,'7ab0c1eac4796ba1de6cd84d5d2d2377084ff988f9b2622635f3e178410db658'),
+            'SHA256SUMS.txt':(294,'faa95659db36c68ff53bfc26d0152c10a4c0f05f914f3d8427b3c932485e0c37'),
+            'RELEASE_NOTES.md':(624,'485427498b0d91ee3a2205b2d31d38829c335ca00ceacc248a715ce9aceffe1c')}
+          assert {p.name for p in dist.iterdir() if p.is_file()}==set(frozen)
+          for name,(size,digest) in frozen.items():
+              data=(dist/name).read_bytes();assert len(data)==size and hashlib.sha256(data).hexdigest()==digest,name
+          manifest=json.loads((dist/'release-manifest.json').read_text())
+          assert manifest['version']=='1.0.39-pre.7' and manifest['file_version']=='1.0.39.7'
+          assert manifest['product_commit']==commit and manifest['product_tree']==tree
+          assert manifest['local_core_builds_passed'] is True and manifest['focused_checks_passed']==17 and manifest['compiled_inputs_verified']==400
+          assert manifest['ci_passed'] is False and manifest['ci_test_execution_started'] is False
+          assert manifest['user_authorized_delivery_without_ci'] is True
+          assert manifest['windows_ui_execution_tested'] is False and manifest['live_game_tested'] is False and manifest['multiplayer_tested'] is False
+          assert manifest['neural_helper_included'] is False and manifest['hardware_neural_inference_tested'] is False
+          expected={'RA2Toolbox.exe','GameRuntime.dll','GameRuntimeHost32.exe'}
+          assert set(manifest['binaries'])==expected and set(manifest['actual_pe_verified'])==expected
+          sums=(dist/'SHA256SUMS.txt').read_text().splitlines();assert len(sums)==3
+          assert {line.split('  ',1)[1] for line in sums}==set(frozen)-{'SHA256SUMS.txt','RELEASE_NOTES.md'}
+          for line in sums:
+              digest,name=line.split('  ',1);assert hashlib.sha256((dist/name).read_bytes()).hexdigest()==digest
+          for asset in manifest['assets']:
+              data=(dist/asset['name']).read_bytes();assert len(data)==asset['bytes'] and hashlib.sha256(data).hexdigest()==asset['sha256']
+          source=manifest['source'];assert source['name']=='RA2-Toolbox-v1.0.39-pre.7-Source.zip'
+          assert source['bytes']==frozen[source['name']][0] and source['sha256']==frozen[source['name']][1]
+          gitrows={}
+          for row in subprocess.check_output(['git','ls-tree','-r','-z',commit]).split(b'\0'):
+              if not row:continue
+              info,name=row.split(b'\t',1);mode,kind,identity=info.decode().split();gitrows[name.decode()]=(mode,kind,identity)
+          with zipfile.ZipFile(dist/source['name']) as archive:
+              assert archive.testzip() is None and len(archive.namelist())==len(set(archive.namelist()))==source['verified_git_blobs']==1275
+              for name in archive.namelist():
+                  path=PurePosixPath(name);assert not path.is_absolute() and '..' not in path.parts and '\\' not in name
+                  assert path.suffix.lower() not in {'.exe','.dll','.o','.obj','.lib','.pdb','.zip','.7z','.sqlite','.dmp','.dump'}
+                  mode,kind,identity=gitrows[name];assert mode in {'100644','100755'} and kind=='blob'
+                  data=archive.read(name);assert hashlib.sha1(b'blob '+str(len(data)).encode()+b'\0'+data).hexdigest()==identity,name
+          with zipfile.ZipFile(dist/'RA2-Toolbox-v1.0.39-pre.7-Update.zip') as archive:
+              assert archive.testzip() is None and len(archive.namelist())==len(set(archive.namelist()))==12
+              assert set(archive.namelist())==expected|{'Build-info.json','LICENSE-Apache-2.0.txt','LICENSE-GPL.txt','LICENSE-MIT.txt','LICENSE-Vulkan-Headers.md','README.txt','SHA256SUMS.txt','THIRD_PARTY_NOTICES.md','xBRZ-LICENSE.txt'}
+              info=json.loads(archive.read('Build-info.json'));assert info=={k:v for k,v in manifest.items() if k!='assets'}
+              checks=archive.read('SHA256SUMS.txt').decode().splitlines();assert len(checks)==11
+              assert {line.split('  ',1)[1] for line in checks}==set(archive.namelist())-{'SHA256SUMS.txt'}
+              for line in checks:
+                  digest,name=line.split('  ',1);assert hashlib.sha256(archive.read(name)).hexdigest()==digest
+              with tempfile.TemporaryDirectory() as temporary:
+                  stage=pathlib.Path(temporary)
+                  for name in expected:
+                      data=archive.read(name);record=manifest['binaries'][name]
+                      assert len(data)==record['bytes'] and hashlib.sha256(data).hexdigest()==record['sha256'];(stage/name).write_bytes(data)
+                  (stage/'BUILD_SOURCE_MANIFEST.json').write_bytes(subprocess.check_output(['git','show',commit+':source/BUILD_SOURCE_MANIFEST.json']))
+                  sys.path.insert(0,str(repo/'source/tools'))
+                  import verify_windows_outputs
+                  actual,errors=verify_windows_outputs.verify(stage,host_arch='x64',neural_helper=False)
+                  assert not errors,errors
+                  assert json.loads(json.dumps(actual))==manifest['actual_pe_verified']
+          print('PASS: frozen packages, three locally built PE files, 1275 Git source blobs and all checksums; Windows CI was not executed')
+          PY
+      - name: Publish the verified prerelease and preserve stable latest
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib,subprocess,zipfile
+          repo=os.environ['GH_REPO'];commit=os.environ['BUILD_SHA'];tag=os.environ['RELEASE_TAG']
+          assert repo=='ARISAKAHIKARI/RA2-Toolbox-Build' and tag=='v1.0.39-pre.7'
+          dist=pathlib.Path('releases/v1.0.39-pre.7');temp=pathlib.Path(os.environ['RUNNER_TEMP'])/'pre7-publish';temp.mkdir()
+          names={'RA2-Toolbox-v1.0.39-pre.7-Update.zip','RA2-Toolbox-v1.0.39-pre.7-Source.zip','release-manifest.json','SHA256SUMS.txt'}
+          def api(path,body=None):
+              command=['gh','api',f'repos/{repo}/'+path]
+              if body is not None:
+                  request=temp/'request.json';request.write_text(json.dumps(body))
+                  command+=['--method','PATCH' if path.startswith('releases/') else 'POST','--input',str(request)]
+              return json.loads(subprocess.check_output(command))
+          def stable():
+              value=api('releases/latest');assert value['id']==423549275 and value['tag_name']=='v1.0.38' and not value['draft'] and not value['prerelease']
+          stable()
+          refs=api('git/matching-refs/tags/'+tag);exact=[r for r in refs if r['ref']=='refs/tags/'+tag]
+          assert len(exact)<=1
+          if exact:assert api('commits/'+tag)['sha']==commit,'Existing tag points elsewhere'
+          pages=json.loads(subprocess.check_output(['gh','api','--paginate','--slurp',f'repos/{repo}/releases?per_page=100']))
+          assert not [r for page in pages for r in page if r['tag_name']==tag],'Refusing to replace an existing release'
+          title='RA2 Toolbox 1.0.39-pre.7 — 前端响应与输入设置'
+          body=(dist/'RELEASE_NOTES.md').read_text()
+          release=api('releases',{'tag_name':tag,'target_commitish':commit,'name':title,'body':body,'draft':True,'prerelease':True,'make_latest':'false'})
+          assert release['draft'] and release['prerelease'] and release['target_commitish']==commit
+          releaseid=release['id']
+          subprocess.run(['gh','release','upload',tag,*[str(dist/name) for name in sorted(names)]],check=True)
+          release=api(f'releases/{releaseid}');assert release['draft'] and len(release['assets'])==4 and {a['name'] for a in release['assets']}==names
+          remote=temp/'download';remote.mkdir();subprocess.run(['gh','release','download',tag,'--dir',str(remote)],check=True)
+          assert {p.name for p in remote.iterdir()}==names
+          for name in names:
+              assert (remote/name).read_bytes()==(dist/name).read_bytes(),'Uploaded bytes differ: '+name
+              if name.endswith('.zip'):
+                  with zipfile.ZipFile(remote/name) as archive:assert archive.testzip() is None
+          stable();release=api(f'releases/{releaseid}',{'draft':False,'prerelease':True,'make_latest':'false'})
+          assert not release['draft'] and release['prerelease'] and release['tag_name']==tag
+          assert api('commits/'+tag)['sha']==commit;stable()
+          receipt={'product_commit':commit,'ci_passed':False,'ci_test_execution_started':False,'local_PE_files_verified':3,'source_git_blobs_verified':1275,'assets_download_verified':True,'stable_latest_unchanged':{'id':423549275,'tag_name':'v1.0.38'},'release':release}
+          pathlib.Path('published-release.json').write_text(json.dumps(receipt,ensure_ascii=False,indent=2)+'\n')
+          with open(os.environ['GITHUB_STEP_SUMMARY'],'a') as summary:summary.write('Published ['+tag+']('+release['html_url']+'). Local build and asset checks passed; product CI did not execute. Stable latest remains v1.0.38.\n')
+          print('PASS: prerelease published from the frozen local-build packages; CI success was not claimed')
+          PY
+      - name: Preserve publication receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: RA2-v139-pre7-publish-verification
+          if-no-files-found: warn
+          retention-days: 14
+          path: published-release.json
