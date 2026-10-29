@@ -1,0 +1,18 @@
+RA2 Neural Renderer is an optional, separate x64 process.
+
+The RA2 neural frame protocol, process client and application integration code
+are provided under their stated MIT notices. They do not incorporate xBRZ.
+The main toolbox retains the licenses of its own components, including xBRZ.
+
+The compiled neural renderer incorporates NVIDIA NGX SDK object code and uses
+NVIDIA DLSS Neural Rendering. Those NVIDIA components remain subject to the
+accompanying NVIDIA license files; they are not licensed under the MIT or GPL
+licenses of other components. This software contains source code provided by
+NVIDIA Corporation.
+
+The build obtains the SDK separately from pinned NVIDIA sources. The source
+archive contains application code and notices, not NVIDIA SDK headers, static
+libraries, model weights, or the Neural Rendering runtime DLL. The optional
+runtime installer obtains the unmodified runtime from NVIDIA's public package.
+
+This experimental integration is not sponsored or endorsed by NVIDIA.

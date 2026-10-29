@@ -15,7 +15,26 @@ class AreaProbe:public vulkancompute::AreaResolve {
 public:bool liveDevice()const{return device_!=VK_NULL_HANDLE;}bool disabled()const{return disabled_;}
 };
 int main(int argc,char**argv){
- const bool required=argc>1&&std::string(argv[1])=="--require";Probe gpu;
+ const bool required=argc>1&&std::string(argv[1])=="--require";
+ // Optional neural guides must not disable a GPU capable of the raw scene.
+ // This source/staging footprint admits ordinary RGBA but not its guide planes.
+ {
+  Probe optional;vulkancompute::FrameJob small;small.width=64;small.height=48;small.collectGuides=true;
+  small.basePixels=std::make_shared<const std::vector<uint32_t>>(64*48,0xff314759u);small.baseDepth=std::make_shared<const std::vector<float>>(64*48,0);
+  small.motion.context=std::make_shared<const int>(1);small.motion.depthFar=-100;small.motion.depthNear=100;small.motion.frame=1;small.motion.tick=100;
+  std::vector<uint32_t> current;const bool rendered=optional.renderFrame(small,current);
+  if(!rendered&&(optional.diagnostics().reason.find("unavailable")!=std::string::npos||optional.diagnostics().reason.find("No compatible")!=std::string::npos)){
+   std::cout<<"VULKAN_GUIDE_ALLOCATION_UNAVAILABLE "<<optional.diagnostics().reason<<std::endl;return required?1:0;
+  }
+  assert(rendered&&current==*small.basePixels&&!optional.guides()&&!optional.disabled()&&optional.liveDevice());
+  assert(optional.guideAllocationFailures()==1&&optional.diagnostics().readbacks==1);
+  for(int n=0;n<3;++n){assert(optional.renderFrame(small,current)&&current==*small.basePixels&&!optional.guides());assert(optional.guideAllocationFailures()==1&&!optional.disabled());}
+  small.collectGuides=false;assert(optional.renderFrame(small,current));small.collectGuides=true;assert(optional.renderFrame(small,current));assert(optional.guideAllocationFailures()==2);
+  small.width=32;small.height=16;small.basePixels=std::make_shared<const std::vector<uint32_t>>(32*16,0xff314759u);small.baseDepth=std::make_shared<const std::vector<float>>(32*16,0);
+  assert(optional.renderFrame(small,current)&&current==*small.basePixels&&optional.guides()&&optional.guides()->resetHistory&&optional.guideAllocationFailures()==2);
+  std::cout<<"PASS Vulkan optional-guide mapped-budget fallback: same-frame raw GPU output retained, no repeated allocation attempts until off/resize, smaller guide frame recovers"<<std::endl;
+ }
+ Probe gpu;
  vulkancompute::FrameJob frame;frame.width=256;frame.height=256;
  auto source=std::make_shared<const std::vector<uint32_t>>(256*256,0xff7f4523);frame.basePixels=source;
  std::vector<uint32_t> output{0x12345678};assert(!gpu.renderFrame(frame,output));assert(output==std::vector<uint32_t>{0x12345678});

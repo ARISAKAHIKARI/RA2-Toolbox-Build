@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 cd "$(dirname "$0")"
+case "${RA2_HOST_ARCH:-x86}" in
+  x86|i686) ;;
+  x64|x86_64|amd64) exec bash ./build-zig-x64.sh "$@" ;;
+  *) echo "RA2_HOST_ARCH must be x86 or x64" >&2; exit 2 ;;
+esac
 : "${ZIG:=zig}"
 version=$("$ZIG" version)
 if [ "$version" != "0.13.0" ]; then
@@ -10,10 +15,10 @@ fi
 # Use the normal DLL CRT startup: these links include the C/C++ runtime.
 # A direct DllMain entry bypasses its initialization and static constructors.
 rm -f BUILD-VERIFIED-v130.tag verification/BUILD-VERIFIED-v130.tag WINDOWS_BUILD_ARTIFACTS.json verification/WINDOWS_BUILD_ARTIFACTS.json
-"$ZIG" rc /fo shared/source/dll_version.res shared/source/dll_version.rc
+MSYS2_ARG_CONV_EXCL='*' "$ZIG" rc /fo shared/source/dll_version.res shared/source/dll_version.rc
 "$ZIG" c++ -target x86-windows-gnu -std=c++17 -O2 -fno-exceptions -fno-rtti -c shared/source/game_entry_manager.cpp -o shared/source/game_entry_manager.o
 "$ZIG" c++ -target x86-windows-gnu -std=c++17 -O2 -fno-exceptions -fno-rtti -c third_party/xbrz/xbrz.cpp -o third_party/xbrz/xbrz.o
-"$ZIG" rc /fo suite/source/app.res suite/source/app.rc
+MSYS2_ARG_CONV_EXCL='*' "$ZIG" rc /fo suite/source/app.res suite/source/app.rc
 "$ZIG" c++ -target x86-windows-msvc -O2 -fms-extensions -fno-stack-protector -c assist/source/guard.cpp -o assist/source/guard.o
 "$ZIG" c++ -target x86-windows-gnu -std=c++17 -O2 -fms-extensions -fasm-blocks -fno-stack-protector -fno-builtin -fno-exceptions -fno-rtti -c assist/source/bridge.cpp -o assist/source/bridge.o
 "$ZIG" c++ -target x86-windows-msvc -O2 -fms-extensions -fno-stack-protector -c cursor/source/resource_guard.cpp -o cursor/source/resource_guard.o

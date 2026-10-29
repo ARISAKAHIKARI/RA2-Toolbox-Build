@@ -10,6 +10,7 @@ namespace external { namespace camera {
 // full-scene upscale or an enlarged whole-map allocation.
 class ViewportCanvas {
  Surface surface_;std::shared_ptr<const std::vector<float>> baseDepth_;GpuDepthPlan depthPlan_;GpuSceneRecord gpuRecord_;uint64_t key_=0;
+ std::shared_ptr<const gpumotion::Guides> guides_;
  int width_=0,height_=0;bool gpuRecording_=false,gpuMasked_=false;
  double x_=0,y_=0,sx_=1,sy_=1;int backingW_=0,backingH_=0;bool dirty_=false,ready_=false;
  bool terrainCached_=false;unsigned samplingMode_=0;size_t terrainCommands_=0;uint64_t terrainPixels_=0;
@@ -44,7 +45,7 @@ class ViewportCanvas {
   for(int y=0;y<h;++y){auto row=pixels.begin()+size_t(y)*w;if(y<t||y>=b)std::fill_n(row,w,0);else{std::fill(row,row+l,0);std::fill(row+r,row+w,0);}}
  }
 public:
- void reset(){surface_={};baseDepth_.reset();depthPlan_={};gpuRecord_.clear();width_=height_=0;key_=0;ready_=dirty_=terrainCached_=gpuRecording_=gpuMasked_=false;samplingMode_=0;}
+ void reset(){surface_={};baseDepth_.reset();guides_.reset();depthPlan_={};gpuRecord_.clear();width_=height_=0;key_=0;ready_=dirty_=terrainCached_=gpuRecording_=gpuMasked_=false;samplingMode_=0;}
  bool visible(double left,double top,double right,double bottom)const{return ready_&&left<x_+width_/sx_&&right>x_&&top<y_+height_/sy_&&bottom>y_;}
  bool visible(const voxel::Image&i,double ax,double ay,double drop=0)const{return ready_&&imageVisible(i,ax,ay,drop,0);}
  bool visibleShifted(const voxel::Image&i,double ax,double ay,double minY,double maxY)const{return ready_&&imageVisible(i,ax,ay+minY,0,0,maxY-minY);}
@@ -76,7 +77,7 @@ public:
               double x,double y,double spanX,double spanY,uint64_t key,colorprecision::Mode precision=colorprecision::Mode::NativeSteps,unsigned mode=0,
               std::shared_ptr<const std::vector<uint32_t>>basePixels={},
               std::shared_ptr<const std::vector<vulkancompute::TileJob>>baseTiles={},std::function<bool(std::vector<uint32_t>&)>cpuBaseFallback={}){
-  const bool wasTerrain=terrainCached_;ready_=false;dirty_=false;terrainCached_=false;samplingMode_=mode;gpuMasked_=false;gpuRecord_.reset();
+  const bool wasTerrain=terrainCached_;ready_=false;dirty_=false;terrainCached_=false;samplingMode_=mode;gpuMasked_=false;guides_.reset();gpuRecord_.reset();
   if(w<1||h<1||w>8192||h>8192||uint64_t(w)*h>16*1024*1024||(pixels.size()!=size_t(w)*h&&!(pixels.empty()&&baseTiles&&!baseTiles->empty()))||
      !std::isfinite(x)||!std::isfinite(y)||!std::isfinite(spanX)||!std::isfinite(spanY)||
      std::abs(x)>1e7||std::abs(y)>1e7||spanX<=0||spanY<=0||spanX>32768||spanY>32768)return false;
@@ -112,13 +113,15 @@ public:
   ready_=true;return true;
  }
  void blit(const voxel::Image&i,float ax,float ay,float,float,float base,const lighting::State&light,float lift=1,float shadowDrop=0,
-           std::shared_ptr<const voxel::Image>owner={}){
+           std::shared_ptr<const voxel::Image>owner={},vulkancompute::MotionIdentity motion={}){
   if(!ready_)return;const float outputX=float((ax-x_)*sx_),outputY=float((ay-y_)*sy_);
-  if(gpuRecording_)gpuRecord_.append(i,std::move(owner),outputX,outputY,float(sx_),float(sy_),base,light,lift,shadowDrop,smooth(i));
+  if(gpuRecording_)gpuRecord_.append(i,std::move(owner),outputX,outputY,float(sx_),float(sy_),base,light,lift,shadowDrop,smooth(i),std::move(motion));
   else surface_.blit(i,outputX,outputY,float(sx_),float(sy_),base,light,lift,shadowDrop,smooth(i));dirty_=true;
  }
  bool gpuRecording()const{return ready_&&gpuRecording_;}
  bool gpuMasked()const{return gpuMasked_;}
+ void motion(vulkancompute::MotionView view,bool enabled){if(gpuRecording_)gpuRecord_.motion(std::move(view),enabled);}
+ std::shared_ptr<const gpumotion::Guides> guides()const{return guides_;}
  const vulkancompute::FrameJob*recordedGpuFrame()const{return gpuRecording()?&gpuRecord_.frame():nullptr;}
  void annotationDot(int x,int y,uint32_t color){if(ready_&&gpuRecording_)gpuRecord_.annotationDot(x,y,color);}
  void gpuMaskPlan(std::shared_ptr<const gpushroud::Plan>plan){if(ready_&&gpuRecording_)gpuRecord_.maskPlan(std::move(plan));}
@@ -137,7 +140,7 @@ public:
    auto&gpu=xbrzadapter::gpuState();gpu.attempted=true;
    if(!gpu.resolve)gpu.resolve=std::make_unique<typename std::decay<decltype(gpu.resolve)>::type::element_type>();
    if(gpuRecord_.valid()&&renderGpu(*gpu.resolve,gpuRecord_.frame(),pixels,maskOut,0)){
-    gpu.used=true;gpuMasked_=bool(gpuRecord_.frame().fogAlpha)||bool(gpuRecord_.frame().maskPlan);if(take)ready_=false;return true;
+    guides_=gpu.resolve->guides();gpu.used=true;gpuMasked_=bool(gpuRecord_.frame().fogAlpha)||bool(gpuRecord_.frame().maskPlan);if(take)ready_=false;return true;
    }
    // Reproduce original calls, including deferred VXL materialization, without
    // publishing a partial GPU frame or waiting for a second render job.

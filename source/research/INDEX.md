@@ -6,6 +6,9 @@
 
 | 主题 | 新笔记 | 关键词 |
 | --- | --- | --- |
+| 64 位工具箱、32 位 Runtime／Hook 辅助程序与真实共享 ABI | [跨位数宿主](2026-10-29-x64-host-runtime-broker.md) | x64 x86 broker148 Shared4169840 ABI632 owner PID Hook cleanup |
+| DLSS 5 官方 NGX 接口、独立进程、逐像素引导与历史消费 | [神经渲染接入](2026-10-29-dlss5-neural-integration.md) | DLSSNR NGX RGBA16F motion depth confidence cancellation sequence Reset |
+| GPU 原生场景的运动、反向正交深度及保护信息 | [神经渲染引导图](2026-10-29-neural-motion-depth-guides.md) | MotionIdentity camera source lifetime per-pixel guides sequence OOM fallback |
 | 覆盖层临时读失败、预定面板完整帧、小地图缓存与拖屏预取 | [宿主闪烁与性能优化](2026-10-29-overlay-panel-render-optimization.md) | ReadLease120ms probe8ms front spare dirty64 prefetch64 same pixels |
 | 原生世界绘制与UI阶段分离、关闭绘制的限制 | [原生绘制停止可行性](2026-10-29-native-render-suppression-feasibility.md) | 4F4480 6D3D10 phase2 feedback 47EC90 A9FAB0 no-code-writes blocked |
 | 小地图分页GPU面积缩小与变化页积分缓存 | [小地图GPU缩小](2026-10-29-minimap-gpu-area.md) | sparse128pages area4x4 prefix Float64 owner one readback CPU fallback |

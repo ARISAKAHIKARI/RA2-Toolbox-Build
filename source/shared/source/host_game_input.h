@@ -1,6 +1,7 @@
 #pragma once
 #include <windows.h>
 #include <mutex>
+#include <cwchar>
 #include <mmsystem.h>
 #include "precise_clock.h"
 #include "key_gesture.h"
@@ -8,6 +9,9 @@
 #include "runtime_protocol.h"
 #include "message_query.h"
 #include "../../external_reader/source/shared_reader.h"
+#ifdef _WIN64
+#include "runtime_broker_client.h"
+#endif
 // EXE-owned subscriptions and cadence. Features never choose a DLL, callback,
 // Win32 hook kind, or injection path. One GETMESSAGE + POST pair per game.
 namespace gameinput {
@@ -30,13 +34,22 @@ inline bool heldBinding(uint32_t binding){
 }
 struct PointerPress {DWORD tick=0,serial=0;uint32_t match=0;int operation=0;POINT point{};int width=0,height=0;uint8_t keys[256]{};};
 struct PointerQueue {PointerPress items[16]{};unsigned head=0,count=0;DWORD dropped=0,cancelSerial=0;bool enabled=false,focused=false,rightArmed=false,leftArmed=false,rightDragged=false;POINT rightOrigin{};uint32_t match=0;DWORD contextAt=0;uint32_t down=0;uint8_t rightKeys[256]{},leftKeys[256]{};};
-struct Target {keygesture::Tracker keys;PointerQueue pointer{};Health lastDiagnostic{};DWORD pid=0,thread=0;HWND window=nullptr;HHOOK message=nullptr,post=nullptr;HANDLE mapping=nullptr;runtime::Control*control=nullptr;uint64_t cursorAt=0,tacticalAt=0;DWORD lastPost=0,lastPostError=0;bool fastTactical=false;};
+struct Target {keygesture::Tracker keys;PointerQueue pointer{};Health lastDiagnostic{};DWORD pid=0,thread=0;HWND window=nullptr;HHOOK message=nullptr,post=nullptr;HANDLE mapping=nullptr;runtime::Control*control=nullptr;uint64_t cursorAt=0,tacticalAt=0;DWORD lastPost=0,lastPostError=0;bool fastTactical=false;
+#ifdef _WIN64
+ uint32_t brokerToken=0,brokerGeneration=0;DWORD brokerRetry=0;
+#endif
+};
 struct Lease {Subscription id=0;gameentry::Client client{};unsigned target=0;};
 struct Host {std::recursive_mutex mutex;Target targets[8]{};Lease leases[32]{};Subscription next=0;HMODULE module=nullptr;HANDLE timer=nullptr;volatile LONG pulseBusy=0;bool preciseTimer=false;const wchar_t* installStage=L"not-started";};
 inline Host& host(){static Host*value=new Host;return *value;}
 inline const wchar_t* installationStage(){auto&h=host();std::lock_guard<std::recursive_mutex> lock(h.mutex);return h.installStage;}
 inline uint32_t mask(gameentry::Client c){return c==gameentry::Client::Assist?runtime::Tactical:c==gameentry::Client::Cursor?runtime::Cursor:0;}
 inline HMODULE runtimeModule(){
+#ifdef _WIN64
+ // A PE32 runtime is intentionally never loaded as executable code into the
+ // PE32+ host. The paired x86 broker validates exports and owns the HHOOKs.
+ return nullptr;
+#else
  auto&h=host();std::lock_guard<std::recursive_mutex>lock(h.mutex);if(h.module)return h.module;
  wchar_t path[32768];DWORD n=GetModuleFileNameW(nullptr,path,32768);if(!n||n>=32768)return nullptr;
  while(n&&path[n-1]!=L'\\'&&path[n-1]!=L'/')--n;
@@ -47,6 +60,33 @@ inline HMODULE runtimeModule(){
  auto entry=(const uint32_t*)GetProcAddress(m,"GameEntryManagerInfo");
  if(!info||info[0]!=runtime::Version||info[1]!=sizeof(runtime::Control)||!entry||entry[0]!=gameentry::Version||entry[1]!=sizeof(gameentry::Request)||!GetProcAddress(m,"GameRuntimeHook")||!GetProcAddress(m,"GameRuntimePostHook")){FreeLibrary(m);SetLastError(ERROR_REVISION_MISMATCH);return nullptr;}
  h.module=m;return m;
+#endif
+}
+inline bool runtimeAvailable(){
+#ifdef _WIN64
+ return runtimebroker::client().transport(runtime::Version,sizeof(runtime::Control),gameentry::Version,sizeof(gameentry::Request));
+#else
+ return runtimeModule()!=nullptr;
+#endif
+}
+inline bool assistIdentity(HMODULE module,uint32_t version,uint32_t bytes,const wchar_t*prefix){
+#ifdef _WIN64
+ uint32_t actualVersion=0,actualBytes=0;
+ if(!runtimebroker::client().identity(actualVersion,actualBytes,prefix))return false;
+ bool valid=actualVersion==version&&actualBytes==bytes;if(!valid)SetLastError(ERROR_REVISION_MISMATCH);return valid;
+#else
+ auto info=reinterpret_cast<const uint32_t*>(GetProcAddress(module,"AssistProtocolInfo"));
+ auto text=reinterpret_cast<const wchar_t*>(GetProcAddress(module,"AssistMappingPrefix"));
+ return info&&info[0]==version&&info[1]==bytes&&text&&wcscmp(text,prefix)==0;
+#endif
+}
+inline uint32_t windowToken(HWND window){
+ // HWND values are interoperable across Windows bitness, unlike pointers.
+ // Verify the low-width handle still names exactly this window's process and
+ // thread before publishing it to the unchanged x86 mailbox.
+ uint32_t raw=uint32_t(uintptr_t(window));DWORD owner=0,roundOwner=0;
+ DWORD thread=GetWindowThreadProcessId(window,&owner),roundThread=GetWindowThreadProcessId((HWND)(uintptr_t)raw,&roundOwner);
+ return raw&&thread&&thread==roundThread&&owner==roundOwner?raw:0;
 }
 inline void post(Target&t,uint32_t bits){
  if(!t.control)return;
@@ -96,6 +136,9 @@ inline Health health(Subscription id){
  return {};
 }
 inline bool clear(Target&t){
+#ifdef _WIN64
+ if(t.brokerToken&&!runtimebroker::client().remove(t.pid,t.brokerToken,t.brokerGeneration))return false;
+#endif
  if(t.post){if(!UnhookWindowsHookEx(t.post))return false;t.post=nullptr;}
  if(t.message){if(!UnhookWindowsHookEx(t.message))return false;t.message=nullptr;}
  if(t.control)UnmapViewOfFile(t.control);if(t.mapping)CloseHandle(t.mapping);t={};return true;
@@ -167,6 +210,14 @@ inline void CALLBACK pulse(void*,BOOLEAN){
  for(unsigned i=0;i<8;++i){auto&t=h.targets[i];if(!t.pid)continue;
   uint32_t enabled=0;for(auto&l:h.leases)if(l.id&&l.target==i)enabled|=mask(l.client);
   if(!enabled){clear(t);continue;}if(!t.control)continue;
+#ifdef _WIN64
+  if(!runtimebroker::client().alive(t.brokerGeneration)){
+   InterlockedExchange(&t.control->enabled,0);
+   if(t.brokerRetry&&int32_t(now-t.brokerRetry)<0)continue;t.brokerRetry=now+1000;
+   if(!runtimebroker::client().install(t.pid,t.thread,uint32_t(uintptr_t(t.window)),t.brokerToken,t.brokerGeneration)){t.lastPostError=GetLastError();continue;}
+   InterlockedExchange(&t.control->enabled,LONG(enabled));t.lastPostError=0;
+  }
+#endif
   if(enabled&runtime::Tactical)pollPointer(t,now);
   uint32_t ready=0;if((enabled&runtime::Cursor)&&precise-t.cursorAt>=4000){t.cursorAt=precise;ready|=runtime::Cursor;}
   const uint64_t tacticalPeriod=t.fastTactical&&t.pointer.enabled&&t.pointer.focused?1000:16000;
@@ -199,7 +250,7 @@ inline Subscription install(gameentry::Client client,DWORD thread,DWORD pid,HWND
  DWORD actual=0,tid=window?GetWindowThreadProcessId(window,&actual):0;
  if(!mask(client)||!pid||!thread||actual!=pid||tid!=thread){SetLastError(ERROR_INVALID_PARAMETER);return 0;}
  h.installStage=L"native-window-check";window=nativeWindow(pid,thread);if(!window)return 0;
- h.installStage=L"load-runtime";HMODULE m=runtimeModule();if(!m)return 0;
+ h.installStage=L"load-runtime";if(!runtimeAvailable())return 0;HMODULE m=runtimeModule();
  h.installStage=L"subscription-slots";
  Lease*slot=nullptr;for(auto&l:h.leases)if(!l.id){slot=&l;break;}if(!slot){SetLastError(ERROR_NOT_ENOUGH_MEMORY);return 0;}
  unsigned at=8;for(unsigned i=0;i<8;++i)if(h.targets[i].pid==pid){at=i;break;}
@@ -209,6 +260,10 @@ inline Subscription install(gameentry::Client client,DWORD thread,DWORD pid,HWND
   bool dead=old?WaitForSingleObject(old,0)==WAIT_OBJECT_0:GetLastError()==ERROR_INVALID_PARAMETER;if(old)CloseHandle(old);
   if(!dead){SetLastError(ERROR_BUSY);return 0;}
   // Keep subscriptions and mapping; replace transport only after old thread exits.
+#ifdef _WIN64
+  if(t.brokerToken&&!runtimebroker::client().remove(t.pid,t.brokerToken,t.brokerGeneration))return 0;
+  t.brokerToken=t.brokerGeneration=0;
+#endif
   if(t.post){UnhookWindowsHookEx(t.post);t.post=nullptr;}if(t.message){UnhookWindowsHookEx(t.message);t.message=nullptr;}
   t.pointer={};t.thread=thread;t.window=window;if(t.control)InterlockedExchange(&t.control->wakePending,0);
  }
@@ -227,9 +282,16 @@ inline Subscription install(gameentry::Client client,DWORD thread,DWORD pid,HWND
  // The HWND may be recreated on the same thread between loading and play.
  // All subscribers must wake the current native window, including old leases.
  if(t.window!=window){t.window=window;if(t.control)InterlockedExchange(&t.control->wakePending,0);}
+#ifdef _WIN64
+ h.installStage=L"x86-hook-broker";
+ if(!runtimebroker::client().install(pid,thread,uint32_t(uintptr_t(window)),t.brokerToken,t.brokerGeneration)){
+  DWORD error=GetLastError();bool used=false;for(auto&l:h.leases)if(l.id&&l.target==at)used=true;if(!used)clear(t);SetLastError(error);return 0;
+ }
+#else
  if(!t.message){h.installStage=L"WH_GETMESSAGE";t.message=SetWindowsHookExW(WH_GETMESSAGE,(HOOKPROC)GetProcAddress(m,"GameRuntimeHook"),m,thread);}
  if(t.message&&!t.post){h.installStage=L"WH_CALLWNDPROCRET";t.post=SetWindowsHookExW(WH_CALLWNDPROCRET,(HOOKPROC)GetProcAddress(m,"GameRuntimePostHook"),m,thread);}
  if(!t.message||!t.post){DWORD error=GetLastError();bool used=false;for(auto&l:h.leases)if(l.id&&l.target==at)used=true;if(!used)clear(t);SetLastError(error);return 0;}
+#endif
  h.installStage=L"host-timer";
  if(!h.timer&&!CreateTimerQueueTimer(&h.timer,nullptr,pulse,nullptr,4,4,WT_EXECUTEDEFAULT)){DWORD error=GetLastError();clear(t);SetLastError(error);return 0;}
  if(!++h.next)++h.next;*slot={h.next,client,at};InterlockedOr(&t.control->enabled,LONG(mask(client)));post(t,mask(client));h.installStage=L"installed-awaiting-callback";return slot->id;

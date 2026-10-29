@@ -27,7 +27,7 @@ static int SendDlgItemMessageW(int,int id,int,int,int){return controls[id];}
 static int GetDlgItem(int,int id){return id;}
 static void SetWindowTextW(int,const wchar_t*){}
 static void SetTimer(int,int,int delay,void*){++changes;timerDelay=delay;}static void syncTypeConfig(){}static void paint(){}
-namespace renderupgrade {static void stop(){++stops;}}
+namespace renderupgrade {static void stop(){++stops;}static void updateNeuralStatus(bool=false){}}
 static int value(const wchar_t*,const wchar_t*key,int fallback){auto i=profile.find(key);return i==profile.end()?fallback:i->second;}
 static void write(const wchar_t*,const wchar_t*key,int v){profile[key]=v;}
 '''+changed_setting+'\n'+globals_+'\nstatic void load(){'+load+'}\nstatic void save(){'+save+'}\nstatic int handle(int id,unsigned wp){int w=1;'+handler+'return -1;}\n'+r'''
@@ -49,13 +49,12 @@ int main(){
  updatingControls=true;controls[9305]=0;int old=renderPixelScale;handle(9305,CBN_SELCHANGE<<16);assert(renderPixelScale==old);updatingControls=false;
  for(int id:{9300,9301,9306,9310}){controls[id]=1;handle(id,BN_CLICKED<<16);}save();load();assert(renderUpgradeEnabled&&unifiedOverlayEnabled&&renderPhysicalOutput&&renderVulkanEnabled);
  controls[9310]=0;handle(9310,BN_CLICKED<<16);save();renderVulkanEnabled=true;load();assert(!renderVulkanEnabled);
- // A DLSS request is persistent intent only while no backend is shipped.
- // It must not toggle Vulkan or explicitly stop rendering. The existing
- // settings path still increments its normal revision and schedules autosave.
+ // Changing neural mode invalidates the previous scene and cancels pending
+ // processing; a checked setting never changes the separate Vulkan option.
  for(bool requested:{false,true}){
   controls[9311]=requested;int stopped=stops,revision=paintRevision,settings=settingsRevision,count=changes;bool gpu=renderVulkanEnabled;autoSavePending=false;
   handle(9311,BN_CLICKED<<16);assert(renderDLSS5Requested==requested&&changes==count+1);
-  assert(stops==stopped&&paintRevision==revision+1&&settingsRevision==settings+1&&renderVulkanEnabled==gpu);
+  assert(stops==stopped+1&&paintRevision==revision+2&&settingsRevision==settings+1&&renderVulkanEnabled==gpu);
   assert(autoSavePending&&timerDelay==300);
   save();renderDLSS5Requested=!requested;load();assert(renderDLSS5Requested==requested);
  }
@@ -69,4 +68,4 @@ with tempfile.TemporaryDirectory() as temp:
     source.write_text(fixture,encoding='utf-8')
     subprocess.run(['g++','-std=c++17','-O2',str(source),'-o',str(binary)],check=True)
     subprocess.run([str(binary)],check=True)
-print('PASS: actual render control events and INI load/save, 32 color/detail/refresh/scale combinations, adaptive mode 3 retained, DLSS intent round-trip without renderer activation/restart, invalid/programmatic events ignored')
+print('PASS: actual render control events and INI load/save, 32 color/detail/refresh/scale combinations, adaptive mode 3 retained, neural request round-trip invalidates old scene without changing Vulkan, invalid/programmatic events ignored')

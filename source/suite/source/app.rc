@@ -1,5 +1,9 @@
 #include "../../shared/source/release_version.h"
+#ifdef RA2_HOST_X64
+1 24 "app-x64.manifest"
+#else
 1 24 "app.manifest"
+#endif
 
 1 VERSIONINFO
  FILEVERSION RA2_RELEASE_VERSION_PARTS

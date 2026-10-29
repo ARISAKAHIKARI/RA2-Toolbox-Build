@@ -775,7 +775,7 @@ static bool bridgeFailed(const std::wstring&reason,DWORD error=0){
 static bool ensureBridge(){
  if(!enabled)return false; // A secondary display alone never installs the command runtime.
  if(shared)return true;
- if(!gameinput::runtimeModule())return bridgeFailed(L"运行组件缺失或版本不匹配，请完整更新工具箱",GetLastError());DWORD now=GetTickCount();
+ if(!gameinput::runtimeAvailable())return bridgeFailed(L"运行组件缺失或版本不匹配，请完整更新工具箱",GetLastError());DWORD now=GetTickCount();
  if(!game||bridgeBlocked||(bridgeRetryAt&&int32_t(now-bridgeRetryAt)<0))return false;
  gameinput::NativeWindowProbe native{};
  if(!gameinput::nativeWindow(pid,gameThread,&native)){
@@ -816,14 +816,13 @@ static bool ensureBridge(){
   UnmapViewOfFile(prior);
  }
  shared=(Shared*)MapViewOfFile(mapping,FILE_MAP_ALL_ACCESS,0,0,sizeof(Shared));if(!shared){DWORD error=GetLastError();releaseBridge();return bridgeFailed(L"映射命令共享内存失败",error);}
- memset(shared,0,sizeof *shared);shared->magic=Magic;shared->version=Version;shared->pid=pid;shared->owner=GetCurrentProcessId();shared->hostWindow=uint32_t(uintptr_t(ui));shared->heartbeat=now;shared->flags=flags();shared->scanMs=8;shared->repairMs=repairMs;shared->externalDisplay=1;shared->driverMode=schedulerMode;shared->driverTarget=schedulerTarget;
+ uint32_t hostWindow=gameinput::windowToken(ui);if(!hostWindow){releaseBridge();return bridgeFailed(L"工具箱窗口句柄无法与 32 位运行组件互通",ERROR_INVALID_WINDOW_HANDLE);}
+ memset(shared,0,sizeof *shared);shared->magic=Magic;shared->version=Version;shared->pid=pid;shared->owner=GetCurrentProcessId();shared->hostWindow=hostWindow;shared->heartbeat=now;shared->flags=flags();shared->scanMs=8;shared->repairMs=repairMs;shared->externalDisplay=1;shared->driverMode=schedulerMode;shared->driverTarget=schedulerTarget;
  shared->megaQueueMode=megaQueueMode;shared->objectQueueMode=objectQueueMode;shared->driverStatus=0;syncAdditional();syncTypeConfig();
  shared->clockTick=now;shared->clockStart=0;shared->clockFrequency=0;
  module=gameinput::runtimeModule();
- if(module){
-  auto identity=reinterpret_cast<const uint32_t*>(GetProcAddress(module,"AssistProtocolInfo"));
-  auto prefix=reinterpret_cast<const wchar_t*>(GetProcAddress(module,"AssistMappingPrefix"));
-  if(!identity||identity[0]!=Version||identity[1]!=sizeof(Shared)||!prefix||wcscmp(prefix,MappingPrefix.text)){
+ {
+  if(!gameinput::assistIdentity(module,Version,sizeof(Shared),MappingPrefix.text)){
    bridgeBlocked=true;releaseBridge();
    diag(L"Assist bridge protocol/structure mismatch");
    return bridgeFailed(L"运行组件版本不匹配，请完整更新工具箱。");
@@ -834,10 +833,18 @@ static bool ensureBridge(){
   critical(L"hook-install-failed stage="+stage+L" Win32="+std::to_wstring(error));logLoadedGameModules();
   return bridgeFailed(L"无法建立游戏操作连接（"+stage+L"）",error);}
  bridgeFailure.clear();ack=notice=0;lastData=0;attachAt=now;wakeGame();
- wchar_t dllPath[32768]={},transportName[96];GetModuleFileNameW(module,dllPath,32768);runtime::mapName(transportName,pid,GetCurrentProcessId());
- critical(std::wstring(L"hook-installed dll=")+dllPath+L" localBase="+std::to_wstring(uintptr_t(module))+
+ wchar_t dllPath[32768]={},transportName[96];uint64_t moduleBase=0,hookRva=0;
+#ifdef _WIN64
+ GetModuleFileNameW(nullptr,dllPath,32768);wchar_t*name=wcsrchr(dllPath,L'\\');
+ if(name&&size_t(name-dllPath)+1+sizeof(L"GameRuntime.dll")/sizeof(wchar_t)<=32768)wcscpy(name+1,L"GameRuntime.dll");else dllPath[0]=0;
+ moduleBase=runtimebroker::client().moduleBase();hookRva=runtimebroker::client().hookRva();
+#else
+ GetModuleFileNameW(module,dllPath,32768);moduleBase=uintptr_t(module);hookRva=uintptr_t(GetProcAddress(module,"GameRuntimeHook"))-uintptr_t(module);
+#endif
+ runtime::mapName(transportName,pid,GetCurrentProcessId());
+ critical(std::wstring(L"hook-installed dll=")+dllPath+L" moduleValidationBase="+std::to_wstring(moduleBase)+
   L" export=GameRuntimeHook stdcallArgs=3 hookType=WH_GETMESSAGE rva="+
-  std::to_wstring(uintptr_t(GetProcAddress(module,"GameRuntimeHook"))-uintptr_t(module))+
+  std::to_wstring(hookRva)+
   L" pid="+std::to_wstring(pid)+L" thread="+std::to_wstring(gameThread)+L" hwnd="+std::to_wstring(uintptr_t(game))+
   L" runtimeMap="+transportName+L" runtimeVersion="+std::to_wstring(runtime::Version)+L" runtimeBytes="+std::to_wstring(sizeof(runtime::Control))+
   L" assistMap="+n+L" assistVersion="+std::to_wstring(Version)+L" assistBytes="+std::to_wstring(sizeof(Shared)));
@@ -1908,10 +1915,8 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
   if(updatingControls)return 0;
   if(id==9302||id==9304||id==9305||id==9308||id==9309){if(HIWORD(wp)!=CBN_SELCHANGE)return 0;int choice=int(SendDlgItemMessageW(w,id,CB_GETCURSEL,0,0));if(choice<0||choice>(id==9305?3:1))return 0;if(id==9302)renderUpgradeLayer=std::clamp(choice,0,1);else if(id==9304)renderPaletteRange=std::clamp(choice,0,1);else if(id==9309)renderColorPrecision=std::clamp(choice,0,1);else if(id==9308)renderSceneDetail=std::clamp(choice,0,1);else renderPixelScale=std::clamp(choice,0,3);}
   else{if(HIWORD(wp)!=BN_CLICKED)return 0;bool on=SendDlgItemMessageW(w,id,BM_GETCHECK,0,0)==BST_CHECKED;if(id==9300)renderUpgradeEnabled=on;else if(id==9306)renderPhysicalOutput=on;else if(id==9307)renderMaterialRefresh=on;else if(id==9310)renderVulkanEnabled=on;else if(id==9311)renderDLSS5Requested=on;else unifiedOverlayEnabled=on;}
-  // No DLSS 5 backend is shipped. Persist intent without restarting the
-  // renderer or treating a checked request as an active graphics feature.
-  if(id==9311){changedSetting();return 0;}
   renderupgrade::stop();++paintRevision;changedSetting();paint();
+  renderupgrade::updateNeuralStatus(true);
   if(!renderUpgradeEnabled)SetWindowTextW(GetDlgItem(w,9303),unifiedOverlayEnabled?L"统一覆盖层：世界信息＋主屏统计；交互窗口尚未合并":L"渲染升级：关闭");
   return 0;
  }

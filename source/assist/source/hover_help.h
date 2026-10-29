@@ -4,7 +4,7 @@ static std::wstring controlHelp(int id,const std::wstring& label){
  if(id>=9000&&id<9000+compute::Count)return L"计算模式：工具箱计算便于分担游戏负载；游戏内计算可减少数据传递等待。修改后从下一局生效。";
  if(id>=729&&id<=738){const int feature[]={450,478,474,702,705,708,719,736,720,721};if(id!=736)id=feature[id-729];}
  switch(id){
- case 9311:case 9312:return L"默认关闭，仅保存 DLSS 5 启用请求。本版本尚未接入 DLSS 5，勾选不会改变画面或启用神经渲染；现有 Vulkan 设置保持独立。";
+ case 9311:case 9312:return L"默认关闭、自动保存。64 位工具箱在完成 GPU 世界画面后调用独立神经渲染进程；文字、指令线与高刷光标随后叠加。需要 Vulkan 精细场景及 NVIDIA 运行环境；仅实际处理成功才显示生效，缺失或失败保留普通画面。";
  case 895:case 885:return L"默认首次发现空袭弹体就沿水平飞行方向移动约 2 格，受阻找相近落点；首次下令后 12 个游戏帧内的新弹不打断移动，之后新弹可触发。可选原版 Scatter。保留近距离躲碾压，受类型清单限制。执行时刻受同步队列影响。";
  case 886:case 887:case 888:return L"当前版本仅开放光标高刷；拖屏、全部与强制高刷暂不可用。目标刷新率仍沿用光标页设置。";
  case 100:case 312:case 780:return L"自动维修：定期维修受损的己方建筑，快捷键用于开关。通常不可维修的建筑需要另行允许。";

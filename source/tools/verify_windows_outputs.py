@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-"""Verify PE32 architecture, ABI exports, dependency closure and release version."""
+"""Verify exact host/runtime architectures, ABI, dependencies and release version."""
 from pathlib import Path
+import argparse
 import hashlib
 import json
 import struct
@@ -12,18 +13,22 @@ from pe32_image import Image
 
 ROOT = Path(__file__).resolve().parent.parent
 NAMES = ('RA2Toolbox.exe','GameRuntime.dll')
+BROKER = 'GameRuntimeHost32.exe'
+NEURAL = 'RA2NeuralRenderer.exe'
 HOOKS = {'GameRuntime.dll':('GameRuntimeHook','GameRuntimePostHook','GameRuntimeInfo','AssistProtocolInfo','AssistMappingPrefix','ManageGameEntry','GameEntryManagerInfo')}
 SYSTEM = {'kernel32.dll', 'user32.dll', 'gdi32.dll', 'winmm.dll', 'gdiplus.dll',
           'comctl32.dll', 'shell32.dll', 'ole32.dll', 'comdlg32.dll', 'advapi32.dll',
           'msvcrt.dll', 'ucrtbase.dll', 'ntdll.dll', 'version.dll', 'ws2_32.dll',
           'shlwapi.dll', 'oleaut32.dll', 'imm32.dll'}
+NEURAL_SYSTEM = SYSTEM | {'d3d12.dll', 'dxgi.dll', 'wintrust.dll', 'crypt32.dll'}
 
 
-def verify_host_manifest(pe):
+def verify_host_manifest(pe, host_arch='x86'):
     # GetWindowSubclass is imported by name. Windows needs the v6 activation
     # dependency in CREATEPROCESS_MANIFEST_RESOURCE_ID (1), before main runs.
     # A declaration in an unused module manifest or arbitrary .rsrc text is
     # insufficient. Check every language of the final executable's resource.
+    architecture = {'x86': 'x86', 'x64': 'amd64'}[host_arch]
     leaves = pe.resource_blobs(24, 1)
     if not leaves:
         raise ValueError('EXE process manifest resource RT_MANIFEST/1 missing')
@@ -32,27 +37,63 @@ def verify_host_manifest(pe):
         root = ET.fromstring(blob)
         if root.tag != '{urn:schemas-microsoft-com:asm.v1}assembly':
             raise ValueError('EXE process manifest has an incorrect XML namespace')
+        identity = root.find('a:assemblyIdentity', namespace)
+        if identity is None or identity.get('processorArchitecture') != architecture:
+            raise ValueError('EXE process manifest assembly architecture mismatch')
         dependencies = root.findall('a:dependency/a:dependentAssembly/a:assemblyIdentity', namespace)
         controls = [item for item in dependencies
                     if item.get('name') == 'Microsoft.Windows.Common-Controls']
         if len(controls) != 1:
             raise ValueError('EXE manifest lacks one Common Controls v6 dependency; GetWindowSubclass cannot load')
         item = controls[0]
-        expected = {'type': 'win32', 'version': '6.0.0.0', 'processorArchitecture': 'x86',
+        expected = {'type': 'win32', 'version': '6.0.0.0', 'processorArchitecture': architecture,
                     'publicKeyToken': '6595b64144ccf1df', 'language': '*'}
         if any(item.get(key) != value for key, value in expected.items()):
             raise ValueError('EXE Common Controls dependency identity/version/architecture mismatch')
     return {'resource_type': 24, 'resource_id': 1, 'languages': [language for language, _ in leaves],
-            'name': 'Microsoft.Windows.Common-Controls', 'version': '6.0.0.0', 'architecture': 'x86'}
+            'name': 'Microsoft.Windows.Common-Controls', 'version': '6.0.0.0', 'architecture': architecture}
 
 
-def verify(root):
+def verify_worker_manifest(pe, architecture='x86', label='x86 broker'):
+    leaves = pe.resource_blobs(24, 1)
+    if not leaves:
+        raise ValueError(label + ' process manifest resource RT_MANIFEST/1 missing')
+    namespace = {'a': 'urn:schemas-microsoft-com:asm.v1',
+                 't': 'urn:schemas-microsoft-com:asm.v3'}
+    for _, blob in leaves:
+        root = ET.fromstring(blob)
+        identity = root.find('a:assemblyIdentity', namespace)
+        if root.tag != '{urn:schemas-microsoft-com:asm.v1}assembly' or identity is None or identity.get('processorArchitecture') != architecture:
+            raise ValueError(label + ' manifest assembly architecture mismatch')
+        # The child inherits the host's token; it must not launch a second UAC
+        # prompt or opt into privileged UI messaging itself.
+        levels = root.findall('.//t:requestedExecutionLevel', namespace)
+        if len(levels) != 1 or levels[0].get('level') != 'asInvoker' or levels[0].get('uiAccess') != 'false':
+            raise ValueError(label + ' manifest must use asInvoker/uiAccess=false')
+    return {'resource_type': 24, 'resource_id': 1,
+            'languages': [language for language, _ in leaves], 'architecture': architecture,
+            'execution_level': 'asInvoker'}
+
+
+def verify_broker_manifest(pe):
+    return verify_worker_manifest(pe)
+
+
+def verify(root, host_arch='x86', neural_helper=False):
+    if host_arch not in ('x86', 'x64'):
+        raise ValueError('host_arch must be x86 or x64')
+    if neural_helper and host_arch != 'x64':
+        raise ValueError('the optional neural helper requires the x64 host profile')
     legacy = json.loads((root / 'BUILD_SOURCE_MANIFEST.json').read_text('utf-8')).get('legacy_binary_sha256', {})
     recs, images, errors = {}, {}, []
-    for name in NAMES:
+    names = NAMES + ((BROKER,) if host_arch == 'x64' else ()) + ((NEURAL,) if neural_helper else ())
+    for name in names:
         try:
             buf = (root / name).read_bytes()
-            pe = Image(buf)
+            pe = Image(buf, allow_x64=host_arch == 'x64')
+            expected_machine = 0x8664 if host_arch == 'x64' and name in ('RA2Toolbox.exe', NEURAL) else 0x14c
+            if pe.machine != expected_machine:
+                raise ValueError('wrong architecture for ' + name + ': expected ' + ('x64 host' if expected_machine == 0x8664 else 'x86 game component'))
             if bool(pe.characteristics & 0x2000) != name.endswith('.dll'):
                 raise ValueError('unexpected EXE/DLL type')
             digest = hashlib.sha256(buf).hexdigest()
@@ -61,18 +102,23 @@ def verify(root):
             exports = pe.exports()
             if name.endswith('.dll') and ({x.split('@')[0] for x in exports}!=set(HOOKS[name]) or any('@' in x and exports[x]!=exports[x.split('@')[0]] for x in exports)):
                 raise ValueError('unexpected component export bypass')
-            required = HOOKS.get(name, ('AssistHostProtocolInfo',))
+            required = HOOKS.get(name, ('AssistHostProtocolInfo',) if name == 'RA2Toolbox.exe' else ())
+            if name == BROKER and exports:
+                raise ValueError('unexpected x86 broker export; broker is an IPC child, not another game entry')
+            if name == NEURAL and exports:
+                raise ValueError('unexpected neural helper export; helper is a separate IPC renderer')
             if any(symbol not in exports for symbol in required):
                 raise ValueError('required export missing: ' + ', '.join(required))
             imports = pe.imports()
-            unknown = [x for x in imports if x.lower() not in SYSTEM
+            system = NEURAL_SYSTEM if name == NEURAL else SYSTEM
+            unknown = [x for x in imports if x.lower() not in system
                        and not x.lower().startswith(('api-ms-win-', 'ext-ms-win-'))]
             if unknown:
                 raise ValueError('unbundled non-system dependency: ' + ', '.join(unknown))
             if "1.0.39.6".encode("utf-16le") not in pe.resource_bytes():
                 raise ValueError("file version resource mismatch")
             images[name] = pe
-            recs[name] = {'bytes': len(buf), 'sha256': digest, 'machine': 'PE32 x86',
+            recs[name] = {'bytes': len(buf), 'sha256': digest, 'machine': pe.architecture,
                           'sections': pe.section_count, 'entry_rva': hex(pe.entry),
                           'exports': list(exports), 'import_dlls': list(imports),
                           'imports': imports}
@@ -81,7 +127,11 @@ def verify(root):
     if not errors:
         try:
             host, bridge = images['RA2Toolbox.exe'], images['GameRuntime.dll']
-            recs['RA2Toolbox.exe']['common_controls_activation'] = verify_host_manifest(host)
+            recs['RA2Toolbox.exe']['common_controls_activation'] = verify_host_manifest(host, host_arch)
+            if host_arch == 'x64':
+                recs[BROKER]['process_manifest'] = verify_broker_manifest(images[BROKER])
+            if neural_helper:
+                recs[NEURAL]['process_manifest'] = verify_worker_manifest(images[NEURAL], 'amd64', 'x64 neural helper')
             a = host.at_rva(host.exports()['AssistHostProtocolInfo'], 8)
             b = bridge.at_rva(bridge.exports()['AssistProtocolInfo'], 8)
             protocol, shared_bytes = struct.unpack('<II', a)
@@ -114,7 +164,8 @@ def verify(root):
             for text in (b'requireAdministrator', b'PerMonitorV2', b'1.0.39.6'):
                 if text not in resource:
                     raise ValueError('EXE manifest missing: ' + text.decode())
-            for rec in recs.values():
+            for name in NAMES:
+                rec = recs[name]
                 rec['assist_protocol'] = protocol
                 rec['assist_shared_bytes'] = shared_bytes
         except Exception as ex:
@@ -123,23 +174,39 @@ def verify(root):
 
 
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--root', type=Path, default=ROOT)
+    parser.add_argument('--host-arch', choices=('x86', 'x64'), default='x86')
+    parser.add_argument('--neural-helper', action='store_true', help='also require and verify the optional x64 RA2NeuralRenderer.exe; does not claim a DLSS-capable device/runtime')
+    args = parser.parse_args()
+    if args.neural_helper and args.host_arch != 'x64':
+        parser.error('--neural-helper requires --host-arch x64')
+    root = args.root.resolve()
     for name in ('BUILD-VERIFIED-v130.tag', 'WINDOWS_BUILD_ARTIFACTS.json'):
-        (ROOT / name).unlink(missing_ok=True)
-    recs, errors = verify(ROOT)
+        (root / name).unlink(missing_ok=True)
+    recs, errors = verify(root, args.host_arch, args.neural_helper)
     if errors:
         print('BUILD NOT VERIFIED:\n' + '\n'.join(errors))
         return 1
-    (ROOT / 'BUILD-VERIFIED-v130.tag').write_text(
-        'v1.0.39-pre.6 SingleRuntime: PE32/ABI/import/version checks passed\n'
+    architecture_label = 'PE32/ABI' if args.host_arch == 'x86' else 'x64 host/x86 runtime/broker ABI'
+    (root / 'BUILD-VERIFIED-v130.tag').write_text(
+        f'v1.0.39-pre.6 SingleRuntime: {architecture_label}/import/version checks passed\n'
         'Game runtime and multiplayer not tested\n', encoding='utf-8')
-    (ROOT / 'WINDOWS_BUILD_ARTIFACTS.json').write_text(json.dumps({
+    (root / 'WINDOWS_BUILD_ARTIFACTS.json').write_text(json.dumps({
         'label': '1.0.39-pre.6 SingleRuntime', 'file_version': '1.0.39.6',
+        'host_architecture': args.host_arch, 'runtime_architecture': 'x86',
+        'neural_helper_verified': args.neural_helper, 'neural_runtime_tested': False,
         'verified': recs, 'runtime_tested': False, 'multiplayer_tested': False,
-        'dependency_check': 'two project binaries import Windows system DLLs only',
+        'dependency_check': {2: 'two', 3: 'three', 4: 'four'}[len(recs)] + ' project binaries import Windows system DLLs only',
     }, ensure_ascii=False, indent=2), encoding='utf-8')
-    print('PASS: 2 current PE32 x86 outputs; hooks exported; ABI/Shared size match; version 1.0.39.6')
+    if args.host_arch == 'x86':
+        print('PASS: 2 current PE32 x86 outputs; hooks exported; ABI/Shared size match; version 1.0.39.6')
+    else:
+        print(f'PASS: {len(recs)} current outputs; x64 host/x86 runtime/broker; hooks exported; ABI/Shared size match; version 1.0.39.6')
+    if args.neural_helper:
+        print('PASS: optional x64 neural helper PE/manifest/system dependencies; DLSS hardware/runtime execution not tested')
     print('PASS: no unbundled third-party or compiler-runtime DLL dependencies')
-    print('PASS: actual EXE RT_MANIFEST/1 enables x86 Common Controls 6 for subclass helper imports')
+    print(f'PASS: actual EXE RT_MANIFEST/1 enables {args.host_arch} Common Controls 6 for subclass helper imports')
     print('NOTE: static validation does not execute the Windows loader or the game')
     return 0
 

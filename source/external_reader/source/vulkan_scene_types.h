@@ -1,5 +1,6 @@
 #pragma once
 #include "vulkan_compute.h"
+#include <tuple>
 namespace external { namespace gpuvoxel {struct Prepared;} namespace gpushroud {struct Plan;} namespace vulkancompute {
 // Immutable aliases must own their actual source Image/ScaledImage storage.
 struct Texture {
@@ -9,6 +10,22 @@ struct Texture {
  int width=0,height=0;
 };
 enum class Sampling : uint32_t {Nearest=0,Bilinear=1,Adaptive=2,Reconstructed=3};
+// Engine instance identity is distinct from shared sprite/pose ownership.
+// Attachment paths use exact indices; no hash can alias two components.
+struct MotionIdentity {
+ uint32_t object=0,id=0,type=0,kind=0;
+ std::vector<uint32_t> part;
+ bool known=false;
+ bool operator<(const MotionIdentity&o)const{return std::tie(object,id,type,kind,part)<std::tie(o.object,o.id,o.type,o.kind,o.part);}
+};
+struct MotionView {
+ std::shared_ptr<const void> context;
+ double x=0,y=0,scaleX=1,scaleY=1;
+ float depthFar=0,depthNear=0; // stable reversed orthographic scene-Z interval
+ uint64_t terrainRevision=0;
+ uint32_t tick=0;
+ int frame=-1;
+};
 struct DrawJob {
  std::shared_ptr<const gpuvoxel::Prepared> gpuRaster; // optional deferred GPU mesh raster
  Texture source; // original coverage, nearest original depth/index and dimensions
@@ -22,6 +39,7 @@ struct DrawJob {
  std::array<float,3> gains{{1,1,1}};
  Sampling sampling=Sampling::Nearest;
  bool shadow=false,writeDepth=true,flat=false,objectPalette=false,smoothRGB=false,skipZ=false;
+ MotionIdentity motion;
 };
 struct FrameJob {
  int width=0,height=0;
@@ -34,5 +52,7 @@ struct FrameJob {
  std::shared_ptr<const gpushroud::Plan> maskPlan; // optional GPU native-mask construction
  std::shared_ptr<const std::vector<uint8_t>> fogAlpha; // native0..127; optional
  int clipLeft=0,clipTop=0,clipRight=-1,clipBottom=-1; // negative right/bottom = full
+ bool collectGuides=false; // no guide buffers, copies or history work when false
+ MotionView motion;
 };
 }}

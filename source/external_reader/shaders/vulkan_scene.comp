@@ -12,8 +12,17 @@ layout(set=0,binding=0,std430) readonly buffer Colors {uint v[];} colors;
 layout(set=0,binding=1,std430) readonly buffer Materials {uint v[];} materials;
 layout(set=0,binding=2,std430) readonly buffer Commands {uint v[];} commands;
 layout(set=0,binding=3,std430) buffer Output {uint v[];} outputImage;
-layout(push_constant) uniform Params {uint width,height,drawsOffset,binsOffset,refsOffset,binColumns,depthOffset,fogOffset,clipLeft,clipTop,clipRight,clipBottom,depthWidth,depthXOffset,depthYOffset;} p;
-const uint Missing=0xffffffffu,Stride=28u;
+layout(push_constant) uniform Params {uint width,height,drawsOffset,binsOffset,refsOffset,binColumns,depthOffset,fogOffset,clipLeft,clipTop,clipRight,clipBottom,depthWidth,depthXOffset,depthYOffset,guideOffset,baseMotionX,baseMotionY,depthFar,depthScale;} p;
+const uint Missing=0xffffffffu,Stride=32u;
+void guides(uint at,vec2 motion,float sceneDepth,bool confidence){
+ if(p.guideOffset==Missing)return;
+ float z=(sceneDepth-uintBitsToFloat(p.depthFar))*uintBitsToFloat(p.depthScale);
+ confidence=confidence&&!isnan(z)&&!isinf(z)&&z>=0.&&z<=1.;z=clamp(isnan(z)||isinf(z)?0.:z,0.,1.);
+ uint base=p.guideOffset+at*3u;outputImage.v[base]=floatBitsToUint(motion.x);outputImage.v[base+1u]=floatBitsToUint(motion.y);
+ // Normalized depth is nonnegative. Its otherwise-unused sign bit stores
+ // the hold-original control flag without reducing float depth precision.
+ outputImage.v[base+2u]=floatBitsToUint(z)|(confidence?0u:0x80000000u);
+}
 uint field(uint draw,uint n){return commands.v[p.drawsOffset+draw*Stride+n];}
 float ffield(uint draw,uint n){return uintBitsToFloat(field(draw,n));}
 uint byteAt(uint offset,uint at){return (materials.v[offset+at/4]>>((at&3u)*8u))&255u;}
@@ -37,8 +46,9 @@ RVec weights(uint a,uint b,uint c,uint d,Real fx,Real fy,bool adaptive){
 }
 void main(){
  uvec2 at=gl_GlobalInvocationID.xy;if(at.x>=p.width||at.y>=p.height)return;uint outputAt=at.y*p.width+at.x;
- if(at.x<p.clipLeft||at.y<p.clipTop||at.x>=p.clipRight||at.y>=p.clipBottom){outputImage.v[outputAt]=0u;return;}
+ if(at.x<p.clipLeft||at.y<p.clipTop||at.x>=p.clipRight||at.y>=p.clipBottom){outputImage.v[outputAt]=0u;guides(outputAt,vec2(0),0.,false);return;}
  uint color=outputImage.v[outputAt];uint depthAt=outputAt;if(p.depthWidth!=0u)depthAt=materials.v[p.depthYOffset+at.y]*p.depthWidth+materials.v[p.depthXOffset+at.x];float depth=uintBitsToFloat(0xff800000u);if(p.depthOffset!=Missing)depth=uintBitsToFloat(materials.v[p.depthOffset+depthAt]);
+ vec2 motion=vec2(uintBitsToFloat(p.baseMotionX),uintBitsToFloat(p.baseMotionY));float guideDepth=depth;bool confidence=!isnan(depth)&&!isinf(depth)&&(color>>24)==255u;
  uint bin=(at.y/32u)*p.binColumns+at.x/32u,first=commands.v[p.binsOffset+bin*2u],count=commands.v[p.binsOffset+bin*2u+1u];
  for(uint item=0;item<count;++item){uint draw=commands.v[p.refsOffset+first+item];
   if(at.x<field(draw,24)||at.y<field(draw,25)||at.x>=field(draw,26)||at.y>=field(draw,27))continue;
@@ -71,6 +81,14 @@ void main(){
   else if((flags&4u)!=0u){precise float part=float(int(field(draw,12))+original.y)/float(field(draw,11))-14.;z+=part+ffield(draw,19);}
   else{int bottom=int(field(draw,13));precise float part=float(bottom)/float(field(draw,11))-14.;part+=ffield(draw,19);part+=float((bottom-int(field(draw,12))-original.y)/3)/float(field(draw,11));z+=part;}
   if(useZ&&z<=depth)continue;
+  if(p.guideOffset!=Missing){
+   bool opaque=(pixel>>24)==255u;
+#ifdef SCENE_FP64
+   if(preciseSample)opaque=filtered.w>=Real(255);
+#endif
+   if((flags&1u)!=0u||!opaque)confidence=false;
+   else{motion=vec2(ffield(draw,28),ffield(draw,29));guideDepth=z;confidence=field(draw,30)!=0u&&useZ&&!isnan(z)&&!isinf(z);}
+  }
   if((flags&1u)!=0u){uint result=color&0xff000000u,alpha=pixel>>24;for(uint shift=0;shift<24;shift+=8)result|=(((color>>shift)&255u)*(510u-alpha)/510u)<<shift;color=result;}
 #ifdef SCENE_FP64
   else if(preciseSample){Real alpha=clamp(filtered.w,Real(0),Real(255));RVec value=unpackColor(color);for(int c=0;c<3;++c)value[c]=clamp(filtered[c],Real(0),alpha)+value[c]*(Real(255)-alpha)/Real(255);value.w=Real(255);color=packColor(value);}
@@ -78,6 +96,7 @@ void main(){
   else{if(mode==0u)pixel=litAt(draw,original);uint alpha=pixel>>24;if(alpha==255u)color=pixel;else{uint result=0xff000000u;for(uint shift=0;shift<24;shift+=8)result|=min(255u,((pixel>>shift)&255u)+((color>>shift)&255u)*(255u-alpha)/255u)<<shift;color=result;}}
   if(useZ&&(flags&2u)!=0u)depth=z;
  }
- if(p.fogOffset!=Missing&&(color>>24)!=0u){uint alpha=byteAt(p.fogOffset,outputAt);if(alpha<127u){uint result=color&0xff000000u;for(uint shift=0;shift<24;shift+=8)result|=((((color>>shift)&255u)*alpha+63u)/127u)<<shift;color=result;}}
+ if(p.fogOffset!=Missing&&(color>>24)!=0u){uint alpha=byteAt(p.fogOffset,outputAt);if(alpha<127u){confidence=false;uint result=color&0xff000000u;for(uint shift=0;shift<24;shift+=8)result|=((((color>>shift)&255u)*alpha+63u)/127u)<<shift;color=result;}}
+ guides(outputAt,motion,guideDepth,confidence);
  outputImage.v[outputAt]=color;
 }

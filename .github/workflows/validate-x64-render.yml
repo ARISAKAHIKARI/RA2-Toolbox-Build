@@ -1,0 +1,198 @@
+name: Validate x64 toolbox and x86 game runtime
+on:
+  push:
+    branches: [codex/fix-render-feedback-20261029]
+    paths: ['source/**', '.github/workflows/validate-x64-render.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: x64-render-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  windows-mixed-architecture:
+    runs-on: windows-2022
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Zig 0.13.0
+        shell: pwsh
+        run: |
+          $ProgressPreference='SilentlyContinue'
+          Invoke-WebRequest 'https://ziglang.org/download/0.13.0/zig-windows-x86_64-0.13.0.zip' -OutFile zig.zip
+          Expand-Archive zig.zip zig
+          $zig=(Resolve-Path 'zig/zig-windows-x86_64-0.13.0/zig.exe').Path
+          if((& $zig version) -ne '0.13.0'){throw 'Unexpected Zig version'}
+          Add-Content $env:GITHUB_ENV "ZIG_EXE=$zig"
+          New-Item -ItemType Directory -Force artifacts/x86,artifacts/x64,diagnostics,tests-x64,broker-fixture | Out-Null
+      - name: Build and verify the unchanged x86 profile
+        working-directory: source
+        shell: pwsh
+        run: |
+          $env:RA2_NO_PAUSE='1'
+          cmd /d /c 'call BUILD_ZIG.cmd > ../diagnostics/build-x86.log 2>&1'
+          $status=$LASTEXITCODE
+          Get-Content ../diagnostics/build-x86.log -Tail 60
+          if($status -ne 0){throw "x86 build failed: $status"}
+          foreach($name in 'RA2Toolbox.exe','GameRuntime.dll','WINDOWS_BUILD_ARTIFACTS.json','BUILD_SOURCE_MANIFEST.json'){
+            Copy-Item $name "../artifacts/x86/$name"
+          }
+      - name: Build the x64 host with x86 runtime and broker
+        shell: bash
+        run: |
+          set -euo pipefail
+          export ZIG="$(cygpath -u "$ZIG_EXE")"
+          export RA2_OUTPUT_DIR="$PWD/artifacts/x64"
+          bash source/build-zig-x64.sh > diagnostics/build-x64.log 2>&1 || { tail -80 diagnostics/build-x64.log; exit 1; }
+          tail -60 diagnostics/build-x64.log
+          python source/tools/verify_windows_outputs.py --root artifacts/x64 --host-arch x64
+      - name: Verify all shared-memory layouts across Windows x86 and x64
+        shell: pwsh
+        run: |
+          python source/tools/verify_crossbit_abi.py --zig $env:ZIG_EXE --output diagnostics/crossbit-abi.json
+          if($LASTEXITCODE -ne 0){throw 'Cross-bitness layout verification failed'}
+          python source/assist/tests/mixed_architecture_verifier.py --x86-root artifacts/x86 --x64-root artifacts/x64
+          if($LASTEXITCODE -ne 0){throw 'Mixed-architecture PE positive/negative gates failed'}
+      - name: Exercise the production x64 client and x86 hook broker on real Windows
+        shell: pwsh
+        run: |
+          Copy-Item artifacts/x64/GameRuntimeHost32.exe broker-fixture/GameRuntimeHost32.exe
+          $flags=@('-std=c++17','-O2','-UNDEBUG')
+          & $env:ZIG_EXE c++ -target x86_64-windows-gnu @flags -municode source/assist/tests/runtime_broker_windows.cpp -o broker-fixture/runtime-broker-test.exe -lkernel32 -luser32
+          if($LASTEXITCODE -ne 0){throw 'Broker controller fixture compilation failed'}
+          & $env:ZIG_EXE c++ -target x86-windows-gnu @flags -municode source/assist/tests/runtime_broker_target_windows.cpp -o broker-fixture/BrokerTarget32.exe '-Wl,--subsystem,windows' -lkernel32 -luser32
+          if($LASTEXITCODE -ne 0){throw 'Broker target fixture compilation failed'}
+          & $env:ZIG_EXE c++ -target x86-windows-gnu @flags -shared source/assist/tests/runtime_broker_runtime_windows.cpp source/assist/tests/runtime_broker_runtime_windows.def -o broker-fixture/GameRuntime.dll -lkernel32 -luser32
+          if($LASTEXITCODE -ne 0){throw 'Broker runtime fixture compilation failed'}
+          & $env:ZIG_EXE c++ -target x86-windows-gnu @flags -DBROKER_FIXTURE_WRONG_VERSION -shared source/assist/tests/runtime_broker_runtime_windows.cpp source/assist/tests/runtime_broker_runtime_windows.def -o broker-fixture/GameRuntimeBad.dll -lkernel32 -luser32
+          if($LASTEXITCODE -ne 0){throw 'Broker version-negative fixture compilation failed'}
+          & ./broker-fixture/runtime-broker-test.exe 2>&1 | Tee-Object diagnostics/runtime-broker-windows.log
+          if($LASTEXITCODE -ne 0){throw 'Actual x64-to-x86 broker regression failed'}
+          if(-not(Select-String -Quiet -Path diagnostics/runtime-broker-windows.log -Pattern '^PASS:')){throw 'Broker fixture PASS marker missing'}
+      - name: Run x64 scene, VXL, lighting, camera and CPU fallback regressions
+        shell: pwsh
+        run: |
+          & $env:ZIG_EXE c++ -target x86_64-windows-gnu -std=c++17 -O2 -UNDEBUG -c source/third_party/xbrz/xbrz.cpp -o tests-x64/xbrz.o
+          if($LASTEXITCODE -ne 0){throw 'x64 xBRZ test object compilation failed'}
+          foreach($name in 'render_presentation','render_feedback_host','render_scroll','overlay_incremental','overlay_present_rate','native_order_feedback','world_presentation','live_shroud_scene','terrain_coverage','voxel_posture','voxel_preview','voxel_lighting','live_voxel_scene','live_scene_lighting','color_scene','xbrz_bilinear','gpu_scene_record','gpu_voxel','gpu_shroud','gpu_scene_renderer','gpu_voxel_cache','gpu_depth_plan','native_repaint','terrain_partial_scene','vulkan_compute','vulkan_scene','gpu_voxel_scene','vulkan_shroud_scene','vulkan_allocation_fallback','radar_diagram_cache','radar_paint_gate','native_area','vulkan_area','gpu_motion','vulkan_guides','neural_pixels','neural_history'){
+            & $env:ZIG_EXE c++ -target x86_64-windows-gnu -std=c++17 -O2 -UNDEBUG "source/assist/tests/$name.cpp" tests-x64/xbrz.o -o "tests-x64/$name.exe"
+            if($LASTEXITCODE -ne 0){throw "x64 compilation failed: $name"}
+            & "./tests-x64/$name.exe" 2>&1 | Tee-Object "diagnostics/$name-x64.log"
+            if($LASTEXITCODE -ne 0){throw "x64 test failed: $name"}
+          }
+      - name: Exercise isolated neural transport and raw-frame fallback on real Windows
+        shell: pwsh
+        run: |
+          & $env:ZIG_EXE c++ -target x86_64-windows-gnu -std=c++17 -O2 -UNDEBUG -municode source/assist/tests/neural_transport_windows.cpp -o tests-x64/neural-transport-test.exe -lkernel32 -luser32
+          if($LASTEXITCODE -ne 0){throw 'Neural transport fixture compilation failed'}
+          & ./tests-x64/neural-transport-test.exe 2>&1 | Tee-Object diagnostics/neural-transport-windows.log
+          if($LASTEXITCODE -ne 0){throw 'Actual isolated neural transport regression failed'}
+          if(-not(Select-String -Quiet -Path diagnostics/neural-transport-windows.log -Pattern '^PASS:')){throw 'Neural transport fixture PASS marker missing'}
+      - name: Prepare pinned private NVIDIA build dependencies without the NR runtime
+        shell: pwsh
+        run: |
+          $sdk=Join-Path $env:RUNNER_TEMP 'ra2-neural-sdk'
+          python source/tools/fetch_neural_sdk.py --output $sdk --sevenzip 'C:/Program Files/7-Zip/7z.exe'
+          if($LASTEXITCODE -ne 0){throw 'Pinned NVIDIA development SDK preparation failed'}
+          Add-Content $env:GITHUB_ENV "RA2_NGX_SDK=$sdk"
+          Copy-Item (Join-Path $sdk 'RA2_NEURAL_SDK_MANIFEST.json') diagnostics/NEURAL_SDK_BUILD_INPUTS.json
+      - name: Build the separate x64 neural helper
+        shell: pwsh
+        run: |
+          $env:RA2_NEURAL_OUTPUT=Join-Path (Resolve-Path artifacts/x64).Path 'RA2NeuralRenderer.exe'
+          cmd /d /c 'call source\neural_renderer\build-msvc.cmd > diagnostics\build-neural-helper.log 2>&1'
+          $status=$LASTEXITCODE
+          Get-Content diagnostics/build-neural-helper.log -Tail 80
+          if($status -ne 0){throw "Neural helper build failed: $status"}
+          python source/tools/verify_windows_outputs.py --root artifacts/x64 --host-arch x64 --neural-helper
+          if($LASTEXITCODE -ne 0){throw 'Optional neural helper PE verification failed'}
+          python source/assist/tests/mixed_architecture_verifier.py --x86-root artifacts/x86 --x64-root artifacts/x64 --neural-helper
+          if($LASTEXITCODE -ne 0){throw 'Optional neural helper PE negative gates failed'}
+      - name: Verify that missing NR runtime is reported without activating DLSS 5
+        shell: pwsh
+        run: |
+          & ./artifacts/x64/RA2NeuralRenderer.exe --probe 2>&1 | Tee-Object diagnostics/neural-probe.log
+          $status=$LASTEXITCODE
+          if($status -ne 2){throw "Expected unavailable helper probe, received $status"}
+          if(-not(Select-String -Quiet -Path diagnostics/neural-probe.log -Pattern 'DLSS5 status=7 available=0')){throw 'Neural helper did not explicitly report the missing NR runtime'}
+      - name: Record exact tested build identity
+        shell: pwsh
+        run: |
+          Copy-Item source/neural_renderer/NOTICE.txt artifacts/x64/NEURAL-NOTICE.txt
+          Copy-Item source/neural_renderer/licenses/NVIDIA-RTX-SDK-LICENSE.txt artifacts/x64/LICENSE-NVIDIA-RTX-SDK.txt
+          Copy-Item source/neural_renderer/licenses/NVIDIA-DLSS-BASE-LICENSE.txt artifacts/x64/LICENSE-NVIDIA-DLSS-BASE.txt
+          $files=@()
+          foreach($name in 'RA2Toolbox.exe','GameRuntime.dll','GameRuntimeHost32.exe','RA2NeuralRenderer.exe','WINDOWS_BUILD_ARTIFACTS.json','BUILD_TARGET.json','NEURAL-NOTICE.txt','LICENSE-NVIDIA-RTX-SDK.txt','LICENSE-NVIDIA-DLSS-BASE.txt'){
+            $path=Join-Path 'artifacts/x64' $name
+            $files+=@{name=$name;bytes=(Get-Item $path).Length;sha256=(Get-FileHash $path -Algorithm SHA256).Hash.ToLowerInvariant()}
+          }
+          @{commit=$env:GITHUB_SHA;run_id=$env:GITHUB_RUN_ID;host='x64';game_runtime='x86';broker='x86';neural_helper='x64';files=$files;actual_game_tested=$false;hardware_dlss5_tested=$false;missing_runtime_probe=$true} | ConvertTo-Json -Depth 5 | Set-Content -Encoding utf8 artifacts/x64/X64_CI_BUILD.json
+      - name: Upload verified x64 experiment binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: RA2-x64-render-experiment
+          if-no-files-found: error
+          retention-days: 14
+          path: |
+            artifacts/x64/RA2Toolbox.exe
+            artifacts/x64/GameRuntime.dll
+            artifacts/x64/GameRuntimeHost32.exe
+            artifacts/x64/RA2NeuralRenderer.exe
+            artifacts/x64/WINDOWS_BUILD_ARTIFACTS.json
+            artifacts/x64/BUILD_TARGET.json
+            artifacts/x64/X64_CI_BUILD.json
+            artifacts/x64/NEURAL-NOTICE.txt
+            artifacts/x64/LICENSE-NVIDIA-RTX-SDK.txt
+            artifacts/x64/LICENSE-NVIDIA-DLSS-BASE.txt
+      - name: Upload controlled-test and build diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: RA2-x64-render-diagnostics
+          if-no-files-found: warn
+          retention-days: 14
+          path: diagnostics/*
+  vulkan-guides:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install software Vulkan and shader tools
+        run: sudo apt-get update && sudo apt-get install -y mesa-vulkan-drivers vulkan-validationlayers glslang-tools spirv-tools
+      - name: Verify scene shader and actual GPU motion guides
+        shell: bash
+        env:
+          ASAN_OPTIONS: detect_leaks=0
+          VK_INSTANCE_LAYERS: VK_LAYER_KHRONOS_validation
+        run: |
+          set -euo pipefail
+          mkdir -p guide-logs
+          python3 source/tools/build_vulkan_scene.py --output /tmp/vulkan_scene_spirv.h
+          cmp /tmp/vulkan_scene_spirv.h source/external_reader/source/vulkan_scene_spirv.h
+          flags=(-std=c++17 -O1 -g -UNDEBUG -DRA2_VULKAN_TEST_SOFTWARE -fsanitize=address,undefined -fno-omit-frame-pointer)
+          g++ "${flags[@]}" -c source/third_party/xbrz/xbrz.cpp -o /tmp/xbrz-guides.o
+          g++ "${flags[@]}" source/assist/tests/gpu_motion.cpp -o /tmp/gpu-motion-test
+          /tmp/gpu-motion-test 2>&1 | tee guide-logs/gpu-motion.log
+          g++ "${flags[@]}" source/assist/tests/neural_pixels.cpp -o /tmp/neural-pixels-test
+          /tmp/neural-pixels-test 2>&1 | tee guide-logs/neural-pixels.log
+          g++ "${flags[@]}" source/assist/tests/neural_history.cpp -o /tmp/neural-history-test
+          /tmp/neural-history-test 2>&1 | tee guide-logs/neural-history.log
+          for name in vulkan_scene gpu_scene_record vulkan_guides gpu_scene_renderer vulkan_allocation_fallback; do
+            g++ "${flags[@]}" "source/assist/tests/$name.cpp" /tmp/xbrz-guides.o -ldl -o "/tmp/$name-test"
+            "/tmp/$name-test" --require 2>&1 | tee "guide-logs/$name.log"
+          done
+          python3 -c 'from pathlib import Path; import re; logs=list(Path("guide-logs").glob("*.log")); assert len(logs)==8; assert not any(re.search("Validation Error|VUID-",p.read_text()) for p in logs), "Vulkan validation errors"'
+      - name: Settings and presentation publication integration
+        run: |
+          python3 source/assist/tests/render_material_settings.py
+          python3 source/assist/tests/auto_settings_ui_test.py
+          python3 source/assist/tests/render_presentation_gate.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Vulkan-x64-render-guides-diagnostics
+          if-no-files-found: warn
+          retention-days: 14
+          path: guide-logs/*.log

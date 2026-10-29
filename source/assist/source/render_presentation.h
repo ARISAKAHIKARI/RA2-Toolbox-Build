@@ -64,12 +64,14 @@ inline bool sampleAdvance(int first,int sampled,int last){
 }
 template<class Request>auto gpuFlag(const Request&r,int)->decltype(bool(r.gpu)){return r.gpu;}
 template<class Request>bool gpuFlag(const Request&,long){return false;}
+template<class Request>auto neuralFlag(const Request&r,int)->decltype(bool(r.neural)){return r.neural;}
+template<class Request>bool neuralFlag(const Request&,long){return false;}
 template<class Request>bool compatible(const Request&a,const Request&b){
  return a.pid==b.pid&&a.match==b.match&&a.context.token==b.context.token&&
   a.context.window==b.context.window&&a.context.width==b.context.width&&a.context.height==b.context.height&&
   a.reveal==b.reveal&&a.generation==b.generation&&a.materialRefresh==b.materialRefresh&&
   a.detail==b.detail&&a.colorPrecision==b.colorPrecision&&a.paletteRange==b.paletteRange&&
-  a.pixelScaleMode==b.pixelScaleMode&&gpuFlag(a,0)==gpuFlag(b,0)&&a.width==b.width&&a.height==b.height&&
+  a.pixelScaleMode==b.pixelScaleMode&&gpuFlag(a,0)==gpuFlag(b,0)&&neuralFlag(a,0)==neuralFlag(b,0)&&a.width==b.width&&a.height==b.height&&
   external::mainview::sameViewport(a.view,b.view)&&b.view.frame>=a.view.frame;
 }
 template<class Frame,class Request>bool usable(const Frame&frame,const Request&request,uint32_t now){
