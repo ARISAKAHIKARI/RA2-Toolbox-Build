@@ -1,0 +1,52 @@
+name: Bootstrap DLSS guide shaders
+on:
+  push:
+    branches: [codex/bootstrap-dlss-guides-20261029]
+    paths: ['source/**', '.github/workflows/bootstrap-dlss-guides.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  shader-and-guides:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      ASAN_OPTIONS: detect_leaks=0
+      VK_INSTANCE_LAYERS: VK_LAYER_KHRONOS_validation
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install software Vulkan and shader tools
+        run: sudo apt-get update && sudo apt-get install -y mesa-vulkan-drivers vulkan-validationlayers glslang-tools spirv-tools
+      - name: Regenerate and validate both scene shaders
+        run: |
+          mkdir -p guide-evidence
+          python3 source/tools/build_vulkan_scene.py --output source/external_reader/source/vulkan_scene_spirv.h | tee guide-evidence/shader-build.log
+          cp source/external_reader/source/vulkan_scene_spirv.h guide-evidence/
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib,json
+          names=['source/external_reader/shaders/vulkan_scene.comp','source/external_reader/source/vulkan_scene.h','source/external_reader/source/vulkan_scene_types.h','source/external_reader/source/gpu_motion.h','source/external_reader/source/vulkan_scene_spirv.h']
+          Path('guide-evidence/source-sha256.json').write_text(json.dumps({n:hashlib.sha256(Path(n).read_bytes()).hexdigest() for n in names},indent=2))
+          PY
+      - name: Actual scene and guide GPU regressions
+        shell: bash
+        run: |
+          set -euo pipefail
+          flags=(-std=c++17 -O1 -g -UNDEBUG -DRA2_VULKAN_TEST_SOFTWARE -fsanitize=address,undefined -fno-omit-frame-pointer)
+          g++ "${flags[@]}" -c source/third_party/xbrz/xbrz.cpp -o /tmp/xbrz.o
+          for name in gpu_motion vulkan_guides vulkan_scene gpu_scene_record gpu_scene_renderer; do
+            g++ "${flags[@]}" "source/assist/tests/$name.cpp" /tmp/xbrz.o -ldl -o "/tmp/$name-test"
+            "/tmp/$name-test" --require 2>&1 | tee "guide-evidence/$name.log"
+          done
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          logs=list(Path('guide-evidence').glob('*.log'))
+          assert not any(re.search('Validation Error|VUID-',p.read_text()) for p in logs)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dlss-motion-guide-evidence
+          path: guide-evidence/*
+          if-no-files-found: error

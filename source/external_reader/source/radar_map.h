@@ -12,7 +12,7 @@
 #include <array>
 // Read-only YRpp MapClass/CellClass/RadarClass model. Projection matches
 // GetCrdOnRadar (0x6557F0); never calls game functions or captures the screen.
-namespace external { namespace radar {
+namespace external { namespace gpumotion {struct Guides;} namespace radar {
 constexpr uint32_t Map=0x87F7E8;
 struct Geometry {
  int width=0,height=0,offsetX=0,offsetY=0,rw=0,rh=0;float factor=0;uint32_t cells=0,house=0;int count=0;mapbounds::Bounds bounds;int rawWidth=0,rawHeight=0;
@@ -48,7 +48,7 @@ struct Geometry {
 };
 struct Marker {double u=0,v=0;uint32_t color=0;bool building=false;uint32_t object=0,id=0,type=0,owner=0,parent=0,parentId=0;int x=0,y=0,z=0,kind=-1,drawZ=0,sort=0,layer=2;bool normalLight=false,onBridge=false;visual::Pose pose;};
 struct CellArt {uint32_t cell=0,type=0,overlayType=0,overlaySourceType=0;int16_t overlay=-1;uint8_t sub=0;int8_t level=0;uint8_t overlayFrame=0;bool sourceHidden=false;uint32_t sourceColor=0;};
-struct Scene {int width=0,height=0;std::vector<uint32_t> pixels;};
+struct Scene {int width=0,height=0;std::vector<uint32_t> pixels;std::shared_ptr<const gpumotion::Guides> guides;};
 // The game stores the selected shroud/fog SHP frame at each Cell. -1 selects
 // clear frame 0, -2 selects opaque frame 15; other values select edge frames.
 // Preserve those values so the native-sized scene can cover protruding TMP
