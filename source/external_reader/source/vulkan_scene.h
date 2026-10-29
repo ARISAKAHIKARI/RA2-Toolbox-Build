@@ -102,7 +102,7 @@ class FrameResolve : public Resolve {
 public:
  ~FrameResolve(){sceneClose();}
  bool supportsFloat64(){return initialize()&&features_.shaderFloat64;}
- bool render(int w,int h,const std::vector<TileJob>&jobs,std::vector<uint32_t>&out){for(const auto&job:jobs)if(job.reconstructionFactor){FrameJob frame;frame.width=w;frame.height=h;frame.baseTiles=jobs;return renderFrame(frame,out);}colorResident_.clear();const bool ok=Resolve::render(w,h,jobs,out);if(!ok)cleanupFailure();return ok;}
+ bool render(int w,int h,const std::vector<TileJob>&jobs,std::vector<uint32_t>&out){guides_.reset();motionHistory_.clear();if(guidesBuffered_&&!inFlight_){destroy(output_);destroy(readback_);guidesBuffered_=false;}for(const auto&job:jobs)if(job.reconstructionFactor){FrameJob frame;frame.width=w;frame.height=h;frame.baseTiles=jobs;return renderFrame(frame,out);}colorResident_.clear();const bool ok=Resolve::render(w,h,jobs,out);if(!ok)cleanupFailure();return ok;}
  std::shared_ptr<const gpumotion::Guides> guides()const{return guides_;}
  bool renderFrame(const FrameJob&frame,std::vector<uint32_t>&out,std::vector<uint8_t>*maskOut=nullptr){guides_.reset();const bool ok=renderFrameImpl(frame,out,maskOut);if(!ok){motionHistory_.clear();cleanupFailure();}return ok;}
 private:

@@ -63,6 +63,9 @@ int main(int argc,char**argv){
  assert(gpu.renderFrame(unknown,actual)&&actual==reference(unknown));guides=gpu.guides();assert(guides&&guides->resetHistory&&guides->confidence[at(7,6)]==0);
  auto changed=second;changed.motion.tick+=32;changed.draws[0].source.pixels=std::make_shared<const std::vector<uint32_t>>(*pixels);
  assert(gpu.renderFrame(changed,actual)&&actual==reference(changed)&&gpu.guides()->resetHistory);
+ // A non-scene GPU resolve cannot expose a previous scene's stale guides.
+ TileJob tile;tile.pixels=f.basePixels;tile.sourceWidth=f.width;tile.sourceHeight=f.height;tile.width=f.width;tile.height=f.height;tile.stepX=tile.stepY=1;
+ assert(gpu.render(f.width,f.height,{tile},actual)&&actual==*f.basePixels&&!gpu.guides());
  // Invalid guides never reject an otherwise valid current world frame.
  auto invalid=second;invalid.motion.context.reset();assert(gpu.renderFrame(invalid,actual)&&actual==reference(invalid)&&!gpu.guides());
  auto disabled=second;disabled.collectGuides=false;assert(gpu.renderFrame(disabled,actual)&&actual==reference(disabled)&&!gpu.guides());
