@@ -7,7 +7,7 @@
 #include <vector>
 namespace external {namespace gpushroud {struct Plan;} namespace gpuarea {
 constexpr uint32_t PageSize=128,PagePixels=PageSize*PageSize,BlockSize=4,PrefixSide=33,PrefixWords=PrefixSide*PrefixSide*3,MaximumPages=2048,Missing=0xffffffffu;
-struct Page {uint32_t x=0,y=0;std::shared_ptr<const std::vector<uint32_t>>pixels;};
+struct Page {uint32_t x=0,y=0;std::shared_ptr<const std::vector<uint32_t>>pixels;uint64_t version=0;};
 struct Plan {
  int nativeWidth=0,nativeHeight=0,width=0,height=0;double spanX=0,spanY=0;uint32_t background=0xff080c08u;
  std::vector<Page>pages;std::shared_ptr<const std::vector<uint8_t>>fog;
@@ -27,7 +27,7 @@ inline bool reference(const Plan&p,std::vector<uint32_t>&out){
  if(!valid(p)||p.mask)return false;const uint32_t cols=(p.nativeWidth+127)/128,rows=(p.nativeHeight+127)/128;
  std::vector<const std::vector<uint32_t>*>table(size_t(cols)*rows,nullptr);for(const auto&page:p.pages)table[size_t(page.y)*cols+page.x]=page.pixels.get();
  std::vector<uint32_t>result(size_t(p.width)*p.height);double sx=p.spanX/p.width,sy=p.spanY/p.height;
- for(int y=0;y<p.height;++y)for(int x=0;x<p.width;++x){double l=x*sx,r=(x+1)*sx,t=y*sy,b=(y+1)*sy;double sum[3]{};
+ for(int y=0;y<p.height;++y)for(int x=0;x<p.width;++x){double l=std::clamp(x*sx,0.,double(p.nativeWidth)),r=std::clamp((x+1)*sx,0.,double(p.nativeWidth)),t=std::clamp(y*sy,0.,double(p.nativeHeight)),b=std::clamp((y+1)*sy,0.,double(p.nativeHeight));double sum[3]{};
   for(int yy=int(t);yy<int(std::ceil(b));++yy)for(int xx=int(l);xx<int(std::ceil(r));++xx){double weight=(std::min(r,double(xx+1))-std::max(l,double(xx)))*(std::min(b,double(yy+1))-std::max(t,double(yy)));const auto*page=table[size_t(yy/128)*cols+xx/128];uint32_t color=page?(*page)[size_t(yy%128)*128+xx%128]:p.background;for(unsigned c=0;c<3;++c)sum[c]+=weight*((color>>(16-c*8))&255);}
   uint32_t color=0xff000000u;for(unsigned c=0;c<3;++c)color|=uint32_t(std::clamp(std::floor(sum[c]/((r-l)*(b-t))+.5),0.,255.))<<(16-c*8);
   if(p.fog){unsigned a=std::min<unsigned>((*p.fog)[size_t(y)*p.width+x],127);uint32_t dark=0xff000000u;for(unsigned shift:{0u,8u,16u})dark|=((((color>>shift)&255)*a+63)/127)<<shift;color=dark;}result[size_t(y)*p.width+x]=color;

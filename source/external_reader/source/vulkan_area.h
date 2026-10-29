@@ -3,17 +3,18 @@
 #include "gpu_area.h"
 #include "vulkan_area_spirv.h"
 #include "vulkan_shroud_backend.h"
+#include <unordered_map>
 namespace external {namespace vulkancompute {
 // Whole-map resolve preserves native painter/Z composition. Sparse immutable
 // pages stay resident; only changed pages rebuild exact integer4x4 integrals.
 class AreaResolve : public Resolve {
- struct Resident {std::weak_ptr<const std::vector<uint32_t>>owner;const void*address=nullptr;uint32_t slot=0;};
+ struct Resident {std::weak_ptr<const std::vector<uint32_t>>owner;const void*address=nullptr;uint32_t slot=0;uint64_t version=0;};
  struct AreaParams {uint32_t width,height,nativeWidth,nativeHeight,columns,tableOffset,xOffset,yOffset,background,fogOffset,buildCount,buildOffset,phase;};
  Buffer prefix_,metadata_;gpushroud::Stage mask_{*this};
  VkDescriptorSetLayout areaLayout_=VK_NULL_HANDLE;VkPipelineLayout areaPipelineLayout_=VK_NULL_HANDLE;VkDescriptorPool areaPool_=VK_NULL_HANDLE;VkDescriptorSet areaSet_=VK_NULL_HANDLE;VkPipeline areaPipeline_=VK_NULL_HANDLE;
  std::vector<Resident>residents_;uint64_t prefixBuilds_=0;bool areaReady_=false;
  static constexpr uint64_t PrefixBytes=uint64_t(gpuarea::MaximumPages)*gpuarea::PrefixWords*4;
- static bool samePage(const Resident&r,const std::shared_ptr<const std::vector<uint32_t>>&p){return r.address==p.get()&&!r.owner.owner_before(p)&&!p.owner_before(r.owner);}
+ static bool samePage(const Resident&r,const std::shared_ptr<const std::vector<uint32_t>>&p,uint64_t version){return r.version==version&&r.address==p.get()&&!r.owner.owner_before(p)&&!p.owner_before(r.owner);}
  void releaseArea(){
   if(inFlight_&&(!vkGetFenceStatus_||vkGetFenceStatus_(device_,fence_)!=VK_SUCCESS))return;
   mask_.release();if(device_){destroy(prefix_);destroy(metadata_);if(areaPipeline_&&vkDestroyPipeline_)vkDestroyPipeline_(device_,areaPipeline_,nullptr);if(areaPool_&&vkDestroyDescriptorPool_)vkDestroyDescriptorPool_(device_,areaPool_,nullptr);if(areaPipelineLayout_&&vkDestroyPipelineLayout_)vkDestroyPipelineLayout_(device_,areaPipelineLayout_,nullptr);if(areaLayout_&&vkDestroyDescriptorSetLayout_)vkDestroyDescriptorSetLayout_(device_,areaLayout_,nullptr);}
@@ -36,17 +37,20 @@ class AreaResolve : public Resolve {
   if(disabled_)return false;if(!gpuarea::valid(p))return fail("Invalid sparse GPU area plan");
   if(p.mask&&(p.mask->width!=p.width||p.mask->height!=p.height))return fail("GPU area mask dimensions disagree");if(!initializeArea())return false;
   std::vector<Resident>active;std::vector<uint32_t>pageSlots;std::vector<size_t>dirty;std::vector<uint8_t>used(gpuarea::MaximumPages);
-  for(const auto&page:p.pages){size_t n=0;for(;n<active.size();++n)if(samePage(active[n],page.pixels))break;if(n==active.size())active.push_back({page.pixels,page.pixels.get(),gpuarea::Missing});pageSlots.push_back(uint32_t(n));}
-  // Reuse only current owners. Old inactive pages may remain alive in another
-  // frame; they can relinquish a GPU slot once the previous fence completed.
-  for(auto&a:active){auto found=std::find_if(residents_.begin(),residents_.end(),[&](const Resident&r){return samePage(r,a.owner.lock());});if(found!=residents_.end()){a.slot=found->slot;used[a.slot]=1;}}
+  std::unordered_multimap<const void*,size_t>activeIndex,residentIndex;activeIndex.reserve(p.pages.size());residentIndex.reserve(residents_.size());
+  for(size_t n=0;n<residents_.size();++n)residentIndex.emplace(residents_[n].address,n);
+  for(const auto&page:p.pages){size_t n=active.size();auto range=activeIndex.equal_range(page.pixels.get());for(auto i=range.first;i!=range.second;++i)if(samePage(active[i->second],page.pixels,page.version)){n=i->second;break;}
+   if(n==active.size()){active.push_back({page.pixels,page.pixels.get(),gpuarea::Missing,page.version});activeIndex.emplace(page.pixels.get(),n);}pageSlots.push_back(uint32_t(n));}
+  // Current Plan aliases protect source pages during this submission only.
+  // Indexing avoids O(N²) weak locks for a warm whole-map presentation.
+  for(auto&a:active){auto source=a.owner.lock();auto range=residentIndex.equal_range(a.address);for(auto i=range.first;i!=range.second;++i){const auto&r=residents_[i->second];if(samePage(r,source,a.version)){a.slot=r.slot;used[a.slot]=1;break;}}}
   uint32_t free=0,slots=1;for(size_t n=0;n<active.size();++n){auto&a=active[n];if(a.slot==gpuarea::Missing){while(free<used.size()&&used[free])++free;if(free==used.size())return fail("GPU area resident budget exceeded");a.slot=free;used[free]=1;dirty.push_back(n);}slots=std::max(slots,a.slot+1);}
   const uint32_t cols=(p.nativeWidth+127)/128,rows=(p.nativeHeight+127)/128;std::vector<uint32_t>metadata(size_t(cols)*rows,gpuarea::Missing);
   for(size_t n=0;n<p.pages.size();++n)metadata[size_t(p.pages[n].y)*cols+p.pages[n].x]=active[pageSlots[n]].slot;
   auto number=[&](double value){uint32_t bits[2];std::memcpy(bits,&value,sizeof value);metadata.push_back(bits[0]);metadata.push_back(bits[1]);};
   AreaParams params{uint32_t(p.width),uint32_t(p.height),uint32_t(p.nativeWidth),uint32_t(p.nativeHeight),cols,0,0,0,p.background,gpuarea::Missing,uint32_t(dirty.size()),0,0};
   if(metadata.size()&1)metadata.push_back(0);params.xOffset=uint32_t(metadata.size());const double sx=p.spanX/p.width,sy=p.spanY/p.height;
-  for(int x=0;x<p.width;++x){number(x*sx);number((x+1)*sx);}params.yOffset=uint32_t(metadata.size());for(int y=0;y<p.height;++y){number(y*sy);number((y+1)*sy);}
+  for(int x=0;x<p.width;++x){number(std::clamp(x*sx,0.,double(p.nativeWidth)));number(std::clamp((x+1)*sx,0.,double(p.nativeWidth)));}params.yOffset=uint32_t(metadata.size());for(int y=0;y<p.height;++y){number(std::clamp(y*sy,0.,double(p.nativeHeight)));number(std::clamp((y+1)*sy,0.,double(p.nativeHeight)));}
   params.buildOffset=uint32_t(metadata.size());for(size_t n:dirty)metadata.push_back(active[n].slot);
   if(p.fog||p.mask){params.fogOffset=uint32_t(metadata.size());size_t words=(uint64_t(p.width)*p.height+3)/4;metadata.resize(metadata.size()+words);if(p.fog)for(size_t n=0;n<p.fog->size();++n)metadata[params.fogOffset+n/4]|=uint32_t((*p.fog)[n])<<((n&3)*8);}
   const uint64_t outputBytes=uint64_t(p.width)*p.height*4,uploadBytes=uint64_t(dirty.size())*gpuarea::PagePixels*4;
@@ -75,6 +79,7 @@ class AreaResolve : public Resolve {
 public:
  AreaResolve()=default;~AreaResolve(){releaseArea();}
  uint64_t prefixBuilds()const{return prefixBuilds_;}
+ void reused(){prefixBuilds_=0;diagnostics_.uploads=diagnostics_.uploadedBytes=diagnostics_.dispatches=diagnostics_.readbacks=0;}
  bool render(const gpuarea::Plan&p,std::vector<uint32_t>&out){
   bool ok=false;try{ok=renderArea(p,out);}catch(const std::bad_alloc&){fatal("GPU area host allocation failed; CPU fallback");}
   if(!ok&&disabled_&&!inFlight_){releaseArea();close();}return ok;
