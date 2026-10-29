@@ -1,5 +1,6 @@
 #include "../../shared/source/latest_worker.h"
 #include "../../shared/source/modern_ui.h"
+#include "../../shared/source/ui_message_queue.h"
 #include "../../shared/source/overlay_stack.h"
 #include "../../shared/source/overlay_compositor.h"
 #include "../../shared/source/release_version.h"
@@ -635,6 +636,6 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR,int){
 #endif
  buttonLabel();
 
- MSG msg;while(GetMessageW(&msg,nullptr,0,0)>0){TranslateMessage(&msg);DispatchMessageW(&msg);}DestroyWindow(overlay);DestroyWindow(secondaryOverlay);iconImages.clear();GdiplusShutdown(token);if(logfile)fclose(logfile);CloseHandle(mutex);return 0;
+ uimessages::Queue messages;MSG msg;while(messages.get(msg)>0){TranslateMessage(&msg);DispatchMessageW(&msg);}DestroyWindow(overlay);DestroyWindow(secondaryOverlay);iconImages.clear();GdiplusShutdown(token);if(logfile)fclose(logfile);CloseHandle(mutex);return 0;
 }
 

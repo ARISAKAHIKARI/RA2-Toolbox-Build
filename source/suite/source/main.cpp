@@ -28,7 +28,7 @@ static HINSTANCE instance;static std::wstring args;
 static std::atomic<bool> statsShown{false},hardwarePointer{false};
 static std::atomic<unsigned> commonRefreshRate{0};
 static std::mutex displayMutex;static suite::DisplayState displayState;static bool displayReady=false;
-static RECT paneRect{};static int publishedCategory=-1;static bool layoutValid=false;static SIZE layoutSize{};static unsigned layoutDpi=0;static uint64_t paneOrder=0;
+static RECT paneRect{};static bool layoutValid=false;static SIZE layoutSize{};static unsigned layoutDpi=0;static uint64_t paneOrder=0;
 static const wchar_t* names[]={L"画面设置",L"单位统计",L"战术控制",L"战场信息",L"实验功能"};
 static const wchar_t* moduleNames[]={L"画面刷新",L"游戏内单位统计",L"战术／游戏内信息"};
 static const wchar_t* configKeys[]={L"Cursor",L"Units",L"Assist"};
@@ -38,7 +38,7 @@ namespace suite {
  void registerPane(int module,HWND pane){
   PostMessageW(pane,DisplaySettingsChanged,0,0);
   if(module==2)PostMessageW(pane,RefreshRateChanged,0,0);
-  modernui::styleChildren(pane);frontend.adopt(unsigned(module),pane);
+  modernui::styleChildren(pane);frontend.adopt(unsigned(module),pane,modernui::windowDpi(pane));
   PostMessageW(frame,PaneReady,module,(LPARAM)pane);
  }
  void reportEnabled(int module,bool value){if(active[module].exchange(value)!=value)PostMessageW(frame,EnabledChanged,module,value);}
@@ -67,10 +67,9 @@ static void layoutPanes(){
  paneRect={px(196),px(12),std::max(px(197),int(r.right)-px(16)),std::max(px(103),int(r.bottom)-px(38))};
  RECT screen=paneRect;MapWindowPoints(frame,nullptr,reinterpret_cast<POINT*>(&screen),2);
  bool visible=suite::frontend.canPresent();
- if(suite::frontend.window(2)&&publishedCategory!=(selected>=2?selected-2:0)){
-  publishedCategory=selected>=2?selected-2:0;suite::frontend.post(2,suite::SelectCategory,publishedCategory);
- }
- for(unsigned i=0;i<3;++i)if(suite::frontend.window(unsigned(i)))suite::frontend.request(i,{screen,visible&&i==selectedPane(),consoleDpi,paneOrder});
+ // Category and visibility share ONE replaceable request. A delayed old
+ // category message cannot relayout the page after a newer selection.
+ for(unsigned i=0;i<3;++i)if(suite::frontend.window(unsigned(i)))suite::frontend.request(i,{screen,visible&&i==selectedPane(),consoleDpi,paneOrder,i==2?std::max(0,selected-2):-1});
 
 }
 static void layout(){
@@ -111,10 +110,10 @@ static LRESULT CALLBACK proc(HWND w,UINT m,WPARAM wp,LPARAM lp){switch(m){
   for(int i=0;i<5;++i)nav[i]=ctl(L"BUTTON",names[i],BS_PUSHBUTTON|WS_TABSTOP,200+i);
   for(int i=0;i<3;++i){checks[i]=ctl(L"BUTTON",moduleNames[i],BS_AUTOCHECKBOX|WS_TABSTOP,100+i);SendMessageW(checks[i],BM_SETCHECK,active[i]?BST_CHECKED:BST_UNCHECKED,0);}
   footer=ctl(L"STATIC",L"设置自动保存 · 切换界面不影响已开启的功能",0,0);SetTimer(w,1,100,nullptr);applyDpi(consoleDpi);layout();return 0;}
- case PaneReady:{int i=int(wp);if(i>=0&&i<3&&suite::frontend.window(unsigned(i))==(HWND)lp){if(i==2)publishedCategory=-1;layout();suite::frontend.post(unsigned(i),suite::ModuleEnable,active[i]);if(closePhase==2)suite::frontend.post(unsigned(i),WM_CLOSE,suite::CloseToken);}return 0;}
+ case PaneReady:{int i=int(wp);if(i>=0&&i<3&&suite::frontend.window(unsigned(i))==(HWND)lp){layout();suite::frontend.post(unsigned(i),suite::ModuleEnable,active[i]);if(closePhase==2)suite::frontend.post(unsigned(i),WM_CLOSE,suite::CloseToken);}return 0;}
  case frontendpanes::DestroyedMessage:case frontendpanes::ActivityMessage:layoutPanes();InvalidateRect(w,&paneRect,FALSE);return 0;
  case EnabledChanged:{int i=int(wp);if(i>=0&&i<3){SendMessageW(checks[i],BM_SETCHECK,lp?BST_CHECKED:BST_UNCHECKED,0);save();}return 0;}
- case WM_COMMAND:if(LOWORD(wp)>=200&&LOWORD(wp)<=204&&HIWORD(wp)==BN_CLICKED){selected=LOWORD(wp)-200;suite::frontend.endInteraction();++paneOrder;publishedCategory=-1;WritePrivateProfileStringW(L"UI",L"Page",std::to_wstring(selected).c_str(),config.c_str());layout();return 0;}if(LOWORD(wp)>=100&&LOWORD(wp)<103&&HIWORD(wp)==BN_CLICKED){int i=LOWORD(wp)-100;active[i]=SendMessageW(checks[i],BM_GETCHECK,0,0)==BST_CHECKED;save();if(suite::frontend.window(unsigned(i)))suite::frontend.post(unsigned(i),suite::ModuleEnable,active[i]);return 0;}break;
+ case WM_COMMAND:if(LOWORD(wp)>=200&&LOWORD(wp)<=204&&HIWORD(wp)==BN_CLICKED){selected=LOWORD(wp)-200;suite::frontend.endInteraction();++paneOrder;WritePrivateProfileStringW(L"UI",L"Page",std::to_wstring(selected).c_str(),config.c_str());layout();return 0;}if(LOWORD(wp)>=100&&LOWORD(wp)<103&&HIWORD(wp)==BN_CLICKED){int i=LOWORD(wp)-100;active[i]=SendMessageW(checks[i],BM_GETCHECK,0,0)==BST_CHECKED;save();if(suite::frontend.window(unsigned(i)))suite::frontend.post(unsigned(i),suite::ModuleEnable,active[i]);return 0;}break;
 
  case WM_DISPLAYCHANGE:for(unsigned i=0;i<3;++i)suite::frontend.post(i,WM_DISPLAYCHANGE,wp,lp);return 0;
  case WM_SIZE:layout();return 0;

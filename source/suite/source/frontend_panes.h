@@ -16,10 +16,11 @@
 #include <mutex>
 namespace frontendpanes {
 constexpr UINT LayoutMessage=WM_APP+80,ActivityMessage=WM_APP+87,DestroyedMessage=WM_APP+89;
+constexpr UINT CategoryMessage=WM_APP+86;
 constexpr UINT_PTR PaneSubclass=0x6328;
 struct Layout {
- RECT rect{};bool visible=false;unsigned dpi=96;uint64_t order=0;
- bool operator==(const Layout& b)const{return rect.left==b.rect.left&&rect.top==b.rect.top&&rect.right==b.rect.right&&rect.bottom==b.rect.bottom&&visible==b.visible&&dpi==b.dpi&&order==b.order;}
+ RECT rect{};bool visible=false;unsigned dpi=96;uint64_t order=0;int category=-1;
+ bool operator==(const Layout& b)const{return rect.left==b.rect.left&&rect.top==b.rect.top&&rect.right==b.rect.right&&rect.bottom==b.rect.bottom&&visible==b.visible&&dpi==b.dpi&&order==b.order&&category==b.category;}
 };
 class Host {
  struct Slot {
@@ -70,7 +71,7 @@ public:
   if(GetGUIThreadInfo(GetCurrentThreadId(),&info)&&!(info.flags&GUI_INMOVESIZE))interactive_=false;
  }
  void closing(){closing_=true;}
- void adopt(unsigned i,HWND w){
+ void adopt(unsigned i,HWND w,unsigned dpi=0){
   if(i>=slots_.size()||!w)return;auto&s=slots_[i];s.host=this;s.index=i;
   auto style=GetWindowLongPtrW(w,GWL_STYLE);
   style&=~LONG_PTR(WS_CHILD|WS_VISIBLE|WS_CAPTION|WS_SYSMENU|WS_MINIMIZEBOX|WS_MAXIMIZEBOX|WS_THICKFRAME);
@@ -80,28 +81,25 @@ public:
   SetWindowLongPtrW(w,GWLP_HWNDPARENT,0);
   SetPropW(w,L"RA2.Suite.Managed",reinterpret_cast<HANDLE>(1));SetWindowSubclass(w,paneProc,PaneSubclass,reinterpret_cast<DWORD_PTR>(&s));
   SetWindowPos(w,nullptr,0,0,0,0,SWP_FRAMECHANGED|SWP_NOMOVE|SWP_NOSIZE|SWP_NOZORDER|SWP_NOACTIVATE|SWP_HIDEWINDOW);
-  s.window=w;
+  s.dpi=dpi;s.window=w;
  }
  bool request(unsigned i,const Layout&wanted){
   if(i>=slots_.size())return false;auto&s=slots_[i];
-  const bool raise=canRaise();auto handle=s.window.load();
+  auto handle=s.window.load();
   const bool shown=handle&&IsWindowVisible(handle);
-  const bool ready=shown&&!IsIconic(handle)&&(!raise||above(handle,shell_));
+  const bool ready=shown&&!IsIconic(handle)&&above(handle,shell_);
   std::lock_guard<std::mutex>lock(s.mutex);auto w=s.window.load();if(!w||w!=handle)return false;
   s.latest=wanted;
   if(s.pending)return true;
   if(s.processing&&s.executing==wanted)return true;
   if(!s.processing&&!wanted.visible&&s.appliedValid&&!s.applied.visible&&!shown)return true;
   if(!s.processing&&s.appliedValid&&s.applied==wanted&&(wanted.visible?ready:!shown))return true;
-  // Don't raise a previously hidden page over a foreign foreground app. Its
-  // visible request is retained and retried when the shell activates again.
-  if(wanted.visible&&!shown&&!raise)return true;
   if(!PostMessageW(w,LayoutMessage,0,0))return false;s.pending=true;return true;
  }
  bool apply(HWND w,UINT message,UINT dpiMessage){
   if(message!=LayoutMessage)return false;auto*s=slot(w);if(!s)return true;Layout next;
   {std::lock_guard<std::mutex>lock(s->mutex);if(!s->pending)return true;next=s->latest;s->pending=false;s->processing=true;s->executing=next;}
-  bool show=next.visible&&canPresent()&&(IsWindowVisible(w)||canRaise());
+  bool show=next.visible&&canPresent();
   if(show&&s->dpi!=next.dpi){s->dpi=next.dpi;SendMessageW(w,dpiMessage,next.dpi,0);}
   // DPI/layout processing can take time. A later switch-away must win before
   // an obsolete page is shown, without any shell-thread synchronous call.
@@ -110,15 +108,20 @@ public:
   if(show){
    if(IsIconic(w))ShowWindow(w,SW_SHOWNOACTIVATE);
    RECT current{};GetWindowRect(w,&current);UINT flags=SWP_NOACTIVATE|SWP_NOOWNERZORDER|SWP_SHOWWINDOW;
-   if(!canRaise())flags|=SWP_NOZORDER;
+   // Keep this independent page immediately above its shell, BELOW any
+   // unrelated window already above the shell. Showing the selected page
+   // must not depend on a transient foreground/activation observation.
+   HWND anchor=GetWindow(shell_,GW_HWNDPREV);
+   if(anchor==w)flags|=SWP_NOZORDER;
    if(current.left==next.rect.left&&current.top==next.rect.top&&current.right==next.rect.right&&current.bottom==next.rect.bottom)flags|=SWP_NOMOVE|SWP_NOSIZE;
-   show=SetWindowPos(w,HWND_TOP,next.rect.left,next.rect.top,next.rect.right-next.rect.left,next.rect.bottom-next.rect.top,flags)!=FALSE;
+   show=SetWindowPos(w,anchor?anchor:HWND_TOP,next.rect.left,next.rect.top,next.rect.right-next.rect.left,next.rect.bottom-next.rect.top,flags)!=FALSE;
    show=show&&IsWindowVisible(w)&&!IsIconic(w);
    if(show){
     // A navigation click advances Layout::order even on the selected page.
     // Rebuild child visibility/clipping when Windows kept the same geometry;
     // no WM_SIZE is otherwise generated for that recovery request.
-    if(flags&SWP_NOSIZE){RECT client{};if(GetClientRect(w,&client))SendMessageW(w,WM_SIZE,SIZE_RESTORED,MAKELPARAM(client.right,client.bottom));}
+    if(next.category>=0)SendMessageW(w,CategoryMessage,next.category,0);
+    else if(flags&SWP_NOSIZE){RECT client{};if(GetClientRect(w,&client))SendMessageW(w,WM_SIZE,SIZE_RESTORED,MAKELPARAM(client.right,client.bottom));}
     RedrawWindow(w,nullptr,nullptr,RDW_INVALIDATE|RDW_ERASE|RDW_FRAME|RDW_ALLCHILDREN|RDW_UPDATENOW);
    }
   }else ShowWindow(w,SW_HIDE);

@@ -58,7 +58,7 @@ inline int MulDiv(int x,int n,int d){return (x*n+d/2)/d;}
 constexpr int WS_EX_TOPMOST=8,WS_POPUP=16,TTS_ALWAYSTIP=1,TTS_NOPREFIX=2,CW_USEDEFAULT=0,TTF_IDISHWND=1,TTF_SUBCLASS=2,TTM_ADDTOOLW=400,TTM_UPDATETIPTEXTW=401,TTM_SETMAXTIPWIDTH=402,TTM_SETDELAYTIME=403,TTDT_INITIAL=1,TTDT_AUTOPOP=2,WM_SYSCHAR=310,EN_CHANGE=1,VK_SHIFT=16,VK_CONTROL=17,VK_MENU=18,WM_LBUTTONDOWN=311,WM_RBUTTONUP=312;
 constexpr auto TOOLTIPS_CLASSW=L"tooltips_class32";
 struct TOOLINFOW{unsigned cbSize,uFlags=0;HWND hwnd=nullptr;UINT_PTR uId=0;wchar_t*lpszText=nullptr;RECT rect{};};
-template<class...T>inline HWND CreateWindowExW(T...){return new Win;}inline bool DestroyWindow(HWND w){delete w;return true;}
+inline unsigned tooltipCreated=0,tooltipDestroyed=0;template<class...T>inline HWND CreateWindowExW(T...){++tooltipCreated;return new Win;}inline bool DestroyWindow(HWND w){++tooltipDestroyed;delete w;return true;}
 inline unsigned LOWORD(uintptr_t n){return n&65535;}inline WPARAM MAKEWPARAM(unsigned a,unsigned b){return a|(b<<16);}inline int GetDlgCtrlID(HWND){return 1;}
 
 using HMENU=void*;
@@ -102,6 +102,13 @@ LRESULT DefSubclassProc(HWND w,UINT m,WPARAM a,LPARAM b){
 }
 LRESULT SendMessageW(HWND w,UINT m,WPARAM a,LPARAM b){DWORD_PTR type=0;if(GetWindowSubclass(w,modernui::hotkeyProc,modernui::HotkeySubclass,&type))return modernui::hotkeyProc(w,m,a,b,modernui::HotkeySubclass,type);if(GetWindowSubclass(w,modernui::buttonProc,modernui::ButtonSubclass,&type))return modernui::buttonProc(w,m,a,b,modernui::ButtonSubclass,type);return DefSubclassProc(w,m,a,b);}
 int main(){
+ {Win page;page.cls=L"PARENT";std::vector<Win> buttons(600);auto created=tooltipCreated,destroyed=tooltipDestroyed;
+  for(auto&b:buttons){b.parent=&page;modernui::tip(&b,L"Live help");}
+  assert(tooltipCreated==created+1);auto shared=(HWND)GetPropW(&page,L"RA2.Tip.Shared");assert(shared);
+  for(auto&b:buttons){assert(GetPropW(&b,L"RA2.Tip.Window")==shared);modernui::tipProc(&b,WM_NCDESTROY,0,0,0x6220,0);assert(tooltipDestroyed==destroyed);}
+  modernui::sharedTipProc(&page,WM_NCDESTROY,0,0,0x6222,0);assert(tooltipDestroyed==destroyed+1);
+  std::puts("PASS 600 control tooltips share one owner-thread window; deleting one control retains peer help; parent retires the shared window");
+ }
  modernui::makeFont();assert(fontHeight==-14&&fontWeight==400);
  modernui::makeFont(modernui::HeadingPixels,96,600);assert(fontHeight==-20&&fontWeight==600);
  for(unsigned dpi:{96u,120u,144u,192u}){

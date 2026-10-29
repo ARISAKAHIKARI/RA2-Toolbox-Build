@@ -1,6 +1,7 @@
 #include "../../external_reader/source/shared_reader.h"
 #include "../../external_reader/source/process_discovery.h"
 #include "../../shared/source/modern_ui.h"
+#include "../../shared/source/ui_message_queue.h"
 #include "../../shared/source/settings_dialog.h"
 #include "../../shared/source/overlay_stack.h"
 #include "../../shared/source/disabled_choices.h"
@@ -1359,7 +1360,7 @@ static LRESULT CALLBACK wndproc(HWND w,UINT m,WPARAM a,LPARAM b){
      SelectObject(dc,saved);DeleteObject(separator);}
    EndPaint(w,&ps);return 0;}
 case WM_GETMINMAXINFO:{auto p=(MINMAXINFO*)b;p->ptMinTrackSize={uidpi::scale(advancedOpen?510:376,uiDpi),uidpi::scale(240,uiDpi)};return 0;}
- case WM_SIZE:viewport(w,scrollX,scrollY);return 0;
+ case WM_SIZE:viewport(w,scrollX,scrollY);relayout(w);return 0;
  case WM_MOUSEWHEEL:{int amount=pagewheel::delta(w,a,uidpi::scale(60,uiDpi));if(amount)viewport(w,scrollX,scrollY-amount);return 0;}
  case WM_VSCROLL:case WM_HSCROLL:{int bar=m==WM_VSCROLL?SB_VERT:SB_HORZ;SCROLLINFO si={sizeof(si),SIF_ALL};GetScrollInfo(w,bar,&si);int n=si.nPos;switch(LOWORD(a)){case SB_LINEUP:n-=uidpi::scale(28,uiDpi);break;case SB_LINEDOWN:n+=uidpi::scale(28,uiDpi);break;case SB_PAGEUP:n-=si.nPage;break;case SB_PAGEDOWN:n+=si.nPage;break;case SB_THUMBTRACK:case SB_THUMBPOSITION:n=si.nTrackPos;break;case SB_TOP:n=0;break;case SB_BOTTOM:n=si.nMax;break;}viewport(w,bar==SB_HORZ?n:scrollX,bar==SB_VERT?n:scrollY);return 0;}
  case WM_TIMER:if(a==152){KillTimer(w,152);if(uiReady)applyTargetRate();return 0;}if(a==150){KillTimer(w,150);if(uiReady&&!applyingSettings){applyingSettings=true;applyScale();applyingSettings=false;}return 0;}break;
@@ -1606,9 +1607,10 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR cmd,int){
  updatePrimaryAction();if(wcsstr(cmd,L"restore")){try{restoreFile();cursorDialog(lastStatus.c_str(),L"恢复 SHA",MB_OK);}catch(const std::exception& e){error(e);}DestroyWindow(mainw);return 0;}RegisterHotKey(mainw,1,MOD_CONTROL|MOD_ALT|MOD_NOREPEAT,VK_F11);RegisterHotKey(mainw,2,MOD_CONTROL|MOD_ALT|MOD_NOREPEAT,VK_F12);RegisterHotKey(mainw,3,MOD_CONTROL|MOD_ALT|MOD_NOREPEAT,VK_F10);RegisterHotKey(mainw,4,MOD_CONTROL|MOD_ALT|MOD_NOREPEAT,VK_F9);timeBeginPeriod(1);QueryPerformanceFrequency(&freq);LARGE_INTEGER next;QueryPerformanceCounter(&next);updateRefresh(true);MSG msg;bool quit=false;
  HANDLE frameTimer=CreateWaitableTimerExW(nullptr,nullptr,0x2,TIMER_ALL_ACCESS);
  if(!frameTimer)frameTimer=CreateWaitableTimerW(nullptr,FALSE,nullptr);
- LONGLONG armedDeadline=0;
+ LONGLONG armedDeadline=0;uimessages::Queue messages;
  while(!quit){
-  while(PeekMessageW(&msg,NULL,0,0,PM_REMOVE)){if(msg.message==WM_QUIT){quit=true;break;}TranslateMessage(&msg);DispatchMessageW(&msg);}
+  unsigned dispatched=0;
+  while(dispatched++<32&&messages.peek(msg)){if(msg.message==WM_QUIT){quit=true;break;}TranslateMessage(&msg);DispatchMessageW(&msg);}
   if(quit)break;
   motionPoll();autoTick();updateRefresh();pollPrepare();
   LARGE_INTEGER now;QueryPerformanceCounter(&now);

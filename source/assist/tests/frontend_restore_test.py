@@ -26,7 +26,7 @@ int main(){Host h;Layout wanted;
  aboveShell=false;assert(h.request(0,wanted)&&posts==1);h.applied();aboveShell=true;
  iconic=true;assert(h.request(0,wanted)&&posts==2);h.applied();iconic=false;
  shown=false;assert(h.request(0,wanted)&&posts==3);h.applied();shown=true;
- for(unsigned i=0;i<1000;++i){aboveShell=false;raise=false;assert(h.request(0,wanted)&&posts==3+i);raise=true;assert(h.request(0,wanted)&&posts==4+i);h.applied();aboveShell=true;}
+ for(unsigned i=0;i<1000;++i){aboveShell=false;raise=false;assert(h.request(0,wanted)&&posts==4+i);raise=true;assert(h.request(0,wanted)&&posts==4+i);h.applied();aboveShell=true;}
  // Clicking the already selected section forces a new owner-thread layout.
  for(unsigned i=0;i<20;++i){++wanted.order;assert(h.request(0,wanted)&&posts==1004+i);h.applied();assert(h.request(0,wanted)&&posts==1004+i);}
  std::puts("PASS production layout request: visible-but-covered, iconic and hidden pages recover without changing geometry/order; 1000 restore cycles and no foreground stealing");}

@@ -27,6 +27,21 @@ constexpr UINT DpiMessage=WM_APP+95;
 inline HFONT makeFont(int pixels=BodyPixels,unsigned dpi=96,int weight=FW_NORMAL){
  return CreateFontW(-int((pixels*panelDpi(dpi,false)+48)/96),0,0,0,weight,FALSE,FALSE,FALSE,DEFAULT_CHARSET,0,0,CLEARTYPE_QUALITY,0,L"Microsoft YaHei UI");
 }
+inline LRESULT CALLBACK sharedTipProc(HWND w,UINT m,WPARAM a,LPARAM b,UINT_PTR id,DWORD_PTR){
+ if(m==WM_NCDESTROY){
+  auto tooltip=(HWND)RemovePropW(w,L"RA2.Tip.Shared");
+  if(tooltip&&IsWindow(tooltip))DestroyWindow(tooltip);
+  RemoveWindowSubclass(w,sharedTipProc,id);
+ }
+ return DefSubclassProc(w,m,a,b);
+}
+inline HWND sharedTooltip(HWND parent){
+ if(!parent)return nullptr;
+ auto tooltip=(HWND)GetPropW(parent,L"RA2.Tip.Shared");if(tooltip&&IsWindow(tooltip))return tooltip;
+ tooltip=CreateWindowExW(WS_EX_TOPMOST,TOOLTIPS_CLASSW,nullptr,WS_POPUP|TTS_ALWAYSTIP|TTS_NOPREFIX,CW_USEDEFAULT,CW_USEDEFAULT,CW_USEDEFAULT,CW_USEDEFAULT,parent,nullptr,GetModuleHandleW(nullptr),nullptr);
+ if(tooltip){SetPropW(parent,L"RA2.Tip.Shared",tooltip);SetWindowSubclass(parent,sharedTipProc,0x6222,0);}
+ return tooltip;
+}
 inline void updateTip(HWND control,bool recreate=false){
  auto text=(std::wstring*)GetPropW(control,L"RA2.Tip.Text");auto tooltip=(HWND)GetPropW(control,L"RA2.Tip.Window");if(!text||!tooltip)return;
  bool disabled=!IsWindowEnabled(control),registered=GetPropW(control,L"RA2.Tip.Registered")!=nullptr;
@@ -40,7 +55,9 @@ inline void updateTip(HWND control,bool recreate=false){
  SetPropW(control,L"RA2.Tip.Registered",(HANDLE)1);if(disabled)SetPropW(control,L"RA2.Tip.ParentRect",(HANDLE)1);else RemovePropW(control,L"RA2.Tip.ParentRect");
 }
 inline LRESULT CALLBACK tipProc(HWND w,UINT m,WPARAM a,LPARAM b,UINT_PTR id,DWORD_PTR){
- if(m==WM_NCDESTROY){delete (std::wstring*)RemovePropW(w,L"RA2.Tip.Text");auto tip=(HWND)RemovePropW(w,L"RA2.Tip.Window");if(tip)DestroyWindow(tip);RemovePropW(w,L"RA2.Tip.Registered");RemovePropW(w,L"RA2.Tip.ParentRect");RemoveWindowSubclass(w,tipProc,id);return DefSubclassProc(w,m,a,b);}
+ if(m==WM_NCDESTROY){auto tooltip=(HWND)RemovePropW(w,L"RA2.Tip.Window");
+  if(tooltip&&IsWindow(tooltip)){TOOLINFOW info{sizeof info};info.hwnd=GetParent(w);info.uId=(UINT_PTR)w;SendMessageW(tooltip,TTM_DELTOOLW,0,(LPARAM)&info);}
+  delete (std::wstring*)RemovePropW(w,L"RA2.Tip.Text");RemovePropW(w,L"RA2.Tip.Registered");RemovePropW(w,L"RA2.Tip.ParentRect");RemoveWindowSubclass(w,tipProc,id);return DefSubclassProc(w,m,a,b);}
  auto result=DefSubclassProc(w,m,a,b);
  if(m==WM_ENABLE||m==WM_SHOWWINDOW||(m==WM_WINDOWPOSCHANGED&&GetPropW(w,L"RA2.Tip.ParentRect")))updateTip(w);
  return result;
@@ -50,7 +67,7 @@ inline void tip(HWND control,const std::wstring& text){
  HWND tooltip=(HWND)GetPropW(control,L"RA2.Tip.Window");
  if(!storage){storage=new std::wstring;SetPropW(control,L"RA2.Tip.Text",storage);SetWindowSubclass(control,tipProc,0x6220,0);}
  *storage=text;
- if(!tooltip){tooltip=CreateWindowExW(WS_EX_TOPMOST,TOOLTIPS_CLASSW,nullptr,WS_POPUP|TTS_ALWAYSTIP|TTS_NOPREFIX,CW_USEDEFAULT,CW_USEDEFAULT,CW_USEDEFAULT,CW_USEDEFAULT,GetParent(control),nullptr,GetModuleHandleW(nullptr),nullptr);SetPropW(control,L"RA2.Tip.Window",tooltip);}
+ if(!tooltip){tooltip=sharedTooltip(GetParent(control));SetPropW(control,L"RA2.Tip.Window",tooltip);}
  if(!tooltip)return;updateTip(control);
  SendMessageW(tooltip,TTM_SETMAXTIPWIDTH,0,scale(440,windowDpi(control)));SendMessageW(tooltip,TTM_SETDELAYTIME,TTDT_INITIAL,450);SendMessageW(tooltip,TTM_SETDELAYTIME,TTDT_AUTOPOP,15000);
 }
