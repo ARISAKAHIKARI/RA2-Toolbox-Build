@@ -27,11 +27,11 @@ jobs:
           $flags=@('-std=c++17','-O2','-UNDEBUG')
           & $env:ZIG_EXE rc /fo broker-fixture/broker.res source/runtime_broker/source/app.rc
           if($LASTEXITCODE -ne 0){throw 'Broker resource compilation failed'}
-          & $env:ZIG_EXE c++ -target x86-windows-gnu @flags -municode source/runtime_broker/source/main.cpp broker-fixture/broker.res -o broker-fixture/GameRuntimeHost32.exe -Wl,--subsystem,windows -lkernel32 -luser32
+          & $env:ZIG_EXE c++ -target x86-windows-gnu @flags -municode source/runtime_broker/source/main.cpp broker-fixture/broker.res -o broker-fixture/GameRuntimeHost32.exe '-Wl,--subsystem,windows' -lkernel32 -luser32
           if($LASTEXITCODE -ne 0){throw 'Production broker compilation failed'}
           & $env:ZIG_EXE c++ -target x86_64-windows-gnu @flags -municode source/assist/tests/runtime_broker_windows.cpp -o broker-fixture/runtime-broker-test.exe -lkernel32 -luser32
           if($LASTEXITCODE -ne 0){throw 'Controller compilation failed'}
-          & $env:ZIG_EXE c++ -target x86-windows-gnu @flags -municode source/assist/tests/runtime_broker_target_windows.cpp -o broker-fixture/BrokerTarget32.exe -Wl,--subsystem,windows -lkernel32 -luser32
+          & $env:ZIG_EXE c++ -target x86-windows-gnu @flags -municode source/assist/tests/runtime_broker_target_windows.cpp -o broker-fixture/BrokerTarget32.exe '-Wl,--subsystem,windows' -lkernel32 -luser32
           if($LASTEXITCODE -ne 0){throw 'Target compilation failed'}
           & $env:ZIG_EXE c++ -target x86-windows-gnu @flags -shared source/assist/tests/runtime_broker_runtime_windows.cpp source/assist/tests/runtime_broker_runtime_windows.def -o broker-fixture/GameRuntime.dll -lkernel32 -luser32
           if($LASTEXITCODE -ne 0){throw 'Runtime fixture compilation failed'}
