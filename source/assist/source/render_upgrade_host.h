@@ -40,6 +40,9 @@ struct Observation {
 };
 static external::ReadSession sampleReader;
 static external::radar::Sampler<external::SharedReadView> sampler(external::SharedReadView{&sampleReader});
+// Full-map paging runs on a third independent thread, never on actor/render threads.
+static external::ReadSession terrainReader;
+static external::radar::Sampler<external::SharedReadView> terrainSampler(external::SharedReadView{&terrainReader});
 static uint32_t process=0,epoch=0;static bool active=false;static uint64_t imageToken=0;
 static constexpr UINT ReadyMessage=WM_APP+20;
 static std::atomic<bool> readyPending{false};
@@ -67,6 +70,19 @@ static std::wstring lastStatusText;
 static void statusText(const std::wstring&text){
  if(lastStatusText==text)return;lastStatusText=text;SetWindowTextW(GetDlgItem(ui,9303),text.c_str());
 }
+static asyncwork::Recurring<Request,external::radar::Frame> terrainWorker([](const Request&r)->std::shared_ptr<const external::radar::Frame>{
+ static uint64_t lastGen=0;static uint32_t lastPid=0,lastMatch=0,lastReveal=~0u;
+ if(lastGen!=r.generation||lastPid!=r.pid||lastMatch!=r.match||lastReveal!=r.reveal){
+  terrainReader.close();terrainSampler.reset();lastGen=r.generation;lastPid=r.pid;lastMatch=r.match;lastReveal=r.reveal;
+ }
+ if(!terrainReader.open(r.pid))return {};
+ terrainReader.begin();
+ if(!terrainSampler.step(r.reveal,8192,true)||!terrainSampler.hasTerrain())return {};
+ auto result=std::make_shared<external::radar::Frame>(terrainSampler.terrainSnapshot(GetTickCount()));
+ auto fresh=[](uint32_t p,void*out,size_t n){return terrainReader.readFresh(p,out,n);};
+ if(!external::radar::sameWorld(*result,external::radar::publicationContext(fresh)))return {};
+ return result;
+});
 static asyncwork::Recurring<Request,Observation> samplingWorker([](const Request&r)->std::shared_ptr<const Observation>{
  static std::shared_ptr<const Observation> last;
  static uint64_t sampleGeneration=0;static uint32_t sampleProcess=0,sampleMatch=0,sampleReveal=~0u;
@@ -76,21 +92,23 @@ static asyncwork::Recurring<Request,Observation> samplingWorker([](const Request
   sampleProcess=r.pid;sampleMatch=r.match;sampleReveal=r.reveal;
  }
  if(!sampleReader.open(r.pid))return {};
+ sampleReader.begin();
  auto fresh=[](uint32_t p,void*out,size_t n){return sampleReader.readFresh(p,out,n);};
  external::mainview::View before;
  if(!external::mainview::sample(fresh,before)||!renderpresentation::sameProjection(before,r.view)||before.frame<r.view.frame)return {};
  // Coalesce very fast UI requests without retaining an old observation for
  // a whole render. Paused games still resample and continue terrain paging.
  if(last&&last->current->frame==before.frame&&DWORD(GetTickCount()-last->tick)<8)return last;
- if(!sampler.hasTerrain())if(auto shared=external::radar::sceneBank().get(r.pid,r.match,r.reveal,GetTickCount()))sampler.seedTerrain(*shared);
- if(!sampler.step(r.reveal,8192,true))return {};
- // Terrain paging can take several simulation ticks. Start a fresh page
- // epoch for actors AFTER that work, rather than labelling old actor pages
- // with the terrain scan's starting frame and rejecting every slow sample.
+ // Reuse completed immutable terrain, never scan its 262k cells on the actor clock.
+ auto source=terrainWorker.get();
+ if(!source||!source->terrain||!external::radar::sameWorld(*source,external::radar::publicationContext(fresh)))
+  source=external::radar::sceneBank().get(r.pid,r.match,r.reveal,GetTickCount());
+ if(!source||!source->terrain||!external::radar::sameWorld(*source,external::radar::publicationContext(fresh)))return {};
+ sampler.seedTerrain(*source);
  sampleReader.begin();external::mainview::View actorView;
  if(!external::mainview::sample(fresh,actorView)||!renderpresentation::sameProjection(before,actorView)||actorView.frame<before.frame)return {};
  auto raw=sampler.snapshot(GetTickCount(),actorView.frame);
- if(!raw.terrain||!raw.markerScanValid||!external::radar::freshMarkers(raw,external::radar::publicationContext(fresh)))return {};
+ if(!raw.terrain||!raw.markerScanValid||!external::radar::sameWorld(raw,external::radar::publicationContext(fresh)))return {};
  external::SharedReadView cached{&sampleReader};external::GameView game(cached);
  const uint32_t rules=game.get<uint32_t>(0x8871E0);
  double yellow=rules>=0x10000?game.get<double>(rules+0x1700,.5):.5;
@@ -106,8 +124,8 @@ static asyncwork::Recurring<Request,Observation> samplingWorker([](const Request
  raw.posesPrepared=true;
  external::mainview::View captured;
  if(!external::mainview::sample(fresh,captured)||!renderpresentation::sameProjection(before,captured)||
-    !renderpresentation::sampleAdvance(actorView.frame,raw.frame,captured.frame)||
-    !external::radar::freshMarkers(raw,external::radar::publicationContext(fresh)))return {};
+    !renderpresentation::sampleAdvance(actorView.frame,raw.frame,captured.frame,uint32_t(std::clamp(presentationNow()-started,0.,10000.)))||
+    !external::radar::sameWorld(raw,external::radar::publicationContext(fresh)))return {};
  auto out=std::make_shared<Observation>();out->request=r;out->view=captured;
  out->tick=GetTickCount();out->observedMs=presentationNow();out->readMs=out->observedMs-started;
  out->current=std::make_shared<const external::radar::Frame>(std::move(raw));
@@ -144,7 +162,8 @@ static asyncwork::Recurring<Request,Frame> worker([](const Request&r)->std::shar
  if(!observed||observed->request.generation!=r.generation||observed->request.pid!=r.pid||
     observed->request.match!=r.match||observed->request.reveal!=r.reveal||
     !renderpresentation::sameProjection(observed->view,before)||
-    !external::radar::freshMarkers(*observed->current,external::radar::publicationContext(fresh)))return unavailable();
+    !external::radar::sameWorld(*observed->current,external::radar::publicationContext(fresh))||
+    uint32_t(GetTickCount()-observed->tick)>250)return unavailable();
  static uint32_t timelineReveal=~0u;
  if(!sampleValid||timelineReveal!=r.reveal||observed->current->frame<sampledLogicFrame){
   timeline.reset();sampledLogicFrame=-1;timelineReveal=r.reveal;
@@ -236,10 +255,10 @@ static asyncwork::Recurring<Request,Frame> worker([](const Request&r)->std::shar
  lastFrameCompleteMs=completedMs;hasFrameCompleteTime=true;progress=2;return out;
 },notifyReady);
 #include "render_feedback_host.h"
-static void suspendScene(){neuralRenderer.cancel();cameraPrefetch.reset();groupLease.reset();if(active){active=false;++generation;worker.invalidate();samplingWorker.invalidate();}feedback::hide();imageToken=0;overlaycompositor::host().hide(overlaycompositor::RenderUpgrade);}
+static void suspendScene(){neuralRenderer.cancel();cameraPrefetch.reset();groupLease.reset();if(active){active=false;++generation;worker.invalidate();samplingWorker.invalidate();terrainWorker.invalidate();}feedback::hide();imageToken=0;overlaycompositor::host().hide(overlaycompositor::RenderUpgrade);}
 static void suspend(){viewLease.reset();suspendScene();}
 static void stop(){suspend();overlaycompositor::host().suspend();}
-static void shutdown(){stop();worker.shutdown();samplingWorker.shutdown();neuralRenderer.reset();feedback::shutdown();overlaycompositor::host().shutdown();}
+static void shutdown(){stop();worker.shutdown();samplingWorker.shutdown();terrainWorker.shutdown();neuralRenderer.reset();feedback::shutdown();overlaycompositor::host().shutdown();}
 static void updateNeuralStatus(bool force=false){
  HWND label=GetDlgItem(ui,9312);if(!label)return;
  static renderpresentation::StatusCadence cadence;
@@ -396,6 +415,7 @@ static void update(POINT origin,const RECT&client,const external::display::State
   layers=groupLease.layers();presentedFrame=groupLease.frame();displaying=true;
  }else{layers.clear();groupLease.reset();imageToken=0;if(!fresh)feedback::hide();}
  overlaycompositor::host().replaceGroupAt(request.context,{overlaycompositor::RenderUpgrade,feedback::SelectionLayer,feedback::CursorLayer},std::move(layers));
+ terrainWorker.submit(request,std::clamp(informationFPS(),30,120));
  samplingWorker.submit(request,informationFPS());
  worker.submit(request,informationFPS());
  const uint32_t now=GetTickCount();
