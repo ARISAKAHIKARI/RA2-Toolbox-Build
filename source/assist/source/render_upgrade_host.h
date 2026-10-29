@@ -6,6 +6,9 @@
 #include "../../external_reader/source/feedback_scene.h"
 #include "../../external_reader/source/feedback_orders.h"
 #include "../../external_reader/source/feedback_cursor.h"
+#include "../../external_reader/source/native_effect_stencil.h"
+#include "../../external_reader/source/native_beam_effects.h"
+#include "../../external_reader/source/native_unit_ui_stencil.h"
 #include "../../external_reader/source/material_motion.h"
 #include <chrono>
 #include "render_presentation.h"
@@ -14,13 +17,13 @@
 // External read/render only. No Runtime requests or engine draw calls.
 namespace renderupgrade {
 static double presentationNow(){return std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now().time_since_epoch()).count();}
-struct Request {uint64_t generation=0;bool materialRefresh=true;int detail=1,colorPrecision=1;uint32_t pid=0,match=0,tick=0;int width=0,height=0;uint32_t reveal=0;int paletteRange=1,pixelScaleMode=0;external::mainview::View view;overlaycompositor::Context context;bool gpu=false,neural=false;uint64_t neuralToken=0;};
+struct Request {uint64_t generation=0;bool materialRefresh=true;int detail=1,colorPrecision=1;uint32_t pid=0,match=0,tick=0;int width=0,height=0;uint32_t reveal=0;int paletteRange=1,pixelScaleMode=0;external::mainview::View view;overlaycompositor::Context context;bool gpu=false,neural=false;uint64_t neuralToken=0;renderpresentation::CameraPrefetch cameraMotion;};
 struct Frame {
  Request request;std::shared_ptr<const external::radar::Scene> image;
  std::vector<external::nativefeedback::Object> objects;
  bool gpuAttempted=false,gpuUsed=false;
  neuralclient::Diagnostics neural;
- uint64_t assetRevision=0;uint32_t sampledTick=0,completedTick=0;int paddingX=0,paddingY=0;double renderMs=0,observationMs=0;int logicFrame=-1;double yellow=.5,red=.25;external::nativefeedback::EffectStatus effects;
+ uint64_t assetRevision=0;uint32_t sampledTick=0,completedTick=0;bool hasCompletionGap=false;int paddingX=0,paddingY=0;double renderMs=0,observationMs=0,completionGapMs=0;int logicFrame=-1;double yellow=.5,red=.25;external::nativefeedback::EffectStatus effects;
 };
 static external::ReadSession reader;
 static external::cameraassets::Context<external::ReadSession> assets(reader);
@@ -37,6 +40,7 @@ static int verifiedScaleSetting=-1;static bool verifiedPhysicalSetting=false;
 static renderpresentation::StatusCadence statusCadence;
 static renderpresentation::CameraPrefetch cameraPrefetch;
 static double lastCompletedRenderMs=0;
+static double lastFrameCompleteMs=0;static bool hasFrameCompleteTime=false;
 static neuralclient::Client neuralRenderer;
 static uint64_t neuralFrame=0;
 static neuralhistory::Gate neuralHistory;
@@ -56,8 +60,8 @@ static asyncwork::Latest<Request,Frame> worker([](const Request&r)->std::shared_
  // Failed attempts do not replace a completed image. The UI independently
  // enforces sample/completion age limits and exact world/view/config identity.
  auto unavailable=[]()->std::shared_ptr<const Frame>{return {};};
- if(process!=r.pid||epoch!=r.match){neuralHistory.invalidate();neuralRenderer.reset();reader.close();sampler.reset();renderer.reset();process=r.pid;epoch=r.match;sampleValid=false;timeline.reset();cameraPrefetch.reset();lastCompletedRenderMs=0;}
- if(workerGeneration!=r.generation){neuralHistory.invalidate();neuralRenderer.reset();workerGeneration=r.generation;sampleValid=false;sampledLogicFrame=-1;timeline.reset();cameraPrefetch.reset();lastCompletedRenderMs=0;}
+ if(process!=r.pid||epoch!=r.match){neuralHistory.invalidate();neuralRenderer.reset();reader.close();sampler.reset();renderer.reset();process=r.pid;epoch=r.match;sampleValid=false;timeline.reset();lastCompletedRenderMs=0;hasFrameCompleteTime=false;}
+ if(workerGeneration!=r.generation){neuralHistory.invalidate();neuralRenderer.reset();workerGeneration=r.generation;sampleValid=false;sampledLogicFrame=-1;timeline.reset();lastCompletedRenderMs=0;hasFrameCompleteTime=false;}
  if(!r.neural&&neuralPreviouslyRequested){neuralHistory.invalidate();neuralRenderer.reset();}
  neuralPreviouslyRequested=r.neural;
  if(!reader.open(r.pid)){progress=-1;return unavailable();}
@@ -111,7 +115,7 @@ static asyncwork::Latest<Request,Frame> worker([](const Request&r)->std::shared_
  const double paddingX=double(border.paddingX)*before.width/r.width,paddingY=double(border.paddingY)*before.height/r.height;
  // Use the SAME pixel budget, biased toward actually observed camera motion.
  // This changes only the source crop, never the game camera or object state.
- const auto renderView=cameraPrefetch.center(before,GetTickCount(),lastCompletedRenderMs,paddingX,paddingY);
+ const auto renderView=r.cameraMotion.centerAt(before,GetTickCount(),lastCompletedRenderMs,paddingX,paddingY);
  sampledRequest.view=renderView;sampledRequest.context.cameraX=renderView.cameraX;sampledRequest.context.cameraY=renderView.cameraY;
  auto crop=external::mainview::crop(renderView,data.terrain->geo.offsetX,data.terrain->geo.offsetY);
  renderer.guideEnabled(neuralHost&&r.neural&&r.gpu&&r.detail!=0&&!neuralRenderer.blocked(),r.generation);
@@ -154,10 +158,14 @@ static asyncwork::Latest<Request,Frame> worker([](const Request&r)->std::shared_
  external::mainview::View after;
  if(!external::mainview::sample(fresh,after)||!renderpresentation::sameProjection(before,after)||after.frame<before.frame||
    !external::radar::sameWorld(data,external::radar::publicationContext(fresh)))return unavailable();
- out->image=std::move(scene);out->sampledTick=sampledTick;out->completedTick=GetTickCount();out->renderMs=presentationNow()-started;lastCompletedRenderMs=out->renderMs;progress=2;return out;
+ out->image=std::move(scene);out->sampledTick=sampledTick;out->completedTick=GetTickCount();const double completedMs=presentationNow();out->renderMs=completedMs-started;lastCompletedRenderMs=out->renderMs;
+ // Written exactly once per successful world-frame completion. Reusing or
+ // touching the same frame at a faster UI cadence cannot inflate this rate.
+ out->hasCompletionGap=hasFrameCompleteTime;out->completionGapMs=hasFrameCompleteTime?completedMs-lastFrameCompleteMs:0;
+ lastFrameCompleteMs=completedMs;hasFrameCompleteTime=true;progress=2;return out;
 });
 #include "render_feedback_host.h"
-static void suspendScene(){neuralRenderer.cancel();groupLease.reset();if(active){active=false;++generation;worker.invalidate();}feedback::hide();imageToken=0;overlaycompositor::host().hide(overlaycompositor::RenderUpgrade);}
+static void suspendScene(){neuralRenderer.cancel();cameraPrefetch.reset();groupLease.reset();if(active){active=false;++generation;worker.invalidate();}feedback::hide();imageToken=0;overlaycompositor::host().hide(overlaycompositor::RenderUpgrade);}
 static void suspend(){viewLease.reset();suspendScene();}
 static void stop(){suspend();overlaycompositor::host().suspend();}
 static void shutdown(){stop();worker.shutdown();neuralRenderer.reset();feedback::shutdown();overlaycompositor::host().shutdown();}
@@ -272,9 +280,10 @@ static void update(POINT origin,const RECT&client,const external::display::State
  request.gpu=renderVulkanEnabled;
  request.neural=renderDLSS5Requested;
  request.neuralToken=neuralRenderer.token();
+ cameraPrefetch.observePresentation(view,viewNow);request.cameraMotion=cameraPrefetch;
  auto result=worker.get();
  renderpresentation::Shift shift;
- bool fresh=result&&renderpresentation::scrollUsable(*result,request,GetTickCount(),shift);
+ bool fresh=result&&renderpresentation::scrollVisible(*result,request,GetTickCount(),shift);
  std::shared_ptr<const Frame> feedbackFrame=result;
  auto alignFeedback=[&]{
   feedbackFrame=result;
@@ -299,7 +308,7 @@ static void update(POINT origin,const RECT&client,const external::display::State
    request.view=retry;request.context=overlaycompositor::host().configure(uintptr_t(game),pid,request.match,client.right,client.bottom,
     retry.cameraX,retry.cameraY,true,false,informationFPS(),true);
    context=request.context;viewLease.observe(uintptr_t(game),pid,request.match,client.right,client.bottom,retry,GetTickCount());
-   fresh=result&&renderpresentation::scrollUsable(*result,request,GetTickCount(),shift);
+   fresh=result&&renderpresentation::scrollVisible(*result,request,GetTickCount(),shift);
    layers.clear();alignFeedback();feedbackReady=fresh&&feedback::update(request,feedbackFrame,left,top,layers);
   }
  }
@@ -308,7 +317,7 @@ static void update(POINT origin,const RECT&client,const external::display::State
   auto pixels=std::shared_ptr<const std::vector<uint32_t>>(result->image,&result->image->pixels);
   layers.push_back({overlaycompositor::RenderUpgrade,5,request.context,
    {left+shift.x,top+shift.y,result->image->width,result->image->height},true,255,std::move(pixels),
-   {left,top,request.width,request.height},renderpresentation::sceneCutouts(feedback::nativeCutouts,shift)});imageToken=context.token;
+   {left,top,request.width,request.height},renderpresentation::sceneCutouts(feedback::nativeCutouts,shift,result->image->width,result->image->height)});imageToken=context.token;
   groupLease.publish(request,feedbackFrame,layers,GetTickCount());displaying=true;
  }else if(!feedback::unsafeView&&groupLease.retain(request,GetTickCount())){
   // Preserve the last COMPLETE atomic scene/input group across a short torn
@@ -359,8 +368,11 @@ static void update(POINT origin,const RECT&client,const external::display::State
   if(request.gpu)status+=request.detail==0?L" · 原生合成对照：CPU":presentedFrame->gpuUsed?L" · Vulkan GPU 场景":L" · Vulkan 未启用或已回退 CPU";
   if(request.neural)status+=presentedFrame->neural.used?L" · DLSS 5 已处理":L" · DLSS 5 未生效（保留普通画面）";
   status+=L" · 本帧 "+std::to_wstring(int(std::lround(presentedFrame->renderMs)))+L" ms";
-  status+=L" · 电弧近似；激光/波纹/粒子待补，实机待测";
+  status+=L" · 光棱/激光与矿车采集保留原生像素；电弧近似，辐射束/波纹/粒子待补，实机待测";
  }
+ if(result&&result->hasCompletionGap)status+=L" · 世界新帧间隔 "+std::to_wstring(int(std::lround(result->completionGapMs)))+L" ms";
+ const auto uploads=overlaycompositor::host().uploadStatistics();
+ if(uploads.count)status+=L" · 覆盖层提交间隔 "+std::to_wstring(uploads.intervalMs)+L" ms（连续最大 "+std::to_wstring(uploads.maxGapMs)+L" ms，非显示 FPS）";
  statusText(status);
 }
 }

@@ -36,14 +36,14 @@ View views[external::watch::MaximumWindows];
 external::watch::Target automatic;bool autoSuppressed=false;
 struct Cached {external::voxel::Image image;DWORD retry=0;uint64_t used=0;bool ready=false;std::string issue;};
 using ArtKey=std::tuple<uint32_t,uint32_t,int,int,uint32_t,uint32_t>;
-using ImageKey=std::tuple<uint32_t,uint32_t,int,int,int,int,int,int,int,uint32_t,uint32_t,uint64_t>;
+using ImageKey=std::tuple<uint32_t,uint32_t,int,int,int,int,int,int,int,uint32_t,uint32_t,uint64_t,int>;
 struct ArtCached {typename Assets::ActorArt art;DWORD retry=0;bool ready=false;std::string issue;};
 std::map<ArtKey,ArtCached> actorArt;
 std::map<ImageKey,Cached> images;
 std::map<std::pair<uint32_t,uint32_t>,ImageKey> displayed;
 size_t actorCursor=0;DWORD diagnosticAt=0;uint64_t assetRevision=0;
 ArtKey artKey(const external::watch::Actor&a){return {a.type,a.owner,a.kind,a.pose.variant,a.kind>=5?a.target.pointer:0,a.kind>=5?a.target.id:0};}
-ImageKey imageKey(const external::watch::Actor&a){return {a.type,a.owner,a.kind,a.kind==4?0:a.pose.body,a.kind==4?0:a.pose.turret,a.kind==4?a.stage:a.pose.frame,a.pose.variant,a.pose.buildingFlags,a.pose.doorFrame,a.kind>=5?a.target.pointer:0,a.kind>=5?a.target.id:0,external::voxelposture::signature(a.pose.posture)};}
+ImageKey imageKey(const external::watch::Actor&a){return {a.type,a.owner,a.kind,a.kind==4?0:a.pose.body,a.kind==4?0:a.pose.turret,a.kind==4?a.stage:a.pose.frame,a.pose.variant,a.pose.buildingFlags,a.pose.doorFrame,a.kind>=5?a.target.pointer:0,a.kind>=5?a.target.id:0,external::visual::postureSignature(a.pose),a.pose.turretFrame};}
 static ArtKey imageArtKey(const ImageKey&k){return {std::get<0>(k),std::get<1>(k),std::get<2>(k),std::get<6>(k),std::get<9>(k),std::get<10>(k)};}
 void discardPaletteImages(const ArtKey&key){
  for(auto i=images.begin();i!=images.end();)if(imageArtKey(i->first)==key)i=images.erase(i);else ++i;
@@ -245,7 +245,7 @@ void drawView(Graphics&g,const View&view){
   auto p=position(a);float x=ox+(p.first-cameraX)*scale,y=oy+(p.second-cameraY)*scale;
   auto found=images.find(imageKey(a));if(found==images.end()||!found->second.ready){auto old=displayed.find({a.target.pointer,a.target.id});if(old!=displayed.end())found=images.find(old->second);}
   if(found!=images.end()&&found->second.ready)canvas.blit(found->second.image,x,y,scale,scale,float((int64_t(a.x)+a.y)*15/256.)-15+external::camera::anchorY(a.kind)-a.drawZ+(a.onBridge?60:0),a.light,a.kind==4?12:(a.kind==3||a.kind==5)?2:1,
-    float(std::max(0,external::screenHeight(a.z,frame.zScale)-(frame.tiles[cy*side+cx].level+(a.onBridge?4:0))*15)));
+    a.pose.shadow.known?float(a.pose.shadow.drop):float(std::max(0,external::screenHeight(a.z,frame.zScale)-(frame.tiles[cy*side+cx].level+(a.onBridge?4:0))*15)));
   if(a.target==frame.center.target){focusX=x;focusY=y;}
  }
  // Repair wrenches are native status sprites, not AnimClass world objects.

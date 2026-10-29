@@ -41,7 +41,14 @@ template<class Read>bool capture(Read read,uint32_t p,State&out){
  s.pose.voxel=s.voxel;
  if(s.voxel){s.pose.body=uint8_t(direction(-velocity[1],velocity[0]));
   s.pose.turret=uint8_t(direction(velocity[2],voxel::nativeVoxelSqrt(velocity[0]*velocity[0]+velocity[1]*velocity[1])));s.pose.frame=0;
- }else{s.pose.frame=noRotate?0:int((28-direction(-velocity[1],velocity[0]))&31);if(animLow||animHigh)s.pose.frame=frame;}
+ }else{
+  // A rotating projectile's SHP frames encode facing, not animation time.
+  // Preserve that facing in the pose so numerically adjacent direction frames
+  // cannot be mistaken for a high-refresh animation transition.
+  s.pose.sequence=(animLow||animHigh)?1:noRotate?2:0;
+  if(!noRotate&&!animLow&&!animHigh)s.pose.body=uint8_t(direction(-velocity[1],velocity[0]));
+  s.pose.frame=noRotate?0:int((28-direction(-velocity[1],velocity[0]))&31);if(animLow||animHigh)s.pose.frame=frame;
+ }
  uint8_t animPalette=0,firersPalette=0;
  if(!read(type+0x2A8,&animPalette,1)||!read(type+0x2A9,&firersPalette,1))return false;
  if(s.voxel){if(!read(type+0x2D4,&s.colorIndex,4)||s.colorIndex<0||s.colorIndex>=512)return false;s.palette=SchemePalette;}

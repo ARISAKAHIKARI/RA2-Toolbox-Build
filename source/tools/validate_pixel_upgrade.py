@@ -28,7 +28,7 @@ assert 'pixelScaleMode==1' in canvas and 'regionCache_->sampleRegion(' in canvas
 assert 'std::shared_ptr<xbrzadapter::RegionCache> regionCache_' in canvas
 assert 'pixelScaleMode!=pixelScaleMode_' in scene
 policy=(root/'assist/source/render_presentation.h').read_text(encoding='utf-8')
-assert 'renderpresentation::scrollUsable(*result,request,GetTickCount(),shift)' in worker
+assert 'renderpresentation::scrollVisible(*result,request,GetTickCount(),shift)' in worker
 assert 'a.paletteRange==b.paletteRange' in policy
 assert 'a.pixelScaleMode==b.pixelScaleMode' in policy
 assert 'assets.presentationPalette(r.paletteRange' in worker

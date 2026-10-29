@@ -17,6 +17,12 @@ inline std::mutex mutex;
 inline std::vector<Entry> entries;
 inline bool own(HWND w){DWORD process=0;return w&&IsWindow(w)&&GetWindowThreadProcessId(w,&process)&&process==GetCurrentProcessId();}
 inline bool opaque(Layer l){return l==Layer::Minimap||l==Layer::Watch||l==Layer::Construction;}
+inline bool otherOwner(HWND w){DWORD thread=GetWindowThreadProcessId(w,nullptr);return thread&&thread!=GetCurrentThreadId();}
+inline UINT ownerFlags(HWND w,UINT flags){return otherOwner(w)?flags|SWP_ASYNCWINDOWPOS:flags;}
+inline bool anchored(HWND window,HWND anchor){
+ return (GetWindowLongPtrW(window,GWL_EXSTYLE)&WS_EX_TOPMOST)&&
+  (anchor==HWND_TOPMOST?GetTopWindow(nullptr)==window:GetWindow(window,GW_HWNDPREV)==anchor);
+}
 inline HWND above(HWND window,Layer layer){
  std::lock_guard<std::mutex> lock(mutex);
  entries.erase(std::remove_if(entries.begin(),entries.end(),[](const Entry&e){return !own(e.window);}),entries.end());
@@ -42,6 +48,7 @@ inline BOOL keepAbove(HWND foreground,bool force=false){
  std::vector<Entry> visible;
  {std::lock_guard<std::mutex> lock(mutex);for(const auto&e:entries)if(own(e.window)&&IsWindowVisible(e.window))visible.push_back(e);}
  if(visible.empty()||std::any_of(visible.begin(),visible.end(),[&](const Entry&e){return e.window==foreground;}))return TRUE;
+ std::sort(visible.begin(),visible.end(),[](const Entry&a,const Entry&b){return a.layer!=b.layer?int(a.layer)>int(b.layer):uintptr_t(a.window)>uintptr_t(b.window);});
  // Hidden/system topmost HWNDs may remain above a game which has just covered
  // our entire group. Absolute desktop-top identity cannot validate the cache.
  // Instead prove that EVERY visible member is still above this foreground.
@@ -49,28 +56,34 @@ inline BOOL keepAbove(HWND foreground,bool force=false){
  // audit or an obscured/changed group needs the full desktop scan and repair.
  DWORD now=GetTickCount();
  if(!force&&checked&&foreground==checkedForeground&&DWORD(now-checkedAt)<250&&visible.size()<=64){
-  const uint64_t complete=visible.size()==64?~uint64_t(0):(uint64_t(1)<<visible.size())-1;uint64_t seen=0;int checkedWindows=0;
+  const uint64_t complete=visible.size()==64?~uint64_t(0):(uint64_t(1)<<visible.size())-1;uint64_t seen=0;int checkedWindows=0;size_t previous=visible.size();bool ordered=true;
   for(HWND w=GetWindow(foreground,GW_HWNDPREV);w&&checkedWindows++<4096;w=GetWindow(w,GW_HWNDPREV)){
-   for(size_t n=0;n<visible.size();++n)if(visible[n].window==w)seen|=uint64_t(1)<<n;
-   if(seen==complete)return TRUE;
+   for(size_t n=0;n<visible.size();++n)if(visible[n].window==w){if(n>=previous)ordered=false;previous=n;seen|=uint64_t(1)<<n;}
+   if(seen==complete){if(ordered)return TRUE;break;}
   }
  }
  checked=true;checkedAt=now;checkedForeground=foreground;
- bool behind=false,obscured=false;int scanned=0;
+ bool behind=false,obscured=false,ordered=true;int scanned=0;size_t previous=0;bool found=false;
  for(HWND w=GetTopWindow(nullptr);w&&scanned++<4096;w=GetWindow(w,GW_HWNDNEXT)){
   if(w==foreground){behind=true;continue;}
-  if(behind&&std::any_of(visible.begin(),visible.end(),[&](const Entry&e){return e.window==w;})){obscured=true;break;}
+  for(size_t n=0;n<visible.size();++n)if(visible[n].window==w){if(behind)obscured=true;if(found&&n<=previous)ordered=false;previous=n;found=true;break;}
  }
- if(!obscured)return TRUE;
- std::sort(visible.begin(),visible.end(),[](const Entry&a,const Entry&b){return a.layer!=b.layer?int(a.layer)>int(b.layer):uintptr_t(a.window)>uintptr_t(b.window);});
+ if(!obscured&&ordered)return TRUE;
  // Keep all User32 callbacks outside the registry mutex. Real Windows rejected
  // deferred repairs even with one UI owner. Individual calls preserve the
  // same highest-to-lowest anchor chain without relying on deferred support.
- // No SHOWWINDOW flag can revive a hidden panel.
+ // Cross-owner User32 positioning is asynchronous. Otherwise the compositor
+ // can wait for a UI owner which is itself joining the compositor at shutdown.
+ // No SHOWWINDOW flag can revive a hidden panel. An asynchronously queued
+ // higher anchor must finish before lower members are placed behind it; the
+ // next producer iteration observes completion and continues the same chain.
  constexpr UINT flags=SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE|SWP_NOOWNERZORDER|SWP_NOSENDCHANGING;
  HWND anchor=HWND_TOPMOST;
  for(const auto&e:visible)if(own(e.window)&&IsWindowVisible(e.window)){
-  if(!SetWindowPos(e.window,anchor,0,0,0,0,flags))return FALSE;
+  if(!anchored(e.window,anchor)){
+   if(!SetWindowPos(e.window,anchor,0,0,0,0,ownerFlags(e.window,flags)))return FALSE;
+   if(otherOwner(e.window)&&!anchored(e.window,anchor))return TRUE;
+  }
   anchor=e.window;
  }
  return TRUE;
@@ -82,14 +95,14 @@ inline BOOL place(HWND window,Layer layer,int x,int y,int w,int h,UINT flags){
  // Static panels and keepalives should not repeatedly trigger User32 position
  // callbacks or discard their painted content. Only skip a request whose real
  // geometry, visibility, topmost state and immediate layer anchor agree.
- const bool ordered=(GetWindowLongPtrW(window,GWL_EXSTYLE)&WS_EX_TOPMOST)&&
-  (anchor==HWND_TOPMOST?GetTopWindow(nullptr)==window:GetWindow(window,GW_HWNDPREV)==anchor);
+ const bool ordered=anchored(window,anchor);
  RECT current{};const bool geometry=GetWindowRect(window,&current)&&
   ((flags&SWP_NOMOVE)||(current.left==x&&current.top==y))&&
   ((flags&SWP_NOSIZE)||(current.right-current.left==w&&current.bottom-current.top==h));
  constexpr UINT ordinary=SWP_NOMOVE|SWP_NOSIZE|SWP_NOZORDER|SWP_NOACTIVATE|SWP_SHOWWINDOW|SWP_NOOWNERZORDER|SWP_NOSENDCHANGING|SWP_NOCOPYBITS;
  if(!(flags&~ordinary)&&ordered&&geometry&&IsWindowVisible(window))return keepAbove(GetForegroundWindow());
- if(!SetWindowPos(window,anchor,x,y,w,h,(flags&~SWP_NOZORDER)|SWP_NOACTIVATE|SWP_NOOWNERZORDER))return FALSE;
+ // A successful foreign-owner request means queued, not synchronously applied.
+ if(!SetWindowPos(window,anchor,x,y,w,h,ownerFlags(window,(flags&~SWP_NOZORDER)|SWP_NOACTIVATE|SWP_NOOWNERZORDER)))return FALSE;
  return keepAbove(GetForegroundWindow(),!ordered);
 }
 inline void forget(HWND window){

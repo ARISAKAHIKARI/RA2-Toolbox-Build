@@ -14,6 +14,7 @@ start=source.index(' Context configure(')
 end=source.index(' void suspend()',start)
 methods=source[start:end]
 header=(root/'shared/source/overlay_composition.h').as_posix()
+statistics='struct UploadStatistics {'+source.split('struct UploadStatistics {',1)[1].split('};',1)[0]+'};'
 fixture=r'''
 #include "HEADER"
 #include "GROUP"
@@ -28,15 +29,17 @@ using DWORD=uint32_t;
 static uint64_t GetTickCount64(){return 1000;}
 using overlaycomposition::Context;using overlaycomposition::Surface;
 struct Node {Surface surface;uint64_t lastSeen=0;};
+STATISTICS
 class Host {
  std::mutex mutex;std::condition_variable cv;std::thread thread;
  std::map<uint64_t,Node>nodes;Context context{};
  uint64_t generation=0,revision=0,heartbeat=0;bool enabled=false,stop=false,top=false;
  int rate=60;DWORD error=0;bool startupFailed=false;
+ UploadStatistics uploadStatistics_{};bool uploadContinuous_=false;
  void run(){}
 public:
  ~Host(){if(thread.joinable())thread.join();}
-'''.replace('HEADER',header).replace('GROUP',(root/'shared/source/overlay_group.h').as_posix())
+'''.replace('HEADER',header).replace('GROUP',(root/'shared/source/overlay_group.h').as_posix()).replace('STATISTICS',statistics)
 observers=r'''
  bool snapshotValid(){std::lock_guard<std::mutex>lock(mutex);auto i=nodes.find(3);
   return i!=nodes.end()&&overlaycomposition::valid(i->second.surface,context);}

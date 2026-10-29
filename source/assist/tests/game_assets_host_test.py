@@ -230,7 +230,11 @@ int main(int argc,char**argv){
  word(memory,slopeLoco,0x7E7EB0);word(memory,slopeLoco+8,slopeActor);word(memory,slopeLoco+0x18,1);word(memory,slopeLoco+0x1C,1);
  half(memory,slopeActor+0x388,8*2048);half(memory,slopeActor+0x38C,8*2048);word(memory,slopeActor+0x390,-1);
  std::array<float,12> slopeMatrix{{.96f,0,.28f,0,0,1,0,0,-.28f,0,.96f,0}};memcpy(memory.data()+0xB45188+48,slopeMatrix.data(),48);
- auto liveSlope=external::visual::pose(game,slopeActor,slopeType,2,10);assert(liveSlope.voxel&&liveSlope.posture.active&&liveSlope.posture.available);
+ constexpr uint32_t shadowCell=0x38C000;word(memory,0x1E0000+(30*512+20)*4,shadowCell);half(memory,shadowCell+0x24,20);half(memory,shadowCell+0x26,30);memory[shadowCell+0x11C]=1;
+ word(memory,slopeActor+0x9C,20*256+128);word(memory,slopeActor+0xA0,30*256+128);word(memory,slopeActor+0xA4,52);
+ word(memory,0x89E7C0,104);memory[0x89E770]=7;double slopeScale=104./256,zScale=.14433756729740643;memcpy(memory.data()+0x89E740,&slopeScale,8);memcpy(memory.data()+0xB0CD48,&zScale,8);
+ std::array<double,5> floorTerms{{1,0,0,104,0}};memcpy(memory.data()+0x81C900,floorTerms.data(),sizeof floorTerms);
+ auto liveSlope=external::visual::pose(game,slopeActor,slopeType,2,10);assert(liveSlope.voxel&&liveSlope.posture.active&&liveSlope.posture.available&&liveSlope.shadow.known&&liveSlope.shadow.posture.available&&liveSlope.shadow.drop==0);
  auto geometryData=v.model.faces.data();auto geometrySize=v.model.faces.size();int slopeFileReads=fileReads;
  external::voxel::Image flatVoxel,slopedVoxel;assert(gameassets::renderActor(v,{},flatVoxel)&&gameassets::renderActor(v,liveSlope,slopedVoxel));
  assert(flatVoxel.pixels!=slopedVoxel.pixels&&v.model.faces.data()==geometryData&&v.model.faces.size()==geometrySize&&fileReads==slopeFileReads);
@@ -241,12 +245,34 @@ int main(int argc,char**argv){
  assert(external::camera::pixels(gpuVoxel)>=size_t(gpuVoxel.width)*gpuVoxel.height&&external::gpuvoxel::materialize(gpuVoxel,materialized));
  assert(materialized.pixels==slopedVoxel.pixels&&materialized.indices==slopedVoxel.indices&&materialized.depth.empty()&&!materialized.gpuRaster&&!materialized.writeDepth);
  gameassets::context.presentationGPU(false);v.shadow=true;external::voxel::Image cpuShadowed;assert(gameassets::renderActor(v,liveSlope,cpuShadowed));
+ auto flatShadow=liveSlope;flatShadow.shadow.posture.ramp=external::voxelposture::identity();flatShadow.shadow.posture.active=false;
+ auto broadFootprint=v;for(auto&f:broadFootprint.model.faces)for(auto&p:f.p){p.x*=4;p.y*=4;}
+ external::voxel::Image broadSloped,broadFlat;assert(gameassets::renderActor(broadFootprint,liveSlope,broadSloped)&&gameassets::renderActor(broadFootprint,flatShadow,broadFlat));
+ assert(broadSloped.attachments[0].pixels!=broadFlat.attachments[0].pixels&&"Cell ramp changes the shadow footprint independently of the hull draw matrix");
  gameassets::context.presentationGPU(true);assert(gameassets::renderActor(v,liveSlope,gpuVoxel)&&gpuVoxel.attachments.size()==1&&gpuVoxel.attachments[0].gpuRaster&&gpuVoxel.attachments[0].shadow);
  external::camera::Surface cpuFallback,expectedFallback;assert(cpuFallback.reset(128,128)&&expectedFallback.reset(128,128));cpuFallback.blit(gpuVoxel,64,64,1,1,100,{});expectedFallback.blit(cpuShadowed,64,64,1,1,100,{});
  assert(cpuFallback.color==expectedFallback.color&&cpuFallback.depth==expectedFallback.depth&&v.model.faces.data()==geometryData&&fileReads==slopeFileReads);
  gameassets::context.presentationGPU(false);v.shadow=false;
  std::cout<<"PASS production GPU VXL/flattened shadow deferral, current posture/color packet, bounded cache accounting and identical same-frame CPU fallback\n";
  std::cout<<"PASS production native Drive posture -> retained VXL model -> changed slope pixels without geometry decode or disk IO\n";
+ // SHP vehicles have an independent 32-facing turret bank in this same SHP.
+ // Exercise both owned archive bytes and direct in-memory SHP decode paths.
+ constexpr uint32_t shpActor=0x390000,shpType=0x394000,shpPointer=0x398000;word(memory,shpType+0xB0,0);memory[shpType+0xCA1]=1;memory[shpType+0xE5C]=1;word(memory,shpActor+0x6C0,uint32_t(-1));word(memory,shpActor+0x3A8,uint32_t(-1));
+ auto turretShape=std::vector<uint8_t>(8+96*26);half(turretShape,2,2);half(turretShape,4,1);half(turretShape,6,96);
+ for(int f=0;f<96;++f){size_t at=8+f*24,data=8+96*24+f*2;half(turretShape,at,1);half(turretShape,at+2,1);half(turretShape,at+4,2);half(turretShape,at+6,1);word(turretShape,at+20,uint32_t(data));}
+ turretShape[8+96*24]=5;turretShape[8+96*24+1]=6;turretShape[8+96*24+12*2+1]=8;turretShape[8+96*24+28*2]=9;
+ memcpy(memory.data()+shpPointer,turretShape.data(),turretShape.size());
+ gameassets::ActorArt shpVehicle;shpVehicle.kind=2;shpVehicle.pointer=shpPointer;shpVehicle.shadow=false;shpVehicle.colors[5]=0xff00aa00;shpVehicle.colors[6]=0xff0000bb;shpVehicle.colors[8]=0xffcc0000;shpVehicle.colors[9]=0xffdddd00;
+ for(bool archived:{true,false}){
+  shpVehicle.shape=archived?turretShape:std::vector<uint8_t>{};half(memory,shpActor+0x3A0,0);half(memory,shpActor+0x3A4,0);
+  auto pose=external::visual::pose(game,shpActor,shpType,2,10);assert(pose.frame==0&&pose.turretFrame==12);external::voxel::Image first;
+  assert(gameassets::renderActor(shpVehicle,pose,first)&&first.attachments.empty()&&!first.incomplete&&first.indices==std::vector<uint8_t>({5,8}));
+  external::camera::Surface surface;assert(surface.reset(64,64));surface.blit(first,20,20,1,1,100,{});size_t leftPixel=size_t(20+first.y)*64+20+first.x;assert(surface.color[leftPixel]==0xff00aa00&&surface.color[leftPixel+1]==0xffcc0000);
+  half(memory,shpActor+0x3A0,16*2048);half(memory,shpActor+0x3A4,16*2048);pose=external::visual::pose(game,shpActor,shpType,2,10);assert(pose.frame==0&&pose.turretFrame==28);
+  assert(gameassets::renderActor(shpVehicle,pose,image)&&image.indices==std::vector<uint8_t>({9,6}));assert(surface.reset(64,64));surface.blit(image,20,20,1,1,100,{});assert(surface.color[leftPixel]==0xffdddd00&&surface.color[leftPixel+1]==0xff0000bb);
+  pose.turretFrame=1000;assert(gameassets::renderActor(shpVehicle,pose,image)&&image.incomplete&&gameassets::failure.find("vehicle-turret/decode:")==0);
+ }
+ std::cout<<"PASS SHP vehicle independent turret frame: archive/live same-shape palette and origin, transparent cutouts, unchanged hull and missing-turret retry\n";
  std::cout<<"PASS production absolute-slot animation -> theater SHP -> Value+Start pixels, power-off first frame, stale slot rejection and voxel scene-depth handoff\n";
  // Successful archived bytes remain resident; repeated frames do no file reads.
  std::vector<uint8_t> bytes;assert(gameassets::files.load("CUSTOMTEM.PAL",bytes));int reads=fileReads;
@@ -506,6 +532,8 @@ int main(int argc,char**argv){
  for(int repeat=0;repeat<10;++repeat){gameassets::context.beginPresentation();assert(gameassets::renderActor(unitArt,liveSlope,cachedGPU)&&cachedGPU.gpuRaster==bodyPacket&&cachedGPU.attachments[0].gpuRaster==shadowPacket);}
  assert(gameassets::context.gpuPreparedBuilds()==unitBuilds);auto unitPosture=liveSlope;unitPosture.posture.forwards+=.02f;
  assert(gameassets::renderActor(unitArt,unitPosture,cachedGPU)&&cachedGPU.gpuRaster!=bodyPacket&&cachedGPU.attachments[0].gpuRaster==shadowPacket);
+ auto unitShadow=liveSlope;unitShadow.shadow.posture.ramp=external::voxelposture::identity();unitShadow.shadow.posture.active=false;
+ assert(gameassets::renderActor(unitArt,unitShadow,cachedGPU)&&cachedGPU.gpuRaster==bodyPacket&&cachedGPU.attachments[0].gpuRaster!=shadowPacket);
  auto originalColor=art.colors[1];art.colors[1]^=0x00010000;assert(gameassets::renderActor(art,projectile.pose,cachedGPU)&&cachedGPU.gpuRaster!=firstPacket);art.colors[1]=originalColor;
  assert(gameassets::renderActor(art,projectile.pose,cachedGPU)&&cachedGPU.gpuRaster==firstPacket);
  auto changedPose=projectile.pose;changedPose.body=(changedPose.body+1)&31;changedPose.bodyFine=-1;

@@ -11,6 +11,7 @@ worker = 'struct Request {' + worker
 # possible without adding diagnostic API to the product.
 worker = worker.replace('class Worker {', 'class Worker {\npublic:', 1)
 worker = worker.replace('std::thread', 'TestThread').replace('std::condition_variable', 'TestCondition')
+worker = worker.replace('std::chrono::steady_clock', 'TestClock')
 period = (root / 'shared/source/monitor_refresh.h').read_text().split('inline uint64_t periodMicros(', 1)[1].split('\n', 1)[0]
 prefix = r'''
 #include <algorithm>
@@ -24,6 +25,11 @@ prefix = r'''
 #include <vector>
 using DWORD=uint32_t;
 static DWORD GetTickCount(){return 1000;}
+static int64_t clockMicros=0,workMicros=0;
+struct TestClock {
+ using duration=std::chrono::microseconds;using time_point=std::chrono::time_point<TestClock,duration>;
+ static time_point now(){return time_point(duration(clockMicros));}
+};
 namespace monitorrefresh {
 constexpr int FallbackHz=60,MinHz=5,MaxHz=500;
 @PERIOD@
@@ -39,9 +45,10 @@ static std::function<void(uint64_t)> atWait;
 struct TestCondition {
  void notify_one(){}
  template<class Lock,class Predicate> void wait(Lock&,Predicate ready){assert(ready());}
- template<class Lock,class Rep,class Period,class Predicate>
- bool wait_for(Lock& lock,std::chrono::duration<Rep,Period> time,Predicate changed){
+ template<class Lock,class Clock,class Duration,class Predicate>
+ bool wait_until(Lock& lock,std::chrono::time_point<Clock,Duration> deadline,Predicate changed){
   assert(!changed());
+  auto time=deadline-Clock::now();if(time<Duration::zero())time=Duration::zero();
   lock.unlock();atWait(std::chrono::duration_cast<std::chrono::microseconds>(time).count());lock.lock();
   // A pure rate update must end the old wait without a world invalidation.
   assert(changed());return true;
@@ -60,7 +67,7 @@ struct Image{int width=320,height=160,units=0;};
 struct Frame {std::shared_ptr<Terrain>terrain=std::make_shared<Terrain>();std::shared_ptr<Image>map,scene;std::vector<int>markers,repairs;bool markerScanValid=false;};
 template<class Assets>struct SceneRenderer {bool capacityExceeded()const{return capacityFailure;}void reset(){++sceneResets;}template<class Read>auto render(const Frame&frame,int w,int h,Read,Assets&){if(capacityFailure)return std::shared_ptr<Image>{};return std::make_shared<Image>(Image{w,h,int(frame.markers.size())});}};
 struct DiagramRenderer {void reset(){++diagramResets;}auto render(std::shared_ptr<Terrain>,int w,int h){return std::make_shared<Image>(Image{w,h});}};
-template<class Read>struct Sampler {explicit Sampler(Read){}void reset(){++samplerResets;}bool step(uint32_t,int,bool){return stepOk;}unsigned revision(){return 1;}Frame snapshot(DWORD){Frame frame;frame.markerScanValid=markerScanValid;if(markerScanValid&&actorCount)frame.markers.push_back(17);return frame;}};
+template<class Read>struct Sampler {explicit Sampler(Read){}void reset(){++samplerResets;}bool step(uint32_t,int,bool){clockMicros+=workMicros;return stepOk;}unsigned revision(){return 1;}Frame snapshot(DWORD){Frame frame;frame.markerScanValid=markerScanValid;if(markerScanValid&&actorCount)frame.markers.push_back(17);return frame;}};
 struct PublicationContext{bool readable=true;};
 template<class Read>PublicationContext publicationContext(Read){return {contextReadable};}
 inline bool sameWorld(const Frame&,PublicationContext context){return context.readable&&worldSame;}inline bool freshMarkers(const Frame&,PublicationContext){return markerFresh;}
@@ -121,7 +128,19 @@ int main(){
  int failedWaits=0;atWait=[&](uint64_t){if(failedWaits++==0){assert(lostStep.get()==cached&&"transient terrain/read failure retains the verified image");worldSame=false;failedRequest.rate=61;lostStep.set(failedRequest);}
   else{assert(!lostStep.get()&&"confirmed world change clears the stale image");lostStep.shutdown();}};
  lostStep.run();assert(failedWaits==2);stepOk=true;worldSame=true;
+ // Inject actual work into the extracted production worker with a controlled
+ // steady clock. Rendering spends the requested interval instead of being
+ // followed by another full interval. Slow frames do not accumulate debt.
+ minimap::Worker paced;minimap::Request pacedRequest{2,3,144,0,1,320,160};paced.set(pacedRequest);int pacedWaits=0;
+ workMicros=5000;
+ atWait=[&](uint64_t micros){
+  if(pacedWaits++==0){assert(micros==1944);workMicros=18000;pacedRequest.rate=145;paced.set(pacedRequest);}
+  else if(pacedWaits==2){assert(micros==0);workMicros=2000;pacedRequest.rate=144;paced.set(pacedRequest);}
+  else{assert(micros==4944);paced.shutdown();}
+ };
+ paced.run();assert(pacedWaits==3);workMicros=0;
  std::cout<<"PASS production minimap worker: rate updates, transient sampling/context failure retains units, verified world/empty change clears, capacity retry and recovery\n";
+ std::cout<<"PASS production minimap deadlines: 5/18/2ms controlled work consumes each period; slow work adds no full wait or catch-up debt\n";
 }
 '''
 code = prefix.replace('@PERIOD@', 'inline uint64_t periodMicros(' + period) + worker + suffix

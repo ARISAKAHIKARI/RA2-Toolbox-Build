@@ -1,6 +1,7 @@
 #include "../../external_reader/source/shared_reader.h"
 #include "../../external_reader/source/process_discovery.h"
 #include "../../shared/source/modern_ui.h"
+#include "../../shared/source/settings_dialog.h"
 #include "../../shared/source/overlay_stack.h"
 #include "../../shared/source/disabled_choices.h"
 #include "../../shared/source/release_version.h"
@@ -80,6 +81,13 @@ static void textIfChanged(HWND w,const std::wstring& text){if(!IsWindow(w))retur
 
 static std::wstring root,gameDir,cacheKey,mode=L"hide";
 static external::ReadSession cursorReader;static DWORD pid=0,threadId=0;static HWND game=nullptr,mainw,overlay,statusw;
+static int cursorDialog(const wchar_t*text,const wchar_t*title,UINT flags){
+#ifdef RA2_UNIFIED
+ return settingsdialog::message(mainw,true,text,title,flags);
+#else
+ return settingsdialog::message(mainw,false,text,title,flags);
+#endif
+}
 static Asset asset;static Bytes original;static DWORD palette[256];static bool loaded=false,running=false,installOwned=false;
 static bool hideConfirmed=false;static LONG lastRehideSeen=0;static gameinput::Subscription hook;static HANDLE mapping;static Shared* shared;
 // v1.2.7: platform host matching + immediate Hook on start.
@@ -416,7 +424,7 @@ static bool anyGame(){auto scan=external::discovery::scan();return scan.processC
 static void install(){if(gameDir.empty()||!loaded)fail("Select the game folder first; bundled assets must be readable");if(anyGame())fail("Exit all Yuri game processes before installing");std::wstring dst=gameDir+L"\\mouse.sha",mark=dst+L".cursor-preview-state",bak=dst+L".cursor-preview-backup";if(exists(mark)||exists(bak))fail("Existing preview state/backup found. Restore first; never overwrite backups");if(manuallyBlankSHA()){status(L"检测到手动放入的透明 SHA，已可直接选择替换 SHA 模式；没有本程序的自动恢复备份。");return;}Bytes blank=encode(asset,true);save(cacheKey+L"\\transparent.sha",blank);bool had=exists(dst);if(had&&!CopyFileW(dst.c_str(),bak.c_str(),TRUE))fail("Backup failed");Bytes m={uint8_t(had?1:0)};try{save(mark,m);save(dst,blank);}catch(...){if(had)CopyFileW(bak.c_str(),dst.c_str(),FALSE);else DeleteFileW(dst.c_str());throw;}installOwned=true;status(L"透明 SHA 已安装。重开游戏，连接，再启动外部光标。不要叠加旧 HWCursor。");}
 static void restoreFile(){if(gameDir.empty())fail("Attach once to identify the game directory");if(anyGame())fail("Exit all Yuri game processes before restoring SHA");std::wstring dst=gameDir+L"\\mouse.sha",mark=dst+L".cursor-preview-state",bak=dst+L".cursor-preview-backup";if(!exists(mark)){
   if(manuallyBlankSHA()){
-   if(MessageBoxW(mainw,L"检测到此前手动放入的透明 mouse.sha。\n将用本程序内置的已验证的缓存原图恢复；同时保留当前透明文件的唯一备份。确定？",L"恢复手动透明 SHA",MB_YESNO|MB_ICONQUESTION)!=IDYES)return;
+   if(cursorDialog(L"检测到此前手动放入的透明 mouse.sha。\n将用本程序内置的已验证的缓存原图恢复；同时保留当前透明文件的唯一备份。确定？",L"恢复手动透明 SHA",MB_YESNO|MB_ICONQUESTION)!=IDYES)return;
    const std::wstring manualBackup=dst+L".manual-transparent-backup";
    if(exists(manualBackup))fail("Manual backup already exists; do not overwrite it");
    if(!CopyFileW(dst.c_str(),manualBackup.c_str(),TRUE))fail("Cannot back up manually installed SHA");
@@ -1152,7 +1160,7 @@ static void applyControlDpi(HWND w,UINT next){
  uiDpi=next;
  if(uiReady){setUiFont();viewport(w,scrollX,scrollY);relayout(w);}
 }
-static void error(const std::exception& e){std::wstring s=widen(e.what());status(L"错误："+s);MessageBoxW(mainw,s.c_str(),L"高刷光标 v" RA2_RELEASE_VERSION_W,MB_OK|MB_ICONWARNING);}
+static void error(const std::exception& e){std::wstring s=widen(e.what());status(L"错误："+s);cursorDialog(s.c_str(),L"高刷光标 v" RA2_RELEASE_VERSION_W,MB_OK|MB_ICONWARNING);}
 static int numeric(HWND w,int min,int max){wchar_t b[32];GetWindowTextW(w,b,32);wchar_t* end;long n=wcstol(b,&end,10);if(end==b||*end||n<min||n>max)fail("Invalid numeric setting; check the range in README");return (int)n;}
 static void applyTargetRate(){
  wchar_t text[32];GetWindowTextW(targetBox,text,32);
@@ -1306,7 +1314,7 @@ static void pollPrepare(){
 
 static bool cursorCloseAllowed(){
  if(mode==L"sha"&&live()&&(exists(gameDir+L"\\mouse.sha.cursor-preview-state")||manuallyBlankSHA()))
-  return MessageBoxW(mainw,L"游戏正在使用透明光标。退出工具箱后可能看不到指针。\n建议先退出游戏，再恢复 SHA。仍退出？",L"透明 SHA",MB_YESNO|MB_ICONWARNING)==IDYES;
+  return cursorDialog(L"游戏正在使用透明光标。退出工具箱后可能看不到指针。\n建议先退出游戏，再恢复 SHA。仍退出？",L"透明 SHA",MB_YESNO|MB_ICONWARNING)==IDYES;
  return true;
 }
 #include "ddraw_settings_ui.h"
@@ -1595,7 +1603,7 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR cmd,int){
 #else
  ShowWindow(mainw,SW_SHOW);
 #endif
- updatePrimaryAction();if(wcsstr(cmd,L"restore")){try{restoreFile();MessageBoxW(mainw,lastStatus.c_str(),L"恢复 SHA",MB_OK);}catch(const std::exception& e){error(e);}DestroyWindow(mainw);return 0;}RegisterHotKey(mainw,1,MOD_CONTROL|MOD_ALT|MOD_NOREPEAT,VK_F11);RegisterHotKey(mainw,2,MOD_CONTROL|MOD_ALT|MOD_NOREPEAT,VK_F12);RegisterHotKey(mainw,3,MOD_CONTROL|MOD_ALT|MOD_NOREPEAT,VK_F10);RegisterHotKey(mainw,4,MOD_CONTROL|MOD_ALT|MOD_NOREPEAT,VK_F9);timeBeginPeriod(1);QueryPerformanceFrequency(&freq);LARGE_INTEGER next;QueryPerformanceCounter(&next);updateRefresh(true);MSG msg;bool quit=false;
+ updatePrimaryAction();if(wcsstr(cmd,L"restore")){try{restoreFile();cursorDialog(lastStatus.c_str(),L"恢复 SHA",MB_OK);}catch(const std::exception& e){error(e);}DestroyWindow(mainw);return 0;}RegisterHotKey(mainw,1,MOD_CONTROL|MOD_ALT|MOD_NOREPEAT,VK_F11);RegisterHotKey(mainw,2,MOD_CONTROL|MOD_ALT|MOD_NOREPEAT,VK_F12);RegisterHotKey(mainw,3,MOD_CONTROL|MOD_ALT|MOD_NOREPEAT,VK_F10);RegisterHotKey(mainw,4,MOD_CONTROL|MOD_ALT|MOD_NOREPEAT,VK_F9);timeBeginPeriod(1);QueryPerformanceFrequency(&freq);LARGE_INTEGER next;QueryPerformanceCounter(&next);updateRefresh(true);MSG msg;bool quit=false;
  HANDLE frameTimer=CreateWaitableTimerExW(nullptr,nullptr,0x2,TIMER_ALL_ACCESS);
  if(!frameTimer)frameTimer=CreateWaitableTimerW(nullptr,FALSE,nullptr);
  LONGLONG armedDeadline=0;

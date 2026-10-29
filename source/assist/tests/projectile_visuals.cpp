@@ -19,8 +19,8 @@ int main(){
  for(int damage:{-200,0,1,500}){put(p+0x6C,damage);assert(external::projectiles::capture(read,p,s));}
  assert(external::projectiles::all(read).size()==1);assert(s.layer==3);memory[t+0x2F7]=1;assert(external::projectiles::capture(read,p,s)&&s.layer==1);memory[t+0x2F7]=0;
  memory[t+0x2A1]=0;double velocity[3]{1,0,0};memcpy(memory.data()+p+0xE8,velocity,sizeof velocity);
- for(auto test:std::vector<std::array<double,3>>{{1,0,20},{0,1,12},{-1,0,4},{0,-1,28}}){velocity[0]=test[0];velocity[1]=test[1];memcpy(memory.data()+p+0xE8,velocity,sizeof velocity);assert(external::projectiles::capture(read,p,s)&&s.pose.frame==int(test[2]));}
- memory[t+0x2F4]=2;memory[p+0x12C]=17;assert(external::projectiles::capture(read,p,s)&&s.pose.frame==17);memory[t+0x2F4]=0;memory[t+0x2F5]=2;assert(external::projectiles::capture(read,p,s)&&s.pose.frame==17);memory[t+0x2F5]=0;
+ for(auto test:std::vector<std::array<double,3>>{{1,0,20},{0,1,12},{-1,0,4},{0,-1,28}}){velocity[0]=test[0];velocity[1]=test[1];memcpy(memory.data()+p+0xE8,velocity,sizeof velocity);assert(external::projectiles::capture(read,p,s)&&s.pose.frame==int(test[2])&&s.pose.sequence==0&&s.pose.body==((28-int(test[2]))&31));}
+ memory[t+0x2F4]=2;memory[p+0x12C]=17;assert(external::projectiles::capture(read,p,s)&&s.pose.frame==17&&s.pose.sequence==1&&s.pose.body==0);memory[t+0x2F4]=0;memory[t+0x2F5]=2;assert(external::projectiles::capture(read,p,s)&&s.pose.frame==17&&s.pose.sequence==1);memory[t+0x2F5]=0;
  for(uint32_t address:{p+0x10,p+0xAC,p+0x81,p+0x90,p+0x9C,p+0x158,t+0x29E,t+0x236,t+0x2A1,t+0x2F4,t+0x2A8}){fail=address;external::projectiles::State old;old.id=777;assert(!external::projectiles::capture(read,p,old)&&old.id==777);}fail=0;
  for(uint32_t address:{p+0x81,p+0x158,t+0x29E}){memory[address]=1;assert(!external::projectiles::capture(read,p,s));memory[address]=0;}
  memory[p+0x90]=0;assert(!external::projectiles::capture(read,p,s));memory[p+0x90]=1;

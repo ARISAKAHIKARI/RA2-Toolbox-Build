@@ -35,18 +35,19 @@ int main(){
  auto surface=[&](uint32_t color){auto pixels=std::make_shared<const std::vector<uint32_t>>(64*48,color);return overlaycompositor::Surface{1,10,context,{0,0,64,48},false,255,pixels};};
  bool eligible=true;
  auto pump=[&](auto condition){DWORD start=GetTickCount();while(!condition()&&DWORD(GetTickCount()-start)<5000){if(eligible){host.configure(uintptr_t(game),GetCurrentProcessId(),1,64,48,0,0,true,true,240);host.touch(1,uintptr_t(game),GetCurrentProcessId());}MSG message{};while(PeekMessageW(&message,nullptr,0,0,PM_REMOVE)){TranslateMessage(&message);DispatchMessageW(&message);}Sleep(2);}CHECK(condition());};
- CHECK(context.token&&host.publish(surface(0xff123456)));pump([&]{return successful.load()>0&&host.window()&&IsWindowVisible(host.window());});HWND only=host.window();CHECK(only&&IsWindowVisible(only)&&submittedPixel==0xff123456);
- rejectUploads=true;CHECK(host.publish(surface(0xff223344)));pump([&]{return host.lastError()==ERROR_RETRY;});
+ CHECK(context.token&&host.publish(surface(0xff123456)));pump([&]{return successful.load()>0&&host.window()&&IsWindowVisible(host.window())&&host.uploadStatistics().count>0;});HWND only=host.window();CHECK(only&&IsWindowVisible(only)&&submittedPixel==0xff123456);
+ const auto firstStatistics=host.uploadStatistics();CHECK(firstStatistics.count&&firstStatistics.lastTick);
+ rejectUploads=true;CHECK(host.publish(surface(0xff223344)));pump([&]{return host.lastError()==ERROR_RETRY;});CHECK(host.uploadStatistics().failures>firstStatistics.failures&&host.uploadStatistics().count==firstStatistics.count);
  // A runtime upload error keeps one owner and accepts a newer complete frame.
  // The old implementation returned false here, causing producer HWND fallback.
  CHECK(host.capture(uintptr_t(game),GetCurrentProcessId()).token==context.token);
  CHECK(host.publish(surface(0xff445566))&&host.touch(1,uintptr_t(game),GetCurrentProcessId()));
  CHECK(host.window()==only&&host.layerCount()==1&&IsWindowVisible(only));
  CHECK(host.replaceGroup({2},{overlaycompositor::Surface{2,20,context,{63,47,1,1},false,255,std::make_shared<const std::vector<uint32_t>>(1,0xffffffff)}}));
- unsigned before=successful;rejectUploads=false;pump([&]{return successful>before&&host.lastError()==0&&submittedPixel==0xff445566;});CHECK(host.window()==only&&host.layerCount()==2&&IsWindowVisible(only));
+ unsigned before=successful;rejectUploads=false;pump([&]{return successful>before&&host.lastError()==0&&submittedPixel==0xff445566;});CHECK(host.window()==only&&host.layerCount()==2&&IsWindowVisible(only)&&host.uploadStatistics().count>firstStatistics.count);
  // Ended eligibility still hides, even after a failed presentation. There is
  // no indefinite stale-frame lease or synthetic foreground activation.
- eligible=false;host.suspend();pump([&]{return !IsWindowVisible(only);});CHECK(!host.capture(uintptr_t(game),GetCurrentProcessId()).token);
+ eligible=false;host.suspend();pump([&]{return !IsWindowVisible(only)&&host.uploadStatistics().intervalMs==0&&host.uploadStatistics().maxGapMs==0;});CHECK(!host.capture(uintptr_t(game),GetCurrentProcessId()).token);
  host.shutdown();fixtureGame=nullptr;DestroyWindow(game);CHECK(GetForegroundWindow()==foreground);
  SetEvent(done);watchdog.join();CloseHandle(done);
  std::puts("PASS real layered HWND upload failure/retry: current frames accepted, one passive presentation owner retained, latest DIB pixels recovered, suspend hides; injected foreground query does not activate windows; no DWM/game visual claim");

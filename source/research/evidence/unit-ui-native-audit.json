@@ -1,0 +1,353 @@
+{
+  "scope": "Actual native pip draw scheduling, GetPipMax/GetPipFillLevel, frame/shape/point arguments; synthetic unit/type/passenger memory and explicit final draw/allocation/predicate boundaries. Not game/Windows output.",
+  "reports": [
+    {
+      "sample": 3,
+      "sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+      "entry": "0x709A90",
+      "abi": "thiscall ret12",
+      "cases": [
+        {
+          "name": "ammo_3_of_5",
+          "status": "PASS",
+          "draws": [
+            {
+              "shape": "0x2007200",
+              "frame": 13,
+              "point": [
+                85,
+                207
+              ],
+              "flags": "0x600"
+            },
+            {
+              "shape": "0x2007200",
+              "frame": 13,
+              "point": [
+                89,
+                207
+              ],
+              "flags": "0x600"
+            },
+            {
+              "shape": "0x2007200",
+              "frame": 13,
+              "point": [
+                93,
+                207
+              ],
+              "flags": "0x600"
+            }
+          ]
+        },
+        {
+          "name": "ammo_empty",
+          "status": "PASS",
+          "draws": []
+        },
+        {
+          "name": "ammo_wrap",
+          "status": "PASS",
+          "draws": [
+            {
+              "shape": "0x2007200",
+              "frame": 16,
+              "point": [
+                85,
+                207
+              ],
+              "flags": "0x600"
+            },
+            {
+              "shape": "0x2007200",
+              "frame": 15,
+              "point": [
+                89,
+                207
+              ],
+              "flags": "0x600"
+            },
+            {
+              "shape": "0x2007200",
+              "frame": 15,
+              "point": [
+                93,
+                207
+              ],
+              "flags": "0x600"
+            },
+            {
+              "shape": "0x2007200",
+              "frame": 15,
+              "point": [
+                97,
+                207
+              ],
+              "flags": "0x600"
+            }
+          ]
+        },
+        {
+          "name": "ifv_empty",
+          "status": "PASS",
+          "draws": [
+            {
+              "shape": "0x2007200",
+              "frame": 0,
+              "point": [
+                85,
+                210
+              ],
+              "flags": "0x600"
+            }
+          ]
+        },
+        {
+          "name": "ifv_passenger",
+          "status": "PASS",
+          "draws": [
+            {
+              "shape": "0x2007200",
+              "frame": 5,
+              "point": [
+                85,
+                210
+              ],
+              "flags": "0x600"
+            }
+          ]
+        },
+        {
+          "name": "apc_gap",
+          "status": "PASS",
+          "draws": [
+            {
+              "shape": "0x2007200",
+              "frame": 5,
+              "point": [
+                85,
+                210
+              ],
+              "flags": "0x600"
+            },
+            {
+              "shape": "0x2007200",
+              "frame": 0,
+              "point": [
+                97,
+                210
+              ],
+              "flags": "0x600"
+            },
+            {
+              "shape": "0x2007200",
+              "frame": 0,
+              "point": [
+                101,
+                210
+              ],
+              "flags": "0x600"
+            }
+          ]
+        }
+      ],
+      "boundary_doubles": [
+        "final SHP draw 0x4AED70",
+        "self-heal predicates 0x50D9C0/0x50D9D0 false",
+        "allocation/free"
+      ],
+      "ranges": {
+        "0x709a90": {
+          "end": "0x70a98a",
+          "sha256": "2f90c430a7355595c3a351a45cd95fcc7eec4817f7d09c687ac4dd18fc9dbd27"
+        },
+        "0x716290": {
+          "end": "0x7162f0",
+          "sha256": "bd420922f96814574a8cb195fd3957e5113578b30e9f76862a66e896d87e1e08"
+        },
+        "0x6f6a8e": {
+          "end": "0x6f6ab6",
+          "sha256": "b0c52b0615f89af3c6cfc6f7f1421b7e69d82eed8da2cb8dbaef5d32ddfe49d1"
+        },
+        "0x5f65a0": {
+          "end": "0x5f65bf",
+          "sha256": "c150b8c12d1008dcc5de153c279b4d76ecad35e68e42717861ca3341f8651489"
+        }
+      }
+    },
+    {
+      "sample": 4,
+      "sha256": "c287d62a4d6a25b547e9339d071dd6e03adcf545699062e478aaeee38c60e89a",
+      "entry": "0x709A90",
+      "abi": "thiscall ret12",
+      "cases": [
+        {
+          "name": "ammo_3_of_5",
+          "status": "PASS",
+          "draws": [
+            {
+              "shape": "0x2007200",
+              "frame": 13,
+              "point": [
+                85,
+                207
+              ],
+              "flags": "0x600"
+            },
+            {
+              "shape": "0x2007200",
+              "frame": 13,
+              "point": [
+                89,
+                207
+              ],
+              "flags": "0x600"
+            },
+            {
+              "shape": "0x2007200",
+              "frame": 13,
+              "point": [
+                93,
+                207
+              ],
+              "flags": "0x600"
+            }
+          ]
+        },
+        {
+          "name": "ammo_empty",
+          "status": "PASS",
+          "draws": []
+        },
+        {
+          "name": "ammo_wrap",
+          "status": "PASS",
+          "draws": [
+            {
+              "shape": "0x2007200",
+              "frame": 16,
+              "point": [
+                85,
+                207
+              ],
+              "flags": "0x600"
+            },
+            {
+              "shape": "0x2007200",
+              "frame": 15,
+              "point": [
+                89,
+                207
+              ],
+              "flags": "0x600"
+            },
+            {
+              "shape": "0x2007200",
+              "frame": 15,
+              "point": [
+                93,
+                207
+              ],
+              "flags": "0x600"
+            },
+            {
+              "shape": "0x2007200",
+              "frame": 15,
+              "point": [
+                97,
+                207
+              ],
+              "flags": "0x600"
+            }
+          ]
+        },
+        {
+          "name": "ifv_empty",
+          "status": "PASS",
+          "draws": [
+            {
+              "shape": "0x2007200",
+              "frame": 0,
+              "point": [
+                85,
+                210
+              ],
+              "flags": "0x600"
+            }
+          ]
+        },
+        {
+          "name": "ifv_passenger",
+          "status": "PASS",
+          "draws": [
+            {
+              "shape": "0x2007200",
+              "frame": 5,
+              "point": [
+                85,
+                210
+              ],
+              "flags": "0x600"
+            }
+          ]
+        },
+        {
+          "name": "apc_gap",
+          "status": "PASS",
+          "draws": [
+            {
+              "shape": "0x2007200",
+              "frame": 5,
+              "point": [
+                85,
+                210
+              ],
+              "flags": "0x600"
+            },
+            {
+              "shape": "0x2007200",
+              "frame": 0,
+              "point": [
+                97,
+                210
+              ],
+              "flags": "0x600"
+            },
+            {
+              "shape": "0x2007200",
+              "frame": 0,
+              "point": [
+                101,
+                210
+              ],
+              "flags": "0x600"
+            }
+          ]
+        }
+      ],
+      "boundary_doubles": [
+        "final SHP draw 0x4AED70",
+        "self-heal predicates 0x50D9C0/0x50D9D0 false",
+        "allocation/free"
+      ],
+      "ranges": {
+        "0x709a90": {
+          "end": "0x70a98a",
+          "sha256": "c4b9ade9dfef9af0384f3df26bad3c0f03b3763787c6a48ad549a505e883bf87"
+        },
+        "0x716290": {
+          "end": "0x7162f0",
+          "sha256": "bd420922f96814574a8cb195fd3957e5113578b30e9f76862a66e896d87e1e08"
+        },
+        "0x6f6a8e": {
+          "end": "0x6f6ab6",
+          "sha256": "b0c52b0615f89af3c6cfc6f7f1421b7e69d82eed8da2cb8dbaef5d32ddfe49d1"
+        },
+        "0x5f65a0": {
+          "end": "0x5f65bf",
+          "sha256": "c150b8c12d1008dcc5de153c279b4d76ecad35e68e42717861ca3341f8651489"
+        }
+      }
+    }
+  ]
+}

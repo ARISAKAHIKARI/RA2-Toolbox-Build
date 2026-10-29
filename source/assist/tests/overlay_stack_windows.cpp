@@ -49,6 +49,20 @@ static LRESULT CALLBACK proc(HWND w,UINT m,WPARAM a,LPARAM b){
  if(m==WM_CLOSE){statisticsPhase="close-forget";overlaystack::forget(w);statisticsPhase="close-destroy";CHECK(DestroyWindow(w));statisticsPhase="close-quit";PostQuitMessage(0);return 0;}
  return DefWindowProcW(w,m,a,b);
 }
+// Foreign-owner placements acknowledge queueing. Wait only in this fixture,
+// while pumping the owning windows, then inspect actual desktop order.
+static void settleGroup(HWND game){
+ const DWORD started=GetTickCount();
+ for(;;){
+  CHECK(overlaystack::keepAbove(game));CHECK(waitPumping(nullptr,1)==WAIT_TIMEOUT);
+  std::vector<overlaystack::Entry> visible;
+  {std::lock_guard<std::mutex> lock(overlaystack::mutex);for(auto e:overlaystack::entries)if(overlaystack::own(e.window)&&IsWindowVisible(e.window))visible.push_back(e);}
+  bool healthy=true;
+  for(auto a:visible){healthy&=higher(a.window,game);for(auto b:visible)if(a.layer!=b.layer&&int(a.layer)>int(b.layer))healthy&=higher(a.window,b.window);}
+  if(healthy)return;
+  CHECK(GetTickCount()-started<5000);
+ }
+}
 int main(){
  SetErrorMode(SEM_FAILCRITICALERRORS|SEM_NOGPFAULTERRORBOX|SEM_NOOPENFILEERRORBOX);
  HANDLE finished=CreateEventW(nullptr,TRUE,FALSE,nullptr);CHECK(finished);
@@ -67,30 +81,40 @@ int main(){
  CHECK(waitPumping(ready,5000)==WAIT_OBJECT_0);CloseHandle(ready);HWND stats=statsHandle;CHECK(GetWindowThreadProcessId(stats,nullptr)!=GetCurrentThreadId());
  checkpoint("show-and-place");
  ShowWindow(game,SW_SHOWNOACTIVATE);
- using namespace overlaystack;auto put=[&](HWND w,Layer l){phase=l==Layer::Statistics?"place-statistics":l==Layer::World?"place-world":l==Layer::Minimap?"place-minimap":l==Layer::Watch?"place-watch":"place-cursor";CHECK(place(w,l,110,140,200,100,SWP_SHOWWINDOW));};
+ using namespace overlaystack;auto put=[&](HWND w,Layer l){phase=l==Layer::Statistics?"place-statistics":l==Layer::World?"place-world":l==Layer::Minimap?"place-minimap":l==Layer::Watch?"place-watch":"place-cursor";CHECK(place(w,l,110,140,200,100,SWP_SHOWWINDOW));
+  const DWORD started=GetTickCount();RECT r{};while(!IsWindowVisible(w)||!GetWindowRect(w,&r)||r.left!=110||r.top!=140||r.right-r.left!=200||r.bottom-r.top!=100){CHECK(waitPumping(nullptr,1)==WAIT_TIMEOUT);CHECK(GetTickCount()-started<5000);}settleGroup(game);};
  put(world,Layer::World);put(map,Layer::Minimap);put(cursor,Layer::Cursor);put(stats,Layer::Statistics);put(watch,Layer::Watch);put(scene,Layer::RenderUpgrade);
  checkpoint("repeat-stacking");
  unsigned stableCallbacks=positionCallbacks;
  for(int i=0;i<100;++i){iteration=i;put(world,Layer::World);put(stats,Layer::Statistics);put(map,Layer::Minimap);CHECK(higher(cursor,watch)&&higher(watch,map)&&higher(map,stats)&&higher(stats,world)&&higher(world,scene));}iteration=-1;
  CHECK(positionCallbacks==stableCallbacks);
+ // Reproduce the shutdown dependency: this HWND owner waits for a producer
+ // without dispatching window messages. The producer must enqueue foreign
+ // positions and finish, rather than synchronously wait for this same owner.
+ checkpoint("busy-owner-raw-join");
+ CHECK(SetWindowPos(game,HWND_TOPMOST,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE));
+ HANDLE repairDone=CreateEventW(nullptr,TRUE,FALSE,nullptr);CHECK(repairDone);
+ std::thread producer([&]{CHECK(keepAbove(game,true));CHECK(SetEvent(repairDone));});
+ CHECK(WaitForSingleObject(repairDone,1000)==WAIT_OBJECT_0);producer.join();CloseHandle(repairDone);
+ settleGroup(game);
  // Promote a real topmost game HWND while all surfaces remain WS_VISIBLE.
  // Pass that controlled foreground candidate to the production group check;
  // the fixture does not seize the runner's actual desktop foreground.
  checkpoint("promoted-game-recovery");HWND foreground=GetForegroundWindow();unsigned callbacks=positionCallbacks;
- for(int i=0;i<4;++i){iteration=i;phase="promote-game";CHECK(SetWindowPos(game,HWND_TOPMOST,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE));CHECK(higher(game,cursor));phase="recovery-interval";CHECK(waitPumping(nullptr,260)==WAIT_TIMEOUT);phase="keep-above-ordered";CHECK(keepAbove(game));
+ for(int i=0;i<4;++i){iteration=i;phase="promote-game";CHECK(SetWindowPos(game,HWND_TOPMOST,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE));CHECK(higher(game,cursor));phase="recovery-interval";CHECK(waitPumping(nullptr,260)==WAIT_TIMEOUT);phase="keep-above-ordered";CHECK(keepAbove(game));settleGroup(game);
   for(auto w:{scene,world,stats,map,watch,cursor})CHECK(IsWindowVisible(w)&&higher(w,game));
   CHECK(higher(cursor,watch)&&higher(watch,map)&&higher(map,stats)&&higher(stats,world)&&higher(world,scene));
  }
  iteration=-1;CHECK(positionCallbacks>callbacks&&GetForegroundWindow()==foreground);
  checkpoint("immediate-repromotion");
  CHECK(SetWindowPos(game,HWND_TOPMOST,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE));CHECK(higher(game,cursor));
- CHECK(keepAbove(game));for(auto w:{scene,world,stats,map,watch,cursor})CHECK(IsWindowVisible(w)&&higher(w,game));
+ CHECK(keepAbove(game));settleGroup(game);for(auto w:{scene,world,stats,map,watch,cursor})CHECK(IsWindowVisible(w)&&higher(w,game));
  CHECK(SetWindowPos(game,HWND_TOPMOST,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE));
- {StackForegroundScope candidate(game);put(cursor,Layer::Cursor);}
+ {StackForegroundScope candidate(game);put(cursor,Layer::Cursor);}settleGroup(game);
  for(auto w:{scene,world,stats,map,watch,cursor})CHECK(IsWindowVisible(w)&&higher(w,game));
  checkpoint("opaque-and-hidden-panels");
  auto boxes=opaqueBoxes(game,800,600);CHECK(boxes.size()==2);for(auto r:boxes)CHECK(r.left==99&&r.top==119&&r.right==301&&r.bottom==221);
- ShowWindow(map,SW_HIDE);CHECK(SetWindowPos(game,HWND_TOPMOST,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE));CHECK(waitPumping(nullptr,260)==WAIT_TIMEOUT);phase="keep-hidden-above-ordered";CHECK(keepAbove(game));
+ ShowWindow(map,SW_HIDE);CHECK(SetWindowPos(game,HWND_TOPMOST,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE));CHECK(waitPumping(nullptr,260)==WAIT_TIMEOUT);phase="keep-hidden-above-ordered";CHECK(keepAbove(game));settleGroup(game);
  CHECK(!IsWindowVisible(map)&&higher(world,scene)&&higher(scene,game)&&opaqueBoxes(game,800,600).size()==1);put(map,Layer::Minimap);CHECK(higher(watch,map)&&higher(map,world));
  checkpoint("stale-handle");CHECK(DestroyWindow(watch));put(world,Layer::World);CHECK(opaqueBoxes(game,800,600).size()==1);
  checkpoint("close-statistics");CHECK(PostMessageW(stats,WM_CLOSE,0,0));
@@ -107,5 +131,5 @@ int main(){
  CHECK(higher(cursor,map)&&higher(map,world)&&higher(world,scene)&&GetForegroundWindow()==foreground);
  checkpoint("destroy-main-windows");for(auto w:{scene,world,map,cursor,game}){forget(w);CHECK(DestroyWindow(w));}
  checkpoint("complete");CHECK(SetEvent(finished));watchdog.join();CloseHandle(finished);
- std::cout<<"PASS real HWND stacking, stable placement emits zero callbacks, immediate repeat game promotions, mixed/single-owner recoveries, callbacks outside the registry lock, no activation, hidden-panel preservation, stale handles and opaque clipping; no actual game/Alt-Tab/DWM visual claim\n";
+ std::cout<<"PASS real HWND stacking, busy-owner raw join, stable placement emits zero callbacks, immediate repeat game promotions, mixed/single-owner recoveries, callbacks outside the registry lock, no activation, hidden-panel preservation, stale handles and opaque clipping; no actual game/Alt-Tab/DWM visual claim\n";
 }

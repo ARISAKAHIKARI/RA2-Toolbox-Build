@@ -52,11 +52,15 @@ class Host {
   bool cloakKnown=false,cloaked=false,cloakSupported=false;
  };
  std::array<Slot,3> slots_{};HWND shell_=nullptr;std::atomic<bool> interactive_{false},closing_{false};
+ const Composition* compositionOverride_=nullptr;
+ const Composition& compositor()const{return compositionOverride_?*compositionOverride_:composition();}
  Slot* slot(HWND w){for(auto& s:slots_)if(s.window.load()==w)return &s;return nullptr;}
  bool cloak(Slot& s,bool value){
-  std::lock_guard<std::mutex> lock(s.mutex);
+  // DWM/User32 may synchronously coordinate with the owning UI thread. That
+  // thread also consumes this slot's mailbox. Never hold its mutex across an
+  // external window API; only the shell changes cloak state after publication.
   if(s.cloakKnown&&s.cloaked==value)return s.cloakSupported;
-  auto set=composition().set;BOOL flag=value?TRUE:FALSE;auto w=s.window.load();
+  auto set=compositor().set;BOOL flag=value?TRUE:FALSE;auto w=s.window.load();
   bool ok=w&&set&&SUCCEEDED(set(w,13 /* DWMWA_CLOAK */,&flag,sizeof flag));
   s.cloakSupported=ok;s.cloakKnown=ok;if(ok)s.cloaked=value;return ok;
  }
@@ -103,6 +107,7 @@ class Host {
   if(bitmap)DeleteObject(bitmap);if(dc)DeleteDC(dc);s.capturing=false;
  }
 public:
+ explicit Host(const Composition* api=nullptr):compositionOverride_(api){}
  void shell(HWND window){shell_=window;}
  HWND shell()const{return shell_;}
  HWND window(unsigned index)const{return index<slots_.size()?slots_[index].window.load():nullptr;}
@@ -136,7 +141,7 @@ public:
   SetWindowPos(w,nullptr,0,0,0,0,SWP_FRAMECHANGED|SWP_NOMOVE|SWP_NOSIZE|SWP_NOZORDER|SWP_NOACTIVATE|SWP_HIDEWINDOW);
   // Before publication the module owns initial concealment; afterwards the
   // shell is the single cloak/uncloak owner. No GUI input queues are attached.
-  if(auto set=composition().set){BOOL value=TRUE;s.cloakSupported=SUCCEEDED(set(w,13,&value,sizeof value));s.cloakKnown=s.cloakSupported;s.cloaked=s.cloakSupported;}
+  if(auto set=compositor().set){BOOL value=TRUE;s.cloakSupported=SUCCEEDED(set(w,13,&value,sizeof value));s.cloakKnown=s.cloakSupported;s.cloaked=s.cloakSupported;}
   s.window.store(w);
  }
  bool request(unsigned index,const Layout& wanted){
@@ -191,7 +196,7 @@ public:
  }
  bool synchronousConcealment(unsigned index)const{return index<slots_.size()&&slots_[index].cloakSupported;}
  bool queryCloaked(unsigned index,bool& value)const{
-  if(index>=slots_.size())return false;auto get=composition().get;DWORD flags=0;auto w=slots_[index].window.load();
+  if(index>=slots_.size())return false;auto get=compositor().get;DWORD flags=0;auto w=slots_[index].window.load();
   if(!w||!get||FAILED(get(w,14 /* DWMWA_CLOAKED */,&flags,sizeof flags)))return false;
   value=(flags&1u)!=0;return true;
  }

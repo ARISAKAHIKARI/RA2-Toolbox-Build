@@ -1,4 +1,5 @@
 #include "../../external_reader/source/radar_scene.h"
+#include "../../external_reader/source/material_motion.h"
 #include <cassert>
 #include <cstdio>
 struct Assets {
@@ -31,5 +32,14 @@ int main(){
  frame.terrain=t;frame.markers[0].pose.frameFrom=-1;auto native=renderer.render(frame,240,120,read,assets,{0,0,240,120,true},0,false);assert(native&&native->pixels[105*240+180]==0xffff0000);
  frame.markers[0].pose.frame=2;assets.unavailable=true;auto waiting=renderer.render(frame,240,120,read,assets,{0,0,240,120,true},0,true);assert(waiting&&!renderer.materialsReady());
  assets.unavailable=false;frame.tick+=2001;auto recovered=renderer.render(frame,240,120,read,assets,{0,0,240,120,true},0,true);assert(recovered&&renderer.materialsReady());
+ // End-to-end: adjacent frame numbers from different infantry sequences must
+ // never produce a purple half-walk/half-fire picture at the midpoint.
+ external::materialmotion::Timeline timeline;auto before=frame,after=frame;before.frame=100;after.frame=101;
+ before.markerScanValid=after.markerScanValid=true;
+ before.markers[0].kind=after.markers[0].kind=1;before.markers[0].pose.frameFrom=after.markers[0].pose.frameFrom=-1;
+ before.markers[0].pose.frame=0;after.markers[0].pose.frame=1;before.markers[0].pose.sequence=1;after.markers[0].pose.sequence=5;
+ assert(timeline.observe(before,1000)&&timeline.observe(after,1020));auto changed=timeline.sample(1030);
+ assert(changed.markers[0].pose.frameFrom==-1);auto snapped=renderer.render(changed,240,120,read,assets,{0,0,240,120,true},0,true);
+ assert(snapped&&snapped->pixels[105*240+180]==0xffff0000);
  std::puts("PASS: production SceneRenderer composes both observed SHP frames, target pixels, immutable source cache, actor removal, final shroud mask and native-mode recovery");
 }

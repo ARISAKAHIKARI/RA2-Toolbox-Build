@@ -2,6 +2,7 @@
 #include "game_view.h"
 #include "building_components.h"
 #include "voxel_posture.h"
+#include "voxel_shadow.h"
 namespace external { namespace visual {
 constexpr double Pi=3.14159265358979323846;
 // FacingClass::Current (4C93D0): interpolate the signed shortest turn using
@@ -26,8 +27,15 @@ struct Pose {
  int bodyFine=-1,turretFine=-1,frameFrom=-1,frameWeight=255;
  uint16_t rawBody=0,rawTurret=0;bool rawFacing=false,voxel=false;
  voxelposture::State posture;
+ voxelshadow::State shadow;
+ int turretFrame=-1;
+ int sequence=-1;
 };
+inline uint64_t postureSignature(const Pose&p){auto body=voxelposture::signature(p.posture);auto shadow=p.shadow.known?voxelposture::signature(p.shadow.posture):0;return shadow?(body*1099511628211ull)^shadow:body;}
 inline double fineRadians(int fine,unsigned fallback){return fine>=0?(double(fine)-64)*(2*Pi/256):radians(fallback);}
+// Unit::DrawAsSHP 73CCAE..73CD08: the turret is a separate 32-facing bank
+// in the same SHP, after all eight WalkFrames banks, independent of hull yaw.
+inline int shpTurretFrame(uint16_t rawTurret,int walkFrames){return walkFrames>=0&&walkFrames<=127?walkFrames*8+int((bucket(rawTurret)+4)&31):-1;}
 template<class Read>int infantryFrame(GameView<Read>&g,uint32_t type,int sequence,int stage,unsigned body){
  uint32_t list=g.template get<uint32_t>(type+0xE3C);if(sequence<0||sequence>=42||list<0x10000)return -1;
  uint32_t s=list+uint32_t(sequence)*36;int start=g.template get<int>(s,-1),count=g.template get<int>(s+4),stride=g.template get<int>(s+8);
@@ -44,16 +52,19 @@ template<class Read>int previewFrame(GameView<Read>&g,uint32_t type,int kind,int
 template<class Read>Pose pose(GameView<Read>&g,uint32_t p,uint32_t type,int kind,int frame){
  Pose out;out.voxel=kind!=1&&g.template get<uint32_t>(type+0xB0)!=0;out.rawBody=facing(g,p+0x388,frame);out.rawTurret=g.template get<uint8_t>(type+0xCA1)?facing(g,p+0x3A0,frame):out.rawBody;out.rawFacing=true;
  out.body=bucket(out.rawBody);out.turret=bucket(out.rawTurret);
- if(out.voxel)out.posture=voxelposture::capture(g,p,type,kind,frame);
+ if(out.voxel){out.posture=voxelposture::capture(g,p,type,kind,frame);out.shadow=voxelshadow::capture(g,p,kind);}
  if(g.template get<int>(type+0x808)>0&&!g.template get<uint8_t>(type+0xCD5)){int variant=g.template get<int>(p+0x124,-1);if(variant>=0&&variant<18)out.variant=variant;}
  if(kind==1){
   int sequence=g.template get<int>(p+0x6C4);if(sequence==-1)sequence=0;
+  out.sequence=sequence;
   // Native Infantry::ShapeNumber 518D80 uses this direction lookup, not the
   // SequenceFacing metadata (which is consumed when loading the sequence).
   out.frame=infantryFrame(g,type,sequence,g.template get<int>(p+0xF8),out.body);
  }else if(kind==2&&!g.template get<uint32_t>(type+0xB0)){
+  if(g.template get<uint8_t>(type+0xCA1))out.turretFrame=shpTurretFrame(out.rawTurret,g.template get<int8_t>(type+0xE5C));
   int dir=g.template get<int>(type+0xE3C)==8?((unsigned(facing(g,p+0x388,frame))+4096)/8192+1)&7:0;
   int firing=g.template get<int>(p+0x6C0,-1),stand=g.template get<int>(type+0xE1C),walk=g.template get<int8_t>(type+0xE5C);
+  out.sequence=firing>=0?1:stand>0?2:3;
   if(firing>=0)out.frame=g.template get<int>(type+0xE30)+dir*g.template get<int8_t>(type+0xE5D)+firing/2;
   else if(stand>0)out.frame=g.template get<int>(type+0xE28)+dir*stand;
   else out.frame=g.template get<int>(type+0xE2C)+dir*std::max(0,walk)+std::max(0,g.template get<int>(p+0x538))%std::max(1,walk);

@@ -59,12 +59,34 @@ int main(){
  }
  Request changed=sampled;Shift shift;
  changed.view.cameraX+=97;assert(!scrollUsable(frame,changed,1250,shift));
+ // Crossing the overscan border must not withdraw every enhanced pixel.
+ // Existing pixels retain their exact camera projection; the newly revealed
+ // edge is transparent, with no extrapolation, scaling or old-camera freeze.
+ size_t partialPixels=0;
+ for(int dy:{-180,0,180})for(int dx:{-200,-97,0,97,200}){
+  auto current=sampled;current.view.cameraX+=dx;current.view.cameraY+=dy;current.context.cameraX+=dx;current.context.cameraY+=dy;
+  assert(scrollVisible(frame,current,1250,shift));
+  overlaycomposition::Surface scene{3,5,current.context,{13+shift.x,7+shift.y,im->width,im->height},true,255,pixels,{13,7,640,400}};
+  auto holes=std::make_shared<const std::vector<overlaycomposition::Rect>>(std::vector<overlaycomposition::Rect>{{0,0,640,1},{0,399,640,1},{300,200,7,1}});
+  scene.cutouts=sceneCutouts(holes,shift,im->width,im->height);
+  assert(overlaycomposition::valid(scene,current.context));std::vector<uint32_t>out;assert(overlaycomposition::compose(current.context,{scene},out));
+  for(int y=0;y<400;++y)for(int x=0;x<640;++x){
+   const int ix=x-shift.x,iy=y-shift.y;const bool covered=ix>=0&&iy>=0&&ix<im->width&&iy<im->height;
+   const bool hole=y==0||y==399||(y==200&&x>=300&&x<307);
+   const auto expected=covered&&!hole?color(current.view.cameraX*2+x,current.view.cameraY*2+y):0;
+   assert(out[size_t(y+7)*700+x+13]==expected);++partialPixels;
+  }
+ }
+ changed=sampled;changed.view.cameraX+=416;assert(!scrollVisible(frame,changed,1250,shift));
+ changed=sampled;changed.view.cameraY-=296;assert(!scrollVisible(frame,changed,1250,shift));
  changed=sampled;changed.view.scenario++;assert(!scrollUsable(frame,changed,1250,shift));
+ assert(!scrollVisible(frame,changed,1250,shift));
  changed=sampled;changed.view.house++;assert(!scrollUsable(frame,changed,1250,shift));
  changed=sampled;changed.generation++;assert(!scrollUsable(frame,changed,1250,shift));
  changed=sampled;changed.paletteRange=0;assert(!scrollUsable(frame,changed,1250,shift));
  changed=sampled;changed.view.frame--;assert(!scrollUsable(frame,changed,1250,shift));
  assert(!scrollUsable(frame,sampled,2700,shift));
+ assert(!scrollVisible(frame,sampled,2700,shift));
  assert(!window(9000,100,9000,100).width&&!window(8192,8192,8192,8192).width);
  auto limited=window(8192,2048,8192,2048);assert(limited.width==8192&&limited.height==2048&&limited.paddingX==0&&limited.paddingY==0);
  auto fourK=window(3840,2160,1920,1080);assert(fourK.width==4224&&fourK.height==2544); // ~29.6% more pixels, no sample reduction
@@ -98,6 +120,20 @@ int main(){
  for(uint32_t now:{1016u,1267u,1000u}){CameraPrefetch p;auto v=sampled.view;p.center(v,1016,120,96,96);v.cameraX+=16;assert(identical(p.center(v,now,120,96,96),v));}
  CameraPrefetch wrappingCamera;auto wrapView=sampled.view;wrappingCamera.center(wrapView,0xfffffff0u,64,96,96);wrapView.cameraX+=16;
  assert(wrappingCamera.center(wrapView,0,64,96,96).cameraX==wrapView.cameraX+64);
+ // UI observations continue while a scene takes300ms. Measuring only once
+ // per worker job would reject every interval as older than250ms.
+ CameraPrefetch observedMotion;auto moving=sampled.view;observedMotion.observe(moving,1000);
+ for(uint32_t tick=1016;tick<=1320;tick+=16){moving.cameraX+=4;observedMotion.observe(moving,tick);}
+ auto immutableMotion=observedMotion;auto workerCamera=moving;workerCamera.cameraX+=1;
+ assert(immutableMotion.centerAt(workerCamera,1321,300,96,96).cameraX==workerCamera.cameraX+64);
+ for(uint32_t tick=1322;tick<1336;tick+=2)observedMotion.observePresentation(moving,tick);
+ assert(observedMotion.centerAt(moving,1334,300,96,96).cameraX==moving.cameraX+64); // duplicate UI polls are not native movement samples
+ auto stopped=observedMotion;stopped.observePresentation(moving,1352);assert(identical(stopped.centerAt(moving,1352,300,96,96),moving));
+ stopped=observedMotion;auto nextFrame=moving;++nextFrame.frame;stopped.observePresentation(nextFrame,1336);assert(identical(stopped.centerAt(nextFrame,1336,300,96,96),nextFrame));
+ assert(identical(immutableMotion.centerAt(workerCamera,1570,300,96,96),workerCamera));
+ observedMotion.observe(moving,1336);assert(identical(observedMotion.centerAt(moving,1336,300,96,96),moving));
+ moving.cameraX-=4;observedMotion.observe(moving,1352);assert(observedMotion.centerAt(moving,1352,300,96,96).cameraX==moving.cameraX-64);
+ assert(immutableMotion.centerAt(workerCamera,1352,300,96,96).cameraX==workerCamera.cameraX+64); // request copy is immutable
  for(double latency:{0.,-1.,double(CompletionMaxAge)+.1,std::numeric_limits<double>::infinity(),std::numeric_limits<double>::quiet_NaN()}){
   CameraPrefetch p;auto v=sampled.view;p.center(v,1000,120,96,96);v.cameraX+=16;assert(identical(p.center(v,1016,latency,96,96),v));v.cameraX+=16;
   assert(identical(p.center(v,1032,120,96,96),v));
@@ -173,5 +209,5 @@ int main(){
  assert(external::nativefeedback::effects(bolts,normal,view,nullptr,.08660254).complete);
  assert(external::nativefeedback::effects(bolts,expanded,view,nullptr,.08660254,128,64,16,16).complete);
  for(int y=0;y<64;++y)for(int x=0;x<128;++x)assert(normal.pixels[size_t(y)*128+x]==expanded.pixels[size_t(y+16)*160+x+16]);
- std::printf("PASS: %zu exact scroll/clip pixels; measured crop prefetch covers120pixel drag during120ms render within existing96border, bounded64/halved32/zero margins, reversal/stop/world/projection/clock/latency guards; %zu exact production native1x/fractional1.5x xBRZ pixels; shared sources, cutouts, size budgets and object/effect geometry\n",checked,prefetchTerrainPixels);
+ std::printf("PASS: %zu exact scroll/clip pixels; %zu partial-coverage pixels with clipped native holes; presentation-cadence observations survive300ms worker renders; measured crop prefetch covers120pixel drag during120ms render within existing96border, bounded64/halved32/zero margins, reversal/stop/world/projection/clock/latency guards; %zu exact production native1x/fractional1.5x xBRZ pixels; shared sources, cutouts, size budgets and object/effect geometry\n",checked,partialPixels,prefetchTerrainPixels);
 }

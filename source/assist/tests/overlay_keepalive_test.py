@@ -37,7 +37,7 @@ windows = r'''
 #include <vector>
 using HDC=void*;using BOOL=int;using DWORD=uint32_t;using UINT=unsigned;using LONG=long;using HWND=void*;using HINSTANCE=void*;using WPARAM=uintptr_t;using LPARAM=intptr_t;using LRESULT=intptr_t;
 constexpr BOOL FALSE=0,TRUE=1;constexpr int SW_HIDE=0,GA_ROOT=2,GW_HWNDNEXT=2,GW_HWNDPREV=3,GWL_EXSTYLE=-20;
-constexpr UINT SWP_NOSIZE=1,SWP_NOMOVE=2,SWP_NOZORDER=4,SWP_NOREDRAW=8,SWP_NOACTIVATE=0x10,SWP_SHOWWINDOW=0x40,SWP_NOCOPYBITS=0x100,SWP_NOOWNERZORDER=0x200,SWP_NOSENDCHANGING=0x400;
+constexpr UINT SWP_NOSIZE=1,SWP_NOMOVE=2,SWP_NOZORDER=4,SWP_NOREDRAW=8,SWP_NOACTIVATE=0x10,SWP_SHOWWINDOW=0x40,SWP_NOCOPYBITS=0x100,SWP_NOOWNERZORDER=0x200,SWP_NOSENDCHANGING=0x400,SWP_ASYNCWINDOWPOS=0x4000;
 constexpr int WS_EX_TOOLWINDOW=1,WS_EX_NOACTIVATE=2,WS_EX_TOPMOST=4,WS_EX_LAYERED=8,WS_POPUP=1,LWA_ALPHA=2;
 #define HWND_TOPMOST reinterpret_cast<HWND>(intptr_t(-1))
 struct POINT{LONG x=0,y=0;};struct RECT{LONG left=0,top=0,right=0,bottom=0;};
@@ -45,9 +45,11 @@ struct WNDCLASSW{LRESULT(*lpfnWndProc)(HWND,UINT,WPARAM,LPARAM)=nullptr;HINSTANC
 struct Window{bool visible=false;DWORD pid=1;RECT rect{};int places=0,paints=0;DWORD thread=1;bool topmost=false;};
 inline std::map<HWND,Window> windows;inline std::vector<HWND> order;inline uintptr_t serial=100;inline HWND foreground=nullptr;
 inline DWORD clockValue=1000;inline int batches=0,rejectedBatches=0;inline bool failBatch=false;
+inline DWORD currentThread=1,busyOwner=0;
+struct PendingMove{HWND h,after;int x,y,w,hg;UINT flags;};inline std::vector<PendingMove> asyncMoves;
 inline HWND makeWindow(DWORD pid=1,DWORD thread=1){HWND h=reinterpret_cast<HWND>(++serial);windows[h].pid=pid;windows[h].thread=thread;order.insert(order.begin(),h);return h;}
 inline BOOL IsWindow(HWND h){return windows.count(h);}inline BOOL IsWindowVisible(HWND h){return IsWindow(h)&&windows[h].visible;}
-inline DWORD GetCurrentProcessId(){return 1;}inline DWORD GetWindowThreadProcessId(HWND h,DWORD*p){if(p)*p=IsWindow(h)?windows[h].pid:0;return IsWindow(h)?windows[h].thread:0;}
+inline DWORD GetCurrentProcessId(){return 1;}inline DWORD GetCurrentThreadId(){return currentThread;}inline DWORD GetWindowThreadProcessId(HWND h,DWORD*p){if(p)*p=IsWindow(h)?windows[h].pid:0;return IsWindow(h)?windows[h].thread:0;}
 inline DWORD GetTickCount(){return clockValue;}inline HWND GetForegroundWindow(){return foreground;}inline HWND GetAncestor(HWND h,UINT){return h;}
 inline HWND GetTopWindow(HWND){return order.empty()?nullptr:order.front();}
 inline HWND GetWindow(HWND h,UINT what){auto i=std::find(order.begin(),order.end(),h);if(i==order.end())return nullptr;if(what==GW_HWNDPREV)return i==order.begin()?nullptr:*--i;assert(what==GW_HWNDNEXT);return ++i!=order.end()?*i:nullptr;}
@@ -56,13 +58,16 @@ inline BOOL GetClientRect(HWND h,RECT*r){if(!IsWindow(h))return FALSE;*r={0,0,wi
 inline BOOL GetWindowRect(HWND h,RECT*r){if(!IsWindow(h))return FALSE;*r=windows[h].rect;return TRUE;}
 inline BOOL ClientToScreen(HWND h,POINT*p){if(!IsWindow(h))return FALSE;p->x+=windows[h].rect.left;p->y+=windows[h].rect.top;return TRUE;}
 inline BOOL SetWindowPos(HWND h,HWND after,int x,int y,int width,int height,UINT flags){
- if(!IsWindow(h))return FALSE;assert(flags&SWP_NOACTIVATE);auto&w=windows[h];++w.places;
+ if(!IsWindow(h))return FALSE;assert(flags&SWP_NOACTIVATE);auto&w=windows[h];
+ if(w.pid==GetCurrentProcessId()&&w.thread!=currentThread){assert(flags&SWP_ASYNCWINDOWPOS);if(w.thread==busyOwner){asyncMoves.push_back({h,after,x,y,width,height,flags});return TRUE;}}
+ ++w.places;
  if(!(flags&SWP_NOMOVE)){w.rect.right+=x-w.rect.left;w.rect.bottom+=y-w.rect.top;w.rect.left=x;w.rect.top=y;}
  if(!(flags&SWP_NOSIZE)){w.rect.right=w.rect.left+width;w.rect.bottom=w.rect.top+height;}
  if(flags&SWP_SHOWWINDOW)w.visible=true;
  if(!(flags&SWP_NOZORDER)){order.erase(std::remove(order.begin(),order.end(),h),order.end());if(after==HWND_TOPMOST){w.topmost=true;order.insert(order.begin(),h);}else{auto at=std::find(order.begin(),order.end(),after);assert(at!=order.end());w.topmost=windows[after].topmost;order.insert(++at,h);}}
  return TRUE;
 }
+inline void finishAsync(){auto pending=std::move(asyncMoves);asyncMoves.clear();DWORD previous=currentThread;busyOwner=0;for(auto m:pending){currentThread=windows[m.h].thread;assert(SetWindowPos(m.h,m.after,m.x,m.y,m.w,m.hg,m.flags));}currentThread=previous;}
 struct Deferred{struct Move{HWND window,after;int x,y,w,h;UINT flags;};std::vector<Move> moves;};using HDWP=Deferred*;
 inline HDWP BeginDeferWindowPos(int){return failBatch?nullptr:new Deferred;}
 inline HDWP DeferWindowPos(HDWP batch,HWND w,HWND after,int x,int y,int width,int height,UINT flags){
@@ -141,6 +146,17 @@ static void stackCase(DWORD statsThread){
  for(auto w:{scene,world,map,watch,cursor})otherPlaces.push_back(windows[w].places);
  for(int i=0;i<100;++i)placeOne(stats,Layer::Statistics);assert(batches==before&&windows[stats].places==statsPlaces&&"unchanged geometry/visibility/actual anchor must not send position callbacks");
  size_t other=0;for(auto w:{scene,world,map,watch,cursor})assert(windows[w].places==otherPlaces[other++]);
+ if(statsThread!=1){
+  // A busy owner queues its move. Recovery returns without waiting and does
+  // not arrange lower members behind an anchor which has not moved yet.
+  clockValue+=1;SetWindowPos(game,HWND_TOPMOST,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE);busyOwner=statsThread;
+  assert(keepAbove(game)&&!asyncMoves.empty());assert(higher(game,stats));
+  finishAsync();assert(keepAbove(game)&&ordered()&&higher(scene,game));
+  // All members being above the game is insufficient if an asynchronous
+  // completion reordered them; the next audit must restore relative layers.
+  currentThread=statsThread;SetWindowPos(stats,HWND_TOPMOST,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE);currentThread=1;
+  assert(higher(stats,cursor));assert(keepAbove(game)&&ordered());
+ }
  // A repeat promotion inside the old250ms throttle must recover now, including
  // the case where the cursor first repairs only itself above the game.
  clockValue+=1;SetWindowPos(game,HWND_TOPMOST,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE);assert(higher(game,cursor));

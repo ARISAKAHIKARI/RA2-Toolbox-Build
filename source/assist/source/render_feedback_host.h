@@ -10,6 +10,8 @@ constexpr uint64_t SelectionLayer=0x52460001,CursorLayer=0x52460002;
 // when only the mouse position changes. No scene-observation delay is added.
 static nf::CursorCache cursorCache;
 static nf::FoundationStencil foundationStencil;
+static external::nativeeffects::EffectStencil effectStencil;
+static external::nativeeffects::UnitUIStencil unitUIStencil;
 static std::shared_ptr<const std::vector<overlaycomposition::Rect>> nativeCutouts;
 static uint32_t cursorPID=0,cursorEpoch=0;
 static overlaycompositor::Context selectionContext{};
@@ -18,10 +20,11 @@ static std::vector<nf::Stroke> oldStrokes;
 static std::shared_ptr<const std::vector<uint32_t>> selectionPixels;
 static nf::Rect selectionBounds;
 static bool live=false,unsafeView=false;
+static bool nativeLeaseUnsafe=false;
 static void hide(){
  overlaycompositor::host().replaceGroup({overlaycompositor::RenderUpgrade,SelectionLayer,CursorLayer},{});
  oldPrimitives.clear();oldStrokes.clear();selectionPixels.reset();selectionBounds={};nativeCutouts.reset();
- cursorCache.clear();foundationStencil.clear();live=false;
+ cursorCache.clear();foundationStencil.clear();effectStencil.clear();unitUIStencil.clear();nativeLeaseUnsafe=false;live=false;
 }
 static void shutdown(){hide();}
 static bool externalCursor(){
@@ -30,8 +33,16 @@ static bool externalCursor(){
  return false;
 }
 static bool update(const Request&r,const std::shared_ptr<const Frame>&scene,int left,int top,std::vector<overlaycompositor::Surface>&layers){
+ struct NativeFailureGuard {
+  bool hadCutouts=false,complete=false;
+  ~NativeFailureGuard(){if(!complete&&(hadCutouts||(nativeCutouts&&!nativeCutouts->empty()))){unsafeView=true;nativeLeaseUnsafe=true;nativeCutouts.reset();}}
+ }nativeFailure{nativeLeaseUnsafe||(nativeCutouts&&!nativeCutouts->empty())};
+ // The host can retry once before deciding whether to keep its old group.
+ // Keep a failed native mask unsafe through that retry, even after clearing
+ // the public mask pointer. Only a complete new group restores lease safety.
+ auto accept=[&](bool value){nativeFailure.complete=value;if(value)nativeLeaseUnsafe=false;return value;};
  unsafeView=false;if(!scene)return false;live=true;
- if(cursorPID!=r.pid||cursorEpoch!=r.match){cursorCache.clear();foundationStencil.clear();nativeCutouts.reset();cursorPID=r.pid;cursorEpoch=r.match;}
+ if(cursorPID!=r.pid||cursorEpoch!=r.match){cursorCache.clear();foundationStencil.clear();effectStencil.clear();unitUIStencil.clear();nativeCutouts.reset();cursorPID=r.pid;cursorEpoch=r.match;}
  if(selectionContext.token!=r.context.token||selectionContext.cameraX!=r.context.cameraX||selectionContext.cameraY!=r.context.cameraY){
   selectionPixels.reset();oldPrimitives.clear();oldStrokes.clear();nativeCutouts.reset();
  }
@@ -39,18 +50,30 @@ static bool update(const Request&r,const std::shared_ptr<const Frame>&scene,int 
  auto read=[](uint32_t p,void*out,size_t n){return externalReader.readFresh(p,out,n);};
  external::mainview::View before;
  if(!external::mainview::sample(read,before))return false;
- if(!external::mainview::sameViewport(before,r.view)||before.frame<r.view.frame){unsafeView=true;return false;}
+ if(!renderpresentation::sameProjection(before,r.view)||before.frame<r.view.frame){unsafeView=true;return false;}
  nf::Band band;std::vector<nf::Selected> selected;
  const bool bandOK=nf::band(read,r.view.tactical,band);
  const bool selectionOK=nf::selected(read,scene->objects,selected);
  std::vector<nf::Stroke> strokes;std::vector<nf::Rect> cutouts;
  const bool ordersOK=nf::actionLines(read,r.view,r.width,r.height,strokes);
  const bool placementOK=foundationStencil.capture(read,r.view,r.width,r.height,cutouts);
+ const bool effectsOK=effectStencil.capture(read,r.view,r.width,r.height,scene->objects,cutouts)&&
+  unitUIStencil.capture(read,r.view,r.width,r.height,scene->objects,cutouts)&&
+  external::nativeeffects::beams(read,r.view,r.width,r.height,cutouts)&&
+  external::nativeeffects::mergeCutouts(cutouts,r.width,r.height);
  const double sx=double(r.width)/r.view.width,sy=double(r.height)/r.view.height;
  external::mainview::View after;
  if(!external::mainview::sample(read,after))return false;
- if(!external::mainview::sameViewport(before,after)||after.frame<before.frame){unsafeView=true;return false;}
+ if(!renderpresentation::sameProjection(before,after)||after.frame<before.frame){unsafeView=true;return false;}
+ // A failed native-effect mask must never retain an older transparent hole:
+ // it could expose an unrelated pixel after the beam/animation has moved.
+ if(!effectsOK){nativeCutouts.reset();return false;}
  if(!bandOK||!selectionOK||!ordersOK||!placementOK)return false;
+ // World feedback is projected for r.view; the band and cursor already use
+ // screen coordinates. Camera motion alone does not tear either one. Native
+ // placement/effect holes are different: the game pixels underneath must still be
+ // at the exact camera for which those holes were captured.
+ if(!cutouts.empty()&&(!external::mainview::sameViewport(before,r.view)||!external::mainview::sameViewport(before,after))){unsafeView=true;nativeCutouts.reset();return false;}
  if(cutouts.empty())nativeCutouts.reset();
  else{
   bool same=nativeCutouts&&nativeCutouts->size()==cutouts.size();
@@ -71,9 +94,9 @@ static bool update(const Request&r,const std::shared_ptr<const Frame>&scene,int 
  if(!GetCursorInfo(&ci)||!GetCursorPos(&pos)||!ScreenToClient(game,&pos)){layers.clear();return false;}
  bool sysCursor=(ci.flags&CURSOR_SHOWING)!=0;
  bool external=externalCursor();
- if(sysCursor||external||pos.x<left||pos.y<top||pos.x>=left+r.width||pos.y>=top+r.height)return true;
+ if(sysCursor||external||pos.x<left||pos.y<top||pos.x>=left+r.width||pos.y>=top+r.height)return accept(true);
  nf::Mouse current;if(!nf::mouse(read,current))return false;
- if(current.refCount<0)return true;
+ if(current.refCount<0)return accept(true);
  size_t cursorBytes=0,cursorCalls=0;
  auto cursorRead=[&](uint32_t p,void*out,size_t n){
   if(++cursorCalls>2048||n>1024*1024-cursorBytes)return false;
@@ -101,6 +124,6 @@ static bool update(const Request&r,const std::shared_ptr<const Frame>&scene,int 
  }
  // Keep the original visible until a verified replacement is ready.
  if(!covered)layers.clear();
- return covered;
+ return accept(covered);
 }
 }

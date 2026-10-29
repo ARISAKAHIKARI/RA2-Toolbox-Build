@@ -19,7 +19,8 @@ inline bool adjacent(const visual::Pose&a,const visual::Pose&b){
  // Direction/sequence changes and loop boundaries snap. Do not dissolve a
  // walking infantryman into a firing/death frame, production body or damage.
  return a.frame>=0&&b.frame>=0&&b.frame==a.frame+1&&a.body==b.body&&a.turret==b.turret&&
-  a.variant==b.variant&&a.buildingFlags==b.buildingFlags&&a.doorFrame==b.doorFrame;
+  a.variant==b.variant&&a.buildingFlags==b.buildingFlags&&a.doorFrame==b.doorFrame&&
+  a.sequence==b.sequence&&a.turretFrame==b.turretFrame;
 }
 class Timeline {
  radar::Frame previous_,current_;double observed_=0,interval_=0;bool ready_=false;

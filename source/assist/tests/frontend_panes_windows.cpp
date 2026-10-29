@@ -1,15 +1,29 @@
 // Controlled native-window boundary tests; this is not a visual/FPS or game test.
 #include "../../suite/source/frontend_panes.h"
+#include "../../shared/source/settings_dialog.h"
 #include <cstdio>
 #include <cstdlib>
 #include <chrono>
 
-static frontendpanes::Host host;
+static frontendpanes::Composition compositionAPI;
+static frontendpanes::Host host(&compositionAPI);
 static std::atomic<HWND> pane{nullptr};
 static std::atomic<unsigned> layouts{0},dpi{0},shellMessages{0},blockDpi{0};
+static std::atomic<int> dialogResult{0};
 static HANDLE ready,busyStarted,busyRelease,idle;
-static constexpr UINT Busy=WM_APP+110,Dpi=WM_APP+111,Ping=WM_APP+112,Idle=WM_APP+113;
+static constexpr UINT Busy=WM_APP+110,Dpi=WM_APP+111,Ping=WM_APP+112,Idle=WM_APP+113,Dialog=WM_APP+114;
+static constexpr auto DialogTitle=L"RA2 managed-pane modal fixture";
+static std::atomic<bool> probeComposition{false};static std::atomic<unsigned> compositionProbes{0};
 static void require(bool value,const char* message){if(!value){std::fprintf(stderr,"FAIL: %s (error=%lu)\n",message,GetLastError());std::abort();}}
+static DWORD WINAPI compositionReentry(void*){return host.post(0,Ping)?0:1;}
+static HRESULT WINAPI checkedComposition(HWND w,DWORD attribute,LPCVOID data,DWORD bytes){
+ if(probeComposition.exchange(false)){
+  auto thread=CreateThread(nullptr,0,compositionReentry,nullptr,0,nullptr);require(thread!=nullptr,"composition reentry worker");
+  require(WaitForSingleObject(thread,1000)==WAIT_OBJECT_0,"composition call must not hold the pane mailbox mutex");
+  DWORD code=1;GetExitCodeThread(thread,&code);CloseHandle(thread);require(code==0,"composition callback can publish a pane message");++compositionProbes;
+ }
+ auto set=frontendpanes::composition().set;return set?set(w,attribute,data,bytes):E_NOTIMPL;
+}
 static void pump(){MSG m;while(PeekMessageW(&m,nullptr,0,0,PM_REMOVE)){TranslateMessage(&m);DispatchMessageW(&m);}}
 template<class F> static void until(F f,const char* message){
  auto start=GetTickCount64();while(!f()){pump();if(GetTickCount64()-start>5000)require(false,message);Sleep(1);}pump();
@@ -23,6 +37,7 @@ static LRESULT CALLBACK paneProc(HWND w,UINT m,WPARAM a,LPARAM b){
  if(m==Dpi){dpi=unsigned(a);if(blockDpi.load()==unsigned(a)){blockDpi=0;SetEvent(busyStarted);require(WaitForSingleObject(busyRelease,5000)==WAIT_OBJECT_0,"in-flight DPI fixture release");}return 0;}
  if(m==Busy){SetEvent(busyStarted);require(WaitForSingleObject(busyRelease,5000)==WAIT_OBJECT_0,"busy fixture release");return 0;}
  if(m==Idle){SetEvent(idle);return 0;}
+ if(m==Dialog){dialogResult=settingsdialog::message(w,true,L"Hidden-pane owner must not conceal this prompt.",DialogTitle,MB_OK);return 0;}
  if(m==WM_PRINTCLIENT){RECT r{};GetClientRect(w,&r);auto brush=CreateSolidBrush(RGB(23,47,89));FillRect((HDC)a,&r,brush);DeleteObject(brush);return 0;}
  if(m==WM_CLOSE){DestroyWindow(w);return 0;}
  if(m==WM_DESTROY){PostQuitMessage(0);return 0;}
@@ -39,6 +54,7 @@ static void busy(){ResetEvent(busyStarted);ResetEvent(busyRelease);PostMessageW(
 static void settle(){ResetEvent(idle);PostMessageW(pane.load(),Idle,0,0);until([]{return WaitForSingleObject(idle,0)==WAIT_OBJECT_0;},"module applies prior queued state");}
 static void pauseDpi(unsigned next){ResetEvent(busyStarted);ResetEvent(busyRelease);blockDpi=next;}
 int main(){
+ compositionAPI=frontendpanes::composition();compositionAPI.set=checkedComposition;
  INITCOMMONCONTROLSEX cc{sizeof cc,ICC_WIN95_CLASSES};InitCommonControlsEx(&cc);
  WNDCLASSW c{};c.lpfnWndProc=shellProc;c.hInstance=GetModuleHandleW(nullptr);c.lpszClassName=L"RA2FrontendShellFixture";RegisterClassW(&c);
  HWND shell=CreateWindowW(c.lpszClassName,L"Settings shell",WS_OVERLAPPEDWINDOW,40,40,600,480,nullptr,nullptr,c.hInstance,nullptr);require(shell!=nullptr,"create shell");host.shell(shell);
@@ -58,7 +74,8 @@ int main(){
  require(widgetPixels>100,"complete child-control drawing preserved in frozen image");
  require(dpi==96,"initial DPI delivery");
 
- busy();unsigned before=layouts;auto start=GetTickCount64();host.beginInteraction();
+ busy();unsigned before=layouts;auto start=GetTickCount64();probeComposition=true;host.beginInteraction();
+ require(compositionProbes==1,"cloak callback reentry is exercised while module UI is busy");
  bool cloaked=false;
  if(host.synchronousConcealment(0)){
   until([&]{return host.queryCloaked(0,cloaked)&&cloaked;},"busy old-position panel immediately DWM-cloaked");
@@ -100,6 +117,19 @@ int main(){
  host.endInteraction();final.visible=true;final.order=6;host.request(0,final);until([&]{return IsWindowVisible(w);},"controls resume after final move");settle();host.present();
  ShowWindow(shell,SW_MINIMIZE);final.visible=host.canPresent();require(!final.visible,"minimized shell rejects presentation");host.request(0,final);until([&]{return !IsWindowVisible(w);},"minimized shell hides settings");require(host.snapshot(0)!=nullptr,"minimize retains complete image");
  ShowWindow(shell,SW_RESTORE);SetForegroundWindow(shell);until([&]{return host.contains(GetForegroundWindow());},"restore shell foreground");
+
+ // A close/error prompt can originate from a different, currently cloaked
+ // settings page. It must not inherit that page's DWM cloak or cross-thread
+ // ownership, and closing the prompt must return to the module message loop.
+ auto forDialog=final;forDialog.visible=false;host.request(0,forDialog);settle();host.present();
+ require(!IsWindowVisible(w),"dialog owner page is actually hidden");host.post(0,Dialog);
+ HWND prompt=nullptr;until([&]{prompt=FindWindowW(L"#32770",DialogTitle);return prompt&&IsWindowVisible(prompt);},"hidden-page prompt is visible");
+ require(GetWindow(prompt,GW_OWNER)==nullptr,"managed prompt has no cloaked or cross-thread owner");
+ require(GetWindowThreadProcessId(prompt,nullptr)==GetWindowThreadProcessId(w,nullptr),"dialog stays on the module UI thread");
+ require(IsWindowEnabled(shell)&&!IsWindowEnabled(w),"task modal prompt leaves the independent shell responsive");
+ if(auto get=frontendpanes::composition().get){DWORD state=0;if(SUCCEEDED(get(prompt,14,&state,sizeof state)))require(state==0,"dialog cannot inherit the hidden pane's DWM cloak");}
+ PostMessageW(prompt,WM_COMMAND,IDOK,0);until([]{return dialogResult.load()==IDOK;},"dismiss prompt and resume module UI");
+ require(IsWindowEnabled(w),"module input reenabled after prompt");SetForegroundWindow(shell);settle();
 
  // An old queued show cannot float over a new foreground application.
  busy();final.visible=true;final.order=7;host.request(0,final);

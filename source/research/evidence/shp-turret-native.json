@@ -1,0 +1,41 @@
+{
+  "result": "PASS",
+  "results": [
+    {
+      "executable_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+      "cases": 426,
+      "frame_mismatches": 0,
+      "same_shape": true,
+      "same_origin": [
+        128,
+        128
+      ],
+      "flags": 10272,
+      "code_range_sha256": {
+        "Unit.SHP_turret_submission": "176eff87e78ba737fc3279c10d13bedf43fd3082de1d4072a1bfcbba511a0cdc"
+      }
+    },
+    {
+      "executable_sha256": "c287d62a4d6a25b547e9339d071dd6e03adcf545699062e478aaeee38c60e89a",
+      "cases": 426,
+      "frame_mismatches": 0,
+      "same_shape": true,
+      "same_origin": [
+        128,
+        128
+      ],
+      "flags": 10272,
+      "code_range_sha256": {
+        "Unit.SHP_turret_submission": "176eff87e78ba737fc3279c10d13bedf43fd3082de1d4072a1bfcbba511a0cdc"
+      }
+    }
+  ],
+  "scope": "Actual 73CCAE..73CD08 and FacingClass::Current; synthetic unit/type/SHP address; final DrawObject is an observed boundary, not a raster or Windows execution",
+  "formula": "8 * signed WalkFrames + ((round32(FacingClass::Current(TurretFacing))+4)&31)",
+  "not_certified": [
+    "full Unit.DrawAsSHP composition",
+    "native offscreen cache compositing",
+    "VXL barrels attached to SHP hull",
+    "Windows/game or multiplayer visuals"
+  ]
+}

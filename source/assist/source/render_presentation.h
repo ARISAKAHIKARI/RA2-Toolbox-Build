@@ -30,25 +30,43 @@ inline bool recent(uint32_t now,uint32_t tick,uint32_t limit){return uint32_t(no
 // time is advanced. A stopped/reversed camera therefore stops/reverses the
 // bias on its very next observation instead of continuing an old velocity.
 class CameraPrefetch {
- external::mainview::View previous_{};uint32_t tick_=0;bool observed_=false;
+ external::mainview::View previous_{};uint32_t tick_=0,interval_=0;int64_t dx_=0,dy_=0;bool observed_=false,measured_=false;
 public:
- void reset(){observed_=false;}
- external::mainview::View center(const external::mainview::View&actual,uint32_t now,double lastRenderMs,double marginX,double marginY){
-  auto out=actual;
-  if(!actual.valid()||!std::isfinite(lastRenderMs)||lastRenderMs<=0||lastRenderMs>CompletionMaxAge||
-    !std::isfinite(marginX)||!std::isfinite(marginY)||marginX<0||marginY<0){reset();return out;}
+ void reset(){observed_=measured_=false;}
+ // Observe at the presentation cadence, independently of a possibly slow
+ // scene worker. The latest immutable observation travels with its request.
+ void observe(const external::mainview::View&actual,uint32_t now){
+  if(!actual.valid()){reset();return;}
   const uint32_t dt=now-tick_;
   const int64_t dx=int64_t(actual.cameraX)-previous_.cameraX,dy=int64_t(actual.cameraY)-previous_.cameraY;
-  const bool measured=observed_&&sameProjection(previous_,actual)&&actual.frame>=previous_.frame&&
+  measured_=observed_&&sameProjection(previous_,actual)&&actual.frame>=previous_.frame&&
    dt>0&&dt<=250&&std::abs(dx)<=4*ScrollBorder&&std::abs(dy)<=4*ScrollBorder;
-  previous_=actual;tick_=now;observed_=true;
-  if(!measured)return out;
+  previous_=actual;tick_=now;interval_=dt;dx_=dx;dy_=dy;observed_=true;
+ }
+ void observePresentation(const external::mainview::View&actual,uint32_t now){
+  // Several UI polls can fall between two native updates. Do not replace a
+  // measured step by synthetic zero velocity on each duplicate poll. A new
+  // game frame or32ms without movement still records an observed stop.
+  if(measured_&&actual.frame==previous_.frame&&external::mainview::sameViewport(actual,previous_)&&recent(now,tick_,32))return;
+  observe(actual,now);
+ }
+ external::mainview::View centerAt(const external::mainview::View&actual,uint32_t now,double lastRenderMs,double marginX,double marginY)const{
+  auto out=actual;
+  if(!actual.valid()||!measured_||!recent(now,tick_,250)||!sameProjection(previous_,actual)||actual.frame<previous_.frame||
+    std::abs(int64_t(actual.cameraX)-previous_.cameraX)>4*ScrollBorder||std::abs(int64_t(actual.cameraY)-previous_.cameraY)>4*ScrollBorder||
+    !std::isfinite(lastRenderMs)||lastRenderMs<=0||lastRenderMs>CompletionMaxAge||
+    !std::isfinite(marginX)||!std::isfinite(marginY)||marginX<0||marginY<0)return out;
   auto bias=[&](int64_t delta,double margin){
    const int limit=int(std::floor(std::min(64.,margin*(2./3.))));
-   return int(std::lround(std::clamp(double(delta)*lastRenderMs/dt,-double(limit),double(limit))));
+   return int(std::lround(std::clamp(double(delta)*lastRenderMs/interval_,-double(limit),double(limit))));
   };
-  out.cameraX+=bias(dx,marginX);out.cameraY+=bias(dy,marginY);
+  out.cameraX+=bias(dx_,marginX);out.cameraY+=bias(dy_,marginY);
   return out.valid()?out:actual;
+ }
+ external::mainview::View center(const external::mainview::View&actual,uint32_t now,double lastRenderMs,double marginX,double marginY){
+  if(!actual.valid()||!std::isfinite(lastRenderMs)||lastRenderMs<=0||lastRenderMs>CompletionMaxAge||
+    !std::isfinite(marginX)||!std::isfinite(marginY)||marginX<0||marginY<0){reset();return actual;}
+  observe(actual,now);return centerAt(actual,now,lastRenderMs,marginX,marginY);
  }
 };
 class StatusCadence {
@@ -83,12 +101,21 @@ template<class Request>bool scrollCompatible(Request a,const Request&b){
 }
 struct Shift {int x=0,y=0;};
 inline std::shared_ptr<const std::vector<overlaycomposition::Rect>> sceneCutouts(
- const std::shared_ptr<const std::vector<overlaycomposition::Rect>>&spans,const Shift&shift){
- if(!spans||(!shift.x&&!shift.y))return spans;
- auto out=std::make_shared<std::vector<overlaycomposition::Rect>>(*spans);
- for(auto&r:*out){r.x-=shift.x;r.y-=shift.y;}return out;
+ const std::shared_ptr<const std::vector<overlaycomposition::Rect>>&spans,const Shift&shift,int width=0,int height=0){
+ if(!spans)return spans;
+ if(!shift.x&&!shift.y&&(!width||!height))return spans;
+ auto out=std::make_shared<std::vector<overlaycomposition::Rect>>();out->reserve(spans->size());
+ for(auto r:*spans){
+  const int64_t left=int64_t(r.x)-shift.x,right=left+r.w,y=int64_t(r.y)-shift.y;
+  if(width>0&&height>0){
+   if(y<0||y>=height)continue;
+   const int64_t first=std::max<int64_t>(0,left),last=std::min<int64_t>(width,right);
+   if(last>first)out->push_back({int(first),int(y),int(last-first),r.h});
+  }else out->push_back({int(left),int(y),r.w,r.h});
+ }
+ return out->empty()?std::shared_ptr<const std::vector<overlaycomposition::Rect>>{}:out;
 }
-template<class Frame,class Request>bool scrollUsable(const Frame&frame,const Request&request,uint32_t now,Shift&shift){
+template<class Frame,class Request>bool scrollVisible(const Frame&frame,const Request&request,uint32_t now,Shift&shift){
  if(!frame.image||!scrollCompatible(frame.request,request)||
    !recent(now,frame.sampledTick,SampleMaxAge)||!recent(now,frame.completedTick,CompletionMaxAge)||
    frame.paddingX<0||frame.paddingY<0||
@@ -96,8 +123,17 @@ template<class Frame,class Request>bool scrollUsable(const Frame&frame,const Req
  const double sx=double(request.width)/request.view.width,sy=double(request.height)/request.view.height;
  const double dx=double(int64_t(request.view.cameraX)-frame.request.view.cameraX)*sx;
  const double dy=double(int64_t(request.view.cameraY)-frame.request.view.cameraY)*sy;
- if(!std::isfinite(dx)||!std::isfinite(dy)||std::abs(dx)>frame.paddingX||std::abs(dy)>frame.paddingY)return false;
- shift={-frame.paddingX-int(std::lround(dx)),-frame.paddingY-int(std::lround(dy))};return true;
+ if(!std::isfinite(dx)||!std::isfinite(dy)||std::abs(dx)>8192||std::abs(dy)>8192)return false;
+ shift={-frame.paddingX-int(std::lround(dx)),-frame.paddingY-int(std::lround(dy))};
+ // Present only existing, correctly projected pixels. A rapid drag can reveal
+ // a narrow native strip without withdrawing the whole enhanced viewport.
+ return shift.x<request.width&&shift.y<request.height&&
+  int64_t(shift.x)+frame.image->width>0&&int64_t(shift.y)+frame.image->height>0;
+}
+template<class Frame,class Request>bool scrollUsable(const Frame&frame,const Request&request,uint32_t now,Shift&shift){
+ if(!scrollVisible(frame,request,now,shift))return false;
+ return shift.x<=0&&shift.y<=0&&int64_t(shift.x)+frame.image->width>=request.width&&
+  int64_t(shift.y)+frame.image->height>=request.height;
 }
 template<class Request,class Frame>class GroupLease {
  Request request_{};std::shared_ptr<const Frame> frame_;std::vector<overlaycomposition::Surface> layers_;uint32_t tick_=0;

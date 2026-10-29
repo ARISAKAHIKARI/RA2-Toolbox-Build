@@ -271,7 +271,7 @@ static bool liveVoxel(const ActorArt&a){return a.voxel;}
   auto packet=gpuPackets_.find(key);
   if(!packet){auto next=std::make_shared<gpuvoxel::Prepared>();
    if(shadow){auto flattened=art.model;for(auto&face:flattened.faces)for(auto&p:face.p)p.z=0;
-    if(!gpuvoxel::prepare(flattened,angle,art.colors,*next,turret,art.turretOffset,nullptr,255,0,false,scale))return false;
+    if(!gpuvoxel::prepare(flattened,angle,art.colors,*next,turret,art.turretOffset,nullptr,255,0,false,scale,posture))return false;
    }else if(!gpuvoxel::prepare(art.model,angle,art.colors,*next,turret,art.turretOffset,&voxelLight,255,pitch,projectile,scale,posture))return false;
    packet=next;gpuPackets_.insert(std::move(key),packet);
   }
@@ -447,8 +447,10 @@ bool renderActor(const ActorArt&art,const external::visual::Pose&pose,external::
    if(!art.flat){if(gpuPresentation_)out.skipZ=true;else out.depth.assign(out.pixels.size(),std::numeric_limits<float>::quiet_NaN());}
   }
   if(art.shadow){external::voxel::Image shadow;bool drawn=false;
-   if(gpuPresentation_)drawn=gpuVoxel(art,angle,turret,0,false,rasterScale,nullptr,true,shadow);
-   else{auto ground=art.model;for(auto&face:ground.faces)for(auto&p:face.p)p.z=0;drawn=external::voxel::render(ground,angle,art.colors,shadow,turret,art.turretOffset,nullptr,255,0,false,rasterScale);}
+   auto shadowPosture=external::voxelshadow::projection(pose.shadow);
+   if(!shadowPosture.available){failure="voxel-current-shadow-unavailable";return false;}
+   if(gpuPresentation_)drawn=gpuVoxel(art,angle,turret,0,false,rasterScale,&shadowPosture,true,shadow);
+   else{auto ground=art.model;for(auto&face:ground.faces)for(auto&p:face.p)p.z=0;drawn=external::voxel::render(ground,angle,art.colors,shadow,turret,art.turretOffset,nullptr,255,0,false,rasterScale,&shadowPosture);}
    if(drawn){shadow.x+=3*shadow.rasterScale;shadow.shadow=true;shadow.flat=true;shadow.writeDepth=false;shadow.depthBias=2;std::vector<float>().swap(shadow.depth);out.attachments.push_back(std::move(shadow));}}
   return true;
  }
@@ -482,6 +484,21 @@ bool renderActor(const ActorArt&art,const external::visual::Pose&pose,external::
  // NormalZAdjust and the -20/-40 production-body adjustment (706469/70653E).
  if(art.kind==external::projectiles::Kind){if(art.shadow){auto ground=out;ground.attachments.clear();ground.shadow=true;ground.flat=true;ground.writeDepth=false;ground.depthBias=-20;ground.airborneShadow=true;out.attachments.push_back(std::move(ground));}}
  else shadow(*shape,pointer,frame,out,art.kind==3,art.kind==3?2.f:out.depthBias+(art.kind==5?0:2));
+ // Native SHP vehicles compose hull and turret at one origin on the temporary
+ // surface, then submit one standing sprite. Merge source indices before
+ // lighting/xBRZ, so differing frame crops do not create two depth gradients.
+ // The vehicle shadow was submitted once before this composition.
+ if(art.kind==2&&pose.turretFrame>=0){external::voxel::Image turret;
+  if(!decode(art.shape,art.pointer,pose.turretFrame,turret,why)){failure="vehicle-turret/decode:"+art.filename+" frame="+std::to_string(pose.turretFrame)+" "+why;complete=false;}
+  else{turret.y+=art.drawY;int left=std::min(out.x,turret.x),top=std::min(out.y,turret.y),right=std::max(out.x+out.width,turret.x+turret.width),bottom=std::max(out.y+out.height,turret.y+turret.height);
+   int width=right-left,height=bottom-top;
+   if(width<1||height<1||width>resolutionsampling::MaxDimension||height>resolutionsampling::MaxDimension||uint64_t(width)*height>resolutionsampling::MaxPixels){failure="vehicle-turret/combined-bounds";complete=false;}
+   else{std::vector<uint32_t> pixels(size_t(width)*height);std::vector<uint8_t> indices(pixels.size());
+    auto merge=[&](const external::voxel::Image&part){for(int y=0;y<part.height;++y)for(int x=0;x<part.width;++x){size_t from=size_t(y)*part.width+x;if(!(part.pixels[from]>>24))continue;size_t to=size_t(y+part.y-top)*width+x+part.x-left;pixels[to]=part.pixels[from];if(part.indices.size()==part.pixels.size())indices[to]=part.indices[from];}};
+    merge(out);merge(turret);out.x=left;out.y=top;out.width=width;out.height=height;out.pixels=std::move(pixels);out.indices=std::move(indices);
+   }
+  }
+ }
  auto component=[&](external::buildings::Part index,int displayed,float depthBias,bool write){const auto&part=art.buildingParts[index];if(!part.pointer||displayed<0)return;
   external::voxel::Image image;if(!decode(part.shape,part.pointer,displayed,image,why)){failure="building-part/decode:"+part.filename+" frame="+std::to_string(displayed)+" "+why;complete=false;return;}
   image.y+=art.drawY;image.objectPalette=true;image.flat=true;image.writeDepth=write;image.depthBias=depthBias;

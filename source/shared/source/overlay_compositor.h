@@ -35,11 +35,14 @@ struct DIB {
  }
 };
 struct Node {Surface surface;uint64_t lastSeen=0;};
+// Successful HWND submissions, not DWM/vblank/displayed-frame measurements.
+struct UploadStatistics {uint64_t count=0,lastTick=0,intervalMs=0,maxGapMs=0,failures=0;};
 class Host {
  std::mutex mutex;std::condition_variable cv;std::thread thread;
  std::map<uint64_t,Node> nodes;Context context{};
  uint64_t generation=0,revision=0,heartbeat=0;bool enabled=false,stop=false,top=false;
  int rate=60;DWORD error=0;bool startupFailed=false;std::atomic<HWND> ownedWindow{nullptr};
+ UploadStatistics uploadStatistics_{};bool uploadContinuous_=false;
  static LRESULT CALLBACK proc(HWND w,UINT m,WPARAM a,LPARAM b){
   if(m==WM_NCHITTEST)return HTTRANSPARENT;
   if(m==WM_MOUSEACTIVATE)return MA_NOACTIVATE;
@@ -54,6 +57,8 @@ class Host {
   if(!window){std::lock_guard<std::mutex>lock(mutex);error=GetLastError();startupFailed=true;return;}
   ownedWindow=window;
   DIB dib;overlaycomposition::Incremental composition;overlaypresentrate::Monitor displayRate;uint64_t presented=~uint64_t(0),token=0;bool visible=false,dibNeedsFullCopy=true;POINT lastOrigin{LONG_MIN,LONG_MIN};bool wasTop=false;
+  overlaypresentrate::Cadence uploadCadence;
+  std::chrono::steady_clock::time_point lastUploadComplete{};
   for(;;){
    MSG message{};while(PeekMessageW(&message,nullptr,0,0,PM_REMOVE)){if(message.message==WM_DISPLAYCHANGE)displayRate.invalidate();TranslateMessage(&message);DispatchMessageW(&message);}
    Context current;std::vector<Surface> layers;uint64_t version;bool active,highest;int hz;
@@ -69,9 +74,12 @@ class Host {
    RECT client{};POINT origin{};
    active=active&&fg==current.pid&&target&&IsWindow(target)&&!IsIconic(target)&&GetClientRect(target,&client)&&
     client.right==current.width&&client.bottom==current.height&&ClientToScreen(target,&origin)&&!layers.empty();
-   if(!active){if(visible)ShowWindow(window,SW_HIDE);visible=false;presented=version;std::this_thread::sleep_for(std::chrono::milliseconds(8));continue;}
+   if(!active){if(visible)ShowWindow(window,SW_HIDE);visible=false;presented=version;
+    std::unique_lock<std::mutex>lock(mutex);uploadContinuous_=false;uploadStatistics_.intervalMs=uploadStatistics_.maxGapMs=0;
+    cv.wait_for(lock,std::chrono::milliseconds(8),[&]{return stop||revision!=version;});continue;}
    // Uploading a full layered HWND faster than its confirmed display mode
    // cannot reveal more frames. Sampling/command clocks keep their own rate.
+   const int requestedHz=hz;
    hz=overlaypresentrate::limit(hz,displayRate.update(target,GetTickCount()));
    bool updated=true;
    if(!visible||version!=presented||token!=current.token){
@@ -84,10 +92,27 @@ class Host {
      if(resize||dibNeedsFullCopy)copy({0,0,current.width,current.height});else for(const auto&dirty:composition.dirtyRegions())copy(dirty);
      dibNeedsFullCopy=false;
      SIZE size{current.width,current.height};POINT zero{};BLENDFUNCTION blend{AC_SRC_OVER,0,255,AC_SRC_ALPHA};
+     // Composition may start immediately. Only submitting to the HWND is
+     // rate-limited, so variable render costs cannot append a whole idle period
+     // or produce a short catch-up upload burst after a slow frame.
+     {
+      std::unique_lock<std::mutex>lock(mutex);
+      auto obsolete=[&]{return stop||!enabled||context.token!=current.token||context.cameraX!=current.cameraX||context.cameraY!=current.cameraY||rate!=requestedHz;};
+      cv.wait_until(lock,uploadCadence.deadline(std::chrono::steady_clock::now(),hz),obsolete);
+      if(obsolete()){dibNeedsFullCopy=true;continue;}
+     }
+     uploadCadence.submitted(std::chrono::steady_clock::now());
      updated=UpdateLayeredWindow(window,nullptr,&origin,&size,dib.dc,&zero,0,&blend,ULW_ALPHA)!=FALSE;
+     const auto completed=std::chrono::steady_clock::now();
+     {std::lock_guard<std::mutex>lock(mutex);if(context.token==current.token){
+      if(updated){
+       auto&statistics=uploadStatistics_;statistics.intervalMs=uploadContinuous_?uint64_t(std::max<int64_t>(0,std::chrono::duration_cast<std::chrono::milliseconds>(completed-lastUploadComplete).count())):0;
+       statistics.maxGapMs=std::max(statistics.maxGapMs,statistics.intervalMs);++statistics.count;statistics.lastTick=GetTickCount64();uploadContinuous_=true;lastUploadComplete=completed;
+      }else ++uploadStatistics_.failures;
+     }}
      if(updated){presented=version;token=current.token;}
     }
-   }
+   }else{std::lock_guard<std::mutex>lock(mutex);uploadContinuous_=false;uploadStatistics_.intervalMs=0;}
    if(updated){
     if(!visible||wasTop!=highest||origin.x!=lastOrigin.x||origin.y!=lastOrigin.y)
      updated=overlaystack::place(window,overlaystack::Layer::RenderUpgrade,origin.x,origin.y,0,0,SWP_NOSIZE|SWP_SHOWWINDOW)!=FALSE;
@@ -95,7 +120,6 @@ class Host {
     if(updated){visible=true;lastOrigin=origin;wasTop=highest;}
    }
    {std::lock_guard<std::mutex>lock(mutex);error=updated?0:GetLastError();}
-   std::this_thread::sleep_for(std::chrono::microseconds(overlaypresentrate::periodMicros(hz)));
   }
   overlaystack::forget(window);DestroyWindow(window);ownedWindow=nullptr;
  }
@@ -105,7 +129,7 @@ public:
   std::lock_guard<std::mutex>lock(mutex);if(stop)return {};
   active=active&&window&&pid&&match&&width>0&&height>0&&width<=8192&&height<=8192&&uint64_t(width)*height<=16*1024*1024;
   bool changed=enabled!=active||context.window!=window||context.pid!=pid||context.match!=match||context.width!=width||context.height!=height;
-  if(changed){nodes.clear();++generation;++revision;}
+  if(changed){nodes.clear();++generation;++revision;uploadStatistics_={};uploadContinuous_=false;}
   if(top!=highest){top=highest;++revision;}
   const int committedX=deferCamera&&!changed?context.cameraX:cameraX,committedY=deferCamera&&!changed?context.cameraY:cameraY;
   if(context.cameraX!=committedX||context.cameraY!=committedY)++revision;
@@ -167,6 +191,7 @@ public:
  HWND window()const{return ownedWindow.load();}
  size_t layerCount(){std::lock_guard<std::mutex>lock(mutex);return nodes.size();}
  DWORD lastError(){std::lock_guard<std::mutex>lock(mutex);return error;}
+ UploadStatistics uploadStatistics(){std::lock_guard<std::mutex>lock(mutex);return uploadStatistics_;}
  void shutdown(){{std::lock_guard<std::mutex>lock(mutex);stop=true;enabled=false;nodes.clear();cv.notify_one();}if(thread.joinable())thread.join();}
 };
 inline Host&host(){static Host value;return value;}

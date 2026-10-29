@@ -31,6 +31,21 @@ int main(){
  auto reset=bank(1,1000);timeline.observe(reset,1520);assert(timeline.sample(1521).markers[0].x==1000);
  auto invalid=bank(2,1050);invalid.markerScanValid=false;assert(!timeline.observe(invalid,1540));
  auto sequence=reset;sequence.frame=2;sequence.markers[0].pose.frame=500;timeline.observe(sequence,1540);assert(timeline.sample(1541).markers[0].pose.frameFrom==-1);
+ // Adjacent numeric SHP indices can belong to unrelated actions or facing
+ // bins. Movement remains smooth, while those discrete pictures must snap.
+ auto transition=[&](int kind,int beforeSequence,int afterSequence,int beforeBody,int afterBody,int beforeTurret,int afterTurret){
+  materialmotion::Timeline discrete;auto old=bank(200,1024),next=bank(201,1088);
+  old.markers[0].kind=next.markers[0].kind=kind;old.markers[0].pose.voxel=next.markers[0].pose.voxel=false;
+  auto&ap=old.markers[0].pose;auto&bp=next.markers[0].pose;ap.frame=10;bp.frame=11;
+  ap.sequence=beforeSequence;bp.sequence=afterSequence;ap.body=uint8_t(beforeBody);bp.body=uint8_t(afterBody);ap.turretFrame=beforeTurret;bp.turretFrame=afterTurret;
+  assert(discrete.observe(old,2000)&&discrete.observe(next,2020));return discrete.sample(2030).markers[0];
+ };
+ auto changedAction=transition(1,1,5,0,0,-1,-1);assert(changedAction.pose.frameFrom==-1&&changedAction.x==1056);
+ assert(transition(2,3,1,0,0,-1,-1).pose.frameFrom==-1); // walk to fire
+ assert(transition(projectiles::Kind,0,0,10,9,-1,-1).pose.frameFrom==-1); // rotating SHP shot
+ assert(transition(2,2,2,0,0,10,11).pose.frameFrom==-1); // independent SHP turret
+ assert(transition(1,5,5,0,0,-1,-1).pose.frameFrom==10); // true same-action animation
+ auto loop=reset;loop.frame=3;loop.markers[0].pose.frame=0;timeline.observe(loop,1560);assert(timeline.sample(1570).markers[0].pose.frameFrom==-1);
  auto nan=timeline.sample(std::numeric_limits<double>::quiet_NaN());assert(!nan.terrain);
  assert(materialmotion::refreshPeriod(500,true)==2&&materialmotion::refreshPeriod(500,false)==16&&materialmotion::refreshPeriod(-1,true)==200);
  voxel::Image first,second,blend;first.width=second.width=2;first.height=second.height=1;

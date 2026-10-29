@@ -2,6 +2,9 @@
 #include "../../shared/source/latest_worker.h"
 #include "../../external_reader/source/feedback_cursor.h"
 #include "../../external_reader/source/feedback_orders.h"
+#include "../../external_reader/source/native_effect_stencil.h"
+#include "../../external_reader/source/native_beam_effects.h"
+#include "../../external_reader/source/native_unit_ui_stencil.h"
 #include "../../external_reader/source/voxel_preview.h"
 #include <cassert>
 #include <cstdio>
@@ -23,10 +26,11 @@ static Host&host(){static Host h;return h;}
 }
 static constexpr uint32_t mouseAt=0x10000,mouseVT=0x11000,shape=0x12000,converter=0x13000,palette=0x14000;
 struct Reader {
- std::vector<uint8_t> bytes=std::vector<uint8_t>(0xB00000);bool failSelection=false,failMouse=false,failView=false;size_t reads=0,readBytes=0,pixelReads=0;
+ std::vector<uint8_t> bytes=std::vector<uint8_t>(0xC00000);bool failSelection=false,failMouse=false,failView=false,failBeam=false;int moveOnSelection=0;size_t reads=0,readBytes=0,pixelReads=0;
  bool open(uint32_t){return true;}void close(){}
  bool readFresh(uint32_t p,void*out,size_t n){++reads;readBytes+=n;if(p>=shape+56&&p<shape+64)++pixelReads;
-  if((failSelection&&p==0xA8ECB8)||(failMouse&&p==0x887640)||(failView&&p==0xA8B230))return false;
+  if(p==0xA8ECB8&&moveOnSelection){uint32_t tactical=0;int camera=0;std::memcpy(&tactical,bytes.data()+0x887324,4);std::memcpy(&camera,bytes.data()+tactical+0xB0,4);camera+=moveOnSelection;put(tactical+0xB0,camera);moveOnSelection=0;}
+  if((failSelection&&p==0xA8ECB8)||(failMouse&&p==0x887640)||(failView&&p==0xA8B230)||(failBeam&&p==external::nativeeffects::LaserArray))return false;
   if(uint64_t(p)+n>bytes.size())return false;std::memcpy(out,bytes.data()+p,n);return true;
  }
  template<class T>void put(uint32_t p,const T&v){std::memcpy(bytes.data()+p,&v,sizeof v);}
@@ -44,6 +48,7 @@ struct Frame {Request request;std::shared_ptr<const std::vector<uint32_t>>image;
 static void setup(const renderupgrade::Request&r){
  auto&m=externalReader;const auto&v=r.view;
  m.put(0xA8B230,v.scenario);m.put(0xA83D4C,v.house);m.put(0x887324,v.tactical);m.put(0xA8ED84,v.frame);m.put(0xA8E9A0,uint8_t(1));
+ m.put(0xB0CD48,.0866025403784);
  m.put(0xA8E378,uint8_t(1));m.put(0x8A00A4,v.screenW);m.put(0x8A00A8,v.screenH);
  m.put(v.tactical+0xB0,v.cameraX);m.put(v.tactical+0xB4,v.cameraY);
  const int rect[]{v.x,v.y,v.width,v.height};m.put(0x886FA0,rect);
@@ -100,8 +105,48 @@ int main(){
  externalReader.failSelection=externalReader.failMouse=externalReader.failView=false;assert(publish(request));
  externalReader.failMouse=true;auto changed=request;changed.detail=0;++clockNow;assert(!publish(changed));
  externalReader.failMouse=false;assert(publish(request));
- externalReader.put(request.view.tactical+0xB0,request.view.cameraX+1);++clockNow;assert(!publish(request)&&feedback::unsafeView);
- layers.clear();assert(!feedback::update(request,frame,0,0,layers));
+ externalReader.put(request.view.tactical+0xB0,request.view.cameraX+1);++clockNow;assert(publish(request)&&!feedback::unsafeView);
+ // The band is screen-local, and must not be translated with world feedback
+ // when the native camera advances during the small feedback read itself.
+ externalReader.put(external::nativefeedback::Map+0x11CF,uint8_t(1));const int edges[]{20,30,120,150};externalReader.put(request.view.tactical+0xD90,edges);
+ externalReader.put(request.view.tactical+0xB0,request.view.cameraX);layers.clear();assert(feedback::update(request,frame,0,0,layers));
+ auto bandLayer=layers.front();assert(bandLayer.id==feedback::SelectionLayer);
+ externalReader.moveOnSelection=8;layers.clear();assert(feedback::update(request,frame,0,0,layers)&&!feedback::unsafeView);
+ assert(layers.front().id==feedback::SelectionLayer&&layers.front().rect==bandLayer.rect&&layers.front().pixels==bandLayer.pixels);
+ externalReader.put(external::nativefeedback::Map+0x11CF,uint8_t(0));
+ externalReader.put(0xA8B230,request.view.scenario+4);layers.clear();assert(!feedback::update(request,frame,0,0,layers)&&feedback::unsafeView);
+ externalReader.put(0xA8B230,request.view.scenario);
+ // A real native foundation hole continues to require an exact camera,
+ // including when it moves during capture. Its underlying pixels are native.
+ auto placement=request;placement.view.cameraX=-100;placement.view.cameraY=1875;setup(placement);
+ constexpr uint32_t map=external::nativefeedback::Map,stencilShape=0x600000,foundation=0x50000,cells=0x100000,tile=0x300000;
+ const int bounds[]{64,64,10,10,1,1};externalReader.put(map+0xF4,bounds);externalReader.put(map+0x13C,cells);externalReader.put(map+0x140,512*512);
+ externalReader.put(map+0x1174,int16_t(64));externalReader.put(map+0x1176,int16_t(64));externalReader.put(map+0x117C,foundation);externalReader.put(map+0x11A8,0x90000u);externalReader.put(0x8A03FC,stencilShape);
+ const int16_t offsets[]{0,0,0x7fff,0x7fff};externalReader.put(foundation,offsets);externalReader.put(cells+(64*512+64)*4,tile);
+ const int16_t cellIdentity[]{64,64};externalReader.put(tile+0x24,cellIdentity);externalReader.put(tile+0x12C,uint8_t(2));
+ const uint16_t shpHeader[]{0,2,2,3};externalReader.put(stencilShape,shpHeader);
+ for(int f=0;f<3;++f){uint32_t at=stencilShape+8+f*24;externalReader.put(at+4,uint16_t(2));externalReader.put(at+6,uint16_t(2));externalReader.put(at+20,uint32_t(80+f*4));const uint8_t opaque[]{1,1,1,1};externalReader.put(stencilShape+80+f*4,opaque);}
+ layers.clear();assert(feedback::update(placement,frame,0,0,layers)&&feedback::nativeCutouts&&!feedback::nativeCutouts->empty());
+ externalReader.moveOnSelection=8;layers.clear();assert(!feedback::update(placement,frame,0,0,layers)&&feedback::unsafeView);
+ layers.clear();assert(!feedback::update(placement,frame,0,0,layers)&&feedback::unsafeView);
+ // A live beam preserves native pixels without decoding an invented line.
+ // Any failed or camera-mismatched effect mask forbids the complete-group
+ // grace path, so an expired beam corridor can never remain on screen.
+ externalReader.put(map+0x11A8,0u);setup(request);
+ constexpr uint32_t beamPointers=0x90000,beamObject=0x91000;
+ const uint32_t beamHead[]{0,beamPointers,1,0,1,0};externalReader.put(external::nativeeffects::LaserArray,beamHead);externalReader.put(beamPointers,beamObject);
+ const int sourcePoint[]{3000,2000,0},targetPoint[]{5000,2000,0};externalReader.put(beamObject+0x24,sourcePoint);externalReader.put(beamObject+0x30,targetPoint);externalReader.put(beamObject+0x4C,15);
+ layers.clear();assert(feedback::update(request,frame,0,0,layers)&&feedback::nativeCutouts&&!feedback::nativeCutouts->empty());
+ for(auto hole:*feedback::nativeCutouts)assert(hole.h==1&&hole.x>=0&&hole.y>=0&&hole.x+hole.w<=request.width&&hole.y<request.height);
+ externalReader.failMouse=true;layers.clear();assert(!feedback::update(request,frame,0,0,layers)&&feedback::unsafeView&&!feedback::nativeCutouts);externalReader.failMouse=false;
+ externalReader.failMouse=true;layers.clear();assert(!feedback::update(request,frame,0,0,layers)&&feedback::unsafeView&&!feedback::nativeCutouts);externalReader.failMouse=false;
+ layers.clear();assert(feedback::update(request,frame,0,0,layers)&&feedback::nativeCutouts);
+ externalReader.failSelection=true;layers.clear();assert(!feedback::update(request,frame,0,0,layers)&&feedback::unsafeView&&!feedback::nativeCutouts);externalReader.failSelection=false;
+ layers.clear();assert(feedback::update(request,frame,0,0,layers)&&feedback::nativeCutouts);
+ externalReader.failBeam=true;layers.clear();assert(!feedback::update(request,frame,0,0,layers)&&feedback::unsafeView&&!feedback::nativeCutouts);externalReader.failBeam=false;
+ externalReader.moveOnSelection=8;layers.clear();assert(!feedback::update(request,frame,0,0,layers)&&feedback::unsafeView&&!feedback::nativeCutouts);
+ setup(request);externalReader.put(external::nativeeffects::LaserArray+16,0u);layers.clear();assert(feedback::update(request,frame,0,0,layers)&&!feedback::nativeCutouts);
+ externalReader.failMouse=true;layers.clear();assert(!feedback::update(request,frame,0,0,layers)&&!feedback::unsafeView);externalReader.failMouse=false;
  assert(overlaycompositor::host().removals==0);feedback::shutdown();assert(overlaycompositor::host().removals==1);
- std::puts("PASS: actual feedback host, 100 current-position cache hits, 50 immediate cursor frame changes, palette refresh, bounded selection/group read grace, native/external cursor and immediate viewport/config rejection");
+ std::puts("PASS: actual feedback host, 100 current-position cache hits, 50 immediate cursor frame changes, palette refresh, bounded selection/group read grace, screen-band stability during camera motion; native foundation holes keep exact-camera rejection, immediate world/config rejection");
 }

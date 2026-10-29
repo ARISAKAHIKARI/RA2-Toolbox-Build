@@ -24,6 +24,7 @@ class Worker {
  void run(){
   external::ReadSession reader;external::cameraassets::Context<external::ReadSession> assets(reader);external::radar::SceneRenderer<decltype(assets)> renderer;external::radar::DiagramRenderer diagram;external::radar::Sampler<external::SharedReadView> sampler(external::SharedReadView{&reader});uint64_t active=~uint64_t(0);int previousFrame=-1;unsigned previousRevision=0;Request activeRequest{};
   for(;;){Request r;uint64_t token;{std::unique_lock<std::mutex> lock(mutex);cv.wait(lock,[&]{return stop||(!paused&&request.pid);});if(stop)return;r=request;token=generation;}
+   const auto iterationStarted=std::chrono::steady_clock::now();
    if(token!=active){if(r.pid!=activeRequest.pid||r.match!=activeRequest.match){reader.close();sampler.reset();renderer.reset();diagram.reset();}else {if(r.mode!=activeRequest.mode)sampler.reset();if(r.gpu!=activeRequest.gpu)renderer.reset();}activeRequest=r;active=token;previousFrame=-1;previousRevision=0;}
    external::xbrzadapter::gpuPresentation(r.gpu); // this worker owns its GPU state; native assets stay CPU-prepared
    std::shared_ptr<const external::radar::Frame> next;
@@ -48,7 +49,7 @@ class Worker {
      if(observed.readable){std::lock_guard<std::mutex> lock(mutex);if(token==generation&&latest&&!external::radar::sameWorld(*latest,observed))latest.reset();}}
    }else{std::lock_guard<std::mutex> lock(mutex);if(token==generation)latest.reset();}
    auto fresh=[&](uint32_t p,void*out,size_t n){return reader.readFresh(p,out,n);};auto completed=external::radar::publicationContext(fresh);
-   {std::unique_lock<std::mutex> lock(mutex);if(token==generation&&next){if(external::radar::sameWorld(*next,completed))latest=std::move(next);else if(completed.readable&&latest&&!external::radar::sameWorld(*latest,completed))latest.reset();}cv.wait_for(lock,std::chrono::microseconds(monitorrefresh::periodMicros(r.rate)),[&]{return stop||paused||generation!=token||request.rate!=r.rate;});if(stop)return;}
+   {std::unique_lock<std::mutex> lock(mutex);if(token==generation&&next){if(external::radar::sameWorld(*next,completed))latest=std::move(next);else if(completed.readable&&latest&&!external::radar::sameWorld(*latest,completed))latest.reset();}cv.wait_until(lock,iterationStarted+std::chrono::microseconds(monitorrefresh::periodMicros(r.rate)),[&]{return stop||paused||generation!=token||request.rate!=r.rate;});if(stop)return;}
   }
  }
 public:

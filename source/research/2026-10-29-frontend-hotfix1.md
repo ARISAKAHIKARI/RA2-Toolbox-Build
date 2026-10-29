@@ -12,7 +12,7 @@ pre.7 已交付包不因工作区修改而自动更新。真实 Windows 桌面�
 
 `assist/source/settings_dependencies.h` 将文本框 ID `9201+2*feature` 加入现有依赖适配器，并通过 `typeListNeed(feature)` 为每个清单分配独立位；`ui_dependencies.h` 从 `featureTypes.filters[f].custom` 发布状态。总依赖位数为 53，并以 `static_assert` 约束不超过 64。关闭限制时禁用相关清单，保留已保存内容并说明原因；重新开启限制后恢复编辑。清单编辑的合成通知经过相同检查，不能只依靠控件灰色外观。
 
-20 个类型字段中的 `BurstRefresh` 是自动启用类型列表，没有相同的 `custom` 开关；排除它，避免把独立列表永久锁住。`assist/tests/settings_dependencies.cpp` 对 19 个清单分别验证关闭、开启、互不串联和该独立列表的例外。
+20 个类型槽中的 `BurstRefresh`（f=17）为保留共享 ABI 的退役槽，`tactical_controls.h` 不创建该控件，因此不加入 19 项清单依赖。`assist/tests/settings_dependencies.cpp` 对 19 个清单分别验证关闭、开启、互不串联及退役槽排除。
 
 ## 队形双击状态的上下文失效
 
@@ -27,6 +27,8 @@ pre.7 已交付包不因工作区修改而自动更新。真实 Windows 桌面�
 `suite/source/main.cpp` 原来另行保存 `panes[]` 与 `displayPanes[]`，而 `frontendpanes::Host` 在 `WM_NCDESTROY` 只清自身窗口指针。模块退出后，宿主可能继续向旧 HWND 发送布局、显示设置或关闭消息；若句柄被别的窗口复用，`IsWindow()` 也不能证明它仍是原设置窗口。此外，宿主等待关闭确认时，如果负责确认的模块已经退出，原 `closeAsked` 状态会使关闭流程继续等待。
 
 现删除两份冗余 HWND 缓存，统一通过 Host 的活动窗口槽查询和投递；`Host::post()`、布局消息发布与 `WM_NCDESTROY` 退役以槽互斥锁协调。退役同时清除待处理状态和快照，通知宿主重绘；迟到的 `PaneReady` 必须仍匹配活动槽。等待关闭确认期间，只要负责模块线程已结束，就继续关闭其他模块，而不是等待不再可能发出的确认。
+
+后续历史澄清：正式冻结的 Hotfix1 本地提交 `9fcc585dbbfa3247fe89b1682ba54367f3d0902f` 中，`Host::cloak()` 确实持槽 mutex 调用外部 `DwmSetWindowAttribute`，不能将该已交付代码描述成 DWM 外调用无锁。Hotfix2 将此外调用移出锁，消息投递与退役仍互斥；具体回调边界检查见[渲染与退出补查](2026-10-29-render-hotfix2.md)。此澄清不改写既有第 103 条 notebook 记录，纠正附加到下一条研究记录。
 
 `assist/tests/frontend_panes_windows.cpp` 增加窗口销毁后活动槽、快照、消息投递与重绘通知断言；`suite_display_test.py` 检查生产消息路径与关闭分支。Windows 目标的双架构 fixture 链接和 suite 对象编译均通过，共 4 项，记录为 `frontend-followup-private/drag/compile-result.json`；这些二进制未在 Windows 执行，因此不宣称实际窗口句柄复用或桌面平滑度已经现场验证。
 
