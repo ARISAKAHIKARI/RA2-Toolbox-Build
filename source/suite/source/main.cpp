@@ -71,7 +71,7 @@ static void layoutPanes(){
   publishedCategory=selected>=2?selected-2:0;suite::frontend.post(2,suite::SelectCategory,publishedCategory);
  }
  for(unsigned i=0;i<3;++i)if(suite::frontend.window(unsigned(i)))suite::frontend.request(i,{screen,visible&&i==selectedPane(),consoleDpi,paneOrder});
- suite::frontend.present();
+
 }
 static void layout(){
  RECT r{};GetClientRect(frame,&r);auto px=[](int n){return modernui::scale(n,consoleDpi);};
@@ -120,17 +120,19 @@ static LRESULT CALLBACK proc(HWND w,UINT m,WPARAM wp,LPARAM lp){switch(m){
  case WM_SIZE:layout();return 0;
  case WM_MOVE:layoutPanes();return 0;
  case WM_ENTERSIZEMOVE:suite::frontend.beginInteraction();layoutPanes();InvalidateRect(w,&paneRect,FALSE);return 0;
+ case WM_CANCELMODE:suite::frontend.endInteraction();layoutPanes();return 0;
+ case WM_ACTIVATEAPP:if(!wp){suite::frontend.endInteraction();layoutPanes();}break;
  case WM_EXITSIZEMOVE:suite::frontend.endInteraction();layoutPanes();InvalidateRect(w,&paneRect,FALSE);return 0;
  case WM_ACTIVATE:if(LOWORD(wp)!=WA_INACTIVE)++paneOrder;layoutPanes();break;
  case WM_SHOWWINDOW:PostMessageW(w,frontendpanes::ActivityMessage,0,0);break;
  case WM_ERASEBKGND:return 1;
- case WM_PAINT:{PAINTSTRUCT ps{};HDC dc=BeginPaint(w,&ps);RECT r{};GetClientRect(w,&r);SetDCBrushColor(dc,modernui::Background);FillRect(dc,&r,(HBRUSH)GetStockObject(DC_BRUSH));suite::frontend.paint(dc,selectedPane(),paneRect);EndPaint(w,&ps);return 0;}
+ case WM_PAINT:{PAINTSTRUCT ps{};HDC dc=BeginPaint(w,&ps);RECT r{};GetClientRect(w,&r);SetDCBrushColor(dc,modernui::Background);FillRect(dc,&r,(HBRUSH)GetStockObject(DC_BRUSH));EndPaint(w,&ps);return 0;}
  case WM_GETMINMAXINFO:((MINMAXINFO*)lp)->ptMinTrackSize={modernui::scale(760,consoleDpi),modernui::scale(620,consoleDpi)};return 0;
  case WM_DPICHANGED:{applyDpi(HIWORD(wp));auto r=(RECT*)lp;SetWindowPos(w,nullptr,r->left,r->top,r->right-r->left,r->bottom-r->top,SWP_NOZORDER|SWP_NOACTIVATE);layout();return 0;}
  case WM_CLOSE:if(!closePhase){closePhase=1;closeAsked=false;SetWindowTextW(frame,L"红警工具箱 · 正在准备退出…");}return 0;
  case CloseDecision:if(closePhase==1){if(wp)shutdown();else{closePhase=0;SetWindowTextW(frame,L"红警工具箱 v" RA2_RELEASE_VERSION_W);}}return 0;
  case WM_TIMER:{
-  layoutPanes();
+  suite::frontend.reconcileInteraction();layoutPanes();
   if(closePhase==1){if(done(0))shutdown();else if(!closeAsked)closeAsked=suite::frontend.post(0,suite::CloseCheck);}
   if(closePhase==2&&done(0)&&done(1)&&done(2)){DestroyWindow(w);return 0;}
   if(!closePhase){for(int i=0;i<3;++i)if(done(i)&&!IsWindow(suite::frontend.window(unsigned(i)))){active[i]=false;SendMessageW(checks[i],BM_SETCHECK,BST_UNCHECKED,0);EnableWindow(checks[i],FALSE);}}
