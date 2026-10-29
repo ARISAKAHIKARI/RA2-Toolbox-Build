@@ -173,6 +173,7 @@ static std::vector<cooperative::Assignment> submittedCooperative,acceptedCoopera
 static bool retryCooperative=false;
 static bool saveAdditionalSettings();static uint32_t additionalFlags();static void syncAdditional();static void serviceCooperative();static void servicePointer();static void fillExtraTypes(bool force);
 static void changedSetting();static void syncSecondaryLayoutControls();
+static void syncSettingDependencies(bool force=false);
 static void readSnapshot();static void syncTypeConfig();static void fillTypeBindings(bool force=false);static void typeBindingFields();
 static std::wstring path(const wchar_t*s){return root+L"\\"+s;}static std::wstring wide(const char*s){std::wstring w;while(*s)w+=wchar_t((unsigned char)*s++);return w;}
 static std::wstring hoverHelp;
@@ -368,7 +369,7 @@ static void rememberLiveTypes(){
  }
 }
 static UINT modifiers(WORD key){BYTE f=HIBYTE(key);return MOD_NOREPEAT|((f&HOTKEYF_CONTROL)?MOD_CONTROL:0)|((f&HOTKEYF_ALT)?MOD_ALT:0)|((f&HOTKEYF_SHIFT)?MOD_SHIFT:0);}
-static std::wstring keyText(WORD key){if(!LOBYTE(key))return L"未绑定";std::wstring r=(key&0x8000)?L"双击 ":L"";BYTE f=HIBYTE(key);if(f&HOTKEYF_CONTROL)r+=L"Ctrl+";if(f&HOTKEYF_ALT)r+=L"Alt+";if(f&HOTKEYF_SHIFT)r+=L"Shift+";wchar_t s[80];LONG code=MapVirtualKeyW(LOBYTE(key),MAPVK_VK_TO_VSC)<<16;if(f&HOTKEYF_EXT)code|=1<<24;GetKeyNameTextW(code,s,80);return r+s;}
+static std::wstring keyText(WORD key){return keygesture::describe(key,modernui::hotkeyName(key));}
 static bool foregroundGame(){if(!game||!IsWindow(game)||IsIconic(game))return false;HWND fg=GetForegroundWindow();if(fg==game)return true;DWORD fgPid=0;GetWindowThreadProcessId(fg,&fgPid);return fgPid&&fgPid==pid;}
 static void wakeGame(){
  if(gameinput::wake(hook))lastPulse=GetTickCount();
@@ -385,13 +386,15 @@ static int desiredHotkeyMode(){
  return !enabled&&extra.watchSecondary&&snap.readStatus==1?1:0;
 }
 static int registeredHotkeyMode=0;
+static uint32_t commandMatch();static uint32_t displayMatch();
+static void synchronizeHotkeyKeys(){uint8_t down[256]{};for(unsigned key=0;key<256;++key)down[key]=(GetAsyncKeyState(int(key))&0x8000)!=0;hotkeyRegistry.synchronize(down,registeredHotkeyMode==1?displayMatch():commandMatch());}
 static bool registerKey(int id,WORD key){return hotkeyRegistry.add(id,key,extra.allHotkeys,[](int slot,WORD chord){
- if(chord==VK_SHIFT||chord==VK_CONTROL||chord==VK_MENU)return true;
+ if(keygesture::sampledOnly(chord))return true;
  if(!RegisterHotKey(ui,slot,modifiers(chord),LOBYTE(chord)))return false;registeredKeyIDs.push_back(slot);return true;});}
-static void registerKeys(){for(int id:registeredKeyIDs)UnregisterHotKey(ui,id);registeredKeyIDs.clear();hotkeyRegistry.clear();hotkeyPending.clear();registeredHotkeyMode=desiredHotkeyMode();keysRegistered=registeredHotkeyMode!=0;if(!keysRegistered)return;int failures=0;
+static void registerKeys(){for(int id:registeredKeyIDs)UnregisterHotKey(ui,id);registeredKeyIDs.clear();hotkeyRegistry.clear();hotkeyPending.clear();typeTap.clear();variantTap.clear();registeredHotkeyMode=desiredHotkeyMode();keysRegistered=registeredHotkeyMode!=0;if(!keysRegistered)return;int failures=0;
  if(registeredHotkeyMode==1){
   for(int i=0;i<3;++i)if(external::watch::firstBinding(extra.watchKeys,i)&&!registerKey(1730+i,WORD(extra.watchKeys[i])))++failures;
-  if(failures)notify(L"副屏跟踪快捷键注册失败，请更换组合。");return;
+  synchronizeHotkeyKeys();if(failures)notify(L"副屏跟踪快捷键注册失败，请更换组合。");return;
  }
  for(int i=0;i<12;++i)if(i!=8&&LOBYTE(hotkeys[i])&&!registerKey(1000+i,hotkeys[i]))++failures;
  for(size_t i=0;i<swBindings.size()&&i<64;++i){auto&b=swBindings[i];if((b.id=="IronCurtainSpecial"&&b.key==hotkeys[9])||(b.id=="ChronoSphereSpecial"&&b.key==hotkeys[10]))continue;if(LOBYTE(b.key)&&!registerKey(int(1020+i),b.key))++failures;}
@@ -406,7 +409,7 @@ static void registerKeys(){for(int id:registeredKeyIDs)UnregisterHotKey(ui,id);r
  if(LOBYTE(idleAircraftKey)&&!registerKey(1701,idleAircraftKey))++failures;
  for(int i=0;i<9;++i)if(LOBYTE(socialKeys[i])&&!registerKey(1710+i,socialKeys[i]))++failures;
  if(LOBYTE(extra.variantKey)&&!registerKey(1700,WORD(extra.variantKey)))++failures;
- if(failures)notify(L"有 "+std::to_wstring(failures)+L" 个快捷键冲突或注册失败，请更换组合，修改后自动生效。");
+ synchronizeHotkeyKeys();if(failures)notify(L"有 "+std::to_wstring(failures)+L" 个快捷键冲突或注册失败，请更换组合，修改后自动生效。");
 }
 static std::wstring serializeIDs(const std::set<std::string>& ids){
  std::wstring result;for(const auto& id:ids){if(!result.empty())result+=L",";result+=wide(id.c_str());}return result;
@@ -461,9 +464,13 @@ static bool save(){++settingsRevision;saveWriteOK=true;for(int i=0;i<12;++i)if(i
 static uint32_t flags(){const uint32_t bits[]={Capacity,Iron,Production,AllTransports,Psychic,Crates,TextPanel};uint32_t r=0;for(int i=0;i<7;++i)if(SendMessageW(check[i],BM_GETCHECK,0,0)==BST_CHECKED)r|=bits[i];if(SendMessageW(repairCheck,BM_GETCHECK,0,0)==BST_CHECKED)r|=AutoRepair;r|=hookpolicy::resolve({hookAdvanced,hookSmartUnload,hookEject,hookAutoCS},true,ejectMode,csMode);if(magnetronMode||extra.magnetronGlobal)r|=MagnetronInput|NativeOrders;if(oreMode)r|=AutoOreReturn;if(buildAnywhereMode)r|=BuildAnywhere;if(csHoldEnabled)r|=CustomCS;if(repairUnrepairable)r|=RepairUnrepairable;return r|additionalFlags();}
 static bool commandFocus(){
  HWND fg=GetForegroundWindow();
+#ifdef RA2_UNIFIED
+ return delivery::focusIsRelevant(foregroundGame(),suite::frontend.contains(fg));
+#else
  HWND rootUi=ui?GetAncestor(ui,GA_ROOT):nullptr;
  return delivery::focusIsRelevant(foregroundGame(),
   fg==ui||fg==rootUi||(fg&&(GetAncestor(fg,GA_ROOT)==ui||GetAncestor(fg,GA_ROOT)==rootUi)));
+#endif
 }
 static controllink::View commandLink(){return {shared!=nullptr,lastData!=0,shared&&shared->stop!=0,
  incoming.status,incoming.commandStatus,incoming.match};}
@@ -1633,19 +1640,12 @@ static bool readOnlyWatchHotkey(WPARAM id,LPARAM event){
  return true;
 }
 static void serviceReadOnlyWatchKeys(){
- static bool wasActive=false,previous[3]{};static uint32_t previousMatch=0;
  bool active=desiredHotkeyMode()==1;uint32_t match=displayMatch();
- bool down[3]{};for(int i=0;i<3;++i)down[i]=(GetAsyncKeyState(16+i)&0x8000)!=0;
- if(!active||!wasActive||previousMatch!=match){
-  std::copy(std::begin(down),std::end(down),previous);wasActive=active;previousMatch=match;
-  if(!active)hotkeyRegistry.cancel();
- }else{
-  for(const auto& group:hotkeyRegistry.groups)if(group.key>=16&&group.key<=18&&down[group.key-16]&&!previous[group.key-16]){
-   hotkeyroute::Group selected;if(hotkeyRegistry.press(group.id,GetTickCount(),match,selected))dispatchReadOnlyWatchKeys(selected);
-  }
-  std::copy(std::begin(down),std::end(down),previous);
- }
- if(!active)return;
+ if(!active){hotkeyRegistry.cancel();return;}
+ uint8_t down[256]{};for(unsigned key=0;key<256;++key)down[key]=(GetAsyncKeyState(int(key))&0x8000)!=0;
+ // Registration synchronizes held keys. The registry also synchronizes its
+ // first sample/epoch change without erasing a valid WM_HOTKEY already seen.
+ hotkeyRegistry.sample(down,GetTickCount(),match,[](const hotkeyroute::Group& group){dispatchReadOnlyWatchKeys(group);});
  hotkeyroute::Group selected;
  while(hotkeyRegistry.expired(GetTickCount(),match,selected))dispatchReadOnlyWatchKeys(selected);
 }
@@ -1666,7 +1666,7 @@ static bool serviceReadOnlyDisplays(DWORD now){
  if(snap.renderStatus!=1){minimap::hide();watchwindows::hide();}
  return true;
 }
-static void tick(){reapBridges();logBridgeHealth();DWORD now=GetTickCount();static DWORD lastControl;if(lastControl&&DWORD(now-lastControl)<8)return;lastControl=now;syncInformationRate();if(!displayFrameRequested()){minimap::hide();watchwindows::hide();watchhost::suspend();}else if(!secondaryDisplayAvailable()){minimap::hideSecondary();watchwindows::hideSecondary();}updateModeStatus(now);updatePlayerTestUI();if(registeredHotkeyMode!=desiredHotkeyMode())registerKeys();if(!enabled&&!secondaryDisplayRequested()){if(pid||shared)detach();clockState(false,informationFPS());return;}
+static void tick(){reapBridges();logBridgeHealth();DWORD now=GetTickCount();static DWORD lastControl;if(lastControl&&DWORD(now-lastControl)<8)return;lastControl=now;syncSettingDependencies();syncInformationRate();if(!displayFrameRequested()){minimap::hide();watchwindows::hide();watchhost::suspend();}else if(!secondaryDisplayAvailable()){minimap::hideSecondary();watchwindows::hideSecondary();}updateModeStatus(now);updatePlayerTestUI();if(registeredHotkeyMode!=desiredHotkeyMode())registerKeys();if(!enabled&&!secondaryDisplayRequested()){if(pid||shared)detach();clockState(false,informationFPS());return;}
  if(pid&&DWORD(now-lastProcessCheck)>=250){lastProcessCheck=now;
   if(!externalReader.alive()){detach();lastFind=now-2000;}
   else {DWORD nextThread=0;bool authoritative=false;
@@ -1848,6 +1848,7 @@ static void bindSuper(){std::string id=selectedSuperID();if(id.empty()){notify(L
 #include "pointer_host.h"
 #include "hotkey_host.h"
 #include "auto_settings_ui.h"
+#include "ui_dependencies.h"
 static_assert(BridgeCloseTimer!=AutoSaveTimer&&BridgeCloseTimer!=1&&BridgeCloseTimer!=2,"distinct close cleanup timer");
 static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
  if(bridgeClosePending){
@@ -1895,14 +1896,14 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
  placedControl({-1,{505,80,120,28}},L"BUTTON",L"定位功能",991,BS_PUSHBUTTON|WS_TABSTOP);
 #include "tactical_controls.h"
  EnableWindow(GetDlgItem(w,420),TRUE);
- statusLabel=control(L"STATIC",L"正在寻找游戏…",20,1370,605,44,430);control(L"BUTTON",L"暂停 / 连接",20,1420,200,28,431,BS_PUSHBUTTON|WS_TABSTOP);control(L"BUTTON",L"使用说明",235,1420,185,28,432,BS_PUSHBUTTON|WS_TABSTOP);control(L"BUTTON",L"退出",435,1420,190,28,433,BS_PUSHBUTTON|WS_TABSTOP);EnableWindow(unloadKeyEdit,TRUE);EnableWindow(GetDlgItem(w,453),TRUE);EnableWindow(hookChecks[1],TRUE);SetWindowTextW(hookChecks[1],L"智能卸载");finalizeTacticalLayout();applyPanelDpi(panelDpi);ready=true;fillTech(true);fillTypeBindings(true);SetTimer(w,1,250,nullptr);SetTimer(w,2,80,nullptr);registerKeys();return 0;}
+ statusLabel=control(L"STATIC",L"正在寻找游戏…",20,1370,605,44,430);control(L"BUTTON",L"暂停 / 连接",20,1420,200,28,431,BS_PUSHBUTTON|WS_TABSTOP);control(L"BUTTON",L"使用说明",235,1420,185,28,432,BS_PUSHBUTTON|WS_TABSTOP);control(L"BUTTON",L"退出",435,1420,190,28,433,BS_PUSHBUTTON|WS_TABSTOP);EnableWindow(unloadKeyEdit,TRUE);EnableWindow(GetDlgItem(w,453),TRUE);EnableWindow(hookChecks[1],TRUE);SetWindowTextW(hookChecks[1],L"智能卸载");finalizeTacticalLayout();applyPanelDpi(panelDpi);ready=true;syncSettingDependencies(true);fillTech(true);fillTypeBindings(true);SetTimer(w,1,250,nullptr);SetTimer(w,2,80,nullptr);registerKeys();return 0;}
  case WM_DISPLAYCHANGE:informationMonitor.invalidate();secondaryDisplayMonitor.invalidate();minimap::invalidateDisplays();watchwindows::invalidateDisplays();syncInformationRate(true);if(enabled||secondaryDisplayRequested())paint();return 0;
  case WM_SIZE:layoutPanel();return 0;
- case WM_DPICHANGED:{applyPanelDpi(HIWORD(wp));if(!(GetWindowLongPtrW(w,GWL_STYLE)&WS_CHILD)){auto r=(RECT*)lp;SetWindowPos(w,nullptr,r->left,r->top,r->right-r->left,r->bottom-r->top,SWP_NOZORDER|SWP_NOACTIVATE);}return 0;}
+ case WM_DPICHANGED:{applyPanelDpi(HIWORD(wp));if(!(GetWindowLongPtrW(w,GWL_STYLE)&WS_CHILD)&&!GetPropW(w,L"RA2.Suite.Managed")){auto r=(RECT*)lp;SetWindowPos(w,nullptr,r->left,r->top,r->right-r->left,r->bottom-r->top,SWP_NOZORDER|SWP_NOACTIVATE);}return 0;}
  case WM_HSCROLL:{SCROLLINFO si{sizeof si,SIF_ALL};GetScrollInfo(w,SB_HORZ,&si);switch(LOWORD(wp)){case SB_LINELEFT:scrollX-=28;break;case SB_LINERIGHT:scrollX+=28;break;case SB_PAGELEFT:scrollX-=int(si.nPage);break;case SB_PAGERIGHT:scrollX+=int(si.nPage);break;case SB_THUMBTRACK:case SB_THUMBPOSITION:scrollX=si.nTrackPos;break;}layoutPanel();return 0;}
  case modernui::FocusMessage:{for(const auto&c:pageControls)if(c.hwnd==(HWND)lp&&c.page>=0){int top=c.rect.y-scrollY,bottom=top+c.visibleHeight;RECT client{};GetClientRect(w,&client);if(top<uilayout::BodyTop)scrollTo(c.rect.y-uilayout::BodyTop);else if(bottom>uilayout::bodyBottom(logical(client.bottom)))scrollTo(c.rect.y+c.visibleHeight-uilayout::bodyBottom(logical(client.bottom)));break;}return 0;}
  case WM_VSCROLL:{SCROLLINFO si{sizeof si,SIF_ALL};GetScrollInfo(w,SB_VERT,&si);int next=scrollY;switch(LOWORD(wp)){case SB_LINEUP:next-=28;break;case SB_LINEDOWN:next+=28;break;case SB_PAGEUP:next-=int(si.nPage);break;case SB_PAGEDOWN:next+=int(si.nPage);break;case SB_THUMBTRACK:next=si.nTrackPos;break;default:return 0;}scrollTo(next);return 0;}
- case WM_MOUSEWHEEL:{static int remainder;remainder+=short(HIWORD(wp));int steps=remainder/WHEEL_DELTA;remainder%=WHEEL_DELTA;if(steps)scrollTo(scrollY-steps*84);return 0;}
+ case WM_MOUSEWHEEL:{int amount=pagewheel::delta(w,wp,84);if(amount)scrollTo(scrollY-amount);return 0;}
 
  case FrameMessage:{if(enabled||secondaryDisplayRequested())paint();InterlockedExchange(&framePending,0);return 0;}
  case InputMessage:{shiftClickTick();InterlockedExchange(&inputPending,0);return 0;}
@@ -1911,6 +1912,8 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
  case WM_TIMER:if(wp==2){updateHoverHelp();return 0;}if(wp==AutoSaveTimer){flushAutoSettings();return 0;}tick();return 0;
  case WM_HOTKEY:if(!readOnlyWatchHotkey(wp,lp))handleHotkey(wp,lp);return 0;
  case WM_COMMAND:{int id=LOWORD(wp);
+ DependencyCommandRefresh dependencyRefresh;
+ if(ready&&!updatingControls&&rejectUnavailableSetting(id,HIWORD(wp)))return 0;
  if(id==9300||id==9301||id==9302||id==9304||id==9305||id==9306||id==9307||id==9308||id==9309||id==9310||id==9311){
   if(updatingControls)return 0;
   if(id==9302||id==9304||id==9305||id==9308||id==9309){if(HIWORD(wp)!=CBN_SELCHANGE)return 0;int choice=int(SendDlgItemMessageW(w,id,CB_GETCURSEL,0,0));if(choice<0||choice>(id==9305?3:1))return 0;if(id==9302)renderUpgradeLayer=std::clamp(choice,0,1);else if(id==9304)renderPaletteRange=std::clamp(choice,0,1);else if(id==9309)renderColorPrecision=std::clamp(choice,0,1);else if(id==9308)renderSceneDetail=std::clamp(choice,0,1);else renderPixelScale=std::clamp(choice,0,3);}
@@ -2043,7 +2046,7 @@ if(id==991){wchar_t query[128]{};GetWindowTextW(featureSearch,query,128);std::ws
  else if(id==448){WORD next=(WORD)SendMessageW(csKeyEdit,HKM_GETHOTKEY,0,0);if(keyConflict(next,"",true)){notify(L"此快捷键已经被其他功能使用。");return 0;}csKey=next;save();registerKeys();notify(L"自动 CS 开关快捷键已保存。");}
  else if(id==452){WORD nextA=WORD(SendMessageW(advancedKeyEdit,HKM_GETHOTKEY,0,0)),nextU=WORD(SendMessageW(unloadKeyEdit,HKM_GETHOTKEY,0,0));WORD oldA=advancedKey,oldU=unloadKey;advancedKey=unloadKey=0;
  bool conflict=keyConflict(nextA,"",false)||keyConflict(nextU,"",false)||(!extra.allHotkeys&&LOBYTE(nextA)&&comparableKey(nextA)==comparableKey(nextU));advancedKey=oldA;unloadKey=oldU;
- if(conflict){notify(L"快捷键冲突，请使用不同组合。");return 0;}advancedKey=nextA;unloadKey=nextU;{hookAdvanced=true;SendMessageW(hookChecks[0],BM_SETCHECK,BST_CHECKED,0);}save();registerKeys();notify(L"原生联机指令快捷键已保存。");}
+ if(conflict){notify(L"快捷键冲突，请使用不同组合。");return 0;}advancedKey=nextA;unloadKey=nextU;save();registerKeys();notify(L"原生联机指令快捷键已保存。");}
  else if(id==458||id==459||id==465||id==466){
   hookAdvanced=SendMessageW(hookChecks[0],BM_GETCHECK,0,0)==BST_CHECKED;
   hookSmartUnload=SendMessageW(hookChecks[1],BM_GETCHECK,0,0)==BST_CHECKED;

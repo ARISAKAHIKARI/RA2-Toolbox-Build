@@ -23,6 +23,7 @@ template<class Create> static void createUnitSettings(Create ctl){
  toggle(suite::EnemyMarkers,L"敌方单位提示",58);
  toggle(suite::Capacity,L"载具载员与容量",96);
  toggle(suite::AllTransports,L"同时显示未选中的载具",130,374);
+ modernui::tip(unitSettingControls[suite::AllTransports],L"需先开启“载具载员与容量”。关闭父功能时保留此选项，重新开启后恢复使用。");
  toggle(suite::Iron,L"铁幕 / 力场剩余时间",174);
  toggle(suite::Frozen,L"冷冻剩余时间",212);
  toggle(suite::Parasite,L"蜘蛛寄生标志",250);
@@ -48,6 +49,7 @@ static bool unitSettingCommand(WPARAM wp){
  int option=LOWORD(wp)-600;if(option<0||option>=suite::DisplayOptionCount||!unitSettingControls[option])return false;
  if(syncingUnitSettings)return true;
  auto h=unitSettingControls[option];auto type=suite::displaySpecs[option].control;
+ if(!IsWindowEnabled(h)){syncUnitSettings(true);return true;}
  if(type==suite::DisplayControl::Check&&HIWORD(wp)==BN_CLICKED)suite::requestDisplaySetting(option,SendMessageW(h,BM_GETCHECK,0,0)==BST_CHECKED);
  else if(type==suite::DisplayControl::Number&&HIWORD(wp)==EN_CHANGE){BOOL ok=FALSE;int value=GetDlgItemInt(ui,LOWORD(wp),&ok,FALSE);if(ok)suite::requestDisplaySetting(option,value);}
  else if(HIWORD(wp)==EN_KILLFOCUS)syncUnitSettings(true);return true;

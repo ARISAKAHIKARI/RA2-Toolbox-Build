@@ -1210,7 +1210,7 @@ static void resizePrimaryPanel(HWND w){
   nh=std::min(nh,workHeight);
  }
  scrollX=scrollY=0;
- if(!(GetWindowLongPtrW(w,GWL_STYLE)&WS_CHILD))SetWindowPos(w,NULL,0,0,nw,nh,SWP_NOZORDER|SWP_NOMOVE|SWP_NOACTIVATE);
+ if(!(GetWindowLongPtrW(w,GWL_STYLE)&WS_CHILD)&&!GetPropW(w,L"RA2.Suite.Managed"))SetWindowPos(w,NULL,0,0,nw,nh,SWP_NOZORDER|SWP_NOMOVE|SWP_NOACTIVATE);
  viewport(w,0,0);relayout(w);
 }
 static void toggleAdvanced(HWND w){
@@ -1352,7 +1352,7 @@ static LRESULT CALLBACK wndproc(HWND w,UINT m,WPARAM a,LPARAM b){
    EndPaint(w,&ps);return 0;}
 case WM_GETMINMAXINFO:{auto p=(MINMAXINFO*)b;p->ptMinTrackSize={uidpi::scale(advancedOpen?510:376,uiDpi),uidpi::scale(240,uiDpi)};return 0;}
  case WM_SIZE:viewport(w,scrollX,scrollY);return 0;
- case WM_MOUSEWHEEL:viewport(w,scrollX,scrollY-GET_WHEEL_DELTA_WPARAM(a)/WHEEL_DELTA*uidpi::scale(60,uiDpi));return 0;
+ case WM_MOUSEWHEEL:{int amount=pagewheel::delta(w,a,uidpi::scale(60,uiDpi));if(amount)viewport(w,scrollX,scrollY-amount);return 0;}
  case WM_VSCROLL:case WM_HSCROLL:{int bar=m==WM_VSCROLL?SB_VERT:SB_HORZ;SCROLLINFO si={sizeof(si),SIF_ALL};GetScrollInfo(w,bar,&si);int n=si.nPos;switch(LOWORD(a)){case SB_LINEUP:n-=uidpi::scale(28,uiDpi);break;case SB_LINEDOWN:n+=uidpi::scale(28,uiDpi);break;case SB_PAGEUP:n-=si.nPage;break;case SB_PAGEDOWN:n+=si.nPage;break;case SB_THUMBTRACK:case SB_THUMBPOSITION:n=si.nTrackPos;break;case SB_TOP:n=0;break;case SB_BOTTOM:n=si.nMax;break;}viewport(w,bar==SB_HORZ?n:scrollX,bar==SB_VERT?n:scrollY);return 0;}
  case WM_TIMER:if(a==152){KillTimer(w,152);if(uiReady)applyTargetRate();return 0;}if(a==150){KillTimer(w,150);if(uiReady&&!applyingSettings){applyingSettings=true;applyScale();applyingSettings=false;}return 0;}break;
  case WM_COMMAND:if(!uiReady)return 0;
@@ -1393,7 +1393,7 @@ case WM_GETMINMAXINFO:{auto p=(MINMAXINFO*)b;p->ptMinTrackSize={uidpi::scale(adv
   // Only scale the original 96-DPI layout, never the previous DPI layout.
   UINT next=HIWORD(a);applyControlDpi(w,next);
   const RECT* r=reinterpret_cast<const RECT*>(b);
-  if(r&&!(GetWindowLongPtrW(w,GWL_STYLE)&WS_CHILD))SetWindowPos(w,NULL,r->left,r->top,r->right-r->left,r->bottom-r->top,
+  if(r&&!(GetWindowLongPtrW(w,GWL_STYLE)&WS_CHILD)&&!GetPropW(w,L"RA2.Suite.Managed"))SetWindowPos(w,NULL,r->left,r->top,r->right-r->left,r->bottom-r->top,
                    SWP_NOZORDER|SWP_NOACTIVATE);
   viewport(w,scrollX,scrollY);relayout(w);return 0;
  }

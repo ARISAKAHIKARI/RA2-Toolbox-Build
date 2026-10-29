@@ -1,7 +1,8 @@
 #pragma once
 #include <stdint.h>
+#include "../../shared/source/key_gesture.h"
 namespace typekeys {
-inline uint16_t canonical(uint16_t key){return key&0x87ff;}
+inline uint16_t canonical(uint16_t key){return keygesture::normalize(key);}
 template<class Bindings> bool firstForKey(const Bindings& bindings,unsigned at){
  const auto key=canonical(bindings[at].key);if(!(key&255))return false;
  for(unsigned i=0;i<at;++i)if(canonical(bindings[i].key)==key)return false;
@@ -10,6 +11,14 @@ template<class Bindings> bool firstForKey(const Bindings& bindings,unsigned at){
 template<class Bindings> int groupSize(const Bindings& bindings,uint16_t key){
  int n=0;key=canonical(key);if(!(key&255))return 0;
  for(const auto&b:bindings)if(canonical(b.key)==key)++n;return n;
+}
+// Legacy unit shortcuts retain screen/global double-tap selection. An explicit
+// gesture anywhere in the same merged group selects explicit semantics for
+// that whole group, independent of which catalogue row registered it first.
+template<class Bindings> bool implicitDouble(const Bindings&bindings,uint16_t key){
+ key=canonical(key);bool found=false;
+ for(const auto&binding:bindings)if(canonical(binding.key)==key){found=true;if(keygesture::mode(binding.key)!=keygesture::Mode::Legacy)return false;}
+ return found;
 }
 template<class Bindings,class Types> int groupMask(const Bindings& bindings,uint16_t key,const Types& types,int count,uint8_t* mask,int limit){
  for(int i=0;i<limit;++i)mask[i]=0;key=canonical(key);if(!(key&255))return 0;

@@ -2,7 +2,7 @@ name: Validate rendering feedback, visibility and performance
 on:
   push:
     branches: [codex/fix-render-feedback-20261029]
-    paths: ['source/**', '.github/workflows/validate-render-feedback-fixes.yml', '.github/workflows/validate-x64-render.yml']
+    paths: ['source/**', '.github/workflows/validate-render-feedback-fixes.yml', '.github/workflows/validate-x64-render.yml', '.github/workflows/validate-frontend.yml']
   workflow_dispatch:
 permissions:
   contents: read

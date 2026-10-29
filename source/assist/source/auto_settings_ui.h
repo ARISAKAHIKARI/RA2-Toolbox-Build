@@ -1,4 +1,5 @@
 #include <utility>
+#include "../../shared/source/key_gesture.h"
 // UI changes apply immediately. Only disk writes are debounced; runtime
 // revision changes must not wait for the profile file to be flushed.
 static constexpr UINT_PTR AutoSaveTimer=3901;
@@ -146,20 +147,25 @@ static bool autoSettingChanged(int id,int notification){
  if(id==700&&select){int mode=int(SendMessageW(extraControls[LoadLogic],CB_GETCURSEL,0,0));if(mode>=0&&mode<=1){extra.loadMode=mode==1;changedSetting();}return true;}
  if((id==703||id==706||id==708)&&select||(id==704||id==707||id==709)&&edit){
   // Validate only this binding, so a partially typed number elsewhere cannot
-  // block a key change. A custom key also selects its custom preset.
+  // block a key change. Direct field edits retain their complete gesture and
+  // select the matching preset without round-tripping through the old choice.
   int slot=id<=704?0:id<=707?1:2;
   const int presets[]={EnterPreset,AirPreset1,AirPreset2},customs[]={EnterCustom,AirCustom1,AirCustom2};
-  ControlUpdate guard;if(edit)SendMessageW(extraControls[presets[slot]],CB_SETCURSEL,4,0);
-  uint32_t key=presetKey(int(SendMessageW(extraControls[presets[slot]],CB_GETCURSEL,0,0)),uint32_t(SendMessageW(extraControls[customs[slot]],HKM_GETHOTKEY,0,0)));
+  ControlUpdate guard;
+  const auto raw=uint32_t(SendMessageW(extraControls[customs[slot]],HKM_GETHOTKEY,0,0));
+  uint32_t key=edit?raw:presetKey(int(SendMessageW(extraControls[presets[slot]],CB_GETCURSEL,0,0)),raw);
+  if(edit)SendMessageW(extraControls[presets[slot]],CB_SETCURSEL,holdPreset(key),0);
   uint32_t* target=slot==0?&extra.enterKey:slot==1?&extra.airKey1:&extra.airKey2;
   uint32_t other=slot==1?extra.airKey2:slot==2?extra.airKey1:0;
-  if(!extra.allHotkeys&&key&&key==other){SendMessageW(extraControls[presets[slot]],CB_SETCURSEL,holdPreset(*target),0);SendMessageW(extraControls[customs[slot]],HKM_SETHOTKEY,*target,0);notify(L"飞机攻击的两个按键需要不同。");return true;}
+  if(!extra.allHotkeys&&keygesture::physical(key)&&keygesture::normalize(key,keygesture::Mode::Hold)==keygesture::normalize(other,keygesture::Mode::Hold)){SendMessageW(extraControls[presets[slot]],CB_SETCURSEL,holdPreset(*target),0);SendMessageW(extraControls[customs[slot]],HKM_SETHOTKEY,*target,0);notify(L"飞机攻击的两个按键需要不同。");return true;}
   *target=key;SendMessageW(extraControls[customs[slot]],HKM_SETHOTKEY,key,0);changedSetting();return true;
  }
  if((id==725||id==727)&&select||(id==726||id==728)&&edit){
   const bool disk=id<=726;int preset=disk?DiskPreset:SellPreset,custom=disk?DiskCustom:SellCustom;
-  ControlUpdate guard;if(edit)SendMessageW(extraControls[preset],CB_SETCURSEL,4,0);
-  auto key=presetKey(int(SendMessageW(extraControls[preset],CB_GETCURSEL,0,0)),uint32_t(SendMessageW(extraControls[custom],HKM_GETHOTKEY,0,0)));
+  ControlUpdate guard;
+  const auto raw=uint32_t(SendMessageW(extraControls[custom],HKM_GETHOTKEY,0,0));
+  auto key=edit?raw:presetKey(int(SendMessageW(extraControls[preset],CB_GETCURSEL,0,0)),raw);
+  if(edit)SendMessageW(extraControls[preset],CB_SETCURSEL,holdPreset(key),0);
   (disk?extra.diskKey:extra.sellKey)=key;if(!disk)SendMessageW(GetDlgItem(ui,789),HKM_SETHOTKEY,key,0);SendMessageW(extraControls[custom],HKM_SETHOTKEY,key,0);changedSetting();return true;
  }
  if(id>=729&&id<729+pointerinput::MouseCount&&select){
@@ -176,7 +182,8 @@ static bool autoSettingChanged(int id,int notification){
  if(target){WORD next=WORD(SendMessageW(widget,HKM_GETHOTKEY,0,0)),old=*target;*target=0;
   bool conflict=keyConflict(next,"",false);*target=old;
   if(conflict){ControlUpdate guard;SendMessageW(widget,HKM_SETHOTKEY,old,0);notify(L"快捷键冲突；已保留原按键，请换一个组合。");return true;}
-  *target=next;if(id==451){hookSmartUnload=true;SendMessageW(hookChecks[1],BM_SETCHECK,BST_CHECKED,0);}if(id==450){hookAdvanced=true;SendMessageW(hookChecks[0],BM_SETCHECK,BST_CHECKED,0);}typeTap.clear();registerKeys();changedSetting();return true;
+  // Editing a binding configures the feature; only its explicit switch enables it.
+  *target=next;typeTap.clear();registerKeys();changedSetting();return true;
  }
  if(id==724){WORD next=WORD(SendMessageW(widget,HKM_GETHOTKEY,0,0));uint32_t old=extra.variantKey;extra.variantKey=0;
   bool conflict=keyConflict(next,"",false);extra.variantKey=old;

@@ -6,7 +6,7 @@ static int selectedTypeIndex(){
  return index>=0&&index<int(savedTypes.types.size())&&savedTypes.types[index].kind!=7?index:-1;
 }
 static WORD typeBinding(const char* id){for(auto&b:typeBindings)if(b.id==id)return b.key;return 0;}
-static WORD comparableKey(WORD k){return MAKEWORD(LOBYTE(k),HIBYTE(k)&(HOTKEYF_CONTROL|HOTKEYF_ALT|HOTKEYF_SHIFT|0x80));}
+static WORD comparableKey(WORD k){auto value=keygesture::normalize(k);return keygesture::mode(value)==keygesture::Mode::Hold?WORD(value&~keygesture::ModeMask):value;}
 static bool keyConflict(WORD key,const std::string& ignore,bool toggle){
  if(extra.allHotkeys||!LOBYTE(key))return false;key=comparableKey(key);
  for(auto k:hotkeys)if(comparableKey(k)==key)return true;
@@ -65,7 +65,7 @@ static void bindType(bool remove){
  else {notify(L"单位快捷键已达上限。");return;}
  typeTap.clear();bool persisted=save();registerKeys();fillTypeBindings(true);
  notify(!persisted?L"保存失败：请检查 Assist.ini 所在目录的写入权限。":
-   LOBYTE(key)?L"组合已保存：同快捷键合并选中，单按屏幕内、双按全图。":L"已解除此单位快捷键。");
+   LOBYTE(key)?typekeys::implicitDouble(typeBindings,key)?L"组合已保存：同快捷键合并选中，单按屏幕内、双按全图。":L"组合已保存：同手势合并选中，按配置的按下/松开手势触发；双击手势选全图。":L"已解除此单位快捷键。");
 }
 
 static void featureTypeFields(){ControlUpdate guard;const auto&f=featureTypes.filters[featureTypeIndex];

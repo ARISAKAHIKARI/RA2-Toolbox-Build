@@ -1,5 +1,6 @@
 #pragma once
 #include <stdint.h>
+#include "../../shared/source/key_gesture.h"
 namespace assist { namespace pointerinput {
 constexpr int MaxSources=512;
 enum Operation { Enhanced=1, AttackMove=2, Sell=3, FollowNative=4, Cancel=5, AirWaypoint=6, C4Test=7, PlayerSelect=8, PlayerOrder=9 };
@@ -10,11 +11,9 @@ inline const wchar_t* entryLabel(uint32_t mode){return mode==1?L"爆破任务＋
 // Preserve native right-click handling; configured right orders execute later.
 // Zero is a mouse-only fallback, never an implicit right-click modifier.
 inline bool matchesHold(const uint8_t*keys,uint32_t key,int operation){
- const unsigned vk=key&255,mods=key>>8;
+ const unsigned vk=key&255;
  if(!vk)return (operation==Enhanced||operation==AttackMove||operation==Sell)&&!keys[16]&&!keys[17]&&!keys[18];
- if(!keys[vk]||((key&0x8000)&&!(keys[vk]&2)))return false;key&=0x7fff;
- if(key==16||key==17||key==18)return true;
- return bool(keys[16])==bool(mods&1)&&bool(keys[17])==bool(mods&2)&&bool(keys[18])==bool(mods&4);
+ return keygesture::matchesHold(keys,key);
 }
 struct Bindings {uint32_t advanced,magnetron,cs,enter,airFirst,airSecond,disk,sell,enabled;};
 inline uint32_t resolveBindings(const uint8_t*keys,int operation,const Bindings&c){

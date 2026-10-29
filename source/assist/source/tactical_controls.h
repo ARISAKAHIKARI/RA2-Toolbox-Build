@@ -56,8 +56,8 @@ label(L"直接攻击移动",20,210);label(L"仅鼠标",240,258);mouse(pointerinp
 note(L"直接攻击移动只下达一次命令；高级移动攻击会持续重新选择目标。",44);
 toggle(9050,L"队形排列（地面单位）",extra.formationEnabled);next();
 label(L"队形拖拽鼠标键",20,260);choices(combo(9056),{L"右键",L"左键（覆盖原生下令）"},extra.formationMouse==1?1:0);next();
-label(L"队形按住键",20,306);key(9051,extra.formationHold,345,280,true);next();
-{const wchar_t* names[]={L"矩形横队",L"分散横队",L"圆形聚集",L"扇形（60°）",L"正方形聚集",L"空心框聚集"};const int ids[]={9052,9053,9054,9055,9057,9058};for(int n=0;n<6;++n){label(names[n],20,306);key(ids[n],extra.formationKeys[n]);next();}}
+label(L"队形按住键",20,306);key(9051,extra.formationHold,345,280,true);modernui::keyboardOnly(GetDlgItem(ui,9051));next();
+{const wchar_t* names[]={L"矩形横队",L"分散横队",L"圆形聚集",L"扇形（60°）",L"正方形聚集",L"空心框聚集"};const int ids[]={9052,9053,9054,9055,9057,9058};for(int n=0;n<6;++n){label(names[n],20,306);key(ids[n],extra.formationKeys[n]);modernui::pressKey(GetDlgItem(ui,ids[n]));modernui::keyboardOnly(GetDlgItem(ui,ids[n]));next();}}
 note(L"按住队形键或双击 Alt 进入，点按提交当前预览；拖动方向决定朝向。形状可共用键，每敲一次切换，长按不重复。Esc 取消。提交后退出预览；成员不变时后续移动保持队形。",44);
 note(L"正方形默认 B，空心框默认 N。框形未拖动时边框面积与中空面积约 3∶1，拖到最大变成单层边框；其余形状拖到最大为一横排。",44);
 label(L"飞机路径点",20,260);choices(combo(803),{L"关闭",L"兼容路径点",L"原生优先",L"原生下单（联机实验）",L"完整原生（联机实验）"},airpathpolicy::mode(extra.airWaypoints,extra.nativeAirWaypoints,extra.nativeAirNetwork));next();

@@ -2,15 +2,28 @@
 // Called only by GameRuntime's existing WH_GETMESSAGE manager, never a new hook.
 static uint32_t blockedButtons;
 static pointerinput::SuppressedClick blockedOrigins[2];
+static void recordRuntimeGesture(const MSG*msg,bool keyContext,uint32_t epoch,uint32_t now){
+ static uint32_t keyEpoch=0;
+ if(!keyContext||keyEpoch!=epoch){runtimeKeys.clear();keyEpoch=epoch;}
+ if(keyContext){
+  unsigned vk=0;bool down=false,repeat=false;
+  switch(msg->message){
+   case WM_KEYDOWN:case WM_SYSKEYDOWN:vk=unsigned(msg->wParam)&255;down=true;repeat=(msg->lParam&(1u<<30))!=0;break;
+   case WM_KEYUP:case WM_SYSKEYUP:vk=unsigned(msg->wParam)&255;break;
+   case WM_LBUTTONDOWN:case WM_LBUTTONDBLCLK:vk=VK_LBUTTON;down=true;break;case WM_LBUTTONUP:vk=VK_LBUTTON;break;
+   case WM_RBUTTONDOWN:case WM_RBUTTONDBLCLK:vk=VK_RBUTTON;down=true;break;case WM_RBUTTONUP:vk=VK_RBUTTON;break;
+   case WM_MBUTTONDOWN:case WM_MBUTTONDBLCLK:vk=VK_MBUTTON;down=true;break;case WM_MBUTTONUP:vk=VK_MBUTTON;break;
+   case WM_XBUTTONDOWN:case WM_XBUTTONDBLCLK:vk=HIWORD(msg->wParam)==XBUTTON1?VK_XBUTTON1:HIWORD(msg->wParam)==XBUTTON2?VK_XBUTTON2:0;down=true;break;
+   case WM_XBUTTONUP:vk=HIWORD(msg->wParam)==XBUTTON1?VK_XBUTTON1:HIWORD(msg->wParam)==XBUTTON2?VK_XBUTTON2:0;break;
+  }
+  if(vk){uint8_t physical[256]{};for(unsigned modifier:{16u,17u,18u})physical[modifier]=(GetKeyState(modifier)&0x8000)!=0;
+   runtimeKeys.edge(vk,down,repeat,now,keygesture::chord(vk,physical));}
+ }
+}
 extern "C" int AssistFilterMessage(void* raw){
  auto*msg=static_cast<MSG*>(raw);if(!msg)return 0;
- static uint32_t keyEpoch=0;
  bool keyContext=sh&&!sh->stop&&!fault&&sh->foreground&&!get<bool>(0xA8BC60+25)&&DWORD(sampleClock(sh)-sh->heartbeat)<=150;
- if(!keyContext||keyEpoch!=match){runtimeKeys.clear();keyEpoch=match;}
- if(keyContext&&(msg->message==WM_KEYDOWN||msg->message==WM_KEYUP||msg->message==WM_SYSKEYDOWN||msg->message==WM_SYSKEYUP)){
-  uint8_t physical[256]{};for(unsigned i=0;i<256;++i)physical[i]=(GetKeyState(i)&0x8000)!=0;unsigned vk=unsigned(msg->wParam)&255;
-  bool down=msg->message==WM_KEYDOWN||msg->message==WM_SYSKEYDOWN;runtimeKeys.edge(vk,down,down&&(msg->lParam&(1u<<30)),sampleClock(sh),keygesture::chord(vk,physical));
- }
+ recordRuntimeGesture(msg,keyContext,match,sampleClock(sh));
  if(formationMessage(msg))return 1;
  if(reservationMessage(msg))return 1;
  bool left=msg->message==WM_LBUTTONDOWN||msg->message==WM_LBUTTONUP||msg->message==WM_LBUTTONDBLCLK;

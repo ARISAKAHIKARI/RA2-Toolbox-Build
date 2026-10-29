@@ -3,6 +3,7 @@
 static formation::Preview formationView;
 static formation::Policy formationPolicy;
 static bool formationModal=false,formationHolding=false,formationButton=false;
+static uint32_t formationHoldingKey=0;
 static bool formationSuppressed[256]{};
 static uint32_t formationAltAt=0,formationEpoch=0,formationLayoutTick=0;
 static int formationStartX=0,formationStartY=0,formationLastX=0,formationLastY=0,formationPixelX=0,formationPixelY=0;
@@ -24,8 +25,8 @@ static FormationJob formationJobs[formation::Maximum];static int formationJobCur
 static bool formationOwns(uint32_t id){for(int n=0;n<formationJobCount;++n)if(formationJobs[n].unit.id==id&&formationJobs[n].unit.token==manualVersions.get(id))return true;return false;}
 static void formationPublish(){if(!sh)return;formationView.tick=sampleClock(sh);formationView.match=match;++formationView.revision;
  InterlockedIncrement(&sh->formationSeq);MemoryBarrier();sh->formationPreview=formationView;MemoryBarrier();InterlockedIncrement(&sh->formationSeq);sh->formationJobs=formationJobCount;notifyHost();}
-static void formationCancel(){formationView.active=formationView.dragging=0;formationView.count=0;formationModal=formationHolding=false;formationPublish();}
-static void resetFormation(){formationForget();formationFeedback=false;formationView={};formationModal=formationHolding=formationButton=false;formationAltAt=0;formationHoldConsumed=false;formationJobCount=formationJobCursor=0;memset(formationSuppressed,0,sizeof formationSuppressed);if(sh){sh->formationJobs=0;formationPublish();}}
+static void formationCancel(){formationView.active=formationView.dragging=0;formationView.count=0;formationModal=formationHolding=false;formationHoldingKey=0;formationPublish();}
+static void resetFormation(){formationForget();formationFeedback=false;formationView={};formationModal=formationHolding=formationButton=false;formationHoldingKey=0;formationAltAt=0;formationHoldConsumed=false;formationJobCount=formationJobCursor=0;memset(formationSuppressed,0,sizeof formationSuppressed);if(sh){sh->formationJobs=0;formationPublish();}}
 static bool formationContext(){
  if(!sh||fault||sh->stop||!sh->foreground||!gameentry::active(gameentry::Client::Assist)||snap.status!=1||!match||!lastHouse||snap.commandStatus!=1||!get<bool>(0xA8E9A0)||get<uint32_t>(0xA83D4C)!=lastHouse||get<bool>(0xA8BC60+25)||DWORD(sampleClock(sh)-sh->heartbeat)>150)return false;
  int frame=get<int>(0xA8ED84);if(frame<snap.frame||int64_t(frame)-snap.frame>6||frame<0||frame>=INT32_MAX||get<int>(0xA8B238)!=snap.session||!eventdelivery::mayQueue(snap.session)||get<bool>(lastHouse+0x1F5)||get<bool>(lastHouse+0x1F6)||get<bool>(lastHouse+0x1F8))return false;
@@ -98,7 +99,7 @@ static void formationCommit(bool remember=true,bool feedback=true){
   if(remember){int at=formationMemory.count++;formationMemory.units[at]=u;formationMemory.offsets[at]=goal;formationMemory.offsets[at].x-=formationView.ax;formationMemory.offsets[at].y-=formationView.ay;}
  }
  if(remember&&!formationSameSelection())formationForget();
- formationView.active=formationView.dragging=0;formationHoldConsumed=formationHolding;formationModal=formationHolding=false;formationAltAt=0;sh->formationConsumedUntil=sampleClock(sh)+200;formationPublish();
+ formationView.active=formationView.dragging=0;formationHoldConsumed=formationHolding;formationModal=formationHolding=false;formationHoldingKey=0;formationAltAt=0;sh->formationConsumedUntil=sampleClock(sh)+200;formationPublish();
 }
 static void formationWatchNative(MSG*msg){
  if(!formationMemory.count)return;
@@ -141,23 +142,38 @@ static void formationContinue(DWORD now){
  }
  formationCommit(false,false);
 }
-static bool formationSwitch(uint32_t key){bool found=false;for(auto k:formationPolicy.keys)found|=k&&k==key;if(!found)return false;formationView.shape=formation::cycle(formationView.shape,key,formationPolicy.keys);if(formationView.count)formationLayout(formationLastX,formationLastY,formationPixelX,formationPixelY);return true;}
+static bool formationSwitch(uint32_t key){key=formation::shapeKey(key);bool found=false;for(auto k:formationPolicy.keys)found|=key&&formation::shapeKey(k)==key;if(!found)return false;formationView.shape=formation::cycle(formationView.shape,key,formationPolicy.keys);if(formationView.count)formationLayout(formationLastX,formationLastY,formationPixelX,formationPixelY);return true;}
+// Modifier prefixes are part of an active hold, not just its entry chord.
+// Once a mouse gesture owns the preview, its release still commits the last
+// published layout even if the keyboard authorization was released first.
+static void formationRefreshHold(){
+ if(!formationHolding)return;
+ uint8_t keys[256]{};const unsigned vk=formationHoldingKey&255;
+ keys[vk]=(GetKeyState(int(vk))&0x8000)!=0;
+ for(unsigned key:{16u,17u,18u})keys[key]=(GetKeyState(int(key))&0x8000)!=0;
+ runtimeKeys.decorate(keys);
+ const bool same=keygesture::normalize(formationHoldingKey,keygesture::Mode::Hold)==keygesture::normalize(formationPolicy.hold,keygesture::Mode::Hold);
+ if(same&&keygesture::matchesHold(keys,formationHoldingKey))return;
+ formationHolding=false;formationHoldingKey=0;
+ if(!formationModal&&!formationButton)formationCancel();else formationPublish();
+}
 static bool formationMessage(MSG*msg){
  const bool down=msg->message==WM_KEYDOWN||msg->message==WM_SYSKEYDOWN,up=msg->message==WM_KEYUP||msg->message==WM_SYSKEYUP;
- uint32_t key=uint32_t(msg->wParam)&255;auto swallow=[&](){msg->message=WM_NULL;msg->wParam=msg->lParam=0;return true;};
- if(up&&formationSuppressed[key]){formationSuppressed[key]=false;if(key==(formationPolicy.hold&255))formationHoldConsumed=false;if(key==(formationPolicy.hold&255)){formationHolding=false;if(!formationModal&&!formationButton)formationCancel();}return swallow();}
+ uint32_t key=uint32_t(msg->wParam)&255;if(up)formationRefreshHold();auto swallow=[&](){msg->message=WM_NULL;msg->wParam=msg->lParam=0;return true;};
+ if(up&&formationSuppressed[key]){formationSuppressed[key]=false;if(key==(formationPolicy.hold&255))formationHoldConsumed=false;if(key==(formationPolicy.hold&255)){formationHolding=false;formationHoldingKey=0;if(!formationModal&&!formationButton)formationCancel();}return swallow();}
  // Release commits the last published layout, never an unseen extra solve.
  if(msg->message==formationButtonUp&&formationButton){formationButton=false;if(formationContext()&&formationView.active&&formationSelectionMatchesPreview()){int x,y,px,py;if(formationPoint(msg,x,y,px,py))formationCommit();else formationCancel();}else formationCancel();return swallow();}
  if(!formationContext()){if(formationView.active)formationCancel();formationFollow={};if(sh&&!sh->formationPolicy.enabled)formationForget();return false;}
+ formationRefreshHold();
  if(down){bool repeated=(msg->lParam&(1u<<30))!=0;
   uint32_t mods=((GetKeyState(VK_SHIFT)&0x8000)?1:0)|((GetKeyState(VK_CONTROL)&0x8000)?2:0)|((GetKeyState(VK_MENU)&0x8000)?4:0);
   uint32_t chord=key|(mods<<8);if(key==VK_MENU)chord&=~(4u<<8);if(key==VK_SHIFT)chord&=~(1u<<8);if(key==VK_CONTROL)chord&=~(2u<<8);
   if(key==VK_MENU&&!repeated){uint32_t now=sampleClock(sh);if(formationAltAt&&DWORD(now-formationAltAt)<=350){formationModal=true;formationView.active=1;formationSelect();formationAtCursor(msg);formationAltAt=0;formationSuppressed[key]=true;formationPublish();return swallow();}else formationAltAt=now;}
-  if(formationPolicy.hold&&chord==(formationPolicy.hold&0x7ff)&&runtimeKeys.qualifies(uint16_t(formationPolicy.hold))){if(formationHoldConsumed)return swallow();formationHolding=true;formationView.active=1;formationSuppressed[key]=true;if(!repeated&&!formationButton){formationSelect();formationAtCursor(msg);}formationPublish();return swallow();}
+  if(formationPolicy.hold&&chord==keygesture::physical(formationPolicy.hold)&&runtimeKeys.qualifies(uint16_t(formationPolicy.hold))&&(!repeated||formationHolding)){if(formationHoldConsumed)return swallow();formationHolding=true;formationHoldingKey=formationPolicy.hold;formationView.active=1;formationSuppressed[key]=true;if(!repeated&&!formationButton){formationSelect();formationAtCursor(msg);}formationPublish();return swallow();}
   if(formationView.active&&key==VK_ESCAPE){formationCancel();formationSuppressed[key]=true;return swallow();}
   // Ignore the mode's hold modifier while interpreting a shape binding.
   if(formationView.active){uint32_t shapeChord=chord;uint32_t hold=formationPolicy.hold&255;if(formationHolding){if(hold==VK_MENU)shapeChord&=~(4u<<8);if(hold==VK_CONTROL)shapeChord&=~(2u<<8);if(hold==VK_SHIFT)shapeChord&=~(1u<<8);}
-   bool matches=false;for(auto k:formationPolicy.keys)matches|=k&&(k&0x7ff)==shapeChord;if(matches){if(!repeated){bool single=false,twice=false;for(auto k:formationPolicy.keys)if((k&0x7ff)==shapeChord){single|=!(k&0x8000);twice|=(k&0x8000)!=0;}if(twice&&(runtimeKeys.held[key]&2))formationSwitch(shapeChord|0x8000);else if(single&&!twice)formationSwitch(shapeChord);}formationSuppressed[key]=true;formationPublish();return swallow();}
+   bool matches=false;for(auto k:formationPolicy.keys)if(auto binding=formation::shapeKey(k);binding)matches|=keygesture::physical(binding)==shapeChord;if(matches){if(!repeated){bool single=false,twice=false;for(auto k:formationPolicy.keys)if(auto binding=formation::shapeKey(k);binding&&keygesture::physical(binding)==shapeChord){single|=!(binding&keygesture::Double);twice|=(binding&keygesture::Double)!=0;}if(twice&&(runtimeKeys.held[key]&2))formationSwitch(shapeChord|0x8000);else if(single&&!twice)formationSwitch(shapeChord);}formationSuppressed[key]=true;formationPublish();return swallow();}
   }
  }
  if(!formationView.active){formationWatchNative(msg);return false;}
@@ -180,6 +196,7 @@ static bool formationMessage(MSG*msg){
 static void formationTick(uint32_t house,int frame,DWORD now){
  if(formationEpoch!=match){resetFormation();formationEpoch=match;}
  if(!formationContext()){if(formationView.active)formationCancel();formationFollow={};if(!sh->formationPolicy.enabled){formationJobCount=0;formationForget();}}
+ formationRefreshHold();
  if(sh->formationKey!=sh->formationKeyAck){if(formationView.active)formationSwitch(sh->formationKeyCode);sh->formationKeyAck=sh->formationKey;formationPublish();}
  if(!simulationReady()||snap.chat)return;
  if(formationFollow.down&&!formationFollow.dragged&&int32_t(sh->formationConsumedUntil-now)>0)sh->formationConsumedUntil=now+200;

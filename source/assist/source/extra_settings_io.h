@@ -1,3 +1,4 @@
+#include "../../shared/source/key_gesture.h"
 static void loadAdditionalSettings(){
  renderColorPrecision=std::clamp(value(L"Display",L"RenderColorPrecision",1),0,1);
  renderMaterialRefresh=value(L"Display",L"RenderMaterialRefresh",1)!=0;
@@ -167,7 +168,7 @@ static bool readAdditionalControls(){
  if(!extraNumber(LoadRadius,1,512,next.loadRadius)||!extraNumber(DefaultFirst,0,512,next.defaults.first)||!extraNumber(DefaultSecond,0,512,next.defaults.second)||!extraNumber(DefaultMaximum,0,512,next.defaults.maximum)){notify(L"请输入有效的范围（1–512）和受击数（0–512）。");return false;}
  auto binding=[](int preset,int custom){return presetKey(int(SendMessageW(extraControls[preset],CB_GETCURSEL,0,0)),uint32_t(SendMessageW(extraControls[custom],HKM_GETHOTKEY,0,0)));};
  next.enterKey=binding(EnterPreset,EnterCustom);next.airKey1=binding(AirPreset1,AirCustom1);next.airKey2=binding(AirPreset2,AirCustom2);
- if(!extra.allHotkeys&&next.airKey1&&next.airKey1==next.airKey2){notify(L"飞机攻击的两个按键需要不同。");return false;}
+ if(!extra.allHotkeys&&keygesture::physical(next.airKey1)&&keygesture::normalize(next.airKey1,keygesture::Mode::Hold)==keygesture::normalize(next.airKey2,keygesture::Mode::Hold)){notify(L"飞机攻击的两个按键需要不同。");return false;}
  next.enter=SendMessageW(extraControls[EnterEnabled],BM_GETCHECK,0,0)==BST_CHECKED;next.air=SendMessageW(extraControls[AirEnabled],BM_GETCHECK,0,0)==BST_CHECKED;
  extra=next;return true;
 }
@@ -189,9 +190,9 @@ static void syncAdditional(){
  shared->nativeAirNetwork=extra.nativeAirNetwork;
  shared->networkHousePreserve=extra.networkHousePreserve;shared->nativeSellCursor=extra.nativeSellCursor;
  shared->nativeMegaGateway=extra.nativeMegaGateway;
- shared->controlCommandOwner=extra.controlCommandOwner;
+ shared->controlCommandOwner=extra.controlAll&&extra.controlCommandOwner;
  InterlockedIncrement(&shared->formationPolicySeq);shared->formationPolicy.enabled=extra.formationEnabled;shared->formationPolicy.hold=extra.formationHold;shared->formationPolicy.mouse=extra.formationMouse;memcpy(shared->formationPolicy.keys,extra.formationKeys,sizeof extra.formationKeys);MemoryBarrier();InterlockedIncrement(&shared->formationPolicySeq);
- shared->missileReserve=extra.missileReserve;shared->lowDamageFilter=extra.lowDamageFilter;shared->lowDamageNetwork=extra.lowDamageNetwork;syncRefreshRate();shared->magnetronDrop=extra.magnetronDrop;shared->dodgeEnabled=extra.dodgeEnabled;shared->dodgeMode=extra.dodgeMode;shared->burstEnabled=shared->burstHoldEnabled=shared->burstHeld=0;shared->missileScope=extra.missileScope;shared->missileAllocation=extra.missileAllocation;shared->magnetronGlobal=extra.magnetronGlobal;shared->missileEnabled=extra.missileDefense;shared->missileScanHz=extra.missileScanHz;shared->controlAll=extra.controlAll;shared->switchPlayerEnabled=extra.switchPlayerEnabled;shared->computeRequested=computeRequested;shared->advancedScanHz=advancedScanHz;shared->advancedPriority=advancedTargetPriority;shared->c4Test=extra.c4Test;shared->renderReveal=extra.renderReveal;shared->loadMode=extra.loadMode;shared->loadRadius=extra.loadRadius;shared->enterKey=extra.enterKey;shared->airKey1=extra.airKey1;shared->airKey2=extra.airKey2;shared->aircraftAllocationPolicy=extra.aircraftAllocationPolicy;
+ shared->missileReserve=extra.missileDefense&&extra.missileReserve;shared->lowDamageFilter=extra.lowDamageFilter;shared->lowDamageNetwork=extra.lowDamageFilter&&extra.lowDamageNetwork;syncRefreshRate();shared->magnetronDrop=extra.magnetronDrop;shared->dodgeEnabled=extra.dodgeEnabled;shared->dodgeMode=extra.dodgeMode;shared->burstEnabled=shared->burstHoldEnabled=shared->burstHeld=0;shared->missileScope=extra.missileScope;shared->missileAllocation=extra.missileAllocation;shared->magnetronGlobal=extra.magnetronGlobal;shared->missileEnabled=extra.missileDefense;shared->missileScanHz=extra.missileScanHz;shared->controlAll=extra.controlAll;shared->switchPlayerEnabled=extra.switchPlayerEnabled;shared->computeRequested=computeRequested;shared->advancedScanHz=advancedScanHz;shared->advancedPriority=advancedTargetPriority;shared->c4Test=extra.c4Test;shared->renderReveal=extra.renderReveal;shared->loadMode=extra.loadMode;shared->loadRadius=extra.loadRadius;shared->enterKey=extra.enterKey;shared->airKey1=extra.airKey1;shared->airKey2=extra.airKey2;shared->aircraftAllocationPolicy=extra.aircraftAllocationPolicy;
  static uint32_t publishedSettings=~0u;
  if(!shared->quotaConfigSeq||publishedSettings!=settingsRevision){publishedSettings=settingsRevision;
   InterlockedIncrement(&shared->quotaConfigSeq);auto&c=shared->quotaConfig;c.defaults=extra.defaults;c.count=0;

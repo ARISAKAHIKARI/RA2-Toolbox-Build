@@ -3,6 +3,7 @@
 #include <initializer_list>
 #include <string>
 #include <vector>
+#include <algorithm>
 int main(){
  struct Binding{std::string id;uint16_t key;};struct Type{const char*id;int kind;};
  std::vector<Binding> bindings={{"HTNK",0x641},{"E1",0x641},{"ORCA",0x642},{"MISSING",0x641},{"HTNK",0xe41},{"POWER",0x641}};
@@ -13,6 +14,11 @@ int main(){
  assert(typekeys::groupMask(bindings,0x642,types,4,mask,8)==1&&!mask[0]&&!mask[1]&&mask[2]);
  assert(typekeys::groupMask(bindings,0,types,4,mask,8)==0&&!mask[2]);
  bindings[1].key=0;assert(typekeys::groupMask(bindings,0x641,types,4,mask,8)==1);
+ assert(typekeys::implicitDouble(bindings,0x641));
+ bindings[1].key=0x1641;assert(!typekeys::implicitDouble(bindings,0x641));
+ assert(typekeys::groupMask(bindings,0x1641,types,4,mask,8)==2&&mask[0]&&mask[1]);
+ std::reverse(bindings.begin(),bindings.end());assert(!typekeys::implicitDouble(bindings,0x641));
+ assert(typekeys::groupMask(bindings,0x641,types,4,mask,8)==2&&mask[0]&&mask[1]);
  typekeys::TypeSet set;for(unsigned i=1;i<=512;++i)set.add(0x10000+i*16384);
  for(unsigned i=1;i<=512;++i)assert(set.contains(0x10000+i*16384));
  assert(!set.contains(0)&&!set.contains(0x12345));set.clear();assert(!set.contains(0x14000));

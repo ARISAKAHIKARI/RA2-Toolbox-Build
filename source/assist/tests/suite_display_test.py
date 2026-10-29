@@ -6,11 +6,17 @@ from pathlib import Path
 import subprocess,tempfile
 root=Path(__file__).resolve().parents[2]
 suite=(root/'suite/source/main.cpp').read_text()
-bus=' void publishDisplaySettings'+suite.split(' void publishDisplaySettings',1)[1].split('\n}\nstatic void save()',1)[0]
+bus_start=suite.index(' void publishDisplaySettings')
+bus_end=suite.index('\nstatic void save()',bus_start)
+bus=suite[bus_start:bus_end].rsplit('\n}',1)[0]
 assist=(root/'assist/source/main.cpp').read_text()
 forward=assist.split(' if(msg==suite::ApplyDisplaySetting){',1)[1].split('\n if(msg==suite::ModuleEnable)',1)[0]
 forward=forward.rsplit('}',1)[0]
-register=suite.split(' void registerPane(int module,HWND pane){',1)[1].split('  auto style=',1)[0]
+register_body=suite.split(' void registerPane(int module,HWND pane){',1)[1].split('\n void reportEnabled',1)[0]
+# This fixture exercises only display-bus startup ordering. The asynchronous
+# native-window adoption immediately following it has a separate HWND fixture.
+register,register_boundary,_=register_body.partition('  modernui::styleChildren(pane);')
+assert register_boundary,'Display registration bus prefix changed; update the focused fixture boundary'
 io=(root/'assist/source/extra_settings_io.h').read_text()
 sync='static void syncRefreshRate()'+io.split('static void syncRefreshRate()',1)[1].split('static void syncAdditional()',1)[0]
 update='static void updateRefresh(bool force=false){'+(root/'cursor/source/main.cpp').read_text().split('static void updateRefresh(bool force=false){',1)[1].split('static uint32_t inputNow()',1)[0]
@@ -53,6 +59,7 @@ static int SendMessageW(int h,int message,WPARAM wp,LPARAM lp){
 static int proc(int h,int message,WPARAM wp,LPARAM lp){SendMessageW(h,message,wp,lp);return 0;}
 static void SetWindowTextW(int h,const wchar_t* text){assert(updatingControls||unitSyncMode);texts[h]=text;if(!texts[h].empty()&&(texts[h][0]==L'-'||(texts[h][0]>=L'0'&&texts[h][0]<=L'9')))fields[h]=std::stoi(text);}
 static int GetFocus(){return focused;}static void EnableWindow(int h,bool on){available[h]=on;}
+static bool IsWindowEnabled(int h){auto i=available.find(h);return i==available.end()||i->second;}
 static int GetDlgItemInt(int,int h,BOOL* ok,int){*ok=fields.count(h)!=0;return fields[h];}
 static int statsInformationFPS(){return statsRate;}
 namespace modernui {static void heading(int){}static void tip(int,const wchar_t*){}}
@@ -114,6 +121,14 @@ int main(){
  config.values[InfoAdaptive]=0;config.infoRate=144;publishDisplaySettings(config);syncUnitSettings();assert(fields[613]==0&&available[609]&&fields[609]==144);
  focused=609;fields[609]=120;syncUnitSettings();assert(fields[609]==120);syncUnitSettings(true);assert(fields[609]==144);focused=0;unitSyncMode=false;
  fields[613]=1;assert(unitSettingCommand(MAKEWPARAM(613,BN_CLICKED))&&requestedOption==InfoAdaptive&&requestedValue==1);
+ // Disabled controls cannot bypass dependencies through synthetic notifications.
+ // Their saved child values survive and are restored in the mirrored UI.
+ unitSyncMode=true;config.values[Capacity]=0;config.values[AllTransports]=1;publishDisplaySettings(config);syncUnitSettings(true);
+ assert(!available[604]&&fields[604]==1);int disabledPosts=posted;fields[604]=0;
+ assert(unitSettingCommand(MAKEWPARAM(604,BN_CLICKED))&&fields[604]==1&&posted==disabledPosts);
+ config.values[InfoAdaptive]=1;publishDisplaySettings(config);syncUnitSettings(true);disabledPosts=posted;fields[609]=500;
+ assert(unitSettingCommand(MAKEWPARAM(609,EN_CHANGE))&&fields[609]==144&&posted==disabledPosts);
+ config.values[InfoAdaptive]=0;publishDisplaySettings(config);syncUnitSettings(true);unitSyncMode=false;
  assert(!unitSettingCommand(MAKEWPARAM(614,BN_CLICKED)));
  int ratePosts=posted;config.infoRate=240;publishDisplaySettings(config);assert(posted==ratePosts+2);publishDisplaySettings(config);assert(posted==ratePosts+2);
  std::atomic<bool> done{false};std::thread writer([&]{for(int n=1;n<=10000;++n){DisplayState s;s.values.fill(n);s.rateMilli=n;s.gapUs=n;s.infoRate=n;publishDisplaySettings(s);}done=true;});

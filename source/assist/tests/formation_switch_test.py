@@ -83,7 +83,7 @@ static bool pointerLocation(const pointerinput::Intent&p){++locationQueries;int 
 static std::set<std::pair<int,int>> blocked;static int cellQueries=0,heightQueries=0;
 static uint32_t readMapCell(int x,int y){++cellQueries;if(x<10||x>=61||y<10||y>=61||blocked.count({x,y}))return 0;return 0x300000+uint32_t((y-10)*51+x-10)*0x200;}
 template<class R,class...Args>static R call(uint32_t at,uint32_t self,Args...){assert(at==0x578080&&self==0x87F7E8);++heightQueries;return R(0);}
-static struct{uint8_t held[256]{};bool qualifies(uint16_t){return true;}}runtimeKeys;
+static keygesture::Tracker runtimeKeys;
 namespace taskarbiter{enum class Owner{Formation};}
 struct Command{uint32_t id=0,cell=0;};static std::vector<Command> commands;static int feedbacks=0;
 static bool simulationReady(){return true;}static int outgoingRoom(){return 256-int(commands.size());}
@@ -105,12 +105,18 @@ static void setup(int button=2){
  for(int n=0;n<25;++n){uint32_t p=0x10000+n*0x1000;actors.push_back(p);put(p+0x10,uint32_t(100+n));put(p+0x21C,lastHouse);put(p+0x6C4,0x190000u);put(p+0x6C,100);put(p+0x9C,(18+n%5)*256+128);put(p+0xA0,(18+n/5)*256+128);}
  selected=actors;resetFormation();formationEpoch=match;selections=notifications=cellQueries=heightQueries=locationQueries=feedbacks=0;
 }
-static void message(UINT message,uint32_t key=0,bool repeat=false,int x=100,int y=100){
+static bool dispatch(UINT message,uint32_t key=0,bool repeat=false,int x=100,int y=100){
  MSG msg;msg.message=message;msg.wParam=key;
  msg.lParam=(message>=WM_MOUSEMOVE&&message<=WM_RBUTTONUP)?MAKELPARAM(short(x),short(y)):(repeat?LPARAM(1u<<30):0);
- assert(formationMessage(&msg));assert(msg.message==WM_NULL);
- assert((sh->formationSeq&1)==0);
+ if(message==WM_KEYDOWN||message==WM_SYSKEYDOWN||message==WM_KEYUP||message==WM_SYSKEYUP){
+  const bool down=message==WM_KEYDOWN||message==WM_SYSKEYDOWN;held[key]=down;
+  uint8_t keys[256]{};for(unsigned i=0;i<256;++i)keys[i]=held[i];
+  runtimeKeys.edge(key,down,repeat,clockValue,keygesture::chord(key,keys));
+ }
+ bool consumed=formationMessage(&msg);if(consumed)assert(msg.message==WM_NULL);
+ assert((sh->formationSeq&1)==0);return consumed;
 }
+static void message(UINT m,uint32_t key=0,bool repeat=false,int x=100,int y=100){assert(dispatch(m,key,repeat,x,y));}
 static void activate(){held[VK_MENU]=true;message(WM_SYSKEYDOWN,VK_MENU);assert(sh->formationPreview.active&&sh->formationPreview.count==25&&selections==1);}
 using Geometry=std::set<std::pair<int,int>>;
 static Geometry geometry(const formation::Preview&p){Geometry out;for(int n=0;n<p.count;++n){assert(p.slots[n].valid);out.insert({p.slots[n].x,p.slots[n].y});}assert(int(out.size())==p.count);return out;}
@@ -164,7 +170,36 @@ int main(){
   setup(button);activate();message(WM_SYSKEYDOWN,'C');message(WM_SYSKEYUP,'C');message(down);selected.pop_back();message(up);
   assert(!sh->formationPreview.active&&!formationJobCount&&commands.empty());++cases;
  }
- std::cout<<"PASS "<<cases<<" production bridge cases: stationary six-shape switch, same-clock cycling, repeat suppression, exact per-ID preview/job/nativeMission destinations for both buttons, moved units and jitter without recomputation, obstacle resolution, release freeze and membership cancellation\n";
+ // Explicit Press and EXT preserve the same group as old bindings. Unsupported
+ // Release/Hold shapes stay native and never silently act as presses.
+ setup();sh->formationPolicy.keys[1]='X'|0x1000;sh->formationPolicy.keys[2]='C'|0x1800;sh->formationPolicy.keys[3]='V'|0x2000;sh->formationPolicy.keys[4]='B'|0x3000;activate();
+ message(WM_SYSKEYDOWN,'X');assert(sh->formationPreview.shape==1);message(WM_SYSKEYUP,'X');
+ message(WM_SYSKEYDOWN,'C');assert(sh->formationPreview.shape==2);message(WM_SYSKEYUP,'C');
+ assert(!dispatch(WM_SYSKEYDOWN,'V')&&!dispatch(WM_SYSKEYUP,'V')&&sh->formationPreview.shape==2);
+ assert(!dispatch(WM_SYSKEYDOWN,'B')&&!dispatch(WM_SYSKEYUP,'B')&&sh->formationPreview.shape==2);++cases;
+ // Double Press selects only on the second physical down, not its release.
+ setup();sh->formationPolicy.keys[1]='X'|0x9000;activate();message(WM_SYSKEYDOWN,'X');assert(sh->formationPreview.shape==0);message(WM_SYSKEYUP,'X');clockValue+=100;message(WM_SYSKEYDOWN,'X');assert(sh->formationPreview.shape==1);message(WM_SYSKEYUP,'X');assert(sh->formationPreview.shape==1);++cases;
+ // Releasing a chord prefix ends a held preview and cannot be resurrected by
+ // putting Ctrl back while G is still down or by the OS key-repeat stream.
+ setup();sh->formationPolicy.hold='G'|0x3200;assert(!dispatch(WM_KEYDOWN,VK_CONTROL));message(WM_KEYDOWN,'G');assert(formationHolding&&sh->formationPreview.active);
+ assert(!dispatch(WM_KEYUP,VK_CONTROL));assert(!formationHolding&&!sh->formationPreview.active);
+ assert(!dispatch(WM_KEYDOWN,VK_CONTROL));assert(!dispatch(WM_KEYDOWN,'G',true));assert(!sh->formationPreview.active);
+ message(WM_KEYUP,'G');message(WM_KEYDOWN,'G');assert(sh->formationPreview.active);++cases;
+ // Tick-side validation also handles a missing modifier-up notification and
+ // changing the configured hold while a prior preview is active.
+ held[VK_CONTROL]=false;formationTick(lastHouse,snap.frame,clockValue);assert(!formationHolding&&!sh->formationPreview.active);++cases;
+ setup();sh->formationPolicy.hold='G'|0x3200;assert(!dispatch(WM_KEYDOWN,VK_CONTROL));message(WM_KEYDOWN,'G');sh->formationPolicy.hold='H'|0x3200;
+ assert(!dispatch(WM_MOUSEMOVE));assert(!formationHolding&&!sh->formationPreview.active);++cases;
+ // A started drag keeps its frozen preview through keyboard release and the
+ // subsequent pointer-up submits exactly those slots, preserving prior input.
+ setup();sh->formationPolicy.hold='G'|0x3200;assert(!dispatch(WM_KEYDOWN,VK_CONTROL));message(WM_KEYDOWN,'G');message(WM_RBUTTONDOWN);clockValue+=20;message(WM_MOUSEMOVE,0,false,180,135);auto drag=sh->formationPreview;assert(drag.dragging);
+ assert(!dispatch(WM_KEYUP,VK_CONTROL));assert(!formationHolding&&formationButton&&sh->formationPreview.active);message(WM_RBUTTONUP);assert(sameSlots(drag,sh->formationPreview));checkJobs(drag);++cases;
+ // Double Alt remains a latched mode independent of whether Alt is held.
+ setup();activate();message(WM_SYSKEYUP,VK_MENU);clockValue+=100;message(WM_SYSKEYDOWN,VK_MENU);assert(formationModal&&sh->formationPreview.active);message(WM_SYSKEYUP,VK_MENU);assert(formationModal&&sh->formationPreview.active);++cases;
+ // A double-hold enters on the second key-down and ends when its prefix goes.
+ setup();sh->formationPolicy.hold='G'|0xb200;assert(!dispatch(WM_KEYDOWN,VK_CONTROL));assert(!dispatch(WM_KEYDOWN,'G'));assert(!sh->formationPreview.active);assert(!dispatch(WM_KEYUP,'G'));clockValue+=100;message(WM_KEYDOWN,'G');assert(formationHolding&&sh->formationPreview.active);
+ assert(!dispatch(WM_KEYUP,VK_CONTROL));assert(!formationHolding&&!sh->formationPreview.active);++cases;
+ std::cout<<"PASS "<<cases<<" production bridge cases: stationary six-shape switch, same-clock cycling, repeat suppression, exact per-ID preview/job/nativeMission destinations for both buttons, moved units and jitter without recomputation, obstacle resolution, release freeze and membership cancellation, Press/EXT compatibility, unsupported modes, chord cancellation/repeat/rebind, drag ownership, modal Alt and double-hold\n";
 }
 '''
 
@@ -175,3 +210,43 @@ with tempfile.TemporaryDirectory() as tmp:
     subprocess.run(['g++', '-std=c++17', '-O2', '-I' + str(root / 'assist/source'),
                     str(cpp), '-o', str(executable)], check=True)
     subprocess.run([str(executable)], check=True, timeout=20)
+
+# Execute the host's actual bridge-routing function as well. The synthetic
+# window/mailbox boundary deliberately makes no real Windows input claim.
+host_function = (root / 'assist/source/formation_host.h').read_text()
+host_function = host_function[host_function.index('static bool formationHotkey'):]
+host_fixture = r'''
+#include <cassert>
+#include <cstdint>
+#include <iostream>
+#include "formation.h"
+#include "type_hotkey.h"
+using namespace assist;
+using WORD=uint16_t;using LONG=int32_t;
+constexpr unsigned VK_SHIFT=16,VK_CONTROL=17,VK_MENU=18;
+static uint32_t now=1000,scene=1;
+static uint32_t GetTickCount(){return now;}static uint32_t commandMatch(){return scene;}
+static void MemoryBarrier(){}static void InterlockedIncrement(volatile LONG*p){++*p;}
+static int wakes=0;static void wakeGame(){++wakes;}
+static struct{bool formationEnabled=true;uint32_t formationHold=18,formationKeys[6]{};}extra;
+static struct Shared{formation::Preview formationPreview;uint32_t formationKey=0,formationKeyAck=0,formationKeyCode=0;}state,*shared=&state;
+'''+host_function+r'''
+int main(){
+ state.formationPreview.active=1;extra.formationKeys[0]='X'|0x1000;
+ assert(formationHotkey('X'|0x400)&&wakes==1&&state.formationKeyCode=='X');state.formationKeyAck=state.formationKey;
+ assert(formationHotkey('X'|0x1800)&&wakes==2&&state.formationKeyCode=='X');state.formationKeyAck=state.formationKey;
+ extra.formationHold=17|0x3000;assert(formationHotkey('X'|0x200)&&wakes==3);state.formationKeyAck=state.formationKey;
+ extra.formationKeys[0]='X'|0x9000;++scene;
+ assert(formationHotkey('X')&&wakes==3);now+=100;assert(formationHotkey('X')&&wakes==4&&state.formationKeyCode==('X'|0x8000));state.formationKeyAck=state.formationKey;
+ extra.formationKeys[0]='X'|0x2000;assert(!formationHotkey('X')&&wakes==4);
+ extra.formationKeys[0]='X'|0x3000;assert(!formationHotkey('X')&&wakes==4);
+ extra.formationKeys[0]='X';state.formationPreview.active=0;assert(!formationHotkey('X'));
+ state.formationPreview.active=1;extra.formationEnabled=false;assert(!formationHotkey('X'));
+ std::cout<<"PASS production host shape routing: Press/EXT normalization, configured modifier, second-down Double Press, unsupported modes, inactive/disabled gates\n";
+}
+'''
+with tempfile.TemporaryDirectory() as tmp:
+    cpp=Path(tmp)/'formation_host_keys.cpp';exe=Path(tmp)/'formation_host_keys'
+    cpp.write_text(host_fixture)
+    subprocess.run(['g++','-std=c++17','-O2','-I'+str(root/'assist/source'),str(cpp),'-o',str(exe)],check=True)
+    subprocess.run([str(exe)],check=True,timeout=20)

@@ -27,11 +27,7 @@ struct Health {
  DWORD nativeSerial=0,nativeCode=0,nativeAddress=0,nativeOperation=0,nativeAccess=0;
  DWORD nativeThread=0,nativeTick=0,nativeEax=0,nativeEcx=0,nativeEsi=0,nativeEbp=0;
 };
-inline bool heldBinding(uint32_t binding){
- const unsigned vk=binding&255,mods=binding>>8;if(!vk)return false;
- if(!(GetAsyncKeyState(vk)&0x8000))return false;if(binding==16||binding==17||binding==18)return true;
- return bool(GetAsyncKeyState(16)&0x8000)==bool(mods&1)&&bool(GetAsyncKeyState(17)&0x8000)==bool(mods&2)&&bool(GetAsyncKeyState(18)&0x8000)==bool(mods&4);
-}
+inline bool heldBinding(uint32_t binding);
 struct PointerPress {DWORD tick=0,serial=0;uint32_t match=0;int operation=0;POINT point{};int width=0,height=0;uint8_t keys[256]{};};
 struct PointerQueue {PointerPress items[16]{};unsigned head=0,count=0;DWORD dropped=0,cancelSerial=0;bool enabled=false,focused=false,rightArmed=false,leftArmed=false,rightDragged=false;POINT rightOrigin{};uint32_t match=0;DWORD contextAt=0;uint32_t down=0;uint8_t rightKeys[256]{},leftKeys[256]{};};
 struct Target {keygesture::Tracker keys;PointerQueue pointer{};Health lastDiagnostic{};DWORD pid=0,thread=0;HWND window=nullptr;HHOOK message=nullptr,post=nullptr;HANDLE mapping=nullptr;runtime::Control*control=nullptr;uint64_t cursorAt=0,tacticalAt=0;DWORD lastPost=0,lastPostError=0;bool fastTactical=false;
@@ -155,6 +151,16 @@ inline void setPointerContext(Subscription id,uint32_t match,bool enabled){
 // Polling belongs to the EXE manager. No low-level mouse/keyboard hooks and no
 // game input is swallowed or rewritten. Right UP follows the native click.
 inline void keySnapshot(Subscription id,uint8_t*out,uint32_t*serial=nullptr){auto&h=host();std::lock_guard<std::recursive_mutex>lock(h.mutex);memset(out,0,256);for(auto&l:h.leases)if(id&&l.id==id){auto&t=h.targets[l.target];memcpy(out,t.keys.held,256);if(serial)memcpy(serial,t.keys.serial,256*sizeof(uint32_t));return;}}
+inline bool heldBinding(uint32_t binding){
+ if(!(binding&255)||!keygesture::isHold(binding))return false;
+ uint8_t keys[256]{};for(unsigned code:{binding&255,16u,17u,18u})keys[code]=(GetAsyncKeyState(code)&0x8000)!=0;
+ if(binding&keygesture::Double){
+  DWORD foreground=0;GetWindowThreadProcessId(GetForegroundWindow(),&foreground);
+  auto&h=host();std::lock_guard<std::recursive_mutex>lock(h.mutex);
+  for(auto&t:h.targets)if(t.pid==foreground&&t.pointer.focused&&(t.keys.held[binding&255]&2)){keys[binding&255]|=keys[binding&255]?2:0;break;}
+ }
+ return keygesture::matchesHold(keys,binding);
+}
 inline void pollPointer(Target&t,DWORD now){
  auto&q=t.pointer;DWORD fg=0;GetWindowThreadProcessId(GetForegroundWindow(),&fg);
  const int keys[]={VK_MBUTTON,VK_XBUTTON1,VK_XBUTTON2,VK_RBUTTON,'S','D','X',VK_LBUTTON};

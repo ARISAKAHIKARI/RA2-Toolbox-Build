@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
+#include "../../shared/source/key_gesture.h"
 namespace assist { namespace formation {
 constexpr int Maximum=256, Shapes=6;
 constexpr double Pi=3.14159265358979323846;
@@ -9,11 +10,18 @@ struct Policy {uint32_t enabled=0,hold=18,keys[Shapes]={'Z','X','C','V','B','N'}
 struct Unit {uint32_t id=0,pointer=0,type=0,token=0,color=0;int x=0,y=0,z=0,kind=0;};
 struct Slot {int x=0,y=0,z=0;uint32_t valid=0;};
 struct Preview {uint32_t match=0,tick=0,active=0,dragging=0,revision=0;int shape=0,count=0,ax=0,ay=0;double facing=0;Unit units[Maximum]{};Slot slots[Maximum]{};};
+// Shape changes are discrete presses; release/hold modes are not accepted.
+// Legacy presses and explicit Press share one identity, including EXT keys.
+inline uint16_t shapeKey(uint32_t key){
+ const auto mode=keygesture::mode(key);
+ return (key&255)&&(mode==keygesture::Mode::Legacy||mode==keygesture::Mode::Press)?keygesture::normalize(key):0;
+}
 // Shared keys deliberately need not be distinct. Only a new physical press
 // calls this function, so OS key-repeat never advances a group.
 inline int cycle(int current,uint32_t key,const uint32_t*keys){
+ key=shapeKey(key);if(!key)return current;
  int first=-1,next=-1;bool found=false;
- for(int i=0;i<Shapes;++i)if(keys[i]&&keys[i]==key){if(first<0)first=i;if(found&&next<0)next=i;if(i==current)found=true;}
+ for(int i=0;i<Shapes;++i)if(shapeKey(keys[i])==key){if(first<0)first=i;if(found&&next<0)next=i;if(i==current)found=true;}
  return next>=0?next:first>=0?first:current;
 }
 struct Point {double x=0,y=0;};

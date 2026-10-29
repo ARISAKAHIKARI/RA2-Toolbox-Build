@@ -566,9 +566,9 @@ static LRESULT CALLBACK proc(HWND w,UINT m,WPARAM a,LPARAM b){
 #endif
   EnableWindow(tabModeBox,tabEnabled);controlsReady=true;modernui::styleChildren(w);consoleScale(consoleDpi);
   if(!RegisterHotKey(w,1,MOD_CONTROL|MOD_ALT|MOD_NOREPEAT,'H'))visibilityStatus(L"备用快捷键注册失败；请用显示按钮或常驻模式");RegisterHotKey(w,2,MOD_CONTROL|MOD_ALT|MOD_NOREPEAT,VK_RIGHT);RegisterHotKey(w,3,MOD_CONTROL|MOD_ALT|MOD_NOREPEAT,VK_LEFT);statsFrameClock.start(w,StatsFrameMessage);SetTimer(w,1,16,nullptr);return 0;}
- case WM_DPICHANGED:consoleScale(HIWORD(a));if(auto rect=(RECT*)b)SetWindowPos(w,nullptr,rect->left,rect->top,rect->right-rect->left,rect->bottom-rect->top,SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS);return 0;
+ case WM_DPICHANGED:consoleScale(HIWORD(a));if(auto rect=(RECT*)b)if(!GetPropW(w,L"RA2.Suite.Managed"))SetWindowPos(w,nullptr,rect->left,rect->top,rect->right-rect->left,rect->bottom-rect->top,SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS);return 0;
  case WM_SIZE:layoutConsole();return 0;
- case WM_MOUSEWHEEL:consoleY-=GET_WHEEL_DELTA_WPARAM(a)/WHEEL_DELTA*modernui::scale(60,consoleDpi);layoutConsole();return 0;
+ case WM_MOUSEWHEEL:{int amount=pagewheel::delta(w,a,modernui::scale(60,consoleDpi));if(amount){consoleY-=amount;layoutConsole();}return 0;}
  case WM_HSCROLL:case WM_VSCROLL:{int bar=m==WM_HSCROLL?SB_HORZ:SB_VERT;SCROLLINFO si{sizeof si,SIF_ALL};GetScrollInfo(w,bar,&si);int next=si.nPos;switch(LOWORD(a)){case SB_LINEUP:next-=modernui::scale(28,consoleDpi);break;case SB_LINEDOWN:next+=modernui::scale(28,consoleDpi);break;case SB_PAGEUP:next-=si.nPage;break;case SB_PAGEDOWN:next+=si.nPage;break;case SB_THUMBTRACK:case SB_THUMBPOSITION:next=si.nTrackPos;break;case SB_TOP:next=0;break;case SB_BOTTOM:next=si.nMax;break;}(bar==SB_HORZ?consoleX:consoleY)=next;layoutConsole();return 0;}
  case WM_ERASEBKGND:return 1;
  case WM_DISPLAYCHANGE:finishSecondaryDrag();statsRefreshMonitor.invalidate();secondaryMonitor.invalidate();resetSecondary();tick();return 0;

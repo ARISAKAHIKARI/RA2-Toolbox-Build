@@ -17,7 +17,7 @@ layout = 'struct PageControl {' + layout
 create = main.split('switch(msg){case WM_CREATE:{', 1)[1].split('\n case ', 1)[0]
 assert create.rstrip().endswith('return 0;}')
 labels = main.split('static const wchar_t* labels[]=', 1)[1].split(';', 1)[0]
-status = 'static void updateModeStatus(DWORD now){' + main.split('static void updateModeStatus(DWORD now){', 1)[1].split('static void updatePlayerTestUI()', 1)[0]
+status = 'static void updateModeStatus(DWORD now){' + main.split('static void updateModeStatus(DWORD now){', 1)[1].split('static void updatePlayerTestUI(', 1)[0]
 prefix = r'''
 #include "ui_layout.h"
 #include "ore_type_config.h"
@@ -26,6 +26,9 @@ prefix = r'''
 #include "scheduler_policy.h"
 #include "compute_policy.h"
 #include "view_zoom.h"
+#include "protocol.h"
+#include "event_delivery.h"
+#include "air_path_policy.h"
 #include <initializer_list>
 #include <cassert>
 #include <cstdint>
@@ -52,7 +55,7 @@ struct SCROLLINFO{unsigned cbSize,fMask;int nMin,nMax;unsigned nPage;int nPos,nT
 struct Window{std::wstring cls,text;int id;uilayout::Rect rect;bool visible=true;RECT clip{};DWORD style=0;bool checked=false;bool enabled=true;};
 static std::vector<Window> windows(2);static std::vector<RECT> regions(1);static SCROLLINFO scrollInfo{};
 static int clientWidth=812,clientHeight=640;
-namespace modernui {static void style(HWND){}static void heading(HWND,unsigned=96){}static void tip(HWND,const std::wstring&){}static unsigned panelDpi(unsigned d,bool){return d;}static unsigned windowDpi(HWND){return 96;}static int scale(int n,unsigned d){return (n*int(d)+48)/96;}static HFONT makeFont(int=14,unsigned=96){return 1;}constexpr int BodyPixels=14;static void mouseOnly(HWND){}static void holdKey(HWND){}}
+namespace modernui {static void style(HWND){}static void heading(HWND,unsigned=96){}static void tip(HWND,const std::wstring&){}static unsigned panelDpi(unsigned d,bool){return d;}static unsigned windowDpi(HWND){return 96;}static int scale(int n,unsigned d){return (n*int(d)+48)/96;}static HFONT makeFont(int=14,unsigned=96){return 1;}constexpr int BodyPixels=14;static void mouseOnly(HWND){}static void holdKey(HWND){}static void pressKey(HWND){}static void keyboardOnly(HWND){}}
 static HWND ui,repairCheck,repairEdit,keys[12],check[7],rateEdit,marginEdit,swList,swHotkey,techSearch,techList,
  typeList,typeKey,tapEdit,typeCS,csCheck,csKeyEdit,typeIdEdit,csStatus,advancedKeyEdit,unloadKeyEdit,nativeStatus,
  hookChecks[4],ejectCheck,ejectKeyEdit,magnetronCheck,magnetronKeyEdit,oreCheck,oreStatus,detailCheck,toastEdit,
@@ -62,6 +65,9 @@ static int labelScalePercent=100,constructionScalePercent=100;static bool minima
 static int minimapSecondaryX=10000,minimapSecondaryY=10000,minimapSecondaryWidth=320;static uint32_t computeRequested=compute::Default;
 static unsigned schedulerTarget=0,megaQueueMode=0,objectQueueMode=0;static HFONT font;static int scrollY,repairMs=2000,fps=60,topMargin=20,doubleMs=350,toastMs=6000;
 static bool infoAdaptive=false;static int informationFPS(){return infoAdaptive?144:fps;}
+static bool renderUpgradeEnabled=false,renderPhysicalOutput=false,unifiedOverlayEnabled=false,renderColorPrecision=false,renderMaterialRefresh=false,renderVulkanEnabled=false,renderDLSS5Requested=false;
+static int renderPaletteRange=0,renderSceneDetail=0,renderPixelScale=0;
+static Snapshot incoming;static bool networkHouseReady(){return false;}
 static DWORD GetTickCount(){return 1606;}
 static bool commandFresh(DWORD){return true;}
 static unsigned infantryEntryResultMatch=0;static std::wstring infantryEntryResult;
@@ -74,7 +80,7 @@ static HWND game=1;static bool enabled=true;static std::wstring hoverHelp,status
 static struct {int techOpen=0,c4TestStatus=0,placementStatus=0,nativeAirStatus=0,renderRevealStatus=0,commandStatus=1,entryReentrant=0,entryContended=0,session=5,lastSubmitError=0,queueSent=0,commandRejected=0,queueFull=0,queueTimingFailure=0,status=1,nativeHookStatus=1,advancedUnits=0,unloadPending=0,ejectWatched=0,csHookStatus=1,oreQueued=0,oreDocking=0,oreManual=0,oreDelivered=0,oreUnverified=0,magnetShots=0,magnetUnverified=0,hookConflicts=0,megaQueueAccepted=0,megaQueueRejected=0,megaQueueStatus=0,objectQueueAccepted=0,objectQueueRejected=0,objectQueueStatus=0;} snap;
 static struct {int size=0;} commandQueue;
 static struct {bool readFresh(uint32_t,void*,size_t){return false;}} externalReader;
-static struct {int techEnhanceStatus=0,techEnhanceCount=0,viewZoomStatus=0,viewZoomApplied=100,viewZoomWidth=800,viewZoomHeight=600,scrollRefreshStatus=0,scrollRefreshRateMilli=0,scrollRefreshMaxGapUs=0,driverMode=0,driverTarget=0,driverStatus=0,driverTicks=0,megaQueueMode=0,objectQueueMode=0;DWORD driverLastTick=0;} mockScheduler;
+static struct {int techEnhanceStatus=0,techEnhanceCount=0,viewZoomStatus=0,viewZoomApplied=100,viewZoomWidth=800,viewZoomHeight=600,scrollRefreshStatus=0,scrollRefreshRateMilli=0,scrollRefreshMaxGapUs=0,driverMode=0,driverTarget=0,driverStatus=0,driverTicks=0,megaQueueMode=0,objectQueueMode=0,lowDamageStatus=0,networkHouseStatus=0,nativeSellCursorStatus=0,nativeMegaGatewayStatus=0,controlCommandOwnerStatus=0;DWORD driverLastTick=0;} mockScheduler;
 static decltype(mockScheduler)* shared=nullptr;
 static unsigned LOBYTE(unsigned key){return key&255;}
 static HWND CreateWindowExW(DWORD,const wchar_t*cls,const wchar_t*text,DWORD style,int x,int y,int w,int h,HWND,HMENU id,HMODULE,void*){
@@ -96,6 +102,9 @@ static void InvalidateRect(HWND,void*,int){}
 static int value(const wchar_t*,const wchar_t*,int def){return def;}
 static void fillTech(bool){}static void fillTypeBindings(bool){}static void registerKeys(){}
 static void SetTimer(HWND,int,int,void*){}
+// Availability is exercised by the production policy/HWND tests. Geometry
+// keeps only its notification boundary, just like fonts, storage and timers.
+static void syncSettingDependencies(bool=false){}
 static void SetWindowTextW(HWND h,const wchar_t* text){windows[h].text=text;}
 static int GetDlgCtrlID(HWND h){return windows[h].id;}
 static void GetWindowTextW(HWND h,wchar_t*out,int n){wcsncpy(out,windows[h].text.c_str(),n-1);out[n-1]=0;}
@@ -147,10 +156,10 @@ int main(){
  cursor={30,50};updateHoverHelp();assert(hoverHelp.empty());
  cursor={30,uilayout::footerTop(clientHeight)};updateHoverHelp();assert(hoverHelp.empty());
  assert(!at(450).help.empty());
- // The status area is two lines tall; instructions remain concise.
+ // Tooltips wrap their own instructions; they no longer occupy the fixed
+ // two-line status area. Keep implementation diagnostics out of this text.
  for(auto&c:pageControls)if(c.page>=0){
   assert(c.help.find(L"GameRuntime")==std::wstring::npos&&c.help.find(L"OutList")==std::wstring::npos&&c.help.find(L"Hook")==std::wstring::npos);
-  if(c.help.size()>110){std::cerr<<"Long help id "<<GetDlgCtrlID(c.hwnd)<<" chars "<<c.help.size()<<"\n";assert(false);}
  }
 
  // Device-pixel layout must follow the font scale, with the same clipping.
@@ -161,10 +170,10 @@ int main(){
  int inspected=0;
  // Body controls are split across three independent categories. Every supported interactive
  // ID survives the redesign; only redundant save labels/navigation disappear.
- for(int id:{100,111,200,211,300,306,310,311,312,410,411,420,421,422,423,424,425,426,427,428,440,441,443,444,445,446,447,449,450,451,453,454,455,456,458,459,466,467,470,471,473,474,476,477,478,481,700,701,702,703,704,705,706,707,708,709,710,711,712,713,714,715,716,717,718,719,720,721,723,724,725,726,727,728,729,730,731,732,733,734,735,736,737,738,751,760,761,762,785,786,787,795,796,797,798,799,818,830,831,832,833,850,851,852,853,900,901,902,903,904,910,911,912,915,802,803,804,807,808,809,810,811,812,813,814,815,816,817,990,991}){
+ for(int id:{100,111,200,211,300,306,310,311,312,410,411,420,421,422,423,424,425,426,427,428,440,441,443,444,445,446,447,449,450,451,453,454,455,456,458,459,466,467,470,471,473,474,476,477,478,481,700,701,702,703,704,705,706,707,708,709,710,711,712,713,714,715,716,717,718,719,720,721,722,723,724,725,726,727,728,729,730,731,732,733,734,735,736,737,738,751,760,761,762,785,786,787,795,796,797,798,799,818,830,831,832,833,850,851,852,853,900,901,902,903,904,910,911,912,915,802,803,804,807,808,809,810,811,812,813,814,815,816,817,990,991}){
   int found=0;for(auto&w:windows)found+=w.id==id;if(found!=1){std::cerr<<"Missing/duplicate ID "<<id<<" count "<<found<<"\n";return 1;}
  }
- for(int id:{108,208,722,913,914,739,790,791,792,805,806,882,883,884,9234,9235})assert(!GetDlgItem(ui,id));
+ for(int id:{108,208,913,914,739,790,791,792,805,806,882,883,884,9234,9235})assert(!GetDlgItem(ui,id));
  for(size_t i=0;i<pageControls.size();++i){const auto&a=pageControls[i];if(a.page<0)continue;assert(a.page>=0&&a.page<3&&a.rect.y>=uilayout::BodyTop);
   auto rect=a.rect;rect.h=a.visibleHeight;
   for(size_t j=i+1;j<pageControls.size();++j){const auto&b=pageControls[j];if(b.page!=a.page)continue;auto other=b.rect;other.h=b.visibleHeight;

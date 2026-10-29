@@ -100,6 +100,11 @@ static std::map<std::wstring,int> burstWrites;
 static void write(const wchar_t* section,const wchar_t* key,int v){profile[key]=v;if(std::wstring(section)==L"BurstRefresh")burstWrites[key]=v;}
 '''+"\nstatic void loadMouse(){"+load_mouse+"}\nstatic void saveMouse(){"+save_mouse+"}\n"
 prefix+="\nstatic void loadAircraftPolicy(){"+aircraft_load+"}\nstatic void saveAircraftPolicy(){"+aircraft_save+"}\n"
+gesture_load=''.join('extra.'+field+'='+io.split('extra.'+field+'=',1)[1].split(';',1)[0]+';' for field in ('enterKey','airKey1','airKey2','diskKey','sellKey'))
+gesture_save=''.join('write('+marker+io.split('write('+marker,1)[1].split(';',1)[0]+';' for marker in (
+ 'L"Cooperative",L"EnterHoldKey",','L"Cooperative",L"AirHoldKey1",','L"Cooperative",L"AirHoldKey2",',
+ 'L"SpecialClick",L"DiskHoldKey",','L"SpecialClick",L"SellHoldKey",'))
+prefix+="\nstatic void loadGestureBindings(){"+gesture_load+"}\nstatic void saveGestureBindings(){"+gesture_save+"}\n"
 feature_load=io.split('static void loadAdditionalSettings(){',1)[1].split(' extra.antiTheft=',1)[0]
 feature_save=io.split('static bool saveAdditionalSettings(){',1)[1].split(' write(L"Modes",L"AntiTheft"',1)[0]
 prefix+="\nstatic void loadFeatureTypes(){"+feature_load+"}\nstatic void saveFeatureTypes(){"+feature_save+"}\n"
@@ -230,14 +235,43 @@ int main(){
  fields[701]=400;autoSettingChanged(701,EN_CHANGE);assert(extra.loadRadius==400);fields.erase(701);
  fields[200]='A';autoSettingChanged(200,EN_CHANGE);assert(hotkeys[0]=='A'); // another incomplete numeric field cannot block a key
  fields[201]='A';autoSettingChanged(201,EN_CHANGE);assert(hotkeys[1]==0&&fields[201]==0);
- fields[450]='G';autoSettingChanged(450,EN_CHANGE);assert(advancedKey=='G'&&hookAdvanced&&fields[800]==BST_CHECKED);
+ fields[450]='G';autoSettingChanged(450,EN_CHANGE);assert(advancedKey=='G'&&!hookAdvanced&&fields[800]!=BST_CHECKED);
  hookAdvanced=false;fields[450]='A';autoSettingChanged(450,EN_CHANGE);assert(advancedKey=='G'&&!hookAdvanced);
- fields[450]=0;autoSettingChanged(450,EN_CHANGE);assert(advancedKey==0&&hookAdvanced);
+ fields[450]=0;autoSettingChanged(450,EN_CHANGE);assert(advancedKey==0&&!hookAdvanced);
+ fields[451]='H';autoSettingChanged(451,EN_CHANGE);assert(unloadKey=='H'&&!hookSmartUnload&&fields[801]!=BST_CHECKED);
  fields[703]=0;autoSettingChanged(703,CBN_SELCHANGE);assert(extra.enterKey==0);
  fields[725]=0;autoSettingChanged(725,CBN_SELCHANGE);assert(extra.diskKey==0);
  fields[727]=0;autoSettingChanged(727,CBN_SELCHANGE);assert(extra.sellKey==0);
  fields[728]='H';autoSettingChanged(728,EN_CHANGE);assert(extra.sellKey=='H'&&fields[727]==4);
  fields[728]=0;autoSettingChanged(728,EN_CHANGE);assert(extra.sellKey==0);
+ {
+  const auto savedSettings=extra;const auto savedFields=fields;const auto savedProfile=profile;
+  constexpr uint32_t doubleCtrl=17|keygesture::Double|uint32_t(keygesture::Mode::Hold);
+  constexpr uint32_t doubleAlt=18|keygesture::Double|uint32_t(keygesture::Mode::Hold);
+  const int presets[]={703,706,708,725,727},customs[]={704,707,709,726,728};
+  uint32_t* bindings[]={&extra.enterKey,&extra.airKey1,&extra.airKey2,&extra.diskKey,&extra.sellKey};
+  const uint32_t expected[]={doubleCtrl,doubleCtrl,doubleAlt,doubleCtrl,doubleCtrl};
+  extra.airKey1=17;extra.airKey2=0;extra.allHotkeys=false;
+  for(int n=0;n<5;++n){fields[presets[n]]=2;fields[customs[n]]=expected[n];
+   assert(autoSettingChanged(customs[n],EN_CHANGE));
+   assert(*bindings[n]==expected[n]&&fields[presets[n]]==holdPreset(expected[n])&&fields[customs[n]]==int(expected[n]));
+  }
+  assert(fields[789]==int(doubleCtrl)); // both sell fields stay synchronized
+  saveGestureBindings();for(auto key:bindings)*key=0;loadGestureBindings();
+  for(int n=0;n<5;++n)assert(*bindings[n]==expected[n]); // actual production INI expressions preserve all mode bits
+  // Legacy continuous keys and explicit Hold keys are the same authorization;
+  // spelling the same gesture differently cannot evade the Air 1/2 conflict.
+  extra.airKey1=17;extra.airKey2=0;fields[708]=2;fields[709]=17|uint32_t(keygesture::Mode::Hold);
+  const auto unchanged=settingsRevision;assert(autoSettingChanged(709,EN_CHANGE));
+  assert(extra.airKey2==0&&fields[708]==0&&fields[709]==0&&settingsRevision==unchanged);
+  extra.airKey1=doubleCtrl;fields[708]=2;fields[709]=17|keygesture::Double;
+  assert(autoSettingChanged(709,EN_CHANGE)&&extra.airKey2==0&&fields[709]==0&&settingsRevision==unchanged);
+  // Choosing a preset is deliberate: it replaces a prior custom gesture and
+  // repaints its field, while direct field edits never inherit that preset.
+  for(int id:{706,725,727}){fields[id]=2;assert(autoSettingChanged(id,CBN_SELCHANGE));}
+  assert(extra.airKey1==17&&fields[707]==17&&extra.diskKey==17&&fields[726]==17&&extra.sellKey==17&&fields[728]==17&&fields[789]==17);
+  extra=savedSettings;fields=savedFields;profile=savedProfile;
+ }
  fields[780]=1;autoSettingChanged(780,BN_CLICKED);assert(repairUnrepairable);fields[780]=0;autoSettingChanged(780,BN_CLICKED);assert(!repairUnrepairable);
  fields[781]=1;autoSettingChanged(781,BN_CLICKED);assert(oreTypes.customMiners&&!oreTypes.customRefineries);
  editText=L"HARV,CMIN";autoSettingChanged(783,EN_CHANGE);assert(oreTypes.minerCount==2&&oreMiners==editText);
@@ -400,4 +434,5 @@ assert 'AircraftAllocationPolicy=0' in (root/'shared/source/initial_profiles.h')
 print('PASS aircraft allocation strategies: legacy default, all three choices, immediate sync, autosave, invalid-selection isolation and production INI roundtrips')
 
 print('PASS passenger inspection, persistent dangerous cargo and independent magnetron drop: UI toggle, autosave, persisted off/on roundtrips')
+print('PASS modifier preset/custom gestures: DoubleHold survives direct edits and production INI roundtrips; deliberate preset changes repaint fields; Legacy/Hold Air conflicts are rejected')
 

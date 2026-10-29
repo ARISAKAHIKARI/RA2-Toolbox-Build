@@ -9,6 +9,7 @@ header=r'''
 #include <map>
 #include <string>
 #include <cassert>
+#include <vector>
 using LONG=long;using UINT=unsigned;using UINT_PTR=uintptr_t;using DWORD_PTR=uintptr_t;using WPARAM=uintptr_t;using LPARAM=intptr_t;using LRESULT=intptr_t;using LONG_PTR=intptr_t;using COLORREF=uint32_t;
 using HANDLE=void*;using HFONT=void*;using HBRUSH=void*;using HDC=void*;using HGDIOBJ=void*;
 struct Win;using HWND=Win*;using Proc=LRESULT(*)(HWND,UINT,WPARAM,LPARAM,UINT_PTR,DWORD_PTR);using BOOL=int;
@@ -49,8 +50,38 @@ inline HWND GetParent(HWND w){return w->parent;}inline BOOL PostMessageW(HWND,UI
 inline int fontHeight=0,fontWeight=0;inline HFONT CreateFontW(int h,int,int,int,int weight,int,int,int,int,int,int,int,int,const wchar_t*){fontHeight=h;fontWeight=weight;return (HFONT)1;}
 inline BOOL EnumChildWindows(HWND,BOOL(*)(HWND,LPARAM),LPARAM){return true;}
 LRESULT DefSubclassProc(HWND,UINT,WPARAM,LPARAM);LRESULT SendMessageW(HWND,UINT,WPARAM,LPARAM);
+
+#define WINAPI
+using HMODULE=void*;
+inline HMODULE GetModuleHandleW(const wchar_t*){return nullptr;}inline void*GetProcAddress(HMODULE,const char*){return nullptr;}
+inline int MulDiv(int x,int n,int d){return (x*n+d/2)/d;}
+constexpr int WS_EX_TOPMOST=8,WS_POPUP=16,TTS_ALWAYSTIP=1,TTS_NOPREFIX=2,CW_USEDEFAULT=0,TTF_IDISHWND=1,TTF_SUBCLASS=2,TTM_ADDTOOLW=400,TTM_UPDATETIPTEXTW=401,TTM_SETMAXTIPWIDTH=402,TTM_SETDELAYTIME=403,TTDT_INITIAL=1,TTDT_AUTOPOP=2,WM_SYSCHAR=310,EN_CHANGE=1,VK_SHIFT=16,VK_CONTROL=17,VK_MENU=18,WM_LBUTTONDOWN=311,WM_RBUTTONUP=312;
+constexpr auto TOOLTIPS_CLASSW=L"tooltips_class32";
+struct TOOLINFOW{unsigned cbSize,uFlags=0;HWND hwnd=nullptr;UINT_PTR uId=0;wchar_t*lpszText=nullptr;RECT rect{};};
+template<class...T>inline HWND CreateWindowExW(T...){return new Win;}inline bool DestroyWindow(HWND w){delete w;return true;}
+inline unsigned LOWORD(uintptr_t n){return n&65535;}inline WPARAM MAKEWPARAM(unsigned a,unsigned b){return a|(b<<16);}inline int GetDlgCtrlID(HWND){return 1;}
+
+using HMENU=void*;
+struct POINT{int x=0,y=0;};
+constexpr auto UPDOWN_CLASSW=L"msctls_updown32",TRACKBAR_CLASSW=L"msctls_trackbar32";
+constexpr int WS_VSCROLL=0x200000,WHEEL_DELTA=120;
+constexpr UINT WM_MOUSEWHEEL=320,WM_LBUTTONUP=321,WM_LBUTTONDBLCLK=322,WM_MBUTTONDOWN=323,WM_XBUTTONDOWN=324,WM_CONTEXTMENU=325,WM_SHOWWINDOW=326,WM_WINDOWPOSCHANGED=327,BM_CLICK=206;
+constexpr UINT TTM_DELTOOLW=404,TTM_NEWTOOLRECTW=405,MF_STRING=0,MF_CHECKED=8,MF_SEPARATOR=0x800,TPM_RETURNCMD=0x100,TPM_NONOTIFY=0x80,TPM_RIGHTBUTTON=2,DT_END_ELLIPSIS=16;
+constexpr unsigned VK_SPACE=32,VK_APPS=93,VK_F10=121,XBUTTON1=1;
+struct COMBOBOXINFO{unsigned cbSize;HWND hwndCombo=nullptr,hwndItem=nullptr,hwndList=nullptr;};
+inline bool IsWindow(HWND w){return w!=nullptr;}inline bool IsWindowVisible(HWND w){return w!=nullptr;}
+inline bool GetWindowRect(HWND,RECT*r){*r={0,0,120,28};return true;}
+inline int MapWindowPoints(HWND,HWND,POINT*,unsigned){return 0;}
+inline bool GetComboBoxInfo(HWND,COMBOBOXINFO*){return false;}
+inline short inputState[256]{};inline short GetKeyState(unsigned key){return key<256?inputState[key]:0;}
+inline HWND SetFocus(HWND w){auto old=focus;focus=w;return old;}
+struct MenuItem{UINT flags,id;std::wstring label;};struct Menu{std::vector<MenuItem> items;};
+inline std::vector<MenuItem> lastMenu;inline UINT menuSelection=0;
+inline HMENU CreatePopupMenu(){return new Menu;}
+inline bool AppendMenuW(HMENU menu,UINT flags,UINT_PTR id,const wchar_t*label){static_cast<Menu*>(menu)->items.push_back({flags,UINT(id),label?label:L""});return true;}
+inline UINT TrackPopupMenu(HMENU,UINT,int,int,int,HWND,void*){return menuSelection;}
+inline bool DestroyMenu(HMENU menu){lastMenu=static_cast<Menu*>(menu)->items;delete static_cast<Menu*>(menu);return true;}
 '''
-header+='\n#define WINAPI\nusing HMODULE=void*;\ninline HMODULE GetModuleHandleW(const wchar_t*){return nullptr;}inline void*GetProcAddress(HMODULE,const char*){return nullptr;}\ninline int MulDiv(int x,int n,int d){return (x*n+d/2)/d;}\nconstexpr int WS_EX_TOPMOST=8,WS_POPUP=16,TTS_ALWAYSTIP=1,TTS_NOPREFIX=2,CW_USEDEFAULT=0,TTF_IDISHWND=1,TTF_SUBCLASS=2,TTM_ADDTOOLW=400,TTM_UPDATETIPTEXTW=401,TTM_SETMAXTIPWIDTH=402,TTM_SETDELAYTIME=403,TTDT_INITIAL=1,TTDT_AUTOPOP=2,WM_SYSCHAR=310,EN_CHANGE=1,VK_SHIFT=16,VK_CONTROL=17,VK_MENU=18,WM_LBUTTONDOWN=311,WM_RBUTTONUP=312;\nconstexpr auto TOOLTIPS_CLASSW=L"tooltips_class32";\nstruct TOOLINFOW{unsigned cbSize,uFlags=0;HWND hwnd=nullptr;UINT_PTR uId=0;wchar_t*lpszText=nullptr;};\ntemplate<class...T>inline HWND CreateWindowExW(T...){return new Win;}inline bool DestroyWindow(HWND w){delete w;return true;}\ninline unsigned LOWORD(uintptr_t n){return n&65535;}inline WPARAM MAKEWPARAM(unsigned a,unsigned b){return a|(b<<16);}inline int GetDlgCtrlID(HWND){return 1;}\n'
 body=r'''
 #include "modern_ui.h"
 LRESULT DefSubclassProc(HWND w,UINT m,WPARAM a,LPARAM b){
@@ -89,13 +120,27 @@ int main(){
  Win specialized;specialized.parent=&parent;specialized.style=BS_OWNERDRAW;modernui::style(&specialized);DWORD_PTR type=0;assert(!GetWindowSubclass(&specialized,modernui::buttonProc,modernui::ButtonSubclass,&type));
  for(const wchar_t*cls:{L"EDIT",L"LISTBOX",L"COMBOBOX",HOTKEY_CLASSW}){Win field;field.cls=cls;for(UINT m:{WM_CTLCOLOREDIT,WM_CTLCOLORLISTBOX,WM_CTLCOLORSTATIC}){assert(modernui::parentProc(&parent,m,(WPARAM)(HDC)1,(LPARAM)&field,0,0)!=99);assert(mode==OPAQUE&&fg!=bg);}}
  Win hotkey;hotkey.cls=HOTKEY_CLASSW;hotkey.parent=&parent;hotkey.hotkey='R'|((HOTKEYF_CONTROL|HOTKEYF_ALT)<<8);
- modernui::style(&hotkey);SendMessageW(&hotkey,WM_PAINT,0,0);assert(focus==nullptr&&drawn==L"Ctrl + Alt + R");
+ modernui::style(&hotkey);SendMessageW(&hotkey,WM_PAINT,0,0);assert(focus==nullptr&&drawn==L"按住 Ctrl+Alt → R");
  int n=hotkey.invalid;SendMessageW(&hotkey,HKM_SETHOTKEY,'G'|(HOTKEYF_CONTROL<<8),0);assert(hotkey.invalid==n+1);
- SendMessageW(&hotkey,WM_PRINTCLIENT,(WPARAM)(HDC)1,0);assert(drawn==L"Ctrl + G");
+ SendMessageW(&hotkey,WM_PRINTCLIENT,(WPARAM)(HDC)1,0);assert(drawn==L"按住 Ctrl → G");
  focus=&hotkey;SendMessageW(&hotkey,WM_SETFOCUS,0,0);focus=nullptr;SendMessageW(&hotkey,WM_KILLFOCUS,0,0);
  int eraseCount=cleared;SendMessageW(&hotkey,HKM_SETHOTKEY,0,0);hotkey.enabled=false;SendMessageW(&hotkey,WM_PAINT,0,0);assert(drawn==L"未设置"&&fg==modernui::Muted&&cleared==eraseCount+1);
- for(UINT m:{WM_KEYDOWN,WM_KEYUP,WM_SYSKEYDOWN,WM_SYSKEYUP,WM_CHAR,WM_ENABLE,WM_SETFONT,WM_SIZE}){int old=hotkey.invalid;SendMessageW(&hotkey,m,0,0);assert(hotkey.invalid==old+1);}
+ for(UINT m:{WM_KEYDOWN,WM_KEYUP,WM_SYSKEYDOWN,WM_SYSKEYUP,WM_CHAR}){int old=hotkey.invalid;SendMessageW(&hotkey,m,0,0);assert(hotkey.invalid==old);}
+ for(UINT m:{WM_ENABLE,WM_SETFONT,WM_SIZE}){int old=hotkey.invalid;SendMessageW(&hotkey,m,0,0);assert(hotkey.invalid==old+1);}
  modernui::mouseOnly(&hotkey);SendMessageW(&hotkey,WM_PAINT,0,0);assert(drawn==L"仅鼠标");
+ hotkey.enabled=true;
+ for(unsigned replacement:{unsigned('J')|unsigned(keygesture::Mode::Release),0u}){
+  SendMessageW(&hotkey,HKM_SETHOTKEY,0,0);SendMessageW(&hotkey,WM_KEYDOWN,VK_CONTROL,0);
+  assert(GetPropW(&hotkey,L"RA2.Modern.PendingModifier"));
+  SendMessageW(&hotkey,HKM_SETHOTKEY,replacement,0);SendMessageW(&hotkey,WM_KEYUP,VK_CONTROL,0);
+  assert(SendMessageW(&hotkey,HKM_GETHOTKEY,0,0)==replacement&&!GetPropW(&hotkey,L"RA2.Modern.PendingModifier"));
+ }
+ modernui::keyboardOnly(&hotkey);SendMessageW(&hotkey,HKM_SETHOTKEY,'G',0);
+ assert(!modernui::hotkeyCommand(&hotkey,modernui::KeyMouseLeft)&&SendMessageW(&hotkey,HKM_GETHOTKEY,0,0)=='G');
+ modernui::showHotkeyMenu(&hotkey);for(const auto&item:lastMenu)assert(item.id<modernui::KeyMouseLeft||item.id>modernui::KeyMouseX2);
+ Win held;held.cls=HOTKEY_CLASSW;held.parent=&parent;modernui::style(&held);modernui::holdKey(&held);SendMessageW(&held,HKM_SETHOTKEY,'G',0);
+ assert(!modernui::hotkeyCommand(&held,modernui::KeyRelease));assert(modernui::hotkeyCommand(&held,modernui::KeyDoubleHold));
+ assert(modernui::hotkeyDescription(&held).find(L"按住")!=std::wstring::npos);
  assert(dcSaved==dcRestored);SendMessageW(&hotkey,WM_NCDESTROY,0,0);assert(!GetWindowSubclass(&hotkey,modernui::hotkeyProc,modernui::HotkeySubclass,&type));
  Win label;label.cls=L"STATIC";modernui::staticProc(&label,WM_SETTEXT,0,(LPARAM)L"x",0,0);assert(label.erased&&label.invalid==1);
  SendMessageW(&toggle,WM_NCDESTROY,0,0);assert(!GetPropW(&toggle,L"RA2.Modern.Checked"));
