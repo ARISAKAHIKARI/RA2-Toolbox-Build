@@ -118,6 +118,9 @@ jobs:
           $status=$LASTEXITCODE
           if($status -ne 2){throw "Expected unavailable helper probe, received $status"}
           if(-not(Select-String -Quiet -Path diagnostics/neural-probe.log -Pattern 'DLSS5 status=7 available=0')){throw 'Neural helper did not explicitly report the missing NR runtime'}
+          # Exit2 is the verified unavailable result, not a failing CI harness.
+          # GitHub's pwsh wrapper otherwise inherits the last native exit code.
+          exit 0
       - name: Record exact tested build identity
         shell: pwsh
         run: |
