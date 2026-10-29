@@ -23,6 +23,7 @@ class FrameResolve : public Resolve {
  static constexpr uint32_t Missing=0xffffffffu,DrawWords=32,MaxDraws=65536,MaxRefs=2*1024*1024;
  Buffer materials_,materialUpload_,commands_;
  gpumotion::History motionHistory_;std::shared_ptr<const gpumotion::Guides> guides_;bool guidesBuffered_=false;
+ int guideRejectedWidth_=0,guideRejectedHeight_=0;uint64_t guideAllocationFailures_=0;
  std::vector<Resident> colorResident_,materialResident_;
  VkDescriptorSetLayout sceneDescriptorLayout_=VK_NULL_HANDLE;VkPipelineLayout scenePipelineLayout_=VK_NULL_HANDLE;
  VkDescriptorPool sceneDescriptorPool_=VK_NULL_HANDLE;VkDescriptorSet sceneDescriptors_=VK_NULL_HANDLE;
@@ -104,13 +105,15 @@ public:
  bool supportsFloat64(){return initialize()&&features_.shaderFloat64;}
  bool render(int w,int h,const std::vector<TileJob>&jobs,std::vector<uint32_t>&out){guides_.reset();motionHistory_.clear();if(guidesBuffered_&&!inFlight_){destroy(output_);destroy(readback_);guidesBuffered_=false;}for(const auto&job:jobs)if(job.reconstructionFactor){FrameJob frame;frame.width=w;frame.height=h;frame.baseTiles=jobs;return renderFrame(frame,out);}colorResident_.clear();const bool ok=Resolve::render(w,h,jobs,out);if(!ok)cleanupFailure();return ok;}
  std::shared_ptr<const gpumotion::Guides> guides()const{return guides_;}
+ uint64_t guideAllocationFailures()const{return guideAllocationFailures_;}
  bool renderFrame(const FrameJob&frame,std::vector<uint32_t>&out,std::vector<uint8_t>*maskOut=nullptr){guides_.reset();const bool ok=renderFrameImpl(frame,out,maskOut);if(!ok){motionHistory_.clear();cleanupFailure();}return ok;}
 private:
  bool renderFrameImpl(const FrameJob&frame,std::vector<uint32_t>&out,std::vector<uint8_t>*maskOut){
   const auto started=std::chrono::steady_clock::now();diagnostics_.uploads=diagnostics_.uploadedBytes=diagnostics_.dispatches=diagnostics_.readbacks=diagnostics_.xbrzBuilds=diagnostics_.voxelRasters=0;
   const int w=frame.width,h=frame.height;const uint64_t pixels=uint64_t(std::max(0,w))*std::max(0,h);
   if(disabled_)return false;if(w<1||h<1||w>8192||h>8192||pixels>MaxPixels||frame.draws.size()>MaxDraws||(bool(frame.basePixels)==!frame.baseTiles.empty())||(frame.basePixels&&frame.basePixels->size()!=pixels)||(frame.baseDepth&&frame.baseDepthWidth==0&&frame.baseDepth->size()!=pixels)||(frame.fogAlpha&&frame.fogAlpha->size()!=pixels))return fail("Invalid GPU scene frame");
-  gpumotion::Plan guidePlan;bool collectGuides=frame.collectGuides&&frame.baseDepth&&motionHistory_.prepare(frame,guidePlan);
+  if(!frame.collectGuides||w!=guideRejectedWidth_||h!=guideRejectedHeight_)guideRejectedWidth_=guideRejectedHeight_=0;
+  gpumotion::Plan guidePlan;bool collectGuides=frame.collectGuides&&!(w==guideRejectedWidth_&&h==guideRejectedHeight_)&&frame.baseDepth&&motionHistory_.prepare(frame,guidePlan);
   if(!collectGuides)motionHistory_.clear();
   bool needs64=false;std::vector<Source>colors,materials;std::vector<std::array<size_t,4>>drawSources;size_t baseSource=0,baseDepth=0,baseDepthX=0,baseDepthY=0,fog=0;
   if(frame.basePixels){baseSource=colors.size();colors.push_back(source(frame.basePixels));}
@@ -168,13 +171,13 @@ private:
    if(collectGuides){dst[28]=bits(guidePlan.draws[n][0]);dst[29]=bits(guidePlan.draws[n][1]);dst[30]=guidePlan.eligible[n];}
   }
   SceneParams params{uint32_t(w),uint32_t(h),0,uint32_t(metadata.size()),0,cols,frame.baseDepth?materialPlan.offsets[baseDepth]:Missing,(frame.maskPlan||frame.fogAlpha)?materialPlan.offsets[fog]:Missing,uint32_t(std::clamp(frame.clipLeft,0,w)),uint32_t(std::clamp(frame.clipTop,0,h)),uint32_t(frame.clipRight<0?w:std::clamp(frame.clipRight,0,w)),uint32_t(frame.clipBottom<0?h:std::clamp(frame.clipBottom,0,h)),uint32_t(frame.baseDepthWidth),frame.baseDepthWidth?materialPlan.offsets[baseDepthX]:Missing,frame.baseDepthWidth?materialPlan.offsets[baseDepthY]:Missing,Missing,0,0,0,0};
-  if(collectGuides&&pixels*16>properties_.limits.maxStorageBufferRange){collectGuides=false;motionHistory_.clear();}
+  if(collectGuides&&pixels*16>properties_.limits.maxStorageBufferRange){guideRejectedWidth_=w;guideRejectedHeight_=h;collectGuides=false;motionHistory_.clear();}
   if(collectGuides){params.guideOffset=uint32_t(pixels);params.baseMotionX=bits(guidePlan.base[0]);params.baseMotionY=bits(guidePlan.base[1]);params.depthFar=bits(frame.motion.depthFar);params.depthScale=bits(1.f/(frame.motion.depthNear-frame.motion.depthFar));}
   params.refsOffset=params.binsOffset+uint32_t(bins.size()*2);uint32_t position=0;for(const auto&bin:bins){metadata.push_back(position);metadata.push_back(uint32_t(bin.size()));position+=bin.size();}for(const auto&bin:bins)metadata.insert(metadata.end(),bin.begin(),bin.end());
   if(metadata.empty())metadata.push_back(0);const VkDeviceSize outputBytes=pixels*4,totalOutputBytes=outputBytes*(collectGuides?4:1),maskBytes=maskOut&&frame.maskPlan?frame.maskPlan->outputWords()*4:0;
   if(guidesBuffered_&&!collectGuides){destroy(output_);destroy(readback_);}guidesBuffered_=collectGuides;
   if(!buffer(output_,totalOutputBytes,VK_BUFFER_USAGE_STORAGE_BUFFER_BIT|VK_BUFFER_USAGE_TRANSFER_SRC_BIT|VK_BUFFER_USAGE_TRANSFER_DST_BIT,false,collectGuides)||!buffer(readback_,totalOutputBytes+maskBytes,VK_BUFFER_USAGE_TRANSFER_DST_BIT,true,collectGuides)||!buffer(commands_,metadata.size()*4,VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,true)){
-   if(collectGuides){destroy(output_);destroy(readback_);guidesBuffered_=false;motionHistory_.clear();FrameJob fallback=frame;fallback.collectGuides=false;return renderFrameImpl(fallback,out,maskOut);}
+   if(collectGuides){++guideAllocationFailures_;destroy(output_);destroy(readback_);guidesBuffered_=false;motionHistory_.clear();FrameJob fallback=frame;fallback.collectGuides=false;const bool raw=renderFrameImpl(fallback,out,maskOut);guideRejectedWidth_=w;guideRejectedHeight_=h;return raw;}
    return fatal("GPU scene framebuffer allocation failed");
   }
   std::memcpy(commands_.mapped,metadata.data(),metadata.size()*4);if(!flush(commands_))return fatal("GPU scene command flush failed");

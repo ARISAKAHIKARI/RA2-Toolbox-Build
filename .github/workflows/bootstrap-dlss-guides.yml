@@ -34,7 +34,7 @@ jobs:
           set -euo pipefail
           flags=(-std=c++17 -O1 -g -UNDEBUG -DRA2_VULKAN_TEST_SOFTWARE -fsanitize=address,undefined -fno-omit-frame-pointer)
           g++ "${flags[@]}" -c source/third_party/xbrz/xbrz.cpp -o /tmp/xbrz.o
-          for name in gpu_motion vulkan_guides vulkan_scene gpu_scene_record gpu_scene_renderer; do
+          for name in gpu_motion vulkan_guides vulkan_scene gpu_scene_record gpu_scene_renderer vulkan_allocation_fallback; do
             g++ "${flags[@]}" "source/assist/tests/$name.cpp" /tmp/xbrz.o -ldl -o "/tmp/$name-test"
             "/tmp/$name-test" --require 2>&1 | tee "guide-evidence/$name.log"
           done
