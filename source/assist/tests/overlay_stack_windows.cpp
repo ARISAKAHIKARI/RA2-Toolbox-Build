@@ -1,4 +1,24 @@
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
+#include <atomic>
+static std::atomic<HWND> stackForegroundCandidate{nullptr};
+static HWND WINAPI stackForeground(){auto candidate=stackForegroundCandidate.load();return candidate?candidate:GetForegroundWindow();}
+struct StackForegroundScope {
+ HWND previous;
+ explicit StackForegroundScope(HWND candidate):previous(stackForegroundCandidate.exchange(candidate)){}
+ ~StackForegroundScope(){stackForegroundCandidate=previous;}
+ StackForegroundScope(const StackForegroundScope&)=delete;
+ StackForegroundScope&operator=(const StackForegroundScope&)=delete;
+};
+// Exercise placement against a controlled game candidate without activating
+// it on the runner desktop. Only the explicitly scoped placement case below
+// substitutes this query; real HWND creation, Z-order APIs and focus assertions
+// continue using Windows. All other placements inspect the real foreground.
+#define GetForegroundWindow stackForeground
 #include "../../shared/source/overlay_stack.h"
+#undef GetForegroundWindow
 #include <cstdio>
 #include <iostream>
 #include <atomic>
@@ -65,7 +85,8 @@ int main(){
  checkpoint("immediate-repromotion");
  CHECK(SetWindowPos(game,HWND_TOPMOST,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE));CHECK(higher(game,cursor));
  CHECK(keepAbove(game));for(auto w:{scene,world,stats,map,watch,cursor})CHECK(IsWindowVisible(w)&&higher(w,game));
- CHECK(SetWindowPos(game,HWND_TOPMOST,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE));put(cursor,Layer::Cursor);
+ CHECK(SetWindowPos(game,HWND_TOPMOST,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE));
+ {StackForegroundScope candidate(game);put(cursor,Layer::Cursor);}
  for(auto w:{scene,world,stats,map,watch,cursor})CHECK(IsWindowVisible(w)&&higher(w,game));
  checkpoint("opaque-and-hidden-panels");
  auto boxes=opaqueBoxes(game,800,600);CHECK(boxes.size()==2);for(auto r:boxes)CHECK(r.left==99&&r.top==119&&r.right==301&&r.bottom==221);
