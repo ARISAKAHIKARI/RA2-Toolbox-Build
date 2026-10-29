@@ -158,7 +158,7 @@ static uint8_t pendingSelectionTypes[MaxTypes];
 static delivery::Item pendingSelection;static bool hasSelection;static uint32_t selectionAck;
 static planner::Planner tacticalPlanner;static std::unique_ptr<planner::World> planningInput=std::make_unique<planner::World>();
 static long worldRevision=-1;static uint32_t plannerAck;static int submittedPlanFrame;static std::vector<planner::Order> submittedPlan;
-static typekeys::Tap typeTap,variantTap;
+static typekeys::Tap typeTap,variantTap,formationTap;
 static hotkeyroute::Registry hotkeyRegistry;static hotkeyroute::Pending hotkeyPending;
 static pointerinput::PendingMatches pointerMatches;
 static std::wstring infantryEntryResult;static uint32_t infantryEntryResultMatch=0;
@@ -391,7 +391,7 @@ static void synchronizeHotkeyKeys(){uint8_t down[256]{};for(unsigned key=0;key<2
 static bool registerKey(int id,WORD key){return hotkeyRegistry.add(id,key,extra.allHotkeys,[](int slot,WORD chord){
  if(keygesture::sampledOnly(chord))return true;
  if(!RegisterHotKey(ui,slot,modifiers(chord),LOBYTE(chord)))return false;registeredKeyIDs.push_back(slot);return true;});}
-static void registerKeys(){for(int id:registeredKeyIDs)UnregisterHotKey(ui,id);registeredKeyIDs.clear();hotkeyRegistry.clear();hotkeyPending.clear();typeTap.clear();variantTap.clear();registeredHotkeyMode=desiredHotkeyMode();keysRegistered=registeredHotkeyMode!=0;if(!keysRegistered)return;int failures=0;
+static void registerKeys(){for(int id:registeredKeyIDs)UnregisterHotKey(ui,id);registeredKeyIDs.clear();hotkeyRegistry.clear();hotkeyPending.clear();typeTap.clear();variantTap.clear();formationTap.clear();registeredHotkeyMode=desiredHotkeyMode();keysRegistered=registeredHotkeyMode!=0;if(!keysRegistered)return;int failures=0;
  if(registeredHotkeyMode==1){
   for(int i=0;i<3;++i)if(external::watch::firstBinding(extra.watchKeys,i)&&!registerKey(1730+i,WORD(extra.watchKeys[i])))++failures;
   synchronizeHotkeyKeys();if(failures)notify(L"副屏跟踪快捷键注册失败，请更换组合。");return;

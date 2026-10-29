@@ -26,6 +26,7 @@ static settingsdeps::State currentSettingDependencies(){
  s.set(Need::Aircraft,extra.air);s.set(Need::AircraftQuotas,extra.aircraftAllocationPolicy==0);
  s.set(Need::QuotaTarget,!quotaID().empty());
  s.set(Need::QuotaOverride,extraControls[QuotaOverride]&&SendMessageW(extraControls[QuotaOverride],BM_GETCHECK,0,0)==BST_CHECKED);
+ for(int f=0;f<featuretypes::Count;++f)s.set(settingsdeps::typeListNeed(f),featureTypes.filters[f].custom!=0);
  return s;
 }
 static std::map<int,settingsdeps::ControlBinding> dependencyBindings;

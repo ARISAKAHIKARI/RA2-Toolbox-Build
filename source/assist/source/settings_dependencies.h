@@ -1,6 +1,8 @@
 #pragma once
 #include <cstdint>
+#include <array>
 #include <initializer_list>
+#include "feature_type_config.h"
 
 // Availability is separate from saved preference: switching a parent off must
 // never erase a child's checked value, key, quota or position.
@@ -10,8 +12,10 @@ enum class Need : unsigned {
  Watch, WatchSecondary, Minimap, MinimapPrimary, MinimapSecondary, CustomMinimap,
  ShiftClick, AppendClicks, Ore, CustomMiners, CustomRefineries, Production,
  ManualRate, Capacity, Advanced, C4, Dodge, Construction, BuildAnywhere,
- Aircraft, AircraftQuotas, QuotaTarget, QuotaOverride, Repair
+ Aircraft, AircraftQuotas, QuotaTarget, QuotaOverride, Repair, TypeListFirst
 };
+constexpr Need typeListNeed(int feature){return Need(unsigned(Need::TypeListFirst)+unsigned(feature));}
+static_assert(unsigned(Need::TypeListFirst)+featuretypes::Count<=64,"dependency state covers every type filter");
 struct State {
  uint64_t available=0;
  void set(Need need,bool on){const auto bit=uint64_t(1)<<unsigned(need);if(on)available|=bit;else available&=~bit;}
@@ -23,6 +27,7 @@ struct Decision {
 };
 inline Decision require(const State&state,std::initializer_list<Need> parents){for(auto parent:parents)if(!state.has(parent))return {parent};return {};}
 inline const wchar_t* reason(Need need){
+ if(unsigned(need)>=unsigned(Need::TypeListFirst)&&unsigned(need)<unsigned(Need::TypeListFirst)+featuretypes::Count)return L"需先开启此功能的类型清单限制";
  switch(need){
  case Need::Render:return L"需先开启渲染升级";
  case Need::Host64:return L"需要 64 位工具箱";
@@ -60,6 +65,10 @@ inline const wchar_t* reason(Need need){
  }
 }
 inline Decision decision(int id,const State&s){
+ if(id>=9201&&id<9200+2*featuretypes::Count&&(id&1)){
+  const int feature=(id-9201)/2;
+  if(feature!=featuretypes::BurstRefresh)return require(s,{typeListNeed(feature)});
+ }
  switch(id){
  case 9304:case 9305:case 9306:case 9307:case 9308:case 9309:return require(s,{Need::Render});
  case 9311:return require(s,{Need::Host64,Need::Render,Need::GPU,Need::Detail});
@@ -94,10 +103,16 @@ inline Decision decision(int id,const State&s){
  }
 }
 inline bool effective(bool saved,int id,const State&s){return saved&&decision(id,s).enabled();}
-inline constexpr int Controls[]={
+inline constexpr int BasicControls[]={
  9304,9305,9306,9307,9308,9309,9311,9040,9041,9181,881,9183,9193,9056,
  9061,9164,9165,9065,831,850,851,852,9100,9101,9166,9167,9168,796,797,
  781,782,783,784,9070,9071,9072,9073,9074,9075,303,310,787,818,802,812,
  9180,895,817,9096,710,711,712,713,714,751,715,716,717,718,312
 };
+inline constexpr auto Controls=[](){
+ std::array<int,sizeof(BasicControls)/sizeof(BasicControls[0])+featuretypes::Count-1> ids{};
+ unsigned next=0;for(int id:BasicControls)ids[next++]=id;
+ for(int feature=0;feature<featuretypes::Count;++feature)if(feature!=featuretypes::BurstRefresh)ids[next++]=9201+2*feature;
+ return ids;
+}();
 }}

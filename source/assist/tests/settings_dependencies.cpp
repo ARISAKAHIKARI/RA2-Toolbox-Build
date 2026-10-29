@@ -37,6 +37,18 @@ int main(){
  quota.set(Need::QuotaTarget,true);assert(decision(715,quota).enabled()&&decision(716,quota).missing==Need::QuotaOverride);
  quota.set(Need::QuotaOverride,true);assert(decision(716,quota).enabled());
  quota.set(Need::AircraftQuotas,false);assert(!decision(710,quota).enabled()&&!decision(715,quota).enabled());
+ // Each persistent type list follows its own opt-in checkbox. Turning one
+ // list on must not unlock any other list, or depend on a live game feature.
+ for(int feature=0;feature<assist::featuretypes::Count;++feature){
+  if(feature==assist::featuretypes::BurstRefresh)continue;
+  State lists;const int id=9201+2*feature;
+  assert(!decision(id,lists).enabled()&&decision(id,lists).missing==typeListNeed(feature));
+  lists.set(typeListNeed(feature),true);assert(decision(id,lists).enabled());
+  for(int other=0;other<assist::featuretypes::Count;++other)if(other!=feature&&other!=assist::featuretypes::BurstRefresh)assert(!decision(9201+2*other,lists).enabled());
+  lists.set(typeListNeed(feature),false);assert(!decision(id,lists).enabled());
+  assert(decision(id-1,lists).enabled()); // the parent stays editable
+ }
+ assert(decision(9201+2*assist::featuretypes::BurstRefresh,State{}).enabled());
  // Every constrained field has a human-readable reason and can recover when
  // all its prerequisites are met; no duplicate IDs hide a control update.
  State all;all.available=~uint64_t(0);std::set<int> unique;

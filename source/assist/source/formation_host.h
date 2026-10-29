@@ -29,8 +29,9 @@ static void draw(Graphics&g,const Drawing&d){
 static void shutdown(){worker.shutdown();}
 }
 static bool formationHotkey(WORD key){
- if(!shared||!extra.formationEnabled||!shared->formationPreview.active)return false;
+ static uint32_t revision=0;if(revision!=settingsRevision){formationTap.clear();revision=settingsRevision;}
+ if(!shared||!extra.formationEnabled||!shared->formationPreview.active){formationTap.clear();return false;}
  uint32_t normalized=keygesture::physical(key);if((extra.formationHold&255)==VK_MENU)normalized&=~(4u<<8);if((extra.formationHold&255)==VK_CONTROL)normalized&=~(2u<<8);if((extra.formationHold&255)==VK_SHIFT)normalized&=~(1u<<8);
- static typekeys::Tap tap;bool single=false,twice=false;for(auto k:extra.formationKeys)if(auto binding=formation::shapeKey(k);binding&&keygesture::physical(binding)==normalized){single|=!(binding&keygesture::Double);twice|=(binding&keygesture::Double)!=0;}
- if(single||twice){if(twice){if(!tap.press(normalized,GetTickCount(),commandMatch(),350))return true;normalized|=0x8000;}if(shared->formationKey==shared->formationKeyAck){shared->formationKeyCode=normalized;MemoryBarrier();InterlockedIncrement((volatile LONG*)&shared->formationKey);wakeGame();}return true;}return false;
+ bool single=false,twice=false;for(auto k:extra.formationKeys)if(auto binding=formation::shapeKey(k);binding&&keygesture::physical(binding)==normalized){single|=!(binding&keygesture::Double);twice|=(binding&keygesture::Double)!=0;}
+ if(single||twice){if(twice){if(!formationTap.press(normalized,GetTickCount(),commandMatch(),350))return true;normalized|=0x8000;}if(shared->formationKey==shared->formationKeyAck){shared->formationKeyCode=normalized;MemoryBarrier();InterlockedIncrement((volatile LONG*)&shared->formationKey);wakeGame();}return true;}formationTap.clear();return false;
 }

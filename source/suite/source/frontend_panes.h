@@ -20,7 +20,7 @@
 #include <vector>
 
 namespace frontendpanes {
-constexpr UINT LayoutMessage=WM_APP+80,ActivityMessage=WM_APP+87,SnapshotMessage=WM_APP+88;
+constexpr UINT LayoutMessage=WM_APP+80,ActivityMessage=WM_APP+87,SnapshotMessage=WM_APP+88,DestroyedMessage=WM_APP+89;
 constexpr UINT_PTR PaneSubclass=0x6328;
 struct Composition {
  using Set=HRESULT(WINAPI*)(HWND,DWORD,LPCVOID,DWORD);using Get=HRESULT(WINAPI*)(HWND,DWORD,PVOID,DWORD);
@@ -54,6 +54,7 @@ class Host {
  std::array<Slot,3> slots_{};HWND shell_=nullptr;std::atomic<bool> interactive_{false},closing_{false};
  Slot* slot(HWND w){for(auto& s:slots_)if(s.window.load()==w)return &s;return nullptr;}
  bool cloak(Slot& s,bool value){
+  std::lock_guard<std::mutex> lock(s.mutex);
   if(s.cloakKnown&&s.cloaked==value)return s.cloakSupported;
   auto set=composition().set;BOOL flag=value?TRUE:FALSE;auto w=s.window.load();
   bool ok=w&&set&&SUCCEEDED(set(w,13 /* DWMWA_CLOAK */,&flag,sizeof flag));
@@ -62,7 +63,11 @@ class Host {
  static LRESULT CALLBACK paneProc(HWND w,UINT m,WPARAM a,LPARAM b,UINT_PTR id,DWORD_PTR data){
   auto& s=*reinterpret_cast<Slot*>(data);auto& host=*s.host;
   if(m==SnapshotMessage){s.snapshotPending=false;host.capture(s);return 0;}
-  if(m==WM_NCDESTROY){s.window.store(nullptr);RemovePropW(w,L"RA2.Suite.Managed");RemoveWindowSubclass(w,paneProc,id);}
+  if(m==WM_NCDESTROY){
+   {std::lock_guard<std::mutex> lock(s.mutex);s.window.store(nullptr);s.pending=false;s.appliedValid=false;s.snapshot.reset();}
+   RemovePropW(w,L"RA2.Suite.Managed");RemoveWindowSubclass(w,paneProc,id);
+   PostMessageW(host.shell_,DestroyedMessage,s.index,(LPARAM)w);
+  }
   auto result=DefSubclassProc(w,m,a,b);
   if(m==WM_ACTIVATE||m==WM_SHOWWINDOW)PostMessageW(host.shell_,ActivityMessage,s.index,0);
   // A frozen settings image is refreshed after a user edit/layout, not at the
@@ -100,6 +105,13 @@ class Host {
 public:
  void shell(HWND window){shell_=window;}
  HWND shell()const{return shell_;}
+ HWND window(unsigned index)const{return index<slots_.size()?slots_[index].window.load():nullptr;}
+ // Serialize publication with WM_NCDESTROY retirement. A cached HWND may have
+ // been reused by another window by the time a later shell message is handled.
+ bool post(unsigned index,UINT message,WPARAM a=0,LPARAM b=0){
+  if(index>=slots_.size())return false;auto& s=slots_[index];std::lock_guard<std::mutex> lock(s.mutex);
+  auto w=s.window.load();return w&&PostMessageW(w,message,a,b);
+ }
  bool managed(HWND w)const{return GetPropW(w,L"RA2.Suite.Managed")!=nullptr;}
  bool contains(HWND w)const{
   if(!w)return false;auto root=GetAncestor(w,GA_ROOTOWNER);if(root==shell_||w==shell_)return true;
@@ -128,9 +140,10 @@ public:
   s.window.store(w);
  }
  bool request(unsigned index,const Layout& wanted){
-  if(index>=slots_.size())return false;auto& s=slots_[index];auto w=s.window.load();if(!w)return false;
+  if(index>=slots_.size())return false;auto& s=slots_[index];
   if(!wanted.visible)cloak(s,true);
   std::lock_guard<std::mutex> lock(s.mutex);
+  auto w=s.window.load();if(!w)return false;
   s.latest=wanted;
   if(s.pending)return true;
   if(s.processing&&s.executing==wanted)return true;

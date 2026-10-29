@@ -224,7 +224,8 @@ host_fixture = r'''
 using namespace assist;
 using WORD=uint16_t;using LONG=int32_t;
 constexpr unsigned VK_SHIFT=16,VK_CONTROL=17,VK_MENU=18;
-static uint32_t now=1000,scene=1;
+static uint32_t now=1000,scene=1,settingsRevision=1;
+static typekeys::Tap formationTap;
 static uint32_t GetTickCount(){return now;}static uint32_t commandMatch(){return scene;}
 static void MemoryBarrier(){}static void InterlockedIncrement(volatile LONG*p){++*p;}
 static int wakes=0;static void wakeGame(){++wakes;}
@@ -242,6 +243,14 @@ int main(){
  extra.formationKeys[0]='X'|0x3000;assert(!formationHotkey('X')&&wakes==4);
  extra.formationKeys[0]='X';state.formationPreview.active=0;assert(!formationHotkey('X'));
  state.formationPreview.active=1;extra.formationEnabled=false;assert(!formationHotkey('X'));
+ // A first tap cannot carry through preview closure or settings changes.
+ extra.formationEnabled=true;extra.formationKeys[0]='X'|0x9000;++settingsRevision;
+ assert(formationHotkey('X')&&wakes==4);state.formationPreview.active=0;assert(!formationHotkey('X'));
+ state.formationPreview.active=1;now+=50;assert(formationHotkey('X')&&wakes==4);
+ ++settingsRevision;now+=50;assert(formationHotkey('X')&&wakes==4);
+ now+=50;assert(formationHotkey('X')&&wakes==5);state.formationKeyAck=state.formationKey;
+ assert(formationHotkey('X')&&wakes==5);assert(!formationHotkey('Y'));
+ now+=50;assert(formationHotkey('X')&&wakes==5);
  std::cout<<"PASS production host shape routing: Press/EXT normalization, configured modifier, second-down Double Press, unsupported modes, inactive/disabled gates\n";
 }
 '''

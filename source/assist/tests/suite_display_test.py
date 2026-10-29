@@ -44,6 +44,7 @@ static std::mutex displayMutex;static suite::DisplayState displayState;static bo
 static std::atomic<int> posted{0},refreshPosts{0};
 static int requestedOption=-1,requestedValue=-1;
 static bool PostMessageW(HWND h,int msg,WPARAM wp,LPARAM lp){assert(h);assert(msg==83||msg==84||msg==85);if(msg==85){assert(h==7);++refreshPosts;}if(msg==83){requestedOption=int(wp);requestedValue=int(lp);}++posted;return true;}
+namespace suite {static struct {bool post(unsigned index,int msg,WPARAM wp=0,LPARAM lp=0){auto h=displayPanes[index].load();return h&&PostMessageW(h,msg,wp,lp);}} frontend;}
 static bool ready=true,updatingControls=false;static int ui=7,notifications=0,lastID=0,lastNotification=0;
 static std::map<int,int> fields;static std::map<int,std::wstring> texts;static std::map<int,bool> available;
 static bool unitSyncMode=false;static int focused=0,statsRate=144;
@@ -140,6 +141,6 @@ int main(){
 '''
 with tempfile.TemporaryDirectory(prefix='suite-display-') as temp:
     cpp=Path(temp)/'test.cpp';exe=Path(temp)/'test'
-    cpp.write_text(prefix+'\nnamespace suite {\n'+bus+'\nvoid registerDisplayPane(int module,HWND pane){'+register+'}\n}\n'+sync+update+'\nstatic int forwardDisplay(int w,WPARAM wp,LPARAM lp){'+forward+'}\n#include "../../unit_monitor/source/display_settings_ui.h"\n'+suffix)
+    cpp.write_text(prefix+'\nnamespace suite {\n'+bus+'\nvoid registerDisplayPane(int module,HWND pane){displayPanes[module]=pane;'+register+'}\n}\n'+sync+update+'\nstatic int forwardDisplay(int w,WPARAM wp,LPARAM lp){'+forward+'}\n#include "../../unit_monitor/source/display_settings_ui.h"\n'+suffix)
     subprocess.run(['g++','-std=c++17','-O2','-pthread','-I'+str(root/'suite/source'),str(cpp),'-o',str(exe)],check=True)
     subprocess.run([str(exe)],check=True)

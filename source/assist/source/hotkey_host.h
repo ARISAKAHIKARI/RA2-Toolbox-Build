@@ -20,9 +20,14 @@ static void executeHotkey(WPARAM wp,bool fanout){
  else if(wp>=1020&&wp<1020+swBindings.size()){auto&b=swBindings[wp-1020];bool found=false;for(int i=0;i<snap.swCount;++i)if(b.id==snap.supers[i].id){send(SelectSuper,snap.supers[i].index);found=true;break;}if(!found)notify(L"本局尚未拥有此超级武器。");}return;
 }
 static void serviceHotkeyBatch(){
- if(formationInputOwns()||!enabled||!foregroundGame()||snap.status!=1||snap.renderStatus!=1||snap.chat){typeTap.clear();variantTap.clear();hotkeyPending.clear();hotkeyRegistry.cancel();return;}
+ const bool context=enabled&&foregroundGame()&&snap.status==1&&snap.renderStatus==1&&!snap.chat;
+ const bool connected=shared&&commandFresh(GetTickCount());
+ // The OS-hotkey fallback shares the native tracker's context cancellation.
+ // No first tap may survive a hidden preview, focus loss, chat or a pause.
+ if(!context||!connected||!shared->formationPreview.active)formationTap.clear();
+ if(formationInputOwns()||!context){typeTap.clear();variantTap.clear();hotkeyPending.clear();hotkeyRegistry.cancel();return;}
  hotkeyPending.expire(GetTickCount(),commandMatch());
- if(!commandFresh(GetTickCount())||!shared){typeTap.clear();variantTap.clear();hotkeyPending.clear();hotkeyRegistry.cancel();return;}
+ if(!connected){formationTap.clear();typeTap.clear();variantTap.clear();hotkeyPending.clear();hotkeyRegistry.cancel();return;}
  uint8_t keys[256]{};for(unsigned i=0;i<256;++i)keys[i]=(GetAsyncKeyState(i)&0x8000)!=0;
  hotkeyRegistry.sample(keys,GetTickCount(),commandMatch(),[](hotkeyroute::Group out){if(!extra.allHotkeys)hotkeyroute::firstPerGesture(out);hotkeyPending.add(out,GetTickCount(),commandMatch());});
  hotkeyroute::Group delayed;while(hotkeyRegistry.expired(GetTickCount(),commandMatch(),delayed)){if(!extra.allHotkeys)hotkeyroute::firstPerGesture(delayed);hotkeyPending.add(delayed,GetTickCount(),commandMatch());}

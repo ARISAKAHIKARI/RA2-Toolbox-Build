@@ -45,6 +45,7 @@ int main(){
  ShowWindow(shell,SW_SHOWNORMAL);SetForegroundWindow(shell);until([&]{return host.contains(GetForegroundWindow());},"foreground desktop needed for native activation tests");
  ready=CreateEventW(nullptr,TRUE,FALSE,nullptr);busyStarted=CreateEventW(nullptr,TRUE,FALSE,nullptr);busyRelease=CreateEventW(nullptr,TRUE,FALSE,nullptr);idle=CreateEventW(nullptr,TRUE,FALSE,nullptr);
  HANDLE worker=CreateThread(nullptr,0,module,nullptr,0,nullptr);require(worker!=nullptr,"start module");until([]{return WaitForSingleObject(ready,0)==WAIT_OBJECT_0;},"module ready");HWND w=pane.load();
+ require(host.window(0)==w&&host.window(3)==nullptr,"only live registered handles are published");
  require(GetParent(w)==nullptr&&GetWindow(w,GW_OWNER)==nullptr,"no cross-thread parent or owner");
  require((GetWindowLongPtrW(w,GWL_STYLE)&WS_POPUP)!=0&&(GetWindowLongPtrW(w,GWL_STYLE)&WS_CHILD)==0,"independent popup");
  require((GetWindowLongPtrW(w,GWL_EXSTYLE)&WS_EX_TOOLWINDOW)!=0,"no extra taskbar/Alt-Tab entry");
@@ -106,7 +107,11 @@ int main(){
  until([&]{return GetForegroundWindow()==foreign;},"foreign foreground activation");unsigned blockedBefore=layouts;SetEvent(busyRelease);
  until([&]{return layouts>blockedBefore;},"stale show consumed");require(!IsWindowVisible(w),"stale show is rejected over foreign foreground");
  DestroyWindow(foreign);SetForegroundWindow(shell);host.closing();final.order=8;host.request(0,final);settle();pump();require(!IsWindowVisible(w),"closing shell cannot re-show module");
- PostMessageW(w,WM_CLOSE,0,0);until([&]{return WaitForSingleObject(worker,0)==WAIT_OBJECT_0;},"module close and cleanup");DestroyWindow(shell);
+ PostMessageW(w,WM_CLOSE,0,0);until([&]{return WaitForSingleObject(worker,0)==WAIT_OBJECT_0;},"module close and cleanup");
+ require(host.window(0)==nullptr,"destroyed pane handle is retired before its worker exits");
+ require(host.snapshot(0)==nullptr,"destroyed pane cannot leave an interactive-looking frozen page");
+ require(!host.request(0,final),"no layout message targets a retired pane handle");
+ require(!host.post(0,Ping),"no setting or close message targets a retired pane handle");DestroyWindow(shell);
  for(HANDLE handle:{worker,ready,busyStarted,busyRelease,idle})CloseHandle(handle);
  std::puts("PASS: independent Win32 settings input queues; busy-reader responsiveness; 10000-to-1 layout coalescing; complete frozen pixels; final DPI/geometry; minimize/foreground/close guards");return 0;
 }

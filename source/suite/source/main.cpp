@@ -19,14 +19,13 @@
 extern "C" int WINAPI CursorEntry(HINSTANCE,HINSTANCE,LPWSTR,int);
 extern "C" int WINAPI MonitorEntry(HINSTANCE,HINSTANCE,LPWSTR,int);
 extern "C" int WINAPI TacticalEntry(HINSTANCE,HINSTANCE,LPWSTR,int);
-static HWND frame,nav[5],checks[3],panes[3],footer,heading,subtitle,switchLabel;
+static HWND frame,nav[5],checks[3],footer,heading,subtitle,switchLabel;
 static HANDLE workers[3];static std::atomic<bool> active[3];static HFONT font;
 static unsigned consoleDpi=96;
 static std::wstring config;static int selected=2,closePhase=0;static bool closeAsked=false;
 static constexpr UINT PaneReady=WM_APP+60,EnabledChanged=WM_APP+61,CloseDecision=WM_APP+62;
 static HINSTANCE instance;static std::wstring args;
 static std::atomic<bool> statsShown{false},hardwarePointer{false};
-static std::atomic<HWND> displayPanes[3]{};
 static std::atomic<unsigned> commonRefreshRate{0};
 static std::mutex displayMutex;static suite::DisplayState displayState;static bool displayReady=false;
 static RECT paneRect{};static int publishedCategory=-1;static bool layoutValid=false;static SIZE layoutSize{};static unsigned layoutDpi=0;static uint64_t paneOrder=0;
@@ -37,7 +36,7 @@ namespace suite {
  HWND parent(){return frame;}
  bool enabled(int module){return active[module].load();}
  void registerPane(int module,HWND pane){
-  displayPanes[module].store(pane);PostMessageW(pane,DisplaySettingsChanged,0,0);
+  PostMessageW(pane,DisplaySettingsChanged,0,0);
   if(module==2)PostMessageW(pane,RefreshRateChanged,0,0);
   modernui::styleChildren(pane);frontend.adopt(unsigned(module),pane);
   PostMessageW(frame,PaneReady,module,(LPARAM)pane);
@@ -51,13 +50,13 @@ namespace suite {
  bool hardwareCursorActive(){return hardwarePointer.load();}
  void publishDisplaySettings(const DisplayState& state){
   {std::lock_guard<std::mutex> lock(displayMutex);if(displayReady&&displayState==state)return;displayState=state;displayReady=true;}
-  for(int i=0;i<2;++i)if(auto pane=displayPanes[i].load())PostMessageW(pane,DisplaySettingsChanged,0,0);
+  for(unsigned i=0;i<2;++i)frontend.post(i,DisplaySettingsChanged);
  }
  bool readDisplaySettings(DisplayState& state){std::lock_guard<std::mutex> lock(displayMutex);if(!displayReady)return false;state=displayState;return true;}
- bool requestDisplaySetting(int option,int value){if(!validDisplayEdit(option,value))return false;auto pane=displayPanes[2].load();return pane&&PostMessageW(pane,ApplyDisplaySetting,option,value);}
+ bool requestDisplaySetting(int option,int value){if(!validDisplayEdit(option,value))return false;return frontend.post(2,ApplyDisplaySetting,option,value);}
  void publishRefreshRate(unsigned hz){
   if(hz<30||hz>500||commonRefreshRate.exchange(hz)==hz)return;
-  if(auto pane=displayPanes[2].load())PostMessageW(pane,RefreshRateChanged,0,0);
+  frontend.post(2,RefreshRateChanged);
  }
  unsigned refreshRate(){return commonRefreshRate.load();}
 }
@@ -68,10 +67,10 @@ static void layoutPanes(){
  paneRect={px(196),px(12),std::max(px(197),int(r.right)-px(16)),std::max(px(103),int(r.bottom)-px(38))};
  RECT screen=paneRect;MapWindowPoints(frame,nullptr,reinterpret_cast<POINT*>(&screen),2);
  bool visible=suite::frontend.canPresent();
- if(panes[2]&&publishedCategory!=(selected>=2?selected-2:0)){
-  publishedCategory=selected>=2?selected-2:0;PostMessageW(panes[2],suite::SelectCategory,publishedCategory,0);
+ if(suite::frontend.window(2)&&publishedCategory!=(selected>=2?selected-2:0)){
+  publishedCategory=selected>=2?selected-2:0;suite::frontend.post(2,suite::SelectCategory,publishedCategory);
  }
- for(unsigned i=0;i<3;++i)if(panes[i])suite::frontend.request(i,{screen,visible&&i==selectedPane(),consoleDpi,paneOrder});
+ for(unsigned i=0;i<3;++i)if(suite::frontend.window(unsigned(i)))suite::frontend.request(i,{screen,visible&&i==selectedPane(),consoleDpi,paneOrder});
  suite::frontend.present();
 }
 static void layout(){
@@ -99,7 +98,7 @@ static void applyDpi(unsigned dpi){
 
 static bool done(int i){return !workers[i]||WaitForSingleObject(workers[i],0)==WAIT_OBJECT_0;}
 static void shutdown(){closePhase=2;suite::frontend.closing();layoutPanes();SetWindowTextW(frame,L"红警工具箱 · 正在恢复并退出…");
- for(int i=0;i<3;++i)if(panes[i])PostMessageW(panes[i],WM_CLOSE,suite::CloseToken,0);
+ for(unsigned i=0;i<3;++i)suite::frontend.post(i,WM_CLOSE,suite::CloseToken);
 }
 static DWORD WINAPI run(LPVOID arg){int i=int((uintptr_t)arg);LPWSTR cmd=const_cast<LPWSTR>(args.c_str());
  int code=i==0?CursorEntry(instance,nullptr,cmd,SW_HIDE):i==1?MonitorEntry(instance,nullptr,cmd,SW_HIDE):TacticalEntry(instance,nullptr,cmd,SW_HIDE);
@@ -112,12 +111,12 @@ static LRESULT CALLBACK proc(HWND w,UINT m,WPARAM wp,LPARAM lp){switch(m){
   for(int i=0;i<5;++i)nav[i]=ctl(L"BUTTON",names[i],BS_PUSHBUTTON|WS_TABSTOP,200+i);
   for(int i=0;i<3;++i){checks[i]=ctl(L"BUTTON",moduleNames[i],BS_AUTOCHECKBOX|WS_TABSTOP,100+i);SendMessageW(checks[i],BM_SETCHECK,active[i]?BST_CHECKED:BST_UNCHECKED,0);}
   footer=ctl(L"STATIC",L"设置自动保存 · 切换界面不影响已开启的功能",0,0);SetTimer(w,1,100,nullptr);applyDpi(consoleDpi);layout();return 0;}
- case PaneReady:{int i=int(wp);if(i>=0&&i<3){panes[i]=(HWND)lp;if(i==2)publishedCategory=-1;layout();PostMessageW(panes[i],suite::ModuleEnable,active[i],0);if(closePhase==2)PostMessageW(panes[i],WM_CLOSE,suite::CloseToken,0);}return 0;}
- case frontendpanes::ActivityMessage:layoutPanes();InvalidateRect(w,&paneRect,FALSE);return 0;
+ case PaneReady:{int i=int(wp);if(i>=0&&i<3&&suite::frontend.window(unsigned(i))==(HWND)lp){if(i==2)publishedCategory=-1;layout();suite::frontend.post(unsigned(i),suite::ModuleEnable,active[i]);if(closePhase==2)suite::frontend.post(unsigned(i),WM_CLOSE,suite::CloseToken);}return 0;}
+ case frontendpanes::DestroyedMessage:case frontendpanes::ActivityMessage:layoutPanes();InvalidateRect(w,&paneRect,FALSE);return 0;
  case EnabledChanged:{int i=int(wp);if(i>=0&&i<3){SendMessageW(checks[i],BM_SETCHECK,lp?BST_CHECKED:BST_UNCHECKED,0);save();}return 0;}
- case WM_COMMAND:if(LOWORD(wp)>=200&&LOWORD(wp)<=204&&HIWORD(wp)==BN_CLICKED){selected=LOWORD(wp)-200;WritePrivateProfileStringW(L"UI",L"Page",std::to_wstring(selected).c_str(),config.c_str());layout();return 0;}if(LOWORD(wp)>=100&&LOWORD(wp)<103&&HIWORD(wp)==BN_CLICKED){int i=LOWORD(wp)-100;active[i]=SendMessageW(checks[i],BM_GETCHECK,0,0)==BST_CHECKED;save();if(panes[i])PostMessageW(panes[i],suite::ModuleEnable,active[i],0);return 0;}break;
+ case WM_COMMAND:if(LOWORD(wp)>=200&&LOWORD(wp)<=204&&HIWORD(wp)==BN_CLICKED){selected=LOWORD(wp)-200;WritePrivateProfileStringW(L"UI",L"Page",std::to_wstring(selected).c_str(),config.c_str());layout();return 0;}if(LOWORD(wp)>=100&&LOWORD(wp)<103&&HIWORD(wp)==BN_CLICKED){int i=LOWORD(wp)-100;active[i]=SendMessageW(checks[i],BM_GETCHECK,0,0)==BST_CHECKED;save();if(suite::frontend.window(unsigned(i)))suite::frontend.post(unsigned(i),suite::ModuleEnable,active[i]);return 0;}break;
 
- case WM_DISPLAYCHANGE:for(auto& slot:displayPanes)if(auto pane=slot.load())PostMessageW(pane,WM_DISPLAYCHANGE,wp,lp);return 0;
+ case WM_DISPLAYCHANGE:for(unsigned i=0;i<3;++i)suite::frontend.post(i,WM_DISPLAYCHANGE,wp,lp);return 0;
  case WM_SIZE:layout();return 0;
  case WM_MOVE:layoutPanes();return 0;
  case WM_ENTERSIZEMOVE:suite::frontend.beginInteraction();layoutPanes();InvalidateRect(w,&paneRect,FALSE);return 0;
@@ -132,9 +131,9 @@ static LRESULT CALLBACK proc(HWND w,UINT m,WPARAM wp,LPARAM lp){switch(m){
  case CloseDecision:if(closePhase==1){if(wp)shutdown();else{closePhase=0;SetWindowTextW(frame,L"红警工具箱 v" RA2_RELEASE_VERSION_W);}}return 0;
  case WM_TIMER:{
   layoutPanes();
-  if(closePhase==1&&!closeAsked){if(panes[0]){closeAsked=true;PostMessageW(panes[0],suite::CloseCheck,0,0);}else if(done(0))shutdown();}
+  if(closePhase==1){if(done(0))shutdown();else if(!closeAsked)closeAsked=suite::frontend.post(0,suite::CloseCheck);}
   if(closePhase==2&&done(0)&&done(1)&&done(2)){DestroyWindow(w);return 0;}
-  if(!closePhase){for(int i=0;i<3;++i)if(done(i)&&!IsWindow(panes[i])){active[i]=false;SendMessageW(checks[i],BM_SETCHECK,BST_UNCHECKED,0);EnableWindow(checks[i],FALSE);}}
+  if(!closePhase){for(int i=0;i<3;++i)if(done(i)&&!IsWindow(suite::frontend.window(unsigned(i)))){active[i]=false;SendMessageW(checks[i],BM_SETCHECK,BST_UNCHECKED,0);EnableWindow(checks[i],FALSE);}}
   return 0;}
  case WM_CTLCOLORSTATIC:case WM_CTLCOLORBTN:{auto dc=(HDC)wp;SetBkMode(dc,OPAQUE);SetTextColor(dc,(HWND)lp==heading?modernui::Text:modernui::Muted);SetBkColor(dc,modernui::Background);SetDCBrushColor(dc,modernui::Background);return (LRESULT)GetStockObject(DC_BRUSH);}
  case WM_DESTROY:KillTimer(w,1);save();PostQuitMessage(0);return 0;

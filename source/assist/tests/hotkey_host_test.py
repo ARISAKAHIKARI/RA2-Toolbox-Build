@@ -25,9 +25,9 @@ struct ControlUpdate {};static int ui=0;constexpr int CB_SETCURSEL=3;static void
 static uint32_t now=1000,scene=8;static uint32_t GetTickCount(){return now;}
 static AdditionalSettings extra;static Snapshot snap{};static auto memory=std::make_unique<Shared>();static Shared*shared=memory.get();
 static bool enabled=true,focused=true,hasSelection=false,ejectMode=false,hookEject=false,csMode=false,hookAutoCS=false;
-static bool formationInputOwns(){return false;}static bool formationHotkey(WORD){return false;}namespace watchhost {static int pins=0;static uint32_t lastKey=0;static void pin(uint32_t key){lastKey=key;++pins;}}
+static bool formationOwns=false;static bool formationInputOwns(){return formationOwns;}static bool formationHotkey(WORD){return false;}namespace watchhost {static int pins=0;static uint32_t lastKey=0;static void pin(uint32_t key){lastKey=key;++pins;}}
 static bool foregroundGame(){return focused;}static bool freshConnection=true;static bool commandFresh(uint32_t){return freshConnection;}static uint32_t commandMatch(){return scene;}
-static int doubleMs=350;static typekeys::Tap typeTap,variantTap;static hotkeyroute::Registry hotkeyRegistry;static hotkeyroute::Pending hotkeyPending;
+static int doubleMs=350;static typekeys::Tap typeTap,variantTap,formationTap;static hotkeyroute::Registry hotkeyRegistry;static hotkeyroute::Pending hotkeyPending;
 static int repairCheck=1,ejectCheck=2,csCheck=3,hookChecks[4]={4,5,6,7};static std::map<int,int>controls;
 static int SendMessageW(int id,int msg,int value,int){if(msg==BM_SETCHECK)controls[id]=value;return controls[id];}
 struct Binding{std::string id;WORD key;};static std::vector<Binding>typeBindings,swBindings;
@@ -108,6 +108,15 @@ int main(){
  gameinput::serial[17]=4;now+=100;serviceHotkeyBatch();assert(watchhost::pins==pins+2);
  gameinput::keys[17]=0;serviceHotkeyBatch();gameinput::keys[17]=1;gameinput::serial[17]=5;now+=100;serviceHotkeyBatch();assert(watchhost::pins==pins+2);
  gameinput::keys[17]=0;serviceHotkeyBatch();gameinput::keys[17]=1;now+=100;serviceHotkeyBatch();assert(watchhost::pins==pins+3);
+
+ // The formation fallback must discard a first tap whenever input context
+ // disappears, including the consumed-input grace interval after closing.
+ auto formationFirst=[&]{formationTap.clear();assert(!formationTap.press('X',now,scene,350));};
+ formationOwns=true;shared->formationPreview.active=1;formationFirst();focused=false;serviceHotkeyBatch();focused=true;assert(!formationTap.press('X',now+100,scene,350));
+ formationFirst();snap.chat=1;serviceHotkeyBatch();snap.chat=0;assert(!formationTap.press('X',now+100,scene,350));
+ formationFirst();freshConnection=false;serviceHotkeyBatch();freshConnection=true;assert(!formationTap.press('X',now+100,scene,350));
+ formationFirst();shared->formationPreview.active=0;serviceHotkeyBatch();assert(!formationTap.press('X',now+100,scene,350));
+ formationFirst();enabled=false;serviceHotkeyBatch();enabled=true;assert(!formationTap.press('X',now+100,scene,350));formationOwns=false;
 
  // The WM_HOTKEY dispatcher must not execute a release action at key down.
  hotkeyRegistry.clear();hotkeyPending.clear();memset(gameinput::keys,0,256);assert(hotkeyRegistry.add(1723,'X'|0x200|0x2000,false,install));hotkeyRegistry.synchronize(gameinput::keys,scene);
