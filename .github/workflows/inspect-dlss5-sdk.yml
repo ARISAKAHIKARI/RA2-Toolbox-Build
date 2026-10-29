@@ -1,0 +1,134 @@
+name: Inspect official DLSS5 SDK inventory
+on:
+  push:
+    branches: [codex/dlss5-sdk-probe-20261029]
+    paths: [.github/workflows/inspect-dlss5-sdk.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: dlss5-sdk-inventory
+  cancel-in-progress: true
+jobs:
+  inventory:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Download verified official SDK and inspect without executing binaries
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import hashlib, json, os, pathlib, re, struct, urllib.request, zipfile
+          url = 'https://github.com/NVIDIA-RTX/Streamline/releases/download/v2.14.16/streamline-sdk-v2.14.16.zip'
+          expected_size = 276016170
+          expected_sha = '32041e51db0cab709a271b72a352281b690c2abbd669a827809401a5dd23956b'
+          archive = pathlib.Path(os.environ['RUNNER_TEMP']) / 'streamline-sdk-v2.14.16.zip'
+          out = pathlib.Path('sdk-inventory')
+          out.mkdir()
+          digest = hashlib.sha256()
+          count = 0
+          req = urllib.request.Request(url, headers={'User-Agent': 'RA2Toolbox-read-only-SDK-inventory'})
+          with urllib.request.urlopen(req, timeout=120) as response, archive.open('wb') as target:
+              while chunk := response.read(1024*1024):
+                  target.write(chunk)
+                  digest.update(chunk)
+                  count += len(chunk)
+                  if count > expected_size:
+                      raise ValueError('Archive exceeds verified release size')
+          assert count == expected_size, (count, expected_size)
+          assert digest.hexdigest() == expected_sha, digest.hexdigest()
+          print('OFFICIAL_ARCHIVE_VERIFIED', count, digest.hexdigest())
+          def pe_info(data):
+              result = {'bytes': len(data), 'sha256': hashlib.sha256(data).hexdigest()}
+              if data[:2] != b'MZ':
+                  return dict(result, error='not PE')
+              off = struct.unpack_from('<I', data, 0x3c)[0]
+              assert data[off:off+4] == b'PE\0\0'
+              machine, sections = struct.unpack_from('<HH', data, off+4)
+              result['machine'] = hex(machine)
+              result['architecture'] = {0x14c:'x86', 0x8664:'x64', 0xaa64:'arm64', 0xa641:'arm64ec'}.get(machine,'unknown')
+              optional_size = struct.unpack_from('<H', data, off+20)[0]
+              opt = off+24
+              magic = struct.unpack_from('<H',data,opt)[0]
+              result['optional_magic'] = hex(magic)
+              dirbase = opt + (112 if magic == 0x20b else 96)
+              export_rva, export_size = struct.unpack_from('<II', data, dirbase)
+              sect = opt + optional_size
+              ranges=[]
+              for n in range(sections):
+                  at=sect+n*40
+                  vsize, rva, rawsize, raw=struct.unpack_from('<IIII',data,at+8)
+                  ranges.append((rva,max(vsize,rawsize),raw,rawsize))
+              def offset(rva):
+                  for start,size,raw,rawsize in ranges:
+                      if start <= rva < start+size:
+                          assert rva-start < rawsize
+                          return raw+rva-start
+                  raise ValueError('Unmapped RVA '+hex(rva))
+              result['exports']=[]
+              if export_rva:
+                  exp=offset(export_rva)
+                  names_count=struct.unpack_from('<I',data,exp+24)[0]
+                  names=struct.unpack_from('<I',data,exp+32)[0]
+                  assert names_count<100000
+                  for n in range(names_count):
+                      name_rva=struct.unpack_from('<I',data,offset(names)+4*n)[0]
+                      start=offset(name_rva)
+                      end=data.find(b'\0',start,min(start+512,len(data)))
+                      assert end>=start
+                      result['exports'].append(data[start:end].decode('ascii',errors='replace'))
+              return result
+          records=[]
+          copies=[]
+          excerpts=[]
+          with zipfile.ZipFile(archive) as sdk:
+              assert sdk.testzip() is None
+              for info in sdk.infolist():
+                  name=info.filename
+                  lower=name.lower()
+                  if info.is_dir():
+                      continue
+                  nr=bool(re.search(r'dlss[_\-.]?nr|neural.?render|uplift',lower))
+                  dlss='dlss' in lower or nr
+                  if dlss:
+                      record={'path':name,'bytes':info.file_size}
+                      if lower.endswith('.dll') and (nr or 'nvngx_dlss' in lower):
+                          record.update(pe_info(sdk.read(info)))
+                      records.append(record)
+                      print('SDK_ENTRY',json.dumps(record,sort_keys=True))
+                  header=lower.endswith(('.h','.hpp','.inl'))
+                  doc=lower.endswith(('.md','.txt','.pdf','.html','.json'))
+                  notice=bool(re.search(r'(^|/)(license[^/]*|notice[^/]*|copying[^/]*|eula[^/]*)$',lower))
+                  if (header or doc or notice) and info.file_size <= 4*1024*1024:
+                      data=sdk.read(info)
+                      content=data.decode('utf-8',errors='replace') if not lower.endswith('.pdf') else ''
+                      lines=content.splitlines()
+                      hits=[i for i,line in enumerate(lines) if re.search(r'kFeatureDLSS_NR|DLSSNR|DLSS_NR|dlss_nr|Uplift|Neural.Rendering',line,re.I)]
+                      if nr or notice or (header and hits):
+                          path=pathlib.PurePosixPath(name)
+                          assert not path.is_absolute() and '..' not in path.parts
+                          dest=out/'contract-notices'/path
+                          dest.parent.mkdir(parents=True,exist_ok=True)
+                          dest.write_bytes(data)
+                          copies.append({'path':name,'bytes':len(data),'sha256':hashlib.sha256(data).hexdigest()})
+                      if hits:
+                          selected=set()
+                          for i in hits:
+                              selected.update(range(max(0,i-2),min(len(lines),i+5)))
+                          snippet='\n'.join(str(i+1)+': '+lines[i] for i in sorted(selected))
+                          excerpts.append({'path':name,'lines':snippet})
+                          print('SDK_CONTRACT',name)
+                          print(snippet[:30000])
+              all_names=[i.filename for i in sdk.infolist()]
+          result={'official_url':url,'archive_bytes':count,'archive_sha256':digest.hexdigest(),'probe_commit':os.environ['GITHUB_SHA'],'all_entry_names':all_names,'dlss_entries':records,'copied_contract_notices':copies,'contract_excerpts':excerpts,'executed_binaries':False,'redistributed_plugin_or_weights':False}
+          (out/'inventory.json').write_text(json.dumps(result,indent=2)+'\n')
+          print('SDK_INVENTORY_COMPLETE',len(all_names),'entries',len(records),'DLSS-related',len(copies),'contract/notice files')
+          archive.unlink()
+          PY
+      - name: Upload only inventory and contract notices
+        uses: actions/upload-artifact@v4
+        with:
+          name: dlss5-sdk-inventory
+          path: sdk-inventory
+          if-no-files-found: error
+          retention-days: 3
