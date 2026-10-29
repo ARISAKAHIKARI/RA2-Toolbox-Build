@@ -130,7 +130,8 @@ static asyncwork::Latest<Request,Frame> worker([](const Request&r)->std::shared_
    const auto&guides=*scene->guides;std::vector<uint32_t> enhanced;
    if(neuralRenderer.process(scene->pixels,guides.motion,guides.depth,guides.confidence,uint32_t(scene->width),uint32_t(scene->height),r.generation,++neuralFrame,neuralHistory.reset(r.generation,guides.sequence,guides.resetHistory),enhanced,r.neuralToken)){
     neuralHistory.accepted(r.generation,guides.sequence);
-    auto result=std::make_shared<external::radar::Scene>(*scene);result->pixels=std::move(enhanced);scene=std::move(result);
+    auto result=std::make_shared<external::radar::Scene>();result->width=scene->width;result->height=scene->height;
+    result->pixels=std::move(enhanced);scene=std::move(result); // guides were consumed; do not retain them in the displayed frame
    }else neuralHistory.invalidate();
    out->neural=neuralRenderer.diagnostics();
   }
