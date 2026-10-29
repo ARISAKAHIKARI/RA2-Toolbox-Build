@@ -45,6 +45,10 @@ jobs:
           Write-Host "NVIDIA_NR_FILE_VERSION=$((Get-Item -LiteralPath $dll).VersionInfo.FileVersion)"
           & $script -InstallDirectory $root -ArchivePath $archive
           CheckInstalled
+          & powershell.exe -NoProfile -File $script -InstallDirectory $root -ArchivePath $archive
+          if($LASTEXITCODE -ne 0){throw 'Windows PowerShell 5 installer failed'}
+          CheckInstalled
+          Write-Host 'WINDOWS_POWERSHELL_5_INSTALL_PASS'
           Write-Host 'INSTALL_AND_REINSTALL_PASS'
           $badArchive=Join-Path $env:RUNNER_TEMP 'bad-nr-sdk.7z'
           [IO.File]::WriteAllText($badArchive,'bad')

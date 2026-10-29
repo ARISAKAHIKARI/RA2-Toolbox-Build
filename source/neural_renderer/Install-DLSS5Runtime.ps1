@@ -151,12 +151,13 @@ try {
         try {
             if (Test-Path -LiteralPath $record.Backup -PathType Leaf) {
                 if (Test-Path -LiteralPath $record.Target -PathType Leaf) {
-                    [System.IO.File]::Replace($record.Backup, $record.Target, $null, $true)
+                    $discard = Join-Path $stage ([System.Guid]::NewGuid().ToString('N') + '.rollback-discard')
+                    [System.IO.File]::Replace($record.Backup, $record.Target, $discard, $true)
                 } else { [System.IO.File]::Move($record.Backup, $record.Target) }
             } elseif ($record.Promoted -and -not $record.Existed) {
                 Remove-Item -LiteralPath $record.Target -Force
             }
-        } catch { $rollbackFailed = $true; Write-Warning ('Could not restore ' + $record.Target + '; retained backup directory: ' + $stage) }
+        } catch { $rollbackFailed = $true; Write-Warning ('Could not restore ' + $record.Target + ': ' + $_.Exception.Message + '; retained backup directory: ' + $stage) }
     }
     throw $originalError
 } finally {
