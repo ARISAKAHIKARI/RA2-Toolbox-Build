@@ -1,7 +1,7 @@
 name: Compile rendering fast path (no test suites)
 on:
   push:
-    branches: [codex/render-fast-path-20261030]
+    branches: [codex/render-fast-path-20261030, codex/render-cpu-gpu-parity-20261030]
     paths:
       - source/**
       - .github/workflows/compile-fast-render.yml
