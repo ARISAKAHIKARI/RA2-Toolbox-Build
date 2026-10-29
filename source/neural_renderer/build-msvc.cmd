@@ -15,7 +15,7 @@ set "RA2_NEURAL_OBJ=%TEMP%\ra2-neural-build-%RANDOM%-%RANDOM%"
 mkdir "%RA2_NEURAL_OBJ%" || exit /b 2
 rc /nologo /fo "%RA2_NEURAL_OBJ%\app.res" app.rc
 if errorlevel 1 goto failed
-cl /nologo /std:c++17 /O2 /MT /EHsc /GR- /DUNICODE /D_UNICODE /I"%RA2_NGX_SDK%\include" main.cpp /Fo"%RA2_NEURAL_OBJ%\main.obj" /Fe"%RA2_NEURAL_OUTPUT%" /link "%RA2_NGX_SDK%\lib\Windows_x86_64\vs2010\x64\nvsdk_ngx_s.lib" "%RA2_NEURAL_OBJ%\app.res" kernel32.lib user32.lib advapi32.lib shell32.lib ole32.lib shlwapi.lib version.lib wintrust.lib crypt32.lib uuid.lib /SUBSYSTEM:CONSOLE /MANIFEST:NO /INCREMENTAL:NO /OPT:REF /OPT:ICF
+cl /nologo /std:c++17 /O2 /MT /EHsc /GR- /DUNICODE /D_UNICODE /I"%RA2_NGX_SDK%\include" main.cpp /Fo"%RA2_NEURAL_OBJ%\main.obj" /Fe"%RA2_NEURAL_OUTPUT%" /link "%RA2_NGX_SDK%\lib\Windows_x86_64\x64\nvsdk_ngx_s.lib" "%RA2_NEURAL_OBJ%\app.res" kernel32.lib user32.lib advapi32.lib shell32.lib ole32.lib shlwapi.lib version.lib wintrust.lib crypt32.lib uuid.lib /SUBSYSTEM:CONSOLE /MANIFEST:NO /INCREMENTAL:NO /OPT:REF /OPT:ICF
 if errorlevel 1 goto failed
 rmdir /s /q "%RA2_NEURAL_OBJ%"
 popd

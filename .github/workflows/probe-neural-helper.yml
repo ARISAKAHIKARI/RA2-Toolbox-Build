@@ -13,7 +13,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: 08e0dd9c6012386863965e89e1b698be0fa6f058
+          ref: codex/neural-helper-probe-20261029
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -31,6 +31,26 @@ jobs:
         run: |
           & cmd /c source\neural_renderer\build-msvc.cmd 2>&1 | Tee-Object neural-probe/build.log
           if($LASTEXITCODE -ne 0){throw 'MSVC neural helper build failed'}
+      - name: Verify captured source and actual Win64 transport
+        shell: pwsh
+        run: |
+          python -c "import hashlib,json;from pathlib import Path;print(json.dumps({p:hashlib.sha256(Path(p).read_bytes()).hexdigest() for p in ['source/neural_renderer/build-msvc.cmd','source/assist/tests/neural_transport_windows.cpp']}))"
+          $vswhere=Join-Path ([Environment]::GetFolderPath('ProgramFilesX86')) 'Microsoft Visual Studio/Installer/vswhere.exe'
+          $vs=& $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          $batch=Join-Path $env:RUNNER_TEMP 'neural-fixture.cmd'
+          @"
+          @echo off
+          call "$vs\VC\Auxiliary\Build\vcvarsall.bat" x64
+          if errorlevel 1 exit /b 2
+          cl /nologo /std:c++17 /O2 /MT /EHsc /UNDEBUG /D_CRT_SECURE_NO_WARNINGS source\assist\tests\neural_transport_windows.cpp /Foneural-probe\transport.obj /Feneural-probe\neural-transport-test.exe /link kernel32.lib user32.lib
+          exit /b %ERRORLEVEL%
+          "@ | Set-Content -Encoding ascii $batch
+          & cmd /c $batch 2>&1 | Tee-Object neural-probe/transport-build.log
+          if($LASTEXITCODE -ne 0){throw 'MSVC transport fixture build failed'}
+          $test=Start-Process -FilePath (Join-Path $env:GITHUB_WORKSPACE 'neural-probe/neural-transport-test.exe') -NoNewWindow -PassThru -RedirectStandardOutput neural-probe/transport.log -RedirectStandardError neural-probe/transport-error.log
+          if(!$test.WaitForExit(30000)){$test.Kill($true);throw 'Transport fixture timed out'}
+          if($test.ExitCode -ne 0){throw "Transport fixture failed: $($test.ExitCode)"}
+          Get-Content neural-probe/transport.log
       - name: Verify actual PE and explicit non-activation without the runtime
         shell: pwsh
         run: |
@@ -54,7 +74,7 @@ jobs:
           imports=pe.imports()
           assert all(x.lower() in NEURAL_SYSTEM or x.lower().startswith(('api-ms-win-','ext-ms-win-')) for x in imports), imports
           manifest=verify_worker_manifest(pe,'amd64','x64 neural helper')
-          result={'source_commit':'08e0dd9c6012386863965e89e1b698be0fa6f058','bytes':len(data),'sha256':hashlib.sha256(data).hexdigest(),'machine':pe.architecture,'imports':imports,'manifest':manifest,'missing_runtime_probe':'pass','actual_neural_inference_tested':False}
+          result={'source_baseline':'08e0dd9c6012386863965e89e1b698be0fa6f058','source_overlay':'modern NGX loader library and captured cancellation token test','bytes':len(data),'sha256':hashlib.sha256(data).hexdigest(),'machine':pe.architecture,'imports':imports,'manifest':manifest,'missing_runtime_probe':'pass','actual_neural_inference_tested':False}
           Path('neural-probe/verification.json').write_text(json.dumps(result,indent=2))
           print(json.dumps(result))
           '@ | Set-Content -Encoding utf8 neural-probe/verify.py
