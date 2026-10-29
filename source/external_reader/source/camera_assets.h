@@ -360,7 +360,7 @@ bool captureProjectile(uint32_t p,uint32_t type,uint32_t id,ActorArt&out){
  if(next.voxel)next.geometryIdentity=std::make_shared<const uint8_t>(0);
  failure.clear();out=std::move(next);return true;
 }
-bool captureActor(uint32_t p,uint32_t type,uint32_t id,ActorArt&out){
+bool captureActor(uint32_t p,uint32_t type,uint32_t id,ActorArt&out,const external::visual::Pose*expected=nullptr){
  failure.clear();if(word(p+0x10)!=id){failure="actor-identity";return false;}ActorArt next;external::GameView game(read);next.kind=game.kind(p);next.type=type;uint32_t owner=word(p+0x21C);next.object=p;next.id=id;next.owner=owner;
  metadata();next.shadow=!rulesINI.yes(text(type+0x24,24),"NOSHADOW");next.flat=artYes(type,"FLAT");
  if(next.kind==3){
@@ -397,7 +397,7 @@ bool captureActor(uint32_t p,uint32_t type,uint32_t id,ActorArt&out){
    }
   }else{part("TUR",type+0xB8,true);part("BARL",type+0xC0,true);}
  }else{
-  bool buildup=next.kind==3&&external::buildings::buildup(game,p);
+  bool buildup=next.kind==3&&(expected?expected->variant==-2:external::buildings::buildup(game,p));
   next.pointer=word(type+(buildup?0xE00:0xA4));std::string filename;bool loaded=false;
   if(buildup){auto stem=text(type+0xE5C,16);if(stem.empty())stem=artValue(type,"Buildup");
    auto names=external::assets::spriteNames(stem,external::assets::shapeName(read,next.pointer),theater(78,3),theater(86,1),(word(type+0x22C)&255)!=0,(word(type+0x237)&255)!=0,false,true);

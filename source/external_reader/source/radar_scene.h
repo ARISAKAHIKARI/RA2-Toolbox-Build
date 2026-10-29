@@ -35,6 +35,8 @@ template<class Assets>class SceneRenderer {
  template<class A>static bool refreshPalette(A&,typename A::ActorArt&,bool&changed,long){changed=false;return true;}
  template<class A>static auto refreshOverlay(A&a,uint32_t t,uint32_t p,int f,bool terrain,bool&changed,int)->decltype(a.refreshOverlayPalette(t,p,f,terrain,changed),bool()){return a.refreshOverlayPalette(t,p,f,terrain,changed);}
  template<class A>static bool refreshOverlay(A&,uint32_t,uint32_t,int,bool,bool&changed,long){changed=false;return true;}
+ template<class A>static auto captureActor(A&a,const Marker&m,typename A::ActorArt&art,int)->decltype(a.captureActor(m.object,m.type,m.id,art,&m.pose),bool()){return a.captureActor(m.object,m.type,m.id,art,&m.pose);}
+ template<class A>static bool captureActor(A&a,const Marker&m,typename A::ActorArt&art,long){return a.captureActor(m.object,m.type,m.id,art);}
  template<class Read>static auto currentVisibility(Read read,int)->decltype(read.fresh(0,nullptr,0),bool()){return true;}
  template<class Read>static bool currentVisibility(Read,long){return false;}
  void invalidateArt(const ArtKey&key){
@@ -405,16 +407,27 @@ public:
   // start of the map must not starve an oil pump or construction-yard anim.
   std::vector<Marker> decodeMarkers=markers;
   for(const auto&m:markers)if(m.pose.frameFrom>=0){auto prior=m;prior.pose.frame=m.pose.frameFrom;prior.pose.frameFrom=-1;decodeMarkers.push_back(prior);}
-  for(size_t scanned=0;scanned<decodeMarkers.size()&&work<8;++scanned){const auto&m=decodeMarkers[actorCursor_++%decodeMarkers.size()];if(unavailablePalettes.count(artKey(m)))continue;auto existing=art_.find(artKey(m));if(liveVoxels&&existing!=art_.end()&&voxelArt(existing->second,0))continue;auto&cached=sprites_[imageKey(m)];
-   if((cached.ready&&!cached.image->incomplete)||(cached.retry&&int32_t(frame.tick-cached.retry)<0))continue;
+  auto decode=[&](const Marker&m,bool transition){if(unavailablePalettes.count(artKey(m)))return;auto existing=art_.find(artKey(m));if(liveVoxels&&existing!=art_.end()&&voxelArt(existing->second,0))return;auto&cached=sprites_[imageKey(m)];
+   if((cached.ready&&!cached.image->incomplete)||(cached.retry&&int32_t(frame.tick-cached.retry)<0))return;
    ++work;voxel::Image image;bool ready=false;auto source=art_.find(artKey(m));
    if(m.kind==4)ready=assets.overlay(m.type,game.template get<uint32_t>(m.type+0xA4),m.pose.frame,image,true);
-   else{if(source==art_.end()){typename Assets::ActorArt art;if((m.kind==6?projectiles::captureArt(assets,m.object,m.type,m.id,art):m.kind==5?assets.captureAnimation(m.object,m.type,m.id,m.parent,m.parentId,art):assets.captureActor(m.object,m.type,m.id,art))&&artBytes+Assets::cost(art)<=128*1024*1024){artBytes+=Assets::cost(art);source=art_.emplace(artKey(m),std::move(art)).first;}}
+   else{if(source==art_.end()){typename Assets::ActorArt art;if((m.kind==6?projectiles::captureArt(assets,m.object,m.type,m.id,art):m.kind==5?assets.captureAnimation(m.object,m.type,m.id,m.parent,m.parentId,art):captureActor(assets,m,art,0))&&artBytes+Assets::cost(art)<=128*1024*1024){artBytes+=Assets::cost(art);source=art_.emplace(artKey(m),std::move(art)).first;}}
     if(source!=art_.end()&&!(liveVoxels&&voxelArt(source->second,0)))ready=assets.renderActor(source->second,m.pose,image);}
    size_t previous=camera::pixels(*cached.image),next=camera::pixels(image);
    if(ready&&pixels-previous+next<=8*1024*1024){camera::opaque(image);pixels=pixels-previous+next;cached.image=std::make_shared<voxel::Image>(std::move(image));cached.ready=true;}
-   cached.retry=cached.ready&&!cached.image->incomplete?0:frame.tick+2000;
+   cached.retry=cached.ready&&!cached.image->incomplete?0:frame.tick+((transition||(m.kind==3&&!cached.ready))?16u:2000u);
+  };
+  // Construction/undeployment must not disappear behind eight unrelated
+  // moving-unit decodes, or wait two seconds after a transient SHP read miss.
+  // Rotate a separate bounded priority budget; normal work keeps its 8 slots.
+  std::set<ImageKey> priority;unsigned transitions=0;
+  for(int phase=0;phase<2&&transitions<32;++phase)for(size_t scanned=0;scanned<decodeMarkers.size()&&transitions<32;++scanned){
+   const auto&m=decodeMarkers[(actorCursor_+scanned)%decodeMarkers.size()];
+   if(m.kind==3&&(m.pose.variant==-2)==(phase==0)&&priority.insert(imageKey(m)).second){int before=work;decode(m,m.pose.variant==-2);if(work!=before)++transitions;}
   }
+  work=0;
+  for(size_t scanned=0;scanned<decodeMarkers.size()&&work<8;++scanned){const auto&m=decodeMarkers[actorCursor_++%decodeMarkers.size()];if(!priority.count(imageKey(m)))decode(m,false);}
+
   if(liveVoxels){
    // Only source VXL/HVA geometry survives between presentations. Current
    // pose pixels are generated from current normals/VPL/palette each pass,

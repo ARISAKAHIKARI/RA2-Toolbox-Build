@@ -41,7 +41,14 @@ int main(){
  auto foreign=CreateWindowW(c.lpszClassName,L"Game stand-in",WS_OVERLAPPEDWINDOW,40,40,650,500,nullptr,nullptr,c.hInstance,nullptr);ShowWindow(foreign,SW_SHOW);
  for(unsigned cycle=0;cycle<12;++cycle){
   SetForegroundWindow(foreign);until([&]{return GetForegroundWindow()==foreign;},"game foreground");check(host.canPresent(),"foreign foreground does not withdraw settings page");
-  SetForegroundWindow(shell);until([&]{return GetForegroundWindow()==shell;},"Alt-Tab back to shell");++l.order;host.request(0,l);
+  ShowWindow(shell,SW_MINIMIZE);auto hidden=l;hidden.visible=false;host.request(0,hidden);
+  until([&]{return !IsWindowVisible(w);},"minimize hides real page");
+  ShowWindow(shell,SW_RESTORE);SetForegroundWindow(shell);until([&]{return GetForegroundWindow()==shell;},"restore shell foreground");host.request(0,l);
+  until([&]{return IsWindowVisible(w);},"restore without new layout geometry");
+  // Simulate Windows finishing shell activation after the pane's show. The
+  // mailbox must repair actual z-order even though every Layout field matches.
+  SetWindowPos(shell,HWND_TOP,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE);host.request(0,l);
+  if(cycle%3==0){ShowWindow(w,SW_SHOWMINNOACTIVE);host.request(0,l);until([&]{return !IsIconic(w);},"restore an iconic content HWND without activation");}
   POINT p{60,35};ClientToScreen(w,&p);until([&]{return WindowFromPoint(p)==button.load();},"real button wins hit test after returning from game");
   auto before=commands.load();click(p);until([&]{return commands>before;},"physical mouse clicks actual button after Alt-Tab");
   RECT r{};GetWindowRect(w,&r);POINT bar{r.right-GetSystemMetrics(SM_CXVSCROLL)/2,r.bottom-9};

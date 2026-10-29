@@ -55,6 +55,13 @@ public:
  // hidden input surface and leave its shell looking like an operable page.
  bool canPresent()const{return !interactive_.load()&&!closing_.load()&&shell_&&IsWindowVisible(shell_)&&!IsIconic(shell_);}
  bool canRaise()const{return canPresent()&&contains(GetForegroundWindow());}
+ static bool above(HWND pane,HWND shell){
+  // Restoring/activating the shell can raise it after an earlier pane layout
+  // completed. WS_VISIBLE alone says nothing about which HWND wins hit tests.
+  HWND at=GetWindow(shell,GW_HWNDPREV);
+  for(unsigned depth=0;at&&depth<4096;++depth,at=GetWindow(at,GW_HWNDPREV))if(at==pane)return true;
+  return false;
+ }
  bool interactive()const{return interactive_.load();}
  void beginInteraction(){interactive_=true;}
  void endInteraction(){interactive_=false;}
@@ -79,12 +86,13 @@ public:
   if(i>=slots_.size())return false;auto&s=slots_[i];
   const bool raise=canRaise();auto handle=s.window.load();
   const bool shown=handle&&IsWindowVisible(handle);
+  const bool ready=shown&&!IsIconic(handle)&&(!raise||above(handle,shell_));
   std::lock_guard<std::mutex>lock(s.mutex);auto w=s.window.load();if(!w||w!=handle)return false;
   s.latest=wanted;
   if(s.pending)return true;
   if(s.processing&&s.executing==wanted)return true;
   if(!s.processing&&!wanted.visible&&s.appliedValid&&!s.applied.visible&&!shown)return true;
-  if(!s.processing&&s.appliedValid&&s.applied==wanted&&shown==wanted.visible)return true;
+  if(!s.processing&&s.appliedValid&&s.applied==wanted&&(wanted.visible?ready:!shown))return true;
   // Don't raise a previously hidden page over a foreign foreground app. Its
   // visible request is retained and retried when the shell activates again.
   if(wanted.visible&&!shown&&!raise)return true;
@@ -100,10 +108,12 @@ public:
   {std::lock_guard<std::mutex>lock(s->mutex);show=show&&s->latest==next;}
   show=show&&canPresent();
   if(show){
+   if(IsIconic(w))ShowWindow(w,SW_SHOWNOACTIVATE);
    RECT current{};GetWindowRect(w,&current);UINT flags=SWP_NOACTIVATE|SWP_NOOWNERZORDER|SWP_SHOWWINDOW;
    if(!canRaise())flags|=SWP_NOZORDER;
    if(current.left==next.rect.left&&current.top==next.rect.top&&current.right==next.rect.right&&current.bottom==next.rect.bottom)flags|=SWP_NOMOVE|SWP_NOSIZE;
-   SetWindowPos(w,HWND_TOP,next.rect.left,next.rect.top,next.rect.right-next.rect.left,next.rect.bottom-next.rect.top,flags);
+   show=SetWindowPos(w,HWND_TOP,next.rect.left,next.rect.top,next.rect.right-next.rect.left,next.rect.bottom-next.rect.top,flags)!=FALSE;
+   show=show&&IsWindowVisible(w)&&!IsIconic(w);
    RedrawWindow(w,nullptr,nullptr,RDW_INVALIDATE|RDW_ALLCHILDREN);
   }else ShowWindow(w,SW_HIDE);
   next.visible=show;

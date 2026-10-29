@@ -331,6 +331,16 @@ int main(int argc,char**argv){
  word(memory,factory+0x534,0);word(memory,factory+0xF8,3);gameassets::buildingPose(factory,factoryType,fp);assert(fp.variant==-2&&gameassets::captureActor(factory,factoryType,701,art)&&art.filename=="CTOILDMK.SHP");assert(gameassets::renderActor(art,fp,image)&&image.attachments.empty());
  word(memory,factory+0x534,1);memory[factory+0x6E4]=0;gameassets::buildingPose(factory,factoryType,fp);assert(fp.variant==-2&&gameassets::captureActor(factory,factoryType,701,art)&&art.filename=="CTOILDMK.SHP");
  memory[factory+0x6E4]=1;word(memory,factory+0xF8,0);gameassets::buildingPose(factory,factoryType,fp);assert(fp.variant==-1&&gameassets::captureActor(factory,factoryType,701,art)&&art.filename=="NTWEAP.SHP"&&gameassets::renderActor(art,fp,image));
+ // A completed sample can precede the live art-mode switch by a frame.
+ // Capture the requested make/normal bank, never file bytes from the later
+ // BState under the earlier cache key. Exercise the actual Context provider.
+ auto sampledNormal=fp,sampledMake=fp;sampledMake.variant=-2;sampledMake.frame=3;
+ assert(gameassets::context.captureActor(factory,factoryType,701,art,&sampledMake)&&art.filename=="CTOILDMK.SHP");
+ assert(gameassets::renderActor(art,sampledMake,image)&&image.indices[0]==6);
+ word(memory,factory+0x534,0);
+ assert(gameassets::context.captureActor(factory,factoryType,701,art,&sampledNormal)&&art.filename=="NTWEAP.SHP");
+ assert(gameassets::renderActor(art,sampledNormal,image)&&image.indices[0]==3+sampledNormal.frame);
+ word(memory,factory+0x534,1);
  // A naval yard's base is its normal body. Its production is slot 8 and must
  // keep native Value+Start, independent of all optional factory-door pointers.
  constexpr uint32_t yard=0x180000,yardType=0x188000,yardAnim=0x190000,yardAnimType=0x198000;

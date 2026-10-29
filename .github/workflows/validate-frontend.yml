@@ -66,7 +66,7 @@ jobs:
             g++ -std=c++17 -O2 -UNDEBUG "source/assist/tests/$name.cpp" -o "/tmp/frontend-$name"
             "/tmp/frontend-$name" 2>&1 | tee "frontend-logs/$name.log"
           done
-          for name in modern_ui_test hold_key_ui_test auto_settings_ui_test hotkey_host_test secondary_display_host_test super_binding_ui_test formation_switch_test ui_geometry_test suite_display_test cursor_settings_ui_test native_key_gesture_test frontend_visibility_test settings_dialog_test; do
+          for name in modern_ui_test hold_key_ui_test auto_settings_ui_test hotkey_host_test secondary_display_host_test super_binding_ui_test formation_switch_test ui_geometry_test suite_display_test cursor_settings_ui_test native_key_gesture_test frontend_visibility_test frontend_restore_test settings_dialog_test; do
             python3 "source/assist/tests/$name.py" 2>&1 | tee "frontend-logs/$name.log"
           done
       - uses: actions/upload-artifact@v4

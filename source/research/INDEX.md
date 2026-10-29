@@ -6,6 +6,7 @@
 
 | 主题 | 新笔记 | 关键词 |
 | --- | --- | --- |
+| 最小化恢复空白与基地车展开／收起消失 | [恢复与过渡帧补修](2026-10-29-restore-and-buildup.md) | Z order IsIconic same layout make priority retry sampled Pose |
 | 切出游戏后按钮与滚动条失效，真实控件恢复 | [控制台原生输入](2026-10-29-console-native-input.md) | AltTab real HWND no cloak no WM_PRINT cancelled move SendInput hit test |
 | 全部分区滚动后控件失效、帧率分项与基地车展开边界 | [滚动输入补查](2026-10-29-scroll-input-followup.md) | WM_PRINT idle timer capture sampling fence readback MCV pending |
 | 坡面阴影、光束／采矿与单位 UI、SHP 炮塔、素材动作、拖屏和退出响应 | [渲染与退出补查 hotfix2](2026-10-29-render-hotfix2.md) | Shadow_Matrix Laser Gather Ammo IFV SHP turret sequence partial visible Cadence ASYNCWINDOWPOS modal |
