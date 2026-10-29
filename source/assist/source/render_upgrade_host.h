@@ -26,7 +26,7 @@ struct Frame {
  std::vector<external::nativefeedback::Object> objects;
  bool gpuAttempted=false,gpuUsed=false;
  neuralclient::Diagnostics neural;
- uint64_t assetRevision=0;uint32_t sampledTick=0,completedTick=0;bool hasCompletionGap=false;int paddingX=0,paddingY=0;double renderMs=0,observationMs=0,completionGapMs=0;int logicFrame=-1;double yellow=.5,red=.25;external::nativefeedback::EffectStatus effects;
+ uint64_t assetRevision=0;uint32_t drawnObjects=0,requestedObjects=0;uint32_t sampledTick=0,completedTick=0;bool hasCompletionGap=false;int paddingX=0,paddingY=0;double renderMs=0,observationMs=0,completionGapMs=0;int logicFrame=-1;double yellow=.5,red=.25;external::nativefeedback::EffectStatus effects;
 };
 static external::ReadSession reader;
 static external::cameraassets::Context<external::ReadSession> assets(reader);
@@ -139,7 +139,7 @@ static asyncwork::Recurring<Request,Observation> samplingWorker([](const Request
 static asyncwork::Recurring<Request,Frame> worker([](const Request&r)->std::shared_ptr<const Frame>{
  const double started=presentationNow();
  static bool neuralPreviouslyRequested=false;
- external::xbrzadapter::gpuPresentation(r.gpu&&r.detail!=0);
+ external::xbrzadapter::gpuPresentation(r.gpu);
  // Failed attempts do not replace a completed image. The UI independently
  // enforces sample/completion age limits and exact world/view/config identity.
  auto unavailable=[]()->std::shared_ptr<const Frame>{return {};};
@@ -184,7 +184,11 @@ static asyncwork::Recurring<Request,Frame> worker([](const Request&r)->std::shar
  assets.presentationDetail(r.detail);
  const auto&gpuBackend=external::xbrzadapter::gpuState().resolve;
  const bool gpuUnavailable=gpuBackend&&!gpuBackend->diagnostics().available&&!gpuBackend->diagnostics().reason.empty();
- assets.presentationGPU(r.gpu&&r.detail!=0&&!gpuUnavailable);
+ // GPU and image quality are separate choices: native nearest/1x is a
+ // supported GPU scene. Never enable fine VXL, xBRZ or RGB expansion merely
+ // because the Vulkan backend was requested.
+ const bool useGpu=r.gpu&&!gpuUnavailable;
+ assets.presentationGPU(useGpu);
  assets.presentationResolution(r.view.width,r.view.height,r.width,r.height);
  assets.presentationColorPrecision(r.colorPrecision!=0);
  assets.presentationPalette(r.paletteRange==1?external::pixelupgrade::PaletteRange::FullRGB:external::pixelupgrade::PaletteRange::OriginalDAC);
@@ -206,11 +210,12 @@ static asyncwork::Recurring<Request,Frame> worker([](const Request&r)->std::shar
  sampledRequest.view=renderView;sampledRequest.context.cameraX=renderView.cameraX;sampledRequest.context.cameraY=renderView.cameraY;
  auto crop=external::mainview::crop(renderView,data.terrain->geo.offsetX,data.terrain->geo.offsetY);
  renderer.guideEnabled(neuralHost&&r.neural&&r.gpu&&r.detail!=0&&!neuralRenderer.blocked(),r.generation);
- auto scene=renderer.render(data,border.width,border.height,external::SharedReadView{&reader},assets,{crop.x-paddingX,crop.y-paddingY,crop.width+2*paddingX,crop.height+2*paddingY,true},unsigned(r.pixelScaleMode),r.detail!=0,true,r.colorPrecision!=0,true);
+ auto scene=renderer.render(data,border.width,border.height,external::SharedReadView{&reader},assets,{crop.x-paddingX,crop.y-paddingY,crop.width+2*paddingX,crop.height+2*paddingY,true},unsigned(r.pixelScaleMode),r.detail!=0||useGpu,true,r.colorPrecision!=0,true);
  if(!scene)return unavailable();
  const double sceneDoneMs=presentationNow();
  auto out=std::make_shared<Frame>();out->request=sampledRequest;out->paddingX=border.paddingX;out->paddingY=border.paddingY;out->assetRevision=assetRevision;out->logicFrame=data.frame;out->observationMs=timeline.interval();
  out->gpuAttempted=external::xbrzadapter::gpuAttempted();out->gpuUsed=external::xbrzadapter::gpuUsed();
+ const auto coverage=renderer.objectCoverage();out->drawnObjects=coverage.first;out->requestedObjects=coverage.second;
  out->sampleMs=observed->readMs;out->sceneMs=sceneDoneMs-sampledMs;
  if(out->gpuUsed&&gpuBackend){out->gpuWaitMs=gpuBackend->diagnostics().waitMilliseconds;out->gpuCopyMs=gpuBackend->diagnostics().readbackMilliseconds;}
  // Neural rendering sees only the completed world. Native feedback, command
@@ -269,7 +274,7 @@ static void updateNeuralStatus(bool force=false){
  else text=L"DLSS 5：需要 64 位工具箱；当前保留普通渲染。";
 #else
  else if(!renderUpgradeEnabled)text=L"DLSS 5：请先开启渲染升级。";
- else if(!renderVulkanEnabled||!renderSceneDetail)text=L"DLSS 5：需要 Vulkan GPU 和精细场景；当前保留普通渲染。";
+ else if(!renderVulkanEnabled||!renderExtraQuality||!renderSceneDetail)text=L"DLSS 5：需要额外画质处理、Vulkan GPU 和精细场景；当前保留普通渲染。";
  else{
   auto completed=worker.get();
   if(completed&&completed->request.generation==generation&&completed->request.pid==pid&&completed->request.match==displayMatch()&&completed->request.neural){
@@ -291,7 +296,7 @@ static void update(POINT origin,const RECT&client,const external::display::State
  const int qualityColor=quality?renderColorPrecision:0;
  const int qualityPalette=quality?renderPaletteRange:0;
  const int qualityScale=quality&&renderXbrzEnabled?renderPixelScale:1;
- const bool qualityGPU=quality&&renderVulkanEnabled;
+ const bool qualityGPU=renderVulkanEnabled; // native Vulkan is not an extra-quality effect
  const bool qualityNeural=quality&&renderDLSS5Requested;
  // The whole tool remains system-DPI aware. A physical-pixel option must
  // explicitly validate monitor geometry instead of assuming a 4K monitor
@@ -468,7 +473,7 @@ static void update(POINT origin,const RECT&client,const external::display::State
   if(request.detail)status+=L" · 精细 VXL/目标像素";
   status+=L" · 单位采样/地形分页/整帧绘制独立线程 · 目标 "+std::to_wstring(informationFPS())+L" Hz";
   if(request.materialRefresh)status+=L" · 素材插值";
-  if(request.gpu)status+=request.detail==0?L" · 原生合成对照：CPU":presentedFrame->gpuUsed?L" · Vulkan GPU 场景":L" · Vulkan 未启用或已回退 CPU";
+  if(request.gpu)status+=presentedFrame->gpuUsed?(request.detail?L" · Vulkan GPU 精细场景":L" · Vulkan GPU 基础场景"):L" · Vulkan 未启用或已回退 CPU";
   if(request.neural)status+=presentedFrame->neural.used?L" · DLSS 5 已处理":L" · DLSS 5 未生效（保留普通画面）";
   status+=L" · 光棱/激光与矿车采集保留原生像素；电弧近似，辐射束/波纹/粒子待补，实机待测";
  }
@@ -480,6 +485,7 @@ static void update(POINT origin,const RECT&client,const external::display::State
  if(displaying&&presentedFrame){
   auto ms=[](double value){wchar_t text[32]{};swprintf(text,32,L"%.1f",value);return std::wstring(text);};
   std::wstring timing=L"独立采样 "+ms(presentedFrame->sampleMs)+L" · 场景 "+ms(presentedFrame->sceneMs)+L" · 后处理 "+ms(presentedFrame->finishMs)+L" ms";
+  timing+=L" · 对象 "+std::to_wstring(presentedFrame->drawnObjects)+L"/"+std::to_wstring(presentedFrame->requestedObjects);
   timing+=L"\r\n新帧 "+(presentedFrame->hasCompletionGap?ms(presentedFrame->completionGapMs):std::wstring(L"待测"))+L" · 观测 "+ms(presentedFrame->observationMs)+L" ms";
   if(presentedFrame->gpuUsed)timing+=L" · GPU等待 "+ms(presentedFrame->gpuWaitMs)+L"／回读整理 "+ms(presentedFrame->gpuCopyMs)+L" ms";
   status=timing+L"\r\n"+status;

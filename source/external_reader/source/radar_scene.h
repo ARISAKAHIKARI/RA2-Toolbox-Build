@@ -26,6 +26,11 @@ template<class Assets>class SceneRenderer {
  template<class A>static auto voxelArt(const A&a,int)->decltype(bool(a.voxel)){return a.voxel;}
  template<class A>static bool voxelArt(const A&,long){return false;}
  template<class A>static auto faceCount(const A&a,int)->decltype(a.model.faces.size()){return a.model.faces.size();}
+ // Only cache rasterized VXL when an asset provider exposes a validated live
+ // VPL content signature. Simpler/test providers keep their old fresh-raster
+ // semantics, so a changing palette can never be mistaken for a stable pose.
+ template<class A>static auto liveVoxelKey(const A&a,int)->decltype(a.voxelLightingRevision(),std::pair<bool,uint64_t>{}){return {true,uint64_t(a.voxelLightingRevision())};}
+ template<class A>static std::pair<bool,uint64_t> liveVoxelKey(const A&,long){return {false,0};}
  template<class A>static size_t faceCount(const A&,long){return 0;}
  template<class A>static auto beginPalette(A&a,int)->decltype(a.beginPresentation(),void()){a.beginPresentation();}
  template<class A>static void beginPalette(A&,long){}
@@ -55,6 +60,8 @@ template<class Assets>class SceneRenderer {
  std::shared_ptr<camera::NativeCanvas::Budget> nativeBudget_=std::make_shared<camera::NativeCanvas::Budget>();
  camera::NativeCanvas pending_,background_;camera::ViewportCanvas detailed_;uint64_t detailKey_=0;std::shared_ptr<const Scene> baseScene_,maskedBaseScene_;
  bool gpuMode_=false,areaGpuMode_=false,areaCachedGpu_=false;
+ bool liveVoxelKeyValid_=false;uint64_t liveVoxelKey_=0;
+ uint32_t requestedObjects_=0,drawnObjects_=0;
  bool guideEnabled_=false;uint64_t guideExternalContext_=0,motionTerrainRevision_=0;
  std::shared_ptr<const void> motionContext_=std::make_shared<const uint8_t>(0);
  std::shared_ptr<const std::vector<vulkancompute::TileJob>> gpuBaseTiles_;
@@ -93,6 +100,9 @@ public:
  void guideEnabled(bool enabled,uint64_t contextKey=0){if(enabled!=guideEnabled_||contextKey!=guideExternalContext_){guideEnabled_=enabled;guideExternalContext_=contextKey;motionContext_=std::make_shared<const uint8_t>(0);}}
  bool materialsReady()const{return materialsReady_;}
  bool capacityExceeded()const{return bool(blocked_)||dynamicFailure_;}
+ // Same actor inventory and native status/effects stage for CPU and GPU.
+ // These counters count visible scene markers rather than hidden game objects.
+ std::pair<uint32_t,uint32_t> objectCoverage()const{return {drawnObjects_,requestedObjects_};}
  // Read-only metadata from the sprite actually displayed; no second decode.
  bool feedbackBounds(const Marker&m,int&x,int&y,int&w,int&h)const{
   auto found=sprites_.find(imageKey(m));
@@ -108,13 +118,13 @@ public:
  }
  struct NativeStats {int width,height;size_t pages,resident;uint64_t cells,presents,partialBanks;};
  NativeStats nativeStats()const{return {background_.width(),background_.height(),background_.pageCount(),nativeBudget_->pages,nativeCells_,basePresents_,partialBanks_};}
- void reset(){tiles_.clear();overlays_.clear();art_.clear();sprites_.clear();displayed_.clear();actorCursor_=0;repairAssets_.reset();clearBackground();coverage_={};coverageLocal_=false;width_=height_=0;spanX_=spanY_=0;revision_=0;terrainPaletteReady_=false;terrainPalette_={};nativeCells_=basePresents_=partialBanks_=0;gpuMaskBuilder_.reset();detailed_.reset();detailKey_=0;}
+ void reset(){liveVoxelKeyValid_=false;tiles_.clear();overlays_.clear();art_.clear();sprites_.clear();displayed_.clear();actorCursor_=0;repairAssets_.reset();clearBackground();coverage_={};coverageLocal_=false;width_=height_=0;spanX_=spanY_=0;revision_=0;terrainPaletteReady_=false;terrainPalette_={};nativeCells_=basePresents_=partialBanks_=0;gpuMaskBuilder_.reset();detailed_.reset();detailKey_=0;}
  template<class Read>std::shared_ptr<const Scene> render(const Frame&frame,int width,int height,Read read,Assets&assets,SceneRegion region={},unsigned pixelScaleMode=0,bool refined=false,bool liveVoxels=true,bool highColorPrecision=false,bool forceFrame=false){
-  materialsReady_=false;
+  materialsReady_=false;requestedObjects_=drawnObjects_=0;
   if(!frame.terrain||!frame.terrain->geo.valid()||frame.terrain->art.size()!=512*512||width<3||height<3||width>(region.active?8192:2048)||height>(region.active?8192:2048)||uint64_t(width)*height>16*1024*1024)return {};
   const bool detail=refined&&region.active;
   const bool gpuMode=detail&&gpuPresentation(assets,0);
-  if(gpuMode!=gpuMode_){gpuMode_=gpuMode;sprites_.clear();displayed_.clear();detailed_.reset();baseScene_.reset();maskedBaseScene_.reset();gpuBaseTiles_.reset();cpuBaseFallback_={};maskSource_.reset();gpuMaskPlan_.reset();cpuMaskPlan_.reset();maskPixels_.reset();}
+  if(gpuMode!=gpuMode_){gpuMode_=gpuMode;liveVoxelKeyValid_=false;sprites_.clear();displayed_.clear();detailed_.reset();baseScene_.reset();maskedBaseScene_.reset();gpuBaseTiles_.reset();cpuBaseFallback_={};maskSource_.reset();gpuMaskPlan_.reset();cpuMaskPlan_.reset();maskPixels_.reset();}
   const auto precision=highColorPrecision?colorprecision::Mode::SmoothRGB:colorprecision::Mode::NativeSteps;
   if(precision!=precision_){reset();precision_=precision;}
   beginPalette(assets,0);
@@ -389,7 +399,15 @@ public:
    else{wanted.insert(i->second);++i;}}
   if(sprites_.size()>1024){for(auto i=sprites_.begin();i!=sprites_.end();)if(!wanted.count(i->first))i=sprites_.erase(i);else ++i;}
   if(art_.size()>512){for(auto i=art_.begin();i!=art_.end();)if(!artWanted.count(i->first))i=art_.erase(i);else ++i;}
-  if(liveVoxels)for(const auto&source:art_)if(voxelArt(source.second,0))invalidateArt(source.first);
+  if(liveVoxels){
+   // Current terrain/object light is still re-evaluated on every presentation.
+   // Only the expensive *unlit* VXL raster can be reused, and only when its
+   // source palette, fine pose, model/posture and live VPL all match.
+   const auto vpl=liveVoxelKey(assets,0);
+   if(!vpl.first||!liveVoxelKeyValid_||liveVoxelKey_!=vpl.second)
+    for(const auto&source:art_)if(voxelArt(source.second,0))invalidateArt(source.first);
+   liveVoxelKeyValid_=vpl.first;liveVoxelKey_=vpl.second;
+  }else liveVoxelKeyValid_=false;
   std::set<ArtKey> unavailablePalettes;
   for(const auto&key:artWanted){auto source=art_.find(key);if(source==art_.end())continue;bool changed=false;
    if(!refreshPalette(assets,source->second,changed,0)){invalidateArt(key);unavailablePalettes.insert(key);}
@@ -437,6 +455,10 @@ public:
     if(source==art_.end()){if(m.pose.voxel)return {};continue;}
     if(!voxelArt(source->second,0))continue;auto key=imageKey(m);if(!rastered.insert(key).second)continue;
     liveFaces+=faceCount(source->second,0);if(liveFaces>2*1024*1024||rastered.size()>2048)return {};
+    // The GPU packet/atlas and CPU raster both reuse the exact same image
+    // identity. Their colour and shadow are lit anew by the scene compositor.
+    auto prior=sprites_.find(key);
+    if(prior!=sprites_.end()&&prior->second.ready&&!prior->second.image->incomplete)continue;
     voxel::Image image;if(!assets.renderActor(source->second,m.pose,image)||image.incomplete)return {};
     auto&cached=sprites_[key];size_t previous=camera::pixels(*cached.image),next=camera::pixels(image);
     if(pixels-previous+next>8*1024*1024)return {};
@@ -451,9 +473,11 @@ public:
   // final animation pass incorrectly paints pumps/fire over foreground units.
   std::stable_sort(order.begin(),order.end(),[](const Marker*a,const Marker*b){return camera::orderKey(a->layer,a->kind,a->x,a->y,a->sort)<camera::orderKey(b->layer,b->kind,b->x,b->y,b->sort);});
   for(const auto*marker:order){const auto&m=*marker;if(m.x<0||m.y<0||m.x>=512*256||m.y>=512*256)continue;
+   ++requestedObjects_;
    auto found=sprites_.find(imageKey(m));if(found==sprites_.end()||!found->second.ready){auto old=displayed_.find({m.object,m.id});if(old!=displayed_.end())found=sprites_.find(old->second);}
    float px=float((double(m.x)-m.y)*30/256.+geo.offsetX*30),py=float((double(m.x)+m.y)*15/256.-geo.offsetY*15+camera::anchorY(m.kind)-screenHeight(m.z,projectionZScale(read)));
    if(found!=sprites_.end()&&found->second.ready){
+    ++drawnObjects_;
     std::shared_ptr<const voxel::Image> imageOwner=found->second.image;const voxel::Image*image=imageOwner.get();voxel::Image blended;
     const float lift=m.kind==4?12:(m.kind==3||m.kind==5)?2:1;
     auto source=art_.find(artKey(m));
