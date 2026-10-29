@@ -372,15 +372,20 @@ static void update(POINT origin,const RECT&client,const external::display::State
   if(renderMaterialRefresh)status+=L" · 素材高刷目标 "+std::to_wstring(informationFPS())+L" Hz";
   if(request.gpu)status+=request.detail==0?L" · 原生合成对照：CPU":presentedFrame->gpuUsed?L" · Vulkan GPU 场景":L" · Vulkan 未启用或已回退 CPU";
   if(request.neural)status+=presentedFrame->neural.used?L" · DLSS 5 已处理":L" · DLSS 5 未生效（保留普通画面）";
-  auto ms=[](double value){wchar_t text[32]{};swprintf(text,32,L"%.1f",value);return std::wstring(text);};
-  status+=L" · 本帧 "+ms(presentedFrame->renderMs)+L" ms（采样 "+ms(presentedFrame->sampleMs)+L"／场景 "+ms(presentedFrame->sceneMs)+L"／后处理 "+ms(presentedFrame->finishMs)+L"）";
-  if(presentedFrame->gpuUsed)status+=L" · 场景内末次 GPU 等待 "+ms(presentedFrame->gpuWaitMs)+L"／回读整理 "+ms(presentedFrame->gpuCopyMs)+L" ms";
-  if(renderMaterialRefresh)status+=L" · 观测间隔 "+ms(presentedFrame->observationMs)+L" ms";
   status+=L" · 光棱/激光与矿车采集保留原生像素；电弧近似，辐射束/波纹/粒子待补，实机待测";
  }
  if(result&&result->hasCompletionGap)status+=L" · 世界新帧间隔 "+std::to_wstring(int(std::lround(result->completionGapMs)))+L" ms";
  const auto uploads=overlaycompositor::host().uploadStatistics();
  if(uploads.count)status+=L" · 覆盖层提交间隔 "+std::to_wstring(uploads.intervalMs)+L" ms（连续最大 "+std::to_wstring(uploads.maxGapMs)+L" ms，非显示 FPS）";
+ // The native status control is only 48 design pixels high. Put current
+ // measurements first; the verbose configuration summary must not hide them.
+ if(displaying&&presentedFrame){
+  auto ms=[](double value){wchar_t text[32]{};swprintf(text,32,L"%.1f",value);return std::wstring(text);};
+  std::wstring timing=L"采样 "+ms(presentedFrame->sampleMs)+L" · 场景 "+ms(presentedFrame->sceneMs)+L" · 后处理 "+ms(presentedFrame->finishMs)+L" ms";
+  timing+=L"\r\n新帧 "+(presentedFrame->hasCompletionGap?ms(presentedFrame->completionGapMs):std::wstring(L"待测"))+L" · 观测 "+ms(presentedFrame->observationMs)+L" ms";
+  if(presentedFrame->gpuUsed)timing+=L" · GPU等待 "+ms(presentedFrame->gpuWaitMs)+L"／回读整理 "+ms(presentedFrame->gpuCopyMs)+L" ms";
+  status=timing+L"\r\n"+status;
+ }
  statusText(status);
 }
 }
