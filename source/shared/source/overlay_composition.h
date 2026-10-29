@@ -25,6 +25,12 @@ struct Surface {
  // to rect's source pixels, preclipped and single-row; other layers still draw.
  std::shared_ptr<const std::vector<Rect>> cutouts;
 };
+// Producers rebuild small masks at the input cadence. Equal spans do not
+// change the image merely because their vector was allocated again.
+inline bool sameCutouts(const std::shared_ptr<const std::vector<Rect>>&a,const std::shared_ptr<const std::vector<Rect>>&b){
+ if(a==b)return true;
+ if(!a)return b->empty();if(!b)return a->empty();return *a==*b;
+}
 inline bool valid(const Surface&s,const Context&c){
  bool image=c.token&&s.context.token==c.token&&s.context.window==c.window&&s.context.pid==c.pid&&
   s.context.match==c.match&&s.context.width==c.width&&s.context.height==c.height&&
@@ -102,7 +108,7 @@ class Incremental {
  Context context_{};std::vector<Surface>layers_;std::vector<uint32_t>pixels_;Rect dirty_{};
  std::vector<Rect>dirtyRegions_;bool collapsed_=false;
  static bool sameBase(const Surface&a,const Surface&b){return a.id==b.id&&a.order==b.order&&a.rect==b.rect&&a.clip==b.clip&&a.opacity==b.opacity&&a.pixels==b.pixels;}
- static bool same(const Surface&a,const Surface&b){return sameBase(a,b)&&a.cutouts==b.cutouts;}
+ static bool same(const Surface&a,const Surface&b){return sameBase(a,b)&&sameCutouts(a.cutouts,b.cutouts);}
  void holes(const Surface&s,const Context&context){
   const auto clip=bounds(s,context);if(!s.cutouts||clip.w<=0||clip.h<=0)return;
   for(const auto&r:*s.cutouts){const int64_t x=int64_t(s.rect.x)+r.x,y=int64_t(s.rect.y)+r.y;

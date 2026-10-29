@@ -114,7 +114,13 @@ public:
    if(current.left==next.rect.left&&current.top==next.rect.top&&current.right==next.rect.right&&current.bottom==next.rect.bottom)flags|=SWP_NOMOVE|SWP_NOSIZE;
    show=SetWindowPos(w,HWND_TOP,next.rect.left,next.rect.top,next.rect.right-next.rect.left,next.rect.bottom-next.rect.top,flags)!=FALSE;
    show=show&&IsWindowVisible(w)&&!IsIconic(w);
-   RedrawWindow(w,nullptr,nullptr,RDW_INVALIDATE|RDW_ALLCHILDREN);
+   if(show){
+    // A navigation click advances Layout::order even on the selected page.
+    // Rebuild child visibility/clipping when Windows kept the same geometry;
+    // no WM_SIZE is otherwise generated for that recovery request.
+    if(flags&SWP_NOSIZE){RECT client{};if(GetClientRect(w,&client))SendMessageW(w,WM_SIZE,SIZE_RESTORED,MAKELPARAM(client.right,client.bottom));}
+    RedrawWindow(w,nullptr,nullptr,RDW_INVALIDATE|RDW_ERASE|RDW_FRAME|RDW_ALLCHILDREN|RDW_UPDATENOW);
+   }
   }else ShowWindow(w,SW_HIDE);
   next.visible=show;
   {std::lock_guard<std::mutex>lock(s->mutex);s->applied=next;s->appliedValid=true;s->processing=false;}

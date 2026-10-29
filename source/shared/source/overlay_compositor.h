@@ -89,8 +89,15 @@ class Host {
      {std::lock_guard<std::mutex>lock(mutex);if(!enabled||context.token!=current.token||context.cameraX!=current.cameraX||context.cameraY!=current.cameraY){dibNeedsFullCopy=true;continue;}}
      const auto&output=composition.pixels();
      auto copy=[&](const overlaycomposition::Rect&dirty){for(int y=dirty.y;y<dirty.y+dirty.h;++y)memcpy(static_cast<uint32_t*>(dib.bits)+size_t(y)*current.width+dirty.x,output.data()+size_t(y)*current.width+dirty.x,size_t(dirty.w)*4);};
+     const bool needsUpload=!visible||resize||dibNeedsFullCopy||token!=current.token||!composition.dirtyRegions().empty();
      if(resize||dibNeedsFullCopy)copy({0,0,current.width,current.height});else for(const auto&dirty:composition.dirtyRegions())copy(dirty);
      dibNeedsFullCopy=false;
+     if(!needsUpload){
+      // A camera/group revision can leave the same clipped pixels. Consume
+      // it without copying the full HWND to DWM; placement still runs below.
+      presented=version;token=current.token;
+      std::lock_guard<std::mutex>lock(mutex);uploadContinuous_=false;uploadStatistics_.intervalMs=0;
+     }else{
      SIZE size{current.width,current.height};POINT zero{};BLENDFUNCTION blend{AC_SRC_OVER,0,255,AC_SRC_ALPHA};
      // Composition may start immediately. Only submitting to the HWND is
      // rate-limited, so variable render costs cannot append a whole idle period
@@ -111,6 +118,8 @@ class Host {
       }else ++uploadStatistics_.failures;
      }}
      if(updated){presented=version;token=current.token;}
+     else dibNeedsFullCopy=true;
+     }
     }
    }else{std::lock_guard<std::mutex>lock(mutex);uploadContinuous_=false;uploadStatistics_.intervalMs=0;}
    if(updated){
@@ -149,7 +158,7 @@ private:
    auto next=std::find_if(layers.begin(),layers.end(),[&](const Surface&s){return s.id==id;});
    if(next==layers.end()){changed|=nodes.erase(id)!=0;continue;}
    auto&node=nodes[id];const auto&old=node.surface;
-   changed|=old.pixels!=next->pixels||old.rect!=next->rect||old.clip!=next->clip||old.cutouts!=next->cutouts||old.order!=next->order||old.opacity!=next->opacity||old.cameraBound!=next->cameraBound||
+   changed|=old.pixels!=next->pixels||old.rect!=next->rect||old.clip!=next->clip||!overlaycomposition::sameCutouts(old.cutouts,next->cutouts)||old.order!=next->order||old.opacity!=next->opacity||old.cameraBound!=next->cameraBound||
     old.context.token!=next->context.token||old.context.cameraX!=next->context.cameraX||old.context.cameraY!=next->context.cameraY;
    node={std::move(*next),now};
   }
@@ -182,7 +191,7 @@ public:
   std::lock_guard<std::mutex>lock(mutex);if(!enabled||startupFailed)return false;
   if(!overlaycomposition::valid(surface,context))return true;
   auto&i=nodes[surface.id];auto&old=i.surface;
-  bool changed=old.pixels!=surface.pixels||old.rect!=surface.rect||old.clip!=surface.clip||old.cutouts!=surface.cutouts||old.order!=surface.order||old.opacity!=surface.opacity||old.context.token!=surface.context.token||old.context.cameraX!=surface.context.cameraX||old.context.cameraY!=surface.context.cameraY;
+  bool changed=old.pixels!=surface.pixels||old.rect!=surface.rect||old.clip!=surface.clip||!overlaycomposition::sameCutouts(old.cutouts,surface.cutouts)||old.order!=surface.order||old.opacity!=surface.opacity||old.context.token!=surface.context.token||old.context.cameraX!=surface.context.cameraX||old.context.cameraY!=surface.context.cameraY;
   i={std::move(surface),GetTickCount64()};if(changed){++revision;cv.notify_one();}return true;
  }
  bool touch(uint64_t id,uintptr_t window,uint32_t pid){std::lock_guard<std::mutex>lock(mutex);if(!enabled||startupFailed||context.window!=window||context.pid!=pid)return false;auto i=nodes.find(id);if(i!=nodes.end()&&overlaycomposition::valid(i->second.surface,context)){i->second.lastSeen=GetTickCount64();return true;}return false;}

@@ -1868,7 +1868,7 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
  }
 #ifdef RA2_UNIFIED
  if(suite::layoutMessage(w,msg,lp))return 0;
- if(msg==suite::SelectCategory){int page=std::clamp(int(wp),0,2);if(activePage!=page){activePage=page;scrollY=scrollX=0;SetWindowTextW(GetDlgItem(w,989),page==0?L"战术控制":page==1?L"战场信息":L"实验功能");layoutPanel();}return 0;}
+ if(msg==suite::SelectCategory){int page=std::clamp(int(wp),0,2);if(activePage!=page)scrollY=scrollX=0;activePage=page;SetWindowTextW(GetDlgItem(w,989),page==0?L"战术控制":page==1?L"战场信息":L"实验功能");layoutPanel();return 0;}
  if(msg==suite::RefreshRateChanged){syncRefreshRate();return 0;}
  if(msg==suite::ApplyDisplaySetting){
   if(!ready||!suite::validDisplayEdit(int(wp),int(lp)))return 0;

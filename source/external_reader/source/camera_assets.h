@@ -175,20 +175,7 @@ double conditionRed(){
  metadata();auto value=rulesINI.get("AUDIOVISUAL","CONDITIONRED");char*end=nullptr;double threshold=strtod(value.c_str(),&end);if(end&&*end=='%')threshold/=100.;
  bool parsed=end&&end!=value.c_str()&&(!*end||(*end=='%'&&!end[1]));return !parsed||!std::isfinite(threshold)||threshold<0||threshold>1?.25:threshold;
 }
-int buildingFrame(uint32_t object,uint32_t type){
- int frame=int32_t(word(object+0xF8)),state=int32_t(word(object+0x534));
- if(word(type+0x16BF)&255)return int32_t(word(object+0x618));
- if(word(type+0x16C0)&255)return int32_t(word(object+0x61C));
- if(state==0){int start=int32_t(word(type+0xF04)),count=int32_t(word(type+0xF08));
-  if(word(type+0x16B7)&255)frame=start+count-frame-1;
-  int mission=int32_t(word(object+0xAC));if(mission==-1)mission=int32_t(word(object+0xB4));
-  if(mission==19)frame=start+count-frame-1;
-  return frame>=0&&frame<8192?frame:-1;
- }
- if(word(type+0x157B)&255)return external::buildings::occupiedFrame(read,object,type,conditionYellow(),conditionRed());
- int strength=int32_t(word(type+0xA0)),health=int32_t(word(object+0x6C));if(strength<=0||health<=0)return 0;
- return std::clamp(frame,0,8191)+(double(health)/strength<=conditionYellow()?1:0);
-}
+int buildingFrame(uint32_t object,uint32_t type){return external::buildings::frame(read,object,type,conditionYellow(),conditionRed());}
 void buildingPose(uint32_t object,uint32_t type,external::visual::Pose&pose){
  pose.frame=buildingFrame(object,type);auto state=external::buildings::state(read,object,type,conditionYellow());
  pose.buildingFlags=state.flags;pose.doorFrame=state.doorFrame;

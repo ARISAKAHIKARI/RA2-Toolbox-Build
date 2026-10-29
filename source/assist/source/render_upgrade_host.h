@@ -29,7 +29,15 @@ struct Frame {
 static external::ReadSession reader;
 static external::cameraassets::Context<external::ReadSession> assets(reader);
 static external::radar::SceneRenderer<decltype(assets)> renderer;
-static external::radar::Sampler<external::SharedReadView> sampler(external::SharedReadView{&reader});
+// Reading owns a separate page epoch and never waits for asset decoding, GPU
+// completion or a layered-window upload. Only immutable banks cross threads.
+struct Observation {
+ Request request;external::mainview::View view;
+ std::shared_ptr<const external::radar::Frame> current,previous;
+ double observedMs=0,previousMs=0,readMs=0;uint32_t tick=0;
+};
+static external::ReadSession sampleReader;
+static external::radar::Sampler<external::SharedReadView> sampler(external::SharedReadView{&sampleReader});
 static uint32_t process=0,epoch=0;static bool active=false;static uint32_t submittedAt=0;static uint64_t imageToken=0;
 static std::atomic<int> progress{0};
 static uint64_t generation=1,workerGeneration=0;
@@ -54,6 +62,50 @@ static std::wstring lastStatusText;
 static void statusText(const std::wstring&text){
  if(lastStatusText==text)return;lastStatusText=text;SetWindowTextW(GetDlgItem(ui,9303),text.c_str());
 }
+static asyncwork::Latest<Request,Observation> samplingWorker([](const Request&r)->std::shared_ptr<const Observation>{
+ static std::shared_ptr<const Observation> last;
+ static uint64_t sampleGeneration=0;static uint32_t sampleProcess=0,sampleMatch=0,sampleReveal=~0u;
+ const double started=presentationNow();
+ if(sampleGeneration!=r.generation||sampleProcess!=r.pid||sampleMatch!=r.match||sampleReveal!=r.reveal){
+  sampleReader.close();sampler.reset();last.reset();sampleGeneration=r.generation;
+  sampleProcess=r.pid;sampleMatch=r.match;sampleReveal=r.reveal;
+ }
+ if(!sampleReader.open(r.pid))return {};
+ auto fresh=[](uint32_t p,void*out,size_t n){return sampleReader.readFresh(p,out,n);};
+ external::mainview::View before;
+ if(!external::mainview::sample(fresh,before)||!renderpresentation::sameProjection(before,r.view)||before.frame<r.view.frame)return {};
+ // Coalesce very fast UI requests without retaining an old observation for
+ // a whole render. Paused games still resample and continue terrain paging.
+ if(last&&last->current->frame==before.frame&&DWORD(GetTickCount()-last->tick)<8)return last;
+ if(!sampler.step(r.reveal,8192,true))return {};
+ auto raw=sampler.snapshot(GetTickCount());
+ if(!raw.terrain||!raw.markerScanValid||!external::radar::freshMarkers(raw,external::radar::publicationContext(fresh)))return {};
+ external::SharedReadView cached{&sampleReader};external::GameView game(cached);
+ const uint32_t rules=game.get<uint32_t>(0x8871E0);
+ double yellow=rules>=0x10000?game.get<double>(rules+0x1700,.5):.5;
+ double red=rules>=0x10000?game.get<double>(rules+0x1708,.25):.25;
+ if(!std::isfinite(yellow)||yellow<0||yellow>1)yellow=.5;
+ if(!std::isfinite(red)||red<0||red>1)red=.25;
+ for(auto&m:raw.markers)if(m.kind==3){
+  m.pose.frame=external::buildings::frame(cached,m.object,m.type,yellow,red);
+  const auto state=external::buildings::state(cached,m.object,m.type,yellow);
+  m.pose.buildingFlags=state.flags;m.pose.doorFrame=state.doorFrame;
+  if(external::buildings::buildup(game,m.object))m.pose.variant=-2;else if(m.pose.variant==-2)m.pose.variant=-1;
+ }
+ raw.posesPrepared=true;
+ external::mainview::View captured;
+ if(!external::mainview::sample(fresh,captured)||!renderpresentation::sameProjection(before,captured)||
+    !renderpresentation::sampleAdvance(before.frame,raw.frame,captured.frame)||
+    !external::radar::freshMarkers(raw,external::radar::publicationContext(fresh)))return {};
+ auto out=std::make_shared<Observation>();out->request=r;out->view=captured;
+ out->tick=GetTickCount();out->observedMs=presentationNow();out->readMs=out->observedMs-started;
+ out->current=std::make_shared<const external::radar::Frame>(std::move(raw));
+ if(last&&out->current->terrain->geo.same(last->current->terrain->geo)){
+  if(out->current->frame>last->current->frame){out->previous=last->current;out->previousMs=last->observedMs;}
+  else if(out->current->frame==last->current->frame){out->previous=last->previous;out->previousMs=last->previousMs;}
+ }
+ last=out;return out;
+});
 static asyncwork::Latest<Request,Frame> worker([](const Request&r)->std::shared_ptr<const Frame>{
  const double started=presentationNow();
  static bool neuralPreviouslyRequested=false;
@@ -61,7 +113,7 @@ static asyncwork::Latest<Request,Frame> worker([](const Request&r)->std::shared_
  // Failed attempts do not replace a completed image. The UI independently
  // enforces sample/completion age limits and exact world/view/config identity.
  auto unavailable=[]()->std::shared_ptr<const Frame>{return {};};
- if(process!=r.pid||epoch!=r.match){neuralHistory.invalidate();neuralRenderer.reset();reader.close();sampler.reset();renderer.reset();process=r.pid;epoch=r.match;sampleValid=false;timeline.reset();lastCompletedRenderMs=0;hasFrameCompleteTime=false;}
+ if(process!=r.pid||epoch!=r.match){neuralHistory.invalidate();neuralRenderer.reset();reader.close();renderer.reset();process=r.pid;epoch=r.match;sampleValid=false;timeline.reset();lastCompletedRenderMs=0;hasFrameCompleteTime=false;}
  if(workerGeneration!=r.generation){neuralHistory.invalidate();neuralRenderer.reset();workerGeneration=r.generation;sampleValid=false;sampledLogicFrame=-1;timeline.reset();lastCompletedRenderMs=0;hasFrameCompleteTime=false;}
  if(!r.neural&&neuralPreviouslyRequested){neuralHistory.invalidate();neuralRenderer.reset();}
  neuralPreviouslyRequested=r.neural;
@@ -76,26 +128,28 @@ static asyncwork::Latest<Request,Frame> worker([](const Request&r)->std::shared_
  Request sampledRequest=r;sampledRequest.view=before;
  sampledRequest.context.cameraX=before.cameraX;sampledRequest.context.cameraY=before.cameraY;
  progress=1;
- // Repeated presentation frames reuse one immutable observed bank. Only a
- // changed logical frame rescans terrain, objects and native animation state.
- if(!sampleValid||before.frame!=sampledLogicFrame){
-  reader.begin();
-  if(!sampler.step(r.reveal,8192,true))return unavailable();
-  auto raw=sampler.snapshot(GetTickCount());auto observed=external::radar::publicationContext(fresh);
-  if(!raw.terrain||!raw.markerScanValid||!external::radar::freshMarkers(raw,observed))return unavailable();
-  for(auto&m:raw.markers)if(m.kind==3)assets.buildingPose(m.object,m.type,m.pose);
-  raw.posesPrepared=true;
-  external::mainview::View captured;
-  if(!external::mainview::sample(fresh,captured)||!renderpresentation::sameProjection(before,captured)||
-    !renderpresentation::sampleAdvance(before.frame,raw.frame,captured.frame)||
-    !external::radar::freshMarkers(raw,external::radar::publicationContext(fresh)))return unavailable();
-  timeline.observe(raw,presentationNow());sampledLogicFrame=raw.frame;sampleValid=true;
+ const auto observed=samplingWorker.get();
+ if(!observed||observed->request.generation!=r.generation||observed->request.pid!=r.pid||
+    observed->request.match!=r.match||observed->request.reveal!=r.reveal||
+    !renderpresentation::sameProjection(observed->view,before)||
+    !external::radar::freshMarkers(*observed->current,external::radar::publicationContext(fresh)))return unavailable();
+ static uint32_t timelineReveal=~0u;
+ if(!sampleValid||timelineReveal!=r.reveal||observed->current->frame<sampledLogicFrame){
+  timeline.reset();sampledLogicFrame=-1;timelineReveal=r.reveal;
+ }
+ if(observed->current->frame!=sampledLogicFrame){
+  // A slow render may miss several readings. Use the sampler's latest TWO
+  // observations, so interpolation latency follows reading, not rendering.
+  if(observed->previous&&observed->previous->frame>sampledLogicFrame)
+   timeline.observe(*observed->previous,observed->previousMs);
+  timeline.observe(*observed->current,observed->observedMs);
+  sampledLogicFrame=observed->current->frame;sampleValid=true;
  }
  const double sampledMs=presentationNow();
  auto data=timeline.sample(presentationNow(),r.materialRefresh,r.detail!=0);
  if(!data.terrain)return unavailable();
- const uint32_t sampledTick=GetTickCount();
- data.tick=sampledTick; // presentation retry deadlines keep running while paused
+ const uint32_t sampledTick=observed->tick;
+ data.tick=GetTickCount(); // presentation retry deadlines keep running while paused
  assets.presentationDetail(r.detail);
  const auto&gpuBackend=external::xbrzadapter::gpuState().resolve;
  const bool gpuUnavailable=gpuBackend&&!gpuBackend->diagnostics().available&&!gpuBackend->diagnostics().reason.empty();
@@ -126,7 +180,7 @@ static asyncwork::Latest<Request,Frame> worker([](const Request&r)->std::shared_
  const double sceneDoneMs=presentationNow();
  auto out=std::make_shared<Frame>();out->request=sampledRequest;out->paddingX=border.paddingX;out->paddingY=border.paddingY;out->assetRevision=assetRevision;out->logicFrame=data.frame;out->observationMs=timeline.interval();
  out->gpuAttempted=external::xbrzadapter::gpuAttempted();out->gpuUsed=external::xbrzadapter::gpuUsed();
- out->sampleMs=sampledMs-started;out->sceneMs=sceneDoneMs-sampledMs;
+ out->sampleMs=observed->readMs;out->sceneMs=sceneDoneMs-sampledMs;
  if(out->gpuUsed&&gpuBackend){out->gpuWaitMs=gpuBackend->diagnostics().waitMilliseconds;out->gpuCopyMs=gpuBackend->diagnostics().readbackMilliseconds;}
  // Neural rendering sees only the completed world. Native feedback, command
  // lines and the independently refreshed cursor are composed afterwards.
@@ -170,10 +224,10 @@ static asyncwork::Latest<Request,Frame> worker([](const Request&r)->std::shared_
  lastFrameCompleteMs=completedMs;hasFrameCompleteTime=true;progress=2;return out;
 });
 #include "render_feedback_host.h"
-static void suspendScene(){neuralRenderer.cancel();cameraPrefetch.reset();groupLease.reset();if(active){active=false;++generation;worker.invalidate();}feedback::hide();imageToken=0;overlaycompositor::host().hide(overlaycompositor::RenderUpgrade);}
+static void suspendScene(){neuralRenderer.cancel();cameraPrefetch.reset();groupLease.reset();if(active){active=false;++generation;worker.invalidate();samplingWorker.invalidate();}feedback::hide();imageToken=0;overlaycompositor::host().hide(overlaycompositor::RenderUpgrade);}
 static void suspend(){viewLease.reset();suspendScene();}
 static void stop(){suspend();overlaycompositor::host().suspend();}
-static void shutdown(){stop();worker.shutdown();neuralRenderer.reset();feedback::shutdown();overlaycompositor::host().shutdown();}
+static void shutdown(){stop();worker.shutdown();samplingWorker.shutdown();neuralRenderer.reset();feedback::shutdown();overlaycompositor::host().shutdown();}
 static void updateNeuralStatus(bool force=false){
  HWND label=GetDlgItem(ui,9312);if(!label)return;
  static renderpresentation::StatusCadence cadence;
@@ -330,6 +384,7 @@ static void update(POINT origin,const RECT&client,const external::display::State
   layers=groupLease.layers();presentedFrame=groupLease.frame();displaying=true;
  }else{layers.clear();groupLease.reset();imageToken=0;if(!fresh)feedback::hide();}
  overlaycompositor::host().replaceGroupAt(request.context,{overlaycompositor::RenderUpgrade,feedback::SelectionLayer,feedback::CursorLayer},std::move(layers));
+ samplingWorker.submit(request);
  const uint32_t now=GetTickCount();if(DWORD(now-submittedAt)>=external::materialmotion::refreshPeriod(informationFPS(),renderMaterialRefresh)){submittedAt=now;worker.submit(std::move(request));}
  // Scene publication, current cursor feedback and worker submission run at
  // their own cadence. A hidden settings-page label needs only 4 updates/sec.
@@ -381,7 +436,7 @@ static void update(POINT origin,const RECT&client,const external::display::State
  // measurements first; the verbose configuration summary must not hide them.
  if(displaying&&presentedFrame){
   auto ms=[](double value){wchar_t text[32]{};swprintf(text,32,L"%.1f",value);return std::wstring(text);};
-  std::wstring timing=L"采样 "+ms(presentedFrame->sampleMs)+L" · 场景 "+ms(presentedFrame->sceneMs)+L" · 后处理 "+ms(presentedFrame->finishMs)+L" ms";
+  std::wstring timing=L"独立采样 "+ms(presentedFrame->sampleMs)+L" · 场景 "+ms(presentedFrame->sceneMs)+L" · 后处理 "+ms(presentedFrame->finishMs)+L" ms";
   timing+=L"\r\n新帧 "+(presentedFrame->hasCompletionGap?ms(presentedFrame->completionGapMs):std::wstring(L"待测"))+L" · 观测 "+ms(presentedFrame->observationMs)+L" ms";
   if(presentedFrame->gpuUsed)timing+=L" · GPU等待 "+ms(presentedFrame->gpuWaitMs)+L"／回读整理 "+ms(presentedFrame->gpuCopyMs)+L" ms";
   status=timing+L"\r\n"+status;

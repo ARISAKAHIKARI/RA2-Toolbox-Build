@@ -24,6 +24,21 @@ template<class Read>int occupiedFrame(Read read,uint32_t object,uint32_t type,do
  if(tech==-1&&frame==3)frame=1;
  return frame;
 }
+template<class Read>int frame(Read read,uint32_t object,uint32_t type,double yellow,double red){
+ GameView<Read> g(read);
+ int frame=g.template get<int>(object+0xF8),state=g.template get<int>(object+0x534);
+ if(g.template get<uint8_t>(type+0x16BF))return g.template get<int>(object+0x618);
+ if(g.template get<uint8_t>(type+0x16C0))return g.template get<int>(object+0x61C);
+ if(state==0){int start=g.template get<int>(type+0xF04),count=g.template get<int>(type+0xF08);
+  if(g.template get<uint8_t>(type+0x16B7))frame=start+count-frame-1;
+  int mission=g.template get<int>(object+0xAC);if(mission==-1)mission=g.template get<int>(object+0xB4);
+  if(mission==19)frame=start+count-frame-1;
+  return frame>=0&&frame<8192?frame:-1;
+ }
+ if(g.template get<uint8_t>(type+0x157B))return external::buildings::occupiedFrame(read,object,type,yellow,red);
+ int strength=g.template get<int>(type+0xA0),health=g.template get<int>(object+0x6C);if(strength<=0||health<=0)return 0;
+ return std::clamp(frame,0,8191)+(double(health)/strength<=yellow?1:0);
+}
 template<class Read>bool buildup(const GameView<Read>&g,uint32_t object){
  // Building::GetImage (4513D0) keeps make art until ActuallyPlacedOnMap.
  return g.template get<int>(object+0x534)==0||!g.template get<uint8_t>(object+0x6E4);

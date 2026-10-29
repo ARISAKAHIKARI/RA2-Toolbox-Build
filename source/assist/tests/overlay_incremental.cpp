@@ -22,6 +22,13 @@ int main(){
  verify({scene,information,information,cursor});verify({scene,information,cursor}); // defensive duplicate-id equivalence
  auto holes=std::make_shared<const std::vector<Rect>>(std::vector<Rect>{{20,20,4,1},{18,20,4,1},{20,21,2,1}});
  scene.cutouts=holes;verify({scene,information,cursor});
+ // Input sampling can produce a new vector with identical cutouts. Reusing
+ // its pixels must leave the dirty list empty, including null/empty masks.
+ scene.cutouts=std::make_shared<const std::vector<Rect>>(*holes);
+ verify({scene,information,cursor});assert(cache.dirtyRegions().empty());
+ scene.cutouts=std::make_shared<const std::vector<Rect>>();verify({scene,information,cursor});
+ scene.cutouts.reset();verify({scene,information,cursor});assert(cache.dirtyRegions().empty());
+ scene.cutouts=holes;verify({scene,information,cursor});
  // Holes are local to this layer: the higher cursor/HUD still draw, and the
  // transparent area outside a HUD reveals the native surface below the HWND.
  assert(expected[10*80+10]==0xffffffff);
