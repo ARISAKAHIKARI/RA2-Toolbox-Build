@@ -11,25 +11,28 @@ load = io.split('static void loadAdditionalSettings(){', 1)[1].split(' extra.vie
 save = '\n'.join(line for line in io.splitlines() if line.lstrip().startswith('write(L"Display",') and ('L"Render' in line or 'L"UnifiedOverlay"' in line))
 handler = main.split(' if(id==9300||', 1)[1].split('\n if(id==862', 1)[0]
 handler = ' if(id==9300||'+handler
+auto_ui = (root/'assist/source/auto_settings_ui.h').read_text(encoding='utf-8')
+changed_setting = 'static void changedSetting(){'+auto_ui.split('static void changedSetting(){', 1)[1].split('static void syncSecondaryLayoutControls(){', 1)[0]
 fixture = r'''
 #include <algorithm>
 #include <cassert>
 #include <map>
 #include <string>
 static std::map<std::wstring,int> profile;static std::map<int,int> controls;
-static bool updatingControls=false;static int paintRevision=0,changes=0,stops=0,ui=1;
+static bool updatingControls=false,autoSavePending=false;static int paintRevision=0,settingsRevision=0,changes=0,stops=0,ui=1,timerDelay=0;
+constexpr int AutoSaveTimer=3901;
 constexpr int CBN_SELCHANGE=1,BN_CLICKED=2,CB_GETCURSEL=3,BM_GETCHECK=4,BST_CHECKED=1;
 static int HIWORD(unsigned v){return int(v>>16);}
 static int SendDlgItemMessageW(int,int id,int,int,int){return controls[id];}
 static int GetDlgItem(int,int id){return id;}
 static void SetWindowTextW(int,const wchar_t*){}
-static void changedSetting(){++changes;}static void paint(){}
+static void SetTimer(int,int,int delay,void*){++changes;timerDelay=delay;}static void syncTypeConfig(){}static void paint(){}
 namespace renderupgrade {static void stop(){++stops;}}
 static int value(const wchar_t*,const wchar_t*key,int fallback){auto i=profile.find(key);return i==profile.end()?fallback:i->second;}
 static void write(const wchar_t*,const wchar_t*key,int v){profile[key]=v;}
-'''+globals_+'\nstatic void load(){'+load+'}\nstatic void save(){'+save+'}\nstatic int handle(int id,unsigned wp){int w=1;'+handler+'return -1;}\n'+r'''
+'''+changed_setting+'\n'+globals_+'\nstatic void load(){'+load+'}\nstatic void save(){'+save+'}\nstatic int handle(int id,unsigned wp){int w=1;'+handler+'return -1;}\n'+r'''
 int main(){
- load();assert(!renderUpgradeEnabled&&!renderPhysicalOutput&&!renderVulkanEnabled&&renderMaterialRefresh&&renderSceneDetail==1&&renderPixelScale==3&&renderColorPrecision==1&&renderUpgradeLayer==1);
+ load();assert(!renderUpgradeEnabled&&!renderPhysicalOutput&&!renderVulkanEnabled&&!renderDLSS5Requested&&renderMaterialRefresh&&renderSceneDetail==1&&renderPixelScale==3&&renderColorPrecision==1&&renderUpgradeLayer==1);
  for(int oldLayer:{0,1}){profile[L"RenderUpgradeLayer"]=oldLayer;load();assert(renderUpgradeLayer==1);save();assert(profile[L"RenderUpgradeLayer"]==1);}
  for(int color:{0,1})for(int detail:{0,1})for(int refresh:{0,1})for(int scale:{0,1,2,3}){
   controls[9309]=color;handle(9309,CBN_SELCHANGE<<16);
@@ -46,6 +49,18 @@ int main(){
  updatingControls=true;controls[9305]=0;int old=renderPixelScale;handle(9305,CBN_SELCHANGE<<16);assert(renderPixelScale==old);updatingControls=false;
  for(int id:{9300,9301,9306,9310}){controls[id]=1;handle(id,BN_CLICKED<<16);}save();load();assert(renderUpgradeEnabled&&unifiedOverlayEnabled&&renderPhysicalOutput&&renderVulkanEnabled);
  controls[9310]=0;handle(9310,BN_CLICKED<<16);save();renderVulkanEnabled=true;load();assert(!renderVulkanEnabled);
+ // A DLSS request is persistent intent only while no backend is shipped.
+ // It must not toggle Vulkan or explicitly stop rendering. The existing
+ // settings path still increments its normal revision and schedules autosave.
+ for(bool requested:{false,true}){
+  controls[9311]=requested;int stopped=stops,revision=paintRevision,settings=settingsRevision,count=changes;bool gpu=renderVulkanEnabled;autoSavePending=false;
+  handle(9311,BN_CLICKED<<16);assert(renderDLSS5Requested==requested&&changes==count+1);
+  assert(stops==stopped&&paintRevision==revision+1&&settingsRevision==settings+1&&renderVulkanEnabled==gpu);
+  assert(autoSavePending&&timerDelay==300);
+  save();renderDLSS5Requested=!requested;load();assert(renderDLSS5Requested==requested);
+ }
+ controls[9311]=0;int count=changes;handle(9311,CBN_SELCHANGE<<16);assert(renderDLSS5Requested&&changes==count);
+ updatingControls=true;handle(9311,BN_CLICKED<<16);assert(renderDLSS5Requested&&changes==count);updatingControls=false;
  profile[L"RenderPixelScale"]=99;profile[L"RenderSceneDetail"]=-1;load();assert(renderPixelScale==3&&renderSceneDetail==0);
 }
 '''
@@ -54,4 +69,4 @@ with tempfile.TemporaryDirectory() as temp:
     source.write_text(fixture,encoding='utf-8')
     subprocess.run(['g++','-std=c++17','-O2',str(source),'-o',str(binary)],check=True)
     subprocess.run([str(binary)],check=True)
-print('PASS: actual render control events and INI load/save, 32 color/detail/refresh/scale combinations, adaptive mode 3 retained, invalid/programmatic events ignored')
+print('PASS: actual render control events and INI load/save, 32 color/detail/refresh/scale combinations, adaptive mode 3 retained, DLSS intent round-trip without renderer activation/restart, invalid/programmatic events ignored')

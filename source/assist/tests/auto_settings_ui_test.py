@@ -28,7 +28,7 @@ struct ControlUpdate{bool old=updatingControls;ControlUpdate(){updatingControls=
 static bool hookAdvanced=false,hookSmartUnload=false;static HWND hookChecks[4]={800,801,802,803};
 static uint32_t computeRequested=compute::Default;static bool minimapEnabled=false,minimapSecondary=false;static int minimapMode=0,minimapScale=10,advancedRangeCells=2,minimapPosition=0,minimapX=20,minimapY=60,minimapAlignX=0,minimapAlignY=0;
 static int minimapSecondaryX=10000,minimapSecondaryY=10000,minimapSecondaryWidth=320;
-static bool renderUpgradeEnabled=false,unifiedOverlayEnabled=false,renderMaterialRefresh=true,renderPhysicalOutput=false;
+static bool renderUpgradeEnabled=false,unifiedOverlayEnabled=false,renderMaterialRefresh=true,renderPhysicalOutput=false,renderVulkanEnabled=false,renderDLSS5Requested=false;
 static int renderColorPrecision=1,renderSceneDetail=1,renderUpgradeLayer=0,renderPaletteRange=1,renderPixelScale=3;
 constexpr unsigned HOTKEYF_CONTROL=2,HOTKEYF_ALT=4;
 constexpr WORD MAKEWORD(unsigned a,unsigned b){return WORD((a&255)|(b<<8));}
@@ -341,7 +341,11 @@ with tempfile.TemporaryDirectory() as temp:
 main=(root/'assist/source/main.cpp').read_text()
 extra=(root/'assist/source/extra_controls.h').read_text()
 assert 'statsVisible()' not in main
-assert 'snap.renderStatus!=1' in main.split('static void paint(){')[1].split('DWORD now=')[0]
+# Fix3 distinguishes a known hidden/menu state from a short failed read.
+# Exercise the production entry and its120ms lease instead of demanding the
+# pre-Fix3 literal that hid every panel on one failed information sample.
+subprocess.run([sys.executable,str(root/'assist/tests/render_presentation_gate.py'),
+                '--source',str(root/'assist/source/main.cpp')],check=True)
 close=main.split('case WM_CLOSE:',1)[1].split('case WM_DESTROY:',1)[0]
 assert close.index('flushAutoSettings();')<close.index('DestroyWindow(w)')
 assert 'L"BUTTON",L"保存' not in main+extra
@@ -363,7 +367,8 @@ assert 'external::discovery::resolveYrppWindow(reader,pid,nullptr,&foundThread)'
 assert 'static BOOL CALLBACK findWindow(' not in cursor
 print('PASS: explicit feature/permission linkage, invalid-key isolation, shared cursor discovery and host ACK single-writer contract')
 
-assert 'if(snap.renderStatus!=1){overlayRecovery.suspend();hideWorldOverlay();hideAircraftButton();minimap::hide();watchwindows::hide();' in main
+assert 'const bool passiveVisible=snap.renderStatus==1||passiveDisplayState()!=overlaydisplay::State::Hidden;' in main
+assert 'if(!passiveVisible){overlayRecovery.suspend();hideWorldOverlay();hideAircraftButton();minimap::hide();watchwindows::hide();' in main
 assert 'else if(!foregroundGame()||snap.chat){overlayRecovery.suspend();hideWorldOverlay();hideAircraftButton();minimap::hidePrimary();watchwindows::hidePrimary();' in main
 assert 'snap.renderStatus=externalValid&&d.renderStatus==1?1:0;' in main
 monitor=(root/'unit_monitor/source/main.cpp').read_text() if (root/'unit_monitor/source/main.cpp').exists() else (root.parent/'unit_monitor/source/main.cpp').read_text()
