@@ -1,0 +1,48 @@
+#version 450
+#extension GL_ARB_gpu_shader_fp64 : require
+layout(local_size_x=8,local_size_y=8,local_size_z=1) in;
+layout(set=0,binding=0,std430) readonly buffer Raw {uint v[];} raw;
+layout(set=0,binding=1,std430) buffer Prefix {uint v[];} prefix;
+layout(set=0,binding=2,std430) readonly buffer Metadata {uint v[];} meta;
+layout(set=0,binding=3,std430) buffer Output {uint v[];} outputImage;
+layout(push_constant) uniform Params {uint width,height,nativeWidth,nativeHeight,columns,tableOffset,xOffset,yOffset,background,fogOffset,buildCount,buildOffset,phase;} p;
+const uint Missing=0xffffffffu,PagePixels=16384u,PrefixWords=3267u;
+uvec3 rgb(uint color){return uvec3((color>>16)&255u,(color>>8)&255u,color&255u);}
+uvec3 readRaw(uint slot,int x,int y){return rgb(raw.v[slot*PagePixels+uint(y)*128u+uint(x)]);}
+uvec3 readPrefix(uint slot,int x,int y){uint at=slot*PrefixWords+(uint(y)*33u+uint(x))*3u;return uvec3(prefix.v[at],prefix.v[at+1u],prefix.v[at+2u]);}
+void writePrefix(uint slot,int x,int y,uvec3 value){uint at=slot*PrefixWords+(uint(y)*33u+uint(x))*3u;prefix.v[at]=value.x;prefix.v[at+1u]=value.y;prefix.v[at+2u]=value.z;}
+uvec3 integerBox(uint slot,int l,int t,int r,int b){
+ if(l>=r||t>=b)return uvec3(0);int cl=(l+3)/4,ct=(t+3)/4,cr=r/4,cb=b/4;uvec3 sum=uvec3(0);
+ if(cl>=cr||ct>=cb){for(int y=t;y<b;++y)for(int x=l;x<r;++x)sum+=readRaw(slot,x,y);return sum;}
+ sum=readPrefix(slot,cr,cb)+readPrefix(slot,cl,ct)-readPrefix(slot,cr,ct)-readPrefix(slot,cl,cb);
+ for(int y=t;y<ct*4;++y)for(int x=l;x<r;++x)sum+=readRaw(slot,x,y);
+ for(int y=cb*4;y<b;++y)for(int x=l;x<r;++x)sum+=readRaw(slot,x,y);
+ for(int y=ct*4;y<cb*4;++y){for(int x=l;x<cl*4;++x)sum+=readRaw(slot,x,y);for(int x=cr*4;x<r;++x)sum+=readRaw(slot,x,y);}
+ return sum;
+}
+int segments(double first,double last,out ivec2 ranges[3],out double weights[3]){
+ int count=0,l=int(floor(first)),r=int(floor(last)),innerL=int(ceil(first)),innerR=int(floor(last));
+ if(first<double(innerL)||l==r){double weight=min(last,double(l+1))-first;if(weight>0.){ranges[count]=ivec2(l,l+1);weights[count++]=weight;}}
+ if(innerL<innerR){ranges[count]=ivec2(innerL,innerR);weights[count++]=1.;}
+ if(last>double(r)&&r!=l){ranges[count]=ivec2(r,r+1);weights[count++]=last-double(r);}return count;
+}
+dvec3 box(uint slot,double left,double top,double right,double bottom){
+ ivec2 xs[3],ys[3];double wx[3],wy[3];int nx=segments(left,right,xs,wx),ny=segments(top,bottom,ys,wy);precise dvec3 sum=dvec3(0);
+ for(int y=0;y<ny;++y)for(int x=0;x<nx;++x){precise double weight=wx[x]*wy[y];sum+=dvec3(integerBox(slot,xs[x].x,ys[y].x,xs[x].y,ys[y].y))*weight;}return sum;
+}
+double value(uint at){return packDouble2x32(uvec2(meta.v[at],meta.v[at+1u]));}
+void main(){
+ uvec2 at=gl_GlobalInvocationID.xy;
+ if(p.phase<2u){if(at.y>=p.buildCount)return;uint slot=meta.v[p.buildOffset+at.y];
+  if(p.phase==0u){if(at.x>=32u)return;int row=int(at.x);uvec3 sum=uvec3(0);writePrefix(slot,0,row+1,sum);for(int col=0;col<32;++col){for(int y=row*4;y<row*4+4;++y)for(int x=col*4;x<col*4+4;++x)sum+=readRaw(slot,x,y);writePrefix(slot,col+1,row+1,sum);}return;}
+  if(at.x>=33u)return;int col=int(at.x);uvec3 sum=uvec3(0);writePrefix(slot,col,0,sum);for(int y=1;y<=32;++y){sum+=readPrefix(slot,col,y);writePrefix(slot,col,y,sum);}return;
+ }
+ if(at.x>=p.width||at.y>=p.height)return;
+ precise double left=value(p.xOffset+at.x*4u),right=value(p.xOffset+at.x*4u+2u),top=value(p.yOffset+at.y*4u),bottom=value(p.yOffset+at.y*4u+2u);
+ precise dvec3 total=dvec3(0);int firstX=int(left)/128,lastX=int(ceil(right)-1.)/128,firstY=int(top)/128,lastY=int(ceil(bottom)-1.)/128;
+ for(int y=firstY;y<=lastY;++y)for(int x=firstX;x<=lastX;++x){precise double l=max(left,double(x*128))-double(x*128),r=min(right,double((x+1)*128))-double(x*128),t=max(top,double(y*128))-double(y*128),b=min(bottom,double((y+1)*128))-double(y*128);uint slot=meta.v[p.tableOffset+uint(y)*p.columns+uint(x)];
+  if(slot==Missing){precise double area=(r-l)*(b-t);total+=dvec3(rgb(p.background))*area;}else total+=box(slot,l,t,r,b);
+ }
+ precise double area=(right-left)*(bottom-top);dvec3 channels=clamp(floor(total/area+dvec3(.5)),dvec3(0),dvec3(255));uint color=0xff000000u|(uint(channels.x)<<16)|(uint(channels.y)<<8)|uint(channels.z);
+ if(p.fogOffset!=Missing){uint index=at.y*p.width+at.x,a=(meta.v[p.fogOffset+index/4u]>>((index&3u)*8u))&255u;a=min(a,127u);uint result=0xff000000u;for(uint s=0u;s<24u;s+=8u)result|=((((color>>s)&255u)*a+63u)/127u)<<s;color=result;}outputImage.v[at.y*p.width+at.x]=color;
+}
