@@ -334,7 +334,7 @@ public:
   if(detail&&!detailed_.prepare(background_,baseScene_->pixels,width,height,region.x,region.y,region.width,region.height,detailKey_,precision_,pixelScaleMode,
     std::shared_ptr<const std::vector<uint32_t>>(baseScene_,&baseScene_->pixels),baseScene_->pixels.empty()?gpuBaseTiles_:nullptr,cpuBaseFallback_))return {};
   if(detail){vulkancompute::MotionView motion;motion.context=motionContext_;motion.x=region.x;motion.y=region.y;motion.scaleX=width/region.width;motion.scaleY=height/region.height;
-   motion.depthFar=-4096;motion.depthNear=float(spanY_+4096);motion.terrainRevision=motionTerrainRevision_;motion.tick=frame.tick;motion.frame=frame.frame;detailed_.motion(std::move(motion),guideEnabled_);}
+   motion.depthFar=-4096;motion.depthNear=32768;motion.terrainRevision=motionTerrainRevision_;motion.tick=frame.tick;motion.frame=frame.frame;detailed_.motion(std::move(motion),guideEnabled_);}
   // Native Cell::DrawShroud places 60x30 alpha sprites on the flat cell
   // projection, after the world is drawn. Cache their final-presentation mask
   // separately from the original-size terrain so units and repairs cannot
@@ -448,7 +448,7 @@ public:
      if(old!=sprites_.end()&&old->second.ready&&materialblend::image(*old->second.image,*image,unsigned(m.pose.frameWeight),lift,blended)){imageOwner=std::make_shared<const voxel::Image>(std::move(blended));image=imageOwner.get();}
     }
     auto light=m.kind==6?projectiles::light(read,uint32_t(m.pose.variant)):m.kind==5?lighting::animation(read,m.object,m.type,m.x,m.y,m.z,scene):m.kind==4?lighting::terrainObject(read,m.type,m.x,m.y,m.z,scene):lighting::object(read,m.type,m.owner,m.kind,m.x,m.y,m.z,scene);uint32_t cell=frame.terrain->art[(m.y/256)*512+m.x/256].cell;bool bridge=m.onBridge;int level=game.template get<int8_t>(cell+0x11B);
-    vulkancompute::MotionIdentity motion;motion.object=m.object;motion.id=m.id;motion.type=m.type;motion.kind=uint32_t(m.kind);motion.known=m.object>=0x10000&&m.type>=0x10000&&m.id!=0xffffffffu&&m.kind>=0&&m.kind<=6;
+    vulkancompute::MotionIdentity motion;motion.object=m.object;motion.id=m.id;motion.type=m.type;motion.kind=uint32_t(m.kind);motion.known=guideEnabled_&&detail&&m.object>=0x10000&&m.type>=0x10000&&m.id!=0xffffffffu&&m.kind>=0&&m.kind<=6;
     draw(*image,px,py,1,1,float((int64_t(m.x)+m.y)*15/256.)-15+camera::anchorY(m.kind)-m.drawZ+(bridge?60:0),light,m.kind==4?12:(m.kind==3||m.kind==5)?2:1,float(std::max(0,screenHeight(m.z,projectionZScale(read))-(level+(bridge?4:0))*15)),std::move(imageOwner),std::move(motion));}
    else if(m.kind<4)fallbacks.push_back(&m);
   }

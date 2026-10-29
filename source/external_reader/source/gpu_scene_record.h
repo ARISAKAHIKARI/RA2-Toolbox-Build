@@ -48,12 +48,12 @@ class GpuSceneRecord {
   if(i.width<=0||i.height<=0||i.width>resolutionsampling::MaxDimension||i.height>resolutionsampling::MaxDimension||uint64_t(i.width)*i.height>resolutionsampling::MaxPixels||i.rasterScale<1||i.rasterScale>resolutionsampling::MaxRasterScale||(!i.gpuRaster&&i.pixels.size()!=size_t(i.width)*i.height)||!std::isfinite(ax)||!std::isfinite(ay)||!std::isfinite(sx)||!std::isfinite(sy)||sx<=0||sy<=0||sx>8||sy>8)return false;
   auto attachment=[&](const voxel::Image&part){return std::shared_ptr<const voxel::Image>(owner,&part);};
   for(size_t index=0;index<i.attachments.size();++index){const auto&part=i.attachments[index];if(part.shadow&&!i.shadowsAfter&&(!part.airborneShadow||shadowDrop>0)){
-   auto key=motion;key.part.push_back(uint32_t(index));if(!flatten(attachment(part),ax,ay+shadowDrop*sy,sx,sy,base,state,lift,0,smooth,key,nesting+1))return false;}}
+   auto key=motion;if(motion.known&&frame_.collectGuides)key.part.push_back(uint32_t(index));if(!flatten(attachment(part),ax,ay+shadowDrop*sy,sx,sy,base,state,lift,0,smooth,key,nesting+1))return false;}}
   const float pxScale=sx/i.rasterScale,pyScale=sy/i.rasterScale,left=ax+i.x*pxScale,top=ay+i.y*pyScale;
   int x0=std::clamp(int(std::floor(std::clamp(left,-1e7f,1e7f))),0,frame_.width),y0=std::clamp(int(std::floor(std::clamp(top,-1e7f,1e7f))),0,frame_.height);
   int x1=std::clamp(int(std::ceil(std::clamp(left+i.width*pxScale,-1e7f,1e7f))),0,frame_.width),y1=std::clamp(int(std::ceil(std::clamp(top+i.height*pyScale,-1e7f,1e7f))),0,frame_.height);
   if(x0<x1&&y0<y1){
-   vulkancompute::DrawJob draw;draw.motion=motion;draw.gpuRaster=i.gpuRaster;draw.source.width=i.width;draw.source.height=i.height;
+   vulkancompute::DrawJob draw;if(frame_.collectGuides)draw.motion=motion;draw.gpuRaster=i.gpuRaster;draw.source.width=i.width;draw.source.height=i.height;
    if(!i.gpuRaster){draw.source.pixels={owner,&i.pixels};if(i.depth.size()==i.pixels.size())draw.source.depth={owner,&i.depth};if(i.indices.size()==i.pixels.size())draw.source.indices={owner,&i.indices};}
    draw.left=left;draw.top=top;draw.scaleX=pxScale;draw.scaleY=pyScale;draw.depthBase=base+i.depthBias;
    draw.originY=i.y;draw.depthBottom=i.depthBottom==std::numeric_limits<int>::min()?i.y+i.height-1:i.depthBottom;draw.rasterScale=i.rasterScale;draw.lift=lift;
@@ -68,7 +68,7 @@ class GpuSceneRecord {
    if(frame_.draws.size()>=65536)return false;frame_.draws.push_back(std::move(draw));
   }
   for(size_t index=0;index<i.attachments.size();++index){const auto&part=i.attachments[index];if((!part.shadow||i.shadowsAfter)&&(!part.airborneShadow||shadowDrop>0)){
-   auto key=motion;key.part.push_back(uint32_t(index));if(!flatten(attachment(part),ax,ay+(part.shadow?shadowDrop*sy:0),sx,sy,base,state,lift,0,smooth,key,nesting+1))return false;}}
+   auto key=motion;if(motion.known&&frame_.collectGuides)key.part.push_back(uint32_t(index));if(!flatten(attachment(part),ax,ay+(part.shadow?shadowDrop*sy:0),sx,sy,base,state,lift,0,smooth,key,nesting+1))return false;}}
   return true;
  }
  static bool validDepth(const vulkancompute::FrameJob&frame){

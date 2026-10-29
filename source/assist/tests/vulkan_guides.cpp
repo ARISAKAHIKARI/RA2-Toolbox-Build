@@ -34,7 +34,7 @@ int main(int argc,char**argv){
  {
   auto image=std::make_shared<voxel::Image>();image->width=image->height=2;image->pixels=*pixels;
   voxel::Image part=*image;part.shadow=true;image->attachments={part,part};camera::GpuSceneRecord record;
-  record.begin(64,48,f.basePixels,f.baseDepth,colorprecision::Mode::NativeSteps);
+  record.begin(64,48,f.basePixels,f.baseDepth,colorprecision::Mode::NativeSteps);record.motion(f.motion,true);
   assert(record.append(*image,image,8,7,1,1,20,{},1,0,false,f.draws[0].motion));
   assert(record.frame().draws.size()==3);
   assert(record.frame().draws[0].motion.part==std::vector<uint32_t>{0});

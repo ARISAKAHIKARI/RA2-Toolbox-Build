@@ -49,7 +49,7 @@ int main(int argc,char**argv){
   const size_t cell=7*512+7;terrain->colors[cell]=0x204060;terrain->art[cell].type=1;terrain->art[cell].sourceColor=0x204060;terrain->shade[cell]={0,0};
   radar::Frame frame;frame.terrain=terrain;frame.tick=100;frame.frame=77;
   for(unsigned n=0;n<3;++n){radar::Marker m;m.x=7*256-int(n)*42;m.y=7*256-int(n)*93;m.object=0x10000+n*128;m.id=10+n;m.type=n?1000+n:1;m.owner=0x20000;m.kind=2;m.pose.voxel=n!=0;m.pose.bodyFine=int(n)*31;m.pose.turretFine=67-int(n)*11;frame.markers.push_back(m);}
-  Assets cpu,gpu;cpu.scale=gpu.scale=int(std::ceil(ratio));gpu.gpu=true;radar::SceneRenderer<Assets> a,b;
+  Assets cpu,gpu;cpu.scale=gpu.scale=int(std::ceil(ratio));gpu.gpu=true;radar::SceneRenderer<Assets> a,b;b.guideEnabled(true,123);
   const int w=int(240*ratio),h=int(120*ratio);const radar::SceneRegion crop{-3.25,-1.5,240,120,true};
   auto compare=[&](){
    xbrzadapter::gpuPresentation(false);auto expected=a.render(frame,w,h,read,cpu,crop,3,true,true,true);assert(expected);
@@ -59,7 +59,8 @@ int main(int argc,char**argv){
    for(size_t i=0;i<actual->pixels.size();++i)for(unsigned shift:{0u,8u,16u,24u}){unsigned x=(actual->pixels[i]>>shift)&255,y=(expected->pixels[i]>>shift)&255,error=x>y?x-y:y-x;maxError=std::max(maxError,error);
     if(error>1){std::cerr<<"SceneRenderer mismatch masked="<<masked<<" ratio="<<ratio<<" frame="<<frames<<" pixel="<<i<<" actual="<<std::hex<<actual->pixels[i]<<" expected="<<expected->pixels[i]<<std::dec<<std::endl;std::abort();}++channels;}
    const std::vector<uint8_t>*ma=nullptr,*mb=nullptr;assert(a.feedbackVisibility(ma)&&b.feedbackVisibility(mb));if(masked){assert(ma&&mb&&*ma==*mb);maskPixels+=ma->size();}
-   if(xbrzadapter::gpuUsed())assert(xbrzadapter::gpuState().resolve->diagnostics().readbacks==1);
+   if(xbrzadapter::gpuUsed()){assert(xbrzadapter::gpuState().resolve->diagnostics().readbacks==1);assert(actual->guides&&actual->guides->width==w&&actual->guides->height==h&&actual->guides->depth.size()==actual->pixels.size());}
+   else assert(!actual->guides);
    ++frames;return actual;
   };
   auto first=compare();assert(a.materialsReady()&&b.materialsReady());const auto captures=gpu.captures;
