@@ -145,6 +145,19 @@ static void stackCase(DWORD statsThread){
  // the case where the cursor first repairs only itself above the game.
  clockValue+=1;SetWindowPos(game,HWND_TOPMOST,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE);assert(higher(game,cursor));
  assert(keepAbove(game)&&ordered()&&higher(scene,game));
+ // Actual Windows can keep hidden/system/foreign topmost HWNDs above the
+ // promoted game. The old absolute-GetTopWindow shortcut skipped this repair.
+ HWND foreign=makeWindow(3);int foreignPlaces=windows[foreign].places;
+ for(bool shown:{false,true}){windows[foreign].visible=shown;clockValue+=1;SetWindowPos(game,HWND_TOPMOST,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE);
+  order.erase(std::remove(order.begin(),order.end(),foreign),order.end());order.insert(order.begin(),foreign);
+  assert(GetTopWindow(nullptr)==foreign&&higher(game,cursor)&&windows[foreign].pid!=GetCurrentProcessId());
+  assert(keepAbove(game)&&ordered());for(auto own:{scene,world,stats,map,watch,cursor})assert(IsWindowVisible(own)&&higher(own,game));
+  assert(windows[foreign].visible==shown&&windows[foreign].places==foreignPlaces);
+ }
+ windows.erase(foreign);order.erase(std::remove(order.begin(),order.end(),foreign),order.end());
+ clockValue+=1;SetWindowPos(game,HWND_TOPMOST,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE);
+ SetWindowPos(cursor,HWND_TOPMOST,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE);assert(higher(cursor,game)&&higher(game,watch));
+ assert(keepAbove(game)&&ordered()&&higher(scene,game)); // finding only one own HWND above game is insufficient
  clockValue+=1;SetWindowPos(game,HWND_TOPMOST,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE);placeOne(cursor,Layer::Cursor);assert(ordered()&&higher(scene,game));
  // Repeated game promotions recover without moving the pointer or pressing Tab.
  for(int n=0;n<5;++n){clockValue+=1000;SetWindowPos(game,HWND_TOPMOST,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE);placeOne(watch,Layer::Watch);assert(ordered()&&higher(world,game));}

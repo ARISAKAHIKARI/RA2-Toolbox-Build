@@ -39,13 +39,23 @@ inline BOOL keepAbove(HWND foreground,bool force=false){
  if(!foreground||!IsWindow(foreground)||repairing.test_and_set())return TRUE;
  struct Release{~Release(){repairing.clear();}} release;
  HWND root=GetAncestor(foreground,GA_ROOT);if(root)foreground=root;
- // A game promoted to the very top can cover the group immediately after a
- // successful check. Do not leave it there for the old 250ms polling window.
- DWORD now=GetTickCount();if(!force&&checked&&foreground==checkedForeground&&DWORD(now-checkedAt)<250&&GetTopWindow(nullptr)!=foreground)return TRUE;
- checked=true;checkedAt=now;checkedForeground=foreground;
  std::vector<Entry> visible;
  {std::lock_guard<std::mutex> lock(mutex);for(const auto&e:entries)if(own(e.window)&&IsWindowVisible(e.window))visible.push_back(e);}
  if(visible.empty()||std::any_of(visible.begin(),visible.end(),[&](const Entry&e){return e.window==foreground;}))return TRUE;
+ // Hidden/system topmost HWNDs may remain above a game which has just covered
+ // our entire group. Absolute desktop-top identity cannot validate the cache.
+ // Instead prove that EVERY visible member is still above this foreground.
+ // A healthy contiguous group takes one hop per member; only the periodic
+ // audit or an obscured/changed group needs the full desktop scan and repair.
+ DWORD now=GetTickCount();
+ if(!force&&checked&&foreground==checkedForeground&&DWORD(now-checkedAt)<250&&visible.size()<=64){
+  const uint64_t complete=visible.size()==64?~uint64_t(0):(uint64_t(1)<<visible.size())-1;uint64_t seen=0;int checkedWindows=0;
+  for(HWND w=GetWindow(foreground,GW_HWNDPREV);w&&checkedWindows++<4096;w=GetWindow(w,GW_HWNDPREV)){
+   for(size_t n=0;n<visible.size();++n)if(visible[n].window==w)seen|=uint64_t(1)<<n;
+   if(seen==complete)return TRUE;
+  }
+ }
+ checked=true;checkedAt=now;checkedForeground=foreground;
  bool behind=false,obscured=false;int scanned=0;
  for(HWND w=GetTopWindow(nullptr);w&&scanned++<4096;w=GetWindow(w,GW_HWNDNEXT)){
   if(w==foreground){behind=true;continue;}
