@@ -19,6 +19,7 @@ namespace renderupgrade {
 static double presentationNow(){return std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now().time_since_epoch()).count();}
 struct Request {uint64_t generation=0;bool materialRefresh=true;int detail=1,colorPrecision=1;uint32_t pid=0,match=0,tick=0;int width=0,height=0;uint32_t reveal=0;int paletteRange=1,pixelScaleMode=0;external::mainview::View view;overlaycompositor::Context context;bool gpu=false,neural=false;uint64_t neuralToken=0;renderpresentation::CameraPrefetch cameraMotion;};
 struct Frame {
+ double sampleMs=0,sceneMs=0,finishMs=0,gpuWaitMs=0,gpuCopyMs=0;
  Request request;std::shared_ptr<const external::radar::Scene> image;
  std::vector<external::nativefeedback::Object> objects;
  bool gpuAttempted=false,gpuUsed=false;
@@ -90,6 +91,7 @@ static asyncwork::Latest<Request,Frame> worker([](const Request&r)->std::shared_
     !external::radar::freshMarkers(raw,external::radar::publicationContext(fresh)))return unavailable();
   timeline.observe(raw,presentationNow());sampledLogicFrame=raw.frame;sampleValid=true;
  }
+ const double sampledMs=presentationNow();
  auto data=timeline.sample(presentationNow(),r.materialRefresh,r.detail!=0);
  if(!data.terrain)return unavailable();
  const uint32_t sampledTick=GetTickCount();
@@ -121,8 +123,11 @@ static asyncwork::Latest<Request,Frame> worker([](const Request&r)->std::shared_
  renderer.guideEnabled(neuralHost&&r.neural&&r.gpu&&r.detail!=0&&!neuralRenderer.blocked(),r.generation);
  auto scene=renderer.render(data,border.width,border.height,external::SharedReadView{&reader},assets,{crop.x-paddingX,crop.y-paddingY,crop.width+2*paddingX,crop.height+2*paddingY,true},unsigned(r.pixelScaleMode),r.detail!=0,true,r.colorPrecision!=0);
  if(!scene)return unavailable();
+ const double sceneDoneMs=presentationNow();
  auto out=std::make_shared<Frame>();out->request=sampledRequest;out->paddingX=border.paddingX;out->paddingY=border.paddingY;out->assetRevision=assetRevision;out->logicFrame=data.frame;out->observationMs=timeline.interval();
  out->gpuAttempted=external::xbrzadapter::gpuAttempted();out->gpuUsed=external::xbrzadapter::gpuUsed();
+ out->sampleMs=sampledMs-started;out->sceneMs=sceneDoneMs-sampledMs;
+ if(out->gpuUsed&&gpuBackend){out->gpuWaitMs=gpuBackend->diagnostics().waitMilliseconds;out->gpuCopyMs=gpuBackend->diagnostics().readbackMilliseconds;}
  // Neural rendering sees only the completed world. Native feedback, command
  // lines and the independently refreshed cursor are composed afterwards.
  if(r.neural){
@@ -158,7 +163,7 @@ static asyncwork::Latest<Request,Frame> worker([](const Request&r)->std::shared_
  external::mainview::View after;
  if(!external::mainview::sample(fresh,after)||!renderpresentation::sameProjection(before,after)||after.frame<before.frame||
    !external::radar::sameWorld(data,external::radar::publicationContext(fresh)))return unavailable();
- out->image=std::move(scene);out->sampledTick=sampledTick;out->completedTick=GetTickCount();const double completedMs=presentationNow();out->renderMs=completedMs-started;lastCompletedRenderMs=out->renderMs;
+ out->image=std::move(scene);out->sampledTick=sampledTick;out->completedTick=GetTickCount();const double completedMs=presentationNow();out->renderMs=completedMs-started;out->finishMs=completedMs-sceneDoneMs;lastCompletedRenderMs=out->renderMs;
  // Written exactly once per successful world-frame completion. Reusing or
  // touching the same frame at a faster UI cadence cannot inflate this rate.
  out->hasCompletionGap=hasFrameCompleteTime;out->completionGapMs=hasFrameCompleteTime?completedMs-lastFrameCompleteMs:0;
@@ -367,7 +372,10 @@ static void update(POINT origin,const RECT&client,const external::display::State
   if(renderMaterialRefresh)status+=L" · 素材高刷目标 "+std::to_wstring(informationFPS())+L" Hz";
   if(request.gpu)status+=request.detail==0?L" · 原生合成对照：CPU":presentedFrame->gpuUsed?L" · Vulkan GPU 场景":L" · Vulkan 未启用或已回退 CPU";
   if(request.neural)status+=presentedFrame->neural.used?L" · DLSS 5 已处理":L" · DLSS 5 未生效（保留普通画面）";
-  status+=L" · 本帧 "+std::to_wstring(int(std::lround(presentedFrame->renderMs)))+L" ms";
+  auto ms=[](double value){wchar_t text[32]{};swprintf(text,32,L"%.1f",value);return std::wstring(text);};
+  status+=L" · 本帧 "+ms(presentedFrame->renderMs)+L" ms（采样 "+ms(presentedFrame->sampleMs)+L"／场景 "+ms(presentedFrame->sceneMs)+L"／后处理 "+ms(presentedFrame->finishMs)+L"）";
+  if(presentedFrame->gpuUsed)status+=L" · 场景内末次 GPU 等待 "+ms(presentedFrame->gpuWaitMs)+L"／回读整理 "+ms(presentedFrame->gpuCopyMs)+L" ms";
+  if(renderMaterialRefresh)status+=L" · 观测间隔 "+ms(presentedFrame->observationMs)+L" ms";
   status+=L" · 光棱/激光与矿车采集保留原生像素；电弧近似，辐射束/波纹/粒子待补，实机待测";
  }
  if(result&&result->hasCompletionGap)status+=L" · 世界新帧间隔 "+std::to_wstring(int(std::lround(result->completionGapMs)))+L" ms";

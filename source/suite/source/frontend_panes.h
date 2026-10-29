@@ -22,6 +22,8 @@
 namespace frontendpanes {
 constexpr UINT LayoutMessage=WM_APP+80,ActivityMessage=WM_APP+87,SnapshotMessage=WM_APP+88,DestroyedMessage=WM_APP+89;
 constexpr UINT_PTR PaneSubclass=0x6328;
+constexpr UINT_PTR SnapshotTimer=0x6329;
+constexpr UINT SnapshotDelay=120;
 struct Composition {
  using Set=HRESULT(WINAPI*)(HWND,DWORD,LPCVOID,DWORD);using Get=HRESULT(WINAPI*)(HWND,DWORD,PVOID,DWORD);
  Set set=nullptr;Get get=nullptr;
@@ -66,22 +68,33 @@ class Host {
  }
  static LRESULT CALLBACK paneProc(HWND w,UINT m,WPARAM a,LPARAM b,UINT_PTR id,DWORD_PTR data){
   auto& s=*reinterpret_cast<Slot*>(data);auto& host=*s.host;
-  if(m==SnapshotMessage){s.snapshotPending=false;host.capture(s);return 0;}
+  if(m==SnapshotMessage){host.requestSnapshot(s);return 0;}
+  if(m==WM_TIMER&&a==SnapshotTimer){
+   if(!s.snapshotPending)return 0; // a killed timer can leave a queued WM_TIMER
+   // Scrollbars and menus run nested message loops. A posted WM_PRINT used
+   // to enter those loops between thumb updates, recursively painting the
+   // entire settings subtree. An idle timer must also respect mouse capture.
+   GUITHREADINFO input{sizeof input};
+   if(!GetGUIThreadInfo(GetCurrentThreadId(),&input)||input.hwndCapture||
+      (input.flags&(GUI_INMOVESIZE|GUI_INMENUMODE|GUI_SYSTEMMENUMODE|GUI_POPUPMENUMODE)))return 0;
+   KillTimer(w,SnapshotTimer);s.snapshotPending=false;host.capture(s);return 0;
+  }
   if(m==WM_NCDESTROY){
+   KillTimer(w,SnapshotTimer);s.snapshotPending=false;
    {std::lock_guard<std::mutex> lock(s.mutex);s.window.store(nullptr);s.pending=false;s.appliedValid=false;s.snapshot.reset();}
    RemovePropW(w,L"RA2.Suite.Managed");RemoveWindowSubclass(w,paneProc,id);
    PostMessageW(host.shell_,DestroyedMessage,s.index,(LPARAM)w);
   }
   auto result=DefSubclassProc(w,m,a,b);
   if(m==WM_ACTIVATE||m==WM_SHOWWINDOW)PostMessageW(host.shell_,ActivityMessage,s.index,0);
-  // A frozen settings image is refreshed after a user edit/layout, not at the
-  // game/render cadence. The capture always runs in this window's own thread.
+  // Edits only restart a low-priority idle timer. Neither input dispatch nor
+  // layout completion waits for a frozen image used solely while shell-dragging.
   if(m==WM_COMMAND||m==WM_VSCROLL||m==WM_HSCROLL||m==WM_MOUSEWHEEL||m==WM_APP+86)host.requestSnapshot(s);
   return result;
  }
  void requestSnapshot(Slot& s){
-  if(s.snapshotPending||s.capturing)return;s.snapshotPending=true;
-  if(!PostMessageW(s.window.load(),SnapshotMessage,0,0))s.snapshotPending=false;
+  if(s.capturing)return;
+  s.snapshotPending=SetTimer(s.window.load(),SnapshotTimer,SnapshotDelay,nullptr)!=0;
  }
  void capture(Slot& s){
   HWND w=s.window.load();if(!w||s.capturing||!IsWindowVisible(w))return;
@@ -163,9 +176,8 @@ public:
   {std::lock_guard<std::mutex> lock(s->mutex);if(!s->pending)return true;next=s->latest;s->pending=false;s->processing=true;s->executing=next;}
   bool show=next.visible&&canPresent();
   if(!show){
-   // DWM already concealed this surface from the shell thread. Capture while
-   // WS_VISIBLE still permits native controls to print, then hide it normally.
-   if(IsWindowVisible(w)){capture(*s);ShowWindow(w,SW_HIDE);}
+   // Hide promptly; never print a subtree while focus/capture is changing.
+   if(IsWindowVisible(w))ShowWindow(w,SW_HIDE);
    next.visible=false;
   }else{
    if(s->dpi!=next.dpi){s->dpi=next.dpi;SendMessageW(w,dpiMessage,next.dpi,0);}
@@ -175,13 +187,13 @@ public:
    // never bring a settings panel in front of the game/another foreground app.
    if(canPresent()){
     SetWindowPos(w,HWND_TOP,next.rect.left,next.rect.top,next.rect.right-next.rect.left,next.rect.bottom-next.rect.top,flags|SWP_SHOWWINDOW);
-    // Finish the real surface and a full frozen frame in this worker thread.
-    // Completion is acknowledged only afterwards; the shell alone uncloaks.
-    RedrawWindow(w,nullptr,nullptr,RDW_INVALIDATE|RDW_ALLCHILDREN|RDW_UPDATENOW);capture(*s);
+    // Finish the real controls independently of the optional drag snapshot.
+    RedrawWindow(w,nullptr,nullptr,RDW_INVALIDATE|RDW_ALLCHILDREN|RDW_UPDATENOW);
    }else{ShowWindow(w,SW_HIDE);next.visible=false;}
   }
   {std::lock_guard<std::mutex> lock(s->mutex);s->applied=next;s->appliedValid=true;s->processing=false;}
   PostMessageW(shell_,ActivityMessage,s->index,0);
+  if(next.visible)requestSnapshot(*s);
   return true;
  }
  // Shell-thread only. A worker completion may arrive after many newer moves:

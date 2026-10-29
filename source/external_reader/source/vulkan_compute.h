@@ -36,7 +36,7 @@ struct Diagnostics {
  uint64_t frames=0,uploadedBytes=0,uploads=0,dispatches=0,readbacks=0,xbrzBuilds=0,voxelRasters=0;
  bool xbrzAvailable=false;
  uint64_t allocatedBufferBytes=0,mappedBufferBytes=0,peakMappedBufferBytes=0;
- double milliseconds=0;
+ double milliseconds=0,waitMilliseconds=0,readbackMilliseconds=0;
  bool available=false,softwareDevice=false;
  std::string device,reason;
 };
@@ -231,7 +231,7 @@ public:
  const Diagnostics& diagnostics()const{return diagnostics_;}
  bool render(int width,int height,const std::vector<TileJob>& jobs,std::vector<uint32_t>& out){
   const auto started=std::chrono::steady_clock::now();
-  diagnostics_.uploads=diagnostics_.uploadedBytes=diagnostics_.dispatches=diagnostics_.readbacks=diagnostics_.xbrzBuilds=diagnostics_.voxelRasters=0;
+  diagnostics_.uploads=diagnostics_.uploadedBytes=diagnostics_.dispatches=diagnostics_.readbacks=diagnostics_.xbrzBuilds=diagnostics_.voxelRasters=0;diagnostics_.waitMilliseconds=diagnostics_.readbackMilliseconds=0;
   if(disabled_)return false;
   if(width<1||height<1||width>8192||height>8192||uint64_t(width)*height>MaxPixels||jobs.empty()||jobs.size()>4096)return fail("Invalid Vulkan output dimensions");
   uint64_t coordinateCount=0;
@@ -296,10 +296,14 @@ public:
   // Software Vulkan exists only in the explicit CI build; shader JIT is not
   // hardware performance evidence and gets a separate test-only wait budget.
   const uint64_t waitBudget=AllowSoftware&&diagnostics_.softwareDevice?10000000000ull:100000000ull;
+  const auto waitStarted=std::chrono::steady_clock::now();
   VkResult waited=vkWaitForFences_(device_,1,&fence_,VK_TRUE,waitBudget);
+  diagnostics_.waitMilliseconds=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-waitStarted).count();
   if(waited!=VK_SUCCESS){quarantined().store(true,std::memory_order_relaxed);return fatal(waited==VK_TIMEOUT?"Vulkan compute timed out; CPU fallback":"Vulkan device lost; CPU fallback");}inFlight_=false;
+  const auto copyStarted=std::chrono::steady_clock::now();
   if(!readback_.coherent){VkMappedMemoryRange range{VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE};range.memory=readback_.memory;range.size=VK_WHOLE_SIZE;if(vkInvalidateMappedMemoryRanges_(device_,1,&range)!=VK_SUCCESS)return fatal("Vulkan readback invalidation failed");}
   out.resize(size_t(width)*height);std::memcpy(out.data(),readback_.mapped,size_t(outputBytes));tiles_=std::move(retained);
+  diagnostics_.readbackMilliseconds=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-copyStarted).count();
   ++diagnostics_.frames;diagnostics_.uploads=copies.size();diagnostics_.uploadedBytes=uploadBytes;diagnostics_.dispatches=dispatches.size();diagnostics_.readbacks=1;diagnostics_.reason.clear();diagnostics_.milliseconds=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-started).count();return true;
  }
 };

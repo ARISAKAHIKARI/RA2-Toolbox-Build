@@ -10,8 +10,10 @@ static frontendpanes::Host host(&compositionAPI);
 static std::atomic<HWND> pane{nullptr};
 static std::atomic<unsigned> layouts{0},dpi{0},shellMessages{0},blockDpi{0};
 static std::atomic<int> dialogResult{0};
+static std::atomic<unsigned> prints{0},scrollInputs{0};
 static HANDLE ready,busyStarted,busyRelease,idle;
 static constexpr UINT Busy=WM_APP+110,Dpi=WM_APP+111,Ping=WM_APP+112,Idle=WM_APP+113,Dialog=WM_APP+114;
+static constexpr UINT BeginScroll=WM_APP+115,EndScroll=WM_APP+116;
 static constexpr auto DialogTitle=L"RA2 managed-pane modal fixture";
 static std::atomic<bool> probeComposition{false};static std::atomic<unsigned> compositionProbes{0};
 static void require(bool value,const char* message){if(!value){std::fprintf(stderr,"FAIL: %s (error=%lu)\n",message,GetLastError());std::abort();}}
@@ -33,12 +35,15 @@ static LRESULT CALLBACK shellProc(HWND w,UINT m,WPARAM a,LPARAM b){
  if(m==Ping){++shellMessages;return 0;}return DefWindowProcW(w,m,a,b);
 }
 static LRESULT CALLBACK paneProc(HWND w,UINT m,WPARAM a,LPARAM b){
+ if(m==BeginScroll){SetCapture(w);require(GetCapture()==w,"capture on pane owner thread");return 0;}
+ if(m==EndScroll){ReleaseCapture();return 0;}
+ if(m==WM_VSCROLL||m==WM_MOUSEWHEEL||m==WM_COMMAND){++scrollInputs;return 0;}
  if(m==frontendpanes::LayoutMessage){++layouts;host.apply(w,m,Dpi);return 0;}
  if(m==Dpi){dpi=unsigned(a);if(blockDpi.load()==unsigned(a)){blockDpi=0;SetEvent(busyStarted);require(WaitForSingleObject(busyRelease,5000)==WAIT_OBJECT_0,"in-flight DPI fixture release");}return 0;}
  if(m==Busy){SetEvent(busyStarted);require(WaitForSingleObject(busyRelease,5000)==WAIT_OBJECT_0,"busy fixture release");return 0;}
  if(m==Idle){SetEvent(idle);return 0;}
  if(m==Dialog){dialogResult=settingsdialog::message(w,true,L"Hidden-pane owner must not conceal this prompt.",DialogTitle,MB_OK);return 0;}
- if(m==WM_PRINTCLIENT){RECT r{};GetClientRect(w,&r);auto brush=CreateSolidBrush(RGB(23,47,89));FillRect((HDC)a,&r,brush);DeleteObject(brush);return 0;}
+ if(m==WM_PRINTCLIENT){++prints;RECT r{};GetClientRect(w,&r);auto brush=CreateSolidBrush(RGB(23,47,89));FillRect((HDC)a,&r,brush);DeleteObject(brush);return 0;}
  if(m==WM_CLOSE){DestroyWindow(w);return 0;}
  if(m==WM_DESTROY){PostQuitMessage(0);return 0;}
  return DefWindowProcW(w,m,a,b);
@@ -73,6 +78,14 @@ int main(){
  unsigned widgetPixels=0;for(unsigned y=12;y<38;++y)for(unsigned x=12;x<172;++x)if((image->pixels[size_t(y)*320+x]&0xffffffu)!=0x172f59u)++widgetPixels;
  require(widgetPixels>100,"complete child-control drawing preserved in frozen image");
  require(dpi==96,"initial DPI delivery");
+
+ host.post(0,BeginScroll);settle();auto printBefore=prints.load();
+ for(unsigned i=0;i<200;++i)host.post(0,i%2?WM_VSCROLL:WM_MOUSEWHEEL);
+ host.post(0,WM_COMMAND);settle();require(scrollInputs==201,"scroll and buttons still dispatch during capture");
+ auto dragStarted=GetTickCount64();until([&]{return GetTickCount64()-dragStarted>300;},"pump captured scroll for idle timer");
+ require(prints==printBefore,"no subtree print while scrollbar/input owns capture");
+ host.post(0,EndScroll);until([&]{return prints>printBefore;},"idle snapshot resumes after capture release");
+ image=host.snapshot(0);
 
  busy();unsigned before=layouts;auto start=GetTickCount64();probeComposition=true;host.beginInteraction();
  require(compositionProbes==1,"cloak callback reentry is exercised while module UI is busy");

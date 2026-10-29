@@ -6,6 +6,7 @@
 
 | 主题 | 新笔记 | 关键词 |
 | --- | --- | --- |
+| 全部分区滚动后控件失效、帧率分项与基地车展开边界 | [滚动输入补查](2026-10-29-scroll-input-followup.md) | WM_PRINT idle timer capture sampling fence readback MCV pending |
 | 坡面阴影、光束／采矿与单位 UI、SHP 炮塔、素材动作、拖屏和退出响应 | [渲染与退出补查 hotfix2](2026-10-29-render-hotfix2.md) | Shadow_Matrix Laser Gather Ammo IFV SHP turret sequence partial visible Cadence ASYNCWINDOWPOS modal |
 | pre.7 类型清单依赖、队形双击上下文、窗口退役与 CI 启动前失败复核 | [前端补查 hotfix1](2026-10-29-frontend-hotfix1.md) | dependency19 type-list Tap context stale connection HWND retirement CI runner0 no-steps |
 | 工具箱独立设置窗口、依赖约束、明确快捷键手势与页面滚轮 | [前端输入与响应](2026-10-29-frontend-input-responsiveness.md) | popup DWM cloak latest processing dependency60 Press Release Hold Double keyboardOnly wheel |
