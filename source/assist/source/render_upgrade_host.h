@@ -284,6 +284,15 @@ static void updateNeuralStatus(bool force=false){
 }
 static void update(POINT origin,const RECT&client,const external::display::State&displayState){
  updateNeuralStatus();
+ // Saved precision/VXL/xBRZ values are only presets until explicitly enabled.
+ const bool quality=renderExtraQuality;
+ const bool qualityMaterial=quality&&renderMaterialRefresh;
+ const int qualityDetail=quality?renderSceneDetail:0;
+ const int qualityColor=quality?renderColorPrecision:0;
+ const int qualityPalette=quality?renderPaletteRange:0;
+ const int qualityScale=quality&&renderXbrzEnabled?renderPixelScale:1;
+ const bool qualityGPU=quality&&renderVulkanEnabled;
+ const bool qualityNeural=quality&&renderDLSS5Requested;
  // The whole tool remains system-DPI aware. A physical-pixel option must
  // explicitly validate monitor geometry instead of assuming a 4K monitor
  // makes a 2K client window magically 4K.
@@ -308,10 +317,10 @@ static void update(POINT origin,const RECT&client,const external::display::State
     auto held=groupLease.frame();
     if(held){
      Request current=held->request;current.generation=generation;current.pid=pid;current.match=match;current.view=prior;
-     current.materialRefresh=renderMaterialRefresh;current.detail=renderSceneDetail;current.colorPrecision=renderColorPrecision;
-     current.paletteRange=renderPaletteRange;current.reveal=uint32_t(extra.renderReveal||extra.mapStrategy==3);
-     current.gpu=renderVulkanEnabled;
-     current.neural=renderDLSS5Requested;
+     current.materialRefresh=qualityMaterial;current.detail=qualityDetail;current.colorPrecision=qualityColor;current.pixelScaleMode=qualityScale;
+     current.paletteRange=qualityPalette;current.reveal=uint32_t(extra.renderReveal||extra.mapStrategy==3);
+     current.gpu=qualityGPU;
+     current.neural=qualityNeural;
      current.neuralToken=neuralRenderer.token();
      // Scale-mode changes require a fresh verified request, even during a read gap.
      if(verifiedScaleSetting!=renderPixelScale||verifiedPhysicalSetting!=renderPhysicalOutput)groupLease.reset();
@@ -361,14 +370,13 @@ static void update(POINT origin,const RECT&client,const external::display::State
  // "Auto" is deliberately adaptive only when the real monitor/target
  // qualifies as physical output. Existing nonphysical configurations retain
  // their original nearest/area behavior.
- const int effectiveScale=renderPath==physicalpresentation::RenderPath::EnhancedPhysicalPixels&&
-   renderPixelScale==0?3:renderPixelScale;
+ const int effectiveScale=qualityScale; // no implicit 4K xBRZ
  verifiedScaleSetting=renderPixelScale;verifiedPhysicalSetting=renderPhysicalOutput;
- Request request{generation,renderMaterialRefresh,renderSceneDetail,renderColorPrecision,pid,displayMatch(),GetTickCount(),right-left,bottom-top,
+ Request request{generation,qualityMaterial,qualityDetail,qualityColor,pid,displayMatch(),GetTickCount(),right-left,bottom-top,
   uint32_t(extra.renderReveal||extra.mapStrategy==3),
-  renderPaletteRange,effectiveScale,view,context};
- request.gpu=renderVulkanEnabled;
- request.neural=renderDLSS5Requested;
+  qualityPalette,effectiveScale,view,context};
+ request.gpu=qualityGPU;
+ request.neural=qualityNeural;
  request.neuralToken=neuralRenderer.token();
  cameraPrefetch.observePresentation(view,viewNow);request.cameraMotion=cameraPrefetch;
  auto result=worker.get();
@@ -427,7 +435,8 @@ static void update(POINT origin,const RECT&client,const external::display::State
  if(!displaying&&!fresh)status=L"渲染升级：采样/素材或视角变化，暂用原画面";
  else if(!displaying&&!feedbackReady)status=L"渲染升级：等待有效光标或选择状态，暂用原画面";
  else{
-  status=renderPaletteRange==1?L"渲染升级：RGB888 全范围色盘":L"渲染升级：原生 DAC 色盘";
+  status=!renderExtraQuality?L"渲染升级：基础快速绘制（原生色盘/光照/几何）":
+          request.paletteRange==1?L"渲染升级：额外画质处理 · RGB888 色盘":L"渲染升级：额外画质处理 · 原生 DAC 色盘";
   if(renderPhysicalOutput){
    if(physical.status==physicalpresentation::Status::Ready)
     status+=L" · 物理设备 "+std::to_wstring(client.right)+L"×"+std::to_wstring(client.bottom)+
@@ -455,10 +464,10 @@ static void update(POINT origin,const RECT&client,const external::display::State
   status+=L" · 游戏视口 "+std::to_wstring(request.view.width)+L"×"+std::to_wstring(request.view.height)+
           L" → 输出 "+std::to_wstring(request.width)+L"×"+std::to_wstring(request.height);
 
-  status+=renderColorPrecision?L" · 连续 RGB 光照":L" · 兼容光照色阶";
-  if(renderSceneDetail)status+=L" · 连续地形＋目标像素对象＋VXL 自适应几何/256 向";
-  status+=L" · 独立整帧绘制目标 "+std::to_wstring(informationFPS())+L" Hz";
-  if(renderMaterialRefresh)status+=L" · 素材插值";
+  status+=request.colorPrecision?L" · 连续 RGB 光照":L" · 原生光照色阶";
+  if(request.detail)status+=L" · 精细 VXL/目标像素";
+  status+=L" · 单位采样/地形分页/整帧绘制独立线程 · 目标 "+std::to_wstring(informationFPS())+L" Hz";
+  if(request.materialRefresh)status+=L" · 素材插值";
   if(request.gpu)status+=request.detail==0?L" · 原生合成对照：CPU":presentedFrame->gpuUsed?L" · Vulkan GPU 场景":L" · Vulkan 未启用或已回退 CPU";
   if(request.neural)status+=presentedFrame->neural.used?L" · DLSS 5 已处理":L" · DLSS 5 未生效（保留普通画面）";
   status+=L" · 光棱/激光与矿车采集保留原生像素；电弧近似，辐射束/波纹/粒子待补，实机待测";
