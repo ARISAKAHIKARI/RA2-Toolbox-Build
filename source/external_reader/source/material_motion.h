@@ -34,7 +34,8 @@ public:
   bool continuous=ready_&&frame.frame>current_.frame&&
    now>observed_&&now-observed_<=250&&frame.terrain->geo.same(current_.terrain->geo)&&
    frame.terrain->reveal==current_.terrain->reveal;
-  prior_.clear();interval_=continuous?std::clamp(now-observed_,4.,250.):0;
+  // Keep the visual lag capped even when game updates or CPU paints are slow.
+  prior_.clear();interval_=continuous?std::clamp(now-observed_,4.,100.):0;
   if(continuous){previous_=std::move(current_);for(const auto&m:previous_.markers)prior_[{m.object,m.id}]=m;}
   else previous_={};
   current_=frame;observed_=now;ready_=true;return true;
