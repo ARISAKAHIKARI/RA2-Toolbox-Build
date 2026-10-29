@@ -1,0 +1,70 @@
+name: Test Neural Rendering runtime installer
+on:
+  push:
+    branches: [codex/dlss5-ngx-probe-20261029]
+    paths: [.github/workflows/test-neural-runtime-installer.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  installer:
+    runs-on: windows-2022
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Parse PowerShell and verify the real pinned runtime transaction
+        shell: pwsh
+        run: |
+          $ErrorActionPreference='Stop'
+          $script=Join-Path $env:GITHUB_WORKSPACE 'source/neural_renderer/Install-DLSS5Runtime.ps1'
+          $tokens=$null; $errors=$null
+          [void][System.Management.Automation.Language.Parser]::ParseFile($script,[ref]$tokens,[ref]$errors)
+          if($errors.Count){throw ($errors|Out-String)}
+          $root=Join-Path $env:RUNNER_TEMP 'nr-installer-test'
+          [void][IO.Directory]::CreateDirectory($root)
+          $configuration=Join-Path $root 'Assist.ini'
+          [IO.File]::WriteAllText($configuration,("[Display]"+[Environment]::NewLine+"RenderDLSS5=0"+[Environment]::NewLine+"Sentinel=keep"))
+          $before=(Get-FileHash -LiteralPath $configuration).Hash
+          $archive=Join-Path $env:RUNNER_TEMP 'official-nr-sdk.7z'
+          $ProgressPreference='SilentlyContinue'
+          Invoke-WebRequest 'https://d1oqksizpb0e3d.cloudfront.net/rtx-remix-ngx_sdk_dlnr%402.7z' -OutFile $archive
+          & $script -InstallDirectory $root -ArchivePath $archive
+          $dll=Join-Path $root 'neural-runtime/nvngx_dlssnr.dll'
+          $license=Join-Path $root 'neural-runtime/LICENSE.txt'
+          $dllHash='2bc19bc09a7b89dd44f73e2ac0108fcc586e2154bdd0830f242f4f040e28789f'
+          $licenseHash='3027f23ca5a46dd9cb8183fbd522983a86f64d7daac5982912bf9f214671f294'
+          function CheckInstalled {
+            if((Get-FileHash -LiteralPath $dll).Hash -ine $dllHash){throw 'Wrong runtime'}
+            if((Get-FileHash -LiteralPath $license).Hash -ine $licenseHash){throw 'Wrong license'}
+            if((Get-FileHash -LiteralPath $configuration).Hash -ne $before){throw 'Configuration changed'}
+            if(@(Get-ChildItem -LiteralPath $root -Filter '.neural-runtime-stage-*' -Force).Count){throw 'Staging directory leaked'}
+          }
+          CheckInstalled
+          $signature=Get-AuthenticodeSignature -LiteralPath $dll
+          Write-Host "NVIDIA_SIGNATURE_STATUS=$($signature.Status) SUBJECT=$($signature.SignerCertificate.Subject)"
+          Write-Host "NVIDIA_NR_FILE_VERSION=$((Get-Item -LiteralPath $dll).VersionInfo.FileVersion)"
+          & $script -InstallDirectory $root -ArchivePath $archive
+          CheckInstalled
+          Write-Host 'INSTALL_AND_REINSTALL_PASS'
+          $badArchive=Join-Path $env:RUNNER_TEMP 'bad-nr-sdk.7z'
+          [IO.File]::WriteAllText($badArchive,'bad')
+          $rejected=$false
+          try { & $script -InstallDirectory $root -ArchivePath $badArchive } catch { $rejected=$true }
+          if(-not $rejected){throw 'Invalid package accepted'}
+          CheckInstalled
+          Write-Host 'INVALID_ARCHIVE_PRESERVES_INSTALL_PASS'
+          $licenseBytes=[IO.File]::ReadAllBytes($license)
+          [IO.File]::WriteAllText($license,'Previous license sentinel for rollback fixture')
+          $previousLicense=(Get-FileHash -LiteralPath $license).Hash
+          $lock=[IO.File]::Open($dll,[IO.FileMode]::Open,[IO.FileAccess]::Read,[IO.FileShare]::Read)
+          $rejected=$false
+          try { & $script -InstallDirectory $root -ArchivePath $archive } catch { $rejected=$true } finally { $lock.Dispose() }
+          if(-not $rejected){throw 'Locked runtime was replaced'}
+          if((Get-FileHash -LiteralPath $dll).Hash -ine $dllHash){throw 'Locked DLL changed'}
+          if((Get-FileHash -LiteralPath $license).Hash -ne $previousLicense){throw 'License rollback failed'}
+          if((Get-FileHash -LiteralPath $configuration).Hash -ne $before){throw 'Configuration changed during rollback'}
+          if(@(Get-ChildItem -LiteralPath $root -Filter '.neural-runtime-stage-*' -Force).Count){throw 'Failed transaction staging leaked'}
+          [IO.File]::WriteAllBytes($license,$licenseBytes)
+          CheckInstalled
+          Write-Host 'LOCKED_RUNTIME_LICENSE_ROLLBACK_PASS'
+          Write-Host 'NR_DLL_NEVER_EXECUTED'
