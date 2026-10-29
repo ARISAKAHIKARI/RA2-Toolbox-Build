@@ -6,6 +6,7 @@
 #include "../../external_reader/source/camera_assets.h"
 #include "../../external_reader/source/radar_scene.h"
 #include "../../external_reader/source/radar_publication.h"
+#include "../../external_reader/source/scene_bank.h"
 #include "../../shared/source/monitor_refresh.h"
 #include "../../shared/source/secondary_display.h"
 #include "radar_paint_gate.h"
@@ -28,15 +29,20 @@ class Worker {
    if(token!=active){if(r.pid!=activeRequest.pid||r.match!=activeRequest.match){reader.close();sampler.reset();renderer.reset();diagram.reset();}else {if(r.mode!=activeRequest.mode)sampler.reset();if(r.gpu!=activeRequest.gpu)renderer.reset();}activeRequest=r;active=token;previousFrame=-1;previousRevision=0;}
    external::xbrzadapter::gpuPresentation(r.gpu); // this worker owns its GPU state; native assets stay CPU-prepared
    std::shared_ptr<const external::radar::Frame> next;
-   if(reader.open(r.pid)){reader.begin();bool ok=sampler.step(r.reveal,4096,r.mode==1);int frame=reader.get<int>(0xA8ED84,-1);
+   if(reader.open(r.pid)){reader.begin();
+    auto fresh=[&](uint32_t p,void*out,size_t n){return reader.readFresh(p,out,n);};
+    auto shared=external::radar::sceneBank().get(r.pid,r.match,r.reveal,GetTickCount(),true);
+    if(shared&&!external::radar::freshMarkers(*shared,external::radar::publicationContext(fresh)))shared.reset();
+    bool ok=shared||sampler.step(r.reveal,4096,r.mode==1);reader.begin();int frame=reader.get<int>(0xA8ED84,-1);
     if(ok&&(r.mode==1||frame!=previousFrame||sampler.revision()!=previousRevision)){
-     auto data=sampler.snapshot(GetTickCount());data.map=diagram.render(data.terrain,r.width,r.height);auto fresh=[&](uint32_t p,void*out,size_t n){return reader.readFresh(p,out,n);};
+     auto data=shared?*shared:sampler.snapshot(GetTickCount(),frame);data.map=diagram.render(data.terrain,r.width,r.height);
      auto sampled=external::radar::publicationContext(fresh);
      const bool same=external::radar::sameWorld(data,sampled);
      // Sampling may span several game ticks. Keep the last complete image
      // until this world's markers are fresh instead of publishing a frame in
      // which every unit vanishes for one paint.
      if(same&&data.markerScanValid&&external::radar::freshMarkers(data,sampled)){
+      if(!shared&&r.mode==1)external::radar::sceneBank().publish(r.pid,r.match,false,std::make_shared<const external::radar::Frame>(data));
       // Publish terrain immediately; retain the last completed scene while the
       // next one loads. Initial MIX scans must not keep the whole window hidden.
       {std::lock_guard<std::mutex> lock(mutex);if(token==generation){if(r.mode==1&&latest&&latest->scene&&latest->terrain->reveal==data.terrain->reveal&&latest->terrain->geo.same(data.terrain->geo)&&latest->scene->width==r.width&&latest->scene->height==r.height)data.scene=latest->scene;latest=std::make_shared<external::radar::Frame>(data);}}

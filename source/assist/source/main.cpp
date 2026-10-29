@@ -1860,7 +1860,7 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
   }
   // Retired subscriptions keep the Runtime awake; stop all new Host work
   // while the sender restores its patches and acknowledges detach.
-  if(msg==WM_TIMER||msg==WM_COMMAND||msg==WM_HOTKEY||msg==FrameMessage||
+  if(msg==WM_TIMER||msg==WM_COMMAND||msg==WM_HOTKEY||msg==FrameMessage||msg==renderupgrade::ReadyMessage||
      msg==InputMessage||msg==ControlMessage||msg==DataMessage)return 0;
 #ifdef RA2_UNIFIED
   if(msg==suite::ModuleEnable||msg==suite::ApplyDisplaySetting||
@@ -1907,6 +1907,7 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
  case WM_MOUSEWHEEL:{int amount=pagewheel::delta(w,wp,84);if(amount)scrollTo(scrollY-amount);return 0;}
 
  case FrameMessage:{if(enabled||secondaryDisplayRequested())paint();InterlockedExchange(&framePending,0);return 0;}
+ case renderupgrade::ReadyMessage:{renderupgrade::presentCompleted();renderupgrade::readyPending=false;return 0;}
  case InputMessage:{shiftClickTick();InterlockedExchange(&inputPending,0);return 0;}
  case ControlMessage:{tick();InterlockedExchange(&controlPending,0);return 0;}
  case DataMessage:{if(shared&&wp==pid){InterlockedExchange(&shared->hostNotifyPending,0);readSnapshot();serviceSelection();result();serviceCommandQueue(GetTickCount());serviceCalculationTasks();servicePlanner();serviceCooperative();servicePointer();serviceHotkeyBatch();serviceConstruction();serviceAirPath();}return 0;}

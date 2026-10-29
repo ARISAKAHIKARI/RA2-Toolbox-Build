@@ -1,5 +1,6 @@
 #pragma once
 #include "../../shared/source/latest_worker.h"
+#include "../../shared/source/recurring_worker.h"
 #include "../../shared/source/overlay_compositor.h"
 #include "../../shared/source/physical_window.h"
 #include "../../external_reader/source/main_viewport.h"
@@ -10,6 +11,7 @@
 #include "../../external_reader/source/native_beam_effects.h"
 #include "../../external_reader/source/native_unit_ui_stencil.h"
 #include "../../external_reader/source/material_motion.h"
+#include "../../external_reader/source/scene_bank.h"
 #include <chrono>
 #include "render_presentation.h"
 #include "neural_renderer_client.h"
@@ -38,7 +40,10 @@ struct Observation {
 };
 static external::ReadSession sampleReader;
 static external::radar::Sampler<external::SharedReadView> sampler(external::SharedReadView{&sampleReader});
-static uint32_t process=0,epoch=0;static bool active=false;static uint32_t submittedAt=0;static uint64_t imageToken=0;
+static uint32_t process=0,epoch=0;static bool active=false;static uint64_t imageToken=0;
+static constexpr UINT ReadyMessage=WM_APP+20;
+static std::atomic<bool> readyPending{false};
+static void notifyReady(){if(!readyPending.exchange(true)&&!PostMessageW(ui,ReadyMessage,0,0))readyPending=false;}
 static std::atomic<int> progress{0};
 static uint64_t generation=1,workerGeneration=0;
 static external::materialmotion::Timeline timeline;
@@ -62,7 +67,7 @@ static std::wstring lastStatusText;
 static void statusText(const std::wstring&text){
  if(lastStatusText==text)return;lastStatusText=text;SetWindowTextW(GetDlgItem(ui,9303),text.c_str());
 }
-static asyncwork::Latest<Request,Observation> samplingWorker([](const Request&r)->std::shared_ptr<const Observation>{
+static asyncwork::Recurring<Request,Observation> samplingWorker([](const Request&r)->std::shared_ptr<const Observation>{
  static std::shared_ptr<const Observation> last;
  static uint64_t sampleGeneration=0;static uint32_t sampleProcess=0,sampleMatch=0,sampleReveal=~0u;
  const double started=presentationNow();
@@ -77,8 +82,14 @@ static asyncwork::Latest<Request,Observation> samplingWorker([](const Request&r)
  // Coalesce very fast UI requests without retaining an old observation for
  // a whole render. Paused games still resample and continue terrain paging.
  if(last&&last->current->frame==before.frame&&DWORD(GetTickCount()-last->tick)<8)return last;
+ if(!sampler.hasTerrain())if(auto shared=external::radar::sceneBank().get(r.pid,r.match,r.reveal,GetTickCount()))sampler.seedTerrain(*shared);
  if(!sampler.step(r.reveal,8192,true))return {};
- auto raw=sampler.snapshot(GetTickCount());
+ // Terrain paging can take several simulation ticks. Start a fresh page
+ // epoch for actors AFTER that work, rather than labelling old actor pages
+ // with the terrain scan's starting frame and rejecting every slow sample.
+ sampleReader.begin();external::mainview::View actorView;
+ if(!external::mainview::sample(fresh,actorView)||!renderpresentation::sameProjection(before,actorView)||actorView.frame<before.frame)return {};
+ auto raw=sampler.snapshot(GetTickCount(),actorView.frame);
  if(!raw.terrain||!raw.markerScanValid||!external::radar::freshMarkers(raw,external::radar::publicationContext(fresh)))return {};
  external::SharedReadView cached{&sampleReader};external::GameView game(cached);
  const uint32_t rules=game.get<uint32_t>(0x8871E0);
@@ -95,18 +106,19 @@ static asyncwork::Latest<Request,Observation> samplingWorker([](const Request&r)
  raw.posesPrepared=true;
  external::mainview::View captured;
  if(!external::mainview::sample(fresh,captured)||!renderpresentation::sameProjection(before,captured)||
-    !renderpresentation::sampleAdvance(before.frame,raw.frame,captured.frame)||
+    !renderpresentation::sampleAdvance(actorView.frame,raw.frame,captured.frame)||
     !external::radar::freshMarkers(raw,external::radar::publicationContext(fresh)))return {};
  auto out=std::make_shared<Observation>();out->request=r;out->view=captured;
  out->tick=GetTickCount();out->observedMs=presentationNow();out->readMs=out->observedMs-started;
  out->current=std::make_shared<const external::radar::Frame>(std::move(raw));
+ external::radar::sceneBank().publish(r.pid,r.match,true,out->current);
  if(last&&out->current->terrain->geo.same(last->current->terrain->geo)){
   if(out->current->frame>last->current->frame){out->previous=last->current;out->previousMs=last->observedMs;}
   else if(out->current->frame==last->current->frame){out->previous=last->previous;out->previousMs=last->previousMs;}
  }
  last=out;return out;
 });
-static asyncwork::Latest<Request,Frame> worker([](const Request&r)->std::shared_ptr<const Frame>{
+static asyncwork::Recurring<Request,Frame> worker([](const Request&r)->std::shared_ptr<const Frame>{
  const double started=presentationNow();
  static bool neuralPreviouslyRequested=false;
  external::xbrzadapter::gpuPresentation(r.gpu&&r.detail!=0);
@@ -175,7 +187,7 @@ static asyncwork::Latest<Request,Frame> worker([](const Request&r)->std::shared_
  sampledRequest.view=renderView;sampledRequest.context.cameraX=renderView.cameraX;sampledRequest.context.cameraY=renderView.cameraY;
  auto crop=external::mainview::crop(renderView,data.terrain->geo.offsetX,data.terrain->geo.offsetY);
  renderer.guideEnabled(neuralHost&&r.neural&&r.gpu&&r.detail!=0&&!neuralRenderer.blocked(),r.generation);
- auto scene=renderer.render(data,border.width,border.height,external::SharedReadView{&reader},assets,{crop.x-paddingX,crop.y-paddingY,crop.width+2*paddingX,crop.height+2*paddingY,true},unsigned(r.pixelScaleMode),r.detail!=0,true,r.colorPrecision!=0);
+ auto scene=renderer.render(data,border.width,border.height,external::SharedReadView{&reader},assets,{crop.x-paddingX,crop.y-paddingY,crop.width+2*paddingX,crop.height+2*paddingY,true},unsigned(r.pixelScaleMode),r.detail!=0,true,r.colorPrecision!=0,true);
  if(!scene)return unavailable();
  const double sceneDoneMs=presentationNow();
  auto out=std::make_shared<Frame>();out->request=sampledRequest;out->paddingX=border.paddingX;out->paddingY=border.paddingY;out->assetRevision=assetRevision;out->logicFrame=data.frame;out->observationMs=timeline.interval();
@@ -222,7 +234,7 @@ static asyncwork::Latest<Request,Frame> worker([](const Request&r)->std::shared_
  // touching the same frame at a faster UI cadence cannot inflate this rate.
  out->hasCompletionGap=hasFrameCompleteTime;out->completionGapMs=hasFrameCompleteTime?completedMs-lastFrameCompleteMs:0;
  lastFrameCompleteMs=completedMs;hasFrameCompleteTime=true;progress=2;return out;
-});
+},notifyReady);
 #include "render_feedback_host.h"
 static void suspendScene(){neuralRenderer.cancel();cameraPrefetch.reset();groupLease.reset();if(active){active=false;++generation;worker.invalidate();samplingWorker.invalidate();}feedback::hide();imageToken=0;overlaycompositor::host().hide(overlaycompositor::RenderUpgrade);}
 static void suspend(){viewLease.reset();suspendScene();}
@@ -384,8 +396,9 @@ static void update(POINT origin,const RECT&client,const external::display::State
   layers=groupLease.layers();presentedFrame=groupLease.frame();displaying=true;
  }else{layers.clear();groupLease.reset();imageToken=0;if(!fresh)feedback::hide();}
  overlaycompositor::host().replaceGroupAt(request.context,{overlaycompositor::RenderUpgrade,feedback::SelectionLayer,feedback::CursorLayer},std::move(layers));
- samplingWorker.submit(request);
- const uint32_t now=GetTickCount();if(DWORD(now-submittedAt)>=external::materialmotion::refreshPeriod(informationFPS(),renderMaterialRefresh)){submittedAt=now;worker.submit(std::move(request));}
+ samplingWorker.submit(request,informationFPS());
+ worker.submit(request,informationFPS());
+ const uint32_t now=GetTickCount();
  // Scene publication, current cursor feedback and worker submission run at
  // their own cadence. A hidden settings-page label needs only 4 updates/sec.
  const unsigned statusKind=(displaying?1:0)|(fresh?2:0)|(feedbackReady?4:0);
@@ -424,7 +437,8 @@ static void update(POINT origin,const RECT&client,const external::display::State
 
   status+=renderColorPrecision?L" · 连续 RGB 光照":L" · 兼容光照色阶";
   if(renderSceneDetail)status+=L" · 连续地形＋目标像素对象＋VXL 自适应几何/256 向";
-  if(renderMaterialRefresh)status+=L" · 素材高刷目标 "+std::to_wstring(informationFPS())+L" Hz";
+  status+=L" · 独立整帧绘制目标 "+std::to_wstring(informationFPS())+L" Hz";
+  if(renderMaterialRefresh)status+=L" · 素材插值";
   if(request.gpu)status+=request.detail==0?L" · 原生合成对照：CPU":presentedFrame->gpuUsed?L" · Vulkan GPU 场景":L" · Vulkan 未启用或已回退 CPU";
   if(request.neural)status+=presentedFrame->neural.used?L" · DLSS 5 已处理":L" · DLSS 5 未生效（保留普通画面）";
   status+=L" · 光棱/激光与矿车采集保留原生像素；电弧近似，辐射束/波纹/粒子待补，实机待测";
@@ -442,5 +456,14 @@ static void update(POINT origin,const RECT&client,const external::display::State
   status=timing+L"\r\n"+status;
  }
  statusText(status);
+}
+static void presentCompleted(){
+ if(!renderUpgradeEnabled||!enabled)return;
+ // Completion needs only the current viewport/input feedback. Do not repeat
+ // the entire tactical information scan before exposing an already drawn frame.
+ externalReader.begin();
+ auto state=external::display::inspect([](uint32_t p,void*out,size_t n){return externalReader.readFresh(p,out,n);});
+ RECT client{};POINT origin{};if(game){GetClientRect(game,&client);ClientToScreen(game,&origin);}
+ update(origin,client,state);
 }
 }

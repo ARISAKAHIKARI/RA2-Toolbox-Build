@@ -64,7 +64,9 @@ class Host {
    Context current;std::vector<Surface> layers;uint64_t version;bool active,highest;int hz;
    {
     std::unique_lock<std::mutex>lock(mutex);if(stop)break;
-    cv.wait_for(lock,std::chrono::milliseconds(4),[&]{return stop||revision!=presented;});if(stop)break;
+    const auto world=nodes.find(RenderUpgrade);
+    const bool continuous=enabled&&world!=nodes.end()&&overlaycomposition::valid(world->second.surface,context);
+    if(!continuous)cv.wait_for(lock,std::chrono::milliseconds(4),[&]{return stop||revision!=presented;});if(stop)break;
     const auto now=GetTickCount64();
     for(auto i=nodes.begin();i!=nodes.end();)if(now-i->second.lastSeen>750){i=nodes.erase(i);++revision;}else ++i;
     current=context;version=revision;active=enabled&&now-heartbeat<500;highest=top;hz=rate;
@@ -77,19 +79,20 @@ class Host {
    if(!active){if(visible)ShowWindow(window,SW_HIDE);visible=false;presented=version;
     std::unique_lock<std::mutex>lock(mutex);uploadContinuous_=false;uploadStatistics_.intervalMs=uploadStatistics_.maxGapMs=0;
     cv.wait_for(lock,std::chrono::milliseconds(8),[&]{return stop||revision!=version;});continue;}
-   // Uploading a full layered HWND faster than its confirmed display mode
-   // cannot reveal more frames. Sampling/command clocks keep their own rate.
+   const bool continuous=std::any_of(layers.begin(),layers.end(),[](const Surface&s){return s.id==RenderUpgrade;});
+   // The enhanced whole scene follows the explicitly requested cadence,
+   // including repeat submission while the next full render is computing.
    const int requestedHz=hz;
-   hz=overlaypresentrate::limit(hz,displayRate.update(target,GetTickCount()));
+   hz=continuous?std::clamp(hz,5,500):overlaypresentrate::limit(hz,displayRate.update(target,GetTickCount()));
    bool updated=true;
-   if(!visible||version!=presented||token!=current.token){
+   if(continuous||!visible||version!=presented||token!=current.token){
     const bool resize=dib.w!=current.width||dib.h!=current.height||!dib.dc;
     if(!composition.update(current,std::move(layers))||!dib.resize(current.width,current.height)){updated=false;}
     else{
      {std::lock_guard<std::mutex>lock(mutex);if(!enabled||context.token!=current.token||context.cameraX!=current.cameraX||context.cameraY!=current.cameraY){dibNeedsFullCopy=true;continue;}}
      const auto&output=composition.pixels();
      auto copy=[&](const overlaycomposition::Rect&dirty){for(int y=dirty.y;y<dirty.y+dirty.h;++y)memcpy(static_cast<uint32_t*>(dib.bits)+size_t(y)*current.width+dirty.x,output.data()+size_t(y)*current.width+dirty.x,size_t(dirty.w)*4);};
-     const bool needsUpload=!visible||resize||dibNeedsFullCopy||token!=current.token||!composition.dirtyRegions().empty();
+     const bool needsUpload=continuous||!visible||resize||dibNeedsFullCopy||token!=current.token||!composition.dirtyRegions().empty();
      if(resize||dibNeedsFullCopy)copy({0,0,current.width,current.height});else for(const auto&dirty:composition.dirtyRegions())copy(dirty);
      dibNeedsFullCopy=false;
      if(!needsUpload){
