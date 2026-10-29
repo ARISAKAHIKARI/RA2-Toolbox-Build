@@ -11,6 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
+      - uses: actions/checkout@v4
       - name: Resolve official public Remix SDK dependency without executing SDK binaries
         shell: bash
         run: |
@@ -58,10 +59,17 @@ jobs:
               if suffix=='.dll':
                   assert data[:2]==b'MZ'; pe=struct.unpack_from('<I',data,0x3c)[0]; assert data[pe:pe+4]==b'PE\0\0'
                   entry['machine']=hex(struct.unpack_from('<H',data,pe+4)[0])
-                  sig=b'\xbd\x04\xef\xfe'; version=data.find(sig)
-                  if version>=0 and version+16<=len(data):
-                      ms,ls=struct.unpack_from('<II',data,version+8)
-                      entry['file_version']='.'.join(map(str,(ms>>16,ms&65535,ls>>16,ls&65535)))
+                  key='VS_VERSION_INFO\0'.encode('utf-16-le')
+                  cursor=0; versions=[]
+                  while (at:=data.find(key,cursor))>=0:
+                      cursor=at+len(key)
+                      if at<6: continue
+                      length,value_size,kind=struct.unpack_from('<HHH',data,at-6)
+                      value=(at+len(key)+3)&~3
+                      if value_size==52 and kind==0 and value+52<=at-6+length and data[value:value+4]==b'\xbd\x04\xef\xfe':
+                          ms,ls=struct.unpack_from('<II',data,value+8)
+                          versions.append('.'.join(map(str,(ms>>16,ms&65535,ls>>16,ls&65535))))
+                  if versions: entry['file_versions']=sorted(set(versions))
               inventory['entries'].append(entry)
               print('NR_PACKAGE_ENTRY',json.dumps(entry,sort_keys=True))
               istext=suffix in ('.h','.hpp','.inl','.txt','.md','.xml','.json','.pdf','.html')
@@ -76,6 +84,19 @@ jobs:
           inventory['archive']={'url':url,'bytes':size,'sha256':digest.hexdigest()}
           print('NR_ARCHIVE_VERIFIED_SOURCE',json.dumps(inventory['archive']))
           (out/'inventory.json').write_text(json.dumps(inventory,indent=2)+'\n')
+          PY
+      - name: Exercise shipped SDK bootstrap from a fresh directory including runtime verification
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import os, pathlib, subprocess
+          cache=pathlib.Path(os.environ['RUNNER_TEMP'])/'nr-packman'/'cache'
+          sevenzip=next(path for path in cache.rglob('7zz') if path.is_file())
+          output=pathlib.Path(os.environ['RUNNER_TEMP'])/'reproducible-neural-sdk'
+          command=['python3','source/tools/fetch_neural_sdk.py','--output',str(output),'--sevenzip',str(sevenzip),'--include-runtime']
+          subprocess.run(command,check=True)
+          subprocess.run(['python3','source/tools/fetch_neural_sdk.py','--output',str(output),'--include-runtime','--verify-only'],check=True)
+          print('SDK_BOOTSTRAP_FRESH_AND_RUNTIME_HASH_VERIFIED')
           PY
       - uses: actions/upload-artifact@v4
         with:
