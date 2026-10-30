@@ -5,7 +5,7 @@
 #include <cstring>
 #include <memory>
 #include <vector>
-namespace external {namespace gpushroud {struct Plan;} namespace gpuarea {
+namespace external {namespace gpushroud {struct Plan;} namespace gpueffects {struct Plan;} namespace gpuarea {
 constexpr uint32_t PageSize=128,PagePixels=PageSize*PageSize,BlockSize=4,PrefixSide=33,PrefixWords=PrefixSide*PrefixSide*3,MaximumPages=sizeof(void*)>=8?8192:2048,Missing=0xffffffffu;
 inline uint64_t atlasBytes(size_t pages,uint64_t deviceLimit){
  const uint64_t required=uint64_t(pages)*PagePixels*4,maximum=uint64_t(MaximumPages)*PagePixels*4;
@@ -17,6 +17,7 @@ struct Plan {
  int nativeWidth=0,nativeHeight=0,width=0,height=0;double spanX=0,spanY=0;uint32_t background=0xff080c08u;
  std::vector<Page>pages;std::shared_ptr<const std::vector<uint8_t>>fog;
  std::shared_ptr<const gpushroud::Plan>mask;
+ std::shared_ptr<const gpueffects::Plan>effects;
 };
 inline bool valid(const Plan&p){
  if(p.nativeWidth<1||p.nativeHeight<1||p.nativeWidth>32768||p.nativeHeight>32768||p.width<1||p.height<1||p.width>2048||p.height>2048||
@@ -29,7 +30,7 @@ inline bool valid(const Plan&p){
 // Slow independent area oracle. Production uses NativeCanvas::Filter on CPU
 // and the GPU's integer coarse summed-area cache, not this loop.
 inline bool reference(const Plan&p,std::vector<uint32_t>&out){
- if(!valid(p)||p.mask)return false;const uint32_t cols=(p.nativeWidth+127)/128,rows=(p.nativeHeight+127)/128;
+ if(!valid(p)||p.mask||p.effects)return false;const uint32_t cols=(p.nativeWidth+127)/128,rows=(p.nativeHeight+127)/128;
  std::vector<const std::vector<uint32_t>*>table(size_t(cols)*rows,nullptr);for(const auto&page:p.pages)table[size_t(page.y)*cols+page.x]=page.pixels.get();
  std::vector<uint32_t>result(size_t(p.width)*p.height);double sx=p.spanX/p.width,sy=p.spanY/p.height;
  for(int y=0;y<p.height;++y)for(int x=0;x<p.width;++x){double l=std::clamp(x*sx,0.,double(p.nativeWidth)),r=std::clamp((x+1)*sx,0.,double(p.nativeWidth)),t=std::clamp(y*sy,0.,double(p.nativeHeight)),b=std::clamp((y+1)*sy,0.,double(p.nativeHeight));double sum[3]{};

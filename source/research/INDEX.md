@@ -6,6 +6,7 @@
 
 | 主题 | 新笔记 | 关键词 |
 | --- | --- | --- |
+| 小地图 GPU 完整帧、盯防共用世界管线、PIPS2 与采矿 SHP | [世界／UI 迁移 Hotfix20](2026-10-30-world-ui-minimap-hotfix20.md) | direct minimap no readback ordered effects watch shared world PIPS2 ANIM plain Convert no native holes |
 | 世界输入常驻、当前相机整帧与观察窗 GPU 直出，删除边缘复制 | [呈现管线 Hotfix19](2026-10-30-world-pipeline-hotfix19.md) | world snapshot camera redraw tactical scissor sidebar shared SRV direct watch no edge replication |
 | Vera20K 批绘、GPU 直出、场景/VXL 耗时、矿石与树影 | [渲染 Hotfix18](2026-10-30-scene-hotfix18.md) | shared texture DirectComposition no readback ordered effects wave VXL pose tint LRU ore Terrain shadow |
 | 1000 Hz 最新状态采样、GPU 回读/深度缓存、拖屏连续性与有界退出 | [渲染延迟 Hotfix17](2026-10-30-render-latency-hotfix17.md) | latest snapshot high resolution readback cached depth reuse scroll close timeout parity merge |

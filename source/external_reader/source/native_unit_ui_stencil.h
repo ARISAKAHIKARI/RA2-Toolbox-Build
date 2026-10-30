@@ -1,7 +1,8 @@
 #pragma once
 #include "native_effect_stencil.h"
 // Native pips are UI drawn after the unit body, not another world actor.
-// Preserve only the decoded native SHP alpha at certified native draw anchors.
+// Verified state produces SHP commands at native draw anchors. The local UI
+// draws their color; the old alpha-only adapter remains for legacy callers.
 namespace external { namespace nativeeffects {
 class UnitUIStencil {
  struct Mask {std::array<uint8_t,24> header{};int x=0,y=0;std::vector<nativefeedback::Rect> runs;};
@@ -69,9 +70,10 @@ class UnitUIStencil {
  }
 public:
  void clear(){shape_=0;header_={};masks_.clear();}
- template<class Read>bool capture(Read read,const mainview::View&view,int width,int height,const std::vector<nativefeedback::Object>&objects,std::vector<nativefeedback::Rect>&out){
+ struct Command {uint32_t shape=0;unsigned frame=0;int x=0,y=0;};
+ template<class Read>bool commands(Read read,const mainview::View&view,const std::vector<nativefeedback::Object>&objects,std::vector<Command>&out){
   using namespace nativefeedback;
-  if(!view.valid()||width<1||height<1||width>8192||height>8192||objects.size()>8192)return false;
+  if(!view.valid()||objects.size()>8192)return false;
   std::array<uint32_t,6> head{},after{};uint32_t house=0;int frame=0;double zscale=0;
   if(!read(0xA8ECB8,head.data(),sizeof head)||head[2]>8192||head[4]>head[2]||head[4]>8192||
      (head[4]&&!range(head[1],size_t(head[4])*4)))return false;
@@ -79,16 +81,10 @@ public:
   if(!read(0xA83D4C,&house,4)||!range(house,4))return false;
   std::vector<uint32_t> selected(head[4]);if(!read(head[1],selected.data(),selected.size()*4))return false;
   auto sorted=selected;std::sort(sorted.begin(),sorted.end());if(std::adjacent_find(sorted.begin(),sorted.end())!=sorted.end())return false;
-  const double sx=double(width)/view.width,sy=double(height)/view.height;if(sx<=0||sy<=0||sx>16||sy>16)return false;
-  std::vector<Rect> pending;uint32_t shape=0;bool sampled=false;std::map<unsigned,Mask> capturedMasks;
+  std::vector<Command>pending;uint32_t shape=0;bool sampled=false;
   auto emit=[&](int x,int y,unsigned f){
    if(!shape&&(!read(0xAC1480,&shape,4)||!range(shape,16)))return false;
-   auto found=capturedMasks.find(f);if(found==capturedMasks.end()){const Mask*decoded=nullptr;if(!mask(read,shape,f,decoded))return false;found=capturedMasks.emplace(f,*decoded).first;}
-   const Mask*m=&found->second;
-   for(auto run:m->runs){int left=int(std::floor((x+m->x+run.x)*sx)),top=int(std::floor((y+m->y+run.y)*sy));
-    int right=int(std::ceil((x+m->x+run.x+run.w)*sx)),bottom=int(std::ceil((y+m->y+run.y+1)*sy));auto rect=intersect({left,top,right-left,bottom-top},{0,0,width,height});
-    for(int yy=rect.y;rect.valid()&&yy<rect.y+rect.h;++yy){if(pending.size()>=131072)return false;pending.push_back({rect.x,yy,rect.w,1});}
-   }return true;
+   if(pending.size()>=131072)return false;pending.push_back({shape,f,x,y});return true;
   };
   for(const auto&o:objects){
    if(o.owner!=house||!std::binary_search(sorted.begin(),sorted.end(),o.pointer))continue;
@@ -109,9 +105,9 @@ public:
     for(size_t i=0;i<frames.size();++i)if(!emit(x+int(i)*4+(gap&&i?8:0),y,frames[i]))return false;
    }else if(mode==1){
     if(!wrap){for(int i=0;i<std::min(u.ammo,maximum);++i){
-     // Supported spawn versions can choose frame12 instead of13 in their
-     // existing draw shim. Their exact native alpha union preserves either.
-     if(!emit(x+4*i,y-3,12)||!emit(x+4*i,y-3,13))return false;
+     // Vera20K ui_overlays::scale_pip_draws / native70A345..41C:
+     // the ordinary Ammo arm uses frame13, without an empty outline.
+     if(!emit(x+4*i,y-3,13))return false;
     }}else for(int i=0;i<wrap;++i){int layer=maximum/wrap-1;while(layer>=0&&layer*wrap+i>=u.ammo)--layer;
      if(!emit(x+4*i,y-3,unsigned(layer<0?14:15+layer)))return false;
     }
@@ -124,5 +120,20 @@ public:
      (shape&&(!read(0xAC1480,&shapeAfter,4)||shapeAfter!=shape)))return false;
   if(out.size()+pending.size()>131072)return false;out.insert(out.end(),pending.begin(),pending.end());return true;
  }
+ // Legacy native passthrough adapter. Production UI consumes commands and
+ // renders their actual palette; this mask remains for compatibility callers.
+ template<class Read>bool capture(Read read,const mainview::View&view,int width,int height,const std::vector<nativefeedback::Object>&objects,std::vector<nativefeedback::Rect>&out){
+  using namespace nativefeedback;if(width<1||height<1||width>8192||height>8192)return false;
+  std::vector<Command>draws;if(!commands(read,view,objects,draws))return false;std::vector<Rect>pending;
+  const double sx=double(width)/view.width,sy=double(height)/view.height;if(sx>16||sy>16)return false;
+  for(const auto&c:draws)for(unsigned frame:std::array<unsigned,2>{{c.frame,c.frame==13?12u:c.frame}}){
+   const Mask*m=nullptr;if(!mask(read,c.shape,frame,m))return false;
+   for(auto run:m->runs){int l=int(std::floor((c.x+m->x+run.x)*sx)),r=int(std::ceil((c.x+m->x+run.x+run.w)*sx));int t=int(std::floor((c.y+m->y+run.y)*sy)),b=int(std::ceil((c.y+m->y+run.y+1)*sy));auto rect=intersect({l,t,r-l,b-t},{0,0,width,height});
+    for(int y=rect.y;rect.valid()&&y<rect.y+rect.h;++y){if(pending.size()>=131072)return false;pending.push_back({rect.x,y,rect.w,1});}
+   }if(c.frame!=13)break;
+  }
+  if(out.size()+pending.size()>131072)return false;out.insert(out.end(),pending.begin(),pending.end());return true;
+ }
+
 };
 }}

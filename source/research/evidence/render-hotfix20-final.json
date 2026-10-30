@@ -1,0 +1,86 @@
+{
+  "name": "Hotfix20 world/UI/minimap migration",
+  "remote_baseline": "ca78f32021a6ff1844e953381fbf3a3b6e45760b",
+  "local_implementation_commit": "d86d5919f7235f7b673c470303683541e7b018e4",
+  "upstream": "3d42426b2e9c1b4cf913a7dbbaaf8bf7d3b6bc7f",
+  "build": {
+    "exit": 0,
+    "compiler": "Zig 0.13.0",
+    "script": "source/build-zig-x64.sh",
+    "host": "x64",
+    "runtime": "x86",
+    "broker": "x86",
+    "version": "1.0.39.7",
+    "binary_validation_exit": 0,
+    "binary_summary": {
+      "RA2Toolbox.exe": {
+        "bytes": 7079936,
+        "sha256": "b8625ff6a7849124655072941cd61b9b6b3ccd2ff1678f844bc8faeb41c4ca02",
+        "machine": "PE32+ x64"
+      },
+      "GameRuntime.dll": {
+        "bytes": 4963328,
+        "sha256": "9c893e6673e5d747c8231365a09ac834106950f555c086c80bc4cf21a4684e1d",
+        "machine": "PE32 x86"
+      },
+      "GameRuntimeHost32.exe": {
+        "bytes": 207872,
+        "sha256": "67fe03900829f1b5f87cdc275146a3c71a6743e6bb03ac2311f2676855ebee64",
+        "machine": "PE32 x86"
+      }
+    },
+    "output": "PASS: 3 current outputs; x64 host/x86 runtime/broker; hooks exported; ABI/Shared size match; version 1.0.39.7\nPASS: no unbundled third-party or compiler-runtime DLL dependencies\nPASS: actual EXE RT_MANIFEST/1 enables x64 Common Controls 6 for subclass helper imports\nNOTE: static validation does not execute the Windows loader or the game\n",
+    "warnings": [
+      "existing camera_assets dangling-else",
+      "existing NativeCanvas shared_ptr::unique deprecation"
+    ],
+    "compositor_hlsl_embedded_exactly": true
+  },
+  "static_shader": {
+    "graphics_driver_loaded": false,
+    "hlsl_sha256": "fa74094e60df515dd915a11504f7a0010b678cfbe78468d168e622fe37f3f705",
+    "stages": {
+      "vert": {
+        "compile_exit": 0,
+        "spirv_val_exit": 0,
+        "bytes": 1488,
+        "sha256": "7a482d11b1313f1ee48bfefdec08431c8cfaf3665e2211563d9149aac49d05a7"
+      },
+      "frag": {
+        "compile_exit": 0,
+        "spirv_val_exit": 0,
+        "bytes": 7360,
+        "sha256": "8f4914f88ddec4d966b6343c3aeb815a3f177edddebc20065ca0a91c1beea872"
+      }
+    }
+  },
+  "source_sha256": {
+    "source/assist/source/minimap_overlay.h": "55699cbc44d8058dc8d01633addae3a458210349c82ba8f0832c3ed438487c69",
+    "source/assist/source/radar_panel.h": "0b30ce67074a7e03466c5a0502a3a1d6f303450bc9bca8a8ca9b3f3b63ada780",
+    "source/assist/source/render_feedback_host.h": "5857351df495c247c910f2533de9be77477339a692fef770b23ce7685eb8b8ef",
+    "source/assist/source/watch_scene.h": "f119122995d3cb3abba50736d9f7d17e683829cf8e43c96ae1921b6b5923644e",
+    "source/external_reader/source/gpu_area.h": "b93ded3eee4767f3684968a1b5eaac916c919772d5c035ac03c84e2d12724007",
+    "source/external_reader/source/live_shape_cache.h": "2e88494ef1797e73c3d1701a4eae6bd737bd85afbd8d551a7419dab462b2ba30",
+    "source/external_reader/source/local_ui_renderer.h": "3e98c038502bbc872279a1358ca7dc21650c1e7153a2ddcaed66e7491aba4a36",
+    "source/external_reader/source/native_canvas.h": "0eabd16e94c58e0ae9810dac85aa1aa8df2de500bd90a6dc65090ad048796dbd",
+    "source/external_reader/source/native_unit_ui_stencil.h": "387d8c5d91797ce17d087526dc49839c8863a6fc45b82daab3e3dce8bb96dd24",
+    "source/external_reader/source/radar_scene.h": "74736de0b2855473d42021a3e84580e5ab179cef426b79947430c395fc70a896",
+    "source/external_reader/source/vulkan_area.h": "532f46e8a33af2ed01db89947f6835ccb0669f13742325cfc75615034ec05c23",
+    "source/external_reader/source/xbrz_adapter.h": "5d9f9b3d41434faac8059131aeacc7fd7572136f247caa01eebad08193f7a498",
+    "source/shared/source/gpu_compositor.h": "ab321d964e8e41b74569364a05dd7c1a7d9e05f5315c8df0cd6dda16c36e1416"
+  },
+  "not_executed": [
+    "CPU fixture suites (user requested compilation only)",
+    "Vulkan device/shader execution",
+    "D3D11/DirectComposition execution",
+    "Windows loader",
+    "live game",
+    "FPS and end-to-end latency"
+  ],
+  "remaining": [
+    "native building placement validity and exact-camera passthrough",
+    "native sidebar and unported special/MOD UI",
+    "custom Phobos OreGathering and non-integer passenger Size",
+    "whole-map native terrain/object color-Z preparation remains CPU-side"
+  ]
+}

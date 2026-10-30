@@ -51,10 +51,10 @@ class Worker {
       // next one loads. Initial MIX scans must not keep the whole window hidden.
       {std::lock_guard<std::mutex> lock(mutex);if(token==generation){if(r.mode==1&&latest&&latest->scene&&latest->terrain->reveal==data.terrain->reveal&&latest->terrain->geo.same(data.terrain->geo)&&latest->scene->width==r.width&&latest->scene->height==r.height)data.scene=latest->scene;latest=std::make_shared<external::radar::Frame>(data);}}
       if(r.mode==1){
-       const auto&profile=r.selection.profile;external::presentation::apply(profile,assets,data.terrain->geo.rawWidth*30,data.terrain->geo.rawHeight*15,r.width,r.height);assets.identity(r.pid,r.match);renderer.features(profile);
+       const auto&profile=r.selection.profile;external::presentation::apply(profile,assets,data.terrain->geo.rawWidth*30,data.terrain->geo.rawHeight*15,r.width,r.height);assets.identity(r.pid,r.match);renderer.features(profile);renderer.directPresentation(true);
        auto animated=external::materialmotion::latest(data,profile.detail!=0);animated.tick=GetTickCount();
        auto scene=renderer.render(animated,r.width,r.height,external::SharedReadView{&reader},assets,{},unsigned(profile.scale),profile.detail!=0,true,profile.precision!=0,true);
-       if(scene&&profile.lasers&&data.effects&&data.effects->boltsValid){const std::vector<uint8_t>*mask=nullptr;if(renderer.feedbackVisibility(mask)){
+       if(scene&&!scene->gpu&&!scene->boltsRendered&&profile.lasers&&data.effects&&data.effects->boltsValid){const std::vector<uint8_t>*mask=nullptr;if(renderer.feedbackVisibility(mask)){
         const auto&geo=data.terrain->geo;external::nativefeedback::WorldView projection{-geo.offsetX*30,geo.offsetY*15,geo.rawWidth*30,geo.rawHeight*15,data.frame};
         auto decorated=std::make_shared<external::radar::Scene>(*scene);auto status=external::nativefeedback::effects(data.effects->bolts,*decorated,projection,mask,external::projectionZScale(fresh));if(status.complete)scene=std::move(decorated);
        }}
@@ -85,6 +85,7 @@ public:
  void shutdown(){{std::lock_guard<std::mutex> lock(mutex);stop=true;request={};latest.reset();++generation;cv.notify_one();}if(thread.joinable())thread.join();}
 };
 static radarpanel::Buffer paintBuffer,secondaryPaintBuffer;
+static radarpanel::Gpu gpuPanel,secondaryGpuPanel;
 static Worker worker;static HWND window,secondaryWindow;static std::shared_ptr<const external::radar::Frame> frame;static overlayui::Recovery recovery,secondaryRecovery;
 static radargate::PaintGate<external::radar::Frame> primaryPaintGate,secondaryPaintGate;
 struct PresentedWorld {
@@ -169,7 +170,7 @@ static SecondaryEdit secondaryHit(HWND w,int x,int y){
  if(y>=0&&y<18)return SecondaryEdit::Move;
  return SecondaryEdit::None;
 }
-static void clear(){hide();worker.set({});lastGeometry={};primaryWorld={};secondaryWorld={};paintBuffer.clear();secondaryPaintBuffer.clear();}
+static void clear(){hide();worker.set({});lastGeometry={};primaryWorld={};secondaryWorld={};paintBuffer.clear();secondaryPaintBuffer.clear();if(window)gpuPanel.cpu(window);if(secondaryWindow)secondaryGpuPanel.cpu(secondaryWindow);}
 static void destroy(){clear();worker.shutdown();if(window)DestroyWindow(window);if(secondaryWindow)DestroyWindow(secondaryWindow);window=secondaryWindow=nullptr;}
 static bool presentation(int width,int height,std::shared_ptr<const external::radar::Scene>&image,radargate::Visual&visual){
  if(!frame||!frame->terrain||!frame->terrain->geo.valid()||width<3||height<3)return false;
@@ -214,6 +215,8 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
  if(msg==WM_SIZE&&w==secondaryWindow&&secondaryEdit!=SecondaryEdit::None){secondaryPaintGate.invalidate();InvalidateRect(w,nullptr,FALSE);return 0;}
  if(msg==WM_RBUTTONDOWN||msg==WM_RBUTTONUP||msg==WM_LBUTTONDBLCLK)return 0;if(msg==WM_MOUSEACTIVATE)return MA_NOACTIVATE;if(msg==WM_ERASEBKGND)return 1;
  if(msg==WM_PAINT){PAINTSTRUCT ps{};HDC dc=BeginPaint(w,&ps);RECT r{};GetClientRect(w,&r);int width=r.right,height=r.bottom;
+  auto&gpu=w==secondaryWindow?secondaryGpuPanel:gpuPanel;
+  if(gpu.active){if(!gpu.ready(width,height)){std::shared_ptr<const external::radar::Scene>image;radargate::Visual visual;if(presentation(width,height,image,visual)&&image->gpu)gpu.present(w,*image,visual);}EndPaint(w,&ps);return 0;}
   auto&buffer=w==secondaryWindow?secondaryPaintBuffer:paintBuffer;
   // User resizing can arrive before the next regular update. Stage a whole
   // replacement first; ordinary exposure only copies the completed front.
@@ -223,9 +226,10 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
  }return DefWindowProcW(w,msg,wp,lp);
 }
 static void placePanel(bool second,int x,int y,int width,int height){
- if(second&&secondaryEdit!=SecondaryEdit::None)return;
+ if(second&&secondaryEdit!=SecondaryEdit::None){RECT current{};if(!GetWindowRect(secondaryWindow,&current))return;x=current.left;y=current.top;width=current.right-current.left;height=current.bottom-current.top;}
  auto&panel=second?secondaryWindow:window;auto&keep=second?secondaryRecovery:recovery;
  auto&buffer=second?secondaryPaintBuffer:paintBuffer;auto&gate=second?secondaryPaintGate:primaryPaintGate;
+ auto&gpu=second?secondaryGpuPanel:gpuPanel;
  auto&world=second?secondaryWorld:primaryWorld;
  if(!panel){WNDCLASSW cls{};cls.lpfnWndProc=proc;cls.hInstance=GetModuleHandleW(nullptr);cls.lpszClassName=L"RA2DataRadar127";cls.hCursor=nullptr;RegisterClassW(&cls);panel=CreateWindowExW(WS_EX_TOOLWINDOW|WS_EX_NOACTIVATE|WS_EX_TOPMOST|WS_EX_LAYERED,cls.lpszClassName,second?L"第二显示器小地图":L"战术小地图",WS_POPUP,0,0,1,1,nullptr,nullptr,cls.hInstance,nullptr);if(panel)SetLayeredWindowAttributes(panel,0,255,LWA_ALPHA);}
  if(!panel)return;RECT old{};GetWindowRect(panel,&old);
@@ -237,9 +241,18 @@ static void placePanel(bool second,int x,int y,int width,int height){
  bool repair=keep.due(GetTickCount(),true,{uintptr_t(game),pid,displayMatch(),width,height},visible);
  bool moved=old.left!=x||old.top!=y||old.right-old.left!=width||old.bottom-old.top!=height;
  std::shared_ptr<const external::radar::Scene>image;radargate::Visual visual;if(!presentation(width,height,image,visual))return;
+ if(image->gpu){
+  // Main/secondary panels retain the same completed shared texture. A busy
+  // presenter retries next cadence without publishing half a panel or GDI.
+  const bool changed=gate.needsVisual(visual)||!gpu.ready(width,height)||gpu.pending;
+  if((changed||repair||!visible)&&!gpu.present(panel,*image,visual)){keep.submitted(false);return;}
+  if(repair||moved||!visible){bool placed=overlaystack::place(panel,overlaystack::Layer::Minimap,x,y,width,height,SWP_NOACTIVATE|SWP_NOREDRAW|SWP_SHOWWINDOW)!=FALSE;keep.submitted(placed);if(!placed)return;}
+  gate.committedVisual(visual);world.commit(uintptr_t(game),pid,displayMatch(),minimapMode,*frame);return;
+ }
  bool changed=gate.needsVisual(visual)||!buffer.ready(width,height);
  if(changed){HDC dc=GetDC(panel);bool ready=dc&&buffer.stage(dc,*image,visual);if(dc)ReleaseDC(panel,dc);if(!ready){keep.submitted(false);return;}}
  if(changed)buffer.promote(); // any synchronous position callback sees the new complete pixels
+ gpu.cpu(panel);
  // A complete backing exists before the first SHOWWINDOW or resize. Suppress
  // positioning-triggered redraw/erasure; WM_PAINT copies the completed front.
  if(repair||moved||!visible){bool placed=overlaystack::place(panel,overlaystack::Layer::Minimap,x,y,width,height,SWP_NOACTIVATE|SWP_NOREDRAW|SWP_SHOWWINDOW)!=FALSE;keep.submitted(placed);if(!placed)return;}

@@ -15,7 +15,8 @@ namespace watchscene {
 template<class Reader,class Assets>class Renderer {
  using Read=std::function<bool(uint32_t,void*,size_t)>;
  Reader&reader_;Assets&assets_;Read read_;external::radar::Sampler<Read> sampler_;
- std::array<external::radar::SceneRenderer<Assets>,3> scenes_;
+ external::radar::SceneRenderer<Assets> preparer_;
+ std::array<external::worldscene::Pipeline,3> scenes_;
  uint32_t controls_=0;bool haveControls_=false;int sourceFrame_=-1;bool reveal_=false;
  external::presentation::Profile profile_;
  static double clock(){return std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now().time_since_epoch()).count();}
@@ -26,8 +27,8 @@ public:
  bool autoSuppressed=false,revealMap=false,danger=false;int width=800,height=600;uint32_t process=0,epoch=0,sourceTick=0;
  bool sharedSource=false,gpuAttempted=false,gpuUsed=false;
  Renderer(Reader&r,Assets&a):reader_(r),assets_(a),read_([&r](uint32_t p,void*out,size_t n){return r.read(p,out,n);}),sampler_(read_){}
- void reset(){sampler_.reset();sourceFrame_=-1;haveControls_=false;automatic={};autoSuppressed=false;for(auto&t:tracks)t={};for(auto&v:views)v={};for(auto&s:scenes_)s.reset();}
- void features(const external::presentation::Profile&p){if(p!=profile_){for(auto&s:scenes_)s.reset();for(auto&v:views)v.scene.reset();sourceFrame_=-1;profile_=p;}}
+ void reset(){preparer_.reset();sampler_.reset();sourceFrame_=-1;haveControls_=false;automatic={};autoSuppressed=false;for(auto&t:tracks)t={};for(auto&v:views)v={};for(auto&s:scenes_)s.reset();}
+ void features(const external::presentation::Profile&p){if(p!=profile_){preparer_.reset();for(auto&s:scenes_)s.reset();for(auto&v:views)v.scene.reset();sourceFrame_=-1;profile_=p;}}
  void syncTracks(uint32_t revision,const std::array<external::watch::Track,3>&next,bool suppressed){if(haveControls_&&controls_==revision)return;std::copy(next.begin(),next.end(),tracks);autoSuppressed=suppressed;controls_=revision;haveControls_=true;}
  bool update(uint32_t now){
   auto fresh=[this](uint32_t p,void*out,size_t n){return reader_.readFresh(p,out,n);};
@@ -42,13 +43,13 @@ public:
    if(!sampled.markerScanValid||!external::radar::recentMarkers(sampled,external::radar::publicationContext(fresh),now))return false;
    bank=std::make_shared<const external::radar::Frame>(std::move(sampled));external::radar::sceneBank().publish(process,epoch,true,bank);
   }
-  if(reveal_!=revealMap||bank->frame<sourceFrame_){sourceFrame_=-1;for(auto&s:scenes_)s.reset();for(auto&v:views)v.scene.reset();}reveal_=revealMap;
+  if(reveal_!=revealMap||bank->frame<sourceFrame_){preparer_.reset();sourceFrame_=-1;for(auto&s:scenes_)s.reset();for(auto&v:views)v.scene.reset();}reveal_=revealMap;
   sourceFrame_=bank->frame;
   auto data=external::materialmotion::latest(*bank,profile_.detail!=0);if(!data.terrain)return false;
   sourceTick=bank->tick;data.tick=now;assets_.identity(process,epoch);
   external::xbrzadapter::gpuPresentation(profile_.gpu);external::presentation::apply(profile_,assets_,Width,Height,Width,Height);
   const double zscale=external::projectionZScale(fresh);
-  gpuAttempted=gpuUsed=false;
+  gpuAttempted=gpuUsed=false;std::shared_ptr<const external::worldscene::Snapshot> world;bool prepared=false;
   for(int i=0;i<3;++i){auto&v=views[i];auto target=tracks[i]?tracks[i].target:i==0?automatic:external::watch::Target{};
    if(!(target==v.frame.focus))v={};v.shown=bool(target);if(!target)continue;
    auto prior=v.frame.center;if(tracks[i]&&tracks[i].located)prior={tracks[i].spatial,tracks[i].x,tracks[i].y,tracks[i].z,true,tracks[i].spatialKind,tracks[i].discoveryFrame,tracks[i].searched,tracks[i].discoveryCursor};
@@ -56,18 +57,22 @@ public:
    // Match the sampled spatial host (carrier/garrison), not newer live actor
    // coordinates projected over an older world snapshot.
    for(const auto&m:data.markers)if(m.object==center.target.pointer&&m.id==center.target.id){center.x=m.x;center.y=m.y;center.z=m.z;center.kind=m.kind;break;}
-   v.frame.focus=target;v.frame.center=center;v.frame.bounds=data.terrain->geo.bounds;v.frame.zScale=zscale;v.frame.reveal=revealMap;
+   auto next=v.frame;
+   next.focus=target;next.center=center;next.bounds=data.terrain->geo.bounds;next.zScale=zscale;next.reveal=revealMap;
    double cx=(int64_t(center.x)-center.y)*30./256,cy=(int64_t(center.x)+center.y)*15./256-external::screenHeight(center.z,zscale)+external::camera::anchorY(center.kind);
-   if(!v.frame.bounds.clampCamera(cx,cy,Width,Height))continue;v.frame.cameraX=cx;v.frame.cameraY=cy;v.frame.cameraReady=true;
-   v.frame.passengers.clear();v.frame.dangerous=false;external::passengers::contents(read_,target.pointer,v.frame.passengers,v.frame.dangerous);
-   auto&s=scenes_[i];s.features(profile_);s.guideEnabled(false,controls_);s.directPresentation(true);
-   auto scene=s.render(data,Width,Height,read_,assets_,{cx-Width/2+data.terrain->geo.offsetX*30.,cy-Height/2-data.terrain->geo.offsetY*15.,Width,Height,true},unsigned(profile_.scale),profile_.detail!=0,true,profile_.precision!=0,true,4.);
+   if(!next.bounds.clampCamera(cx,cy,Width,Height))continue;next.cameraX=cx;next.cameraY=cy;next.cameraReady=true;
+   next.passengers.clear();next.dangerous=false;external::passengers::contents(read_,target.pointer,next.passengers,next.dangerous);
+   // Prepare the complete world once for all three cameras. Each camera
+   // records the same pass sequence at its own current position; following a
+   // fast target never translates pixels or invalidates native terrain pages.
+   if(!prepared){prepared=true;preparer_.features(profile_);preparer_.guideEnabled(false,controls_);preparer_.prepareWorld(true);
+    auto ready=preparer_.render(data,Width,Height,read_,assets_,{cx-Width/2+data.terrain->geo.offsetX*30.,cy-Height/2-data.terrain->geo.offsetY*15.,Width,Height,true},unsigned(profile_.scale),profile_.detail!=0,true,profile_.precision!=0,true,4.);
+    if(ready)world=preparer_.preparedWorld();
+   }
+   external::mainview::View camera{0x10000,data.terrain->geo.house,0x10000,data.frame,int(cx)-Width/2,int(cy)-Height/2,Width,Height,0,0,Width,Height};
+   auto scene=world?scenes_[i].draw(world,camera,Width,Height,fresh):nullptr;
    gpuAttempted|=external::xbrzadapter::gpuAttempted();gpuUsed|=external::xbrzadapter::gpuUsed();
-   if(scene&&!scene->boltsRendered&&profile_.lasers&&data.effects&&data.effects->boltsValid){const std::vector<uint8_t>*mask=nullptr;if(s.feedbackVisibility(mask)){
-    external::mainview::View camera{0x10000,data.terrain->geo.house,0x10000,data.frame,int(cx)-Width/2,int(cy)-Height/2,Width,Height,0,0,Width,Height};
-    auto decorated=std::make_shared<external::radar::Scene>(*scene);auto status=external::nativefeedback::effects(data.effects->bolts,*decorated,camera,mask,zscale);if(status.complete)scene=std::move(decorated);
-   }}
-   if(scene)v.scene=std::move(scene);
+   if(scene){next.cameraX=camera.cameraX+Width/2;next.cameraY=camera.cameraY+Height/2;v.scene=std::move(scene);v.frame=std::move(next);}
   }
   bool visible[3]{};external::watch::Box boxes[3]{};for(int i=0;i<3;++i)visible[i]=views[i].shown;external::watch::arrange(visible,width,height,boxes);for(int i=0;i<3;++i)views[i].box=boxes[i];
   return true;

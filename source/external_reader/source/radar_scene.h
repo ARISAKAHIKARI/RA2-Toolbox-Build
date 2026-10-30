@@ -16,6 +16,8 @@
 #include "scene_frame_reuse.h"
 #include "gpu_effect_plan.h"
 #include "world_scene_pipeline.h"
+#include "native_effect_stencil.h"
+#include "live_shape_cache.h"
 #include <map>
 #include <tuple>
 #include <set>
@@ -24,6 +26,7 @@ namespace external { namespace radar {
 struct SceneRegion {double x=0,y=0,width=0,height=0;bool active=false;};
 template<class Assets>class SceneRenderer {
  presentation::Profile features_;
+ liveshape::Cache gatherShapes_;
  bool prepareWorldOnly_=false;
  std::shared_ptr<const worldscene::Snapshot> preparedWorld_;
  std::array<std::array<std::shared_ptr<const voxel::Image>,47>,2> worldShroud_{};
@@ -145,7 +148,7 @@ public:
  }
  struct NativeStats {int width,height;size_t pages,resident;uint64_t cells,presents,partialBanks;};
  NativeStats nativeStats()const{return {background_.width(),background_.height(),background_.pageCount(),nativeBudget_->pages,nativeCells_,basePresents_,partialBanks_};}
- void reset(){preparedWorld_.reset();worldShroud_={};gpuFrameReuse_.reset();outputPool_.clear();evaluatedPaint_.clear();evaluatedStamp_.clear();evaluationEpoch_=0;overlayScanSource_.reset();overlaySources_.clear();effectAlphas_.clear();voxelLightKnown_=false;tiles_.clear();overlays_.clear();art_.clear();sprites_.clear();displayed_.clear();actorCursor_=transientCursor_=0;repairAssets_.reset();clearBackground();coverage_={};coverageLocal_=false;width_=height_=0;spanX_=spanY_=0;revision_=0;terrainPaletteReady_=false;terrainPalette_={};nativeCells_=basePresents_=partialBanks_=0;gpuMaskBuilder_.reset();detailed_.reset();detailKey_=0;}
+ void reset(){gatherShapes_.reset();preparedWorld_.reset();worldShroud_={};gpuFrameReuse_.reset();outputPool_.clear();evaluatedPaint_.clear();evaluatedStamp_.clear();evaluationEpoch_=0;overlayScanSource_.reset();overlaySources_.clear();effectAlphas_.clear();voxelLightKnown_=false;tiles_.clear();overlays_.clear();art_.clear();sprites_.clear();displayed_.clear();actorCursor_=transientCursor_=0;repairAssets_.reset();clearBackground();coverage_={};coverageLocal_=false;width_=height_=0;spanX_=spanY_=0;revision_=0;terrainPaletteReady_=false;terrainPalette_={};nativeCells_=basePresents_=partialBanks_=0;gpuMaskBuilder_.reset();detailed_.reset();detailKey_=0;}
  void features(const presentation::Profile&p){if(p.voxelLighting!=features_.voxelLighting||p.spriteLighting!=features_.spriteLighting){art_.clear();sprites_.clear();displayed_.clear();voxelLightKnown_=false;}features_=p;}
  template<class Read>std::shared_ptr<const Scene> render(const Frame&frame,int width,int height,Read read,Assets&assets,SceneRegion region={},unsigned pixelScaleMode=0,bool refined=false,bool liveVoxels=true,bool highColorPrecision=false,bool forceFrame=false,double decodeBudgetMs=4.){
   const bool warming=!materialsReady_;materialsReady_=false;decodeStats_={};stageStats_={};requestedObjects_=drawnObjects_=0;
@@ -540,6 +543,7 @@ public:
   // Native ground animations share object order (Layer, GetYSort). A blanket
   // final animation pass incorrectly paints pumps/fire over foreground units.
   std::stable_sort(order.begin(),order.end(),[](const Marker*a,const Marker*b){return camera::orderKey(a->layer,a->kind,a->x,a->y,a->sort)<camera::orderKey(b->layer,b->kind,b->x,b->y,b->sort);});
+  gatherShapes_.begin();
   for(const auto*marker:order){const auto&m=*marker;if(m.x<0||m.y<0||m.x>=512*256||m.y>=512*256)continue;
    ++requestedObjects_;
    auto found=sprites_.find(imageKey(m));if(found==sprites_.end()||!found->second.ready){auto old=displayed_.find({m.object,m.id});if(old!=displayed_.end())found=sprites_.find(old->second);}
@@ -555,7 +559,18 @@ public:
     const bool relight=(source!=art_.end()&&voxelArt(source->second,0))?features_.voxelLighting:features_.spriteLighting;
     auto light=(!relight||m.kind==7||m.kind==8)?lighting::State{}:m.kind==6?projectiles::light(read,uint32_t(m.pose.variant)):m.kind==5?lighting::animation(read,m.object,m.type,m.x,m.y,m.z,scene):m.kind==4?lighting::terrainObject(read,m.type,m.x,m.y,m.z,scene):lighting::object(read,m.type,m.owner,m.kind,m.x,m.y,m.z,scene);uint32_t cell=frame.terrain->art[(m.y/256)*512+m.x/256].cell;bool bridge=m.onBridge;int level=game.template get<int8_t>(cell+0x11B);
     vulkancompute::MotionIdentity motion;motion.object=m.object;motion.id=m.id;motion.type=m.type;motion.kind=uint32_t(m.kind);motion.known=guideEnabled_&&detail&&m.object>=0x10000&&m.type>=0x10000&&m.id!=0xffffffffu&&m.kind>=0&&m.kind<=6;
-    draw(*image,px,py,1,1,float((int64_t(m.x)+m.y)*15/256.)-15+camera::anchorY(m.kind)-m.drawZ+(bridge?60:0),light,m.kind==4?12:(m.kind==3||m.kind==5)?2:1,m.pose.shadow.known?float(m.pose.shadow.drop):float(std::max(0,screenHeight(m.z,projectionScale)-(level+(bridge?4:0))*15)),std::move(imageOwner),std::move(motion));}
+    draw(*image,px,py,1,1,float((int64_t(m.x)+m.y)*15/256.)-15+camera::anchorY(m.kind)-m.drawZ+(bridge?60:0),light,m.kind==4?12:(m.kind==3||m.kind==5)?2:1,m.pose.shadow.known?float(m.pose.shadow.drop):float(std::max(0,screenHeight(m.z,projectionScale)-(level+(bridge?4:0))*15)),std::move(imageOwner),std::move(motion));
+    // Vera units.rs: OREGATH is an owned, Z-read-only piece immediately
+    // after its harvester. It follows the same world camera and shroud pass.
+    if(features_.particles&&m.kind==2){nativeeffects::GatherState gather;nativefeedback::Object object;object.pointer=m.object;object.id=m.id;object.type=m.type;object.owner=m.owner;object.kind=m.kind;
+     if(nativeeffects::gather(read,object,frame.frame,gather)){uint32_t shape=0;if(read(nativeeffects::GatherShape,&shape,4))if(auto effect=gatherShapes_.get(read,shape,gather.frame,0x87F6C0)){
+      const int x=m.x+gather.point.x-gather.location.x,y=m.y+gather.point.y-gather.location.y;
+      const float gx=float(int((int64_t(x)-y)*30/256)+geo.offsetX*30),gy=float(int((int64_t(x)+y)*15/256)-geo.offsetY*15-screenHeight(m.z,projectionScale));
+      auto effectLight=features_.spriteLighting?lighting::object(read,m.type,m.owner,m.kind,m.x,m.y,m.z,scene):lighting::State{};
+      draw(*effect,gx,gy,1,1,float((int64_t(m.x)+m.y)*15/256)-15-m.drawZ+(bridge?60:0),effectLight,3,0,effect);
+     }}
+    }
+   }
    else if(m.kind<4)fallbacks.push_back(&m);
   }
   if(prepareWorldOnly_){
@@ -594,10 +609,10 @@ public:
   if(view.failed()){dynamicFailure_=true;return {};}
   stage(stageStats_.objectsMs);
   const bool worldEffects=frame.effects&&frame.effects->world&&!frame.effects->world->empty();
-  const bool staticView=!worldEffects&&(detail?(!detailed_.dirty()&&!gpuMode_):(!view.dirtyPages()&&objectDraws.empty()))&&fallbacks.empty();
+  const bool staticView=!(features_.lasers&&frame.effects&&frame.effects->boltsValid&&!frame.effects->bolts.empty())&&!worldEffects&&(detail?(!detailed_.dirty()&&!gpuMode_):(!view.dirtyPages()&&objectDraws.empty()))&&fallbacks.empty();
   if(staticView&&!forceFrame){
    if(areaGpuMode){
-    auto cached=masked?maskedBaseScene_:baseScene_;if(cached&&cached->pixels.size()==size_t(width)*height){xbrzadapter::gpuAreaCached(areaCachedGpu_);return cached;}
+    auto cached=masked?maskedBaseScene_:baseScene_;if(cached&&(cached->gpu?gpupresent::valid(cached->gpu,width,height)&&gpupresent::available():cached->pixels.size()==size_t(width)*height)){xbrzadapter::gpuAreaCached(areaCachedGpu_);return cached;}
    }else{
     if(!masked)return baseScene_;
     if(!maskedBaseScene_){auto out=std::make_shared<Scene>(*baseScene_);mask_.apply(out->pixels);maskedBaseScene_=std::move(out);}return maskedBaseScene_;
@@ -607,13 +622,13 @@ public:
   const bool bolts=features_.lasers&&frame.effects&&frame.effects->boltsValid&&!frame.effects->bolts.empty();
   worldfx::View effectView;effectView.x=region.active?region.x:0;effectView.y=region.active?region.y:0;effectView.width=region.active?region.width:spanX_;effectView.height=region.active?region.height:spanY_;effectView.pixelsW=width;effectView.pixelsH=height;effectView.offsetX=geo.offsetX;effectView.offsetY=geo.offsetY;effectView.zscale=projectionScale;
   auto alphaAsset=[&](uint32_t pointer)->std::shared_ptr<const voxel::Image>{auto found=effectAlphas_.find(pointer);if(found==effectAlphas_.end()){voxel::Image image;if(!alphaImage(assets,pointer,image,0))return {};size_t bytes=0;for(const auto&item:effectAlphas_)bytes+=camera::pixels(*item.second)*5;if(bytes+camera::pixels(image)*5>16*1024*1024)effectAlphas_.clear();found=effectAlphas_.emplace(pointer,std::make_shared<const voxel::Image>(std::move(image))).first;}return found->second;};
-  bool effectPlanReady=false;
-  if(gpuMode_){
-   for(const auto*m:fallbacks){auto p=dot(*m);detailed_.annotationDot(p.first,p.second,m->color);}
+  bool effectPlanReady=false;std::shared_ptr<const gpueffects::Plan> areaEffects;
+  if(gpuMode_||(areaGpuMode&&fallbacks.empty())){
+   if(gpuMode_)for(const auto*m:fallbacks){auto p=dot(*m);detailed_.annotationDot(p.first,p.second,m->color);}
    gpueffects::Builder builder(effectView);
    if(worldEffects){const auto&fx=*frame.effects->world;if(features_.particles)for(const auto&a:fx.alphas)if(auto image=alphaAsset(a.image))builder.alpha(a,image);builder.paint(fx,features_.particles,features_.lasers);}
    if(bolts)builder.bolts(frame.effects->bolts,frame.frame);
-   auto plan=builder.finish();effectPlanReady=plan->valid;detailed_.gpuEffects((worldEffects||bolts)?plan:nullptr);
+   auto plan=builder.finish();effectPlanReady=plan->valid;if(gpuMode_)detailed_.gpuEffects((worldEffects||bolts)?plan:nullptr);else areaEffects=std::move(plan);
   }
   if(masked&&(gpuMode_||areaGpuMode)&&!gpuMaskPlan_&&!maskPixels_)maskPixels_=std::make_shared<const std::vector<uint8_t>>(mask_.alpha);
   // Repeating a verified identical GPU plan needs neither dispatch/fence nor
@@ -626,23 +641,23 @@ public:
   const bool directReady=directPresentation_&&gpuMode_&&effectPlanReady&&!guideEnabled_;
   auto*maskReadback=!directReady&&masked&&gpuMaskPlan_&&cpuMaskPlan_!=gpuMaskPlan_?&mask_.alpha:nullptr;
   auto out=(gpuMode_||areaGpuMode)?outputPool_.acquire():std::make_shared<Scene>();out->width=width;out->height=height;out->guides.reset();out->gpu.reset();out->boltsRendered=false;bool areaUsed=false;
-  const bool sameNative=!region.active&&nativePresentation_.pixels&&nativePresentation_.pixels->size()==size_t(width)*height&&
+  const bool sameNative=!region.active&&!areaGpuMode&&nativePresentation_.pixels&&nativePresentation_.pixels->size()==size_t(width)*height&&
     nativePresentation_.background==detailKey_&&nativePresentation_.objects==objectCanvas_.revision()&&nativePresentation_.gpu==areaGpuMode&&
     (!nativePresentation_.used||(nativePresentation_.mask==(masked?gpuMaskPlan_:nullptr)&&nativePresentation_.fog==(masked?maskPixels_:nullptr)));
   if(sameNative){out->pixels=*nativePresentation_.pixels;areaUsed=nativePresentation_.used;if(areaGpuMode)xbrzadapter::gpuAreaCached(areaUsed);}
   else if(areaGpuMode){
-   areaUsed=view.presentGPU(width,height,out->pixels,spanX_,spanY_,masked?maskPixels_:nullptr,masked?gpuMaskPlan_:nullptr);
+   areaUsed=view.presentGPU(width,height,out->pixels,spanX_,spanY_,masked?maskPixels_:nullptr,masked?gpuMaskPlan_:nullptr,areaEffects,directPresentation_&&effectPlanReady&&fallbacks.empty()?&out->gpu:nullptr);
    if(!areaUsed&&!view.present(width,height,out->pixels,spanX_,spanY_)){dynamicFailure_=true;return {};}
   }else{
    if(!detail)out->pixels=incrementalNative?*nativePresentation_.pixels:baseScene_->pixels;
    if(!(detail?detailed_.finish(out->pixels,true,masked?maskPixels_:nullptr,masked?gpuMaskPlan_:nullptr,maskReadback,directReady?&out->gpu:nullptr):region.active?view.presentRegion(width,height,out->pixels,region.x,region.y,region.width,region.height,pixelScaleMode):view.presentDirty(width,height,out->pixels,spanX_,spanY_))){dynamicFailure_=true;return {};}
   }
-  if(!region.active&&!sameNative){nativePresentation_.pixels=std::make_shared<const std::vector<uint32_t>>(out->pixels);
+  if(!region.active&&!sameNative&&!areaUsed){nativePresentation_.pixels=std::make_shared<const std::vector<uint32_t>>(out->pixels);
    nativePresentation_.background=detailKey_;nativePresentation_.objects=objectCanvas_.revision();nativePresentation_.gpu=areaGpuMode;nativePresentation_.used=areaUsed;
    nativePresentation_.mask=areaUsed&&masked?gpuMaskPlan_:nullptr;nativePresentation_.fog=areaUsed&&masked?maskPixels_:nullptr;
   }
   stage(stageStats_.resolveMs);
-  const bool gpuEffectsDone=gpuMode_&&detailed_.gpuCompleted()&&effectPlanReady;out->boltsRendered=gpuEffectsDone&&features_.lasers&&frame.effects&&frame.effects->boltsValid;
+  const bool gpuEffectsDone=effectPlanReady&&((gpuMode_&&detailed_.gpuCompleted())||(areaUsed&&areaEffects));out->boltsRendered=gpuEffectsDone&&features_.lasers&&frame.effects&&frame.effects->boltsValid;
   if(!out->gpu&&masked&&gpuMaskPlan_&&cpuMaskPlan_!=gpuMaskPlan_&&(!areaUsed||!fallbacks.empty()||worldEffects)){
    // CPU replay and missing-art dots need a native mask; a successful whole
    // minimap stays GPU-resident through its mask and returns only final RGBA.

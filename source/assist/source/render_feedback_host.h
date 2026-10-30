@@ -11,8 +11,6 @@ static external::localui::Task<Request,external::ReadSession> localUI([]{return 
 // when only the mouse position changes. No scene-observation delay is added.
 static nf::CursorCache cursorCache;
 static nf::FoundationStencil foundationStencil;
-static external::nativeeffects::EffectStencil effectStencil;
-static external::nativeeffects::UnitUIStencil unitUIStencil;
 static std::shared_ptr<const std::vector<overlaycomposition::Rect>> nativeCutouts;
 static uint32_t cursorPID=0,cursorEpoch=0;
 static overlaycompositor::Context selectionContext{};
@@ -26,7 +24,7 @@ static void hide(){
  localUI.invalidate();
  overlaycompositor::host().replaceGroup({overlaycompositor::RenderUpgrade,SelectionLayer,CursorLayer,MessageLayer,TimerLayer,StatusLayer,RallyLayer},{});
  oldPrimitives.clear();oldStrokes.clear();selectionPixels.reset();selectionBounds={};nativeCutouts.reset();
- cursorCache.clear();foundationStencil.clear();effectStencil.clear();unitUIStencil.clear();nativeLeaseUnsafe=false;live=false;
+ cursorCache.clear();foundationStencil.clear();nativeLeaseUnsafe=false;live=false;
 }
 static void shutdown(){hide();localUI.shutdown();}
 static bool externalCursor(){
@@ -46,7 +44,7 @@ static bool update(const Request&r,const std::shared_ptr<const Frame>&scene,int 
  // the public mask pointer. Only a complete new group restores lease safety.
  auto accept=[&](bool value){nativeFailure.complete=value;if(value)nativeLeaseUnsafe=false;return value;};
  unsafeView=unsafeWorld=false;if(!scene)return false;live=true;
- if(cursorPID!=r.pid||cursorEpoch!=r.match){cursorCache.clear();foundationStencil.clear();effectStencil.clear();unitUIStencil.clear();nativeCutouts.reset();cursorPID=r.pid;cursorEpoch=r.match;}
+ if(cursorPID!=r.pid||cursorEpoch!=r.match){cursorCache.clear();foundationStencil.clear();nativeCutouts.reset();cursorPID=r.pid;cursorEpoch=r.match;}
  if(selectionContext.token!=r.context.token||selectionContext.cameraX!=r.context.cameraX||selectionContext.cameraY!=r.context.cameraY){
   selectionPixels.reset();oldPrimitives.clear();oldStrokes.clear();nativeCutouts.reset();
  }
@@ -62,9 +60,7 @@ static bool update(const Request&r,const std::shared_ptr<const Frame>&scene,int 
  const bool ordersOK=nf::actionLines(read,r.view,r.width,r.height,strokes);
  const bool nativeAligned=external::mainview::sameViewport(before,r.view);
  const bool placementOK=!nativeAligned||foundationStencil.capture(read,r.view,r.width,r.height,cutouts);
- const bool effectsOK=!nativeAligned||((!r.profile.particles||effectStencil.capture(read,r.view,r.width,r.height,scene->objects,cutouts))&&
-  unitUIStencil.capture(read,r.view,r.width,r.height,scene->objects,cutouts)&&
-  (!r.profile.lasers||independentLasers(*scene,0)||external::nativeeffects::beams(read,r.view,r.width,r.height,cutouts))&&
+ const bool effectsOK=!nativeAligned||((!r.profile.lasers||independentLasers(*scene,0)||external::nativeeffects::beams(read,r.view,r.width,r.height,cutouts))&&
   external::nativeeffects::mergeCutouts(cutouts,r.width,r.height));
  const double sx=double(r.width)/r.view.width,sy=double(r.height)/r.view.height;
  external::mainview::View after;

@@ -1,10 +1,29 @@
 #pragma once
 #include "construction_buffer.h"
 #include "radar_paint_gate.h"
+#include "../../shared/source/gpu_compositor.h"
 // Stage the entire GDI image before changing a panel's geometry or showing it.
 // WM_PAINT normally copies this completed front; exposures/periodic repairs do
 // not re-run HALFTONE or allocate a brush for every unit marker.
 namespace radarpanel {
+class Gpu {
+ gpupresent::Compositor compositor_;int width_=0,height_=0;
+public:
+ bool active=false,pending=false;
+ void reset(){compositor_.reset();width_=height_=0;active=pending=false;}
+ bool ready(int w,int h)const{return active&&width_==w&&height_==h;}
+ void cpu(HWND window){if(!active)return;reset();auto style=GetWindowLongPtrW(window,GWL_EXSTYLE)&~WS_EX_NOREDIRECTIONBITMAP;
+  SetWindowLongPtrW(window,GWL_EXSTYLE,style&~WS_EX_LAYERED);SetWindowLongPtrW(window,GWL_EXSTYLE,style|WS_EX_LAYERED);SetLayeredWindowAttributes(window,0,255,LWA_ALPHA);
+ }
+ template<class Image>bool present(HWND window,const Image&image,const radargate::Visual&v){
+  if(!image.gpu||!v.real||!v.marks.empty())return false;
+  if(!active){SetWindowLongPtrW(window,GWL_EXSTYLE,(GetWindowLongPtrW(window,GWL_EXSTYLE)&~WS_EX_LAYERED)|WS_EX_NOREDIRECTIONBITMAP);active=true;}
+  overlaycomposition::Rect view{v.view.left,v.view.top,v.view.right-v.view.left,v.view.bottom-v.view.top};
+  pending=!compositor_.presentFrame(window,image.gpu,v.width,v.height,0xff9da173u,&view);
+  if(!pending){width_=v.width;height_=v.height;}else if(compositor_.reason()!="GPU frame not ready")gpupresent::available()=false;
+  return !pending;
+ }
+};
 class Buffer {
  assist::construction::PanelBuffer front_,spare_;
  int width_=0,height_=0,pendingWidth_=0,pendingHeight_=0;

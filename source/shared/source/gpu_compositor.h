@@ -17,13 +17,25 @@ class Compositor {
  Com<ID3D11VertexShader> vertex_;Com<ID3D11PixelShader> pixel_;Com<ID3D11Buffer> constants_,holes_;Com<ID3D11ShaderResourceView> holesView_;Com<ID3D11BlendState> blend_;Com<ID3D11RasterizerState> raster_;
  HMODULE compiler_=nullptr,dcomp_=nullptr;HWND window_=nullptr;int width_=0,height_=0;size_t holeCapacity_=0;bool ready_=false;
  std::map<uint64_t,Cached> cache_;std::string reason_;
- struct Parameters {float rect[4],output[4];uint32_t data[4];float drawRect[4];};
+ struct Parameters {float rect[4],output[4];uint32_t data[4];float drawRect[4],panel[4],panelView[4];};
  static constexpr const char*Shader=R"HLSL(
-cbuffer Params:register(b0){float4 rect;float4 output;uint4 data;float4 drawRect;}
+cbuffer Params:register(b0){float4 rect;float4 output;uint4 data;float4 drawRect;float4 panel;float4 panelView;}
 Texture2D<float4> source:register(t0);StructuredBuffer<uint2> holes:register(t1);
 struct Vertex {float4 position:SV_Position;};
 Vertex vs(uint id:SV_VertexID){Vertex o;float2 corner=float2(id&1,id>>1);float2 p=drawRect.xy+corner*drawRect.zw;o.position=float4(p.x*2/output.x-1,1-p.y*2/output.y,0,1);return o;}
-float4 ps(Vertex input):SV_Target{int2 p=int2(floor(input.position.xy*output.zw))-int2(rect.xy);
+float4 ps(Vertex input):SV_Target{
+ if(panel.z!=0.){
+  int2 at=int2(floor(input.position.xy));int2 size=int2(panel.xy);
+  if(any(at<int2(1,1))||any(at>=size-int2(1,1)))return float4(float((data.z>>16)&255u),float((data.z>>8)&255u),float(data.z&255u),255.)/255.;
+  int4 box=int4(panelView);if(all(at>=box.xy)&&all(at<box.zw)&&(at.x==box.x||at.y==box.y||at.x==box.z-1||at.y==box.w-1))return float4(230.,234.,205.,255.)/255.;
+  // Source pixels cover only the panel interior. Border/view widths remain
+  // one physical pixel at every desktop scale and while dragging a resize.
+  float2 q=(input.position.xy-1.)*rect.zw/(panel.xy-2.)-.5;int2 a=int2(floor(q)),limit=int2(rect.zw)-1;float2 f=frac(q);
+  float4 top=lerp(source.Load(int3(clamp(a,int2(0,0),limit),0)),source.Load(int3(clamp(a+int2(1,0),int2(0,0),limit),0)),f.x);
+  float4 bottom=lerp(source.Load(int3(clamp(a+int2(0,1),int2(0,0),limit),0)),source.Load(int3(clamp(a+int2(1,1),int2(0,0),limit),0)),f.x);
+  return lerp(top,bottom,f.y)*(float(data.x)/255.);
+ }
+ int2 p=int2(floor(input.position.xy*output.zw))-int2(rect.xy);
  if(data.w!=0&&(p.x<int(data.w)||p.y<int(data.w)||p.x>=int(rect.z)-int(data.w)||p.y>=int(rect.w)-int(data.w)))return float4(float((data.z>>16)&255u),float((data.z>>8)&255u),float(data.z&255u),255.)/255.;
  if(data.y!=0&&p.y>=0&&p.y<int(rect.w)){uint2 row=holes[p.y];for(uint n=0;n<row.y;++n){uint2 span=holes[row.x+n];if(p.x>=int(span.x)&&p.x<int(span.y))discard;}}
  if(any(p<int2(0,0))||any(p>=int2(rect.zw)))discard;
@@ -92,7 +104,7 @@ public:
  ~Compositor(){reset();}
  const std::string&reason()const{return reason_;}
  void reset(){cache_.clear();target_.reset();swap_.reset();visual_.reset();compositionTarget_.reset();composition_.reset();vertex_.reset();pixel_.reset();constants_.reset();holesView_.reset();holes_.reset();blend_.reset();raster_.reset();context_.reset();owner_.reset();window_=nullptr;ready_=false;width_=height_=0;holeCapacity_=0;if(compiler_)FreeLibrary(compiler_);if(dcomp_)FreeLibrary(dcomp_);compiler_=dcomp_=nullptr;}
- bool present(HWND window,const overlaycomposition::Context&view,std::vector<overlaycomposition::Surface>layers,int targetWidth=0,int targetHeight=0,uint32_t border=0){
+ bool present(HWND window,const overlaycomposition::Context&view,std::vector<overlaycomposition::Surface>layers,int targetWidth=0,int targetHeight=0,uint32_t border=0,const overlaycomposition::Rect*panelView=nullptr){
   overlaycomposition::order(layers,view);auto world=std::find_if(layers.begin(),layers.end(),[](const auto&s){return bool(s.gpu);});
   std::shared_ptr<Device> owner=world!=layers.end()?std::static_pointer_cast<const SharedImage>(world->gpu->resource)->owner:owner_;
   if(!owner)return fail("GPU presentation device unavailable");
@@ -100,6 +112,7 @@ public:
   if(!contextLock.owns_lock())return fail("GPU frame not ready");
   const int physicalW=targetWidth>0?targetWidth:view.width,physicalH=targetHeight>0?targetHeight:view.height;
   if(physicalW<1||physicalH<1||physicalW>8192||physicalH>8192||uint64_t(physicalW)*physicalH>16*1024*1024)return fail("GPU presentation dimensions invalid");
+  if(panelView&&(physicalW<3||physicalH<3))return fail("GPU panel dimensions invalid");
   if(!initialize(window,owner)||!resize(physicalW,physicalH))return false;
   SharedReads reads(context_.get());
   for(const auto&s:layers){
@@ -114,6 +127,7 @@ public:
   D3D11_VIEWPORT viewport{0,0,float(physicalW),float(physicalH),0,1};context_->RSSetViewports(1,&viewport);
   for(const auto&s:layers){auto bounds=overlaycomposition::bounds(s,view);if(bounds.w<=0||bounds.h<=0)continue;if(!cutouts(s))return fail("GPU cutout upload failed");
    Parameters p{{float(s.rect.x),float(s.rect.y),float(s.rect.w),float(s.rect.h)},{float(view.width),float(view.height),float(view.width)/physicalW,float(view.height)/physicalH},{s.opacity,uint32_t(s.cutouts&&!s.cutouts->empty()),border,border?6u:0u},{float(bounds.x),float(bounds.y),float(bounds.w),float(bounds.h)}};
+   if(panelView){p.data[3]=0;p.panel[0]=float(physicalW);p.panel[1]=float(physicalH);p.panel[2]=1;p.panelView[0]=float(panelView->x);p.panelView[1]=float(panelView->y);p.panelView[2]=float(panelView->x+panelView->w);p.panelView[3]=float(panelView->y+panelView->h);}
    D3D11_MAPPED_SUBRESOURCE mapped{};if(FAILED(context_->Map(constants_.get(),0,D3D11_MAP_WRITE_DISCARD,0,&mapped)))return fail("GPU compositor parameter upload failed");std::memcpy(mapped.pData,&p,sizeof p);context_->Unmap(constants_.get(),0);
    ID3D11Buffer*constants=constants_.get();context_->VSSetConstantBuffers(0,1,&constants);context_->PSSetConstantBuffers(0,1,&constants);ID3D11ShaderResourceView*views[]={cache_[s.id].texture.view.get(),p.data[1]?holesView_.get():nullptr};context_->PSSetShaderResources(0,2,views);
    D3D11_RECT clip{LONG(int64_t(bounds.x)*physicalW/view.width),LONG(int64_t(bounds.y)*physicalH/view.height),LONG((int64_t(bounds.x+bounds.w)*physicalW+view.width-1)/view.width),LONG((int64_t(bounds.y+bounds.h)*physicalH+view.height-1)/view.height)};context_->RSSetScissorRects(1,&clip);context_->Draw(4,0);
@@ -124,12 +138,12 @@ public:
   for(auto i=cache_.begin();i!=cache_.end();)if(std::none_of(layers.begin(),layers.end(),[&](const auto&s){return s.id==i->first;}))i=cache_.erase(i);else ++i;
   reason_.clear();return true;
  }
- bool presentFrame(HWND window,std::shared_ptr<const Frame>frame,int w,int h,uint32_t border){
+ bool presentFrame(HWND window,std::shared_ptr<const Frame>frame,int w,int h,uint32_t border,const overlaycomposition::Rect*panelView=nullptr){
   if(!frame||!frame->resource)return fail("GPU frame unavailable");
   const int sourceW=frame->resource->width,sourceH=frame->resource->height;
   overlaycomposition::Context view{1,reinterpret_cast<uintptr_t>(window),0,0,sourceW,sourceH,0,0};
   overlaycomposition::Surface layer{1,0,view,{0,0,sourceW,sourceH},false,255,{}, {}, {},std::move(frame)};
-  return present(window,view,{std::move(layer)},w,h,border);
+  return present(window,view,{std::move(layer)},w,h,border,panelView);
  }
 
 };

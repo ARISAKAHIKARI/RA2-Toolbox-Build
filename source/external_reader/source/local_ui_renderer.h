@@ -6,6 +6,8 @@
 #include "map_bounds.h"
 #include "ground_geometry.h"
 #include "repair_visuals.h"
+#include "live_shape_cache.h"
+#include "native_unit_ui_stencil.h"
 #include <set>
 namespace external {namespace localui {
 // Main-view UI rendered from values and real font coverage. No framebuffer,
@@ -52,11 +54,14 @@ public:
 };
 class Engine {
  BitmapFont font_;Strings strings_;
- struct Icon {std::array<uint8_t,24>header{};voxel::Image image;};std::map<std::pair<uint32_t,int>,Icon>icons_;std::array<uint32_t,256>iconPalette_{};bool iconReady_=false;
- template<class Read>bool icon(Read read,Painter&p,uint32_t shape,int frame,int x,int y){
-  if(!shape||frame<0||frame>=8192)return true;if(!iconReady_){std::array<uint32_t,256>colors{};uint32_t converter=0;if(!read(0x87F6C8,&converter,4)||!repairvisuals::palette(read,converter,colors))return true;if(colors!=iconPalette_){icons_.clear();iconPalette_=colors;}iconReady_=true;}
-  uint16_t tag=0;if(!read(shape,&tag,2))return true;if(tag==0xFFFF&&!read(shape+12,&shape,4))return true;std::array<uint8_t,24>header{};if(shape<0x10000||!read(shape+8+frame*24,header.data(),24))return true;auto key=std::make_pair(shape,frame);auto found=icons_.find(key);if(found==icons_.end()||found->second.header!=header){Icon image;image.header=header;if(!voxel::sprite(read,shape,iconPalette_,image.image,frame,nullptr,255))return true;if(icons_.size()>=128)icons_.clear();found=icons_.insert_or_assign(key,std::move(image)).first;}const auto&image=found->second.image;
-  for(int row=0;row<image.height;++row)for(int col=0;col<image.width;){uint32_t color=image.pixels[size_t(row)*image.width+col];if(!(color>>24)){++col;continue;}int start=col++;while(col<image.width&&image.pixels[size_t(row)*image.width+col]==color)++col;p.fill({x+image.x+start,y+image.y+row,col-start,1},color);}return p.good();
+ liveshape::Cache shapes_;nativeeffects::UnitUIStencil unitPips_;
+ template<class Read>bool icon(Read read,Painter&p,uint32_t shape,int frame,int x,int y,uint32_t palette=0x87F6C4,bool required=false){
+  auto image=shapes_.get(read,shape,frame,palette);if(!image)return !required;
+  for(int row=0;row<image->height;++row)for(int col=0;col<image->width;){uint32_t color=image->pixels[size_t(row)*image->width+col];if(!(color>>24)){++col;continue;}int start=col++;while(col<image->width&&image->pixels[size_t(row)*image->width+col]==color)++col;p.fill({x+image->x+start,y+image->y+row,col-start,1},color);}return p.good();
+ }
+ template<class Read>bool pips(Read read,const mainview::View&v,const std::vector<nativefeedback::Object>&objects,Painter&p){
+  std::vector<nativeeffects::UnitUIStencil::Command>commands;if(!unitPips_.commands(read,v,objects,commands))return false;p.lane(2);
+  for(const auto&c:commands)if(!icon(read,p,c.shape,int(c.frame),c.x,c.y,0x87F6C4,true))return false;return true;
  }
  template<class Read>bool statuses(Read read,const mainview::View&v,const std::vector<nativefeedback::Object>&objects,Painter&p,bool&fontUsed){GameView game(read);double scale=projectionZScale(read);p.lane(2);
   auto project=[&](nativefeedback::Point3 q){return std::array<int,2>{{int((int64_t(q.x)-q.y)*30/256)-v.cameraX,int((int64_t(q.x)+q.y)*15/256)-screenHeight(q.z,scale)-v.cameraY}};};
@@ -64,7 +69,7 @@ class Engine {
    // Raw Veterancy, before selected/hovered health admission (70A990).
    if(o.owner==v.house||!game.template get<uint32_t>(o.pointer+0x518)){float raw=0;if(read(o.pointer+0x150,&raw,4)&&std::isfinite(raw)){int rank=raw<0?19:raw>=2?15:raw>=1?14:-1;if(rank>=0){uint32_t shape=game.template get<uint32_t>(0xAC147C);if(!icon(read,p,shape,rank,at[0]+(kind==1?5:10),at[1]+(kind==1?2:6)))return false;}}}
    if(o.owner==v.house&&game.template get<uint8_t>(o.pointer+0x83)){int group=game.template get<int>(o.pointer+0x214,-1);if(group>=0&&group<10){int x=at[0]-14,y=at[1]-(kind==1?29:26);if(kind==3){x=at[0]-4-(w+h)*15;y=at[1]-36+(h-w)*15/2;}if(!fontUsed&&!font_.begin(read))return false;fontUsed=true;uint32_t color=0;if(!houseColor(read,o.owner,color)||!p.text(font_,read,number((group+1)%10),x,y,color,0x49,true,2,-2))return false;}}
-   if(kind==3){repairvisuals::Sprite repair;if(repairvisuals::sample(read,o.pointer,o.id,repair)){auto q=project({repair.x,repair.y,repair.z});if(!icon(read,p,repair.shape,repair.frame,q[0],q[1]))return false;}}
+   if(kind==3){repairvisuals::Sprite repair;if(repairvisuals::sample(read,o.pointer,o.id,repair)){auto q=project({repair.x,repair.y,repair.z});if(!icon(read,p,repair.shape,repair.frame,q[0],q[1],0x87F6C8))return false;}}
   }return true;
  }
  template<class Read>bool paths(Read read,const mainview::View&v,const std::vector<nativefeedback::Object>&objects,Painter&p,bool&fontUsed,uint32_t tick){GameView game(read);p.lane(3);double scale=projectionZScale(read);auto project=[&](nativefeedback::Point3 q){return std::array<int,2>{{int((int64_t(q.x)-q.y)*30/256)-v.cameraX,int((int64_t(q.x)+q.y)*15/256)-screenHeight(q.z,scale)-v.cameraY}};};
@@ -106,7 +111,7 @@ class Engine {
   }return true;
  }
 public:
- void reset(){font_.reset();strings_.reset();icons_.clear();iconReady_=false;}
- template<class Read>bool capture(Read read,const mainview::View&view,const std::vector<nativefeedback::Object>&objects,int width,int height,Plan&out,uint32_t tick=0){out={};iconReady_=false;if(!view.valid()||width<1||height<1||width>8192||height>8192||uint64_t(width)*height>16*1024*1024||objects.size()>8192)return false;Painter painter(out,view.width,view.height,width,height);bool fontUsed=false;painter.lane(0);if(!labels(read,view,painter,out,fontUsed)){out={};return false;}painter.lane(1);if(!timers(read,view,painter,out,fontUsed)){out={};return false;}if(!buildings(read,view,objects,painter,out,fontUsed)||!statuses(read,view,objects,painter,fontUsed)||!paths(read,view,objects,painter,fontUsed,tick)||!painter.good()||(fontUsed&&!font_.stable(read))){out={};return false;}out.glyphDecodes=font_.decodes();return true;}
+ void reset(){font_.reset();strings_.reset();shapes_.reset();unitPips_.clear();}
+ template<class Read>bool capture(Read read,const mainview::View&view,const std::vector<nativefeedback::Object>&objects,int width,int height,Plan&out,uint32_t tick=0){out={};shapes_.begin();if(!view.valid()||width<1||height<1||width>8192||height>8192||uint64_t(width)*height>16*1024*1024||objects.size()>8192)return false;Painter painter(out,view.width,view.height,width,height);bool fontUsed=false;painter.lane(0);if(!labels(read,view,painter,out,fontUsed)){out={};return false;}painter.lane(1);if(!timers(read,view,painter,out,fontUsed)){out={};return false;}if(!buildings(read,view,objects,painter,out,fontUsed)||!statuses(read,view,objects,painter,fontUsed)||!pips(read,view,objects,painter)||!paths(read,view,objects,painter,fontUsed,tick)||!painter.good()||(fontUsed&&!font_.stable(read))){out={};return false;}out.glyphDecodes=font_.decodes();return true;}
 };
 }}

@@ -40,9 +40,9 @@ inline bool gpuAttempted(){return gpuState().attempted;}
 inline bool gpuUsed(){return gpuState().used;}
 inline bool gpuAreaAvailable(){auto&state=gpuState();return state.requested&&(!state.area||state.area->diagnostics().available||state.area->diagnostics().reason.empty());}
 inline void gpuAreaCached(bool used){auto&state=gpuState();if(used&&state.requested){state.attempted=state.used=true;if(state.area)state.area->reused();}}
-inline bool gpuArea(const gpuarea::Plan&plan,std::vector<uint32_t>&out){
+inline bool gpuArea(const gpuarea::Plan&plan,std::vector<uint32_t>&out,std::shared_ptr<const gpupresent::Frame>*gpuOut=nullptr){
  auto&state=gpuState();if(!state.requested)return false;state.attempted=true;if(!state.area)state.area=std::make_unique<vulkancompute::AreaResolve>();
- const bool used=state.area->render(plan,out);state.used=state.used||used;return used;
+ const bool used=state.area->render(plan,out,gpuOut);state.used=state.used||used;return used;
 }
 constexpr size_t MaxPixels=16*1024*1024, CachePixels=rendermemory::LitPixels;
 // Standard bilinear resolve with Q8 weights and ONE final rounding. Each axis

@@ -321,8 +321,9 @@ public:
   return gpuarea::valid(plan);
  }
  bool presentGPU(int width,int height,std::vector<uint32_t>&out,double spanX=-1,double spanY=-1,
-  std::shared_ptr<const std::vector<uint8_t>>fog={},std::shared_ptr<const gpushroud::Plan>mask={})const{
-  if(!xbrzadapter::gpuAreaAvailable())return false;gpuarea::Plan plan;if(!areaPlan(width,height,plan,spanX,spanY))return false;plan.fog=std::move(fog);plan.mask=std::move(mask);return xbrzadapter::gpuArea(plan,out);
+  std::shared_ptr<const std::vector<uint8_t>>fog={},std::shared_ptr<const gpushroud::Plan>mask={},
+  std::shared_ptr<const gpueffects::Plan>effects={},std::shared_ptr<const gpupresent::Frame>*gpuOut=nullptr)const{
+  if(!xbrzadapter::gpuAreaAvailable())return false;gpuarea::Plan plan;if(!areaPlan(width,height,plan,spanX,spanY))return false;plan.fog=std::move(fog);plan.mask=std::move(mask);plan.effects=std::move(effects);return xbrzadapter::gpuArea(plan,out,gpuOut);
  }
  bool present(int width,int height,std::vector<uint32_t>&out,double spanX=-1,double spanY=-1)const{
   if(failed_||width<1||height<1||width>2048||height>2048||width_<1||height_<1)return false;
