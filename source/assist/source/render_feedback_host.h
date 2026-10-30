@@ -60,11 +60,12 @@ static bool update(const Request&r,const std::shared_ptr<const Frame>&scene,int 
  const bool selectionOK=nf::selected(read,scene->objects,selected);
  std::vector<nf::Stroke> strokes;std::vector<nf::Rect> cutouts;
  const bool ordersOK=nf::actionLines(read,r.view,r.width,r.height,strokes);
- const bool placementOK=foundationStencil.capture(read,r.view,r.width,r.height,cutouts);
- const bool effectsOK=(!r.profile.particles||effectStencil.capture(read,r.view,r.width,r.height,scene->objects,cutouts))&&
+ const bool nativeAligned=external::mainview::sameViewport(before,r.view);
+ const bool placementOK=!nativeAligned||foundationStencil.capture(read,r.view,r.width,r.height,cutouts);
+ const bool effectsOK=!nativeAligned||((!r.profile.particles||effectStencil.capture(read,r.view,r.width,r.height,scene->objects,cutouts))&&
   unitUIStencil.capture(read,r.view,r.width,r.height,scene->objects,cutouts)&&
   (!r.profile.lasers||independentLasers(*scene,0)||external::nativeeffects::beams(read,r.view,r.width,r.height,cutouts))&&
-  external::nativeeffects::mergeCutouts(cutouts,r.width,r.height);
+  external::nativeeffects::mergeCutouts(cutouts,r.width,r.height));
  const double sx=double(r.width)/r.view.width,sy=double(r.height)/r.view.height;
  external::mainview::View after;
  if(!external::mainview::sample(read,after))return false;
@@ -76,8 +77,9 @@ static bool update(const Request&r,const std::shared_ptr<const Frame>&scene,int 
  // World feedback is projected for r.view; the band and cursor already use
  // screen coordinates. Camera motion alone does not tear either one. Native
  // placement/effect holes are different: the game pixels underneath must still be
- // at the exact camera for which those holes were captured.
- if(!cutouts.empty()&&(!external::mainview::sameViewport(before,r.view)||!external::mainview::sameViewport(before,after))){unsafeView=true;nativeCutouts.reset();return false;}
+ // at the exact camera for which those holes were captured. Omit those
+ // holes during movement while keeping the independently rendered world.
+ if(!cutouts.empty()&&(!external::mainview::sameViewport(before,r.view)||!external::mainview::sameViewport(before,after))){cutouts.clear();nativeCutouts.reset();}
  if(cutouts.empty())nativeCutouts.reset();
  else{
   bool same=nativeCutouts&&nativeCutouts->size()==cutouts.size();

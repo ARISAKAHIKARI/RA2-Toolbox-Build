@@ -92,5 +92,15 @@
     "continuity": "Retains Hotfix17 parity merge/1000 Hz sampling target/2-second exit deadline; edge extension for short viewport overscan misses",
     "remaining": "CPU source decoding and static terrain cache construction; whole-map/minimap and independent window output retain their existing paths. No full Vera20K engine transplant.",
     "validation": "CPU-only fixtures, GLSL/HLSL static compilation, SPIR-V validation, Zig Windows cross build, PE/ABI/import checks; Vulkan/device/Windows/game/FPS not executed or measured"
+  },
+  "Hotfix19": {
+    "reference": "Vera20K 3d42426b2e9c1b4cf913a7dbbaaf8bf7d3b6bc7f: build world instances, update camera, ordered world/effect/shroud passes, tactical scissor and separate UI presentation; C++ adaptation, not a verbatim Rust/wgpu engine replacement.",
+    "world": "Main view retains whole-map native terrain and immutable world-space object/shadow/effect inputs. A separate presentation worker samples the actual camera and redraws the current viewport without waiting for asset decoding.",
+    "scroll": "Remove overscan prediction, framebuffer translation, edge replication and hold-during-scroll. Publish a complete frame with its own camera. State age is capped at 500 ms and completion age at 100 ms; failure does not renew timestamps.",
+    "sidebar": "World and feedback surfaces share the tactical clip; compositor window uses the union of actual layer bounds. DirectComposition mode removes WS_EX_LAYERED and uses WS_EX_NOREDIRECTIONBITMAP; CPU mode restores layered output.",
+    "watch": "Primary and secondary watch panels present immutable shared GPU textures directly with GPU scaling/borders. One adapter immediate context has a nonblocking presentation mutex. Shared source SRVs remain keyed-locked through draw submission; the extra frame CopyResource is removed.",
+    "budget": "At most 12 immutable direct-output slots per existing output pool, retaining the previous 384 MiB total pixel budget; held outputs are not overwritten.",
+    "remaining": "State reading, source decoding, static terrain preparation and geometry planning remain CPU work. Full-map minimap output, legacy/native UI passthrough and unsupported effects remain existing integrations. Native pixel-perfect parity and a full Rust/wgpu/simulation transplant are not completed.",
+    "validation": "Targeted CPU-only presentation fixtures, static HLSL/SPIR-V validation and Zig mixed-architecture cross compilation. No Vulkan, D3D11, Windows loader or live game execution; visual ghosting/black sidebar fixes are not live-certified."
   }
 }

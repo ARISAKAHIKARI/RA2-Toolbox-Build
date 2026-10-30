@@ -19,9 +19,9 @@ int main(){
  using namespace renderpresentation;
  Request request;Frame frame{request,std::make_shared<const std::vector<uint32_t>>(12,0xff123456),1000,1450};
  // A 450ms render is usable immediately after completion, then pending and
- // transiently failed work leave its pixels unchanged until the bounded lease.
- assert(usable(frame,request,1450));assert(usable(frame,request,2100));
- assert(!usable(frame,request,2950));
+ // transiently failed work leave its pixels unchanged only inside the short lease.
+ assert(usable(frame,request,1450));assert(usable(frame,request,1499));
+ assert(!usable(frame,request,1500));
  frame.completedTick=3400;assert(!usable(frame,request,3500)); // old sample cannot be laundered by a late completion
  frame.sampledTick=0xfffffff0u;frame.completedTick=0xfffffff8u;assert(usable(frame,request,50));
  frame={request,std::make_shared<const std::vector<uint32_t>>(12,0xff123456),1000,1450};
@@ -46,15 +46,15 @@ int main(){
  std::atomic<int> attempted{0};
  asyncwork::Latest<Request,Frame> worker([&](const Request&r)->std::shared_ptr<const Frame>{
   attempted=r.sequence;if(r.fail)return {};
-  auto out=std::make_shared<Frame>();out->request=r;out->sampledTick=r.tick;out->completedTick=r.tick+450;
+  auto out=std::make_shared<Frame>();out->request=r;out->sampledTick=r.tick;out->completedTick=r.tick+50;
   out->image=std::make_shared<const std::vector<uint32_t>>(12,0xff000000u|unsigned(r.sequence));return out;
  });
  std::shared_ptr<const Frame> last;
  for(int n=1;n<=30;++n){
-  request.sequence=n;request.tick=1000+uint32_t(n)*100;request.fail=n%3!=1;
+  request.sequence=n;request.tick=1000+uint32_t(n)*25;request.fail=n%3!=1;
   worker.submit(request);eventually([&]{return attempted.load()==n;});
   if(!request.fail){eventually([&]{auto f=worker.get();return f&&f->request.sequence==n;});last=worker.get();}
-  auto f=worker.get();assert(f&&f==last&&usable(*f,request,request.tick+450));
+  auto f=worker.get();assert(f&&f==last&&usable(*f,request,request.tick+50));
   std::vector<overlaycomposition::Surface> layers{{3,110,request.context,{0,0,4,3},true,255,f->image}};
   assert(overlaycomposition::groupValid({3,4,5},layers,request.context));
   std::vector<uint32_t> pixels;assert(overlaycomposition::compose(request.context,layers,pixels));

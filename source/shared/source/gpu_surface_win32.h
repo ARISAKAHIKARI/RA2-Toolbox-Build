@@ -12,6 +12,7 @@
 #include <mutex>
 #include <string>
 #include <utility>
+#include <vector>
 namespace gpupresent {
 template<class T>class Com {
  T* p_=nullptr;
@@ -22,6 +23,9 @@ public:
 };
 inline HMODULE systemModule(const wchar_t*name){wchar_t path[MAX_PATH]{};auto n=GetSystemDirectoryW(path,MAX_PATH);if(!n||n>=MAX_PATH-64)return nullptr;return LoadLibraryW((std::wstring(path,n)+L"\\"+name).c_str());}
 struct Device {
+ // All windows on this adapter share one immediate context. Never let the
+ // UI's watch windows race the independent main-overlay presenter.
+ std::mutex presentationMutex;
  HMODULE d3dModule=nullptr,dxgiModule=nullptr;Com<ID3D11Device> device;Com<IDXGIFactory2> factory;uint64_t adapter=0;
  ~Device(){factory.reset();device.reset();if(d3dModule)FreeLibrary(d3dModule);if(dxgiModule)FreeLibrary(dxgiModule);}
  static std::shared_ptr<Device> create(uint64_t luid){
@@ -41,7 +45,7 @@ struct Device {
 inline std::shared_ptr<Device> device(uint64_t luid){static std::mutex mutex;static std::map<uint64_t,std::weak_ptr<Device>> devices;std::lock_guard<std::mutex>lock(mutex);
  auto prior=devices[luid].lock();if(prior)return prior;auto next=Device::create(luid);if(next)devices[luid]=next;return next;}
 struct SharedImage final:Resource {
- std::shared_ptr<Device> owner;Com<ID3D11Texture2D> texture;Com<IDXGIKeyedMutex> keyed;HANDLE handle=nullptr;
+ std::shared_ptr<Device> owner;Com<ID3D11Texture2D> texture;Com<ID3D11ShaderResourceView> view;Com<IDXGIKeyedMutex> keyed;HANDLE handle=nullptr;
  mutable std::atomic<bool> consumed{false};bool produced=false;
  ~SharedImage(){if(handle)CloseHandle(handle);}
  // Also reclaims frames dropped by the latest-only publication queue. A frame
@@ -54,8 +58,31 @@ struct SharedImage final:Resource {
   D3D11_TEXTURE2D_DESC desc{};desc.Width=w;desc.Height=h;desc.MipLevels=desc.ArraySize=1;desc.Format=DXGI_FORMAT_B8G8R8A8_UNORM;desc.SampleDesc.Count=1;desc.Usage=D3D11_USAGE_DEFAULT;
   desc.BindFlags=D3D11_BIND_SHADER_RESOURCE;desc.MiscFlags=D3D11_RESOURCE_MISC_SHARED_NTHANDLE|D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX;
   if(FAILED(out->owner->device->CreateTexture2D(&desc,nullptr,out->texture.put()))||FAILED(out->texture->QueryInterface(__uuidof(IDXGIKeyedMutex),reinterpret_cast<void**>(out->keyed.put()))))return {};
+  if(FAILED(out->owner->device->CreateShaderResourceView(out->texture.get(),nullptr,out->view.put())))return {};
   Com<IDXGIResource1> resource;if(FAILED(out->texture->QueryInterface(__uuidof(IDXGIResource1),reinterpret_cast<void**>(resource.put())))||FAILED(resource->CreateSharedHandle(nullptr,DXGI_SHARED_RESOURCE_READ|DXGI_SHARED_RESOURCE_WRITE,nullptr,&out->handle)))return {};
   static std::atomic<uint64_t> sequence{0};out->sequence=++sequence;return out;
+ }
+};
+// Borrow published images for an entire draw submission. The frame owners
+// prevent slot reuse; the keyed mutex orders D3D reads against Vulkan writes.
+// A second window may read the same completed image after key 0 is returned.
+class SharedReads {
+ ID3D11DeviceContext*context_;
+ std::vector<std::shared_ptr<const SharedImage>> images_;
+public:
+ explicit SharedReads(ID3D11DeviceContext*context):context_(context){}
+ ~SharedReads(){finish();}
+ HRESULT acquire(std::shared_ptr<const SharedImage>image){
+  for(const auto&prior:images_)if(prior==image)return S_OK;
+  const HRESULT result=image->keyed->AcquireSync(image->consumed.load(std::memory_order_acquire)?0:1,0);
+  if(result==S_OK)images_.push_back(std::move(image));return result;
+ }
+ bool finish(){
+  if(images_.empty())return true;
+  ID3D11ShaderResourceView*empty[2]{};context_->PSSetShaderResources(0,2,empty);
+  context_->Flush();bool ok=true;
+  for(const auto&image:images_){if(FAILED(image->keyed->ReleaseSync(0)))ok=false;else image->consumed.store(true,std::memory_order_release);}
+  images_.clear();if(!ok)available()=false;return ok;
  }
 };
 }

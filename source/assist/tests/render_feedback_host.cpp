@@ -94,6 +94,7 @@ int main(){
  auto publish=[&](const Request&r){
   layers.clear();
   if(feedback::update(r,frame,0,0,layers)){
+   auto completed=std::make_shared<Frame>(*frame);completed->completedTick=completed->sampledTick=clockNow;frame=std::move(completed);
    layers.push_back({overlaycompositor::RenderUpgrade,110,r.context,{0,0,r.width,r.height},true,255,frame->image});
    group.publish(r,frame,layers,clockNow);
   }else if(!feedback::unsafeView&&group.retain(r,clockNow))layers=group.layers();
@@ -102,10 +103,10 @@ int main(){
  };
  assert(publish(request));const uint32_t lastGood=clockNow;
  auto scrolling=request;scrolling.view.cameraX+=160;scrolling.context.cameraX+=160;
- assert(group.holdDuringScroll(scrolling,lastGood+31)&&!group.holdDuringScroll(scrolling,lastGood+32));
- auto otherWorld=scrolling;otherWorld.view.scenario++;assert(!group.holdDuringScroll(otherWorld,lastGood+1));
- auto otherConfig=scrolling;otherConfig.generation++;assert(!group.holdDuringScroll(otherConfig,lastGood+1));
- for(int n=1;n<=7;++n){clockNow=lastGood+uint32_t(n)*15;externalReader.failSelection=n%3==0;externalReader.failMouse=n%3==1;externalReader.failView=n%3==2;
+ assert(!group.retain(scrolling,lastGood+31));
+ auto otherWorld=scrolling;otherWorld.view.scenario++;assert(!group.retain(otherWorld,lastGood+1));
+ auto otherConfig=scrolling;otherConfig.generation++;assert(!group.retain(otherConfig,lastGood+1));
+ for(int n=1;n<=6;++n){clockNow=lastGood+uint32_t(n)*15;externalReader.failSelection=n%3==0;externalReader.failMouse=n%3==1;externalReader.failView=n%3==2;
   assert(publish(request));assert(layers.back().pixels==frame->image); // never a full native frame on transient feedback reads
  }
  clockNow=lastGood+120;assert(!publish(request)); // failures never renew lastGood
@@ -123,8 +124,8 @@ int main(){
  externalReader.put(external::nativefeedback::Map+0x11CF,uint8_t(0));
  externalReader.put(0xA8B230,request.view.scenario+4);layers.clear();assert(!feedback::update(request,frame,0,0,layers)&&feedback::unsafeView&&feedback::unsafeWorld);
  externalReader.put(0xA8B230,request.view.scenario);
- // A real native foundation hole continues to require an exact camera,
- // including when it moves during capture. Its underlying pixels are native.
+ // A native foundation hole is omitted when the camera moves before or
+ // during capture; the independent complete world can still be published.
  auto placement=request;placement.view.cameraX=-100;placement.view.cameraY=1875;setup(placement);
  constexpr uint32_t map=external::nativefeedback::Map,stencilShape=0x600000,foundation=0x50000,cells=0x100000,tile=0x300000;
  const int bounds[]{64,64,10,10,1,1};externalReader.put(map+0xF4,bounds);externalReader.put(map+0x13C,cells);externalReader.put(map+0x140,512*512);
@@ -134,8 +135,8 @@ int main(){
  const uint16_t shpHeader[]{0,2,2,3};externalReader.put(stencilShape,shpHeader);
  for(int f=0;f<3;++f){uint32_t at=stencilShape+8+f*24;externalReader.put(at+4,uint16_t(2));externalReader.put(at+6,uint16_t(2));externalReader.put(at+20,uint32_t(80+f*4));const uint8_t opaque[]{1,1,1,1};externalReader.put(stencilShape+80+f*4,opaque);}
  layers.clear();assert(feedback::update(placement,frame,0,0,layers)&&feedback::nativeCutouts&&!feedback::nativeCutouts->empty());
- externalReader.moveOnSelection=8;layers.clear();assert(!feedback::update(placement,frame,0,0,layers)&&feedback::unsafeView&&!feedback::unsafeWorld);
- layers.clear();assert(!feedback::update(placement,frame,0,0,layers)&&feedback::unsafeView);
+ externalReader.moveOnSelection=8;layers.clear();assert(feedback::update(placement,frame,0,0,layers)&&!feedback::unsafeView&&!feedback::nativeCutouts);
+ layers.clear();assert(feedback::update(placement,frame,0,0,layers)&&!feedback::unsafeView&&!feedback::nativeCutouts);
  // A live beam preserves native pixels without decoding an invented line.
  // Any failed or camera-mismatched effect mask forbids the complete-group
  // grace path, so an expired beam corridor can never remain on screen.
@@ -151,9 +152,9 @@ int main(){
  externalReader.failSelection=true;layers.clear();assert(!feedback::update(request,frame,0,0,layers)&&feedback::unsafeView&&!feedback::nativeCutouts);externalReader.failSelection=false;
  layers.clear();assert(feedback::update(request,frame,0,0,layers)&&feedback::nativeCutouts);
  externalReader.failBeam=true;layers.clear();assert(!feedback::update(request,frame,0,0,layers)&&feedback::unsafeView&&!feedback::nativeCutouts);externalReader.failBeam=false;
- externalReader.moveOnSelection=8;layers.clear();assert(!feedback::update(request,frame,0,0,layers)&&feedback::unsafeView&&!feedback::nativeCutouts);
+ externalReader.moveOnSelection=8;layers.clear();assert(feedback::update(request,frame,0,0,layers)&&!feedback::unsafeView&&!feedback::nativeCutouts);
  setup(request);externalReader.put(external::nativeeffects::LaserArray+16,0u);layers.clear();assert(feedback::update(request,frame,0,0,layers)&&!feedback::nativeCutouts);
  externalReader.failMouse=true;layers.clear();assert(!feedback::update(request,frame,0,0,layers)&&!feedback::unsafeView);externalReader.failMouse=false;
  assert(overlaycompositor::host().removals==0);feedback::shutdown();assert(overlaycompositor::host().removals==1);
- std::puts("PASS: actual feedback host, 100 current-position cache hits, 50 immediate cursor frame changes, palette refresh, bounded selection/group read grace, screen-band stability during camera motion; native foundation holes keep exact-camera rejection, immediate world/config rejection");
+ std::puts("PASS: actual feedback host, 100 current-position cache hits, 50 immediate cursor frame changes, palette refresh, bounded selection/group read grace, screen-band stability during camera motion; native foundation holes removed on camera mismatch, immediate world/config rejection");
 }

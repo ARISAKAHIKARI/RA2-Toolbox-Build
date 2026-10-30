@@ -58,6 +58,18 @@ class Host {
   if(!window){std::lock_guard<std::mutex>lock(mutex);error=GetLastError();startupFailed=true;return;}
   ownedWindow=window;
   DIB dib;gpupresent::Compositor gpuComposition;bool gpuWindow=false;overlaycomposition::Incremental composition;overlaypresentrate::Monitor displayRate;uint64_t presented=~uint64_t(0),token=0;bool visible=false,dibNeedsFullCopy=true;POINT lastOrigin{LONG_MIN,LONG_MIN};bool wasTop=false;
+  // A native window region enforces the same scissor boundary as the world
+  // pass. Uncovered sidebar pixels never belong to this composition HWND.
+  std::vector<overlaycomposition::Rect> windowRegion;
+  auto clipWindow=[&](const Context&view,const std::vector<Surface>&surfaces){
+   std::vector<overlaycomposition::Rect> rects;for(const auto&s:surfaces){auto r=overlaycomposition::bounds(s,view);if(r.w>0&&r.h>0)rects.push_back(r);}
+   std::sort(rects.begin(),rects.end(),[](const auto&a,const auto&b){return std::tie(a.x,a.y,a.w,a.h)<std::tie(b.x,b.y,b.w,b.h);});
+   rects.erase(std::unique(rects.begin(),rects.end()),rects.end());if(rects==windowRegion)return true;
+   HRGN region=CreateRectRgn(0,0,0,0);if(!region)return false;
+   for(const auto&r:rects){HRGN part=CreateRectRgn(r.x,r.y,r.x+r.w,r.y+r.h);if(!part){DeleteObject(region);return false;}
+    const int combined=CombineRgn(region,region,part,RGN_OR);DeleteObject(part);if(combined==ERROR){DeleteObject(region);return false;}}
+   if(!SetWindowRgn(window,region,FALSE)){DeleteObject(region);return false;}windowRegion=std::move(rects);return true;
+  };
   overlaypresentrate::Cadence uploadCadence;
   std::chrono::steady_clock::time_point lastUploadComplete{};
   for(;;){
@@ -89,14 +101,20 @@ class Host {
    const bool gpuFrame=std::any_of(layers.begin(),layers.end(),[](const Surface&s){return bool(s.gpu);});
    if(gpuFrame){
     if(!gpuWindow){
-     SetWindowLongPtrW(window,GWL_EXSTYLE,GetWindowLongPtrW(window,GWL_EXSTYLE)|WS_EX_NOREDIRECTIONBITMAP);
-     SetLayeredWindowAttributes(window,0,255,LWA_ALPHA);gpuWindow=true;dib.clear();composition={};dibNeedsFullCopy=true;
+     SetWindowLongPtrW(window,GWL_EXSTYLE,(GetWindowLongPtrW(window,GWL_EXSTYLE)&~WS_EX_LAYERED)|WS_EX_NOREDIRECTIONBITMAP);
+     gpuWindow=true;dib.clear();composition={};dibNeedsFullCopy=true;
     }
     SetWindowPos(window,nullptr,origin.x,origin.y,current.width,current.height,SWP_NOZORDER|SWP_NOACTIVATE);
     {
      std::unique_lock<std::mutex>lock(mutex);auto obsolete=[&]{return stop||!enabled||context.token!=current.token||context.cameraX!=current.cameraX||context.cameraY!=current.cameraY||rate!=requestedHz;};
      cv.wait_until(lock,uploadCadence.deadline(std::chrono::steady_clock::now(),hz),obsolete);if(obsolete())continue;
+     // A worker may finish while the output cadence is waiting. Present the
+     // newest complete layer set, without holding an older frame one interval.
+     if(version!=revision){layers.clear();for(const auto&n:nodes)if(overlaycomposition::valid(n.second.surface,current))layers.push_back(n.second.surface);version=revision;
+      if(std::none_of(layers.begin(),layers.end(),[](const Surface&s){return bool(s.gpu);}))continue;
+     }
     }
+    if(!clipWindow(current,layers))continue;
     uploadCadence.submitted(std::chrono::steady_clock::now());updated=gpuComposition.present(window,current,layers);
     const auto completed=std::chrono::steady_clock::now();
     {std::lock_guard<std::mutex>lock(mutex);if(context.token==current.token){if(updated){auto&statistics=uploadStatistics_;statistics.intervalMs=uploadContinuous_?uint64_t(std::max<int64_t>(0,std::chrono::duration_cast<std::chrono::milliseconds>(completed-lastUploadComplete).count())):0;statistics.maxGapMs=std::max(statistics.maxGapMs,statistics.intervalMs);++statistics.count;statistics.lastTick=GetTickCount64();uploadContinuous_=true;lastUploadComplete=completed;}else ++uploadStatistics_.failures;}}
@@ -107,6 +125,7 @@ class Host {
     gpuComposition.reset();auto style=GetWindowLongPtrW(window,GWL_EXSTYLE)&~WS_EX_NOREDIRECTIONBITMAP;
     SetWindowLongPtrW(window,GWL_EXSTYLE,style&~WS_EX_LAYERED);SetWindowLongPtrW(window,GWL_EXSTYLE,style|WS_EX_LAYERED);gpuWindow=false;dibNeedsFullCopy=true;
    }
+   if(!clipWindow(current,layers))continue;
    if(continuous||!visible||version!=presented||token!=current.token){
     const bool resize=dib.w!=current.width||dib.h!=current.height||!dib.dc;
     if(!composition.update(current,std::move(layers))||!dib.resize(current.width,current.height)){updated=false;}
@@ -156,7 +175,7 @@ class Host {
    }
    {std::lock_guard<std::mutex>lock(mutex);error=updated?0:GetLastError();}
   }
-  overlaystack::forget(window);DestroyWindow(window);ownedWindow=nullptr;
+  gpuComposition.reset();overlaystack::forget(window);DestroyWindow(window);ownedWindow=nullptr;
  }
 public:
  ~Host(){shutdown();}
@@ -184,7 +203,7 @@ private:
    auto next=std::find_if(layers.begin(),layers.end(),[&](const Surface&s){return s.id==id;});
    if(next==layers.end()){changed|=nodes.erase(id)!=0;continue;}
    auto&node=nodes[id];const auto&old=node.surface;
-   changed|=old.pixels!=next->pixels||old.gpu!=next->gpu||old.extendEdges!=next->extendEdges||old.rect!=next->rect||old.clip!=next->clip||!overlaycomposition::sameCutouts(old.cutouts,next->cutouts)||old.order!=next->order||old.opacity!=next->opacity||old.cameraBound!=next->cameraBound||
+   changed|=old.pixels!=next->pixels||old.gpu!=next->gpu||old.rect!=next->rect||old.clip!=next->clip||!overlaycomposition::sameCutouts(old.cutouts,next->cutouts)||old.order!=next->order||old.opacity!=next->opacity||old.cameraBound!=next->cameraBound||
     old.context.token!=next->context.token||old.context.cameraX!=next->context.cameraX||old.context.cameraY!=next->context.cameraY;
    node={std::move(*next),now};
   }
@@ -217,7 +236,7 @@ public:
   std::lock_guard<std::mutex>lock(mutex);if(!enabled||startupFailed)return false;
   if(!overlaycomposition::valid(surface,context))return true;
   auto&i=nodes[surface.id];auto&old=i.surface;
-  bool changed=old.pixels!=surface.pixels||old.gpu!=surface.gpu||old.extendEdges!=surface.extendEdges||old.rect!=surface.rect||old.clip!=surface.clip||!overlaycomposition::sameCutouts(old.cutouts,surface.cutouts)||old.order!=surface.order||old.opacity!=surface.opacity||old.context.token!=surface.context.token||old.context.cameraX!=surface.context.cameraX||old.context.cameraY!=surface.context.cameraY;
+  bool changed=old.pixels!=surface.pixels||old.gpu!=surface.gpu||old.rect!=surface.rect||old.clip!=surface.clip||!overlaycomposition::sameCutouts(old.cutouts,surface.cutouts)||old.order!=surface.order||old.opacity!=surface.opacity||old.context.token!=surface.context.token||old.context.cameraX!=surface.context.cameraX||old.context.cameraY!=surface.context.cameraY;
   i={std::move(surface),GetTickCount64()};if(changed){++revision;cv.notify_one();}return true;
  }
  bool touch(uint64_t id,uintptr_t window,uint32_t pid){std::lock_guard<std::mutex>lock(mutex);if(!enabled||startupFailed||context.window!=window||context.pid!=pid)return false;auto i=nodes.find(id);if(i!=nodes.end()&&overlaycomposition::valid(i->second.surface,context)){i->second.lastSeen=GetTickCount64();return true;}return false;}

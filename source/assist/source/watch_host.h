@@ -2,7 +2,7 @@
 #include "watch_scene.h"
 namespace watchhost {
 static constexpr int Width=external::watch::NativeViewWidth,Height=external::watch::NativeViewHeight;
-struct View {external::watch::Frame frame;external::watch::Box box;bool shown=false;uint32_t revision=0;std::shared_ptr<const std::vector<uint32_t>> pixels;};
+struct View {external::watch::Frame frame;external::watch::Box box;bool shown=false;uint32_t revision=0;std::shared_ptr<const std::vector<uint32_t>> pixels;std::shared_ptr<const gpupresent::Frame> gpu;};
 static View views[3];static external::watch::Track tracks[3];static bool autoSuppressed=false,shown=false,suspended=false;
 static uint32_t process=0,epoch=0,controls=0;static uint8_t trackingOptions=0xff;
 struct Request {uint32_t pid,match,tick,control;int width,height;bool reveal,danger,suppressed;std::array<external::watch::Track,3> tracks;external::presentation::Selection selection;};
@@ -19,8 +19,14 @@ static asyncwork::Latest<Request,Result> worker([](const Request&r)->std::shared
  renderer.features(r.selection.profile);renderer.syncTracks(r.control,r.tracks,r.suppressed);if(!renderer.update(GetTickCount()))return {};
  auto result=std::make_shared<Result>();result->pid=r.pid;result->match=r.match;result->control=r.control;result->tick=r.tick;result->suppressed=renderer.autoSuppressed;std::copy(std::begin(renderer.tracks),std::end(renderer.tracks),result->tracks.begin());
  for(int i=0;i<3;++i){auto&v=renderer.views[i];auto&out=result->views[i];out.shown=v.shown;out.box=v.box;out.frame.focus=v.frame.focus;out.frame.bounds=v.frame.bounds;out.frame.center=v.frame.center;out.frame.cameraX=v.frame.cameraX;out.frame.cameraY=v.frame.cameraY;out.frame.dangerous=v.frame.dangerous;out.revision=r.tick;
-  if(v.shown){auto pixels=std::make_shared<std::vector<uint32_t>>(Width*Height);Bitmap bm(Width,Height,Width*4,PixelFormat32bppPARGB,reinterpret_cast<BYTE*>(pixels->data()));{Graphics g(&bm);renderer.drawView(g,v);}out.pixels=std::move(pixels);}}
- result->diagnostic="watch shared-scene="+std::to_string(renderer.sharedSource)+" gpu-attempted="+std::to_string(renderer.gpuAttempted)+" gpu-used="+std::to_string(renderer.gpuUsed)+" source-age="+std::to_string(uint32_t(GetTickCount()-renderer.sourceTick));
+  if(v.shown&&v.scene){
+   out.gpu=v.scene->gpu;
+   if(!out.gpu&&v.scene->pixels.size()==size_t(Width)*Height)out.pixels=std::shared_ptr<const std::vector<uint32_t>>(v.scene,&v.scene->pixels);
+  }
+  out.shown=out.shown&&(bool(out.gpu)||bool(out.pixels));
+ }
+ unsigned directViews=0;for(const auto&v:result->views)directViews+=bool(v.gpu);
+ result->diagnostic="watch direct="+std::to_string(directViews)+" shared-scene="+std::to_string(renderer.sharedSource)+" gpu-attempted="+std::to_string(renderer.gpuAttempted)+" gpu-used="+std::to_string(renderer.gpuUsed)+" source-age="+std::to_string(uint32_t(GetTickCount()-renderer.sourceTick));
  // Normal sampling shares a page cache. A trigger can replace VisibleRect
  // while assets decode, so validate the completed batch against uncached
  // bounds before publishing. Dropping the batch preserves the UI's slots.
@@ -75,7 +81,7 @@ static void update(uint32_t now){
  arrange();
  Request r{pid,epoch,now,controls,snap.width,snap.height,bool(extra.renderReveal||assist::shroudpolicy::fullPreview(extra.mapStrategy)),bool(extra.watchDanger),autoSuppressed,{}};std::copy(std::begin(tracks),std::end(tracks),r.tracks.begin());r.selection=selection;worker.submit(std::move(r));
 }
-static void drawView(Graphics&g,const View&v){if(!v.shown||!v.pixels)return;Bitmap bm(Width,Height,Width*4,PixelFormat32bppPARGB,reinterpret_cast<BYTE*>(const_cast<uint32_t*>(v.pixels->data())));g.SetInterpolationMode(InterpolationModeNearestNeighbor);g.SetPixelOffsetMode(PixelOffsetModeHalf);g.DrawImage(&bm,RectF(0,0,float(Width),float(Height)),0.f,0.f,float(Width),float(Height),UnitPixel,nullptr);}
+static void drawView(Graphics&g,const View&v){if(!v.shown||!v.pixels)return;Bitmap bm(Width,Height,Width*4,PixelFormat32bppPARGB,reinterpret_cast<BYTE*>(const_cast<uint32_t*>(v.pixels->data())));g.SetInterpolationMode(InterpolationModeNearestNeighbor);g.SetPixelOffsetMode(PixelOffsetModeHalf);g.DrawImage(&bm,RectF(0,0,float(Width),float(Height)),0.f,0.f,float(Width),float(Height),UnitPixel,nullptr);Pen border(Color(255,v.frame.dangerous?255:105,v.frame.dangerous?167:195,v.frame.dangerous?62:225),6.f);g.DrawRectangle(&border,3.f,3.f,float(Width-6),float(Height-6));}
 static void shutdown(){worker.shutdown();}
 }
 

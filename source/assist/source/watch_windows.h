@@ -4,6 +4,26 @@
 namespace watchwindows {
 static HWND windows[3]{},secondaryWindows[3]{};static construction::PanelBuffer buffers[3],secondaryBuffers[3];
 static overlayui::Recovery recovery[3],secondaryRecovery[3];static uint32_t revisions[3]{},secondaryRevisions[3]{};
+// Each HWND owns its composition target; all presenters borrow the adapter's
+// immediate context with a zero-wait lock. Published scenes stay immutable.
+struct GpuPanel {
+ gpupresent::Compositor compositor;bool active=false,pending=false;
+ void cpu(HWND window){
+  if(!active){pending=false;return;}compositor.reset();
+  const auto style=GetWindowLongPtrW(window,GWL_EXSTYLE)&~WS_EX_NOREDIRECTIONBITMAP;
+  SetWindowLongPtrW(window,GWL_EXSTYLE,style&~WS_EX_LAYERED);
+  SetWindowLongPtrW(window,GWL_EXSTYLE,style|WS_EX_LAYERED);SetLayeredWindowAttributes(window,0,255,LWA_ALPHA);
+  active=pending=false;
+ }
+ void reset(){compositor.reset();active=pending=false;}
+ bool present(HWND window,const watchhost::View&view,int width,int height){
+  if(!active){SetWindowLongPtrW(window,GWL_EXSTYLE,(GetWindowLongPtrW(window,GWL_EXSTYLE)&~WS_EX_LAYERED)|WS_EX_NOREDIRECTIONBITMAP);active=true;}
+  pending=!compositor.presentFrame(window,view.gpu,width,height,view.frame.dangerous?0xffffa73eu:0xff69c3e1u);
+  if(pending&&compositor.reason()!="GPU frame not ready")gpupresent::available()=false;
+  return !pending;
+ }
+};
+static GpuPanel gpuPanels[6];
 static secondarydisplay::Monitor secondaryMonitor;
 static HWND dragWindow=nullptr;static HMONITOR dragMonitor=nullptr;static RECT dragWork{};
 static POINT dragCursor{},dragGroup{},dragCurrent{},dragOffsets[3]{};
@@ -21,7 +41,7 @@ static void hidePrimary(){for(int i=0;i<3;++i){recovery[i].suspend();if(windows[
 static void hideSecondary(){cancelDrag();for(int i=0;i<3;++i){secondaryRecovery[i].suspend();if(secondaryWindows[i])ShowWindow(secondaryWindows[i],SW_HIDE);}}
 static void hide(){hidePrimary();hideSecondary();}
 static void invalidateDisplays(){cancelDrag();secondaryMonitor.invalidate();}
-static void destroy(){hide();for(int i=0;i<3;++i){if(windows[i])DestroyWindow(windows[i]);if(secondaryWindows[i])DestroyWindow(secondaryWindows[i]);windows[i]=secondaryWindows[i]=nullptr;buffers[i].clear();secondaryBuffers[i].clear();}watchhost::reset();}
+static void destroy(){hide();for(int i=0;i<3;++i){gpuPanels[i].reset();gpuPanels[i+3].reset();if(windows[i])DestroyWindow(windows[i]);if(secondaryWindows[i])DestroyWindow(secondaryWindows[i]);windows[i]=secondaryWindows[i]=nullptr;buffers[i].clear();secondaryBuffers[i].clear();}watchhost::reset();}
 static void occlude(Graphics&g){
  for(int i=0;i<3;++i)if(windows[i]&&IsWindowVisible(windows[i])&&watchhost::views[i].shown){auto b=watchhost::views[i].box;g.SetClip(RectF(float(b.x-1),float(b.y-1),float(b.w+2),float(b.h+2)),CombineModeExclude);}
 }
@@ -115,9 +135,14 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
   // before a synchronous UpdateWindow. An unrelated WM_PAINT still checks
   // the live display gate before it can draw a stale game scene.
   bool eligible=paintingVerified?(second?extra.watchSecondary:enabled&&extra.watchEnabled&&foregroundGame()&&!snap.chat):(second?secondaryUsable():usable());
-  if(eligible&&watchhost::views[slot].shown){auto&buffer=second?secondaryBuffers[slot]:buffers[slot];HDC mem=buffer.acquire(dc,r.right,r.bottom);if(mem){
-    {Graphics g(mem);g.ScaleTransform(float(r.right)/watchhost::Width,float(r.bottom)/watchhost::Height);watchhost::drawView(g,watchhost::views[slot]);}buffer.present(dc);
-  }}EndPaint(w,&ps);return 0;
+  if(eligible&&watchhost::views[slot].shown){
+   auto&view=watchhost::views[slot];auto&gpu=gpuPanels[panel];auto&buffer=second?secondaryBuffers[slot]:buffers[slot];
+   if(view.gpu){if(!gpu.active)buffer.clear();gpu.present(w,view,r.right,r.bottom);}
+   else{gpu.cpu(w);HDC mem=buffer.acquire(dc,r.right,r.bottom);if(mem){
+    {Graphics g(mem);g.ScaleTransform(float(r.right)/watchhost::Width,float(r.bottom)/watchhost::Height);watchhost::drawView(g,view);}buffer.present(dc);
+   }}
+  }else ShowWindow(w,SW_HIDE);
+  EndPaint(w,&ps);return 0;
  }return DefWindowProcW(w,msg,wp,lp);
 }
 static void placePanel(int slot,bool second,int x,int y,int w,int h){
@@ -129,7 +154,7 @@ static void placePanel(int slot,bool second,int x,int y,int w,int h){
  RECT old{};GetWindowRect(window,&old);bool changed=old.left!=x||old.top!=y||old.right-old.left!=w||old.bottom-old.top!=h;
  bool repair=keep.due(GetTickCount(),true,{uintptr_t(game),pid,displayMatch(),w,h},IsWindowVisible(window)!=FALSE);
  if(changed||repair)keep.submitted(overlaystack::place(window,overlaystack::Layer::Watch,x,y,w,h,SWP_NOACTIVATE|SWP_SHOWWINDOW)!=FALSE);
- if(changed||repair||revision!=view.revision){revision=view.revision;InvalidateRect(window,nullptr,FALSE);paintingVerified=true;UpdateWindow(window);paintingVerified=false;}
+ if(changed||repair||revision!=view.revision||gpuPanels[slot+(second?3:0)].pending){revision=view.revision;InvalidateRect(window,nullptr,FALSE);paintingVerified=true;UpdateWindow(window);paintingVerified=false;}
 }
 static void update(POINT origin,const RECT&client,bool verifiedBattlefield){
  if(verifiedBattlefield&&enabled&&extra.watchEnabled&&foregroundGame()&&!snap.chat&&client.right>0&&client.bottom>0&&snap.width>0&&snap.height>0){
@@ -140,7 +165,11 @@ static void update(POINT origin,const RECT&client,bool verifiedBattlefield){
  if(dragging){
   int count=0;for(int i=0;i<3;++i)if(watchhost::views[i].shown){++count;if(!secondaryWindows[i]||!IsWindowVisible(secondaryWindows[i])){count=-10;break;}}
   if(count==dragCount&&target.monitor==dragMonitor&&target.work.left==dragWork.left&&target.work.top==dragWork.top&&
-     target.work.right==dragWork.right&&target.work.bottom==dragWork.bottom)return;
+     target.work.right==dragWork.right&&target.work.bottom==dragWork.bottom){
+   // Keep drawing new frames while the group is being dragged.
+   for(int i=0;i<3;++i)if(watchhost::views[i].shown){RECT r{};if(GetWindowRect(secondaryWindows[i],&r))placePanel(i,true,r.left,r.top,r.right-r.left,r.bottom-r.top);}
+   return;
+  }
   cancelDrag();
  }
  int count=0;for(const auto&view:watchhost::views)count+=view.shown;

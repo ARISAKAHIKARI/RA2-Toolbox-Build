@@ -15,6 +15,7 @@
 #include "render_profile.h"
 #include "scene_frame_reuse.h"
 #include "gpu_effect_plan.h"
+#include "world_scene_pipeline.h"
 #include <map>
 #include <tuple>
 #include <set>
@@ -23,6 +24,9 @@ namespace external { namespace radar {
 struct SceneRegion {double x=0,y=0,width=0,height=0;bool active=false;};
 template<class Assets>class SceneRenderer {
  presentation::Profile features_;
+ bool prepareWorldOnly_=false;
+ std::shared_ptr<const worldscene::Snapshot> preparedWorld_;
+ std::array<std::array<std::shared_ptr<const voxel::Image>,47>,2> worldShroud_{};
  struct Cached {std::shared_ptr<voxel::Image> image=std::make_shared<voxel::Image>();bool ready=false;uint32_t retry=0;};
  struct SpriteCached {std::shared_ptr<const voxel::Image> image=std::make_shared<voxel::Image>();bool ready=false;uint32_t retry=0;};
  using ArtKey=std::tuple<uint32_t,uint32_t,int,int,uint32_t,uint32_t>;
@@ -119,6 +123,8 @@ public:
  explicit SceneRenderer(size_t pages=camera::NativeCanvas::MaximumPages):nativeBudget_(pages==camera::NativeCanvas::MaximumPages?camera::NativeCanvas::sharedBudget():std::make_shared<camera::NativeCanvas::Budget>()){if(pages!=camera::NativeCanvas::MaximumPages)nativeBudget_->maximum=std::clamp<size_t>(pages,1,camera::NativeCanvas::MaximumPages);}
  void guideEnabled(bool enabled,uint64_t contextKey=0){if(enabled!=guideEnabled_||contextKey!=guideExternalContext_){guideEnabled_=enabled;guideExternalContext_=contextKey;motionContext_=std::make_shared<const uint8_t>(0);}}
  void directPresentation(bool enabled){if(enabled!=directPresentation_){gpuFrameReuse_.reset();directPresentation_=enabled;}}
+ void prepareWorld(bool enabled){if(prepareWorldOnly_!=enabled){reset();prepareWorldOnly_=enabled;}}
+ std::shared_ptr<const worldscene::Snapshot> preparedWorld()const{return preparedWorld_;}
  bool materialsReady()const{return materialsReady_;}
  std::pair<uint32_t,uint32_t> objectCoverage()const{return {drawnObjects_,requestedObjects_};}
  const DecodeStats&decodeStats()const{return decodeStats_;}
@@ -139,7 +145,7 @@ public:
  }
  struct NativeStats {int width,height;size_t pages,resident;uint64_t cells,presents,partialBanks;};
  NativeStats nativeStats()const{return {background_.width(),background_.height(),background_.pageCount(),nativeBudget_->pages,nativeCells_,basePresents_,partialBanks_};}
- void reset(){gpuFrameReuse_.reset();outputPool_.clear();evaluatedPaint_.clear();evaluatedStamp_.clear();evaluationEpoch_=0;overlayScanSource_.reset();overlaySources_.clear();effectAlphas_.clear();voxelLightKnown_=false;tiles_.clear();overlays_.clear();art_.clear();sprites_.clear();displayed_.clear();actorCursor_=transientCursor_=0;repairAssets_.reset();clearBackground();coverage_={};coverageLocal_=false;width_=height_=0;spanX_=spanY_=0;revision_=0;terrainPaletteReady_=false;terrainPalette_={};nativeCells_=basePresents_=partialBanks_=0;gpuMaskBuilder_.reset();detailed_.reset();detailKey_=0;}
+ void reset(){preparedWorld_.reset();worldShroud_={};gpuFrameReuse_.reset();outputPool_.clear();evaluatedPaint_.clear();evaluatedStamp_.clear();evaluationEpoch_=0;overlayScanSource_.reset();overlaySources_.clear();effectAlphas_.clear();voxelLightKnown_=false;tiles_.clear();overlays_.clear();art_.clear();sprites_.clear();displayed_.clear();actorCursor_=transientCursor_=0;repairAssets_.reset();clearBackground();coverage_={};coverageLocal_=false;width_=height_=0;spanX_=spanY_=0;revision_=0;terrainPaletteReady_=false;terrainPalette_={};nativeCells_=basePresents_=partialBanks_=0;gpuMaskBuilder_.reset();detailed_.reset();detailKey_=0;}
  void features(const presentation::Profile&p){if(p.voxelLighting!=features_.voxelLighting||p.spriteLighting!=features_.spriteLighting){art_.clear();sprites_.clear();displayed_.clear();voxelLightKnown_=false;}features_=p;}
  template<class Read>std::shared_ptr<const Scene> render(const Frame&frame,int width,int height,Read read,Assets&assets,SceneRegion region={},unsigned pixelScaleMode=0,bool refined=false,bool liveVoxels=true,bool highColorPrecision=false,bool forceFrame=false,double decodeBudgetMs=4.){
   const bool warming=!materialsReady_;materialsReady_=false;decodeStats_={};stageStats_={};requestedObjects_=drawnObjects_=0;
@@ -163,7 +169,7 @@ public:
   // native viewport. No ceil-induced pixel row becomes part of the view.
   int nativeWidth=viewport.backingWidth(),nativeHeight=viewport.backingHeight();
   if((complete_&&(!complete_->geo.same(domain)||complete_->reveal!=frame.terrain->reveal))||(building_&&(!building_->geo.same(domain)||building_->reveal!=frame.terrain->reveal))||exactX!=spanX_||exactY!=spanY_)clearBackground();
-  if(region.active){
+  if(region.active&&!prepareWorldOnly_){
    if(!coverageLocal_||!coverage_.contains(region.x,region.y,region.width,region.height,nativeWidth,nativeHeight)){
     clearBackground();coverage_=terraincoverage::Region::plan(region.x,region.y,region.width,region.height,nativeWidth,nativeHeight);coverageLocal_=true;
     if(!coverage_.ready)return {};
@@ -195,13 +201,13 @@ public:
    for(size_t n=0;n<building_->colors.size();++n)if(building_->colors[n]||(building_->art[n].sourceColor&&(region.active||!building_->art[n].sourceHidden))){
     int x=int(n%512),y=int(n/512);mapbounds::TileOrigin origin;
     if(!building_->geo.tileOrigin(x,y,building_->art[n].level,origin))continue;
-    if(region.active&&!coverage_.tile(origin.x,origin.y)&&!coverage_.rgb((x-y+building_->geo.offsetX)*30,(x+y-building_->geo.offsetY)*15))continue;
+    if(coverageLocal_&&!coverage_.tile(origin.x,origin.y)&&!coverage_.rgb((x-y+building_->geo.offsetX)*30,(x+y-building_->geo.offsetY)*15))continue;
     cells_.push_back(n);
    }
    if(building_->reveal&&building_->baseColors.size()==building_->colors.size())
     for(size_t n=0;n<building_->baseColors.size();++n)
      if(building_->baseColors[n]&&!building_->colors[n]&&!building_->art[n].sourceColor&&
-       (!region.active||coverage_.rgb((int(n%512)-int(n/512)+building_->geo.offsetX)*30,(int(n%512)+int(n/512)-building_->geo.offsetY)*15)))baseCells_.push_back(n);
+       (!coverageLocal_||coverage_.rgb((int(n%512)-int(n/512)+building_->geo.offsetX)*30,(int(n%512)+int(n/512)-building_->geo.offsetY)*15)))baseCells_.push_back(n);
    std::stable_sort(cells_.begin(),cells_.end(),[](size_t a,size_t b){return a%512+a/512<b%512+b/512;});}
    // New sampling banks commonly contain identical terrain. Compare evaluated
    // per-cell lighting before deciding to rebuild millions of native pixels.
@@ -359,7 +365,7 @@ public:
   // Native terrain shadows were already composed exactly once above.
   const bool areaGpuMode=!region.active&&background_.pageCount()<=gpuarea::MaximumPages&&xbrzadapter::gpuAreaAvailable();
   if(areaGpuMode!=areaGpuMode_){areaGpuMode_=areaGpuMode;baseScene_.reset();maskedBaseScene_.reset();maskSource_.reset();gpuMaskPlan_.reset();cpuMaskPlan_.reset();maskPixels_.reset();}
-  if(!baseScene_){
+  if(!prepareWorldOnly_&&!baseScene_){
    auto base=std::make_shared<Scene>();base->width=width;base->height=height;
    gpuBaseTiles_.reset();cpuBaseFallback_={};
    std::vector<vulkancompute::TileJob> jobs;
@@ -383,9 +389,9 @@ public:
   }
   // Color reconstruction never interpolates engine Z. Dynamic actors still
   // compose at target pixels against nearest original terrain depth.
-  if(detail&&!detailed_.prepare(background_,baseScene_->pixels,width,height,region.x,region.y,region.width,region.height,detailKey_,precision_,pixelScaleMode,
+  if(!prepareWorldOnly_&&detail&&!detailed_.prepare(background_,baseScene_->pixels,width,height,region.x,region.y,region.width,region.height,detailKey_,precision_,pixelScaleMode,
     std::shared_ptr<const std::vector<uint32_t>>(baseScene_,&baseScene_->pixels),baseScene_->pixels.empty()?gpuBaseTiles_:nullptr,cpuBaseFallback_,motionTerrainRevision_+1))return {};
-  if(detail){vulkancompute::MotionView motion;motion.context=motionContext_;motion.x=region.x;motion.y=region.y;motion.scaleX=width/region.width;motion.scaleY=height/region.height;
+  if(!prepareWorldOnly_&&detail){vulkancompute::MotionView motion;motion.context=motionContext_;motion.x=region.x;motion.y=region.y;motion.scaleX=width/region.width;motion.scaleY=height/region.height;
    motion.depthFar=-4096;motion.depthNear=32768;motion.terrainRevision=motionTerrainRevision_;motion.tick=frame.tick;motion.frame=frame.frame;detailed_.motion(std::move(motion),guideEnabled_);}
   // Native Cell::DrawShroud places 60x30 alpha sprites on the flat cell
   // projection, after the world is drawn. Cache their final-presentation mask
@@ -395,7 +401,7 @@ public:
   uint32_t options=game.template get<uint32_t>(0xA8B230);
   bool fog=masked&&options>=0x10000&&(game.template get<uint8_t>(options+1)&0x10)&&
    game.template get<uint8_t>(complete_->geo.house+0x1F5)==0;
-  if(masked&&region.active&&currentVisibility(read,0)){
+  if(!prepareWorldOnly_&&masked&&region.active&&currentVisibility(read,0)){
    shroudmask::Snapshot current;
    if(!liveMasks_.capture(read,complete_->geo,region.x,region.y,region.width,region.height,current))return {};
    fog=current.fog;
@@ -409,7 +415,7 @@ public:
     maskedBaseScene_.reset();maskPixels_.reset();
    }
    liveMaskSnapshot_=std::move(current);liveMaskValid_=true;maskSource_=complete_;maskFog_=fog;
-  }else if(masked&&(maskSource_!=complete_||maskFog_!=fog||mask_.width!=width||mask_.height!=height)){
+  }else if(!prepareWorldOnly_&&masked&&(maskSource_!=complete_||maskFog_!=fog||mask_.width!=width||mask_.height!=height)){
    bool same=maskSource_&&maskFog_==fog&&mask_.width==width&&mask_.height==height&&
     maskSource_->geo.same(complete_->geo)&&maskSource_->shade==complete_->shade;
    if(!same){
@@ -425,12 +431,12 @@ public:
   }
   auto view=background_.fork();
   std::vector<camera::ObjectCanvas::Draw>objectDraws;objectDraws.reserve(frame.markers.size());
-  auto draw=[&](const voxel::Image&i,float x,float y,float sx,float sy,float z,const lighting::State&light,float lift=1,float drop=0,std::shared_ptr<const voxel::Image>owner={},vulkancompute::MotionIdentity motion={}){if(detail)detailed_.blit(i,x,y,sx,sy,z,light,lift,drop,std::move(owner),std::move(motion));else{if(!owner||owner.get()!=&i)owner=std::make_shared<const voxel::Image>(i);objectDraws.push_back({std::move(owner),x,y,z,lift,drop,light});}};
+  auto draw=[&](const voxel::Image&i,float x,float y,float sx,float sy,float z,const lighting::State&light,float lift=1,float drop=0,std::shared_ptr<const voxel::Image>owner={},vulkancompute::MotionIdentity motion={}){if(detail&&!prepareWorldOnly_)detailed_.blit(i,x,y,sx,sy,z,light,lift,drop,std::move(owner),std::move(motion));else{if(!owner||owner.get()!=&i)owner=std::make_shared<const voxel::Image>(i);objectDraws.push_back({std::move(owner),x,y,z,lift,drop,light});}};
   const double projectionScale=projectionZScale(read);
   const auto&geo=frame.terrain->geo;int work=0;size_t pixels=0;std::vector<const Marker*> fallbacks;
   stage(stageStats_.terrainMs);auto markers=frame.markers;
   if(!features_.particles)markers.erase(std::remove_if(markers.begin(),markers.end(),[](const Marker&m){return m.kind==7||m.kind==8||(m.kind==5&&!m.parent);}),markers.end());
-  if(region.active)markers.erase(std::remove_if(markers.begin(),markers.end(),[&](const Marker&m){
+  if(region.active&&!prepareWorldOnly_)markers.erase(std::remove_if(markers.begin(),markers.end(),[&](const Marker&m){
    double x=(double(m.x)-m.y)*30/256.+geo.offsetX*30,y=(double(m.x)+m.y)*15/256.-geo.offsetY*15-screenHeight(m.z,projectionScale);
    if(x<region.x-512||x>region.x+region.width+512||y<region.y-512||y>region.y+region.height+512)return true;
    // Once this exact pose is known, cull its real body+attachment bounds
@@ -551,6 +557,28 @@ public:
     vulkancompute::MotionIdentity motion;motion.object=m.object;motion.id=m.id;motion.type=m.type;motion.kind=uint32_t(m.kind);motion.known=guideEnabled_&&detail&&m.object>=0x10000&&m.type>=0x10000&&m.id!=0xffffffffu&&m.kind>=0&&m.kind<=6;
     draw(*image,px,py,1,1,float((int64_t(m.x)+m.y)*15/256.)-15+camera::anchorY(m.kind)-m.drawZ+(bridge?60:0),light,m.kind==4?12:(m.kind==3||m.kind==5)?2:1,m.pose.shadow.known?float(m.pose.shadow.drop):float(std::max(0,screenHeight(m.z,projectionScale)-(level+(bridge?4:0))*15)),std::move(imageOwner),std::move(motion));}
    else if(m.kind<4)fallbacks.push_back(&m);
+  }
+  if(prepareWorldOnly_){
+   // All terrain pages and world-space instances survive camera movement.
+   // Decoding/live palette reads stay here; the presentation lane owns the
+   // camera, pass recording and GPU submission for every new viewport.
+   auto packet=std::make_shared<worldscene::Snapshot>();packet->ground=background_.fork();packet->state=frame;
+   packet->instances=std::move(objectDraws);packet->terrainRevision=motionTerrainRevision_;packet->profile=features_;packet->samplingMode=pixelScaleMode;packet->precision=precision_;packet->zscale=projectionScale;packet->masked=masked;
+   for(const auto*m:fallbacks)packet->missing.push_back(*m);
+   for(const auto&m:markers){int x,y,w,h;if(feedbackBounds(m,x,y,w,h))packet->bounds[{m.object,m.id}]={x,y,w,h};}
+   if(masked)for(int kind=0;kind<2;++kind)for(int n=0;n<47;++n)if(!worldShroud_[kind][n]){
+    voxel::Image image;if(assets.shroud(kind!=0,n,image))worldShroud_[kind][n]=std::make_shared<const voxel::Image>(std::move(image));
+   }
+   packet->shroud=worldShroud_;
+   if(features_.particles&&frame.effects&&frame.effects->world)for(const auto&a:frame.effects->world->alphas){
+    auto found=effectAlphas_.find(a.image);if(found==effectAlphas_.end()){voxel::Image image;if(!alphaImage(assets,a.image,image,0))continue;
+     size_t bytes=0;for(const auto&item:effectAlphas_)bytes+=camera::pixels(*item.second)*5;
+     if(bytes+camera::pixels(image)*5>16*1024*1024)effectAlphas_.clear();
+     found=effectAlphas_.emplace(a.image,std::make_shared<const voxel::Image>(std::move(image))).first;
+    }packet->alphas.emplace(found->first,found->second);
+   }
+   preparedWorld_=std::move(packet);stage(stageStats_.objectsMs);
+   auto out=std::make_shared<Scene>();out->width=width;out->height=height;return out;
   }
   // Local status glyphs are drawn by local_ui_task on the main view only.
   // Keep physical border scenery; the native radar projection and output

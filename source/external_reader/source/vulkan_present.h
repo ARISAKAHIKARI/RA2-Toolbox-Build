@@ -63,7 +63,12 @@ public:
   pending_=nullptr;if(!gpupresent::available()||!initialize())return false;
   for(auto i=slots_.begin();i!=slots_.end();){auto&s=**i;if(s.source.use_count()==1&&(s.source->width!=w||s.source->height!=h)){destroy(s);i=slots_.erase(i);}else ++i;}
   for(auto&s:slots_)if(s->source.use_count()==1&&s->source->width==w&&s->source->height==h&&s->source->writable()){pending_=s.get();return true;}
-  if(slots_.size()>=6)return false;auto next=create(w,h);if(!next)return false;pending_=next.get();slots_.push_back(std::move(next));return true;
+  // Three watch cameras can each have a displayed, completed and rendering
+  // frame. Keep those owners intact instead of oscillating to CPU at slot 6.
+  // Large main views retain the original 384 MiB pixel-storage ceiling.
+  uint64_t bytes=uint64_t(w)*h*4;for(const auto&s:slots_)bytes+=uint64_t(s->source->width)*s->source->height*4;
+  if(slots_.size()>=12||bytes>384ull*1024*1024)return false;
+  auto next=create(w,h);if(!next)return false;pending_=next.get();slots_.push_back(std::move(next));return true;
 #else
   (void)w;(void)h;return false;
 #endif

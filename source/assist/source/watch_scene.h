@@ -60,7 +60,7 @@ public:
    double cx=(int64_t(center.x)-center.y)*30./256,cy=(int64_t(center.x)+center.y)*15./256-external::screenHeight(center.z,zscale)+external::camera::anchorY(center.kind);
    if(!v.frame.bounds.clampCamera(cx,cy,Width,Height))continue;v.frame.cameraX=cx;v.frame.cameraY=cy;v.frame.cameraReady=true;
    v.frame.passengers.clear();v.frame.dangerous=false;external::passengers::contents(read_,target.pointer,v.frame.passengers,v.frame.dangerous);
-   auto&s=scenes_[i];s.features(profile_);s.guideEnabled(false,controls_);
+   auto&s=scenes_[i];s.features(profile_);s.guideEnabled(false,controls_);s.directPresentation(true);
    auto scene=s.render(data,Width,Height,read_,assets_,{cx-Width/2+data.terrain->geo.offsetX*30.,cy-Height/2-data.terrain->geo.offsetY*15.,Width,Height,true},unsigned(profile_.scale),profile_.detail!=0,true,profile_.precision!=0,true,4.);
    gpuAttempted|=external::xbrzadapter::gpuAttempted();gpuUsed|=external::xbrzadapter::gpuUsed();
    if(scene&&!scene->boltsRendered&&profile_.lasers&&data.effects&&data.effects->boltsValid){const std::vector<uint8_t>*mask=nullptr;if(s.feedbackVisibility(mask)){

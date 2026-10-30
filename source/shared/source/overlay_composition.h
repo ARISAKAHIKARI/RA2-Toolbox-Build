@@ -26,7 +26,6 @@ struct Surface {
  // to rect's source pixels, preclipped and single-row; other layers still draw.
  std::shared_ptr<const std::vector<Rect>> cutouts;
  std::shared_ptr<const gpupresent::Frame> gpu;
- bool extendEdges=false; // cover clip during a short overscan miss; never expose native world strips
 };
 // Producers rebuild small masks at the input cadence. Equal spans do not
 // change the image merely because their vector was allocated again.
@@ -58,7 +57,7 @@ inline uint32_t over(uint32_t source,uint32_t destination,unsigned opacity){
  }return out;
 }
 inline Rect bounds(const Surface&s,const Context&context){
- const auto&r=s.extendEdges&&s.clip.w>0&&s.clip.h>0?s.clip:s.rect;
+ const auto&r=s.rect;
  int64_t left=std::max<int64_t>(0,r.x),top=std::max<int64_t>(0,r.y);
  int64_t right=std::min<int64_t>(context.width,int64_t(r.x)+r.w),bottom=std::min<int64_t>(context.height,int64_t(r.y)+r.h);
  if(s.clip.w>0&&s.clip.h>0){
@@ -85,10 +84,6 @@ inline void paint(const Context&context,const std::vector<Surface>&layers,std::v
   std::vector<Rect>holes;if(s.cutouts){holes=*s.cutouts;std::sort(holes.begin(),holes.end(),[](const Rect&a,const Rect&b){return a.y!=b.y?a.y<b.y:a.x<b.x;});}
   for(int y=top;y<bottom;++y){
    auto draw=[&](int first,int end){
-    if(s.extendEdges&&(y<r.y||y>=int64_t(r.y)+r.h||first<r.x||end>int64_t(r.x)+r.w)){
-     size_t row=size_t(std::clamp<int64_t>(int64_t(y)-r.y,0,r.h-1))*r.w;
-     for(int x=first;x<end;++x){auto&d=pixels[size_t(y)*context.width+x];d=over((*s.pixels)[row+size_t(std::clamp<int64_t>(int64_t(x)-r.x,0,r.w-1))],d,s.opacity);}return;
-    }
     const auto*src=s.pixels->data()+size_t(int64_t(y)-r.y)*r.w+int64_t(first)-r.x;
     auto*dst=pixels.data()+size_t(y)*context.width+first;
     for(int x=first;x<end;++x,++src,++dst)*dst=over(*src,*dst,s.opacity);
@@ -115,7 +110,7 @@ inline bool compose(const Context&context,std::vector<Surface>layers,std::vector
 class Incremental {
  Context context_{};std::vector<Surface>layers_;std::vector<uint32_t>pixels_;Rect dirty_{};
  std::vector<Rect>dirtyRegions_;bool collapsed_=false;
- static bool sameBase(const Surface&a,const Surface&b){return a.id==b.id&&a.order==b.order&&a.rect==b.rect&&a.clip==b.clip&&a.opacity==b.opacity&&a.pixels==b.pixels&&a.gpu==b.gpu&&a.extendEdges==b.extendEdges;}
+ static bool sameBase(const Surface&a,const Surface&b){return a.id==b.id&&a.order==b.order&&a.rect==b.rect&&a.clip==b.clip&&a.opacity==b.opacity&&a.pixels==b.pixels&&a.gpu==b.gpu;}
  static bool same(const Surface&a,const Surface&b){return sameBase(a,b)&&sameCutouts(a.cutouts,b.cutouts);}
  void holes(const Surface&s,const Context&context){
   const auto clip=bounds(s,context);if(!s.cutouts||clip.w<=0||clip.h<=0)return;
