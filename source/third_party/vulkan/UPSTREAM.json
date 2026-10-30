@@ -4,7 +4,7 @@
   "commit": "b379292b2ab6df5771ba9870d53cf8b2c9295daf",
   "local_modifications": false,
   "layout": "include/vulkan headers relocated to this directory; include/vk_video preserved as vk_video; all included upstream file bytes unchanged",
-  "usage": "VK_NO_PROTOTYPES; dynamic Vulkan 1.0 function loading, no Vulkan library link or loader binary bundled",
+  "usage": "VK_NO_PROTOTYPES; dynamic Vulkan 1.0 compute, optional Vulkan 1.1 Win32 external-memory presentation; no Vulkan library link or loader binary bundled",
   "files": [
     {
       "path": "vulkan_core.h",
@@ -117,6 +117,14 @@
       "source_url": "https://github.com/KhronosGroup/Vulkan-Headers/blob/b379292b2ab6df5771ba9870d53cf8b2c9295daf/LICENSES/Apache-2.0.txt",
       "bytes": 11358,
       "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    {
+      "path": "vulkan_win32.h",
+      "original_path": "include/vulkan/vulkan_win32.h",
+      "git_blob_sha": "d7a0b2bab4f17a04f3240e38a94c61873d2db5ec",
+      "source_url": "https://github.com/KhronosGroup/Vulkan-Headers/blob/b379292b2ab6df5771ba9870d53cf8b2c9295daf/include/vulkan/vulkan_win32.h",
+      "bytes": 15112,
+      "sha256": "fa3a9263d1764b82b634180ec5d3010adc216108bae11c02b157f733073f87f8"
     }
   ]
 }

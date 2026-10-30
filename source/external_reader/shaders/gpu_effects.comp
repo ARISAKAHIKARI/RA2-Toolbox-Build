@@ -1,0 +1,54 @@
+#version 450
+// GPL-3.0: ordered destination batches adapted from Vera20K
+// terrain_surface_lines.rs/wgsl @ 3d42426b2e9c. RGBA policy matches this
+// external reader; source/CPU geometry never reads the frame's color pixels.
+layout(local_size_x=8,local_size_y=8) in;
+layout(std430,binding=1) readonly buffer Materials {uint material[];};
+layout(std430,binding=2) readonly buffer Commands {uint command[];};
+layout(std430,binding=3) buffer Output {uint pixel[];};
+layout(push_constant) uniform Params {
+ uint width,height,drawsOffset,binsOffset,refsOffset,columns,fogOffset,snapshotOffset;
+ uint left,top,right,bottom;
+} p;
+uint u(uint i,uint n){return command[p.drawsOffset+i*32u+n];}
+float f(uint i,uint n){return uintBitsToFloat(u(i,n));}
+uint byteAt(uint offset,uint at){return (material[offset+at/4u]>>((at%4u)*8u))&255u;}
+uint over(uint s,uint d){uint inv=255u-(s>>24),o=0;for(uint sh=0;sh<32;sh+=8)o|=min(255u,((s>>sh)&255u)+(((d>>sh)&255u)*inv+127u)/255u)<<sh;return o;}
+uint lit(uint dst,uint rgb,uint mask,bool add){uint o=0xff000000u;for(uint sh=0;sh<24;sh+=8){uint src=((rgb>>sh)&255u)*mask/127u,old=(dst>>sh)&255u;o|=(add?min(255u,old+src):src+old*(127u-mask)/127u)<<sh;}return o;}
+int roundAway(float v){return int(sign(v)*floor(abs(v)+0.5));}
+int lineHits(uint i,ivec2 at){
+ vec2 a=vec2(f(i,8),f(i,9)),b=vec2(f(i,10),f(i,11)),delta=b-a;int count=int(u(i,12));if(count==0)return at==ivec2(roundAway(a.x),roundAway(a.y))?1:0;
+ if(count==1){int hits=0;for(int n=0;n<=1;++n){vec2 q=a+delta*float(n);if(at==ivec2(roundAway(q.x),roundAway(q.y)))++hits;}return hits;}
+ bool majorX=abs(delta.x)>=abs(delta.y);float extent=majorX?delta.x:delta.y;
+ if(abs(extent)<0.00001)return at==ivec2(roundAway(a.x),roundAway(a.y))?count+1:0;
+ float center=(float(majorX?at.x:at.y)-(majorX?a.x:a.y))*float(count)/extent;
+ int first=max(0,int(floor(center))-3),last=min(count,int(ceil(center))+3),hits=0;
+ for(int n=first;n<=last;++n){vec2 q=a+delta*float(n)/float(count);if(at==ivec2(roundAway(q.x),roundAway(q.y)))++hits;}return hits;
+}
+int boltHits(uint i,ivec2 at){
+ ivec2 a=ivec2(u(i,8),u(i,9)),b=ivec2(u(i,10),u(i,11)),d=abs(b-a),step=ivec2(a.x<b.x?1:-1,a.y<b.y?1:-1);int r=int(u(i,13));bool majorX=d.x>=d.y;int major=majorX?d.x:d.y,minor=majorX?d.y:d.x;
+ if(major==0)return all(lessThanEqual(abs(at-a),ivec2(r)))?1:0;
+ int center=(majorX?at.x-a.x:at.y-a.y)*(majorX?step.x:step.y),hits=0;
+ for(int n=max(0,center-r);n<=min(major,center+r);++n){int m=(n*minor*2+major)/(major*2);ivec2 q=a+(majorX?ivec2(n,m):ivec2(m,n))*step;if(all(lessThanEqual(abs(at-q),ivec2(r))))++hits;}return hits;
+}
+bool insideWave(uint i,ivec2 at){
+ float crosses[6];uint count=0,vertices=u(i,20);for(uint n=0;n<vertices;++n){uint next=(n+1u)%vertices;vec2 a=vec2(f(i,8+2*n),f(i,9+2*n)),b=vec2(f(i,8+2*next),f(i,9+2*next));float y=float(at.y)+.5;if((a.y>y)!=(b.y>y))crosses[count++]=a.x+(y-a.y)*(b.x-a.x)/(b.y-a.y);}
+ for(uint n=1;n<count;++n)for(uint k=n;k>0&&crosses[k]<crosses[k-1];--k){float t=crosses[k];crosses[k]=crosses[k-1];crosses[k-1]=t;}
+ for(uint n=0;n+1<count;n+=2)if(at.x>=int(ceil(crosses[n]))&&at.x<=int(floor(crosses[n+1])))return true;return false;
+}
+void main(){
+ uvec2 at=gl_GlobalInvocationID.xy+uvec2(p.left,p.top);if(at.x>=p.right||at.y>=p.bottom||at.x>=p.width||at.y>=p.height)return;
+ uint address=at.y*p.width+at.x,visible=p.fogOffset==0xffffffffu?127u:byteAt(p.fogOffset,address);if(visible==0)return;
+ uint bin=(at.y/32u)*p.columns+at.x/32u,start=command[p.binsOffset+2u*bin],count=command[p.binsOffset+2u*bin+1u],dst=pixel[address],bolt=0;
+ for(uint n=0;n<count;++n){uint i=command[p.refsOffset+start+n];if(at.x<u(i,4)||at.y<u(i,5)||at.x>=u(i,6)||at.y>=u(i,7))continue;uint kind=u(i,0),rgb=u(i,1);
+  if(kind==0u){int hits=lineHits(i,ivec2(at));for(int k=0;k<hits;++k)dst=lit(dst,rgb,visible,u(i,2)!=0u);}
+  else if(kind==1u){vec2 d=(vec2(at)-vec2(f(i,8),f(i,9)))/vec2(f(i,10),f(i,11));float strength=max(0.,1.-length(d))*.3;uint c=0;for(uint sh=0;sh<24;sh+=8)c|=uint(float((rgb>>sh)&255u)*strength)<<sh;dst=lit(dst,c,visible,true);}
+  else if(kind==2u){ivec2 q=clamp(ivec2((vec2(at)-vec2(f(i,8),f(i,9)))/vec2(f(i,10),f(i,11))),ivec2(0),ivec2(u(i,14)-1u,u(i,15)-1u));uint index=byteAt(u(i,3),uint(q.y)*u(i,14)+uint(q.x));if(index!=0){uint o=0xff000000u;for(uint sh=0;sh<24;sh+=8){uint old=(dst>>sh)&255u,value=min(255u,old*index/128u);o|=((value*visible+old*(127u-visible))/127u)<<sh;}dst=o;}}
+  else if(kind==3u&&insideWave(i,ivec2(at))){
+   vec2 scale=vec2(f(i,23),f(i,24));float distance=length((vec2(at)-vec2(f(i,21),f(i,22)))/scale);int sine=int(sin((distance+float(int(u(i,25))))*(u(i,26)==3u?.1:.125))*12.+.49);int mag=min(u(i,26)==3u?9:12,abs(sine)),multiple=mag<=1?0:mag<=6?1:mag<=9?2:3;
+   const ivec2 directions[8]=ivec2[8](ivec2(0,-1),ivec2(1,-1),ivec2(1,0),ivec2(1,1),ivec2(0,1),ivec2(-1,1),ivec2(-1,0),ivec2(-1,-1));vec2 delta=vec2(directions[u(i,27)])*float(multiple)*scale;ivec2 q=clamp(ivec2(at)+ivec2(roundAway(delta.x),roundAway(delta.y)),ivec2(0),ivec2(p.width-1u,p.height-1u));
+   uint source=pixel[p.snapshotOffset+uint(q.y)*p.width+uint(q.x)],o=0xff000000u;for(uint sh=0;sh<24;sh+=8){uint value=min(255u,(((source>>sh)&255u)*uint(110+mag*8))/128u);o|=((value*visible+((dst>>sh)&255u)*(127u-visible))/127u)<<sh;}dst=o;
+  }else if(kind==4u){int hits=boltHits(i,ivec2(at));for(int k=0;k<hits;++k)bolt=over(rgb,bolt);}
+ }
+ if(bolt!=0u){uint masked=0;for(uint sh=0;sh<32;sh+=8)masked|=((((bolt>>sh)&255u)*visible+63u)/127u)<<sh;dst=over(masked,dst);}pixel[address]=dst;
+}

@@ -13,7 +13,7 @@ class ViewportCanvas {
  struct DepthSource {uint64_t revision=0;int x=0,y=0,w=0,h=0;std::shared_ptr<const std::vector<float>> pixels;} depthSource_;
  uint64_t terrainRevision_=0;
  std::shared_ptr<const gpumotion::Guides> guides_;
- int width_=0,height_=0;bool gpuRecording_=false,gpuMasked_=false;
+ int width_=0,height_=0;bool gpuRecording_=false,gpuMasked_=false,gpuCompleted_=false;
  double x_=0,y_=0,sx_=1,sy_=1;int backingW_=0,backingH_=0;bool dirty_=false,ready_=false;
  bool terrainCached_=false;unsigned samplingMode_=0;size_t terrainCommands_=0;uint64_t terrainPixels_=0;
  static constexpr uint32_t Background=0xff080c08u;
@@ -47,13 +47,13 @@ class ViewportCanvas {
   for(int y=0;y<h;++y){auto row=pixels.begin()+size_t(y)*w;if(y<t||y>=b)std::fill_n(row,w,0);else{std::fill(row,row+l,0);std::fill(row+r,row+w,0);}}
  }
 public:
- void reset(){surface_={};baseDepth_.reset();guides_.reset();depthPlan_={};depthSource_={};terrainRevision_=0;gpuRecord_.clear();width_=height_=0;key_=0;ready_=dirty_=terrainCached_=gpuRecording_=gpuMasked_=false;samplingMode_=0;}
+ void reset(){surface_={};baseDepth_.reset();guides_.reset();depthPlan_={};depthSource_={};terrainRevision_=0;gpuRecord_.clear();width_=height_=0;key_=0;ready_=dirty_=terrainCached_=gpuRecording_=gpuMasked_=gpuCompleted_=false;samplingMode_=0;}
  bool visible(double left,double top,double right,double bottom)const{return ready_&&left<x_+width_/sx_&&right>x_&&top<y_+height_/sy_&&bottom>y_;}
  bool visible(const voxel::Image&i,double ax,double ay,double drop=0)const{return ready_&&imageVisible(i,ax,ay,drop,0);}
  bool visibleShifted(const voxel::Image&i,double ax,double ay,double minY,double maxY)const{return ready_&&imageVisible(i,ax,ay+minY,0,0,maxY-minY);}
  bool prepareTerrain(const NativeCanvas&background,const std::vector<uint32_t>*cached,int w,int h,
               double x,double y,double spanX,double spanY,uint64_t key,colorprecision::Mode precision,unsigned mode,bool&rebuild){
-  ready_=false;dirty_=false;gpuRecording_=gpuMasked_=false;gpuRecord_.reset();depthPlan_={};rebuild=true;
+  ready_=false;dirty_=false;gpuRecording_=gpuMasked_=gpuCompleted_=false;gpuRecord_.reset();depthPlan_={};rebuild=true;
   if(w<1||h<1||w>8192||h>8192||uint64_t(w)*h>16*1024*1024||!std::isfinite(x)||!std::isfinite(y)||!std::isfinite(spanX)||!std::isfinite(spanY)||std::abs(x)>1e7||std::abs(y)>1e7||spanX<=0||spanY<=0||spanX>32768||spanY>32768||w/spanX>4||h/spanY>4)return false;
   bool reuse=!surface_.failed()&&baseDepth_&&terrainCached_&&cached&&cached->size()==size_t(w)*h&&key==key_&&width_==w&&height_==h&&x==x_&&y==y_&&sx_==w/spanX&&sy_==h/spanY&&samplingMode_==mode&&surface_.precision()==precision;
   if(reuse){surface_.color=*cached;surface_.depth=*baseDepth_;rebuild=false;}
@@ -79,7 +79,7 @@ public:
               double x,double y,double spanX,double spanY,uint64_t key,colorprecision::Mode precision=colorprecision::Mode::NativeSteps,unsigned mode=0,
               std::shared_ptr<const std::vector<uint32_t>>basePixels={},
               std::shared_ptr<const std::vector<vulkancompute::TileJob>>baseTiles={},std::function<bool(std::vector<uint32_t>&)>cpuBaseFallback={},uint64_t terrainRevision=0){
-  const bool wasTerrain=terrainCached_;ready_=false;dirty_=false;terrainCached_=false;samplingMode_=mode;gpuMasked_=false;guides_.reset();gpuRecord_.reset();
+  const bool wasTerrain=terrainCached_;ready_=false;dirty_=false;terrainCached_=false;samplingMode_=mode;gpuMasked_=gpuCompleted_=false;guides_.reset();gpuRecord_.reset();
   if(w<1||h<1||w>8192||h>8192||uint64_t(w)*h>16*1024*1024||(pixels.size()!=size_t(w)*h&&!(pixels.empty()&&baseTiles&&!baseTiles->empty()))||
      !std::isfinite(x)||!std::isfinite(y)||!std::isfinite(spanX)||!std::isfinite(spanY)||
      std::abs(x)>1e7||std::abs(y)>1e7||spanX<=0||spanY<=0||spanX>32768||spanY>32768)return false;
@@ -137,6 +137,7 @@ public:
  }
  bool gpuRecording()const{return ready_&&gpuRecording_;}
  bool gpuMasked()const{return gpuMasked_;}
+ bool gpuCompleted()const{return gpuCompleted_;}
  void motion(vulkancompute::MotionView view,bool enabled){if(gpuRecording_)gpuRecord_.motion(std::move(view),enabled);}
  std::shared_ptr<const gpumotion::Guides> guides()const{return guides_;}
  const vulkancompute::FrameJob*recordedGpuFrame()const{return gpuRecording()?&gpuRecord_.frame():nullptr;}
@@ -146,6 +147,7 @@ public:
   const int t=std::clamp(int(std::ceil(-y_*sy_-.5)),0,height_),b=std::clamp(int(std::ceil((backingH_-y_)*sy_-.5)),0,height_);
   gpuRecord_.clip(l,t,r,b);gpuRecord_.fog(std::move(fog));if(mask)gpuRecord_.maskPlan(std::move(mask));return gpuRecord_.valid()?&gpuRecord_.frame():nullptr;
  }
+ void gpuEffects(std::shared_ptr<const gpueffects::Plan>plan){if(ready_&&gpuRecording_)gpuRecord_.effects(std::move(plan));}
  void annotationDot(int x,int y,uint32_t color){if(ready_&&gpuRecording_)gpuRecord_.annotationDot(x,y,color);}
  void gpuMaskPlan(std::shared_ptr<const gpushroud::Plan>plan){if(ready_&&gpuRecording_)gpuRecord_.maskPlan(std::move(plan));}
  void gpuBaseTiles(std::vector<vulkancompute::TileJob>jobs){if(ready_&&gpuRecording_)gpuRecord_.baseTiles(std::move(jobs));}
@@ -153,15 +155,17 @@ public:
  template<class Backend>static auto renderGpu(Backend&backend,const vulkancompute::FrameJob&frame,std::vector<uint32_t>&pixels,std::vector<uint8_t>*mask,int)->decltype(backend.renderFrame(frame,pixels,mask),bool()){return backend.renderFrame(frame,pixels,mask);}
  template<class Backend>static auto renderGpu(Backend&backend,const vulkancompute::FrameJob&frame,std::vector<uint32_t>&pixels,std::vector<uint8_t>*,long)->decltype(backend.renderFrame(frame,pixels),bool()){return backend.renderFrame(frame,pixels);}
  template<class Backend>static bool renderGpu(Backend&,const vulkancompute::FrameJob&,std::vector<uint32_t>&,std::vector<uint8_t>*,...){return false;}
+ template<class Backend>static auto renderGpuDirect(Backend&backend,const vulkancompute::FrameJob&frame,std::vector<uint32_t>&pixels,std::vector<uint8_t>*mask,std::shared_ptr<const gpupresent::Frame>*output,int)->decltype(backend.renderFrame(frame,pixels,mask,output),bool()){return backend.renderFrame(frame,pixels,mask,output);}
+ template<class Backend>static bool renderGpuDirect(Backend&backend,const vulkancompute::FrameJob&frame,std::vector<uint32_t>&pixels,std::vector<uint8_t>*mask,std::shared_ptr<const gpupresent::Frame>*,long){return renderGpu(backend,frame,pixels,mask,0);}
  bool finish(std::vector<uint32_t>&pixels,bool take=false,std::shared_ptr<const std::vector<uint8_t>>fog={},
-             std::shared_ptr<const gpushroud::Plan>maskPlan={},std::vector<uint8_t>*maskOut=nullptr){
-  if(!ready_)return false;
+             std::shared_ptr<const gpushroud::Plan>maskPlan={},std::vector<uint8_t>*maskOut=nullptr,std::shared_ptr<const gpupresent::Frame>*gpuOut=nullptr){
+  gpuCompleted_=false;if(!ready_)return false;
   if(gpuRecording_){
    completeGpuPlan(std::move(fog),std::move(maskPlan));
    auto&gpu=xbrzadapter::gpuState();gpu.attempted=true;
    if(!gpu.resolve)gpu.resolve=std::make_unique<typename std::decay<decltype(gpu.resolve)>::type::element_type>();
-   if(gpuRecord_.valid()&&renderGpu(*gpu.resolve,gpuRecord_.frame(),pixels,maskOut,0)){
-    guides_=gpu.resolve->guides();gpu.used=true;gpuMasked_=bool(gpuRecord_.frame().fogAlpha)||bool(gpuRecord_.frame().maskPlan);if(take)ready_=false;return true;
+   if(gpuRecord_.valid()&&(gpuOut?renderGpuDirect(*gpu.resolve,gpuRecord_.frame(),pixels,maskOut,gpuOut,0):renderGpu(*gpu.resolve,gpuRecord_.frame(),pixels,maskOut,0))){
+    guides_=gpu.resolve->guides();gpu.used=true;gpuCompleted_=true;gpuMasked_=bool(gpuRecord_.frame().fogAlpha)||bool(gpuRecord_.frame().maskPlan);if(take)ready_=false;return true;
    }
    // Reproduce original calls, including deferred VXL materialization, without
    // publishing a partial GPU frame or waiting for a second render job.

@@ -140,8 +140,8 @@ template<class Frame,class Request>bool scrollVisible(const Frame&frame,const Re
  const double dy=double(int64_t(request.view.cameraY)-frame.request.view.cameraY)*sy;
  if(!std::isfinite(dx)||!std::isfinite(dy)||std::abs(dx)>8192||std::abs(dy)>8192)return false;
  shift={-frame.paddingX-int(std::lround(dx)),-frame.paddingY-int(std::lround(dy))};
- // Present only existing, correctly projected pixels. A rapid drag can reveal
- // a narrow native strip without withdrawing the whole enhanced viewport.
+ // Keep correctly projected overlap. The compositor extends the edge only
+ // across an overscan miss until the next world frame completes.
  return shift.x<request.width&&shift.y<request.height&&
   int64_t(shift.x)+frame.image->width>0&&int64_t(shift.y)+frame.image->height>0;
 }

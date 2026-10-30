@@ -115,6 +115,7 @@ public:
  }
  void clip(int left,int top,int right,int bottom){frame_.clipLeft=left;frame_.clipTop=top;frame_.clipRight=right;frame_.clipBottom=bottom;}
  void fog(std::shared_ptr<const std::vector<uint8_t>>alpha){frame_.fogAlpha=std::move(alpha);}
+ void effects(std::shared_ptr<const gpueffects::Plan>plan){frame_.effects=std::move(plan);}
  void motion(vulkancompute::MotionView view,bool enabled){frame_.motion=std::move(view);frame_.collectGuides=enabled;}
  void maskPlan(std::shared_ptr<const gpushroud::Plan>plan){frame_.maskPlan=std::move(plan);}
  void baseTiles(std::vector<vulkancompute::TileJob>jobs){frame_.baseTiles=std::move(jobs);if(!frame_.baseTiles.empty())frame_.basePixels.reset();}

@@ -1,7 +1,7 @@
 #pragma once
 #include "vulkan_compute.h"
 #include <tuple>
-namespace external { namespace gpuvoxel {struct Prepared;} namespace gpushroud {struct Plan;} namespace vulkancompute {
+namespace external { namespace gpueffects {struct Plan;} namespace gpuvoxel {struct Prepared;} namespace gpushroud {struct Plan;} namespace vulkancompute {
 // Immutable aliases must own their actual source Image/ScaledImage storage.
 struct Texture {
  std::shared_ptr<const std::vector<uint32_t>> pixels;
@@ -54,5 +54,6 @@ struct FrameJob {
  int clipLeft=0,clipTop=0,clipRight=-1,clipBottom=-1; // negative right/bottom = full
  bool collectGuides=false; // no guide buffers, copies or history work when false
  MotionView motion;
+ std::shared_ptr<const gpueffects::Plan> effects;
 };
 }}

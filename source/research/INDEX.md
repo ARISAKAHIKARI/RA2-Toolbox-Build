@@ -6,6 +6,7 @@
 
 | 主题 | 新笔记 | 关键词 |
 | --- | --- | --- |
+| Vera20K 批绘、GPU 直出、场景/VXL 耗时、矿石与树影 | [渲染 Hotfix18](2026-10-30-scene-hotfix18.md) | shared texture DirectComposition no readback ordered effects wave VXL pose tint LRU ore Terrain shadow |
 | 1000 Hz 最新状态采样、GPU 回读/深度缓存、拖屏连续性与有界退出 | [渲染延迟 Hotfix17](2026-10-30-render-latency-hotfix17.md) | latest snapshot high resolution readback cached depth reuse scroll close timeout parity merge |
 | CPU/GPU 共享场景对象清单、原生 GPU 与画质解耦、静止 VXL 缓存 | [CPU/GPU 场景对齐](2026-10-30-cpu-gpu-scene-parity.md) | ddf0002 native Vulkan VPL revision object coverage |
 | HVA 多帧、独立碎片／程序化效果与队形公共画布 | [动画与队形 Hotfix15](2026-10-30-animation-effects-formation-hotfix15.md) | HVA frames VoxelAnim rawVXL quaternion LaserDraw Wave AlphaShape points ViewportCanvas |

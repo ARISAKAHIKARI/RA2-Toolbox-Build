@@ -1,0 +1,231 @@
+{
+  "baseline": "98aaf4f8e0a432725dd7edeea58ae093b21ae724",
+  "cpu_checkpoint": "7593a400689f8f266295d36122f7f87c8a39ebea",
+  "merge_preserved": "ddf0002f795524fdc80760a0c8ae244746d4d52f",
+  "cpp_tests": [
+    {
+      "test": "terrain_tint_cache",
+      "exit": 0,
+      "seconds": 0.42,
+      "output": "PASS 4096 lit cells: 32768 -> 16388 reader calls, next-epoch tint changes and per-call fallback preserved\n"
+    },
+    {
+      "test": "terrain_sprite",
+      "exit": 0,
+      "seconds": 4.85,
+      "output": "PASS terrain body/second-half shadow, animated read-only depth, empty frames, spawner offsets, foreground occlusion, CPU pixels and GPU commands without Vulkan execution\n"
+    },
+    {
+      "test": "terrain_global_scene",
+      "exit": 0,
+      "seconds": 23.15,
+      "output": "In file included from /workspace/scratch/784e207eabd2/ra2-toolbox/source/assist/tests/terrain_global_scene.cpp:2:\n/workspace/scratch/784e207eabd2/ra2-toolbox/source/assist/tests/terrain_partial_scene.cpp: In function ‘int terrain_partial_fixture_main()’:\n/workspace/scratch/784e207eabd2/ra2-toolbox/source/assist/tests/terrain_partial_scene.cpp:101:13: warning: control reaches end of non-void function [-Wreturn-type]\n  101 |  std::printf(\"PASS actual SceneRenderer partial terrain: %u isolated overlay banks, %llu partial cells / %llu initial full cells, %llu exact output pixels; changing/removed/attachment-only bounds, overlapping cliff/shadow/actor/baseRGB, native+1.5x xBRZ, source/palette/current local/global light guards\\n\",banks,(unsigned long long)partialCells,(unsigned long long)fullCells,(unsigned long long)pixels);\n      |  ~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\nPASS whole-map: 6/6 unchanged draws publish immediately, 5 ore changes use local pages (403 redrawn cells), 368640 exact pixels; mean unchanged 0.385 ms\n"
+    },
+    {
+      "test": "terrain_partial_scene",
+      "exit": 0,
+      "seconds": 23.31,
+      "output": "PASS actual SceneRenderer partial terrain: 10 isolated overlay banks, 730 partial cells / 4030 initial full cells, 8036352 exact output pixels; changing/removed/attachment-only bounds, overlapping cliff/shadow/actor/baseRGB, native+1.5x xBRZ, source/palette/current local/global light guards\n"
+    },
+    {
+      "test": "render_depth_cache",
+      "exit": 0,
+      "seconds": 4.81,
+      "output": "PASS 345600 exact nearest-Z samples, 20 pans reuse one immutable native depth plane, revision/coverage/reset invalidation; CPU plan only, no Vulkan execution\n"
+    },
+    {
+      "test": "native_image_bank",
+      "exit": 0,
+      "seconds": 1.33,
+      "output": "PASS native pre-scale image identity, 10000 concurrent shared reads, world/profile/palette isolation, bounded eviction and live ownership\n"
+    },
+    {
+      "test": "immutable_atlas_plan",
+      "exit": 0,
+      "seconds": 6.5,
+      "output": "{\"status\":\"PASS\",\"randomized_epochs\":300,\"sources\":4096,\"baseline_median_ms\":5.26009,\"optimized_median_ms\":0.230052,\"speedup\":22.8648,\"scope\":\"CPU atlas planner only\"}\n"
+    },
+    {
+      "test": "gpu_voxel",
+      "exit": 0,
+      "seconds": 1.75,
+      "output": "PASS: GPU voxel packet/native CPU oracle 96 poses, pixels=261025 triangles=15915 candidatepixels=1083427; VPL/fallback/projectile/turret/posture/scales1-4/alpha/ties, ordered depth\n"
+    },
+    {
+      "test": "live_scene_lighting",
+      "exit": 0,
+      "seconds": 23.21,
+      "output": "PASS: same-frame local terrain/owner tint/rule lighting and live palette changes, retained geometry, per-object animation palettes, failed-read recovery and no stale multipass background\n"
+    },
+    {
+      "test": "voxel_motion",
+      "exit": 0,
+      "seconds": 4.8,
+      "output": "PASS immutable independent body/turret HVA frames, affine inverse and GPU pose keys; real debris array/identity/tumble/invisibility/bridge shadow and disabled sampling\n"
+    },
+    {
+      "test": "voxel_shadow",
+      "exit": 0,
+      "seconds": 0.98,
+      "output": "PASS Drive/Ship independent Cell ramp shadow, exact within-cell floor and bridge drop, no hull rocking/timer, world-plane projection, geometry-cache identity and invalid-read isolation\n"
+    },
+    {
+      "test": "voxel_posture",
+      "exit": 0,
+      "seconds": 1.74,
+      "output": "PASS: Drive/Ship live ramp and transition, rocking, real vertex/normal projection, opaque output, retained model geometry, race/table failure rejection and custom-locomotor isolation\n"
+    },
+    {
+      "test": "live_voxel_scene",
+      "exit": 0,
+      "seconds": 22.07,
+      "output": "PASS: VXL current source raster every presentation, 12-model pass beyond source budget8, live VPL color and angle, no VXL image blend, raw geometry retention and failure fallback\n"
+    },
+    {
+      "test": "render_backend_parity",
+      "exit": 0,
+      "seconds": 22.28,
+      "output": "PASS: basic/detailed marker coverage 6/6; stable VPL CPU VXL raster 3->3, VPL revision re-raster 6\n"
+    },
+    {
+      "test": "scene_frame_reuse",
+      "exit": 0,
+      "seconds": 6.14,
+      "output": "PASS 1000 identical current command plans reuse immutable pixels; live position/light/palette/camera/guides and 18 output-input mutations, painter order, tiles and reset invalidate; no Vulkan execution\n"
+    },
+    {
+      "test": "gpu_effect_plan",
+      "exit": 0,
+      "seconds": 2.5,
+      "output": "PASS 12288 Bresenham/thickness coverage and blend multiplicity cases; effect ordering, wave snapshots, bounded CSR bins, black points, command overflow and immutable GPU surface contract; no Vulkan execution\n"
+    },
+    {
+      "test": "world_effects",
+      "exit": 0,
+      "seconds": 1.89,
+      "output": "PASS 600 immutable laser lifetimes, blink/fade, disabled scans, shared camera scaling, laser/radiation/sonic/magnetic/pixel/glow/alpha raster and destination visibility masks; native A/Z and pixel identity not certified\n"
+    },
+    {
+      "test": "viewport_detail",
+      "exit": 0,
+      "seconds": 12.12,
+      "output": "PASS: target-pixel 1.5x depth/occlusion, actual 2x VXL geometry and logical anchors, AA coverage, transparent backing margins and bounded allocation\n"
+    },
+    {
+      "test": "render_feedback_host",
+      "exit": 0,
+      "seconds": 7.27,
+      "output": "PASS: actual feedback host, 100 current-position cache hits, 50 immediate cursor frame changes, palette refresh, bounded selection/group read grace, screen-band stability during camera motion; native foundation holes keep exact-camera rejection, immediate world/config rejection\n"
+    },
+    {
+      "test": "native_feedback_scene",
+      "exit": 0,
+      "seconds": 24.26,
+      "output": "PASS: 6172 renderer/group checks; actual cached sprite bounds, visibility, no duplicate decode, effect masking, input layers on top\n"
+    },
+    {
+      "test": "bounded_shutdown",
+      "exit": 0,
+      "seconds": 0.02,
+      "output": "PASS one close deadline, 2-second bound, only toolbox self handle, safe thread ownership and creation failure fallback (Win32 mock)\n",
+      "configuration": "-Isource/tests/winmock; no actual process termination"
+    },
+    {
+      "test": "render_scroll",
+      "exit": 0,
+      "seconds": 23.76,
+      "output": "PASS: 17358000 exact scroll/clip pixels; 3840000 partial-coverage pixels with clipped native holes; presentation-cadence observations survive300ms worker renders; measured crop prefetch covers120pixel drag during120ms render within existing96border, bounded64/halved32/zero margins, reversal/stop/world/projection/clock/latency guards; 15600 exact production native1x/fractional1.5x xBRZ pixels; shared sources, cutouts, size budgets and object/effect geometry\n"
+    },
+    {
+      "test": "overlay_incremental",
+      "exit": 0,
+      "configuration": "Executed CPU composition equivalence fixture"
+    }
+  ],
+  "integration_checks": [
+    {
+      "test": "source/assist/tests/render_material_settings.py",
+      "exit": 0,
+      "output": "PASS: actual render control events and INI load/save, 32 color/detail/refresh/scale combinations, adaptive mode 3 retained, removed neural control/legacy INI is inert, explicit quality/xBRZ round-trip, invalid/programmatic events ignored\n"
+    },
+    {
+      "test": "source/assist/tests/render_atomic_camera.py",
+      "exit": 0,
+      "output": "PASS: actual Host camera/group/publication methods; runtime errors retain owner while startup failure falls back; legacy gap reproduced;1000 deferred camera commits and invalid proposals remain complete under concurrent observation\n"
+    },
+    {
+      "test": "source/assist/tests/render_presentation_gate.py",
+      "exit": 0,
+      "output": "PASS: actual paint/display lease keeps existing pixels through brief information/display failures; exact120ms expiry, no failure renewal, immediate menu/focus/chat/disable/window/epoch/size rejection and clock wrap; no new-data or command dispatch while holding\n"
+    },
+    {
+      "test": "source/tools/validate_material_refresh.py",
+      "exit": 0,
+      "output": "PASS: latest observed state and independently scheduled device-pixel detail integrated; 1000 Hz sampling / 5–500 Hz drawing targets, persistent options, epoch invalidation, final visibility mask; no game-write APIs\n"
+    },
+    {
+      "test": "source/assist/tests/ui_geometry_test.py",
+      "exit": 0,
+      "output": "PASS: shipped UI construction/layout: {\"controls\": 472, \"fully_reachable_checks\": 5496, \"viewport_sizes\": 12, \"pages\": 5, \"content_bottom\": 130}\nPASS: all controls accessible, no overlap, supported interactive IDs retained, five independently scrollable categories, pinned header/footer, clipped body and scroll limits\n"
+    }
+  ],
+  "production_assets_fixture": "game_assets_host_test.py passed; synthetic Win32 file/memory boundary; no device creation",
+  "vxl_before": {
+    "status": "PASS",
+    "digest": "ae556d7b6095a5d7",
+    "pixels": 694336,
+    "triangles": 42405,
+    "faces_per_model": 5440,
+    "poses": 64,
+    "median_prepare_ms": 153.707,
+    "prepared": 3481600,
+    "scope": "CPU pose preparation; no Vulkan"
+  },
+  "vxl_after": {
+    "status": "PASS",
+    "digest": "ae556d7b6095a5d7",
+    "pixels": 694336,
+    "triangles": 42405,
+    "faces_per_model": 5440,
+    "poses": 64,
+    "median_prepare_ms": 38.207,
+    "prepared": 3481600,
+    "scope": "CPU pose preparation; no Vulkan"
+  },
+  "effects_shader": {
+    "source_sha256": "147aa136316dfff08c4d586f7efc0967c22a826db4a93122d736fcbabc49568f",
+    "spirv_sha256": "0c7c2e073e8ccdb77a61ba6578491514ec4a2f99a69ad264ebcf06e889773353",
+    "bytes": 22432,
+    "graphics_driver_loaded": false
+  },
+  "compositor_hlsl": "VS and PS compiled to SPIR-V by glslang 15.1.0 and validated; Windows D3DCompile not executed",
+  "windows_build": {
+    "zig": "0.13.0",
+    "host": "x86_64-windows-gnu",
+    "runtime": "x86-windows-gnu",
+    "broker": "x86-windows-gnu",
+    "pe_abi_import_checks": "passed"
+  },
+  "vulkan_executed": false,
+  "d3d11_executed": false,
+  "windows_loader_executed": false,
+  "live_game_tested": false,
+  "hardware_fps_measured": false,
+  "binaries": [
+    {
+      "name": "RA2Toolbox.exe",
+      "bytes": 6984192,
+      "sha256": "f83dc9ab4737f066634564bf26835b24f7e8cef90bc9f8cab8a366f47834d868"
+    },
+    {
+      "name": "GameRuntime.dll",
+      "bytes": 4963328,
+      "sha256": "459b167a38a0e35b3a67b0987c1a395b05926d670db1dc72a776edb45a03b58a"
+    },
+    {
+      "name": "GameRuntimeHost32.exe",
+      "bytes": 207872,
+      "sha256": "3e0d2006619610eab7df61b47f646d16337500a7fa74cbfc86f0902ef54c37ba"
+    }
+  ]
+}

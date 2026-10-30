@@ -48,7 +48,7 @@
       "hook_broker": "x86"
     }
   },
-  "render_effect_coverage": "See ANIMATION_RENDER_COVERAGE.md: HVA frames, standard VoxelAnim, fire/pixel particles, independent laser/radiation/wave/alpha/glow paths now integrated; new procedural effects use a CPU post-pass over shared CPU/GPU scene output, with native A/Z and exact pixels still uncertified.",
+  "render_effect_coverage": "See ANIMATION_RENDER_COVERAGE.md: GPU viewport batches now include laser/radiation/wave/pixel/glow/alpha and electric bolts. CPU replay remains available. Native A/Z and bit-exact pixels remain uncertified.",
   "Hotfix13": {
     "ui": "Video/Control/Automatic/GameRules/Experimental; original three masters removed; video owns cursor/render and monitoring/watch/minimap",
     "defaults": "particles, lasers, VXL and SHP relighting ON; individual persisted OFF choices retained; extra quality/xBRZ/Vulkan remain opt-in",
@@ -82,5 +82,15 @@
     "scroll": "velocity/latency adaptive overscan and bounded complete-group continuity",
     "exit": "2-second self-process deadline after accepted close; never terminates game or unmaps executing game gate",
     "verification": "15 portable C++ checks + 5 integration checks; Zig mixed-architecture build and static PE/ABI/import validation. No Vulkan execution or live Windows/game/GPU performance measurement."
+  },
+  "Hotfix18": {
+    "reference": "Vera20K 3d42426b2e9c1b4cf913a7dbbaaf8bf7d3b6bc7f: immutable atlases, ordered GPU effects, terrain/shadow/depth policy; cncdraw presentation audit only",
+    "main_output": "Optional same-adapter Vulkan 1.1 Win32 shared texture -> D3D11 -> DirectComposition; no CPU frame readback on successful direct output; bounded immutable slot pool and nonblocking presentation",
+    "effects": "Ordered GPU line/glow/alpha/wave/bolt batches; wave destination snapshots; bounded CSR; no native RNG or draw entry points",
+    "cpu": "Whole-map unchanged-source scan no longer stalls, local ore updates, one tint converter snapshot, constant-time LRU and atlas dirtiness, once-per-pose VXL transform and once-per-face projection",
+    "terrain": "Body plus second-half Terrain SHP shadow, empty frames retained, static health frame, animated read-only Z, resource flat Z and correct overlay Y/Z",
+    "continuity": "Retains Hotfix17 parity merge/1000 Hz sampling target/2-second exit deadline; edge extension for short viewport overscan misses",
+    "remaining": "CPU source decoding and static terrain cache construction; whole-map/minimap and independent window output retain their existing paths. No full Vera20K engine transplant.",
+    "validation": "CPU-only fixtures, GLSL/HLSL static compilation, SPIR-V validation, Zig Windows cross build, PE/ABI/import checks; Vulkan/device/Windows/game/FPS not executed or measured"
   }
 }

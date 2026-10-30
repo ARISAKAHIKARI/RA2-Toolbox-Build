@@ -177,7 +177,7 @@ static asyncwork::Recurring<Request,Frame> worker([](const Request&r)->std::shar
  const auto renderView=observed->cameraMotion.centerAt(before,motionNow,lastCompletedRenderMs,paddingX,paddingY);
  sampledRequest.view=renderView;sampledRequest.context.cameraX=renderView.cameraX;sampledRequest.context.cameraY=renderView.cameraY;
  auto crop=external::mainview::crop(renderView,data.terrain->geo.offsetX,data.terrain->geo.offsetY);
- renderer.guideEnabled(false,r.generation);
+ renderer.guideEnabled(false,r.generation);renderer.directPresentation(true);
  auto scene=renderer.render(data,border.width,border.height,external::SharedReadView{&reader},assets,{crop.x-paddingX,crop.y-paddingY,crop.width+2*paddingX,crop.height+2*paddingY,true},unsigned(r.pixelScaleMode),r.detail!=0,true,r.colorPrecision!=0,true,r.decodeBudgetMs);
  if(!scene)return unavailable();
  const double sceneDoneMs=presentationNow();
@@ -198,7 +198,8 @@ static asyncwork::Recurring<Request,Frame> worker([](const Request&r)->std::shar
  const std::vector<uint8_t>*visibility=nullptr;
  out->effects.complete=!r.profile.lasers;
  const bool independentLasers=r.profile.lasers&&data.effects&&data.effects->world&&data.effects->world->lasersValid;
- if(r.profile.lasers&&data.effects&&data.effects->boltsValid&&renderer.feedbackVisibility(visibility)){
+ if(scene->boltsRendered){out->effects.complete=true;out->effects.bolts=unsigned(data.effects->bolts.size());}
+ else if(r.profile.lasers&&data.effects&&data.effects->boltsValid&&renderer.feedbackVisibility(visibility)){
   out->effects.complete=true;
   if(!data.effects->bolts.empty()){
    auto decorated=std::make_shared<external::radar::Scene>(*scene);
@@ -342,7 +343,7 @@ static void update(POINT origin,const RECT&client,const external::display::State
   auto pixels=std::shared_ptr<const std::vector<uint32_t>>(result->image,&result->image->pixels);
   layers.push_back({overlaycompositor::RenderUpgrade,5,request.context,
    {left+shift.x,top+shift.y,result->image->width,result->image->height},true,255,std::move(pixels),
-   {left,top,request.width,request.height},renderpresentation::sceneCutouts(feedback::nativeCutouts,shift,result->image->width,result->image->height)});imageToken=context.token;
+   {left,top,request.width,request.height},renderpresentation::sceneCutouts(feedback::nativeCutouts,shift,result->image->width,result->image->height),result->image->gpu,true});imageToken=context.token;
   groupLease.publish(request,feedbackFrame,layers,GetTickCount());displaying=true;
  }else if(!feedback::unsafeView&&groupLease.retain(request,GetTickCount())){
   // Preserve the last COMPLETE atomic scene/input group across a short torn
@@ -403,7 +404,7 @@ static void update(POINT origin,const RECT&client,const external::display::State
   if(!renderProcessing)status+=L" · 基础快速绘制（额外画质处理关闭）";
   status+=L" · 独立整帧绘制目标 "+std::to_wstring(informationFPS())+L" Hz";
   status+=L" · 最新内存状态";
-  if(request.gpu)status+=presentedFrame->gpuUsed?L" · Vulkan GPU 场景":L" · Vulkan 未启用或已回退 CPU";
+  if(request.gpu)status+=presentedFrame->gpuUsed?(presentedFrame->image&&presentedFrame->image->gpu?L" · GPU 场景直出":L" · Vulkan GPU 场景"):L" · Vulkan 未启用或已回退 CPU";
   status+=L" · 光棱/激光与矿车采集保留原生像素；电弧近似，辐射束/波纹/粒子待补，实机待测";
  }
  if(result&&result->hasCompletionGap)status+=L" · 世界新帧间隔 "+std::to_wstring(int(std::lround(result->completionGapMs)))+L" ms";
@@ -422,7 +423,7 @@ static void update(POINT origin,const RECT&client,const external::display::State
   timing+=L"\r\n场景读取 "+std::to_wstring(presentedFrame->renderReadCalls)+L" 次／缓存 "+std::to_wstring(presentedFrame->renderPageHits)+L" · 色盘采样 "+std::to_wstring(presentedFrame->paletteSamples)+L"／复用 "+std::to_wstring(presentedFrame->paletteHits);
   timing+=L"\r\n采样目标 "+std::to_wstring(renderpresentation::ObservationRate)+L" Hz · 逻辑帧变化间隔 "+ms(presentedFrame->stateIntervalMs)+L" ms";
   timing+=L"\r\n链路：采样→开画 "+ms(presentedFrame->sampleToDrawMs)+L" · 完成→交付 "+ms(completionToHandoffMs)+L" · 当前画面数据年龄 "+ms(std::max(0.,presentationNow()-presentedFrame->sampledAtMs))+L" ms";
-  if(presentedFrame->gpuUsed)timing+=presentedFrame->gpuReadbackCached?L" · 回读：CPU 缓存内存":L" · 回读：非缓存内存";
+  if(presentedFrame->gpuUsed)timing+=presentedFrame->image&&presentedFrame->image->gpu?L" · 回读：0（GPU 直出）":presentedFrame->gpuReadbackCached?L" · 回读：CPU 缓存内存":L" · 回读：非缓存内存";
   if(request.gpu){auto wide=[](const std::string&s){return std::wstring(s.begin(),s.end());};
    timing+=L"\r\nGPU："+(presentedFrame->gpuUsed?std::wstring(presentedFrame->gpuSoftware?L"软件设备 ":L"硬件设备 "):std::wstring(L"CPU 回退 "))+wide(presentedFrame->gpuDevice);
    if(!presentedFrame->gpuReason.empty())timing+=L" · "+wide(presentedFrame->gpuReason);

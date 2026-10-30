@@ -127,7 +127,7 @@ struct Canvas {
   for(int x:{l,rr})for(int y:{t,bb}){line(x,y,x+(x==l?k:-k),y,c);line(x,y,x,y+(y==t?k:-k),c);}}
 };
 inline uint32_t hash(uint32_t x){x^=x>>16;x*=0x7feb352du;x^=x>>15;x*=0x846ca68bu;return x^(x>>16);}
-inline void bolt(Canvas&c,double x0,double y0,double x1,double y1,uint32_t seed,bool alternate,double scale){
+template<class Target>inline void bolt(Target&c,double x0,double y0,double x1,double y1,uint32_t seed,bool alternate,double scale){
  double length=std::hypot(x1-x0,y1-y0);if(!std::isfinite(length)||length<.5||length>100000||!std::isfinite(scale)||scale<=0||scale>16)return;
  int n=std::clamp(int(length/12),4,64);double nx=-(y1-y0)/length,ny=(x1-x0)/length;
  uint32_t edge=alternate?0xffb02058u:0xff4058e8u,core=alternate?0xffffd0e0u:0xffe0f8ffu;

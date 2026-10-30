@@ -23,6 +23,7 @@
 #define NOMINMAX
 #endif
 #include <windows.h>
+#include "../../third_party/vulkan/vulkan_win32.h"
 #else
 #include <dlfcn.h>
 #endif
@@ -46,6 +47,7 @@ struct Diagnostics {
  std::string device,reason;
 };
 class Resolve {
+ friend class DirectOutput;
  friend class external::gpuxbrz::Stage;
  friend class external::gpuvoxel::Stage;
  friend class external::gpushroud::Stage;
@@ -69,6 +71,7 @@ protected:
 #endif
  VkInstance instance_=VK_NULL_HANDLE;VkPhysicalDevice physical_=VK_NULL_HANDLE;VkDevice device_=VK_NULL_HANDLE;
  VkQueue queue_=VK_NULL_HANDLE;uint32_t queueFamily_=0;
+ bool externalImages_=false;uint64_t adapterLuid_=0;
  VkPhysicalDeviceMemoryProperties memory_{};VkPhysicalDeviceProperties properties_{};VkPhysicalDeviceFeatures features_{};
  VkDescriptorSetLayout descriptorLayout_=VK_NULL_HANDLE;VkPipelineLayout pipelineLayout_=VK_NULL_HANDLE;
  VkPipeline pipeline_=VK_NULL_HANDLE;VkDescriptorPool descriptorPool_=VK_NULL_HANDLE;VkDescriptorSet descriptors_=VK_NULL_HANDLE;
@@ -175,6 +178,12 @@ protected:
   vkCreateInstance_=reinterpret_cast<PFN_vkCreateInstance>(vkGetInstanceProcAddr_(VK_NULL_HANDLE,"vkCreateInstance"));
   if(!vkCreateInstance_)return fatal("Vulkan 1.0 entry point unavailable");
   VkApplicationInfo app{VK_STRUCTURE_TYPE_APPLICATION_INFO};app.pApplicationName="RA2 Toolbox fractional resolve";app.apiVersion=VK_API_VERSION_1_0;
+#ifdef _WIN32
+  // DirectComposition sharing uses the Vulkan 1.1 external-memory queries.
+  // Keep the established compute/readback path on older loaders/devices.
+  auto instanceVersion=reinterpret_cast<PFN_vkEnumerateInstanceVersion>(vkGetInstanceProcAddr_(VK_NULL_HANDLE,"vkEnumerateInstanceVersion"));uint32_t version=VK_API_VERSION_1_0;
+  if(instanceVersion&&instanceVersion(&version)==VK_SUCCESS&&version>=VK_API_VERSION_1_1)app.apiVersion=VK_API_VERSION_1_1;
+#endif
   VkInstanceCreateInfo create{VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO};create.pApplicationInfo=&app;
   if(vkCreateInstance_(&create,nullptr,&instance_)!=VK_SUCCESS)return fatal("Vulkan instance unavailable");
 #define RA2_VK_LOAD_INSTANCE(F) F##_=reinterpret_cast<PFN_##F>(vkGetInstanceProcAddr_(instance_,#F));if(!F##_)return fatal("Missing Vulkan instance function " #F);
@@ -200,6 +209,19 @@ protected:
   VkPhysicalDeviceFeatures supported{};vkGetPhysicalDeviceFeatures_(physical_,&supported);features_.shaderFloat64=supported.shaderFloat64;
   float priority=1;VkDeviceQueueCreateInfo q{VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO};q.queueFamilyIndex=queueFamily_;q.queueCount=1;q.pQueuePriorities=&priority;
   VkDeviceCreateInfo d{VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO};d.queueCreateInfoCount=1;d.pQueueCreateInfos=&q;d.pEnabledFeatures=&features_;
+#ifdef _WIN32
+  const char* sharingExtensions[]={VK_KHR_EXTERNAL_MEMORY_WIN32_EXTENSION_NAME,VK_KHR_WIN32_KEYED_MUTEX_EXTENSION_NAME};
+  if(app.apiVersion>=VK_API_VERSION_1_1&&properties_.apiVersion>=VK_API_VERSION_1_1){
+   auto enumerate=reinterpret_cast<PFN_vkEnumerateDeviceExtensionProperties>(vkGetInstanceProcAddr_(instance_,"vkEnumerateDeviceExtensionProperties"));
+   auto properties2=reinterpret_cast<PFN_vkGetPhysicalDeviceProperties2>(vkGetInstanceProcAddr_(instance_,"vkGetPhysicalDeviceProperties2"));uint32_t n=0;
+   if(enumerate&&properties2&&enumerate(physical_,nullptr,&n,nullptr)==VK_SUCCESS&&n<=4096){std::vector<VkExtensionProperties> extensions(n);
+    if(enumerate(physical_,nullptr,&n,extensions.data())==VK_SUCCESS){bool supported=true;for(auto name:sharingExtensions)supported&=std::any_of(extensions.begin(),extensions.end(),[&](const auto&e){return std::strcmp(e.extensionName,name)==0;});
+     VkPhysicalDeviceIDProperties id{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES};VkPhysicalDeviceProperties2 props{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2};props.pNext=&id;properties2(physical_,&props);
+     if(supported&&id.deviceLUIDValid){std::memcpy(&adapterLuid_,id.deviceLUID,8);externalImages_=true;d.enabledExtensionCount=2;d.ppEnabledExtensionNames=sharingExtensions;}
+    }
+   }
+  }
+#endif
   if(vkCreateDevice_(physical_,&d,nullptr,&device_)!=VK_SUCCESS)return fatal("Vulkan logical device creation failed");
 #define RA2_VK_LOAD_DEVICE(F) F##_=reinterpret_cast<PFN_##F>(vkGetDeviceProcAddr_(device_,#F));if(!F##_)return fatal("Missing Vulkan device function " #F);
   RA2_VK_DEVICE_FUNCTIONS(RA2_VK_LOAD_DEVICE)

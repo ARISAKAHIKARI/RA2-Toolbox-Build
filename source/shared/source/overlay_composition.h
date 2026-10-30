@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <memory>
 #include <vector>
+#include "gpu_surface.h"
 // Host-only, platform-independent layer contract. Pixels are immutable PARGB.
 // A view token is invalid after a match/window/size change. Camera-dependent
 // surfaces carry the camera they were actually rendered for, not a guess.
@@ -24,6 +25,8 @@ struct Surface {
  // Optional sparse horizontal spans left transparent in this layer. Relative
  // to rect's source pixels, preclipped and single-row; other layers still draw.
  std::shared_ptr<const std::vector<Rect>> cutouts;
+ std::shared_ptr<const gpupresent::Frame> gpu;
+ bool extendEdges=false; // cover clip during a short overscan miss; never expose native world strips
 };
 // Producers rebuild small masks at the input cadence. Equal spans do not
 // change the image merely because their vector was allocated again.
@@ -36,8 +39,8 @@ inline bool valid(const Surface&s,const Context&c){
   s.context.match==c.match&&s.context.width==c.width&&s.context.height==c.height&&
   (!s.cameraBound||(s.context.cameraX==c.cameraX&&s.context.cameraY==c.cameraY))&&
   s.id&&s.rect.w>0&&s.rect.h>0&&s.rect.w<=8192&&s.rect.h<=8192&&
-  uint64_t(s.rect.w)*s.rect.h<=16*1024*1024&&s.pixels&&
-  s.pixels->size()==size_t(s.rect.w)*s.rect.h;
+  uint64_t(s.rect.w)*s.rect.h<=16*1024*1024&&
+  (s.gpu?gpupresent::valid(s.gpu,s.rect.w,s.rect.h):(s.pixels&&s.pixels->size()==size_t(s.rect.w)*s.rect.h));
  if(!image)return false;
  if(s.cutouts){if(s.cutouts->size()>16384)return false;for(const auto&r:*s.cutouts)
   if(r.x<0||r.y<0||r.w<=0||r.h!=1||int64_t(r.x)+r.w>s.rect.w||r.y>=s.rect.h)return false;}
@@ -55,8 +58,9 @@ inline uint32_t over(uint32_t source,uint32_t destination,unsigned opacity){
  }return out;
 }
 inline Rect bounds(const Surface&s,const Context&context){
- int64_t left=std::max<int64_t>(0,s.rect.x),top=std::max<int64_t>(0,s.rect.y);
- int64_t right=std::min<int64_t>(context.width,int64_t(s.rect.x)+s.rect.w),bottom=std::min<int64_t>(context.height,int64_t(s.rect.y)+s.rect.h);
+ const auto&r=s.extendEdges&&s.clip.w>0&&s.clip.h>0?s.clip:s.rect;
+ int64_t left=std::max<int64_t>(0,r.x),top=std::max<int64_t>(0,r.y);
+ int64_t right=std::min<int64_t>(context.width,int64_t(r.x)+r.w),bottom=std::min<int64_t>(context.height,int64_t(r.y)+r.h);
  if(s.clip.w>0&&s.clip.h>0){
   left=std::max<int64_t>(left,s.clip.x);top=std::max<int64_t>(top,s.clip.y);
   right=std::min<int64_t>(right,int64_t(s.clip.x)+s.clip.w);bottom=std::min<int64_t>(bottom,int64_t(s.clip.y)+s.clip.h);
@@ -81,6 +85,10 @@ inline void paint(const Context&context,const std::vector<Surface>&layers,std::v
   std::vector<Rect>holes;if(s.cutouts){holes=*s.cutouts;std::sort(holes.begin(),holes.end(),[](const Rect&a,const Rect&b){return a.y!=b.y?a.y<b.y:a.x<b.x;});}
   for(int y=top;y<bottom;++y){
    auto draw=[&](int first,int end){
+    if(s.extendEdges&&(y<r.y||y>=int64_t(r.y)+r.h||first<r.x||end>int64_t(r.x)+r.w)){
+     size_t row=size_t(std::clamp<int64_t>(int64_t(y)-r.y,0,r.h-1))*r.w;
+     for(int x=first;x<end;++x){auto&d=pixels[size_t(y)*context.width+x];d=over((*s.pixels)[row+size_t(std::clamp<int64_t>(int64_t(x)-r.x,0,r.w-1))],d,s.opacity);}return;
+    }
     const auto*src=s.pixels->data()+size_t(int64_t(y)-r.y)*r.w+int64_t(first)-r.x;
     auto*dst=pixels.data()+size_t(y)*context.width+first;
     for(int x=first;x<end;++x,++src,++dst)*dst=over(*src,*dst,s.opacity);
@@ -95,7 +103,7 @@ inline void paint(const Context&context,const std::vector<Surface>&layers,std::v
 inline bool compose(const Context&context,std::vector<Surface>layers,std::vector<uint32_t>&pixels){
  if(context.width<1||context.height<1||context.width>8192||context.height>8192||
     uint64_t(context.width)*context.height>16*1024*1024)return false;
- order(layers,context);pixels.resize(size_t(context.width)*context.height);
+ order(layers,context);if(std::any_of(layers.begin(),layers.end(),[](const auto&s){return bool(s.gpu);}))return false;pixels.resize(size_t(context.width)*context.height);
  paint(context,layers,pixels,{0,0,context.width,context.height});return true;
 }
 // Small feedback changes must not scan a full 4K scene. Keep distant affected
@@ -107,7 +115,7 @@ inline bool compose(const Context&context,std::vector<Surface>layers,std::vector
 class Incremental {
  Context context_{};std::vector<Surface>layers_;std::vector<uint32_t>pixels_;Rect dirty_{};
  std::vector<Rect>dirtyRegions_;bool collapsed_=false;
- static bool sameBase(const Surface&a,const Surface&b){return a.id==b.id&&a.order==b.order&&a.rect==b.rect&&a.clip==b.clip&&a.opacity==b.opacity&&a.pixels==b.pixels;}
+ static bool sameBase(const Surface&a,const Surface&b){return a.id==b.id&&a.order==b.order&&a.rect==b.rect&&a.clip==b.clip&&a.opacity==b.opacity&&a.pixels==b.pixels&&a.gpu==b.gpu&&a.extendEdges==b.extendEdges;}
  static bool same(const Surface&a,const Surface&b){return sameBase(a,b)&&sameCutouts(a.cutouts,b.cutouts);}
  void holes(const Surface&s,const Context&context){
   const auto clip=bounds(s,context);if(!s.cutouts||clip.w<=0||clip.h<=0)return;
@@ -141,7 +149,7 @@ public:
  const std::vector<Rect>&dirtyRegions()const{return dirtyRegions_;}
  bool update(const Context&context,std::vector<Surface>layers){
   if(context.width<1||context.height<1||context.width>8192||context.height>8192||uint64_t(context.width)*context.height>16*1024*1024)return false;
-  order(layers,context);dirty_={};dirtyRegions_.clear();collapsed_=false;
+  order(layers,context);if(std::any_of(layers.begin(),layers.end(),[](const auto&s){return bool(s.gpu);}))return false;dirty_={};dirtyRegions_.clear();collapsed_=false;
   bool full=context_.token!=context.token||context_.window!=context.window||context_.pid!=context.pid||context_.match!=context.match||context_.width!=context.width||context_.height!=context.height||pixels_.size()!=size_t(context.width)*context.height;
   auto duplicate=[](const std::vector<Surface>&surfaces){for(size_t n=0;n<surfaces.size();++n)for(size_t m=0;m<n;++m)if(surfaces[n].id==surfaces[m].id)return true;return false;};
   full=full||duplicate(layers)||duplicate(layers_);

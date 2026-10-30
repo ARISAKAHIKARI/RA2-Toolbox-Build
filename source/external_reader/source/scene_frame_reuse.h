@@ -15,7 +15,7 @@ inline bool samePixels(const vulkancompute::DrawJob&a,const vulkancompute::DrawJ
  b.left,b.top,b.scaleX,b.scaleY,b.depthBase,b.originY,b.depthBottom,b.rasterScale,b.lift,b.gains,b.sampling,b.shadow,b.writeDepth,b.flat,b.objectPalette,b.smoothRGB,b.skipZ);
 }
 inline bool samePixels(const vulkancompute::FrameJob&a,const vulkancompute::FrameJob&b){
- if(a.collectGuides||b.collectGuides)return false; // temporal guides carry history, not just pixels
+ if(a.collectGuides||b.collectGuides||a.effects!=b.effects)return false; // temporal guides carry history, not just pixels
  if(std::tie(a.width,a.height,a.basePixels,a.baseDepth,a.baseDepthWidth,a.baseDepthHeight,a.baseDepthXs,a.baseDepthYs,a.maskPlan,a.fogAlpha,a.clipLeft,a.clipTop,a.clipRight,a.clipBottom)!=
     std::tie(b.width,b.height,b.basePixels,b.baseDepth,b.baseDepthWidth,b.baseDepthHeight,b.baseDepthXs,b.baseDepthYs,b.maskPlan,b.fogAlpha,b.clipLeft,b.clipTop,b.clipRight,b.clipBottom)||a.baseTiles.size()!=b.baseTiles.size()||a.draws.size()!=b.draws.size())return false;
  for(size_t n=0;n<a.baseTiles.size();++n)if(!samePixels(a.baseTiles[n],b.baseTiles[n]))return false;

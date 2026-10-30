@@ -63,7 +63,7 @@ public:
    auto&s=scenes_[i];s.features(profile_);s.guideEnabled(false,controls_);
    auto scene=s.render(data,Width,Height,read_,assets_,{cx-Width/2+data.terrain->geo.offsetX*30.,cy-Height/2-data.terrain->geo.offsetY*15.,Width,Height,true},unsigned(profile_.scale),profile_.detail!=0,true,profile_.precision!=0,true,4.);
    gpuAttempted|=external::xbrzadapter::gpuAttempted();gpuUsed|=external::xbrzadapter::gpuUsed();
-   if(scene&&profile_.lasers&&data.effects&&data.effects->boltsValid){const std::vector<uint8_t>*mask=nullptr;if(s.feedbackVisibility(mask)){
+   if(scene&&!scene->boltsRendered&&profile_.lasers&&data.effects&&data.effects->boltsValid){const std::vector<uint8_t>*mask=nullptr;if(s.feedbackVisibility(mask)){
     external::mainview::View camera{0x10000,data.terrain->geo.house,0x10000,data.frame,int(cx)-Width/2,int(cy)-Height/2,Width,Height,0,0,Width,Height};
     auto decorated=std::make_shared<external::radar::Scene>(*scene);auto status=external::nativefeedback::effects(data.effects->bolts,*decorated,camera,mask,zscale);if(status.complete)scene=std::move(decorated);
    }}
