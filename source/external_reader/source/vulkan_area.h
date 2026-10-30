@@ -5,6 +5,8 @@
 #include "vulkan_shroud_backend.h"
 #include "vulkan_present.h"
 #include "gpu_effect_plan.h"
+#include "vulkan_area_objects.h"
+#include "scene_frame_reuse.h"
 #include "gpu_effects_spirv.h"
 #include <unordered_map>
 namespace external {namespace vulkancompute {
@@ -13,16 +15,22 @@ namespace external {namespace vulkancompute {
 class AreaResolve : public Resolve {
  DirectOutput direct_{*this};
  VkDescriptorSet effectsSet_=VK_NULL_HANDLE;VkPipeline effectsPipeline_=VK_NULL_HANDLE;
- struct Resident {std::weak_ptr<const std::vector<uint32_t>>owner;const void*address=nullptr;uint32_t slot=0;uint64_t version=0;};
+ struct Resident {std::weak_ptr<const std::vector<uint32_t>>owner;const void*address=nullptr;uint32_t slot=0;uint64_t version=0;uint32_t x=0,y=0;
+  std::vector<uint32_t>draws;std::weak_ptr<const std::vector<DrawJob>>objects;};
+ gpuarea::ObjectStage objectsStage_{*this};std::shared_ptr<const std::vector<DrawJob>>previousObjects_;int nativeWidth_=0,nativeHeight_=0;
  struct AreaParams {uint32_t width,height,nativeWidth,nativeHeight,columns,tableOffset,xOffset,yOffset,background,fogOffset,buildCount,buildOffset,phase;};
  Buffer prefix_,metadata_,rawBanks_[3];gpushroud::Stage mask_{*this};bool banked_=false;uint32_t storageBindings_=4;
  VkDescriptorSetLayout areaLayout_=VK_NULL_HANDLE;VkPipelineLayout areaPipelineLayout_=VK_NULL_HANDLE;VkDescriptorPool areaPool_=VK_NULL_HANDLE;VkDescriptorSet areaSet_=VK_NULL_HANDLE;VkPipeline areaPipeline_=VK_NULL_HANDLE;
  std::vector<Resident>residents_;uint64_t prefixBuilds_=0;bool areaReady_=false;VkDeviceSize areaAtlasBytes_=AtlasBytes;
  static constexpr uint64_t PrefixBytes=uint64_t(gpuarea::MaximumPages)*gpuarea::PrefixWords*4;
- static bool samePage(const Resident&r,const std::shared_ptr<const std::vector<uint32_t>>&p,uint64_t version){return r.version==version&&r.address==p.get()&&!r.owner.owner_before(p)&&!p.owner_before(r.owner);}
+ static bool samePage(const Resident&r,const gpuarea::Page&p,const std::shared_ptr<const std::vector<DrawJob>>&objects){
+  if(r.x!=p.x||r.y!=p.y||r.version!=p.version||r.address!=p.pixels.get()||r.owner.owner_before(p.pixels)||p.pixels.owner_before(r.owner)||r.draws.size()!=p.draws.size())return false;
+  if(r.draws.empty())return true;auto old=r.objects.lock();if(!old||!objects)return false;
+  for(size_t n=0;n<r.draws.size();++n)if(!camera::samePixels((*old)[r.draws[n]],(*objects)[p.draws[n]]))return false;return true;
+ }
  void releaseArea(){
   if(inFlight_&&(!vkGetFenceStatus_||vkGetFenceStatus_(device_,fence_)!=VK_SUCCESS))return;
-  direct_.close();mask_.release();if(device_){if(effectsPipeline_&&vkDestroyPipeline_)vkDestroyPipeline_(device_,effectsPipeline_,nullptr);effectsPipeline_=VK_NULL_HANDLE;effectsSet_=VK_NULL_HANDLE;for(auto&bank:rawBanks_)destroy(bank);destroy(prefix_);destroy(metadata_);if(areaPipeline_&&vkDestroyPipeline_)vkDestroyPipeline_(device_,areaPipeline_,nullptr);if(areaPool_&&vkDestroyDescriptorPool_)vkDestroyDescriptorPool_(device_,areaPool_,nullptr);if(areaPipelineLayout_&&vkDestroyPipelineLayout_)vkDestroyPipelineLayout_(device_,areaPipelineLayout_,nullptr);if(areaLayout_&&vkDestroyDescriptorSetLayout_)vkDestroyDescriptorSetLayout_(device_,areaLayout_,nullptr);}
+  direct_.close();mask_.release();objectsStage_.release();previousObjects_.reset();if(device_){if(effectsPipeline_&&vkDestroyPipeline_)vkDestroyPipeline_(device_,effectsPipeline_,nullptr);effectsPipeline_=VK_NULL_HANDLE;effectsSet_=VK_NULL_HANDLE;for(auto&bank:rawBanks_)destroy(bank);destroy(prefix_);destroy(metadata_);if(areaPipeline_&&vkDestroyPipeline_)vkDestroyPipeline_(device_,areaPipeline_,nullptr);if(areaPool_&&vkDestroyDescriptorPool_)vkDestroyDescriptorPool_(device_,areaPool_,nullptr);if(areaPipelineLayout_&&vkDestroyPipelineLayout_)vkDestroyPipelineLayout_(device_,areaPipelineLayout_,nullptr);if(areaLayout_&&vkDestroyDescriptorSetLayout_)vkDestroyDescriptorSetLayout_(device_,areaLayout_,nullptr);}
   prefix_={};metadata_={};areaPipeline_=VK_NULL_HANDLE;areaPool_=VK_NULL_HANDLE;areaPipelineLayout_=VK_NULL_HANDLE;areaLayout_=VK_NULL_HANDLE;areaSet_=VK_NULL_HANDLE;areaReady_=false;residents_.clear();
  }
  bool initializeArea(){
@@ -49,6 +57,7 @@ class AreaResolve : public Resolve {
   if(disabled_)return false;if(!gpuarea::valid(p))return fail("Invalid sparse GPU area plan");
   if(p.mask&&(p.mask->width!=p.width||p.mask->height!=p.height))return fail("GPU area mask dimensions disagree");if(!initializeArea())return false;
   if(p.effects&&(!p.effects->valid||p.effects->width!=p.width||p.effects->height!=p.height))return fail("GPU area effects dimensions disagree");
+  if(nativeWidth_!=p.nativeWidth||nativeHeight_!=p.nativeHeight){residents_.clear();nativeWidth_=p.nativeWidth;nativeHeight_=p.nativeHeight;}
   const auto requiredAtlas=gpuarea::atlasBytes(p.pages.size(),banked_?uint64_t(gpuarea::MaximumPages)*gpuarea::PagePixels*4:properties_.limits.maxStorageBufferRange);
   if(!requiredAtlas)return fail("GPU area native pages exceed device storage-buffer range; CPU fallback");
   if(banked_){const uint64_t rawBytes=uint64_t(p.pages.size())*gpuarea::PagePixels*4;
@@ -57,16 +66,18 @@ class AreaResolve : public Resolve {
   }else if(atlas_.size<requiredAtlas){residents_.clear();if(!buffer(atlas_,requiredAtlas,VK_BUFFER_USAGE_STORAGE_BUFFER_BIT|VK_BUFFER_USAGE_TRANSFER_DST_BIT|VK_BUFFER_USAGE_TRANSFER_SRC_BIT,false,true))return fatal("GPU area atlas growth failed; CPU fallback");}
   areaAtlasBytes_=atlas_.size;for(const auto&bank:rawBanks_)areaAtlasBytes_+=bank.size;
   std::vector<Resident>active;std::vector<uint32_t>pageSlots;std::vector<size_t>dirty;std::vector<uint8_t>used(gpuarea::MaximumPages);
-  std::unordered_multimap<const void*,size_t>activeIndex,residentIndex;activeIndex.reserve(p.pages.size());residentIndex.reserve(residents_.size());
+  std::unordered_multimap<const void*,size_t>residentIndex;residentIndex.reserve(residents_.size());
   for(size_t n=0;n<residents_.size();++n)residentIndex.emplace(residents_[n].address,n);
-  for(const auto&page:p.pages){size_t n=active.size();auto range=activeIndex.equal_range(page.pixels.get());for(auto i=range.first;i!=range.second;++i)if(samePage(active[i->second],page.pixels,page.version)){n=i->second;break;}
-   if(n==active.size()){active.push_back({page.pixels,page.pixels.get(),gpuarea::Missing,page.version});activeIndex.emplace(page.pixels.get(),n);}pageSlots.push_back(uint32_t(n));}
-  // Current Plan aliases protect source pages during this submission only.
-  // Indexing avoids O(N²) weak locks for a warm whole-map presentation.
-  for(auto&a:active){auto source=a.owner.lock();auto range=residentIndex.equal_range(a.address);for(auto i=range.first;i!=range.second;++i){const auto&r=residents_[i->second];if(samePage(r,source,a.version)){a.slot=r.slot;used[a.slot]=1;break;}}}
+  // A page is identified by its world coordinates AND all ordered draws.
+  // Different pages may share one blank source, but never a composed slot.
+  for(const auto&page:p.pages){Resident a{page.pixels,page.pixels.get(),gpuarea::Missing,page.version,page.x,page.y,page.draws,p.objects};
+   auto range=residentIndex.equal_range(a.address);for(auto i=range.first;i!=range.second;++i){const auto&r=residents_[i->second];if(!used[r.slot]&&samePage(r,page,p.objects)){a.slot=r.slot;used[a.slot]=1;break;}}active.push_back(std::move(a));}
   uint32_t free=0,slots=1;for(size_t n=0;n<active.size();++n){auto&a=active[n];if(a.slot==gpuarea::Missing){while(free<used.size()&&used[free])++free;if(free==used.size())return fail("GPU area resident budget exceeded");a.slot=free;used[free]=1;dirty.push_back(n);}slots=std::max(slots,a.slot+1);}
+  for(const auto&a:active)pageSlots.push_back(a.slot);
+  std::array<Buffer*,4>banks{{&atlas_,&rawBanks_[0],&rawBanks_[1],&rawBanks_[2]}};
+  if(!objectsStage_.prepare(p,pageSlots,dirty,banks,banked_))return false;
   const uint32_t cols=(p.nativeWidth+127)/128,rows=(p.nativeHeight+127)/128;std::vector<uint32_t>metadata(size_t(cols)*rows,gpuarea::Missing);
-  for(size_t n=0;n<p.pages.size();++n)metadata[size_t(p.pages[n].y)*cols+p.pages[n].x]=active[pageSlots[n]].slot;
+  for(size_t n=0;n<p.pages.size();++n)metadata[size_t(p.pages[n].y)*cols+p.pages[n].x]=pageSlots[n];
   auto number=[&](double value){uint32_t bits[2];std::memcpy(bits,&value,sizeof value);metadata.push_back(bits[0]);metadata.push_back(bits[1]);};
   AreaParams params{uint32_t(p.width),uint32_t(p.height),uint32_t(p.nativeWidth),uint32_t(p.nativeHeight),cols,0,0,0,p.background,gpuarea::Missing,uint32_t(dirty.size()),0,0};
   if(metadata.size()&1)metadata.push_back(0);params.xOffset=uint32_t(metadata.size());const double sx=p.spanX/p.width,sy=p.spanY/p.height;
@@ -100,12 +111,13 @@ class AreaResolve : public Resolve {
   for(unsigned bank=0;bank<4;++bank)if(!copies[bank].empty())vkCmdCopyBuffer_(command_,upload_.buffer,bank?rawBanks_[bank-1].buffer:atlas_.buffer,uint32_t(copies[bank].size()),copies[bank].data());
   VkMemoryBarrier before{VK_STRUCTURE_TYPE_MEMORY_BARRIER};before.srcAccessMask=VK_ACCESS_TRANSFER_WRITE_BIT|VK_ACCESS_HOST_WRITE_BIT;before.dstAccessMask=VK_ACCESS_SHADER_READ_BIT|VK_ACCESS_SHADER_WRITE_BIT;vkCmdPipelineBarrier_(command_,VK_PIPELINE_STAGE_TRANSFER_BIT|VK_PIPELINE_STAGE_HOST_BIT,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,0,1,&before,0,nullptr,0,nullptr);
   auto barrier=[&](){VkMemoryBarrier b{VK_STRUCTURE_TYPE_MEMORY_BARRIER};b.srcAccessMask=VK_ACCESS_SHADER_WRITE_BIT;b.dstAccessMask=VK_ACCESS_SHADER_READ_BIT|VK_ACCESS_SHADER_WRITE_BIT;vkCmdPipelineBarrier_(command_,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,0,1,&b,0,nullptr,0,nullptr);};
+  objectsStage_.record(command_);if(objectsStage_.jobs())barrier();
   if(p.mask)mask_.record(command_);
   vkCmdBindPipeline_(command_,VK_PIPELINE_BIND_POINT_COMPUTE,areaPipeline_);vkCmdBindDescriptorSets_(command_,VK_PIPELINE_BIND_POINT_COMPUTE,areaPipelineLayout_,0,1,&areaSet_,0,nullptr);
   if(!dirty.empty())for(uint32_t phase=0;phase<2;++phase){params.phase=phase;vkCmdPushConstants_(command_,areaPipelineLayout_,VK_SHADER_STAGE_COMPUTE_BIT,0,sizeof params,&params);vkCmdDispatch_(command_,phase?5:4,(params.buildCount+7)/8,1);barrier();}
   params.phase=2;vkCmdPushConstants_(command_,areaPipelineLayout_,VK_SHADER_STAGE_COMPUTE_BIT,0,sizeof params,&params);vkCmdDispatch_(command_,(params.width+7)/8,(params.height+7)/8,1);
   for(const auto&d:effects){
-   if(d.snapshot){VkMemoryBarrier ready{VK_STRUCTURE_TYPE_MEMORY_BARRIER};ready.srcAccessMask=VK_ACCESS_SHADER_READ_BIT|VK_ACCESS_SHADER_WRITE_BIT;ready.dstAccessMask=VK_ACCESS_TRANSFER_READ_BIT|VK_ACCESS_TRANSFER_WRITE_BIT;vkCmdPipelineBarrier_(command_,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,VK_PIPELINE_STAGE_TRANSFER_BIT,0,1,&ready,0,nullptr,0,nullptr);VkBufferCopy copy{0,outputBytes,outputBytes};vkCmdCopyBuffer_(command_,output_.buffer,output_.buffer,1,&copy);ready.srcAccessMask=VK_ACCESS_TRANSFER_WRITE_BIT;ready.dstAccessMask=VK_ACCESS_SHADER_READ_BIT|VK_ACCESS_SHADER_WRITE_BIT;vkCmdPipelineBarrier_(command_,VK_PIPELINE_STAGE_TRANSFER_BIT,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,0,1,&ready,0,nullptr,0,nullptr);}else barrier();
+   if(d.snapshot){VkMemoryBarrier ready{VK_STRUCTURE_TYPE_MEMORY_BARRIER};ready.srcAccessMask=VK_ACCESS_SHADER_READ_BIT|VK_ACCESS_SHADER_WRITE_BIT;ready.dstAccessMask=VK_ACCESS_TRANSFER_READ_BIT|VK_ACCESS_TRANSFER_WRITE_BIT;vkCmdPipelineBarrier_(command_,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,VK_PIPELINE_STAGE_TRANSFER_BIT,0,1,&ready,0,nullptr,0,nullptr);std::vector<VkBufferCopy>spans;for(const auto&copy:gpueffects::snapshotCopies(d))spans.push_back({copy.source,copy.destination,copy.bytes});if(!spans.empty())vkCmdCopyBuffer_(command_,output_.buffer,output_.buffer,uint32_t(spans.size()),spans.data());ready.srcAccessMask=VK_ACCESS_TRANSFER_WRITE_BIT;ready.dstAccessMask=VK_ACCESS_SHADER_READ_BIT|VK_ACCESS_SHADER_WRITE_BIT;vkCmdPipelineBarrier_(command_,VK_PIPELINE_STAGE_TRANSFER_BIT,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,0,1,&ready,0,nullptr,0,nullptr);}else barrier();
    vkCmdBindPipeline_(command_,VK_PIPELINE_BIND_POINT_COMPUTE,effectsPipeline_);vkCmdBindDescriptorSets_(command_,VK_PIPELINE_BIND_POINT_COMPUTE,areaPipelineLayout_,0,1,&effectsSet_,0,nullptr);vkCmdPushConstants_(command_,areaPipelineLayout_,VK_SHADER_STAGE_COMPUTE_BIT,0,sizeof d.params,d.params.data());vkCmdDispatch_(command_,(d.params[10]-d.params[8]+7)/8,(d.params[11]-d.params[9]+7)/8,1);
   }
   VkMemoryBarrier ready{VK_STRUCTURE_TYPE_MEMORY_BARRIER};ready.srcAccessMask=VK_ACCESS_SHADER_WRITE_BIT;ready.dstAccessMask=VK_ACCESS_TRANSFER_READ_BIT;vkCmdPipelineBarrier_(command_,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,VK_PIPELINE_STAGE_TRANSFER_BIT,0,1,&ready,0,nullptr,0,nullptr);if(direct)direct_.record(command_,output_.buffer);else{VkBufferCopy result{0,0,outputBytes};vkCmdCopyBuffer_(command_,output_.buffer,readback_.buffer,1,&result);}
@@ -114,7 +126,7 @@ class AreaResolve : public Resolve {
   if(direct){out.clear();*gpuOut=direct_.completed();}else{
   if(!readback_.coherent){VkMappedMemoryRange range{VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE};range.memory=readback_.memory;range.size=VK_WHOLE_SIZE;if(vkInvalidateMappedMemoryRanges_(device_,1,&range)!=VK_SUCCESS)return fatal("GPU area readback invalidation failed");}
   out.resize(size_t(p.width)*p.height);std::memcpy(out.data(),readback_.mapped,size_t(outputBytes));}
-  residents_=std::move(active);if(p.mask)mask_.commit();prefixBuilds_=dirty.size();++diagnostics_.frames;diagnostics_.uploads=dirty.size()+(p.mask?mask_.uploads():0);diagnostics_.uploadedBytes=uploadBytes+metadata.size()*4+(p.mask?mask_.uploadedBytes():0);diagnostics_.dispatches=1+(dirty.empty()?0:2)+effects.size()+(p.mask?mask_.dispatches():0);diagnostics_.readbacks=direct?0:1;diagnostics_.reason.clear();diagnostics_.milliseconds=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-started).count();return true;
+  residents_=std::move(active);previousObjects_=p.objects;objectsStage_.commit();diagnostics_.voxelRasters=objectsStage_.rasters();if(p.mask)mask_.commit();prefixBuilds_=dirty.size();++diagnostics_.frames;diagnostics_.uploads=dirty.size()+objectsStage_.uploads()+(p.mask?mask_.uploads():0);diagnostics_.uploadedBytes=uploadBytes+metadata.size()*4+objectsStage_.uploadedBytes()+(p.mask?mask_.uploadedBytes():0);diagnostics_.dispatches=1+(dirty.empty()?0:2)+objectsStage_.dispatches()+effects.size()+(p.mask?mask_.dispatches():0);diagnostics_.readbacks=direct?0:1;diagnostics_.reason.clear();diagnostics_.milliseconds=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-started).count();return true;
  }
 public:
  AreaResolve()=default;~AreaResolve(){releaseArea();}

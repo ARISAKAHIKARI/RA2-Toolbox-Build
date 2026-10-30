@@ -19,7 +19,7 @@ inline bool image(const voxel::Image&a,const voxel::Image&b,unsigned weight,floa
     a.width<1||a.height<1||b.width<1||b.height<1||a.pixels.size()!=size_t(a.width)*a.height||b.pixels.size()!=size_t(b.width)*b.height)return false;
  const int l=std::min(a.x,b.x),t=std::min(a.y,b.y),r=std::max(a.x+a.width,b.x+b.width),bt=std::max(a.y+a.height,b.y+b.height);
  if(r-l>2048||bt-t>2048||std::abs(l)>4096||std::abs(t)>4096)return false;
- voxel::Image next=b;next.x=l;next.y=t;next.width=r-l;next.height=bt-t;next.attachments.clear();
+ voxel::Image next=b;next.x=l;next.y=t;next.width=r-l;next.height=bt-t;next.attachments.clear();next.nativeBlend=0;next.blendSource.reset();next.sourcePalette.reset();
  next.pixels.assign(size_t(next.width)*next.height,0);next.depth.assign(next.pixels.size(),-std::numeric_limits<float>::infinity());next.indices.resize(next.pixels.size());
  for(int y=t;y<bt;++y)for(int x=l;x<r;++x){
   int ax=x-a.x,ay=y-a.y,bx=x-b.x,by=y-b.y;

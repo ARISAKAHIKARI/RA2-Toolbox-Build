@@ -1,5 +1,6 @@
 #pragma once
 #include "native_canvas.h"
+#include "gpu_scene_record.h"
 #include <atomic>
 namespace external {namespace camera {
 // Objects keep native pixels and painter order. Independent pages can run on
@@ -25,7 +26,7 @@ private:
   return e.hasBase==bool(base)&&(!base||(e.base.lock()==base&&e.version==base->revision))&&e.draws==draws;
  }
  static bool gpu(const voxel::Image&i){if(i.gpuRaster)return true;for(const auto&p:i.attachments)if(gpu(p))return true;return false;}
- static size_t bytes(const voxel::Image&i){size_t n=sizeof i+i.pixels.size()*4+i.indices.size()+i.depth.size()*4;for(const auto&p:i.attachments)n+=bytes(p);return n;}
+ static size_t bytes(const voxel::Image&i){size_t n=sizeof i+i.pixels.size()*4+i.indices.size()+i.depth.size()*4+(i.sourcePalette?i.sourcePalette->size()*4:0)+(i.blendSource?i.blendSource->size()*4:0);for(const auto&p:i.attachments)n+=bytes(p);return n;}
  static bool materialize(const voxel::Image&in,voxel::Image&out){
   if(!gpuvoxel::materialize(in,out))return false;
   for(auto&part:out.attachments)if(gpu(part)){voxel::Image next;if(!materialize(part,next))return false;part=std::move(next);}return true;
@@ -45,6 +46,27 @@ private:
 public:
  void clear(){pages_.clear();rasters_.clear();rasterBytes_=rasterSerial_=0;budget_.reset();width_=height_=0;++revision_;stats_={};}
  const Stats&stats()const{return stats_;}uint64_t revision()const{return revision_;}
+ // Vera's retained native source -> ordered draws -> final resolve contract.
+ // Only metadata is built here. CPU rasterization is deferred to compose()
+ // when the GPU cannot complete the whole map transaction.
+ bool planGPU(const NativeCanvas&base,const std::vector<Draw>&draws,int width,int height,double spanX,double spanY,gpuarea::Plan&out){
+  if(!base.areaPlan(width,height,out,spanX,spanY))return false;
+  GpuSceneRecord record;record.beginObjects(base.width_,base.height_,base.precision_);
+  for(const auto&d:draws)if(!d.image||!record.append(*d.image,d.image,d.x,d.y,1,1,d.base,d.light,d.lift,d.drop,false))return false;
+  auto objects=std::make_shared<const std::vector<vulkancompute::DrawJob>>(record.frame().draws);out.objects=objects;
+  std::map<uint32_t,size_t>lookup;for(size_t n=0;n<out.pages.size();++n)lookup[NativeCanvas::key(out.pages[n].x,out.pages[n].y)]=n;
+  std::shared_ptr<const std::vector<uint32_t>>blank;size_t refs=0;
+  for(size_t n=0;n<objects->size();++n){const auto&d=(*objects)[n];
+   auto edge=[](float x,int limit,bool high){return std::clamp(int(high?std::ceil(std::clamp(x,-1e7f,1e7f)):std::floor(std::clamp(x,-1e7f,1e7f))),0,limit);};
+   int l=edge(d.left,base.width_,false),t=edge(d.top,base.height_,false),r=edge(d.left+d.source.width*d.scaleX,base.width_,true),b=edge(d.top+d.source.height*d.scaleY,base.height_,true);
+   l=std::max(l,base.paintLeft_);t=std::max(t,base.paintTop_);r=std::min(r,base.paintRight_);b=std::min(b,base.paintBottom_);if(l>=r||t>=b)continue;
+   for(int y=t/128;y<=(b-1)/128;++y)for(int x=l/128;x<=(r-1)/128;++x){if(++refs>2*1024*1024)return false;auto k=NativeCanvas::key(x,y);auto found=lookup.find(k);
+    if(found==lookup.end()){if(out.pages.size()>=gpuarea::MaximumPages)return false;if(!blank)blank=std::make_shared<const std::vector<uint32_t>>(gpuarea::PagePixels,base.background_);
+     found=lookup.emplace(k,out.pages.size()).first;out.pages.push_back({uint32_t(x),uint32_t(y),blank,0,{},{}});
+    }out.pages[found->second].draws.push_back(uint32_t(n));
+   }
+  }return gpuarea::valid(out);
+ }
  // relativeOutput requires the caller's last resolved pixels to match our
  // previous revision AND the current base/view. Otherwise dirty means every
  // object page, so callers starting with terrain alone remain correct.

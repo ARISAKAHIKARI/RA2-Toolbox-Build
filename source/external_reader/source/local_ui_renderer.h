@@ -112,6 +112,24 @@ class Engine {
  }
 public:
  void reset(){font_.reset();strings_.reset();shapes_.reset();unitPips_.clear();}
- template<class Read>bool capture(Read read,const mainview::View&view,const std::vector<nativefeedback::Object>&objects,int width,int height,Plan&out,uint32_t tick=0){out={};shapes_.begin();if(!view.valid()||width<1||height<1||width>8192||height>8192||uint64_t(width)*height>16*1024*1024||objects.size()>8192)return false;Painter painter(out,view.width,view.height,width,height);bool fontUsed=false;painter.lane(0);if(!labels(read,view,painter,out,fontUsed)){out={};return false;}painter.lane(1);if(!timers(read,view,painter,out,fontUsed)){out={};return false;}if(!buildings(read,view,objects,painter,out,fontUsed)||!statuses(read,view,objects,painter,fontUsed)||!pips(read,view,objects,painter)||!paths(read,view,objects,painter,fontUsed,tick)||!painter.good()||(fontUsed&&!font_.stable(read))){out={};return false;}out.glyphDecodes=font_.decodes();return true;}
+ template<class Read>bool capture(Read read,const mainview::View&view,const std::vector<nativefeedback::Object>&objects,int width,int height,Plan&out,uint32_t tick=0){
+  out={};shapes_.begin();if(!view.valid()||width<1||height<1||width>8192||height>8192||uint64_t(width)*height>16*1024*1024||objects.size()>8192)return false;
+  // Each independent producer publishes a complete layer transaction. A bad
+  // timer/font/passenger read discards that producer, not every other UI layer.
+  // The outer task still rejects a camera/frame/identity race for the whole UI.
+  size_t total=0;auto capture=[&](auto producer){Plan next;Painter painter(next,view.width,view.height,width,height);bool fontUsed=false;
+   if(!producer(painter,next,fontUsed)||!painter.good()||(fontUsed&&!font_.stable(read)))return;
+   size_t count=0;for(const auto&layer:next.layers)count+=layer.size();if(total+count>262144)return;total+=count;
+   for(size_t n=0;n<out.layers.size();++n)out.layers[n].insert(out.layers[n].end(),next.layers[n].begin(),next.layers[n].end());
+   out.messages+=next.messages;out.timers+=next.timers;out.primary+=next.primary;out.rallies+=next.rallies;
+  };
+  capture([&](Painter&p,Plan&next,bool&font){p.lane(0);return labels(read,view,p,next,font);});
+  capture([&](Painter&p,Plan&next,bool&font){p.lane(1);return timers(read,view,p,next,font);});
+  capture([&](Painter&p,Plan&next,bool&font){return buildings(read,view,objects,p,next,font);});
+  capture([&](Painter&p,Plan&,bool&font){return statuses(read,view,objects,p,font);});
+  capture([&](Painter&p,Plan&,bool&){return pips(read,view,objects,p);});
+  capture([&](Painter&p,Plan&,bool&font){return paths(read,view,objects,p,font,tick);});
+  out.glyphDecodes=font_.decodes();return true;
+ }
 };
 }}

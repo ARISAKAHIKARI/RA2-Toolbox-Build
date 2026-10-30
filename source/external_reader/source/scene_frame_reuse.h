@@ -1,5 +1,6 @@
 #pragma once
 #include "vulkan_scene_types.h"
+#include "gpu_effect_plan.h"
 #include <optional>
 namespace external {namespace camera {
 // Compare the completed draw inputs AFTER current state/light/palette/mask
@@ -10,12 +11,12 @@ inline bool samePixels(const vulkancompute::TileJob&a,const vulkancompute::TileJ
 }
 inline bool samePixels(const vulkancompute::DrawJob&a,const vulkancompute::DrawJob&b){
  return std::tie(a.gpuRaster,a.source.pixels,a.source.depth,a.source.indices,a.source.width,a.source.height,a.reconstructionSource,a.reconstructed,a.reconstructedWidth,a.reconstructedHeight,a.reconstructionFactor,
- a.left,a.top,a.scaleX,a.scaleY,a.depthBase,a.originY,a.depthBottom,a.rasterScale,a.lift,a.gains,a.sampling,a.shadow,a.writeDepth,a.flat,a.objectPalette,a.smoothRGB,a.skipZ)==
+ a.left,a.top,a.scaleX,a.scaleY,a.depthBase,a.originY,a.depthBottom,a.rasterScale,a.lift,a.gains,a.sampling,a.shadow,a.writeDepth,a.flat,a.objectPalette,a.smoothRGB,a.skipZ,a.sourcePalette,a.nativeBlend)==
  std::tie(b.gpuRaster,b.source.pixels,b.source.depth,b.source.indices,b.source.width,b.source.height,b.reconstructionSource,b.reconstructed,b.reconstructedWidth,b.reconstructedHeight,b.reconstructionFactor,
- b.left,b.top,b.scaleX,b.scaleY,b.depthBase,b.originY,b.depthBottom,b.rasterScale,b.lift,b.gains,b.sampling,b.shadow,b.writeDepth,b.flat,b.objectPalette,b.smoothRGB,b.skipZ);
+ b.left,b.top,b.scaleX,b.scaleY,b.depthBase,b.originY,b.depthBottom,b.rasterScale,b.lift,b.gains,b.sampling,b.shadow,b.writeDepth,b.flat,b.objectPalette,b.smoothRGB,b.skipZ,b.sourcePalette,b.nativeBlend);
 }
 inline bool samePixels(const vulkancompute::FrameJob&a,const vulkancompute::FrameJob&b){
- if(a.collectGuides||b.collectGuides||a.effects!=b.effects)return false; // temporal guides carry history, not just pixels
+ if(a.collectGuides||b.collectGuides||!gpueffects::same(a.effects,b.effects))return false; // temporal guides carry history, not just pixels
  if(std::tie(a.width,a.height,a.basePixels,a.baseDepth,a.baseDepthWidth,a.baseDepthHeight,a.baseDepthXs,a.baseDepthYs,a.maskPlan,a.fogAlpha,a.clipLeft,a.clipTop,a.clipRight,a.clipBottom)!=
     std::tie(b.width,b.height,b.basePixels,b.baseDepth,b.baseDepthWidth,b.baseDepthHeight,b.baseDepthXs,b.baseDepthYs,b.maskPlan,b.fogAlpha,b.clipLeft,b.clipTop,b.clipRight,b.clipBottom)||a.baseTiles.size()!=b.baseTiles.size()||a.draws.size()!=b.draws.size())return false;
  for(size_t n=0;n<a.baseTiles.size();++n)if(!samePixels(a.baseTiles[n],b.baseTiles[n]))return false;

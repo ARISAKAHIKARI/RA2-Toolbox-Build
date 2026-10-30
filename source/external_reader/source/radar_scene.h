@@ -605,7 +605,9 @@ public:
   const bool incrementalNative=!region.active&&!areaGpuMode&&nativePresentation_.pixels&&
    nativePresentation_.pixels->size()==size_t(width)*height&&nativePresentation_.background==detailKey_&&
    nativePresentation_.objects==objectCanvas_.revision()&&!nativePresentation_.gpu&&!nativePresentation_.used;
-  if(!detail&&!objectCanvas_.compose(background_,objectDraws,view,incrementalNative)){dynamicFailure_=true;return {};}
+  gpuarea::Plan nativeAreaPlan;
+  const bool nativeObjectsGpu=areaGpuMode&&objectCanvas_.planGPU(background_,objectDraws,width,height,spanX_,spanY_,nativeAreaPlan);
+  if(!detail&&!nativeObjectsGpu&&!objectCanvas_.compose(background_,objectDraws,view,incrementalNative)){dynamicFailure_=true;return {};}
   if(view.failed()){dynamicFailure_=true;return {};}
   stage(stageStats_.objectsMs);
   const bool worldEffects=frame.effects&&frame.effects->world&&!frame.effects->world->empty();
@@ -634,7 +636,7 @@ public:
   // Repeating a verified identical GPU plan needs neither dispatch/fence nor
   // full-screen readback/copy. The scene stays immutable; current sampled
   // state, live light and palette validation above still run at every request.
-  const auto*reusePlan=gpuMode_&&fallbacks.empty()&&!worldEffects&&!bolts&&!guideEnabled_?
+  const auto*reusePlan=gpuMode_&&fallbacks.empty()&&effectPlanReady&&!guideEnabled_?
    detailed_.completeGpuPlan(masked?maskPixels_:nullptr,masked?gpuMaskPlan_:nullptr):nullptr;
   if(reusePlan){if(auto previous=gpuFrameReuse_.get(*reusePlan)){if(!previous->gpu||gpupresent::available()){xbrzadapter::gpuState().used=true;stageStats_.reused=true;stage(stageStats_.resolveMs);return previous;}}}
   else gpuFrameReuse_.reset();
@@ -646,8 +648,12 @@ public:
     (!nativePresentation_.used||(nativePresentation_.mask==(masked?gpuMaskPlan_:nullptr)&&nativePresentation_.fog==(masked?maskPixels_:nullptr)));
   if(sameNative){out->pixels=*nativePresentation_.pixels;areaUsed=nativePresentation_.used;if(areaGpuMode)xbrzadapter::gpuAreaCached(areaUsed);}
   else if(areaGpuMode){
-   areaUsed=view.presentGPU(width,height,out->pixels,spanX_,spanY_,masked?maskPixels_:nullptr,masked?gpuMaskPlan_:nullptr,areaEffects,directPresentation_&&effectPlanReady&&fallbacks.empty()?&out->gpu:nullptr);
-   if(!areaUsed&&!view.present(width,height,out->pixels,spanX_,spanY_)){dynamicFailure_=true;return {};}
+   auto*direct=directPresentation_&&effectPlanReady&&fallbacks.empty()?&out->gpu:nullptr;
+   if(nativeObjectsGpu){nativeAreaPlan.fog=masked?maskPixels_:nullptr;nativeAreaPlan.mask=masked?gpuMaskPlan_:nullptr;nativeAreaPlan.effects=areaEffects;areaUsed=xbrzadapter::gpuArea(nativeAreaPlan,out->pixels,direct);}
+   else areaUsed=view.presentGPU(width,height,out->pixels,spanX_,spanY_,masked?maskPixels_:nullptr,masked?gpuMaskPlan_:nullptr,areaEffects,direct);
+   if(!areaUsed){if(nativeObjectsGpu&&!objectCanvas_.compose(background_,objectDraws,view,false)){dynamicFailure_=true;return {};}
+    if(!view.present(width,height,out->pixels,spanX_,spanY_)){dynamicFailure_=true;return {};}}
+
   }else{
    if(!detail)out->pixels=incrementalNative?*nativePresentation_.pixels:baseScene_->pixels;
    if(!(detail?detailed_.finish(out->pixels,true,masked?maskPixels_:nullptr,masked?gpuMaskPlan_:nullptr,maskReadback,directReady?&out->gpu:nullptr):region.active?view.presentRegion(width,height,out->pixels,region.x,region.y,region.width,region.height,pixelScaleMode):view.presentDirty(width,height,out->pixels,spanX_,spanY_))){dynamicFailure_=true;return {};}

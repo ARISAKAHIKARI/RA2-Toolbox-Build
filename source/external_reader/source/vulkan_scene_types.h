@@ -29,6 +29,8 @@ struct MotionView {
 struct DrawJob {
  std::shared_ptr<const gpuvoxel::Prepared> gpuRaster; // optional deferred GPU mesh raster
  Texture source; // original coverage, nearest original depth/index and dimensions
+ std::shared_ptr<const std::vector<uint32_t>> sourcePalette;
+ uint32_t nativeBlend=0; // opaque source + native packed destination selector
  std::shared_ptr<const std::vector<uint32_t>> reconstructionSource; // already lit native PARGB for GPU xBRZ
  std::shared_ptr<const std::vector<uint32_t>> reconstructed; // already lit PARGB
  int reconstructedWidth=0,reconstructedHeight=0,reconstructionFactor=0;

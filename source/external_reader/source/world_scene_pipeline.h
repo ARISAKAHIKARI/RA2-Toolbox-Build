@@ -88,7 +88,7 @@ public:
   if(hasWorld){if(world->profile.particles)for(const auto&a:effects->world->alphas){auto image=world->alphas.find(a.image);if(image!=world->alphas.end())builder.alpha(a,image->second);}builder.paint(*effects->world,world->profile.particles,world->profile.lasers);}
   if(bolts)builder.bolts(effects->bolts,world->state.frame);
   auto plan=builder.finish();canvas_.gpuEffects((hasWorld||bolts)?plan:nullptr);
-  const auto*inputs=!hasWorld&&!bolts?canvas_.completeGpuPlan({},mask_):nullptr;
+  const auto*inputs=plan->valid?canvas_.completeGpuPlan({},mask_):nullptr;
   world_=world;view_=view;width_=width;height_=height;
   if(inputs)if(auto prior=reuse_.get(*inputs)){if(!prior->gpu||gpupresent::available()){xbrzadapter::gpuState().used=true;return prior;}}
   auto out=outputs_.acquire();out->width=width;out->height=height;out->gpu.reset();out->guides.reset();out->boltsRendered=false;

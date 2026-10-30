@@ -5,6 +5,7 @@
 #include "scene_order.h"
 #include "pixel_upgrade.h"
 #include "color_precision.h"
+#include "native_packed_color.h"
 #include "xbrz_adapter.h"
 namespace external { namespace camera {
 struct Light {
@@ -36,7 +37,7 @@ inline void previewPixels(const voxel::Image&image,const lighting::State&state,u
  for(size_t i=0;i<out.size();++i){uint32_t p=light.apply(image.pixels[i],indexed?image.indices[i]:0,image.objectPalette),v=0;
   for(int shift:{0,8,16,24})v|=((((p>>shift)&255)*opacity+127)/255)<<shift;out[i]=v;}
 }
-inline size_t pixels(const voxel::Image&i){size_t n=i.gpuRaster?size_t(std::max(0,i.width))*std::max(0,i.height)+i.gpuRaster->triangles.size()*(sizeof(gpuvoxel::Triangle)/4):i.pixels.size();for(const auto&part:i.attachments)n+=pixels(part);return n;}
+inline size_t pixels(const voxel::Image&i){size_t n=i.gpuRaster?size_t(std::max(0,i.width))*std::max(0,i.height)+i.gpuRaster->triangles.size()*(sizeof(gpuvoxel::Triangle)/4):i.pixels.size();if(i.sourcePalette)n+=i.sourcePalette->size();if(i.blendSource)n+=i.blendSource->size();for(const auto&part:i.attachments)n+=pixels(part);return n;}
 inline void opaque(voxel::Image&i){
  if(!i.intrinsicAlpha)for(auto&p:i.pixels)if(unsigned a=p>>24)p=0xff000000u|(std::min(255u,((p>>16)&255)*255/a)<<16)|(std::min(255u,((p>>8)&255)*255/a)<<8)|std::min(255u,(p&255)*255/a);
  for(auto&part:i.attachments)if(!part.shadow)opaque(part);
@@ -68,6 +69,8 @@ public:
   if(i.width<=0||i.height<=0||i.width>resolutionsampling::MaxDimension||i.height>resolutionsampling::MaxDimension||uint64_t(i.width)*i.height>resolutionsampling::MaxPixels||i.rasterScale<1||i.rasterScale>resolutionsampling::MaxRasterScale||i.pixels.size()!=size_t(i.width)*i.height||!std::isfinite(ax)||!std::isfinite(ay)||!std::isfinite(sx)||!std::isfinite(sy)||sx<=0||sy<=0||sx>8||sy>8)return;
   for(const auto&part:i.attachments)if(part.shadow&&!i.shadowsAfter&&(!part.airborneShadow||shadowDrop>0))blit(part,ax,ay+shadowDrop*sy,sx,sy,base,light,lift,0,smooth);
   float pxScale=sx/i.rasterScale,pyScale=sy/i.rasterScale;
+  const bool packed=precision_==colorprecision::Mode::NativeSteps&&i.nativeBlend>0&&i.nativeBlend<=3&&i.blendSource&&i.blendSource->size()==i.pixels.size()&&(!smooth||(pxScale==1&&pyScale==1));
+  const auto&source=packed?*i.blendSource:i.pixels;
   float left=ax+i.x*pxScale,top=ay+i.y*pyScale;
   int x0=std::clamp(int(std::floor(std::clamp(left,-1e7f,1e7f))),0,width_),y0=std::clamp(int(std::floor(std::clamp(top,-1e7f,1e7f))),0,height_);
   int x1=std::clamp(int(std::ceil(std::clamp(left+i.width*pxScale,-1e7f,1e7f))),0,width_),y1=std::clamp(int(std::ceil(std::clamp(top+i.height*pyScale,-1e7f,1e7f))),0,height_);
@@ -95,11 +98,12 @@ public:
     if(!zData){if(i.flat)rowZ+=float(i.y+sourceY)/i.rasterScale-14+lift;
      else{int bottom=i.depthBottom==std::numeric_limits<int>::min()?i.y+i.height-1:i.depthBottom;rowZ+=float(bottom)/i.rasterScale-14+lift+float((bottom-i.y-sourceY)/3)/i.rasterScale;}}
     size_t from=size_t(sourceY)*i.width+first+ox,to=size_t(y)*width_+first;
-    for(int x=first;x<last;++x,++from,++to){uint32_t p=i.pixels[from];unsigned alpha=p>>24;if(!alpha)continue;
+    for(int x=first;x<last;++x,++from,++to){uint32_t p=source[from];unsigned alpha=p>>24;if(!alpha)continue;
      float z=rowZ;bool useZ=!i.skipZ;if(zData){if(std::isnan(i.depth[from]))useZ=false;else z+=i.depth[from];}
      if(useZ&&z<=depth[to])continue;
-     if(i.shadow){uint32_t old=color[to];if(alpha==255)color[to]=(old&0xff000000u)|((old&0x00fefefeu)>>1);
+     if(i.shadow){uint32_t old=color[to];if(alpha==255)color[to]=precision_==colorprecision::Mode::NativeSteps?nativepacked::shadow(old):(old&0xff000000u)|((old&0x00fefefeu)>>1);
       else{uint32_t v=old&0xff000000u;for(int shift:{0,8,16})v|=(((old>>shift)&255)*(510-alpha)/510)<<shift;color[to]=v;}}
+     else if(packed)color[to]=nativepacked::blend(transform.apply(p,indexed?i.indices[from]:0,i.objectPalette),color[to],i.nativeBlend);
      else{if(!neutral||alpha!=255)p=transform.apply(p,indexed?i.indices[from]:0,i.objectPalette);
       if(alpha==255)color[to]=p;else{uint32_t old=color[to],out=(alpha+(old>>24)*(255-alpha)/255)<<24;for(int shift:{0,8,16})out|=std::min(255u,((p>>shift)&255)+((old>>shift)&255)*(255-alpha)/255)<<shift;color[to]=out;}}
      if(useZ&&i.writeDepth)depth[to]=z;
@@ -107,7 +111,7 @@ public:
    }
   }else for(int y=y0;y<y1;++y){int sourceY=int(std::floor((y+.5f-top)/pyScale));if(sourceY<0||sourceY>=i.height)continue;
    for(int x=x0;x<x1;++x){int sourceX=int(std::floor((x+.5f-left)/pxScale));if(sourceX<0||sourceX>=i.width)continue;
-    size_t from=size_t(sourceY)*i.width+sourceX,to=size_t(y)*width_+x;uint32_t p=i.pixels[from];
+    size_t from=size_t(sourceY)*i.width+sourceX,to=size_t(y)*width_+x;uint32_t p=source[from];
     std::array<double,4> filtered{};bool preciseSample=false;
     bool sampled=enlarged||(!reconstruct&&smooth&&(!i.shadow||i.rasterScale>1)&&(pxScale!=1||pyScale!=1));
     if(enlarged){
@@ -143,7 +147,8 @@ public:
     else if(i.flat)z+=float(i.y+sourceY)/i.rasterScale-14+lift;
     else{int bottom=i.depthBottom==std::numeric_limits<int>::min()?i.y+i.height-1:i.depthBottom;z+=float(bottom)/i.rasterScale-14+lift+float((bottom-i.y-sourceY)/3)/i.rasterScale;}
     if(useZ&&z<=depth[to])continue;
-    if(i.shadow){uint32_t old=color[to],v=old&0xff000000u;unsigned a=p>>24;for(int shift:{0,8,16})v|=(((old>>shift)&255)*(510-a)/510)<<shift;color[to]=v;}
+    if(i.shadow){uint32_t old=color[to],v=old&0xff000000u;unsigned a=p>>24;if(a==255&&precision_==colorprecision::Mode::NativeSteps)color[to]=nativepacked::shadow(old);else{for(int shift:{0,8,16})v|=(((old>>shift)&255)*(510-a)/510)<<shift;color[to]=v;}}
+    else if(packed)color[to]=nativepacked::blend(transform.apply(p,indexed?i.indices[from]:0,i.objectPalette),color[to],i.nativeBlend);
     else if(preciseSample){
      const double alpha=std::clamp(filtered[3],0.,255.);uint32_t old=color[to];unsigned oldAlpha=old>>24;uint32_t out=(oldAlpha==255?255u:unsigned(std::clamp(std::floor(alpha+oldAlpha*(255-alpha)/255.+.5),0.,255.)))<<24;
      for(int c=0;c<3;++c){int shift=16-c*8;double value=std::clamp(filtered[c],0.,alpha)+((old>>shift)&255)*(255-alpha)/255.;out|=uint32_t(std::clamp(std::floor(value+.5),0.,255.))<<shift;}color[to]=out;

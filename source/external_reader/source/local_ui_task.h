@@ -21,7 +21,7 @@ private:
   if(!mainview::sample(fresh,before)||!mainview::sameViewport(before,r.view)||before.frame<r.view.frame)return {};uint32_t sampled=clock_();Plan plan;
   if(!engine_.capture(read,before,input.objects,r.width,r.height,plan,sampled))return {};
   for(size_t lane=0;lane<plan.layers.size();++lane){auto&primitives=plan.layers[lane];if(primitives.empty()){images_[lane]={};old_[lane].clear();}
-   else if(primitives!=old_[lane]){nativefeedback::Canvas canvas;nativefeedback::Rect bounds;if(!nativefeedback::paintInteractions(primitives,{},canvas,bounds))return {};images_[lane]={bounds,std::make_shared<const std::vector<uint32_t>>(std::move(canvas.pixels))};old_[lane]=std::move(primitives);}
+   else if(primitives!=old_[lane]){nativefeedback::Canvas canvas;nativefeedback::Rect bounds;if(!nativefeedback::paintInteractions(primitives,{},canvas,bounds)){images_[lane]={};old_[lane].clear();continue;}images_[lane]={bounds,std::make_shared<const std::vector<uint32_t>>(std::move(canvas.pixels))};old_[lane]=std::move(primitives);}
   }
   mainview::View after;if(!mainview::sample(fresh,after)||!mainview::sameViewport(before,after)||after.frame<before.frame||uint32_t(clock_()-sampled)>150)return {};
   auto result=std::make_shared<Result>();result->request=r;result->view=before;result->sampledTick=sampled;result->images=images_;result->messages=plan.messages;result->timers=plan.timers;result->primary=plan.primary;result->rallies=plan.rallies;return result;

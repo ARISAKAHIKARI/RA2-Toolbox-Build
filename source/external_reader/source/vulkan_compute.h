@@ -27,7 +27,7 @@
 #else
 #include <dlfcn.h>
 #endif
-namespace external { namespace gpuxbrz {class Stage;} namespace gpuvoxel {class Stage;} namespace gpushroud {class Stage;} namespace vulkancompute {
+namespace external { namespace gpuxbrz {class Stage;} namespace gpuvoxel {class Stage;} namespace gpushroud {class Stage;} namespace gpuarea {class ObjectStage;} namespace vulkancompute {
 struct TileJob {
  std::shared_ptr<const std::vector<uint32_t>> pixels;
  int sourceWidth=0,sourceHeight=0,left=0,top=0,width=0,height=0;
@@ -51,6 +51,7 @@ class Resolve {
  friend class external::gpuxbrz::Stage;
  friend class external::gpuvoxel::Stage;
  friend class external::gpushroud::Stage;
+ friend class external::gpuarea::ObjectStage;
 protected:
 #ifdef RA2_VULKAN_TEST_SOFTWARE
  static constexpr bool AllowSoftware=true;

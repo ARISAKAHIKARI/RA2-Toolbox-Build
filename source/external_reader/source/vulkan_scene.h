@@ -1,5 +1,6 @@
 #pragma once
 #include "vulkan_scene_types.h"
+#include "gpu_draw_encoding.h"
 #include "vulkan_present.h"
 #include "gpu_motion.h"
 #include "vulkan_scene_spirv.h"
@@ -38,7 +39,7 @@ class FrameResolve : public Resolve {
  }
  bool uploadPlan(const std::vector<Source>&input,const UploadPlan&plan,Buffer&staging,std::vector<VkBufferCopy>&copies,VkDeviceSize maximum){
   if(!plan.bytes)return true;if(!buffer(staging,plan.bytes,VK_BUFFER_USAGE_TRANSFER_SRC_BIT,true,false,maximum))return fatal("GPU scene staging allocation failed");
-  VkDeviceSize offset=0;for(size_t i:plan.dirty){const auto&s=input[i];if(s.generated)continue;VkDeviceSize bytes=((s.bytes+3)/4)*4;std::memcpy(static_cast<char*>(staging.mapped)+offset,s.data,s.bytes);if(bytes>s.bytes)std::memset(static_cast<char*>(staging.mapped)+offset+s.bytes,0,size_t(bytes-s.bytes));copies.push_back({offset,VkDeviceSize(plan.offsets[i])*4,bytes});offset+=bytes;}
+  VkDeviceSize offset=0;for(size_t i:plan.dirty){const auto&s=input[i];if(s.generated)continue;VkDeviceSize bytes=((s.bytes+3)/4)*4;std::memcpy(static_cast<char*>(staging.mapped)+offset,s.data,s.bytes);if(bytes>s.bytes)std::memset(static_cast<char*>(staging.mapped)+offset+s.bytes,0,size_t(bytes-s.bytes));VkBufferCopy copy{offset,VkDeviceSize(plan.offsets[i])*4,bytes};if(!copies.empty()&&copies.back().srcOffset+copies.back().size==copy.srcOffset&&copies.back().dstOffset+copies.back().size==copy.dstOffset)copies.back().size+=bytes;else copies.push_back(copy);offset+=bytes;}
   if(!flush(staging))return fatal("GPU scene staging flush failed");return true;
  }
  bool pipeline(const uint32_t*words,size_t bytes,VkPipeline&out){
@@ -101,7 +102,7 @@ private:
   if(!frame.collectGuides||w!=guideRejectedWidth_||h!=guideRejectedHeight_)guideRejectedWidth_=guideRejectedHeight_=0;
   gpumotion::Plan guidePlan;bool collectGuides=frame.collectGuides&&!frame.effects&&!(w==guideRejectedWidth_&&h==guideRejectedHeight_)&&frame.baseDepth&&motionHistory_.prepare(frame,guidePlan);
   if(!collectGuides)motionHistory_.clear();
-  bool needs64=false;std::vector<Source>colors,materials;std::vector<std::array<size_t,4>>drawSources;size_t baseSource=0,baseDepth=0,baseDepthX=0,baseDepthY=0,fog=0;
+  bool needs64=false;std::vector<Source>colors,materials;std::vector<std::array<size_t,5>>drawSources;size_t baseSource=0,baseDepth=0,baseDepthX=0,baseDepthY=0,fog=0;
   if(frame.basePixels){baseSource=colors.size();colors.push_back(source(frame.basePixels));}
   uint64_t coordinateCount=0;if(frame.baseTiles.size()>4096)return fail("GPU scene base tile count exceeded");
   std::vector<size_t>tileSources;for(const auto&t:frame.baseTiles){
@@ -122,12 +123,13 @@ private:
   for(const auto&d:frame.draws){
    const auto&t=d.source;if((!t.pixels&&!d.gpuRaster)||t.width<1||t.height<1||t.width>8192||t.height>8192||uint64_t(t.width)*t.height>MaxPixels||(t.pixels&&uint64_t(t.width)*t.height!=t.pixels->size())||(t.depth&&t.depth->size()!=uint64_t(t.width)*t.height)||(t.indices&&t.indices->size()!=uint64_t(t.width)*t.height)||d.rasterScale<1||d.rasterScale>4||!std::isfinite(d.left)||!std::isfinite(d.top)||!std::isfinite(d.scaleX)||!std::isfinite(d.scaleY)||d.scaleX<=0||d.scaleY<=0||d.scaleX>8||d.scaleY>8||!std::isfinite(d.depthBase)||!std::isfinite(d.lift)||uint32_t(d.sampling)>3)return fail("Invalid GPU scene sprite");
    for(float gain:d.gains)if(!std::isfinite(gain)||gain<0||gain>16)return fail("Invalid GPU scene light");
-   std::array<size_t,4> sources{{colors.size(),size_t(-1),size_t(-1),size_t(-1)}};
+   std::array<size_t,5> sources{{colors.size(),size_t(-1),size_t(-1),size_t(-1),size_t(-1)}};
    if(d.gpuRaster){if(d.gpuRaster->width!=t.width||d.gpuRaster->height!=t.height)return fail("GPU voxel dimensions disagree");auto owner=std::shared_ptr<const void>(d.gpuRaster,d.gpuRaster.get());colors.push_back({owner,nullptr,size_t(t.width)*t.height*4,true,1});sources[2]=materials.size();materials.push_back({owner,nullptr,size_t(t.width)*t.height*4,true,2});}
    else colors.push_back(source(t.pixels));
    if(t.depth){sources[1]=materials.size();materials.push_back(source(t.depth));}if(t.indices&&!d.gpuRaster){sources[2]=materials.size();materials.push_back(source(t.indices));}
+   if(d.sourcePalette){if(d.sourcePalette->size()!=256||(!d.gpuRaster&&!t.indices))return fail("Invalid indexed GPU palette");sources[4]=colors.size();colors.push_back(source(d.sourcePalette));}
    if(d.sampling==Sampling::Reconstructed){if((!d.reconstructed&&!d.reconstructionSource)||(d.reconstructed&&d.reconstructionSource)||d.reconstructionFactor<2||d.reconstructionFactor>4||d.reconstructedWidth!=t.width*d.reconstructionFactor||d.reconstructedHeight!=t.height*d.reconstructionFactor||(d.reconstructed&&d.reconstructed->size()!=uint64_t(d.reconstructedWidth)*d.reconstructedHeight)||(d.reconstructionSource&&d.reconstructionSource->size()!=uint64_t(t.width)*t.height))return fail("Invalid reconstructed GPU scene sprite");sources[3]=colors.size();if(d.reconstructionSource){auto owner=std::shared_ptr<const void>(d.reconstructionSource,d.reconstructionSource.get());uint64_t signature=(uint64_t(d.reconstructionFactor)<<56)|(uint64_t(t.width)<<28)|uint64_t(t.height);colors.push_back({owner,nullptr,size_t(d.reconstructedWidth)*d.reconstructedHeight*4,true,signature});}else colors.push_back(source(d.reconstructed));}
-   needs64|=d.sampling!=Sampling::Nearest;drawSources.push_back(sources);
+   if(d.nativeBlend>3||(d.nativeBlend&&(d.sampling!=Sampling::Nearest||d.smoothRGB)))return fail("Invalid packed GPU blend");needs64|=d.sampling!=Sampling::Nearest;drawSources.push_back(sources);
    auto bound=[&](float value,int limit,bool high){double v=std::clamp(double(value),-1e7,1e7);return std::clamp(int(high?std::ceil(v):std::floor(v)),0,limit);};
    int left=bound(d.left,w,false),top=bound(d.top,h,false),right=bound(d.left+t.width*d.scaleX,w,true),bottom=bound(d.top+t.height*d.scaleY,h,true);bounds.push_back({left,top,right,bottom});candidatePixels+=uint64_t(std::max(0,right-left))*std::max(0,bottom-top);
   }
@@ -160,11 +162,14 @@ private:
   uint64_t refs=0;for(size_t bin=0;bin<binCount;++bin){starts[bin]=uint32_t(refs);refs+=counts[bin];if(refs>MaxRefs)return fail("GPU scene bin budget exceeded");}starts[binCount]=uint32_t(refs);
   std::vector<uint32_t>references(size_t(refs),0);auto positions=starts;
   for(size_t n=0;n<bounds.size();++n)visitBins(n,[&](size_t bin){references[positions[bin]++]=uint32_t(n);});
+  // Vera read-only reduction: opaque bodies replace every preceding admitted
+  // color in this Z-read-only span. Encode spans in the upper reference bits;
+  // the shader seeks the last admitted opaque pixel, then replays its tail.
+  encodeReadOnlyRuns(frame.draws,references,starts);
   std::vector<uint32_t>metadata(frame.draws.size()*DrawWords);auto offset=[&](const UploadPlan&p,size_t n){return n==size_t(-1)?Missing:p.offsets[n];};
   for(size_t n=0;n<frame.draws.size();++n){const auto&d=frame.draws[n];const auto&s=drawSources[n];auto*dst=metadata.data()+n*DrawWords;
-   dst[0]=offset(colorPlan,s[0]);dst[1]=offset(materialPlan,s[1]);dst[2]=offset(materialPlan,s[2]);dst[3]=d.source.width;dst[4]=d.source.height;dst[5]=offset(colorPlan,s[3]);dst[6]=d.reconstructedWidth;dst[7]=d.reconstructedHeight;dst[8]=d.reconstructionFactor;
-   dst[9]=(d.shadow?1:0)|(d.writeDepth?2:0)|(d.flat?4:0)|(d.objectPalette?8:0)|(d.smoothRGB?16:0)|(d.skipZ?32:0)|(d.gpuRaster?64:0);dst[10]=uint32_t(d.sampling);dst[11]=d.rasterScale;dst[12]=uint32_t(d.originY);dst[13]=uint32_t(d.depthBottom);
-   dst[14]=bits(d.left);dst[15]=bits(d.top);dst[16]=bits(d.scaleX);dst[17]=bits(d.scaleY);dst[18]=bits(d.depthBase);dst[19]=bits(d.lift);for(int c=0;c<3;++c)dst[20+c]=bits(d.gains[c]);for(int c=0;c<4;++c)dst[24+c]=bounds[n][c];
+   std::array<uint32_t,5>at{{offset(colorPlan,s[0]),offset(materialPlan,s[1]),offset(materialPlan,s[2]),offset(colorPlan,s[3]),offset(colorPlan,s[4])}};
+   encodeDraw(d,at,bounds[n],dst);
    if(collectGuides){dst[28]=bits(guidePlan.draws[n][0]);dst[29]=bits(guidePlan.draws[n][1]);dst[30]=guidePlan.eligible[n];}
   }
   SceneParams params{uint32_t(w),uint32_t(h),0,uint32_t(metadata.size()),0,cols,frame.baseDepth?materialPlan.offsets[baseDepth]:Missing,(frame.maskPlan||frame.fogAlpha)?materialPlan.offsets[fog]:Missing,uint32_t(std::clamp(frame.clipLeft,0,w)),uint32_t(std::clamp(frame.clipTop,0,h)),uint32_t(frame.clipRight<0?w:std::clamp(frame.clipRight,0,w)),uint32_t(frame.clipBottom<0?h:std::clamp(frame.clipBottom,0,h)),uint32_t(frame.baseDepthWidth),frame.baseDepthWidth?materialPlan.offsets[baseDepthX]:Missing,frame.baseDepthWidth?materialPlan.offsets[baseDepthY]:Missing,Missing,0,0,0,0};
@@ -206,7 +211,7 @@ private:
   for(const auto&d:effectDispatches){
    VkMemoryBarrier ready{VK_STRUCTURE_TYPE_MEMORY_BARRIER};ready.srcAccessMask=VK_ACCESS_SHADER_WRITE_BIT|VK_ACCESS_SHADER_READ_BIT;ready.dstAccessMask=d.snapshot?VK_ACCESS_TRANSFER_READ_BIT|VK_ACCESS_TRANSFER_WRITE_BIT:VK_ACCESS_SHADER_READ_BIT|VK_ACCESS_SHADER_WRITE_BIT;
    vkCmdPipelineBarrier_(command_,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,d.snapshot?VK_PIPELINE_STAGE_TRANSFER_BIT:VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,0,1,&ready,0,nullptr,0,nullptr);
-   if(d.snapshot){VkBufferCopy copy{0,outputBytes,outputBytes};vkCmdCopyBuffer_(command_,output_.buffer,output_.buffer,1,&copy);VkMemoryBarrier snapshot{VK_STRUCTURE_TYPE_MEMORY_BARRIER};snapshot.srcAccessMask=VK_ACCESS_TRANSFER_WRITE_BIT;snapshot.dstAccessMask=VK_ACCESS_SHADER_READ_BIT|VK_ACCESS_SHADER_WRITE_BIT;vkCmdPipelineBarrier_(command_,VK_PIPELINE_STAGE_TRANSFER_BIT,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,0,1,&snapshot,0,nullptr,0,nullptr);}
+   if(d.snapshot){std::vector<VkBufferCopy>spans;for(const auto&copy:gpueffects::snapshotCopies(d))spans.push_back({copy.source,copy.destination,copy.bytes});if(!spans.empty())vkCmdCopyBuffer_(command_,output_.buffer,output_.buffer,uint32_t(spans.size()),spans.data());VkMemoryBarrier snapshot{VK_STRUCTURE_TYPE_MEMORY_BARRIER};snapshot.srcAccessMask=VK_ACCESS_TRANSFER_WRITE_BIT;snapshot.dstAccessMask=VK_ACCESS_SHADER_READ_BIT|VK_ACCESS_SHADER_WRITE_BIT;vkCmdPipelineBarrier_(command_,VK_PIPELINE_STAGE_TRANSFER_BIT,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,0,1,&snapshot,0,nullptr,0,nullptr);}
    vkCmdBindPipeline_(command_,VK_PIPELINE_BIND_POINT_COMPUTE,effectsPipeline_);vkCmdBindDescriptorSets_(command_,VK_PIPELINE_BIND_POINT_COMPUTE,scenePipelineLayout_,0,1,&sceneDescriptors_,0,nullptr);vkCmdPushConstants_(command_,scenePipelineLayout_,VK_SHADER_STAGE_COMPUTE_BIT,0,sizeof(d.params),d.params.data());vkCmdDispatch_(command_,(d.params[10]-d.params[8]+7)/8,(d.params[11]-d.params[9]+7)/8,1);
   }
   VkMemoryBarrier after{VK_STRUCTURE_TYPE_MEMORY_BARRIER};after.srcAccessMask=VK_ACCESS_SHADER_WRITE_BIT;after.dstAccessMask=VK_ACCESS_TRANSFER_READ_BIT;vkCmdPipelineBarrier_(command_,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,VK_PIPELINE_STAGE_TRANSFER_BIT,0,1,&after,0,nullptr,0,nullptr);if(direct)direct_.record(command_,output_.buffer);else{VkBufferCopy copy{0,0,totalOutputBytes};vkCmdCopyBuffer_(command_,output_.buffer,readback_.buffer,1,&copy);}if(maskBytes){VkMemoryBarrier maskCopy{VK_STRUCTURE_TYPE_MEMORY_BARRIER};maskCopy.srcAccessMask=VK_ACCESS_TRANSFER_WRITE_BIT;maskCopy.dstAccessMask=VK_ACCESS_TRANSFER_READ_BIT;vkCmdPipelineBarrier_(command_,VK_PIPELINE_STAGE_TRANSFER_BIT,VK_PIPELINE_STAGE_TRANSFER_BIT,0,1,&maskCopy,0,nullptr,0,nullptr);VkBufferCopy mask{VkDeviceSize(materialPlan.offsets[fog])*4,totalOutputBytes,maskBytes};vkCmdCopyBuffer_(command_,materials_.buffer,readback_.buffer,1,&mask);}VkMemoryBarrier host{VK_STRUCTURE_TYPE_MEMORY_BARRIER};host.srcAccessMask=VK_ACCESS_TRANSFER_WRITE_BIT;host.dstAccessMask=VK_ACCESS_HOST_READ_BIT;vkCmdPipelineBarrier_(command_,VK_PIPELINE_STAGE_TRANSFER_BIT,VK_PIPELINE_STAGE_HOST_BIT,0,1,&host,0,nullptr,0,nullptr);

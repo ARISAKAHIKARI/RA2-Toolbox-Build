@@ -104,6 +104,8 @@ inline bool materialize(const Image&input,Image&out){
  if(!input.gpuRaster){out=input;return true;}
  if(input.width!=input.gpuRaster->width||input.height!=input.gpuRaster->height||input.rasterScale!=input.gpuRaster->rasterScale)return false;
  Image raster;if(!rasterReference(*input.gpuRaster,raster))return false;
- out=input;out.pixels=std::move(raster.pixels);out.indices=std::move(raster.indices);out.gpuRaster.reset();return true;
+ out=input;out.pixels=std::move(raster.pixels);out.indices=std::move(raster.indices);out.gpuRaster.reset();
+ if(input.sourcePalette){if(input.sourcePalette->size()!=256)return false;for(size_t n=0;n<out.pixels.size();++n)if(out.pixels[n]>>24)out.pixels[n]=(*input.sourcePalette)[out.indices[n]];out.sourcePalette.reset();}
+ return true;
 }
 }}

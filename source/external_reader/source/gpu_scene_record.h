@@ -68,7 +68,7 @@ class GpuSceneRecord {
   if(x0<x1&&y0<y1){
    vulkancompute::DrawJob draw;if(frame_.collectGuides)draw.motion=motion;draw.gpuRaster=i.gpuRaster;draw.source.width=i.width;draw.source.height=i.height;
    if(!i.gpuRaster){draw.source.pixels={owner,&i.pixels};if(i.depth.size()==i.pixels.size())draw.source.depth={owner,&i.depth};if(i.indices.size()==i.pixels.size())draw.source.indices={owner,&i.indices};}
-   draw.left=left;draw.top=top;draw.scaleX=pxScale;draw.scaleY=pyScale;draw.depthBase=base+i.depthBias;
+   draw.sourcePalette=i.sourcePalette;draw.left=left;draw.top=top;draw.scaleX=pxScale;draw.scaleY=pyScale;draw.depthBase=base+i.depthBias;
    draw.originY=i.y;draw.depthBottom=i.depthBottom==std::numeric_limits<int>::min()?i.y+i.height-1:i.depthBottom;draw.rasterScale=i.rasterScale;draw.lift=lift;
    draw.shadow=i.shadow;draw.writeDepth=i.writeDepth;draw.flat=i.flat;draw.objectPalette=i.objectPalette;draw.smoothRGB=precision_==colorprecision::Mode::SmoothRGB;draw.skipZ=i.skipZ;
    Light transform(state,precision_);std::copy_n(transform.gains,3,draw.gains.begin());
@@ -78,6 +78,7 @@ class GpuSceneRecord {
     draw.reconstructionFactor=factor;draw.sampling=vulkancompute::Sampling::Reconstructed;
    }
    else if(smooth&&(!i.shadow||i.rasterScale>1)&&(pxScale!=1||pyScale!=1))draw.sampling=i.rasterScale>1&&pxScale<=1&&pyScale<=1?vulkancompute::Sampling::Bilinear:vulkancompute::Sampling::Adaptive;
+   if(draw.sampling==vulkancompute::Sampling::Nearest&&!draw.smoothRGB&&i.nativeBlend>0&&i.nativeBlend<=3&&i.blendSource&&i.blendSource->size()==size_t(i.width)*i.height){draw.source.pixels=i.blendSource;draw.nativeBlend=i.nativeBlend;}
    if(frame_.draws.size()>=65536)return false;frame_.draws.push_back(std::move(draw));
   }
   for(size_t index=0;index<i.attachments.size();++index){const auto&part=i.attachments[index];if((!part.shadow||i.shadowsAfter)&&(!part.airborneShadow||shadowDrop>0)){
@@ -97,6 +98,7 @@ public:
  GpuSceneRecord(GpuSceneRecord&&)=default;GpuSceneRecord&operator=(GpuSceneRecord&&)=default;
  void reset(){frame_={};fallbackBase_.reset();cpuBaseFallback_={};replay_.clear();valid_=false;}
  void clear(){reset();litSources_.clear();litIndex_.clear();litBytes_=serial_=litBuilds_=litHits_=0;}
+ void beginObjects(int width,int height,colorprecision::Mode precision){reset();frame_.width=width;frame_.height=height;precision_=precision;valid_=width>0&&height>0&&width<=32768&&height<=32768;}
  uint64_t litBuilds()const{return litBuilds_;}uint64_t litHits()const{return litHits_;}size_t litBytes()const{return litBytes_;}
  void begin(int width,int height,std::shared_ptr<const std::vector<uint32_t>>base,std::shared_ptr<const std::vector<float>>depth,colorprecision::Mode precision,
             std::shared_ptr<const std::vector<vulkancompute::TileJob>>baseTiles={},std::function<bool(std::vector<uint32_t>&)>cpuBaseFallback={},GpuDepthPlan depthPlan={}){

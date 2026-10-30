@@ -317,7 +317,7 @@ public:
   plan={};if(failed_||!width_||!height_)return false;if(spanX<=0)spanX=width_;if(spanY<=0)spanY=height_;
   plan.nativeWidth=width_;plan.nativeHeight=height_;plan.width=width;plan.height=height;plan.spanX=spanX;plan.spanY=spanY;plan.background=background_;
   if(pages_.size()>gpuarea::MaximumPages)return false;
-  for(const auto&entry:pages_){const auto&page=entry.second;plan.pages.push_back({uint32_t(pageX(entry.first)),uint32_t(pageY(entry.first)),std::shared_ptr<const std::vector<uint32_t>>(page,&page->surface.color),page->revision});}
+  for(const auto&entry:pages_){const auto&page=entry.second;plan.pages.push_back({uint32_t(pageX(entry.first)),uint32_t(pageY(entry.first)),std::shared_ptr<const std::vector<uint32_t>>(page,&page->surface.color),page->revision,std::shared_ptr<const std::vector<float>>(page,&page->surface.depth),{}});}
   return gpuarea::valid(plan);
  }
  bool presentGPU(int width,int height,std::vector<uint32_t>&out,double spanX=-1,double spanY=-1,

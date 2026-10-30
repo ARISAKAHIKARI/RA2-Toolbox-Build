@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Compile and validate both Vulkan scene precision variants."""
+"""Compile and validate viewport and native-page Vulkan scene variants."""
 from pathlib import Path
 import argparse,hashlib,json,struct,subprocess,tempfile
 p=argparse.ArgumentParser();p.add_argument('--output',type=Path,required=True);a=p.parse_args()
 source=Path(__file__).resolve().parents[1]/'external_reader/shaders/vulkan_scene.comp'
 lines=['#pragma once','#include <cstdint>','namespace external { namespace vulkancompute {']
 with tempfile.TemporaryDirectory(prefix='ra2-vulkan-scene-') as tmp:
- for name,define in [('SceneShader',[]),('Scene64Shader',['-DSCENE_FP64'])]:
+ for name,define in [('SceneShader',[]),('Scene64Shader',['-DSCENE_FP64']),('ScenePagesShader',['-DSCENE_PAGES']),('ScenePagesBankedShader',['-DSCENE_PAGES','-DSCENE_BANKED'])]:
   binary=Path(tmp)/(name+'.spv');subprocess.run(['glslangValidator','-V','--target-env','vulkan1.0','-Os',*define,'-o',str(binary),str(source)],check=True);subprocess.run(['spirv-val','--target-env','vulkan1.0',str(binary)],check=True)
   data=binary.read_bytes();words=struct.unpack('<'+'I'*(len(data)//4),data)
   lines.append('inline constexpr uint32_t '+name+'[]={')

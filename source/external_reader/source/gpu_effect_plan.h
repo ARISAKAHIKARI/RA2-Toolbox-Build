@@ -12,26 +12,63 @@ enum Kind:uint32_t {Line=0,Glow=1,Alpha=2,Wave=3,Bolt=4};
 struct Command {std::array<uint32_t,Words> words{};std::shared_ptr<const std::vector<uint8_t>> indices;};
 struct Batch {size_t first=0,count=0;bool snapshot=false;};
 struct Plan {int width=0,height=0;std::vector<Command>commands;std::vector<Batch>batches;bool valid=true;};
-struct Dispatch {std::array<uint32_t,12>params{};bool snapshot=false;};
+struct Dispatch {std::array<uint32_t,12>params{};bool snapshot=false;std::array<uint32_t,4>readBounds{};};
+inline float real(uint32_t n){float f;std::memcpy(&f,&n,4);return f;}
+// Include maximum displaced reads, rounding, and destination writes. Two
+// waves can share a snapshot only if these conservative footprints are disjoint.
+inline std::array<uint32_t,4> footprint(const Command&c,int w,int h){
+ const auto&a=c.words;int dx=0,dy=0;if(a[0]==Wave){dx=int(std::ceil(std::min(8192.,3.*std::abs(double(real(a[23]))))))+1;dy=int(std::ceil(std::min(8192.,3.*std::abs(double(real(a[24]))))))+1;}
+ return {{uint32_t(std::max(0,int(a[4])-dx)),uint32_t(std::max(0,int(a[5])-dy)),uint32_t(std::min(w,int(a[6])+dx)),uint32_t(std::min(h,int(a[7])+dy))}};
+}
+struct CopySpan {uint64_t source=0,destination=0,bytes=0;};
+inline std::vector<CopySpan> snapshotCopies(const Dispatch&d){
+ std::vector<CopySpan>out;const auto&r=d.readBounds;uint64_t width=d.params[0],base=width*d.params[1]*4;
+ for(uint32_t y=r[1];y<r[3];++y){uint64_t offset=(uint64_t(y)*width+r[0])*4,bytes=uint64_t(r[2]-r[0])*4;
+  if(!out.empty()&&out.back().source+out.back().bytes==offset)out.back().bytes+=bytes;else out.push_back({offset,base+offset,bytes});}
+ return out;
+}
+inline bool same(const std::shared_ptr<const Plan>&a,const std::shared_ptr<const Plan>&b){
+ if(a==b)return true;if(!a||!b||!a->valid||!b->valid||a->width!=b->width||a->height!=b->height||a->commands.size()!=b->commands.size()||a->batches.size()!=b->batches.size())return false;
+ for(size_t n=0;n<a->commands.size();++n)if(a->commands[n].words!=b->commands[n].words||a->commands[n].indices!=b->commands[n].indices)return false;
+ for(size_t n=0;n<a->batches.size();++n){const auto&x=a->batches[n];const auto&y=b->batches[n];if(x.first!=y.first||x.count!=y.count||x.snapshot!=y.snapshot)return false;}return true;
+}
+// Vera terrain_batch dependency waves, adapted to our immutable wave commands.
+// Normal color batches and bolt accumulation are hard ordering boundaries.
+inline void scheduleWaves(Plan&p){
+ std::vector<Command>ordered;std::vector<Batch>batches;ordered.reserve(p.commands.size());uint64_t visits=0;
+ const int cols=(p.width+31)/32,rows=(p.height+31)/32;
+ for(size_t at=0;at<p.batches.size();){const auto&batch=p.batches[at];
+  if(!batch.snapshot){size_t first=ordered.size();for(size_t n=batch.first;n<batch.first+batch.count;++n)ordered.push_back(std::move(p.commands[n]));batches.push_back({first,batch.count,false});++at;continue;}
+  size_t end=at;while(end<p.batches.size()&&p.batches[end].snapshot)++end;
+  std::vector<int>last(size_t(cols)*rows,-1);std::vector<std::vector<size_t>>levels;
+  for(size_t i=at;i<end;++i)for(size_t n=p.batches[i].first;n<p.batches[i].first+p.batches[i].count;++n){const auto&c=p.commands[n];if(c.words[0]!=Wave){p.valid=false;return;}auto r=footprint(c,p.width,p.height);int level=0;
+   for(uint32_t y=r[1]/32;y<=(r[3]-1)/32;++y)for(uint32_t x=r[0]/32;x<=(r[2]-1)/32;++x){if(++visits>MaximumReferences){p.valid=false;return;}level=std::max(level,last[size_t(y)*cols+x]+1);}
+   for(uint32_t y=r[1]/32;y<=(r[3]-1)/32;++y)for(uint32_t x=r[0]/32;x<=(r[2]-1)/32;++x)last[size_t(y)*cols+x]=level;
+   if(levels.size()<=size_t(level))levels.resize(size_t(level)+1);levels[level].push_back(n);
+  }
+  for(auto&level:levels){size_t first=ordered.size();for(auto n:level)ordered.push_back(std::move(p.commands[n]));batches.push_back({first,level.size(),true});}at=end;
+ }
+ p.commands=std::move(ordered);p.batches=std::move(batches);
+}
 // Append to the scene's existing command upload. Small effects dispatch only
 // their bounding rectangle; ordered 32-pixel bins avoid a full draw-list scan.
 inline bool pack(const Plan&p,const std::vector<uint32_t>&alphas,uint32_t fog,std::vector<uint32_t>&words,std::vector<Dispatch>&jobs){
  if(!p.valid||p.width<1||p.height<1||p.width>8192||p.height>8192||p.commands.size()>MaximumCommands||alphas.size()!=p.commands.size())return false;
  const uint32_t base=uint32_t(words.size()),cols=(p.width+31)/32,rows=(p.height+31)/32,bins=cols*rows;
  for(size_t n=0;n<p.commands.size();++n){auto c=p.commands[n].words;if(c[0]>Bolt||c[4]>=c[6]||c[5]>=c[7]||c[6]>uint32_t(p.width)||c[7]>uint32_t(p.height))return false;if(c[0]==Alpha)c[3]=alphas[n];words.insert(words.end(),c.begin(),c.end());}
- uint64_t totalRefs=0;
- for(const auto&batch:p.batches){if(!batch.count||batch.first>p.commands.size()||batch.count>p.commands.size()-batch.first)return false;
+ uint64_t totalRefs=0;size_t covered=0;
+ for(const auto&batch:p.batches){if(batch.first!=covered||!batch.count||batch.first>p.commands.size()||batch.count>p.commands.size()-batch.first)return false;
+  covered+=batch.count;std::array<uint32_t,4>readBounds{{uint32_t(p.width),uint32_t(p.height),0,0}};
   std::vector<uint32_t>counts(bins),starts(bins+1);uint32_t l=p.width,t=p.height,r=0,b=0;
   auto visit=[&](size_t n,auto fn){auto&c=p.commands[n].words;for(uint32_t y=c[5]/32;y<=(c[7]-1)/32;++y)for(uint32_t x=c[4]/32;x<=(c[6]-1)/32;++x)fn(y*cols+x);};
-  for(size_t n=batch.first;n<batch.first+batch.count;++n){auto&c=p.commands[n].words;l=std::min(l,c[4]);t=std::min(t,c[5]);r=std::max(r,c[6]);b=std::max(b,c[7]);visit(n,[&](uint32_t i){++counts[i];});}
+  for(size_t n=batch.first;n<batch.first+batch.count;++n){auto&c=p.commands[n].words;if((c[0]==Wave)!=batch.snapshot)return false;if(batch.snapshot){auto f=footprint(p.commands[n],p.width,p.height);readBounds[0]=std::min(readBounds[0],f[0]);readBounds[1]=std::min(readBounds[1],f[1]);readBounds[2]=std::max(readBounds[2],f[2]);readBounds[3]=std::max(readBounds[3],f[3]);}l=std::min(l,c[4]);t=std::min(t,c[5]);r=std::max(r,c[6]);b=std::max(b,c[7]);visit(n,[&](uint32_t i){++counts[i];});}
   uint32_t refs=0;for(uint32_t i=0;i<bins;++i){starts[i]=refs;if(uint64_t(refs)+counts[i]+totalRefs>MaximumReferences)return false;refs+=counts[i];}starts[bins]=refs;totalRefs+=refs;
   auto next=starts;std::vector<uint32_t>references(refs);for(size_t n=batch.first;n<batch.first+batch.count;++n)visit(n,[&](uint32_t i){references[next[i]++]=uint32_t(n);});
   uint32_t binOffset=uint32_t(words.size());for(uint32_t i=0;i<bins;++i){words.push_back(starts[i]);words.push_back(counts[i]);}uint32_t refOffset=uint32_t(words.size());words.insert(words.end(),references.begin(),references.end());
-  jobs.push_back({{uint32_t(p.width),uint32_t(p.height),base,binOffset,refOffset,cols,fog,uint32_t(p.width*p.height),l,t,r,b},batch.snapshot});
- }return true;
+  jobs.push_back({{uint32_t(p.width),uint32_t(p.height),base,binOffset,refOffset,cols,fog,uint32_t(p.width*p.height),l,t,r,b},batch.snapshot,readBounds});
+ }return covered==p.commands.size();
 }
 inline uint32_t bits(float f){uint32_t n;std::memcpy(&n,&f,4);return n;}
-inline float real(uint32_t n){float f;std::memcpy(&f,&n,4);return f;}
 class Builder {
  worldfx::View v_;std::shared_ptr<Plan> plan_;size_t start_=0;
  bool append(Command c){if(!plan_->valid)return false;if(plan_->commands.size()>=MaximumCommands){plan_->valid=false;return false;}if(c.words[4]>=c.words[6]||c.words[5]>=c.words[7])return true;plan_->commands.push_back(std::move(c));return true;}
@@ -43,7 +80,7 @@ class Builder {
  void flush(bool snapshot=false){if(plan_->commands.size()>start_)plan_->batches.push_back({start_,plan_->commands.size()-start_,snapshot});start_=plan_->commands.size();}
  static uint32_t color(uint32_t rgb,double strength){uint32_t c=0;for(int sh:{0,8,16})c|=uint32_t(std::clamp(((rgb>>sh)&255)*strength,0.,255.))<<sh;return c;}
 public:
- explicit Builder(const worldfx::View&view):v_(view),plan_(std::make_shared<Plan>()){plan_->width=view.pixelsW;plan_->height=view.pixelsH;}
+ explicit Builder(const worldfx::View&view):v_(view),plan_(std::make_shared<Plan>()){plan_->width=view.pixelsW;plan_->height=view.pixelsH;plan_->valid=view.pixelsW>0&&view.pixelsH>0&&view.pixelsW<=8192&&view.pixelsH<=8192&&std::isfinite(view.width)&&std::isfinite(view.height)&&view.width>0&&view.height>0;}
  void pixel(int x,int y,uint32_t c,double strength=1,bool add=true){line({double(x),double(y)},{double(x),double(y)},c,strength,add,true);}
  void line(std::array<double,2>a,std::array<double,2>b,uint32_t rgb,double strength=1,bool add=true,bool point=false){
   if((!rgb&&!point)||strength<=0)return;double dx=b[0]-a[0],dy=b[1]-a[1],lo=0,hi=1;
@@ -80,6 +117,6 @@ public:
   c.words[8]=uint32_t(ax);c.words[9]=uint32_t(ay);c.words[10]=uint32_t(bx);c.words[11]=uint32_t(by);c.words[13]=radius;append(std::move(c));
  }
  void bolts(const std::vector<nativefeedback::Bolt>&list,int frame){flush();for(const auto&e:list){auto a=v_.project(e.source),b=v_.project(e.target);double scale=std::min(v_.pixelsW/v_.width,v_.pixelsH/v_.height),margin=8*scale+8;if(std::max(a[0],b[0])<-margin||std::min(a[0],b[0])>v_.pixelsW+margin||std::max(a[1],b[1])<-margin||std::min(a[1],b[1])>v_.pixelsH+margin)continue;nativefeedback::bolt(*this,a[0],a[1],b[0],b[1],e.seed^uint32_t(frame),e.alternate,scale);}flush();}
- std::shared_ptr<const Plan> finish(){flush();return plan_;}
+ std::shared_ptr<const Plan> finish(){flush();if(plan_->valid)scheduleWaves(*plan_);return plan_;}
 };
 }}

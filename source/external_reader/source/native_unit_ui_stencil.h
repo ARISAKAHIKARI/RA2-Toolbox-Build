@@ -1,5 +1,6 @@
 #pragma once
 #include "native_effect_stencil.h"
+#include "native_pip_numeric.h"
 // Native pips are UI drawn after the unit body, not another world actor.
 // Verified state produces SHP commands at native draw anchors. The local UI
 // draws their color; the old alpha-only adapter remains for legacy callers.
@@ -17,8 +18,8 @@ class UnitUIStencil {
  template<class Read>bool unit(Read read,const nativefeedback::Object&o,uint32_t house,Unit&v){
   using namespace nativefeedback;std::array<uint8_t,0x300> data{};uint32_t type=0;
   if(!range(o.pointer,data.size())||!read(o.pointer,data.data(),data.size()))return false;
-  auto vt=u32(data.data());if(vt!=0x7F5C70&&vt!=0x7E22A4)return false;
-  if(!read(o.pointer+0x6C4,&type,4)||type!=o.type||!range(type,0xE00)||
+  auto vt=u32(data.data());if(vt!=0x7F5C70&&vt!=0x7E22A4&&vt!=0x7EB058)return false;
+  if(!read(o.pointer+(vt==0x7EB058?0x6C0:0x6C4),&type,4)||type!=o.type||!range(type,0xE00)||
      u32(data.data()+0x10)!=o.id||!o.id||u32(data.data()+0x21C)!=o.owner||o.owner!=house||
      data[0x81]||data[0x83]!=1||data[0x90]!=1||int32_t(u32(data.data()+0x6C))<=0)return false;
   v={o.pointer,o.id,type,o.owner,vt};std::memcpy(&v.point,data.data()+0x9C,sizeof v.point);
@@ -44,7 +45,7 @@ class UnitUIStencil {
  // 709E65 fills the slots in reverse linked-list order. Do not replace an IFV
  // passenger's own pip frame with a guessed generic passenger count.
  template<class Read>bool passengerFrames(Read read,const Unit&u,int maximum,std::vector<unsigned>&frames){
-  using namespace nativefeedback;struct Passenger{uint32_t p=0,id=0,next=0,type=0,vt=0;int size=0,typeOffset=0;unsigned frame=0;};
+  using namespace nativefeedback;struct Passenger{uint32_t p=0,id=0,next=0,type=0,vt=0;double size=0;int fillers=0,typeOffset=0;unsigned frame=0;};
   std::vector<Passenger> passengers;std::vector<uint32_t> seen;uint32_t p=u.passenger;int total=0;
   for(int n=0;n<u.count;++n){
    if(!range(p,0x6C8)||std::find(seen.begin(),seen.end(),p)!=seen.end())return false;seen.push_back(p);
@@ -54,13 +55,13 @@ class UnitUIStencil {
    if(vt==0x7EB058){if(!read(p+q.typeOffset,&q.type,4)||!range(q.type,0xE00)||!read(q.type+0xDFC,&q.frame,4))return false;}
    else if(vt==0x7F5C70||vt==0x7E22A4){if(!read(p+q.typeOffset,&q.type,4))return false;q.frame=vt==0x7F5C70?5:1;}
    else return false;
-   if(!range(q.type,0x388)||!read(q.type+0x380,&size,8)||!std::isfinite(size)||size<1||size>512||std::floor(size)!=size||q.frame>=8192)return false;
-   q.size=int(size);total+=q.size;if(total>8192)return false;passengers.push_back(q);p=q.next;
+   if(!range(q.type,0x388)||!read(q.type+0x380,&size,8)||!std::isfinite(size)||size<=0||size>512||q.frame>=8192)return false;
+   q.size=size;q.fillers=vt==0x7E22A4?0:std::max(0,int(size)-1);total+=int(size);if(total>8192)return false;passengers.push_back(q);p=q.next;
   }
   if(p)return false;
   frames.assign(size_t(maximum),0);if(total>maximum){frames.clear();return true;}
-  int slot=total-1;for(const auto&q:passengers){for(int extra=1;extra<q.size;++extra){if(slot<0)return false;frames[size_t(slot--)]=3;}
-   if(slot<0)return false;frames[size_t(slot--)]=q.frame;
+  int slot=total-1;for(const auto&q:passengers){for(int extra=0;extra<q.fillers&&slot>=0;++extra)frames[size_t(slot--)]=3;
+   if(slot>=0)frames[size_t(slot--)]=q.frame;
    uint32_t id=0,next=0,type=0,vt=0,parent=0;double size=0;unsigned pip=0;
    if(!read(q.p,&vt,4)||vt!=q.vt||!read(q.p+0x10,&id,4)||id!=q.id||!read(q.p+0x30,&next,4)||next!=q.next||
       !read(q.p+q.typeOffset,&type,4)||type!=q.type||!read(q.p+0x11C,&parent,4)||parent!=u.pointer||
@@ -88,13 +89,14 @@ public:
   };
   for(const auto&o:objects){
    if(o.owner!=house||!std::binary_search(sorted.begin(),sorted.end(),o.pointer))continue;
-   uint32_t vt=0;if(!read(o.pointer,&vt,4))return false;if(vt!=0x7F5C70&&vt!=0x7E22A4)continue;
+   uint32_t vt=0;if(!read(o.pointer,&vt,4))return false;if(vt!=0x7F5C70&&vt!=0x7E22A4&&vt!=0x7EB058)continue;
    Unit u;if(!unit(read,o,house,u))return false;
    int mode=0,capacity=0,maximum=0,wrap=0;uint32_t typeVT=0,pipMax=0;
    if(!read(u.type,&typeVT,4)||!range(typeVT,0x78)||!read(typeVT+0x74,&pipMax,4)||pipMax!=0x716290||
       !read(u.type+0x3D4,&mode,4)||!read(u.type+0x5E0,&capacity,4)||!read(u.type+0x3E4,&wrap,4))return false;
-   if(mode!=1&&mode!=3)continue;
-   if(!read(u.type+(mode==1?0x684:0x5E0),&maximum,4)||maximum<0||maximum>512||capacity<0||capacity>512||wrap<0||wrap>512)return false;
+   if(mode!=1&&mode!=2&&mode!=3)continue;
+   if(mode==2)maximum=vt==0x7EB058?3:5;
+   if((mode!=2&&!read(u.type+(mode==1?0x684:0x5E0),&maximum,4))||maximum<0||maximum>512||capacity<0||capacity>512||wrap<0||wrap>512)return false;
    if(!maximum)continue;
    if(!sampled){if(!read(0xA8ED84,&frame,4)||frame<0||!read(0xB0CD48,&zscale,8)||!std::isfinite(zscale)||zscale<=0||zscale>1)return false;sampled=true;}
    const int x=int((int64_t(u.point.x)-u.point.y)*30/256)-view.cameraX-15;
@@ -103,6 +105,14 @@ public:
     uint8_t gap=0;if(!read(u.type+0x805,&gap,1)||gap>1)return false;
     std::vector<unsigned> frames;if(!passengerFrames(read,u,maximum,frames))return false;
     for(size_t i=0;i<frames.size();++i)if(!emit(x+int(i)*4+(gap&&i?8:0),y,frames[i]))return false;
+   }else if(mode==2){
+    std::array<float,4>storage{},afterStorage{};int capacity=0,afterCapacity=0;
+    if(!read(u.pointer+0x33C,storage.data(),sizeof storage)||!read(u.type+0x800,&capacity,4)||capacity<=0||capacity>1000000)return false;
+    for(float value:storage)if(!std::isfinite(value)||value<0||value>1000000||std::floor(value)!=value)return false;
+    unsigned gems=unsigned(nativepips::quantity(uint32_t(storage[1]),capacity,maximum));
+    unsigned ore=unsigned(nativepips::quantity(uint32_t((storage[3]+storage[2])+storage[0]),capacity,maximum));ore=std::min(ore,unsigned(maximum)-gems);
+    for(unsigned i=0;i<unsigned(maximum);++i)if(!emit(x+4*int(i),y,i<gems?5:i<gems+ore?2:0))return false;
+    if(!read(u.pointer+0x33C,afterStorage.data(),sizeof afterStorage)||afterStorage!=storage||!read(u.type+0x800,&afterCapacity,4)||afterCapacity!=capacity)return false;
    }else if(mode==1){
     if(!wrap){for(int i=0;i<std::min(u.ammo,maximum);++i){
      // Vera20K ui_overlays::scale_pip_draws / native70A345..41C:
@@ -112,6 +122,9 @@ public:
      if(!emit(x+4*i,y-3,unsigned(layer<0?14:15+layer)))return false;
     }
    }
+   int modeAfter=0,capacityAfter=0,wrapAfter=0,maximumAfter=maximum;
+   if(!read(u.type+0x3D4,&modeAfter,4)||modeAfter!=mode||!read(u.type+0x5E0,&capacityAfter,4)||capacityAfter!=capacity||!read(u.type+0x3E4,&wrapAfter,4)||wrapAfter!=wrap||
+      (mode!=2&&(!read(u.type+(mode==1?0x684:0x5E0),&maximumAfter,4)||maximumAfter!=maximum)))return false;
    Unit verify;if(!unit(read,o,house,verify)||!(u==verify))return false;
   }
   int frameAfter=0;uint32_t houseAfter=0,shapeAfter=0;

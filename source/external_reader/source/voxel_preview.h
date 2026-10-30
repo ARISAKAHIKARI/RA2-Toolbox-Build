@@ -20,7 +20,15 @@ constexpr size_t MaxBytes=8*1024*1024,MaxVoxels=100000,MaxFaces=150000;
 struct Vec {float x=0,y=0,z=0;};
 struct Face {Vec p[4],normal{};uint8_t color=0,normalIndex=255,normalType=0;bool turret=false,hasNormal=false;uint8_t section=0;std::shared_ptr<const Motion> motion;};
 struct Model {std::vector<Face> faces;};
-struct Image {int rasterScale=1;int canvasWidth=0,canvasHeight=0;int width=0,height=0,x=0,y=0,depthBottom=std::numeric_limits<int>::min();std::vector<uint32_t> pixels;std::vector<float> depth;std::vector<uint8_t> indices;bool intrinsicAlpha=false,objectPalette=false,flat=false,writeDepth=true,shadow=false,shadowsAfter=false,incomplete=false,airborneShadow=false,skipZ=false;float depthBias=0;std::vector<Image> attachments;std::shared_ptr<const gpuvoxel::Prepared> gpuRaster;};
+struct Image {int rasterScale=1;int canvasWidth=0,canvasHeight=0;int width=0,height=0,x=0,y=0,depthBottom=std::numeric_limits<int>::min();std::vector<uint32_t> pixels;std::vector<float> depth;std::vector<uint8_t> indices;bool intrinsicAlpha=false,objectPalette=false,flat=false,writeDepth=true,shadow=false,shadowsAfter=false,incomplete=false,airborneShadow=false,skipZ=false;float depthBias=0;std::vector<Image> attachments;std::shared_ptr<const gpuvoxel::Prepared> gpuRaster;
+ // Vera sprite_source/unit_atlas: pose coverage and the current palette have
+ // independent immutable owners. A live palette change must not rerasterize
+ // an otherwise identical indexed VXL pose.
+ std::shared_ptr<const std::vector<uint32_t>> sourcePalette;
+ // Opaque source for native packed translucency; pixels remains premultiplied
+ // for generic preview/filter consumers. 1/2/3 mean 25/50/75% translucency.
+ std::shared_ptr<const std::vector<uint32_t>> blendSource;uint8_t nativeBlend=0;
+};
 struct Library {uint32_t failed=0,headers=0,tailers=0,size=0,head=0,tail=0,body=0;};
 struct Tail {uint32_t start,end,data;float multiplier,matrix[12],bounds[24];uint8_t size[3],normal;};
 static_assert(sizeof(Tail)==164,"VXL memory tailer stride");
