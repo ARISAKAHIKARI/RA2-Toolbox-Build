@@ -4,15 +4,15 @@
 #include <set>
 using namespace assist::settingsdeps;
 int main(){
- State s;bool savedDLSS=true;
- assert(!decision(9311,s).enabled()&&decision(9311,s).missing==Need::Host64);
- s.set(Need::Host64,true);assert(decision(9311,s).missing==Need::Render);
- s.set(Need::Render,true);assert(decision(9311,s).missing==Need::GPU);
- s.set(Need::GPU,true);assert(decision(9311,s).missing==Need::Detail);
- s.set(Need::Detail,true);assert(effective(savedDLSS,9311,s));
- for(auto parent:{Need::Host64,Need::Render,Need::GPU,Need::Detail}){
-  s.set(parent,false);assert(!effective(savedDLSS,9311,s)&&savedDLSS);
-  s.set(parent,true);assert(effective(savedDLSS,9311,s));
+ State s;bool saved=true;
+ assert(!decision(9313,s).enabled()&&decision(9313,s).missing==Need::Render);
+ s.set(Need::Render,true);assert(decision(9313,s).enabled());
+ assert(decision(9304,s).missing==Need::Quality&&decision(9314,s).missing==Need::Quality);
+ s.set(Need::Quality,true);assert(decision(9304,s).enabled()&&decision(9314,s).enabled()&&decision(9305,s).missing==Need::Reconstruction);
+ s.set(Need::Reconstruction,true);assert(effective(saved,9305,s));
+ for(auto parent:{Need::Render,Need::Quality,Need::Reconstruction}){
+  s.set(parent,false);assert(!effective(saved,9305,s)&&saved);
+  s.set(parent,true);assert(effective(saved,9305,s));
  }
  // The GPU master and secondary windows are independent consumers; requiring
  // a primary scene/window would incorrectly disable working configurations.

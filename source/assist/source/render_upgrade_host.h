@@ -14,18 +14,16 @@
 #include "../../external_reader/source/scene_bank.h"
 #include <chrono>
 #include "render_presentation.h"
-#include "neural_renderer_client.h"
-#include "neural_history.h"
 // External read/render only. No Runtime requests or engine draw calls.
 namespace renderupgrade {
 static double presentationNow(){return std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now().time_since_epoch()).count();}
-struct Request {uint64_t generation=0;bool materialRefresh=true;int detail=1,colorPrecision=1;uint32_t pid=0,match=0,tick=0;int width=0,height=0;uint32_t reveal=0;int paletteRange=1,pixelScaleMode=0;external::mainview::View view;overlaycompositor::Context context;bool gpu=false,neural=false;uint64_t neuralToken=0;renderpresentation::CameraPrefetch cameraMotion;};
+struct Request {uint64_t generation=0;bool materialRefresh=true;int detail=1,colorPrecision=1;uint32_t pid=0,match=0,tick=0;int width=0,height=0;uint32_t reveal=0;int paletteRange=1,pixelScaleMode=0;external::mainview::View view;overlaycompositor::Context context;bool gpu=false;renderpresentation::CameraPrefetch cameraMotion;double decodeBudgetMs=4.;};
 struct Frame {
- double sampleMs=0,sceneMs=0,finishMs=0,gpuWaitMs=0,gpuCopyMs=0;
+ double sampleMs=0,sceneMs=0,finishMs=0,gpuPrepareMs=0,gpuWaitMs=0,gpuCopyMs=0;
+ uint32_t readCalls=0,pageHits=0,prefetchedPages=0,decodeAttempts=0;double decodeMs=0;
  Request request;std::shared_ptr<const external::radar::Scene> image;
  std::vector<external::nativefeedback::Object> objects;
  bool gpuAttempted=false,gpuUsed=false;
- neuralclient::Diagnostics neural;
  uint64_t assetRevision=0;uint32_t sampledTick=0,completedTick=0;bool hasCompletionGap=false;int paddingX=0,paddingY=0;double renderMs=0,observationMs=0,completionGapMs=0;int logicFrame=-1;double yellow=.5,red=.25;external::nativefeedback::EffectStatus effects;
 };
 static external::ReadSession reader;
@@ -36,7 +34,7 @@ static external::radar::SceneRenderer<decltype(assets)> renderer;
 struct Observation {
  Request request;external::mainview::View view;
  std::shared_ptr<const external::radar::Frame> current,previous;
- double observedMs=0,previousMs=0,readMs=0;uint32_t tick=0;
+ double observedMs=0,previousMs=0,readMs=0;uint32_t tick=0,readCalls=0,pageHits=0,prefetchedPages=0;
 };
 static external::ReadSession sampleReader;
 static external::radar::Sampler<external::SharedReadView> sampler(external::SharedReadView{&sampleReader});
@@ -57,14 +55,6 @@ static renderpresentation::StatusCadence statusCadence;
 static renderpresentation::CameraPrefetch cameraPrefetch;
 static double lastCompletedRenderMs=0;
 static double lastFrameCompleteMs=0;static bool hasFrameCompleteTime=false;
-static neuralclient::Client neuralRenderer;
-static uint64_t neuralFrame=0;
-static neuralhistory::Gate neuralHistory;
-#ifdef _WIN64
-static constexpr bool neuralHost=true;
-#else
-static constexpr bool neuralHost=false;
-#endif
 static std::wstring lastStatusText;
 static void statusText(const std::wstring&text){
  if(lastStatusText==text)return;lastStatusText=text;SetWindowTextW(GetDlgItem(ui,9303),text.c_str());
@@ -119,6 +109,7 @@ static asyncwork::Recurring<Request,Observation> samplingWorker([](const Request
     !external::radar::sameWorld(raw,external::radar::publicationContext(fresh)))return {};
  auto out=std::make_shared<Observation>();out->request=r;out->view=captured;
  out->tick=GetTickCount();out->observedMs=presentationNow();out->readMs=out->observedMs-started;
+ out->readCalls=sampleReader.reads;out->pageHits=sampleReader.pageHits;out->prefetchedPages=sampleReader.prefetchedPages;
  out->current=std::make_shared<const external::radar::Frame>(std::move(raw));
  external::radar::sceneBank().publish(r.pid,r.match,true,out->current);
  if(last&&out->current->terrain->geo.same(last->current->terrain->geo)){
@@ -129,15 +120,12 @@ static asyncwork::Recurring<Request,Observation> samplingWorker([](const Request
 });
 static asyncwork::Recurring<Request,Frame> worker([](const Request&r)->std::shared_ptr<const Frame>{
  const double started=presentationNow();
- static bool neuralPreviouslyRequested=false;
- external::xbrzadapter::gpuPresentation(r.gpu&&r.detail!=0);
+ external::xbrzadapter::gpuPresentation(r.gpu);
  // Failed attempts do not replace a completed image. The UI independently
  // enforces sample/completion age limits and exact world/view/config identity.
  auto unavailable=[]()->std::shared_ptr<const Frame>{return {};};
- if(process!=r.pid||epoch!=r.match){neuralHistory.invalidate();neuralRenderer.reset();reader.close();renderer.reset();process=r.pid;epoch=r.match;sampleValid=false;timeline.reset();lastCompletedRenderMs=0;hasFrameCompleteTime=false;}
- if(workerGeneration!=r.generation){neuralHistory.invalidate();neuralRenderer.reset();workerGeneration=r.generation;sampleValid=false;sampledLogicFrame=-1;timeline.reset();lastCompletedRenderMs=0;hasFrameCompleteTime=false;}
- if(!r.neural&&neuralPreviouslyRequested){neuralHistory.invalidate();neuralRenderer.reset();}
- neuralPreviouslyRequested=r.neural;
+ if(process!=r.pid||epoch!=r.match){reader.close();renderer.reset();process=r.pid;epoch=r.match;sampleValid=false;timeline.reset();lastCompletedRenderMs=0;hasFrameCompleteTime=false;}
+ if(workerGeneration!=r.generation){workerGeneration=r.generation;sampleValid=false;sampledLogicFrame=-1;timeline.reset();lastCompletedRenderMs=0;hasFrameCompleteTime=false;}
  if(!reader.open(r.pid)){progress=-1;return unavailable();}
  reader.begin(); // Explicit fresh page epoch for every presentation request.
  assets.identity(r.pid,r.match);
@@ -175,7 +163,7 @@ static asyncwork::Recurring<Request,Frame> worker([](const Request&r)->std::shar
  assets.presentationDetail(r.detail);
  const auto&gpuBackend=external::xbrzadapter::gpuState().resolve;
  const bool gpuUnavailable=gpuBackend&&!gpuBackend->diagnostics().available&&!gpuBackend->diagnostics().reason.empty();
- assets.presentationGPU(r.gpu&&r.detail!=0&&!gpuUnavailable);
+ assets.presentationGPU(r.gpu&&!gpuUnavailable);
  assets.presentationResolution(r.view.width,r.view.height,r.width,r.height);
  assets.presentationColorPrecision(r.colorPrecision!=0);
  assets.presentationPalette(r.paletteRange==1?external::pixelupgrade::PaletteRange::FullRGB:external::pixelupgrade::PaletteRange::OriginalDAC);
@@ -196,34 +184,16 @@ static asyncwork::Recurring<Request,Frame> worker([](const Request&r)->std::shar
  const auto renderView=r.cameraMotion.centerAt(before,GetTickCount(),lastCompletedRenderMs,paddingX,paddingY);
  sampledRequest.view=renderView;sampledRequest.context.cameraX=renderView.cameraX;sampledRequest.context.cameraY=renderView.cameraY;
  auto crop=external::mainview::crop(renderView,data.terrain->geo.offsetX,data.terrain->geo.offsetY);
- renderer.guideEnabled(neuralHost&&r.neural&&r.gpu&&r.detail!=0&&!neuralRenderer.blocked(),r.generation);
- auto scene=renderer.render(data,border.width,border.height,external::SharedReadView{&reader},assets,{crop.x-paddingX,crop.y-paddingY,crop.width+2*paddingX,crop.height+2*paddingY,true},unsigned(r.pixelScaleMode),r.detail!=0,true,r.colorPrecision!=0,true);
+ renderer.guideEnabled(false,r.generation);
+ auto scene=renderer.render(data,border.width,border.height,external::SharedReadView{&reader},assets,{crop.x-paddingX,crop.y-paddingY,crop.width+2*paddingX,crop.height+2*paddingY,true},unsigned(r.pixelScaleMode),r.detail!=0,true,r.colorPrecision!=0,true,r.decodeBudgetMs);
  if(!scene)return unavailable();
  const double sceneDoneMs=presentationNow();
  auto out=std::make_shared<Frame>();out->request=sampledRequest;out->paddingX=border.paddingX;out->paddingY=border.paddingY;out->assetRevision=assetRevision;out->logicFrame=data.frame;out->observationMs=timeline.interval();
  out->gpuAttempted=external::xbrzadapter::gpuAttempted();out->gpuUsed=external::xbrzadapter::gpuUsed();
+ out->readCalls=observed->readCalls;out->pageHits=observed->pageHits;out->prefetchedPages=observed->prefetchedPages;
+ out->decodeAttempts=renderer.decodeStats().attempts;out->decodeMs=renderer.decodeStats().milliseconds;
  out->sampleMs=observed->readMs;out->sceneMs=sceneDoneMs-sampledMs;
- if(out->gpuUsed&&gpuBackend){out->gpuWaitMs=gpuBackend->diagnostics().waitMilliseconds;out->gpuCopyMs=gpuBackend->diagnostics().readbackMilliseconds;}
- // Neural rendering sees only the completed world. Native feedback, command
- // lines and the independently refreshed cursor are composed afterwards.
- if(r.neural){
-#ifdef _WIN64
-  if(!r.gpu||!r.detail){neuralHistory.invalidate();out->neural.status=neuralframe::Status::Unsupported;out->neural.reason="Enable Vulkan and the detailed scene mode first";}
-  else if(neuralRenderer.blocked()){neuralHistory.invalidate();out->neural=neuralRenderer.diagnostics();}
-  else if(!out->gpuUsed||!scene->guides){neuralHistory.invalidate();out->neural.status=neuralframe::Status::Unsupported;out->neural.reason="Waiting for a complete GPU world frame and motion guides";}
-  else{
-   const auto&guides=*scene->guides;std::vector<uint32_t> enhanced;
-   if(neuralRenderer.process(scene->pixels,guides.motion,guides.depth,guides.confidence,uint32_t(scene->width),uint32_t(scene->height),r.generation,++neuralFrame,neuralHistory.reset(r.generation,guides.sequence,guides.resetHistory),enhanced,r.neuralToken)){
-    neuralHistory.accepted(r.generation,guides.sequence);
-    auto result=std::make_shared<external::radar::Scene>();result->width=scene->width;result->height=scene->height;
-    result->pixels=std::move(enhanced);scene=std::move(result); // guides were consumed; do not retain them in the displayed frame
-   }else neuralHistory.invalidate();
-   out->neural=neuralRenderer.diagnostics();
-  }
-#else
-  out->neural.status=neuralframe::Status::Unsupported;out->neural.reason="DLSS 5 requires the 64-bit toolbox";
-#endif
- }
+ if(out->gpuUsed&&gpuBackend){out->gpuPrepareMs=gpuBackend->diagnostics().prepareMilliseconds;out->gpuWaitMs=gpuBackend->diagnostics().waitMilliseconds;out->gpuCopyMs=gpuBackend->diagnostics().readbackMilliseconds;}
  const double zscale=external::projectionZScale(fresh);
  out->objects=external::nativefeedback::objectGeometry(renderer,data,renderView,r.width,r.height,zscale,border.paddingX,border.paddingY);
  out->yellow=assets.conditionYellow();out->red=assets.conditionRed();
@@ -246,35 +216,11 @@ static asyncwork::Recurring<Request,Frame> worker([](const Request&r)->std::shar
  lastFrameCompleteMs=completedMs;hasFrameCompleteTime=true;progress=2;return out;
 },notifyReady);
 #include "render_feedback_host.h"
-static void suspendScene(){neuralRenderer.cancel();cameraPrefetch.reset();groupLease.reset();if(active){active=false;++generation;worker.invalidate();samplingWorker.invalidate();terrainWorker.invalidate();}feedback::hide();imageToken=0;overlaycompositor::host().hide(overlaycompositor::RenderUpgrade);}
+static void suspendScene(){cameraPrefetch.reset();groupLease.reset();if(active){active=false;++generation;worker.invalidate();samplingWorker.invalidate();terrainWorker.invalidate();}feedback::hide();imageToken=0;overlaycompositor::host().hide(overlaycompositor::RenderUpgrade);}
 static void suspend(){viewLease.reset();suspendScene();}
 static void stop(){suspend();overlaycompositor::host().suspend();}
-static void shutdown(){stop();worker.shutdown();samplingWorker.shutdown();terrainWorker.shutdown();neuralRenderer.reset();feedback::shutdown();overlaycompositor::host().shutdown();}
-static void updateNeuralStatus(bool force=false){
- HWND label=GetDlgItem(ui,9312);if(!label)return;
- static renderpresentation::StatusCadence cadence;
- const uint64_t key=(generation<<4)|uint64_t(renderDLSS5Requested)|(uint64_t(renderUpgradeEnabled)<<1)|(uint64_t(renderVulkanEnabled)<<2)|(uint64_t(renderSceneDetail!=0)<<3);
- if(!force&&!cadence.due(key,GetTickCount()))return;std::wstring text;
- if(!renderDLSS5Requested)text=L"DLSS 5：关闭";
-#ifndef _WIN64
- else text=L"DLSS 5：需要 64 位工具箱；当前保留普通渲染。";
-#else
- else if(!renderUpgradeEnabled)text=L"DLSS 5：请先开启渲染升级。";
- else if(!renderVulkanEnabled||!effectiveRenderDetail())text=L"DLSS 5：需要 Vulkan GPU 和精细场景；当前保留普通渲染。";
- else{
-  auto completed=worker.get();
-  if(completed&&completed->request.generation==generation&&completed->request.pid==pid&&completed->request.match==displayMatch()&&completed->request.neural){
-   const auto&d=completed->neural;
-   if(d.used)text=L"DLSS 5：已处理世界画面 · "+std::to_wstring(int(std::lround(d.milliseconds)))+L" ms";
-   else{int count=MultiByteToWideChar(CP_UTF8,0,d.reason.data(),int(d.reason.size()),nullptr,0);std::wstring reason(size_t(std::max(0,count)),L' ');if(count)MultiByteToWideChar(CP_UTF8,0,d.reason.data(),int(d.reason.size()),reason.data(),count);if(reason.size()>100){reason.resize(97);reason+=L"…";}text=L"DLSS 5：未生效 · "+reason;}
-  }else text=L"DLSS 5：等待完整 GPU 世界画面及后端初始化。";
- }
-#endif
- static std::wstring previous;static HWND previousLabel=nullptr;
- if(label!=previousLabel||text!=previous){previousLabel=label;previous=text;SetWindowTextW(label,text.c_str());}
-}
+static void shutdown(){stop();worker.shutdown();samplingWorker.shutdown();terrainWorker.shutdown();feedback::shutdown();overlaycompositor::host().shutdown();}
 static void update(POINT origin,const RECT&client,const external::display::State&displayState){
- updateNeuralStatus();
  // The whole tool remains system-DPI aware. A physical-pixel option must
  // explicitly validate monitor geometry instead of assuming a 4K monitor
  // makes a 2K client window magically 4K.
@@ -302,8 +248,6 @@ static void update(POINT origin,const RECT&client,const external::display::State
      current.materialRefresh=effectiveRenderInterpolation();current.detail=effectiveRenderDetail();current.colorPrecision=effectiveRenderPrecision();
      current.paletteRange=effectiveRenderPalette();current.reveal=uint32_t(extra.renderReveal||extra.mapStrategy==3);
      current.gpu=renderVulkanEnabled;
-     current.neural=renderDLSS5Requested;
-     current.neuralToken=neuralRenderer.token();
      // Scale-mode changes require a fresh verified request, even during a read gap.
      if(verifiedScaleSetting!=effectiveRenderScale()||verifiedPhysicalSetting!=renderPhysicalOutput)groupLease.reset();
      if(groupLease.retain(current,viewNow)){
@@ -355,9 +299,7 @@ static void update(POINT origin,const RECT&client,const external::display::State
  Request request{generation,effectiveRenderInterpolation(),effectiveRenderDetail(),effectiveRenderPrecision(),pid,displayMatch(),GetTickCount(),right-left,bottom-top,
   uint32_t(extra.renderReveal||extra.mapStrategy==3),
   effectiveRenderPalette(),effectiveScale,view,context};
- request.gpu=renderVulkanEnabled;
- request.neural=renderDLSS5Requested;
- request.neuralToken=neuralRenderer.token();
+ request.gpu=renderVulkanEnabled;request.decodeBudgetMs=std::clamp(500./informationFPS(),1.,6.);
  cameraPrefetch.observePresentation(view,viewNow);request.cameraMotion=cameraPrefetch;
  auto result=worker.get();
  renderpresentation::Shift shift;
@@ -448,8 +390,7 @@ static void update(POINT origin,const RECT&client,const external::display::State
   if(!renderProcessing)status+=L" · 基础快速绘制（额外画质处理关闭）";
   status+=L" · 独立整帧绘制目标 "+std::to_wstring(informationFPS())+L" Hz";
   if(request.materialRefresh)status+=L" · 素材插值";
-  if(request.gpu)status+=request.detail==0?L" · 原生合成对照：CPU":presentedFrame->gpuUsed?L" · Vulkan GPU 场景":L" · Vulkan 未启用或已回退 CPU";
-  if(request.neural)status+=presentedFrame->neural.used?L" · DLSS 5 已处理":L" · DLSS 5 未生效（保留普通画面）";
+  if(request.gpu)status+=presentedFrame->gpuUsed?L" · Vulkan GPU 场景":L" · Vulkan 未启用或已回退 CPU";
   status+=L" · 光棱/激光与矿车采集保留原生像素；电弧近似，辐射束/波纹/粒子待补，实机待测";
  }
  if(result&&result->hasCompletionGap)status+=L" · 世界新帧间隔 "+std::to_wstring(int(std::lround(result->completionGapMs)))+L" ms";
@@ -461,7 +402,8 @@ static void update(POINT origin,const RECT&client,const external::display::State
   auto ms=[](double value){wchar_t text[32]{};swprintf(text,32,L"%.1f",value);return std::wstring(text);};
   std::wstring timing=L"独立采样 "+ms(presentedFrame->sampleMs)+L" · 场景 "+ms(presentedFrame->sceneMs)+L" · 后处理 "+ms(presentedFrame->finishMs)+L" ms";
   timing+=L"\r\n新帧 "+(presentedFrame->hasCompletionGap?ms(presentedFrame->completionGapMs):std::wstring(L"待测"))+L" · 观测 "+ms(presentedFrame->observationMs)+L" ms";
-  if(presentedFrame->gpuUsed)timing+=L" · GPU等待 "+ms(presentedFrame->gpuWaitMs)+L"／回读整理 "+ms(presentedFrame->gpuCopyMs)+L" ms";
+  if(presentedFrame->gpuUsed)timing+=L" · GPU准备 "+ms(presentedFrame->gpuPrepareMs)+L"／等待 "+ms(presentedFrame->gpuWaitMs)+L"／回读整理 "+ms(presentedFrame->gpuCopyMs)+L" ms";
+  timing+=L"\r\n读取 "+std::to_wstring(presentedFrame->readCalls)+L" 次 · 批量 "+std::to_wstring(presentedFrame->prefetchedPages)+L" 页 · 素材解码 "+std::to_wstring(presentedFrame->decodeAttempts)+L" 项／"+ms(presentedFrame->decodeMs)+L" ms";
   status=timing+L"\r\n"+status;
  }
  statusText(status);

@@ -7,11 +7,13 @@
 #include <unordered_set>
 #include <array>
 #include <deque>
+#include <vector>
+#include <algorithm>
 #include "process_connection.h"
 namespace external {
 // Read-only handle. No allocation, injection, protection or write API for the game.
 struct ReaderDiagnostics {
- uint32_t reads=0,errors=0,pageHits=0,pageMisses=0,pageFallbacks=0;
+ uint32_t reads=0,errors=0,pageHits=0,pageMisses=0,pageFallbacks=0,prefetchedPages=0,prefetchMisses=0;
  // Read-only diagnostics: do not change access rights or game memory.
  DWORD lastOpenError=0,lastReadError=0,lastRegionQueryError=0;
  uint32_t lastFailedAddress=0;
@@ -30,6 +32,12 @@ class ProcessReader : public ReaderDiagnostics {
  // A partly unreadable page cannot fill the cache. Retry its fields directly
  // for this sample instead of repeating the failing 4 KiB read for each one.
  std::unordered_set<uint32_t> failedPages_;
+ auto storage(uint32_t page)->decltype(pages_)::iterator{
+  auto it=pages_.find(page);if(it!=pages_.end())return it;
+  if(pages_.size()==8192){auto node=pages_.extract(pageOrder_.front());pageOrder_.pop_front();node.key()=page;node.mapped().epoch=0;it=pages_.insert(std::move(node)).position;}
+  else{it=pages_.try_emplace(page).first;++pageAllocations_;}
+  pageOrder_.push_back(page);return it;
+ }
 public:
  ProcessReader()=default;ProcessReader(const ProcessReader&)=delete;
  ProcessReader& operator=(const ProcessReader&)=delete;
@@ -52,9 +60,28 @@ public:
  // Keep address-to-storage bindings between observations, never their old
  // values. The first access in a new epoch refills the page from the game.
  // This avoids freeing/allocating thousands of 4 KiB nodes every frame.
- void begin(){if(!++epoch_){pages_.clear();pageOrder_.clear();epoch_=1;}failedPages_.clear();reads=errors=pageHits=pageMisses=pageFallbacks=0;lastReadError=0;lastFailedAddress=0;lastFailedSize=0;lastBytesRead=0;lastRegionState=lastRegionProtect=0;lastRegionQueried=false;lastRegionQueryError=0;}
+ void begin(){if(!++epoch_){pages_.clear();pageOrder_.clear();epoch_=1;}failedPages_.clear();reads=errors=pageHits=pageMisses=pageFallbacks=prefetchedPages=prefetchMisses=0;lastReadError=0;lastFailedAddress=0;lastFailedSize=0;lastBytesRead=0;lastRegionState=lastRegionProtect=0;lastRegionQueried=false;lastRegionQueryError=0;}
  size_t cachedPageStorage()const{return pages_.size();}
  size_t pageBufferAllocations()const{return pageAllocations_;}
+ // Adjacent actor pages enter this epoch in one bounded RPM call. A failed
+ // speculative span poisons no page: normal per-page/field fallback remains.
+ void prefetch(const std::vector<uint32_t>&addresses,size_t span){
+  if(!canRead()||!span||span>4096)return;std::vector<uint32_t> wanted;wanted.reserve(std::min<size_t>(addresses.size()*2,4096));
+  for(uint32_t p:addresses){if(p<0x10000||uint64_t(p)+span>0x80000000ull)continue;
+   for(uint32_t page=p&~4095u;uint64_t(page)<uint64_t(p)+span;page+=4096){auto it=pages_.find(page);if(it==pages_.end()||it->second.epoch!=epoch_)wanted.push_back(page);}
+   if(wanted.size()>=4096)break;
+  }
+  std::sort(wanted.begin(),wanted.end());wanted.erase(std::unique(wanted.begin(),wanted.end()),wanted.end());
+  std::array<unsigned char,65536> bytes;
+  for(size_t first=0;first<wanted.size();){size_t end=first+1;while(end<wanted.size()&&end-first<16&&wanted[end]==wanted[end-1]+4096)++end;
+   // Isolated pages are already optimal in the ordinary lazy reader.
+   if(end-first>1){SIZE_T got=0;++reads;size_t n=(end-first)*4096;
+    if(ReadProcessMemory(connection_->handle,(void*)(uintptr_t)wanted[first],bytes.data(),n,&got)&&got==n){
+     for(size_t i=first;i<end;++i){auto&cached=storage(wanted[i])->second;std::memcpy(cached.bytes.data(),bytes.data()+(i-first)*4096,4096);cached.epoch=epoch_;++prefetchedPages;}
+    }else ++prefetchMisses;
+   }first=end;
+  }
+ }
  bool read(uint32_t address,void*out,size_t size){
   if(!canRead()||!out||address<0x10000||!size||size>4*1024*1024||uint64_t(address)+size>0x80000000ull){
    ++errors;lastReadError=!valid()?ERROR_INVALID_HANDLE:!canRead()?ERROR_ACCESS_DENIED:ERROR_INVALID_PARAMETER;
@@ -65,11 +92,7 @@ public:
    auto it=pages_.find(page);if(it!=pages_.end()&&it->second.epoch==epoch_){++pageHits;std::memcpy(out,it->second.bytes.data()+(address&4095),size);return true;}
    ++pageMisses;
    if(!failedPages_.count(page)){
-    if(it==pages_.end()){
-     if(pages_.size()==8192){auto node=pages_.extract(pageOrder_.front());pageOrder_.pop_front();node.key()=page;it=pages_.insert(std::move(node)).position;}
-     else{it=pages_.try_emplace(page).first;++pageAllocations_;}
-     pageOrder_.push_back(page);
-    }
+    if(it==pages_.end())it=storage(page);
     auto&cached=it->second;cached.epoch=0;SIZE_T got=0;++reads;
     if(ReadProcessMemory(connection_->handle,(void*)(uintptr_t)page,cached.bytes.data(),cached.bytes.size(),&got)&&got==cached.bytes.size()){
      cached.epoch=epoch_;std::memcpy(out,cached.bytes.data()+(address&4095),size);return true;

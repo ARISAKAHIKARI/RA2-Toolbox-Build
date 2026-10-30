@@ -97,9 +97,10 @@ public:
     baseDepth_=std::make_shared<const std::vector<float>>(std::move(source));depthPlan_={nw,nh,std::move(xs),std::move(ys)};
    }else{
     auto depth=std::make_shared<std::vector<float>>(size_t(w)*h);
-    for(int yy=0;yy<h;++yy){int iy=std::clamp(int(std::floor(y+(yy+.5)*spanY/h))-y0,0,nh-1);
-     for(int xx=0;xx<w;++xx){int ix=std::clamp(int(std::floor(x+(xx+.5)*spanX/w))-x0,0,nw-1);(*depth)[size_t(yy)*w+xx]=source[size_t(iy)*nw+ix];}
-    }baseDepth_=std::move(depth);depthPlan_={};
+    std::vector<int>xs(w);for(int xx=0;xx<w;++xx)xs[xx]=std::clamp(int(std::floor(x+(xx+.5)*spanX/w))-x0,0,nw-1);
+    parallelrows::rows(size_t(h),size_t(w)*h,[&](size_t first,size_t last){for(int yy=int(first);yy<int(last);++yy){int iy=std::clamp(int(std::floor(y+(yy+.5)*spanY/h))-y0,0,nh-1);
+     for(int xx=0;xx<w;++xx)(*depth)[size_t(yy)*w+xx]=source[size_t(iy)*nw+xs[xx]];
+    }});baseDepth_=std::move(depth);depthPlan_={};
    }
   }
   if(!requestGpu&&(surface_.failed()||surface_.width()!=w||surface_.height()!=h||gpuRecording_))if(!surface_.reset(w,h))return false;

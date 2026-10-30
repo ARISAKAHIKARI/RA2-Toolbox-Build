@@ -25,6 +25,8 @@ template<class Assets>class SceneRenderer {
  static ArtKey artKey(const ImageKey&k){return {std::get<0>(k),std::get<1>(k),std::get<2>(k),std::get<6>(k),std::get<11>(k),std::get<12>(k)};}
  template<class A>static auto voxelArt(const A&a,int)->decltype(bool(a.voxel)){return a.voxel;}
  template<class A>static bool voxelArt(const A&,long){return false;}
+ template<class A>static auto voxelRevision(const A&a,int)->decltype(a.voxelLightingRevision(),a.voxelLightingAvailable(),std::pair<bool,uint64_t>{}){return {a.voxelLightingAvailable(),a.voxelLightingRevision()};}
+ template<class A>static std::pair<bool,uint64_t> voxelRevision(const A&,long){return {false,0};}
  template<class A>static auto faceCount(const A&a,int)->decltype(a.model.faces.size()){return a.model.faces.size();}
  template<class A>static size_t faceCount(const A&,long){return 0;}
  template<class A>static auto beginPalette(A&a,int)->decltype(a.beginPresentation(),void()){a.beginPresentation();}
@@ -45,11 +47,12 @@ template<class Assets>class SceneRenderer {
  }
  std::array<uint32_t,256> terrainPalette_{};bool terrainPaletteReady_=false;
  colorprecision::Mode precision_=colorprecision::Mode::NativeSteps;
- lighting::State buildingLight_;
+ lighting::State buildingLight_;uint64_t voxelLightRevision_=0;bool voxelLightKnown_=false;
+ struct DecodeStats {unsigned attempts=0,hits=0;double milliseconds=0,budget=0;} decodeStats_;
  std::map<std::pair<uint32_t,unsigned>,Cached> tiles_,overlays_;
  std::map<ArtKey,typename Assets::ActorArt> art_;
  std::map<ImageKey,Cached> sprites_;
- std::map<ObjectKey,ImageKey> displayed_;size_t actorCursor_=0;repairvisuals::Assets repairAssets_;
+ std::map<ObjectKey,ImageKey> displayed_;size_t actorCursor_=0,transientCursor_=0;repairvisuals::Assets repairAssets_;
  std::shared_ptr<const Terrain> building_,complete_,blocked_;bool dynamicFailure_=false,materialsReady_=false;
  struct Paint {lighting::State light,overlayLight;int overlayOffset=0;bool bridge=false;uint64_t signature=0;};
  std::shared_ptr<camera::NativeCanvas::Budget> nativeBudget_=std::make_shared<camera::NativeCanvas::Budget>();
@@ -92,6 +95,7 @@ public:
  explicit SceneRenderer(size_t pages=camera::NativeCanvas::MaximumPages){nativeBudget_->maximum=std::clamp<size_t>(pages,1,camera::NativeCanvas::MaximumPages);}
  void guideEnabled(bool enabled,uint64_t contextKey=0){if(enabled!=guideEnabled_||contextKey!=guideExternalContext_){guideEnabled_=enabled;guideExternalContext_=contextKey;motionContext_=std::make_shared<const uint8_t>(0);}}
  bool materialsReady()const{return materialsReady_;}
+ const DecodeStats&decodeStats()const{return decodeStats_;}
  bool capacityExceeded()const{return bool(blocked_)||dynamicFailure_;}
  // Read-only metadata from the sprite actually displayed; no second decode.
  bool feedbackBounds(const Marker&m,int&x,int&y,int&w,int&h)const{
@@ -108,12 +112,14 @@ public:
  }
  struct NativeStats {int width,height;size_t pages,resident;uint64_t cells,presents,partialBanks;};
  NativeStats nativeStats()const{return {background_.width(),background_.height(),background_.pageCount(),nativeBudget_->pages,nativeCells_,basePresents_,partialBanks_};}
- void reset(){tiles_.clear();overlays_.clear();art_.clear();sprites_.clear();displayed_.clear();actorCursor_=0;repairAssets_.reset();clearBackground();coverage_={};coverageLocal_=false;width_=height_=0;spanX_=spanY_=0;revision_=0;terrainPaletteReady_=false;terrainPalette_={};nativeCells_=basePresents_=partialBanks_=0;gpuMaskBuilder_.reset();detailed_.reset();detailKey_=0;}
- template<class Read>std::shared_ptr<const Scene> render(const Frame&frame,int width,int height,Read read,Assets&assets,SceneRegion region={},unsigned pixelScaleMode=0,bool refined=false,bool liveVoxels=true,bool highColorPrecision=false,bool forceFrame=false){
-  materialsReady_=false;
+ void reset(){voxelLightKnown_=false;tiles_.clear();overlays_.clear();art_.clear();sprites_.clear();displayed_.clear();actorCursor_=transientCursor_=0;repairAssets_.reset();clearBackground();coverage_={};coverageLocal_=false;width_=height_=0;spanX_=spanY_=0;revision_=0;terrainPaletteReady_=false;terrainPalette_={};nativeCells_=basePresents_=partialBanks_=0;gpuMaskBuilder_.reset();detailed_.reset();detailKey_=0;}
+ template<class Read>std::shared_ptr<const Scene> render(const Frame&frame,int width,int height,Read read,Assets&assets,SceneRegion region={},unsigned pixelScaleMode=0,bool refined=false,bool liveVoxels=true,bool highColorPrecision=false,bool forceFrame=false,double decodeBudgetMs=4.){
+  const bool warming=!materialsReady_;materialsReady_=false;decodeStats_={};
   if(!frame.terrain||!frame.terrain->geo.valid()||frame.terrain->art.size()!=512*512||width<3||height<3||width>(region.active?8192:2048)||height>(region.active?8192:2048)||uint64_t(width)*height>16*1024*1024)return {};
-  const bool detail=refined&&region.active;
-  const bool gpuMode=detail&&gpuPresentation(assets,0);
+  const bool gpuMode=region.active&&gpuPresentation(assets,0);
+  // Geometry quality belongs to Assets. Both quality settings share actor,
+  // attachment, repair, depth and mask composition on the GPU.
+  const bool detail=region.active&&(refined||gpuMode);
   if(gpuMode!=gpuMode_){gpuMode_=gpuMode;sprites_.clear();displayed_.clear();detailed_.reset();baseScene_.reset();maskedBaseScene_.reset();gpuBaseTiles_.reset();cpuBaseFallback_={};maskSource_.reset();gpuMaskPlan_.reset();cpuMaskPlan_.reset();maskPixels_.reset();}
   const auto precision=highColorPrecision?colorprecision::Mode::SmoothRGB:colorprecision::Mode::NativeSteps;
   if(precision!=precision_){reset();precision_=precision;}
@@ -375,10 +381,11 @@ public:
   }
   auto view=background_.fork();
   auto draw=[&](const voxel::Image&i,float x,float y,float sx,float sy,float z,const lighting::State&light,float lift=1,float drop=0,std::shared_ptr<const voxel::Image>owner={},vulkancompute::MotionIdentity motion={}){if(detail)detailed_.blit(i,x,y,sx,sy,z,light,lift,drop,std::move(owner),std::move(motion));else view.blit(i,x,y,sx,sy,z,light,lift,drop);};
+  const double projectionScale=projectionZScale(read);
   const auto&geo=frame.terrain->geo;int work=0;size_t pixels=0;std::vector<const Marker*> fallbacks;
   auto markers=frame.markers;
   if(region.active)markers.erase(std::remove_if(markers.begin(),markers.end(),[&](const Marker&m){
-   double x=(double(m.x)-m.y)*30/256.+geo.offsetX*30,y=(double(m.x)+m.y)*15/256.-geo.offsetY*15-screenHeight(m.z,projectionZScale(read));
+   double x=(double(m.x)-m.y)*30/256.+geo.offsetX*30,y=(double(m.x)+m.y)*15/256.-geo.offsetY*15-screenHeight(m.z,projectionScale);
    return x<region.x-512||x>region.x+region.width+512||y<region.y-512||y>region.y+region.height+512;
   }),markers.end());
   for(auto&m:markers)if(m.kind==3&&!frame.posesPrepared)assets.buildingPose(m.object,m.type,m.pose);
@@ -389,7 +396,9 @@ public:
    else{wanted.insert(i->second);++i;}}
   if(sprites_.size()>1024){for(auto i=sprites_.begin();i!=sprites_.end();)if(!wanted.count(i->first))i=sprites_.erase(i);else ++i;}
   if(art_.size()>512){for(auto i=art_.begin();i!=art_.end();)if(!artWanted.count(i->first))i=art_.erase(i);else ++i;}
-  if(liveVoxels)for(const auto&source:art_)if(voxelArt(source.second,0))invalidateArt(source.first);
+  const auto lightRevision=voxelRevision(assets,0);const bool voxelLightChanged=!lightRevision.first||!voxelLightKnown_||voxelLightRevision_!=lightRevision.second;
+  voxelLightKnown_=lightRevision.first;voxelLightRevision_=lightRevision.second;
+  if(liveVoxels&&voxelLightChanged)for(const auto&source:art_)if(voxelArt(source.second,0))invalidateArt(source.first);
   std::set<ArtKey> unavailablePalettes;
   for(const auto&key:artWanted){auto source=art_.find(key);if(source==art_.end())continue;bool changed=false;
    if(!refreshPalette(assets,source->second,changed,0)){invalidateArt(key);unavailablePalettes.insert(key);}
@@ -399,7 +408,13 @@ public:
    if(!refreshOverlay(assets,m.type,game.template get<uint32_t>(m.type+0xA4),m.pose.frame,true,changed,0)){invalidateArt(artKey(m));unavailablePalettes.insert(artKey(m));}
    else if(changed)invalidateArt(artKey(m));
   }
-  if(!unavailablePalettes.empty())return {};
+  if(!unavailablePalettes.empty()){
+   // Explosions, smoke and projectiles may expire between the immutable
+   // observation and this render. Drop only those instances, never the whole
+   // completed world because one transient no longer has a live palette.
+   for(const auto&m:markers)if(m.kind<5&&unavailablePalettes.count(artKey(m)))return {};
+   markers.erase(std::remove_if(markers.begin(),markers.end(),[&](const Marker&m){return m.kind>=5&&unavailablePalettes.count(artKey(m));}),markers.end());
+  }
   for(const auto&i:sprites_)pixels+=camera::pixels(*i.second.image);size_t artBytes=0;for(const auto&i:art_)artBytes+=Assets::cost(i.second);
   if(pixels>6*1024*1024){for(auto i=sprites_.begin();i!=sprites_.end()&&pixels>4*1024*1024;)if(!wanted.count(i->first)){pixels-=camera::pixels(*i->second.image);i=sprites_.erase(i);}else ++i;}
   if(artBytes>96*1024*1024){for(auto i=art_.begin();i!=art_.end()&&artBytes>64*1024*1024;)if(!artWanted.count(i->first)){artBytes-=Assets::cost(i->second);i=art_.erase(i);}else ++i;}
@@ -408,8 +423,8 @@ public:
   std::vector<Marker> decodeMarkers=markers;
   for(const auto&m:markers)if(m.pose.frameFrom>=0){auto prior=m;prior.pose.frame=m.pose.frameFrom;prior.pose.frameFrom=-1;decodeMarkers.push_back(prior);}
   auto decode=[&](const Marker&m,bool transition){if(unavailablePalettes.count(artKey(m)))return;auto existing=art_.find(artKey(m));if(liveVoxels&&existing!=art_.end()&&voxelArt(existing->second,0))return;auto&cached=sprites_[imageKey(m)];
-   if((cached.ready&&!cached.image->incomplete)||(cached.retry&&int32_t(frame.tick-cached.retry)<0))return;
-   ++work;voxel::Image image;bool ready=false;auto source=art_.find(artKey(m));
+   if(cached.ready&&!cached.image->incomplete){++decodeStats_.hits;return;}if(cached.retry&&int32_t(frame.tick-cached.retry)<0)return;
+   ++work;++decodeStats_.attempts;voxel::Image image;bool ready=false;auto source=art_.find(artKey(m));
    if(m.kind==4)ready=assets.overlay(m.type,game.template get<uint32_t>(m.type+0xA4),m.pose.frame,image,true);
    else{if(source==art_.end()){typename Assets::ActorArt art;if((m.kind==6?projectiles::captureArt(assets,m.object,m.type,m.id,art):m.kind==5?assets.captureAnimation(m.object,m.type,m.id,m.parent,m.parentId,art):captureActor(assets,m,art,0))&&artBytes+Assets::cost(art)<=128*1024*1024){artBytes+=Assets::cost(art);source=art_.emplace(artKey(m),std::move(art)).first;}}
     if(source!=art_.end()&&!(liveVoxels&&voxelArt(source->second,0)))ready=assets.renderActor(source->second,m.pose,image);}
@@ -417,26 +432,38 @@ public:
    if(ready&&pixels-previous+next<=8*1024*1024){camera::opaque(image);pixels=pixels-previous+next;cached.image=std::make_shared<voxel::Image>(std::move(image));cached.ready=true;}
    cached.retry=cached.ready&&!cached.image->incomplete?0:frame.tick+((transition||(m.kind==3&&!cached.ready))?16u:2000u);
   };
-  // Construction/undeployment must not disappear behind eight unrelated
-  // moving-unit decodes, or wait two seconds after a transient SHP read miss.
-  // Rotate a separate bounded priority budget; normal work keeps its 8 slots.
-  std::set<ImageKey> priority;unsigned transitions=0;
-  for(int phase=0;phase<2&&transitions<32;++phase)for(size_t scanned=0;scanned<decodeMarkers.size()&&transitions<32;++scanned){
+  // Time budgets scale throughput with actual decode cost, not eight poses
+  // per completed render. Every lane gets one attempt even after a slow job;
+  // the 512-job ceiling only bounds pathological zero-cost/malformed input.
+  using DecodeClock=std::chrono::steady_clock;const auto decodeStarted=DecodeClock::now();
+  const double requested=std::isfinite(decodeBudgetMs)?std::clamp(decodeBudgetMs,.5,12.):4.;
+  const double budget=warming?std::max(8.,requested):requested;decodeStats_.budget=budget;
+  auto room=[&](unsigned attempted,DecodeClock::time_point start,double share){return attempted==0||(attempted<512&&std::chrono::duration<double,std::milli>(DecodeClock::now()-start).count()<budget*share);};
+  std::set<ImageKey> priority;unsigned transitions=0;auto lane=DecodeClock::now();
+  for(int phase=0;phase<2&&room(transitions,lane,.25);++phase)for(size_t scanned=0;scanned<decodeMarkers.size()&&room(transitions,lane,.25);++scanned){
    const auto&m=decodeMarkers[(actorCursor_+scanned)%decodeMarkers.size()];
    if(m.kind==3&&(m.pose.variant==-2)==(phase==0)&&priority.insert(imageKey(m)).second){int before=work;decode(m,m.pose.variant==-2);if(work!=before)++transitions;}
   }
-  work=0;
-  for(size_t scanned=0;scanned<decodeMarkers.size()&&work<8;++scanned){const auto&m=decodeMarkers[actorCursor_++%decodeMarkers.size()];if(!priority.count(imageKey(m)))decode(m,false);}
+  unsigned transients=0;lane=DecodeClock::now();
+  for(size_t scanned=0;scanned<decodeMarkers.size()&&room(transients,lane,.35);++scanned){
+   const auto&m=decodeMarkers[transientCursor_++%decodeMarkers.size()];
+   if(m.kind>=5&&priority.insert(imageKey(m)).second){int before=work;decode(m,true);if(work!=before)++transients;}
+  }
+  work=0;lane=DecodeClock::now();
+  for(size_t scanned=0;scanned<decodeMarkers.size()&&room(unsigned(work),lane,.40);++scanned){const auto&m=decodeMarkers[actorCursor_++%decodeMarkers.size()];if(!priority.count(imageKey(m)))decode(m,false);}
+  decodeStats_.milliseconds=std::chrono::duration<double,std::milli>(DecodeClock::now()-decodeStarted).count();
 
   if(liveVoxels){
-   // Only source VXL/HVA geometry survives between presentations. Current
-   // pose pixels are generated from current normals/VPL/palette each pass,
-   // independently of the bounded source/SHP decode queue above.
+   // Refresh VPL and palette provenance every pass; reuse pose pixels only
+   // while both revisions and the complete body/shadow posture still agree.
+   // A reader without revision support retains the conservative live path.
    std::set<ImageKey> rastered;size_t liveFaces=0;
    for(const auto&m:markers){auto source=art_.find(artKey(m));
     if(source==art_.end()){if(m.pose.voxel)return {};continue;}
     if(!voxelArt(source->second,0))continue;auto key=imageKey(m);if(!rastered.insert(key).second)continue;
     liveFaces+=faceCount(source->second,0);if(liveFaces>2*1024*1024||rastered.size()>2048)return {};
+    auto cachedImage=sprites_.find(key);
+    if(!voxelLightChanged&&cachedImage!=sprites_.end()&&cachedImage->second.ready&&!cachedImage->second.image->incomplete){++decodeStats_.hits;continue;}
     voxel::Image image;if(!assets.renderActor(source->second,m.pose,image)||image.incomplete)return {};
     auto&cached=sprites_[key];size_t previous=camera::pixels(*cached.image),next=camera::pixels(image);
     if(pixels-previous+next>8*1024*1024)return {};
@@ -452,7 +479,7 @@ public:
   std::stable_sort(order.begin(),order.end(),[](const Marker*a,const Marker*b){return camera::orderKey(a->layer,a->kind,a->x,a->y,a->sort)<camera::orderKey(b->layer,b->kind,b->x,b->y,b->sort);});
   for(const auto*marker:order){const auto&m=*marker;if(m.x<0||m.y<0||m.x>=512*256||m.y>=512*256)continue;
    auto found=sprites_.find(imageKey(m));if(found==sprites_.end()||!found->second.ready){auto old=displayed_.find({m.object,m.id});if(old!=displayed_.end())found=sprites_.find(old->second);}
-   float px=float((double(m.x)-m.y)*30/256.+geo.offsetX*30),py=float((double(m.x)+m.y)*15/256.-geo.offsetY*15+camera::anchorY(m.kind)-screenHeight(m.z,projectionZScale(read)));
+   float px=float((double(m.x)-m.y)*30/256.+geo.offsetX*30),py=float((double(m.x)+m.y)*15/256.-geo.offsetY*15+camera::anchorY(m.kind)-screenHeight(m.z,projectionScale));
    if(found!=sprites_.end()&&found->second.ready){
     std::shared_ptr<const voxel::Image> imageOwner=found->second.image;const voxel::Image*image=imageOwner.get();voxel::Image blended;
     const float lift=m.kind==4?12:(m.kind==3||m.kind==5)?2:1;
@@ -462,14 +489,14 @@ public:
     }
     auto light=m.kind==6?projectiles::light(read,uint32_t(m.pose.variant)):m.kind==5?lighting::animation(read,m.object,m.type,m.x,m.y,m.z,scene):m.kind==4?lighting::terrainObject(read,m.type,m.x,m.y,m.z,scene):lighting::object(read,m.type,m.owner,m.kind,m.x,m.y,m.z,scene);uint32_t cell=frame.terrain->art[(m.y/256)*512+m.x/256].cell;bool bridge=m.onBridge;int level=game.template get<int8_t>(cell+0x11B);
     vulkancompute::MotionIdentity motion;motion.object=m.object;motion.id=m.id;motion.type=m.type;motion.kind=uint32_t(m.kind);motion.known=guideEnabled_&&detail&&m.object>=0x10000&&m.type>=0x10000&&m.id!=0xffffffffu&&m.kind>=0&&m.kind<=6;
-    draw(*image,px,py,1,1,float((int64_t(m.x)+m.y)*15/256.)-15+camera::anchorY(m.kind)-m.drawZ+(bridge?60:0),light,m.kind==4?12:(m.kind==3||m.kind==5)?2:1,m.pose.shadow.known?float(m.pose.shadow.drop):float(std::max(0,screenHeight(m.z,projectionZScale(read))-(level+(bridge?4:0))*15)),std::move(imageOwner),std::move(motion));}
+    draw(*image,px,py,1,1,float((int64_t(m.x)+m.y)*15/256.)-15+camera::anchorY(m.kind)-m.drawZ+(bridge?60:0),light,m.kind==4?12:(m.kind==3||m.kind==5)?2:1,m.pose.shadow.known?float(m.pose.shadow.drop):float(std::max(0,screenHeight(m.z,projectionScale)-(level+(bridge?4:0))*15)),std::move(imageOwner),std::move(motion));}
    else if(m.kind<4)fallbacks.push_back(&m);
   }
   // Native status sprites use their cursor palette and are drawn after all
   // world objects without either reading or writing the world depth buffer.
   const lighting::State statusLight;
   for(const auto&sprite:frame.repairs)if(const auto*image=repairAssets_.image(assets,sprite)){
-   float x=float((double(sprite.x)-sprite.y)*30/256.+geo.offsetX*30),y=float((double(sprite.x)+sprite.y)*15/256.-geo.offsetY*15-screenHeight(sprite.z,projectionZScale(read)));
+   float x=float((double(sprite.x)-sprite.y)*30/256.+geo.offsetX*30),y=float((double(sprite.x)+sprite.y)*15/256.-geo.offsetY*15-screenHeight(sprite.z,projectionScale));
    draw(*image,x,y,1,1,0,statusLight);
   }
   // Keep physical border scenery; the native radar projection and output

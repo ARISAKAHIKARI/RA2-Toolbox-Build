@@ -64,6 +64,7 @@ void update(){files.update(reader_,process_,match_);vpl();}
 uint64_t revision(){return files.revision()^(uint64_t(word(0x822CF8)+1)*0x9e3779b97f4a7c15ull)^
     (paletteRange_==pixelupgrade::PaletteRange::FullRGB?0x45e391acbbdb1891ull:0)^(detail_?0x312df964ba273d19ull:0)^(detail_?uint64_t(presentationRasterScale())*0xf7e71b69894eb76bull:0)^(colorPrecision_?0x5a730c99b194d6e3ull:0);}
 uint64_t voxelLightingRevision()const{return voxelLight.signature();}
+bool voxelLightingAvailable()const{return !presentation_||presentationVplFresh_;}
 bool cameo(const char*name,std::vector<uint8_t>&out){update();return files.load(name,out);}
 uint32_t word(uint32_t p){uint32_t v=0;read(p,&v,4);return v;}
 std::string text(uint32_t p,unsigned n){return external::assets::text(read,p,n);}

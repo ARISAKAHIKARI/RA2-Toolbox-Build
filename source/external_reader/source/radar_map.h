@@ -10,6 +10,7 @@
 #include "radar_shroud_selector.h"
 #include <memory>
 #include <array>
+#include "../../shared/source/parallel_rows.h"
 // Read-only YRpp MapClass/CellClass/RadarClass model. Projection matches
 // GetCrdOnRadar (0x6557F0); never calls game functions or captures the screen.
 namespace external { namespace gpumotion {struct Guides;} namespace radar {
@@ -70,6 +71,8 @@ template<class Read> class Sampler {
  struct MaskBits {uint8_t state=0,shroud=0,fog=0;}; // state: unknown, verified, unavailable
  std::vector<MaskBits> maskBits_;std::array<int8_t,256> frameLookup_{};
  template<class T>T get(uint32_t a,T fallback={})const{return view_.template get<T>(a,fallback);}
+ template<class R>static auto prefetch(R read,const std::vector<uint32_t>&p,int)->decltype(read.prefetch(p,0x800),void()){read.prefetch(p,0x800);}
+ template<class R>static void prefetch(R,const std::vector<uint32_t>&,long){}
  bool maskBits(int x,int y,shroudselector::Bits&out){
   if(!geo_.legal(x,y))return false;size_t i=size_t(y)*512+x;
   if(i>=pointers_.size())return false;
@@ -152,6 +155,7 @@ public:
   GameView<Read> live(read_);Frame out;out.terrain=terrain_;out.tick=now;out.frame=observedFrame>=0?observedFrame:lastFrame_;if(!terrain_)return out;
   std::vector<uint32_t> bodies;out.markerScanValid=view_.vecChecked(0xA8EC78,bodies);
   if(!out.markerScanValid)return out;
+  prefetch(read_,bodies,0);out.markers.reserve(bodies.size());
   for(uint32_t p:bodies){int kind=view_.kind(p);if(!view_.live(p)||(kind!=3&&get<uint32_t>(p+0x11C))||get<int>(p+0x220)!=0)continue;
    int x=get<int>(p+0x9C,-1),y=get<int>(p+0xA0,-1);if(x<0||y<0||x>=512*256||y>=512*256)continue;int cx=x/256,cy=y/256;
    if(!geo_.legal(cx,cy)||!terrain_->colors[cy*512+cx])continue;uint32_t owner=get<uint32_t>(p+0x21C);uint8_t rgb[3]{};if(owner<0x10000||!read_(owner+22265,rgb,3))continue;
@@ -198,9 +202,9 @@ inline uint32_t smoothColor(const Terrain&t,double x,double y){
 }
 inline void raster(const Terrain&t,int w,int h,std::vector<uint32_t>&pixels){
  if(w<=0||h<=0||w>4096||h>4096){pixels.clear();return;}pixels.assign(size_t(w)*h,0x101710);if(!t.geo.valid()||t.colors.size()!=512*512)return;const auto&g=t.geo;
- for(int py=0;py<h;++py)for(int px=0;px<w;++px){double u=(px+.5)*g.rawWidth/w-g.offsetX,v=(py+.5)*g.rawHeight/h+g.offsetY;
+ parallelrows::rows(size_t(h),size_t(w)*h,[&](size_t first,size_t last){for(int py=int(first);py<int(last);++py)for(int px=0;px<w;++px){double u=(px+.5)*g.rawWidth/w-g.offsetX,v=(py+.5)*g.rawHeight/h+g.offsetY;
   pixels[size_t(py)*w+px]=smoothColor(t,(u+v)/2,(v-u)/2);
- }
+ }});
 }
 // Immutable terrain banks change independently of marker/display frames.
 // Retain their scaled background so higher refresh rates do not rescale it.

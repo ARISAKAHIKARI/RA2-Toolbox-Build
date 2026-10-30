@@ -7,14 +7,13 @@
 #include "gpu_xbrz_selfcheck.h"
 #include "vulkan_shroud_backend.h"
 #include <set>
+#include "immutable_atlas_plan.h"
 namespace external { namespace vulkancompute {
 // Per-pixel ordered composition: a pixel is owned by one invocation, while
 // 32x32 bins restrict it to sprites which can affect that region. No atomics,
 // inter-draw barriers or per-sprite framebuffer readbacks are needed.
 class FrameResolve : public Resolve {
- struct Source {std::shared_ptr<const void> owner;const void* data=nullptr;size_t bytes=0;bool generated=false;uint64_t signature=0;};
- struct Resident {std::weak_ptr<const void> owner;const void* address=nullptr;uint32_t offset=0,words=0;uint64_t signature=0;};
- struct UploadPlan {std::vector<Resident> retained;std::vector<uint32_t> offsets;std::vector<size_t> dirty;VkDeviceSize bytes=0;};
+ using Source=immutableatlas::Source;using Resident=immutableatlas::Resident;using UploadPlan=immutableatlas::Plan;
  struct SceneParams {uint32_t width,height,drawsOffset,binsOffset,refsOffset,binColumns,depthOffset,fogOffset,clipLeft,clipTop,clipRight,clipBottom,depthWidth,depthXOffset,depthYOffset,guideOffset,baseMotionX,baseMotionY,depthFar,depthScale;};
  static constexpr VkDeviceSize MaterialBytes=96ull*1024*1024;
  gpuvoxel::Stage voxels_{*this};
@@ -30,26 +29,8 @@ class FrameResolve : public Resolve {
  VkPipeline scenePipeline_=VK_NULL_HANDLE,scene64Pipeline_=VK_NULL_HANDLE;
  bool sceneReady_=false,xbrzChecked_=false,xbrzChecking_=false,xbrzRejected_=false;
  template<class T>static Source source(const std::shared_ptr<const std::vector<T>>& v){return v?Source{std::shared_ptr<const void>(v,v.get()),v->data(),v->size()*sizeof(T)}:Source{};}
- static bool identical(const Resident&r,const Source&s){return r.address==s.owner.get()&&!r.owner.owner_before(s.owner)&&!s.owner.owner_before(r.owner)&&r.words==(s.bytes+3)/4&&r.signature==s.signature;}
  bool plan(const std::vector<Source>&input,const std::vector<Resident>&resident,UploadPlan&out,VkDeviceSize maximum){
-  std::vector<Resident> active;std::vector<size_t> indices;uint64_t total=0;
-  for(const auto&s:input){if(!s.owner||(!s.data&&!s.generated)||!s.bytes||s.bytes>maximum)return fail("Invalid immutable GPU source");size_t n=0;for(;n<active.size();++n)if(identical(active[n],s))break;
-   if(n==active.size()){Resident r{s.owner,s.owner.get(),0,uint32_t((s.bytes+3)/4),s.signature};active.push_back(r);total+=r.words;}indices.push_back(n);
-  }
-  if(total>maximum/4)return fail("GPU scene texture budget exceeded");
-  out.retained=resident;out.retained.erase(std::remove_if(out.retained.begin(),out.retained.end(),[](const Resident&r){return r.owner.expired();}),out.retained.end());
-  bool repack=false;std::vector<bool>dirty(active.size(),false);
-  for(size_t n=0;n<active.size();++n){const auto&original=input[std::find(indices.begin(),indices.end(),n)-indices.begin()];auto found=std::find_if(out.retained.begin(),out.retained.end(),[&](const Resident&r){return identical(r,original);});
-   if(found!=out.retained.end()){active[n].offset=found->offset;continue;}
-   std::sort(out.retained.begin(),out.retained.end(),[](const Resident&a,const Resident&b){return a.offset<b.offset;});uint64_t offset=0;
-   for(const auto&r:out.retained){if(offset+active[n].words<=r.offset)break;offset=uint64_t(r.offset)+r.words;}
-   if(offset+active[n].words>maximum/4){repack=true;break;}
-   active[n].offset=uint32_t(offset);out.retained.push_back(active[n]);dirty[n]=true;
-  }
-  if(repack){out.retained=active;uint32_t offset=0;for(size_t n=0;n<active.size();++n){active[n].offset=out.retained[n].offset=offset;offset+=active[n].words;dirty[n]=true;}}
-  out.offsets.reserve(input.size());std::vector<bool>seen(active.size(),false);
-  for(size_t i=0;i<input.size();++i){const size_t n=indices[i];out.offsets.push_back(active[n].offset);if(dirty[n]&&!seen[n]){seen[n]=true;out.dirty.push_back(i);if(!input[i].generated)out.bytes+=VkDeviceSize(active[n].words)*4;}}
-  return true;
+  return immutableatlas::build(input,resident,out,maximum)||fail("Invalid or oversized immutable GPU scene sources");
  }
  bool uploadPlan(const std::vector<Source>&input,const UploadPlan&plan,Buffer&staging,std::vector<VkBufferCopy>&copies,VkDeviceSize maximum){
   if(!plan.bytes)return true;if(!buffer(staging,plan.bytes,VK_BUFFER_USAGE_TRANSFER_SRC_BIT,true,false,maximum))return fatal("GPU scene staging allocation failed");
@@ -85,7 +66,7 @@ class FrameResolve : public Resolve {
   if(matches)for(int factor:{2,3,4}){const uint32_t*expected=factor==2?gpuxbrz::SelfCheck2:factor==3?gpuxbrz::SelfCheck3:gpuxbrz::SelfCheck4;const int size=7*factor;for(int y=0;y<size;++y)for(int x=0;x<size;++x)if(pixels[size_t(y)*63+left+x]!=expected[size_t(y)*size+x])matches=false;left+=size;}
   xbrzChecking_=false;xbrzChecked_=matches;xbrzRejected_=!matches;
   if(!matches)return fail("GPU xBRZ device self-check failed; CPU fallback");
-  diagnostics_.uploads=diagnostics_.uploadedBytes=diagnostics_.dispatches=diagnostics_.readbacks=diagnostics_.xbrzBuilds=diagnostics_.voxelRasters=0;diagnostics_.waitMilliseconds=diagnostics_.readbackMilliseconds=0;return true;
+  diagnostics_.uploads=diagnostics_.uploadedBytes=diagnostics_.dispatches=diagnostics_.readbacks=diagnostics_.xbrzBuilds=diagnostics_.voxelRasters=0;diagnostics_.prepareMilliseconds=diagnostics_.waitMilliseconds=diagnostics_.readbackMilliseconds=0;return true;
  }
  static uint32_t bits(float value){uint32_t result;std::memcpy(&result,&value,4);return result;}
  void sceneClose(){
@@ -109,7 +90,7 @@ public:
  bool renderFrame(const FrameJob&frame,std::vector<uint32_t>&out,std::vector<uint8_t>*maskOut=nullptr){guides_.reset();const bool ok=renderFrameImpl(frame,out,maskOut);if(!ok){motionHistory_.clear();cleanupFailure();}return ok;}
 private:
  bool renderFrameImpl(const FrameJob&frame,std::vector<uint32_t>&out,std::vector<uint8_t>*maskOut){
-  const auto started=std::chrono::steady_clock::now();diagnostics_.uploads=diagnostics_.uploadedBytes=diagnostics_.dispatches=diagnostics_.readbacks=diagnostics_.xbrzBuilds=diagnostics_.voxelRasters=0;diagnostics_.waitMilliseconds=diagnostics_.readbackMilliseconds=0;
+  const auto started=std::chrono::steady_clock::now();diagnostics_.uploads=diagnostics_.uploadedBytes=diagnostics_.dispatches=diagnostics_.readbacks=diagnostics_.xbrzBuilds=diagnostics_.voxelRasters=0;diagnostics_.prepareMilliseconds=diagnostics_.waitMilliseconds=diagnostics_.readbackMilliseconds=0;
   const int w=frame.width,h=frame.height;const uint64_t pixels=uint64_t(std::max(0,w))*std::max(0,h);
   if(disabled_)return false;if(w<1||h<1||w>8192||h>8192||pixels>MaxPixels||frame.draws.size()>MaxDraws||(bool(frame.basePixels)==!frame.baseTiles.empty())||(frame.basePixels&&frame.basePixels->size()!=pixels)||(frame.baseDepth&&frame.baseDepthWidth==0&&frame.baseDepth->size()!=pixels)||(frame.fogAlpha&&frame.fogAlpha->size()!=pixels))return fail("Invalid GPU scene frame");
   if(!frame.collectGuides||w!=guideRejectedWidth_||h!=guideRejectedHeight_)guideRejectedWidth_=guideRejectedHeight_=0;
@@ -119,6 +100,7 @@ private:
   if(frame.basePixels){baseSource=colors.size();colors.push_back(source(frame.basePixels));}
   uint64_t coordinateCount=0;if(frame.baseTiles.size()>4096)return fail("GPU scene base tile count exceeded");
   std::vector<size_t>tileSources;for(const auto&t:frame.baseTiles){
+   if(bool(t.nearestXs)!=bool(t.nearestYs)||(t.nearestXs&&(!t.nearest||t.nearestXs->size()!=size_t(w)||t.nearestYs->size()!=size_t(h))))return fail("Invalid nearest GPU scene axes");
    if(t.reconstructionFactor&&(t.reconstructionFactor<2||t.reconstructionFactor>4))return fail("Invalid GPU xBRZ factor");
    const uint64_t f=t.reconstructionFactor?t.reconstructionFactor:1;
    if(uint64_t(t.sourceWidth)*f>8192||uint64_t(t.sourceHeight)*f>8192||uint64_t(t.sourceWidth)*t.sourceHeight*f*f>MaxPixels)return fail("GPU xBRZ dimensions exceeded");
@@ -160,9 +142,17 @@ private:
   {std::set<std::pair<uint32_t,uint32_t>>seen;voxelJobs.erase(std::remove_if(voxelJobs.begin(),voxelJobs.end(),[&](const gpuvoxel::Stage::Job&job){return !seen.insert({job.colorOffset,job.indexOffset}).second;}),voxelJobs.end());}
   if(!voxels_.prepare(voxelJobs,atlas_.buffer,AtlasBytes,materials_.buffer,MaterialBytes))return false;
   std::vector<VkBufferCopy>colorCopies,materialCopies;if(!uploadPlan(colors,colorPlan,upload_,colorCopies,AtlasBytes)||!uploadPlan(materials,materialPlan,materialUpload_,materialCopies,MaterialBytes))return false;
-  const uint32_t cols=(uint32_t(w)+31)/32,rows=(uint32_t(h)+31)/32;std::vector<std::vector<uint32_t>>bins(size_t(cols)*rows);
-  for(size_t n=0;n<bounds.size();++n){const auto&r=bounds[n];if(r[0]>=r[2]||r[1]>=r[3])continue;for(int y=r[1]/32;y<=(r[3]-1)/32;++y)for(int x=r[0]/32;x<=(r[2]-1)/32;++x)bins[size_t(y)*cols+x].push_back(uint32_t(n));}
-  size_t refs=0;for(const auto&bin:bins)refs+=bin.size();if(refs>MaxRefs)return fail("GPU scene bin budget exceeded");
+  const uint32_t cols=(uint32_t(w)+31)/32,rows=(uint32_t(h)+31)/32;const size_t binCount=size_t(cols)*rows;
+  // CSR bins keep exact painter order with three contiguous allocations,
+  // instead of thousands of per-bin vectors growing on every presentation.
+  std::vector<uint32_t>counts(binCount,0),starts(binCount+1,0);
+  auto visitBins=[&](size_t n,auto&&visit){const auto&r=bounds[n];if(r[0]>=r[2]||r[1]>=r[3])return;
+   for(int y=r[1]/32;y<=(r[3]-1)/32;++y)for(int x=r[0]/32;x<=(r[2]-1)/32;++x)visit(size_t(y)*cols+x);
+  };
+  for(size_t n=0;n<bounds.size();++n)visitBins(n,[&](size_t bin){++counts[bin];});
+  uint64_t refs=0;for(size_t bin=0;bin<binCount;++bin){starts[bin]=uint32_t(refs);refs+=counts[bin];if(refs>MaxRefs)return fail("GPU scene bin budget exceeded");}starts[binCount]=uint32_t(refs);
+  std::vector<uint32_t>references(size_t(refs),0);auto positions=starts;
+  for(size_t n=0;n<bounds.size();++n)visitBins(n,[&](size_t bin){references[positions[bin]++]=uint32_t(n);});
   std::vector<uint32_t>metadata(frame.draws.size()*DrawWords);auto offset=[&](const UploadPlan&p,size_t n){return n==size_t(-1)?Missing:p.offsets[n];};
   for(size_t n=0;n<frame.draws.size();++n){const auto&d=frame.draws[n];const auto&s=drawSources[n];auto*dst=metadata.data()+n*DrawWords;
    dst[0]=offset(colorPlan,s[0]);dst[1]=offset(materialPlan,s[1]);dst[2]=offset(materialPlan,s[2]);dst[3]=d.source.width;dst[4]=d.source.height;dst[5]=offset(colorPlan,s[3]);dst[6]=d.reconstructedWidth;dst[7]=d.reconstructedHeight;dst[8]=d.reconstructionFactor;
@@ -173,7 +163,7 @@ private:
   SceneParams params{uint32_t(w),uint32_t(h),0,uint32_t(metadata.size()),0,cols,frame.baseDepth?materialPlan.offsets[baseDepth]:Missing,(frame.maskPlan||frame.fogAlpha)?materialPlan.offsets[fog]:Missing,uint32_t(std::clamp(frame.clipLeft,0,w)),uint32_t(std::clamp(frame.clipTop,0,h)),uint32_t(frame.clipRight<0?w:std::clamp(frame.clipRight,0,w)),uint32_t(frame.clipBottom<0?h:std::clamp(frame.clipBottom,0,h)),uint32_t(frame.baseDepthWidth),frame.baseDepthWidth?materialPlan.offsets[baseDepthX]:Missing,frame.baseDepthWidth?materialPlan.offsets[baseDepthY]:Missing,Missing,0,0,0,0};
   if(collectGuides&&pixels*16>properties_.limits.maxStorageBufferRange){guideRejectedWidth_=w;guideRejectedHeight_=h;collectGuides=false;motionHistory_.clear();}
   if(collectGuides){params.guideOffset=uint32_t(pixels);params.baseMotionX=bits(guidePlan.base[0]);params.baseMotionY=bits(guidePlan.base[1]);params.depthFar=bits(frame.motion.depthFar);params.depthScale=bits(1.f/(frame.motion.depthNear-frame.motion.depthFar));}
-  params.refsOffset=params.binsOffset+uint32_t(bins.size()*2);uint32_t position=0;for(const auto&bin:bins){metadata.push_back(position);metadata.push_back(uint32_t(bin.size()));position+=bin.size();}for(const auto&bin:bins)metadata.insert(metadata.end(),bin.begin(),bin.end());
+  params.refsOffset=params.binsOffset+uint32_t(binCount*2);metadata.reserve(metadata.size()+binCount*2+references.size());for(size_t bin=0;bin<binCount;++bin){metadata.push_back(starts[bin]);metadata.push_back(counts[bin]);}metadata.insert(metadata.end(),references.begin(),references.end());
   if(metadata.empty())metadata.push_back(0);const VkDeviceSize outputBytes=pixels*4,totalOutputBytes=outputBytes*(collectGuides?4:1),maskBytes=maskOut&&frame.maskPlan?frame.maskPlan->outputWords()*4:0;
   if(guidesBuffered_&&!collectGuides){destroy(output_);destroy(readback_);}guidesBuffered_=collectGuides;
   if(!buffer(output_,totalOutputBytes,VK_BUFFER_USAGE_STORAGE_BUFFER_BIT|VK_BUFFER_USAGE_TRANSFER_SRC_BIT|VK_BUFFER_USAGE_TRANSFER_DST_BIT,false,collectGuides)||!buffer(readback_,totalOutputBytes+maskBytes,VK_BUFFER_USAGE_TRANSFER_DST_BIT,true,collectGuides)||!buffer(commands_,metadata.size()*4,VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,true)){
@@ -182,7 +172,7 @@ private:
   }
   std::memcpy(commands_.mapped,metadata.data(),metadata.size()*4);if(!flush(commands_))return fatal("GPU scene command flush failed");
   std::vector<Coordinate>coords;std::vector<Dispatch>baseDispatches;
-  for(size_t n=0;n<frame.baseTiles.size();++n){const auto&t=frame.baseTiles[n];int factor=t.reconstructionFactor?t.reconstructionFactor:1;const int sourceWidth=t.sourceWidth*factor,sourceHeight=t.sourceHeight*factor;Params p{colorPlan.offsets[tileSources[n]],uint32_t(sourceWidth),uint32_t(w),uint32_t(t.left),uint32_t(t.top),uint32_t(t.width),uint32_t(t.height),uint32_t(coords.size()),0};for(int x=0;x<t.width;++x)coords.push_back(coordinate(t.sourceX+x*t.stepX,sourceWidth));p.yOffset=uint32_t(coords.size());for(int y=0;y<t.height;++y)coords.push_back(coordinate(t.sourceY+y*t.stepY,sourceHeight));baseDispatches.push_back({p});}
+  for(size_t n=0;n<frame.baseTiles.size();++n){const auto&t=frame.baseTiles[n];int factor=t.reconstructionFactor?t.reconstructionFactor:1;const int sourceWidth=t.sourceWidth*factor,sourceHeight=t.sourceHeight*factor;Params p{colorPlan.offsets[tileSources[n]],uint32_t(sourceWidth),uint32_t(w),uint32_t(t.left),uint32_t(t.top),uint32_t(t.width),uint32_t(t.height),uint32_t(coords.size()),0};for(int x=0;x<t.width;++x)coords.push_back(coordinate(t.nearest?std::floor(t.sourceX+(t.nearestXs?double((*t.nearestXs)[t.left+x]):x*t.stepX)):t.sourceX+x*t.stepX,sourceWidth));p.yOffset=uint32_t(coords.size());for(int y=0;y<t.height;++y)coords.push_back(coordinate(t.nearest?std::floor(t.sourceY+(t.nearestYs?double((*t.nearestYs)[t.top+y]):y*t.stepY)):t.sourceY+y*t.stepY,sourceHeight));baseDispatches.push_back({p});}
   if(coords.size()>MaxCoordinates)return fail("GPU scene resolve coordinates exceeded");
   if(coords.empty())destroy(coordinates_);
   if(!coords.empty()){if(!buffer(coordinates_,coords.size()*sizeof(Coordinate),VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,true))return fatal("GPU scene coordinates allocation failed");std::memcpy(coordinates_.mapped,coords.data(),coords.size()*sizeof(Coordinate));if(!flush(coordinates_))return fatal("GPU scene coordinates flush failed");VkDescriptorBufferInfo infos[3]{{atlas_.buffer,0,AtlasBytes},{coordinates_.buffer,0,coords.size()*sizeof(Coordinate)},{output_.buffer,0,outputBytes}};VkWriteDescriptorSet writes[3]{};for(uint32_t i=0;i<3;++i){writes[i].sType=VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;writes[i].dstSet=descriptors_;writes[i].dstBinding=i;writes[i].descriptorCount=1;writes[i].descriptorType=VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;writes[i].pBufferInfo=&infos[i];}vkUpdateDescriptorSets_(device_,3,writes,0,nullptr);}
@@ -199,7 +189,7 @@ private:
   vkCmdBindPipeline_(command_,VK_PIPELINE_BIND_POINT_COMPUTE,needs64?scene64Pipeline_:scenePipeline_);vkCmdBindDescriptorSets_(command_,VK_PIPELINE_BIND_POINT_COMPUTE,scenePipelineLayout_,0,1,&sceneDescriptors_,0,nullptr);vkCmdPushConstants_(command_,scenePipelineLayout_,VK_SHADER_STAGE_COMPUTE_BIT,0,sizeof(params),&params);vkCmdDispatch_(command_,(w+7)/8,(h+7)/8,1);
   VkMemoryBarrier after{VK_STRUCTURE_TYPE_MEMORY_BARRIER};after.srcAccessMask=VK_ACCESS_SHADER_WRITE_BIT;after.dstAccessMask=VK_ACCESS_TRANSFER_READ_BIT;vkCmdPipelineBarrier_(command_,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,VK_PIPELINE_STAGE_TRANSFER_BIT,0,1,&after,0,nullptr,0,nullptr);VkBufferCopy copy{0,0,totalOutputBytes};vkCmdCopyBuffer_(command_,output_.buffer,readback_.buffer,1,&copy);if(maskBytes){VkMemoryBarrier maskCopy{VK_STRUCTURE_TYPE_MEMORY_BARRIER};maskCopy.srcAccessMask=VK_ACCESS_TRANSFER_WRITE_BIT;maskCopy.dstAccessMask=VK_ACCESS_TRANSFER_READ_BIT;vkCmdPipelineBarrier_(command_,VK_PIPELINE_STAGE_TRANSFER_BIT,VK_PIPELINE_STAGE_TRANSFER_BIT,0,1,&maskCopy,0,nullptr,0,nullptr);VkBufferCopy mask{VkDeviceSize(materialPlan.offsets[fog])*4,totalOutputBytes,maskBytes};vkCmdCopyBuffer_(command_,materials_.buffer,readback_.buffer,1,&mask);}VkMemoryBarrier host{VK_STRUCTURE_TYPE_MEMORY_BARRIER};host.srcAccessMask=VK_ACCESS_TRANSFER_WRITE_BIT;host.dstAccessMask=VK_ACCESS_HOST_READ_BIT;vkCmdPipelineBarrier_(command_,VK_PIPELINE_STAGE_TRANSFER_BIT,VK_PIPELINE_STAGE_HOST_BIT,0,1,&host,0,nullptr,0,nullptr);
   if(vkEndCommandBuffer_(command_)!=VK_SUCCESS)return fatal("GPU scene completion failed");VkSubmitInfo submit{VK_STRUCTURE_TYPE_SUBMIT_INFO};submit.commandBufferCount=1;submit.pCommandBuffers=&command_;if(vkQueueSubmit_(queue_,1,&submit,fence_)!=VK_SUCCESS)return fatal("GPU scene submission failed");inFlight_=true;
-  const uint64_t waitBudget=AllowSoftware&&diagnostics_.softwareDevice?10000000000ull:100000000ull;const auto waitStarted=std::chrono::steady_clock::now();const auto waited=vkWaitForFences_(device_,1,&fence_,VK_TRUE,waitBudget);diagnostics_.waitMilliseconds=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-waitStarted).count();if(waited!=VK_SUCCESS){quarantined().store(true,std::memory_order_relaxed);return fatal("GPU scene timed out/lost; CPU fallback");}inFlight_=false;
+  const uint64_t waitBudget=AllowSoftware&&diagnostics_.softwareDevice?10000000000ull:100000000ull;const auto waitStarted=std::chrono::steady_clock::now();diagnostics_.prepareMilliseconds=std::chrono::duration<double,std::milli>(waitStarted-started).count();const auto waited=vkWaitForFences_(device_,1,&fence_,VK_TRUE,waitBudget);diagnostics_.waitMilliseconds=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-waitStarted).count();if(waited!=VK_SUCCESS){quarantined().store(true,std::memory_order_relaxed);return fatal("GPU scene timed out/lost; CPU fallback");}inFlight_=false;
   const auto copyStarted=std::chrono::steady_clock::now();
   if(!readback_.coherent){VkMappedMemoryRange range{VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE};range.memory=readback_.memory;range.size=VK_WHOLE_SIZE;if(vkInvalidateMappedMemoryRanges_(device_,1,&range)!=VK_SUCCESS)return fatal("GPU scene readback invalidation failed");}
   out.resize(size_t(pixels));std::memcpy(out.data(),readback_.mapped,size_t(outputBytes));if(maskOut){if(frame.maskPlan){maskOut->resize(size_t(pixels));std::memcpy(maskOut->data(),static_cast<char*>(readback_.mapped)+totalOutputBytes,size_t(pixels));}else if(frame.fogAlpha)*maskOut=*frame.fogAlpha;else maskOut->clear();}if(collectGuides){

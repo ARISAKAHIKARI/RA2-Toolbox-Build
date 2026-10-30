@@ -31,12 +31,16 @@ struct TileJob {
  int sourceWidth=0,sourceHeight=0,left=0,top=0,width=0,height=0;
  double sourceX=0,sourceY=0,stepX=1,stepY=1;
  int reconstructionFactor=0; // 0: prepared pixels;2..4: raw pixels handled by FrameResolve
+ bool nearest=false; // floor source centers; no filtering or xBRZ implied
+ // Optional shared full-output axes preserve the CPU center calculation at
+ // rational scales. Repeated step addition can land one ULP below a cell.
+ std::shared_ptr<const std::vector<int32_t>> nearestXs,nearestYs;
 };
 struct Diagnostics {
  uint64_t frames=0,uploadedBytes=0,uploads=0,dispatches=0,readbacks=0,xbrzBuilds=0,voxelRasters=0;
  bool xbrzAvailable=false;
  uint64_t allocatedBufferBytes=0,mappedBufferBytes=0,peakMappedBufferBytes=0;
- double milliseconds=0,waitMilliseconds=0,readbackMilliseconds=0;
+ double milliseconds=0,prepareMilliseconds=0,waitMilliseconds=0,readbackMilliseconds=0;
  bool available=false,softwareDevice=false;
  std::string device,reason;
 };
@@ -231,11 +235,12 @@ public:
  const Diagnostics& diagnostics()const{return diagnostics_;}
  bool render(int width,int height,const std::vector<TileJob>& jobs,std::vector<uint32_t>& out){
   const auto started=std::chrono::steady_clock::now();
-  diagnostics_.uploads=diagnostics_.uploadedBytes=diagnostics_.dispatches=diagnostics_.readbacks=diagnostics_.xbrzBuilds=diagnostics_.voxelRasters=0;diagnostics_.waitMilliseconds=diagnostics_.readbackMilliseconds=0;
+  diagnostics_.uploads=diagnostics_.uploadedBytes=diagnostics_.dispatches=diagnostics_.readbacks=diagnostics_.xbrzBuilds=diagnostics_.voxelRasters=0;diagnostics_.prepareMilliseconds=diagnostics_.waitMilliseconds=diagnostics_.readbackMilliseconds=0;
   if(disabled_)return false;
   if(width<1||height<1||width>8192||height>8192||uint64_t(width)*height>MaxPixels||jobs.empty()||jobs.size()>4096)return fail("Invalid Vulkan output dimensions");
   uint64_t coordinateCount=0;
   for(const auto& j:jobs){
+   if(bool(j.nearestXs)!=bool(j.nearestYs)||(j.nearestXs&&(!j.nearest||j.nearestXs->size()!=size_t(width)||j.nearestYs->size()!=size_t(height))))return fail("Invalid nearest GPU tile axes");
    if(j.reconstructionFactor)return fail("Raw xBRZ work requires FrameResolve");
    if(!j.pixels||j.sourceWidth<1||j.sourceHeight<1||j.sourceWidth>8192||j.sourceHeight>8192||uint64_t(j.sourceWidth)*j.sourceHeight!=j.pixels->size()||j.pixels->size()>AtlasBytes/4||j.width<1||j.height<1||j.left<0||j.top<0||int64_t(j.left)+j.width>width||int64_t(j.top)+j.height>height||!std::isfinite(j.sourceX)||!std::isfinite(j.sourceY)||!std::isfinite(j.stepX)||!std::isfinite(j.stepY)||std::abs(j.sourceX)>1e10||std::abs(j.sourceY)>1e10||std::abs(j.stepX)>1e6||std::abs(j.stepY)>1e6)return fail("Invalid Vulkan tile");
    coordinateCount+=uint64_t(j.width)+j.height;
@@ -265,8 +270,8 @@ public:
   if(!buffer(coordinates_,coordinateBytes,VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,true)||!buffer(output_,outputBytes,VK_BUFFER_USAGE_STORAGE_BUFFER_BIT|VK_BUFFER_USAGE_TRANSFER_SRC_BIT|VK_BUFFER_USAGE_TRANSFER_DST_BIT,false)||!buffer(readback_,outputBytes,VK_BUFFER_USAGE_TRANSFER_DST_BIT,true)||(uploadBytes&&!buffer(upload_,uploadBytes,VK_BUFFER_USAGE_TRANSFER_SRC_BIT,true)))return fatal("Vulkan frame buffer allocation failed; CPU fallback");
   std::vector<Dispatch> dispatches;dispatches.reserve(jobs.size());auto* coords=static_cast<Coordinate*>(coordinates_.mapped);uint32_t next=0;
   for(size_t i=0;i<jobs.size();++i){const auto&j=jobs[i];Params p{active[indices[i]].offset,uint32_t(j.sourceWidth),uint32_t(width),uint32_t(j.left),uint32_t(j.top),uint32_t(j.width),uint32_t(j.height),next,0};
-   for(int x=0;x<j.width;++x)coords[next++]=coordinate(j.sourceX+x*j.stepX,j.sourceWidth);p.yOffset=next;
-   for(int y=0;y<j.height;++y)coords[next++]=coordinate(j.sourceY+y*j.stepY,j.sourceHeight);dispatches.push_back({p});
+   for(int x=0;x<j.width;++x){double at=j.sourceX+(j.nearestXs?double((*j.nearestXs)[j.left+x]):x*j.stepX);coords[next++]=coordinate(j.nearest?std::floor(at):at,j.sourceWidth);}p.yOffset=next;
+   for(int y=0;y<j.height;++y){double at=j.sourceY+(j.nearestYs?double((*j.nearestYs)[j.top+y]):y*j.stepY);coords[next++]=coordinate(j.nearest?std::floor(at):at,j.sourceHeight);}dispatches.push_back({p});
   }
   VkDeviceSize uploadOffset=0;std::vector<VkBufferCopy> copies;copies.reserve(dirty.size());
   for(size_t a:dirty){auto owner=active[a].owner.lock();if(!owner)return fail("Vulkan tile expired");VkDeviceSize bytes=VkDeviceSize(active[a].count)*4;std::memcpy(static_cast<char*>(upload_.mapped)+uploadOffset,owner->data(),size_t(bytes));copies.push_back({uploadOffset,VkDeviceSize(active[a].offset)*4,bytes});uploadOffset+=bytes;}
@@ -297,6 +302,7 @@ public:
   // hardware performance evidence and gets a separate test-only wait budget.
   const uint64_t waitBudget=AllowSoftware&&diagnostics_.softwareDevice?10000000000ull:100000000ull;
   const auto waitStarted=std::chrono::steady_clock::now();
+  diagnostics_.prepareMilliseconds=std::chrono::duration<double,std::milli>(waitStarted-started).count();
   VkResult waited=vkWaitForFences_(device_,1,&fence_,VK_TRUE,waitBudget);
   diagnostics_.waitMilliseconds=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-waitStarted).count();
   if(waited!=VK_SUCCESS){quarantined().store(true,std::memory_order_relaxed);return fatal(waited==VK_TIMEOUT?"Vulkan compute timed out; CPU fallback":"Vulkan device lost; CPU fallback");}inFlight_=false;

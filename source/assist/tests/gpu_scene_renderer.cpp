@@ -6,6 +6,9 @@
 using namespace external;
 struct Assets {
  struct ActorArt {bool voxel=false;voxel::Model model;std::array<uint32_t,256> colors{};unsigned palette=0;};
+ bool lightReady=true;uint64_t lightEpoch=0;
+ bool voxelLightingAvailable()const{return lightReady;}
+ uint64_t voxelLightingRevision()const{return lightEpoch;}
  bool gpu=false;int scale=1;unsigned paletteEpoch=0,captures=0,rasters=0,shapeRasters=0;
  voxel::Vpl pages=gpuvoxeltest::vpl();
  bool presentationGPU()const{return gpu;}
@@ -29,7 +32,7 @@ struct Assets {
  bool captureActor(uint32_t,uint32_t type,uint32_t,ActorArt&out){++captures;out={};out.voxel=type>=1000;if(out.voxel)out.model=gpuvoxeltest::model();colors(out);return true;}
  bool captureAnimation(uint32_t p,uint32_t t,uint32_t id,uint32_t,uint32_t,ActorArt&out){return captureActor(p,t,id,out);}
  bool renderActor(const ActorArt&a,const visual::Pose&pose,voxel::Image&out){
-  if(a.voxel){++rasters;const auto angle=visual::fineRadians(pose.bodyFine,pose.body),turret=visual::fineRadians(pose.turretFine,pose.turret);
+  if(a.voxel){if(!lightReady)return false;++rasters;const auto angle=visual::fineRadians(pose.bodyFine,pose.body),turret=visual::fineRadians(pose.turretFine,pose.turret);
    if(gpu){auto packet=std::make_shared<gpuvoxel::Prepared>();if(!gpuvoxel::prepare(a.model,angle,a.colors,*packet,turret,3.5f,&pages,255,0,false,scale,&pose.posture))return false;
     out={};out.gpuRaster=packet;out.width=packet->width;out.height=packet->height;out.x=packet->x;out.y=packet->y;out.rasterScale=packet->rasterScale;out.depthBottom=packet->depthBottom;out.objectPalette=true;
    }else if(!voxel::render(a.model,angle,a.colors,out,turret,3.5f,&pages,255,0,false,scale,&pose.posture))return false;
@@ -43,17 +46,17 @@ struct Assets {
 int main(int argc,char**argv){
  const bool required=argc>1&&std::string(argv[1])=="--require";
  auto read=[](uint32_t,void*,size_t){return false;};uint64_t channels=0,maskPixels=0;unsigned frames=0,used=0,maxError=0;
- for(bool masked:{false,true})for(double ratio:{1.,1.5,2.}){
+ for(bool refined:{true,false})for(bool masked:{false,true})for(double ratio:{1.,1.5,2.}){
   auto terrain=std::make_shared<radar::Terrain>();terrain->geo={8,8,6,7,8,8,1,0x10000,0x20000,512*512,{8,8,0,0,8,8},8,8};terrain->reveal=!masked;
   terrain->colors.resize(512*512);terrain->art.resize(512*512);terrain->shade.resize(512*512);
   const size_t cell=7*512+7;terrain->colors[cell]=0x204060;terrain->art[cell].type=1;terrain->art[cell].sourceColor=0x204060;terrain->shade[cell]={0,0};
   radar::Frame frame;frame.terrain=terrain;frame.tick=100;frame.frame=77;
   for(unsigned n=0;n<3;++n){radar::Marker m;m.x=7*256-int(n)*42;m.y=7*256-int(n)*93;m.object=0x10000+n*128;m.id=10+n;m.type=n?1000+n:1;m.owner=0x20000;m.kind=2;m.pose.voxel=n!=0;m.pose.bodyFine=int(n)*31;m.pose.turretFine=67-int(n)*11;frame.markers.push_back(m);}
-  Assets cpu,gpu;cpu.scale=gpu.scale=int(std::ceil(ratio));gpu.gpu=true;radar::SceneRenderer<Assets> a,b;b.guideEnabled(true,123);
+  Assets cpu,gpu;cpu.scale=gpu.scale=refined?int(std::ceil(ratio)):1;gpu.gpu=true;radar::SceneRenderer<Assets> a,b;b.guideEnabled(true,123);
   const int w=int(240*ratio),h=int(120*ratio);const radar::SceneRegion crop{-3.25,-1.5,240,120,true};
   auto compare=[&](){
-   xbrzadapter::gpuPresentation(false);auto expected=a.render(frame,w,h,read,cpu,crop,3,true,true,true);assert(expected);
-   xbrzadapter::gpuPresentation(true);auto actual=b.render(frame,w,h,read,gpu,crop,3,true,true,true);assert(actual);
+   xbrzadapter::gpuPresentation(false);auto expected=a.render(frame,w,h,read,cpu,crop,refined?3:1,true,true,true);assert(expected);
+   xbrzadapter::gpuPresentation(true);auto actual=b.render(frame,w,h,read,gpu,crop,refined?3:1,refined,true,true);assert(actual);
    if(required&&!xbrzadapter::gpuUsed()){std::cerr<<"GPU renderer unavailable: "<<(xbrzadapter::gpuState().resolve?xbrzadapter::gpuState().resolve->diagnostics().reason:"not submitted")<<std::endl;std::abort();}
    used+=xbrzadapter::gpuUsed();assert(actual->pixels.size()==expected->pixels.size());
    for(size_t i=0;i<actual->pixels.size();++i)for(unsigned shift:{0u,8u,16u,24u}){unsigned x=(actual->pixels[i]>>shift)&255,y=(expected->pixels[i]>>shift)&255,error=x>y?x-y:y-x;maxError=std::max(maxError,error);
@@ -64,12 +67,14 @@ int main(int argc,char**argv){
    ++frames;return actual;
   };
   auto first=compare();assert(a.materialsReady()&&b.materialsReady());const auto captures=gpu.captures;
-  auto warm=compare();assert(warm->pixels==first->pixels&&gpu.captures==captures);
+  const auto rasters=gpu.rasters;auto warm=compare();assert(warm->pixels==first->pixels&&gpu.captures==captures&&gpu.rasters==rasters);
+  ++cpu.lightEpoch;++gpu.lightEpoch;compare();assert(gpu.rasters>rasters);
+  gpu.lightReady=false;assert(!b.render(frame,w,h,read,gpu,crop,refined?3:1,refined,true,true));gpu.lightReady=true;
   ++cpu.paletteEpoch;++gpu.paletteEpoch;auto relit=compare();assert(relit->pixels!=warm->pixels&&gpu.captures==captures);
   frame.markers[1].pose.bodyFine=91;auto turned=compare();assert(turned->pixels!=relit->pixels&&gpu.captures==captures);
   if(masked){auto changed=std::make_shared<radar::Terrain>(*terrain);changed->shade[cell]={15,0};frame.terrain=changed;auto covered=compare();assert(covered->pixels!=turned->pixels);}
   // CPU/GPU representation switches retain decoded VXL/HVA source geometry.
-  gpu.gpu=false;xbrzadapter::gpuPresentation(true);auto fallback=b.render(frame,w,h,read,gpu,crop,3,true,true,true);assert(fallback&&gpu.captures==captures);
+  gpu.gpu=false;xbrzadapter::gpuPresentation(true);auto fallback=b.render(frame,w,h,read,gpu,crop,refined?3:1,refined,true,true);assert(fallback&&gpu.captures==captures);
  }
  std::cout<<"PASS actual SceneRenderer CPU/GPU used="<<used<<"/"<<frames<<" channel_comparisons="<<channels<<" max_error="<<maxError<<" mask_pixels="<<maskPixels<<"; native1x/1.5x/2x, rawterrain+SHPxBRZ, deferredVXL, fog, livepalette/pose/sameclock and representationtoggle source retention"<<std::endl;
 }

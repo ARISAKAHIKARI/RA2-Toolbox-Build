@@ -6,6 +6,7 @@
 #include <set>
 #include <array>
 #include <new>
+#include "../../shared/source/parallel_rows.h"
 // Native-pixel composition storage. Source sprites are never individually
 // minified: all depth/shadow/color operations run at one pixel per source pixel.
 namespace external { namespace camera {
@@ -199,7 +200,24 @@ public:
  // independent of the radar's whole-map downscale. Outside backing falls back
  // to the underlying game through transparent pixels instead of stretching.
  bool gpuRegion(int width,int height,double x,double y,double spanX,double spanY,unsigned mode,std::vector<vulkancompute::TileJob>&out)const{
-  if(failed_||(mode!=2&&mode!=3)||width_<1||height_<1)return false;
+  if(failed_||width_<1||height_<1||width<1||height<1||width>8192||height>8192||uint64_t(width)*height>16*1024*1024||
+     !std::isfinite(x)||!std::isfinite(y)||!std::isfinite(spanX)||!std::isfinite(spanY)||spanX<=0||spanY<=0||std::abs(x)>1e7||std::abs(y)>1e7||spanX>32768||spanY>32768)return false;
+  if(mode==1){out.clear();const double sx=spanX/width,sy=spanY/height;
+   // The established CPU path uses area integration for a fractional native
+   // crop or shrink. Those cases retain its cached CPU base, then GPU actors.
+   if(!(sx<=1&&sy<=1&&(sx<1||sy<1))&&!(sx==1&&sy==1&&std::floor(x)==x&&std::floor(y)==y))return false;
+   auto xs=std::make_shared<std::vector<int32_t>>(width),ys=std::make_shared<std::vector<int32_t>>(height);
+   for(int xx=0;xx<width;++xx)(*xs)[xx]=int32_t(std::floor(x+(xx+.5)*spanX/width));
+   for(int yy=0;yy<height;++yy)(*ys)[yy]=int32_t(std::floor(y+(yy+.5)*spanY/height));
+   for(const auto&entry:pages_){int px=pageX(entry.first)*PageSize,py=pageY(entry.first)*PageSize;
+    auto edge=[](double v,int limit){return int(std::clamp(std::ceil(v-.5),0.,double(limit)));};
+    int l=edge((px-x)/sx,width),r=edge((std::min(px+PageSize,width_)-x)/sx,width);
+    int t=edge((py-y)/sy,height),b=edge((std::min(py+PageSize,height_)-y)/sy,height);if(l>=r||t>=b)continue;
+    auto pixels=std::shared_ptr<const std::vector<uint32_t>>(entry.second,&entry.second->surface.color);
+    vulkancompute::TileJob job{std::move(pixels),PageSize,PageSize,l,t,r-l,b-t,double(-px),double(-py),1,1};job.nearest=true;job.nearestXs=xs;job.nearestYs=ys;out.push_back(std::move(job));
+   }return !out.empty();
+  }
+  if(mode!=2&&mode!=3)return false;
   if(!regionCache_)regionCache_=std::make_shared<xbrzadapter::RegionCache>();
   auto fetch=[&](int px,int py){return pixel(std::clamp(px,0,width_-1),std::clamp(py,0,height_-1));};
   return regionCache_->gpuRegion(fetch,x,y,spanX,spanY,width,height,out);
@@ -219,7 +237,10 @@ public:
    const int w=int(std::floor(x+(width-.5)*sx))-x0+1,h=int(std::floor(y+(height-.5)*sy))-y0+1;
    std::vector<uint32_t> source;if(!presentRegion(w,h,source,x0,y0,w,h,0))return false;
    auto fetch=[&](int px,int py)->uint32_t{int xx=px-x0,yy=py-y0;return xx>=0&&yy>=0&&xx<w&&yy<h?source[size_t(yy)*w+xx]:0;};
-   return pixelupgrade::sampleNearest(fetch,x,y,spanX,spanY,width,height,out);
+   std::vector<int> xs(width);for(int xx=0;xx<width;++xx)xs[xx]=int(std::floor(x+(xx+.5)*spanX/width));
+   parallelrows::rows(size_t(height),size_t(width)*height,[&](size_t first,size_t last){for(int yy=int(first);yy<int(last);++yy){
+    int py=int(std::floor(y+(yy+.5)*spanY/height));for(int xx=0;xx<width;++xx)out[size_t(yy)*width+xx]=fetch(xs[xx],py);
+   }});return true;
   }
   if((pixelScaleMode==3||pixelScaleMode==2)&&sx>=.25&&sy>=.25&&sx<=1&&sy<=1&&(sx<1||sy<1)){
    // Scale the current lit, fully composited terrain with a real neighborhood.
@@ -238,7 +259,7 @@ public:
   }
   if(sx==1&&sy==1&&std::floor(x)==x&&std::floor(y)==y){
    // Contiguous page runs, not per-pixel map lookups, in the native case.
-   for(int dy=0;dy<height;++dy){int yy=int(y)+dy;if(yy<0||yy>=height_)continue;
+   parallelrows::rows(size_t(height),size_t(width)*height,[&](size_t first,size_t last){for(int dy=int(first);dy<int(last);++dy){int yy=int(y)+dy;if(yy<0||yy>=height_)continue;
     int lo=std::max(0,-int(x)),hi=std::min(width,width_-int(x));
     for(int dx=lo;dx<hi;){int xx=int(x)+dx,end=std::min(hi,dx+PageSize-xx%PageSize);
      auto page=pages_.find(key(xx/PageSize,yy/PageSize));auto*dest=out.data()+size_t(dy)*width+dx;
@@ -246,7 +267,7 @@ public:
      else std::copy_n(page->second->surface.color.data()+size_t(yy%PageSize)*PageSize+xx%PageSize,end-dx,dest);
      dx=end;
     }
-   }return true;
+   }});return true;
   }
   Filter filter(*this);
   for(int dy=0;dy<height;++dy)for(int dx=0;dx<width;++dx){

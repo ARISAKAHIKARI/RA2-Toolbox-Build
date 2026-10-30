@@ -37,10 +37,12 @@ void operator delete(void*p,size_t)noexcept{std::free(p);}
 #include @READER@
 DWORD fakeLastError=0;
 static bool completePage=false;
+static bool batchFail=false;
 static bool wideRange=false;static uint8_t memoryVersion=0;
 static int pageAttempts=0,fieldAttempts=0;
 BOOL ReadProcessMemory(HANDLE,const void*at,void*out,SIZE_T size,SIZE_T*got){
  const uintptr_t address=reinterpret_cast<uintptr_t>(at);
+ if(batchFail&&size>4096){*got=0;fakeLastError=ERROR_PARTIAL_COPY;return FALSE;}
  if(address==0x12000&&size==4096){++pageAttempts;if(!completePage){*got=2048;fakeLastError=ERROR_PARTIAL_COPY;return FALSE;}}
  else if(size<4096)++fieldAttempts;
  if(address<0x12000||(!wideRange&&address+size>0x14000)||(!completePage&&address+size>0x12800&&address<0x13000)){
@@ -89,8 +91,18 @@ int main(){
  assert(reader.cachedPageStorage()==8192&&reader.pageBufferAllocations()==8192);
  memoryVersion=201;reader.begin();assert(reader.read(0x100010,value,4)&&value[0]==uint8_t(16+201));
  assert(reader.pageBufferAllocations()==8192);
+ // Sixteen adjacent actor pages now need one RPM, with current-epoch bytes.
+ std::vector<uint32_t> actors;for(unsigned n=0;n<16;++n)actors.push_back(0x400000+n*4096+16);
+ memoryVersion=11;reader.begin();reader.prefetch(actors,0x800);assert(reader.reads==1&&reader.prefetchedPages==16);
+ for(auto at:actors){assert(reader.read(at,value,4)&&value[0]==27);assert(reader.read(at+0x600,value,4));}
+ assert(reader.reads==1&&reader.pageHits==32);
+ memoryVersion=12;reader.begin();reader.prefetch(actors,0x800);for(auto at:actors)assert(reader.read(at,value,4)&&value[0]==28);
+ // A failed speculative batch leaves every good page eligible for lazy read.
+ batchFail=true;reader.begin();reader.prefetch(actors,0x800);assert(reader.prefetchMisses==1&&reader.errors==0);
+ for(auto at:actors)assert(reader.read(at,value,4)&&value[0]==28);
+ assert(reader.reads==17&&reader.pageMisses==16);batchFail=false;
  reader.close();assert(reader.cachedPageStorage()==0&&!reader.read(0x100010,value,4));
- std::cout<<"PASS ProcessReader: partial-page fallback, fresh epoch values, zero warm page-buffer allocations, bounded address churn and process-close invalidation\n";
+ std::cout<<"PASS ProcessReader: partial-page fallback, fresh epoch values, zero warm page-buffer allocations, bounded address churn, coalesced actor reads/failure fallback and process-close invalidation\n";
 }
 '''.replace('@READER@', json.dumps(str(root / 'external_reader/source/process_reader.h')))
 with tempfile.TemporaryDirectory(prefix='ra2-reader-pages-') as tmp:

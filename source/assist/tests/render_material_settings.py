@@ -6,7 +6,7 @@ import tempfile
 root = Path(__file__).resolve().parents[2]
 main = (root/'assist/source/main.cpp').read_text(encoding='utf-8')
 io = (root/'assist/source/extra_settings_io.h').read_text(encoding='utf-8')
-globals_ = next(line for line in main.splitlines() if line.startswith('static bool renderUpgradeEnabled='))
+globals_ = 'static bool renderUpgradeEnabled='+main.split('static bool renderUpgradeEnabled=',1)[1].split('static bool minimapEnabled=',1)[0]
 load = io.split('static void loadAdditionalSettings(){', 1)[1].split(' extra.viewZoomEnabled=', 1)[0]
 save = '\n'.join(line for line in io.splitlines() if line.lstrip().startswith('write(L"Display",') and ('L"Render' in line or 'L"UnifiedOverlay"' in line))
 handler = main.split(' if(id==9300||', 1)[1].split('\n if(id==862', 1)[0]
@@ -27,12 +27,12 @@ static int SendDlgItemMessageW(int,int id,int,int,int){return controls[id];}
 static int GetDlgItem(int,int id){return id;}
 static void SetWindowTextW(int,const wchar_t*){}
 static void SetTimer(int,int,int delay,void*){++changes;timerDelay=delay;}static void syncTypeConfig(){}static void paint(){}
-namespace renderupgrade {static void stop(){++stops;}static void updateNeuralStatus(bool=false){}}
+namespace renderupgrade {static void stop(){++stops;}}
 static int value(const wchar_t*,const wchar_t*key,int fallback){auto i=profile.find(key);return i==profile.end()?fallback:i->second;}
 static void write(const wchar_t*,const wchar_t*key,int v){profile[key]=v;}
 '''+changed_setting+'\n'+globals_+'\nstatic void load(){'+load+'}\nstatic void save(){'+save+'}\nstatic int handle(int id,unsigned wp){int w=1;'+handler+'return -1;}\n'+r'''
 int main(){
- load();assert(!renderUpgradeEnabled&&!renderPhysicalOutput&&!renderVulkanEnabled&&!renderDLSS5Requested&&renderMaterialRefresh&&renderSceneDetail==1&&renderPixelScale==3&&renderColorPrecision==1&&renderUpgradeLayer==1);
+ load();assert(!renderUpgradeEnabled&&!renderPhysicalOutput&&!renderVulkanEnabled&&!renderProcessing&&!renderXbrzEnabled&&renderMaterialRefresh&&renderSceneDetail==1&&renderPixelScale==3&&renderColorPrecision==1&&renderUpgradeLayer==1);
  for(int oldLayer:{0,1}){profile[L"RenderUpgradeLayer"]=oldLayer;load();assert(renderUpgradeLayer==1);save();assert(profile[L"RenderUpgradeLayer"]==1);}
  for(int color:{0,1})for(int detail:{0,1})for(int refresh:{0,1})for(int scale:{0,1,2,3}){
   controls[9309]=color;handle(9309,CBN_SELCHANGE<<16);
@@ -49,17 +49,12 @@ int main(){
  updatingControls=true;controls[9305]=0;int old=renderPixelScale;handle(9305,CBN_SELCHANGE<<16);assert(renderPixelScale==old);updatingControls=false;
  for(int id:{9300,9301,9306,9310}){controls[id]=1;handle(id,BN_CLICKED<<16);}save();load();assert(renderUpgradeEnabled&&unifiedOverlayEnabled&&renderPhysicalOutput&&renderVulkanEnabled);
  controls[9310]=0;handle(9310,BN_CLICKED<<16);save();renderVulkanEnabled=true;load();assert(!renderVulkanEnabled);
- // Changing neural mode invalidates the previous scene and cancels pending
- // processing; a checked setting never changes the separate Vulkan option.
- for(bool requested:{false,true}){
-  controls[9311]=requested;int stopped=stops,revision=paintRevision,settings=settingsRevision,count=changes;bool gpu=renderVulkanEnabled;autoSavePending=false;
-  handle(9311,BN_CLICKED<<16);assert(renderDLSS5Requested==requested&&changes==count+1);
-  assert(stops==stopped+1&&paintRevision==revision+2&&settingsRevision==settings+1&&renderVulkanEnabled==gpu);
-  assert(autoSavePending&&timerDelay==300);
-  save();renderDLSS5Requested=!requested;load();assert(renderDLSS5Requested==requested);
- }
- controls[9311]=0;int count=changes;handle(9311,CBN_SELCHANGE<<16);assert(renderDLSS5Requested&&changes==count);
- updatingControls=true;handle(9311,BN_CLICKED<<16);assert(renderDLSS5Requested&&changes==count);updatingControls=false;
+ // Removed neural controls and legacy INI values cannot dispatch processing.
+ profile[L"RenderDLSS5"]=1;load();int stopped=stops,revision=paintRevision,count=changes;
+ controls[9311]=1;assert(handle(9311,BN_CLICKED<<16)==-1);assert(stops==stopped&&paintRevision==revision&&changes==count);
+ assert(!renderProcessing&&!renderXbrzEnabled&&effectiveRenderDetail()==0&&effectiveRenderPrecision()==0&&effectiveRenderScale()==1&&!effectiveRenderInterpolation());
+ for(int id:{9313,9314}){controls[id]=1;handle(id,BN_CLICKED<<16);}save();load();assert(renderProcessing&&renderXbrzEnabled);
+ controls[9314]=0;handle(9314,BN_CLICKED<<16);assert(effectiveRenderScale()==1);
  profile[L"RenderPixelScale"]=99;profile[L"RenderSceneDetail"]=-1;load();assert(renderPixelScale==3&&renderSceneDetail==0);
 }
 '''
@@ -68,4 +63,4 @@ with tempfile.TemporaryDirectory() as temp:
     source.write_text(fixture,encoding='utf-8')
     subprocess.run(['g++','-std=c++17','-O2',str(source),'-o',str(binary)],check=True)
     subprocess.run([str(binary)],check=True)
-print('PASS: actual render control events and INI load/save, 32 color/detail/refresh/scale combinations, adaptive mode 3 retained, neural request round-trip invalidates old scene without changing Vulkan, invalid/programmatic events ignored')
+print('PASS: actual render control events and INI load/save, 32 color/detail/refresh/scale combinations, adaptive mode 3 retained, removed neural control/legacy INI is inert, explicit quality/xBRZ round-trip, invalid/programmatic events ignored')
