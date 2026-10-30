@@ -24,7 +24,7 @@ struct Pose {
  uint8_t body=0,turret=0;int frame=0,variant=-1,buildingFlags=0,doorFrame=-1;
  // Presentation metadata, never written to the engine. Fine angles are 1/256
  // turns; raw facing retains the already verified FacingClass::Current value.
- int bodyFine=-1,turretFine=-1,frameFrom=-1,frameWeight=255;
+ int bodyFine=-1,turretFine=-1,frameFrom=-1,frameWeight=255;int hvaBody=0,hvaTurret=0;
  uint16_t rawBody=0,rawTurret=0;bool rawFacing=false,voxel=false;
  voxelposture::State posture;
  voxelshadow::State shadow;
@@ -52,7 +52,7 @@ template<class Read>int previewFrame(GameView<Read>&g,uint32_t type,int kind,int
 template<class Read>Pose pose(GameView<Read>&g,uint32_t p,uint32_t type,int kind,int frame){
  Pose out;out.voxel=kind!=1&&g.template get<uint32_t>(type+0xB0)!=0;out.rawBody=facing(g,p+0x388,frame);out.rawTurret=g.template get<uint8_t>(type+0xCA1)?facing(g,p+0x3A0,frame):out.rawBody;out.rawFacing=true;
  out.body=bucket(out.rawBody);out.turret=bucket(out.rawTurret);
- if(out.voxel){out.posture=voxelposture::capture(g,p,type,kind,frame);out.shadow=voxelshadow::capture(g,p,kind);}
+ if(out.voxel){int count=g.template get<int>(g.template get<uint32_t>(type+0xB4)+8,1),turretCount=g.template get<int>(g.template get<uint32_t>(type+0xBC)+8,1);int bodyCounter=kind==3?0:g.template get<int>(p+0x538),turretCounter=g.template get<int>(p+0x148);out.hvaBody=count>1&&count<=4096?bodyCounter%count:0;out.hvaTurret=out.hvaBody?out.hvaBody:turretCount>1&&turretCount<=4096?turretCounter%turretCount:0;out.posture=voxelposture::capture(g,p,type,kind,frame);out.shadow=voxelshadow::capture(g,p,kind);}
  if(g.template get<int>(type+0x808)>0&&!g.template get<uint8_t>(type+0xCD5)){int variant=g.template get<int>(p+0x124,-1);if(variant>=0&&variant<18)out.variant=variant;}
  if(kind==1){
   int sequence=g.template get<int>(p+0x6C4);if(sequence==-1)sequence=0;

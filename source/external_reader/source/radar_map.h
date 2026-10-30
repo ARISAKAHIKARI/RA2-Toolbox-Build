@@ -9,6 +9,8 @@
 #include "projectile_visuals.h"
 #include "native_feedback.h"
 #include "particle_visuals.h"
+#include "voxel_animation_visuals.h"
+#include "world_effects.h"
 #include "radar_shroud_selector.h"
 #include <memory>
 #include <array>
@@ -61,7 +63,7 @@ struct ShroudFrames {int8_t shroud=127,fog=127;
  bool operator==(const ShroudFrames&o)const{return shroud==o.shroud&&fog==o.fog;}
 };
 struct Terrain {Geometry geo;std::vector<uint32_t> colors,baseColors;std::vector<CellArt> art;std::vector<ShroudFrames> shade;bool reveal=false;};
-struct EffectSnapshot {std::vector<nativefeedback::Bolt> bolts;bool boltsValid=false;};
+struct EffectSnapshot {std::vector<nativefeedback::Bolt> bolts;bool boltsValid=false;std::shared_ptr<const worldfx::Snapshot>world;};
 struct Frame {std::shared_ptr<const Terrain> terrain;std::vector<Marker> markers;std::shared_ptr<const Scene> scene,map;uint32_t tick=0;int frame=-1;bool markerScanValid=false,posesPrepared=false;std::vector<repairvisuals::Sprite> repairs;std::shared_ptr<const EffectSnapshot> effects;uint8_t effectMask=3;};
 inline bool supportsEffects(const Frame&frame,bool particles,bool lasers){return (!particles||(frame.effectMask&1))&&(!lasers||(frame.effectMask&2));}
 inline uint32_t terrainColor(int land,int level,bool fog){
@@ -168,8 +170,10 @@ public:
    m.color=uint32_t(rgb[0])<<16|uint32_t(rgb[1])<<8|rgb[2];m.building=kind==3;m.object=p;m.id=get<uint32_t>(p+0x10);m.type=view_.type(p,kind);m.owner=owner;m.x=x;m.y=y;m.z=get<int>(p+0xA4);m.kind=kind;m.onBridge=get<uint8_t>(p+0x8C)!=0;m.pose=visual::pose(live,p,m.type,kind,out.frame);
    m.layer=std::clamp(get<int>(p+0x94,2),0,4);if(kind==3)m.sort=(get<uint8_t>(m.type+0x16C5)?32:0)-(get<uint8_t>(m.type+0x16B7)?16:0);out.markers.push_back(m);
   }
+  std::shared_ptr<worldfx::Snapshot>world;
   if(!terrain_->art.empty()){
-   auto effects=std::make_shared<EffectSnapshot>();effects->boltsValid=!lasers_||nativefeedback::bolts(read_,effects->bolts);out.effects=std::move(effects);
+   world=std::make_shared<worldfx::Snapshot>(worldfx::capture(read_,particles_,lasers_));
+   auto effects=std::make_shared<EffectSnapshot>();effects->boltsValid=!lasers_||nativefeedback::bolts(read_,effects->bolts);effects->world=world;out.effects=std::move(effects);
    const auto bodies=out.markers;for(const auto&body:bodies)if(body.kind==3)for(const auto&a:animations::attached(read_,body.object,body.id)){
     Marker m;m.object=a.object;m.id=a.id;m.type=a.type;m.owner=a.owner;m.parent=a.parent;m.parentId=a.parentId;m.x=a.x;m.y=a.y;m.z=a.z;m.kind=5;m.pose.frame=a.frame;m.pose.variant=a.blend;m.drawZ=a.zAdjust;m.sort=a.sort;m.layer=a.layer;m.normalLight=a.normalLight;m.onBridge=get<uint8_t>(a.parent+0x8C)!=0;geo_.project(double(m.x)/256,double(m.y)/256,m.u,m.v);if(m.u>=0&&m.u<1&&m.v>=0&&m.v<1)out.markers.push_back(m);
    }
@@ -184,12 +188,13 @@ public:
    }
   }
   if(!terrain_->art.empty()){
-   for(const auto&m:out.markers)if(m.kind==3){repairvisuals::Sprite sprite;if(repairvisuals::sample(read_,m.object,m.id,sprite))out.repairs.push_back(sprite);}
    if(particles_)for(const auto&s:particles::all(read_)){
     int cx=s.x/256,cy=s.y/256;if(!geo_.legal(cx,cy)||!terrain_->colors[cy*512+cx])continue;
+    if(s.point){if(world)world->points.push_back({{s.x,s.y,s.z},s.color});continue;}
     Marker m;m.object=s.object;m.id=s.id;m.type=s.type;m.x=s.x;m.y=s.y;m.z=s.z;m.kind=particles::Kind;m.pose.frame=s.frame;m.pose.variant=s.blend;m.layer=s.layer;
     geo_.project(double(m.x)/256,double(m.y)/256,m.u,m.v);if(m.u>=0&&m.u<1&&m.v>=0&&m.v<1)out.markers.push_back(m);
    }
+   if(particles_)for(const auto&s:voxelanims::all(read_)){int cx=s.x/256,cy=s.y/256;if(!geo_.legal(cx,cy)||!terrain_->colors[cy*512+cx])continue;Marker m;m.object=s.object;m.id=s.id;m.type=s.type;m.owner=s.owner;m.x=s.x;m.y=s.y;m.z=s.z;m.kind=voxelanims::Kind;m.pose=s.pose;m.drawZ=-13;m.sort=0;m.layer=s.layer;geo_.project(double(m.x)/256,double(m.y)/256,m.u,m.v);out.markers.push_back(m);}
    for(const auto&s:projectiles::all(read_)){
     int cx=s.x/256,cy=s.y/256;if(!geo_.legal(cx,cy)||!terrain_->colors[cy*512+cx])continue;
     Marker m;m.object=s.object;m.id=s.id;m.type=s.type;m.owner=s.owner;m.x=s.x;m.y=s.y;m.z=s.z;m.kind=projectiles::Kind;m.pose=s.pose;m.drawZ=s.drawZ;m.sort=s.sort;m.layer=s.layer;m.onBridge=s.onBridge;

@@ -22,16 +22,17 @@ inline bool pal(const std::vector<uint8_t>&bytes,std::array<uint32_t,256>&out,
 inline bool vxl(const std::vector<uint8_t>&v,const std::vector<uint8_t>&h,voxel::Model&out,float offset=0,float sx=1,float sy=1){
  if(v.size()<802||h.size()<24||memcmp(v.data(),"Voxel Animation",15))return false;unsigned count=word(v.data()+20),bodySize=word(v.data()+28),frames=word(h.data()+16),layers=word(h.data()+20);
  if(!count||count>32||word(v.data()+24)!=count||!frames||frames>4096||layers!=count||uint64_t(802)+count*28+bodySize+count*92>v.size()||uint64_t(24)+layers*16+uint64_t(layers)*frames*48>h.size())return false;
- Memory m;uint32_t body=m.append(v.data()+802+count*28,bodySize);if(!body)return false;std::vector<voxel::Tail> tails(count);std::vector<std::array<float,12>> matrices(count);
+ Memory m;uint32_t body=m.append(v.data()+802+count*28,bodySize);if(!body)return false;std::vector<voxel::Tail> tails(count);std::vector<std::array<float,12>> matrices(size_t(count)*frames);
  for(unsigned i=0;i<count;++i){const auto*p=v.data()+802+count*28+bodySize+i*92;auto&t=tails[i];t.start=body+word(p);t.end=body+word(p+4);t.data=body+word(p+8);memcpy(&t.multiplier,p+12,4);memcpy(t.matrix,p+16,48);float b[6];memcpy(b,p+64,24);memcpy(t.size,p+88,3);t.normal=p[91];
   if(!voxel::finite(t.multiplier)||t.multiplier<=0||t.multiplier>64)return false;
   for(int j=0;j<8;++j)for(int axis=0;axis<3;++axis)t.bounds[j*3+axis]=b[axis+((j&(1<<axis))?3:0)];
   int layer=-1;for(unsigned k=0;k<layers;++k)if(!memcmp(v.data()+802+i*28,h.data()+24+k*16,16)){layer=int(k);break;}if(layer<0)return false;
-  memcpy(matrices[i].data(),h.data()+24+layers*16+layer*48,48);for(int axis=0;axis<3;++axis)matrices[i][axis*4+3]*=t.multiplier;
+  for(unsigned frame=0;frame<frames;++frame){auto&matrix=matrices[size_t(frame)*count+i];memcpy(matrix.data(),h.data()+24+layers*16+(size_t(frame)*layers+layer)*48,48);for(int axis=0;axis<3;++axis)matrix[axis*4+3]*=t.multiplier;}
  }
  uint32_t tail=m.append(tails.data(),tails.size()*sizeof(voxel::Tail)),matrix=m.append(matrices.data(),matrices.size()*48);if(!tail||!matrix)return false;
  voxel::Library lib{0,count,count,bodySize,0,tail,body};uint32_t library=m.append(&lib,sizeof lib);uint32_t motion[4]={0,layers,frames,matrix};uint32_t hva=m.append(motion,sizeof motion);return library&&hva&&voxel::capturePart(m,library,hva,out,offset,sx,sy);
 }
+inline bool rawVxl(const std::vector<uint8_t>&v,voxel::Model&out){if(v.size()<802||std::memcmp(v.data(),"Voxel Animation",15))return false;unsigned layers=word(v.data()+20);if(!layers||layers>32||v.size()<802+layers*28)return false;std::vector<uint8_t>h(24+layers*16+layers*48);uint32_t frames=1;std::memcpy(h.data()+16,&frames,4);std::memcpy(h.data()+20,&layers,4);auto identity=voxelposture::identity();for(unsigned i=0;i<layers;++i){std::memcpy(h.data()+24+i*16,v.data()+802+i*28,16);std::memcpy(h.data()+24+layers*16+i*48,identity.data(),48);}return vxl(v,h,out);}
 template<class Read>std::string text(Read read,uint32_t p,unsigned n){if(p<0x10000||n>127)return {};char s[128]{};if(!read(p,s,n))return {};s[n]=0;return safe(s)?name(s):std::string{};}
 template<class Read>std::string shapeName(Read read,uint32_t p){uint16_t tag=0;uint32_t filename=0;if(!read(p,&tag,2)||tag!=65535||!read(p+8,&filename,4)||filename<0x10000)return {};std::string s;for(int i=0;i<127;++i){char c=0;if(!read(filename+i,&c,1))return {};if(!c)return safe(s)?name(s):std::string{};s.push_back(c);}return {};}
 }}

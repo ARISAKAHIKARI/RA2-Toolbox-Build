@@ -19,7 +19,7 @@ private:
   if(pid_!=r.pid||match_!=r.match){reader_.close();engine_.reset();for(auto&p:old_)p.clear();images_={};pid_=r.pid;match_=r.match;}
   if(!reader_.open(r.pid))return {};reader_.begin();auto fresh=[&](uint32_t p,void*out,size_t n){return reader_.readFresh(p,out,n);};auto read=[&](uint32_t p,void*out,size_t n){return reader_.read(p,out,n);};mainview::View before;
   if(!mainview::sample(fresh,before)||!mainview::sameViewport(before,r.view)||before.frame<r.view.frame)return {};uint32_t sampled=clock_();Plan plan;
-  if(!engine_.capture(read,before,input.objects,r.width,r.height,plan))return {};
+  if(!engine_.capture(read,before,input.objects,r.width,r.height,plan,sampled))return {};
   for(size_t lane=0;lane<plan.layers.size();++lane){auto&primitives=plan.layers[lane];if(primitives.empty()){images_[lane]={};old_[lane].clear();}
    else if(primitives!=old_[lane]){nativefeedback::Canvas canvas;nativefeedback::Rect bounds;if(!nativefeedback::paintInteractions(primitives,{},canvas,bounds))return {};images_[lane]={bounds,std::make_shared<const std::vector<uint32_t>>(std::move(canvas.pixels))};old_[lane]=std::move(primitives);}
   }
@@ -28,7 +28,7 @@ private:
  }
 public:
  explicit Task(std::function<uint32_t()>clock):clock_(std::move(clock)),worker_([this](const Input&i){return run(i);}){}
- void submit(const Request&r,const std::vector<nativefeedback::Object>&objects){Input input;input.request=r;for(const auto&o:objects)if(o.kind==3)input.objects.push_back(o);worker_.submit(std::move(input));}
+ void submit(const Request&r,const std::vector<nativefeedback::Object>&objects){Input input;input.request=r;for(const auto&o:objects)if(o.kind>=0&&o.kind<=3)input.objects.push_back(o);worker_.submit(std::move(input));}
  std::shared_ptr<const Result>get(){return worker_.get();}
  std::shared_ptr<const Result>visible(const Request&r,uint32_t now){auto result=worker_.get();if(!result||result->request.pid!=r.pid||result->request.match!=r.match||result->request.generation!=r.generation||result->request.width!=r.width||result->request.height!=r.height||result->request.context.token!=r.context.token||!mainview::sameViewport(result->view,r.view)||r.view.frame<result->view.frame||uint32_t(now-result->sampledTick)>150)return {};return result;}
  void invalidate(){worker_.invalidate();}void shutdown(){worker_.shutdown();}

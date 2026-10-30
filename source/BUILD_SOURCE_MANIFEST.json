@@ -48,7 +48,7 @@
       "hook_broker": "x86"
     }
   },
-  "render_effect_coverage": "See ANIMATION_RENDER_COVERAGE.md. AnimClass SHP opacity/fade is sampled; particles, WaveClass, RadBeam, VoxelAnim and distortions remain incomplete.",
+  "render_effect_coverage": "See ANIMATION_RENDER_COVERAGE.md: HVA frames, standard VoxelAnim, fire/pixel particles, independent laser/radiation/wave/alpha/glow paths now integrated; new procedural effects use a CPU post-pass over shared CPU/GPU scene output, with native A/Z and exact pixels still uncertified.",
   "Hotfix13": {
     "ui": "Video/Control/Automatic/GameRules/Experimental; original three masters removed; video owns cursor/render and monitoring/watch/minimap",
     "defaults": "particles, lasers, VXL and SHP relighting ON; individual persisted OFF choices retained; extra quality/xBRZ/Vulkan remain opt-in",
@@ -61,5 +61,12 @@
     "local_ui": "Replaces broad native message/timer/primary/rally passthrough rectangles with independent main-view font masks and patterned lines; current GAME.FNT and CSF values read-only; four cached compositor textures on a private reader/worker",
     "reference": "Vera20k 0b6a073d0928453036c4a53d117bb7a2d8d573a7 font, anchors and rally pixel walk; cnc-ddraw 279a057ee7e1e4d584b56141c014ab01f3c6ee6d format/palette comparison only",
     "validation_limit": "Portable controlled regressions and local cross compilation; no Windows game/GPU/FPS or pixel-perfect font certification; custom UI, input caret, sloped/object rally destinations remain incomplete"
+  },
+  "Hotfix15": {
+    "world": "Shared immutable effect snapshots and CPU/GPU viewport output for laser/prism/disk segments, straight radiation/temporal beams, sonic/magnetic displacement, pixel particles, alpha shapes and glow; no native timers, RNG or draw methods called",
+    "hva_debris": "All HVA matrices retained; current body/turret counters and cache identities; independent VoxelAnim array, current bounce quaternion, floor/bridge shadow, raw VXL without HVA, shared immutable debris geometry",
+    "main_ui": "Main-only group/rank/repair/power status; exact-floor/object rally resolver; Campaign held/full timers omitted; queued Foot navigation nodes/labels; full PlanMgr graph and custom UI remain partial",
+    "formation": "Shared native material bank and ViewportCanvas CPU/GPU compositor/profile; private ghost placement, bounded elapsed-time decode rotation, cached palette invalidation; final bitmap drawn without per-pixel UI processing",
+    "limits": "No live Windows/game/GPU/netplay/FPS measurement. Eruption RadBeam2, legacy Wave1/2, building-light beams, complete PlanMgr graph, full-screen distortions and arbitrary mod UI still incomplete."
   }
 }

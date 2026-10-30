@@ -122,11 +122,11 @@ public:
     if(useZ&&z<=depth[to])continue;
     if(i.shadow){uint32_t old=color[to],v=old&0xff000000u;unsigned a=p>>24;for(int shift:{0,8,16})v|=(((old>>shift)&255)*(510-a)/510)<<shift;color[to]=v;}
     else if(preciseSample){
-     const double alpha=std::clamp(filtered[3],0.,255.);uint32_t out=0xff000000u,old=color[to];
+     const double alpha=std::clamp(filtered[3],0.,255.);uint32_t old=color[to];unsigned oldAlpha=old>>24;uint32_t out=(oldAlpha==255?255u:unsigned(std::clamp(std::floor(alpha+oldAlpha*(255-alpha)/255.+.5),0.,255.)))<<24;
      for(int c=0;c<3;++c){int shift=16-c*8;double value=std::clamp(filtered[c],0.,alpha)+((old>>shift)&255)*(255-alpha)/255.;out|=uint32_t(std::clamp(std::floor(value+.5),0.,255.))<<shift;}color[to]=out;
     }
     else{if(!sampled)p=transform.apply(p,indexed?i.indices[from]:0,i.objectPalette);unsigned a=p>>24;
-     if(a==255)color[to]=p;else{uint32_t old=color[to],out=0xff000000u;for(int shift:{0,8,16})out|=std::min(255u,((p>>shift)&255)+((old>>shift)&255)*(255-a)/255)<<shift;color[to]=out;}
+     if(a==255)color[to]=p;else{uint32_t old=color[to],out=(a+(old>>24)*(255-a)/255)<<24;for(int shift:{0,8,16})out|=std::min(255u,((p>>shift)&255)+((old>>shift)&255)*(255-a)/255)<<shift;color[to]=out;}
     }
     // Building/terrain shadows write their ground plane. Without this, each
     // overlapping shadow halves the same pixel again and quickly turns black.

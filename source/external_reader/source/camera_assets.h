@@ -12,6 +12,7 @@
 #include "sprite_names.h"
 #include "projectile_visuals.h"
 #include "particle_visuals.h"
+#include "voxel_animation_visuals.h"
 #include "live_palette_cache.h"
 #include "palette_recovery.h"
 #include "gpu_voxel.h"
@@ -264,9 +265,11 @@ bool actor(uint32_t p,uint32_t type,uint32_t id,double angle,external::voxel::Im
 // Observation assets are retained separately from rendered headings: turning a
 // unit must not reopen/redecode its VXL/HVA files every overlay frame.
 struct BuildingPart {uint32_t pointer=0;std::vector<uint8_t> shape;std::string filename;};
+using DebrisModelKey=std::tuple<uint32_t,uint32_t,uint32_t,uint32_t,int,uint64_t>;
+inline static std::mutex debrisModelMutex_;inline static std::map<DebrisModelKey,std::weak_ptr<const voxel::Model>>debrisModels_;
 struct ActorArt {
- mutable bool sourceKnown=false;mutable nativeimages::Signature sourceSignature;
- external::voxel::Model model;std::vector<uint8_t> shape;std::array<uint32_t,256> colors{};
+ mutable bool sourceKnown=false;mutable nativeimages::Signature sourceSignature;mutable size_t capturedBytes=0;
+ external::voxel::Model model;std::shared_ptr<const voxel::Model>sharedGeometry;const voxel::Model&geometry()const{return sharedGeometry?*sharedGeometry:model;}std::vector<uint8_t> shape;std::array<uint32_t,256> colors{};
  // A fresh nonce is assigned only after successful immutable model capture.
  // Copies/moves preserve it; recapture/replacement always creates a new owner.
  gpuvoxel::PacketCache::Geometry geometryIdentity;
@@ -277,19 +280,19 @@ struct ActorArt {
  std::array<BuildingPart,external::buildings::PartCount> buildingParts;
 };
 static bool liveVoxel(const ActorArt&a){return a.voxel;}
- bool gpuVoxel(const ActorArt&art,double angle,double turret,double pitch,bool projectile,int scale,const voxelposture::State*posture,bool shadow,voxel::Image&out){
+ bool gpuVoxel(const ActorArt&art,double angle,double turret,double pitch,bool projectile,int scale,const voxelposture::State*posture,bool shadow,voxel::Image&out,int bodyFrame=0,int turretFrame=0){
   if(!shadow)gpuVplSnapshot();
-  auto key=gpuvoxel::PacketCache::key(art.geometryIdentity,shadow?std::shared_ptr<const gpuvoxel::PacketCache::VplSnapshot>{}:gpuVplSnapshot_,art.colors,angle,turret,pitch,art.turretOffset,scale,projectile,shadow,posture);
+  auto key=gpuvoxel::PacketCache::key(art.geometryIdentity,shadow?std::shared_ptr<const gpuvoxel::PacketCache::VplSnapshot>{}:gpuVplSnapshot_,art.colors,angle,turret,pitch,art.turretOffset,scale,projectile,shadow,posture,bodyFrame,turretFrame);
   auto packet=gpuPackets_.find(key);
   if(!packet){auto next=std::make_shared<gpuvoxel::Prepared>();
-   if(shadow){auto flattened=art.model;for(auto&face:flattened.faces)for(auto&p:face.p)p.z=0;
-    if(!gpuvoxel::prepare(flattened,angle,art.colors,*next,turret,art.turretOffset,nullptr,255,0,false,scale,posture))return false;
-   }else if(!gpuvoxel::prepare(art.model,angle,art.colors,*next,turret,art.turretOffset,&voxelLight,255,pitch,projectile,scale,posture))return false;
+   if(shadow){voxel::Model flattened;if(bodyFrame||turretFrame){if(!voxel::animated(art.geometry(),bodyFrame,turretFrame,flattened))return false;}else flattened=art.geometry();for(auto&face:flattened.faces)for(auto&p:face.p){if(art.kind==voxelanims::Kind&&posture)p=voxel::posturePoint(posture->ramp,p);p.z=0;}
+    if(!gpuvoxel::prepare(flattened,angle,art.colors,*next,turret,art.turretOffset,nullptr,255,0,false,scale,art.kind==voxelanims::Kind?nullptr:posture))return false;
+   }else{voxel::Model animated;const voxel::Model*model=&art.geometry();if(bodyFrame||turretFrame){if(!voxel::animated(art.geometry(),bodyFrame,turretFrame,animated))return false;model=&animated;}if(!gpuvoxel::prepare(*model,angle,art.colors,*next,turret,art.turretOffset,&voxelLight,255,pitch,projectile,scale,posture))return false;}
    packet=next;gpuPackets_.insert(std::move(key),packet);
   }
   out={};out.rasterScale=packet->rasterScale;out.width=packet->width;out.height=packet->height;out.x=packet->x;out.y=packet->y;out.depthBottom=packet->depthBottom;out.objectPalette=true;out.gpuRaster=std::move(packet);return true;
  }
-static size_t cost(const ActorArt&a){size_t n=a.shape.size()+a.model.faces.size()*sizeof(external::voxel::Face);for(const auto&part:a.buildingParts)n+=part.shape.size();return n;}
+static size_t cost(const ActorArt&a){if(a.capturedBytes)return a.capturedBytes;if(a.sharedGeometry)return sizeof(ActorArt);size_t n=a.shape.size()+a.model.faces.size()*sizeof(external::voxel::Face);std::set<const voxel::Motion*>seen;for(const auto&face:a.model.faces)if(face.motion&&seen.insert(face.motion.get()).second)n+=face.motion->changes.capacity()*48;for(const auto&part:a.buildingParts)n+=part.shape.size();a.capturedBytes=std::max<size_t>(1,n);return n;}
 static int integer(const std::string&s,int fallback=0){if(s.empty())return fallback;char*end=nullptr;long n=strtol(s.c_str(),&end,10);return end!=s.c_str()&&!*end?int(std::clamp(n,-8192l,8192l)):fallback;}
 void captureBuildingParts(uint32_t type,ActorArt&art){
  for(int i=0;i<external::buildings::PartCount;++i){auto&part=art.buildingParts[i];part.pointer=word(type+external::buildings::partOffsets[i]);if(part.pointer<0x10000){part.pointer=0;continue;}
@@ -330,6 +333,13 @@ bool captureAnimation(uint32_t p,uint32_t type,uint32_t id,uint32_t parent,uint3
  bool paletteChanged=false;if(!refreshActorPalette(next,paletteChanged))return false;
  failure.clear();out=std::move(next);return true;
 }
+bool debrisPalette(uint32_t owner,std::array<uint32_t,256>&out){lastPaletteLive_=false;if(owner>=0x10000){int index=int(word(owner+0x16054)),count=int(word(0xB054E0));uint32_t items=word(0xB054D4),scheme=index>=0&&index<count&&count<=512?word(items+index*4):0;uint8_t raw[768]{};if(scheme>=0x10000&&read(scheme+4,raw,sizeof raw)){for(int i=0;i<256;++i)out[i]=0xFF000000u|(uint32_t(raw[i*3])<<16)|(uint32_t(raw[i*3+1])<<8)|raw[i*3+2];out[0]=0;lastPaletteLive_=true;return true;}}return convertPalette(word(0x87F6BC),out)||paletteFile("UNITSNO.PAL",out);}
+bool captureVoxelAnimation(uint32_t p,uint32_t type,uint32_t id,ActorArt&out){voxelanims::State state;if(!voxelanims::capture(read,p,state)||state.id!=id||state.type!=type)return false;ActorArt next;next.object=p;next.type=type;next.id=id;next.owner=state.owner;next.kind=voxelanims::Kind;next.voxel=true;next.shadow=true;
+ DebrisModelKey key{process_,match_,type,word(type+0xB0),state.section,files.revision()};{std::lock_guard<std::mutex>lock(debrisModelMutex_);auto found=debrisModels_.find(key);if(found!=debrisModels_.end())next.sharedGeometry=found->second.lock();}
+ if(!next.sharedGeometry){voxel::Model model;bool loaded=voxel::captureRaw(read,word(type+0xB0),model);if(!loaded){std::vector<uint8_t>v;auto stem=imageName(type);loaded=!stem.empty()&&files.load(stem+".VXL",v)&&assets::rawVxl(v,model);}if(!loaded)return false;model.faces.erase(std::remove_if(model.faces.begin(),model.faces.end(),[&](const auto&f){return f.section!=state.section;}),model.faces.end());if(model.faces.empty())return false;next.sharedGeometry=std::make_shared<const voxel::Model>(std::move(model));std::lock_guard<std::mutex>lock(debrisModelMutex_);if(debrisModels_.size()>=4096)for(auto i=debrisModels_.begin();i!=debrisModels_.end();)if(i->second.expired())i=debrisModels_.erase(i);else ++i;if(debrisModels_.size()>=4096)debrisModels_.erase(debrisModels_.begin());debrisModels_[key]=next.sharedGeometry;}
+ if(!debrisPalette(state.owner,next.colors))return false;next.paletteLive=lastPaletteLive_;next.geometryIdentity=std::make_shared<const uint8_t>(0);out=std::move(next);return true;}
+
+bool effectAlpha(uint32_t pointer,voxel::Image&out){std::array<uint32_t,256>colors{};for(unsigned i=0;i<256;++i)colors[i]=0xFF000000u|(i<<16)|(i<<8)|i;return voxel::sprite(read,pointer,colors,out,0,nullptr,255);}
 bool particlePalette(std::array<uint32_t,256>&out){lastPaletteLive_=false;return convertPalette(word(0x87F6C0),out)||paletteFile("ANIM.PAL",out);}
 bool captureParticle(uint32_t p,uint32_t type,uint32_t id,ActorArt&out){
  external::particles::State state;if(!external::particles::capture(read,p,state)||state.id!=id||state.type!=type)return false;
@@ -441,6 +451,7 @@ bool refreshActorPalette(ActorArt&art,bool&changed){
   }else if(art.kind==external::particles::Kind){external::particles::State state;
    if(!external::particles::capture(read,art.object,state)||state.id!=art.id||state.type!=art.type)return false;
    ok=particlePalette(sample.colors);
+  }else if(art.kind==external::voxelanims::Kind){external::voxelanims::State state;if(!external::voxelanims::capture(read,art.object,state)||state.id!=art.id||state.type!=art.type)return false;ok=debrisPalette(state.owner,sample.colors);
   }else if(art.kind==external::projectiles::Kind){external::projectiles::State state;
    if(!external::projectiles::capture(read,art.object,state)||state.id!=art.id||state.type!=art.type)return false;
    ok=projectilePalette(state,sample.colors);
@@ -457,16 +468,16 @@ bool renderSharedActor(const ActorArt&art,const external::visual::Pose&pose,std:
  if(art.voxel&&!voxelLightingAvailable())return false;
  bool cacheable=process_&&art.id&&(art.voxel?bool(art.geometryIdentity):!art.shape.empty());
  if(art.kind==3)for(const auto&part:art.buildingParts)if(part.pointer&&part.shape.empty())cacheable=false;
- if(cacheable&&!art.sourceKnown){auto&h=art.sourceSignature;
-  for(const auto&f:art.model.faces){for(const auto&p:f.p){h.add(p.x);h.add(p.y);h.add(p.z);}h.add(f.normal.x);h.add(f.normal.y);h.add(f.normal.z);h.add(f.color);h.add(f.normalIndex);h.add(f.normalType);h.add(f.turret);h.add(f.hasNormal);}
+ if(cacheable&&!art.sourceKnown){auto&h=art.sourceSignature;std::set<const voxel::Motion*> motions;
+  for(const auto&f:art.geometry().faces){for(const auto&p:f.p){h.add(p.x);h.add(p.y);h.add(p.z);}h.add(f.normal.x);h.add(f.normal.y);h.add(f.normal.z);h.add(f.color);h.add(f.normalIndex);h.add(f.normalType);h.add(f.turret);h.add(f.hasNormal);h.add(f.section);if(f.motion&&motions.insert(f.motion.get()).second)for(const auto&m:f.motion->changes)for(float v:m)h.add(v);}
   h.bytes(art.shape.data(),art.shape.size());for(const auto&part:art.buildingParts){h.add(part.pointer);h.bytes(part.shape.data(),part.shape.size());}
   for(int v:{art.kind,art.fw,art.fh,art.moveX,art.moveY,art.drawY,art.zAdjust})h.add(v);
   h.add(art.turretOffset);h.add(art.flat);h.add(art.shadow);h.add(art.depthMaskBiased);
   if(art.depthMask){h.bytes(art.depthMask->pixels.data(),art.depthMask->pixels.size()*4);h.bytes(art.depthMask->depth.data(),art.depthMask->depth.size()*4);h.add(art.depthMask->width);h.add(art.depthMask->height);h.add(art.depthMask->x);h.add(art.depthMask->y);}
   art.sourceKnown=true;
  }
- nativeimages::Key key;if(cacheable){key.palette=art.colors;key.values={process_,match_,files.revision(),art.kind>=5?art.object:0,art.kind>=5?art.id:0,art.type,art.owner,art.parent,art.parentId,art.sourceSignature.a,art.sourceSignature.b,art.voxel?voxelLight.signature():0,
-  uint32_t(pose.body)|(uint64_t(pose.turret)<<8)|(uint64_t(uint32_t(pose.frame))<<16),uint32_t(pose.variant),uint32_t(pose.buildingFlags),uint32_t(pose.doorFrame),uint32_t(pose.turretFrame),uint32_t(pose.bodyFine),uint32_t(pose.turretFine),external::visual::postureSignature(pose),art.voxel?uint32_t(presentationRasterScale()):1,art.voxel?uint64_t(gpuPresentation_):0,uint64_t(art.pointer),0};
+ nativeimages::Key key;if(cacheable){key.palette=art.colors;key.values={process_,match_,files.revision(),art.kind>=5&&art.kind!=voxelanims::Kind?art.object:0,art.kind>=5&&art.kind!=voxelanims::Kind?art.id:0,art.type,art.owner,art.parent,art.parentId,art.sourceSignature.a,art.sourceSignature.b,art.voxel?voxelLight.signature():0,
+  uint32_t(pose.body)|(uint64_t(pose.turret)<<8)|(uint64_t(uint32_t(pose.frame))<<16),uint32_t(pose.variant),uint32_t(pose.buildingFlags),uint32_t(pose.doorFrame),uint32_t(pose.turretFrame),uint32_t(pose.bodyFine),uint32_t(pose.turretFine),external::visual::postureSignature(pose),art.voxel?uint32_t(presentationRasterScale()):1,art.voxel?uint64_t(gpuPresentation_):0,uint64_t(art.pointer),uint32_t(pose.hvaBody)|(uint64_t(uint32_t(pose.hvaTurret))<<32)};
   if(auto image=nativeimages::bank().get(key)){out=std::move(image);return true;}
  }
  external::voxel::Image image;if(!renderActor(art,pose,image))return false;external::camera::opaque(image);out=std::make_shared<const external::voxel::Image>(std::move(image));if(cacheable)nativeimages::bank().put(std::move(key),out);return true;
@@ -479,9 +490,10 @@ bool renderActor(const ActorArt&art,const external::visual::Pose&pose,external::
   if(!presentation_)vpl();bool projectile=art.kind==external::projectiles::Kind;
   if(projectile&&!voxelLight.ready()){failure="projectile-vpl-unavailable";return false;}
   if(!pose.posture.available){failure="voxel-current-posture-unavailable";return false;}
+  const int bodyFrame=pose.hvaBody,turretFrame=bodyFrame?bodyFrame:pose.hvaTurret;if(bodyFrame<0||turretFrame<0)return false;
   if(gpuPresentation_){
-   if(!gpuVoxel(art,angle,projectile?std::numeric_limits<double>::quiet_NaN():turret,projectile?turret:0,projectile,rasterScale,&pose.posture,false,out))return false;
-  }else if(!external::voxel::render(art.model,angle,art.colors,out,projectile?std::numeric_limits<double>::quiet_NaN():turret,art.turretOffset,&voxelLight,255,projectile?turret:0,projectile,rasterScale,&pose.posture))return false;
+   if(!gpuVoxel(art,angle,projectile?std::numeric_limits<double>::quiet_NaN():turret,projectile?turret:0,projectile,rasterScale,&pose.posture,false,out,bodyFrame,turretFrame))return false;
+  }else{voxel::Model animated;const voxel::Model*model=&art.geometry();if(bodyFrame||turretFrame){if(!voxel::animated(art.geometry(),bodyFrame,turretFrame,animated))return false;model=&animated;}if(!external::voxel::render(*model,angle,art.colors,out,projectile?std::numeric_limits<double>::quiet_NaN():turret,art.turretOffset,&voxelLight,255,projectile?turret:0,projectile,rasterScale,&pose.posture))return false;}
   // The model Z buffer resolves faces inside the cached voxel only. The game
   // submits that cached image through the same standing shape Z test as SHP.
   // Orthographic model depth is not in the terrain/BUILDNGZ buffer's units.
@@ -491,11 +503,11 @@ bool renderActor(const ActorArt&art,const external::visual::Pose&pose,external::
    if(!art.flat){if(gpuPresentation_)out.skipZ=true;else out.depth.assign(out.pixels.size(),std::numeric_limits<float>::quiet_NaN());}
   }
   if(art.shadow){external::voxel::Image shadow;bool drawn=false;
-   auto shadowPosture=external::voxelshadow::projection(pose.shadow);
+   auto shadowPosture=art.kind==voxelanims::Kind?pose.posture:external::voxelshadow::projection(pose.shadow);
    if(!shadowPosture.available){failure="voxel-current-shadow-unavailable";return false;}
-   if(gpuPresentation_)drawn=gpuVoxel(art,angle,turret,0,false,rasterScale,&shadowPosture,true,shadow);
-   else{auto ground=art.model;for(auto&face:ground.faces)for(auto&p:face.p)p.z=0;drawn=external::voxel::render(ground,angle,art.colors,shadow,turret,art.turretOffset,nullptr,255,0,false,rasterScale,&shadowPosture);}
-   if(drawn){shadow.x+=3*shadow.rasterScale;shadow.shadow=true;shadow.flat=true;shadow.writeDepth=false;shadow.depthBias=2;std::vector<float>().swap(shadow.depth);out.attachments.push_back(std::move(shadow));}}
+   if(gpuPresentation_)drawn=gpuVoxel(art,angle,turret,0,false,rasterScale,&shadowPosture,true,shadow,bodyFrame,turretFrame);
+   else{voxel::Model ground;if(bodyFrame||turretFrame){if(!voxel::animated(art.geometry(),bodyFrame,turretFrame,ground))return false;}else ground=art.geometry();for(auto&face:ground.faces)for(auto&p:face.p){if(art.kind==voxelanims::Kind)p=voxel::posturePoint(pose.posture.ramp,p);p.z=0;}drawn=external::voxel::render(ground,angle,art.colors,shadow,turret,art.turretOffset,nullptr,255,0,false,rasterScale,art.kind==voxelanims::Kind?nullptr:&shadowPosture);}
+   if(drawn){shadow.x+=(art.kind==voxelanims::Kind?0:3)*shadow.rasterScale;shadow.shadow=true;shadow.flat=true;shadow.writeDepth=false;shadow.depthBias=art.kind==voxelanims::Kind?-2:2;std::vector<float>().swap(shadow.depth);out.attachments.push_back(std::move(shadow));}}
   return true;
  }
  if(pose.frame<0){failure="sprite-sequence";return false;}

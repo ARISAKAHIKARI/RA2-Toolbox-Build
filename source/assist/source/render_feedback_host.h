@@ -34,6 +34,8 @@ static bool externalCursor(){
  for(const auto&e:overlaystack::entries)if(e.layer==overlaystack::Layer::Cursor&&e.window&&IsWindowVisible(e.window))return true;
  return false;
 }
+template<class F>static auto independentLasers(const F&f,int)->decltype(f.effects.independentLasers,bool()){return f.effects.independentLasers;}
+template<class F>static bool independentLasers(const F&,long){return false;}
 static bool update(const Request&r,const std::shared_ptr<const Frame>&scene,int left,int top,std::vector<overlaycompositor::Surface>&layers){
  struct NativeFailureGuard {
   bool hadCutouts=false,complete=false;
@@ -61,7 +63,7 @@ static bool update(const Request&r,const std::shared_ptr<const Frame>&scene,int 
  const bool placementOK=foundationStencil.capture(read,r.view,r.width,r.height,cutouts);
  const bool effectsOK=(!r.profile.particles||effectStencil.capture(read,r.view,r.width,r.height,scene->objects,cutouts))&&
   unitUIStencil.capture(read,r.view,r.width,r.height,scene->objects,cutouts)&&
-  (!r.profile.lasers||external::nativeeffects::beams(read,r.view,r.width,r.height,cutouts))&&
+  (!r.profile.lasers||independentLasers(*scene,0)||external::nativeeffects::beams(read,r.view,r.width,r.height,cutouts))&&
   external::nativeeffects::mergeCutouts(cutouts,r.width,r.height);
  const double sx=double(r.width)/r.view.width,sy=double(r.height)/r.view.height;
  external::mainview::View after;

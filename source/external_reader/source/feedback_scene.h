@@ -18,7 +18,7 @@ template<class Renderer,class Frame>std::vector<Object> objectGeometry(const Ren
  }
  return out;
 }
-struct EffectStatus {bool complete=false;unsigned bolts=0;};
+struct EffectStatus {bool complete=false;unsigned bolts=0;bool independentLasers=false;};
 // Whole-map previews have a virtual source viewport larger than a physical
 // display. Only projection fields are needed by the passive bolt rasterizer.
 struct WorldView {int cameraX=0,cameraY=0,width=0,height=0,frame=-1;bool valid()const{return frame>=0&&width>0&&height>0&&width<=122880&&height<=122880&&std::abs(int64_t(cameraX))<1000000&&std::abs(int64_t(cameraY))<1000000;}};

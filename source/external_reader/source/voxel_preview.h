@@ -11,13 +11,14 @@
 #include "voxel_lighting.h"
 #include "resolution_sampling.h"
 #include "voxel_posture.h"
+#include "voxel_motion.h"
 namespace external { namespace gpuvoxel {struct Prepared;} }
 namespace external { namespace voxel {
 // Read-only in-memory VXL/HVA capture. Never calls the game renderer. Layout
 // evidence: YRpp + native 755DB0/7563A8, 5BD5C0/5BD730 and 705D70.
 constexpr size_t MaxBytes=8*1024*1024,MaxVoxels=100000,MaxFaces=150000;
 struct Vec {float x=0,y=0,z=0;};
-struct Face {Vec p[4],normal{};uint8_t color=0,normalIndex=255,normalType=0;bool turret=false,hasNormal=false;};
+struct Face {Vec p[4],normal{};uint8_t color=0,normalIndex=255,normalType=0;bool turret=false,hasNormal=false;uint8_t section=0;std::shared_ptr<const Motion> motion;};
 struct Model {std::vector<Face> faces;};
 struct Image {int rasterScale=1;int canvasWidth=0,canvasHeight=0;int width=0,height=0,x=0,y=0,depthBottom=std::numeric_limits<int>::min();std::vector<uint32_t> pixels;std::vector<float> depth;std::vector<uint8_t> indices;bool intrinsicAlpha=false,objectPalette=false,flat=false,writeDepth=true,shadow=false,shadowsAfter=false,incomplete=false,airborneShadow=false,skipZ=false;float depthBias=0;std::vector<Image> attachments;std::shared_ptr<const gpuvoxel::Prepared> gpuRaster;};
 struct Library {uint32_t failed=0,headers=0,tailers=0,size=0,head=0,tail=0,body=0;};
@@ -31,11 +32,11 @@ inline Vec transform(const float*m,Vec p){return {m[0]*p.x+m[1]*p.y+m[2]*p.z+m[3
 template<class Read>bool capturePart(Read read,uint32_t vxl,uint32_t hva,Model&out,float offset=0,float scaleX=1,float scaleY=1){
  Library lib{},after{};if(!range(vxl,sizeof lib)||!read(vxl,&lib,sizeof lib)||uint8_t(lib.failed)||!lib.headers||lib.headers>32||lib.tailers!=lib.headers||!lib.size||lib.size>MaxBytes||!range(lib.body,lib.size)||!range(lib.tail,lib.tailers*sizeof(Tail)))return false;
  struct Motion{uint32_t failed,layers,frames,matrices;}motion{},motionAfter{};
- if(!range(hva,sizeof motion)||!read(hva,&motion,sizeof motion)||uint8_t(motion.failed)||motion.layers!=lib.headers||!motion.frames||motion.frames>4096||!range(motion.matrices,motion.layers*48))return false;
- std::vector<uint8_t> data(lib.size);std::vector<Tail> tails(lib.tailers);std::vector<std::array<float,12>> matrices(motion.layers);
+ if(!range(hva,sizeof motion)||!read(hva,&motion,sizeof motion)||uint8_t(motion.failed)||motion.layers!=lib.headers||!motion.frames||motion.frames>4096||uint64_t(motion.layers)*motion.frames*48>MaxBytes||!range(motion.matrices,size_t(motion.layers)*motion.frames*48))return false;
+ std::vector<uint8_t> data(lib.size);std::vector<Tail> tails(lib.tailers);std::vector<std::array<float,12>> matrices(size_t(motion.layers)*motion.frames);
  if(!read(lib.body,data.data(),data.size())||!read(lib.tail,tails.data(),tails.size()*sizeof(Tail))||!read(motion.matrices,matrices.data(),matrices.size()*48))return false;
  Model pending;size_t total=0;
- for(size_t limb=0;limb<tails.size();++limb){auto&t=tails[limb];auto&m=matrices[limb];int sx=t.size[0],sy=t.size[1],sz=t.size[2];if(!sx||!sy||!sz||size_t(sx)*sy*sz>4*1024*1024)return false;
+ for(size_t limb=0;limb<tails.size();++limb){auto&t=tails[limb];auto&m=matrices[limb];std::shared_ptr<external::voxel::Motion> animation;if(motion.frames>1){voxelposture::Matrix inverse;if(!inverseMotion(motionBasis(m,offset,scaleX,scaleY),inverse))return false;animation=std::make_shared<external::voxel::Motion>();animation->changes.reserve(motion.frames);for(unsigned frame=0;frame<motion.frames;++frame){auto posed=matrices[frame*motion.layers+limb];for(float f:posed)if(!finite(f))return false;animation->changes.push_back(frame?voxelposture::multiply(motionBasis(posed,offset,scaleX,scaleY),inverse):voxelposture::identity());}}int sx=t.size[0],sy=t.size[1],sz=t.size[2];if(!sx||!sy||!sz||size_t(sx)*sy*sz>4*1024*1024)return false;
   for(float f:m)if(!finite(f))return false;
   Vec lo{16384,16384,16384},hi{-16384,-16384,-16384};for(int i=0;i<8;++i){float x=t.bounds[i*3],y=t.bounds[i*3+1],z=t.bounds[i*3+2];if(!finite(x)||!finite(y)||!finite(z))return false;lo.x=std::min(lo.x,x);lo.y=std::min(lo.y,y);lo.z=std::min(lo.z,z);hi.x=std::max(hi.x,x);hi.y=std::max(hi.y,y);hi.z=std::max(hi.z,z);}
   Vec step{(hi.x-lo.x)/sx,(hi.y-lo.y)/sy,(hi.z-lo.z)/sz};if(step.x<=0||step.y<=0||step.z<=0||step.x>64||step.y>64||step.z>64)return false;
@@ -56,7 +57,7 @@ template<class Read>bool capturePart(Read read,uint32_t vxl,uint32_t hva,Model&o
   const int corners[6][4]={{0,4,6,2},{1,3,7,5},{0,1,5,4},{2,6,7,3},{0,2,3,1},{4,5,7,6}};
   for(int z=0;z<sz;++z)for(int y=0;y<sy;++y)for(int x=0;x<sx;++x){uint8_t color=grid[index(x,y,z)];if(!color)continue;
    for(int f=0;f<6;++f){int nx=x+normals[f][0],ny=y+normals[f][1],nz=z+normals[f][2];if(nx>=0&&nx<sx&&ny>=0&&ny<sy&&nz>=0&&nz<sz&&grid[index(nx,ny,nz)])continue;
-    if(pending.faces.size()+out.faces.size()>=MaxFaces)return false;Face face;face.color=color;face.normalIndex=shading[index(x,y,z)];std::array<float,3> normal{};
+    if(pending.faces.size()+out.faces.size()>=MaxFaces)return false;Face face;face.section=uint8_t(limb);face.motion=animation;face.color=color;face.normalIndex=shading[index(x,y,z)];std::array<float,3> normal{};
     face.normalType=t.normal;face.hasNormal=normalVector(t.normal,face.normalIndex,normal);
     if(face.hasNormal){face.normal={(m[0]*normal[0]+m[1]*normal[1]+m[2]*normal[2])/scaleX,-(m[4]*normal[0]+m[5]*normal[1]+m[6]*normal[2])/scaleY,m[8]*normal[0]+m[9]*normal[1]+m[10]*normal[2]};float n=std::sqrt(face.normal.x*face.normal.x+face.normal.y*face.normal.y+face.normal.z*face.normal.z);if(n>1e-6f){face.normal.x/=n;face.normal.y/=n;face.normal.z/=n;}else face.hasNormal=false;}
     // Native D*Rz(-angle), with screen Y inverted, equals this preview's
@@ -68,6 +69,10 @@ template<class Read>bool capturePart(Read read,uint32_t vxl,uint32_t hva,Model&o
  }
  if(!read(vxl,&after,sizeof after)||std::memcmp(&lib,&after,sizeof lib)||!read(hva,&motionAfter,sizeof motionAfter)||std::memcmp(&motion,&motionAfter,sizeof motion))return false;
  out.faces.insert(out.faces.end(),pending.faces.begin(),pending.faces.end());return !pending.faces.empty();
+}
+template<class Read>bool captureRaw(Read read,uint32_t vxl,Model&out){Library lib;if(!read(vxl,&lib,sizeof lib)||!lib.headers||lib.headers>32)return false;constexpr uint32_t Header=0xF0000000,Matrix=0xF0001000;std::array<uint32_t,4>motion{{0,lib.headers,1,Matrix}};std::vector<voxelposture::Matrix>identity(lib.headers,voxelposture::identity());auto source=[&](uint32_t p,void*buffer,size_t n){if(p>=Header&&uint64_t(p)+n<=uint64_t(Header)+sizeof motion){std::memcpy(buffer,reinterpret_cast<const uint8_t*>(motion.data())+p-Header,n);return true;}if(p>=Matrix&&uint64_t(p)+n<=uint64_t(Matrix)+identity.size()*48){std::memcpy(buffer,reinterpret_cast<const uint8_t*>(identity.data())+p-Matrix,n);return true;}return read(p,buffer,n);};return capturePart(source,vxl,Header,out);}
+inline bool animated(const Model&model,int body,int turret,Model&out){
+ if(body<0||turret<0)return false;out=model;for(auto&face:out.faces){if(!face.motion||face.motion->changes.empty())continue;const auto&m=face.motion->changes[unsigned(face.turret?turret:body)%face.motion->changes.size()];for(auto&p:face.p)p=transform(m.data(),p);if(face.hasNormal){voxelposture::Matrix inv;if(!inverseMotion(m,inv)){face.hasNormal=false;continue;}auto n=face.normal;face.normal={inv[0]*n.x+inv[4]*n.y+inv[8]*n.z,inv[1]*n.x+inv[5]*n.y+inv[9]*n.z,inv[2]*n.x+inv[6]*n.y+inv[10]*n.z};float length=std::sqrt(face.normal.x*face.normal.x+face.normal.y*face.normal.y+face.normal.z*face.normal.z);if(length>1e-6f){face.normal.x/=length;face.normal.y/=length;face.normal.z/=length;}else return false;}}return true;
 }
 template<class Read>bool palette(Read read,uint32_t type,uint32_t owner,std::array<uint32_t,256>&out){
  uint32_t vector=0,items=0,scheme=0;int index=-1,count=0;

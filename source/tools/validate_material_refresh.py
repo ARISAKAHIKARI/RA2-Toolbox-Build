@@ -35,7 +35,7 @@ assert 'materialblend::image(' in scene and 'detailed_.prepare(' in scene
 assert 'if(masked&&!areaUsed&&(!detail||!detailed_.gpuMasked()))mask_.apply(out->pixels);' in scene
 assert 'masked?maskPixels_:nullptr,masked?gpuMaskPlan_:nullptr,maskReadback' in scene
 assert 'areaUsed=view.presentGPU(width,height,out->pixels,spanX_,spanY_,masked?maskPixels_:nullptr,masked?gpuMaskPlan_:nullptr);' in scene
-assert 'if(masked&&gpuMaskPlan_&&cpuMaskPlan_!=gpuMaskPlan_&&(!areaUsed||!fallbacks.empty()))' in scene
+assert 'if(masked&&gpuMaskPlan_&&cpuMaskPlan_!=gpuMaskPlan_&&(!areaUsed||!fallbacks.empty()||worldEffects))' in scene
 assert 'if((!detail||!detailed_.gpuMasked())&&!gpushroud::reference(*gpuMaskPlan_,mask_.alpha))return {};' in scene
 assert 'frame.posesPrepared' in scene
 assert 'refreshPalette(assets,' in scene and 'invalidateArt(key)' in scene

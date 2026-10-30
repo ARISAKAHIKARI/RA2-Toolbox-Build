@@ -9,15 +9,16 @@ int main(int argc,char**argv){
  uint64_t gpuComparisons=0;unsigned gpuMaxError=0;
  auto base=std::make_shared<const std::vector<uint32_t>>(24*18,0xff416283);auto depth=std::make_shared<const std::vector<float>>(24*18,-std::numeric_limits<float>::infinity());
  size_t cases=0;
- for(auto precision:{colorprecision::Mode::NativeSteps,colorprecision::Mode::SmoothRGB})for(bool after:{false,true})for(float ratio:{1.f,1.5f,2.f}){
+ for(auto precision:{colorprecision::Mode::NativeSteps,colorprecision::Mode::SmoothRGB})for(bool after:{false,true})for(float ratio:{1.f,1.5f,2.f})for(unsigned baseAlpha:{0u,127u,255u}){
+  uint32_t baseColor=baseAlpha<<24;for(unsigned shift:{0u,8u,16u})baseColor|=(((0xff416283u>>shift)&255)*baseAlpha/255)<<shift;auto sceneBase=std::make_shared<const std::vector<uint32_t>>(24*18,baseColor);
   auto image=std::make_shared<voxel::Image>(sprite(0x80604020));image->shadowsAfter=after;image->depthBias=2;image->depthBottom=4;for(size_t n=0;n<image->indices.size();++n)image->indices[n]=n%3==0?1:241;image->pixels[4]=0;image->indices[4]=0;
   image->attachments={sprite(0xff000000,true),sprite(0xffa02060)};image->attachments[0].airborneShadow=true;image->attachments[0].y=1;image->attachments[1].x=2;
   lighting::State light;light.intensity=700;light.tint={{900,1100,800}};
-  camera::GpuSceneRecord record;record.begin(24,18,base,depth,precision);assert(record.append(*image,image,9,8,ratio,ratio,10,light,1,2,true));
+  camera::GpuSceneRecord record;record.begin(24,18,sceneBase,depth,precision);assert(record.append(*image,image,9,8,ratio,ratio,10,light,1,2,true));
   assert(record.valid()&&record.frame().draws.size()==3);const auto&draw=record.frame().draws[after?0:1];assert(draw.source.pixels.get()==&image->pixels&&draw.source.indices.get()==&image->indices&&draw.depthBase==12&&draw.depthBottom==4);
   if(ratio>1){assert(draw.reconstructionSource&&!draw.reconstructed&&draw.reconstructionFactor==2&&draw.reconstructedWidth==6);camera::Light transform(light,precision);for(size_t n=0;n<image->pixels.size();++n)assert((*draw.reconstructionSource)[n]==transform.apply(image->pixels[n],image->indices[n],true));}
   assert(record.frame().draws[after?1:0].shadow&&record.frame().draws[2].source.pixels.get()==&image->attachments[1].pixels);
-  camera::Surface expected;assert(expected.reset(24,18));expected.precision(precision);expected.color=*base;expected.depth=*depth;expected.blit(*image,9,8,ratio,ratio,10,light,1,2,true);
+  camera::Surface expected;assert(expected.reset(24,18));expected.precision(precision);expected.color=*sceneBase;expected.depth=*depth;expected.blit(*image,9,8,ratio,ratio,10,light,1,2,true);
   record.annotationDot(12,13,0x203040);for(int y=12;y<15;++y)for(int x=11;x<14;++x)expected.color[size_t(y)*24+x]=0xff203040;
   if(device){std::vector<uint32_t> actual;if(!device->renderFrame(record.frame(),actual)){std::fprintf(stderr,"GPU record unavailable: %s\n",device->diagnostics().reason.c_str());return 1;}assert(actual.size()==expected.color.size()&&device->diagnostics().readbacks==1);
    for(size_t at=0;at<actual.size();++at)for(int shift:{0,8,16,24}){unsigned error=unsigned(std::abs(int((actual[at]>>shift)&255)-int((expected.color[at]>>shift)&255)));gpuMaxError=std::max(gpuMaxError,error);if(error>1){std::fprintf(stderr,"GPU record mismatch case=%zu xy=(%zu,%zu) shift=%d expected=%08x actual=%08x\n",cases,at%24,at/24,shift,expected.color[at],actual[at]);return 2;}++gpuComparisons;}

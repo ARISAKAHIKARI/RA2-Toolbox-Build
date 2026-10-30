@@ -91,9 +91,9 @@ void main(){
   }
   if((flags&1u)!=0u){uint result=color&0xff000000u,alpha=pixel>>24;for(uint shift=0;shift<24;shift+=8)result|=(((color>>shift)&255u)*(510u-alpha)/510u)<<shift;color=result;}
 #ifdef SCENE_FP64
-  else if(preciseSample){Real alpha=clamp(filtered.w,Real(0),Real(255));RVec value=unpackColor(color);for(int c=0;c<3;++c)value[c]=clamp(filtered[c],Real(0),alpha)+value[c]*(Real(255)-alpha)/Real(255);value.w=Real(255);color=packColor(value);}
+  else if(preciseSample){Real alpha=clamp(filtered.w,Real(0),Real(255));RVec value=unpackColor(color);for(int c=0;c<3;++c)value[c]=clamp(filtered[c],Real(0),alpha)+value[c]*(Real(255)-alpha)/Real(255);value.w=value.w==Real(255)?Real(255):alpha+value.w*(Real(255)-alpha)/Real(255);color=packColor(value);}
 #endif
-  else{if(mode==0u)pixel=litAt(draw,original);uint alpha=pixel>>24;if(alpha==255u)color=pixel;else{uint result=0xff000000u;for(uint shift=0;shift<24;shift+=8)result|=min(255u,((pixel>>shift)&255u)+((color>>shift)&255u)*(255u-alpha)/255u)<<shift;color=result;}}
+  else{if(mode==0u)pixel=litAt(draw,original);uint alpha=pixel>>24;if(alpha==255u)color=pixel;else{uint result=(alpha+(color>>24)*(255u-alpha)/255u)<<24;for(uint shift=0;shift<24;shift+=8)result|=min(255u,((pixel>>shift)&255u)+((color>>shift)&255u)*(255u-alpha)/255u)<<shift;color=result;}}
   if(useZ&&(flags&2u)!=0u)depth=z;
  }
  if(p.fogOffset!=Missing&&(color>>24)!=0u){uint alpha=byteAt(p.fogOffset,outputAt);if(alpha<127u){confidence=false;uint result=color&0xff000000u;for(uint shift=0;shift<24;shift+=8)result|=((((color>>shift)&255u)*alpha+63u)/127u)<<shift;color=result;}}

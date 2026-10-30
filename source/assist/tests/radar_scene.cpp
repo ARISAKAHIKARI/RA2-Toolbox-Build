@@ -249,11 +249,11 @@ int main(){
   for(int frame=0;frame<7;++frame){uint32_t header=shape+8+frame*24,offset=8+7*24+frame*3600;put(header+4,uint16_t(60));put(header+6,uint16_t(60));put(header+20,offset);std::fill(memory.begin()+shape+offset,memory.begin()+shape+offset+3600,uint8_t(frame%2+1));}
   effects.read=[&](uint32_t at,void*out,size_t n){if(uint64_t(at)+n>memory.size())return false;memcpy(out,memory.data()+at,n);return true;};
   external::repairvisuals::Sprite repair;repair.x=m.x;repair.y=m.y;repair.shape=shape;repair.converter=converter;repair.frame=0;repair.tick=1;f.repairs={repair};
-  image=effectsRenderer.render(f,128,64,read,effects);assert(image&&image->pixels[32*128+64]==0xffff0000);
-  ++f.repairs[0].tick;f.repairs[0].frame=1;image=effectsRenderer.render(f,128,64,read,effects);assert(image&&image->pixels[32*128+64]==0xff00ff00);
+  image=effectsRenderer.render(f,128,64,read,effects);assert(image&&image->pixels[32*128+64]==0xff0000ff); // local repair/status sprites are main-view UI
+  ++f.repairs[0].tick;f.repairs[0].frame=1;image=effectsRenderer.render(f,128,64,read,effects);assert(image&&image->pixels[32*128+64]==0xff0000ff);
   f.repairs.clear();image=effectsRenderer.render(f,128,64,read,effects);assert(image&&image->pixels[32*128+64]==0xff0000ff);
   f.markers.clear();image=effectsRenderer.render(f,128,64,read,effects);assert(image&&std::find(image->pixels.begin(),image->pixels.end(),0xff0000ff)==image->pixels.end());
  }
- std::cout<<"PASS scene publication, native animation frame-zero/advance, independent door/roof cache, shared source art, fair retained poses, ground/air layers, shroud policy, resource/wall/bridge light, native area presentation/cache/budget recovery, projectile/repair effects, resize and reset\n";
+ std::cout<<"PASS scene publication, native animation frame-zero/advance, independent door/roof cache, shared source art, fair retained poses, ground/air layers, shroud policy, resource/wall/bridge light, native area presentation/cache/budget recovery, projectile effects and main-only status exclusion, resize and reset\n";
 }
 

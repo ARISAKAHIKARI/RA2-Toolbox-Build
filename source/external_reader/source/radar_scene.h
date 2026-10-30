@@ -21,17 +21,18 @@ template<class Assets>class SceneRenderer {
  struct Cached {std::shared_ptr<voxel::Image> image=std::make_shared<voxel::Image>();bool ready=false;uint32_t retry=0;};
  struct SpriteCached {std::shared_ptr<const voxel::Image> image=std::make_shared<voxel::Image>();bool ready=false;uint32_t retry=0;};
  using ArtKey=std::tuple<uint32_t,uint32_t,int,int,uint32_t,uint32_t>;
- using ImageKey=std::tuple<uint32_t,uint32_t,int,int,int,int,int,int,int,int,int,uint32_t,uint32_t,uint64_t,int>;
+ using ImageKey=std::tuple<uint32_t,uint32_t,int,int,int,int,int,int,int,int,int,uint32_t,uint32_t,uint64_t,int,int,int>;
  using ObjectKey=std::pair<uint32_t,uint32_t>;
  static ArtKey artKey(const Marker&m){return {m.type,m.owner,m.kind,(m.kind==5||m.kind==7)?0:m.pose.variant,m.kind>=5?m.object:0,m.kind>=5?m.id:0};}
- static ImageKey imageKey(const Marker&m){return {m.type,m.owner,m.kind,m.pose.body,m.pose.turret,m.pose.frame,m.pose.variant,m.pose.buildingFlags,m.pose.doorFrame,m.pose.bodyFine,m.pose.turretFine,m.kind>=5?m.object:0,m.kind>=5?m.id:0,visual::postureSignature(m.pose),m.pose.turretFrame};}
+ static ImageKey imageKey(const Marker&m){return {m.type,m.owner,m.kind,m.pose.body,m.pose.turret,m.pose.frame,m.pose.variant,m.pose.buildingFlags,m.pose.doorFrame,m.pose.bodyFine,m.pose.turretFine,m.kind>=5?m.object:0,m.kind>=5?m.id:0,visual::postureSignature(m.pose),m.pose.turretFrame,m.pose.hvaBody,m.pose.hvaTurret};}
  static ArtKey artKey(const ImageKey&k){return {std::get<0>(k),std::get<1>(k),std::get<2>(k),(std::get<2>(k)==5||std::get<2>(k)==7)?0:std::get<6>(k),std::get<11>(k),std::get<12>(k)};}
  template<class A>static auto voxelArt(const A&a,int)->decltype(bool(a.voxel)){return a.voxel;}
  template<class A>static bool voxelArt(const A&,long){return false;}
  template<class A>static auto voxelRevision(const A&a,int)->decltype(a.voxelLightingRevision(),a.voxelLightingAvailable(),std::pair<bool,uint64_t>{}){return {a.voxelLightingAvailable(),a.voxelLightingRevision()};}
  template<class A>static std::pair<bool,uint64_t> voxelRevision(const A&,long){return {false,0};}
- template<class A>static auto faceCount(const A&a,int)->decltype(a.model.faces.size()){return a.model.faces.size();}
- template<class A>static size_t faceCount(const A&,long){return 0;}
+ template<class A>static auto faceCount(const A&a,int)->decltype(a.geometry().faces.size()){return a.geometry().faces.size();}
+ template<class A>static auto faceCount(const A&a,long)->decltype(a.model.faces.size()){return a.model.faces.size();}
+ template<class A>static size_t faceCount(const A&,...){return 0;}
  template<class A>static auto beginPalette(A&a,int)->decltype(a.beginPresentation(),void()){a.beginPresentation();}
  template<class A>static void beginPalette(A&,long){}
  template<class A>static auto gpuPresentation(const A&a,int)->decltype(bool(a.presentationGPU())){return a.presentationGPU();}
@@ -46,6 +47,9 @@ template<class Assets>class SceneRenderer {
  template<class A>static bool captureActor(A&a,const Marker&m,typename A::ActorArt&art,long){return a.captureActor(m.object,m.type,m.id,art);}
  template<class Read>static auto currentVisibility(Read read,int)->decltype(read.fresh(0,nullptr,0),bool()){return true;}
  template<class Read>static bool currentVisibility(Read,long){return false;}
+ template<class A>static auto alphaImage(A&a,uint32_t pointer,voxel::Image&out,int)->decltype(a.effectAlpha(pointer,out),bool()){return a.effectAlpha(pointer,out);}
+ template<class A>static bool alphaImage(A&,uint32_t,voxel::Image&,long){return false;}
+ std::map<uint32_t,std::shared_ptr<const voxel::Image>>effectAlphas_;
  void invalidateArt(const ArtKey&key){
   for(auto i=sprites_.begin();i!=sprites_.end();)if(artKey(i->first)==key)i=sprites_.erase(i);else ++i;
   for(auto i=displayed_.begin();i!=displayed_.end();)if(artKey(i->second)==key)i=displayed_.erase(i);else ++i;
@@ -117,7 +121,7 @@ public:
  }
  struct NativeStats {int width,height;size_t pages,resident;uint64_t cells,presents,partialBanks;};
  NativeStats nativeStats()const{return {background_.width(),background_.height(),background_.pageCount(),nativeBudget_->pages,nativeCells_,basePresents_,partialBanks_};}
- void reset(){voxelLightKnown_=false;tiles_.clear();overlays_.clear();art_.clear();sprites_.clear();displayed_.clear();actorCursor_=transientCursor_=0;repairAssets_.reset();clearBackground();coverage_={};coverageLocal_=false;width_=height_=0;spanX_=spanY_=0;revision_=0;terrainPaletteReady_=false;terrainPalette_={};nativeCells_=basePresents_=partialBanks_=0;gpuMaskBuilder_.reset();detailed_.reset();detailKey_=0;}
+ void reset(){effectAlphas_.clear();voxelLightKnown_=false;tiles_.clear();overlays_.clear();art_.clear();sprites_.clear();displayed_.clear();actorCursor_=transientCursor_=0;repairAssets_.reset();clearBackground();coverage_={};coverageLocal_=false;width_=height_=0;spanX_=spanY_=0;revision_=0;terrainPaletteReady_=false;terrainPalette_={};nativeCells_=basePresents_=partialBanks_=0;gpuMaskBuilder_.reset();detailed_.reset();detailKey_=0;}
  void features(const presentation::Profile&p){if(p.voxelLighting!=features_.voxelLighting||p.spriteLighting!=features_.spriteLighting){art_.clear();sprites_.clear();displayed_.clear();voxelLightKnown_=false;}features_=p;}
  template<class Read>std::shared_ptr<const Scene> render(const Frame&frame,int width,int height,Read read,Assets&assets,SceneRegion region={},unsigned pixelScaleMode=0,bool refined=false,bool liveVoxels=true,bool highColorPrecision=false,bool forceFrame=false,double decodeBudgetMs=4.){
   const bool warming=!materialsReady_;materialsReady_=false;decodeStats_={};
@@ -390,7 +394,7 @@ public:
   const double projectionScale=projectionZScale(read);
   const auto&geo=frame.terrain->geo;int work=0;size_t pixels=0;std::vector<const Marker*> fallbacks;
   auto markers=frame.markers;
-  if(!features_.particles)markers.erase(std::remove_if(markers.begin(),markers.end(),[](const Marker&m){return m.kind==7||(m.kind==5&&!m.parent);}),markers.end());
+  if(!features_.particles)markers.erase(std::remove_if(markers.begin(),markers.end(),[](const Marker&m){return m.kind==7||m.kind==8||(m.kind==5&&!m.parent);}),markers.end());
   if(region.active)markers.erase(std::remove_if(markers.begin(),markers.end(),[&](const Marker&m){
    double x=(double(m.x)-m.y)*30/256.+geo.offsetX*30,y=(double(m.x)+m.y)*15/256.-geo.offsetY*15-screenHeight(m.z,projectionScale);
    return x<region.x-512||x>region.x+region.width+512||y<region.y-512||y>region.y+region.height+512;
@@ -433,7 +437,7 @@ public:
    if(cached.ready&&!cached.image->incomplete){++decodeStats_.hits;return;}if(cached.retry&&int32_t(frame.tick-cached.retry)<0)return;
    ++work;++decodeStats_.attempts;voxel::Image image;std::shared_ptr<const voxel::Image>sharedImage;bool ready=false;auto source=art_.find(artKey(m));
    if(m.kind==4)ready=assets.overlay(m.type,game.template get<uint32_t>(m.type+0xA4),m.pose.frame,image,true);
-   else{if(source==art_.end()){typename Assets::ActorArt art;if((m.kind==7?particles::captureArt(assets,m.object,m.type,m.id,art):m.kind==6?projectiles::captureArt(assets,m.object,m.type,m.id,art):m.kind==5?assets.captureAnimation(m.object,m.type,m.id,m.parent,m.parentId,art):captureActor(assets,m,art,0))&&artBytes+Assets::cost(art)<=128*1024*1024){artBytes+=Assets::cost(art);source=art_.emplace(artKey(m),std::move(art)).first;}}
+   else{if(source==art_.end()){typename Assets::ActorArt art;if((m.kind==8?voxelanims::captureArt(assets,m.object,m.type,m.id,art):m.kind==7?particles::captureArt(assets,m.object,m.type,m.id,art):m.kind==6?projectiles::captureArt(assets,m.object,m.type,m.id,art):m.kind==5?assets.captureAnimation(m.object,m.type,m.id,m.parent,m.parentId,art):captureActor(assets,m,art,0))&&artBytes+Assets::cost(art)<=128*1024*1024){artBytes+=Assets::cost(art);source=art_.emplace(artKey(m),std::move(art)).first;}}
     if(source!=art_.end()&&!(liveVoxels&&voxelArt(source->second,0)))ready=sharedActor(assets,source->second,m.pose,sharedImage,0);}
    size_t previous=camera::pixels(*cached.image),next=sharedImage?camera::pixels(*sharedImage):camera::pixels(image);
    if(ready&&pixels-previous+next<=8*1024*1024){if(!sharedImage){camera::opaque(image);sharedImage=std::make_shared<const voxel::Image>(std::move(image));}pixels=pixels-previous+next;cached.image=std::move(sharedImage);cached.ready=true;}
@@ -466,14 +470,14 @@ public:
    // A reader without revision support retains the conservative live path.
    std::set<ImageKey> rastered;size_t liveFaces=0;
    for(const auto&m:markers){auto source=art_.find(artKey(m));
-    if(source==art_.end()){if(m.pose.voxel)return {};continue;}
+    if(source==art_.end()){if(m.pose.voxel&&m.kind<5)return {};continue;}
     if(!voxelArt(source->second,0))continue;auto key=imageKey(m);if(!rastered.insert(key).second)continue;
     auto cachedImage=sprites_.find(key);
     if(!voxelLightChanged&&cachedImage!=sprites_.end()&&cachedImage->second.ready&&!cachedImage->second.image->incomplete){++decodeStats_.hits;continue;}
-    liveFaces+=faceCount(source->second,0);if(liveFaces>2*1024*1024)return {};
-    std::shared_ptr<const voxel::Image>image;if(!sharedActor(assets,source->second,m.pose,image,0)||!image||image->incomplete)return {};
+    liveFaces+=faceCount(source->second,0);if(liveFaces>2*1024*1024){if(m.kind>=5)continue;return {};}
+    std::shared_ptr<const voxel::Image>image;if(!sharedActor(assets,source->second,m.pose,image,0)||!image||image->incomplete){if(m.kind>=5)continue;return {};}
     auto&cached=sprites_[key];size_t previous=camera::pixels(*cached.image),next=camera::pixels(*image);
-    if(pixels-previous+next>8*1024*1024)return {};
+    if(pixels-previous+next>8*1024*1024){if(m.kind>=5)continue;return {};}
     pixels=pixels-previous+next;cached.image=std::move(image);cached.ready=true;cached.retry=0;
    }
   }
@@ -495,23 +499,18 @@ public:
      if(old!=sprites_.end()&&old->second.ready&&materialblend::image(*old->second.image,*image,unsigned(m.pose.frameWeight),lift,blended)){imageOwner=std::make_shared<const voxel::Image>(std::move(blended));image=imageOwner.get();}
     }
     const bool relight=(source!=art_.end()&&voxelArt(source->second,0))?features_.voxelLighting:features_.spriteLighting;
-    auto light=(!relight||m.kind==7)?lighting::State{}:m.kind==6?projectiles::light(read,uint32_t(m.pose.variant)):m.kind==5?lighting::animation(read,m.object,m.type,m.x,m.y,m.z,scene):m.kind==4?lighting::terrainObject(read,m.type,m.x,m.y,m.z,scene):lighting::object(read,m.type,m.owner,m.kind,m.x,m.y,m.z,scene);uint32_t cell=frame.terrain->art[(m.y/256)*512+m.x/256].cell;bool bridge=m.onBridge;int level=game.template get<int8_t>(cell+0x11B);
+    auto light=(!relight||m.kind==7||m.kind==8)?lighting::State{}:m.kind==6?projectiles::light(read,uint32_t(m.pose.variant)):m.kind==5?lighting::animation(read,m.object,m.type,m.x,m.y,m.z,scene):m.kind==4?lighting::terrainObject(read,m.type,m.x,m.y,m.z,scene):lighting::object(read,m.type,m.owner,m.kind,m.x,m.y,m.z,scene);uint32_t cell=frame.terrain->art[(m.y/256)*512+m.x/256].cell;bool bridge=m.onBridge;int level=game.template get<int8_t>(cell+0x11B);
     vulkancompute::MotionIdentity motion;motion.object=m.object;motion.id=m.id;motion.type=m.type;motion.kind=uint32_t(m.kind);motion.known=guideEnabled_&&detail&&m.object>=0x10000&&m.type>=0x10000&&m.id!=0xffffffffu&&m.kind>=0&&m.kind<=6;
     draw(*image,px,py,1,1,float((int64_t(m.x)+m.y)*15/256.)-15+camera::anchorY(m.kind)-m.drawZ+(bridge?60:0),light,m.kind==4?12:(m.kind==3||m.kind==5)?2:1,m.pose.shadow.known?float(m.pose.shadow.drop):float(std::max(0,screenHeight(m.z,projectionScale)-(level+(bridge?4:0))*15)),std::move(imageOwner),std::move(motion));}
    else if(m.kind<4)fallbacks.push_back(&m);
   }
-  // Native status sprites use their cursor palette and are drawn after all
-  // world objects without either reading or writing the world depth buffer.
-  const lighting::State statusLight;
-  for(const auto&sprite:frame.repairs)if(const auto*image=repairAssets_.image(assets,sprite)){
-   float x=float((double(sprite.x)-sprite.y)*30/256.+geo.offsetX*30),y=float((double(sprite.x)+sprite.y)*15/256.-geo.offsetY*15-screenHeight(sprite.z,projectionScale));
-   draw(*image,x,y,1,1,0,statusLight);
-  }
+  // Local status glyphs are drawn by local_ui_task on the main view only.
   // Keep physical border scenery; the native radar projection and output
   // canvas crop the image. Camera movement limits are not a pixel mask.
   if(tiles_.size()>4096)tiles_.clear();if(overlays_.size()>4096)overlays_.clear();
   if(view.failed()){dynamicFailure_=true;return {};}
-  const bool staticView=(detail?(!detailed_.dirty()&&!gpuMode_):!view.dirtyPages())&&fallbacks.empty();
+  const bool worldEffects=frame.effects&&frame.effects->world&&!frame.effects->world->empty();
+  const bool staticView=!worldEffects&&(detail?(!detailed_.dirty()&&!gpuMode_):!view.dirtyPages())&&fallbacks.empty();
   if(staticView&&!forceFrame){
    if(areaGpuMode){
     auto cached=masked?maskedBaseScene_:baseScene_;if(cached&&cached->pixels.size()==size_t(width)*height){xbrzadapter::gpuAreaCached(areaCachedGpu_);return cached;}
@@ -531,7 +530,7 @@ public:
    if(!detail)out->pixels=baseScene_->pixels;
    if(!(detail?detailed_.finish(out->pixels,true,masked?maskPixels_:nullptr,masked?gpuMaskPlan_:nullptr,maskReadback):region.active?view.presentRegion(width,height,out->pixels,region.x,region.y,region.width,region.height,pixelScaleMode):view.presentDirty(width,height,out->pixels,spanX_,spanY_))){dynamicFailure_=true;return {};}
   }
-  if(masked&&gpuMaskPlan_&&cpuMaskPlan_!=gpuMaskPlan_&&(!areaUsed||!fallbacks.empty())){
+  if(masked&&gpuMaskPlan_&&cpuMaskPlan_!=gpuMaskPlan_&&(!areaUsed||!fallbacks.empty()||worldEffects)){
    // CPU replay and missing-art dots need a native mask; a successful whole
    // minimap stays GPU-resident through its mask and returns only final RGBA.
    if((!detail||!detailed_.gpuMasked())&&!gpushroud::reference(*gpuMaskPlan_,mask_.alpha))return {};
@@ -544,6 +543,9 @@ public:
    if(masked&&(areaUsed||(detail&&detailed_.gpuMasked()))){unsigned alpha=mask_.alpha[at];if(alpha<127){uint32_t lit=0xff000000u;for(int shift:{0,8,16})lit|=((((color>>shift)&255u)*alpha+63)/127)<<shift;color=lit;}}
    out->pixels[at]=color;
   }}
+  if(worldEffects){worldfx::View effectView;effectView.x=region.active?region.x:0;effectView.y=region.active?region.y:0;effectView.width=region.active?region.width:spanX_;effectView.height=region.active?region.height:spanY_;effectView.pixelsW=width;effectView.pixelsH=height;effectView.offsetX=geo.offsetX;effectView.offsetY=geo.offsetY;effectView.zscale=projectionScale;worldfx::Painter painter(out->pixels,effectView,masked&&(areaUsed||(detail&&detailed_.gpuMasked()))?&mask_.alpha:nullptr);const auto&effects=*frame.effects->world;
+   if(features_.particles)for(const auto&alpha:effects.alphas){auto found=effectAlphas_.find(alpha.image);if(found==effectAlphas_.end()){voxel::Image image;if(!alphaImage(assets,alpha.image,image,0))continue;size_t bytes=0;for(const auto&item:effectAlphas_)bytes+=camera::pixels(*item.second)*5;if(bytes+camera::pixels(image)*5>16*1024*1024)effectAlphas_.clear();found=effectAlphas_.emplace(alpha.image,std::make_shared<const voxel::Image>(std::move(image))).first;}painter.alpha(alpha,*found->second);}painter.paint(effects,features_.particles,features_.lasers);
+  }
   if(masked&&!areaUsed&&(!detail||!detailed_.gpuMasked()))mask_.apply(out->pixels);
   if(areaGpuMode&&staticView){areaCachedGpu_=areaUsed;if(masked)maskedBaseScene_=out;else baseScene_=out;}
   return out;

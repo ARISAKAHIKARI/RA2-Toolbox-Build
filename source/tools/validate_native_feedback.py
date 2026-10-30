@@ -1,7 +1,7 @@
 from pathlib import Path
 import re
 root=Path(__file__).resolve().parents[1]
-paths=['external_reader/source/native_feedback.h','external_reader/source/feedback_selection.h','external_reader/source/feedback_cursor.h','external_reader/source/feedback_scene.h','external_reader/source/feedback_orders.h','assist/source/render_feedback_host.h','assist/source/render_upgrade_host.h','external_reader/source/native_ui_font.h','external_reader/source/local_ui_renderer.h','external_reader/source/local_ui_task.h']
+paths=['external_reader/source/native_feedback.h','external_reader/source/feedback_selection.h','external_reader/source/feedback_cursor.h','external_reader/source/feedback_scene.h','external_reader/source/feedback_orders.h','assist/source/render_feedback_host.h','assist/source/render_upgrade_host.h','external_reader/source/native_ui_font.h','external_reader/source/local_ui_renderer.h','external_reader/source/local_ui_task.h','external_reader/source/world_effects.h','external_reader/source/voxel_animation_visuals.h','external_reader/source/voxel_motion.h','external_reader/source/ground_geometry.h','assist/source/formation_engine.h']
 for path in paths:
     text=(root/path).read_text(encoding='utf-8')
     text=re.sub(r'/\*.*?\*/|//[^\n]*','',text,flags=re.S)

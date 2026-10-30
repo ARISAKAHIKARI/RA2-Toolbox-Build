@@ -6,6 +6,7 @@
 
 | 主题 | 新笔记 | 关键词 |
 | --- | --- | --- |
+| HVA 多帧、独立碎片／程序化效果与队形公共画布 | [动画与队形 Hotfix15](2026-10-30-animation-effects-formation-hotfix15.md) | HVA frames VoxelAnim rawVXL quaternion LaserDraw Wave AlphaShape points ViewportCanvas |
 | 本地 UI 独立绘制、当前原生字体与 Vera20k 对照 | [独立本地 UI Hotfix14](2026-10-30-independent-local-ui-hotfix14.md) | GAME.FNT CSF primary rally font cache worker no broad UI cutouts |
 | 共享缩放前素材、五类界面与粒子／本地 UI 边界 | [共享场景与本地 UI Hotfix13](2026-10-30-shared-scenes-local-ui-hotfix13.md) | SceneBank NativeImageBank particles defaults messages timers primary rally |
 | 持续规划后台线程、全局磁电索引、固定名额与动画类别审计 | [规划线程与动画 Hotfix12](2026-10-30-planner-thread-animation-audit-hotfix12.md) | UI ValueTask receipts expiry VXL256 selection512 EBolt128 SHP translucency x87 cooperative frozen keys |

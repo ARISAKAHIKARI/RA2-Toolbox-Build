@@ -191,6 +191,7 @@ static asyncwork::Recurring<Request,Frame> worker([](const Request&r)->std::shar
  out->yellow=assets.conditionYellow();out->red=assets.conditionRed();
  const std::vector<uint8_t>*visibility=nullptr;
  out->effects.complete=!r.profile.lasers;
+ const bool independentLasers=r.profile.lasers&&data.effects&&data.effects->world&&data.effects->world->lasersValid;
  if(r.profile.lasers&&data.effects&&data.effects->boltsValid&&renderer.feedbackVisibility(visibility)){
   out->effects.complete=true;
   if(!data.effects->bolts.empty()){
@@ -199,6 +200,7 @@ static asyncwork::Recurring<Request,Frame> worker([](const Request&r)->std::shar
    if(out->effects.complete)scene=std::move(decorated);
   }
  }
+ out->effects.independentLasers=independentLasers;
  external::mainview::View after;
  if(!external::mainview::sample(fresh,after)||!renderpresentation::sameProjection(before,after)||after.frame<before.frame||
    !external::radar::sameWorld(data,external::radar::publicationContext(fresh)))return unavailable();
