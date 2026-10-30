@@ -17,8 +17,9 @@ presentation=host.split('auto result=worker.get();',1)[1]
 assert presentation.index('host().replaceGroupAt(')<presentation.index('worker.submit(')<presentation.index('statusCadence.due(')
 assert 'heldFrame' not in host, 'Whole-frame reuse can bypass dynamic lighting and palette updates'
 assert 'reader.begin(); // Explicit fresh page epoch' in host
-assert 'timeline.observe(raw,' in host and 'timeline.sample(' in host
-assert 'before.frame!=sampledLogicFrame' in host and 'refreshPeriod(informationFPS(),renderMaterialRefresh)' in host
+assert 'timeline.observe(*observed->previous,observed->previousMs)' in host
+assert 'timeline.observe(*observed->current,observed->observedMs)' in host and 'timeline.sample(' in host
+assert 'observed->current->frame!=sampledLogicFrame' in host and 'worker.submit(request,informationFPS())' in host
 policy=(root/'assist/source/render_presentation.h').read_text(encoding='utf-8')
 assert 'a.generation==b.generation' in policy and '++generation;worker.invalidate()' in host
 assert 'frame.sampledTick,SampleMaxAge' in policy and 'frame.completedTick,CompletionMaxAge' in policy

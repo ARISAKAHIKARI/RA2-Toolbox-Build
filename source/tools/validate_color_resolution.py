@@ -17,7 +17,7 @@ assert 'presentationColorPrecision(r.colorPrecision!=0)' in host
 policy=(root/'assist/source/render_presentation.h').read_text(encoding='utf-8')
 assert 'renderpresentation::scrollVisible(*result,request,GetTickCount(),shift)' in host
 assert 'a.colorPrecision==b.colorPrecision' in policy
-assert 'true,r.colorPrecision!=0)' in host
+assert 'true,r.colorPrecision!=0,true,r.decodeBudgetMs)' in host
 scene = (root/'external_reader/source/radar_scene.h').read_text(encoding='utf-8')
 assert 'if(precision!=precision_){reset();precision_=precision;}' in scene
 assert 'pending_.precision(precision_)' in scene

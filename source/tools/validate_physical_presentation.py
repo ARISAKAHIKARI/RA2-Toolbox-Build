@@ -39,14 +39,17 @@ assert "renderPhysicalOutput" in host
 assert "physical.status==physicalpresentation::Status::Ready" in host
 assert "if(physicalBlocked)visible=false" not in host
 assert "physicalpresentation::renderPath(physical,renderPhysicalOutput)" in host
-assert "renderPath==physicalpresentation::RenderPath::EnhancedPhysicalPixels" in host
+# Physical output must not silently promote an area/nearest request to xBRZ.
+# The two explicit processing switches now own the effective scale policy.
+assert "const int effectiveScale=effectiveRenderScale();" in host
+assert "return renderProcessing&&renderXbrzEnabled?renderPixelScale:1;" in main
 assert "疑似独占/显示模式切换：覆盖层保持" in host
 assert "仅停用 4K 增强" in host
 assert "const bool physicalBlocked" not in host
 assert "LegacyClientPixels" in geometry and "EnhancedPhysicalPixels" in geometry
 assert "keepExistingOverlay(" in geometry
 assert "physicalpresentation::inspect(game" in host
-assert "renderPixelScale==0?3:renderPixelScale" in host
+assert "renderPixelScale==0?3:renderPixelScale" not in host
 assert "4K 物理重绘已停用" not in host
 assert "疑似独占/显示模式切换：覆盖层保持" in host
 assert "9306" in main and "renderPhysicalOutput=on" in main

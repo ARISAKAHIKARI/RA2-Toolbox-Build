@@ -65,7 +65,7 @@ static int labelScalePercent=100,constructionScalePercent=100;static bool minima
 static int minimapSecondaryX=10000,minimapSecondaryY=10000,minimapSecondaryWidth=320;static uint32_t computeRequested=compute::Default;
 static unsigned schedulerTarget=0,megaQueueMode=0,objectQueueMode=0;static HFONT font;static int scrollY,repairMs=2000,fps=60,topMargin=20,doubleMs=350,toastMs=6000;
 static bool infoAdaptive=false;static int informationFPS(){return infoAdaptive?144:fps;}
-static bool renderUpgradeEnabled=false,renderPhysicalOutput=false,unifiedOverlayEnabled=false,renderColorPrecision=false,renderMaterialRefresh=false,renderVulkanEnabled=false,renderDLSS5Requested=false;
+static bool renderUpgradeEnabled=false,renderPhysicalOutput=false,unifiedOverlayEnabled=false,renderColorPrecision=false,renderMaterialRefresh=false,renderVulkanEnabled=false,renderProcessing=false,renderXbrzEnabled=false;
 static int renderPaletteRange=0,renderSceneDetail=0,renderPixelScale=0;
 static Snapshot incoming;static bool networkHouseReady(){return false;}
 static DWORD GetTickCount(){return 1606;}

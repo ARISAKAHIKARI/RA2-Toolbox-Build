@@ -9,6 +9,7 @@ prefix=r'''
 #include "ore_type_config.h"
 #include "feature_type_config.h"
 #include "protocol.h"
+#include "shroud_policy.h"
 #include <cwchar>
 #include <cassert>
 #include <algorithm>
@@ -28,7 +29,7 @@ struct ControlUpdate{bool old=updatingControls;ControlUpdate(){updatingControls=
 static bool hookAdvanced=false,hookSmartUnload=false;static HWND hookChecks[4]={800,801,802,803};
 static uint32_t computeRequested=compute::Default;static bool minimapEnabled=false,minimapSecondary=false;static int minimapMode=0,minimapScale=10,advancedRangeCells=2,minimapPosition=0,minimapX=20,minimapY=60,minimapAlignX=0,minimapAlignY=0;
 static int minimapSecondaryX=10000,minimapSecondaryY=10000,minimapSecondaryWidth=320;
-static bool renderUpgradeEnabled=false,unifiedOverlayEnabled=false,renderMaterialRefresh=true,renderPhysicalOutput=false,renderVulkanEnabled=false,renderDLSS5Requested=false;
+static bool renderUpgradeEnabled=false,unifiedOverlayEnabled=false,renderMaterialRefresh=true,renderPhysicalOutput=false,renderVulkanEnabled=false,renderProcessing=false,renderXbrzEnabled=false;
 static int renderColorPrecision=1,renderSceneDetail=1,renderUpgradeLayer=0,renderPaletteRange=1,renderPixelScale=3;
 constexpr unsigned HOTKEYF_CONTROL=2,HOTKEYF_ALT=4;
 constexpr WORD MAKEWORD(unsigned a,unsigned b){return WORD((a&255)|(b<<8));}
@@ -317,6 +318,8 @@ int main(){
  saveMouse();extra.renderReveal=false;loadMouse();assert(extra.renderReveal&&!extra.experimentalReveal);
  profile[L"RevealMap"]=1;loadMouse();assert(extra.renderReveal&&!extra.experimentalReveal); // legacy permission loses on load
  fields[808]=4;autoSettingChanged(808,CBN_SELCHANGE);assert(extra.renderReveal==3&&!extra.experimentalReveal);saveFeatureTypes();saveMouse();loadFeatureTypes();loadMouse();assert(extra.mapStrategy==4&&extra.renderReveal==3);
+ for(int strategy:{5,6}){fields[808]=strategy;assert(autoSettingChanged(808,CBN_SELCHANGE));assert(extra.mapStrategy==strategy&&extra.renderReveal==unsigned(strategy-1)&&!extra.experimentalReveal);saveFeatureTypes();saveMouse();extra.mapStrategy=0;extra.renderReveal=0;loadFeatureTypes();loadMouse();assert(extra.mapStrategy==strategy&&extra.renderReveal==unsigned(strategy-1));}
+ for(int invalid:{-1,7}){fields[808]=invalid;assert(autoSettingChanged(808,CBN_SELCHANGE));assert(extra.mapStrategy==6&&extra.renderReveal==5);}
  fields[9096]=1;autoSettingChanged(9096,CBN_SELCHANGE);fields[9097]=1;autoSettingChanged(9097,BN_CLICKED);saveFeatureTypes();saveMouse();extra.placementImplementation=0;extra.techEnhance=false;loadFeatureTypes();loadMouse();assert(extra.placementImplementation==1&&extra.techEnhance);
  fields[808]=0;autoSettingChanged(808,CBN_SELCHANGE);assert(!extra.renderReveal);saveFeatureTypes();saveMouse();loadMouse();assert(!extra.renderReveal);
  fields[803]=2;autoSettingChanged(803,CBN_SELCHANGE);assert(extra.nativeAirWaypoints&&airway::resets==1&&pointerMatches.clears==1);

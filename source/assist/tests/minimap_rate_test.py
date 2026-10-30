@@ -54,7 +54,7 @@ struct TestCondition {
   assert(changed());return true;
  }
 };
-static int samplerResets=0,sceneResets=0,diagramResets=0;static bool capacityFailure=false,markerFresh=true,markerScanValid=true,contextReadable=true,stepOk=true,worldSame=true;static int actorCount=1;
+static int samplerResets=0,samplerSteps=0,sceneResets=0,diagramResets=0;static bool capacityFailure=false,markerFresh=true,markerScanValid=true,contextReadable=true,stepOk=true,worldSame=true,useSharedBank=false;static int actorCount=1;
 namespace external {
 namespace xbrzadapter{inline bool requested=false;inline void gpuPresentation(bool value){requested=value;}}
 struct ReadSession {void close(){}bool open(DWORD){return true;}void begin(){}bool readFresh(uint32_t,void*,size_t){return true;}template<class T>T get(uint32_t,T){return 1;}};
@@ -67,10 +67,14 @@ struct Image{int width=320,height=160,units=0;};
 struct Frame {std::shared_ptr<Terrain>terrain=std::make_shared<Terrain>();std::shared_ptr<Image>map,scene;std::vector<int>markers,repairs;bool markerScanValid=false;};
 template<class Assets>struct SceneRenderer {bool capacityExceeded()const{return capacityFailure;}void reset(){++sceneResets;}template<class Read>auto render(const Frame&frame,int w,int h,Read,Assets&){if(capacityFailure)return std::shared_ptr<Image>{};return std::make_shared<Image>(Image{w,h,int(frame.markers.size())});}};
 struct DiagramRenderer {void reset(){++diagramResets;}auto render(std::shared_ptr<Terrain>,int w,int h){return std::make_shared<Image>(Image{w,h});}};
-template<class Read>struct Sampler {explicit Sampler(Read){}void reset(){++samplerResets;}bool step(uint32_t,int,bool){clockMicros+=workMicros;return stepOk;}unsigned revision(){return 1;}Frame snapshot(DWORD){Frame frame;frame.markerScanValid=markerScanValid;if(markerScanValid&&actorCount)frame.markers.push_back(17);return frame;}};
+template<class Read>struct Sampler {explicit Sampler(Read){}void reset(){++samplerResets;}bool step(uint32_t,int,bool){++samplerSteps;clockMicros+=workMicros;return stepOk;}unsigned revision(){return 1;}Frame snapshot(DWORD,int){Frame frame;frame.markerScanValid=markerScanValid;if(markerScanValid&&actorCount)frame.markers.push_back(17);return frame;}};
 struct PublicationContext{bool readable=true;};
 template<class Read>PublicationContext publicationContext(Read){return {contextReadable};}
 inline bool sameWorld(const Frame&,PublicationContext context){return context.readable&&worldSame;}inline bool freshMarkers(const Frame&,PublicationContext){return markerFresh;}
+inline bool recentMarkers(const Frame&,PublicationContext context,DWORD){return context.readable&&markerFresh;}
+struct SceneBank {std::shared_ptr<const Frame> get(DWORD,uint32_t,uint32_t,DWORD,bool){if(!useSharedBank)return {};auto frame=std::make_shared<Frame>();frame->markerScanValid=true;frame->markers.push_back(17);return frame;}
+ void publish(DWORD,uint32_t,bool,std::shared_ptr<const Frame>){} };
+inline SceneBank&sceneBank(){static SceneBank bank;return bank;}
 }
 }
 namespace minimap {
@@ -139,6 +143,11 @@ int main(){
   else{assert(micros==4944);paced.shutdown();}
  };
  paced.run();assert(pacedWaits==3);workMicros=0;
+ // A fresh shared world bypasses the separate terrain traversal while still
+ // publishing the sampled markers to the minimap renderer.
+ useSharedBank=true;minimap::Worker shared;shared.set({2,3,60,0,1,320,160});int beforeSteps=samplerSteps;
+ atWait=[&](uint64_t){auto result=shared.get();assert(result&&result->scene&&result->scene->units==1&&samplerSteps==beforeSteps);shared.shutdown();};
+ shared.run();useSharedBank=false;
  std::cout<<"PASS production minimap worker: rate updates, transient sampling/context failure retains units, verified world/empty change clears, capacity retry and recovery\n";
  std::cout<<"PASS production minimap deadlines: 5/18/2ms controlled work consumes each period; slow work adds no full wait or catch-up debt\n";
 }
