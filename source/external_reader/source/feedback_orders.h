@@ -56,7 +56,7 @@ template<class Read>bool actionLines(Read read,const mainview::View&view,int wid
  if(!read(0xB0EA80,timer,sizeof timer))return false;
  if(timer[2]<=0||(timer[0]!=-1&&(int64_t(view.frame)-timer[0]>=timer[2])))return true;
  std::array<uint32_t,6> head{},after{};
- if(!read(0xA8ECB8,head.data(),sizeof head)||head[2]>8192||head[4]>head[2]||head[4]>512||
+ if(!read(0xA8ECB8,head.data(),sizeof head)||head[2]>8192||head[4]>head[2]||head[4]>8192||
   (head[4]&&!range(head[1],size_t(head[4])*4)))return false;
  std::vector<uint32_t> selected(head[4]);if(!selected.empty()&&!read(head[1],selected.data(),selected.size()*4))return false;
  auto sorted=selected;std::sort(sorted.begin(),sorted.end());if(std::adjacent_find(sorted.begin(),sorted.end())!=sorted.end())return false;

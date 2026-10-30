@@ -7,6 +7,8 @@
 #include "art_variants.h"
 #include "repair_visuals.h"
 #include "projectile_visuals.h"
+#include "native_feedback.h"
+#include "particle_visuals.h"
 #include "radar_shroud_selector.h"
 #include <memory>
 #include <array>
@@ -59,14 +61,16 @@ struct ShroudFrames {int8_t shroud=127,fog=127;
  bool operator==(const ShroudFrames&o)const{return shroud==o.shroud&&fog==o.fog;}
 };
 struct Terrain {Geometry geo;std::vector<uint32_t> colors,baseColors;std::vector<CellArt> art;std::vector<ShroudFrames> shade;bool reveal=false;};
-struct Frame {std::shared_ptr<const Terrain> terrain;std::vector<Marker> markers;std::shared_ptr<const Scene> scene,map;uint32_t tick=0;int frame=-1;bool markerScanValid=false,posesPrepared=false;std::vector<repairvisuals::Sprite> repairs;};
+struct EffectSnapshot {std::vector<nativefeedback::Bolt> bolts;bool boltsValid=false;};
+struct Frame {std::shared_ptr<const Terrain> terrain;std::vector<Marker> markers;std::shared_ptr<const Scene> scene,map;uint32_t tick=0;int frame=-1;bool markerScanValid=false,posesPrepared=false;std::vector<repairvisuals::Sprite> repairs;std::shared_ptr<const EffectSnapshot> effects;uint8_t effectMask=3;};
+inline bool supportsEffects(const Frame&frame,bool particles,bool lasers){return (!particles||(frame.effectMask&1))&&(!lasers||(frame.effectMask&2));}
 inline uint32_t terrainColor(int land,int level,bool fog){
  static constexpr uint32_t colors[]={0x66794b,0x85836c,0x285e86,0x70756d,0x999684,0xb7a843,0xb4a47c,0x77734d,0xb4cbd0,0x77766b,0x55584f,0x58703d};
  if(land<0||land>=12)return 0x44483a;uint32_t c=colors[land];int shade=std::clamp(level,0,14)*2;
  int r=std::min(255,int(c>>16)+shade),g=std::min(255,int((c>>8)&255)+shade),b=std::min(255,int(c&255)+shade);if(fog){r=r*2/3;g=g*2/3;b=b*2/3;}return uint32_t(r<<16|g<<8|b);
 }
 template<class Read> class Sampler {
- Read read_;GameView<Read> view_;Geometry geo_{};std::vector<uint32_t> pointers_;std::shared_ptr<Terrain> pending_;std::shared_ptr<const Terrain> terrain_;
+ bool particles_=true,lasers_=true;Read read_;GameView<Read> view_;Geometry geo_{};std::vector<uint32_t> pointers_;std::shared_ptr<Terrain> pending_;std::shared_ptr<const Terrain> terrain_;
  std::vector<uint32_t> tileTypes_,overlayTypes_;std::vector<artvariants::Pool> resourcePools_;size_t cursor_=0;int lastFrame_=-1;uint32_t reveal_=0;unsigned revision_=0;
  struct MaskBits {uint8_t state=0,shroud=0,fog=0;}; // state: unknown, verified, unavailable
  std::vector<MaskBits> maskBits_;std::array<int8_t,256> frameLookup_{};
@@ -95,6 +99,7 @@ template<class Read> class Sampler {
  }
 public:
  explicit Sampler(Read r):read_(r),view_(r){}
+ void effects(bool particles,bool lasers){particles_=particles;lasers_=lasers;}
  void reset(){geo_={};pointers_.clear();maskBits_.clear();pending_.reset();terrain_.reset();cursor_=0;lastFrame_=-1;++revision_;}
  unsigned revision()const{return revision_;}
  bool hasTerrain()const{return bool(terrain_);}
@@ -152,7 +157,7 @@ public:
   if(cursor_==pointers_.size()){terrain_=pending_;pending_.reset();maskBits_.clear();++revision_;}return true;
  }
  Frame snapshot(uint32_t now,int observedFrame=-1)const{
-  GameView<Read> live(read_);Frame out;out.terrain=terrain_;out.tick=now;out.frame=observedFrame>=0?observedFrame:lastFrame_;if(!terrain_)return out;
+  GameView<Read> live(read_);Frame out;out.effectMask=uint8_t(particles_)|(uint8_t(lasers_)<<1);out.terrain=terrain_;out.tick=now;out.frame=observedFrame>=0?observedFrame:lastFrame_;if(!terrain_)return out;
   std::vector<uint32_t> bodies;out.markerScanValid=view_.vecChecked(0xA8EC78,bodies);
   if(!out.markerScanValid)return out;
   prefetch(read_,bodies,0);out.markers.reserve(bodies.size());
@@ -164,12 +169,13 @@ public:
    m.layer=std::clamp(get<int>(p+0x94,2),0,4);if(kind==3)m.sort=(get<uint8_t>(m.type+0x16C5)?32:0)-(get<uint8_t>(m.type+0x16B7)?16:0);out.markers.push_back(m);
   }
   if(!terrain_->art.empty()){
+   auto effects=std::make_shared<EffectSnapshot>();effects->boltsValid=!lasers_||nativefeedback::bolts(read_,effects->bolts);out.effects=std::move(effects);
    const auto bodies=out.markers;for(const auto&body:bodies)if(body.kind==3)for(const auto&a:animations::attached(read_,body.object,body.id)){
-    Marker m;m.object=a.object;m.id=a.id;m.type=a.type;m.owner=a.owner;m.parent=a.parent;m.parentId=a.parentId;m.x=a.x;m.y=a.y;m.z=a.z;m.kind=5;m.pose.frame=a.frame;m.drawZ=a.zAdjust;m.sort=a.sort;m.layer=a.layer;m.normalLight=a.normalLight;m.onBridge=get<uint8_t>(a.parent+0x8C)!=0;geo_.project(double(m.x)/256,double(m.y)/256,m.u,m.v);if(m.u>=0&&m.u<1&&m.v>=0&&m.v<1)out.markers.push_back(m);
+    Marker m;m.object=a.object;m.id=a.id;m.type=a.type;m.owner=a.owner;m.parent=a.parent;m.parentId=a.parentId;m.x=a.x;m.y=a.y;m.z=a.z;m.kind=5;m.pose.frame=a.frame;m.pose.variant=a.blend;m.drawZ=a.zAdjust;m.sort=a.sort;m.layer=a.layer;m.normalLight=a.normalLight;m.onBridge=get<uint8_t>(a.parent+0x8C)!=0;geo_.project(double(m.x)/256,double(m.y)/256,m.u,m.v);if(m.u>=0&&m.u<1&&m.v>=0&&m.v<1)out.markers.push_back(m);
    }
    std::set<uint32_t> seen;for(const auto&m:out.markers)if(m.kind==5)seen.insert(m.object);
-   for(const auto&a:animations::all(read_)){if(!seen.insert(a.object).second||!terrain_->colors[(a.y/256)*512+a.x/256])continue;
-    Marker m;m.object=a.object;m.id=a.id;m.type=a.type;m.owner=a.owner;m.x=a.x;m.y=a.y;m.z=a.z;m.kind=5;m.pose.frame=a.frame;m.drawZ=a.zAdjust;m.sort=a.sort;m.layer=a.layer;m.normalLight=a.normalLight;geo_.project(double(m.x)/256,double(m.y)/256,m.u,m.v);if(m.u>=0&&m.u<1&&m.v>=0&&m.v<1)out.markers.push_back(m);
+   if(particles_)for(const auto&a:animations::all(read_)){if(!seen.insert(a.object).second||!terrain_->colors[(a.y/256)*512+a.x/256])continue;
+    Marker m;m.object=a.object;m.id=a.id;m.type=a.type;m.owner=a.owner;m.x=a.x;m.y=a.y;m.z=a.z;m.kind=5;m.pose.frame=a.frame;m.pose.variant=a.blend;m.drawZ=a.zAdjust;m.sort=a.sort;m.layer=a.layer;m.normalLight=a.normalLight;geo_.project(double(m.x)/256,double(m.y)/256,m.u,m.v);if(m.u>=0&&m.u<1&&m.v>=0&&m.v<1)out.markers.push_back(m);
    }
    for(auto p:view_.vec(0xA8E988)){if(get<uint32_t>(p)!=0x7F522C||get<uint8_t>(p+0xCD)||get<int>(p+0x6C)<=0)continue;
     Marker m;m.object=p;m.id=get<uint32_t>(p+0x10);m.type=get<uint32_t>(p+0xC8);m.x=get<int>(p+0x9C,-1);m.y=get<int>(p+0xA0,-1);m.z=get<int>(p+0xA4);m.kind=4;m.pose.frame=get<int>(p+0xAC);
@@ -179,6 +185,11 @@ public:
   }
   if(!terrain_->art.empty()){
    for(const auto&m:out.markers)if(m.kind==3){repairvisuals::Sprite sprite;if(repairvisuals::sample(read_,m.object,m.id,sprite))out.repairs.push_back(sprite);}
+   if(particles_)for(const auto&s:particles::all(read_)){
+    int cx=s.x/256,cy=s.y/256;if(!geo_.legal(cx,cy)||!terrain_->colors[cy*512+cx])continue;
+    Marker m;m.object=s.object;m.id=s.id;m.type=s.type;m.x=s.x;m.y=s.y;m.z=s.z;m.kind=particles::Kind;m.pose.frame=s.frame;m.pose.variant=s.blend;m.layer=s.layer;
+    geo_.project(double(m.x)/256,double(m.y)/256,m.u,m.v);if(m.u>=0&&m.u<1&&m.v>=0&&m.v<1)out.markers.push_back(m);
+   }
    for(const auto&s:projectiles::all(read_)){
     int cx=s.x/256,cy=s.y/256;if(!geo_.legal(cx,cy)||!terrain_->colors[cy*512+cx])continue;
     Marker m;m.object=s.object;m.id=s.id;m.type=s.type;m.owner=s.owner;m.x=s.x;m.y=s.y;m.z=s.z;m.kind=projectiles::Kind;m.pose=s.pose;m.drawZ=s.drawZ;m.sort=s.sort;m.layer=s.layer;m.onBridge=s.onBridge;

@@ -6,6 +6,7 @@
 
 | 主题 | 新笔记 | 关键词 |
 | --- | --- | --- |
+| 持续规划后台线程、全局磁电索引、固定名额与动画类别审计 | [规划线程与动画 Hotfix12](2026-10-30-planner-thread-animation-audit-hotfix12.md) | UI ValueTask receipts expiry VXL256 selection512 EBolt128 SHP translucency x87 cooperative frozen keys |
 | 迷雾素材替换与单位统计、副相机及进程识别性能 | [素材与工具箱性能 Hotfix11](2026-10-30-shroud-material-and-toolbox-performance-hotfix11.md) | SHP GetData 69E740 refs lazy alpha127 restoration async statistics VPL cache |
 | 批量读取、行并行、GPU 基础档、耗时解码预算及迷雾替换验证 | [读取/GPU/动画 Hotfix10](2026-10-30-reader-gpu-budget-hotfix10.md) | prefetch64KiB rows4 atlas CSR decode budget transient VPL SHP127 replacement |
 | 只开启渲染升级时的默认重处理、基础快速模式及高速游戏时效 | [快速模式与高速采样 Hotfix9](2026-10-30-fast-mode-and-high-speed.md) | 72ms 260ms RenderProcessing xBRZ explicit terrain thread wallclock actor age |
@@ -141,3 +142,5 @@
 
 - [2026-10-26：对手建筑变卖实验与所属方自毁事件](2026-10-26-enemy-sell-pre4.md)：Sell=0x16、实际Owner编号、默认关闭及旧配置迁移；Destruct=0x08、Exit/AboutToExit/RemovePlayer区别；4FC980标志与定时器、4FC6D0销毁后继及联机证据边界。
 
+
+| 共享场景与缩放前结果、五类 UI、粒子与本地消息／倒计时保留 | [Hotfix13](2026-10-30-shared-scenes-local-ui-hotfix13.md) | SceneBank SceneRenderer NativeImageBank Particle MessageList BitFont DrawTimer PrimaryFactory ArchiveTarget |

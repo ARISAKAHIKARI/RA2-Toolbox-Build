@@ -29,7 +29,7 @@ public:
  void reset(){previous_={};current_={};observed_=interval_=0;ready_=false;prior_.clear();}
  bool observe(const radar::Frame&frame,double now){
   if(!frame.terrain||!frame.markerScanValid||frame.frame<0||!std::isfinite(now))return false;
-  if(ready_&&frame.frame==current_.frame)return false;
+  if(ready_&&frame.frame==current_.frame){current_=frame;return false;} // refresh current membership without advancing the interpolation clock
   bool continuous=ready_&&frame.frame>current_.frame&&
    now>observed_&&now-observed_<=250&&frame.terrain->geo.same(current_.terrain->geo)&&
    frame.terrain->reveal==current_.terrain->reveal;

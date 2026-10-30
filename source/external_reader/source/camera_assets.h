@@ -11,10 +11,13 @@
 #include "scene_lighting.h"
 #include "sprite_names.h"
 #include "projectile_visuals.h"
+#include "particle_visuals.h"
 #include "live_palette_cache.h"
 #include "palette_recovery.h"
 #include "gpu_voxel.h"
 #include "gpu_voxel_cache.h"
+#include "native_image_bank.h"
+#include "camera_raster.h"
 #include <map>
 #include <tuple>
 #include <cstdio>
@@ -28,7 +31,7 @@ namespace external { namespace cameraassets {
 template<class Reader>class Context {
  Reader&reader_;uint32_t process_=0,match_=0;
  bool lastPaletteLive_=false,terrainPaletteLive_=false,presentation_=false,presentationVplFresh_=false;
- bool colorPrecision_=false,gpuPresentation_=false;
+ bool colorPrecision_=false,gpuPresentation_=false,voxelRelight_=true,spriteRelight_=true;
  gpuvoxel::PacketCache gpuPackets_;
  std::shared_ptr<const gpuvoxel::PacketCache::VplSnapshot>gpuVplSnapshot_;
  uint64_t gpuVplSignature_=0;
@@ -46,6 +49,9 @@ public:
  void presentationDetail(int detail){detail_=std::clamp(detail,0,1);}
  void presentationGPU(bool enabled){gpuPresentation_=enabled;}
  bool presentationGPU()const{return gpuPresentation_;}
+ void presentationLighting(bool voxel,bool sprite){voxelRelight_=voxel;spriteRelight_=sprite;}
+ bool voxelRelighting()const{return voxelRelight_;}
+ bool spriteRelighting()const{return spriteRelight_;}
  uint64_t gpuPreparedBuilds()const{return gpuPackets_.builds();}
  uint64_t gpuPreparedHits()const{return gpuPackets_.hits();}
  size_t gpuPreparedCacheBytes()const{return gpuPackets_.bytes();}
@@ -64,7 +70,7 @@ void update(){files.update(reader_,process_,match_);vpl();}
 uint64_t revision(){return files.revision()^(uint64_t(word(0x822CF8)+1)*0x9e3779b97f4a7c15ull)^
     (paletteRange_==pixelupgrade::PaletteRange::FullRGB?0x45e391acbbdb1891ull:0)^(detail_?0x312df964ba273d19ull:0)^(detail_?uint64_t(presentationRasterScale())*0xf7e71b69894eb76bull:0)^(colorPrecision_?0x5a730c99b194d6e3ull:0);}
 uint64_t voxelLightingRevision()const{return voxelLight.signature();}
-bool voxelLightingAvailable()const{return !presentation_||presentationVplFresh_;}
+bool voxelLightingAvailable()const{return !voxelRelight_||!presentation_||presentationVplFresh_;}
 bool cameo(const char*name,std::vector<uint8_t>&out){update();return files.load(name,out);}
 uint32_t word(uint32_t p){uint32_t v=0;read(p,&v,4);return v;}
 std::string text(uint32_t p,unsigned n){return external::assets::text(read,p,n);}
@@ -84,6 +90,7 @@ external::assets::EffectiveINI<Read> artINI,rulesINI;uint64_t iniRevision=~uint6
  void resolveCameo(um::Type&t){update();auto file=cameoCatalog.resolve([&](const char*n,std::vector<uint8_t>&b){return files.load(n,b);},files.revision(),files.revision()^(GetTickCount64()/5000),t.id,text(t.ptr+0x1F8,25),t.cameo);memset(t.cameo,0,sizeof t.cameo);if(file.size()<sizeof t.cameo)memcpy(t.cameo,file.data(),file.size());}
  void vpl(bool force=false){
   auto revision=files.revision();if(voxelRevision!=revision){voxelRevision=revision;voxelLight={};voxelChecked=voxelNative=false;}
+  if(!voxelRelight_&&voxelLight.ready())return; // freeze the verified table; no live table recapture
   uint32_t now=GetTickCount();if(!force&&voxelChecked&&uint32_t(now-voxelCheck)<1000)return;voxelCheck=now;voxelChecked=true;
   if(force)presentationVplFresh_=false;
   // Prefer the table actually used by the game, including modded archives
@@ -189,8 +196,9 @@ void buildingPose(uint32_t object,uint32_t type,external::visual::Pose&pose){
 }
 struct OverlayPalette {std::string file;std::array<uint32_t,256> colors{};bool live=false;uint64_t revision=1;};
 std::map<std::pair<uint32_t,bool>,OverlayPalette> overlayPalettes_;
-void beginPresentation(){presentation_=true;vpl(true);if(overlayPalettes_.size()>4096)overlayPalettes_.clear();}
+void beginPresentation(){presentation_=true;vpl(voxelRelight_);if(overlayPalettes_.size()>4096)overlayPalettes_.clear();}
 bool refreshOverlayPalette(uint32_t type,uint32_t pointer,int frame,bool terrain,bool&changed){
+ if(!spriteRelight_&&overlayPalettes_.count({type,terrain})){changed=false;return true;}
  (void)pointer;(void)frame;changed=false;auto found=overlayPalettes_.find({type,terrain});if(found==overlayPalettes_.end())return true;
  auto&binding=found->second;
  return external::livepalette::refresh(binding.colors,binding.live,binding.revision,changed,[&](external::livepalette::Sample&sample){
@@ -257,6 +265,7 @@ bool actor(uint32_t p,uint32_t type,uint32_t id,double angle,external::voxel::Im
 // unit must not reopen/redecode its VXL/HVA files every overlay frame.
 struct BuildingPart {uint32_t pointer=0;std::vector<uint8_t> shape;std::string filename;};
 struct ActorArt {
+ mutable bool sourceKnown=false;mutable nativeimages::Signature sourceSignature;
  external::voxel::Model model;std::vector<uint8_t> shape;std::array<uint32_t,256> colors{};
  // A fresh nonce is assigned only after successful immutable model capture.
  // Copies/moves preserve it; recapture/replacement always creates a new owner.
@@ -320,6 +329,14 @@ bool captureAnimation(uint32_t p,uint32_t type,uint32_t id,uint32_t parent,uint3
  if(!external::animations::capture(read,p,parent,parentId,after)||after.id!=id||after.type!=type||after.owner!=state.owner){failure="animation-changed";return false;}
  bool paletteChanged=false;if(!refreshActorPalette(next,paletteChanged))return false;
  failure.clear();out=std::move(next);return true;
+}
+bool particlePalette(std::array<uint32_t,256>&out){lastPaletteLive_=false;return convertPalette(word(0x87F6C0),out)||paletteFile("ANIM.PAL",out);}
+bool captureParticle(uint32_t p,uint32_t type,uint32_t id,ActorArt&out){
+ external::particles::State state;if(!external::particles::capture(read,p,state)||state.id!=id||state.type!=type)return false;
+ ActorArt next;next.kind=external::particles::Kind;next.type=type;next.object=p;next.id=id;next.pointer=word(type+0xA4);next.flat=true;next.shadow=false;
+ const bool loaded=shapeBytes(type,next.pointer,next.shape,next.filename,false,true);if(!particlePalette(next.colors))return false;next.paletteLive=lastPaletteLive_;
+ if(!loaded){external::voxel::Image check;if(!external::voxel::sprite(read,next.pointer,next.colors,check,state.frame,nullptr,255))return false;}
+ external::particles::State after;if(!external::particles::capture(read,p,after)||after.id!=id||after.type!=type)return false;out=std::move(next);return true;
 }
 bool projectilePalette(const external::projectiles::State&state,std::array<uint32_t,256>&out){
  lastPaletteLive_=false;
@@ -415,11 +432,15 @@ bool captureActor(uint32_t p,uint32_t type,uint32_t id,ActorArt&out,const extern
  if(word(p+0x10)!=id||word(p+0x21C)!=owner)return false;bool paletteChanged=false;if(!refreshActorPalette(next,paletteChanged))return false;if(next.voxel)next.geometryIdentity=std::make_shared<const uint8_t>(0);out=std::move(next);return true;
 }
 bool refreshActorPalette(ActorArt&art,bool&changed){
+ changed=false;if(!(art.voxel?voxelRelight_:spriteRelight_))return true;
  return external::livepalette::refresh(art.colors,art.paletteLive,art.paletteRevision,changed,[&](external::livepalette::Sample&sample){
   bool ok=false;
   if(art.kind==5){external::animations::State state;
    if(!external::animations::capture(read,art.object,art.parent,art.parentId,state)||state.id!=art.id||state.type!=art.type||state.owner!=art.owner)return false;
    ok=animationPalette(art.object,art.type,art.parent,state.owner,state.x,state.y,sample.colors);
+  }else if(art.kind==external::particles::Kind){external::particles::State state;
+   if(!external::particles::capture(read,art.object,state)||state.id!=art.id||state.type!=art.type)return false;
+   ok=particlePalette(sample.colors);
   }else if(art.kind==external::projectiles::Kind){external::projectiles::State state;
    if(!external::projectiles::capture(read,art.object,state)||state.id!=art.id||state.type!=art.type)return false;
    ok=projectilePalette(state,sample.colors);
@@ -430,11 +451,31 @@ bool refreshActorPalette(ActorArt&art,bool&changed){
   sample.live=lastPaletteLive_;return ok;
  });
 }
+// Share already drawn native materials across main/watch/map contexts. Source
+// fingerprints are computed once per immutable capture, not once per pose.
+bool renderSharedActor(const ActorArt&art,const external::visual::Pose&pose,std::shared_ptr<const external::voxel::Image>&out){
+ if(art.voxel&&!voxelLightingAvailable())return false;
+ bool cacheable=process_&&art.id&&(art.voxel?bool(art.geometryIdentity):!art.shape.empty());
+ if(art.kind==3)for(const auto&part:art.buildingParts)if(part.pointer&&part.shape.empty())cacheable=false;
+ if(cacheable&&!art.sourceKnown){auto&h=art.sourceSignature;
+  for(const auto&f:art.model.faces){for(const auto&p:f.p){h.add(p.x);h.add(p.y);h.add(p.z);}h.add(f.normal.x);h.add(f.normal.y);h.add(f.normal.z);h.add(f.color);h.add(f.normalIndex);h.add(f.normalType);h.add(f.turret);h.add(f.hasNormal);}
+  h.bytes(art.shape.data(),art.shape.size());for(const auto&part:art.buildingParts){h.add(part.pointer);h.bytes(part.shape.data(),part.shape.size());}
+  for(int v:{art.kind,art.fw,art.fh,art.moveX,art.moveY,art.drawY,art.zAdjust})h.add(v);
+  h.add(art.turretOffset);h.add(art.flat);h.add(art.shadow);h.add(art.depthMaskBiased);
+  if(art.depthMask){h.bytes(art.depthMask->pixels.data(),art.depthMask->pixels.size()*4);h.bytes(art.depthMask->depth.data(),art.depthMask->depth.size()*4);h.add(art.depthMask->width);h.add(art.depthMask->height);h.add(art.depthMask->x);h.add(art.depthMask->y);}
+  art.sourceKnown=true;
+ }
+ nativeimages::Key key;if(cacheable){key.palette=art.colors;key.values={process_,match_,files.revision(),art.kind>=5?art.object:0,art.kind>=5?art.id:0,art.type,art.owner,art.parent,art.parentId,art.sourceSignature.a,art.sourceSignature.b,art.voxel?voxelLight.signature():0,
+  uint32_t(pose.body)|(uint64_t(pose.turret)<<8)|(uint64_t(uint32_t(pose.frame))<<16),uint32_t(pose.variant),uint32_t(pose.buildingFlags),uint32_t(pose.doorFrame),uint32_t(pose.turretFrame),uint32_t(pose.bodyFine),uint32_t(pose.turretFine),external::visual::postureSignature(pose),art.voxel?uint32_t(presentationRasterScale()):1,art.voxel?uint64_t(gpuPresentation_):0,uint64_t(art.pointer),0};
+  if(auto image=nativeimages::bank().get(key)){out=std::move(image);return true;}
+ }
+ external::voxel::Image image;if(!renderActor(art,pose,image))return false;external::camera::opaque(image);out=std::make_shared<const external::voxel::Image>(std::move(image));if(cacheable)nativeimages::bank().put(std::move(key),out);return true;
+}
 bool renderActor(const ActorArt&art,const external::visual::Pose&pose,external::voxel::Image&out){
  auto angle=external::visual::fineRadians(pose.bodyFine,pose.body),turret=external::visual::fineRadians(pose.turretFine,pose.turret);
  if(art.voxel){
   const int rasterScale=presentationRasterScale();if(!rasterScale){failure="voxel-presentation-resolution-unsupported";return false;}
-  if(presentation_&&!presentationVplFresh_){failure="voxel-current-vpl-unavailable";return false;}
+  if(voxelRelight_&&presentation_&&!presentationVplFresh_){failure="voxel-current-vpl-unavailable";return false;}
   if(!presentation_)vpl();bool projectile=art.kind==external::projectiles::Kind;
   if(projectile&&!voxelLight.ready()){failure="projectile-vpl-unavailable";return false;}
   if(!pose.posture.available){failure="voxel-current-posture-unavailable";return false;}
@@ -514,6 +555,7 @@ bool renderActor(const ActorArt&art,const external::visual::Pose&pose,external::
   if(pose.buildingFlags&external::buildings::Constructed)component(external::buildings::Bib,pose.frame,1,true);
   if(unloading){component(roof?external::buildings::UnderRoofDoor:external::buildings::UnderDoor,(pose.buildingFlags&external::buildings::Damaged)?1:0,0,true);component(external::buildings::Door,pose.doorFrame,5,false);}
  }
+ if((art.kind==5||art.kind==external::particles::Kind)&&pose.variant>0){unsigned alpha=external::animations::opacity(pose.variant);for(auto&pixel:out.pixels){uint32_t result=0;for(int shift:{0,8,16,24})result|=((((pixel>>shift)&255)*alpha+127)/255)<<shift;pixel=result;}out.intrinsicAlpha=true;}
  out.incomplete=!complete;return true;
 }
 

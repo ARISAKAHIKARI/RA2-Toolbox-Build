@@ -3,11 +3,11 @@
 namespace external { namespace nativefeedback {
 // Bounds belong to the sprite that was actually presented. Selection and
 // health are read afresh; no second decoder or guessed mouse gestures.
-struct Object {uint32_t pointer=0,id=0,type=0,owner=0;Rect bounds;};
+struct Object {uint32_t pointer=0,id=0,type=0,owner=0;Rect bounds;int kind=-1;};
 struct Selected {Rect bounds;int health=0,strength=0;};
 template<class Read>bool selected(Read read,const std::vector<Object>&objects,std::vector<Selected>&out){
  out.clear();std::array<uint32_t,6> head{},after{};
- if(!read(0xA8ECB8,head.data(),sizeof head)||head[2]>8192||head[4]>head[2]||head[4]>512||
+ if(!read(0xA8ECB8,head.data(),sizeof head)||head[2]>8192||head[4]>head[2]||head[4]>8192||
     (head[4]&&!range(head[1],size_t(head[4])*4)))return false;
  std::vector<uint32_t> pointers(head[4]);
  if(!pointers.empty()&&!read(head[1],pointers.data(),pointers.size()*4))return false;

@@ -35,6 +35,8 @@ prefix=r'''
 #include <iostream>
 using HWND=int;using WPARAM=uintptr_t;using LPARAM=intptr_t;using BOOL=int;
 constexpr int TRUE=1,FALSE=0,BST_CHECKED=1,BST_UNCHECKED=0,BN_CLICKED=0,CBN_SELCHANGE=1,EN_CHANGE=2,EN_KILLFOCUS=3;
+constexpr int HKM_SETHOTKEY=30,HKM_GETHOTKEY=31,CB_ADDSTRING=32,CB_GETCURSEL=33,CBS_DROPDOWNLIST=34;
+constexpr const wchar_t*HOTKEY_CLASSW=L"HOTKEY";
 constexpr int BM_SETCHECK=1,CB_SETCURSEL=2,WM_COMMAND=3,BM_GETCHECK=4,EM_SETLIMITTEXT=5;
 constexpr int BS_AUTOCHECKBOX=1,WS_TABSTOP=2,WS_BORDER=4,ES_NUMBER=8,ES_AUTOHSCROLL=16;
 namespace suite {constexpr int ApplyDisplaySetting=83,DisplaySettingsChanged=84,RefreshRateChanged=85;}
@@ -54,16 +56,18 @@ static WPARAM MAKEWPARAM(int id,int notification){return id|(notification<<16);}
 static int LOWORD(WPARAM value){return int(value&65535);}static int HIWORD(WPARAM value){return int(value>>16);}
 static int SendMessageW(int h,int message,WPARAM wp,LPARAM lp){
  if(message==WM_COMMAND){assert(!updatingControls&&h==ui);++notifications;lastID=wp&65535;lastNotification=wp>>16;assert(lp==lastID);}
- else if(message==BM_GETCHECK)return fields[h];
+ else if(message==BM_GETCHECK||message==CB_GETCURSEL||message==HKM_GETHOTKEY)return fields[h];
+ else if(message==CB_ADDSTRING)return 0;
  else {assert(updatingControls||unitSyncMode);fields[h]=int(wp);}return 0;
 }
 static int proc(int h,int message,WPARAM wp,LPARAM lp){SendMessageW(h,message,wp,lp);return 0;}
 static void SetWindowTextW(int h,const wchar_t* text){assert(updatingControls||unitSyncMode);texts[h]=text;if(!texts[h].empty()&&(texts[h][0]==L'-'||(texts[h][0]>=L'0'&&texts[h][0]<=L'9')))fields[h]=std::stoi(text);}
+static void GetWindowTextW(int h,wchar_t*out,int n){wcsncpy(out,texts[h].c_str(),n-1);out[n-1]=0;}
 static int GetFocus(){return focused;}static void EnableWindow(int h,bool on){available[h]=on;}
 static bool IsWindowEnabled(int h){auto i=available.find(h);return i==available.end()||i->second;}
 static int GetDlgItemInt(int,int h,BOOL* ok,int){*ok=fields.count(h)!=0;return fields[h];}
 static int statsInformationFPS(){return statsRate;}
-namespace modernui {static void heading(int){}static void tip(int,const wchar_t*){}}
+namespace modernui {static void pressKey(int){}static void heading(int){}static void tip(int,const wchar_t*){}}
 static void publishSuiteDisplay(){}
 static struct {unsigned scrollRefreshHz=0,scrollRefreshMode=0;int sampleIntervalMs=0;} runtimeState,*shared=&runtimeState;
 static struct {int scrollRefreshMode=0;} extra;
@@ -135,7 +139,7 @@ int main(){
  std::atomic<bool> done{false};std::thread writer([&]{for(int n=1;n<=10000;++n){DisplayState s;s.values.fill(n);s.rateMilli=n;s.gapUs=n;s.infoRate=n;publishDisplaySettings(s);}done=true;});
  do{if(readDisplaySettings(out)){if(out.rateMilli){for(auto v:out.values)assert(v==out.rateMilli);assert(out.gapUs==out.rateMilli&&out.infoRate==out.rateMilli);}}}while(!done);
  writer.join();assert(readDisplaySettings(out)&&out.rateMilli==10000);int count=posted;publishDisplaySettings(out);assert(posted==count);
- std::cout<<"PASS 14 routed setting IDs: valid endpoints, invalid edits, owner-thread notifications and not-ready suppression; adaptive/manual controls, local rate readback and retained manual target\n";
+ std::cout<<"PASS 62 routed setting IDs: valid endpoints, invalid edits, owner-thread notifications and not-ready suppression; adaptive/manual controls, local rate readback and retained manual target\n";
  std::cout<<"PASS 10000 cross-thread state publications: coherent snapshots and unchanged-state notification coalescing\n";
 }
 '''

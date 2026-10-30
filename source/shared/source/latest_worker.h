@@ -13,14 +13,17 @@ template<class Input,class Output>class Latest {
  std::mutex mutex_;std::condition_variable cv_;std::thread thread_;
  std::unique_ptr<Input> pending_;std::shared_ptr<const Output> latest_;
  std::function<std::shared_ptr<const Output>(const Input&)> work_;
+ std::function<void()> completed_;
  uint64_t epoch_=0;bool stop_=false;
  void run(){for(;;){std::unique_ptr<Input> input;uint64_t epoch;
   {std::unique_lock<std::mutex> lock(mutex_);cv_.wait(lock,[&]{return stop_||pending_;});if(stop_)return;input=std::move(pending_);epoch=epoch_;}
   auto result=work_(*input);
-  {std::lock_guard<std::mutex> lock(mutex_);if(!stop_&&epoch==epoch_&&result)latest_=std::move(result);}
+  bool published=false;
+  {std::lock_guard<std::mutex> lock(mutex_);if(!stop_&&epoch==epoch_&&result){latest_=std::move(result);published=true;}}
+  if(published&&completed_)completed_();
  }}
 public:
- explicit Latest(std::function<std::shared_ptr<const Output>(const Input&)> work):work_(std::move(work)){}
+ explicit Latest(std::function<std::shared_ptr<const Output>(const Input&)> work,std::function<void()> completed={}):work_(std::move(work)),completed_(std::move(completed)){}
  ~Latest(){shutdown();}
  void submit(Input input){std::lock_guard<std::mutex> lock(mutex_);if(stop_)return;pending_=std::make_unique<Input>(std::move(input));if(!thread_.joinable())thread_=std::thread([this]{run();});cv_.notify_one();}
  std::shared_ptr<const Output> get(){std::lock_guard<std::mutex> lock(mutex_);return latest_;}

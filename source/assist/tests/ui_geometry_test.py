@@ -20,6 +20,7 @@ labels = main.split('static const wchar_t* labels[]=', 1)[1].split(';', 1)[0]
 status = 'static void updateModeStatus(DWORD now){' + main.split('static void updateModeStatus(DWORD now){', 1)[1].split('static void updatePlayerTestUI(', 1)[0]
 prefix = r'''
 #include "ui_layout.h"
+#include "../../suite/source/settings_categories.h"
 #include "ore_type_config.h"
 #include "feature_type_config.h"
 #include "additional_settings.h"
@@ -65,6 +66,7 @@ static int labelScalePercent=100,constructionScalePercent=100;static bool minima
 static int minimapSecondaryX=10000,minimapSecondaryY=10000,minimapSecondaryWidth=320;static uint32_t computeRequested=compute::Default;
 static unsigned schedulerTarget=0,megaQueueMode=0,objectQueueMode=0;static HFONT font;static int scrollY,repairMs=2000,fps=60,topMargin=20,doubleMs=350,toastMs=6000;
 static bool infoAdaptive=false;static int informationFPS(){return infoAdaptive?144:fps;}
+static bool renderParticleEffects=true,renderLaserEffects=true,renderVoxelLighting=true,renderSpriteLighting=true;
 static bool renderUpgradeEnabled=false,renderPhysicalOutput=false,unifiedOverlayEnabled=false,renderColorPrecision=false,renderMaterialRefresh=false,renderVulkanEnabled=false,renderProcessing=false,renderXbrzEnabled=false;
 static int renderPaletteRange=0,renderSceneDetail=0,renderPixelScale=0;
 static Snapshot incoming;static bool networkHouseReady(){return false;}
@@ -119,7 +121,7 @@ suffix = r'''
 static bool intersects(uilayout::Rect a,uilayout::Rect b){return a.x<b.x+b.w&&b.x<a.x+a.w&&a.y<b.y+b.h&&b.y<a.y+a.h;}
 int main(){
  create(1);assert(ready&&pageControls.size()>100);
- for(int id:{446,447,473,474,9094,9095}){bool found=false;for(const auto&c:pageControls)if(GetDlgCtrlID(c.hwnd)==id){assert(c.page==2);found=true;}assert(found);}
+ for(int id:{446,447}){bool found=false;for(const auto&c:pageControls)if(GetDlgCtrlID(c.hwnd)==id){assert(c.page==2);found=true;}assert(found);}
  csHoldEnabled=true;csHoldKey='G';csMode=false;hookAutoCS=false;updateModeStatus(1000);
  assert(windows[csStatus].text.find(L"按键 CS：开")!=std::wstring::npos&&windows[csStatus].text.find(L"已就绪")!=std::wstring::npos);
  snap.status=0;updateModeStatus(1200);assert(windows[nativeStatus].text==L"正在读取对局");
@@ -135,16 +137,12 @@ int main(){
 
  // Feature groups and adjacent bindings follow the actual controls.
  auto at=[&](int id)->const PageControl&{for(auto&c:pageControls)if(GetDlgCtrlID(c.hwnd)==id)return c;assert(false);return pageControls[0];};
- for(int id:{100,111,451,455,853,440,724})assert(at(id).rect.y>at(900).rect.y&&at(id).rect.y<at(901).rect.y);
- for(int id:{458,450,477,702,705,719,720,721,736,795,803,109,110,410})assert(at(id).rect.y>at(901).rect.y&&at(id).rect.y<at(902).rect.y);
  for(auto pair:{std::pair<int,int>{450,729},{478,730},{474,731},{704,732},{707,733},{709,734},{726,735},{728,737},{789,738},{811,812}})assert(at(pair.first).rect.y==at(pair.second).rect.y&&at(pair.first).rect.x+at(pair.first).rect.w<at(pair.second).rect.x);
  for(int id:{861,862,863,864})assert(!windows[at(id).hwnd].enabled);
  for(int id:{861})assert(!windows[at(id).hwnd].checked);
- for(int id:{803,894,866})assert(at(id).rect.y>at(901).rect.y&&at(id).rect.y<at(902).rect.y);
- for(int id:{808,809})assert(at(id).page==1);
- for(int id:{799,817})assert(at(id).page==0&&at(id).rect.y>at(902).rect.y&&at(id).rect.y<at(905).rect.y);
- for(int id:{885,895,420,860})assert(at(id).page==2);
- assert(at(885).rect.y>at(904).rect.y&&at(885).rect.y<at(9094).rect.y);
+ for(int id:{808,809,420})assert(at(id).page==suite::categories::Rules);
+ for(int id:{9300,9310,9320,9321,9322,9323})assert(at(id).page==suite::categories::Video);
+ for(int id:{9170,9171,788,473,474})assert(at(id).page==suite::categories::Control);
  for(int id:{803,808})assert(windows[at(id).hwnd].enabled&&windows[at(id).hwnd].text.find(L"测试")==std::wstring::npos&&windows[at(id).hwnd].text.find(L"实验")==std::wstring::npos);
  extra.airWaypoints=false;extra.nativeAirWaypoints=extra.renderReveal=true;snap.nativeAirStatus=snap.renderRevealStatus=1;updateModeStatus(2800);
  assert(windows[at(866).hwnd].text==L"飞机路径点：原生模式"&&windows[at(809).hwnd].text==L"地图显示：已启用");
@@ -174,13 +172,13 @@ int main(){
   int found=0;for(auto&w:windows)found+=w.id==id;if(found!=1){std::cerr<<"Missing/duplicate ID "<<id<<" count "<<found<<"\n";return 1;}
  }
  for(int id:{108,208,913,914,739,790,791,792,805,806,882,883,884,9234,9235})assert(!GetDlgItem(ui,id));
- for(size_t i=0;i<pageControls.size();++i){const auto&a=pageControls[i];if(a.page<0)continue;assert(a.page>=0&&a.page<3&&a.rect.y>=uilayout::BodyTop);
+ for(size_t i=0;i<pageControls.size();++i){const auto&a=pageControls[i];if(a.page<0)continue;assert(a.page>=0&&a.page<suite::categories::Count&&a.rect.y>=uilayout::BodyTop);
   auto rect=a.rect;rect.h=a.visibleHeight;
   for(size_t j=i+1;j<pageControls.size();++j){const auto&b=pageControls[j];if(b.page!=a.page)continue;auto other=b.rect;other.h=b.visibleHeight;
    if(intersects(rect,other)){std::cerr<<"IDs "<<windows[a.hwnd].id<<","<<windows[b.hwnd].id<<" rectangles "<<rect.x<<","<<rect.y<<","<<rect.w<<","<<rect.h<<" / "<<other.x<<","<<other.y<<","<<other.w<<","<<other.h<<"\n";return 1;}
   }
  }
- for(activePage=0;activePage<3;++activePage)for(int width:{645,812,1040})for(int height:{440,580,720,900}){
+ for(activePage=0;activePage<suite::categories::Count;++activePage)for(int width:{645,812,1040})for(int height:{440,580,720,900}){
   clientWidth=width;clientHeight=height;const int maximum=uilayout::maxScroll(pageBottom(),height);
   for(const auto&c:pageControls)if(c.page==activePage){
    scrollTo(c.rect.y-uilayout::BodyTop);const auto&w=windows[c.hwnd];
@@ -195,7 +193,7 @@ int main(){
    else if(w.visible&&w.clip.bottom>w.clip.top){assert(w.rect.y+w.clip.top>=uilayout::BodyTop);assert(w.rect.y+w.clip.bottom<=uilayout::bodyBottom(height));}
   }
  }
- std::cout<<"{\"controls\":"<<pageControls.size()<<",\"fully_reachable_checks\":"<<inspected<<",\"viewport_sizes\":12,\"pages\":3,\"content_bottom\":"<<pageBottom()<<",\"geometry\":[";
+ std::cout<<"{\"controls\":"<<pageControls.size()<<",\"fully_reachable_checks\":"<<inspected<<",\"viewport_sizes\":12,\"pages\":5,\"content_bottom\":"<<pageBottom()<<",\"geometry\":[";
  std::wstring_convert<std::codecvt_utf8<wchar_t>> utf8;bool first=true;
  for(auto&c:pageControls){if(!first)std::cout<<",";first=false;auto&w=windows[c.hwnd];std::cout<<"{\"id\":"<<w.id<<",\"page\":"<<c.page<<",\"x\":"<<c.rect.x<<",\"y\":"<<c.rect.y<<",\"w\":"<<c.rect.w<<",\"h\":"<<c.visibleHeight<<",\"toggle\":"<<((w.style&BS_AUTOCHECKBOX)?"true":"false")<<",\"checked\":"<<(w.checked?"true":"false")<<",\"class\":"<<std::quoted(utf8.to_bytes(w.cls))<<",\"text\":"<<std::quoted(utf8.to_bytes(w.text))<<"}";}
  std::cout<<"]}\n";
@@ -214,5 +212,5 @@ with tempfile.TemporaryDirectory(prefix='ra2-ui-') as directory:
     if '--dump' in sys.argv:Path(sys.argv[sys.argv.index('--dump')+1]).write_text(json.dumps(result,ensure_ascii=False,indent=2)+'\n')
     summary={k:v for k,v in result.items() if k!='geometry'}
     print('PASS: shipped UI construction/layout: ' + json.dumps(summary))
-    print('PASS: all controls accessible, no overlap, supported interactive IDs retained, three independently scrollable categories, pinned header/footer, clipped body and scroll limits')
+    print('PASS: all controls accessible, no overlap, supported interactive IDs retained, five independently scrollable categories, pinned header/footer, clipped body and scroll limits')
 

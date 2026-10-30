@@ -93,6 +93,8 @@ prefix = r'''
 #include @SECONDARY_LAYOUT_HEADER@
 #include "../../shared/source/overlay_recovery.h"
 #include "../source/radar_layout.h"
+#include "../source/shroud_policy.h"
+#include "../../external_reader/source/render_profile.h"
 static bool higher(HWND a,HWND b){for(HWND w:GetTopWindow(nullptr)?order:std::vector<HWND>{}){if(w==a)return true;if(w==b)return false;}return false;}
 static HWND game,ui;static DWORD pid=2;static bool focused=true,enabled=true,minimapEnabled=true,minimapSecondary=false,secondAvailable=false,battlefieldVisible=true;
 static int minimapMode=0,minimapScale=10,minimapPosition=1,minimapX=0,minimapY=0,minimapAlignX=0,minimapAlignY=0,fps=60;
@@ -110,7 +112,7 @@ struct Geometry{int offsetX=0,offsetY=0;double rawWidth=10,rawHeight=10;bool sam
 }}
 namespace radarpanel{inline bool failStage=false,failPresent=false;struct Buffer{bool painted=false,valid=false,pending=false;int w=0,h=0,pw=0,ph=0,stages=0;bool ready(int width,int height)const{return valid&&width==w&&height==h;}template<class Image>bool stage(HDC,const Image&,const radargate::Visual&v){++stages;pending=!failStage;pw=v.width;ph=v.height;return pending;}bool promote(){if(!pending)return false;w=pw;h=ph;pending=false;valid=true;return true;}bool present(HDC,int width,int height){painted=ready(width,height)&&!failPresent;return painted;}};}
 namespace minimap{
-struct Request{DWORD pid;uint32_t match;int rate;uint32_t reveal;int mode,width,height;bool gpu=false;};
+struct Request{DWORD pid;uint32_t match;int rate;uint32_t reveal;int mode,width,height;bool gpu=false;external::presentation::Selection selection;};
 struct Worker{std::shared_ptr<const external::radar::Frame>latest=std::make_shared<external::radar::Frame>();bool paused=false;int rate=0;void set(Request r){paused=false;rate=r.rate;}void pause(){paused=true;}auto get(){return latest;}};
 static Worker worker;static HWND window,secondaryWindow;static secondarydisplay::Monitor secondaryMonitor;static std::shared_ptr<const external::radar::Frame>frame;static external::radar::Geometry lastGeometry;
 static radargate::PaintGate<external::radar::Frame> primaryPaintGate,secondaryPaintGate;

@@ -28,7 +28,7 @@ def run(game):
   elif at==0x70bcb0:u.mem_write(buffer,bytes(u.mem_read(target+0x9c,12)));ret(buffer,4)
   elif at==0x568300:ret(0,4)
   elif at==0x7049c0:
-   draws.append({'source':list(struct.unpack('<iii',u.mem_read(sp+4,12))),'destination':list(struct.unpack('<iii',u.mem_read(sp+16,12))),'rgb':list(u.mem_read(sp+28,3))});ret(0,36)
+   draws.append({'source':list(struct.unpack('<iii',u.mem_read(sp+4,12))),'destination':list(struct.unpack('<iii',u.mem_read(sp+16,12))),'rgb':list(u.mem_read(sp+28,3)),'animated':bool(r(sp+32)),'shadow':bool(r(sp+36))});ret(0,36)
  u.hook_add(UC_HOOK_CODE,hook)
  for name,selected,enabled,start,targetP,destinationP,nav,expected in [
   ('unselected',0,1,40,0,destination,0,None),('option_off',1,0,40,0,destination,0,None),

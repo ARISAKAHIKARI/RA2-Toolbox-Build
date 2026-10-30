@@ -123,14 +123,9 @@ for(int f=0;f<featuretypes::Count;++f){
 
 heading(3,903,L"战场信息",L"调整游戏内信息显示、缩放与位置；有效设置立即生效。");
 
-#ifdef RA2_UNIFIED
-{auto h=placedControl({-3,{0,0,1,1}},L"COMBOBOX",L"",808,CBS_DROPDOWNLIST);choices(h,{L"关闭",L"受控模式（半透明）",L"受控模式（透明）",L"原生揭示（实验性）",L"直接模式（全图）",L"素材替换（透明）",L"素材替换（半透明）"},extra.mapStrategy);}
-placedControl({-3,{0,0,1,1}},L"STATIC",L"",809,0);
-#else
 label(L"黑幕绘制方式",20,260);choices(combo(808),{L"关闭",L"受控模式（半透明）",L"受控模式（透明）",L"原生揭示（实验性）",L"直接模式（全图）",L"素材替换（透明）",L"素材替换（半透明）"},extra.mapStrategy);next();
-note(L"素材替换使用原版绘制流程，替换已载入的黑幕 alpha 素材并保留备份；关闭时恢复。渲染升级、副相机和小地图按全图预览，不显示半透明遮罩。",44);
+note(L"素材替换保留原版绘制流程，关闭时恢复已备份的素材；仅改变显示，不改变探索状态。");
 item(L"STATIC",L"地图显示：关闭",20,605,809);next();
-#endif
 const wchar_t* displayNames[]={L"载具载员与容量",L"铁幕 / 力场剩余时间",L"生产队列空闲提醒",L"显示未选中的载具",L"敌方索敌显示",L"箱子信息",L"战术文字提示"};
 const wchar_t* displayIni[]={L"Capacity",L"Iron",L"Production",L"AllTransports",L"Psychic",L"Crates",L"TextPanel"};
 #ifdef RA2_UNIFIED
@@ -185,7 +180,9 @@ toggle(9307,L"素材高刷（跟随信息刷新率 · 最高目标 500 Hz）",re
 label(L"场景精细度",20,260);choices(combo(9308),{L"原生像素合成（对照）",L"精细：VXL 自适应采样＋256 向转动＋物理像素合成"},renderSceneDetail);next();
 toggle(9314,L"启用 xBRZ 边缘重建（独立开启）",renderXbrzEnabled);next();
 label(L"素材边缘重建",20,260);choices(combo(9305),{L"面积采样（不使用 xBRZ）",L"最近邻（实际倍率）",L"xBRZ（实际倍率）",L"自适应 1–4× xBRZ"},renderPixelScale);next();
-toggle(9310,L"Vulkan GPU 场景与小地图（实验）",renderVulkanEnabled);next();
+toggle(9310,L"Vulkan GPU（主视图、副相机与小地图）",renderVulkanEnabled);next();
+toggle(9320,L"粒子与动画效果",renderParticleEffects);next();toggle(9321,L"激光与光束效果",renderLaserEffects);next();
+toggle(9322,L"VXL 实时光影重算",renderVoxelLighting);next();toggle(9323,L"SHP 实时光影重算",renderSpriteLighting);next();
 note(L"基础与精细档均可由 GPU 合成场景、光照、深度、阴影与迷雾；精细档额外使用自适应 VXL，xBRZ 仍需独立开启。实景小地图缩小使用 GPU 分页面积采样，保留原尺寸遮挡。素材缓存复用；采样、姿态与材质准备仍在 CPU。设备或功能不可用时回退 CPU。",88);
 note(L"SHP/TMP 使用 xBRZ 1.9 原版算法处理当前光照后的颜色，VXL 按实际输出比例重新采样几何。GPU 为同规则移植并执行设备自检，失败时保留上游 CPU 路径。非整数倍率先用 2–4× xBRZ，再缩至目标像素；实时光照或色盘变化会更新结果。",88);
 note(L"4K 增强仅在游戏客户区覆盖整块物理显示器且 DPI/视口校验通过时生效。独占全屏若切换到 2560×1440，仍使用现有覆盖层按 2560×1440 正常绘制，只停用 4K 增强；不会因为独占就隐藏覆盖层。2K 窗口也不会假冒 4K。最终倍率按游戏视口与实际客户区计算，支持 1.5× 等分数比例；不固定放大 2×，不改变镜头与鼠标命中。",88);

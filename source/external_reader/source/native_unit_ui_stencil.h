@@ -73,7 +73,7 @@ public:
   using namespace nativefeedback;
   if(!view.valid()||width<1||height<1||width>8192||height>8192||objects.size()>8192)return false;
   std::array<uint32_t,6> head{},after{};uint32_t house=0;int frame=0;double zscale=0;
-  if(!read(0xA8ECB8,head.data(),sizeof head)||head[2]>8192||head[4]>head[2]||head[4]>512||
+  if(!read(0xA8ECB8,head.data(),sizeof head)||head[2]>8192||head[4]>head[2]||head[4]>8192||
      (head[4]&&!range(head[1],size_t(head[4])*4)))return false;
   if(!head[4])return true;
   if(!read(0xA83D4C,&house,4)||!range(house,4))return false;

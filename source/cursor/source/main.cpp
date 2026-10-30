@@ -58,8 +58,8 @@ static HFONT uiFont=nullptr, titleFont=nullptr, actionFont=nullptr;
 static bool uiLayoutBusy=false;
 // Compact first-run panel; legacy controls are shown only in Advanced.
 static bool advancedOpen=false;
-static constexpr int compactContentW=770,compactContentH=394;
-static constexpr int advancedContentW=770,advancedContentH=1354;
+static constexpr int compactContentW=770;static int compactContentH=394;
+static constexpr int advancedContentW=770;static int advancedContentH=1354;
 static int uiContentW=compactContentW,uiContentH=compactContentH;
 static constexpr int advancedOffsetY=325;
 static std::vector<HWND> advancedControls;
@@ -236,7 +236,7 @@ static void updatePrimaryAction(){
  suite::reportEnabled(0,enabled);
 #endif
  textIfChanged(primaryAction,enabled?L"暂停":L"开启");
- textIfChanged(subTitleLabel,mode==L"hide"?(nativeGameRefresh?L"Hook · 游戏内刷新":L"光标显示与补帧 · 设置自动生效"):mode==L"sha"?L"透明 SHA · 外置光标":L"保留原光标 · 外置光标");
+ textIfChanged(subTitleLabel,mode==L"hide"?(nativeGameRefresh?L"Hook · 游戏内刷新":L"光标、场景画质与特效 · 各项独立启用"):mode==L"sha"?L"透明 SHA · 外置光标":L"保留原光标 · 外置光标");
  std::wstring state=manualCursorPause?L"光标已暂停（F9 恢复）":!autoStart?L"已关闭":autoPaused?L"需要检查 · 展开高级设置":running?L"运行中":L"等待游戏启动";
  textIfChanged(statusw,state);
  static int lastPaint=-1;int paint=running?2:enabled?1:0;
@@ -1499,8 +1499,8 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR cmd,int){
   else if(child!=nativeBox){logical.y+=advancedOffsetY;advancedControls.push_back(child);ShowWindow(child,SW_HIDE);}
   controlOrigins.push_back({child,logical});
  }
- titleLabel=CreateWindowW(L"STATIC",L"高刷鼠标",WS_CHILD|WS_VISIBLE,20,16,220,26,mainw,nullptr,inst,nullptr);
- subTitleLabel=CreateWindowW(L"STATIC",L"光标显示与补帧 · 设置自动生效",WS_CHILD|WS_VISIBLE,20,44,320,22,mainw,nullptr,inst,nullptr);
+ titleLabel=CreateWindowW(L"STATIC",L"光标与渲染",WS_CHILD|WS_VISIBLE,20,16,220,26,mainw,nullptr,inst,nullptr);
+ subTitleLabel=CreateWindowW(L"STATIC",L"光标、场景画质与特效 · 各项独立启用",WS_CHILD|WS_VISIBLE,20,44,320,22,mainw,nullptr,inst,nullptr);
  primaryAction=CreateWindowW(L"BUTTON",L"暂停",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,20,128,132,34,mainw,(HMENU)101,inst,nullptr);
  advancedAction=CreateWindowW(L"BUTTON",L"高级设置 ▾",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,164,128,176,34,mainw,(HMENU)102,inst,nullptr);
  quickInfo=CreateWindowW(L"STATIC",L"",WS_CHILD|WS_VISIBLE,20,250,320,20,mainw,nullptr,inst,nullptr);
@@ -1543,12 +1543,14 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR cmd,int){
  modernui::tip(refreshModeBox,L"当前仅保留光标高刷；拖屏、全部及强制高刷暂不可用。");
  modernui::tip(targetBox,L"自动跟随显示器；也可输入 30–500 FPS，当前用于光标刷新。");
  EnableWindow(refreshModeBox,FALSE);
- basic(L"STATIC",L"黑幕绘制",20,332,88,22,0);
- shroudModeBox=basic(L"COMBOBOX",L"",114,328,626,150,156,CBS_DROPDOWNLIST|WS_TABSTOP);
- for(const wchar_t*text:{L"关闭",L"受控模式（半透明）",L"受控模式（透明）",L"原生揭示（实验性）",L"直接模式（全图）",L"素材替换（透明）",L"素材替换（半透明）"})SendMessageW(shroudModeBox,CB_ADDSTRING,0,(LPARAM)text);
- EnableWindow(shroudModeBox,FALSE);modernui::tip(shroudModeBox,L"素材替换修改已加载的迷雾透明度，切换或关闭时恢复原始素材；原生揭示会修改探索状态。渲染升级、副相机和小地图仍按全图预览，不显示半透明遮罩。均为实验性功能。");
  basic(L"BUTTON",L"配置 DDraw 高刷…",20,366,350,32,157,BS_PUSHBUTTON|WS_TABSTOP);
  basic(L"BUTTON",L"恢复 DDraw 配置…",390,366,350,32,158,BS_PUSHBUTTON|WS_TABSTOP);
+#endif
+#ifdef RA2_UNIFIED
+ auto videoControl=[&](const wchar_t* cls,const wchar_t* text,DWORD style,int x,int y,int width,int height,int id){return basic(cls,text,x,y,width,height,id,style);};
+ const int videoEnd=renderVideoSettings.create(videoControl,suite::VideoGroup::Render,468,20,720);
+ const int shift=videoEnd-438;for(auto&c:controlOrigins)if(c.handle==advancedHeader||std::find(advancedControls.begin(),advancedControls.end(),c.handle)!=advancedControls.end())c.logical.y+=shift;
+ compactContentH=videoEnd+20;advancedContentH+=shift;uiContentH=advancedOpen?advancedContentH:compactContentH;
 #endif
  // Main and advanced settings share one width, palette and renderer.
  for(auto& c:controlOrigins){

@@ -57,9 +57,11 @@ static bool update(const Request&r,const std::shared_ptr<const Frame>&scene,int 
  std::vector<nf::Stroke> strokes;std::vector<nf::Rect> cutouts;
  const bool ordersOK=nf::actionLines(read,r.view,r.width,r.height,strokes);
  const bool placementOK=foundationStencil.capture(read,r.view,r.width,r.height,cutouts);
- const bool effectsOK=effectStencil.capture(read,r.view,r.width,r.height,scene->objects,cutouts)&&
+ const bool effectsOK=(!r.profile.particles||effectStencil.capture(read,r.view,r.width,r.height,scene->objects,cutouts))&&
   unitUIStencil.capture(read,r.view,r.width,r.height,scene->objects,cutouts)&&
-  external::nativeeffects::beams(read,r.view,r.width,r.height,cutouts)&&
+  (!r.profile.lasers||external::nativeeffects::beams(read,r.view,r.width,r.height,cutouts))&&
+  external::localui::capture(read,r.view,r.width,r.height,cutouts)&&
+  external::localui::buildings(read,r.view,scene->objects,r.width,r.height,cutouts)&&
   external::nativeeffects::mergeCutouts(cutouts,r.width,r.height);
  const double sx=double(r.width)/r.view.width,sy=double(r.height)/r.view.height;
  external::mainview::View after;

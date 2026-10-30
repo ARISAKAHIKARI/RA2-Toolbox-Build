@@ -68,20 +68,28 @@ static void selections(){
  Band b;auto primitives=selectionPrimitives(out,b,{0,0,320,200},1,1);CHECK(primitives.size()==10);
  CHECK(primitives.back().color==0xffff4040);Canvas canvas;Rect bounds;CHECK(paint(primitives,canvas,bounds));CHECK(bounds.x==29&&bounds.y==34);
  auto full=selectionPrimitives({{{0,0,40,30},100,100}},b,{0,0,20,20},1,1);for(auto q:full){CHECK(q.rect.x>=0&&q.rect.y>=0&&q.rect.x+q.rect.w<=20&&q.rect.y+q.rect.h<=20);}
+ std::array<uint32_t,600> manySelected{};manySelected[0]=p;for(unsigned n=1;n<manySelected.size();++n)manySelected[n]=0x300000+n*0x100;
+ m.set(ptr,manySelected);m.set(0xA8ECB8,std::array<uint32_t,6>{{0,ptr,600,0,600,0}});CHECK(selected(read,objects,out)&&out.size()==1);
+ m.set(ptr,p);m.set(0xA8ECB8,std::array<uint32_t,6>{{0,ptr,1,0,1,0}});
  objects[0].id=8;CHECK(!selected(read,objects,out)&&out.empty());objects[0].id=7;
  m.set(p+0x83,uint8_t(0));CHECK(!selected(read,objects,out));m.set(p+0x83,uint8_t(1));
  unsigned count=0;m.hook=[&](uint32_t at,size_t){if(at==0xA8ECB8&&++count==2)m.set(at+16,uint32_t(0));};CHECK(!selected(read,objects,out));m.hook={};
  m.set(0xA8ECB8,std::array<uint32_t,6>{{0,0,0,0,0,0}});CHECK(selected(read,objects,out)&&out.empty());
- m.set(0xA8ECB8,std::array<uint32_t,6>{{0,ptr,513,0,513,0}});CHECK(!selected(read,objects,out));
+ m.set(0xA8ECB8,std::array<uint32_t,6>{{0,ptr,uint32_t(MaxBolts+1),0,uint32_t(MaxBolts+1),0}});CHECK(!selected(read,objects,out));
 }
 static void effects(){
  Memory m;uint32_t p=0x100000,ptr=0x200000;m.set(Bolts,std::array<uint32_t,6>{{0,ptr,1,0,1,0}});m.set(ptr,p);m.zero(p,0x30);
  m.set(p,Point3{1000,2000,0});m.set(p+12,Point3{2000,3000,20});m.set(p+0x1C,uint32_t(42));m.set(p+0x28,uint32_t(8));m.set(p+0x2C,uint8_t(1));
  auto read=[&](uint32_t p,void*out,size_t n){return m.read(p,out,n);};auto original=m.bytes;std::vector<Bolt> list;
  CHECK(bolts(read,list)&&list.size()==1&&list[0].seed==42&&list[0].alternate);CHECK(m.bytes==original);
+ // More than 128 native objects remain a valid complete snapshot.
+ std::array<uint32_t,600> many{};
+ for(unsigned n=0;n<many.size();++n){many[n]=0x300000+n*0x100;m.zero(many[n],0x30);m.set(many[n],Point3{1000,2000,0});m.set(many[n]+12,Point3{2000,3000,20});m.set(many[n]+0x28,uint32_t(8));}
+ m.set(ptr,many);m.set(Bolts,std::array<uint32_t,6>{{0,ptr,600,0,600,0}});CHECK(bolts(read,list)&&list.size()==600);
+ m.set(ptr,p);m.set(Bolts,std::array<uint32_t,6>{{0,ptr,1,0,1,0}});
  m.set(p+0x28,uint32_t(0));CHECK(bolts(read,list)&&list.empty());m.set(p+0x28,uint32_t(8));
  unsigned count=0;m.hook=[&](uint32_t at,size_t n){if(at==p&&n==0x30&&++count==2)m.set(p+0x28,uint32_t(4));};CHECK(!bolts(read,list));m.hook={};
- m.set(Bolts,std::array<uint32_t,6>{{0,ptr,513,0,513,0}});CHECK(!bolts(read,list));
+ m.set(Bolts,std::array<uint32_t,6>{{0,ptr,uint32_t(MaxBolts+1),0,uint32_t(MaxBolts+1),0}});CHECK(!bolts(read,list));
  Canvas a,b;CHECK(a.reset(128,64)&&b.reset(128,64));bolt(a,-100,32,228,32,42,false,1);bolt(b,-100,32,228,32,42,false,1);CHECK(a.pixels==b.pixels);
  CHECK(std::any_of(a.pixels.begin(),a.pixels.end(),[](uint32_t p){return p!=0;}));
  auto before=a.pixels;bolt(a,NAN,0,1,1,0,false,1);CHECK(a.pixels==before);

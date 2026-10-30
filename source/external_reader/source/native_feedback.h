@@ -9,6 +9,7 @@
 // Passive observations and bounded PARGB rasterization. No Win32/game calls,
 // no writes through the reader, and no game RNG or mission/selection setters.
 namespace external { namespace nativefeedback {
+constexpr size_t MaxBolts=8192; // snapshot validation bound, not a per-frame draw quota
 constexpr uint32_t MousePointer=0x887640u, Map=0x87F7E8u, Bolts=0x8A0E88u;
 inline bool range(uint32_t p,size_t n){return p>=0x10000u&&n<=8*1024*1024&&uint64_t(p)+n<=0x100000000ull;}
 struct Rect {int x=0,y=0,w=0,h=0;bool valid()const{return w>0&&h>0;}};
@@ -88,9 +89,8 @@ struct Bolt {Point3 source,target;uint32_t seed=0;bool alternate=false;};
 // never be shifted by this renderer, and Random is read rather than advanced.
 template<class Read>bool bolts(Read read,std::vector<Bolt>&out){
  out.clear();std::array<uint32_t,6> v{},after{};
- if(!read(Bolts,v.data(),sizeof v)||v[2]>512||v[4]>v[2]||(v[4]&&!range(v[1],size_t(v[4])*4)))return false;
+ if(!read(Bolts,v.data(),sizeof v)||v[2]>MaxBolts||v[4]>v[2]||(v[4]&&!range(v[1],size_t(v[4])*4)))return false;
  std::vector<uint32_t> ptr(v[4]);if(!ptr.empty()&&!read(v[1],ptr.data(),ptr.size()*4))return false;
- if(ptr.size()>128)return false;
  std::vector<Bolt> pending;
  for(uint32_t p:ptr){std::array<uint8_t,0x30>a{},b{};
   if(!range(p,a.size())||!read(p,a.data(),a.size())||!read(p,b.data(),b.size())||a!=b)return false;

@@ -28,6 +28,13 @@ int main(){
  memory.put(source+0x21C,owner+4);assert(actionLines(read,view,640,600,lines)&&lines.empty());memory.put(source+0x21C,owner);
  memory.put(source+0x2B4,0u);memory.put(source+0x58C,0x50000u);memory.put(source+0x590,1);memory.put(source+0x598,1);memory.put(0x50000,target);
  assert(actionLines(read,view,640,600,lines)&&lines.size()==1&&lines[0].color==0xff00fc00u&&lines[0].x1==190);
+ // A normal selection larger than 512 remains drawable. These are distinct
+ // live objects, not duplicate vector entries or fabricated line segments.
+ memory.put(source+0x58C,0u);memory.put(source+0x590,0);memory.put(source+0x598,0);
+ for(unsigned n=0;n<600;++n){uint32_t object=0x100000+n*0x800;std::memcpy(memory.bytes.data()+object,memory.bytes.data()+source,0x700);memory.put(object+0x10,n+100u);memory.put(0x500000+n*4,object);}
+ memory.put(0xA8ECB8+4,0x500000u);memory.put(0xA8ECB8+8,600u);memory.put(0xA8ECB8+16,600u);
+ assert(actionLines(read,view,640,600,lines)&&lines.size()==600);
+ memory.put(0xA8ECB8+4,pointers);memory.put(0xA8ECB8+8,1u);memory.put(0xA8ECB8+16,1u);
  memory.tear=true;assert(!actionLines(read,view,640,600,lines));memory.tear=false;
  memory.put(0x843108,uint8_t(0));assert(actionLines(read,view,640,600,lines)&&lines.empty());
 

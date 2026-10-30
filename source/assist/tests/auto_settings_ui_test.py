@@ -29,6 +29,7 @@ struct ControlUpdate{bool old=updatingControls;ControlUpdate(){updatingControls=
 static bool hookAdvanced=false,hookSmartUnload=false;static HWND hookChecks[4]={800,801,802,803};
 static uint32_t computeRequested=compute::Default;static bool minimapEnabled=false,minimapSecondary=false;static int minimapMode=0,minimapScale=10,advancedRangeCells=2,minimapPosition=0,minimapX=20,minimapY=60,minimapAlignX=0,minimapAlignY=0;
 static int minimapSecondaryX=10000,minimapSecondaryY=10000,minimapSecondaryWidth=320;
+static bool renderParticleEffects=true,renderLaserEffects=true,renderVoxelLighting=true,renderSpriteLighting=true;
 static bool renderUpgradeEnabled=false,unifiedOverlayEnabled=false,renderMaterialRefresh=true,renderPhysicalOutput=false,renderVulkanEnabled=false,renderProcessing=false,renderXbrzEnabled=false;
 static int renderColorPrecision=1,renderSceneDetail=1,renderUpgradeLayer=0,renderPaletteRange=1,renderPixelScale=3;
 constexpr unsigned HOTKEYF_CONTROL=2,HOTKEYF_ALT=4;
@@ -367,6 +368,10 @@ int main(){
  assert(autoSettingChanged(861,BN_CLICKED)&&!extra.switchPlayerEnabled&&extra.sellEnemy==playertest::SellAvailable);
  assert(fields[861]==BST_UNCHECKED);
  fields[722]=BST_UNCHECKED;assert(autoSettingChanged(722,BN_CLICKED)&&!extra.sellEnemy);
+ profile.clear();loadFeatureTypes();assert(renderParticleEffects&&renderLaserEffects&&renderVoxelLighting&&renderSpriteLighting);
+ renderParticleEffects=renderLaserEffects=renderVoxelLighting=renderSpriteLighting=false;saveFeatureTypes();
+ renderParticleEffects=renderLaserEffects=renderVoxelLighting=renderSpriteLighting=true;loadFeatureTypes();assert(!renderParticleEffects&&!renderLaserEffects&&!renderVoxelLighting&&!renderSpriteLighting);
+ renderParticleEffects=renderLaserEffects=renderVoxelLighting=renderSpriteLighting=true;saveFeatureTypes();loadFeatureTypes();assert(renderParticleEffects&&renderLaserEffects&&renderVoxelLighting&&renderSpriteLighting);
  autoSaveOK=false;flushAutoSettings();assert(lastMessage.find(L"自动保存失败")!=std::wstring::npos);
 }
 '''

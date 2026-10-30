@@ -3,6 +3,7 @@
 #include <windows.h>
 #include "../../shared/source/modern_ui.h"
 #include "display_settings.h"
+#include "settings_categories.h"
 #include "frontend_panes.h"
 namespace suite {
 constexpr UINT PaneLayout=WM_APP+80,ModuleEnable=WM_APP+81,CloseCheck=WM_APP+82;

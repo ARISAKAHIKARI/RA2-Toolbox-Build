@@ -25,6 +25,10 @@ int main(){
  UnitUIStencil stencil;std::vector<Rect> holes;
  assert(stencil.capture(read,view,640,600,{actor},holes)&&mergeCutouts(holes,640,600)&&holes.size()==6);
  assert(holes[0].x==66&&holes[0].y==224&&holes[0].w==3&&holes[0].h==1);assert(holes[3].x==67&&holes[3].y==225&&holes[3].w==1);
+ // Offscreen selected units must not disable visible native UI at >512.
+ for(unsigned n=0;n<600;++n)m.put(pointers+n*4,n?0x700000+n*0x100:object);
+ m.put(0xA8ECB8+8,600u);m.put(0xA8ECB8+16,600u);holes.clear();assert(stencil.capture(read,view,640,600,{actor},holes)&&mergeCutouts(holes,640,600)&&holes.size()==6);
+ m.put(0xA8ECB8+8,1u);m.put(0xA8ECB8+16,1u);
  auto decoded=m.pixelReads;holes.clear();assert(stencil.capture(read,view,640,600,{actor},holes)&&m.pixelReads==decoded);
  view.cameraX-=7;holes.clear();assert(stencil.capture(read,view,640,600,{actor},holes)&&mergeCutouts(holes,640,600)&&holes[0].x==73);view.cameraX+=7;
  holes.clear();assert(stencil.capture(read,view,1280,1200,{actor},holes)&&mergeCutouts(holes,1280,1200)&&holes[0].x==132&&holes[0].y==448&&holes[0].w==6&&holes[0].h==1);

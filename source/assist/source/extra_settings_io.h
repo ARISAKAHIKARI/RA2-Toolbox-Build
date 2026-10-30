@@ -13,6 +13,8 @@ static void loadAdditionalSettings(){
  renderPixelScale=std::clamp(value(L"Display",L"RenderPixelScale",3),0,3);
  renderPhysicalOutput=value(L"Display",L"RenderPhysicalOutput",0)!=0;
  renderVulkanEnabled=value(L"Display",L"RenderVulkan",0)!=0;
+ renderParticleEffects=value(L"Display",L"RenderParticles",1)!=0;renderLaserEffects=value(L"Display",L"RenderLasers",1)!=0;
+ renderVoxelLighting=value(L"Display",L"RenderVoxelLighting",1)!=0;renderSpriteLighting=value(L"Display",L"RenderSpriteLighting",1)!=0;
  extra.viewZoomEnabled=false;extra.viewZoomPercent=100; // temporarily unavailable, including saved settings
  extra.techEnhance=value(L"Experimental",L"TechEnhance",0)!=0;
  extra.networkHousePreserve=value(L"Experimental",L"NetworkHousePreserve",0)!=0;
@@ -124,6 +126,8 @@ static bool saveAdditionalSettings(){
  write(L"Display",L"RenderSceneDetail",renderSceneDetail);
  write(L"Display",L"RenderPhysicalOutput",renderPhysicalOutput);
  write(L"Display",L"RenderVulkan",renderVulkanEnabled);
+ write(L"Display",L"RenderParticles",renderParticleEffects);write(L"Display",L"RenderLasers",renderLaserEffects);
+ write(L"Display",L"RenderVoxelLighting",renderVoxelLighting);write(L"Display",L"RenderSpriteLighting",renderSpriteLighting);
  write(L"Display",L"MinimapMode",minimapMode);
  write(L"Display",L"MinimapSecondary",minimapSecondary);
  write(L"Display",L"MinimapSecondaryX",minimapSecondaryX);write(L"Display",L"MinimapSecondaryY",minimapSecondaryY);write(L"Display",L"MinimapSecondaryWidth",minimapSecondaryWidth);

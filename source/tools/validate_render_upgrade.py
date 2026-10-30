@@ -29,12 +29,13 @@ assert host.count('CreateWindowExW(') == 1
 assert 'context.cameraX!=current.cameraX' in host
 assert 'Context{}' in host and 'nodes.clear()' in host
 # Pin reviewed native entry/transport cores. The bridge.cpp update is the
-# explicitly scoped AirSingle post-enqueue ownership takeover; runtime.cpp
+# reviewed AirSingle takeover and Hotfix12 reuse of the game-thread world
+# index for owned global-magnetron candidates (48 routing + 6 guard cases); runtime.cpp
 # additionally forwards right-double-click messages to that same filter. Aircraft policy
 # and IPC changes have separate behavioral and ABI tests.
 expected = {
     'game_runtime/source/runtime.cpp': '1b2f4c1845d24c1baff9e7b03c654bc2812600b3de055e2dd846711d483073a0',
-    'assist/source/bridge.cpp': '18f517b994b483dfd6ace00d654355fc3972e4fd4174a43636b0812253d2cae2',
+    'assist/source/bridge.cpp': 'd8e080694b965ba14fb9deb57c6e59e4b3c48867fcdbe9fb0041782884c0c37b',
     'shared/source/game_entry_manager.cpp': '4f5480d228cfe31b2adc6d71e06513752ce11e77f79aafe1666f9b7b0623b105',
     'shared/source/game_entry_api.h': 'a113072ab7abe73d1667b311c5b90d99e2571aa70cff665a8a90645fdabc243b',
     'shared/source/runtime_protocol.h': 'eb480104be375885b5370692c3c90d76409fd32f2d7f95415e7df6344693a56b',

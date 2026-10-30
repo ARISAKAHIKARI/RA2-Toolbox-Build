@@ -38,7 +38,7 @@ inline void previewPixels(const voxel::Image&image,const lighting::State&state,u
 }
 inline size_t pixels(const voxel::Image&i){size_t n=i.gpuRaster?size_t(std::max(0,i.width))*std::max(0,i.height)+i.gpuRaster->triangles.size()*(sizeof(gpuvoxel::Triangle)/4):i.pixels.size();for(const auto&part:i.attachments)n+=pixels(part);return n;}
 inline void opaque(voxel::Image&i){
- for(auto&p:i.pixels)if(unsigned a=p>>24)p=0xff000000u|(std::min(255u,((p>>16)&255)*255/a)<<16)|(std::min(255u,((p>>8)&255)*255/a)<<8)|std::min(255u,(p&255)*255/a);
+ if(!i.intrinsicAlpha)for(auto&p:i.pixels)if(unsigned a=p>>24)p=0xff000000u|(std::min(255u,((p>>16)&255)*255/a)<<16)|(std::min(255u,((p>>8)&255)*255/a)<<8)|std::min(255u,(p&255)*255/a);
  for(auto&part:i.attachments)if(!part.shadow)opaque(part);
 }
 class Surface {

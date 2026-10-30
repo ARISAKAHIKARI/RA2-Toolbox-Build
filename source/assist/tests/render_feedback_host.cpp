@@ -1,4 +1,6 @@
 #include "../source/render_presentation.h"
+#include "../../external_reader/source/render_profile.h"
+#include "../../external_reader/source/native_local_ui.h"
 #include "../../shared/source/latest_worker.h"
 #include "../../external_reader/source/feedback_cursor.h"
 #include "../../external_reader/source/feedback_orders.h"
@@ -37,7 +39,7 @@ struct Reader {
 }externalReader;
 namespace external {using ReadSession=Reader;}
 namespace renderupgrade {
-struct Request {
+struct Request {external::presentation::Profile profile;
  uint64_t generation=1;bool materialRefresh=true;int detail=1,colorPrecision=1;uint32_t pid=77,match=8,tick=1000,reveal=0;int paletteRange=1,pixelScaleMode=3;int width=640,height=600;
  external::mainview::View view{0x20000,0x21000,0x22000,50,100,200,800,600,0,0,640,600};
  overlaycompositor::Context context{9,101,77,8,800,600,100,200};

@@ -1,1 +1,4 @@
 /source/build-x64/
+
+__pycache__/
+*.py[cod]

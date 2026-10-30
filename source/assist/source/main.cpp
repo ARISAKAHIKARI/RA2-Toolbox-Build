@@ -16,6 +16,7 @@
 #include <gdiplus.h>
 #include <shellapi.h>
 #include <algorithm>
+#include <atomic>
 #include <string>
 #include <vector>
 #include <memory>
@@ -46,7 +47,10 @@
 #include "../../shared/source/monitor_refresh.h"
 #include "../../shared/source/secondary_display.h"
 #include "type_catalog.h"
-#include "external_planner.h"
+#include "planner_task.h"
+#include "value_task.h"
+#include "../../suite/source/settings_categories.h"
+#include "../../external_reader/source/render_profile.h"
 #include "clock_ms.h"
 #include "label_motion.h"
 #include "crate_names.h"
@@ -73,6 +77,7 @@ namespace watchwindows {static void hide();}
 static uint32_t computeRequested=compute::Default;
 static bool renderUpgradeEnabled=false,unifiedOverlayEnabled=false,renderPhysicalOutput=false,renderMaterialRefresh=true,renderVulkanEnabled=false;static int renderUpgradeLayer=1,renderPaletteRange=1,renderPixelScale=3,renderSceneDetail=1,renderColorPrecision=1;
 static bool renderProcessing=false,renderXbrzEnabled=false;
+static bool renderParticleEffects=true,renderLaserEffects=true,renderVoxelLighting=true,renderSpriteLighting=true;
 static int effectiveRenderDetail(){return renderProcessing?renderSceneDetail:0;}
 static int effectiveRenderPrecision(){return renderProcessing?renderColorPrecision:0;}
 static int effectiveRenderPalette(){return renderProcessing?renderPaletteRange:0;}
@@ -164,7 +169,20 @@ static oreconfig::Config oreTypes{};static std::wstring oreMiners=L"HARV,CMIN",o
 static featuretypes::Config featureTypes{};static std::wstring featureTypeText[featuretypes::Count];static int featureTypeIndex=0;
 static uint8_t pendingSelectionTypes[MaxTypes];
 static delivery::Item pendingSelection;static bool hasSelection;static uint32_t selectionAck;
-static planner::Planner tacticalPlanner;static std::unique_ptr<planner::World> planningInput=std::make_unique<planner::World>();
+static std::atomic<HWND> calculationWindow{nullptr};static std::atomic<DWORD> calculationPID{0};
+static void calculationCompleted(){if(HWND window=calculationWindow.load()){const DWORD process=calculationPID.load();if(process)PostMessageW(window,DataMessage,process,0);}}
+static void bindCalculations(){calculationPID.store(pid);calculationWindow.store(ui);}
+static planner::Task plannerTask;
+static asyncwork::Latest<planner::TaskInput,planner::TaskOutput> plannerWorker([](const planner::TaskInput&i){return plannerTask.run(i);},calculationCompleted);
+static planner::Statistics plannerState;static uint64_t planningGeneration=1,planningSerial=0;static bool planningBusy=false;
+static std::vector<planner::Receipt> plannerReceipts;
+static compute::ValueTask<dodgecompute::Input,dodgecompute::Result> dodgeTask(dodgecompute::calculate,calculationCompleted);
+static compute::ValueTask<burstcompute::Input,burstcompute::Result> burstTask(burstcompute::calculate,calculationCompleted);
+static compute::ValueTask<missilecompute::Input,missilecompute::Result> missileTask(missilecompute::calculate,calculationCompleted);
+static compute::ValueTask<unloadcompute::Input,unloadcompute::Result> unloadTask(unloadcompute::calculate,calculationCompleted);
+static compute::ValueTask<compute::LoadInput,compute::LoadResult> loadTask([](compute::LoadInput&i){static auto work=std::make_unique<loading::Workspace>();return compute::load(i,*work);},calculationCompleted);
+static compute::ValueTask<compute::RepairInput,compute::RepairResult> repairTask(compute::repair,calculationCompleted);
+static void resetPlanning(){calculationWindow.store(nullptr);calculationPID.store(0);++planningGeneration;planningBusy=false;plannerWorker.invalidate();plannerState={};plannerReceipts.clear();plannerMicros=0;dodgeTask.invalidate();burstTask.invalidate();missileTask.invalidate();unloadTask.invalidate();loadTask.invalidate();repairTask.invalidate();}
 static long worldRevision=-1;static uint32_t plannerAck;static int submittedPlanFrame;static std::vector<planner::Order> submittedPlan;
 static typekeys::Tap typeTap,variantTap,formationTap;
 static hotkeyroute::Registry hotkeyRegistry;static hotkeyroute::Pending hotkeyPending;
@@ -635,103 +653,88 @@ static void logPlanning(const planner::World&w,const wchar_t* reason){
   L" full="+std::to_wstring(full)+L" manualPaused="+std::to_wstring(paused)+L" automaticMission="+std::to_wstring(automatic)+
   L" refineries="+std::to_wstring(w.refineryCount)+L" sampleMiner="+std::to_wstring(firstID)+
   L" cargo="+std::to_wstring(firstLoad)+L" capacity="+std::to_wstring(firstLimit)+L" mission="+std::to_wstring(firstMission)+
-  L" jobs="+std::to_wstring(tacticalPlanner.queued)+L" issued="+std::to_wstring(tacticalPlanner.issued)+
-  L" oreBypasses="+std::to_wstring(tacticalPlanner.oreBypasses)+L" yieldAttempts="+std::to_wstring(tacticalPlanner.oreYieldAttempts)+L" turnTimeouts="+std::to_wstring(tacticalPlanner.oreTurnTimeouts)+
+  L" jobs="+std::to_wstring(plannerState.queued)+L" issued="+std::to_wstring(plannerState.issued)+
+  L" oreBypasses="+std::to_wstring(plannerState.oreBypasses)+L" yieldAttempts="+std::to_wstring(plannerState.oreYieldAttempts)+L" turnTimeouts="+std::to_wstring(plannerState.oreTurnTimeouts)+
   L" planRequest="+std::to_wstring(shared->planRequest)+L" planAck="+std::to_wstring(shared->planAck)+
   L" result="+std::to_wstring(shared->planResult)+L" accepted="+std::to_wstring(shared->planAcceptedMask)+L" rejected="+std::to_wstring(shared->planRejectedMask));
 }
+template<class Input,class Output>static void serviceValueTask(compute::ValueTask<Input,Output>&worker,volatile uint32_t&request,volatile uint32_t&computed,
+ const Input&source,Output&destination,volatile long*inputSequence=nullptr,volatile long*resultSequence=nullptr){
+ const uint32_t task=request;if(task==computed)return;
+ const long seq=inputSequence?*inputSequence:0;if(seq&1)return;MemoryBarrier();
+ if(worker.needs(planningGeneration,task,seq)){
+  auto input=std::make_shared<Input>();memcpy(input.get(),&source,sizeof(Input));MemoryBarrier();
+  if(task!=request||(inputSequence&&seq!=*inputSequence)||input->match!=uint32_t(snap.match))return;
+  worker.submit(planningGeneration,task,seq,std::move(input));
+ }
+ auto result=worker.get();
+ if(!result||result->generation!=planningGeneration||result->task!=task||result->sequence!=seq||result->value.match!=uint32_t(snap.match))return;
+ MemoryBarrier();if(task!=request||(inputSequence&&seq!=*inputSequence))return;
+ if(resultSequence)InterlockedIncrement(resultSequence);MemoryBarrier();
+ destination=result->value;computed=task;MemoryBarrier();if(resultSequence)InterlockedIncrement(resultSequence);wakeGame();
+}
 static void serviceCalculationTasks(){
- if(!shared||!commandFresh(GetTickCount()))return;
- if(shared->dodgeTask!=shared->dodgeComputed){
-  long seq=shared->dodgeInputSeq;if(seq&1)return;MemoryBarrier();uint32_t task=shared->dodgeTask;
-  static auto input=std::make_unique<dodgecompute::Input>();memcpy(input.get(),&shared->dodgeInput,sizeof(*input));MemoryBarrier();
-  if(seq!=shared->dodgeInputSeq||task!=shared->dodgeTask)return;auto result=dodgecompute::calculate(*input);
-  if(seq==shared->dodgeInputSeq&&task==shared->dodgeTask){InterlockedIncrement(&shared->dodgeResultSeq);MemoryBarrier();shared->dodgeResult=result;shared->dodgeComputed=task;MemoryBarrier();InterlockedIncrement(&shared->dodgeResultSeq);wakeGame();}
- }
- if(shared->burstTask!=shared->burstComputed){
-  long seq=shared->burstInputSeq;if(seq&1)return;MemoryBarrier();uint32_t task=shared->burstTask;
-  static auto input=std::make_unique<burstcompute::Input>();memcpy(input.get(),&shared->burstInput,sizeof(*input));MemoryBarrier();
-  if(seq!=shared->burstInputSeq||task!=shared->burstTask)return;auto result=burstcompute::calculate(*input);
-  if(seq==shared->burstInputSeq&&task==shared->burstTask){InterlockedIncrement(&shared->burstResultSeq);MemoryBarrier();shared->burstResult=result;shared->burstComputed=task;MemoryBarrier();InterlockedIncrement(&shared->burstResultSeq);wakeGame();}
- }
- if(shared->missileTask!=shared->missileComputed){
-  long seq=shared->missileInputSeq;if(seq&1)return;MemoryBarrier();uint32_t task=shared->missileTask;
-  static auto input=std::make_unique<missilecompute::Input>();memcpy(input.get(),&shared->missileInput,sizeof(*input));MemoryBarrier();
-  if(seq!=shared->missileInputSeq||task!=shared->missileTask)return;
-  auto result=missilecompute::calculate(*input);
-  if(seq==shared->missileInputSeq&&task==shared->missileTask){InterlockedIncrement(&shared->missileResultSeq);MemoryBarrier();shared->missileResult=result;shared->missileComputed=task;MemoryBarrier();InterlockedIncrement(&shared->missileResultSeq);wakeGame();}
- }
- if(shared->unloadTask!=shared->unloadComputed){
-  const long seq=shared->unloadInputSeq;if(seq&1)return;MemoryBarrier();const uint32_t task=shared->unloadTask;
-  static auto input=std::make_unique<unloadcompute::Input>();memcpy(input.get(),&shared->unloadInput,sizeof(*input));MemoryBarrier();
-  if(seq!=shared->unloadInputSeq||task!=shared->unloadTask)return;
-  auto result=unloadcompute::calculate(*input);
-  if(seq==shared->unloadInputSeq&&task==shared->unloadTask){
-   InterlockedIncrement(&shared->unloadResultSeq);MemoryBarrier();shared->unloadResult=result;shared->unloadComputed=task;
-   MemoryBarrier();InterlockedIncrement(&shared->unloadResultSeq);wakeGame();
-  }
- }
-
- if(shared->loadTask!=shared->loadComputed){uint32_t task=shared->loadTask;MemoryBarrier();
-  static auto input=std::make_unique<compute::LoadInput>();static auto work=std::make_unique<loading::Workspace>();
-  memcpy(input.get(),&shared->loadInput,sizeof(*input));MemoryBarrier();if(task!=shared->loadTask)return;
-  auto result=compute::load(*input,*work);
-  if(task==shared->loadTask){shared->loadResult=result;MemoryBarrier();shared->loadComputed=task;wakeGame();}
- }
- if(shared->repairTask!=shared->repairComputed){uint32_t task=shared->repairTask;MemoryBarrier();
-  static auto input=std::make_unique<compute::RepairInput>();memcpy(input.get(),&shared->repairInput,sizeof(*input));MemoryBarrier();if(task!=shared->repairTask)return;
-  auto result=compute::repair(*input);
-  if(task==shared->repairTask){shared->repairResult=result;MemoryBarrier();shared->repairComputed=task;wakeGame();}
- }
+ if(!shared||!commandFresh(GetTickCount()))return;bindCalculations();
+ serviceValueTask(dodgeTask,shared->dodgeTask,shared->dodgeComputed,shared->dodgeInput,shared->dodgeResult,&shared->dodgeInputSeq,&shared->dodgeResultSeq);
+ serviceValueTask(burstTask,shared->burstTask,shared->burstComputed,shared->burstInput,shared->burstResult,&shared->burstInputSeq,&shared->burstResultSeq);
+ serviceValueTask(missileTask,shared->missileTask,shared->missileComputed,shared->missileInput,shared->missileResult,&shared->missileInputSeq,&shared->missileResultSeq);
+ serviceValueTask(unloadTask,shared->unloadTask,shared->unloadComputed,shared->unloadInput,shared->unloadResult,&shared->unloadInputSeq,&shared->unloadResultSeq);
+ serviceValueTask(loadTask,shared->loadTask,shared->loadComputed,shared->loadInput,shared->loadResult);
+ serviceValueTask(repairTask,shared->repairTask,shared->repairComputed,shared->repairInput,shared->repairResult);
+}
+static planner::Parameters plannerParameters(){
+ planner::Parameters p;p.flags=compute::plannerFlags(shared->flags,shared->computeApplied,false);p.modes=compute::magnetronIntents(shared->computeApplied,false);
+ p.veteran=veteranPercent;p.elite=elitePercent;p.timeout=pathTimeout;p.hz=advancedScanHz;p.priority=advancedTargetPriority;p.range=advancedRangeCells;
+ p.drop=extra.magnetronDrop&&!compute::inside(shared->computeApplied,compute::MagnetronDrop);p.observeDrop=extra.magnetronDrop;return p;
+}
+static void plannerStatistics(){
+ shared->plannerTracking=plannerState.tracking;
+ if(!compute::inside(shared->computeApplied,compute::Ore)){snap.oreYielded=plannerState.yielded;snap.oreQueued=plannerState.queued;snap.oreDocking=plannerState.docking;snap.oreIssued=plannerState.issued;
+  snap.oreDelivered=plannerState.oreDelivered;snap.oreUnverified=plannerState.oreUnverified;}
+ snap.magnetShots=incoming.magnetShots+plannerState.magnetShots;snap.magnetUnverified=incoming.magnetUnverified+plannerState.magnetUnverified;
 }
 static void servicePlanner(){
- if(!shared||!enabled||snap.status!=1||!commandFresh(GetTickCount()))return;
- if(!compute::inside(shared->computeApplied,compute::Ore)){snap.oreYielded=tacticalPlanner.yielded;snap.oreQueued=tacticalPlanner.queued;snap.oreDocking=tacticalPlanner.docking;snap.oreIssued=tacticalPlanner.issued;
- snap.oreDelivered=tacticalPlanner.oreDelivered;snap.oreUnverified=tacticalPlanner.oreUnverified;}
- snap.magnetShots=incoming.magnetShots+tacticalPlanner.magnetShots;snap.magnetUnverified=incoming.magnetUnverified+tacticalPlanner.magnetUnverified;
- shared->plannerTracking=tacticalPlanner.trackingFlags();
- uint32_t receipt=shared->planAck;
- if(receipt!=plannerAck){MemoryBarrier();plannerAck=receipt;uint32_t accepted=shared->planAcceptedMask,rejected=shared->planRejectedMask;
+ if(!shared||!enabled||snap.status!=1||!commandFresh(GetTickCount()))return;bindCalculations();
+ plannerStatistics();
+ const uint32_t receipt=shared->planAck;
+ if(receipt!=plannerAck){MemoryBarrier();plannerAck=receipt;const uint32_t accepted=shared->planAcceptedMask,rejected=shared->planRejectedMask;
   if(diagEnabled)diag(L"plan ack="+std::to_wstring(receipt)+L" result="+std::to_wstring(shared->planResult)+L" accepted="+std::to_wstring(accepted)+L" rejected="+std::to_wstring(rejected));
   for(size_t i=0;i<submittedPlan.size()&&i<planner::MaxOrders;++i){
-   if(accepted&(1u<<i))tacticalPlanner.accepted(submittedPlan[i],submittedPlanFrame);
-   else if(rejected&(1u<<i)){if(shared->planResult==-7)tacticalPlanner.expired(submittedPlan[i]);else tacticalPlanner.rejected(submittedPlan[i],submittedPlanFrame);}
+   auto kind=planner::Receipt::Expired;if(accepted&(1u<<i))kind=planner::Receipt::Accepted;
+   else if((rejected&(1u<<i))&&shared->planResult!=-7)kind=planner::Receipt::Rejected;
+   plannerReceipts.push_back({submittedPlan[i],submittedPlanFrame,kind});
   }
   submittedPlan.clear();
  }
  if(shared->planRequest!=shared->planAck)return;
- long seq=shared->worldSeq;
- if(seq&1||seq==worldRevision)return;
- auto&w=*planningInput;MemoryBarrier();w.match=shared->world.match;w.tick=shared->world.tick;w.frame=shared->world.frame;
- w.count=shared->world.count;w.intentCount=shared->world.intentCount;w.refineryCount=shared->world.refineryCount;
- w.inputSerial=shared->world.inputSerial;
- if(!planner::validWorldCounts(w.count,w.intentCount,w.refineryCount)){tacticalPlanner.reset();shared->plannerTracking=0;return;}
- w.combatCount=shared->world.combatCount;if(w.combatCount<0||w.combatCount>planner::MaxCombatProbes)return;
- memcpy(w.combat,shared->world.combat,size_t(w.combatCount)*sizeof(planner::CombatProbe));
- memcpy(w.actors,shared->world.actors,size_t(w.count)*sizeof(planner::Actor));memcpy(w.intents,shared->world.intents,size_t(w.intentCount)*sizeof(planner::Intent));memcpy(w.refineries,shared->world.refineries,size_t(w.refineryCount)*sizeof(planner::Refinery));MemoryBarrier();
- if(seq!=shared->worldSeq)return;
- // The game can publish a new world after readSnapshot() copied the previous
- // control state. Retry that revision when control catches up, rather than
- // permanently consuming it as a fictitious frame rollback.
- if(w.match==uint32_t(snap.match)&&w.frame>snap.frame){logPlanning(w,L"waiting-control-snapshot");wakeGame();return;}
- worldRevision=seq;
- if(!freshness::valid(w.match,snap.match,w.tick,w.frame,GetTickCount(),snap.frame,freshness::Tactical)||snap.chat){logPlanning(w,snap.chat?L"chat":L"stale-source");wakeGame();return;}
- LARGE_INTEGER begin{},end{},frequency{};QueryPerformanceCounter(&begin);
- submittedPlan=tacticalPlanner.step(w,compute::plannerFlags(shared->flags,shared->computeApplied,false),veteranPercent,elitePercent,pathTimeout,advancedScanHz,advancedTargetPriority,advancedRangeCells,extra.magnetronDrop&&!compute::inside(shared->computeApplied,compute::MagnetronDrop),compute::magnetronIntents(shared->computeApplied,false),extra.magnetronDrop);shared->plannerTracking=tacticalPlanner.trackingFlags();
- QueryPerformanceCounter(&end);QueryPerformanceFrequency(&frequency);plannerMicros=frequency.QuadPart>0?DWORD((end.QuadPart-begin.QuadPart)*1000000/frequency.QuadPart):0;
- if(!compute::inside(shared->computeApplied,compute::Ore)){snap.oreYielded=tacticalPlanner.yielded;snap.oreQueued=tacticalPlanner.queued;snap.oreDocking=tacticalPlanner.docking;snap.oreIssued=tacticalPlanner.issued;
- snap.oreDelivered=tacticalPlanner.oreDelivered;snap.oreUnverified=tacticalPlanner.oreUnverified;}
- snap.magnetShots=incoming.magnetShots+tacticalPlanner.magnetShots;snap.magnetUnverified=incoming.magnetUnverified+tacticalPlanner.magnetUnverified;
- logPlanning(w,submittedPlan.empty()?L"no-order":L"planned");
- if(submittedPlan.empty())return;
- // Planning is stateful. Expiration makes jobs eligible again without
- // blacklisting a target or counting a movement failure.
- if(!freshness::valid(w.match,snap.match,w.tick,w.frame,GetTickCount(),snap.frame,freshness::Tactical)){
-  for(const auto&o:submittedPlan)tacticalPlanner.expired(o);submittedPlan.clear();wakeGame();return;
+ // Only a completed immutable value can enter the existing command mailbox.
+ // Changing settings, chat, source expiry or a new bridge rejects old orders;
+ // expiration is returned to the worker before its next stateful step.
+ if(planningBusy){
+  auto result=plannerWorker.get();if(!result||result->generation!=planningGeneration||result->serial!=planningSerial)return;
+  planningBusy=false;if(result->match==uint32_t(snap.match)){plannerState=result->statistics;plannerMicros=result->micros;}else{plannerState={};plannerMicros=0;}plannerStatistics();
+  if(result->parameters==plannerParameters()&&!snap.chat&&freshness::valid(result->match,snap.match,result->tick,result->frame,GetTickCount(),snap.frame,freshness::Tactical)){
+   submittedPlan=result->orders;
+   if(!submittedPlan.empty()){
+    memcpy(shared->plan,submittedPlan.data(),submittedPlan.size()*sizeof(planner::Order));shared->planCount=int(submittedPlan.size());shared->planMatch=result->match;shared->planTick=result->tick;shared->planFrame=result->frame;submittedPlanFrame=result->frame;
+    MemoryBarrier();InterlockedIncrement((volatile LONG*)&shared->planRequest);wakeGame();return;
+   }
+  }else for(const auto&o:result->orders)plannerReceipts.push_back({o,result->frame,planner::Receipt::Expired});
  }
- memcpy(shared->plan,submittedPlan.data(),submittedPlan.size()*sizeof(planner::Order));shared->planCount=int(submittedPlan.size());shared->planMatch=w.match;shared->planTick=w.tick;shared->planFrame=w.frame;submittedPlanFrame=w.frame;
- MemoryBarrier();InterlockedIncrement((volatile LONG*)&shared->planRequest);wakeGame();
+ const auto parameters=plannerParameters();if(!parameters.flags&&!parameters.drop&&!parameters.observeDrop&&!plannerState.tracking&&plannerReceipts.empty())return;
+ const long seq=shared->worldSeq;if((seq&1)||seq==worldRevision||snap.chat)return;
+ auto input=std::make_shared<planner::World>();auto&w=*input;MemoryBarrier();
+ w.match=shared->world.match;w.tick=shared->world.tick;w.frame=shared->world.frame;w.count=shared->world.count;w.intentCount=shared->world.intentCount;w.refineryCount=shared->world.refineryCount;w.inputSerial=shared->world.inputSerial;w.combatCount=shared->world.combatCount;
+ if(!planner::validWorldCounts(w.count,w.intentCount,w.refineryCount)||w.combatCount<0||w.combatCount>planner::MaxCombatProbes)return;
+ memcpy(w.combat,shared->world.combat,size_t(w.combatCount)*sizeof(planner::CombatProbe));memcpy(w.actors,shared->world.actors,size_t(w.count)*sizeof(planner::Actor));memcpy(w.intents,shared->world.intents,size_t(w.intentCount)*sizeof(planner::Intent));memcpy(w.refineries,shared->world.refineries,size_t(w.refineryCount)*sizeof(planner::Refinery));MemoryBarrier();
+ if(seq!=shared->worldSeq)return;
+ if(w.match==uint32_t(snap.match)&&w.frame>snap.frame){wakeGame();return;}
+ worldRevision=seq;
+ if(!freshness::valid(w.match,snap.match,w.tick,w.frame,GetTickCount(),snap.frame,freshness::Tactical)){logPlanning(w,L"stale-source");wakeGame();return;}
+ planner::TaskInput job;job.generation=planningGeneration;job.serial=++planningSerial;job.world=std::move(input);job.parameters=plannerParameters();job.receipts=std::move(plannerReceipts);plannerReceipts.clear();
+ planningBusy=true;plannerWorker.submit(std::move(job));
 }
+
 struct RetiredBridge {Shared*state;HANDLE mapping;HMODULE module;gameinput::Subscription hook;HWND window;DWORD lastWake;DWORD thread;std::shared_ptr<const external::ProcessConnection> process;};
 static std::vector<RetiredBridge> retiredBridges;
 static bool bridgeClosePending=false;
@@ -758,13 +761,13 @@ static void reapBridges(){DWORD now=GetTickCount();for(size_t i=0;i<retiredBridg
 static void releaseBridge(){
  commandcursor::clear();
  if(hook)logBridgeHealth(true); // preserve the last IPC evidence before unmapping
- tacticalPlanner.reset();submittedPlan.clear();worldRevision=-1;plannerAck=0;hasSelection=false;selectionAck=0;cooperativeDelivered=cooperativeReceipt=0;retryCooperative=false;submittedCooperative.clear();acceptedCooperative.clear();processedCooperative.clear();cooperativeSourcePool={};
+ resetPlanning();submittedPlan.clear();worldRevision=-1;plannerAck=0;hasSelection=false;selectionAck=0;cooperativeDelivered=cooperativeReceipt=0;retryCooperative=false;submittedCooperative.clear();acceptedCooperative.clear();processedCooperative.clear();cooperativeSourcePool={};
  if(shared&&hook){shared->stop=1;wakeGame();retiredBridges.push_back({shared,mapping,module,hook,game,GetTickCount(),gameThread,externalReader.connectionIdentity()});}
  else{if(hook)gameinput::release(gameentry::Client::Assist,hook);if(shared)UnmapViewOfFile(shared);if(mapping)CloseHandle(mapping);}
  hook=0;shared=nullptr;mapping=nullptr;module=nullptr;lastData=attachAt=lastPulse=0;incoming={};snapshotSeq=~0u;lastReceiptWrite=lastReceiptMatch=0;reapBridges();
 }
 static void detach(){renderupgrade::stop();clearPassengerDisplay();watchwindows::hide();minimap::clear();hideAircraftButton();resetConstruction();resetAirPath();hotkeyPending.clear();pointerMatches.clear();
- tacticalPlanner.reset();submittedPlan.clear();worldRevision=-1;plannerAck=0;hasSelection=false;selectionAck=0;
+ resetPlanning();submittedPlan.clear();worldRevision=-1;plannerAck=0;hasSelection=false;selectionAck=0;
  DWORD exitCode=0;bool exitKnown=gameProcess&&GetExitCodeProcess(gameProcess,&exitCode);
  critical(L"detach pid="+std::to_wstring(pid)+L" processExitCode="+(exitKnown?hex32(exitCode):L"unavailable")+
   L" stillActive="+std::to_wstring(exitKnown&&exitCode==STILL_ACTIVE));commandQueue.clear();inFlightMatch=0;inFlightRetries=0;sentAt=0;lastStallLog=0;typeTap.clear();
@@ -953,7 +956,7 @@ static void sampleExternal(DWORD now){
  if(!externalAt||DWORD(displayNow-externalAt)>=period){
   const DWORD gap=externalAt?DWORD(displayNow-externalAt):0;
   LARGE_INTEGER sampleStart{},sampleEnd{},sampleFrequency{};QueryPerformanceCounter(&sampleStart);
-  externalAt=displayNow;externalReader.begin();externalSampler.stopped(tacticalPlanner.stoppedUnits());externalData=&externalSampler.sample(displayNow,flags(),extra.enemyMarkers,statusOptions());
+  externalAt=displayNow;externalReader.begin();externalSampler.stopped(plannerState.stopped);externalData=&externalSampler.sample(displayNow,flags(),extra.enemyMarkers,statusOptions());
   if(externalData->status==1)attackRecorder.sample([](uint32_t p,void*out,size_t n){return externalReader.readFresh(p,out,n);},
    [](const std::string&s){critical(std::wstring(s.begin(),s.end()));},now,externalReader.generation(),externalData->match,
    "flags="+std::to_string(flags())+" global="+std::to_string(extra.magnetronGlobal)+" drop="+std::to_string(extra.magnetronDrop)+
@@ -1513,9 +1516,19 @@ static void serviceCommandQueue(DWORD now){
  if(commandFresh(now)&&shared->request==shared->ack&&(snap.techOpen!=(techMode?techImplementation+1:0)||(techMode&&techAcknowledgedHash!=typeListHash(snap.types,snap.typeCount)))&&!snap.techError)send(OpenTech,techMode);
 }
 static void publishSuiteDisplay(){
+ if(!ready)return;
+ external::presentation::Profile profile;profile.gpu=renderVulkanEnabled;profile.material=effectiveRenderInterpolation();profile.detail=effectiveRenderDetail();profile.precision=effectiveRenderPrecision();profile.palette=effectiveRenderPalette();profile.scale=effectiveRenderScale();
+ profile.particles=renderParticleEffects;profile.lasers=renderLaserEffects;profile.voxelLighting=renderVoxelLighting;profile.spriteLighting=renderSpriteLighting;external::presentation::settings().publish(profile);
 #ifdef RA2_UNIFIED
- if(!ready)return;suite::DisplayState state;
+ suite::DisplayState state;
  state.values={extra.scrollRefreshMode,int(extra.enemyMarkers),int(SendMessageW(check[1],BM_GETCHECK,0,0)==BST_CHECKED),int(SendMessageW(check[0],BM_GETCHECK,0,0)==BST_CHECKED),int(SendMessageW(check[3],BM_GETCHECK,0,0)==BST_CHECKED),int(extra.frozen),int(extra.parasiteMarker),int(extra.crateBuffMarkers),labelScalePercent,fps,extra.mapStrategy,int(extra.passengerBubbles),int(extra.dangerPassengers),int(infoAdaptive)};
+ for(int i=suite::RenderUpgrade;i<suite::DisplayOptionCount;++i){auto control=GetDlgItem(ui,suite::displaySpecs[i].id);if(!control)continue;const auto type=suite::displaySpecs[i].control;
+  if(type==suite::DisplayControl::Check)state.values[i]=SendMessageW(control,BM_GETCHECK,0,0)==BST_CHECKED;
+  else if(type==suite::DisplayControl::Choice)state.values[i]=int(SendMessageW(control,CB_GETCURSEL,0,0));
+  else if(type==suite::DisplayControl::Hotkey)state.values[i]=int(SendMessageW(control,HKM_GETHOTKEY,0,0));
+  else{BOOL ok=FALSE;state.values[i]=int(GetDlgItemInt(ui,suite::displaySpecs[i].id,&ok,FALSE));}
+ }
+ wchar_t renderText[1024]{};GetDlgItemTextW(ui,9303,renderText,1024);state.renderStatus=renderText;
  state.infoRate=informationFPS();
  state.assistEnabled=enabled;state.refreshStatus=shared?shared->scrollRefreshStatus:0;
  state.rateMilli=shared?int(shared->scrollRefreshRateMilli):0;state.gapUs=shared?int(shared->scrollRefreshMaxGapUs):0;
@@ -1823,28 +1836,34 @@ static void applyPanelDpi(unsigned dpi){
  layoutPanel();
 }
 static void scrollTo(int position){scrollY=position;layoutPanel();}
-// Pack controls into tactical, battlefield-information and experimental pages.
+// Pack complete control rows into the five product categories.
 // Row intervals keep labels/inputs aligned while removing old page whitespace.
 #include "hover_help.h"
 static void finalizeTacticalLayout(){
- int bottoms[3]={uilayout::BodyTop+12,uilayout::BodyTop+12,uilayout::BodyTop+12};
+ std::vector<int> originalPages;for(const auto&c:pageControls)originalPages.push_back(c.page);
+ int bottoms[suite::categories::Count];std::fill(std::begin(bottoms),std::end(bottoms),uilayout::BodyTop+12);
  for(int section:{0,1,2,5,3,4}){
-  int category=section==3?1:section==4?2:0;int&y=bottoms[category];
-  std::vector<size_t> items;for(size_t i=0;i<pageControls.size();++i)if(pageControls[i].page==section)items.push_back(i);
+  std::vector<size_t> items;for(size_t i=0;i<pageControls.size();++i)if(originalPages[i]==section)items.push_back(i);
   std::stable_sort(items.begin(),items.end(),[](size_t a,size_t b){return pageControls[a].rect.y<pageControls[b].rect.y;});
-  if(items.empty())continue;if(section>0)y+=24;
-  for(size_t at=0;at<items.size();){size_t end=at+1;int top=pageControls[items[at]].rect.y,bottom=top+pageControls[items[at]].visibleHeight;
+  for(size_t at=0;at<items.size();){size_t end=at+1;const int top=pageControls[items[at]].rect.y;int bottom=top+pageControls[items[at]].visibleHeight;
    while(end<items.size()&&pageControls[items[end]].rect.y<bottom){auto&c=pageControls[items[end++]];bottom=std::max(bottom,c.rect.y+c.visibleHeight);}
-   std::wstring rowHelp;
-   for(size_t i=at;i<end;++i){auto&c=pageControls[items[i]];int id=GetDlgCtrlID(c.hwnd);if(id){auto h=controlHelp(id,L"");if(!h.empty()){rowHelp=h;break;}}}
-   for(size_t i=at;i<end;++i){auto&c=pageControls[items[i]];wchar_t label[512]{};GetWindowTextW(c.hwnd,label,512);if(c.help.empty())c.help=controlHelp(GetDlgCtrlID(c.hwnd),L"");if(c.help.empty())c.help=rowHelp.empty()?controlHelp(0,label):rowHelp;c.rect.y=y+c.rect.y-top;}
-   y+=bottom-top+12;at=end;
+   std::vector<int> ids;std::wstring rowHelp;for(size_t i=at;i<end;++i){int id=GetDlgCtrlID(pageControls[items[i]].hwnd);if(id){ids.push_back(id);if(rowHelp.empty())rowHelp=controlHelp(id,L"");}}
+   int category=suite::categories::row(section,ids.data(),unsigned(ids.size()));int&y=bottoms[category];
+   for(size_t i=at;i<end;++i){auto&c=pageControls[items[i]];wchar_t label[512]{};GetWindowTextW(c.hwnd,label,512);if(c.help.empty())c.help=controlHelp(GetDlgCtrlID(c.hwnd),L"");if(c.help.empty())c.help=rowHelp.empty()?controlHelp(0,label):rowHelp;c.rect.y=y+c.rect.y-top;c.page=category;
+#ifdef RA2_UNIFIED
+    if(category==suite::categories::Video){c.page=-3;ShowWindow(c.hwnd,SW_HIDE);}
+#endif
+    modernui::tip(c.hwnd,c.help);
+   }
+   y+=bottom-top+14;at=end;
   }
-  y+=12;
  }
- for(auto&c:pageControls)if(c.page>=0){c.page=c.page==3?1:c.page==4?2:0;modernui::tip(c.hwnd,c.help);}
- scrollY=0;layoutPanel();
+#ifdef RA2_UNIFIED
+ for(auto&c:pageControls){int id=GetDlgCtrlID(c.hwnd);if(id==430||(id>=910&&id<=915)){c.page=-3;ShowWindow(c.hwnd,SW_HIDE);}}
+#endif
+ activePage=suite::categories::Control;scrollY=scrollX=0;layoutPanel();
 }
+
 static HWND placedControl(uilayout::Placement placement,const wchar_t*cls,const wchar_t*text,int id,DWORD style){
  if(!wcscmp(text,L"自动保存"))return HWND{};
  auto r=placement.rect;HWND c=CreateWindowExW((!wcscmp(cls,L"EDIT")||!wcscmp(cls,L"LISTBOX"))?WS_EX_CLIENTEDGE:0,cls,text,WS_CHILD|WS_VISIBLE|WS_CLIPSIBLINGS|style,r.x,r.y,r.w,r.h,ui,(HMENU)(INT_PTR)id,GetModuleHandleW(nullptr),nullptr);
@@ -1878,7 +1897,7 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
  }
 #ifdef RA2_UNIFIED
  if(suite::layoutMessage(w,msg,lp))return 0;
- if(msg==suite::SelectCategory){int page=std::clamp(int(wp),0,2);if(activePage!=page)scrollY=scrollX=0;activePage=page;SetWindowTextW(GetDlgItem(w,989),page==0?L"战术控制":page==1?L"战场信息":L"实验功能");layoutPanel();return 0;}
+ if(msg==suite::SelectCategory){int page=std::clamp(int(wp),0,int(suite::categories::Count)-1);if(activePage!=page)scrollY=scrollX=0;activePage=page;SetWindowTextW(GetDlgItem(w,989),suite::categories::name(page));layoutPanel();return 0;}
  if(msg==suite::RefreshRateChanged){syncRefreshRate();return 0;}
  if(msg==suite::ApplyDisplaySetting){
   if(!ready||!suite::validDisplayEdit(int(wp),int(lp)))return 0;
@@ -1886,6 +1905,7 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
   int notification=BN_CLICKED;
   {ControlUpdate guard;
    if(spec.control==suite::DisplayControl::Check)SendMessageW(control,BM_SETCHECK,lp?BST_CHECKED:BST_UNCHECKED,0);
+   else if(spec.control==suite::DisplayControl::Hotkey){SendMessageW(control,HKM_SETHOTKEY,lp,0);notification=EN_CHANGE;}
    else if(spec.control==suite::DisplayControl::Choice){SendMessageW(control,CB_SETCURSEL,lp,0);notification=CBN_SELCHANGE;}
    else {SetWindowTextW(control,std::to_wstring(int(lp)).c_str());notification=EN_CHANGE;}
   }
@@ -1925,10 +1945,10 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
  case WM_COMMAND:{int id=LOWORD(wp);
  DependencyCommandRefresh dependencyRefresh;
  if(ready&&!updatingControls&&rejectUnavailableSetting(id,HIWORD(wp)))return 0;
- if(id==9300||id==9301||id==9302||id==9304||id==9305||id==9306||id==9307||id==9308||id==9309||id==9310||id==9313||id==9314){
+ if(id==9300||id==9301||id==9302||id==9304||id==9305||id==9306||id==9307||id==9308||id==9309||id==9310||id==9313||id==9314||(id>=9320&&id<=9323)){
   if(updatingControls)return 0;
   if(id==9302||id==9304||id==9305||id==9308||id==9309){if(HIWORD(wp)!=CBN_SELCHANGE)return 0;int choice=int(SendDlgItemMessageW(w,id,CB_GETCURSEL,0,0));if(choice<0||choice>(id==9305?3:1))return 0;if(id==9302)renderUpgradeLayer=std::clamp(choice,0,1);else if(id==9304)renderPaletteRange=std::clamp(choice,0,1);else if(id==9309)renderColorPrecision=std::clamp(choice,0,1);else if(id==9308)renderSceneDetail=std::clamp(choice,0,1);else renderPixelScale=std::clamp(choice,0,3);}
-  else{if(HIWORD(wp)!=BN_CLICKED)return 0;bool on=SendDlgItemMessageW(w,id,BM_GETCHECK,0,0)==BST_CHECKED;if(id==9300)renderUpgradeEnabled=on;else if(id==9306)renderPhysicalOutput=on;else if(id==9307)renderMaterialRefresh=on;else if(id==9310)renderVulkanEnabled=on;else if(id==9313)renderProcessing=on;else if(id==9314)renderXbrzEnabled=on;else unifiedOverlayEnabled=on;}
+  else{if(HIWORD(wp)!=BN_CLICKED)return 0;bool on=SendDlgItemMessageW(w,id,BM_GETCHECK,0,0)==BST_CHECKED;if(id==9300)renderUpgradeEnabled=on;else if(id==9306)renderPhysicalOutput=on;else if(id==9307)renderMaterialRefresh=on;else if(id==9310)renderVulkanEnabled=on;else if(id==9313)renderProcessing=on;else if(id==9314)renderXbrzEnabled=on;else if(id==9320)renderParticleEffects=on;else if(id==9321)renderLaserEffects=on;else if(id==9322)renderVoxelLighting=on;else if(id==9323)renderSpriteLighting=on;else unifiedOverlayEnabled=on;}
   renderupgrade::stop();++paintRevision;changedSetting();paint();
   if(!renderUpgradeEnabled)SetWindowTextW(GetDlgItem(w,9303),unifiedOverlayEnabled?L"统一覆盖层：世界信息＋主屏统计；交互窗口尚未合并":L"渲染升级：关闭");
   return 0;

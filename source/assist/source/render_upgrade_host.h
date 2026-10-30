@@ -10,14 +10,16 @@
 #include "../../external_reader/source/native_effect_stencil.h"
 #include "../../external_reader/source/native_beam_effects.h"
 #include "../../external_reader/source/native_unit_ui_stencil.h"
+#include "../../external_reader/source/native_local_ui.h"
 #include "../../external_reader/source/material_motion.h"
 #include "../../external_reader/source/scene_bank.h"
+#include "../../external_reader/source/scene_poses.h"
 #include <chrono>
 #include "render_presentation.h"
 // External read/render only. No Runtime requests or engine draw calls.
 namespace renderupgrade {
 static double presentationNow(){return std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now().time_since_epoch()).count();}
-struct Request {uint64_t generation=0;bool materialRefresh=true;int detail=1,colorPrecision=1;uint32_t pid=0,match=0,tick=0;int width=0,height=0;uint32_t reveal=0;int paletteRange=1,pixelScaleMode=0;external::mainview::View view;overlaycompositor::Context context;bool gpu=false;renderpresentation::CameraPrefetch cameraMotion;double decodeBudgetMs=4.;};
+struct Request {uint64_t generation=0;bool materialRefresh=true;int detail=1,colorPrecision=1;uint32_t pid=0,match=0,tick=0;int width=0,height=0;uint32_t reveal=0;int paletteRange=1,pixelScaleMode=0;external::mainview::View view;overlaycompositor::Context context;bool gpu=false;renderpresentation::CameraPrefetch cameraMotion;double decodeBudgetMs=4.;external::presentation::Profile profile;};
 struct Frame {
  double sampleMs=0,sceneMs=0,finishMs=0,gpuPrepareMs=0,gpuWaitMs=0,gpuCopyMs=0;
  uint32_t readCalls=0,pageHits=0,prefetchedPages=0,decodeAttempts=0;double decodeMs=0;
@@ -88,21 +90,10 @@ static asyncwork::Recurring<Request,Observation> samplingWorker([](const Request
  // immutable whole-map banks while this reader samples positions and poses.
  auto terrain=terrainWorker.get();if(!terrain)return {};
  sampler.useTerrain(*terrain);const auto actorView=before;const double actorsStarted=presentationNow();
- auto raw=sampler.snapshot(GetTickCount(),actorView.frame);
+ sampler.effects(r.profile.particles,r.profile.lasers);auto raw=sampler.snapshot(GetTickCount(),actorView.frame);
  if(!raw.terrain||!raw.markerScanValid||!external::radar::sameWorld(raw,external::radar::publicationContext(fresh)))return {};
  external::SharedReadView cached{&sampleReader};external::GameView game(cached);
- const uint32_t rules=game.get<uint32_t>(0x8871E0);
- double yellow=rules>=0x10000?game.get<double>(rules+0x1700,.5):.5;
- double red=rules>=0x10000?game.get<double>(rules+0x1708,.25):.25;
- if(!std::isfinite(yellow)||yellow<0||yellow>1)yellow=.5;
- if(!std::isfinite(red)||red<0||red>1)red=.25;
- for(auto&m:raw.markers)if(m.kind==3){
-  m.pose.frame=external::buildings::frame(cached,m.object,m.type,yellow,red);
-  const auto state=external::buildings::state(cached,m.object,m.type,yellow);
-  m.pose.buildingFlags=state.flags;m.pose.doorFrame=state.doorFrame;
-  if(external::buildings::buildup(game,m.object))m.pose.variant=-2;else if(m.pose.variant==-2)m.pose.variant=-1;
- }
- raw.posesPrepared=true;
+ external::radar::preparePoses(raw,cached);
  external::mainview::View captured;
  if(!external::mainview::sample(fresh,captured)||!renderpresentation::sameProjection(before,captured)||
     captured.frame<raw.frame||presentationNow()-actorsStarted>50.||
@@ -154,12 +145,13 @@ static asyncwork::Recurring<Request,Frame> worker([](const Request&r)->std::shar
    timeline.observe(*observed->previous,observed->previousMs);
   timeline.observe(*observed->current,observed->observedMs);
   sampledLogicFrame=observed->current->frame;sampleValid=true;
- }
+ }else timeline.observe(*observed->current,observed->observedMs);
  const double sampledMs=presentationNow();
- auto data=timeline.sample(presentationNow(),r.materialRefresh,r.detail!=0);
+ auto data=timeline.sample(presentationNow(),r.materialRefresh,r.detail!=0);data.effects=observed->current->effects;
  if(!data.terrain)return unavailable();
  const uint32_t sampledTick=observed->tick;
  data.tick=GetTickCount(); // presentation retry deadlines keep running while paused
+ renderer.features(r.profile);assets.presentationLighting(r.profile.voxelLighting,r.profile.spriteLighting);
  assets.presentationDetail(r.detail);
  const auto&gpuBackend=external::xbrzadapter::gpuState().resolve;
  const bool gpuUnavailable=gpuBackend&&!gpuBackend->diagnostics().available&&!gpuBackend->diagnostics().reason.empty();
@@ -197,12 +189,13 @@ static asyncwork::Recurring<Request,Frame> worker([](const Request&r)->std::shar
  const double zscale=external::projectionZScale(fresh);
  out->objects=external::nativefeedback::objectGeometry(renderer,data,renderView,r.width,r.height,zscale,border.paddingX,border.paddingY);
  out->yellow=assets.conditionYellow();out->red=assets.conditionRed();
- std::vector<external::nativefeedback::Bolt> bolts;const std::vector<uint8_t>*visibility=nullptr;
- if(external::nativefeedback::bolts(fresh,bolts)&&renderer.feedbackVisibility(visibility)){
+ const std::vector<uint8_t>*visibility=nullptr;
+ out->effects.complete=!r.profile.lasers;
+ if(r.profile.lasers&&data.effects&&data.effects->boltsValid&&renderer.feedbackVisibility(visibility)){
   out->effects.complete=true;
-  if(!bolts.empty()){
+  if(!data.effects->bolts.empty()){
    auto decorated=std::make_shared<external::radar::Scene>(*scene);
-   out->effects=external::nativefeedback::effects(bolts,*decorated,renderView,visibility,zscale,r.width,r.height,border.paddingX,border.paddingY);
+   out->effects=external::nativefeedback::effects(data.effects->bolts,*decorated,renderView,visibility,zscale,r.width,r.height,border.paddingX,border.paddingY);
    if(out->effects.complete)scene=std::move(decorated);
   }
  }
@@ -221,6 +214,9 @@ static void suspend(){viewLease.reset();suspendScene();}
 static void stop(){suspend();overlaycompositor::host().suspend();}
 static void shutdown(){stop();worker.shutdown();samplingWorker.shutdown();terrainWorker.shutdown();feedback::shutdown();overlaycompositor::host().shutdown();}
 static void update(POINT origin,const RECT&client,const external::display::State&displayState){
+ const auto selected=external::presentation::settings().get();static uint64_t profileRevision=~uint64_t(0);
+ if(profileRevision!=selected.revision){profileRevision=selected.revision;++generation;worker.invalidate();samplingWorker.invalidate();terrainWorker.invalidate();groupLease.reset();}
+
  // The whole tool remains system-DPI aware. A physical-pixel option must
  // explicitly validate monitor geometry instead of assuming a 4K monitor
  // makes a 2K client window magically 4K.
@@ -246,7 +242,7 @@ static void update(POINT origin,const RECT&client,const external::display::State
     if(held){
      Request current=held->request;current.generation=generation;current.pid=pid;current.match=match;current.view=prior;
      current.materialRefresh=effectiveRenderInterpolation();current.detail=effectiveRenderDetail();current.colorPrecision=effectiveRenderPrecision();
-     current.paletteRange=effectiveRenderPalette();current.reveal=uint32_t(extra.renderReveal||extra.mapStrategy==3);
+     current.paletteRange=effectiveRenderPalette();current.reveal=uint32_t(extra.renderReveal||assist::shroudpolicy::fullPreview(extra.mapStrategy));
      current.gpu=renderVulkanEnabled;
      // Scale-mode changes require a fresh verified request, even during a read gap.
      if(verifiedScaleSetting!=effectiveRenderScale()||verifiedPhysicalSetting!=renderPhysicalOutput)groupLease.reset();
@@ -297,9 +293,9 @@ static void update(POINT origin,const RECT&client,const external::display::State
  const int effectiveScale=effectiveRenderScale();
  verifiedScaleSetting=effectiveScale;verifiedPhysicalSetting=renderPhysicalOutput;
  Request request{generation,effectiveRenderInterpolation(),effectiveRenderDetail(),effectiveRenderPrecision(),pid,displayMatch(),GetTickCount(),right-left,bottom-top,
-  uint32_t(extra.renderReveal||extra.mapStrategy==3),
+  uint32_t(extra.renderReveal||assist::shroudpolicy::fullPreview(extra.mapStrategy)),
   effectiveRenderPalette(),effectiveScale,view,context};
- request.gpu=renderVulkanEnabled;request.decodeBudgetMs=std::clamp(500./informationFPS(),1.,6.);
+ request.profile=selected.profile;request.gpu=selected.profile.gpu;request.decodeBudgetMs=std::clamp(500./informationFPS(),1.,6.);
  cameraPrefetch.observePresentation(view,viewNow);request.cameraMotion=cameraPrefetch;
  auto result=worker.get();
  renderpresentation::Shift shift;

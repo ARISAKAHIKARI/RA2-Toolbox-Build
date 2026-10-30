@@ -43,11 +43,11 @@ struct ArtCached {typename Assets::ActorArt art;DWORD retry=0;bool ready=false;s
 std::map<ArtKey,ArtCached> actorArt;
 std::map<ImageKey,Cached> images;
 std::map<std::pair<uint32_t,uint32_t>,ImageKey> displayed;
-size_t actorCursor=0;DWORD diagnosticAt=0;uint64_t assetRevision=0;
+size_t actorCursor=0,voxelCursor=0,staticCursor=0;DWORD diagnosticAt=0;uint64_t assetRevision=0;
 uint64_t voxelLightRevision=0;bool voxelLightKnown=false;
-ArtKey artKey(const external::watch::Actor&a){return {a.type,a.owner,a.kind,a.pose.variant,a.kind>=5?a.target.pointer:0,a.kind>=5?a.target.id:0};}
+ArtKey artKey(const external::watch::Actor&a){return {a.type,a.owner,a.kind,a.kind==5?0:a.pose.variant,a.kind>=5?a.target.pointer:0,a.kind>=5?a.target.id:0};}
 ImageKey imageKey(const external::watch::Actor&a){return {a.type,a.owner,a.kind,a.kind==4?0:a.pose.body,a.kind==4?0:a.pose.turret,a.kind==4?a.stage:a.pose.frame,a.pose.variant,a.pose.buildingFlags,a.pose.doorFrame,a.kind>=5?a.target.pointer:0,a.kind>=5?a.target.id:0,external::visual::postureSignature(a.pose),a.pose.turretFrame,a.pose.bodyFine,a.pose.turretFine};}
-static ArtKey imageArtKey(const ImageKey&k){return {std::get<0>(k),std::get<1>(k),std::get<2>(k),std::get<6>(k),std::get<9>(k),std::get<10>(k)};}
+static ArtKey imageArtKey(const ImageKey&k){return {std::get<0>(k),std::get<1>(k),std::get<2>(k),std::get<2>(k)==5?0:std::get<6>(k),std::get<9>(k),std::get<10>(k)};}
 void discardPaletteImages(const ArtKey&key){
  for(auto i=images.begin();i!=images.end();)if(imageArtKey(i->first)==key)i=images.erase(i);else ++i;
  for(auto i=displayed.begin();i!=displayed.end();)if(imageArtKey(i->second)==key)i=displayed.erase(i);else ++i;
@@ -61,7 +61,7 @@ uint32_t controlRevision=0;bool haveControls=false;
 // Depth, shadows and sprite coverage are resolved at native game pixels.
 // The immutable result is reduced only when the actual window is presented.
 static constexpr int Width=external::watch::NativeViewWidth,Height=external::watch::NativeViewHeight;
-void reset(){for(auto&t:tracks)t={};for(auto&v:views)v={};automatic={};autoSuppressed=false;haveControls=false;voxelLightKnown=false;images.clear();displayed.clear();actorArt.clear();actorCursor=0;diagnosticAt=0;tiles.clear();overlays.clear();terrainPalette={};terrainPaletteEverReady=terrainPaletteUnavailable=false;repairAssets.reset();shown=false;}
+void reset(){for(auto&t:tracks)t={};for(auto&v:views)v={};automatic={};autoSuppressed=false;haveControls=false;voxelLightKnown=false;images.clear();displayed.clear();actorArt.clear();actorCursor=voxelCursor=staticCursor=0;diagnosticAt=0;tiles.clear();overlays.clear();terrainPalette={};terrainPaletteEverReady=terrainPaletteUnavailable=false;repairAssets.reset();shown=false;}
 void syncTracks(uint32_t revision,const std::array<external::watch::Track,3>&next,bool suppress){
  // Pending snapshots may predate the worker's death/succession decision. Only
  // a new user control revision can replace that authoritative tracking state.
@@ -74,8 +74,9 @@ void refreshAssets(external::watch::Frame&frame,DWORD now){
  if(assetRevision!=assets.revision()){assetRevision=assets.revision();voxelLightKnown=false;images.clear();displayed.clear();actorArt.clear();tiles.clear();overlays.clear();terrainPalette={};for(auto&view:views)view.shroudRaster.reset();actorCursor=0;}
  // Only palette-dependent poses are discarded. Keep captured VXL/SHP
  // geometry, but never display its old colors during an unreadable update.
+ std::set<ArtKey> currentArt;for(const auto&a:frame.actors)currentArt.insert(artKey(a));
  std::set<ArtKey> unavailablePalettes;
- for(auto&entry:actorArt)if(entry.second.ready){bool changed=false;
+ for(auto&entry:actorArt)if(entry.second.ready&&currentArt.count(entry.first)){bool changed=false;
   bool valid=refreshPalette(assets,entry.second.art,changed,0);
   if(changed||!valid)discardPaletteImages(entry.first);
   if(!valid)unavailablePalettes.insert(entry.first);
@@ -110,7 +111,8 @@ void refreshAssets(external::watch::Frame&frame,DWORD now){
   for(const auto&t:frame.tiles){uint32_t p=tmp?t.type:t.overlayType;auto key=std::make_pair(p,uint32_t(tmp?t.sub:t.overlayFrame));if(p&&needed.insert(key).second)wanted.push_back(key);}
   if(cache.size()>2048){for(auto it=cache.begin();it!=cache.end();)if(!needed.count(it->first))it=cache.erase(it);else ++it;}
   size_t pixels=0;for(const auto&item:cache)pixels+=external::camera::pixels(item.second.image);if(pixels>3*1024*1024){for(auto i=cache.begin();i!=cache.end()&&pixels>2*1024*1024;)if(!needed.count(i->first)){pixels-=external::camera::pixels(i->second.image);i=cache.erase(i);}else ++i;}int work=0;
-  for(auto key:wanted){if(!tmp&&unavailableOverlays.count(key.first))continue;auto&c=cache[key];if(c.ready||work>=4||(c.retry&&int32_t(now-c.retry)<0))continue;++work;c.retry=now+2000;external::voxel::Image image;
+  DWORD staticStarted=GetTickCount();
+  for(size_t scanned=0;scanned<wanted.size();++scanned){auto key=wanted[staticCursor++%wanted.size()];if(!tmp&&unavailableOverlays.count(key.first))continue;auto&c=cache[key];if(c.ready||(c.retry&&int32_t(now-c.retry)<0))continue;if(work&&DWORD(GetTickCount()-staticStarted)>=2){--staticCursor;break;}++work;c.retry=now+2000;external::voxel::Image image;
    uint32_t pointer=0;read(key.first+0xA4,&pointer,4);
    bool ok=tmp?assets.tile(key.first,key.second,terrainPalette,image):assets.overlay(key.first,pointer,int(key.second),image);
    std::string memoryReason;
@@ -138,18 +140,20 @@ void refreshAssets(external::watch::Frame&frame,DWORD now){
  // Reuse an identical pose only while its current VPL signature is verified.
  // Unreadable/unknown lighting keeps the conservative per-pass redraw path.
  std::set<ArtKey> liveVoxelArt;
- for(const auto&source:actorArt)if(source.second.ready&&isVoxelArt(source.second.art,0))liveVoxelArt.insert(source.first);
+ for(const auto&source:actorArt)if(source.second.ready&&currentArt.count(source.first)&&isVoxelArt(source.second.art,0))liveVoxelArt.insert(source.first);
  const auto light=voxelRevision(assets,0);const bool lightChanged=!light.first||!voxelLightKnown||voxelLightRevision!=light.second;
  voxelLightKnown=light.first;voxelLightRevision=light.second;
  if(lightChanged)for(const auto&key:liveVoxelArt)discardPaletteImages(key);
  pixels=0;for(const auto&i:images)pixels+=external::camera::pixels(i.second.image);
- std::set<ImageKey> voxelDrawn;size_t liveFaces=0,livePoses=0;
- for(const auto&a:frame.actors){auto key=artKey(a);if(!liveVoxelArt.count(key)||unavailablePalettes.count(key)||!voxelDrawn.insert(imageKey(a)).second)continue;
+ std::set<ImageKey> voxelDrawn;size_t liveFaces=0,livePoses=0;DWORD voxelStarted=GetTickCount();
+ for(size_t scanned=0;scanned<frame.actors.size();++scanned){const auto&a=frame.actors[voxelCursor++%frame.actors.size()];auto key=artKey(a);if(!liveVoxelArt.count(key)||unavailablePalettes.count(key)||!voxelDrawn.insert(imageKey(a)).second)continue;
   auto cached=images.find(imageKey(a));if(cached!=images.end()&&cached->second.ready&&!cached->second.image.incomplete){cached->second.used=++serial;continue;}
   auto source=actorArt.find(key);size_t facesForPose=voxelFaces(source->second.art,0);
-  // Hard per-presentation work bounds. Old RGBA was already discarded, so
+  // Rotate live work by elapsed time and geometry cost. Old RGBA was already discarded, so
   // excess actors stay hidden rather than retaining obsolete light/poses.
-  if(livePoses>=256||facesForPose>2*1024*1024-liveFaces)continue;
+  if(livePoses&&DWORD(GetTickCount()-voxelStarted)>=6){--voxelCursor;break;}
+  if(facesForPose>2*1024*1024)continue;
+  if(facesForPose>2*1024*1024-liveFaces){--voxelCursor;break;}
   ++livePoses;liveFaces+=facesForPose;external::voxel::Image image;
   if(!assets.renderActor(source->second.art,a.pose,image))continue;
   size_t count=external::camera::pixels(image);if(pixels+count>32*1024*1024)continue;
@@ -159,7 +163,7 @@ void refreshAssets(external::watch::Frame&frame,DWORD now){
  for(size_t scanned=0;scanned<n;++scanned){
   const auto&a=frame.actors[actorCursor++%n];if(liveVoxelArt.count(artKey(a)))continue;if(unavailablePalettes.count(artKey(a))||(a.kind==4&&unavailableTerrain.count(a.type)))continue;auto&c=images[imageKey(a)];c.used=++serial;
   if((c.ready&&!c.image.incomplete)||(c.retry&&int32_t(now-c.retry)<0))continue;
-  if(work>=512||(work&&DWORD(GetTickCount()-started)>=6))break;
+  if(work>=512||(work&&DWORD(GetTickCount()-started)>=6)){--actorCursor;break;}
   ++work;external::voxel::Image image;bool ok=false;
   if(a.kind==4){uint32_t shp=0;read(a.type+0xA4,&shp,4);ok=assets.overlay(a.type,shp,a.stage,image,true);}
   else{

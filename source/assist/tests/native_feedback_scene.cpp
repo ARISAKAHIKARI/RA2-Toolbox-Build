@@ -41,6 +41,10 @@ int main(){
  }
  CHECK(core&&halo);
  auto decorated=base;auto state=nativefeedback::effects(bolts,decorated,view,nullptr,.08660254);CHECK(state.complete&&state.bolts==1&&decorated.pixels!=base.pixels);
+ // The 129th/600th bolt must not disable the whole effect pass. All are
+ // outside this camera, so early culling also keeps work independent of length.
+ auto distant=bolts.front();distant.source={100000,0,0};distant.target={110000,0,0};std::vector<nativefeedback::Bolt> manyBolts(600,distant);
+ decorated=base;state=nativefeedback::effects(manyBolts,decorated,view,nullptr,.08660254);CHECK(state.complete&&state.bolts==600&&decorated.pixels==base.pixels);
  std::vector<uint8_t>hidden(base.pixels.size(),2);decorated=base;state=nativefeedback::effects(bolts,decorated,view,&hidden,.08660254);CHECK(state.complete&&decorated.pixels==base.pixels);
  hidden.resize(3);decorated=base;state=nativefeedback::effects(bolts,decorated,view,&hidden,.08660254);CHECK(!state.complete&&decorated.pixels==base.pixels);
  decorated=base;CHECK(!nativefeedback::effects(bolts,decorated,view,nullptr,NAN).complete);

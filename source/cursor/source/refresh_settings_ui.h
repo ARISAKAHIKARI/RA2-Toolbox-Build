@@ -1,7 +1,9 @@
 #ifdef RA2_UNIFIED
+#include "../../suite/source/video_settings_ui.h"
+static suite::VideoSettings renderVideoSettings;
 static HWND refreshModeBox,refreshStateLabel,shroudModeBox;static bool refreshingSuiteControls=false;
 static void syncRefreshControls(){
- suite::DisplayState state;if(!suite::readDisplaySettings(state)||!refreshModeBox)return;
+ renderVideoSettings.sync();suite::DisplayState state;if(!suite::readDisplaySettings(state)||!refreshModeBox)return;
  refreshingSuiteControls=true;EnableWindow(refreshModeBox,TRUE);
  SendMessageW(refreshModeBox,CB_SETCURSEL,0,0);
  if(shroudModeBox){EnableWindow(shroudModeBox,TRUE);SendMessageW(shroudModeBox,CB_SETCURSEL,state.values[suite::ShroudStrategy],0);}
@@ -15,6 +17,7 @@ static void syncRefreshControls(){
  SetWindowTextW(refreshStateLabel,text.c_str());refreshingSuiteControls=false;
 }
 static bool refreshSettingCommand(WPARAM wp,LPARAM lp){
+ if(renderVideoSettings.command(wp))return true;
  if(refreshingSuiteControls)return false;HWND control=(HWND)lp;
  if(control==shroudModeBox&&HIWORD(wp)==CBN_SELCHANGE){suite::requestDisplaySetting(suite::ShroudStrategy,int(SendMessageW(control,CB_GETCURSEL,0,0)));return true;}
  if(control==refreshModeBox&&HIWORD(wp)==CBN_SELCHANGE){SendMessageW(control,CB_SETCURSEL,0,0);suite::requestDisplaySetting(suite::RefreshMode,0);return true;}

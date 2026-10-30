@@ -103,6 +103,15 @@ int main(int argc,char**argv){
  std::cout<<"PASS production Context observed-resolution raster selection, same-scale revision reuse, unsupported-ratio fallback and native-detail isolation\n";
  gameassets::ActorArt art;assert(gameassets::captureActor(p,t,42,art));assert(!art.voxel&&!art.shape.empty());assert(art.colors[3]==0xff0c1824u);
  external::GameView game(gameassets::context.read);external::voxel::Image image;
+ {gameassets::Context other(externalReader);other.identity(pid,commandMatch());gameassets::ActorArt captured;assert(other.captureActor(p,t,42,captured));
+  external::visual::Pose pose;std::shared_ptr<const external::voxel::Image>a,b,c;assert(gameassets::context.renderSharedActor(art,pose,a));auto before=external::nativeimages::bank().stats();
+  assert(other.renderSharedActor(captured,pose,b)&&a==b&&external::nativeimages::bank().stats().hits==before.hits+1);
+  auto identical=captured;identical.object+=0x1000;++identical.id;assert(other.renderSharedActor(identical,pose,c)&&c==a);
+  pose.frame=1;assert(other.renderSharedActor(captured,pose,c)&&c!=b);pose.frame=0;captured.colors[3]^=1;assert(other.renderSharedActor(captured,pose,c)&&c!=b);
+  other.identity(pid,commandMatch()+1);assert(other.renderSharedActor(captured,pose,c)&&c!=b);
+  std::cout<<"PASS production main/watch/map contexts share identical unscaled SHP results; pose, palette and world changes cannot reuse them\n";
+ }
+
  for(int heading=0;heading<32;heading+=4){external::visual::Pose pose;pose.frame=external::visual::previewFrame(game,t,1,heading);assert(gameassets::renderActor(art,pose,image));assert(image.width==4&&image.height==3&&std::count_if(image.pixels.begin(),image.pixels.end(),[](auto c){return c!=0;})==12);assert(pose.frame==dirs[(8+heading)&31]);assert(image.pixels[0]==external::voxel::premultiply(art.colors[3+pose.frame],1,255));}
  // Walk sequence: two frames per facing, distinct indexed colors at each frame.
  word(memory,p+0x6C4,1);for(int body=0;body<32;body+=4)for(int stage=0;stage<2;++stage){half(memory,p+0x388,uint16_t(body*2048));word(memory,p+0xF8,stage);auto pose=external::visual::pose(game,p,t,1,0);assert(pose.frame==8+dirs[body]*2+stage);assert(gameassets::renderActor(art,pose,image));assert(image.pixels[0]==external::voxel::premultiply(art.colors[3+pose.frame],1,255));}
@@ -190,6 +199,11 @@ int main(int argc,char**argv){
  auto states=external::animations::attached(gameassets::context.read,building,501);assert(states.size()==1&&states[0].frame==5&&states[0].x==26112);
  assert(gameassets::captureAnimation(anim,animType,502,building,501,art));assert(art.kind==5&&art.filename=="CTOILD_A.SHP");
  external::visual::Pose ap;ap.frame=states[0].frame;assert(gameassets::renderActor(art,ap,image));assert(image.pixels[0]==external::voxel::premultiply(art.colors[8],1,255));
+ // Current native blend enters the real SHP renderer and remains intrinsic,
+ // rather than being turned opaque by a later camera preparation pass.
+ const unsigned animationAlpha[]{255,192,128,64};
+ for(int blend=1;blend<=3;++blend){ap.variant=blend;assert(gameassets::renderActor(art,ap,image)&&image.intrinsicAlpha);for(auto pixel:image.pixels)if(pixel>>24){unsigned a=pixel>>24;assert(a==animationAlpha[blend]&&((pixel>>16)&255)<=a&&((pixel>>8)&255)<=a&&(pixel&255)<=a);}}
+ ap.variant=states[0].blend;assert(ap.variant==0&&gameassets::renderActor(art,ap,image)&&!image.intrinsicAlpha);
  // The animation's assigned LightConvert supplies both palette and tint.
  // A parent's generic unit palette must not replace its actual custom drawer.
  constexpr uint32_t animConvert=0x1C0000,animPalette=0x1C1000,cellConvert=0x1C2000,cellPalette=0x1C3000,lightCell=0x2F0000;

@@ -1,9 +1,11 @@
 #ifdef RA2_UNIFIED
+#include "../../suite/source/video_settings_ui.h"
+static suite::VideoSettings monitorVideoSettings;
 static bool syncingUnitSettings=false;static HWND unitSettingControls[suite::DisplayOptionCount]{},unitInfoRateStatus;
 static int statsInformationFPS();
 static void syncUnitInformationRate(){if(unitInfoRateStatus)SetWindowTextW(unitInfoRateStatus,(L"当前："+std::to_wstring(statsInformationFPS())+L" Hz").c_str());}
 static void syncUnitSettings(bool force=false){
- suite::DisplayState state;if(!suite::readDisplaySettings(state))return;
+ monitorVideoSettings.sync(force);suite::DisplayState state;if(!suite::readDisplaySettings(state))return;
  syncingUnitSettings=true;
  for(int i=0;i<suite::DisplayOptionCount;++i)if(auto control=unitSettingControls[i]){
   EnableWindow(control,TRUE);
@@ -43,9 +45,11 @@ template<class Create> static void createUnitSettings(Create ctl){
  unitInfoRateStatus=ctl(L"STATIC",L"当前：— Hz",0,354,534,326,23,614);
  modernui::tip(unitSettingControls[suite::InfoAdaptive],L"跟随游戏所在屏幕的名义刷新率；未运行游戏时使用工具箱所在屏幕。最高 500 Hz，读取失败时使用 60 Hz。");
  modernui::tip(unitSettingControls[suite::InfoFPS],L"手动目标为 5–500 Hz。启用自适应时保留此值，关闭自适应后恢复使用。");
+ monitorVideoSettings.create(ctl,suite::VideoGroup::Monitor,606,14,666);
  syncUnitSettings();
 }
 static bool unitSettingCommand(WPARAM wp){
+ if(monitorVideoSettings.command(wp))return true;
  int option=LOWORD(wp)-600;if(option<0||option>=suite::DisplayOptionCount||!unitSettingControls[option])return false;
  if(syncingUnitSettings)return true;
  auto h=unitSettingControls[option];auto type=suite::displaySpecs[option].control;

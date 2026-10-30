@@ -34,7 +34,7 @@
   "release_status": "1.0.39-pre.7; prerelease publication requires the final same-commit build and frontend checks",
   "frontend": "Independent settings input queues; latest-layout snapshots; dependency gating; explicit key gestures; page-only wheel scrolling",
   "technology_experiment": "Native AddCameo + two local UI CanBuild limit-only callsite wrappers; native factories/events unchanged; no live purchase/netplay certification",
-  "calculation_locations": "Thirteen tactical decision families selectable; native queries/events always GameRuntime; statistics/reservations/display external.",
+  "calculation_locations": "Fifteen tactical decision families selectable; native queries/events always GameRuntime; host planner and six value-only compute lanes run on persistent workers, with UI publication and original source deadlines.",
   "player_control": "Experimental shared control retained; current-player switching and enemy-building Sell disabled",
   "refresh_experiment": "Cursor high refresh enabled; scene/forced refresh and view zoom entries disabled",
   "architecture_variants": {
@@ -47,5 +47,14 @@
       "runtime": "x86",
       "hook_broker": "x86"
     }
+  },
+  "render_effect_coverage": "See ANIMATION_RENDER_COVERAGE.md. AnimClass SHP opacity/fade is sampled; particles, WaveClass, RadBeam, VoxelAnim and distortions remain incomplete.",
+  "Hotfix13": {
+    "ui": "Video/Control/Automatic/GameRules/Experimental; original three masters removed; video owns cursor/render and monitoring/watch/minimap",
+    "defaults": "particles, lasers, VXL and SHP relighting ON; individual persisted OFF choices retained; extra quality/xBRZ/Vulkan remain opt-in",
+    "shared_world": "same immutable SceneBank, same SceneRenderer and presentation profile for main, watch and real minimap; feature-specific tactical facts and late game-thread validation remain",
+    "shared_native_materials": "bounded immutable native pre-scale VXL/SHP result bank + native TMP cache; viewport composition/scaling remains per camera, not one full-world screenshot",
+    "local_ui": "main-only command/selection/cursor and native message/SW+mission timer preservation; conservative primary-factory/rally passthrough; no Phobos chat replacement or pixel-perfect claim",
+    "particles": "certified BehavesLike 0/1 SHP frames/opacity; directional fire, pixel particles, waves, RadBeam, VoxelAnim and several special effects remain incomplete"
   }
 }

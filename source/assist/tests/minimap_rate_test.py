@@ -23,6 +23,7 @@ prefix = r'''
 #include <memory>
 #include <mutex>
 #include <vector>
+#include "@PROFILE@"
 using DWORD=uint32_t;
 static DWORD GetTickCount(){return 1000;}
 static int64_t clockMicros=0,workMicros=0;
@@ -59,15 +60,19 @@ namespace external {
 namespace xbrzadapter{inline bool requested=false;inline void gpuPresentation(bool value){requested=value;}}
 struct ReadSession {void close(){}bool open(DWORD){return true;}void begin(){}bool readFresh(uint32_t,void*,size_t){return true;}template<class T>T get(uint32_t,T){return 1;}};
 struct SharedReadView{ReadSession*reader;};
-namespace cameraassets {template<class Read>struct Context{explicit Context(Read&){}void identity(DWORD,uint32_t){}};}
+namespace cameraassets {template<class Read>struct Context{explicit Context(Read&){}void identity(DWORD,uint32_t){}
+ void presentationDetail(int){}void presentationGPU(bool){}void presentationResolution(int,int,int,int){}void presentationColorPrecision(bool){}void presentationPalette(pixelupgrade::PaletteRange){}void presentationLighting(bool,bool){}
+};}
 namespace radar {
-struct Geometry {bool same(const Geometry&)const{return true;}};
+struct Geometry {int rawWidth=64,rawHeight=64,offsetX=0,offsetY=0;bool same(const Geometry&)const{return true;}};
 struct Terrain{Geometry geo;bool reveal=false;};
 struct Image{int width=320,height=160,units=0;};
-struct Frame {std::shared_ptr<Terrain>terrain=std::make_shared<Terrain>();std::shared_ptr<Image>map,scene;std::vector<int>markers,repairs;bool markerScanValid=false;};
-template<class Assets>struct SceneRenderer {bool capacityExceeded()const{return capacityFailure;}void reset(){++sceneResets;}template<class Read>auto render(const Frame&frame,int w,int h,Read,Assets&){if(capacityFailure)return std::shared_ptr<Image>{};return std::make_shared<Image>(Image{w,h,int(frame.markers.size())});}};
+struct EffectSnapshot{bool boltsValid=true;std::vector<int>bolts;};using Scene=Image;
+struct Frame {uint32_t tick=1000;int frame=1;std::shared_ptr<const EffectSnapshot>effects;std::shared_ptr<Terrain>terrain=std::make_shared<Terrain>();std::shared_ptr<Image>map,scene;std::vector<int>markers,repairs;bool markerScanValid=false;};
+template<class Assets>struct SceneRenderer {bool capacityExceeded()const{return capacityFailure;}void features(const presentation::Profile&){}bool feedbackVisibility(const std::vector<uint8_t>*&mask){mask=nullptr;return true;}void reset(){++sceneResets;}template<class Read>auto render(const Frame&frame,int w,int h,Read,Assets&,std::initializer_list<int>,unsigned,bool,bool,bool,bool){if(capacityFailure)return std::shared_ptr<Image>{};return std::make_shared<Image>(Image{w,h,int(frame.markers.size())});}};
 struct DiagramRenderer {void reset(){++diagramResets;}auto render(std::shared_ptr<Terrain>,int w,int h){return std::make_shared<Image>(Image{w,h});}};
-template<class Read>struct Sampler {explicit Sampler(Read){}void reset(){++samplerResets;}bool step(uint32_t,int,bool){++samplerSteps;clockMicros+=workMicros;return stepOk;}unsigned revision(){return 1;}Frame snapshot(DWORD,int){Frame frame;frame.markerScanValid=markerScanValid;if(markerScanValid&&actorCount)frame.markers.push_back(17);return frame;}};
+template<class Read>struct Sampler {explicit Sampler(Read){}void effects(bool,bool){}void reset(){++samplerResets;}bool step(uint32_t,int,bool){++samplerSteps;clockMicros+=workMicros;return stepOk;}unsigned revision(){return 1;}Frame snapshot(DWORD,int){Frame frame;frame.markerScanValid=markerScanValid;if(markerScanValid&&actorCount)frame.markers.push_back(17);return frame;}};
+template<class Read>void preparePoses(Frame&,Read){}inline bool supportsEffects(const Frame&,bool,bool){return true;}
 struct PublicationContext{bool readable=true;};
 template<class Read>PublicationContext publicationContext(Read){return {contextReadable};}
 inline bool sameWorld(const Frame&,PublicationContext context){return context.readable&&worldSame;}inline bool freshMarkers(const Frame&,PublicationContext){return markerFresh;}
@@ -76,6 +81,11 @@ struct SceneBank {std::shared_ptr<const Frame> get(DWORD,uint32_t,uint32_t,DWORD
  void publish(DWORD,uint32_t,bool,std::shared_ptr<const Frame>){} };
 inline SceneBank&sceneBank(){static SceneBank bank;return bank;}
 }
+}
+namespace external {
+template<class Read>double projectionZScale(Read){return .25;}
+namespace materialmotion {struct Timeline {radar::Frame current;void reset(){}void observe(const radar::Frame&frame,double){current=frame;}auto sample(double,bool,bool){return current;}};}
+namespace nativefeedback {struct WorldView{int cameraX,cameraY,width,height,frame;};struct Status{bool complete=true;};template<class...A>Status effects(A&&...){return {};}}
 }
 namespace minimap {
 '''
@@ -152,7 +162,7 @@ int main(){
  std::cout<<"PASS production minimap deadlines: 5/18/2ms controlled work consumes each period; slow work adds no full wait or catch-up debt\n";
 }
 '''
-code = prefix.replace('@PERIOD@', 'inline uint64_t periodMicros(' + period) + worker + suffix
+code = prefix.replace('@PERIOD@', 'inline uint64_t periodMicros(' + period).replace('@PROFILE@',str(root/'external_reader/source/render_profile.h')) + worker + suffix
 with tempfile.TemporaryDirectory(prefix='minimap-rate-') as temp:
     path = Path(temp)
     (path / 'test.cpp').write_text(code)

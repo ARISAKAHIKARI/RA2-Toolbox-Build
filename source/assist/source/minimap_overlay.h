@@ -7,6 +7,10 @@
 #include "../../external_reader/source/radar_scene.h"
 #include "../../external_reader/source/radar_publication.h"
 #include "../../external_reader/source/scene_bank.h"
+#include "../../external_reader/source/scene_poses.h"
+#include "../../external_reader/source/render_profile.h"
+#include "../../external_reader/source/feedback_scene.h"
+#include "../../external_reader/source/material_motion.h"
 #include "../../shared/source/monitor_refresh.h"
 #include "../../shared/source/secondary_display.h"
 #include "radar_paint_gate.h"
@@ -16,37 +20,48 @@
 #include <condition_variable>
 #include <chrono>
 namespace minimap {
-struct Request {DWORD pid=0;uint32_t match=0;int rate=60;uint32_t reveal=0;int mode=0,width=320,height=160;bool gpu=false;};
+struct Request {DWORD pid=0;uint32_t match=0;int rate=60;uint32_t reveal=0;int mode=0,width=320,height=160;bool gpu=false;external::presentation::Selection selection;};
 // Separate task cache, shared central read-only connection. Terrain traversal
 // never blocks the UI or the game thread. Publish complete immutable frames.
 class Worker {
  std::mutex mutex;std::condition_variable cv;std::thread thread;bool stop=false,paused=false;Request request{};uint64_t generation=0;
  std::shared_ptr<const external::radar::Frame> latest;
  void run(){
-  external::ReadSession reader;external::cameraassets::Context<external::ReadSession> assets(reader);external::radar::SceneRenderer<decltype(assets)> renderer;external::radar::DiagramRenderer diagram;external::radar::Sampler<external::SharedReadView> sampler(external::SharedReadView{&reader});uint64_t active=~uint64_t(0);int previousFrame=-1;unsigned previousRevision=0;Request activeRequest{};
+  external::ReadSession reader;external::cameraassets::Context<external::ReadSession> assets(reader);external::radar::SceneRenderer<decltype(assets)> renderer;external::radar::DiagramRenderer diagram;external::radar::Sampler<external::SharedReadView> sampler(external::SharedReadView{&reader});uint64_t active=~uint64_t(0);int previousFrame=-1;unsigned previousRevision=0;Request activeRequest{};external::materialmotion::Timeline timeline;int timelineFrame=-1;
   for(;;){Request r;uint64_t token;{std::unique_lock<std::mutex> lock(mutex);cv.wait(lock,[&]{return stop||(!paused&&request.pid);});if(stop)return;r=request;token=generation;}
    const auto iterationStarted=std::chrono::steady_clock::now();
-   if(token!=active){if(r.pid!=activeRequest.pid||r.match!=activeRequest.match){reader.close();sampler.reset();renderer.reset();diagram.reset();}else {if(r.mode!=activeRequest.mode)sampler.reset();if(r.gpu!=activeRequest.gpu)renderer.reset();}activeRequest=r;active=token;previousFrame=-1;previousRevision=0;}
+   if(token!=active){if(r.pid!=activeRequest.pid||r.match!=activeRequest.match){reader.close();sampler.reset();renderer.reset();diagram.reset();}else {if(r.mode!=activeRequest.mode)sampler.reset();if(r.gpu!=activeRequest.gpu||r.selection.revision!=activeRequest.selection.revision)renderer.reset();}timeline.reset();timelineFrame=-1;activeRequest=r;active=token;previousFrame=-1;previousRevision=0;}
    external::xbrzadapter::gpuPresentation(r.gpu); // this worker owns its GPU state; native assets stay CPU-prepared
    std::shared_ptr<const external::radar::Frame> next;
    if(reader.open(r.pid)){reader.begin();
     auto fresh=[&](uint32_t p,void*out,size_t n){return reader.readFresh(p,out,n);};
     auto shared=external::radar::sceneBank().get(r.pid,r.match,r.reveal,GetTickCount(),true);
-    if(shared&&!external::radar::recentMarkers(*shared,external::radar::publicationContext(fresh),GetTickCount()))shared.reset();
-    bool ok=shared||sampler.step(r.reveal,4096,r.mode==1);reader.begin();int frame=reader.get<int>(0xA8ED84,-1);
+    if(shared&&(!external::radar::recentMarkers(*shared,external::radar::publicationContext(fresh),GetTickCount())||!external::radar::supportsEffects(*shared,r.selection.profile.particles,r.selection.profile.lasers)))shared.reset();
+    sampler.effects(r.selection.profile.particles,r.selection.profile.lasers);bool ok=shared||sampler.step(r.reveal,4096,r.mode==1);reader.begin();int frame=reader.get<int>(0xA8ED84,-1);
     if(ok&&(r.mode==1||frame!=previousFrame||sampler.revision()!=previousRevision)){
-     auto data=shared?*shared:sampler.snapshot(GetTickCount(),frame);data.map=diagram.render(data.terrain,r.width,r.height);
+     auto data=shared?*shared:sampler.snapshot(GetTickCount(),frame);if(!shared)external::radar::preparePoses(data,external::SharedReadView{&reader});data.map=diagram.render(data.terrain,r.width,r.height);
      auto sampled=external::radar::publicationContext(fresh);
      const bool same=external::radar::sameWorld(data,sampled);
      // Sampling may span several game ticks. Keep the last complete image
      // until this world's markers are fresh instead of publishing a frame in
      // which every unit vanishes for one paint.
      if(same&&data.markerScanValid&&(shared?external::radar::recentMarkers(data,sampled,GetTickCount()):external::radar::freshMarkers(data,sampled))){
-      if(!shared&&r.mode==1)external::radar::sceneBank().publish(r.pid,r.match,false,std::make_shared<const external::radar::Frame>(data));
+      if(!shared&&r.mode==1)external::radar::sceneBank().publish(r.pid,r.match,true,std::make_shared<const external::radar::Frame>(data));
       // Publish terrain immediately; retain the last completed scene while the
       // next one loads. Initial MIX scans must not keep the whole window hidden.
       {std::lock_guard<std::mutex> lock(mutex);if(token==generation){if(r.mode==1&&latest&&latest->scene&&latest->terrain->reveal==data.terrain->reveal&&latest->terrain->geo.same(data.terrain->geo)&&latest->scene->width==r.width&&latest->scene->height==r.height)data.scene=latest->scene;latest=std::make_shared<external::radar::Frame>(data);}}
-      if(r.mode==1){assets.identity(r.pid,r.match);auto scene=renderer.render(data,r.width,r.height,external::SharedReadView{&reader},assets);if(scene)data.scene=std::move(scene);}
+      if(r.mode==1){
+       const auto&profile=r.selection.profile;external::presentation::apply(profile,assets,data.terrain->geo.rawWidth*30,data.terrain->geo.rawHeight*15,r.width,r.height);assets.identity(r.pid,r.match);renderer.features(profile);
+       const double moment=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now().time_since_epoch()).count();
+       timeline.observe(data,moment-uint32_t(GetTickCount()-data.tick));timelineFrame=data.frame;
+       auto animated=timeline.sample(moment,profile.material,profile.detail!=0);animated.effects=data.effects;animated.tick=GetTickCount();
+       auto scene=renderer.render(animated,r.width,r.height,external::SharedReadView{&reader},assets,{},unsigned(profile.scale),profile.detail!=0,true,profile.precision!=0,true);
+       if(scene&&profile.lasers&&data.effects&&data.effects->boltsValid){const std::vector<uint8_t>*mask=nullptr;if(renderer.feedbackVisibility(mask)){
+        const auto&geo=data.terrain->geo;external::nativefeedback::WorldView projection{-geo.offsetX*30,geo.offsetY*15,geo.rawWidth*30,geo.rawHeight*15,data.frame};
+        auto decorated=std::make_shared<external::radar::Scene>(*scene);auto status=external::nativefeedback::effects(data.effects->bolts,*decorated,projection,mask,external::projectionZScale(fresh));if(status.complete)scene=std::move(decorated);
+       }}
+       if(scene)data.scene=std::move(scene);
+      }
       next=std::make_shared<external::radar::Frame>(std::move(data));
      }else if(!same&&sampled.readable){std::lock_guard<std::mutex> lock(mutex);if(token==generation&&latest&&!external::radar::sameWorld(*latest,sampled))latest.reset();}
      previousFrame=frame;previousRevision=sampler.revision();
@@ -60,11 +75,11 @@ class Worker {
  }
 public:
  ~Worker(){shutdown();}
- void set(Request r){std::lock_guard<std::mutex> lock(mutex);bool changed=r.pid!=request.pid||r.match!=request.match||r.reveal!=request.reveal||r.mode!=request.mode||r.width!=request.width||r.height!=request.height||r.gpu!=request.gpu;
+ void set(Request r){std::lock_guard<std::mutex> lock(mutex);bool changed=r.pid!=request.pid||r.match!=request.match||r.reveal!=request.reveal||r.mode!=request.mode||r.width!=request.width||r.height!=request.height||r.gpu!=request.gpu||r.selection.revision!=request.selection.revision;
   if(changed){++generation;
    // A size edit may present the last verified world while the one shared
    // renderer produces the requested dimensions. Identity/mode changes may not.
-   if(r.pid!=request.pid||r.match!=request.match||r.reveal!=request.reveal||r.mode!=request.mode||r.gpu!=request.gpu)latest.reset();
+   if(r.pid!=request.pid||r.match!=request.match||r.reveal!=request.reveal||r.mode!=request.mode||r.gpu!=request.gpu||r.selection.revision!=request.selection.revision)latest.reset();
   }
   request=r;paused=false;if(r.pid&&!thread.joinable()){stop=false;thread=std::thread([this]{run();});}cv.notify_one();}
  void pause(){std::lock_guard<std::mutex> lock(mutex);paused=true;cv.notify_one();}
@@ -258,7 +273,7 @@ static void update(POINT origin,const RECT&client,bool verifiedBattlefield){
  // smaller game-panel raster into a blurry preview.
  int width=std::max(primary?layout.destination.w:0,secondary?secondaryBox.w:0);
  int height=std::max(primary?layout.destination.h:0,secondary?secondaryBox.h:0);
- worker.set({pid,displayMatch(),informationFPS(),uint32_t(extra.renderReveal||extra.mapStrategy==3),minimapMode,std::min(2048,width-2),std::min(2048,height-2),renderVulkanEnabled});
+ worker.set({pid,displayMatch(),informationFPS(),uint32_t(extra.renderReveal||assist::shroudpolicy::fullPreview(extra.mapStrategy)),minimapMode,std::min(2048,width-2),std::min(2048,height-2),renderVulkanEnabled,external::presentation::settings().get()});
  frame=worker.get();if(!frame||!frame->terrain){cancelDrag();hidePrimary();hideSecondary();return;}if(dragging&&dragMatch!=commandMatch())cancelDrag();
  if(primary){auto d=layout.destination;placePanel(false,origin.x+d.x,origin.y+d.y,d.w,d.h);}
  if(secondary)placePanel(true,secondaryBox.x,secondaryBox.y,secondaryBox.w,secondaryBox.h);

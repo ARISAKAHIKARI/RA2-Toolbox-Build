@@ -1,28 +1,26 @@
 #include "../../shared/source/latest_worker.h"
-#include "watch_engine.h"
+#include "watch_scene.h"
 namespace watchhost {
 static constexpr int Width=external::watch::NativeViewWidth,Height=external::watch::NativeViewHeight;
 struct View {external::watch::Frame frame;external::watch::Box box;bool shown=false;uint32_t revision=0;std::shared_ptr<const std::vector<uint32_t>> pixels;};
 static View views[3];static external::watch::Track tracks[3];static bool autoSuppressed=false,shown=false,suspended=false;
 static uint32_t process=0,epoch=0,controls=0;static uint8_t trackingOptions=0xff;
-struct Request {uint32_t pid,match,tick,control;int width,height;bool reveal,danger,suppressed;std::array<external::watch::Track,3> tracks;};
+struct Request {uint32_t pid,match,tick,control;int width,height;bool reveal,danger,suppressed;std::array<external::watch::Track,3> tracks;external::presentation::Selection selection;};
 struct Result {uint32_t pid,match,control,tick;std::array<external::watch::Track,3> tracks;bool suppressed=false;std::string diagnostic;std::array<View,3> views;};
 static std::shared_ptr<const Result> applied;
 static external::ReadSession renderReader;
 static external::cameraassets::Context<external::ReadSession> renderAssets(renderReader);
-static watchengine::Renderer<external::ReadSession,decltype(renderAssets)> renderer(renderReader,renderAssets);
+static watchscene::Renderer<external::ReadSession,decltype(renderAssets)> renderer(renderReader,renderAssets);
 static asyncwork::Latest<Request,Result> worker([](const Request&r)->std::shared_ptr<const Result>{
  if(renderer.process!=r.pid||renderer.epoch!=r.match){renderer.reset();renderReader.close();renderer.process=r.pid;renderer.epoch=r.match;}
  if(!renderReader.open(r.pid))return {};renderReader.begin();
  if(!external::display::inspect(external::SharedReadView{&renderReader}).visible())return {};
  renderer.width=r.width;renderer.height=r.height;renderer.revealMap=r.reveal;renderer.danger=r.danger;
- renderer.syncTracks(r.control,r.tracks,r.suppressed);renderer.update(r.tick);
+ renderer.features(r.selection.profile);renderer.syncTracks(r.control,r.tracks,r.suppressed);if(!renderer.update(GetTickCount()))return {};
  auto result=std::make_shared<Result>();result->pid=r.pid;result->match=r.match;result->control=r.control;result->tick=r.tick;result->suppressed=renderer.autoSuppressed;std::copy(std::begin(renderer.tracks),std::end(renderer.tracks),result->tracks.begin());
- for(int i=0;i<3;++i){auto&v=renderer.views[i];auto&out=result->views[i];out.shown=v.shown;out.box=v.box;out.frame.focus=v.frame.focus;out.frame.bounds=v.frame.bounds;out.revision=r.tick;
+ for(int i=0;i<3;++i){auto&v=renderer.views[i];auto&out=result->views[i];out.shown=v.shown;out.box=v.box;out.frame.focus=v.frame.focus;out.frame.bounds=v.frame.bounds;out.frame.center=v.frame.center;out.frame.cameraX=v.frame.cameraX;out.frame.cameraY=v.frame.cameraY;out.frame.dangerous=v.frame.dangerous;out.revision=r.tick;
   if(v.shown){auto pixels=std::make_shared<std::vector<uint32_t>>(Width*Height);Bitmap bm(Width,Height,Width*4,PixelFormat32bppPARGB,reinterpret_cast<BYTE*>(pixels->data()));{Graphics g(&bm);renderer.drawView(g,v);}out.pixels=std::move(pixels);}}
- result->diagnostic="watch async archives="+std::to_string(renderAssets.files.count())+" source="+std::to_string(renderer.actorArt.size())+" poses="+std::to_string(renderer.images.size());
- for(const auto&v:renderer.views)if(v.shown)for(const auto&a:v.frame.actors){auto i=renderer.images.find(renderer.imageKey(a));if(i!=renderer.images.end()&&!i->second.ready&&!i->second.issue.empty()){result->diagnostic+=" missing="+renderAssets.text(a.type+0x24,24)+" frame="+std::to_string(a.pose.frame)+" "+i->second.issue;goto diagnostic_done;}}
- diagnostic_done:
+ result->diagnostic="watch shared-scene="+std::to_string(renderer.sharedSource)+" gpu-attempted="+std::to_string(renderer.gpuAttempted)+" gpu-used="+std::to_string(renderer.gpuUsed)+" source-age="+std::to_string(uint32_t(GetTickCount()-renderer.sourceTick));
  // Normal sampling shares a page cache. A trigger can replace VisibleRect
  // while assets decode, so validate the completed batch against uncached
  // bounds before publishing. Dropping the batch preserves the UI's slots.
@@ -59,6 +57,9 @@ static void pin(uint32_t key){
  worker.invalidate();++controls;autoSuppressed=true;++paintRevision;notify(L"已添加跟踪窗口 "+std::to_wstring(slot+1)+L"；左击跳转，Shift＋右击关闭。");
 }
 static void update(uint32_t now){
+ auto selection=external::presentation::settings().get();static uint64_t selectedRevision=~uint64_t(0);
+ if(selectedRevision!=selection.revision){selectedRevision=selection.revision;worker.invalidate();++controls;applied.reset();for(auto&v:views)v={};}
+
  if(process!=pid||epoch!=displayMatch()){reset();process=pid;epoch=displayMatch();}
  bool primary=enabled&&extra.watchEnabled&&foregroundGame()&&!snap.chat;
  bool secondary=extra.watchSecondary&&secondaryDisplayAvailable();
@@ -72,7 +73,7 @@ static void update(uint32_t now){
  // immutable result once rather than replaying its old tracking decisions.
  auto result=worker.get();if(result&&result!=applied&&result->pid==pid&&result->match==epoch&&result->control==controls){applied=result;std::copy(result->views.begin(),result->views.end(),views);std::copy(result->tracks.begin(),result->tracks.end(),tracks);autoSuppressed=result->suppressed;static uint32_t logged=0;if(DWORD(now-logged)>=5000){logged=now;critical(std::wstring(result->diagnostic.begin(),result->diagnostic.end()));}}
  arrange();
- Request r{pid,epoch,now,controls,snap.width,snap.height,bool(extra.renderReveal||extra.mapStrategy==3),bool(extra.watchDanger),autoSuppressed,{}};std::copy(std::begin(tracks),std::end(tracks),r.tracks.begin());worker.submit(std::move(r));
+ Request r{pid,epoch,now,controls,snap.width,snap.height,bool(extra.renderReveal||assist::shroudpolicy::fullPreview(extra.mapStrategy)),bool(extra.watchDanger),autoSuppressed,{}};std::copy(std::begin(tracks),std::end(tracks),r.tracks.begin());r.selection=selection;worker.submit(std::move(r));
 }
 static void drawView(Graphics&g,const View&v){if(!v.shown||!v.pixels)return;Bitmap bm(Width,Height,Width*4,PixelFormat32bppPARGB,reinterpret_cast<BYTE*>(const_cast<uint32_t*>(v.pixels->data())));g.SetInterpolationMode(InterpolationModeNearestNeighbor);g.SetPixelOffsetMode(PixelOffsetModeHalf);g.DrawImage(&bm,RectF(0,0,float(Width),float(Height)),0.f,0.f,float(Width),float(Height),UnitPixel,nullptr);}
 static void shutdown(){worker.shutdown();}

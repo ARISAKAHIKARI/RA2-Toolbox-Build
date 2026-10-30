@@ -32,6 +32,8 @@ static int value(const wchar_t*,const wchar_t*key,int fallback){auto i=profile.f
 static void write(const wchar_t*,const wchar_t*key,int v){profile[key]=v;}
 '''+changed_setting+'\n'+globals_+'\nstatic void load(){'+load+'}\nstatic void save(){'+save+'}\nstatic int handle(int id,unsigned wp){int w=1;'+handler+'return -1;}\n'+r'''
 int main(){
+ load();assert(renderParticleEffects&&renderLaserEffects&&renderVoxelLighting&&renderSpriteLighting);
+ for(int on:{0,1}){for(int id:{9320,9321,9322,9323}){controls[id]=on;assert(handle(id,BN_CLICKED<<16)==0);}save();renderParticleEffects=renderLaserEffects=renderVoxelLighting=renderSpriteLighting=!on;load();assert(renderParticleEffects==bool(on)&&renderLaserEffects==bool(on)&&renderVoxelLighting==bool(on)&&renderSpriteLighting==bool(on));}
  load();assert(!renderUpgradeEnabled&&!renderPhysicalOutput&&!renderVulkanEnabled&&!renderProcessing&&!renderXbrzEnabled&&renderMaterialRefresh&&renderSceneDetail==1&&renderPixelScale==3&&renderColorPrecision==1&&renderUpgradeLayer==1);
  for(int oldLayer:{0,1}){profile[L"RenderUpgradeLayer"]=oldLayer;load();assert(renderUpgradeLayer==1);save();assert(profile[L"RenderUpgradeLayer"]==1);}
  for(int color:{0,1})for(int detail:{0,1})for(int refresh:{0,1})for(int scale:{0,1,2,3}){
