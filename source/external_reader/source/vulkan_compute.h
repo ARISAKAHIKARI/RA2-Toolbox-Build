@@ -79,7 +79,7 @@ protected:
 #ifdef RA2_VULKAN_MAPPED_BUDGET_BYTES
  static constexpr uint64_t MappedBudget=RA2_VULKAN_MAPPED_BUDGET_BYTES;
 #else
- static constexpr uint64_t MappedBudget=512ull*1024*1024;
+ static constexpr uint64_t MappedBudget=sizeof(void*)>=8?768ull*1024*1024:512ull*1024*1024;
 #endif
  void memoryDiagnostics(){diagnostics_.allocatedBufferBytes=allocatedBufferBytes_;diagnostics_.mappedBufferBytes=mappedBufferBytes_;diagnostics_.peakMappedBufferBytes=peakMappedBufferBytes_;}
  static std::atomic<bool>& quarantined(){static std::atomic<bool> value{false};return value;}

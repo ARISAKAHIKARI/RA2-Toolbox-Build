@@ -4,6 +4,7 @@
 #include <mutex>
 #include <tuple>
 #include <type_traits>
+#include "render_memory_budget.h"
 namespace external {namespace nativeimages {
 // Immutable native-pixel world materials, BEFORE viewport composition/scaling.
 // Image includes its depth, shadows and pure-value GPU triangles. No reader,
@@ -22,11 +23,11 @@ class Bank {
  struct Entry {std::shared_ptr<const voxel::Image>image;uint64_t used;size_t bytes;};
  std::mutex mutex_;std::map<Key,Entry>entries_;size_t bytes_=0,budget_;uint64_t serial_=0,hits_=0,misses_=0;
 public:
- explicit Bank(size_t budget=96*1024*1024):budget_(budget){}
+ explicit Bank(size_t budget=rendermemory::SharedImages):budget_(budget){}
  std::shared_ptr<const voxel::Image>get(const Key&key){std::lock_guard<std::mutex>lock(mutex_);auto at=entries_.find(key);if(at==entries_.end()){++misses_;return {};}at->second.used=++serial_;++hits_;return at->second.image;}
  void put(Key key,std::shared_ptr<const voxel::Image>image){if(!image||image->incomplete)return;size_t cost=bytes(*image)+sizeof(Entry)+sizeof(Key);if(cost>budget_)return;std::lock_guard<std::mutex>lock(mutex_);
   if(entries_.count(key))return;
-  while(!entries_.empty()&&(bytes_+cost>budget_||entries_.size()>=4096)){auto old=std::min_element(entries_.begin(),entries_.end(),[](const auto&a,const auto&b){return a.second.used<b.second.used;});bytes_-=old->second.bytes;entries_.erase(old);}
+  while(!entries_.empty()&&bytes_+cost>budget_){auto old=std::min_element(entries_.begin(),entries_.end(),[](const auto&a,const auto&b){return a.second.used<b.second.used;});bytes_-=old->second.bytes;entries_.erase(old);}
   bytes_+=cost;entries_.emplace(std::move(key),Entry{std::move(image),++serial_,cost});
  }
  struct Stats{size_t resident,entries;uint64_t hits,misses;};Stats stats(){std::lock_guard<std::mutex>lock(mutex_);return {bytes_,entries_.size(),hits_,misses_};}

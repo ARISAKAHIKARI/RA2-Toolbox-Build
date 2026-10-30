@@ -26,7 +26,7 @@ class Pool {
   consume();{std::lock_guard<std::mutex> lock(state_);if(!--remaining_)done_.notify_one();}
  }}
 public:
- Pool(){const unsigned hardware=std::thread::hardware_concurrency();const unsigned count=hardware>2?std::min(3u,hardware-2):0;
+ Pool(){const unsigned hardware=std::thread::hardware_concurrency();const unsigned count=hardware>3?std::min(7u,hardware-3):hardware>2?1u:0u;
   for(unsigned i=0;i<count;++i)threads_.emplace_back([this]{run();});
  }
  ~Pool(){{std::lock_guard<std::mutex> lock(state_);stop_=true;ready_.notify_all();}for(auto&t:threads_)t.join();}

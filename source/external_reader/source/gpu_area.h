@@ -6,7 +6,12 @@
 #include <memory>
 #include <vector>
 namespace external {namespace gpushroud {struct Plan;} namespace gpuarea {
-constexpr uint32_t PageSize=128,PagePixels=PageSize*PageSize,BlockSize=4,PrefixSide=33,PrefixWords=PrefixSide*PrefixSide*3,MaximumPages=2048,Missing=0xffffffffu;
+constexpr uint32_t PageSize=128,PagePixels=PageSize*PageSize,BlockSize=4,PrefixSide=33,PrefixWords=PrefixSide*PrefixSide*3,MaximumPages=sizeof(void*)>=8?8192:2048,Missing=0xffffffffu;
+inline uint64_t atlasBytes(size_t pages,uint64_t deviceLimit){
+ const uint64_t required=uint64_t(pages)*PagePixels*4,maximum=uint64_t(MaximumPages)*PagePixels*4;
+ uint64_t capacity=128ull*1024*1024;while(capacity<required&&capacity<maximum)capacity*=2;
+ return capacity>=required&&capacity<=maximum&&capacity<=deviceLimit?capacity:0;
+}
 struct Page {uint32_t x=0,y=0;std::shared_ptr<const std::vector<uint32_t>>pixels;uint64_t version=0;};
 struct Plan {
  int nativeWidth=0,nativeHeight=0,width=0,height=0;double spanX=0,spanY=0;uint32_t background=0xff080c08u;

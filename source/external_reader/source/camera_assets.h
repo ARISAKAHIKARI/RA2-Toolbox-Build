@@ -244,8 +244,8 @@ bool tile(uint32_t type,unsigned sub,const std::array<uint32_t,256>&pal,external
  }
  auto retain=[&]{if(process_){
   auto cost=[](auto&&self,const external::voxel::Image&i)->size_t{size_t n=4*(i.pixels.size()+i.depth.size())+i.indices.size();for(const auto&a:i.attachments)n+=self(self,a);return n;};
-  const size_t bytes=cost(cost,out);if(bytes<=64*1024*1024){auto image=std::make_shared<const external::voxel::Image>(out);std::lock_guard<std::mutex>lock(sharedTileMutex_);
-   if(!sharedTiles_.count(key)){if(sharedTileBytes_+bytes>64*1024*1024){sharedTiles_.clear();sharedTileBytes_=0;}sharedTiles_[key]=std::move(image);sharedTileBytes_+=bytes;}}
+  const size_t bytes=cost(cost,out);if(bytes<=rendermemory::SharedTiles){auto image=std::make_shared<const external::voxel::Image>(out);std::lock_guard<std::mutex>lock(sharedTileMutex_);
+   if(!sharedTiles_.count(key)){if(sharedTileBytes_+bytes>rendermemory::SharedTiles){sharedTiles_.clear();sharedTileBytes_=0;}sharedTiles_[key]=std::move(image);sharedTileBytes_+=bytes;}}
  }return true;};
  std::vector<uint8_t> bytes;auto filename=text(type+0x2F5,14);std::string reason;
  if(!filename.empty()&&files.load(filename,bytes)&&external::assets::tmp(std::move(bytes),sub,pal,out,&reason))return retain();

@@ -9,6 +9,7 @@
 #include <memory>
 #include <tuple>
 #include <vector>
+#include "render_memory_budget.h"
 #if !defined(RA2_XBRZ_SCALAR_ONLY) && (defined(__SSE2__) || defined(_M_X64) || (defined(_M_IX86_FP) && _M_IX86_FP>=2))
 #define RA2_XBRZ_SSE2 1
 #include <emmintrin.h>
@@ -43,7 +44,7 @@ inline bool gpuArea(const gpuarea::Plan&plan,std::vector<uint32_t>&out){
  auto&state=gpuState();if(!state.requested)return false;state.attempted=true;if(!state.area)state.area=std::make_unique<vulkancompute::AreaResolve>();
  const bool used=state.area->render(plan,out);state.used=state.used||used;return used;
 }
-constexpr size_t MaxPixels=16*1024*1024, CachePixels=4*1024*1024;
+constexpr size_t MaxPixels=16*1024*1024, CachePixels=rendermemory::LitPixels;
 // Standard bilinear resolve with Q8 weights and ONE final rounding. Each axis
 // differs from its real weight by <=1/512; with channels in [0,255], total
 // pre-round error is <=255/256<1, so final bytes differ by at most one unit.

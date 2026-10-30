@@ -5,10 +5,20 @@ layout(set=0,binding=0,std430) readonly buffer Raw {uint v[];} raw;
 layout(set=0,binding=1,std430) buffer Prefix {uint v[];} prefix;
 layout(set=0,binding=2,std430) readonly buffer Metadata {uint v[];} meta;
 layout(set=0,binding=3,std430) buffer Output {uint v[];} outputImage;
+#ifdef AREA_BANKED
+layout(set=0,binding=4,std430) readonly buffer Raw1 {uint v[];} raw1;
+layout(set=0,binding=5,std430) readonly buffer Raw2 {uint v[];} raw2;
+layout(set=0,binding=6,std430) readonly buffer Raw3 {uint v[];} raw3;
+#endif
 layout(push_constant) uniform Params {uint width,height,nativeWidth,nativeHeight,columns,tableOffset,xOffset,yOffset,background,fogOffset,buildCount,buildOffset,phase;} p;
 const uint Missing=0xffffffffu,PagePixels=16384u,PrefixWords=3267u;
 uvec3 rgb(uint color){return uvec3((color>>16)&255u,(color>>8)&255u,color&255u);}
-uvec3 readRaw(uint slot,int x,int y){return rgb(raw.v[slot*PagePixels+uint(y)*128u+uint(x)]);}
+uvec3 readRaw(uint slot,int x,int y){uint at=slot*PagePixels+uint(y)*128u+uint(x);
+#ifdef AREA_BANKED
+ uint bank=at>>25u;at&=0x1ffffffu;
+ if(bank==1u)return rgb(raw1.v[at]);if(bank==2u)return rgb(raw2.v[at]);if(bank==3u)return rgb(raw3.v[at]);
+#endif
+ return rgb(raw.v[at]);}
 uvec3 readPrefix(uint slot,int x,int y){uint at=slot*PrefixWords+(uint(y)*33u+uint(x))*3u;return uvec3(prefix.v[at],prefix.v[at+1u],prefix.v[at+2u]);}
 void writePrefix(uint slot,int x,int y,uvec3 value){uint at=slot*PrefixWords+(uint(y)*33u+uint(x))*3u;prefix.v[at]=value.x;prefix.v[at+1u]=value.y;prefix.v[at+2u]=value.z;}
 uvec3 integerBox(uint slot,int l,int t,int r,int b){

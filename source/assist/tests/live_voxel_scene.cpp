@@ -10,7 +10,7 @@ struct Assets {
  bool overlay(uint32_t,uint32_t,int,external::voxel::Image&,bool=false){return false;}
  bool shroud(bool,int,external::voxel::Image&){return false;}
  void buildingPose(uint32_t,uint32_t,external::visual::Pose&){}
- bool captureActor(uint32_t,uint32_t type,uint32_t,ActorArt&art){++captures;art.voxel=type>=1000;art.type=type;if(art.voxel&&heavyModel)art.model.faces.resize(2*1024*1024+1);return true;}
+ bool captureActor(uint32_t,uint32_t type,uint32_t,ActorArt&art){++captures;art.voxel=type>=1000;art.type=type;if(art.voxel&&heavyModel)art.model.faces.resize(external::rendermemory::LiveFaces+1);return true;}
  bool captureAnimation(uint32_t p,uint32_t t,uint32_t id,uint32_t,uint32_t,ActorArt&a){return captureActor(p,t,id,a);}
  bool renderActor(const ActorArt&art,const external::visual::Pose&pose,external::voxel::Image&i){
   if(art.voxel){++voxels;if(failVXL)return false;}else ++shapes;

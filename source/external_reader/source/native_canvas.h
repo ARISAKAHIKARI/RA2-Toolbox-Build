@@ -6,6 +6,8 @@
 #include <set>
 #include <array>
 #include <new>
+#include <atomic>
+#include "render_memory_budget.h"
 #include "../../shared/source/parallel_rows.h"
 // Native-pixel composition storage. Source sprites are never individually
 // minified: all depth/shadow/color operations run at one pixel per source pixel.
@@ -14,13 +16,17 @@ class NativeCanvas {
  friend class ObjectCanvas;
 public:
  static constexpr int PageSize=128,MaximumDimension=32768;
- static constexpr size_t MaximumPages=4096,DynamicReserve=256;
- struct Budget {size_t pages=0;size_t maximum=MaximumPages;};
+ static constexpr size_t MaximumPages=rendermemory::NativePages,DynamicReserve=256;
+ struct Budget {
+  std::atomic<size_t>pages{0};size_t maximum=MaximumPages;
+  bool acquire(){auto count=pages.load(std::memory_order_relaxed);while(count<maximum)if(pages.compare_exchange_weak(count,count+1,std::memory_order_relaxed))return true;return false;}
+ };
+ static std::shared_ptr<Budget>sharedBudget(){static auto value=std::make_shared<Budget>();return value;}
 private:
  struct Page {
   std::shared_ptr<Budget> budget;Surface surface;uint64_t revision=0;
-  explicit Page(std::shared_ptr<Budget>b):budget(std::move(b)){++budget->pages;surface.reset(PageSize,PageSize);}
-  Page(const Page&p):budget(p.budget),surface(p.surface),revision(p.revision){++budget->pages;}
+  explicit Page(std::shared_ptr<Budget>b):budget(std::move(b)){if(!budget->acquire())throw std::bad_alloc();try{if(!surface.reset(PageSize,PageSize))throw std::bad_alloc();}catch(...){--budget->pages;throw;}}
+  Page(const Page&p):budget(p.budget),revision(p.revision){if(!budget->acquire())throw std::bad_alloc();try{surface=p.surface;}catch(...){--budget->pages;throw;}}
   ~Page(){--budget->pages;}
  };
  colorprecision::Mode precision_=colorprecision::Mode::NativeSteps;
@@ -116,12 +122,12 @@ public:
  };
 public:
  bool reset(int width,int height,std::shared_ptr<Budget>budget={},uint32_t background=0xff080c08u){
-  regionCache_.reset();pages_.clear();dirty_.clear();dirtyRects_.clear();repaintPages_.clear();repainting_=false;failed_=dynamic_=false;width_=height_=0;paintLeft_=paintTop_=paintRight_=paintBottom_=0;background_=background;budget_=budget?std::move(budget):std::make_shared<Budget>();
+  regionCache_.reset();pages_.clear();dirty_.clear();dirtyRects_.clear();repaintPages_.clear();repainting_=false;failed_=dynamic_=false;width_=height_=0;paintLeft_=paintTop_=paintRight_=paintBottom_=0;background_=background;budget_=budget?std::move(budget):sharedBudget();
   if(width<1||height<1||width>MaximumDimension||height>MaximumDimension||!budget_->maximum)return false;width_=width;height_=height;paintRight_=width;paintBottom_=height;return true;
  }
  void precision(colorprecision::Mode mode){if(mode!=precision_)regionCache_.reset();precision_=mode;}
  int width()const{return width_;}int height()const{return height_;}bool failed()const{return failed_;}void clearFailure(){failed_=false;}
- size_t pageCount()const{return pages_.size();}size_t dirtyPages()const{return dirty_.size();}size_t residentPages()const{return budget_?budget_->pages:0;}
+ size_t pageCount()const{return pages_.size();}size_t dirtyPages()const{return dirty_.size();}size_t residentPages()const{return budget_?budget_->pages.load(std::memory_order_relaxed):0;}
  void clean(){dirty_.clear();dirtyRects_.clear();repainting_=false;repaintPages_.clear();}
  NativeCanvas fork()const{NativeCanvas out=*this;out.dynamic_=true;out.failed_=false;out.clean();return out;}
  void restrictPaint(int left,int top,int right,int bottom){
@@ -295,8 +301,10 @@ public:
   if(failed_||width<1||height<1||width>2048||height>2048||width_<1||height_<1)return false;
   if(spanX<=0)spanX=width_;if(spanY<=0)spanY=height_;if(spanX>width_||spanY>height_||!std::isfinite(spanX)||!std::isfinite(spanY))return false;
   if(spanX==width&&spanY==height){out.resize(size_t(width)*height);for(int y=0;y<height;++y)nativeRow(y,0,width,out.data()+size_t(y)*width);return true;}
-  out.resize(size_t(width)*height);Filter filter(*this);double sx=spanX/width,sy=spanY/height;
-  for(int y=0;y<height;++y)for(int x=0;x<width;++x)out[size_t(y)*width+x]=filter.pixel(x*sx,y*sy,(x+1)*sx,(y+1)*sy);return true;
+  out.resize(size_t(width)*height);double sx=spanX/width,sy=spanY/height;
+  parallelrows::rows(size_t(height),size_t(std::ceil(spanX))*size_t(std::ceil(spanY)),[&](size_t first,size_t last){Filter filter(*this);
+   for(int y=int(first);y<int(last);++y)for(int x=0;x<width;++x)out[size_t(y)*width+x]=filter.pixel(x*sx,y*sy,(x+1)*sx,(y+1)*sy);
+  });return true;
  }
  bool presentDirty(int width,int height,std::vector<uint32_t>&out,double spanX=-1,double spanY=-1)const{
   if(failed_||width<1||height<1||width>2048||height>2048||out.size()!=size_t(width)*height)return false;
@@ -306,11 +314,11 @@ public:
   std::vector<std::vector<std::pair<int,int>>> rows(height);double sx=spanX/width,sy=spanY/height;
   for(const auto&r:dirtyRects_){int x0=std::clamp(int(std::floor(r[0]/sx)),0,width),x1=std::clamp(int(std::ceil(r[2]/sx)),0,width);
    int y0=std::clamp(int(std::floor(r[1]/sy)),0,height),y1=std::clamp(int(std::ceil(r[3]/sy)),0,height);for(int y=y0;y<y1;++y)rows[y].emplace_back(x0,x1);}
-  Filter filter(*this);
-  for(int y=0;y<height;++y){auto&spans=rows[y];std::sort(spans.begin(),spans.end());int last=0;for(auto span:spans){int from=std::max(last,span.first);
+  parallelrows::rows(size_t(height),size_t(std::ceil(spanX))*size_t(std::ceil(spanY)),[&](size_t first,size_t end){Filter filter(*this);
+  for(int y=int(first);y<int(end);++y){auto&spans=rows[y];std::sort(spans.begin(),spans.end());int last=0;for(auto span:spans){int from=std::max(last,span.first);
    if(exact)nativeRow(y,from,span.second,out.data()+size_t(y)*width);
    else for(int x=from;x<span.second;++x)out[size_t(y)*width+x]=filter.pixel(x*sx,y*sy,(x+1)*sx,(y+1)*sy);
-   last=std::max(last,span.second);}}
+   last=std::max(last,span.second);}}});
   return true;
  }
 };

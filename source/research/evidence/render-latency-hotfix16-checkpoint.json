@@ -443,5 +443,13 @@
         1920
       ]
     }
-  ]
+  ],
+  "second_checkpoint": {
+    "gpu_area_large": "PASS GPU area beyond2048: 2304 unique native pages, device-aware raw banks, exact output, warm0uploads, changed1upload, one final readback; software=1 device=llvmpipe (LLVM 20.1.2, 256 bits)",
+    "gpu_area": "PASS actual GPU sparse area frames=33 channels=3572628 max_error=0; shrink/upscale/fractional/sparse/deleted/owner-reuse/current native fog, warm0uploads0prefixbuilds onefinalreadback; production_scene_channels=642312 software=1 device=llvmpipe (LLVM 20.1.2, 256 bits)",
+    "shader_build": "/workspace/scratch/fdb693f7ba5d/ra2-toolbox/source/external_reader/shaders/vulkan_area.comp\n/workspace/scratch/fdb693f7ba5d/ra2-toolbox/source/external_reader/shaders/vulkan_area.comp\n{\"variant\": \"AreaShader\", \"source_sha256\": \"3104a74901dda70f731a9b6d6dcd37bf6b9970839cc5710588fbcfa279549dd2\", \"spirv_sha256\": \"5cf66cb57786b182bc37057ad7cafdbae0df569f56c6c173b1a8067278e5a2f6\", \"bytes\": 17564}\n{\"variant\": \"AreaBankedShader\", \"source_sha256\": \"3104a74901dda70f731a9b6d6dcd37bf6b9970839cc5710588fbcfa279549dd2\", \"spirv_sha256\": \"8d91d24b34e483d7e647c0336f45955bea86d3306774e1def271e8bcd2fc6edc\", \"bytes\": 23368}",
+    "total_budget_target_GiB": 8,
+    "shared_native_pages": 24576,
+    "ongoing": true
+  }
 }

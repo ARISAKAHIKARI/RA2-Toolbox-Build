@@ -37,7 +37,7 @@ private:
   voxel::Image next;if(!materialize(*source,next))return {};auto image=std::make_shared<const voxel::Image>(std::move(next));++stats_.rasterBuilds;
   if(found!=rasters_.end()){rasterBytes_-=found->second.bytes;rasters_.erase(found);}
   for(auto p=rasters_.begin();p!=rasters_.end();)if(p->second.source.expired()){rasterBytes_-=p->second.bytes;p=rasters_.erase(p);}else ++p;
-  const size_t cost=bytes(*image);constexpr size_t Budget=64*1024*1024;
+  const size_t cost=bytes(*image);constexpr size_t Budget=rendermemory::RasterBytes;
   if(cost<=Budget){while(!rasters_.empty()&&rasterBytes_+cost>Budget){auto old=std::min_element(rasters_.begin(),rasters_.end(),[](const auto&a,const auto&b){return a.second.used<b.second.used;});rasterBytes_-=old->second.bytes;rasters_.erase(old);}
    rasterBytes_+=cost;rasters_.emplace(source.get(),Raster{source,image,cost,++rasterSerial_});}
   return image;
@@ -71,15 +71,20 @@ public:
     auto&entry=pages_[job.first];
     if(entry.page&&same(entry,sourcePage,job.second)){++stats_.reused;}
     else{
-     entry.page.reset();
+     // A previous synchronous presentation normally released its page owners.
+     // Reuse those two 128x128 buffers instead of free/allocate/copy per page.
+     // A retained snapshot forces COW and keeps its old color/depth immutable.
+     const bool reusable=entry.page&&entry.page.use_count()==1;
+     if(!reusable)entry.page.reset();
      // Release cached pages before allocating another copy; the global native
      // page budget remains authoritative for both static and dynamic storage.
-     while(!out.room()){
+     while(!reusable&&!out.room()){
       auto evict=std::find_if(pages_.begin(),pages_.end(),[&](const auto&p){return p.first!=job.first&&p.second.page&&(!out.pages_.count(p.first)||out.pages_.at(p.first)!=p.second.page);});
       if(evict==pages_.end())return fail();evict->second.page.reset();
      }
      entry.hasBase=bool(sourcePage);entry.base=sourcePage;entry.version=sourcePage?sourcePage->revision:0;entry.draws=std::move(job.second);
-     entry.page=sourcePage?std::make_shared<NativeCanvas::Page>(*sourcePage):std::make_shared<NativeCanvas::Page>(base.budget_);
+     if(reusable){if(sourcePage)entry.page->surface=sourcePage->surface;else if(!entry.page->surface.reset(NativeCanvas::PageSize,NativeCanvas::PageSize,base.background_))return fail();}
+     else entry.page=sourcePage?std::make_shared<NativeCanvas::Page>(*sourcePage):std::make_shared<NativeCanvas::Page>(base.budget_);
      if(!sourcePage&&base.background_!=0xff080c08u)std::fill(entry.page->surface.color.begin(),entry.page->surface.color.end(),base.background_);
      entry.page->surface.precision(base.precision_);++entry.page->revision;changed.push_back({job.first,&entry});++stats_.changed;
     }

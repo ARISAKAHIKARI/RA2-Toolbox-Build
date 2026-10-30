@@ -68,13 +68,17 @@ template<class Assets>class SceneRenderer {
  std::map<ObjectKey,ImageKey> displayed_;size_t actorCursor_=0,transientCursor_=0;repairvisuals::Assets repairAssets_;
  std::shared_ptr<const Terrain> building_,complete_,blocked_;bool dynamicFailure_=false,materialsReady_=false;
  struct Paint {lighting::State light,overlayLight;int overlayOffset=0;bool bridge=false;uint64_t signature=0;};
- std::shared_ptr<camera::NativeCanvas::Budget> nativeBudget_=std::make_shared<camera::NativeCanvas::Budget>();
+ std::shared_ptr<camera::NativeCanvas::Budget> nativeBudget_;
  camera::NativeCanvas pending_,background_;camera::ObjectCanvas objectCanvas_;camera::ViewportCanvas detailed_;uint64_t detailKey_=0;std::shared_ptr<const Scene> baseScene_,maskedBaseScene_;
  bool gpuMode_=false,areaGpuMode_=false,areaCachedGpu_=false;
  bool guideEnabled_=false;uint64_t guideExternalContext_=0,motionTerrainRevision_=0;
  std::shared_ptr<const void> motionContext_=std::make_shared<const uint8_t>(0);
  std::shared_ptr<const std::vector<vulkancompute::TileJob>> gpuBaseTiles_;
  std::function<bool(std::vector<uint32_t>&)> cpuBaseFallback_;
+ struct NativePresentation {
+  std::shared_ptr<const std::vector<uint32_t>>pixels;uint64_t background=0,objects=0;bool gpu=false,used=false;
+  std::shared_ptr<const gpushroud::Plan>mask;std::shared_ptr<const std::vector<uint8_t>>fog;
+ }nativePresentation_;
  shroudmask::Raster mask_;std::shared_ptr<const Terrain> maskSource_;bool maskFog_=false;
  gpushroud::Builder gpuMaskBuilder_;std::shared_ptr<const gpushroud::Plan> gpuMaskPlan_,cpuMaskPlan_;
  std::shared_ptr<const std::vector<uint8_t>> maskPixels_;
@@ -102,10 +106,10 @@ template<class Assets>class SceneRenderer {
    if(x.overlayType&&x.overlayFrame!=y.overlayFrame){if(changed.size()>=256)return false;changed.push_back(n);}
   }return !changed.empty();
  }
- void clearBackground(){objectCanvas_.clear();++motionTerrainRevision_;partialBank_=false;changedOverlayCells_.clear();repaintCells_.clear();building_.reset();complete_.reset();blocked_.reset();dynamicFailure_=false;pending_={};background_={};baseScene_.reset();maskedBaseScene_.reset();gpuBaseTiles_.reset();cpuBaseFallback_={};maskSource_.reset();mask_={};gpuMaskPlan_.reset();cpuMaskPlan_.reset();maskPixels_.reset();liveMaskValid_=false;cells_.clear();baseCells_.clear();prepared_.clear();painted_.clear();cursor_=baseCursor_=0;probing_=probeChanged_=pendingIncomplete_=backgroundIncomplete_=false;backgroundRetry_=0;}
+ void clearBackground(){nativePresentation_={};objectCanvas_.clear();++motionTerrainRevision_;partialBank_=false;changedOverlayCells_.clear();repaintCells_.clear();building_.reset();complete_.reset();blocked_.reset();dynamicFailure_=false;pending_={};background_={};baseScene_.reset();maskedBaseScene_.reset();gpuBaseTiles_.reset();cpuBaseFallback_={};maskSource_.reset();mask_={};gpuMaskPlan_.reset();cpuMaskPlan_.reset();maskPixels_.reset();liveMaskValid_=false;cells_.clear();baseCells_.clear();prepared_.clear();painted_.clear();cursor_=baseCursor_=0;probing_=probeChanged_=pendingIncomplete_=backgroundIncomplete_=false;backgroundRetry_=0;}
 
 public:
- explicit SceneRenderer(size_t pages=camera::NativeCanvas::MaximumPages){nativeBudget_->maximum=std::clamp<size_t>(pages,1,camera::NativeCanvas::MaximumPages);}
+ explicit SceneRenderer(size_t pages=camera::NativeCanvas::MaximumPages):nativeBudget_(pages==camera::NativeCanvas::MaximumPages?camera::NativeCanvas::sharedBudget():std::make_shared<camera::NativeCanvas::Budget>()){if(pages!=camera::NativeCanvas::MaximumPages)nativeBudget_->maximum=std::clamp<size_t>(pages,1,camera::NativeCanvas::MaximumPages);}
  void guideEnabled(bool enabled,uint64_t contextKey=0){if(enabled!=guideEnabled_||contextKey!=guideExternalContext_){guideEnabled_=enabled;guideExternalContext_=contextKey;motionContext_=std::make_shared<const uint8_t>(0);}}
  bool materialsReady()const{return materialsReady_;}
  const DecodeStats&decodeStats()const{return decodeStats_;}
@@ -438,8 +442,8 @@ public:
   }
   stage(stageStats_.palettesMs);
   for(const auto&i:sprites_)pixels+=camera::pixels(*i.second.image);size_t artBytes=0;for(const auto&i:art_)artBytes+=Assets::cost(i.second);
-  if(pixels>6*1024*1024){for(auto i=sprites_.begin();i!=sprites_.end()&&pixels>4*1024*1024;)if(!wanted.count(i->first)){pixels-=camera::pixels(*i->second.image);i=sprites_.erase(i);}else ++i;}
-  if(artBytes>96*1024*1024){for(auto i=art_.begin();i!=art_.end()&&artBytes>64*1024*1024;)if(!artWanted.count(i->first)){artBytes-=Assets::cost(i->second);i=art_.erase(i);}else ++i;}
+  if(pixels>rendermemory::PosePixels*3/4){for(auto i=sprites_.begin();i!=sprites_.end()&&pixels>rendermemory::PosePixels/2;)if(!wanted.count(i->first)){pixels-=camera::pixels(*i->second.image);i=sprites_.erase(i);}else ++i;}
+  if(artBytes>rendermemory::Geometry*3/4){for(auto i=art_.begin();i!=art_.end()&&artBytes>rendermemory::Geometry/2;)if(!artWanted.count(i->first)){artBytes-=Assets::cost(i->second);i=art_.erase(i);}else ++i;}
   // Rotate the decode budget independently of draw order. Moving units at the
   // start of the map must not starve an oil pump or construction-yard anim.
   std::vector<Marker> decodeMarkers=markers;
@@ -448,10 +452,10 @@ public:
    if(cached.ready&&!cached.image->incomplete){++decodeStats_.hits;return;}if(cached.retry&&int32_t(frame.tick-cached.retry)<0)return;
    ++work;++decodeStats_.attempts;voxel::Image image;std::shared_ptr<const voxel::Image>sharedImage;bool ready=false;auto source=art_.find(artKey(m));
    if(m.kind==4)ready=assets.overlay(m.type,game.template get<uint32_t>(m.type+0xA4),m.pose.frame,image,true);
-   else{if(source==art_.end()){typename Assets::ActorArt art;if((m.kind==8?voxelanims::captureArt(assets,m.object,m.type,m.id,art):m.kind==7?particles::captureArt(assets,m.object,m.type,m.id,art):m.kind==6?projectiles::captureArt(assets,m.object,m.type,m.id,art):m.kind==5?assets.captureAnimation(m.object,m.type,m.id,m.parent,m.parentId,art):captureActor(assets,m,art,0))&&artBytes+Assets::cost(art)<=128*1024*1024){artBytes+=Assets::cost(art);source=art_.emplace(artKey(m),std::move(art)).first;}}
+   else{if(source==art_.end()){typename Assets::ActorArt art;if((m.kind==8?voxelanims::captureArt(assets,m.object,m.type,m.id,art):m.kind==7?particles::captureArt(assets,m.object,m.type,m.id,art):m.kind==6?projectiles::captureArt(assets,m.object,m.type,m.id,art):m.kind==5?assets.captureAnimation(m.object,m.type,m.id,m.parent,m.parentId,art):captureActor(assets,m,art,0))&&artBytes+Assets::cost(art)<=rendermemory::Geometry){artBytes+=Assets::cost(art);source=art_.emplace(artKey(m),std::move(art)).first;}}
     if(source!=art_.end()&&!(liveVoxels&&voxelArt(source->second,0)))ready=sharedActor(assets,source->second,m.pose,sharedImage,0);}
    size_t previous=camera::pixels(*cached.image),next=sharedImage?camera::pixels(*sharedImage):camera::pixels(image);
-   if(ready&&pixels-previous+next<=8*1024*1024){if(!sharedImage){camera::opaque(image);sharedImage=std::make_shared<const voxel::Image>(std::move(image));}pixels=pixels-previous+next;cached.image=std::move(sharedImage);cached.ready=true;}
+   if(ready&&pixels-previous+next<=rendermemory::PosePixels){if(!sharedImage){camera::opaque(image);sharedImage=std::make_shared<const voxel::Image>(std::move(image));}pixels=pixels-previous+next;cached.image=std::move(sharedImage);cached.ready=true;}
    cached.retry=cached.ready&&!cached.image->incomplete?0:frame.tick+((transition||(m.kind==3&&!cached.ready))?16u:2000u);
   };
   // Time budgets scale throughput with actual decode cost, not eight poses
@@ -485,10 +489,10 @@ public:
     if(!voxelArt(source->second,0))continue;auto key=imageKey(m);if(!rastered.insert(key).second)continue;
     auto cachedImage=sprites_.find(key);
     if(!voxelLightChanged&&cachedImage!=sprites_.end()&&cachedImage->second.ready&&!cachedImage->second.image->incomplete){++decodeStats_.hits;continue;}
-    liveFaces+=faceCount(source->second,0);if(liveFaces>2*1024*1024){if(m.kind>=5)continue;return {};}
+    liveFaces+=faceCount(source->second,0);if(liveFaces>rendermemory::LiveFaces){if(m.kind>=5)continue;return {};}
     std::shared_ptr<const voxel::Image>image;if(!sharedActor(assets,source->second,m.pose,image,0)||!image||image->incomplete){if(m.kind>=5)continue;return {};}
     auto&cached=sprites_[key];size_t previous=camera::pixels(*cached.image),next=camera::pixels(*image);
-    if(pixels-previous+next>8*1024*1024){if(m.kind>=5)continue;return {};}
+    if(pixels-previous+next>rendermemory::PosePixels){if(m.kind>=5)continue;return {};}
     pixels=pixels-previous+next;cached.image=std::move(image);cached.ready=true;cached.retry=0;
    }
   }
@@ -537,12 +541,20 @@ public:
   if(masked&&(gpuMode_||areaGpuMode)&&!gpuMaskPlan_&&!maskPixels_)maskPixels_=std::make_shared<const std::vector<uint8_t>>(mask_.alpha);
   auto*maskReadback=masked&&gpuMaskPlan_&&cpuMaskPlan_!=gpuMaskPlan_?&mask_.alpha:nullptr;
   auto out=std::make_shared<Scene>();out->width=width;out->height=height;bool areaUsed=false;
-  if(areaGpuMode){
+  const bool sameNative=!region.active&&nativePresentation_.pixels&&nativePresentation_.pixels->size()==size_t(width)*height&&
+    nativePresentation_.background==detailKey_&&nativePresentation_.objects==objectCanvas_.revision()&&nativePresentation_.gpu==areaGpuMode&&
+    (!nativePresentation_.used||(nativePresentation_.mask==(masked?gpuMaskPlan_:nullptr)&&nativePresentation_.fog==(masked?maskPixels_:nullptr)));
+  if(sameNative){out->pixels=*nativePresentation_.pixels;areaUsed=nativePresentation_.used;if(areaGpuMode)xbrzadapter::gpuAreaCached(areaUsed);}
+  else if(areaGpuMode){
    areaUsed=view.presentGPU(width,height,out->pixels,spanX_,spanY_,masked?maskPixels_:nullptr,masked?gpuMaskPlan_:nullptr);
    if(!areaUsed&&!view.present(width,height,out->pixels,spanX_,spanY_)){dynamicFailure_=true;return {};}
   }else{
    if(!detail)out->pixels=baseScene_->pixels;
    if(!(detail?detailed_.finish(out->pixels,true,masked?maskPixels_:nullptr,masked?gpuMaskPlan_:nullptr,maskReadback):region.active?view.presentRegion(width,height,out->pixels,region.x,region.y,region.width,region.height,pixelScaleMode):view.presentDirty(width,height,out->pixels,spanX_,spanY_))){dynamicFailure_=true;return {};}
+  }
+  if(!region.active&&!sameNative){nativePresentation_.pixels=std::make_shared<const std::vector<uint32_t>>(out->pixels);
+   nativePresentation_.background=detailKey_;nativePresentation_.objects=objectCanvas_.revision();nativePresentation_.gpu=areaGpuMode;nativePresentation_.used=areaUsed;
+   nativePresentation_.mask=areaUsed&&masked?gpuMaskPlan_:nullptr;nativePresentation_.fog=areaUsed&&masked?maskPixels_:nullptr;
   }
   stage(stageStats_.resolveMs);
   if(masked&&gpuMaskPlan_&&cpuMaskPlan_!=gpuMaskPlan_&&(!areaUsed||!fallbacks.empty()||worldEffects)){
