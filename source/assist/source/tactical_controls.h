@@ -124,11 +124,11 @@ for(int f=0;f<featuretypes::Count;++f){
 heading(3,903,L"战场信息",L"调整游戏内信息显示、缩放与位置；有效设置立即生效。");
 
 #ifdef RA2_UNIFIED
-{auto h=placedControl({-3,{0,0,1,1}},L"COMBOBOX",L"",808,CBS_DROPDOWNLIST);choices(h,{L"关闭",L"受控模式（半透明）",L"受控模式（透明）",L"原生揭示（实验性）",L"直接模式（全图）"},extra.mapStrategy);}
+{auto h=placedControl({-3,{0,0,1,1}},L"COMBOBOX",L"",808,CBS_DROPDOWNLIST);choices(h,{L"关闭",L"受控模式（半透明）",L"受控模式（透明）",L"原生揭示（实验性）",L"直接模式（全图）",L"素材替换（透明）",L"素材替换（半透明）"},extra.mapStrategy);}
 placedControl({-3,{0,0,1,1}},L"STATIC",L"",809,0);
 #else
-label(L"黑幕绘制方式",20,260);choices(combo(808),{L"关闭",L"受控模式（半透明）",L"受控模式（透明）",L"原生揭示（实验性）",L"直接模式（全图）"},extra.mapStrategy);next();
-note(L"半透明与不渲染仅改变显示；地图全开在对局就绪后自动执行，可能导致联机不同步。",44);
+label(L"黑幕绘制方式",20,260);choices(combo(808),{L"关闭",L"受控模式（半透明）",L"受控模式（透明）",L"原生揭示（实验性）",L"直接模式（全图）",L"素材替换（透明）",L"素材替换（半透明）"},extra.mapStrategy);next();
+note(L"素材替换使用原版绘制流程，替换已载入的黑幕 alpha 素材并保留备份；关闭时恢复。渲染升级、副相机和小地图按全图预览，不显示半透明遮罩。",44);
 item(L"STATIC",L"地图显示：关闭",20,605,809);next();
 #endif
 const wchar_t* displayNames[]={L"载具载员与容量",L"铁幕 / 力场剩余时间",L"生产队列空闲提醒",L"显示未选中的载具",L"敌方索敌显示",L"箱子信息",L"战术文字提示"};

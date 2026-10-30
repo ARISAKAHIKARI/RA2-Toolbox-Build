@@ -22,7 +22,8 @@
 #include <cstdint>
 #include "core.h"
 #include "../../shared/source/viewport_scale.h"
-#include "sampler.h"
+#include "sampling_task.h"
+#include "presentation_state.h"
 #include "../../external_reader/source/display_state.h"
 #include "../../external_reader/source/shared_reader.h"
 #include "../../external_reader/source/process_discovery.h"
@@ -39,24 +40,15 @@ using namespace Gdiplus;
 static HWND ui,overlay,secondaryOverlay,stats,bStart,bDemo,cBuildings,cOthers,eTop,eLeft,cTab,cSecondary,tabModeBox,visibilityLabel;static HFONT font;
 static void hidePrimaryStats(){overlaycompositor::host().hide(overlaycompositor::Statistics);if(overlay)ShowWindow(overlay,SW_HIDE);}
 static external::ReadSession reader;static um::IconCache& iconCache=um::sharedIconCache();
-static std::unique_ptr<um::Sampler<external::SharedReadView,external::NoResolve>> sampler;
-static std::unique_ptr<um::Snapshot> snap(new um::Snapshot{}),incoming(new um::Snapshot{});
+static std::shared_ptr<const um::Snapshot> snap=std::make_shared<const um::Snapshot>();
+static asyncwork::Latest<um::SampleRequest,um::SampleResult> samplingWorker(
+ [task=std::make_shared<um::SamplingTask>(&iconCache)](const um::SampleRequest&r){return task->run(r);});
+static uint64_t samplingGeneration=1;
+static std::shared_ptr<const um::SampleResult> appliedSample;
 static HWND game;static DWORD pid,threadId;static bool enabled=true,demo=false,showOthers=true,buildings=false,hidden=false,manualVisible=false;
 static int topMargin=20,leftMargin=6,scalePercent=100;static bool controlsReady=false;
 static int secondaryX=0,secondaryY=0;
 static int page=0;static DWORD lastSearch=0,lastGood=0;static std::wstring root,status;static FILE* logfile;
-#include "../../external_reader/source/cameo_catalog.h"
-static external::assets::Files assetFiles;static uint32_t assetMatch=0;
-static bool loadAsset(const char* name,std::vector<uint8_t>&out){assetFiles.update(reader,pid,assetMatch);return assetFiles.load(name,out);}
-
-static bool readCameoMemory(uint32_t p,void*out,size_t n){return reader.readFresh(p,out,n);}
-static external::assets::RuntimeCameos<decltype(&readCameoMemory)> cameoCatalog(&readCameoMemory);
-static void resolveCameo(um::Type&t,uint32_t match){
- assetMatch=match;
- assetFiles.update(reader,pid,assetMatch);char image[26]{};reader.readFresh(t.ptr+0x1F8,image,25);
- auto file=cameoCatalog.resolve(loadAsset,assetFiles.revision(),assetFiles.revision()^(GetTickCount64()/5000),t.id,image,t.cameo);
- memset(t.cameo,0,sizeof t.cameo);if(file.size()<sizeof t.cameo)memcpy(t.cameo,file.data(),file.size());
-}
 static uint32_t demoStart,oldMatch=0;static DWORD lastData=0;
 static void statsVisible(bool value){
 #ifdef RA2_UNIFIED
@@ -66,6 +58,7 @@ static void statsVisible(bool value){
 static bool tabEnabled=true,renderDirty=true,secondaryDirty=true,gameActive=false,secondaryEnabled=false,secondaryActive=false;
 static secondarydisplay::Monitor secondaryMonitor;
 static void resetSecondary();
+static void resetPrimaryRender();
 static tabui::Mode tabMode=tabui::Mode::TapOrHold;static tabui::Controller tabs;static tabui::Fade fade;
 static overlayui::Recovery overlayRecovery,secondaryRecovery;
 static constexpr UINT StatsFrameMessage=WM_APP+10;
@@ -120,10 +113,6 @@ static void pollTab(){
  if(!tabEligible()||modified){tabs.loseFocus();previous=down;return;}
  if(down!=previous){previous=down;if(tabs.event(down,tabEligible(),modified,false,GetTickCount())){if(down){hidden=false;manualVisible=false;}renderDirty=secondaryDirty=true;}}
 }
-static bool changed(const um::Snapshot& a,const um::Snapshot& b){
- return a.match!=b.match||a.status!=b.status||a.typeCount!=b.typeCount||a.playerCount!=b.playerCount||a.paletteReady!=b.paletteReady||
-  memcmp(a.palette,b.palette,sizeof a.palette)||memcmp(a.types,b.types,sizeof(um::Type)*a.typeCount)||memcmp(a.players,b.players,sizeof(um::Player)*a.playerCount);
-}
 static void log(const wchar_t* msg){if(logfile){fwprintf(logfile,L"[%lu] %ls\n",GetTickCount(),msg);fflush(logfile);}}
 static std::wstring path(const wchar_t* f){return root+L"\\"+f;}
 static void setStatus(const std::wstring& s){if(status!=s){status=s;SetWindowTextW(stats,s.c_str());log(s.c_str());}}
@@ -149,8 +138,8 @@ static void detach(){
  statsFrameClock.state(false,statsInformationFPS());
  overlayRecovery.suspend();
  statsVisible(false);resetSecondary();
- sampler.reset();assetMatch=0;assetFiles.clear();cameoCatalog.clear();reader.close();
- game=nullptr;pid=0;threadId=0;lastGood=0;oldMatch=0;page=0;gameActive=false;tabs.reset();fade.hide();renderDirty=secondaryDirty=true;paintedAlpha=-1;surface.clear();memset(snap.get(),0,sizeof(*snap));memset(incoming.get(),0,sizeof(*incoming));hidePrimaryStats();
+ ++samplingGeneration;samplingWorker.invalidate();appliedSample.reset();samplingWorker.submit({samplingGeneration,0});reader.close();resetPrimaryRender();
+ game=nullptr;pid=0;threadId=0;lastGood=0;oldMatch=0;page=0;gameActive=false;tabs.reset();fade.hide();renderDirty=secondaryDirty=true;paintedAlpha=-1;surface.clear();snap=std::make_shared<const um::Snapshot>();hidePrimaryStats();
 }
 static bool attach(){
  auto scan=external::discovery::scan();
@@ -167,7 +156,7 @@ static bool attach(){
  }
  pid=c.pid;threadId=c.thread;game=external::discovery::resolveYrppWindow(reader,pid,c.window,&threadId);
  wchar_t image[32768]{};DWORD imageSize=32768;reader.imagePath(image,&imageSize);iconCache.open(std::filesystem::path(image),std::filesystem::path(root)/L"cache"/L"icons");
- sampler=std::make_unique<um::Sampler<external::SharedReadView,external::NoResolve>>(external::SharedReadView{&reader},external::NoResolve{},&iconCache,loadAsset,resolveCameo);
+
  setStatus(L"已连接只读 PID "+std::to_wstring(pid)+(game?L"，验证布局…":L"，等待窗口后再显示覆盖层"));lastGood=GetTickCount();return true;
 }
 static Color color(uint32_t c){return Color(c);}
@@ -259,6 +248,7 @@ static std::shared_ptr<const RenderFrame> renderPixels(const RenderRequest&r){
 }
 static asyncwork::Latest<RenderRequest,RenderFrame> renderWorker(renderPixels);
 static std::shared_ptr<const RenderFrame> renderedFrame;
+static void resetPrimaryRender(){renderWorker.invalidate();renderedFrame.reset();}
 static asyncwork::Latest<RenderRequest,RenderFrame> secondaryRenderWorker(renderPixels);
 static std::shared_ptr<const RenderFrame> secondaryRenderedFrame;
 static POINT secondaryOrigin{LONG_MIN,LONG_MIN};static int secondaryWidth=0,secondaryHeight=0;
@@ -317,7 +307,7 @@ static bool updateSecondary(DWORD now,bool battlefield,bool displayFrame){
  }
  secondaryActive=true;if(!displayFrame)return true;
  if(secondaryDirty||(!secondaryRenderedFrame&&DWORD(now-secondaryLastSubmit)>=250)){
-  secondaryRenderWorker.submit({width,height,width,height,leftMargin,topMargin,scalePercent,page,showOthers,buildings,demo,pid,oldMatch,now,std::make_shared<um::Snapshot>(*snap)});secondaryDirty=false;secondaryLastSubmit=now;
+  secondaryRenderWorker.submit({width,height,width,height,leftMargin,topMargin,scalePercent,page,showOthers,buildings,demo,pid,oldMatch,now,snap});secondaryDirty=false;secondaryLastSubmit=now;
  }
  auto completed=secondaryRenderWorker.get();if(completed&&completed!=secondaryRenderedFrame){const auto&r=completed->request;
   if(r.pid==pid&&r.match==oldMatch&&r.width==width&&r.height==height&&r.page==page&&r.scalePercent==scalePercent&&r.leftMargin==leftMargin&&r.topMargin==topMargin&&r.showOthers==showOthers&&r.buildings==buildings&&r.demo==demo&&DWORD(now-r.tick)<1000&&secondarySurface.ensure(completed->width,completed->height)){
@@ -346,7 +336,7 @@ static bool updateSecondary(DWORD now,bool battlefield,bool displayFrame){
  return true;
 }
 static void render(int width,int height,POINT,int gameWidth,int gameHeight){
- renderWorker.submit({width,height,gameWidth,gameHeight,leftMargin,topMargin,scalePercent,page,showOthers,buildings,demo,pid,oldMatch,GetTickCount(),std::make_shared<um::Snapshot>(*snap)});renderDirty=false;
+ renderWorker.submit({width,height,gameWidth,gameHeight,leftMargin,topMargin,scalePercent,page,showOthers,buildings,demo,pid,oldMatch,GetTickCount(),snap});renderDirty=false;
 }
 static void present(POINT origin,int alpha,int width,int height,int gameWidth,int gameHeight,bool repair=false){
  auto completed=renderWorker.get();if(completed&&completed!=renderedFrame){const auto&r=completed->request;
@@ -376,7 +366,7 @@ static void present(POINT origin,int alpha,int width,int height,int gameWidth,in
 }
 
 static void demoData(){
- memset(snap.get(),0,sizeof(*snap));snap->status=1;snap->paletteReady=1;snap->typeCount=12;snap->playerCount=3;snap->tick=GetTickCount();
+ auto snap=std::make_shared<um::Snapshot>();snap->status=1;snap->paletteReady=1;snap->typeCount=12;snap->playerCount=3;snap->tick=GetTickCount();
  for(int i=0;i<256;i++)snap->palette[i]=0xFF000000|(i<<16)|(i<<8)|i;snap->palette[0]=0;
  uint32_t colors[]={0xFF55C7FF,0xFFFF6D7E,0xFFFFD66E};const wchar_t* names[]={L"本机玩家",L"玩家 2",L"玩家 3"};
  for(int i=0;i<12;i++){auto& t=snap->types[i];sprintf(t.id,"%s%02d",i%3==0?"AIR":i%3==1?"TANK":"INF",i);t.category=i%4;t.iconReady=1;
@@ -385,9 +375,30 @@ static void demoData(){
  for(int p=0;p<3;p++){auto& v=snap->players[p];v.color=colors[p];v.local=p==0;v.houseIndex=p;v.credits=10000+p*2500;v.creditsKnown=1;memcpy(v.name,names[p],(wcslen(names[p])+1)*2);for(int i=0;i<12-p*3;i++){auto& c=v.cells[i];c.owned=(i*3+p*7)%24+1;if(i%3==0){c.queued=i%5+1;c.active=1;c.progress=((GetTickCount()-demoStart)/150+i*4)%55;c.paused=i==6;}}}
  // Repeat a retirement example every 20 seconds; columns compact automatically.
  if((GetTickCount()-demoStart)/1000%20>=12){snap->players[1]=snap->players[2];snap->playerCount=2;}
+ ::snap=std::move(snap);
 }
+static void consumeSample(DWORD now){
+ if(demo||!pid||(!enabled&&!secondaryEnabled))return;
+ auto result=samplingWorker.get();
+ if(!result||result==appliedSample||result->request.generation!=samplingGeneration||result->request.pid!=pid||result->request.connection!=reader.generation()||!result->snapshot)return;
+ const auto&incoming=result->snapshot;
+ if(incoming->status==1&&DWORD(now-incoming->tick)>=2000)return;
+ appliedSample=std::move(result);
+     if(incoming->typeCount>=0&&incoming->typeCount<=um::MaxTypes&&incoming->playerCount>=0&&incoming->playerCount<=um::MaxPlayers){
+      const bool dataChanged=!um::samePresentation(*snap,*incoming);renderDirty=renderDirty||dataChanged;secondaryDirty=secondaryDirty||dataChanged;snap=incoming;if(snap->status==1&&now-snap->tick<2000)lastGood=now;
+      if(snap->status!=1||oldMatch!=snap->match){
+       if(snap->status==1){oldMatch=snap->match;
+        // Keep the user's latched/manual visibility through loading and rounds.
+        // loseFocus below releases a held Tab without changing that choice.
+        log((L"单位统计采样代次 "+std::to_wstring(oldMatch)+L"，重建玩家列表与画面").c_str());}
+       else lastGood=0;
+       page=0;tabs.loseFocus();fade.hide();paintedAlpha=-1;renderDirty=secondaryDirty=true;surface.clear();resetPrimaryRender();
+       statsVisible(false);hidePrimaryStats();resetSecondary();
+      }
+     }
+ }
 static void tick(bool displayFrame=false){
- DWORD now=GetTickCount();
+ DWORD now=GetTickCount();consumeSample(now);
  const bool controlStep=!displayFrame||!statsFrameClock.running();
  if(controlStep){pollTab();refreshInformationRate(now);}
  if(now-lastData>=250){lastData=now;
@@ -406,25 +417,13 @@ static void tick(bool displayFrame=false){
     if(found.best.window&&found.best.pid==pid){game=found.best.window;threadId=found.best.thread;}
    }
    if(!pid&&now-lastSearch>=1500){lastSearch=now;attach();}
-   if(sampler){reader.begin();*incoming=sampler->sample(now,true);
-     if(incoming->typeCount>=0&&incoming->typeCount<=um::MaxTypes&&incoming->playerCount>=0&&incoming->playerCount<=um::MaxPlayers){
-      const bool dataChanged=changed(*snap,*incoming);renderDirty=renderDirty||dataChanged;secondaryDirty=secondaryDirty||dataChanged;std::swap(snap,incoming);if(snap->status==1&&now-snap->tick<2000)lastGood=now;
-      if(snap->status!=1||oldMatch!=snap->match){
-       if(snap->status==1){oldMatch=snap->match;
-        // Keep the user's latched/manual visibility through loading and rounds.
-        // loseFocus below releases a held Tab without changing that choice.
-        log((L"单位统计采样代次 "+std::to_wstring(oldMatch)+L"，重建玩家列表与画面").c_str());}
-       else lastGood=0;
-       page=0;tabs.loseFocus();fade.hide();paintedAlpha=-1;renderDirty=secondaryDirty=true;surface.clear();
-       statsVisible(false);hidePrimaryStats();resetSecondary();
-      }
-     }
+   if(pid){samplingWorker.submit({samplingGeneration,pid,reader.generation()});
     if(snap->status<0)setStatus(L"此 EXE 的数据布局不受支持，已停止采集");
     else if(snap->status==0){
-     const auto p=sampler->probe();
+     const auto p=appliedSample?appliedSample->probe:external::layout::Result{};
      setStatus(std::wstring(L"只读采集：")+external::layout::description(p.stage)+
         L" · 地址="+std::to_wstring(p.address)+
-        L" · Win32="+std::to_wstring(reader.lastReadError));
+        L" · Win32="+std::to_wstring(appliedSample?(appliedSample->openError?appliedSample->openError:appliedSample->readError):0));
     }
     else if(now-lastGood>3000)setStatus(L"读取暂未更新：检查游戏权限或是否已退出对局");
     else {std::wstring msg=L"已连接 · 真人 "+std::to_wstring(snap->playerCount)+L" · 类型 "+std::to_wstring(snap->typeCount);
@@ -601,12 +600,12 @@ static LRESULT CALLBACK proc(HWND w,UINT m,WPARAM a,LPARAM b){
   int id=LOWORD(a);UINT value=id==121?secondaryX:secondaryY;
   syncingSecondaryDragControls=true;SetDlgItemInt(w,id,value,FALSE);syncingSecondaryDragControls=false;
   return 0;
- }if(HIWORD(a)==BN_CLICKED){switch(LOWORD(a)){case 100:enabled=!enabled;if(!enabled&&!secondaryEnabled)detach();else if(enabled)lastSearch=0;break;case 101:demo=!demo;demoStart=GetTickCount();enabled=true;hidden=false;manualVisible=false;if(!demo)memset(snap.get(),0,sizeof(*snap));break;case 102:detach();status.clear();lastSearch=0;break;case 103:buildings=SendMessageW(cBuildings,BM_GETCHECK,0,0)==BST_CHECKED;save();break;case 104:showOthers=SendMessageW(cOthers,BM_GETCHECK,0,0)==BST_CHECKED;save();break;case 113:tabEnabled=SendMessageW(cTab,BM_GETCHECK,0,0)!=BST_CHECKED;tabs.reset();hidden=false;manualVisible=false;EnableWindow(tabModeBox,tabEnabled);save();break;case 116:toggleOverlay();break;case 120:secondaryEnabled=SendMessageW(cSecondary,BM_GETCHECK,0,0)==BST_CHECKED;secondaryMonitor.invalidate();resetSecondary();if(!enabled&&!secondaryEnabled)detach();else lastSearch=0;save();break;}renderDirty=secondaryDirty=true;buttonLabel();tick();}return 0;
+ }if(HIWORD(a)==BN_CLICKED){switch(LOWORD(a)){case 100:enabled=!enabled;if(!enabled&&!secondaryEnabled)detach();else if(enabled)lastSearch=0;break;case 101:demo=!demo;demoStart=GetTickCount();enabled=true;hidden=false;manualVisible=false;++samplingGeneration;samplingWorker.invalidate();appliedSample.reset();resetPrimaryRender();resetSecondary();snap=std::make_shared<const um::Snapshot>();break;case 102:detach();status.clear();lastSearch=0;break;case 103:buildings=SendMessageW(cBuildings,BM_GETCHECK,0,0)==BST_CHECKED;save();break;case 104:showOthers=SendMessageW(cOthers,BM_GETCHECK,0,0)==BST_CHECKED;save();break;case 113:tabEnabled=SendMessageW(cTab,BM_GETCHECK,0,0)!=BST_CHECKED;tabs.reset();hidden=false;manualVisible=false;EnableWindow(tabModeBox,tabEnabled);save();break;case 116:toggleOverlay();break;case 120:secondaryEnabled=SendMessageW(cSecondary,BM_GETCHECK,0,0)==BST_CHECKED;secondaryMonitor.invalidate();resetSecondary();if(!enabled&&!secondaryEnabled)detach();else lastSearch=0;save();break;}renderDirty=secondaryDirty=true;buttonLabel();tick();}return 0;
  case WM_HOTKEY:if(a==1){toggleOverlay();}else if(a==2)page++;else if(a==3)page=std::max(0,page-1);renderDirty=secondaryDirty=true;tick();return 0;
  case WM_CTLCOLORSTATIC:case WM_CTLCOLORBTN:SetBkMode((HDC)a,OPAQUE);SetTextColor((HDC)a,modernui::Text);SetBkColor((HDC)a,modernui::Background);SetDCBrushColor((HDC)a,modernui::Background);return (LRESULT)GetStockObject(DC_BRUSH);
  case WM_DRAWITEM:{auto d=(DRAWITEMSTRUCT*)b;HBRUSH br=CreateSolidBrush((d->itemState&ODS_SELECTED)?RGB(47,76,99):RGB(31,48,68));FillRect(d->hDC,&d->rcItem,br);DeleteObject(br);SetBkMode(d->hDC,TRANSPARENT);SetTextColor(d->hDC,RGB(223,237,251));SelectObject(d->hDC,font);wchar_t t[50];GetWindowTextW(d->hwndItem,t,50);DrawTextW(d->hDC,t,-1,&d->rcItem,DT_CENTER|DT_VCENTER|DT_SINGLELINE);return TRUE;}
  case WM_PAINT:{PAINTSTRUCT ps;HDC dc=BeginPaint(w,&ps);RECT r;GetClientRect(w,&r);HBRUSH br=CreateSolidBrush(modernui::Background);FillRect(dc,&r,br);DeleteObject(br);SetBkMode(dc,TRANSPARENT);SetTextColor(dc,RGB(110,210,248));SelectObject(dc,font);TextOutW(dc,modernui::scale(14,consoleDpi)-consoleX,modernui::scale(12,consoleDpi)-consoleY,L"单位统计",lstrlenW(L"单位统计"));SetTextColor(dc,RGB(148,166,188));TextOutW(dc,modernui::scale(14,consoleDpi)-consoleX,modernui::scale(32,consoleDpi)-consoleY,L"玩家兵力与单位状态",lstrlenW(L"玩家兵力与单位状态"));EndPaint(w,&ps);return 0;}
- case WM_DESTROY:finishSecondaryDrag();statsFrameClock.shutdown();renderWorker.shutdown();secondaryRenderWorker.shutdown();surface.clear();secondarySurface.clear();KillTimer(w,1);UnregisterHotKey(w,1);UnregisterHotKey(w,2);UnregisterHotKey(w,3);detach();DeleteObject(font);PostQuitMessage(0);return 0;}
+ case WM_DESTROY:finishSecondaryDrag();statsFrameClock.shutdown();samplingWorker.shutdown();renderWorker.shutdown();secondaryRenderWorker.shutdown();surface.clear();secondarySurface.clear();KillTimer(w,1);UnregisterHotKey(w,1);UnregisterHotKey(w,2);UnregisterHotKey(w,3);detach();DeleteObject(font);PostQuitMessage(0);return 0;}
  return DefWindowProcW(w,m,a,b);
 }
 int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR,int){

@@ -19,6 +19,10 @@ struct LiveAssets {
  bool renderActor(const ActorArt&a,const external::visual::Pose&,external::voxel::Image&i){++renders;if(a.voxel&&!voxelRenderOK)return false;i={};i.width=i.height=1;i.pixels={a.color^voxelLight};return true;}
  static size_t cost(const ActorArt&a){return a.model.faces.size()*sizeof(external::voxel::Face);}
 };
+struct KnownLightAssets:LiveAssets {
+ bool available=true;uint64_t voxelLightingRevision()const{return voxelLight;}
+ bool voxelLightingAvailable()const{return available;}
+};
 int main(){
  LiveAssets assets;watchengine::Renderer<decltype(externalReader),LiveAssets> render(externalReader,assets);
  external::watch::Frame frame;frame.tiles.clear();
@@ -54,5 +58,17 @@ int main(){
  voxels.actorArt.begin()->second.art.model.faces.resize(2*1024*1024+1);
  int priorRenders=voxelAssets.renders;voxels.refreshAssets(voxelFrame,2005);
  assert(voxelAssets.renders==priorRenders&&!voxels.images.count(vk)&&voxels.displayed.empty());
+ // A verified, unchanged light signature and pose reuse the actual image;
+ // a lighting change, unavailable VPL or a new pose cannot reuse it.
+ KnownLightAssets stable;stable.liveVoxel=true;
+ watchengine::Renderer<decltype(externalReader),KnownLightAssets> cached(externalReader,stable);
+ cached.refreshAssets(voxelFrame,3000);assert(stable.renders==1&&stable.captures==1);
+ cached.refreshAssets(voxelFrame,3001);assert(stable.renders==1);
+ stable.voxelLight=0x00010101;cached.refreshAssets(voxelFrame,3002);assert(stable.renders==2);
+ voxelFrame.actors[0].pose.bodyFine=3;cached.refreshAssets(voxelFrame,3003);assert(stable.renders==3);
+ auto newKey=cached.imageKey(voxelFrame.actors[0]);stable.available=false;stable.voxelRenderOK=false;
+ cached.refreshAssets(voxelFrame,3004);assert(!cached.images.count(newKey)&&cached.displayed.empty());
+ stable.available=true;stable.voxelRenderOK=true;cached.refreshAssets(voxelFrame,3005);assert(stable.renders==5&&cached.images.count(newKey));
+ cached.refreshAssets(voxelFrame,3006);assert(stable.renders==5);
  std::puts("PASS: watch same-pointer palette changes invalidate only affected colored poses, preserve geometry, isolate per-object animations and hide unreadable colors until recovery");
 }

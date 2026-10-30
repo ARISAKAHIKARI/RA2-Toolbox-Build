@@ -57,8 +57,8 @@ static void loadAdditionalSettings(){
  extra.c4Mode=uint32_t(std::clamp(value(L"Experimental",L"InfantryEntryMode",0),0,1));
  extra.c4Key=value(L"Experimental",L"C4HoldKey",'C'|(4<<8));extra.c4Mouse=std::clamp(value(L"Experimental",L"C4Mouse",1),0,6);if(extra.c4Mouse==5)extra.c4Mouse=1;
  for(int i=0;i<9;++i)socialKeys[i]=WORD(value(L"Hotkeys",i?(L"Taunt"+std::to_wstring(i)).c_str():L"Cheer",0)&65535);
- extra.mapStrategy=std::clamp(value(L"Display",L"ShroudStrategy",value(L"Experimental",L"RenderReveal",0)?2:0),0,4);
- extra.renderReveal=extra.mapStrategy==1?2:extra.mapStrategy==2?1:extra.mapStrategy==4?3:0;
+ extra.mapStrategy=std::clamp(value(L"Display",L"ShroudStrategy",value(L"Experimental",L"RenderReveal",0)?2:0),0,shroudpolicy::MaxStrategy);
+ extra.renderReveal=shroudpolicy::runtimeMode(extra.mapStrategy);
  extra.experimentalReveal=extra.mapStrategy==3;
  extra.nativeAirWaypoints=value(L"Experimental",L"NativeAirWaypoints",0)!=0;
  extra.airWaypoints=value(L"Aircraft",L"ZWaypoints",0)!=0;

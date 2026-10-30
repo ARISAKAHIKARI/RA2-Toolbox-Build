@@ -1545,8 +1545,8 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR cmd,int){
  EnableWindow(refreshModeBox,FALSE);
  basic(L"STATIC",L"黑幕绘制",20,332,88,22,0);
  shroudModeBox=basic(L"COMBOBOX",L"",114,328,626,150,156,CBS_DROPDOWNLIST|WS_TABSTOP);
- for(const wchar_t*text:{L"关闭",L"受控模式（半透明）",L"受控模式（透明）",L"原生揭示（实验性）",L"直接模式（全图）"})SendMessageW(shroudModeBox,CB_ADDSTRING,0,(LPARAM)text);
- EnableWindow(shroudModeBox,FALSE);modernui::tip(shroudModeBox,L"受控模式改变黑幕绘制；原生揭示调用游戏揭示流程；直接模式使用已验证的固定判定修改。均为实验性功能。");
+ for(const wchar_t*text:{L"关闭",L"受控模式（半透明）",L"受控模式（透明）",L"原生揭示（实验性）",L"直接模式（全图）",L"素材替换（透明）",L"素材替换（半透明）"})SendMessageW(shroudModeBox,CB_ADDSTRING,0,(LPARAM)text);
+ EnableWindow(shroudModeBox,FALSE);modernui::tip(shroudModeBox,L"素材替换修改已加载的迷雾透明度，切换或关闭时恢复原始素材；原生揭示会修改探索状态。渲染升级、副相机和小地图仍按全图预览，不显示半透明遮罩。均为实验性功能。");
  basic(L"BUTTON",L"配置 DDraw 高刷…",20,366,350,32,157,BS_PUSHBUTTON|WS_TABSTOP);
  basic(L"BUTTON",L"恢复 DDraw 配置…",390,366,350,32,158,BS_PUSHBUTTON|WS_TABSTOP);
 #endif

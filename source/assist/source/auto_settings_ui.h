@@ -62,8 +62,8 @@ static bool autoSettingChanged(int id,int notification){
  if(id==9195&&select){int policy=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));if(policy>=0&&policy<=2){extra.aircraftAllocationPolicy=policy;pointerMatches.clear();changedSetting();syncAdditional();}return true;}
  if(id==811&&edit){extra.c4Key=uint32_t(SendMessageW(GetDlgItem(ui,id),HKM_GETHOTKEY,0,0));changedSetting();return true;}
  if(id==812&&select){int selected=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));if(selected>=0&&selected<=5){extra.c4Mouse=selected==5?6:selected;changedSetting();}return true;}
- if(id==808&&select){int strategy=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));if(strategy<0||strategy>4)return true;
-  extra.mapStrategy=strategy;extra.renderReveal=strategy==1?2:strategy==2?1:strategy==4?3:0;extra.experimentalReveal=strategy==3;autoRevealNewMatch=strategy==3;
+ if(id==808&&select){int strategy=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));if(strategy<0||strategy>shroudpolicy::MaxStrategy)return true;
+  extra.mapStrategy=strategy;extra.renderReveal=shroudpolicy::runtimeMode(strategy);extra.experimentalReveal=strategy==3;autoRevealNewMatch=strategy==3;
   for(int i=0;i<commandQueue.size;)if(commandQueue.slots[i].command==RevealMap)commandQueue.discard(i);else ++i;
   autoRevealMatch=autoRevealDone=autoRevealRetry=0;changedSetting();syncAdditional();notify(strategy==3?L"地图全开将在对局就绪后自动执行；此模式有联机不同步风险。":L"地图显示策略已更新。");return true;}
 

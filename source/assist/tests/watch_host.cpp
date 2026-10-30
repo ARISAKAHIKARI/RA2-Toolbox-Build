@@ -72,8 +72,8 @@ int main(){
  changedImage.pixels[0]=previousPixel; // Same mask is applied to recomposed actor art.
  int before=captures,oldRenders=renders;put(actors[1]+0x388,uint16_t(32768));put(actors[1]+0x3A0,uint16_t(49152));clockValue+=50;engine.update(clockValue);assert(captures==before&&renders>oldRenders);
  auto a=std::find_if(engine.views[0].frame.actors.begin(),engine.views[0].frame.actors.end(),[](auto&a){return a.target.id==2;});assert(a!=engine.views[0].frame.actors.end());assert(engine.images.at(engine.imageKey(*a)).image.pixels[0]==0xff001018);
- // All 299 valid models turn together: the 16-item work budget must retain
- // the previous real image for actors whose new pose is still waiting.
+ // All 299 valid models turn together: the time budget must retain the
+ // previous real image for actors whose new pose is still waiting.
  for(auto p:actors)put(p+0x388,uint16_t(2048));clockValue+=50;engine.update(clockValue);draws=0;engine.drawView(g,engine.views[0]);assert(draws==1&&engine.views[0].raster.color.size()==640*512);assert(engine.images.size()<=600);
  assert(tileCalls==0&&engine.tiles.empty()); // no transparent success cache before palette arrives
  put(0xABBED0+9,uint8_t(32));clockValue+=50;engine.update(clockValue);assert(tileCalls==1&&engine.tiles.begin()->second.ready&&engine.tiles.begin()->second.image.pixels[0]!=0);

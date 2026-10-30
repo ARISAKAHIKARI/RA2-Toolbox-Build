@@ -23,6 +23,8 @@ template<class Art>auto isVoxelArt(const Art&a,int)->decltype(bool(a.voxel)){ret
 template<class Art>bool isVoxelArt(const Art&,long){return false;}
 template<class Art>auto voxelFaces(const Art&a,int)->decltype(a.model.faces.size()){return a.model.faces.size();}
 template<class Art>size_t voxelFaces(const Art&,long){return 0;}
+template<class Assets>auto voxelRevision(const Assets&a,int)->decltype(a.voxelLightingRevision(),a.voxelLightingAvailable(),std::pair<bool,uint64_t>{}){return {a.voxelLightingAvailable(),a.voxelLightingRevision()};}
+template<class Assets>std::pair<bool,uint64_t> voxelRevision(const Assets&,long){return {false,0};}
 template<class Reader,class Assets>class Renderer {
 public:
  Reader& reader;Assets& assets;std::function<bool(uint32_t,void*,size_t)> read;
@@ -36,14 +38,15 @@ View views[external::watch::MaximumWindows];
 external::watch::Target automatic;bool autoSuppressed=false;
 struct Cached {external::voxel::Image image;DWORD retry=0;uint64_t used=0;bool ready=false;std::string issue;};
 using ArtKey=std::tuple<uint32_t,uint32_t,int,int,uint32_t,uint32_t>;
-using ImageKey=std::tuple<uint32_t,uint32_t,int,int,int,int,int,int,int,uint32_t,uint32_t,uint64_t,int>;
+using ImageKey=std::tuple<uint32_t,uint32_t,int,int,int,int,int,int,int,uint32_t,uint32_t,uint64_t,int,int,int>;
 struct ArtCached {typename Assets::ActorArt art;DWORD retry=0;bool ready=false;std::string issue;};
 std::map<ArtKey,ArtCached> actorArt;
 std::map<ImageKey,Cached> images;
 std::map<std::pair<uint32_t,uint32_t>,ImageKey> displayed;
 size_t actorCursor=0;DWORD diagnosticAt=0;uint64_t assetRevision=0;
+uint64_t voxelLightRevision=0;bool voxelLightKnown=false;
 ArtKey artKey(const external::watch::Actor&a){return {a.type,a.owner,a.kind,a.pose.variant,a.kind>=5?a.target.pointer:0,a.kind>=5?a.target.id:0};}
-ImageKey imageKey(const external::watch::Actor&a){return {a.type,a.owner,a.kind,a.kind==4?0:a.pose.body,a.kind==4?0:a.pose.turret,a.kind==4?a.stage:a.pose.frame,a.pose.variant,a.pose.buildingFlags,a.pose.doorFrame,a.kind>=5?a.target.pointer:0,a.kind>=5?a.target.id:0,external::visual::postureSignature(a.pose),a.pose.turretFrame};}
+ImageKey imageKey(const external::watch::Actor&a){return {a.type,a.owner,a.kind,a.kind==4?0:a.pose.body,a.kind==4?0:a.pose.turret,a.kind==4?a.stage:a.pose.frame,a.pose.variant,a.pose.buildingFlags,a.pose.doorFrame,a.kind>=5?a.target.pointer:0,a.kind>=5?a.target.id:0,external::visual::postureSignature(a.pose),a.pose.turretFrame,a.pose.bodyFine,a.pose.turretFine};}
 static ArtKey imageArtKey(const ImageKey&k){return {std::get<0>(k),std::get<1>(k),std::get<2>(k),std::get<6>(k),std::get<9>(k),std::get<10>(k)};}
 void discardPaletteImages(const ArtKey&key){
  for(auto i=images.begin();i!=images.end();)if(imageArtKey(i->first)==key)i=images.erase(i);else ++i;
@@ -58,7 +61,7 @@ uint32_t controlRevision=0;bool haveControls=false;
 // Depth, shadows and sprite coverage are resolved at native game pixels.
 // The immutable result is reduced only when the actual window is presented.
 static constexpr int Width=external::watch::NativeViewWidth,Height=external::watch::NativeViewHeight;
-void reset(){for(auto&t:tracks)t={};for(auto&v:views)v={};automatic={};autoSuppressed=false;haveControls=false;images.clear();displayed.clear();actorArt.clear();actorCursor=0;diagnosticAt=0;tiles.clear();overlays.clear();terrainPalette={};terrainPaletteEverReady=terrainPaletteUnavailable=false;repairAssets.reset();shown=false;}
+void reset(){for(auto&t:tracks)t={};for(auto&v:views)v={};automatic={};autoSuppressed=false;haveControls=false;voxelLightKnown=false;images.clear();displayed.clear();actorArt.clear();actorCursor=0;diagnosticAt=0;tiles.clear();overlays.clear();terrainPalette={};terrainPaletteEverReady=terrainPaletteUnavailable=false;repairAssets.reset();shown=false;}
 void syncTracks(uint32_t revision,const std::array<external::watch::Track,3>&next,bool suppress){
  // Pending snapshots may predate the worker's death/succession decision. Only
  // a new user control revision can replace that authoritative tracking state.
@@ -68,7 +71,7 @@ void syncTracks(uint32_t revision,const std::array<external::watch::Track,3>&nex
 void arrange(){bool visible[3]{};external::watch::Box boxes[3]{};bool wasShown=shown;shown=false;for(int i=0;i<3;++i)shown|=visible[i]=views[i].shown;external::watch::arrange(visible,width,height,boxes);bool changed=wasShown!=shown;for(int i=0;i<3;++i){auto&a=views[i].box;auto b=boxes[i];changed|=a.x!=b.x||a.y!=b.y||a.w!=b.w||a.h!=b.h;a=b;}(void)changed;}
 void refreshAssets(external::watch::Frame&frame,DWORD now){
  assets.identity(process,epoch);beginPalettePass(assets,0);
- if(assetRevision!=assets.revision()){assetRevision=assets.revision();images.clear();displayed.clear();actorArt.clear();tiles.clear();overlays.clear();terrainPalette={};for(auto&view:views)view.shroudRaster.reset();actorCursor=0;}
+ if(assetRevision!=assets.revision()){assetRevision=assets.revision();voxelLightKnown=false;images.clear();displayed.clear();actorArt.clear();tiles.clear();overlays.clear();terrainPalette={};for(auto&view:views)view.shroudRaster.reset();actorCursor=0;}
  // Only palette-dependent poses are discarded. Keep captured VXL/SHP
  // geometry, but never display its old colors during an unreadable update.
  std::set<ArtKey> unavailablePalettes;
@@ -78,13 +81,14 @@ void refreshAssets(external::watch::Frame&frame,DWORD now){
   if(!valid)unavailablePalettes.insert(entry.first);
  }
  std::set<uint32_t> unavailableOverlays;
- for(const auto&t:frame.tiles)if(t.overlayType){bool changed=false;uint32_t pointer=0;read(t.overlayType+0xA4,&pointer,4);
+ std::set<std::pair<uint32_t,int>> checkedOverlays,checkedTerrain;
+ for(const auto&t:frame.tiles)if(t.overlayType&&checkedOverlays.insert({t.overlayType,t.overlayFrame}).second){bool changed=false;uint32_t pointer=0;read(t.overlayType+0xA4,&pointer,4);
   bool valid=refreshOverlay(assets,t.overlayType,pointer,t.overlayFrame,false,changed,0);
   if(changed||!valid)for(auto i=overlays.begin();i!=overlays.end();)if(i->first.first==t.overlayType)i=overlays.erase(i);else ++i;
   if(!valid)unavailableOverlays.insert(t.overlayType);
  }
  std::set<uint32_t> unavailableTerrain;
- for(const auto&a:frame.actors)if(a.kind==4){bool changed=false;uint32_t pointer=0;read(a.type+0xA4,&pointer,4);
+ for(const auto&a:frame.actors)if(a.kind==4&&checkedTerrain.insert({a.type,a.stage}).second){bool changed=false;uint32_t pointer=0;read(a.type+0xA4,&pointer,4);
   bool valid=refreshOverlay(assets,a.type,pointer,a.stage,true,changed,0);
   if(changed||!valid){for(auto i=images.begin();i!=images.end();)if(std::get<0>(i->first)==a.type&&std::get<2>(i->first)==4)i=images.erase(i);else ++i;
    for(auto i=displayed.begin();i!=displayed.end();)if(std::get<0>(i->second)==a.type&&std::get<2>(i->second)==4)i=displayed.erase(i);else ++i;}
@@ -102,9 +106,10 @@ void refreshAssets(external::watch::Frame&frame,DWORD now){
 
  bool paletteReady=std::any_of(terrainPalette.begin(),terrainPalette.end(),[](uint32_t c){return c!=0;});std::string paletteIssue=paletteReady?"":assets.failure;
  auto fetchStatic=[&](auto&cache,bool tmp){
-  std::vector<std::pair<uint32_t,uint32_t>> wanted;for(const auto&t:frame.tiles){uint32_t p=tmp?t.type:t.overlayType;if(p)wanted.emplace_back(p,uint32_t(tmp?t.sub:t.overlayFrame));}
-  if(cache.size()>2048){for(auto it=cache.begin();it!=cache.end();)if(std::find(wanted.begin(),wanted.end(),it->first)==wanted.end())it=cache.erase(it);else ++it;}
-  size_t pixels=0;for(const auto&item:cache)pixels+=external::camera::pixels(item.second.image);if(pixels>3*1024*1024){for(auto i=cache.begin();i!=cache.end()&&pixels>2*1024*1024;)if(std::find(wanted.begin(),wanted.end(),i->first)==wanted.end()){pixels-=external::camera::pixels(i->second.image);i=cache.erase(i);}else ++i;}int work=0;
+  std::vector<std::pair<uint32_t,uint32_t>> wanted;std::set<std::pair<uint32_t,uint32_t>> needed;
+  for(const auto&t:frame.tiles){uint32_t p=tmp?t.type:t.overlayType;auto key=std::make_pair(p,uint32_t(tmp?t.sub:t.overlayFrame));if(p&&needed.insert(key).second)wanted.push_back(key);}
+  if(cache.size()>2048){for(auto it=cache.begin();it!=cache.end();)if(!needed.count(it->first))it=cache.erase(it);else ++it;}
+  size_t pixels=0;for(const auto&item:cache)pixels+=external::camera::pixels(item.second.image);if(pixels>3*1024*1024){for(auto i=cache.begin();i!=cache.end()&&pixels>2*1024*1024;)if(!needed.count(i->first)){pixels-=external::camera::pixels(i->second.image);i=cache.erase(i);}else ++i;}int work=0;
   for(auto key:wanted){if(!tmp&&unavailableOverlays.count(key.first))continue;auto&c=cache[key];if(c.ready||work>=4||(c.retry&&int32_t(now-c.retry)<0))continue;++work;c.retry=now+2000;external::voxel::Image image;
    uint32_t pointer=0;read(key.first+0xA4,&pointer,4);
    bool ok=tmp?assets.tile(key.first,key.second,terrainPalette,image):assets.overlay(key.first,pointer,int(key.second),image);
@@ -130,15 +135,17 @@ void refreshAssets(external::watch::Frame&frame,DWORD now){
  size_t pixels=0,faces=0,artBytes=0;for(const auto&i:images)pixels+=external::camera::pixels(i.second.image);for(const auto&i:actorArt){faces+=i.second.art.model.faces.size();artBytes+=Assets::cost(i.second.art);}
  if(pixels>24*1024*1024){for(auto i=images.begin();i!=images.end()&&pixels>16*1024*1024;)if(!wanted.count(i->first)){pixels-=external::camera::pixels(i->second.image);i=images.erase(i);}else ++i;}
  if(artBytes>96*1024*1024){for(auto i=actorArt.begin();i!=actorArt.end()&&artBytes>64*1024*1024;)if(!artWanted.count(i->first)){artBytes-=Assets::cost(i->second.art);faces-=i->second.art.model.faces.size();i=actorArt.erase(i);}else ++i;}
- // Cached VXL models are immutable geometry, not prelit pose images. Draw
- // every visible captured voxel with the current VPL/light on every pass,
- // independently of the budget for discovering/decoding new assets.
+ // Reuse an identical pose only while its current VPL signature is verified.
+ // Unreadable/unknown lighting keeps the conservative per-pass redraw path.
  std::set<ArtKey> liveVoxelArt;
  for(const auto&source:actorArt)if(source.second.ready&&isVoxelArt(source.second.art,0))liveVoxelArt.insert(source.first);
- for(const auto&key:liveVoxelArt)discardPaletteImages(key);
+ const auto light=voxelRevision(assets,0);const bool lightChanged=!light.first||!voxelLightKnown||voxelLightRevision!=light.second;
+ voxelLightKnown=light.first;voxelLightRevision=light.second;
+ if(lightChanged)for(const auto&key:liveVoxelArt)discardPaletteImages(key);
  pixels=0;for(const auto&i:images)pixels+=external::camera::pixels(i.second.image);
  std::set<ImageKey> voxelDrawn;size_t liveFaces=0,livePoses=0;
  for(const auto&a:frame.actors){auto key=artKey(a);if(!liveVoxelArt.count(key)||unavailablePalettes.count(key)||!voxelDrawn.insert(imageKey(a)).second)continue;
+  auto cached=images.find(imageKey(a));if(cached!=images.end()&&cached->second.ready&&!cached->second.image.incomplete){cached->second.used=++serial;continue;}
   auto source=actorArt.find(key);size_t facesForPose=voxelFaces(source->second.art,0);
   // Hard per-presentation work bounds. Old RGBA was already discarded, so
   // excess actors stay hidden rather than retaining obsolete light/poses.
@@ -152,7 +159,7 @@ void refreshAssets(external::watch::Frame&frame,DWORD now){
  for(size_t scanned=0;scanned<n;++scanned){
   const auto&a=frame.actors[actorCursor++%n];if(liveVoxelArt.count(artKey(a)))continue;if(unavailablePalettes.count(artKey(a))||(a.kind==4&&unavailableTerrain.count(a.type)))continue;auto&c=images[imageKey(a)];c.used=++serial;
   if((c.ready&&!c.image.incomplete)||(c.retry&&int32_t(now-c.retry)<0))continue;
-  if(work>=16||(work&&DWORD(GetTickCount()-started)>=6))break;
+  if(work>=512||(work&&DWORD(GetTickCount()-started)>=6))break;
   ++work;external::voxel::Image image;bool ok=false;
   if(a.kind==4){uint32_t shp=0;read(a.type+0xA4,&shp,4);ok=assets.overlay(a.type,shp,a.stage,image,true);}
   else{

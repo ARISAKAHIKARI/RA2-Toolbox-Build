@@ -1,6 +1,7 @@
 // Explicit experimental game-judgment opt-ins. Sole writer: GameEntryManager.
 #include "../../shared/source/experimental_patch_policy.h"
 #include "../../shared/source/patch_context.h"
+#include "shroud_material_bridge.h"
 extern "C" int __cdecl GuardedRiskAction(unsigned,unsigned,unsigned);
 static bool riskControlActive;
 static bool riskPlacementActive=false,riskAirActive=false,riskRenderActive=false,riskC4Active=false;
@@ -454,7 +455,8 @@ static bool redrawRevealTest();
 static void restoreSmallMapCamera(),restoreHighScroll();
 static void restorePlacement(){
  restoreSmallMapCamera();restoreHighScroll();
- const bool wasRendered=riskRenderActive;
+ const bool wasRendered=riskRenderActive||shroudMaterials.active();
+ const bool materialRestored=shroudMaterials.restore(read,writeShroudMaterial);
  riskPlacementActive=riskAirActive=riskRenderActive=riskC4Active=riskLowDamageActive=riskLowDamageAllHouses=false;prepareRiskSites();
  controlSitesTick(false);
  bool directPlace=directGroupRestore(directpatch::Group::Placement);
@@ -463,7 +465,7 @@ static void restorePlacement(){
  bool type=restoreRiskSite(riskSites[1]),arrival=restoreRiskSite(riskSites[2]);
  snap.placementStatus=place?0:-2;snap.nativeAirStatus=type&&arrival?0:-2;
  bool shroud=restoreRiskSite(riskSites[3]),fog=restoreRiskSite(riskSites[4]);
- snap.renderRevealStatus=shroud&&fog&&directMap?0:-2;
+ snap.renderRevealStatus=shroud&&fog&&directMap&&materialRestored?0:-2;
  bool c4Arrival=restoreRiskSite(riskSites[5]),c4Movement=restoreRiskSite(riskSites[8]);
  snap.c4TestStatus=c4Arrival&&c4Movement?0:-2;
  if(sh)sh->lowDamageStatus=restoreRiskSite(riskSites[9])?0:-2;
@@ -497,7 +499,16 @@ static void placementTick(){
  // capability override, including when an older configuration enables C4Test.
  riskC4Active=false;
  {bool a=restoreRiskSite(riskSites[5]),b=restoreRiskSite(riskSites[8]);snap.c4TestStatus=!a||!b?-2:sh->c4Test?1:0;}
- if(sh->renderReveal==3){
+ const bool materialWanted=shroudpolicy::materialMode(sh->renderReveal);
+ const bool materialOff=materialWanted||shroudMaterials.restore(read,writeShroudMaterial);
+ if(!materialWanted&&shroudMaterials.changed())riskRenderRedrawPending=true;
+ if(materialWanted){
+  riskRenderActive=false;bool a=restoreRiskSite(riskSites[3]),b=restoreRiskSite(riskSites[4]);
+  const bool directOff=directGroupRestore(directpatch::Group::Map);
+  snap.renderRevealStatus=a&&b&&directOff?shroudMaterials.update(sh->renderReveal==4?1:2,GetTickCount(),read,writeShroudMaterial):-2;
+  if(shroudMaterials.changed())riskRenderRedrawPending=true;
+ }else if(!materialOff){riskRenderActive=false;restoreRiskSite(riskSites[3]);restoreRiskSite(riskSites[4]);directGroupRestore(directpatch::Group::Map);snap.renderRevealStatus=-2;
+ }else if(sh->renderReveal==3){
   riskRenderActive=false;bool a=restoreRiskSite(riskSites[3]),b=restoreRiskSite(riskSites[4]);
   bool ok=a&&b&&directGroupEnable(directpatch::Group::Map);
   if(!ok)directGroupRestore(directpatch::Group::Map);

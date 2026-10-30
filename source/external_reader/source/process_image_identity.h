@@ -26,11 +26,14 @@ inline bool processMatches(DWORD pid){
  const uint64_t creation=uint64_t(created.dwHighDateTime)<<32|created.dwLowDateTime;
  const DWORD now=GetTickCount();
  static std::mutex mutex;static std::unordered_map<DWORD,Cached> cache;
- std::lock_guard<std::mutex> guard(mutex);
- auto i=cache.find(pid);
- if(i!=cache.end()&&i->second.creation==creation&&i->second.path==path&&DWORD(now-i->second.tick)<3000)return i->second.matched;
- // Bounded negative cache; retry files that were unavailable during startup.
- if(cache.size()>=256)cache.clear();
- bool matched=fileMatches(path);cache[pid]={creation,path,now,matched};return matched;
+ {std::lock_guard<std::mutex> guard(mutex);auto i=cache.find(pid);
+  if(i!=cache.end()&&i->second.creation==creation&&i->second.path==path&&DWORD(now-i->second.tick)<3000)return i->second.matched;}
+ // Slow EXE reads must not hold up another module's cached discovery result.
+ bool matched=fileMatches(path);
+ {std::lock_guard<std::mutex> guard(mutex);auto i=cache.find(pid);
+  if(i!=cache.end()&&int32_t(i->second.tick-now)>0)return matched;
+  // Bounded negative cache; retry files unavailable during startup.
+  if(cache.size()>=256)cache.clear();cache[pid]={creation,path,now,matched};}
+ return matched;
 }
 } }

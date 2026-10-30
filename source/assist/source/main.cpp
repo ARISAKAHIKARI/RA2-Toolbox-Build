@@ -3,6 +3,7 @@
 #include "../../shared/source/overlay_stack.h"
 #include "../../shared/source/overlay_compositor.h"
 #include "../../shared/source/release_version.h"
+#include "shroud_policy.h"
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
 #ifndef UNICODE
@@ -1724,7 +1725,9 @@ static void tick(){reapBridges();logBridgeHealth();DWORD now=GetTickCount();stat
   DWORD wakePeriod=shared->foreground?16:(shared->dodgeEnabled||shared->dodgeActive||shared->missileEnabled||shared->missileHeld||((configured|shared->plannerTracking)&(AdvancedInput|MagnetronInput|AutoOreReturn|AirWaypoints|AntiTheft))?64:500);
   if(DWORD(now-lastPulse)>=wakePeriod)wakeGame();
   readSnapshot();schedulerDiagnostic();serviceSelection();result();serviceCommandQueue(GetTickCount());serviceCalculationTasks();servicePlanner();serviceCooperative();servicePointer();serviceCommandCursorHint();serviceHotkeyBatch();serviceConstruction();serviceAirPath();
-  if(ready&&GetDlgItem(ui,833)){
+  static renderpresentation::StatusCadence computeStatusCadence;
+  const uint64_t computeStatusKey=uint64_t(shared->computeApplied)|(uint64_t(computeRequested)<<32)|(uint64_t(showDetails)<<63);
+  if(ready&&GetDlgItem(ui,833)&&computeStatusCadence.due(computeStatusKey,now)){
   std::wstring text=L"当前生效：";for(int i=0;i<compute::Count;++i){if(i)text+=i%2?L" · ":L"\r\n";text+=compute::label(i);text+=compute::inside(shared->computeApplied,compute::Feature(i))?L"：游戏内":L"：工具箱";}
   if(shared->computeApplied!=computeRequested)text+=L"\r\n配置已修改，下一局生效。";
   if(showDetails)text+=L"\r\n游戏内计算耗时 "+std::to_wstring(shared->runtimePlannerMicros)+L" 微秒。";

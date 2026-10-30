@@ -94,7 +94,7 @@ struct Snapshot {
  uint32_t receiptWrite,receiptCount;TaskReceiptSummary recentReceipts[RecentReceiptCapacity];
  uint32_t entryThread=0,entryCalls=0,entryReentrant=0,entryContended=0,entryWrongThread=0;
  int c4TestStatus=0;
- int renderRevealStatus=0; // 1=render-only test installed; -2=signature/install/restore conflict
+ int renderRevealStatus=0; // 1=active, 2=waiting for loaded materials; -2=signature/install/restore conflict
  int lastSubmitError=0; // 0=queued; 1=epoch; 2=session; 3=inactive; 4=chat; 5=thread; 6=room; 7/8=ctor; 9=timer
 
 };
@@ -143,7 +143,7 @@ struct Shared {
  volatile long featureConfigSeq;featuretypes::Config featureConfig;
  volatile uint32_t c4Test;
  volatile uint32_t advancedRangeCells; // 0..30 extra acquisition cells, host-owned
- volatile uint32_t renderReveal; // 0=native, 1=skip masks, 2=half opacity; never RevealMap
+ volatile uint32_t renderReveal; // 0=native, 1/2=hook, 3=direct, 4/5=clear/half material; never RevealMap
  // Local UI feedback, consumed by the existing Runtime game-thread dispatcher.
  // Immutable until ack; short lived and never an EventClass / OutList command.
  volatile uint32_t uiSoundRequest,uiSoundAck;uint32_t uiSoundTick,uiSoundMatch;

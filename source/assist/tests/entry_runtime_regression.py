@@ -243,6 +243,9 @@ def on_code(uc,a,size,_):
             value='Local\\RA2CursorBridge_v154_123';u.mem_write(arg(0),(value+'\0').encode('utf-16le'));ret(len(value),0)
         elif n=='ReadProcessMemory':
             u.mem_write(arg(2),bytes(u.mem_read(arg(1),arg(3))));w(arg(4),arg(3));ret(1,5)
+        elif n=='WriteProcessMemory':
+            writes=globals().setdefault('process_memory_writes',[]);writes.append((arg(1),arg(3)))
+            u.mem_write(arg(1),bytes(u.mem_read(arg(2),arg(3))));w(arg(4),arg(3));ret(1,5)
         elif n in ('QueryPerformanceCounter','QueryPerformanceFrequency'):
             u.mem_write(arg(0),struct.pack('<Q',globals().get('precise_us',clock*1000) if n.endswith('Counter') else 1000000));counter+=10;ret(1,1)
         elif n=='VirtualProtect':w(arg(3),0x20);ret(1,4)

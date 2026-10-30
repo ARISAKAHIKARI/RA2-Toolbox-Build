@@ -67,6 +67,14 @@ jobs:
           for name in render_upgrade native_feedback pixel_upgrade physical_presentation material_refresh color_resolution aircraft_allocation; do
             python3 source/tools/validate_$name.py
           done
+          g++ -std=c++17 -O2 -UNDEBUG source/assist/tests/shroud_material.cpp -o /tmp/shroud-material-test
+          /tmp/shroud-material-test
+          g++ -std=c++17 -O2 -UNDEBUG -pthread source/unit_monitor/tests/async_sampling.cpp -o /tmp/unit-async-sampling-test
+          /tmp/unit-async-sampling-test
+          g++ -std=c++17 -O2 -UNDEBUG -pthread -Isource/tests/winmock source/tests/process_identity_lock.cpp -o /tmp/process-identity-lock-test
+          /tmp/process-identity-lock-test
+          python3 source/assist/tests/secondary_stats_test.py
+          python3 source/tools/audit_architecture.py
           g++ -std=c++17 -O2 -UNDEBUG -DRA2_XBRZ_SCALAR_ONLY source/assist/tests/xbrz_bilinear.cpp /tmp/xbrz.o -o /tmp/xbrz-bilinear-scalar
           /tmp/xbrz-bilinear-scalar
           python3 source/assist/tests/gpu_xbrz_model_test.py

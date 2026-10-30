@@ -10,7 +10,7 @@ constexpr DisplaySpec displaySpecs[]={
  {300,0,1,DisplayControl::Check},{303,0,1,DisplayControl::Check},
  {723,0,1,DisplayControl::Check},{892,0,1,DisplayControl::Check},
  {893,0,1,DisplayControl::Check},{816,50,250,DisplayControl::Number},
- {310,5,500,DisplayControl::Number},{808,0,4,DisplayControl::Choice},
+ {310,5,500,DisplayControl::Number},{808,0,6,DisplayControl::Choice},
  {897,0,1,DisplayControl::Check},{898,0,1,DisplayControl::Check},
  {9160,0,1,DisplayControl::Check}
 };
