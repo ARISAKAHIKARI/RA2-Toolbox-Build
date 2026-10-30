@@ -82,7 +82,30 @@ public:
    for(size_t n=0;n<source.size();++n)source[n]=transform.apply(i.pixels[n],indexed?i.indices[n]:0,i.objectPalette);
    enlarged=scaleCache_.get(source,i.width,i.height,f);if(!enlarged)reconstructionFailed_=true;
   }
-  for(int y=y0;y<y1;++y){int sourceY=int(std::floor((y+.5f-top)/pyScale));if(sourceY<0||sourceY>=i.height)continue;
+  // Native-size game coordinates are exact multiples of 1/256 pixels.
+  // Each row is a contiguous source span, without per-pixel division/floor.
+  const bool native=pxScale==1&&pyScale==1&&std::abs(left)<=16384&&std::abs(top)<=16384&&
+      left*256==std::floor(left*256)&&top*256==std::floor(top*256);
+  if(native){
+   const int ox=int(std::floor(.5f-left)),oy=int(std::floor(.5f-top));
+   const bool neutral=transform.gains[0]==1&&transform.gains[1]==1&&transform.gains[2]==1;
+   const int first=std::max(x0,-ox),last=std::min(x1,i.width-ox);
+   for(int y=std::max(y0,-oy);y<std::min(y1,i.height-oy);++y){const int sourceY=y+oy;
+    float rowZ=base+i.depthBias;
+    if(!zData){if(i.flat)rowZ+=float(i.y+sourceY)/i.rasterScale-14+lift;
+     else{int bottom=i.depthBottom==std::numeric_limits<int>::min()?i.y+i.height-1:i.depthBottom;rowZ+=float(bottom)/i.rasterScale-14+lift+float((bottom-i.y-sourceY)/3)/i.rasterScale;}}
+    size_t from=size_t(sourceY)*i.width+first+ox,to=size_t(y)*width_+first;
+    for(int x=first;x<last;++x,++from,++to){uint32_t p=i.pixels[from];unsigned alpha=p>>24;if(!alpha)continue;
+     float z=rowZ;bool useZ=!i.skipZ;if(zData){if(std::isnan(i.depth[from]))useZ=false;else z+=i.depth[from];}
+     if(useZ&&z<=depth[to])continue;
+     if(i.shadow){uint32_t old=color[to];if(alpha==255)color[to]=(old&0xff000000u)|((old&0x00fefefeu)>>1);
+      else{uint32_t v=old&0xff000000u;for(int shift:{0,8,16})v|=(((old>>shift)&255)*(510-alpha)/510)<<shift;color[to]=v;}}
+     else{if(!neutral||alpha!=255)p=transform.apply(p,indexed?i.indices[from]:0,i.objectPalette);
+      if(alpha==255)color[to]=p;else{uint32_t old=color[to],out=(alpha+(old>>24)*(255-alpha)/255)<<24;for(int shift:{0,8,16})out|=std::min(255u,((p>>shift)&255)+((old>>shift)&255)*(255-alpha)/255)<<shift;color[to]=out;}}
+     if(useZ&&i.writeDepth)depth[to]=z;
+    }
+   }
+  }else for(int y=y0;y<y1;++y){int sourceY=int(std::floor((y+.5f-top)/pyScale));if(sourceY<0||sourceY>=i.height)continue;
    for(int x=x0;x<x1;++x){int sourceX=int(std::floor((x+.5f-left)/pxScale));if(sourceX<0||sourceX>=i.width)continue;
     size_t from=size_t(sourceY)*i.width+sourceX,to=size_t(y)*width_+x;uint32_t p=i.pixels[from];
     std::array<double,4> filtered{};bool preciseSample=false;

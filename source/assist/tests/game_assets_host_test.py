@@ -32,12 +32,12 @@ body=r'''
 #include <fstream>
 #include "source/external_reader/source/game_archive.h"
 static std::map<std::string,std::vector<uint8_t>> disk;
-static int fileReads=0;
+static int fileReads=0,rawReads=0;
 static std::vector<uint8_t> memory(0x1000000);
 static DWORD clockValue=1000,pid=1;static bool imagePathAvailable=true;static uint32_t commandMatch(){return 1;}
 namespace external {struct ReadSession {
  bool imagePath(wchar_t*p,DWORD*n){if(!imagePathAvailable)return false;std::wcscpy(p,L"C:\\Game\\gamemd.exe");*n=std::wcslen(p);return true;}
- bool readFresh(uint32_t p,void*out,size_t n){if(uint64_t(p)+n>memory.size())return false;memcpy(out,memory.data()+p,n);return true;}
+ bool readFresh(uint32_t p,void*out,size_t n){++rawReads;if(uint64_t(p)+n>memory.size())return false;memcpy(out,memory.data()+p,n);return true;}
 };}
 static external::ReadSession externalReader;
 struct OpenFile {const std::vector<uint8_t>*data;size_t pos;};
@@ -570,6 +570,18 @@ int main(int argc,char**argv){
  assert(gameassets::renderActor(art,projectile.pose,cachedGPU)&&cachedGPU.gpuRaster!=previousPacket);
  gameassets::context.presentationGPU(false);
  std::cout<<"PASS production immutable GPU packet reuse across40 fresh VPL captures; exact palette/pose/posture/raster/VPL invalidation, capture nonce recapture and copy/move identity\n";
+ // Sample each source once in a presentation, without resampling live INI
+ // and palette memory for every identical instance. The next pass is fresh.
+ {
+  constexpr uint32_t owner=0x760000,type=0x770000,vector=0x751000,items=0x751100,scheme=0x752000;
+  word(memory,type+0xDF0,vector);word(memory,owner+0x16054,0);word(memory,vector+4,items);word(memory,vector+16,1);word(memory,items,scheme);
+  memset(memory.data()+scheme+4,31,768);gameassets::Context sharedPalette(externalReader);sharedPalette.identity(pid,101);sharedPalette.beginPresentation();
+  std::array<uint32_t,256>first{},again{};assert(sharedPalette.spritePalette(type,"",false,owner,first));int readsAfterFirst=rawReads;
+  for(int n=0;n<299;++n)assert(sharedPalette.spritePalette(type,"",false,owner,again)&&again==first);
+  assert(rawReads==readsAfterFirst&&sharedPalette.paletteSamples()==1&&sharedPalette.paletteSampleHits()==299);
+  memory[scheme+7]=63;sharedPalette.beginPresentation();assert(sharedPalette.spritePalette(type,"",false,owner,again)&&again!=first&&sharedPalette.paletteSamples()==1);
+  std::cout<<"PASS production palette source sampled once for300 instances; 299 cache hits add zero remote reads, next presentation observes changed RGB\n";
+ }
  // Missing VPL must not substitute the vehicle Lambert approximation for
  // the distinct projectile selector. Source readiness will trigger retry.
  word(memory,0xB2FB58,0);disk.erase("VOXELS.VPL");gameassets::context.identity(pid+4,99);

@@ -39,6 +39,10 @@ template<class Reader>class Context {
  int detail_=0;
  resolutionsampling::Selection resolution_;
  pixelupgrade::PaletteRange paletteRange_=pixelupgrade::PaletteRange::OriginalDAC;
+ struct PaletteSample {std::array<uint32_t,256>colors{};bool live=false;};
+ using PaletteSampleKey=std::tuple<uint32_t,uint32_t,std::string,bool,bool>;
+ std::map<PaletteSampleKey,PaletteSample>presentationPalettes_;
+ uint64_t paletteSamples_=0,paletteSampleHits_=0;
  using SharedTileKey=std::tuple<uint32_t,uint32_t,uint32_t,uint32_t,unsigned,uint64_t,std::array<uint32_t,256>>;
  inline static std::mutex sharedTileMutex_;
  inline static std::map<SharedTileKey,std::shared_ptr<const external::voxel::Image>> sharedTiles_;
@@ -53,6 +57,8 @@ public:
  void presentationLighting(bool voxel,bool sprite){voxelRelight_=voxel;spriteRelight_=sprite;}
  bool voxelRelighting()const{return voxelRelight_;}
  bool spriteRelighting()const{return spriteRelight_;}
+ uint64_t paletteSamples()const{return paletteSamples_;}
+ uint64_t paletteSampleHits()const{return paletteSampleHits_;}
  uint64_t gpuPreparedBuilds()const{return gpuPackets_.builds();}
  uint64_t gpuPreparedHits()const{return gpuPackets_.hits();}
  size_t gpuPreparedCacheBytes()const{return gpuPackets_.bytes();}
@@ -61,7 +67,7 @@ public:
  void presentationPalette(pixelupgrade::PaletteRange mode){paletteRange_=mode;}
  explicit Context(Reader&r):reader_(r),read{&r},artINI(read,external::assets::LiveINI::ArtObject),rulesINI(read,external::assets::LiveINI::RulesPointer,true),cameoCatalog(read){}
  void identity(uint32_t process,uint32_t match){
-  if(process_!=process||match_!=match){overlayPalettes_.clear();gpuPackets_.clear();gpuVplSnapshot_.reset();gpuVplSignature_=0;terrainPaletteLive_=presentation_=presentationVplFresh_=false;voxelLight={};voxelChecked=voxelNative=false;voxelRevision=~uint64_t(0);}
+  if(process_!=process||match_!=match){presentationPalettes_.clear();overlayPalettes_.clear();gpuPackets_.clear();gpuVplSnapshot_.reset();gpuVplSignature_=0;terrainPaletteLive_=presentation_=presentationVplFresh_=false;voxelLight={};voxelChecked=voxelNative=false;voxelRevision=~uint64_t(0);}
   process_=process;match_=match;update();
  }
 
@@ -154,6 +160,15 @@ bool shapeBytes(uint32_t type,uint32_t pointer,std::vector<uint8_t>&bytes,std::s
  file.clear();failure="sprite-not-found:"+artName(type);for(const auto&n:names)failure+=" "+n;return false;
 }
 bool spritePalette(uint32_t type,const std::string&file,bool overlay,uint32_t owner,std::array<uint32_t,256>&out,bool terrain=false){
+ // All objects in one presentation use one sampled palette per source binding.
+ // Revalidate on the next presentation; do not repeat live INI traversal and
+ // raw remote palette reads for every instance of an identical unit type.
+ PaletteSampleKey key{type,owner,file,overlay,terrain};
+ if(presentation_){auto found=presentationPalettes_.find(key);if(found!=presentationPalettes_.end()){out=found->second.colors;lastPaletteLive_=found->second.live;++paletteSampleHits_;return true;}}
+ ++paletteSamples_;if(!sampleSpritePalette(type,file,overlay,owner,out,terrain))return false;
+ if(presentation_&&presentationPalettes_.size()<4096)presentationPalettes_.emplace(std::move(key),PaletteSample{out,lastPaletteLive_});return true;
+}
+bool sampleSpritePalette(uint32_t type,const std::string&file,bool overlay,uint32_t owner,std::array<uint32_t,256>&out,bool terrain=false){
  lastPaletteLive_=false;
  if(terrain&&external::lighting::spawnsTiberium(read,type)){
   uint32_t convert=word(0x87F6BC);if(convertPalette(convert,out))return true;
@@ -197,7 +212,7 @@ void buildingPose(uint32_t object,uint32_t type,external::visual::Pose&pose){
 }
 struct OverlayPalette {std::string file;std::array<uint32_t,256> colors{};bool live=false;uint64_t revision=1;};
 std::map<std::pair<uint32_t,bool>,OverlayPalette> overlayPalettes_;
-void beginPresentation(){presentation_=true;vpl(voxelRelight_);if(overlayPalettes_.size()>4096)overlayPalettes_.clear();}
+void beginPresentation(){presentation_=true;presentationPalettes_.clear();paletteSamples_=paletteSampleHits_=0;vpl(voxelRelight_);if(overlayPalettes_.size()>4096)overlayPalettes_.clear();}
 bool refreshOverlayPalette(uint32_t type,uint32_t pointer,int frame,bool terrain,bool&changed){
  if(!spriteRelight_&&overlayPalettes_.count({type,terrain})){changed=false;return true;}
  (void)pointer;(void)frame;changed=false;auto found=overlayPalettes_.find({type,terrain});if(found==overlayPalettes_.end())return true;

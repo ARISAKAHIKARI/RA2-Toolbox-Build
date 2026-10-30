@@ -11,6 +11,7 @@
 // minified: all depth/shadow/color operations run at one pixel per source pixel.
 namespace external { namespace camera {
 class NativeCanvas {
+ friend class ObjectCanvas;
 public:
  static constexpr int PageSize=128,MaximumDimension=32768;
  static constexpr size_t MaximumPages=4096,DynamicReserve=256;

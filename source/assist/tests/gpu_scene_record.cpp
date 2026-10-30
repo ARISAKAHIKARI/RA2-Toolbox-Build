@@ -35,6 +35,20 @@ int main(int argc,char**argv){
   light.intensity=700;auto changed=draw();assert(changed&&changed!=warm&&*changed!=*warm);
   camera::GpuSceneRecord malformed;malformed.begin(24,18,base,std::make_shared<const std::vector<float>>(1),colorprecision::Mode::NativeSteps);camera::Surface rejected;assert(!malformed.valid()&&!malformed.replay(rejected));
  }
+ // More than 128 simultaneous live materials used to churn every frame even
+ // when their pixels fit the byte budget. Keep their ownership and light keys.
+ {
+  camera::GpuSceneRecord record;std::vector<std::shared_ptr<const voxel::Image>>owners;
+  std::vector<std::shared_ptr<const std::vector<uint32_t>>>warm;lighting::State light;light.intensity=800;
+  for(unsigned n=0;n<160;++n){auto image=std::make_shared<voxel::Image>();image->width=image->height=64;image->pixels.assign(4096,0xff102030u+n);image->indices.assign(4096,20);owners.push_back(image);}
+  auto draw=[&]{record.begin(24,18,base,depth,colorprecision::Mode::SmoothRGB);for(const auto&i:owners)assert(record.append(*i,i,1,1,2,2,10,light,1,0,true));};
+  draw();for(const auto&d:record.frame().draws)warm.push_back(d.reconstructionSource);
+  assert(record.litBuilds()==160);draw();assert(record.litBuilds()==160&&record.litHits()==160);
+  for(size_t n=0;n<warm.size();++n)assert(record.frame().draws[n].reconstructionSource==warm[n]);
+  camera::GpuSceneRecord moved=std::move(record);record=std::move(moved);draw();assert(record.litHits()==320);
+  light.intensity=500;draw();assert(record.litBuilds()==320&&record.frame().draws[0].reconstructionSource!=warm[0]);
+  assert(record.litBytes()<=external::xbrzadapter::CachePixels*4);record.clear();assert(!record.litBytes()&&!record.litHits()&&!record.litBuilds());
+ }
  // Native terrain may stay as a GPU plan; failed GPU work invokes the retained
  // CPU background callback once per replay, then reproduces original sprites.
  int fallbackCalls=0;auto empty=std::make_shared<const std::vector<uint32_t>>();

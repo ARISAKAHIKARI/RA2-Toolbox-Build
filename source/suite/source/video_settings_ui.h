@@ -85,7 +85,7 @@ public:
    }
    controls_[e.option]=h;EnableWindow(h,FALSE);modernui::tip(h,e.label);y+=42;
   }
-  if(group==VideoGroup::Render){status_=ctl(L"STATIC",L"正在同步渲染设置…",0,x,y,width,78,0);y+=92;modernui::tip(controls_[RenderGPU],L"GPU 不可用时回退 CPU；不同视角共用场景与绘制参数。独立效果类型的覆盖范围见动画审计表。");}
+  if(group==VideoGroup::Render){status_=ctl(L"STATIC",L"正在同步渲染设置…",0,x,y,width,180,0);y+=194;modernui::tip(controls_[RenderGPU],L"GPU 不可用时回退 CPU；不同视角共用场景与绘制参数。状态显示设备、回退原因以及场景各阶段耗时。");}
   sync();return y;
  }
  void sync(bool force=false){DisplayState state;if(!readDisplaySettings(state))return;syncing_=true;

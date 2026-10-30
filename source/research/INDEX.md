@@ -147,3 +147,5 @@
 
 
 | 共享场景与缩放前结果、五类 UI、粒子与本地消息／倒计时保留 | [Hotfix13](2026-10-30-shared-scenes-local-ui-hotfix13.md) | SceneBank SceneRenderer NativeImageBank Particle MessageList BitFont DrawTimer PrimaryFactory ArchiveTarget |
+
+- [Hotfix16：基础路径与整图延迟调查（进行中）](2026-10-30-render-latency-hotfix16.md)：原尺寸像素热点、128 项 xBRZ 缓存抖动、同帧调色板共享、基础整图分页并行与未解决的缩小输出开销。

@@ -1,0 +1,447 @@
+{
+  "scene-comparison": {
+    "before": [
+      {
+        "width": 1280,
+        "height": 720,
+        "actors": 160,
+        "frames": 20,
+        "median_ms": 18.8748,
+        "p95_ms": 19.9246,
+        "checksum": 13353475631882030851,
+        "stages_mean_ms": {
+          "terrain": 0,
+          "materials": 0,
+          "objects": 0,
+          "resolve": 0,
+          "effects": 0
+        }
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "actors": 160,
+        "frames": 20,
+        "median_ms": 17.2669,
+        "p95_ms": 19.2338,
+        "checksum": 13353475631882030851,
+        "stages_mean_ms": {
+          "terrain": 0,
+          "materials": 0,
+          "objects": 0,
+          "resolve": 0,
+          "effects": 0
+        }
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "actors": 160,
+        "frames": 20,
+        "median_ms": 17.4197,
+        "p95_ms": 19.8429,
+        "checksum": 13353475631882030851,
+        "stages_mean_ms": {
+          "terrain": 0,
+          "materials": 0,
+          "objects": 0,
+          "resolve": 0,
+          "effects": 0
+        }
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "actors": 160,
+        "frames": 20,
+        "median_ms": 17.2028,
+        "p95_ms": 19.6778,
+        "checksum": 13353475631882030851,
+        "stages_mean_ms": {
+          "terrain": 0,
+          "materials": 0,
+          "objects": 0,
+          "resolve": 0,
+          "effects": 0
+        }
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "actors": 160,
+        "frames": 20,
+        "median_ms": 18.0845,
+        "p95_ms": 19.7712,
+        "checksum": 13353475631882030851,
+        "stages_mean_ms": {
+          "terrain": 0,
+          "materials": 0,
+          "objects": 0,
+          "resolve": 0,
+          "effects": 0
+        }
+      }
+    ],
+    "after": [
+      {
+        "width": 1280,
+        "height": 720,
+        "actors": 160,
+        "frames": 20,
+        "median_ms": 6.91731,
+        "p95_ms": 10.2001,
+        "checksum": 13353475631882030851,
+        "stages_mean_ms": {
+          "terrain": 2.88151,
+          "materials": 0.0508099,
+          "objects": 4.51032,
+          "resolve": 0.00128695,
+          "effects": 0.0003966
+        }
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "actors": 160,
+        "frames": 20,
+        "median_ms": 6.84656,
+        "p95_ms": 9.77096,
+        "checksum": 13353475631882030851,
+        "stages_mean_ms": {
+          "terrain": 2.89859,
+          "materials": 0.0521643,
+          "objects": 4.43508,
+          "resolve": 0.0012243,
+          "effects": 0.0004232
+        }
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "actors": 160,
+        "frames": 20,
+        "median_ms": 7.27752,
+        "p95_ms": 9.78803,
+        "checksum": 13353475631882030851,
+        "stages_mean_ms": {
+          "terrain": 2.90121,
+          "materials": 0.0584924,
+          "objects": 4.53655,
+          "resolve": 0.0014259,
+          "effects": 0.00052885
+        }
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "actors": 160,
+        "frames": 20,
+        "median_ms": 6.93949,
+        "p95_ms": 9.90592,
+        "checksum": 13353475631882030851,
+        "stages_mean_ms": {
+          "terrain": 3.00428,
+          "materials": 0.0496155,
+          "objects": 4.41847,
+          "resolve": 0.00138955,
+          "effects": 0.0005063
+        }
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "actors": 160,
+        "frames": 20,
+        "median_ms": 7.59828,
+        "p95_ms": 10.8182,
+        "checksum": 13353475631882030851,
+        "stages_mean_ms": {
+          "terrain": 3.10114,
+          "materials": 0.0574317,
+          "objects": 4.75869,
+          "resolve": 0.00137895,
+          "effects": 0.0005364
+        }
+      }
+    ]
+  },
+  "material-comparison": {
+    "before": [
+      {
+        "materials": 160,
+        "native_size": 64,
+        "median_ms": 5.648047,
+        "p95_ms": 5.861244,
+        "reused_on_second_frame": 0,
+        "checksum": 66224071050411264
+      },
+      {
+        "materials": 160,
+        "native_size": 64,
+        "median_ms": 5.568009,
+        "p95_ms": 5.935994,
+        "reused_on_second_frame": 0,
+        "checksum": 66224071050411264
+      },
+      {
+        "materials": 160,
+        "native_size": 64,
+        "median_ms": 5.766914,
+        "p95_ms": 6.212577,
+        "reused_on_second_frame": 0,
+        "checksum": 66224071050411264
+      },
+      {
+        "materials": 160,
+        "native_size": 64,
+        "median_ms": 5.736309,
+        "p95_ms": 6.260638,
+        "reused_on_second_frame": 0,
+        "checksum": 66224071050411264
+      },
+      {
+        "materials": 160,
+        "native_size": 64,
+        "median_ms": 6.10821,
+        "p95_ms": 6.624899,
+        "reused_on_second_frame": 0,
+        "checksum": 66224071050411264
+      }
+    ],
+    "after": [
+      {
+        "materials": 160,
+        "native_size": 64,
+        "median_ms": 0.018057,
+        "p95_ms": 0.018487,
+        "reused_on_second_frame": 160,
+        "checksum": 66224071050411264
+      },
+      {
+        "materials": 160,
+        "native_size": 64,
+        "median_ms": 0.017746,
+        "p95_ms": 0.018387,
+        "reused_on_second_frame": 160,
+        "checksum": 66224071050411264
+      },
+      {
+        "materials": 160,
+        "native_size": 64,
+        "median_ms": 0.017657,
+        "p95_ms": 0.017736,
+        "reused_on_second_frame": 160,
+        "checksum": 66224071050411264
+      },
+      {
+        "materials": 160,
+        "native_size": 64,
+        "median_ms": 0.017936,
+        "p95_ms": 0.019319,
+        "reused_on_second_frame": 160,
+        "checksum": 66224071050411264
+      },
+      {
+        "materials": 160,
+        "native_size": 64,
+        "median_ms": 0.018167,
+        "p95_ms": 0.036805,
+        "reused_on_second_frame": 160,
+        "checksum": 66224071050411264
+      }
+    ]
+  },
+  "whole-map-initial": [
+    {
+      "width": 1280,
+      "height": 720,
+      "actors": 160,
+      "frames": 20,
+      "median_ms": 22.9103,
+      "p95_ms": 24.8427,
+      "checksum": 1803597672812669471,
+      "stages_mean_ms": {
+        "terrain": 0,
+        "materials": 0,
+        "objects": 0,
+        "resolve": 0,
+        "effects": 0
+      },
+      "mode": "whole-map",
+      "actual_actors": 160,
+      "variant": "before"
+    },
+    {
+      "width": 1280,
+      "height": 720,
+      "actors": 160,
+      "frames": 20,
+      "median_ms": 9.43242,
+      "p95_ms": 10.7205,
+      "checksum": 1803597672812669471,
+      "stages_mean_ms": {
+        "terrain": 0.0668301,
+        "materials": 0.0984297,
+        "objects": 4.89197,
+        "resolve": 4.39167,
+        "effects": 0.0002742
+      },
+      "mode": "whole-map",
+      "actual_actors": 160,
+      "variant": "after"
+    },
+    {
+      "width": 1280,
+      "height": 720,
+      "actors": 160,
+      "frames": 20,
+      "median_ms": 72.2871,
+      "p95_ms": 86.6637,
+      "checksum": 6959570589855696655,
+      "stages_mean_ms": {
+        "terrain": 0,
+        "materials": 0,
+        "objects": 0,
+        "resolve": 0,
+        "effects": 0
+      },
+      "mode": "whole-map",
+      "actual_actors": 640,
+      "variant": "before"
+    },
+    {
+      "width": 1280,
+      "height": 720,
+      "actors": 160,
+      "frames": 20,
+      "median_ms": 25.438,
+      "p95_ms": 27.4757,
+      "checksum": 6959570589855696655,
+      "stages_mean_ms": {
+        "terrain": 0.0748565,
+        "materials": 0.20253,
+        "objects": 18.2138,
+        "resolve": 6.99059,
+        "effects": 0.00034195
+      },
+      "mode": "whole-map",
+      "actual_actors": 640,
+      "variant": "after"
+    },
+    {
+      "width": 1280,
+      "height": 720,
+      "actors": 160,
+      "frames": 20,
+      "median_ms": 128.205,
+      "p95_ms": 142.051,
+      "checksum": 6959570589855696655,
+      "stages_mean_ms": {
+        "terrain": 0,
+        "materials": 0,
+        "objects": 0,
+        "resolve": 0,
+        "effects": 0
+      },
+      "mode": "whole-map",
+      "actual_actors": 1280,
+      "variant": "before"
+    },
+    {
+      "width": 1280,
+      "height": 720,
+      "actors": 160,
+      "frames": 20,
+      "median_ms": 42.7934,
+      "p95_ms": 47.1204,
+      "checksum": 6959570589855696655,
+      "stages_mean_ms": {
+        "terrain": 0.0765471,
+        "materials": 0.403851,
+        "objects": 35.1974,
+        "resolve": 7.48266,
+        "effects": 0.00032255
+      },
+      "mode": "whole-map",
+      "actual_actors": 1280,
+      "variant": "after"
+    }
+  ],
+  "whole-map-pages": [
+    {
+      "width": 1280,
+      "height": 720,
+      "actors": 160,
+      "frames": 20,
+      "median_ms": 12.5601,
+      "p95_ms": 14.7773,
+      "checksum": 1803597672812669471,
+      "stages_mean_ms": {
+        "terrain": 0.0933693,
+        "materials": 0.0641518,
+        "objects": 3.46852,
+        "resolve": 8.5066,
+        "effects": 0.0003251
+      },
+      "actual_actors": 160,
+      "output": [
+        320,
+        160
+      ],
+      "native": [
+        3840,
+        1920
+      ]
+    },
+    {
+      "width": 1280,
+      "height": 720,
+      "actors": 160,
+      "frames": 20,
+      "median_ms": 21.1279,
+      "p95_ms": 23.3544,
+      "checksum": 6959570589855696655,
+      "stages_mean_ms": {
+        "terrain": 0.0806639,
+        "materials": 0.251902,
+        "objects": 8.22757,
+        "resolve": 12.5093,
+        "effects": 0.00043845
+      },
+      "actual_actors": 640,
+      "output": [
+        320,
+        160
+      ],
+      "native": [
+        3840,
+        1920
+      ]
+    },
+    {
+      "width": 1280,
+      "height": 720,
+      "actors": 160,
+      "frames": 20,
+      "median_ms": 31.8418,
+      "p95_ms": 36.7926,
+      "checksum": 6959570589855696655,
+      "stages_mean_ms": {
+        "terrain": 0.0969664,
+        "materials": 0.467473,
+        "objects": 17.1048,
+        "resolve": 14.1063,
+        "effects": 0.0003596
+      },
+      "actual_actors": 1280,
+      "output": [
+        320,
+        160
+      ],
+      "native": [
+        3840,
+        1920
+      ]
+    }
+  ]
+}

@@ -2,6 +2,8 @@
 #include "camera_raster.h"
 #include "vulkan_scene.h"
 #include <functional>
+#include <list>
+#include <unordered_map>
 namespace external { namespace camera {
 // A frame keeps immutable image owners, including their depth/index arrays.
 // The original calls are retained too: unsupported/failed GPU work replays the
@@ -22,7 +24,9 @@ class GpuSceneRecord {
   std::shared_ptr<const std::vector<uint32_t>> pixels;uint64_t used=0;
  };
  vulkancompute::FrameJob frame_;std::shared_ptr<const std::vector<uint32_t>> fallbackBase_;std::function<bool(std::vector<uint32_t>&)> cpuBaseFallback_;std::vector<Replay> replay_;
- std::vector<LitSource> litSources_;size_t litPixels_=0;
+ std::list<LitSource> litSources_;
+ std::unordered_multimap<const voxel::Image*,typename std::list<LitSource>::iterator>litIndex_;
+ size_t litBytes_=0;uint64_t litBuilds_=0,litHits_=0;
  uint64_t serial_=0;bool valid_=false;
  colorprecision::Mode precision_=colorprecision::Mode::NativeSteps;
  static std::shared_ptr<const voxel::Image> retain(const voxel::Image&i,std::shared_ptr<const voxel::Image> owner){
@@ -33,14 +37,23 @@ class GpuSceneRecord {
  std::shared_ptr<const std::vector<uint32_t>> litSource(const std::shared_ptr<const voxel::Image>&owner,const Light&light){
   const auto&i=*owner;if(i.gpuRaster||i.pixels.size()!=size_t(i.width)*i.height)return {};
   std::array<float,3> gains;std::copy_n(light.gains,3,gains.begin());
-  for(auto&cached:litSources_)if(cached.address==owner.get()&&!cached.owner.owner_before(owner)&&!owner.owner_before(cached.owner)&&cached.precision==precision_&&cached.gains==gains){cached.used=++serial_;return cached.pixels;}
+  auto range=litIndex_.equal_range(owner.get());
+  for(auto at=range.first;at!=range.second;++at){auto cached=at->second;
+   if(!cached->owner.owner_before(owner)&&!owner.owner_before(cached->owner)&&cached->precision==precision_&&cached->gains==gains){
+    cached->used=++serial_;++litHits_;litSources_.splice(litSources_.end(),litSources_,cached);return cached->pixels;}}
+  ++litBuilds_;
   auto pixels=std::make_shared<std::vector<uint32_t>>(i.pixels.size());const bool indexed=i.indices.size()==i.pixels.size();
   for(size_t n=0;n<i.pixels.size();++n)(*pixels)[n]=light.apply(i.pixels[n],indexed?i.indices[n]:0,i.objectPalette);
-  for(auto it=litSources_.begin();it!=litSources_.end();)if(it->owner.expired()){litPixels_-=it->pixels->size();it=litSources_.erase(it);}else ++it;
-  while(!litSources_.empty()&&(litPixels_+pixels->size()>xbrzadapter::CachePixels||litSources_.size()>=128)){
-   auto oldest=std::min_element(litSources_.begin(),litSources_.end(),[](const LitSource&a,const LitSource&b){return a.used<b.used;});litPixels_-=oldest->pixels->size();litSources_.erase(oldest);
+  constexpr size_t EntryBytes=sizeof(LitSource)+12*sizeof(void*),Budget=xbrzadapter::CachePixels*4;
+  const size_t cost=pixels->size()*4+EntryBytes;
+  // Bound actual storage, not 128 materials. With 129 live materials the
+  // former count limit evicted the next needed input on every single frame.
+  if(cost<=Budget){while(!litSources_.empty()&&litBytes_+cost>Budget){auto oldest=litSources_.begin();
+    auto entries=litIndex_.equal_range(oldest->address);for(auto at=entries.first;at!=entries.second;++at)if(at->second==oldest){litIndex_.erase(at);break;}
+    litBytes_-=oldest->pixels->size()*4+EntryBytes;litSources_.erase(oldest);
+   }
+   litBytes_+=cost;litSources_.push_back({owner,owner.get(),gains,precision_,pixels,++serial_});litIndex_.emplace(owner.get(),std::prev(litSources_.end()));
   }
-  if(pixels->size()<=xbrzadapter::CachePixels){litPixels_+=pixels->size();litSources_.push_back({owner,owner.get(),gains,precision_,pixels,++serial_});}
   return pixels;
  }
  bool flatten(const std::shared_ptr<const voxel::Image>&owner,float ax,float ay,float sx,float sy,float base,const lighting::State&state,float lift,float shadowDrop,bool smooth,const vulkancompute::MotionIdentity&motion,unsigned nesting=0){
@@ -80,8 +93,11 @@ class GpuSceneRecord {
   return true;
  }
 public:
+ GpuSceneRecord()=default;GpuSceneRecord(const GpuSceneRecord&)=delete;GpuSceneRecord&operator=(const GpuSceneRecord&)=delete;
+ GpuSceneRecord(GpuSceneRecord&&)=default;GpuSceneRecord&operator=(GpuSceneRecord&&)=default;
  void reset(){frame_={};fallbackBase_.reset();cpuBaseFallback_={};replay_.clear();valid_=false;}
- void clear(){reset();litSources_.clear();litPixels_=serial_=0;}
+ void clear(){reset();litSources_.clear();litIndex_.clear();litBytes_=serial_=litBuilds_=litHits_=0;}
+ uint64_t litBuilds()const{return litBuilds_;}uint64_t litHits()const{return litHits_;}size_t litBytes()const{return litBytes_;}
  void begin(int width,int height,std::shared_ptr<const std::vector<uint32_t>>base,std::shared_ptr<const std::vector<float>>depth,colorprecision::Mode precision,
             std::shared_ptr<const std::vector<vulkancompute::TileJob>>baseTiles={},std::function<bool(std::vector<uint32_t>&)>cpuBaseFallback={},GpuDepthPlan depthPlan={}){
   reset();frame_.width=width;frame_.height=height;frame_.basePixels=std::move(base);fallbackBase_=frame_.basePixels;frame_.baseDepth=std::move(depth);precision_=precision;cpuBaseFallback_=std::move(cpuBaseFallback);

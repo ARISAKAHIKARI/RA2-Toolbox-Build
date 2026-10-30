@@ -22,6 +22,9 @@ static double presentationNow(){return std::chrono::duration<double,std::milli>(
 struct Request {uint64_t generation=0;bool materialRefresh=true;int detail=1,colorPrecision=1;uint32_t pid=0,match=0,tick=0;int width=0,height=0;uint32_t reveal=0;int paletteRange=1,pixelScaleMode=0;external::mainview::View view;overlaycompositor::Context context;bool gpu=false;renderpresentation::CameraPrefetch cameraMotion;double decodeBudgetMs=4.;external::presentation::Profile profile;};
 struct Frame {
  double sampleMs=0,sceneMs=0,finishMs=0,gpuPrepareMs=0,gpuWaitMs=0,gpuCopyMs=0;
+ double terrainMs=0,palettesMs=0,decodeStageMs=0,voxelMs=0,objectsMs=0,resolveMs=0,effectsMs=0;
+ uint32_t renderReadCalls=0,renderPageHits=0;uint64_t paletteSamples=0,paletteHits=0;
+ std::string gpuDevice,gpuReason;bool gpuSoftware=false;
  uint32_t readCalls=0,pageHits=0,prefetchedPages=0,decodeAttempts=0;double decodeMs=0;
  Request request;std::shared_ptr<const external::radar::Scene> image;
  std::vector<external::nativefeedback::Object> objects;
@@ -185,7 +188,10 @@ static asyncwork::Recurring<Request,Frame> worker([](const Request&r)->std::shar
  out->readCalls=observed->readCalls;out->pageHits=observed->pageHits;out->prefetchedPages=observed->prefetchedPages;
  out->decodeAttempts=renderer.decodeStats().attempts;out->decodeMs=renderer.decodeStats().milliseconds;
  out->sampleMs=observed->readMs;out->sceneMs=sceneDoneMs-sampledMs;
- if(out->gpuUsed&&gpuBackend){out->gpuPrepareMs=gpuBackend->diagnostics().prepareMilliseconds;out->gpuWaitMs=gpuBackend->diagnostics().waitMilliseconds;out->gpuCopyMs=gpuBackend->diagnostics().readbackMilliseconds;}
+ const auto&stages=renderer.stageStats();out->terrainMs=stages.terrainMs;out->palettesMs=stages.palettesMs;out->decodeStageMs=stages.decodeMs;out->voxelMs=stages.voxelMs;out->objectsMs=stages.objectsMs;out->resolveMs=stages.resolveMs;out->effectsMs=stages.effectsMs;
+ out->renderReadCalls=reader.reads;out->renderPageHits=reader.pageHits;out->paletteSamples=assets.paletteSamples();out->paletteHits=assets.paletteSampleHits();
+ if(gpuBackend){const auto&d=gpuBackend->diagnostics();out->gpuDevice=d.device;out->gpuReason=d.reason;out->gpuSoftware=d.softwareDevice;
+  if(out->gpuUsed){out->gpuPrepareMs=d.prepareMilliseconds;out->gpuWaitMs=d.waitMilliseconds;out->gpuCopyMs=d.readbackMilliseconds;}}
  const double zscale=external::projectionZScale(fresh);
  out->objects=external::nativefeedback::objectGeometry(renderer,data,renderView,r.width,r.height,zscale,border.paddingX,border.paddingY);
  out->yellow=assets.conditionYellow();out->red=assets.conditionRed();
@@ -402,7 +408,13 @@ static void update(POINT origin,const RECT&client,const external::display::State
   timing+=L"\r\n新帧 "+(presentedFrame->hasCompletionGap?ms(presentedFrame->completionGapMs):std::wstring(L"待测"))+L" · 观测 "+ms(presentedFrame->observationMs)+L" ms";
   if(presentedFrame->gpuUsed)timing+=L" · GPU准备 "+ms(presentedFrame->gpuPrepareMs)+L"／等待 "+ms(presentedFrame->gpuWaitMs)+L"／回读整理 "+ms(presentedFrame->gpuCopyMs)+L" ms";
   timing+=L"\r\n读取 "+std::to_wstring(presentedFrame->readCalls)+L" 次 · 批量 "+std::to_wstring(presentedFrame->prefetchedPages)+L" 页 · 素材解码 "+std::to_wstring(presentedFrame->decodeAttempts)+L" 项／"+ms(presentedFrame->decodeMs)+L" ms";
-  status=timing+L"\r\n"+status;
+  timing+=L"\r\n场景细分：地形 "+ms(presentedFrame->terrainMs)+L" · 色盘 "+ms(presentedFrame->palettesMs)+L" · 解码 "+ms(presentedFrame->decodeStageMs)+L" · VXL "+ms(presentedFrame->voxelMs)+L" · 对象合成 "+ms(presentedFrame->objectsMs)+L" · 输出 "+ms(presentedFrame->resolveMs)+L" · 特效 "+ms(presentedFrame->effectsMs)+L" ms";
+  timing+=L"\r\n场景读取 "+std::to_wstring(presentedFrame->renderReadCalls)+L" 次／缓存 "+std::to_wstring(presentedFrame->renderPageHits)+L" · 色盘采样 "+std::to_wstring(presentedFrame->paletteSamples)+L"／复用 "+std::to_wstring(presentedFrame->paletteHits);
+  if(request.gpu){auto wide=[](const std::string&s){return std::wstring(s.begin(),s.end());};
+   timing+=L"\r\nGPU："+(presentedFrame->gpuUsed?std::wstring(presentedFrame->gpuSoftware?L"软件设备 ":L"硬件设备 "):std::wstring(L"CPU 回退 "))+wide(presentedFrame->gpuDevice);
+   if(!presentedFrame->gpuReason.empty())timing+=L" · "+wide(presentedFrame->gpuReason);
+  }
+  status=std::move(timing);
  }
  statusText(status);
 }
