@@ -45,10 +45,13 @@ private:
 public:
  void clear(){pages_.clear();rasters_.clear();rasterBytes_=rasterSerial_=0;budget_.reset();width_=height_=0;++revision_;stats_={};}
  const Stats&stats()const{return stats_;}uint64_t revision()const{return revision_;}
- bool compose(const NativeCanvas&base,const std::vector<Draw>&draws,NativeCanvas&out){
+ // relativeOutput requires the caller's last resolved pixels to match our
+ // previous revision AND the current base/view. Otherwise dirty means every
+ // object page, so callers starting with terrain alone remain correct.
+ bool compose(const NativeCanvas&base,const std::vector<Draw>&draws,NativeCanvas&out,bool relativeOutput=false){
   stats_={};out=base.fork();auto fail=[&]{clear();out.failed_=true;return false;};if(base.failed_)return fail();
   if(budget_.lock()!=base.budget_||width_!=base.width_||height_!=base.height_||background_!=base.background_||precision_!=base.precision_){
-   clear();budget_=base.budget_;width_=base.width_;height_=base.height_;background_=base.background_;precision_=base.precision_;
+   relativeOutput=false;clear();budget_=base.budget_;width_=base.width_;height_=base.height_;background_=base.background_;precision_=base.precision_;
   }
   try{
    std::map<uint32_t,std::vector<Draw>>jobs;
@@ -65,11 +68,16 @@ public:
     }
    }
    if(!jobs.empty())out.regionCache_.reset();
-   for(auto p=pages_.begin();p!=pages_.end();)if(!jobs.count(p->first)){p=pages_.erase(p);++stats_.removed;}else ++p;
+   auto dirty=[&](uint32_t k){out.dirty_.insert(k);
+    int x=NativeCanvas::pageX(k)*NativeCanvas::PageSize,y=NativeCanvas::pageY(k)*NativeCanvas::PageSize;
+    out.dirtyRects_.push_back({x,y,std::min(x+NativeCanvas::PageSize,base.width_),std::min(y+NativeCanvas::PageSize,base.height_)});
+   };
+   for(auto p=pages_.begin();p!=pages_.end();)if(!jobs.count(p->first)){if(relativeOutput)dirty(p->first);p=pages_.erase(p);++stats_.removed;}else ++p;
    struct Work {uint32_t key;Entry*entry;};std::vector<Work>changed;changed.reserve(jobs.size());
    for(auto&job:jobs){auto source=base.pages_.find(job.first);std::shared_ptr<NativeCanvas::Page>sourcePage=source==base.pages_.end()?nullptr:source->second;
     auto&entry=pages_[job.first];
-    if(entry.page&&same(entry,sourcePage,job.second)){++stats_.reused;}
+    const bool reused=entry.page&&same(entry,sourcePage,job.second);
+    if(reused){++stats_.reused;}
     else{
      // A previous synchronous presentation normally released its page owners.
      // Reuse those two 128x128 buffers instead of free/allocate/copy per page.
@@ -88,9 +96,7 @@ public:
      if(!sourcePage&&base.background_!=0xff080c08u)std::fill(entry.page->surface.color.begin(),entry.page->surface.color.end(),base.background_);
      entry.page->surface.precision(base.precision_);++entry.page->revision;changed.push_back({job.first,&entry});++stats_.changed;
     }
-    out.pages_[job.first]=entry.page;out.dirty_.insert(job.first);
-    int x=NativeCanvas::pageX(job.first)*NativeCanvas::PageSize,y=NativeCanvas::pageY(job.first)*NativeCanvas::PageSize;
-    out.dirtyRects_.push_back({x,y,std::min(x+NativeCanvas::PageSize,base.width_),std::min(y+NativeCanvas::PageSize,base.height_)});
+    out.pages_[job.first]=entry.page;if(!relativeOutput||!reused)dirty(job.first);
    }
    std::atomic<bool>failed{false};
    parallelrows::rows(changed.size(),changed.size()*size_t(NativeCanvas::PageSize)*NativeCanvas::PageSize,[&](size_t first,size_t last){

@@ -23,8 +23,33 @@ public:
  };
  static std::shared_ptr<Budget>sharedBudget(){static auto value=std::make_shared<Budget>();return value;}
 private:
+ // Retain exact sums with the immutable native page, across presentations
+ // and CPU row workers. Admission is shared by all canvases; a full cache
+ // still permits the bounded per-filter scratch path below.
+ struct AreaPrefix {
+  static constexpr size_t Bytes=size_t(PageSize+1)*(PageSize+1)*sizeof(std::array<uint32_t,3>);
+  inline static std::atomic<size_t> retained{0};
+  inline static std::atomic<uint64_t> builds{0};
+  std::vector<std::array<uint32_t,3>>sum;uint64_t revision=0;bool cached=false;
+  ~AreaPrefix(){if(cached)retained.fetch_sub(Bytes,std::memory_order_relaxed);}
+  bool retain(){auto bytes=retained.load(std::memory_order_relaxed);
+   while(bytes<=rendermemory::AreaPrefixes-Bytes)if(retained.compare_exchange_weak(bytes,bytes+Bytes,std::memory_order_relaxed)){cached=true;return true;}return false;
+  }
+ };
  struct Page {
   std::shared_ptr<Budget> budget;Surface surface;uint64_t revision=0;
+  mutable std::mutex prefixMutex;mutable std::shared_ptr<const AreaPrefix>area;
+  std::shared_ptr<const AreaPrefix>prefix(bool build)const{
+   std::lock_guard<std::mutex>lock(prefixMutex);
+   if(area&&area->revision==revision)return area;
+   area.reset();if(!build)return {};
+   auto next=std::make_shared<AreaPrefix>();next->revision=revision;next->sum.resize(size_t(PageSize+1)*(PageSize+1));
+   for(int y=0;y<PageSize;++y){uint32_t running[3]{};for(int x=0;x<PageSize;++x){uint32_t c=surface.color[size_t(y)*PageSize+x];
+    auto&to=next->sum[size_t(y+1)*(PageSize+1)+x+1];const auto&above=next->sum[size_t(y)*(PageSize+1)+x+1];
+    for(int channel=0;channel<3;++channel){running[channel]+=(c>>(16-channel*8))&255;to[channel]=above[channel]+running[channel];}
+   }}
+   ++AreaPrefix::builds;if(next->retain())area=next;return next;
+  }
   explicit Page(std::shared_ptr<Budget>b):budget(std::move(b)){if(!budget->acquire())throw std::bad_alloc();try{if(!surface.reset(PageSize,PageSize))throw std::bad_alloc();}catch(...){--budget->pages;throw;}}
   Page(const Page&p):budget(p.budget),revision(p.revision){if(!budget->acquire())throw std::bad_alloc();try{surface=p.surface;}catch(...){--budget->pages;throw;}}
   ~Page(){--budget->pages;}
@@ -78,21 +103,21 @@ private:
   if(i.width>0&&i.height>0){x0=std::min(x0,ax+float(i.x)/i.rasterScale);y0=std::min(y0,ay+float(i.y)/i.rasterScale);x1=std::max(x1,ax+float(i.x+i.width)/i.rasterScale);y1=std::max(y1,ay+float(i.y+i.height)/i.rasterScale);}
   for(const auto&p:i.attachments)imageBounds(p,ax,ay+(p.shadow?shadowDrop:0),0,x0,y0,x1,y1);
  }
- // Bounded per-presentation summed-area cache. It accelerates exact box-area
- // filtering without retaining a second full native framebuffer or its sums.
+ // Each worker holds at most two page rows of sums. Pages also retain them
+ // under the shared byte budget, so unchanged pages and neighboring workers
+ // do not repeatedly scan the same 128x128 native pixels.
  class Filter {
-  struct Prefix {std::vector<std::array<uint32_t,3>> sum;uint64_t used=0,work=0;};
+  struct Prefix {std::shared_ptr<const AreaPrefix>sum;uint64_t used=0,work=0;};
   const NativeCanvas&canvas;std::map<const Page*,Prefix> cache;uint64_t serial=0;size_t prefixes=0,limit=16;
   const Prefix&prefix(const Page*p){
-   auto found=cache.find(p);if(found!=cache.end()&&!found->second.sum.empty()){found->second.used=++serial;return found->second;}
-   if(prefixes>=limit){auto oldest=cache.end();for(auto i=cache.begin();i!=cache.end();++i)if(!i->second.sum.empty()&&(oldest==cache.end()||i->second.used<oldest->second.used))oldest=i;if(oldest!=cache.end()){cache.erase(oldest);--prefixes;}}
-   Prefix row;row.used=++serial;row.sum.resize(size_t(PageSize+1)*(PageSize+1));
-   for(int y=0;y<PageSize;++y){uint32_t running[3]{};for(int x=0;x<PageSize;++x){uint32_t c=p->surface.color[size_t(y)*PageSize+x];auto&to=row.sum[size_t(y+1)*(PageSize+1)+x+1];const auto&above=row.sum[size_t(y)*(PageSize+1)+x+1];for(int channel=0;channel<3;++channel){running[channel]+=(c>>(16-channel*8))&255;to[channel]=above[channel]+running[channel];}}}
+   auto found=cache.find(p);if(found!=cache.end()&&found->second.sum){found->second.used=++serial;return found->second;}
+   if(prefixes>=limit){auto oldest=cache.end();for(auto i=cache.begin();i!=cache.end();++i)if(i->second.sum&&(oldest==cache.end()||i->second.used<oldest->second.used))oldest=i;if(oldest!=cache.end()){cache.erase(oldest);--prefixes;}}
+   Prefix row;row.used=++serial;row.sum=p->prefix(true);
    ++prefixes;return cache.insert_or_assign(p,std::move(row)).first->second;
   }
   static double integral(const Prefix&p,const Page*page,double x,double y,int channel){
    x=std::clamp(x,0.,double(PageSize));y=std::clamp(y,0.,double(PageSize));int ix=int(x),iy=int(y);double fx=x-ix,fy=y-iy;
-   const auto at=[&](int xx,int yy){return p.sum[size_t(yy)*(PageSize+1)+xx][channel];};double value=at(ix,iy);
+   const auto at=[&](int xx,int yy){return p.sum->sum[size_t(yy)*(PageSize+1)+xx][channel];};double value=at(ix,iy);
    if(fx&&ix<PageSize)value+=fx*double(at(ix+1,iy)-at(ix,iy));
    if(fy&&iy<PageSize)value+=fy*double(at(ix,iy+1)-at(ix,iy));
    if(fx&&fy&&ix<PageSize&&iy<PageSize)value+=fx*fy*((page->surface.color[size_t(iy)*PageSize+ix]>>(16-channel*8))&255);
@@ -108,10 +133,10 @@ public:
     double top=std::max(y0,double(y*PageSize))-y*PageSize,bottom=std::min(y1,double((y+1)*PageSize))-y*PageSize;if(left>=right||top>=bottom)continue;
     auto found=canvas.pages_.find(key(x,y));if(found==canvas.pages_.end()){double a=(right-left)*(bottom-top);for(int c=0;c<3;++c)total[c]+=a*((canvas.background_>>(16-c*8))&255);}
     else{const auto*page=found->second.get();auto&entry=cache[page];entry.used=++serial;
-     // Sparse unit/status changes should not rebuild a 128² prefix for a
-     // single output footprint. Dense work amortizes one prefix; retaining
-     // two full native page rows prevents scanline LRU thrashing.
-     if(entry.sum.empty()&&(right-left)*(bottom-top)<=1024&&entry.work<PageSize*PageSize/2){
+     // Tiny footprints can use direct samples. Whole-map reduction must not
+     // first evaluate half a page with double-precision per-pixel weights,
+     // only to scan the complete page again when constructing its sums.
+     if(!entry.sum&&(right-left)*(bottom-top)<16&&entry.work<PageSize*PageSize/2){
       entry.work+=uint64_t((std::ceil(right)-std::floor(left))*(std::ceil(bottom)-std::floor(top)));
       for(int yy=int(top);yy<int(std::ceil(bottom));++yy)for(int xx=int(left);xx<int(std::ceil(right));++xx){double weight=(std::min(right,double(xx+1))-std::max(left,double(xx)))*(std::min(bottom,double(yy+1))-std::max(top,double(yy)));uint32_t color=page->surface.color[size_t(yy)*PageSize+xx];for(int c=0;c<3;++c)total[c]+=weight*((color>>(16-c*8))&255);}
      }else{const auto&s=prefix(page);for(int c=0;c<3;++c)total[c]+=integral(s,page,right,bottom,c)-integral(s,page,left,bottom,c)-integral(s,page,right,top,c)+integral(s,page,left,top,c);}
@@ -121,6 +146,8 @@ public:
   }
  };
 public:
+ struct AreaCacheStats {size_t bytes;uint64_t builds;};
+ static AreaCacheStats areaCacheStats(){return {AreaPrefix::retained.load(std::memory_order_relaxed),AreaPrefix::builds.load(std::memory_order_relaxed)};}
  bool reset(int width,int height,std::shared_ptr<Budget>budget={},uint32_t background=0xff080c08u){
   regionCache_.reset();pages_.clear();dirty_.clear();dirtyRects_.clear();repaintPages_.clear();repainting_=false;failed_=dynamic_=false;width_=height_=0;paintLeft_=paintTop_=paintRight_=paintBottom_=0;background_=background;budget_=budget?std::move(budget):sharedBudget();
   if(width<1||height<1||width>MaximumDimension||height>MaximumDimension||!budget_->maximum)return false;width_=width;height_=height;paintRight_=width;paintBottom_=height;return true;

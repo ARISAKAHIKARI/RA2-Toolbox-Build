@@ -524,11 +524,17 @@ public:
   // Keep physical border scenery; the native radar projection and output
   // canvas crop the image. Camera movement limits are not a pixel mask.
   if(tiles_.size()>4096)tiles_.clear();if(overlays_.size()>4096)overlays_.clear();
-  if(!detail&&!objectCanvas_.compose(background_,objectDraws,view)){dynamicFailure_=true;return {};}
+  // The saved CPU output is unmasked and predates annotations/effects. Only
+  // reuse it if it describes the immediately preceding ObjectCanvas revision;
+  // a failed intermediate render must fall back to the complete terrain base.
+  const bool incrementalNative=!region.active&&!areaGpuMode&&nativePresentation_.pixels&&
+   nativePresentation_.pixels->size()==size_t(width)*height&&nativePresentation_.background==detailKey_&&
+   nativePresentation_.objects==objectCanvas_.revision()&&!nativePresentation_.gpu&&!nativePresentation_.used;
+  if(!detail&&!objectCanvas_.compose(background_,objectDraws,view,incrementalNative)){dynamicFailure_=true;return {};}
   if(view.failed()){dynamicFailure_=true;return {};}
   stage(stageStats_.objectsMs);
   const bool worldEffects=frame.effects&&frame.effects->world&&!frame.effects->world->empty();
-  const bool staticView=!worldEffects&&(detail?(!detailed_.dirty()&&!gpuMode_):!view.dirtyPages())&&fallbacks.empty();
+  const bool staticView=!worldEffects&&(detail?(!detailed_.dirty()&&!gpuMode_):(!view.dirtyPages()&&objectDraws.empty()))&&fallbacks.empty();
   if(staticView&&!forceFrame){
    if(areaGpuMode){
     auto cached=masked?maskedBaseScene_:baseScene_;if(cached&&cached->pixels.size()==size_t(width)*height){xbrzadapter::gpuAreaCached(areaCachedGpu_);return cached;}
@@ -549,7 +555,7 @@ public:
    areaUsed=view.presentGPU(width,height,out->pixels,spanX_,spanY_,masked?maskPixels_:nullptr,masked?gpuMaskPlan_:nullptr);
    if(!areaUsed&&!view.present(width,height,out->pixels,spanX_,spanY_)){dynamicFailure_=true;return {};}
   }else{
-   if(!detail)out->pixels=baseScene_->pixels;
+   if(!detail)out->pixels=incrementalNative?*nativePresentation_.pixels:baseScene_->pixels;
    if(!(detail?detailed_.finish(out->pixels,true,masked?maskPixels_:nullptr,masked?gpuMaskPlan_:nullptr,maskReadback):region.active?view.presentRegion(width,height,out->pixels,region.x,region.y,region.width,region.height,pixelScaleMode):view.presentDirty(width,height,out->pixels,spanX_,spanY_))){dynamicFailure_=true;return {};}
   }
   if(!region.active&&!sameNative){nativePresentation_.pixels=std::make_shared<const std::vector<uint32_t>>(out->pixels);

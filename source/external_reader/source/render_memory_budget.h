@@ -16,4 +16,5 @@ constexpr size_t LiveFaces=Wide?8*1024*1024:2*1024*1024;
 constexpr size_t PacketBytes=Wide?128*1024*1024:64*1024*1024;
 constexpr size_t LitPixels=Wide?16*1024*1024:4*1024*1024;
 constexpr size_t RasterBytes=Wide?128*1024*1024:64*1024*1024;
+constexpr size_t AreaPrefixes=Wide?256*1024*1024:32*1024*1024; // shared CPU area sums
 }}

@@ -68,5 +68,10 @@
     "main_ui": "Main-only group/rank/repair/power status; exact-floor/object rally resolver; Campaign held/full timers omitted; queued Foot navigation nodes/labels; full PlanMgr graph and custom UI remain partial",
     "formation": "Shared native material bank and ViewportCanvas CPU/GPU compositor/profile; private ghost placement, bounded elapsed-time decode rotation, cached palette invalidation; final bitmap drawn without per-pixel UI processing",
     "limits": "No live Windows/game/GPU/netplay/FPS measurement. Eruption RadBeam2, legacy Wave1/2, building-light beams, complete PlanMgr graph, full-screen distortions and arbitrary mod UI still incomplete."
+  },
+  "Hotfix16": {
+    "cpu_area": "Revision-scoped native-page integral cache shared across row workers and views; 256 MiB retained x64 / 32 MiB x86, invalidated by page writes, immutable COW snapshots retained. Dense shrink no longer directly samples half a page before constructing sums.",
+    "cpu_dirty": "Whole-map CPU output resumes from the immediately preceding unmasked object revision. Only changed and removed object pages are refiltered; background/view/backend or failed-frame mismatches use the complete base.",
+    "verification": "Seven focused CPU regressions and local Zig mixed-architecture build; no Vulkan execution in this continuation; no live Windows/game/FPS measurement."
   }
 }

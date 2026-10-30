@@ -11,6 +11,21 @@ static uint32_t reference(const camera::Surface&s,double x0,double y0,double x1,
  uint32_t out=0xff000000;for(int ch=0;ch<3;++ch)out|=uint32_t(std::floor(sums[ch]/area+.5))<<(16-ch*8);return out;
 }
 int main(){
+ // Sums belong to a page revision: warm presentations and concurrent row
+ // workers share them, while in-place edits and COW snapshots stay distinct.
+ {
+  const auto before=camera::NativeCanvas::areaCacheStats();camera::NativeCanvas source;assert(source.reset(1024,512));lighting::State light;
+  voxel::Image tile;tile.width=tile.height=128;tile.pixels.resize(128*128);tile.skipZ=true;
+  for(size_t n=0;n<tile.pixels.size();++n)tile.pixels[n]=0xff000000u|uint32_t(n*31)&0xffffffu;
+  for(int y=0;y<512;y+=128)for(int x=0;x<1024;x+=128)source.blit(tile,float(x),float(y),1,1,0,light);
+  std::vector<uint32_t>a,b;assert(source.present(128,64,a));auto warm=camera::NativeCanvas::areaCacheStats();assert(warm.builds==before.builds+32);
+  assert(source.present(128,64,b)&&a==b&&camera::NativeCanvas::areaCacheStats().builds==warm.builds);
+  auto snapshot=source.fork();tile.width=tile.height=1;tile.pixels={0xffffffff};source.blit(tile,1,1,1,1,0,light);
+  assert(source.present(128,64,b)&&a!=b&&camera::NativeCanvas::areaCacheStats().builds==warm.builds+1);
+  std::vector<uint32_t>old;assert(snapshot.present(128,64,old)&&old==a);
+  tile.pixels={0xff000000};source.blit(tile,1,1,1,1,0,light);assert(source.present(128,64,b)&&camera::NativeCanvas::areaCacheStats().builds==warm.builds+2);
+  source={};snapshot={};assert(camera::NativeCanvas::areaCacheStats().bytes==before.bytes);
+ }
  camera::NativeCanvas native;camera::Surface flat;assert(native.reset(315,170)&&flat.reset(315,170));lighting::State light;
  voxel::Image tile;tile.width=275;tile.height=121;tile.x=-32;tile.y=-24;tile.pixels.resize(tile.width*tile.height);tile.depth.resize(tile.pixels.size());
  for(int y=0;y<tile.height;++y)for(int x=0;x<tile.width;++x){auto n=size_t(y)*tile.width+x;tile.pixels[n]=0xff000000u|uint32_t((x*13)&255)<<16|uint32_t((y*17)&255)<<8|uint32_t((x+y)&255);tile.depth[n]=float(y%7);}

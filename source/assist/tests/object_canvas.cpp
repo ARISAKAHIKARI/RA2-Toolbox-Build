@@ -14,16 +14,22 @@ int main(){
   draws.push_back({image,float(10+n%30*34)+.25f,float(18+n/30*61)+.75f,float(n%31),2,float(n%5),state});
  }
  camera::ObjectCanvas cache;camera::NativeCanvas output;
+ camera::ObjectCanvas delta;camera::NativeCanvas deltaOutput;std::vector<uint32_t>resolved;bool previous=false;
  auto check=[&]{auto reference=base.fork();for(const auto&draw:draws)reference.blit(*draw.image,draw.x,draw.y,1,1,draw.base,draw.light,draw.lift,draw.drop);
-  assert(cache.compose(base,draws,output));for(int y=0;y<768;++y)for(int x=0;x<1024;++x){assert(output.pixel(x,y)==reference.pixel(x,y));assert(output.depth(x,y)==reference.depth(x,y));}};
+  assert(cache.compose(base,draws,output));for(int y=0;y<768;++y)for(int x=0;x<1024;++x){assert(output.pixel(x,y)==reference.pixel(x,y));assert(output.depth(x,y)==reference.depth(x,y));}
+  assert(delta.compose(base,draws,deltaOutput,previous));if(!previous)assert(base.present(173,109,resolved,1023.25,767.5));
+  assert(deltaOutput.presentDirty(173,109,resolved,1023.25,767.5));std::vector<uint32_t>full;assert(reference.present(173,109,full,1023.25,767.5));assert(resolved==full);previous=true;
+ };
  check();assert(cache.stats().changed>=32);auto revision=cache.revision();camera::NativeCanvas old=output;
  check();assert(!cache.stats().changed&&cache.stats().reused>=32&&cache.revision()==revision);
+ assert(!deltaOutput.dirtyPages());
  gpuarea::Plan a,b;assert(old.areaPlan(160,120,a)&&output.areaPlan(160,120,b)&&a.pages.size()==b.pages.size());
  for(size_t n=0;n<a.pages.size();++n)assert(a.pages[n].pixels==b.pages[n].pixels&&a.pages[n].version==b.pages[n].version);
  draws[0].x+=128;draws[5].light.intensity=200;draws.erase(draws.begin()+6,draws.begin()+12);check();assert(cache.stats().changed>0&&cache.stats().reused>0);
  std::reverse(draws.begin(),draws.end());check();assert(cache.stats().changed>0);
- voxel::Image dot;dot.width=dot.height=1;dot.pixels={0xff112233};dot.depth={2000};base.blit(dot,511,383,1,1,0,light);check();assert(cache.stats().changed>0&&cache.stats().reused>0);
+ voxel::Image dot;dot.width=dot.height=1;dot.pixels={0xff112233};dot.depth={2000};base.blit(dot,511,383,1,1,0,light);previous=false;check();assert(cache.stats().changed>0&&cache.stats().reused>0);
  draws.clear();check();assert(cache.stats().removed>0&&!output.dirtyPages());
+ assert(deltaOutput.dirtyPages()>0);check();assert(!deltaOutput.dirtyPages());
  // Resolve each immutable VXL and deferred shadow once, before page workers.
  auto source=std::make_shared<voxel::Image>();auto model=gpuvoxeltest::model();auto vpl=gpuvoxeltest::vpl();std::array<uint32_t,256>palette{};palette.fill(0xff789abc);
  assert(gpuvoxel::image(model,.2,palette,*source,.7,2,&vpl,255));source->depth.clear();source->writeDepth=false;
