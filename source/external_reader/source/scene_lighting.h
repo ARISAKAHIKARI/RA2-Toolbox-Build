@@ -3,6 +3,7 @@
 #include <array>
 #include <cstdint>
 #include <cstring>
+#include <unordered_map>
 namespace external { namespace lighting {
 // Raw palettes contain expanded RGB, not a rendered lighting ramp. Read the
 // current ambient and LightConvert tint separately; never call the renderer.
@@ -22,6 +23,18 @@ template<class Read>bool converterTint(Read read,uint32_t convert,std::array<int
  uint8_t again=2;if(!read(at,after.data(),12)||after!=current||!read(convert+0x1B0,&again,1)||again!=tinted)return false;
  out=current;return true;
 }
+// One presentation/read epoch only. Thousands of cells usually share the
+// same converter; validate its tint once rather than five reads per cell.
+// Cache failures as failures, so callers retain their own fallback tint.
+struct TintCache {
+ struct Entry {std::array<int,3> tint{};bool valid=false;};
+ std::unordered_map<uint32_t,Entry> entries;
+ template<class Read>bool sample(Read read,uint32_t convert,std::array<int,3>&out){
+  auto found=entries.find(convert);
+  if(found==entries.end()){Entry e;e.valid=converterTint(read,convert,e.tint);found=entries.emplace(convert,e).first;}
+  if(!found->second.valid)return false;out=found->second.tint;return true;
+ }
+};
 // 705D70: ordinary SHP and VXL use their owner's ColorScheme, including a
 // type-specific CustomPalette vector. A cell's LightConvert is terrain art;
 // its RGB tint must not leak onto these objects.
@@ -64,12 +77,12 @@ enum class Layer {Object,Terrain,Bridge};
 // Read the engine's evaluated cell, not a second approximation of [Lighting].
 // 484680 combines height, Ground and current ambient (including special modes),
 // then applies the slope/light-source intensity for terrain and bridge layers.
-template<class Read>State cell(Read read,uint32_t p,const State&fallback,Layer layer=Layer::Object,bool localTint=true){
+template<class Read>State cell(Read read,uint32_t p,const State&fallback,Layer layer=Layer::Object,bool localTint=true,TintCache*tints=nullptr){
  if(p<0x10000||p>0xfffffe00)return fallback;
  uint32_t scale=0,convert=0;int16_t values[3]{},after[3]{};
  if(!read(p+0x104,&scale,4)||scale>262144||!read(p+0x34,&convert,4)||(!scale&&convert<0x10000)||
     !read(p+0x10A,values,6)||std::any_of(values,values+3,[](int x){return x<0||x>2000;}))return fallback;
- State out=fallback;out.intensity=values[int(layer)];if(localTint)converterTint(read,convert,out.tint);
+ State out=fallback;out.intensity=values[int(layer)];if(localTint){if(tints)tints->sample(read,convert,out.tint);else converterTint(read,convert,out.tint);}
  if(!read(p+0x10A,after,6)||memcmp(values,after,6))return fallback;
  return out;
 }

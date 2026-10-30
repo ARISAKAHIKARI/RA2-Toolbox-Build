@@ -7,7 +7,10 @@
 namespace external {namespace immutableatlas {
 struct Source {std::shared_ptr<const void> owner;const void* data=nullptr;size_t bytes=0;bool generated=false;uint64_t signature=0;};
 struct Resident {std::weak_ptr<const void> owner;const void* address=nullptr;uint32_t offset=0,words=0;uint64_t signature=0;};
-struct Plan {std::vector<Resident> retained;std::vector<uint32_t> offsets;std::vector<size_t> dirty;uint64_t bytes=0;};
+struct Plan {
+ std::vector<Resident> retained;std::vector<uint32_t> offsets;std::vector<size_t> dirty;std::vector<uint8_t> dirtyFlags;uint64_t bytes=0;
+ bool changed(size_t n)const{return n<dirtyFlags.size()&&dirtyFlags[n]!=0;}
+};
 inline bool identical(const Resident&r,const Source&s){return r.address==s.owner.get()&&!r.owner.owner_before(s.owner)&&!s.owner.owner_before(r.owner)&&r.words==(s.bytes+3)/4&&r.signature==s.signature;}
 // Address indexes are accelerators only: control-block identity, word length
 // and generation signature are always checked before reusing GPU storage.
@@ -38,8 +41,8 @@ inline bool build(const std::vector<Source>&input,const std::vector<Resident>&re
   if(gap->offset==gap->end)gaps.erase(gap);out.retained.push_back(active[n]);dirty[n]=true;
  }
  if(repack){out.retained=active;uint32_t offset=0;for(size_t n=0;n<active.size();++n){active[n].offset=out.retained[n].offset=offset;offset+=active[n].words;dirty[n]=true;}}
- out.offsets.reserve(input.size());std::vector<bool> seen(active.size(),false);
- for(size_t i=0;i<input.size();++i){const size_t n=indices[i];out.offsets.push_back(active[n].offset);if(dirty[n]&&!seen[n]){seen[n]=true;out.dirty.push_back(i);if(!input[i].generated)out.bytes+=uint64_t(active[n].words)*4;}}
+ out.offsets.reserve(input.size());out.dirtyFlags.assign(input.size(),0);std::vector<bool> seen(active.size(),false);
+ for(size_t i=0;i<input.size();++i){const size_t n=indices[i];out.offsets.push_back(active[n].offset);if(dirty[n]&&!seen[n]){seen[n]=true;out.dirty.push_back(i);out.dirtyFlags[i]=1;if(!input[i].generated)out.bytes+=uint64_t(active[n].words)*4;}}
  return true;
 }
 }}

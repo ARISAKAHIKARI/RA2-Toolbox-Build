@@ -131,7 +131,7 @@ public:
  }
  void blit(const voxel::Image&i,float ax,float ay,float,float,float base,const lighting::State&light,float lift=1,float shadowDrop=0,
            std::shared_ptr<const voxel::Image>owner={},vulkancompute::MotionIdentity motion={}){
-  if(!ready_)return;const float outputX=float((ax-x_)*sx_),outputY=float((ay-y_)*sy_);
+  if(!ready_||!visible(i,ax,ay,shadowDrop))return;const float outputX=float((ax-x_)*sx_),outputY=float((ay-y_)*sy_);
   if(gpuRecording_)gpuRecord_.append(i,std::move(owner),outputX,outputY,float(sx_),float(sy_),base,light,lift,shadowDrop,smooth(i),std::move(motion));
   else surface_.blit(i,outputX,outputY,float(sx_),float(sy_),base,light,lift,shadowDrop,smooth(i));dirty_=true;
  }
@@ -140,6 +140,12 @@ public:
  void motion(vulkancompute::MotionView view,bool enabled){if(gpuRecording_)gpuRecord_.motion(std::move(view),enabled);}
  std::shared_ptr<const gpumotion::Guides> guides()const{return guides_;}
  const vulkancompute::FrameJob*recordedGpuFrame()const{return gpuRecording()?&gpuRecord_.frame():nullptr;}
+ const vulkancompute::FrameJob*completeGpuPlan(std::shared_ptr<const std::vector<uint8_t>>fog={},std::shared_ptr<const gpushroud::Plan>mask={}){
+  if(!gpuRecording())return nullptr;
+  const int l=std::clamp(int(std::ceil(-x_*sx_-.5)),0,width_),r=std::clamp(int(std::ceil((backingW_-x_)*sx_-.5)),0,width_);
+  const int t=std::clamp(int(std::ceil(-y_*sy_-.5)),0,height_),b=std::clamp(int(std::ceil((backingH_-y_)*sy_-.5)),0,height_);
+  gpuRecord_.clip(l,t,r,b);gpuRecord_.fog(std::move(fog));if(mask)gpuRecord_.maskPlan(std::move(mask));return gpuRecord_.valid()?&gpuRecord_.frame():nullptr;
+ }
  void annotationDot(int x,int y,uint32_t color){if(ready_&&gpuRecording_)gpuRecord_.annotationDot(x,y,color);}
  void gpuMaskPlan(std::shared_ptr<const gpushroud::Plan>plan){if(ready_&&gpuRecording_)gpuRecord_.maskPlan(std::move(plan));}
  void gpuBaseTiles(std::vector<vulkancompute::TileJob>jobs){if(ready_&&gpuRecording_)gpuRecord_.baseTiles(std::move(jobs));}
@@ -151,9 +157,7 @@ public:
              std::shared_ptr<const gpushroud::Plan>maskPlan={},std::vector<uint8_t>*maskOut=nullptr){
   if(!ready_)return false;
   if(gpuRecording_){
-   const int l=std::clamp(int(std::ceil(-x_*sx_-.5)),0,width_),r=std::clamp(int(std::ceil((backingW_-x_)*sx_-.5)),0,width_);
-   const int t=std::clamp(int(std::ceil(-y_*sy_-.5)),0,height_),b=std::clamp(int(std::ceil((backingH_-y_)*sy_-.5)),0,height_);
-   gpuRecord_.clip(l,t,r,b);gpuRecord_.fog(std::move(fog));if(maskPlan)gpuRecord_.maskPlan(std::move(maskPlan));
+   completeGpuPlan(std::move(fog),std::move(maskPlan));
    auto&gpu=xbrzadapter::gpuState();gpu.attempted=true;
    if(!gpu.resolve)gpu.resolve=std::make_unique<typename std::decay<decltype(gpu.resolve)>::type::element_type>();
    if(gpuRecord_.valid()&&renderGpu(*gpu.resolve,gpuRecord_.frame(),pixels,maskOut,0)){

@@ -131,14 +131,14 @@ private:
   if(rawTiles&&!verifyXbrz())return false;
   UploadPlan colorPlan,materialPlan;if(!plan(colors,colorResident_,colorPlan,AtlasBytes)||!plan(materials,materialResident_,materialPlan,MaterialBytes))return false;
   std::vector<gpuxbrz::RawJob>rawJobs;
-  for(size_t n=0;n<frame.baseTiles.size();++n){const auto&t=frame.baseTiles[n];if(t.reconstructionFactor&&std::find(colorPlan.dirty.begin(),colorPlan.dirty.end(),tileSources[n])!=colorPlan.dirty.end())rawJobs.push_back({t.pixels,t.sourceWidth,t.sourceHeight,t.reconstructionFactor,colorPlan.offsets[tileSources[n]]});}
-  for(size_t n=0;n<frame.draws.size();++n){const auto&d=frame.draws[n];if(d.reconstructionSource&&std::find(colorPlan.dirty.begin(),colorPlan.dirty.end(),drawSources[n][3])!=colorPlan.dirty.end())rawJobs.push_back({d.reconstructionSource,d.source.width,d.source.height,d.reconstructionFactor,colorPlan.offsets[drawSources[n][3]]});}
+  for(size_t n=0;n<frame.baseTiles.size();++n){const auto&t=frame.baseTiles[n];if(t.reconstructionFactor&&colorPlan.changed(tileSources[n]))rawJobs.push_back({t.pixels,t.sourceWidth,t.sourceHeight,t.reconstructionFactor,colorPlan.offsets[tileSources[n]]});}
+  for(size_t n=0;n<frame.draws.size();++n){const auto&d=frame.draws[n];if(d.reconstructionSource&&colorPlan.changed(drawSources[n][3]))rawJobs.push_back({d.reconstructionSource,d.source.width,d.source.height,d.reconstructionFactor,colorPlan.offsets[drawSources[n][3]]});}
   {std::set<uint32_t>seen;rawJobs.erase(std::remove_if(rawJobs.begin(),rawJobs.end(),[&](const gpuxbrz::RawJob&job){return !seen.insert(job.outputOffset).second;}),rawJobs.end());}
   if(!xbrz_.prepare(rawJobs))return false;diagnostics_.xbrzAvailable=xbrz_.available();
-  const bool maskDirty=frame.maskPlan&&std::find(materialPlan.dirty.begin(),materialPlan.dirty.end(),fog)!=materialPlan.dirty.end();
+  const bool maskDirty=frame.maskPlan&&materialPlan.changed(fog);
   if(frame.maskPlan&&!shroud_.prepare(frame.maskPlan,materials_.buffer,materialPlan.offsets[fog],MaterialBytes))return false;
   std::vector<gpuvoxel::Stage::Job>voxelJobs;
-  for(size_t n=0;n<frame.draws.size();++n)if(frame.draws[n].gpuRaster){const auto&s=drawSources[n];bool dirty=std::find(colorPlan.dirty.begin(),colorPlan.dirty.end(),s[0])!=colorPlan.dirty.end()||std::find(materialPlan.dirty.begin(),materialPlan.dirty.end(),s[2])!=materialPlan.dirty.end();if(dirty)voxelJobs.push_back({frame.draws[n].gpuRaster,colorPlan.offsets[s[0]],materialPlan.offsets[s[2]]});}
+  for(size_t n=0;n<frame.draws.size();++n)if(frame.draws[n].gpuRaster){const auto&s=drawSources[n];bool dirty=colorPlan.changed(s[0])||materialPlan.changed(s[2]);if(dirty)voxelJobs.push_back({frame.draws[n].gpuRaster,colorPlan.offsets[s[0]],materialPlan.offsets[s[2]]});}
   {std::set<std::pair<uint32_t,uint32_t>>seen;voxelJobs.erase(std::remove_if(voxelJobs.begin(),voxelJobs.end(),[&](const gpuvoxel::Stage::Job&job){return !seen.insert({job.colorOffset,job.indexOffset}).second;}),voxelJobs.end());}
   if(!voxels_.prepare(voxelJobs,atlas_.buffer,AtlasBytes,materials_.buffer,MaterialBytes))return false;
   std::vector<VkBufferCopy>colorCopies,materialCopies;if(!uploadPlan(colors,colorPlan,upload_,colorCopies,AtlasBytes)||!uploadPlan(materials,materialPlan,materialUpload_,materialCopies,MaterialBytes))return false;

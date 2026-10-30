@@ -21,6 +21,7 @@ namespace renderupgrade {
 static double presentationNow(){return std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now().time_since_epoch()).count();}
 struct Request {uint64_t generation=0;bool materialRefresh=true;int detail=1,colorPrecision=1;uint32_t pid=0,match=0,tick=0;int width=0,height=0;uint32_t reveal=0;int paletteRange=1,pixelScaleMode=0;external::mainview::View view;overlaycompositor::Context context;bool gpu=false;renderpresentation::CameraPrefetch cameraMotion;double decodeBudgetMs=4.;int displayRate=60;external::presentation::Profile profile;};
 struct Frame {
+ double sampledAtMs=0,completedAtMs=0,sampleToDrawMs=0;
  double sampleMs=0,sceneMs=0,finishMs=0,gpuPrepareMs=0,gpuWaitMs=0,gpuCopyMs=0;
  double terrainMs=0,palettesMs=0,decodeStageMs=0,voxelMs=0,objectsMs=0,resolveMs=0,effectsMs=0;
  uint32_t renderReadCalls=0,renderPageHits=0,drawnObjects=0,requestedObjects=0;uint64_t paletteSamples=0,paletteHits=0;
@@ -28,7 +29,7 @@ struct Frame {
  uint32_t readCalls=0,pageHits=0,prefetchedPages=0,decodeAttempts=0;double decodeMs=0;
  Request request;std::shared_ptr<const external::radar::Scene> image;
  std::vector<external::nativefeedback::Object> objects;
- bool gpuAttempted=false,gpuUsed=false;
+ bool gpuAttempted=false,gpuUsed=false,sceneReused=false;
  uint64_t assetRevision=0;uint32_t sampledTick=0,completedTick=0;bool hasCompletionGap=false;int paddingX=0,paddingY=0;double renderMs=0,observationMs=0,stateIntervalMs=0,completionGapMs=0;int logicFrame=-1;double yellow=.5,red=.25;external::nativefeedback::EffectStatus effects;
 };
 static external::ReadSession reader;
@@ -52,6 +53,7 @@ static std::atomic<bool> readyPending{false};
 static void notifyReady(){if(!readyPending.exchange(true)&&!PostMessageW(ui,ReadyMessage,0,0))readyPending=false;}
 static std::atomic<int> progress{0};
 static uint64_t generation=1,workerGeneration=0;
+static double handedOffFrameMs=0,completionToHandoffMs=0;
 static renderpresentation::ViewLease viewLease;
 static renderpresentation::GroupLease<Request,Frame> groupLease;
 static int verifiedScaleSetting=-1;static bool verifiedPhysicalSetting=false;
@@ -185,10 +187,11 @@ static asyncwork::Recurring<Request,Frame> worker([](const Request&r)->std::shar
  out->readCalls=observed->readCalls;out->pageHits=observed->pageHits;out->prefetchedPages=observed->prefetchedPages;
  out->decodeAttempts=renderer.decodeStats().attempts;out->decodeMs=renderer.decodeStats().milliseconds;
  out->sampleMs=observed->readMs;out->sceneMs=sceneDoneMs-sampledMs;
- const auto&stages=renderer.stageStats();out->terrainMs=stages.terrainMs;out->palettesMs=stages.palettesMs;out->decodeStageMs=stages.decodeMs;out->voxelMs=stages.voxelMs;out->objectsMs=stages.objectsMs;out->resolveMs=stages.resolveMs;out->effectsMs=stages.effectsMs;
+ out->sampledAtMs=observed->observedMs;out->sampleToDrawMs=std::max(0.,sampledMs-observed->observedMs);
+ const auto&stages=renderer.stageStats();out->sceneReused=stages.reused;out->terrainMs=stages.terrainMs;out->palettesMs=stages.palettesMs;out->decodeStageMs=stages.decodeMs;out->voxelMs=stages.voxelMs;out->objectsMs=stages.objectsMs;out->resolveMs=stages.resolveMs;out->effectsMs=stages.effectsMs;
  out->renderReadCalls=reader.reads;out->renderPageHits=reader.pageHits;out->paletteSamples=assets.paletteSamples();out->paletteHits=assets.paletteSampleHits();
  if(gpuBackend){const auto&d=gpuBackend->diagnostics();out->gpuDevice=d.device;out->gpuReason=d.reason;out->gpuSoftware=d.softwareDevice;out->gpuReadbackCached=d.readbackCached;
-  if(out->gpuUsed){out->gpuPrepareMs=d.prepareMilliseconds;out->gpuWaitMs=d.waitMilliseconds;out->gpuCopyMs=d.readbackMilliseconds;}}
+  if(out->gpuUsed&&!out->sceneReused){out->gpuPrepareMs=d.prepareMilliseconds;out->gpuWaitMs=d.waitMilliseconds;out->gpuCopyMs=d.readbackMilliseconds;}}
  const double zscale=external::projectionZScale(fresh);
  out->objects=external::nativefeedback::objectGeometry(renderer,data,renderView,r.width,r.height,zscale,border.paddingX,border.paddingY);
  out->yellow=assets.conditionYellow();out->red=assets.conditionRed();
@@ -207,7 +210,7 @@ static asyncwork::Recurring<Request,Frame> worker([](const Request&r)->std::shar
  external::mainview::View after;
  if(!external::mainview::sample(fresh,after)||!renderpresentation::sameProjection(before,after)||after.frame<before.frame||
    !external::radar::sameWorld(data,external::radar::publicationContext(fresh)))return unavailable();
- out->image=std::move(scene);out->sampledTick=sampledTick;out->completedTick=GetTickCount();const double completedMs=presentationNow();out->renderMs=completedMs-started;out->finishMs=completedMs-sceneDoneMs;lastCompletedRenderMs=out->renderMs;
+ out->image=std::move(scene);out->sampledTick=sampledTick;out->completedTick=GetTickCount();const double completedMs=presentationNow();out->completedAtMs=completedMs;out->renderMs=completedMs-started;out->finishMs=completedMs-sceneDoneMs;lastCompletedRenderMs=out->renderMs;
  // Written exactly once per successful world-frame completion. Reusing or
  // touching the same frame at a faster UI cadence cannot inflate this rate.
  out->hasCompletionGap=hasFrameCompleteTime;out->completionGapMs=hasFrameCompleteTime?completedMs-lastFrameCompleteMs:0;
@@ -354,6 +357,7 @@ static void update(POINT origin,const RECT&client,const external::display::State
   presentedFrame=groupLease.frame();displaying=true;
  }else{layers.clear();groupLease.reset();imageToken=0;if(!fresh)feedback::hide();}
  overlaycompositor::host().replaceGroupAt(publishContext,{overlaycompositor::RenderUpgrade,feedback::SelectionLayer,feedback::CursorLayer,feedback::MessageLayer,feedback::TimerLayer,feedback::StatusLayer,feedback::RallyLayer},std::move(layers));
+ if(displaying&&presentedFrame&&presentedFrame->completedAtMs!=handedOffFrameMs){handedOffFrameMs=presentedFrame->completedAtMs;completionToHandoffMs=std::max(0.,presentationNow()-handedOffFrameMs);}
  terrainWorker.submit(request,std::min(60,informationFPS()));
  samplingWorker.submit(request,renderpresentation::ObservationRate);
  worker.submit(request,informationFPS());
@@ -412,10 +416,12 @@ static void update(POINT origin,const RECT&client,const external::display::State
   std::wstring timing=L"独立采样 "+ms(presentedFrame->sampleMs)+L" · 场景 "+ms(presentedFrame->sceneMs)+L" · 后处理 "+ms(presentedFrame->finishMs)+L" ms";
   timing+=L"\r\n新帧 "+(presentedFrame->hasCompletionGap?ms(presentedFrame->completionGapMs):std::wstring(L"待测"))+L" · 采样间隔 "+ms(presentedFrame->observationMs)+L" ms";
   if(presentedFrame->gpuUsed)timing+=L" · GPU准备 "+ms(presentedFrame->gpuPrepareMs)+L"／等待 "+ms(presentedFrame->gpuWaitMs)+L"／回读整理 "+ms(presentedFrame->gpuCopyMs)+L" ms";
+  if(presentedFrame->sceneReused)timing+=L" · 画面输入相同，复用 GPU 结果";
   timing+=L"\r\n对象 "+std::to_wstring(presentedFrame->drawnObjects)+L"/"+std::to_wstring(presentedFrame->requestedObjects)+L" · 读取 "+std::to_wstring(presentedFrame->readCalls)+L" 次 · 批量 "+std::to_wstring(presentedFrame->prefetchedPages)+L" 页 · 素材解码 "+std::to_wstring(presentedFrame->decodeAttempts)+L" 项／"+ms(presentedFrame->decodeMs)+L" ms";
   timing+=L"\r\n场景细分：地形 "+ms(presentedFrame->terrainMs)+L" · 色盘 "+ms(presentedFrame->palettesMs)+L" · 解码 "+ms(presentedFrame->decodeStageMs)+L" · VXL "+ms(presentedFrame->voxelMs)+L" · 对象合成 "+ms(presentedFrame->objectsMs)+L" · 输出 "+ms(presentedFrame->resolveMs)+L" · 特效 "+ms(presentedFrame->effectsMs)+L" ms";
   timing+=L"\r\n场景读取 "+std::to_wstring(presentedFrame->renderReadCalls)+L" 次／缓存 "+std::to_wstring(presentedFrame->renderPageHits)+L" · 色盘采样 "+std::to_wstring(presentedFrame->paletteSamples)+L"／复用 "+std::to_wstring(presentedFrame->paletteHits);
-  timing+=L"\r\n采样目标 "+std::to_wstring(renderpresentation::ObservationRate)+L" Hz · 状态更新 "+ms(presentedFrame->stateIntervalMs)+L" ms";
+  timing+=L"\r\n采样目标 "+std::to_wstring(renderpresentation::ObservationRate)+L" Hz · 逻辑帧变化间隔 "+ms(presentedFrame->stateIntervalMs)+L" ms";
+  timing+=L"\r\n链路：采样→开画 "+ms(presentedFrame->sampleToDrawMs)+L" · 完成→交付 "+ms(completionToHandoffMs)+L" · 当前画面数据年龄 "+ms(std::max(0.,presentationNow()-presentedFrame->sampledAtMs))+L" ms";
   if(presentedFrame->gpuUsed)timing+=presentedFrame->gpuReadbackCached?L" · 回读：CPU 缓存内存":L" · 回读：非缓存内存";
   if(request.gpu){auto wide=[](const std::string&s){return std::wstring(s.begin(),s.end());};
    timing+=L"\r\nGPU："+(presentedFrame->gpuUsed?std::wstring(presentedFrame->gpuSoftware?L"软件设备 ":L"硬件设备 "):std::wstring(L"CPU 回退 "))+wide(presentedFrame->gpuDevice);

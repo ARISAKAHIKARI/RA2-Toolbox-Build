@@ -149,6 +149,10 @@ int main(int argc,char**argv){
  disk["TREE.TEM"]=shp;disk["ISOTEM.PAL"]=pal;
  memcpy(memory.data()+0x7E1B78+78,"SNO",4);memcpy(memory.data()+0x7E1B78+68,"ISOSNO",7);memory[0x7E1B78+86]='A';
  clockValue+=6000;gameassets::update();assert(gameassets::overlay(tree,0,0,image,true));assert(image.pixels[0]==external::voxel::premultiply(0xff0c1824u,1,255));
+ assert(image.shadowsAfter&&image.attachments.size()==1&&image.attachments[0].shadow&&image.attachments[0].indices[0]==15);
+ assert(image.writeDepth&&image.attachments[0].writeDepth);
+ memory[tree+0x2B3]=1;assert(gameassets::overlay(tree,0,1,image,true));assert(!image.writeDepth&&!image.attachments[0].writeDepth&&image.attachments[0].indices[0]==16);memory[tree+0x2B3]=0;
+ std::cout<<"PASS production archived Terrain body plus actual second-half shadow, shared draw point and animated read-only Z policy\n";
  assert(gameassets::overlay(ore,0,0,image));assert(image.pixels[0]==external::voxel::premultiply(0xff585858u,1,255));
  memcpy(memory.data()+0x7E1B78+78,"TEM",4);memcpy(memory.data()+0x7E1B78+68,"ISOTEM",7);memory[0x7E1B78+86]='T';
  // Native Terrain.Draw selects the resource converter for SpawnsTiberium,

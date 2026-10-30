@@ -1,6 +1,7 @@
 #pragma once
 #include "gpu_voxel.h"
 #include <map>
+#include <list>
 #include <mutex>
 #include <tuple>
 #include <type_traits>
@@ -20,15 +21,18 @@ struct Key {
 };
 inline size_t bytes(const voxel::Image&i){size_t n=sizeof i+i.pixels.capacity()*4+i.depth.capacity()*4+i.indices.capacity();if(i.gpuRaster)n+=sizeof(gpuvoxel::Prepared)+i.gpuRaster->triangles.capacity()*sizeof(gpuvoxel::Triangle);for(const auto&a:i.attachments)n+=bytes(a);return n;}
 class Bank {
- struct Entry {std::shared_ptr<const voxel::Image>image;uint64_t used;size_t bytes;};
- std::mutex mutex_;std::map<Key,Entry>entries_;size_t bytes_=0,budget_;uint64_t serial_=0,hits_=0,misses_=0;
+ using Recency=std::list<const Key*>;
+ struct Entry {std::shared_ptr<const voxel::Image>image;size_t bytes;Recency::iterator recent;};
+ std::mutex mutex_;std::map<Key,Entry>entries_;Recency recent_;size_t bytes_=0,budget_;uint64_t hits_=0,misses_=0;
 public:
  explicit Bank(size_t budget=rendermemory::SharedImages):budget_(budget){}
- std::shared_ptr<const voxel::Image>get(const Key&key){std::lock_guard<std::mutex>lock(mutex_);auto at=entries_.find(key);if(at==entries_.end()){++misses_;return {};}at->second.used=++serial_;++hits_;return at->second.image;}
- void put(Key key,std::shared_ptr<const voxel::Image>image){if(!image||image->incomplete)return;size_t cost=bytes(*image)+sizeof(Entry)+sizeof(Key);if(cost>budget_)return;std::lock_guard<std::mutex>lock(mutex_);
+ std::shared_ptr<const voxel::Image>get(const Key&key){std::lock_guard<std::mutex>lock(mutex_);auto at=entries_.find(key);if(at==entries_.end()){++misses_;return {};}recent_.splice(recent_.end(),recent_,at->second.recent);++hits_;return at->second.image;}
+ void put(Key key,std::shared_ptr<const voxel::Image>image){if(!image||image->incomplete)return;size_t cost=bytes(*image)+sizeof(Entry)+sizeof(Key)+7*sizeof(void*);if(cost>budget_)return;std::lock_guard<std::mutex>lock(mutex_);
   if(entries_.count(key))return;
-  while(!entries_.empty()&&bytes_+cost>budget_){auto old=std::min_element(entries_.begin(),entries_.end(),[](const auto&a,const auto&b){return a.second.used<b.second.used;});bytes_-=old->second.bytes;entries_.erase(old);}
-  bytes_+=cost;entries_.emplace(std::move(key),Entry{std::move(image),++serial_,cost});
+  // Camera/pose churn must not scan every cached image for each eviction.
+  while(!recent_.empty()&&bytes_+cost>budget_){auto old=entries_.find(*recent_.front());bytes_-=old->second.bytes;recent_.pop_front();entries_.erase(old);}
+  auto inserted=entries_.emplace(std::move(key),Entry{std::move(image),cost,{}}).first;
+  recent_.push_back(&inserted->first);inserted->second.recent=std::prev(recent_.end());bytes_+=cost;
  }
  struct Stats{size_t resident,entries;uint64_t hits,misses;};Stats stats(){std::lock_guard<std::mutex>lock(mutex_);return {bytes_,entries_.size(),hits_,misses_};}
 };

@@ -28,6 +28,7 @@ int main(){
   for(unsigned i=0;i<1000;++i){unsigned n=random()%2048;auto owner=owners[n];input.push_back({owner,owner->data(),owner->size()*4,(n%4)==0,uint64_t(epoch%3)});}
   Plan oldPlan,newPlan;bool a=reference(input,oldResident,oldPlan,256*1024),b=build(input,newResident,newPlan,256*1024);assert(a==b&&a);
   assert(oldPlan.offsets==newPlan.offsets&&oldPlan.dirty==newPlan.dirty&&oldPlan.bytes==newPlan.bytes);
+  for(size_t i=0;i<input.size();++i)assert(newPlan.changed(i)==(std::find(oldPlan.dirty.begin(),oldPlan.dirty.end(),i)!=oldPlan.dirty.end()));
   oldResident=std::move(oldPlan.retained);newResident=std::move(newPlan.retained);++passed;
  }
  // Reusing a raw address with a different owner or generation cannot reuse

@@ -1,4 +1,5 @@
 #pragma once
+#include "terrain_sprite.h"
 #include "game_asset_files.h"
 #include "asset_decode.h"
 #include "radar_shroud_assets.h"
@@ -228,9 +229,12 @@ bool overlay(uint32_t type,uint32_t pointer,int frame,external::voxel::Image&out
  // Scene overlays use indexed cutouts, not the decoder's translucent preview
  // default. Decode covered pixels opaque before ground composition; trying to
  // undo premultiplication afterwards also loses original palette precision.
- std::string why;bool ok=disk?external::voxel::sprite(external::assets::Memory{std::move(bytes)},external::assets::Memory::Base,pal,out,frame,&why,255):external::voxel::sprite(read,pointer,pal,out,frame,&why,255);if(!ok)failure="overlay-frame/decode:"+file+" frame="+std::to_string(frame)+" "+why;
- if(ok&&terrain&&external::lighting::spawnsTiberium(read,type))out.y-=16; // Native 71C2A9 / 71C438.
- if(ok&&!terrain){out.flat=(word(type+0x2B3)&255)!=0;bool wall=(word(type+0x2A8)&255)!=0,rock=(word(type+0x2B5)&255)!=0;out.depthBias=out.flat?-1.f:(wall||rock)?0.f:15.f;out.writeDepth=(word(type+0x2AD)&255)==0;}
+ std::string why;bool ok=false;
+ if(terrain){const bool animated=(word(type+0x2B3)&255)!=0,spawner=external::lighting::spawnsTiberium(read,type);
+  ok=disk?terrainsprite::decode(external::assets::Memory{std::move(bytes)},external::assets::Memory::Base,pal,frame,animated,spawner,out,&why):terrainsprite::decode(read,pointer,pal,frame,animated,spawner,out,&why);
+ }else ok=disk?external::voxel::sprite(external::assets::Memory{std::move(bytes)},external::assets::Memory::Base,pal,out,frame,&why,255):external::voxel::sprite(read,pointer,pal,out,frame,&why,255);
+ if(!ok)failure="overlay-frame/decode:"+file+" frame="+std::to_string(frame)+" "+why;
+ if(ok&&!terrain)terrainsprite::overlayDepth(out,(word(type+0x2A9)&255)!=0,(word(type+0x2A8)&255)!=0,(word(type+0x2B3)&255)!=0,(word(type+0x2B5)&255)!=0);
  return ok;}
 bool sprite(uint32_t type,uint32_t pointer,const std::array<uint32_t,256>&pal,int frame,external::voxel::Image&out){
  std::vector<uint8_t> bytes;std::string filename;if(!shapeBytes(type,pointer,bytes,filename))return false;

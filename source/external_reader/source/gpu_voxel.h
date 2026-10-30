@@ -35,9 +35,10 @@ inline bool prepare(const Model&model,double angle,const std::array<uint32_t,256
   if(!ready){pages.fill(16);std::array<float,3> raw{};for(unsigned i=0;i<253&&normalVector(face.normalType,i,raw);++i)pages[i]=uint8_t(projectile?nativeProjectilePage(raw,face.turret?turretLight:bodyLight):nativeVoxelPage(raw,face.turret?turretLight:bodyLight));ready=true;}
   return pages[face.normalIndex];
  };
- auto pitched=[&](Vec p){if(pitch==0)return p;double c=std::cos(pitch),s=std::sin(pitch);return Vec{float(p.x*c+p.z*s),p.y,float(-p.x*s+p.z*c)};};
- auto worldPoint=[&](const Face&f,Vec p){auto point=posePoint(f,pitched(p),angle,turretAngle,turretOffset);return tilted?posturePoint(geometryWorld,point):point;};
- float minX=0,minY=0,maxX=0,maxY=0;for(const auto&f:model.faces)for(auto p:f.p){auto s=project(worldPoint(f,p));if(!finite(s.x)||!finite(s.y)||!finite(s.z))return false;minX=std::min(minX,s.x);minY=std::min(minY,s.y);maxX=std::max(maxX,s.x);maxY=std::max(maxY,s.y);}
+ const PoseTransform transform(angle,turretAngle,turretOffset,pitch);
+ auto worldPoint=[&](const Face&f,Vec p){auto point=transform.point(f,p);return tilted?posturePoint(geometryWorld,point):point;};
+ std::vector<ProjectedFace> projected;float minX=0,minY=0,maxX=0,maxY=0;
+ if(!projectModel(model,worldPoint,projected,minX,minY,maxX,maxY))return false;
  int left=int(std::floor(minX))-1,top=int(std::floor(minY))-1,w=int(std::ceil(maxX))-left+2,h=int(std::ceil(maxY))-top+2;if(w<1||h<1||w>512||h>512)return false;
  // Rasterize the original VXL faces at the presentation's required sample
  // density. These are new geometry samples; world depth stays in native units.
@@ -45,8 +46,8 @@ inline bool prepare(const Model&model,double angle,const std::array<uint32_t,256
  left*=rasterScale;top*=rasterScale;w*=rasterScale;h*=rasterScale;
  out.rasterScale=rasterScale;out.width=w;out.height=h;out.x=left;out.y=top;out.depthBottom=(int(std::ceil(maxY))-1)*rasterScale;out.triangles.reserve(model.faces.size()*2);
  auto edge=[](Screen a,Screen b,float x,float y){return (x-a.x)*(b.y-a.y)-(y-a.y)*(b.x-a.x);};
- for(const auto&f:model.faces){Screen s[4];Vec world[4];for(int c=0;c<4;++c){world[c]=worldPoint(f,f.p[c]);s[c]=project(world[c]);s[c].x=s[c].x*rasterScale-left;s[c].y=s[c].y*rasterScale-top;}
-  Vec a{world[1].x-world[0].x,world[1].y-world[0].y,world[1].z-world[0].z},b{world[2].x-world[0].x,world[2].y-world[0].y,world[2].z-world[0].z};Vec normal{a.y*b.z-a.z*b.y,a.z*b.x-a.x*b.z,a.x*b.y-a.y*b.x};float len=std::sqrt(normal.x*normal.x+normal.y*normal.y+normal.z*normal.z);
+ for(size_t face=0;face<model.faces.size();++face){const auto&f=model.faces[face];const auto&cached=projected[face];Screen s[4];
+  for(int c=0;c<4;++c){s[c]=cached.points[c];s[c].x=s[c].x*rasterScale-left;s[c].y=s[c].y*rasterScale-top;}
   uint8_t index=f.color;float light=1;
   if(vpl&&vpl->ready()&&(f.hasNormal||f.normalIndex>=253)){
    // Precalculate once per normal mode/facing, as 753D00 does. HVA changes
@@ -54,7 +55,7 @@ inline bool prepare(const Model&model,double angle,const std::array<uint32_t,256
    // reserved for the fallback path.
    index=vpl->map(pageFor(f),index);
   }else{
-   Vec n=f.hasNormal?rotate(pitched(f.normal),f.turret&&std::isfinite(turretAngle)?turretAngle:angle):normal;
+   Vec n=f.hasNormal?transform.direction(f,f.normal):cached.normal;
    if(tilted&&f.hasNormal)n=posturePoint(geometryWorld,n,true);
    float length=std::sqrt(n.x*n.x+n.y*n.y+n.z*n.z);
    float diffuse=length>1e-6f?std::max(0.f,(n.x*worldLight[0]+n.y*worldLight[1]+n.z*worldLight[2])/length):0;
