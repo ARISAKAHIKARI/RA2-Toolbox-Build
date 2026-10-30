@@ -17,9 +17,10 @@ presentation=host.split('auto result=worker.get();',1)[1]
 assert presentation.index('host().replaceGroupAt(')<presentation.index('worker.submit(')<presentation.index('statusCadence.due(')
 assert 'heldFrame' not in host, 'Whole-frame reuse can bypass dynamic lighting and palette updates'
 assert 'reader.begin(); // Explicit fresh page epoch' in host
-assert 'timeline.observe(*observed->previous,observed->previousMs)' in host
-assert 'timeline.observe(*observed->current,observed->observedMs)' in host and 'timeline.sample(' in host
-assert 'observed->current->frame!=sampledLogicFrame' in host and 'worker.submit(request,informationFPS())' in host
+assert 'materialmotion::latest(*observed->current' in host
+assert 'timeline.sample(' not in host and 'sampledLogicFrame' not in host
+assert 'samplingWorker.submit(request,renderpresentation::ObservationRate)' in host
+assert 'worker.submit(request,informationFPS())' in host
 policy=(root/'assist/source/render_presentation.h').read_text(encoding='utf-8')
 assert 'a.generation==b.generation' in policy and '++generation;worker.invalidate()' in host
 assert 'frame.sampledTick,SampleMaxAge' in policy and 'frame.completedTick,CompletionMaxAge' in policy
@@ -44,4 +45,4 @@ assert 'voxel-current-vpl-unavailable' in (root/'external_reader/source/camera_a
 assets=(root/'external_reader/source/camera_assets.h').read_text(encoding='utf-8')
 assert 'refreshActorPalette(ActorArt&art,bool&changed)' in assets and 'refreshOverlayPalette(' in assets
 assert 'fineRadians(pose.bodyFine' in assets and 'presentationRasterScale()' in assets
-print('PASS: observed material timeline and device-pixel detail integrated; 5–500 Hz target, persistent options, epoch invalidation, final visibility mask; no game-write APIs')
+print('PASS: latest observed state and independently scheduled device-pixel detail integrated; 1000 Hz sampling / 5–500 Hz drawing targets, persistent options, epoch invalidation, final visibility mask; no game-write APIs')

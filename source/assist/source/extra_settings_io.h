@@ -1,6 +1,6 @@
 #include "../../shared/source/key_gesture.h"
 static void loadAdditionalSettings(){
- renderProcessing=value(L"Display",L"RenderProcessing",0)!=0;
+ renderProcessing=value(L"Display",L"RenderProcessing",value(L"Display",L"RenderExtraQuality",0))!=0;
  renderXbrzEnabled=value(L"Display",L"RenderXbrzEnabled",0)!=0;
  renderColorPrecision=std::clamp(value(L"Display",L"RenderColorPrecision",1),0,1);
  renderMaterialRefresh=value(L"Display",L"RenderMaterialRefresh",1)!=0;
@@ -12,7 +12,7 @@ static void loadAdditionalSettings(){
  renderPaletteRange=std::clamp(value(L"Display",L"RenderPaletteRange",1),0,1);
  renderPixelScale=std::clamp(value(L"Display",L"RenderPixelScale",3),0,3);
  renderPhysicalOutput=value(L"Display",L"RenderPhysicalOutput",0)!=0;
- renderVulkanEnabled=value(L"Display",L"RenderVulkan",0)!=0;
+ renderVulkanEnabled=value(L"Display",L"RenderVulkan",1)!=0;
  renderParticleEffects=value(L"Display",L"RenderParticles",1)!=0;renderLaserEffects=value(L"Display",L"RenderLasers",1)!=0;
  renderVoxelLighting=value(L"Display",L"RenderVoxelLighting",1)!=0;renderSpriteLighting=value(L"Display",L"RenderSpriteLighting",1)!=0;
  extra.viewZoomEnabled=false;extra.viewZoomPercent=100; // temporarily unavailable, including saved settings

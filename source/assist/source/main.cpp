@@ -11,6 +11,7 @@
 #endif
 #define _UNICODE
 #include <windows.h>
+#include "../../shared/source/bounded_shutdown.h"
 #include <commctrl.h>
 #include <objidl.h>
 #include <gdiplus.h>
@@ -75,7 +76,7 @@ namespace renderupgrade {static void stop();static void shutdown();}
 namespace minimap {static void hide();static void clear();static void destroy();}
 namespace watchwindows {static void hide();}
 static uint32_t computeRequested=compute::Default;
-static bool renderUpgradeEnabled=false,unifiedOverlayEnabled=false,renderPhysicalOutput=false,renderMaterialRefresh=true,renderVulkanEnabled=false;static int renderUpgradeLayer=1,renderPaletteRange=1,renderPixelScale=3,renderSceneDetail=1,renderColorPrecision=1;
+static bool renderUpgradeEnabled=false,unifiedOverlayEnabled=false,renderPhysicalOutput=false,renderMaterialRefresh=true,renderVulkanEnabled=true;static int renderUpgradeLayer=1,renderPaletteRange=1,renderPixelScale=3,renderSceneDetail=1,renderColorPrecision=1;
 static bool renderProcessing=false,renderXbrzEnabled=false;
 static bool renderParticleEffects=true,renderLaserEffects=true,renderVoxelLighting=true,renderSpriteLighting=true;
 static int effectiveRenderDetail(){return renderProcessing?renderSceneDetail:0;}
@@ -2111,15 +2112,15 @@ if(id==991){wchar_t query[128]{};GetWindowTextW(featureSearch,query,128);std::ws
  if(wp!=suite::CloseToken){suite::requestClose();return 0;}
 #endif
  if(!bridgeClosePending){
-  bridgeClosePending=true;flushAutoSettings();stopClock();KillTimer(w,1);KillTimer(w,2);
+  boundedshutdown::begin();bridgeClosePending=true;flushAutoSettings();stopClock();KillTimer(w,1);KillTimer(w,2);
   for(int id:registeredKeyIDs)UnregisterHotKey(w,id);registeredKeyIDs.clear();
   detach();
  }
  if(retiredBridges.empty()){DestroyWindow(w);return 0;}
- // The suite waits for this pane's thread before destroying the parent. Keep
- // both windows alive; a time limit must not force removal of a blocked gate.
- setStatus(L"正在恢复游戏并退出；若持续等待，请退出游戏后完成清理。");
- SetWindowTextW(GetAncestor(w,GA_ROOT),L"红警工具箱 · 正在恢复游戏；若持续等待，请退出游戏");
+ // Leave a blocked game-side gate mapped; the independent process deadline
+ // bounds all restoration and worker joins without touching the game process.
+ setStatus(L"正在退出；恢复最多等待 2 秒，超时跳过。");
+ SetWindowTextW(GetAncestor(w,GA_ROOT),L"红警工具箱 · 正在退出（恢复最多等待 2 秒）…");
  SetTimer(w,BridgeCloseTimer,100,nullptr);return 0;
  case WM_DESTROY:renderupgrade::shutdown();worldrender::worker.shutdown();formationhost::shutdown();watchhost::shutdown();watchwindows::destroy();minimap::destroy();destroyAircraftButton();destroyConstruction();KillTimer(w,AutoSaveTimer);KillTimer(w,BridgeCloseTimer);save();stopClock();KillTimer(w,1);KillTimer(w,2);detach();for(int id:registeredKeyIDs)UnregisterHotKey(w,id);registeredKeyIDs.clear();PostQuitMessage(0);return 0;}return DefWindowProcW(w,msg,wp,lp);}
 int WINAPI wWinMain(HINSTANCE h,HINSTANCE,LPWSTR,int show){SetProcessDPIAware();HANDLE single=CreateMutexW(nullptr,FALSE,L"Local\\RA2Assist_v013_Host");if(GetLastError()==ERROR_ALREADY_EXISTS){MessageBoxW(nullptr,L"战术助手已在运行。",L"尤里战术助手",MB_OK);return 0;}

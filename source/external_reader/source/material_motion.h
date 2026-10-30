@@ -22,6 +22,22 @@ inline bool adjacent(const visual::Pose&a,const visual::Pose&b){
   a.variant==b.variant&&a.buildingFlags==b.buildingFlags&&a.doorFrame==b.doorFrame&&
   a.sequence==b.sequence&&a.turretFrame==b.turretFrame;
 }
+// Live presenters consume the newest memory snapshot immediately. Rendering
+// it again never waits for a new engine frame or moves actors back toward the
+// preceding observation. Raw 16-bit facing can still use fine VXL geometry.
+inline radar::Frame latest(const radar::Frame&frame,bool fine=true){
+ if(!frame.terrain||!frame.markerScanValid||frame.frame<0)return {};
+ auto out=frame;
+ for(auto&m:out.markers){
+  m.pose.frameFrom=-1;m.pose.frameWeight=255;
+  if(fine&&m.pose.voxel){
+   const auto body=m.pose.rawFacing?m.pose.rawBody:uint16_t(m.pose.body*2048);
+   const auto turret=m.pose.rawFacing?m.pose.rawTurret:uint16_t(m.pose.turret*2048);
+   m.pose.bodyFine=angle(body,body,1.);m.pose.turretFine=angle(turret,turret,1.);
+  }
+ }
+ return out;
+}
 class Timeline {
  radar::Frame previous_,current_;double observed_=0,interval_=0;bool ready_=false;
  using Key=std::pair<uint32_t,uint32_t>;std::map<Key,radar::Marker> prior_;
@@ -33,7 +49,7 @@ public:
   bool continuous=ready_&&frame.frame>current_.frame&&
    now>observed_&&now-observed_<=250&&frame.terrain->geo.same(current_.terrain->geo)&&
    frame.terrain->reveal==current_.terrain->reveal;
-  prior_.clear();interval_=continuous?std::clamp(now-observed_,1.,250.):0;
+  prior_.clear();interval_=continuous?std::clamp(now-observed_,1.,100.):0;
   if(continuous){previous_=std::move(current_);for(const auto&m:previous_.markers)prior_[{m.object,m.id}]=m;}
   else previous_={};
   current_=frame;observed_=now;ready_=true;return true;

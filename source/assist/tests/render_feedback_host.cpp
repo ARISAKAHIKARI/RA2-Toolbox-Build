@@ -101,6 +101,10 @@ int main(){
   return !layers.empty();
  };
  assert(publish(request));const uint32_t lastGood=clockNow;
+ auto scrolling=request;scrolling.view.cameraX+=160;scrolling.context.cameraX+=160;
+ assert(group.holdDuringScroll(scrolling,lastGood+31)&&!group.holdDuringScroll(scrolling,lastGood+32));
+ auto otherWorld=scrolling;otherWorld.view.scenario++;assert(!group.holdDuringScroll(otherWorld,lastGood+1));
+ auto otherConfig=scrolling;otherConfig.generation++;assert(!group.holdDuringScroll(otherConfig,lastGood+1));
  for(int n=1;n<=7;++n){clockNow=lastGood+uint32_t(n)*15;externalReader.failSelection=n%3==0;externalReader.failMouse=n%3==1;externalReader.failView=n%3==2;
   assert(publish(request));assert(layers.back().pixels==frame->image); // never a full native frame on transient feedback reads
  }
@@ -117,7 +121,7 @@ int main(){
  externalReader.moveOnSelection=8;layers.clear();assert(feedback::update(request,frame,0,0,layers)&&!feedback::unsafeView);
  assert(layers.front().id==feedback::SelectionLayer&&layers.front().rect==bandLayer.rect&&layers.front().pixels==bandLayer.pixels);
  externalReader.put(external::nativefeedback::Map+0x11CF,uint8_t(0));
- externalReader.put(0xA8B230,request.view.scenario+4);layers.clear();assert(!feedback::update(request,frame,0,0,layers)&&feedback::unsafeView);
+ externalReader.put(0xA8B230,request.view.scenario+4);layers.clear();assert(!feedback::update(request,frame,0,0,layers)&&feedback::unsafeView&&feedback::unsafeWorld);
  externalReader.put(0xA8B230,request.view.scenario);
  // A real native foundation hole continues to require an exact camera,
  // including when it moves during capture. Its underlying pixels are native.
@@ -130,7 +134,7 @@ int main(){
  const uint16_t shpHeader[]{0,2,2,3};externalReader.put(stencilShape,shpHeader);
  for(int f=0;f<3;++f){uint32_t at=stencilShape+8+f*24;externalReader.put(at+4,uint16_t(2));externalReader.put(at+6,uint16_t(2));externalReader.put(at+20,uint32_t(80+f*4));const uint8_t opaque[]{1,1,1,1};externalReader.put(stencilShape+80+f*4,opaque);}
  layers.clear();assert(feedback::update(placement,frame,0,0,layers)&&feedback::nativeCutouts&&!feedback::nativeCutouts->empty());
- externalReader.moveOnSelection=8;layers.clear();assert(!feedback::update(placement,frame,0,0,layers)&&feedback::unsafeView);
+ externalReader.moveOnSelection=8;layers.clear();assert(!feedback::update(placement,frame,0,0,layers)&&feedback::unsafeView&&!feedback::unsafeWorld);
  layers.clear();assert(!feedback::update(placement,frame,0,0,layers)&&feedback::unsafeView);
  // A live beam preserves native pixels without decoding an invented line.
  // Any failed or camera-mismatched effect mask forbids the complete-group

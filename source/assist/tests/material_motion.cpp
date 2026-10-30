@@ -20,6 +20,12 @@ int main(){
  assert(!timeline.observe(b,1100)&&timeline.interval()==20); // same tick cannot reset interpolation
  assert(timeline.sample(1030,false).markers[0].x==1088);
  assert(timeline.sample(1030,true,false).markers[0].pose.bodyFine==-1);
+ // Live presenters have no observation-buffer delay, including a fresh
+ // memory update whose native frame number has not advanced yet.
+ auto current=materialmotion::latest(b);assert(current.markers[0].x==1088&&current.markers[0].pose.frameFrom==-1);
+ b.markers[0].x=1099;b.markers[0].pose.rawBody=1024;
+ for(int n=0;n<5;++n){current=materialmotion::latest(b);assert(current.frame==101&&current.markers[0].x==1099&&current.markers[0].pose.bodyFine==4);}
+ b.markers[0].x=1088;
  assert(materialmotion::presentationKey(start)!=materialmotion::presentationKey(middle));
  assert(materialmotion::presentationKey(end)==materialmotion::presentationKey(timeline.sample(1100)));
  auto gone=bank(102,1100);gone.markers.clear();assert(timeline.observe(gone,1040));assert(timeline.sample(1041).markers.empty());

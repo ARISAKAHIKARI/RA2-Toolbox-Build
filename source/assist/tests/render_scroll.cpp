@@ -58,6 +58,22 @@ int main(){
   for(int x=23;x<31;++x)assert(out[size_t(27)*700+x]==0);
  }
  Request changed=sampled;Shift shift;
+ // A 160px/16ms drag exceeds the old96px border during one15ms render.
+ // Adapt only the observed moving axis and preserve exact world projection.
+ {
+  CameraPrefetch fast;auto actual=sampled.view;fast.observe(actual,1000);actual.cameraX+=160;fast.observe(actual,1016);
+  auto margins=fast.borders(actual,1016,15,144);assert(margins.first>ScrollBorder&&margins.second==ScrollBorder);
+  const auto expanded=window(640,400,320,200,margins.first,margins.second);
+  auto center=fast.centerAt(actual,1016,15,margins.first,margins.second);
+  auto image=std::make_shared<Image>();image->width=expanded.width;image->height=expanded.height;image->pixels.resize(size_t(image->width)*image->height);
+  Request rendered=sampled;rendered.view=center;
+  for(int y=0;y<image->height;++y)for(int x=0;x<image->width;++x)image->pixels[size_t(y)*image->width+x]=color(center.cameraX*2+x-expanded.paddingX,center.cameraY*2+y-expanded.paddingY);
+  Frame ready{rendered,image,1000,1016,expanded.paddingX,expanded.paddingY};Request current=sampled;current.view=actual;current.view.cameraX+=200;current.context.cameraX=current.view.cameraX;
+  assert(scrollUsable(ready,current,1017,shift));
+  for(int y=0;y<400;++y)for(int x=0;x<640;++x)assert(image->pixels[size_t(y-shift.y)*image->width+x-shift.x]==color(current.view.cameraX*2+x,current.view.cameraY*2+y));
+  assert(fast.borders(actual,1300,15,144)==std::make_pair(ScrollBorder,ScrollBorder));
+  auto capped=window(3840,2160,1920,1080,MaximumScrollBorder,MaximumScrollBorder);assert(uint64_t(capped.width)*capped.height<=16*1024*1024);
+ }
  changed.view.cameraX+=97;assert(!scrollUsable(frame,changed,1250,shift));
  // Crossing the overscan border must not withdraw every enhanced pixel.
  // Existing pixels retain their exact camera projection; the newly revealed

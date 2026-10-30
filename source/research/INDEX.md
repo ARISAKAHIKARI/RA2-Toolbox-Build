@@ -6,6 +6,8 @@
 
 | 主题 | 新笔记 | 关键词 |
 | --- | --- | --- |
+| 1000 Hz 最新状态采样、GPU 回读/深度缓存、拖屏连续性与有界退出 | [渲染延迟 Hotfix17](2026-10-30-render-latency-hotfix17.md) | latest snapshot high resolution readback cached depth reuse scroll close timeout parity merge |
+| CPU/GPU 共享场景对象清单、原生 GPU 与画质解耦、静止 VXL 缓存 | [CPU/GPU 场景对齐](2026-10-30-cpu-gpu-scene-parity.md) | ddf0002 native Vulkan VPL revision object coverage |
 | HVA 多帧、独立碎片／程序化效果与队形公共画布 | [动画与队形 Hotfix15](2026-10-30-animation-effects-formation-hotfix15.md) | HVA frames VoxelAnim rawVXL quaternion LaserDraw Wave AlphaShape points ViewportCanvas |
 | 本地 UI 独立绘制、当前原生字体与 Vera20k 对照 | [独立本地 UI Hotfix14](2026-10-30-independent-local-ui-hotfix14.md) | GAME.FNT CSF primary rally font cache worker no broad UI cutouts |
 | 共享缩放前素材、五类界面与粒子／本地 UI 边界 | [共享场景与本地 UI Hotfix13](2026-10-30-shared-scenes-local-ui-hotfix13.md) | SceneBank NativeImageBank particles defaults messages timers primary rally |

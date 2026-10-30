@@ -73,5 +73,14 @@
     "cpu_area": "Revision-scoped native-page integral cache shared across row workers and views; 256 MiB retained x64 / 32 MiB x86, invalidated by page writes, immutable COW snapshots retained. Dense shrink no longer directly samples half a page before constructing sums.",
     "cpu_dirty": "Whole-map CPU output resumes from the immediately preceding unmasked object revision. Only changed and removed object pages are refiltered; background/view/backend or failed-frame mismatches use the complete base.",
     "verification": "Seven focused CPU regressions and local Zig mixed-architecture build; no Vulkan execution in this continuation; no live Windows/game/FPS measurement."
+  },
+  "Hotfix17": {
+    "merged_branch": "codex/render-cpu-gpu-parity-20261030",
+    "merged_commit": "ddf0002f795524fdc80760a0c8ae244746d4d52f",
+    "sampling": "1000 Hz target, independent high-resolution deadline; latest memory state, no delayed observation interpolation",
+    "gpu": "cached readback memory preference, immutable output pool, resident native depth during pans; explicit CPU choice retained",
+    "scroll": "velocity/latency adaptive overscan and bounded complete-group continuity",
+    "exit": "2-second self-process deadline after accepted close; never terminates game or unmaps executing game gate",
+    "verification": "15 portable C++ checks + 5 integration checks; Zig mixed-architecture build and static PE/ABI/import validation. No Vulkan execution or live Windows/game/GPU performance measurement."
   }
 }

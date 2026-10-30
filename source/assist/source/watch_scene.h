@@ -16,7 +16,6 @@ template<class Reader,class Assets>class Renderer {
  using Read=std::function<bool(uint32_t,void*,size_t)>;
  Reader&reader_;Assets&assets_;Read read_;external::radar::Sampler<Read> sampler_;
  std::array<external::radar::SceneRenderer<Assets>,3> scenes_;
- external::materialmotion::Timeline timeline_;
  uint32_t controls_=0;bool haveControls_=false;int sourceFrame_=-1;bool reveal_=false;
  external::presentation::Profile profile_;
  static double clock(){return std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now().time_since_epoch()).count();}
@@ -27,8 +26,8 @@ public:
  bool autoSuppressed=false,revealMap=false,danger=false;int width=800,height=600;uint32_t process=0,epoch=0,sourceTick=0;
  bool sharedSource=false,gpuAttempted=false,gpuUsed=false;
  Renderer(Reader&r,Assets&a):reader_(r),assets_(a),read_([&r](uint32_t p,void*out,size_t n){return r.read(p,out,n);}),sampler_(read_){}
- void reset(){sampler_.reset();timeline_.reset();sourceFrame_=-1;haveControls_=false;automatic={};autoSuppressed=false;for(auto&t:tracks)t={};for(auto&v:views)v={};for(auto&s:scenes_)s.reset();}
- void features(const external::presentation::Profile&p){if(p!=profile_){for(auto&s:scenes_)s.reset();for(auto&v:views)v.scene.reset();timeline_.reset();sourceFrame_=-1;profile_=p;}}
+ void reset(){sampler_.reset();sourceFrame_=-1;haveControls_=false;automatic={};autoSuppressed=false;for(auto&t:tracks)t={};for(auto&v:views)v={};for(auto&s:scenes_)s.reset();}
+ void features(const external::presentation::Profile&p){if(p!=profile_){for(auto&s:scenes_)s.reset();for(auto&v:views)v.scene.reset();sourceFrame_=-1;profile_=p;}}
  void syncTracks(uint32_t revision,const std::array<external::watch::Track,3>&next,bool suppressed){if(haveControls_&&controls_==revision)return;std::copy(next.begin(),next.end(),tracks);autoSuppressed=suppressed;controls_=revision;haveControls_=true;}
  bool update(uint32_t now){
   auto fresh=[this](uint32_t p,void*out,size_t n){return reader_.readFresh(p,out,n);};
@@ -40,12 +39,12 @@ public:
    if(auto prior=external::radar::sceneBank().get(process,epoch,revealMap,now))sampler_.seedTerrain(*prior);
    sampler_.effects(profile_.particles,profile_.lasers);if(!sampler_.step(revealMap,16384,true))return false;
    auto sampled=sampler_.snapshot(now,current.frame);external::radar::preparePoses(sampled,read_);
-   if(!sampled.markerScanValid||!external::radar::freshMarkers(sampled,external::radar::publicationContext(fresh)))return false;
+   if(!sampled.markerScanValid||!external::radar::recentMarkers(sampled,external::radar::publicationContext(fresh),now))return false;
    bank=std::make_shared<const external::radar::Frame>(std::move(sampled));external::radar::sceneBank().publish(process,epoch,true,bank);
   }
-  if(reveal_!=revealMap||bank->frame<sourceFrame_){timeline_.reset();sourceFrame_=-1;for(auto&s:scenes_)s.reset();for(auto&v:views)v.scene.reset();}reveal_=revealMap;
-  timeline_.observe(*bank,clock()-uint32_t(now-bank->tick));sourceFrame_=bank->frame;
-  auto data=timeline_.sample(clock(),profile_.material,profile_.detail!=0);data.effects=bank->effects;if(!data.terrain)return false;
+  if(reveal_!=revealMap||bank->frame<sourceFrame_){sourceFrame_=-1;for(auto&s:scenes_)s.reset();for(auto&v:views)v.scene.reset();}reveal_=revealMap;
+  sourceFrame_=bank->frame;
+  auto data=external::materialmotion::latest(*bank,profile_.detail!=0);if(!data.terrain)return false;
   sourceTick=bank->tick;data.tick=now;assets_.identity(process,epoch);
   external::xbrzadapter::gpuPresentation(profile_.gpu);external::presentation::apply(profile_,assets_,Width,Height,Width,Height);
   const double zscale=external::projectionZScale(fresh);

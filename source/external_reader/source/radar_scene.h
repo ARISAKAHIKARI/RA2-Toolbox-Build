@@ -1,4 +1,5 @@
 #pragma once
+#include "../../shared/source/frame_pool.h"
 #include "radar_map.h"
 #include "watch_view.h"
 #include "camera_raster.h"
@@ -68,9 +69,12 @@ template<class Assets>class SceneRenderer {
  std::map<ObjectKey,ImageKey> displayed_;size_t actorCursor_=0,transientCursor_=0;repairvisuals::Assets repairAssets_;
  std::shared_ptr<const Terrain> building_,complete_,blocked_;bool dynamicFailure_=false,materialsReady_=false;
  struct Paint {lighting::State light,overlayLight;int overlayOffset=0;bool bridge=false;uint64_t signature=0;};
+ std::vector<Paint> evaluatedPaint_;std::vector<uint32_t> evaluatedStamp_;uint32_t evaluationEpoch_=0;
+ asyncwork::FramePool<Scene> outputPool_;
  std::shared_ptr<camera::NativeCanvas::Budget> nativeBudget_;
  camera::NativeCanvas pending_,background_;camera::ObjectCanvas objectCanvas_;camera::ViewportCanvas detailed_;uint64_t detailKey_=0;std::shared_ptr<const Scene> baseScene_,maskedBaseScene_;
  bool gpuMode_=false,areaGpuMode_=false,areaCachedGpu_=false;
+ uint32_t requestedObjects_=0,drawnObjects_=0;
  bool guideEnabled_=false;uint64_t guideExternalContext_=0,motionTerrainRevision_=0;
  std::shared_ptr<const void> motionContext_=std::make_shared<const uint8_t>(0);
  std::shared_ptr<const std::vector<vulkancompute::TileJob>> gpuBaseTiles_;
@@ -112,6 +116,7 @@ public:
  explicit SceneRenderer(size_t pages=camera::NativeCanvas::MaximumPages):nativeBudget_(pages==camera::NativeCanvas::MaximumPages?camera::NativeCanvas::sharedBudget():std::make_shared<camera::NativeCanvas::Budget>()){if(pages!=camera::NativeCanvas::MaximumPages)nativeBudget_->maximum=std::clamp<size_t>(pages,1,camera::NativeCanvas::MaximumPages);}
  void guideEnabled(bool enabled,uint64_t contextKey=0){if(enabled!=guideEnabled_||contextKey!=guideExternalContext_){guideEnabled_=enabled;guideExternalContext_=contextKey;motionContext_=std::make_shared<const uint8_t>(0);}}
  bool materialsReady()const{return materialsReady_;}
+ std::pair<uint32_t,uint32_t> objectCoverage()const{return {drawnObjects_,requestedObjects_};}
  const DecodeStats&decodeStats()const{return decodeStats_;}
  const StageStats&stageStats()const{return stageStats_;}
  bool capacityExceeded()const{return bool(blocked_)||dynamicFailure_;}
@@ -130,10 +135,10 @@ public:
  }
  struct NativeStats {int width,height;size_t pages,resident;uint64_t cells,presents,partialBanks;};
  NativeStats nativeStats()const{return {background_.width(),background_.height(),background_.pageCount(),nativeBudget_->pages,nativeCells_,basePresents_,partialBanks_};}
- void reset(){overlayScanSource_.reset();overlaySources_.clear();effectAlphas_.clear();voxelLightKnown_=false;tiles_.clear();overlays_.clear();art_.clear();sprites_.clear();displayed_.clear();actorCursor_=transientCursor_=0;repairAssets_.reset();clearBackground();coverage_={};coverageLocal_=false;width_=height_=0;spanX_=spanY_=0;revision_=0;terrainPaletteReady_=false;terrainPalette_={};nativeCells_=basePresents_=partialBanks_=0;gpuMaskBuilder_.reset();detailed_.reset();detailKey_=0;}
+ void reset(){outputPool_.clear();evaluatedPaint_.clear();evaluatedStamp_.clear();evaluationEpoch_=0;overlayScanSource_.reset();overlaySources_.clear();effectAlphas_.clear();voxelLightKnown_=false;tiles_.clear();overlays_.clear();art_.clear();sprites_.clear();displayed_.clear();actorCursor_=transientCursor_=0;repairAssets_.reset();clearBackground();coverage_={};coverageLocal_=false;width_=height_=0;spanX_=spanY_=0;revision_=0;terrainPaletteReady_=false;terrainPalette_={};nativeCells_=basePresents_=partialBanks_=0;gpuMaskBuilder_.reset();detailed_.reset();detailKey_=0;}
  void features(const presentation::Profile&p){if(p.voxelLighting!=features_.voxelLighting||p.spriteLighting!=features_.spriteLighting){art_.clear();sprites_.clear();displayed_.clear();voxelLightKnown_=false;}features_=p;}
  template<class Read>std::shared_ptr<const Scene> render(const Frame&frame,int width,int height,Read read,Assets&assets,SceneRegion region={},unsigned pixelScaleMode=0,bool refined=false,bool liveVoxels=true,bool highColorPrecision=false,bool forceFrame=false,double decodeBudgetMs=4.){
-  const bool warming=!materialsReady_;materialsReady_=false;decodeStats_={};stageStats_={};
+  const bool warming=!materialsReady_;materialsReady_=false;decodeStats_={};stageStats_={};requestedObjects_=drawnObjects_=0;
   auto stageAt=std::chrono::steady_clock::now();auto stage=[&](double&ms){auto now=std::chrono::steady_clock::now();ms=std::chrono::duration<double,std::milli>(now-stageAt).count();stageAt=now;};
   if(!frame.terrain||!frame.terrain->geo.valid()||frame.terrain->art.size()!=512*512||width<3||height<3||width>(region.active?8192:2048)||height>(region.active?8192:2048)||uint64_t(width)*height>16*1024*1024)return {};
   const bool gpuMode=region.active&&gpuPresentation(assets,0);
@@ -202,17 +207,25 @@ public:
   }
   size_t staticPixels=0;for(const auto&i:tiles_)staticPixels+=camera::pixels(*i.second.image);for(const auto&i:overlays_)staticPixels+=camera::pixels(*i.second.image);
   const Terrain*evaluatedTerrain=building_.get();
-  auto prepare=[&](size_t index){const auto&cell=evaluatedTerrain->art[index];Paint value;value.light=lighting::cell(read,cell.cell,scene,lighting::Layer::Terrain);value.overlayLight=value.light;
+  // Validation, incremental probing and painting all use this presentation's
+  // read epoch. Do not reread/recalculate the same cell in each pass. The final
+  // race check below deliberately bypasses the memo after a bank commit.
+  evaluatedPaint_.resize(evaluatedTerrain->art.size());evaluatedStamp_.resize(evaluatedTerrain->art.size());
+  if(!++evaluationEpoch_){std::fill(evaluatedStamp_.begin(),evaluatedStamp_.end(),0);++evaluationEpoch_;}
+  auto prepare=[&](size_t index,bool fresh=false){
+   if(!fresh&&evaluatedStamp_[index]==evaluationEpoch_)return evaluatedPaint_[index];
+   const auto&cell=evaluatedTerrain->art[index];Paint value;value.light=lighting::cell(read,cell.cell,scene,lighting::Layer::Terrain);value.overlayLight=value.light;
    if(cell.overlayType){uint32_t source=cell.overlaySourceType?cell.overlaySourceType:cell.overlayType;value.overlayOffset=watch::overlayOffset(read,cell.cell,source,cell.overlay,cell.overlayFrame);value.bridge=(game.template get<uint32_t>(cell.cell+0x140)&0x80)!=0;
     if(value.bridge)value.overlayLight=lighting::cell(read,cell.cell,scene,lighting::Layer::Bridge);
     else if(game.template get<uint8_t>(source+0x2A9)){value.overlayLight=scene;value.overlayLight.intensity=1000;}
     else if(game.template get<uint8_t>(source+0x2A8))value.overlayLight=lighting::cell(read,cell.cell,scene,lighting::Layer::Object,false);
    }
-   value.signature=lightKey(lightKey(1469598103934665603ull,value.light),value.overlayLight);value.signature=mix(mix(value.signature,uint32_t(value.overlayOffset)),value.bridge);return value;
+   value.signature=lightKey(lightKey(1469598103934665603ull,value.light),value.overlayLight);value.signature=mix(mix(value.signature,uint32_t(value.overlayOffset)),value.bridge);
+   evaluatedStamp_[index]=evaluationEpoch_;evaluatedPaint_[index]=value;return value;
   };
   // Validate the CURRENT crop synchronously. Offscreen incremental checks
   // must not make a stable main viewport flash back to the game every pass.
-  auto verifyVisible=[&](){
+  auto verifyVisible=[&](bool fresh=false){
    if(!region.active||!evaluatedTerrain||painted_.size()!=cells_.size())return false;
    double haloX=512,haloY=512;
    auto imageExtent=[&](auto&&self,const voxel::Image&i,unsigned nesting)->void{if(nesting>16||i.rasterScale<1)return;
@@ -226,7 +239,7 @@ public:
     if(!evaluatedTerrain->geo.tileOrigin(int(index%512),int(index/512),int(cell.level),origin))continue;
     double x=origin.x+30,y=origin.y+15;
     if(x<region.x-haloX||x>region.x+region.width+haloX||y<region.y-haloY||y>region.y+region.height+haloY)continue;
-    if(prepare(index).signature!=painted_[n])return false;
+    if(prepare(index,fresh).signature!=painted_[n])return false;
    }return true;
   };
   bool visibleVerified=building_&&(bankSameSource_||partialBank_)&&verifyVisible();
@@ -328,7 +341,7 @@ public:
    if(cursor_==total){++motionTerrainRevision_;committed=true;if(partialBank_)++partialBanks_;background_=std::move(pending_);background_.clean();painted_.resize(prepared_.size());for(size_t n=0;n<prepared_.size();++n)painted_[n]=prepared_[n].signature;prepared_.clear();complete_=building_;building_.reset();partialBank_=false;changedOverlayCells_.clear();repaintCells_.clear();backgroundLight_=scene;backgroundIncomplete_=pendingIncomplete_;backgroundRetry_=frame.tick+2000;baseScene_.reset();maskedBaseScene_.reset();}
   }
   // Reject local-light races during incremental builds before publication.
-  if(committed&&region.active&&!verifyVisible())return {};
+  if(committed&&region.active&&!verifyVisible(true))return {};
   // An incomplete bank may only reuse a synchronously validated crop.
   if(!complete_||(building_&&!visibleVerified))return {};
   // Scale the CURRENT lit terrain as one continuous native RGB backing.
@@ -363,7 +376,7 @@ public:
   // Color reconstruction never interpolates engine Z. Dynamic actors still
   // compose at target pixels against nearest original terrain depth.
   if(detail&&!detailed_.prepare(background_,baseScene_->pixels,width,height,region.x,region.y,region.width,region.height,detailKey_,precision_,pixelScaleMode,
-    std::shared_ptr<const std::vector<uint32_t>>(baseScene_,&baseScene_->pixels),baseScene_->pixels.empty()?gpuBaseTiles_:nullptr,cpuBaseFallback_))return {};
+    std::shared_ptr<const std::vector<uint32_t>>(baseScene_,&baseScene_->pixels),baseScene_->pixels.empty()?gpuBaseTiles_:nullptr,cpuBaseFallback_,motionTerrainRevision_+1))return {};
   if(detail){vulkancompute::MotionView motion;motion.context=motionContext_;motion.x=region.x;motion.y=region.y;motion.scaleX=width/region.width;motion.scaleY=height/region.height;
    motion.depthFar=-4096;motion.depthNear=32768;motion.terrainRevision=motionTerrainRevision_;motion.tick=frame.tick;motion.frame=frame.frame;detailed_.motion(std::move(motion),guideEnabled_);}
   // Native Cell::DrawShroud places 60x30 alpha sprites on the flat cell
@@ -505,9 +518,11 @@ public:
   // final animation pass incorrectly paints pumps/fire over foreground units.
   std::stable_sort(order.begin(),order.end(),[](const Marker*a,const Marker*b){return camera::orderKey(a->layer,a->kind,a->x,a->y,a->sort)<camera::orderKey(b->layer,b->kind,b->x,b->y,b->sort);});
   for(const auto*marker:order){const auto&m=*marker;if(m.x<0||m.y<0||m.x>=512*256||m.y>=512*256)continue;
+   ++requestedObjects_;
    auto found=sprites_.find(imageKey(m));if(found==sprites_.end()||!found->second.ready){auto old=displayed_.find({m.object,m.id});if(old!=displayed_.end())found=sprites_.find(old->second);}
    float px=float((double(m.x)-m.y)*30/256.+geo.offsetX*30),py=float((double(m.x)+m.y)*15/256.-geo.offsetY*15+camera::anchorY(m.kind)-screenHeight(m.z,projectionScale));
    if(found!=sprites_.end()&&found->second.ready){
+    ++drawnObjects_;
     std::shared_ptr<const voxel::Image> imageOwner=found->second.image;const voxel::Image*image=imageOwner.get();voxel::Image blended;
     const float lift=m.kind==4?12:(m.kind==3||m.kind==5)?2:1;
     auto source=art_.find(artKey(m));
@@ -546,7 +561,7 @@ public:
   auto dot=[&](const Marker&m){return std::pair<int,int>{int(((double(m.x)-m.y)*30/256.+geo.offsetX*30-(region.active?region.x:0))*width/(region.active?region.width:spanX_)),int(((double(m.x)+m.y)*15/256.-geo.offsetY*15-(region.active?region.y:0))*height/(region.active?region.height:spanY_))};};
   if(masked&&(gpuMode_||areaGpuMode)&&!gpuMaskPlan_&&!maskPixels_)maskPixels_=std::make_shared<const std::vector<uint8_t>>(mask_.alpha);
   auto*maskReadback=masked&&gpuMaskPlan_&&cpuMaskPlan_!=gpuMaskPlan_?&mask_.alpha:nullptr;
-  auto out=std::make_shared<Scene>();out->width=width;out->height=height;bool areaUsed=false;
+  auto out=(gpuMode_||areaGpuMode)?outputPool_.acquire():std::make_shared<Scene>();out->width=width;out->height=height;out->guides.reset();bool areaUsed=false;
   const bool sameNative=!region.active&&nativePresentation_.pixels&&nativePresentation_.pixels->size()==size_t(width)*height&&
     nativePresentation_.background==detailKey_&&nativePresentation_.objects==objectCanvas_.revision()&&nativePresentation_.gpu==areaGpuMode&&
     (!nativePresentation_.used||(nativePresentation_.mask==(masked?gpuMaskPlan_:nullptr)&&nativePresentation_.fog==(masked?maskPixels_:nullptr)));

@@ -10,6 +10,8 @@ namespace external { namespace camera {
 // full-scene upscale or an enlarged whole-map allocation.
 class ViewportCanvas {
  Surface surface_;std::shared_ptr<const std::vector<float>> baseDepth_;GpuDepthPlan depthPlan_;GpuSceneRecord gpuRecord_;uint64_t key_=0;
+ struct DepthSource {uint64_t revision=0;int x=0,y=0,w=0,h=0;std::shared_ptr<const std::vector<float>> pixels;} depthSource_;
+ uint64_t terrainRevision_=0;
  std::shared_ptr<const gpumotion::Guides> guides_;
  int width_=0,height_=0;bool gpuRecording_=false,gpuMasked_=false;
  double x_=0,y_=0,sx_=1,sy_=1;int backingW_=0,backingH_=0;bool dirty_=false,ready_=false;
@@ -45,7 +47,7 @@ class ViewportCanvas {
   for(int y=0;y<h;++y){auto row=pixels.begin()+size_t(y)*w;if(y<t||y>=b)std::fill_n(row,w,0);else{std::fill(row,row+l,0);std::fill(row+r,row+w,0);}}
  }
 public:
- void reset(){surface_={};baseDepth_.reset();guides_.reset();depthPlan_={};gpuRecord_.clear();width_=height_=0;key_=0;ready_=dirty_=terrainCached_=gpuRecording_=gpuMasked_=false;samplingMode_=0;}
+ void reset(){surface_={};baseDepth_.reset();guides_.reset();depthPlan_={};depthSource_={};terrainRevision_=0;gpuRecord_.clear();width_=height_=0;key_=0;ready_=dirty_=terrainCached_=gpuRecording_=gpuMasked_=false;samplingMode_=0;}
  bool visible(double left,double top,double right,double bottom)const{return ready_&&left<x_+width_/sx_&&right>x_&&top<y_+height_/sy_&&bottom>y_;}
  bool visible(const voxel::Image&i,double ax,double ay,double drop=0)const{return ready_&&imageVisible(i,ax,ay,drop,0);}
  bool visibleShifted(const voxel::Image&i,double ax,double ay,double minY,double maxY)const{return ready_&&imageVisible(i,ax,ay+minY,0,0,maxY-minY);}
@@ -76,7 +78,7 @@ public:
  bool prepare(const NativeCanvas&background,const std::vector<uint32_t>&pixels,int w,int h,
               double x,double y,double spanX,double spanY,uint64_t key,colorprecision::Mode precision=colorprecision::Mode::NativeSteps,unsigned mode=0,
               std::shared_ptr<const std::vector<uint32_t>>basePixels={},
-              std::shared_ptr<const std::vector<vulkancompute::TileJob>>baseTiles={},std::function<bool(std::vector<uint32_t>&)>cpuBaseFallback={}){
+              std::shared_ptr<const std::vector<vulkancompute::TileJob>>baseTiles={},std::function<bool(std::vector<uint32_t>&)>cpuBaseFallback={},uint64_t terrainRevision=0){
   const bool wasTerrain=terrainCached_;ready_=false;dirty_=false;terrainCached_=false;samplingMode_=mode;gpuMasked_=false;guides_.reset();gpuRecord_.reset();
   if(w<1||h<1||w>8192||h>8192||uint64_t(w)*h>16*1024*1024||(pixels.size()!=size_t(w)*h&&!(pixels.empty()&&baseTiles&&!baseTiles->empty()))||
      !std::isfinite(x)||!std::isfinite(y)||!std::isfinite(spanX)||!std::isfinite(spanY)||
@@ -86,16 +88,30 @@ public:
   if(gpu.resolve&&!gpu.resolve->diagnostics().available&&!gpu.resolve->diagnostics().reason.empty())requestGpu=false;
   const std::vector<uint32_t>*base=&pixels;std::vector<uint32_t>generatedBase;
   if(!requestGpu&&base->size()!=size_t(w)*h){if(!cpuBaseFallback||!cpuBaseFallback(generatedBase)||generatedBase.size()!=size_t(w)*h)return false;base=&generatedBase;}
-  const bool depthChanged=!baseDepth_||wasTerrain||((depthPlan_.width>0)!=requestGpu)||key!=key_||width_!=w||height_!=h||x!=x_||y!=y_||sx_!=w/spanX||sy_!=h/spanY;
+  const bool depthChanged=!baseDepth_||wasTerrain||((depthPlan_.width>0)!=requestGpu)||key!=key_||terrainRevision!=terrainRevision_||width_!=w||height_!=h||x!=x_||y!=y_||sx_!=w/spanX||sy_!=h/spanY;
   if(depthChanged){
    int x0=int(std::floor(x)),y0=int(std::floor(y)),nw=int(std::ceil(x+spanX))-x0,nh=int(std::ceil(y+spanY))-y0;
-   std::vector<float> source;if(!background.depthRegion(x0,y0,nw,nh,source))return false;
    if(requestGpu){
+    // Keep the native Z plane resident during nearby camera pans. Color crop
+    // keys change on every pan, but immutable terrain Z does not. Only small
+    // nearest-sample axes change until the crop leaves this bounded source.
+    const bool reuse=terrainRevision&&!wasTerrain&&depthSource_.pixels&&depthSource_.revision==terrainRevision&&
+     x0>=depthSource_.x&&y0>=depthSource_.y&&int64_t(x0)+nw<=int64_t(depthSource_.x)+depthSource_.w&&int64_t(y0)+nh<=int64_t(depthSource_.y)+depthSource_.h;
+    if(reuse){x0=depthSource_.x;y0=depthSource_.y;nw=depthSource_.w;nh=depthSource_.h;}
+    else{
+     if(terrainRevision){const int l=int(std::floor(double(x0)/128))*128-256,t=int(std::floor(double(y0)/128))*128-256;
+      const int w0=x0+nw+256-l,h0=y0+nh+256-t;
+      if(w0<=8192&&h0<=8192&&uint64_t(w0)*h0<=16*1024*1024){x0=l;y0=t;nw=w0;nh=h0;}
+     }
+     std::vector<float> source;if(!background.depthRegion(x0,y0,nw,nh,source))return false;
+     depthSource_={terrainRevision,x0,y0,nw,nh,std::make_shared<const std::vector<float>>(std::move(source))};
+    }
     auto xs=std::make_shared<std::vector<uint32_t>>(w),ys=std::make_shared<std::vector<uint32_t>>(h);
     for(int xx=0;xx<w;++xx)(*xs)[xx]=uint32_t(std::clamp(int(std::floor(x+(xx+.5)*spanX/w))-x0,0,nw-1));
     for(int yy=0;yy<h;++yy)(*ys)[yy]=uint32_t(std::clamp(int(std::floor(y+(yy+.5)*spanY/h))-y0,0,nh-1));
-    baseDepth_=std::make_shared<const std::vector<float>>(std::move(source));depthPlan_={nw,nh,std::move(xs),std::move(ys)};
+    baseDepth_=depthSource_.pixels;depthPlan_={nw,nh,std::move(xs),std::move(ys)};
    }else{
+    depthSource_={};std::vector<float> source;if(!background.depthRegion(x0,y0,nw,nh,source))return false;
     auto depth=std::make_shared<std::vector<float>>(size_t(w)*h);
     std::vector<int>xs(w);for(int xx=0;xx<w;++xx)xs[xx]=std::clamp(int(std::floor(x+(xx+.5)*spanX/w))-x0,0,nw-1);
     parallelrows::rows(size_t(h),size_t(w)*h,[&](size_t first,size_t last){for(int yy=int(first);yy<int(last);++yy){int iy=std::clamp(int(std::floor(y+(yy+.5)*spanY/h))-y0,0,nh-1);
@@ -105,7 +121,7 @@ public:
   }
   if(!requestGpu&&(surface_.failed()||surface_.width()!=w||surface_.height()!=h||gpuRecording_))if(!surface_.reset(w,h))return false;
   if(requestGpu&&!gpuRecording_)surface_={}; // release a previous CPU frame once, not once per recorded frame
-  width_=w;height_=h;key_=key;x_=x;y_=y;sx_=w/spanX;sy_=h/spanY;
+  width_=w;height_=h;key_=key;terrainRevision_=terrainRevision;x_=x;y_=y;sx_=w/spanX;sy_=h/spanY;
   surface_.precision(precision);backingW_=background.width();backingH_=background.height();gpuRecording_=requestGpu;
   if(gpuRecording_){
    if((!baseTiles||baseTiles->empty())&&(!basePixels||basePixels.get()!=&pixels))basePixels=std::make_shared<const std::vector<uint32_t>>(pixels);

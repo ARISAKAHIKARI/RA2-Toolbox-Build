@@ -7,12 +7,13 @@
 #include <memory>
 #include <mutex>
 #include <thread>
+#include "deadline_wake.h"
 namespace asyncwork {
 // One immutable latest configuration, one running job, and its own clock.
 // UI submissions update configuration/lease; they do not schedule each frame.
 template<class Input,class Output>class Recurring {
  using Clock=std::chrono::steady_clock;
- std::mutex mutex_;std::condition_variable cv_;std::thread thread_;
+ std::mutex mutex_;DeadlineWake cv_;std::thread thread_;
  std::shared_ptr<const Input> input_;std::shared_ptr<const Output> latest_;
  std::function<std::shared_ptr<const Output>(const Input&)> work_;
  std::function<void()> completed_;
@@ -41,7 +42,7 @@ public:
  ~Recurring(){shutdown();}
  void submit(Input input,int rate,std::chrono::milliseconds lease=std::chrono::milliseconds(500)){
   auto next=std::make_shared<const Input>(std::move(input));std::lock_guard<std::mutex>lock(mutex_);if(stop_)return;
-  rate=std::clamp(rate,5,500);auto now=Clock::now();if(!input_||rate!=rate_)due_=now;
+  rate=std::clamp(rate,5,1000);auto now=Clock::now();if(!input_||rate!=rate_)due_=now;
   input_=std::move(next);rate_=rate;expires_=now+lease;
   if(!thread_.joinable())thread_=std::thread([this]{run();});cv_.notify_one();
  }

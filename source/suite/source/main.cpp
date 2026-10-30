@@ -8,6 +8,7 @@
 #define _UNICODE
 #endif
 #include <windows.h>
+#include "../../shared/source/bounded_shutdown.h"
 #include <commctrl.h>
 #include <string>
 #include <atomic>
@@ -93,7 +94,7 @@ static void applyDpi(unsigned dpi){
 }
 
 static bool done(int i){return !workers[i]||WaitForSingleObject(workers[i],0)==WAIT_OBJECT_0;}
-static void shutdown(){closePhase=2;suite::frontend.closing();layoutPanes();SetWindowTextW(frame,L"红警工具箱 · 正在恢复并退出…");
+static void shutdown(){boundedshutdown::begin();closePhase=2;suite::frontend.closing();layoutPanes();SetWindowTextW(frame,L"红警工具箱 · 正在退出（恢复最多等待 2 秒）…");
  for(unsigned i=0;i<3;++i)suite::frontend.post(i,WM_CLOSE,suite::CloseToken);
 }
 static DWORD WINAPI run(LPVOID arg){int i=int((uintptr_t)arg);LPWSTR cmd=const_cast<LPWSTR>(args.c_str());

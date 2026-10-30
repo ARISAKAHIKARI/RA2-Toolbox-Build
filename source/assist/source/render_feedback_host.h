@@ -20,7 +20,7 @@ static std::vector<nf::Primitive> oldPrimitives;
 static std::vector<nf::Stroke> oldStrokes;
 static std::shared_ptr<const std::vector<uint32_t>> selectionPixels;
 static nf::Rect selectionBounds;
-static bool live=false,unsafeView=false;
+static bool live=false,unsafeView=false,unsafeWorld=false;
 static bool nativeLeaseUnsafe=false;
 static void hide(){
  localUI.invalidate();
@@ -45,7 +45,7 @@ static bool update(const Request&r,const std::shared_ptr<const Frame>&scene,int 
  // Keep a failed native mask unsafe through that retry, even after clearing
  // the public mask pointer. Only a complete new group restores lease safety.
  auto accept=[&](bool value){nativeFailure.complete=value;if(value)nativeLeaseUnsafe=false;return value;};
- unsafeView=false;if(!scene)return false;live=true;
+ unsafeView=unsafeWorld=false;if(!scene)return false;live=true;
  if(cursorPID!=r.pid||cursorEpoch!=r.match){cursorCache.clear();foundationStencil.clear();effectStencil.clear();unitUIStencil.clear();nativeCutouts.reset();cursorPID=r.pid;cursorEpoch=r.match;}
  if(selectionContext.token!=r.context.token||selectionContext.cameraX!=r.context.cameraX||selectionContext.cameraY!=r.context.cameraY){
   selectionPixels.reset();oldPrimitives.clear();oldStrokes.clear();nativeCutouts.reset();
@@ -54,7 +54,7 @@ static bool update(const Request&r,const std::shared_ptr<const Frame>&scene,int 
  auto read=[](uint32_t p,void*out,size_t n){return externalReader.readFresh(p,out,n);};
  external::mainview::View before;
  if(!external::mainview::sample(read,before))return false;
- if(!renderpresentation::sameProjection(before,r.view)||before.frame<r.view.frame){unsafeView=true;return false;}
+ if(!renderpresentation::sameProjection(before,r.view)||before.frame<r.view.frame){unsafeView=unsafeWorld=true;return false;}
  nf::Band band;std::vector<nf::Selected> selected;
  const bool bandOK=nf::band(read,r.view.tactical,band);
  const bool selectionOK=nf::selected(read,scene->objects,selected);
@@ -68,7 +68,7 @@ static bool update(const Request&r,const std::shared_ptr<const Frame>&scene,int 
  const double sx=double(r.width)/r.view.width,sy=double(r.height)/r.view.height;
  external::mainview::View after;
  if(!external::mainview::sample(read,after))return false;
- if(!renderpresentation::sameProjection(before,after)||after.frame<before.frame){unsafeView=true;return false;}
+ if(!renderpresentation::sameProjection(before,after)||after.frame<before.frame){unsafeView=unsafeWorld=true;return false;}
  // A failed native-effect mask must never retain an older transparent hole:
  // it could expose an unrelated pixel after the beam/animation has moved.
  if(!effectsOK){nativeCutouts.reset();return false;}

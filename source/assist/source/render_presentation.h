@@ -11,10 +11,12 @@ constexpr uint32_t SampleMaxAge=2500,CompletionMaxAge=1500,ViewReadGrace=120;
 // A small source border lets camera motion crop a completed image immediately.
 // Keep its cost bounded: no resolution reduction and no full-frame UI copies.
 constexpr int ScrollBorder=96;
+constexpr int MaximumScrollBorder=384;
+constexpr int ObservationRate=1000;
 struct Window {int paddingX=0,paddingY=0,width=0,height=0;};
-inline Window window(int width,int height,int nativeWidth,int nativeHeight){
+inline Window window(int width,int height,int nativeWidth,int nativeHeight,int borderX=ScrollBorder,int borderY=ScrollBorder){
  if(width<1||height<1||width>8192||height>8192||uint64_t(width)*height>16*1024*1024||nativeWidth<1||nativeHeight<1)return {};
- Window out{int(std::ceil(double(ScrollBorder)*width/nativeWidth)),int(std::ceil(double(ScrollBorder)*height/nativeHeight)),width,height};
+ Window out{int(std::ceil(double(std::clamp(borderX,0,MaximumScrollBorder))*width/nativeWidth)),int(std::ceil(double(std::clamp(borderY,0,MaximumScrollBorder))*height/nativeHeight)),width,height};
  auto fits=[&]{return int64_t(width)+2ll*out.paddingX<=8192&&int64_t(height)+2ll*out.paddingY<=8192&&
   (uint64_t(width)+2ull*out.paddingX)*(uint64_t(height)+2ull*out.paddingY)<=16*1024*1024;};
  while(!fits()&&(out.paddingX||out.paddingY)){out.paddingX/=2;out.paddingY/=2;}
@@ -33,6 +35,16 @@ class CameraPrefetch {
  external::mainview::View previous_{};uint32_t tick_=0,interval_=0;int64_t dx_=0,dy_=0;bool observed_=false,measured_=false;
 public:
  void reset(){observed_=measured_=false;}
+ std::pair<int,int> borders(const external::mainview::View&actual,uint32_t now,double lastRenderMs,int displayRate)const{
+  if(!measured_||!recent(now,tick_,250)||!sameProjection(previous_,actual)||actual.frame<previous_.frame||
+    !std::isfinite(lastRenderMs)||lastRenderMs<0||lastRenderMs>CompletionMaxAge)return {ScrollBorder,ScrollBorder};
+  // Cover the in-flight render plus the next presentation. Quantized source
+  // margins avoid resizing for every tiny velocity variation; never change
+  // output resolution. Teleports still require a newly observed scene.
+  const double horizon=std::max(4.,lastRenderMs)+1000./std::clamp(displayRate,5,500);
+  auto margin=[&](int64_t delta){return std::clamp(int(std::ceil((32.+std::abs(double(delta))*horizon/interval_)/32.))*32,ScrollBorder,MaximumScrollBorder);};
+  return {margin(dx_),margin(dy_)};
+ }
  // Observe at the presentation cadence, independently of a possibly slow
  // scene worker. The latest immutable observation travels with its request.
  void observe(const external::mainview::View&actual,uint32_t now){
@@ -57,7 +69,7 @@ public:
     !std::isfinite(lastRenderMs)||lastRenderMs<=0||lastRenderMs>CompletionMaxAge||
     !std::isfinite(marginX)||!std::isfinite(marginY)||marginX<0||marginY<0)return out;
   auto bias=[&](int64_t delta,double margin){
-   const int limit=int(std::floor(std::min(64.,margin*(2./3.))));
+   const int limit=int(std::floor(margin*(2./3.)));
    return int(std::lround(std::clamp(double(delta)*lastRenderMs/interval_,-double(limit),double(limit))));
   };
   out.cameraX+=bias(dx_,marginX);out.cameraY+=bias(dy_,marginY);
@@ -79,6 +91,9 @@ public:
 };
 inline bool sampleAdvance(int first,int sampled,int last){
  return first>=0&&sampled>=first&&last>=sampled&&int64_t(last)-sampled<=2;
+}
+inline bool sampleAdvance(int first,int sampled,int last,uint32_t elapsedMs){
+ return first>=0&&sampled>=first&&last>=sampled&&elapsedMs<=120;
 }
 template<class Request>auto gpuFlag(const Request&r,int)->decltype(bool(r.gpu)){return r.gpu;}
 template<class Request>bool gpuFlag(const Request&,long){return false;}
@@ -145,6 +160,11 @@ public:
  bool retain(const Request&request,uint32_t now)const{
   return frame_&&compatible(request_,request)&&usable(*frame_,request,now)&&recent(now,tick_,ViewReadGrace);
  }
+ bool holdDuringScroll(const Request&request,uint32_t now)const{
+  return frame_&&scrollCompatible(request_,request)&&recent(now,frame_->sampledTick,SampleMaxAge)&&
+   recent(now,frame_->completedTick,CompletionMaxAge)&&recent(now,tick_,32);
+ }
+ const overlaycomposition::Context&context()const{return request_.context;}
  const std::vector<overlaycomposition::Surface>&layers()const{return layers_;}
  const std::shared_ptr<const Frame>&frame()const{return frame_;}
 };

@@ -1,0 +1,128 @@
+{
+  "baseline": "594af4b4c24858714f92a70af042365903fe62aa",
+  "merge_parent": "ddf0002f795524fdc80760a0c8ae244746d4d52f",
+  "merge_base": "b422be861e705120ea12069630588c54fda72364",
+  "cpp_tests": [
+    {
+      "test": "render_memory_path",
+      "exit": 0,
+      "seconds": 0.37
+    },
+    {
+      "test": "render_async_cadence",
+      "exit": 0,
+      "seconds": 0.88
+    },
+    {
+      "test": "bounded_shutdown",
+      "exit": 0,
+      "seconds": 0.17
+    },
+    {
+      "test": "render_depth_cache",
+      "exit": 0,
+      "seconds": 4.76
+    },
+    {
+      "test": "material_motion",
+      "exit": 0,
+      "seconds": 1.72
+    },
+    {
+      "test": "render_backend_parity",
+      "exit": 0,
+      "seconds": 19.62
+    },
+    {
+      "test": "render_feedback_host",
+      "exit": 0,
+      "seconds": 7.73
+    },
+    {
+      "test": "render_scroll",
+      "exit": 0,
+      "seconds": 22.6
+    },
+    {
+      "test": "terrain_partial_scene",
+      "exit": 0,
+      "seconds": 20.05
+    },
+    {
+      "test": "live_scene_lighting",
+      "exit": 0,
+      "seconds": 20.05
+    },
+    {
+      "test": "live_voxel_scene",
+      "exit": 0,
+      "seconds": 18.76
+    },
+    {
+      "test": "watch_host",
+      "exit": 0,
+      "seconds": 12.33
+    },
+    {
+      "test": "radar_scene",
+      "exit": 0,
+      "seconds": 32.24
+    },
+    {
+      "test": "minimap_terrain_crop",
+      "exit": 0,
+      "seconds": 21.5
+    },
+    {
+      "test": "terrain_viewport",
+      "exit": 0,
+      "seconds": 19.8
+    }
+  ],
+  "feedback_continuity_recheck": "passed after 32ms hold/world-rejection additions",
+  "integration_checks": [
+    "render_material_settings.py",
+    "render_atomic_camera.py",
+    "render_presentation_gate.py",
+    "validate_material_refresh.py",
+    "ui_geometry_test.py"
+  ],
+  "integration_status": "passed",
+  "depth_plan_exact_samples": 345600,
+  "native_depth_pans_reused": 20,
+  "object_coverage": {
+    "basic": "6/6",
+    "detailed": "6/6",
+    "unchanged_vpl_added_rasters": 0,
+    "changed_vpl_added_rasters": 3
+  },
+  "cross_compile": {
+    "zig": "0.13.0",
+    "host": "x86_64-windows-gnu",
+    "runtime": "x86-windows-gnu",
+    "pe_abi_import_check": "passed"
+  },
+  "vulkan_executed": false,
+  "windows_loader_executed": false,
+  "live_game_tested": false,
+  "hardware_fps_measured": false,
+  "sampling_target_hz": 1000,
+  "sampling_target_verified_on_windows": false,
+  "binaries": [
+    {
+      "name": "RA2Toolbox.exe",
+      "bytes": 6873088,
+      "sha256": "a7a45def015b553683b1422294a2cb6cb9fbd058b0677a28c95318916ea4c370"
+    },
+    {
+      "name": "GameRuntime.dll",
+      "bytes": 4963328,
+      "sha256": "c834d129c56420dab82da61fa0954810e1c234776c8de59e4b78a429343f5158"
+    },
+    {
+      "name": "GameRuntimeHost32.exe",
+      "bytes": 207872,
+      "sha256": "60cdb333ab64eefc6b50b9861846b12d8b257d175903eda3a3553be438efe085"
+    }
+  ]
+}

@@ -1,4 +1,5 @@
 #pragma once
+#include "gpu_memory_policy.h"
 // Optional Vulkan 1.0 compute resolve. No game handles, hooks or memory writes.
 // Input tiles are immutable premultiplied ARGB8; only changed tiles are uploaded.
 #ifndef VK_NO_PROTOTYPES
@@ -41,7 +42,7 @@ struct Diagnostics {
  bool xbrzAvailable=false;
  uint64_t allocatedBufferBytes=0,mappedBufferBytes=0,peakMappedBufferBytes=0;
  double milliseconds=0,prepareMilliseconds=0,waitMilliseconds=0,readbackMilliseconds=0;
- bool available=false,softwareDevice=false;
+ bool available=false,softwareDevice=false,readbackCached=false;
  std::string device,reason;
 };
 class Resolve {
@@ -56,7 +57,7 @@ protected:
 #endif
  static constexpr VkDeviceSize AtlasBytes=128ull*1024*1024;
  static constexpr uint64_t MaxPixels=16ull*1024*1024,MaxCoordinates=4ull*1024*1024;
- struct Buffer {VkBuffer buffer=VK_NULL_HANDLE;VkDeviceMemory memory=VK_NULL_HANDLE;VkDeviceSize size=0;void* mapped=nullptr;bool coherent=false;VkDeviceSize allocationBytes=0;};
+ struct Buffer {VkBuffer buffer=VK_NULL_HANDLE;VkDeviceMemory memory=VK_NULL_HANDLE;VkDeviceSize size=0;void* mapped=nullptr;bool coherent=false,cached=false;VkDeviceSize allocationBytes=0;};
  struct Tile {std::weak_ptr<const std::vector<uint32_t>> owner;const void* address=nullptr;uint32_t offset=0,count=0;uint64_t used=0;};
  struct Coordinate {uint32_t a,b,weight,pad;};
  struct Params {uint32_t offset,sourceWidth,outputWidth,left,top,width,height,xOffset,yOffset;};
@@ -81,7 +82,7 @@ protected:
 #else
  static constexpr uint64_t MappedBudget=sizeof(void*)>=8?768ull*1024*1024:512ull*1024*1024;
 #endif
- void memoryDiagnostics(){diagnostics_.allocatedBufferBytes=allocatedBufferBytes_;diagnostics_.mappedBufferBytes=mappedBufferBytes_;diagnostics_.peakMappedBufferBytes=peakMappedBufferBytes_;}
+ void memoryDiagnostics(){diagnostics_.allocatedBufferBytes=allocatedBufferBytes_;diagnostics_.mappedBufferBytes=mappedBufferBytes_;diagnostics_.peakMappedBufferBytes=peakMappedBufferBytes_;diagnostics_.readbackCached=readback_.cached;}
  static std::atomic<bool>& quarantined(){static std::atomic<bool> value{false};return value;}
 #define RA2_VK_GLOBAL(F) PFN_##F F##_=nullptr;
  RA2_VK_GLOBAL(vkGetInstanceProcAddr) RA2_VK_GLOBAL(vkCreateInstance)
@@ -142,8 +143,8 @@ protected:
   int best=-1,score=-1;
   for(uint32_t i=0;i<memory_.memoryTypeCount;++i)if(req.memoryTypeBits&(1u<<i)){
    const auto flags=memory_.memoryTypes[i].propertyFlags;
-   if(host&&!(flags&VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))continue;
-   int s=host?((flags&VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)?4:0)+((flags&VK_MEMORY_PROPERTY_HOST_CACHED_BIT)?2:0):((flags&VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)?4:0);
+   const bool readback=host&&(usage&VK_BUFFER_USAGE_TRANSFER_DST_BIT)&&!(usage&VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
+   const int s=gpumemory::score(host,readback,flags&VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,flags&VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,flags&VK_MEMORY_PROPERTY_HOST_CACHED_BIT,flags&VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
    if(s>score){best=int(i);score=s;}
   }
   if(best<0){destroy(b);return fail("No suitable Vulkan memory type");}
@@ -151,7 +152,7 @@ protected:
   if(vkAllocateMemory_(device_,&allocation,nullptr,&b.memory)!=VK_SUCCESS){destroy(b);return fail("Vulkan buffer allocation failed");}
   b.allocationBytes=req.size;allocatedBufferBytes_+=req.size;memoryDiagnostics();
   if(vkBindBufferMemory_(device_,b.buffer,b.memory,0)!=VK_SUCCESS){destroy(b);return fail("Vulkan buffer binding failed");}
-  b.size=capacity;b.coherent=(memory_.memoryTypes[best].propertyFlags&VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)!=0;
+  b.size=capacity;b.coherent=(memory_.memoryTypes[best].propertyFlags&VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)!=0;b.cached=(memory_.memoryTypes[best].propertyFlags&VK_MEMORY_PROPERTY_HOST_CACHED_BIT)!=0;
   if(host){void*mapped=nullptr;if(vkMapMemory_(device_,b.memory,0,VK_WHOLE_SIZE,0,&mapped)!=VK_SUCCESS){destroy(b);return fail("Vulkan mapping failed");}b.mapped=mapped;}
   if(host){mappedBufferBytes_+=b.allocationBytes;peakMappedBufferBytes_=std::max(peakMappedBufferBytes_,mappedBufferBytes_);memoryDiagnostics();}
   return true;

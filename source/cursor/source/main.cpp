@@ -11,6 +11,7 @@
 #define NOMINMAX
 #endif
 #include <windows.h>
+#include "../../shared/source/bounded_shutdown.h"
 #include <tlhelp32.h>
 #include <shellapi.h>
 #include <commdlg.h>
@@ -1416,10 +1417,11 @@ case WM_GETMINMAXINFO:{auto p=(MINMAXINFO*)b;p->ptMinTrackSize={uidpi::scale(adv
 #ifdef RA2_UNIFIED
  if(a!=suite::CloseToken){suite::requestClose();return 0;}
 #endif
- KillTimer(w,152);if(uiReady)applyTargetRate();KillTimer(w,150);if(uiReady&&!applyingSettings){applyingSettings=true;applyScale();applyingSettings=false;}
 #ifndef RA2_UNIFIED
  if(!cursorCloseAllowed())return 0;
 #endif
+ boundedshutdown::begin();
+ KillTimer(w,152);if(uiReady)applyTargetRate();KillTimer(w,150);if(uiReady&&!applyingSettings){applyingSettings=true;applyScale();applyingSettings=false;}
  stop();DestroyWindow(w);return 0;
  case WM_DESTROY:if(playbackCancel)playbackCancel->store(true);if(prepareProcess){HANDLE cancel=CreateFileW(prepareCancel.c_str(),GENERIC_WRITE,FILE_SHARE_READ,NULL,CREATE_ALWAYS,FILE_ATTRIBUTE_NORMAL,NULL);if(cancel!=INVALID_HANDLE_VALUE)CloseHandle(cancel);CloseHandle(prepareProcess);prepareProcess=nullptr;}if(uiFont){DeleteObject(uiFont);uiFont=NULL;}if(titleFont){DeleteObject(titleFont);titleFont=NULL;}if(actionFont){DeleteObject(actionFont);actionFont=NULL;}if(panelBrush){DeleteObject(panelBrush);panelBrush=NULL;}if(headerBrush){DeleteObject(headerBrush);headerBrush=NULL;}if(statusBrush){DeleteObject(statusBrush);statusBrush=NULL;}PostQuitMessage(0);return 0;}return DefWindowProcW(w,m,a,b);}
 int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR cmd,int){
