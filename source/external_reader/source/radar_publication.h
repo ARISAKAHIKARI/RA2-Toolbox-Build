@@ -19,4 +19,9 @@ inline bool sameWorld(const Frame&sample,const PublicationContext&current){
 inline bool freshMarkers(const Frame&sample,const PublicationContext&sampled){
  return sameWorld(sample,sampled)&&int64_t(sampled.frame)-sample.frame<=2;
 }
+// A completed, validated bank crosses a thread boundary. Its usable age is
+// wall time: two game ticks can be only a few milliseconds at fast game speed.
+inline bool recentMarkers(const Frame&sample,const PublicationContext&current,uint32_t now,uint32_t maximumAge=100){
+ return sample.markerScanValid&&sameWorld(sample,current)&&uint32_t(now-sample.tick)<=maximumAge;
+}
 }}

@@ -6,6 +6,7 @@
 
 | 主题 | 新笔记 | 关键词 |
 | --- | --- | --- |
+| 只开启渲染升级时的默认重处理、基础快速模式及高速游戏时效 | [快速模式与高速采样 Hotfix9](2026-10-30-fast-mode-and-high-speed.md) | 72ms 260ms RenderProcessing xBRZ explicit terrain thread wallclock actor age |
 | 独立采样与整帧绘制时钟、小地图全图源数据及 TMP 解码复用 | [独立整帧时钟 Hotfix8](2026-10-30-independent-full-frame-clock.md) | Recurring 5-500Hz 500ms lease completion notify scene bank shared TMP force full upload |
 | 设置页首次加载慢与切换空白、原子类别布局、输入绘制饥饿 | [设置页生命周期 Hotfix7](2026-10-29-settings-page-lifecycle.md) | latest category foreground lag relative z order shared tooltip 600 fair message pump |
 | 独立读取与绘制、相同覆盖层去重、点击分区强制恢复 | [读取与呈现提速 Hotfix6](2026-10-29-independent-scene-reading.md) | Latest two observations separate ReadSession epoch cutouts equal no dirty upload WM_SIZE navigation |

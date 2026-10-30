@@ -95,6 +95,12 @@ public:
  void reset(){geo_={};pointers_.clear();maskBits_.clear();pending_.reset();terrain_.reset();cursor_=0;lastFrame_=-1;++revision_;}
  unsigned revision()const{return revision_;}
  bool hasTerrain()const{return bool(terrain_);}
+ Frame terrainFrame(uint32_t now)const{Frame out;out.terrain=terrain_;out.tick=now;out.frame=lastFrame_;return out;}
+ void useTerrain(const Frame&frame){
+  if(!frame.terrain)return;
+  if(!geo_.same(frame.terrain->geo)||reveal_!=uint32_t(frame.terrain->reveal))reset();
+  terrain_=frame.terrain;geo_=terrain_->geo;reveal_=terrain_->reveal;lastFrame_=frame.frame;
+ }
  void seedTerrain(const Frame&frame){
   if(terrain_||!frame.terrain||frame.terrain->art.empty())return;
   reset();terrain_=frame.terrain;geo_=terrain_->geo;reveal_=terrain_->reveal;lastFrame_=frame.frame;++revision_;

@@ -40,6 +40,8 @@ struct Observation {
 };
 static external::ReadSession sampleReader;
 static external::radar::Sampler<external::SharedReadView> sampler(external::SharedReadView{&sampleReader});
+static external::ReadSession terrainReader;
+static external::radar::Sampler<external::SharedReadView> terrainSampler(external::SharedReadView{&terrainReader});
 static uint32_t process=0,epoch=0;static bool active=false;static uint64_t imageToken=0;
 static constexpr UINT ReadyMessage=WM_APP+20;
 static std::atomic<bool> readyPending{false};
@@ -67,6 +69,19 @@ static std::wstring lastStatusText;
 static void statusText(const std::wstring&text){
  if(lastStatusText==text)return;lastStatusText=text;SetWindowTextW(GetDlgItem(ui,9303),text.c_str());
 }
+static asyncwork::Recurring<Request,external::radar::Frame> terrainWorker([](const Request&r)->std::shared_ptr<const external::radar::Frame>{
+ static uint64_t seenGeneration=0;static uint32_t seenPid=0,seenMatch=0,seenReveal=~0u;
+ if(seenGeneration!=r.generation||seenPid!=r.pid||seenMatch!=r.match||seenReveal!=r.reveal){
+  terrainReader.close();terrainSampler.reset();seenGeneration=r.generation;seenPid=r.pid;seenMatch=r.match;seenReveal=r.reveal;
+ }
+ if(!terrainReader.open(r.pid))return {};
+ if(!terrainSampler.hasTerrain())if(auto bank=external::radar::sceneBank().get(r.pid,r.match,r.reveal,GetTickCount()))terrainSampler.seedTerrain(*bank);
+ if(!terrainSampler.step(r.reveal,8192,true))return {};
+ auto data=terrainSampler.terrainFrame(GetTickCount());if(!data.terrain)return {};
+ auto fresh=[](uint32_t p,void*out,size_t n){return terrainReader.readFresh(p,out,n);};
+ if(!external::radar::sameWorld(data,external::radar::publicationContext(fresh)))return {};
+ return std::make_shared<const external::radar::Frame>(std::move(data));
+});
 static asyncwork::Recurring<Request,Observation> samplingWorker([](const Request&r)->std::shared_ptr<const Observation>{
  static std::shared_ptr<const Observation> last;
  static uint64_t sampleGeneration=0;static uint32_t sampleProcess=0,sampleMatch=0,sampleReveal=~0u;
@@ -79,18 +94,12 @@ static asyncwork::Recurring<Request,Observation> samplingWorker([](const Request
  auto fresh=[](uint32_t p,void*out,size_t n){return sampleReader.readFresh(p,out,n);};
  external::mainview::View before;
  if(!external::mainview::sample(fresh,before)||!renderpresentation::sameProjection(before,r.view)||before.frame<r.view.frame)return {};
- // Coalesce very fast UI requests without retaining an old observation for
- // a whole render. Paused games still resample and continue terrain paging.
- if(last&&last->current->frame==before.frame&&DWORD(GetTickCount()-last->tick)<8)return last;
- if(!sampler.hasTerrain())if(auto shared=external::radar::sceneBank().get(r.pid,r.match,r.reveal,GetTickCount()))sampler.seedTerrain(*shared);
- if(!sampler.step(r.reveal,8192,true))return {};
- // Terrain paging can take several simulation ticks. Start a fresh page
- // epoch for actors AFTER that work, rather than labelling old actor pages
- // with the terrain scan's starting frame and rejecting every slow sample.
- sampleReader.begin();external::mainview::View actorView;
- if(!external::mainview::sample(fresh,actorView)||!renderpresentation::sameProjection(before,actorView)||actorView.frame<before.frame)return {};
+ // The fast actor path NEVER traverses terrain. The third worker publishes
+ // immutable whole-map banks while this reader samples positions and poses.
+ auto terrain=terrainWorker.get();if(!terrain)return {};
+ sampler.useTerrain(*terrain);const auto actorView=before;const double actorsStarted=presentationNow();
  auto raw=sampler.snapshot(GetTickCount(),actorView.frame);
- if(!raw.terrain||!raw.markerScanValid||!external::radar::freshMarkers(raw,external::radar::publicationContext(fresh)))return {};
+ if(!raw.terrain||!raw.markerScanValid||!external::radar::sameWorld(raw,external::radar::publicationContext(fresh)))return {};
  external::SharedReadView cached{&sampleReader};external::GameView game(cached);
  const uint32_t rules=game.get<uint32_t>(0x8871E0);
  double yellow=rules>=0x10000?game.get<double>(rules+0x1700,.5):.5;
@@ -106,8 +115,8 @@ static asyncwork::Recurring<Request,Observation> samplingWorker([](const Request
  raw.posesPrepared=true;
  external::mainview::View captured;
  if(!external::mainview::sample(fresh,captured)||!renderpresentation::sameProjection(before,captured)||
-    !renderpresentation::sampleAdvance(actorView.frame,raw.frame,captured.frame)||
-    !external::radar::freshMarkers(raw,external::radar::publicationContext(fresh)))return {};
+    captured.frame<raw.frame||presentationNow()-actorsStarted>50.||
+    !external::radar::sameWorld(raw,external::radar::publicationContext(fresh)))return {};
  auto out=std::make_shared<Observation>();out->request=r;out->view=captured;
  out->tick=GetTickCount();out->observedMs=presentationNow();out->readMs=out->observedMs-started;
  out->current=std::make_shared<const external::radar::Frame>(std::move(raw));
@@ -144,7 +153,8 @@ static asyncwork::Recurring<Request,Frame> worker([](const Request&r)->std::shar
  if(!observed||observed->request.generation!=r.generation||observed->request.pid!=r.pid||
     observed->request.match!=r.match||observed->request.reveal!=r.reveal||
     !renderpresentation::sameProjection(observed->view,before)||
-    !external::radar::freshMarkers(*observed->current,external::radar::publicationContext(fresh)))return unavailable();
+    presentationNow()-observed->observedMs>100.||
+    !external::radar::recentMarkers(*observed->current,external::radar::publicationContext(fresh),GetTickCount()))return unavailable();
  static uint32_t timelineReveal=~0u;
  if(!sampleValid||timelineReveal!=r.reveal||observed->current->frame<sampledLogicFrame){
   timeline.reset();sampledLogicFrame=-1;timelineReveal=r.reveal;
@@ -236,10 +246,10 @@ static asyncwork::Recurring<Request,Frame> worker([](const Request&r)->std::shar
  lastFrameCompleteMs=completedMs;hasFrameCompleteTime=true;progress=2;return out;
 },notifyReady);
 #include "render_feedback_host.h"
-static void suspendScene(){neuralRenderer.cancel();cameraPrefetch.reset();groupLease.reset();if(active){active=false;++generation;worker.invalidate();samplingWorker.invalidate();}feedback::hide();imageToken=0;overlaycompositor::host().hide(overlaycompositor::RenderUpgrade);}
+static void suspendScene(){neuralRenderer.cancel();cameraPrefetch.reset();groupLease.reset();if(active){active=false;++generation;worker.invalidate();samplingWorker.invalidate();terrainWorker.invalidate();}feedback::hide();imageToken=0;overlaycompositor::host().hide(overlaycompositor::RenderUpgrade);}
 static void suspend(){viewLease.reset();suspendScene();}
 static void stop(){suspend();overlaycompositor::host().suspend();}
-static void shutdown(){stop();worker.shutdown();samplingWorker.shutdown();neuralRenderer.reset();feedback::shutdown();overlaycompositor::host().shutdown();}
+static void shutdown(){stop();worker.shutdown();samplingWorker.shutdown();terrainWorker.shutdown();neuralRenderer.reset();feedback::shutdown();overlaycompositor::host().shutdown();}
 static void updateNeuralStatus(bool force=false){
  HWND label=GetDlgItem(ui,9312);if(!label)return;
  static renderpresentation::StatusCadence cadence;
@@ -250,7 +260,7 @@ static void updateNeuralStatus(bool force=false){
  else text=L"DLSS 5：需要 64 位工具箱；当前保留普通渲染。";
 #else
  else if(!renderUpgradeEnabled)text=L"DLSS 5：请先开启渲染升级。";
- else if(!renderVulkanEnabled||!renderSceneDetail)text=L"DLSS 5：需要 Vulkan GPU 和精细场景；当前保留普通渲染。";
+ else if(!renderVulkanEnabled||!effectiveRenderDetail())text=L"DLSS 5：需要 Vulkan GPU 和精细场景；当前保留普通渲染。";
  else{
   auto completed=worker.get();
   if(completed&&completed->request.generation==generation&&completed->request.pid==pid&&completed->request.match==displayMatch()&&completed->request.neural){
@@ -289,13 +299,13 @@ static void update(POINT origin,const RECT&client,const external::display::State
     auto held=groupLease.frame();
     if(held){
      Request current=held->request;current.generation=generation;current.pid=pid;current.match=match;current.view=prior;
-     current.materialRefresh=renderMaterialRefresh;current.detail=renderSceneDetail;current.colorPrecision=renderColorPrecision;
-     current.paletteRange=renderPaletteRange;current.reveal=uint32_t(extra.renderReveal||extra.mapStrategy==3);
+     current.materialRefresh=effectiveRenderInterpolation();current.detail=effectiveRenderDetail();current.colorPrecision=effectiveRenderPrecision();
+     current.paletteRange=effectiveRenderPalette();current.reveal=uint32_t(extra.renderReveal||extra.mapStrategy==3);
      current.gpu=renderVulkanEnabled;
      current.neural=renderDLSS5Requested;
      current.neuralToken=neuralRenderer.token();
      // Scale-mode changes require a fresh verified request, even during a read gap.
-     if(verifiedScaleSetting!=renderPixelScale||verifiedPhysicalSetting!=renderPhysicalOutput)groupLease.reset();
+     if(verifiedScaleSetting!=effectiveRenderScale()||verifiedPhysicalSetting!=renderPhysicalOutput)groupLease.reset();
      if(groupLease.retain(current,viewNow)){
       for(auto id:{overlaycompositor::RenderUpgrade,feedback::SelectionLayer,feedback::CursorLayer})
        overlaycompositor::host().touch(id,uintptr_t(game),pid);
@@ -339,15 +349,12 @@ static void update(POINT origin,const RECT&client,const external::display::State
  const int left=int((int64_t(view.x)*client.right)/view.screenW),top=int((int64_t(view.y)*client.bottom)/view.screenH);
  const int right=int((int64_t(view.x+view.width)*client.right+view.screenW-1)/view.screenW);
  const int bottom=int((int64_t(view.y+view.height)*client.bottom+view.screenH-1)/view.screenH);
- // "Auto" is deliberately adaptive only when the real monitor/target
- // qualifies as physical output. Existing nonphysical configurations retain
- // their original nearest/area behavior.
- const int effectiveScale=renderPath==physicalpresentation::RenderPath::EnhancedPhysicalPixels&&
-   renderPixelScale==0?3:renderPixelScale;
- verifiedScaleSetting=renderPixelScale;verifiedPhysicalSetting=renderPhysicalOutput;
- Request request{generation,renderMaterialRefresh,renderSceneDetail,renderColorPrecision,pid,displayMatch(),GetTickCount(),right-left,bottom-top,
+ // Scaling is explicit. Physical output never silently enables xBRZ.
+ const int effectiveScale=effectiveRenderScale();
+ verifiedScaleSetting=effectiveScale;verifiedPhysicalSetting=renderPhysicalOutput;
+ Request request{generation,effectiveRenderInterpolation(),effectiveRenderDetail(),effectiveRenderPrecision(),pid,displayMatch(),GetTickCount(),right-left,bottom-top,
   uint32_t(extra.renderReveal||extra.mapStrategy==3),
-  renderPaletteRange,effectiveScale,view,context};
+  effectiveRenderPalette(),effectiveScale,view,context};
  request.gpu=renderVulkanEnabled;
  request.neural=renderDLSS5Requested;
  request.neuralToken=neuralRenderer.token();
@@ -396,6 +403,7 @@ static void update(POINT origin,const RECT&client,const external::display::State
   layers=groupLease.layers();presentedFrame=groupLease.frame();displaying=true;
  }else{layers.clear();groupLease.reset();imageToken=0;if(!fresh)feedback::hide();}
  overlaycompositor::host().replaceGroupAt(request.context,{overlaycompositor::RenderUpgrade,feedback::SelectionLayer,feedback::CursorLayer},std::move(layers));
+ terrainWorker.submit(request,std::min(60,informationFPS()));
  samplingWorker.submit(request,informationFPS());
  worker.submit(request,informationFPS());
  const uint32_t now=GetTickCount();
@@ -407,7 +415,7 @@ static void update(POINT origin,const RECT&client,const external::display::State
  if(!displaying&&!fresh)status=L"渲染升级：采样/素材或视角变化，暂用原画面";
  else if(!displaying&&!feedbackReady)status=L"渲染升级：等待有效光标或选择状态，暂用原画面";
  else{
-  status=renderPaletteRange==1?L"渲染升级：RGB888 全范围色盘":L"渲染升级：原生 DAC 色盘";
+  status=request.paletteRange==1?L"渲染升级：RGB888 全范围色盘":L"渲染升级：原生 DAC 色盘";
   if(renderPhysicalOutput){
    if(physical.status==physicalpresentation::Status::Ready)
     status+=L" · 物理设备 "+std::to_wstring(client.right)+L"×"+std::to_wstring(client.bottom)+
@@ -435,10 +443,11 @@ static void update(POINT origin,const RECT&client,const external::display::State
   status+=L" · 游戏视口 "+std::to_wstring(request.view.width)+L"×"+std::to_wstring(request.view.height)+
           L" → 输出 "+std::to_wstring(request.width)+L"×"+std::to_wstring(request.height);
 
-  status+=renderColorPrecision?L" · 连续 RGB 光照":L" · 兼容光照色阶";
-  if(renderSceneDetail)status+=L" · 连续地形＋目标像素对象＋VXL 自适应几何/256 向";
+  status+=request.colorPrecision?L" · 连续 RGB 光照":L" · 兼容光照色阶";
+  if(request.detail)status+=L" · 连续地形＋目标像素对象＋VXL 自适应几何/256 向";
+  if(!renderProcessing)status+=L" · 基础快速绘制（额外画质处理关闭）";
   status+=L" · 独立整帧绘制目标 "+std::to_wstring(informationFPS())+L" Hz";
-  if(renderMaterialRefresh)status+=L" · 素材插值";
+  if(request.materialRefresh)status+=L" · 素材插值";
   if(request.gpu)status+=request.detail==0?L" · 原生合成对照：CPU":presentedFrame->gpuUsed?L" · Vulkan GPU 场景":L" · Vulkan 未启用或已回退 CPU";
   if(request.neural)status+=presentedFrame->neural.used?L" · DLSS 5 已处理":L" · DLSS 5 未生效（保留普通画面）";
   status+=L" · 光棱/激光与矿车采集保留原生像素；电弧近似，辐射束/波纹/粒子待补，实机待测";

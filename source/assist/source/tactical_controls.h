@@ -173,6 +173,8 @@ number(816,L"载员与状态文字缩放 / %",labelScalePercent,L"50–250 · �
 marginEdit=number(311,L"文字提示上边距 / 像素",topMargin,L"0–4096");
 toastEdit=number(471,L"战术提示时长 / 毫秒",toastMs,L"500–60000");
 toggle(9300,L"渲染升级（全视口 · 实验性）",renderUpgradeEnabled);next();
+toggle(9313,L"额外画质处理（关闭：基础快速绘制）",renderProcessing);next();
+note(L"仅开启渲染升级时，跳过扩色、连续光照增强、精细 VXL、xBRZ 与素材插值；仍执行基本素材解码和原生色盘映射。下方已保存的画质选项保留，需独立开启额外画质处理才生效。",64);
 toggle(9306,L"4K 物理像素增强（独占全屏保留原分辨率 · 实验性）",renderPhysicalOutput);next();
 label(L"渲染层级",20,260);{auto layer=combo(9302);choices(layer,{L"场景固定在信息层下方"},0);EnableWindow(layer,FALSE);}next();
 toggle(9301,L"统一覆盖层（世界信息＋主屏统计）",unifiedOverlayEnabled);next();
@@ -181,7 +183,8 @@ label(L"颜色计算精度",20,260);choices(combo(9309),{L"兼容色阶（原有
 note(L"增强档保留 RGB888／32 位输出，减少光照台阶；仅当原始色盘重新量化后与运行时 RGB565 全表一致，才补回原色盘中的精度。252 是旧式色盘展开后的通道上限，不是颜色数量；不能恢复没有来源的丢失颜色。非 HDR／10-bit 输出。",72);
 toggle(9307,L"素材高刷（跟随信息刷新率 · 最高目标 500 Hz）",renderMaterialRefresh);next();
 label(L"场景精细度",20,260);choices(combo(9308),{L"原生像素合成（对照）",L"精细：VXL 自适应采样＋256 向转动＋物理像素合成"},renderSceneDetail);next();
-label(L"素材边缘重建",20,260);choices(combo(9305),{L"原生比例（4K 模式自动采用 xBRZ）",L"最近邻（实际倍率）",L"xBRZ（实际倍率）",L"自适应 1–4× xBRZ（推荐）"},renderPixelScale);next();
+toggle(9314,L"启用 xBRZ 边缘重建（独立开启）",renderXbrzEnabled);next();
+label(L"素材边缘重建",20,260);choices(combo(9305),{L"面积采样（不使用 xBRZ）",L"最近邻（实际倍率）",L"xBRZ（实际倍率）",L"自适应 1–4× xBRZ"},renderPixelScale);next();
 toggle(9310,L"Vulkan GPU 场景与小地图（实验）",renderVulkanEnabled);next();
 note(L"精细档可由 GPU 执行 xBRZ、VXL 像素光栅、现场光照／深度／阴影合成及迷雾，原生 1× 也有效。实景小地图缩小使用 GPU 分页面积采样，保留原尺寸遮挡。素材缓存复用；采样、姿态与材质准备仍在 CPU。设备或功能不可用时回退 CPU。",88);
 note(L"SHP/TMP 使用 xBRZ 1.9 原版算法处理当前光照后的颜色，VXL 按实际输出比例重新采样几何。GPU 为同规则移植并执行设备自检，失败时保留上游 CPU 路径。非整数倍率先用 2–4× xBRZ，再缩至目标像素；实时光照或色盘变化会更新结果。",88);

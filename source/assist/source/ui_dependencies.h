@@ -10,7 +10,8 @@ static settingsdeps::State currentSettingDependencies(){
 #ifdef _WIN64
  s.set(Need::Host64,true);
 #endif
- s.set(Need::GPU,renderVulkanEnabled);s.set(Need::Detail,renderSceneDetail!=0);
+ s.set(Need::GPU,renderVulkanEnabled);s.set(Need::Detail,effectiveRenderDetail()!=0);
+ s.set(Need::Quality,renderProcessing);s.set(Need::Reconstruction,renderXbrzEnabled);
  s.set(Need::Missile,extra.missileDefense);s.set(Need::LowDamage,extra.lowDamageFilter);
  s.set(Need::ControlAll,extra.controlAll);s.set(Need::Formation,extra.formationEnabled);
  s.set(Need::Watch,extra.watchEnabled||extra.watchSecondary);s.set(Need::WatchSecondary,extra.watchSecondary);
