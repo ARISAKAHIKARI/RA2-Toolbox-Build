@@ -10,7 +10,7 @@
 #include "../../external_reader/source/native_effect_stencil.h"
 #include "../../external_reader/source/native_beam_effects.h"
 #include "../../external_reader/source/native_unit_ui_stencil.h"
-#include "../../external_reader/source/native_local_ui.h"
+#include "../../external_reader/source/local_ui_task.h"
 #include "../../external_reader/source/material_motion.h"
 #include "../../external_reader/source/scene_bank.h"
 #include "../../external_reader/source/scene_poses.h"
@@ -247,7 +247,7 @@ static void update(POINT origin,const RECT&client,const external::display::State
      // Scale-mode changes require a fresh verified request, even during a read gap.
      if(verifiedScaleSetting!=effectiveRenderScale()||verifiedPhysicalSetting!=renderPhysicalOutput)groupLease.reset();
      if(groupLease.retain(current,viewNow)){
-      for(auto id:{overlaycompositor::RenderUpgrade,feedback::SelectionLayer,feedback::CursorLayer})
+      for(auto id:{overlaycompositor::RenderUpgrade,feedback::SelectionLayer,feedback::CursorLayer,feedback::MessageLayer,feedback::TimerLayer,feedback::StatusLayer,feedback::RallyLayer})
        overlaycompositor::host().touch(id,uintptr_t(game),pid);
      }else{groupLease.reset();feedback::hide();imageToken=0;}
     }
@@ -340,7 +340,7 @@ static void update(POINT origin,const RECT&client,const external::display::State
   // cursor/selection read. Failure never refreshes this lease's deadline.
   layers=groupLease.layers();presentedFrame=groupLease.frame();displaying=true;
  }else{layers.clear();groupLease.reset();imageToken=0;if(!fresh)feedback::hide();}
- overlaycompositor::host().replaceGroupAt(request.context,{overlaycompositor::RenderUpgrade,feedback::SelectionLayer,feedback::CursorLayer},std::move(layers));
+ overlaycompositor::host().replaceGroupAt(request.context,{overlaycompositor::RenderUpgrade,feedback::SelectionLayer,feedback::CursorLayer,feedback::MessageLayer,feedback::TimerLayer,feedback::StatusLayer,feedback::RallyLayer},std::move(layers));
  terrainWorker.submit(request,std::min(60,informationFPS()));
  samplingWorker.submit(request,informationFPS());
  worker.submit(request,informationFPS());

@@ -11,6 +11,8 @@
 | [Ares — All Ares Contributors](https://github.com/Ares-Developers/Ares) | 引擎扩展行为、模块检测与共存参考 | 保留 [上游原始声明](docs/licenses/Ares-LICENSE.txt)，包括其署名和广告鸣谢条款；[原始来源](https://github.com/Ares-Developers/Ares/blob/master/src/LICENSE) |
 | [ccmaps-net — zzattack 及贡献者](https://github.com/zzattack/ccmaps-net) | 地图资源、法线／VPL 表及渲染选型参考 | [GPL v3 原文](https://github.com/zzattack/ccmaps-net/blob/56712d7c9c5048afbfe9bddb01c0ec43f6fc008a/COPYING) |
 | [FA2sp／HDM Edition — handama 及贡献者](https://github.com/handama/FA2sp) | SHP 格式、剧场资源与光照实现参考 | 上游采用 **AGPL v3**，参见保留的 [原始许可](docs/licenses/FA2sp-LICENSE.txt) 和[固定版本来源](https://github.com/handama/FA2sp/blob/f2a461f1788b0ce0667a58ca69f1a931d8be946c/LICENSE) |
+| [Vera20k — YuriPlanet 及贡献者](https://github.com/YuriPlanet/vera20k) | Hotfix14 的 GAME.FNT 字形、文字定位、集结线裁线／图案／像素步进参考与适配；不包含游戏素材 | **GPL v3**；固定提交 `0b6a073d0928453036c4a53d117bb7a2d8d573a7`，保留[上游许可](https://github.com/YuriPlanet/vera20k/blob/0b6a073d0928453036c4a53d117bb7a2d8d573a7/LICENSE-GPL)，本仓库同许可全文见 LICENSE-GPL |
+| [cnc-ddraw — FunkyFr3sh 及贡献者](https://github.com/FunkyFr3sh/cnc-ddraw) | 现有表面像素格式、调色板、透明键与呈现流程比对；未移植其代码 | 固定提交 `279a057ee7e1e4d584b56141c014ab01f3c6ee6d`；参见[上游许可](https://github.com/FunkyFr3sh/cnc-ddraw/blob/279a057ee7e1e4d584b56141c014ab01f3c6ee6d/LICENSE) |
 | [xBRZ — Zenju](https://sourceforge.net/projects/xbrz/files/xBRZ/xBRZ_1.9.zip/download) | SHP／TMP 与原生画布当前颜色的像素边缘放大，使用未修改的 xBRZ 1.9 C++ 实现 | **GPL v3**；保留[上游许可](source/third_party/xbrz/License.txt)、文件内版权和特殊链接例外，来源与 SHA-256 见[集成说明](source/third_party/xbrz/README.ra2toolbox.md) |
 
 引用到具体源文件、版本或算法的记录见 [研究索引](source/research/INDEX.md)。移植或修改上游代码时，原文件中的作者、版权、许可及变更说明应一并保留。

@@ -1,6 +1,6 @@
 #include "../source/render_presentation.h"
 #include "../../external_reader/source/render_profile.h"
-#include "../../external_reader/source/native_local_ui.h"
+#include "../../external_reader/source/local_ui_task.h"
 #include "../../shared/source/latest_worker.h"
 #include "../../external_reader/source/feedback_cursor.h"
 #include "../../external_reader/source/feedback_orders.h"
@@ -29,7 +29,8 @@ static Host&host(){static Host h;return h;}
 static constexpr uint32_t mouseAt=0x10000,mouseVT=0x11000,shape=0x12000,converter=0x13000,palette=0x14000;
 struct Reader {
  std::vector<uint8_t> bytes=std::vector<uint8_t>(0xC00000);bool failSelection=false,failMouse=false,failView=false,failBeam=false;int moveOnSelection=0;size_t reads=0,readBytes=0,pixelReads=0;
- bool open(uint32_t){return true;}void close(){}
+ bool open(uint32_t){return true;}void close(){}void begin(){}
+ bool read(uint32_t p,void*out,size_t n){return readFresh(p,out,n);}
  bool readFresh(uint32_t p,void*out,size_t n){++reads;readBytes+=n;if(p>=shape+56&&p<shape+64)++pixelReads;
   if(p==0xA8ECB8&&moveOnSelection){uint32_t tactical=0;int camera=0;std::memcpy(&tactical,bytes.data()+0x887324,4);std::memcpy(&camera,bytes.data()+tactical+0xB0,4);camera+=moveOnSelection;put(tactical+0xB0,camera);moveOnSelection=0;}
   if((failSelection&&p==0xA8ECB8)||(failMouse&&p==0x887640)||(failView&&p==0xA8B230)||(failBeam&&p==external::nativeeffects::LaserArray))return false;

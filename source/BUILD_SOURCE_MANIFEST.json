@@ -56,5 +56,10 @@
     "shared_native_materials": "bounded immutable native pre-scale VXL/SHP result bank + native TMP cache; viewport composition/scaling remains per camera, not one full-world screenshot",
     "local_ui": "main-only command/selection/cursor and native message/SW+mission timer preservation; conservative primary-factory/rally passthrough; no Phobos chat replacement or pixel-perfect claim",
     "particles": "certified BehavesLike 0/1 SHP frames/opacity; directional fire, pixel particles, waves, RadBeam, VoxelAnim and several special effects remain incomplete"
+  },
+  "Hotfix14": {
+    "local_ui": "Replaces broad native message/timer/primary/rally passthrough rectangles with independent main-view font masks and patterned lines; current GAME.FNT and CSF values read-only; four cached compositor textures on a private reader/worker",
+    "reference": "Vera20k 0b6a073d0928453036c4a53d117bb7a2d8d573a7 font, anchors and rally pixel walk; cnc-ddraw 279a057ee7e1e4d584b56141c014ab01f3c6ee6d format/palette comparison only",
+    "validation_limit": "Portable controlled regressions and local cross compilation; no Windows game/GPU/FPS or pixel-perfect font certification; custom UI, input caret, sloped/object rally destinations remain incomplete"
   }
 }
