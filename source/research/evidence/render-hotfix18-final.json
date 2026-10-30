@@ -126,7 +126,7 @@
     {
       "test": "bounded_shutdown",
       "exit": 0,
-      "seconds": 0.02,
+      "seconds": 0.0019,
       "output": "PASS one close deadline, 2-second bound, only toolbox self handle, safe thread ownership and creation failure fallback (Win32 mock)\n",
       "configuration": "-Isource/tests/winmock; no actual process termination"
     },
@@ -193,9 +193,9 @@
     "scope": "CPU pose preparation; no Vulkan"
   },
   "effects_shader": {
-    "source_sha256": "147aa136316dfff08c4d586f7efc0967c22a826db4a93122d736fcbabc49568f",
-    "spirv_sha256": "0c7c2e073e8ccdb77a61ba6578491514ec4a2f99a69ad264ebcf06e889773353",
-    "bytes": 22432,
+    "source_sha256": "db5cd55b07e55d807345dde4a0caeb49b69d0f872b184fffac9ffbe5d7c9605e",
+    "spirv_sha256": "c43c1c1a503490c16b81a71dedd488c08095ad241cb1210a812caf541e687dbc",
+    "bytes": 22532,
     "graphics_driver_loaded": false
   },
   "compositor_hlsl": "VS and PS compiled to SPIR-V by glslang 15.1.0 and validated; Windows D3DCompile not executed",
@@ -214,18 +214,19 @@
   "binaries": [
     {
       "name": "RA2Toolbox.exe",
-      "bytes": 6984192,
-      "sha256": "f83dc9ab4737f066634564bf26835b24f7e8cef90bc9f8cab8a366f47834d868"
+      "bytes": 6984704,
+      "sha256": "9210949fc1f0137d8438e1183d43f26ae24b6452f64f76c3c6f554e30938d590"
     },
     {
       "name": "GameRuntime.dll",
       "bytes": 4963328,
-      "sha256": "459b167a38a0e35b3a67b0987c1a395b05926d670db1dc72a776edb45a03b58a"
+      "sha256": "0aba4db469451e8313b624c8f918a373b40f084ca37d415f0e8833713d94b6bc"
     },
     {
       "name": "GameRuntimeHost32.exe",
       "bytes": 207872,
-      "sha256": "3e0d2006619610eab7df61b47f646d16337500a7fa74cbfc86f0902ef54c37ba"
+      "sha256": "c9b49ffe7e455c1374e570f4f2d8a4a23ab5f2d456b8224646930d2f1cef6bdf"
     }
-  ]
+  ],
+  "effects_transparency_review": "Zero-strength glow does not store to the output, preserving transparent pixels outside its ellipse; statically compiled/validated, no GPU execution."
 }

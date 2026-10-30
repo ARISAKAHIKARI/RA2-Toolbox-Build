@@ -42,7 +42,7 @@ void main(){
  uint bin=(at.y/32u)*p.columns+at.x/32u,start=command[p.binsOffset+2u*bin],count=command[p.binsOffset+2u*bin+1u],dst=pixel[address],bolt=0;
  for(uint n=0;n<count;++n){uint i=command[p.refsOffset+start+n];if(at.x<u(i,4)||at.y<u(i,5)||at.x>=u(i,6)||at.y>=u(i,7))continue;uint kind=u(i,0),rgb=u(i,1);
   if(kind==0u){int hits=lineHits(i,ivec2(at));for(int k=0;k<hits;++k)dst=lit(dst,rgb,visible,u(i,2)!=0u);}
-  else if(kind==1u){vec2 d=(vec2(at)-vec2(f(i,8),f(i,9)))/vec2(f(i,10),f(i,11));float strength=max(0.,1.-length(d))*.3;uint c=0;for(uint sh=0;sh<24;sh+=8)c|=uint(float((rgb>>sh)&255u)*strength)<<sh;dst=lit(dst,c,visible,true);}
+  else if(kind==1u){vec2 d=(vec2(at)-vec2(f(i,8),f(i,9)))/vec2(f(i,10),f(i,11));float strength=max(0.,1.-length(d))*.3;if(strength>0.){uint c=0;for(uint sh=0;sh<24;sh+=8)c|=uint(float((rgb>>sh)&255u)*strength)<<sh;dst=lit(dst,c,visible,true);}}
   else if(kind==2u){ivec2 q=clamp(ivec2((vec2(at)-vec2(f(i,8),f(i,9)))/vec2(f(i,10),f(i,11))),ivec2(0),ivec2(u(i,14)-1u,u(i,15)-1u));uint index=byteAt(u(i,3),uint(q.y)*u(i,14)+uint(q.x));if(index!=0){uint o=0xff000000u;for(uint sh=0;sh<24;sh+=8){uint old=(dst>>sh)&255u,value=min(255u,old*index/128u);o|=((value*visible+old*(127u-visible))/127u)<<sh;}dst=o;}}
   else if(kind==3u&&insideWave(i,ivec2(at))){
    vec2 scale=vec2(f(i,23),f(i,24));float distance=length((vec2(at)-vec2(f(i,21),f(i,22)))/scale);int sine=int(sin((distance+float(int(u(i,25))))*(u(i,26)==3u?.1:.125))*12.+.49);int mag=min(u(i,26)==3u?9:12,abs(sine)),multiple=mag<=1?0:mag<=6?1:mag<=9?2:3;
