@@ -72,7 +72,7 @@ inline Decision decision(int id,const State&s){
   if(feature!=featuretypes::BurstRefresh)return require(s,{typeListNeed(feature)});
  }
  switch(id){
- case 9306:case 9313:return require(s,{Need::Render});
+ case 9324:case 9306:case 9313:return require(s,{Need::Render});
  case 9304:case 9307:case 9308:case 9309:case 9314:return require(s,{Need::Render,Need::Quality});
  case 9305:return require(s,{Need::Render,Need::Quality,Need::Reconstruction});
  case 9040:case 9041:case 9181:case 881:return require(s,{Need::Missile});
@@ -107,7 +107,7 @@ inline Decision decision(int id,const State&s){
 }
 inline bool effective(bool saved,int id,const State&s){return saved&&decision(id,s).enabled();}
 inline constexpr int BasicControls[]={
- 9304,9305,9306,9307,9308,9309,9313,9314,9040,9041,9181,881,9183,9193,9056,
+ 9304,9305,9306,9307,9308,9309,9313,9314,9324,9040,9041,9181,881,9183,9193,9056,
  9061,9164,9165,9065,831,850,851,852,9100,9101,9166,9167,9168,796,797,
  781,782,783,784,9070,9071,9072,9073,9074,9075,303,310,787,818,802,812,
  9180,895,817,9096,710,711,712,713,714,751,715,716,717,718,312

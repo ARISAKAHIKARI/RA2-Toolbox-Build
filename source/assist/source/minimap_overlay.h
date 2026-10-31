@@ -27,10 +27,10 @@ class Worker {
  std::mutex mutex;std::condition_variable cv;std::thread thread;bool stop=false,paused=false;Request request{};uint64_t generation=0;
  std::shared_ptr<const external::radar::Frame> latest;
  void run(){
-  external::ReadSession reader;external::cameraassets::Context<external::ReadSession> assets(reader);external::radar::SceneRenderer<decltype(assets)> renderer;external::radar::DiagramRenderer diagram;external::sceneextras::Layers radarLayers;external::radar::Sampler<external::SharedReadView> sampler(external::SharedReadView{&reader});uint64_t active=~uint64_t(0);int previousFrame=-1;unsigned previousRevision=0;Request activeRequest{};
+  external::ReadSession reader;external::cameraassets::Context<external::ReadSession> assets(reader);external::radar::SceneRenderer<decltype(assets)> renderer;external::radar::DiagramRenderer diagram;external::sceneextras::Layers radarLayers;external::materialmotion::Timeline motion;external::radar::Sampler<external::SharedReadView> sampler(external::SharedReadView{&reader});uint64_t active=~uint64_t(0);int previousFrame=-1;unsigned previousRevision=0;Request activeRequest{};
   for(;;){Request r;uint64_t token;{std::unique_lock<std::mutex> lock(mutex);cv.wait(lock,[&]{return stop||(!paused&&request.pid);});if(stop)return;r=request;token=generation;}
    const auto iterationStarted=std::chrono::steady_clock::now();
-   if(token!=active){if(r.pid!=activeRequest.pid||r.match!=activeRequest.match){reader.close();sampler.reset();renderer.reset();diagram.reset();radarLayers.reset();}else {if(r.mode!=activeRequest.mode)sampler.reset();if(r.gpu!=activeRequest.gpu||r.selection.revision!=activeRequest.selection.revision)renderer.reset();}activeRequest=r;active=token;previousFrame=-1;previousRevision=0;}
+   if(token!=active){if(r.pid!=activeRequest.pid||r.match!=activeRequest.match){reader.close();sampler.reset();renderer.reset();diagram.reset();radarLayers.reset();motion.reset();}else {if(r.mode!=activeRequest.mode)sampler.reset();if(r.gpu!=activeRequest.gpu||r.selection.revision!=activeRequest.selection.revision)renderer.reset();}activeRequest=r;active=token;previousFrame=-1;previousRevision=0;}
    external::xbrzadapter::gpuPresentation(r.gpu); // this worker owns its GPU state; native assets stay CPU-prepared
    std::shared_ptr<const external::radar::Frame> next;
    if(reader.open(r.pid)){reader.begin();
@@ -39,7 +39,7 @@ class Worker {
     if(shared&&(!external::radar::recentMarkers(*shared,external::radar::publicationContext(fresh),GetTickCount())||!external::radar::supportsEffects(*shared,r.selection.profile.particles,r.selection.profile.lasers)))shared.reset();
     sampler.effects(r.selection.profile.particles,r.selection.profile.lasers);bool ok=shared||sampler.step(r.reveal,4096,r.mode==1);reader.begin();int frame=reader.get<int>(0xA8ED84,-1);
     if(ok&&(r.mode==1||frame!=previousFrame||sampler.revision()!=previousRevision)){
-     auto data=shared?*shared:sampler.snapshot(GetTickCount(),frame);if(!shared)external::radar::preparePoses(data,external::SharedReadView{&reader});assets.identity(r.pid,r.match);radarLayers.begin();data.map=external::sceneextras::decorateRadar(diagram.render(data.terrain,r.width,r.height),data,external::SharedReadView{&reader},assets,radarLayers);
+     auto data=shared?*shared:sampler.snapshot(GetTickCount(),frame);if(!shared){data.observedMs=external::materialmotion::now();external::radar::preparePoses(data,external::SharedReadView{&reader});}assets.identity(r.pid,r.match);radarLayers.begin();data.map=external::sceneextras::decorateRadar(diagram.render(data.terrain,r.width,r.height),data,external::SharedReadView{&reader},assets,radarLayers);
      auto sampled=external::radar::publicationContext(fresh);
      const bool same=external::radar::sameWorld(data,sampled);
      // Sampling may span several game ticks. Keep the last complete image
@@ -52,7 +52,7 @@ class Worker {
       {std::lock_guard<std::mutex> lock(mutex);if(token==generation){if(r.mode==1&&latest&&latest->scene&&latest->terrain->reveal==data.terrain->reveal&&latest->terrain->geo.same(data.terrain->geo)&&latest->scene->width==r.width&&latest->scene->height==r.height)data.scene=latest->scene;latest=std::make_shared<external::radar::Frame>(data);}}
       if(r.mode==1){
        const auto&profile=r.selection.profile;external::presentation::apply(profile,assets,data.terrain->geo.rawWidth*30,data.terrain->geo.rawHeight*15,r.width,r.height);assets.identity(r.pid,r.match);renderer.features(profile);renderer.directPresentation(true);
-       auto animated=external::materialmotion::latest(data,profile.detail!=0);animated.tick=GetTickCount();
+       motion.observe(data,external::materialmotion::now());auto animated=motion.sampleLatest(external::materialmotion::now(),profile.motion,profile.detail!=0);animated.tick=GetTickCount();
        auto scene=renderer.render(animated,r.width,r.height,external::SharedReadView{&reader},assets,{},unsigned(profile.scale),profile.detail!=0,true,profile.precision!=0,true);
        if(scene&&!scene->gpu&&!scene->boltsRendered&&profile.lasers&&data.effects&&data.effects->boltsValid){const std::vector<uint8_t>*mask=nullptr;if(renderer.feedbackVisibility(mask)){
         const auto&geo=data.terrain->geo;external::nativefeedback::WorldView projection{-geo.offsetX*30,geo.offsetY*15,geo.rawWidth*30,geo.rawHeight*15,data.frame};

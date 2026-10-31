@@ -3,6 +3,7 @@ static void loadAdditionalSettings(){
  renderProcessing=value(L"Display",L"RenderProcessing",value(L"Display",L"RenderExtraQuality",0))!=0;
  renderXbrzEnabled=value(L"Display",L"RenderXbrzEnabled",0)!=0;
  renderColorPrecision=std::clamp(value(L"Display",L"RenderColorPrecision",1),0,1);
+ renderHighRefresh=value(L"Display",L"RenderHighRefresh",1)!=0;
  renderMaterialRefresh=value(L"Display",L"RenderMaterialRefresh",1)!=0;
  renderSceneDetail=std::clamp(value(L"Display",L"RenderSceneDetail",1),0,1);
  renderUpgradeEnabled=value(L"Display",L"RenderUpgrade",0)!=0;
@@ -122,6 +123,7 @@ static bool saveAdditionalSettings(){
  write(L"Display",L"RenderPaletteRange",renderPaletteRange);
  write(L"Display",L"RenderColorPrecision",renderColorPrecision);
  write(L"Display",L"RenderPixelScale",renderPixelScale);
+ write(L"Display",L"RenderHighRefresh",renderHighRefresh);
  write(L"Display",L"RenderMaterialRefresh",renderMaterialRefresh);
  write(L"Display",L"RenderSceneDetail",renderSceneDetail);
  write(L"Display",L"RenderPhysicalOutput",renderPhysicalOutput);

@@ -26,6 +26,7 @@ DECLARATIONS = (
     ('unit_monitor/source/core.h', 'Shared', 'um::Shared'),
     ('unit_monitor/source/core.h', 'Snapshot', 'um::Snapshot'),
     ('shared/source/runtime_protocol.h', 'Control', 'runtime::Control'),
+    ('shared/source/frame_signal_protocol.h', 'Channel', 'framesignal::Channel'),
     ('shared/source/runtime_broker_protocol.h', 'Packet', 'runtimebroker::Packet'),
     ('shared/source/game_entry_api.h', 'Request', 'gameentry::Request'),
     ('shared/source/neural_frame_protocol.h', 'Header', 'neuralframe::Header'),
@@ -90,7 +91,7 @@ def members(path, name):
 
 def fixture():
     entries = [(name, name) for name in ('assist::Version', 'runtime::Version',
-                                       'gameentry::Version', 'runtimebroker::Version', 'neuralframe::Version')]
+                                       'gameentry::Version', 'runtimebroker::Version', 'neuralframe::Version', 'framesignal::Version')]
     for relative, name, cpp in DECLARATIONS:
         entries.extend(((f'sizeof({cpp})', f'sizeof({cpp})'),
                         (f'alignof({cpp})', f'alignof({cpp})')))

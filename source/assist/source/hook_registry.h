@@ -24,7 +24,7 @@ inline Owner ownerAt(uint32_t a){
  case 0x004AC179:return Owner::NativeSell;
  case 0x00646F4E:return Owner::NativeMega;
  case 0x006F7D44:return Owner::Combat;
- case 0x0055D360: return Owner::Frame;
+ case 0x0055DE81:case 0x0055D360: return Owner::Frame;
  case 0x00646E90: return Owner::CS;
  case 0x00731BF0: return Owner::Cursor;
  case 0x006FFE00: return Owner::NativeEvent;
@@ -100,6 +100,7 @@ inline bool knownOriginal(uint32_t at,const uint8_t* bytes,unsigned size){
  case 0x006F7D44:signature=lowDamage;expected=sizeof lowDamage;break;
  case 0x44574A:case 0x445795:case 0x4457D0:case 0x445810:signature=masterEnum;expected=5;break;
  case 0x6AA788:signature=masterPrune;expected=6;break;
+ case 0x0055DE81:{static const uint8_t committed[]={0x89,0x15,0x84,0xED,0xA8,0};return size==6&&!memcmp(bytes,committed,6);}
  case 0x0055D360:signature=frame;expected=sizeof frame;break;
  case 0x00646E90:signature=cs;expected=sizeof cs;break;
  case 0x00731BF0:signature=cursor;expected=sizeof cursor;break;

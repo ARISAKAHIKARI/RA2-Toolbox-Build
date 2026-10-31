@@ -2,10 +2,12 @@
 #include "radar_map.h"
 #include <cmath>
 #include <map>
+#include <chrono>
 // Read-only presentation timeline. Interpolate two OBSERVED states, with one
 // observation interval of visual latency. Never predict movement, advance an
 // unobserved SHP frame, change a simulation clock or submit a game command.
 namespace external { namespace materialmotion {
+inline double now(){return std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now().time_since_epoch()).count();}
 inline int angle(uint16_t a,uint16_t b,double phase){
  int delta=int(uint16_t(b-a));if(delta>32767)delta-=65536;
  int raw=int(std::lround(double(a)+delta*phase));return ((raw+128)>>8)&255;
@@ -39,23 +41,46 @@ inline radar::Frame latest(const radar::Frame&frame,bool fine=true){
  return out;
 }
 class Timeline {
- radar::Frame previous_,current_;double observed_=0,interval_=0;bool ready_=false;
+ radar::Frame previous_,current_;double observed_=0,interval_=0,motionInterval_=0;bool ready_=false;
  using Key=std::pair<uint32_t,uint32_t>;std::map<Key,radar::Marker> prior_;
 public:
- void reset(){previous_={};current_={};observed_=interval_=0;ready_=false;prior_.clear();}
+ void reset(){previous_={};current_={};observed_=interval_=motionInterval_=0;ready_=false;prior_.clear();}
  bool observe(const radar::Frame&frame,double now){
+  if(frame.observedMs>0)now=frame.observedMs;
   if(!frame.terrain||!frame.markerScanValid||frame.frame<0||!std::isfinite(now))return false;
-  if(ready_&&frame.frame==current_.frame){current_=frame;return false;} // refresh current membership without advancing the interpolation clock
+  if(ready_&&frame.frame==current_.frame&&frame.terrain->geo.same(current_.terrain->geo)&&frame.terrain->reveal==current_.terrain->reveal){current_=frame;return false;} // refresh current membership without advancing the interpolation clock
   bool continuous=ready_&&frame.frame>current_.frame&&
    now>observed_&&now-observed_<=250&&frame.terrain->geo.same(current_.terrain->geo)&&
    frame.terrain->reveal==current_.terrain->reveal;
-  prior_.clear();interval_=continuous?std::clamp(now-observed_,1.,100.):0;
+  prior_.clear();motionInterval_=continuous?now-observed_:0;interval_=continuous?std::clamp(now-observed_,1.,100.):0;
   if(continuous){previous_=std::move(current_);for(const auto&m:previous_.markers)prior_[{m.object,m.id}]=m;}
   else previous_={};
   current_=frame;observed_=now;ready_=true;return true;
  }
  bool ready()const{return ready_;}
  double interval()const{return interval_;}
+ // Display-only, zero-buffer motion from the latest two observed frames.
+ // The horizon is at most one observed frame and 25 ms. Native poses, game
+ // clocks, animation sequences, RNG and command queues are never advanced.
+ radar::Frame sampleLatest(double at,bool enabled=true,bool fine=true)const{
+  if(!ready_||!std::isfinite(at))return {};
+  auto out=latest(current_,fine);
+  const double age=at-observed_,horizon=std::min(motionInterval_,25.);
+  const double phase=enabled&&motionInterval_>0&&age>=0&&age<=std::max(motionInterval_*2.,50.)?std::min(age,horizon)/motionInterval_:0.;
+  const int ticks=previous_.frame>=0?std::max(1,current_.frame-previous_.frame):1;
+  for(auto&m:out.markers){auto it=prior_.find({m.object,m.id});if(it==prior_.end()||!identity(it->second,m))continue;
+   const auto&old=it->second;const int ox=m.x,oy=m.y,oz=m.z;const double dx=double(m.x)-old.x,dy=double(m.y)-old.y,dz=double(m.z)-old.z;
+   const double limit=(m.kind==projectiles::Kind?1536.:256.)*ticks;
+   if(phase==0||m.kind==3||m.kind==4||m.kind>6||dx*dx+dy*dy>limit*limit||std::abs(dz)>256.*ticks)continue;
+   m.x=int(std::lround(m.x+dx*phase));m.y=int(std::lround(m.y+dy*phase));m.z=int(std::lround(m.z+dz*phase));
+   if(m.x<0||m.y<0||m.z<0||m.x>=512*256||m.y>=512*256){m.x=ox;m.y=oy;m.z=oz;continue;}
+   out.terrain->geo.project(double(m.x)/256,double(m.y)/256,m.u,m.v);
+   if(fine&&m.pose.voxel){auto raw=[](const radar::Marker&v,bool turret){return v.pose.rawFacing?(turret?v.pose.rawTurret:v.pose.rawBody):uint16_t((turret?v.pose.turret:v.pose.body)*2048);};
+    auto turn=[&](bool turret){const auto a=raw(old,turret),b=raw(m,turret);int d=int(uint16_t(b-a));if(d>32767)d-=65536;return std::abs(d)<=8192?angle(a,b,1.+phase):angle(b,b,1.);};
+    m.pose.bodyFine=turn(false);m.pose.turretFine=turn(true);
+   }
+  }return out;
+ }
  radar::Frame sample(double now,bool interpolate=true,bool fine=true)const{
   if(!ready_||!std::isfinite(now))return {};
   auto out=current_;double phase=interpolate&&interval_>0?std::clamp((now-observed_)/interval_,0.,1.):1.;

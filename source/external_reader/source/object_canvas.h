@@ -9,8 +9,9 @@ class ObjectCanvas {
 public:
  struct Draw {
   std::shared_ptr<const voxel::Image> image;float x=0,y=0,base=0,lift=1,drop=0;lighting::State light;Material material;
+  uint32_t object=0,id=0;
   bool operator==(const Draw&b)const{return image.get()==b.image.get()&&!image.owner_before(b.image)&&!b.image.owner_before(image)&&
-    x==b.x&&y==b.y&&base==b.base&&lift==b.lift&&drop==b.drop&&light==b.light&&material==b.material;}
+    x==b.x&&y==b.y&&base==b.base&&lift==b.lift&&drop==b.drop&&light==b.light&&material==b.material&&object==b.object&&id==b.id;}
  };
  struct Stats {size_t changed=0,reused=0,removed=0,references=0,rasterBuilds=0,rasterHits=0;}stats_;
 private:

@@ -367,7 +367,7 @@ public:
   }
   auto view=background_.fork();
   std::vector<camera::ObjectCanvas::Draw>objectDraws;objectDraws.reserve(frame.markers.size());
-  auto draw=[&](const voxel::Image&i,float x,float y,float sx,float sy,float z,const lighting::State&light,float lift=1,float drop=0,std::shared_ptr<const voxel::Image>owner={},vulkancompute::MotionIdentity motion={},camera::Material material={}){if(detail&&!prepareWorldOnly_)detailed_.blit(i,x,y,sx,sy,z,light,lift,drop,std::move(owner),std::move(motion),material);else{if(!owner||owner.get()!=&i)owner=std::make_shared<const voxel::Image>(i);objectDraws.push_back({std::move(owner),x,y,z,lift,drop,light,material});}};
+  auto draw=[&](const voxel::Image&i,float x,float y,float sx,float sy,float z,const lighting::State&light,float lift=1,float drop=0,std::shared_ptr<const voxel::Image>owner={},vulkancompute::MotionIdentity motion={},camera::Material material={}){if(detail&&!prepareWorldOnly_)detailed_.blit(i,x,y,sx,sy,z,light,lift,drop,std::move(owner),std::move(motion),material);else{if(!owner||owner.get()!=&i)owner=std::make_shared<const voxel::Image>(i);objectDraws.push_back({std::move(owner),x,y,z,lift,drop,light,material,motion.object,motion.id});}};
   const double projectionScale=projectionZScale(read);
   const auto&geo=frame.terrain->geo;int work=0;size_t pixels=0;std::vector<const Marker*> fallbacks;
   extraLayers_.ground(frame,read,assets,scene,draw);extraLayers_.frozen(frame,read,assets,scene,projectionScale,draw);
@@ -502,7 +502,7 @@ public:
       const int x=m.x+gather.point.x-gather.location.x,y=m.y+gather.point.y-gather.location.y;
       const float gx=float(int((int64_t(x)-y)*30/256)+geo.offsetX*30),gy=float(int((int64_t(x)+y)*15/256)-geo.offsetY*15-screenHeight(m.z,projectionScale));
       auto effectLight=features_.spriteLighting?lighting::object(read,m.type,m.owner,m.kind,m.x,m.y,m.z,scene):lighting::State{};
-      draw(*effect,gx,gy,1,1,float((int64_t(m.x)+m.y)*15/256)-15-m.drawZ+(bridge?60:0),effectLight,3,0,effect);
+      draw(*effect,gx,gy,1,1,float((int64_t(m.x)+m.y)*15/256)-15-m.drawZ+(bridge?60:0),effectLight,3,0,effect,motion);
      }}
     }
    }

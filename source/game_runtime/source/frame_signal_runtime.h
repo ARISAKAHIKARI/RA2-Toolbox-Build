@@ -1,0 +1,59 @@
+#pragma once
+#include "../../shared/source/frame_signal_protocol.h"
+#include "../../shared/source/game_entry_client.h"
+namespace frameobserver {
+static HANDLE mapping=nullptr,event=nullptr;static framesignal::Channel*channel=nullptr;static DWORD owner=0;
+static bool installed=false,conflict=false;static uint8_t patchBytes[6]{};
+static const uint8_t original[6]={0x89,0x15,0x84,0xED,0xA8,0};
+static uint32_t continuation=framesignal::CommitSite+6;
+extern "C" void FrameSignalCommitted(){
+ // Never scan objects, allocate, block, dispatch commands or call the engine.
+ // The instruction adapter has already committed the native EDX frame value.
+ auto*c=channel;if(!c||!c->enabled||GetCurrentThreadId()!=c->thread||DWORD(GetTickCount()-c->heartbeat)>500)return;
+ const DWORD error=GetLastError();LARGE_INTEGER q{};QueryPerformanceCounter(&q);
+ InterlockedIncrement(&c->seq);c->frame=*(volatile LONG*)(uintptr_t)framesignal::Counter;c->qpc=q.QuadPart;++c->serial;InterlockedIncrement(&c->seq);
+ if(event)SetEvent(event);SetLastError(error);
+}
+static void __declspec(naked) committedAdapter(){
+ __asm {
+  mov dword ptr ds:[0xA8ED84], edx
+  pushfd
+  pushad
+  mov ebx, esp
+  sub esp, 528
+  and esp, -16
+  fxsave [esp]
+  cld
+  call FrameSignalCommitted
+  fxrstor [esp]
+  mov esp, ebx
+  popad
+  popfd
+  jmp dword ptr [continuation]
+ }
+}
+static void releaseChannel(){if(channel)UnmapViewOfFile(channel);channel=nullptr;if(event)CloseHandle(event);if(mapping)CloseHandle(mapping);event=mapping=nullptr;owner=0;}
+static void maintain(DWORD requestedOwner){
+ gameentry::Scope entry(gameentry::Client::Assist);if(!entry)return;
+ const DWORD error=GetLastError();
+ bool alive=channel&&owner==requestedOwner&&channel->enabled&&DWORD(GetTickCount()-channel->heartbeat)<=500;
+ if(!alive&&installed){
+  const bool restored=gameentry::patch(gameentry::Client::Assist,framesignal::CommitSite,patchBytes,original,6);
+  if(channel)channel->state=restored?framesignal::Waiting:framesignal::RestoreFailed;
+  if(!restored)conflict=true;installed=false;
+ }
+ if(!alive)releaseChannel();
+ if(!channel&&requestedOwner){wchar_t path[96];framesignal::name(path,GetCurrentProcessId(),requestedOwner);
+  mapping=OpenFileMappingW(FILE_MAP_ALL_ACCESS,FALSE,path);if(mapping)channel=(framesignal::Channel*)MapViewOfFile(mapping,FILE_MAP_ALL_ACCESS,0,0,sizeof(framesignal::Channel));
+  if(!channel||channel->magic!=framesignal::Magic||channel->version!=framesignal::Version||channel->pid!=GetCurrentProcessId()||channel->owner!=requestedOwner||!channel->enabled||DWORD(GetTickCount()-channel->heartbeat)>500)releaseChannel();
+  else{owner=requestedOwner;framesignal::name(path,GetCurrentProcessId(),owner,true);event=OpenEventW(EVENT_MODIFY_STATE,FALSE,path);if(!event)releaseChannel();}
+ }
+ if(channel&&!installed&&channel->state==framesignal::Waiting){
+  patchBytes[0]=0xE9;const uint32_t delta=uint32_t(uintptr_t(&committedAdapter))-framesignal::CommitSite-5;memcpy(patchBytes+1,&delta,4);patchBytes[5]=0x90;
+  installed=!conflict&&gameentry::patch(gameentry::Client::Assist,framesignal::CommitSite,original,patchBytes,6);
+  channel->error=installed?0:GetLastError();channel->thread=GetCurrentThreadId();LARGE_INTEGER f{};QueryPerformanceFrequency(&f);channel->frequency=f.QuadPart;
+  MemoryBarrier();InterlockedExchange(&channel->state,installed?framesignal::Native:framesignal::SignatureRejected);
+ }
+ SetLastError(error);
+}
+}

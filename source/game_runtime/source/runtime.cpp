@@ -5,6 +5,7 @@
 #include "../../shared/source/runtime_fault.h"
 #include "../../shared/source/game_entry_client.h"
 #include "../../shared/source/runtime_fp_scope.h"
+#include "frame_signal_runtime.h"
 extern "C" void AssistRuntimeMessage(int,WPARAM,LPARAM);
 extern "C" void CursorRuntimeMessage(int,WPARAM,LPARAM);
 extern "C" void CursorRuntimePost(int,WPARAM,LPARAM);
@@ -107,7 +108,7 @@ static void CALLBACK watchdogProc(HWND,UINT,UINT_PTR,DWORD){
  RuntimeFPScope fp;
  // This timer only restores stale/disconnected clients. It never schedules
  // new user work. The host owns normal cadence and the command mailboxes.
- if(!InterlockedCompareExchange(&dispatching,1,0)){cleanup();InterlockedExchange(&dispatching,0);}
+ if(!InterlockedCompareExchange(&dispatching,1,0)){cleanup();frameobserver::maintain(controller&&WaitForSingleObject(controller,0)==WAIT_TIMEOUT?controllerID:0);InterlockedExchange(&dispatching,0);}
 }
 static bool ensureWatchdog(runtime::Stage* failure=nullptr){
  DWORD tid=GetCurrentThreadId();if(watchdog&&watchdogThread==tid)return true;
@@ -166,6 +167,7 @@ extern "C" __declspec(dllexport) LRESULT CALLBACK GameRuntimeHook(int code,WPARA
       if(ready&runtime::Cursor)CursorRuntimeMessage(code,wp,lp);
       if(ready&runtime::Tactical)AssistRuntimeMessage(code,wp,lp);
       if((control->enabled&runtime::Tactical)&&(msg->message==WM_MOUSEMOVE||msg->message==WM_KEYDOWN||msg->message==WM_KEYUP||msg->message==WM_SYSKEYDOWN||msg->message==WM_SYSKEYUP||msg->message==WM_LBUTTONDOWN||msg->message==WM_LBUTTONDBLCLK||msg->message==WM_LBUTTONUP||msg->message==WM_RBUTTONDOWN||msg->message==WM_RBUTTONDBLCLK||msg->message==WM_RBUTTONUP))AssistRuntimeFilter((void*)lp);
+      frameobserver::maintain(controllerID);
       if(ready)InterlockedIncrement(&control->dispatches);
      }else cleanup();
     }
