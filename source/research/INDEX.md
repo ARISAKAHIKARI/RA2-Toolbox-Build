@@ -6,6 +6,8 @@
 
 | 主题 | 新笔记 | 关键词 |
 | --- | --- | --- |
+| Hotfix25共同帧输入、来源历史、协作快照与协议81 | [输入/执行/ABI](2026-10-31-coherent-compute-frame-hotfix25.md) | computeFrameSeq latest source history 16 consumer bits cooperativeInputFrame protocol81 |
+| Hotfix25卸载顺序、特殊pips、范围提示、CnCNet隐形准入与Phobos指示器 | [实施/字段/差异](2026-10-31-render-counters-hotfix25.md) · [原生证据](evidence/render-hotfix25-native.json) · [固定上游](evidence/render-hotfix25-upstream.json) | tether Unload16 spawn garrison absorber mind-control radial 6ED harvester active power delta |
 | Hotfix24原生帧完成通知、独立高刷位置与保留实例更新 | [原生位置/ABI/边界](2026-10-31-frame-notified-high-refresh-hotfix24.md) · [构建记录](evidence/render-hotfix24-final.json) | 55DE81 A8ED84 SetEvent latest bounded extrapolation shadow depth 64-byte |
 | Hotfix23第二轮11入口：原生保存图/材质/尾迹、地面层、信标雷达、PixelFX和Chrono | [实施/字段/边界](2026-10-31-vera-scene-extras-hotfix23.md) · [静态证据](evidence/render-hotfix23-native.json) | Fogged8B3D10 trailABCB78 CellFC PixelFX7EFDA4 ChronoA9FAB0 sin84F084 Rubble14F4 Smudge3C |
 | Vera第二轮绘制缺口：迷雾保存图、隐形伪装、沉船、污迹、尾迹、信标、雷达事件、桥影、废墟、闪光与整屏扭曲 | [额外11项审计](2026-10-31-vera-render-additional-gaps.md) | FoggedObject DrawState Sinking Smudge LineTrail Beacon RadarEvent BridgeShadow Rubble PixelFX ChronoScreen SLOP ZShape |

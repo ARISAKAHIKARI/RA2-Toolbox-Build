@@ -6,6 +6,13 @@ namespace external { namespace nativedraw {
 // GPL-3.0 adaptation of Vera20K draw_state.rs. Values are read from the
 // engine-owned Techno, never advanced or written by a presentation viewport.
 struct State {bool visible=true,disguised=false;uint32_t type=0,owner=0;int kind=-1;int16_t waterline=0;camera::Material material;};
+// CnCNet yr-patches0318b1f: adopt its observer/detached-alliance policy only
+// when the live branch resolves to the documented cloak patch instructions.
+// An unrelated detour is not evidence that a different visibility rule exists.
+template<class Read>bool cncCloakPolicy(Read read,uint32_t site){
+ std::array<uint8_t,5>branch{};if(!read(site,branch.data(),branch.size())||branch[0]!=0xE9)return false;int32_t delta=0;std::memcpy(&delta,branch.data()+1,4);int64_t target=int64_t(site)+5+delta;if(target<0x10000||target>0x7FFFFFF0)return false;
+ const std::array<uint8_t,12>expected{{0x8B,0x15,0x4C,0x3D,0xA8,0,0x39,0x15,0x98,0x11,0xAC,0}};std::array<uint8_t,12>code{};return read(uint32_t(target),code.data(),code.size())&&code==expected;
+}
 template<class Read>bool alive(const GameView<Read>&g,uint32_t p,int kind){
  return kind>=0&&g.template get<uint8_t>(p+0x74)&&!g.template get<uint8_t>(p+0x81)&&g.template get<uint8_t>(p+0x90)&&
   (g.template get<int>(p+0x6C)>0||(kind==2&&g.template get<uint8_t>(p+0x3CD)));
@@ -17,12 +24,17 @@ template<class Read>State capture(Read read,uint32_t p,uint32_t type,int kind,ui
  const uint32_t cell=lighting::cellAt(read,g.template get<int>(p+0x9C,-1),g.template get<int>(p+0xA0,-1));
  auto sensed=[&](unsigned offset){return cell&&house>=0&&house<24&&g.template get<uint16_t>(cell+offset+house*2)>0;};
  int character=0;
+ const bool cnc=cncCloakPolicy(read,kind==3?0x45455B:0x703A09);
+ const bool observing=observer&&observer==g.template get<uint32_t>(0xAC1198);
+ auto ownerAllied=[&]{return out.owner==observer||(house>=0&&house<32&&(g.template get<uint32_t>(out.owner+0x5788)&(1u<<house)));};
+ auto shadowVisible=[&]{const bool allied=g.allied(out.owner,observer)&&ownerAllied();return !g.template get<uint8_t>(0xB73550)||owned||sensed(0x7C)||(cnc?(observing||ownerAllied()):(g.template get<int>(0xA8B238)!=0&&allied));};
  if(g.template get<uint8_t>(type+0xC9A)){if(!owned&&!editor)character=5;}
- else if(cloak&&kind!=3&&!editor){
-  if(cloak==2){const bool allied=g.allied(out.owner,observer)&&g.allied(observer,out.owner);character=(!g.template get<uint8_t>(0xB73550)||owned||sensed(0x7C)||(g.template get<int>(0xA8B238)!=0&&allied))?3:5;}
+ else if(cloak&&!editor){
+  if(cloak==2)character=shadowVisible()?3:5;
   else if(progress>0){int stages=g.template get<int>(g.template get<uint32_t>(0x8871E0)+0x628);int scaled=stages>0?int(std::clamp(int64_t(progress)*256/stages,int64_t(-2147483647),int64_t(2147483647))):0;
    character=scaled<=63?1:scaled<=127?2:scaled<=191?3:owned?3:scaled<255?4:5;}
  }
+ if(kind==3){int stage=g.template get<int8_t>(p+0x6ED);if(stage)character=stage<=10?(stage>5?2:1):shadowVisible()?3:5;}
  out.visible=character<5;if(!out.visible)return out;
  unsigned selector=character==1?1:(character==2||character==3)?2:character==4?(progress?2:1):0;
  if(g.template get<uint8_t>(p+0x270)||g.template get<uint8_t>(p+0x271))selector|=kind==3&&g.template get<uint8_t>(type+0x16B1)?3:2;

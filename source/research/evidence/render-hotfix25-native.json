@@ -1,0 +1,86 @@
+{
+  "supported_executable_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+  "evidence_type": "static disassembly and pinned upstream source only",
+  "private_executable_included": false,
+  "private_raw_disassembly_included": false,
+  "ranges": [
+    {
+      "name": "tether-building",
+      "virtual_start": "0x43da80",
+      "virtual_end_exclusive": "0x43dc1c",
+      "local_disassembly_sha256": "e144b3f450e886ab3c1dfd68aa1d3d9ba050ba4acb69b204c6ff5e4576377288"
+    },
+    {
+      "name": "tether-unit",
+      "virtual_start": "0x73b0b0",
+      "virtual_end_exclusive": "0x73b180",
+      "local_disassembly_sha256": "5b2e7c02f39588178ae348095ef5b7942190896bb236e597f6eb926a99fc8644"
+    },
+    {
+      "name": "pips-special",
+      "virtual_start": "0x709a90",
+      "virtual_end_exclusive": "0x70a1de",
+      "local_disassembly_sha256": "7291864f90a0145dec8327a0eb6e52e15db3f4f2d637c3619fac89dd27f5319f"
+    },
+    {
+      "name": "pip-max",
+      "virtual_start": "0x716290",
+      "virtual_end_exclusive": "0x7162da",
+      "local_disassembly_sha256": "352f27fcb7e8fa913c42fd6323f991af18b20b80f03ee17cd248cc829b2e3c0d"
+    },
+    {
+      "name": "spawn-docked",
+      "virtual_start": "0x6b7d50",
+      "virtual_end_exclusive": "0x6b7d74",
+      "local_disassembly_sha256": "b6956e80a32ac3ae5e69820f947f2e2d7a1c398c5b2bcbb1a8de1861d2e480ae"
+    },
+    {
+      "name": "capture-overload",
+      "virtual_start": "0x4726c0",
+      "virtual_end_exclusive": "0x4726e9",
+      "local_disassembly_sha256": "58baa99e4073e7fe63babb5b50ae8668894cd8dba4af372d324cc4436cb0e13d"
+    },
+    {
+      "name": "radial-range",
+      "virtual_start": "0x4566b0",
+      "virtual_end_exclusive": "0x456750",
+      "local_disassembly_sha256": "2d550f18fb493e6415e543b25da0cf72f11dbc51079bac684ad1ccb068129f1c"
+    },
+    {
+      "name": "radial-building",
+      "virtual_start": "0x456750",
+      "virtual_end_exclusive": "0x456980",
+      "local_disassembly_sha256": "9efe858f59049dfd897447c27aac90d7fdbc08cd5ced1981ce8a2eb8fc84bad5"
+    },
+    {
+      "name": "radial-tactical",
+      "virtual_start": "0x6dbe20",
+      "virtual_end_exclusive": "0x6dc3ff",
+      "local_disassembly_sha256": "d47a35796e0d49214c51a816677ac55a912a0c617f841a9b48a77bc97b0c1c43"
+    },
+    {
+      "name": "building-cloak",
+      "virtual_start": "0x4544a0",
+      "virtual_end_exclusive": "0x4545d0",
+      "local_disassembly_sha256": "2fa956280b81ea1ff0befd8b7743dff70812b22824e0a3256229ac0bc67f4cd6"
+    },
+    {
+      "name": "mobile-cloak",
+      "virtual_start": "0x703860",
+      "virtual_end_exclusive": "0x703ab0",
+      "local_disassembly_sha256": "f7fe716447a5a5585502cfe2f14c241cad97b3c488ae288ab65a850ca97f75ae"
+    },
+    {
+      "name": "slave-manager",
+      "virtual_start": "0x6af1a0",
+      "virtual_end_exclusive": "0x6af310",
+      "local_disassembly_sha256": "ba1870053f08c208b2e9825d633384ba259af6db752667822abd38e5c9d754cc"
+    },
+    {
+      "name": "drive-moving",
+      "virtual_start": "0x4afb80",
+      "virtual_end_exclusive": "0x4afc10",
+      "local_disassembly_sha256": "a1fba499c40e52c7d4cffe0076370760a9db25bdbb18ca42b39a27f5954e385c"
+    }
+  ]
+}

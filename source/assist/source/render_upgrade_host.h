@@ -17,6 +17,7 @@
 #include "../../external_reader/source/scene_poses.h"
 #include <chrono>
 #include "render_presentation.h"
+#include "sidebar_indicator_host.h"
 // External read/render; the sampler leases the shared Runtime frame signal.
 // No engine drawing or feature command is dispatched by this pipeline.
 namespace renderupgrade {
@@ -250,9 +251,9 @@ static asyncwork::Recurring<Request,Frame> presentationWorker([](const Request&r
 },notifyReady);
 #include "render_feedback_host.h"
 static void suspendScene(){groupLease.reset();if(active){active=false;++generation;worker.invalidate();presentationWorker.invalidate();samplingWorker.invalidate();terrainWorker.invalidate();}feedback::hide();imageToken=0;overlaycompositor::host().hide(overlaycompositor::RenderUpgrade);}
-static void suspend(){viewLease.reset();suspendScene();}
+static void suspend(){viewLease.reset();suspendScene();sidebarhud::stop();}
 static void stop(){suspend();overlaycompositor::host().suspend();}
-static void shutdown(){stop();presentationWorker.shutdown();worker.shutdown();samplingWorker.shutdown();sampleSignal.close();terrainWorker.shutdown();feedback::shutdown();overlaycompositor::host().shutdown();}
+static void shutdown(){stop();presentationWorker.shutdown();worker.shutdown();samplingWorker.shutdown();sampleSignal.close();terrainWorker.shutdown();feedback::shutdown();sidebarhud::shutdown();overlaycompositor::host().shutdown();}
 static void update(POINT origin,const RECT&client,const external::display::State&displayState){
  const auto selected=external::presentation::settings().get();static uint64_t profileRevision=~uint64_t(0);
  if(profileRevision!=selected.revision){profileRevision=selected.revision;++generation;worker.invalidate();presentationWorker.invalidate();samplingWorker.invalidate();terrainWorker.invalidate();groupLease.reset();}
@@ -260,7 +261,7 @@ static void update(POINT origin,const RECT&client,const external::display::State
  // The whole tool remains system-DPI aware. A physical-pixel option must
  // explicitly validate monitor geometry instead of assuming a 4K monitor
  // makes a 2K client window magically 4K.
- const bool requested=renderUpgradeEnabled||unifiedOverlayEnabled;
+ const bool requested=renderUpgradeEnabled||unifiedOverlayEnabled||harvesterCounterEnabled||powerDeltaEnabled;
  const bool visible=requested&&enabled&&foregroundGame()&&!snap.chat&&pid&&game&&
   (!displayState.readable||displayState.visible());
  const uint32_t viewNow=GetTickCount(),match=displayMatch();
@@ -324,6 +325,7 @@ static void update(POINT origin,const RECT&client,const external::display::State
  const auto renderPath=physicalpresentation::renderPath(physical,renderPhysicalOutput);
  auto context=overlaycompositor::host().configure(uintptr_t(game),pid,displayMatch(),client.right,client.bottom,
   visible?view.cameraX:0,visible?view.cameraY:0,visible,false,informationFPS(),renderUpgradeEnabled);
+ sidebarhud::update(pid,displayMatch(),view,context,harvesterCounterEnabled,powerDeltaEnabled);
  if(!renderUpgradeEnabled){progress=0;return;}
  active=true;
  const int left=int((int64_t(view.x)*client.right)/view.screenW),top=int((int64_t(view.y)*client.bottom)/view.screenH);

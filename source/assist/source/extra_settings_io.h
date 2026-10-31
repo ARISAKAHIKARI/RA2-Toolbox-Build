@@ -1,5 +1,6 @@
 #include "../../shared/source/key_gesture.h"
 static void loadAdditionalSettings(){
+ harvesterCounterEnabled=value(L"Display",L"HarvesterCounter",0)!=0;powerDeltaEnabled=value(L"Display",L"PowerDelta",0)!=0;
  renderProcessing=value(L"Display",L"RenderProcessing",value(L"Display",L"RenderExtraQuality",0))!=0;
  renderXbrzEnabled=value(L"Display",L"RenderXbrzEnabled",0)!=0;
  renderColorPrecision=std::clamp(value(L"Display",L"RenderColorPrecision",1),0,1);
@@ -116,6 +117,7 @@ static bool saveAdditionalSettings(){
  write(L"Display",L"MinimapPosition",minimapPosition);write(L"Display",L"MinimapX",minimapX);write(L"Display",L"MinimapY",minimapY);
  write(L"Display",L"MinimapAlignX",minimapAlignX);write(L"Display",L"MinimapAlignY",minimapAlignY);
  write(L"Display",L"RenderUpgrade",renderUpgradeEnabled);
+ write(L"Display",L"HarvesterCounter",harvesterCounterEnabled);write(L"Display",L"PowerDelta",powerDeltaEnabled);
  write(L"Display",L"RenderProcessing",renderProcessing);
  write(L"Display",L"RenderXbrzEnabled",renderXbrzEnabled);
  write(L"Display",L"UnifiedOverlay",unifiedOverlayEnabled);

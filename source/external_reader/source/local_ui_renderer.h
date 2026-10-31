@@ -9,6 +9,7 @@
 #include "live_shape_cache.h"
 #include "native_unit_ui_stencil.h"
 #include "native_planning.h"
+#include "native_radial_indicators.h"
 #include <set>
 namespace external {namespace localui {
 // Main-view UI rendered from values and real font coverage. No framebuffer,
@@ -166,6 +167,7 @@ public:
   capture([&](Painter&p,Plan&,bool&font){return statuses(read,view,objects,p,font);});
   capture([&](Painter&p,Plan&,bool&){return pips(read,view,objects,p);});
   capture([&](Painter&p,Plan&,bool&){return paths(fresh,view,p,tick);});
+  capture([&](Painter&p,Plan&,bool&){std::vector<radialindicators::Draw>draws;return radialindicators::capture(fresh,view,objects,tick,draws)&&radialindicators::paint(draws,view,projectionZScale(read),p);});
   out.glyphDecodes=font_.decodes();return true;
  }
  template<class Read>bool capture(Read read,const mainview::View&view,const std::vector<nativefeedback::Object>&objects,int width,int height,Plan&out,uint32_t tick=0){return capture(read,read,view,objects,width,height,out,tick);}

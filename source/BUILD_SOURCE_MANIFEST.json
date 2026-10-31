@@ -6,7 +6,7 @@
   "resources": "Update package reuses existing assets/profiles/preprocessing runtime/engine",
   "resources_legacy_reuse": true,
   "build_protocol": 81,
-  "validation": "verify_crossbit_abi.py compares actual Windows x86/x64 wire declarations; verify_windows_outputs.py verifies exact PE architectures and current exported protocol; Windows broker and rendering CI are required for the final build",
+  "validation": "Production cross compilation; actual Windows x86/x64 wire declarations checked by verify_crossbit_abi.py; PE architecture, imports, exports, versions and manifests checked by verify_windows_outputs.py. No game/Windows/GPU execution or CPU fixture suites in this delivery.",
   "build_requirement": "Zig 0.13.0; x86 paired build or x64 host with x86 runtime and broker.",
   "settings": {
     "Orders.MegaMissionBackend": "0=constructor; 1=high-level MP; SP uses constructor/DoList centrally",
@@ -31,7 +31,7 @@
     "TacticalClass::SetTacticalPosition (0x6D6000), native camera update",
     "GScreenClass::Render (0x4F4480), native composition and presentation"
   ],
-  "release_status": "1.0.39-pre.7; prerelease publication requires the final same-commit build and frontend checks",
+  "release_status": "1.0.39-pre.7 Hotfix25 experimental update; same-source production build and static checks; live-game and visual verification outstanding.",
   "frontend": "Independent settings input queues; latest-layout snapshots; dependency gating; explicit key gestures; page-only wheel scrolling",
   "technology_experiment": "Native AddCameo + two local UI CanBuild limit-only callsite wrappers; native factories/events unchanged; no live purchase/netplay certification",
   "calculation_locations": "Fifteen tactical decision families selectable; native queries/events always GameRuntime; host planner and six value-only compute lanes run on persistent workers, with UI publication and original source deadlines.",
@@ -135,5 +135,16 @@
     "cadence": "Sampling and algorithm rates are separate. Configured missile decision rate retained; sampled cohort cursors advance on completion to preserve fairness.",
     "abi": "Assist protocol81, Shared6580464; cooperative fixed-value capture2410584; Runtime4 and frame signal1 unchanged. Never mix old command DLL with this host.",
     "validation": "Cross compilation and static ABI/PE checks only; no CPU fixture suites, native instructions, Windows/game/GPU/FPS/netplay execution."
+  },
+  "Hotfix25_Render": {
+    "references": "CnCNet/yr-patches0318b1f, YRppd979554, Vera20K3d42426, Phobosf06797e; exact source and native address evidence in source/research/evidence/render-hotfix25-{upstream,native}.json",
+    "scene": "Building-slot tether contacts precede building body; Unit ordinary body suppression follows current/queued Unload16. Main retained draw groups and watch/minimap share native order. Status UI remains in its original owner.",
+    "pips": "Spawn docked0/6, garrison OccupyPip, absorber forward cargo and mind-control capacity/overload; selected/hover/ally/public-building admission, infantry and building anchors. No complete Phobos shield/self-heal/bomb Extras parity claim.",
+    "radial": "Selected building range/concentric/rays and armed superweapon rings; engine-owned range/selection/frame/pulse values only. UI midpoint/tan/coverage replay retains numeric and native unsigned16 Z/AA differences. Building placement preview remains native.",
+    "cloak": "Building6ED transition character and signature-gated CnCNet observer/detached-alliance policy; unknown detours use baseline rules.",
+    "indicators": "Harvester active/total and power output-minus-drain, threshold colors and blackout state; independent passive sidebar layers and worker; native harvesters/slave miners only, custom Phobos extension tags not inferred.",
+    "settings": "Display.HarvesterCounter=0 and Display.PowerDelta=0 by default; independent of RenderUpgrade. Existing RenderHighRefresh now exposed in the unified video page.",
+    "limits": "Full native Z/A and cloak displacement, slope Z, some special effects/light/parts and RGB555 whole-pipeline parity remain outstanding. No shader changes in Hotfix25.",
+    "validation": "Cross compilation, ABI/PE/static source checks only; no CPU test suites, Windows/game, native instruction, GPU, multiplayer or FPS execution."
   }
 }

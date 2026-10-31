@@ -108,11 +108,8 @@ public:
     item.x+=dx;item.y+=dy;item.base+=float(sum*15/256.);item.drop=std::max(0.f,item.drop+float(height));
     if(item.material.clipBottom<1e7f)item.material.clipBottom-=dy;return false;
    }),instances.end());
-   // Preserve fixed ground/trail passes and the order of an actor's parts.
-   for(size_t first=0;first<instances.size();){if(!instances[first].object){++first;continue;}size_t last=first+1;while(last<instances.size()&&instances[last].object)++last;
-    std::stable_sort(instances.begin()+first,instances.begin()+last,[&](const auto&a,const auto&b){const auto&x=*current.at({a.object,a.id});const auto&y=*current.at({b.object,b.id});return camera::orderKey(x.layer,x.kind,x.x,x.y,x.sort)<camera::orderKey(y.layer,y.kind,y.x,y.y,y.sort);});first=last;
-   }
   }
+  tetherdraw::replay(instances,presented_.markers);
   auto missing=world->missing;if(live){missing.erase(std::remove_if(missing.begin(),missing.end(),[&](auto&m){auto found=current.find({m.object,m.id});if(found==current.end()||!materialmotion::identity(m,*found->second))return true;m=*found->second;return false;}),missing.end());}
   for(const auto&item:instances)if(item.image&&canvas_.visible(*item.image,item.x,item.y,item.drop))canvas_.blit(*item.image,item.x,item.y,1,1,item.base,item.light,item.lift,item.drop,item.image,{},item.material);
   for(const auto&m:missing){const int x=int(((double(m.x)-m.y)*30/256.-view.cameraX)*width/view.width),y=int(((double(m.x)+m.y)*15/256.-view.cameraY)*height/view.height);canvas_.annotationDot(x,y,m.color);}

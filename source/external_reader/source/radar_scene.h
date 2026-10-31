@@ -473,10 +473,9 @@ public:
   materialsReady_=!backgroundIncomplete_&&!building_;
   for(const auto&m:decodeMarkers){auto source=art_.find(artKey(m));if(liveVoxels&&source!=art_.end()&&voxelArt(source->second,0))continue;auto found=sprites_.find(imageKey(m));materialsReady_&=found!=sprites_.end()&&found->second.ready&&!found->second.image->incomplete;}
   stage(stageStats_.voxelMs);stageStats_.materialsMs=stageStats_.palettesMs+stageStats_.decodeMs+stageStats_.voxelMs;stageStats_.actors=markers.size();
-  std::vector<const Marker*> order;for(const auto&m:markers)order.push_back(&m);
+  auto order=tetherdraw::order(markers,!prepareWorldOnly_);
   // Native ground animations share object order (Layer, GetYSort). A blanket
   // final animation pass incorrectly paints pumps/fire over foreground units.
-  std::stable_sort(order.begin(),order.end(),[](const Marker*a,const Marker*b){return camera::orderKey(a->layer,a->kind,a->x,a->y,a->sort)<camera::orderKey(b->layer,b->kind,b->x,b->y,b->sort);});
   gatherShapes_.begin();
   for(const auto*marker:order){const auto&m=*marker;if(m.x<0||m.y<0||m.x>=512*256||m.y>=512*256)continue;
    ++requestedObjects_;
