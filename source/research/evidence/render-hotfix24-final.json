@@ -1,0 +1,70 @@
+{
+  "date": "2026-10-31",
+  "timezone": "Asia/Shanghai",
+  "baseline": "9ac69f69165e98cbf70b0fa094b3b11b42c56132",
+  "implementation_remote_commit": "8936b99594ed8faab1c9d5a6befa39ab28d2d4f7",
+  "implementation_remote_tree": "0d1b134e86983ddf31c98d1ccbce87fd345e94f8",
+  "implementation_local_commit": "ce76110a93fd440b46431e5b35b70c63470a3731",
+  "build": {
+    "compiler": "Zig 0.13.0",
+    "configuration": "production -O2, x64 host / x86 Runtime and broker",
+    "success": true,
+    "binary_summary": {
+      "RA2Toolbox.exe": {
+        "sha256": "a2dc64ac60b92775ca825c7ab69e5c12ef1a37f431fb2e280c362171d2df20d8",
+        "bytes": 7455744
+      },
+      "GameRuntime.dll": {
+        "sha256": "e03ee3e47e6806bfc034c71e106ae304978266991a6ee52241bbcdd0c182671d",
+        "bytes": 4966912
+      },
+      "GameRuntimeHost32.exe": {
+        "sha256": "101729ae448349d1161b7d7664bc0e340dac0bdf7e59753bacf0c06422ceb7c0",
+        "bytes": 207872
+      }
+    },
+    "pe_architecture_imports_exports_version_manifest_passed": true,
+    "version": "1.0.39.7"
+  },
+  "abi": {
+    "passed": true,
+    "entries": 649,
+    "frame_channel_bytes": 64,
+    "frame_channel_alignment": 8,
+    "seq_offset": 32,
+    "qpc_offset": 48,
+    "frequency_offset": 56,
+    "runtime_control_unchanged": 176,
+    "assist_protocol": 80,
+    "runtime_protocol": 4
+  },
+  "native_static": {
+    "supported_game_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+    "site": "0x55DE81",
+    "continuation": "0x55DE87",
+    "counter": "0xA8ED84",
+    "method": "objdump static disassembly only",
+    "adapter": "original MOV, flags/GPR/FXSAVE preservation, IPC plus coalesced SetEvent, continue"
+  },
+  "source_identity": {
+    "remote_implementation_is_direct_child_of_baseline": true,
+    "local_source_blobs_verified_against_remote_tree": 1445,
+    "all_local_tracked_blobs_match": true
+  },
+  "not_executed": [
+    "CPU fixture suites",
+    "native game instructions",
+    "Windows loader",
+    "game",
+    "Vulkan/D3D",
+    "FPS/input-to-photon",
+    "multiplayer"
+  ],
+  "limits": [
+    "Sampling rate follows actual logic updates and reading cost; 60Hz not guaranteed.",
+    "Bounded display extrapolation can briefly correct on stops/turns.",
+    "SHP animation sequence and particle/RNG clocks remain observed.",
+    "Native frame site only statically checked for the recorded game image; unknown signatures fall back.",
+    "Full scene rendering and presentation throughput are not measured."
+  ]
+}
