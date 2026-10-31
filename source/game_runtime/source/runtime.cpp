@@ -16,7 +16,12 @@ extern "C" void EntryRuntimeDetach();
 extern "C" __declspec(dllexport) const uint32_t GameRuntimeInfo[2]={runtime::Version,sizeof(runtime::Control)};
 static runtime::Control* control;
 static HANDLE mapping,controller;
-static DWORD controllerID;
+static DWORD controllerID;static HWND frameWakeWindow;
+extern "C" void RuntimeFrameReady(){
+ auto*c=control;if(!c||!frameWakeWindow||!(c->enabled&runtime::Tactical)||DWORD(GetTickCount()-c->heartbeat)>500)return;
+ InterlockedOr(&c->ready,runtime::Tactical);
+ if(!InterlockedCompareExchange(&c->wakePending,1,0)&&!PostMessageW(frameWakeWindow,WM_NULL,runtime::WakeTag,controllerID))InterlockedExchange(&c->wakePending,0);
+}
 static PVOID exceptionObserver;
 static DWORD observerThread;
 static volatile LONG observingException;
@@ -158,7 +163,7 @@ extern "C" __declspec(dllexport) LRESULT CALLBACK GameRuntimeHook(int code,WPARA
    // run consecutively, each releasing its execution scope before the next.
    bool bound=false;{gameentry::Scope entry(gameentry::Client::Assist,true);bound=bool(entry);}
    if(bound){
-    if(msg->message==WM_NULL&&msg->wParam==runtime::WakeTag)connect(DWORD(msg->lParam),trace);
+    if(msg->message==WM_NULL&&msg->wParam==runtime::WakeTag){if(connect(DWORD(msg->lParam),trace))frameWakeWindow=msg->hwnd;}
     if(control&&ensureWatchdog()){
      if(msg->message==WM_NULL&&msg->wParam==runtime::WakeTag&&DWORD(msg->lParam)==controllerID)InterlockedExchange(&control->wakePending,0);
      LONG ready=InterlockedExchange(&control->ready,0)&InterlockedCompareExchange(&control->enabled,0,0);

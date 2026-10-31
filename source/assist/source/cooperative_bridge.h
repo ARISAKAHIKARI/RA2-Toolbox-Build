@@ -225,6 +225,17 @@ static void runtimeCooperativeTick(uint32_t house,int frame,DWORD now){
   runtimeCoopPending=false;MemoryBarrier();sh->runtimeCoopDone=request.serial;notifyHost();
  }
 }
+// Only the common game-thread capture epoch produces host cooperative input.
+static void captureCooperativeFrame(uint32_t house,int frame,DWORD now){
+ const auto&r=sh->cooperativeRequest;auto&out=sh->cooperativeInputFrame;
+ if(!cooperative::valid(r)||r.match!=match||!freshness::intentAlive(r.tick,now)||snap.chat||compute::inside(sh->computeApplied,r.mode==cooperative::Enter?compute::Enter:compute::Aircraft)){out.frame=-1;return;}
+ if((!externalInputFrame&&out.request.serial==r.serial)||(out.request.serial==r.serial&&sh->cooperativeFrameWanted!=r.serial))return;
+ static compute::QuotaConfig quotas;long seq=sh->quotaConfigSeq;if(seq&1)return;MemoryBarrier();memcpy(&quotas,&sh->quotaConfig,sizeof quotas);MemoryBarrier();if(seq!=sh->quotaConfigSeq||quotas.count<0||quotas.count>512)return;
+ auto input=external::cooperativeInput(LocalRawRead{},r,[&](uint32_t type){const char*id=(const char*)(uintptr_t)(type+0x24);for(int i=0;i<quotas.count;++i)if(sameid(id,quotas.entries[i].id))return quotas.entries[i].quota;return quotas.defaults;});
+ auto feature=r.mode==cooperative::Enter?featuretypes::EnterSource:featuretypes::Aircraft;
+ for(size_t i=0;i<input.units.size();++i)for(size_t j=0;j<input.targets.size();++j)if(!featureTypeAllowed(feature,input.units[i].type)||(r.mode==cooperative::Enter&&!featureTypeAllowed(featuretypes::EnterTarget,input.targets[j].type)))input.compatible[i*input.targets.size()+j]=0;
+ cooperative::pack(out,input,r,now,frame);
+}
 static void cooperativeTick(uint32_t house,int frame,DWORD now){
  observeCooperativeEffects(house,frame);
  runtimeCooperativeTick(house,frame,now);

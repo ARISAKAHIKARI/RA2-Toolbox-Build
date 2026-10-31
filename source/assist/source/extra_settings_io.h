@@ -243,27 +243,21 @@ static void serviceCooperative(){
  if(!freshness::intentAlive(request.tick,now)){
   cooperativeDelivered=request.serial;retryCooperative=false;notify(L"协同请求已超时，请重新下令。");return;
  }
- // Guard reads bypass the task cache. Cached re-reading of frame/house would
- // merely compare a snapshot with itself and hide a game transition.
- // Sampling may span frames within the source-age budget. Requiring every
- // field in one frame would starve large selections; live checks remain final.
- externalReader.begin();uint32_t houseBefore=0,houseAfter=0;int frameBefore=-1,frameAfter=-1;
- DWORD acquired=GetTickCount();
- if(!externalReader.readFresh(0xA83D4C,&houseBefore,sizeof houseBefore)||houseBefore<0x10000||
-    !externalReader.readFresh(0xA8ED84,&frameBefore,sizeof frameBefore)||frameBefore<0)return;
- auto input=external::cooperativeInput(external::SharedReadView{&externalReader},request,[](uint32_t type){char id[24]{};externalReader.read(type+0x24,id,23);auto found=targetQuotas.find(id);return found==targetQuotas.end()?extra.defaults:found->second;});
+ // Read the immutable game-thread frame capture; never independently scan
+ // another game frame from the host/UI while preparing this command.
+ shared->cooperativeFrameWanted=request.serial;
+ const long batch=shared->computeFrameSeq;if(batch&1)return;
+ static auto captured=std::make_unique<cooperative::FrameInput>();MemoryBarrier();
+ if(!cooperative::copyFrame(*captured,shared->cooperativeInputFrame))return;MemoryBarrier();
+ if(batch!=shared->computeFrameSeq||captured->request.serial!=request.serial||captured->match!=uint32_t(snap.match)||captured->frame!=shared->computeFrame){wakeGame();return;}
+ const DWORD acquired=captured->tick;const int frameBefore=captured->frame;
+ if(!freshness::valid(captured->match,snap.match,acquired,frameBefore,now,shared->computeFrame,freshness::Cooperative)){wakeGame();return;}
+ auto input=cooperative::unpack(*captured);cooperative::restrictSources(input,request);
  if(retry)cooperative::reserveAccepted(input,acceptedCooperative);
- // Apply host filters before allocation so excluded sources never reserve capacity.
- const auto sourceFeature=request.mode==cooperative::Enter?featuretypes::EnterSource:featuretypes::Aircraft;
- auto permitted=[&](featuretypes::Feature f,uint32_t type){char id[24]{};return !featureTypes.filters[f].custom||(type>=0x10000&&externalReader.read(type+0x24,id,23)&&featuretypes::allowed(featureTypes,f,id));};
- for(size_t i=0;i<input.units.size();++i){bool sourceAllowed=permitted(sourceFeature,input.units[i].type);
-  for(size_t j=0;j<input.targets.size();++j)if(!sourceAllowed||(request.mode==cooperative::Enter&&!permitted(featuretypes::EnterTarget,input.targets[j].type)))input.compatible[i*input.targets.size()+j]=0;
- }
  auto assignments=cooperative::allocate(input);
- if(!externalReader.readFresh(0xA8ED84,&frameAfter,sizeof frameAfter)||
-    !externalReader.readFresh(0xA83D4C,&houseAfter,sizeof houseAfter)||houseAfter!=houseBefore||frameAfter<frameBefore||
-    !freshness::valid(request.match,snap.match,acquired,frameBefore,GetTickCount(),frameAfter,freshness::Cooperative)||
+ if(!freshness::valid(request.match,shared->computeFrameMatch,acquired,frameBefore,GetTickCount(),shared->computeFrame,freshness::Cooperative)||
     !freshness::intentAlive(request.tick,GetTickCount())||shared->cooperativeRequest.serial!=request.serial||shared->cooperativeSeq!=seq){wakeGame();return;}
+ shared->cooperativeFrameWanted=0;
  cooperativeDelivered=request.serial;retryCooperative=false;
  if(assignments.empty()){notify(cooperative::damageMode(request.mode)?L"预计伤害已足额，或没有有效的可分配目标。":L"屏幕内没有可分配的同类空位或有效敌方目标。");return;}
  cooperativePending=request;submittedCooperative=assignments;

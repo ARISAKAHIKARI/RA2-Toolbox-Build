@@ -151,7 +151,7 @@ static void watchEjections(uint32_t house,int frame,Vec all){
 #include "unload_compute_bridge.h"
 static void smartUnloadTick(uint32_t house,int frame,int&budget){
  serviceUnloadCalculation(house,frame,budget);
- if(!unloadCalculationPending){unloadExternalInput.count=0;unloadExternalInput.targetCount=0;unloadExternalInput.match=match;unloadExternalInput.tick=sampleClock(sh);unloadExternalInput.frame=frame;}
+ if(externalInputFrame){unloadExternalInput.count=0;unloadExternalInput.targetCount=0;unloadExternalInput.match=match;unloadExternalInput.tick=sampleClock(sh);unloadExternalInput.frame=frame;}
  Vec all=vec(0xA8EC78),inf=vec(0xA83DE8);watchEjections(house,frame,all);int todo=unloadCount;if(todo>nativeorders::WorkPerFrame)todo=nativeorders::WorkPerFrame;
  while(todo--&&unloadCount){if(unloadCursor>=unloadCount)unloadCursor=0;int i=unloadCursor++;auto&r=unloadPassengers[i];uint32_t p=r.p;
   bool member=nativeMember(inf,p),carrierMember=nativeMember(all,r.carrier);
@@ -218,7 +218,7 @@ static void smartUnloadTick(uint32_t house,int frame,int&budget){
     collectUnloadSource(input,r,house,frame);
     auto decision=unloadcompute::decide(input.sources[0],input.targets,input.actions[0],input.targetCount);
     done=applyUnloadDecision(r,input,0,decision,house,frame,budget,false);
-   }else if(!unloadCalculationPending&&unloadExternalInput.count<unloadcompute::MaxSources){
+   }else if(externalInputFrame&&unloadExternalInput.count<unloadcompute::MaxSources){
     collectUnloadSource(unloadExternalInput,r,house,frame);
    }
   }

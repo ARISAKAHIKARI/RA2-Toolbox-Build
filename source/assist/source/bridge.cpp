@@ -107,6 +107,7 @@ static void recordReceipt(const gateway::Receipt&r){
  if(snap.receiptCount<RecentReceiptCapacity)++snap.receiptCount;
 }
 static gateway::MissionObserver<128> missionObserver;
+static bool externalInputFrame=false;static int inputFrame=-1;static uint32_t inputMatch=0;
 static taskarbiter::FrameArbiter<2048> actorFrameArbiter;
 static taskarbiter::LeaseArbiter<2048> actorLeaseArbiter;
 static bool bridgePinned,autoWas;static DWORD lastAuto,techRefresh;
@@ -753,10 +754,11 @@ static void uiSoundCommand(DWORD now){
 static DWORD clampedRepairInterval(uint32_t ms){
  return ms<500?500:ms>30000?30000:ms;
 }
-static int collectRepairs(uint32_t house,DWORD now){
- if(repairCalculationPending)return -6;
+static compute::FrameHistory<compute::RepairInput> repairFrames;static compute::RepairResult repairResultCopy;
+static int collectRepairs(uint32_t house,DWORD now,bool refresh=false){
+ if(repairCalculationPending&&!refresh)return -6;
  bool internal=compute::inside(sh->computeApplied,compute::Repair);
- if(!internal&&sh->repairTask!=sh->repairComputed)return -6;
+ if(!internal&&!refresh){repairFrames.clear();repairTaskSeen=sh->repairComputed;}
  Vec v=vec(0xA8EB40);repairCount=repairAt=repairDone=0;auto&in=sh->repairInput;
  if(!internal){in.match=match;in.tick=now;in.frame=get<int>(0xA8ED84);in.count=0;}
  for(int i=0;i<v.count&&repairCount<2048;++i){uint32_t p=item(v,i);if(!p||!own(p,house))continue;uint32_t t=typeOf(p,3),id=get<uint32_t>(p+0x10);
@@ -766,19 +768,24 @@ static int collectRepairs(uint32_t house,DWORD now){
   else if(in.count<2048)in.items[in.count++]={id,view};
  }
  if(internal)return repairCount;
- repairCalculationPending=true;repairCalculationStarted=now;MemoryBarrier();InterlockedIncrement((volatile LONG*)&sh->repairTask);notifyHost();return -30;
+ repairCalculationPending=true;if(!refresh)repairCalculationStarted=now;const uint32_t serial=compute::nextTask(sh->repairTask);repairFrames.retain(serial,in);MemoryBarrier();sh->repairTask=serial;notifyHost();return -30;
 }
 static void repairCalculationTick(DWORD now){
  if(!repairCalculationPending)return;
- bool timeout=DWORD(now-repairCalculationStarted)>1000;
- if(!timeout&&(sh->repairComputed!=sh->repairTask||sh->repairTask==repairTaskSeen))return;
- MemoryBarrier();repairTaskSeen=sh->repairTask;repairCalculationPending=false;
- const auto&in=sh->repairInput;const auto&r=sh->repairResult;
- bool valid=!timeout&&r.count>=0&&r.count<=2048&&r.match==in.match&&r.tick==in.tick&&r.frame==in.frame&&
-  freshness::valid(in.match,match,in.tick,in.frame,now,get<int>(0xA8ED84),freshness::Cooperative)&&!get<bool>(0xA8BC60+25);
- repairCount=repairAt=repairDone=0;
- if(valid){for(int i=0;i<r.count;++i){bool known=false;for(int j=0;j<in.count;++j)if(in.items[j].id==r.ids[i]){known=true;break;}if(known)repairIDs[repairCount++]=r.ids[i];}}
- else if(repairAckPending){sh->result=-7;sh->count=0;pendingAck=repairAckRequest;pendingAckReady=true;repairAckPending=false;}
+ if(DWORD(now-repairCalculationStarted)>1000){repairCalculationPending=false;if(repairAckPending){sh->result=-7;sh->count=0;pendingAck=repairAckRequest;pendingAckReady=true;repairAckPending=false;}return;}
+ const uint32_t completed=sh->repairComputed;
+ if(compute::newer(completed,repairTaskSeen)){
+  const long seq=sh->repairResultSeq;if(!(seq&1)){MemoryBarrier();repairResultCopy=sh->repairResult;MemoryBarrier();
+   if(seq==sh->repairResultSeq&&completed==sh->repairComputed){repairTaskSeen=completed;const auto*input=repairFrames.find(completed);const auto&r=repairResultCopy;
+    if(input&&r.count>=0&&r.count<=2048&&r.match==input->match&&r.tick==input->tick&&r.frame==input->frame&&
+       freshness::valid(input->match,match,input->tick,input->frame,now,get<int>(0xA8ED84),freshness::Cooperative)&&!get<bool>(0xA8BC60+25)){
+     repairCalculationPending=false;repairCount=repairAt=repairDone=0;
+     for(int i=0;i<r.count;++i){bool known=false;for(int j=0;j<input->count;++j)if(input->items[j].id==r.ids[i]){known=true;break;}if(known)repairIDs[repairCount++]=r.ids[i];}return;
+    }
+   }
+  }
+ }
+ if(externalInputFrame&&!get<bool>(0xA8BC60+25))collectRepairs(lastHouse,now,true);
 }
 
 static int superSelect(uint32_t house,int index){Vec v=vec(house+0x254,256);uint32_t p=item(v,index);if(!p||get<uint32_t>(p+0x2C)!=house||!get<bool>(p+0x6D))return -4;
@@ -1021,15 +1028,16 @@ static void tick(){
  bool selectionPending=sh->selectRequest!=sh->selectAck;bool planPending=sh->planRequest!=sh->planAck;bool cooperativePending=sh->cooperativePlan!=sh->cooperativeAck;bool cmd=sh->request!=sh->ack||selectionPending||planPending||cooperativePending||sh->pointer.request!=sh->pointer.ack;// A message wake observes the current simulation frame; pending work bypasses
  // display cadence. This is not a frame hook and does not advance the game.
  bool frameDue=get<int>(0xA8ED84)!=lastFrame&&
-   (sh->formationPolicy.enabled||formationJobCount||stickyCount||sh->magnetronGlobal||sh->magnetronDrop||sh->dodgeEnabled||dodgeCount||sh->burstEnabled||sh->burstHoldEnabled||burstCount||sh->missileEnabled||missileHoldCount||nativeCount||unloadCount||sh->runtimeTracking||runtimeCoopPending||loadCalculationPending||repairCalculationPending||(sh->flags&(EjectAssist|AntiTheft))||
+   (sh->computeApplied!=compute::All||sh->formationPolicy.enabled||formationJobCount||stickyCount||sh->magnetronGlobal||sh->magnetronDrop||sh->dodgeEnabled||dodgeCount||sh->burstEnabled||sh->burstHoldEnabled||burstCount||sh->missileEnabled||missileHoldCount||nativeCount||unloadCount||sh->runtimeTracking||runtimeCoopPending||loadCalculationPending||repairCalculationPending||(sh->flags&(EjectAssist|AntiTheft))||
     (sh->plannerTracking&&(sh->flags&(AdvancedInput|MagnetronInput|AutoOreReturn)))||
     sh->planRequest!=sh->planAck||sh->cooperativePlan!=sh->cooperativeAck);
+ bool resultsDue=(loadCalculationPending&&compute::newer(sh->loadComputed,loadTaskSeen))||(repairCalculationPending&&compute::newer(sh->repairComputed,repairTaskSeen))||((sh->missileEnabled||missileHoldCount)&&compute::newer(sh->missileComputed,missileApplied))||((sh->dodgeEnabled||dodgeCount)&&compute::newer(sh->dodgeComputed,dodgeApplied))||(unloadCount&&compute::newer(sh->unloadComputed,unloadApplied));
  bool soundPending=sh->uiSoundRequest!=sh->uiSoundAck;
  const uint64_t preciseNow=preciseclock::micros();static uint64_t fastSampleAt=0;
  bool refreshDue=(featureavailability::SceneRefresh&&sh->foreground&&sh->scrollRefreshMode&&sh->scrollRefreshHz&&scrollCadence.ready(preciseNow,sh->scrollRefreshHz))||
    (scrollRefreshActive&&(!sh->foreground||!sh->scrollRefreshMode||!sh->scrollRefreshHz));
  bool fastDue=sh->foreground&&(sh->dodgeEnabled||dodgeCount||sh->burstEnabled||sh->burstHeld||burstCount)&&preciseNow-fastSampleAt>=2000;
- if(!cmd&&!soundPending&&!frameDue&&!refreshDue&&!fastDue&&DWORD(now-last)<period)return;last=now;fastSampleAt=preciseNow;
+ if(!cmd&&!resultsDue&&!soundPending&&!frameDue&&!refreshDue&&!fastDue&&DWORD(now-last)<period)return;last=now;fastSampleAt=preciseNow;
  LARGE_INTEGER start,end,controlEnd,worldEnd;static LARGE_INTEGER frequency{};if(!frequency.QuadPart)QueryPerformanceFrequency(&frequency);QueryPerformanceCounter(&start);
  uint32_t house=get<uint32_t>(0xA83D4C);int frame=get<int>(0xA8ED84);bool running=get<bool>(0xA8E9A0);bool active=house>=0x10000&&house!=get<uint32_t>(0xAC1198)&&!get<bool>(house+0x1F5)&&!get<bool>(house+0x1F6)&&!get<bool>(house+0x1F8);
  if(active){Vec hv=vec(0xA80228,32);bool found=false;for(int i=0;i<hv.count;++i)if(item(hv,i)==house)found=true;active=found;}
@@ -1065,6 +1073,9 @@ static void tick(){
    if(!catalogueReady||catalogueHash!=stamp.hash)scanTypes();catalogueHash=stamp.hash;catalogueReady=true;
   }else{catalogueReady=false;scanTypes();}
  }
+ externalInputFrame=inputMatch!=match||inputFrame!=frame;if(externalInputFrame){inputMatch=match;inputFrame=frame;}
+ InterlockedIncrement(&sh->computeFrameSeq);
+ struct InputPublication {Shared*value;uint32_t session,tick;int frame;bool advanced;~InputPublication(){if(advanced){value->computeFrameMatch=session;value->computeFrameTick=tick;value->computeFrame=frame;++value->computeFrameSerial;}MemoryBarrier();InterlockedIncrement(&value->computeFrameSeq);notifyHost();}} inputPublication{sh,match,now,frame,externalInputFrame};
  // Control time belongs to the dispatcher, never to the optional display scan.
  rebuildPlayerSidebar(house);lastFrame=frame;snap.frame=frame;snap.match=match;snap.session=sessionMode;snap.status=1;snap.bridgeStatus=1;snap.commandStatus=1;
  snap.chat=get<bool>(0xA8BC60+25);if(!sh->foreground||snap.chat)runtimeKeys.clear();
@@ -1104,6 +1115,7 @@ static void tick(){
  const bool dodgeChanged=dodgeControlTick(house,frame,now);
  resetBurstControl(); // Removed feature: old shared flags never produce commands.
  const bool burstChanged=false;
+ captureCooperativeFrame(house,frame,now);
  const bool planningChanged=publishPlanningWorld(house,frame,now);
  runtimePlanningTick(house,frame,now);
  const bool missileChanged=missileControlTick(house,frame,now);
@@ -1121,7 +1133,7 @@ static void tick(){
  if(snap.techOpen&&((techPending&&DWORD(now-techRefresh)>=16)||DWORD(now-techRefresh)>=1000))refreshTech(house,now);
  if(full){if(!sh->externalDisplay)scan(house,frame,now);sceneFrame=frame;sceneTick=now;sceneFlags=flags;sceneTactical=tactical;sceneWidth=width;sceneHeight=height;sceneZoom=zoom;sceneResultSerial=snap.crateResultSerial;}
  else if(cameraMoved)shiftScene(cx-cameraX,cy-cameraY);
- else if(!cmd&&!summaryChanged&&!planningChanged&&!missileChanged&&!burstChanged&&!dodgeChanged&&DWORD(now-snap.sampledTick)<250)return;
+ else if(!externalInputFrame&&!cmd&&!summaryChanged&&!planningChanged&&!missileChanged&&!burstChanged&&!dodgeChanged&&DWORD(now-snap.sampledTick)<250)return;
  cameraX=cx;cameraY=cy;snap.cameraX=cx;snap.cameraY=cy;
  }
  QueryPerformanceCounter(&end);if(active)snap.displayMicros=micros(worldEnd,end,frequency);

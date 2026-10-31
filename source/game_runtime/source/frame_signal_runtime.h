@@ -6,13 +6,14 @@ static HANDLE mapping=nullptr,event=nullptr;static framesignal::Channel*channel=
 static bool installed=false,conflict=false;static uint8_t patchBytes[6]{};
 static const uint8_t original[6]={0x89,0x15,0x84,0xED,0xA8,0};
 static uint32_t continuation=framesignal::CommitSite+6;
+extern "C" void RuntimeFrameReady();
 extern "C" void FrameSignalCommitted(){
  // Never scan objects, allocate, block, dispatch commands or call the engine.
  // The instruction adapter has already committed the native EDX frame value.
  auto*c=channel;if(!c||!c->enabled||GetCurrentThreadId()!=c->thread||DWORD(GetTickCount()-c->heartbeat)>500)return;
  const DWORD error=GetLastError();LARGE_INTEGER q{};QueryPerformanceCounter(&q);
  InterlockedIncrement(&c->seq);c->frame=*(volatile LONG*)(uintptr_t)framesignal::Counter;c->qpc=q.QuadPart;++c->serial;InterlockedIncrement(&c->seq);
- if(event)SetEvent(event);SetLastError(error);
+ if(event)SetEvent(event);if(c->enabled&framesignal::Compute)RuntimeFrameReady();SetLastError(error);
 }
 static void __declspec(naked) committedAdapter(){
  __asm {

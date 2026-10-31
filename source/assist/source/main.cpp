@@ -660,28 +660,31 @@ static void logPlanning(const planner::World&w,const wchar_t* reason){
   L" result="+std::to_wstring(shared->planResult)+L" accepted="+std::to_wstring(shared->planAcceptedMask)+L" rejected="+std::to_wstring(shared->planRejectedMask));
 }
 template<class Input,class Output>static void serviceValueTask(compute::ValueTask<Input,Output>&worker,volatile uint32_t&request,volatile uint32_t&computed,
- const Input&source,Output&destination,volatile long*inputSequence=nullptr,volatile long*resultSequence=nullptr){
- const uint32_t task=request;if(task==computed)return;
- const long seq=inputSequence?*inputSequence:0;if(seq&1)return;MemoryBarrier();
- if(worker.needs(planningGeneration,task,seq)){
-  auto input=std::make_shared<Input>();memcpy(input.get(),&source,sizeof(Input));MemoryBarrier();
-  if(task!=request||(inputSequence&&seq!=*inputSequence)||input->match!=uint32_t(snap.match))return;
-  worker.submit(planningGeneration,task,seq,std::move(input));
- }
+ const Input&source,Output&destination,volatile long*inputSequence=nullptr,volatile long*resultSequence=nullptr,uint32_t cadence=0){
+ // Publish a completed in-flight result against its original source serial.
+ // A newer captured frame must not starve a slower but still valid result.
  auto result=worker.get();
- if(!result||result->generation!=planningGeneration||result->task!=task||result->sequence!=seq||result->value.match!=uint32_t(snap.match))return;
- MemoryBarrier();if(task!=request||(inputSequence&&seq!=*inputSequence))return;
- if(resultSequence)InterlockedIncrement(resultSequence);MemoryBarrier();
- destination=result->value;computed=task;MemoryBarrier();if(resultSequence)InterlockedIncrement(resultSequence);wakeGame();
+ if(result&&result->generation==planningGeneration&&compute::newer(result->task,computed)&&result->value.match==uint32_t(snap.match)&&
+    freshness::valid(result->value.match,snap.match,result->value.tick,result->value.frame,GetTickCount(),snap.frame,freshness::Cooperative)){
+  if(resultSequence)InterlockedIncrement(resultSequence);MemoryBarrier();destination=result->value;computed=result->task;MemoryBarrier();if(resultSequence)InterlockedIncrement(resultSequence);wakeGame();
+ }
+ const uint32_t task=request;if(!task||task==computed)return;
+ const long batch=shared->computeFrameSeq;if(batch&1)return;
+ const long seq=inputSequence?*inputSequence:0;if(seq&1)return;MemoryBarrier();
+ if(worker.needs(planningGeneration,task,seq)&&worker.ready(GetTickCount(),cadence)){
+  auto input=std::make_shared<Input>();memcpy(input.get(),&source,sizeof(Input));MemoryBarrier();
+  if(batch!=shared->computeFrameSeq||task!=request||(inputSequence&&seq!=*inputSequence)||input->match!=uint32_t(snap.match)||input->frame!=shared->computeFrame||input->match!=shared->computeFrameMatch)return;
+  worker.submit(planningGeneration,task,seq,std::move(input));worker.started(GetTickCount());
+ }
 }
 static void serviceCalculationTasks(){
  if(!shared||!commandFresh(GetTickCount()))return;bindCalculations();
  serviceValueTask(dodgeTask,shared->dodgeTask,shared->dodgeComputed,shared->dodgeInput,shared->dodgeResult,&shared->dodgeInputSeq,&shared->dodgeResultSeq);
  serviceValueTask(burstTask,shared->burstTask,shared->burstComputed,shared->burstInput,shared->burstResult,&shared->burstInputSeq,&shared->burstResultSeq);
- serviceValueTask(missileTask,shared->missileTask,shared->missileComputed,shared->missileInput,shared->missileResult,&shared->missileInputSeq,&shared->missileResultSeq);
+ serviceValueTask(missileTask,shared->missileTask,shared->missileComputed,shared->missileInput,shared->missileResult,&shared->missileInputSeq,&shared->missileResultSeq,1000u/std::clamp(uint32_t(shared->missileScanHz),1u,60u));
  serviceValueTask(unloadTask,shared->unloadTask,shared->unloadComputed,shared->unloadInput,shared->unloadResult,&shared->unloadInputSeq,&shared->unloadResultSeq);
- serviceValueTask(loadTask,shared->loadTask,shared->loadComputed,shared->loadInput,shared->loadResult);
- serviceValueTask(repairTask,shared->repairTask,shared->repairComputed,shared->repairInput,shared->repairResult);
+ serviceValueTask(loadTask,shared->loadTask,shared->loadComputed,shared->loadInput,shared->loadResult,nullptr,&shared->loadResultSeq);
+ serviceValueTask(repairTask,shared->repairTask,shared->repairComputed,shared->repairInput,shared->repairResult,nullptr,&shared->repairResultSeq);
 }
 static planner::Parameters plannerParameters(){
  planner::Parameters p;p.flags=compute::plannerFlags(shared->flags,shared->computeApplied,false);p.modes=compute::magnetronIntents(shared->computeApplied,false);
@@ -723,12 +726,13 @@ static void servicePlanner(){
   }else for(const auto&o:result->orders)plannerReceipts.push_back({o,result->frame,planner::Receipt::Expired});
  }
  const auto parameters=plannerParameters();if(!parameters.flags&&!parameters.drop&&!parameters.observeDrop&&!plannerState.tracking&&plannerReceipts.empty())return;
+ const long batch=shared->computeFrameSeq;if(batch&1)return;
  const long seq=shared->worldSeq;if((seq&1)||seq==worldRevision||snap.chat)return;
  auto input=std::make_shared<planner::World>();auto&w=*input;MemoryBarrier();
  w.match=shared->world.match;w.tick=shared->world.tick;w.frame=shared->world.frame;w.count=shared->world.count;w.intentCount=shared->world.intentCount;w.refineryCount=shared->world.refineryCount;w.inputSerial=shared->world.inputSerial;w.combatCount=shared->world.combatCount;
  if(!planner::validWorldCounts(w.count,w.intentCount,w.refineryCount)||w.combatCount<0||w.combatCount>planner::MaxCombatProbes)return;
  memcpy(w.combat,shared->world.combat,size_t(w.combatCount)*sizeof(planner::CombatProbe));memcpy(w.actors,shared->world.actors,size_t(w.count)*sizeof(planner::Actor));memcpy(w.intents,shared->world.intents,size_t(w.intentCount)*sizeof(planner::Intent));memcpy(w.refineries,shared->world.refineries,size_t(w.refineryCount)*sizeof(planner::Refinery));MemoryBarrier();
- if(seq!=shared->worldSeq)return;
+ if(seq!=shared->worldSeq||batch!=shared->computeFrameSeq||w.frame!=shared->computeFrame||w.match!=shared->computeFrameMatch)return;
  if(w.match==uint32_t(snap.match)&&w.frame>snap.frame){wakeGame();return;}
  worldRevision=seq;
  if(!freshness::valid(w.match,snap.match,w.tick,w.frame,GetTickCount(),snap.frame,freshness::Tactical)){logPlanning(w,L"stale-source");wakeGame();return;}
@@ -1740,11 +1744,13 @@ static void tick(){reapBridges();logBridgeHealth();DWORD now=GetTickCount();stat
   if(DWORD(now-lastPulse)>=wakePeriod)wakeGame();
   readSnapshot();schedulerDiagnostic();serviceSelection();result();serviceCommandQueue(GetTickCount());serviceCalculationTasks();servicePlanner();serviceCooperative();servicePointer();serviceCommandCursorHint();serviceHotkeyBatch();serviceConstruction();serviceAirPath();
   static renderpresentation::StatusCadence computeStatusCadence;
+  gameinput::setFrameSampling(hook,enabled&&shared->computeApplied!=compute::All);
   const uint64_t computeStatusKey=uint64_t(shared->computeApplied)|(uint64_t(computeRequested)<<32)|(uint64_t(showDetails)<<63);
   if(ready&&GetDlgItem(ui,833)&&computeStatusCadence.due(computeStatusKey,now)){
   std::wstring text=L"当前生效：";for(int i=0;i<compute::Count;++i){if(i)text+=i%2?L" · ":L"\r\n";text+=compute::label(i);text+=compute::inside(shared->computeApplied,compute::Feature(i))?L"：游戏内":L"：工具箱";}
   if(shared->computeApplied!=computeRequested)text+=L"\r\n配置已修改，下一局生效。";
   if(showDetails)text+=L"\r\n游戏内计算耗时 "+std::to_wstring(shared->runtimePlannerMicros)+L" 微秒。";
+  if(showDetails){const long seq=shared->computeFrameSeq;if(!(seq&1)){const int frame=shared->computeFrame;const uint32_t stamp=shared->computeFrameTick,serial=shared->computeFrameSerial;MemoryBarrier();if(seq==shared->computeFrameSeq)text+=L"\r\n统一决策样本：游戏帧 "+std::to_wstring(frame)+L" · 批次 "+std::to_wstring(serial)+L" · 年龄 "+std::to_wstring(DWORD(GetTickCount()-stamp))+L" ms · "+(gameinput::nativeFrameSampling(hook)?L"原生帧通知":L"帧号检测");}}
   static std::wstring previous;if(previous!=text){previous=text;SetDlgItemTextW(ui,833,text.c_str());}
  }
  now=GetTickCount(); // snapshot/queue services may have advanced lastData/sentAt.

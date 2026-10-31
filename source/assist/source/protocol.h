@@ -15,12 +15,14 @@
 #include "construction_input.h"
 #include "compute_policy.h"
 #include "compute_tasks.h"
+#include "compute_frame.h"
+#include "cooperative_frame.h"
 #include "unload_compute.h"
 #include "missile_compute.h"
 #include "burst_compute.h"
 #include "dodge_compute.h"
 namespace assist {
-constexpr uint32_t Magic=0x41533130, Version=80;
+constexpr uint32_t Magic=0x41533130, Version=81;
 // Both binaries derive the namespace from the protocol version. Do not maintain
 // a separate literal in the host: a valid ABI with a different name never connects.
 struct MappingPrefixValue {
@@ -112,6 +114,8 @@ struct Shared {
  volatile uint32_t selectRequest,selectAck;
  int selectIndex,selectGlobal;uint32_t selectObjectID;uint32_t selectTick,selectMatch;
  int selectResult,selectCount;uint32_t csHoldKey;
+ // One game-thread publication epoch covers all external decision inputs.
+ volatile long computeFrameSeq=0;uint32_t computeFrameSerial=0,computeFrameMatch=0,computeFrameTick=0;int computeFrame=-1;
  volatile long worldSeq;planner::World world;
  volatile uint32_t planRequest,planAck;uint32_t planTick,planMatch;
  int planCount,planAccepted,planResult;planner::Order plan[planner::MaxOrders];volatile uint32_t plannerTracking;
@@ -120,6 +124,7 @@ struct Shared {
  int loadMode,loadRadius;
  uint32_t enterKey,airKey1,airKey2;
  volatile long cooperativeSeq;cooperative::Request cooperativeRequest;
+ cooperative::FrameInput cooperativeInputFrame;volatile uint32_t cooperativeFrameWanted=0;
  volatile uint32_t cooperativePlan,cooperativeAck;uint32_t cooperativeSerial,cooperativeTick;
  int cooperativeCount,cooperativeAccepted,cooperativeRejected,cooperativeMode;
  cooperative::Assignment cooperativeOrders[cooperative::MaxSources];
@@ -156,6 +161,7 @@ struct Shared {
  volatile uint32_t runtimeTracking=0,runtimePlannerMicros=0;
  // Runtime produces raw immutable tasks; host publishes pure results and the
  // computed serial last. Neither field is a command/event receipt.
+ volatile long loadResultSeq=0,repairResultSeq=0;
  volatile uint32_t loadTask=0,loadComputed=0;compute::LoadInput loadInput;compute::LoadResult loadResult;
  volatile uint32_t repairTask=0,repairComputed=0;compute::RepairInput repairInput;compute::RepairResult repairResult;
  volatile long quotaConfigSeq=0;compute::QuotaConfig quotaConfig;

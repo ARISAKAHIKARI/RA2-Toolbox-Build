@@ -50,6 +50,8 @@ static void finishLoadingReservation(const loading::Reservation&r,uint32_t sessi
 }
 static bool loadCalculationPending,loadAckPending;static uint32_t loadAckRequest,loadTaskSeen;
 static DWORD loadCalculationStarted;
+static compute::FrameHistory<compute::LoadInput> loadFrames;static compute::LoadResult loadResultCopy;static compute::LoadInput loadCaptureCohort;
+static int autoLoad(uint32_t house,const compute::LoadInput*cohort=nullptr);
 static int submitLoading(uint32_t house,const loading::Infantry*soldiers,int ns,const loading::Vehicle*vehicles,int nv,const int*assignment,const uint32_t*tokens){
  using namespace loading;int frame=get<int>(0xA8ED84);loadQueryFailed=false;
  faultContext.phase=runtimefault::LoadSubmit;
@@ -78,13 +80,21 @@ static void loadingCalculationTick(uint32_t house,DWORD now){
  if(!loadCalculationPending)return;
  auto finish=[&](int result){loadCalculationPending=false;if(loadAckPending){sh->result=result;sh->count=snap.loadIssued;pendingAck=loadAckRequest;pendingAckReady=true;loadAckPending=false;}};
  if(DWORD(now-loadCalculationStarted)>1000){finish(-7);return;}
- if(sh->loadComputed!=sh->loadTask||sh->loadTask==loadTaskSeen)return;MemoryBarrier();loadTaskSeen=sh->loadTask;
- const auto&in=sh->loadInput;const auto&r=sh->loadResult;
- if(!compute::valid(in)||r.count!=in.ns||r.match!=in.match||r.tick!=in.tick||r.frame!=in.frame||
-    !freshness::valid(in.match,match,in.tick,in.frame,now,get<int>(0xA8ED84),freshness::Cooperative)||get<bool>(0xA8BC60+25)){finish(-7);return;}
- finish(submitLoading(house,in.soldiers,in.ns,in.vehicles,in.nv,r.assignment,in.tokens));
+ const uint32_t completed=sh->loadComputed;
+ if(compute::newer(completed,loadTaskSeen)){
+  long seq=sh->loadResultSeq;if(!(seq&1)){MemoryBarrier();loadResultCopy=sh->loadResult;MemoryBarrier();
+   if(seq==sh->loadResultSeq&&completed==sh->loadComputed){loadTaskSeen=completed;const auto*source=loadFrames.find(completed);const auto&r=loadResultCopy;
+    if(source&&compute::valid(*source)&&source->mode==int(sh->loadMode==1)&&source->radius==std::clamp(sh->loadRadius,1,512)&&r.count==source->ns&&r.match==source->match&&r.tick==source->tick&&r.frame==source->frame&&
+       freshness::valid(source->match,match,source->tick,source->frame,now,get<int>(0xA8ED84),freshness::Cooperative)&&!get<bool>(0xA8BC60+25)){
+     finish(submitLoading(house,source->soldiers,source->ns,source->vehicles,source->nv,r.assignment,source->tokens));return;
+    }
+   }
+  }
+ }
+ if(externalInputFrame&&!get<bool>(0xA8BC60+25)){loadCaptureCohort=sh->loadInput;autoLoad(house,&loadCaptureCohort);}
 }
-static int autoLoad(uint32_t house){
+static int autoLoad(uint32_t house,const compute::LoadInput*cohort){
+ if(!cohort&&loadCalculationPending)return -6;
  using namespace loading;
  FaultPhase phase(runtimefault::LoadCollect);loadQueryFailed=false;
  snap.loadUnits=snap.loadVehicles=snap.loadIssued=snap.loadWaiting=snap.loadUnassigned=0;
@@ -100,15 +110,17 @@ static int autoLoad(uint32_t house){
   }else ++i;
  }
  static Vehicle vehicles[MaxVehicles];static Infantry soldiers[MaxInfantry];static Composition composition;static Workspace workspace;composition.clear();
- int nv=0,ns=0;Vec selected=vec(0xA8ECB8,4096);
- bool selectedCarrier=false;
- for(int i=0;i<selected.count;++i){uint32_t p=item(selected,i);
+ int nv=0,ns=0;Vec selected=vec(0xA8ECB8,4096);const int selectedCount=cohort?cohort->ns:selected.count;
+ auto selectedAt=[&](int i){if(!cohort)return item(selected,i);const auto&p=cohort->soldiers[i];return worldByID(p.id)==p.object&&manualVersions.get(p.id)==cohort->tokens[i]?p.object:0u;};
+ bool selectedCarrier=cohort&&cohort->nv>0;
+ for(int i=0;i<selectedCount;++i){uint32_t p=selectedAt(i);
   if(p&&own(p,house)&&kind(p)==2&&featureObjectAllowed(featuretypes::LoadTransport,p)){uint32_t t=typeOf(p,2);if(t&&get<int>(t+0x5E0)>0){selectedCarrier=true;break;}}
  }
  // Match MO's explicitly selected-carrier assignment when carriers were
  // selected. A passenger-only hotkey finds nearby owned carriers as requested.
- Vec carriers=selectedCarrier?selected:all;
- for(int i=0;i<carriers.count&&nv<MaxVehicles;++i){uint32_t p=item(carriers,i);if(!p||!loadingObject(p,house,2)||incomingVehicle(p))continue;uint32_t t=typeOf(p,2);if(!t||!featureTypeAllowed(featuretypes::LoadTransport,t))continue;
+ Vec carriers=selectedCarrier?selected:all;const int carrierCount=cohort?cohort->nv:carriers.count;
+ auto carrierAt=[&](int i){if(!cohort)return item(carriers,i);const auto&v=cohort->vehicles[i];return worldByID(v.id)==v.object?v.object:0u;};
+ for(int i=0;i<carrierCount&&nv<MaxVehicles;++i){uint32_t p=carrierAt(i);if(!p||!loadingObject(p,house,2)||incomingVehicle(p))continue;uint32_t t=typeOf(p,2);if(!t||!featureTypeAllowed(featuretypes::LoadTransport,t))continue;
   int capacity=get<int>(t+0x5E0),count=get<int>(p+0x114);double limit=get<double>(t+0x388);if(capacity<=0||capacity>1024||count<0||count>256||!(limit>0&&limit<=128))continue;
   for(auto&number:composition.numbers[nv])number=0;
   int used=0;uint32_t q=get<uint32_t>(p+0x118),seen[256]{};int n=0;
@@ -121,9 +133,9 @@ static int autoLoad(uint32_t house){
  }
  snap.loadVehicles=nv;
  bool accepts[MaxVehicles]{};
- for(int j=0;j<nv;++j)if(freeSlots(vehicles[j])>0)for(int i=0;i<selected.count;++i){uint32_t p=item(selected,i);int k=p?kind(p):-1;if((k!=1&&k!=2)||p==vehicles[j].object||!loadingObject(p,house,k))continue;uint32_t t=typeOf(p,k);int size=t?slots(get<double>(t+0x380)):0;if(featureTypeAllowed(featuretypes::LoadPassenger,t)&&size>0&&size<=freeSlots(vehicles[j])&&canEnter(p,vehicles[j].object)){accepts[j]=true;break;}}
+ for(int j=0;j<nv;++j)if(freeSlots(vehicles[j])>0)for(int i=0;i<selectedCount;++i){uint32_t p=selectedAt(i);int k=p?kind(p):-1;if((k!=1&&k!=2)||p==vehicles[j].object||!loadingObject(p,house,k))continue;uint32_t t=typeOf(p,k);int size=t?slots(get<double>(t+0x380)):0;if(featureTypeAllowed(featuretypes::LoadPassenger,t)&&size>0&&size<=freeSlots(vehicles[j])&&canEnter(p,vehicles[j].object)){accepts[j]=true;break;}}
 
- for(int i=0;i<selected.count;++i){uint32_t p=item(selected,i);if(!p||!own(p,house))continue;int k=kind(p);if((k!=1&&k!=2)||!loadingObject(p,house,k))continue;uint32_t t=typeOf(p,k);if(!t||!featureTypeAllowed(featuretypes::LoadPassenger,t))continue;
+ for(int i=0;i<selectedCount;++i){uint32_t p=selectedAt(i);if(!p||!own(p,house))continue;int k=kind(p);if((k!=1&&k!=2)||!loadingObject(p,house,k))continue;uint32_t t=typeOf(p,k);if(!t||!featureTypeAllowed(featuretypes::LoadPassenger,t))continue;
   // Airborne/jumpjet passengers cannot receive native Enter. UI legality remains
   // authoritative for mods and NoManualEnter/NoManualUnload extensions.
   if(get<bool>(p+0x134)||get<int>(p+0x94)==3||get<bool>(p+0x84)||get<bool>(p+0x8D))continue;
@@ -146,14 +158,14 @@ static int autoLoad(uint32_t house){
  if(loadQueryFailed)return -15;
  static uint32_t tokens[MaxInfantry];for(int i=0;i<ns;++i)tokens[i]=manualVersions.get(soldiers[i].id);
  if(!compute::inside(sh->computeApplied,compute::Load)){
-  if(sh->loadTask!=sh->loadComputed)return -6;
+  if(!cohort){loadFrames.clear();loadTaskSeen=sh->loadComputed;}
   auto&in=sh->loadInput;in.match=match;in.tick=sampleClock(sh);in.frame=frame;in.ns=ns;in.nv=nv;in.mode=sh->loadMode==1;in.radius=std::clamp(sh->loadRadius,1,512);
   memcpy(in.soldiers,soldiers,size_t(ns)*sizeof(Infantry));memcpy(in.vehicles,vehicles,size_t(nv)*sizeof(Vehicle));in.composition=composition;memcpy(in.tokens,tokens,size_t(ns)*4);
   for(int i=0;i<ns;++i)for(int j=0;j<nv;++j){int64_t dx=int64_t(soldiers[i].x)-vehicles[j].x,dy=int64_t(soldiers[i].y)-vehicles[j].y,limit=int64_t(in.radius)*256;
    in.compatible[i][j]=soldiers[i].slots<=freeSlots(vehicles[j])&&soldiers[i].slots<=vehicles[j].sizeLimit&&dx*dx+dy*dy<=limit*limit&&canEnter(soldiers[i].object,vehicles[j].object);
    if(loadQueryFailed)return -15;
   }
-  loadCalculationPending=true;loadCalculationStarted=in.tick;MemoryBarrier();InterlockedIncrement((volatile LONG*)&sh->loadTask);notifyHost();return -30;
+  loadCalculationPending=true;if(!cohort)loadCalculationStarted=in.tick;const uint32_t serial=compute::nextTask(sh->loadTask);loadFrames.retain(serial,in);MemoryBarrier();sh->loadTask=serial;notifyHost();return -30;
  }
  static int assignment[MaxInfantry];assign(soldiers,ns,vehicles,nv,sh->loadMode==1?1:0,sh->loadRadius,composition,workspace,assignment,[](const Infantry&p,const Vehicle&v){return canEnter(p.object,v.object);});
  if(loadQueryFailed)return -15;

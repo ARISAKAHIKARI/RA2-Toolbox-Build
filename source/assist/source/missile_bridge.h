@@ -1,6 +1,7 @@
 // Owned by the sole GameRuntime dispatcher. All attacks/reservations/releases are native events.
 extern "C" int GuardedCombatWeapon(unsigned,unsigned,unsigned*,int*,int*,int*);
 extern "C" int GuardedObjectAir(unsigned,int*);
+static compute::FrameHistory<missilecompute::Input> missileFrames;static uint32_t missileApplied=0;
 static missilecompute::Input missileInput;
 static missilecompute::Result missileResult;
 static bool missilePending,missileScanned;
@@ -19,7 +20,7 @@ static bool missileManuallyOwned(uint32_t p){uint32_t id=get<uint32_t>(p+0x10);f
 static int missileRecord(uint32_t id){for(int n=0;n<missileSendCount;++n)if(missileSends[n].id==id)return n;return -1;}
 static void publishMissileHeld(){missileHoldCount=0;for(int n=0;n<missileSendCount;++n)missileHoldCount+=missileSends[n].held||missileSends[n].controlled;if(sh)sh->missileHeld=missileHoldCount;}
 static void resetMissileControl(){
- missileManualCount=0;missilePending=missileScanned=false;missileFrame=-1;missileSendCount=missileSourceCursor=missileTargetCursor=missileManagedCursor=missileHoldCount=0;
+ missileManualCount=0;missileFrames.clear();missileApplied=sh?sh->missileComputed:0;missilePending=missileScanned=false;missileFrame=-1;missileSendCount=missileSourceCursor=missileTargetCursor=missileManagedCursor=missileHoldCount=0;
  for(auto&m:missileMotion)m={};missileMotionCursor=0;
  if(sh){sh->missileSources=sh->missileTargets=sh->missileIssued=sh->missileHeld=0;}
 }
@@ -132,14 +133,15 @@ static bool releaseMissileHolds(uint32_t house,int frame,DWORD now){
  }
  return missileHoldCount==0;
 }
-static void applyMissileResult(const missilecompute::Result&r,uint32_t house,int frame,DWORD now){
- if(r.match!=missileInput.match||r.tick!=missileInput.tick||r.frame!=missileInput.frame||r.count<0||r.count>missilecompute::MaxOrders)return;
+static void applyMissileResult(const missilecompute::Result&r,uint32_t house,int frame,DWORD now,const missilecompute::Input*source=nullptr){
+ const auto&input=source?*source:missileInput;
+ if(r.match!=input.match||r.tick!=input.tick||r.frame!=input.frame||r.count<0||r.count>missilecompute::MaxOrders)return;
  if(missileSettings!=(sh->missileScope|(sh->missileAllocation<<8)|(sh->missileReserve<<16)|(sh->lowDamageFilter<<17)))return;
  for(int n=0;n<r.count;++n){
   if(!sh->missileEnabled||snap.chat||!freshness::valid(r.match,match,r.tick,r.frame,sampleClock(sh),frame,freshness::Tactical))break;
   int si=r.orders[n].source,ti=r.orders[n].target,action=r.orders[n].action;
-  if(si<0||si>=missileInput.count||(action!=missilecompute::Advance&&action!=0&&action!=1&&action!=5))continue;
-  auto&s=missileInput.sources[si];uint32_t p=worldByID(s.id);
+  if(si<0||si>=input.count||(action!=missilecompute::Advance&&action!=0&&action!=1&&action!=5))continue;
+  auto&s=input.sources[si];uint32_t p=worldByID(s.id);
   if(p!=s.pointer||manualVersions.get(s.id)!=s.token)continue;
   int at=missileRecord(s.id);if(at>=0&&missileSends[at].mission>=0)continue;
   uint32_t q=0;bool outside=false;
@@ -152,7 +154,7 @@ static void applyMissileResult(const missilecompute::Result&r,uint32_t house,int
   }
   else {
    if(!missileSource(p,house))continue;
-   if(ti<0||ti>=missileInput.targetCount)continue;auto&t=missileInput.targets[ti];q=worldByID(t.id);
+   if(ti<0||ti>=input.targetCount)continue;auto&t=input.targets[ti];q=worldByID(t.id);
    if(q!=t.pointer||!missileTarget(q,house))continue;auto e=missileEdge(p,q);if(!e.damage||(action==1&&!e.close))continue;outside=!e.close;
    if((action==0||(action==missilecompute::Advance&&kind(p)==3&&outside))&&at>=0&&missileSends[at].held&&get<int>(p+0xAC)==0&&!get<uint32_t>(p+0x2B4)){missileSends[at].target=get<uint32_t>(q+0x10);continue;}
    if(get<uint32_t>(p+0x2B4)==q&&at>=0&&missileSends[at].controlled){
@@ -172,22 +174,22 @@ static bool missileControlTick(uint32_t house,int frame,DWORD now){
  if(!sh->missileEnabled){missilePending=false;releaseMissileHolds(house,frame,now);if(!missileSendCount)resetMissileControl();return false;}
  if(snap.chat||!simulationReady())return false;
  uint32_t settings=sh->missileScope|(sh->missileAllocation<<8)|(sh->missileReserve<<16)|(sh->lowDamageFilter<<17);
- if(settings!=missileSettings){missilePending=missileScanned=false;missileFrame=-1;missileSettings=settings;}
- if(missilePending){
-  if(!freshness::valid(missileInput.match,match,missileInput.tick,missileInput.frame,now,frame,freshness::Tactical))missilePending=false;
-  else if(sh->missileComputed==missileSerial){long seq=sh->missileResultSeq;if(seq&1)return false;MemoryBarrier();memcpy(&missileResult,&sh->missileResult,sizeof missileResult);MemoryBarrier();
-   if(seq!=sh->missileResultSeq)return false;missilePending=false;applyMissileResult(missileResult,house,frame,now);
-  }else return false;
+ if(settings!=missileSettings){missileFrames.clear();missileApplied=sh->missileComputed;missilePending=missileScanned=false;missileFrame=-1;missileSettings=settings;}
+ const bool outside=!compute::inside(sh->computeApplied,compute::MissileDefense);
+ if(outside&&compute::newer(sh->missileComputed,missileApplied)){
+  const uint32_t completed=sh->missileComputed;long seq=sh->missileResultSeq;
+  if(!(seq&1)){MemoryBarrier();missileResult=sh->missileResult;MemoryBarrier();if(seq==sh->missileResultSeq&&completed==sh->missileComputed){missileApplied=completed;if(const auto*source=missileFrames.find(completed)){applyMissileResult(missileResult,house,frame,now,source);if(const auto*c=missileFrames.cursors(completed)){missileSourceCursor=(*c)[0];missileTargetCursor=(*c)[1];missileManagedCursor=(*c)[2];}}}}
  }
+ if(outside&&!externalInputFrame)return false;
  if(frame==missileFrame)return false;
- if(missileScanned&&DWORD(now-missileScanTick)<1000u/std::clamp(uint32_t(sh->missileScanHz),1u,60u))return false;
+ if(!outside&&missileScanned&&DWORD(now-missileScanTick)<1000u/std::clamp(uint32_t(sh->missileScanHz),1u,60u))return false;
  missileFrame=frame;missileScanTick=now;missileScanned=true;
  auto&i=missileInput;i={};i.match=match;i.tick=now;i.frame=frame;i.mode=sh->missileAllocation|(sh->missileReserve?missilecompute::ReserveSleep:0);
  Vec all=vec(0xA8EC78);int visited=0;
  for(;visited<all.count&&i.targetCount<64;++visited){uint32_t q=item(all,(missileTargetCursor+visited)%all.count);if(!missileTarget(q,house))continue;
   sampleMissileMotion(q,frame);uint32_t victim=worldObjects.contains(get<uint32_t>(q+0x2B4))?get<uint32_t>(q+0x2B4):0;
   i.targets[i.targetCount++]={get<uint32_t>(q+0x10),q,get<int>(q+0x6C),uint32_t(victim&&own(victim,house)?(std::abs(int64_t(get<int>(q+0x9C))-get<int>(victim+0x9C))+std::abs(int64_t(get<int>(q+0xA0))-get<int>(victim+0xA0))<=3*256?2:1):0)};
- }if(all.count)missileTargetCursor=(missileTargetCursor+visited)%all.count;
+ }const int nextTargetCursor=all.count?(missileTargetCursor+visited)%all.count:0;if(!outside)missileTargetCursor=nextTargetCursor;
  auto add=[&](uint32_t p){if(i.count>=64||!p)return;for(int n=0;n<i.count;++n)if(i.sources[n].pointer==p)return;
   uint32_t id=get<uint32_t>(p+0x10);int at=missileRecord(id);bool held=at>=0&&missileSends[at].held;
   bool managed=at>=0&&missileSends[at].controlled;
@@ -202,12 +204,12 @@ static bool missileControlTick(uint32_t house,int frame,DWORD now){
  // Persistent advances must not monopolize all 64 slots in a large army.
  int revisited=0,managedBudget=i.targetCount?32:64;
  for(;revisited<missileSendCount&&i.count<managedBudget;++revisited){auto&r=missileSends[(missileManagedCursor+revisited)%missileSendCount];if(r.held||r.controlled)add(worldByID(r.id));}
- if(missileSendCount)missileManagedCursor=(missileManagedCursor+revisited)%missileSendCount;
+ const int nextManagedCursor=missileSendCount?(missileManagedCursor+revisited)%missileSendCount:0;if(!outside)missileManagedCursor=nextManagedCursor;
  visited=0;if(i.targetCount)for(;visited<all.count&&i.count<64;++visited)add(item(all,(missileSourceCursor+visited)%all.count));
- if(all.count)missileSourceCursor=(missileSourceCursor+visited)%all.count;
+ const int nextSourceCursor=all.count?(missileSourceCursor+visited)%all.count:0;if(!outside)missileSourceCursor=nextSourceCursor;
  sh->missileSources=i.count;sh->missileTargets=i.targetCount;if(!i.count)return true;
  if(compute::inside(sh->computeApplied,compute::MissileDefense))applyMissileResult(missilecompute::calculate(i),house,frame,now);
- else {InterlockedIncrement(&sh->missileInputSeq);MemoryBarrier();memcpy(&sh->missileInput,&i,sizeof i);missileSerial=sh->missileTask+1;sh->missileTask=missileSerial;MemoryBarrier();InterlockedIncrement(&sh->missileInputSeq);missilePending=true;notifyHost();}
+ else {InterlockedIncrement(&sh->missileInputSeq);MemoryBarrier();memcpy(&sh->missileInput,&i,sizeof i);missileSerial=compute::nextTask(sh->missileTask);missileFrames.retain(missileSerial,i,{nextSourceCursor,nextTargetCursor,nextManagedCursor});sh->missileTask=missileSerial;MemoryBarrier();InterlockedIncrement(&sh->missileInputSeq);missilePending=true;notifyHost();}
  return true;
 }
 
