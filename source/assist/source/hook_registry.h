@@ -21,6 +21,7 @@ inline Owner ownerAt(uint32_t a){
  case 0x0064B9D4:return Owner::NetworkTransport;
  case 0x0064B660:return Owner::NetworkTransport;
  case 0x0064B4EA:return Owner::NetworkTransport;
+ case 0x00649D61:case 0x00649DBC:return Owner::NetworkTransport;
  case 0x006929E5:return Owner::NativeSell;
  case 0x004AC179:return Owner::NativeSell;
  case 0x00646F4E:return Owner::NativeMega;
@@ -55,6 +56,8 @@ inline bool knownOriginal(uint32_t at,const uint8_t* bytes,unsigned size){
  static const uint8_t pre6NetworkCompressedHouse[]={0x88,0x8C,0x40,0xD6,0x02,0xA8,0x00};
  static const uint8_t pre6NetworkPack[]={0x81,0xEC,0x94,0x00,0x00,0x00};
  static const uint8_t pre6NetworkDictionary[]={0x8B,0xCA,0xC7,0x44,0x24,0x10,0x00,0x00,0x00,0x00};
+ static const uint8_t houseFrameGroup[]={0xA1,0x4C,0xB2,0xA8,0x00};
+ static const uint8_t housePlainLimit[]={0x8B,0x54,0x24,0x14,0x8B,0x74,0x24,0x10};
  static const uint8_t pre6NativeSellCursor[]={0xE8,0x06,0x8D,0xE7,0xFF};
  static const uint8_t pre6NativeSellOwner[]={0x8B,0x0D,0x4C,0x3D,0xA8,0x00,0x8B,0x51,0x30};
  static const uint8_t pre6NativeMegaSuccess[]={0xB0,0x01,0x5F,0x5E,0x83,0xC4,0x70};
@@ -96,6 +99,8 @@ inline bool knownOriginal(uint32_t at,const uint8_t* bytes,unsigned size){
  case 0x0064B9D4:signature=pre6NetworkCompressedHouse;expected=sizeof pre6NetworkCompressedHouse;break;
  case 0x0064B660:signature=pre6NetworkPack;expected=sizeof pre6NetworkPack;break;
  case 0x0064B4EA:signature=pre6NetworkDictionary;expected=sizeof pre6NetworkDictionary;break;
+ case 0x00649D61:signature=houseFrameGroup;expected=sizeof houseFrameGroup;break;
+ case 0x00649DBC:signature=housePlainLimit;expected=sizeof housePlainLimit;break;
  case 0x006929E5:signature=pre6NativeSellCursor;expected=sizeof pre6NativeSellCursor;break;
  case 0x004AC179:signature=pre6NativeSellOwner;expected=sizeof pre6NativeSellOwner;break;
  case 0x00646F4E:signature=pre6NativeMegaSuccess;expected=sizeof pre6NativeMegaSuccess;break;

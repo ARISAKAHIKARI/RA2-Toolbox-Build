@@ -17,7 +17,8 @@ spec=importlib.util.spec_from_file_location('network_runtime_support',Path(__fil
 args=sys.argv;sys.argv=[str(spec.origin),a.game,a.dll,'--filter','__fixture__','--output',str(Path(a.output).with_suffix('.helpers.json'))];spec.loader.exec_module(n);sys.argv=args
 SITES={0x649ca0:bytes.fromhex('83ec1c5355'),0x649e1e:bytes.fromhex('888c40d602a800'),
        0x64b660:bytes.fromhex('81ec94000000'),0x64b9d4:bytes.fromhex('888c40d602a800'),
-       0x64b4ea:bytes.fromhex('8bcac744241000000000')}
+       0x64b4ea:bytes.fromhex('8bcac744241000000000'),
+       0x649d61:bytes.fromhex('a14cb2a800'),0x649dbc:bytes.fromhex('8b5424148b742410')}
 GPRS=(UC_X86_REG_EAX,UC_X86_REG_EBX,UC_X86_REG_ECX,UC_X86_REG_EDX,UC_X86_REG_ESI,UC_X86_REG_EDI,UC_X86_REG_EBP,UC_X86_REG_ESP)
 FPREGS=(UC_X86_REG_FPCW,UC_X86_REG_FPSW,UC_X86_REG_FPTAG,UC_X86_REG_MXCSR,
         UC_X86_REG_FP0,UC_X86_REG_FP1,UC_X86_REG_FP2,UC_X86_REG_FP3,UC_X86_REG_FP4,UC_X86_REG_FP5,UC_X86_REG_FP6,UC_X86_REG_FP7,
@@ -145,16 +146,21 @@ def pdb_public(m,path,name):
     return found.pop()
 def watch_thunks(m):
     pending={};seen=[]
-    continuations={0x649e25:0x649e1e,0x64b666:0x64b660,0x64b9db:0x64b9d4,0x64b551:0x64b4ea}
+    continuations={0x649d66:0x649d61,0x649dc4:0x649dbc,0x649e25:0x649e1e,0x64b666:0x64b660,0x64b9db:0x64b9d4,0x64b551:0x64b4ea}
     def hook(uc,at,size,_):
         if at in continuations.values():pending[at]=(tuple(uc.reg_read(r) for r in GPRS),uc.reg_read(UC_X86_REG_EFLAGS),fp(m))
         elif at in continuations:
             site=continuations[at]
             if site not in pending:return # native cache path may reach the same continuation
             regs,flags,float_state=pending.pop(site);now=tuple(uc.reg_read(r) for r in GPRS)
-            assert now[:-1]==regs[:-1],(hex(site),'registers',regs,now)
+            if site==0x649d61:
+                assert now[0]==m.protocol and now[1:-1]==regs[1:-1],(hex(site),'protocol load / preserved registers')
+            elif site==0x649dbc:
+                assert all(now[k]==regs[k] for k in (0,1,2,5,6)),(hex(site),'unrelated registers')
+                assert now[3]==m.r(regs[-1]+0x14) and 0<=now[4]<=m.r(regs[-1]+0x10),(hex(site),'native counter / packet bound')
+            else:assert now[:-1]==regs[:-1],(hex(site),'registers',regs,now)
             assert now[-1]==regs[-1]-(0x94 if site==0x64b660 else 0),(hex(site),'stack')
-            if site!=0x64b660:assert uc.reg_read(UC_X86_REG_EFLAGS)==flags,(hex(site),'flags')
+            if site not in (0x64b660,0x649dbc):assert uc.reg_read(UC_X86_REG_EFLAGS)==flags,(hex(site),'flags')
             assert fp(m)==float_state,(hex(site),'x87/SSE state')
             seen.append(site)
     for at in set(continuations)|set(continuations.values()):m.u.hook_add(UC_HOOK_CODE,hook,begin=at,end=at)
@@ -173,6 +179,21 @@ for protocol in (0,1,2):
         unchanged(m,before)
         return {'runtime_command':32,'foreign_house':1,'same_native_local_and_decoded_event':True}
     check(f'runtime_foreign_destruct_through_sender_protocol_{protocol}',actual_command)
+for protocol in (0,1,2):
+    def own_wire(protocol=protocol):
+        m=setup(3,protocol);assert toggle(m,True).networkHouseStatus==1
+        fill(m,[(kind,0,ident) for kind,house,ident in MIXED],126)
+        before=protect(m);crc_calls=[]
+        trace=m.u.hook_add(UC_HOOK_CODE,lambda uc,at,size,_:crc_calls.append(at),begin=0x64dab0,end=0x64dab0)
+        sent,local=send(m);m.u.hook_del(trace);unchanged(m,before)
+        assert not crc_calls,'sender must not recompute game CRC / advance RNG'
+        assert len(m.sent)==1 and m.sent[0][2]==0
+        remote=[b for b in decode(m) if b[0]!=0x1c]
+        assert [canonical(b) for b in local]==[canonical(b) for b in remote]
+        return {'packet_sha256':[hashlib.sha256(packet).hexdigest() for packet in m.sent],
+                'native_crc_recomputations':len(crc_calls),'event_houses':[b[2] for b in local]}
+    check(f'own_wire_protocol_{protocol}',own_wire)
+
 for mode in (3,4):
     for protocol in (0,1,2):
         def main(mode=mode,protocol=protocol):
@@ -189,7 +210,14 @@ for mode in (3,4):
             remote=[b for b in decode(m) if b[0]!=0x1c]
             assert [canonical(b) for b in local]==[canonical(b) for b in remote]
             assert [b[2] for b in local]==[h for k,h,i in MIXED]
-            expected={0x649e1e} if protocol==0 else {0x64b660,0x64b9d4,0x64b4ea}
+            expected={0x649d61,0x649dbc,0x649e1e} if protocol==0 else {0x649d61,0x64b660,0x64b9d4,0x64b4ea}
+            # Three contiguous runs, including a three-event foreign run. No
+            # regrouping across an intervening local run and no per-event split.
+            assert len(m.sent)==3 and [packet[2] for packet in m.sent]==[0,1,0]
+            assert all(struct.unpack_from('<I',packet,7)[0]==0x12345678 for packet in m.sent)
+            assert all(struct.unpack_from('<H',packet,11)[0]==100 and packet[13]==5 for packet in m.sent)
+            assert len({packet[3:7] for packet in m.sent})==1
+            if protocol==0:assert [len(packet) for packet in m.sent]==[333,444,444]
             assert expected<=set(seen),(protocol,seen)
             unchanged(m,before)
             packets=len(m.sent);assert n.state(m).networkHousePackets==packets
@@ -202,15 +230,17 @@ for mode in (3,4):
             assert bytes(m.u.mem_read(0xafa338,32))==bytes(32)
             unchanged(m,before)
             assert all(any(at<=address<at+len(data) for at,data in SITES.items()) for address,size in m.codeWrites),m.codeWrites
-            return {'native_packets':packets,'managed_sites':5,'leaf_register_fp_checks':len(seen),'foreign_cancelled':2}
+            return {'native_packets':packets,'packet_houses':[0,1,0],'foreign_events_in_one_packet':3,'native_crc_count_delay_preserved':True,'managed_sites':len(SITES),'leaf_register_fp_checks':len(seen),'foreign_cancelled':2}
         check(f'installed_native_sender_session_{mode}_protocol_{protocol}',main)
 
-for case in ('singleplayer_0','singleplayer_5','unsupported_protocol','context_conflict','site_conflict','invalid_ring'):
+for case in ('singleplayer_0','singleplayer_5','unsupported_protocol','context_conflict','site_conflict','frame_site_conflict','plain_site_conflict','invalid_ring'):
     def reject(case=case):
         mode=0 if case=='singleplayer_0' else 5 if case=='singleplayer_5' else 3
         m=setup(mode,3 if case=='unsupported_protocol' else 1)
         if case=='context_conflict':m.u.mem_write(0x649d40,b'\x90')
         if case=='site_conflict':m.u.mem_write(0x64b9d4,b'\x90')
+        if case=='frame_site_conflict':m.u.mem_write(0x649d61,b'\x90')
+        if case=='plain_site_conflict':m.u.mem_write(0x649dbc,b'\x90')
         s=toggle(m,True)
         if case!='invalid_ring':
             assert s.networkHouseStatus!=1 and not m.codeWrites,(case,s.networkHouseStatus,m.codeWrites)
@@ -221,7 +251,7 @@ for case in ('singleplayer_0','singleplayer_5','unsupported_protocol','context_c
         return {'blocked_without_event_send':True}
     check('rejection_'+case,reject)
 
-for protocol in (1,2):
+for protocol in (0,1,2):
     def phase(protocol=protocol):
         m=setup(3,protocol);assert toggle(m,True).networkHouseStatus==1
         fill(m,[(0x16,0,701),(0x16,1,702),(8,0,0)])
@@ -229,7 +259,7 @@ for protocol in (1,2):
         def invalidate(first):
             if first==1:m.b(m.enemy+0x1ed,0)
         m.onSend=invalidate;sent,local=send(m);m.onSend=None
-        assert sent==1 and len(m.sent)==1 and len(local)==1
+        assert sent==(0 if protocol==0 else 1) and len(m.sent)==1 and len(local)==1
         assert m.r(0xa802c8)==2 and [b[0] for b,t in logical_out(m)]==[0x16,8]
         # Next runtime entry cancels the now-invalid foreign remainder before
         # removing the protected sender; the queued local event remains.
@@ -303,7 +333,10 @@ for case in ('invalid_ring','changed_world'):
             assert s.stop==1 and s.networkHouseStatus==-3,(s.stop,s.networkHouseStatus)
             assert logical_out(m)==queued
             assert ('UnmapViewOfFile',m.SH) not in calls and ('CloseHandle',1) not in calls,calls
-            assert len(m.mapping_names)==open_count
+            # Since HF24, a missing optional frame-notification mapping is
+            # probed again. This fixture returns0 for that mapping; no new
+            # Assist/Runtime mapping may replace the retained connection.
+            assert all(name.startswith('Local\\RA2Frame_v1_') for name in m.mapping_names[open_count:]),m.mapping_names[open_count:]
             installed(m)
         if case=='invalid_ring':m.w(0xa802d0,0)
         else:

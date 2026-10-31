@@ -21,6 +21,7 @@ constexpr uint32_t NetworkPlainHouse=0x649E1E;
 constexpr uint32_t NetworkCompressedHouse=0x64B9D4;
 constexpr uint32_t NetworkPack=0x64B660;
 constexpr uint32_t NetworkDictionary=0x64B4EA;
+constexpr uint32_t NetworkFrameGroup=0x649D61,NetworkPlainLimit=0x649DBC;
 constexpr uint32_t NativeSellCursor=0x6929E5;
 constexpr uint32_t NativeSellOwner=0x4AC179;
 constexpr uint32_t NativeMegaSuccess=0x646F4E;
@@ -29,7 +30,7 @@ constexpr uint32_t ControlMegaFOwner=0x646FD2;
 constexpr uint32_t ControlPlanningOwner=0x6FFC93;
 constexpr uint32_t ControlObjectOwner=0x6FFE2B;
 inline bool callSite(uint32_t at){return at==TechDraw||at==TechPrune||at==ControlOwner||at==ControlPlanning||at==NativeSellCursor;}
-inline unsigned size(uint32_t at){if(at==BuildTimeTooltip)return 4;if(at==FrameCommitted)return 6;if(at==ControlMegaOwner)return 10;if(at==ControlMegaFOwner)return 10;if(at==ControlPlanningOwner)return 8;if(at==ControlObjectOwner)return 5;if(at==NetworkSend)return 5;if(at==NetworkPlainHouse)return 7;if(at==NetworkCompressedHouse)return 7;if(at==NetworkPack)return 6;if(at==NetworkDictionary)return 10;if(at==NativeSellCursor)return 5;if(at==NativeSellOwner)return 9;if(at==NativeMegaSuccess)return 7;if(auto s=directpatch::find(at))return s->size;if(masterTech(at))return at==MasterPrune?6:5;if(callSite(at)||at==CameraClamp||at==ControlHouse)return 5;return at==ScrollMap?8:at==Placement?5:at==AirType?4:at==AirArrival?10:at==ShroudDraw?5:at==FogDraw?5:(at==C4Execution||at==C4Movement||at==LowDamage)?6:0;}
+inline unsigned size(uint32_t at){if(at==BuildTimeTooltip)return 4;if(at==FrameCommitted)return 6;if(at==ControlMegaOwner)return 10;if(at==ControlMegaFOwner)return 10;if(at==ControlPlanningOwner)return 8;if(at==ControlObjectOwner)return 5;if(at==NetworkFrameGroup)return 5;if(at==NetworkPlainLimit)return 8;if(at==NetworkSend)return 5;if(at==NetworkPlainHouse)return 7;if(at==NetworkCompressedHouse)return 7;if(at==NetworkPack)return 6;if(at==NetworkDictionary)return 10;if(at==NativeSellCursor)return 5;if(at==NativeSellOwner)return 9;if(at==NativeMegaSuccess)return 7;if(auto s=directpatch::find(at))return s->size;if(masterTech(at))return at==MasterPrune?6:5;if(callSite(at)||at==CameraClamp||at==ControlHouse)return 5;return at==ScrollMap?8:at==Placement?5:at==AirType?4:at==AirArrival?10:at==ShroudDraw?5:at==FogDraw?5:(at==C4Execution||at==C4Movement||at==LowDamage)?6:0;}
 inline uint32_t destination(uint32_t at,const uint8_t* bytes,unsigned n){
  if(!bytes||n!=size(at)||!n)return 0;
  uint32_t value=0;

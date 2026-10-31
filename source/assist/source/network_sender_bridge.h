@@ -5,10 +5,11 @@
 extern "C" int __cdecl GuardedNetworkSend(unsigned,unsigned,int,int,int);
 static bool networkSenderInstalled,networkSenderEnabled,networkSenderPacking,networkSenderFaulted;
 static bool networkSenderCacheDirty;
+static int networkSenderPacketLimit,networkSenderPacketHouse=-1;
 static uint32_t networkSenderScenario,networkSenderItems,networkSenderLocal,networkSenderLocalID,networkSenderMatch;
 static int networkSenderState=networksender::Off;
 struct NetworkSenderSite {networksender::Site spec;uint8_t patch[10];};
-static NetworkSenderSite networkSenderSites[5];
+static NetworkSenderSite networkSenderSites[networksender::SiteCount];
 static bool networkSenderQueue(networksender::Ring&r){return read(0xA802C8,&r,sizeof r)&&networksender::valid(r);}
 static uint32_t networkSenderEvent(unsigned slot){return 0xA802D4+slot*networksender::EventBytes;}
 static bool networkSenderWorld(){
@@ -126,10 +127,14 @@ extern "C" void __cdecl AssistNetworkSenderAbort(){
 static int __fastcall networkSenderEntry(unsigned transport,unsigned buffer,int capacity,int delay,int serial){
  RuntimeFPScope fp;return GuardedNetworkSend(transport,buffer,capacity,delay,serial);
 }
-static bool __cdecl networkSenderCompressedGroup(uint32_t stack,uint32_t buffer){
+// Called after the original FrameInfo has filled Frame/CRC/count/Delay, before
+// either encoder. Only House changes. CRC is the original global game-state
+// digest, not a per-House checksum or a checksum of these packet bytes.
+static bool __cdecl networkSenderFrameGroup(uint32_t stack,uint32_t buffer){
  if(!networkSenderPacking)return true;
+ networkSenderPacketLimit=0;networkSenderPacketHouse=-1;
  networksender::Ring ring{};if(!networkSenderQueue(ring)||!networkSenderWorld())return false;
- const int limit=*(int*)(uintptr_t)(stack+12);if(limit<0)return false;
+ const int limit=*(int*)(uintptr_t)(stack+0x10);if(limit<0)return false;
  if(!ring.count||!limit)return true;
  const int local=get<int>(networkSenderLocal+0x30);int first=-1;unsigned count=0;
  for(int i=0;i<ring.count&&i<limit;++i){uint8_t head[3]{};
@@ -139,9 +144,71 @@ static bool __cdecl networkSenderCompressedGroup(uint32_t stack,uint32_t buffer)
   if(!i)first=house;else if(house!=first)break;++count;
  }
  if(!count||!networksender::validHouse(first)||buffer<0x10000)return false;
- *(int*)(uintptr_t)(stack+12)=int(count);*(uint8_t*)(uintptr_t)(buffer+2)=uint8_t(first);
+ networksender::Ring again{};if(!networkSenderQueue(again)||!networksender::same(ring,again))return false;
+ networkSenderPacketLimit=int(count);networkSenderPacketHouse=first;
+ *(uint8_t*)(uintptr_t)(buffer+2)=uint8_t(first);
  return true;
 }
+static bool __cdecl networkSenderCompressedGroup(uint32_t stack,uint32_t buffer){
+ if(!networkSenderPacking)return true;
+ const int limit=*(int*)(uintptr_t)(stack+12);if(limit<0)return false;
+ if(!limit)return true;
+ if(networkSenderPacketLimit<=0||!networksender::validHouse(networkSenderPacketHouse)||
+    buffer<0x10000||get<uint8_t>(buffer+2)!=networkSenderPacketHouse)return false;
+ *(int*)(uintptr_t)(stack+12)=std::min(limit,networkSenderPacketLimit);return true;
+}
+static __declspec(naked) void networkSenderFrameEntry(){__asm {
+ pushfd
+ pushad
+ mov ebx,esp
+ sub esp,528
+ and esp,-16
+ fxsave [esp]
+ cld
+ fninit
+ fldcw [esp]
+ mov dword ptr [esp+512],1F80h
+ ldmxcsr [esp+512]
+ push dword ptr [ebx+16]
+ mov eax,[ebx+12]
+ add eax,4
+ push eax
+ call networkSenderFrameGroup
+ add esp,8
+ test al,al
+ jz blocked
+ fxrstor [esp]
+ mov esp,ebx
+ popad
+ popfd
+ mov eax,dword ptr ds:[0A8B24Ch]
+ push 649D66h
+ ret
+blocked:
+ mov byte ptr [networkSenderFaulted],1
+ mov byte ptr [networkSenderEnabled],0
+ fxrstor [esp]
+ mov esp,ebx
+ popad
+ popfd
+ push 649FD4h
+ ret
+}}
+// Bound the original protocol0 inner loop without changing the real queue,
+// the outer remaining count, native progress accounting or return convention.
+static __declspec(naked) void networkSenderPlainLimitEntry(){__asm {
+ mov edx,[esp+14h]
+ mov esi,[esp+10h]
+ cmp byte ptr [networkSenderPacking],0
+ je original
+ cmp esi,dword ptr [networkSenderPacketLimit]
+ jle original
+ mov esi,dword ptr [networkSenderPacketLimit]
+original:
+ // The original CMP immediately after this continuation defines live flags.
+ push 649DC4h
+ ret
+}}
 static __declspec(naked) void networkSenderCompressedEntry(){__asm {
  pushfd
  pushad
@@ -224,19 +291,23 @@ fullGroup:
 }}
 static void networkSenderPrepare(){static bool prepared=false;if(prepared)return;prepared=true;
  const uint32_t targets[]={uint32_t(uintptr_t(&networkSenderEntry)),uint32_t(uintptr_t(&networkSenderUncompressedHouse)),
-  uint32_t(uintptr_t(&networkSenderCompressedEntry)),uint32_t(uintptr_t(&networkSenderCompressedHouse)),uint32_t(uintptr_t(&networkSenderCacheEntry))};
- for(unsigned i=0;i<5;++i){auto&s=networkSenderSites[i];s.spec=networksender::Sites[i];memset(s.patch,0x90,s.spec.size);s.patch[0]=0xE9;
+  uint32_t(uintptr_t(&networkSenderCompressedEntry)),uint32_t(uintptr_t(&networkSenderCompressedHouse)),uint32_t(uintptr_t(&networkSenderCacheEntry)),
+  uint32_t(uintptr_t(&networkSenderFrameEntry)),uint32_t(uintptr_t(&networkSenderPlainLimitEntry))};
+ for(unsigned i=0;i<networksender::SiteCount;++i){auto&s=networkSenderSites[i];s.spec=networksender::Sites[i];memset(s.patch,0x90,s.spec.size);s.patch[0]=0xE9;
   const uint32_t rel=targets[i]-s.spec.address-5;memcpy(s.patch+1,&rel,4);
  }
 }
 static bool networkSenderContext(){
  // Fixed cross-site ABI dependencies; the manager also checks each exact
- // displaced instruction and refuses any foreign detour at our five sites.
+ // displaced instruction and refuses any foreign detour at our seven sites.
  struct Probe {uint32_t address;uint8_t size,bytes[16];};
  static const Probe probes[]={
   {0x649CA5,6,{0x8B,0x2D,0xF8,0x41,0x8B,0x00}},
   {0x649D40,12,{0x8B,0x15,0x4C,0x3D,0xA8,0x00,0x8A,0x42,0x30,0x88,0x43,0x02}},
+  {0x649D4C,11,{0x8B,0x15,0xFC,0x51,0xAC,0x00,0x66,0x8B,0x44,0x24,0x38}},
+  {0x649D57,10,{0x89,0x53,0x07,0x66,0x89,0x43,0x0B,0x88,0x4B,0x0D}},
   {0x649D8D,7,{0x8B,0xCB,0xE8,0xCC,0x18,0x00,0x00}},
+  {0x649DC4,8,{0x3B,0xD6,0x0F,0x8D,0x8F,0x01,0x00,0x00}},
   {0x649FF0,12,{0x8B,0xC6,0x5F,0x5E,0x5D,0x5B,0x83,0xC4,0x1C,0xC2,0x0C,0x00}},
   {0x64B666,7,{0x53,0x55,0x56,0x8B,0xD9,0x57,0xB9}},
   {0x64B551,10,{0x8A,0x44,0x24,0x30,0x84,0xC0,0x0F,0x84,0xF4,0x00}},
@@ -254,7 +325,7 @@ static bool restoreNetworkSender(){
           (!networkSenderWorld()&&!networkSenderNoForeign())||!networkSenderClearCache())){
   networkSenderState=networksender::Blocked;networkSenderPublish();return false;
  }
- bool ok=true;for(int i=4;i>=0;--i){auto&s=networkSenderSites[i];if(codeHookRegistry.active(s.spec.address)&&
+ bool ok=true;for(int i=int(networksender::SiteCount)-1;i>=0;--i){auto&s=networkSenderSites[i];if(codeHookRegistry.active(s.spec.address)&&
   !gameentry::patch(gameentry::Client::Assist,s.spec.address,s.patch,s.spec.original,s.spec.size))ok=false;}
  networkSenderInstalled=!ok;networkSenderState=ok?networksender::Off:networksender::Unsupported;networkSenderPublish();return ok;
 }
@@ -278,7 +349,7 @@ static void networkSenderTick(bool requested){
  if(!ok){restoreNetworkSender();networkSenderState=networksender::Unsupported;networkSenderPublish();return;}
  if(!networkSenderWorld())networkSenderBindWorld();
  // Install the outer safety gate first. No new foreign admission is published
- // until all four leaves have installed and the complete group is rechecked.
+ // until every leaf has installed and the complete group is rechecked.
  for(auto&s:networkSenderSites)if(!codeHookRegistry.active(s.spec.address)&&
   !gameentry::patch(gameentry::Client::Assist,s.spec.address,s.spec.original,s.patch,s.spec.size)){ok=false;break;}
  networkSenderInstalled=ok&&networkSenderOwnSites();networkSenderEnabled=networkSenderInstalled;

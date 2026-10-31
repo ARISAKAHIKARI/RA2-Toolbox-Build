@@ -6,6 +6,7 @@
 
 | 主题 | 新笔记 | 关键词 |
 | --- | --- | --- |
+| Hotfix31连续House分包、协议0匹配帧头与CRC边界 | [实现与受控验证](2026-10-31-network-house-grouping-hotfix31.md) · [36项证据](evidence/network-house-grouping-hotfix31.json) | FrameInfo649D61 protocol0 limit649DBC globalCRC no-recompute native7sites own-wire-identical |
 | Hotfix30完整A查表、原生专用内核与精确整帧SIMD | [实现、对照与测量](2026-10-31-native-blitter-performance-hotfix30.md) · [原始轮次](evidence/native-blitter-hotfix30.json) | blitter full-A SSE2 127 exact 8192 four-plane 1440p CPU12.505ms not-game-FPS |
 | YRpp原生绘制性能参考：专用blitter、A查表、RLE跨度、VXL姿态缓存和可见/脏区 | [源码核对与路线](2026-10-31-yrpp-native-rendering-performance-reference.md) | YRpp d979554 AlphaLightingRemap palette RLE voxel cache dirty areas native packed |
 | HF29之后逐项评估回合与CPU冗余初始化候选 | [合回条件、对照和下一步](2026-10-31-performance-remerge-after-hotfix29.md) | confirmed-recovery separate-branch CPU memory initialization benchmark no-direct-output |

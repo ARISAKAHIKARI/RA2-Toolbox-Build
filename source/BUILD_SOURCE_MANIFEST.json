@@ -32,7 +32,7 @@
     "TacticalClass::SetTacticalPosition (0x6D6000), native camera update",
     "GScreenClass::Render (0x4F4480), native composition and presentation"
   ],
-  "release_status": "Hotfix30 experimental CPU native blitter performance update; stable latest remains v1.0.38",
+  "release_status": "Hotfix31 experimental House-group packet isolation, retaining Hotfix30 rendering; stable latest remainsv1.0.38",
   "frontend": "Independent settings input queues; latest-layout snapshots; dependency gating; explicit key gestures; page-only wheel scrolling",
   "technology_experiment": "Native AddCameo + two local UI CanBuild limit-only callsite wrappers; native factories/events unchanged; no live purchase/netplay certification",
   "calculation_locations": "Fifteen tactical decision families selectable; native queries/events always GameRuntime; host planner and six value-only compute lanes run on persistent workers, with UI publication and original source deadlines.",
@@ -188,5 +188,12 @@
     "presentation": "Hotfix29 single owner, whole Surface, completed pixel readback and layered compositor retained; direct shared-texture output and optional quality remain disabled",
     "validation": "6029568 exact palette comparisons; all65536 channel/A base shade pairs plus offsets/tails and scalar/SSE2; 8192 ordered four-plane baseline draws; 32 replay layouts; 36 ordered replay oracles; continuity/waterline/display fence. Production cross-build and static metadata results accompany update. No Windows/game/GPU execution or real FPS measurement",
     "controlled_cpu_replay": "1440p/160 synthetic objects: initialization-only34.056ms ->12.505ms; HF2938.316ms ->12.505ms; three alternating rounds per variant,15 timed draws per round, identical digests. This excludes scene preparation and presentation."
+  },
+  "Hotfix31": {
+    "network": "All native protocols0/1/2 partition consecutive same-House OutList runs; each game data packet has one matching FrameInfo.House; order retained and same-House events batch together",
+    "crc": "Original global game-state digest, Frame, count and Delay preserved; no per-House CRC replacement or extra ComputeGameCRC call",
+    "managed_sites": 7,
+    "validation": "36 final actual DLL/native controlled cases; all-local wire identical toHF30 in all3 protocols; 16512 rings and4088 partitions; mixed-architecture build,680ABI and static PE/import/manifest checks. No live socket/peer, full simulation, Windows loader or multiplayer test",
+    "remaining": "Cross-sender same-House scheduler order and MegaMission receiver-cache collisions remain unresolved; packet grouping does not repair those design limits"
   }
 }
