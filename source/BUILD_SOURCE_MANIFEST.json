@@ -31,7 +31,7 @@
     "TacticalClass::SetTacticalPosition (0x6D6000), native camera update",
     "GScreenClass::Render (0x4F4480), native composition and presentation"
   ],
-  "release_status": "1.0.39-pre.7 Hotfix25 experimental update; same-source production build and static checks; live-game and visual verification outstanding.",
+  "release_status": "1.0.39-pre.7 Hotfix26 experimental update; world native surface/effects production paths integrated; static-only validation, no live visual parity claim.",
   "frontend": "Independent settings input queues; latest-layout snapshots; dependency gating; explicit key gestures; page-only wheel scrolling",
   "technology_experiment": "Native AddCameo + two local UI CanBuild limit-only callsite wrappers; native factories/events unchanged; no live purchase/netplay certification",
   "calculation_locations": "Fifteen tactical decision families selectable; native queries/events always GameRuntime; host planner and six value-only compute lanes run on persistent workers, with UI publication and original source deadlines.",
@@ -146,5 +146,12 @@
     "settings": "Display.HarvesterCounter=0 and Display.PowerDelta=0 by default; independent of RenderUpgrade. Existing RenderHighRefresh now exposed in the unified video page.",
     "limits": "Full native Z/A and cloak displacement, slope Z, some special effects/light/parts and RGB555 whole-pipeline parity remain outstanding. No shader changes in Hotfix25.",
     "validation": "Cross compilation, ABI/PE/static source checks only; no CPU test suites, Windows/game, native instruction, GPU, multiplayer or FPS execution."
+  },
+  "Hotfix26": {
+    "surface": "Separate u16 native Z and full-byte A, signed SHP candidates, TMP equal admission, native palette rows, BUILDNGZ/SLOP and clipping; shared CPU/GPU world paths.",
+    "pages": "Native Z/A before sparse-page area resolve; complete cross-page ordered displacement on CPU/GPU; original-size TMP replay.",
+    "effects": "Laser explicit/house/paired AA, RadBeam0/1/2, Wave0/1/2/3, combat/building/particle-system lights and building outlines; runtime565/555 core operations.",
+    "abi": "Assist81 Runtime4 entry3 signal1 unchanged.",
+    "limits": "No pixel-equivalence claim for enhanced reconstruction, minified effects, all x87 intermediate rounding, separate local UI/EBolt or arbitrary mixed parts. No native/GPU/Windows/game/CPU-suite/FPS execution."
   }
 }

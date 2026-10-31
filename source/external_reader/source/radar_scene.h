@@ -11,6 +11,7 @@
 #include "camera_repair.h"
 #include "viewport_canvas.h"
 #include "material_blend.h"
+#include "native_page_masks.h"
 #include "gpu_shroud.h"
 #include "render_profile.h"
 #include "scene_frame_reuse.h"
@@ -84,7 +85,7 @@ template<class Assets>class SceneRenderer {
  asyncwork::FramePool<Scene> outputPool_;
  camera::FrameReuse<Scene> gpuFrameReuse_;
  std::shared_ptr<camera::NativeCanvas::Budget> nativeBudget_;
- camera::NativeCanvas pending_,background_;camera::ObjectCanvas objectCanvas_;camera::ViewportCanvas detailed_;uint64_t detailKey_=0;std::shared_ptr<const Scene> baseScene_,maskedBaseScene_;
+ camera::NativePageMasks nativePageMasks_;camera::NativeCanvas pending_,background_;camera::ObjectCanvas objectCanvas_;camera::ViewportCanvas detailed_;uint64_t detailKey_=0;std::shared_ptr<const Scene> baseScene_,maskedBaseScene_;
  bool gpuMode_=false,areaGpuMode_=false,areaCachedGpu_=false;
  uint32_t requestedObjects_=0,drawnObjects_=0;
  bool guideEnabled_=false,directPresentation_=false;uint64_t guideExternalContext_=0,motionTerrainRevision_=0;
@@ -115,7 +116,7 @@ template<class Assets>class SceneRenderer {
    if(!x.sourceColor&&n<a.colors.size()&&a.colors[n]!=b.colors[n])return false;
   }return true;
  }
- void clearBackground(){gpuFrameReuse_.reset();nativePresentation_={};objectCanvas_.clear();++motionTerrainRevision_;building_.reset();complete_.reset();blocked_.reset();dynamicFailure_=false;pending_={};background_={};baseScene_.reset();maskedBaseScene_.reset();gpuBaseTiles_.reset();cpuBaseFallback_={};maskSource_.reset();mask_={};gpuMaskPlan_.reset();cpuMaskPlan_.reset();maskPixels_.reset();liveMaskValid_=false;cells_.clear();baseCells_.clear();prepared_.clear();painted_.clear();cursor_=baseCursor_=0;probing_=probeChanged_=pendingIncomplete_=backgroundIncomplete_=false;backgroundRetry_=0;}
+ void clearBackground(){nativePageMasks_.reset();gpuFrameReuse_.reset();nativePresentation_={};objectCanvas_.clear();++motionTerrainRevision_;building_.reset();complete_.reset();blocked_.reset();dynamicFailure_=false;pending_={};background_={};baseScene_.reset();maskedBaseScene_.reset();gpuBaseTiles_.reset();cpuBaseFallback_={};maskSource_.reset();mask_={};gpuMaskPlan_.reset();cpuMaskPlan_.reset();maskPixels_.reset();liveMaskValid_=false;cells_.clear();baseCells_.clear();prepared_.clear();painted_.clear();cursor_=baseCursor_=0;probing_=probeChanged_=pendingIncomplete_=backgroundIncomplete_=false;backgroundRetry_=0;}
 
 public:
  explicit SceneRenderer(size_t pages=camera::NativeCanvas::MaximumPages):nativeBudget_(pages==camera::NativeCanvas::MaximumPages?camera::NativeCanvas::sharedBudget():std::make_shared<camera::NativeCanvas::Budget>()){if(pages!=camera::NativeCanvas::MaximumPages)nativeBudget_->maximum=std::clamp<size_t>(pages,1,camera::NativeCanvas::MaximumPages);}
@@ -278,7 +279,7 @@ public:
      pending_.terrainSource(index,tile.ready?tile.image:nullptr,px,py,base,paint.light,int(cell.level));
      if(tile.ready){camera::Material material;material.nativeZ=true;material.nativeZAdjust=-15*int(cell.level);pending_.blit(*tile.image,px,py,1,1,base,paint.light,0,0,material);}
      else{pendingIncomplete_=true;pending_.diamond(px,py,1,1,base,0xff000000u|baseColor,paint.light);}
-    } // A cell without a resolved tile has no ground sprite to paint.
+    }else pending_.terrainSource(index,nullptr,px,py,base,paint.light,int(cell.level)); // No retained source may survive a removed tile.
     // Overlay bodies and their separate shadow sweep are dynamic world layers.
     if(pending_.failed())break;++nativeCells_;
    }
@@ -366,10 +367,14 @@ public:
     maskedBaseScene_.reset();maskPixels_.reset();}
    maskSource_=complete_;maskFog_=fog;
   }
-  auto view=background_.fork();
+  auto alphaAsset=[&](uint32_t pointer)->std::shared_ptr<const voxel::Image>{auto found=effectAlphas_.find(pointer);if(found==effectAlphas_.end()){voxel::Image image;if(!alphaImage(assets,pointer,image,0))return {};size_t bytes=0;for(const auto&item:effectAlphas_)bytes+=camera::pixels(*item.second)*5;if(bytes+camera::pixels(image)*5>16*1024*1024)effectAlphas_.clear();found=effectAlphas_.emplace(pointer,std::make_shared<const voxel::Image>(std::move(image))).first;}return found->second;};
+  const double projectionScale=projectionZScale(read);
+  auto nativeBase=background_.fork();
+  if(!detail&&!prepareWorldOnly_&&!nativePageMasks_.prepare(nativeBase,*frame.terrain,masked,fog,frame.effects&&frame.effects->world?frame.effects->world.get():nullptr,features_.particles,projectionScale,[&](bool fog,int n,voxel::Image&out){return assets.shroud(fog,n,out);},alphaAsset))return {};
+  auto view=nativeBase.fork();
   std::vector<camera::ObjectCanvas::Draw>objectDraws;objectDraws.reserve(frame.markers.size());
   auto draw=[&](const voxel::Image&i,float x,float y,float sx,float sy,float z,const lighting::State&light,float lift=1,float drop=0,std::shared_ptr<const voxel::Image>owner={},vulkancompute::MotionIdentity motion={},camera::Material material={}){if(detail&&!prepareWorldOnly_)detailed_.blit(i,x,y,sx,sy,z,light,lift,drop,std::move(owner),std::move(motion),material);else{if(!owner||owner.get()!=&i)owner=std::make_shared<const voxel::Image>(i);objectDraws.push_back({std::move(owner),x,y,z,lift,drop,light,material,motion.object,motion.id});}};
-  const double projectionScale=projectionZScale(read);
+
   const auto&geo=frame.terrain->geo;int work=0;size_t pixels=0;std::vector<const Marker*> fallbacks;
   extraLayers_.ground(frame,read,assets,scene,draw);extraLayers_.frozen(frame,read,assets,scene,projectionScale,draw);
   stage(stageStats_.terrainMs);auto markers=frame.markers;
@@ -544,13 +549,14 @@ public:
    nativePresentation_.pixels->size()==size_t(width)*height&&nativePresentation_.background==detailKey_&&
    nativePresentation_.objects==objectCanvas_.revision()&&!nativePresentation_.gpu&&!nativePresentation_.used;
   gpuarea::Plan nativeAreaPlan;
-  const bool nativeObjectsGpu=areaGpuMode&&objectCanvas_.planGPU(background_,objectDraws,width,height,spanX_,spanY_,nativeAreaPlan);
-  if(!detail&&!nativeObjectsGpu&&!objectCanvas_.compose(background_,objectDraws,view,incrementalNative)){dynamicFailure_=true;return {};}
+  const bool nativeObjectsGpu=areaGpuMode&&objectCanvas_.planGPU(nativeBase,objectDraws,width,height,spanX_,spanY_,nativeAreaPlan);
+  if(!detail&&!nativeObjectsGpu&&!objectCanvas_.compose(nativeBase,objectDraws,view,incrementalNative)){dynamicFailure_=true;return {};}
   if(view.failed()){dynamicFailure_=true;return {};}
   stage(stageStats_.objectsMs);
   const bool worldEffects=frame.effects&&frame.effects->world&&!frame.effects->world->empty();
   const bool radarExtras=!region.active&&sceneextras::hasRadar(frame);
-  const bool staticView=!radarExtras&&beacons.empty()&&!(features_.lasers&&frame.effects&&frame.effects->boltsValid&&!frame.effects->bolts.empty())&&!worldEffects&&(detail?(!detailed_.dirty()&&!gpuMode_):(!view.dirtyPages()&&objectDraws.empty()))&&fallbacks.empty();
+  const bool nativePages=!detail&&!nativeBase.terrainSources().empty();
+  const bool staticView=!nativePages&&!radarExtras&&beacons.empty()&&!(features_.lasers&&frame.effects&&frame.effects->boltsValid&&!frame.effects->bolts.empty())&&!worldEffects&&(detail?(!detailed_.dirty()&&!gpuMode_):(!view.dirtyPages()&&objectDraws.empty()))&&fallbacks.empty();
   if(staticView&&!forceFrame){
    if(areaGpuMode){
     auto cached=masked?maskedBaseScene_:baseScene_;if(cached&&(cached->gpu?gpupresent::valid(cached->gpu,width,height)&&gpupresent::available():cached->pixels.size()==size_t(width)*height)){xbrzadapter::gpuAreaCached(areaCachedGpu_);return cached;}
@@ -562,7 +568,7 @@ public:
   auto dot=[&](const Marker&m){return std::pair<int,int>{int(((double(m.x)-m.y)*30/256.+geo.offsetX*30-(region.active?region.x:0))*width/(region.active?region.width:spanX_)),int(((double(m.x)+m.y)*15/256.-geo.offsetY*15-(region.active?region.y:0))*height/(region.active?region.height:spanY_))};};
   const bool bolts=features_.lasers&&frame.effects&&frame.effects->boltsValid&&!frame.effects->bolts.empty();
   worldfx::View effectView;effectView.x=region.active?region.x:0;effectView.y=region.active?region.y:0;effectView.width=region.active?region.width:spanX_;effectView.height=region.active?region.height:spanY_;effectView.pixelsW=width;effectView.pixelsH=height;effectView.offsetX=geo.offsetX;effectView.offsetY=geo.offsetY;effectView.zscale=projectionScale;
-  auto alphaAsset=[&](uint32_t pointer)->std::shared_ptr<const voxel::Image>{auto found=effectAlphas_.find(pointer);if(found==effectAlphas_.end()){voxel::Image image;if(!alphaImage(assets,pointer,image,0))return {};size_t bytes=0;for(const auto&item:effectAlphas_)bytes+=camera::pixels(*item.second)*5;if(bytes+camera::pixels(image)*5>16*1024*1024)effectAlphas_.clear();found=effectAlphas_.emplace(pointer,std::make_shared<const voxel::Image>(std::move(image))).first;}return found->second;};
+
   bool effectPlanReady=false;std::shared_ptr<const gpueffects::Plan> areaEffects;
   if(detail||(areaGpuMode&&fallbacks.empty())){
    if(gpuMode_)for(const auto*m:fallbacks){auto p=dot(*m);detailed_.annotationDot(p.first,p.second,m->color);}
@@ -592,7 +598,7 @@ public:
    auto*direct=directPresentation_&&effectPlanReady&&fallbacks.empty()?&out->gpu:nullptr;
    if(nativeObjectsGpu){nativeAreaPlan.fog=masked?maskPixels_:nullptr;nativeAreaPlan.mask=masked?gpuMaskPlan_:nullptr;nativeAreaPlan.effects=areaEffects;areaUsed=xbrzadapter::gpuArea(nativeAreaPlan,out->pixels,direct);}
    else areaUsed=view.presentGPU(width,height,out->pixels,spanX_,spanY_,masked?maskPixels_:nullptr,masked?gpuMaskPlan_:nullptr,areaEffects,direct);
-   if(!areaUsed){if(nativeObjectsGpu&&!objectCanvas_.compose(background_,objectDraws,view,false)){dynamicFailure_=true;return {};}
+   if(!areaUsed){if(nativeObjectsGpu&&!objectCanvas_.compose(nativeBase,objectDraws,view,false)){dynamicFailure_=true;return {};}
     if(!view.present(width,height,out->pixels,spanX_,spanY_)){dynamicFailure_=true;return {};}}
 
   }else{
@@ -619,9 +625,10 @@ public:
    out->pixels[at]=color;
   }}
   if(worldEffects&&!gpuEffectsDone){worldfx::Painter painter(out->pixels,effectView,detail&&detailed_.nativeScene()?detailed_.nativeAlpha().get():masked&&(areaUsed||(detail&&detailed_.gpuMasked()))?&mask_.alpha:nullptr,detail&&detailed_.nativeScene()?&detailed_.nativeDepth():nullptr);const auto&effects=*frame.effects->world;
-   if(features_.particles&&(!detail||!detailed_.nativeScene()))for(const auto&alpha:effects.alphas)if(auto image=alphaAsset(alpha.image))painter.alpha(alpha,*image);painter.paint(effects,features_.particles,features_.lasers);
+   if(nativePages){auto sample=[&](int x,int y){return std::pair<int,int>{int(std::floor(effectView.x+(x+.5)*effectView.width/width)),int(std::floor(effectView.y+(y+.5)*effectView.height/height))};};painter.nativeSamples([&view,sample](int x,int y){auto p=sample(x,y);return unsigned(view.nativeDepth(p.first,p.second));},[&view,sample](int x,int y){auto p=sample(x,y);return view.nativeAlphaAt(p.first,p.second);});}
+   if(features_.particles&&!nativePages&&(!detail||!detailed_.nativeScene()))for(const auto&alpha:effects.alphas)if(auto image=alphaAsset(alpha.image))painter.alpha(alpha,*image);painter.paint(effects,features_.particles,features_.lasers);
   }
-  if(masked&&!areaUsed&&(!detail||!detailed_.gpuMasked()))mask_.apply(out->pixels);
+  if(masked&&!nativePages&&!areaUsed&&(!detail||!detailed_.gpuMasked()))mask_.apply(out->pixels);
   if(bolts&&!gpuEffectsDone&&!region.active){nativefeedback::WorldView projection{-geo.offsetX*30,geo.offsetY*15,geo.rawWidth*30,geo.rawHeight*15,frame.frame};auto status=nativefeedback::effects(frame.effects->bolts,*out,projection,masked?&mask_.alpha:nullptr,projectionScale);if(!status.complete)return {};out->boltsRendered=true;}
   if(!beacons.empty()&&!gpuEffectsDone){sceneextras::RadarCPU sink(*out);for(const auto&b:beacons)sink.uiImage(b.draw.image,b.rgba,(b.draw.x-effectView.x)*width/effectView.width,(b.draw.y-effectView.y)*height/effectView.height,width/effectView.width,height/effectView.height);}
   if(radarExtras&&!gpuEffectsDone){sceneextras::RadarCPU sink(*out);sceneextras::radarDecorations(frame,width,height,read,assets,extraLayers_,sink);}

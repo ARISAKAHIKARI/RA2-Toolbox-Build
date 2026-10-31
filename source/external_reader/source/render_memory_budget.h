@@ -7,7 +7,7 @@ namespace external {namespace rendermemory {
 // Keep 32-bit compatibility separate. These are not Vulkan device-memory limits.
 constexpr bool Wide=sizeof(void*)>=8;
 constexpr uint64_t TotalBytes=Wide?8ull*1024*1024*1024:768ull*1024*1024;
-constexpr size_t NativePages=Wide?19660:3276; // shared:3GiB / 512MiB RGBA+scene-Z+native-u16-Z
+constexpr size_t NativePages=Wide?17873:2978; // shared:3GiB / 512MiB RGBA+scene-Z+native-u16-Z+A
 constexpr size_t SharedImages=Wide?768*1024*1024:96*1024*1024;
 constexpr size_t SharedTiles=Wide?256*1024*1024:64*1024*1024;
 constexpr size_t Geometry=Wide?256*1024*1024:128*1024*1024;

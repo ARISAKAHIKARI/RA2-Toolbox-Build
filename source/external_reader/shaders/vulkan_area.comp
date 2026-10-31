@@ -10,7 +10,9 @@ layout(set=0,binding=4,std430) readonly buffer Raw1 {uint v[];} raw1;
 layout(set=0,binding=5,std430) readonly buffer Raw2 {uint v[];} raw2;
 layout(set=0,binding=6,std430) readonly buffer Raw3 {uint v[];} raw3;
 #endif
-layout(push_constant) uniform Params {uint width,height,nativeWidth,nativeHeight,columns,tableOffset,xOffset,yOffset,background,fogOffset,buildCount,buildOffset,phase;} p;
+layout(set=0,binding=7,std430) readonly buffer NativeDepth {uint v[];} nativeDepth;
+layout(set=0,binding=8,std430) readonly buffer NativeAlpha {uint v[];} nativeAlpha;
+layout(push_constant) uniform Params {uint width,height,nativeWidth,nativeHeight,columns,tableOffset,xOffset,yOffset,background,fogOffset,buildCount,buildOffset,phase,nativeSurface,alphaTableOffset;} p;
 const uint Missing=0xffffffffu,PagePixels=16384u,PrefixWords=3267u;
 uvec3 rgb(uint color){return uvec3((color>>16)&255u,(color>>8)&255u,color&255u);}
 uvec3 readRaw(uint slot,int x,int y){uint at=slot*PagePixels+uint(y)*128u+uint(x);
@@ -55,4 +57,8 @@ void main(){
  }
  precise double area=(right-left)*(bottom-top);dvec3 channels=clamp(floor(total/area+dvec3(.5)),dvec3(0),dvec3(255));uint color=0xff000000u|(uint(channels.x)<<16)|(uint(channels.y)<<8)|uint(channels.z);
  if(p.fogOffset!=Missing){uint index=at.y*p.width+at.x,a=(meta.v[p.fogOffset+index/4u]>>((index&3u)*8u))&255u;a=min(a,127u);uint result=0xff000000u;for(uint s=0u;s<24u;s+=8u)result|=((((color>>s)&255u)*a+63u)/127u)<<s;color=result;}outputImage.v[at.y*p.width+at.x]=color;
+ if(p.nativeSurface!=0u){uint nx=uint(clamp(floor((left+right)*.5),0.,double(p.nativeWidth-1u))),ny=uint(clamp(floor((top+bottom)*.5),0.,double(p.nativeHeight-1u)));uint page=(ny/128u)*p.columns+nx/128u,slot=meta.v[p.tableOffset+page],local=(ny%128u)*128u+nx%128u,z=65535u,a=127u;
+  if(slot!=Missing){uint address=slot*PagePixels+local;z=(nativeDepth.v[address/2u]>>((address&1u)*16u))&65535u;uint alphaOffset=meta.v[p.alphaTableOffset+page];if(alphaOffset!=Missing)a=(nativeAlpha.v[alphaOffset+local/4u]>>((local&3u)*8u))&255u;}outputImage.v[p.width*p.height+at.y*p.width+at.x]=z|(a<<16u);
+ }
+
 }

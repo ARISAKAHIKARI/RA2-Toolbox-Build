@@ -12,18 +12,30 @@ namespace external { namespace lighting {
 struct State {
  int ambient=100;std::array<int,3> tint{{1000,1000,1000}};
  int intensity=-1; // Native cell intensity already includes Ambient/Ground/Level.
- unsigned paletteRows=53;bool scalar=false,rgb555=false;
- bool operator==(const State&o)const{return ambient==o.ambient&&tint==o.tint&&intensity==o.intensity&&paletteRows==o.paletteRows&&scalar==o.scalar&&rgb555==o.rgb555;}
+ unsigned paletteRows=53;bool scalar=false,rgb555=false;std::shared_ptr<const std::vector<uint32_t>>table;
+ bool operator==(const State&o)const{return ambient==o.ambient&&tint==o.tint&&intensity==o.intensity&&paletteRows==o.paletteRows&&scalar==o.scalar&&rgb555==o.rgb555&&table==o.table;}
  bool operator!=(const State&o)const{return !(*this==o);}
  std::array<float,3> gains()const{int value=intensity<0?ambient*10:intensity;return {{value*tint[0]/1000000.f,value*tint[1]/1000000.f,value*tint[2]/1000000.f}};}
 };
 template<class Read>void converterMetadata(Read read,uint32_t convert,State&out){
- int rows=0;uint32_t vt=0;std::array<int,6>format{},after{};
- if(convert>=0x10000&&convert<=0xfffffe90u&&read(convert+0x16C,&rows,4)&&rows>=1&&rows<=256&&read(convert,&vt,4)){out.paletteRows=unsigned(rows);out.scalar=vt==0x7E5358;}
+ int rows=0;uint32_t vt=0;std::array<int,6>format{},after{};out.table.reset();
  if(read(0x8A0DD0,format.data(),sizeof format)&&read(0x8A0DD0,after.data(),sizeof after)&&format==after)out.rgb555=format==std::array<int,6>{{10,3,0,3,5,3}};
+ if(convert<0x10000||convert>0xfffffe90u||!read(convert+0x16C,&rows,4)||rows<1||rows>256||!read(convert,&vt,4)||(vt!=0x7E5358&&vt!=0x7ED0A4))return;
+ out.paletteRows=unsigned(rows);out.scalar=vt==0x7E5358;
+ // FullColorData contains the evaluated native palette rows. Capture one
+ // immutable table per converter and committed game frame, retaining pointer
+ // identity when its content is unchanged. No neutral-row reconstruction.
+ struct Entry{int frame=-1,rows=0;uint32_t data=0;std::shared_ptr<const std::vector<uint32_t>>table;};static thread_local std::unordered_map<uint32_t,Entry>cache;static thread_local uint32_t scenario=0;
+ uint32_t map=0,data=0;int frame=-1,bpp=0;read(0xA8B230,&map,4);read(0xA8ED84,&frame,4);if(scenario!=map||cache.size()>1024){cache.clear();scenario=map;}
+ if(!read(convert+4,&bpp,4)||bpp!=2||!read(convert+0x170,&data,4)||data<0x10000||uint64_t(data)+uint64_t(rows)*512>0x100000000ull)return;
+ auto&entry=cache[convert];if(frame>=0&&entry.frame==frame&&entry.rows==rows&&entry.data==data&&entry.table){out.table=entry.table;return;}
+ std::vector<uint16_t>words(size_t(rows)*256);int rowsAfter=0;uint32_t dataAfter=0;if(!read(data,words.data(),words.size()*2)||!read(convert+0x170,&dataAfter,4)||dataAfter!=data||!read(convert+0x16C,&rowsAfter,4)||rowsAfter!=rows)return;
+ bool same=entry.table&&entry.table->size()==words.size();if(same)for(size_t n=0;n<words.size();++n)if((*entry.table)[n]!=words[n]){same=false;break;}
+ if(!same)entry.table=std::make_shared<const std::vector<uint32_t>>(words.begin(),words.end());entry.frame=frame;entry.rows=rows;entry.data=data;out.table=entry.table;
 }
+
 inline nativesurface::Palette palette(const State&s,bool object){nativesurface::Palette p;p.rows=s.paletteRows;p.brightness=s.intensity<0?s.ambient*10:s.intensity;
- for(int n=0;n<3;++n)p.scale[n]=s.scalar?65536:nativesurface::scale16(s.tint[n]);p.special=object;p.scalar=s.scalar;p.rgb555=s.rgb555;return p;}
+ for(int n=0;n<3;++n)p.scale[n]=s.scalar?65536:nativesurface::scale16(s.tint[n]);p.special=object;p.scalar=s.scalar;p.rgb555=s.rgb555;p.table=s.table;return p;}
 template<class Read>bool converterTint(Read read,uint32_t convert,std::array<int,3>&out){
  if(convert<0x10000||convert>0xfffffe00)return false;
  uint8_t tinted=0;if(!read(convert+0x1B0,&tinted,1)||tinted>1)return false;

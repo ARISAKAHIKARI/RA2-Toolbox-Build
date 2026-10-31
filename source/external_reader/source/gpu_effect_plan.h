@@ -10,7 +10,7 @@ namespace external { namespace gpueffects {
 // preceding destination snapshot. No graphics API is called by this planner.
 // GPL-3.0 reference: terrain_surface_lines.rs/wgsl @ 3d42426b2e9c.
 constexpr uint32_t Words=32,MaximumCommands=65536,MaximumReferences=2*1024*1024;
-enum Kind:uint32_t {Line=0,Glow=1,Alpha=2,Wave=3,Bolt=4,Chrono=5,Sparkle=6,Sprite=7,RadarLine=8,NativeWave=9,NativeLine=10};
+enum Kind:uint32_t {Line=0,Glow=1,Alpha=2,Wave=3,Bolt=4,Chrono=5,Sparkle=6,Sprite=7,RadarLine=8,NativeWave=9,NativeLine=10,NativeAA=11};
 struct Command {std::array<uint32_t,Words> words{};std::shared_ptr<const std::vector<uint8_t>> indices,tables;};
 struct Batch {size_t first=0,count=0;bool snapshot=false;};
 struct Plan {int width=0,height=0;std::vector<Command>commands;std::vector<Batch>batches;bool valid=true;};
@@ -57,7 +57,7 @@ inline void scheduleWaves(Plan&p){
 inline bool pack(const Plan&p,const std::vector<uint32_t>&alphas,uint32_t fog,std::vector<uint32_t>&words,std::vector<Dispatch>&jobs,const std::vector<uint32_t>&tables={}){
  if(!p.valid||p.width<1||p.height<1||p.width>8192||p.height>8192||p.commands.size()>MaximumCommands||alphas.size()!=p.commands.size())return false;
  const uint32_t base=uint32_t(words.size()),cols=(p.width+31)/32,rows=(p.height+31)/32,bins=cols*rows;
- for(size_t n=0;n<p.commands.size();++n){auto c=p.commands[n].words;if(c[0]>NativeLine||c[4]>=c[6]||c[5]>=c[7]||c[6]>uint32_t(p.width)||c[7]>uint32_t(p.height))return false;if(p.commands[n].tables){if(tables.size()!=p.commands.size())return false;c[31]=tables[n];}if(c[0]==Alpha||c[0]==Chrono||c[0]==Sprite||c[0]==Glow||c[0]==NativeWave||c[0]==NativeLine)c[3]=alphas[n];words.insert(words.end(),c.begin(),c.end());}
+ for(size_t n=0;n<p.commands.size();++n){auto c=p.commands[n].words;if(c[0]>NativeAA||c[4]>=c[6]||c[5]>=c[7]||c[6]>uint32_t(p.width)||c[7]>uint32_t(p.height))return false;if(p.commands[n].tables){if(tables.size()!=p.commands.size())return false;c[31]=tables[n];}if(c[0]==Alpha||c[0]==Chrono||c[0]==Sprite||c[0]==Glow||c[0]==NativeWave||c[0]==NativeLine||c[0]==NativeAA)c[3]=alphas[n];words.insert(words.end(),c.begin(),c.end());}
  uint64_t totalRefs=0;size_t covered=0;
  for(const auto&batch:p.batches){if(batch.first!=covered||!batch.count||batch.first>p.commands.size()||batch.count>p.commands.size()-batch.first)return false;
   covered+=batch.count;std::array<uint32_t,4>readBounds{{uint32_t(p.width),uint32_t(p.height),0,0}};
@@ -67,7 +67,7 @@ inline bool pack(const Plan&p,const std::vector<uint32_t>&alphas,uint32_t fog,st
   uint32_t refs=0;for(uint32_t i=0;i<bins;++i){starts[i]=refs;if(uint64_t(refs)+counts[i]+totalRefs>MaximumReferences)return false;refs+=counts[i];}starts[bins]=refs;totalRefs+=refs;
   auto next=starts;std::vector<uint32_t>references(refs);for(size_t n=batch.first;n<batch.first+batch.count;++n)visit(n,[&](uint32_t i){references[next[i]++]=uint32_t(n);});
   uint32_t binOffset=uint32_t(words.size());for(uint32_t i=0;i<bins;++i){words.push_back(starts[i]);words.push_back(counts[i]);}uint32_t refOffset=uint32_t(words.size());words.insert(words.end(),references.begin(),references.end());
-  jobs.push_back({{uint32_t(p.width),uint32_t(p.height),base,binOffset,refOffset,cols,fog,uint32_t(p.width*p.height),l,t,r,b},batch.snapshot,readBounds});
+  jobs.push_back({{uint32_t(p.width),uint32_t(p.height),base,binOffset,refOffset,cols,fog,uint32_t(p.width*p.height),l,t,r,b},batch.snapshot,readBounds});if(p.commands[batch.first].words[0]==NativeAA){if(batch.count!=1)return false;jobs.back().params[14]=1;jobs.back().params[15]=uint32_t(batch.first);}
  }return covered==p.commands.size();
 }
 inline uint32_t bits(float f){uint32_t n;std::memcpy(&n,&f,4);return n;}
@@ -92,6 +92,10 @@ public:
   auto bytes=std::make_shared<std::vector<uint8_t>>(packed.size()*4);std::memcpy(bytes->data(),packed.data(),bytes->size());Command c;c.words[0]=NativeLine;c.words[1]=rgb;c.words[8]=uint32_t(top);c.words[9]=uint32_t(rows);c.words[10]=bits(float(sx));c.words[11]=bits(float(sy));c.words[12]=mode;c.words[13]=strength;c.words[14]=format;c.words[15]=uint32_t(pixels.front().gateX);c.indices=bytes;
   if(bounds(c,left*sx,top*sy,(right+1)*sx,(bottom+1)*sy))append(std::move(c));
  }
+ void nativeAA(std::array<double,2>a,std::array<double,2>b,int za,int zb,uint32_t rgb,float intensity,bool format,const nativefx::Math*math){double sx=v_.pixelsW/v_.width,sy=v_.pixelsH/v_.height;std::vector<uint32_t>pairs;int l=INT_MAX,t=INT_MAX,r=INT_MIN,bottom=INT_MIN;
+  if(!nativefx::antialiased({{int(a[0]/sx),int(a[1]/sy)}},{{int(b[0]/sx),int(b[1]/sy)}},za,zb,int(std::ceil(v_.width)),int(std::ceil(v_.height)),intensity,math,[&](const nativefx::AAPair&op){pairs.insert(pairs.end(),{uint32_t(op.primary[0]),uint32_t(op.primary[1]),uint32_t(op.neighbor[0]),uint32_t(op.neighbor[1]),op.z,uint32_t(op.source[0]),uint32_t(op.destination[0]),uint32_t(op.source[1]),uint32_t(op.destination[1]),op.swap});for(auto p:{op.primary,op.neighbor}){l=std::min(l,p[0]);r=std::max(r,p[0]);t=std::min(t,p[1]);bottom=std::max(bottom,p[1]);}})){plan_->valid=false;return;}if(pairs.empty())return;
+  Command c;c.words[0]=NativeAA;c.words[1]=rgb;c.words[8]=bits(float(sx));c.words[9]=bits(float(sy));c.words[12]=uint32_t(pairs.size()/10);c.words[14]=format;auto bytes=std::make_shared<std::vector<uint8_t>>(pairs.size()*4);std::memcpy(bytes->data(),pairs.data(),bytes->size());c.indices=bytes;if(!bounds(c,l*sx,t*sy,(r+1)*sx,(bottom+1)*sy))return;flush();append(std::move(c));flush();
+ }
  void pixel(int x,int y,uint32_t c,double strength=1,bool add=true){line({double(x),double(y)},{double(x),double(y)},c,strength,add,true);}
  void line(std::array<double,2>a,std::array<double,2>b,uint32_t rgb,double strength=1,bool add=true,bool point=false){
   if((!rgb&&!point)||strength<=0)return;double dx=b[0]-a[0],dy=b[1]-a[1],lo=0,hi=1;
@@ -101,8 +105,8 @@ public:
   if(!bounds(c,std::min(ax,bx)-1,std::min(ay,by)-1,std::max(ax,bx)+2,std::max(ay,by)+2))return;
   c.words[8]=bits(float(ax));c.words[9]=bits(float(ay));c.words[10]=bits(float(bx));c.words[11]=bits(float(by));c.words[12]=point?0:uint32_t(std::max(1,int(std::ceil(std::max(std::abs(bx-ax),std::abs(by-ay))))));append(std::move(c));
  }
- void glow(const worldfx::Glow&s){auto m=nativecombat::mask(s.size,s.spotlightRadius);if(!m)return;auto p=v_.project(s.point);int l=int(p[0])-128,t=int(p[1])-64;Command c;c.words[0]=Glow;c.words[2]=uint32_t(s.flags);c.words[8]=uint32_t(l);c.words[9]=uint32_t(t);c.words[14]=s.rgb555;c.indices=m;
-  if(bounds(c,l,t,l+256,t+128))append(std::move(c));}
+ void glow(const worldfx::Glow&s){auto m=nativecombat::mask(s.size,s.spotlightRadius);if(!m)return;auto p=v_.project(s.point);double sx=v_.pixelsW/v_.width,sy=v_.pixelsH/v_.height;int l=int(p[0]/sx)-128,t=int(p[1]/sy)-64;Command c;c.words[0]=Glow;c.words[2]=uint32_t(s.flags);c.words[8]=uint32_t(l);c.words[9]=uint32_t(t);c.words[10]=bits(float(sx));c.words[11]=bits(float(sy));c.words[14]=s.rgb555;c.indices=m;
+  if(bounds(c,l*sx,t*sy,(l+256)*sx,(t+128)*sy))append(std::move(c));}
 
  template<class Image>void alpha(const worldfx::Alpha&s,const std::shared_ptr<const Image>&image){
   if(!image||image->width<1||image->height<1||image->indices.size()!=size_t(image->width)*image->height)return;auto p=v_.project(s.point);double sx=v_.pixelsW/v_.width,sy=v_.pixelsH/v_.height;

@@ -13,7 +13,7 @@ template<class Read>bool decode(Read read,uint32_t pointer,const std::array<uint
  if(voxel::u16(head)==65535){uint32_t loaded=0;if(!read(pointer+12,&loaded,4)||!voxel::range(loaded,8)||!read(loaded,head,8))return false;pointer=loaded;}
  const int frames=voxel::u16(head+6);
  if(!voxel::sprite(read,pointer,palette,out,frame,reason,255))return false;
- out.writeDepth=!animated;out.shadowsAfter=true;
+ out.writeDepth=!animated;out.shadowsAfter=true;out.nativeDepth.enabled=true;out.nativeDepth.gradient=nativesurface::Gradient::Vertical;out.nativeDepth.adjust=-10;
  if(spawner)out.y-=16;
  // Empty body/shadow frames remain empty; never substitute standing frame 0.
  // Cell overlay shadows are emitted separately by scene_extra_layers.h.
@@ -23,7 +23,7 @@ template<class Read>bool decode(Read read,uint32_t pointer,const std::array<uint
   if(spawner)shadow.y-=16;
   shadow.shadow=shadow.flat=true;shadow.writeDepth=!animated;
   // SceneRenderer supplies terrain-body lift 12; the flat stencil uses 3.
-  shadow.depthBias=-9;out.attachments.push_back(std::move(shadow));
+  shadow.nativeDepth.enabled=true;shadow.nativeDepth.gradient=nativesurface::Gradient::Flat;shadow.nativeDepth.adjust=-1;shadow.depthBias=-9;out.attachments.push_back(std::move(shadow));
  }
  return true;
 }
@@ -32,6 +32,6 @@ inline void overlayDepth(voxel::Image&out,bool resource,bool wall,bool drawFlat,
  // chain-reaction flags do not disable depth writes for an opaque body.
  out.flat=resource||(!wall&&drawFlat);
  out.depthBias=out.flat?-1.f:(wall||rock)?0.f:15.f;
- out.writeDepth=true;
+ out.writeDepth=true;out.nativeDepth.enabled=true;out.nativeDepth.gradient=out.flat?nativesurface::Gradient::Flat:nativesurface::Gradient::Vertical;out.nativeDepth.adjust=(resource||wall||drawFlat||rock)?0:-15;
 }
 }}

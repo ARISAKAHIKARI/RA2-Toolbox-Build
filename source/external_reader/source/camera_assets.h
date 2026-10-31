@@ -144,8 +144,8 @@ bool convertedPalette(uint32_t convert,std::array<uint32_t,256>&out){
  int shades=int(word(convert+0x16C));uint32_t pointer=word(convert+0x174);uint16_t colors[256]{};
  if(shades<1||shades>256||pointer<0x10000||uint64_t(pointer)+sizeof colors>0x100000000ull||!read(pointer,colors,sizeof colors)||
     pointer!=word(convert+0x174)||word(convert)!=0x7E5358||word(convert+4)!=2||std::all_of(colors,colors+256,[](uint16_t c){return c==0;}))return false;
- for(int i=0;i<256;++i){unsigned c=colors[i],r=(c>>11)&31,g=(c>>5)&63,b=c&31;
-  out[i]=0xff000000u|(((r<<3)|(r>>2))<<16)|(((g<<2)|(g>>4))<<8)|(b<<3)|(b>>2);
+ std::array<int,6>format{};bool rgb555=read(0x8A0DD0,format.data(),sizeof format)&&format==std::array<int,6>{{10,3,0,3,5,3}};
+ for(int i=0;i<256;++i){out[i]=nativepacked::color(colors[i],0xff000000u,rgb555);
  }out[0]=0;lastPaletteLive_=true;return true;
 }
 bool palette(bool iso,std::array<uint32_t,256>&out){lastPaletteLive_=false;if(iso&&external::terrain::palette(read,0xABBED0,out)){lastPaletteLive_=true;terrainPaletteLive_=true;return true;}if(iso&&terrainPaletteLive_)return false;std::vector<uint8_t> bytes;std::string n=iso?theater(68,10):"UNIT"+theater(78,3);if(n.empty()){failure="palette-theater-name";return false;}n+=".PAL";if(!files.load(n,bytes)){failure="palette-not-found:"+n;return false;}if(!external::assets::pal(bytes,out,paletteRange_)){failure="palette-format:"+n;return false;}return true;}
@@ -246,6 +246,22 @@ bool sprite(uint32_t type,uint32_t pointer,const std::array<uint32_t,256>&pal,in
 int resourceFrames(uint32_t type,uint32_t pointer,bool overlay=false){
  uint8_t header[8]{};if(read(pointer,header,8)){if(voxel::u16(header)==65535){const uint32_t loaded=word(pointer+12);if(!read(loaded,header,8))std::memset(header,0,8);}if(voxel::u16(header)==0&&voxel::u16(header+6)>0)return voxel::u16(header+6);}
  std::vector<uint8_t>bytes;std::string file;if(!shapeBytes(type,pointer,bytes,file,overlay)||bytes.size()<8||voxel::u16(bytes.data())!=0)return 0;return voxel::u16(bytes.data()+6);
+}
+bool overlayDepthShape(voxel::Image&image,unsigned slope,bool legacy){
+ if(!slope)return true;if(slope>4)return false;std::vector<uint8_t>bytes;
+ if(!files.load("SLOP0"+std::to_string(slope)+"Z."+theater(78,3),bytes)||bytes.size()<32)return true;
+ const auto*f=bytes.data()+8;int fx=int16_t(voxel::u16(f)),fy=int16_t(voxel::u16(f+2)),w=voxel::u16(f+4),h=voxel::u16(f+6);uint32_t data=voxel::u32(f+20);
+ if(!w||!h||w>2048||h>2048||data>=bytes.size())return true;
+ const int ox=-(legacy?30:0)-fx,oy=(legacy?2:0)-fy;
+ int l=std::max(0,ox-image.x),t=std::max(0,oy-image.y),right=std::min(image.width,ox-image.x+w),bottom=std::min(image.height,oy-image.y+h);
+ int width=right-l,height=bottom-t;if(width<=0||height<=0)return false;
+ // 437AAB uses intersection dimensions at the original destination and
+ // advances encoded body data only for subsequent viewport clipping.
+ voxel::Image next=image;next.width=width;next.height=height;next.pixels.resize(size_t(width)*height);next.indices.resize(next.pixels.size());next.nativeShapeCoverage.assign(next.pixels.size(),1);
+ next.nativeDepth.shape=image.nativeExtended;next.nativeDepth.clipTop=0;next.nativeDepth.clipBottom=height;if(image.nativeExtended)next.nativeShape.resize(next.pixels.size());
+ for(int y=0;y<height;++y)for(int x=0;x<width;++x){size_t to=size_t(y)*width+x,from=size_t(y)*image.width+x;next.pixels[to]=image.pixels[from];if(image.indices.size()==image.pixels.size())next.indices[to]=image.indices[from];
+  if(image.nativeExtended){int64_t at=int64_t(data)+int64_t(image.y+y-oy)*w+image.x+x-ox;next.nativeShape[to]=at>=0&&at<int64_t(bytes.size())?-int(int8_t(bytes[size_t(at)])):0;}}
+ image=std::move(next);return true;
 }
 bool resourceSprite(uint32_t type,uint32_t pointer,const std::array<uint32_t,256>&pal,int frame,voxel::Image&out,bool namedOnly=false,bool overlay=false){
  if(voxel::sprite(read,pointer,pal,out,frame,nullptr,255))return true;
@@ -537,7 +553,7 @@ bool renderActor(const ActorArt&art,const external::visual::Pose&pose,external::
   // The model Z buffer resolves faces inside the cached voxel only. The game
   // submits that cached image through the same standing shape Z test as SHP.
   // Orthographic model depth is not in the terrain/BUILDNGZ buffer's units.
-  std::vector<float>().swap(out.depth);out.writeDepth=false;out.nativeDepth.enabled=true;out.nativeDepth.voxel=true;out.nativeDepth.gradient=nativesurface::Gradient::Vertical;if(projectile){out.flat=art.flat;
+  std::vector<float>().swap(out.depth);out.writeDepth=false;out.nativeDepth.enabled=true;out.nativeDepth.voxel=true;out.nativeDepth.gradient=nativesurface::Gradient::Vertical;if(projectile){out.flat=art.flat;if(art.flat)out.nativeDepth.gradient=nativesurface::Gradient::Flat;
    // 46B1A5/490B90: non-flat projectile flags 0800 select a blitter
    // without a Z read or write. Flat 2800 keeps the ground Z read.
    if(!art.flat){if(gpuPresentation_)out.skipZ=true;else out.depth.assign(out.pixels.size(),std::numeric_limits<float>::quiet_NaN());}
@@ -578,7 +594,7 @@ bool renderActor(const ActorArt&art,const external::visual::Pose&pose,external::
   if(decode(bytes,at,displayed+n/2,part,why)){part.y+=art.drawY;part.shadow=true;part.flat=true;part.writeDepth=write;part.nativeDepth.enabled=true;part.nativeDepth.gradient=nativesurface::Gradient::Flat;part.nativeDepth.adjust=-int(shadowBias);image.shadowsAfter=art.kind==3||write;part.depthBias=shadowBias;image.attachments.push_back(std::move(part));}};
  // DrawObject's shadow branch recomputes its ground plane independently of
  // NormalZAdjust and the -20/-40 production-body adjustment (706469/70653E).
- if(art.kind==external::projectiles::Kind){if(art.shadow){auto ground=out;ground.attachments.clear();ground.shadow=true;ground.flat=true;ground.writeDepth=false;ground.depthBias=-20;ground.airborneShadow=true;out.attachments.push_back(std::move(ground));}}
+ if(art.kind==external::projectiles::Kind){if(art.shadow){auto ground=out;ground.attachments.clear();ground.shadow=true;ground.flat=true;ground.writeDepth=false;ground.depthBias=-20;ground.nativeDepth.gradient=nativesurface::Gradient::Flat;ground.nativeDepth.adjust=20;ground.airborneShadow=true;out.attachments.push_back(std::move(ground));}}
  else shadow(*shape,pointer,frame,out,art.kind==3,art.kind==3?2.f:out.depthBias+(art.kind==5?0:2));
  // Native SHP vehicles compose hull and turret at one origin on the temporary
  // surface, then submit one standing sprite. Merge source indices before
@@ -591,7 +607,7 @@ bool renderActor(const ActorArt&art,const external::visual::Pose&pose,external::
    if(width<1||height<1||width>resolutionsampling::MaxDimension||height>resolutionsampling::MaxDimension||uint64_t(width)*height>resolutionsampling::MaxPixels){failure="vehicle-turret/combined-bounds";complete=false;}
    else{std::vector<uint32_t> pixels(size_t(width)*height);std::vector<uint8_t> indices(pixels.size());
     auto merge=[&](const external::voxel::Image&part){for(int y=0;y<part.height;++y)for(int x=0;x<part.width;++x){size_t from=size_t(y)*part.width+x;if(!(part.pixels[from]>>24))continue;size_t to=size_t(y+part.y-top)*width+x+part.x-left;pixels[to]=part.pixels[from];if(part.indices.size()==part.pixels.size())indices[to]=part.indices[from];}};
-    merge(out);merge(turret);out.x=left;out.y=top;out.width=width;out.height=height;out.pixels=std::move(pixels);out.indices=std::move(indices);
+    merge(out);merge(turret);out.x=left;out.y=top;out.width=width;out.height=height;out.pixels=std::move(pixels);out.indices=std::move(indices);out.nativeDepth.composite=true;
    }
   }
  }

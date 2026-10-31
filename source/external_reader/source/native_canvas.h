@@ -17,6 +17,7 @@ class NativeCanvas {
  friend class ObjectCanvas;
 public:
  struct TerrainDraw {std::shared_ptr<const voxel::Image>image;float x=0,y=0,base=0;lighting::State light;Material material;};
+ using AlphaPages=std::map<uint32_t,std::shared_ptr<const std::vector<uint8_t>>>;
  static constexpr int PageSize=128,MaximumDimension=32768;
  static constexpr size_t MaximumPages=rendermemory::NativePages,DynamicReserve=256;
  struct Budget {
@@ -61,6 +62,7 @@ private:
  std::shared_ptr<Budget> budget_;std::map<uint32_t,std::shared_ptr<Page>> pages_;std::set<uint32_t> dirty_;std::vector<std::array<int,4>> dirtyRects_;
  struct TerrainSources {std::vector<TerrainDraw>draws;std::unordered_map<size_t,size_t>indices;};
  std::shared_ptr<TerrainSources>terrainSources_;
+ std::shared_ptr<const AlphaPages>nativeAlpha_;
  // Source discovery remains conservative. Local terrain banks only paint the
  // page-aligned output neighborhood; repaint jobs further restrict writes to
  // pages which were explicitly cleared for reconstruction.
@@ -99,7 +101,7 @@ private:
   if(!repainting_)regionCache_.reset();
   try{
    if(!ensure(x0,y0,x1,y1))return;
-   for(int y=y0/PageSize;y<=(y1-1)/PageSize;++y)for(int x=x0/PageSize;x<=(x1-1)/PageSize;++x){uint32_t k=key(x,y);if(repainting_&&!repaintPages_.count(k))continue;auto&page=*pages_.find(k)->second;auto&surface=page.surface;surface.precision(precision_);surface.nativeView(y*PageSize,1,1,width_,height_);++page.revision;draw(surface,x*PageSize,y*PageSize);dirty_.insert(k);}
+   for(int y=y0/PageSize;y<=(y1-1)/PageSize;++y)for(int x=x0/PageSize;x<=(x1-1)/PageSize;++x){uint32_t k=key(x,y);if(repainting_&&!repaintPages_.count(k))continue;auto&page=*pages_.find(k)->second;auto&surface=page.surface;surface.precision(precision_);surface.nativeView(y*PageSize,1,1,width_,height_,x*PageSize);++page.revision;draw(surface,x*PageSize,y*PageSize);dirty_.insert(k);}
    dirtyRects_.push_back({x0,y0,x1,y1});
   }catch(const std::bad_alloc&){failed_=true;}
  }
@@ -153,7 +155,7 @@ public:
  struct AreaCacheStats {size_t bytes;uint64_t builds;};
  static AreaCacheStats areaCacheStats(){return {AreaPrefix::retained.load(std::memory_order_relaxed),AreaPrefix::builds.load(std::memory_order_relaxed)};}
  bool reset(int width,int height,std::shared_ptr<Budget>budget={},uint32_t background=0xff080c08u){
-  regionCache_.reset();terrainSources_.reset();pages_.clear();dirty_.clear();dirtyRects_.clear();repaintPages_.clear();repainting_=false;failed_=dynamic_=false;width_=height_=0;paintLeft_=paintTop_=paintRight_=paintBottom_=0;background_=background;budget_=budget?std::move(budget):sharedBudget();
+  regionCache_.reset();terrainSources_.reset();nativeAlpha_.reset();pages_.clear();dirty_.clear();dirtyRects_.clear();repaintPages_.clear();repainting_=false;failed_=dynamic_=false;width_=height_=0;paintLeft_=paintTop_=paintRight_=paintBottom_=0;background_=background;budget_=budget?std::move(budget):sharedBudget();
   if(width<1||height<1||width>MaximumDimension||height>MaximumDimension||!budget_->maximum)return false;width_=width;height_=height;paintRight_=width;paintBottom_=height;return true;
  }
  void precision(colorprecision::Mode mode){if(mode!=precision_)regionCache_.reset();precision_=mode;}
@@ -243,6 +245,11 @@ public:
   Material m;m.nativeZ=true;m.nativeZAdjust=-15*level;terrainSources_->draws[at->second]={std::move(image),x,y,base,light,m};
  }
  const std::vector<TerrainDraw>&terrainSources()const{static const std::vector<TerrainDraw>empty;return terrainSources_?terrainSources_->draws:empty;}
+ void nativeAlpha(std::shared_ptr<const AlphaPages>pages){nativeAlpha_=std::move(pages);}
+ std::shared_ptr<const std::vector<uint8_t>>nativeAlpha(uint32_t k)const{if(!nativeAlpha_)return {};auto at=nativeAlpha_->find(k);return at==nativeAlpha_->end()?nullptr:at->second;}
+ std::vector<uint32_t>pageKeys()const{std::vector<uint32_t>out;for(const auto&p:pages_)out.push_back(p.first);return out;}
+ uint16_t nativeDepth(int x,int y)const{if(x<0||y<0||x>=width_||y>=height_)return 65535;auto p=pages_.find(key(x/PageSize,y/PageSize));return p==pages_.end()?65535:p->second->surface.nativeZ[size_t(y%PageSize)*PageSize+x%PageSize];}
+ unsigned nativeAlphaAt(int x,int y)const{if(x<0||y<0||x>=width_||y>=height_)return 0;auto a=nativeAlpha(key(x/PageSize,y/PageSize));return a?(*a)[size_t(y%PageSize)*PageSize+x%PageSize]:127;}
  // Crop a native-pixel scene BEFORE presentation scaling. This is deliberately
  // independent of the radar's whole-map downscale. Outside backing falls back
  // to the underlying game through transparent pixels instead of stretching.
@@ -330,7 +337,7 @@ public:
   plan={};if(failed_||!width_||!height_)return false;if(spanX<=0)spanX=width_;if(spanY<=0)spanY=height_;
   plan.nativeWidth=width_;plan.nativeHeight=height_;plan.width=width;plan.height=height;plan.spanX=spanX;plan.spanY=spanY;plan.background=background_;
   if(pages_.size()>gpuarea::MaximumPages)return false;
-  for(const auto&entry:pages_){const auto&page=entry.second;plan.pages.push_back({uint32_t(pageX(entry.first)),uint32_t(pageY(entry.first)),std::shared_ptr<const std::vector<uint32_t>>(page,&page->surface.color),page->revision,std::shared_ptr<const std::vector<float>>(page,&page->surface.depth),{}});}
+  for(const auto&entry:pages_){const auto&page=entry.second;plan.pages.push_back({uint32_t(pageX(entry.first)),uint32_t(pageY(entry.first)),std::shared_ptr<const std::vector<uint32_t>>(page,&page->surface.color),page->revision,std::shared_ptr<const std::vector<float>>(page,&page->surface.depth),{},nativeAlpha(entry.first)});}
   return gpuarea::valid(plan);
  }
  bool presentGPU(int width,int height,std::vector<uint32_t>&out,double spanX=-1,double spanY=-1,

@@ -7,7 +7,7 @@ inline std::array<int,4> drawBounds(const DrawJob&d,int w,int h){
  int top=edge(d.top,h,false);return {{edge(d.left,w,false),top,edge(d.left+d.source.width*d.scaleX,w,true),std::max(top,edge(std::min(d.top+d.source.height*d.scaleY,d.clipBottom-.5f),h,true))}};
 }
 // Shared by viewport and sparse native-page shaders; offsets are uint words.
-inline void encodeDraw(const DrawJob&d,const std::array<uint32_t,7>&source,const std::array<int,4>&bounds,uint32_t*dst){
+inline void encodeDraw(const DrawJob&d,const std::array<uint32_t,8>&source,const std::array<int,4>&bounds,uint32_t*dst){
  std::fill_n(dst,64,0);dst[0]=source[0];dst[1]=source[1];dst[2]=source[2];dst[3]=d.source.width;dst[4]=d.source.height;
  dst[5]=source[3];dst[6]=d.reconstructedWidth;dst[7]=d.reconstructedHeight;dst[8]=d.reconstructionFactor;
  dst[9]=(d.shadow?1:0)|(d.writeDepth?2:0)|(d.flat?4:0)|(d.objectPalette?8:0)|(d.smoothRGB?16:0)|(d.skipZ?32:0)|(d.gpuRaster?64:0)|(d.translucency<<8)|(d.mixStrength<<16);
@@ -20,7 +20,7 @@ inline void encodeDraw(const DrawJob&d,const std::array<uint32_t,7>&source,const
  dst[39]=uint32_t(b.seed);dst[40]=b.accumulator;dst[41]=d.nativeWalk.split;dst[42]=b.increment;dst[43]=b.threshold;dst[44]=uint32_t(b.step);
  dst[45]=source[5];dst[46]=source[6];dst[47]=d.palette.rows;dst[48]=uint32_t(d.palette.brightness);
  for(unsigned n=0;n<3;++n)dst[49+n]=d.palette.scale[n];dst[52]=d.palette.special;dst[53]=d.palette.colour;dst[54]=uint32_t(d.cloakWords);
- dst[55]=drawBits(d.nativeScaleX);dst[56]=drawBits(d.nativeScaleY);dst[57]=d.nativePitch;
+ dst[55]=drawBits(d.nativeScaleX);dst[56]=drawBits(d.nativeScaleY);dst[57]=d.nativePitch;dst[58]=source[7];
 }
 // VERA read-only interval lowering, adapted to our per-pixel compute owner.
 // No sorting occurs: an interval ends at every actual Z writer in this bin.

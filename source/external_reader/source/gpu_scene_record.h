@@ -73,7 +73,7 @@ class GpuSceneRecord {
    draw.originY=i.y;draw.depthBottom=i.depthBottom==std::numeric_limits<int>::min()?i.y+i.height-1:i.depthBottom;draw.rasterScale=i.rasterScale;draw.lift=lift;
    draw.shadow=i.shadow;draw.writeDepth=i.writeDepth;draw.flat=i.flat;draw.objectPalette=i.objectPalette;draw.smoothRGB=precision_==colorprecision::Mode::SmoothRGB;draw.skipZ=i.skipZ;
    draw.nativeDepth=i.nativeDepth;if(material.shpFlat&&!i.shadow)draw.nativeDepth.gradient=nativesurface::Gradient::Flat;draw.palette=lighting::palette(state,i.objectPalette);draw.palette.rgb555|=material.rgb555;
-   draw.nativeWalk=nativesurface::walk(draw.nativeDepth,int(std::floor(top/sy)),(i.height+i.rasterScale-1)/i.rasterScale,int(std::ceil(frame_.height/sy)),material.nativeZAdjust,material.bridgeSplit);
+   draw.nativeWalk=nativesurface::walk(draw.nativeDepth,int(std::floor(top/sy)),(i.height+i.rasterScale-1)/i.rasterScale,int(std::ceil(std::min(float(frame_.height),draw.clipBottom-.5f)/sy)),material.nativeZAdjust,material.bridgeSplit);
    if(i.nativeShape.size()==size_t(i.width)*i.height)draw.nativeShape={owner,&i.nativeShape};
    if(i.nativeShapeCoverage.size()==size_t(i.width)*i.height)draw.nativeCoverage={owner,&i.nativeShapeCoverage};
    draw.displace=material.displace&&i.nativeDepth.voxel;draw.cloakWords=material.cloakWords;draw.nativePitch=int(std::ceil(frame_.width/sx));draw.nativeScaleX=sx;draw.nativeScaleY=sy;
@@ -142,7 +142,7 @@ public:
    auto a=mask?std::make_shared<std::vector<uint8_t>>(*mask):std::make_shared<std::vector<uint8_t>>(size_t(frame_.width)*frame_.height,127);
    if(frame_.effects)for(const auto&command:frame_.effects->commands)if(command.words[0]==gpueffects::Alpha&&command.indices){const auto&w=command.words;
     for(uint32_t y=w[5];y<w[7];++y)for(uint32_t x=w[4];x<w[6];++x){int xx=int((x-gpueffects::real(w[8]))/gpueffects::real(w[10])),yy=int((y-gpueffects::real(w[9]))/gpueffects::real(w[11]));if(xx<0||yy<0||xx>=int(w[14])||yy>=int(w[15]))continue;size_t at=size_t(y)*frame_.width+x;(*a)[at]=uint8_t(std::min(255u,unsigned((*a)[at])*(*command.indices)[size_t(yy)*w[14]+xx]/127u));}}
-   surface.alpha(a);
+   surface.nativeBase(a);
   }
   if(frame_.baseDepthWidth>0){
    // The GPU consumes this compact native plane directly. Only an actual CPU

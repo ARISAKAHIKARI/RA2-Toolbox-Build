@@ -15,6 +15,7 @@ inline uint64_t atlasBytes(size_t pages,uint64_t deviceLimit){
 }
 struct Page {uint32_t x=0,y=0;std::shared_ptr<const std::vector<uint32_t>>pixels;uint64_t version=0;
  std::shared_ptr<const std::vector<float>>depth;std::vector<uint32_t>draws;
+ std::shared_ptr<const std::vector<uint8_t>>nativeAlpha;
 };
 struct Plan {
  int nativeWidth=0,nativeHeight=0,width=0,height=0;double spanX=0,spanY=0;uint32_t background=0xff080c08u;
@@ -22,6 +23,7 @@ struct Plan {
  std::shared_ptr<const gpushroud::Plan>mask;
  std::shared_ptr<const gpueffects::Plan>effects;
  std::shared_ptr<const std::vector<vulkancompute::DrawJob>>objects;
+ bool nativeSurface=false;
 };
 inline bool valid(const Plan&p){
  if(p.nativeWidth<1||p.nativeHeight<1||p.nativeWidth>32768||p.nativeHeight>32768||p.width<1||p.height<1||p.width>2048||p.height>2048||
@@ -29,7 +31,7 @@ inline bool valid(const Plan&p){
   (p.fog&&p.fog->size()!=uint64_t(p.width)*p.height)||(p.fog&&p.mask))return false;
  const uint32_t cols=(p.nativeWidth+PageSize-1)/PageSize,rows=(p.nativeHeight+PageSize-1)/PageSize;std::vector<uint8_t>seen(size_t(cols)*rows);
  uint64_t refs=0;if(p.objects&&p.objects->size()>65536)return false;
- for(const auto&page:p.pages){if(page.x>=cols||page.y>=rows||!page.pixels||page.pixels->size()!=PagePixels||(page.depth&&page.depth->size()!=PagePixels)||seen[size_t(page.y)*cols+page.x]++)return false;
+ for(const auto&page:p.pages){if(page.x>=cols||page.y>=rows||!page.pixels||page.pixels->size()!=PagePixels||(page.depth&&page.depth->size()!=PagePixels)||(page.nativeAlpha&&page.nativeAlpha->size()!=PagePixels)||seen[size_t(page.y)*cols+page.x]++)return false;
   if(!page.draws.empty()&&!p.objects)return false;uint32_t prior=0;bool first=true;for(auto n:page.draws){if(n>=p.objects->size()||(!first&&n<=prior)||++refs>2*1024*1024)return false;prior=n;first=false;}
  }
  return true;

@@ -2,6 +2,8 @@
 
 补充：[第二轮11项独立绘制缺口](2026-10-31-vera-render-additional-gaps.md) 继续核对保存图、隐形/伪装、沉船、污迹、尾迹、信标/雷达事件、桥影、废墟、闪光和全屏效果，并标明上游近似与未完成分支。
 
+后续状态：Hotfix25已补tether、部分额外pips、范围提示及侧栏计数器；[Hotfix26](2026-10-31-native-surface-hotfix26.md)接入世界Z/A、跨页位移、色阶、SLOP及光束/灯光。本表保留Hotfix21审计基线，不作为当前版本仍缺失的逐项断言；当前完成项与未决边界以同版实施记录为准。
+
 比较基线：本仓库 Hotfix21（远端 `1b9ecb3b08932ba905212ce0259d8c25ada7ac93`）与 [Vera20K `3d42426`](https://github.com/ARISAKAHIKARI/vera20k/tree/3d42426b2e9c1b4cf913a7dbbaaf8bf7d3b6bc7f)。本次重新读取规划、VXL图集、绘制调度、光束/光照、阶段和UI源码；不是仅按文件名猜测。Hotfix22单独补路径点，其余表中项目是后续工作，**不算本轮已实现**。
 
 ## 先纠正“已完成”的口径

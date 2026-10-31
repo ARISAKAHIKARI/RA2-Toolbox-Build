@@ -21,7 +21,7 @@ constexpr size_t MaxBytes=8*1024*1024,MaxVoxels=100000,MaxFaces=150000;
 struct Vec {float x=0,y=0,z=0;};
 struct Face {Vec p[4],normal{};uint8_t color=0,normalIndex=255,normalType=0;bool turret=false,hasNormal=false;uint8_t section=0;std::shared_ptr<const Motion> motion;};
 struct Model {std::vector<Face> faces;};
-struct Image {int rasterScale=1;int canvasWidth=0,canvasHeight=0;int width=0,height=0,x=0,y=0,depthBottom=std::numeric_limits<int>::min();std::vector<uint32_t> pixels;std::vector<float> depth;std::vector<uint8_t> indices;bool intrinsicAlpha=false,objectPalette=false,flat=false,writeDepth=true,shadow=false,shadowsAfter=false,incomplete=false,airborneShadow=false,skipZ=false;float depthBias=0;std::vector<Image> attachments;std::shared_ptr<const gpuvoxel::Prepared> gpuRaster;
+struct Image {int rasterScale=1;int canvasWidth=0,canvasHeight=0;int width=0,height=0,x=0,y=0,depthBottom=std::numeric_limits<int>::min();std::vector<uint32_t> pixels;std::vector<float> depth;std::vector<uint8_t> indices;bool nativeExtended=false,intrinsicAlpha=false,objectPalette=false,flat=false,writeDepth=true,shadow=false,shadowsAfter=false,incomplete=false,airborneShadow=false,skipZ=false;float depthBias=0;std::vector<Image> attachments;std::shared_ptr<const gpuvoxel::Prepared> gpuRaster;
  // Vera sprite_source/unit_atlas: pose coverage and the current palette have
  // independent immutable owners. A live palette change must not rerasterize
  // an otherwise identical indexed VXL pose.
@@ -203,7 +203,7 @@ template<class Read>bool sprite(Read read,uint32_t pointer,const std::array<uint
  // The canvas is the origin reference, not a clipping box. Cropped frames
  // may extend beyond it (weapons/death animations). Keep their real anchor.
  if(width>2048||height>2048||std::abs(x)>4096||std::abs(y)>4096)return fail("crop-bounds");
- Image next;next.canvasWidth=w;next.canvasHeight=h;next.width=std::max(1,width);next.height=std::max(1,height);next.x=x-w/2;next.y=y-h/2;next.pixels.resize(size_t(next.width)*next.height);next.indices.resize(next.pixels.size());
+ Image next;next.nativeExtended=compressed;next.canvasWidth=w;next.canvasHeight=h;next.width=std::max(1,width);next.height=std::max(1,height);next.x=x-w/2;next.y=y-h/2;next.pixels.resize(size_t(next.width)*next.height);next.indices.resize(next.pixels.size());
  if(!offset||!width||!height){out=std::move(next);return true;}
  if(offset<uint32_t(8+frames*24)||offset>MaxBytes||uint64_t(pointer)+offset>0xffffffffull||!range(pointer+offset,1))return fail("pixel-offset");
  uint32_t at=pointer+offset;

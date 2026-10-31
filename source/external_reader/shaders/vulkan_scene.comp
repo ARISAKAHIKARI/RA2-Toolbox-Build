@@ -13,9 +13,12 @@ layout(set=0,binding=1,std430) readonly buffer Materials {uint v[];} materials;
 layout(set=0,binding=2,std430) readonly buffer Commands {uint v[];} commands;
 layout(set=0,binding=3,std430) coherent buffer Output {uint v[];} outputImage;
 #if defined(SCENE_PAGES) && defined(SCENE_BANKED)
-layout(set=0,binding=4,std430) buffer Output1 {uint v[];} output1;
-layout(set=0,binding=5,std430) buffer Output2 {uint v[];} output2;
-layout(set=0,binding=6,std430) buffer Output3 {uint v[];} output3;
+layout(set=0,binding=4,std430) coherent buffer Output1 {uint v[];} output1;
+layout(set=0,binding=5,std430) coherent buffer Output2 {uint v[];} output2;
+layout(set=0,binding=6,std430) coherent buffer Output3 {uint v[];} output3;
+#endif
+#ifdef SCENE_PAGES
+layout(set=0,binding=7,std430) buffer NativeDepth {uint v[];} nativeDepthImage;
 #endif
 layout(push_constant) uniform Params {uint width,height,drawsOffset,binsOffset,refsOffset,binColumns,depthOffset,fogOffset,clipLeft,clipTop,clipRight,clipBottom,depthWidth,depthXOffset,depthYOffset,guideOffset,baseMotionX,baseMotionY,depthFar,depthScale,firstDraw,lastDraw,stateOffset,zaOffset,phase,alphaOffset,alphaCount,nativeScene,nativeScaleX,nativeScaleY,format,reserved;} p;
 const uint Missing=0xffffffffu,Stride=64u;
@@ -71,6 +74,7 @@ uint rawAt(uint draw,ivec2 at){uint raw=coverageAt(draw,at),palette=field(draw,3
 uint compatibilityLitAt(uint draw,ivec2 at){uint pixel=rawAt(draw,at),flags=field(draw,9);if(emissive(indexAt(draw,at),flags))return pixel;uint result=pixel&0xff000000u;float alpha=float(pixel>>24);for(uint c=0;c<3;++c){uint shift=16u-c*8u;precise float value=clamp(float((pixel>>shift)&255u)*ffield(draw,20u+c),0.,alpha);uint channel=(flags&16u)!=0u?uint(floor(value+.5)):uint(value);result|=channel<<shift;}return result;}
 uint nativePalette(uint draw,uint pixel,uint index,uint a,bool opaque){
  uint n=clamp(field(draw,47),1u,256u),q=min((uint(clamp(int(field(draw,48)),0,2000))*261u)>>11u,254u),row=min(a*q*(n-1u)/32258u,n-1u);
+ uint table=field(draw,58);if(table!=Missing){uint word=materials.v[table+row*256u+index];if(opaque)word|=field(draw,53);return packedColorF(word,pixel&0xff000000u,(field(draw,32)&8u)!=0u);}
  uvec3 scale=uvec3(field(draw,49),field(draw,50),field(draw,51));if(n>1u)scale=scale*(2u*row)/(n-1u);
  if(field(draw,52)!=0u&&index>=240u&&index<=254u){uint d=min(n*30u/200u>0u?n*30u/200u-1u:0u,(n-1u)/2u);scale=uvec3(n>1u&&row<=d?(d==0u?0u:row*65536u/d):65536u);}
  uvec3 rgb=uvec3((pixel>>16u)&255u,(pixel>>8u)&255u,pixel&255u);rgb=(field(draw,32)&16u)!=0u?(rgb*scale)>>16u:(rgb*(scale>>4u))>>12u;rgb=min(rgb,uvec3(255u));
@@ -94,7 +98,13 @@ uint alphaAt(uvec2 at){uint address=at.y*p.width+at.x,a=p.fogOffset==Missing?127
  }return a;
 }
 uint displaced(uint draw,uvec2 at){vec2 scale=vec2(ffield(draw,55),ffield(draw,56));int pitch=max(1,int(field(draw,57)));ivec2 q=ivec2(floor((vec2(at)+.5)/scale));int linear=q.y*pitch+q.x+int(field(draw,54));if(linear<0)return 0xff000000u;
- q=ivec2(floor((vec2(linear%pitch,linear/pitch)+.5)*scale));if(any(lessThan(q,ivec2(0)))||any(greaterThanEqual(q,ivec2(p.width,p.height))))return 0xff000000u;return outputImage.v[uint(q.y)*p.width+uint(q.x)];}
+ q=ivec2(floor((vec2(linear%pitch,linear/pitch)+.5)*scale));if(any(lessThan(q,ivec2(0)))||any(greaterThanEqual(q,ivec2(p.width,p.height))))return 0xff000000u;
+#ifdef SCENE_PAGES
+ uint key=(uint(q.y)/128u)*((p.width+127u)/128u)+uint(q.x)/128u,entry=commands.v[p.reserved+key*2u];if(entry==0u)return 0xff000000u;return readOutput((entry-1u)*16384u+(uint(q.y)%128u)*128u+uint(q.x)%128u);
+#else
+ return outputImage.v[uint(q.y)*p.width+uint(q.x)];
+#endif
+}
 
 uint distance(uint a,uint b){ivec3 d=ivec3((a>>16)&255u,(a>>8)&255u,a&255u)-ivec3((b>>16)&255u,(b>>8)&255u,b&255u);return uint(d.x*d.x+2*d.y*d.y+d.z*d.z);}
 RVec weights(uint a,uint b,uint c,uint d,Real fx,Real fy,bool adaptive){
@@ -121,12 +131,12 @@ bool opaqueAdmitted(uint draw,uvec2 at,float depth){
  ivec2 q=ivec2(floor(x),floor(y));if((rawAt(draw,q)>>24u)!=255u)return false;
  precise float z;bool useZ;sourceDepth(draw,q,z,useZ);return !useZ||z>depth;
 }
-void compose(uvec2 inputAt){
+void compose(uvec2 inputAt,uint pageJob){
 #ifdef SCENE_PAGES
  // One 128x128 native page per workgroup Z. Commands remain world-space;
  // no minification or CPU materialization happens before color/Z composition.
- uint job=gl_WorkGroupID.z;if(job>=p.clipRight)return;uvec2 local=gl_GlobalInvocationID.xy;if(any(greaterThanEqual(local,uvec2(128u))))return;
- uint j=p.clipLeft+job*4u,slot=commands.v[j],outputAt=slot*16384u+local.y*128u+local.x;
+ uint job=pageJob;if(job>=p.clipRight)return;uvec2 local=inputAt;if(any(greaterThanEqual(local,uvec2(128u))))return;
+ uint j=p.clipLeft+job*6u,slot=commands.v[j],outputAt=slot*16384u+local.y*128u+local.x;
  uvec2 at=uvec2(commands.v[j+1u],commands.v[j+2u])*128u+local;
  if(at.x>=p.width||at.y>=p.height)return;
  uint color=readOutput(outputAt),sourceDepthOffset=commands.v[j+3u];float depth=sourceDepthOffset==Missing?uintBitsToFloat(0xff800000u):uintBitsToFloat(materials.v[sourceDepthOffset+local.y*128u+local.x]);
@@ -143,14 +153,15 @@ void compose(uvec2 inputAt){
  uint bin=(at.y/32u)*p.binColumns+at.x/32u,first=commands.v[p.binsOffset+bin*2u],count=commands.v[p.binsOffset+bin*2u+1u];
 #endif
 #ifdef SCENE_PAGES
- uint nativeZ=65535u;activeAlpha=127u;
+ uint nativeZ=65535u;activeAlpha=commands.v[j+5u]==Missing?127u:byteAt(commands.v[j+5u],local.y*128u+local.x);
+ if(p.nativeScene!=0u&&(p.phase&1u)==0u){uint packed=atomicAdd(nativeDepthImage.v[outputAt/2u],0u);nativeZ=(packed>>((outputAt&1u)*16u))&65535u;depth=32768.-float(nativeZ);}
+
 #endif
+ if(p.nativeScene!=0u&&(p.phase&1u)!=0u&&activeAlpha!=127u){uint initial=color&0xff000000u;for(uint shift=0u;shift<24u;shift+=8u)initial|=min(255u,((color>>shift)&255u)*activeAlpha/127u)<<shift;color=initial;}
  for(uint item=0;item<count;++item){uint encoded=commands.v[p.refsOffset+first+item];
   if(encoded>>16u!=0u){uint end=min(count,item+1u+(encoded>>16u));for(uint last=end;last>item;){--last;uint candidate=commands.v[p.refsOffset+first+last]&65535u;if(opaqueAdmitted(candidate,at,depth)){item=last;break;}}}
   uint draw=commands.v[p.refsOffset+first+item]&65535u;
-#ifndef SCENE_PAGES
   if(draw<p.firstDraw||draw>=p.lastDraw)continue;
-#endif
   if(at.x<field(draw,24)||at.y<field(draw,25)||at.x>=field(draw,26)||at.y>=field(draw,27))continue;
   precise float px=(float(at.x)+.5-ffield(draw,14))/ffield(draw,16),py=(float(at.y)+.5-ffield(draw,15))/ffield(draw,17);
   ivec2 original=ivec2(floor(px),floor(py));if(any(lessThan(original,ivec2(0)))||original.x>=int(field(draw,3))||original.y>=int(field(draw,4)))continue;
@@ -193,11 +204,11 @@ void compose(uvec2 inputAt){
   if((flags&1u)!=0u){uint result=color&0xff000000u,alpha=pixel>>24;if(alpha==255u&&(flags&16u)==0u)color=packedColorF((packedWordF(color,format555)>>1u)&(format555?0x3defu:0x7befu),color&0xff000000u,format555);else{for(uint shift=0;shift<24;shift+=8)result|=(((color>>shift)&255u)*(510u-alpha)/510u)<<shift;color=result;}}
   else if(field(draw,23)!=0u)color=packedBlendF(litAt(draw,original),color,field(draw,23),format555);
 #ifdef SCENE_FP64
-  else if(preciseSample){Real alpha=clamp(filtered.w,Real(0),Real(255));RVec value=unpackColor(color);for(int c=0;c<3;++c)value[c]=clamp(filtered[c],Real(0),alpha)+value[c]*(Real(255)-alpha)/Real(255);value.w=value.w==Real(255)?Real(255):alpha+value.w*(Real(255)-alpha)/Real(255);color=packColor(value);}
+  else if(preciseSample){if(native&&field(draw,47)!=1u)filtered.xyz*=Real(activeAlpha)/Real(127);Real alpha=clamp(filtered.w,Real(0),Real(255));RVec value=unpackColor(color);for(int c=0;c<3;++c)value[c]=clamp(filtered[c],Real(0),alpha)+value[c]*(Real(255)-alpha)/Real(255);value.w=value.w==Real(255)?Real(255):alpha+value.w*(Real(255)-alpha)/Real(255);color=packColor(value);}
 #endif
-  else{if(mode==0u)pixel=litAt(draw,original);uint alpha=pixel>>24;if(alpha==255u)color=pixel;else{uint result=(alpha+(color>>24)*(255u-alpha)/255u)<<24;for(uint shift=0;shift<24;shift+=8)result|=min(255u,((pixel>>shift)&255u)+((color>>shift)&255u)*(255u-alpha)/255u)<<shift;color=result;}}
+  else{if(mode==0u)pixel=litAt(draw,original);else if(mode==3u&&native&&field(draw,47)!=1u){uint adjusted=pixel&0xff000000u;for(uint shift=0u;shift<24u;shift+=8u)adjusted|=min(255u,((pixel>>shift)&255u)*activeAlpha/127u)<<shift;pixel=(flags&16u)==0u?packedColorF(packedWordF(adjusted,format555),pixel&0xff000000u,format555):adjusted;}uint alpha=pixel>>24;if(alpha==255u)color=pixel;else{uint result=(alpha+(color>>24)*(255u-alpha)/255u)<<24;for(uint shift=0;shift<24;shift+=8)result|=min(255u,((pixel>>shift)&255u)+((color>>shift)&255u)*(255u-alpha)/255u)<<shift;color=result;}}
   uint strength=(flags>>16u)&255u;
-  if(strength!=0u){uint result=0u,packed=packedWord(prior);for(uint c=0u;c<3u;++c){uint shift=16u-c*8u;uint old=(prior>>shift)&255u;if((flags&16u)==0u)old=c==0u?((packed>>11u)&31u)<<3u:c==1u?((packed>>5u)&63u)<<2u:(packed&31u)<<3u;result|=(((old*(256u-strength))>>8u)+((((color>>shift)&255u)*strength)>>8u))<<shift;}color=(flags&16u)==0u?packedColor(packedWord(result),0xff000000u):0xff000000u|result;}
+  if(strength!=0u){uint result=0u,packed=packedWordF(prior,format555);for(uint c=0u;c<3u;++c){uint shift=16u-c*8u;uint old=(prior>>shift)&255u;if((flags&16u)==0u)old=c==0u?((packed>>(format555?10u:11u))&31u)<<3u:c==1u?((packed>>5u)&(format555?31u:63u))<<(format555?3u:2u):(packed&31u)<<3u;result|=(((old*(256u-strength))>>8u)+((((color>>shift)&255u)*strength)>>8u))<<shift;}color=(flags&16u)==0u?packedColorF(packedWordF(result,format555),0xff000000u,format555):0xff000000u|result;}
   uint selector=(flags>>8u)&3u;
   if(selector!=0u){if((flags&16u)==0u)color=packedBlendF(color,prior,selector,format555);else{uint weight=4u-selector,result=0u;for(uint shift=0u;shift<32u;shift+=8u)result|=((((color>>shift)&255u)*weight+((prior>>shift)&255u)*(4u-weight))/4u)<<shift;color=result;}}
   if(useZ&&(flags&2u)!=0u){depth=z;if(native)nativeZ=uint(nz)&65535u;}
@@ -207,14 +218,22 @@ void compose(uvec2 inputAt){
  if((p.phase&4u)!=0u)guides(outputAt,motion,guideDepth,confidence);
  outputImage.v[p.stateOffset+outputAt]=floatBitsToUint(depth);outputImage.v[p.zaOffset+outputAt]=nativeZ|(activeAlpha<<16u);
 #endif
+#ifdef SCENE_PAGES
+ if(p.nativeScene!=0u){uint shift=(outputAt&1u)*16u;atomicAnd(nativeDepthImage.v[outputAt/2u],~(65535u<<shift));atomicOr(nativeDepthImage.v[outputAt/2u],nativeZ<<shift);}
+#endif
  writeOutput(outputAt,color);
 }
 
 void main(){
 #ifndef SCENE_PAGES
  if((p.phase&2u)!=0u){if(any(notEqual(gl_GlobalInvocationID,uvec3(0u))))return;
-  uint draw=p.firstDraw;for(uint y=field(draw,25);y<field(draw,27);++y)for(uint x=field(draw,24);x<field(draw,26);++x){compose(uvec2(x,y));memoryBarrierBuffer();}return;
+  uint draw=p.firstDraw;for(uint y=field(draw,25);y<field(draw,27);++y)for(uint x=field(draw,24);x<field(draw,26);++x){compose(uvec2(x,y),0u);memoryBarrierBuffer();}return;
  }
 #endif
- compose(gl_GlobalInvocationID.xy);
+#ifdef SCENE_PAGES
+ if((p.phase&2u)!=0u){if(any(notEqual(gl_GlobalInvocationID,uvec3(0u))))return;uint draw=p.firstDraw;
+  for(uint y=field(draw,25);y<field(draw,27);++y)for(uint x=field(draw,24);x<field(draw,26);++x){uint key=(y/128u)*((p.width+127u)/128u)+x/128u,job=commands.v[p.reserved+key*2u+1u];if(job!=0u){compose(uvec2(x%128u,y%128u),job-1u);memoryBarrierBuffer();}}return;
+ }
+#endif
+ compose(gl_GlobalInvocationID.xy,gl_WorkGroupID.z);
 }

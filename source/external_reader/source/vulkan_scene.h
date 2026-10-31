@@ -102,7 +102,7 @@ private:
   if(!frame.collectGuides||w!=guideRejectedWidth_||h!=guideRejectedHeight_)guideRejectedWidth_=guideRejectedHeight_=0;
   gpumotion::Plan guidePlan;bool hasDisplacement=false;for(const auto&draw:frame.draws)hasDisplacement|=draw.displace;bool collectGuides=frame.collectGuides&&!hasDisplacement&&!frame.effects&&!(w==guideRejectedWidth_&&h==guideRejectedHeight_)&&frame.baseDepth&&motionHistory_.prepare(frame,guidePlan);
   if(!collectGuides)motionHistory_.clear();
-  bool needs64=false;std::vector<Source>colors,materials;std::vector<std::array<size_t,7>>drawSources;size_t baseSource=0,baseDepth=0,baseDepthX=0,baseDepthY=0,fog=0;
+  bool needs64=false;std::vector<Source>colors,materials;std::vector<std::array<size_t,8>>drawSources;size_t baseSource=0,baseDepth=0,baseDepthX=0,baseDepthY=0,fog=0;
   if(frame.basePixels){baseSource=colors.size();colors.push_back(source(frame.basePixels));}
   uint64_t coordinateCount=0;if(frame.baseTiles.size()>4096)return fail("GPU scene base tile count exceeded");
   std::vector<size_t>tileSources;for(const auto&t:frame.baseTiles){
@@ -123,10 +123,11 @@ private:
   for(const auto&d:frame.draws){
    const auto&t=d.source;if((!t.pixels&&!d.gpuRaster)||t.width<1||t.height<1||t.width>8192||t.height>8192||uint64_t(t.width)*t.height>MaxPixels||(t.pixels&&uint64_t(t.width)*t.height!=t.pixels->size())||(t.depth&&t.depth->size()!=uint64_t(t.width)*t.height)||(t.indices&&t.indices->size()!=uint64_t(t.width)*t.height)||d.rasterScale<1||d.rasterScale>4||!std::isfinite(d.left)||!std::isfinite(d.top)||!std::isfinite(d.scaleX)||!std::isfinite(d.scaleY)||d.scaleX<=0||d.scaleY<=0||d.scaleX>8||d.scaleY>8||!std::isfinite(d.depthBase)||!std::isfinite(d.lift)||uint32_t(d.sampling)>3)return fail("Invalid GPU scene sprite");
    for(float gain:d.gains)if(!std::isfinite(gain)||gain<0||gain>16)return fail("Invalid GPU scene light");
-   std::array<size_t,7> sources{{colors.size(),size_t(-1),size_t(-1),size_t(-1),size_t(-1),size_t(-1),size_t(-1)}};
+   std::array<size_t,8> sources{{colors.size(),size_t(-1),size_t(-1),size_t(-1),size_t(-1),size_t(-1),size_t(-1),size_t(-1)}};
    if(d.gpuRaster){if(d.gpuRaster->width!=t.width||d.gpuRaster->height!=t.height)return fail("GPU voxel dimensions disagree");auto owner=std::shared_ptr<const void>(d.gpuRaster,d.gpuRaster.get());colors.push_back({owner,nullptr,size_t(t.width)*t.height*4,true,1});sources[2]=materials.size();materials.push_back({owner,nullptr,size_t(t.width)*t.height*4,true,2});}
    else colors.push_back(source(t.pixels));
    if(d.nativeShape){if(d.nativeShape->size()!=uint64_t(t.width)*t.height)return fail("Invalid native Z shape");sources[5]=materials.size();materials.push_back(source(d.nativeShape));}if(d.nativeCoverage){if(d.nativeCoverage->size()!=uint64_t(t.width)*t.height)return fail("Invalid native Z coverage");sources[6]=materials.size();materials.push_back(source(d.nativeCoverage));}if(t.depth){sources[1]=materials.size();materials.push_back(source(t.depth));}if(t.indices&&!d.gpuRaster){sources[2]=materials.size();materials.push_back(source(t.indices));}
+   if(d.palette.table){if(d.palette.table->size()!=size_t(d.palette.rows)*256)return fail("Invalid native palette rows");sources[7]=materials.size();materials.push_back(source(d.palette.table));}
    if(d.sourcePalette){if(d.sourcePalette->size()!=256||(!d.gpuRaster&&!t.indices))return fail("Invalid indexed GPU palette");sources[4]=colors.size();colors.push_back(source(d.sourcePalette));}
    if(d.sampling==Sampling::Reconstructed){if((!d.reconstructed&&!d.reconstructionSource)||(d.reconstructed&&d.reconstructionSource)||d.reconstructionFactor<2||d.reconstructionFactor>4||d.reconstructedWidth!=t.width*d.reconstructionFactor||d.reconstructedHeight!=t.height*d.reconstructionFactor||(d.reconstructed&&d.reconstructed->size()!=uint64_t(d.reconstructedWidth)*d.reconstructedHeight)||(d.reconstructionSource&&d.reconstructionSource->size()!=uint64_t(t.width)*t.height))return fail("Invalid reconstructed GPU scene sprite");sources[3]=colors.size();if(d.reconstructionSource){auto owner=std::shared_ptr<const void>(d.reconstructionSource,d.reconstructionSource.get());uint64_t signature=(uint64_t(d.reconstructionFactor)<<56)|(uint64_t(t.width)<<28)|uint64_t(t.height);colors.push_back({owner,nullptr,size_t(d.reconstructedWidth)*d.reconstructedHeight*4,true,signature});}else colors.push_back(source(d.reconstructed));}
    if(d.mixStrength>255||d.translucency>3||!std::isfinite(d.clipBottom)||d.nativeBlend>3||(d.nativeBlend&&(d.sampling!=Sampling::Nearest||d.smoothRGB)))return fail("Invalid packed GPU blend");needs64|=d.sampling!=Sampling::Nearest;drawSources.push_back(sources);
@@ -168,7 +169,7 @@ private:
   if(!frame.nativeScene)encodeReadOnlyRuns(frame.draws,references,starts);
   std::vector<uint32_t>metadata(frame.draws.size()*DrawWords);auto offset=[&](const UploadPlan&p,size_t n){return n==size_t(-1)?Missing:p.offsets[n];};
   for(size_t n=0;n<frame.draws.size();++n){const auto&d=frame.draws[n];const auto&s=drawSources[n];auto*dst=metadata.data()+n*DrawWords;
-   std::array<uint32_t,7>at{{offset(colorPlan,s[0]),offset(materialPlan,s[1]),offset(materialPlan,s[2]),offset(colorPlan,s[3]),offset(colorPlan,s[4]),offset(materialPlan,s[5]),offset(materialPlan,s[6])}};
+   std::array<uint32_t,8>at{{offset(colorPlan,s[0]),offset(materialPlan,s[1]),offset(materialPlan,s[2]),offset(colorPlan,s[3]),offset(colorPlan,s[4]),offset(materialPlan,s[5]),offset(materialPlan,s[6]),offset(materialPlan,s[7])}};
    encodeDraw(d,at,bounds[n],dst);
    if(collectGuides){dst[28]=bits(guidePlan.draws[n][0]);dst[29]=bits(guidePlan.draws[n][1]);dst[30]=guidePlan.eligible[n];}
   }

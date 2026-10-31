@@ -31,6 +31,7 @@ class Layers {
   if(!colors&&mode==Smudge)colors=assets.palette(true,pal);if(colors)palettes_[paletteKey]=pal;}if(!colors)return {};
   Key key{type,shape,frame,owner,mode,flags};auto found=images_.find(key);if(found!=images_.end()&&found->second.palette==pal)return found->second.image;
   voxel::Image image;if(!assets.resourceSprite(type,shape,pal,frame,image,mode==Bib||(mode==Rubble&&shape==g.template get<uint32_t>(type+0x14F4)),overlay))return {};
+  image.nativeDepth.enabled=mode!=BeaconShape;image.nativeDepth.gradient=nativesurface::Gradient::Vertical;
   image.objectPalette=mode==FrozenBody||mode==Animation||mode==Bib;image.writeDepth=true;
   if(mode==Overlay)terrainsprite::overlayDepth(image,g.template get<uint8_t>(type+0x2A9),g.template get<uint8_t>(type+0x2A8),g.template get<uint8_t>(type+0x2B3),g.template get<uint8_t>(type+0x2B5));
   else if(mode==OverlayShadow||mode==RubbleShadow||mode==FrozenShadow){image.shadow=image.flat=true;image.depthBias=0;}
@@ -40,6 +41,12 @@ class Layers {
   else if(mode==FrozenBody){image.flat=flags!=0;image.depthBias=flags?0:-float(g.template get<int>(type+0x1520));
    if(!flags){std::array<uint32_t,256>white{};white.fill(0xffffffffu);voxel::Image mask;int fw=1,fh=1;animations::foundation(read,type,fw,fh);
     if(fw<8&&voxel::sprite(read,g.template get<uint32_t>(0x89DDBC),white,mask,0,nullptr,255))camera::buildingDepth(image,mask,fw,fh,g.template get<int>(type+0x1530),g.template get<int>(type+0x1534),true);}}
+  if(mode==Bib||mode==Smudge||mode==FrozenShadow||mode==OverlayShadow||mode==RubbleShadow||(mode==FrozenBody&&flags))image.nativeDepth.gradient=nativesurface::Gradient::Flat;
+  if(mode==Animation)image.nativeDepth.gradient=image.flat?nativesurface::Gradient::Flat:nativesurface::Gradient::Vertical;
+  if(mode==FrozenBody)image.nativeDepth.adjust=int(-image.depthBias);
+  if(mode==Rubble){image.nativeDepth.gradient=(flags&1)?nativesurface::Gradient::Flat:nativesurface::Gradient::Vertical;image.nativeDepth.adjust=(flags&2)?-15:0;}
+  if((mode==Overlay||mode==Rubble)&&(flags&0xF00)){if(!assets.overlayDepthShape(image,unsigned(flags>>8)&15,(flags&16)!=0))return {};}
+  if(mode==Overlay&&(flags&16)){image.flat=true;image.nativeDepth.gradient=nativesurface::Gradient::Flat;image.nativeDepth.adjust=0;}
   if(found!=images_.end()){bytes_-=camera::pixels(*found->second.image)*13;images_.erase(found);}
   size_t cost=camera::pixels(image)*13;if(cost>64*1024*1024)return {};if(images_.size()>=4096||bytes_+cost>64*1024*1024){images_.clear();bytes_=0;}
   auto result=std::make_shared<const voxel::Image>(std::move(image));images_[key]={pal,result};bytes_+=cost;return result;
@@ -59,7 +66,7 @@ public:
    mapbounds::TileOrigin at;if(!geo.tileOrigin(int(n%512),int(n/512),c.level,at))continue;
    auto image=sprite(read,assets,c.smudgeType,g.template get<uint32_t>(c.smudgeType+0xA4),0,0,Smudge,0,g.template get<uint32_t>(c.cell+0x34));if(!image)continue;
    int col=c.smudgeData%w,row=c.smudgeData/w;auto light=lighting::cell(read,c.cell,scene,lighting::Layer::Terrain,true,&tints);
-   draw(*image,float(at.x+30+30*(row-col)),float(at.y-15*(row+col)),1,1,0,light,0,0,image);
+   camera::Material material;material.nativeZ=true;draw(*image,float(at.x+30+30*(row-col)),float(at.y-15*(row+col)),1,1,0,light,0,0,image,vulkancompute::MotionIdentity{},material);
   }
   // Independent body and shadow sweeps; the second half never uses the
   // body's Latin-square bridge variant. Crate state is always frame zero.
@@ -71,14 +78,16 @@ public:
     mode=shadow?RubbleShadow:Rubble;
    }else if(!shadow&&bridge&&(index==0||index==9)){static constexpr int latin[16]={0,1,2,3,3,2,1,0,2,3,0,1,1,0,3,2};index+=latin[((n/512)&3)*4+((n%512)&3)];}
    if(shadow){int count=frames(assets,type,shape,mode==OverlayShadow);if(count<2||index>=count/2)continue;index+=count/2;}
-   auto image=sprite(read,assets,type,shape,index,0,mode);if(!image)continue;
+   uint32_t sourceType=c.overlaySourceType?c.overlaySourceType:c.overlayType;bool resource=g.template get<uint8_t>(sourceType+0x2A9),wall=g.template get<uint8_t>(sourceType+0x2A8),drawFlat=g.template get<uint8_t>(sourceType+0x2B3),rock=g.template get<uint8_t>(sourceType+0x2B5),legacy=!resource&&!wall&&c.overlay==0x7E;
+   int depthFlags=(resource||legacy||(!wall&&drawFlat)?1:0)|(!resource&&!legacy&&!wall&&!drawFlat&&!rock?2:0)|(legacy?16:0);if(!shadow&&(resource||legacy))depthFlags|=int(g.template get<uint8_t>(c.cell+0x11C))<<8;
+   auto image=sprite(read,assets,type,shape,index,0,mode,depthFlags);if(!image)continue;
    mapbounds::TileOrigin at;if(!geo.tileOrigin(int(n%512),int(n/512),c.level,at))continue;
    uint32_t source=c.overlaySourceType?c.overlaySourceType:c.overlayType;int offset=watch::overlayOffset(read,c.cell,source,c.overlay,c.overlayFrame);
    float px=float(at.x+30),py=float(at.y+15+offset),base=float((n%512+n/512)*15+offset);if(!shadow&&bridge)base+=60;
    if(shadow&&bridge&&c.overlayFrame>=9&&c.overlayFrame<=17){px-=15;py+=7;}
    auto light=shadow?lighting::State{}:lighting::cell(read,c.cell,scene,bridge?lighting::Layer::Bridge:lighting::Layer::Terrain,true,&tints);
    if(!shadow&&g.template get<uint8_t>(source+0x2A9))light={};else if(!shadow&&g.template get<uint8_t>(source+0x2A8))light=lighting::cell(read,c.cell,scene,lighting::Layer::Object,false);
-   draw(*image,px,py,1,1,base,light,2,0,image);
+   camera::Material material;material.nativeZ=true;material.nativeZAdjust=-15*int(c.level)-2;draw(*image,px,py,1,1,base,light,2,0,image,vulkancompute::MotionIdentity{},material);
   }
  }
  template<class Read,class Assets,class Draw>void frozen(const radar::Frame&frame,Read read,Assets&assets,const lighting::State&scene,double zscale,Draw draw){
@@ -88,7 +97,7 @@ public:
    const float base=float((int64_t(v.point.x)+v.point.y-256)*15/256)-15;
    auto light=lighting::object(read,body.type,v.owner,3,v.point.x,v.point.y,v.point.z,scene);auto top=lighting::at(read,v.point.x,v.point.y,v.point.z,scene);light.intensity=(top.intensity>=0?top.intensity:top.ambient*10)+g.template get<int16_t>(body.type+0x1548);
    uint32_t shape=g.template get<uint32_t>(body.type+0xA4);
-   auto emit=[&](uint32_t type,uint32_t shape,int index,Mode mode,int flags,float z,const lighting::State&light){if(auto image=sprite(read,assets,type,shape,index,v.owner,mode,flags))draw(*image,x,y,1,1,z,light,2,0,image);};
+   auto emit=[&](uint32_t type,uint32_t shape,int index,Mode mode,int flags,float z,const lighting::State&light){if(auto image=sprite(read,assets,type,shape,index,v.owner,mode,flags)){camera::Material material;material.nativeZ=true;material.nativeZAdjust=-screenHeight(v.point.z,zscale)-2+int(base-z);draw(*image,x,y,1,1,z,light,2,0,image,vulkancompute::MotionIdentity{},material);}};
    emit(body.type,shape,body.frame,FrozenBody,body.noZShape&255,base,light);
    int count=frames(assets,body.type,shape);if(body.frame<count/2)emit(body.type,shape,body.frame+count/2,FrozenShadow,0,base,{});
    emit(body.type,g.template get<uint32_t>(body.type+0x1518),body.frame,Bib,0,base+1,light);

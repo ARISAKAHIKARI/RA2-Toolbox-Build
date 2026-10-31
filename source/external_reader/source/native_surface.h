@@ -4,6 +4,8 @@
 #include <cstdint>
 #include <limits>
 #include <cmath>
+#include <memory>
+#include <vector>
 #include "native_packed_color.h"
 namespace external { namespace nativesurface {
 // GPL-3.0 adaptation of Vera20K native_z.rs / palette_light.rs @3d42426.
@@ -46,11 +48,11 @@ inline Walk walk(const Depth&depth,int screenTop,int nativeHeight,int viewHeight
 inline uint32_t scale16(int milli){uint32_t x=uint32_t(std::clamp(milli,0,2000));return (x?x*65536u-1u:0u)/1000u;}
 struct Palette {
  unsigned rows=53;int brightness=1000;std::array<uint32_t,3>scale{{65535,65535,65535}};
- bool special=false,scalar=false,rgb555=false;uint16_t colour=0;
- bool operator==(const Palette&o)const{return rows==o.rows&&brightness==o.brightness&&scale==o.scale&&special==o.special&&scalar==o.scalar&&rgb555==o.rgb555&&colour==o.colour;}
+ bool special=false,scalar=false,rgb555=false;uint16_t colour=0;std::shared_ptr<const std::vector<uint32_t>>table;
+ bool operator==(const Palette&o)const{return rows==o.rows&&brightness==o.brightness&&scale==o.scale&&special==o.special&&scalar==o.scalar&&rgb555==o.rgb555&&colour==o.colour&&table==o.table;}
  uint32_t apply(uint32_t rgb,uint8_t index,unsigned a=127,bool opaque=true)const{
   const unsigned n=std::clamp(rows,1u,256u),q=std::min((unsigned(std::clamp(brightness,0,2000))*261u)>>11,254u);
-  const unsigned row=std::min(a*q*(n-1)/32258u,n-1);auto gain=scale;
+  const unsigned row=std::min(a*q*(n-1)/32258u,n-1);if(table&&table->size()==size_t(n)*256)return nativepacked::color((*table)[size_t(row)*256+index]|(opaque?colour:0),rgb&0xff000000u,rgb555);auto gain=scale;
   for(auto&c:gain)if(n>1)c=c*(2*row)/(n-1);
   if(special&&index>=240&&index<=254){unsigned d=std::min(n*30/200?n*30/200-1:0,(n-1)/2),neutral=65536;
    if(n>1&&row<=d)neutral=d?row*65536/d:0;gain.fill(neutral);}

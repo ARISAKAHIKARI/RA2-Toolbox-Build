@@ -40,3 +40,5 @@ Ares 原始声明要求的鸣谢：
 ## 游戏内容
 
 Command & Conquer、Red Alert 及游戏内容的相关权利归 Electronic Arts 和其他原权利人所有。
+
+Hotfix26：Vera20K `3d42426b2e9c1b4cf913a7dbbaaf8bf7d3b6bc7f`（YuriPlanet及贡献者，GPL-3.0）的 native_z、foot_depth、palette_light、terrain/overlay/building_zshape、surface_line/surface_line_aa、surface_line_cubic_table.bin、laser、radiation_beam、wave_geometry、combat_light/building_light、sim/world/spotlight 适配到C++/GLSL。`native_line_cubic.h`保留257项公开原生cubic数据；没有提交游戏EXE或游戏素材。字段参考CnCNet/YRpp `d9795546950fcc75a94325ffc83b44d16ec34ce2`。修改及验证边界见[Hotfix26](source/research/2026-10-31-native-surface-hotfix26.md)。
