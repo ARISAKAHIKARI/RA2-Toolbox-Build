@@ -230,7 +230,7 @@ static asyncwork::Recurring<Request,Frame> presentationWorker([](const Request&r
  const double started=presentationNow();external::xbrzadapter::gpuPresentation(r.gpu);
  auto observed=samplingWorker.get();
  const external::radar::Frame*moving=observed&&observed->request.generation==r.generation&&observed->request.pid==r.pid&&observed->request.match==r.match&&observed->request.reveal==r.reveal&&presentationNow()-observed->observedMs<=100.?observed->current.get():nullptr;
- auto image=worldPipeline.draw(prepared->world,camera,r.width,r.height,external::SharedReadView{&presentationReader},moving);
+ auto image=worldPipeline.draw(prepared->world,camera,r.width,r.height,external::SharedReadView{&presentationReader},moving,GetTickCount());
  if(!image)return {};
  external::mainview::View after;
  if(!external::mainview::sample(fresh,after)||!renderpresentation::sameProjection(camera,after)||after.frame<camera.frame||

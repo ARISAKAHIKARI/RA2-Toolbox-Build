@@ -1,0 +1,231 @@
+{
+  "version": "1.0.39-pre.7-hotfix27",
+  "evidence": "offline_disassembly_and_pinned_primary_source_comparison",
+  "supported_executable_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+  "sources": [
+    {
+      "repo": "CnCNet/YRpp",
+      "commit": "d9795546950fcc75a94325ffc83b44d16ec34ce2",
+      "path": "FactoryClass.h",
+      "blob": "872a5f47194778a5244f4b17e6cb93b732f0bcb9",
+      "read": true
+    },
+    {
+      "repo": "CnCNet/YRpp",
+      "commit": "d9795546950fcc75a94325ffc83b44d16ec34ce2",
+      "path": "TechnoClass.h",
+      "blob": "8af9d48463819a5879c2b0a0e205a98644551c47",
+      "read": true
+    },
+    {
+      "repo": "CnCNet/YRpp",
+      "commit": "d9795546950fcc75a94325ffc83b44d16ec34ce2",
+      "path": "TechnoTypeClass.h",
+      "blob": "c817f49118b4c8b23b5f7bb4b08c677ca57723f9",
+      "read": true
+    },
+    {
+      "repo": "CnCNet/YRpp",
+      "commit": "d9795546950fcc75a94325ffc83b44d16ec34ce2",
+      "path": "HouseClass.h",
+      "blob": "e578deaf617dfc3a603073b80f14c8aa4b3e993c",
+      "read": true
+    },
+    {
+      "repo": "CnCNet/YRpp",
+      "commit": "d9795546950fcc75a94325ffc83b44d16ec34ce2",
+      "path": "ToolTipManager.h",
+      "blob": "a39f5427fc7797c5bf458f56f32e6e1027c9cb0b",
+      "read": true
+    },
+    {
+      "repo": "CnCNet/YRpp",
+      "commit": "d9795546950fcc75a94325ffc83b44d16ec34ce2",
+      "path": "CCToolTip.h",
+      "blob": "34a9a6f2ac719cfe6d8b09bd2f89c7be65353af3",
+      "read": true
+    },
+    {
+      "repo": "CnCNet/YRpp",
+      "commit": "d9795546950fcc75a94325ffc83b44d16ec34ce2",
+      "path": "SidebarClass.h",
+      "blob": "b5b787da5db599156d121d6b9a41dcde4a81b997",
+      "read": true
+    },
+    {
+      "repo": "CnCNet/YRpp",
+      "commit": "d9795546950fcc75a94325ffc83b44d16ec34ce2",
+      "path": "FPSCounter.h",
+      "blob": "db6b3571728ab8e7f4e9a038cc962a6ef1c9d682",
+      "read": true
+    },
+    {
+      "repo": "CnCNet/YRpp",
+      "commit": "d9795546950fcc75a94325ffc83b44d16ec34ce2",
+      "path": "SessionClass.h",
+      "blob": "dda797b5f0166f44bcb6af305ded3985b3d0943a",
+      "read": true
+    },
+    {
+      "repo": "CnCNet/YRpp",
+      "commit": "d9795546950fcc75a94325ffc83b44d16ec34ce2",
+      "path": "BuildingTypeClass.h",
+      "blob": "74545e1cbf7a547ab83bfb14adcbcd08b771877a",
+      "read": true
+    },
+    {
+      "repo": "CnCNet/YRpp",
+      "commit": "d9795546950fcc75a94325ffc83b44d16ec34ce2",
+      "path": "EBolt.h",
+      "blob": "49b42de9b233f103310ed898ca3ea0fed1fe9636",
+      "read": true
+    },
+    {
+      "repo": "ARISAKAHIKARI/vera20k",
+      "commit": "3d42426b2e9c1b4cf913a7dbbaaf8bf7d3b6bc7f",
+      "path": "src/sim/production/factory.rs",
+      "blob": "f45b826ec4047215535a2d66e0723c1a0f8198d3",
+      "read": true
+    },
+    {
+      "repo": "ARISAKAHIKARI/vera20k",
+      "commit": "3d42426b2e9c1b4cf913a7dbbaaf8bf7d3b6bc7f",
+      "path": "src/render/radial_indicator.rs",
+      "blob": "7865efe00a928f5e4074ecb982041c37a763765c",
+      "read": true
+    },
+    {
+      "repo": "ARISAKAHIKARI/vera20k",
+      "commit": "3d42426b2e9c1b4cf913a7dbbaaf8bf7d3b6bc7f",
+      "path": "src/render/electric_bolt.rs",
+      "blob": "399fc5762de62eba992b64dc714e8a469fe7cc10",
+      "read": true
+    },
+    {
+      "repo": "ARISAKAHIKARI/vera20k",
+      "commit": "3d42426b2e9c1b4cf913a7dbbaaf8bf7d3b6bc7f",
+      "path": "src/app/presentation/electric_bolts.rs",
+      "blob": "2b50eff4402069dc91b3f1ef4a36c7976fb557fc",
+      "read": true
+    },
+    {
+      "repo": "ARISAKAHIKARI/vera20k",
+      "commit": "3d42426b2e9c1b4cf913a7dbbaaf8bf7d3b6bc7f",
+      "path": "src/app/presentation/instances/units.rs",
+      "blob": "f412c315f93d7c9d63cfa340477d4b5deb50c328",
+      "read": true
+    },
+    {
+      "repo": "ARISAKAHIKARI/vera20k",
+      "commit": "3d42426b2e9c1b4cf913a7dbbaaf8bf7d3b6bc7f",
+      "path": "src/app/presentation/instances/shp.rs",
+      "blob": "65bc7add640211fde00645875cb1e94afd95cc73",
+      "read": true
+    },
+    {
+      "repo": "ARISAKAHIKARI/vera20k",
+      "commit": "3d42426b2e9c1b4cf913a7dbbaaf8bf7d3b6bc7f",
+      "path": "src/render/unit_atlas.rs",
+      "blob": "ad30213bd64b6a2e1c53b00fe393ba964d4e5e53",
+      "read": true
+    },
+    {
+      "repo": "ARISAKAHIKARI/vera20k",
+      "commit": "3d42426b2e9c1b4cf913a7dbbaaf8bf7d3b6bc7f",
+      "path": "src/sim/game_entity/voxel_recoil.rs",
+      "blob": "f63e64b53de5ab513845914120e64e19ea01c601",
+      "read": true
+    },
+    {
+      "repo": "ARISAKAHIKARI/vera20k",
+      "commit": "3d42426b2e9c1b4cf913a7dbbaaf8bf7d3b6bc7f",
+      "path": "tools/voxel_oracle/building_barrel.md",
+      "blob": "5b04e524b89d11d22bd0073bd821539cf7ee0f32",
+      "read": true
+    },
+    {
+      "repo": "ARISAKAHIKARI/vera20k",
+      "commit": "3d42426b2e9c1b4cf913a7dbbaaf8bf7d3b6bc7f",
+      "path": "tools/voxel_oracle/recoil.md",
+      "blob": "88e995d2fc29565e7eb037b547984136fa68f139",
+      "read": true
+    },
+    {
+      "repo": "ARISAKAHIKARI/vera20k",
+      "commit": "3d42426b2e9c1b4cf913a7dbbaaf8bf7d3b6bc7f",
+      "path": "tools/spatial_oracle/factory_cadence.meta.json",
+      "blob": "b1093bfa559d187d874db69b6fa76525ad06e784",
+      "read": true
+    },
+    {
+      "repo": "ARISAKAHIKARI/vera20k",
+      "commit": "3d42426b2e9c1b4cf913a7dbbaaf8bf7d3b6bc7f",
+      "path": "tools/spatial_oracle/time_to_build.meta.json",
+      "blob": "48a1be43bd2bfbe095895d5b7d3f38011866fafe",
+      "read": true
+    },
+    {
+      "repo": "Phobos-developers/Phobos",
+      "commit": "f06797ec39f2b60b9fa5b6da69288c36d189b712",
+      "path": "src/Misc/PhobosToolTip.cpp",
+      "blob": "eaed57198bc26a303aecdb063e2f02b20e57a09f",
+      "read": true
+    },
+    {
+      "repo": "Phobos-developers/Phobos",
+      "commit": "f06797ec39f2b60b9fa5b6da69288c36d189b712",
+      "path": "src/Misc/PhobosToolTip.h",
+      "blob": "73407eec3df6783824c9c66fcf1df4d6350c8307",
+      "read": true
+    }
+  ],
+  "executed": {
+    "native_instructions": false,
+    "cpu_fixture_suites": false,
+    "windows_game": false,
+    "vulkan_d3d": false,
+    "multiplayer_fps": false
+  },
+  "addresses": {
+    "time_to_build": "6F47A0",
+    "type_base": "711EE0",
+    "country": "50C0A0",
+    "power_ratio": "4FCE30",
+    "factory_start": "4C9EA0",
+    "factory_rate": "4C9FB0",
+    "factory_ai": "4C9B20",
+    "factory_power_refresh": "4CA6E0",
+    "tooltip_slot": "7F74D8",
+    "original_tooltip": "479050",
+    "tooltip_process": "724AD0",
+    "strip_help": "6A92E0",
+    "multiplayer_fps": "A8B558",
+    "singleplayer_measured_fps": "ABCD44",
+    "electric_bolt": "4C1F20",
+    "radial": "456980",
+    "building_guns": "43DA80",
+    "building_gun_z": "43E900",
+    "recoil_update_not_called": "70ED10"
+  },
+  "abi": {
+    "assist": 82,
+    "shared_bytes": 6580472,
+    "runtime": 4,
+    "entry": 3,
+    "signal": 1,
+    "static_layout_entries": 680
+  },
+  "readiness_tail": {
+    "frames": 1,
+    "source": "user_requested_sidebar_handoff_convention",
+    "live_end_to_end_proven": false
+  },
+  "non_equivalence": [
+    "private_visual_rng_not_process_main",
+    "current_pitch_key_does_not_repeat_retail_sticky_cache",
+    "host_x87_intermediate_rounding",
+    "enhanced_and_minified_feedback",
+    "extension_defined_draws"
+  ],
+  "raw_private_dump_published": false
+}

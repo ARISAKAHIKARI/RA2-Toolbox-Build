@@ -26,6 +26,7 @@ inline constexpr VideoEntry videoEntries[]={
  {WatchPrimary,VideoGroup::Monitor,L"在游戏内显示副相机",L""},
  {HarvesterCounter,VideoGroup::Monitor,L"矿车指示器（工作中 / 总数）",L""},
  {PowerDelta,VideoGroup::Monitor,L"电量指示器（发电 − 耗电）",L""},
+ {BuildTimeTooltip,VideoGroup::Monitor,L"建造栏提示框显示建造时间",L""},
  {WatchSecondary,VideoGroup::Monitor,L"在第二显示器显示副相机",L""},
  {WatchDanger,VideoGroup::Monitor,L"自动跟踪危险载员",L""},
  {WatchKey1,VideoGroup::Monitor,L"副相机 1 快捷键",L""},

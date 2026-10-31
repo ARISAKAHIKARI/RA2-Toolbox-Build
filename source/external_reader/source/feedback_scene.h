@@ -2,6 +2,8 @@
 #include "feedback_selection.h"
 #include "main_viewport.h"
 #include "camera_raster.h"
+#include "world_effects.h"
+#include "native_bolt_geometry.h"
 namespace external { namespace nativefeedback {
 // Use immutable bounds from the current rendered sprites; never decode twice.
 template<class Renderer,class Frame>std::vector<Object> objectGeometry(const Renderer&renderer,const Frame&frame,const mainview::View&v,int w,int h,double zscale,int marginX=0,int marginY=0){
@@ -22,26 +24,14 @@ struct EffectStatus {bool complete=false;unsigned bolts=0;bool independentLasers
 // Whole-map previews have a virtual source viewport larger than a physical
 // display. Only projection fields are needed by the passive bolt rasterizer.
 struct WorldView {int cameraX=0,cameraY=0,width=0,height=0,frame=-1;bool valid()const{return frame>=0&&width>0&&height>0&&width<=122880&&height<=122880&&std::abs(int64_t(cameraX))<1000000&&std::abs(int64_t(cameraY))<1000000;}};
-template<class Scene,class Projection>EffectStatus effects(const std::vector<Bolt>&list,Scene&scene,const Projection&v,const std::vector<uint8_t>*mask,double zscale,int viewportWidth=0,int viewportHeight=0,int offsetX=0,int offsetY=0){
+template<class Scene,class Projection>EffectStatus effects(const std::vector<Bolt>&list,Scene&scene,const Projection&v,const std::vector<uint8_t>*mask,double zscale,int viewportWidth=0,int viewportHeight=0,int offsetX=0,int offsetY=0,const std::vector<uint16_t>*depth=nullptr,const std::vector<uint8_t>*nativeAlpha=nullptr){
  EffectStatus status;
  if(!v.valid()||scene.width<1||scene.height<1||scene.pixels.size()!=size_t(scene.width)*scene.height||
     !std::isfinite(zscale)||zscale<=0||zscale>1||list.size()>MaxBolts)return status;
  status.complete=true;if(list.empty())return status;
- Canvas layer;if(!layer.reset(scene.width,scene.height))return {};
- double sx=double(viewportWidth>0?viewportWidth:scene.width)/v.width,sy=double(viewportHeight>0?viewportHeight:scene.height)/v.height;if(sx<=0||sy<=0||sx>16||sy>16)return {};
- for(const auto&e:list){
-  auto point=[&](Point3 p){return std::array<double,2>{{((double(p.x)-p.y)*30/256.-v.cameraX)*sx+offsetX,
-    ((double(p.x)+p.y)*15/256.-screenHeight(p.z,zscale)-v.cameraY)*sy+offsetY}};};
-  auto a=point(e.source),b=point(e.target);
-  // Cull before strand construction: large battles can contain thousands of
-  // offscreen bolts. The margin includes all jitter and the glow footprint.
-  const double scale=std::min(sx,sy),margin=8*scale+8;
-  if(std::max(a[0],b[0])<-margin||std::min(a[0],b[0])>scene.width+margin||std::max(a[1],b[1])<-margin||std::min(a[1],b[1])>scene.height+margin){++status.bolts;continue;}
-  // Deterministic visual jitter only; no native RNG/FLH/lifetime updates.
-  bolt(layer,a[0],a[1],b[0],b[1],e.seed^uint32_t(v.frame),e.alternate,std::min(sx,sy));++status.bolts;
- }
- if(!applyVisibility(layer,mask))return {};
- for(size_t i=0;i<scene.pixels.size();++i)if(layer.pixels[i])scene.pixels[i]=over(layer.pixels[i],scene.pixels[i]);
+ const double sx=double(viewportWidth>0?viewportWidth:scene.width)/v.width,sy=double(viewportHeight>0?viewportHeight:scene.height)/v.height;if(sx<=0||sy<=0||sx>16||sy>16)return {};
+ worldfx::View view;view.x=v.cameraX-double(offsetX)/sx;view.y=v.cameraY-double(offsetY)/sy;view.width=scene.width/sx;view.height=scene.height/sy;view.pixelsW=scene.width;view.pixelsH=scene.height;view.zscale=zscale;
+ worldfx::Painter painter(scene.pixels,view,nativeAlpha?nativeAlpha:mask,depth);boltgeometry::paint(list,painter,view);status.bolts=unsigned(list.size());
  return status;
 }
 }}

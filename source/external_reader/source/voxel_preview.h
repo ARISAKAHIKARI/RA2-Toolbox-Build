@@ -19,7 +19,7 @@ namespace external { namespace voxel {
 // evidence: YRpp + native 755DB0/7563A8, 5BD5C0/5BD730 and 705D70.
 constexpr size_t MaxBytes=8*1024*1024,MaxVoxels=100000,MaxFaces=150000;
 struct Vec {float x=0,y=0,z=0;};
-struct Face {Vec p[4],normal{};uint8_t color=0,normalIndex=255,normalType=0;bool turret=false,hasNormal=false;uint8_t section=0;std::shared_ptr<const Motion> motion;};
+struct Face {Vec p[4],normal{};uint8_t color=0,normalIndex=255,normalType=0;bool turret=false,hasNormal=false;uint8_t section=0,part=0;std::shared_ptr<const Motion> motion;};
 struct Model {std::vector<Face> faces;};
 struct Image {int rasterScale=1;int canvasWidth=0,canvasHeight=0;int width=0,height=0,x=0,y=0,depthBottom=std::numeric_limits<int>::min();std::vector<uint32_t> pixels;std::vector<float> depth;std::vector<uint8_t> indices;bool nativeExtended=false,intrinsicAlpha=false,objectPalette=false,flat=false,writeDepth=true,shadow=false,shadowsAfter=false,incomplete=false,airborneShadow=false,skipZ=false;float depthBias=0;std::vector<Image> attachments;std::shared_ptr<const gpuvoxel::Prepared> gpuRaster;
  // Vera sprite_source/unit_atlas: pose coverage and the current palette have
@@ -103,15 +103,16 @@ inline Vec posePoint(const Face&face,Vec point,double bodyAngle,double turretAng
 // Resolve a pose once, then use it for all vertices and fallback normals.
 // Keep the same intermediate float rounding as rotate()/posePoint().
 struct PoseTransform {
- double bc,bs,tc,ts,pc,ps;bool turret,pitch;Vec pivot;
- PoseTransform(double body,double turn,float offset,double tilt):bc(std::cos(body)),bs(std::sin(body)),
-  tc(std::isfinite(turn)?std::cos(turn):bc),ts(std::isfinite(turn)?std::sin(turn):bs),pc(std::cos(tilt)),ps(std::sin(tilt)),turret(std::isfinite(turn)),pitch(tilt!=0),pivot{float(offset*bc),float(offset*bs),0}{}
+ double bc,bs,tc,ts,pc,ps,gc,gs;bool turret,pitch;Vec pivot;std::array<float,2>recoil;
+ PoseTransform(double body,double turn,float offset,double tilt,double gunTilt=0,std::array<float,2>travel={}):bc(std::cos(body)),bs(std::sin(body)),
+  tc(std::isfinite(turn)?std::cos(turn):bc),ts(std::isfinite(turn)?std::sin(turn):bs),pc(std::cos(tilt)),ps(std::sin(tilt)),gc(std::cos(gunTilt)),gs(std::sin(gunTilt)),turret(std::isfinite(turn)),pitch(tilt!=0),pivot{float(offset*bc),float(offset*bs),0},recoil(travel){}
  Vec direction(const Face&face,Vec p)const{
   if(pitch)p={float(p.x*pc+p.z*ps),p.y,float(-p.x*ps+p.z*pc)};
+  if(face.part==2)p={float(p.x*gc+p.z*gs),p.y,float(-p.x*gs+p.z*gc)};
   const double c=face.turret&&turret?tc:bc,s=face.turret&&turret?ts:bs;
   return {float(p.x*c-p.y*s),float(p.x*s+p.y*c),p.z};
  }
- Vec point(const Face&face,Vec p)const{p=direction(face,p);if(face.turret&&turret){p.x+=pivot.x;p.y+=pivot.y;}return p;}
+ Vec point(const Face&face,Vec p)const{if(face.part)p.x-=recoil[face.part==2?1:0];p=direction(face,p);if(face.turret&&turret){p.x+=pivot.x;p.y+=pivot.y;}return p;}
 };
 inline Vec posturePoint(const voxelposture::Matrix&matrix,Vec point,bool direction=false){
  // capturePart already mirrored native model Y after HVA. Re-enter native
@@ -120,10 +121,11 @@ inline Vec posturePoint(const voxelposture::Matrix&matrix,Vec point,bool directi
  auto at=[&](int row){return matrix[row*4]*native.x+matrix[row*4+1]*native.y+matrix[row*4+2]*native.z+(direction?0:matrix[row*4+3]);};
  return {at(0),-at(1),at(2)};
 }
-inline VoxelLight postureLight(double angle,const voxelposture::Matrix&world){
+inline VoxelLight postureLight(double angle,const voxelposture::Matrix&world,double pitch=0){
  voxelposture::Matrix view{{NativeVoxelView[0],NativeVoxelView[1],NativeVoxelView[2],0,
   NativeVoxelView[3],NativeVoxelView[4],NativeVoxelView[5],0,NativeVoxelView[6],NativeVoxelView[7],NativeVoxelView[8],0}};
  auto draw=voxelposture::multiply(voxelposture::multiply(view,world),voxelposture::yaw(-angle,true));
+ if(pitch){auto sc=nativeVoxelSinCos(-pitch);voxelposture::Matrix turn{{sc[1],0,sc[0],0,0,1,0,0,-sc[0],0,sc[1],0}};draw=voxelposture::multiply(draw,turn);}
  VoxelLight out;for(unsigned i=0;i<3;++i)out.source[i]=nativeStoredFloat(
   double(draw[i])*NativeLightSource[0]+double(draw[i+4])*NativeLightSource[1]+double(draw[i+8])*NativeLightSource[2]);
  auto sum=out.source;sum[2]=nativeStoredFloat(double(sum[2])+1);
@@ -143,21 +145,22 @@ template<class Transform>bool projectModel(const Model&model,Transform transform
  }return true;
 }
 inline uint32_t premultiply(uint32_t c,float light,unsigned alpha=124){unsigned r=unsigned(std::clamp(((c>>16)&255)*light,0.f,255.f)),g=unsigned(std::clamp(((c>>8)&255)*light,0.f,255.f)),b=unsigned(std::clamp((c&255)*light,0.f,255.f));return (alpha<<24)|((r*alpha/255)<<16)|((g*alpha/255)<<8)|(b*alpha/255);}
-inline bool render(const Model&model,double angle,const std::array<uint32_t,256>&pal,Image&out,double turretAngle=std::numeric_limits<double>::quiet_NaN(),float turretOffset=0,const Vpl*vpl=nullptr,unsigned alpha=124,double pitch=0,bool projectile=false,int rasterScale=1,const voxelposture::State*posture=nullptr){
+inline bool render(const Model&model,double angle,const std::array<uint32_t,256>&pal,Image&out,double turretAngle=std::numeric_limits<double>::quiet_NaN(),float turretOffset=0,const Vpl*vpl=nullptr,unsigned alpha=124,double pitch=0,bool projectile=false,int rasterScale=1,const voxelposture::State*posture=nullptr,double gunPitch=0,std::array<float,2>recoil={}){
  out={};if(rasterScale<1||rasterScale>resolutionsampling::MaxRasterScale||model.faces.empty()||model.faces.size()>MaxFaces||!std::isfinite(angle)||(posture&&!posture->available))return false;
  const bool tilted=posture&&posture->active&&!projectile;
  const auto geometryWorld=tilted?voxelposture::world(*posture,angle,false):voxelposture::identity();
  const auto lightWorld=tilted?voxelposture::world(*posture,angle,true):voxelposture::identity();
  const auto bodyLight=tilted?postureLight(angle,lightWorld):nativeVoxelLight(angle,pitch),turretLight=std::isfinite(turretAngle)?(tilted?postureLight(turretAngle,lightWorld):nativeVoxelLight(turretAngle,pitch)):bodyLight;
  const auto worldLight=nativeVoxelWorldLight();
- std::array<std::array<uint8_t,256>,5> bodyPages,turretPages;std::array<bool,5> bodyPagesReady{},turretPagesReady{};
+ const auto barrelLight=tilted?postureLight(std::isfinite(turretAngle)?turretAngle:angle,lightWorld,gunPitch):nativeVoxelLight(std::isfinite(turretAngle)?turretAngle:angle,gunPitch);
+ std::array<std::array<uint8_t,256>,5> bodyPages,turretPages,barrelPages;std::array<bool,5> bodyPagesReady{},turretPagesReady{},barrelPagesReady{};
  auto pageFor=[&](const Face&face)->unsigned{
   if(face.normalIndex>=253||face.normalType<1||face.normalType>4)return 16;
-  auto&pages=(face.turret?turretPages:bodyPages)[face.normalType];auto&ready=(face.turret?turretPagesReady:bodyPagesReady)[face.normalType];
-  if(!ready){pages.fill(16);std::array<float,3> raw{};for(unsigned i=0;i<253&&normalVector(face.normalType,i,raw);++i)pages[i]=uint8_t(projectile?nativeProjectilePage(raw,face.turret?turretLight:bodyLight):nativeVoxelPage(raw,face.turret?turretLight:bodyLight));ready=true;}
+  auto&pages=(face.part==2?barrelPages:face.turret?turretPages:bodyPages)[face.normalType];auto&ready=(face.part==2?barrelPagesReady:face.turret?turretPagesReady:bodyPagesReady)[face.normalType];
+  if(!ready){pages.fill(16);std::array<float,3> raw{};for(unsigned i=0;i<253&&normalVector(face.normalType,i,raw);++i)pages[i]=uint8_t(projectile?nativeProjectilePage(raw,face.part==2?barrelLight:face.turret?turretLight:bodyLight):nativeVoxelPage(raw,face.part==2?barrelLight:face.turret?turretLight:bodyLight));ready=true;}
   return pages[face.normalIndex];
  };
- const PoseTransform transform(angle,turretAngle,turretOffset,pitch);
+ const PoseTransform transform(angle,turretAngle,turretOffset,pitch,gunPitch,recoil);
  auto worldPoint=[&](const Face&f,Vec p){auto point=transform.point(f,p);return tilted?posturePoint(geometryWorld,point):point;};
  std::vector<ProjectedFace> projected;float minX=0,minY=0,maxX=0,maxY=0;
  if(!projectModel(model,worldPoint,projected,minX,minY,maxX,maxY))return false;

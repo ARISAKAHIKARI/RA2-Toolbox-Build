@@ -211,8 +211,8 @@ def main():
     differences = {name: {'x86': records['x86'].get(name), 'x64': records['x64'].get(name)}
                    for name in sorted(set(records['x86']) | set(records['x64']))
                    if records['x86'].get(name) != records['x64'].get(name)}
-    baseline = {'assist::Version': 81, 'runtime::Version': 4, 'gameentry::Version': 3,
-                'runtimebroker::Version': 1, 'sizeof(assist::Shared)': 6580464,
+    baseline = {'assist::Version': 82, 'runtime::Version': 4, 'gameentry::Version': 3,
+                'runtimebroker::Version': 1, 'sizeof(assist::Shared)': 6580472,
                 'sizeof(runtime::Control)': 176, 'sizeof(gameentry::Request)': 108,
                 'sizeof(runtimebroker::Packet)': 148,
                 'neuralframe::Version': 1, 'sizeof(neuralframe::Header)': 256}
@@ -231,10 +231,10 @@ def main():
     if differences:
         print(json.dumps(differences, indent=2))
         raise SystemExit('FAIL: Windows x86/x64 shared-memory layouts differ')
-    # Hotfix25 intentionally upgrades the input publication ABI to protocol81.
+    # Hotfix27 adds the local tooltip request/status to protocol82.
     # Lock the measured x86/x64 layout instead of accepting arbitrary growth.
     assert baseline_matches, 'Protocol/version or deployed x86 wire baseline changed'
-    print(f'PASS: {len(records["x86"])} Windows x86/x64 wire size/alignment/field offsets match; protocol81 Shared6580464, Runtime176, manager108')
+    print(f'PASS: {len(records["x86"])} Windows x86/x64 wire size/alignment/field offsets match; protocol82 Shared6580472, Runtime176, manager108')
     print('PASS: real PE32+/64-bit imports, ordinal bit, bounds and strict default x86 parser checks; no Windows image executed')
 
 

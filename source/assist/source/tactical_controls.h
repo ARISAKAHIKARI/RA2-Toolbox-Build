@@ -169,6 +169,7 @@ marginEdit=number(311,L"文字提示上边距 / 像素",topMargin,L"0–4096");
 toastEdit=number(471,L"战术提示时长 / 毫秒",toastMs,L"500–60000");
 toggle(9325,L"矿车指示器（工作中 / 总数）",harvesterCounterEnabled);next();
 toggle(9326,L"电量指示器（发电 − 耗电）",powerDeltaEnabled);next();
+toggle(9327,L"建造栏提示框显示建造时间",buildTimeTooltipEnabled);next();
 toggle(9300,L"渲染升级（全视口 · 实验性）",renderUpgradeEnabled);next();
 toggle(9313,L"额外画质处理（关闭：基础快速绘制）",renderProcessing);next();
 note(L"仅开启渲染升级时，跳过扩色、连续光照增强、精细 VXL与 xBRZ；仍执行基本素材解码和原生色盘映射。下方已保存的画质选项保留，需独立开启额外画质处理才生效。",64);

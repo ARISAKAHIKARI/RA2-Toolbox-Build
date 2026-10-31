@@ -94,3 +94,17 @@ extern "C" int __cdecl GuardedNetworkSend(unsigned transport,unsigned buffer,int
  }__finally {EndAssistCapture(token);SetLastError(savedError);}
  return result;
 }
+
+// A failed local text query retains the original tooltip and other services.
+extern "C" unsigned AssistBuildTimeTooltip(unsigned,unsigned);
+extern "C" void AssistBuildTimeTooltipFailed();
+extern "C" unsigned GuardedBuildTimeTooltip(unsigned id,unsigned original){
+ const unsigned long savedError=GetLastError();
+ unsigned token=BeginAssistCapture();if(!token){SetLastError(savedError);return original;}
+ unsigned result=original;
+ __try {
+  __try {result=AssistBuildTimeTooltip(id,original);}
+  __except(AssistExceptionFilter(_exception_info(),17)){AssistBuildTimeTooltipFailed();result=original;}
+ }__finally {EndAssistCapture(token);SetLastError(savedError);}
+ return result;
+}

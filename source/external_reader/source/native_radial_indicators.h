@@ -1,12 +1,14 @@
 #pragma once
 #include "ground_geometry.h"
 #include "native_ui_font.h"
+#include "native_effect_math.h"
+#include "main_viewport.h"
 namespace external { namespace radialindicators {
 // GPL-3.0: Vera20K3d42426 presentation/radial_indicators.rs and
 // render/radial_indicator.rs. Read native range/pulse owners; never advance
 // the engine's draw clock or call its drawing methods from an external thread.
 struct Draw {nativefeedback::Point3 point;float radius=0;uint32_t color=0;bool pixels=false,truncate=true,fade=true,rays=true;};
-inline uint32_t interpolate(uint32_t rgb,uint32_t to,unsigned factor){uint32_t out=0;for(int shift:{0,8,16}){int a=(rgb>>shift)&255,b=(to>>shift)&255;out|=uint32_t(std::clamp(a+(b-a)*int(factor)/256,0,255))<<shift;}return out;}
+inline uint32_t interpolate(uint32_t rgb,uint32_t to,unsigned factor){uint32_t out=0;for(int shift:{0,8,16}){int a=(rgb>>shift)&255,b=(to>>shift)&255;out|=uint32_t(std::clamp((a*int(256-factor)+b*int(factor))>>8,0,255))<<shift;}return out;}
 inline int radiusPixels(float radius,bool truncate=true){if(!std::isfinite(radius)||radius<0||radius>128)return -1;double r=truncate?std::trunc(radius):radius;return int((r+.5)/double(float(std::sqrt(2.)))*60.);}
 template<class Read>int buildingRange(GameView<Read>&g,uint32_t p,uint32_t type){
  int psychic=g.template get<int>(type+0x170C);if(psychic>0)return psychic;
@@ -42,6 +44,37 @@ template<class Read,class Objects>bool capture(Read read,const mainview::View&vi
   }
  }
  return g.template get<int>(0xA8ED84,-1)==view.frame&&g.vecChecked(0xA8ECB8,after,8192)&&after==selected&&out.size()<=256;
+}
+// Original7BB350: independent integer midpoint walks; explicit DWORD wrap.
+// GPL-3.0 adaptation of Vera20K surface_line.rs. UI outlines ignore world Z/A.
+template<class Emit>void nativeEllipse(int cx,int cy,int rx,int ry,int width,int height,Emit emit){
+ if(rx<0||ry<0||rx>8192||ry>8192)return;
+ auto add=[](int a,int b){return int32_t(uint32_t(a)+uint32_t(b));};
+ auto mul=[](int a,int b){return int32_t(uint32_t(a)*uint32_t(b));};
+ auto pixel=[&](int x,int y){if(x>=0&&y>=0&&x<width&&y<height)emit(nativefx::LinePixel{x,y,0,0});};
+ auto quartet=[&](int x,int y){pixel(cx+x,cy+y);pixel(cx-x,cy-y);pixel(cx+x,cy-y);pixel(cx-x,cy+y);};
+ const int xx=mul(rx,rx),yy=mul(ry,ry);pixel(cx,cy+ry);pixel(cx,cy-ry);
+ int x=0,y=ry,dx=0,dy=mul(mul(xx,ry),2),decision=add(xx/4,-mul(xx,ry));
+ for(int n=0;n<=rx;++n){decision=add(add(decision,dx),yy);if(decision>=0){dy=add(dy,-mul(xx,2));decision=add(decision,-dy);--y;}dx=add(dx,mul(yy,2));++x;if(dx>=dy)break;quartet(x,y);}
+ pixel(cx+rx,cy);pixel(cx-rx,cy);x=rx;y=0;dx=mul(mul(yy,rx),2);dy=0;decision=add(yy/4,-mul(yy,rx));
+ for(int n=0;n<=ry;++n){decision=add(add(decision,dy),xx);if(decision>=0){dx=add(dx,-mul(yy,2));decision=add(decision,-dx);--x;}dy=add(dy,mul(xx,2));++y;if(dy>dx)break;quartet(x,y);}
+}
+template<class Sink>void geometry(const std::vector<Draw>&draws,const mainview::View&view,double zscale,const nativefx::Math&math,Sink&sink,int width,int height,bool format){
+ const double sx=double(width)/view.width,sy=double(height)/view.height;
+ for(const auto&d:draws){const int rx=d.pixels?nativefx::chop(d.radius):nativefx::chop(((d.truncate?std::trunc(d.radius):double(d.radius))+.5)/math.rootWide(2.)*60.),ry=rx/2;
+  if(rx<0||rx>8192)continue;const int cx=int((int64_t(d.point.x)-d.point.y)*30/256)-view.cameraX,cy=int((int64_t(d.point.x)+d.point.y)*15/256)-screenHeight(d.point.z,zscale)-view.cameraY;
+  if(cx+rx<=0||cx-rx>=view.width||cy+ry<=0||cy-ry>=view.height)continue;
+  const uint32_t rgb=d.fade?interpolate(d.color,0,50):d.color;
+  for(int inset=0;inset<2;++inset){std::vector<nativefx::LinePixel>pixels;nativeEllipse(cx,cy,rx-inset,ry-inset,view.width,view.height,[&](auto p){pixels.push_back(p);});sink.nativePixels(pixels,rgb,4,255,format);}
+  if(!d.rays||!rx||!ry)continue;
+  constexpr float strengths[4]={.05f,.2f,.4f,1.f};
+  for(unsigned n=0;n<4;++n){double angle=double(int32_t(uint32_t(view.frame)+n))*.005;angle-=nativefx::chop(angle*.15915494309189535)*6.2831853071795864769;int ex=0,ey=0;
+   if(std::abs(angle-1.5707963267948966)<.001)ey=-ry;
+   else if(std::abs(angle-4.71238898038469)<.001)ey=ry;
+   else{const double cosine=math.cosine(angle),tangent=cosine?math.sine(angle)/cosine:1e30;double x=math.rootWide(1./(1./(double(rx)*rx)+tangent*tangent/(double(ry)*ry))),y=math.rootWide((1.-x*x/(double(rx)*rx))*ry*ry);if(angle>1.5707963267948966&&angle<4.71238898038469)x=-x;if(angle<3.141592653589793)y=-y;ex=nativefx::chop(x);ey=nativefx::chop(y);}
+   sink.nativeAA({{cx*sx,cy*sy}},{{(cx+ex)*sx,(cy+ey)*sy}},-500,-500,d.color,strengths[n],format,&math);
+  }
+ }
 }
 template<class Painter>void ellipse(Painter&p,int cx,int cy,int rx,int ry,uint32_t color){
  if(rx<0||ry<0||rx>8192||ry>8192)return;auto emit=[&](int x,int y){for(int sx:{-1,1})for(int sy:{-1,1})p.fill({cx+sx*x,cy+sy*y,1,1},color);};

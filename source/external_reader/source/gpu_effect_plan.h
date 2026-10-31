@@ -2,6 +2,7 @@
 #include "world_effects.h"
 #include "native_scene_extras.h"
 #include "native_packed_color.h"
+#include "native_bolt_geometry.h"
 #include <array>
 #include <memory>
 namespace external { namespace gpueffects {
@@ -86,8 +87,13 @@ public:
  void nativeLine(std::array<double,2>a,std::array<double,2>b,int za,int zb,uint32_t rgb,unsigned mode,unsigned strength,bool format,const nativefx::Math*math){
   double sx=v_.pixelsW/v_.width,sy=v_.pixelsH/v_.height;std::vector<nativefx::LinePixel>pixels;
   if(!nativefx::line({{int(a[0]/sx),int(a[1]/sy)}},{{int(b[0]/sx),int(b[1]/sy)}},za,zb,int(std::ceil(v_.width)),int(std::ceil(v_.height)),math,[&](auto p){pixels.push_back(p);})){plan_->valid=false;return;}if(pixels.empty())return;
+  nativePixels(pixels,rgb,mode,strength,format);
+ }
+ void nativePixels(const std::vector<nativefx::LinePixel>&pixels,uint32_t rgb,unsigned mode,unsigned strength,bool format){
+  if(pixels.empty())return;const double sx=v_.pixelsW/v_.width,sy=v_.pixelsH/v_.height;
   int top=pixels.front().y,bottom=top,left=pixels.front().x,right=left;for(auto p:pixels){top=std::min(top,p.y);bottom=std::max(bottom,p.y);left=std::min(left,p.x);right=std::max(right,p.x);}int rows=bottom-top+1;
   std::vector<std::vector<std::array<uint32_t,2>>>runs(size_t(rows),std::vector<std::array<uint32_t,2>>{});for(auto p:pixels)runs[size_t(p.y-top)].push_back({{uint32_t(p.x),p.z}});
+  for(auto&row:runs)std::stable_sort(row.begin(),row.end(),[](auto a,auto b){return int32_t(a[0])<int32_t(b[0]);});
   std::vector<uint32_t>packed(size_t(rows)*2);for(int y=0;y<rows;++y){packed[size_t(y)*2]=uint32_t(packed.size());packed[size_t(y)*2+1]=uint32_t(runs[y].size());for(auto op:runs[y])packed.insert(packed.end(),op.begin(),op.end());}
   auto bytes=std::make_shared<std::vector<uint8_t>>(packed.size()*4);std::memcpy(bytes->data(),packed.data(),bytes->size());Command c;c.words[0]=NativeLine;c.words[1]=rgb;c.words[8]=uint32_t(top);c.words[9]=uint32_t(rows);c.words[10]=bits(float(sx));c.words[11]=bits(float(sy));c.words[12]=mode;c.words[13]=strength;c.words[14]=format;c.words[15]=uint32_t(pixels.front().gateX);c.indices=bytes;
   if(bounds(c,left*sx,top*sy,(right+1)*sx,(bottom+1)*sy))append(std::move(c));
@@ -159,7 +165,7 @@ public:
   if(!bounds(c,std::min(ax,bx)-radius,std::min(ay,by)-radius,std::max(ax,bx)+radius+1,std::max(ay,by)+radius+1))return;
   c.words[8]=uint32_t(ax);c.words[9]=uint32_t(ay);c.words[10]=uint32_t(bx);c.words[11]=uint32_t(by);c.words[13]=radius;append(std::move(c));
  }
- void bolts(const std::vector<nativefeedback::Bolt>&list,int frame){flush();for(const auto&e:list){auto a=v_.project(e.source),b=v_.project(e.target);double scale=std::min(v_.pixelsW/v_.width,v_.pixelsH/v_.height),margin=8*scale+8;if(std::max(a[0],b[0])<-margin||std::min(a[0],b[0])>v_.pixelsW+margin||std::max(a[1],b[1])<-margin||std::min(a[1],b[1])>v_.pixelsH+margin)continue;nativefeedback::bolt(*this,a[0],a[1],b[0],b[1],e.seed^uint32_t(frame),e.alternate,scale);}flush();}
+ void bolts(const std::vector<nativefeedback::Bolt>&list,int){flush();boltgeometry::paint(list,*this,v_);flush();}
  std::shared_ptr<const Plan> finish(){flush();if(plan_->valid)scheduleWaves(*plan_);return plan_;}
 };
 }}

@@ -93,6 +93,13 @@ public:
   nativefx::line({{int(a[0]/sx),int(a[1]/sy)}},{{int(b[0]/sx),int(b[1]/sy)}},za,zb,int(std::ceil(v_.width)),int(std::ceil(v_.height)),math,[&](auto op){int l=std::max(0,int(std::ceil(op.x*sx-.5))),r=std::min(v_.pixelsW,int(std::ceil((op.x+1)*sx-.5))),t=std::max(0,int(std::ceil(op.y*sy-.5))),bottom=std::min(v_.pixelsH,int(std::ceil((op.y+1)*sy-.5)));
    for(int y=t;y<bottom;++y)for(int x=l;x<r;++x){size_t at=size_t(y)*v_.pixelsW+x;if(op.z>=zAt(x,y))continue;int gate=mode==1?int(std::floor((op.gateX+.5)*sx)):x;unsigned a=aAt(gate,y);pixels_[at]=nativefx::lineColor(pixels_[at],rgb,a,mode,strength,format);}
   });}
+ // Mode4 is an opaque UI outline, deliberately independent of Z/A.
+ void nativePixels(const std::vector<nativefx::LinePixel>&ops,uint32_t rgb,unsigned mode,unsigned strength,bool format){
+  const double sx=v_.pixelsW/v_.width,sy=v_.pixelsH/v_.height;
+  for(auto op:ops){int l=std::max(0,int(std::ceil(op.x*sx-.5))),r=std::min(v_.pixelsW,int(std::ceil((op.x+1)*sx-.5))),t=std::max(0,int(std::ceil(op.y*sy-.5))),b=std::min(v_.pixelsH,int(std::ceil((op.y+1)*sy-.5)));
+   for(int y=t;y<b;++y)for(int x=l;x<r;++x){auto&dst=pixels_[size_t(y)*v_.pixelsW+x];if(mode==4)dst=nativefx::lineColor(dst,rgb,127,2,255,format);else if(op.z<zAt(x,y))dst=nativefx::lineColor(dst,rgb,aAt(x,y),mode,strength,format);}
+  }
+ }
  void nativeAA(std::array<double,2>a,std::array<double,2>b,int za,int zb,uint32_t rgb,float intensity,bool format,const nativefx::Math*math){double sx=v_.pixelsW/v_.width,sy=v_.pixelsH/v_.height;
   nativefx::antialiased({{int(a[0]/sx),int(a[1]/sy)}},{{int(b[0]/sx),int(b[1]/sy)}},za,zb,int(std::ceil(v_.width)),int(std::ceil(v_.height)),intensity,math,[&](const nativefx::AAPair&op){std::array<std::array<int,2>,2>q{{op.primary,op.neighbor}},at{};std::array<uint32_t,2>old{},next{};
    for(unsigned n=0;n<2;++n){at[n]={{int(std::floor((q[n][0]+.5)*sx)),int(std::floor((q[n][1]+.5)*sy))}};auto p=at[n];old[n]=p[0]>=0&&p[1]>=0&&p[0]<v_.pixelsW&&p[1]<v_.pixelsH?pixels_[size_t(p[1])*v_.pixelsW+p[0]]:0xff000000u;}

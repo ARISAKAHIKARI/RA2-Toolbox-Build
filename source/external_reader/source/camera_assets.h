@@ -326,18 +326,19 @@ struct ActorArt {
  uint32_t pointer=0,type=0;float turretOffset=0;bool voxel=false;int kind=-1,fw=1,fh=1,moveX=0,moveY=0,drawY=0,zAdjust=0;bool flat=false,shadow=true;
  std::shared_ptr<const external::voxel::Image> depthMask;bool depthMaskBiased=false;
  std::array<BuildingPart,external::buildings::PartCount> buildingParts;
+ struct Gun {std::shared_ptr<const voxel::Model>geometry;gpuvoxel::PacketCache::Geometry identity;int frames=1;};std::array<Gun,2>guns;int gunX=0,gunY=0,gunZ=0;float gunOffset=0;bool hasGuns()const{return bool(guns[0].geometry)||bool(guns[1].geometry);}
 };
-static bool liveVoxel(const ActorArt&a){return a.voxel;}
- bool gpuVoxel(const ActorArt&art,double angle,double turret,double pitch,bool projectile,int scale,const voxelposture::State*posture,bool shadow,voxel::Image&out,int bodyFrame=0,int turretFrame=0){
+static bool liveVoxel(const ActorArt&a){return a.voxel||a.hasGuns();}
+ bool gpuVoxel(const ActorArt&art,double angle,double turret,double pitch,bool projectile,int scale,const voxelposture::State*posture,bool shadow,voxel::Image&out,int bodyFrame=0,int turretFrame=0,double gunPitch=0,std::array<float,2>recoil={}){
   if(!shadow)gpuVplSnapshot();
   const bool indexed=!shadow&&gpuVplSnapshot_&&std::all_of(art.geometry().faces.begin(),art.geometry().faces.end(),[](const auto&f){return f.hasNormal||f.normalIndex>=253;});
   std::array<uint32_t,256> neutral{};neutral.fill(0xffffffffu);const auto&colors=(indexed||shadow)?neutral:art.colors;
-  auto key=gpuvoxel::PacketCache::key(art.geometryIdentity,shadow?std::shared_ptr<const gpuvoxel::PacketCache::VplSnapshot>{}:gpuVplSnapshot_,colors,angle,turret,pitch,art.turretOffset,scale,projectile,shadow,posture,bodyFrame,turretFrame);
+  auto key=gpuvoxel::PacketCache::key(art.geometryIdentity,shadow?std::shared_ptr<const gpuvoxel::PacketCache::VplSnapshot>{}:gpuVplSnapshot_,colors,angle,turret,pitch,art.turretOffset,scale,projectile,shadow,posture,bodyFrame,turretFrame,gunPitch,recoil);
   auto packet=gpuPackets_.find(key);
   if(!packet){auto next=std::make_shared<gpuvoxel::Prepared>();
    if(shadow){voxel::Model flattened;if(bodyFrame||turretFrame){if(!voxel::animated(art.geometry(),bodyFrame,turretFrame,flattened))return false;}else flattened=art.geometry();for(auto&face:flattened.faces)for(auto&p:face.p){if(art.kind==voxelanims::Kind&&posture)p=voxel::posturePoint(posture->ramp,p);p.z=0;}
     if(!gpuvoxel::prepare(flattened,angle,colors,*next,turret,art.turretOffset,nullptr,255,0,false,scale,art.kind==voxelanims::Kind?nullptr:posture))return false;
-   }else{voxel::Model animated;const voxel::Model*model=&art.geometry();if(bodyFrame||turretFrame){if(!voxel::animated(art.geometry(),bodyFrame,turretFrame,animated))return false;model=&animated;}if(!gpuvoxel::prepare(*model,angle,colors,*next,turret,art.turretOffset,&voxelLight,255,pitch,projectile,scale,posture))return false;}
+   }else{voxel::Model animated;const voxel::Model*model=&art.geometry();if(bodyFrame||turretFrame){if(!voxel::animated(art.geometry(),bodyFrame,turretFrame,animated))return false;model=&animated;}if(!gpuvoxel::prepare(*model,angle,colors,*next,turret,art.turretOffset,&voxelLight,255,pitch,projectile,scale,posture,gunPitch,recoil))return false;}
    packet=next;gpuPackets_.insert(std::move(key),packet);
   }
   out={};out.rasterScale=packet->rasterScale;out.width=packet->width;out.height=packet->height;out.x=packet->x;out.y=packet->y;out.depthBottom=packet->depthBottom;out.objectPalette=true;out.gpuRaster=std::move(packet);
@@ -348,7 +349,7 @@ static bool liveVoxel(const ActorArt&a){return a.voxel;}
    }
   }return true;
  }
-static size_t cost(const ActorArt&a){if(a.capturedBytes)return a.capturedBytes;if(a.sharedGeometry)return sizeof(ActorArt);size_t n=a.shape.size()+a.model.faces.size()*sizeof(external::voxel::Face);std::set<const voxel::Motion*>seen;for(const auto&face:a.model.faces)if(face.motion&&seen.insert(face.motion.get()).second)n+=face.motion->changes.capacity()*48;for(const auto&part:a.buildingParts)n+=part.shape.size();a.capturedBytes=std::max<size_t>(1,n);return n;}
+static size_t cost(const ActorArt&a){if(a.capturedBytes)return a.capturedBytes;if(a.sharedGeometry)return sizeof(ActorArt);size_t n=a.shape.size()+a.model.faces.size()*sizeof(external::voxel::Face);std::set<const voxel::Motion*>seen;for(const auto&face:a.model.faces)if(face.motion&&seen.insert(face.motion.get()).second)n+=face.motion->changes.capacity()*48;for(const auto&part:a.buildingParts)n+=part.shape.size();for(const auto&gun:a.guns)if(gun.geometry){n+=gun.geometry->faces.size()*sizeof(voxel::Face);for(const auto&face:gun.geometry->faces)if(face.motion&&seen.insert(face.motion.get()).second)n+=face.motion->changes.capacity()*48;}a.capturedBytes=std::max<size_t>(1,n);return n;}
 static int integer(const std::string&s,int fallback=0){if(s.empty())return fallback;char*end=nullptr;long n=strtol(s.c_str(),&end,10);return end!=s.c_str()&&!*end?int(std::clamp(n,-8192l,8192l)):fallback;}
 void captureBuildingParts(uint32_t type,ActorArt&art){
  for(int i=0;i<external::buildings::PartCount;++i){auto&part=art.buildingParts[i];part.pointer=word(type+external::buildings::partOffsets[i]);if(part.pointer<0x10000){part.pointer=0;continue;}
@@ -469,9 +470,9 @@ bool captureActor(uint32_t p,uint32_t type,uint32_t id,ActorArt&out,const extern
   external::voxel::Model model;std::vector<uint8_t> v,h;
   bool ok=!stem.empty()&&files.load(stem+suffix+".VXL",v)&&files.load(stem+suffix+".HVA",h)&&external::assets::vxl(v,h,model,0,float(sx),float(sy));
   if(!ok)ok=external::voxel::capturePart(read,word(at),word(at+4),model,0,float(sx),float(sy));
-  if(ok){for(auto&f:model.faces)f.turret=turret;next.model.faces.insert(next.model.faces.end(),model.faces.begin(),model.faces.end());}return ok;
+  if(ok){for(auto&f:model.faces){f.turret=turret;f.part=turret?(suffix=="BARL"?2:1):0;}next.model.faces.insert(next.model.faces.end(),model.faces.begin(),model.faces.end());}return ok;
  };
- if(part("",type+0xB0,false)){
+ if(next.kind!=3&&part("",type+0xB0,false)){
   if(!spritePalette(type,"",false,owner,next.colors))return false;next.paletteLive=lastPaletteLive_;
   next.voxel=true;int offset=int32_t(word(type+0x720));if(offset<-4096||offset>4096)return false;next.turretOffset=float(offset)*12/256*float(sx);
   int variant=-1;if(int(word(type+0x808))>0&&!uint8_t(word(type+0xCD5)))variant=int(word(p+0x124));
@@ -479,7 +480,7 @@ bool captureActor(uint32_t p,uint32_t type,uint32_t id,ActorArt&out,const extern
    // Native 73B90E and 70DCF0 select ExtraBarrels/ExtraTurrets by
    // CurrentTurretNumber (+124), not CurrentWeaponNumber (+138).
    for(uint32_t at:{type+0xC8+uint32_t(variant)*8,type+0x158+uint32_t(variant)*8}){
-    external::voxel::Model component;if(external::voxel::capturePart(read,word(at),word(at+4),component,0,float(sx),float(sy))){for(auto&f:component.faces)f.turret=true;next.model.faces.insert(next.model.faces.end(),component.faces.begin(),component.faces.end());}
+    external::voxel::Model component;if(external::voxel::capturePart(read,word(at),word(at+4),component,0,float(sx),float(sy))){for(auto&f:component.faces){f.turret=true;f.part=at<type+0x158?1:2;}next.model.faces.insert(next.model.faces.end(),component.faces.begin(),component.faces.end());}
    }
   }else{part("TUR",type+0xB8,true);part("BARL",type+0xC0,true);}
  }else{
@@ -494,7 +495,17 @@ bool captureActor(uint32_t p,uint32_t type,uint32_t id,ActorArt&out,const extern
   if(terrainPalette?!palette(true,next.colors):!spritePalette(type,filename,false,owner,next.colors))return false;next.paletteFilename=filename;next.paletteLive=lastPaletteLive_;
   if(!loaded){external::voxel::Image check;if(!external::voxel::sprite(read,next.pointer,next.colors,check)){failure="sprite-not-found/unloaded:"+(filename.empty()?stem:filename);return false;}}
  }
- if(next.kind==3)captureBuildingParts(type,next);
+ if(next.kind==3){captureBuildingParts(type,next);
+  if(game.template get<uint8_t>(type+0x16C5)){
+   next.gunX=game.template get<int>(type+0x11E0);next.gunY=game.template get<int>(type+0x11E4);next.gunZ=game.template get<int>(type+0x11E8);next.gunOffset=float(int32_t(word(type+0x720))/8);
+   if(std::abs(int64_t(next.gunX))>8192||std::abs(int64_t(next.gunY))>8192||std::abs(int64_t(next.gunZ))>8192||std::abs(next.gunOffset)>4096)return false;
+   for(unsigned n=0;n<2;++n){uint32_t slot=type+0xB8+n*8,vxl=word(slot),hva=word(slot+4);if(vxl<0x10000||hva<0x10000)continue;
+    voxel::Model model;if(!voxel::capturePart(read,vxl,hva,model,0,float(sx),float(sy))){failure="building-gun/live-slot";return false;}
+    const int count=game.template get<int>(hva+8,1);if(count<1||count>4096)return false;
+    for(auto&face:model.faces){face.turret=true;face.part=uint8_t(n+1);}next.guns[n]={std::make_shared<const voxel::Model>(std::move(model)),std::make_shared<const uint8_t>(0),count};
+   }
+  }
+ }
  if(word(p+0x10)!=id||word(p+0x21C)!=actualOwner||game.type(p,actualKind)!=actualType)return false;bool paletteChanged=false;if(!refreshActorPalette(next,paletteChanged))return false;if(next.voxel)next.geometryIdentity=std::make_shared<const uint8_t>(0);out=std::move(next);return true;
 }
 bool refreshActorPalette(ActorArt&art,bool&changed){
@@ -521,19 +532,21 @@ bool refreshActorPalette(ActorArt&art,bool&changed){
 // Share already drawn native materials across main/watch/map contexts. Source
 // fingerprints are computed once per immutable capture, not once per pose.
 bool renderSharedActor(const ActorArt&art,const external::visual::Pose&pose,std::shared_ptr<const external::voxel::Image>&out){
- if(art.voxel&&!voxelLightingAvailable())return false;
+ if((art.voxel||art.hasGuns())&&!voxelLightingAvailable())return false;
  bool cacheable=process_&&art.id&&(art.voxel?bool(art.geometryIdentity):!art.shape.empty());
  if(art.kind==3)for(const auto&part:art.buildingParts)if(part.pointer&&part.shape.empty())cacheable=false;
  if(cacheable&&!art.sourceKnown){auto&h=art.sourceSignature;std::set<const voxel::Motion*> motions;
-  for(const auto&f:art.geometry().faces){for(const auto&p:f.p){h.add(p.x);h.add(p.y);h.add(p.z);}h.add(f.normal.x);h.add(f.normal.y);h.add(f.normal.z);h.add(f.color);h.add(f.normalIndex);h.add(f.normalType);h.add(f.turret);h.add(f.hasNormal);h.add(f.section);if(f.motion&&motions.insert(f.motion.get()).second)for(const auto&m:f.motion->changes)for(float v:m)h.add(v);}
+  for(const auto&f:art.geometry().faces){for(const auto&p:f.p){h.add(p.x);h.add(p.y);h.add(p.z);}h.add(f.normal.x);h.add(f.normal.y);h.add(f.normal.z);h.add(f.color);h.add(f.normalIndex);h.add(f.normalType);h.add(f.turret);h.add(f.part);h.add(f.hasNormal);h.add(f.section);if(f.motion&&motions.insert(f.motion.get()).second)for(const auto&m:f.motion->changes)for(float v:m)h.add(v);}
+  for(const auto&gun:art.guns)if(gun.geometry){h.add(gun.frames);std::set<const voxel::Motion*>seen;for(const auto&f:gun.geometry->faces){for(const auto&p:f.p){h.add(p.x);h.add(p.y);h.add(p.z);}h.add(f.color);h.add(f.normalIndex);h.add(f.normalType);h.add(f.part);h.add(f.section);if(f.motion&&seen.insert(f.motion.get()).second)for(const auto&m:f.motion->changes)for(float v:m)h.add(v);}}
+  h.add(art.gunX);h.add(art.gunY);h.add(art.gunZ);h.add(art.gunOffset);
   h.bytes(art.shape.data(),art.shape.size());for(const auto&part:art.buildingParts){h.add(part.pointer);h.bytes(part.shape.data(),part.shape.size());}
   for(int v:{art.kind,art.fw,art.fh,art.moveX,art.moveY,art.drawY,art.zAdjust})h.add(v);
   h.add(art.turretOffset);h.add(art.flat);h.add(art.shadow);h.add(art.depthMaskBiased);
   if(art.depthMask){h.bytes(art.depthMask->pixels.data(),art.depthMask->pixels.size()*4);h.bytes(art.depthMask->depth.data(),art.depthMask->depth.size()*4);h.add(art.depthMask->width);h.add(art.depthMask->height);h.add(art.depthMask->x);h.add(art.depthMask->y);}
   art.sourceKnown=true;
  }
- nativeimages::Key key;if(cacheable){key.palette=art.colors;key.values={process_,match_,files.revision(),art.kind>=5&&art.kind!=voxelanims::Kind?art.object:0,art.kind>=5&&art.kind!=voxelanims::Kind?art.id:0,art.type,art.owner,art.parent,art.parentId,art.sourceSignature.a,art.sourceSignature.b,art.voxel?voxelLight.signature():0,
-  uint32_t(pose.body)|(uint64_t(pose.turret)<<8)|(uint64_t(uint32_t(pose.frame))<<16),uint32_t(pose.variant),uint32_t(pose.buildingFlags),uint32_t(pose.doorFrame),uint32_t(pose.turretFrame),uint32_t(pose.bodyFine),uint32_t(pose.turretFine),external::visual::postureSignature(pose),art.voxel?uint32_t(presentationRasterScale()):1,art.voxel?uint64_t(gpuPresentation_):0,uint64_t(art.pointer),uint32_t(pose.hvaBody)|(uint64_t(uint32_t(pose.hvaTurret))<<32)};
+ nativeimages::Key key;if(cacheable){key.palette=art.colors;key.values={process_,match_,files.revision(),art.kind>=5&&art.kind!=voxelanims::Kind?art.object:0,art.kind>=5&&art.kind!=voxelanims::Kind?art.id:0,art.type,art.owner,art.parent,art.parentId,art.sourceSignature.a,art.sourceSignature.b,(art.voxel||art.hasGuns())?voxelLight.signature():0,
+  uint32_t(pose.body)|(uint64_t(pose.turret)<<8)|(uint64_t(uint32_t(pose.frame))<<16),uint32_t(pose.variant),uint32_t(pose.buildingFlags),uint32_t(pose.doorFrame),uint32_t(pose.turretFrame),uint32_t(pose.bodyFine),uint32_t(pose.turretFine),external::visual::postureSignature(pose),(art.voxel||art.hasGuns())?uint32_t(presentationRasterScale()):1,(art.voxel||art.hasGuns())?uint64_t(gpuPresentation_):0,uint64_t(art.pointer),uint32_t(pose.hvaBody)|(uint64_t(uint32_t(pose.hvaTurret))<<32)};
   if(auto image=nativeimages::bank().get(key)){out=std::move(image);return true;}
  }
  external::voxel::Image image;if(!renderActor(art,pose,image))return false;external::camera::opaque(image);out=std::make_shared<const external::voxel::Image>(std::move(image));if(cacheable)nativeimages::bank().put(std::move(key),out);return true;
@@ -541,6 +554,8 @@ bool renderSharedActor(const ActorArt&art,const external::visual::Pose&pose,std:
 bool renderActor(const ActorArt&art,const external::visual::Pose&pose,external::voxel::Image&out){
  auto angle=external::visual::fineRadians(pose.bodyFine,pose.body),turret=external::visual::fineRadians(pose.turretFine,pose.turret);
  if(art.voxel){
+  if(!pose.gunPoseValid){failure="voxel-current-recoil-unavailable";return false;}
+  const double gunPitch=-(int(external::visual::bucket(pose.rawBarrel))-8)*(2*external::visual::Pi/32);
   const int rasterScale=presentationRasterScale();if(!rasterScale){failure="voxel-presentation-resolution-unsupported";return false;}
   if(voxelRelight_&&presentation_&&!presentationVplFresh_){failure="voxel-current-vpl-unavailable";return false;}
   if(!presentation_)vpl();bool projectile=art.kind==external::projectiles::Kind;
@@ -548,8 +563,8 @@ bool renderActor(const ActorArt&art,const external::visual::Pose&pose,external::
   if(!pose.posture.available){failure="voxel-current-posture-unavailable";return false;}
   const int bodyFrame=pose.hvaBody,turretFrame=bodyFrame?bodyFrame:pose.hvaTurret;if(bodyFrame<0||turretFrame<0)return false;
   if(gpuPresentation_){
-   if(!gpuVoxel(art,angle,projectile?std::numeric_limits<double>::quiet_NaN():turret,projectile?turret:0,projectile,rasterScale,&pose.posture,false,out,bodyFrame,turretFrame))return false;
-  }else{voxel::Model animated;const voxel::Model*model=&art.geometry();if(bodyFrame||turretFrame){if(!voxel::animated(art.geometry(),bodyFrame,turretFrame,animated))return false;model=&animated;}if(!external::voxel::render(*model,angle,art.colors,out,projectile?std::numeric_limits<double>::quiet_NaN():turret,art.turretOffset,&voxelLight,255,projectile?turret:0,projectile,rasterScale,&pose.posture))return false;}
+   if(!gpuVoxel(art,angle,projectile?std::numeric_limits<double>::quiet_NaN():turret,projectile?turret:0,projectile,rasterScale,&pose.posture,false,out,bodyFrame,turretFrame,projectile?0:gunPitch,pose.recoil))return false;
+  }else{voxel::Model animated;const voxel::Model*model=&art.geometry();if(bodyFrame||turretFrame){if(!voxel::animated(art.geometry(),bodyFrame,turretFrame,animated))return false;model=&animated;}if(!external::voxel::render(*model,angle,art.colors,out,projectile?std::numeric_limits<double>::quiet_NaN():turret,art.turretOffset,&voxelLight,255,projectile?turret:0,projectile,rasterScale,&pose.posture,projectile?0:gunPitch,pose.recoil))return false;}
   // The model Z buffer resolves faces inside the cached voxel only. The game
   // submits that cached image through the same standing shape Z test as SHP.
   // Orthographic model depth is not in the terrain/BUILDNGZ buffer's units.
@@ -622,6 +637,24 @@ bool renderActor(const ActorArt&art,const external::visual::Pose&pose,external::
   // only the standing body uses BUILDNGZ. Their own state supplies the frame.
   if(pose.buildingFlags&external::buildings::Constructed)component(external::buildings::Bib,pose.frame,1,true);
   if(unloading){component(roof?external::buildings::UnderRoofDoor:external::buildings::UnderDoor,(pose.buildingFlags&external::buildings::Damaged)?1:0,0,true);component(external::buildings::Door,pose.doorFrame,5,false);}
+ }
+ if(art.kind==3&&art.hasGuns()&&pose.buildingGunVisible){
+  if(!pose.gunPoseValid){failure="building-gun/current-recoil-unavailable";return false;}
+  if(voxelRelight_&&presentation_&&!presentationVplFresh_){failure="building-gun/current-vpl-unavailable";return false;}if(!presentation_)vpl();
+  const int scale=presentationRasterScale();if(!scale)return false;
+  const double yaw=external::visual::radians(external::visual::bucket(pose.rawBody));
+  const double barrelPitch=-(int(external::visual::bucket(pose.rawBarrel))-8)*(2*external::visual::Pi/32);
+  const unsigned quadrant=(((unsigned(pose.rawBody)>>13)+1)>>1)&3;const bool turretFirst=quadrant==1||quadrant==2;
+  for(unsigned n:{turretFirst?0u:1u,turretFirst?1u:0u}){const auto&gun=art.guns[n];if(!gun.geometry)continue;
+   int hvaFrame=(n==1&&art.guns[0].geometry)?0:pose.gunFrame%gun.frames;if(hvaFrame<0){failure="building-gun/negative-hva-frame";return false;}
+   ActorArt component;component.kind=3;component.type=art.type;component.colors=art.colors;component.voxel=true;component.sharedGeometry=gun.geometry;component.geometryIdentity=gun.identity;component.turretOffset=art.guns[0].geometry?art.gunOffset:0;
+   const auto recoil=art.guns[0].geometry?pose.recoil:std::array<float,2>{};external::voxel::Image image;bool drawn=false;
+   if(gpuPresentation_)drawn=gpuVoxel(component,yaw,yaw,0,false,scale,nullptr,false,image,0,hvaFrame,barrelPitch,recoil);
+   else{voxel::Model animated;const auto*model=gun.geometry.get();if(hvaFrame){if(!voxel::animated(*model,0,hvaFrame,animated))return false;model=&animated;}drawn=voxel::render(*model,yaw,art.colors,image,yaw,component.turretOffset,&voxelLight,255,0,false,scale,nullptr,barrelPitch,recoil);}
+   if(!drawn){failure="building-gun/raster";return false;}
+   image.x+=art.gunX*image.rasterScale;image.y+=(art.gunY+art.drawY)*image.rasterScale;image.objectPalette=true;image.writeDepth=false;image.nativeDepth.enabled=true;image.nativeDepth.voxel=true;image.nativeDepth.gradient=nativesurface::Gradient::Vertical;image.nativeDepth.adjust=art.gunZ+2;
+   std::vector<float>().swap(image.depth);out.attachments.push_back(std::move(image));
+  }
  }
  if((art.kind==5||art.kind==external::particles::Kind)&&pose.variant>0){out.nativeBlend=uint8_t(unsigned(pose.variant)&3);out.blendSource=std::make_shared<const std::vector<uint32_t>>(out.pixels);unsigned alpha=external::animations::opacity(pose.variant);for(auto&pixel:out.pixels){uint32_t result=0;for(int shift:{0,8,16,24})result|=((((pixel>>shift)&255)*alpha+127)/255)<<shift;pixel=result;}out.intrinsicAlpha=true;}
  out.incomplete=!complete;return true;

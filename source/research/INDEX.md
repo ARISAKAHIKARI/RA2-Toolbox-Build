@@ -6,6 +6,7 @@
 
 | 主题 | 新笔记 | 关键词 |
 | --- | --- | --- |
+| Hotfix27建造提示框、54格/供电期限与GPU范围/电弧/建筑混合部件 | [计时/ABI/实施与边界](2026-10-31-build-time-and-render-hotfix27.md) · [证据](evidence/build-time-render-hotfix27.json) | CCToolTip7F74D8 TimeToBuild6F47A0 Factory54 rate255 LowPower4CA6E0 DesiredFPSA8B558 radial pairedAA EBolt phase building B8 C0 recoil3D8 3F8 |
 | Hotfix26原生Z/A、跨页位移隐形、完整色阶与光束/临时灯光 | [原生字段/实施记录](2026-10-31-native-surface-hotfix26.md) | unsigned16 signed candidate ABuffer AlphaShape word-offset Foot ZFudge native Wave RadBeam2 Spotlight90 FullColorData Laser AA transient light |
 | Hotfix25共同帧输入、来源历史、协作快照与协议81 | [输入/执行/ABI](2026-10-31-coherent-compute-frame-hotfix25.md) | computeFrameSeq latest source history 16 consumer bits cooperativeInputFrame protocol81 |
 | Hotfix25卸载顺序、特殊pips、范围提示、CnCNet隐形准入与Phobos指示器 | [实施/字段/差异](2026-10-31-render-counters-hotfix25.md) · [原生证据](evidence/render-hotfix25-native.json) · [固定上游](evidence/render-hotfix25-upstream.json) | tether Unload16 spawn garrison absorber mind-control radial 6ED harvester active power delta |

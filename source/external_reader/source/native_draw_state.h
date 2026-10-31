@@ -55,7 +55,7 @@ template<class Read>State capture(Read read,uint32_t p,uint32_t type,int kind,ui
  out.material.nativeZ=true;out.material.nativeZAdjust=-screenHeight(g.template get<int>(p+0xA4),projectionZScale(read))-2;
  const bool voxel=g.template get<uint8_t>(out.type+0x236)!=0;
  if(kind>=0&&kind<=2){nativefoot::Sample<Read>sample(read,p,frame);auto depth=sample.capture(p,type,kind,frame,voxel);out.material.nativeZAdjust=depth.adjust;out.material.bridgeSplit=depth.split;out.material.shpFlat=depth.shpFlat;}
- out.material.displace=character==4&&voxel;
+ out.material.displace=character==4&&(voxel||(kind==3&&g.template get<uint8_t>(type+0x16C5)));
  if(out.material.displace){float raw=g.template get<float>(p+0x24C);int32_t chopped=std::isfinite(raw)&&double(raw)>=-2147483648.&&double(raw)<2147483648.?int32_t(raw):int32_t(0x80000000u);
   out.material.cloakWords=int32_t(g.template get<uint32_t>(p+0x10)+uint32_t(chopped))%400;}
  std::array<int,6>format{};if(read(0x8A0DD0,format.data(),sizeof format))out.material.rgb555=format==std::array<int,6>{{10,3,0,3,5,3}};

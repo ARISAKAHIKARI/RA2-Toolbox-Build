@@ -22,7 +22,7 @@
 #include "burst_compute.h"
 #include "dodge_compute.h"
 namespace assist {
-constexpr uint32_t Magic=0x41533130, Version=81;
+constexpr uint32_t Magic=0x41533130, Version=82;
 // Both binaries derive the namespace from the protocol version. Do not maintain
 // a separate literal in the host: a valid ABI with a different name never connects.
 struct MappingPrefixValue {
@@ -207,6 +207,7 @@ struct Shared {
  uint32_t nativeMegaGatewayAccepted=0,nativeMegaGatewaySkipped=0;
  volatile uint32_t controlCommandOwner=0;volatile int controlCommandOwnerStatus=0;
  uint32_t controlCommandOwnerAccepted=0,controlCommandOwnerRejected=0;
+ volatile uint32_t buildTimeTooltip=0;volatile int32_t buildTimeTooltipStatus=0; // native sidebar box, local UI only
  volatile uint32_t aircraftAllocationPolicy=0; // 0 quotas, 1 five-cell damage, 2 single-target damage/deselect
 
 };

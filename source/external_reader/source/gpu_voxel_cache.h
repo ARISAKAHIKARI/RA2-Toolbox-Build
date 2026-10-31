@@ -12,7 +12,7 @@ public:
  struct Key {
   Geometry geometry;std::shared_ptr<const VplSnapshot> vpl;
   std::array<uint32_t,256> palette{};
-  std::array<uint32_t,29> parameters{};
+  std::array<uint32_t,33> parameters{};
  };
 private:
  struct Entry {Key key;std::shared_ptr<const Prepared> packet;uint64_t used=0;size_t bytes=0;};
@@ -46,13 +46,13 @@ public:
   if(bytes_+cost+tableCost()>budget_)return;bytes_+=cost+tableCost();if(key.vpl)++tables_[key.vpl];
   const auto bucket=hash(key);entries_.push_back({std::move(key),std::move(packet),++serial_,cost});index_.emplace(bucket,std::prev(entries_.end()));
  }
- static Key key(Geometry geometry,std::shared_ptr<const VplSnapshot>vpl,const std::array<uint32_t,256>&palette,double angle,double turret,double pitch,float offset,int scale,bool projectile,bool shadow,const voxelposture::State*posture,int bodyFrame=0,int turretFrame=0){
+ static Key key(Geometry geometry,std::shared_ptr<const VplSnapshot>vpl,const std::array<uint32_t,256>&palette,double angle,double turret,double pitch,float offset,int scale,bool projectile,bool shadow,const voxelposture::State*posture,int bodyFrame=0,int turretFrame=0,double gunPitch=0,std::array<float,2>recoil={}){
   Key out;out.geometry=std::move(geometry);out.vpl=std::move(vpl);out.palette=palette;size_t next=0;
   auto number=[&](const auto&value){static_assert(sizeof(value)==4||sizeof(value)==8,"packed GPU pose scalar");std::memcpy(out.parameters.data()+next,&value,sizeof value);next+=sizeof(value)/4;};
   number(angle);number(turret);number(pitch);number(offset);number(uint32_t(scale));number(uint32_t(255));number(uint32_t(projectile)|(uint32_t(shadow)<<1)|(posture?4u:0u));
   const auto state=posture?*posture:voxelposture::State{};
   for(float value:state.ramp)number(value);for(float value:{state.sideways,state.forwards,state.scaleX,state.scaleY})number(value);number(uint32_t(state.active)|(uint32_t(state.available)<<1));
-  number(uint32_t(bodyFrame));number(uint32_t(turretFrame));return out;
+  number(uint32_t(bodyFrame));number(uint32_t(turretFrame));number(gunPitch);number(recoil[0]);number(recoil[1]);return out;
  }
 };
 }}

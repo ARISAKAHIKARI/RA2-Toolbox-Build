@@ -21,21 +21,22 @@ struct Params {
  uint32_t colorOffset=0,indexOffset=0,width=0,height=0;
 };
 static_assert(sizeof(Params)==32,"GPU voxel push constants");
-inline bool prepare(const Model&model,double angle,const std::array<uint32_t,256>&pal,Prepared&out,double turretAngle=std::numeric_limits<double>::quiet_NaN(),float turretOffset=0,const Vpl*vpl=nullptr,unsigned alpha=124,double pitch=0,bool projectile=false,int rasterScale=1,const voxelposture::State*posture=nullptr){
+inline bool prepare(const Model&model,double angle,const std::array<uint32_t,256>&pal,Prepared&out,double turretAngle=std::numeric_limits<double>::quiet_NaN(),float turretOffset=0,const Vpl*vpl=nullptr,unsigned alpha=124,double pitch=0,bool projectile=false,int rasterScale=1,const voxelposture::State*posture=nullptr,double gunPitch=0,std::array<float,2>recoil={}){
  out={};if(rasterScale<1||rasterScale>resolutionsampling::MaxRasterScale||model.faces.empty()||model.faces.size()>MaxFaces||!std::isfinite(angle)||(posture&&!posture->available))return false;
  const bool tilted=posture&&posture->active&&!projectile;
  const auto geometryWorld=tilted?voxelposture::world(*posture,angle,false):voxelposture::identity();
  const auto lightWorld=tilted?voxelposture::world(*posture,angle,true):voxelposture::identity();
  const auto bodyLight=tilted?postureLight(angle,lightWorld):nativeVoxelLight(angle,pitch),turretLight=std::isfinite(turretAngle)?(tilted?postureLight(turretAngle,lightWorld):nativeVoxelLight(turretAngle,pitch)):bodyLight;
  const auto worldLight=nativeVoxelWorldLight();
- std::array<std::array<uint8_t,256>,5> bodyPages,turretPages;std::array<bool,5> bodyPagesReady{},turretPagesReady{};
+ const auto barrelLight=tilted?postureLight(std::isfinite(turretAngle)?turretAngle:angle,lightWorld,gunPitch):nativeVoxelLight(std::isfinite(turretAngle)?turretAngle:angle,gunPitch);
+ std::array<std::array<uint8_t,256>,5> bodyPages,turretPages,barrelPages;std::array<bool,5> bodyPagesReady{},turretPagesReady{},barrelPagesReady{};
  auto pageFor=[&](const Face&face)->unsigned{
   if(face.normalIndex>=253||face.normalType<1||face.normalType>4)return 16;
-  auto&pages=(face.turret?turretPages:bodyPages)[face.normalType];auto&ready=(face.turret?turretPagesReady:bodyPagesReady)[face.normalType];
-  if(!ready){pages.fill(16);std::array<float,3> raw{};for(unsigned i=0;i<253&&normalVector(face.normalType,i,raw);++i)pages[i]=uint8_t(projectile?nativeProjectilePage(raw,face.turret?turretLight:bodyLight):nativeVoxelPage(raw,face.turret?turretLight:bodyLight));ready=true;}
+  auto&pages=(face.part==2?barrelPages:face.turret?turretPages:bodyPages)[face.normalType];auto&ready=(face.part==2?barrelPagesReady:face.turret?turretPagesReady:bodyPagesReady)[face.normalType];
+  if(!ready){pages.fill(16);std::array<float,3> raw{};for(unsigned i=0;i<253&&normalVector(face.normalType,i,raw);++i)pages[i]=uint8_t(projectile?nativeProjectilePage(raw,face.part==2?barrelLight:face.turret?turretLight:bodyLight):nativeVoxelPage(raw,face.part==2?barrelLight:face.turret?turretLight:bodyLight));ready=true;}
   return pages[face.normalIndex];
  };
- const PoseTransform transform(angle,turretAngle,turretOffset,pitch);
+ const PoseTransform transform(angle,turretAngle,turretOffset,pitch,gunPitch,recoil);
  auto worldPoint=[&](const Face&f,Vec p){auto point=transform.point(f,p);return tilted?posturePoint(geometryWorld,point):point;};
  std::vector<ProjectedFace> projected;float minX=0,minY=0,maxX=0,maxY=0;
  if(!projectModel(model,worldPoint,projected,minX,minY,maxX,maxY))return false;
@@ -92,9 +93,9 @@ inline bool rasterReference(const Prepared&input,Image&out){
 }
 inline uint32_t orderedDepth(float z){if(z==0)z=0;uint32_t bits=0;std::memcpy(&bits,&z,4);return (bits&0x80000000u)?~bits:(bits^0x80000000u);}
 inline float decodedDepth(uint32_t key){uint32_t bits=(key&0x80000000u)?(key^0x80000000u):~key;float z=0;std::memcpy(&z,&bits,4);return z;}
-inline bool image(const Model&model,double angle,const std::array<uint32_t,256>&pal,Image&out,double turretAngle=std::numeric_limits<double>::quiet_NaN(),float turretOffset=0,const Vpl*vpl=nullptr,unsigned alpha=124,double pitch=0,bool projectile=false,int rasterScale=1,const voxelposture::State*posture=nullptr){
+inline bool image(const Model&model,double angle,const std::array<uint32_t,256>&pal,Image&out,double turretAngle=std::numeric_limits<double>::quiet_NaN(),float turretOffset=0,const Vpl*vpl=nullptr,unsigned alpha=124,double pitch=0,bool projectile=false,int rasterScale=1,const voxelposture::State*posture=nullptr,double gunPitch=0,std::array<float,2>recoil={}){
  auto prepared=std::make_shared<Prepared>();
- if(!prepare(model,angle,pal,*prepared,turretAngle,turretOffset,vpl,alpha,pitch,projectile,rasterScale,posture))return false;
+ if(!prepare(model,angle,pal,*prepared,turretAngle,turretOffset,vpl,alpha,pitch,projectile,rasterScale,posture,gunPitch,recoil))return false;
  out={};out.rasterScale=prepared->rasterScale;out.width=prepared->width;out.height=prepared->height;out.x=prepared->x;out.y=prepared->y;out.depthBottom=prepared->depthBottom;out.objectPalette=true;out.gpuRaster=std::move(prepared);return true;
 }
 // Same-frame CPU fallback. Keep caller metadata (including standing-Z,

@@ -11,6 +11,7 @@
 #include "radar_decoration.h"
 #include "render_profile.h"
 #include "material_motion.h"
+#include "native_radial_indicators.h"
 #include "scene_order.h"
 #include "../../shared/source/frame_pool.h"
 #include <map>
@@ -48,6 +49,7 @@ class Pipeline {
  camera::ViewportCanvas canvas_;
  radar::shroudmask::Live visibility_;
  radar::shroudmask::Snapshot visible_;
+ std::shared_ptr<const nativefx::Math> radialMath_;
  gpushroud::Builder masks_;
  std::shared_ptr<const gpushroud::Plan> mask_;
  std::shared_ptr<const std::vector<vulkancompute::TileJob>> tiles_;
@@ -59,8 +61,8 @@ class Pipeline {
  asyncwork::FramePool<radar::Scene> outputs_;
 public:
  const radar::Frame&presentedState()const{return presented_;}
- void reset(){motion_.reset();presented_={};chrono_.reset();canvas_.reset();visibility_.reset();masks_.reset();mask_.reset();tiles_.reset();base_.reset();world_.reset();visible_={};view_={};width_=height_=0;reuse_.reset();outputs_.clear();}
- template<class Read>std::shared_ptr<const radar::Scene> draw(std::shared_ptr<const Snapshot>world,const mainview::View&inputView,int width,int height,Read read,const radar::Frame*latest=nullptr){
+ void reset(){motion_.reset();presented_={};chrono_.reset();canvas_.reset();visibility_.reset();masks_.reset();mask_.reset();tiles_.reset();base_.reset();world_.reset();visible_={};radialMath_.reset();view_={};width_=height_=0;reuse_.reset();outputs_.clear();}
+ template<class Read>std::shared_ptr<const radar::Scene> draw(std::shared_ptr<const Snapshot>world,const mainview::View&inputView,int width,int height,Read read,const radar::Frame*latest=nullptr,uint32_t uiTick=0){
   auto view=inputView;
   if(!world||!world->state.terrain||!view.valid()||width<1||height<1)return {};
   chrono_.select(world,view,width,height,read);
@@ -123,7 +125,15 @@ public:
   const bool sparkles=world->profile.particles&&world->state.extras&&!world->state.extras->sparkles.empty();
   if(sparkles)for(const auto&s:world->state.extras->sparkles)builder.sparkle(s,world->precision==colorprecision::Mode::SmoothRGB);
   if(chrono_.active())builder.chrono(chrono_.state(),chrono_.table(),view.width,view.height);
-  auto plan=builder.finish();canvas_.gpuEffects((hasWorld||bolts||sparkles||chrono_.active()||!world->beacons.empty())?plan:nullptr);
+  // Main-camera local ranges share destination pixels with the world. A
+  // rejected producer leaves the world transaction intact, never stale rays.
+  std::vector<nativefeedback::Object>radialObjects;for(const auto&m:presented_.markers)if(m.kind==3)radialObjects.push_back({m.object,m.id,m.type,m.owner,{},m.kind});
+  std::vector<radialindicators::Draw>radials;std::array<int,6>pixelFormat{};const bool radial555=read(0x8A0DD0,pixelFormat.data(),sizeof pixelFormat)&&pixelFormat==std::array<int,6>{{10,3,0,3,5,3}};
+  if(chrono_.active()||!radialindicators::capture(read,view,radialObjects,uiTick,radials))radials.clear();
+  if(!radials.empty()&&!radialMath_)radialMath_=nativefx::math(read);if(!radialMath_)radials.clear();
+  const auto radialMath=radialMath_;
+  if(!radials.empty())radialindicators::geometry(radials,view,world->zscale,*radialMath,builder,width,height,radial555);
+  auto plan=builder.finish();canvas_.gpuEffects((hasWorld||bolts||sparkles||chrono_.active()||!world->beacons.empty()||!radials.empty())?plan:nullptr);
   const auto*inputs=plan->valid?canvas_.completeGpuPlan({},mask_):nullptr;
   world_=world;view_=view;width_=width;height_=height;
   if(inputs)if(auto prior=reuse_.get(*inputs)){if(!prior->gpu||gpupresent::available()){xbrzadapter::gpuState().used=true;return prior;}}
@@ -137,12 +147,14 @@ public:
    }
    if(hasWorld){worldfx::Painter painter(out->pixels,effectView,canvas_.nativeScene()?canvas_.nativeAlpha().get():nullptr,canvas_.nativeScene()?&canvas_.nativeDepth():nullptr);if(world->profile.particles&&!canvas_.nativeScene())for(const auto&a:effects->world->alphas){auto image=world->alphas.find(a.image);if(image!=world->alphas.end())painter.alpha(a,*image->second);}painter.paint(*effects->world,world->profile.particles,world->profile.lasers);}
    if(mask_&&!canvas_.nativeScene())for(size_t n=0;n<out->pixels.size();++n){auto c=out->pixels[n];uint32_t color=c&0xff000000u;for(int shift:{0,8,16})color|=((((c>>shift)&255u)*alpha[n]+63u)/127u)<<shift;out->pixels[n]=color;}
-   if(bolts){auto status=nativefeedback::effects(effects->bolts,*out,view,mask_?&alpha:nullptr,world->zscale);if(!status.complete)return {};out->boltsRendered=true;}
+   if(bolts){auto status=nativefeedback::effects(effects->bolts,*out,view,mask_?&alpha:nullptr,world->zscale,0,0,0,0,canvas_.nativeScene()?&canvas_.nativeDepth():nullptr,canvas_.nativeScene()?canvas_.nativeAlpha().get():nullptr);if(!status.complete)return {};out->boltsRendered=true;}
+
   }
   if(!canvas_.gpuCompleted()){
    sceneextras::RadarCPU sink(*out);for(const auto&b:world->beacons)sink.uiImage(b.draw.image,b.rgba,(b.draw.x-crop.x)*width/crop.width,(b.draw.y-crop.y)*height/crop.height,width/crop.width,height/crop.height);
    if(sparkles)for(const auto&s:world->state.extras->sparkles)chronoscene::sparkle(s,effectView,out->pixels,world->precision==colorprecision::Mode::SmoothRGB);
    chrono_.apply(out->pixels,width,height,view.width,view.height);
+   if(!radials.empty()){worldfx::Painter painter(out->pixels,effectView,canvas_.nativeScene()?canvas_.nativeAlpha().get():nullptr,canvas_.nativeScene()?&canvas_.nativeDepth():nullptr);radialindicators::geometry(radials,view,world->zscale,*radialMath,painter,width,height,radial555);}
   }
   if(inputs&&canvas_.gpuCompleted())reuse_.completed(*inputs,out);else reuse_.reset();
   return out;

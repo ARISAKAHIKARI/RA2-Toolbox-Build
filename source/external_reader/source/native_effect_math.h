@@ -19,12 +19,12 @@ struct Math {
  double sine(double radians)const{int raw=chop(radians*2607.594482421875),index=(raw/2)%8192;if(index<0)index+=8192;if((raw&1)&&index<8191)++index;return trig[unsigned(index)];}
  double cosine(double radians)const{int raw=chop(radians*2607.594482421875),index=(raw/2)%8192;if(index<0)index+=10240;else index+=2048;if((raw&1)&&index<10239)++index;return trig[unsigned(index)];}
  double arcSine(double ratio)const{int index=-chop((ratio+1.)*-2048.);return index>=0&&index<int(asin.size())?asin[unsigned(index)]:0.;}
- double rootWide(double squared)const{if(!(squared>0)||!std::isfinite(squared))return 0;float f=float(squared);if(double(f)>squared)f=std::nextafter(f,0.f);uint32_t bits;std::memcpy(&bits,&f,4);int exponent=int((bits>>23)&255)-127;if(exponent<0||exponent>126)return 0;uint32_t mantissa=(bits&0x7fffffu)|((exponent&1)?0x800000u:0u),result=sqrt[mantissa>>10]+(uint32_t(exponent/2+127)<<23);std::memcpy(&f,&result,4);return f;}
+ double rootWide(double squared)const{if(!(squared>0)||!std::isfinite(squared))return 0;float f=float(squared);if(double(f)>squared)f=std::nextafter(f,0.f);uint32_t bits;std::memcpy(&bits,&f,4);int exponent=int((bits>>23)&255)-127;if(exponent< -126||exponent>126)return 0;uint32_t mantissa=(bits&0x7fffffu)|((exponent&1)?0x800000u:0u),result=sqrt[mantissa>>10]+(uint32_t((exponent>=0?exponent/2:(exponent-1)/2)+127)<<23);std::memcpy(&f,&result,4);return f;}
  double root(int32_t squared)const{
   uint32_t value=squared<0?0u-uint32_t(squared):uint32_t(squared);if(!value)return 0;
   int exponent=31;while(!(value&(1u<<exponent)))--exponent;
   uint32_t bits=(uint32_t(exponent+127)<<23)|(exponent>23?(value>>(exponent-23))&0x7fffffu:(value<<(23-exponent))&0x7fffffu);
-  uint32_t mantissa=(bits&0x7fffffu)|((exponent&1)?0x800000u:0u),result=sqrt[mantissa>>10]+(uint32_t(exponent/2+127)<<23);float out;std::memcpy(&out,&result,4);return out;
+  uint32_t mantissa=(bits&0x7fffffu)|((exponent&1)?0x800000u:0u),result=sqrt[mantissa>>10]+(uint32_t((exponent>=0?exponent/2:(exponent-1)/2)+127)<<23);float out;std::memcpy(&out,&result,4);return out;
  }
 };
 template<class Read>std::shared_ptr<const Math> math(Read read){static thread_local std::weak_ptr<const Math>cache;if(auto current=cache.lock())return current;

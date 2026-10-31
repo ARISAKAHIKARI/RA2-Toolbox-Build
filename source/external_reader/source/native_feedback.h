@@ -6,6 +6,7 @@
 #include <cstring>
 #include <limits>
 #include <vector>
+#include "native_effect_math.h"
 // Passive observations and bounded PARGB rasterization. No Win32/game calls,
 // no writes through the reader, and no game RNG or mission/selection setters.
 namespace external { namespace nativefeedback {
@@ -84,7 +85,7 @@ template<class Read>bool mousePalette(Read read,uint32_t converter,std::array<ui
 }
 struct Point3 {int32_t x=0,y=0,z=0;};
 inline bool worldPoint(Point3 p){return p.x>=0&&p.y>=0&&p.x<512*256&&p.y<512*256&&p.z>=-16384&&p.z<=100000;}
-struct Bolt {Point3 source,target;uint32_t seed=0;bool alternate=false;};
+struct Bolt {Point3 source,target;uint32_t seed=0;bool alternate=false;int zAdjust=0;bool rgb555=false;std::array<uint32_t,3>colors{};std::shared_ptr<const nativefx::Math>math;};
 // Public EBolt layout. A snapshot is diagnostic/visual only; Lifetime must
 // never be shifted by this renderer, and Random is read rather than advanced.
 template<class Read>bool bolts(Read read,std::vector<Bolt>&out){
@@ -92,14 +93,19 @@ template<class Read>bool bolts(Read read,std::vector<Bolt>&out){
  if(!read(Bolts,v.data(),sizeof v)||v[2]>MaxBolts||v[4]>v[2]||(v[4]&&!range(v[1],size_t(v[4])*4)))return false;
  std::vector<uint32_t> ptr(v[4]);if(!ptr.empty()&&!read(v[1],ptr.data(),ptr.size()*4))return false;
  std::vector<Bolt> pending;
+ auto math=nativefx::math(read);std::array<uint16_t,16>palette{};uint32_t converter=0,row=0,bpp=0;std::array<int,6>format{};
+ if(!ptr.empty()&&(!math||!read(0x87F6C4,&converter,4)||!read(converter+4,&bpp,4)||bpp!=2||!read(converter+0x174,&row,4)||!read(row,palette.data(),sizeof palette)||!read(0x8A0DD0,format.data(),sizeof format)))return false;
+ const bool f555=format==std::array<int,6>{{10,3,0,3,5,3}};
+ if(!ptr.empty()&&!f555&&format!=std::array<int,6>{{11,3,0,3,5,2}})return false;
  for(uint32_t p:ptr){std::array<uint8_t,0x30>a{},b{};
   if(!range(p,a.size())||!read(p,a.data(),a.size())||!read(p,b.data(),b.size())||a!=b)return false;
-  Bolt e;std::memcpy(&e.source,a.data(),12);std::memcpy(&e.target,a.data()+12,12);e.seed=u32(a.data()+0x1C);e.alternate=a[0x2C]!=0;
+  Bolt e;std::memcpy(&e.source,a.data(),12);std::memcpy(&e.target,a.data()+12,12);e.seed=u32(a.data()+0x1C);e.zAdjust=int32_t(u32(a.data()+0x18));e.math=math;e.rgb555=f555;for(unsigned n=0;n<3;++n)e.colors[n]=nativepacked::color(palette[n==0?10:n==1?5:15],0xff000000u,f555);e.alternate=a[0x2C]!=0;
   if(a[0x2C]>1||!worldPoint(e.source)||!worldPoint(e.target)||!u32(a.data()+0x28))continue;
   pending.push_back(e);
  }
  if(!read(Bolts,after.data(),sizeof after)||v!=after)return false;
  if(!ptr.empty()){std::vector<uint32_t> verify(ptr.size());if(!read(v[1],verify.data(),verify.size()*4)||ptr!=verify)return false;}
+ if(!ptr.empty()){std::array<uint16_t,16>again{};uint32_t current=0,currentRow=0;std::array<int,6>verifyFormat{};if(!read(0x87F6C4,&current,4)||current!=converter||!read(converter+0x174,&currentRow,4)||currentRow!=row||!read(row,again.data(),sizeof again)||again!=palette||!read(0x8A0DD0,verifyFormat.data(),sizeof verifyFormat)||format!=verifyFormat)return false;}
  out=std::move(pending);return true;
 }
 inline uint32_t over(uint32_t s,uint32_t d){

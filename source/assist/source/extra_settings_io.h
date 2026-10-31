@@ -1,6 +1,6 @@
 #include "../../shared/source/key_gesture.h"
 static void loadAdditionalSettings(){
- harvesterCounterEnabled=value(L"Display",L"HarvesterCounter",0)!=0;powerDeltaEnabled=value(L"Display",L"PowerDelta",0)!=0;
+ buildTimeTooltipEnabled=value(L"Display",L"BuildTimeTooltip",1)!=0;harvesterCounterEnabled=value(L"Display",L"HarvesterCounter",0)!=0;powerDeltaEnabled=value(L"Display",L"PowerDelta",0)!=0;
  renderProcessing=value(L"Display",L"RenderProcessing",value(L"Display",L"RenderExtraQuality",0))!=0;
  renderXbrzEnabled=value(L"Display",L"RenderXbrzEnabled",0)!=0;
  renderColorPrecision=std::clamp(value(L"Display",L"RenderColorPrecision",1),0,1);
@@ -117,7 +117,7 @@ static bool saveAdditionalSettings(){
  write(L"Display",L"MinimapPosition",minimapPosition);write(L"Display",L"MinimapX",minimapX);write(L"Display",L"MinimapY",minimapY);
  write(L"Display",L"MinimapAlignX",minimapAlignX);write(L"Display",L"MinimapAlignY",minimapAlignY);
  write(L"Display",L"RenderUpgrade",renderUpgradeEnabled);
- write(L"Display",L"HarvesterCounter",harvesterCounterEnabled);write(L"Display",L"PowerDelta",powerDeltaEnabled);
+ write(L"Display",L"BuildTimeTooltip",buildTimeTooltipEnabled);write(L"Display",L"HarvesterCounter",harvesterCounterEnabled);write(L"Display",L"PowerDelta",powerDeltaEnabled);
  write(L"Display",L"RenderProcessing",renderProcessing);
  write(L"Display",L"RenderXbrzEnabled",renderXbrzEnabled);
  write(L"Display",L"UnifiedOverlay",unifiedOverlayEnabled);
@@ -196,7 +196,7 @@ static void syncRefreshRate(){extra.scrollRefreshMode=0;if(!shared)return;
 static void syncAdditional(){
  if(!playertest::Available)extra.controlAll=false;if(!playertest::SellAvailable)extra.sellEnemy=false;if(!playertest::SwitchAvailable)extra.switchPlayerEnabled=false;if(!shared)return;
  extra.viewZoomEnabled=false;extra.viewZoomPercent=100;shared->viewZoomPercent=100;
- shared->placementImplementation=extra.placementImplementation;shared->techEnhance=extra.techEnhance;
+ shared->buildTimeTooltip=buildTimeTooltipEnabled;shared->placementImplementation=extra.placementImplementation;shared->techEnhance=extra.techEnhance;
  shared->nativeAirNetwork=extra.nativeAirNetwork;
  shared->networkHousePreserve=extra.networkHousePreserve;shared->nativeSellCursor=extra.nativeSellCursor;
  shared->nativeMegaGateway=extra.nativeMegaGateway;
