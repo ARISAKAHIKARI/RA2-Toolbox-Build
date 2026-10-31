@@ -1,5 +1,7 @@
 # 首次远端摘要匹配、Hook 生命周期与联机副作用复核
 
+後續狀態：首次遠端同步安裝門檻已依使用者要求撤回；其餘生命週期／衝突與還原修正保留。見 [2026-11-01 回退記錄](2026-11-01-hook-gate-rollback-shroud-publication.md)。以下記錄當時實作與證據。
+
 ## 问题与证据边界
 
 基于 `codex/crc-map-shadow-hotfix32-20261031` / `9af98529e3eac95766e5faa0f2c04c9d409a3dd3`。

@@ -61,7 +61,6 @@
 #include "ui_layout.h"
 #include "additional_settings.h"
 #include "signatures.h"
-#include "initial_sync_gate.h"
 #include "../../external_reader/source/watch_slots.h"
 #include "view_zoom.h"
 #include "../../external_reader/source/cooperative_reader.h"
@@ -806,42 +805,11 @@ static bool bridgeFailed(const std::wstring&reason,DWORD error=0){
  if(bridgeFailure!=text){bridgeFailure=text;critical(L"command bridge failure: "+text+L" pid="+std::to_wstring(pid)+L" thread="+std::to_wstring(gameThread));}
  setStatus(text);return false;
 }
-static assist::initialsync::Gate hostInitialSync;
-static DWORD hostInitialSyncPid;
-static bool hostInitialSyncReady(){
- if(hostInitialSyncPid!=pid){hostInitialSync.reset();hostInitialSyncPid=pid;}
- auto readGame=[](uint32_t at,void*out,size_t n){return externalReader.readFresh(at,out,n);};
- assist::initialsync::Identity id{externalData&&externalData->match?externalData->match:1,0,0,0,0,-1};
- int frame=-1,local=-1,players=0;uint8_t running=0,oos=0;uint32_t observer=0,peers=0;
- if(!readGame(0xA8B238,&id.mode,4)||!readGame(0xA8E9A0,&running,1)||!running||
-    !readGame(0xA83D4C,&id.house,4)||id.house<0x10000||!readGame(0xA8ED84,&frame,4)||frame<0)return false;
- if(id.mode==0||id.mode==5){hostInitialSync.reset();return true;}
- if(id.mode!=3&&id.mode!=4)return false;
- uint32_t houses[6]{};
- if(!readGame(0xA8B230,&id.scenario,4)||!readGame(0xA80228,houses,sizeof houses)||
-    houses[4]<1||houses[4]>32||houses[4]>houses[2]||houses[1]<0x10000||
-    !readGame(id.house+0x10,&id.id,4)||!readGame(id.house+0x30,&local,4)||
-    !readGame(0xA8B54C,&players,4)||players<1||players>8||
-    !readGame(0xAC1198,&observer,4)||!readGame(0xA8B8C2,&oos,1))return false;
- id.items=houses[1];bool foundLocal=false;
- for(unsigned i=0;i<houses[4];++i){uint32_t house=0;int index=-1;uint8_t human=0,defeated=0;
-  if(!readGame(id.items+i*4,&house,4)||house<0x10000||!readGame(house+0x30,&index,4)||index!=int(i)||
-     !readGame(house+0x1EC,&human,1)||!readGame(house+0x1F5,&defeated,1))return false;
-  if(house==id.house&&index==local)foundLocal=true;
-  if(house!=id.house&&house!=observer&&human&&!defeated)peers|=1u<<i;
- }
- if(!foundLocal||(!peers&&players>1&&!hostInitialSync.hasProof(id,frame)))return false;
- return hostInitialSync.update(id,frame,peers,oos!=0,readGame);
-}
 static bool ensureBridge(){
  if(!enabled)return false; // A secondary display alone never installs the command runtime.
  if(shared)return true;
- // Observe peer sync from the EXE before even installing the Windows message
- // hooks / loading Runtime into the game. Runtime independently rechecks it
- // before any native game patch or feature-side mutation is admitted.
- if(!game||!hostInitialSyncReady())return bridgeFailed(hostInitialSync.state==assist::initialsync::Mismatch?
-  L"已观察到本局摘要不匹配，尚未注入游戏操作组件；请保留双方 SYNC 日志。":
-  L"等待游戏运行及首次远端 FrameInfo 执行/摘要匹配，尚未注入游戏操作组件。");
+ // Runtime feature maintenance still checks local playable state and exact signatures.
+ if(!game)return false;
  if(!gameinput::runtimeAvailable())return bridgeFailed(L"运行组件缺失或版本不匹配，请完整更新工具箱",GetLastError());DWORD now=GetTickCount();
  if(!game||bridgeBlocked||(bridgeRetryAt&&int32_t(now-bridgeRetryAt)<0))return false;
  gameinput::NativeWindowProbe native{};
@@ -1613,7 +1581,6 @@ static void updateModeStatus(DWORD now){
  if(shared&&shared->techEnhanceStatus<0)enhancement+=shared->techEnhanceCount?L"仍有未还原字段（"+std::to_wstring(shared->techEnhanceCount)+L" 项），请查看日志":L"字段不兼容或已被修改，请查看日志";
  else if(!extra.techEnhance)enhancement+=L"关闭";
  else if(!shared||phase)enhancement+=L"等待游戏就绪";
- else if(shared->techEnhanceStatus==2)enhancement+=L"仅支持单机，联机未修改";
  else if(shared->techEnhanceStatus==1)enhancement+=L"已启用（"+std::to_wstring(shared->techEnhanceCount)+L" 项）";
  else enhancement+=L"等待生效";
  SetWindowTextW(GetDlgItem(ui,9098),enhancement.c_str());

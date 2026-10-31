@@ -208,18 +208,27 @@
     "validation": "Final actual DLL/native controlled results accompany package; production cross build,685 ABI entries and static PE/import/manifest checks. No Windows loader/live socket/multiplayer validation"
   },
   "peer_sync_hook_review": {
-    "activation": "Read-only host pre-injection observation for the tactical connection, then independent Runtime pending/executed FrameInfo + fresh native CRC history proof before native patches or feature mutation",
-    "lifecycle": "Retry exact startup signatures after sync; invalid HHOOK cleanup is idempotent; inactive control thunks replay native path; sender fault expires only after safe retirement in a new epoch",
+    "activation": "Peer FrameInfo/CRC prerequisite reverted at user request; local playable-state, exact signature and ownership checks remain",
+    "lifecycle": "Retry exact startup signatures when locally playable; invalid HHOOK cleanup is idempotent; inactive control thunks replay native path; sender fault expires only after safe retirement in a new epoch",
     "abi": "Assist83/Runtime4/entry3 unchanged",
-    "validation": "13 compiler-evaluated policy cases and 685 Windows x86/x64 COFF ABI entries pass; changed production objects compile. Full links, Windows/game and multiplayer execution remain untested.",
+    "validation": "Historical observer remains tested but is no longer an installation gate. Current local-only readiness, synthetic restoration and shroud publication checks are recorded in research/2026-11-01-hook-gate-rollback-shroud-publication.md",
     "merged_hotfix": "17ee48810d33d47203d52893d3b0472d992f3a11: full host process/lease reclamation and diagnostics"
   },
   "latent_desync_mutation_review": {
     "source_base": "fefd9e017060c7955811a9518c9bf98f7b144ffe",
-    "technology": "SP0/5 only; retains failed writes/restores and retries without forgetting originals",
+    "technology": "Explicit TechEnhance switch controls supported sessions, including multiplayer; failed-write/restoration ownership and retry remain",
     "crc_restore": "Temporary world/House read failure retains owned MapIsClear data and delays unhook/model clearing",
     "detach": "All feature code/data restorations complete before stop=2 and IPC unmapping; Runtime frame notification remains independent",
     "validation": "40 new compiler-evaluated recovery cases + prior 13 activation cases; actual Windows x86 bridge/x64 host COFF compilation; full links/live multiplayer remain unverified",
     "note": "research/2026-11-01-latent-desync-mutation-audit.md"
+  },
+  "hook_readiness_rollback": {
+    "peer_sync_required": false,
+    "technology_multiplayer_opt_in": true,
+    "shroud": "Reject incomplete terrain/neighbor masks; retain completed same-world bank; projection read failures are not zero coordinates",
+    "diagnostics": "Standalone 21-stage, 30-second explicit-verdict observer also removes peer-sync requirement",
+    "note": "research/2026-11-01-hook-gate-rollback-shroud-publication.md",
+    "game_tested": false,
+    "multiplayer_tested": false
   }
 }

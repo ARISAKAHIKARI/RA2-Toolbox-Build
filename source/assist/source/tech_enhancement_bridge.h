@@ -32,11 +32,8 @@ static void techEnhancementTick(DWORD now){
  // Restoration owns the original world/values until it has really finished.
  if(enhancementRestoring&&!restoreTechEnhancement())return;
  if(!sh->techEnhance){if(enhancementRequested)restoreTechEnhancement();return;}
- // TechLevel is a simulation rule, not a synchronized EventClass operation.
- if(!techenhancement::mayApply(get<int>(0xA8B238))){
-  if(enhancementRequested&&!restoreTechEnhancement())return;
-  sh->techEnhanceStatus=techenhancement::SingleplayerOnly;sh->techEnhanceCount=0;return;
- }
+ // The explicit TechEnhance switch owns this opt-in in every supported
+ // session. Keep field identity, original-value ownership and rollback.
  if(enhancementRequested&&enhancementWorld()!=techenhancement::IdentityState::Current&&!restoreTechEnhancement())return;
  if(!enhancementRequested){
   enhancementRequested=true;enhancementConflict=false;enhancementEpoch=sessionTracker.epoch;

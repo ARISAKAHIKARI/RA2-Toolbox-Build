@@ -15,8 +15,7 @@ constexpr unsigned Count=sizeof Rules/sizeof Rules[0];
 constexpr uint32_t LevelOffset=0x634;
 struct Record {uint32_t pointer=0,items=0;int index=0,original=0;bool owned=false,conflict=false;};
 enum class IdentityState { Current, Retired, Unavailable };
-enum Status { Off=0, Applied=1, SingleplayerOnly=2, Incompatible=-2 };
-constexpr bool mayApply(int mode){return mode==0||mode==5;}
+enum Status { Off=0, Applied=1, Incompatible=-2 };
 constexpr bool sameID(const char*a,const char*b){
  for(unsigned i=0;i<24;++i){if(a[i]!=b[i])return false;if(!a[i])return true;}return false;
 }

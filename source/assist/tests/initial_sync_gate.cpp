@@ -67,10 +67,15 @@ int main(){
   m.put(0xA8B238,int(3));m.put(0xA8B230,uint32_t(0x20000000));m.put(0xA8022C,uint32_t(0x20001000));m.put(0xA83D4C,uint32_t(0x20002000));
   m.put(0x20002010,uint32_t(100));m.put(0xA8ED84,int(100));m.put(0xA8E9A0,uint8_t(1));m.put(0xA8B8C2,uint8_t(0));
   auto can=[&](){return mayInstall([&](uint32_t at,void*out,size_t n){return m.read(at,out,n);});};
-  clear();assert(!can());approve(0x20000000,0x20001000,0x20002000,100,3,100);assert(can());++cases;
-  m.put(0xA8ED84,int(99));assert(!can());m.put(0xA8ED84,int(100));m.put(0xA8B8C2,uint8_t(1));assert(!can());++cases;
-  m.put(0xA8B8C2,uint8_t(0));m.put(0x20002010,uint32_t(101));assert(!can());++cases;
-  clear();m.put(0xA8B238,int(0));assert(can());m.put(0xA8B238,int(2));assert(!can());++cases;
+  // No DoList, CRC history or approval token exists in this fixture.
+  assert(can());++cases;
+  m.put(0xA8ED84,int(0));assert(can());m.put(0xA8B238,int(4));assert(can());++cases;
+  m.put(0xA8B8C2,uint8_t(1));assert(!can());m.put(0xA8B8C2,uint8_t(0));
+  m.put(0xA8E9A0,uint8_t(0));assert(!can());m.put(0xA8E9A0,uint8_t(1));++cases;
+  m.put(0xA83D4C,uint32_t(0));assert(!can());m.put(0xA83D4C,uint32_t(0x20002000));
+  m.put(0xA8ED84,int(-1));assert(!can());m.put(0xA8ED84,int(1));++cases;
+  m.put(0xA8B238,int(0));assert(can());m.put(0xA8B238,int(5));assert(can());
+  m.put(0xA8B238,int(2));assert(!can());++cases;
  }
- printf("PASS: %u read-only peer-sync, lifecycle, CRC mismatch and central patch-gate cases; no game or network execution\n",cases);
+ printf("PASS: %u retired observer and current local-only patch-readiness cases; no game or network execution\n",cases);
 }

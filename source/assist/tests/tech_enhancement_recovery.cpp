@@ -69,8 +69,6 @@ constexpr bool worldRetired(){Fixture f;if(!f.apply())return false;auto r=f.rest
 constexpr bool invalidVector(){Fixture f;if(!f.apply())return false;f.memory.count=-1;auto r=f.restore();
  return !r.complete&&!r.ok&&r.retained==1&&f.records[0].owned&&f.memory.writes==1;}
 constexpr bool ineligible(){Fixture f;f.memory.level=6;return f.apply()&&!f.records[0].owned&&!f.memory.writes&&f.memory.level==6;}
-static_assert(mayApply(0)&&mayApply(5),"verified SP modes");
-static_assert(!mayApply(3)&&!mayApply(4)&&!mayApply(-1)&&!mayApply(2),"never change MP/unknown rules");
 static_assert(fullWord(),"32-bit value and successful rollback");
 static_assert(failedApply(false),"ownership before a write that fails before mutation");
 static_assert(failedApply(true),"ownership before failed read-back after mutation");

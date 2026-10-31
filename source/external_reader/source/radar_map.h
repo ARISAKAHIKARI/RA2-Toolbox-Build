@@ -80,7 +80,8 @@ template<class Read> class Sampler {
  bool particles_=true,lasers_=true;Read read_;GameView<Read> view_;Geometry geo_{};std::vector<uint32_t> pointers_;std::shared_ptr<Terrain> pending_;std::shared_ptr<const Terrain> terrain_;
  std::vector<uint32_t> tileTypes_,overlayTypes_,smudgeTypes_;std::vector<artvariants::Pool> resourcePools_;size_t cursor_=0;int lastFrame_=-1;uint32_t reveal_=0;unsigned revision_=0;
  struct MaskBits {uint8_t state=0,shroud=0,fog=0;}; // state: unknown, verified, unavailable
- std::vector<MaskBits> maskBits_;std::array<int8_t,256> frameLookup_{};
+ std::vector<MaskBits> maskBits_;std::array<int8_t,256> frameLookup_{};bool pendingIncomplete_=false;
+ void discardPending(){pending_.reset();pointers_.clear();maskBits_.clear();cursor_=0;pendingIncomplete_=false;}
  template<class T>T get(uint32_t a,T fallback={})const{return view_.template get<T>(a,fallback);}
  template<class R>static auto prefetch(R read,const std::vector<uint32_t>&p,int)->decltype(read.prefetch(p,0x800),void()){read.prefetch(p,0x800);}
  template<class R>static void prefetch(R,const std::vector<uint32_t>&,long){}
@@ -94,8 +95,9 @@ template<class Read> class Sampler {
     if(read_(p+0x24,field.data(),field.size())){
      int16_t xy[2]{};std::memcpy(xy,field.data(),sizeof xy);
      if(xy[0]==x&&xy[1]==y)bits={1,field[0x108],field[0x11C]};
-    }
-   }
+     else pendingIncomplete_=true;
+    }else pendingIncomplete_=true;
+   }else if(p)pendingIncomplete_=true;
   }
   if(bits.state!=1)return false;out={bits.shroud,bits.fog};return true;
  }
@@ -107,7 +109,7 @@ template<class Read> class Sampler {
 public:
  explicit Sampler(Read r):read_(r),view_(r){}
  void effects(bool particles,bool lasers){particles_=particles;lasers_=lasers;}
- void reset(){geo_={};pointers_.clear();maskBits_.clear();pending_.reset();terrain_.reset();cursor_=0;lastFrame_=-1;++revision_;}
+ void reset(){geo_={};discardPending();terrain_.reset();lastFrame_=-1;++revision_;}
  unsigned revision()const{return revision_;}
  bool hasTerrain()const{return bool(terrain_);}
  Frame terrainFrame(uint32_t now)const{Frame out;out.terrain=terrain_;out.tick=now;out.frame=lastFrame_;return out;}
@@ -126,11 +128,13 @@ public:
   // follows the explored/fog cells. Keep this policy in the immutable bank.
   reveal=reveal?1u:0u;
   Geometry g;g.bounds=mapbounds::sample(read_);g.width=g.bounds.width;g.height=g.bounds.height;g.cells=get<uint32_t>(Map+0x13C);g.count=get<int>(Map+0x140);
-  g.factor=get<float>(Map+0x1488);g.offsetX=get<int>(Map+0x1490);g.offsetY=get<int>(Map+0x1498);g.rw=get<int>(Map+0x14A4);g.rh=get<int>(Map+0x14A8);g.rawWidth=get<int>(Map+0x1240,-1);g.rawHeight=get<int>(Map+0x1244,-1);g.house=get<uint32_t>(0xA83D4C);
-  int frame=get<int>(0xA8ED84,-1);if(!g.valid()||frame<0||get<uint8_t>(0xA8E9A0)!=1 ){reset();return false;}
+  g.factor=get<float>(Map+0x1488);g.rw=get<int>(Map+0x14A4);g.rh=get<int>(Map+0x14A8);g.rawWidth=get<int>(Map+0x1240,-1);g.rawHeight=get<int>(Map+0x1244,-1);g.house=get<uint32_t>(0xA83D4C);
+  // Zero is a valid projection offset, so a failed read cannot use it as a fallback.
+  if(!read_(Map+0x1490,&g.offsetX,sizeof g.offsetX)||!read_(Map+0x1498,&g.offsetY,sizeof g.offsetY)){discardPending();return false;}
+  int frame=get<int>(0xA8ED84,-1);if(!g.valid()||frame<0||get<uint8_t>(0xA8E9A0)!=1 ){discardPending();return false;}
   if(!display::inspect(read_).visible())return false;
   if(!g.same(geo_)||frame<lastFrame_||reveal_!=reveal){reset();geo_=g;reveal_=reveal;}lastFrame_=frame;
-  if(!pending_){pointers_.resize(g.count);if(!read_(g.cells,pointers_.data(),pointers_.size()*4)||(!reveal&&!shroudselector::readLookup(read_,frameLookup_))){reset();return false;}
+  if(!pending_){pointers_.resize(g.count);if(!read_(g.cells,pointers_.data(),pointers_.size()*4)||(!reveal&&!shroudselector::readLookup(read_,frameLookup_))){discardPending();return false;}
    if(!reveal)maskBits_.resize(512*512);
    pending_=std::make_shared<Terrain>();pending_->geo=g;pending_->reveal=bool(reveal);pending_->colors.resize(512*512);pending_->shade.resize(512*512);if(real){pending_->baseColors.resize(512*512);pending_->art.resize(512*512);tileTypes_=view_.vec(0xA8ED28,65536);overlayTypes_=view_.vec(0xA83D80);smudgeTypes_=view_.vec(0xA8EC18,4096);resourcePools_=artvariants::pools(read_,overlayTypes_);}cursor_=0;}
   size_t end=std::min(pointers_.size(),cursor_+size_t(std::clamp(budget,1,16384)));
@@ -138,16 +142,17 @@ public:
   // sources: an excluded cell's TMP can still intersect the current crop.
   for(;cursor_<end;++cursor_){int x=int(cursor_%512),y=int(cursor_/512);bool flat=g.flatVisible(x,y);
    if(!g.legal(x,y)||(!flat&&(!real||!g.terrainSourceCandidate(x,y))))continue;uint32_t p=pointers_[cursor_];
-   if(p<0x10000)continue;std::array<uint8_t,0x148> cell{};if(!read_(p,cell.data(),cell.size()))continue;
+   if(!p)continue;if(p<0x10000){pendingIncomplete_=true;continue;}
+   std::array<uint8_t,0x148> cell{};if(!read_(p,cell.data(),cell.size())){pendingIncomplete_=true;continue;}
    int16_t cx=0,cy=0;int land=-1;std::memcpy(&cx,cell.data()+0x24,2);std::memcpy(&cy,cell.data()+0x26,2);std::memcpy(&land,cell.data()+0xEC,4);
-   if(cx!=x||cy!=y)continue;
+   if(cx!=x||cy!=y){pendingIncomplete_=true;continue;}
    if(!reveal)maskBits_[cursor_]={1,cell[0x12C],cell[0x140]};
    int level=int8_t(cell[0x11B]);if(real&&flat)pending_->baseColors[cursor_]=terrainColor(land,level,false);
    bool admitted=flat&&(!reveal||g.bounds.usable(x,y,level,cell[0x11C]!=0));
    bool terrainSource=real&&g.terrainSourceVisible(x,y,level);
    if(!admitted&&!terrainSource&&(!real||!g.shroudSourceVisible(x,y)))continue;
    int8_t shroud=reveal?-1:maskFrame(x,y,false),fog=reveal?-1:maskFrame(x,y,true);
-   if(shroud<-2||shroud>46||fog<-2||fog>46)continue;
+   if(shroud<-2||shroud>46||fog<-2||fog>46){pendingIncomplete_=true;continue;}
    pending_->shade[cursor_]={shroud,fog};
    // A partial shroud frame still reveals part of this cell. Keep its source
    // pixels; the composed scene is clipped by the frame's screen-space mask.
@@ -161,7 +166,11 @@ public:
    if(admitted&&sourceVisible)pending_->colors[cursor_]=color;
    if(terrainSource&&!pending_->art.empty()){auto&a=pending_->art[cursor_];a.cell=p;a.sourceColor=color;a.sourceHidden=!sourceVisible;a.sub=cell[0x11A];a.level=int8_t(cell[0x11B]);a.overlayFrame=cell[0x11E];a.smudgeData=cell[0x11F];a.land=land;std::memcpy(&a.pixelFX,cell.data()+0xFC,4);std::memcpy(&a.flags,cell.data()+0x140,4);std::memcpy(&a.rubbleType,cell.data()+0x40,4);int smudge=-1;std::memcpy(&smudge,cell.data()+0x48,4);if(admitted&&smudge>=0&&size_t(smudge)<smudgeTypes_.size())a.smudgeType=smudgeTypes_[smudge];int tile=-1,overlay=-1;uint32_t flags=0;memcpy(&flags,cell.data()+0x140,4);memcpy(&tile,cell.data()+0x38,4);memcpy(&overlay,cell.data()+0x44,4);if(tile==65535){tile=get<int>(0xAA10B0,-1);a.sub=0;}if(tile>=0&&size_t(tile)<tileTypes_.size())a.type=artvariants::tile(read_,tileTypes_[tile],a.sub,x,y,flags);if(admitted&&overlay>=0&&size_t(overlay)<overlayTypes_.size()){a.overlay=int16_t(overlay);a.overlaySourceType=overlayTypes_[overlay];int drawOverlay=artvariants::overlay(read_,overlayTypes_,resourcePools_,overlay,x,y,cell[0x11C]);a.overlayType=overlayTypes_[drawOverlay];}}
   }
-  if(cursor_==pointers_.size()){terrain_=pending_;pending_.reset();maskBits_.clear();++revision_;}return true;
+  // Missing physical cells are valid holes. Failed reads of existing cells
+  // are NOT opaque/absent visibility: reject the candidate and retain the
+  // previous complete bank, including its shade. Never publish a dark flash.
+  if(pendingIncomplete_){discardPending();return false;}
+  if(cursor_==pointers_.size()){terrain_=pending_;discardPending();++revision_;}return true;
  }
  Frame snapshot(uint32_t now,int observedFrame=-1)const{
   GameView<Read> live(read_);Frame out;out.effectMask=uint8_t(particles_)|(uint8_t(lasers_)<<1);out.terrain=terrain_;out.tick=now;out.frame=observedFrame>=0?observedFrame:lastFrame_;if(!terrain_)return out;

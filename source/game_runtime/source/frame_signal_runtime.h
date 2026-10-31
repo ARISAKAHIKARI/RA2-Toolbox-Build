@@ -52,8 +52,8 @@ static void maintain(DWORD requestedOwner){
   else{owner=requestedOwner;framesignal::name(path,GetCurrentProcessId(),owner,true);event=OpenEventW(EVENT_MODIFY_STATE,FALSE,path);if(!event)releaseChannel();}
  }
  if(channel&&!installed&&channel->state==framesignal::Waiting){
-  // Waiting for peer sync is not a signature failure. Keep the message-based
-  // fallback alive and retry after the Assist dispatcher grants activation.
+  // Loading/menu state is not a signature failure. Keep the message-based
+  // fallback alive until the local game becomes playable; no peer-sync gate.
   if(!permitted){
    SetLastError(error);return;
   }

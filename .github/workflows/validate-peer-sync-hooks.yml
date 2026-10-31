@@ -1,4 +1,4 @@
-name: Validate post-HF32 peer sync and hook lifecycle
+name: Validate hook readiness, lifecycle and shroud publication
 on:
   push:
     branches: [codex/crc-map-shadow-hotfix32-20261031]
@@ -20,6 +20,11 @@ jobs:
           mkdir -p diagnostics
           for name in initial_sync_gate initial_sync_compiletime tech_enhancement_recovery crc_shadow_recovery hook_registry_policy experimental_patch_policy; do
             g++ -std=c++17 -O2 -UNDEBUG "source/assist/tests/$name.cpp" -o "/tmp/$name"
+            "/tmp/$name" | tee "diagnostics/$name.log"
+          done
+          g++ -std=c++17 -O2 -c source/third_party/xbrz/xbrz.cpp -o /tmp/shroud-test-xbrz.o
+          for name in radar_visibility_publication radar_boundary radar_shroud_mask; do
+            g++ -std=c++17 -O2 -UNDEBUG "source/assist/tests/$name.cpp" /tmp/shroud-test-xbrz.o -o "/tmp/$name"
             "/tmp/$name" | tee "diagnostics/$name.log"
           done
           g++ -std=c++17 -O2 -UNDEBUG source/assist/tests/hook_inventory.cpp -o /tmp/hook_inventory

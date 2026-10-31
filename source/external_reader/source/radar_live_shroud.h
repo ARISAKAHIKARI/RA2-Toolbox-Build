@@ -50,6 +50,7 @@ public:
     done+=take;
    }return true;
   };
+  bool complete=true;
   auto fetch=[&](int cx,int cy,shroudselector::Bits&value){
    if(!g.legal(cx,cy))return false;size_t index=size_t(cy)*512+cx;
    if(index>=pointers_.size())return false;
@@ -58,8 +59,9 @@ public:
     if(cell>=0x10000&&cell<=0x7ffffe00u){std::array<uint8_t,0x11D>field{};
      if(fields(cell+0x24,field.data(),field.size())){int16_t coord[2]{};std::memcpy(coord,field.data(),sizeof coord);
       if(coord[0]==cx&&coord[1]==cy){cached.value={field[0x108],field[0x11C]};cached.valid=true;}
-     }
-    }
+      else complete=false;
+     }else complete=false;
+    }else if(cell)complete=false;
    }
    if(!cached.valid)return false;value=cached.value;return true;
   };
@@ -82,6 +84,9 @@ public:
     candidate.cells.push_back({uint32_t(cy*512+cx),shade});
    }
   }
+  // A failed read must not become an opaque selector neighbor in a published
+  // mask. The caller keeps its previous completed scene and retries later.
+  if(!complete)return false;
   const auto after=publicationContext(fresh);uint32_t afterScenario=0;
   if(!matches(after)||after.frame<before.frame||int64_t(after.frame)-before.frame>4||
     !fresh(0xA8B230,&afterScenario,4)||afterScenario!=scenario||!fresh(Map+0x140,&count,4)||count!=g.count||
