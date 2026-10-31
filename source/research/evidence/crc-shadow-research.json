@@ -1,0 +1,348 @@
+{
+  "scope": "Offline native CRC input-substitution proof; no installable game hook.\n\nThe real game-memory MapIsClear byte stays changed. Only the emulated BL load\nat64DCCA is substituted. This does not prove field instrumentation coverage,\ndisplay-only semantics, a complete Reveal or any multiplayer compatibility.\n",
+  "executable_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+  "field": "House+0x241 MapIsClear",
+  "native_input": "64DCCA ->64DCD0",
+  "installable_hook": false,
+  "production_enabled": false,
+  "game_tested": false,
+  "multiplayer_tested": false,
+  "logger_mocked": true,
+  "limitations": [
+    "No complete world tick or Reveal executed",
+    "Natural-writer coverage not proved",
+    "No platform integrity or multiplayer validation",
+    "Native logger is mocked as in the reused baseline; RNG counts are relative to that same fixture"
+  ],
+  "results": [
+    {
+      "case": "baseline",
+      "native_crc": 863614368,
+      "oracle_crc": 863614368,
+      "status": "PASS",
+      "crc_calls": 1,
+      "House_input_reads": 1,
+      "physical_MapIsClear_after": 0,
+      "rng_indices_after": [
+        1,
+        104
+      ],
+      "physical_override": null,
+      "shadow_original": null
+    },
+    {
+      "case": "map_clear",
+      "native_crc": 863614496,
+      "oracle_crc": 863614496,
+      "status": "PASS",
+      "crc_calls": 1,
+      "House_input_reads": 1,
+      "physical_MapIsClear_after": 1,
+      "rng_indices_after": [
+        1,
+        104
+      ],
+      "physical_override": null,
+      "shadow_original": null
+    },
+    {
+      "case": "baseline",
+      "native_crc": 863614368,
+      "oracle_crc": 863614368,
+      "status": "PASS",
+      "crc_calls": 1,
+      "House_input_reads": 1,
+      "physical_MapIsClear_after": 1,
+      "rng_indices_after": [
+        1,
+        104
+      ],
+      "physical_override": 1,
+      "shadow_original": 0
+    },
+    {
+      "case": "x_step",
+      "native_crc": 863614914,
+      "oracle_crc": 863614914,
+      "status": "PASS",
+      "crc_calls": 1,
+      "House_input_reads": 1,
+      "physical_MapIsClear_after": 0,
+      "rng_indices_after": [
+        1,
+        104
+      ],
+      "physical_override": null,
+      "shadow_original": null
+    },
+    {
+      "case": "x_step",
+      "native_crc": 863614914,
+      "oracle_crc": 863614914,
+      "status": "PASS",
+      "crc_calls": 1,
+      "House_input_reads": 1,
+      "physical_MapIsClear_after": 1,
+      "rng_indices_after": [
+        1,
+        104
+      ],
+      "physical_override": 1,
+      "shadow_original": 0
+    },
+    {
+      "case": "direction",
+      "native_crc": 863614880,
+      "oracle_crc": 863614880,
+      "status": "PASS",
+      "crc_calls": 1,
+      "House_input_reads": 1,
+      "physical_MapIsClear_after": 0,
+      "rng_indices_after": [
+        1,
+        104
+      ],
+      "physical_override": null,
+      "shadow_original": null
+    },
+    {
+      "case": "direction",
+      "native_crc": 863614880,
+      "oracle_crc": 863614880,
+      "status": "PASS",
+      "crc_calls": 1,
+      "House_input_reads": 1,
+      "physical_MapIsClear_after": 1,
+      "rng_indices_after": [
+        1,
+        104
+      ],
+      "physical_override": 1,
+      "shadow_original": 0
+    },
+    {
+      "case": "random",
+      "native_crc": 846705879,
+      "oracle_crc": 846705879,
+      "status": "PASS",
+      "crc_calls": 1,
+      "House_input_reads": 1,
+      "physical_MapIsClear_after": 0,
+      "rng_indices_after": [
+        1,
+        104
+      ],
+      "physical_override": null,
+      "shadow_original": null
+    },
+    {
+      "case": "random",
+      "native_crc": 846705879,
+      "oracle_crc": 846705879,
+      "status": "PASS",
+      "crc_calls": 1,
+      "House_input_reads": 1,
+      "physical_MapIsClear_after": 1,
+      "rng_indices_after": [
+        1,
+        104
+      ],
+      "physical_override": 1,
+      "shadow_original": 0
+    },
+    {
+      "case": "order",
+      "native_crc": 1228589473,
+      "oracle_crc": 1228589473,
+      "status": "PASS",
+      "crc_calls": 1,
+      "House_input_reads": 1,
+      "physical_MapIsClear_after": 0,
+      "rng_indices_after": [
+        1,
+        104
+      ],
+      "physical_override": null,
+      "shadow_original": null
+    },
+    {
+      "case": "order",
+      "native_crc": 1228589473,
+      "oracle_crc": 1228589473,
+      "status": "PASS",
+      "crc_calls": 1,
+      "House_input_reads": 1,
+      "physical_MapIsClear_after": 1,
+      "rng_indices_after": [
+        1,
+        104
+      ],
+      "physical_override": 1,
+      "shadow_original": 0
+    },
+    {
+      "case": "count",
+      "native_crc": 3167709857,
+      "oracle_crc": 3167709857,
+      "status": "PASS",
+      "crc_calls": 1,
+      "House_input_reads": 1,
+      "physical_MapIsClear_after": 0,
+      "rng_indices_after": [
+        1,
+        104
+      ],
+      "physical_override": null,
+      "shadow_original": null
+    },
+    {
+      "case": "count",
+      "native_crc": 3167709857,
+      "oracle_crc": 3167709857,
+      "status": "PASS",
+      "crc_calls": 1,
+      "House_input_reads": 1,
+      "physical_MapIsClear_after": 1,
+      "rng_indices_after": [
+        1,
+        104
+      ],
+      "physical_override": 1,
+      "shadow_original": 0
+    },
+    {
+      "case": "map_clear",
+      "native_crc": 863614496,
+      "oracle_crc": 863614496,
+      "status": "PASS",
+      "crc_calls": 1,
+      "House_input_reads": 1,
+      "physical_MapIsClear_after": 1,
+      "rng_indices_after": [
+        1,
+        104
+      ],
+      "physical_override": 1,
+      "shadow_original": 1
+    }
+  ],
+  "baseline_matrix": {
+    "scope": "CRC-only matrix on owner-provided PE; native logger mocked; no world tick or netplay",
+    "executable_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+    "mapped_image_sha256": "2b70f1a773e56f588eb4d471808a74a682af3e6fa7190ad5f755b07438daff6f",
+    "game_tested": false,
+    "multiplayer_tested": false,
+    "results": [
+      {
+        "case": "baseline",
+        "native_crc": 863614368,
+        "oracle_crc": 863614368,
+        "status": "PASS"
+      },
+      {
+        "case": "x_small",
+        "native_crc": 863614368,
+        "oracle_crc": 863614368,
+        "status": "PASS"
+      },
+      {
+        "case": "x_step",
+        "native_crc": 863614914,
+        "oracle_crc": 863614914,
+        "status": "PASS"
+      },
+      {
+        "case": "z",
+        "native_crc": 863614368,
+        "oracle_crc": 863614368,
+        "status": "PASS"
+      },
+      {
+        "case": "health",
+        "native_crc": 863614368,
+        "oracle_crc": 863614368,
+        "status": "PASS"
+      },
+      {
+        "case": "money",
+        "native_crc": 863614368,
+        "oracle_crc": 863614368,
+        "status": "PASS"
+      },
+      {
+        "case": "mission",
+        "native_crc": 863614368,
+        "oracle_crc": 863614368,
+        "status": "PASS"
+      },
+      {
+        "case": "techlevel",
+        "native_crc": 863614368,
+        "oracle_crc": 863614368,
+        "status": "PASS"
+      },
+      {
+        "case": "map_clear",
+        "native_crc": 863614496,
+        "oracle_crc": 863614496,
+        "status": "PASS"
+      },
+      {
+        "case": "direction",
+        "native_crc": 863614880,
+        "oracle_crc": 863614880,
+        "status": "PASS"
+      },
+      {
+        "case": "random",
+        "native_crc": 846705879,
+        "oracle_crc": 846705879,
+        "status": "PASS"
+      },
+      {
+        "case": "order",
+        "native_crc": 1228589473,
+        "oracle_crc": 1228589473,
+        "status": "PASS"
+      },
+      {
+        "case": "count",
+        "native_crc": 3167709857,
+        "oracle_crc": 3167709857,
+        "status": "PASS"
+      }
+    ]
+  },
+  "model_verification": "PASS: original-value model; repeated tool writes, real same-value reveal, re-shroud, House isolation, pointer reuse, unknown-source blocking, frame rollback and new match. Research only.",
+  "static_candidate_scan": {
+    "scope": "linear disassembly of PE executable sections; direct displacement/overlap candidates only, not indirect/dynamic/extension coverage",
+    "candidate_operands": 24,
+    "exact_0x241_operands": 10,
+    "read_sites": [
+      "0x502FFF: CRCEngine bool input, not ordinary consumer proven",
+      "0x64DCCA: global ComputeGameCRC House byte load",
+      "0x64E250: CRC diagnostic routine region"
+    ],
+    "write_sites": [
+      "0x4F576B",
+      "0x4FC328",
+      "0x577ACA",
+      "0x577BC7",
+      "0x577CA7",
+      "0x577DB0",
+      "0x577F48"
+    ],
+    "unknowns": [
+      "bulk initialization and load/restore",
+      "indirect aliases and compiler address arithmetic",
+      "loaded modules/extensions",
+      "whole Reveal cell/Visionary side effects"
+    ]
+  },
+  "fixed_primary_sources": {
+    "repository": "CnCNet/YRpp",
+    "commit": "d9795546950fcc75a94325ffc83b44d16ec34ce2",
+    "HouseClass.h": "e578deaf617dfc3a603073b80f14c8aa4b3e993c",
+    "CRC.h": "555ffa0b219df8aa072cccc947160c997f39ed34"
+  }
+}

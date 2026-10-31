@@ -1,6 +1,6 @@
 """Run captured native CRC, Ctrl+Alt action and Sticky transition prefixes.
 
-Requires the owner's private .mem/.valid capture, never shipped with this test.
+Requires the owner's private .mem/.valid capture or PE, never shipped with this test.
 CRC executes the original full computation; only its logging sink is mocked.
 Input and mission probes use synthetic object/map/keyboard queries. They do not
 prove complete pathfinding, arrival effects, Windows input or live netplay.
@@ -15,12 +15,23 @@ from unicorn import Uc, UC_ARCH_X86, UC_MODE_32, UC_HOOK_CODE
 from unicorn.x86_const import *
 
 p=argparse.ArgumentParser(description=__doc__)
-p.add_argument('--capture',required=True)
+inputs=p.add_mutually_exclusive_group(required=True)
+inputs.add_argument('--capture')
+inputs.add_argument('--game',help='owner-provided PE; CRC-only matrix, executable bytes only; broader probes require capture')
 p.add_argument('--output',required=True)
 a=p.parse_args()
-with zipfile.ZipFile(a.capture) as z:
-    image=z.read(next(n for n in z.namelist() if n.endswith('/00-clean-game.mem')))
-    valid=z.read(next(n for n in z.namelist() if n.endswith('/00-clean-game.valid')))
+if a.capture:
+    with zipfile.ZipFile(a.capture) as z:
+        image=z.read(next(n for n in z.namelist() if n.endswith('/00-clean-game.mem')))
+        valid=z.read(next(n for n in z.namelist() if n.endswith('/00-clean-game.valid')))
+else:
+    import pefile
+    native=pefile.PE(a.game);assert native.OPTIONAL_HEADER.ImageBase==0x400000
+    image=native.get_memory_mapped_image();valid=bytearray(len(image))
+    for section in native.sections:
+        if section.Characteristics&0x20000000:
+            begin=section.VirtualAddress;length=min(section.SizeOfRawData,len(image)-begin)
+            valid[begin:begin+length]=b'\x01'*length
 assert len(image)==len(valid)
 BASE=0x400000
 S=0x20000000
@@ -138,6 +149,17 @@ baseline=rows[0]['native_crc']
 for row in rows:
     equal=row['case'] in ('baseline','x_small','z','health','money','mission','techlevel')
     assert (row['native_crc']==baseline)==equal,row
+
+if a.game:
+    # The additional historic comparison/input/mission probes below are tied
+    # to their original capture's control-flow endpoints, not arbitrary PEs.
+    out={'scope':'CRC-only matrix on owner-provided PE; native logger mocked; no world tick or netplay',
+         'executable_sha256':hashlib.sha256(Path(a.game).read_bytes()).hexdigest(),
+         'mapped_image_sha256':hashlib.sha256(image).hexdigest(),
+         'game_tested':False,'multiplayer_tested':False,'results':rows}
+    Path(a.output).write_text(json.dumps(out,indent=2)+'\n')
+    print('PASS',len(rows),'native CRC input cases; no full-game or multiplayer validation')
+    raise SystemExit(0)
 
 # Original QueueMission(start=true included) still asks Unit readiness and
 # therefore cannot move an ordinary vehicle out of Sticky.
@@ -262,8 +284,10 @@ for mission in (0,23):
         assert q.r(S+0xac)==requested and q.r(S+0xb4)==MASK,(mission,requested,q.r(S+0xac))
         rows.append({'case':'passive_native_order_exit','before':mission,'requested':requested,'after':q.r(S+0xac),'status':'PASS'})
 
-out={'scope':__doc__,'supported_executable_sha256':'7b8a068535d6af06845edf95ae829b113d00c02909330e16f197426cd7db94b6',
-     'capture_image_sha256':hashlib.sha256(image).hexdigest(),'game_tested':False,'multiplayer_tested':False,'results':rows,
+out={'scope':__doc__,'supported_executable_sha256':hashlib.sha256(Path(a.game).read_bytes()).hexdigest() if a.game else '7b8a068535d6af06845edf95ae829b113d00c02909330e16f197426cd7db94b6',
+     'input_kind':'PE executable' if a.game else 'mem/valid capture',
+     'capture_image_sha256':hashlib.sha256(image).hexdigest() if a.capture else None,
+     'mapped_image_sha256':hashlib.sha256(image).hexdigest(),'game_tested':False,'multiplayer_tested':False,'results':rows,
      'native_code_sha256':{f'{lo:08X}-{hi:08X}':hashlib.sha256(image[lo-BASE:hi-BASE]).hexdigest() for lo,hi in [(0x64dab0,0x64de7d),(0x65c780,0x65c7d1),(0x741970,0x741a80),(0x700600,0x7008a6)]}}
 Path(a.output).write_text(json.dumps(out,indent=2)+'\n')
-print('PASS',len(rows),'captured native CRC/input/mission cases; no live gameplay or multiplayer validation')
+print('PASS',len(rows),'native CRC/input/mission cases; no live gameplay or multiplayer validation')
