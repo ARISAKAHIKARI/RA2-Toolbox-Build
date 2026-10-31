@@ -859,7 +859,9 @@ static bool ensureBridge(){
  }
  hook=gameinput::install(gameentry::Client::Assist,gameThread,pid,game);
  if(!hook){DWORD error=GetLastError();std::wstring stage=gameinput::installationStage();releaseBridge();
-  critical(L"hook-install-failed stage="+stage+L" Win32="+std::to_wstring(error));logLoadedGameModules();
+  const auto capacity=gameinput::capacity();
+  critical(L"hook-install-failed stage="+stage+L" Win32="+std::to_wstring(error)+
+   L" hostBits="+std::to_wstring(sizeof(void*)*8)+L" targets="+std::to_wstring(capacity.targets)+L"/8 subscriptions="+std::to_wstring(capacity.subscriptions)+L"/32");logLoadedGameModules();
   return bridgeFailed(L"无法建立游戏操作连接（"+stage+L"）",error);}
  bridgeFailure.clear();ack=notice=0;lastData=0;attachAt=now;wakeGame();
  wchar_t dllPath[32768]={},transportName[96];uint64_t moduleBase=0,hookRva=0;
