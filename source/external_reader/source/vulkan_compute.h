@@ -78,7 +78,7 @@ protected:
  VkPipeline pipeline_=VK_NULL_HANDLE;VkDescriptorPool descriptorPool_=VK_NULL_HANDLE;VkDescriptorSet descriptors_=VK_NULL_HANDLE;
  VkCommandPool commandPool_=VK_NULL_HANDLE;VkCommandBuffer command_=VK_NULL_HANDLE;VkFence fence_=VK_NULL_HANDLE;
  Buffer atlas_,coordinates_,output_,upload_,readback_;
- std::vector<Tile> tiles_;uint64_t serial_=0;bool tried_=false,disabled_=false,inFlight_=false;
+ std::vector<Tile> tiles_;uint64_t serial_=0;bool tried_=false,disabled_=false,inFlight_=false,abandoned_=false;
  Diagnostics diagnostics_;
  uint64_t allocatedBufferBytes_=0,mappedBufferBytes_=0,peakMappedBufferBytes_=0;
 #ifdef RA2_VULKAN_MAPPED_BUDGET_BYTES
@@ -109,8 +109,10 @@ protected:
 #undef RA2_VK_GLOBAL
  bool fail(const char* reason){diagnostics_.reason=reason;return false;}
  bool fatal(const char* reason){disabled_=true;diagnostics_.available=false;return fail(reason);}
+ bool abandon(const char*reason){abandoned_=inFlight_=disabled_=true;quarantined().store(true,std::memory_order_relaxed);diagnostics_.available=false;return fail(reason);}
  void destroy(Buffer& b){if(!device_)return;if(b.mapped&&vkUnmapMemory_){vkUnmapMemory_(device_,b.memory);mappedBufferBytes_-=b.allocationBytes;}if(b.buffer&&vkDestroyBuffer_)vkDestroyBuffer_(device_,b.buffer,nullptr);if(b.memory&&vkFreeMemory_){vkFreeMemory_(device_,b.memory,nullptr);allocatedBufferBytes_-=b.allocationBytes;}b={};memoryDiagnostics();}
  void close(){
+  if(abandoned_)return;
   // A timed-out queue may still reference every allocation. Never destroy or
   // unload that live device. Quarantine this single bounded backend until exit; a process-wide sticky flag blocks
   // subsequent backend initialization after such a timeout, including worker
@@ -254,6 +256,7 @@ protected:
  static bool same(const Tile& tile,const std::shared_ptr<const std::vector<uint32_t>>& owner){return tile.address==owner.get()&&!tile.owner.owner_before(owner)&&!owner.owner_before(tile.owner);}
  static Coordinate coordinate(double p,int size){p=std::clamp(p,0.,double(size-1));uint32_t a=uint32_t(p);return {a,std::min(a+1,uint32_t(size-1)),uint32_t((p-a)*256+.5),0};}
 public:
+ static bool driverQuarantined(){return quarantined().load(std::memory_order_relaxed);}
  Resolve()=default;Resolve(const Resolve&)=delete;Resolve& operator=(const Resolve&)=delete;
  ~Resolve(){close();}
  const Diagnostics& diagnostics()const{return diagnostics_;}

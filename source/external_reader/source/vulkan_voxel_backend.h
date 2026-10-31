@@ -36,6 +36,7 @@ public:
  ~Stage(){close();}
  const Stats&stats()const{return stats_;}
  void close(){
+  if(core_.abandoned_)return;
   // Share the coordinator's bounded timeout quarantine. In-flight Vulkan
   // commands may still reference every buffer, descriptor and pipeline here.
   if(core_.inFlight_&&(!core_.vkGetFenceStatus_||core_.vkGetFenceStatus_(core_.device_,core_.fence_)!=VK_SUCCESS))return;

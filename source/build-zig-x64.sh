@@ -40,11 +40,12 @@ rc "$runtime_dir/dll_version.res" shared/source/dll_version.rc
 rc "$runtime_dir/broker.res" runtime_broker/source/app.rc
 "$ZIG" c++ -target x86-windows-gnu -std=c++17 -O2 -municode runtime_broker/source/main.cpp "$runtime_dir/broker.res" -o "$build_dir/GameRuntimeHost32.exe" -Wl,--subsystem,windows -lkernel32 -luser32
 rc "$host_dir/app.res" /d RA2_HOST_X64=1 suite/source/app.rc
+"$ZIG" c++ -target x86_64-windows-msvc -O2 -fms-extensions -fno-stack-protector -DRA2_GPU_FAULT_GUARD -c shared/source/gpu_fault_guard.cpp -o "$host_dir/gpu_fault_guard.o"
 "$ZIG" c++ -target x86_64-windows-gnu -std=c++17 -O2 -fno-exceptions -fno-rtti -c third_party/xbrz/xbrz.cpp -o "$host_dir/xbrz.o"
 for entry in Cursor Monitor Tactical; do
   case "$entry" in Cursor) module=cursor;; Monitor) module=unit_monitor;; Tactical) module=assist;; esac
-  "$ZIG" c++ -target x86_64-windows-gnu -std=c++17 -O2 -DRA2_UNIFIED -DwWinMain="${entry}Entry" -Isuite/source -c "$module/source/main.cpp" -o "$host_dir/$module.o"
+  "$ZIG" c++ -target x86_64-windows-gnu -std=c++17 -O2 -DRA2_UNIFIED -DRA2_GPU_FAULT_GUARD -DwWinMain="${entry}Entry" -Isuite/source -c "$module/source/main.cpp" -o "$host_dir/$module.o"
 done
-"$ZIG" c++ -target x86_64-windows-gnu -std=c++17 -O2 -municode suite/source/main.cpp "$host_dir/cursor.o" "$host_dir/unit_monitor.o" "$host_dir/assist.o" "$host_dir/xbrz.o" "$host_dir/app.res" -o "$build_dir/RA2Toolbox.exe" -Wl,--subsystem,windows -lgdiplus -lcomctl32 -luser32 -lgdi32 -lwinmm -lshell32 -lole32 -lcomdlg32
+"$ZIG" c++ -target x86_64-windows-gnu -std=c++17 -O2 -municode suite/source/main.cpp "$host_dir/cursor.o" "$host_dir/unit_monitor.o" "$host_dir/assist.o" "$host_dir/xbrz.o" "$host_dir/gpu_fault_guard.o" "$host_dir/app.res" -o "$build_dir/RA2Toolbox.exe" -Wl,--subsystem,windows -lgdiplus -lcomctl32 -luser32 -lgdi32 -lwinmm -lshell32 -lole32 -lcomdlg32
 cp BUILD_SOURCE_MANIFEST.json "$build_dir/BUILD_SOURCE_MANIFEST.json"
 printf '%s\n' '{"host":"x64","runtime":"x86","broker":"x86","assist_protocol":82,"runtime_protocol":4,"game_tested":false}' > "$build_dir/BUILD_TARGET.json"

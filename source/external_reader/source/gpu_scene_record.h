@@ -151,9 +151,22 @@ public:
     for(int x=0;x<frame_.width;++x)surface.depth[size_t(y)*frame_.width+x]=(*frame_.baseDepth)[row+(*frame_.baseDepthXs)[x]];
    }
   }else surface.depth=*frame_.baseDepth;
-  for(const auto&call:replay_){if(call.image)surface.blit(*call.image,call.ax,call.ay,call.sx,call.sy,call.base,call.light,call.lift,call.drop,call.smooth,call.material);
-   else for(int y=std::max(0,call.dotY-1);y<std::min(frame_.height,call.dotY+2);++y)for(int x=std::max(0,call.dotX-1);x<std::min(frame_.width,call.dotX+2);++x)surface.color[size_t(y)*frame_.width+x]=call.dot;
-  }return !surface.failed();
+  auto paint=[&](Surface&target,const Replay&call,int row){if(call.image)target.blit(*call.image,call.ax,call.ay-row,call.sx,call.sy,call.base,call.light,call.lift,call.drop,call.smooth,call.material);
+   else for(int y=std::max(0,call.dotY-row-1);y<std::min(target.height(),call.dotY-row+2);++y)for(int x=std::max(0,call.dotX-1);x<std::min(frame_.width,call.dotX+2);++x)target.color[size_t(y)*frame_.width+x]=call.dot;};
+  // Independent rows, identical painter order. Destination-reading cloak
+  // calls fence the row team and retain their native global scanline order.
+  // Failed GPU meshes are materialized once on the owner, never per row team.
+  auto calls=replay_;for(auto&call:calls)if(call.image&&call.image->gpuRaster){voxel::Image image;if(!gpuvoxel::materialize(*call.image,image))return false;call.image=std::make_shared<const voxel::Image>(std::move(image));}
+  std::atomic<bool>failed{false};auto segment=[&](size_t first,size_t last){if(first==last)return;const auto alpha=surface.alphaPlane();
+   parallelrows::rows(size_t(frame_.height),size_t(frame_.width)*frame_.height,[&](size_t top,size_t bottom){try{if(top==0&&bottom==size_t(frame_.height)){for(size_t n=first;n<last;++n)paint(surface,calls[n],0);return;}
+    static thread_local Surface band;const int rows=int(bottom-top);if(!band.reset(frame_.width,rows)){failed=true;return;}band.precision(precision_);band.outputRowOrigin(int(top));band.nativeView(0,frame_.nativeScaleX,frame_.nativeScaleY,int(std::ceil(frame_.width/frame_.nativeScaleX)),int(std::ceil(frame_.height/frame_.nativeScaleY)));
+    const size_t offset=top*frame_.width,count=size_t(rows)*frame_.width;std::copy_n(surface.color.data()+offset,count,band.color.data());std::copy_n(surface.depth.data()+offset,count,band.depth.data());std::copy_n(surface.nativeZ.data()+offset,count,band.nativeZ.data());
+    if(alpha&&alpha->size()==surface.color.size())band.alpha(std::make_shared<const std::vector<uint8_t>>(alpha->begin()+offset,alpha->begin()+offset+count));
+    for(size_t n=first;n<last;++n)paint(band,calls[n],int(top));if(band.failed()){failed=true;return;}
+    std::copy_n(band.color.data(),count,surface.color.data()+offset);std::copy_n(band.depth.data(),count,surface.depth.data()+offset);std::copy_n(band.nativeZ.data(),count,surface.nativeZ.data()+offset);
+   }catch(const std::bad_alloc&){failed=true;}
+   });};
+  size_t first=0;for(size_t n=0;n<calls.size();++n)if(calls[n].material.displace){segment(first,n);if(failed)return false;paint(surface,calls[n],0);first=n+1;}segment(first,calls.size());return !failed&&!surface.failed();
  }
 };
 }}

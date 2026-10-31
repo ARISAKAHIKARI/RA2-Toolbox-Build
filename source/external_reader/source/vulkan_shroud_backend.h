@@ -37,6 +37,7 @@ class Stage {
   if(!o.buffer(alpha_,AlphaWords*4,VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,true,true))return o.fatal("GPU shroud source allocation failed");ready_=true;return true;
  }
  void close(){
+  if(owner_.abandoned_)return;
   auto&o=owner_;if(o.inFlight_&&(!o.vkGetFenceStatus_||o.vkGetFenceStatus_(o.device_,o.fence_)!=VK_SUCCESS))return;
   if(o.device_){
    o.destroy(alpha_);o.destroy(metadata_);o.destroy(mask_);

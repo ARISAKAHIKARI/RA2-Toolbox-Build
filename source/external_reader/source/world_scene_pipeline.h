@@ -59,10 +59,13 @@ class Pipeline {
  int width_=0,height_=0;
  camera::FrameReuse<radar::Scene> reuse_;
  asyncwork::FramePool<radar::Scene> outputs_;
+ std::array<double,4>timings_{};bool reused_=false;
 public:
  const radar::Frame&presentedState()const{return presented_;}
+ const std::array<double,4>&timings()const{return timings_;}bool reused()const{return reused_;}
  void reset(){motion_.reset();presented_={};chrono_.reset();canvas_.reset();visibility_.reset();masks_.reset();mask_.reset();tiles_.reset();base_.reset();world_.reset();visible_={};radialMath_.reset();view_={};width_=height_=0;reuse_.reset();outputs_.clear();}
  template<class Read>std::shared_ptr<const radar::Scene> draw(std::shared_ptr<const Snapshot>world,const mainview::View&inputView,int width,int height,Read read,const radar::Frame*latest=nullptr,uint32_t uiTick=0){
+  timings_={};reused_=false;auto stageAt=std::chrono::steady_clock::now();auto stage=[&](unsigned n){auto now=std::chrono::steady_clock::now();timings_[n]=std::chrono::duration<double,std::milli>(now-stageAt).count();stageAt=now;};
   auto view=inputView;
   if(!world||!world->state.terrain||!view.valid()||width<1||height<1)return {};
   chrono_.select(world,view,width,height,read);
@@ -97,6 +100,7 @@ public:
    visible_=std::move(now);
   }else if(!world->masked){mask_.reset();visible_={};}
   // Translate retained instances, including their shadows and depth anchors.
+  stage(0);
   // This lane does no asset reads/decoding or VXL geometry reconstruction.
   using Key=std::pair<uint32_t,uint32_t>;std::map<Key,const radar::Marker*> old,current;
   if(live){for(const auto&m:world->state.markers)old[{m.object,m.id}]=&m;for(const auto&m:presented_.markers)current[{m.object,m.id}]=&m;}
@@ -136,9 +140,10 @@ public:
   auto plan=builder.finish();canvas_.gpuEffects((hasWorld||bolts||sparkles||chrono_.active()||!world->beacons.empty()||!radials.empty())?plan:nullptr);
   const auto*inputs=plan->valid?canvas_.completeGpuPlan({},mask_):nullptr;
   world_=world;view_=view;width_=width;height_=height;
-  if(inputs)if(auto prior=reuse_.get(*inputs)){if(!prior->gpu||gpupresent::available()){xbrzadapter::gpuState().used=true;return prior;}}
+  stage(1);if(inputs)if(auto prior=reuse_.get(*inputs)){if(!prior->gpu||gpupresent::available()){xbrzadapter::gpuState().used=bool(prior->gpu);reused_=true;return prior;}}
   auto out=outputs_.acquire();out->width=width;out->height=height;out->gpu.reset();out->guides.reset();out->boltsRendered=false;
   if(!canvas_.finish(out->pixels,true,{},mask_,nullptr,&out->gpu))return {};
+  stage(2);
   if(canvas_.gpuCompleted())out->boltsRendered=world->profile.lasers&&effects&&effects->boltsValid;
   else{
    std::vector<uint8_t> alpha;if(mask_&&!gpushroud::reference(*mask_,alpha))return {};
@@ -156,7 +161,9 @@ public:
    chrono_.apply(out->pixels,width,height,view.width,view.height);
    if(!radials.empty()){worldfx::Painter painter(out->pixels,effectView,canvas_.nativeScene()?canvas_.nativeAlpha().get():nullptr,canvas_.nativeScene()?&canvas_.nativeDepth():nullptr);radialindicators::geometry(radials,view,world->zscale,*radialMath,painter,width,height,radial555);}
   }
-  if(inputs&&canvas_.gpuCompleted())reuse_.completed(*inputs,out);else reuse_.reset();
+  // Reuse a completed CPU frame too, only after comparing the full current
+  // ordered draw/material/Z/A/effect inputs. Game-frame equality is not a key.
+  stage(3);if(inputs)reuse_.completed(*inputs,out);else reuse_.reset();
   return out;
  }
 };

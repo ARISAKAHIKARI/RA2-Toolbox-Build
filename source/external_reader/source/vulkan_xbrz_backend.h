@@ -170,6 +170,7 @@ public:
  // submission/fence succeeds. A failed attempt never publishes partial owners.
  void commit(){if(prepared_){if(!params_.empty())resident_=std::move(pending_);prepared_=false;}}
  void close(){
+  if(core_.abandoned_)return;
   if(core_.inFlight_&&core_.vkGetFenceStatus_&&core_.vkGetFenceStatus_(core_.device_,core_.fence_)!=VK_SUCCESS)return;
   if(core_.device_){
    core_.destroy(raw_);core_.destroy(flags_);core_.destroy(upload_);

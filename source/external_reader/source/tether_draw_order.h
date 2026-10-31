@@ -24,10 +24,20 @@ template<class Read,class Markers>void capture(Read read,Markers&markers){
   if((count&&(!read(links,after.data(),after.size()*4)||after!=before))||game.template get<uint32_t>(m.object+0xE4)!=links||game.template get<int>(m.object+0xE8,-1)!=count||game.template get<int>(m.object+0xAC,-1)!=16)m.tetherRedraw.clear();
  }
 }
+template<class Marker>auto displayIndex(const Marker&m,int)->decltype(m.displayOrder,int()){return m.displayOrder;}
+template<class Marker>int displayIndex(const Marker&,long){return -1;}
 template<class Markers>auto order(const Markers&markers,bool replay=true){
  using Marker=typename Markers::value_type;std::vector<const Marker*>sorted,result;std::map<Key,const Marker*>lookup;
  for(const auto&m:markers){sorted.push_back(&m);lookup[{m.object,m.id}]=&m;}
  std::stable_sort(sorted.begin(),sorted.end(),[](auto a,auto b){return camera::orderKey(a->layer,a->kind,a->x,a->y,a->sort)<camera::orderKey(b->layer,b->kind,b->x,b->y,b->sort);});
+ // Keep directly drawn families (particles/attached anims) near their existing
+ // Y-sort anchors, while native Display members keep their exact list order.
+ std::vector<const Marker*>nativeSorted;nativeSorted.reserve(sorted.size());
+ for(size_t at=0;at<sorted.size();){size_t end=at+1;while(end<sorted.size()&&sorted[end]->layer==sorted[at]->layer)++end;
+  std::vector<const Marker*>known,extra;for(size_t n=at;n<end;++n)(displayIndex(*sorted[n],0)>=0?known:extra).push_back(sorted[n]);
+  std::stable_sort(known.begin(),known.end(),[](auto a,auto b){return displayIndex(*a,0)<displayIndex(*b,0);});size_t next=0;
+  for(auto m:known){while(next<extra.size()&&camera::orderKey(extra[next]->layer,extra[next]->kind,extra[next]->x,extra[next]->y,extra[next]->sort)<camera::orderKey(m->layer,m->kind,m->x,m->y,m->sort))nativeSorted.push_back(extra[next++]);nativeSorted.push_back(m);}while(next<extra.size())nativeSorted.push_back(extra[next++]);at=end;
+ }sorted=std::move(nativeSorted);
  for(auto m:sorted){if(replay)for(auto key:m->tetherRedraw){auto found=lookup.find(key);if(found!=lookup.end())result.push_back(found->second);}if(!replay||!m->tetherHidden)result.push_back(m);}
  return result;
 }

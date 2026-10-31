@@ -54,6 +54,7 @@ public:
  ~DirectOutput(){close();}
  void close(){
 #ifdef _WIN32
+  if(core_.abandoned_){for(auto&s:slots_)(void)s.release();slots_.clear();pending_=nullptr;device_.reset();return;}
   if(core_.inFlight_&&core_.vkGetFenceStatus_&&core_.vkGetFenceStatus_(core_.device_,core_.fence_)!=VK_SUCCESS)return;
   for(auto&s:slots_)destroy(*s);slots_.clear();pending_=nullptr;device_.reset();
 #endif

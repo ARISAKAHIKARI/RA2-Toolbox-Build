@@ -48,14 +48,14 @@ class Surface {
  int width_=0,height_=0;
  colorprecision::Mode precision_=colorprecision::Mode::NativeSteps;
  xbrzadapter::Cache scaleCache_;bool reconstructionFailed_=false;
- int nativeOriginX_=0,nativeOriginY_=0,nativeViewHeight_=0,nativePitch_=0,writeTop_=0,writeBottom_=0;std::function<uint32_t(int,int)>nativeRead_;float nativeScaleX_=1,nativeScaleY_=1;
+ int nativeOriginX_=0,nativeOriginY_=0,nativeViewHeight_=0,nativePitch_=0,writeTop_=0,writeBottom_=0,outputOriginY_=0;std::function<uint32_t(int,int)>nativeRead_;float nativeScaleX_=1,nativeScaleY_=1;
  std::shared_ptr<const std::vector<uint8_t>> alpha_;
 public:
  std::vector<uint32_t> color;std::vector<float> depth;
  std::vector<uint16_t> nativeZ;
  bool reset(int w,int h,uint32_t background=0xff080c08u){
   if(w<=0||h<=0||w>8192||h>8192||uint64_t(w)*h>16*1024*1024){width_=height_=0;color.clear();depth.clear();return false;}
-  width_=w;height_=h;reconstructionFailed_=false;color.assign(size_t(w)*h,background);depth.assign(color.size(),-std::numeric_limits<float>::infinity());nativeZ.assign(color.size(),65535);alpha_.reset();nativeRead_={};writeTop_=0;writeBottom_=h;nativeOriginX_=nativeOriginY_=0;nativeScaleX_=nativeScaleY_=1;nativePitch_=w;nativeViewHeight_=h;return true;
+  width_=w;height_=h;reconstructionFailed_=false;color.assign(size_t(w)*h,background);depth.assign(color.size(),-std::numeric_limits<float>::infinity());nativeZ.assign(color.size(),65535);alpha_.reset();nativeRead_={};writeTop_=0;writeBottom_=h;nativeOriginX_=nativeOriginY_=outputOriginY_=0;nativeScaleX_=nativeScaleY_=1;nativePitch_=w;nativeViewHeight_=h;return true;
  }
  int width()const{return width_;}int height()const{return height_;}
  void precision(colorprecision::Mode mode){precision_=mode==colorprecision::Mode::SmoothRGB?mode:colorprecision::Mode::NativeSteps;}
@@ -64,6 +64,9 @@ public:
  void nativeView(int originY,float scaleX,float scaleY,int pitch,int viewHeight,int originX=0){nativeOriginX_=originX;nativeOriginY_=originY;nativeScaleX_=scaleX;nativeScaleY_=scaleY;nativePitch_=pitch;nativeViewHeight_=viewHeight;}
  void nativeRead(std::function<uint32_t(int,int)>read){nativeRead_=std::move(read);}
  void writeRows(int top,int bottom){writeTop_=std::clamp(top,0,height_);writeBottom_=std::clamp(bottom,writeTop_,height_);}
+ // Row workers own private buffers but use the original viewport's native
+ // Z/clip origin. This is distinct from the map-page nativeOriginY.
+ void outputRowOrigin(int y){outputOriginY_=y;}
  void alpha(std::shared_ptr<const std::vector<uint8_t>>a){alpha_=std::move(a);}
  const std::shared_ptr<const std::vector<uint8_t>>&alphaPlane()const{return alpha_;}
  unsigned alphaAt(size_t at)const{return alpha_&&alpha_->size()==color.size()?(*alpha_)[at]:127;}
@@ -89,19 +92,22 @@ public:
   int x1=std::clamp(int(std::ceil(std::clamp(left+i.width*pxScale,-1e7f,1e7f))),0,width_),y1=std::clamp(int(std::ceil(std::clamp(top+i.height*pyScale,-1e7f,1e7f))),0,height_);
   y1=std::min(y1,int(std::ceil(std::clamp(ay+material.clipBottom*sy-.5f,-1e7f,1e7f))));
   y0=std::max(y0,writeTop_);y1=std::min(y1,writeBottom_);
+  if(x0>=x1||y0>=y1){if(parts)for(const auto&part:i.attachments)if((!part.shadow||i.shadowsAfter)&&(!part.airborneShadow||shadowDrop>0))blit(part,ax,ay+(part.shadow?shadowDrop*sy:0),sx,sy,base,light,lift,0,smooth,material.shifted(part.shadow?shadowDrop:0));return;}
   Light transform(light,precision_);bool zData=i.depth.size()==i.pixels.size(),indexed=i.indices.size()==i.pixels.size();
   const bool nativeDepth=i.nativeDepth.enabled;const bool rgb555=light.rgb555||material.rgb555;auto nativePalette=lighting::palette(light,i.objectPalette);
-  const int nativeHeight=(i.height+i.rasterScale-1)/i.rasterScale,nativeTop=int(std::floor(top/sy))+nativeOriginY_;
+  const int nativeHeight=(i.height+i.rasterScale-1)/i.rasterScale,nativeTop=int(std::floor((top+outputOriginY_)/sy))+nativeOriginY_;
   auto nativeDescriptor=i.nativeDepth;if(material.shpFlat&&!i.shadow)nativeDescriptor.gradient=nativesurface::Gradient::Flat;
-  const int clipHeight=material.clipBottom<1e6f?std::min(nativeViewHeight_,nativeOriginY_+int(std::ceil(ay/sy+material.clipBottom-.5f))):nativeViewHeight_;
+  const int clipHeight=material.clipBottom<1e6f?std::min(nativeViewHeight_,nativeOriginY_+int(std::ceil((ay+outputOriginY_)/sy+material.clipBottom-.5f))):nativeViewHeight_;
   const auto walk=nativesurface::walk(nativeDescriptor,nativeTop,nativeHeight,clipHeight,material.nativeZAdjust,material.bridgeSplit);
   auto candidate=[&](int row,size_t from){return walk.at(row/i.rasterScale,i.nativeShape.size()==i.pixels.size()?i.nativeShape[from]:0);};
   auto covered=[&](size_t from){return i.nativeShapeCoverage.empty()||(i.nativeShapeCoverage.size()==i.pixels.size()&&i.nativeShapeCoverage[from]);};
-  auto displaced=[&](int x,int y){int pitch=std::max(1,nativePitch_);int nx=nativeOriginX_+int(std::floor((x+.5f)/nativeScaleX_)),ny=nativeOriginY_+int(std::floor((y+.5f)/nativeScaleY_));int64_t linear=int64_t(ny)*pitch+nx+material.cloakWords;
+  auto displaced=[&](int x,int y){int pitch=std::max(1,nativePitch_);int nx=nativeOriginX_+int(std::floor((x+.5f)/nativeScaleX_)),ny=nativeOriginY_+int(std::floor((y+outputOriginY_+.5f)/nativeScaleY_));int64_t linear=int64_t(ny)*pitch+nx+material.cloakWords;
    if(linear<0||linear>=int64_t(pitch)*nativeViewHeight_)return uint32_t(0xff000000u);int worldX=int(linear%pitch),worldY=int(linear/pitch);if(nativeRead_)return nativeRead_(worldX,worldY);
    int xx=int(std::floor((worldX-nativeOriginX_+.5)*nativeScaleX_)),yy=int(std::floor((worldY-nativeOriginY_+.5)*nativeScaleY_));return xx>=0&&yy>=0&&xx<width_&&yy<height_?color[size_t(yy)*width_+xx]:uint32_t(0xff000000u);};
   auto alphaColor=[&](uint32_t p,unsigned a){if(!nativeDepth||nativePalette.rows==1||a==127)return p;uint32_t v=p&0xff000000u;for(int sh:{0,8,16})v|=std::min(255u,((p>>sh)&255)*a/127u)<<sh;return v;};
-  auto sourceLit=[&](uint32_t pixel,size_t from,size_t to){return precision_==colorprecision::Mode::NativeSteps&&nativeDepth&&indexed?nativePalette.apply(pixel,i.indices[from],alphaAt(to),!i.nativeBlend&&!material.translucency):alphaColor(transform.apply(pixel,indexed?i.indices[from]:0,i.objectPalette),alphaAt(to));};
+  const bool paletteFast=precision_==colorprecision::Mode::NativeSteps&&nativeDepth&&indexed&&nativePalette.table&&uint64_t(i.width)*i.height>=1024;std::array<uint32_t,256>opaquePalette{};
+  if(paletteFast)for(unsigned index=0;index<256;++index)opaquePalette[index]=nativePalette.apply(0xff000000u,uint8_t(index),127,!i.nativeBlend&&!material.translucency);
+  auto sourceLit=[&](uint32_t pixel,size_t from,size_t to){const unsigned a=alphaAt(to);if(paletteFast&&a==127&&(pixel>>24)==255)return opaquePalette[i.indices[from]];return precision_==colorprecision::Mode::NativeSteps&&nativeDepth&&indexed?nativePalette.apply(pixel,i.indices[from],a,!i.nativeBlend&&!material.translucency):alphaColor(transform.apply(pixel,indexed?i.indices[from]:0,i.objectPalette),a);};
   auto colorAt=[&](int x,int y,unsigned alpha){if(x<0||y<0||x>=i.width||y>=i.height)return uint32_t(0);size_t at=size_t(y)*i.width+x;return nativeDepth&&indexed&&precision_==colorprecision::Mode::NativeSteps?nativePalette.apply(i.pixels[at],i.indices[at],alpha,!i.nativeBlend&&!material.translucency):alphaColor(transform.apply(i.pixels[at],indexed?i.indices[at]:0,i.objectPalette),alpha);};
   // SHP colors enter the unchanged upstream xBRZ scaler AFTER current scene
   // lighting, remap and emissive evaluation. Never bake a fixed light into art.

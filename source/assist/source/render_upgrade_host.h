@@ -28,6 +28,7 @@ struct Frame {
  int frameSignalState=0;double signalDelayMs=0;
  double sampleMs=0,sceneMs=0,finishMs=0,gpuPrepareMs=0,gpuWaitMs=0,gpuCopyMs=0;
  double terrainMs=0,palettesMs=0,decodeStageMs=0,voxelMs=0,objectsMs=0,resolveMs=0,effectsMs=0;
+ std::array<double,4>compositionMs{};
  uint32_t renderReadCalls=0,renderPageHits=0,drawnObjects=0,requestedObjects=0;uint64_t paletteSamples=0,paletteHits=0;
  std::string gpuDevice,gpuReason;bool gpuSoftware=false,gpuReadbackCached=false;
  uint32_t readCalls=0,pageHits=0,prefetchedPages=0,decodeAttempts=0;double decodeMs=0;
@@ -167,7 +168,7 @@ static asyncwork::Recurring<Request,Frame> worker([](const Request&r)->std::shar
  assets.presentationDetail(r.detail);
  const auto&gpuBackend=external::xbrzadapter::gpuState().resolve;
  const bool gpuUnavailable=gpuBackend&&!gpuBackend->diagnostics().available&&!gpuBackend->diagnostics().reason.empty();
- assets.presentationGPU(r.gpu&&!gpuUnavailable);
+ assets.presentationGPU(r.gpu&&!gpuUnavailable&&!external::vulkancompute::Resolve::driverQuarantined());
  assets.presentationResolution(r.view.width,r.view.height,r.width,r.height);
  assets.presentationColorPrecision(r.colorPrecision!=0);
  assets.presentationPalette(r.paletteRange==1?external::pixelupgrade::PaletteRange::FullRGB:external::pixelupgrade::PaletteRange::OriginalDAC);
@@ -242,7 +243,7 @@ static asyncwork::Recurring<Request,Frame> presentationWorker([](const Request&r
  out->completedTick=GetTickCount();out->completedAtMs=presentationNow();out->resolveMs=out->completedAtMs-started;
  out->renderMs=out->completedAtMs-out->sampledAtMs;out->sampleToDrawMs=std::max(0.,started-out->sampledAtMs);out->finishMs=out->resolveMs;
  out->hasCompletionGap=lastCompleted!=0;out->completionGapMs=lastCompleted?out->completedAtMs-lastCompleted:0;lastCompleted=out->completedAtMs;
- out->gpuAttempted=external::xbrzadapter::gpuAttempted();out->gpuUsed=external::xbrzadapter::gpuUsed();out->sceneReused=false;
+ out->gpuAttempted=external::xbrzadapter::gpuAttempted();out->gpuUsed=external::xbrzadapter::gpuUsed();out->sceneReused=worldPipeline.reused();out->compositionMs=worldPipeline.timings();
  if(const auto&backend=external::xbrzadapter::gpuState().resolve){const auto&d=backend->diagnostics();
   out->gpuDevice=d.device;out->gpuReason=d.reason;out->gpuSoftware=d.softwareDevice;out->gpuReadbackCached=d.readbackCached;
   out->gpuPrepareMs=d.prepareMilliseconds;out->gpuWaitMs=d.waitMilliseconds;out->gpuCopyMs=d.readbackMilliseconds;
@@ -422,7 +423,8 @@ static void update(POINT origin,const RECT&client,const external::display::State
   std::wstring timing=L"独立采样 "+ms(presentedFrame->sampleMs)+L" · 场景 "+ms(presentedFrame->sceneMs)+L" · 后处理 "+ms(presentedFrame->finishMs)+L" ms";
   timing+=L"\r\n新帧 "+(presentedFrame->hasCompletionGap?ms(presentedFrame->completionGapMs):std::wstring(L"待测"))+L" · 采样间隔 "+ms(presentedFrame->observationMs)+L" ms";
   if(presentedFrame->gpuUsed)timing+=L" · GPU准备 "+ms(presentedFrame->gpuPrepareMs)+L"／等待 "+ms(presentedFrame->gpuWaitMs)+L"／回读整理 "+ms(presentedFrame->gpuCopyMs)+L" ms";
-  if(presentedFrame->sceneReused)timing+=L" · 画面输入相同，复用 GPU 结果";
+  if(presentedFrame->sceneReused)timing+=L" · 画面输入相同，复用完成画面";
+  timing+=L"\r\n后处理细分：取景/遮罩 "+ms(presentedFrame->compositionMs[0])+L" · 命令 "+ms(presentedFrame->compositionMs[1])+L" · 合成 "+ms(presentedFrame->compositionMs[2])+L" · 特效 "+ms(presentedFrame->compositionMs[3])+L" ms";
   timing+=L"\r\n对象 "+std::to_wstring(presentedFrame->drawnObjects)+L"/"+std::to_wstring(presentedFrame->requestedObjects)+L" · 读取 "+std::to_wstring(presentedFrame->readCalls)+L" 次 · 批量 "+std::to_wstring(presentedFrame->prefetchedPages)+L" 页 · 素材解码 "+std::to_wstring(presentedFrame->decodeAttempts)+L" 项／"+ms(presentedFrame->decodeMs)+L" ms";
   timing+=L"\r\n场景细分：地形 "+ms(presentedFrame->terrainMs)+L" · 色盘 "+ms(presentedFrame->palettesMs)+L" · 解码 "+ms(presentedFrame->decodeStageMs)+L" · VXL "+ms(presentedFrame->voxelMs)+L" · 对象合成 "+ms(presentedFrame->objectsMs)+L" · 输出 "+ms(presentedFrame->resolveMs)+L" · 特效 "+ms(presentedFrame->effectsMs)+L" ms";
   timing+=L"\r\n场景读取 "+std::to_wstring(presentedFrame->renderReadCalls)+L" 次／缓存 "+std::to_wstring(presentedFrame->renderPageHits)+L" · 色盘采样 "+std::to_wstring(presentedFrame->paletteSamples)+L"／复用 "+std::to_wstring(presentedFrame->paletteHits);
