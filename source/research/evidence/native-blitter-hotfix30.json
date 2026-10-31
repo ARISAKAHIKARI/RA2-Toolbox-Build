@@ -1,0 +1,416 @@
+{
+  "scope": "portable synthetic CPU replay only; excludes state reading, scene/source preparation, window presentation and GPU work",
+  "baseline_local": "84c78b52cd90de8dcfb7f7ac1bb241537b6a89b4",
+  "initialization_reference_local": "53dff58",
+  "yrpp_reference": "CnCNet/YRpp@d9795546950fcc75a94325ffc83b44d16ec34ce2",
+  "bench_method": "Three rounds per variant in alternating order; each round warms3 draws and reports median of15 timed replays; per-pixel A cycles0..127 including zero-object case. OS scheduling/load varies; no live FPS inference.",
+  "summary": [
+    {
+      "width": 1280,
+      "height": 720,
+      "objects": 0,
+      "median_ms": {
+        "hotfix29": 7.866987,
+        "initialization_only": 6.047304,
+        "hotfix30": 1.436019
+      },
+      "reduction_vs_hf29_percent": 81.74626448473856,
+      "reduction_vs_initialization_percent": 76.25356687872811,
+      "four_plane_digest": "12869024814175558787"
+    },
+    {
+      "width": 1280,
+      "height": 720,
+      "objects": 160,
+      "median_ms": {
+        "hotfix29": 13.739116,
+        "initialization_only": 12.001967,
+        "hotfix30": 4.261898
+      },
+      "reduction_vs_hf29_percent": 68.97982373829582,
+      "reduction_vs_initialization_percent": 64.49000401350878,
+      "four_plane_digest": "5996660681124487446"
+    },
+    {
+      "width": 2560,
+      "height": 1440,
+      "objects": 0,
+      "median_ms": {
+        "hotfix29": 30.119429,
+        "initialization_only": 26.88892,
+        "hotfix30": 7.262637
+      },
+      "reduction_vs_hf29_percent": 75.88720224410629,
+      "reduction_vs_initialization_percent": 72.99022422618684,
+      "four_plane_digest": "16654046778691900291"
+    },
+    {
+      "width": 2560,
+      "height": 1440,
+      "objects": 160,
+      "median_ms": {
+        "hotfix29": 38.316082,
+        "initialization_only": 34.05584,
+        "hotfix30": 12.5054
+      },
+      "reduction_vs_hf29_percent": 67.36252939431542,
+      "reduction_vs_initialization_percent": 63.27971942550823,
+      "four_plane_digest": "10309123569078343753"
+    }
+  ],
+  "raw_rounds": [
+    {
+      "variant": "hotfix29",
+      "timings": [
+        {
+          "width": 1280,
+          "height": 720,
+          "objects": 0,
+          "median_ms": 7.866987,
+          "digest": "12869024814175558787"
+        },
+        {
+          "width": 1280,
+          "height": 720,
+          "objects": 160,
+          "median_ms": 13.739116,
+          "digest": "5996660681124487446"
+        },
+        {
+          "width": 2560,
+          "height": 1440,
+          "objects": 0,
+          "median_ms": 30.119429,
+          "digest": "16654046778691900291"
+        },
+        {
+          "width": 2560,
+          "height": 1440,
+          "objects": 160,
+          "median_ms": 38.028119,
+          "digest": "10309123569078343753"
+        }
+      ]
+    },
+    {
+      "variant": "initialization_only",
+      "timings": [
+        {
+          "width": 1280,
+          "height": 720,
+          "objects": 0,
+          "median_ms": 6.179567,
+          "digest": "12869024814175558787"
+        },
+        {
+          "width": 1280,
+          "height": 720,
+          "objects": 160,
+          "median_ms": 12.001967,
+          "digest": "5996660681124487446"
+        },
+        {
+          "width": 2560,
+          "height": 1440,
+          "objects": 0,
+          "median_ms": 26.88892,
+          "digest": "16654046778691900291"
+        },
+        {
+          "width": 2560,
+          "height": 1440,
+          "objects": 160,
+          "median_ms": 35.30697,
+          "digest": "10309123569078343753"
+        }
+      ]
+    },
+    {
+      "variant": "hotfix30",
+      "timings": [
+        {
+          "width": 1280,
+          "height": 720,
+          "objects": 0,
+          "median_ms": 1.265266,
+          "digest": "12869024814175558787"
+        },
+        {
+          "width": 1280,
+          "height": 720,
+          "objects": 160,
+          "median_ms": 4.261898,
+          "digest": "5996660681124487446"
+        },
+        {
+          "width": 2560,
+          "height": 1440,
+          "objects": 0,
+          "median_ms": 7.343063,
+          "digest": "16654046778691900291"
+        },
+        {
+          "width": 2560,
+          "height": 1440,
+          "objects": 160,
+          "median_ms": 12.5054,
+          "digest": "10309123569078343753"
+        }
+      ]
+    },
+    {
+      "variant": "hotfix30",
+      "timings": [
+        {
+          "width": 1280,
+          "height": 720,
+          "objects": 0,
+          "median_ms": 1.436019,
+          "digest": "12869024814175558787"
+        },
+        {
+          "width": 1280,
+          "height": 720,
+          "objects": 160,
+          "median_ms": 4.180958,
+          "digest": "5996660681124487446"
+        },
+        {
+          "width": 2560,
+          "height": 1440,
+          "objects": 0,
+          "median_ms": 6.639355,
+          "digest": "16654046778691900291"
+        },
+        {
+          "width": 2560,
+          "height": 1440,
+          "objects": 160,
+          "median_ms": 11.719414,
+          "digest": "10309123569078343753"
+        }
+      ]
+    },
+    {
+      "variant": "initialization_only",
+      "timings": [
+        {
+          "width": 1280,
+          "height": 720,
+          "objects": 0,
+          "median_ms": 6.047304,
+          "digest": "12869024814175558787"
+        },
+        {
+          "width": 1280,
+          "height": 720,
+          "objects": 160,
+          "median_ms": 12.154688,
+          "digest": "5996660681124487446"
+        },
+        {
+          "width": 2560,
+          "height": 1440,
+          "objects": 0,
+          "median_ms": 27.577228,
+          "digest": "16654046778691900291"
+        },
+        {
+          "width": 2560,
+          "height": 1440,
+          "objects": 160,
+          "median_ms": 34.05584,
+          "digest": "10309123569078343753"
+        }
+      ]
+    },
+    {
+      "variant": "hotfix29",
+      "timings": [
+        {
+          "width": 1280,
+          "height": 720,
+          "objects": 0,
+          "median_ms": 7.028976,
+          "digest": "12869024814175558787"
+        },
+        {
+          "width": 1280,
+          "height": 720,
+          "objects": 160,
+          "median_ms": 12.586817,
+          "digest": "5996660681124487446"
+        },
+        {
+          "width": 2560,
+          "height": 1440,
+          "objects": 0,
+          "median_ms": 29.900095,
+          "digest": "16654046778691900291"
+        },
+        {
+          "width": 2560,
+          "height": 1440,
+          "objects": 160,
+          "median_ms": 38.316082,
+          "digest": "10309123569078343753"
+        }
+      ]
+    },
+    {
+      "variant": "hotfix29",
+      "timings": [
+        {
+          "width": 1280,
+          "height": 720,
+          "objects": 0,
+          "median_ms": 8.578167,
+          "digest": "12869024814175558787"
+        },
+        {
+          "width": 1280,
+          "height": 720,
+          "objects": 160,
+          "median_ms": 14.342845,
+          "digest": "5996660681124487446"
+        },
+        {
+          "width": 2560,
+          "height": 1440,
+          "objects": 0,
+          "median_ms": 32.944567,
+          "digest": "16654046778691900291"
+        },
+        {
+          "width": 2560,
+          "height": 1440,
+          "objects": 160,
+          "median_ms": 43.060628,
+          "digest": "10309123569078343753"
+        }
+      ]
+    },
+    {
+      "variant": "hotfix30",
+      "timings": [
+        {
+          "width": 1280,
+          "height": 720,
+          "objects": 0,
+          "median_ms": 1.437403,
+          "digest": "12869024814175558787"
+        },
+        {
+          "width": 1280,
+          "height": 720,
+          "objects": 160,
+          "median_ms": 6.067382,
+          "digest": "5996660681124487446"
+        },
+        {
+          "width": 2560,
+          "height": 1440,
+          "objects": 0,
+          "median_ms": 7.262637,
+          "digest": "16654046778691900291"
+        },
+        {
+          "width": 2560,
+          "height": 1440,
+          "objects": 160,
+          "median_ms": 12.97928,
+          "digest": "10309123569078343753"
+        }
+      ]
+    },
+    {
+      "variant": "initialization_only",
+      "timings": [
+        {
+          "width": 1280,
+          "height": 720,
+          "objects": 0,
+          "median_ms": 5.886124,
+          "digest": "12869024814175558787"
+        },
+        {
+          "width": 1280,
+          "height": 720,
+          "objects": 160,
+          "median_ms": 11.451194,
+          "digest": "5996660681124487446"
+        },
+        {
+          "width": 2560,
+          "height": 1440,
+          "objects": 0,
+          "median_ms": 24.628165,
+          "digest": "16654046778691900291"
+        },
+        {
+          "width": 2560,
+          "height": 1440,
+          "objects": 160,
+          "median_ms": 31.316504,
+          "digest": "10309123569078343753"
+        }
+      ]
+    }
+  ],
+  "regression": {
+    "indexed_ordered_draws": {
+      "ordered_draws": 8192,
+      "four_plane_digest": "10270135044812603347",
+      "gpu_executed": false
+    },
+    "indexed_baseline_identical": true,
+    "frame_replay_layouts": 32,
+    "frame_replay_baseline_identical": true,
+    "native_palette_exact_comparisons": 6029568,
+    "base_shade_channel_A_pairs": 65536,
+    "base_shade_offsets_tails_scalar_and_SSE2": true,
+    "scene_record_ordered_oracles": 36,
+    "continuity_waterline_display_fence": true,
+    "historical_camera_native_rows": "Known historical fixed digest fails identically on HF29/step1; not changed or declared passed."
+  },
+  "not_executed": [
+    "Windows loader",
+    "Vulkan/D3D device",
+    "live game",
+    "real FPS",
+    "native game instructions",
+    "multiplayer"
+  ],
+  "limits": [
+    "No full Vera/engine phase parity claim",
+    "Two prepare-only map index forks removed by control-flow inspection; their timing not isolated",
+    "Transparent zero-alpha runs are scanned in decoded rows, not a new compressed-source RLE cache",
+    "No private game binary or raw dump included"
+  ],
+  "build": {
+    "toolchain": "Zig0.13.0",
+    "host": "x64",
+    "runtime": "x86",
+    "broker": "x86",
+    "production_cross_build_exit": 0,
+    "windows_static_checks_exit": 0,
+    "crossbit_ABI_entries": 680,
+    "crossbit_ABI_differences": {},
+    "game_executed": false,
+    "gpu_executed": false
+  },
+  "production_outputs": {
+    "RA2Toolbox.exe": {
+      "bytes": 8398848,
+      "sha256": "750f798e058595e8dee683f93155bce10605dc091702077a94c08309644b56c5"
+    },
+    "GameRuntime.dll": {
+      "bytes": 5253120,
+      "sha256": "1ca8447e07ef550cbb35b6d843fb4f3eb97890140444b1095572ebb34a561bfb"
+    },
+    "GameRuntimeHost32.exe": {
+      "bytes": 207872,
+      "sha256": "5baef9bb6b4cdc2a7c18084e30a75704493ec09e35d6598a3ba395fc52e70255"
+    }
+  }
+}

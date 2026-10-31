@@ -369,9 +369,9 @@ public:
   }
   auto alphaAsset=[&](uint32_t pointer)->std::shared_ptr<const voxel::Image>{auto found=effectAlphas_.find(pointer);if(found==effectAlphas_.end()){voxel::Image image;if(!alphaImage(assets,pointer,image,0))return {};size_t bytes=0;for(const auto&item:effectAlphas_)bytes+=camera::pixels(*item.second)*5;if(bytes+camera::pixels(image)*5>16*1024*1024)effectAlphas_.clear();found=effectAlphas_.emplace(pointer,std::make_shared<const voxel::Image>(std::move(image))).first;}return found->second;};
   const double projectionScale=projectionZScale(read);
-  auto nativeBase=background_.fork();
+  auto nativeBase=prepareWorldOnly_?camera::NativeCanvas{}:background_.fork();
   if(!detail&&!prepareWorldOnly_&&!nativePageMasks_.prepare(nativeBase,*frame.terrain,masked,fog,frame.effects&&frame.effects->world?frame.effects->world.get():nullptr,features_.particles,projectionScale,[&](bool fog,int n,voxel::Image&out){return assets.shroud(fog,n,out);},alphaAsset))return {};
-  auto view=nativeBase.fork();
+  auto view=prepareWorldOnly_?camera::NativeCanvas{}:nativeBase.fork();
   std::vector<camera::ObjectCanvas::Draw>objectDraws;objectDraws.reserve(frame.markers.size());
   auto draw=[&](const voxel::Image&i,float x,float y,float sx,float sy,float z,const lighting::State&light,float lift=1,float drop=0,std::shared_ptr<const voxel::Image>owner={},vulkancompute::MotionIdentity motion={},camera::Material material={}){if(detail&&!prepareWorldOnly_)detailed_.blit(i,x,y,sx,sy,z,light,lift,drop,std::move(owner),std::move(motion),material);else{if(!owner||owner.get()!=&i)owner=std::make_shared<const voxel::Image>(i);objectDraws.push_back({std::move(owner),x,y,z,lift,drop,light,material,motion.object,motion.id});}};
 

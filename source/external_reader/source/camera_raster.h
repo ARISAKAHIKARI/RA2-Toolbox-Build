@@ -6,6 +6,8 @@
 #include "pixel_upgrade.h"
 #include "color_precision.h"
 #include "native_packed_color.h"
+#include "native_palette_lookup.h"
+#include "native_base_shade.h"
 #include "render_material.h"
 #include "xbrz_adapter.h"
 #include <functional>
@@ -64,6 +66,51 @@ private:
   if(initialDepth)depth=*initialDepth;else if(depthWillBeWritten)depth.resize(color.size());else depth.assign(color.size(),-std::numeric_limits<float>::infinity());
   nativeZ.assign(color.size(),65535);alpha_.reset();nativeRead_={};writeTop_=0;writeBottom_=h;nativeOriginX_=nativeOriginY_=outputOriginY_=0;nativeScaleX_=nativeScaleY_=1;nativePitch_=w;nativeViewHeight_=h;return true;
  }
+ template<bool ReadZ,bool WriteZ,bool PixelDepth,bool Table>
+ void indexedRows(const voxel::Image&i,const nativesurface::PaletteLookup&palette,const nativesurface::Walk&walk,
+                  float base,float lift,float left,float top,int x0,int x1,int y0,int y1){
+  const int ox=int(std::floor(.5f-left)),oy=int(std::floor(.5f-top));
+  const int first=std::max(x0,-ox),last=std::min(x1,i.width-ox);
+  if(first>=last)return;
+  const auto*shape=i.nativeShape.size()==i.pixels.size()?i.nativeShape.data():nullptr;
+  if(!i.nativeShapeCoverage.empty()&&i.nativeShapeCoverage.size()!=i.pixels.size())return;
+  const auto*coverage=i.nativeShapeCoverage.empty()?nullptr:i.nativeShapeCoverage.data();
+  const auto*alpha=alpha_&&alpha_->size()==color.size()?alpha_->data():nullptr;
+  for(int y=std::max(y0,-oy);y<std::min(y1,i.height-oy);++y){const int sourceY=y+oy;
+   float rowZ=0;if constexpr(WriteZ){rowZ=base+i.depthBias;
+    if constexpr(!PixelDepth){if(i.flat)rowZ+=float(i.y+sourceY)/i.rasterScale-14+lift;
+     else{int bottom=i.depthBottom==std::numeric_limits<int>::min()?i.y+i.height-1:i.depthBottom;rowZ+=float(bottom)/i.rasterScale-14+lift+float((bottom-i.y-sourceY)/3)/i.rasterScale;}}
+   }
+   const int rowNativeZ=ReadZ?walk.at(sourceY/i.rasterScale):0;
+   size_t from=size_t(sourceY)*i.width+first+ox,to=size_t(y)*width_+first,end=from+last-first;
+   while(from<end){const uint32_t p=i.pixels[from];const unsigned opacity=p>>24;
+    // Transparent spans advance coordinates together, without touching Z/A or
+    // entering the selected pixel operator. No source/target order changes.
+    if(!opacity){const size_t start=from;do{++from;}while(from<end&&!(i.pixels[from]>>24));to+=from-start;continue;}
+    bool useZ=ReadZ;float z=rowZ;if constexpr(ReadZ&&PixelDepth){const float dz=i.depth[from];if(std::isnan(dz))useZ=false;else if constexpr(WriteZ)z+=dz;}
+    const int nz=rowNativeZ+(shape?shape[from]:0);
+    if((coverage&&!coverage[from])||(useZ&&!nativesurface::admits(nz,nativeZ[to],i.nativeDepth.tileEqual))){++from;++to;continue;}
+    const uint32_t lit=palette.template shade<Table>(p,i.indices[from],alpha?alpha[to]:uint8_t(127));
+    if(opacity==255)color[to]=lit;
+    else{const uint32_t prior=color[to];uint32_t out=(opacity+(prior>>24)*(255-opacity)/255)<<24;
+     for(int shift:{0,8,16})out|=std::min(255u,((lit>>shift)&255)+((prior>>shift)&255)*(255-opacity)/255)<<shift;color[to]=out;}
+    if constexpr(WriteZ)if(useZ){depth[to]=z;nativeZ[to]=uint16_t(nz);}
+    ++from;++to;
+   }
+  }
+ }
+ template<bool Table>
+ void indexedNative(const voxel::Image&i,const nativesurface::PaletteLookup&palette,const nativesurface::Walk&walk,
+                    float base,float lift,float left,float top,int x0,int x1,int y0,int y1){
+  const bool pixelDepth=i.depth.size()==i.pixels.size();
+  // Choose depth ownership once per call, as YRpp chooses its blitter family.
+  if(i.skipZ)indexedRows<false,false,false,Table>(i,palette,walk,base,lift,left,top,x0,x1,y0,y1);
+  else if(i.writeDepth){if(pixelDepth)indexedRows<true,true,true,Table>(i,palette,walk,base,lift,left,top,x0,x1,y0,y1);
+   else indexedRows<true,true,false,Table>(i,palette,walk,base,lift,left,top,x0,x1,y0,y1);}
+  else{if(pixelDepth)indexedRows<true,false,true,Table>(i,palette,walk,base,lift,left,top,x0,x1,y0,y1);
+   else indexedRows<true,false,false,Table>(i,palette,walk,base,lift,left,top,x0,x1,y0,y1);}
+ }
+
 public:
  bool reset(int w,int h,uint32_t background=0xff080c08u){return resetStorage(w,h,background,nullptr,nullptr,false);}
  // Frame replay supplies final base pixels/depth directly. A null depth means
@@ -85,7 +132,8 @@ public:
  const std::shared_ptr<const std::vector<uint8_t>>&alphaPlane()const{return alpha_;}
  unsigned alphaAt(size_t at)const{return alpha_&&alpha_->size()==color.size()?(*alpha_)[at]:127;}
  void nativeBase(std::shared_ptr<const std::vector<uint8_t>>a,bool clearDepth=true){alpha_=std::move(a);if(clearDepth){std::fill(nativeZ.begin(),nativeZ.end(),65535);std::fill(depth.begin(),depth.end(),-std::numeric_limits<float>::infinity());}
-  if(alpha_&&alpha_->size()==color.size())for(size_t n=0;n<color.size();++n){unsigned a=(*alpha_)[n];if(a==127)continue;uint32_t c=color[n],out=c&0xff000000u;for(int sh:{0,8,16})out|=std::min(255u,((c>>sh)&255u)*a/127u)<<sh;color[n]=out;}}
+  if(alpha_&&alpha_->size()==color.size())nativesurface::shadeBase(color.data(),alpha_->data(),color.size(),xbrzadapter::bilinearSse2Available());}
+
  void diamond(float ax,float ay,float sx,float sy,float base,uint32_t c,const lighting::State&light){
   c=lit(c,0,false,light,precision_);
   for(int y=std::max(0,int(std::floor(ay-15*sy)));y<std::min(height_,int(std::ceil(ay+15*sy)));++y)
@@ -119,10 +167,10 @@ public:
    if(linear<0||linear>=int64_t(pitch)*nativeViewHeight_)return uint32_t(0xff000000u);int worldX=int(linear%pitch),worldY=int(linear/pitch);if(nativeRead_)return nativeRead_(worldX,worldY);
    int xx=int(std::floor((worldX-nativeOriginX_+.5)*nativeScaleX_)),yy=int(std::floor((worldY-nativeOriginY_+.5)*nativeScaleY_));return xx>=0&&yy>=0&&xx<width_&&yy<height_?color[size_t(yy)*width_+xx]:uint32_t(0xff000000u);};
   auto alphaColor=[&](uint32_t p,unsigned a){if(!nativeDepth||nativePalette.rows==1||a==127)return p;uint32_t v=p&0xff000000u;for(int sh:{0,8,16})v|=std::min(255u,((p>>sh)&255)*a/127u)<<sh;return v;};
-  const bool paletteFast=precision_==colorprecision::Mode::NativeSteps&&nativeDepth&&indexed&&nativePalette.table&&uint64_t(i.width)*i.height>=1024;std::array<uint32_t,256>opaquePalette{};
-  if(paletteFast)for(unsigned index=0;index<256;++index)opaquePalette[index]=nativePalette.apply(0xff000000u,uint8_t(index),127,!i.nativeBlend&&!material.translucency);
-  auto sourceLit=[&](uint32_t pixel,size_t from,size_t to){const unsigned a=alphaAt(to);if(paletteFast&&a==127&&(pixel>>24)==255)return opaquePalette[i.indices[from]];return precision_==colorprecision::Mode::NativeSteps&&nativeDepth&&indexed?nativePalette.apply(pixel,i.indices[from],a,!i.nativeBlend&&!material.translucency):alphaColor(transform.apply(pixel,indexed?i.indices[from]:0,i.objectPalette),a);};
-  auto colorAt=[&](int x,int y,unsigned alpha){if(x<0||y<0||x>=i.width||y>=i.height)return uint32_t(0);size_t at=size_t(y)*i.width+x;return nativeDepth&&indexed&&precision_==colorprecision::Mode::NativeSteps?nativePalette.apply(i.pixels[at],i.indices[at],alpha,!i.nativeBlend&&!material.translucency):alphaColor(transform.apply(i.pixels[at],indexed?i.indices[at]:0,i.objectPalette),alpha);};
+  const bool nativeIndexed=precision_==colorprecision::Mode::NativeSteps&&nativeDepth&&indexed;
+  nativesurface::PaletteLookup paletteLookup;if(nativeIndexed)paletteLookup.prepare(nativePalette,!i.nativeBlend&&!material.translucency);
+  auto sourceLit=[&](uint32_t pixel,size_t from,size_t to){const unsigned a=alphaAt(to);return nativeIndexed?paletteLookup.apply(pixel,i.indices[from],uint8_t(a)):alphaColor(transform.apply(pixel,indexed?i.indices[from]:0,i.objectPalette),a);};
+  auto colorAt=[&](int x,int y,unsigned alpha){if(x<0||y<0||x>=i.width||y>=i.height)return uint32_t(0);size_t at=size_t(y)*i.width+x;return nativeIndexed?paletteLookup.apply(i.pixels[at],i.indices[at],uint8_t(alpha)):alphaColor(transform.apply(i.pixels[at],indexed?i.indices[at]:0,i.objectPalette),alpha);};
   // SHP colors enter the unchanged upstream xBRZ scaler AFTER current scene
   // lighting, remap and emissive evaluation. Never bake a fixed light into art.
   // Supersampled VXLs retain their real geometry and coverage resolve below.
@@ -136,7 +184,10 @@ public:
   // Each row is a contiguous source span, without per-pixel division/floor.
   const bool native=pxScale==1&&pyScale==1&&std::abs(left)<=16384&&std::abs(top)<=16384&&
       left*256==std::floor(left*256)&&top*256==std::floor(top*256);
-  if(native){
+  const bool indexedFast=native&&nativeIndexed&&!i.shadow&&!packed&&!material.displace&&!material.mixStrength&&!material.translucency;
+  if(indexedFast){if(paletteLookup.table())indexedNative<true>(i,paletteLookup,walk,base,lift,left,top,x0,x1,y0,y1);
+   else indexedNative<false>(i,paletteLookup,walk,base,lift,left,top,x0,x1,y0,y1);}
+  else if(native){
    const int ox=int(std::floor(.5f-left)),oy=int(std::floor(.5f-top));
    const bool neutral=transform.gains[0]==1&&transform.gains[1]==1&&transform.gains[2]==1;
    const int first=std::max(x0,-ox),last=std::min(x1,i.width-ox);
