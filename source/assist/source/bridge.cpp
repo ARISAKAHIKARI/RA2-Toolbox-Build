@@ -116,7 +116,8 @@ static bool bridgePinned,autoWas;static DWORD lastAuto,techRefresh;
 static repairdelivery::Pending<> pendingRepairs;
 static void resetPointerInput();static void restoreClickHooks();static void resetCooperativeState();static void clickHooksTick(uint32_t);static void cooperativeTick(uint32_t,int,DWORD);
 static void clearNativeOrders();static void restoreCSHook();static void restoreTech();static void clearFlashes();static void resetProduction();
-static void restoreTechEnhancement();
+static bool restoreTechEnhancement();
+static bool featureRestorationComplete();
 static void resetFeatureTypes();static void clearOreOrders();static void cancelOreJob(uint32_t p);static void restorePlacement();
 static uint32_t worldByID(uint32_t id);static bool rawOreCompatible(uint32_t unit,uint32_t refinery);
 static void cancelUnloadPassenger(uint32_t p);
@@ -161,10 +162,14 @@ static void reset(){initialSyncReset();restoreCrcMapShadow();restoreBuildTimeToo
 static void mapName(wchar_t*out,DWORD p){mappingName(out,p);}
 static HANDLE controllerProcess;static DWORD controllerPID,controllerCheckAt;
 static void disconnect(){
- // The sender may still protect unsent foreign events. Keep its world identity
- // and the existing message/IPC connection until it can retire safely.
- if(!restoreCrcMapShadow()||!restoreNetworkSender())return;
- restorePlayerContext();InterlockedExchange(&hostWorkPending,0);if(controllerProcess)CloseHandle(controllerProcess);controllerProcess=nullptr;controllerPID=controllerCheckAt=0;restoreFrameDriver();InterlockedExchange(&messageGameThread,0);reset();sessionTracker.update(false,0,-1,-1);if(sh)UnmapViewOfFile(sh);sh=nullptr;if(mapping)CloseHandle(mapping);mapping=nullptr;lastHouse=pendingAck=0;pendingAckReady=false;
+ // reset attempts EVERY restoration even if one group must defer. Keep each
+ // group's world identity and the transport until all ownership has retired.
+ restorePlayerContext();reset();
+ // In particular, raw direct patches have no disabled callback to fall back
+ // through. Do not acknowledge stop/unmap IPC while any feature still owns one.
+ if(!featureRestorationComplete())return;
+ if(sh&&sh->magic==Magic&&sh->version==Version&&sh->pid==GetCurrentProcessId()&&sh->stop){MemoryBarrier();sh->stop=2;}
+ InterlockedExchange(&hostWorkPending,0);if(controllerProcess)CloseHandle(controllerProcess);controllerProcess=nullptr;controllerPID=controllerCheckAt=0;restoreFrameDriver();InterlockedExchange(&messageGameThread,0);sessionTracker.update(false,0,-1,-1);if(sh)UnmapViewOfFile(sh);sh=nullptr;if(mapping)CloseHandle(mapping);mapping=nullptr;lastHouse=pendingAck=0;pendingAckReady=false;
 }
 static_assert(Signatures[8].address==startupcompat::BeaconEntry,"ClearBeacons signature index");
 static bool startupSignature(const Signature&s){
@@ -700,6 +705,13 @@ static bool nativeObjectUnhooked(){return nativeObjectSignature();}
 #include "pointer_bridge.h"
 #include "sticky_bridge.h"
 #include "selected_mode_bridge.h"
+static bool featureRestorationComplete(){
+ // 55DE81 belongs to Runtime's independent read-only frame notification
+ // channel. It has its own cleanup and must not deadlock Assist detachment.
+ const unsigned frameOnly=codeHookRegistry.active(0x55DE81)?1u:0u;
+ return codeHookRegistry.installed()==frameOnly&&!crcMapInstalled&&!networkSenderInstalled&&
+  !shroudMaterials.active()&&!enhancementRestoring;
+}
 // Reserve a share for other active task families, then let a lone family use
 // the remaining capacity. All sends still obey the shared 24-event frame cap.
 static int recurringBudget(EventLane lane){
@@ -1023,8 +1035,7 @@ static void tick(){
   // and message entry alive so a later game-thread tick can finish cleanup.
   // stop=2 permits the Host to remove its last message-hook subscription.
   restoreNativeSellCursor();restoreNativeMegaGateway();restoreControlObjectOwner();restoreControlCommandOwner();
-  if(!restoreCrcMapShadow()||!restoreNetworkSender())return;
-  restoreFrameDriver();Shared* old=sh;reset();if(old->stop)old->stop=2;disconnect();return;
+  restoreFrameDriver();disconnect();return;
  }
  if(snap.techOpen&&!(sh->flags&UnsafeTech))restoreTech();
  DWORD period=sh->foreground?sh->scanMs:((sh->flags&(AdvancedInput|MagnetronInput|AutoOreReturn|AirWaypoints|AntiTheft))?64:500);if(period<2)period=2;if(period>1000)period=1000;

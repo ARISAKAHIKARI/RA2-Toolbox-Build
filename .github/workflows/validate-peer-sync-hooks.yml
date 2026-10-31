@@ -18,7 +18,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p diagnostics
-          for name in initial_sync_gate initial_sync_compiletime hook_registry_policy experimental_patch_policy; do
+          for name in initial_sync_gate initial_sync_compiletime tech_enhancement_recovery crc_shadow_recovery hook_registry_policy experimental_patch_policy; do
             g++ -std=c++17 -O2 -UNDEBUG "source/assist/tests/$name.cpp" -o "/tmp/$name"
             "/tmp/$name" | tee "diagnostics/$name.log"
           done

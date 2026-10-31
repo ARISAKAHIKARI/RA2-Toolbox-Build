@@ -1,5 +1,6 @@
 #pragma once
 #include "crc_shadow_policy.h"
+#include "crc_shadow_restore.h"
 extern "C" unsigned __cdecl GuardedMapCrcShadow(unsigned,unsigned,unsigned);
 static crcshadow::Model crcMapModel;
 static bool crcMapActive,crcMapInstalled,crcMapFaulted,crcMapToolScope,crcMapNativeReconstructed;
@@ -96,13 +97,16 @@ static void crcMapPublish(){if(!sh)return;unsigned tracked=0;for(const auto&e:cr
 }
 static bool restoreCrcMapShadow(){
  crcMapPrepare();crcMapToolScope=false;
- if(crcMapWorld()&&get<int>(0xA8ED84)>=crcMapLastFrame)for(const auto&e:crcMapModel.entries())if(e.active&&e.known&&!e.blocked){
-  crcshadow::Identity current;if(!crcMapIdentity(e.identity.pointer,current)||!(current==e.identity))continue;
-  uint8_t live=0;if(!read(current.pointer+0x241,&live,1))return false;
-  if(live!=e.display){crcMapUnsafeEpoch=crcMapEpoch;continue;} // unknown origin: never overwrite it
-  if(live!=e.original){if(!gameentry::active(gameentry::Client::Assist))return false;
-   put<uint8_t>(current.pointer+0x241,e.original);if(get<uint8_t>(current.pointer+0x241)!=e.original)return false;
-   crcMapModel.naturalWrite(current,e.original);}
+ int frame=-1;read(0xA8ED84,&frame,4);
+ const crcshadow::World world{crcMapEpoch,crcMapScenario,crcMapItems,crcMapLocal,crcMapLocalID,crcMapMode};
+ const auto restored=crcshadow::restoreData(crcMapModel,world,match,frame,crcMapLastFrame,read,
+  [](uint32_t at,const uint8_t*value,size_t n){
+   if(n!=1||!gameentry::active(gameentry::Client::Assist))return false;
+   put<uint8_t>(at,*value);uint8_t after=0;return read(at,&after,1)&&after==*value;
+  });
+ if(!restored.complete){
+  if(restored.conflict)crcMapUnsafeEpoch=crcMapEpoch;
+  crcMapState=-2;crcMapPublish();return false;
  }
  crcMapActive=false;bool ok=true;for(int n=int(crcshadow::SiteCount)-1;n>=0;--n){auto&s=crcMapSites[n];
   if(codeHookRegistry.active(s.spec.address)&&!gameentry::patch(gameentry::Client::Assist,s.spec.address,s.patch,s.spec.original,s.spec.size))ok=false;}

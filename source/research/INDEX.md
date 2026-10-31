@@ -6,6 +6,7 @@
 
 | 主题 | 新笔记 | 关键词 |
 | --- | --- | --- |
+| 首次同步之后仍会分叉的直接写入与恢复遗漏 | [后续不同步审计与修复](2026-11-01-latent-desync-mutation-audit.md) | TechLevel SP-only failed-write ownership retry MapIsClear read-failure premature-unhook stop-ack all-patches native-query side-effects |
 | 宿主 Hook/订阅生命周期与目标槽回收 | [Hotfix33 回收修正与受控证据](2026-10-31-host-hook-lifecycle-hotfix33.md) | 8targets 32leases 1404 retained-process reap failed-unhook capacity |
 | 首次远端 FrameInfo 匹配门槛、51 站点清单与重连/恢复审查 | [实现与联机风险边界](2026-10-31-peer-sync-hook-activation-audit.md) | pending-executed CRC-history read-only activation 8targets 32leases invalid-HHOOK cleanup-handoff control-native-fallback |
 | Hotfix32全图MapIsClear实验镜像、自然写入与开局/局中启用时机 | [实现、地址、生命周期与验证范围](2026-10-31-crc-map-shadow-hotfix32.md) | Assist83 MapIsClear shadow 8sites natural-write runtime21 lifecycle5 cached-signatures computeApplied new-epoch not-netplay |

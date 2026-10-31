@@ -1609,7 +1609,14 @@ static void updateModeStatus(DWORD now){
  int phase=!enabled?1:!game?2:snap.status<0?3:(snap.status!=1||(shared&&commandMatch()&&snap.commandStatus!=1))?4:0;
  static int oldPhase=-1;static DWORD last; if(phase==oldPhase&&DWORD(now-last)<200)return;oldPhase=phase;last=now;publishSuiteDisplay();
  auto riskText=[&](bool wanted,int state)->std::wstring{if(state==-2)return L"启用或关闭失败，请查看日志";if(state==-1)return L"不支持此游戏版本";if(!wanted)return state==1?L"等待恢复":L"关闭";return phase?L"等待游戏就绪":state==1?L"已启用（实验性）":L"等待生效";};
- std::wstring enhancement=L"科技加强：";enhancement+=!extra.techEnhance?L"关闭":!shared||phase?L"等待游戏就绪":shared->techEnhanceStatus<0?L"部分字段不兼容或已被修改，请查看日志":shared->techEnhanceStatus==1?L"已启用（"+std::to_wstring(shared->techEnhanceCount)+L" 项）":L"等待生效";SetWindowTextW(GetDlgItem(ui,9098),enhancement.c_str());
+ std::wstring enhancement=L"科技加强：";
+ if(shared&&shared->techEnhanceStatus<0)enhancement+=shared->techEnhanceCount?L"仍有未还原字段（"+std::to_wstring(shared->techEnhanceCount)+L" 项），请查看日志":L"字段不兼容或已被修改，请查看日志";
+ else if(!extra.techEnhance)enhancement+=L"关闭";
+ else if(!shared||phase)enhancement+=L"等待游戏就绪";
+ else if(shared->techEnhanceStatus==2)enhancement+=L"仅支持单机，联机未修改";
+ else if(shared->techEnhanceStatus==1)enhancement+=L"已启用（"+std::to_wstring(shared->techEnhanceCount)+L" 项）";
+ else enhancement+=L"等待生效";
+ SetWindowTextW(GetDlgItem(ui,9098),enhancement.c_str());
  std::wstring riskStatus=L"随处建造："+riskText(buildAnywhereMode,snap.placementStatus);
  std::wstring airStatus=L"飞机路径点：";airStatus+=!(extra.airWaypoints||extra.nativeAirWaypoints)?L"关闭":phase?L"等待游戏就绪":extra.airWaypoints||extra.airPathKey||!airway::native()?L"兼容模式":snap.nativeAirStatus==-2?L"启用或关闭失败，请查看日志":snap.nativeAirStatus==-1?L"不支持此游戏版本":snap.nativeAirStatus==3?L"原生下单联机实验":snap.nativeAirStatus==4?L"完整原生联机实验":snap.nativeAirStatus==1?L"原生模式":L"等待生效";
  SetWindowTextW(GetDlgItem(ui,866),airStatus.c_str());

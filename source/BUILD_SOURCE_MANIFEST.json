@@ -213,5 +213,13 @@
     "abi": "Assist83/Runtime4/entry3 unchanged",
     "validation": "13 compiler-evaluated policy cases and 685 Windows x86/x64 COFF ABI entries pass; changed production objects compile. Full links, Windows/game and multiplayer execution remain untested.",
     "merged_hotfix": "17ee48810d33d47203d52893d3b0472d992f3a11: full host process/lease reclamation and diagnostics"
+  },
+  "latent_desync_mutation_review": {
+    "source_base": "fefd9e017060c7955811a9518c9bf98f7b144ffe",
+    "technology": "SP0/5 only; retains failed writes/restores and retries without forgetting originals",
+    "crc_restore": "Temporary world/House read failure retains owned MapIsClear data and delays unhook/model clearing",
+    "detach": "All feature code/data restorations complete before stop=2 and IPC unmapping; Runtime frame notification remains independent",
+    "validation": "40 new compiler-evaluated recovery cases + prior 13 activation cases; actual Windows x86 bridge/x64 host COFF compilation; full links/live multiplayer remain unverified",
+    "note": "research/2026-11-01-latent-desync-mutation-audit.md"
   }
 }

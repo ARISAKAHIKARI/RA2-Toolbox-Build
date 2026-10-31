@@ -1,0 +1,126 @@
+{
+  "baseline": "fefd9e017060c7955811a9518c9bf98f7b144ffe",
+  "date": "2026-11-01",
+  "scope": "Source audit, actual Windows-target COFF code generation, compiler execution of production constexpr policies. No linked game or multiplayer execution.",
+  "compiler": "Clang 18.1.6 (official SHA256-verified Zig 0.13.0)",
+  "new_compiletime_cases": {
+    "technology_recovery": 24,
+    "crc_shadow_recovery": 16,
+    "passed": true
+  },
+  "prior_first_sync_cases": 13,
+  "total_compiletime_cases": 53,
+  "objects": [
+    {
+      "source": "source/assist/source/bridge.cpp",
+      "source_sha256": "1f737ed34cc504208ee96d48d1c2b8979bbad87a72d0cca2f1bc11163ee28a18",
+      "target": "x86",
+      "object_bytes": 8533938,
+      "object_sha256": "ded5e9934d02eb191cc8bf8bdadcec45e4d6fdd32880e43fcfe0f83af62f7eb8",
+      "compiled": true,
+      "linked": false,
+      "executed": false
+    },
+    {
+      "source": "source/assist/source/main.cpp",
+      "source_sha256": "79f472b6a1a8254b1e75017fc6fce80b1f626b412838c78a0b6cd11c727f1188",
+      "target": "x64",
+      "object_bytes": 49167882,
+      "object_sha256": "32da5b8e3fd6d5f963fb891fc6b5f60607406575b5f5ecad535e8f9c0e47ab6d",
+      "compiled": true,
+      "linked": false,
+      "executed": false
+    },
+    {
+      "source": "source/assist/tests/tech_enhancement_recovery.cpp",
+      "source_sha256": "2ac745852189a0e1e14931b0c765f55f49d2f8d37a0a184c9fb2530235e3c90c",
+      "target": "x86",
+      "object_bytes": 10098,
+      "object_sha256": "0ebd6f6ce07e442022d78d520e3899e01fe272e90ccbcbde35741b13a97780a9",
+      "compiled": true,
+      "linked": false,
+      "executed": false
+    },
+    {
+      "source": "source/assist/tests/crc_shadow_recovery.cpp",
+      "source_sha256": "aefd48d0d32b15039b06171d8a8824530f9a6855f631b66c4f7ea388eec07e7f",
+      "target": "x86",
+      "object_bytes": 10086,
+      "object_sha256": "7c341ad324757a77534aa9da0b2f40f28d3e6bf1e201a7439e44c627e6ee13fa",
+      "compiled": true,
+      "linked": false,
+      "executed": false
+    }
+  ],
+  "policy_inputs": [
+    {
+      "path": "source/assist/source/tech_enhancement.h",
+      "sha256": "cd3d9ba868225295210ce38b478376f9a8d6d2051bb252f37f5d8ce7865edcfe"
+    },
+    {
+      "path": "source/assist/source/tech_enhancement_bridge.h",
+      "sha256": "8116e67affbe4be09bd409a797b45934ff58787ec6c4589f8fd475c0c49efcfd"
+    },
+    {
+      "path": "source/assist/source/crc_shadow_policy.h",
+      "sha256": "4703a3208990df663bd71c303dc450f0468026bcffe059a5db2e74c51d4be26c"
+    },
+    {
+      "path": "source/assist/source/crc_shadow_restore.h",
+      "sha256": "ce7d9c1825f95b551999eb397146bc500aabc1e74047c9a6cf48294e7e4ebac7"
+    },
+    {
+      "path": "source/assist/source/crc_shadow_bridge.h",
+      "sha256": "24e21250fc16bba0d42c6f61148e13b1fdaf9b51c183cde7e3ae3725e8c2205d"
+    },
+    {
+      "path": "source/assist/source/hover_help.h",
+      "sha256": "85382ae769067a127a347aa97388a7d69e74e0804875541c3ff213a8b3ae13bd"
+    }
+  ],
+  "abi": {
+    "unchanged_protocols": true,
+    "prior_actual_entries": 685,
+    "evidence": "peer-sync-object-abi.json",
+    "rerun": false,
+    "reason": "No Shared/Runtime/entry protocol or public cross-bit structure changed"
+  },
+  "changes": [
+    "Technology direct rule edits are SP-only; writer ownership is retained across failure and verified restoration is retryable",
+    "MapIsClear data restoration distinguishes temporary read failure from proven world/House retirement before hook cleanup",
+    "Stop acknowledgement and transport unmapping wait for all feature patches/material/field ownership to retire; independent Runtime frame notification is excluded"
+  ],
+  "ci": {
+    "merge_run": 41221881846,
+    "conclusion": "failure",
+    "jobs": [
+      {
+        "id": 124597967062,
+        "runner_id": 0,
+        "steps": 0
+      },
+      {
+        "id": 124597967385,
+        "runner_id": 0,
+        "steps": 0
+      }
+    ],
+    "reason": "Failure before allocation; cause not established"
+  },
+  "not_run": [
+    "Normal production links and PE checks",
+    "Windows HHOOK execution",
+    "Merged host_input_test.py runtime",
+    "Private-engine fixtures and complete Reveal",
+    "Real native-query mutation/RNG footprint",
+    "Live game, socket transport or multiplayer"
+  ],
+  "remaining_risks": [
+    "Full Reveal/Visionary/Cell effects",
+    "Shared simulation control predicate and lowDamageNetwork",
+    "Full native aircraft planning advancement",
+    "Cross-sender same-House scheduling and compressed receiver dictionary",
+    "Arbitrary MOD virtual-query side effects",
+    "Existing state changed by previously pinned Runtime"
+  ]
+}
