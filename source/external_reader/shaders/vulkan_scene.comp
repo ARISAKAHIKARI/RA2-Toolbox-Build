@@ -83,7 +83,7 @@ void sourceDepth(uint draw,ivec2 original,out float z,out bool useZ){
  else{int bottom=int(field(draw,13));precise float part=float(bottom)/float(field(draw,11))-14.;part+=ffield(draw,19);part+=float((bottom-int(field(draw,12))-original.y)/3)/float(field(draw,11));z+=part;}
 }
 bool opaqueAdmitted(uint draw,uvec2 at,float depth){
- if((field(draw,9)&1u)!=0u||field(draw,10)!=0u||field(draw,23)!=0u)return false;
+ if((field(draw,9)&16712449u)!=0u||field(draw,10)!=0u||field(draw,23)!=0u)return false;
  if(at.x<field(draw,24)||at.y<field(draw,25)||at.x>=field(draw,26)||at.y>=field(draw,27))return false;
  precise float x=(float(at.x)+.5-ffield(draw,14))/ffield(draw,16),y=(float(at.y)+.5-ffield(draw,15))/ffield(draw,17);
  ivec2 q=ivec2(floor(x),floor(y));if((rawAt(draw,q)>>24u)!=255u)return false;
@@ -138,19 +138,24 @@ void main(){
   if((pixel>>24)==0u)continue;precise float z;bool useZ;sourceDepth(draw,original,z,useZ);
   if(useZ&&z<=depth)continue;
   if(p.guideOffset!=Missing){
-   bool opaque=(pixel>>24)==255u&&field(draw,23)==0u;
+   bool opaque=(pixel>>24)==255u&&field(draw,23)==0u&&(flags&16712448u)==0u;
 #ifdef SCENE_FP64
-   if(preciseSample)opaque=filtered.w>=Real(255);
+   if(preciseSample)opaque=opaque&&filtered.w>=Real(255);
 #endif
    if((flags&1u)!=0u||!opaque)confidence=false;
    else{motion=vec2(ffield(draw,28),ffield(draw,29));guideDepth=z;confidence=field(draw,30)!=0u&&useZ&&!isnan(z)&&!isinf(z);}
   }
+  uint prior=color;
   if((flags&1u)!=0u){uint result=color&0xff000000u,alpha=pixel>>24;if(alpha==255u&&(flags&16u)==0u)color=packedColor(halfWord(packedWord(color)),color&0xff000000u);else{for(uint shift=0;shift<24;shift+=8)result|=(((color>>shift)&255u)*(510u-alpha)/510u)<<shift;color=result;}}
   else if(field(draw,23)!=0u)color=packedBlend(litAt(draw,original),color,field(draw,23));
 #ifdef SCENE_FP64
   else if(preciseSample){Real alpha=clamp(filtered.w,Real(0),Real(255));RVec value=unpackColor(color);for(int c=0;c<3;++c)value[c]=clamp(filtered[c],Real(0),alpha)+value[c]*(Real(255)-alpha)/Real(255);value.w=value.w==Real(255)?Real(255):alpha+value.w*(Real(255)-alpha)/Real(255);color=packColor(value);}
 #endif
   else{if(mode==0u)pixel=litAt(draw,original);uint alpha=pixel>>24;if(alpha==255u)color=pixel;else{uint result=(alpha+(color>>24)*(255u-alpha)/255u)<<24;for(uint shift=0;shift<24;shift+=8)result|=min(255u,((pixel>>shift)&255u)+((color>>shift)&255u)*(255u-alpha)/255u)<<shift;color=result;}}
+  uint strength=(flags>>16u)&255u;
+  if(strength!=0u){uint result=0u,packed=packedWord(prior);for(uint c=0u;c<3u;++c){uint shift=16u-c*8u;uint old=(prior>>shift)&255u;if((flags&16u)==0u)old=c==0u?((packed>>11u)&31u)<<3u:c==1u?((packed>>5u)&63u)<<2u:(packed&31u)<<3u;result|=(((old*(256u-strength))>>8u)+((((color>>shift)&255u)*strength)>>8u))<<shift;}color=(flags&16u)==0u?packedColor(packedWord(result),0xff000000u):0xff000000u|result;}
+  uint selector=(flags>>8u)&3u;
+  if(selector!=0u){if((flags&16u)==0u)color=packedBlend(color,prior,selector);else{uint weight=4u-selector,result=0u;for(uint shift=0u;shift<32u;shift+=8u)result|=((((color>>shift)&255u)*weight+((prior>>shift)&255u)*(4u-weight))/4u)<<shift;color=result;}}
   if(useZ&&(flags&2u)!=0u)depth=z;
  }
 #ifndef SCENE_PAGES

@@ -16,7 +16,7 @@ class GpuSceneRecord {
  struct Replay {
   std::shared_ptr<const voxel::Image> image;
   float ax=0,ay=0,sx=1,sy=1,base=0,lift=1,drop=0;lighting::State light;bool smooth=false;
-  int dotX=0,dotY=0;uint32_t dot=0;
+  int dotX=0,dotY=0;uint32_t dot=0;Material material;
  };
  struct LitSource {
   std::weak_ptr<const voxel::Image> owner;const voxel::Image*address=nullptr;
@@ -56,18 +56,19 @@ class GpuSceneRecord {
   }
   return pixels;
  }
- bool flatten(const std::shared_ptr<const voxel::Image>&owner,float ax,float ay,float sx,float sy,float base,const lighting::State&state,float lift,float shadowDrop,bool smooth,const vulkancompute::MotionIdentity&motion,unsigned nesting=0){
+ bool flatten(const std::shared_ptr<const voxel::Image>&owner,float ax,float ay,float sx,float sy,float base,const lighting::State&state,float lift,float shadowDrop,bool smooth,const vulkancompute::MotionIdentity&motion,Material material={},unsigned nesting=0){
   if(!owner||nesting>16)return false;const auto&i=*owner;
   if(i.width<=0||i.height<=0||i.width>resolutionsampling::MaxDimension||i.height>resolutionsampling::MaxDimension||uint64_t(i.width)*i.height>resolutionsampling::MaxPixels||i.rasterScale<1||i.rasterScale>resolutionsampling::MaxRasterScale||(!i.gpuRaster&&i.pixels.size()!=size_t(i.width)*i.height)||!std::isfinite(ax)||!std::isfinite(ay)||!std::isfinite(sx)||!std::isfinite(sy)||sx<=0||sy<=0||sx>8||sy>8)return false;
   auto attachment=[&](const voxel::Image&part){return std::shared_ptr<const voxel::Image>(owner,&part);};
   for(size_t index=0;index<i.attachments.size();++index){const auto&part=i.attachments[index];if(part.shadow&&!i.shadowsAfter&&(!part.airborneShadow||shadowDrop>0)){
-   auto key=motion;if(motion.known&&frame_.collectGuides)key.part.push_back(uint32_t(index));if(!flatten(attachment(part),ax,ay+shadowDrop*sy,sx,sy,base,state,lift,0,smooth,key,nesting+1))return false;}}
+   auto key=motion;if(motion.known&&frame_.collectGuides)key.part.push_back(uint32_t(index));if(!flatten(attachment(part),ax,ay+shadowDrop*sy,sx,sy,base,state,lift,0,smooth,key,material.shifted(part.shadow?shadowDrop:0),nesting+1))return false;}}
   const float pxScale=sx/i.rasterScale,pyScale=sy/i.rasterScale,left=ax+i.x*pxScale,top=ay+i.y*pyScale;
   int x0=std::clamp(int(std::floor(std::clamp(left,-1e7f,1e7f))),0,frame_.width),y0=std::clamp(int(std::floor(std::clamp(top,-1e7f,1e7f))),0,frame_.height);
   int x1=std::clamp(int(std::ceil(std::clamp(left+i.width*pxScale,-1e7f,1e7f))),0,frame_.width),y1=std::clamp(int(std::ceil(std::clamp(top+i.height*pyScale,-1e7f,1e7f))),0,frame_.height);
   if(x0<x1&&y0<y1){
    vulkancompute::DrawJob draw;if(frame_.collectGuides)draw.motion=motion;draw.gpuRaster=i.gpuRaster;draw.source.width=i.width;draw.source.height=i.height;
    if(!i.gpuRaster){draw.source.pixels={owner,&i.pixels};if(i.depth.size()==i.pixels.size())draw.source.depth={owner,&i.depth};if(i.indices.size()==i.pixels.size())draw.source.indices={owner,&i.indices};}
+   draw.mixStrength=i.shadow?0:material.mixStrength;draw.translucency=i.shadow?0:material.translucency;draw.clipBottom=ay+material.clipBottom*sy;
    draw.sourcePalette=i.sourcePalette;draw.left=left;draw.top=top;draw.scaleX=pxScale;draw.scaleY=pyScale;draw.depthBase=base+i.depthBias;
    draw.originY=i.y;draw.depthBottom=i.depthBottom==std::numeric_limits<int>::min()?i.y+i.height-1:i.depthBottom;draw.rasterScale=i.rasterScale;draw.lift=lift;
    draw.shadow=i.shadow;draw.writeDepth=i.writeDepth;draw.flat=i.flat;draw.objectPalette=i.objectPalette;draw.smoothRGB=precision_==colorprecision::Mode::SmoothRGB;draw.skipZ=i.skipZ;
@@ -82,7 +83,7 @@ class GpuSceneRecord {
    if(frame_.draws.size()>=65536)return false;frame_.draws.push_back(std::move(draw));
   }
   for(size_t index=0;index<i.attachments.size();++index){const auto&part=i.attachments[index];if((!part.shadow||i.shadowsAfter)&&(!part.airborneShadow||shadowDrop>0)){
-   auto key=motion;if(motion.known&&frame_.collectGuides)key.part.push_back(uint32_t(index));if(!flatten(attachment(part),ax,ay+(part.shadow?shadowDrop*sy:0),sx,sy,base,state,lift,0,smooth,key,nesting+1))return false;}}
+   auto key=motion;if(motion.known&&frame_.collectGuides)key.part.push_back(uint32_t(index));if(!flatten(attachment(part),ax,ay+(part.shadow?shadowDrop*sy:0),sx,sy,base,state,lift,0,smooth,key,material.shifted(part.shadow?shadowDrop:0),nesting+1))return false;}}
   return true;
  }
  static bool validDepth(const vulkancompute::FrameJob&frame){
@@ -107,9 +108,9 @@ public:
   if(baseTiles&&!baseTiles->empty()){frame_.baseTiles=*baseTiles;frame_.basePixels.reset();}
   valid_=((frame_.basePixels&&frame_.basePixels->size()==size_t(width)*height)||!frame_.baseTiles.empty())&&validDepth(frame_);
  }
- bool append(const voxel::Image&i,std::shared_ptr<const voxel::Image>owner,float ax,float ay,float sx,float sy,float base,const lighting::State&light,float lift,float drop,bool smooth,vulkancompute::MotionIdentity motion={}){
-  owner=retain(i,std::move(owner));replay_.push_back({owner,ax,ay,sx,sy,base,lift,drop,light,smooth});
-  if(valid_)valid_=flatten(owner,ax,ay,sx,sy,base,light,lift,drop,smooth,motion);return valid_;
+ bool append(const voxel::Image&i,std::shared_ptr<const voxel::Image>owner,float ax,float ay,float sx,float sy,float base,const lighting::State&light,float lift,float drop,bool smooth,vulkancompute::MotionIdentity motion={},Material material={}){
+  owner=retain(i,std::move(owner));replay_.push_back({owner,ax,ay,sx,sy,base,lift,drop,light,smooth});replay_.back().material=material;
+  if(valid_)valid_=flatten(owner,ax,ay,sx,sy,base,light,lift,drop,smooth,motion,material);return valid_;
  }
  void annotationDot(int x,int y,uint32_t color){
   color=0xff000000u|(color&0xffffffu);Replay replay;replay.dotX=x;replay.dotY=y;replay.dot=color;replay_.push_back(replay);
@@ -137,7 +138,7 @@ public:
     for(int x=0;x<frame_.width;++x)surface.depth[size_t(y)*frame_.width+x]=(*frame_.baseDepth)[row+(*frame_.baseDepthXs)[x]];
    }
   }else surface.depth=*frame_.baseDepth;
-  for(const auto&call:replay_){if(call.image)surface.blit(*call.image,call.ax,call.ay,call.sx,call.sy,call.base,call.light,call.lift,call.drop,call.smooth);
+  for(const auto&call:replay_){if(call.image)surface.blit(*call.image,call.ax,call.ay,call.sx,call.sy,call.base,call.light,call.lift,call.drop,call.smooth,call.material);
    else for(int y=std::max(0,call.dotY-1);y<std::min(frame_.height,call.dotY+2);++y)for(int x=std::max(0,call.dotX-1);x<std::min(frame_.width,call.dotX+2);++x)surface.color[size_t(y)*frame_.width+x]=call.dot;
   }return !surface.failed();
  }

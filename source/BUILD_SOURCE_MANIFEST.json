@@ -110,5 +110,14 @@
     "limits": "Valid map cells and known retail Techno/cell refs only; no new validation of arbitrary patched layouts, native exact cell/ramp target geometry or badge threshold approximation; no visual or performance certification",
     "audit": "source/research/2026-10-31-vera-render-gaps-and-gpu-roadmap.md",
     "validation": "Cross compilation and static PE/import/version/ABI checks only. No CPU fixture suite, Vulkan/D3D, Windows loader, live game or FPS tests."
+  },
+  "Hotfix23": {
+    "reference": "Vera20K 3d42426b2e9c1b4cf913a7dbbaaf8bf7d3b6bc7f, GPL-3.0; fixed YRpp d9795546950fcc75a94325ffc83b44d16ec34ce2 and private sample static disassembly",
+    "scene": "Saved FoggedObject body/shadow/bib/anims; observer cloak/translucency/disguise/warp, native sinking row; per-cell Smudge; ordered overlay bodies and separate shadows; native custom Rubble resources",
+    "effects": "Native 32-slot LineTrail including detached records; tactical/radar beacons and radar events; native Cell PixelFX positions/phase with GPU color interpolation; Action127 retained world/viewport rotation and RGB565 whitening",
+    "cache": "Dynamic overlays no longer invalidate TMP banks. Instance material/waterline are part of CPU/GPU replay and frame reuse; bounded shared art and unchanged trail-plane reuse",
+    "gpu": "Main/watch shared scene effects; real minimap events/beacons on GPU; schematic map CPU worker composition. CPU still reads state, decodes art and prepares geometry",
+    "limits": "No cloak word-offset displacement, full unsigned16 Z/A, slope Z tables or native complete-screen capture; Chrono re-renders retained immutable world, with f32/resize/load differences; no offscreen PixelFX clock fabrication",
+    "validation": "Zig 0.13 mixed-architecture production build, GLSL/SPIR-V and PE/ABI/import/manifest static checks only; no CPU fixtures, native execution, GPU, Windows/game/netplay or FPS measurement"
   }
 }

@@ -11,6 +11,12 @@ inline uint32_t color(uint32_t w,uint32_t alpha=0xff000000u){
  static constexpr uint8_t six[64]={0,4,8,12,16,20,24,28,32,36,40,45,49,53,57,61,65,69,73,77,81,85,89,93,97,101,105,109,113,117,121,125,129,133,138,142,146,150,154,158,162,166,170,174,178,182,186,190,194,198,202,206,210,214,219,223,227,231,235,239,243,247,251,255};
  return alpha|(uint32_t(five[(w>>11)&31])<<16)|(uint32_t(six[(w>>5)&63])<<8)|five[w&31];
 }
+inline uint32_t trail(uint32_t source,uint32_t destination,unsigned strength){
+ const uint32_t d=word(destination);uint32_t out=0;
+ const unsigned dst[3]={((d>>11)&31u)<<3,((d>>5)&63u)<<2,(d&31u)<<3};
+ for(unsigned n=0;n<3;++n){unsigned shift=16-n*8;out|=(((dst[n]*(256-strength))>>8)+((((source>>shift)&255)*strength)>>8))<<shift;}
+ return color(word(out));
+}
 inline uint32_t shadow(uint32_t destination){return color(half(word(destination)),destination&0xff000000u);}
 inline uint32_t blend(uint32_t source,uint32_t destination,unsigned selector){
  const uint32_t s=word(source),d=word(destination);uint32_t result=s;

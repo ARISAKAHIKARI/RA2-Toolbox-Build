@@ -6,6 +6,7 @@
 #include "pixel_upgrade.h"
 #include "color_precision.h"
 #include "native_packed_color.h"
+#include "render_material.h"
 #include "xbrz_adapter.h"
 namespace external { namespace camera {
 struct Light {
@@ -64,16 +65,17 @@ public:
     size_t at=size_t(y)*width_+x;float z=base+(y+.5f-ay)/sy-14;if(z>=depth[at]){color[at]=c;depth[at]=z;}
    }
  }
- void blit(const voxel::Image&i,float ax,float ay,float sx,float sy,float base,const lighting::State&light,float lift=1,float shadowDrop=0,bool smooth=false){
-  if(i.gpuRaster){voxel::Image raster;if(!gpuvoxel::materialize(i,raster)){reconstructionFailed_=true;return;}blit(raster,ax,ay,sx,sy,base,light,lift,shadowDrop,smooth);return;}
+ void blit(const voxel::Image&i,float ax,float ay,float sx,float sy,float base,const lighting::State&light,float lift=1,float shadowDrop=0,bool smooth=false,Material material={}){
+  if(i.gpuRaster){voxel::Image raster;if(!gpuvoxel::materialize(i,raster)){reconstructionFailed_=true;return;}blit(raster,ax,ay,sx,sy,base,light,lift,shadowDrop,smooth,material);return;}
   if(i.width<=0||i.height<=0||i.width>resolutionsampling::MaxDimension||i.height>resolutionsampling::MaxDimension||uint64_t(i.width)*i.height>resolutionsampling::MaxPixels||i.rasterScale<1||i.rasterScale>resolutionsampling::MaxRasterScale||i.pixels.size()!=size_t(i.width)*i.height||!std::isfinite(ax)||!std::isfinite(ay)||!std::isfinite(sx)||!std::isfinite(sy)||sx<=0||sy<=0||sx>8||sy>8)return;
-  for(const auto&part:i.attachments)if(part.shadow&&!i.shadowsAfter&&(!part.airborneShadow||shadowDrop>0))blit(part,ax,ay+shadowDrop*sy,sx,sy,base,light,lift,0,smooth);
+  for(const auto&part:i.attachments)if(part.shadow&&!i.shadowsAfter&&(!part.airborneShadow||shadowDrop>0))blit(part,ax,ay+shadowDrop*sy,sx,sy,base,light,lift,0,smooth,material.shifted(part.shadow?shadowDrop:0));
   float pxScale=sx/i.rasterScale,pyScale=sy/i.rasterScale;
   const bool packed=precision_==colorprecision::Mode::NativeSteps&&i.nativeBlend>0&&i.nativeBlend<=3&&i.blendSource&&i.blendSource->size()==i.pixels.size()&&(!smooth||(pxScale==1&&pyScale==1));
   const auto&source=packed?*i.blendSource:i.pixels;
   float left=ax+i.x*pxScale,top=ay+i.y*pyScale;
   int x0=std::clamp(int(std::floor(std::clamp(left,-1e7f,1e7f))),0,width_),y0=std::clamp(int(std::floor(std::clamp(top,-1e7f,1e7f))),0,height_);
   int x1=std::clamp(int(std::ceil(std::clamp(left+i.width*pxScale,-1e7f,1e7f))),0,width_),y1=std::clamp(int(std::ceil(std::clamp(top+i.height*pyScale,-1e7f,1e7f))),0,height_);
+  y1=std::min(y1,int(std::ceil(std::clamp(ay+material.clipBottom*sy-.5f,-1e7f,1e7f))));
   Light transform(light,precision_);bool zData=i.depth.size()==i.pixels.size(),indexed=i.indices.size()==i.pixels.size();
   auto colorAt=[&](int x,int y){if(x<0||y<0||x>=i.width||y>=i.height)return uint32_t(0);size_t at=size_t(y)*i.width+x;return transform.apply(i.pixels[at],indexed?i.indices[at]:0,i.objectPalette);};
   // SHP colors enter the unchanged upstream xBRZ scaler AFTER current scene
@@ -101,12 +103,15 @@ public:
     for(int x=first;x<last;++x,++from,++to){uint32_t p=source[from];unsigned alpha=p>>24;if(!alpha)continue;
      float z=rowZ;bool useZ=!i.skipZ;if(zData){if(std::isnan(i.depth[from]))useZ=false;else z+=i.depth[from];}
      if(useZ&&z<=depth[to])continue;
+     const uint32_t prior=color[to];
      if(i.shadow){uint32_t old=color[to];if(alpha==255)color[to]=precision_==colorprecision::Mode::NativeSteps?nativepacked::shadow(old):(old&0xff000000u)|((old&0x00fefefeu)>>1);
       else{uint32_t v=old&0xff000000u;for(int shift:{0,8,16})v|=(((old>>shift)&255)*(510-alpha)/510)<<shift;color[to]=v;}}
      else if(packed)color[to]=nativepacked::blend(transform.apply(p,indexed?i.indices[from]:0,i.objectPalette),color[to],i.nativeBlend);
      else{if(!neutral||alpha!=255)p=transform.apply(p,indexed?i.indices[from]:0,i.objectPalette);
       if(alpha==255)color[to]=p;else{uint32_t old=color[to],out=(alpha+(old>>24)*(255-alpha)/255)<<24;for(int shift:{0,8,16})out|=std::min(255u,((p>>shift)&255)+((old>>shift)&255)*(255-alpha)/255)<<shift;color[to]=out;}}
-     if(useZ&&i.writeDepth)depth[to]=z;
+     if(!i.shadow&&material.mixStrength)color[to]=precision_==colorprecision::Mode::NativeSteps?nativepacked::trail(color[to],prior,material.mixStrength):((color[to]&0xff000000u)|([&]{uint32_t v=0;for(int sh:{0,8,16})v|=(((((color[to]>>sh)&255)*material.mixStrength)>>8)+((((prior>>sh)&255)*(256-material.mixStrength))>>8))<<sh;return v;})());
+     if(!i.shadow&&material.translucency)color[to]=precision_==colorprecision::Mode::NativeSteps?nativepacked::blend(color[to],prior,material.translucency):materialColor(color[to],prior,material.translucency);
+    if(useZ&&i.writeDepth)depth[to]=z;
     }
    }
   }else for(int y=y0;y<y1;++y){int sourceY=int(std::floor((y+.5f-top)/pyScale));if(sourceY<0||sourceY>=i.height)continue;
@@ -147,6 +152,7 @@ public:
     else if(i.flat)z+=float(i.y+sourceY)/i.rasterScale-14+lift;
     else{int bottom=i.depthBottom==std::numeric_limits<int>::min()?i.y+i.height-1:i.depthBottom;z+=float(bottom)/i.rasterScale-14+lift+float((bottom-i.y-sourceY)/3)/i.rasterScale;}
     if(useZ&&z<=depth[to])continue;
+    const uint32_t prior=color[to];
     if(i.shadow){uint32_t old=color[to],v=old&0xff000000u;unsigned a=p>>24;if(a==255&&precision_==colorprecision::Mode::NativeSteps)color[to]=nativepacked::shadow(old);else{for(int shift:{0,8,16})v|=(((old>>shift)&255)*(510-a)/510)<<shift;color[to]=v;}}
     else if(packed)color[to]=nativepacked::blend(transform.apply(p,indexed?i.indices[from]:0,i.objectPalette),color[to],i.nativeBlend);
     else if(preciseSample){
@@ -158,10 +164,12 @@ public:
     }
     // Building/terrain shadows write their ground plane. Without this, each
     // overlapping shadow halves the same pixel again and quickly turns black.
+    if(!i.shadow&&material.mixStrength)color[to]=precision_==colorprecision::Mode::NativeSteps?nativepacked::trail(color[to],prior,material.mixStrength):((color[to]&0xff000000u)|([&]{uint32_t v=0;for(int sh:{0,8,16})v|=(((((color[to]>>sh)&255)*material.mixStrength)>>8)+((((prior>>sh)&255)*(256-material.mixStrength))>>8))<<sh;return v;})());
+     if(!i.shadow&&material.translucency)color[to]=precision_==colorprecision::Mode::NativeSteps?nativepacked::blend(color[to],prior,material.translucency):materialColor(color[to],prior,material.translucency);
     if(useZ&&i.writeDepth)depth[to]=z;
    }
   }
-  for(const auto&part:i.attachments)if((!part.shadow||i.shadowsAfter)&&(!part.airborneShadow||shadowDrop>0))blit(part,ax,ay+(part.shadow?shadowDrop*sy:0),sx,sy,base,light,lift,0,smooth);
+  for(const auto&part:i.attachments)if((!part.shadow||i.shadowsAfter)&&(!part.airborneShadow||shadowDrop>0))blit(part,ax,ay+(part.shadow?shadowDrop*sy:0),sx,sy,base,light,lift,0,smooth,material.shifted(part.shadow?shadowDrop:0));
  }
 };
 }}

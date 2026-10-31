@@ -1,0 +1,136 @@
+{
+  "name": "Hotfix23 E1-E11 scene producer integration",
+  "created_utc": "2026-10-31T02:50:44.465493+00:00",
+  "remote_baseline": "05704f90b838851a7495035f60e801ee8ebae6fc",
+  "compiled_implementation_local_commit": "b34840d9dd586d0782d1d04a8a89058156097240",
+  "local_history_note": "Local checkout recovered from a byte-for-byte verified remote 05704f9 snapshot; synthetic local parent is not published. Remote changes are based on the original remote tree and parent.",
+  "upstream": "3d42426b2e9c1b4cf913a7dbbaaf8bf7d3b6bc7f",
+  "build": {
+    "exit": 0,
+    "compiler": "Zig 0.13.0",
+    "script": "source/build-zig-x64.sh",
+    "host": "x64",
+    "runtime": "x86",
+    "broker": "x86",
+    "version": "1.0.39.7",
+    "binary_validation_exit": 0,
+    "binary_summary": {
+      "RA2Toolbox.exe": {
+        "bytes": 7419904,
+        "sha256": "d7e20a13cbfe2649ef8087bfc3f3000afdacb39c252b45154a5657e5a2dbd8fc",
+        "machine": "PE32+ x64"
+      },
+      "GameRuntime.dll": {
+        "bytes": 4963328,
+        "sha256": "cb946cc4b6d03993b8cbd6d47862deb91b6bba2671fd2dc678a0830b1f5f9e1c",
+        "machine": "PE32 x86"
+      },
+      "GameRuntimeHost32.exe": {
+        "bytes": 207872,
+        "sha256": "d9e30e0c5e887d27b950fc39c1cc16b66efb398ef95ae1606b9e0ad04f12cc53",
+        "machine": "PE32 x86"
+      }
+    },
+    "build_log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "warnings": [
+      "existing camera_assets dangling-else",
+      "existing NativeCanvas shared_ptr::unique deprecation"
+    ]
+  },
+  "shader_static_compilation": {
+    "variants": [
+      {
+        "variant": "SceneShader",
+        "source_sha256": "25fe1696d7b6b4389781360fee69f3b42f91f4f9a63345baf24eeda2acaad8d2",
+        "spirv_sha256": "a6b375d870b5b2572cdb04399903391c7fc4682a26d273b1ad04a116c3055028",
+        "bytes": 39356
+      },
+      {
+        "variant": "Scene64Shader",
+        "source_sha256": "25fe1696d7b6b4389781360fee69f3b42f91f4f9a63345baf24eeda2acaad8d2",
+        "spirv_sha256": "6add3b342f20b3d8545276c5ee70b6d198b0f1d5ed0fb7959600f6df496d3c8d",
+        "bytes": 63700
+      },
+      {
+        "variant": "ScenePagesShader",
+        "source_sha256": "25fe1696d7b6b4389781360fee69f3b42f91f4f9a63345baf24eeda2acaad8d2",
+        "spirv_sha256": "3d508721b7a571d787e15e6f5e6f9b64588d8483d75ad606fe33c7aafd405513",
+        "bytes": 34160
+      },
+      {
+        "variant": "ScenePagesBankedShader",
+        "source_sha256": "25fe1696d7b6b4389781360fee69f3b42f91f4f9a63345baf24eeda2acaad8d2",
+        "spirv_sha256": "a482d0c911c8beaaa86db7b1b7a8a97b80d36533e6d87fdd4c0074178d6fb53c",
+        "bytes": 35572
+      },
+      {
+        "source_sha256": "478b75b3449df156f43d2c2a1c3fcf667f1dc8f4e9565c0114b1888e9deb5574",
+        "spirv_sha256": "fb6da21b17094d8e715e5f0be67e8be9567c58584cf7af61e344b3dba6bac360",
+        "bytes": 30840,
+        "graphics_driver_loaded": false
+      }
+    ],
+    "spirv_val_passed": true,
+    "gpu_or_driver_loaded": false
+  },
+  "source_sha256": {
+    "THIRD_PARTY_NOTICES.md": "28385c9d4dfe64be7d5cd85ddaa90b3e487c98956b37cb80899530f76734a5ce",
+    "source/ANIMATION_RENDER_COVERAGE.md": "2a7fae0db89d24adf0e592a1947fe1506fff1938f4394ab37fb9c6bb636f2974",
+    "source/BUILD_SOURCE_MANIFEST.json": "cac6d3b1995fd37c79c4eba0a92c893ec37bdeb3910434dd0ebd2d95e9edffa2",
+    "source/assist/source/minimap_overlay.h": "efff0e74207323c7f3a00799a7f868609b962d9dfb53a4cda7ddd8664fd897fe",
+    "source/external_reader/shaders/gpu_effects.comp": "478b75b3449df156f43d2c2a1c3fcf667f1dc8f4e9565c0114b1888e9deb5574",
+    "source/external_reader/shaders/vulkan_scene.comp": "25fe1696d7b6b4389781360fee69f3b42f91f4f9a63345baf24eeda2acaad8d2",
+    "source/external_reader/source/camera_assets.h": "d0e978f829d4a1eae256e0cc4da1b839ab652759394d58ff938f2f82f02ef3df",
+    "source/external_reader/source/camera_raster.h": "b5a073301325ad405808a75d541cbd07460622be99e36fb72adbd94df1ec7e47",
+    "source/external_reader/source/chrono_scene.h": "3a8cf9d2f079f600467c36a34fd8448bad1f3d7db6da8bbfab814daae9930d90",
+    "source/external_reader/source/gpu_draw_encoding.h": "17fbb251a256bfa403be89b5ad4b04131e910d149bf9bbcce6ca4fe8a211d9b4",
+    "source/external_reader/source/gpu_effect_plan.h": "2b1e7afd1a6d4642a405120fed97078973dfbbdfef1be632fc4352025f1b292f",
+    "source/external_reader/source/gpu_effects_spirv.h": "d1e1483c9739b2669d05123abec5e82ea1412dfe2da52078129ea2a6c0808d36",
+    "source/external_reader/source/gpu_scene_record.h": "0781298791e8a21c76f682cd17668c5ac182fc60857a08fb523dbb40b12f49eb",
+    "source/external_reader/source/line_trail_layers.h": "8d4336afecc5ae3a9d20fb4fd32dc667d6c5cb9bfff3e6dd833136b563d8cce5",
+    "source/external_reader/source/material_motion.h": "c68a70b55bb7a2b6bd5933bac6098eae64b87938e4dc12bffb8608371901e39d",
+    "source/external_reader/source/native_draw_state.h": "3acfa3313abc628b141eee129b929f1a4969bcc82fa0fcc02d9b8ba995ad38bf",
+    "source/external_reader/source/native_packed_color.h": "cc2fabc02053cab63ca8dc5fc9413255e30499c49ac864ce943be4f626b3ad84",
+    "source/external_reader/source/native_scene_extras.h": "20f227b96b7d89d37c8276c3c30c3a168d2b3a196e9e1497be42c2a97553cb85",
+    "source/external_reader/source/object_canvas.h": "ebdb5283970a5097bdd64e228cf748fb5dcbaf994eab9af2d8092acef23e8e70",
+    "source/external_reader/source/radar_decoration.h": "1f5db1bbbe53304a7296976f8c27d615204259ad1af96b563afce74c15636b3f",
+    "source/external_reader/source/radar_map.h": "48cb8efca8dec7d94f1b51bf4d39ba479c28b7012a15e067405c62e1a7b91ffc",
+    "source/external_reader/source/radar_scene.h": "2d7f14943bed624ed80fd187df0d6fa4d3e5779489b1150654923f343a0fcf28",
+    "source/external_reader/source/render_material.h": "681bf8cae50a4ce1fea43a801164ae887c8210cc812c519d70cc2f1d4a460cd1",
+    "source/external_reader/source/scene_extra_layers.h": "d0cdfc4ffdf289ede3d967c8497eb6226a1c55d24b37bad1ed2ed66cee38f5fc",
+    "source/external_reader/source/scene_frame_reuse.h": "86fb56ee28e28bd58e9195b8effffb8ca1e06366cc31830b389f46a8bbca1503",
+    "source/external_reader/source/scene_poses.h": "a080d1e321c6cbe238821f2280588bc9614edf5b080e0f5200fd362f41e10472",
+    "source/external_reader/source/terrain_sprite.h": "2f1a155f9fbee49dc67d3eea787aa79bb214218192ad2abf5fd5aca1d1c08869",
+    "source/external_reader/source/viewport_canvas.h": "a7d7bd6eb07fa37481e13b75844b2021639d9be22ad2dcf8c12ac75fcea79862",
+    "source/external_reader/source/vulkan_area_objects.h": "6a5d176a61ed7dbf78bb7291fa1eecdcd3e8c56357f949f803b2af0a29e30199",
+    "source/external_reader/source/vulkan_scene.h": "ebd00c8fc40acccb2f43f4e312812105c7bb3b3addc6f2f908a8a38a7da9b99c",
+    "source/external_reader/source/vulkan_scene_spirv.h": "847fae9764182098b8b96849208f82c538bbc5f43d4df81a78201fbdc3c90ee2",
+    "source/external_reader/source/vulkan_scene_types.h": "6dd3af486242698cbbb2bb9499cd7a6bb441f9f9c5d2c5d7425e922de52f15dc",
+    "source/external_reader/source/world_scene_pipeline.h": "9e9b4b5fa3bc89b5c54b022002068c127da65cf7cae2efe212dbdbf82536bdae",
+    "source/research/2026-10-31-vera-render-additional-gaps.md": "960714fe737777680da6708fbb4eadf6b41780531ec7372a4c2b34a6fd205572",
+    "source/research/2026-10-31-vera-scene-extras-hotfix23.md": "3b54fd24de2941b00480153e707c024db29cf45a516a146240533b88b1080c69",
+    "source/research/INDEX.md": "6e03051694aa9085b4a9b4031aa007d1bdc1f8ffd5371515971abea9f13b7e7b",
+    "source/research/evidence/render-hotfix23-native.json": "46d913f62e29b1a39afe16d7c0821ec638832d1bf5415ba962105fc4d04e87ed"
+  },
+  "scope": {
+    "cpu_fixture_suites_run": false,
+    "native_instruction_execution": false,
+    "vulkan_executed": false,
+    "d3d11_executed": false,
+    "windows_loader_executed": false,
+    "game_executed": false,
+    "fps_measured": false,
+    "shaders_changed": true
+  },
+  "notes": [
+    "Every E1-E11 has a production entry; this does not mean full Vera/native parity.",
+    "No gameplay timer, RNG, input, protocol or hook change.",
+    "Native cloak displacement and complete unsigned16 Z/A remain pending.",
+    "Chrono retains world inputs/camera and recomposes; it is not native full-screen capture.",
+    "No claim of real-game ghosting or performance certification."
+  ],
+  "research": [
+    "source/research/2026-10-31-vera-scene-extras-hotfix23.md",
+    "source/research/evidence/render-hotfix23-native.json"
+  ]
+}

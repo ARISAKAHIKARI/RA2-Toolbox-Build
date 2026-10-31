@@ -74,3 +74,10 @@ Hotfix14 将四类本地 UI 的采样、字形解码、CSF 查找、排版和光
 主视口的 GPU 场景现在可通过同一显卡的 Vulkan／D3D11 共享纹理直接交给 DirectComposition，成功时不创建或映射整帧 CPU 回读。激光、辐射线、点、辉光、AlphaShape、波纹及电弧改为有序 GPU 命令；波纹读取上一批已完成的 GPU 颜色快照，电弧在 GPU 内合成透明层后只乘一次迷雾。CPU 继续负责只读状态、源素材解码和几何命令准备，GPU 失败时使用原 CPU 回放。
 
 Terrain SHP 的第二半阴影、动画读 Z／静态写 Z、健康值静态帧、矿石 flat/Z 和偏移均按固定 Vera20K 来源适配。没有把其整个模拟器／RNG、原生 RGB565 管线或全部屏幕效果搬入本外部工具。全图小地图、独立副屏窗口和部分本地 UI 源纹理仍保留既有输出／准备方式；不能称为所有工具窗口都已零回读。验证范围详见 [Hotfix18](research/2026-10-30-scene-hotfix18.md)，没有运行 Vulkan 或真实 Windows 游戏。
+
+
+## Hotfix23：第二轮场景入口
+
+新增FoggedObject保存图、观察者cloak/伪装/warp透明材质、原生沉船行、逐Cell Smudge、独立overlay/桥影和自定义Rubble、32槽LineTrail、PBEACON/RDRBEACN、RadarEvent、原生Cell PixelFX以及Action127 ChronoScreen。CPU/GPU回放和主/盯防共享世界均已接入口；实景雷达反馈进入GPU，示意地图在工作线程依次组合对象点、事件和信标。完整列表、来源和未完成边界见[Hotfix23](research/2026-10-31-vera-scene-extras-hotfix23.md)。
+
+cloak word-offset折射、完整unsigned16 Z/A、坡面深度表和原生完整屏幕捕获仍未等价。Chrono保留不可变世界重组输入；PixelFX只消费游戏已分配并推进的记录。只做生产交叉编译/着色器/PE静态校验，无CPU夹具或游戏/GPU执行。上文Hotfix15的历史描述不代表这些后续入口仍然缺失；真正Z规划图另已在Hotfix22接入。

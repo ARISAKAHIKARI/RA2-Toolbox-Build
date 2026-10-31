@@ -16,7 +16,7 @@ template<class Read>bool decode(Read read,uint32_t pointer,const std::array<uint
  out.writeDepth=!animated;out.shadowsAfter=true;
  if(spawner)out.y-=16;
  // Empty body/shadow frames remain empty; never substitute standing frame 0.
- // An ordinary cell overlay has no such second-half shadow convention.
+ // Cell overlay shadows are emitted separately by scene_extra_layers.h.
  if(frames>=2&&frame>=0&&frame<frames/2){
   voxel::Image shadow;
   if(!voxel::sprite(read,pointer,palette,shadow,frame+frames/2,reason,255))return false;

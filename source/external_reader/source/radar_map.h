@@ -11,6 +11,8 @@
 #include "particle_visuals.h"
 #include "voxel_animation_visuals.h"
 #include "world_effects.h"
+#include "native_draw_state.h"
+#include "native_scene_extras.h"
 #include "../../shared/source/gpu_surface.h"
 #include "radar_shroud_selector.h"
 #include <memory>
@@ -52,8 +54,8 @@ struct Geometry {
  }
  void project(double x,double y,double&u,double&v)const{u=(x-y+offsetX)/rawWidth;v=(x+y-offsetY)/rawHeight;}
 };
-struct Marker {double u=0,v=0;uint32_t color=0;bool building=false;uint32_t object=0,id=0,type=0,owner=0,parent=0,parentId=0;int x=0,y=0,z=0,kind=-1,drawZ=0,sort=0,layer=2;bool normalLight=false,onBridge=false;visual::Pose pose;};
-struct CellArt {uint32_t cell=0,type=0,overlayType=0,overlaySourceType=0;int16_t overlay=-1;uint8_t sub=0;int8_t level=0;uint8_t overlayFrame=0;bool sourceHidden=false;uint32_t sourceColor=0;};
+struct Marker {double u=0,v=0;uint32_t color=0;bool building=false;uint32_t object=0,id=0,type=0,owner=0,parent=0,parentId=0;int x=0,y=0,z=0,kind=-1,drawZ=0,sort=0,layer=2;bool normalLight=false,onBridge=false,disguised=false;int16_t waterline=0;camera::Material material;visual::Pose pose;};
+struct CellArt {uint32_t cell=0,type=0,overlayType=0,overlaySourceType=0,smudgeType=0,rubbleType=0,flags=0,pixelFX=0;int land=0;uint8_t smudgeData=0;int16_t overlay=-1;uint8_t sub=0;int8_t level=0;uint8_t overlayFrame=0;bool sourceHidden=false;uint32_t sourceColor=0;};
 struct Scene {int width=0,height=0;std::vector<uint32_t> pixels;std::shared_ptr<const gpumotion::Guides> guides;std::shared_ptr<const gpupresent::Frame> gpu;bool boltsRendered=false;};
 // The game stores the selected shroud/fog SHP frame at each Cell. -1 selects
 // clear frame 0, -2 selects opaque frame 15; other values select edge frames.
@@ -65,7 +67,7 @@ struct ShroudFrames {int8_t shroud=127,fog=127;
 };
 struct Terrain {Geometry geo;std::vector<uint32_t> colors,baseColors;std::vector<CellArt> art;std::vector<ShroudFrames> shade;bool reveal=false;};
 struct EffectSnapshot {std::vector<nativefeedback::Bolt> bolts;bool boltsValid=false;std::shared_ptr<const worldfx::Snapshot>world;};
-struct Frame {std::shared_ptr<const Terrain> terrain;std::vector<Marker> markers;std::shared_ptr<const Scene> scene,map;uint32_t tick=0;int frame=-1;bool markerScanValid=false,posesPrepared=false;std::vector<repairvisuals::Sprite> repairs;std::shared_ptr<const EffectSnapshot> effects;uint8_t effectMask=3;};
+struct Frame {std::shared_ptr<const Terrain> terrain;std::vector<Marker> markers;std::shared_ptr<const Scene> scene,map;uint32_t tick=0;int frame=-1;bool markerScanValid=false,posesPrepared=false;std::vector<repairvisuals::Sprite> repairs;std::shared_ptr<const sceneextras::Snapshot> extras;std::shared_ptr<const EffectSnapshot> effects;uint8_t effectMask=3;};
 inline bool supportsEffects(const Frame&frame,bool particles,bool lasers){return (!particles||(frame.effectMask&1))&&(!lasers||(frame.effectMask&2));}
 inline uint32_t terrainColor(int land,int level,bool fog){
  static constexpr uint32_t colors[]={0x66794b,0x85836c,0x285e86,0x70756d,0x999684,0xb7a843,0xb4a47c,0x77734d,0xb4cbd0,0x77766b,0x55584f,0x58703d};
@@ -74,7 +76,7 @@ inline uint32_t terrainColor(int land,int level,bool fog){
 }
 template<class Read> class Sampler {
  bool particles_=true,lasers_=true;Read read_;GameView<Read> view_;Geometry geo_{};std::vector<uint32_t> pointers_;std::shared_ptr<Terrain> pending_;std::shared_ptr<const Terrain> terrain_;
- std::vector<uint32_t> tileTypes_,overlayTypes_;std::vector<artvariants::Pool> resourcePools_;size_t cursor_=0;int lastFrame_=-1;uint32_t reveal_=0;unsigned revision_=0;
+ std::vector<uint32_t> tileTypes_,overlayTypes_,smudgeTypes_;std::vector<artvariants::Pool> resourcePools_;size_t cursor_=0;int lastFrame_=-1;uint32_t reveal_=0;unsigned revision_=0;
  struct MaskBits {uint8_t state=0,shroud=0,fog=0;}; // state: unknown, verified, unavailable
  std::vector<MaskBits> maskBits_;std::array<int8_t,256> frameLookup_{};
  template<class T>T get(uint32_t a,T fallback={})const{return view_.template get<T>(a,fallback);}
@@ -128,7 +130,7 @@ public:
   if(!g.same(geo_)||frame<lastFrame_||reveal_!=reveal){reset();geo_=g;reveal_=reveal;}lastFrame_=frame;
   if(!pending_){pointers_.resize(g.count);if(!read_(g.cells,pointers_.data(),pointers_.size()*4)||(!reveal&&!shroudselector::readLookup(read_,frameLookup_))){reset();return false;}
    if(!reveal)maskBits_.resize(512*512);
-   pending_=std::make_shared<Terrain>();pending_->geo=g;pending_->reveal=bool(reveal);pending_->colors.resize(512*512);pending_->shade.resize(512*512);if(real){pending_->baseColors.resize(512*512);pending_->art.resize(512*512);tileTypes_=view_.vec(0xA8ED28,65536);overlayTypes_=view_.vec(0xA83D80);resourcePools_=artvariants::pools(read_,overlayTypes_);}cursor_=0;}
+   pending_=std::make_shared<Terrain>();pending_->geo=g;pending_->reveal=bool(reveal);pending_->colors.resize(512*512);pending_->shade.resize(512*512);if(real){pending_->baseColors.resize(512*512);pending_->art.resize(512*512);tileTypes_=view_.vec(0xA8ED28,65536);overlayTypes_=view_.vec(0xA83D80);smudgeTypes_=view_.vec(0xA8EC18,4096);resourcePools_=artvariants::pools(read_,overlayTypes_);}cursor_=0;}
   size_t end=std::min(pointers_.size(),cursor_+size_t(std::clamp(budget,1,16384)));
   // Retain the native RGB/diagram/actor admission separately from terrain
   // sources: an excluded cell's TMP can still intersect the current crop.
@@ -155,7 +157,7 @@ public:
    if(!sourceVisible&&!terrainSource)continue;
    uint32_t color=terrainColor(land,level,!real&&!reveal&&fog!=-1);
    if(admitted&&sourceVisible)pending_->colors[cursor_]=color;
-   if(terrainSource&&!pending_->art.empty()){auto&a=pending_->art[cursor_];a.cell=p;a.sourceColor=color;a.sourceHidden=!sourceVisible;a.sub=cell[0x11A];a.level=int8_t(cell[0x11B]);a.overlayFrame=cell[0x11E];int tile=-1,overlay=-1;uint32_t flags=0;memcpy(&flags,cell.data()+0x140,4);memcpy(&tile,cell.data()+0x38,4);memcpy(&overlay,cell.data()+0x44,4);if(tile==65535){tile=get<int>(0xAA10B0,-1);a.sub=0;}if(tile>=0&&size_t(tile)<tileTypes_.size())a.type=artvariants::tile(read_,tileTypes_[tile],a.sub,x,y,flags);if(admitted&&overlay>=0&&size_t(overlay)<overlayTypes_.size()){a.overlay=int16_t(overlay);a.overlaySourceType=overlayTypes_[overlay];int drawOverlay=artvariants::overlay(read_,overlayTypes_,resourcePools_,overlay,x,y,cell[0x11C]);a.overlayType=overlayTypes_[drawOverlay];}}
+   if(terrainSource&&!pending_->art.empty()){auto&a=pending_->art[cursor_];a.cell=p;a.sourceColor=color;a.sourceHidden=!sourceVisible;a.sub=cell[0x11A];a.level=int8_t(cell[0x11B]);a.overlayFrame=cell[0x11E];a.smudgeData=cell[0x11F];a.land=land;std::memcpy(&a.pixelFX,cell.data()+0xFC,4);std::memcpy(&a.flags,cell.data()+0x140,4);std::memcpy(&a.rubbleType,cell.data()+0x40,4);int smudge=-1;std::memcpy(&smudge,cell.data()+0x48,4);if(admitted&&smudge>=0&&size_t(smudge)<smudgeTypes_.size())a.smudgeType=smudgeTypes_[smudge];int tile=-1,overlay=-1;uint32_t flags=0;memcpy(&flags,cell.data()+0x140,4);memcpy(&tile,cell.data()+0x38,4);memcpy(&overlay,cell.data()+0x44,4);if(tile==65535){tile=get<int>(0xAA10B0,-1);a.sub=0;}if(tile>=0&&size_t(tile)<tileTypes_.size())a.type=artvariants::tile(read_,tileTypes_[tile],a.sub,x,y,flags);if(admitted&&overlay>=0&&size_t(overlay)<overlayTypes_.size()){a.overlay=int16_t(overlay);a.overlaySourceType=overlayTypes_[overlay];int drawOverlay=artvariants::overlay(read_,overlayTypes_,resourcePools_,overlay,x,y,cell[0x11C]);a.overlayType=overlayTypes_[drawOverlay];}}
   }
   if(cursor_==pointers_.size()){terrain_=pending_;pending_.reset();maskBits_.clear();++revision_;}return true;
  }
@@ -163,12 +165,27 @@ public:
   GameView<Read> live(read_);Frame out;out.effectMask=uint8_t(particles_)|(uint8_t(lasers_)<<1);out.terrain=terrain_;out.tick=now;out.frame=observedFrame>=0?observedFrame:lastFrame_;if(!terrain_)return out;
   std::vector<uint32_t> bodies;out.markerScanValid=view_.vecChecked(0xA8EC78,bodies);
   if(!out.markerScanValid)return out;
+  if(!terrain_->art.empty()){
+   auto extras=std::make_shared<sceneextras::Snapshot>(sceneextras::capture(read_,geo_.house,out.frame,!terrain_->reveal,particles_));
+   if(particles_)for(size_t n=0;n<terrain_->art.size()&&extras->sparkles.size()<8192;++n){const auto&c=terrain_->art[n];if(!c.pixelFX||!c.cell)continue;
+    // DrawPixelFX6D7A30: no occupant, no bridge deck, visible native Cell.
+    if(get<uint32_t>(c.cell+0xE4)||(get<uint32_t>(c.cell+0x140)&0x1000)||(!terrain_->reveal&&(!(get<uint8_t>(c.cell+0x12C)&0x10)||terrain_->shade[n].fog!=-1)))continue;
+    std::array<int32_t,15>d{},after{};if(!read_(c.pixelFX,d.data(),60)||uint32_t(d[0])!=0x7EFDA4||d[14]>0||d[4]<0||d[4]>8192||d[12]<-31||d[12]>32||d[13]<-15||d[13]>16)continue;
+    bool valid=true;for(int k=6;k<12;++k)valid&=d[k]>=0&&d[k]<=255;if(!valid||!read_(c.pixelFX,after.data(),60)||after!=d||get<uint32_t>(c.cell+0xFC)!=c.pixelFX)continue;
+    sceneextras::Sparkle s;s.x=int(n%512);s.y=int(n/512);s.level=c.level;s.dx=d[12];s.dy=d[13];s.phase=d[4];s.base=uint32_t(d[9]<<16|d[10]<<8|d[11]);s.peak=uint32_t(d[6]<<16|d[7]<<8|d[8]);extras->sparkles.push_back(s);
+   }out.extras=std::move(extras);
+  }
+  if(!out.extras)out.extras=std::make_shared<const sceneextras::Snapshot>(sceneextras::capture(read_,geo_.house,out.frame,false,false));
   prefetch(read_,bodies,0);out.markers.reserve(bodies.size());
-  for(uint32_t p:bodies){int kind=view_.kind(p);if(!view_.live(p)||(kind!=3&&get<uint32_t>(p+0x11C))||get<int>(p+0x220)!=0)continue;
+  for(uint32_t p:bodies){int kind=view_.kind(p);if(!nativedraw::alive(view_,p,kind)||(kind!=3&&get<uint32_t>(p+0x11C)))continue;
+   if(kind==3&&!terrain_->reveal&&out.extras&&out.extras->frozenValid&&get<uint8_t>(p+0x6E7))continue;
+   auto drawState=nativedraw::capture(read_,p,view_.type(p,kind),kind,geo_.house,out.frame);if(!drawState.visible)continue;
    int x=get<int>(p+0x9C,-1),y=get<int>(p+0xA0,-1);if(x<0||y<0||x>=512*256||y>=512*256)continue;int cx=x/256,cy=y/256;
    if(!geo_.legal(cx,cy)||!terrain_->colors[cy*512+cx])continue;uint32_t owner=get<uint32_t>(p+0x21C);uint8_t rgb[3]{};if(owner<0x10000||!read_(owner+22265,rgb,3))continue;
    Marker m;geo_.project(double(x)/256,double(y)/256,m.u,m.v);if(m.u<0||m.u>=1||m.v<0||m.v>=1)continue;
    m.color=uint32_t(rgb[0])<<16|uint32_t(rgb[1])<<8|rgb[2];m.building=kind==3;m.object=p;m.id=get<uint32_t>(p+0x10);m.type=view_.type(p,kind);m.owner=owner;m.x=x;m.y=y;m.z=get<int>(p+0xA4);m.kind=kind;m.onBridge=get<uint8_t>(p+0x8C)!=0;m.pose=visual::pose(live,p,m.type,kind,out.frame);
+   m.material=drawState.material;m.waterline=drawState.waterline;m.disguised=drawState.disguised;
+   if(drawState.disguised){m.type=drawState.type;m.owner=drawState.owner;m.kind=drawState.kind;m.pose={};if(m.kind<3){m.pose=visual::pose(live,p,m.type,kind,out.frame);if(m.kind!=kind){m.pose.frame=visual::previewFrame(live,m.type,m.kind,int(m.pose.body)-8);m.pose.variant=-1;m.pose.turretFrame=-1;}}}
    m.layer=std::clamp(get<int>(p+0x94,2),0,4);if(kind==3)m.sort=(get<uint8_t>(m.type+0x16C5)?32:0)-(get<uint8_t>(m.type+0x16B7)?16:0);out.markers.push_back(m);
   }
   std::shared_ptr<worldfx::Snapshot>world;

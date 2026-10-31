@@ -27,10 +27,10 @@ class Worker {
  std::mutex mutex;std::condition_variable cv;std::thread thread;bool stop=false,paused=false;Request request{};uint64_t generation=0;
  std::shared_ptr<const external::radar::Frame> latest;
  void run(){
-  external::ReadSession reader;external::cameraassets::Context<external::ReadSession> assets(reader);external::radar::SceneRenderer<decltype(assets)> renderer;external::radar::DiagramRenderer diagram;external::radar::Sampler<external::SharedReadView> sampler(external::SharedReadView{&reader});uint64_t active=~uint64_t(0);int previousFrame=-1;unsigned previousRevision=0;Request activeRequest{};
+  external::ReadSession reader;external::cameraassets::Context<external::ReadSession> assets(reader);external::radar::SceneRenderer<decltype(assets)> renderer;external::radar::DiagramRenderer diagram;external::sceneextras::Layers radarLayers;external::radar::Sampler<external::SharedReadView> sampler(external::SharedReadView{&reader});uint64_t active=~uint64_t(0);int previousFrame=-1;unsigned previousRevision=0;Request activeRequest{};
   for(;;){Request r;uint64_t token;{std::unique_lock<std::mutex> lock(mutex);cv.wait(lock,[&]{return stop||(!paused&&request.pid);});if(stop)return;r=request;token=generation;}
    const auto iterationStarted=std::chrono::steady_clock::now();
-   if(token!=active){if(r.pid!=activeRequest.pid||r.match!=activeRequest.match){reader.close();sampler.reset();renderer.reset();diagram.reset();}else {if(r.mode!=activeRequest.mode)sampler.reset();if(r.gpu!=activeRequest.gpu||r.selection.revision!=activeRequest.selection.revision)renderer.reset();}activeRequest=r;active=token;previousFrame=-1;previousRevision=0;}
+   if(token!=active){if(r.pid!=activeRequest.pid||r.match!=activeRequest.match){reader.close();sampler.reset();renderer.reset();diagram.reset();radarLayers.reset();}else {if(r.mode!=activeRequest.mode)sampler.reset();if(r.gpu!=activeRequest.gpu||r.selection.revision!=activeRequest.selection.revision)renderer.reset();}activeRequest=r;active=token;previousFrame=-1;previousRevision=0;}
    external::xbrzadapter::gpuPresentation(r.gpu); // this worker owns its GPU state; native assets stay CPU-prepared
    std::shared_ptr<const external::radar::Frame> next;
    if(reader.open(r.pid)){reader.begin();
@@ -39,7 +39,7 @@ class Worker {
     if(shared&&(!external::radar::recentMarkers(*shared,external::radar::publicationContext(fresh),GetTickCount())||!external::radar::supportsEffects(*shared,r.selection.profile.particles,r.selection.profile.lasers)))shared.reset();
     sampler.effects(r.selection.profile.particles,r.selection.profile.lasers);bool ok=shared||sampler.step(r.reveal,4096,r.mode==1);reader.begin();int frame=reader.get<int>(0xA8ED84,-1);
     if(ok&&(r.mode==1||frame!=previousFrame||sampler.revision()!=previousRevision)){
-     auto data=shared?*shared:sampler.snapshot(GetTickCount(),frame);if(!shared)external::radar::preparePoses(data,external::SharedReadView{&reader});data.map=diagram.render(data.terrain,r.width,r.height);
+     auto data=shared?*shared:sampler.snapshot(GetTickCount(),frame);if(!shared)external::radar::preparePoses(data,external::SharedReadView{&reader});assets.identity(r.pid,r.match);radarLayers.begin();data.map=external::sceneextras::decorateRadar(diagram.render(data.terrain,r.width,r.height),data,external::SharedReadView{&reader},assets,radarLayers);
      auto sampled=external::radar::publicationContext(fresh);
      const bool same=external::radar::sameWorld(data,sampled);
      // Sampling may span several game ticks. Keep the last complete image
@@ -176,12 +176,7 @@ static bool presentation(int width,int height,std::shared_ptr<const external::ra
  if(!frame||!frame->terrain||!frame->terrain->geo.valid()||width<3||height<3)return false;
  bool real=minimapMode==1&&bool(frame->scene);image=real?frame->scene:frame->map;if(!image)return false;
  const int mw=width-2,mh=height-2;visual={};visual.image=image;visual.width=width;visual.height=height;visual.real=real;
- if(!real){visual.marks.reserve(frame->markers.size());for(const auto&m:frame->markers){
-  if(!std::isfinite(m.u)||!std::isfinite(m.v)||m.u<0||m.u>=1||m.v<0||m.v>=1)continue;
-  int x=1+int(m.u*mw),y=1+int(m.v*mh),radius=m.building?2:1;
-  radargate::Mark mark{std::max(1,x-radius),std::max(1,y-radius),std::min(width-1,x+radius+1),std::min(height-1,y+radius+1),m.color&0xffffffu};
-  if(mark.right>mark.left&&mark.bottom>mark.top)visual.marks.push_back(mark);
- }}
+ // Diagram markers and radar feedback are already ordered by the worker.
  const auto&g=frame->terrain->geo;double left=(snap.cameraX/30.0+g.offsetX)/g.rawWidth,top=(snap.cameraY/15.0-g.offsetY)/g.rawHeight;
  double right=left+std::max(0,snap.width-160)/30.0/g.rawWidth,bottom=top+snap.height/15.0/g.rawHeight;
  visual.view={1+int(std::clamp(left,0.,1.)*(mw-1)),1+int(std::clamp(top,0.,1.)*(mh-1)),1+int(std::clamp(right,0.,1.)*(mw-1)),1+int(std::clamp(bottom,0.,1.)*(mh-1)),0};return true;

@@ -1,5 +1,7 @@
 #pragma once
 #include "world_effects.h"
+#include "native_scene_extras.h"
+#include "native_packed_color.h"
 #include <array>
 #include <memory>
 namespace external { namespace gpueffects {
@@ -8,7 +10,7 @@ namespace external { namespace gpueffects {
 // preceding destination snapshot. No graphics API is called by this planner.
 // GPL-3.0 reference: terrain_surface_lines.rs/wgsl @ 3d42426b2e9c.
 constexpr uint32_t Words=32,MaximumCommands=65536,MaximumReferences=2*1024*1024;
-enum Kind:uint32_t {Line=0,Glow=1,Alpha=2,Wave=3,Bolt=4};
+enum Kind:uint32_t {Line=0,Glow=1,Alpha=2,Wave=3,Bolt=4,Chrono=5,Sparkle=6,Sprite=7,RadarLine=8};
 struct Command {std::array<uint32_t,Words> words{};std::shared_ptr<const std::vector<uint8_t>> indices;};
 struct Batch {size_t first=0,count=0;bool snapshot=false;};
 struct Plan {int width=0,height=0;std::vector<Command>commands;std::vector<Batch>batches;bool valid=true;};
@@ -38,8 +40,8 @@ inline void scheduleWaves(Plan&p){
  std::vector<Command>ordered;std::vector<Batch>batches;ordered.reserve(p.commands.size());uint64_t visits=0;
  const int cols=(p.width+31)/32,rows=(p.height+31)/32;
  for(size_t at=0;at<p.batches.size();){const auto&batch=p.batches[at];
-  if(!batch.snapshot){size_t first=ordered.size();for(size_t n=batch.first;n<batch.first+batch.count;++n)ordered.push_back(std::move(p.commands[n]));batches.push_back({first,batch.count,false});++at;continue;}
-  size_t end=at;while(end<p.batches.size()&&p.batches[end].snapshot)++end;
+  if(!batch.snapshot||p.commands[batch.first].words[0]!=Wave){size_t first=ordered.size();for(size_t n=batch.first;n<batch.first+batch.count;++n)ordered.push_back(std::move(p.commands[n]));batches.push_back({first,batch.count,batch.snapshot});++at;continue;}
+  size_t end=at;while(end<p.batches.size()&&p.batches[end].snapshot&&p.commands[p.batches[end].first].words[0]==Wave)++end;
   std::vector<int>last(size_t(cols)*rows,-1);std::vector<std::vector<size_t>>levels;
   for(size_t i=at;i<end;++i)for(size_t n=p.batches[i].first;n<p.batches[i].first+p.batches[i].count;++n){const auto&c=p.commands[n];if(c.words[0]!=Wave){p.valid=false;return;}auto r=footprint(c,p.width,p.height);int level=0;
    for(uint32_t y=r[1]/32;y<=(r[3]-1)/32;++y)for(uint32_t x=r[0]/32;x<=(r[2]-1)/32;++x){if(++visits>MaximumReferences){p.valid=false;return;}level=std::max(level,last[size_t(y)*cols+x]+1);}
@@ -55,13 +57,13 @@ inline void scheduleWaves(Plan&p){
 inline bool pack(const Plan&p,const std::vector<uint32_t>&alphas,uint32_t fog,std::vector<uint32_t>&words,std::vector<Dispatch>&jobs){
  if(!p.valid||p.width<1||p.height<1||p.width>8192||p.height>8192||p.commands.size()>MaximumCommands||alphas.size()!=p.commands.size())return false;
  const uint32_t base=uint32_t(words.size()),cols=(p.width+31)/32,rows=(p.height+31)/32,bins=cols*rows;
- for(size_t n=0;n<p.commands.size();++n){auto c=p.commands[n].words;if(c[0]>Bolt||c[4]>=c[6]||c[5]>=c[7]||c[6]>uint32_t(p.width)||c[7]>uint32_t(p.height))return false;if(c[0]==Alpha)c[3]=alphas[n];words.insert(words.end(),c.begin(),c.end());}
+ for(size_t n=0;n<p.commands.size();++n){auto c=p.commands[n].words;if(c[0]>RadarLine||c[4]>=c[6]||c[5]>=c[7]||c[6]>uint32_t(p.width)||c[7]>uint32_t(p.height))return false;if(c[0]==Alpha||c[0]==Chrono||c[0]==Sprite)c[3]=alphas[n];words.insert(words.end(),c.begin(),c.end());}
  uint64_t totalRefs=0;size_t covered=0;
  for(const auto&batch:p.batches){if(batch.first!=covered||!batch.count||batch.first>p.commands.size()||batch.count>p.commands.size()-batch.first)return false;
   covered+=batch.count;std::array<uint32_t,4>readBounds{{uint32_t(p.width),uint32_t(p.height),0,0}};
   std::vector<uint32_t>counts(bins),starts(bins+1);uint32_t l=p.width,t=p.height,r=0,b=0;
   auto visit=[&](size_t n,auto fn){auto&c=p.commands[n].words;for(uint32_t y=c[5]/32;y<=(c[7]-1)/32;++y)for(uint32_t x=c[4]/32;x<=(c[6]-1)/32;++x)fn(y*cols+x);};
-  for(size_t n=batch.first;n<batch.first+batch.count;++n){auto&c=p.commands[n].words;if((c[0]==Wave)!=batch.snapshot)return false;if(batch.snapshot){auto f=footprint(p.commands[n],p.width,p.height);readBounds[0]=std::min(readBounds[0],f[0]);readBounds[1]=std::min(readBounds[1],f[1]);readBounds[2]=std::max(readBounds[2],f[2]);readBounds[3]=std::max(readBounds[3],f[3]);}l=std::min(l,c[4]);t=std::min(t,c[5]);r=std::max(r,c[6]);b=std::max(b,c[7]);visit(n,[&](uint32_t i){++counts[i];});}
+  for(size_t n=batch.first;n<batch.first+batch.count;++n){auto&c=p.commands[n].words;if((c[0]==Wave||c[0]==Chrono)!=batch.snapshot)return false;if(batch.snapshot){auto f=footprint(p.commands[n],p.width,p.height);readBounds[0]=std::min(readBounds[0],f[0]);readBounds[1]=std::min(readBounds[1],f[1]);readBounds[2]=std::max(readBounds[2],f[2]);readBounds[3]=std::max(readBounds[3],f[3]);}l=std::min(l,c[4]);t=std::min(t,c[5]);r=std::max(r,c[6]);b=std::max(b,c[7]);visit(n,[&](uint32_t i){++counts[i];});}
   uint32_t refs=0;for(uint32_t i=0;i<bins;++i){starts[i]=refs;if(uint64_t(refs)+counts[i]+totalRefs>MaximumReferences)return false;refs+=counts[i];}starts[bins]=refs;totalRefs+=refs;
   auto next=starts;std::vector<uint32_t>references(refs);for(size_t n=batch.first;n<batch.first+batch.count;++n)visit(n,[&](uint32_t i){references[next[i]++]=uint32_t(n);});
   uint32_t binOffset=uint32_t(words.size());for(uint32_t i=0;i<bins;++i){words.push_back(starts[i]);words.push_back(counts[i]);}uint32_t refOffset=uint32_t(words.size());words.insert(words.end(),references.begin(),references.end());
@@ -104,6 +106,28 @@ public:
   else poly={lerp(p[0],p[2],s.front),lerp(from,to,s.front),lerp(p[1],p[3],s.front),lerp(p[1],p[3],s.back),lerp(from,to,s.back),lerp(p[0],p[2],s.back)};
   double l=poly[0][0],r=l,t=poly[0][1],b=t;Command c;c.words[0]=Wave;for(size_t i=0;i<poly.size();++i){l=std::min(l,poly[i][0]);r=std::max(r,poly[i][0]);t=std::min(t,poly[i][1]);b=std::max(b,poly[i][1]);c.words[8+i*2]=bits(float(poly[i][0]));c.words[9+i*2]=bits(float(poly[i][1]));}
   if(!bounds(c,l,t,r+1,b+1))return;c.words[20]=uint32_t(poly.size());c.words[21]=bits(float(from[0]));c.words[22]=bits(float(from[1]));c.words[23]=bits(float(v_.pixelsW/v_.width));c.words[24]=bits(float(v_.pixelsH/v_.height));c.words[25]=s.phase;c.words[26]=s.kind;c.words[27]=s.direction;flush();append(std::move(c));flush(true);
+ }
+ void uiLine(std::array<double,2>a,std::array<double,2>b,uint32_t color){
+  double dx=b[0]-a[0],dy=b[1]-a[1],lo=0,hi=1;auto clip=[&](double p,double q){if(p==0)return q>=0;double t=q/p;if(p<0)lo=std::max(lo,t);else hi=std::min(hi,t);return lo<=hi;};
+  if(!clip(-dx,a[0])||!clip(dx,v_.pixelsW-1-a[0])||!clip(-dy,a[1])||!clip(dy,v_.pixelsH-1-a[1]))return;
+  int ax=int(a[0]+lo*dx),ay=int(a[1]+lo*dy),bx=int(a[0]+hi*dx),by=int(a[1]+hi*dy);if(ax>bx){std::swap(ax,bx);std::swap(ay,by);}Command c;c.words[0]=RadarLine;c.words[1]=color;
+  if(!bounds(c,std::min(ax,bx),std::min(ay,by),std::max(ax,bx)+1,std::max(ay,by)+1))return;
+  c.words[8]=ax;c.words[9]=ay;c.words[10]=bx;c.words[11]=by;append(std::move(c));
+ }
+ void uiImage(const std::shared_ptr<const voxel::Image>&image,const std::shared_ptr<const std::vector<uint8_t>>&rgba,double x,double y,double sx,double sy){
+  if(!image||!rgba||rgba->size()!=image->pixels.size()*4)return;Command c;c.words[0]=Sprite;c.indices=rgba;double l=x+image->x*sx,t=y+image->y*sy;
+  if(!bounds(c,l,t,l+image->width*sx,t+image->height*sy))return;c.words[8]=bits(float(l));c.words[9]=bits(float(t));c.words[10]=bits(float(sx));c.words[11]=bits(float(sy));c.words[14]=image->width;c.words[15]=image->height;append(std::move(c));
+ }
+ void sparkle(const sceneextras::Sparkle&s,bool smooth=false){
+  double x=((s.x-s.y+v_.offsetX)*30.+s.dx-v_.x)*v_.pixelsW/v_.width,y=((s.x+s.y-v_.offsetY-s.level)*15.+15+s.dy-v_.y)*v_.pixelsH/v_.height;
+  Command c;c.words[0]=Sparkle;c.words[1]=s.base;c.words[2]=s.peak;c.words[8]=uint32_t(s.phase);c.words[9]=smooth;
+  if(bounds(c,std::floor(x),std::floor(y),std::max(std::floor(x)+1,std::ceil(x+v_.pixelsW/v_.width)),std::max(std::floor(y)+1,std::ceil(y+v_.pixelsH/v_.height))))append(std::move(c));
+ }
+ void chrono(const sceneextras::Chrono&s,const std::shared_ptr<const std::vector<uint8_t>>&trig,int nativeWidth,int nativeHeight){
+  if(s.phase<1||s.phase>3||s.duration<1||nativeWidth<1||nativeHeight<1||!trig||trig->size()!=10241*4)return;
+  Command c;c.words[0]=Chrono;c.words[1]=s.phase==2?1:0;int step=std::clamp(s.phase==1?s.duration-s.remaining:s.remaining,0,s.duration);double velocity=0,amplitude=0;for(int n=0;n<step;++n){velocity+=.002;amplitude+=velocity;}
+  c.words[8]=uint32_t(int64_t(step)*255/s.duration);c.words[9]=bits(float(amplitude));c.words[10]=nativeWidth;c.words[11]=nativeHeight;c.indices=trig;
+  if(!bounds(c,0,0,v_.pixelsW,v_.pixelsH))return;flush();append(std::move(c));flush(true);
  }
  void paint(const worldfx::Snapshot&s,bool particles,bool lasers){worldfx::Geometry<Builder>(*this,v_).paint(s,particles,lasers);}
  // The native-feedback strand generator emits bounded line geometry only.

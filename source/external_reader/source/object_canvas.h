@@ -8,9 +8,9 @@ namespace external {namespace camera {
 class ObjectCanvas {
 public:
  struct Draw {
-  std::shared_ptr<const voxel::Image> image;float x=0,y=0,base=0,lift=1,drop=0;lighting::State light;
+  std::shared_ptr<const voxel::Image> image;float x=0,y=0,base=0,lift=1,drop=0;lighting::State light;Material material;
   bool operator==(const Draw&b)const{return image.get()==b.image.get()&&!image.owner_before(b.image)&&!b.image.owner_before(image)&&
-    x==b.x&&y==b.y&&base==b.base&&lift==b.lift&&drop==b.drop&&light==b.light;}
+    x==b.x&&y==b.y&&base==b.base&&lift==b.lift&&drop==b.drop&&light==b.light&&material==b.material;}
  };
  struct Stats {size_t changed=0,reused=0,removed=0,references=0,rasterBuilds=0,rasterHits=0;}stats_;
 private:
@@ -52,7 +52,7 @@ public:
  bool planGPU(const NativeCanvas&base,const std::vector<Draw>&draws,int width,int height,double spanX,double spanY,gpuarea::Plan&out){
   if(!base.areaPlan(width,height,out,spanX,spanY))return false;
   GpuSceneRecord record;record.beginObjects(base.width_,base.height_,base.precision_);
-  for(const auto&d:draws)if(!d.image||!record.append(*d.image,d.image,d.x,d.y,1,1,d.base,d.light,d.lift,d.drop,false))return false;
+  for(const auto&d:draws)if(!d.image||!record.append(*d.image,d.image,d.x,d.y,1,1,d.base,d.light,d.lift,d.drop,false,{},d.material))return false;
   auto objects=std::make_shared<const std::vector<vulkancompute::DrawJob>>(record.frame().draws);out.objects=objects;
   std::map<uint32_t,size_t>lookup;for(size_t n=0;n<out.pages.size();++n)lookup[NativeCanvas::key(out.pages[n].x,out.pages[n].y)]=n;
   std::shared_ptr<const std::vector<uint32_t>>blank;size_t refs=0;
@@ -124,7 +124,7 @@ public:
    parallelrows::rows(changed.size(),changed.size()*size_t(NativeCanvas::PageSize)*NativeCanvas::PageSize,[&](size_t first,size_t last){
     try{for(size_t n=first;n<last;++n){const auto&work=changed[n];auto&surface=work.entry->page->surface;
       const int x=NativeCanvas::pageX(work.key)*NativeCanvas::PageSize,y=NativeCanvas::pageY(work.key)*NativeCanvas::PageSize;
-      for(const auto&draw:work.entry->draws)surface.blit(*draw.image,draw.x-x,draw.y-y,1,1,draw.base,draw.light,draw.lift,draw.drop);
+      for(const auto&draw:work.entry->draws)surface.blit(*draw.image,draw.x-x,draw.y-y,1,1,draw.base,draw.light,draw.lift,draw.drop,false,draw.material);
       if(surface.failed())failed=true;
      }}catch(const std::bad_alloc&){failed=true;}
    });

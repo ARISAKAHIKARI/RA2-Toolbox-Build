@@ -6,6 +6,7 @@
 
 | 主题 | 新笔记 | 关键词 |
 | --- | --- | --- |
+| Hotfix23第二轮11入口：原生保存图/材质/尾迹、地面层、信标雷达、PixelFX和Chrono | [实施/字段/边界](2026-10-31-vera-scene-extras-hotfix23.md) · [静态证据](evidence/render-hotfix23-native.json) | Fogged8B3D10 trailABCB78 CellFC PixelFX7EFDA4 ChronoA9FAB0 sin84F084 Rubble14F4 Smudge3C |
 | Vera第二轮绘制缺口：迷雾保存图、隐形伪装、沉船、污迹、尾迹、信标、雷达事件、桥影、废墟、闪光与整屏扭曲 | [额外11项审计](2026-10-31-vera-render-additional-gaps.md) | FoggedObject DrawState Sinking Smudge LineTrail Beacon RadarEvent BridgeShadow Rubble PixelFX ChronoScreen SLOP ZShape |
 | 真正Z路径点/规划图、共享前驱/回环/高亮与剩余绘制差距和GPU路线 | [Hotfix22路径点](2026-10-31-native-planning-render-hotfix22.md) · [差距/GPU清单](2026-10-31-vera-render-gaps-and-gpu-roadmap.md) | PlanMgr AC4B30 AC4C78 token514 event NetID loop fresh readset UI5 static terrain async GPU HVA A-buffer |
 | Vera绘制12领域梳理、GPU动态原尺寸页、延后色盘、565混合、波形依赖及资源UI | [迁移总表](2026-10-30-vera-render-migration-map.md) · [Hotfix21实施](2026-10-30-vera-render-integration-hotfix21.md) | indexed palette native page Z readonly RGB565 dependency wave resource pip PC53 chop UI isolation |

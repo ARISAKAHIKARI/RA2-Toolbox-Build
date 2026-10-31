@@ -241,6 +241,18 @@ bool sprite(uint32_t type,uint32_t pointer,const std::array<uint32_t,256>&pal,in
  std::vector<uint8_t> bytes;std::string filename;if(!shapeBytes(type,pointer,bytes,filename))return false;
  if(external::assets::shp(std::move(bytes),frame,pal,out))return true;failure="sprite-load/decode:"+filename+" frame="+std::to_string(frame);return false;
 }
+// A saved bib/custom rubble is a distinct resource. Its fallback must not
+// silently substitute the building body when the live SHP is demand-loaded.
+int resourceFrames(uint32_t type,uint32_t pointer,bool overlay=false){
+ uint8_t header[8]{};if(read(pointer,header,8)){if(voxel::u16(header)==65535){const uint32_t loaded=word(pointer+12);if(!read(loaded,header,8))std::memset(header,0,8);}if(voxel::u16(header)==0&&voxel::u16(header+6)>0)return voxel::u16(header+6);}
+ std::vector<uint8_t>bytes;std::string file;if(!shapeBytes(type,pointer,bytes,file,overlay)||bytes.size()<8||voxel::u16(bytes.data())!=0)return 0;return voxel::u16(bytes.data()+6);
+}
+bool resourceSprite(uint32_t type,uint32_t pointer,const std::array<uint32_t,256>&pal,int frame,voxel::Image&out,bool namedOnly=false,bool overlay=false){
+ if(voxel::sprite(read,pointer,pal,out,frame,nullptr,255))return true;
+ auto name=assets::shapeName(read,pointer);std::vector<uint8_t>bytes;
+ if(!name.empty()&&files.load(name,bytes)&&assets::shp(std::move(bytes),frame,pal,out))return true;
+ if(namedOnly)return false;std::string filename;if(!shapeBytes(type,pointer,bytes,filename,overlay))return false;return assets::shp(std::move(bytes),frame,pal,out);
+}
 bool tile(uint32_t type,unsigned sub,const std::array<uint32_t,256>&pal,external::voxel::Image&out){
  const uint32_t resource=word(type+0xA4);const SharedTileKey key{process_,match_,type,resource,sub,files.revision(),pal};
  if(process_){std::shared_ptr<const external::voxel::Image> cached;
@@ -418,8 +430,8 @@ bool captureProjectile(uint32_t p,uint32_t type,uint32_t id,ActorArt&out){
  if(next.voxel)next.geometryIdentity=std::make_shared<const uint8_t>(0);
  failure.clear();out=std::move(next);return true;
 }
-bool captureActor(uint32_t p,uint32_t type,uint32_t id,ActorArt&out,const external::visual::Pose*expected=nullptr){
- failure.clear();if(word(p+0x10)!=id){failure="actor-identity";return false;}ActorArt next;external::GameView game(read);next.kind=game.kind(p);next.type=type;uint32_t owner=word(p+0x21C);next.object=p;next.id=id;next.owner=owner;
+bool captureActor(uint32_t p,uint32_t type,uint32_t id,ActorArt&out,const external::visual::Pose*expected=nullptr,int displayKind=-1,uint32_t displayOwner=0){
+ failure.clear();if(word(p+0x10)!=id){failure="actor-identity";return false;}ActorArt next;external::GameView game(read);const int actualKind=game.kind(p);const uint32_t actualType=game.type(p,actualKind),actualOwner=word(p+0x21C);if(actualKind<0||(displayKind<0&&actualType!=type))return false;next.kind=displayKind<0?actualKind:displayKind;next.type=type;uint32_t owner=displayKind<0?actualOwner:displayOwner;next.object=p;next.id=id;next.owner=owner;
  metadata();next.shadow=!rulesINI.yes(text(type+0x24,24),"NOSHADOW");next.flat=artYes(type,"FLAT");
  if(next.kind==3){
   auto foundation=external::assets::name(artValue(type,"FOUNDATION"));int fw=1,fh=1;
@@ -467,7 +479,7 @@ bool captureActor(uint32_t p,uint32_t type,uint32_t id,ActorArt&out,const extern
   if(!loaded){external::voxel::Image check;if(!external::voxel::sprite(read,next.pointer,next.colors,check)){failure="sprite-not-found/unloaded:"+(filename.empty()?stem:filename);return false;}}
  }
  if(next.kind==3)captureBuildingParts(type,next);
- if(word(p+0x10)!=id||word(p+0x21C)!=owner)return false;bool paletteChanged=false;if(!refreshActorPalette(next,paletteChanged))return false;if(next.voxel)next.geometryIdentity=std::make_shared<const uint8_t>(0);out=std::move(next);return true;
+ if(word(p+0x10)!=id||word(p+0x21C)!=actualOwner||game.type(p,actualKind)!=actualType)return false;bool paletteChanged=false;if(!refreshActorPalette(next,paletteChanged))return false;if(next.voxel)next.geometryIdentity=std::make_shared<const uint8_t>(0);out=std::move(next);return true;
 }
 bool refreshActorPalette(ActorArt&art,bool&changed){
  changed=false;if(!(art.voxel?voxelRelight_:spriteRelight_))return true;

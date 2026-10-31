@@ -25,6 +25,13 @@ int lineHits(uint i,ivec2 at){
  int first=max(0,int(floor(center))-3),last=min(count,int(ceil(center))+3),hits=0;
  for(int n=first;n<=last;++n){vec2 q=a+delta*float(n)/float(count);if(at==ivec2(roundAway(q.x),roundAway(q.y)))++hits;}return hits;
 }
+bool radarHit(uint i,ivec2 at){
+ ivec2 a=ivec2(u(i,8),u(i,9)),b=ivec2(u(i,10),u(i,11));int dx=b.x-a.x,dy=abs(b.y-a.y),signY=b.y<a.y?-1:1;
+ bool majorX=dx>dy;int major=max(dx,dy),minor=min(dx,dy),count=major+int(dx==0||dy==0);
+ if(major==0)return all(equal(at,a));int n=majorX?at.x-a.x:(at.y-a.y)*signY;if(n<0||n>=count)return false;
+ // Error > 0, with the diagonal endpoint excluded by Surface::DrawLine.
+ int m=(2*n*minor+major-1)/(2*major);ivec2 q=a+(majorX?ivec2(n,m*signY):ivec2(m,n*signY));return all(equal(at,q));
+}
 int boltHits(uint i,ivec2 at){
  ivec2 a=ivec2(u(i,8),u(i,9)),b=ivec2(u(i,10),u(i,11)),d=abs(b-a),step=ivec2(a.x<b.x?1:-1,a.y<b.y?1:-1);int r=int(u(i,13));bool majorX=d.x>=d.y;int major=majorX?d.x:d.y,minor=majorX?d.y:d.x;
  if(major==0)return all(lessThanEqual(abs(at-a),ivec2(r)))?1:0;
@@ -38,10 +45,28 @@ bool insideWave(uint i,ivec2 at){
 }
 void main(){
  uvec2 at=gl_GlobalInvocationID.xy+uvec2(p.left,p.top);if(at.x>=p.right||at.y>=p.bottom||at.x>=p.width||at.y>=p.height)return;
- uint address=at.y*p.width+at.x,visible=p.fogOffset==0xffffffffu?127u:byteAt(p.fogOffset,address);if(visible==0)return;
+ uint address=at.y*p.width+at.x,visible=p.fogOffset==0xffffffffu?127u:byteAt(p.fogOffset,address);
  uint bin=(at.y/32u)*p.columns+at.x/32u,start=command[p.binsOffset+2u*bin],count=command[p.binsOffset+2u*bin+1u],dst=pixel[address],bolt=0;
- for(uint n=0;n<count;++n){uint i=command[p.refsOffset+start+n];if(at.x<u(i,4)||at.y<u(i,5)||at.x>=u(i,6)||at.y>=u(i,7))continue;uint kind=u(i,0),rgb=u(i,1);
-  if(kind==0u){int hits=lineHits(i,ivec2(at));for(int k=0;k<hits;++k)dst=lit(dst,rgb,visible,u(i,2)!=0u);}
+ for(uint n=0;n<count;++n){uint i=command[p.refsOffset+start+n];if(at.x<u(i,4)||at.y<u(i,5)||at.x>=u(i,6)||at.y>=u(i,7))continue;uint kind=u(i,0),rgb=u(i,1);if(visible==0u&&kind!=5u&&kind!=6u&&kind!=7u&&kind!=8u)continue;
+  if(kind==7u){ivec2 q=ivec2(floor((vec2(at)+.5-vec2(f(i,8),f(i,9)))/vec2(f(i,10),f(i,11))));if(all(greaterThanEqual(q,ivec2(0)))&&q.x<int(u(i,14))&&q.y<int(u(i,15))){uint c=material[u(i,3)+uint(q.y)*u(i,14)+uint(q.x)];if((c>>24u)!=0u)dst=c;}}
+  else if(kind==8u){if(radarHit(i,ivec2(at)))dst=0xff000000u|rgb;}
+  else if(kind==5u){
+   if(u(i,1)==1u){dst=0xffffffffu;continue;}
+   vec2 nativeSize=vec2(u(i,10),u(i,11)),local=floor(vec2(at)*nativeSize/vec2(p.width,p.height));
+   // Our output is the tactical crop; the game's 32-pixel command bar is
+   // outside it. Use Composite's full-height centre (height-32 == crop).
+   vec2 centre=floor(nativeSize*.5),delta=local-centre;float radial=(1.-dot(delta,delta)/max(1.,dot(centre,centre)))*5.;
+   float angle=radial*radial*f(i,9),rawFloat=angle*2607.594482421875;int raw=rawFloat<2147483520.&&rawFloat>=-2147483648.?int(rawFloat):int(0x80000000u),index=(raw/2)%8192;if(index<0)index+=8192;int cosine=index+2048;
+   if((raw&1)!=0){if(index<8191)++index;if(cosine<10239)++cosine;}
+   float sn=uintBitsToFloat(material[u(i,3)+uint(index)]),cs=uintBitsToFloat(material[u(i,3)+uint(cosine)]);
+   ivec2 sampleNative=clamp(ivec2(vec2(sn*delta.y+cs*delta.x,cs*delta.y-sn*delta.x)+centre),ivec2(0),ivec2(nativeSize)-1);
+   uvec2 q=min(uvec2(vec2(sampleNative)*vec2(p.width,p.height)/nativeSize),uvec2(p.width-1u,p.height-1u));uint source=pixel[p.snapshotOffset+q.y*p.width+q.x],weight=u(i,8)&65535u;
+   uvec3 c=uvec3((source>>19u)&31u,(source>>10u)&63u,(source>>3u)&31u),maximum=uvec3(31u,63u,31u);c+=((maximum-c)*weight)>>8u;
+   uvec3 bytes=(c*255u+maximum/2u)/maximum;dst=0xff000000u|(bytes.r<<16u)|(bytes.g<<8u)|bytes.b;
+  }else if(kind==6u){uint phase=u(i,8),lerp=phase&4095u;if((phase&4096u)!=0u)lerp=4096u-lerp;uint color=0u;
+   for(uint sh=0u;sh<24u;sh+=8u)color|=(((((u(i,1)>>sh)&255u)*(4096u-lerp))+(((u(i,2)>>sh)&255u)*lerp))>>12u)<<sh;
+   if(u(i,9)==0u){uint r=(color>>19u)&31u,g=(color>>10u)&63u,b=(color>>3u)&31u;color=(((r<<3u)|(r>>2u))<<16u)|(((g<<2u)|(g>>4u))<<8u)|(b<<3u)|(b>>2u);}dst=0xff000000u|color;
+  }else if(kind==0u){int hits=lineHits(i,ivec2(at));for(int k=0;k<hits;++k)dst=lit(dst,rgb,visible,u(i,2)!=0u);}
   else if(kind==1u){vec2 d=(vec2(at)-vec2(f(i,8),f(i,9)))/vec2(f(i,10),f(i,11));float strength=max(0.,1.-length(d))*.3;if(strength>0.){uint c=0;for(uint sh=0;sh<24;sh+=8)c|=uint(float((rgb>>sh)&255u)*strength)<<sh;dst=lit(dst,c,visible,true);}}
   else if(kind==2u){ivec2 q=clamp(ivec2((vec2(at)-vec2(f(i,8),f(i,9)))/vec2(f(i,10),f(i,11))),ivec2(0),ivec2(u(i,14)-1u,u(i,15)-1u));uint index=byteAt(u(i,3),uint(q.y)*u(i,14)+uint(q.x));if(index!=0){uint o=0xff000000u;for(uint sh=0;sh<24;sh+=8){uint old=(dst>>sh)&255u,value=min(255u,old*index/128u);o|=((value*visible+old*(127u-visible))/127u)<<sh;}dst=o;}}
   else if(kind==3u&&insideWave(i,ivec2(at))){

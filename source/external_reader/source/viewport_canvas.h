@@ -130,10 +130,10 @@ public:
   ready_=true;return true;
  }
  void blit(const voxel::Image&i,float ax,float ay,float,float,float base,const lighting::State&light,float lift=1,float shadowDrop=0,
-           std::shared_ptr<const voxel::Image>owner={},vulkancompute::MotionIdentity motion={}){
+           std::shared_ptr<const voxel::Image>owner={},vulkancompute::MotionIdentity motion={},Material material={}){
   if(!ready_||!visible(i,ax,ay,shadowDrop))return;const float outputX=float((ax-x_)*sx_),outputY=float((ay-y_)*sy_);
-  if(gpuRecording_)gpuRecord_.append(i,std::move(owner),outputX,outputY,float(sx_),float(sy_),base,light,lift,shadowDrop,smooth(i),std::move(motion));
-  else surface_.blit(i,outputX,outputY,float(sx_),float(sy_),base,light,lift,shadowDrop,smooth(i));dirty_=true;
+  if(gpuRecording_)gpuRecord_.append(i,std::move(owner),outputX,outputY,float(sx_),float(sy_),base,light,lift,shadowDrop,smooth(i),std::move(motion),material);
+  else surface_.blit(i,outputX,outputY,float(sx_),float(sy_),base,light,lift,shadowDrop,smooth(i),material);dirty_=true;
  }
  bool gpuRecording()const{return ready_&&gpuRecording_;}
  bool gpuMasked()const{return gpuMasked_;}

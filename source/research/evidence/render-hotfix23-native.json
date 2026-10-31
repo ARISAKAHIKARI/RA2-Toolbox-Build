@@ -1,0 +1,241 @@
+{
+  "name": "Hotfix23 native static layout and fixed-source evidence",
+  "created_utc": "2026-10-31T02:49:33.435793+00:00",
+  "question": "Implement E1-E11 using passive game-owned records and shared CPU/GPU composition",
+  "supported_sample_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+  "private_binary_or_raw_disassembly_included": false,
+  "native_instruction_execution": false,
+  "new_call_abi": false,
+  "upstream": {
+    "repository": "ARISAKAHIKARI/vera20k",
+    "commit": "3d42426b2e9c1b4cf913a7dbbaaf8bf7d3b6bc7f",
+    "license": "GPL-3.0",
+    "files": [
+      {
+        "path": "src/app/presentation/instances/cell_bodies.rs",
+        "blob": "2899b0f82163167e657970c50f311e0dd2f6ee80"
+      },
+      {
+        "path": "src/rules/overlay_types.rs",
+        "blob": "f8f525bd2ef9c31e3c12e7bec1263bfac2074886"
+      },
+      {
+        "path": "src/render/draw_state.rs",
+        "blob": "55e4f1cddada9da82d2333584f9fdf930cecb4c7"
+      },
+      {
+        "path": "src/render/sinking.rs",
+        "blob": "9800fcda3cfec08dab9f13876d4a6ef9f79ff7b9"
+      },
+      {
+        "path": "src/render/smudge.rs",
+        "blob": "2fd8e76968a8466812b53d6caba2c1f716bfe133"
+      },
+      {
+        "path": "src/render/line_trail.rs",
+        "blob": "9d81e81ef3c37984d6b5b1a2cbbfdfdd67305119"
+      },
+      {
+        "path": "src/render/surface_line.rs",
+        "blob": "c0d6b829bef87670c0b765936b0c420311943d0b"
+      },
+      {
+        "path": "src/render/beacon_art.rs",
+        "blob": "6f6df1802dc8186e5790770de062d0c68331ae74"
+      },
+      {
+        "path": "src/render/radar/events.rs",
+        "blob": "a546fea815fe9dbee5e4fce65ff295b24e23aa4b"
+      },
+      {
+        "path": "src/render/pixel_fx_sparkles.rs",
+        "blob": "a60aeefaec2a7da5a76f2b115ae0bd8e4cbea425"
+      },
+      {
+        "path": "src/render/chrono_screen.rs",
+        "blob": "4ba46241f18590212815c0514c4ea705f5405c22"
+      },
+      {
+        "path": "src/render/chrono_screen.wgsl",
+        "blob": "2971d150acbc0dc4790296b317478f8b575a6c02"
+      },
+      {
+        "path": "src/app/chrono_screen.rs",
+        "blob": "6a2eb8f76662342328fceae1ebd816bf55eccdf2"
+      },
+      {
+        "path": "src/app/presentation/instances/fogged.rs",
+        "blob": "9690124c6aef2850972eb44f644a95145e4ae9b6"
+      },
+      {
+        "path": "src/app/presentation/instances/bridges.rs",
+        "blob": "e861a9731d835b105b6bad681988ed2cb8f4600b"
+      },
+      {
+        "path": "src/app/presentation/line_trails.rs",
+        "blob": "81e3ce81e96b1a7e1c3fbb4a9281c9632f7cccf5"
+      },
+      {
+        "path": "src/rules/building_rubble.rs",
+        "blob": "b916644277a93069b9237a05e28ef8f08541f75c"
+      },
+      {
+        "path": "src/sim/vision/fog_objects.rs",
+        "blob": "29a4b5672e2a98ce7f20857813c67553683d3836"
+      },
+      {
+        "path": "src/sim/world/fog_objects.rs",
+        "blob": "c431005e5f1925bece3722cf883e9090d353abc1"
+      },
+      {
+        "path": "src/sim/superweapon/chrono_screen.rs",
+        "blob": "0ae62f63ac9c11863c75abf97356ab1c606fa6c1"
+      },
+      {
+        "path": "src/sim/cloak_disguise.rs",
+        "blob": "144565c501f33e0a626386d7afb875821aa645fd"
+      },
+      {
+        "path": "tools/projectile_oracle/line_trail.py",
+        "blob": "edfe4d59bb3dba9221bae07432dab152ad398a46"
+      },
+      {
+        "path": "tools/spatial_oracle/smudge_render.py",
+        "blob": "cc26d93f8c061962115d2354990e4ab031b2f29c"
+      },
+      {
+        "path": "tools/spatial_oracle/bridge_shadow_render.py",
+        "blob": "eb64fc9cb267eab123225fa3d8502c7820d15b4f"
+      },
+      {
+        "path": "tools/spatial_oracle/mirage_disguise.py",
+        "blob": "8fde6afb7a91f7983258e41c4de5ea41d43ca1bd"
+      },
+      {
+        "path": "src/util/native_trig.rs",
+        "blob": "4b91666a306e0e21f9c751811656f782fa76fe3f"
+      },
+      {
+        "path": "src/sim/radar.rs",
+        "blob": "4e127830aeb1f5f020fd5e9069c4f66384cbebba"
+      }
+    ],
+    "oracle_executed": false
+  },
+  "layout_reference": {
+    "repository": "Phobos-developers/YRpp",
+    "commit": "d9795546950fcc75a94325ffc83b44d16ec34ce2"
+  },
+  "private_disassembly_manifests": [
+    {
+      "va_range": "45F160:45F230",
+      "instructions_text_sha256": "8f4c5b3e62fc0e0bff089166cc6e9ef3203797c42c428fa04d1d472ea15e7b7f",
+      "raw_text_published": false
+    },
+    {
+      "va_range": "47F510:47F6A0",
+      "instructions_text_sha256": "c935e3775a61a1bed6b5bcb4e251238d405c4c5f5b2498da7a305884a45c1400",
+      "raw_text_published": false
+    },
+    {
+      "va_range": "47F6A0:47F850",
+      "instructions_text_sha256": "62e9f6ffd8d3b82efeb98aff75b98ffc91bcd810c20ed62a168a528b44e07c13",
+      "raw_text_published": false
+    },
+    {
+      "va_range": "4CB150:4CB200",
+      "instructions_text_sha256": "5a8e855910dfbe5f1b0ec0253d258f2c5820203195df45d1b0fd01807225e0a7",
+      "raw_text_published": false
+    },
+    {
+      "va_range": "4D0EF0:4D1200",
+      "instructions_text_sha256": "47fad8b9ae2f915eacbd6d4f07b8aed41a5494d59b834d3681fc11b2d6a9a8e0",
+      "raw_text_published": false
+    },
+    {
+      "va_range": "4D1114:4D1500",
+      "instructions_text_sha256": "39f599348a0077821ee7379caeaf43bc8f0392b842d5705047206de4a6fe93be",
+      "raw_text_published": false
+    },
+    {
+      "va_range": "4D1890:4D2180",
+      "instructions_text_sha256": "dbc1477452bf4e7fd11b323dbb22d66d8aa258dd609e2b8038949553bc14b502",
+      "raw_text_published": false
+    },
+    {
+      "va_range": "53B460:53B650",
+      "instructions_text_sha256": "0f4629ba289e12fcac2e4d5503ad9b1b71dce097d45ce5a1d1ab9281622db1c7",
+      "raw_text_published": false
+    },
+    {
+      "va_range": "53BBA0:53C200",
+      "instructions_text_sha256": "91ac71ac6d2adda1f4c1eaaf02e5b731dd5271e2f627526c67e89cfe2b12ad2d",
+      "raw_text_published": false
+    },
+    {
+      "va_range": "631D40:631F50",
+      "instructions_text_sha256": "182ac4593ca081d8a2db952980d81abc9579a4b6ad8c4e69f85330062801545d",
+      "raw_text_published": false
+    },
+    {
+      "va_range": "65FA70:65FC40",
+      "instructions_text_sha256": "b63ae36f9e2b9152e94011fcfb753e368d1cde4dfb52e2d5767ca0250de1be1a",
+      "raw_text_published": false
+    },
+    {
+      "va_range": "660000:660250",
+      "instructions_text_sha256": "ddda145886a1ece68f32bc949f51419c2034f97dd398116280a51e695c2f1b25",
+      "raw_text_published": false
+    },
+    {
+      "va_range": "6B55F0:6B56D0",
+      "instructions_text_sha256": "afa6125eda44e92647a1db7eb1b5c60051f1e1af4ea8a53cd314333b1bc68cc2",
+      "raw_text_published": false
+    },
+    {
+      "va_range": "6D78D0:6D7A30",
+      "instructions_text_sha256": "da375529ad56397d31df265d4f6330be9c0747d11bd17ad3f8d6317b6e669619",
+      "raw_text_published": false
+    },
+    {
+      "va_range": "6D7A30:6D7D40 (first decoded instruction may begin mid-instruction; conclusions from 6D7A36 onwards)",
+      "instructions_text_sha256": "ba00c87b21d02beba23ac0dc78f40276b69c1b1d20a15bcebc16c92acbb2e82a",
+      "raw_text_published": false
+    },
+    {
+      "va_range": "703860:703A10",
+      "instructions_text_sha256": "e911c1aedd3b5291a837fc26220b40529aae961c0d9c8c03428cc916006a4b46",
+      "raw_text_published": false
+    },
+    {
+      "va_range": "703A10:703B80",
+      "instructions_text_sha256": "d1f3e13645413541bd8531baf8543d389b23650e38731d6965722c618a16b4de",
+      "raw_text_published": false
+    },
+    {
+      "va_range": "70ED80:70EE80",
+      "instructions_text_sha256": "f1e746e94da93d829381d7124e4d2255e920fdde241ebde6d93209d3bc237c10",
+      "raw_text_published": false
+    }
+  ],
+  "conclusions_file": "source/research/2026-10-31-vera-scene-extras-hotfix23.md",
+  "rejected": [
+    "Treat FoggedObject as a live building pose",
+    "Advance trail decay, PixelFX RNG or Chrono counters from host refresh",
+    "Use overlay body Latin jitter for its shadow",
+    "Force a second-half shadow onto custom Rubble resource",
+    "Deduplicate a partial multi-cell smudge by missing origin",
+    "Treat all 17 radar event types as visible outlines",
+    "Claim cloak displacement or full unsigned16 Z/A parity from new selector support"
+  ],
+  "unresolved": [
+    "native word-offset cloak displacement",
+    "full unsigned16 Z/A and slope Z data",
+    "rubble proxy outer clipping",
+    "x87 versus f32 Chrono/radar arithmetic",
+    "retained-world recomposition versus native captured complete screen",
+    "offscreen native PixelFX allocation/update",
+    "arbitrary patched/mod class layouts",
+    "real Windows/GPU visual performance and correctness"
+  ]
+}

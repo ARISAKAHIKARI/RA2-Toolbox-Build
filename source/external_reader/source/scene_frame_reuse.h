@@ -11,9 +11,9 @@ inline bool samePixels(const vulkancompute::TileJob&a,const vulkancompute::TileJ
 }
 inline bool samePixels(const vulkancompute::DrawJob&a,const vulkancompute::DrawJob&b){
  return std::tie(a.gpuRaster,a.source.pixels,a.source.depth,a.source.indices,a.source.width,a.source.height,a.reconstructionSource,a.reconstructed,a.reconstructedWidth,a.reconstructedHeight,a.reconstructionFactor,
- a.left,a.top,a.scaleX,a.scaleY,a.depthBase,a.originY,a.depthBottom,a.rasterScale,a.lift,a.gains,a.sampling,a.shadow,a.writeDepth,a.flat,a.objectPalette,a.smoothRGB,a.skipZ,a.sourcePalette,a.nativeBlend)==
+ a.left,a.top,a.scaleX,a.scaleY,a.depthBase,a.originY,a.depthBottom,a.rasterScale,a.lift,a.gains,a.sampling,a.shadow,a.writeDepth,a.flat,a.objectPalette,a.smoothRGB,a.skipZ,a.sourcePalette,a.nativeBlend,a.translucency,a.clipBottom,a.mixStrength)==
  std::tie(b.gpuRaster,b.source.pixels,b.source.depth,b.source.indices,b.source.width,b.source.height,b.reconstructionSource,b.reconstructed,b.reconstructedWidth,b.reconstructedHeight,b.reconstructionFactor,
- b.left,b.top,b.scaleX,b.scaleY,b.depthBase,b.originY,b.depthBottom,b.rasterScale,b.lift,b.gains,b.sampling,b.shadow,b.writeDepth,b.flat,b.objectPalette,b.smoothRGB,b.skipZ,b.sourcePalette,b.nativeBlend);
+ b.left,b.top,b.scaleX,b.scaleY,b.depthBase,b.originY,b.depthBottom,b.rasterScale,b.lift,b.gains,b.sampling,b.shadow,b.writeDepth,b.flat,b.objectPalette,b.smoothRGB,b.skipZ,b.sourcePalette,b.nativeBlend,b.translucency,b.clipBottom,b.mixStrength);
 }
 inline bool samePixels(const vulkancompute::FrameJob&a,const vulkancompute::FrameJob&b){
  if(a.collectGuides||b.collectGuides||!gpueffects::same(a.effects,b.effects))return false; // temporal guides carry history, not just pixels
