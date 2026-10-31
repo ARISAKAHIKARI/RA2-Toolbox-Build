@@ -6,6 +6,7 @@
 
 | 主题 | 新笔记 | 关键词 |
 | --- | --- | --- |
+| Vera第二轮绘制缺口：迷雾保存图、隐形伪装、沉船、污迹、尾迹、信标、雷达事件、桥影、废墟、闪光与整屏扭曲 | [额外11项审计](2026-10-31-vera-render-additional-gaps.md) | FoggedObject DrawState Sinking Smudge LineTrail Beacon RadarEvent BridgeShadow Rubble PixelFX ChronoScreen SLOP ZShape |
 | 真正Z路径点/规划图、共享前驱/回环/高亮与剩余绘制差距和GPU路线 | [Hotfix22路径点](2026-10-31-native-planning-render-hotfix22.md) · [差距/GPU清单](2026-10-31-vera-render-gaps-and-gpu-roadmap.md) | PlanMgr AC4B30 AC4C78 token514 event NetID loop fresh readset UI5 static terrain async GPU HVA A-buffer |
 | Vera绘制12领域梳理、GPU动态原尺寸页、延后色盘、565混合、波形依赖及资源UI | [迁移总表](2026-10-30-vera-render-migration-map.md) · [Hotfix21实施](2026-10-30-vera-render-integration-hotfix21.md) | indexed palette native page Z readonly RGB565 dependency wave resource pip PC53 chop UI isolation |
 | 小地图 GPU 完整帧、盯防共用世界管线、PIPS2 与采矿 SHP | [世界／UI 迁移 Hotfix20](2026-10-30-world-ui-minimap-hotfix20.md) | direct minimap no readback ordered effects watch shared world PIPS2 ANIM plain Convert no native holes |
