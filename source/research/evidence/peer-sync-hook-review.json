@@ -1,0 +1,115 @@
+{
+  "base_commit": "9af98529e3eac95766e5faa0f2c04c9d409a3dd3",
+  "integration_parents": [
+    "e2d6d7992bfdad2521001a14793b5cb1730f99b2",
+    "17ee48810d33d47203d52893d3b0472d992f3a11"
+  ],
+  "scope": "Source audit, actual Windows-target COFF code generation and compiler-evaluated policy scenarios. No linked game/runtime or multiplayer execution.",
+  "compiler": "Clang 18.1.6 from official SHA256-verified Zig 0.13.0",
+  "compile_time_policy": {
+    "cases": 13,
+    "passed": true,
+    "mechanism": "C++17 static_assert evaluation of production Gate, both identity and peer/CRC lifecycle paths"
+  },
+  "objects": [
+    {
+      "source": "assist/tests/initial_sync_compiletime.cpp",
+      "target": "x86",
+      "source_sha256": "7498c3dd0cbe5f9b1c6a27c6e3c153d0d895020926b391b8a81b00e0893608e2",
+      "object_sha256": "94f963cf7ef3602ebafc729f6cf0a88596d2a1c775a5019cc5e922b345aea242",
+      "object_bytes": 10098,
+      "object_compiled": true,
+      "linked": false,
+      "executed": false
+    },
+    {
+      "source": "assist/source/bridge.cpp",
+      "target": "x86",
+      "source_sha256": "ceb3c4f33e2df274e6b5d12ef70df81398f0e7957373180c1b08654038ee0766",
+      "object_sha256": "7fe39e2296872d3500dec5c1db75785f1bda57af9f1aa61ec0166e6383ae1615",
+      "object_bytes": 8518558,
+      "object_compiled": true,
+      "linked": false,
+      "executed": false
+    },
+    {
+      "source": "assist/source/main.cpp",
+      "target": "x64",
+      "source_sha256": "bef74352db4c4ee5053a45d7aa993d4ee12adc2cc47c27e1bfcbce2c1bb6fb57",
+      "object_sha256": "9f438bf30d8e20ced64da3533a4929589f36f781e1f8026c9ad7aa0b2c7c4155",
+      "object_bytes": 49170004,
+      "object_compiled": true,
+      "linked": false,
+      "executed": false
+    },
+    {
+      "source": "game_runtime/source/runtime.cpp",
+      "target": "x86",
+      "source_sha256": "86ee875895224e5b8314d8c992897a4b165cad94689dda277489c0ffe9e03dfd",
+      "object_sha256": "ac65328c5a64d5f441089b5e9465e66dacacef262aad2aaeb4327edb809b74db",
+      "object_bytes": 69719,
+      "object_compiled": true,
+      "linked": false,
+      "executed": false
+    },
+    {
+      "source": "shared/source/game_entry_manager.cpp",
+      "target": "x86",
+      "source_sha256": "fd1b2aa1dd712600c325c6c8ce418962ec287d2dd5d2f8ace0cfabbbab51987a",
+      "object_sha256": "6f0a1ca1f93eb603e3482486c7a04ff94996de61475041949a2faec45ae0ce92",
+      "object_bytes": 78659,
+      "object_compiled": true,
+      "linked": false,
+      "executed": false
+    },
+    {
+      "source": "cursor/source/hide.cpp",
+      "target": "x86",
+      "source_sha256": "d12c0cee63b328e97a8dd5f79df4f78d6e6d27a10fee93a2e24772c0e1b8e7b8",
+      "object_sha256": "ee82f79ed3fe8980572016242ac447750ed9bf98db81ede38bec6b4e9a40ea1f",
+      "object_bytes": 85835,
+      "object_compiled": true,
+      "linked": false,
+      "executed": false
+    },
+    {
+      "source": "assist/tests/control_predicate_windows.cpp",
+      "target": "x86",
+      "source_sha256": "a9b613956a8cdde5ab6d14d3219661f264c08740b99e91fc0642fd39faad2124",
+      "object_sha256": "9fa56110ee8ad4edc914e84e59837e075a19e792090261041e9a62525b587df8",
+      "object_bytes": 11402,
+      "object_compiled": true,
+      "linked": false,
+      "executed": false
+    }
+  ],
+  "abi": {
+    "layout_entries": 685,
+    "passed": true,
+    "evidence": "peer-sync-object-abi.json",
+    "pe_parser_checks_run": false
+  },
+  "ci": {
+    "run_id": 41218221856,
+    "runner_id": 0,
+    "job_steps": 0,
+    "conclusion": "failure before runner allocation; cause not established",
+    "url": "https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/actions/runs/41218221856"
+  },
+  "normal_link_attempt": {
+    "status": "blocked",
+    "reason": "Sandbox temp-file rename / cache write denied in ordinary Zig driver. Direct Clang frontend succeeds."
+  },
+  "not_run": [
+    "Linked production exe/DLL and PE checks",
+    "Actual Windows HHOOK regression execution",
+    "Merged host_input_test.py runtime",
+    "Private-engine DLL fixtures and full Reveal",
+    "Live Windows game or real multiplayer"
+  ],
+  "inherited_evidence": {
+    "commit": "17ee48810d33d47203d52893d3b0472d992f3a11",
+    "path": "host-hook-lifecycle-hotfix33.json",
+    "rerun_on_merge": false
+  }
+}

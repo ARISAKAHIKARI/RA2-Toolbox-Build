@@ -21,7 +21,7 @@ static bool initialSyncTick(int mode,int frame){
   if(house==lastHouse&&i==local)foundLocal=true;
   if(house!=lastHouse&&house!=observer&&human&&!defeated)peers|=1u<<i;
  }
- if(!foundLocal||(!peers&&players>1&&!initialSyncGate.ready)){multiplayerpatch::clear();return false;}
+ if(!foundLocal||(!peers&&players>1&&!initialSyncGate.hasProof(identity,frame))){multiplayerpatch::clear();return false;}
  const bool ready=initialSyncGate.update(identity,frame,peers,oos!=0,read);
  if(!ready)multiplayerpatch::clear();return ready;
 }

@@ -7,6 +7,11 @@
 static bool riskControlActive,riskControlNativeJump;
 static uint32_t riskControlNativeTarget;
 #include "../source/control_predicate_thunks.h"
+static __declspec(naked) int __fastcall invokePredicate(unsigned entry,unsigned house){__asm {
+ mov eax,ecx
+ mov ecx,edx
+ jmp eax
+}}
 int main(){
  static_assert(sizeof(void*)==4,"Run the production x86 thunks");
  auto*data=VirtualAlloc((void*)0xA80000,0x10000,MEM_RESERVE|MEM_COMMIT,PAGE_READWRITE);
@@ -16,8 +21,8 @@ int main(){
  const unsigned char native[]={0xB8,0x55,0,0,0,0xC3};memcpy((void*)0x50B6F0,native,sizeof native);
  const unsigned char continuation[]={0x83,0xC0,100,0xC3};memcpy((void*)0x50B700,continuation,sizeof continuation);
  FlushInstructionCache(GetCurrentProcess(),code,0x10000);
- using Predicate=int(__thiscall*)(void*);
- auto common=(Predicate)&riskControlEntry,owner=(Predicate)&riskControlOwnerEntry;
+ auto common=[](void*house){return invokePredicate(unsigned(uintptr_t(&riskControlEntry)),unsigned(uintptr_t(house)));};
+ auto owner=[](void*house){return invokePredicate(unsigned(uintptr_t(&riskControlOwnerEntry)),unsigned(uintptr_t(house)));};
  riskControlNativeTarget=0x50B700;riskControlActive=false;riskControlNativeJump=false;
  assert(common(nullptr)==103);assert(owner((void*)0x20000000)==0x55);
  riskControlActive=true;assert(common(nullptr)==1);assert(owner((void*)0x20000000)==1);assert(owner((void*)0x20001000)==0);

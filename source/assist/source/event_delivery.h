@@ -10,13 +10,13 @@ constexpr uint32_t OutListAddress=0x00A802C8u,DoListAddress=0x008B41F8u,DoListTi
 enum class Lane : uint8_t { Unsupported, Single, Multiplayer };
 // Explicitly verified vanilla modes only. Additional launcher modes require
 // independent runtime ABI validation; never guess that they are singleplayer.
-inline Lane classify(int mode){
+constexpr Lane classify(int mode){
  if(mode==0||mode==5)return Lane::Single;
  if(mode==3||mode==4)return Lane::Multiplayer;
  return Lane::Unsupported;
 }
-inline bool isMultiplayer(int mode){return classify(mode)==Lane::Multiplayer;}
-inline bool isSingleplayer(int mode){return classify(mode)==Lane::Single;}
+constexpr bool isMultiplayer(int mode){return classify(mode)==Lane::Multiplayer;}
+constexpr bool isSingleplayer(int mode){return classify(mode)==Lane::Single;}
 inline bool mayQueue(int mode){return classify(mode)!=Lane::Unsupported;}
 inline bool unifiedOutList(int mode){return isMultiplayer(mode);}
 inline bool outListRoom(int count,int tail){

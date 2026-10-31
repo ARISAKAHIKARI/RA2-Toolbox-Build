@@ -6,6 +6,7 @@
 
 | 主题 | 新笔记 | 关键词 |
 | --- | --- | --- |
+| 宿主 Hook/订阅生命周期与目标槽回收 | [Hotfix33 回收修正与受控证据](2026-10-31-host-hook-lifecycle-hotfix33.md) | 8targets 32leases 1404 retained-process reap failed-unhook capacity |
 | 首次远端 FrameInfo 匹配门槛、51 站点清单与重连/恢复审查 | [实现与联机风险边界](2026-10-31-peer-sync-hook-activation-audit.md) | pending-executed CRC-history read-only activation 8targets 32leases invalid-HHOOK cleanup-handoff control-native-fallback |
 | Hotfix32全图MapIsClear实验镜像、自然写入与开局/局中启用时机 | [实现、地址、生命周期与验证范围](2026-10-31-crc-map-shadow-hotfix32.md) | Assist83 MapIsClear shadow 8sites natural-write runtime21 lifecycle5 cached-signatures computeApplied new-epoch not-netplay |
 | CRC原值镜像机制与当前功能的直接/间接影响 | [模型、14项原生验证及边界](2026-10-31-crc-shadow-and-feature-classification.md) · [证据](evidence/crc-shadow-research.json) | MapIsClear64DCCA mirror natural-write same-value identity no-production-hook CRC-input |

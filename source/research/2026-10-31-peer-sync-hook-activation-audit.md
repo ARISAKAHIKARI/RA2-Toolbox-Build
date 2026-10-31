@@ -20,7 +20,7 @@
 
 已执行的旧槽、只有帧号增加、固定秒数、未执行的收到封包都不能解锁。换身份、回退和重新连接需要新证据。每次最多扫描 128 条待执行记录，只读游戏内存，不调用 CRC，不推进 RNG，不发送/修改任何事件、摘要历史或平台验证。
 
-`bridge.cpp` 在科技字段修改、补丁维护、命令消费和自动功能之前等待；GameEntryManager 的 Install 分支再次核对本局批准身份，Restore 不受此限制；可选 `55DE81` 帧通知同样延后，等待不能被记成签名不支持。WH_GETMESSAGE/WH_CALLWNDPROCRET 是保留的 IPC/游标消息入口，不是先启用模拟修改。
+宿主 `main.cpp` 在战术连接的 Runtime 注入/Windows message hook 安装之前先以 ReadSession 完成同样的只读观察；进入 Runtime 后 `bridge.cpp` 再独立取得新证据，且在科技字段修改、补丁维护、命令消费和自动功能之前等待。GameEntryManager 的 Install 分支再次核对本局批准身份，Restore 不受此限制；可选 `55DE81` 帧通知同样延后，等待不能被记成签名不支持。独立游标服务仍使用共享消息入口；不把它声称为模拟修改，也不宣称所有 Windows DLL 加载副作用均已排除。
 
 地址/布局依据：YRpp `d979554` 的 EventClass（111 字节、执行位 +1、House +2、Frame +3、CRC +7、Delay +13）、SessionClass（MPlayerCount +314，即 A8B54C）、Unsorted::Network（OutOfSync=A8B8C2）。这些是公开头文件/已有原生研究依据；本轮没有在实际平台重跑 FrameInfo 的完整消费流程。若某平台不保留可观察的执行标记，状态会持续等待，不用超时强行放行。
 
@@ -76,5 +76,15 @@ HF32 的 21 项 CRC 测试刻意在 577DB6 跳到 577F1E，未执行完整 Cell/
 * `.github/workflows/validate-peer-sync-hooks.yml` 编译 x64 Host/x86 Runtime/broker、验证 PE 与跨位 ABI，并上传精确提交的诊断/实验二进制。以实际 CI 结果为准，不把新增测试文本当成通过证据。
 
 未完成：用户平台对 FrameInfo 执行标记的实测、完整原生 Reveal 及后续世界更新、相同配置的旧/新 DLL 双机对照和首次 SYNC 分歧定位。重启工具箱不是新游戏/新模拟基线，不能用它证明已还原以前的改动。
+
+## 合入 17ee488 与本轮实际检查结果
+
+用户随后指定合入 `17ee48810d33d47203d52893d3b0472d992f3a11`。两边共同祖先为 HF32 `9af9852`，不是直接用新文件覆盖全部工作。完整保留该提交的 host_game_input.h、host_input_test.py、原笔记和证据；在 main.cpp 合并其 hostBits/targets/subscriptions 日志与本轮等待/签名字节诊断。来源提交的 64+64 生命周期等结果仍归属于它，不冒认成合并版本已重新运行。
+
+本轮已实际完成：Clang 18.1.6（官方 Zig 0.13.0）对合并后 Host、Assist bridge、GameEntryManager、Runtime、Cursor 及测试的 Windows 目标物件编译；`initial_sync_compiletime.cpp` 的 13 个 static_assert 场景通过；从同一 ABI 夹具的 Windows x86/x64 COFF 常量读取并比对 685 项布局，Assist83/Shared6580496 等基线不变。没有通过链接后的 PE 来替代实际未发生的运行。
+
+CI run 41218221856 的两个 job runner_id=0、steps=[]，没有进入编译；未取得可用 job 日志，不猜测账户原因。本机正常 Zig driver 又遇到沙箱临时文件重命名/快取写入拒绝，因此改用相同编译器的直接 Clang 前端完成物件和静态断言验证。**完整 exe/DLL 链接、Windows HHOOK 测试执行、合并后的 host_input_test.py 运行、PE/import 负例与真实双机测试均未完成**；不发布为已验证联机二进制。
+
+证据：[本轮检查摘要](evidence/peer-sync-hook-review.json)、[COFF ABI 实际数值](evidence/peer-sync-object-abi.json)。尚未完成的运行项不会因为源码中有测试而计为 PASS。
 
 公开布局来源：[EventClass](https://github.com/Phobos-developers/YRpp/blob/d979554/EventClass.h)、[SessionClass](https://github.com/Phobos-developers/YRpp/blob/d979554/SessionClass.h)、[Unsorted](https://github.com/Phobos-developers/YRpp/blob/d979554/Unsorted.h)。既有证据见 HF31/HF32、control-138-regression-audit 与 ordinary-desync-triage；本轮不重新冒认那些旧执行结果。

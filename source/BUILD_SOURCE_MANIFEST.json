@@ -208,9 +208,10 @@
     "validation": "Final actual DLL/native controlled results accompany package; production cross build,685 ABI entries and static PE/import/manifest checks. No Windows loader/live socket/multiplayer validation"
   },
   "peer_sync_hook_review": {
-    "activation": "Read-only pending-to-executed remote FrameInfo observation with fresh matching native CRC history, per-session/House identity; feature work and native patch installs deferred together",
+    "activation": "Read-only host pre-injection observation for the tactical connection, then independent Runtime pending/executed FrameInfo + fresh native CRC history proof before native patches or feature mutation",
     "lifecycle": "Retry exact startup signatures after sync; invalid HHOOK cleanup is idempotent; inactive control thunks replay native path; sender fault expires only after safe retirement in a new epoch",
     "abi": "Assist83/Runtime4/entry3 unchanged",
-    "validation": "See peer-sync workflow at the exact source commit; no full Reveal, game transport or real multiplayer certification"
+    "validation": "13 compiler-evaluated policy cases and 685 Windows x86/x64 COFF ABI entries pass; changed production objects compile. Full links, Windows/game and multiplayer execution remain untested.",
+    "merged_hotfix": "17ee48810d33d47203d52893d3b0472d992f3a11: full host process/lease reclamation and diagnostics"
   }
 }
