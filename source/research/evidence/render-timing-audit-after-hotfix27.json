@@ -1,0 +1,444 @@
+{
+  "audit": "render-timing-audit-after-hotfix27",
+  "date": "2026-10-31",
+  "local_product_commit": "988d9707fdac3e9bfd202e6c3b0e8ad4bb5ffc1a",
+  "remote_product_commit": "04c05425bb14e559dd7a496d3f28ac2a984403c3",
+  "supported_executable_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+  "evidence_level": "production-source-review+pinned-primary-source-review+existing-static-disassembly; no execution",
+  "production_sources": [
+    {
+      "path": "source/assist/source/build_time_tooltip.h",
+      "sha256": "e00f23af761eaeb56eb8f23a24c7086f4e0890d560cf6b2f202dd38c93ddb6c4",
+      "anchors": [
+        {
+          "symbol_or_fragment": "AssistBuildTimeTooltip(unsigned",
+          "lines": [
+            53
+          ]
+        },
+        {
+          "symbol_or_fragment": "raw=call<int>",
+          "lines": [
+            72
+          ]
+        },
+        {
+          "symbol_or_fragment": "const int total=",
+          "lines": [
+            76
+          ]
+        },
+        {
+          "symbol_or_fragment": "unsigned fps=",
+          "lines": [
+            80
+          ]
+        },
+        {
+          "symbol_or_fragment": "const int stored=",
+          "lines": [
+            98
+          ]
+        }
+      ]
+    },
+    {
+      "path": "source/external_reader/source/feedback_selection.h",
+      "sha256": "6ce5bf8230b72a61a9711c177a2ad0cba3003bf76caef615d3b0c9c9595b0ce8",
+      "anchors": [
+        {
+          "symbol_or_fragment": "template<class Read>bool selected",
+          "lines": [
+            8
+          ]
+        },
+        {
+          "symbol_or_fragment": "selectionPrimitives",
+          "lines": [
+            34
+          ]
+        },
+        {
+          "symbol_or_fragment": "int k=",
+          "lines": [
+            42
+          ]
+        },
+        {
+          "symbol_or_fragment": "double fraction=",
+          "lines": [
+            49
+          ]
+        }
+      ]
+    },
+    {
+      "path": "source/external_reader/source/local_ui_renderer.h",
+      "sha256": "9ddd9f5b223bfc3a234871e911427c95b0100586c15b3ca494974a2c3efe1af7",
+      "anchors": [
+        {
+          "symbol_or_fragment": "template<class Read>bool statuses",
+          "lines": [
+            78
+          ]
+        },
+        {
+          "symbol_or_fragment": "bool text(BitmapFont",
+          "lines": [
+            47
+          ]
+        },
+        {
+          "symbol_or_fragment": "template<class Read>bool icon",
+          "lines": [
+            70
+          ]
+        },
+        {
+          "symbol_or_fragment": "return statuses(read",
+          "lines": [
+            167
+          ]
+        }
+      ]
+    },
+    {
+      "path": "source/external_reader/source/native_unit_ui_stencil.h",
+      "sha256": "525d746e49b1433a1b5ddf610835b61d7fef4ee28b43d4f97a01faec6cc16497",
+      "anchors": [
+        {
+          "symbol_or_fragment": "template<class Read>bool commands",
+          "lines": [
+            76
+          ]
+        },
+        {
+          "symbol_or_fragment": "if(spawnMax)",
+          "lines": [
+            118
+          ]
+        },
+        {
+          "symbol_or_fragment": "if(building&&",
+          "lines": [
+            101,
+            119
+          ]
+        }
+      ]
+    },
+    {
+      "path": "source/external_reader/source/voxel_posture.h",
+      "sha256": "42f091b76afa98ca8b0e7facf19c0b403d68ac44f506018619a38319b5c33275",
+      "anchors": [
+        {
+          "symbol_or_fragment": "template<class Read>State capture",
+          "lines": [
+            66
+          ]
+        },
+        {
+          "symbol_or_fragment": "if(table!=",
+          "lines": [
+            70
+          ]
+        }
+      ]
+    },
+    {
+      "path": "source/external_reader/source/visual_pose.h",
+      "sha256": "1f3341200e3baf966c8189c3ab5650d6b10b061fbf837b3ea129c0e49a274778",
+      "anchors": [
+        {
+          "symbol_or_fragment": "template<class Read>Pose pose",
+          "lines": [
+            54
+          ]
+        },
+        {
+          "symbol_or_fragment": "out.posture=voxelposture::capture",
+          "lines": [
+            61
+          ]
+        }
+      ]
+    },
+    {
+      "path": "source/external_reader/source/world_scene_pipeline.h",
+      "sha256": "055b40991340e9b23bc6cbb5751d39ed4f2739e43dcbb594cf72bf6349bf8ed9",
+      "anchors": [
+        {
+          "symbol_or_fragment": "for(const auto&item:instances)",
+          "lines": [
+            116
+          ]
+        },
+        {
+          "symbol_or_fragment": "if(hasWorld){",
+          "lines": [
+            122,
+            148
+          ]
+        },
+        {
+          "symbol_or_fragment": "if(bolts)builder",
+          "lines": [
+            123
+          ]
+        },
+        {
+          "symbol_or_fragment": "if(chrono_.active()||",
+          "lines": [
+            132
+          ]
+        }
+      ]
+    }
+  ],
+  "upstream_newly_read": {
+    "repository": "ARISAKAHIKARI/vera20k",
+    "commit": "3d42426b2e9c1b4cf913a7dbbaaf8bf7d3b6bc7f",
+    "files": [
+      {
+        "path": "src/app/presentation/selection_brackets.rs",
+        "sha": "c8485c5a7ac2b7213af2386b4186f7896cd9b53b",
+        "length": 10743
+      },
+      {
+        "path": "src/render/selection_overlay.rs",
+        "sha": "35fa636291c74b27b2f52aa3ebd2f55ad73244c7",
+        "length": 25171
+      },
+      {
+        "path": "src/app/presentation/render/object_extras.rs",
+        "sha": "9212e584be38ae36f2941ecf6ee0fc942fd41144",
+        "length": 15048
+      },
+      {
+        "path": "src/render/locomotor_visual.rs",
+        "sha": "4ccf2abcaf395c97a2767fdefa14085c246c278e",
+        "length": 13810
+      },
+      {
+        "path": "src/app/presentation/airstrike_lines.rs",
+        "sha": "f8c3ad51ab953085ea9cd327574836f7969dad29",
+        "length": 5881
+      },
+      {
+        "path": "src/app/presentation/control_links.rs",
+        "sha": "f467edb2a731a7ab0c48a816745bb0ae2077e9ef",
+        "length": 5646
+      },
+      {
+        "path": "src/app/presentation/talk_bubble.rs",
+        "sha": "e0bb41f2b1ff3527b6dc1133c370279c7d9b577c",
+        "length": 2497
+      },
+      {
+        "path": "src/app/presentation/render/object_stages.rs",
+        "sha": "fb8140f82b57771ef2706e8fb89a19d70b878c31",
+        "length": 7766
+      },
+      {
+        "path": "src/app/presentation/render/draw_passes.rs",
+        "sha": "ae72ca82a467e54051a2305104a2fd35635a5e25",
+        "length": 56321
+      },
+      {
+        "path": "src/app/presentation/ui_overlays.rs",
+        "sha": "604435796319b6b0eff0ccc908835733a980f914",
+        "length": 91443
+      },
+      {
+        "path": "src/app/presentation/instances/units.rs",
+        "sha": "f412c315f93d7c9d63cfa340477d4b5deb50c328",
+        "length": 115679
+      },
+      {
+        "path": "src/app/presentation/screen_shake.rs",
+        "sha": "0e5e36d31fdbdf9346850d63c0b9f1c3f96170c6",
+        "length": 4845
+      }
+    ]
+  },
+  "timing": {
+    "native_query": {
+      "address": "6F47A0",
+      "abi": "thiscall, ECX=scratch Building receiver, EAX=int",
+      "fields": [
+        "vtable 7E3EBC",
+        "Type +520",
+        "Owner +21C"
+      ]
+    },
+    "build_speed": {
+      "status": "covered-native",
+      "address": "711EE0",
+      "fields": [
+        "Type.Cost +610",
+        "Rules.BuildSpeed +1748 double"
+      ],
+      "factor": 0.9
+    },
+    "power": {
+      "status": "covered-native",
+      "addresses": [
+        "4FCE30",
+        "6F47A0",
+        "4CA6E0"
+      ],
+      "fields": [
+        "House +53A4/+53A8",
+        "Rules +578/+570/+574"
+      ],
+      "current_step_deadline_preserved": true
+    },
+    "steps": {
+      "status": "covered",
+      "addresses": [
+        "4C9EA0",
+        "4C9FB0"
+      ],
+      "count": 54,
+      "per_step": "clamp(trunc(nativeTime/54),1,255)"
+    },
+    "ready_tail": {
+      "status": "implemented-plus-one-native-end-to-end-proof-open",
+      "addresses": [
+        "4C9B20",
+        "6AB5BE..6AB5E7"
+      ],
+      "note": "Factory completion is same-call; sidebar rate+1 is not proof of a mandatory additional ready frame."
+    },
+    "multiple_factories": {
+      "status": "covered-native",
+      "addresses": [
+        "500910",
+        "6F47A0"
+      ],
+      "fields": [
+        "Rules +57C"
+      ],
+      "truncation": "per-extra-factory, not one final pow truncation"
+    },
+    "remaining": "max(0,duration-(frame-start))+(53-progress)*storedRate+1",
+    "cash_stalls": {
+      "status": "current-state-only",
+      "address": "4C9B20",
+      "fields": [
+        "Factory +5C/+60"
+      ],
+      "future_income_prediction": false
+    },
+    "multiplayer_fps": {
+      "address": "A8B558",
+      "field": "Session +320",
+      "source": "negotiated game FPS, not display/renderer FPS"
+    },
+    "rejected": [
+      "fixed initial-N-stages full speed then remaining stages slow",
+      "rate+1 display clock proves +1 on every production step",
+      "BuildSpeed coverage predicts future cash income"
+    ]
+  },
+  "confirmed_gaps": [
+    {
+      "id": "R1",
+      "name": "native building brackets, health pips and hover admission",
+      "upstream": [
+        "selection_brackets.rs",
+        "ui_overlays.rs"
+      ],
+      "native": [
+        "6F60D0",
+        "6F5190",
+        "6F64A0"
+      ]
+    },
+    {
+      "id": "R2",
+      "name": "bomb clock, self-heal pip and speech bubble",
+      "upstream": [
+        "ui_overlays.rs",
+        "talk_bubble.rs"
+      ],
+      "native": [
+        "6F519B..524E",
+        "70A6BB",
+        "6F5E8D"
+      ]
+    },
+    {
+      "id": "R3",
+      "name": "mind-control relationship curves and persistent Boris designation",
+      "upstream": [
+        "control_links.rs",
+        "airstrike_lines.rs"
+      ],
+      "native": [
+        "472160",
+        "704E40",
+        "705860"
+      ]
+    },
+    {
+      "id": "R4",
+      "name": "Fly/Jumpjet/Hover/Rocket-specific visual poses",
+      "upstream": [
+        "instances/units.rs",
+        "locomotor_visual.rs"
+      ],
+      "native": [
+        "4CF610",
+        "4CF830",
+        "54DCC0",
+        "513F40",
+        "663470"
+      ]
+    },
+    {
+      "id": "R5",
+      "name": "full native parent/late-Extras/effects/feedback ordering",
+      "upstream": [
+        "render/draw_passes.rs",
+        "render/object_extras.rs"
+      ],
+      "native": [
+        "6D9789",
+        "6D4664",
+        "6D467F",
+        "6D46B6"
+      ]
+    },
+    {
+      "id": "R6",
+      "name": "range indicators suppressed while Chrono active",
+      "production_condition": "chrono_.active() clears radials"
+    }
+  ],
+  "residuals": [
+    "separate visual RNG",
+    "host-vs-x87 step rounding",
+    "scaled destination feedback"
+  ],
+  "gpu_remaining": [
+    "CPU local font/icon/selection raster and uploads; use atlas/instances and shared surfaces"
+  ],
+  "open": [
+    "ready frame end-to-end order",
+    "ScreenText target/mission feedback",
+    "screen-shake versus native camera",
+    "arbitrary mod extensions"
+  ],
+  "validation": {
+    "source_paths_and_json": "checked",
+    "production_behavior_changed": false,
+    "binary_built": false,
+    "native_instructions_executed": false,
+    "cpu_fixture_suite_executed": false,
+    "upstream_oracles_executed": false,
+    "windows_game_executed": false,
+    "gpu_executed": false,
+    "netplay_or_fps_executed": false
+  }
+}
