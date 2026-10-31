@@ -65,10 +65,10 @@ struct Raster {
    for(int py=y0;py<y1;++py)for(int px=x0;px<x1;++px)for(int sy=0;sy<samplesY;++sy)for(int sx=0;sx<samplesX;++sx){
     double nx=(px+(sx+.5)/samplesX)*spanX/w,ny=(py+(sy+.5)/samplesY)*spanY/h;
     int ix=int(std::floor(nx-left)),iy=int(std::floor(ny-top));if(ix<0||iy<0||ix>=image.width||iy>=image.height)continue;
-    uint8_t value=image.indices[size_t(iy)*image.width+ix];if(value>127)continue;
+    uint8_t value=image.indices[size_t(iy)*image.width+ix];if((!kind&&value==254)||(kind&&value>127))continue;
     auto&target=surface[(size_t(py)*w+px)*samples+size_t(sy)*samplesX+sx];
     if(!kind)target=value;
-    else target=target==127?value:uint8_t(std::max(0,int(target)+int(value)-127));
+    else target=uint8_t(std::max(0,int(target)+int(value)-127));
    }
   }
   std::vector<uint8_t> result(size_t(w)*h);

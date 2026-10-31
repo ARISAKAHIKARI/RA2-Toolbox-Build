@@ -537,7 +537,7 @@ bool renderActor(const ActorArt&art,const external::visual::Pose&pose,external::
   // The model Z buffer resolves faces inside the cached voxel only. The game
   // submits that cached image through the same standing shape Z test as SHP.
   // Orthographic model depth is not in the terrain/BUILDNGZ buffer's units.
-  std::vector<float>().swap(out.depth);out.writeDepth=false;if(projectile){out.flat=art.flat;
+  std::vector<float>().swap(out.depth);out.writeDepth=false;out.nativeDepth.enabled=true;out.nativeDepth.voxel=true;out.nativeDepth.gradient=nativesurface::Gradient::Vertical;if(projectile){out.flat=art.flat;
    // 46B1A5/490B90: non-flat projectile flags 0800 select a blitter
    // without a Z read or write. Flat 2800 keeps the ground Z read.
    if(!art.flat){if(gpuPresentation_)out.skipZ=true;else out.depth.assign(out.pixels.size(),std::numeric_limits<float>::quiet_NaN());}
@@ -547,7 +547,7 @@ bool renderActor(const ActorArt&art,const external::visual::Pose&pose,external::
    if(!shadowPosture.available){failure="voxel-current-shadow-unavailable";return false;}
    if(gpuPresentation_)drawn=gpuVoxel(art,angle,turret,0,false,rasterScale,&shadowPosture,true,shadow,bodyFrame,turretFrame);
    else{voxel::Model ground;if(bodyFrame||turretFrame){if(!voxel::animated(art.geometry(),bodyFrame,turretFrame,ground))return false;}else ground=art.geometry();for(auto&face:ground.faces)for(auto&p:face.p){if(art.kind==voxelanims::Kind)p=voxel::posturePoint(pose.posture.ramp,p);p.z=0;}drawn=external::voxel::render(ground,angle,art.colors,shadow,turret,art.turretOffset,nullptr,255,0,false,rasterScale,art.kind==voxelanims::Kind?nullptr:&shadowPosture);}
-   if(drawn){shadow.x+=(art.kind==voxelanims::Kind?0:3)*shadow.rasterScale;shadow.shadow=true;shadow.flat=true;shadow.writeDepth=false;shadow.depthBias=art.kind==voxelanims::Kind?-2:2;std::vector<float>().swap(shadow.depth);out.attachments.push_back(std::move(shadow));}}
+   if(drawn){shadow.x+=(art.kind==voxelanims::Kind?0:3)*shadow.rasterScale;shadow.shadow=true;shadow.flat=true;shadow.writeDepth=false;shadow.depthBias=art.kind==voxelanims::Kind?-2:2;shadow.nativeDepth.enabled=true;shadow.nativeDepth.gradient=nativesurface::Gradient::Flat;shadow.nativeDepth.adjust=-int(shadow.depthBias);std::vector<float>().swap(shadow.depth);out.attachments.push_back(std::move(shadow));}}
   return true;
  }
  if(pose.frame<0){failure="sprite-sequence";return false;}
@@ -572,10 +572,10 @@ bool renderActor(const ActorArt&art,const external::visual::Pose&pose,external::
   complete=false;shape=&art.shape;pointer=art.pointer;frame=pose.frame;bias=-float(art.zAdjust);int n=frames(*shape,pointer);if(n>0)frame=std::min(frame,n/2);
   if(!decode(*shape,pointer,frame,out,why))return false;
  }
- out.y+=art.drawY;out.objectPalette=true;out.flat=art.flat;out.writeDepth=art.kind==3;out.depthBias=bias;
+ out.y+=art.drawY;out.objectPalette=true;out.flat=art.flat;out.writeDepth=art.kind==3;out.depthBias=bias;out.nativeDepth.enabled=true;out.nativeDepth.gradient=art.flat?nativesurface::Gradient::Flat:nativesurface::Gradient::Vertical;out.nativeDepth.adjust=-int(bias);
  if(art.kind==3&&!out.flat&&art.depthMask)external::camera::buildingDepth(out,*art.depthMask,art.fw,art.fh,art.moveX,art.moveY,art.depthMaskBiased);
  auto shadow=[&](const std::vector<uint8_t>&bytes,uint32_t at,int displayed,external::voxel::Image&image,bool write,float shadowBias){int n=frames(bytes,at);if(!art.shadow||n<2||displayed<0||displayed>=n/2)return;external::voxel::Image part;
-  if(decode(bytes,at,displayed+n/2,part,why)){part.y+=art.drawY;part.shadow=true;part.flat=true;part.writeDepth=write;image.shadowsAfter=art.kind==3||write;part.depthBias=shadowBias;image.attachments.push_back(std::move(part));}};
+  if(decode(bytes,at,displayed+n/2,part,why)){part.y+=art.drawY;part.shadow=true;part.flat=true;part.writeDepth=write;part.nativeDepth.enabled=true;part.nativeDepth.gradient=nativesurface::Gradient::Flat;part.nativeDepth.adjust=-int(shadowBias);image.shadowsAfter=art.kind==3||write;part.depthBias=shadowBias;image.attachments.push_back(std::move(part));}};
  // DrawObject's shadow branch recomputes its ground plane independently of
  // NormalZAdjust and the -20/-40 production-body adjustment (706469/70653E).
  if(art.kind==external::projectiles::Kind){if(art.shadow){auto ground=out;ground.attachments.clear();ground.shadow=true;ground.flat=true;ground.writeDepth=false;ground.depthBias=-20;ground.airborneShadow=true;out.attachments.push_back(std::move(ground));}}
@@ -597,7 +597,7 @@ bool renderActor(const ActorArt&art,const external::visual::Pose&pose,external::
  }
  auto component=[&](external::buildings::Part index,int displayed,float depthBias,bool write){const auto&part=art.buildingParts[index];if(!part.pointer||displayed<0)return;
   external::voxel::Image image;if(!decode(part.shape,part.pointer,displayed,image,why)){failure="building-part/decode:"+part.filename+" frame="+std::to_string(displayed)+" "+why;complete=false;return;}
-  image.y+=art.drawY;image.objectPalette=true;image.flat=true;image.writeDepth=write;image.depthBias=depthBias;
+  image.y+=art.drawY;image.objectPalette=true;image.flat=true;image.writeDepth=write;image.depthBias=depthBias;image.nativeDepth.enabled=true;image.nativeDepth.gradient=nativesurface::Gradient::Flat;image.nativeDepth.adjust=-int(depthBias);
   shadow(part.shape,part.pointer,displayed,image,write,2);out.attachments.push_back(std::move(image));
  };
  if(art.kind==3){

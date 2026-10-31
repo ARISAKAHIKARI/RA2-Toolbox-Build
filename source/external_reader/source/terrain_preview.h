@@ -31,10 +31,11 @@ template<class Read>bool tile(Read read,uint32_t pointer,unsigned index,const st
  if(right-left>512||bottom-top>512)return fail("canvas-bounds");
  uint8_t diamond[area],zData[area]{};if(!voxel::range(p,52+area*((flags&2)?2:1))||!read(p+52,diamond,sizeof diamond)||((flags&2)&&!read(p+zOffset,zData,sizeof zData)))return fail("diamond-read");
  voxel::Image result;result.width=right-left;result.height=bottom-top;result.x=left-30;result.y=top-15;result.pixels.resize(size_t(result.width)*result.height);result.indices.resize(result.pixels.size());result.depth.assign(result.pixels.size(),std::numeric_limits<float>::quiet_NaN());
- size_t at=0;for(int y=0;y<30;++y){int width=4*std::min(y+1,29-y),x=(60-width)/2;for(int i=0;i<width;++i){size_t to=size_t(y-top)*result.width+x+i-left;uint8_t c=diamond[at];if(c){result.pixels[to]=pal[c];result.indices[to]=c;if(flags&2)result.depth[to]=-float(zData[at]);}++at;}}if(at!=area)return false;
+ result.nativeDepth.enabled=true;result.nativeDepth.gradient=nativesurface::Gradient::Tile;result.nativeDepth.tileEqual=true;result.nativeDepth.tileTop=-top;result.nativeShape.assign(result.pixels.size(),0);
+ size_t at=0;for(int y=0;y<30;++y){int width=4*std::min(y+1,29-y),x=(60-width)/2;for(int i=0;i<width;++i){size_t to=size_t(y-top)*result.width+x+i-left;uint8_t c=diamond[at];if(c){result.pixels[to]=pal[c];result.indices[to]=c;if(flags&2){result.depth[to]=-float(zData[at]);result.nativeShape[to]=zData[at];}}++at;}}if(at!=area)return false;
  if(extra){size_t n=size_t(ew)*eh;if(uint64_t(p)+extraOffset+n>0x100000000ull||!voxel::range(p+extraOffset,n))return fail("extra-overflow");std::vector<uint8_t> pixels(n),extraZ;uint32_t extraZOffset=word(16);if(!read(p+extraOffset,pixels.data(),n))return fail("extra-read");
   if((flags&2)&&extraZOffset){if(extraZOffset<52+area*2||extraZOffset>voxel::MaxBytes||uint64_t(p)+extraZOffset+n>0x100000000ull||!voxel::range(p+extraZOffset,n))return fail("extra-z-bounds");extraZ.resize(n);if(!read(p+extraZOffset,extraZ.data(),n))return fail("extra-z-read");}
-  for(int y=0;y<eh;++y)for(int x=0;x<ew;++x)if(uint8_t c=pixels[size_t(y)*ew+x]){size_t to=size_t(y+ey-top)*result.width+x+ex-left;result.pixels[to]=pal[c];result.indices[to]=c;if(!extraZ.empty())result.depth[to]=-float(extraZ[size_t(y)*ew+x]);}
+  for(int y=0;y<eh;++y)for(int x=0;x<ew;++x)if(uint8_t c=pixels[size_t(y)*ew+x]){size_t to=size_t(y+ey-top)*result.width+x+ex-left;result.pixels[to]=pal[c];result.indices[to]=c;if(!extraZ.empty()){result.depth[to]=-float(extraZ[size_t(y)*ew+x]);result.nativeShape[to]=extraZ[size_t(y)*ew+x];}}
  }
  uint32_t after=0;if(!read(pointer+16+index*4,&after,4)||after!=p)return fail("directory-changed");out=std::move(result);return true;
 }

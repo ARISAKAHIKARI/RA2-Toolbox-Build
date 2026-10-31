@@ -6,6 +6,7 @@
 
 | 主题 | 新笔记 | 关键词 |
 | --- | --- | --- |
+| Hotfix26原生Z/A、目标面读写、位移隐形与特殊效果（实施中） | [原生字段/实施记录](2026-10-31-native-surface-hotfix26.md) | unsigned16 signed candidate ABuffer AlphaShape word-offset Foot ZFudge native Wave RadBeam2 Spotlight90 |
 | Hotfix25共同帧输入、来源历史、协作快照与协议81 | [输入/执行/ABI](2026-10-31-coherent-compute-frame-hotfix25.md) | computeFrameSeq latest source history 16 consumer bits cooperativeInputFrame protocol81 |
 | Hotfix25卸载顺序、特殊pips、范围提示、CnCNet隐形准入与Phobos指示器 | [实施/字段/差异](2026-10-31-render-counters-hotfix25.md) · [原生证据](evidence/render-hotfix25-native.json) · [固定上游](evidence/render-hotfix25-upstream.json) | tether Unload16 spawn garrison absorber mind-control radial 6ED harvester active power delta |
 | Hotfix24原生帧完成通知、独立高刷位置与保留实例更新 | [原生位置/ABI/边界](2026-10-31-frame-notified-high-refresh-hotfix24.md) · [构建记录](evidence/render-hotfix24-final.json) | 55DE81 A8ED84 SetEvent latest bounded extrapolation shadow depth 64-byte |

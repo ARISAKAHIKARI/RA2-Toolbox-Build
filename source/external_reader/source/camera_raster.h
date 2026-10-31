@@ -47,16 +47,23 @@ class Surface {
  int width_=0,height_=0;
  colorprecision::Mode precision_=colorprecision::Mode::NativeSteps;
  xbrzadapter::Cache scaleCache_;bool reconstructionFailed_=false;
+ int nativeOriginY_=0,nativeViewHeight_=0,nativePitch_=0;float nativeScaleX_=1,nativeScaleY_=1;
+ std::shared_ptr<const std::vector<uint8_t>> alpha_;
 public:
  std::vector<uint32_t> color;std::vector<float> depth;
+ std::vector<uint16_t> nativeZ;
  bool reset(int w,int h,uint32_t background=0xff080c08u){
   if(w<=0||h<=0||w>8192||h>8192||uint64_t(w)*h>16*1024*1024){width_=height_=0;color.clear();depth.clear();return false;}
-  width_=w;height_=h;reconstructionFailed_=false;color.assign(size_t(w)*h,background);depth.assign(color.size(),-std::numeric_limits<float>::infinity());return true;
+  width_=w;height_=h;reconstructionFailed_=false;color.assign(size_t(w)*h,background);depth.assign(color.size(),-std::numeric_limits<float>::infinity());nativeZ.assign(color.size(),65535);alpha_.reset();nativeOriginY_=0;nativeScaleX_=nativeScaleY_=1;nativePitch_=w;nativeViewHeight_=h;return true;
  }
  int width()const{return width_;}int height()const{return height_;}
  void precision(colorprecision::Mode mode){precision_=mode==colorprecision::Mode::SmoothRGB?mode:colorprecision::Mode::NativeSteps;}
  colorprecision::Mode precision()const{return precision_;}
  bool failed()const{return reconstructionFailed_;}
+ void nativeView(int originY,float scaleX,float scaleY,int pitch,int viewHeight){nativeOriginY_=originY;nativeScaleX_=scaleX;nativeScaleY_=scaleY;nativePitch_=pitch;nativeViewHeight_=viewHeight;}
+ void alpha(std::shared_ptr<const std::vector<uint8_t>>a){alpha_=std::move(a);}
+ const std::shared_ptr<const std::vector<uint8_t>>&alphaPlane()const{return alpha_;}
+ unsigned alphaAt(size_t at)const{return alpha_&&alpha_->size()==color.size()?(*alpha_)[at]:127;}
  void diamond(float ax,float ay,float sx,float sy,float base,uint32_t c,const lighting::State&light){
   c=lit(c,0,false,light,precision_);
   for(int y=std::max(0,int(std::floor(ay-15*sy)));y<std::min(height_,int(std::ceil(ay+15*sy)));++y)
@@ -77,6 +84,15 @@ public:
   int x1=std::clamp(int(std::ceil(std::clamp(left+i.width*pxScale,-1e7f,1e7f))),0,width_),y1=std::clamp(int(std::ceil(std::clamp(top+i.height*pyScale,-1e7f,1e7f))),0,height_);
   y1=std::min(y1,int(std::ceil(std::clamp(ay+material.clipBottom*sy-.5f,-1e7f,1e7f))));
   Light transform(light,precision_);bool zData=i.depth.size()==i.pixels.size(),indexed=i.indices.size()==i.pixels.size();
+  const bool nativeDepth=i.nativeDepth.enabled;const bool rgb555=light.rgb555||material.rgb555;auto nativePalette=lighting::palette(light,i.objectPalette);
+  const int nativeHeight=(i.height+i.rasterScale-1)/i.rasterScale,nativeTop=int(std::floor(top/sy))+nativeOriginY_;
+  auto nativeDescriptor=i.nativeDepth;if(material.shpFlat&&!i.shadow)nativeDescriptor.gradient=nativesurface::Gradient::Flat;
+  const auto walk=nativesurface::walk(nativeDescriptor,nativeTop,nativeHeight,nativeViewHeight_,material.nativeZAdjust,material.bridgeSplit);
+  auto candidate=[&](int row,size_t from){return walk.at(row/i.rasterScale,i.nativeShape.size()==i.pixels.size()?i.nativeShape[from]:0);};
+  auto covered=[&](size_t from){return i.nativeShapeCoverage.empty()||(i.nativeShapeCoverage.size()==i.pixels.size()&&i.nativeShapeCoverage[from]);};
+  auto displaced=[&](int x,int y){int pitch=std::max(1,nativePitch_);int nx=int(std::floor((x+.5f)/nativeScaleX_)),ny=int(std::floor((y+.5f)/nativeScaleY_));int64_t linear=int64_t(ny)*pitch+nx+material.cloakWords;
+   if(linear<0)return uint32_t(0xff000000u);int xx=int(std::floor((linear%pitch+.5)*nativeScaleX_)),yy=int(std::floor((linear/pitch+.5)*nativeScaleY_));return xx>=0&&yy>=0&&xx<width_&&yy<height_?color[size_t(yy)*width_+xx]:uint32_t(0xff000000u);};
+  auto sourceLit=[&](uint32_t pixel,size_t from,size_t to){return precision_==colorprecision::Mode::NativeSteps&&nativeDepth&&indexed?nativePalette.apply(pixel,i.indices[from],alphaAt(to),!i.nativeBlend&&!material.translucency):transform.apply(pixel,indexed?i.indices[from]:0,i.objectPalette);};
   auto colorAt=[&](int x,int y){if(x<0||y<0||x>=i.width||y>=i.height)return uint32_t(0);size_t at=size_t(y)*i.width+x;return transform.apply(i.pixels[at],indexed?i.indices[at]:0,i.objectPalette);};
   // SHP colors enter the unchanged upstream xBRZ scaler AFTER current scene
   // lighting, remap and emissive evaluation. Never bake a fixed light into art.
@@ -102,16 +118,17 @@ public:
     size_t from=size_t(sourceY)*i.width+first+ox,to=size_t(y)*width_+first;
     for(int x=first;x<last;++x,++from,++to){uint32_t p=source[from];unsigned alpha=p>>24;if(!alpha)continue;
      float z=rowZ;bool useZ=!i.skipZ;if(zData){if(std::isnan(i.depth[from]))useZ=false;else z+=i.depth[from];}
-     if(useZ&&z<=depth[to])continue;
-     const uint32_t prior=color[to];
-     if(i.shadow){uint32_t old=color[to];if(alpha==255)color[to]=precision_==colorprecision::Mode::NativeSteps?nativepacked::shadow(old):(old&0xff000000u)|((old&0x00fefefeu)>>1);
+     int nz=candidate(sourceY,from);if(nativeDepth&&!covered(from))continue;
+     if(useZ&&(nativeDepth?!nativesurface::admits(nz,nativeZ[to],i.nativeDepth.tileEqual):z<=depth[to]))continue;
+     const uint32_t prior=color[to];if(material.displace&&i.nativeDepth.voxel){color[to]=nativepacked::blend(displaced(x,y),prior,material.translucency,rgb555);if(useZ&&i.writeDepth){depth[to]=z;nativeZ[to]=uint16_t(nz);}continue;}
+     if(i.shadow){uint32_t old=color[to];if(alpha==255)color[to]=precision_==colorprecision::Mode::NativeSteps?nativepacked::shadow(old,rgb555):(old&0xff000000u)|((old&0x00fefefeu)>>1);
       else{uint32_t v=old&0xff000000u;for(int shift:{0,8,16})v|=(((old>>shift)&255)*(510-alpha)/510)<<shift;color[to]=v;}}
-     else if(packed)color[to]=nativepacked::blend(transform.apply(p,indexed?i.indices[from]:0,i.objectPalette),color[to],i.nativeBlend);
-     else{if(!neutral||alpha!=255)p=transform.apply(p,indexed?i.indices[from]:0,i.objectPalette);
+     else if(packed)color[to]=nativepacked::blend(sourceLit(p,from,to),color[to],i.nativeBlend,rgb555);
+     else{if(nativeDepth||!neutral||alpha!=255)p=sourceLit(p,from,to);
       if(alpha==255)color[to]=p;else{uint32_t old=color[to],out=(alpha+(old>>24)*(255-alpha)/255)<<24;for(int shift:{0,8,16})out|=std::min(255u,((p>>shift)&255)+((old>>shift)&255)*(255-alpha)/255)<<shift;color[to]=out;}}
      if(!i.shadow&&material.mixStrength)color[to]=precision_==colorprecision::Mode::NativeSteps?nativepacked::trail(color[to],prior,material.mixStrength):((color[to]&0xff000000u)|([&]{uint32_t v=0;for(int sh:{0,8,16})v|=(((((color[to]>>sh)&255)*material.mixStrength)>>8)+((((prior>>sh)&255)*(256-material.mixStrength))>>8))<<sh;return v;})());
-     if(!i.shadow&&material.translucency)color[to]=precision_==colorprecision::Mode::NativeSteps?nativepacked::blend(color[to],prior,material.translucency):materialColor(color[to],prior,material.translucency);
-    if(useZ&&i.writeDepth)depth[to]=z;
+     if(!i.shadow&&material.translucency)color[to]=precision_==colorprecision::Mode::NativeSteps?nativepacked::blend(color[to],prior,material.translucency,rgb555):materialColor(color[to],prior,material.translucency);
+    if(useZ&&i.writeDepth){depth[to]=z;if(nativeDepth)nativeZ[to]=uint16_t(nz);}
     }
    }
   }else for(int y=y0;y<y1;++y){int sourceY=int(std::floor((y+.5f-top)/pyScale));if(sourceY<0||sourceY>=i.height)continue;
@@ -151,22 +168,23 @@ public:
     if(zData){if(std::isnan(i.depth[from]))useZ=false;else z+=i.depth[from];}
     else if(i.flat)z+=float(i.y+sourceY)/i.rasterScale-14+lift;
     else{int bottom=i.depthBottom==std::numeric_limits<int>::min()?i.y+i.height-1:i.depthBottom;z+=float(bottom)/i.rasterScale-14+lift+float((bottom-i.y-sourceY)/3)/i.rasterScale;}
-    if(useZ&&z<=depth[to])continue;
-    const uint32_t prior=color[to];
-    if(i.shadow){uint32_t old=color[to],v=old&0xff000000u;unsigned a=p>>24;if(a==255&&precision_==colorprecision::Mode::NativeSteps)color[to]=nativepacked::shadow(old);else{for(int shift:{0,8,16})v|=(((old>>shift)&255)*(510-a)/510)<<shift;color[to]=v;}}
-    else if(packed)color[to]=nativepacked::blend(transform.apply(p,indexed?i.indices[from]:0,i.objectPalette),color[to],i.nativeBlend);
+    int nz=candidate(sourceY,from);if(nativeDepth&&!covered(from))continue;
+     if(useZ&&(nativeDepth?!nativesurface::admits(nz,nativeZ[to],i.nativeDepth.tileEqual):z<=depth[to]))continue;
+    const uint32_t prior=color[to];if(material.displace&&i.nativeDepth.voxel){color[to]=nativepacked::blend(displaced(x,y),prior,material.translucency,rgb555);if(useZ&&i.writeDepth){depth[to]=z;nativeZ[to]=uint16_t(nz);}continue;}
+    if(i.shadow){uint32_t old=color[to],v=old&0xff000000u;unsigned a=p>>24;if(a==255&&precision_==colorprecision::Mode::NativeSteps)color[to]=nativepacked::shadow(old,rgb555);else{for(int shift:{0,8,16})v|=(((old>>shift)&255)*(510-a)/510)<<shift;color[to]=v;}}
+    else if(packed)color[to]=nativepacked::blend(sourceLit(p,from,to),color[to],i.nativeBlend,rgb555);
     else if(preciseSample){
      const double alpha=std::clamp(filtered[3],0.,255.);uint32_t old=color[to];unsigned oldAlpha=old>>24;uint32_t out=(oldAlpha==255?255u:unsigned(std::clamp(std::floor(alpha+oldAlpha*(255-alpha)/255.+.5),0.,255.)))<<24;
      for(int c=0;c<3;++c){int shift=16-c*8;double value=std::clamp(filtered[c],0.,alpha)+((old>>shift)&255)*(255-alpha)/255.;out|=uint32_t(std::clamp(std::floor(value+.5),0.,255.))<<shift;}color[to]=out;
     }
-    else{if(!sampled)p=transform.apply(p,indexed?i.indices[from]:0,i.objectPalette);unsigned a=p>>24;
+    else{if(!sampled)p=sourceLit(p,from,to);else if(nativeDepth&&precision_==colorprecision::Mode::NativeSteps&&alphaAt(to)!=127){uint32_t v=p&0xff000000u;for(int sh:{0,8,16})v|=std::min(255u,((p>>sh)&255)*alphaAt(to)/127)<<sh;p=nativepacked::color(nativepacked::word(v,rgb555),p&0xff000000u,rgb555);}unsigned a=p>>24;
      if(a==255)color[to]=p;else{uint32_t old=color[to],out=(a+(old>>24)*(255-a)/255)<<24;for(int shift:{0,8,16})out|=std::min(255u,((p>>shift)&255)+((old>>shift)&255)*(255-a)/255)<<shift;color[to]=out;}
     }
     // Building/terrain shadows write their ground plane. Without this, each
     // overlapping shadow halves the same pixel again and quickly turns black.
     if(!i.shadow&&material.mixStrength)color[to]=precision_==colorprecision::Mode::NativeSteps?nativepacked::trail(color[to],prior,material.mixStrength):((color[to]&0xff000000u)|([&]{uint32_t v=0;for(int sh:{0,8,16})v|=(((((color[to]>>sh)&255)*material.mixStrength)>>8)+((((prior>>sh)&255)*(256-material.mixStrength))>>8))<<sh;return v;})());
-     if(!i.shadow&&material.translucency)color[to]=precision_==colorprecision::Mode::NativeSteps?nativepacked::blend(color[to],prior,material.translucency):materialColor(color[to],prior,material.translucency);
-    if(useZ&&i.writeDepth)depth[to]=z;
+     if(!i.shadow&&material.translucency)color[to]=precision_==colorprecision::Mode::NativeSteps?nativepacked::blend(color[to],prior,material.translucency,rgb555):materialColor(color[to],prior,material.translucency);
+    if(useZ&&i.writeDepth){depth[to]=z;if(nativeDepth)nativeZ[to]=uint16_t(nz);}
    }
   }
   for(const auto&part:i.attachments)if((!part.shadow||i.shadowsAfter)&&(!part.airborneShadow||shadowDrop>0))blit(part,ax,ay+(part.shadow?shadowDrop*sy:0),sx,sy,base,light,lift,0,smooth,material.shifted(part.shadow?shadowDrop:0));

@@ -130,8 +130,8 @@ inline bool reference(const Plan&plan,std::vector<uint8_t>&out){
   for(int sy=0;sy<plan.samplesY;++sy)for(int sx=0;sx<plan.samplesX;++sx){unsigned value=2;
    for(uint32_t ref=plan.ranges[bin];ref<plan.ranges[bin+1];++ref){const auto&s=plan.stamps[plan.references[ref]];if(uint32_t(px)<s.rect[0]||uint32_t(px)>=s.rect[2]||uint32_t(py)<s.rect[1]||uint32_t(py)>=s.rect[3])continue;
     int ix=plan.coordinates[s.coordinates[0]+(uint32_t(px)-s.rect[0])*plan.samplesX+sx],iy=plan.coordinates[s.coordinates[1]+(uint32_t(py)-s.rect[1])*plan.samplesY+sy];
-    if(ix<0||iy<0||ix>=int(s.source[1])||iy>=int(s.source[2]))continue;unsigned incoming=(*plan.sources[s.source[0]].indices)[size_t(iy)*s.source[1]+ix];if(incoming>127)continue;
-    value=s.source[3]?(value==127?incoming:unsigned(std::max(0,int(value)+int(incoming)-127))):incoming;
+    if(ix<0||iy<0||ix>=int(s.source[1])||iy>=int(s.source[2]))continue;unsigned incoming=(*plan.sources[s.source[0]].indices)[size_t(iy)*s.source[1]+ix];
+    if(!s.source[3]){if(incoming!=254)value=incoming;}else if(incoming<=127)value=unsigned(std::max(0,int(value)+int(incoming)-127));
    }sum+=value;
   }out[size_t(py)*plan.width+px]=uint8_t((sum+unsigned(plan.samplesX*plan.samplesY)/2)/unsigned(plan.samplesX*plan.samplesY));
  }return true;

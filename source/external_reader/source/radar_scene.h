@@ -275,7 +275,8 @@ public:
      auto&tile=tiles_[{cell.type,cell.sub}];
      if(!tile.ready&&paletteReady&&loads<64&&(!tile.retry||int32_t(frame.tick-tile.retry)>=0)){++loads;tile.ready=assets.tile(cell.type,cell.sub,palette,*tile.image);if(tile.ready){auto n=camera::pixels(*tile.image);if(staticPixels+n<=16*1024*1024)staticPixels+=n;else{tile.ready=false;tile.image=std::make_shared<voxel::Image>();}}tile.retry=frame.tick+2000;}
      if(!tile.ready&&paletteReady&&loads>=64&&!tile.retry)break;
-     if(tile.ready)pending_.blit(*tile.image,px,py,1,1,base,paint.light,0);
+     pending_.terrainSource(index,tile.ready?tile.image:nullptr,px,py,base,paint.light,int(cell.level));
+     if(tile.ready){camera::Material material;material.nativeZ=true;material.nativeZAdjust=-15*int(cell.level);pending_.blit(*tile.image,px,py,1,1,base,paint.light,0,0,material);}
      else{pendingIncomplete_=true;pending_.diamond(px,py,1,1,base,0xff000000u|baseColor,paint.light);}
     } // A cell without a resolved tile has no ground sprite to paint.
     // Overlay bodies and their separate shadow sweep are dynamic world layers.
@@ -492,7 +493,7 @@ public:
     const bool relight=(source!=art_.end()&&voxelArt(source->second,0))?features_.voxelLighting:features_.spriteLighting;
     auto light=(!relight||m.kind==7||m.kind==8)?lighting::State{}:m.kind==6?projectiles::light(read,uint32_t(m.pose.variant)):m.kind==5?lighting::animation(read,m.object,m.type,m.x,m.y,m.z,scene):m.kind==4?lighting::terrainObject(read,m.type,m.x,m.y,m.z,scene):lighting::object(read,m.type,m.owner,m.kind,m.x,m.y,m.z,scene);uint32_t cell=frame.terrain->art[(m.y/256)*512+m.x/256].cell;bool bridge=m.onBridge;int level=game.template get<int8_t>(cell+0x11B);
     vulkancompute::MotionIdentity motion;motion.object=m.object;motion.id=m.id;motion.type=m.type;motion.kind=uint32_t(m.kind);motion.known=guideEnabled_&&detail&&m.object>=0x10000&&m.type>=0x10000&&m.id!=0xffffffffu&&m.kind>=0&&m.kind<=6;
-    auto material=m.material;if(m.waterline>0)material.clipBottom=float(m.waterline-geo.offsetY*15)-py;
+    auto material=m.material;if(!material.nativeZ){material.nativeZ=true;material.nativeZAdjust=-screenHeight(m.z,projectionScale)-2;}if(m.waterline>0)material.clipBottom=float(m.waterline-geo.offsetY*15)-py;
     draw(*image,px,py,1,1,float((int64_t(m.x)+m.y)*15/256.)-15+camera::anchorY(m.kind)-m.drawZ+(bridge?60:0),light,m.kind==4?12:(m.kind==3||m.kind==5)?2:1,m.pose.shadow.known?float(m.pose.shadow.drop):float(std::max(0,screenHeight(m.z,projectionScale)-(level+(bridge?4:0))*15)),std::move(imageOwner),std::move(motion),material);
     // Vera units.rs: OREGATH is an owned, Z-read-only piece immediately
     // after its harvester. It follows the same world camera and shroud pass.
@@ -563,16 +564,16 @@ public:
   worldfx::View effectView;effectView.x=region.active?region.x:0;effectView.y=region.active?region.y:0;effectView.width=region.active?region.width:spanX_;effectView.height=region.active?region.height:spanY_;effectView.pixelsW=width;effectView.pixelsH=height;effectView.offsetX=geo.offsetX;effectView.offsetY=geo.offsetY;effectView.zscale=projectionScale;
   auto alphaAsset=[&](uint32_t pointer)->std::shared_ptr<const voxel::Image>{auto found=effectAlphas_.find(pointer);if(found==effectAlphas_.end()){voxel::Image image;if(!alphaImage(assets,pointer,image,0))return {};size_t bytes=0;for(const auto&item:effectAlphas_)bytes+=camera::pixels(*item.second)*5;if(bytes+camera::pixels(image)*5>16*1024*1024)effectAlphas_.clear();found=effectAlphas_.emplace(pointer,std::make_shared<const voxel::Image>(std::move(image))).first;}return found->second;};
   bool effectPlanReady=false;std::shared_ptr<const gpueffects::Plan> areaEffects;
-  if(gpuMode_||(areaGpuMode&&fallbacks.empty())){
+  if(detail||(areaGpuMode&&fallbacks.empty())){
    if(gpuMode_)for(const auto*m:fallbacks){auto p=dot(*m);detailed_.annotationDot(p.first,p.second,m->color);}
    gpueffects::Builder builder(effectView);
    if(worldEffects){const auto&fx=*frame.effects->world;if(features_.particles)for(const auto&a:fx.alphas)if(auto image=alphaAsset(a.image))builder.alpha(a,image);builder.paint(fx,features_.particles,features_.lasers);}
    if(bolts)builder.bolts(frame.effects->bolts,frame.frame);
    for(const auto&b:beacons)builder.uiImage(b.draw.image,b.rgba,(b.draw.x-effectView.x)*width/effectView.width,(b.draw.y-effectView.y)*height/effectView.height,width/effectView.width,height/effectView.height);
    if(radarExtras)sceneextras::radarDecorations(frame,width,height,read,assets,extraLayers_,builder);
-   auto plan=builder.finish();effectPlanReady=plan->valid;if(gpuMode_)detailed_.gpuEffects((worldEffects||bolts||!beacons.empty())?plan:nullptr);else areaEffects=std::move(plan);
+   auto plan=builder.finish();effectPlanReady=plan->valid;if(detail)detailed_.gpuEffects((worldEffects||bolts||!beacons.empty())?plan:nullptr);else areaEffects=std::move(plan);
   }
-  if(masked&&(gpuMode_||areaGpuMode)&&!gpuMaskPlan_&&!maskPixels_)maskPixels_=std::make_shared<const std::vector<uint8_t>>(mask_.alpha);
+  if(masked&&(gpuMode_||areaGpuMode||detail)&&!gpuMaskPlan_&&!maskPixels_)maskPixels_=std::make_shared<const std::vector<uint8_t>>(mask_.alpha);
   // Repeating a verified identical GPU plan needs neither dispatch/fence nor
   // full-screen readback/copy. The scene stays immutable; current sampled
   // state, live light and palette validation above still run at every request.
@@ -617,8 +618,8 @@ public:
    if(masked&&(areaUsed||(detail&&detailed_.gpuMasked()))){unsigned alpha=mask_.alpha[at];if(alpha<127){uint32_t lit=0xff000000u;for(int shift:{0,8,16})lit|=((((color>>shift)&255u)*alpha+63)/127)<<shift;color=lit;}}
    out->pixels[at]=color;
   }}
-  if(worldEffects&&!gpuEffectsDone){worldfx::Painter painter(out->pixels,effectView,masked&&(areaUsed||(detail&&detailed_.gpuMasked()))?&mask_.alpha:nullptr);const auto&effects=*frame.effects->world;
-   if(features_.particles)for(const auto&alpha:effects.alphas)if(auto image=alphaAsset(alpha.image))painter.alpha(alpha,*image);painter.paint(effects,features_.particles,features_.lasers);
+  if(worldEffects&&!gpuEffectsDone){worldfx::Painter painter(out->pixels,effectView,detail&&detailed_.nativeScene()?detailed_.nativeAlpha().get():masked&&(areaUsed||(detail&&detailed_.gpuMasked()))?&mask_.alpha:nullptr,detail&&detailed_.nativeScene()?&detailed_.nativeDepth():nullptr);const auto&effects=*frame.effects->world;
+   if(features_.particles&&(!detail||!detailed_.nativeScene()))for(const auto&alpha:effects.alphas)if(auto image=alphaAsset(alpha.image))painter.alpha(alpha,*image);painter.paint(effects,features_.particles,features_.lasers);
   }
   if(masked&&!areaUsed&&(!detail||!detailed_.gpuMasked()))mask_.apply(out->pixels);
   if(bolts&&!gpuEffectsDone&&!region.active){nativefeedback::WorldView projection{-geo.offsetX*30,geo.offsetY*15,geo.rawWidth*30,geo.rawHeight*15,frame.frame};auto status=nativefeedback::effects(frame.effects->bolts,*out,projection,masked?&mask_.alpha:nullptr,projectionScale);if(!status.complete)return {};out->boltsRendered=true;}

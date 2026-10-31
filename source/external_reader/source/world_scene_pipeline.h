@@ -106,7 +106,7 @@ public:
     const double sum=(double(q.x)+q.y)-(double(p.x)+p.y),height=screenHeight(q.z,world->zscale)-screenHeight(p.z,world->zscale);
     const float dx=float(((double(q.x)-q.y)-(double(p.x)-p.y))*30/256.),dy=float(sum*15/256.-height);
     item.x+=dx;item.y+=dy;item.base+=float(sum*15/256.);item.drop=std::max(0.f,item.drop+float(height));
-    if(item.material.clipBottom<1e7f)item.material.clipBottom-=dy;return false;
+    auto material=q.material;material.mixStrength=item.material.mixStrength;material.clipBottom=q.waterline>0?float(q.waterline-geo.offsetY*15)-item.y:1e7f;item.material=material;return false;
    }),instances.end());
   }
   tetherdraw::replay(instances,presented_.markers);
@@ -135,8 +135,8 @@ public:
    for(const auto&m:missing){const int x=int(((double(m.x)-m.y)*30/256.-view.cameraX)*width/view.width),y=int(((double(m.x)+m.y)*15/256.-view.cameraY)*height/view.height);
     for(int yy=std::max(0,y-1);yy<std::min(height,y+2);++yy)for(int xx=std::max(0,x-1);xx<std::min(width,x+2);++xx)out->pixels[size_t(yy)*width+xx]=0xff000000u|(m.color&0xffffffu);
    }
-   if(hasWorld){worldfx::Painter painter(out->pixels,effectView);if(world->profile.particles)for(const auto&a:effects->world->alphas){auto image=world->alphas.find(a.image);if(image!=world->alphas.end())painter.alpha(a,*image->second);}painter.paint(*effects->world,world->profile.particles,world->profile.lasers);}
-   if(mask_)for(size_t n=0;n<out->pixels.size();++n){auto c=out->pixels[n];uint32_t color=c&0xff000000u;for(int shift:{0,8,16})color|=((((c>>shift)&255u)*alpha[n]+63u)/127u)<<shift;out->pixels[n]=color;}
+   if(hasWorld){worldfx::Painter painter(out->pixels,effectView,canvas_.nativeScene()?canvas_.nativeAlpha().get():nullptr,canvas_.nativeScene()?&canvas_.nativeDepth():nullptr);if(world->profile.particles&&!canvas_.nativeScene())for(const auto&a:effects->world->alphas){auto image=world->alphas.find(a.image);if(image!=world->alphas.end())painter.alpha(a,*image->second);}painter.paint(*effects->world,world->profile.particles,world->profile.lasers);}
+   if(mask_&&!canvas_.nativeScene())for(size_t n=0;n<out->pixels.size();++n){auto c=out->pixels[n];uint32_t color=c&0xff000000u;for(int shift:{0,8,16})color|=((((c>>shift)&255u)*alpha[n]+63u)/127u)<<shift;out->pixels[n]=color;}
    if(bolts){auto status=nativefeedback::effects(effects->bolts,*out,view,mask_?&alpha:nullptr,world->zscale);if(!status.complete)return {};out->boltsRendered=true;}
   }
   if(!canvas_.gpuCompleted()){

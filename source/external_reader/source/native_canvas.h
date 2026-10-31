@@ -7,6 +7,7 @@
 #include <array>
 #include <new>
 #include <atomic>
+#include <unordered_map>
 #include "render_memory_budget.h"
 #include "../../shared/source/parallel_rows.h"
 // Native-pixel composition storage. Source sprites are never individually
@@ -15,6 +16,7 @@ namespace external { namespace camera {
 class NativeCanvas {
  friend class ObjectCanvas;
 public:
+ struct TerrainDraw {std::shared_ptr<const voxel::Image>image;float x=0,y=0,base=0;lighting::State light;Material material;};
  static constexpr int PageSize=128,MaximumDimension=32768;
  static constexpr size_t MaximumPages=rendermemory::NativePages,DynamicReserve=256;
  struct Budget {
@@ -57,6 +59,8 @@ private:
  colorprecision::Mode precision_=colorprecision::Mode::NativeSteps;
  int width_=0,height_=0;uint32_t background_=0xff080c08;bool failed_=false,dynamic_=false;
  std::shared_ptr<Budget> budget_;std::map<uint32_t,std::shared_ptr<Page>> pages_;std::set<uint32_t> dirty_;std::vector<std::array<int,4>> dirtyRects_;
+ struct TerrainSources {std::vector<TerrainDraw>draws;std::unordered_map<size_t,size_t>indices;};
+ std::shared_ptr<TerrainSources>terrainSources_;
  // Source discovery remains conservative. Local terrain banks only paint the
  // page-aligned output neighborhood; repaint jobs further restrict writes to
  // pages which were explicitly cleared for reconstruction.
@@ -95,7 +99,7 @@ private:
   if(!repainting_)regionCache_.reset();
   try{
    if(!ensure(x0,y0,x1,y1))return;
-   for(int y=y0/PageSize;y<=(y1-1)/PageSize;++y)for(int x=x0/PageSize;x<=(x1-1)/PageSize;++x){uint32_t k=key(x,y);if(repainting_&&!repaintPages_.count(k))continue;auto&page=*pages_.find(k)->second;auto&surface=page.surface;surface.precision(precision_);++page.revision;draw(surface,x*PageSize,y*PageSize);dirty_.insert(k);}
+   for(int y=y0/PageSize;y<=(y1-1)/PageSize;++y)for(int x=x0/PageSize;x<=(x1-1)/PageSize;++x){uint32_t k=key(x,y);if(repainting_&&!repaintPages_.count(k))continue;auto&page=*pages_.find(k)->second;auto&surface=page.surface;surface.precision(precision_);surface.nativeView(y*PageSize,1,1,width_,height_);++page.revision;draw(surface,x*PageSize,y*PageSize);dirty_.insert(k);}
    dirtyRects_.push_back({x0,y0,x1,y1});
   }catch(const std::bad_alloc&){failed_=true;}
  }
@@ -149,7 +153,7 @@ public:
  struct AreaCacheStats {size_t bytes;uint64_t builds;};
  static AreaCacheStats areaCacheStats(){return {AreaPrefix::retained.load(std::memory_order_relaxed),AreaPrefix::builds.load(std::memory_order_relaxed)};}
  bool reset(int width,int height,std::shared_ptr<Budget>budget={},uint32_t background=0xff080c08u){
-  regionCache_.reset();pages_.clear();dirty_.clear();dirtyRects_.clear();repaintPages_.clear();repainting_=false;failed_=dynamic_=false;width_=height_=0;paintLeft_=paintTop_=paintRight_=paintBottom_=0;background_=background;budget_=budget?std::move(budget):sharedBudget();
+  regionCache_.reset();terrainSources_.reset();pages_.clear();dirty_.clear();dirtyRects_.clear();repaintPages_.clear();repainting_=false;failed_=dynamic_=false;width_=height_=0;paintLeft_=paintTop_=paintRight_=paintBottom_=0;background_=background;budget_=budget?std::move(budget):sharedBudget();
   if(width<1||height<1||width>MaximumDimension||height>MaximumDimension||!budget_->maximum)return false;width_=width;height_=height;paintRight_=width;paintBottom_=height;return true;
  }
  void precision(colorprecision::Mode mode){if(mode!=precision_)regionCache_.reset();precision_=mode;}
@@ -224,12 +228,21 @@ public:
   if(!std::isfinite(ax)||!std::isfinite(ay)||sx!=1||sy!=1)return;
   paint(int(std::floor(ax-30)),int(std::floor(ay-15)),int(std::ceil(ax+30)),int(std::ceil(ay+15)),[&](Surface&s,int x,int y){s.diamond(ax-x,ay-y,1,1,base,color,light);});
  }
- void blit(const voxel::Image&image,float ax,float ay,float sx,float sy,float base,const lighting::State&light,float lift=1,float shadowDrop=0){
+ void blit(const voxel::Image&image,float ax,float ay,float sx,float sy,float base,const lighting::State&light,float lift=1,float shadowDrop=0,Material material={}){
   if(!std::isfinite(ax)||!std::isfinite(ay)||sx!=1||sy!=1)return;
   float left=float(width_),top=float(height_),right=0,bottom=0;imageBounds(image,ax,ay,shadowDrop,left,top,right,bottom);
   if(!std::isfinite(left)||!std::isfinite(top)||!std::isfinite(right)||!std::isfinite(bottom))return;
-  paint(int(std::floor(std::clamp(left,-1e7f,1e7f))),int(std::floor(std::clamp(top,-1e7f,1e7f))),int(std::ceil(std::clamp(right,-1e7f,1e7f))),int(std::ceil(std::clamp(bottom,-1e7f,1e7f))),[&](Surface&s,int x,int y){s.blit(image,ax-x,ay-y,1,1,base,light,lift,shadowDrop);});
+  paint(int(std::floor(std::clamp(left,-1e7f,1e7f))),int(std::floor(std::clamp(top,-1e7f,1e7f))),int(std::ceil(std::clamp(right,-1e7f,1e7f))),int(std::ceil(std::clamp(bottom,-1e7f,1e7f))),[&](Surface&s,int x,int y){s.blit(image,ax-x,ay-y,1,1,base,light,lift,shadowDrop,false,material);});
  }
+ // Retain indexed TMP owners, not a second decoded copy. Camera-dependent A
+ // and native Z are resolved again before objects; cached lit RGB is only the
+ // reconstruction/underlay source. Dirty banks replace the same cell's entry.
+ void terrainSource(size_t key,std::shared_ptr<const voxel::Image>image,float x,float y,float base,const lighting::State&light,int level){
+  if(!terrainSources_)terrainSources_=std::make_shared<TerrainSources>();else if(!terrainSources_.unique())terrainSources_=std::make_shared<TerrainSources>(*terrainSources_);
+  auto [at,added]=terrainSources_->indices.emplace(key,terrainSources_->draws.size());if(added)terrainSources_->draws.emplace_back();
+  Material m;m.nativeZ=true;m.nativeZAdjust=-15*level;terrainSources_->draws[at->second]={std::move(image),x,y,base,light,m};
+ }
+ const std::vector<TerrainDraw>&terrainSources()const{static const std::vector<TerrainDraw>empty;return terrainSources_?terrainSources_->draws:empty;}
  // Crop a native-pixel scene BEFORE presentation scaling. This is deliberately
  // independent of the radar's whole-map downscale. Outside backing falls back
  // to the underlying game through transparent pixels instead of stretching.

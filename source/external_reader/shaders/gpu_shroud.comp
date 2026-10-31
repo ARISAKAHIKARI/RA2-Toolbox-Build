@@ -22,9 +22,10 @@ uint samplePixel(uint pixel){
    int ix=int(metadata.value[p.coordinateOffset+metadata.value[stamp+8u]+(px-rect.x)*p.samplesX+sx]);
    int iy=int(metadata.value[p.coordinateOffset+metadata.value[stamp+9u]+(py-rect.y)*p.samplesY+sy]);
    if(ix<0||iy<0||uint(ix)>=sourceWidth||uint(iy)>=sourceHeight)continue;
-   uint incoming=alpha.value[metadata.value[stamp+4u]+uint(iy)*sourceWidth+uint(ix)];if(incoming>127u)continue;
-   if(metadata.value[stamp+7u]==0u)result=incoming;
-   else result=result==127u?incoming:uint(max(0,int(result)+int(incoming)-127));
+   uint incoming=alpha.value[metadata.value[stamp+4u]+uint(iy)*sourceWidth+uint(ix)];
+   if(metadata.value[stamp+7u]==0u){if(incoming!=254u)result=incoming;}
+   else if(incoming>127u)continue;
+   else result=uint(max(0,int(result)+int(incoming)-127));
   }sum+=result;
  }
  uint samples=p.samplesX*p.samplesY;return (sum+samples/2u)/samples;

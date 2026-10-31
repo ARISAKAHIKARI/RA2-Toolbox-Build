@@ -36,11 +36,11 @@ class AreaResolve : public Resolve {
  bool initializeArea(){
   if(areaReady_)return true;if(!initialize())return false;
   if(!features_.shaderFloat64)return fatal("GPU area filter needs shaderFloat64");
-  if(properties_.limits.maxPerStageDescriptorStorageBuffers<4||properties_.limits.maxDescriptorSetStorageBuffers<4||properties_.limits.maxPushConstantsSize<sizeof(AreaParams))return fatal("GPU area storage bindings unavailable");
+  if(properties_.limits.maxPerStageDescriptorStorageBuffers<4||properties_.limits.maxDescriptorSetStorageBuffers<4||properties_.limits.maxPushConstantsSize<64)return fatal("GPU area storage bindings unavailable");
   banked_=sizeof(void*)>=8&&properties_.limits.maxStorageBufferRange<uint64_t(gpuarea::MaximumPages)*gpuarea::PagePixels*4&&properties_.limits.maxPerStageDescriptorStorageBuffers>=7&&properties_.limits.maxDescriptorSetStorageBuffers>=7;storageBindings_=banked_?7:4;
   VkDescriptorSetLayoutBinding bindings[7]{};for(uint32_t n=0;n<storageBindings_;++n){bindings[n].binding=n;bindings[n].descriptorType=VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;bindings[n].descriptorCount=1;bindings[n].stageFlags=VK_SHADER_STAGE_COMPUTE_BIT;}
   VkDescriptorSetLayoutCreateInfo ds{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO};ds.bindingCount=storageBindings_;ds.pBindings=bindings;if(vkCreateDescriptorSetLayout_(device_,&ds,nullptr,&areaLayout_)!=VK_SUCCESS)return fatal("GPU area layout failed");
-  VkPushConstantRange push{VK_SHADER_STAGE_COMPUTE_BIT,0,sizeof(AreaParams)};VkPipelineLayoutCreateInfo pl{VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO};pl.setLayoutCount=1;pl.pSetLayouts=&areaLayout_;pl.pushConstantRangeCount=1;pl.pPushConstantRanges=&push;if(vkCreatePipelineLayout_(device_,&pl,nullptr,&areaPipelineLayout_)!=VK_SUCCESS)return fatal("GPU area pipeline layout failed");
+  VkPushConstantRange push{VK_SHADER_STAGE_COMPUTE_BIT,0,64};VkPipelineLayoutCreateInfo pl{VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO};pl.setLayoutCount=1;pl.pSetLayouts=&areaLayout_;pl.pushConstantRangeCount=1;pl.pPushConstantRanges=&push;if(vkCreatePipelineLayout_(device_,&pl,nullptr,&areaPipelineLayout_)!=VK_SUCCESS)return fatal("GPU area pipeline layout failed");
   VkShaderModuleCreateInfo sm{VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO};sm.codeSize=banked_?sizeof(AreaBankedShader):sizeof(AreaShader);sm.pCode=banked_?AreaBankedShader:AreaShader;VkShaderModule shader=VK_NULL_HANDLE;if(vkCreateShaderModule_(device_,&sm,nullptr,&shader)!=VK_SUCCESS)return fatal("GPU area shader module failed");
   VkComputePipelineCreateInfo cp{VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO};cp.stage.sType=VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;cp.stage.stage=VK_SHADER_STAGE_COMPUTE_BIT;cp.stage.module=shader;cp.stage.pName="main";cp.layout=areaPipelineLayout_;VkResult status=vkCreateComputePipelines_(device_,VK_NULL_HANDLE,1,&cp,nullptr,&areaPipeline_);vkDestroyShaderModule_(device_,shader,nullptr);if(status!=VK_SUCCESS)return fatal("GPU area pipeline failed");
   VkDescriptorPoolSize poolSize{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,storageBindings_*2};VkDescriptorPoolCreateInfo pool{VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO};pool.maxSets=2;pool.poolSizeCount=1;pool.pPoolSizes=&poolSize;if(vkCreateDescriptorPool_(device_,&pool,nullptr,&areaPool_)!=VK_SUCCESS)return fatal("GPU area descriptor pool failed");
@@ -88,12 +88,13 @@ class AreaResolve : public Resolve {
   // The effect shader reads both commands and alpha/fog from metadata_.
   std::vector<gpueffects::Dispatch> effects;bool waveSnapshot=false;
   if(p.effects&&!p.effects->commands.empty()){
-   std::vector<uint32_t>alphas;alphas.reserve(p.effects->commands.size());
+   std::vector<uint32_t>alphas,tableOffsets;alphas.reserve(p.effects->commands.size());
    for(const auto&c:p.effects->commands){alphas.push_back(c.indices?uint32_t(metadata.size()):gpuarea::Missing);if(c.indices){
     if(c.indices->size()>16*1024*1024||metadata.size()+(c.indices->size()+3)/4>16*1024*1024)return fail("GPU area effect material budget exceeded");
     const size_t at=metadata.size();metadata.resize(at+(c.indices->size()+3)/4);std::memcpy(metadata.data()+at,c.indices->data(),c.indices->size());
    }}
-   if(!gpueffects::pack(*p.effects,alphas,params.fogOffset,metadata,effects)||!initializeEffects())return false;
+   std::map<const void*,uint32_t>tableCache;for(const auto&c:p.effects->commands){uint32_t at=gpuarea::Missing;if(c.tables){auto found=tableCache.find(c.tables.get());if(found!=tableCache.end())at=found->second;else{at=uint32_t(metadata.size());metadata.resize(metadata.size()+(c.tables->size()+3)/4);std::memcpy(metadata.data()+at,c.tables->data(),c.tables->size());tableCache.emplace(c.tables.get(),at);}}tableOffsets.push_back(at);}
+   if(!gpueffects::pack(*p.effects,alphas,params.fogOffset,metadata,effects,tableOffsets)||!initializeEffects())return false;
    for(const auto&d:effects)waveSnapshot|=d.snapshot;
   }
   const uint64_t outputBytes=uint64_t(p.width)*p.height*4,uploadBytes=uint64_t(dirty.size())*gpuarea::PagePixels*4;

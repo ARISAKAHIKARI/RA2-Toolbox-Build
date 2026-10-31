@@ -19,12 +19,12 @@ namespace external { namespace vulkancompute {
 class FrameResolve : public Resolve {
  DirectOutput direct_{*this};
  using Source=immutableatlas::Source;using Resident=immutableatlas::Resident;using UploadPlan=immutableatlas::Plan;
- struct SceneParams {uint32_t width,height,drawsOffset,binsOffset,refsOffset,binColumns,depthOffset,fogOffset,clipLeft,clipTop,clipRight,clipBottom,depthWidth,depthXOffset,depthYOffset,guideOffset,baseMotionX,baseMotionY,depthFar,depthScale;};
+ struct SceneParams {uint32_t width,height,drawsOffset,binsOffset,refsOffset,binColumns,depthOffset,fogOffset,clipLeft,clipTop,clipRight,clipBottom,depthWidth,depthXOffset,depthYOffset,guideOffset,baseMotionX,baseMotionY,depthFar,depthScale,firstDraw,lastDraw,stateOffset,zaOffset,phase,alphaOffset,alphaCount,nativeScene,nativeScaleX,nativeScaleY,format,reserved;};
  static constexpr VkDeviceSize MaterialBytes=96ull*1024*1024;
  gpuvoxel::Stage voxels_{*this};
  gpuxbrz::Stage xbrz_{*this};
  gpushroud::Stage shroud_{*this};
- static constexpr uint32_t Missing=0xffffffffu,DrawWords=32,MaxDraws=65536,MaxRefs=2*1024*1024;
+ static constexpr uint32_t Missing=0xffffffffu,DrawWords=64,MaxDraws=65536,MaxRefs=2*1024*1024;
  Buffer materials_,materialUpload_,commands_;
  gpumotion::History motionHistory_;std::shared_ptr<const gpumotion::Guides> guides_;bool guidesBuffered_=false;
  int guideRejectedWidth_=0,guideRejectedHeight_=0;uint64_t guideAllocationFailures_=0;
@@ -100,9 +100,9 @@ private:
   const int w=frame.width,h=frame.height;const uint64_t pixels=uint64_t(std::max(0,w))*std::max(0,h);
   if(disabled_)return false;if(w<1||h<1||w>8192||h>8192||pixels>MaxPixels||frame.draws.size()>MaxDraws||(bool(frame.basePixels)==!frame.baseTiles.empty())||(frame.basePixels&&frame.basePixels->size()!=pixels)||(frame.baseDepth&&frame.baseDepthWidth==0&&frame.baseDepth->size()!=pixels)||(frame.fogAlpha&&frame.fogAlpha->size()!=pixels))return fail("Invalid GPU scene frame");
   if(!frame.collectGuides||w!=guideRejectedWidth_||h!=guideRejectedHeight_)guideRejectedWidth_=guideRejectedHeight_=0;
-  gpumotion::Plan guidePlan;bool collectGuides=frame.collectGuides&&!frame.effects&&!(w==guideRejectedWidth_&&h==guideRejectedHeight_)&&frame.baseDepth&&motionHistory_.prepare(frame,guidePlan);
+  gpumotion::Plan guidePlan;bool hasDisplacement=false;for(const auto&draw:frame.draws)hasDisplacement|=draw.displace;bool collectGuides=frame.collectGuides&&!hasDisplacement&&!frame.effects&&!(w==guideRejectedWidth_&&h==guideRejectedHeight_)&&frame.baseDepth&&motionHistory_.prepare(frame,guidePlan);
   if(!collectGuides)motionHistory_.clear();
-  bool needs64=false;std::vector<Source>colors,materials;std::vector<std::array<size_t,5>>drawSources;size_t baseSource=0,baseDepth=0,baseDepthX=0,baseDepthY=0,fog=0;
+  bool needs64=false;std::vector<Source>colors,materials;std::vector<std::array<size_t,7>>drawSources;size_t baseSource=0,baseDepth=0,baseDepthX=0,baseDepthY=0,fog=0;
   if(frame.basePixels){baseSource=colors.size();colors.push_back(source(frame.basePixels));}
   uint64_t coordinateCount=0;if(frame.baseTiles.size()>4096)return fail("GPU scene base tile count exceeded");
   std::vector<size_t>tileSources;for(const auto&t:frame.baseTiles){
@@ -117,16 +117,16 @@ private:
   if(frame.baseDepth){baseDepth=materials.size();materials.push_back(source(frame.baseDepth));}
   if(frame.maskPlan){if(frame.maskPlan->width!=w||frame.maskPlan->height!=h)return fail("GPU mask dimensions disagree");fog=materials.size();auto owner=std::shared_ptr<const void>(frame.maskPlan,frame.maskPlan.get());materials.push_back({owner,nullptr,frame.maskPlan->outputWords()*4,true,3});}
   else if(frame.fogAlpha){fog=materials.size();materials.push_back(source(frame.fogAlpha));}
-  std::vector<size_t>effectSources;
-  if(frame.effects){if(!frame.effects->valid||frame.effects->width!=w||frame.effects->height!=h)return fail("Invalid GPU effects plan");for(const auto&c:frame.effects->commands){effectSources.push_back(c.indices?materials.size():size_t(-1));if(c.indices)materials.push_back(source(c.indices));}}
+  std::vector<size_t>effectSources,effectTables;
+  if(frame.effects){if(!frame.effects->valid||frame.effects->width!=w||frame.effects->height!=h)return fail("Invalid GPU effects plan");for(const auto&c:frame.effects->commands){effectSources.push_back(c.indices?materials.size():size_t(-1));if(c.indices)materials.push_back(source(c.indices));effectTables.push_back(c.tables?materials.size():size_t(-1));if(c.tables)materials.push_back(source(c.tables));}}
   uint64_t candidatePixels=0;std::vector<std::array<int,4>> bounds;bounds.reserve(frame.draws.size());
   for(const auto&d:frame.draws){
    const auto&t=d.source;if((!t.pixels&&!d.gpuRaster)||t.width<1||t.height<1||t.width>8192||t.height>8192||uint64_t(t.width)*t.height>MaxPixels||(t.pixels&&uint64_t(t.width)*t.height!=t.pixels->size())||(t.depth&&t.depth->size()!=uint64_t(t.width)*t.height)||(t.indices&&t.indices->size()!=uint64_t(t.width)*t.height)||d.rasterScale<1||d.rasterScale>4||!std::isfinite(d.left)||!std::isfinite(d.top)||!std::isfinite(d.scaleX)||!std::isfinite(d.scaleY)||d.scaleX<=0||d.scaleY<=0||d.scaleX>8||d.scaleY>8||!std::isfinite(d.depthBase)||!std::isfinite(d.lift)||uint32_t(d.sampling)>3)return fail("Invalid GPU scene sprite");
    for(float gain:d.gains)if(!std::isfinite(gain)||gain<0||gain>16)return fail("Invalid GPU scene light");
-   std::array<size_t,5> sources{{colors.size(),size_t(-1),size_t(-1),size_t(-1),size_t(-1)}};
+   std::array<size_t,7> sources{{colors.size(),size_t(-1),size_t(-1),size_t(-1),size_t(-1),size_t(-1),size_t(-1)}};
    if(d.gpuRaster){if(d.gpuRaster->width!=t.width||d.gpuRaster->height!=t.height)return fail("GPU voxel dimensions disagree");auto owner=std::shared_ptr<const void>(d.gpuRaster,d.gpuRaster.get());colors.push_back({owner,nullptr,size_t(t.width)*t.height*4,true,1});sources[2]=materials.size();materials.push_back({owner,nullptr,size_t(t.width)*t.height*4,true,2});}
    else colors.push_back(source(t.pixels));
-   if(t.depth){sources[1]=materials.size();materials.push_back(source(t.depth));}if(t.indices&&!d.gpuRaster){sources[2]=materials.size();materials.push_back(source(t.indices));}
+   if(d.nativeShape){if(d.nativeShape->size()!=uint64_t(t.width)*t.height)return fail("Invalid native Z shape");sources[5]=materials.size();materials.push_back(source(d.nativeShape));}if(d.nativeCoverage){if(d.nativeCoverage->size()!=uint64_t(t.width)*t.height)return fail("Invalid native Z coverage");sources[6]=materials.size();materials.push_back(source(d.nativeCoverage));}if(t.depth){sources[1]=materials.size();materials.push_back(source(t.depth));}if(t.indices&&!d.gpuRaster){sources[2]=materials.size();materials.push_back(source(t.indices));}
    if(d.sourcePalette){if(d.sourcePalette->size()!=256||(!d.gpuRaster&&!t.indices))return fail("Invalid indexed GPU palette");sources[4]=colors.size();colors.push_back(source(d.sourcePalette));}
    if(d.sampling==Sampling::Reconstructed){if((!d.reconstructed&&!d.reconstructionSource)||(d.reconstructed&&d.reconstructionSource)||d.reconstructionFactor<2||d.reconstructionFactor>4||d.reconstructedWidth!=t.width*d.reconstructionFactor||d.reconstructedHeight!=t.height*d.reconstructionFactor||(d.reconstructed&&d.reconstructed->size()!=uint64_t(d.reconstructedWidth)*d.reconstructedHeight)||(d.reconstructionSource&&d.reconstructionSource->size()!=uint64_t(t.width)*t.height))return fail("Invalid reconstructed GPU scene sprite");sources[3]=colors.size();if(d.reconstructionSource){auto owner=std::shared_ptr<const void>(d.reconstructionSource,d.reconstructionSource.get());uint64_t signature=(uint64_t(d.reconstructionFactor)<<56)|(uint64_t(t.width)<<28)|uint64_t(t.height);colors.push_back({owner,nullptr,size_t(d.reconstructedWidth)*d.reconstructedHeight*4,true,signature});}else colors.push_back(source(d.reconstructed));}
    if(d.mixStrength>255||d.translucency>3||!std::isfinite(d.clipBottom)||d.nativeBlend>3||(d.nativeBlend&&(d.sampling!=Sampling::Nearest||d.smoothRGB)))return fail("Invalid packed GPU blend");needs64|=d.sampling!=Sampling::Nearest;drawSources.push_back(sources);
@@ -165,25 +165,27 @@ private:
   // Vera read-only reduction: opaque bodies replace every preceding admitted
   // color in this Z-read-only span. Encode spans in the upper reference bits;
   // the shader seeks the last admitted opaque pixel, then replays its tail.
-  encodeReadOnlyRuns(frame.draws,references,starts);
+  if(!frame.nativeScene)encodeReadOnlyRuns(frame.draws,references,starts);
   std::vector<uint32_t>metadata(frame.draws.size()*DrawWords);auto offset=[&](const UploadPlan&p,size_t n){return n==size_t(-1)?Missing:p.offsets[n];};
   for(size_t n=0;n<frame.draws.size();++n){const auto&d=frame.draws[n];const auto&s=drawSources[n];auto*dst=metadata.data()+n*DrawWords;
-   std::array<uint32_t,5>at{{offset(colorPlan,s[0]),offset(materialPlan,s[1]),offset(materialPlan,s[2]),offset(colorPlan,s[3]),offset(colorPlan,s[4])}};
+   std::array<uint32_t,7>at{{offset(colorPlan,s[0]),offset(materialPlan,s[1]),offset(materialPlan,s[2]),offset(colorPlan,s[3]),offset(colorPlan,s[4]),offset(materialPlan,s[5]),offset(materialPlan,s[6])}};
    encodeDraw(d,at,bounds[n],dst);
    if(collectGuides){dst[28]=bits(guidePlan.draws[n][0]);dst[29]=bits(guidePlan.draws[n][1]);dst[30]=guidePlan.eligible[n];}
   }
   SceneParams params{uint32_t(w),uint32_t(h),0,uint32_t(metadata.size()),0,cols,frame.baseDepth?materialPlan.offsets[baseDepth]:Missing,(frame.maskPlan||frame.fogAlpha)?materialPlan.offsets[fog]:Missing,uint32_t(std::clamp(frame.clipLeft,0,w)),uint32_t(std::clamp(frame.clipTop,0,h)),uint32_t(frame.clipRight<0?w:std::clamp(frame.clipRight,0,w)),uint32_t(frame.clipBottom<0?h:std::clamp(frame.clipBottom,0,h)),uint32_t(frame.baseDepthWidth),frame.baseDepthWidth?materialPlan.offsets[baseDepthX]:Missing,frame.baseDepthWidth?materialPlan.offsets[baseDepthY]:Missing,Missing,0,0,0,0};
-  if(collectGuides&&pixels*16>properties_.limits.maxStorageBufferRange){guideRejectedWidth_=w;guideRejectedHeight_=h;collectGuides=false;motionHistory_.clear();}
-  if(collectGuides){params.guideOffset=uint32_t(pixels);params.baseMotionX=bits(guidePlan.base[0]);params.baseMotionY=bits(guidePlan.base[1]);params.depthFar=bits(frame.motion.depthFar);params.depthScale=bits(1.f/(frame.motion.depthNear-frame.motion.depthFar));}
+  if(collectGuides&&pixels*28>properties_.limits.maxStorageBufferRange){guideRejectedWidth_=w;guideRejectedHeight_=h;collectGuides=false;motionHistory_.clear();}
+  if(collectGuides){params.guideOffset=uint32_t(pixels*4);params.baseMotionX=bits(guidePlan.base[0]);params.baseMotionY=bits(guidePlan.base[1]);params.depthFar=bits(frame.motion.depthFar);params.depthScale=bits(1.f/(frame.motion.depthNear-frame.motion.depthFar));}
   params.refsOffset=params.binsOffset+uint32_t(binCount*2);metadata.reserve(metadata.size()+binCount*2+references.size());for(size_t bin=0;bin<binCount;++bin){metadata.push_back(starts[bin]);metadata.push_back(counts[bin]);}metadata.insert(metadata.end(),references.begin(),references.end());
   std::vector<gpueffects::Dispatch>effectDispatches;bool waveSnapshot=false;
   if(frame.effects&&!frame.effects->commands.empty()){
-   std::vector<uint32_t>alphaOffsets;for(size_t n:effectSources)alphaOffsets.push_back(n==size_t(-1)?Missing:materialPlan.offsets[n]);
-   if(!gpueffects::pack(*frame.effects,alphaOffsets,(frame.maskPlan||frame.fogAlpha)?materialPlan.offsets[fog]:Missing,metadata,effectDispatches))return fail("GPU effect command budget exceeded");
+   std::vector<uint32_t>alphaOffsets,tableOffsets;for(size_t n:effectSources)alphaOffsets.push_back(n==size_t(-1)?Missing:materialPlan.offsets[n]);for(size_t n:effectTables)tableOffsets.push_back(n==size_t(-1)?Missing:materialPlan.offsets[n]);
+   if(!gpueffects::pack(*frame.effects,alphaOffsets,(frame.maskPlan||frame.fogAlpha)?materialPlan.offsets[fog]:Missing,metadata,effectDispatches,tableOffsets))return fail("GPU effect command budget exceeded");
    if(!effectsPipeline_&&!pipeline(EffectsShader,sizeof(EffectsShader),effectsPipeline_))return false;
    for(const auto&d:effectDispatches)waveSnapshot|=d.snapshot;
   }
-  if(metadata.empty())metadata.push_back(0);const VkDeviceSize outputBytes=pixels*4,totalOutputBytes=outputBytes*(collectGuides?4:1),maskBytes=maskOut&&frame.maskPlan?frame.maskPlan->outputWords()*4:0,allocatedOutputBytes=std::max(totalOutputBytes,outputBytes*(waveSnapshot?2:1));
+  params.firstDraw=0;params.lastDraw=uint32_t(frame.draws.size());params.stateOffset=uint32_t(pixels);params.zaOffset=uint32_t(pixels*2);params.phase=1;params.nativeScene=frame.nativeScene;params.nativeScaleX=bits(frame.nativeScaleX);params.nativeScaleY=bits(frame.nativeScaleY);params.alphaOffset=uint32_t(metadata.size());params.alphaCount=0;
+  if(frame.nativeScene&&frame.effects)for(size_t n=0;n<frame.effects->commands.size();++n)if(frame.effects->commands[n].words[0]==gpueffects::Alpha){auto c=frame.effects->commands[n].words;c[3]=effectSources[n]==size_t(-1)?Missing:materialPlan.offsets[effectSources[n]];metadata.insert(metadata.end(),c.begin(),c.end());++params.alphaCount;}
+  if(metadata.empty())metadata.push_back(0);const VkDeviceSize outputBytes=pixels*4,totalOutputBytes=outputBytes*(collectGuides?7:1),maskBytes=maskOut&&frame.maskPlan?frame.maskPlan->outputWords()*4:0,allocatedOutputBytes=std::max(totalOutputBytes,outputBytes*((waveSnapshot||hasDisplacement)?4:3));
   const bool direct=gpuOut&&!collectGuides&&!maskOut&&direct_.prepare(w,h);
   if(direct)destroy(readback_);
   if(guidesBuffered_&&!collectGuides){destroy(output_);destroy(readback_);}guidesBuffered_=collectGuides;
@@ -207,11 +209,13 @@ private:
   if(!rawJobs.empty()&&!xbrz_.record(command_,atlas_.buffer))return false;
   if(!voxelJobs.empty())voxels_.record(command_);
   if(!baseDispatches.empty()){vkCmdBindPipeline_(command_,VK_PIPELINE_BIND_POINT_COMPUTE,pipeline_);vkCmdBindDescriptorSets_(command_,VK_PIPELINE_BIND_POINT_COMPUTE,pipelineLayout_,0,1,&descriptors_,0,nullptr);for(const auto&d:baseDispatches){vkCmdPushConstants_(command_,pipelineLayout_,VK_SHADER_STAGE_COMPUTE_BIT,0,sizeof(Params),&d.params);vkCmdDispatch_(command_,(d.params.width+7)/8,(d.params.height+7)/8,1);}VkMemoryBarrier resolve{VK_STRUCTURE_TYPE_MEMORY_BARRIER};resolve.srcAccessMask=VK_ACCESS_SHADER_WRITE_BIT;resolve.dstAccessMask=VK_ACCESS_SHADER_READ_BIT|VK_ACCESS_SHADER_WRITE_BIT;vkCmdPipelineBarrier_(command_,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,0,1,&resolve,0,nullptr,0,nullptr);}
-  vkCmdBindPipeline_(command_,VK_PIPELINE_BIND_POINT_COMPUTE,needs64?scene64Pipeline_:scenePipeline_);vkCmdBindDescriptorSets_(command_,VK_PIPELINE_BIND_POINT_COMPUTE,scenePipelineLayout_,0,1,&sceneDescriptors_,0,nullptr);vkCmdPushConstants_(command_,scenePipelineLayout_,VK_SHADER_STAGE_COMPUTE_BIT,0,sizeof(params),&params);vkCmdDispatch_(command_,(w+7)/8,(h+7)/8,1);
-  for(const auto&d:effectDispatches){
+  vkCmdBindPipeline_(command_,VK_PIPELINE_BIND_POINT_COMPUTE,needs64?scene64Pipeline_:scenePipeline_);vkCmdBindDescriptorSets_(command_,VK_PIPELINE_BIND_POINT_COMPUTE,scenePipelineLayout_,0,1,&sceneDescriptors_,0,nullptr);
+  size_t sceneDispatches=0;auto dispatchScene=[&](uint32_t first,uint32_t last,bool serial,bool final){params.firstDraw=first;params.lastDraw=last;params.phase=(sceneDispatches?0u:1u)|(serial?2u:0u)|(final?4u:0u);vkCmdPushConstants_(command_,scenePipelineLayout_,VK_SHADER_STAGE_COMPUTE_BIT,0,sizeof(params),&params);vkCmdDispatch_(command_,serial?1:(w+7)/8,serial?1:(h+7)/8,1);++sceneDispatches;VkMemoryBarrier ready{VK_STRUCTURE_TYPE_MEMORY_BARRIER};ready.srcAccessMask=VK_ACCESS_SHADER_WRITE_BIT|VK_ACCESS_SHADER_READ_BIT;ready.dstAccessMask=VK_ACCESS_SHADER_READ_BIT|VK_ACCESS_SHADER_WRITE_BIT;vkCmdPipelineBarrier_(command_,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,0,1,&ready,0,nullptr,0,nullptr);};
+  uint32_t first=0;for(uint32_t n=0;n<frame.draws.size();++n)if(frame.draws[n].displace){if(n>first||!sceneDispatches)dispatchScene(first,n,false,false);dispatchScene(n,n+1,true,false);first=n+1;}dispatchScene(first,uint32_t(frame.draws.size()),false,true);
+  for(auto d:effectDispatches){d.params[7]=uint32_t(pixels*3);d.params[12]=params.zaOffset;d.params[13]=frame.nativeScene;
    VkMemoryBarrier ready{VK_STRUCTURE_TYPE_MEMORY_BARRIER};ready.srcAccessMask=VK_ACCESS_SHADER_WRITE_BIT|VK_ACCESS_SHADER_READ_BIT;ready.dstAccessMask=d.snapshot?VK_ACCESS_TRANSFER_READ_BIT|VK_ACCESS_TRANSFER_WRITE_BIT:VK_ACCESS_SHADER_READ_BIT|VK_ACCESS_SHADER_WRITE_BIT;
    vkCmdPipelineBarrier_(command_,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,d.snapshot?VK_PIPELINE_STAGE_TRANSFER_BIT:VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,0,1,&ready,0,nullptr,0,nullptr);
-   if(d.snapshot){std::vector<VkBufferCopy>spans;for(const auto&copy:gpueffects::snapshotCopies(d))spans.push_back({copy.source,copy.destination,copy.bytes});if(!spans.empty())vkCmdCopyBuffer_(command_,output_.buffer,output_.buffer,uint32_t(spans.size()),spans.data());VkMemoryBarrier snapshot{VK_STRUCTURE_TYPE_MEMORY_BARRIER};snapshot.srcAccessMask=VK_ACCESS_TRANSFER_WRITE_BIT;snapshot.dstAccessMask=VK_ACCESS_SHADER_READ_BIT|VK_ACCESS_SHADER_WRITE_BIT;vkCmdPipelineBarrier_(command_,VK_PIPELINE_STAGE_TRANSFER_BIT,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,0,1,&snapshot,0,nullptr,0,nullptr);}
+   if(d.snapshot){std::vector<VkBufferCopy>spans;for(const auto&copy:gpueffects::snapshotCopies(d))spans.push_back({copy.source,copy.destination+outputBytes*2,copy.bytes});if(!spans.empty())vkCmdCopyBuffer_(command_,output_.buffer,output_.buffer,uint32_t(spans.size()),spans.data());VkMemoryBarrier snapshot{VK_STRUCTURE_TYPE_MEMORY_BARRIER};snapshot.srcAccessMask=VK_ACCESS_TRANSFER_WRITE_BIT;snapshot.dstAccessMask=VK_ACCESS_SHADER_READ_BIT|VK_ACCESS_SHADER_WRITE_BIT;vkCmdPipelineBarrier_(command_,VK_PIPELINE_STAGE_TRANSFER_BIT,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,0,1,&snapshot,0,nullptr,0,nullptr);}
    vkCmdBindPipeline_(command_,VK_PIPELINE_BIND_POINT_COMPUTE,effectsPipeline_);vkCmdBindDescriptorSets_(command_,VK_PIPELINE_BIND_POINT_COMPUTE,scenePipelineLayout_,0,1,&sceneDescriptors_,0,nullptr);vkCmdPushConstants_(command_,scenePipelineLayout_,VK_SHADER_STAGE_COMPUTE_BIT,0,sizeof(d.params),d.params.data());vkCmdDispatch_(command_,(d.params[10]-d.params[8]+7)/8,(d.params[11]-d.params[9]+7)/8,1);
   }
   VkMemoryBarrier after{VK_STRUCTURE_TYPE_MEMORY_BARRIER};after.srcAccessMask=VK_ACCESS_SHADER_WRITE_BIT;after.dstAccessMask=VK_ACCESS_TRANSFER_READ_BIT;vkCmdPipelineBarrier_(command_,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,VK_PIPELINE_STAGE_TRANSFER_BIT,0,1,&after,0,nullptr,0,nullptr);if(direct)direct_.record(command_,output_.buffer);else{VkBufferCopy copy{0,0,totalOutputBytes};vkCmdCopyBuffer_(command_,output_.buffer,readback_.buffer,1,&copy);}if(maskBytes){VkMemoryBarrier maskCopy{VK_STRUCTURE_TYPE_MEMORY_BARRIER};maskCopy.srcAccessMask=VK_ACCESS_TRANSFER_WRITE_BIT;maskCopy.dstAccessMask=VK_ACCESS_TRANSFER_READ_BIT;vkCmdPipelineBarrier_(command_,VK_PIPELINE_STAGE_TRANSFER_BIT,VK_PIPELINE_STAGE_TRANSFER_BIT,0,1,&maskCopy,0,nullptr,0,nullptr);VkBufferCopy mask{VkDeviceSize(materialPlan.offsets[fog])*4,totalOutputBytes,maskBytes};vkCmdCopyBuffer_(command_,materials_.buffer,readback_.buffer,1,&mask);}VkMemoryBarrier host{VK_STRUCTURE_TYPE_MEMORY_BARRIER};host.srcAccessMask=VK_ACCESS_TRANSFER_WRITE_BIT;host.dstAccessMask=VK_ACCESS_HOST_READ_BIT;vkCmdPipelineBarrier_(command_,VK_PIPELINE_STAGE_TRANSFER_BIT,VK_PIPELINE_STAGE_HOST_BIT,0,1,&host,0,nullptr,0,nullptr);
@@ -224,14 +228,14 @@ private:
   out.resize(size_t(pixels));std::memcpy(out.data(),readback_.mapped,size_t(outputBytes));if(maskOut){if(frame.maskPlan){maskOut->resize(size_t(pixels));std::memcpy(maskOut->data(),static_cast<char*>(readback_.mapped)+totalOutputBytes,size_t(pixels));}else if(frame.fogAlpha)*maskOut=*frame.fogAlpha;else maskOut->clear();}if(collectGuides){
    auto guides=std::make_shared<gpumotion::Guides>();guides->width=w;guides->height=h;guides->resetHistory=guidePlan.reset;guides->sequence=motionHistory_.nextSequence();
    guides->motion.resize(size_t(pixels)*2);guides->depth.resize(size_t(pixels));guides->confidence.resize(size_t(pixels));
-   const auto*packed=reinterpret_cast<const uint32_t*>(static_cast<const char*>(readback_.mapped)+outputBytes);
+   const auto*packed=reinterpret_cast<const uint32_t*>(static_cast<const char*>(readback_.mapped)+outputBytes*4);
    for(size_t n=0;n<size_t(pixels);++n){uint32_t z=packed[n*3+2],m0=packed[n*3],m1=packed[n*3+1],depthBits=z&0x7fffffffu;
     std::memcpy(&guides->motion[n*2],&m0,4);std::memcpy(&guides->motion[n*2+1],&m1,4);std::memcpy(&guides->depth[n],&depthBits,4);guides->confidence[n]=(z&0x80000000u)?0.f:1.f;
    }motionHistory_.commit(frame);guides_=std::move(guides);
   }
   }
   diagnostics_.readbackMilliseconds=direct?0:std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-copyStarted).count();
-  colorResident_=std::move(colorPlan.retained);materialResident_=std::move(materialPlan.retained);tiles_.clear();voxels_.commit();xbrz_.commit();if(maskDirty)shroud_.commit();++diagnostics_.frames;diagnostics_.uploads=colorCopies.size()+materialCopies.size()+xbrz_.uploads()+(frame.maskPlan?shroud_.uploads():0);diagnostics_.uploadedBytes=colorPlan.bytes+materialPlan.bytes+voxels_.stats().uploadedBytes+xbrz_.uploadedBytes()+(frame.maskPlan?shroud_.uploadedBytes():0);diagnostics_.dispatches=baseDispatches.size()+1+effectDispatches.size()+voxels_.stats().dispatches+xbrz_.dispatches()+(maskDirty?shroud_.dispatches():0);diagnostics_.xbrzBuilds=xbrz_.builds();diagnostics_.voxelRasters=voxels_.stats().jobs;diagnostics_.readbacks=direct?0:1;diagnostics_.milliseconds=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-started).count();diagnostics_.reason.clear();return true;
+  colorResident_=std::move(colorPlan.retained);materialResident_=std::move(materialPlan.retained);tiles_.clear();voxels_.commit();xbrz_.commit();if(maskDirty)shroud_.commit();++diagnostics_.frames;diagnostics_.uploads=colorCopies.size()+materialCopies.size()+xbrz_.uploads()+(frame.maskPlan?shroud_.uploads():0);diagnostics_.uploadedBytes=colorPlan.bytes+materialPlan.bytes+voxels_.stats().uploadedBytes+xbrz_.uploadedBytes()+(frame.maskPlan?shroud_.uploadedBytes():0);diagnostics_.dispatches=baseDispatches.size()+sceneDispatches+effectDispatches.size()+voxels_.stats().dispatches+xbrz_.dispatches()+(maskDirty?shroud_.dispatches():0);diagnostics_.xbrzBuilds=xbrz_.builds();diagnostics_.voxelRasters=voxels_.stats().jobs;diagnostics_.readbacks=direct?0:1;diagnostics_.milliseconds=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-started).count();diagnostics_.reason.clear();return true;
  }
 };
 }}

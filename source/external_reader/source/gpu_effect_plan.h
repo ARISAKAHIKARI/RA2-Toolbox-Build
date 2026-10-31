@@ -10,16 +10,16 @@ namespace external { namespace gpueffects {
 // preceding destination snapshot. No graphics API is called by this planner.
 // GPL-3.0 reference: terrain_surface_lines.rs/wgsl @ 3d42426b2e9c.
 constexpr uint32_t Words=32,MaximumCommands=65536,MaximumReferences=2*1024*1024;
-enum Kind:uint32_t {Line=0,Glow=1,Alpha=2,Wave=3,Bolt=4,Chrono=5,Sparkle=6,Sprite=7,RadarLine=8};
-struct Command {std::array<uint32_t,Words> words{};std::shared_ptr<const std::vector<uint8_t>> indices;};
+enum Kind:uint32_t {Line=0,Glow=1,Alpha=2,Wave=3,Bolt=4,Chrono=5,Sparkle=6,Sprite=7,RadarLine=8,NativeWave=9,NativeLine=10};
+struct Command {std::array<uint32_t,Words> words{};std::shared_ptr<const std::vector<uint8_t>> indices,tables;};
 struct Batch {size_t first=0,count=0;bool snapshot=false;};
 struct Plan {int width=0,height=0;std::vector<Command>commands;std::vector<Batch>batches;bool valid=true;};
-struct Dispatch {std::array<uint32_t,12>params{};bool snapshot=false;std::array<uint32_t,4>readBounds{};};
+struct Dispatch {std::array<uint32_t,16>params{};bool snapshot=false;std::array<uint32_t,4>readBounds{};};
 inline float real(uint32_t n){float f;std::memcpy(&f,&n,4);return f;}
 // Include maximum displaced reads, rounding, and destination writes. Two
 // waves can share a snapshot only if these conservative footprints are disjoint.
 inline std::array<uint32_t,4> footprint(const Command&c,int w,int h){
- const auto&a=c.words;int dx=0,dy=0;if(a[0]==Wave){dx=int(std::ceil(std::min(8192.,3.*std::abs(double(real(a[23]))))))+1;dy=int(std::ceil(std::min(8192.,3.*std::abs(double(real(a[24]))))))+1;}
+ const auto&a=c.words;int dx=0,dy=0;if(a[0]==Wave||a[0]==NativeWave){unsigned x=a[0]==Wave?23:8,y=a[0]==Wave?24:9;dx=int(std::ceil(std::min(8192.,3.*std::abs(double(real(a[x]))))))+1;dy=int(std::ceil(std::min(8192.,3.*std::abs(double(real(a[y]))))))+1;}
  return {{uint32_t(std::max(0,int(a[4])-dx)),uint32_t(std::max(0,int(a[5])-dy)),uint32_t(std::min(w,int(a[6])+dx)),uint32_t(std::min(h,int(a[7])+dy))}};
 }
 struct CopySpan {uint64_t source=0,destination=0,bytes=0;};
@@ -31,7 +31,7 @@ inline std::vector<CopySpan> snapshotCopies(const Dispatch&d){
 }
 inline bool same(const std::shared_ptr<const Plan>&a,const std::shared_ptr<const Plan>&b){
  if(a==b)return true;if(!a||!b||!a->valid||!b->valid||a->width!=b->width||a->height!=b->height||a->commands.size()!=b->commands.size()||a->batches.size()!=b->batches.size())return false;
- for(size_t n=0;n<a->commands.size();++n)if(a->commands[n].words!=b->commands[n].words||a->commands[n].indices!=b->commands[n].indices)return false;
+ for(size_t n=0;n<a->commands.size();++n)if(a->commands[n].words!=b->commands[n].words||a->commands[n].indices!=b->commands[n].indices||a->commands[n].tables!=b->commands[n].tables)return false;
  for(size_t n=0;n<a->batches.size();++n){const auto&x=a->batches[n];const auto&y=b->batches[n];if(x.first!=y.first||x.count!=y.count||x.snapshot!=y.snapshot)return false;}return true;
 }
 // Vera terrain_batch dependency waves, adapted to our immutable wave commands.
@@ -54,16 +54,16 @@ inline void scheduleWaves(Plan&p){
 }
 // Append to the scene's existing command upload. Small effects dispatch only
 // their bounding rectangle; ordered 32-pixel bins avoid a full draw-list scan.
-inline bool pack(const Plan&p,const std::vector<uint32_t>&alphas,uint32_t fog,std::vector<uint32_t>&words,std::vector<Dispatch>&jobs){
+inline bool pack(const Plan&p,const std::vector<uint32_t>&alphas,uint32_t fog,std::vector<uint32_t>&words,std::vector<Dispatch>&jobs,const std::vector<uint32_t>&tables={}){
  if(!p.valid||p.width<1||p.height<1||p.width>8192||p.height>8192||p.commands.size()>MaximumCommands||alphas.size()!=p.commands.size())return false;
  const uint32_t base=uint32_t(words.size()),cols=(p.width+31)/32,rows=(p.height+31)/32,bins=cols*rows;
- for(size_t n=0;n<p.commands.size();++n){auto c=p.commands[n].words;if(c[0]>RadarLine||c[4]>=c[6]||c[5]>=c[7]||c[6]>uint32_t(p.width)||c[7]>uint32_t(p.height))return false;if(c[0]==Alpha||c[0]==Chrono||c[0]==Sprite)c[3]=alphas[n];words.insert(words.end(),c.begin(),c.end());}
+ for(size_t n=0;n<p.commands.size();++n){auto c=p.commands[n].words;if(c[0]>NativeLine||c[4]>=c[6]||c[5]>=c[7]||c[6]>uint32_t(p.width)||c[7]>uint32_t(p.height))return false;if(p.commands[n].tables){if(tables.size()!=p.commands.size())return false;c[31]=tables[n];}if(c[0]==Alpha||c[0]==Chrono||c[0]==Sprite||c[0]==Glow||c[0]==NativeWave||c[0]==NativeLine)c[3]=alphas[n];words.insert(words.end(),c.begin(),c.end());}
  uint64_t totalRefs=0;size_t covered=0;
  for(const auto&batch:p.batches){if(batch.first!=covered||!batch.count||batch.first>p.commands.size()||batch.count>p.commands.size()-batch.first)return false;
   covered+=batch.count;std::array<uint32_t,4>readBounds{{uint32_t(p.width),uint32_t(p.height),0,0}};
   std::vector<uint32_t>counts(bins),starts(bins+1);uint32_t l=p.width,t=p.height,r=0,b=0;
   auto visit=[&](size_t n,auto fn){auto&c=p.commands[n].words;for(uint32_t y=c[5]/32;y<=(c[7]-1)/32;++y)for(uint32_t x=c[4]/32;x<=(c[6]-1)/32;++x)fn(y*cols+x);};
-  for(size_t n=batch.first;n<batch.first+batch.count;++n){auto&c=p.commands[n].words;if((c[0]==Wave||c[0]==Chrono)!=batch.snapshot)return false;if(batch.snapshot){auto f=footprint(p.commands[n],p.width,p.height);readBounds[0]=std::min(readBounds[0],f[0]);readBounds[1]=std::min(readBounds[1],f[1]);readBounds[2]=std::max(readBounds[2],f[2]);readBounds[3]=std::max(readBounds[3],f[3]);}l=std::min(l,c[4]);t=std::min(t,c[5]);r=std::max(r,c[6]);b=std::max(b,c[7]);visit(n,[&](uint32_t i){++counts[i];});}
+  for(size_t n=batch.first;n<batch.first+batch.count;++n){auto&c=p.commands[n].words;if((c[0]==Wave||c[0]==Chrono||(c[0]==NativeWave&&(c[1]==0||c[1]==3)))!=batch.snapshot)return false;if(batch.snapshot){auto f=footprint(p.commands[n],p.width,p.height);readBounds[0]=std::min(readBounds[0],f[0]);readBounds[1]=std::min(readBounds[1],f[1]);readBounds[2]=std::max(readBounds[2],f[2]);readBounds[3]=std::max(readBounds[3],f[3]);}l=std::min(l,c[4]);t=std::min(t,c[5]);r=std::max(r,c[6]);b=std::max(b,c[7]);visit(n,[&](uint32_t i){++counts[i];});}
   uint32_t refs=0;for(uint32_t i=0;i<bins;++i){starts[i]=refs;if(uint64_t(refs)+counts[i]+totalRefs>MaximumReferences)return false;refs+=counts[i];}starts[bins]=refs;totalRefs+=refs;
   auto next=starts;std::vector<uint32_t>references(refs);for(size_t n=batch.first;n<batch.first+batch.count;++n)visit(n,[&](uint32_t i){references[next[i]++]=uint32_t(n);});
   uint32_t binOffset=uint32_t(words.size());for(uint32_t i=0;i<bins;++i){words.push_back(starts[i]);words.push_back(counts[i]);}uint32_t refOffset=uint32_t(words.size());words.insert(words.end(),references.begin(),references.end());
@@ -83,6 +83,15 @@ class Builder {
  static uint32_t color(uint32_t rgb,double strength){uint32_t c=0;for(int sh:{0,8,16})c|=uint32_t(std::clamp(((rgb>>sh)&255)*strength,0.,255.))<<sh;return c;}
 public:
  explicit Builder(const worldfx::View&view):v_(view),plan_(std::make_shared<Plan>()){plan_->width=view.pixelsW;plan_->height=view.pixelsH;plan_->valid=view.pixelsW>0&&view.pixelsH>0&&view.pixelsW<=8192&&view.pixelsH<=8192&&std::isfinite(view.width)&&std::isfinite(view.height)&&view.width>0&&view.height>0;}
+ void nativeLine(std::array<double,2>a,std::array<double,2>b,int za,int zb,uint32_t rgb,unsigned mode,unsigned strength,bool format,const nativefx::Math*math){
+  double sx=v_.pixelsW/v_.width,sy=v_.pixelsH/v_.height;std::vector<nativefx::LinePixel>pixels;
+  if(!nativefx::line({{int(a[0]/sx),int(a[1]/sy)}},{{int(b[0]/sx),int(b[1]/sy)}},za,zb,int(std::ceil(v_.width)),int(std::ceil(v_.height)),math,[&](auto p){pixels.push_back(p);})){plan_->valid=false;return;}if(pixels.empty())return;
+  int top=pixels.front().y,bottom=top,left=pixels.front().x,right=left;for(auto p:pixels){top=std::min(top,p.y);bottom=std::max(bottom,p.y);left=std::min(left,p.x);right=std::max(right,p.x);}int rows=bottom-top+1;
+  std::vector<std::vector<std::array<uint32_t,2>>>runs(size_t(rows),std::vector<std::array<uint32_t,2>>{});for(auto p:pixels)runs[size_t(p.y-top)].push_back({{uint32_t(p.x),p.z}});
+  std::vector<uint32_t>packed(size_t(rows)*2);for(int y=0;y<rows;++y){packed[size_t(y)*2]=uint32_t(packed.size());packed[size_t(y)*2+1]=uint32_t(runs[y].size());for(auto op:runs[y])packed.insert(packed.end(),op.begin(),op.end());}
+  auto bytes=std::make_shared<std::vector<uint8_t>>(packed.size()*4);std::memcpy(bytes->data(),packed.data(),bytes->size());Command c;c.words[0]=NativeLine;c.words[1]=rgb;c.words[8]=uint32_t(top);c.words[9]=uint32_t(rows);c.words[10]=bits(float(sx));c.words[11]=bits(float(sy));c.words[12]=mode;c.words[13]=strength;c.words[14]=format;c.words[15]=uint32_t(pixels.front().gateX);c.indices=bytes;
+  if(bounds(c,left*sx,top*sy,(right+1)*sx,(bottom+1)*sy))append(std::move(c));
+ }
  void pixel(int x,int y,uint32_t c,double strength=1,bool add=true){line({double(x),double(y)},{double(x),double(y)},c,strength,add,true);}
  void line(std::array<double,2>a,std::array<double,2>b,uint32_t rgb,double strength=1,bool add=true,bool point=false){
   if((!rgb&&!point)||strength<=0)return;double dx=b[0]-a[0],dy=b[1]-a[1],lo=0,hi=1;
@@ -92,8 +101,9 @@ public:
   if(!bounds(c,std::min(ax,bx)-1,std::min(ay,by)-1,std::max(ax,bx)+2,std::max(ay,by)+2))return;
   c.words[8]=bits(float(ax));c.words[9]=bits(float(ay));c.words[10]=bits(float(bx));c.words[11]=bits(float(by));c.words[12]=point?0:uint32_t(std::max(1,int(std::ceil(std::max(std::abs(bx-ax),std::abs(by-ay))))));append(std::move(c));
  }
- void glow(const worldfx::Glow&s){if(s.flags&1)return;auto p=v_.project(s.point);double rx=std::clamp(s.size*v_.pixelsW/v_.width,1.,1024.),ry=std::clamp(s.size*.5*v_.pixelsH/v_.height,1.,1024.);Command c;c.words[0]=Glow;c.words[1]=((s.flags&2)?0:0xFF0000)|((s.flags&4)?0:0xFF00)|((s.flags&8)?0:0xFF);
-  if(!bounds(c,int(p[0]-rx),int(p[1]-ry),int(p[0]+rx)+1,int(p[1]+ry)+1))return;c.words[8]=bits(float(p[0]));c.words[9]=bits(float(p[1]));c.words[10]=bits(float(rx));c.words[11]=bits(float(ry));append(std::move(c));}
+ void glow(const worldfx::Glow&s){auto m=nativecombat::mask(s.size,s.spotlightRadius);if(!m)return;auto p=v_.project(s.point);int l=int(p[0])-128,t=int(p[1])-64;Command c;c.words[0]=Glow;c.words[2]=uint32_t(s.flags);c.words[8]=uint32_t(l);c.words[9]=uint32_t(t);c.words[14]=s.rgb555;c.indices=m;
+  if(bounds(c,l,t,l+256,t+128))append(std::move(c));}
+
  template<class Image>void alpha(const worldfx::Alpha&s,const std::shared_ptr<const Image>&image){
   if(!image||image->width<1||image->height<1||image->indices.size()!=size_t(image->width)*image->height)return;auto p=v_.project(s.point);double sx=v_.pixelsW/v_.width,sy=v_.pixelsH/v_.height;
   int left=int(std::floor(p[0]+(s.dx+image->x+image->canvasWidth/2)*sx)),top=int(std::floor(p[1]+(s.dy+image->y+image->canvasHeight/2)*sy));Command c;c.words[0]=Alpha;
@@ -101,6 +111,11 @@ public:
   c.words[8]=bits(float(left));c.words[9]=bits(float(top));c.words[10]=bits(float(sx));c.words[11]=bits(float(sy));c.words[14]=image->width;c.words[15]=image->height;c.indices=std::shared_ptr<const std::vector<uint8_t>>(image,&image->indices);append(std::move(c));
  }
  void wave(const worldfx::Wave&s){
+  if(!s.polygon.empty()){std::array<int,2>source;auto spans=worldfx::waveSpans(s,v_,source);if(spans.rows.empty())return;Command c;c.words[0]=NativeWave;c.words[1]=uint32_t(s.kind);c.words[2]=uint32_t(s.direction);c.words[8]=bits(float(v_.pixelsW/v_.width));c.words[9]=bits(float(v_.pixelsH/v_.height));c.words[10]=uint32_t(source[0]);c.words[11]=uint32_t(source[1]);c.words[12]=uint32_t(screenHeight(s.from.z,v_.zscale));c.words[13]=uint32_t(s.kind==1||s.kind==2?s.laser:s.phase);c.words[14]=uint32_t(spans.rows.size());c.words[15]=uint32_t(spans.top);c.words[18]=s.rgb555;c.words[19]=uint32_t(std::ceil(v_.width));c.words[20]=uint32_t(std::ceil(v_.height));
+   int left=spans.rows.front()[0],right=left;for(auto row:spans.rows){left=std::min(left,row[0]);right=std::max(right,row[1]);}if(!bounds(c,left*v_.pixelsW/v_.width,spans.top*v_.pixelsH/v_.height,(right+1)*v_.pixelsW/v_.width,(spans.top+int(spans.rows.size()))*v_.pixelsH/v_.height))return;
+   auto bytes=std::make_shared<std::vector<uint8_t>>(spans.rows.size()*8);std::memcpy(bytes->data(),spans.rows.data(),bytes->size());c.indices=bytes;c.tables=s.tables;flush();append(std::move(c));flush(s.kind==0||s.kind==3);return;
+  }
+
   auto from=v_.project(s.from),to=v_.project(s.to);std::array<std::array<double,2>,4>p;for(int i=0;i<4;++i)p[i]=v_.project(s.corners[i]);auto lerp=[](auto a,auto b,double t){return std::array<double,2>{{a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t}};};std::vector<std::array<double,2>>poly;
   if(s.kind==3)poly={lerp(p[0],p[2],s.front),lerp(p[1],p[3],s.front),lerp(p[1],p[3],s.back),lerp(p[0],p[2],s.back)};
   else poly={lerp(p[0],p[2],s.front),lerp(from,to,s.front),lerp(p[1],p[3],s.front),lerp(p[1],p[3],s.back),lerp(from,to,s.back),lerp(p[0],p[2],s.back)};

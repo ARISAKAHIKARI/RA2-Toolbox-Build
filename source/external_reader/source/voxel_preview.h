@@ -12,6 +12,7 @@
 #include "resolution_sampling.h"
 #include "voxel_posture.h"
 #include "voxel_motion.h"
+#include "native_surface.h"
 namespace external { namespace gpuvoxel {struct Prepared;} }
 namespace external { namespace voxel {
 // Read-only in-memory VXL/HVA capture. Never calls the game renderer. Layout
@@ -28,6 +29,11 @@ struct Image {int rasterScale=1;int canvasWidth=0,canvasHeight=0;int width=0,hei
  // Opaque source for native packed translucency; pixels remains premultiplied
  // for generic preview/filter consumers. 1/2/3 mean 25/50/75% translucency.
  std::shared_ptr<const std::vector<uint32_t>> blendSource;uint8_t nativeBlend=0;
+ nativesurface::Depth nativeDepth;
+ // Signed native second-shape bytes, already aligned/clipped to this image.
+ // The original allocation stays separate from display/reconstruction depth.
+ std::vector<int32_t> nativeShape;
+ std::vector<uint8_t> nativeShapeCoverage;
 };
 struct Library {uint32_t failed=0,headers=0,tailers=0,size=0,head=0,tail=0,body=0;};
 struct Tail {uint32_t start,end,data;float multiplier,matrix[12],bounds[24];uint8_t size[3],normal;};

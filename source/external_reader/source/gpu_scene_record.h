@@ -72,6 +72,11 @@ class GpuSceneRecord {
    draw.sourcePalette=i.sourcePalette;draw.left=left;draw.top=top;draw.scaleX=pxScale;draw.scaleY=pyScale;draw.depthBase=base+i.depthBias;
    draw.originY=i.y;draw.depthBottom=i.depthBottom==std::numeric_limits<int>::min()?i.y+i.height-1:i.depthBottom;draw.rasterScale=i.rasterScale;draw.lift=lift;
    draw.shadow=i.shadow;draw.writeDepth=i.writeDepth;draw.flat=i.flat;draw.objectPalette=i.objectPalette;draw.smoothRGB=precision_==colorprecision::Mode::SmoothRGB;draw.skipZ=i.skipZ;
+   draw.nativeDepth=i.nativeDepth;if(material.shpFlat&&!i.shadow)draw.nativeDepth.gradient=nativesurface::Gradient::Flat;draw.palette=lighting::palette(state,i.objectPalette);draw.palette.rgb555|=material.rgb555;
+   draw.nativeWalk=nativesurface::walk(draw.nativeDepth,int(std::floor(top/sy)),(i.height+i.rasterScale-1)/i.rasterScale,int(std::ceil(frame_.height/sy)),material.nativeZAdjust,material.bridgeSplit);
+   if(i.nativeShape.size()==size_t(i.width)*i.height)draw.nativeShape={owner,&i.nativeShape};
+   if(i.nativeShapeCoverage.size()==size_t(i.width)*i.height)draw.nativeCoverage={owner,&i.nativeShapeCoverage};
+   draw.displace=material.displace&&i.nativeDepth.voxel;draw.cloakWords=material.cloakWords;draw.nativePitch=int(std::ceil(frame_.width/sx));draw.nativeScaleX=sx;draw.nativeScaleY=sy;
    Light transform(state,precision_);std::copy_n(transform.gains,3,draw.gains.begin());
    const bool reconstruct=smooth&&!i.shadow&&i.rasterScale==1&&(pxScale>1||pyScale>1);
    if(reconstruct){const int factor=xbrzadapter::factor(pxScale,pyScale);if(!factor)return false;
@@ -100,6 +105,7 @@ public:
  void reset(){frame_={};fallbackBase_.reset();cpuBaseFallback_={};replay_.clear();valid_=false;}
  void clear(){reset();litSources_.clear();litIndex_.clear();litBytes_=serial_=litBuilds_=litHits_=0;}
  void beginObjects(int width,int height,colorprecision::Mode precision){reset();frame_.width=width;frame_.height=height;precision_=precision;valid_=width>0&&height>0&&width<=32768&&height<=32768;}
+ void nativeView(float sx,float sy,bool enabled){frame_.nativeScene=enabled;frame_.nativeScaleX=sx;frame_.nativeScaleY=sy;}
  uint64_t litBuilds()const{return litBuilds_;}uint64_t litHits()const{return litHits_;}size_t litBytes()const{return litBytes_;}
  void begin(int width,int height,std::shared_ptr<const std::vector<uint32_t>>base,std::shared_ptr<const std::vector<float>>depth,colorprecision::Mode precision,
             std::shared_ptr<const std::vector<vulkancompute::TileJob>>baseTiles={},std::function<bool(std::vector<uint32_t>&)>cpuBaseFallback={},GpuDepthPlan depthPlan={}){
@@ -130,7 +136,14 @@ public:
   const std::vector<uint32_t>*base=fallbackBase_.get();std::vector<uint32_t>generated;
   if(!base||base->size()!=size_t(frame_.width)*frame_.height){if(!cpuBaseFallback_||!cpuBaseFallback_(generated)||generated.size()!=size_t(frame_.width)*frame_.height)return false;base=&generated;}
   if(!frame_.baseDepth||!surface.reset(frame_.width,frame_.height))return false;
-  surface.precision(precision_);surface.color=*base;
+  surface.precision(precision_);surface.color=*base;surface.nativeView(0,frame_.nativeScaleX,frame_.nativeScaleY,int(std::ceil(frame_.width/frame_.nativeScaleX)),int(std::ceil(frame_.height/frame_.nativeScaleY)));
+  if(frame_.nativeScene){std::shared_ptr<const std::vector<uint8_t>>mask=frame_.fogAlpha;
+   if(frame_.maskPlan){auto a=std::make_shared<std::vector<uint8_t>>();if(!gpushroud::reference(*frame_.maskPlan,*a))return false;mask=a;}
+   auto a=mask?std::make_shared<std::vector<uint8_t>>(*mask):std::make_shared<std::vector<uint8_t>>(size_t(frame_.width)*frame_.height,127);
+   if(frame_.effects)for(const auto&command:frame_.effects->commands)if(command.words[0]==gpueffects::Alpha&&command.indices){const auto&w=command.words;
+    for(uint32_t y=w[5];y<w[7];++y)for(uint32_t x=w[4];x<w[6];++x){int xx=int((x-gpueffects::real(w[8]))/gpueffects::real(w[10])),yy=int((y-gpueffects::real(w[9]))/gpueffects::real(w[11]));if(xx<0||yy<0||xx>=int(w[14])||yy>=int(w[15]))continue;size_t at=size_t(y)*frame_.width+x;(*a)[at]=uint8_t(std::min(255u,unsigned((*a)[at])*(*command.indices)[size_t(yy)*w[14]+xx]/127u));}}
+   surface.alpha(a);
+  }
   if(frame_.baseDepthWidth>0){
    // The GPU consumes this compact native plane directly. Only an actual CPU
    // fallback expands it to the output framebuffer's depth layout.

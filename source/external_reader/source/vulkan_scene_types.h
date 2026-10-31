@@ -1,6 +1,7 @@
 #pragma once
 #include "vulkan_compute.h"
 #include <tuple>
+#include "native_surface.h"
 namespace external { namespace gpueffects {struct Plan;} namespace gpuvoxel {struct Prepared;} namespace gpushroud {struct Plan;} namespace vulkancompute {
 // Immutable aliases must own their actual source Image/ScaledImage storage.
 struct Texture {
@@ -42,10 +43,15 @@ struct DrawJob {
  std::array<float,3> gains{{1,1,1}};
  Sampling sampling=Sampling::Nearest;
  bool shadow=false,writeDepth=true,flat=false,objectPalette=false,smoothRGB=false,skipZ=false;
+ nativesurface::Depth nativeDepth;nativesurface::Walk nativeWalk;nativesurface::Palette palette;
+ std::shared_ptr<const std::vector<int32_t>>nativeShape;
+ std::shared_ptr<const std::vector<uint8_t>>nativeCoverage;
+ int cloakWords=0,nativePitch=0;float nativeScaleX=1,nativeScaleY=1;bool displace=false;
  MotionIdentity motion;
 };
 struct FrameJob {
  int width=0,height=0;
+ bool nativeScene=false;float nativeScaleX=1,nativeScaleY=1;
  std::shared_ptr<const std::vector<uint32_t>> basePixels;
  std::vector<TileJob> baseTiles; // alternative GPU resolve; empty when basePixels exists
  std::shared_ptr<const std::vector<float>> baseDepth; // output Z, or native plane with axis maps below
