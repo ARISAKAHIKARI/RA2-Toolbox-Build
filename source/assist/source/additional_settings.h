@@ -10,6 +10,7 @@ struct AdditionalSettings {
  bool controlAll=false,switchPlayerEnabled=false;
  bool controlCommandOwner=false;
  bool networkHousePreserve=false,nativeSellCursor=false;
+ bool crcMapShadow=false;
  bool nativeMegaGateway=true;
  bool techEnhance=false;int placementImplementation=0;
  bool viewZoomEnabled=false;int viewZoomPercent=100;

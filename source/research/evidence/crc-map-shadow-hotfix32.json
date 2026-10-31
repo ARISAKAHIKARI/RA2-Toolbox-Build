@@ -1,0 +1,504 @@
+{
+  "release": "1.0.39-pre.7 Hotfix32 x64 update",
+  "game_tested": false,
+  "multiplayer_tested": false,
+  "windows_loader_tested": false,
+  "gpu_tested": false,
+  "binaries": {
+    "RA2Toolbox.exe": "efd3c8839178414f4d298d4d64d5791ace1c9e1baa70516bb33f11fd8a5fc2d4",
+    "GameRuntime.dll": "c93e7e22e39eaaa701ce619196c5e86c2303ad6a67397bcdc422ffd5e5c34240",
+    "GameRuntimeHost32.exe": "f898d40686466c7196f97a477a905476f17a7cebac10804622fdad20ad4024cd"
+  },
+  "abi": {
+    "assist": 83,
+    "shared_bytes": 6580496,
+    "entries": 685
+  },
+  "controlled_runtime_cases": {
+    "crc-runtime-final": 21,
+    "network-runtime-final": 36,
+    "lifecycle-runtime-final": 5
+  },
+  "runtime": {
+    "crc-runtime-final": {
+      "scope": "Actual compiled experimental MapIsClear CRC adapter on a synthetic world.\n\nNative reveal is stopped AFTER its real flag write and BEFORE cells/Visionary.\nThe real CRC and installed leaves run; Win32 and logger are fixture sinks.\nNo complete Reveal, world tick, platform transport or multiplayer execution.\n",
+      "dll_sha256": "c93e7e22e39eaaa701ce619196c5e86c2303ad6a67397bcdc422ffd5e5c34240",
+      "game_fixture_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+      "game_tested": false,
+      "multiplayer_tested": false,
+      "results": [
+        {
+          "case": "default_off",
+          "status": "PASS",
+          "all_eight_sites_original": true
+        },
+        {
+          "case": "tool_reveal_and_restore",
+          "status": "PASS",
+          "tracked_tool_flag": true,
+          "restored_original_flag_and_eight_sites": true
+        },
+        {
+          "case": "actual_native_crc",
+          "status": "PASS",
+          "shadow_crc_matches_original": true,
+          "normal_motion_still_changes_crc": true,
+          "normal_rng_still_changes_crc": true,
+          "no_extra_crc_or_rng_calls": true
+        },
+        {
+          "case": "natural_write_0x4fc328",
+          "status": "PASS",
+          "natural_value": 1,
+          "same_value_write_recorded": true
+        },
+        {
+          "case": "natural_write_0x577aca",
+          "status": "PASS",
+          "natural_value": 0,
+          "same_value_write_recorded": false
+        },
+        {
+          "case": "natural_write_0x577bc7",
+          "status": "PASS",
+          "natural_value": 0,
+          "same_value_write_recorded": false
+        },
+        {
+          "case": "natural_write_0x577ca7",
+          "status": "PASS",
+          "natural_value": 0,
+          "same_value_write_recorded": false
+        },
+        {
+          "case": "natural_write_0x577db0",
+          "status": "PASS",
+          "natural_value": 1,
+          "same_value_write_recorded": true
+        },
+        {
+          "case": "natural_write_0x577f48",
+          "status": "PASS",
+          "natural_value": 1,
+          "same_value_write_recorded": true
+        },
+        {
+          "case": "boundary_singleplayer",
+          "status": "PASS",
+          "rejected_before_activation": true,
+          "runtime_status": -5
+        },
+        {
+          "case": "boundary_mode",
+          "status": "PASS",
+          "rejected_before_activation": true,
+          "runtime_status": -5
+        },
+        {
+          "case": "boundary_late",
+          "status": "PASS",
+          "rejected_before_activation": true,
+          "runtime_status": -4
+        },
+        {
+          "case": "boundary_conflict",
+          "status": "PASS",
+          "rejected_before_activation": true,
+          "runtime_status": -2
+        },
+        {
+          "case": "boundary_writer_conflict",
+          "status": "PASS",
+          "rejected_before_activation": true,
+          "runtime_status": -2
+        },
+        {
+          "case": "boundary_mod",
+          "status": "PASS",
+          "rejected_before_activation": true,
+          "runtime_status": -6
+        },
+        {
+          "case": "boundary_unknown_write",
+          "status": "PASS",
+          "no_stale_original_applied": true
+        },
+        {
+          "case": "boundary_pointer_reuse",
+          "status": "PASS",
+          "no_stale_original_applied": true
+        },
+        {
+          "case": "boundary_constructor",
+          "status": "PASS",
+          "no_stale_original_applied": true
+        },
+        {
+          "case": "boundary_pending_off",
+          "status": "PASS",
+          "no_stale_original_applied": true
+        },
+        {
+          "case": "boundary_frame_rewind",
+          "status": "PASS",
+          "no_stale_original_applied": true
+        },
+        {
+          "case": "boundary_heartbeat_stop",
+          "status": "PASS",
+          "no_stale_original_applied": true
+        }
+      ]
+    },
+    "network-runtime-final": {
+      "scope": "Actual DLL managed sender adapter with native packing and decode fixtures.\n\nSynthetic Win32, Houses and capture-only transport. Runs the installed DLL's\nthunks, native 649CA0/64B660 and 64BDD0; protocol 0 wire records are parsed.\nNo live peer, platform transport, event effects or complete House scheduler.\nAI/nonhuman Houses may be skipped by the original scheduler and are rejected\nas foreign adapter targets. MegaMission byte 0D is native cache metadata.\nFault cases test safe reads and deferred mapping cleanup. An optional matching\nPDB resolves the actual Abort body, not Windows SEH dispatch or exception unwind.\n",
+      "dll_sha256": "c93e7e22e39eaaa701ce619196c5e86c2303ad6a67397bcdc422ffd5e5c34240",
+      "game_fixture_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+      "pdb_sha256": "ee39a1f668d4952a628dc42e62d6cac25308dcc40de0ca093ca79dd0224fde13",
+      "game_tested": false,
+      "multiplayer_tested": false,
+      "results": [
+        {
+          "case": "runtime_foreign_destruct_through_sender_protocol_0",
+          "status": "PASS",
+          "runtime_command": 32,
+          "foreign_house": 1,
+          "same_native_local_and_decoded_event": true
+        },
+        {
+          "case": "runtime_foreign_destruct_through_sender_protocol_1",
+          "status": "PASS",
+          "runtime_command": 32,
+          "foreign_house": 1,
+          "same_native_local_and_decoded_event": true
+        },
+        {
+          "case": "runtime_foreign_destruct_through_sender_protocol_2",
+          "status": "PASS",
+          "runtime_command": 32,
+          "foreign_house": 1,
+          "same_native_local_and_decoded_event": true
+        },
+        {
+          "case": "own_wire_protocol_0",
+          "status": "PASS",
+          "packet_sha256": [
+            "a768611c070fa705530c10340e1f0dc25b78d3074d1b69de4c41535e237d4c27"
+          ],
+          "native_crc_recomputations": 0,
+          "event_houses": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "case": "own_wire_protocol_1",
+          "status": "PASS",
+          "packet_sha256": [
+            "6b5d606fd82e9b224a92dc44208fb010085ef82bf05b39737ba4254a1bbe5836"
+          ],
+          "native_crc_recomputations": 0,
+          "event_houses": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "case": "own_wire_protocol_2",
+          "status": "PASS",
+          "packet_sha256": [
+            "85a4cb29ab3c7907a1911a2f62aa58ff610d1dda15a76be178d22baa64c7b7f0"
+          ],
+          "native_crc_recomputations": 0,
+          "event_houses": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "case": "installed_native_sender_session_3_protocol_0",
+          "status": "PASS",
+          "native_packets": 3,
+          "packet_houses": [
+            0,
+            1,
+            0
+          ],
+          "foreign_events_in_one_packet": 3,
+          "native_crc_count_delay_preserved": true,
+          "managed_sites": 7,
+          "leaf_register_fp_checks": 21,
+          "foreign_cancelled": 2
+        },
+        {
+          "case": "installed_native_sender_session_3_protocol_1",
+          "status": "PASS",
+          "native_packets": 3,
+          "packet_houses": [
+            0,
+            1,
+            0
+          ],
+          "foreign_events_in_one_packet": 3,
+          "native_crc_count_delay_preserved": true,
+          "managed_sites": 7,
+          "leaf_register_fp_checks": 17,
+          "foreign_cancelled": 2
+        },
+        {
+          "case": "installed_native_sender_session_3_protocol_2",
+          "status": "PASS",
+          "native_packets": 3,
+          "packet_houses": [
+            0,
+            1,
+            0
+          ],
+          "foreign_events_in_one_packet": 3,
+          "native_crc_count_delay_preserved": true,
+          "managed_sites": 7,
+          "leaf_register_fp_checks": 17,
+          "foreign_cancelled": 2
+        },
+        {
+          "case": "installed_native_sender_session_4_protocol_0",
+          "status": "PASS",
+          "native_packets": 3,
+          "packet_houses": [
+            0,
+            1,
+            0
+          ],
+          "foreign_events_in_one_packet": 3,
+          "native_crc_count_delay_preserved": true,
+          "managed_sites": 7,
+          "leaf_register_fp_checks": 21,
+          "foreign_cancelled": 2
+        },
+        {
+          "case": "installed_native_sender_session_4_protocol_1",
+          "status": "PASS",
+          "native_packets": 3,
+          "packet_houses": [
+            0,
+            1,
+            0
+          ],
+          "foreign_events_in_one_packet": 3,
+          "native_crc_count_delay_preserved": true,
+          "managed_sites": 7,
+          "leaf_register_fp_checks": 17,
+          "foreign_cancelled": 2
+        },
+        {
+          "case": "installed_native_sender_session_4_protocol_2",
+          "status": "PASS",
+          "native_packets": 3,
+          "packet_houses": [
+            0,
+            1,
+            0
+          ],
+          "foreign_events_in_one_packet": 3,
+          "native_crc_count_delay_preserved": true,
+          "managed_sites": 7,
+          "leaf_register_fp_checks": 17,
+          "foreign_cancelled": 2
+        },
+        {
+          "case": "rejection_singleplayer_0",
+          "status": "PASS",
+          "blocked_without_event_send": true
+        },
+        {
+          "case": "rejection_singleplayer_5",
+          "status": "PASS",
+          "blocked_without_event_send": true
+        },
+        {
+          "case": "rejection_unsupported_protocol",
+          "status": "PASS",
+          "blocked_without_event_send": true
+        },
+        {
+          "case": "rejection_context_conflict",
+          "status": "PASS",
+          "blocked_without_event_send": true
+        },
+        {
+          "case": "rejection_site_conflict",
+          "status": "PASS",
+          "blocked_without_event_send": true
+        },
+        {
+          "case": "rejection_frame_site_conflict",
+          "status": "PASS",
+          "blocked_without_event_send": true
+        },
+        {
+          "case": "rejection_plain_site_conflict",
+          "status": "PASS",
+          "blocked_without_event_send": true
+        },
+        {
+          "case": "rejection_invalid_ring",
+          "status": "PASS",
+          "blocked_without_event_send": true
+        },
+        {
+          "case": "callback_target_invalidation_protocol_0",
+          "status": "PASS",
+          "completed_prefix": 1,
+          "failed_group_not_consumed": true
+        },
+        {
+          "case": "callback_target_invalidation_protocol_1",
+          "status": "PASS",
+          "completed_prefix": 1,
+          "failed_group_not_consumed": true
+        },
+        {
+          "case": "callback_target_invalidation_protocol_2",
+          "status": "PASS",
+          "completed_prefix": 1,
+          "failed_group_not_consumed": true
+        },
+        {
+          "case": "foreign_filter_ai",
+          "status": "PASS",
+          "no_foreign_execution": true
+        },
+        {
+          "case": "foreign_filter_observer",
+          "status": "PASS",
+          "no_foreign_execution": true
+        },
+        {
+          "case": "foreign_filter_non_gameplay",
+          "status": "PASS",
+          "no_foreign_execution": true
+        },
+        {
+          "case": "foreign_filter_invalid_index",
+          "status": "PASS",
+          "no_foreign_execution": true
+        },
+        {
+          "case": "foreign_filter_wrong_thread",
+          "status": "PASS",
+          "no_foreign_execution": true
+        },
+        {
+          "case": "readiness_paused",
+          "status": "PASS",
+          "foreign_never_rewritten_as_local": true,
+          "same_world_foreign_cancelled": true
+        },
+        {
+          "case": "readiness_heartbeat_expired",
+          "status": "PASS",
+          "foreign_never_rewritten_as_local": true,
+          "same_world_foreign_cancelled": true
+        },
+        {
+          "case": "readiness_stopped",
+          "status": "PASS",
+          "foreign_never_rewritten_as_local": true,
+          "same_world_foreign_cancelled": true
+        },
+        {
+          "case": "readiness_changed_world",
+          "status": "PASS",
+          "foreign_never_rewritten_as_local": true,
+          "same_world_foreign_cancelled": false
+        },
+        {
+          "case": "fault_boundary_cached_house_unmapped",
+          "status": "PASS",
+          "cached_house_page_unmapped": true,
+          "safe_read_failures": 4,
+          "queue_unchanged": true,
+          "gate_retained": true
+        },
+        {
+          "case": "fault_boundary_stop_deferred_invalid_ring",
+          "status": "PASS",
+          "deferred_stop_ticks": 2,
+          "mapping_and_hooks_retained_until_safe": true,
+          "final_stop_ack": 2,
+          "foreign_cancelled": 1
+        },
+        {
+          "case": "fault_boundary_stop_deferred_changed_world",
+          "status": "PASS",
+          "deferred_stop_ticks": 2,
+          "mapping_and_hooks_retained_until_safe": true,
+          "final_stop_ack": 2,
+          "foreign_cancelled": 0
+        },
+        {
+          "case": "fault_boundary_abort_body_invalid_world_and_shared",
+          "status": "PASS",
+          "direct_abort_rva": "0x9590",
+          "shared_and_cached_house_unmapped": true,
+          "only_dll_local_writes": 3,
+          "windows_seh_dispatch_tested": false
+        }
+      ]
+    },
+    "lifecycle-runtime-final": {
+      "scope": "Compiled Runtime lifecycle in a synthetic playable world; Win32 is mocked.\nNo platform connection, full simulation or multiplayer disconnect is tested.\n",
+      "dll_sha256": "c93e7e22e39eaaa701ce619196c5e86c2303ad6a67397bcdc422ffd5e5c34240",
+      "game_fixture_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+      "game_tested": false,
+      "multiplayer_tested": false,
+      "results": [
+        {
+          "case": "placement_midgame",
+          "status": "PASS",
+          "same_epoch_toggle": true
+        },
+        {
+          "case": "placement_before_first_ready",
+          "status": "PASS",
+          "same_epoch_toggle": true
+        },
+        {
+          "case": "suspension_defers_request",
+          "status": "PASS",
+          "deferred_then_applied": true
+        },
+        {
+          "case": "compute_split_new_epoch_only",
+          "status": "PASS",
+          "midgame_pending_then_new_epoch_applied": true
+        },
+        {
+          "case": "startup_signature_failure_cached",
+          "status": "PASS",
+          "first_failure_is_cached": true,
+          "not_evidence_of_platform_mismatch": true
+        }
+      ]
+    }
+  },
+  "scope": "Synthetic Win32/world sinks; real compiled DLL, original CRC and flag leaves. Full Reveal cell/Visionary suffix and live platform/netplay not executed."
+}

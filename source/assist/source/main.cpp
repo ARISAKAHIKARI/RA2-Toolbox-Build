@@ -312,6 +312,11 @@ static void logBridgeHealth(bool force=false){
   L" installedCodePatches="+std::to_wstring(incoming.hookInstalled)+L" nativeAirMode="+std::to_wstring(incoming.nativeAirStatus)+
   L" zoomStatus="+std::to_wstring(shared?shared->viewZoomStatus:0)+L" zoomApplied="+std::to_wstring(shared?shared->viewZoomApplied:100)+L" refreshMode="+std::to_wstring(shared?shared->scrollRefreshMode:0)+L" scrollHz="+std::to_wstring(shared?shared->scrollRefreshHz:0)+L" scrollStatus="+std::to_wstring(shared?shared->scrollRefreshStatus:0)+L" scrollDraws="+std::to_wstring(shared?shared->scrollRefreshDraws:0)+L" extraRenderMilliHz="+std::to_wstring(shared?shared->scrollRefreshRateMilli:0)+L" extraRenderMaxGapUs="+std::to_wstring(shared?shared->scrollRefreshMaxGapUs:0)+
   L" renderReveal="+std::to_wstring(shared?shared->renderReveal:0)+L" renderStatus="+std::to_wstring(incoming.renderRevealStatus)+
+  L" computeRequested="+hex32(shared?shared->computeRequested:0)+L" computeApplied="+hex32(shared?shared->computeApplied:0)+
+  L" placementStatus="+std::to_wstring(incoming.placementStatus)+L" controlStatus="+std::to_wstring(shared?shared->playerControlStatus:0)+
+  L" houseRequested="+std::to_wstring(shared?shared->networkHousePreserve:0)+L" houseStatus="+std::to_wstring(shared?shared->networkHouseStatus:0)+
+  L" crcShadowRequested="+std::to_wstring(shared?shared->crcMapShadow:0)+L" crcShadowStatus="+std::to_wstring(shared?shared->crcMapShadowStatus:0)+
+  L" crcShadowTracked="+std::to_wstring(shared?shared->crcMapShadowTracked:0)+L" crcShadowSubstitutions="+std::to_wstring(shared?shared->crcMapShadowSubstitutions:0)+L" crcShadowFaults="+std::to_wstring(shared?shared->crcMapShadowFaults:0)+
   L" burstEnabled="+std::to_wstring(shared?shared->burstEnabled:0)+L" burstHeld="+std::to_wstring(shared?shared->burstHeld:0)+
   L" burstActive="+std::to_wstring(shared?shared->burstActive:0)+L" burstIssued="+std::to_wstring(shared?shared->burstIssued:0)+
   L" burstInside="+std::to_wstring(shared&&compute::inside(shared->computeApplied,compute::BurstRefresh))+
@@ -1474,6 +1479,7 @@ static void result(){if(!shared)return;uint32_t a=shared->ack;if(a==ack)return;M
   }
  }
  if(c==RevealMap&&r<0&&extra.mapStrategy==3){autoRevealMatch=0;autoRevealRetry=GetTickCount()+2000;}
+ if(c==RevealMap&&r==-22){notify(L"全图 CRC 原值镜像尚未就绪，本次未揭示；请查看实验功能状态。若本局已揭示，请在新对局揭示前开启。");return;}
  if(r==-10||r==-15){critical(L"command exception result="+std::to_wstring(r)+L" command="+std::to_wstring(c));logBridgeHealth(true);}
  if(r<0){const wchar_t*s=r==-10?L"游戏操作发生异常，已暂停发送指令；请重启游戏。详情见 logs/Runtime.log。":r==-15?L"无法确认本次装车条件，操作未执行；其他功能仍可用。详情见 logs/Runtime.log。":r==-3?L"当前没有可操作的对局。":r==-5?L"超级武器尚未就绪或当前不可用。":r==-6?L"指令未能提交，详细原因已记录到日志。":r==-7?L"指令已过期或对局已改变，本次未执行。":r==-8?L"请先关闭游戏聊天输入框。":r==-9?L"缺少可用的匹配工厂 / 供电，或已达建造上限。":r==-11?L"此游戏版本暂不支持科技生产，功能未启用。":r==-12?L"此游戏版本暂不支持该操作。":r==-22?L"喝彩或嘲讽尚在冷却，请稍后再试。":r==-23?L"本局已关闭嘲讽；快捷键不能更改其他玩家的接收设置。":r==-21?L"黑幕绘制方式未选择自动全图，本次未执行。":r==-20?L"当前版本不支持此操作。":r==-13?L"此操作仅支持单机。":r==-14?L"地图尚未完成初始化，稍后重试。":L"所选目标已失效，请刷新后重试。";if(r==-6)critical(L"command submission failed: "+submitDiagnostic());notify(s);return;}
  if(c==Repair)notify(n?L"已安排维修 "+std::to_wstring(n)+L" 座受损建筑。":L"没有需要维修的己方建筑。");
@@ -1584,6 +1590,15 @@ static void updateModeStatus(DWORD now){
   else if(fresh&&extra.controlCommandOwner&&eventdelivery::isMultiplayer(incoming.session)&&!networkHouseReady())owner+=L"等待事件所属方保留已启用";
   else owner+=stateText(extra.controlCommandOwner,shared?shared->controlCommandOwnerStatus:0);
   SetWindowTextW(GetDlgItem(ui,9194),owner.c_str());
+  const int cs=shared?shared->crcMapShadowStatus:0;std::wstring crc=L"全图 CRC 原值镜像：";
+  if(!fresh)crc+=extra.crcMapShadow?L"等待新对局及连接":L"关闭";
+  else if(cs==-4||cs==-3)crc+=L"原值不可信，请在新对局揭示前开启";
+  else if(cs==-5)crc+=L"仅支持联机的自动地图全开";
+  else if(cs==-6)crc+=L"暂不支持Ares/Phobos扩展";
+  else if(cs<0)crc+=L"站点不兼容或恢复冲突";
+  else if(cs==1){crc+=extra.crcMapShadow?L"实验已启用":L"正在关闭";crc+=L" · 跟踪"+std::to_wstring(shared->crcMapShadowTracked)+L"方 · 替代"+std::to_wstring(shared->crcMapShadowSubstitutions)+L"次";}
+  else crc+=extra.crcMapShadow?L"等待适配":L"关闭";
+  SetWindowTextW(GetDlgItem(ui,9197),crc.c_str());
  }
  SetWindowTextW(GetDlgItem(ui,813),(L"步兵强制进入建筑："+(extra.c4Test&&snap.c4TestStatus==1&&!phase&&infantryEntryResultMatch==commandMatch()&&!infantryEntryResult.empty()?infantryEntryResult:riskText(extra.c4Test,snap.c4TestStatus))).c_str());
  std::wstring progress=snap.techOpen==2?L"经典兼容 · 生产进度：":L"生产进度：";uint32_t owner=0;

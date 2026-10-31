@@ -108,3 +108,14 @@ extern "C" unsigned GuardedBuildTimeTooltip(unsigned id,unsigned original){
  }__finally {EndAssistCapture(token);SetLastError(savedError);}
  return result;
 }
+
+// CRC leaves return the already-loaded native EBX on failure. No game writes
+// or CRC/RNG recomputation in this boundary; capture is owned by native logic.
+extern "C" unsigned __cdecl AssistMapCrcShadow(unsigned,unsigned,unsigned);
+extern "C" void __cdecl AssistMapCrcAbort();
+extern "C" unsigned __cdecl GuardedMapCrcShadow(unsigned op,unsigned house,unsigned savedEBX){
+ const unsigned long savedError=GetLastError();unsigned result=savedEBX;
+ __try {result=AssistMapCrcShadow(op,house,savedEBX);}
+ __except(AssistExceptionFilter(_exception_info(),14)){AssistMapCrcAbort();}
+ SetLastError(savedError);return result;
+}

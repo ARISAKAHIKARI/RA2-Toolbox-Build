@@ -19,6 +19,7 @@ static void loadAdditionalSettings(){
  renderVoxelLighting=value(L"Display",L"RenderVoxelLighting",1)!=0;renderSpriteLighting=value(L"Display",L"RenderSpriteLighting",1)!=0;
  extra.viewZoomEnabled=false;extra.viewZoomPercent=100; // temporarily unavailable, including saved settings
  extra.techEnhance=value(L"Experimental",L"TechEnhance",0)!=0;
+ extra.crcMapShadow=value(L"Experimental",L"CrcMapIsClearShadow",0)!=0;
  extra.networkHousePreserve=value(L"Experimental",L"NetworkHousePreserve",0)!=0;
  extra.nativeSellCursor=value(L"Experimental",L"NativeSellCursor",0)!=0;
  extra.nativeMegaGateway=value(L"Experimental",L"NativeMegaGateway",1)!=0;
@@ -99,6 +100,7 @@ static void loadAdditionalSettings(){
 static bool saveAdditionalSettings(){
  write(L"ViewZoom",L"Enabled",0);write(L"ViewZoom",L"Percent",100);
  write(L"Experimental",L"TechEnhance",extra.techEnhance);write(L"Experimental",L"PlacementImplementation",extra.placementImplementation);
+ write(L"Experimental",L"CrcMapIsClearShadow",extra.crcMapShadow);
  write(L"Experimental",L"NetworkHousePreserve",extra.networkHousePreserve);write(L"Experimental",L"NativeSellCursor",extra.nativeSellCursor);
  write(L"Experimental",L"NativeMegaGateway",extra.nativeMegaGateway);
  write(L"Experimental",L"ControlCommandOwner",extra.controlCommandOwner);
@@ -198,6 +200,7 @@ static void syncAdditional(){
  extra.viewZoomEnabled=false;extra.viewZoomPercent=100;shared->viewZoomPercent=100;
  shared->buildTimeTooltip=buildTimeTooltipEnabled;shared->placementImplementation=extra.placementImplementation;shared->techEnhance=extra.techEnhance;
  shared->nativeAirNetwork=extra.nativeAirNetwork;
+ shared->crcMapShadow=extra.crcMapShadow;
  shared->networkHousePreserve=extra.networkHousePreserve;shared->nativeSellCursor=extra.nativeSellCursor;
  shared->nativeMegaGateway=extra.nativeMegaGateway;
  shared->controlCommandOwner=extra.controlAll&&extra.controlCommandOwner;

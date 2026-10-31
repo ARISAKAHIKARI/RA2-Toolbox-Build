@@ -6,7 +6,7 @@ int main(){
  m.frame(1,100);assert(m.beginTool(a,0,1));assert(m.crcValue(a,1)==0);
  assert(m.beginTool(a,1,1));assert(m.crcValue(a,1)==0); // Repeat must not bless our own value.
  m.naturalWrite(a,1);assert(m.crcValue(a,1)==1); // Real reveal while display is already1.
- m.naturalWrite(a,0);assert(m.crcValue(a,1)==0); // Real re-shroud updates baseline.
+ m.naturalWrite(a,0);assert(m.crcValue(a,0)==0);assert(m.beginTool(a,0,1)&&m.crcValue(a,1)==0); // Real re-shroud updates baseline.
  assert(m.crcValue(b,1)==1);assert(m.beginTool(b,1,0));assert(m.crcValue(b,0)==1);
  auto reused=a;++reused.id;assert(m.crcValue(reused,1)==1); // Pointer/index alone is insufficient.
  m.unknownWrite(a);assert(m.crcValue(a,1)==1&&!m.beginTool(a,1,1));
