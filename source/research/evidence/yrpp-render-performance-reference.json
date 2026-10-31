@@ -1,0 +1,79 @@
+{
+  "repository": "CnCNet/YRpp",
+  "commit": "d9795546950fcc75a94325ffc83b44d16ec34ce2",
+  "evidence": "source review only",
+  "game_executed": false,
+  "gpu_executed": false,
+  "files": [
+    {
+      "path": "GScreenClass.h",
+      "git_blob": "6434760fc075995c8984da2168885683d968a966",
+      "url": "https://github.com/CnCNet/YRpp/blob/d9795546950fcc75a94325ffc83b44d16ec34ce2/GScreenClass.h"
+    },
+    {
+      "path": "TacticalClass.h",
+      "git_blob": "56f1189665cbb93e82fb8e2b56b09a237d6858f3",
+      "url": "https://github.com/CnCNet/YRpp/blob/d9795546950fcc75a94325ffc83b44d16ec34ce2/TacticalClass.h"
+    },
+    {
+      "path": "Surface.h",
+      "git_blob": "da0270af75471a5ad27897664ba4b51895b4c6d4",
+      "url": "https://github.com/CnCNet/YRpp/blob/d9795546950fcc75a94325ffc83b44d16ec34ce2/Surface.h"
+    },
+    {
+      "path": "ConvertClass.h",
+      "git_blob": "2400087c242b682b29044904b94bfb68f69889f3",
+      "url": "https://github.com/CnCNet/YRpp/blob/d9795546950fcc75a94325ffc83b44d16ec34ce2/ConvertClass.h"
+    },
+    {
+      "path": "DisplayClass.h",
+      "git_blob": "9bcbda03f2d386f0e93349bd59eef167f43c08f3",
+      "url": "https://github.com/CnCNet/YRpp/blob/d9795546950fcc75a94325ffc83b44d16ec34ce2/DisplayClass.h"
+    },
+    {
+      "path": "Drawing.h",
+      "git_blob": "bff5ed831ba2d0e347474cef443981a3ee69901b",
+      "url": "https://github.com/CnCNet/YRpp/blob/d9795546950fcc75a94325ffc83b44d16ec34ce2/Drawing.h"
+    },
+    {
+      "path": "MapClass.h",
+      "git_blob": "a6588dc7e3ab7ebd3ffc15818949c059fe79fecd",
+      "url": "https://github.com/CnCNet/YRpp/blob/d9795546950fcc75a94325ffc83b44d16ec34ce2/MapClass.h"
+    },
+    {
+      "path": "AlphaLightingRemapClass.h",
+      "git_blob": "5454eb579e5e659dc16943f78d7ff22cc0925c5c",
+      "url": "https://github.com/CnCNet/YRpp/blob/d9795546950fcc75a94325ffc83b44d16ec34ce2/AlphaLightingRemapClass.h"
+    },
+    {
+      "path": "ObjectTypeClass.h",
+      "git_blob": "43e7e1ae7cb82039edbe5b8d783bb9719c005906",
+      "url": "https://github.com/CnCNet/YRpp/blob/d9795546950fcc75a94325ffc83b44d16ec34ce2/ObjectTypeClass.h"
+    },
+    {
+      "path": "Blitters/Blitter.h",
+      "git_blob": "d9bc08387fbca53c80ffec78d07044ff92e0107e",
+      "url": "https://github.com/CnCNet/YRpp/blob/d9795546950fcc75a94325ffc83b44d16ec34ce2/Blitters/Blitter.h"
+    },
+    {
+      "path": "Blitters/BlitPlainXlatZReadWrite.h",
+      "git_blob": "dc41c64b461475a299c94608e9f06e7d9a2a5656",
+      "url": "https://github.com/CnCNet/YRpp/blob/d9795546950fcc75a94325ffc83b44d16ec34ce2/Blitters/BlitPlainXlatZReadWrite.h"
+    },
+    {
+      "path": "Blitters/RLEBlitTransXlatZReadWrite.h",
+      "git_blob": "dc758afa16f119f743e2f352afa05fe1385eb012",
+      "url": "https://github.com/CnCNet/YRpp/blob/d9795546950fcc75a94325ffc83b44d16ec34ce2/Blitters/RLEBlitTransXlatZReadWrite.h"
+    },
+    {
+      "path": "Blitters/BlitTransXlatAlphaZReadWrite.h",
+      "git_blob": "892c9eb659d2648ac65516720ff910b596216755",
+      "url": "https://github.com/CnCNet/YRpp/blob/d9795546950fcc75a94325ffc83b44d16ec34ce2/Blitters/BlitTransXlatAlphaZReadWrite.h"
+    },
+    {
+      "path": "Blitters/RLEBlitTransXlatAlphaZReadWrite.h",
+      "git_blob": "9e22453eeb1bb2f9568d257df94bd08ad1f418af",
+      "url": "https://github.com/CnCNet/YRpp/blob/d9795546950fcc75a94325ffc83b44d16ec34ce2/Blitters/RLEBlitTransXlatAlphaZReadWrite.h"
+    }
+  ]
+}

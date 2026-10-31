@@ -6,6 +6,7 @@
 
 | 主题 | 新笔记 | 关键词 |
 | --- | --- | --- |
+| YRpp原生绘制性能参考：专用blitter、A查表、RLE跨度、VXL姿态缓存和可见/脏区 | [源码核对与路线](2026-10-31-yrpp-native-rendering-performance-reference.md) | YRpp d979554 AlphaLightingRemap palette RLE voxel cache dirty areas native packed |
 | HF29之后逐项评估回合与CPU冗余初始化候选 | [合回条件、对照和下一步](2026-10-31-performance-remerge-after-hotfix29.md) | confirmed-recovery separate-branch CPU memory initialization benchmark no-direct-output |
 | Hotfix29恢复完成帧主体、GPU回读呈现与原始素材 | [恢复方案与验证](2026-10-31-stable-render-recovery-hotfix29.md) | complete-front single-owner no-interop CPU full-surface waterline fence bounded1500 quality-paused |
 | HF28整合自审：迁移不完整、阶段/水线Z/最终呈现边界与测试缺口 | [源码问题与验收范围](2026-10-31-render-integration-self-audit.md) | BuildingBase Display Extras Spotlight CPU GPU half-pixel waterline duplicated source work SEH DirectComposition untested row bands |
