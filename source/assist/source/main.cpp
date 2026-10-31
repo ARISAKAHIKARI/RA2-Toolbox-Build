@@ -80,11 +80,11 @@ static bool renderUpgradeEnabled=false,unifiedOverlayEnabled=false,renderPhysica
 static bool renderProcessing=false,renderXbrzEnabled=false;
 static bool renderParticleEffects=true,renderLaserEffects=true,renderVoxelLighting=true,renderSpriteLighting=true;
 static bool harvesterCounterEnabled=false,powerDeltaEnabled=false,buildTimeTooltipEnabled=true;
-static int effectiveRenderDetail(){return renderProcessing?renderSceneDetail:0;}
-static int effectiveRenderPrecision(){return renderProcessing?renderColorPrecision:0;}
-static int effectiveRenderPalette(){return renderProcessing?renderPaletteRange:0;}
-static int effectiveRenderScale(){return renderProcessing&&renderXbrzEnabled?renderPixelScale:1;}
-static bool effectiveRenderInterpolation(){return renderProcessing&&renderMaterialRefresh;}
+static int effectiveRenderDetail(){return 0;} // recovery: native source geometry
+static int effectiveRenderPrecision(){return 0;}
+static int effectiveRenderPalette(){return 0;}
+static int effectiveRenderScale(){return 1;} // nearest source pixels, no reconstruction
+static bool effectiveRenderInterpolation(){return false;}
 static bool minimapEnabled=false,minimapSecondary=false;static int minimapMode=0,minimapScale=10,minimapPosition=0,minimapX=20,minimapY=60,minimapAlignX=0,minimapAlignY=0;
 static int minimapSecondaryX=10000,minimapSecondaryY=10000,minimapSecondaryWidth=320;
 static WORD socialKeys[9]{}; // Cheer, taunts 1..8; empty by default.

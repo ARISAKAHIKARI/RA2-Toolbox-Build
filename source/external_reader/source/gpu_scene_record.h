@@ -73,7 +73,7 @@ class GpuSceneRecord {
    draw.originY=i.y;draw.depthBottom=i.depthBottom==std::numeric_limits<int>::min()?i.y+i.height-1:i.depthBottom;draw.rasterScale=i.rasterScale;draw.lift=lift;
    draw.shadow=i.shadow;draw.writeDepth=i.writeDepth;draw.flat=i.flat;draw.objectPalette=i.objectPalette;draw.smoothRGB=precision_==colorprecision::Mode::SmoothRGB;draw.skipZ=i.skipZ;
    draw.nativeDepth=i.nativeDepth;if(material.shpFlat&&!i.shadow)draw.nativeDepth.gradient=nativesurface::Gradient::Flat;draw.palette=lighting::palette(state,i.objectPalette);draw.palette.rgb555|=material.rgb555;
-   draw.nativeWalk=nativesurface::walk(draw.nativeDepth,int(std::floor(top/sy)),(i.height+i.rasterScale-1)/i.rasterScale,int(std::ceil(std::min(float(frame_.height),draw.clipBottom-.5f)/sy)),material.nativeZAdjust,material.bridgeSplit);
+   draw.nativeWalk=nativesurface::walk(draw.nativeDepth,int(std::floor(top/sy)),(i.height+i.rasterScale-1)/i.rasterScale,nativesurface::clippedViewHeight(ay,sy,material.clipBottom,int(std::ceil(frame_.height/sy))),material.nativeZAdjust,material.bridgeSplit);
    if(i.nativeShape.size()==size_t(i.width)*i.height)draw.nativeShape={owner,&i.nativeShape};
    if(i.nativeShapeCoverage.size()==size_t(i.width)*i.height)draw.nativeCoverage={owner,&i.nativeShapeCoverage};
    draw.displace=material.displace&&i.nativeDepth.voxel;draw.cloakWords=material.cloakWords;draw.nativePitch=int(std::ceil(frame_.width/sx));draw.nativeScaleX=sx;draw.nativeScaleY=sy;
@@ -153,20 +153,11 @@ public:
   }else surface.depth=*frame_.baseDepth;
   auto paint=[&](Surface&target,const Replay&call,int row){if(call.image)target.blit(*call.image,call.ax,call.ay-row,call.sx,call.sy,call.base,call.light,call.lift,call.drop,call.smooth,call.material);
    else for(int y=std::max(0,call.dotY-row-1);y<std::min(target.height(),call.dotY-row+2);++y)for(int x=std::max(0,call.dotX-1);x<std::min(frame_.width,call.dotX+2);++x)target.color[size_t(y)*frame_.width+x]=call.dot;};
-  // Independent rows, identical painter order. Destination-reading cloak
-  // calls fence the row team and retain their native global scanline order.
-  // Failed GPU meshes are materialized once on the owner, never per row team.
-  auto calls=replay_;for(auto&call:calls)if(call.image&&call.image->gpuRaster){voxel::Image image;if(!gpuvoxel::materialize(*call.image,image))return false;call.image=std::make_shared<const voxel::Image>(std::move(image));}
-  std::atomic<bool>failed{false};auto segment=[&](size_t first,size_t last){if(first==last)return;const auto alpha=surface.alphaPlane();
-   parallelrows::rows(size_t(frame_.height),size_t(frame_.width)*frame_.height,[&](size_t top,size_t bottom){try{if(top==0&&bottom==size_t(frame_.height)){for(size_t n=first;n<last;++n)paint(surface,calls[n],0);return;}
-    static thread_local Surface band;const int rows=int(bottom-top);if(!band.reset(frame_.width,rows)){failed=true;return;}band.precision(precision_);band.outputRowOrigin(int(top));band.nativeView(0,frame_.nativeScaleX,frame_.nativeScaleY,int(std::ceil(frame_.width/frame_.nativeScaleX)),int(std::ceil(frame_.height/frame_.nativeScaleY)));
-    const size_t offset=top*frame_.width,count=size_t(rows)*frame_.width;std::copy_n(surface.color.data()+offset,count,band.color.data());std::copy_n(surface.depth.data()+offset,count,band.depth.data());std::copy_n(surface.nativeZ.data()+offset,count,band.nativeZ.data());
-    if(alpha&&alpha->size()==surface.color.size())band.alpha(std::make_shared<const std::vector<uint8_t>>(alpha->begin()+offset,alpha->begin()+offset+count));
-    for(size_t n=first;n<last;++n)paint(band,calls[n],int(top));if(band.failed()){failed=true;return;}
-    std::copy_n(band.color.data(),count,surface.color.data()+offset);std::copy_n(band.depth.data(),count,surface.depth.data()+offset);std::copy_n(band.nativeZ.data(),count,surface.nativeZ.data()+offset);
-   }catch(const std::bad_alloc&){failed=true;}
-   });};
-  size_t first=0;for(size_t n=0;n<calls.size();++n)if(calls[n].material.displace){segment(first,n);if(failed)return false;paint(surface,calls[n],0);first=n+1;}segment(first,calls.size());return !failed&&!surface.failed();
+  // Restore the original whole-surface painter. Destination-reading cloak,
+  // native Z/A and attachments all consume the same complete target and order.
+  // Parallel source preparation can be reintroduced after independent parity.
+  for(const auto&call:replay_)paint(surface,call,0);
+  return !surface.failed();
  }
 };
 }}

@@ -30,6 +30,11 @@ inline Row rows(Gradient gradient,int screenTop,int height,int adjust,bool shape
  out.seed=raw/3*3-height/3;out.threshold=3;out.step=1;out.accumulator=3-height%3;
  if(out.accumulator==3){out.accumulator=0;++out.seed;}return out;
 }
+// Clip in native coordinates before rounding. The half-pixel belongs to
+// this coordinate space, not to the scaled output framebuffer.
+inline int clippedViewHeight(double anchorY,double scaleY,double clipBottom,int viewHeight,int originY=0){
+ return clipBottom<1e6?std::min(viewHeight,originY+int(std::ceil(anchorY/scaleY+clipBottom-.5))):viewHeight;
+}
 inline bool admits(int candidate,uint16_t stored,bool equal=false){return equal?candidate<=int(stored):candidate<int(stored);}
 struct Walk {
  Row upper,lower;int first=0,split=0;bool divided=false;

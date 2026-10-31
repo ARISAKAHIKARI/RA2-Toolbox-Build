@@ -97,7 +97,7 @@ public:
   const bool nativeDepth=i.nativeDepth.enabled;const bool rgb555=light.rgb555||material.rgb555;auto nativePalette=lighting::palette(light,i.objectPalette);
   const int nativeHeight=(i.height+i.rasterScale-1)/i.rasterScale,nativeTop=int(std::floor((top+outputOriginY_)/sy))+nativeOriginY_;
   auto nativeDescriptor=i.nativeDepth;if(material.shpFlat&&!i.shadow)nativeDescriptor.gradient=nativesurface::Gradient::Flat;
-  const int clipHeight=material.clipBottom<1e6f?std::min(nativeViewHeight_,nativeOriginY_+int(std::ceil((ay+outputOriginY_)/sy+material.clipBottom-.5f))):nativeViewHeight_;
+  const int clipHeight=nativesurface::clippedViewHeight(ay+outputOriginY_,sy,material.clipBottom,nativeViewHeight_,nativeOriginY_);
   const auto walk=nativesurface::walk(nativeDescriptor,nativeTop,nativeHeight,clipHeight,material.nativeZAdjust,material.bridgeSplit);
   auto candidate=[&](int row,size_t from){return walk.at(row/i.rasterScale,i.nativeShape.size()==i.pixels.size()?i.nativeShape[from]:0);};
   auto covered=[&](size_t from){return i.nativeShapeCoverage.empty()||(i.nativeShapeCoverage.size()==i.pixels.size()&&i.nativeShapeCoverage[from]);};

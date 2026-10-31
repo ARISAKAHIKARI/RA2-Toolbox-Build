@@ -61,7 +61,7 @@ public:
  }
  bool prepare(int w,int h){
 #ifdef _WIN32
-  pending_=nullptr;if(!gpupresent::available()||!initialize())return false;
+  pending_=nullptr;if(!gpupresent::DirectPresentationEnabled||!gpupresent::available()||!initialize())return false;
   for(auto i=slots_.begin();i!=slots_.end();){auto&s=**i;if(s.source.use_count()==1&&(s.source->width!=w||s.source->height!=h)){destroy(s);i=slots_.erase(i);}else ++i;}
   for(auto&s:slots_)if(s->source.use_count()==1&&s->source->width==w&&s->source->height==h&&s->source->writable()){pending_=s.get();return true;}
   // Three watch cameras can each have a displayed, completed and rendering

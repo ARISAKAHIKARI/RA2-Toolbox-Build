@@ -1,5 +1,6 @@
 #pragma once
 #include "gpu_memory_policy.h"
+#include "../../shared/source/gpu_surface.h"
 // Optional Vulkan 1.0 compute resolve. No game handles, hooks or memory writes.
 // Input tiles are immutable premultiplied ARGB8; only changed tiles are uploaded.
 #ifndef VK_NO_PROTOTYPES
@@ -214,7 +215,7 @@ protected:
   VkDeviceCreateInfo d{VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO};d.queueCreateInfoCount=1;d.pQueueCreateInfos=&q;d.pEnabledFeatures=&features_;
 #ifdef _WIN32
   const char* sharingExtensions[]={VK_KHR_EXTERNAL_MEMORY_WIN32_EXTENSION_NAME,VK_KHR_WIN32_KEYED_MUTEX_EXTENSION_NAME};
-  if(app.apiVersion>=VK_API_VERSION_1_1&&properties_.apiVersion>=VK_API_VERSION_1_1){
+  if(gpupresent::DirectPresentationEnabled&&app.apiVersion>=VK_API_VERSION_1_1&&properties_.apiVersion>=VK_API_VERSION_1_1){
    auto enumerate=reinterpret_cast<PFN_vkEnumerateDeviceExtensionProperties>(vkGetInstanceProcAddr_(instance_,"vkEnumerateDeviceExtensionProperties"));
    auto properties2=reinterpret_cast<PFN_vkGetPhysicalDeviceProperties2>(vkGetInstanceProcAddr_(instance_,"vkGetPhysicalDeviceProperties2"));uint32_t n=0;
    if(enumerate&&properties2&&enumerate(physical_,nullptr,&n,nullptr)==VK_SUCCESS&&n<=4096){std::vector<VkExtensionProperties> extensions(n);

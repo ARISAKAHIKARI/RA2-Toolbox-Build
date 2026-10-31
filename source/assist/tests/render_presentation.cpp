@@ -19,9 +19,9 @@ int main(){
  using namespace renderpresentation;
  Request request;Frame frame{request,std::make_shared<const std::vector<uint32_t>>(12,0xff123456),1000,1450};
  // A 450ms render is usable immediately after completion, then pending and
- // transiently failed work leave its pixels unchanged only inside the short lease.
+ // transiently failed work retain the complete pixels within the restored bound.
  assert(usable(frame,request,1450));assert(usable(frame,request,1499));
- assert(!usable(frame,request,1500));
+ assert(usable(frame,request,1500));assert(!usable(frame,request,2950));
  frame.completedTick=3400;assert(!usable(frame,request,3500)); // old sample cannot be laundered by a late completion
  frame.sampledTick=0xfffffff0u;frame.completedTick=0xfffffff8u;assert(usable(frame,request,50));
  frame={request,std::make_shared<const std::vector<uint32_t>>(12,0xff123456),1000,1450};

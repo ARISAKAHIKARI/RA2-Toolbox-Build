@@ -6,6 +6,7 @@
 
 | 主题 | 新笔记 | 关键词 |
 | --- | --- | --- |
+| Hotfix29恢复完成帧主体、GPU回读呈现与原始素材 | [恢复方案与验证](2026-10-31-stable-render-recovery-hotfix29.md) | complete-front single-owner no-interop CPU full-surface waterline fence bounded1500 quality-paused |
 | HF28整合自审：迁移不完整、阶段/水线Z/最终呈现边界与测试缺口 | [源码问题与验收范围](2026-10-31-render-integration-self-audit.md) | BuildingBase Display Extras Spotlight CPU GPU half-pixel waterline duplicated source work SEH DirectComposition untested row bands |
 | Hotfix28用户CPU乱序/约250ms与GPU崩溃反馈：显示清单、并行合成、故障隔离 | [修复与证据边界](2026-10-31-render-recovery-hotfix28.md) | Display8A0360 stride24 native order row bands Z A cloak barrier palette lookup CPU reuse GPU SEH fault log no live proof |
 | Hotfix27后渲染遗漏与建造五因素复核 | [当前遗漏/计时判定](2026-10-31-render-timing-audit-after-hotfix27.md) · [证据](evidence/render-timing-audit-after-hotfix27.json) | BuildSpeed power54 rate255 ready+1 unproven health brackets bomb selfheal talk control-link airstrike Fly Hover Jumpjet Rocket phase Chrono radial |

@@ -13,6 +13,7 @@ template<class Read,class Markers>bool capture(Read read,Markers&markers,int fra
  for(unsigned layer=0;layer<lists.size();++layer){std::vector<uint32_t>again;if(!g.vecChecked(0x8A0360+layer*24,again,65536)||again!=lists[layer])return false;}
  if(g.template get<int>(0xA8ED84,-1)!=frame)return false;
  for(auto&m:markers){auto found=rank.find(m.object);if(found!=rank.end()&&g.template get<uint32_t>(m.object+0x10)!=m.id)return false;}
+ if(g.template get<int>(0xA8ED84,-1)!=frame)return false;
  for(auto&m:markers){auto found=rank.find(m.object);if(found!=rank.end()){m.layer=found->second.first;m.displayOrder=found->second.second;}else m.displayOrder=-1;}return true;
 }
 }}

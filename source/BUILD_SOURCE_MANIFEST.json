@@ -6,7 +6,7 @@
   "resources": "Update package reuses existing assets/profiles/preprocessing runtime/engine",
   "resources_legacy_reuse": true,
   "build_protocol": 82,
-  "validation": "Production cross compilation; actual Windows x86/x64 wire declarations checked by verify_crossbit_abi.py; PE architecture, imports, exports, versions and manifests checked by verify_windows_outputs.py. No game/Windows/GPU execution or CPU fixture suites in this delivery.",
+  "validation": "Production x64 host/x86 runtime cross-compilation, 680 real Windows cross-bit ABI checks, PE/import/manifest checks, targeted portable CPU continuity and ordered replay execution. No Windows/game/GPU execution. Historical camera-native-rows digest fails on both HF28 baseline and recovery with identical current digests.",
   "build_requirement": "Zig 0.13.0; x86 paired build or x64 host with x86 runtime and broker.",
   "settings": {
     "Orders.MegaMissionBackend": "0=constructor; 1=high-level MP; SP uses constructor/DoList centrally",
@@ -32,7 +32,7 @@
     "TacticalClass::SetTacticalPosition (0x6D6000), native camera update",
     "GScreenClass::Render (0x4F4480), native composition and presentation"
   ],
-  "release_status": "1.0.39-pre.7 Hotfix28 experimental render recovery; native Display order, ordered CPU row composition, GPU fault isolation. Static validation only.",
+  "release_status": "1.0.39-pre.7 Hotfix29 rendering recovery candidate; single render owner, completed pixel handoff, no shared-image direct presentation; not game/GPU validated",
   "frontend": "Independent settings input queues; latest-layout snapshots; dependency gating; explicit key gestures; page-only wheel scrolling",
   "technology_experiment": "Native AddCameo + two local UI CanBuild limit-only callsite wrappers; native factories/events unchanged; no live purchase/netplay certification",
   "calculation_locations": "Fifteen tactical decision families selectable; native queries/events always GameRuntime; host planner and six value-only compute lanes run on persistent workers, with UI publication and original source deadlines.",
@@ -171,5 +171,15 @@
     "gpu": "x64 SEH leaf around scene rendering and failure cleanup; driver quarantine and CPU fallback; device range checks; local fault-stage log.",
     "telemetry": "Separate crop/mask, commands, composition and effects timings.",
     "limits": "User reported CPU disorder/about250ms and GPU crash; no live reproduction, no measured speedup or crash-root-cause claim. New status/locomotor work remains outside this recovery package."
+  },
+  "Hotfix29": {
+    "priority": "Restore coherent original-material rendering before quality enhancements",
+    "render_owner": "One main render worker prepares and resolves a completed camera-tagged image; independent state and terrain readers retained",
+    "output": "Vulkan compute with completed final-pixel readback and the existing layered-window compositor; shared Vulkan/D3D/DirectComposition output suspended across views",
+    "cpu": "Original whole-surface ordered replay, no HF28 output-row bands",
+    "quality": "Original source geometry, DAC/native light, nearest sampling; seven extra-quality controls removed; persisted extra-quality requests not applied",
+    "continuity": "2500ms sample/1500ms completion bounds; failed feedback cannot independently withdraw a valid world; held world keeps its own camera without native holes",
+    "remaining": "HF28 audit BuildingBase/Extras and full native phase equivalence remain incomplete; no real Windows/game/GPU execution",
+    "validation": "Targeted portable continuity/replay tests and x86/x64 production compile/static checks; historical row oracle mismatch also exists on HF28 baseline"
   }
 }

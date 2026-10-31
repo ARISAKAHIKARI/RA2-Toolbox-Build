@@ -129,14 +129,15 @@ static asyncwork::Recurring<Request,Observation> samplingWorker([](const Request
  }
  last=out;return out;
 });
+static external::worldscene::Pipeline worldPipeline;
 static asyncwork::Recurring<Request,Frame> worker([](const Request&r)->std::shared_ptr<const Frame>{
  const double started=presentationNow();
  external::xbrzadapter::gpuPresentation(r.gpu);
  // Failed attempts do not replace a completed image. The UI independently
  // enforces sample/completion age limits and exact world/view/config identity.
  auto unavailable=[]()->std::shared_ptr<const Frame>{return {};};
- if(process!=r.pid||epoch!=r.match){reader.close();renderer.reset();process=r.pid;epoch=r.match;hasFrameCompleteTime=false;}
- if(workerGeneration!=r.generation){workerGeneration=r.generation;hasFrameCompleteTime=false;preparationMotion.reset();}
+ if(process!=r.pid||epoch!=r.match){reader.close();renderer.reset();worldPipeline.reset();process=r.pid;epoch=r.match;hasFrameCompleteTime=false;}
+ if(workerGeneration!=r.generation){workerGeneration=r.generation;hasFrameCompleteTime=false;preparationMotion.reset();worldPipeline.reset();}
  if(!reader.open(r.pid)){progress=-1;return unavailable();}
  reader.begin(); // Explicit fresh page epoch for every presentation request.
  assets.identity(r.pid,r.match);
@@ -182,10 +183,10 @@ static asyncwork::Recurring<Request,Frame> worker([](const Request&r)->std::shar
  // hidden actors are never resurrected from a prior interpolation endpoint.
 
  // Vera-style retained world preparation: a camera never rebuilds or clips
- // the world cache. The independent presentation lane selects its viewport.
+ // the world cache. The same render owner resolves the final viewport.
  const auto renderView=before;
  auto crop=external::mainview::crop(renderView,data.terrain->geo.offsetX,data.terrain->geo.offsetY);
- renderer.guideEnabled(false,r.generation);renderer.directPresentation(true);renderer.prepareWorld(true);
+ renderer.guideEnabled(false,r.generation);renderer.directPresentation(false);renderer.prepareWorld(true);
  auto scene=renderer.render(data,r.width,r.height,external::SharedReadView{&reader},assets,{crop.x,crop.y,crop.width,crop.height,true},unsigned(r.pixelScaleMode),r.detail!=0,true,r.colorPrecision!=0,true,r.decodeBudgetMs);
  if(!scene)return unavailable();
  const double sceneDoneMs=presentationNow();
@@ -200,64 +201,42 @@ static asyncwork::Recurring<Request,Frame> worker([](const Request&r)->std::shar
  out->renderReadCalls=reader.reads;out->renderPageHits=reader.pageHits;out->paletteSamples=assets.paletteSamples();out->paletteHits=assets.paletteSampleHits();
  if(gpuBackend){const auto&d=gpuBackend->diagnostics();out->gpuDevice=d.device;out->gpuReason=d.reason;out->gpuSoftware=d.softwareDevice;out->gpuReadbackCached=d.readbackCached;
   if(out->gpuUsed&&!out->sceneReused){out->gpuPrepareMs=d.prepareMilliseconds;out->gpuWaitMs=d.waitMilliseconds;out->gpuCopyMs=d.readbackMilliseconds;}}
- const double zscale=external::projectionZScale(fresh);
- out->objects=external::nativefeedback::objectGeometry(renderer,data,renderView,r.width,r.height,zscale);
  out->yellow=assets.conditionYellow();out->red=assets.conditionRed();
  out->effects.complete=!r.profile.lasers;
  out->effects.independentLasers=r.profile.lasers&&data.effects&&data.effects->world&&data.effects->world->lasersValid;
  external::mainview::View after;
  if(!external::mainview::sample(fresh,after)||!renderpresentation::sameProjection(before,after)||after.frame<before.frame||
    !external::radar::sameWorld(data,external::radar::publicationContext(fresh)))return unavailable();
- out->image=std::move(scene);out->sampledTick=sampledTick;out->completedTick=GetTickCount();const double completedMs=presentationNow();out->completedAtMs=completedMs;out->renderMs=completedMs-started;out->finishMs=completedMs-sceneDoneMs;
- // Written exactly once per successful world-frame completion. Reusing or
- // touching the same frame at a faster UI cadence cannot inflate this rate.
- out->hasCompletionGap=hasFrameCompleteTime;out->completionGapMs=hasFrameCompleteTime?completedMs-lastFrameCompleteMs:0;
- lastFrameCompleteMs=completedMs;hasFrameCompleteTime=true;progress=2;return out;
-});
-static external::ReadSession presentationReader;
-static external::worldscene::Pipeline worldPipeline;
-static asyncwork::Recurring<Request,Frame> presentationWorker([](const Request&r)->std::shared_ptr<const Frame>{
- static uint64_t seenGeneration=0;static uint32_t seenPid=0,seenMatch=0;static double lastCompleted=0;
- if(seenGeneration!=r.generation||seenPid!=r.pid||seenMatch!=r.match){
-  presentationReader.close();worldPipeline.reset();seenGeneration=r.generation;seenPid=r.pid;seenMatch=r.match;lastCompleted=0;
- }
- auto prepared=worker.get();if(!prepared||!prepared->world||!renderpresentation::sameWorldRequest(prepared->request,r)||
-    !renderpresentation::recent(GetTickCount(),prepared->sampledTick,renderpresentation::SampleMaxAge))return {};
- if(!presentationReader.open(r.pid))return {};presentationReader.begin();
- auto fresh=[](uint32_t p,void*out,size_t n){return presentationReader.readFresh(p,out,n);};
- external::mainview::View camera;
- if(!external::mainview::sample(fresh,camera)||!renderpresentation::sameProjection(camera,r.view)||
-    !external::radar::sameWorld(prepared->world->state,external::radar::publicationContext(fresh)))return {};
- const double started=presentationNow();external::xbrzadapter::gpuPresentation(r.gpu);
- auto observed=samplingWorker.get();
- const external::radar::Frame*moving=observed&&observed->request.generation==r.generation&&observed->request.pid==r.pid&&observed->request.match==r.match&&observed->request.reveal==r.reveal&&presentationNow()-observed->observedMs<=100.?observed->current.get():nullptr;
- auto image=worldPipeline.draw(prepared->world,camera,r.width,r.height,external::SharedReadView{&presentationReader},moving,GetTickCount());
- if(!image)return {};
- external::mainview::View after;
- if(!external::mainview::sample(fresh,after)||!renderpresentation::sameProjection(camera,after)||after.frame<camera.frame||
-    !external::radar::sameWorld(prepared->world->state,external::radar::publicationContext(fresh)))return {};
- auto out=std::make_shared<Frame>(*prepared);out->image=std::move(image);out->request=r;out->request.view=camera;
- out->request.context.cameraX=camera.cameraX;out->request.context.cameraY=camera.cameraY;out->paddingX=out->paddingY=0;
- out->objects=external::nativefeedback::objectGeometry(*out->world,worldPipeline.presentedState(),camera,r.width,r.height,out->world->zscale);
- out->effects.complete=!r.profile.lasers||out->image->boltsRendered;
- out->completedTick=GetTickCount();out->completedAtMs=presentationNow();out->resolveMs=out->completedAtMs-started;
- out->renderMs=out->completedAtMs-out->sampledAtMs;out->sampleToDrawMs=std::max(0.,started-out->sampledAtMs);out->finishMs=out->resolveMs;
- out->hasCompletionGap=lastCompleted!=0;out->completionGapMs=lastCompleted?out->completedAtMs-lastCompleted:0;lastCompleted=out->completedAtMs;
- out->gpuAttempted=external::xbrzadapter::gpuAttempted();out->gpuUsed=external::xbrzadapter::gpuUsed();out->sceneReused=worldPipeline.reused();out->compositionMs=worldPipeline.timings();
+ // One render owner prepares AND resolves the whole world. Restore the
+ // original completed-frame handoff instead of passing GPU/material owners
+ // between separate preparation and presentation workers.
+ const double compositionStarted=presentationNow();
+ auto image=worldPipeline.draw(out->world,after,r.width,r.height,external::SharedReadView{&reader},nullptr,GetTickCount());
+ if(!image)return unavailable();
+ external::mainview::View committed;
+ if(!external::mainview::sample(fresh,committed)||!renderpresentation::sameProjection(after,committed)||committed.frame<after.frame||
+    !external::radar::sameWorld(data,external::radar::publicationContext(fresh)))return unavailable();
+ out->request.view=after;out->request.context.cameraX=after.cameraX;out->request.context.cameraY=after.cameraY;
+ out->objects=external::nativefeedback::objectGeometry(*out->world,worldPipeline.presentedState(),after,r.width,r.height,out->world->zscale);
+ out->effects.complete=!r.profile.lasers||image->boltsRendered;
+ out->gpuAttempted=external::xbrzadapter::gpuAttempted();out->gpuUsed=external::xbrzadapter::gpuUsed();
+ out->sceneReused=worldPipeline.reused();out->compositionMs=worldPipeline.timings();
  if(const auto&backend=external::xbrzadapter::gpuState().resolve){const auto&d=backend->diagnostics();
   out->gpuDevice=d.device;out->gpuReason=d.reason;out->gpuSoftware=d.softwareDevice;out->gpuReadbackCached=d.readbackCached;
   out->gpuPrepareMs=d.prepareMilliseconds;out->gpuWaitMs=d.waitMilliseconds;out->gpuCopyMs=d.readbackMilliseconds;
  }
- return out;
+ out->image=std::move(image);out->sampledTick=sampledTick;out->completedTick=GetTickCount();const double completedMs=presentationNow();out->completedAtMs=completedMs;out->renderMs=completedMs-started;out->finishMs=completedMs-compositionStarted;
+ out->hasCompletionGap=hasFrameCompleteTime;out->completionGapMs=hasFrameCompleteTime?completedMs-lastFrameCompleteMs:0;
+ lastFrameCompleteMs=completedMs;hasFrameCompleteTime=true;progress=2;return out;
 },notifyReady);
 #include "render_feedback_host.h"
-static void suspendScene(){groupLease.reset();if(active){active=false;++generation;worker.invalidate();presentationWorker.invalidate();samplingWorker.invalidate();terrainWorker.invalidate();}feedback::hide();imageToken=0;overlaycompositor::host().hide(overlaycompositor::RenderUpgrade);}
+static void suspendScene(){groupLease.reset();if(active){active=false;++generation;worker.invalidate();samplingWorker.invalidate();terrainWorker.invalidate();}feedback::hide();imageToken=0;overlaycompositor::host().hide(overlaycompositor::RenderUpgrade);}
 static void suspend(){viewLease.reset();suspendScene();sidebarhud::stop();}
 static void stop(){suspend();overlaycompositor::host().suspend();}
-static void shutdown(){stop();presentationWorker.shutdown();worker.shutdown();samplingWorker.shutdown();sampleSignal.close();terrainWorker.shutdown();feedback::shutdown();sidebarhud::shutdown();overlaycompositor::host().shutdown();}
+static void shutdown(){stop();worker.shutdown();samplingWorker.shutdown();sampleSignal.close();terrainWorker.shutdown();feedback::shutdown();sidebarhud::shutdown();overlaycompositor::host().shutdown();}
 static void update(POINT origin,const RECT&client,const external::display::State&displayState){
  const auto selected=external::presentation::settings().get();static uint64_t profileRevision=~uint64_t(0);
- if(profileRevision!=selected.revision){profileRevision=selected.revision;++generation;worker.invalidate();presentationWorker.invalidate();samplingWorker.invalidate();terrainWorker.invalidate();groupLease.reset();}
+ if(profileRevision!=selected.revision){profileRevision=selected.revision;++generation;worker.invalidate();samplingWorker.invalidate();terrainWorker.invalidate();groupLease.reset();}
 
  // The whole tool remains system-DPI aware. A physical-pixel option must
  // explicitly validate monitor geometry instead of assuming a 4K monitor
@@ -278,7 +257,7 @@ static void update(POINT origin,const RECT&client,const external::display::State
   if(viewLease.retain(uintptr_t(game),pid,match,client.right,client.bottom,viewNow)){
    const auto&prior=viewLease.view();
    overlaycompositor::host().configure(uintptr_t(game),pid,match,client.right,client.bottom,
-    prior.cameraX,prior.cameraY,true,false,informationFPS());
+    prior.cameraX,prior.cameraY,true,false,informationFPS(),renderUpgradeEnabled);
    if(renderUpgradeEnabled){
     auto held=groupLease.frame();
     if(held){
@@ -288,9 +267,9 @@ static void update(POINT origin,const RECT&client,const external::display::State
      current.gpu=renderVulkanEnabled;
      // Scale-mode changes require a fresh verified request, even during a read gap.
      if(verifiedScaleSetting!=effectiveRenderScale()||verifiedPhysicalSetting!=renderPhysicalOutput)groupLease.reset();
-     if(groupLease.retain(current,viewNow)){
-      for(auto id:{overlaycompositor::RenderUpgrade,feedback::SelectionLayer,feedback::CursorLayer,feedback::MessageLayer,feedback::TimerLayer,feedback::StatusLayer,feedback::RallyLayer,feedback::PlanningHighlightLayer})
-       overlaycompositor::host().touch(id,uintptr_t(game),pid);
+     if(groupLease.retainWorld(current,viewNow)){
+      overlaycompositor::host().replaceGroupAt(groupLease.context(),{overlaycompositor::RenderUpgrade,feedback::SelectionLayer,feedback::CursorLayer,feedback::MessageLayer,feedback::TimerLayer,feedback::StatusLayer,feedback::RallyLayer,feedback::PlanningHighlightLayer},
+       renderpresentation::worldOnly(groupLease.layers(),overlaycompositor::RenderUpgrade));
      }else{groupLease.reset();feedback::hide();imageToken=0;}
     }
    }
@@ -340,7 +319,7 @@ static void update(POINT origin,const RECT&client,const external::display::State
   effectiveRenderPalette(),effectiveScale,view,context};
  request.displayRate=informationFPS();request.profile=selected.profile;request.gpu=selected.profile.gpu;request.decodeBudgetMs=std::clamp(500./informationFPS(),1.,6.);
  const Request liveRequest=request;
- auto result=presentationWorker.get();
+ auto result=worker.get();
  // Publish the complete frame under the camera used to draw ALL its passes.
  // Camera lag is bounded by completion age. Never move, stretch or pad a
  // completed image to masquerade as the next camera's newly exposed pixels.
@@ -350,24 +329,28 @@ static void update(POINT origin,const RECT&client,const external::display::State
  const bool feedbackReady=fresh&&feedback::update(request,result,left,top,layers);
  auto publishContext=request.context;
  std::shared_ptr<const Frame> presentedFrame=result;bool displaying=false;
- if(fresh&&feedbackReady){
+ if(fresh&&!feedback::unsafeWorld){
+  if(!feedbackReady){layers.clear();feedback::nativeCutouts.reset();}
   auto pixels=std::shared_ptr<const std::vector<uint32_t>>(result->image,&result->image->pixels);
   layers.push_back({overlaycompositor::RenderUpgrade,5,request.context,
    {left,top,result->image->width,result->image->height},true,255,std::move(pixels),
    {left,top,request.width,request.height},feedback::nativeCutouts,result->image->gpu});imageToken=context.token;
   for(auto&layer:layers)layer.clip={left,top,request.width,request.height};
   groupLease.publish(request,result,layers,GetTickCount());displaying=true;
- }else if(!feedback::unsafeView&&external::mainview::sameViewport(request.view,liveRequest.view)&&groupLease.retain(request,GetTickCount())){
-  // Preserve the last COMPLETE atomic scene/input group across a short torn
-  // cursor/selection read. Failure never refreshes this lease's deadline.
-  layers=groupLease.layers();presentedFrame=groupLease.frame();displaying=true;
+ }else if(!feedback::unsafeWorld&&groupLease.retainWorld(liveRequest,GetTickCount())){
+  // Preserve only the completed world across a pending/failed draw.
+  // Failure never refreshes this lease's deadline or any native hole.
+  layers=groupLease.layers();presentedFrame=groupLease.frame();publishContext=groupLease.context();
+  // A complete image keeps its own camera. Never stretch or translate it,
+  // and never expose native pixels or stale interaction layers from that view.
+  layers=renderpresentation::worldOnly(std::move(layers),overlaycompositor::RenderUpgrade);displaying=true;
  }else{layers.clear();groupLease.reset();imageToken=0;if(!fresh)feedback::hide();}
  overlaycompositor::host().replaceGroupAt(publishContext,{overlaycompositor::RenderUpgrade,feedback::SelectionLayer,feedback::CursorLayer,feedback::MessageLayer,feedback::TimerLayer,feedback::StatusLayer,feedback::RallyLayer,feedback::PlanningHighlightLayer},std::move(layers));
  if(displaying&&presentedFrame&&presentedFrame->completedAtMs!=handedOffFrameMs){handedOffFrameMs=presentedFrame->completedAtMs;completionToHandoffMs=std::max(0.,presentationNow()-handedOffFrameMs);}
  terrainWorker.submit(liveRequest,std::min(60,informationFPS()));
  samplingWorker.submit(liveRequest,renderpresentation::ObservationRate);
  worker.submit(liveRequest,informationFPS());
- presentationWorker.submit(liveRequest,informationFPS());
+
  const uint32_t now=GetTickCount();
  // Scene publication, current cursor feedback and worker submission run at
  // their own cadence. A hidden settings-page label needs only 4 updates/sec.
@@ -407,7 +390,7 @@ static void update(POINT origin,const RECT&client,const external::display::State
 
   status+=request.colorPrecision?L" · 连续 RGB 光照":L" · 兼容光照色阶";
   if(request.detail)status+=L" · 连续地形＋目标像素对象＋VXL 自适应几何/256 向";
-  if(!renderProcessing)status+=L" · 基础快速绘制（额外画质处理关闭）";
+  status+=L" · 原始素材绘制（画质增强暂停）";
   status+=L" · 独立整帧绘制目标 "+std::to_wstring(informationFPS())+L" Hz";
   status+=request.profile.motion?L" · 最新观测＋有界移动补帧":L" · 最新内存状态";
   if(request.gpu)status+=presentedFrame->gpuUsed?(presentedFrame->image&&presentedFrame->image->gpu?L" · GPU 场景直出":L" · Vulkan GPU 场景"):L" · Vulkan 未启用或已回退 CPU";

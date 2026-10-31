@@ -1,0 +1,60 @@
+{
+  "hotfix": 29,
+  "baseline_local": "88bb838ad2a6f68ceba99cd32be1a5392e405163",
+  "baseline_remote": "aa558bbbc8498cde6bdb8b6211b79f7a4e58c7b7",
+  "policy": {
+    "single_main_render_owner": true,
+    "direct_shared_gpu_output": false,
+    "gpu_compute_retained": true,
+    "cpu_whole_surface_replay": true,
+    "quality_controls_removed": true
+  },
+  "executed": {
+    "portable_cpu": true,
+    "production_cross_compile": true,
+    "abi_680": true,
+    "pe_manifest_import": true,
+    "windows_game": false,
+    "gpu_driver": false,
+    "multiplayer": false,
+    "fps_measured": false
+  },
+  "portable_checks": {
+    "render_recovery": "PASS: 500 continuity polls, full 640x480 ARGB/u16Z/A oracle, four waterline scales, Display closing fence",
+    "render_presentation": "PASS: 30 async success/failure publications and request invalidation",
+    "scene_frame_reuse": "PASS: 1000 repeated plans and 18 changed-input invalidations",
+    "gpu_scene_record": "PASS: 36 CPU replay cases; no device created"
+  },
+  "known_test_failure": {
+    "test": "camera_native_rows.cpp",
+    "historical_expected": 12758203375126593659,
+    "hf28_current_digest": 139458224140098203,
+    "recovery_current_digest": 139458224140098203,
+    "cases_each": 2304,
+    "historical_assertion_retained": true,
+    "meaning": "Existing historical oracle mismatch; unchanged baseline/recovery output on this case set; not native-game acceptance"
+  },
+  "remaining": [
+    "No Windows/game/GPU acceptance",
+    "HF28 audit BuildingBase/Extras/native-stage completeness remains open",
+    "No proof of the unique GPU hang trigger or FPS gain"
+  ],
+  "sources": {
+    "source/BUILD_SOURCE_MANIFEST.json": "3ee2c1bb1451abfa57e92bdd5b8b381ca271a3ca89066fafbff947c0190f3c15",
+    "source/assist/source/main.cpp": "3f26d8c5463544e5b2e71a5b7f551965d1119c012bfba0220ae6091a5fdf2084",
+    "source/assist/source/render_presentation.h": "d27320f8a6d65a4fa5044432a20b9688e1293a9236acdbeb01e83283e3c42f43",
+    "source/assist/source/render_upgrade_host.h": "bbebe267af4a7c7208e36fb1aa794ef9d290e9458785110f4696c9d1f60cd64a",
+    "source/assist/tests/render_presentation.cpp": "a581ce1f6f179307d5fa1ba95d11ca8251a154b335bdfa7ecc380677e0e0ad9d",
+    "source/external_reader/source/camera_raster.h": "3c9730378ba8421f183ee34ae0de8ec0b4b603a4efa51a8d9c0313b4c13b749a",
+    "source/external_reader/source/gpu_scene_record.h": "de3f4139155f0081943559e528ebb40b295fb25ab34091a36b46b2a6c170165b",
+    "source/external_reader/source/native_display_order.h": "805c020a6114a14e03ea5da43dfc00b89558bab469128e444471a84b399503f7",
+    "source/external_reader/source/native_surface.h": "965b5e56808244784449184f30999d78b009d347a916e200aa65b742062a3e74",
+    "source/external_reader/source/vulkan_compute.h": "f283be3a8fca98be19225f5227843995fbf951362ed4af45cdd31df576054467",
+    "source/external_reader/source/vulkan_present.h": "565051ee585f508649c716692d46e8034cebb3dd6547f45b6e77559cf942a091",
+    "source/research/INDEX.md": "0b97cc761aacb4ee3cb6e8147254226dc829faede4af114ded1c733f60d17f10",
+    "source/shared/source/gpu_surface.h": "211f85dd9bb2d5f3c08bcbecd5ff6321410c0523ea05c7c65a3288ae9843877c",
+    "source/suite/source/video_settings_ui.h": "61f4c45019f2cb763c7250f79e32a450367ff21632ba4221d1f34bc3646727e0",
+    "source/assist/tests/render_recovery.cpp": "9c437ebb1c76764d0757e57c12fb3228c211a2e65c70b484e695023ed1fd4f63",
+    "source/research/2026-10-31-stable-render-recovery-hotfix29.md": "95828acdff2db2f228d30a1f30ea6d94531dc20a69afcc547c31e938db7126f0"
+  }
+}

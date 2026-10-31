@@ -7,7 +7,10 @@
 // not a new image. Keep the last completed image for a bounded interval, while
 // every successful job still recomposes CURRENT lighting and palette data.
 namespace renderpresentation {
-constexpr uint32_t SampleMaxAge=500,CompletionMaxAge=100,ViewReadGrace=120;
+// Restore the pre-migration completed-frame window. A 250 ms render must not
+// withdraw an otherwise valid front image after 100 ms. Neither retries nor UI
+// polls renew these timestamps; menu/focus/world/config invalidation is immediate.
+constexpr uint32_t SampleMaxAge=2500,CompletionMaxAge=1500,ViewReadGrace=120;
 constexpr int ObservationRate=1000;
 inline bool sameProjection(external::mainview::View a,const external::mainview::View&b){
  a.cameraX=b.cameraX;a.cameraY=b.cameraY;return external::mainview::sameViewport(a,b);
@@ -53,6 +56,10 @@ template<class Frame,class Request>bool completeUsable(const Frame&frame,const R
   recent(now,frame.sampledTick,SampleMaxAge)&&recent(now,frame.completedTick,CompletionMaxAge)&&
   frame.image->width==request.width&&frame.image->height==request.height;
 }
+inline std::vector<overlaycomposition::Surface> worldOnly(std::vector<overlaycomposition::Surface>layers,uint64_t id){
+ layers.erase(std::remove_if(layers.begin(),layers.end(),[&](const auto&layer){return layer.id!=id;}),layers.end());
+ for(auto&layer:layers)layer.cutouts.reset();return layers;
+}
 template<class Request,class Frame>class GroupLease {
  Request request_{};std::shared_ptr<const Frame> frame_;std::vector<overlaycomposition::Surface> layers_;uint32_t tick_=0;
 public:
@@ -62,6 +69,12 @@ public:
  }
  bool retain(const Request&request,uint32_t now)const{
   return frame_&&compatible(request_,request)&&usable(*frame_,request,now)&&recent(now,tick_,ViewReadGrace);
+ }
+ // Hold a complete camera-tagged world while a newer camera is being drawn.
+ // The caller retains this context and removes all native cutouts/feedback.
+ bool retainWorld(const Request&request,uint32_t now)const{
+  return frame_&&sameWorldRequest(request_,request)&&
+   recent(now,frame_->sampledTick,SampleMaxAge)&&recent(now,frame_->completedTick,CompletionMaxAge);
  }
  const overlaycomposition::Context&context()const{return request_.context;}
  const std::vector<overlaycomposition::Surface>&layers()const{return layers_;}
