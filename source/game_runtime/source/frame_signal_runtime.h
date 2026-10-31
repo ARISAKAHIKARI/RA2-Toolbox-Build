@@ -1,6 +1,7 @@
 #pragma once
 #include "../../shared/source/frame_signal_protocol.h"
 #include "../../shared/source/game_entry_client.h"
+#include "../../shared/source/multiplayer_patch_gate.h"
 namespace frameobserver {
 static HANDLE mapping=nullptr,event=nullptr;static framesignal::Channel*channel=nullptr;static DWORD owner=0;
 static bool installed=false,conflict=false;static uint8_t patchBytes[6]{};
@@ -38,10 +39,11 @@ static void maintain(DWORD requestedOwner){
  gameentry::Scope entry(gameentry::Client::Assist);if(!entry)return;
  const DWORD error=GetLastError();
  bool alive=channel&&owner==requestedOwner&&channel->enabled&&DWORD(GetTickCount()-channel->heartbeat)<=500;
- if(!alive&&installed){
+ const bool permitted=multiplayerpatch::mayInstall([](uint32_t at,void*out,size_t n){SIZE_T got=0;return ReadProcessMemory(GetCurrentProcess(),(const void*)(uintptr_t)at,out,n,&got)&&got==n;});
+ if((!alive||!permitted)&&installed){
   const bool restored=gameentry::patch(gameentry::Client::Assist,framesignal::CommitSite,patchBytes,original,6);
   if(channel)channel->state=restored?framesignal::Waiting:framesignal::RestoreFailed;
-  if(!restored)conflict=true;installed=false;
+  if(!restored)conflict=true;installed=!restored;
  }
  if(!alive)releaseChannel();
  if(!channel&&requestedOwner){wchar_t path[96];framesignal::name(path,GetCurrentProcessId(),requestedOwner);
@@ -50,6 +52,11 @@ static void maintain(DWORD requestedOwner){
   else{owner=requestedOwner;framesignal::name(path,GetCurrentProcessId(),owner,true);event=OpenEventW(EVENT_MODIFY_STATE,FALSE,path);if(!event)releaseChannel();}
  }
  if(channel&&!installed&&channel->state==framesignal::Waiting){
+  // Waiting for peer sync is not a signature failure. Keep the message-based
+  // fallback alive and retry after the Assist dispatcher grants activation.
+  if(!permitted){
+   SetLastError(error);return;
+  }
   patchBytes[0]=0xE9;const uint32_t delta=uint32_t(uintptr_t(&committedAdapter))-framesignal::CommitSite-5;memcpy(patchBytes+1,&delta,4);patchBytes[5]=0x90;
   installed=!conflict&&gameentry::patch(gameentry::Client::Assist,framesignal::CommitSite,original,patchBytes,6);
   channel->error=installed?0:GetLastError();channel->thread=GetCurrentThreadId();LARGE_INTEGER f{};QueryPerformanceFrequency(&f);channel->frequency=f.QuadPart;

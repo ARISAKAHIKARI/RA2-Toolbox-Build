@@ -4,6 +4,7 @@
 #include "entry_policy.h"
 #include "experimental_patch_policy.h"
 #include "patch_context.h"
+#include "multiplayer_patch_gate.h"
 #include "../../assist/source/hook_registry.h"
 using namespace gameentry;
 static Policy policy;
@@ -37,6 +38,9 @@ static Result applyPatch(const Request&r){
  const auto transition=patches.proposal(r.address,r.before,r.after,r.length);
  if(transition==assist::hookregistry::Transition::Deny)return Result::PatchDenied;
  if(transition==assist::hookregistry::Transition::Install){
+  if(!multiplayerpatch::mayInstall([](uint32_t at,void*out,size_t n){
+   SIZE_T got=0;return ReadProcessMemory(GetCurrentProcess(),(const void*)(uintptr_t)at,out,n,&got)&&got==n;
+  }))return Result::PatchDenied;
   // Entry bytes alone do not establish the adapter's stack/continuation ABI.
   // Restoration must remain possible after a dependency changes.
   if(!patchcontext::compatible(r.address,[](uint32_t at,void*out,size_t n){

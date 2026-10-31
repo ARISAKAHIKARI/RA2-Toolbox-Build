@@ -161,6 +161,11 @@ template<unsigned Capacity=64> struct Registry {
  unsigned installed()const{unsigned n=0;for(unsigned i=0;i<used;++i)if(slots[i].active)++n;return n;}
  Transition proposal(uint32_t address,const uint8_t*before,const uint8_t*after,unsigned n)const{
   if(!before||!after||!n||n>16||address<0x10000||ownerAt(address)==Owner::Unknown||!memcmp(before,after,n))return Transition::Deny;
+  // Starting-address ownership alone does not protect an overlapping range.
+  // A failed/conflicted active patch still owns its bytes until restored.
+  for(unsigned j=0;j<used;++j){const auto&s=slots[j];
+   if(s.active&&s.address!=address&&uint64_t(address)<uint64_t(s.address)+s.size&&uint64_t(s.address)<uint64_t(address)+n)return Transition::Deny;
+  }
   int i=find(address);if(i<0)return used<Capacity&&knownOriginal(address,before,n)?Transition::Install:Transition::Deny;
   const Slot&s=slots[i];if(s.conflict||s.owner!=ownerAt(address)||s.size!=n)return Transition::Deny;
   if(s.active)return !memcmp(before,s.patch,n)&&!memcmp(after,s.original,n)?Transition::Restore:Transition::Deny;

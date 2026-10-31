@@ -51,5 +51,10 @@ int main(){
  reg.markConflict(0x55D360); // a third party changed the site before our first write
  assert(reg.conflict(0x55D360));
  assert(reg.proposal(0x55D360,frame,patch,5)==Transition::Deny);
+ // Distinct starting addresses do not authorize intersecting active ranges.
+ Registry<> overlap;overlap.used=1;overlap.slots[0].address=0x6A97D0;overlap.slots[0].size=4;overlap.slots[0].active=true;
+ assert(overlap.proposal(0x6A97D2,sidebar,redirected,5)==Transition::Deny);
+ overlap.slots[0].conflict=true;assert(overlap.proposal(0x6A97D2,sidebar,redirected,5)==Transition::Deny);
+ overlap.slots[0].active=false;assert(overlap.proposal(0x6A97D2,sidebar,redirected,5)==Transition::Install);
  std::cout<<"PASS: owned patch install/restore, sticky conflict, known original signatures and per-site isolation\n";
 }

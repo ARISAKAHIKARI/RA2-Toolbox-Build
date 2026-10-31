@@ -4,6 +4,8 @@
 #include "shroud_material_bridge.h"
 extern "C" int __cdecl GuardedRiskAction(unsigned,unsigned,unsigned);
 static bool riskControlActive;
+static bool riskControlNativeJump;
+static uint32_t riskControlNativeTarget=0x50B6F5;
 static bool riskPlacementActive=false,riskAirActive=false,riskRenderActive=false,riskC4Active=false;
 static bool riskLowDamageActive=false;
 static bool riskLowDamageAllHouses=false;
@@ -335,17 +337,7 @@ original:
 // The capture shows a shared control predicate, not selection-only calls.
 // Installed only as one manager-owned group after context/heartbeat preflight.
 // These hot leaf functions do no polling, lease acquisition, allocation or IO.
-static __declspec(naked) void riskControlEntry(){__asm {
- mov eax,1
- ret
-}}
-static __declspec(naked) void riskControlOwnerEntry(){__asm {
- mov edx,dword ptr ds:[0A83D4Ch]
- xor eax,eax
- cmp ecx,edx
- sete al
- ret
-}}
+#include "control_predicate_thunks.h"
 // Keep the native x87 pop/condition path, correcting only the automatic
 // acquisition threshold for the local House. Explicit Attack does not use it.
 static __declspec(naked) void riskLowDamageEntry(){__asm {
@@ -443,7 +435,10 @@ static void controlSitesTick(bool enabled){
   auto&s=controlSites[2];uint8_t original[5]{};
   if(!codeHookRegistry.active(s.address)){
    if(!read(s.address,original,5)||!hookregistry::knownOriginal(s.address,original,5))ok=false;
-   else memcpy(s.before,original,5);
+   else {memcpy(s.before,original,5);riskControlNativeJump=original[0]==0xE9;
+    riskControlNativeTarget=s.address+5;
+    if(riskControlNativeJump){uint32_t rel=0;memcpy(&rel,original+1,4);riskControlNativeTarget+=rel;}
+   }
   }
   if(ok)for(auto&site:controlSites)if(!installRiskSite(site)){ok=false;break;}
  }

@@ -8,7 +8,9 @@ p=argparse.ArgumentParser();p.add_argument('game');p.add_argument('dll');p.add_a
 def fixture():
  spec=importlib.util.spec_from_file_location('lifecycle_fixture',Path(__file__).with_name('entry_runtime_regression.py'))
  m=importlib.util.module_from_spec(spec);m.fixture_paths=[a.game,a.dll];spec.loader.exec_module(m)
- m.w(0xa8b238,3);s=state(m);s.flags=0;s.externalDisplay=1;save(m,s);return m
+ # These historic toggle tests have no remote peer/transport. Explicitly
+ # identify the isolated multiplayer fixture as a one-player session.
+ m.w(0xa8b238,3);m.w(0xa8b54c,1);s=state(m);s.flags=0;s.externalDisplay=1;save(m,s);return m
 def state(m):return m.Shared.from_buffer_copy(m.u.mem_read(m.SH,C.sizeof(m.Shared)))
 def save(m,s):m.u.mem_write(m.SH,bytes(s))
 def tick(m):m.w(0xa8ed84,m.r(0xa8ed84)+1);return m.hook()
@@ -42,10 +44,11 @@ def computation():
 check('compute_split_new_epoch_only',computation)
 def signature():
  m=fixture();raw=bytes(m.u.mem_read(0x6aa600,8));m.b(0x6aa600,0xcc);s=tick(m)
- assert s.data.status==-1
- m.u.mem_write(0x6aa600,raw);s=tick(m);assert s.data.status==-1
- return {'first_failure_is_cached':True,'not_evidence_of_platform_mismatch':True}
-check('startup_signature_failure_cached',signature)
+ assert s.data.status==1 and s.data.commandStatus==3
+ m.u.mem_write(0x6aa600,raw);m.clock+=1100;s=tick(m)
+ assert s.data.status==1 and s.data.commandStatus==1
+ return {'temporary_failure_retried':True,'exact_signature_still_required':True}
+check('startup_signature_failure_retried',signature)
 Path(a.output).write_text(json.dumps({'scope':__doc__,'dll_sha256':hashlib.sha256(Path(a.dll).read_bytes()).hexdigest(),
  'game_fixture_sha256':hashlib.sha256(Path(a.game).read_bytes()).hexdigest(),'game_tested':False,'multiplayer_tested':False,'results':rows},indent=2)+'\n')
 raise SystemExit(any(r['status']!='PASS' for r in rows))

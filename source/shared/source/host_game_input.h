@@ -136,8 +136,8 @@ inline bool clear(Target&t){
 #ifdef _WIN64
  if(t.brokerToken&&!runtimebroker::client().remove(t.pid,t.brokerToken,t.brokerGeneration))return false;
 #endif
- if(t.post){if(!UnhookWindowsHookEx(t.post))return false;t.post=nullptr;}
- if(t.message){if(!UnhookWindowsHookEx(t.message))return false;t.message=nullptr;}
+ if(t.post){if(!UnhookWindowsHookEx(t.post)&&GetLastError()!=ERROR_INVALID_HOOK_HANDLE)return false;t.post=nullptr;}
+ if(t.message){if(!UnhookWindowsHookEx(t.message)&&GetLastError()!=ERROR_INVALID_HOOK_HANDLE)return false;t.message=nullptr;}
  if(t.control)UnmapViewOfFile(t.control);if(t.mapping)CloseHandle(t.mapping);t={};return true;
 }
 // Capture identity belongs to the producer, never to the dequeueing feature.
@@ -266,6 +266,7 @@ inline Subscription install(gameentry::Client client,DWORD thread,DWORD pid,HWND
  h.installStage=L"load-runtime";if(!runtimeAvailable())return 0;HMODULE m=runtimeModule();
  h.installStage=L"subscription-slots";
  Lease*slot=nullptr;for(auto&l:h.leases)if(!l.id){slot=&l;break;}if(!slot){SetLastError(ERROR_NOT_ENOUGH_MEMORY);return 0;}
+ h.installStage=L"target-slots";
  unsigned at=8;for(unsigned i=0;i<8;++i)if(h.targets[i].pid==pid){at=i;break;}
  if(at<8&&h.targets[at].thread!=thread){
   h.installStage=L"previous-thread-still-alive";

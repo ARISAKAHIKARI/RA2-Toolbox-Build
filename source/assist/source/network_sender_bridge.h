@@ -342,6 +342,10 @@ static void networkSenderTick(bool requested){
   networkSenderEnabled=false;
   if(!restoreNetworkSender())return;
  }
+ // A sender fault remains latched in its own epoch. It must not disable
+ // every later match in the pinned DLL after the old group retired safely.
+ if(networkSenderFaulted&&networkSenderMatch!=match&&!networkSenderInstalled&&
+    !codeHookRegistry.active(networksender::Sender)&&!networkSenderCacheDirty&&networkSenderNoForeign())networkSenderFaulted=false;
  bool ok=!networkSenderFaulted&&networkSenderContext();
  for(const auto&s:networkSenderSites){uint8_t bytes[10]{};const bool active=codeHookRegistry.active(s.spec.address);
   if(codeHookRegistry.conflict(s.spec.address)||!read(s.spec.address,bytes,s.spec.size)||memcmp(bytes,active?s.patch:s.spec.original,s.spec.size))ok=false;

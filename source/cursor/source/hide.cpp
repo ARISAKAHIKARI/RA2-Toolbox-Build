@@ -399,6 +399,7 @@ static bool insideGameWindow(HWND w){
  HWND renderer=(HWND)(uintptr_t)s->gameWindow;
  return IsWindow(renderer)&&GetAncestor(w,GA_ROOT)==GetAncestor(renderer,GA_ROOT);
 }
+extern "C" bool CursorRuntimeDetached(){return s==nullptr;}
 static bool isDialogMessage(HWND w){
  if(!w)return false;
  HWND root=GetAncestor(w,GA_ROOT);

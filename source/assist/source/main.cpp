@@ -60,6 +60,7 @@
 #include "pointer_batch.h"
 #include "ui_layout.h"
 #include "additional_settings.h"
+#include "signatures.h"
 #include "../../external_reader/source/watch_slots.h"
 #include "view_zoom.h"
 #include "../../external_reader/source/cooperative_reader.h"
@@ -527,6 +528,9 @@ static std::wstring commandWaitReason(){
  if(incoming.status<0)return L"游戏操作发生异常，已停止发送指令；请重启游戏。详情见 logs/Runtime.log。";
  if(DWORD(GetTickCount()-lastData)>=1500)return L"游戏数据已超过 1.5 秒未更新，等待恢复。";
  if(incoming.status!=1)return L"当前对局尚不可操作，等待游戏恢复。";
+ if(incoming.commandStatus==2)return L"等待本局远端 FrameInfo 执行及摘要匹配；功能补丁和自动命令尚未启用。";
+ if(incoming.commandStatus==3)return L"游戏入口签名暂不兼容，尚未启用功能；每秒重新核对，请查看 logs/Runtime.log。";
+ if(incoming.commandStatus==4)return L"已观察到同步摘要不匹配，功能保持停用；请保留双方 SYNC 日志。";
  if(incoming.commandStatus!=1)return foregroundGame()?L"游戏已暂停或正在显示菜单，恢复后继续。":L"请切回游戏并恢复运行。";
  if(incoming.chat)return L"请关闭游戏聊天输入框后继续。";
  if(shared->request!=shared->ack)return L"正在等待上一条指令处理完成。";
@@ -860,6 +864,8 @@ static bool ensureBridge(){
  hook=gameinput::install(gameentry::Client::Assist,gameThread,pid,game);
  if(!hook){DWORD error=GetLastError();std::wstring stage=gameinput::installationStage();releaseBridge();
   critical(L"hook-install-failed stage="+stage+L" Win32="+std::to_wstring(error));logLoadedGameModules();
+  if(stage==L"target-slots")return bridgeFailed(L"8 个游戏进程连接槽已占用；这不是功能数量限制，请查看旧连接清理日志",error);
+  if(stage==L"subscription-slots")return bridgeFailed(L"32 个功能订阅槽已占用，请查看旧订阅清理日志",error);
   return bridgeFailed(L"无法建立游戏操作连接（"+stage+L"）",error);}
  bridgeFailure.clear();ack=notice=0;lastData=0;attachAt=now;wakeGame();
  wchar_t dllPath[32768]={},transportName[96];uint64_t moduleBase=0,hookRva=0;
@@ -1070,6 +1076,22 @@ static void readSnapshot(){
     L" patches="+std::to_wstring(incoming.inputPatchMask));
    loggedMatch=incoming.match;loggedReady=incoming.commandStatus;loggedFlags=shared->flags;loggedSent=incoming.queueSent;entryLogAt=logNow;
   }
+  static DWORD activationLogAt=0;static int activationState=0;
+  if(incoming.commandStatus>=2&&incoming.commandStatus<=4&&
+     (activationState!=incoming.commandStatus||DWORD(logNow-activationLogAt)>=5000)){
+   activationState=incoming.commandStatus;activationLogAt=logNow;
+   int players=0;uint8_t oos=0;int ring[3]{};
+   externalReader.readFresh(0xA8B54C,&players,4);externalReader.readFresh(0xA8B8C2,&oos,1);externalReader.readFresh(0x8B41F8,ring,sizeof ring);
+   critical(L"activation-wait state="+std::to_wstring(incoming.commandStatus)+L" frame="+std::to_wstring(incoming.frame)+
+    L" players="+std::to_wstring(players)+L" nativeOOS="+std::to_wstring(oos)+L" DoList="+std::to_wstring(ring[0])+L"/"+std::to_wstring(ring[1])+L"/"+std::to_wstring(ring[2]));
+   if(incoming.commandStatus==3)for(const auto&s:Signatures){uint8_t actual[12]{};
+    if(!externalReader.readFresh(s.address,actual,s.length)){critical(L"startup-probe-unreadable site="+hex32(s.address));continue;}
+    if(memcmp(actual,s.bytes,s.length)){std::wstring expected,found;wchar_t byte[4];
+     for(unsigned j=0;j<s.length;++j){swprintf(byte,4,L"%02X",unsigned(s.bytes[j]));expected+=byte;swprintf(byte,4,L"%02X",unsigned(actual[j]));found+=byte;}
+     critical(L"startup-probe-difference site="+hex32(s.address)+L" expected="+expected+L" actual="+found);
+    }
+   }
+  }else if(incoming.commandStatus==1)activationState=0;
   snap.bridgeStatus=incoming.status;
   snap.commandStatus=incoming.commandStatus;
   if(first)diag(L"command bridge status="+std::to_wstring(incoming.status));

@@ -12,6 +12,8 @@ extern "C" void CursorRuntimePost(int,WPARAM,LPARAM);
 extern "C" void AssistRuntimeWatchdog();
 extern "C" void AssistRuntimeFilter(void*);
 extern "C" void CursorRuntimeWatchdog();
+extern "C" bool AssistRuntimeDetached();
+extern "C" bool CursorRuntimeDetached();
 extern "C" void EntryRuntimeDetach();
 extern "C" __declspec(dllexport) const uint32_t GameRuntimeInfo[2]={runtime::Version,sizeof(runtime::Control)};
 static runtime::Control* control;
@@ -139,6 +141,12 @@ static bool connect(DWORD owner,WakeTrace& trace){
  if(controller&&WaitForSingleObject(controller,0)!=WAIT_OBJECT_0){trace.report(runtime::ControllerBusy);return false;}
  trace.retainBeforeReconnect(owner);
  cleanup();
+ // A watchdog attempt can defer restoration (e.g. unsent foreign events).
+ // Retain the OLD controller transport until both services actually detach;
+ // attempting cleanup is not proof that it completed.
+ if(!AssistRuntimeDetached()||!CursorRuntimeDetached()){
+  trace.report(runtime::ControllerBusy,ERROR_BUSY);return false;
+ }
  if(control)UnmapViewOfFile(control);control=nullptr;
  if(mapping)CloseHandle(mapping);mapping=nullptr;
  if(controller)CloseHandle(controller);controller=nullptr;controllerID=0;
