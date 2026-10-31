@@ -21,3 +21,5 @@ Assist协议升为81，`Shared=6580464`，协作输入固定值区 `2410584`；R
 所复用观察点的唯一静态支持样本 SHA-256 为 `268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0`，地址和保存现场 ABI 见 [Hotfix24](2026-10-31-frame-notified-high-refresh-hotfix24.md)。本轮没有新增引擎调用或修改游戏逻辑/RNG。本轮不把可更改的显示/维护轮询伪装成新游戏帧，也不承诺稳定60Hz逻辑采样。
 
 `verify_crossbit_abi.py` 对实际 Windows x86/x64 声明的678项布局检查通过，未运行生成的 Windows 文件。最终 PE 与编译记录见本轮最终证据。按用户约定不运行 CPU 测试套件、Windows/游戏、原生指令、GPU、联机或 FPS 测量。
+
+最终冻结编译及三个PE检查均通过，678项布局一致，1456个已跟踪输入构建期间无变化；证据见 [Hotfix25最终记录](evidence/render-hotfix25-final.json)。实现提交 `23abc5a56c0d1d3bc678eb817c59a84efb72d8e4`。这仍不是实机验证。

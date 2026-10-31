@@ -1,0 +1,66 @@
+{
+  "release": "RA2Toolbox1.0.39-pre.7 Hotfix25",
+  "implementation_commit": "23abc5a56c0d1d3bc678eb817c59a84efb72d8e4",
+  "compute_checkpoint": "4fc229ee7e514bba27b5c404aaab3a35eb6fe4a8",
+  "local_implementation": "dad4f36",
+  "compiler": "Zig0.13.0",
+  "build_exit_code": 0,
+  "build_log_sha256": "fddaa9cd3c56584139a6cfc8254c09dd8a44994b43196a084cfd78d152dc089b",
+  "frozen_source_files": 1456,
+  "changed_during_build": [],
+  "source_equality": {
+    "local_blob_count": 1456,
+    "remote_entry_count": 3546,
+    "mismatches": [],
+    "remote_tree": "6e07c1c866e6c4a9e6216d5813663d7d6899d7fd",
+    "local_implementation": "dad4f36",
+    "remote_implementation": "23abc5a56c0d1d3bc678eb817c59a84efb72d8e4"
+  },
+  "files": {
+    "RA2Toolbox.exe": {
+      "sha256": "4ec4c23fc6b1f0042bfa7e4df29db4aa40122fefa9d6d0c280f0a419fb8db949",
+      "bytes": 7458304
+    },
+    "GameRuntime.dll": {
+      "sha256": "82601176da3cab2d405a6c6859b8e796f5e793cf0eabaccd819ba04e351287e8",
+      "bytes": 5247488
+    },
+    "GameRuntimeHost32.exe": {
+      "sha256": "1865298c70d06fa895e4be1c05c304be1bbb4b35e52128245bf1bd5697f6589e",
+      "bytes": 207872
+    }
+  },
+  "cross_bit_abi": {
+    "protocol": 81,
+    "layout_entries": 678,
+    "differences": {},
+    "wire_baseline": {
+      "assist::Version": 81,
+      "runtime::Version": 4,
+      "gameentry::Version": 3,
+      "runtimebroker::Version": 1,
+      "sizeof(assist::Shared)": 6580464,
+      "sizeof(runtime::Control)": 176,
+      "sizeof(gameentry::Request)": 108,
+      "sizeof(runtimebroker::Packet)": 148,
+      "neuralframe::Version": 1,
+      "sizeof(neuralframe::Header)": 256
+    },
+    "wire_baseline_matches": true,
+    "passed": true,
+    "executed_windows_images": false,
+    "fixture_sha256": "81345cf56723a42c6da68ecebd2fbba8bd536da4006093c12d21e5f3edd72221"
+  },
+  "pe_static_checks": "PASS: 3 outputs, correct architectures/protocol/Shared/versions/exports/imports/manifest; no unbundled dependencies",
+  "shader_changes": false,
+  "private_executable_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+  "game_tested": false,
+  "gpu_tested": false,
+  "windows_loader_executed": false,
+  "native_instruction_execution": false,
+  "cpu_test_suites_run": false,
+  "fps_measured": false,
+  "multiplayer_tested": false,
+  "stable_latest_changed": false,
+  "limits": "See 2026-10-31-render-counters-hotfix25.md: native Z/A/displacement/AA/trig and other remaining gaps; indicators cover native harvesters/slave miners, not arbitrary Phobos extension tags."
+}
