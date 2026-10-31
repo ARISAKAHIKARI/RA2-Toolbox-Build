@@ -29,9 +29,9 @@ template<class Read>class Sample {
   }if(out.dummy){dummy_=c;out.coord=c;}return out;
  }
  Coord coord(const Cell&c)const{return c.dummy?dummy_:c.coord;}
- bool near(uint32_t mask){auto own=get(own_);if(bridge_)return false;std::array<Cell,4>n{{get(offset(own_,4)),get(offset(own_,0)),get(offset(own_,2)),get(offset(own_,6))}};
+ bool bridgeNearby(uint32_t mask){auto own=get(own_);if(bridge_)return false;std::array<Cell,4>n{{get(offset(own_,4)),get(offset(own_,0)),get(offset(own_,2)),get(offset(own_,6))}};
   if(own.flags&mask)return true;for(unsigned i=0;i<4;++i)if((n[i].flags&mask)&&bool(n[i].flags&0x800)==(i<2))return true;return false;}
- int column(){get(own_);if(!near(0x100)&&!near(0x400))return 0;auto s=get(offset(own_,4)),e=get(offset(own_,2)),se=get(offset(own_,3));auto column=[&](const Cell&c){int n=int32_t(uint32_t(c.tile)-uint32_t(bridgeSet_)+1u);return c.tile!=255&&c.tile!=65535&&n>=7&&n<=16;};return int(column(s)||column(e))+int(column(se));}
+ int column(){get(own_);if(!bridgeNearby(0x100)&&!bridgeNearby(0x400))return 0;auto s=get(offset(own_,4)),e=get(offset(own_,2)),se=get(offset(own_,3));auto column=[&](const Cell&c){int n=int32_t(uint32_t(c.tile)-uint32_t(bridgeSet_)+1u);return c.tile!=255&&c.tile!=65535&&n>=7&&n<=16;};return int(column(s)||column(e))+int(column(se));}
  int tunnel(){if(bridge_)return 0;auto n=get(offset(own_,0)),w=get(offset(own_,6)),c=get(own_);auto selected=c.low?c:n.low?n:w;if(!selected.low||coord(selected)==Coord{{0,0}})return 0;Coord at=coord(selected);auto n1=get(offset(at,0)),w1=get(offset(at,6));auto n2=get(offset(coord(n1),0)),w2=get(offset(coord(w1),6));return n2.low||w2.low;}
  int cliff(){auto c=get(own_);if(bridge_)return 0;auto first=get(offset(own_,3));int score=first.level-c.level>=4?2:0;auto second=get(offset(coord(first),3));return second.level-c.level>=4?1:score;}
  int additional(uint32_t object,uint32_t type,int kind,int base,int frame){auto c=get(own_);
@@ -52,7 +52,7 @@ public:
   auto c=get(own_);bool grounded=voxel;
   if(!voxel&&(kind==1||kind==2)){int height=g_.template get<int>(0x89E7C0,104),floor=0;std::array<double,5>terms{};double scale=g_.template get<double>(0x89E740,1.);if(c.ramp)g_.bytes(0x81C900+(unsigned(c.ramp)-1)*40,terms.data(),sizeof terms);
    grounded=voxelshadow::floorHeight(c.level,height,g_.template get<int>(object+0x9C),g_.template get<int>(object+0xA0),unsigned(c.ramp),scale,terms,floor)&&z==floor+(bridge_?g_.template get<int>(0xAC13BC,416):0);}
-  int columns=column(),tunnels=tunnel(),cliffs=cliff();bool byBridge=near(0x100);
+  int columns=column(),tunnels=tunnel(),cliffs=cliff();bool byBridge=bridgeNearby(0x100);
   if(grounded){auto multiply=[](int a,int b){return int32_t(uint32_t(a)*uint32_t(b));};int maximum=std::max({multiply(g_.template get<int>(type+0xDC4,5),columns),multiply(g_.template get<int>(type+0xDC8,10),tunnels),multiply(g_.template get<int>(type+0xDC0,10),cliffs),byBridge?g_.template get<int>(type+0xDCC):0});out.adjust=int32_t(uint32_t(additional(object,type,kind,base,frame))+uint32_t(maximum)-(voxel?0u:2u));}
   if(kind==2&&g_.template get<uint8_t>(type+0xE16)){uint32_t contacts=g_.template get<uint32_t>(object+0xE4);int count=g_.template get<int>(object+0xE8);uint32_t contact=count>0&&count<=32?g_.template get<uint32_t>(contacts):0;
    bool factory=g_.template get<uint32_t>(object+0x5A4)&&g_.kind(contact)==3&&g_.template get<uint8_t>(g_.type(contact,3)+0x16BD);out.split=(byBridge&&columns==0)||factory;
