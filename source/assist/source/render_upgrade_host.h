@@ -270,7 +270,7 @@ static void update(POINT origin,const RECT&client,const external::display::State
      // Scale-mode changes require a fresh verified request, even during a read gap.
      if(verifiedScaleSetting!=effectiveRenderScale()||verifiedPhysicalSetting!=renderPhysicalOutput)groupLease.reset();
      if(groupLease.retain(current,viewNow)){
-      for(auto id:{overlaycompositor::RenderUpgrade,feedback::SelectionLayer,feedback::CursorLayer,feedback::MessageLayer,feedback::TimerLayer,feedback::StatusLayer,feedback::RallyLayer})
+      for(auto id:{overlaycompositor::RenderUpgrade,feedback::SelectionLayer,feedback::CursorLayer,feedback::MessageLayer,feedback::TimerLayer,feedback::StatusLayer,feedback::RallyLayer,feedback::PlanningHighlightLayer})
        overlaycompositor::host().touch(id,uintptr_t(game),pid);
      }else{groupLease.reset();feedback::hide();imageToken=0;}
     }
@@ -342,7 +342,7 @@ static void update(POINT origin,const RECT&client,const external::display::State
   // cursor/selection read. Failure never refreshes this lease's deadline.
   layers=groupLease.layers();presentedFrame=groupLease.frame();displaying=true;
  }else{layers.clear();groupLease.reset();imageToken=0;if(!fresh)feedback::hide();}
- overlaycompositor::host().replaceGroupAt(publishContext,{overlaycompositor::RenderUpgrade,feedback::SelectionLayer,feedback::CursorLayer,feedback::MessageLayer,feedback::TimerLayer,feedback::StatusLayer,feedback::RallyLayer},std::move(layers));
+ overlaycompositor::host().replaceGroupAt(publishContext,{overlaycompositor::RenderUpgrade,feedback::SelectionLayer,feedback::CursorLayer,feedback::MessageLayer,feedback::TimerLayer,feedback::StatusLayer,feedback::RallyLayer,feedback::PlanningHighlightLayer},std::move(layers));
  if(displaying&&presentedFrame&&presentedFrame->completedAtMs!=handedOffFrameMs){handedOffFrameMs=presentedFrame->completedAtMs;completionToHandoffMs=std::max(0.,presentationNow()-handedOffFrameMs);}
  terrainWorker.submit(liveRequest,std::min(60,informationFPS()));
  samplingWorker.submit(liveRequest,renderpresentation::ObservationRate);

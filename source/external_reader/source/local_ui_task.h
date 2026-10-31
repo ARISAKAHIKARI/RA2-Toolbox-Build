@@ -10,16 +10,16 @@ template<class Request,class Reader>class Task {
  struct Input {Request request;std::vector<nativefeedback::Object>objects;};
 public:
  struct Image {nativefeedback::Rect bounds;std::shared_ptr<const std::vector<uint32_t>>pixels;};
- struct Result {Request request;mainview::View view;uint32_t sampledTick=0;std::array<Image,4>images;unsigned messages=0,timers=0,primary=0,rallies=0;};
+ struct Result {Request request;mainview::View view;uint32_t sampledTick=0;std::array<Image,LayerCount>images;unsigned messages=0,timers=0,primary=0,rallies=0;};
 private:
  Reader reader_;Engine engine_;uint32_t pid_=0,match_=0;std::function<uint32_t()>clock_;
- std::array<std::vector<nativefeedback::Primitive>,4>old_;std::array<Image,4>images_;
+ std::array<std::vector<nativefeedback::Primitive>,LayerCount>old_;std::array<Image,LayerCount>images_;
  asyncwork::Latest<Input,Result>worker_;
  std::shared_ptr<const Result>run(const Input&input){const auto&r=input.request;
   if(pid_!=r.pid||match_!=r.match){reader_.close();engine_.reset();for(auto&p:old_)p.clear();images_={};pid_=r.pid;match_=r.match;}
   if(!reader_.open(r.pid))return {};reader_.begin();auto fresh=[&](uint32_t p,void*out,size_t n){return reader_.readFresh(p,out,n);};auto read=[&](uint32_t p,void*out,size_t n){return reader_.read(p,out,n);};mainview::View before;
   if(!mainview::sample(fresh,before)||!mainview::sameViewport(before,r.view)||before.frame<r.view.frame)return {};uint32_t sampled=clock_();Plan plan;
-  if(!engine_.capture(read,before,input.objects,r.width,r.height,plan,sampled))return {};
+  if(!engine_.capture(read,fresh,before,input.objects,r.width,r.height,plan,sampled))return {};
   for(size_t lane=0;lane<plan.layers.size();++lane){auto&primitives=plan.layers[lane];if(primitives.empty()){images_[lane]={};old_[lane].clear();}
    else if(primitives!=old_[lane]){nativefeedback::Canvas canvas;nativefeedback::Rect bounds;if(!nativefeedback::paintInteractions(primitives,{},canvas,bounds)){images_[lane]={};old_[lane].clear();continue;}images_[lane]={bounds,std::make_shared<const std::vector<uint32_t>>(std::move(canvas.pixels))};old_[lane]=std::move(primitives);}
   }

@@ -58,7 +58,7 @@
     "particles": "certified BehavesLike 0/1 SHP frames/opacity; directional fire, pixel particles, waves, RadBeam, VoxelAnim and several special effects remain incomplete"
   },
   "Hotfix14": {
-    "local_ui": "Replaces broad native message/timer/primary/rally passthrough rectangles with independent main-view font masks and patterned lines; current GAME.FNT and CSF values read-only; four cached compositor textures on a private reader/worker",
+    "local_ui": "Replaces broad native message/timer/primary/rally passthrough rectangles with independent main-view font masks and patterned lines; current GAME.FNT and CSF values read-only; five cached compositor textures (planning highlights added in Hotfix22) on a private reader/worker",
     "reference": "Vera20k 0b6a073d0928453036c4a53d117bb7a2d8d573a7 font, anchors and rally pixel walk; cnc-ddraw 279a057ee7e1e4d584b56141c014ab01f3c6ee6d format/palette comparison only",
     "validation_limit": "Portable controlled regressions and local cross compilation; no Windows game/GPU/FPS or pixel-perfect font certification; custom UI, input caret, sloped/object rally destinations remain incomplete"
   },
@@ -102,5 +102,13 @@
     "budget": "At most 12 immutable direct-output slots per existing output pool, retaining the previous 384 MiB total pixel budget; held outputs are not overwritten.",
     "remaining": "State reading, source decoding, static terrain preparation and geometry planning remain CPU work. Full-map minimap output, legacy/native UI passthrough and unsupported effects remain existing integrations. Native pixel-perfect parity and a full Rust/wgpu/simulation transplant are not completed.",
     "validation": "Targeted CPU-only presentation fixtures, static HLSL/SPIR-V validation and Zig mixed-architecture cross compilation. No Vulkan, D3D11, Windows loader or live game execution; visual ghosting/black sidebar fixes are not live-certified."
+  },
+  "Hotfix22": {
+    "reference": "Vera20K 3d42426b2e9c1b4cf913a7dbbaaf8bf7d3b6bc7f planning.rs/planning_lines.rs, existing planning native fixture layouts; GPL-3.0 C++ read-only adaptation",
+    "planning": "Read AC4B30 nodes, AC4C78 tokens, Techno+514 and node member events; full-map shared predecessors, loops, selected/highlight colors, native active gate, current and acquired attack-move legs; uncached bounded read-set validation",
+    "drawing": "All solid outlines before patterned interiors, 6x6 node markers, optional mouse433/434 mission icons, independent 16/24px hover/highlight layer after ordinary action lines; no font dependency or synthetic numeric waypoint labels",
+    "limits": "Valid map cells and known retail Techno/cell refs only; no new validation of arbitrary patched layouts, native exact cell/ramp target geometry or badge threshold approximation; no visual or performance certification",
+    "audit": "source/research/2026-10-31-vera-render-gaps-and-gpu-roadmap.md",
+    "validation": "Cross compilation and static PE/import/version/ABI checks only. No CPU fixture suite, Vulkan/D3D, Windows loader, live game or FPS tests."
   }
 }

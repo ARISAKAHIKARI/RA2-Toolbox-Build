@@ -8,11 +8,13 @@
 #include "repair_visuals.h"
 #include "live_shape_cache.h"
 #include "native_unit_ui_stencil.h"
+#include "native_planning.h"
 #include <set>
 namespace external {namespace localui {
 // Main-view UI rendered from values and real font coverage. No framebuffer,
 // passthrough rectangle or cutout is accepted or produced by this module.
-struct Plan {std::array<std::vector<nativefeedback::Primitive>,4>layers;unsigned messages=0,timers=0,primary=0,rallies=0;uint64_t glyphDecodes=0;};
+constexpr size_t LayerCount=5;
+struct Plan {std::array<std::vector<nativefeedback::Primitive>,LayerCount>layers;unsigned messages=0,timers=0,primary=0,rallies=0;uint64_t glyphDecodes=0;};
 inline int remaining(int start,int duration,int frame){return int(std::clamp<int64_t>(start==-1?duration:int64_t(duration)-frame+start,0,INT32_MAX));}
 inline std::u16string number(int value,int digits=0){auto n=std::to_string(value);if(int(n.size())<digits)n=std::string(digits-n.size(),'0')+n;return {n.begin(),n.end()};}
 inline std::u16string clockText(int frames){int s=frames/15,h=s/3600,m=s/60%60;return h?number(h)+u":"+number(m,2)+u":"+number(s%60,2):number(m,2)+u":"+number(s%60,2);}
@@ -39,7 +41,7 @@ class Painter {
 public:
  Painter(Plan&p,int nw,int nh,int w,int h):plan_(p),nativeW_(nw),nativeH_(nh),width_(w),height_(h),sx_(double(w)/nw),sy_(double(h)/nh){}
  bool good()const{return !overflow_;}
- void lane(size_t value){lane_=std::min<size_t>(value,3);}
+ void lane(size_t value){lane_=std::min<size_t>(value,LayerCount-1);}
  void fill(nativefeedback::Rect r,uint32_t color){r=nativefeedback::intersect(r,{0,0,nativeW_,nativeH_});if(!r.valid()||overflow_)return;auto edge=[](int v,double s){return int(std::ceil(v*s-.5));};int x=edge(r.x,sx_),y=edge(r.y,sy_),right=edge(r.x+r.w,sx_),bottom=edge(r.y+r.h,sy_);auto result=nativefeedback::intersect({x,y,right-x,bottom-y},{0,0,width_,height_});if(!result.valid())return;if(total_>=262144){overflow_=true;return;}plan_.layers[lane_].push_back({result,color});++total_;}
  template<class Read>bool text(BitmapFont&font,Read read,const std::u16string&s,int x,int y,uint32_t color,uint32_t flags=0,bool background=false,int mx=1,int my=1,int maxWidth=INT32_MAX){
   int measured=0;if(!font.measure(read,s,measured))return false;if(flags&0x100)x-=measured/2;else if(flags&0x200)x-=measured;if(background)fill({x-mx,y-my,measured+2*mx,font.lineHeight()+2*my},0xFF000000);
@@ -50,6 +52,15 @@ public:
   }return good();
  }
  void planning(std::array<int,2>from,std::array<int,2>to,uint32_t color,uint32_t tick){int phase=int((uint32_t(0)-tick)>>5)&15;if(clipLine(from,to,nativeW_,nativeH_))patternLine(from,to,phase,[&](int x,int y){fill({x,y,1,1},color);},4);}
+ void outline(nativefeedback::Rect r,uint32_t color){fill({r.x,r.y,r.w,1},color);fill({r.x,r.y+r.h-1,r.w,1},color);fill({r.x,r.y,1,r.h},color);fill({r.x+r.w-1,r.y,1,r.h},color);}
+ void marker(std::array<int,2>at,int size,uint32_t color,bool outer){nativefeedback::Rect r{at[0]-size/2,at[1]-size/2,size,size};if(outer)outline(r,color);else fill(r,color);}
+ void planningStroke(std::array<int,2>from,std::array<int,2>to,uint32_t color,uint32_t tick,int width,bool outer){
+  int minor=std::abs(to[1]-from[1])<std::abs(to[0]-from[0])?1:0;
+  for(int offset=outer?width/2-width+1:0;offset<=(outer?width/2:width-1);++offset){auto a=from,b=to;a[minor]+=offset;b[minor]+=offset;
+   if(!outer){planning(a,b,color,tick);continue;}if(!clipLine(a,b,nativeW_,nativeH_))continue;
+   patternLine(a,b,0,[&](int x,int y){fill({x,y,1,1},color);},8);
+  }
+ }
  void rally(std::array<int,2>from,std::array<int,2>to,uint32_t color,int frame){int phase=int((int64_t(INT32_MAX)-frame)%15);from[1]+=2;to[1]+=2;for(uint32_t pass:{0xFF000000u,color,color}){if(clipLine(from,to,nativeW_,nativeH_))patternLine(from,to,phase,[&](int x,int y){fill({x,y,1,1},pass);});--from[1];--to[1];}}
 };
 class Engine {
@@ -72,9 +83,35 @@ class Engine {
    if(kind==3){repairvisuals::Sprite repair;if(repairvisuals::sample(read,o.pointer,o.id,repair)){auto q=project({repair.x,repair.y,repair.z});if(!icon(read,p,repair.shape,repair.frame,q[0],q[1],0x87F6C8))return false;}}
   }return true;
  }
- template<class Read>bool paths(Read read,const mainview::View&v,const std::vector<nativefeedback::Object>&objects,Painter&p,bool&fontUsed,uint32_t tick){GameView game(read);p.lane(3);double scale=projectionZScale(read);auto project=[&](nativefeedback::Point3 q){return std::array<int,2>{{int((int64_t(q.x)-q.y)*30/256)-v.cameraX,int((int64_t(q.x)+q.y)*15/256)-screenHeight(q.z,scale)-v.cameraY}};};
-  for(const auto&o:objects){if(o.owner!=v.house||o.kind<0||o.kind>2||!game.live(o.pointer)||game.template get<uint32_t>(o.pointer+0x10)!=o.id||!game.template get<uint8_t>(o.pointer+0x83))continue;std::vector<uint32_t>queue;if(!game.vecChecked(o.pointer+0x588,queue,512)||queue.empty())continue;uint32_t current=game.template get<uint32_t>(o.pointer+0x5A4);if(current&&queue.front()!=current)queue.insert(queue.begin(),current);nativefeedback::Point3 source;if(!read(o.pointer+0x9C,&source,12)||!nativefeedback::worldPoint(source))continue;uint32_t color=0;if(!houseColor(read,o.owner,color))return false;int index=0;for(auto pointer:queue){nativefeedback::Point3 target;if(!ground::target(read,pointer,target))break;if(target.x==source.x&&target.y==source.y&&target.z==source.z)continue;auto from=project(source),to=project(target);p.planning(from,to,color,tick);if(!fontUsed&&!font_.begin(read))return false;fontUsed=true;if(!p.text(font_,read,number(++index),to[0]+3,to[1]-font_.lineHeight(),color))return false;source=target;}}
-  return true;
+ template<class Read>bool paths(Read fresh,const mainview::View&v,Painter&p,uint32_t tick){
+  planning::Graph graph;if(!planning::capture(fresh,v.house,graph))return false;if(!graph.active)return true;p.lane(3);
+  double scale=projectionZScale(fresh);auto project=[&](nativefeedback::Point3 q){return std::array<int,2>{{int((int64_t(q.x)-q.y)*30/256)-v.cameraX,int((int64_t(q.x)+q.y)*15/256)-screenHeight(q.z,scale)-v.cameraY}};};
+  auto color=[&](uint32_t owner,bool bright){const auto&rgb=graph.colors.at(owner);uint32_t value=0;for(int n=0;n<3;++n){int c=rgb[n],target=bright?255:0;c+=(target-c)*(bright?100:80)/256;value|=uint32_t(c)<<(16-8*n);}return rgb565(value);};
+  auto outer=[&](uint32_t actor){return graph.white.count(actor)?0xFFFFFFFFu:0xFF000000u;};
+  auto markerColor=[&](const planning::Node&node){uint32_t dark=color(node.owner,false);for(const auto&line:node.incoming)if(!line.loop&&color(line.owner,line.bright)==dark)return dark;return color(node.owner,node.bright);};
+  uint32_t mouse=0,shape=0;fresh(nativefeedback::MousePointer,&mouse,4);if(nativefeedback::range(mouse,8))fresh(mouse+4,&shape,4);
+  auto badge=[&](int frame,std::array<int,2>from,std::array<int,2>to,uint32_t ink,uint32_t background,bool edge){
+   if(!frame||std::hypot(double(to[0])-from[0],double(to[1])-from[1])<37)return;
+   int x=(from[0]+to[0])/2,y=(from[1]+to[1])/2;
+   if(edge){p.outline({x-10,y-10,21,21},background);return;}
+   p.outline({x-9,y-9,19,19},ink);p.fill({x-8,y-8,17,17},background);
+   // Mouse rows76/77 are SHP frames433/434, not numbered text. A missing
+   // cursor asset omits only its icon, never the complete planning graph.
+   if(auto image=shapes_.get(fresh,shape,frame,0x87F6C8))for(int row=0;row<image->height;++row)for(int col=0;col<image->width;++col){uint32_t c=image->pixels[size_t(row)*image->width+col];if(c>>24)p.fill({x-image->width/2-1+col,y-image->height/2+row,1,1},c);}
+  };
+  // PlanMgr63B0A0 must finish every outline before63B150 interiors.
+  for(const auto&node:graph.nodes){uint32_t edge=outer(node.members.front());for(const auto&line:node.incoming){auto from=project(line.from),to=project(line.to);p.planningStroke(from,to,edge,tick,4,true);badge(node.badge,from,to,edge,edge,true);}p.marker(project(node.point),8,edge,true);}
+  auto actorLines=[&](const planning::Actor&actor,bool edge){uint32_t border=outer(actor.pointer);auto draw=[&](const planning::Segment&line,int frame,int width,bool end=true){auto from=project(line.from),to=project(line.to);uint32_t ink=edge?border:color(line.owner,line.bright);p.marker(from,edge?6:4,ink,edge);p.planningStroke(from,to,ink,tick,width,edge);if(end)p.marker(to,edge?6:4,ink,edge);badge(frame,from,to,ink,border,edge);};
+   if(actor.markerOnly){p.marker(project(actor.marker),edge?6:4,edge?border:color(actor.owner,false),edge);return;}
+   if(actor.hasCurrent)draw(actor.current,actor.currentBadge,edge?3:1);if(actor.hasMega)draw(actor.mega,434,edge?3:1);if(actor.hasConnection)draw(actor.connection,actor.badge,actor.hasCurrent?(edge?3:1):(edge?4:2),edge);
+  };
+  for(const auto&actor:graph.actors)actorLines(actor,true);
+  for(const auto&node:graph.nodes){for(const auto&line:node.incoming){auto from=project(line.from),to=project(line.to);uint32_t ink=color(line.owner,line.bright);p.planningStroke(from,to,ink,tick,2,false);badge(node.badge,from,to,ink,outer(node.members.front()),false);}p.marker(project(node.point),6,markerColor(node),false);}
+  for(const auto&node:graph.nodes)p.marker(project(node.point),6,markerColor(node),false);
+  for(const auto&actor:graph.actors)actorLines(actor,false);
+  p.lane(4); // PlanMgr63B2F0 follows ordinary action lines in Tactical.
+  for(const auto&node:graph.nodes)for(auto highlight:{std::pair<uint32_t,int>{graph.hover,16},{graph.highlight,24}})if(node.pointer==highlight.first){auto at=project(node.point);for(int inset=0;inset<3;++inset){int size=highlight.second;p.outline({at[0]-size/2+inset,at[1]-size/2+inset,size-inset*2,size-inset*2},0xFFFFFFFFu);}}
+  return p.good();
  }
  template<class Read>bool labels(Read read,const mainview::View&v,Painter&p,Plan&out,bool&fontUsed){
   std::array<uint8_t,40>head{},after{};if(!read(0xA8BC60,head.data(),head.size()))return false;std::set<uint32_t>seen;
@@ -112,7 +149,7 @@ class Engine {
  }
 public:
  void reset(){font_.reset();strings_.reset();shapes_.reset();unitPips_.clear();}
- template<class Read>bool capture(Read read,const mainview::View&view,const std::vector<nativefeedback::Object>&objects,int width,int height,Plan&out,uint32_t tick=0){
+ template<class Read,class Fresh>bool capture(Read read,Fresh fresh,const mainview::View&view,const std::vector<nativefeedback::Object>&objects,int width,int height,Plan&out,uint32_t tick=0){
   out={};shapes_.begin();if(!view.valid()||width<1||height<1||width>8192||height>8192||uint64_t(width)*height>16*1024*1024||objects.size()>8192)return false;
   // Each independent producer publishes a complete layer transaction. A bad
   // timer/font/passenger read discards that producer, not every other UI layer.
@@ -128,8 +165,9 @@ public:
   capture([&](Painter&p,Plan&next,bool&font){return buildings(read,view,objects,p,next,font);});
   capture([&](Painter&p,Plan&,bool&font){return statuses(read,view,objects,p,font);});
   capture([&](Painter&p,Plan&,bool&){return pips(read,view,objects,p);});
-  capture([&](Painter&p,Plan&,bool&font){return paths(read,view,objects,p,font,tick);});
+  capture([&](Painter&p,Plan&,bool&){return paths(fresh,view,p,tick);});
   out.glyphDecodes=font_.decodes();return true;
  }
+ template<class Read>bool capture(Read read,const mainview::View&view,const std::vector<nativefeedback::Object>&objects,int width,int height,Plan&out,uint32_t tick=0){return capture(read,read,view,objects,width,height,out,tick);}
 };
 }}

@@ -3,7 +3,7 @@
 // no game calls, cursor hiding, selection writes or extra game hooks are used.
 namespace feedback {
 namespace nf=external::nativefeedback;
-constexpr uint64_t SelectionLayer=0x52460001,CursorLayer=0x52460002,MessageLayer=0x52460010,TimerLayer=0x52460011,StatusLayer=0x52460012,RallyLayer=0x52460013;
+constexpr uint64_t SelectionLayer=0x52460001,CursorLayer=0x52460002,MessageLayer=0x52460010,TimerLayer=0x52460011,StatusLayer=0x52460012,RallyLayer=0x52460013,PlanningHighlightLayer=0x52460014;
 static external::localui::Task<Request,external::ReadSession> localUI([]{return uint32_t(GetTickCount());});
 // Cursor art is already resident in game memory. Capture the current small
 // frame synchronously; waiting for an older async cursor withdrew the entire
@@ -22,7 +22,7 @@ static bool live=false,unsafeView=false,unsafeWorld=false;
 static bool nativeLeaseUnsafe=false;
 static void hide(){
  localUI.invalidate();
- overlaycompositor::host().replaceGroup({overlaycompositor::RenderUpgrade,SelectionLayer,CursorLayer,MessageLayer,TimerLayer,StatusLayer,RallyLayer},{});
+ overlaycompositor::host().replaceGroup({overlaycompositor::RenderUpgrade,SelectionLayer,CursorLayer,MessageLayer,TimerLayer,StatusLayer,RallyLayer,PlanningHighlightLayer},{});
  oldPrimitives.clear();oldStrokes.clear();selectionPixels.reset();selectionBounds={};nativeCutouts.reset();
  cursorCache.clear();foundationStencil.clear();nativeLeaseUnsafe=false;live=false;
 }
@@ -92,7 +92,7 @@ static bool update(const Request&r,const std::shared_ptr<const Frame>&scene,int 
  }
  if(selectionPixels)layers.push_back({SelectionLayer,200,r.context,{left+selectionBounds.x,top+selectionBounds.y,selectionBounds.w,selectionBounds.h},true,255,selectionPixels});
  localUI.submit(r,scene->objects);
- if(auto ui=localUI.visible(r,GetTickCount())){constexpr uint64_t ids[]={MessageLayer,TimerLayer,StatusLayer,RallyLayer};constexpr int ranks[]={220,221,210,180};for(size_t i=0;i<ui->images.size();++i){const auto&image=ui->images[i];if(image.pixels)layers.push_back({ids[i],ranks[i],r.context,{left+image.bounds.x,top+image.bounds.y,image.bounds.w,image.bounds.h},true,255,image.pixels});}}
+ if(auto ui=localUI.visible(r,GetTickCount())){constexpr uint64_t ids[]={MessageLayer,TimerLayer,StatusLayer,RallyLayer,PlanningHighlightLayer};constexpr int ranks[]={220,221,210,180,205};static_assert(sizeof(ids)/sizeof(ids[0])==external::localui::LayerCount,"local UI layer mapping");for(size_t i=0;i<ui->images.size();++i){const auto&image=ui->images[i];if(image.pixels)layers.push_back({ids[i],ranks[i],r.context,{left+image.bounds.x,top+image.bounds.y,image.bounds.w,image.bounds.h},true,255,image.pixels});}}
  // Mirror only the covered portion of the original software cursor.
  CURSORINFO ci{};ci.cbSize=sizeof ci;POINT pos{};
  if(!GetCursorInfo(&ci)||!GetCursorPos(&pos)||!ScreenToClient(game,&pos)){layers.clear();return false;}
