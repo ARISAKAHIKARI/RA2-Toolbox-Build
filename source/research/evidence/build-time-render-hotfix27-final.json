@@ -1,0 +1,62 @@
+{
+  "release": "1.0.39-pre.7 Hotfix27",
+  "evidence": "static-only frozen production build",
+  "product_source_local_commit": "988d9707fdac3e9bfd202e6c3b0e8ad4bb5ffc1a",
+  "product_source_remote_commit": "04c05425bb14e559dd7a496d3f28ac2a984403c3",
+  "product_remote_tree": "932f15b5654b7ac091ac1d5001caf207aad8e56a",
+  "frozen_files_unchanged_and_remote_blob_equal": 1472,
+  "preserved_base_unmodified_blobs": 3315,
+  "remote_tree_entries": 3562,
+  "toolchain": "Zig0.13.0",
+  "production_build_exit_code": 0,
+  "pe_static_passed": true,
+  "abi_entries": 680,
+  "wire": {
+    "assist": 82,
+    "shared_bytes": 6580472,
+    "runtime": 4,
+    "entry": 3,
+    "frame_signal": 1
+  },
+  "changed_shader": {
+    "source_sha256": "d70f3d0bc58570d4e2097e258f75c22b1f463cda114a7f82e6c1514701770ea2",
+    "spirv_sha256": "76e125156e46e39f326f6c68e20b774150f0f7ac0ceaca1c2a19738bce0e7087",
+    "bytes": 66740,
+    "graphics_driver_loaded": false
+  },
+  "embedded_shader_equals_recompiled": true,
+  "binaries": {
+    "RA2Toolbox.exe": {
+      "bytes": 8378368,
+      "sha256": "70070207b0f88f575215bd1437e303a480099926acecfcbdc51c7153e00ac206",
+      "machine": "x64"
+    },
+    "GameRuntime.dll": {
+      "bytes": 5253120,
+      "sha256": "f4dcb6fd9cf8e7dd28c4ee9b83c1ce7b60ebe3ca70e18fe7727d05dea745821d",
+      "machine": "x86"
+    },
+    "GameRuntimeHost32.exe": {
+      "bytes": 207872,
+      "sha256": "1c11f03fdd1df900b1550daa09ddf722b3bd883144a256c857da04649cab0b79",
+      "machine": "x86"
+    }
+  },
+  "validation_logs_sha256": {
+    "build-hotfix27-final.log": "837b3120b6a23f688b505cdfeccdc495e59785982c970e8a3c68e2cd4255741d",
+    "abi-hotfix27-final.log": "cfac4999a42cf3abf65109cdd8154dc7e94d9a9197f656ec75b3c5cfa50487a7",
+    "pe-hotfix27-final.log": "60ae7fc638e1e5fc1d99945191b5a59e4084559a63b57d2d86329b07e28a2dfe",
+    "shader27-final.log": "219dc0f471089827507dd265dc67de36d86bcfd331753876bd2d1d4f112e74a7"
+  },
+  "executed": {
+    "cpu_fixture_suites": false,
+    "native_instructions": false,
+    "windows_or_game": false,
+    "vulkan_d3d": false,
+    "multiplayer": false,
+    "fps_measurements": false
+  },
+  "ci_status_claimed": false,
+  "private_executable_or_raw_dump_included": false,
+  "stable_latest_changed": false
+}
