@@ -135,14 +135,14 @@ public:
   if(frame_.width<1||frame_.height<1||uint64_t(frame_.width)*frame_.height>16*1024*1024||!validDepth(frame_))return false;
   const std::vector<uint32_t>*base=fallbackBase_.get();std::vector<uint32_t>generated;
   if(!base||base->size()!=size_t(frame_.width)*frame_.height){if(!cpuBaseFallback_||!cpuBaseFallback_(generated)||generated.size()!=size_t(frame_.width)*frame_.height)return false;base=&generated;}
-  if(!frame_.baseDepth||!surface.reset(frame_.width,frame_.height))return false;
-  surface.precision(precision_);surface.color=*base;surface.nativeView(0,frame_.nativeScaleX,frame_.nativeScaleY,int(std::ceil(frame_.width/frame_.nativeScaleX)),int(std::ceil(frame_.height/frame_.nativeScaleY)));
+  if(!frame_.baseDepth||!surface.resetFrame(frame_.width,frame_.height,*base,frame_.baseDepthWidth?nullptr:frame_.baseDepth.get()))return false;
+  surface.precision(precision_);surface.nativeView(0,frame_.nativeScaleX,frame_.nativeScaleY,int(std::ceil(frame_.width/frame_.nativeScaleX)),int(std::ceil(frame_.height/frame_.nativeScaleY)));
   if(frame_.nativeScene){std::shared_ptr<const std::vector<uint8_t>>mask=frame_.fogAlpha;
    if(frame_.maskPlan){auto a=std::make_shared<std::vector<uint8_t>>();if(!gpushroud::reference(*frame_.maskPlan,*a))return false;mask=a;}
    auto a=mask?std::make_shared<std::vector<uint8_t>>(*mask):std::make_shared<std::vector<uint8_t>>(size_t(frame_.width)*frame_.height,127);
    if(frame_.effects)for(const auto&command:frame_.effects->commands)if(command.words[0]==gpueffects::Alpha&&command.indices){const auto&w=command.words;
     for(uint32_t y=w[5];y<w[7];++y)for(uint32_t x=w[4];x<w[6];++x){int xx=int((x-gpueffects::real(w[8]))/gpueffects::real(w[10])),yy=int((y-gpueffects::real(w[9]))/gpueffects::real(w[11]));if(xx<0||yy<0||xx>=int(w[14])||yy>=int(w[15]))continue;size_t at=size_t(y)*frame_.width+x;(*a)[at]=uint8_t(std::min(255u,unsigned((*a)[at])*(*command.indices)[size_t(yy)*w[14]+xx]/127u));}}
-   surface.nativeBase(a);
+   surface.nativeBase(a,false);
   }
   if(frame_.baseDepthWidth>0){
    // The GPU consumes this compact native plane directly. Only an actual CPU
@@ -150,7 +150,7 @@ public:
    for(int y=0;y<frame_.height;++y){size_t row=size_t((*frame_.baseDepthYs)[y])*frame_.baseDepthWidth;
     for(int x=0;x<frame_.width;++x)surface.depth[size_t(y)*frame_.width+x]=(*frame_.baseDepth)[row+(*frame_.baseDepthXs)[x]];
    }
-  }else surface.depth=*frame_.baseDepth;
+  }
   auto paint=[&](Surface&target,const Replay&call,int row){if(call.image)target.blit(*call.image,call.ax,call.ay-row,call.sx,call.sy,call.base,call.light,call.lift,call.drop,call.smooth,call.material);
    else for(int y=std::max(0,call.dotY-row-1);y<std::min(target.height(),call.dotY-row+2);++y)for(int x=std::max(0,call.dotX-1);x<std::min(frame_.width,call.dotX+2);++x)target.color[size_t(y)*frame_.width+x]=call.dot;};
   // Restore the original whole-surface painter. Destination-reading cloak,

@@ -53,9 +53,23 @@ class Surface {
 public:
  std::vector<uint32_t> color;std::vector<float> depth;
  std::vector<uint16_t> nativeZ;
- bool reset(int w,int h,uint32_t background=0xff080c08u){
-  if(w<=0||h<=0||w>8192||h>8192||uint64_t(w)*h>16*1024*1024){width_=height_=0;color.clear();depth.clear();return false;}
-  width_=w;height_=h;reconstructionFailed_=false;color.assign(size_t(w)*h,background);depth.assign(color.size(),-std::numeric_limits<float>::infinity());nativeZ.assign(color.size(),65535);alpha_.reset();nativeRead_={};writeTop_=0;writeBottom_=h;nativeOriginX_=nativeOriginY_=outputOriginY_=0;nativeScaleX_=nativeScaleY_=1;nativePitch_=w;nativeViewHeight_=h;return true;
+private:
+ bool resetStorage(int w,int h,uint32_t background,const std::vector<uint32_t>*base,const std::vector<float>*initialDepth,bool depthWillBeWritten){
+  if(w<=0||h<=0||w>8192||h>8192||uint64_t(w)*h>16*1024*1024||
+     (base&&base->size()!=size_t(w)*h)||(initialDepth&&initialDepth->size()!=size_t(w)*h)){
+   width_=height_=0;color.clear();depth.clear();return false;
+  }
+  width_=w;height_=h;reconstructionFailed_=false;
+  if(base)color=*base;else color.assign(size_t(w)*h,background);
+  if(initialDepth)depth=*initialDepth;else if(depthWillBeWritten)depth.resize(color.size());else depth.assign(color.size(),-std::numeric_limits<float>::infinity());
+  nativeZ.assign(color.size(),65535);alpha_.reset();nativeRead_={};writeTop_=0;writeBottom_=h;nativeOriginX_=nativeOriginY_=outputOriginY_=0;nativeScaleX_=nativeScaleY_=1;nativePitch_=w;nativeViewHeight_=h;return true;
+ }
+public:
+ bool reset(int w,int h,uint32_t background=0xff080c08u){return resetStorage(w,h,background,nullptr,nullptr,false);}
+ // Frame replay supplies final base pixels/depth directly. A null depth means
+ // a validated compact plane will overwrite EVERY element before any drawing.
+ bool resetFrame(int w,int h,const std::vector<uint32_t>&base,const std::vector<float>*initialDepth){
+  return resetStorage(w,h,0,&base,initialDepth,true);
  }
  int width()const{return width_;}int height()const{return height_;}
  void precision(colorprecision::Mode mode){precision_=mode==colorprecision::Mode::SmoothRGB?mode:colorprecision::Mode::NativeSteps;}
@@ -70,7 +84,7 @@ public:
  void alpha(std::shared_ptr<const std::vector<uint8_t>>a){alpha_=std::move(a);}
  const std::shared_ptr<const std::vector<uint8_t>>&alphaPlane()const{return alpha_;}
  unsigned alphaAt(size_t at)const{return alpha_&&alpha_->size()==color.size()?(*alpha_)[at]:127;}
- void nativeBase(std::shared_ptr<const std::vector<uint8_t>>a){alpha_=std::move(a);std::fill(nativeZ.begin(),nativeZ.end(),65535);std::fill(depth.begin(),depth.end(),-std::numeric_limits<float>::infinity());
+ void nativeBase(std::shared_ptr<const std::vector<uint8_t>>a,bool clearDepth=true){alpha_=std::move(a);if(clearDepth){std::fill(nativeZ.begin(),nativeZ.end(),65535);std::fill(depth.begin(),depth.end(),-std::numeric_limits<float>::infinity());}
   if(alpha_&&alpha_->size()==color.size())for(size_t n=0;n<color.size();++n){unsigned a=(*alpha_)[n];if(a==127)continue;uint32_t c=color[n],out=c&0xff000000u;for(int sh:{0,8,16})out|=std::min(255u,((c>>sh)&255u)*a/127u)<<sh;color[n]=out;}}
  void diamond(float ax,float ay,float sx,float sy,float base,uint32_t c,const lighting::State&light){
   c=lit(c,0,false,light,precision_);
