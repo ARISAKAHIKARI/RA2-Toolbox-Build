@@ -25,6 +25,8 @@ jobs:
           g++ -std=c++17 -O2 -UNDEBUG source/assist/tests/hook_inventory.cpp -o /tmp/hook_inventory
           /tmp/hook_inventory > diagnostics/hook-inventory.json
           python3 -m json.tool diagnostics/hook-inventory.json
+          g++ -std=c++17 -O2 -UNDEBUG source/hook_diagnostics/tests/sequence.cpp -o /tmp/hook-diagnostic-sequence
+          /tmp/hook-diagnostic-sequence | tee diagnostics/hook-diagnostic-sequence.log
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -59,6 +61,10 @@ jobs:
           if($LASTEXITCODE -ne 0){throw 'Host cleanup test compilation failed'}
           & ./artifacts/host-target-cleanup-test.exe | Tee-Object diagnostics/host-target-cleanup.log
           if($LASTEXITCODE -ne 0){throw 'Stale target cleanup regression failed'}
+          & $env:ZIG_EXE c++ -target x86-windows-gnu -std=c++17 -O2 -UNDEBUG source/hook_diagnostics/tests/camera_gate.cpp -o artifacts/camera-diagnostic-gate.exe -luser32
+          if($LASTEXITCODE -ne 0){throw 'Diagnostic camera gate compilation failed'}
+          & ./artifacts/camera-diagnostic-gate.exe | Tee-Object diagnostics/camera-diagnostic-gate.log
+          if($LASTEXITCODE -ne 0){throw 'Diagnostic camera gate regression failed'}
       - name: Build the production x64 host, x86 Runtime and broker
         shell: bash
         run: |
@@ -68,6 +74,15 @@ jobs:
           bash source/build-zig-x64.sh > diagnostics/build.log 2>&1 || { tail -80 diagnostics/build.log; exit 1; }
           python source/tools/verify_windows_outputs.py --root artifacts/build --host-arch x64
           python source/tools/verify_crossbit_abi.py --zig "$ZIG_EXE" --output diagnostics/crossbit-abi.json
+      - name: Build and verify the standalone 30-second Hook observer
+        shell: pwsh
+        run: |
+          python source/tools/build_hook_diagnostics.py --zig $env:ZIG_EXE --base-build artifacts/build --output artifacts/hook-test
+          if($LASTEXITCODE -ne 0){throw 'Diagnostic build/UI/broker smoke failed'}
+          python source/tools/verify_hook_diagnostics.py --root artifacts/hook-test
+          if($LASTEXITCODE -ne 0){throw 'Diagnostic PE/ABI validation failed'}
+          Copy-Item source/hook_diagnostics/README.md artifacts/hook-test/README.md
+          @{commit=$env:GITHUB_SHA;run_id=$env:GITHUB_RUN_ID;game_tested=$false;multiplayer_tested=$false;scope='Diagnostic UI/broker loader and PE/ABI checks; no game attached'} | ConvertTo-Json | Set-Content -Encoding utf8 artifacts/hook-test/HOOK_TEST_BUILD.json
       - name: Record test-build identity and scope
         shell: pwsh
         run: |
@@ -86,4 +101,16 @@ jobs:
         with:
           name: peer-sync-experimental-build-not-netplay-certified
           path: artifacts/build/*
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: isolated-hook-test-not-netplay-certified
+          path: |
+            artifacts/hook-test/RA2HookTest.exe
+            artifacts/hook-test/GameRuntime.dll
+            artifacts/hook-test/GameRuntimeHost32.exe
+            artifacts/hook-test/HOOK_TEST_VERIFIED.json
+            artifacts/hook-test/HOOK_TEST_BUILD.json
+            artifacts/hook-test/BUILD_TARGET.json
+            artifacts/hook-test/README.md
           if-no-files-found: error

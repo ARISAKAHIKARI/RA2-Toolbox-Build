@@ -6,6 +6,7 @@
 
 | 主题 | 新笔记 | 关键词 |
 | --- | --- | --- |
+| RA2OL 同步錯誤的逐組 Hook 測試版、隱式相機補丁與小地圖閃爍候選 | [流程、來源證據與實測邊界](2026-11-01-ra2ol-hook-isolation-diagnostics.md) · [操作／編譯說明](../hook_diagnostics/README.md) | RA2OL 30seconds explicit-verdict isolated-groups 48+3 14denied CameraClamp6D8640 diagnostic-opt-in incomplete-shroud not-netplay |
 | 首次同步之后仍会分叉的直接写入与恢复遗漏 | [后续不同步审计与修复](2026-11-01-latent-desync-mutation-audit.md) | TechLevel SP-only failed-write ownership retry MapIsClear read-failure premature-unhook stop-ack all-patches native-query side-effects |
 | 宿主 Hook/订阅生命周期与目标槽回收 | [Hotfix33 回收修正与受控证据](2026-10-31-host-hook-lifecycle-hotfix33.md) | 8targets 32leases 1404 retained-process reap failed-unhook capacity |
 | 首次远端 FrameInfo 匹配门槛、51 站点清单与重连/恢复审查 | [实现与联机风险边界](2026-10-31-peer-sync-hook-activation-audit.md) | pending-executed CRC-history read-only activation 8targets 32leases invalid-HHOOK cleanup-handoff control-native-fallback |

@@ -1,4 +1,7 @@
 #include "small_map_camera.h"
+#ifdef RA2_HOOK_DIAGNOSTICS
+#include "../../shared/source/hook_diagnostic_gate.h"
+#endif
 // Uses the existing game-thread patch manager, never a second hook owner.
 static smallcamera::Geometry cameraGeometry(){return {get<int>(0x87F8DC),get<int>(0x87F8E4),get<int>(0x87F8E8),get<int>(0x87F8EC),get<int>(0x87F8F0),get<int>(0x886FA8),get<int>(0x886FAC)};}
 // Original method does not use ECX; both ABIs pop its one Point* argument.
@@ -14,6 +17,11 @@ static bool __stdcall smallMapClamp(smallcamera::Point*p){
 static RiskSite cameraSite{experimentalpatch::CameraClamp,5,{0xA1,0xE4,0xF8,0x87,0},{}};
 static void restoreSmallMapCamera(){restoreRiskSite(cameraSite);}
 static void smallMapCameraTick(){
+#ifdef RA2_HOOK_DIAGNOSTICS
+ // A diagnostic zero-patch baseline must not silently install the automatic
+ // small-map camera adapter. Geometry/signature/ownership checks still apply.
+ if(!hookdiagnostic::camera(sh?sh->owner:0)){restoreSmallMapCamera();return;}
+#endif
  if(!smallcamera::needed(cameraGeometry())){restoreSmallMapCamera();return;}
  if(!cameraSite.after[0]){cameraSite.after[0]=0xE9;uint32_t offset=uint32_t(uintptr_t(&smallMapClamp))-cameraSite.address-5;memcpy(cameraSite.after+1,&offset,4);}
  // Existing CnCNet/Phobos/platform replacements keep ownership of the site.
