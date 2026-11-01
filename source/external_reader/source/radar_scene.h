@@ -109,7 +109,13 @@ template<class Assets>class SceneRenderer {
  bool bankSameSource_=false,probing_=false,probeChanged_=false,pendingIncomplete_=false,backgroundIncomplete_=false;uint32_t backgroundRetry_=0;int width_=0,height_=0;double spanX_=0,spanY_=0;uint64_t revision_=0;
  lighting::State backgroundLight_;uint64_t nativeCells_=0,basePresents_=0;SceneRegion region_{};unsigned pixelScaleMode_=0;bool detailedBase_=false;
  static uint64_t mix(uint64_t h,uint64_t v){return (h^v)*1099511628211ull;}
- static uint64_t lightKey(uint64_t h,const lighting::State&s){h=mix(h,uint32_t(s.ambient));h=mix(h,uint32_t(s.intensity));for(int c:s.tint)h=mix(h,uint32_t(c));return h;}
+ static uint64_t lightKey(uint64_t h,const lighting::State&s){
+  h=mix(h,uint32_t(s.ambient));h=mix(h,uint32_t(s.intensity));for(int c:s.tint)h=mix(h,uint32_t(c));
+  h=mix(h,s.paletteRows);h=mix(h,s.scalar);h=mix(h,s.rgb555);
+  // converterMetadata retains this immutable owner when row bytes agree.
+  // Ambient/tint equality alone cannot retain changed native palette rows.
+  return mix(h,reinterpret_cast<uintptr_t>(s.table.get()));
+ }
  static bool sameSource(const Terrain&a,const Terrain&b,bool local=false){
   if(!a.geo.same(b.geo)||a.reveal!=b.reveal||a.colors.size()!=b.colors.size()||a.baseColors!=b.baseColors||a.art.size()!=b.art.size())return false;
   // Exploration belongs to the destination mask and actor admission. It must
@@ -591,12 +597,15 @@ public:
    auto plan=builder.finish();effectPlanReady=plan->valid;if(detail)detailed_.gpuEffects((worldEffects||bolts||radarExtras||!beacons.empty())?plan:nullptr);else areaEffects=std::move(plan);
   }
   if(masked&&(gpuMode_||areaGpuMode||detail)&&!gpuMaskPlan_&&!maskPixels_)maskPixels_=std::make_shared<const std::vector<uint8_t>>(mask_.alpha);
-  // Repeating a verified identical GPU plan needs neither dispatch/fence nor
-  // full-screen readback/copy. The scene stays immutable; current sampled
-  // state, live light and palette validation above still run at every request.
-  const auto*reusePlan=gpuMode_&&fallbacks.empty()&&effectPlanReady&&!guideEnabled_?
+  // Current sampled state, live light, palette and mask validation above run
+  // on every request. Identical complete inputs can also retain CPU output.
+  // CPU effects/annotations use separate painters with double-precision input;
+  // do not use their quantized GPU plan as an exact CPU postprocessing key.
+  const bool cpuReusable=detail&&!worldEffects&&!bolts&&!radarExtras&&beacons.empty();
+  const bool reusableResolve=gpuMode_||cpuReusable;
+  const auto*reusePlan=reusableResolve&&fallbacks.empty()&&effectPlanReady&&!guideEnabled_?
    detailed_.completeGpuPlan(masked?maskPixels_:nullptr,masked?gpuMaskPlan_:nullptr):nullptr;
-  if(reusePlan){if(auto previous=gpuFrameReuse_.get(*reusePlan)){if(!previous->gpu||gpupresent::available()){xbrzadapter::gpuState().used=true;stageStats_.reused=true;stage(stageStats_.resolveMs);return previous;}}}
+  if(reusePlan){if(auto previous=gpuFrameReuse_.get(*reusePlan)){if(!previous->gpu||gpupresent::available()){xbrzadapter::gpuState().used=bool(previous->gpu);stageStats_.reused=true;stage(stageStats_.resolveMs);return previous;}}}
   else gpuFrameReuse_.reset();
   const bool directReady=directPresentation_&&gpuMode_&&effectPlanReady&&!guideEnabled_;
   auto*maskReadback=!directReady&&masked&&gpuMaskPlan_&&cpuMaskPlan_!=gpuMaskPlan_?&mask_.alpha:nullptr;
@@ -644,7 +653,7 @@ public:
   if(!beacons.empty()&&!gpuEffectsDone){sceneextras::RadarCPU sink(*out);for(const auto&b:beacons)sink.uiImage(b.draw.image,b.rgba,(b.draw.x-effectView.x)*width/effectView.width,(b.draw.y-effectView.y)*height/effectView.height,width/effectView.width,height/effectView.height);}
   if(radarExtras&&!gpuEffectsDone){sceneextras::RadarCPU sink(*out);sceneextras::radarDecorations(frame,width,height,read,assets,extraLayers_,sink);}
   if(areaGpuMode&&staticView){areaCachedGpu_=areaUsed;if(masked)maskedBaseScene_=out;else baseScene_=out;}
-  if(reusePlan&&xbrzadapter::gpuUsed())gpuFrameReuse_.completed(*reusePlan,out);
+  if(reusePlan&&(detailed_.gpuCompleted()||cpuReusable))gpuFrameReuse_.completed(*reusePlan,out);else gpuFrameReuse_.reset();
   stage(stageStats_.effectsMs);return out;
  }
 };

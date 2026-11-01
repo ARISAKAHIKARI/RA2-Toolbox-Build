@@ -6,6 +6,7 @@
 
 | 主题 | 新笔记 | 关键词 |
 | --- | --- | --- |
+| 全鏈路顯示效能：讀取、排程、計畫與呈現 | [修正、受控量測與實機邊界](2026-11-01-end-to-end-render-performance.md) | batched-RPM COW-TMP CPU-plan-reuse immutable-panels dirty-upload timing |
 | 覆蓋層連續性、面板尺寸合成、星級與觀戰 Hook 保留 | [修正、原生 HWND 寬度與驗證邊界](2026-11-01-render-continuity-and-hook-lifetime.md) | camera-independent HUD checked materials output-sized renderer HWND DWORD scene-bank observer hook-ownership |
 | 科技純資料候選、同世界 epoch 改變後還原責任 | [尚未實作的候選與已修的還原錯誤](2026-11-01-tech-data-candidates-and-recovery.md) | CanBuild direct-E8 Type634 Prerequisite648 Scenario epoch restore |
 | 控制標記資料模式、跨epoch還原與普通事件功能分類更正 | [實作、互斥與驗證](2026-11-01-control-house-flag-mode.md) | Assist85 House1ED data-only mode2 native-query classification epoch ownership |

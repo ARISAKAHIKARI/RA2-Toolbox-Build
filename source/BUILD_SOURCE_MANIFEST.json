@@ -368,5 +368,16 @@
     "game_tested": false,
     "multiplayer_tested": false,
     "gpu_live_tested": false
+  },
+  "end_to_end_render_performance": {
+    "baseline_commit": "1e1568155385d13f225a7c99877dd7bbd535868b",
+    "scope": "Read batching/cache, duplicate observation probe, snapshot retirement, retained terrain prefix, checked CPU plan reuse, immutable watch panels, dirty/recovery compositor submission, five-second stage metrics",
+    "hook_and_command_behavior_changed": false,
+    "refresh_rate_or_view_reduced": false,
+    "note": "research/2026-11-01-end-to-end-render-performance.md",
+    "evidence": "research/evidence/pipeline-performance-build.json",
+    "game_tested": false,
+    "multiplayer_tested": false,
+    "gpu_live_tested": false
   }
 }

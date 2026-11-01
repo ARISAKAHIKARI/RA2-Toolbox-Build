@@ -256,6 +256,9 @@ public:
   Material m;m.nativeZ=true;m.nativeZAdjust=-15*level;terrainSources_->draws[at->second]={std::move(image),x,y,base,light,m};
  }
  const std::vector<TerrainDraw>&terrainSources()const{static const std::vector<TerrainDraw>empty;return terrainSources_?terrainSources_->draws:empty;}
+ // Retaining this identity also retains immutability: terrainSource() forks
+ // on the next write, including light/material changes at the same game frame.
+ std::shared_ptr<const void> terrainSourceOwner()const{return terrainSources_;}
  void nativeAlpha(std::shared_ptr<const AlphaPages>pages){nativeAlpha_=std::move(pages);}
  std::shared_ptr<const std::vector<uint8_t>>nativeAlpha(uint32_t k)const{if(!nativeAlpha_)return {};auto at=nativeAlpha_->find(k);return at==nativeAlpha_->end()?nullptr:at->second;}
  std::vector<uint32_t>pageKeys()const{std::vector<uint32_t>out;for(const auto&p:pages_)out.push_back(p.first);return out;}

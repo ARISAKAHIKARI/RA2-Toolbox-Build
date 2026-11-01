@@ -17,6 +17,8 @@
 #include "../../external_reader/source/scene_poses.h"
 #include <chrono>
 #include "render_presentation.h"
+#include "render_observation_probe.h"
+#include "../../shared/source/pipeline_timing.h"
 #include "sidebar_indicator_host.h"
 // External read/render; the sampler observes native frame-number changes.
 // No engine drawing or feature command is dispatched by this pipeline.
@@ -83,6 +85,7 @@ static asyncwork::Recurring<Request,external::radar::Frame> terrainWorker([](con
  return std::make_shared<const external::radar::Frame>(std::move(data));
 });
 static asyncwork::Recurring<Request,Observation> samplingWorker([](const Request&r)->std::shared_ptr<const Observation>{
+ static pipelineperf::Window timings(L"world-observation",{L"attempt",L"duplicate",L"capture"});pipelineperf::Scope attempt(timings,0,critical);
  static std::shared_ptr<const Observation> last;
  static uint64_t sampleGeneration=0;static uint32_t sampleProcess=0,sampleMatch=0,sampleReveal=~0u;
  const double started=presentationNow();
@@ -95,6 +98,8 @@ static asyncwork::Recurring<Request,Observation> samplingWorker([](const Request
  // sampling do not need to replace the game's frame-commit instruction.
  const double captureStarted=presentationNow();
  auto fresh=[](uint32_t p,void*out,size_t n){return sampleReader.readFresh(p,out,n);};
+ if(last&&renderobservation::duplicate(fresh,last->current->frame,last->observedMs,captureStarted)){timings.add(1,0);return {};}
+ pipelineperf::Scope capture(timings,2);
  external::mainview::View before;
  if(!external::mainview::sample(fresh,before)||!renderpresentation::sameProjection(before,r.view)||before.frame<r.view.frame)return {};
  if(last&&last->current->frame==before.frame&&captureStarted-last->observedMs<50.)return {};
@@ -126,6 +131,7 @@ static asyncwork::Recurring<Request,Observation> samplingWorker([](const Request
 });
 static external::worldscene::Pipeline worldPipeline;
 static asyncwork::Recurring<Request,Frame> worker([](const Request&r)->std::shared_ptr<const Frame>{
+ static pipelineperf::Window timings(L"world-render",{L"attempt",L"prepare",L"compose",L"completed"});pipelineperf::Scope attempt(timings,0,critical);
  const double started=presentationNow();
  external::xbrzadapter::gpuPresentation(r.gpu);
  // Failed attempts do not replace a completed image. The UI independently
@@ -182,7 +188,8 @@ static asyncwork::Recurring<Request,Frame> worker([](const Request&r)->std::shar
  const auto renderView=before;
  auto crop=external::mainview::crop(renderView,data.terrain->geo.offsetX,data.terrain->geo.offsetY);
  renderer.guideEnabled(false,r.generation);renderer.directPresentation(false);renderer.prepareWorld(true);
- auto scene=renderer.render(data,r.width,r.height,external::SharedReadView{&reader},assets,{crop.x,crop.y,crop.width,crop.height,true},unsigned(r.pixelScaleMode),r.detail!=0,true,r.colorPrecision!=0,true,r.decodeBudgetMs);
+ pipelineperf::Scope prepare(timings,1);
+ auto scene=renderer.render(data,r.width,r.height,external::SharedReadView{&reader},assets,{crop.x,crop.y,crop.width,crop.height,true},unsigned(r.pixelScaleMode),r.detail!=0,true,r.colorPrecision!=0,true,r.decodeBudgetMs);prepare.finish();
  if(!scene)return unavailable();
  const double sceneDoneMs=presentationNow();
  auto out=std::make_shared<Frame>();out->world=renderer.preparedWorld();if(!out->world)return unavailable();out->request=sampledRequest;out->paddingX=out->paddingY=0;out->assetRevision=assetRevision;out->logicFrame=data.frame;out->observationMs=observed->intervalMs;out->stateIntervalMs=observed->stateIntervalMs;out->frameSignalState=observed->frameSignalState;out->signalDelayMs=observed->signalDelayMs;
@@ -206,7 +213,7 @@ static asyncwork::Recurring<Request,Frame> worker([](const Request&r)->std::shar
  // original completed-frame handoff instead of passing GPU/material owners
  // between separate preparation and presentation workers.
  const double compositionStarted=presentationNow();
- auto image=worldPipeline.draw(out->world,after,r.width,r.height,external::SharedReadView{&reader},nullptr,GetTickCount());
+ pipelineperf::Scope compose(timings,2);auto image=worldPipeline.draw(out->world,after,r.width,r.height,external::SharedReadView{&reader},nullptr,GetTickCount());compose.finish();
  if(!image)return unavailable();
  external::mainview::View committed;
  if(!external::mainview::sample(fresh,committed)||!renderpresentation::sameProjection(after,committed)||committed.frame<after.frame||
@@ -222,7 +229,7 @@ static asyncwork::Recurring<Request,Frame> worker([](const Request&r)->std::shar
  }
  out->image=std::move(image);out->sampledTick=sampledTick;out->completedTick=GetTickCount();const double completedMs=presentationNow();out->completedAtMs=completedMs;out->renderMs=completedMs-started;out->finishMs=completedMs-compositionStarted;
  out->hasCompletionGap=hasFrameCompleteTime;out->completionGapMs=hasFrameCompleteTime?completedMs-lastFrameCompleteMs:0;
- lastFrameCompleteMs=completedMs;hasFrameCompleteTime=true;progress=2;return out;
+ lastFrameCompleteMs=completedMs;hasFrameCompleteTime=true;progress=2;timings.add(3,out->renderMs);return out;
 },notifyReady);
 #include "render_feedback_host.h"
 static void suspendScene(){groupLease.reset();if(active){active=false;++generation;worker.invalidate();samplingWorker.invalidate();terrainWorker.invalidate();}feedback::hide();imageToken=0;overlaycompositor::host().hide(overlaycompositor::RenderUpgrade);}
@@ -230,6 +237,7 @@ static void suspend(){viewLease.reset();suspendScene();sidebarhud::stop();}
 static void stop(){suspend();overlaycompositor::host().suspend();}
 static void shutdown(){stop();worker.shutdown();samplingWorker.shutdown();terrainWorker.shutdown();feedback::shutdown();sidebarhud::shutdown();overlaycompositor::host().shutdown();}
 static void update(POINT origin,const RECT&client,const external::display::State&displayState){
+ static const bool diagnostics=[](){overlaycompositor::host().setDiagnosticsSink(critical);return true;}();(void)diagnostics;
  if(!overlayvisibility::visible()){stop();return;}
  const auto selected=external::presentation::settings().get();static uint64_t profileRevision=~uint64_t(0);
  if(profileRevision!=selected.revision){profileRevision=selected.revision;++generation;worker.invalidate();samplingWorker.invalidate();terrainWorker.invalidate();groupLease.reset();}

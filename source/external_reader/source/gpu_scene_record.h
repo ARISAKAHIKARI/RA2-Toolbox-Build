@@ -28,6 +28,7 @@ class GpuSceneRecord {
  std::unordered_multimap<const voxel::Image*,typename std::list<LitSource>::iterator>litIndex_;
  size_t litBytes_=0;uint64_t litBuilds_=0,litHits_=0;
  uint64_t serial_=0;bool valid_=false;
+ size_t prefixDraws_=0,prefixReplay_=0;bool prefixReady_=false;
  colorprecision::Mode precision_=colorprecision::Mode::NativeSteps;
  static std::shared_ptr<const voxel::Image> retain(const voxel::Image&i,std::shared_ptr<const voxel::Image> owner){
   // A caller-provided owner must own THIS object, not an unrelated stack copy.
@@ -102,14 +103,23 @@ class GpuSceneRecord {
 public:
  GpuSceneRecord()=default;GpuSceneRecord(const GpuSceneRecord&)=delete;GpuSceneRecord&operator=(const GpuSceneRecord&)=delete;
  GpuSceneRecord(GpuSceneRecord&&)=default;GpuSceneRecord&operator=(GpuSceneRecord&&)=default;
- void reset(){frame_={};fallbackBase_.reset();cpuBaseFallback_={};replay_.clear();valid_=false;}
- void clear(){reset();litSources_.clear();litIndex_.clear();litBytes_=serial_=litBuilds_=litHits_=0;}
+ void reset(bool retainPrefix=false){
+  // Keep allocated command storage. A verified immutable terrain prefix may
+  // remain in place; every dynamic call and all frame-wide state are retired.
+  const bool keep=retainPrefix&&prefixReady_;
+  auto draws=std::move(frame_.draws);draws.resize(keep?prefixDraws_:0);frame_={};frame_.draws=std::move(draws);
+  fallbackBase_.reset();cpuBaseFallback_={};replay_.resize(keep?prefixReplay_:0);valid_=false;
+  if(!keep){prefixReady_=false;prefixDraws_=prefixReplay_=0;}
+ }
+ void clear(){reset();frame_={};replay_=std::vector<Replay>{};litSources_.clear();litIndex_.clear();litBytes_=serial_=litBuilds_=litHits_=0;}
  void beginObjects(int width,int height,colorprecision::Mode precision){reset();frame_.width=width;frame_.height=height;precision_=precision;valid_=width>0&&height>0&&width<=32768&&height<=32768;}
  void nativeView(float sx,float sy,bool enabled){frame_.nativeScene=enabled;frame_.nativeScaleX=sx;frame_.nativeScaleY=sy;}
  uint64_t litBuilds()const{return litBuilds_;}uint64_t litHits()const{return litHits_;}size_t litBytes()const{return litBytes_;}
+ bool prefixAvailable()const{return prefixReady_;}
+ void retainPrefix(){prefixReady_=valid_;prefixDraws_=frame_.draws.size();prefixReplay_=replay_.size();}
  void begin(int width,int height,std::shared_ptr<const std::vector<uint32_t>>base,std::shared_ptr<const std::vector<float>>depth,colorprecision::Mode precision,
-            std::shared_ptr<const std::vector<vulkancompute::TileJob>>baseTiles={},std::function<bool(std::vector<uint32_t>&)>cpuBaseFallback={},GpuDepthPlan depthPlan={}){
-  reset();frame_.width=width;frame_.height=height;frame_.basePixels=std::move(base);fallbackBase_=frame_.basePixels;frame_.baseDepth=std::move(depth);precision_=precision;cpuBaseFallback_=std::move(cpuBaseFallback);
+            std::shared_ptr<const std::vector<vulkancompute::TileJob>>baseTiles={},std::function<bool(std::vector<uint32_t>&)>cpuBaseFallback={},GpuDepthPlan depthPlan={},bool retainTerrainPrefix=false){
+  reset(retainTerrainPrefix);frame_.width=width;frame_.height=height;frame_.basePixels=std::move(base);fallbackBase_=frame_.basePixels;frame_.baseDepth=std::move(depth);precision_=precision;cpuBaseFallback_=std::move(cpuBaseFallback);
   frame_.baseDepthWidth=depthPlan.width;frame_.baseDepthHeight=depthPlan.height;frame_.baseDepthXs=std::move(depthPlan.xs);frame_.baseDepthYs=std::move(depthPlan.ys);
   if(baseTiles&&!baseTiles->empty()){frame_.baseTiles=*baseTiles;frame_.basePixels.reset();}
   valid_=((frame_.basePixels&&frame_.basePixels->size()==size_t(width)*height)||!frame_.baseTiles.empty())&&validDepth(frame_);

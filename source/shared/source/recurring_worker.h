@@ -11,6 +11,7 @@
 namespace asyncwork {
 // One immutable latest configuration, one running job, and its own clock.
 // UI submissions update configuration/lease; they do not schedule each frame.
+// Snapshot retirement must not hold the lock needed by UI get/submit calls.
 template<class Input,class Output>class Recurring {
  using Clock=std::chrono::steady_clock;
  std::mutex mutex_;DeadlineWake cv_;std::thread thread_;
@@ -25,7 +26,7 @@ template<class Input,class Output>class Recurring {
     if(stop_)return;
     if(!input_){cv_.wait(lock,[&]{return stop_||input_;});continue;}
     auto now=Clock::now();
-    if(now>=expires_){input_.reset();latest_.reset();continue;}
+    if(now>=expires_){auto input=std::move(input_);auto output=std::move(latest_);lock.unlock();input.reset();output.reset();lock.lock();continue;}
     if(now<due_){cv_.wait_until(lock,std::min(due_,expires_));continue;}
     input=input_;epoch=epoch_;
     due_=now+std::chrono::nanoseconds(1000000000ll/rate_);break;
@@ -33,7 +34,7 @@ template<class Input,class Output>class Recurring {
   }
   auto result=work_(*input);bool published=false;
   {std::lock_guard<std::mutex>lock(mutex_);
-   if(!stop_&&epoch==epoch_&&input_&&Clock::now()<expires_&&result){latest_=std::move(result);published=true;}
+   if(!stop_&&epoch==epoch_&&input_&&Clock::now()<expires_&&result){latest_.swap(result);published=true;}
   }
   if(published&&completed_)completed_();
  }}
@@ -43,13 +44,15 @@ public:
  void submit(Input input,int rate,std::chrono::milliseconds lease=std::chrono::milliseconds(500)){
   auto next=std::make_shared<const Input>(std::move(input));std::lock_guard<std::mutex>lock(mutex_);if(stop_)return;
   rate=std::clamp(rate,5,1000);auto now=Clock::now();if(!input_||rate!=rate_)due_=now;
-  input_=std::move(next);rate_=rate;expires_=now+lease;
+  input_.swap(next);rate_=rate;expires_=now+lease;
   if(!thread_.joinable())thread_=std::thread([this]{run();});cv_.notify_one();
  }
  std::shared_ptr<const Output> get(){std::lock_guard<std::mutex>lock(mutex_);return latest_;}
- void invalidate(){std::lock_guard<std::mutex>lock(mutex_);++epoch_;input_.reset();latest_.reset();cv_.notify_one();}
+ void invalidate(){std::shared_ptr<const Input> input;std::shared_ptr<const Output> output;{std::lock_guard<std::mutex>lock(mutex_);++epoch_;input=std::move(input_);output=std::move(latest_);cv_.notify_one();}}
  void shutdown(){
-  {std::lock_guard<std::mutex>lock(mutex_);stop_=true;++epoch_;input_.reset();latest_.reset();cv_.notify_one();}
+  std::shared_ptr<const Input> input;std::shared_ptr<const Output> output;
+  {std::lock_guard<std::mutex>lock(mutex_);stop_=true;++epoch_;input=std::move(input_);output=std::move(latest_);cv_.notify_one();}
+  input.reset();output.reset();
   if(thread_.joinable())thread_.join();
  }
 };

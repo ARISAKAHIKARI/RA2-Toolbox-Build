@@ -15,6 +15,8 @@
 #include <atomic>
 #include "overlay_stack.h"
 #include "gpu_compositor.h"
+#include "overlay_submit_policy.h"
+#include "pipeline_timing.h"
 // One EXE-owned passive window for multiple logical layers. No game hooks,
 // engine functions, screen capture, window activation or input forwarding.
 // Producers retain their immutable pixels; this host owns only composition.
@@ -44,6 +46,7 @@ class Host {
  uint64_t generation=0,revision=0,heartbeat=0;bool enabled=false,stop=false,top=false;
  int rate=60;DWORD error=0;bool startupFailed=false;std::atomic<HWND> ownedWindow{nullptr};
  UploadStatistics uploadStatistics_{};bool uploadContinuous_=false;
+ std::atomic<pipelineperf::Sink> diagnosticsSink_{nullptr};
  static LRESULT CALLBACK proc(HWND w,UINT m,WPARAM a,LPARAM b){
   if(m==WM_NCHITTEST)return HTTRANSPARENT;
   if(m==WM_MOUSEACTIVATE)return MA_NOACTIVATE;
@@ -57,7 +60,8 @@ class Host {
    wc.lpszClassName,L"统一覆盖层 · 渲染实验",WS_POPUP,0,0,1,1,nullptr,nullptr,wc.hInstance,nullptr);
   if(!window){std::lock_guard<std::mutex>lock(mutex);error=GetLastError();startupFailed=true;return;}
   ownedWindow=window;
-  DIB dib;gpupresent::Compositor gpuComposition;bool gpuWindow=false;overlaycomposition::Incremental composition;overlaypresentrate::Monitor displayRate;uint64_t presented=~uint64_t(0),token=0;bool visible=false,dibNeedsFullCopy=true;POINT lastOrigin{LONG_MIN,LONG_MIN};bool wasTop=false;
+  DIB dib;gpupresent::Compositor gpuComposition;bool gpuWindow=false;overlaypublication::CpuStage cpu;overlaypublication::Submission submission;overlaypresentrate::Monitor displayRate;uint64_t presented=~uint64_t(0),token=0;bool visible=false;POINT lastOrigin{LONG_MIN,LONG_MIN};bool wasTop=false;
+  pipelineperf::Window timings(L"compositor",{L"compose",L"dib-copy",L"ulw",L"gpu-present"});
   // A native window region enforces the same scissor boundary as the world
   // pass. Uncovered sidebar pixels never belong to this composition HWND.
   std::vector<overlaycomposition::Rect> windowRegion;
@@ -71,18 +75,18 @@ class Host {
    if(!SetWindowRgn(window,region,FALSE)){DeleteObject(region);return false;}windowRegion=std::move(rects);return true;
   };
   overlaypresentrate::Cadence uploadCadence;
-  std::chrono::steady_clock::time_point lastUploadComplete{};
+  std::chrono::steady_clock::time_point lastUploadComplete{},wakeAt{};bool wakeScheduled=false,cpuPrepared=false;uint64_t cpuVersion=0,cpuToken=0;
   for(;;){
-   MSG message{};while(PeekMessageW(&message,nullptr,0,0,PM_REMOVE)){if(message.message==WM_DISPLAYCHANGE)displayRate.invalidate();TranslateMessage(&message);DispatchMessageW(&message);}
+   timings.report(diagnosticsSink_.load(std::memory_order_relaxed));
+   MSG message{};while(PeekMessageW(&message,nullptr,0,0,PM_REMOVE)){if(message.message==WM_DISPLAYCHANGE){displayRate.invalidate();cpu.lost();submission.failed();}TranslateMessage(&message);DispatchMessageW(&message);}
    Context current;std::vector<Surface> layers;uint64_t version;bool active,highest;int hz;
    {
     std::unique_lock<std::mutex>lock(mutex);if(stop)break;
-    const auto world=nodes.find(RenderUpgrade);
-    const bool continuous=enabled&&world!=nodes.end()&&overlaycomposition::valid(world->second.surface,context);
-    if(!continuous)cv.wait_for(lock,std::chrono::milliseconds(4),[&]{return stop||revision!=presented;});if(stop)break;
+    const auto wait=overlaypublication::pollDelay(std::chrono::steady_clock::now(),wakeAt,wakeScheduled);
+    cv.wait_for(lock,wait,[&]{return stop||submission.changed(revision);});wakeScheduled=false;if(stop)break;
     const auto now=GetTickCount64();
     for(auto i=nodes.begin();i!=nodes.end();)if(now-i->second.lastSeen>750){i=nodes.erase(i);++revision;}else ++i;
-    current=context;version=revision;active=enabled&&now-heartbeat<500;highest=top;hz=rate;
+    current=context;version=revision;submission.observe(version);active=enabled&&now-heartbeat<500;highest=top;hz=rate;
     for(const auto&n:nodes)if(overlaycomposition::valid(n.second.surface,current))layers.push_back(n.second.surface);
    }
    const HWND target=reinterpret_cast<HWND>(current.window);DWORD fg=0;GetWindowThreadProcessId(GetForegroundWindow(),&fg);
@@ -91,69 +95,73 @@ class Host {
     client.right==current.width&&client.bottom==current.height&&ClientToScreen(target,&origin)&&!layers.empty();
    if(!active){if(visible)ShowWindow(window,SW_HIDE);visible=false;presented=version;
     std::unique_lock<std::mutex>lock(mutex);uploadContinuous_=false;uploadStatistics_.intervalMs=uploadStatistics_.maxGapMs=0;
-    cv.wait_for(lock,std::chrono::milliseconds(8),[&]{return stop||revision!=version;});continue;}
+    continue;}
    const bool continuous=std::any_of(layers.begin(),layers.end(),[](const Surface&s){return s.id==RenderUpgrade;});
-   // The enhanced whole scene follows the explicitly requested cadence,
-   // including repeat submission while the next full render is computing.
+   // New enhanced scenes retain the requested upload cadence. The completed
+   // HWND already retains identical pixels while the next render computes.
    const int requestedHz=hz;
    hz=continuous?std::clamp(hz,5,500):overlaypresentrate::limit(hz,displayRate.update(target,GetTickCount()));
-   bool updated=true;
+   bool updated=true,deferred=false;
+   auto maySubmit=[&]{const auto now=std::chrono::steady_clock::now(),deadline=uploadCadence.deadline(now,hz);if(deadline<=now)return true;
+    wakeAt=deadline;wakeScheduled=true;submission.defer();deferred=true;return false;};
+   const bool repair=submission.repair(GetTickCount64());
+   const bool changed=version!=presented||token!=current.token;
    const bool gpuFrame=std::any_of(layers.begin(),layers.end(),[](const Surface&s){return bool(s.gpu);});
-   if(gpuFrame){
+   const bool needsFrame=submission.needs(GetTickCount64(),changed,visible,!gpuFrame&&cpu.lostContent());
+   if(needsFrame&&gpuFrame){
+    if(maySubmit()){
     if(!gpuWindow){
      SetWindowLongPtrW(window,GWL_EXSTYLE,(GetWindowLongPtrW(window,GWL_EXSTYLE)&~WS_EX_LAYERED)|WS_EX_NOREDIRECTIONBITMAP);
-     gpuWindow=true;dib.clear();composition={};dibNeedsFullCopy=true;
+     gpuWindow=true;dib.clear();cpu.reset();cpuPrepared=false;
     }
     SetWindowPos(window,nullptr,origin.x,origin.y,current.width,current.height,SWP_NOZORDER|SWP_NOACTIVATE);
     {
-     std::unique_lock<std::mutex>lock(mutex);auto obsolete=[&]{return stop||!enabled||context.token!=current.token||context.cameraX!=current.cameraX||context.cameraY!=current.cameraY||rate!=requestedHz;};
-     cv.wait_until(lock,uploadCadence.deadline(std::chrono::steady_clock::now(),hz),obsolete);if(obsolete())continue;
+     std::unique_lock<std::mutex>lock(mutex);if(stop||!enabled||context.token!=current.token||context.cameraX!=current.cameraX||context.cameraY!=current.cameraY||rate!=requestedHz)continue;
      // A worker may finish while the output cadence is waiting. Present the
      // newest complete layer set, without holding an older frame one interval.
      if(version!=revision){layers.clear();for(const auto&n:nodes)if(overlaycomposition::valid(n.second.surface,current))layers.push_back(n.second.surface);version=revision;
       if(std::none_of(layers.begin(),layers.end(),[](const Surface&s){return bool(s.gpu);}))continue;
      }
     }
-    if(!clipWindow(current,layers))continue;
-    uploadCadence.submitted(std::chrono::steady_clock::now());updated=gpuComposition.present(window,current,layers);
+    if(!clipWindow(current,layers)){submission.failed();continue;}
+    uploadCadence.submitted(std::chrono::steady_clock::now());{pipelineperf::Scope timing(timings,3);updated=gpuComposition.present(window,current,layers);}
+    submission.completed(GetTickCount64(),updated);
     const auto completed=std::chrono::steady_clock::now();
     {std::lock_guard<std::mutex>lock(mutex);if(context.token==current.token){if(updated){auto&statistics=uploadStatistics_;statistics.intervalMs=uploadContinuous_?uint64_t(std::max<int64_t>(0,std::chrono::duration_cast<std::chrono::milliseconds>(completed-lastUploadComplete).count())):0;statistics.maxGapMs=std::max(statistics.maxGapMs,statistics.intervalMs);++statistics.count;statistics.lastTick=GetTickCount64();uploadContinuous_=true;lastUploadComplete=completed;}else ++uploadStatistics_.failures;}}
     if(updated){presented=version;token=current.token;}
     else if(gpuComposition.reason()!="GPU frame not ready")gpupresent::available()=false;
-   }else{
+    }
+   }else if(needsFrame){
    if(gpuWindow){
     gpuComposition.reset();auto style=GetWindowLongPtrW(window,GWL_EXSTYLE)&~WS_EX_NOREDIRECTIONBITMAP;
-    SetWindowLongPtrW(window,GWL_EXSTYLE,style&~WS_EX_LAYERED);SetWindowLongPtrW(window,GWL_EXSTYLE,style|WS_EX_LAYERED);gpuWindow=false;dibNeedsFullCopy=true;
+    SetWindowLongPtrW(window,GWL_EXSTYLE,style&~WS_EX_LAYERED);SetWindowLongPtrW(window,GWL_EXSTYLE,style|WS_EX_LAYERED);gpuWindow=false;cpu.lost();
    }
-   if(!clipWindow(current,layers))continue;
-   if(continuous||!visible||version!=presented||token!=current.token){
-    const bool resize=dib.w!=current.width||dib.h!=current.height||!dib.dc;
-    if(!composition.update(current,std::move(layers))||!dib.resize(current.width,current.height)){updated=false;}
+   if(!clipWindow(current,layers)){submission.failed();continue;}
+   {
+    bool composed=cpuPrepared&&cpuVersion==version&&cpuToken==current.token;
+    if(!composed){pipelineperf::Scope timing(timings,0);composed=cpu.compose(current,std::move(layers),dib);cpuPrepared=composed;if(composed){cpuVersion=version;cpuToken=current.token;}}
+    if(!composed){updated=false;submission.failed();}
     else{
-     {std::lock_guard<std::mutex>lock(mutex);if(!enabled||context.token!=current.token||context.cameraX!=current.cameraX||context.cameraY!=current.cameraY){dibNeedsFullCopy=true;continue;}}
-     const auto&output=composition.pixels();
-     auto copy=[&](const overlaycomposition::Rect&dirty){for(int y=dirty.y;y<dirty.y+dirty.h;++y)memcpy(static_cast<uint32_t*>(dib.bits)+size_t(y)*current.width+dirty.x,output.data()+size_t(y)*current.width+dirty.x,size_t(dirty.w)*4);};
-     const bool needsUpload=continuous||!visible||resize||dibNeedsFullCopy||token!=current.token||!composition.dirtyRegions().empty();
-     if(resize||dibNeedsFullCopy)copy({0,0,current.width,current.height});else for(const auto&dirty:composition.dirtyRegions())copy(dirty);
-     dibNeedsFullCopy=false;
+     {std::lock_guard<std::mutex>lock(mutex);if(!enabled||context.token!=current.token||context.cameraX!=current.cameraX||context.cameraY!=current.cameraY){cpu.lost();continue;}}
+     const bool needsUpload=cpu.needsUpload(repair||submission.pending()||!visible||token!=current.token);
+     bool copied=true;if(cpu.needsCopy()){pipelineperf::Scope timing(timings,1);copied=cpu.copy(dib);}if(!copied){submission.failed();continue;}
      if(!needsUpload){
       // A camera/group revision can leave the same clipped pixels. Consume
       // it without copying the full HWND to DWM; placement still runs below.
       presented=version;token=current.token;
       std::lock_guard<std::mutex>lock(mutex);uploadContinuous_=false;uploadStatistics_.intervalMs=0;
-     }else{
+     }else if(maySubmit()){
      SIZE size{current.width,current.height};POINT zero{};BLENDFUNCTION blend{AC_SRC_OVER,0,255,AC_SRC_ALPHA};
      // Composition may start immediately. Only submitting to the HWND is
      // rate-limited, so variable render costs cannot append a whole idle period
      // or produce a short catch-up upload burst after a slow frame.
      {
       std::unique_lock<std::mutex>lock(mutex);
-      auto obsolete=[&]{return stop||!enabled||context.token!=current.token||context.cameraX!=current.cameraX||context.cameraY!=current.cameraY||rate!=requestedHz;};
-      cv.wait_until(lock,uploadCadence.deadline(std::chrono::steady_clock::now(),hz),obsolete);
-      if(obsolete()){dibNeedsFullCopy=true;continue;}
+      if(stop||!enabled||context.token!=current.token||context.cameraX!=current.cameraX||context.cameraY!=current.cameraY||rate!=requestedHz||revision!=version){cpu.lost();continue;}
      }
      uploadCadence.submitted(std::chrono::steady_clock::now());
-     updated=UpdateLayeredWindow(window,nullptr,&origin,&size,dib.dc,&zero,0,&blend,ULW_ALPHA)!=FALSE;
+     {pipelineperf::Scope timing(timings,2);updated=UpdateLayeredWindow(window,nullptr,&origin,&size,dib.dc,&zero,0,&blend,ULW_ALPHA)!=FALSE;}
+     submission.completed(GetTickCount64(),updated);
      const auto completed=std::chrono::steady_clock::now();
      {std::lock_guard<std::mutex>lock(mutex);if(context.token==current.token){
       if(updated){
@@ -162,13 +170,14 @@ class Host {
       }else ++uploadStatistics_.failures;
      }}
      if(updated){presented=version;token=current.token;}
-     else dibNeedsFullCopy=true;
+     else cpu.lost();
      }
     }
-   }else{std::lock_guard<std::mutex>lock(mutex);uploadContinuous_=false;uploadStatistics_.intervalMs=0;}
    }
-   if(updated){
-    if(!visible||wasTop!=highest||origin.x!=lastOrigin.x||origin.y!=lastOrigin.y)
+   }else{std::lock_guard<std::mutex>lock(mutex);uploadContinuous_=false;uploadStatistics_.intervalMs=0;
+   }
+   if(updated&&(!deferred||visible)){
+    if(repair||!visible||wasTop!=highest||origin.x!=lastOrigin.x||origin.y!=lastOrigin.y)
      updated=overlaystack::place(window,overlaystack::Layer::RenderUpgrade,origin.x,origin.y,0,0,SWP_NOSIZE|SWP_SHOWWINDOW)!=FALSE;
     else overlaystack::keepAbove(GetForegroundWindow());
     if(updated){visible=true;lastOrigin=origin;wasTop=highest;}
@@ -179,6 +188,7 @@ class Host {
  }
 public:
  ~Host(){shutdown();}
+ void setDiagnosticsSink(pipelineperf::Sink sink){diagnosticsSink_.store(sink,std::memory_order_relaxed);}
  Context configure(uintptr_t window,uint32_t pid,uint32_t match,int width,int height,int cameraX,int cameraY,bool active,bool highest,int hz,bool deferCamera=false){
   std::lock_guard<std::mutex>lock(mutex);if(stop)return {};
   active=active&&window&&pid&&match&&width>0&&height>0&&width<=8192&&height<=8192&&uint64_t(width)*height<=16*1024*1024;

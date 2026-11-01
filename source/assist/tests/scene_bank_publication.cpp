@@ -24,5 +24,15 @@ int main(){
  auto invalid=sample(102,10,10.);invalid->markerScanValid=false;bank.publish(3,1,true,invalid);assert(bank.get(3,1,0,11,true)==afterWrap);
  auto reveal=sample(103,12,12.,true);bank.publish(3,1,true,reveal);assert(bank.get(3,1,1,13,true)==reveal&&!bank.get(3,1,0,13,true));
  assert(!bank.get(3,1,1,513,true));
+ // A retiring source can release large assets or trigger cache bookkeeping.
+ // Its deleter must run after unlocking, so a consumer can read the newly
+ // published source even while the old source is being destroyed.
+ bool retiredOutsideLock=false;auto incoming=sample(105,14,14.,true);
+ auto* retiring=new Frame(*sample(104,13,13.,true));
+ bank.publish(3,1,true,std::shared_ptr<const Frame>(retiring,[&](const Frame*value){
+  retiredOutsideLock=bank.get(3,1,1,15,true)==incoming;delete value;
+ }));
+ bank.publish(3,1,true,incoming);assert(retiredOutsideLock);
  std::puts("PASS: production SceneBank rejects late older observations, preserves newer rewinds, separates identities and reveal policy, handles tick wrap and rejects incomplete sources");
+ std::puts("PASS: retired source destruction runs outside publication lock; consumer can read replacement during retirement");
 }

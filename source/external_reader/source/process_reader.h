@@ -32,11 +32,22 @@ class ProcessReader : public ReaderDiagnostics {
  // A partly unreadable page cannot fill the cache. Retry its fields directly
  // for this sample instead of repeating the failing 4 KiB read for each one.
  std::unordered_set<uint32_t> failedPages_;
+ std::vector<uint32_t> prefetchPages_;
  auto storage(uint32_t page)->decltype(pages_)::iterator{
   auto it=pages_.find(page);if(it!=pages_.end())return it;
   if(pages_.size()==8192){auto node=pages_.extract(pageOrder_.front());pageOrder_.pop_front();node.key()=page;node.mapped().epoch=0;it=pages_.insert(std::move(node)).position;}
   else{it=pages_.try_emplace(page).first;++pageAllocations_;}
   pageOrder_.push_back(page);return it;
+ }
+ const Page* cachedPage(uint32_t page){
+  auto it=pages_.find(page);if(it!=pages_.end()&&it->second.epoch==epoch_){++pageHits;return &it->second;}
+  ++pageMisses;if(failedPages_.count(page))return nullptr;
+  if(it==pages_.end())it=storage(page);
+  auto&cached=it->second;cached.epoch=0;SIZE_T got=0;++reads;
+  if(ReadProcessMemory(connection_->handle,(void*)(uintptr_t)page,cached.bytes.data(),cached.bytes.size(),&got)&&got==cached.bytes.size()){
+   cached.epoch=epoch_;return &cached;
+  }
+  if(failedPages_.size()<8192)failedPages_.insert(page);return nullptr;
  }
 public:
  ProcessReader()=default;ProcessReader(const ProcessReader&)=delete;
@@ -66,12 +77,15 @@ public:
  // Adjacent actor pages enter this epoch in one bounded RPM call. A failed
  // speculative span poisons no page: normal per-page/field fallback remains.
  void prefetch(const std::vector<uint32_t>&addresses,size_t span){
-  if(!canRead()||!span||span>4096)return;std::vector<uint32_t> wanted;wanted.reserve(std::min<size_t>(addresses.size()*2,4096));
-  for(uint32_t p:addresses){if(p<0x10000||uint64_t(p)+span>0x80000000ull)continue;
+  if(!canRead()||!span||span>4096)return;auto&wanted=prefetchPages_;wanted.clear();
+  const size_t count=std::min<size_t>(addresses.size(),65536);wanted.reserve(count*2);
+  for(size_t index=0;index<count;++index){uint32_t p=addresses[index];if(p<0x10000||uint64_t(p)+span>0x80000000ull)continue;
    for(uint32_t page=p&~4095u;uint64_t(page)<uint64_t(p)+span;page+=4096){auto it=pages_.find(page);if(it==pages_.end()||it->second.epoch!=epoch_)wanted.push_back(page);}
-   if(wanted.size()>=4096)break;
   }
   std::sort(wanted.begin(),wanted.end());wanted.erase(std::unique(wanted.begin(),wanted.end()),wanted.end());
+  // Bound remote work after de-duplication. Packed Cells share many pages;
+  // counting their duplicate addresses used to stop half a chunk early.
+  if(wanted.size()>4096)wanted.resize(4096);
   std::array<unsigned char,65536> bytes;
   for(size_t first=0;first<wanted.size();){size_t end=first+1;while(end<wanted.size()&&end-first<16&&wanted[end]==wanted[end-1]+4096)++end;
    // Isolated pages are already optimal in the ordinary lazy reader.
@@ -87,20 +101,20 @@ public:
    ++errors;lastReadError=!valid()?ERROR_INVALID_HANDLE:!canRead()?ERROR_ACCESS_DENIED:ERROR_INVALID_PARAMETER;
    lastFailedAddress=address;lastFailedSize=size;lastBytesRead=0;lastRegionQueried=false;return false;
   }
-  uint32_t page=address&~4095u;
-  if(size<=4096&&(address&4095)+size<=4096){
-   auto it=pages_.find(page);if(it!=pages_.end()&&it->second.epoch==epoch_){++pageHits;std::memcpy(out,it->second.bytes.data()+(address&4095),size);return true;}
-   ++pageMisses;
-   if(!failedPages_.count(page)){
-    if(it==pages_.end())it=storage(page);
-    auto&cached=it->second;cached.epoch=0;SIZE_T got=0;++reads;
-    if(ReadProcessMemory(connection_->handle,(void*)(uintptr_t)page,cached.bytes.data(),cached.bytes.size(),&got)&&got==cached.bytes.size()){
-     cached.epoch=epoch_;std::memcpy(out,cached.bytes.data()+(address&4095),size);return true;
+  const uint32_t page=address&~4095u;
+  if(size<=4096){
+   if(const auto*first=cachedPage(page)){
+    const size_t part=std::min<size_t>(size,4096-(address&4095));
+    std::memcpy(out,first->bytes.data()+(address&4095),part);
+    if(part==size)return true;
+    // A <=4 KiB object block may straddle two prefetched pages. Copy the
+    // first before looking up the next: bounded storage may evict it.
+    if(const auto*second=cachedPage(page+4096)){
+     std::memcpy(static_cast<unsigned char*>(out)+part,second->bytes.data(),size-part);return true;
     }
-    if(failedPages_.size()<8192)failedPages_.insert(page);
    }
+   ++pageFallbacks;
   }
-  if(size<=4096&&(address&4095)+size<=4096)++pageFallbacks;
   return readFresh(address,out,size);
  }
  // Immediate dynamic fields bypass page caching. Preserve the cursor's existing

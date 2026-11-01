@@ -9,6 +9,9 @@ class SceneBank {
 public:
  void publish(uint32_t pid,uint32_t match,bool world,std::shared_ptr<const Frame>frame){
   if(!frame||!frame->terrain||frame->terrain->art.empty()||!frame->markerScanValid)return;
+  // Releasing the last source can free whole-map art and marker vectors.
+  // Keep that work outside the publication lock used by every view.
+  std::shared_ptr<const Frame> retired;
   std::lock_guard<std::mutex>lock(mutex_);
   if(frame_&&pid_==pid&&match_==match){
    // Independent view workers finish at different times. Completion order
@@ -23,7 +26,7 @@ public:
     if(order<0||(order==0&&frame->frame<frame_->frame))return;
    }
   }
-  pid_=pid;match_=match;world_=world;frame_=std::move(frame);
+  pid_=pid;match_=match;world_=world;retired=std::move(frame_);frame_=std::move(frame);
  }
  std::shared_ptr<const Frame> get(uint32_t pid,uint32_t match,uint32_t reveal,uint32_t now,bool worldOnly=false){
   std::lock_guard<std::mutex>lock(mutex_);

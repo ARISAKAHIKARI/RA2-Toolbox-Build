@@ -9,6 +9,7 @@
 namespace asyncwork {
 // One running job and one replaceable pending snapshot. No caller waits for
 // computation, and invalidation rejects an in-flight old-world completion.
+// Retire potentially large snapshots after releasing the scheduling mutex.
 template<class Input,class Output>class Latest {
  std::mutex mutex_;std::condition_variable cv_;std::thread thread_;
  std::unique_ptr<Input> pending_;std::shared_ptr<const Output> latest_;
@@ -19,15 +20,15 @@ template<class Input,class Output>class Latest {
   {std::unique_lock<std::mutex> lock(mutex_);cv_.wait(lock,[&]{return stop_||pending_;});if(stop_)return;input=std::move(pending_);epoch=epoch_;}
   auto result=work_(*input);
   bool published=false;
-  {std::lock_guard<std::mutex> lock(mutex_);if(!stop_&&epoch==epoch_&&result){latest_=std::move(result);published=true;}}
+  {std::lock_guard<std::mutex> lock(mutex_);if(!stop_&&epoch==epoch_&&result){latest_.swap(result);published=true;}}
   if(published&&completed_)completed_();
  }}
 public:
  explicit Latest(std::function<std::shared_ptr<const Output>(const Input&)> work,std::function<void()> completed={}):work_(std::move(work)),completed_(std::move(completed)){}
  ~Latest(){shutdown();}
- void submit(Input input){std::lock_guard<std::mutex> lock(mutex_);if(stop_)return;pending_=std::make_unique<Input>(std::move(input));if(!thread_.joinable())thread_=std::thread([this]{run();});cv_.notify_one();}
+ void submit(Input input){auto next=std::make_unique<Input>(std::move(input));std::lock_guard<std::mutex> lock(mutex_);if(stop_)return;pending_.swap(next);if(!thread_.joinable())thread_=std::thread([this]{run();});cv_.notify_one();}
  std::shared_ptr<const Output> get(){std::lock_guard<std::mutex> lock(mutex_);return latest_;}
- void invalidate(){std::lock_guard<std::mutex> lock(mutex_);++epoch_;pending_.reset();latest_.reset();}
- void shutdown(){{std::lock_guard<std::mutex> lock(mutex_);stop_=true;pending_.reset();latest_.reset();++epoch_;cv_.notify_one();}if(thread_.joinable())thread_.join();}
+ void invalidate(){std::unique_ptr<Input> input;std::shared_ptr<const Output> output;{std::lock_guard<std::mutex> lock(mutex_);++epoch_;input=std::move(pending_);output=std::move(latest_);}}
+ void shutdown(){std::unique_ptr<Input> input;std::shared_ptr<const Output> output;{std::lock_guard<std::mutex> lock(mutex_);stop_=true;input=std::move(pending_);output=std::move(latest_);++epoch_;cv_.notify_one();}input.reset();output.reset();if(thread_.joinable())thread_.join();}
 };
 }

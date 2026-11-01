@@ -11,6 +11,7 @@ constexpr uint32_t Cells=0x100000,Cell=0x200000,Neighbor=0x210000,House=0x300000
 constexpr size_t Index=5*512+5;
 std::vector<uint8_t> memory(0x1000000);
 uint32_t failAt=0;size_t failLength=0;bool neighborFieldFail=false,pageOnlyFail=false;
+std::vector<uint32_t> prefetched;size_t prefetchSpan=0;
 template<class T>void put(uint32_t at,T value){std::memcpy(memory.data()+at,&value,sizeof value);}
 bool bytes(uint32_t at,void*out,size_t n){
  if(uint64_t(at)+n>memory.size())return false;
@@ -19,7 +20,9 @@ bool bytes(uint32_t at,void*out,size_t n){
  if(pageOnlyFail&&at==Cell&&n==4096)return false;
  std::memcpy(out,memory.data()+at,n);return true;
 }
-struct Read {bool operator()(uint32_t at,void*out,size_t n)const{return bytes(at,out,n);}bool fresh(uint32_t at,void*out,size_t n)const{return bytes(at,out,n);}};
+struct Read {bool operator()(uint32_t at,void*out,size_t n)const{return bytes(at,out,n);}bool fresh(uint32_t at,void*out,size_t n)const{return bytes(at,out,n);}
+ void prefetch(const std::vector<uint32_t>&addresses,size_t span)const{prefetched=addresses;prefetchSpan=span;}
+};
 void setup(){
  put(radar::Map+0xF4,4);put(radar::Map+0xF8,4);put(radar::Map+0x104,4);put(radar::Map+0x108,4);
  put(radar::Map+0x13C,Cells);put(radar::Map+0x140,4096);put(radar::Map+0x1488,1.f);
@@ -33,6 +36,7 @@ void setup(){
 }
 int main(){
  setup();radar::Sampler<Read> sampler(Read{});assert(sampler.step(0,4096,true));
+ assert(prefetchSpan==0x148&&prefetched==std::vector<uint32_t>({Cell,Neighbor}));
  auto front=sampler.terrainFrame(1).terrain;auto revision=sampler.revision();assert(front&&front->shade[Index].shroud==-1);
  auto retained=[&](){assert(sampler.terrainFrame(2).terrain==front&&sampler.revision()==revision);assert(front->shade[Index].shroud==-1);};
  unsigned rejected=0;
@@ -53,8 +57,9 @@ int main(){
  put(Cell+0x12C,uint8_t(0x08));neighborFieldFail=true;
  assert(!sampler.step(0,4096,true));retained();++rejected;neighborFieldFail=false;put(Cell+0x12C,uint8_t(0x10));
  // Failure after two successful bounded chunks must not publish half a bank.
- assert(sampler.step(0,1024,true));assert(sampler.step(0,1024,true));retained();
+ assert(sampler.step(0,1024,true));assert(prefetched.empty());assert(sampler.step(0,1024,true));assert(prefetched.empty());retained();
  failAt=Cell;failLength=0x148;assert(!sampler.step(0,1024,true));retained();++rejected;
+ assert(prefetched==std::vector<uint32_t>({Cell,Neighbor}));
  radar::Sampler<Read> first(Read{});assert(!first.step(0,4096,true)&&!first.hasTerrain());
  failLength=0;for(int i=0;i<4;++i)assert(sampler.step(0,1024,true));
  assert(sampler.revision()==revision+1&&sampler.terrainFrame(4).terrain!=front);

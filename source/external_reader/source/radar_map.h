@@ -79,13 +79,13 @@ inline uint32_t terrainColor(int land,int level,bool fog){
 }
 template<class Read> class Sampler {
  bool particles_=true,lasers_=true;Read read_;GameView<Read> view_;Geometry geo_{};std::vector<uint32_t> pointers_;std::shared_ptr<Terrain> pending_;std::shared_ptr<const Terrain> terrain_;
- std::vector<uint32_t> tileTypes_,overlayTypes_,smudgeTypes_;std::vector<artvariants::Pool> resourcePools_;size_t cursor_=0;int lastFrame_=-1;uint32_t reveal_=0;unsigned revision_=0;
+ std::vector<uint32_t> tileTypes_,overlayTypes_,smudgeTypes_,prefetchCells_;std::vector<artvariants::Pool> resourcePools_;size_t cursor_=0;int lastFrame_=-1;uint32_t reveal_=0;unsigned revision_=0;
  struct MaskBits {uint8_t state=0,shroud=0,fog=0;}; // state: unknown, verified, unavailable
  std::vector<MaskBits> maskBits_;std::array<int8_t,256> frameLookup_{};bool pendingIncomplete_=false;
  void discardPending(){pending_.reset();pointers_.clear();maskBits_.clear();cursor_=0;pendingIncomplete_=false;}
  template<class T>T get(uint32_t a,T fallback={})const{return view_.template get<T>(a,fallback);}
- template<class R>static auto prefetch(R read,const std::vector<uint32_t>&p,int)->decltype(read.prefetch(p,0x800),void()){read.prefetch(p,0x800);}
- template<class R>static void prefetch(R,const std::vector<uint32_t>&,long){}
+ template<class R>static auto prefetch(R read,const std::vector<uint32_t>&p,size_t span,int)->decltype(read.prefetch(p,span),void()){read.prefetch(p,span);}
+ template<class R>static void prefetch(R,const std::vector<uint32_t>&,size_t,long){}
  bool maskBits(int x,int y,shroudselector::Bits&out){
   if(!geo_.legal(x,y))return false;size_t i=size_t(y)*512+x;
   if(i>=pointers_.size())return false;
@@ -146,6 +146,14 @@ public:
     if(pendingIncomplete_){discardPending();return false;}
    }cursor_=0;}
   size_t end=std::min(pointers_.size(),cursor_+size_t(std::clamp(budget,1,16384)));
+  // The same bounded chunk and admission as the scalar pass below. Reading
+  // adjacent Cell pages together changes neither scan frequency nor which
+  // cells are required; failed batches retain the ordinary checked fallback.
+  prefetchCells_.clear();prefetchCells_.reserve(end-cursor_);
+  for(size_t index=cursor_;index<end;++index){int x=int(index%512),y=int(index/512);
+   if(pointers_[index]>=0x10000&&g.legal(x,y)&&(g.flatVisible(x,y)||(real&&g.terrainSourceCandidate(x,y))))prefetchCells_.push_back(pointers_[index]);
+  }
+  prefetch(read_,prefetchCells_,0x148,0);
   // Retain the native RGB/diagram/actor admission separately from terrain
   // sources: an excluded cell's TMP can still intersect the current crop.
   for(;cursor_<end;++cursor_){int x=int(cursor_%512),y=int(cursor_/512);bool flat=g.flatVisible(x,y);
@@ -203,7 +211,7 @@ public:
    }out.extras=std::move(extras);
   }
   if(!out.extras)out.extras=std::make_shared<const sceneextras::Snapshot>(sceneextras::capture(read_,geo_.house,out.frame,false,false));
-  prefetch(read_,bodies,0);out.markers.reserve(bodies.size());
+  prefetch(read_,bodies,0x800,0);out.markers.reserve(bodies.size());
   for(uint32_t p:bodies){int kind=view_.kind(p);if(!nativedraw::alive(view_,p,kind)||(kind!=3&&get<uint32_t>(p+0x11C)))continue;
    if(kind==3&&!terrain_->reveal&&out.extras&&out.extras->frozenValid&&get<uint8_t>(p+0x6E7))continue;
    auto drawState=nativedraw::capture(read_,p,view_.type(p,kind),kind,geo_.house,out.frame);if(!drawState.visible)continue;

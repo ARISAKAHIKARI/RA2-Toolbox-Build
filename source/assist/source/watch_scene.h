@@ -8,6 +8,7 @@
 #include "../../external_reader/source/material_motion.h"
 #include <functional>
 #include <chrono>
+#include "watch_presentation.h"
 namespace watchscene {
 // A tracking camera is a viewport of the common immutable world, rendered by
 // the SAME scene compositor as the main view. Only camera lifetime/navigation
@@ -26,15 +27,20 @@ public:
  std::array<View,3> views;external::watch::Track tracks[3];external::watch::Target automatic;
  bool autoSuppressed=false,revealMap=false,danger=false;int width=800,height=600;uint32_t process=0,epoch=0,sourceTick=0;
  bool sharedSource=false,gpuAttempted=false,gpuUsed=false;
+ struct Timings {double sample=0,prepare=0,total=0;std::array<double,3>draw{};std::array<bool,3>attempted{},reused{};bool prepared=false,sampled=false;} timings;
  std::array<std::array<int,2>,3> outputSizes{{{{320,256}},{{320,256}},{{320,256}}}};
  Renderer(Reader&r,Assets&a):reader_(r),assets_(a),read_([&r](uint32_t p,void*out,size_t n){return r.read(p,out,n);}),sampler_(read_){}
  void reset(){motion_.reset();preparer_.reset();sampler_.reset();sourceFrame_=-1;haveControls_=false;automatic={};autoSuppressed=false;for(auto&t:tracks)t={};for(auto&v:views)v={};for(auto&s:scenes_)s.reset();}
  void features(const external::presentation::Profile&p){if(p!=profile_){preparer_.reset();for(auto&s:scenes_)s.reset();for(auto&v:views)v.scene.reset();sourceFrame_=-1;profile_=p;}}
  void syncTracks(uint32_t revision,const std::array<external::watch::Track,3>&next,bool suppressed){if(haveControls_&&controls_==revision)return;std::copy(next.begin(),next.end(),tracks);autoSuppressed=suppressed;controls_=revision;haveControls_=true;}
  bool update(uint32_t now){
+  timings={};const double started=clock();struct Total {double start;Timings&out;~Total(){out.total=watchpresentation::now()-start;if(!out.sampled)out.sample=out.total;}} total{started,timings};
   auto fresh=[this](uint32_t p,void*out,size_t n){return reader_.readFresh(p,out,n);};
   bool manual=false;for(auto&t:tracks){bool had=bool(t);external::watch::follow(fresh,t);if(had&&!t)autoSuppressed=true;manual|=bool(t);}
   if(!manual&&!autoSuppressed)automatic=external::watch::choose(read_,{},automatic,danger);else automatic={};
+  // With automatic tracking explicitly off/suppressed and no pinned target,
+  // there is no camera to draw. Do not sample/decode a world for empty panels.
+  if(!manual&&(!danger||autoSuppressed)){for(auto&v:views)v={};sourceTick=now;sharedSource=gpuAttempted=gpuUsed=false;return true;}
   auto current=external::radar::publicationContext(fresh);auto bank=external::radar::sceneBank().get(process,epoch,revealMap,now,true);
   if(bank&&(!external::radar::recentMarkers(*bank,current,now)||!external::radar::supportsEffects(*bank,profile_.particles,profile_.lasers)))bank.reset();sharedSource=bool(bank);
   if(!bank){
@@ -51,6 +57,7 @@ public:
   int rasterW=1,rasterH=1;for(const auto&size:outputSizes){rasterW=std::max(rasterW,size[0]);rasterH=std::max(rasterH,size[1]);}
   external::xbrzadapter::gpuPresentation(profile_.gpu);external::presentation::apply(profile_,assets_,Width,Height,rasterW,rasterH);
   const double zscale=external::projectionZScale(fresh);
+  timings.sample=clock()-started;timings.sampled=true;
   gpuAttempted=gpuUsed=false;std::shared_ptr<const external::worldscene::Snapshot> world;bool prepared=false;
   for(int i=0;i<3;++i){auto&v=views[i];auto target=tracks[i]?tracks[i].target:i==0?automatic:external::watch::Target{};
    if(!(target==v.frame.focus))v={};v.shown=bool(target);if(!target)continue;
@@ -67,14 +74,14 @@ public:
    // Prepare the complete world once for all three cameras. Each camera
    // records the same pass sequence at its own current position; following a
    // fast target never translates pixels or invalidates native terrain pages.
-   if(!prepared){prepared=true;preparer_.features(profile_);preparer_.guideEnabled(false,controls_);preparer_.prepareWorld(true);preparer_.outputSized(true);
+   if(!prepared){prepared=true;timings.prepared=true;const double prepareAt=clock();preparer_.features(profile_);preparer_.guideEnabled(false,controls_);preparer_.prepareWorld(true);preparer_.outputSized(true);
     auto ready=preparer_.render(data,Width,Height,read_,assets_,{cx-Width/2+data.terrain->geo.offsetX*30.,cy-Height/2-data.terrain->geo.offsetY*15.,Width,Height,true},unsigned(profile_.scale),profile_.detail!=0,true,profile_.precision!=0,true,4.);
-    if(ready)world=preparer_.preparedWorld();
+    if(ready)world=preparer_.preparedWorld();timings.prepare=clock()-prepareAt;
    }
    external::mainview::View camera{0x10000,data.terrain->geo.house,0x10000,data.frame,int(cx)-Width/2,int(cy)-Height/2,Width,Height,0,0,Width,Height};
    // Camera span stays 640x512 game pixels. Only its physical raster follows
    // the largest visible host panel, shared by primary and secondary displays.
-   auto scene=world?scenes_[i].draw(world,camera,outputSizes[i][0],outputSizes[i][1],fresh):nullptr;
+   const double drawAt=clock();timings.attempted[i]=bool(world);auto scene=world?scenes_[i].draw(world,camera,outputSizes[i][0],outputSizes[i][1],fresh):nullptr;timings.draw[i]=clock()-drawAt;timings.reused[i]=bool(scene)&&scenes_[i].reused();
    gpuAttempted|=external::xbrzadapter::gpuAttempted();gpuUsed|=external::xbrzadapter::gpuUsed();
    if(scene){next.cameraX=camera.cameraX+Width/2;next.cameraY=camera.cameraY+Height/2;v.scene=std::move(scene);v.frame=std::move(next);}
   }

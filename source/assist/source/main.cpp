@@ -991,8 +991,10 @@ static void mergeExternal(){
  updateEnemyDisplay(d);updateStatusDisplay(d);
 }
 #include "../../external_reader/source/attack_trace.h"
+#include "../../shared/source/pipeline_timing.h"
 static external::attacktrace::Recorder attackRecorder;
 static void sampleExternal(DWORD now){
+ static pipelineperf::Window timings(L"information-sample",{L"total"});pipelineperf::Scope total(timings,0,critical);
  if(shared&&shared->viewZoomBusy)return;
  
  if(!externalReader.valid())return;
@@ -1296,15 +1298,16 @@ static void present(){auto frame=worker.get();
 #include "sidebar_overlay.h"
 static void hideSidebarOverlay(){sidebaroverlay::invalidate();}
 static void paint(){
+ static pipelineperf::Window timings(L"host-paint",{L"total",L"information",L"world-handoff",L"panels",L"hud"});pipelineperf::Scope total(timings,0,critical);
  ++displayCounters.paints;
  if(!overlayvisibility::visible()){renderupgrade::stop();worldrender::invalidate();hideSidebarOverlay();overlayRecovery.suspend();hideWorldOverlay();hideAircraftButton();minimap::hide();watchhost::suspend();watchwindows::hide();hideConstruction();clearPassengerDisplay();return;}
- if(enabled||secondaryDisplayRequested())sampleExternal(GetTickCount()); // Display cadence is independent of command servicing.
+ {pipelineperf::Scope sample(timings,1);if(enabled||secondaryDisplayRequested())sampleExternal(GetTickCount());} // Display cadence is independent of command servicing.
  const auto displayState=external::display::inspect([](uint32_t at,void*out,size_t n){return externalReader.readFresh(at,out,n);});
  RECT r{};GetClientRect(game,&r);POINT origin{};ClientToScreen(game,&origin);
  // The scene renderer validates its own live view. An unrelated information
  // scan can fail for one refresh without invalidating that completed scene.
  // Pass the readable/hidden distinction through before the legacy UI gates.
- renderupgrade::update(origin,r,displayState);
+ {pipelineperf::Scope handoff(timings,2);renderupgrade::update(origin,r,displayState);}
  const auto passive=passiveDisplayState(displayState,r);
  if(passive==overlaydisplay::State::Hidden){worldrender::invalidate();hideSidebarOverlay();overlayRecovery.suspend();hideWorldOverlay();hideAircraftButton();minimap::hide();watchwindows::hide();hideConstruction();clearPassengerDisplay();return;}
  if(passive==overlaydisplay::State::Hold){
@@ -1317,7 +1320,8 @@ static void paint(){
  const DWORD renderNow=sampleRenderClock(shared);
  {static worldpresentation::ContextRevision prior;auto c=overlaycompositor::host().capture(uintptr_t(game),pid);
   if(prior.changed(c.token,c.cameraX,c.cameraY,snap.cameraX,snap.cameraY))++paintRevision;}
- minimap::update(origin,r,battlefield);watchhost::update(renderNow);watchwindows::update(origin,r,battlefield);
+ {pipelineperf::Scope panels(timings,3);minimap::update(origin,r,battlefield);watchhost::update(renderNow);watchwindows::update(origin,r,battlefield);}
+ pipelineperf::Scope hud(timings,4);
  if(!enabled||!foregroundGame()||snap.chat){worldrender::invalidate();hideSidebarOverlay();overlayRecovery.suspend();hideWorldOverlay();hideAircraftButton();hideConstruction();clearPassengerDisplay();return;}
  DWORD now=sampleClock(shared);int labelCount=motion.render(renderNow,labelViews);
  const auto&statusFrame=externalSampler.unitStatuses();
@@ -1772,7 +1776,7 @@ static bool serviceReadOnlyDisplays(DWORD now){
  if(snap.renderStatus!=1){minimap::hide();watchwindows::hide();}
  return true;
 }
-static void tick(){reapBridges();logBridgeHealth();DWORD now=GetTickCount();static DWORD lastControl;if(lastControl&&DWORD(now-lastControl)<8)return;lastControl=now;pollOverlayVisibility();syncSettingDependencies();syncInformationRate();if(!displayFrameRequested()){minimap::hide();watchwindows::hide();watchhost::suspend();}else if(!secondaryDisplayAvailable()){minimap::hideSecondary();watchwindows::hideSecondary();}updateModeStatus(now);updatePlayerTestUI();if(registeredHotkeyMode!=desiredHotkeyMode())registerKeys();if(!enabled&&!secondaryDisplayRequested()){if(pid||shared)detach();clockState(false,informationFPS());return;}
+static void tick(){reapBridges();logBridgeHealth();DWORD now=GetTickCount();static DWORD lastControl;if(lastControl&&DWORD(now-lastControl)<8)return;static pipelineperf::Window timings(L"host-control",{L"total"});pipelineperf::Scope total(timings,0,critical);lastControl=now;pollOverlayVisibility();syncSettingDependencies();syncInformationRate();if(!displayFrameRequested()){minimap::hide();watchwindows::hide();watchhost::suspend();}else if(!secondaryDisplayAvailable()){minimap::hideSecondary();watchwindows::hideSecondary();}updateModeStatus(now);updatePlayerTestUI();if(registeredHotkeyMode!=desiredHotkeyMode())registerKeys();if(!enabled&&!secondaryDisplayRequested()){if(pid||shared)detach();clockState(false,informationFPS());return;}
  if(pid&&DWORD(now-lastProcessCheck)>=250){lastProcessCheck=now;
   if(!externalReader.alive()){detach();lastFind=now-2000;}
   else {DWORD nextThread=0;bool authoritative=false;

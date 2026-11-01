@@ -5,8 +5,15 @@ The real HWND/thread loop has separate Windows tests; this checks the camera
 and scene lock transaction, including a concurrent compositor-state observer.
 """
 from pathlib import Path
+import argparse
+import contextlib
 import subprocess
 import tempfile
+
+parser=argparse.ArgumentParser(description=__doc__)
+parser.add_argument('--zig',type=Path)
+parser.add_argument('--build-dir',type=Path)
+args=parser.parse_args()
 
 root=Path(__file__).resolve().parents[2]
 source=(root/'shared/source/overlay_compositor.h').read_text('utf-8')
@@ -78,8 +85,10 @@ int main(){
  std::puts("PASS: actual Host camera/group/publication methods; runtime errors retain owner while startup failure falls back; legacy gap reproduced;1000 deferred camera commits and invalid proposals remain complete under concurrent observation");
 }
 '''
-with tempfile.TemporaryDirectory(prefix='render-atomic-camera-') as tmp:
-    cpp,exe=Path(tmp)/'atomic.cpp',Path(tmp)/'atomic'
+if args.build_dir:args.build_dir.mkdir(parents=True,exist_ok=True)
+with contextlib.nullcontext(args.build_dir) if args.build_dir else tempfile.TemporaryDirectory(prefix='render-atomic-camera-') as tmp:
+    cpp,exe=Path(tmp)/'atomic.cpp',Path(tmp)/('atomic.exe' if args.zig else 'atomic')
     cpp.write_text(fixture+methods+observers,'utf-8')
-    subprocess.run(['g++','-std=c++17','-O2','-pthread',str(cpp),'-o',str(exe)],check=True)
+    compiler=[str(args.zig),'c++','-target','x86_64-windows-gnu'] if args.zig else ['g++']
+    subprocess.run(compiler+['-std=c++17','-O2','-pthread',str(cpp),'-o',str(exe)],check=True)
     subprocess.run([str(exe)],check=True)

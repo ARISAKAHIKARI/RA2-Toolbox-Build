@@ -12,6 +12,7 @@ class ViewportCanvas {
  Surface surface_;std::shared_ptr<const std::vector<float>> baseDepth_;GpuDepthPlan depthPlan_;GpuSceneRecord gpuRecord_;uint64_t key_=0;
  struct DepthSource {uint64_t revision=0;int x=0,y=0,w=0,h=0;std::shared_ptr<const std::vector<float>> pixels;} depthSource_;
  uint64_t terrainRevision_=0;
+ std::shared_ptr<const void> terrainPrefixOwner_;bool terrainPlanReused_=false;
  std::shared_ptr<const gpumotion::Guides> guides_;
  int width_=0,height_=0;bool gpuRequested_=false,nativeScene_=false;bool gpuRecording_=false,gpuMasked_=false,gpuCompleted_=false;
  double x_=0,y_=0,sx_=1,sy_=1;int backingW_=0,backingH_=0;bool dirty_=false,ready_=false;
@@ -47,13 +48,13 @@ class ViewportCanvas {
   for(int y=0;y<h;++y){auto row=pixels.begin()+size_t(y)*w;if(y<t||y>=b)std::fill_n(row,w,0);else{std::fill(row,row+l,0);std::fill(row+r,row+w,0);}}
  }
 public:
- void reset(){surface_={};baseDepth_.reset();guides_.reset();depthPlan_={};depthSource_={};terrainRevision_=0;gpuRecord_.clear();width_=height_=0;key_=0;ready_=dirty_=terrainCached_=gpuRecording_=gpuMasked_=gpuCompleted_=false;samplingMode_=0;}
+ void reset(){surface_={};baseDepth_.reset();guides_.reset();depthPlan_={};depthSource_={};terrainRevision_=0;terrainPrefixOwner_.reset();terrainPlanReused_=false;gpuRecord_.clear();width_=height_=0;key_=0;ready_=dirty_=terrainCached_=gpuRecording_=gpuMasked_=gpuCompleted_=false;samplingMode_=0;}
  bool visible(double left,double top,double right,double bottom)const{return ready_&&left<x_+width_/sx_&&right>x_&&top<y_+height_/sy_&&bottom>y_;}
  bool visible(const voxel::Image&i,double ax,double ay,double drop=0)const{return ready_&&imageVisible(i,ax,ay,drop,0);}
  bool visibleShifted(const voxel::Image&i,double ax,double ay,double minY,double maxY)const{return ready_&&imageVisible(i,ax,ay+minY,0,0,maxY-minY);}
  bool prepareTerrain(const NativeCanvas&background,const std::vector<uint32_t>*cached,int w,int h,
               double x,double y,double spanX,double spanY,uint64_t key,colorprecision::Mode precision,unsigned mode,bool&rebuild){
-  ready_=false;dirty_=false;gpuRecording_=gpuMasked_=gpuCompleted_=false;gpuRecord_.reset();depthPlan_={};rebuild=true;
+  ready_=false;dirty_=false;gpuRecording_=gpuMasked_=gpuCompleted_=false;terrainPrefixOwner_.reset();terrainPlanReused_=false;gpuRecord_.reset();depthPlan_={};rebuild=true;
   if(w<1||h<1||w>8192||h>8192||uint64_t(w)*h>16*1024*1024||!std::isfinite(x)||!std::isfinite(y)||!std::isfinite(spanX)||!std::isfinite(spanY)||std::abs(x)>1e7||std::abs(y)>1e7||spanX<=0||spanY<=0||spanX>32768||spanY>32768||w/spanX>4||h/spanY>4)return false;
   bool reuse=!surface_.failed()&&baseDepth_&&terrainCached_&&cached&&cached->size()==size_t(w)*h&&key==key_&&width_==w&&height_==h&&x==x_&&y==y_&&sx_==w/spanX&&sy_==h/spanY&&samplingMode_==mode&&surface_.precision()==precision;
   if(reuse){surface_.color=*cached;surface_.depth=*baseDepth_;rebuild=false;}
@@ -79,13 +80,17 @@ public:
               double x,double y,double spanX,double spanY,uint64_t key,colorprecision::Mode precision=colorprecision::Mode::NativeSteps,unsigned mode=0,
               std::shared_ptr<const std::vector<uint32_t>>basePixels={},
               std::shared_ptr<const std::vector<vulkancompute::TileJob>>baseTiles={},std::function<bool(std::vector<uint32_t>&)>cpuBaseFallback={},uint64_t terrainRevision=0){
-  const bool wasTerrain=terrainCached_;ready_=false;dirty_=false;terrainCached_=false;samplingMode_=mode;gpuMasked_=gpuCompleted_=false;guides_.reset();gpuRecord_.reset();
+  const bool wasTerrain=terrainCached_;ready_=false;dirty_=false;terrainCached_=false;terrainPlanReused_=false;gpuMasked_=gpuCompleted_=false;guides_.reset();
   if(w<1||h<1||w>8192||h>8192||uint64_t(w)*h>16*1024*1024||(pixels.size()!=size_t(w)*h&&!(pixels.empty()&&baseTiles&&!baseTiles->empty()))||
      !std::isfinite(x)||!std::isfinite(y)||!std::isfinite(spanX)||!std::isfinite(spanY)||
      std::abs(x)>1e7||std::abs(y)>1e7||spanX<=0||spanY<=0||spanX>32768||spanY>32768)return false;
   auto&gpu=xbrzadapter::gpuState();
   nativeScene_=background.retainedGround()||!background.terrainSources().empty();gpuRequested_=gpu.requested;bool requestGpu=gpu.requested||nativeScene_;
   if(gpu.resolve&&!gpu.resolve->diagnostics().available&&!gpu.resolve->diagnostics().reason.empty()){gpuRequested_=false;requestGpu=nativeScene_;}
+  const auto terrainOwner=background.terrainSourceOwner();
+  const bool reuseTerrain=requestGpu&&nativeScene_&&terrainOwner&&terrainOwner==terrainPrefixOwner_&&gpuRecord_.prefixAvailable()&&!wasTerrain&&
+   key==key_&&terrainRevision==terrainRevision_&&width_==w&&height_==h&&x==x_&&y==y_&&sx_==w/spanX&&sy_==h/spanY&&
+   samplingMode_==mode&&surface_.precision()==precision&&backingW_==background.width()&&backingH_==background.height();
   const std::vector<uint32_t>*base=&pixels;std::vector<uint32_t>generatedBase;
   if(!requestGpu&&base->size()!=size_t(w)*h){if(!cpuBaseFallback||!cpuBaseFallback(generatedBase)||generatedBase.size()!=size_t(w)*h)return false;base=&generatedBase;}
   const bool depthChanged=!baseDepth_||wasTerrain||((depthPlan_.width>0)!=(requestGpu&&!background.retainedGround()))||key!=key_||terrainRevision!=terrainRevision_||width_!=w||height_!=h||x!=x_||y!=y_||sx_!=w/spanX||sy_!=h/spanY;
@@ -125,14 +130,15 @@ public:
   }
   if(!requestGpu&&(surface_.failed()||surface_.width()!=w||surface_.height()!=h||gpuRecording_))if(!surface_.reset(w,h))return false;
   if(requestGpu&&!gpuRecording_)surface_={}; // release a previous CPU frame once, not once per recorded frame
-  width_=w;height_=h;key_=key;terrainRevision_=terrainRevision;x_=x;y_=y;sx_=w/spanX;sy_=h/spanY;
+  width_=w;height_=h;key_=key;terrainRevision_=terrainRevision;x_=x;y_=y;sx_=w/spanX;sy_=h/spanY;samplingMode_=mode;
   surface_.precision(precision);backingW_=background.width();backingH_=background.height();gpuRecording_=requestGpu;
   if(gpuRecording_){
    if((!baseTiles||baseTiles->empty())&&(!basePixels||basePixels.get()!=&pixels))basePixels=std::make_shared<const std::vector<uint32_t>>(pixels);
-   gpuRecord_.begin(w,h,std::move(basePixels),baseDepth_,precision,std::move(baseTiles),std::move(cpuBaseFallback),depthPlan_);
+   gpuRecord_.begin(w,h,std::move(basePixels),baseDepth_,precision,std::move(baseTiles),std::move(cpuBaseFallback),depthPlan_,reuseTerrain);
    gpuRecord_.nativeView(float(sx_),float(sy_),nativeScene_);
-   if(nativeScene_)for(const auto&tile:background.terrainSources())if(tile.image&&imageVisible(*tile.image,tile.x,tile.y,0,0))gpuRecord_.append(*tile.image,tile.image,float((tile.x-x_)*sx_),float((tile.y-y_)*sy_),float(sx_),float(sy_),tile.base,tile.light,0,0,smooth(*tile.image),{},tile.material);
-  }else{surface_.color=*base;surface_.depth=*baseDepth_;}
+   if(!reuseTerrain){if(nativeScene_)for(const auto&tile:background.terrainSources())if(tile.image&&imageVisible(*tile.image,tile.x,tile.y,0,0))gpuRecord_.append(*tile.image,tile.image,float((tile.x-x_)*sx_),float((tile.y-y_)*sy_),float(sx_),float(sy_),tile.base,tile.light,0,0,smooth(*tile.image),{},tile.material);gpuRecord_.retainPrefix();}
+   terrainPrefixOwner_=terrainOwner;terrainPlanReused_=reuseTerrain;
+  }else{gpuRecord_.reset();terrainPrefixOwner_.reset();surface_.color=*base;surface_.depth=*baseDepth_;}
   ready_=true;return true;
  }
  void blit(const voxel::Image&i,float ax,float ay,float,float,float base,const lighting::State&light,float lift=1,float shadowDrop=0,
@@ -142,6 +148,7 @@ public:
   else surface_.blit(i,outputX,outputY,float(sx_),float(sy_),base,light,lift,shadowDrop,smooth(i),material);dirty_=true;
  }
  bool gpuRecording()const{return ready_&&gpuRecording_;}
+ bool terrainPlanReused()const{return terrainPlanReused_;}
  bool gpuMasked()const{return gpuMasked_;}
  bool gpuCompleted()const{return gpuCompleted_;}
  const std::vector<uint16_t>&nativeDepth()const{return surface_.nativeZ;}
