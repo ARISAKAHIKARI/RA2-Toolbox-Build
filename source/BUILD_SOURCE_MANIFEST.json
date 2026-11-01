@@ -316,5 +316,15 @@
     ],
     "material_ui_removed": true,
     "manual_reveal_restored": true
+  },
+  "technology_refresh": {
+    "baseline_commit": "309e82aa6e4d1be7385bca39820603cddcc0e827",
+    "sidebar_modes_0_1": "one complete allowed-catalogue pass per refresh; no 32-examined/8-added frame slicing",
+    "native_checks_retained": true,
+    "master_mode_unchanged": true,
+    "code_patch_requirements_unchanged": true,
+    "note": "research/2026-11-01-control-tech-data-only-review.md",
+    "game_tested": false,
+    "multiplayer_tested": false
   }
 }

@@ -1,0 +1,471 @@
+{
+  "baseline": "309e82aa6e4d1be7385bca39820603cddcc0e827",
+  "source_sha256": {
+    "source/assist/source/sidebar.h": "cc923ab8240fd43cc06cc6be89d8feb7aec5d36286754c54231114b8758427aa",
+    "source/assist/tests/tech_refresh_full_pass.py": "363d27927f2fbcd7c96f676c3342ab5a49a942ccef56a74466d54350cb43c537"
+  },
+  "source_snapshot_unchanged": true,
+  "compiled_source_count": 499,
+  "build_commands": [
+    {
+      "name": "runtime-resources",
+      "args": [
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\toolchain\\zig-windows-x86_64-0.13.0\\zig.exe",
+        "rc",
+        "/fo",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\build\\tech-one-pass-x64\\obj\\runtime-x86\\dll_version.res",
+        "shared/source/dll_version.rc"
+      ],
+      "cwd": "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\checkout\\source",
+      "exit_code": 0,
+      "seconds": 0.06
+    },
+    {
+      "name": "game-entry-manager",
+      "args": [
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\toolchain\\zig-windows-x86_64-0.13.0\\zig.exe",
+        "c++",
+        "-target",
+        "x86-windows-gnu",
+        "-std=c++17",
+        "-O2",
+        "-fno-exceptions",
+        "-fno-rtti",
+        "-c",
+        "shared/source/game_entry_manager.cpp",
+        "-o",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\build\\tech-one-pass-x64\\obj\\runtime-x86\\game_entry_manager.o"
+      ],
+      "cwd": "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\checkout\\source",
+      "exit_code": 0,
+      "seconds": 0.08
+    },
+    {
+      "name": "native-guard",
+      "args": [
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\toolchain\\zig-windows-x86_64-0.13.0\\zig.exe",
+        "c++",
+        "-target",
+        "x86-windows-msvc",
+        "-nostdlib",
+        "-nostdinc",
+        "-O2",
+        "-fms-extensions",
+        "-fno-stack-protector",
+        "-c",
+        "assist/source/guard.cpp",
+        "-o",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\build\\tech-one-pass-x64\\obj\\runtime-x86\\guard.o"
+      ],
+      "cwd": "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\checkout\\source",
+      "exit_code": 0,
+      "seconds": 0.02
+    },
+    {
+      "name": "assist-bridge",
+      "args": [
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\toolchain\\zig-windows-x86_64-0.13.0\\zig.exe",
+        "c++",
+        "-target",
+        "x86-windows-gnu",
+        "-std=c++17",
+        "-O2",
+        "-fms-extensions",
+        "-fasm-blocks",
+        "-fno-stack-protector",
+        "-fno-builtin",
+        "-fno-exceptions",
+        "-fno-rtti",
+        "-c",
+        "assist/source/bridge.cpp",
+        "-o",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\build\\tech-one-pass-x64\\obj\\runtime-x86\\bridge.o"
+      ],
+      "cwd": "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\checkout\\source",
+      "exit_code": 0,
+      "seconds": 12.89
+    },
+    {
+      "name": "resource-guard",
+      "args": [
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\toolchain\\zig-windows-x86_64-0.13.0\\zig.exe",
+        "c++",
+        "-target",
+        "x86-windows-msvc",
+        "-nostdlib",
+        "-nostdinc",
+        "-O2",
+        "-fms-extensions",
+        "-fno-stack-protector",
+        "-c",
+        "cursor/source/resource_guard.cpp",
+        "-o",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\build\\tech-one-pass-x64\\obj\\runtime-x86\\resource_guard.o"
+      ],
+      "cwd": "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\checkout\\source",
+      "exit_code": 0,
+      "seconds": 0.03
+    },
+    {
+      "name": "cursor-hide",
+      "args": [
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\toolchain\\zig-windows-x86_64-0.13.0\\zig.exe",
+        "c++",
+        "-target",
+        "x86-windows-gnu",
+        "-O2",
+        "-DUNICODE",
+        "-D_UNICODE",
+        "-fms-extensions",
+        "-fasm-blocks",
+        "-fno-stack-protector",
+        "-fno-builtin",
+        "-fno-exceptions",
+        "-fno-rtti",
+        "-c",
+        "cursor/source/hide.cpp",
+        "-o",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\build\\tech-one-pass-x64\\obj\\runtime-x86\\hide.o"
+      ],
+      "cwd": "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\checkout\\source",
+      "exit_code": 0,
+      "seconds": 0.03
+    },
+    {
+      "name": "runtime",
+      "args": [
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\toolchain\\zig-windows-x86_64-0.13.0\\zig.exe",
+        "c++",
+        "-target",
+        "x86-windows-gnu",
+        "-std=c++17",
+        "-O2",
+        "-fms-extensions",
+        "-fasm-blocks",
+        "-fno-stack-protector",
+        "-fno-builtin",
+        "-fno-exceptions",
+        "-fno-rtti",
+        "-c",
+        "game_runtime/source/runtime.cpp",
+        "-o",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\build\\tech-one-pass-x64\\obj\\runtime-x86\\runtime.o"
+      ],
+      "cwd": "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\checkout\\source",
+      "exit_code": 0,
+      "seconds": 0.05
+    },
+    {
+      "name": "runtime-link",
+      "args": [
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\toolchain\\zig-windows-x86_64-0.13.0\\zig.exe",
+        "c++",
+        "-target",
+        "x86-windows-gnu",
+        "-shared",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\build\\tech-one-pass-x64\\obj\\runtime-x86\\runtime.o",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\build\\tech-one-pass-x64\\obj\\runtime-x86\\game_entry_manager.o",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\build\\tech-one-pass-x64\\obj\\runtime-x86\\bridge.o",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\build\\tech-one-pass-x64\\obj\\runtime-x86\\guard.o",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\build\\tech-one-pass-x64\\obj\\runtime-x86\\hide.o",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\build\\tech-one-pass-x64\\obj\\runtime-x86\\resource_guard.o",
+        "game_runtime/source/runtime.def",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\build\\tech-one-pass-x64\\obj\\runtime-x86\\dll_version.res",
+        "-o",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\build\\tech-one-pass-x64\\GameRuntime.dll",
+        "-lkernel32",
+        "-luser32",
+        "-lgdi32",
+        "-lwinmm"
+      ],
+      "cwd": "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\checkout\\source",
+      "exit_code": 0,
+      "seconds": 0.31
+    },
+    {
+      "name": "broker-resources",
+      "args": [
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\toolchain\\zig-windows-x86_64-0.13.0\\zig.exe",
+        "rc",
+        "/fo",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\build\\tech-one-pass-x64\\obj\\runtime-x86\\broker.res",
+        "runtime_broker/source/app.rc"
+      ],
+      "cwd": "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\checkout\\source",
+      "exit_code": 0,
+      "seconds": 0.05
+    },
+    {
+      "name": "broker",
+      "args": [
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\toolchain\\zig-windows-x86_64-0.13.0\\zig.exe",
+        "c++",
+        "-target",
+        "x86-windows-gnu",
+        "-std=c++17",
+        "-O2",
+        "-municode",
+        "runtime_broker/source/main.cpp",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\build\\tech-one-pass-x64\\obj\\runtime-x86\\broker.res",
+        "-o",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\build\\tech-one-pass-x64\\GameRuntimeHost32.exe",
+        "-Wl,--subsystem,windows",
+        "-lkernel32",
+        "-luser32"
+      ],
+      "cwd": "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\checkout\\source",
+      "exit_code": 0,
+      "seconds": 0.45
+    },
+    {
+      "name": "host-resources",
+      "args": [
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\toolchain\\zig-windows-x86_64-0.13.0\\zig.exe",
+        "rc",
+        "/fo",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\build\\tech-one-pass-x64\\obj\\host-x64\\app.res",
+        "/d",
+        "RA2_HOST_X64=1",
+        "suite/source/app.rc"
+      ],
+      "cwd": "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\checkout\\source",
+      "exit_code": 0,
+      "seconds": 0.06
+    },
+    {
+      "name": "gpu-fault-guard",
+      "args": [
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\toolchain\\zig-windows-x86_64-0.13.0\\zig.exe",
+        "c++",
+        "-target",
+        "x86_64-windows-msvc",
+        "-nostdlib",
+        "-nostdinc",
+        "-O2",
+        "-fms-extensions",
+        "-fno-stack-protector",
+        "-DRA2_GPU_FAULT_GUARD",
+        "-c",
+        "shared/source/gpu_fault_guard.cpp",
+        "-o",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\build\\tech-one-pass-x64\\obj\\host-x64\\gpu_fault_guard.o"
+      ],
+      "cwd": "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\checkout\\source",
+      "exit_code": 0,
+      "seconds": 0.03
+    },
+    {
+      "name": "xbrz",
+      "args": [
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\toolchain\\zig-windows-x86_64-0.13.0\\zig.exe",
+        "c++",
+        "-target",
+        "x86_64-windows-gnu",
+        "-std=c++17",
+        "-O2",
+        "-fno-exceptions",
+        "-fno-rtti",
+        "-c",
+        "third_party/xbrz/xbrz.cpp",
+        "-o",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\build\\tech-one-pass-x64\\obj\\host-x64\\xbrz.o"
+      ],
+      "cwd": "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\checkout\\source",
+      "exit_code": 0,
+      "seconds": 0.06
+    },
+    {
+      "name": "host-cursor",
+      "args": [
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\toolchain\\zig-windows-x86_64-0.13.0\\zig.exe",
+        "c++",
+        "-target",
+        "x86_64-windows-gnu",
+        "-std=c++17",
+        "-O2",
+        "-DRA2_UNIFIED",
+        "-DRA2_GPU_FAULT_GUARD",
+        "-DwWinMain=CursorEntry",
+        "-Isuite/source",
+        "-c",
+        "cursor/source/main.cpp",
+        "-o",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\build\\tech-one-pass-x64\\obj\\host-x64\\cursor.o"
+      ],
+      "cwd": "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\checkout\\source",
+      "exit_code": 0,
+      "seconds": 0.09
+    },
+    {
+      "name": "host-unit_monitor",
+      "args": [
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\toolchain\\zig-windows-x86_64-0.13.0\\zig.exe",
+        "c++",
+        "-target",
+        "x86_64-windows-gnu",
+        "-std=c++17",
+        "-O2",
+        "-DRA2_UNIFIED",
+        "-DRA2_GPU_FAULT_GUARD",
+        "-DwWinMain=MonitorEntry",
+        "-Isuite/source",
+        "-c",
+        "unit_monitor/source/main.cpp",
+        "-o",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\build\\tech-one-pass-x64\\obj\\host-x64\\unit_monitor.o"
+      ],
+      "cwd": "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\checkout\\source",
+      "exit_code": 0,
+      "seconds": 0.09
+    },
+    {
+      "name": "host-assist",
+      "args": [
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\toolchain\\zig-windows-x86_64-0.13.0\\zig.exe",
+        "c++",
+        "-target",
+        "x86_64-windows-gnu",
+        "-std=c++17",
+        "-O2",
+        "-DRA2_UNIFIED",
+        "-DRA2_GPU_FAULT_GUARD",
+        "-DwWinMain=TacticalEntry",
+        "-Isuite/source",
+        "-c",
+        "assist/source/main.cpp",
+        "-o",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\build\\tech-one-pass-x64\\obj\\host-x64\\assist.o"
+      ],
+      "cwd": "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\checkout\\source",
+      "exit_code": 0,
+      "seconds": 0.12
+    },
+    {
+      "name": "host-link",
+      "args": [
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\toolchain\\zig-windows-x86_64-0.13.0\\zig.exe",
+        "c++",
+        "-target",
+        "x86_64-windows-gnu",
+        "-std=c++17",
+        "-O2",
+        "-municode",
+        "suite/source/main.cpp",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\build\\tech-one-pass-x64\\obj\\host-x64\\cursor.o",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\build\\tech-one-pass-x64\\obj\\host-x64\\unit_monitor.o",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\build\\tech-one-pass-x64\\obj\\host-x64\\assist.o",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\build\\tech-one-pass-x64\\obj\\host-x64\\xbrz.o",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\build\\tech-one-pass-x64\\obj\\host-x64\\gpu_fault_guard.o",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\build\\tech-one-pass-x64\\obj\\host-x64\\app.res",
+        "-o",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\build\\tech-one-pass-x64\\RA2Toolbox.exe",
+        "-Wl,--subsystem,windows",
+        "-lgdiplus",
+        "-lcomctl32",
+        "-luser32",
+        "-lgdi32",
+        "-lwinmm",
+        "-lshell32",
+        "-lole32",
+        "-lcomdlg32"
+      ],
+      "cwd": "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\checkout\\source",
+      "exit_code": 0,
+      "seconds": 6.08
+    }
+  ],
+  "validation_commands": [
+    {
+      "name": "sidebar-refresh",
+      "command": [
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\toolchain\\python\\python.exe",
+        "assist/tests/tech_refresh_full_pass.py",
+        "--zig",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\toolchain\\zig-windows-x86_64-0.13.0\\zig.exe",
+        "--build-dir",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\diagnostics\\tech-one-pass\\sidebar-refresh"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "production-pe",
+      "command": [
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\toolchain\\python\\python.exe",
+        "tools/verify_windows_outputs.py",
+        "--root",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\build\\tech-one-pass-x64",
+        "--host-arch",
+        "x64"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "diagnostic-build",
+      "command": [
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\toolchain\\python\\python.exe",
+        "tools/build_hook_diagnostics.py",
+        "--zig",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\toolchain\\zig-windows-x86_64-0.13.0\\zig.exe",
+        "--base-build",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\build\\tech-one-pass-x64",
+        "--output",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\build\\hook-test-tech-one-pass"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "diagnostic-pe",
+      "command": [
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\toolchain\\python\\python.exe",
+        "tools/verify_hook_diagnostics.py",
+        "--root",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\build\\hook-test-tech-one-pass"
+      ],
+      "exit_code": 0
+    }
+  ],
+  "sidebar_refresh": {
+    "passed": true,
+    "checks": 30,
+    "stdout": "Technology full-pass refresh: 30 checks, 0 failures\r\n",
+    "scope": "Extracted production scheduling; native factory and AddCameo substituted"
+  },
+  "old_negative_control": {
+    "expected_failures": 11,
+    "stdout": "Technology full-pass refresh: 30 checks, 11 failures\r\n",
+    "old_source_sha256": "16a3a361757195be1719c04c6bdbc21bb46eed6fe3779b40d52bf7e2fe1225fc"
+  },
+  "files": {
+    "tech-one-pass-x64": {
+      "RA2Toolbox.exe": {
+        "sha256": "a25d7fe2342d1e43c1928254a4af1fa6c58264c6434ad7f4de0ff635466d43ba",
+        "bytes": 8417280
+      },
+      "GameRuntime.dll": {
+        "sha256": "c9d2800492ddae9e3f85c75e5859c6fa495f0ceb3aa92d7e9f4cf9d754958954",
+        "bytes": 5272064
+      },
+      "GameRuntimeHost32.exe": {
+        "sha256": "257097305288b500f8db5599ac752db08aff3dc52581e2d8b362f2e204f6ba2e",
+        "bytes": 207872
+      }
+    },
+    "hook-test-tech-one-pass": {
+      "RA2HookTest.exe": {
+        "sha256": "8a40f0a452bae1cb5973ff67ed3c64384bac8270c42502573f417deadebc7c67",
+        "bytes": 468992
+      },
+      "GameRuntime.dll": {
+        "sha256": "23028dba23cc70ff25159c2b0c1883470ab52935b8bc6179c8950552c3a987ef",
+        "bytes": 5273600
+      },
+      "GameRuntimeHost32.exe": {
+        "sha256": "257097305288b500f8db5599ac752db08aff3dc52581e2d8b362f2e204f6ba2e",
+        "bytes": 207872
+      }
+    }
+  },
+  "diagnostic_loading": "BUILD diagnostic-bridge\r\nPASS diagnostic-bridge\r\nBUILD diagnostic-runtime\r\nPASS diagnostic-runtime\r\nBUILD host-resource\r\nPASS host-resource\r\nBUILD diagnostic-host\r\nPASS diagnostic-host\r\nPASS Windows hidden UI, selection/exclusion controls, baseline opt-in, stopped-OOS skip, bundle identity and invalid PID refusal; no game attached\r\nPASS actual x64 host/x86 broker handshake and Runtime DLL loader; no game hooks installed\r\nPASS diagnostic bundle built\r\n",
+  "game_tested": false,
+  "multiplayer_tested": false
+}
