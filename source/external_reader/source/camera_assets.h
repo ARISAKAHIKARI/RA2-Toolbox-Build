@@ -15,6 +15,7 @@
 #include "particle_visuals.h"
 #include "voxel_animation_visuals.h"
 #include "live_palette_cache.h"
+#include "first_field_reads.h"
 #include "palette_recovery.h"
 #include "gpu_voxel.h"
 #include "gpu_voxel_cache.h"
@@ -112,7 +113,9 @@ external::assets::EffectiveINI<Read> artINI,rulesINI;uint64_t iniRevision=~uint6
   // Prefer the table actually used by the game, including modded archives
   // unavailable to the external file reader. Legacy users poll from update();
   // live presentation captures every pass and keeps geometry revision separate.
-  if(voxelLight.capture(read)){voxelNative=true;if(force)presentationVplFresh_=true;if(gpuPresentation_)gpuVplSnapshot(true);return;}
+  // The live double-read above is still mandatory. An unchanged, freshly
+  // verified VPL need not expand the same 32 pages into 256 GPU pages again.
+  if(voxelLight.capture(read)){voxelNative=true;if(force)presentationVplFresh_=true;if(gpuPresentation_)gpuVplSnapshot();return;}
   if(force)return; // current-presentation VXL never uses stale or guessed light tables
   if(voxelLight.ready())return;
   std::vector<uint8_t>b;if(files.load("VOXELS.VPL",b))voxelLight.load(b);
@@ -515,19 +518,30 @@ bool captureActor(uint32_t p,uint32_t type,uint32_t id,ActorArt&out,const extern
  }
  if(word(p+0x10)!=id||word(p+0x21C)!=actualOwner||game.type(p,actualKind)!=actualType)return false;bool paletteChanged=false;if(!refreshActorPalette(next,paletteChanged))return false;if(next.voxel)next.geometryIdentity=std::make_shared<const uint8_t>(0);out=std::move(next);return true;
 }
+template<class Capture>bool paletteActorCapture(const ActorArt&art,Capture capture){
+ // These already-known object/type bindings are revalidated by capture. The
+ // wrapper preserves every repeat read, including its final identity checks;
+ // it lives for only ONE of livepalette::refresh's two independent resolves.
+ fieldreads::First<Read> fields(read);
+ if(art.kind==5){fields.block(art.object,0x1A0);fields.block(art.type+0x2B4,0xB8);
+  if(art.parent){fields.block(art.parent,0x224);fields.block(art.parent+0x55C,0x8C);}
+ }else if(art.kind==external::particles::Kind){fields.block(art.object,0x130);fields.block(art.type+0x2B0,0x68);
+ }else if(art.kind==external::projectiles::Kind){fields.block(art.object,0x15C);fields.block(art.type,0x2F8);}
+ return capture(fields.view());
+}
 bool refreshActorPalette(ActorArt&art,bool&changed){
  changed=false;if(!(art.voxel?voxelRelight_:spriteRelight_))return true;
  return external::livepalette::refresh(art.colors,art.paletteLive,art.paletteRevision,changed,[&](external::livepalette::Sample&sample){
   bool ok=false;
   if(art.kind==5){external::animations::State state;
-   if(!external::animations::capture(read,art.object,art.parent,art.parentId,state)||state.id!=art.id||state.type!=art.type||state.owner!=art.owner)return false;
+   if(!paletteActorCapture(art,[&](auto sample){return external::animations::capture(sample,art.object,art.parent,art.parentId,state);})||state.id!=art.id||state.type!=art.type||state.owner!=art.owner)return false;
    ok=animationPalette(art.object,art.type,art.parent,state.owner,state.x,state.y,sample.colors);
   }else if(art.kind==external::particles::Kind){external::particles::State state;
-   if(!external::particles::capture(read,art.object,state)||state.id!=art.id||state.type!=art.type)return false;
+   if(!paletteActorCapture(art,[&](auto sample){return external::particles::capture(sample,art.object,state);})||state.id!=art.id||state.type!=art.type)return false;
    ok=particlePalette(sample.colors);
   }else if(art.kind==external::voxelanims::Kind){external::voxelanims::State state;if(!external::voxelanims::capture(read,art.object,state)||state.id!=art.id||state.type!=art.type)return false;ok=debrisPalette(state.owner,sample.colors);
   }else if(art.kind==external::projectiles::Kind){external::projectiles::State state;
-   if(!external::projectiles::capture(read,art.object,state)||state.id!=art.id||state.type!=art.type)return false;
+   if(!paletteActorCapture(art,[&](auto sample){return external::projectiles::capture(sample,art.object,state);})||state.id!=art.id||state.type!=art.type)return false;
    ok=projectilePalette(state,sample.colors);
   }else{
    bool terrainPalette=art.kind==3&&!art.voxel&&(word(art.type+0x1702)&255);
@@ -552,7 +566,13 @@ bool renderSharedActor(const ActorArt&art,const external::visual::Pose&pose,std:
   if(art.depthMask){h.bytes(art.depthMask->pixels.data(),art.depthMask->pixels.size()*4);h.bytes(art.depthMask->depth.data(),art.depthMask->depth.size()*4);h.add(art.depthMask->width);h.add(art.depthMask->height);h.add(art.depthMask->x);h.add(art.depthMask->y);}
   art.sourceKnown=true;
  }
- nativeimages::Key key;if(cacheable){key.palette=art.colors;key.values={process_,match_,files.revision(),art.kind>=5&&art.kind!=voxelanims::Kind?art.object:0,art.kind>=5&&art.kind!=voxelanims::Kind?art.id:0,art.type,art.owner,art.parent,art.parentId,art.sourceSignature.a,art.sourceSignature.b,(art.voxel||art.hasGuns())?voxelLight.signature():0,
+ // Fully captured pure SHP is decoded only from immutable bytes and pose.
+ // Keep capture/liveness checks per actor, but share its identical material
+ // across transient animation/particle/projectile instances as well. Mixed
+ // or live-pointer art retains the existing identity-sensitive cache key.
+ const bool capturedSprite=!art.voxel&&!art.hasGuns()&&!art.shape.empty()&&art.kind>=5&&art.kind!=voxelanims::Kind;
+ const bool instanceKey=art.kind>=5&&art.kind!=voxelanims::Kind&&!capturedSprite;
+ nativeimages::Key key;if(cacheable){key.palette=art.colors;key.values={process_,match_,files.revision(),instanceKey?art.object:0,instanceKey?art.id:0,art.type,art.owner,art.parent,art.parentId,art.sourceSignature.a,art.sourceSignature.b,(art.voxel||art.hasGuns())?voxelLight.signature():0,
   uint32_t(pose.body)|(uint64_t(pose.turret)<<8)|(uint64_t(uint32_t(pose.frame))<<16),uint32_t(pose.variant),uint32_t(pose.buildingFlags),uint32_t(pose.doorFrame),uint32_t(pose.turretFrame),uint32_t(pose.bodyFine),uint32_t(pose.turretFine),external::visual::postureSignature(pose),(art.voxel||art.hasGuns())?uint32_t(presentationRasterScale()):1,(art.voxel||art.hasGuns())?uint64_t(gpuPresentation_):0,uint64_t(art.pointer),uint32_t(pose.hvaBody)|(uint64_t(uint32_t(pose.hvaTurret))<<32)};
   if(auto image=nativeimages::bank().get(key)){out=std::move(image);return true;}
  }

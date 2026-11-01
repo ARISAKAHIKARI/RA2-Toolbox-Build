@@ -28,6 +28,8 @@ static void loadAdditionalSettings(){
  extra.nativeMegaGateway=explicitPatchPreferences&&value(L"Experimental",L"NativeMegaGateway",0)!=0;
  extra.nativeCombatQueries=value(L"Experimental",L"NativeCombatQueries",0)!=0;
  extra.controlCommandOwner=value(L"Experimental",L"ControlCommandOwner",0)!=0;
+ // Replace the former flag implementation in slot 0; retain the native slot
+ // and saved companion preferences, which remain suppressed in Master mode.
  extra.controlImplementation=value(L"Experimental",L"ControlImplementation",0)==1?1:0;
  extra.placementImplementation=std::clamp(value(L"Experimental",L"PlacementImplementation",0),0,1);
  extra.overlayKey=value(L"Hotkeys",L"OverlayToggle",0xC0)&65535;

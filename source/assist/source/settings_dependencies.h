@@ -40,7 +40,7 @@ inline const wchar_t* reason(Need need){
  case Need::LowDamage:return L"需先开启低伤害过滤";
  case Need::ControlAll:return L"需先开启跨玩家操控";
  case Need::NativeControl:return L"需选择原生判定 Hook 实现";
- case Need::NetworkControlAllowed:return L"控制标记启用时不能使用所属方保留 Hook";
+ case Need::NetworkControlAllowed:return L"Master 基本模式启用时不能使用所属方保留 Hook";
  case Need::Formation:return L"需先开启队形排列";
  case Need::Watch:return L"需先开启主屏或副屏跟踪";
  case Need::WatchSecondary:return L"需先开启副屏跟踪";

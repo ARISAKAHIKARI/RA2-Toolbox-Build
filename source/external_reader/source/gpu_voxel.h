@@ -29,13 +29,9 @@ inline bool prepare(const Model&model,double angle,const std::array<uint32_t,256
  const auto bodyLight=tilted?postureLight(angle,lightWorld):nativeVoxelLight(angle,pitch),turretLight=std::isfinite(turretAngle)?(tilted?postureLight(turretAngle,lightWorld):nativeVoxelLight(turretAngle,pitch)):bodyLight;
  const auto worldLight=nativeVoxelWorldLight();
  const auto barrelLight=tilted?postureLight(std::isfinite(turretAngle)?turretAngle:angle,lightWorld,gunPitch):nativeVoxelLight(std::isfinite(turretAngle)?turretAngle:angle,gunPitch);
- std::array<std::array<uint8_t,256>,5> bodyPages,turretPages,barrelPages;std::array<bool,5> bodyPagesReady{},turretPagesReady{},barrelPagesReady{};
- auto pageFor=[&](const Face&face)->unsigned{
-  if(face.normalIndex>=253||face.normalType<1||face.normalType>4)return 16;
-  auto&pages=(face.part==2?barrelPages:face.turret?turretPages:bodyPages)[face.normalType];auto&ready=(face.part==2?barrelPagesReady:face.turret?turretPagesReady:bodyPagesReady)[face.normalType];
-  if(!ready){pages.fill(16);std::array<float,3> raw{};for(unsigned i=0;i<253&&normalVector(face.normalType,i,raw);++i)pages[i]=uint8_t(projectile?nativeProjectilePage(raw,face.part==2?barrelLight:face.turret?turretLight:bodyLight):nativeVoxelPage(raw,face.part==2?barrelLight:face.turret?turretLight:bodyLight));ready=true;}
-  return pages[face.normalIndex];
- };
+ NormalPages normalPages;
+ auto pageFor=[&](const Face&face)->unsigned{return normalPages.page(face,face.part==2?barrelLight:face.turret?turretLight:bodyLight,projectile);};
+ const bool nativeVpl=vpl&&vpl->ready();std::array<uint32_t,256>mappedColors;std::array<bool,256>mappedReady{};
  const PoseTransform transform(angle,turretAngle,turretOffset,pitch,gunPitch,recoil);
  auto worldPoint=[&](const Face&f,Vec p){auto point=transform.point(f,p);return tilted?posturePoint(geometryWorld,point):point;};
  std::vector<ProjectedFace> projected;float minX=0,minY=0,maxX=0,maxY=0;
@@ -50,8 +46,9 @@ inline bool prepare(const Model&model,double angle,const std::array<uint32_t,256
  for(size_t face=0;face<model.faces.size();++face){const auto&f=model.faces[face];const auto&cached=projected[face];Screen s[4];
   for(int c=0;c<4;++c){s[c]=cached.points[c];s[c].x=s[c].x*rasterScale-left;s[c].y=s[c].y*rasterScale-top;}
   uint8_t index=f.color;float light=1;
-  if(vpl&&vpl->ready()&&(f.hasNormal||f.normalIndex>=253)){
-   // Precalculate once per normal mode/facing, as 753D00 does. HVA changes
+  const bool mapped=nativeVpl&&(f.hasNormal||f.normalIndex>=253);
+  if(mapped){
+   // Resolve once per used normal index/facing, as 753D00 does. HVA changes
    // geometry but not these raw normal-table indices; transformed normals are
    // reserved for the fallback path.
    index=vpl->map(pageFor(f),index);
@@ -62,7 +59,7 @@ inline bool prepare(const Model&model,double angle,const std::array<uint32_t,256
    float diffuse=length>1e-6f?std::max(0.f,(n.x*worldLight[0]+n.y*worldLight[1]+n.z*worldLight[2])/length):0;
    light=.8f+1.3f*diffuse;
   }
-  uint32_t color=premultiply(pal[index],light,alpha);
+  uint32_t color;if(mapped){if(!mappedReady[index]){mappedColors[index]=premultiply(pal[index],1,alpha);mappedReady[index]=true;}color=mappedColors[index];}else color=premultiply(pal[index],light,alpha);
   for(int t=0;t<2;++t){Screen v[3]={s[0],s[t+1],s[t+2]};float area=edge(v[0],v[1],v[2].x,v[2].y);if(std::abs(area)<1e-6f)continue;
    int x0=std::max(0,int(std::floor(std::min({v[0].x,v[1].x,v[2].x})))),x1=std::min(w-1,int(std::ceil(std::max({v[0].x,v[1].x,v[2].x}))));int y0=std::max(0,int(std::floor(std::min({v[0].y,v[1].y,v[2].y})))),y1=std::min(h-1,int(std::ceil(std::max({v[0].y,v[1].y,v[2].y}))));
    if(x1<x0||y1<y0)continue;

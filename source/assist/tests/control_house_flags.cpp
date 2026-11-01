@@ -18,7 +18,7 @@ struct Memory {
   auto*p=(uint8_t*)out;for(unsigned i=0;i<size;++i){auto v=bytes.find(at+i);if(v==bytes.end())return false;p[i]=v->second;}return true;
  }
  bool write(uint32_t at,const void*in,size_t size){
-  // Production policy is a one-byte data write, not code/global/owner writes.
+  // Retired model fixture writes one flag byte to simulate old responsibility.
   assert(size==1&&(at==0x101ED||at==0x201ED));++writes;
   if(writeFail==at&&!failAfterWrite)return false;
   bytes[at]=*(const uint8_t*)in;return writeFail!=at;
@@ -35,7 +35,7 @@ struct Memory {
 };
 int main(){
  for(uint32_t mode=0;mode<6;++mode){
-  assert(controlmode::native(mode)==(mode==1));assert(controlmode::data(mode)==(mode==2));
+  assert(controlmode::native(mode)==(mode==1));assert(controlmode::master(mode)==(mode==2));
   assert(controlmode::proxyOrders(mode)==(mode==1));assert(controlmode::sender(mode)==(mode==0||mode==1));
  }
  Memory m;auto read=[&](uint32_t a,void*p,size_t n){return m.read(a,p,n);};
@@ -83,5 +83,5 @@ int main(){
  m.put<int>(0xA8ED84,100);m.put<uint8_t>(0x101ED,0);m.put<uint8_t>(0x201ED,0);start();m.put<uint8_t>(0x101ED,7);
  assert(!model.restoreAll(1,read,write)&&model.pending()&&m.get<uint8_t>(0x101ED)==7);
  m.put<uint8_t>(0x101ED,0);assert(model.restoreAll(1,read,write));
- puts("PASS: House+1ED only; native/proxy/sender mode admission; original values; partial write/read/restore recovery; conflict retention; epoch, rewind and pointer reuse");
+ puts("PASS retired House ownership model: mode admission, saved values, partial write/read/restore recovery, conflict retention, epoch, rewind and pointer reuse; no current activation route");
 }

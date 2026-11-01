@@ -6,6 +6,17 @@
 
 | 主题 | 新笔记 | 关键词 |
 | --- | --- | --- |
+| 原生 Place 接收鏈與超距離／陰影放置候選 | [實際判定鏈與 12 項隔離驗證](2026-11-01-placement-event-reception.md) | Place0B ObjectUnlimbo5F4F3C legality no-text native-event |
+| 科技全開的規則資料／原生生產事件候選 | [原生門檻與 31 項隔離驗證](2026-11-01-tech-no-code-feasibility.md) | CanBuild FindFactory Produce PrerequisiteOverride DoubleOwned data-only no-text |
+| 快取預算、重複計費與整庫清空 | [只讀審計與容量調整邊界](2026-11-01-cache-budget-audit.md) | TotalBytes-unused per-context shared-owner LRU RAM VRAM resident |
+| VXL 舊新姿態同占預算導致永遠無法發布 | [重現、修復與回退素材保留](2026-11-01-pose-cache-transition-liveness.md) | PosePixels displayed wanted cache self-lock current frameFrom immutable-front |
+| 動態物件 palette 捕獲的重複跨進程讀取 | [首次欄位批讀與雙讀驗證](2026-11-01-palette-read-batching.md) | first-field bulk fresh RPM identity parent palette-race fallback |
+| 地形逐畫面重複查詢、完整世界與新鮮驗證 | [正式渲染器對照與頁快取成本](2026-11-01-terrain-presentation-read-cost.md) | converter metadata cell-intensity fresh-verify ProcessReader full-world |
+| 控制標記替換為修改大師基本指令模式 | [配置、所有權與產品驗證](2026-11-01-master-control-implementation.md) · [原生指令及 ABI](2026-11-01-master-control-native-audit.md) | Assist86 Master direct-jump 50B6F0 6339BA 637E40 strict-before-common restore-order |
+| 任意建造不改程式碼候選與資料旗標區分 | [原生 Place、距離與落地合法性](2026-11-01-placement-no-code-feasibility.md) | Place0B proximity4A8EB0 AdjacentEB4 PlaceAnywhere1703 Unlimbo preliminary-legality |
+| 局中首次啟用：連接需求漏項與具體阻塞診斷 | [已修缺口、冷啟用與實機邊界](2026-11-01-midgame-feature-activation.md) | needsBridge cold-enable requested-applied commandStatus Scenario fixture |
+| 動態 VXL／SHP 核心、素材重用與裁切前准入 | [實作、來源與逐位對照](2026-11-01-actor-render-performance.md) | HVA normal-pages SIMD SHP physical-material VPL clip-admission |
+| 回退前後 CPU 繪製效能與安全並行 | [歷史對照與分區回放](2026-11-01-shp-kernel-and-cpu-replay.md) | HF29 parallel-rows full-target ordered barriers exact-Z-A |
 | 全鏈路顯示效能：讀取、排程、計畫與呈現 | [修正、受控量測與實機邊界](2026-11-01-end-to-end-render-performance.md) | batched-RPM COW-TMP CPU-plan-reuse immutable-panels dirty-upload timing |
 | 覆蓋層連續性、面板尺寸合成、星級與觀戰 Hook 保留 | [修正、原生 HWND 寬度與驗證邊界](2026-11-01-render-continuity-and-hook-lifetime.md) | camera-independent HUD checked materials output-sized renderer HWND DWORD scene-bank observer hook-ownership |
 | 科技純資料候選、同世界 epoch 改變後還原責任 | [尚未實作的候選與已修的還原錯誤](2026-11-01-tech-data-candidates-and-recovery.md) | CanBuild direct-E8 Type634 Prerequisite648 Scenario epoch restore |

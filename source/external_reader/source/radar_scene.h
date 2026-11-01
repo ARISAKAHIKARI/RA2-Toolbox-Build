@@ -28,6 +28,14 @@
 #include <chrono>
 namespace external { namespace radar {
 struct SceneRegion {double x=0,y=0,width=0,height=0;bool active=false;};
+enum class RenderFailure : uint8_t {None, TerrainPalette, ActorPalette, MissingVoxelArt, VoxelFaceBudget, VoxelRaster, VoxelImageMissing, VoxelIncomplete, VoxelPoseBudget};
+inline const char* renderFailureName(RenderFailure f){switch(f){
+ case RenderFailure::TerrainPalette:return "terrain-palette";case RenderFailure::ActorPalette:return "actor-palette";
+ case RenderFailure::MissingVoxelArt:return "voxel-art-missing";case RenderFailure::VoxelFaceBudget:return "voxel-face-budget";
+ case RenderFailure::VoxelRaster:return "voxel-raster-failed";case RenderFailure::VoxelImageMissing:return "voxel-image-missing";
+ case RenderFailure::VoxelIncomplete:return "voxel-image-incomplete";case RenderFailure::VoxelPoseBudget:return "voxel-pose-budget";
+ default:return "other-stage";
+}}
 template<class Assets>class SceneRenderer {
  presentation::Profile features_;
  liveshape::Cache gatherShapes_;sceneextras::Layers extraLayers_;sceneextras::TrailLayers trailLayers_;
@@ -77,7 +85,21 @@ template<class Assets>class SceneRenderer {
  colorprecision::Mode precision_=colorprecision::Mode::NativeSteps;
  lighting::State buildingLight_;uint64_t voxelLightRevision_=0;bool voxelLightKnown_=false;
  struct DecodeStats {unsigned attempts=0,hits=0;double milliseconds=0,budget=0;} decodeStats_;
- struct StageStats {double terrainMs=0,materialsMs=0,palettesMs=0,decodeMs=0,voxelMs=0,objectsMs=0,resolveMs=0,effectsMs=0;size_t overlayScanCells=0,actors=0;bool reused=false;} stageStats_;
+ struct StageStats {double terrainMs=0,materialsMs=0,palettesMs=0,decodeMs=0,voxelMs=0,objectsMs=0,resolveMs=0,effectsMs=0;size_t overlayScanCells=0,actors=0,terrainLightCells=0,terrainGeometryChecks=0,terrainProbeCopies=0;bool reused=false;
+  RenderFailure failure=RenderFailure::None;uint32_t failureObject=0,failureType=0,failureID=0;int failureKind=-1,rasterScale=0,hvaBody=0,hvaTurret=0;
+  bool voxelLightAvailable=false,voxelLightChanged=false,gunPoseValid=false,postureAvailable=false,shadowAvailable=false;
+  size_t candidates=0,liveFaces=0,posePixels=0,replacementPixels=0,newPixels=0,geometryBytes=0;std::string assetFailure;
+ } stageStats_;
+ template<class A>static auto clearAssetFailure(A&a,int)->decltype(a.failure.clear(),void()){a.failure.clear();}
+ template<class A>static void clearAssetFailure(A&,long){}
+ template<class A>static auto assetFailure(const A&a,int)->decltype(std::string(a.failure)){return a.failure;}
+ template<class A>static std::string assetFailure(const A&,long){return {};}
+ template<class A>static auto rasterScale(const A&a,int)->decltype(int(a.presentationRasterScale())){return a.presentationRasterScale();}
+ template<class A>static int rasterScale(const A&,long){return 0;}
+ void recordFailure(RenderFailure reason,const Marker&m){auto&s=stageStats_;s.failure=reason;s.failureObject=m.object;s.failureType=m.type;s.failureID=m.id;s.failureKind=m.kind;
+  s.gunPoseValid=m.pose.gunPoseValid;s.postureAvailable=m.pose.posture.available;s.shadowAvailable=m.pose.shadow.posture.available;s.hvaBody=m.pose.hvaBody;s.hvaTurret=m.pose.hvaTurret;
+ }
+
  std::map<std::pair<uint32_t,unsigned>,Cached> tiles_;
  std::map<ArtKey,typename Assets::ActorArt> art_;
  std::map<ImageKey,SpriteCached> sprites_;
@@ -192,7 +214,7 @@ public:
   if(blocked_){if(blocked_==frame.terrain||sameSource(*blocked_,*frame.terrain,region.active)){blocked_=frame.terrain;return {};}blocked_.reset();}
   lighting::State scene=lighting::sample(read);GameView<Read> game(read);
   std::array<uint32_t,256> liveTerrainPalette{};const bool paletteReady=assets.palette(true,liveTerrainPalette);
-  if(!paletteReady&&terrainPaletteReady_)return {};
+  if(!paletteReady&&terrainPaletteReady_){stageStats_.failure=RenderFailure::TerrainPalette;return {};}
   if(paletteReady){if(terrainPaletteReady_&&terrainPalette_!=liveTerrainPalette){tiles_.clear();clearBackground();}terrainPalette_=liveTerrainPalette;terrainPaletteReady_=true;}
   // A pending bank cannot combine lighting from two different global states.
   if(building_&&buildingLight_!=scene){building_.reset();pending_={};prepared_.clear();cursor_=baseCursor_=0;}
@@ -229,6 +251,7 @@ public:
   lighting::TintCache terrainTints;
   auto prepare=[&](size_t index,bool fresh=false){
    if(!fresh&&evaluatedStamp_[index]==evaluationEpoch_)return evaluatedPaint_[index];
+   ++stageStats_.terrainLightCells;
    const auto&cell=evaluatedTerrain->art[index];Paint value;value.light=lighting::cell(read,cell.cell,scene,lighting::Layer::Terrain,true,fresh?nullptr:&terrainTints);
    value.signature=lightKey(1469598103934665603ull,value.light);
    evaluatedStamp_[index]=evaluationEpoch_;evaluatedPaint_[index]=value;return value;
@@ -245,10 +268,14 @@ public:
    };
    auto extent=[&](const auto&cache){for(const auto&item:cache){if(item.second.ready)imageExtent(imageExtent,*item.second.image,0);else{haloX=std::max(haloX,512.);haloY=std::max(haloY,512.);}}};
    extent(tiles_);
-   for(size_t n=0;n<cells_.size();++n){size_t index=cells_[n];const auto&cell=evaluatedTerrain->art[index];mapbounds::TileOrigin origin;
-    if(!evaluatedTerrain->geo.tileOrigin(int(index%512),int(index/512),int(cell.level),origin))continue;
-    double x=origin.x+30,y=origin.y+15;
-    if(region.active&&(x<region.x-haloX||x>region.x+region.width+haloX||y<region.y-haloY||y>region.y+region.height+haloY))continue;
+   for(size_t n=0;n<cells_.size();++n){size_t index=cells_[n];
+    // cells_ already belongs to this exact geometry/source. Whole-map views
+    // need every cell's current light, but have no crop to project it against.
+    if(region.active){++stageStats_.terrainGeometryChecks;const auto&cell=evaluatedTerrain->art[index];mapbounds::TileOrigin origin;
+     if(!evaluatedTerrain->geo.tileOrigin(int(index%512),int(index/512),int(cell.level),origin))continue;
+     double x=origin.x+30,y=origin.y+15;
+     if(x<region.x-haloX||x>region.x+region.width+haloX||y<region.y-haloY||y>region.y+region.height+haloY)continue;
+    }
     if(prepare(index,fresh).signature!=painted_[n])return false;
    }return true;
   };
@@ -257,7 +284,11 @@ public:
   bool committed=false;
   // Whole-map verification above already evaluated every cell. Do not stall
   // moving actors for several more 4096-cell probe passes on identical ground.
-  if(building_&&probing_){size_t end=!region.active&&visibleVerified?cells_.size():std::min(cells_.size(),cursor_+size_t(4096));for(;cursor_<end;++cursor_){prepared_[cursor_]=prepare(cells_[cursor_]);probeChanged_|=prepared_[cursor_].signature!=painted_[cursor_];}
+  if(building_&&probing_){
+   // Successful whole-map verification already compared every signature.
+   // Do not copy every Paint into a temporary vector only to discard it.
+   if(!region.active&&visibleVerified)cursor_=cells_.size();
+   else{size_t end=std::min(cells_.size(),cursor_+size_t(4096));for(;cursor_<end;++cursor_){++stageStats_.terrainProbeCopies;prepared_[cursor_]=prepare(cells_[cursor_]);probeChanged_|=prepared_[cursor_].signature!=painted_[cursor_];}}
    if(cursor_==cells_.size()){
     if(!probeChanged_){complete_=building_;building_.reset();backgroundLight_=scene;cursor_=0;prepared_.clear();}
     else{probing_=false;cursor_=baseCursor_=0;if(!resetPending())return {};}
@@ -420,6 +451,7 @@ public:
   const auto lightRevision=voxelRevision(assets,0);const bool voxelLightChanged=!lightRevision.first||!voxelLightKnown_||voxelLightRevision_!=lightRevision.second;
   voxelLightKnown_=lightRevision.first;voxelLightRevision_=lightRevision.second;
   if(liveVoxels&&voxelLightChanged)for(const auto&source:art_)if(voxelArt(source.second,0))invalidateArt(source.first);
+  stageStats_.candidates=markers.size();stageStats_.rasterScale=rasterScale(assets,0);stageStats_.voxelLightAvailable=lightRevision.first;stageStats_.voxelLightChanged=voxelLightChanged;
   std::set<ArtKey> unavailablePalettes;
   for(const auto&key:artWanted){auto source=art_.find(key);if(source==art_.end())continue;bool changed=false;
    if(!refreshPalette(assets,source->second,changed,0)){invalidateArt(key);unavailablePalettes.insert(key);}
@@ -433,7 +465,7 @@ public:
    // Explosions, smoke and projectiles may expire between the immutable
    // observation and this render. Drop only those instances, never the whole
    // completed world because one transient no longer has a live palette.
-   for(const auto&m:markers)if(m.kind<5&&unavailablePalettes.count(artKey(m)))return {};
+   for(const auto&m:markers)if(m.kind<5&&unavailablePalettes.count(artKey(m))){recordFailure(RenderFailure::ActorPalette,m);stage(stageStats_.palettesMs);return {};}
    markers.erase(std::remove_if(markers.begin(),markers.end(),[&](const Marker&m){return m.kind>=5&&unavailablePalettes.count(artKey(m));}),markers.end());
   }
   stage(stageStats_.palettesMs);
@@ -475,20 +507,43 @@ public:
   for(size_t scanned=0;scanned<decodeMarkers.size()&&room(unsigned(work),lane,.40);++scanned){const auto&m=decodeMarkers[actorCursor_++%decodeMarkers.size()];if(!priority.count(imageKey(m)))decode(m,false);}
   decodeStats_.milliseconds=std::chrono::duration<double,std::milli>(DecodeClock::now()-decodeStarted).count();
   stage(stageStats_.decodeMs);
+  stageStats_.geometryBytes=artBytes;stageStats_.posePixels=pixels;
   if(liveVoxels){
    // Refresh VPL and palette provenance every pass; reuse pose pixels only
    // while both revisions and the complete body/shadow posture still agree.
    // A reader without revision support retains the conservative live path.
    std::set<ImageKey> rastered;size_t liveFaces=0;
    for(const auto&m:markers){auto source=art_.find(artKey(m));
-    if(source==art_.end()){if(m.pose.voxel&&m.kind<5)return {};continue;}
+    if(source==art_.end()){if(m.pose.voxel&&m.kind<5){recordFailure(RenderFailure::MissingVoxelArt,m);stage(stageStats_.voxelMs);return {};}continue;}
     if(!voxelArt(source->second,0))continue;auto key=imageKey(m);if(!rastered.insert(key).second)continue;
     auto cachedImage=sprites_.find(key);
     if(!voxelLightChanged&&cachedImage!=sprites_.end()&&cachedImage->second.ready&&!cachedImage->second.image->incomplete){++decodeStats_.hits;continue;}
-    liveFaces+=faceCount(source->second,0);if(liveFaces>rendermemory::LiveFaces){if(m.kind>=5)continue;return {};}
-    std::shared_ptr<const voxel::Image>image;if(!sharedActor(assets,source->second,m.pose,image,0)||!image||image->incomplete){if(m.kind>=5)continue;return {};}
+    liveFaces+=faceCount(source->second,0);stageStats_.liveFaces=liveFaces;if(liveFaces>rendermemory::LiveFaces){if(m.kind>=5)continue;recordFailure(RenderFailure::VoxelFaceBudget,m);stage(stageStats_.voxelMs);return {};}
+    clearAssetFailure(assets,0);std::shared_ptr<const voxel::Image>image;const bool drawn=sharedActor(assets,source->second,m.pose,image,0);
+    if(!drawn||!image||image->incomplete){if(m.kind>=5)continue;recordFailure(!drawn?RenderFailure::VoxelRaster:!image?RenderFailure::VoxelImageMissing:RenderFailure::VoxelIncomplete,m);stageStats_.assetFailure=assetFailure(assets,0);stage(stageStats_.voxelMs);return {};}
     auto&cached=sprites_[key];size_t previous=camera::pixels(*cached.image),next=camera::pixels(*image);
-    if(pixels-previous+next>rendermemory::PosePixels){if(m.kind>=5)continue;return {};}
+    if(m.kind<5&&pixels-previous+next>rendermemory::PosePixels){
+     // Old displayed poses are useful fallbacks for time-budgeted SHP and
+     // optional transient VXL. Ordinary live VXL instead requires its current
+     // pose before ANY new frame can publish. Keeping both generations until
+     // success can therefore pin the cache forever even when one frame fits.
+     // Retire only those soft old VXL entries, once across the whole cache;
+     // immutable published CPU/GPU/world frames keep their own image owners.
+     // Build the stricter set only under actual pressure; the normal path
+     // keeps its existing wanted set and performs no extra per-frame copies.
+     std::set<ImageKey> required;for(const auto&current:markers){required.insert(imageKey(current));
+      if(current.pose.frameFrom>=0){auto prior=current;prior.pose.frame=current.pose.frameFrom;required.insert(imageKey(prior));}
+     }
+     bool retired=false;
+     for(auto i=sprites_.begin();i!=sprites_.end();){auto art=art_.find(artKey(i->first));
+      if(std::get<2>(i->first)<5&&!required.count(i->first)&&art!=art_.end()&&voxelArt(art->second,0)){
+       pixels-=camera::pixels(*i->second.image);i=sprites_.erase(i);retired=true;
+      }else ++i;
+     }
+     if(retired)for(auto i=displayed_.begin();i!=displayed_.end();)if(!sprites_.count(i->second))i=displayed_.erase(i);else ++i;
+    }
+    stageStats_.posePixels=pixels;stageStats_.replacementPixels=previous;stageStats_.newPixels=next;
+    if(pixels-previous+next>rendermemory::PosePixels){if(m.kind>=5)continue;recordFailure(RenderFailure::VoxelPoseBudget,m);stage(stageStats_.voxelMs);return {};}
     pixels=pixels-previous+next;cached.image=std::move(image);cached.ready=true;cached.retry=0;
    }
   }

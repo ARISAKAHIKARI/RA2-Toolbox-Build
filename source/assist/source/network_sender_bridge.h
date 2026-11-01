@@ -41,7 +41,7 @@ static bool networkSenderOwnSites(){
 static bool networkSenderContext();
 static bool networkHousePreserveReady(){
  return networkSenderEnabled&&networkSenderInstalled&&!networkSenderFaulted&&sh&&!sh->stop&&!fault&&
-  sh->networkHousePreserve&&controlmode::sender(sh->controlAll)&&!controlHouseFlagsPending()&&match&&snap.match==match&&snap.status==1&&snap.commandStatus==1&&
+  sh->networkHousePreserve&&controlmode::sender(sh->controlAll)&&!controlTransitionPending()&&match&&snap.match==match&&snap.status==1&&snap.commandStatus==1&&
   DWORD(sampleClock(sh)-sh->heartbeat)<3000&&get<bool>(0xA8E9A0)&&
   snap.session==get<int>(0xA8B238)&&eventdelivery::isMultiplayer(snap.session)&&
   networksender::protocol(get<int>(0xA8B24C))&&networkSenderWorld()&&networkSenderOwnSites();
@@ -331,7 +331,7 @@ static bool restoreNetworkSender(){
 }
 static void networkSenderTick(bool requested){
  networkSenderPrepare();
- requested=requested&&sh&&controlmode::sender(sh->controlAll)&&!controlHouseFlagsPending()&&!sh->stop&&!fault&&eventdelivery::isMultiplayer(get<int>(0xA8B238))&&
+ requested=requested&&sh&&controlmode::sender(sh->controlAll)&&!controlTransitionPending()&&!sh->stop&&!fault&&eventdelivery::isMultiplayer(get<int>(0xA8B238))&&
   lastHouse&&lastHouse==get<uint32_t>(0xA83D4C)&&get<bool>(0xA8E9A0)&&networksender::protocol(get<int>(0xA8B24C));
  if(!requested){restoreNetworkSender();return;}
  if(networkSenderPacking)return;

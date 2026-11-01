@@ -1,5 +1,6 @@
 #pragma once
 #include "camera_raster.h"
+#include "cpu_replay_rows.h"
 #include "vulkan_scene.h"
 #include <functional>
 #include <list>
@@ -140,7 +141,8 @@ public:
  void baseTiles(std::vector<vulkancompute::TileJob>jobs){frame_.baseTiles=std::move(jobs);if(!frame_.baseTiles.empty())frame_.basePixels.reset();}
  bool valid()const{return valid_;}
  const vulkancompute::FrameJob&frame()const{return frame_;}
- bool replay(Surface&surface)const{
+ bool replay(Surface&surface,cpureplay::Stats*stats=nullptr)const{
+  if(stats)*stats={};
   // basePixels stays captured for fallback even when GPU base tiles are used.
   if(frame_.width<1||frame_.height<1||uint64_t(frame_.width)*frame_.height>16*1024*1024||!validDepth(frame_))return false;
   const std::vector<uint32_t>*base=fallbackBase_.get();std::vector<uint32_t>generated;
@@ -161,13 +163,28 @@ public:
     for(int x=0;x<frame_.width;++x)surface.depth[size_t(y)*frame_.width+x]=(*frame_.baseDepth)[row+(*frame_.baseDepthXs)[x]];
    }
   }
-  auto paint=[&](Surface&target,const Replay&call,int row){if(call.image)target.blit(*call.image,call.ax,call.ay-row,call.sx,call.sy,call.base,call.light,call.lift,call.drop,call.smooth,call.material);
-   else for(int y=std::max(0,call.dotY-row-1);y<std::min(target.height(),call.dotY-row+2);++y)for(int x=std::max(0,call.dotX-1);x<std::min(frame_.width,call.dotX+2);++x)target.color[size_t(y)*frame_.width+x]=call.dot;};
-  // Restore the original whole-surface painter. Destination-reading cloak,
-  // native Z/A and attachments all consume the same complete target and order.
-  // Parallel source preparation can be reintroduced after independent parity.
-  for(const auto&call:replay_)paint(surface,call,0);
-  return !surface.failed();
+  auto paint=[&](const Replay&call,int first,int last,RasterScratch*scratch){if(call.image)surface.blit(*call.image,call.ax,call.ay,call.sx,call.sy,call.base,call.light,call.lift,call.drop,call.smooth,call.material,true,scratch,first,last);
+   else for(int y=std::max(first,call.dotY-1);y<std::min(last,call.dotY+2);++y)for(int x=std::max(0,call.dotX-1);x<std::min(frame_.width,call.dotX+2);++x)surface.color[size_t(y)*frame_.width+x]=call.dot;};
+  std::atomic<bool> rowFailed{false};
+  auto segment=[&](size_t first,size_t last,size_t work){
+   if(first==last)return;
+   if(last-first<8||work<262144||frame_.height<32){if(stats)stats->serialCalls+=last-first;for(size_t n=first;n<last;++n)paint(replay_[n],0,frame_.height,nullptr);return;}
+   if(stats)++stats->rowSegments;
+   parallelrows::rows(size_t(frame_.height),work,[&](size_t top,size_t bottom){
+    // Persistent per-worker scratch; never shared between concurrent draws.
+    try{static thread_local RasterScratch scratch;
+     for(size_t n=first;n<last;++n)paint(replay_[n],int(top),int(bottom),&scratch);
+    }catch(const std::bad_alloc&){rowFailed=true;}
+   });
+  };
+  size_t first=0,work=0;
+  for(size_t n=0;n<replay_.size();++n){const auto&call=replay_[n];
+   if(call.material.displace||(call.image&&!cpureplay::rowIndependent(*call.image,call.sx,call.sy,call.smooth))){
+    segment(first,n,work);if(rowFailed)return false;if(stats){++stats->barriers;++stats->serialCalls;}paint(call,0,frame_.height,nullptr);first=n+1;work=0;
+   }else work=std::min<size_t>(16777216,work+(call.image?cpureplay::work(*call.image,call.sx,call.sy):9));
+  }
+  segment(first,replay_.size(),work);
+  return !rowFailed&&!surface.failed();
  }
 };
 }}

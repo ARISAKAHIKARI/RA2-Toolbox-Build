@@ -48,12 +48,25 @@ template<class Read>bool converterTint(Read read,uint32_t convert,std::array<int
 // same converter; validate its tint once rather than five reads per cell.
 // Cache failures as failures, so callers retain their own fallback tint.
 struct TintCache {
- struct Entry {std::array<int,3> tint{};bool valid=false;};
+ struct Entry {std::array<int,3> tint{};bool valid=false,metadataReady=false;
+  unsigned inputRows=0,rows=0;bool inputScalar=false,input555=false,scalar=false,rgb555=false;
+  std::shared_ptr<const std::vector<uint32_t>>table;
+ };
  std::unordered_map<uint32_t,Entry> entries;
  template<class Read>bool sample(Read read,uint32_t convert,std::array<int,3>&out){
   auto found=entries.find(convert);
   if(found==entries.end()){Entry e;e.valid=converterTint(read,convert,e.tint);found=entries.emplace(convert,e).first;}
   if(!found->second.valid)return false;out=found->second.tint;return true;
+ }
+ template<class Read>void shade(Read read,uint32_t convert,State&out){
+  sample(read,convert,out.tint);auto&e=entries.find(convert)->second;
+  // Metadata is shared by the same converter during this presentation too.
+  // Its failure paths preserve some incoming fields, so include those inputs
+  // rather than caching a complete State (cell intensity remains individual).
+  if(!e.metadataReady||e.inputRows!=out.paletteRows||e.inputScalar!=out.scalar||e.input555!=out.rgb555){
+   e.inputRows=out.paletteRows;e.inputScalar=out.scalar;e.input555=out.rgb555;
+   converterMetadata(read,convert,out);e.rows=out.paletteRows;e.scalar=out.scalar;e.rgb555=out.rgb555;e.table=out.table;e.metadataReady=true;
+  }else{out.paletteRows=e.rows;out.scalar=e.scalar;out.rgb555=e.rgb555;out.table=e.table;}
  }
 };
 // 705D70: ordinary SHP and VXL use their owner's ColorScheme, including a
@@ -103,7 +116,7 @@ template<class Read>State cell(Read read,uint32_t p,const State&fallback,Layer l
  uint32_t scale=0,convert=0;int16_t values[3]{},after[3]{};
  if(!read(p+0x104,&scale,4)||scale>262144||!read(p+0x34,&convert,4)||(!scale&&convert<0x10000)||
     !read(p+0x10A,values,6)||std::any_of(values,values+3,[](int x){return x<0||x>2000;}))return fallback;
- State out=fallback;out.intensity=values[int(layer)];if(localTint){if(tints)tints->sample(read,convert,out.tint);else converterTint(read,convert,out.tint);converterMetadata(read,convert,out);}
+ State out=fallback;out.intensity=values[int(layer)];if(localTint){if(tints)tints->shade(read,convert,out);else{converterTint(read,convert,out.tint);converterMetadata(read,convert,out);}}
  if(!read(p+0x10A,after,6)||memcmp(values,after,6))return fallback;
  return out;
 }

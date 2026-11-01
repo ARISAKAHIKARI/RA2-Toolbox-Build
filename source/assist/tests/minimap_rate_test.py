@@ -31,9 +31,11 @@ prefix = r'''
 #include <iostream>
 #include <memory>
 #include <mutex>
+#include <string>
 #include <vector>
 #include "@PROFILE@"
 #include "@TIMING@"
+#include "@MEMORY@"
 using DWORD=uint32_t;
 static void critical(const std::wstring&){}
 static DWORD GetTickCount(){return 1000;}
@@ -91,9 +93,18 @@ struct Frame {uint32_t tick=1000;int frame=1;double observedMs=0;std::shared_ptr
  ~Frame(){if(onFrameRetire)onFrameRetire();}
 };
 inline bool reusableRealScene(const Frame&previous,const Frame&current,int width,int height){return previous.terrain&&current.terrain&&previous.scene&&previous.frame<=current.frame&&previous.terrain->reveal==current.terrain->reveal&&previous.terrain->geo.same(current.terrain->geo)&&previous.scene->width==width&&previous.scene->height==height;}
-struct StageStats {bool reused=false;size_t actors=0;double terrainMs=0,palettesMs=0,decodeMs=0,voxelMs=0,objectsMs=0,resolveMs=0,effectsMs=0;};
+// The worker reads these diagnostics; rendering itself remains a stand-in.
+// No scheduling or publication assertions depend on diagnostic values.
+enum class RenderFailure : uint8_t {None};
+inline const char*renderFailureName(RenderFailure){return "other-stage";}
+struct StageStats {bool reused=false;size_t actors=0;double terrainMs=0,palettesMs=0,decodeMs=0,voxelMs=0,objectsMs=0,resolveMs=0,effectsMs=0;
+ RenderFailure failure=RenderFailure::None;uint32_t failureObject=0,failureType=0,failureID=0;int failureKind=-1,rasterScale=1,hvaBody=0,hvaTurret=0;
+ bool voxelLightAvailable=false,voxelLightChanged=false,gunPoseValid=false,postureAvailable=false,shadowAvailable=false;
+ size_t candidates=0,liveFaces=0,posePixels=0,replacementPixels=0,newPixels=0,geometryBytes=0;std::string assetFailure;
+};
+struct DecodeStats {unsigned attempts=0;};
 struct NativeStats {int width=0,height=0;size_t pages=0,resident=0;};
-template<class Assets>struct SceneRenderer {StageStats stats;bool capacityExceeded()const{return capacityFailure;}void directPresentation(bool){}void outputSized(bool){}const StageStats&stageStats(){return stats;}NativeStats nativeStats(){return {};}
+template<class Assets>struct SceneRenderer {StageStats stats;DecodeStats decode;const DecodeStats&decodeStats()const{return decode;}bool capacityExceeded()const{return capacityFailure;}void directPresentation(bool){}void outputSized(bool){}const StageStats&stageStats(){return stats;}NativeStats nativeStats(){return {};}
  void features(const presentation::Profile&){}bool feedbackVisibility(const std::vector<uint8_t>*&mask){mask=nullptr;return true;}void reset(){++sceneResets;}
  template<class Read>auto render(const Frame&frame,int w,int h,Read,Assets&,std::initializer_list<int>,unsigned,bool,bool,bool,bool){if(atRender)atRender();if(capacityFailure)return std::shared_ptr<Image>{};return std::make_shared<Image>(Image{w,h,int(frame.markers.size())});}};
 struct DiagramRenderer {void reset(){++diagramResets;}auto render(std::shared_ptr<Terrain>,int w,int h){return std::make_shared<Image>(Image{w,h});}};
@@ -220,7 +231,7 @@ int main(){
  std::cout<<"PASS production minimap publication: initial diagram, one final replacement for completed scenes; set/shutdown/read/world/final-swap retire outside lock ("<<retired<<" retirements)\n";
 }
 '''
-code = prefix.replace('@PERIOD@', 'inline uint64_t periodMicros(' + period).replace('@PROFILE@',(root/'external_reader/source/render_profile.h').as_posix()).replace('@TIMING@',(root/'shared/source/pipeline_timing.h').as_posix()) + worker + suffix
+code = prefix.replace('@PERIOD@', 'inline uint64_t periodMicros(' + period).replace('@PROFILE@',(root/'external_reader/source/render_profile.h').as_posix()).replace('@TIMING@',(root/'shared/source/pipeline_timing.h').as_posix()).replace('@MEMORY@',(root/'external_reader/source/render_memory_budget.h').as_posix()) + worker + suffix
 
 def execute(path):
     path.mkdir(parents=True, exist_ok=True)

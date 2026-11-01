@@ -10,7 +10,7 @@ struct AdditionalSettings {
  uint32_t missionModeKeys[3]{}; // Sleep, Guard, Harmless; empty by default
  bool formationEnabled=false;uint32_t formationHold=18,formationKeys[6]={'Z','X','C','V','B','N'},formationMouse=2;
  bool controlAll=false,switchPlayerEnabled=false;
- int controlImplementation=0; // 0=House control flag data, 1=native predicate Hook.
+ int controlImplementation=0; // 0=Master basic instruction patches, 1=native predicate Hook.
  bool controlCommandOwner=false;
  bool networkHousePreserve=false,nativeSellCursor=false;
  bool crcMapShadow=false;
@@ -43,9 +43,9 @@ struct AdditionalSettings {
  uint32_t diskKey=17,sellKey=17;
  uint32_t enterKey=18,airKey1=17,airKey2=0,variantKey='T'|(2<<8);
  cooperative::Quota defaults{};
- uint32_t controlRequest()const{return !controlAll?controlmode::Off:controlImplementation==1?controlmode::Native:controlmode::HouseFlag;}
+ uint32_t controlRequest()const{return !controlAll?controlmode::Off:controlImplementation==1?controlmode::Native:controlmode::Master;}
  bool nativeControlRequested()const{return controlmode::native(controlRequest());}
- bool dataControlRequested()const{return controlmode::data(controlRequest());}
+ bool masterControlRequested()const{return controlmode::master(controlRequest());}
  bool commandOwnerRequested()const{return nativeControlRequested()&&controlCommandOwner;}
  bool networkHouseRequested()const{return networkHousePreserve&&controlmode::sender(controlRequest());}
 };

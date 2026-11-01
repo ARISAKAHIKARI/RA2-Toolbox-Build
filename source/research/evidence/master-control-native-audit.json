@@ -1,0 +1,84 @@
+{
+  "executable_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+  "checks": 777,
+  "status": "PASS",
+  "private_executable_modified": false,
+  "game_executed": false,
+  "patch_applied_to_emulator_copy_only": true,
+  "sites": [
+    {
+      "address": "0x6339ba",
+      "before": "E8 31 7D ED FF",
+      "after": "E8 57 7D ED FF",
+      "length": 5
+    },
+    {
+      "address": "0x637e40",
+      "before": "E8 AB 38 ED FF",
+      "after": "E8 D1 38 ED FF",
+      "length": 5
+    }
+  ],
+  "predicate_variants": [
+    {
+      "kind": "supported_PE_forwarder",
+      "address": "0x50b6f0",
+      "before": "E9 FB 2A 67 00",
+      "after": "E9 1B 00 00 00",
+      "length": 5
+    },
+    {
+      "kind": "captured_native_prefix_composite",
+      "address": "0x50b6f7",
+      "before": "75 1D",
+      "after": "EB 17",
+      "length": 2
+    }
+  ],
+  "strict_target": "0x50b716",
+  "true_target": "0x50b710",
+  "rows": [
+    {
+      "variant": "supported_PE_forwarder",
+      "style": "original",
+      "function_results_checked": 96
+    },
+    {
+      "variant": "supported_PE_forwarder",
+      "style": "predicate_only",
+      "function_results_checked": 96
+    },
+    {
+      "variant": "supported_PE_forwarder",
+      "style": "master_complete",
+      "function_results_checked": 96
+    },
+    {
+      "variant": "supported_PE_forwarder",
+      "style": "master_unified_entry",
+      "function_results_checked": 96
+    },
+    {
+      "variant": "captured_native_prefix_composite",
+      "style": "original",
+      "function_results_checked": 96
+    },
+    {
+      "variant": "captured_native_prefix_composite",
+      "style": "predicate_only",
+      "function_results_checked": 96
+    },
+    {
+      "variant": "captured_native_prefix_composite",
+      "style": "master_complete",
+      "function_results_checked": 96
+    },
+    {
+      "variant": "captured_native_prefix_composite",
+      "style": "master_unified_entry",
+      "function_results_checked": 96
+    }
+  ],
+  "non_stack_data_writes": 0,
+  "boundary": "Original supported PE and explicitly composed captured-native prefix; only predicates, owner-index function and planning owner-index slice execute. No complete command, Windows UI, game lifecycle or netplay claim."
+}

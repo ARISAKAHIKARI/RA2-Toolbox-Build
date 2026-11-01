@@ -29,7 +29,7 @@ static Vec vec(uint32_t at,int){Vec v{};return read(at,&v,sizeof v)?v:Vec{};}
 static bool playableHouse(uint32_t p){return p==0x10000000||p==0x10010000;}
 #include "../source/control_house_flags_bridge.h"
 static bool riskReady(bool){return ready;}
-static bool controlCodeRetired(){return retired;}
+static bool controlCompanionsRetired(){return retired;}
 int main(){
  assert(VirtualAlloc((void*)0xA80000,0x10000,MEM_RESERVE|MEM_COMMIT,PAGE_READWRITE)==(void*)0xA80000);
  assert(VirtualAlloc((void*)0x10000000,0x30000,MEM_RESERVE|MEM_COMMIT,PAGE_READWRITE)==(void*)0x10000000);
@@ -41,29 +41,22 @@ int main(){
   put<uint32_t>(p,0x7E0000);put<uint32_t>(p+0x10,100+i);put<int>(p+0x30,i);put<uint32_t>(p+0x34,0x10022000+i*4);
   put<uint8_t>(p+0x1EC,0);put<uint8_t>(p+0x1ED,0);put<uint32_t>(p+0x21C,0xC0FFEE);
  }
- sh->controlAll=controlmode::Native;controlHouseFlagTick();assert(!controlHouseFlagsPending());
- sh->controlAll=controlmode::HouseFlag;retired=false;controlHouseFlagTick();
- assert(sh->playerControlStatus==-2&&!controlHouseFlagsPending()&&get<uint8_t>(0x100001ED)==0);
- retired=true;controlHouseFlagTick();assert(sh->playerControlStatus==2&&controlHouseFlagsPending());
- assert(get<uint8_t>(0x100001ED)==1&&get<uint8_t>(0x100101ED)==1);
- assert(get<uint8_t>(0x100001EC)==0&&get<uint32_t>(0x1000021C)==0xC0FFEE&&get<uint32_t>(0xA83D4C)==0x10000000);
- // Focus/simulation suspension keeps ownership and does not change data.
- ready=false;controlHouseFlagMaintenance();controlHouseFlagTick();assert(controlHouseFlagsPending()&&get<uint8_t>(0x100001ED)==1);ready=true;
- // Native mode may not start until an actual Win32 protected-page failure
- // has recovered. A sibling record restores independently in the meantime.
+ // Simulate a held legacy record; the current production bridge only restores.
+ auto hold=[&](){assert(controlHouseFlags.bind(sessionTracker.epoch,read));
+  for(unsigned i=0;i<2;++i){controlflags::Identity id{};assert(controlflags::capture(i,id,read));
+   assert(controlflags::apply(controlHouseFlags.records[i],id,read,controlHouseFlagWrite));}
+ };
+ sh->controlAll=controlmode::Master;controlHouseFlagMaintenance();
+ assert(!controlHouseFlagsPending()&&get<uint8_t>(0x100001ED)==0);
+ hold();assert(controlHouseFlagsPending()&&get<uint8_t>(0x100001ED)==1);
  DWORD previous=0;assert(VirtualProtect((void*)0x10000000,0x1000,PAGE_READONLY,&previous));
- sh->controlAll=controlmode::Native;controlHouseFlagMaintenance();
- assert(controlHouseFlagsPending()&&sh->playerControlStatus==-2&&get<uint8_t>(0x100101ED)==0);
+ controlHouseFlagMaintenance();assert(controlHouseFlagsPending()&&sh->playerControlStatus==-2&&get<uint8_t>(0x100101ED)==0);
  assert(VirtualProtect((void*)0x10000000,0x1000,previous,&previous));controlHouseFlagMaintenance();
  assert(!controlHouseFlagsPending()&&get<uint8_t>(0x100001ED)==0);
- sh->controlAll=controlmode::HouseFlag;controlHouseFlagTick();assert(sh->playerControlStatus==2);
- // Temporary read failure cannot acknowledge cleanup or forget originals.
- sh->controlAll=controlmode::Off;readFailure=0x10000010;controlHouseFlagMaintenance();assert(controlHouseFlagsPending());
+ hold();readFailure=0x10000010;controlHouseFlagMaintenance();assert(controlHouseFlagsPending());
  readFailure=0;controlHouseFlagMaintenance();assert(!controlHouseFlagsPending());
- // A local-player/command-epoch change does not prove the House disappeared.
- sh->controlAll=controlmode::HouseFlag;controlHouseFlagTick();++sessionTracker.epoch;controlHouseFlagMaintenance();
+ hold();++sessionTracker.epoch;controlHouseFlagMaintenance();
  assert(!controlHouseFlagsPending()&&get<uint8_t>(0x100001ED)==0);
- controlHouseFlagTick();assert(sh->playerControlStatus==2);
- assert(restoreControlHouseFlags()&&!controlHouseFlagsPending());
- puts("PASS Win32 data bridge: mode and pending-code exclusion, real writable/protected House pages, focus retention, partial cleanup, retry and epoch migration; no game launched");
+ assert(get<uint8_t>(0x100001EC)==0&&get<uint32_t>(0x1000021C)==0xC0FFEE&&get<uint32_t>(0xA83D4C)==0x10000000);
+ puts("PASS Win32 retired data recovery: Master does not enable House writes; partial protected-page cleanup, retry and epoch migration; no game launched");
 }

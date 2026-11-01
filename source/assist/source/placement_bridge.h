@@ -423,38 +423,7 @@ static bool setTechSites(bool enabled){
  if(enabled&&masterOff){riskTechActive=installRiskSite(riskSites[6])&&installRiskSite(riskSites[7]);if(riskTechActive)return true;}
  bool a=restoreRiskSite(riskSites[6]),b=restoreRiskSite(riskSites[7]);return !enabled&&masterOff&&a&&b;
 }
-// Preserve both owner-index paths before enabling the common predicate.
-// 0x637E40 is a verified CALL boundary. Never write the sample's 0x6378E0.
-static RiskSite controlSites[]={
- {experimentalpatch::ControlOwner,5,{0xE8,0x31,0x7D,0xED,0xFF},{}},
- {experimentalpatch::ControlPlanning,5,{0xE8,0xAB,0x38,0xED,0xFF},{}},
- {experimentalpatch::ControlHouse,5,{0xA1,0x38,0xB2,0xA8,0},{}}
-};
-static void controlSitesTick(bool enabled){
- enabled=enabled&&playertest::Available&&sh&&controlmode::native(sh->controlAll)&&!controlHouseFlagsPending();
- if(riskControlActive&&!enabled&&riskContextReady())unselect();
- riskControlActive=false;bool ok=true;
- static bool prepared=false;
- if(!prepared){
-  for(auto&s:controlSites){const uint32_t target=uint32_t(uintptr_t(s.address==experimentalpatch::ControlHouse?&riskControlEntry:&riskControlOwnerEntry));
-   s.after[0]=experimentalpatch::callSite(s.address)?0xE8:0xE9;const uint32_t offset=target-s.address-5;memcpy(s.after+1,&offset,4);}
-  prepared=true;
- }
- if(enabled){
-  auto&s=controlSites[2];uint8_t original[5]{};
-  if(!codeHookRegistry.active(s.address)){
-   if(!read(s.address,original,5)||!hookregistry::knownOriginal(s.address,original,5))ok=false;
-   else {memcpy(s.before,original,5);riskControlNativeJump=original[0]==0xE9;
-    riskControlNativeTarget=s.address+5;
-    if(riskControlNativeJump){uint32_t rel=0;memcpy(&rel,original+1,4);riskControlNativeTarget+=rel;}
-   }
-  }
-  if(ok)for(auto&site:controlSites)if(!installRiskSite(site)){ok=false;break;}
- }
- // Restore the common predicate first; preserve foreign bytes on conflict.
- if(!enabled||!ok)for(int i=2;i>=0;--i)if(!restoreRiskSite(controlSites[i]))ok=false;
- riskControlActive=enabled&&ok;if(sh)sh->playerControlStatus=ok?(enabled?1:0):-2;
-}
+#include "control_sites_bridge.h"
 static bool redrawRevealTest();
 static void restoreSmallMapCamera(),restoreHighScroll();
 static void restorePlacement(){
@@ -528,9 +497,8 @@ static void placementTick(){
  sh->lowDamageStatus=!lowOK?-2:!sh->lowDamageFilter?0:riskLowDamageActive?1:2;
  const bool ownerGuardReady=!sh->controlCommandOwner||(controlCommandOwnerReady(lastHouse)&&
   (!eventdelivery::isMultiplayer(get<int>(0xA8B238))||networkHousePreserveReady()));
- controlSitesTick(controlmode::native(sh->controlAll)&&ownerGuardReady);
- if(controlHouseFlagsPending()&&!controlmode::data(sh->controlAll))sh->playerControlStatus=-2;
- controlHouseFlagTick();
+ controlSitesTick(controlmode::master(sh->controlAll)||(controlmode::native(sh->controlAll)&&ownerGuardReady));
+ if(controlHouseFlagsPending())sh->playerControlStatus=-2;
  // Infantry entry uses ordinary task/planning events. Never install either
  // capability override, including when an older configuration enables C4Test.
  riskC4Active=false;

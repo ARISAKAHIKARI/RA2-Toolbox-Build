@@ -1,6 +1,7 @@
 #pragma once
 #include "vulkan_scene_types.h"
 #include "gpu_draw_encoding.h"
+#include "gpu_scene_sources.h"
 #include "vulkan_present.h"
 #include "gpu_motion.h"
 #include "vulkan_scene_spirv.h"
@@ -119,9 +120,8 @@ private:
   const int w=frame.width,h=frame.height;const uint64_t pixels=uint64_t(std::max(0,w))*std::max(0,h);
   if(disabled_)return false;if(w<1||h<1||w>8192||h>8192||pixels>MaxPixels||frame.draws.size()>MaxDraws||(bool(frame.basePixels)==!frame.baseTiles.empty())||(frame.basePixels&&frame.basePixels->size()!=pixels)||(frame.baseDepth&&frame.baseDepthWidth==0&&frame.baseDepth->size()!=pixels)||(frame.fogAlpha&&frame.fogAlpha->size()!=pixels))return fail("Invalid GPU scene frame");
   if(!frame.collectGuides||w!=guideRejectedWidth_||h!=guideRejectedHeight_)guideRejectedWidth_=guideRejectedHeight_=0;
-  gpumotion::Plan guidePlan;bool hasDisplacement=false;for(const auto&draw:frame.draws)hasDisplacement|=draw.displace;bool collectGuides=frame.collectGuides&&!hasDisplacement&&!frame.effects&&!(w==guideRejectedWidth_&&h==guideRejectedHeight_)&&frame.baseDepth&&motionHistory_.prepare(frame,guidePlan);
-  if(!collectGuides)motionHistory_.clear();
-  bool needs64=false;std::vector<Source>colors,materials;std::vector<std::array<size_t,8>>drawSources;size_t baseSource=0,baseDepth=0,baseDepthX=0,baseDepthY=0,fog=0;
+  gpumotion::Plan guidePlan;
+  std::vector<Source>colors,materials;std::vector<std::array<size_t,8>>drawSources;size_t baseSource=0,baseDepth=0,baseDepthX=0,baseDepthY=0,fog=0;
   if(frame.basePixels){baseSource=colors.size();colors.push_back(source(frame.basePixels));}
   uint64_t coordinateCount=0;if(frame.baseTiles.size()>4096)return fail("GPU scene base tile count exceeded");
   std::vector<size_t>tileSources;for(const auto&t:frame.baseTiles){
@@ -138,37 +138,27 @@ private:
   else if(frame.fogAlpha){fog=materials.size();materials.push_back(source(frame.fogAlpha));}
   std::vector<size_t>effectSources,effectTables;
   if(frame.effects){if(!frame.effects->valid||frame.effects->width!=w||frame.effects->height!=h)return fail("Invalid GPU effects plan");for(const auto&c:frame.effects->commands){effectSources.push_back(c.indices?materials.size():size_t(-1));if(c.indices)materials.push_back(source(c.indices));effectTables.push_back(c.tables?materials.size():size_t(-1));if(c.tables)materials.push_back(source(c.tables));}}
-  uint64_t candidatePixels=0;std::vector<std::array<int,4>> bounds;bounds.reserve(frame.draws.size());
-  for(const auto&d:frame.draws){
-   const auto&t=d.source;if((!t.pixels&&!d.gpuRaster)||t.width<1||t.height<1||t.width>8192||t.height>8192||uint64_t(t.width)*t.height>MaxPixels||(t.pixels&&uint64_t(t.width)*t.height!=t.pixels->size())||(t.depth&&t.depth->size()!=uint64_t(t.width)*t.height)||(t.indices&&t.indices->size()!=uint64_t(t.width)*t.height)||d.rasterScale<1||d.rasterScale>4||!std::isfinite(d.left)||!std::isfinite(d.top)||!std::isfinite(d.scaleX)||!std::isfinite(d.scaleY)||d.scaleX<=0||d.scaleY<=0||d.scaleX>8||d.scaleY>8||!std::isfinite(d.depthBase)||!std::isfinite(d.lift)||uint32_t(d.sampling)>3)return fail("Invalid GPU scene sprite");
-   for(float gain:d.gains)if(!std::isfinite(gain)||gain<0||gain>16)return fail("Invalid GPU scene light");
-   std::array<size_t,8> sources{{colors.size(),size_t(-1),size_t(-1),size_t(-1),size_t(-1),size_t(-1),size_t(-1),size_t(-1)}};
-   if(d.gpuRaster){if(d.gpuRaster->width!=t.width||d.gpuRaster->height!=t.height)return fail("GPU voxel dimensions disagree");auto owner=std::shared_ptr<const void>(d.gpuRaster,d.gpuRaster.get());colors.push_back({owner,nullptr,size_t(t.width)*t.height*4,true,1});sources[2]=materials.size();materials.push_back({owner,nullptr,size_t(t.width)*t.height*4,true,2});}
-   else colors.push_back(source(t.pixels));
-   if(d.nativeShape){if(d.nativeShape->size()!=uint64_t(t.width)*t.height)return fail("Invalid native Z shape");sources[5]=materials.size();materials.push_back(source(d.nativeShape));}if(d.nativeCoverage){if(d.nativeCoverage->size()!=uint64_t(t.width)*t.height)return fail("Invalid native Z coverage");sources[6]=materials.size();materials.push_back(source(d.nativeCoverage));}if(t.depth){sources[1]=materials.size();materials.push_back(source(t.depth));}if(t.indices&&!d.gpuRaster){sources[2]=materials.size();materials.push_back(source(t.indices));}
-   if(d.palette.table){if(d.palette.table->size()!=size_t(d.palette.rows)*256)return fail("Invalid native palette rows");sources[7]=materials.size();materials.push_back(source(d.palette.table));}
-   if(d.sourcePalette){if(d.sourcePalette->size()!=256||(!d.gpuRaster&&!t.indices))return fail("Invalid indexed GPU palette");sources[4]=colors.size();colors.push_back(source(d.sourcePalette));}
-   if(d.sampling==Sampling::Reconstructed){if((!d.reconstructed&&!d.reconstructionSource)||(d.reconstructed&&d.reconstructionSource)||d.reconstructionFactor<2||d.reconstructionFactor>4||d.reconstructedWidth!=t.width*d.reconstructionFactor||d.reconstructedHeight!=t.height*d.reconstructionFactor||(d.reconstructed&&d.reconstructed->size()!=uint64_t(d.reconstructedWidth)*d.reconstructedHeight)||(d.reconstructionSource&&d.reconstructionSource->size()!=uint64_t(t.width)*t.height))return fail("Invalid reconstructed GPU scene sprite");sources[3]=colors.size();if(d.reconstructionSource){auto owner=std::shared_ptr<const void>(d.reconstructionSource,d.reconstructionSource.get());uint64_t signature=(uint64_t(d.reconstructionFactor)<<56)|(uint64_t(t.width)<<28)|uint64_t(t.height);colors.push_back({owner,nullptr,size_t(d.reconstructedWidth)*d.reconstructedHeight*4,true,signature});}else colors.push_back(source(d.reconstructed));}
-   if(d.mixStrength>255||d.translucency>3||!std::isfinite(d.clipBottom)||d.nativeBlend>3||(d.nativeBlend&&(d.sampling!=Sampling::Nearest||d.smoothRGB)))return fail("Invalid packed GPU blend");needs64|=d.sampling!=Sampling::Nearest;drawSources.push_back(sources);
-   auto bound=[&](float value,int limit,bool high){double v=std::clamp(double(value),-1e7,1e7);return std::clamp(int(high?std::ceil(v):std::floor(v)),0,limit);};
-   int left=bound(d.left,w,false),top=bound(d.top,h,false),right=bound(d.left+t.width*d.scaleX,w,true),bottom=std::max(top,bound(std::min(d.top+t.height*d.scaleY,d.clipBottom-.5f),h,true));bounds.push_back({left,top,right,bottom});candidatePixels+=uint64_t(std::max(0,right-left))*std::max(0,bottom-top);
-  }
-  if(candidatePixels>128ull*1024*1024)return fail("GPU scene candidate budget exceeded");faultStage_=2;if(!sceneInitialize())return false;
+  std::vector<scenesources::Bounds> bounds;scenesources::Stats admission;
+  if(const char*error=scenesources::append(frame,colors,materials,drawSources,bounds,admission))return fail(error);
+  const bool needs64=admission.needs64,hasDisplacement=admission.displacement;
+  bool collectGuides=frame.collectGuides&&!hasDisplacement&&!frame.effects&&!(w==guideRejectedWidth_&&h==guideRejectedHeight_)&&frame.baseDepth&&motionHistory_.prepare(frame,guidePlan);
+  if(!collectGuides)motionHistory_.clear();
+  if(admission.candidatePixels>128ull*1024*1024)return fail("GPU scene candidate budget exceeded");faultStage_=2;if(!sceneInitialize())return false;
   if(properties_.limits.maxPushConstantsSize<sizeof(SceneParams))return fatal("GPU scene push constants unavailable");
-  bool rawTiles=false;for(const auto&t:frame.baseTiles)rawTiles|=t.reconstructionFactor!=0;for(const auto&d:frame.draws)rawTiles|=bool(d.reconstructionSource);
+  bool rawTiles=admission.rawTiles;for(const auto&t:frame.baseTiles)rawTiles|=t.reconstructionFactor!=0;
   if((needs64||rawTiles)&&!features_.shaderFloat64)return fail("GPU scene sampling requires shaderFloat64; CPU fallback");faultStage_=3;
   if(needs64&&!scene64Pipeline_&&!pipeline(Scene64Shader,sizeof(Scene64Shader),scene64Pipeline_))return false;
   if(rawTiles&&!verifyXbrz())return false;
   faultStage_=4;UploadPlan colorPlan,materialPlan;if(!plan(colors,colorResident_,colorPlan,AtlasBytes)||!plan(materials,materialResident_,materialPlan,MaterialBytes))return false;
   std::vector<gpuxbrz::RawJob>rawJobs;
   for(size_t n=0;n<frame.baseTiles.size();++n){const auto&t=frame.baseTiles[n];if(t.reconstructionFactor&&colorPlan.changed(tileSources[n]))rawJobs.push_back({t.pixels,t.sourceWidth,t.sourceHeight,t.reconstructionFactor,colorPlan.offsets[tileSources[n]]});}
-  for(size_t n=0;n<frame.draws.size();++n){const auto&d=frame.draws[n];if(d.reconstructionSource&&colorPlan.changed(drawSources[n][3]))rawJobs.push_back({d.reconstructionSource,d.source.width,d.source.height,d.reconstructionFactor,colorPlan.offsets[drawSources[n][3]]});}
+  for(size_t n=0;n<frame.draws.size();++n){const auto&d=frame.draws[n];if(scenesources::active(bounds[n])&&d.reconstructionSource&&colorPlan.changed(drawSources[n][3]))rawJobs.push_back({d.reconstructionSource,d.source.width,d.source.height,d.reconstructionFactor,colorPlan.offsets[drawSources[n][3]]});}
   {std::set<uint32_t>seen;rawJobs.erase(std::remove_if(rawJobs.begin(),rawJobs.end(),[&](const gpuxbrz::RawJob&job){return !seen.insert(job.outputOffset).second;}),rawJobs.end());}
   if(!xbrz_.prepare(rawJobs))return false;diagnostics_.xbrzAvailable=xbrz_.available();
   const bool maskDirty=frame.maskPlan&&materialPlan.changed(fog);
   if(frame.maskPlan&&!shroud_.prepare(frame.maskPlan,materials_.buffer,materialPlan.offsets[fog],MaterialBytes))return false;
   std::vector<gpuvoxel::Stage::Job>voxelJobs;
-  for(size_t n=0;n<frame.draws.size();++n)if(frame.draws[n].gpuRaster){const auto&s=drawSources[n];bool dirty=colorPlan.changed(s[0])||materialPlan.changed(s[2]);if(dirty)voxelJobs.push_back({frame.draws[n].gpuRaster,colorPlan.offsets[s[0]],materialPlan.offsets[s[2]]});}
+  for(size_t n=0;n<frame.draws.size();++n)if(scenesources::active(bounds[n])&&frame.draws[n].gpuRaster){const auto&s=drawSources[n];bool dirty=colorPlan.changed(s[0])||materialPlan.changed(s[2]);if(dirty)voxelJobs.push_back({frame.draws[n].gpuRaster,colorPlan.offsets[s[0]],materialPlan.offsets[s[2]]});}
   {std::set<std::pair<uint32_t,uint32_t>>seen;voxelJobs.erase(std::remove_if(voxelJobs.begin(),voxelJobs.end(),[&](const gpuvoxel::Stage::Job&job){return !seen.insert({job.colorOffset,job.indexOffset}).second;}),voxelJobs.end());}
   if(!voxels_.prepare(voxelJobs,atlas_.buffer,AtlasBytes,materials_.buffer,MaterialBytes))return false;
   std::vector<VkBufferCopy>colorCopies,materialCopies;if(!uploadPlan(colors,colorPlan,upload_,colorCopies,AtlasBytes)||!uploadPlan(materials,materialPlan,materialUpload_,materialCopies,MaterialBytes))return false;
@@ -233,7 +223,7 @@ private:
   if(!baseDispatches.empty()){vkCmdBindPipeline_(command_,VK_PIPELINE_BIND_POINT_COMPUTE,pipeline_);vkCmdBindDescriptorSets_(command_,VK_PIPELINE_BIND_POINT_COMPUTE,pipelineLayout_,0,1,&descriptors_,0,nullptr);for(const auto&d:baseDispatches){vkCmdPushConstants_(command_,pipelineLayout_,VK_SHADER_STAGE_COMPUTE_BIT,0,sizeof(Params),&d.params);vkCmdDispatch_(command_,(d.params.width+7)/8,(d.params.height+7)/8,1);}VkMemoryBarrier resolve{VK_STRUCTURE_TYPE_MEMORY_BARRIER};resolve.srcAccessMask=VK_ACCESS_SHADER_WRITE_BIT;resolve.dstAccessMask=VK_ACCESS_SHADER_READ_BIT|VK_ACCESS_SHADER_WRITE_BIT;vkCmdPipelineBarrier_(command_,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,0,1,&resolve,0,nullptr,0,nullptr);}
   vkCmdBindPipeline_(command_,VK_PIPELINE_BIND_POINT_COMPUTE,needs64?scene64Pipeline_:scenePipeline_);vkCmdBindDescriptorSets_(command_,VK_PIPELINE_BIND_POINT_COMPUTE,scenePipelineLayout_,0,1,&sceneDescriptors_,0,nullptr);
   size_t sceneDispatches=0;auto dispatchScene=[&](uint32_t first,uint32_t last,bool serial,bool final){params.firstDraw=first;params.lastDraw=last;params.phase=(sceneDispatches?0u:1u)|(serial?2u:0u)|(final?4u:0u);vkCmdPushConstants_(command_,scenePipelineLayout_,VK_SHADER_STAGE_COMPUTE_BIT,0,sizeof(params),&params);vkCmdDispatch_(command_,serial?1:(w+7)/8,serial?1:(h+7)/8,1);++sceneDispatches;VkMemoryBarrier ready{VK_STRUCTURE_TYPE_MEMORY_BARRIER};ready.srcAccessMask=VK_ACCESS_SHADER_WRITE_BIT|VK_ACCESS_SHADER_READ_BIT;ready.dstAccessMask=VK_ACCESS_SHADER_READ_BIT|VK_ACCESS_SHADER_WRITE_BIT;vkCmdPipelineBarrier_(command_,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,0,1,&ready,0,nullptr,0,nullptr);};
-  uint32_t first=0;for(uint32_t n=0;n<frame.draws.size();++n)if(frame.draws[n].displace){if(n>first||!sceneDispatches)dispatchScene(first,n,false,false);dispatchScene(n,n+1,true,false);first=n+1;}dispatchScene(first,uint32_t(frame.draws.size()),false,true);
+  uint32_t first=0;for(uint32_t n=0;n<frame.draws.size();++n)if(scenesources::active(bounds[n])&&frame.draws[n].displace){if(n>first||!sceneDispatches)dispatchScene(first,n,false,false);dispatchScene(n,n+1,true,false);first=n+1;}dispatchScene(first,uint32_t(frame.draws.size()),false,true);
   for(auto d:effectDispatches){d.params[7]=uint32_t(pixels*3);d.params[12]=params.zaOffset;d.params[13]=frame.nativeScene;
    VkMemoryBarrier ready{VK_STRUCTURE_TYPE_MEMORY_BARRIER};ready.srcAccessMask=VK_ACCESS_SHADER_WRITE_BIT|VK_ACCESS_SHADER_READ_BIT;ready.dstAccessMask=d.snapshot?VK_ACCESS_TRANSFER_READ_BIT|VK_ACCESS_TRANSFER_WRITE_BIT:VK_ACCESS_SHADER_READ_BIT|VK_ACCESS_SHADER_WRITE_BIT;
    vkCmdPipelineBarrier_(command_,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,d.snapshot?VK_PIPELINE_STAGE_TRANSFER_BIT:VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,0,1,&ready,0,nullptr,0,nullptr);

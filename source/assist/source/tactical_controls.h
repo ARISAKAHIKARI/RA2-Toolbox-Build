@@ -88,6 +88,8 @@ number(818,L"高级移动攻击额外索敌距离 / 格",advancedRangeCells,L"0�
 label(L"高级移动攻击目标优先级",20,260);choices(combo(802),{L"单位价值优先",L"弹头伤害比例优先"},advancedTargetPriority);next();
 note(L"索敌范围为单位射程加额外距离；忽略伤害比例不超过 2% 的目标。",44);
 toggle(804,L"防御建筑优先攻击渗透单位",extra.antiTheft);next();
+toggle(885,L"自动躲弹",extra.dodgeEnabled,20,280);choices(combo(895,310,305,180),{L"顺向移动 2 格",L"原版散开（Scatter）"},extra.dodgeMode);next();
+note(L"对己方可移动地面单位预判敌机攻击与逼近碾压，短距离躲避。支持类型清单，不保证躲过追踪弹或瞬时伤害。",60);
 toggle(880,L"防空火控",extra.missileDefense);next();
 label(L"目标范围",20,260);choices(combo(9040),{L"仅导弹类",L"所有敌方空中单位"},extra.missileScope);next();
 label(L"火力分配",20,260);choices(combo(9041),{L"智能分配（血量与伤害）",L"平均分配"},extra.missileAllocation);next();
@@ -96,7 +98,7 @@ number(881,L"火控检测频率 / 次每秒",extra.missileScanHz,L"1–60 · 默
 note(L"智能分配以预计 120% 血量为覆盖线。提前休眠留枪：建筑、战车、步兵先 Sleep 等待已分配目标进入原生射程，冷却或多余火力继续等待；无候选时恢复 Guard。关闭留枪则沿用原版攻击接近。手动命令和队形优先。",60);
 toggle(9182,L"过滤低伤害自动目标",extra.lowDamageFilter);next();
 toggle(9183,L"高危：修改原生索敌",extra.lowDamageNetwork);next();
-note(L"默认仅过滤工具箱自动命令，单机与联机均不修改原生索敌。另开高危选项会改写原生判断：单机影响己方，联机影响全部阵营，可能不同步。",60);
+note(L"需先开启“自动功能”页的“过滤低伤害自动目标”。默认仅过滤工具箱自动命令，单机与联机均不修改原生索敌。另开高危选项会改写原生判断：单机影响己方，联机影响全部阵营，可能不同步。",60);
 item(L"STATIC",L"低伤害过滤：关闭",20,605,9184);next();
 
 // One visible Auto CS switch represents the previous two enable flags.
@@ -172,8 +174,9 @@ marginEdit=number(311,L"文字提示上边距 / 像素",topMargin,L"0–4096");
 toastEdit=number(471,L"战术提示时长 / 毫秒",toastMs,L"500–60000");
 toggle(9325,L"矿车指示器（工作中 / 总数）",harvesterCounterEnabled);next();
 toggle(9326,L"电量指示器（发电 − 耗电）",powerDeltaEnabled);next();
-toggle(9327,L"高危：原生建造栏提示框显示建造时间",buildTimeTooltipEnabled);next();
-toggle(9300,L"渲染升级（全视口 · 实验性）",renderUpgradeEnabled);next();
+toggle(9327,L"原生建造栏提示框显示建造时间",buildTimeTooltipEnabled);next();
+EnableWindow(toggle(9300,L"渲染升级（全视口 · 实验性，入口暂不可用）",renderUpgradeEnabled),FALSE);next();
+note(L"入口暂时关闭，保留已保存的启用值和画质设置。");
 toggle(9313,L"额外画质处理（关闭：基础快速绘制）",renderProcessing);next();
 note(L"仅开启渲染升级时，跳过扩色、连续光照增强、精细 VXL与 xBRZ；仍执行基本素材解码和原生色盘映射。下方已保存的画质选项保留，需独立开启额外画质处理才生效。",64);
 toggle(9306,L"4K 物理像素增强（独占全屏保留原分辨率 · 实验性）",renderPhysicalOutput);next();
@@ -214,8 +217,6 @@ note(L"自定义坐标是布局框左上角，对齐决定地图在框内的位�
 detailCheck=toggle(481,L"显示运行耗时",showDetails);next();
 
 heading(4,904,L"高级与实验性设置",L"各项按实际实现单独标注。原生武器／射程查询与 CRC 原值镜像不标高危；平台兼容性仍需实测。");
-toggle(885,L"自动躲弹（实验性）",extra.dodgeEnabled,20,280);choices(combo(895,310,305,180),{L"顺向移动 2 格",L"原版散开（Scatter）"},extra.dodgeMode);next();
-note(L"对己方可移动地面单位预判敌机攻击与逼近碾压，短距离躲避。支持类型清单，不保证躲过追踪弹或瞬时伤害。",60);
 button(9094,L"Sticky 驻守（实验性／支持联机进入）",20,306);key(9095,extra.stickyKey);next();note(L"所选地面单位进入 Sticky=6；默认 Ctrl+Alt+S，可改组合或双击。联机仅支持同步进入，重复键不重发，退出尚未实现。单机可再次按键或手动下令解除；实际进入后显示金色标记。");
 for(int i=0;i<selectedmode::Count;++i){button(9170+2*i,selectedmode::label(i),20,306);key(9171+2*i,extra.missionModeKeys[i]);next();}
 note(L"对所选己方步兵、战车下达一次原版任务。默认未绑定，可设组合键或双击。驻守是 Guard=5，不是 G 的区域警戒。其他命令可覆盖；这三项不能解除 Sticky。",60);
@@ -263,17 +264,17 @@ item(L"STATIC",L"原生命令仲裁：等待对局",20,605,9192,0,44);next(44);
 toggle(9198,L"精确原生战斗查询（实验）",extra.nativeCombatQueries);next();
 note(L"默认关闭：武器、射程及空中状态由只读字段估算。开启后调用现有原生函数，不修改这些函数的代码或虚表；MOD 规则与副作用仍待验证，尚未确认这些查询导致不同步。",85);
 toggle(860,L"高危：操控其他玩家单位",extra.controlAll);next();
-label(L"控制实现",20,180);choices(combo(9250,210,415),{L"控制标记（不改程序码，高危数据写入）",L"原生判定 Hook（高危）"},extra.controlImplementation);next();
-note(L"控制标记只修改各方控制标记，不切换当前玩家或修改单位归属；不开启控制判定、命令所属方或事件所属方保留 Hook。联机可能无效，不能保证同步安全。",65);
+label(L"控制实现",20,180);choices(combo(9250,210,415),{L"Master 基本指令修改（高危）",L"原生判定 Hook（高危）"},extra.controlImplementation);next();
+note(L"Master 基本模式直接修改三处游戏指令，替代旧控制标记实现；不切换当前玩家或单位归属，不额外启用命令所属方或事件所属方保留。切换前须还原旧状态。联机效果未验证，不能保证同步安全。",65);
 item(L"STATIC",L"跨玩家操控：等待连接",20,605,865);next();
 toggle(9193,L"高危：命令使用单位所属方",extra.controlCommandOwner);next();
-note(L"默认关闭，仅原生判定 Hook 模式可用。控制标记模式保留已保存值但不启用此 Hook。联机还需事件所属方保留已启用；条件不满足时拒绝外方命令。他方单位规划命令暂不支持。",65);
+note(L"默认关闭，仅原生判定 Hook 模式可用。Master 基本模式保留已保存值但不启用此 Hook。联机还需事件所属方保留已启用；条件不满足时拒绝外方命令。他方单位规划命令暂不支持。",65);
 item(L"STATIC",L"控制命令所属方：关闭",20,605,9194,0,44);next(44);
 toggle(9196,L"全图 CRC 原值镜像",extra.crcMapShadow);next();
 note(L"默认关闭。请在新对局揭示地图前开启，再使用“自动地图全开”。仅镜像原生揭示的 MapIsClear；不支持直接全图、MOD及局中加载。不会屏蔽位置或随机数变化，仍可能不同步。关闭仅恢复受控旗标，不撤销已探索区域。",85);
 item(L"STATIC",L"全图 CRC 原值镜像：关闭",20,605,9197,0,60);next(60);
 toggle(9187,L"高危：保留事件所属方",extra.networkHousePreserve);next();
-note(L"控制标记模式启用时不可同时使用所属方保留 Hook；保存的开关值保留，停止控制标记或选择原生判定 Hook 后恢复可用。只有状态为已启用时才允许跨所属方请求，仍受原版调度及平台影响。",65);
+note(L"Master 基本模式启用时不可同时使用所属方保留 Hook；保存的开关值保留，停止跨玩家操控或选择原生判定 Hook 后恢复可用。只有状态为已启用时才允许跨所属方请求，仍受原版调度及平台影响。",65);
 item(L"STATIC",L"事件所属方保留：关闭",20,605,9188,0,44);next(44);
 EnableWindow(toggle(861,L"高危：切换操控方（暂不可用）",false),FALSE);next();
 label(L"目标所属方（请明确选择）");next();

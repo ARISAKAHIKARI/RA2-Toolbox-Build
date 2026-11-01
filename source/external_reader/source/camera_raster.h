@@ -46,10 +46,15 @@ inline void opaque(voxel::Image&i){
  if(!i.intrinsicAlpha)for(auto&p:i.pixels)if(unsigned a=p>>24)p=0xff000000u|(std::min(255u,((p>>16)&255)*255/a)<<16)|(std::min(255u,((p>>8)&255)*255/a)<<8)|std::min(255u,(p&255)*255/a);
  for(auto&part:i.attachments)if(!part.shadow)opaque(part);
 }
+struct RasterScratch {std::vector<int> columns;};
 class Surface {
  int width_=0,height_=0;
  colorprecision::Mode precision_=colorprecision::Mode::NativeSteps;
  xbrzadapter::Cache scaleCache_;bool reconstructionFailed_=false;
+ // Per-blit horizontal mapping, retained by this worker-owned surface. Keep
+ // the original float division/floor: reciprocal multiplication changes
+ // coverage at fractional pixel boundaries. Attachments run outside the loop.
+ std::vector<int> sourceColumns_;
  int nativeOriginX_=0,nativeOriginY_=0,nativeViewHeight_=0,nativePitch_=0,writeTop_=0,writeBottom_=0,outputOriginY_=0;std::function<uint32_t(int,int)>nativeRead_;float nativeScaleX_=1,nativeScaleY_=1;
  std::shared_ptr<const std::vector<uint8_t>> alpha_;
 public:
@@ -142,10 +147,13 @@ public:
     size_t at=size_t(y)*width_+x;float z=base+(y+.5f-ay)/sy-14;if(z>=depth[at]){color[at]=c;depth[at]=z;}
    }
  }
- void blit(const voxel::Image&i,float ax,float ay,float sx,float sy,float base,const lighting::State&light,float lift=1,float shadowDrop=0,bool smooth=false,Material material={},bool parts=true){
-  if(i.gpuRaster){voxel::Image raster;if(!gpuvoxel::materialize(i,raster)){reconstructionFailed_=true;return;}blit(raster,ax,ay,sx,sy,base,light,lift,shadowDrop,smooth,material,parts);return;}
+ // Optional row ownership retains full-target coordinates and all source
+ // geometry. Concurrent callers must provide private scratch and exclude
+ // reconstruction, deferred GPU materialization and cross-pixel reads.
+ void blit(const voxel::Image&i,float ax,float ay,float sx,float sy,float base,const lighting::State&light,float lift=1,float shadowDrop=0,bool smooth=false,Material material={},bool parts=true,RasterScratch*scratch=nullptr,int firstRow=0,int lastRow=std::numeric_limits<int>::max()){
+  if(i.gpuRaster){voxel::Image raster;if(!gpuvoxel::materialize(i,raster)){reconstructionFailed_=true;return;}blit(raster,ax,ay,sx,sy,base,light,lift,shadowDrop,smooth,material,parts,scratch,firstRow,lastRow);return;}
   if(i.width<=0||i.height<=0||i.width>resolutionsampling::MaxDimension||i.height>resolutionsampling::MaxDimension||uint64_t(i.width)*i.height>resolutionsampling::MaxPixels||i.rasterScale<1||i.rasterScale>resolutionsampling::MaxRasterScale||i.pixels.size()!=size_t(i.width)*i.height||!std::isfinite(ax)||!std::isfinite(ay)||!std::isfinite(sx)||!std::isfinite(sy)||sx<=0||sy<=0||sx>8||sy>8)return;
-  if(parts)for(const auto&part:i.attachments)if(part.shadow&&!i.shadowsAfter&&(!part.airborneShadow||shadowDrop>0))blit(part,ax,ay+shadowDrop*sy,sx,sy,base,light,lift,0,smooth,material.shifted(part.shadow?shadowDrop:0));
+  if(parts)for(const auto&part:i.attachments)if(part.shadow&&!i.shadowsAfter&&(!part.airborneShadow||shadowDrop>0))blit(part,ax,ay+shadowDrop*sy,sx,sy,base,light,lift,0,smooth,material.shifted(part.shadow?shadowDrop:0),true,scratch,firstRow,lastRow);
   float pxScale=sx/i.rasterScale,pyScale=sy/i.rasterScale;
   const bool packed=precision_==colorprecision::Mode::NativeSteps&&i.nativeBlend>0&&i.nativeBlend<=3&&i.blendSource&&i.blendSource->size()==i.pixels.size()&&(!smooth||(pxScale==1&&pyScale==1));
   const auto&source=packed?*i.blendSource:i.pixels;
@@ -153,15 +161,14 @@ public:
   int x0=std::clamp(int(std::floor(std::clamp(left,-1e7f,1e7f))),0,width_),y0=std::clamp(int(std::floor(std::clamp(top,-1e7f,1e7f))),0,height_);
   int x1=std::clamp(int(std::ceil(std::clamp(left+i.width*pxScale,-1e7f,1e7f))),0,width_),y1=std::clamp(int(std::ceil(std::clamp(top+i.height*pyScale,-1e7f,1e7f))),0,height_);
   y1=std::min(y1,int(std::ceil(std::clamp(ay+material.clipBottom*sy-.5f,-1e7f,1e7f))));
-  y0=std::max(y0,writeTop_);y1=std::min(y1,writeBottom_);
-  if(x0>=x1||y0>=y1){if(parts)for(const auto&part:i.attachments)if((!part.shadow||i.shadowsAfter)&&(!part.airborneShadow||shadowDrop>0))blit(part,ax,ay+(part.shadow?shadowDrop*sy:0),sx,sy,base,light,lift,0,smooth,material.shifted(part.shadow?shadowDrop:0));return;}
+  y0=std::max({y0,writeTop_,firstRow});y1=std::min({y1,writeBottom_,lastRow});
+  if(x0>=x1||y0>=y1){if(parts)for(const auto&part:i.attachments)if((!part.shadow||i.shadowsAfter)&&(!part.airborneShadow||shadowDrop>0))blit(part,ax,ay+(part.shadow?shadowDrop*sy:0),sx,sy,base,light,lift,0,smooth,material.shifted(part.shadow?shadowDrop:0),true,scratch,firstRow,lastRow);return;}
   Light transform(light,precision_);bool zData=i.depth.size()==i.pixels.size(),indexed=i.indices.size()==i.pixels.size();
   const bool nativeDepth=i.nativeDepth.enabled;const bool rgb555=light.rgb555||material.rgb555;auto nativePalette=lighting::palette(light,i.objectPalette);
   const int nativeHeight=(i.height+i.rasterScale-1)/i.rasterScale,nativeTop=int(std::floor((top+outputOriginY_)/sy))+nativeOriginY_;
   auto nativeDescriptor=i.nativeDepth;if(material.shpFlat&&!i.shadow)nativeDescriptor.gradient=nativesurface::Gradient::Flat;
   const int clipHeight=nativesurface::clippedViewHeight(ay+outputOriginY_,sy,material.clipBottom,nativeViewHeight_,nativeOriginY_);
   const auto walk=nativesurface::walk(nativeDescriptor,nativeTop,nativeHeight,clipHeight,material.nativeZAdjust,material.bridgeSplit);
-  auto candidate=[&](int row,size_t from){return walk.at(row/i.rasterScale,i.nativeShape.size()==i.pixels.size()?i.nativeShape[from]:0);};
   auto covered=[&](size_t from){return i.nativeShapeCoverage.empty()||(i.nativeShapeCoverage.size()==i.pixels.size()&&i.nativeShapeCoverage[from]);};
   auto displaced=[&](int x,int y){int pitch=std::max(1,nativePitch_);int nx=nativeOriginX_+int(std::floor((x+.5f)/nativeScaleX_)),ny=nativeOriginY_+int(std::floor((y+outputOriginY_+.5f)/nativeScaleY_));int64_t linear=int64_t(ny)*pitch+nx+material.cloakWords;
    if(linear<0||linear>=int64_t(pitch)*nativeViewHeight_)return uint32_t(0xff000000u);int worldX=int(linear%pitch),worldY=int(linear/pitch);if(nativeRead_)return nativeRead_(worldX,worldY);
@@ -195,10 +202,11 @@ public:
     float rowZ=base+i.depthBias;
     if(!zData){if(i.flat)rowZ+=float(i.y+sourceY)/i.rasterScale-14+lift;
      else{int bottom=i.depthBottom==std::numeric_limits<int>::min()?i.y+i.height-1:i.depthBottom;rowZ+=float(bottom)/i.rasterScale-14+lift+float((bottom-i.y-sourceY)/3)/i.rasterScale;}}
+    const int rowNativeZ=walk.at(sourceY/i.rasterScale);
     size_t from=size_t(sourceY)*i.width+first+ox,to=size_t(y)*width_+first;
     for(int x=first;x<last;++x,++from,++to){uint32_t p=source[from];unsigned alpha=p>>24;if(!alpha)continue;
      float z=rowZ;bool useZ=!i.skipZ;if(zData){if(std::isnan(i.depth[from]))useZ=false;else z+=i.depth[from];}
-     int nz=candidate(sourceY,from);if(nativeDepth&&!covered(from))continue;
+     int nz=rowNativeZ+(i.nativeShape.size()==i.pixels.size()?i.nativeShape[from]:0);if(nativeDepth&&!covered(from))continue;
      if(useZ&&(nativeDepth?!nativesurface::admits(nz,nativeZ[to],i.nativeDepth.tileEqual):z<=depth[to]))continue;
      const uint32_t prior=color[to];if(material.displace&&i.nativeDepth.voxel){color[to]=nativepacked::blend(displaced(x,y),prior,material.translucency,rgb555);if(useZ&&i.writeDepth){depth[to]=z;nativeZ[to]=uint16_t(nz);}continue;}
      if(i.shadow){uint32_t old=color[to];if(alpha==255)color[to]=precision_==colorprecision::Mode::NativeSteps?nativepacked::shadow(old,rgb555):(old&0xff000000u)|((old&0x00fefefeu)>>1);
@@ -211,11 +219,18 @@ public:
     if(useZ&&i.writeDepth){depth[to]=z;if(nativeDepth)nativeZ[to]=uint16_t(nz);}
     }
    }
-  }else for(int y=y0;y<y1;++y){int sourceY=int(std::floor((y+.5f-top)/pyScale));if(sourceY<0||sourceY>=i.height)continue;
-   for(int x=x0;x<x1;++x){int sourceX=int(std::floor((x+.5f-left)/pxScale));if(sourceX<0||sourceX>=i.width)continue;
+  }else{
+   auto&columns=scratch?scratch->columns:sourceColumns_;columns.resize(size_t(x1-x0));
+   for(int x=x0;x<x1;++x)columns[size_t(x-x0)]=int(std::floor((x+.5f-left)/pxScale));
+   const bool sampled=enlarged||(!reconstruct&&smooth&&(!i.shadow||i.rasterScale>1)&&(pxScale!=1||pyScale!=1));
+   for(int y=y0;y<y1;++y){int sourceY=int(std::floor((y+.5f-top)/pyScale));if(sourceY<0||sourceY>=i.height)continue;
+    float rowZ=base+i.depthBias;
+    if(!zData){if(i.flat)rowZ+=float(i.y+sourceY)/i.rasterScale-14+lift;
+     else{int bottom=i.depthBottom==std::numeric_limits<int>::min()?i.y+i.height-1:i.depthBottom;rowZ+=float(bottom)/i.rasterScale-14+lift+float((bottom-i.y-sourceY)/3)/i.rasterScale;}}
+    const int rowNativeZ=walk.at(sourceY/i.rasterScale);
+   for(int x=x0;x<x1;++x){int sourceX=columns[size_t(x-x0)];if(sourceX<0||sourceX>=i.width)continue;
     size_t from=size_t(sourceY)*i.width+sourceX,to=size_t(y)*width_+x;uint32_t p=source[from];
     std::array<double,4> filtered{};bool preciseSample=false;
-    bool sampled=enlarged||(!reconstruct&&smooth&&(!i.shadow||i.rasterScale>1)&&(pxScale!=1||pyScale!=1));
     if(enlarged){
      // Source coverage and Z stay native: a filtered transparent neighbor
      // cannot invent new hit-test/occlusion geometry around a cutout.
@@ -244,11 +259,9 @@ public:
      }
     }
     if(!(p>>24))continue;
-    float z=base+i.depthBias;bool useZ=!i.skipZ;
+    float z=rowZ;bool useZ=!i.skipZ;
     if(zData){if(std::isnan(i.depth[from]))useZ=false;else z+=i.depth[from];}
-    else if(i.flat)z+=float(i.y+sourceY)/i.rasterScale-14+lift;
-    else{int bottom=i.depthBottom==std::numeric_limits<int>::min()?i.y+i.height-1:i.depthBottom;z+=float(bottom)/i.rasterScale-14+lift+float((bottom-i.y-sourceY)/3)/i.rasterScale;}
-    int nz=candidate(sourceY,from);if(nativeDepth&&!covered(from))continue;
+    int nz=rowNativeZ+(i.nativeShape.size()==i.pixels.size()?i.nativeShape[from]:0);if(nativeDepth&&!covered(from))continue;
      if(useZ&&(nativeDepth?!nativesurface::admits(nz,nativeZ[to],i.nativeDepth.tileEqual):z<=depth[to]))continue;
     const uint32_t prior=color[to];if(material.displace&&i.nativeDepth.voxel){color[to]=nativepacked::blend(displaced(x,y),prior,material.translucency,rgb555);if(useZ&&i.writeDepth){depth[to]=z;nativeZ[to]=uint16_t(nz);}continue;}
     if(i.shadow){uint32_t old=color[to],v=old&0xff000000u;unsigned a=p>>24;if(a==255&&precision_==colorprecision::Mode::NativeSteps)color[to]=nativepacked::shadow(old,rgb555);else{for(int shift:{0,8,16})v|=(((old>>shift)&255)*(510-a)/510)<<shift;color[to]=v;}}
@@ -267,7 +280,8 @@ public:
     if(useZ&&i.writeDepth){depth[to]=z;if(nativeDepth)nativeZ[to]=uint16_t(nz);}
    }
   }
-  if(parts)for(const auto&part:i.attachments)if((!part.shadow||i.shadowsAfter)&&(!part.airborneShadow||shadowDrop>0))blit(part,ax,ay+(part.shadow?shadowDrop*sy:0),sx,sy,base,light,lift,0,smooth,material.shifted(part.shadow?shadowDrop:0));
+  }
+  if(parts)for(const auto&part:i.attachments)if((!part.shadow||i.shadowsAfter)&&(!part.airborneShadow||shadowDrop>0))blit(part,ax,ay+(part.shadow?shadowDrop*sy:0),sx,sy,base,light,lift,0,smooth,material.shifted(part.shadow?shadowDrop:0),true,scratch,firstRow,lastRow);
  }
 };
 }}

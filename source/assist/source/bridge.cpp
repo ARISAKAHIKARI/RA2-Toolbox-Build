@@ -20,6 +20,7 @@
 #include "outgoing_batch.h"
 #include "object_index.h"
 #include "hook_policy.h"
+#include "activation_diagnostic.h"
 #include "event_delivery.h"
 #include "mega_queue_backend.h"
 #include "constructor_adapter.h"
@@ -710,8 +711,7 @@ static bool nativeObjectUnhooked(){return nativeObjectSignature();}
 #include "pointer_bridge.h"
 #include "sticky_bridge.h"
 #include "selected_mode_bridge.h"
-static bool controlCodeRetired(){
- for(const auto&s:controlSites)if(codeHookRegistry.active(s.address))return false;
+static bool controlCompanionsRetired(){
  for(const auto&s:controlCommandOwnerSites)if(codeHookRegistry.active(s.address))return false;
  if(codeHookRegistry.active(controlObjectOwnerSite.address)||networkSenderInstalled||networkSenderPacking||networkSenderCacheDirty)return false;
  for(const auto&s:networksender::Sites)if(codeHookRegistry.active(s.address))return false;
@@ -1030,7 +1030,7 @@ static void suspendedOptions(){
  if(!sh->nativeSellCursor)restoreNativeSellCursor();
  if(!sh->nativeMegaGateway)restoreNativeMegaGateway();
  if(!sh->controlCommandOwner||!controlmode::native(sh->controlAll)){restoreControlObjectOwner();restoreControlCommandOwner();}
- if(!controlmode::native(sh->controlAll))controlSitesTick(false);
+ controlSitesSuspend();
  if(!sh->networkHousePreserve||!controlmode::sender(sh->controlAll))restoreNetworkSender();
  if(!sh->buildTimeTooltip)restoreBuildTimeTooltip();
  if(!sh->crcMapShadow)restoreCrcMapShadow();
@@ -1044,10 +1044,10 @@ static void suspendedOptions(){
  // ordinary playable maintenance re-enables them after all gates pass.
  riskControlActive=false;riskLowDamageActive=false;
 }
-static void suspendedSnapshot(DWORD now,bool render){
+static void suspendedSnapshot(DWORD now,bool render,int reason){
  suspendedOptions();if(!render){scrollRendering=false;scrollCadence={};}
  uint8_t chat=1;const bool chatKnown=read(0xA8BC79,&chat,sizeof chat);
- snap.commandStatus=0;snap.chat=!chatKnown||chat!=0;runtimeKeys.clear();
+ snap.commandStatus=reason;snap.chat=!chatKnown||chat!=0;runtimeKeys.clear();
  if(render&&good&&chatKnown){buildTimeTooltipTick();renderRevealTick();viewZoomTick();smallMapCameraTick();radarNavigationTick(now);highScrollTick(preciseclock::micros());}
  if(!render&&riskRenderActive)riskRenderRedrawPending=true;
  pointerTick();publishSnapshot(now);
@@ -1083,8 +1083,8 @@ static void tick(){
  }
  if(snap.techOpen&&!(sh->flags&UnsafeTech))restoreTech();
  const auto worldSample=worldlife::capture(read);const auto worldChange=hookWorld.observe(worldSample);
- if(worldCleanupPending){reset();worldCleanupPending=!featureRestorationComplete();if(worldCleanupPending){snap.commandStatus=0;publishSnapshot(now);return;}}
- if(worldChange==worldlife::Change::Unknown){snap.status=hookWorld.bound?1:0;snap.bridgeStatus=1;suspendedSnapshot(now,false);return;}
+ if(worldCleanupPending){reset();worldCleanupPending=!featureRestorationComplete();if(worldCleanupPending){snap.commandStatus=activation::CleanupPending;publishSnapshot(now);return;}}
+ if(worldChange==worldlife::Change::Unknown){snap.status=hookWorld.bound?1:0;snap.bridgeStatus=1;suspendedSnapshot(now,false,activation::WorldUnknown);return;}
  DWORD period=sh->foreground?sh->scanMs:((sh->flags&(AdvancedInput|MagnetronInput|AutoOreReturn|AirWaypoints|AntiTheft))?64:500);if(period<2)period=2;if(period>1000)period=1000;
  // Focus changes execution cadence, not Hook ownership. Explicitly disabling
  // the refresh option still wakes cleanup promptly.
@@ -1109,10 +1109,10 @@ static void tick(){
  if(worldGone){if(soundPending){MemoryBarrier();sh->uiSoundAck=sh->uiSoundRequest;}cancelCooperativePlan(-3);if(lastHouse||snap.status!=0){reset();worldCleanupPending=!featureRestorationComplete();}sessionTracker.update(false,0,-1,-1);lastHouse=0;lastFrame=-1;commandDormant=false;snap.status=0;snap.bridgeStatus=1;snap.commandStatus=0;snap.labels=0;snap.swCount=0;if(sh->request!=sh->ack){sh->result=-3;sh->count=0;pendingAck=sh->request;pendingAckReady=true;}if(selectionPending){sh->selectResult=-3;sh->selectCount=0;MemoryBarrier();sh->selectAck=sh->selectRequest;}if(planPending){sh->planResult=-3;sh->planAccepted=0;sh->planAcceptedMask=sh->planRejectedMask=0;MemoryBarrier();sh->planAck=sh->planRequest;}}
  else {
  const bool replaced=worldChange==worldlife::Change::Start||worldChange==worldlife::Change::Replaced||worldChange==worldlife::Change::Rewind;
- if(replaced){if(worldChange==worldlife::Change::Rewind)crcMapShadowRewind(sessionTracker.epoch+1);if(lastHouse)cancelCooperativePlan(-3);reset();worldCleanupPending=!featureRestorationComplete();sessionTracker.update(false,0,-1,-1);lastHouse=0;commandDormant=false;if(worldCleanupPending){snap.commandStatus=0;publishSnapshot(now);return;}}
+ if(replaced){if(worldChange==worldlife::Change::Rewind)crcMapShadowRewind(sessionTracker.epoch+1);if(lastHouse)cancelCooperativePlan(-3);reset();worldCleanupPending=!featureRestorationComplete();sessionTracker.update(false,0,-1,-1);lastHouse=0;commandDormant=false;if(worldCleanupPending){snap.commandStatus=activation::CleanupPending;publishSnapshot(now);return;}}
  // A missing House/roster read is uncertainty within this confirmed world.
  // Keep both the command epoch and owned hooks until identity is readable.
- if(authority==worldlife::Authority::Unknown){snap.status=1;snap.bridgeStatus=1;snap.frame=frame;snap.session=sessionMode;suspendedSnapshot(now,false);return;}
+ if(authority==worldlife::Authority::Unknown){snap.status=1;snap.bridgeStatus=1;snap.frame=frame;snap.session=sessionMode;suspendedSnapshot(now,false,activation::AuthorityUnknown);return;}
  auto matchTransition=sessionTracker.update(true,house,sessionMode,frame);
  const bool houseChanged=!replaced&&matchTransition==sessionepoch::Transition::HouseChanged;
  bool newMatch=replaced||matchTransition!=sessionepoch::Transition::None;
@@ -1129,7 +1129,7 @@ static void tick(){
  active=authority==worldlife::Authority::Command&&worldSample.running&&display.visible();
  if(!active){
   if(authority==worldlife::Authority::ViewOnly&&!commandDormant){cancelCooperativePlan(-3);reset(false);commandDormant=true;}
-  suspendedSnapshot(now,worldSample.running&&display.visible());return;
+  suspendedSnapshot(now,worldSample.running&&display.visible(),authority==worldlife::Authority::ViewOnly?activation::ViewOnly:!worldSample.running?activation::Paused:activation::DisplayHidden);return;
  }
  commandDormant=false;
  techEnhancementTick(now);
@@ -1160,7 +1160,7 @@ static void tick(){
  // Only tick consumes feature requests; neither Hook callback can bypass
  // the shared game-thread intent/validation/event pipeline.
  consumeSubmittedIntents(house,frame,now);
- if(playerContextChanged){playerContextChanged=false;snap.commandStatus=0;publishSnapshot(now);return;}
+ if(playerContextChanged){playerContextChanged=false;snap.commandStatus=activation::HouseChanged;publishSnapshot(now);return;}
  QueryPerformanceCounter(&controlEnd);snap.controlMicros=micros(start,controlEnd,frequency);
  // Release receipts before any recurring work or overlay projection. In a busy
  // scene the next user command can now be staged while rendering catches up.

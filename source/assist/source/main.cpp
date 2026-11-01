@@ -41,6 +41,7 @@
 #include "../../shared/source/message_query.h"
 #include "scheduler_policy.h"
 #include "hook_policy.h"
+#include "activation_diagnostic.h"
 #include "command_delivery.h"
 #include "control_link.h"
 #include "event_delivery.h"
@@ -63,6 +64,7 @@
 #include "pointer_batch.h"
 #include "ui_layout.h"
 #include "additional_settings.h"
+#include "runtime_feature_demand.h"
 #include "signatures.h"
 #include "../../external_reader/source/watch_slots.h"
 #include "view_zoom.h"
@@ -540,6 +542,8 @@ static std::wstring commandWaitReason(){
  const auto health=gameinput::health(hook);
  if(health.diagnosticValid&&health.stage<0)return L"无法建立游戏连接，请查看 logs/Runtime.log。";
  if(health.postError)return L"游戏暂未响应，指令尚未提交。";
+ if(lastData&&!shared->stop&&incoming.status>=0&&DWORD(GetTickCount()-lastData)<1500)
+  if(const auto*reason=activation::message(incoming.commandStatus))return reason;
  if(!lastData||!incoming.match){
   if(!health.callbacks)return L"只读连接可用，尚未收到游戏内 Hook 回调；详情见 logs/Runtime.log。";
   if(!health.dispatches)return L"Hook 已回调，正在等待游戏内连接完成；详情见 logs/Runtime.log。";
@@ -549,9 +553,7 @@ static std::wstring commandWaitReason(){
  if(incoming.status<0)return L"游戏操作发生异常，已停止发送指令；请重启游戏。详情见 logs/Runtime.log。";
  if(DWORD(GetTickCount()-lastData)>=1500)return L"游戏数据已超过 1.5 秒未更新，等待恢复。";
  if(incoming.status!=1)return L"当前对局尚不可操作，等待游戏恢复。";
- if(incoming.commandStatus==2)return L"等待本局远端 FrameInfo 执行及摘要匹配；功能补丁和自动命令尚未启用。";
- if(incoming.commandStatus==3)return L"游戏入口签名暂不兼容，尚未启用功能；每秒重新核对，请查看 logs/Runtime.log。";
- if(incoming.commandStatus==4)return L"已观察到同步摘要不匹配，功能保持停用；请保留双方 SYNC 日志。";
+ if(const auto*reason=activation::message(incoming.commandStatus))return reason;
  if(incoming.commandStatus!=1)return foregroundGame()?L"游戏已暂停或正在显示菜单，恢复后继续。":L"请切回游戏并恢复运行。";
  if(incoming.chat)return L"请关闭游戏聊天输入框后继续。";
  if(shared->request!=shared->ack)return L"正在等待上一条指令处理完成。";
@@ -1082,6 +1084,7 @@ static void logCommandReceipts(const Snapshot& s){
  }
  lastReceiptWrite=s.receiptWrite;
 }
+#include "activation_host.h"
 static void readSnapshot(){
  static Snapshot candidate;
  if(shared)for(int tries=0;tries<2;++tries){uint32_t a=shared->seq;if(a&1)continue;if((!lastData&&!a)||a==snapshotSeq)break;
@@ -1132,7 +1135,7 @@ static void readSnapshot(){
    hasSelection=false;
   }else bridgeAttempts=0;break;
  }
- mergeExternal();
+ mergeExternal();logFeatureActivation(GetTickCount());
 }
 struct TextRaster{std::wstring text;float size;ARGB color;std::unique_ptr<Bitmap> image;};static std::vector<TextRaster> textRasters;
 static void drawText(Graphics&g,const std::wstring&s,float x,float y,float size,Color color){
@@ -1643,7 +1646,7 @@ static void updateModeStatus(DWORD now){
   auto stateText=[&](bool requested,int state){return !fresh?(requested?L"等待对局及连接就绪":L"关闭"):
    state<0?L"不可用，请检查游戏版本或功能冲突":state==2?L"正在处理待发事件并恢复":
    state==1?(requested?L"已启用（实验性）":L"正在关闭"):requested?L"等待适配启用":L"关闭";};
-  std::wstring network=L"高危 · 事件所属方保留：";if(extra.dataControlRequested()){network+=L"控制标记模式下不请求启用";if(shared&&shared->networkHouseStatus)network+=L"（旧状态待还原或检查）";}else network+=stateText(extra.networkHouseRequested(),shared?shared->networkHouseStatus:0);
+  std::wstring network=L"高危 · 事件所属方保留：";if(extra.masterControlRequested()){network+=L"Master 基本模式下不请求启用";if(shared&&shared->networkHouseStatus)network+=L"（旧状态待还原或检查）";}else network+=stateText(extra.networkHouseRequested(),shared?shared->networkHouseStatus:0);
   SetWindowTextW(GetDlgItem(ui,9188),network.c_str());
   std::wstring sell=L"高危 · 原生变卖光标：";
   if(fresh&&extra.nativeSellCursor&&eventdelivery::isMultiplayer(incoming.session)&&!networkHouseReady()&&shared->nativeSellCursorStatus==0)sell+=L"等待事件所属方保留已启用";
@@ -1652,7 +1655,7 @@ static void updateModeStatus(DWORD now){
   std::wstring mega=L"高危 · 原生成功入口观察：";mega+=stateText(extra.nativeMegaGateway,shared?shared->nativeMegaGatewayStatus:0);
   SetWindowTextW(GetDlgItem(ui,9192),mega.c_str());
   std::wstring owner=L"高危 · 控制命令所属方：";
-  if(extra.dataControlRequested())owner+=L"控制标记模式下不请求启用";
+  if(extra.masterControlRequested())owner+=L"Master 基本模式下不请求启用";
   else if(extra.controlCommandOwner&&!extra.controlAll)owner+=L"等待开启跨玩家操控";
   else if(fresh&&extra.commandOwnerRequested()&&eventdelivery::isMultiplayer(incoming.session)&&!networkHouseReady())owner+=L"等待事件所属方保留已启用";
   else owner+=stateText(extra.commandOwnerRequested(),shared?shared->controlCommandOwnerStatus:0);
@@ -1728,8 +1731,8 @@ static void updatePlayerTestUI(bool force=false){
  EnableWindow(GetDlgItem(ui,9185),idle&&epoch==commandMatch()&&selected>=0&&selected<count&&!foreign);
  if(foreign){SetWindowTextW(GetDlgItem(ui,9186),DestructForeignNotice);destructForeignNoticeShown=true;}
  else if(destructForeignNoticeShown){SetWindowTextW(GetDlgItem(ui,9186),L"自毁：所选所属方可提交实验请求；已入队不代表已自毁。");destructForeignNoticeShown=false;}
- std::wstring label=extra.controlImplementation==1?L"高危 · 原生控制判定 Hook：":L"高危 · 控制标记：";
- label+=status<0?L"应用或还原未完成，请检查日志":!extra.controlAll?(status?L"等待还原":L"关闭"):status==int(extra.controlRequest())?(status==2?L"标记已应用，联机效果未验证":L"已启用，联机效果未验证"):L"等待切换完成";
+ std::wstring label=extra.controlImplementation==1?L"高危 · 原生控制判定 Hook：":L"高危 · Master 基本指令修改：";
+ label+=status<0?L"应用或还原未完成，请检查日志":!extra.controlAll?(status?L"等待还原":L"关闭"):status==int(extra.controlRequest())?(extra.masterControlRequested()?L"三处指令已修改，联机效果未验证":L"已启用，联机效果未验证"):L"等待切换完成";
  label+=L" · 当前玩家 "+std::to_wstring(current+1);SetWindowTextW(GetDlgItem(ui,865),label.c_str());
 }
 #include "shift_click_host.h"
@@ -1823,7 +1826,7 @@ static void tick(){reapBridges();logBridgeHealth();DWORD now=GetTickCount();stat
  }
  if(serviceReadOnlyDisplays(now))return;
  sampleExternal(now);uint32_t configured=flags();
- bool needsBridge=buildTimeTooltipEnabled||(externalData&&externalData->status==1)||techMode||extra.techEnhance||extra.dodgeEnabled||extra.missileDefense||commandQueue.size||hasSelection||externalSampler.flashCount||(configured&(AutoCS|AdvancedInput|MagnetronInput|AutoOreReturn|CustomCS|BuildAnywhere|AutoRepair|EjectAssist|SpecialClickFlags));
+ bool needsBridge=runtimeFeatureDemand(configured,extra,techMode,buildTimeTooltipEnabled)||(externalData&&externalData->status==1)||commandQueue.size||hasSelection||externalSampler.flashCount;
  if(needsBridge&&!shared)ensureBridge();
  now=GetTickCount(); // ensureBridge may have created attachAt after tick entry.
  if(shared){
@@ -2040,6 +2043,9 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
  case WM_HOTKEY:if(!readOnlyWatchHotkey(wp,lp))handleHotkey(wp,lp);return 0;
  case WM_COMMAND:{int id=LOWORD(wp);
  DependencyCommandRefresh dependencyRefresh;
+ // Keep the disabled render entry closed to forwarded/synthetic notifications,
+ // without changing the saved preference or stopping an existing renderer.
+ if(id==9300){SendDlgItemMessageW(w,id,BM_SETCHECK,renderUpgradeEnabled?BST_CHECKED:BST_UNCHECKED,0);EnableWindow(GetDlgItem(w,id),FALSE);return 0;}
  if(ready&&!updatingControls&&rejectUnavailableSetting(id,HIWORD(wp)))return 0;
  if(id==9300||id==9301||id==9302||id==9304||id==9305||id==9306||id==9307||id==9308||id==9309||id==9310||id==9313||id==9314||(id>=9320&&id<=9327)){
   if(updatingControls)return 0;

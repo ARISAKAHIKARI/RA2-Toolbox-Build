@@ -23,7 +23,7 @@ static bool controlCommandOwnerMegaCompatible(){
   !memcmp(actual,s.after,sizeof actual);
 }
 static bool controlCommandOwnerReady(uint32_t owner){
- if(!sh||!sh->controlCommandOwner||!controlmode::native(sh->controlAll)||controlHouseFlagsPending()||!sh->foreground||
+ if(!sh||!sh->controlCommandOwner||!controlmode::native(sh->controlAll)||controlTransitionPending()||!sh->foreground||
     !riskReady(true)||snap.status!=1||snap.commandStatus!=1||get<bool>(0xA8BC60+25)||
     !controlCommandOwnerOwnSites()||!controlCommandOwnerNativeObjectReady()||
     !playableHouse(owner))return false;
@@ -181,7 +181,7 @@ static void restoreControlCommandOwner(){
  if(sh)sh->controlCommandOwnerStatus=ok?0:-2;
 }
 static void controlCommandOwnerTick(){
- if(!sh||!sh->controlCommandOwner||!controlmode::native(sh->controlAll)||controlHouseFlagsPending()){restoreControlCommandOwner();return;}
+ if(!sh||!sh->controlCommandOwner||!controlmode::native(sh->controlAll)||controlTransitionPending()){restoreControlCommandOwner();return;}
  if(!riskReady()){restoreControlCommandOwner();sh->controlCommandOwnerStatus=-2;return;}
  prepareControlCommandOwner();controlCommandOwnerActive=false;bool ok=true;
  for(auto&s:controlCommandOwnerSites)if(!installRiskSite(s)){ok=false;break;}
