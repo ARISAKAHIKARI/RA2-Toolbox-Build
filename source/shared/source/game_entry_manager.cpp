@@ -97,7 +97,7 @@ extern "C" __declspec(dllexport) int32_t __stdcall ManageGameEntry(Request*r){
  }
  Result result=Result::Invalid;bool retain=false;
  if(r->operation==Operation::Enter||r->operation==Operation::Capture){
-  const bool priorDead=(policy.thread&&policy.thread!=tid)?isBoundThreadDead(policy.thread):false;
+  const bool priorDead=!owned&&isBoundThreadDead(policy.thread);
   result=policy.enter(tid,*r,priorDead);
   if(result==Result::Ok){
    // Nested capture already owns a live outer lease on this exact thread.

@@ -34,7 +34,7 @@ static bool formationContext(){
  if(!external::display::inspect([](uint32_t at,void*out,size_t n){return read(at,out,n);}).visible())return false;
  long seq=sh->formationPolicySeq;if(seq&1)return formationPolicy.enabled!=0;MemoryBarrier();auto p=sh->formationPolicy;MemoryBarrier();if(seq!=sh->formationPolicySeq)return formationPolicy.enabled!=0;formationPolicy=p;return p.enabled!=0;
 }
-static bool formationActor(uint32_t p){int air=0,k=kind(p);return p&&worldObjects.contains(p)&&own(p,lastHouse)&&(k==1||k==2)&&!get<bool>(p+0x1C8)&&!get<uint32_t>(p+0x11C)&&!get<uint32_t>(p+0x2B0)&&!get<bool>(p+0x427)&&GuardedObjectAir(p,&air)&&!air;}
+static bool formationActor(uint32_t p){int air=0,k=kind(p);return p&&worldObjects.contains(p)&&own(p,lastHouse)&&(k==1||k==2)&&!get<bool>(p+0x1C8)&&!get<uint32_t>(p+0x11C)&&!get<uint32_t>(p+0x2B0)&&!get<bool>(p+0x427)&&objectAirQuery(p,&air)&&!air;}
 static bool formationSelectionMatchesPreview(){
  Vec selected=vec(0xA8ECB8);bool found[formation::Maximum]{};int count=0;
  for(int n=0;n<selected.count;++n){uint32_t p=item(selected,n);if(!formationActor(p))continue;++count;int j=0;

@@ -24,6 +24,7 @@ static settingsdeps::State currentSettingDependencies(){
  s.set(Need::Advanced,hookAdvanced);s.set(Need::C4,extra.c4Test);s.set(Need::Dodge,extra.dodgeEnabled);
  s.set(Need::Construction,extra.constructionQueue);s.set(Need::BuildAnywhere,buildAnywhereMode);
  s.set(Need::Repair,repairCheck&&SendMessageW(repairCheck,BM_GETCHECK,0,0)==BST_CHECKED);
+ s.set(Need::ManualReveal,extra.manualReveal);
  s.set(Need::Aircraft,extra.air);s.set(Need::AircraftQuotas,extra.aircraftAllocationPolicy==0);
  s.set(Need::QuotaTarget,!quotaID().empty());
  s.set(Need::QuotaOverride,extraControls[QuotaOverride]&&SendMessageW(extraControls[QuotaOverride],BM_GETCHECK,0,0)==BST_CHECKED);
@@ -51,7 +52,7 @@ static void syncSettingDependencies(bool force){
   const PageControl* placed=nullptr;for(const auto&c:pageControls)if(c.hwnd==control){placed=&c;break;}
   std::wstring help=placed?placed->help:L"";
   if(help.empty())help=dependencyWindowText(control);
-  if(!availability.enabled())help=std::wstring(L"当前不可用：")+settingsdeps::reason(availability.missing)+L"。已保存的子设置保留，开启父功能后恢复。\r\n"+help;
+  if(!availability.enabled())help=std::wstring(L"当前不可用：")+settingsdeps::reason(availability.missing)+(availability.missing==settingsdeps::Need::Unavailable?L"。相关快捷键与旧启用设置不执行。\r\n":L"。已保存的子设置保留，开启父功能后恢复。\r\n")+help;
   if(dependencyTips[control]!=help){dependencyTips[control]=help;modernui::tip(control,help);}
   auto addCaption=[&](HWND w){auto&text=dependencyCaption(w);captions[w]=availability.enabled()?text.original:std::wstring(L"[")+settingsdeps::reason(availability.missing)+L"] "+text.original;};
   wchar_t cls[32]{};GetClassNameW(control,cls,32);if(!_wcsicmp(cls,L"BUTTON"))addCaption(control);

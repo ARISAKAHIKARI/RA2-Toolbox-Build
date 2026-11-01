@@ -3,6 +3,7 @@
 #include <array>
 #include <initializer_list>
 #include "feature_type_config.h"
+#include "../../shared/source/feature_availability.h"
 
 // Availability is separate from saved preference: switching a parent off must
 // never erase a child's checked value, key, quota or position.
@@ -12,7 +13,7 @@ enum class Need : unsigned {
  Watch, WatchSecondary, Minimap, MinimapPrimary, MinimapSecondary, CustomMinimap,
  ShiftClick, AppendClicks, Ore, CustomMiners, CustomRefineries, Production,
  ManualRate, Capacity, Advanced, C4, Dodge, Construction, BuildAnywhere,
- Aircraft, AircraftQuotas, QuotaTarget, QuotaOverride, Repair, Quality, Reconstruction, TypeListFirst
+ Aircraft, AircraftQuotas, QuotaTarget, QuotaOverride, Repair, Quality, Reconstruction, Unavailable, ManualReveal, TypeListFirst
 };
 constexpr Need typeListNeed(int feature){return Need(unsigned(Need::TypeListFirst)+unsigned(feature));}
 static_assert(unsigned(Need::TypeListFirst)+featuretypes::Count<=64,"dependency state covers every type filter");
@@ -63,15 +64,20 @@ inline const wchar_t* reason(Need need){
  case Need::QuotaTarget:return L"需先输入有效目标类型";
  case Need::QuotaOverride:return L"需先开启此类型独立配额";
  case Need::Repair:return L"需先开启自动维修";
+ case Need::Unavailable:return L"此功能暂不可用";
+ case Need::ManualReveal:return L"需先允许手动地图揭示";
  default:return L"";
  }
 }
 inline Decision decision(int id,const State&s){
+ if(!featureavailability::AutoCS&&(id==445||id==446||id==447||id==448||id==466))return {Need::Unavailable};
+ if(!featureavailability::InfantryForcedEntry&&(id==810||id==811||id==812||id==9180))return {Need::Unavailable};
  if(id>=9201&&id<9200+2*featuretypes::Count&&(id&1)){
   const int feature=(id-9201)/2;
   if(feature!=featuretypes::BurstRefresh)return require(s,{typeListNeed(feature)});
  }
  switch(id){
+ case 108:case 208:return require(s,{Need::ManualReveal});
  case 9324:case 9306:case 9313:return require(s,{Need::Render});
  case 9304:case 9307:case 9308:case 9309:case 9314:return require(s,{Need::Render,Need::Quality});
  case 9305:return require(s,{Need::Render,Need::Quality,Need::Reconstruction});
@@ -110,7 +116,7 @@ inline constexpr int BasicControls[]={
  9304,9305,9306,9307,9308,9309,9313,9314,9324,9040,9041,9181,881,9183,9193,9056,
  9061,9164,9165,9065,831,850,851,852,9100,9101,9166,9167,9168,796,797,
  781,782,783,784,9070,9071,9072,9073,9074,9075,303,310,787,818,802,812,
- 9180,895,817,9096,710,711,712,713,714,751,715,716,717,718,312
+ 9180,895,817,9096,710,711,712,713,714,751,715,716,717,718,312,445,446,447,448,466,810,811,108,208
 };
 inline constexpr auto Controls=[](){
  std::array<int,sizeof(BasicControls)/sizeof(BasicControls[0])+featuretypes::Count-1> ids{};

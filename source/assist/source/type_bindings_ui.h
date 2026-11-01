@@ -34,7 +34,7 @@ static void typeBindingFields(){
  ControlUpdate guard;
  int i=selectedTypeIndex();const char*id=i>=0?savedTypes.types[i].id:"";
  SendMessageW(typeKey,HKM_SETHOTKEY,typeBinding(id),0);SendMessageW(typeCS,BM_SETCHECK,csUnits.count(id)?BST_CHECKED:BST_UNCHECKED,0);
- EnableWindow(typeCS,i>=0&&(savedTypes.types[i].kind==16||savedTypes.types[i].kind==40));
+ EnableWindow(typeCS,featureavailability::AutoCS&&i>=0&&(savedTypes.types[i].kind==16||savedTypes.types[i].kind==40));
 }
 static void fillTypeBindings(bool force){
  if(SendMessageW(typeList,CB_GETDROPPEDSTATE,0,0))return;

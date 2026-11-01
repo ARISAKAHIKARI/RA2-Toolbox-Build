@@ -11,8 +11,8 @@
 #include "../../game_runtime/source/frame_signal_runtime.h"
 static DWORD testThread,tokenSerial,depth,tokens[16];
 static gameentry::Client clients[16];
-static bool tooltipOwned,frameOwned,failRestore,failInstallAfterWrite;
-static unsigned patchCalls,providerCalls,appendCalls,readyCalls;
+static bool tooltipOwned,frameOwned,failRestore,failInstallAfterWrite,failRestoreAfterWrite;
+static unsigned patchCalls,providerCalls,appendCalls,readyCalls,cursorRestoreCalls;
 extern "C" const uint8_t testArena[0x710000];
 __asm__(".section .text$fixture,\"xr\"\n.globl _testArena\n_testArena:\n.zero 0x710000\n.text\n");
 static unsigned lastId;static void* lastReceiver;
@@ -20,6 +20,7 @@ static wchar_t unitName[]=L"unit",price[]=L"power plant\n$800",withTime[]=L"powe
 extern "C" void GuardedCursorResource(){}
 extern "C" void RuntimeFrameReady(){++readyCalls;}
 extern "C" unsigned GuardedBuildTimeTooltip(unsigned id,unsigned original){++appendCalls;return id==1000?unsigned(uintptr_t(withTime)):original;}
+extern "C" void __thiscall TestCursorRestore(void*self){++cursorRestoreCalls;++reinterpret_cast<LONG*>(self)[3];}
 extern "C" wchar_t* __thiscall TestSidebar(void*self,unsigned id){
  ++providerCalls;lastReceiver=self;lastId=id;
  return id==0?unitName:id==1000?price:nullptr;
@@ -42,7 +43,7 @@ extern "C" int32_t __stdcall gameentry::ManageGameEntry(gameentry::Request*r){
  auto* site=(void*)(uintptr_t)r->address;
  if(memcmp(site,r->before,r->length)||(*owned&&failRestore))return int32_t(Result::PatchDenied);
  memcpy(site,r->after,r->length);*owned=!*owned;FlushInstructionCache(GetCurrentProcess(),site,r->length);
- return int32_t(*owned&&failInstallAfterWrite?Result::SystemFailure:Result::Ok);
+ return int32_t((*owned&&failInstallAfterWrite)||(!*owned&&failRestoreAfterWrite)?Result::SystemFailure:Result::Ok);
 }
 static void page(uint32_t address){
  // Never overwrite CRT/stack/heap reservations. The linker-owned arena
@@ -106,6 +107,7 @@ int main(){
  memcpy((void*)nativetooltip::Original,nativetooltip::NativeBody,sizeof(nativetooltip::NativeBody));
  const uint8_t getter[]={0x8B,0x41,0x0C,0xC3};memcpy((void*)0x7B89F0,getter,4);
  jump(nativetooltip::Provider,(void*)&TestSidebar);
+ jump(0x7B9750,(void*)&TestCursorRestore);
  *(uint32_t*)nativetooltip::Slot=nativetooltip::Original;
  mouseVtable[1]=0x7B8A00;mouseVtable[3]=0x7B9930;mouseVtable[4]=0x7B9750;mouseVtable[10]=0x7B89F0;
  mouseObject[0]=uint32_t(uintptr_t(mouseVtable));memcpy(otherMouse,mouseObject,sizeof(mouseObject));
@@ -123,6 +125,21 @@ int main(){
  CursorRuntimePost(0,0,(LPARAM)&focusEvent);
  assert(held==mouseObject&&patchCalls==focusPatches&&cursorState.menuSuspend==2);
  cursorState.menuSuspend=0;NativeTooltipMaintain(true);assert(tooltip(0)==unitName&&patchCalls==focusPatches);
+ // A paused controller can keep its process alive without a fresh heartbeat.
+ // Retain hide and tooltip ownership, stop sampling, and honor explicit stop.
+ owner=OpenProcess(SYNCHRONIZE,FALSE,GetCurrentProcessId());assert(owner);ownerId=cursorState.owner=GetCurrentProcessId();
+ cursorState.heartbeat=GetTickCount()-6000;cursorState.command=0;lastSampleAt=0;
+ const LONG staleSamples=cursorState.sampleAttempts;
+ {gameentry::Scope scope(gameentry::Client::Cursor);assert(scope);tick();}
+ CursorRuntimeWatchdog();NativeTooltipMaintain(true);
+ assert(held==mouseObject&&cursorState.state==1&&cursorState.sampleAttempts==staleSamples&&patchCalls==focusPatches&&cursorRestoreCalls==0);
+ CloseHandle(owner);owner=nullptr;lastSampleAt=0;ownerId=0; // unknown liveness also cannot prove death
+ CursorRuntimeWatchdog();assert(held==mouseObject&&cursorState.state==1);
+ cursorState.command=2;lastSampleAt=0;
+ {gameentry::Scope scope(gameentry::Client::Cursor);assert(scope);tick();}
+ assert(!held&&cursorState.state==0&&cursorRestoreCalls==1&&LONG(mouseObject[3])==0);
+ NativeTooltipMaintain(false);assert(!tooltipOwned);
+ cursorState.command=0;cursor(true);NativeTooltipMaintain(true);
  // Additional engine hide, no text, replaced object, foreign getter, and
  // unavailable capture all keep native null. No forced hidden-name flag.
  cursor(true,-2);assert(!tooltip(0));cursor(true);assert(!tooltip(99));
@@ -157,7 +174,7 @@ int main(){
  // Run the real compiled frame adapter with live registers, EFLAGS (DF=1),
  // native store, and a balanced return continuation. No game simulation.
  frameobserver::continuation=uint32_t(uintptr_t(&frameReturn));
- framesignal::Channel c{};c.enabled=framesignal::Compute;c.thread=testThread;c.heartbeat=GetTickCount();
+ framesignal::Channel c{};c.state=framesignal::Native;c.enabled=framesignal::Compute;c.thread=testThread;c.heartbeat=GetTickCount();
  for(unsigned scenario=0;scenario<4;++scenario){
   frameobserver::channel=scenario?&c:nullptr;c.thread=scenario==2?0:testThread;c.heartbeat=scenario==3?GetTickCount()-1000:GetTickCount();
   alignas(16) uint8_t fpBefore[512]{},fpAfter[512]{};
@@ -197,6 +214,25 @@ int main(){
   bool supported=mode==0||mode==5||mode==3||mode==4;
   assert(!framesignal::nativeAllowed(mode,false)&&framesignal::nativeAllowed(mode,true)==supported);
  }
+ // The manager records physical ownership before reporting protection/cache
+ // errors. Failed installation after a write must still owe restoration.
+ *(int*)0xA8B238=3;c.state=framesignal::Waiting;c.enabled=framesignal::Compute|framesignal::ExplicitDiagnostic;c.heartbeat=GetTickCount();
+ frameobserver::channel=&c;frameobserver::owner=GetCurrentProcessId();failInstallAfterWrite=true;
+ frameobserver::maintain(GetCurrentProcessId());
+ assert(frameOwned&&frameobserver::installed&&c.state==framesignal::SignatureRejected);
+ unsigned rejectedReady=readyCalls;frameobserver::FrameSignalCommitted();assert(readyCalls==rejectedReady);
+ failInstallAfterWrite=false;failRestore=true;
+ frameobserver::maintain(GetCurrentProcessId()+1);
+ assert(frameOwned&&frameobserver::installed&&frameobserver::channel==&c&&frameobserver::owner==GetCurrentProcessId()&&c.state==framesignal::RestoreFailed);
+ // Retrying an actual restore that reports an OS failure after committing
+ // original bytes clears physical ownership, rather than poisoning retries.
+ failRestore=false;failRestoreAfterWrite=true;c.enabled=framesignal::Compute;
+ frameobserver::maintain(GetCurrentProcessId());
+ assert(!frameOwned&&!frameobserver::installed&&!frameobserver::conflict&&c.state==framesignal::MessageFallback);
+ failRestoreAfterWrite=false;c.enabled|=framesignal::ExplicitDiagnostic;
+ frameobserver::maintain(GetCurrentProcessId());assert(frameOwned&&c.state==framesignal::Native);
+ frameobserver::channel=nullptr;frameobserver::maintain(0);assert(!frameOwned&&!frameobserver::installed);
+ puts("PASS frame write failures: post-write install failure retains ownership; failed restore retains old channel; post-write restore failure recovers without stale ownership");
  // Multiplayer still requires local playable state before NEW installation.
  *(int*)0xA8B238=3;c.state=framesignal::Waiting;c.enabled=framesignal::Compute|framesignal::ExplicitDiagnostic;c.heartbeat=GetTickCount();
  frameobserver::channel=&c;frameobserver::owner=GetCurrentProcessId();patches=patchCalls;

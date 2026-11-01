@@ -1,6 +1,7 @@
 // Explicit input mailbox consumed ONLY inside the ordinary leased Assist tick.
 // Original click, mission constructor and received-event functions stay intact.
 #include "input_feedback.h"
+#include "disabled_feature_policy.h"
 static uint32_t pointerFeedback=0;
 static uint32_t pointerSeen,pointerCancelSeen,pointerTarget,pointerTargetID,pointerCell;
 static int pointerGroundZ;static int pointerAt;static bool pointerActive;
@@ -56,6 +57,7 @@ static bool pointerLocation(const pointerinput::Intent&i){
  pointerGroundZ=coord.z;pointerCell=uint32_t(cell.y*1000+cell.x);pointerTarget=object;pointerTargetID=object?get<uint32_t>(object+0x10):0;return true;
 }
 static bool pointerEntryOrder(uint32_t p,int mission,uint32_t cell,bool planning){
+ if(!featureavailability::InfantryForcedEntry)return false;
  // Explicit user experiment: serialize a cell-destination order without normal
  // mission feasibility, allegiance, immobilization or automation arbitration.
  // The unified constructor/queue still owns packet format and transport.
@@ -71,6 +73,11 @@ static bool pointerEntryOrder(uint32_t p,int mission,uint32_t cell,bool planning
 }
 static void pointerTick(){
  auto&b=sh->pointer;uint32_t request=b.request;MemoryBarrier();
+ // Refuse retired input before coordinate queries, cancellation of existing
+ // jobs, or native event construction, including queued/stale host requests.
+ if(request!=b.ack&&!featuregate::pointer(b.intent.operation)){
+  pointerFeedback=0;pointerBatchValid=false;b.accepted=0;pointerFinish(-4);return;
+ }
  if(pointerCancelSeen!=b.cancelSerial){pointerCancelSeen=b.cancelSerial;
   if(pointerActive&&pointerSeen==request&&request!=b.ack)pointerFinish(-7);
  }

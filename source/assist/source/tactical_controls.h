@@ -22,8 +22,8 @@ for(int i:{11,1,2,3,4,5,6,7,0}){
  HWND h=i==0?toggle(100,labels[0],value(L"Modes",L"AutoRepair",0)!=0,20,306):button(100+i,labels[i],20,306);
  if(i==0)repairCheck=h;keys[i]=key(200+i,hotkeys[i]);next();
 }
-hookChecks[1]=toggle(459,L"智能卸载",hookSmartUnload,20,270);unloadKeyEdit=key(451,unloadKey,305,180);button(453,L"立即卸载",500,125);next();
-ejectCheck=toggle(455,L"载员自动逃生",ejectMode,20,306);ejectKeyEdit=key(456,ejectKey);next();
+hookChecks[1]=toggle(459,L"高危：智能卸载",hookSmartUnload,20,270);unloadKeyEdit=key(451,unloadKey,305,180);button(453,L"高危：立即卸载",500,125);next();
+ejectCheck=toggle(455,L"高危：载员自动逃生",ejectMode,20,306);ejectKeyEdit=key(456,ejectKey);next();
 label(L"喝彩",20,306);key(870,socialKeys[0]);next();
 for(int i=1;i<9;++i){auto text=L"嘲讽 "+std::to_wstring(i);label(text.c_str(),20,306);key(870+i,socialKeys[i]);next();}
 note(L"绑定后由工具箱接管该组合；聊天和菜单中不接管。嘲讽仍遵循原版冷却与接收方设置。",44);
@@ -43,7 +43,7 @@ label(L"功能开关",20,210);label(L"按住键 / 自定义组合",240,258);labe
 hookChecks[0]=toggle(458,L"高级移动攻击",hookAdvanced,20,210);advancedKeyEdit=key(450,advancedKey,240,258,true);mouse(pointerinput::MouseAdvanced);next();
 magnetronCheck=toggle(477,L"磁电轮换攻击",magnetronMode,20,210);magnetronKeyEdit=key(478,magnetronKey,240,258,true);mouse(pointerinput::MouseMagnetron);next();
  toggle(9042,L"磁电全局无限吸",extra.magnetronGlobal);next();note(L"自动接管空闲磁电，沿用轮换和类型清单；手动移动或攻击优先。关闭后停止自动接续。");
-extraControls[EnterEnabled]=toggle(702,L"高级进驻",extra.enter,20,210);holdPresetControl(EnterPreset,EnterCustom,extra.enterKey);mouse(pointerinput::MouseEnter);next();
+extraControls[EnterEnabled]=toggle(702,L"高危：高级进驻",extra.enter,20,210);holdPresetControl(EnterPreset,EnterCustom,extra.enterKey);mouse(pointerinput::MouseEnter);next();
 extraControls[AirEnabled]=toggle(705,L"飞机分配攻击 · 1",extra.air,20,210);holdPresetControl(AirPreset1,AirCustom1,extra.airKey1);mouse(pointerinput::MouseAirFirst);next();
 label(L"飞机分配攻击 · 2",20,210);holdPresetControl(AirPreset2,AirCustom2,extra.airKey2);mouse(pointerinput::MouseAirSecond);next();
 label(L"飞机分配策略（1 / 2 共用）",20,260);extraControls[AircraftPolicy]=combo(9195);choices(extraControls[AircraftPolicy],{L"按数量配额（原模式 1 / 2）",L"5格战车 · 预计伤害 120%",L"单目标 120% · 派出后取消选中"},extra.aircraftAllocationPolicy);next();
@@ -81,7 +81,7 @@ oreCheck=toggle(470,L"矿车自动卸矿",oreMode);next();
 oreStatus=item(L"STATIC",L"等待对局",20,605,0,0,44);next(44);
 for(int i=0;i<2;++i){bool miner=i==0;toggle(781+i,miner?L"指定矿车类型":L"指定矿场类型",miner?oreTypes.customMiners:oreTypes.customRefineries);next();auto h=edit(783+i,miner?oreMiners:oreRefineries,20,605);SendMessageW(h,EM_SETLIMITTEXT,12287,0);next();}
 note(L"类型 ID 用逗号分隔；未启用清单时自动识别，启用后仅使用所列类型。",44);
-label(L"自动装车分配方式",20,260);extraControls[LoadLogic]=combo(700);choices(extraControls[LoadLogic],{L"就近优先",L"兵种均衡"},extra.loadMode);next();
+label(L"高危：自动装车分配方式",20,260);extraControls[LoadLogic]=combo(700);choices(extraControls[LoadLogic],{L"就近优先",L"兵种均衡"},extra.loadMode);next();
 extraControls[LoadRadius]=number(701,L"自动装车范围 / 格",extra.loadRadius,L"1–512");
 number(787,L"高级移动攻击检测频率 / 次每秒",advancedScanHz,L"1–60 · 默认 10");
 number(818,L"高级移动攻击额外索敌距离 / 格",advancedRangeCells,L"0–30 · 默认 2");
@@ -123,9 +123,12 @@ for(int f=0;f<featuretypes::Count;++f){
 
 heading(3,903,L"战场信息",L"调整游戏内信息显示、缩放与位置；有效设置立即生效。");
 
-label(L"黑幕绘制方式",20,260);choices(combo(808),{L"关闭",L"半透明（素材方式）",L"透明（素材方式）",L"高危：原生揭示",L"高危：直接全图",L"素材替换（透明）",L"素材替换（半透明）",L"高危：原生半透明绘制补丁",L"高危：原生透明绘制补丁"},extra.mapStrategy);next();
-note(L"透明、半透明优先修改显示素材，不改写代码或探索状态；关闭时恢复素材。高危选项保留原生补丁或真正揭示，可能影响联机同步。");
+label(L"黑幕绘制方式",20,260);choices(combo(808),{L"关闭",L"高危：半透明绘制",L"高危：透明绘制",L"高危：原生揭示",L"高危：直接全图"},shroudpolicy::uiIndex(extra.mapStrategy));next();
+note(L"透明与半透明恢复原有绘制补丁实现，均标为高危。素材方案已移除；旧素材设置按关闭处理，不会自动改开补丁。");
 item(L"STATIC",L"地图显示：关闭",20,605,809);next();
+toggle(9199,L"高危：允许手动地图揭示",extra.manualReveal);next();
+button(108,L"高危：立即揭示地图",20,306);keys[8]=key(208,hotkeys[8]);next();
+note(L"默认 Ctrl＋Alt＋O，可改键。勾选只允许手动执行，不自动揭示；默认不启用 CRC 镜像。执行前需将上方黑幕绘制方式设为关闭，手动揭示会改变当前对局探索状态，仍有联机风险。",65);
 const wchar_t* displayNames[]={L"载具载员与容量",L"铁幕 / 力场剩余时间",L"生产队列空闲提醒",L"显示未选中的载具",L"敌方索敌显示",L"箱子信息",L"战术文字提示"};
 const wchar_t* displayIni[]={L"Capacity",L"Iron",L"Production",L"AllTransports",L"Psychic",L"Crates",L"TextPanel"};
 #ifdef RA2_UNIFIED
@@ -208,15 +211,15 @@ label(L"自定义垂直对齐",20,260);choices(combo(9101),{L"靠上",L"居中",
 note(L"自定义坐标是布局框左上角，对齐决定地图在框内的位置。左上／左下预设按地图实际尺寸贴边；自动避开原雷达和飞机按钮。左击或拖动可移动主视角。",60);
 detailCheck=toggle(481,L"显示运行耗时",showDetails);next();
 
-heading(4,904,L"高级与实验性设置",L"高危表示仍需改写游戏代码、函数入口或联机状态。未标记不代表已通过联机实测；普通指令优先使用原生事件。");
-toggle(885,L"自动躲弹（实验性）",extra.dodgeEnabled,20,280);choices(combo(895,310,305,180),{L"顺向移动 2 格",L"原版散开（Scatter）"},extra.dodgeMode);next();
+heading(4,904,L"高级与实验性设置",L"高危：代码或同步状态改写，或副作用未验证的原生查询。未标记不代表已通过联机实测。");
+toggle(885,L"自动躲弹（实验性）",extra.dodgeEnabled,20,280);choices(combo(895,310,305,180),{L"高危：顺向移动（原生通行查询）",L"原版散开（Scatter）"},extra.dodgeMode);next();
 note(L"对己方可移动地面单位预判敌机攻击与逼近碾压，短距离躲避。支持类型清单，不保证躲过追踪弹或瞬时伤害。",60);
 button(9094,L"Sticky 驻守（实验性／支持联机进入）",20,306);key(9095,extra.stickyKey);next();note(L"所选地面单位进入 Sticky=6；默认 Ctrl+Alt+S，可改组合或双击。联机仅支持同步进入，重复键不重发，退出尚未实现。单机可再次按键或手动下令解除；实际进入后显示金色标记。");
 for(int i=0;i<selectedmode::Count;++i){button(9170+2*i,selectedmode::label(i),20,306);key(9171+2*i,extra.missionModeKeys[i]);next();}
 note(L"对所选己方步兵、战车下达一次原版任务。默认未绑定，可设组合键或双击。驻守是 Guard=5，不是 G 的区域警戒。其他命令可覆盖；这三项不能解除 Sticky。",60);
-csCheck=toggle(446,L"自动移动攻击（CS）",csMode,20,306);csKeyEdit=key(447,csKey);next();
+csCheck=toggle(446,L"自动移动攻击（CS，暂不可用）",csMode,20,306);csKeyEdit=key(447,csKey);next();
 csHoldCheck=toggle(473,L"按键移动攻击（CS）",csHoldEnabled,20,210);csHoldEdit=key(474,csHoldKey,240,258,true);mouse(pointerinput::MouseCS);next();
-note(L"自动模式和按键模式均使用原版移动攻击命令；参与类型、快捷键和鼠标键设置保持不变。");
+note(L"自动 CS 暂不可用，旧设置与开关快捷键不再执行。按键 CS 保留，使用原版移动攻击命令。");
 toggle(899,L"磁电全局自动摔落（实验性）",extra.magnetronDrop);next();
 note(L"独立检查全图己方磁电已吸起的载具，包括己方、盟友和敌方，手动强制攻击也生效。检测建筑、地面坦克、树木、矿柱、悬崖及水陆不适配；两栖/悬浮不因普通水陆而摔，排除下方空中单位和桥面。默认关闭，实际摔落效果仍需测试。",76);
 EnableWindow(toggle(9090,L"视角缩放（暂不可用）",false),FALSE);next();
@@ -237,9 +240,9 @@ item(L"STATIC",L"高刷策略：仅光标",20,605,888);next();
 anywhereCheck=toggle(476,L"高危：随处建造",buildAnywhereMode);next();
 label(L"建造方式",20,180);choices(combo(9096,220,405,180),{L"受控模式（默认）",L"直接模式"},extra.placementImplementation);next();
 item(L"STATIC",L"功能状态：等待连接",20,605,807,0,44);next(44);
-toggle(810,L"步兵强制进入建筑（实验性）",extra.c4Test,20,280);key(811,extra.c4Key,310,188,true);choices(combo(812,510,115,180),{L"停用",L"中键",L"侧键 1",L"侧键 2",L"右键",L"左键"},extra.c4Mouse==6?5:extra.c4Mouse);next();
+toggle(810,L"步兵强制进入建筑（暂不可用）",extra.c4Test,20,280);key(811,extra.c4Key,310,188,true);choices(combo(812,510,115,180),{L"停用",L"中键",L"侧键 1",L"侧键 2",L"右键",L"左键"},extra.c4Mouse==6?5:extra.c4Mouse);next();
 label(L"进入实现",20,260);choices(combo(9180),{L"占领任务＋建筑格",L"爆破任务＋建筑格"},extra.c4Mode);next();
-note(L"两种实现均向被点击的建筑占地格下令。默认占领任务；普通点击直接提交，按住游戏路径点键时追加。建筑被坦克覆盖时从同格查找。实际能否进入由原版判定。",60);
+note(L"步兵强制进入暂时停用；已保存的配置、快捷键和鼠标绑定均不执行。高级进驻不受此项影响。",60);
 item(L"STATIC",L"步兵强制进入建筑：关闭",20,605,813);next();
 toggle(9097,L"高危：科技加强（直接修改类型规则）",extra.techEnhance);next();
 note(L"开放奶牛、电影英雄等隐藏类型；关闭后恢复本功能修改的科技等级。可能影响联机同步。",44);
@@ -255,6 +258,8 @@ item(L"STATIC",L"生产进度：等待游戏",20,605,815,0,65);next(65);
 toggle(9191,L"高危：原生 MegaMission 成功入口观察",extra.nativeMegaGateway);next();
 note(L"默认关闭；普通手动输入由消息与任务观察处理。此附加入口会改写游戏代码，在原生命令成功发送后登记手动优先并取消冲突任务。发出原生事件不需要开启它。",65);
 item(L"STATIC",L"原生命令仲裁：等待对局",20,605,9192,0,44);next(44);
+toggle(9198,L"高危：原生武器、射程与空中状态查询",extra.nativeCombatQueries);next();
+note(L"默认关闭：武器、射程及队形等功能的空中状态由只读字段估算，可能与 MOD、实时电力及原生判断不同。开启后调用游戏原生查询；尚未验证平台改写后的查询没有同步状态副作用。",85);
 toggle(860,L"高危：操控其他玩家单位",extra.controlAll);next();
 
 item(L"STATIC",L"跨玩家操控：等待连接",20,605,865);next();

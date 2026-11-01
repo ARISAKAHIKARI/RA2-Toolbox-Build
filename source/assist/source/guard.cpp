@@ -14,14 +14,15 @@ extern "C" int AssistExceptionFilter(void* raw,unsigned boundary){
  }
  return 1;
 }
-// A failed read-only native legality query rejects this batch before submission.
-// Other exceptions still reach the outer Runtime fault boundary.
+// A failed native legality query rejects this batch before submission. SEH
+// bounds faults, not side effects of platform/MOD overrides. UI marks this risk.
 extern "C" int GuardedEnterAction(unsigned address,unsigned source,unsigned target,unsigned* action){
  __try {*action=((unsigned(__thiscall*)(void*,void*,bool))address)((void*)source,(void*)target,true);return 1;}
  __except(_exception_code()==0xc0000005u?AssistExceptionFilter(_exception_info(),9):0){return 0;}
 }
 // YRpp virtual SelectWeapon (+2E4), GetWeapon (+3F8), IsCloseEnough (+3A8).
-// Read-only queries, on the bound game thread; no click/fire/mission mutation.
+// Explicit high-risk compatibility path. Platform/MOD virtual-method side
+// effects are not verified; default callers use the raw query wrapper instead.
 extern "C" int GuardedCombatWeapon(unsigned source,unsigned target,unsigned* weapon,int* selected,int* close,int* airborne){
  __try {
   auto table=*(unsigned**)source;
@@ -39,9 +40,6 @@ extern "C" int GuardedCombatWeapon(unsigned source,unsigned target,unsigned* wea
 extern "C" int GuardedObjectAir(unsigned object,int* airborne){
  __try {*airborne=((bool(__thiscall*)(void*))(*(unsigned**)object)[0x54/4])((void*)object);return 1;}
  __except(_exception_code()==0xc0000005u?AssistExceptionFilter(_exception_info(),9):0){return 0;}
-}
-extern "C" int GuardedMissileWeapon(unsigned source,unsigned target,unsigned* weapon){
- int slot=0,close=0,airborne=0;return GuardedCombatWeapon(source,target,weapon,&slot,&close,&airborne)>0&&close;
 }
 extern "C" unsigned BeginAssistCapture();
 extern "C" void EndAssistCapture(unsigned);

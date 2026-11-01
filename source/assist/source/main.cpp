@@ -1,3 +1,4 @@
+#include "../../shared/source/feature_availability.h"
 #include "../../shared/source/modern_ui.h"
 #include "../../shared/source/ui_message_queue.h"
 #include "../../shared/source/overlay_stack.h"
@@ -29,6 +30,7 @@
 #include <cstdio>
 #include <cstdint>
 #include "protocol.h"
+#include "reveal_permission.h"
 
 #include "../../shared/source/host_game_input.h"
 #include "../../shared/source/command_cursor_hint.h"
@@ -132,7 +134,7 @@ static typecatalog::Catalogue savedTypes;static uint32_t catalogueRevision=0;
 static uint32_t settingsRevision=1;
 static bool shiftClickEnabled=true;static int shiftClickMode=0,shiftClickGap=0,shiftSidebarWidth=160,shiftSidebarTop=200;
 static bool magnetronMode=false;static WORD magnetronKey;static HWND magnetronCheck,magnetronKeyEdit;
-static bool hookAdvanced=true,hookSmartUnload=false,hookEject=false,hookAutoCS=true,diagEnabled=false;
+static bool hookAdvanced=true,hookSmartUnload=false,hookEject=false,hookAutoCS=false,diagEnabled=false;
 static std::wstring bridgeFailure;static bool gameWindowFromYrpp=false;
 static HWND hookChecks[4];static DWORD attachAt=0;static uint32_t paintRevision;static bool keysRegistered;static int scrollY;
 static assist::delivery::Queue commandQueue;
@@ -158,7 +160,7 @@ static bool techAllowed(const assist::Type& t){
 }
 static WORD hotkeys[12];static const int actions[]={Repair,CombatSelection,EmptyTransports,DamagedSelection,IdleHarvester,IdleEngineer,IdleTransport,ClearBeacons,RevealMap,SelectIron,SelectChrono,AutoBoard};
 static std::vector<int> registeredKeyIDs;
-static const wchar_t* labels[]={L"自动维修",L"选择作战单位",L"选择空载运输载具",L"选择受损单位",L"选择空闲矿车",L"选择空闲工程师",L"定位空闲运输载具",L"清除信标",L"高危：地图全开",L"铁幕目标选择",L"超时空目标选择",L"自动装车"};
+static const wchar_t* labels[]={L"自动维修",L"选择作战单位",L"选择空载运输载具",L"选择受损单位",L"选择空闲矿车",L"选择空闲工程师",L"定位空闲运输载具",L"清除信标",L"高危：地图全开",L"铁幕目标选择",L"超时空目标选择",L"高危：自动装车"};
 static const char* iniKeys[]={"Repair","Combat","EmptyTransports","Damaged","IdleHarvester","IdleEngineer","IdleTransport","ClearBeacons","RevealMap","IronCurtain","ChronoSphere","AutoLoad"};
 struct Binding{std::string id;WORD key;};static std::vector<Binding> swBindings;
 static HWND typeList,typeKey,typeCS,csCheck,csKeyEdit,csStatus,tapEdit,typeIdEdit;
@@ -430,12 +432,12 @@ static void registerKeys(){for(int id:registeredKeyIDs)UnregisterHotKey(ui,id);r
   for(int i=0;i<3;++i)if(external::watch::firstBinding(extra.watchKeys,i)&&!registerKey(1730+i,WORD(extra.watchKeys[i])))++failures;
   synchronizeHotkeyKeys();if(failures)notify(L"副屏跟踪快捷键注册失败，请更换组合。");return;
  }
- for(int i=0;i<12;++i)if(i!=8&&LOBYTE(hotkeys[i])&&!registerKey(1000+i,hotkeys[i]))++failures;
+ for(int i=0;i<12;++i)if((i!=8||extra.manualReveal)&&LOBYTE(hotkeys[i])&&!registerKey(1000+i,hotkeys[i]))++failures;
  for(size_t i=0;i<swBindings.size()&&i<64;++i){auto&b=swBindings[i];if((b.id=="IronCurtainSpecial"&&b.key==hotkeys[9])||(b.id=="ChronoSphereSpecial"&&b.key==hotkeys[10]))continue;if(LOBYTE(b.key)&&!registerKey(int(1020+i),b.key))++failures;}
  for(size_t i=0;i<typeBindings.size()&&i<512;++i){auto&b=typeBindings[i];if(typekeys::firstForKey(typeBindings,unsigned(i))&&!registerKey(int(1100+i),b.key))++failures;}
  if(LOBYTE(ejectKey)&&!registerKey(1696,ejectKey))++failures;
  if(hookSmartUnload&&LOBYTE(unloadKey)&&!registerKey(1698,unloadKey))++failures;
- if(hookAutoCS&&LOBYTE(csKey)&&!registerKey(1699,csKey))++failures;
+ if(featureavailability::AutoCS&&hookAutoCS&&LOBYTE(csKey)&&!registerKey(1699,csKey))++failures;
  if(extra.viewZoomEnabled){for(int i=0;i<3;++i)if(!registerKey(1720+i,WORD((i==0?VK_OEM_MINUS:i==1?VK_OEM_PLUS:VK_BACK)|(6<<8))))++failures;}
  if(LOBYTE(extra.stickyKey)&&!registerKey(1723,WORD(extra.stickyKey)))++failures;
  for(int i=0;i<selectedmode::Count;++i)if(LOBYTE(extra.missionModeKeys[i])&&!registerKey(1724+i,WORD(extra.missionModeKeys[i])))++failures;
@@ -461,7 +463,7 @@ static void chooseTechProfile(int next){
  techProfile=std::clamp(next,0,2);
  techExceptions=profileExceptions[techProfile];
 }
-static bool save(){++settingsRevision;saveWriteOK=true;for(int i=0;i<12;++i)if(i!=8)write(L"Hotkeys",wide(iniKeys[i]).c_str(),hotkeys[i]);WritePrivateProfileStringW(L"Hotkeys",L"RevealMap",nullptr,path(L"Assist.ini").c_str());write(L"Display",L"FPS",fps);write(L"Display",L"AdaptiveFPS",infoAdaptive);write(L"Display",L"LabelRefreshVersion",1);write(L"Display",L"TopMargin",topMargin);
+static bool save(){++settingsRevision;saveWriteOK=true;for(int i=0;i<12;++i)write(L"Hotkeys",wide(iniKeys[i]).c_str(),hotkeys[i]);write(L"Display",L"FPS",fps);write(L"Display",L"AdaptiveFPS",infoAdaptive);write(L"Display",L"LabelRefreshVersion",1);write(L"Display",L"TopMargin",topMargin);
  write(L"Display",L"LabelScalePercent",labelScalePercent);write(L"Display",L"ConstructionScalePercent",constructionScalePercent);
  for(int i=0;i<7;++i){const wchar_t*names[]={L"Capacity",L"Iron",L"Production",L"AllTransports",L"Psychic",L"Crates",L"TextPanel"};write(L"Display",names[i],SendMessageW(check[i],BM_GETCHECK,0,0)==BST_CHECKED);}
  write(L"Modes",L"AutoRepair",SendMessageW(repairCheck,BM_GETCHECK,0,0)==BST_CHECKED);write(L"Modes",L"RepairUnrepairable",repairUnrepairable);write(L"Experimental",L"NativeTechProduction",techMode);write(L"Modes",L"RepairMs",repairMs);
@@ -550,7 +552,7 @@ static bool userCommand(int c){return c!=OpenTech;}
 static DWORD discoverGamePid(); // Same window filter used by attach(), without installing a second Hook.
 static bool queueCommand(int c,int arg,int arg2,uint32_t match,int retries=0,DWORD delayMs=0,uint32_t token=0,uint64_t typeHash=0){
  if(!enabled)return false;
- if(c==RevealMap&&!extra.experimentalReveal)return false;
+ if(c==RevealMap&&(!extra.experimentalReveal||extra.renderReveal))return false;
  DWORD now=GetTickCount();
  if(!game||!pid||!IsWindow(game)||(shared&&lastData&&incoming.status<0))return false;
  bool queued=commandQueue.add({c,arg,arg2,pid,match,now,retries,now+delayMs,token,typeHash?typeHash:typeListHash(snap.types,snap.typeCount)});
@@ -567,7 +569,8 @@ static void send(int command,int arg=0,int arg2=0,int retries=0,bool fromQueue=f
  }
  const uint64_t intentTypes=typeListHash(snap.types,snap.typeCount);
  if(command==OpenTech)arg2=techImplementation;
- if(command==RevealMap&&!extra.experimentalReveal){notify(L"请在黑幕绘制方式中选择自动全图。");return;}
+ if(command==RevealMap&&(!extra.experimentalReveal||(!fromQueue&&!extra.manualReveal))){notify(L"请先开启允许手动地图揭示。");return;}
+ if(command==RevealMap&&extra.renderReveal){notify(L"请先将黑幕绘制方式设为关闭；当前绘制补丁与原生揭示不能同时执行。");return;}
  DWORD now=GetTickCount();
  if(game&&!shared)ensureBridge();
  if(command==SmartUnload&&!hookSmartUnload){notify(L"智能卸载功能开关已关闭。");return;}
@@ -620,7 +623,9 @@ static void send(int command,int arg=0,int arg2=0,int retries=0,bool fromQueue=f
  shared->requestTypeHash=typeListHash(snap.types,snap.typeCount);
  shared->requestToken=requestToken;shared->command=command;shared->arg=arg;shared->arg2=arg2;
  shared->requestTick=now;shared->requestMatch=commandMatch();
- MemoryBarrier();InterlockedIncrement((volatile LONG*)&shared->request);
+ MemoryBarrier();
+ if(command==RevealMap)revealpermission::beforeRequest(shared->flags,extra.experimentalReveal,[&]{InterlockedIncrement((volatile LONG*)&shared->request);});
+ else InterlockedIncrement((volatile LONG*)&shared->request);
  wakeGame();
 }
 // A priority mailbox within the same Shared protocol. Game-side selection is
@@ -1507,7 +1512,7 @@ static void result(){if(!shared)return;uint32_t a=shared->ack;if(a==ack)return;M
  if(c==RevealMap&&r<0&&extra.mapStrategy==3){autoRevealMatch=0;autoRevealRetry=GetTickCount()+2000;}
  if(c==RevealMap&&r==-22){notify(L"全图 CRC 原值镜像尚未就绪，本次未揭示；请查看实验功能状态。若本局已揭示，请在新对局揭示前开启。");return;}
  if(r==-10||r==-15){critical(L"command exception result="+std::to_wstring(r)+L" command="+std::to_wstring(c));logBridgeHealth(true);}
- if(r<0){const wchar_t*s=r==-10?L"游戏操作发生异常，已暂停发送指令；请重启游戏。详情见 logs/Runtime.log。":r==-15?L"无法确认本次装车条件，操作未执行；其他功能仍可用。详情见 logs/Runtime.log。":r==-3?L"当前没有可操作的对局。":r==-5?L"超级武器尚未就绪或当前不可用。":r==-6?L"指令未能提交，详细原因已记录到日志。":r==-7?L"指令已过期或对局已改变，本次未执行。":r==-8?L"请先关闭游戏聊天输入框。":r==-9?L"缺少可用的匹配工厂 / 供电，或已达建造上限。":r==-11?L"此游戏版本暂不支持科技生产，功能未启用。":r==-12?L"此游戏版本暂不支持该操作。":r==-22?L"喝彩或嘲讽尚在冷却，请稍后再试。":r==-23?L"本局已关闭嘲讽；快捷键不能更改其他玩家的接收设置。":r==-21?L"黑幕绘制方式未选择自动全图，本次未执行。":r==-20?L"当前版本不支持此操作。":r==-13?L"此操作仅支持单机。":r==-14?L"地图尚未完成初始化，稍后重试。":L"所选目标已失效，请刷新后重试。";if(r==-6)critical(L"command submission failed: "+submitDiagnostic());notify(s);return;}
+ if(r<0){const wchar_t*s=r==-10?L"游戏操作发生异常，已暂停发送指令；请重启游戏。详情见 logs/Runtime.log。":r==-15?L"无法确认本次装车条件，操作未执行；其他功能仍可用。详情见 logs/Runtime.log。":r==-3?L"当前没有可操作的对局。":r==-5?L"超级武器尚未就绪或当前不可用。":r==-6?L"指令未能提交，详细原因已记录到日志。":r==-7?L"指令已过期或对局已改变，本次未执行。":r==-8?L"请先关闭游戏聊天输入框。":r==-9?L"缺少可用的匹配工厂 / 供电，或已达建造上限。":r==-11?L"此游戏版本暂不支持科技生产，功能未启用。":r==-12?L"此游戏版本暂不支持该操作。":r==-22?L"喝彩或嘲讽尚在冷却，请稍后再试。":r==-23?L"本局已关闭嘲讽；快捷键不能更改其他玩家的接收设置。":r==-21?L"地图揭示未获允许或绘制方式冲突，本次未执行。":r==-20?L"当前版本不支持此操作。":r==-13?L"此操作仅支持单机。":r==-14?L"地图尚未完成初始化，稍后重试。":L"所选目标已失效，请刷新后重试。";if(r==-6)critical(L"command submission failed: "+submitDiagnostic());notify(s);return;}
  if(c==Repair)notify(n?L"已安排维修 "+std::to_wstring(n)+L" 座受损建筑。":L"没有需要维修的己方建筑。");
  else if(c==RevealMap){autoRevealDone=inFlightMatch;notify(L"已执行当前对局的地图揭示。");}
  else if(c==Cheer)notify(L"喝彩已提交。");
@@ -1559,7 +1564,7 @@ static void publishSuiteDisplay(){
  profile.particles=renderParticleEffects;profile.lasers=renderLaserEffects;profile.voxelLighting=renderVoxelLighting;profile.spriteLighting=renderSpriteLighting;external::presentation::settings().publish(profile);
 #ifdef RA2_UNIFIED
  suite::DisplayState state;
- state.values={extra.scrollRefreshMode,int(extra.enemyMarkers),int(SendMessageW(check[1],BM_GETCHECK,0,0)==BST_CHECKED),int(SendMessageW(check[0],BM_GETCHECK,0,0)==BST_CHECKED),int(SendMessageW(check[3],BM_GETCHECK,0,0)==BST_CHECKED),int(extra.frozen),int(extra.parasiteMarker),int(extra.crateBuffMarkers),labelScalePercent,fps,extra.mapStrategy,int(extra.passengerBubbles),int(extra.dangerPassengers),int(infoAdaptive)};
+ state.values={extra.scrollRefreshMode,int(extra.enemyMarkers),int(SendMessageW(check[1],BM_GETCHECK,0,0)==BST_CHECKED),int(SendMessageW(check[0],BM_GETCHECK,0,0)==BST_CHECKED),int(SendMessageW(check[3],BM_GETCHECK,0,0)==BST_CHECKED),int(extra.frozen),int(extra.parasiteMarker),int(extra.crateBuffMarkers),labelScalePercent,fps,shroudpolicy::uiIndex(extra.mapStrategy),int(extra.passengerBubbles),int(extra.dangerPassengers),int(infoAdaptive)};
  for(int i=suite::RenderUpgrade;i<suite::DisplayOptionCount;++i){auto control=GetDlgItem(ui,suite::displaySpecs[i].id);if(!control)continue;const auto type=suite::displaySpecs[i].control;
   if(type==suite::DisplayControl::Check)state.values[i]=SendMessageW(control,BM_GETCHECK,0,0)==BST_CHECKED;
   else if(type==suite::DisplayControl::Choice)state.values[i]=int(SendMessageW(control,CB_GETCURSEL,0,0));
@@ -1588,7 +1593,7 @@ static void updateModeStatus(DWORD now){
  std::wstring airStatus=L"飞机路径点：";airStatus+=!(extra.airWaypoints||extra.nativeAirWaypoints)?L"关闭":phase?L"等待游戏就绪":extra.airWaypoints||extra.airPathKey||!airway::native()?L"兼容模式":snap.nativeAirStatus==-2?L"启用或关闭失败，请查看日志":snap.nativeAirStatus==-1?L"不支持此游戏版本":snap.nativeAirStatus==3?L"高危 · 原生下单":snap.nativeAirStatus==4?L"高危 · 完整原生":snap.nativeAirStatus==1?L"高危 · 原生模式":L"等待生效";
  SetWindowTextW(GetDlgItem(ui,866),airStatus.c_str());
  SetWindowTextW(GetDlgItem(ui,807),riskStatus.c_str());
- std::wstring renderText=(extra.mapStrategy==3||extra.mapStrategy==4||extra.mapStrategy>=7)?L"高危 · 地图显示：":L"地图显示：";renderText+=extra.mapStrategy==3?(autoRevealDone&&autoRevealDone==commandMatch()?L"自动地图全开已执行":L"等待自动地图全开"):snap.renderRevealStatus==-2?L"启用或关闭失败，请查看日志":!extra.renderReveal?L"关闭":phase?L"等待游戏就绪":snap.renderRevealStatus==1?L"已启用":L"等待生效";
+ std::wstring renderText=(extra.mapStrategy!=0)?L"高危 · 地图显示：":L"地图显示：";renderText+=extra.mapStrategy==3?(autoRevealDone&&autoRevealDone==commandMatch()?L"自动地图全开已执行":L"等待自动地图全开"):snap.renderRevealStatus==-2?L"启用或关闭失败，请查看日志":!extra.renderReveal?L"关闭":phase?L"等待游戏就绪":snap.renderRevealStatus==1?L"已启用":L"等待生效";
  SetWindowTextW(GetDlgItem(ui,809),renderText.c_str());
  {int z=shared?shared->viewZoomStatus:viewzoom::Waiting;std::wstring text=L"视角缩放：";
   if(!shared)text+=extra.viewZoomEnabled?L"等待连接":L"关闭";
@@ -1632,7 +1637,7 @@ static void updateModeStatus(DWORD now){
   else crc+=extra.crcMapShadow?L"等待适配":L"关闭";
   SetWindowTextW(GetDlgItem(ui,9197),crc.c_str());
  }
- SetWindowTextW(GetDlgItem(ui,813),(L"步兵强制进入建筑："+(extra.c4Test&&snap.c4TestStatus==1&&!phase&&infantryEntryResultMatch==commandMatch()&&!infantryEntryResult.empty()?infantryEntryResult:riskText(extra.c4Test,snap.c4TestStatus))).c_str());
+ SetWindowTextW(GetDlgItem(ui,813),(L"步兵强制进入建筑（暂不可用）："+(extra.c4Test&&snap.c4TestStatus==1&&!phase&&infantryEntryResultMatch==commandMatch()&&!infantryEntryResult.empty()?infantryEntryResult:riskText(extra.c4Test,snap.c4TestStatus))).c_str());
  std::wstring progress=snap.techOpen==2?L"经典兼容 · 生产进度：":L"生产进度：";uint32_t owner=0;
  if(techMode&&commandFresh(now)&&externalReader.readFresh(0xA83D4C,&owner,4)&&owner>=0x10000){
   const int offsets[]={0x53BC,0x53CC,0x53B0,0x53B4,0x53B8,0x53AC};const wchar_t* names[]={L"建筑",L"防御",L"步兵",L"战车",L"舰船",L"飞机"};
@@ -1652,7 +1657,7 @@ static void updateModeStatus(DWORD now){
  if(shared&&snap.lastSubmitError)nt+=L" · 部分指令未执行，请查看日志";
  static std::wstring oldNativeText;if(nt!=oldNativeText){oldNativeText=nt;SetWindowTextW(nativeStatus,nt.c_str());}
  bool csRequested=(csMode&&hookAutoCS)||csHoldEnabled;
- std::wstring csText=L"自动 CS："+std::wstring(csMode?(hookAutoCS?L"开":L"未允许"):L"关")+L" · 按键 CS："+(csHoldEnabled?(LOBYTE(csHoldKey)?L"开":L"仅鼠标"):L"关");
+ std::wstring csText=L"自动 CS："+std::wstring(featureavailability::AutoCS?(csMode?(hookAutoCS?L"开":L"未允许"):L"关"):L"暂不可用")+L" · 按键 CS："+(csHoldEnabled?(LOBYTE(csHoldKey)?L"开":L"仅鼠标"):L"关");
  if(phase)csText+=L" · "+std::wstring(phaseText);else if(csRequested)csText+=snap.csHookStatus<0?L" · 暂不可用":snap.csHookStatus==1?L" · 已就绪":L" · 等待对局";
  static std::wstring oldCSText;if(csText!=oldCSText){oldCSText=csText;SetWindowTextW(csStatus,csText.c_str());}
  std::wstring oreText=oreMode?L"排队 "+std::to_wstring(snap.oreQueued)+L" · 进场 "+std::to_wstring(snap.oreDocking):L"自动卸矿已关闭";
@@ -1981,7 +1986,7 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
  placedControl({-1,{505,80,120,28}},L"BUTTON",L"定位功能",991,BS_PUSHBUTTON|WS_TABSTOP);
 #include "tactical_controls.h"
  EnableWindow(GetDlgItem(w,420),TRUE);
- statusLabel=control(L"STATIC",L"正在寻找游戏…",20,1370,605,44,430);control(L"BUTTON",L"暂停 / 连接",20,1420,200,28,431,BS_PUSHBUTTON|WS_TABSTOP);control(L"BUTTON",L"使用说明",235,1420,185,28,432,BS_PUSHBUTTON|WS_TABSTOP);control(L"BUTTON",L"退出",435,1420,190,28,433,BS_PUSHBUTTON|WS_TABSTOP);EnableWindow(unloadKeyEdit,TRUE);EnableWindow(GetDlgItem(w,453),TRUE);EnableWindow(hookChecks[1],TRUE);SetWindowTextW(hookChecks[1],L"智能卸载");finalizeTacticalLayout();applyPanelDpi(panelDpi);ready=true;syncSettingDependencies(true);fillTech(true);fillTypeBindings(true);SetTimer(w,1,250,nullptr);SetTimer(w,2,80,nullptr);registerKeys();return 0;}
+ statusLabel=control(L"STATIC",L"正在寻找游戏…",20,1370,605,44,430);control(L"BUTTON",L"暂停 / 连接",20,1420,200,28,431,BS_PUSHBUTTON|WS_TABSTOP);control(L"BUTTON",L"使用说明",235,1420,185,28,432,BS_PUSHBUTTON|WS_TABSTOP);control(L"BUTTON",L"退出",435,1420,190,28,433,BS_PUSHBUTTON|WS_TABSTOP);EnableWindow(unloadKeyEdit,TRUE);EnableWindow(GetDlgItem(w,453),TRUE);EnableWindow(hookChecks[1],TRUE);SetWindowTextW(hookChecks[1],L"高危：智能卸载");finalizeTacticalLayout();applyPanelDpi(panelDpi);ready=true;syncSettingDependencies(true);fillTech(true);fillTypeBindings(true);SetTimer(w,1,250,nullptr);SetTimer(w,2,80,nullptr);registerKeys();return 0;}
  case WM_DISPLAYCHANGE:informationMonitor.invalidate();secondaryDisplayMonitor.invalidate();minimap::invalidateDisplays();watchwindows::invalidateDisplays();syncInformationRate(true);if(enabled||secondaryDisplayRequested())paint();return 0;
  case WM_SIZE:layoutPanel();return 0;
  case WM_DPICHANGED:{applyPanelDpi(HIWORD(wp));if(!(GetWindowLongPtrW(w,GWL_STYLE)&WS_CHILD)&&!GetPropW(w,L"RA2.Suite.Managed")){auto r=(RECT*)lp;SetWindowPos(w,nullptr,r->left,r->top,r->right-r->left,r->bottom-r->top,SWP_NOZORDER|SWP_NOACTIVATE);}return 0;}
@@ -2210,11 +2215,11 @@ int WINAPI wWinMain(HINSTANCE h,HINSTANCE,LPWSTR,int show){SetProcessDPIAware();
  hookAdvanced=value(L"Hooks",L"Advanced",value(L"NativeOrders",L"EnableInputHooks",0))!=0;
  hookSmartUnload=value(L"Hooks",L"SmartUnload",0)!=0;
  hookEject=value(L"Hooks",L"Eject",0)!=0;
- hookAutoCS=value(L"Hooks",L"AutoCS",0)!=0;
+ hookAutoCS=featureavailability::AutoCS&&value(L"Hooks",L"AutoCS",0)!=0;
  diagEnabled=value(L"Debug",L"Diagnostics",0)!=0;
- autoRevealNewMatch=extra.mapStrategy==3;
+ autoRevealNewMatch=shroudpolicy::automaticReveal(extra.mapStrategy);
  techMode=value(L"Experimental",L"NativeTechProduction",0)!=0;repairMs=std::clamp(value(L"Modes",L"RepairMs",2000),500,30000);
- const WORD defaults[]={'R','Q','T','D','M','E','V','B','O','I','C','L'};static_assert(sizeof(defaults)/sizeof(defaults[0])==12);for(int i=0;i<12;++i)hotkeys[i]=i==8?0:(WORD)value(L"Hotkeys",wide(iniKeys[i]).c_str(),MAKEWORD(defaults[i],HOTKEYF_CONTROL|HOTKEYF_ALT));
+ const WORD defaults[]={'R','Q','T','D','M','E','V','B','O','I','C','L'};static_assert(sizeof(defaults)/sizeof(defaults[0])==12);for(int i=0;i<12;++i)hotkeys[i]=(WORD)value(L"Hotkeys",wide(iniKeys[i]).c_str(),MAKEWORD(defaults[i],HOTKEYF_CONTROL|HOTKEYF_ALT));
  wchar_t section[8192];GetPrivateProfileSectionW(L"SuperHotkeys",section,8192,path(L"Assist.ini").c_str());for(wchar_t*s=section;*s;s+=wcslen(s)+1){std::wstring line=s;size_t e=line.find(L'=');if(e==std::wstring::npos)continue;std::string id;for(size_t i=0;i<e&&i<23;++i)id+=(char)line[i];swBindings.push_back({id,(WORD)_wtoi(line.c_str()+e+1)});}
  for(const wchar_t* sec:{L"TypeHotkeys",L"AutoCSUnits"}){wchar_t entries[32768];GetPrivateProfileSectionW(sec,entries,32768,path(L"Assist.ini").c_str());for(wchar_t* p=entries;*p;p+=wcslen(p)+1){std::wstring line=p;size_t e=line.find(L'=');if(e==std::wstring::npos)continue;std::string id;for(size_t j=0;j<e&&j<23;++j)if(line[j]>32&&line[j]<127)id+=char(line[j]);if(id.empty())continue;int v=_wtoi(line.c_str()+e+1);if(!wcscmp(sec,L"TypeHotkeys")){if(LOBYTE(v)&&typeBindings.size()<512)typeBindings.push_back({id,WORD(v)});}else if(v)csUnits.insert(id);}}
  loadCatalogue();
@@ -2231,7 +2236,7 @@ int WINAPI wWinMain(HINSTANCE h,HINSTANCE,LPWSTR,int show){SetProcessDPIAware();
  shiftSidebarWidth=std::clamp(value(L"Click",L"SidebarWidth",GetPrivateProfileIntW(L"Click",L"SidebarWidth",160,path(L"settings.ini").c_str())),32,600);shiftSidebarTop=std::clamp(value(L"Click",L"SidebarTop",GetPrivateProfileIntW(L"Click",L"SidebarTop",200,path(L"settings.ini").c_str())),0,2000);
  shiftClickEnabled=value(L"Click",L"Enabled",GetPrivateProfileIntW(L"Click",L"Enabled",0,path(L"settings.ini").c_str()))!=0;shiftClickMode=std::clamp(value(L"Click",L"Mode",GetPrivateProfileIntW(L"Click",L"Mode",0,path(L"settings.ini").c_str())),0,2);shiftClickGap=std::clamp(value(L"Click",L"IntervalMs",GetPrivateProfileIntW(L"Click",L"IntervalMs",0,path(L"settings.ini").c_str())),0,250);
  advancedRangeCells=std::clamp(value(L"NativeOrders",L"TargetRangeExtraCells",2),0,30);advancedTargetPriority=std::clamp(value(L"NativeOrders",L"TargetPriority",0),0,1);advancedScanHz=std::clamp(value(L"NativeOrders",L"TargetScanHz",10),1,60);advancedKey=WORD(value(L"NativeOrders",L"AdvancedHoldKey",MAKEWORD('G',HOTKEYF_ALT)));unloadKey=WORD(value(L"NativeOrders",L"UnloadKey",MAKEWORD('U',HOTKEYF_CONTROL|HOTKEYF_ALT)));pathTimeout=std::clamp(value(L"NativeOrders",L"PathTimeoutFrames",90),30,900);
- doubleMs=std::clamp(value(L"TypeSelection",L"DoublePressMs",350),20,5000);csMode=value(L"AutoCS",L"Enabled",0)!=0&&hookAutoCS;csKey=WORD(value(L"AutoCS",L"ToggleKey",MAKEWORD('A',HOTKEYF_CONTROL|HOTKEYF_ALT)));
+ doubleMs=std::clamp(value(L"TypeSelection",L"DoublePressMs",350),20,5000);csMode=featureavailability::AutoCS&&value(L"AutoCS",L"Enabled",0)!=0&&hookAutoCS;csKey=WORD(value(L"AutoCS",L"ToggleKey",MAKEWORD('A',HOTKEYF_CONTROL|HOTKEYF_ALT)));
  toastMs=std::clamp(value(L"Display",L"ToastMs",6000),500,60000);showDetails=value(L"Display",L"DetailedStatus",0)!=0;
  magnetronMode=value(L"Modes",L"MagnetronMove",0)!=0;magnetronKey=WORD(value(L"NativeOrders",L"MagnetronHoldKey",MAKEWORD('M',HOTKEYF_ALT)));
  repairUnrepairable=value(L"Modes",L"RepairUnrepairable",0)!=0;

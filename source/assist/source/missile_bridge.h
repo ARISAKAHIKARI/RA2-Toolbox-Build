@@ -1,6 +1,5 @@
 // Owned by the sole GameRuntime dispatcher. All attacks/reservations/releases are native events.
-extern "C" int GuardedCombatWeapon(unsigned,unsigned,unsigned*,int*,int*,int*);
-extern "C" int GuardedObjectAir(unsigned,int*);
+
 static compute::FrameHistory<missilecompute::Input> missileFrames;static uint32_t missileApplied=0;
 static missilecompute::Input missileInput;
 static missilecompute::Result missileResult;
@@ -28,7 +27,7 @@ static bool missileTarget(uint32_t p,uint32_t house){
  if(!p||!nativeEnemy(p,house)||get<uint32_t>(p+0x11C)||get<int>(p+0x220))return false;
  int k=kind(p);uint32_t t=typeOf(p,k);if(!t||!featureTypeAllowed(featuretypes::MissileTarget,t))return false;
  if(sh->missileScope==0){if(k!=0||!get<bool>(t+0xD68))return false;}
- else {int airborne=0;if(k==3||!GuardedObjectAir(p,&airborne)||!airborne)return false;}
+ else {int airborne=0;if(k==3||!objectAirQuery(p,&airborne)||!airborne)return false;}
  return get<bool>(t+0x231)&&!get<bool>(t+0x233)&&!remaining(get<int>(p+0x18C),get<int>(p+0x194),get<int>(0xA8ED84));
 }
 static bool missileSource(uint32_t p,uint32_t house){
@@ -62,7 +61,7 @@ static void sampleMissileMotion(uint32_t p,int frame){
 }
 static missilecompute::Edge missileEdge(uint32_t p,uint32_t q){
  missilecompute::Edge e{};e.close=0;uint32_t weapon=0;int slot=0,close=0,airborne=0;
- if(GuardedCombatWeapon(p,q,&weapon,&slot,&close,&airborne)<=0||!airborne)return e;
+ if(combatWeaponQuery(p,q,&weapon,&slot,&close,&airborne)<=0||!airborne)return e;
  auto info=rawWeaponInfo(weapon,true);int armor=get<int>(typeOf(q,kind(q))+0x9C);
  if(armor<0||armor>10||!(info.flags&planner::AirWeapon)||!(info.selectMask&(1u<<armor))||
     (info.flags&(planner::HealingWeapon|planner::MindControlWeapon|planner::TemporalWeapon|planner::ParasiteWeapon|planner::LocomotorWeapon)))return e;
@@ -74,8 +73,8 @@ static missilecompute::Edge missileEdge(uint32_t p,uint32_t q){
  if(!close){
   int bonus=std::clamp(get<int>(typeOf(p,kind(p))+0x68C),-32768,32768);
   double range=std::max(0,info.range+bonus),gap=distance-range;
-  // Native IsCloseEnough remains authoritative. The approximation only limits
-  // advance acquisition; it never licenses a shot or enters the minimum range.
+  // The selected raw/native range query controls the in-range estimate. This
+  // gap only limits acquisition; the synced Attack mission owns actual fire.
   if(gap>missilecompute::AdvanceLeash||distance<info.minimum)return e;
   int at=missileRecord(get<uint32_t>(p+0x10));
   if(at>=0){const auto&r=missileSends[at];int frame=get<int>(0xA8ED84);

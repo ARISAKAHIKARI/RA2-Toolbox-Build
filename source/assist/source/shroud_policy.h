@@ -1,10 +1,16 @@
 #pragma once
 namespace assist {namespace shroudpolicy {
 constexpr int MaxStrategy=8;
-// Normal half/transparent display uses the existing verified SHP alpha data
-// replacement. Legacy instruction detours require explicit high-risk 7/8.
-// Keep 5/6 as persisted aliases for their existing material modes.
-constexpr int runtimeMode(int strategy){return strategy==1?5:strategy==2?4:strategy==4?3:strategy==5?4:strategy==6?5:strategy==7?2:strategy==8?1:0;}
+// The material prototype did not produce a usable display in the user's game.
+// Preserve explicit half/clear choices as their original high-risk detours.
+// Old material preferences 5/6 become off; never silently upgrade them to hooks.
+constexpr int savedStrategy(int strategy){return strategy>=0&&strategy<=MaxStrategy&&strategy!=5&&strategy!=6?strategy:0;}
+constexpr int legacyStrategy(int mode){return mode==1?2:mode==2?1:mode==3?4:0;}
+constexpr int uiIndex(int strategy){return strategy==7?1:strategy==8?2:savedStrategy(strategy);}
+constexpr int strategyFromUI(int index){return index>=0&&index<=4?index:-1;}
+constexpr int runtimeMode(int strategy){return strategy==1||strategy==7?2:strategy==2||strategy==8?1:strategy==4?3:0;}
 constexpr bool materialMode(unsigned mode){return mode==4||mode==5;}
-constexpr bool fullPreview(int strategy){return strategy==1||strategy==2||strategy==3||strategy==5||strategy==6;}
+constexpr bool fullPreview(int strategy){return strategy==1||strategy==2||strategy==3||strategy==7||strategy==8;}
+constexpr bool automaticReveal(int strategy){return strategy==3;}
+constexpr bool revealEnabled(bool manual,int strategy){return manual||automaticReveal(strategy);}
 }}

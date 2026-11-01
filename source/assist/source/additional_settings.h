@@ -12,6 +12,7 @@ struct AdditionalSettings {
  bool networkHousePreserve=false,nativeSellCursor=false;
  bool crcMapShadow=false;
  bool nativeMegaGateway=false; // Optional native observer; ordinary input uses the message path.
+ bool nativeCombatQueries=false; // Explicit engine selector/range calls; raw observations are the default.
  bool techEnhance=false;int placementImplementation=0;
  bool viewZoomEnabled=false;int viewZoomPercent=100;
  int scrollRefreshMode=0; // cursor / scrolling / scene / forced redraw
@@ -19,7 +20,7 @@ struct AdditionalSettings {
  int scrollRefreshHz=120; // standalone assist only
 #endif
  bool c4Test=false;uint32_t c4Key='C'|(4<<8),c4Mouse=1,c4Mode=0;
- uint32_t renderReveal=0;int mapStrategy=0;bool experimentalReveal=false,antiTheft=false,nativeAirWaypoints=false;
+ uint32_t renderReveal=0;int mapStrategy=0;bool manualReveal=false,experimentalReveal=false,antiTheft=false,nativeAirWaypoints=false;
  bool enemyMarkers=false,idleAircraft=false,constructionQueue=false,airWaypoints=false;
  uint32_t productionReminderMask=0; // buildings, defenses, infantry, vehicles, ships, aircraft
  uint32_t airPathKey=0;

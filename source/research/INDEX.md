@@ -6,6 +6,7 @@
 
 | 主题 | 新笔记 | 关键词 |
 | --- | --- | --- |
+| 深入不同步審查：失敗恢復、TID 回收、過期指令與查詢副作用 | [六項修正、原生查詢高危選項與驗證](2026-11-01-deep-desync-followup.md) | Assist84 native-query opt-in frame-write-failure thread-identity stale-heartbeat shroud-read-retry AirPathMove |
 | 優先無程式碼改寫、原生事件與高危分類 | [功能遷移、51 站點與驗證範圍](2026-11-01-no-code-preferred-feature-migration.md) | no-code-preferred v0720 native-events polling material-alpha high-risk migration |
 | 恢復普通聯機幀通知與測試預設，保留切屏修正 | [使用者確認的回退範圍](2026-11-01-frame-notification-policy-rollback.md) | native-frame session0/5/3/4 no-forced-polling no-default-skip focus-retained |
 | 測試器切屏誤停、可選基線與手動略過 | [日誌對照、焦點生命週期與回歸](2026-11-01-hook-test-focus-selection.md) | no-native-OOS seqlock retry focus-retains-hooks optional-baselines early-verdict shared-site-exclusion |

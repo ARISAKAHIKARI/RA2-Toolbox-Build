@@ -11,7 +11,9 @@ constexpr bool native(int session,bool requested,unsigned networkMode=0){
 constexpr bool arrival(int session,bool requested,unsigned networkMode=0){
  return native(session,requested,networkMode)&&networkMode==2;
 }
-constexpr bool events(int session,bool regular,bool requested,unsigned networkMode=0){
+// The current mode is mandatory at every admission point. Omitting it would
+// admit a stale sampled request after switching to either native experiment.
+constexpr bool events(int session,bool regular,bool requested,unsigned networkMode){
  return (session==0||session==5||multiplayer(session))&&!native(session,requested,networkMode)&&(regular||requested);
 }
 }}

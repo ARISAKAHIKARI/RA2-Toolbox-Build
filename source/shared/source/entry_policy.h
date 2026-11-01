@@ -17,8 +17,10 @@ struct Policy {
   if(!tid||!r.module||uint32_t(r.client)<1||uint32_t(r.client)>3)return Result::Invalid;
   const bool capture=r.operation==Operation::Capture;
   if(capture&&r.bindThread)return Result::Invalid;
-  if(thread&&thread!=tid){
+  if(thread&&(thread!=tid||priorThreadDead)){
    // No module may promote itself over another live thread binding.
+   // A reused numeric TID is a new identity too: callbacks cannot revive it
+   // without the explicit message-boundary bind used for a different TID.
    const bool canTakeOver=!module&&r.bindThread&&priorThreadDead;
    if(!canTakeOver)return Result::WrongThread;
   }

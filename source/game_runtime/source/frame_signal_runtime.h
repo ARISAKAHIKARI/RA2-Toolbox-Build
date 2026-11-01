@@ -12,7 +12,7 @@ extern "C" void FrameSignalCommitted(){
  // Never scan objects, allocate, block, dispatch commands or call the engine.
  // The instruction adapter has already committed the native EDX frame value.
  const DWORD error=GetLastError();
- auto*c=channel;if(!c||!c->enabled||GetCurrentThreadId()!=c->thread||DWORD(GetTickCount()-c->heartbeat)>500){SetLastError(error);return;}
+ auto*c=channel;if(!c||c->state!=framesignal::Native||!c->enabled||GetCurrentThreadId()!=c->thread||DWORD(GetTickCount()-c->heartbeat)>500){SetLastError(error);return;}
  LARGE_INTEGER q{};QueryPerformanceCounter(&q);
  InterlockedIncrement(&c->seq);c->frame=*(volatile LONG*)(uintptr_t)framesignal::Counter;c->qpc=q.QuadPart;++c->serial;InterlockedIncrement(&c->seq);
  if(event)SetEvent(event);if(c->enabled&framesignal::Compute)RuntimeFrameReady();SetLastError(error);
@@ -51,8 +51,14 @@ static void maintain(DWORD requestedOwner){
  const bool deselected=channel&&!(channel->enabled&framesignal::ExplicitDiagnostic);
  if((!alive||deselected)&&installed){
   const bool restored=gameentry::patch(gameentry::Client::Assist,framesignal::CommitSite,patchBytes,original,6);
-  if(channel)channel->state=restored?framesignal::Waiting:framesignal::RestoreFailed;
-  if(!restored)conflict=true;installed=!restored;
+  // The writer can return an OS failure after changing and recording bytes.
+  // Ownership, not the return code, decides whether cleanup still owes work.
+  const auto actual=gameentry::inspect(framesignal::CommitSite);
+  installed=!restored&&actual.active;conflict=actual.conflict!=0;
+  if(channel)channel->state=installed?framesignal::RestoreFailed:framesignal::Waiting;
+  // Keep the old channel/owner while its patch remains outstanding. Never
+  // silently adopt a replacement controller around a failed restoration.
+  if(installed){SetLastError(error);return;}
  }
  if(!alive)releaseChannel();
  if(!channel&&requestedOwner){wchar_t path[96];framesignal::name(path,GetCurrentProcessId(),requestedOwner);
@@ -71,9 +77,11 @@ static void maintain(DWORD requestedOwner){
   }
   if(DWORD(GetTickCount()-channel->heartbeat)>500){SetLastError(error);return;}
   patchBytes[0]=0xE9;const uint32_t delta=uint32_t(uintptr_t(&committedAdapter))-framesignal::CommitSite-5;memcpy(patchBytes+1,&delta,4);patchBytes[5]=0x90;
-  installed=!conflict&&gameentry::patch(gameentry::Client::Assist,framesignal::CommitSite,original,patchBytes,6);
-  channel->error=installed?0:GetLastError();channel->thread=GetCurrentThreadId();LARGE_INTEGER f{};QueryPerformanceFrequency(&f);channel->frequency=f.QuadPart;
-  MemoryBarrier();InterlockedExchange(&channel->state,installed?framesignal::Native:framesignal::SignatureRejected);
+  const bool ok=!conflict&&gameentry::patch(gameentry::Client::Assist,framesignal::CommitSite,original,patchBytes,6);
+  const DWORD installError=ok?0:GetLastError();
+  installed=ok||gameentry::inspect(framesignal::CommitSite).active;
+  channel->error=installError;channel->thread=GetCurrentThreadId();LARGE_INTEGER f{};QueryPerformanceFrequency(&f);channel->frequency=f.QuadPart;
+  MemoryBarrier();InterlockedExchange(&channel->state,ok?framesignal::Native:framesignal::SignatureRejected);
  }
  SetLastError(error);
 }

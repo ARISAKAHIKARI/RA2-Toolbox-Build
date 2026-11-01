@@ -136,7 +136,13 @@ static void crcMapShadowTick(){
  crcMapActive=true;crcMapState=1;crcMapPublish();
 }
 static bool crcMapToolBegin(uint32_t house){
- if(!sh||!sh->crcMapShadow){crcMapUnsafeEpoch=match;return true;}
+ if(!sh||!sh->crcMapShadow){
+  // Turning the option off does not prove that restoration has finished.
+  // Retained write hooks must not mistake another tool reveal for a natural
+  // game write and overwrite the original byte still awaiting restoration.
+  if(crcMapActive||crcMapInstalled||crcMapToolScope)return false;
+  crcMapUnsafeEpoch=match;return true;
+ }
  if(!crcMapActive||crcMapFaulted||crcMapToolScope||!crcMapWorld())return false;
  crcshadow::Identity id;uint8_t before=0;
  if(!crcMapIdentity(house,id)||!read(house+0x241,&before,1)||!crcMapModel.beginTool(id,before,1)){crcMapUnknown();crcMapPublish();return false;}

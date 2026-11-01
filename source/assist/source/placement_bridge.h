@@ -495,7 +495,7 @@ static void placementTick(){
  // Infantry entry uses ordinary task/planning events. Never install either
  // capability override, including when an older configuration enables C4Test.
  riskC4Active=false;
- {bool a=restoreRiskSite(riskSites[5]),b=restoreRiskSite(riskSites[8]);snap.c4TestStatus=!a||!b?-2:sh->c4Test?1:0;}
+ {bool a=restoreRiskSite(riskSites[5]),b=restoreRiskSite(riskSites[8]);snap.c4TestStatus=!a||!b?-2:featureavailability::InfantryForcedEntry&&sh->c4Test?1:0;}
  const bool materialWanted=shroudpolicy::materialMode(sh->renderReveal);
  const bool materialOff=materialWanted||shroudMaterials.restore(read,writeShroudMaterial);
  if(!materialWanted&&shroudMaterials.changed())riskRenderRedrawPending=true;
@@ -540,6 +540,6 @@ static void placementTick(){
   if(!riskAirActive){restoreRiskSite(riskSites[1]);restoreRiskSite(riskSites[2]);}
   snap.nativeAirStatus=riskAirActive?(airpathpolicy::multiplayer(get<int>(0xA8B238))?(advance?4:3):1):supported?-2:-1;
  }else{riskAirActive=false;bool a=restoreRiskSite(riskSites[1]),b=restoreRiskSite(riskSites[2]);
-  snap.nativeAirStatus=a&&b?((sh->flags&NativeAirWaypoints)&&airpathpolicy::events(get<int>(0xA8B238),false,true)?2:0):-2;}
+  snap.nativeAirStatus=a&&b?((sh->flags&NativeAirWaypoints)&&airpathpolicy::events(get<int>(0xA8B238),false,true,sh->nativeAirNetwork)?2:0):-2;}
 }
 

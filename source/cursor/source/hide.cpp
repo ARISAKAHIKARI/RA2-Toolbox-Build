@@ -348,10 +348,16 @@ static void tick(){
  }
  if(!lastOwnerCheck||DWORD(stamp-lastOwnerCheck)>=100||s->command){
   lastOwnerCheck=stamp;
-  if(!owner||WaitForSingleObject(owner,0)!=WAIT_TIMEOUT||DWORD(stamp-s->heartbeat)>5000){
+  if(!owner&&ownerId)owner=OpenProcess(SYNCHRONIZE,FALSE,ownerId);
+  // Only the retained process object's exit proves controller death. A
+  // stalled heartbeat or failed query pauses work without losing our hide.
+  if(owner&&WaitForSingleObject(owner,0)==WAIT_OBJECT_0){
    bool ok=restore();s->error=ok?0:4;s->state=0;s->command=0;return;
   }
  }
+ // Explicit stop must remain serviceable while paused or owner liveness is
+ // unknown; other requests stay pending until the live controller resumes.
+ if(s->command!=2&&(!owner||WaitForSingleObject(owner,0)!=WAIT_TIMEOUT||DWORD(stamp-s->heartbeat)>5000))return;
  LONG cmd=InterlockedExchange(&s->command,0);
  if(cmd==2){bool ok=restore();s->error=ok?0:4;s->state=0;return;}
  if(InterlockedExchange(&s->resourceRequest,0))GuardedCursorResource();
@@ -396,9 +402,8 @@ extern "C" void CursorRuntimeMessage(int code,WPARAM wp,LPARAM lp){
 }
 extern "C" void CursorRuntimeWatchdog(){
  if(!s)return;
- DWORD now=GetTickCount();
- bool dead=!owner||WaitForSingleObject(owner,0)!=WAIT_TIMEOUT;
- if(s->command!=2&&!dead&&DWORD(now-s->heartbeat)<=5000)return;
+ const bool dead=owner&&WaitForSingleObject(owner,0)==WAIT_OBJECT_0;
+ if(s->command!=2&&!dead)return;
  gameentry::Scope entry(gameentry::Client::Cursor);if(!entry)return;
  bool ok=restore();s->error=ok?0:4;s->state=0;s->command=0;
  if(ok)disconnectCursor();

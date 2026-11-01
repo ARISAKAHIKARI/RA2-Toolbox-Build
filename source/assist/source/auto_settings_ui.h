@@ -58,15 +58,22 @@ static bool autoSettingChanged(int id,int notification){
   pointerMatches.clear();changedSetting();syncAdditional();updatePlayerTestUI(true);return true;
  }
  if(id==9191&&notification==BN_CLICKED){extra.nativeMegaGateway=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();syncAdditional();return true;}
+ if(id==9198&&notification==BN_CLICKED){extra.nativeCombatQueries=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();syncAdditional();return true;}
  if(id==9193&&notification==BN_CLICKED){extra.controlCommandOwner=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;pointerMatches.clear();changedSetting();syncAdditional();return true;}
  if(id==9196&&notification==BN_CLICKED){extra.crcMapShadow=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();syncAdditional();return true;}
  if(id==9195&&select){int policy=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));if(policy>=0&&policy<=2){extra.aircraftAllocationPolicy=policy;pointerMatches.clear();changedSetting();syncAdditional();}return true;}
  if(id==811&&edit){extra.c4Key=uint32_t(SendMessageW(GetDlgItem(ui,id),HKM_GETHOTKEY,0,0));changedSetting();return true;}
  if(id==812&&select){int selected=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));if(selected>=0&&selected<=5){extra.c4Mouse=selected==5?6:selected;changedSetting();}return true;}
- if(id==808&&select){int strategy=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));if(strategy<0||strategy>shroudpolicy::MaxStrategy)return true;
-  extra.mapStrategy=strategy;extra.renderReveal=shroudpolicy::runtimeMode(strategy);extra.experimentalReveal=strategy==3;autoRevealNewMatch=strategy==3;
+ if(id==808&&select){int strategy=shroudpolicy::strategyFromUI(int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0)));if(strategy<0)return true;
+  extra.mapStrategy=strategy;extra.renderReveal=shroudpolicy::runtimeMode(strategy);extra.experimentalReveal=shroudpolicy::revealEnabled(extra.manualReveal,strategy);autoRevealNewMatch=shroudpolicy::automaticReveal(strategy);
   for(int i=0;i<commandQueue.size;)if(commandQueue.slots[i].command==RevealMap)commandQueue.discard(i);else ++i;
   autoRevealMatch=autoRevealDone=autoRevealRetry=0;changedSetting();syncAdditional();notify(strategy==3?L"地图全开将在对局就绪后自动执行；此模式有联机不同步风险。":L"地图显示策略已更新。");return true;}
+ if(id==9199&&notification==BN_CLICKED){
+  extra.manualReveal=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;
+  extra.experimentalReveal=shroudpolicy::revealEnabled(extra.manualReveal,extra.mapStrategy);
+  if(!extra.experimentalReveal)for(int i=0;i<commandQueue.size;)if(commandQueue.slots[i].command==RevealMap)commandQueue.discard(i);else ++i;
+  changedSetting();syncAdditional();registerKeys();notify(extra.manualReveal?L"已允许手动揭示；按快捷键或点击立即揭示才会执行。":L"手动揭示已关闭。");return true;
+ }
 
  if(id==895&&select){int mode=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));if(mode>=0&&mode<=1){extra.dodgeMode=mode;changedSetting();syncAdditional();}return true;}
  if(id==885&&notification==BN_CLICKED){extra.dodgeEnabled=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();syncAdditional();return true;}

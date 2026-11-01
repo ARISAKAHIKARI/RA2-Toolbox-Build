@@ -4,7 +4,6 @@
 #include "business_effects.h"
 #include "../../external_reader/source/cooperative_reader.h"
 #include "aircraft_selection_bridge.h"
-extern "C" int GuardedCombatWeapon(unsigned,unsigned,unsigned*,int*,int*,int*);
 struct LocalRawRead {bool operator()(uint32_t a,void*out,size_t n)const{if(a<0x10000||uint64_t(a)+n>=0x80000000ull)return false;memcpy(out,(const void*)(uintptr_t)a,n);return true;}};
 static external::GameView<LocalRawRead> clickView(LocalRawRead{});
 static uint32_t clickSerial,cooperativePlanSeen;static int cooperativeAt;
@@ -168,10 +167,10 @@ uint32_t p=worldByID(o.id),t=worldByID(o.target);bool valid=p&&t&&own(p,house)&&
      if(valid){auto s=clickView.combat(p,frame,true),v=clickView.combat(t,frame,false);auto estimated=external::cooperativedamage::estimate(clickView,p,t,s,v);
       uint32_t selectedWeapon=0;int slot=-1,close=0,air=0;
       // The external selector is the existing supported policy. Confirm its
-      // actual native slot/weapon immediately before issuing; unsupported MOD
-      // selectors or a changed weapon/ammo/modifier fail closed, never budget
-      // a different live weapon as if the original estimate were still valid.
-      valid=cooperative::validDamage(estimated.damage)&&estimated.damage==o.expectedDamage&&GuardedCombatWeapon(p,t,&selectedWeapon,&slot,&close,&air)>0&&selectedWeapon==estimated.weapon&&slot==estimated.slot;
+      // current raw slot/weapon immediately before issuing. The optional high-risk
+      // mode queries the native selector instead. A changed weapon/ammo/modifier
+      // fails closed; never budget a different live weapon as the old estimate.
+      valid=cooperative::validDamage(estimated.damage)&&estimated.damage==o.expectedDamage&&combatWeaponQuery(p,t,&selectedWeapon,&slot,&close,&air)>0&&selectedWeapon==estimated.weapon&&slot==estimated.slot;
      }
     }
    }}

@@ -4,7 +4,7 @@ enum Category {Video,Control,Automatic,Rules,Experimental,Count};
 inline const wchar_t*name(int category){constexpr const wchar_t*names[]={L"视频",L"控制",L"自动功能",L"游戏规则",L"实验性功能"};return category>=0&&category<Count?names[category]:L"设置";}
 inline bool rule(int id){
  if(id>=420&&id<=428)return true;
- switch(id){case 108:case 208:case 476:case 808:case 809:case 814:case 815:case 896:case 860:case 722:case 9189:case 9190:case 9185:case 9186:case 861:case 862:case 863:case 864:case 9096:case 9097:case 9098:return true;default:return false;}
+ switch(id){case 108:case 208:case 9199:case 476:case 808:case 809:case 814:case 815:case 896:case 860:case 722:case 9189:case 9190:case 9185:case 9186:case 861:case 862:case 863:case 864:case 9096:case 9097:case 9098:return true;default:return false;}
 }
 // Classify a complete label/input row, keeping related controls together.
 // Historical page numbers describe control ownership, not navigation.

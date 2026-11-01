@@ -52,7 +52,14 @@ public:
  bool active()const{return !owned_.empty();}bool changed()const{return changed_;}int status()const{return status_;}
  template<class Read,class Write>bool restore(Read read,Write write){
   changed_=false;bool ok=true;std::vector<Source> retained;
-  for(auto&s:owned_){if(!identity(s,read))continue;bool restored=true;
+  for(auto&s:owned_){
+   // An unreadable header does not prove the allocation was retired. Keep
+   // its originals and retry; only a successfully read, different identity
+   // permits forgetting the old resource without writing into its successor.
+   std::vector<uint8_t> header(s.header.size());
+   if(!read(s.base,header.data(),header.size())){ok=false;retained.push_back(std::move(s));continue;}
+   if(header!=s.header)continue;
+   bool restored=true;
    for(const auto&p:s.planes){std::vector<uint8_t> bytes(p.original.size());
     if(!read(p.address,bytes.data(),bytes.size())){restored=false;continue;}
     if(bytes==p.original)continue;

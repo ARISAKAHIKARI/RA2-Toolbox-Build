@@ -1,7 +1,7 @@
 #pragma once
 #include <windows.h>
 #include <stdint.h>
-// Separate test-only transport. The production Assist83 wire ABI is unchanged.
+// Separate test-only transport. This channel is independent of the production Assist wire ABI.
 namespace hookdiagnostic {
 constexpr uint32_t Magic=0x48444731,Version=1;
 struct Channel {uint32_t magic=Magic,version=Version,pid=0,owner=0;volatile DWORD heartbeat=0;volatile LONG camera=0;};
