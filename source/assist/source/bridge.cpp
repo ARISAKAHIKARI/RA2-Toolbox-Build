@@ -29,6 +29,7 @@
 #include "repair_delivery.h"
 #include "session_epoch.h"
 #include "control_link.h"
+#include "control_mode_policy.h"
 #include "scheduler_policy.h"
 #include "dispatch_router.h"
 #include "order_policy.h"
@@ -482,7 +483,7 @@ static bool nativeMission(uint32_t house,uint32_t id,int mission,uint32_t target
                           uint32_t dest,int destTag,uint32_t nearest=0,int nearestTag=0,
                           taskarbiter::Owner owner=taskarbiter::Owner::Generic,uint32_t* receiptID=nullptr,
                           int targetTag=-1,OrderAuthority authority=OrderAuthority::Local,bool appendWaypoint=false,bool cooperativeTakeover=false){
- const bool foreign=authority==OrderAuthority::PlayerTest&&sh&&sh->controlAll&&playableHouse(house);
+ const bool foreign=authority==OrderAuthority::PlayerTest&&sh&&controlmode::proxyOrders(sh->controlAll)&&playableHouse(house);
  if(!id||!house||(house!=lastHouse&&!foreign)||!eventdelivery::mayQueue(get<int>(0xA8B238))||!loadInterfaces())return false;
  const uint8_t resolvedTargetTag=targetTag>=0?uint8_t(targetTag):(target?0x34:0);
  const uint32_t submittedAt=sampleClock(sh);
@@ -691,6 +692,7 @@ static bool nativeObjectUnhooked(){return nativeObjectSignature();}
 #include "anti_theft_bridge.h"
 #include "external_orders_bridge.h"
 #include "player_test_bridge.h"
+#include "control_house_flags_bridge.h"
 #include "placement_bridge.h"
 #include "network_sender_bridge.h"
 #include "crc_shadow_bridge.h"
@@ -706,6 +708,13 @@ static bool nativeObjectUnhooked(){return nativeObjectSignature();}
 #include "pointer_bridge.h"
 #include "sticky_bridge.h"
 #include "selected_mode_bridge.h"
+static bool controlCodeRetired(){
+ for(const auto&s:controlSites)if(codeHookRegistry.active(s.address))return false;
+ for(const auto&s:controlCommandOwnerSites)if(codeHookRegistry.active(s.address))return false;
+ if(codeHookRegistry.active(controlObjectOwnerSite.address)||networkSenderInstalled||networkSenderPacking||networkSenderCacheDirty)return false;
+ for(const auto&s:networksender::Sites)if(codeHookRegistry.active(s.address))return false;
+ return true;
+}
 static bool featureRestorationComplete(){
  // 55DE81 belongs to Runtime's independent read-only frame notification
  // channel. It has its own cleanup and must not deadlock Assist detachment.
@@ -714,7 +723,7 @@ static bool featureRestorationComplete(){
  // A released build-time claim may leave the shared tooltip slot owned by
  // Cursor. Runtime separately retires it after the last client detaches.
  return codeHookRegistry.installed()==runtimeOnly&&!crcMapInstalled&&!networkSenderInstalled&&
-  !shroudMaterials.active()&&!enhancementRestoring;
+  !shroudMaterials.active()&&!enhancementRestoring&&!controlHouseFlagsPending();
 }
 // Reserve a share for other active task families, then let a lone family use
 // the remaining capacity. All sends still obey the shared 24-event frame cap.
@@ -1026,7 +1035,7 @@ static void tick(){
  // A deferred disconnect must never turn an invalid mapping into a usable
  // command connection on the next callback.
  if(!sh||sh->magic!=Magic||sh->version!=Version||sh->pid!=GetCurrentProcessId()){disconnect();return;}
- playerMaintenance();DWORD now=sampleClock(sh);if(sh->stop||(DWORD(now-sh->heartbeat)>3000&&controllerExited(now))){
+ playerMaintenance();controlHouseFlagMaintenance();DWORD now=sampleClock(sh);if(sh->stop||(DWORD(now-sh->heartbeat)>3000&&controllerExited(now))){
   stickyTick(true);
   // Release our automatic attack/hold orders before acknowledging detach. No game
   // field is changed locally, including when the controlling EXE has exited.

@@ -21,7 +21,7 @@ extern "C" int GuardedEnterAction(unsigned address,unsigned source,unsigned targ
  __except(_exception_code()==0xc0000005u?AssistExceptionFilter(_exception_info(),9):0){return 0;}
 }
 // YRpp virtual SelectWeapon (+2E4), GetWeapon (+3F8), IsCloseEnough (+3A8).
-// Explicit high-risk compatibility path. Platform/MOD virtual-method side
+// Explicit experimental compatibility path. Platform/MOD virtual-method side
 // effects are not verified; default callers use the raw query wrapper instead.
 extern "C" int GuardedCombatWeapon(unsigned source,unsigned target,unsigned* weapon,int* selected,int* close,int* airborne){
  __try {

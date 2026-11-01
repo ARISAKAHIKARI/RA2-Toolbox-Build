@@ -60,6 +60,10 @@ static bool autoSettingChanged(int id,int notification){
  if(id==9191&&notification==BN_CLICKED){extra.nativeMegaGateway=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();syncAdditional();return true;}
  if(id==9198&&notification==BN_CLICKED){extra.nativeCombatQueries=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();syncAdditional();return true;}
  if(id==9193&&notification==BN_CLICKED){extra.controlCommandOwner=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;pointerMatches.clear();changedSetting();syncAdditional();return true;}
+ if(id==9250&&select){int mode=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));if(mode<0||mode>1)return true;
+  extra.controlImplementation=mode;pointerMatches.clear();changedSetting();syncAdditional();
+  notify(mode==0?L"已选择控制标记；开启时不发送控制配套 Hook 请求。旧状态还原完成后生效，仍有联机风险。":L"已选择原生判定 Hook；开启后会修改游戏代码，仍有联机风险。");return true;
+ }
  if(id==9196&&notification==BN_CLICKED){extra.crcMapShadow=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();syncAdditional();return true;}
  if(id==9195&&select){int policy=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));if(policy>=0&&policy<=2){extra.aircraftAllocationPolicy=policy;pointerMatches.clear();changedSetting();syncAdditional();}return true;}
  if(id==811&&edit){extra.c4Key=uint32_t(SendMessageW(GetDlgItem(ui,id),HKM_GETHOTKEY,0,0));changedSetting();return true;}

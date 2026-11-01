@@ -6,6 +6,7 @@
 
 | 主题 | 新笔记 | 关键词 |
 | --- | --- | --- |
+| 控制標記資料模式、跨epoch還原與普通事件功能分類更正 | [實作、互斥與驗證](2026-11-01-control-house-flag-mode.md) | Assist85 House1ED data-only mode2 native-query classification epoch ownership |
 | 控制／科技純資料方案核對，科技清單一次刷新 | [判定分支、舊版依據與驗證](2026-11-01-control-tech-data-only-review.md) | House1EC 1ED CurrentPlayer 50B6F0 TechLevel 634 full-pass no-frame-slicing |
 | 深入不同步審查：失敗恢復、TID 回收、過期指令與查詢副作用 | [六項修正、原生查詢高危選項與驗證](2026-11-01-deep-desync-followup.md) | Assist84 native-query opt-in frame-write-failure thread-identity stale-heartbeat shroud-read-retry AirPathMove |
 | 優先無程式碼改寫、原生事件與高危分類 | [功能遷移、51 站點與驗證範圍](2026-11-01-no-code-preferred-feature-migration.md) | no-code-preferred v0720 native-events polling material-alpha high-risk migration |

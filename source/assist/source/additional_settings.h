@@ -2,12 +2,14 @@
 #include "player_test_policy.h"
 #include "cooperative_types.h"
 #include "pointer_intent.h"
+#include "control_mode_policy.h"
 namespace assist {
 struct AdditionalSettings {
  uint32_t stickyKey='S'|(6<<8);
  uint32_t missionModeKeys[3]{}; // Sleep, Guard, Harmless; empty by default
  bool formationEnabled=false;uint32_t formationHold=18,formationKeys[6]={'Z','X','C','V','B','N'},formationMouse=2;
  bool controlAll=false,switchPlayerEnabled=false;
+ int controlImplementation=0; // 0=House control flag data, 1=native predicate Hook.
  bool controlCommandOwner=false;
  bool networkHousePreserve=false,nativeSellCursor=false;
  bool crcMapShadow=false;
@@ -40,6 +42,11 @@ struct AdditionalSettings {
  uint32_t diskKey=17,sellKey=17;
  uint32_t enterKey=18,airKey1=17,airKey2=0,variantKey='T'|(2<<8);
  cooperative::Quota defaults{};
+ uint32_t controlRequest()const{return !controlAll?controlmode::Off:controlImplementation==1?controlmode::Native:controlmode::HouseFlag;}
+ bool nativeControlRequested()const{return controlmode::native(controlRequest());}
+ bool dataControlRequested()const{return controlmode::data(controlRequest());}
+ bool commandOwnerRequested()const{return nativeControlRequested()&&controlCommandOwner;}
+ bool networkHouseRequested()const{return networkHousePreserve&&controlmode::sender(controlRequest());}
 };
 enum ExtraControl {LoadLogic,LoadRadius,EnterEnabled,EnterPreset,EnterCustom,AirEnabled,AirPreset1,AirCustom1,AirPreset2,AirCustom2,DefaultFirst,DefaultSecond,DefaultMaximum,QuotaType,QuotaID,QuotaOverride,QuotaFirst,QuotaSecond,QuotaMaximum,DiskEnabled,SellDrainedEnabled,SellVehiclesEnabled,SellEnemyEnabled,FrozenEnabled,VariantKey,DiskPreset,DiskCustom,SellPreset,SellCustom,MouseFirst,RevealExperimental=MouseFirst+pointerinput::MouseCount,EnemyMarkersEnabled,AircraftPolicy,ExtraControlCount};
 inline int holdPreset(uint32_t key){return !key?0:key==18?1:key==17?2:key==16?3:4;}

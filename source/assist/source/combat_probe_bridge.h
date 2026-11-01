@@ -1,5 +1,5 @@
 // Raw observations are the default. Engine selectors/range calls require the
-// explicit high-risk option; both planners consume the resulting values.
+// explicit experimental option; both planners consume the resulting values.
 static planner::CombatProbe probeCombatPair(uint32_t p,uint32_t q,const planner::Actor& actor,const planner::Actor& victim,int padding){
  planner::CombatProbe result{};result.target=get<uint32_t>(q+0x10);
  uint32_t weapon=0;int slot=0,close=0,airborne=0;

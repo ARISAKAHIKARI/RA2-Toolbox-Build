@@ -211,7 +211,7 @@ def main():
     differences = {name: {'x86': records['x86'].get(name), 'x64': records['x64'].get(name)}
                    for name in sorted(set(records['x86']) | set(records['x64']))
                    if records['x86'].get(name) != records['x64'].get(name)}
-    baseline = {'assist::Version': 84, 'runtime::Version': 4, 'gameentry::Version': 3,
+    baseline = {'assist::Version': 85, 'runtime::Version': 4, 'gameentry::Version': 3,
                 'runtimebroker::Version': 1, 'sizeof(assist::Shared)': 6580496,
                 'assist::Shared.aircraftAllocationPolicy': 6580488,
                 'assist::Shared.nativeCombatQueries': 6580492,
@@ -233,10 +233,10 @@ def main():
     if differences:
         print(json.dumps(differences, indent=2))
         raise SystemExit('FAIL: Windows x86/x64 shared-memory layouts differ')
-    # Protocol84 adds the explicit native combat-query opt-in at the wire tail.
+    # Protocol85 changes controlAll mode semantics without changing the wire layout.
     # Lock the measured x86/x64 layout instead of accepting arbitrary growth.
     assert baseline_matches, 'Protocol/version or deployed x86 wire baseline changed'
-    print(f'PASS: {len(records["x86"])} Windows x86/x64 wire size/alignment/field offsets match; protocol84 Shared6580496, Runtime176, manager108')
+    print(f'PASS: {len(records["x86"])} Windows x86/x64 wire size/alignment/field offsets match; protocol85 Shared6580496, Runtime176, manager108')
     print('PASS: real PE32+/64-bit imports, ordinal bit, bounds and strict default x86 parser checks; no Windows image executed')
 
 

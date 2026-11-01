@@ -160,7 +160,7 @@ static bool techAllowed(const assist::Type& t){
 }
 static WORD hotkeys[12];static const int actions[]={Repair,CombatSelection,EmptyTransports,DamagedSelection,IdleHarvester,IdleEngineer,IdleTransport,ClearBeacons,RevealMap,SelectIron,SelectChrono,AutoBoard};
 static std::vector<int> registeredKeyIDs;
-static const wchar_t* labels[]={L"自动维修",L"选择作战单位",L"选择空载运输载具",L"选择受损单位",L"选择空闲矿车",L"选择空闲工程师",L"定位空闲运输载具",L"清除信标",L"高危：地图全开",L"铁幕目标选择",L"超时空目标选择",L"高危：自动装车"};
+static const wchar_t* labels[]={L"自动维修",L"选择作战单位",L"选择空载运输载具",L"选择受损单位",L"选择空闲矿车",L"选择空闲工程师",L"定位空闲运输载具",L"清除信标",L"高危：地图全开",L"铁幕目标选择",L"超时空目标选择",L"自动装车"};
 static const char* iniKeys[]={"Repair","Combat","EmptyTransports","Damaged","IdleHarvester","IdleEngineer","IdleTransport","ClearBeacons","RevealMap","IronCurtain","ChronoSphere","AutoLoad"};
 struct Binding{std::string id;WORD key;};static std::vector<Binding> swBindings;
 static HWND typeList,typeKey,typeCS,csCheck,csKeyEdit,csStatus,tapEdit,typeIdEdit;
@@ -515,7 +515,7 @@ static uint32_t displayMatch(){return externalData&&externalData->status==1?exte
 static bool uninitializedBridgeTimedOut(){return shared&&!commandMatch()&&attachAt&&DWORD(GetTickCount()-attachAt)>8000&&(!lastData||DWORD(GetTickCount()-lastData)>8000)&&shared->request==shared->ack;}
 static bool commandChannelReady(){return controllink::ready(commandLink());}
 static bool commandFresh(DWORD now){return commandChannelReady()&&DWORD(now-lastData)<1500;}
-static bool networkHouseReady(){return extra.networkHousePreserve&&shared&&shared->networkHousePreserve&&shared->networkHouseStatus==1;}
+static bool networkHouseReady(){return extra.networkHouseRequested()&&shared&&shared->networkHousePreserve&&shared->networkHouseStatus==1;}
 static std::wstring commandWaitReason(){
  if(!shared)return bridgeFailure.empty()?L"正在连接游戏，指令尚未提交。":bridgeFailure;
  const auto health=gameinput::health(hook);
@@ -1614,7 +1614,7 @@ static void updateModeStatus(DWORD now){
   auto stateText=[&](bool requested,int state){return !fresh?(requested?L"等待对局及连接就绪":L"关闭"):
    state<0?L"不可用，请检查游戏版本或功能冲突":state==2?L"正在处理待发事件并恢复":
    state==1?(requested?L"已启用（实验性）":L"正在关闭"):requested?L"等待适配启用":L"关闭";};
-  std::wstring network=L"高危 · 事件所属方保留：";network+=stateText(extra.networkHousePreserve,shared?shared->networkHouseStatus:0);
+  std::wstring network=L"高危 · 事件所属方保留：";if(extra.dataControlRequested()){network+=L"控制标记模式下不请求启用";if(shared&&shared->networkHouseStatus)network+=L"（旧状态待还原或检查）";}else network+=stateText(extra.networkHouseRequested(),shared?shared->networkHouseStatus:0);
   SetWindowTextW(GetDlgItem(ui,9188),network.c_str());
   std::wstring sell=L"高危 · 原生变卖光标：";
   if(fresh&&extra.nativeSellCursor&&eventdelivery::isMultiplayer(incoming.session)&&!networkHouseReady()&&shared->nativeSellCursorStatus==0)sell+=L"等待事件所属方保留已启用";
@@ -1623,9 +1623,10 @@ static void updateModeStatus(DWORD now){
   std::wstring mega=L"高危 · 原生成功入口观察：";mega+=stateText(extra.nativeMegaGateway,shared?shared->nativeMegaGatewayStatus:0);
   SetWindowTextW(GetDlgItem(ui,9192),mega.c_str());
   std::wstring owner=L"高危 · 控制命令所属方：";
-  if(extra.controlCommandOwner&&!extra.controlAll)owner+=L"等待开启跨玩家操控";
-  else if(fresh&&extra.controlCommandOwner&&eventdelivery::isMultiplayer(incoming.session)&&!networkHouseReady())owner+=L"等待事件所属方保留已启用";
-  else owner+=stateText(extra.controlCommandOwner,shared?shared->controlCommandOwnerStatus:0);
+  if(extra.dataControlRequested())owner+=L"控制标记模式下不请求启用";
+  else if(extra.controlCommandOwner&&!extra.controlAll)owner+=L"等待开启跨玩家操控";
+  else if(fresh&&extra.commandOwnerRequested()&&eventdelivery::isMultiplayer(incoming.session)&&!networkHouseReady())owner+=L"等待事件所属方保留已启用";
+  else owner+=stateText(extra.commandOwnerRequested(),shared?shared->controlCommandOwnerStatus:0);
   SetWindowTextW(GetDlgItem(ui,9194),owner.c_str());
   const int cs=shared?shared->crcMapShadowStatus:0;std::wstring crc=L"高危 · 全图 CRC 原值镜像：";
   if(!fresh)crc+=extra.crcMapShadow?L"等待新对局及连接":L"关闭";
@@ -1698,7 +1699,8 @@ static void updatePlayerTestUI(bool force=false){
  EnableWindow(GetDlgItem(ui,9185),idle&&epoch==commandMatch()&&selected>=0&&selected<count&&!foreign);
  if(foreign){SetWindowTextW(GetDlgItem(ui,9186),DestructForeignNotice);destructForeignNoticeShown=true;}
  else if(destructForeignNoticeShown){SetWindowTextW(GetDlgItem(ui,9186),L"自毁：所选所属方可提交实验请求；已入队不代表已自毁。");destructForeignNoticeShown=false;}
- std::wstring label=L"跨玩家操控：";label+=!extra.controlAll?L"关闭":status==1?L"已启用（实验性）":status<0?L"此版本不兼容，未启用":L"等待生效";
+ std::wstring label=extra.controlImplementation==1?L"高危 · 原生控制判定 Hook：":L"高危 · 控制标记：";
+ label+=status<0?L"应用或还原未完成，请检查日志":!extra.controlAll?(status?L"等待还原":L"关闭"):status==int(extra.controlRequest())?(status==2?L"标记已应用，联机效果未验证":L"已启用，联机效果未验证"):L"等待切换完成";
  label+=L" · 当前玩家 "+std::to_wstring(current+1);SetWindowTextW(GetDlgItem(ui,865),label.c_str());
 }
 #include "shift_click_host.h"
@@ -1986,7 +1988,7 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
  placedControl({-1,{505,80,120,28}},L"BUTTON",L"定位功能",991,BS_PUSHBUTTON|WS_TABSTOP);
 #include "tactical_controls.h"
  EnableWindow(GetDlgItem(w,420),TRUE);
- statusLabel=control(L"STATIC",L"正在寻找游戏…",20,1370,605,44,430);control(L"BUTTON",L"暂停 / 连接",20,1420,200,28,431,BS_PUSHBUTTON|WS_TABSTOP);control(L"BUTTON",L"使用说明",235,1420,185,28,432,BS_PUSHBUTTON|WS_TABSTOP);control(L"BUTTON",L"退出",435,1420,190,28,433,BS_PUSHBUTTON|WS_TABSTOP);EnableWindow(unloadKeyEdit,TRUE);EnableWindow(GetDlgItem(w,453),TRUE);EnableWindow(hookChecks[1],TRUE);SetWindowTextW(hookChecks[1],L"高危：智能卸载");finalizeTacticalLayout();applyPanelDpi(panelDpi);ready=true;syncSettingDependencies(true);fillTech(true);fillTypeBindings(true);SetTimer(w,1,250,nullptr);SetTimer(w,2,80,nullptr);registerKeys();return 0;}
+ statusLabel=control(L"STATIC",L"正在寻找游戏…",20,1370,605,44,430);control(L"BUTTON",L"暂停 / 连接",20,1420,200,28,431,BS_PUSHBUTTON|WS_TABSTOP);control(L"BUTTON",L"使用说明",235,1420,185,28,432,BS_PUSHBUTTON|WS_TABSTOP);control(L"BUTTON",L"退出",435,1420,190,28,433,BS_PUSHBUTTON|WS_TABSTOP);EnableWindow(unloadKeyEdit,TRUE);EnableWindow(GetDlgItem(w,453),TRUE);EnableWindow(hookChecks[1],TRUE);SetWindowTextW(hookChecks[1],L"智能卸载");finalizeTacticalLayout();applyPanelDpi(panelDpi);ready=true;syncSettingDependencies(true);fillTech(true);fillTypeBindings(true);SetTimer(w,1,250,nullptr);SetTimer(w,2,80,nullptr);registerKeys();return 0;}
  case WM_DISPLAYCHANGE:informationMonitor.invalidate();secondaryDisplayMonitor.invalidate();minimap::invalidateDisplays();watchwindows::invalidateDisplays();syncInformationRate(true);if(enabled||secondaryDisplayRequested())paint();return 0;
  case WM_SIZE:layoutPanel();return 0;
  case WM_DPICHANGED:{applyPanelDpi(HIWORD(wp));if(!(GetWindowLongPtrW(w,GWL_STYLE)&WS_CHILD)&&!GetPropW(w,L"RA2.Suite.Managed")){auto r=(RECT*)lp;SetWindowPos(w,nullptr,r->left,r->top,r->right-r->left,r->bottom-r->top,SWP_NOZORDER|SWP_NOACTIVATE);}return 0;}
@@ -2144,7 +2146,7 @@ if(id==991){wchar_t query[128]{};GetWindowTextW(featureSearch,query,128);std::ws
   hookEject=ejectMode;
   hookAutoCS=SendMessageW(hookChecks[3],BM_GETCHECK,0,0)==BST_CHECKED;
   save();registerKeys();diag(L"hook switches flags="+std::to_wstring(flags()));notify(L"功能开关已保存。");}
- else if(id==455){ejectMode=SendMessageW(ejectCheck,BM_GETCHECK,0,0)==BST_CHECKED;hookEject=ejectMode;if(ejectMode){hookEject=true;SendMessageW(hookChecks[2],BM_SETCHECK,BST_CHECKED,0);}save();notify(ejectMode?L"逃生助手已开启：仅跟踪选中的己方载具；乘员弹出散开后部署。":L"逃生助手已关闭。");}
+ else if(id==455){ejectMode=SendMessageW(ejectCheck,BM_GETCHECK,0,0)==BST_CHECKED;hookEject=ejectMode;if(ejectMode){hookEject=true;SendMessageW(hookChecks[2],BM_SETCHECK,BST_CHECKED,0);}save();notify(ejectMode?L"逃生助手已开启：跟踪选中的己方载具，为幸存乘员安排部署或其他后续任务。":L"逃生助手已关闭。");}
  else if(id==457){WORD next=WORD(SendMessageW(ejectKeyEdit,HKM_GETHOTKEY,0,0)),old=ejectKey;ejectKey=0;bool conflict=keyConflict(next,"",false);ejectKey=old;if(conflict){notify(L"快捷键冲突，请换一个组合。");return 0;}ejectKey=next;save();registerKeys();notify(L"幸存乘员开关快捷键已保存。");}
  else if(id==453)send(SmartUnload);
  else if(id==454)send(CancelAdvanced);

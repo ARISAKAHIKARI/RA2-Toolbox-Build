@@ -95,7 +95,7 @@ static void restoreControlObjectOwner(){
  controlObjectOwnerActive=false;restoreRiskSite(controlObjectOwnerSite);
 }
 static void controlObjectOwnerTick(){
- if(!sh||!sh->controlCommandOwner||!riskReady()){restoreControlObjectOwner();return;}
+ if(!sh||!sh->controlCommandOwner||!controlmode::native(sh->controlAll)||controlHouseFlagsPending()||!riskReady()){restoreControlObjectOwner();return;}
  auto&s=controlObjectOwnerSite;
  if(!s.after[0]){s.after[0]=0xE9;const uint32_t offset=uint32_t(uintptr_t(&controlObjectOwnerEntry))-s.address-5;memcpy(s.after+1,&offset,4);}
  controlObjectOwnerActive=installRiskSite(s);

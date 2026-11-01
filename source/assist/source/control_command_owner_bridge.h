@@ -23,7 +23,7 @@ static bool controlCommandOwnerMegaCompatible(){
   !memcmp(actual,s.after,sizeof actual);
 }
 static bool controlCommandOwnerReady(uint32_t owner){
- if(!sh||!sh->controlCommandOwner||!sh->controlAll||!sh->foreground||
+ if(!sh||!sh->controlCommandOwner||!controlmode::native(sh->controlAll)||controlHouseFlagsPending()||!sh->foreground||
     !riskReady(true)||snap.status!=1||snap.commandStatus!=1||get<bool>(0xA8BC60+25)||
     !controlCommandOwnerOwnSites()||!controlCommandOwnerNativeObjectReady()||
     !playableHouse(owner))return false;
@@ -181,12 +181,12 @@ static void restoreControlCommandOwner(){
  if(sh)sh->controlCommandOwnerStatus=ok?0:-2;
 }
 static void controlCommandOwnerTick(){
- if(!sh||!sh->controlCommandOwner){restoreControlCommandOwner();return;}
+ if(!sh||!sh->controlCommandOwner||!controlmode::native(sh->controlAll)||controlHouseFlagsPending()){restoreControlCommandOwner();return;}
  if(!riskReady()){restoreControlCommandOwner();sh->controlCommandOwnerStatus=-2;return;}
  prepareControlCommandOwner();controlCommandOwnerActive=false;bool ok=true;
  for(auto&s:controlCommandOwnerSites)if(!installRiskSite(s)){ok=false;break;}
  if(!ok){restoreControlCommandOwner();sh->controlCommandOwnerStatus=-2;return;}
  controlCommandOwnerActive=true;
  const bool transport=!eventdelivery::isMultiplayer(get<int>(0xA8B238))||networkHousePreserveReady();
- sh->controlCommandOwnerStatus=sh->controlAll&&transport&&controlCommandOwnerNativeObjectReady()?1:-2;
+ sh->controlCommandOwnerStatus=controlmode::native(sh->controlAll)&&transport&&controlCommandOwnerNativeObjectReady()?1:-2;
 }

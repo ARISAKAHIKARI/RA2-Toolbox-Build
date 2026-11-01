@@ -28,6 +28,7 @@ static void loadAdditionalSettings(){
  extra.nativeMegaGateway=explicitPatchPreferences&&value(L"Experimental",L"NativeMegaGateway",0)!=0;
  extra.nativeCombatQueries=value(L"Experimental",L"NativeCombatQueries",0)!=0;
  extra.controlCommandOwner=value(L"Experimental",L"ControlCommandOwner",0)!=0;
+ extra.controlImplementation=value(L"Experimental",L"ControlImplementation",0)==1?1:0;
  extra.placementImplementation=std::clamp(value(L"Experimental",L"PlacementImplementation",0),0,1);
  extra.stickyKey=value(L"Hotkeys",L"StickyGuard",extra.stickyKey)&65535;
  for(int i=0;i<selectedmode::Count;++i)extra.missionModeKeys[i]=value(L"Hotkeys",selectedmode::setting(i),0)&65535;
@@ -111,6 +112,7 @@ static bool saveAdditionalSettings(){
  write(L"Experimental",L"NativeMegaGateway",extra.nativeMegaGateway);
  write(L"Experimental",L"NativeCombatQueries",extra.nativeCombatQueries);
  write(L"Experimental",L"ControlCommandOwner",extra.controlCommandOwner);
+ write(L"Experimental",L"ControlImplementation",extra.controlImplementation);
  write(L"Hotkeys",L"StickyGuard",extra.stickyKey);
  for(int i=0;i<selectedmode::Count;++i)write(L"Hotkeys",selectedmode::setting(i),extra.missionModeKeys[i]);
  write(L"Watch",L"SecondaryEnabled",extra.watchSecondary);
@@ -208,12 +210,12 @@ static void syncAdditional(){
  shared->buildTimeTooltip=buildTimeTooltipEnabled;shared->placementImplementation=extra.placementImplementation;shared->techEnhance=extra.techEnhance;
  shared->nativeAirNetwork=extra.nativeAirNetwork;
  shared->crcMapShadow=extra.crcMapShadow;
- shared->networkHousePreserve=extra.networkHousePreserve;shared->nativeSellCursor=extra.nativeSellCursor;
+ shared->networkHousePreserve=extra.networkHouseRequested();shared->nativeSellCursor=extra.nativeSellCursor;
  shared->nativeMegaGateway=extra.nativeMegaGateway;
  shared->nativeCombatQueries=extra.nativeCombatQueries;
- shared->controlCommandOwner=extra.controlAll&&extra.controlCommandOwner;
+ shared->controlCommandOwner=extra.commandOwnerRequested();
  InterlockedIncrement(&shared->formationPolicySeq);shared->formationPolicy.enabled=extra.formationEnabled;shared->formationPolicy.hold=extra.formationHold;shared->formationPolicy.mouse=extra.formationMouse;memcpy(shared->formationPolicy.keys,extra.formationKeys,sizeof extra.formationKeys);MemoryBarrier();InterlockedIncrement(&shared->formationPolicySeq);
- shared->missileReserve=extra.missileDefense&&extra.missileReserve;shared->lowDamageFilter=extra.lowDamageFilter;shared->lowDamageNetwork=extra.lowDamageFilter&&extra.lowDamageNetwork;syncRefreshRate();shared->magnetronDrop=extra.magnetronDrop;shared->dodgeEnabled=extra.dodgeEnabled;shared->dodgeMode=extra.dodgeMode;shared->burstEnabled=shared->burstHoldEnabled=shared->burstHeld=0;shared->missileScope=extra.missileScope;shared->missileAllocation=extra.missileAllocation;shared->magnetronGlobal=extra.magnetronGlobal;shared->missileEnabled=extra.missileDefense;shared->missileScanHz=extra.missileScanHz;shared->controlAll=extra.controlAll;shared->switchPlayerEnabled=extra.switchPlayerEnabled;shared->computeRequested=computeRequested;shared->advancedScanHz=advancedScanHz;shared->advancedPriority=advancedTargetPriority;shared->c4Test=featureavailability::InfantryForcedEntry&&extra.c4Test;shared->renderReveal=extra.renderReveal;shared->loadMode=extra.loadMode;shared->loadRadius=extra.loadRadius;shared->enterKey=extra.enterKey;shared->airKey1=extra.airKey1;shared->airKey2=extra.airKey2;shared->aircraftAllocationPolicy=extra.aircraftAllocationPolicy;
+ shared->missileReserve=extra.missileDefense&&extra.missileReserve;shared->lowDamageFilter=extra.lowDamageFilter;shared->lowDamageNetwork=extra.lowDamageFilter&&extra.lowDamageNetwork;syncRefreshRate();shared->magnetronDrop=extra.magnetronDrop;shared->dodgeEnabled=extra.dodgeEnabled;shared->dodgeMode=extra.dodgeMode;shared->burstEnabled=shared->burstHoldEnabled=shared->burstHeld=0;shared->missileScope=extra.missileScope;shared->missileAllocation=extra.missileAllocation;shared->magnetronGlobal=extra.magnetronGlobal;shared->missileEnabled=extra.missileDefense;shared->missileScanHz=extra.missileScanHz;shared->controlAll=extra.controlRequest();shared->switchPlayerEnabled=extra.switchPlayerEnabled;shared->computeRequested=computeRequested;shared->advancedScanHz=advancedScanHz;shared->advancedPriority=advancedTargetPriority;shared->c4Test=featureavailability::InfantryForcedEntry&&extra.c4Test;shared->renderReveal=extra.renderReveal;shared->loadMode=extra.loadMode;shared->loadRadius=extra.loadRadius;shared->enterKey=extra.enterKey;shared->airKey1=extra.airKey1;shared->airKey2=extra.airKey2;shared->aircraftAllocationPolicy=extra.aircraftAllocationPolicy;
  static uint32_t publishedSettings=~0u;
  if(!shared->quotaConfigSeq||publishedSettings!=settingsRevision){publishedSettings=settingsRevision;
   InterlockedIncrement(&shared->quotaConfigSeq);auto&c=shared->quotaConfig;c.defaults=extra.defaults;c.count=0;

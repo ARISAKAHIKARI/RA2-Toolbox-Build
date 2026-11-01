@@ -13,7 +13,7 @@ enum class Need : unsigned {
  Watch, WatchSecondary, Minimap, MinimapPrimary, MinimapSecondary, CustomMinimap,
  ShiftClick, AppendClicks, Ore, CustomMiners, CustomRefineries, Production,
  ManualRate, Capacity, Advanced, C4, Dodge, Construction, BuildAnywhere,
- Aircraft, AircraftQuotas, QuotaTarget, QuotaOverride, Repair, Quality, Reconstruction, Unavailable, ManualReveal, TypeListFirst
+ Aircraft, AircraftQuotas, QuotaTarget, QuotaOverride, Repair, Quality, Reconstruction, Unavailable, ManualReveal, NativeControl, NetworkControlAllowed, TypeListFirst
 };
 constexpr Need typeListNeed(int feature){return Need(unsigned(Need::TypeListFirst)+unsigned(feature));}
 static_assert(unsigned(Need::TypeListFirst)+featuretypes::Count<=64,"dependency state covers every type filter");
@@ -39,6 +39,8 @@ inline const wchar_t* reason(Need need){
  case Need::Missile:return L"需先开启防空火控";
  case Need::LowDamage:return L"需先开启低伤害过滤";
  case Need::ControlAll:return L"需先开启跨玩家操控";
+ case Need::NativeControl:return L"需选择原生判定 Hook 实现";
+ case Need::NetworkControlAllowed:return L"控制标记启用时不能使用所属方保留 Hook";
  case Need::Formation:return L"需先开启队形排列";
  case Need::Watch:return L"需先开启主屏或副屏跟踪";
  case Need::WatchSecondary:return L"需先开启副屏跟踪";
@@ -83,7 +85,8 @@ inline Decision decision(int id,const State&s){
  case 9305:return require(s,{Need::Render,Need::Quality,Need::Reconstruction});
  case 9040:case 9041:case 9181:case 881:return require(s,{Need::Missile});
  case 9183:return require(s,{Need::LowDamage});
- case 9193:return require(s,{Need::ControlAll});
+ case 9193:return require(s,{Need::ControlAll,Need::NativeControl});
+ case 9187:return require(s,{Need::NetworkControlAllowed});
  case 9056:return require(s,{Need::Formation});
  case 9061:return require(s,{Need::Watch});
  case 9164:case 9165:return require(s,{Need::WatchSecondary});
@@ -113,7 +116,7 @@ inline Decision decision(int id,const State&s){
 }
 inline bool effective(bool saved,int id,const State&s){return saved&&decision(id,s).enabled();}
 inline constexpr int BasicControls[]={
- 9304,9305,9306,9307,9308,9309,9313,9314,9324,9040,9041,9181,881,9183,9193,9056,
+ 9304,9305,9306,9307,9308,9309,9313,9314,9324,9040,9041,9181,881,9183,9193,9187,9056,
  9061,9164,9165,9065,831,850,851,852,9100,9101,9166,9167,9168,796,797,
  781,782,783,784,9070,9071,9072,9073,9074,9075,303,310,787,818,802,812,
  9180,895,817,9096,710,711,712,713,714,751,715,716,717,718,312,445,446,447,448,466,810,811,108,208

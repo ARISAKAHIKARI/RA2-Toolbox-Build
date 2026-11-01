@@ -42,7 +42,7 @@ extern "C" int __cdecl AssistRiskAction(unsigned op,unsigned object,unsigned hou
  if(!riskReady(true)){if(op==3)riskRenderRedrawPending=true;return 0;}
  if(op==9||op==10)return nativeSellCursorAction(op,object,house);
  if(op==11)return nativeMegaGatewayAction(op,object,house);
- if(op==6)return riskControlActive&&sh->controlAll&&playableHouse(house)&&
+ if(op==6)return riskControlActive&&controlmode::native(sh->controlAll)&&playableHouse(house)&&
   (!sh->controlCommandOwner||house==lastHouse||controlCommandOwnerReady(house));
  if(op==4)return 0; // retired: preserve native movement and C4 capability checks
  if(op==3)return sh->renderReveal==2?halfShroud(object,house!=0):1;
@@ -422,7 +422,7 @@ static RiskSite controlSites[]={
  {experimentalpatch::ControlHouse,5,{0xA1,0x38,0xB2,0xA8,0},{}}
 };
 static void controlSitesTick(bool enabled){
- enabled=enabled&&playertest::Available;
+ enabled=enabled&&playertest::Available&&sh&&controlmode::native(sh->controlAll)&&!controlHouseFlagsPending();
  if(riskControlActive&&!enabled&&riskContextReady())unselect();
  riskControlActive=false;bool ok=true;
  static bool prepared=false;
@@ -454,6 +454,8 @@ static void restorePlacement(){
  const bool materialRestored=shroudMaterials.restore(read,writeShroudMaterial);
  riskPlacementActive=riskAirActive=riskRenderActive=riskC4Active=riskLowDamageActive=riskLowDamageAllHouses=false;prepareRiskSites();
  controlSitesTick(false);
+ if(restoreControlHouseFlags())controlHouseFlagFailed=false;
+ else if(sh)sh->playerControlStatus=-2;
  bool directPlace=directGroupRestore(directpatch::Group::Placement);
  bool directMap=directGroupRestore(directpatch::Group::Map);
  bool place=restoreRiskSite(riskSites[0])&&directPlace;
@@ -491,7 +493,9 @@ static void placementTick(){
  bool priorRender=riskRenderActive;
  const bool ownerGuardReady=!sh->controlCommandOwner||(controlCommandOwnerReady(lastHouse)&&
   (!eventdelivery::isMultiplayer(get<int>(0xA8B238))||networkHousePreserveReady()));
- controlSitesTick(sh->controlAll!=0&&ownerGuardReady);
+ controlSitesTick(controlmode::native(sh->controlAll)&&ownerGuardReady);
+ if(controlHouseFlagsPending()&&!controlmode::data(sh->controlAll))sh->playerControlStatus=-2;
+ controlHouseFlagTick();
  // Infantry entry uses ordinary task/planning events. Never install either
  // capability override, including when an older configuration enables C4Test.
  riskC4Active=false;

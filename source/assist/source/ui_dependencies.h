@@ -14,6 +14,7 @@ static settingsdeps::State currentSettingDependencies(){
  s.set(Need::Quality,renderProcessing);s.set(Need::Reconstruction,renderXbrzEnabled);
  s.set(Need::Missile,extra.missileDefense);s.set(Need::LowDamage,extra.lowDamageFilter);
  s.set(Need::ControlAll,extra.controlAll);s.set(Need::Formation,extra.formationEnabled);
+ s.set(Need::NativeControl,extra.nativeControlRequested());s.set(Need::NetworkControlAllowed,!extra.dataControlRequested());
  s.set(Need::Watch,extra.watchEnabled||extra.watchSecondary);s.set(Need::WatchSecondary,extra.watchSecondary);
  s.set(Need::Minimap,minimapEnabled||minimapSecondary);s.set(Need::MinimapPrimary,minimapEnabled);
  s.set(Need::MinimapSecondary,minimapSecondary);s.set(Need::CustomMinimap,minimapPosition==3);

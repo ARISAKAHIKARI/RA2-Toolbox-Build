@@ -50,7 +50,7 @@ static bool authorizePlayerOrder(const intent::EventOrder&o,OrderAuthority autho
  if(authority==OrderAuthority::Local)return o.player==get<int>(lastHouse+0x30);
  if(!playertest::Available)return false;
  if(!sh||sh->stop||DWORD(sampleClock(sh)-sh->heartbeat)>=3000)return false;
- if(authority==OrderAuthority::PlayerTest){if(!sh->controlAll||o.domain!=vanilla::Domain::MegaMission||!playertest::manualMission(o.mission))return false;}
+ if(authority==OrderAuthority::PlayerTest){if(!controlmode::proxyOrders(sh->controlAll)||o.domain!=vanilla::Domain::MegaMission||!playertest::manualMission(o.mission))return false;}
  else if(authority==OrderAuthority::SellPlayerTest){if(!playertest::SellAvailable||!(sh->flags&SellEnemy)||o.domain!=vanilla::Domain::Object||o.eventKind!=0x16)return false;}
  else return false;
  uint32_t object=worldByID(uint32_t(o.a));if(!object||!live(object)||o.tagA!=0x34)return false;
