@@ -244,18 +244,34 @@
     "user_log": "hook-test-20261101-101023-27848.log",
     "first_oos_step": 3,
     "site": "0x55DE81",
-    "normal_multiplayer": "message fallback",
+    "normal_multiplayer": "Native frame notification restored at user request; no forced multiplayer polling",
     "explicit_diagnostic_retained": true,
     "platform_hook_detection_proven": false
   },
   "hook_test_focus_selection": {
     "baseline_commit": "3613e3336609286b7340943c68785b215ae10f78",
     "baselines_default": false,
-    "frame_notification_excluded_default": true,
+    "frame_notification_excluded_default": false,
     "controls": "Start at selected group; continue following or single; persist exclusions; block groups sharing excluded sites; early normal logs actual time; OOS skip prepares next fresh-game run",
     "focus": "Retain native site ownership while focus/presentation pauses; freeze observation and cleanup timeout in background; bounded snapshot recovery after focus return",
     "normal_toolbox": "Cursor subscription and shared tooltip slot survive Alt-Tab; suspended frame observer retains live-owner site; optional SceneRefresh remains product-disabled",
     "note": "research/2026-11-01-hook-test-focus-selection.md",
+    "game_tested": false,
+    "multiplayer_tested": false
+  },
+  "frame_notification_policy_rollback": {
+    "baseline_commit": "77790c4f314e22dc2df3f25746c6c4f3b0dd8e1b",
+    "supported_sessions": [
+      0,
+      5,
+      3,
+      4
+    ],
+    "diagnostic_override_required": false,
+    "default_test_exclusions": [],
+    "focus_fix_retained": true,
+    "readiness_and_signature_checks_retained": true,
+    "note": "research/2026-11-01-frame-notification-policy-rollback.md",
     "game_tested": false,
     "multiplayer_tested": false
   }

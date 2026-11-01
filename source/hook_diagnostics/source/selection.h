@@ -6,7 +6,6 @@ namespace hooktest {
 // a suspect site through a later test's dependencies.
 struct Selection {
  std::vector<bool> excluded=std::vector<bool>(steps().size(),false);
- Selection(){for(unsigned i=2;i<steps().size();++i)excluded[i]=steps()[i].kind==FrameSignal;}
  int blockedBy(unsigned index)const{
   if(index<2||index>=steps().size())return -1;
   for(unsigned j=2;j<steps().size();++j)if(excluded[j]){

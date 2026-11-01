@@ -215,7 +215,7 @@ HWND control(const wchar_t*cls,const wchar_t*text,DWORD style,int x,int y,int w,
 LRESULT CALLBACK proc(HWND w,UINT m,WPARAM wp,LPARAM lp){switch(m){
  case WM_CREATE:window=w;font=CreateFontW(-17,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,0,0,CLEARTYPE_QUALITY,0,L"Microsoft YaHei UI");control(L"STATIC",L"游戏 PID：",0,14,14,80,26,0);pidEdit=control(L"EDIT",L"",WS_BORDER|ES_NUMBER,100,12,100,28,101);control(L"BUTTON",L"查找游戏",0,212,12,100,28,102);control(L"BUTTON",L"开始",0,324,12,84,28,103);
   stepChoice=control(L"COMBOBOX",L"",CBS_DROPDOWNLIST|WS_VSCROLL,420,12,400,500,104);SendMessageW(stepChoice,CB_ADDSTRING,0,(LPARAM)L"全部未略过：按顺序逐组测试");for(unsigned i=2;i<hooktest::steps().size();++i)SendMessageW(stepChoice,CB_ADDSTRING,0,(LPARAM)hooktest::steps()[i].name);SendMessageW(stepChoice,CB_SETCURSEL,0,0);
-  statusBox=control(L"STATIC",L"先关闭原工具箱并完整重启游戏，正常进入对局，再点开始。\r\n默认略过帧通知；安装成功后可随时点正常提前继续，也可略过本组。",0,14,54,806,76,0);
+  statusBox=control(L"STATIC",L"先关闭原工具箱并完整重启游戏，正常进入对局，再点开始。\r\n默认不略过功能组；安装成功后可随时点正常提前继续，也可手动略过本组。",0,14,54,806,76,0);
   control(L"BUTTON",L"正常，下一组",0,14,138,170,32,105);control(L"BUTTON",L"同步错误，停止",0,196,138,180,32,106);control(L"BUTTON",L"略过本组",0,388,138,170,32,107);control(L"BUTTON",L"停止并还原",0,570,138,160,32,108);
   followingBox=control(L"BUTTON",L"从选中组起，继续测后面的组（取消则只测所选组）",BS_AUTOCHECKBOX,14,180,806,28,111);SendMessageW(followingBox,BM_SETCHECK,BST_CHECKED,0);
   baselineBox=control(L"BUTTON",L"本轮也测两个基线（已确认正常可不选）",BS_AUTOCHECKBOX,14,210,806,28,113);
@@ -238,8 +238,8 @@ int WINAPI wWinMain(HINSTANCE instance,HINSTANCE,LPWSTR command,int showCommand)
  HWND w=CreateWindowExW(0,c.lpszClassName,L"RA2 Hook 逐组测试 — 可提前确认，可手动略过",WS_OVERLAPPED|WS_CAPTION|WS_SYSMENU|WS_MINIMIZEBOX,CW_USEDEFAULT,CW_USEDEFAULT,1170,640,nullptr,nullptr,instance,nullptr);if(!w)return 3;
  if(smoke){
   bool ok=bundleMatches()&&SendMessageW(stepChoice,CB_GETCOUNT,0,0)==LRESULT(hooktest::steps().size()-1)&&SendMessageW(skipList,LB_GETCOUNT,0,0)==LRESULT(hooktest::steps().size()-2);
-  ok=ok&&SendMessageW(baselineBox,BM_GETCHECK,0,0)==BST_UNCHECKED&&SendMessageW(followingBox,BM_GETCHECK,0,0)==BST_CHECKED&&SendMessageW(skipList,LB_GETSEL,0,0)>0;
-  auto plan=selection.schedule(0,true);ok=ok&&plan.size()==18&&plan.front()==3;
+  ok=ok&&SendMessageW(baselineBox,BM_GETCHECK,0,0)==BST_UNCHECKED&&SendMessageW(followingBox,BM_GETCHECK,0,0)==BST_CHECKED&&SendMessageW(skipList,LB_GETSEL,0,0)==0;
+  auto plan=selection.schedule(0,true);ok=ok&&plan.size()==19&&plan.front()==2;
   RECT client{};GetClientRect(w,&client);
   for(int id:{101,109,110,111,112,113}){RECT r{};HWND child=GetDlgItem(w,id);ok=ok&&child&&GetWindowRect(child,&r);MapWindowPoints(nullptr,w,(POINT*)&r,2);ok=ok&&r.left>=0&&r.top>=0&&r.right<=client.right&&r.bottom<=client.bottom;}
   SendMessageW(w,WM_COMMAND,112,0);ok=ok&&selection.schedule(0,true).size()==19;

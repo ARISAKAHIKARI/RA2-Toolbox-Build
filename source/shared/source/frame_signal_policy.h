@@ -1,9 +1,9 @@
 #pragma once
 namespace framesignal {
-// A user-supplied RA2OL run first OOSed with only CommitSite installed.
-// Normal multiplayer uses the existing message/polling fallback. The test
-// host can still explicitly isolate this site; no integrity-check bypass.
-constexpr bool nativeAllowed(int session,bool explicitDiagnostic){
- return session==0||session==5||((session==3||session==4)&&explicitDiagnostic);
+// Preserve the original supported session modes. Diagnostic selection is
+// metadata, not an override required to enable native multiplayer sampling.
+// The caller still checks local readiness, ownership and exact signatures.
+constexpr bool nativeAllowed(int session,bool /*explicitDiagnostic*/){
+ return session==0||session==5||session==3||session==4;
 }
 }

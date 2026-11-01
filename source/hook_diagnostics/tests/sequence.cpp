@@ -3,6 +3,7 @@
 #include "../source/selection.h"
 #include "../source/observation_gate.h"
 #include <set>
+#include <string>
 #include <cassert>
 #include <cstdio>
 int main(){
@@ -24,10 +25,12 @@ int main(){
  assert(s.phase==Phase::Question&&s.since==90100&&!s.tick(130000));assert(s.skip());
  // No baseline steps by default. A single group is exactly one step;
  // opting into baselines prepends them once for the entire run.
- Selection selection;auto plan=selection.schedule(0,true);assert(plan.size()==18&&plan.front()==3);
- auto withBaselines=selection.schedule(0,true,true);assert(withBaselines.size()==20&&withBaselines[0]==0&&withBaselines[1]==1);
+ Selection selection;auto plan=selection.schedule(0,true);assert(plan.size()==19&&plan.front()==2);
+ auto withBaselines=selection.schedule(0,true,true);assert(withBaselines.size()==21&&withBaselines[0]==0&&withBaselines[1]==1);
  assert(selection.schedule(2,false)==std::vector<unsigned>{3});
- assert(selection.schedule(2,true).size()==18&&selection.schedule(1,false).empty());
+ assert(selection.schedule(2,true).size()==18&&selection.schedule(1,false)==std::vector<unsigned>{2});
+ selection.excluded[2]=true;assert(selection.schedule(1,false).empty()&&selection.schedule(0,true).size()==18);
+ selection.excluded[2]=false;
  assert(selection.schedule(-1,true).empty()&&selection.schedule(100,true).empty());
  assert(selection.nextChoice(2)==2);
  std::set<std::wstring> keys;

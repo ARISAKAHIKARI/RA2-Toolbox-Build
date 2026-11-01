@@ -1,0 +1,64 @@
+{
+  "date": "2026-11-01",
+  "base_commit": "77790c4f314e22dc2df3f25746c6c4f3b0dd8e1b",
+  "requested_change": "Restore ordinary multiplayer native frame notification and default test inclusion; preserve focus lifecycle fixes",
+  "source_sha256": {
+    "source/assist/tests/cursor_tooltip_windows.cpp": "61d572d83bd410745d5c99507366a62d8be55987d5a9d1ae6384f5bafe0cfae3",
+    "source/BUILD_SOURCE_MANIFEST.json": "67f79f84986875ee1a5f61fa115b9bdd18e5a8883e29a1099dcaed336035ab4d",
+    "source/game_runtime/source/frame_signal_runtime.h": "da9a380260eadf49bb920a8830ff9ce15e33749b07c52ec851af81104afeca07",
+    "source/hook_diagnostics/README.md": "d8bc62088405e8b31220e1b5ad66713f854085a69ad78d3f7ecff36a6b7ae735",
+    "source/hook_diagnostics/source/main.cpp": "bcbc3345e20a30b589f8bc4334781c3ef943a9814bbea2bc3d4021b0789b0469",
+    "source/hook_diagnostics/source/selection.h": "ad0967555f16bfb4db08df9f77753347bc64601472308ae29fae9c478bf0cfc6",
+    "source/hook_diagnostics/tests/sequence.cpp": "88cd29ce98361fbd379c60bbbeb0268b83116ca85bd678885e4ee2dd450732be",
+    "source/shared/source/frame_signal_policy.h": "bbe556702d49caa1cbf88285645dc4f5b86e67c8ebcf7bf4c2cc7e249cd3cd96"
+  },
+  "tests": {
+    "native_fixture": {
+      "build_exit": 0,
+      "test_exit": 0,
+      "stdout": "PASS native tooltip: original suppression reproduced; names/prices, shared owners, native extra hides, ABI and cleanup\nPASS frame adapter: GPR/ESP/EFLAGS/FXSAVE preserved; native store; live/stale/absent callbacks; ordinary sessions 0/5/3/4 install; readiness and owner-exit cleanup\nPASS focus lifecycle: cursor hide/tooltip ownership retained; live-owner frame hook survives pause/stale sample and diagnostic-bit removal\nSynthetic Win32 execution only: no RA2OL/game visual or multiplayer claim.\n"
+    },
+    "crossbit": {
+      "passed": true,
+      "layout_entries": 685,
+      "differences": {}
+    },
+    "diagnostic_sequence": "Passed default 19 groups including FrameSignal, optional/off baselines, explicit exclusions, early normal and focus/OOS/restoration guards",
+    "production_pe": "passed",
+    "diagnostic_pe": "passed",
+    "diagnostic_ui_and_broker": "passed actual hidden UI and x64-to-x86 broker/DLL loader; no game attached",
+    "unchanged_focus_and_sequence_files": 7
+  },
+  "files": {
+    "toolbox": {
+      "RA2Toolbox.exe": {
+        "bytes": 8414720,
+        "sha256": "5382e4b0cc2f9187347e6ef42153aaeddd4f14f387f585a97e2b7259e384f2af"
+      },
+      "GameRuntime.dll": {
+        "bytes": 5272576,
+        "sha256": "595f502e9ee52531523013a5577a426a954d9d1a6094b2863a12ffd93e75b742"
+      },
+      "GameRuntimeHost32.exe": {
+        "bytes": 207872,
+        "sha256": "5af73e67d653815f1e8ef745401e8b07b356ef95fa8e913a71ed91b3036b67b4"
+      }
+    },
+    "hook_test": {
+      "RA2HookTest.exe": {
+        "bytes": 468992,
+        "sha256": "138e1b68ab3b65fa6c7bfd9d217aa00398ea438f01d9a8116fbdb8031a6b600b"
+      },
+      "GameRuntime.dll": {
+        "bytes": 5273600,
+        "sha256": "0803291be99afc5b3edde1e9f9e701fd3200f0a54d7147c40cc30907f6863e9c"
+      },
+      "GameRuntimeHost32.exe": {
+        "bytes": 207872,
+        "sha256": "5af73e67d653815f1e8ef745401e8b07b356ef95fa8e913a71ed91b3036b67b4"
+      }
+    }
+  },
+  "game_tested": false,
+  "multiplayer_tested": false
+}

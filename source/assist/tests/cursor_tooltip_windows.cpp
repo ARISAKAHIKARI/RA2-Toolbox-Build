@@ -171,24 +171,37 @@ int main(){
   assert(!memcmp(beforeFrame,afterFrame,sizeof beforeFrame)&&*(int*)framesignal::Counter==42&&GetLastError()==0x87654321);
   assert(readyCalls==beforeReady+(scenario==1?1:0));
  }
- // Exercise production maintain(), not a duplicate policy: MP installs no
- // frame site unless the diagnostic host explicitly asks for this one test.
+ // Exercise production maintain(): ordinary SP/LAN/Internet requests use
+ // the native site without requiring the diagnostic-only consumer bit.
  memcpy((void*)framesignal::CommitSite,frameobserver::original,6);
- *(int*)0xA8B238=3;*(uint32_t*)0xA83D4C=0x123456;*(uint8_t*)0xA8E9A0=1;*(uint8_t*)0xA8B8C2=0;
- c.thread=testThread;c.heartbeat=GetTickCount();c.state=framesignal::Waiting;c.enabled=framesignal::Compute;
+ *(uint32_t*)0xA83D4C=0x123456;*(uint8_t*)0xA8E9A0=1;*(uint8_t*)0xA8B8C2=0;
+ for(int mode:{0,5,3,4}){
+  *(int*)0xA8B238=mode;c.thread=testThread;c.heartbeat=GetTickCount();c.state=framesignal::Waiting;c.enabled=framesignal::Compute;
+  frameobserver::channel=&c;frameobserver::owner=GetCurrentProcessId();patches=patchCalls;
+  frameobserver::maintain(GetCurrentProcessId());assert(frameOwned&&c.state==framesignal::Native&&patchCalls==patches+1);
+  patches=patchCalls;c.enabled|=framesignal::ExplicitDiagnostic;frameobserver::maintain(GetCurrentProcessId());assert(frameOwned&&patchCalls==patches);
+  *(uint8_t*)0xA8E9A0=0;c.heartbeat=GetTickCount()-1000;
+  frameobserver::maintain(GetCurrentProcessId());assert(frameOwned&&c.state==framesignal::Native&&patchCalls==patches);
+  unsigned readyBeforePause=readyCalls;frameobserver::FrameSignalCommitted();assert(readyCalls==readyBeforePause);
+  *(uint8_t*)0xA8E9A0=1;c.heartbeat=GetTickCount();c.enabled=framesignal::Compute;
+  frameobserver::maintain(GetCurrentProcessId());assert(frameOwned&&c.state==framesignal::Native&&patchCalls==patches);
+  // The fixture's channel is stack-owned; remove that pointer before the
+  // real owner-exit cleanup path, which still restores the managed site.
+  frameobserver::channel=nullptr;frameobserver::maintain(0);assert(!frameOwned&&!frameobserver::installed);
+ }
+ for(int mode:{-1,0,1,2,3,4,5,6}){
+  bool supported=mode==0||mode==5||mode==3||mode==4;
+  assert(framesignal::nativeAllowed(mode,false)==supported&&framesignal::nativeAllowed(mode,true)==supported);
+ }
+ // Multiplayer still requires local playable state before NEW installation.
+ *(int*)0xA8B238=3;c.state=framesignal::Waiting;c.enabled=framesignal::Compute;c.heartbeat=GetTickCount();
  frameobserver::channel=&c;frameobserver::owner=GetCurrentProcessId();patches=patchCalls;
- frameobserver::maintain(GetCurrentProcessId());assert(!frameOwned&&c.state==framesignal::MessageFallback&&patchCalls==patches);
- c.enabled|=framesignal::ExplicitDiagnostic;frameobserver::maintain(GetCurrentProcessId());assert(frameOwned&&c.state==framesignal::Native);
- patches=patchCalls;*(uint8_t*)0xA8E9A0=0;c.heartbeat=GetTickCount()-1000;
- frameobserver::maintain(GetCurrentProcessId());assert(frameOwned&&c.state==framesignal::Native&&patchCalls==patches);
- unsigned readyBeforePause=readyCalls;frameobserver::FrameSignalCommitted();assert(readyCalls==readyBeforePause);
- *(uint8_t*)0xA8E9A0=1;c.heartbeat=GetTickCount();frameobserver::maintain(GetCurrentProcessId());assert(frameOwned&&patchCalls==patches);
- c.enabled=framesignal::Compute;frameobserver::maintain(GetCurrentProcessId());assert(!frameOwned&&c.state==framesignal::MessageFallback);
- for(int mode:{-1,0,1,2,3,4,5,6})assert(framesignal::nativeAllowed(mode,false)==(mode==0||mode==5));
- assert(framesignal::nativeAllowed(3,true)&&framesignal::nativeAllowed(4,true));
+ *(uint8_t*)0xA8E9A0=0;frameobserver::maintain(GetCurrentProcessId());assert(!frameOwned&&patchCalls==patches);
+ *(uint8_t*)0xA8E9A0=1;*(uint8_t*)0xA8B8C2=1;frameobserver::maintain(GetCurrentProcessId());assert(!frameOwned&&patchCalls==patches);
+ *(uint8_t*)0xA8B8C2=0;c.enabled=0;frameobserver::maintain(GetCurrentProcessId());assert(!frameOwned&&patchCalls==patches);
  frameobserver::channel=nullptr;assert(!depth);
- puts("PASS frame adapter: all GPR/ESP/EFLAGS/FXSAVE preserved; native store; live/stale/absent callbacks; MP fallback and explicit diagnostic opt-in");
- puts("PASS focus lifecycle: cursor presentation suspension retains hide/tooltip ownership; temporary frame pause and stale samples retain installed diagnostic site");
+ puts("PASS frame adapter: GPR/ESP/EFLAGS/FXSAVE preserved; native store; live/stale/absent callbacks; ordinary sessions 0/5/3/4 install; readiness and owner-exit cleanup");
+ puts("PASS focus lifecycle: cursor hide/tooltip ownership retained; live-owner frame hook survives pause/stale sample and diagnostic-bit removal");
  puts("Synthetic Win32 execution only: no RA2OL/game visual or multiplayer claim.");
  return 0;
 }

@@ -46,8 +46,7 @@ static void maintain(DWORD requestedOwner){
  const bool playable=multiplayerpatch::mayInstall(read);
  int session=-1;read(0xA8B238,&session,4);
  bool permitted=playable&&framesignal::nativeAllowed(session,channel&&(channel->enabled&framesignal::ExplicitDiagnostic));
- const bool mpRetire=(session==3||session==4)&&channel&&!(channel->enabled&framesignal::ExplicitDiagnostic);
- if((!alive||mpRetire)&&installed){
+ if(!alive&&installed){
   const bool restored=gameentry::patch(gameentry::Client::Assist,framesignal::CommitSite,patchBytes,original,6);
   if(channel)channel->state=restored?framesignal::Waiting:framesignal::RestoreFailed;
   if(!restored)conflict=true;installed=!restored;
