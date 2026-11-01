@@ -79,6 +79,11 @@ jobs:
           bash source/build-zig-x64.sh > diagnostics/build.log 2>&1 || { tail -80 diagnostics/build.log; exit 1; }
           python source/tools/verify_windows_outputs.py --root artifacts/build --host-arch x64
           python source/tools/verify_crossbit_abi.py --zig "$ZIG_EXE" --output diagnostics/crossbit-abi.json
+      - name: Execute native tooltip and frame adapter regressions
+        shell: pwsh
+        run: |
+          python source/tools/test_cursor_tooltip_windows.py --zig $env:ZIG_EXE --output diagnostics/cursor-tooltip
+          if($LASTEXITCODE -ne 0){throw 'Native tooltip/frame regression failed'}
       - name: Build and verify the standalone 30-second Hook observer
         shell: pwsh
         run: |

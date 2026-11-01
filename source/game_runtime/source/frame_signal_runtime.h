@@ -11,8 +11,9 @@ extern "C" void RuntimeFrameReady();
 extern "C" void FrameSignalCommitted(){
  // Never scan objects, allocate, block, dispatch commands or call the engine.
  // The instruction adapter has already committed the native EDX frame value.
- auto*c=channel;if(!c||!c->enabled||GetCurrentThreadId()!=c->thread||DWORD(GetTickCount()-c->heartbeat)>500)return;
- const DWORD error=GetLastError();LARGE_INTEGER q{};QueryPerformanceCounter(&q);
+ const DWORD error=GetLastError();
+ auto*c=channel;if(!c||!c->enabled||GetCurrentThreadId()!=c->thread||DWORD(GetTickCount()-c->heartbeat)>500){SetLastError(error);return;}
+ LARGE_INTEGER q{};QueryPerformanceCounter(&q);
  InterlockedIncrement(&c->seq);c->frame=*(volatile LONG*)(uintptr_t)framesignal::Counter;c->qpc=q.QuadPart;++c->serial;InterlockedIncrement(&c->seq);
  if(event)SetEvent(event);if(c->enabled&framesignal::Compute)RuntimeFrameReady();SetLastError(error);
 }
@@ -39,7 +40,10 @@ static void maintain(DWORD requestedOwner){
  gameentry::Scope entry(gameentry::Client::Assist);if(!entry)return;
  const DWORD error=GetLastError();
  bool alive=channel&&owner==requestedOwner&&channel->enabled&&DWORD(GetTickCount()-channel->heartbeat)<=500;
- const bool permitted=multiplayerpatch::mayInstall([](uint32_t at,void*out,size_t n){SIZE_T got=0;return ReadProcessMemory(GetCurrentProcess(),(const void*)(uintptr_t)at,out,n,&got)&&got==n;});
+ auto read=[](uint32_t at,void*out,size_t n){SIZE_T got=0;return ReadProcessMemory(GetCurrentProcess(),(const void*)(uintptr_t)at,out,n,&got)&&got==n;};
+ const bool playable=multiplayerpatch::mayInstall(read);
+ int session=-1;read(0xA8B238,&session,4);
+ bool permitted=playable&&framesignal::nativeAllowed(session,channel&&(channel->enabled&framesignal::ExplicitDiagnostic));
  if((!alive||!permitted)&&installed){
   const bool restored=gameentry::patch(gameentry::Client::Assist,framesignal::CommitSite,patchBytes,original,6);
   if(channel)channel->state=restored?framesignal::Waiting:framesignal::RestoreFailed;
@@ -51,7 +55,10 @@ static void maintain(DWORD requestedOwner){
   if(!channel||channel->magic!=framesignal::Magic||channel->version!=framesignal::Version||channel->pid!=GetCurrentProcessId()||channel->owner!=requestedOwner||!channel->enabled||DWORD(GetTickCount()-channel->heartbeat)>500)releaseChannel();
   else{owner=requestedOwner;framesignal::name(path,GetCurrentProcessId(),owner,true);event=OpenEventW(EVENT_MODIFY_STATE,FALSE,path);if(!event)releaseChannel();}
  }
- if(channel&&!installed&&channel->state==framesignal::Waiting){
+ // A newly opened channel may contain the explicit diagnostic request.
+ permitted=playable&&framesignal::nativeAllowed(session,channel&&(channel->enabled&framesignal::ExplicitDiagnostic));
+ if(channel&&!installed&&(channel->state==framesignal::Waiting||channel->state==framesignal::MessageFallback)){
+  if(playable&&!permitted){channel->state=framesignal::MessageFallback;SetLastError(error);return;}
   // Loading/menu state is not a signature failure. Keep the message-based
   // fallback alive until the local game becomes playable; no peer-sync gate.
   if(!permitted){

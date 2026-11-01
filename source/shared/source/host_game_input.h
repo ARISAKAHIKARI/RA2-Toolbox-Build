@@ -31,7 +31,7 @@ struct Health {
 inline bool heldBinding(uint32_t binding);
 struct PointerPress {DWORD tick=0,serial=0;uint32_t match=0;int operation=0;POINT point{};int width=0,height=0;uint8_t keys[256]{};};
 struct PointerQueue {PointerPress items[16]{};unsigned head=0,count=0;DWORD dropped=0,cancelSerial=0;bool enabled=false,focused=false,rightArmed=false,leftArmed=false,rightDragged=false;POINT rightOrigin{};uint32_t match=0;DWORD contextAt=0;uint32_t down=0;uint8_t rightKeys[256]{},leftKeys[256]{};};
-struct Target {keygesture::Tracker keys;PointerQueue pointer{};Health lastDiagnostic{};DWORD pid=0,thread=0;HWND window=nullptr;HHOOK message=nullptr,post=nullptr;HANDLE mapping=nullptr,process=nullptr;runtime::Control*control=nullptr;uint64_t cursorAt=0,tacticalAt=0;DWORD lastPost=0,lastPostError=0;bool fastTactical=false,frameSampling=false;std::shared_ptr<framesignal::Client> frameSignal;
+struct Target {keygesture::Tracker keys;PointerQueue pointer{};Health lastDiagnostic{};DWORD pid=0,thread=0;HWND window=nullptr;HHOOK message=nullptr,post=nullptr;HANDLE mapping=nullptr,process=nullptr;runtime::Control*control=nullptr;uint64_t cursorAt=0,tacticalAt=0;DWORD lastPost=0,lastPostError=0;bool fastTactical=false,frameSampling=false,diagnosticFrame=false;std::shared_ptr<framesignal::Client> frameSignal;
 #ifdef _WIN64
  uint32_t brokerToken=0,brokerGeneration=0;DWORD brokerRetry=0;
 #endif
@@ -234,7 +234,7 @@ inline void setFastTactical(Subscription id,bool enabled){
  for(auto&l:h.leases)if(id&&l.id==id&&l.client==gameentry::Client::Assist){h.targets[l.target].fastTactical=enabled;updateTimer();return;}
 }
 inline bool nativeFrameSampling(Subscription id){auto&h=host();std::lock_guard<std::recursive_mutex>lock(h.mutex);for(auto&l:h.leases)if(id&&l.id==id){auto&t=h.targets[l.target];framesignal::Stamp stamp;if(t.frameSignal&&t.frameSignal->current(stamp)&&stamp.state==framesignal::Native&&stamp.serial>0&&stamp.frequency>0){LARGE_INTEGER q{};QueryPerformanceCounter(&q);return double(q.QuadPart-stamp.qpc)*1000./stamp.frequency<100.;}}return false;}
-inline void setFrameSampling(Subscription id,bool enabled){auto&h=host();std::lock_guard<std::recursive_mutex>lock(h.mutex);for(auto&l:h.leases)if(id&&l.id==id&&l.client==gameentry::Client::Assist){auto&t=h.targets[l.target];t.frameSampling=enabled;if(!enabled)t.frameSignal.reset();return;}}
+inline void setFrameSampling(Subscription id,bool enabled,bool diagnostic=false){auto&h=host();std::lock_guard<std::recursive_mutex>lock(h.mutex);for(auto&l:h.leases)if(id&&l.id==id&&l.client==gameentry::Client::Assist){auto&t=h.targets[l.target];if(!enabled||t.diagnosticFrame!=diagnostic)t.frameSignal.reset();t.frameSampling=enabled;t.diagnosticFrame=enabled&&diagnostic;return;}}
 inline void CALLBACK pulse(void*,BOOLEAN){
  auto&h=host();if(InterlockedCompareExchange(&h.pulseBusy,1,0))return;
  struct Reset {volatile LONG*value;~Reset(){InterlockedExchange(value,0);}} reset{&h.pulseBusy};
@@ -251,7 +251,7 @@ inline void CALLBACK pulse(void*,BOOLEAN){
   }
 #endif
   bool nativeFrames=false;
-  if((enabled&runtime::Tactical)&&t.frameSampling){if(!t.frameSignal)t.frameSignal=std::make_shared<framesignal::Client>();if(t.frameSignal->open(t.pid,framesignal::Compute)){t.frameSignal->heartbeat();framesignal::Stamp stamp;if(t.frameSignal->current(stamp)&&stamp.state==framesignal::Native&&stamp.frequency>0&&stamp.serial>0){LARGE_INTEGER q{};QueryPerformanceCounter(&q);nativeFrames=double(q.QuadPart-stamp.qpc)*1000./stamp.frequency<100.;}}}
+  if((enabled&runtime::Tactical)&&t.frameSampling){if(!t.frameSignal)t.frameSignal=std::make_shared<framesignal::Client>();if(t.frameSignal->open(t.pid,framesignal::Compute|(t.diagnosticFrame?framesignal::ExplicitDiagnostic:0))){t.frameSignal->heartbeat();framesignal::Stamp stamp;if(t.frameSignal->current(stamp)&&stamp.state==framesignal::Native&&stamp.frequency>0&&stamp.serial>0){LARGE_INTEGER q{};QueryPerformanceCounter(&q);nativeFrames=double(q.QuadPart-stamp.qpc)*1000./stamp.frequency<100.;}}}
   else t.frameSignal.reset();
   t.control->heartbeat=now;
   if(enabled&runtime::Tactical)pollPointer(t,now);

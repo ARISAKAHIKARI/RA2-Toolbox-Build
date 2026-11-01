@@ -1,0 +1,22 @@
+{
+  "file": "hook-test-20261101-101023-27848.log",
+  "sha256": "642b6285a89c7e73060f58122c71c44dafbde7010edaf642dcb2d4d9cb121b06",
+  "base_commit": "4e2e516e861e0f089de69272155e47ab30d2de61",
+  "platform": "RA2OL (user supplied)",
+  "executable_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+  "baseline_sites": 51,
+  "timeline": [
+    "2026-11-01 10:10:24.232 STEP 1/21 只读基线（不加载 Runtime）",
+    "2026-11-01 10:10:24.555 OBSERVE_BEGIN verified installed set; 30 seconds",
+    "2026-11-01 10:11:05.148 USER_VERDICT normal (observed 30 seconds; not certification)",
+    "2026-11-01 10:11:05.512 STEP 2/21 Windows 消息 Hook + Runtime，功能全关",
+    "2026-11-01 10:11:06.208 OBSERVE_BEGIN verified installed set; 30 seconds",
+    "2026-11-01 10:11:40.803 USER_VERDICT normal (observed 30 seconds; not certification)",
+    "2026-11-01 10:11:41.292 STEP 3/21 帧完成通知",
+    "2026-11-01 10:11:42.400 OBSERVE_BEGIN verified installed set; 30 seconds",
+    "2026-11-01 10:11:43.240 STOP 观察到原生 OOS 标记",
+    "2026-11-01 10:11:43.814 STOPPED cleanup=Runtime-acknowledged-and-baseline-restored"
+  ],
+  "observed_change": "Only 0x55DE81 differs from accepted baseline in step 3",
+  "attribution": "Temporal association in one user run; not proof of platform integrity checking or a unique cause"
+}

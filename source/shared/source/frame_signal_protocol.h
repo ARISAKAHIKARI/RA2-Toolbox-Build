@@ -3,10 +3,11 @@
 #include <cstdint>
 #include <cstddef>
 #include <initializer_list>
+#include "frame_signal_policy.h"
 namespace framesignal {
 constexpr uint32_t Magic=0x46523234,Version=1,CommitSite=0x55DE81,Counter=0xA8ED84;
-enum Consumer : LONG {Render=1,Compute=2};
-enum State : LONG {Waiting=0,Native=1,SignatureRejected=-1,RestoreFailed=-2};
+enum Consumer : LONG {Render=1,Compute=2,ExplicitDiagnostic=4};
+enum State : LONG {Waiting=0,Native=1,MessageFallback=2,SignatureRejected=-1,RestoreFailed=-2};
 struct alignas(8) Channel {
  uint32_t magic,version,pid,owner;
  volatile LONG enabled;volatile DWORD heartbeat;volatile LONG state,frame;

@@ -1,0 +1,74 @@
+{
+  "date": "2026-11-01",
+  "base_commit": "4e2e516e861e0f089de69272155e47ab30d2de61",
+  "supported_game_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+  "user_log_sha256": "642b6285a89c7e73060f58122c71c44dafbde7010edaf642dcb2d4d9cb121b06",
+  "compiler": "Zig 0.13.0",
+  "source_sha256": {
+    ".github/workflows/validate-peer-sync-hooks.yml": "71ca9121c8967afc223b83a5ba117783bfb34228db0e758fdddd37a85dcef8ba",
+    "source/assist/source/bridge.cpp": "507bdc0e4f60256aeafb0ddc683e2b4626d34f26f9af475f1b00780237889559",
+    "source/assist/source/build_time_tooltip.h": "0af05cafeb26809587e3bec38f033c1ff0fe97155796f324ddd09b87aac7cb39",
+    "source/assist/tests/cursor_tooltip_windows.cpp": "0f29e1b4c29b1047d497de91f583511df349b180e34b9c16d769f43a91e3f37b",
+    "source/cursor/source/hide.cpp": "329414fdb973977aaa93c01b2cd1e97654c7dc47137ca68bf1be5b39cf73d956",
+    "source/game_runtime/source/frame_signal_runtime.h": "252b12c3634020e4eb05747756e305abde2a430e89302d830951c97d28798830",
+    "source/game_runtime/source/native_tooltip_runtime.h": "18f36a31e54a496225593bd0131dc96940862a50a9d20478b4d0d47ab81b6305",
+    "source/game_runtime/source/runtime.cpp": "6070bbf5e8f7cebb1b8a679ead4d3e4b0aa56ad7e3cedda1ad6e579b15fcc206",
+    "source/hook_diagnostics/source/main.cpp": "9e83ce8b06cc1fba19bd57a7d80c0cd3e54072e723e56aa3f7d4973133dbf41c",
+    "source/shared/source/frame_signal_policy.h": "254541a56bee82f41befd65c5aaddac2cd151d189be7d4499fb1f56a1c835c3c",
+    "source/shared/source/frame_signal_protocol.h": "721afb22b6a62191fb969a68b5620f3cfa03fcfd7f46fa0ada3a55278b78f18d",
+    "source/shared/source/host_game_input.h": "27acd96927dd1ce8b73de976622a9f81b13e80771fbeb2297e7f82e58d10e283",
+    "source/shared/source/native_tooltip_client.h": "353edd80cf5655a17df095f838a579d3c68c7c4bf2b3d7972cec81278042da28",
+    "source/tools/test_cursor_tooltip_windows.py": "d1e584ee21cb25e9c8823190bcabce03081daa2ed2fb671cc1cc40b9f8758932"
+  },
+  "tests": {
+    "native_fixture": {
+      "build_exit": 0,
+      "test_exit": 0,
+      "stdout": "PASS native tooltip: original suppression reproduced; names/prices, shared owners, native extra hides, ABI and cleanup\nPASS frame adapter: all GPR/ESP/EFLAGS/FXSAVE preserved; native store; live/stale/absent callbacks; MP fallback and explicit diagnostic opt-in\nSynthetic Win32 execution only: no RA2OL/game visual or multiplayer claim.\n"
+    },
+    "crossbit": {
+      "passed": true,
+      "layout_entries": 685,
+      "differences": {},
+      "wire_baseline_matches": true
+    },
+    "host_cleanup": "PASS: twelve stale HHOOK cleanup/reuse cycles; no game process or injection",
+    "diagnostic_sequence": "PASS: all 51 native sites accounted for: 48 scheduled (camera conditional), 3 product-disabled; 14 denied sites never scheduled; 21 stages\r\nPASS: timing starts after verified installation; answer required; failed restoration and OOS cannot advance; final stage and clock regression",
+    "production_pe": "passed",
+    "diagnostic_pe": "passed",
+    "diagnostic_ui_and_broker": "passed; actual hidden UI and x64-to-x86 broker/DLL loader smoke; no game attached"
+  },
+  "files": {
+    "toolbox": {
+      "RA2Toolbox.exe": {
+        "bytes": 8414720,
+        "sha256": "c0b52bfb22448699225283e81ab763184837cafc94577e04093dc759cc8e6aab"
+      },
+      "GameRuntime.dll": {
+        "bytes": 5272576,
+        "sha256": "cbb39e7715b9427045a4263d35cfa16b2e24f3abe970a0083319562f8376738b"
+      },
+      "GameRuntimeHost32.exe": {
+        "bytes": 207872,
+        "sha256": "151f6f33a038053bfb0b6165cf162a4b0a3852c641616e0d1509942be65a8002"
+      }
+    },
+    "hook_test": {
+      "RA2HookTest.exe": {
+        "bytes": 443904,
+        "sha256": "8415ab068c3241d839469495f751d4eb04864117672525775f19cdab541562d4"
+      },
+      "GameRuntime.dll": {
+        "bytes": 5273600,
+        "sha256": "47fbac3ff8cfcfcdadfa73071d27cbd14cb1432271e6bd321ea54d4865d5a52a"
+      },
+      "GameRuntimeHost32.exe": {
+        "bytes": 207872,
+        "sha256": "151f6f33a038053bfb0b6165cf162a4b0a3852c641616e0d1509942be65a8002"
+      }
+    }
+  },
+  "game_visual_tested": false,
+  "new_build_multiplayer_tested": false,
+  "scope": "Local static game-file inspection, synthetic x86 Win32 execution, full builds and loader checks; prior user multiplayer observation is recorded separately; no claim that RA2OL detects hooks"
+}

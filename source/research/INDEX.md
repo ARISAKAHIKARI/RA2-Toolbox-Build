@@ -6,6 +6,7 @@
 
 | 主题 | 新笔记 | 关键词 |
 | --- | --- | --- |
+| 高刷光標吞掉單位／價格提示；RA2OL 第三組幀通知首次 OOS | [原生分支、共同槽所有權與日誌結論](2026-11-01-cursor-tooltip-frame-oos.md) | RefCount -1 GetToolTipText479050 Sidebar6D1800 shared7F74D8 Frame55DE81 message-fallback explicit-diagnostic not-detection-proof |
 | 依使用者要求撤回首次同步／科技模式封鎖，修正不完整陰影發布 | [回退範圍、欄位與回歸](2026-11-01-hook-gate-rollback-shroud-publication.md) | no-peer-sync-prerequisite TechEnhance opt-in incomplete-mask keep-front selector-read-failure projection-offset |
 | RA2OL 同步錯誤的逐組 Hook 測試版、隱式相機補丁與小地圖閃爍候選 | [流程、來源證據與實測邊界](2026-11-01-ra2ol-hook-isolation-diagnostics.md) · [操作／編譯說明](../hook_diagnostics/README.md) | RA2OL 30seconds explicit-verdict isolated-groups 48+3 14denied CameraClamp6D8640 diagnostic-opt-in incomplete-shroud not-netplay |
 | 首次同步之后仍会分叉的直接写入与恢复遗漏 | [后续不同步审计与修复](2026-11-01-latent-desync-mutation-audit.md) | TechLevel SP-only failed-write ownership retry MapIsClear read-failure premature-unhook stop-ack all-patches native-query side-effects |

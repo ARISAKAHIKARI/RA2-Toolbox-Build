@@ -1,5 +1,6 @@
 #pragma once
 #include "../../shared/source/runtime_fp_scope.h"
+#include "../../shared/source/native_tooltip_client.h"
 // Local presentation, through the existing entry manager. The original
 // CCToolTip callback runs first; Process724AD0 measures/copies our text into
 // the same native box. Never extend Sidebar's 66-wchar static buffer in place.
@@ -7,13 +8,6 @@
 static bool buildTimeTooltipActive,buildTimeTooltipFailed;static uint32_t buildTimeTooltipFailedMatch;
 extern "C" void AssistBuildTimeTooltipFailed(){buildTimeTooltipFailed=true;buildTimeTooltipFailedMatch=match;}
 static void restoreBuildTimeTooltip();
-extern "C" unsigned GuardedBuildTimeTooltip(unsigned,unsigned);
-static wchar_t* __fastcall buildTimeTooltipEntry(void*self,void*,unsigned id){
- auto original=((wchar_t*(__thiscall*)(void*,unsigned))0x479050)(self,id);
- if(!original)return original;
- RuntimeFPScope fp;
- return reinterpret_cast<wchar_t*>(uintptr_t(GuardedBuildTimeTooltip(id,unsigned(uintptr_t(original)))));
-}
 static bool buildTimeTooltipCompatible(){
  // The fake object is allowed only for the verified read-only implementation.
  // Foreign tooltip/TimeToBuild detours can require additional fields.
@@ -34,18 +28,16 @@ static void buildTimeTooltipTick(){
  if(!wanted){restoreBuildTimeTooltip();return;}
  if(buildTimeTooltipActive)return;
  if(!buildTimeTooltipCompatible()){sh->buildTimeTooltipStatus=-2;return;}
- const uint32_t original=0x479050,target=uint32_t(uintptr_t(&buildTimeTooltipEntry));
- buildTimeTooltipActive=gameentry::patch(gameentry::Client::Assist,0x7F74D8,(const uint8_t*)&original,(const uint8_t*)&target,4);
+ buildTimeTooltipActive=NativeTooltipBuildTime(true);
  sh->buildTimeTooltipStatus=buildTimeTooltipActive?1:-2;
 }
 static void restoreBuildTimeTooltip(){
- if(buildTimeTooltipActive){
-  const uint32_t original=0x479050,target=uint32_t(uintptr_t(&buildTimeTooltipEntry));
-  if(!gameentry::patch(gameentry::Client::Assist,0x7F74D8,(const uint8_t*)&target,(const uint8_t*)&original,4)){
-   if(sh)sh->buildTimeTooltipStatus=-2;return;
-  }
-  buildTimeTooltipActive=false;
+ // Release only this feature's claim. The cursor can still need the same
+ // slot with the build-time option off, including after Assist disconnects.
+ if(!NativeTooltipBuildTime(false)){
+  buildTimeTooltipActive=true;if(sh)sh->buildTimeTooltipStatus=-2;return;
  }
+ buildTimeTooltipActive=false;
  if(sh)sh->buildTimeTooltipStatus=0;
 }
 // No gameplay object is constructed, registered, charged or ticked. Only the

@@ -119,6 +119,17 @@ static bool current(void** p,LONG* ref){
  *p=0;*ref=0;
  return read(0x887640,p,4)&&valid(*p)&&read((DWORD)(*p)+12,ref,4);
 }
+extern "C" bool CursorTooltipNeeded(){return held&&s&&s->state==1;}
+extern "C" bool CursorTooltipOwnsHiddenMouse(){
+ if(!CursorTooltipNeeded())return false;
+ gameentry::Request lease{};if(!gameentry::capture(gameentry::Client::Cursor,lease))return false;
+ void* p=nullptr;LONG ref=0;DWORD vt=0,getter=0;
+ // -1 + our one held HideCursor = native visible count 0. Leave additional
+ // game hides (< -1), replacement objects and foreign getters untouched.
+ const bool ours=current(&p,&ref)&&p==held&&ref==-1&&
+  read(DWORD(uintptr_t(p)),&vt,4)&&read(vt+0x28,&getter,4)&&getter==0x7B89F0;
+ gameentry::leave(lease);return ours;
+}
 // Return Windows cursor control to its prior owner. Balance only our own
 // ShowCursor increments; do not unconditionally toggle visibility on detach.
 static void nativeRelease(){

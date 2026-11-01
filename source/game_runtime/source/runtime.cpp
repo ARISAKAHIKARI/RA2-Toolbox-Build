@@ -6,6 +6,7 @@
 #include "../../shared/source/game_entry_client.h"
 #include "../../shared/source/runtime_fp_scope.h"
 #include "frame_signal_runtime.h"
+#include "native_tooltip_runtime.h"
 extern "C" void AssistRuntimeMessage(int,WPARAM,LPARAM);
 extern "C" void CursorRuntimeMessage(int,WPARAM,LPARAM);
 extern "C" void CursorRuntimePost(int,WPARAM,LPARAM);
@@ -110,7 +111,7 @@ struct WakeTrace {
  }}
  ~WakeTrace(){if(handle){if(view)UnmapViewOfFile(view);CloseHandle(handle);}}
 };
-static void cleanup(){AssistRuntimeWatchdog();CursorRuntimeWatchdog();}
+static void cleanup(){AssistRuntimeWatchdog();CursorRuntimeWatchdog();NativeTooltipMaintain(false);}
 static void CALLBACK watchdogProc(HWND,UINT,UINT_PTR,DWORD){
  RuntimeFPScope fp;
  // This timer only restores stale/disconnected clients. It never schedules
@@ -144,7 +145,7 @@ static bool connect(DWORD owner,WakeTrace& trace){
  // A watchdog attempt can defer restoration (e.g. unsent foreign events).
  // Retain the OLD controller transport until both services actually detach;
  // attempting cleanup is not proof that it completed.
- if(!AssistRuntimeDetached()||!CursorRuntimeDetached()){
+ if(!AssistRuntimeDetached()||!CursorRuntimeDetached()||!NativeTooltipDetached()){
   trace.report(runtime::ControllerBusy,ERROR_BUSY);return false;
  }
  if(control)UnmapViewOfFile(control);control=nullptr;
@@ -179,6 +180,7 @@ extern "C" __declspec(dllexport) LRESULT CALLBACK GameRuntimeHook(int code,WPARA
       // Cursor work cannot be starved by a stream of tactical commands.
       if(ready&runtime::Cursor)CursorRuntimeMessage(code,wp,lp);
       if(ready&runtime::Tactical)AssistRuntimeMessage(code,wp,lp);
+      if(ready)NativeTooltipMaintain(true);
       if((control->enabled&runtime::Tactical)&&(msg->message==WM_MOUSEMOVE||msg->message==WM_KEYDOWN||msg->message==WM_KEYUP||msg->message==WM_SYSKEYDOWN||msg->message==WM_SYSKEYUP||msg->message==WM_LBUTTONDOWN||msg->message==WM_LBUTTONDBLCLK||msg->message==WM_LBUTTONUP||msg->message==WM_RBUTTONDOWN||msg->message==WM_RBUTTONDBLCLK||msg->message==WM_RBUTTONUP))AssistRuntimeFilter((void*)lp);
       frameobserver::maintain(controllerID);
       if(ready)InterlockedIncrement(&control->dispatches);

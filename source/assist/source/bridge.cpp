@@ -708,8 +708,11 @@ static bool nativeObjectUnhooked(){return nativeObjectSignature();}
 static bool featureRestorationComplete(){
  // 55DE81 belongs to Runtime's independent read-only frame notification
  // channel. It has its own cleanup and must not deadlock Assist detachment.
- const unsigned frameOnly=codeHookRegistry.active(0x55DE81)?1u:0u;
- return codeHookRegistry.installed()==frameOnly&&!crcMapInstalled&&!networkSenderInstalled&&
+ const unsigned runtimeOnly=(codeHookRegistry.active(0x55DE81)?1u:0u)+
+  (!buildTimeTooltipActive&&codeHookRegistry.active(0x7F74D8)?1u:0u);
+ // A released build-time claim may leave the shared tooltip slot owned by
+ // Cursor. Runtime separately retires it after the last client detaches.
+ return codeHookRegistry.installed()==runtimeOnly&&!crcMapInstalled&&!networkSenderInstalled&&
   !shroudMaterials.active()&&!enhancementRestoring;
 }
 // Reserve a share for other active task families, then let a lone family use
