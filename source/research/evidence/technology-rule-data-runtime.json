@@ -1,0 +1,71 @@
+{
+  "scope": "Compiled Runtime rule-data technology lifecycle with synthetic world/Win32/native UI.\nThe actual native CanBuild/FindFactory predicates are tested separately by\n tools/audit_tech_data_native.py. This is not a running game or netplay test.\n",
+  "dll_sha256": "59b5e315a43f8a13e8fc5366f8c8ab7819855589e23c75f4a1cacda67649115a",
+  "hash_stable_during_test": true,
+  "game_fixture_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+  "game_tested": false,
+  "multiplayer_tested": false,
+  "results": [
+    {
+      "case": "cold_rule_data_session_0",
+      "status": "PASS",
+      "same_epoch_on_off_on": true,
+      "native_icons": 3,
+      "feature_code_patches": 0,
+      "toolbox_production_rejected": true
+    },
+    {
+      "case": "cold_rule_data_session_3",
+      "status": "PASS",
+      "same_epoch_on_off_on": true,
+      "native_icons": 3,
+      "feature_code_patches": 0,
+      "toolbox_production_rejected": true
+    },
+    {
+      "case": "all_retained_mode_transitions",
+      "status": "PASS",
+      "data_to_all_three_old_modes_and_back": true,
+      "old_patch_counts": [
+        2,
+        2,
+        5
+      ]
+    },
+    {
+      "case": "native_icon_admission",
+      "status": "PASS",
+      "full_native_rule_and_factory_admission_required": true
+    },
+    {
+      "case": "production_safe_mode_switch",
+      "status": "PASS",
+      "pending_production_preserves_actual_mode_both_directions": true,
+      "cleared_production_allows_explicit_retry": true
+    },
+    {
+      "case": "foreign_field_stop_pending_and_recovery",
+      "status": "PASS",
+      "foreign_value_not_overwritten": true,
+      "reset_preserves_minus44_until_real_restore": true
+    },
+    {
+      "case": "focus_menu_and_paused_off",
+      "status": "PASS",
+      "background_menu_retains_data": true,
+      "paused_explicit_disable_restores": true
+    },
+    {
+      "case": "enhancement_ownership_handoff",
+      "status": "PASS",
+      "enhancement_restored_before_data_original_capture": true,
+      "saved_preference_resumes_after_data_release": true
+    },
+    {
+      "case": "invalid_type_partial_group_and_retry",
+      "status": "PASS",
+      "partial_group_rolls_back_before_icons": true,
+      "identity_recovery_retries_pending_mode": true
+    }
+  ]
+}

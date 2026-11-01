@@ -6,6 +6,11 @@
 
 | 主题 | 新笔记 | 关键词 |
 | --- | --- | --- |
+| 原生面板科技資料模式與還原責任 | [規則欄位、面板與模式切換](2026-11-01-native-sidebar-tech-data-mode.md) | CanBuild data-journal TechEnhance native-sidebar Assist87 |
+| 原生事件任意建造正式選項 | [完工產品、游標與入隊邊界](2026-11-01-native-placement-event-implementation.md) | Place factory-UID frozen-cursor no-code |
+| 觀察窗誤消失與讀取能力遺失 | [生命欄位、換代、批讀與輸入重用](2026-11-01-watch-lifetime-reader-performance.md) | IsAlive IsOnMap display-epoch typed-prefetch Timeline |
+| 小地圖星級的最終面板合成 | [相同場景標記與 CPU/GPU 對照](2026-11-01-radar-final-panel-insignia.md) | PIPS14 PIPS15 physical-pixels immutable-scene WARP |
+| 建造提示按檔位上限換算 | [原生速度分支與估算規則](2026-11-01-build-time-speed-ceiling.md) | GameSpeed A8EB60 multiplayer-cap 647C43 nominal-FPS |
 | 原生 Place 接收鏈與超距離／陰影放置候選 | [實際判定鏈與 12 項隔離驗證](2026-11-01-placement-event-reception.md) | Place0B ObjectUnlimbo5F4F3C legality no-text native-event |
 | 科技全開的規則資料／原生生產事件候選 | [原生門檻與 31 項隔離驗證](2026-11-01-tech-no-code-feasibility.md) | CanBuild FindFactory Produce PrerequisiteOverride DoubleOwned data-only no-text |
 | 快取預算、重複計費與整庫清空 | [只讀審計與容量調整邊界](2026-11-01-cache-budget-audit.md) | TotalBytes-unused per-context shared-owner LRU RAM VRAM resident |

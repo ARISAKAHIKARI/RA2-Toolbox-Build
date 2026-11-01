@@ -6,6 +6,23 @@
 // WM_PAINT normally copies this completed front; exposures/periodic repairs do
 // not re-run HALFTONE or allocate a brush for every unit marker.
 namespace radarpanel {
+// Only this panel needs direct pixels after its GDI resize. Keep both complete
+// DIBs alive, so an annotation/resize failure never replaces the visible front.
+class PixelBuffer {
+ HDC memory_=nullptr;HBITMAP bitmap_=nullptr;HGDIOBJ previous_=nullptr;uint32_t*pixels_=nullptr;int width_=0,height_=0;
+public:
+ PixelBuffer()=default;PixelBuffer(const PixelBuffer&)=delete;PixelBuffer&operator=(const PixelBuffer&)=delete;
+ ~PixelBuffer(){clear();}
+ void clear(){if(memory_){SelectObject(memory_,previous_);DeleteObject(bitmap_);DeleteDC(memory_);}memory_=nullptr;bitmap_=nullptr;previous_=nullptr;pixels_=nullptr;width_=height_=0;}
+ void swap(PixelBuffer&o){using std::swap;swap(memory_,o.memory_);swap(bitmap_,o.bitmap_);swap(previous_,o.previous_);swap(pixels_,o.pixels_);swap(width_,o.width_);swap(height_,o.height_);}
+ HDC acquire(HDC target,int w,int h){if(memory_&&width_==w&&height_==h)return memory_;HDC dc=CreateCompatibleDC(target);if(!dc)return nullptr;
+  BITMAPINFO info{};info.bmiHeader.biSize=sizeof(BITMAPINFOHEADER);info.bmiHeader.biWidth=w;info.bmiHeader.biHeight=-h;info.bmiHeader.biPlanes=1;info.bmiHeader.biBitCount=32;info.bmiHeader.biCompression=BI_RGB;
+  void*bits=nullptr;HBITMAP image=CreateDIBSection(target,&info,DIB_RGB_COLORS,&bits,nullptr,0);if(!image){DeleteDC(dc);return nullptr;}HGDIOBJ old=SelectObject(dc,image);if(!old||old==HGDI_ERROR){DeleteObject(image);DeleteDC(dc);return nullptr;}
+  clear();memory_=dc;bitmap_=image;previous_=old;pixels_=static_cast<uint32_t*>(bits);width_=w;height_=h;return memory_;
+ }
+ uint32_t*pixels(){return pixels_;}
+ bool present(HDC target){return memory_&&BitBlt(target,0,0,width_,height_,memory_,0,0,SRCCOPY);}
+};
 class Gpu {
  gpupresent::Compositor compositor_;int width_=0,height_=0;
 public:
@@ -19,13 +36,14 @@ public:
   if(!image.gpu||!v.real||!v.marks.empty())return false;
   if(!active){SetWindowLongPtrW(window,GWL_EXSTYLE,(GetWindowLongPtrW(window,GWL_EXSTYLE)&~WS_EX_LAYERED)|WS_EX_NOREDIRECTIONBITMAP);active=true;}
   overlaycomposition::Rect view{v.view.left,v.view.top,v.view.right-v.view.left,v.view.bottom-v.view.top};
-  pending=!compositor_.presentFrame(window,image.gpu,v.width,v.height,0xff9da173u,&view);
+  const auto glyphs=panelglyphs::place(image.ranks,v.width,v.height);
+  pending=!compositor_.presentFrame(window,image.gpu,v.width,v.height,0xff9da173u,&view,&glyphs);
   if(!pending){width_=v.width;height_=v.height;}else if(compositor_.reason()!="GPU frame not ready")gpupresent::available()=false;
   return !pending;
  }
 };
 class Buffer {
- assist::construction::PanelBuffer front_,spare_;
+ PixelBuffer front_,spare_;
  int width_=0,height_=0,pendingWidth_=0,pendingHeight_=0;
  bool ready_=false,pending_=false;
 public:
@@ -42,6 +60,9 @@ public:
   else{if(!SetStretchBltMode(memory,HALFTONE)||!SetBrushOrgEx(memory,0,0,nullptr))return false;const int rows=StretchDIBits(memory,1,1,w,h,0,0,image.width,image.height,image.pixels.data(),&info,DIB_RGB_COLORS,SRCCOPY);if(!rows||rows==GDI_ERROR)return false;}
   HBRUSH brush=static_cast<HBRUSH>(GetStockObject(DC_BRUSH));if(!brush)return false;
   for(const auto&m:v.marks){RECT r{m.left,m.top,m.right,m.bottom};if(SetDCBrushColor(memory,RGB(m.color>>16,(m.color>>8)&255,m.color&255))==CLR_INVALID||!FillRect(memory,&r,brush))return false;}
+  // Flush pending GDI writes before touching DIB pixels. Insignia is added at
+  // this panel's final dimensions, then its camera rectangle/border stays top.
+  if(!GdiFlush())return false;panelglyphs::paint(spare_.pixels(),v.width,v.height,panelglyphs::place(image.ranks,v.width,v.height));
   if(v.view.right>v.view.left&&v.view.bottom>v.view.top){RECT r{v.view.left,v.view.top,v.view.right,v.view.bottom};if(SetDCBrushColor(memory,RGB(230,234,205))==CLR_INVALID||!FrameRect(memory,&r,brush))return false;}
   RECT border{0,0,v.width,v.height};if(SetDCBrushColor(memory,RGB(157,161,115))==CLR_INVALID||!FrameRect(memory,&border,brush)||!GdiFlush())return false;
   pendingWidth_=v.width;pendingHeight_=v.height;pending_=true;return true;

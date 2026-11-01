@@ -6,7 +6,8 @@
 #include "../../external_reader/source/scene_poses.h"
 #include "../../external_reader/source/feedback_scene.h"
 #include "../../external_reader/source/material_motion.h"
-#include <functional>
+#include "watch_read_view.h"
+#include "watch_observation.h"
 #include <chrono>
 #include "watch_presentation.h"
 namespace watchscene {
@@ -14,12 +15,12 @@ namespace watchscene {
 // the SAME scene compositor as the main view. Only camera lifetime/navigation
 // queries remain local. Sampling is a fallback when no other producer is live.
 template<class Reader,class Assets>class Renderer {
- using Read=std::function<bool(uint32_t,void*,size_t)>;
+ using Read=ReadView<Reader>;
  Reader&reader_;Assets&assets_;Read read_;external::radar::Sampler<Read> sampler_;
  external::radar::SceneRenderer<Assets> preparer_;
  std::array<external::worldscene::Pipeline,3> scenes_;
  uint32_t controls_=0;bool haveControls_=false;int sourceFrame_=-1;bool reveal_=false;
- external::presentation::Profile profile_;external::materialmotion::Timeline motion_;
+ external::presentation::Profile profile_;Observation motion_;
  static double clock(){return std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now().time_since_epoch()).count();}
 public:
  static constexpr int Width=external::watch::NativeViewWidth,Height=external::watch::NativeViewHeight;
@@ -29,7 +30,7 @@ public:
  bool sharedSource=false,gpuAttempted=false,gpuUsed=false;
  struct Timings {double sample=0,prepare=0,total=0;std::array<double,3>draw{};std::array<bool,3>attempted{},reused{};bool prepared=false,sampled=false;} timings;
  std::array<std::array<int,2>,3> outputSizes{{{{320,256}},{{320,256}},{{320,256}}}};
- Renderer(Reader&r,Assets&a):reader_(r),assets_(a),read_([&r](uint32_t p,void*out,size_t n){return r.read(p,out,n);}),sampler_(read_){}
+ Renderer(Reader&r,Assets&a):reader_(r),assets_(a),read_{&r},sampler_(read_){}
  void reset(){motion_.reset();preparer_.reset();sampler_.reset();sourceFrame_=-1;haveControls_=false;automatic={};autoSuppressed=false;for(auto&t:tracks)t={};for(auto&v:views)v={};for(auto&s:scenes_)s.reset();}
  void features(const external::presentation::Profile&p){if(p!=profile_){preparer_.reset();for(auto&s:scenes_)s.reset();for(auto&v:views)v.scene.reset();sourceFrame_=-1;profile_=p;}}
  void syncTracks(uint32_t revision,const std::array<external::watch::Track,3>&next,bool suppressed){if(haveControls_&&controls_==revision)return;std::copy(next.begin(),next.end(),tracks);autoSuppressed=suppressed;controls_=revision;haveControls_=true;}
@@ -52,7 +53,7 @@ public:
   }
   if(reveal_!=revealMap||bank->frame<sourceFrame_){motion_.reset();preparer_.reset();sourceFrame_=-1;for(auto&s:scenes_)s.reset();for(auto&v:views)v.scene.reset();}reveal_=revealMap;
   sourceFrame_=bank->frame;
-  motion_.observe(*bank,clock());auto data=motion_.sampleLatest(clock(),profile_.motion,profile_.detail!=0);if(!data.terrain)return false;
+  motion_.observe(bank,clock());auto data=motion_.sampleLatest(clock(),profile_.motion,profile_.detail!=0);if(!data.terrain)return false;
   sourceTick=bank->tick;data.tick=now;assets_.identity(process,epoch);
   int rasterW=1,rasterH=1;for(const auto&size:outputSizes){rasterW=std::max(rasterW,size[0]);rasterH=std::max(rasterH,size[1]);}
   external::xbrzadapter::gpuPresentation(profile_.gpu);external::presentation::apply(profile_,assets_,Width,Height,rasterW,rasterH);

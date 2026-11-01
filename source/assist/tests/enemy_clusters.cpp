@@ -1,32 +1,27 @@
+#ifdef NDEBUG
+#undef NDEBUG
+#endif
 #include "../source/enemy_clusters.h"
-#include "../source/label_motion.h"
 #include <cassert>
-#include <iostream>
-using namespace assist;using namespace external::enemies;
-static Frame raw,out;static visual::LabelView positions[Maximum],result[Maximum];
-static void add(int x,int y,uint32_t id,uint32_t owner=1,uint32_t type=1,int kind=2){
- auto&m=raw.items[raw.count++];m={};m.id=id;m.object=id+0x10000;m.owner=owner;m.type=type;m.kind=kind;m.worldX=x;m.worldY=y;m.x=x/4;m.y=y/4;
-}
-static auto groups(){return enemyclusters::group(raw);}
+#include <cstdio>
+#include <random>
+using namespace assist::enemyclusters;
+using Frame=external::enemies::Frame;
+static Frame f;
+static void add(int x,int y,int kind=1,unsigned owner=1,unsigned type=1){auto&m=f.items[f.count];m={};m.id=++f.count;m.object=0x10000+16*m.id;m.worldX=x;m.worldY=y;m.kind=kind;m.owner=owner;m.type=type;}
+static std::vector<int> labels(const std::vector<Group>&groups,int count){std::vector<int> out(count,-1);for(size_t n=0;n<groups.size();++n)for(int i:groups[n].members){assert(i>=0&&i<count&&out[i]==-1);out[i]=int(n);}for(int n:out)assert(n>=0);return out;}
 int main(){
- raw.width=1920;raw.height=1080;add(1000,1000,3);add(1512,1000,1);assert(groups().size()==1);
- raw.items[1].worldX=1513;assert(groups().size()==2);raw.items[1].worldX=1512;
- add(2024,1000,2);auto g=groups();assert(g.size()==2); // no transitive chain beyond two cells
- for(auto&a:g)for(int i:a.members)for(int j:a.members)assert(enemyclusters::square(int64_t(raw.items[i].worldX)-raw.items[j].worldX)+enemyclusters::square(int64_t(raw.items[i].worldY)-raw.items[j].worldY)<=512*512);
- raw.count=0;add(1000,1000,1);add(1000,1000,2,2);add(1000,1000,3,1,2);add(1000,1000,4,1,1,3);add(1000,1000,5,1,1,3);assert(groups().size()==5);
- raw.count=0;add(1000,1000,30);add(1362,1362,10);assert(groups().size()==1);raw.items[1].worldX=1363;assert(groups().size()==2);
- raw.count=0;add(1000,1000,1);add(1100,1000,2);add(5000,5000,3);g=groups();
- for(int i=0;i<3;++i){positions[i]={};positions[i].id=raw.items[i].id;positions[i].x=100.25f+i*20;positions[i].y=50.5f+i*10;}
- assert(enemyclusters::render(raw,positions,3,g,out,result)==2&&out.items[0].quantity==2&&out.items[1].quantity==1);
- assert(result[0].x==110.25f&&result[0].y==55.5f);
- // Unordered Motion output is matched by identity, with no camera-scale distance.
- std::swap(positions[0],positions[2]);enemyclusters::render(raw,positions,3,g,out,result);assert(result[0].x==110.25f);
- for(int step=0;step<1000;++step){for(int i=0;i<3;++i){positions[i].x+=.125f;positions[i].y-=.25f;}enemyclusters::render(raw,positions,3,g,out,result);assert(result[0].x==110.25f+(step+1)*.125f);}
- raw.items[1].worldX=1513;g=groups();assert(g.size()==3);enemyclusters::render(raw,positions,3,g,out,result);assert(result[0].x==positions[2].x&&out.items[0].quantity==1);
- raw.items[1].worldX=1100;std::swap(raw.items[0],raw.items[2]);g=groups();enemyclusters::render(raw,positions,3,g,out,result);assert(out.items[0].id==1&&out.items[0].quantity==2);
- // The maximum crowded army is one compact group; bad coordinates never merge.
- raw.count=0;for(int i=0;i<Maximum;++i)add(1000+i%100,1000+i%73,i+1);assert(groups().size()==1);
- raw.items[0].worldX=INT32_MIN;assert(groups().size()==2);
- raw.count=0;assert(groups().empty());
- std::cout<<"PASS exact 2-cell distance, owner/type separation, no chain merge, deterministic ordering, 2048 units, per-unit smooth centroid and immediate split\n";
+ add(0,0);add(6*256,0);add(3*256,0);assert(group(f).size()==1); // late bridge, exact boundary
+ f={};add(0,0);add(3*256+1,0);assert(group(f).size()==2);
+ f={};add(0,0);add(3*256,1);assert(group(f).size()==2); // Euclidean, not square radius
+ f={};add(0,0);add(0,0,1,2);add(0,0,1,1,2);add(0,0,3);add(0,0,3);add(-1,0);assert(group(f).size()==6);
+ // Compare the spatial index against an independent all-pairs flood fill.
+ std::mt19937 rng(711);unsigned comparisons=0;
+ for(int trial=0;trial<120;++trial){f={};int n=32+int(rng()%96);for(int i=0;i<n;++i)add(int(rng()%8192),int(rng()%8192),int(rng()%4),1+rng()%2,1+rng()%3);
+  auto actual=labels(group(f),n);std::vector<int> expected(n,-1),todo;
+  for(int seed=0;seed<n;++seed)if(expected[seed]<0){expected[seed]=seed;todo={seed};for(size_t k=0;k<todo.size();++k){const auto&a=f.items[todo[k]];for(int j=0;j<n;++j){const auto&b=f.items[j];if(expected[j]>=0||a.kind>=3||a.kind!=b.kind||a.owner!=b.owner||a.type!=b.type)continue;int64_t dx=int64_t(a.worldX)-b.worldX,dy=int64_t(a.worldY)-b.worldY;if(dx*dx+dy*dy<=int64_t(768)*768){expected[j]=seed;todo.push_back(j);}}}}
+  for(int a=0;a<n;++a)for(int b=0;b<n;++b){assert((actual[a]==actual[b])==(expected[a]==expected[b]));++comparisons;}
+ }
+ f={};for(int i=0;i<external::enemies::Maximum;++i)add(i%32,i/32);auto dense=group(f);assert(dense.size()==1&&dense[0].members.size()==external::enemies::Maximum);
+ std::printf("PASS three-cell connected components: boundaries, late bridge, categories and %u flood-fill comparisons.\n",comparisons);
 }

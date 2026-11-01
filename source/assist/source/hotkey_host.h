@@ -1,5 +1,10 @@
 // Each colliding action enters the existing request/selection channel in turn.
+static bool dispatchHotkeyGroup(hotkeyroute::Group group){
+ placementeventhost::immediate(group,[]{submitPlacementEvent();});
+ return group.actions.empty()||hotkeyPending.add(group,GetTickCount(),commandMatch());
+}
 static void executeHotkey(WPARAM wp,bool fanout){
+ if(wp==placementeventhost::Hotkey){notify(L"放置按键已失效，请在游戏中重新按键。");return;}
  if(wp>=1720&&wp<=1722&&extra.viewZoomEnabled){
   extra.viewZoomPercent=wp==1722?100:viewzoom::step(extra.viewZoomPercent,wp==1720?-1:1);
   {ControlUpdate guard;SendDlgItemMessageW(ui,9091,CB_SETCURSEL,viewzoom::index(extra.viewZoomPercent),0);}
@@ -29,8 +34,9 @@ static void serviceHotkeyBatch(){
  hotkeyPending.expire(GetTickCount(),commandMatch());
  if(!connected){formationTap.clear();typeTap.clear();variantTap.clear();hotkeyPending.clear();hotkeyRegistry.cancel();return;}
  uint8_t keys[256]{};for(unsigned i=0;i<256;++i)keys[i]=(GetAsyncKeyState(i)&0x8000)!=0;
- hotkeyRegistry.sample(keys,GetTickCount(),commandMatch(),[](hotkeyroute::Group out){if(!extra.allHotkeys)hotkeyroute::firstPerGesture(out);hotkeyPending.add(out,GetTickCount(),commandMatch());});
- hotkeyroute::Group delayed;while(hotkeyRegistry.expired(GetTickCount(),commandMatch(),delayed)){if(!extra.allHotkeys)hotkeyroute::firstPerGesture(delayed);hotkeyPending.add(delayed,GetTickCount(),commandMatch());}
+ hotkeyRegistry.sample(keys,GetTickCount(),commandMatch(),[](hotkeyroute::Group out){if(!extra.allHotkeys)hotkeyroute::firstPerGesture(out);dispatchHotkeyGroup(std::move(out));});
+ hotkeyroute::Group delayed;while(hotkeyRegistry.expired(GetTickCount(),commandMatch(),delayed)){if(!extra.allHotkeys)hotkeyroute::firstPerGesture(delayed);
+  placementeventhost::immediate(delayed,[]{notify(L"放置按键与延迟手势冲突，请配置独立按键后重试。");});dispatchHotkeyGroup(std::move(delayed));}
  for(unsigned n=0;n<hotkeyroute::Pending::Capacity;++n){
   if(hasSelection||commandQueue.size||shared->request!=shared->ack||shared->selectRequest!=shared->selectAck)return;
   hotkeyroute::Action action;if(!hotkeyPending.pop(GetTickCount(),commandMatch(),action))return;
@@ -51,7 +57,10 @@ static void handleHotkey(WPARAM id,LPARAM event){
  if(formationHotkey(key)){hotkeyPending.clear();return;}
  hotkeyroute::Group selected;if(!hotkeyRegistry.press(int(id),GetTickCount(),commandMatch(),selected))return;
  if(!extra.allHotkeys)hotkeyroute::firstPerGesture(selected);
- if(!hotkeyPending.add(selected,GetTickCount(),commandMatch()))notify(L"快捷键请求队列已满，本次组合未提交。");
+ // WM_HOTKEY can itself wait in the Windows queue. An old place edge must
+ // not resolve the current cursor after a long blocked UI callback.
+ if(DWORD(GetTickCount()-DWORD(GetMessageTime()))>150)placementeventhost::immediate(selected,[]{notify(L"放置按键已过期，请重新按键。");});
+ if(!dispatchHotkeyGroup(std::move(selected)))notify(L"快捷键请求队列已满，本次组合未提交。");
  serviceHotkeyBatch();
 }
 

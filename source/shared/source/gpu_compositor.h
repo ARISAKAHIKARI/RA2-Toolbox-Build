@@ -1,6 +1,7 @@
 #pragma once
 #include "gpu_surface_win32.h"
 #include "overlay_composition.h"
+#include "panel_glyphs.h"
 #ifdef _WIN32
 #include <dcomp.h>
 #include <d3dcompiler.h>
@@ -24,7 +25,7 @@ Texture2D<float4> source:register(t0);StructuredBuffer<uint2> holes:register(t1)
 struct Vertex {float4 position:SV_Position;};
 Vertex vs(uint id:SV_VertexID){Vertex o;float2 corner=float2(id&1,id>>1);float2 p=drawRect.xy+corner*drawRect.zw;o.position=float4(p.x*2/output.x-1,1-p.y*2/output.y,0,1);return o;}
 float4 ps(Vertex input):SV_Target{
- if(panel.z!=0.){
+ if(panel.z>0.){
   int2 at=int2(floor(input.position.xy));int2 size=int2(panel.xy);
   if(any(at<int2(1,1))||any(at>=size-int2(1,1)))return float4(float((data.z>>16)&255u),float((data.z>>8)&255u),float(data.z&255u),255.)/255.;
   int4 box=int4(panelView);if(all(at>=box.xy)&&all(at<box.zw)&&(at.x==box.x||at.y==box.y||at.x==box.z-1||at.y==box.w-1))return float4(230.,234.,205.,255.)/255.;
@@ -34,6 +35,14 @@ float4 ps(Vertex input):SV_Target{
   float4 top=lerp(source.Load(int3(clamp(a,int2(0,0),limit),0)),source.Load(int3(clamp(a+int2(1,0),int2(0,0),limit),0)),f.x);
   float4 bottom=lerp(source.Load(int3(clamp(a+int2(0,1),int2(0,0),limit),0)),source.Load(int3(clamp(a+int2(1,1),int2(0,0),limit),0)),f.x);
   return lerp(top,bottom,f.y)*(float(data.x)/255.);
+ }
+ if(panel.z<0.){
+  int2 at=int2(floor(input.position.xy));int4 box=int4(panelView);
+  // Panel chrome is topmost on both CPU and GPU. Glyphs are clipped to the
+  // interior by the physical scissor; never cover the camera rectangle.
+  if(all(at>=box.xy)&&all(at<box.zw)&&(at.x==box.x||at.y==box.y||at.x==box.z-1||at.y==box.w-1))discard;
+  int2 p=int2(floor((input.position.xy-drawRect.xy)*rect.zw/drawRect.zw));
+  return source.Load(int3(clamp(p,int2(0,0),int2(rect.zw)-1),0));
  }
  int2 p=int2(floor(input.position.xy*output.zw))-int2(rect.xy);
  if(data.w!=0&&(p.x<int(data.w)||p.y<int(data.w)||p.x>=int(rect.z)-int(data.w)||p.y>=int(rect.w)-int(data.w)))return float4(float((data.z>>16)&255u),float((data.z>>8)&255u),float(data.z&255u),255.)/255.;
@@ -104,7 +113,7 @@ public:
  ~Compositor(){reset();}
  const std::string&reason()const{return reason_;}
  void reset(){cache_.clear();target_.reset();swap_.reset();visual_.reset();compositionTarget_.reset();composition_.reset();vertex_.reset();pixel_.reset();constants_.reset();holesView_.reset();holes_.reset();blend_.reset();raster_.reset();context_.reset();owner_.reset();window_=nullptr;ready_=false;width_=height_=0;holeCapacity_=0;if(compiler_)FreeLibrary(compiler_);if(dcomp_)FreeLibrary(dcomp_);compiler_=dcomp_=nullptr;}
- bool present(HWND window,const overlaycomposition::Context&view,std::vector<overlaycomposition::Surface>layers,int targetWidth=0,int targetHeight=0,uint32_t border=0,const overlaycomposition::Rect*panelView=nullptr){
+ bool present(HWND window,const overlaycomposition::Context&view,std::vector<overlaycomposition::Surface>layers,int targetWidth=0,int targetHeight=0,uint32_t border=0,const overlaycomposition::Rect*panelView=nullptr,const std::vector<panelglyphs::Draw>*glyphs=nullptr){
   overlaycomposition::order(layers,view);auto world=std::find_if(layers.begin(),layers.end(),[](const auto&s){return bool(s.gpu);});
   std::shared_ptr<Device> owner=world!=layers.end()?std::static_pointer_cast<const SharedImage>(world->gpu->resource)->owner:owner_;
   if(!owner)return fail("GPU presentation device unavailable");
@@ -122,6 +131,12 @@ public:
    }
    if(!source(s,cache_[s.id]))return false;
   }
+  std::set<uint64_t> glyphIds;
+  if(glyphs)for(const auto&g:*glyphs){
+   if(g.width<1||g.height<1||g.sourceWidth<1||g.sourceHeight<1||g.sourceWidth>1024||g.sourceHeight>1024||!g.pixels||g.pixels->size()!=size_t(g.sourceWidth)*g.sourceHeight)return fail("GPU panel glyph invalid");
+   const uint64_t id=reinterpret_cast<uintptr_t>(g.pixels.get());if(!glyphIds.insert(id).second)continue;
+   overlaycomposition::Surface s;s.id=id;s.rect={0,0,g.sourceWidth,g.sourceHeight};s.pixels=g.pixels;if(!source(s,cache_[id]))return false;
+  }
   const float clear[4]{};context_->ClearRenderTargetView(target_.get(),clear);ID3D11RenderTargetView*target=target_.get();context_->OMSetRenderTargets(1,&target,nullptr);context_->OMSetBlendState(blend_.get(),nullptr,~0u);
   context_->IASetInputLayout(nullptr);context_->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);context_->VSSetShader(vertex_.get(),nullptr,0);context_->PSSetShader(pixel_.get(),nullptr,0);context_->RSSetState(raster_.get());
   D3D11_VIEWPORT viewport{0,0,float(physicalW),float(physicalH),0,1};context_->RSSetViewports(1,&viewport);
@@ -132,18 +147,25 @@ public:
    ID3D11Buffer*constants=constants_.get();context_->VSSetConstantBuffers(0,1,&constants);context_->PSSetConstantBuffers(0,1,&constants);ID3D11ShaderResourceView*views[]={cache_[s.id].texture.view.get(),p.data[1]?holesView_.get():nullptr};context_->PSSetShaderResources(0,2,views);
    D3D11_RECT clip{LONG(int64_t(bounds.x)*physicalW/view.width),LONG(int64_t(bounds.y)*physicalH/view.height),LONG((int64_t(bounds.x+bounds.w)*physicalW+view.width-1)/view.width),LONG((int64_t(bounds.y+bounds.h)*physicalH+view.height-1)/view.height)};context_->RSSetScissorRects(1,&clip);context_->Draw(4,0);
   }
+  if(glyphs)for(const auto&g:*glyphs){
+   Parameters p{{0,0,float(g.sourceWidth),float(g.sourceHeight)},{float(physicalW),float(physicalH),1,1},{255,0,0,0},{float(g.x),float(g.y),float(g.width),float(g.height)}};p.panel[2]=-1;
+   if(panelView){p.panelView[0]=float(panelView->x);p.panelView[1]=float(panelView->y);p.panelView[2]=float(panelView->x+panelView->w);p.panelView[3]=float(panelView->y+panelView->h);}
+   D3D11_MAPPED_SUBRESOURCE mapped{};if(FAILED(context_->Map(constants_.get(),0,D3D11_MAP_WRITE_DISCARD,0,&mapped)))return fail("GPU glyph parameter upload failed");std::memcpy(mapped.pData,&p,sizeof p);context_->Unmap(constants_.get(),0);
+   ID3D11Buffer*constants=constants_.get();context_->VSSetConstantBuffers(0,1,&constants);context_->PSSetConstantBuffers(0,1,&constants);ID3D11ShaderResourceView*views[]={cache_[reinterpret_cast<uintptr_t>(g.pixels.get())].texture.view.get(),nullptr};context_->PSSetShaderResources(0,2,views);
+   D3D11_RECT clip{std::max(1,g.x),std::max(1,g.y),std::min(physicalW-1,g.x+g.width),std::min(physicalH-1,g.y+g.height)};if(clip.right>clip.left&&clip.bottom>clip.top){context_->RSSetScissorRects(1,&clip);context_->Draw(4,0);}
+  }
   ID3D11ShaderResourceView*empty[2]{};context_->PSSetShaderResources(0,2,empty);context_->OMSetRenderTargets(0,nullptr,nullptr);
   if(!reads.finish())return fail("GPU shared frame release failed");
   const HRESULT result=swap_->Present(0,DXGI_PRESENT_DO_NOT_WAIT);if(result==DXGI_ERROR_WAS_STILL_DRAWING)return fail("GPU frame not ready");if(FAILED(result)||FAILED(composition_->Commit()))return fail("GPU composition present failed");
-  for(auto i=cache_.begin();i!=cache_.end();)if(std::none_of(layers.begin(),layers.end(),[&](const auto&s){return s.id==i->first;}))i=cache_.erase(i);else ++i;
+  for(auto i=cache_.begin();i!=cache_.end();)if(!glyphIds.count(i->first)&&std::none_of(layers.begin(),layers.end(),[&](const auto&s){return s.id==i->first;}))i=cache_.erase(i);else ++i;
   reason_.clear();return true;
  }
- bool presentFrame(HWND window,std::shared_ptr<const Frame>frame,int w,int h,uint32_t border,const overlaycomposition::Rect*panelView=nullptr){
+ bool presentFrame(HWND window,std::shared_ptr<const Frame>frame,int w,int h,uint32_t border,const overlaycomposition::Rect*panelView=nullptr,const std::vector<panelglyphs::Draw>*glyphs=nullptr){
   if(!frame||!frame->resource)return fail("GPU frame unavailable");
   const int sourceW=frame->resource->width,sourceH=frame->resource->height;
   overlaycomposition::Context view{1,reinterpret_cast<uintptr_t>(window),0,0,sourceW,sourceH,0,0};
   overlaycomposition::Surface layer{1,0,view,{0,0,sourceW,sourceH},false,255,{}, {}, {},std::move(frame)};
-  return present(window,view,{std::move(layer)},w,h,border,panelView);
+  return present(window,view,{std::move(layer)},w,h,border,panelView,glyphs);
  }
 
 };

@@ -31,7 +31,8 @@ static void loadAdditionalSettings(){
  // Replace the former flag implementation in slot 0; retain the native slot
  // and saved companion preferences, which remain suppressed in Master mode.
  extra.controlImplementation=value(L"Experimental",L"ControlImplementation",0)==1?1:0;
- extra.placementImplementation=std::clamp(value(L"Experimental",L"PlacementImplementation",0),0,1);
+ extra.placementImplementation=buildingmodes::placement(value(L"Experimental",L"PlacementImplementation",0));
+ extra.placementEventKey=value(L"Hotkeys",L"PlaceCompletedBuilding",extra.placementEventKey)&65535;
  extra.overlayKey=value(L"Hotkeys",L"OverlayToggle",0xC0)&65535;
  extra.stickyKey=value(L"Hotkeys",L"StickyGuard",extra.stickyKey)&65535;
  for(int i=0;i<selectedmode::Count;++i)extra.missionModeKeys[i]=value(L"Hotkeys",selectedmode::setting(i),0)&65535;
@@ -110,6 +111,7 @@ static bool saveAdditionalSettings(){
  write(L"Compatibility",L"NoCodeWriteDefaultsVersion",1);
  write(L"ViewZoom",L"Enabled",0);write(L"ViewZoom",L"Percent",100);
  write(L"Experimental",L"TechEnhance",extra.techEnhance);write(L"Experimental",L"PlacementImplementation",extra.placementImplementation);
+ write(L"Hotkeys",L"PlaceCompletedBuilding",extra.placementEventKey);
  write(L"Experimental",L"CrcMapIsClearShadow",extra.crcMapShadow);
  write(L"Experimental",L"NetworkHousePreserve",extra.networkHousePreserve);write(L"Experimental",L"NativeSellCursor",extra.nativeSellCursor);
  write(L"Experimental",L"NativeMegaGateway",extra.nativeMegaGateway);

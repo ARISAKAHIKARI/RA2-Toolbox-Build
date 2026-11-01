@@ -1,17 +1,21 @@
 #pragma once
 #include "scene_extra_layers.h"
 namespace external { namespace sceneextras {
-inline bool hasRadar(const radar::Frame&frame){return (frame.extras&&(!frame.extras->radar.empty()||!frame.extras->beacons.empty()))||std::any_of(frame.markers.begin(),frame.markers.end(),[](const auto&m){return m.rank>=0;});}
+inline bool hasRadar(const radar::Frame&frame){return frame.extras&&(!frame.extras->radar.empty()||!frame.extras->beacons.empty());}
+template<class Read>std::shared_ptr<const panelglyphs::Annotations> radarRanks(const radar::Frame&frame,Read read,Layers&layers){
+ if(!frame.terrain)return {};const auto&geo=frame.terrain->geo;if(geo.rawWidth<=0||geo.rawHeight<=0)return {};
+ auto out=std::make_shared<panelglyphs::Annotations>();out->worldWidth=geo.rawWidth*30.;out->worldHeight=geo.rawHeight*15.;const double zscale=projectionZScale(read);
+ for(const auto&m:frame.markers)if(m.rank>=0&&m.kind>=0&&m.kind<=3&&std::isfinite(m.u)&&std::isfinite(m.v)&&m.u>=0&&m.u<1&&m.v>=0&&m.v<1){
+  if(auto image=layers.rankGlyph(read,m.rank))out->glyphs.push_back({m.u,m.v-screenHeight(m.z,zscale)/out->worldHeight,image->x,image->y,image->width,image->height,std::shared_ptr<const std::vector<uint32_t>>(image,&image->pixels)});
+ }return out->glyphs.empty()?nullptr:out;
+}
+inline std::shared_ptr<const radar::Scene> withRadarRanks(std::shared_ptr<const radar::Scene>scene,const std::shared_ptr<const panelglyphs::Annotations>&ranks){
+ if(!scene||panelglyphs::same(scene->ranks,ranks))return scene;auto next=std::make_shared<radar::Scene>(*scene);next->ranks=ranks;return next;
+}
 // RadarClass660000 and BeaconManager431700 order. No event admission, EVA,
 // beacon placement, message editing or Spacebar-history writes occur here.
 template<class Read,class Assets,class Sink>void radarDecorations(const radar::Frame&frame,int width,int height,Read read,Assets&assets,Layers&layers,Sink&sink){
  if(!frame.terrain)return;const auto&geo=frame.terrain->geo;const double sx=double(width)/geo.rw,sy=double(height)/geo.rh;
- // Insignia is a screen annotation, like a radar beacon. Retain native PIPS
- // frames (one star / elite stars), at a readable minimum of one device pixel.
- const double zscale=projectionZScale(read),pixelX=double(width)/(geo.rawWidth*30),pixelY=double(height)/(geo.rawHeight*15);
- for(const auto&m:frame.markers)if(m.rank>=0&&m.kind>=0&&m.kind<=3&&std::isfinite(m.u)&&std::isfinite(m.v)&&m.u>=0&&m.u<1&&m.v>=0&&m.v<1){
-  if(auto image=layers.rankGlyph(read,m.rank))sink.uiImage(image,layers.rankBytes(m.rank),m.u*width+2,m.v*height-screenHeight(m.z,zscale)*pixelY+2,std::max(1.,pixelX),std::max(1.,pixelY));
- }
  if(!frame.extras)return;
  for(const auto&e:frame.extras->radar){uint32_t bright=e.type==0||e.type==3||e.type==4?0xffffff:e.type==5?0x00ffff:e.type==1||e.type==2||e.type==11||e.type==12?0xffff00:0;if(!bright)continue;
   uint32_t color=0;for(int sh:{0,8,16})if((bright>>sh)&255)color|=unsigned(128+127*std::clamp(e.fade,0.f,1.f))<<sh;
@@ -40,6 +44,6 @@ template<class Read,class Assets>std::shared_ptr<const radar::Scene> decorateRad
  if(!scene||scene->pixels.size()!=size_t(scene->width)*scene->height)return scene;if(frame.markers.empty()&&!hasRadar(frame))return scene;
  auto next=std::make_shared<radar::Scene>(*scene);for(const auto&m:frame.markers){if(!std::isfinite(m.u)||!std::isfinite(m.v)||m.u<0||m.u>=1||m.v<0||m.v>=1)continue;
   int x=int(m.u*next->width),y=int(m.v*next->height),radius=m.building?2:1;for(int yy=std::max(0,y-radius);yy<std::min(next->height,y+radius+1);++yy)for(int xx=std::max(0,x-radius);xx<std::min(next->width,x+radius+1);++xx)next->pixels[size_t(yy)*next->width+xx]=0xff000000u|m.color;
- }RadarCPU sink(*next);radarDecorations(frame,next->width,next->height,read,assets,layers,sink);return next;
+ }RadarCPU sink(*next);radarDecorations(frame,next->width,next->height,read,assets,layers,sink);next->ranks=radarRanks(frame,read,layers);return next;
 }
 }}

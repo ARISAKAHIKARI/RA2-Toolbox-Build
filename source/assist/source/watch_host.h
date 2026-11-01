@@ -1,11 +1,13 @@
 #include "../../shared/source/latest_worker.h"
 #include "watch_scene.h"
+#include "watch_world_lifetime.h"
 #include <cstdio>
 namespace watchhost {
 static constexpr int Width=external::watch::NativeViewWidth,Height=external::watch::NativeViewHeight;
 struct View {external::watch::Frame frame;external::watch::Box box;bool shown=false;int pixelWidth=0,pixelHeight=0;std::shared_ptr<const std::vector<uint32_t>> pixels;std::shared_ptr<const gpupresent::Frame> gpu;};
 static View views[3];static external::watch::Track tracks[3];static bool autoSuppressed=false,shown=false,suspended=false;
 static uint32_t process=0,epoch=0,controls=0;static uint8_t trackingOptions=0xff;
+static watchworld::Lifetime lifetime;static uint32_t lifetimeSample=0;static bool lifetimeReady=false;
 static std::array<int,2> panelDemand[2][3]{};
 static void demand(int slot,bool second,int width,int height){if(slot>=0&&slot<3)panelDemand[second][slot]={std::clamp(width,0,2048),std::clamp(height,0,2048)};}
 struct Request {uint32_t pid,match,tick,control;int width,height;bool reveal,danger,suppressed;std::array<external::watch::Track,3> tracks;external::presentation::Selection selection;std::array<std::array<int,2>,3> outputSizes;};
@@ -56,13 +58,24 @@ template<class Read>static bool followTracks(Read read,int slot=-1){
  if(changed){worker.invalidate();++controls;applied.reset();arrange();++paintRevision;}
  return changed;
 }
-static void reset(){suspended=false;worker.invalidate();applied.reset();++controls;for(auto&t:tracks)t={};for(auto&v:views)v={};autoSuppressed=false;shown=false;}
+static void reset(){suspended=false;worker.invalidate();applied.reset();++controls;for(auto&t:tracks)t={};for(auto&v:views)v={};autoSuppressed=false;shown=false;lifetime.reset();lifetimeSample=0;lifetimeReady=false;}
 static void suspend(){if(suspended)return;suspended=true;worker.invalidate();applied.reset();++controls;for(auto&v:views)v.shown=false;shown=false;}
+static bool synchronizeWorld(){
+ const bool valid=externalData&&externalData->status==1&&externalData->sampledTick&&uint32_t(sampleRenderClock(nullptr)-externalData->sampledTick)<2000;
+ const uint32_t sampled=externalData?externalData->sampledTick:0,match=valid?externalData->match:0;
+ if(process==pid&&sampled==lifetimeSample&&(!match||match==epoch))return lifetimeReady&&valid;
+ auto next=lifetime;auto decision=next.observe(pid,match,assist::worldlife::capture([](uint32_t p,void*out,size_t n){return externalReader.readFresh(p,out,n);}));
+ if(decision.clear)reset();
+ else if(decision.rebind){worker.invalidate();++controls;applied.reset();}
+ lifetime=next;lifetimeSample=sampled;lifetimeReady=decision.ready;process=pid;
+ if(decision.ready)epoch=match;
+ return lifetimeReady&&valid;
+}
 static void close(int slot){if(slot<0||slot>=3)return;worker.invalidate();++controls;tracks[slot]={};views[slot]={};autoSuppressed=true;arrange();++paintRevision;}
 static void pin(uint32_t key){
  if((!enabled||!extra.watchEnabled)&&!extra.watchSecondary)return;
  if(!foregroundGame()||snap.chat||formationInputOwns())return;
- if(process!=pid||epoch!=displayMatch()){reset();process=pid;epoch=displayMatch();}
+ if(!synchronizeWorld())return;
  auto read=[](uint32_t p,void*out,size_t n){return externalReader.readFresh(p,out,n);};followTracks(read);
  int slot=-1;auto result=external::watch::add(tracks,extra.watchKeys,key,external::watch::capture(read),slot);using R=external::watch::AddResult;
  if(result==R::NoTarget){notify(L"请先选中单位，或将鼠标放到单位上。");return;}
@@ -74,7 +87,7 @@ static void update(uint32_t now){
  auto selection=external::presentation::settings().get();static uint64_t selectedRevision=~uint64_t(0);
  if(selectedRevision!=selection.revision){selectedRevision=selection.revision;worker.invalidate();++controls;applied.reset();for(auto&v:views)v={};}
 
- if(process!=pid||epoch!=displayMatch()){reset();process=pid;epoch=displayMatch();}
+ if(!synchronizeWorld()){suspend();return;}
  bool primary=enabled&&extra.watchEnabled&&foregroundGame()&&!snap.chat;
  bool secondary=extra.watchSecondary&&secondaryDisplayAvailable();
  uint8_t options=uint8_t(primary||secondary)|(uint8_t(bool(extra.watchDanger))<<1);

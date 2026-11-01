@@ -406,8 +406,26 @@ static bool installRiskSite(RiskSite&s){
 }
 #include "master_tech_bridge.h"
 #include "direct_modes_bridge.h"
+static bool nativeTechRetired(){
+ if(riskTechActive)return false;
+ auto reader=[](uint32_t at,void*out,size_t n){return read(at,out,n);};
+ if(!techmode::retired(riskSites[6],codeHookRegistry,reader)||!techmode::retired(riskSites[7],codeHookRegistry,reader))return false;
+ for(const auto&s:masterTechSites)if(!techmode::retired(s,codeHookRegistry,reader))return false;
+ return true;
+}
+static bool nativePlacementRetired(){
+ if(riskPlacementActive)return false;
+ auto reader=[](uint32_t at,void*out,size_t n){return read(at,out,n);};
+ if(!techmode::retired(riskSites[0],codeHookRegistry,reader))return false;
+ for(const auto&s:directpatch::Sites)if(s.group==directpatch::Group::Placement&&!techmode::retired(s,codeHookRegistry,reader))return false;
+ // No retired older placement entry may retain ownership either.
+ return !codeHookRegistry.active(0x464AC0)&&!codeHookRegistry.conflict(0x464AC0);
+}
 static bool setTechSites(bool enabled){
  prepareRiskSites();prepareMasterTech();riskTechActive=false;
+ // Defense in depth: callers cannot accidentally install the default pair
+ // when they request the rule-data implementation.
+ if(enabled&&techmode::data(techImplementation))enabled=false;
  if(enabled&&techImplementation==2){
   // The old call gates and master prune have adjacent ABI dependencies.
   // Restore the old pair before preflighting the complete new group.
@@ -504,7 +522,12 @@ static void placementTick(){
  riskC4Active=false;
  {bool a=restoreRiskSite(riskSites[5]),b=restoreRiskSite(riskSites[8]);snap.c4TestStatus=!a||!b?-2:featureavailability::InfantryForcedEntry&&sh->c4Test?1:0;}
  renderRevealTick();
- if((sh->flags&BuildAnywhere)&&sh->placementImplementation==1){
+ if((sh->flags&BuildAnywhere)&&sh->placementImplementation==2){
+  riskPlacementActive=false;
+  const bool oldOff=restoreRiskSite(riskSites[0]);
+  const bool directOff=directGroupRestore(directpatch::Group::Placement);
+  snap.placementStatus=oldOff&&directOff&&nativePlacementRetired()?2:-2;
+ }else if((sh->flags&BuildAnywhere)&&sh->placementImplementation==1){
   riskPlacementActive=false;bool off=restoreRiskSite(riskSites[0]);
   bool ok=off&&directGroupEnable(directpatch::Group::Placement);
   if(!ok)directGroupRestore(directpatch::Group::Placement);

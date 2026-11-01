@@ -1,0 +1,281 @@
+{
+  "status": "PASS",
+  "checks": 38,
+  "private_executable_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+  "no_private_exe_writes": true,
+  "no_running_process_operations": true,
+  "actual_native_functions": [
+    "0x4F7870 CanBuild",
+    "0x5F7900 FindFactory",
+    "0x4779E0 vector copy",
+    "0x49FAE0 counter access",
+    "0x748170/748180 native UnitType WhatAmI/GetArrayIndex",
+    "0x711EC0 native GetOwners (including DoubleOwned)",
+    "0x6A6140 native sidebar factory link with no cameo"
+  ],
+  "mocked": [
+    "malloc/free host runtime",
+    "synthetic Building current mission=0"
+  ],
+  "boundary": "Synthetic unit/building-type/house/factory data only. Executes full native predicates; does not execute complete Produce receiver, production progress, sidebar, Windows UI, MOD overrides or multiplayer.",
+  "rows": [
+    {
+      "name": "ordinary eligible human",
+      "result": 1,
+      "full_tech_entered": true,
+      "build_limit_entered": true,
+      "allocator_calls": 0
+    },
+    {
+      "name": "TechLevel higher than House blocks",
+      "result": 0,
+      "full_tech_entered": true,
+      "build_limit_entered": false,
+      "allocator_calls": 0
+    },
+    {
+      "name": "TechLevel minus1 blocks",
+      "result": 0,
+      "full_tech_entered": true,
+      "build_limit_entered": false,
+      "allocator_calls": 0
+    },
+    {
+      "name": "lower TechLevel alone does not clear Unbuildable",
+      "result": 0,
+      "full_tech_entered": true,
+      "build_limit_entered": false,
+      "allocator_calls": 0
+    },
+    {
+      "name": "lower TechLevel alone does not clear RequiredHouses",
+      "result": 0,
+      "full_tech_entered": true,
+      "build_limit_entered": false,
+      "allocator_calls": 0
+    },
+    {
+      "name": "lower TechLevel alone does not clear ForbiddenHouses",
+      "result": 0,
+      "full_tech_entered": true,
+      "build_limit_entered": false,
+      "allocator_calls": 0
+    },
+    {
+      "name": "lower TechLevel does not clear stolen requirement 0",
+      "result": 0,
+      "full_tech_entered": true,
+      "build_limit_entered": false,
+      "allocator_calls": 0
+    },
+    {
+      "name": "lower TechLevel does not clear stolen requirement 1",
+      "result": 0,
+      "full_tech_entered": true,
+      "build_limit_entered": false,
+      "allocator_calls": 0
+    },
+    {
+      "name": "lower TechLevel does not clear stolen requirement 2",
+      "result": 0,
+      "full_tech_entered": true,
+      "build_limit_entered": false,
+      "allocator_calls": 0
+    },
+    {
+      "name": "missing prerequisite still blocks low level",
+      "result": 0,
+      "full_tech_entered": true,
+      "build_limit_entered": false,
+      "allocator_calls": 2
+    },
+    {
+      "name": "genuine prerequisite ownership passes",
+      "result": 1,
+      "full_tech_entered": true,
+      "build_limit_entered": true,
+      "allocator_calls": 2
+    },
+    {
+      "name": "empty prerequisite count bypasses prerequisite gate",
+      "result": 1,
+      "full_tech_entered": true,
+      "build_limit_entered": true,
+      "allocator_calls": 2
+    },
+    {
+      "name": "BuildLimit zero means zero allowed",
+      "result": 0,
+      "full_tech_entered": true,
+      "build_limit_entered": true,
+      "allocator_calls": 0
+    },
+    {
+      "name": "positive BuildLimit attained blocks",
+      "result": -1,
+      "full_tech_entered": true,
+      "build_limit_entered": true,
+      "allocator_calls": 0
+    },
+    {
+      "name": "negative BuildLimit counts lifetime production",
+      "result": 0,
+      "full_tech_entered": true,
+      "build_limit_entered": true,
+      "allocator_calls": 0
+    },
+    {
+      "name": "all scalar and prerequisite locks fail normal full check",
+      "result": 0,
+      "full_tech_entered": true,
+      "build_limit_entered": false,
+      "allocator_calls": 0
+    },
+    {
+      "name": "native buildlimitOnly skips all tech locks",
+      "result": 1,
+      "full_tech_entered": false,
+      "build_limit_entered": true,
+      "allocator_calls": 0
+    },
+    {
+      "name": "native buildlimitOnly even bypasses Unbuildable",
+      "result": 1,
+      "full_tech_entered": false,
+      "build_limit_entered": true,
+      "allocator_calls": 0
+    },
+    {
+      "name": "prerequisite override real owned building bypasses all scalar tech locks",
+      "result": 1,
+      "full_tech_entered": true,
+      "build_limit_entered": true,
+      "allocator_calls": 2
+    },
+    {
+      "name": "override cannot bypass Unbuildable first gate",
+      "result": 0,
+      "full_tech_entered": true,
+      "build_limit_entered": false,
+      "allocator_calls": 0
+    },
+    {
+      "name": "override cannot bypass BuildLimit",
+      "result": 0,
+      "full_tech_entered": true,
+      "build_limit_entered": true,
+      "allocator_calls": 2
+    },
+    {
+      "name": "native factory still accepts locked tech via limitOnly",
+      "result": 537067520,
+      "full_tech_entered": false,
+      "build_limit_entered": true,
+      "allocator_calls": 0
+    },
+    {
+      "name": "native factory OwnerFlags disjoint denies",
+      "result": 0,
+      "full_tech_entered": false,
+      "build_limit_entered": true,
+      "allocator_calls": 0
+    },
+    {
+      "name": "OwnerFlags union admits compatible owned factory",
+      "result": 537067520,
+      "full_tech_entered": false,
+      "build_limit_entered": true,
+      "allocator_calls": 0
+    },
+    {
+      "name": "DoubleOwned data flag allows owner mismatch in MP",
+      "result": 537067520,
+      "full_tech_entered": false,
+      "build_limit_entered": true,
+      "allocator_calls": 0
+    },
+    {
+      "name": "DoubleOwned does not bypass owner mismatch in campaign",
+      "result": 0,
+      "full_tech_entered": false,
+      "build_limit_entered": true,
+      "allocator_calls": 0
+    },
+    {
+      "name": "no actual factory denies",
+      "result": 0,
+      "full_tech_entered": false,
+      "build_limit_entered": false,
+      "allocator_calls": 0
+    },
+    {
+      "name": "wrong factory class denies",
+      "result": 0,
+      "full_tech_entered": false,
+      "build_limit_entered": false,
+      "allocator_calls": 0
+    },
+    {
+      "name": "unpowered factory denies",
+      "result": 0,
+      "full_tech_entered": false,
+      "build_limit_entered": false,
+      "allocator_calls": 0
+    },
+    {
+      "name": "naval mismatch denies",
+      "result": 0,
+      "full_tech_entered": false,
+      "build_limit_entered": true,
+      "allocator_calls": 0
+    },
+    {
+      "name": "native factory still enforces BuildLimit",
+      "result": 0,
+      "full_tech_entered": false,
+      "build_limit_entered": true,
+      "allocator_calls": 0
+    },
+    {
+      "name": "production nine-field data plan UnitType",
+      "before": 0,
+      "applied_full_CanBuild": 1,
+      "applied_FindFactory": true,
+      "restored": 0,
+      "native_code_unchanged": true
+    },
+    {
+      "name": "production nine-field data plan BuildingType",
+      "before": 0,
+      "applied_full_CanBuild": 1,
+      "applied_FindFactory": true,
+      "restored": 0,
+      "native_code_unchanged": true
+    },
+    {
+      "name": "native superweapon restriction remains enforced by data plan",
+      "full_CanBuild": 0,
+      "superweapon_association_unchanged": true
+    },
+    {
+      "name": "native Produce sidebar link without cameo kind 3",
+      "result": 0,
+      "non_stack_writes": 0
+    },
+    {
+      "name": "native Produce sidebar link without cameo kind 7",
+      "result": 0,
+      "non_stack_writes": 0
+    },
+    {
+      "name": "native Produce sidebar link without cameo kind 16",
+      "result": 0,
+      "non_stack_writes": 0
+    },
+    {
+      "name": "native Produce sidebar link without cameo kind 40",
+      "result": 0,
+      "non_stack_writes": 0
+    }
+  ]
+}

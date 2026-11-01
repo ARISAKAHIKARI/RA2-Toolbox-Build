@@ -1,0 +1,7 @@
+{
+  "exit_code": 0,
+  "production_functions_extracted": true,
+  "game_tested": false,
+  "multiplayer_tested": false,
+  "output": "technology rule-data production transition checks=38 failures=0; bounded engine/data/patch mocks, no game/netplay\n"
+}

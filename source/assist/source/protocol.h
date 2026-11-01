@@ -21,8 +21,9 @@
 #include "missile_compute.h"
 #include "burst_compute.h"
 #include "dodge_compute.h"
+#include "native_placement_policy.h"
 namespace assist {
-constexpr uint32_t Magic=0x41533130, Version=86;
+constexpr uint32_t Magic=0x41533130, Version=87;
 // Both binaries derive the namespace from the protocol version. Do not maintain
 // a separate literal in the host: a valid ABI with a different name never connects.
 struct MappingPrefixValue {
@@ -34,7 +35,7 @@ inline void mappingName(wchar_t*out,uint32_t pid){const wchar_t*s=MappingPrefix.
 
 constexpr uint32_t DataMessage=0x8002, WakeTag=0x41533230;
 constexpr int MaxLabels=2048, MaxSW=32, MaxTypes=512, MaxThreats=128, MaxCrates=256, MaxCrateResults=16;
-enum Command { None, Repair, CombatSelection, EmptyTransports, DamagedSelection, IdleHarvester, IdleEngineer, IdleTransport, ClearBeacons, RevealMap, OpenTech, SelectSuper, Produce, SelectIron, SelectChrono, AutoBoard, SelectType, SmartUnload, CancelAdvanced, SelectVariant, ProduceReserved, AirPathMove, CancelTechProduction, SwitchPlayer, RestorePlayer, Cheer, Taunt, ProduceDeferred, StickyGuard, SetSleep, SetGuard, SetHarmless, DestructPlayer };
+enum Command { None, Repair, CombatSelection, EmptyTransports, DamagedSelection, IdleHarvester, IdleEngineer, IdleTransport, ClearBeacons, RevealMap, OpenTech, SelectSuper, Produce, SelectIron, SelectChrono, AutoBoard, SelectType, SmartUnload, CancelAdvanced, SelectVariant, ProduceReserved, AirPathMove, CancelTechProduction, SwitchPlayer, RestorePlayer, Cheer, Taunt, ProduceDeferred, StickyGuard, SetSleep, SetGuard, SetHarmless, DestructPlayer, PlaceCompletedBuilding };
 // DestructPlayer: arg=House pointer, arg2=House UniqueID, requestToken=House
 // array index. Standard requestMatch/requestTick and ack/result apply.
 namespace selectedmode {
@@ -59,7 +60,7 @@ constexpr int RecentReceiptCapacity=32;
 struct Label { uint32_t id; int x,y,used,capacity,ironFrames,shield,advanced; uint32_t ownerColor; int frozenFrames; };
 struct Super { char id[24]; uint16_t name[40]; int index,ready,frames; };
 struct Type { char id[24]; uint16_t name[40]; int kind,index,naval,cost; };
-inline bool typeIndexedCommand(int c,int arg){return (c==OpenTech&&arg)||c==Produce||c==CancelTechProduction||c==ProduceReserved||c==ProduceDeferred||c==SelectType;}
+inline bool typeIndexedCommand(int c,int arg){return (c==OpenTech&&arg)||c==Produce||c==CancelTechProduction||c==ProduceReserved||c==ProduceDeferred||c==SelectType||c==PlaceCompletedBuilding;}
 inline uint64_t typeListHash(const Type*types,int count){
  if(count<0||count>MaxTypes)return 0;uint64_t h=1469598103934665603ull;
  auto mix=[&](const void*p,size_t n){auto b=(const uint8_t*)p;while(n--)h=(h^*b++)*1099511628211ull;};
@@ -67,7 +68,7 @@ inline uint64_t typeListHash(const Type*types,int count){
 }
 struct Snapshot {
  int status,frame,session,width,height,labels,swCount,typeCount,selected,transports,used,capacity;
- // techOpen: 0=off, 1=controlled, 2=classic compatibility, 3=direct.
+ // techOpen: 0=off, 1=controlled, 2=classic compatibility, 3=direct, 4=native sidebar rule data.
  int factories,busyFactories,pausedFactories,completedFactories,credits,techOpen;
  uint32_t match,noticeSerial; int notice; uint32_t scanMicros;
  Label label[MaxLabels]; Super supers[MaxSW]; Type types[MaxTypes];
@@ -98,6 +99,8 @@ struct Snapshot {
  int c4TestStatus=0;
  int renderRevealStatus=0; // 1=active, 2=waiting for loaded materials; -2=signature/install/restore conflict
  int lastSubmitError=0; // 0=queued; 1=epoch; 2=session; 3=inactive; 4=chat; 5=thread; 6=room; 7/8=ctor; 9=timer
+ int placementOfferCount=0;
+ nativeplacement::Offer placementOffers[nativeplacement::MaxOffers]{};
 
 };
 struct PlayerTestInfo {uint32_t pointer,id;int index,human;uint16_t name[21];};
@@ -212,6 +215,9 @@ struct Shared {
  uint32_t crcMapShadowTracked=0,crcMapShadowSubstitutions=0,crcMapShadowFaults=0;
  volatile uint32_t aircraftAllocationPolicy=0; // 0 quotas, 1 five-cell damage, 2 single-target damage/deselect
  volatile uint32_t nativeCombatQueries=0; // explicit experimental engine weapon/range queries; default raw observation
+ // Frozen by the Host until the normal command acknowledgement. This request
+ // is never staged across a reconnect or replayed by the generic queue.
+ nativeplacement::Request placementRequest{};
 
 };
 inline int remaining(int start,int duration,int frame){

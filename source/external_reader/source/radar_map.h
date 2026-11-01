@@ -17,6 +17,7 @@
 #include "tether_draw_order.h"
 #include "native_display_order.h"
 #include "../../shared/source/gpu_surface.h"
+#include "../../shared/source/panel_glyphs.h"
 #include "radar_shroud_selector.h"
 #include <memory>
 #include <array>
@@ -59,7 +60,7 @@ struct Geometry {
 };
 struct Marker {double u=0,v=0;uint32_t color=0;bool building=false;uint32_t object=0,id=0,type=0,owner=0,parent=0,parentId=0;int x=0,y=0,z=0,kind=-1,drawZ=0,sort=0,layer=2;bool normalLight=false,onBridge=false,disguised=false,tetherHidden=false;std::vector<tetherdraw::Key>tetherRedraw;int16_t waterline=0;camera::Material material;visual::Pose pose;int displayOrder=-1,rank=-1;};
 struct CellArt {uint32_t cell=0,type=0,overlayType=0,overlaySourceType=0,smudgeType=0,rubbleType=0,flags=0,pixelFX=0;int land=0;uint8_t smudgeData=0;int16_t overlay=-1;uint8_t sub=0;int8_t level=0;uint8_t overlayFrame=0;bool sourceHidden=false;uint32_t sourceColor=0;};
-struct Scene {int width=0,height=0;std::vector<uint32_t> pixels;std::shared_ptr<const gpumotion::Guides> guides;std::shared_ptr<const gpupresent::Frame> gpu;bool boltsRendered=false;};
+struct Scene {int width=0,height=0;std::vector<uint32_t> pixels;std::shared_ptr<const gpumotion::Guides> guides;std::shared_ptr<const gpupresent::Frame> gpu;bool boltsRendered=false;std::shared_ptr<const panelglyphs::Annotations> ranks;};
 // The game stores the selected shroud/fog SHP frame at each Cell. -1 selects
 // clear frame 0, -2 selects opaque frame 15; other values select edge frames.
 // Preserve those values so the native-sized scene can cover protruding TMP

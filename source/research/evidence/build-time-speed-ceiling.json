@@ -1,0 +1,80 @@
+{
+  "game_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+  "kind": "original-instruction controlled fixture and signature checks",
+  "cases": [
+    {
+      "visible_speed": 6,
+      "internal_speed": 0,
+      "multiplayer_cap": 60
+    },
+    {
+      "visible_speed": 5,
+      "internal_speed": 1,
+      "multiplayer_cap": 45
+    },
+    {
+      "visible_speed": 4,
+      "internal_speed": 2,
+      "multiplayer_cap": 30
+    },
+    {
+      "visible_speed": 3,
+      "internal_speed": 3,
+      "multiplayer_cap": 20
+    },
+    {
+      "visible_speed": 2,
+      "internal_speed": 4,
+      "multiplayer_cap": 15
+    },
+    {
+      "visible_speed": 1,
+      "internal_speed": 5,
+      "multiplayer_cap": 12
+    }
+  ],
+  "runtime_caps": [
+    {
+      "internal_speed": 0,
+      "cap": 60
+    },
+    {
+      "internal_speed": 1,
+      "cap": 45
+    },
+    {
+      "internal_speed": 2,
+      "cap": 30
+    },
+    {
+      "internal_speed": 3,
+      "cap": 20
+    },
+    {
+      "internal_speed": 4,
+      "cap": 15
+    },
+    {
+      "internal_speed": 5,
+      "cap": 12
+    }
+  ],
+  "live_speed_event_preserves_setup_copy": true,
+  "addresses": {
+    "speed_selector_conversion": "4E1E14",
+    "multiplayer_setup": "79730D..7973B6",
+    "configured_rate": "A8B570",
+    "selected_speed": "A8EB60",
+    "singleplayer_duration_copy": "55D79E..55D7BC",
+    "clock_quantization": "6C8C46"
+  },
+  "singleplayer_visible_speed_rates": [
+    12,
+    15,
+    20,
+    30,
+    60,
+    60
+  ],
+  "boundary": "Single-player uses nominal 60-tick speed ceilings; its original timer quantizes wall time at 16 ms. Unlimited speed 6 intentionally follows speed 5. No actual wall-clock production, platform-modified timer, or multiplayer test."
+}

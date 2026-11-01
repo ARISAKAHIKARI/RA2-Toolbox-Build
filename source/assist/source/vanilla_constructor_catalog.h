@@ -85,7 +85,7 @@ constexpr uint32_t address(Domain d){
 }
 constexpr Exposure exposure(Domain d){
  return d==Domain::Object || d==Domain::MegaMission || d==Domain::Production ||
-        d==Domain::SuperWeaponPlace ? Exposure::SupportedSender : Exposure::ProbeOnly;
+        d==Domain::SuperWeaponPlace || d==Domain::Place ? Exposure::SupportedSender : Exposure::ProbeOnly;
 }
 // 111-byte vanilla event, same as YRpp NetworkEvent; avoid relying on packing
 // defaults (NetworkEvents is a byte, frame is offset 3).

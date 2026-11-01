@@ -5,7 +5,7 @@
   "source": "Current rendering branch: x64 external host with x86 GameRuntime and hook broker; Vulkan rendering is optional.",
   "resources": "Update package reuses existing assets/profiles/preprocessing runtime/engine",
   "resources_legacy_reuse": true,
-  "build_protocol": 86,
+  "build_protocol": 87,
   "validation": "This build: complete x64 host/x86 Runtime/broker plus diagnostic build, production renderer/recovery/lifetime fixtures, real Win32 HWND rebind, ABI and PE/loader verification. Synthetic CPU timings are not live game FPS. No live game or RA2OL multiplayer validation.",
   "build_requirement": "Zig 0.13.0; x86 paired build or x64 host with x86 runtime and broker.",
   "settings": {
@@ -394,14 +394,17 @@
     "dodge": "Automatic, experimental suffix removed",
     "native_low_damage": "Rules; prior high-risk label and automatic-filter prerequisite retained",
     "current_house_switch": "Experimental; high-risk and disabled retained",
-    "command_owner": "unchanged"
+    "command_owner": "unchanged",
+    "magnetron_global": "Automatic; experimental suffix removed",
+    "auto_escape": "Automatic"
   },
   "placement_no_code_audit": {
     "note": "research/2026-11-01-placement-no-code-feasibility.md",
     "evidence": "research/evidence/placement-no-code-audit.json",
-    "production_changed": false,
-    "candidate": "Native Place event for excess distance; not integrated or full-placement/netplay tested",
-    "controlled_cases": 12
+    "production_changed": true,
+    "candidate": "Integrated optional mode 2: explicit completed-product native Place event; ground/occupancy rules remain native; netplay unverified",
+    "controlled_cases": 12,
+    "implementation_note": "research/2026-11-01-native-placement-event-implementation.md"
   },
   "render_upgrade_entry": {
     "enabled": false,
@@ -419,7 +422,7 @@
       "native_hook": 1,
       "master": 2
     },
-    "assist_protocol": 86,
+    "assist_protocol": 87,
     "sites": [
       "50B6F0 -> 50B710",
       "6339BA -> 50B716",
@@ -433,5 +436,75 @@
     "native_audit": "research/2026-11-01-master-control-native-audit.md",
     "game_tested": false,
     "multiplayer_tested": false
+  },
+  "native_event_modes": {
+    "placement": 2,
+    "tech": 3,
+    "placement_behavior": "Completed-building selection and an immediate native Place event at the captured cursor point; no placement feature patches",
+    "tech_behavior": "Original game sidebar icons and normal game production through reversible selected Type rule-data edits; full native CanBuild and real factory checks retained; no technology feature code patches",
+    "scope": "Normal engine factory/build-limit/ground/occupancy rules retained; old patch modes remain explicit choices; shared dispatcher follows existing preferences",
+    "game_tested": false,
+    "multiplayer_tested": false,
+    "tech_risk": "High risk: simulation rule data changes; not a multiplayer synchronization guarantee; enhancement writer suspended until owned data is restored",
+    "tech_scope": "Existing allowed catalogue only; costs, BuildLimit, real factories and native special restrictions retained; one complete pass",
+    "tech_note": "research/2026-11-01-native-sidebar-tech-data-mode.md"
+  },
+  "build_time_speed_ceiling": {
+    "note": "research/2026-11-01-build-time-speed-ceiling.md",
+    "singleplayer_visible_speeds": [
+      12,
+      15,
+      20,
+      30,
+      60,
+      60
+    ],
+    "multiplayer_visible_speeds": [
+      12,
+      15,
+      20,
+      30,
+      45,
+      60
+    ],
+    "measured_fps_used": false
+  },
+  "enemy_markers_clustering": {
+    "radius_cells": 3,
+    "semantics": "Euclidean connected components; same owner/type/kind mobile units; buildings remain separate"
+  },
+  "ui_subsettings": {
+    "default": "collapsed",
+    "groups": [
+      "aircraft fire allocation and quotas",
+      "formation",
+      "air-defense fire control"
+    ],
+    "scope": "main switches stay visible; search and keyboard focus expand containing group; stored feature values unaffected"
+  },
+  "watch_lifetime_performance": {
+    "note": "research/2026-11-01-watch-lifetime-reader-performance.md",
+    "fixes": [
+      "native Alive/OnMap offsets",
+      "retain pins on display sample epoch recovery",
+      "typed terrain prefetch",
+      "reuse identical immutable Timeline observations"
+    ],
+    "controlled_rpm": {
+      "before": 22728,
+      "after": 2592
+    },
+    "controlled_ms": {
+      "before": 165.443,
+      "after": 142.475
+    },
+    "game_fps_tested": false
+  },
+  "minimap_rank_composition": {
+    "note": "research/2026-11-01-radar-final-panel-insignia.md",
+    "stage": "each final physical panel after world scaling",
+    "metadata": "bound to completed immutable Scene",
+    "verified": "5-size actual GDI and D3D11 WARP RGB equivalence; real SceneRenderer reuse/failure cases",
+    "live_gpu_tested": false
   }
 }

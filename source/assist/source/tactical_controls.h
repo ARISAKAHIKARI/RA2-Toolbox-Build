@@ -23,7 +23,6 @@ for(int i:{11,1,2,3,4,5,6,7,0}){
  if(i==0)repairCheck=h;keys[i]=key(200+i,hotkeys[i]);next();
 }
 hookChecks[1]=toggle(459,L"智能卸载",hookSmartUnload,20,270);unloadKeyEdit=key(451,unloadKey,305,180);button(453,L"立即卸载",500,125);next();
-ejectCheck=toggle(455,L"载员自动逃生",ejectMode,20,306);ejectKeyEdit=key(456,ejectKey);next();
 label(L"喝彩",20,306);key(870,socialKeys[0]);next();
 for(int i=1;i<9;++i){auto text=L"嘲讽 "+std::to_wstring(i);label(text.c_str(),20,306);key(870+i,socialKeys[i]);next();}
 note(L"绑定后由工具箱接管该组合；聊天和菜单中不接管。嘲讽仍遵循原版冷却与接收方设置。",44);
@@ -44,22 +43,36 @@ hookChecks[0]=toggle(458,L"高级移动攻击",hookAdvanced,20,210);advancedKeyE
 magnetronCheck=toggle(477,L"磁电轮换攻击",magnetronMode,20,210);magnetronKeyEdit=key(478,magnetronKey,240,258,true);mouse(pointerinput::MouseMagnetron);next();
  toggle(9042,L"磁电全局无限吸",extra.magnetronGlobal);next();note(L"自动接管空闲磁电，沿用轮换和类型清单；手动移动或攻击优先。关闭后停止自动接续。");
 extraControls[EnterEnabled]=toggle(702,L"高级进驻",extra.enter,20,210);holdPresetControl(EnterPreset,EnterCustom,extra.enterKey);mouse(pointerinput::MouseEnter);next();
-extraControls[AirEnabled]=toggle(705,L"飞机分配攻击 · 1",extra.air,20,210);holdPresetControl(AirPreset1,AirCustom1,extra.airKey1);mouse(pointerinput::MouseAirFirst);next();
+extraControls[AirEnabled]=toggle(705,L"飞机分配攻击",extra.air,20,455);button(9601,L"展开设置",500,125);next();
+activeFoldGroup=9601;
+label(L"飞机分配攻击 · 1",20,210);holdPresetControl(AirPreset1,AirCustom1,extra.airKey1);mouse(pointerinput::MouseAirFirst);next();
 label(L"飞机分配攻击 · 2",20,210);holdPresetControl(AirPreset2,AirCustom2,extra.airKey2);mouse(pointerinput::MouseAirSecond);next();
 label(L"飞机分配策略（1 / 2 共用）",20,260);extraControls[AircraftPolicy]=combo(9195);choices(extraControls[AircraftPolicy],{L"按数量配额（原模式 1 / 2）",L"5格战车 · 预计伤害 120%",L"单目标 120% · 派出后取消选中"},extra.aircraftAllocationPolicy);next();
 note(L"5格策略只选点选中心5格圆形内敌方战车（含边界），预计有效伤害足额后改分；没有其他未覆盖的可攻击目标时才追加。单目标策略达到生命值120%即停，仅成功提交的飞机取消选中，未派出飞机保持任务和选中；左/右键须开启“优先执行增强指令”接管原点击，独占中键/侧键可用。单目标不支持Shift排队（按住Shift时不派出）。预计伤害不保证实际命中。",76);
+label(L"飞机分配攻击数量");next();
+extraControls[DefaultFirst]=number(710,L"攻击模式 1 / 架每目标",extra.defaults.first,L"0–512 · 0 为不优先");
+extraControls[DefaultSecond]=number(711,L"攻击模式 2 / 架每目标",extra.defaults.second,L"0–512 · 0 为不优先");
+extraControls[DefaultMaximum]=number(712,L"每个目标最多承受 / 架",extra.defaults.maximum,L"0–512 · 0 为不限");
+extraControls[QuotaType]=combo(713,20,275,260);extraControls[QuotaID]=edit(714,L"",305,185);button(751,L"读取类型",505,120);next();
+extraControls[QuotaOverride]=toggle(715,L"为所选目标类型单独设置分配数量",false);next();
+extraControls[QuotaFirst]=number(716,L"所选类型 · 攻击模式 1",1,L"0–512");
+extraControls[QuotaSecond]=number(717,L"所选类型 · 攻击模式 2",2,L"0–512");
+extraControls[QuotaMaximum]=number(718,L"所选类型 · 最大数量",0,L"0–512 · 0 为不限");
+activeFoldGroup=0;
 extraControls[DiskEnabled]=toggle(719,L"飞碟主武器攻击",extra.disk,20,210);holdPresetControl(DiskPreset,DiskCustom,extra.diskKey);mouse(pointerinput::MouseDisk);next();
 extraControls[SellDrainedEnabled]=toggle(720,L"出售被吸取目标",extra.sellDrained,20,210);holdPresetControl(SellPreset,SellCustom,extra.sellKey);mouse(pointerinput::MouseSellDrained);next();
 extraControls[SellVehiclesEnabled]=toggle(721,L"出售战车",extra.sellVehicles,20,210);key(789,extra.sellKey,240,258,true);mouse(pointerinput::MouseSellVehicle);next();
 note(L"出售战车不支持兰博玩；两种出售操作共用按住键，鼠标键分别设置。",44);
 label(L"直接攻击移动",20,210);label(L"仅鼠标",240,258);mouse(pointerinput::MouseAttack);next();
 note(L"直接攻击移动只下达一次命令；高级移动攻击会持续重新选择目标。",44);
-toggle(9050,L"队形排列（地面单位）",extra.formationEnabled);next();
+toggle(9050,L"队形排列（地面单位）",extra.formationEnabled,20,455);button(9602,L"展开设置",500,125);next();
+activeFoldGroup=9602;
 label(L"队形拖拽鼠标键",20,260);choices(combo(9056),{L"右键",L"左键（覆盖原生下令）"},extra.formationMouse==1?1:0);next();
 label(L"队形按住键",20,306);key(9051,extra.formationHold,345,280,true);modernui::keyboardOnly(GetDlgItem(ui,9051));next();
 {const wchar_t* names[]={L"矩形横队",L"分散横队",L"圆形聚集",L"扇形（60°）",L"正方形聚集",L"空心框聚集"};const int ids[]={9052,9053,9054,9055,9057,9058};for(int n=0;n<6;++n){label(names[n],20,306);key(ids[n],extra.formationKeys[n]);modernui::pressKey(GetDlgItem(ui,ids[n]));modernui::keyboardOnly(GetDlgItem(ui,ids[n]));next();}}
 note(L"按住队形键或双击 Alt 进入，点按提交当前预览；拖动方向决定朝向。形状可共用键，每敲一次切换，长按不重复。Esc 取消。提交后退出预览；成员不变时后续移动保持队形。",44);
 note(L"正方形默认 B，空心框默认 N。框形未拖动时边框面积与中空面积约 3∶1，拖到最大变成单层边框；其余形状拖到最大为一横排。",44);
+activeFoldGroup=0;
 label(L"飞机路径点",20,260);choices(combo(803),{L"关闭",L"兼容路径点",L"原生事件兼容（旧原生优先）",L"高危：原生下单补丁",L"高危：完整原生补丁"},airpathpolicy::mode(extra.airWaypoints,extra.nativeAirWaypoints,extra.nativeAirNetwork));next();
 label(L"路径点按住键",20,306);{auto h=key(894,extra.airPathKey);modernui::holdKey(h);}next();
 note(L"留空跟随游戏路径点键；兼容选项在单机、联机均通过原生移动事件接续，不改写代码。高危选项会改写飞机入口；完整原生还改本机到达任务，可能不同步。",60);
@@ -72,6 +85,9 @@ swList=combo(410,20,315,260);swHotkey=key(411,0,345,280);next();
 note(L"启用超级武器后，使用游戏内目标光标选择位置。",26);
 
 heading(2,902,L"自动化与目标设置",L"调整自动任务的频率、范围及参与单位。操作说明会显示在底部状态栏。");
+ejectCheck=toggle(455,L"载员自动逃生",ejectMode,20,306);ejectKeyEdit=key(456,ejectKey);next();
+toggle(899,L"磁电全局自动摔落",extra.magnetronDrop);next();
+note(L"独立检查全图己方磁电已吸起的载具，包括己方、盟友和敌方，手动强制攻击也生效。检测建筑、地面坦克、树木、矿柱、悬崖及水陆不适配；两栖/悬浮不因普通水陆而摔，排除下方空中单位和桥面。默认关闭，实际摔落效果仍需测试。",76);
 toggle(799,L"生产预定",extra.constructionQueue);next();
 note(L"建筑/防御各预定 5 项，步兵/载具各 30 项；可建造单位接连进入原生队列。",44);
 number(817,L"建筑预定面板缩放 / %",constructionScalePercent,L"50–250 · 默认 100");
@@ -90,12 +106,14 @@ note(L"索敌范围为单位射程加额外距离；忽略伤害比例不超过 
 toggle(804,L"防御建筑优先攻击渗透单位",extra.antiTheft);next();
 toggle(885,L"自动躲弹",extra.dodgeEnabled,20,280);choices(combo(895,310,305,180),{L"顺向移动 2 格",L"原版散开（Scatter）"},extra.dodgeMode);next();
 note(L"对己方可移动地面单位预判敌机攻击与逼近碾压，短距离躲避。支持类型清单，不保证躲过追踪弹或瞬时伤害。",60);
-toggle(880,L"防空火控",extra.missileDefense);next();
+toggle(880,L"防空火控",extra.missileDefense,20,455);button(9603,L"展开设置",500,125);next();
+activeFoldGroup=9603;
 label(L"目标范围",20,260);choices(combo(9040),{L"仅导弹类",L"所有敌方空中单位"},extra.missileScope);next();
 label(L"火力分配",20,260);choices(combo(9041),{L"智能分配（血量与伤害）",L"平均分配"},extra.missileAllocation);next();
 toggle(9181,L"提前休眠留枪",extra.missileReserve);next();
 number(881,L"火控检测频率 / 次每秒",extra.missileScanHz,L"1–60 · 默认 10");
 note(L"智能分配以预计 120% 血量为覆盖线。提前休眠留枪：建筑、战车、步兵先 Sleep 等待已分配目标进入原生射程，冷却或多余火力继续等待；无候选时恢复 Guard。关闭留枪则沿用原版攻击接近。手动命令和队形优先。",60);
+activeFoldGroup=0;
 toggle(9182,L"过滤低伤害自动目标",extra.lowDamageFilter);next();
 toggle(9183,L"高危：修改原生索敌",extra.lowDamageNetwork);next();
 note(L"需先开启“自动功能”页的“过滤低伤害自动目标”。默认仅过滤工具箱自动命令，单机与联机均不修改原生索敌。另开高危选项会改写原生判断：单机影响己方，联机影响全部阵营，可能不同步。",60);
@@ -106,15 +124,6 @@ hookChecks[3]=placedControl({-3,{0,0,1,1}},L"BUTTON",L"",466,BS_AUTOCHECKBOX);
 SendMessageW(hookChecks[3],BM_SETCHECK,hookAutoCS?BST_CHECKED:BST_UNCHECKED,0);ShowWindow(hookChecks[3],SW_HIDE);
 csStatus=item(L"STATIC",L"移动攻击：等待对局",20,605,0,0,44);next(44);
 nativeStatus=item(L"STATIC",L"战术任务：等待对局",20,605,0,0,44);next(44);
-label(L"飞机分配攻击数量");next();
-extraControls[DefaultFirst]=number(710,L"攻击模式 1 / 架每目标",extra.defaults.first,L"0–512 · 0 为不优先");
-extraControls[DefaultSecond]=number(711,L"攻击模式 2 / 架每目标",extra.defaults.second,L"0–512 · 0 为不优先");
-extraControls[DefaultMaximum]=number(712,L"每个目标最多承受 / 架",extra.defaults.maximum,L"0–512 · 0 为不限");
-extraControls[QuotaType]=combo(713,20,275,260);extraControls[QuotaID]=edit(714,L"",305,185);button(751,L"读取类型",505,120);next();
-extraControls[QuotaOverride]=toggle(715,L"为所选目标类型单独设置分配数量",false);next();
-extraControls[QuotaFirst]=number(716,L"所选类型 · 攻击模式 1",1,L"0–512");
-extraControls[QuotaSecond]=number(717,L"所选类型 · 攻击模式 2",2,L"0–512");
-extraControls[QuotaMaximum]=number(718,L"所选类型 · 最大数量",0,L"0–512 · 0 为不限");
 heading(5,905,L"单位类型清单",L"每个功能独立设置。关闭限制时按功能本身的条件处理；开启且清单为空时不处理任何类型。");
 for(int f=0;f<featuretypes::Count;++f){
  if(f==featuretypes::BurstRefresh)continue; // Retired slot stays in the shared ABI.
@@ -223,8 +232,6 @@ note(L"对所选己方步兵、战车下达一次原版任务。默认未绑定�
 csCheck=toggle(446,L"自动移动攻击（CS，暂不可用）",csMode,20,306);csKeyEdit=key(447,csKey);next();
 csHoldCheck=toggle(473,L"按键移动攻击（CS）",csHoldEnabled,20,210);csHoldEdit=key(474,csHoldKey,240,258,true);mouse(pointerinput::MouseCS);next();
 note(L"自动 CS 暂不可用，旧设置与开关快捷键不再执行。按键 CS 保留，使用原版移动攻击命令。");
-toggle(899,L"磁电全局自动摔落（实验性）",extra.magnetronDrop);next();
-note(L"独立检查全图己方磁电已吸起的载具，包括己方、盟友和敌方，手动强制攻击也生效。检测建筑、地面坦克、树木、矿柱、悬崖及水陆不适配；两栖/悬浮不因普通水陆而摔，排除下方空中单位和桥面。默认关闭，实际摔落效果仍需测试。",76);
 EnableWindow(toggle(9090,L"视角缩放（暂不可用）",false),FALSE);next();
 label(L"视角倍率",20,260);choices(combo(9091),{L"50%",L"75%",L"100%",L"125%",L"150%"},viewzoom::index(extra.viewZoomPercent));EnableWindow(GetDlgItem(ui,9091),FALSE);next();
 EnableWindow(button(9092,L"恢复 100%",20,280),FALSE);next();
@@ -240,8 +247,11 @@ note(L"当前仅保留光标高刷；拖屏、全部及强制高刷暂不可用�
 item(L"STATIC",L"高刷策略：仅光标",20,605,888);next();
 #endif
 
-anywhereCheck=toggle(476,L"高危：随处建造",buildAnywhereMode);next();
-label(L"建造方式",20,180);choices(combo(9096,220,405,180),{L"受控模式（默认）",L"直接模式"},extra.placementImplementation);next();
+anywhereCheck=toggle(476,buildingmodes::placementCaption(extra.placementImplementation),buildAnywhereMode);next();
+label(L"建造方式",20,180);choices(combo(9096,220,405,180),{L"高危：受控模式（默认）",L"高危：直接模式",L"原生事件（快捷键放置）"},extra.placementImplementation);next();
+label(L"已完成建筑",20,180);combo(9251,220,405,180);next();
+label(L"放置所选完成建筑",20,280);key(9252,extra.placementEventKey,345,280);next();
+note(L"原生事件模式不修改游戏指令，也不解除原版落地规则。建筑完成后在上方选择具体产品，将鼠标移到游戏地图，按此键提交一次；默认 Ctrl＋Alt＋G。不会替换选择或延后补放，原生红格左键不由此模式接管。",85);
 item(L"STATIC",L"功能状态：等待连接",20,605,807,0,44);next(44);
 toggle(810,L"步兵强制进入建筑（暂不可用）",extra.c4Test,20,280);key(811,extra.c4Key,310,188,true);choices(combo(812,510,115,180),{L"停用",L"中键",L"侧键 1",L"侧键 2",L"右键",L"左键"},extra.c4Mouse==6?5:extra.c4Mouse);next();
 label(L"进入实现",20,260);choices(combo(9180),{L"占领任务＋建筑格",L"爆破任务＋建筑格"},extra.c4Mode);next();
@@ -250,13 +260,13 @@ item(L"STATIC",L"步兵强制进入建筑：关闭",20,605,813);next();
 toggle(9097,L"高危：科技加强（直接修改类型规则）",extra.techEnhance);next();
 note(L"开放奶牛、电影英雄等隐藏类型；关闭后恢复本功能修改的科技等级。可能影响联机同步。",44);
 item(L"STATIC",L"科技加强：关闭",20,605,9098);next();
-toggle(420,L"高危：科技解锁",techMode,20,305);techSearch=edit(421,L"",345,280);SendMessageW(techSearch,EM_SETCUEBANNER,TRUE,(LPARAM)L"搜索名称或单位 ID");next();
-label(L"实现方式",20,180);choices(combo(896,220,405,180),{L"受控模式（默认）",L"经典兼容",L"直接模式"},techImplementation);next();
-note(L"直接模式显示 TechLevel 非 -1 的项目，并保留侧栏图标；此模式不使用下方许可筛选。经典兼容保留早期检查。实际生产与联机效果仍待实测。",44);
+toggle(420,buildingmodes::technologyCaption(techImplementation),techMode,20,305);techSearch=edit(421,L"",345,280);SendMessageW(techSearch,EM_SETCUEBANNER,TRUE,(LPARAM)L"搜索名称或单位 ID");next();
+label(L"实现方式",20,180);choices(combo(896,220,405,180),{L"高危：受控模式（默认）",L"高危：经典兼容",L"高危：直接模式",L"高危：原生面板（规则数据）"},techImplementation);next();
+note(L"规则数据模式不修改游戏指令，通过放宽类型的建造条件供原生建造栏使用；这些规则同时影响所有玩家和 AI，联机高危。关闭还原规则后，游戏可能取消不再合法的未完成生产；切换旧模式会先等待相关生产完成或取消。旧三种改码模式保留；直接模式不使用下方许可筛选。",85);
 techList=item(L"LISTBOX",L"",20,455,422,LBS_NOTIFY|WS_VSCROLL|WS_TABSTOP,152);
 int listTop=rowY;button(423,L"生产所选",488,137);next();button(424,L"切换许可",488,137);next();button(425,L"全选",488,65);button(426,L"清空",560,65);next();button(427,L"兼容预设",488,137);rowY=listTop+164;
 button(428,L"查看许可清单",20,285);button(814,L"取消所选类型的生产",320,305);next();
-note(L"加入原生生产侧栏；仍需匹配阵营的生产设施、电力及可用建造数量。",44);
+note(L"规则数据模式请在游戏原生建造栏生产或取消；此清单只设置许可，不从工具箱下单。旧三种模式保留工具箱生产。完成建筑也可使用上方独立的原生事件放置。",65);
 item(L"STATIC",L"生产进度：等待游戏",20,605,815,0,65);next(65);
 toggle(9191,L"高危：原生 MegaMission 成功入口观察",extra.nativeMegaGateway);next();
 note(L"默认关闭；普通手动输入由消息与任务观察处理。此附加入口会改写游戏代码，在原生命令成功发送后登记手动优先并取消冲突任务。发出原生事件不需要开启它。",65);

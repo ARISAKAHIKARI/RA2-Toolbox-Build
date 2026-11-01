@@ -10,6 +10,14 @@ inline Verdict admit(const intent::EventOrder&r,bool diagnosticProbe=false){
  if(vanilla::exposure(r.domain)==vanilla::Exposure::ProbeOnly&&!diagnosticProbe&&!(r.domain==vanilla::Domain::NoOptions&&(r.eventKind==vanilla::EventType::AllCheer||r.eventKind==vanilla::EventType::PlanCommit||r.eventKind==vanilla::EventType::Destruct)))return Verdict::ProbeOnly;
  if(r.appendWaypoint&&r.domain!=vanilla::Domain::MegaMission)return Verdict::InvalidFields;
  switch(r.domain){
+ case vanilla::Domain::Place:
+  // Only the completed-building form is a supported sender. Runtime additionally
+  // requires an explicit frozen product/factory request before construction and
+  // immediately before queue insertion; this serializer cannot authorize it.
+  if(r.eventKind!=vanilla::EventType::Place||r.a!=7||r.b<0||r.b>=4096||(r.c!=0&&r.c!=1)||
+     r.cell.x<=0||r.cell.y<=0||!vanilla::validCell(r.cell)||r.d||r.mission||
+     r.tagA||r.tagB||r.tagC||r.nearestTag)return Verdict::InvalidFields;
+  break;
  case vanilla::Domain::Object:
   if(r.a<=0 || r.tagA!=vanilla::TargetTag::Techno ||
      (r.eventKind!=vanilla::EventType::Idle&&r.eventKind!=vanilla::EventType::Scatter&&r.eventKind!=vanilla::EventType::Repair&&r.eventKind!=vanilla::EventType::Sell))

@@ -50,6 +50,7 @@ struct Snapshot {int techOpen=0;} snap;
 static bool enhancementChangedCatalogue=false,catalogueDirty=false,catalogueReady=true;
 static DWORD catalogueAt=0;
 static unsigned scans=0,refreshes=0;
+static bool techDataBlocksEnhancement(){return false;}
 static void scanTypes(){++scans;}
 static void requestTechRefresh(){++refreshes;}
 GLOBALS

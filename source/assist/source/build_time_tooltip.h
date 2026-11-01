@@ -1,6 +1,7 @@
 #pragma once
 #include "../../shared/source/runtime_fp_scope.h"
 #include "../../shared/source/native_tooltip_client.h"
+#include "build_time_rate.h"
 // Local presentation, through the existing entry manager. The original
 // CCToolTip callback runs first; Process724AD0 measures/copies our text into
 // the same native box. Never extend Sidebar's 66-wchar static buffer in place.
@@ -68,9 +69,10 @@ extern "C" unsigned AssistBuildTimeTooltip(unsigned id,unsigned original){
  // mistake Select6AB5CC's rate+1 presentation clock for 54 extra frames.
  const int total=54*rate+1;
  const int session=get<int>(0xA8B238);
- // Session+320 is the negotiated MP frame rate (native FrameInfo4C807D),
- // not monitor refresh or this external renderer's presentation frequency.
- unsigned fps=(session==3||session==4)?get<unsigned>(0xA8B558):get<unsigned>(0xABCD44);if(fps>1000)fps=0;
+ // Use the selected speed's maximum, not measured/adaptively reduced FPS.
+ // Single-player unlimited speed 6 is estimated at speed 5 by user request.
+ int speed=-1;read(0xA8EB60,&speed,sizeof speed);
+ const unsigned fps=buildtime::allowedRate(session,speed);
  static wchar_t text[256];unsigned used=0;
  // Process724AD0 copies at most 256 UTF-16 units without adding a NUL.
  // Refuse rather than truncate a translated name or another extension's text.

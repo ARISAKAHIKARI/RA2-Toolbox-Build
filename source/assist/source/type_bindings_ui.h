@@ -16,6 +16,7 @@ static bool keyConflict(WORD key,const std::string& ignore,bool toggle){
  if(extra.watchEnabled)for(auto binding:extra.watchKeys)if(comparableKey(WORD(binding))==key)return true;
  for(auto social:socialKeys)if(comparableKey(social)==key)return true;
  if(comparableKey(WORD(extra.variantKey))==key)return true;
+ if(comparableKey(WORD(extra.placementEventKey))==key)return true;
  return (!toggle&&comparableKey(csKey)==key)||comparableKey(advancedKey)==key||comparableKey(unloadKey)==key||comparableKey(ejectKey)==key||comparableKey(csHoldKey)==key||comparableKey(magnetronKey)==key;
 }
 static void syncTypeConfig(){

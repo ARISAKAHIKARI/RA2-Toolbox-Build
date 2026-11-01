@@ -48,7 +48,13 @@ static bool autoSettingChanged(int id,int notification){
   extra.viewZoomEnabled=false;extra.viewZoomPercent=100;SendMessageW(GetDlgItem(ui,9090),BM_SETCHECK,BST_UNCHECKED,0);SendMessageW(GetDlgItem(ui,9091),CB_SETCURSEL,2,0);syncAdditional();return true;
  }
  if(id==886&&select){extra.scrollRefreshMode=0;SendMessageW(GetDlgItem(ui,id),CB_SETCURSEL,0,0);changedSetting();syncAdditional();return true;}
- if(id==9096&&select){int mode=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));if(mode>=0&&mode<=1){extra.placementImplementation=mode;changedSetting();syncAdditional();}return true;}
+ if(id==9096&&select){int mode=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));if(mode>=0&&mode<=buildingmodes::PlacementEvent){extra.placementImplementation=mode;resetPlacementEvent();changedSetting();syncAdditional();registerKeys();updatePlacementEventUI();}return true;}
+ if(id==9251&&select){selectPlacementEvent();return true;}
+ if(id==9252&&edit){WORD next=WORD(SendMessageW(GetDlgItem(ui,id),HKM_GETHOTKEY,0,0));const auto old=extra.placementEventKey;extra.placementEventKey=0;
+  bool conflict=keyConflict(next,"",false);extra.placementEventKey=old;
+  if(conflict){ControlUpdate guard;SendMessageW(GetDlgItem(ui,id),HKM_SETHOTKEY,old,0);notify(L"快捷键冲突；已保留原按键，请换一个组合。");return true;}
+  extra.placementEventKey=next;registerKeys();changedSetting();return true;
+ }
  if(id==9097&&notification==BN_CLICKED){extra.techEnhance=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();syncAdditional();return true;}
  if(id==810&&notification==BN_CLICKED){extra.c4Test=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;pointerMatches.clear();changedSetting();return true;}
  if(id==9180&&select){int mode=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));if(mode>=0&&mode<=1){extra.c4Mode=uint32_t(mode);infantryEntryResult.clear();pointerMatches.clear();changedSetting();}return true;}

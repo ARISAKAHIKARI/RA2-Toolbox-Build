@@ -3,6 +3,7 @@
 #include "cooperative_types.h"
 #include "pointer_intent.h"
 #include "control_mode_policy.h"
+#include "building_event_settings.h"
 namespace assist {
 struct AdditionalSettings {
  uint32_t overlayKey=0xC0; // ` / · on the standard keyboard; presentation only.
@@ -17,6 +18,7 @@ struct AdditionalSettings {
  bool nativeMegaGateway=false; // Optional native observer; ordinary input uses the message path.
  bool nativeCombatQueries=false; // Explicit engine selector/range calls; raw observations are the default.
  bool techEnhance=false;int placementImplementation=0;
+ uint32_t placementEventKey='G'|(6<<8); // Explicit one-shot completed-building placement.
  bool viewZoomEnabled=false;int viewZoomPercent=100;
  int scrollRefreshMode=0; // cursor / scrolling / scene / forced redraw
 #ifndef RA2_UNIFIED

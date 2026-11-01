@@ -627,14 +627,15 @@ public:
   stage(stageStats_.objectsMs);
   const bool worldEffects=frame.effects&&frame.effects->world&&!frame.effects->world->empty();
   const bool radarExtras=!region.active&&sceneextras::hasRadar(frame);
+  const auto radarRanks=region.active?nullptr:sceneextras::radarRanks(frame,read,extraLayers_);
   const bool nativePages=!detail&&!nativeBase.terrainSources().empty();
   const bool staticView=!background_.retainedGround()&&!nativePages&&!radarExtras&&beacons.empty()&&!(features_.lasers&&frame.effects&&frame.effects->boltsValid&&!frame.effects->bolts.empty())&&!worldEffects&&(detail?(!detailed_.dirty()&&!gpuMode_):(!view.dirtyPages()&&objectDraws.empty()))&&fallbacks.empty();
   if(staticView&&!forceFrame){
    if(areaGpuMode){
-    auto cached=masked?maskedBaseScene_:baseScene_;if(cached&&(cached->gpu?gpupresent::valid(cached->gpu,width,height)&&gpupresent::available():cached->pixels.size()==size_t(width)*height)){xbrzadapter::gpuAreaCached(areaCachedGpu_);return cached;}
+    auto cached=masked?maskedBaseScene_:baseScene_;if(cached&&(cached->gpu?gpupresent::valid(cached->gpu,width,height)&&gpupresent::available():cached->pixels.size()==size_t(width)*height)){xbrzadapter::gpuAreaCached(areaCachedGpu_);return sceneextras::withRadarRanks(cached,radarRanks);}
    }else{
-    if(!masked)return baseScene_;
-    if(!maskedBaseScene_){auto out=std::make_shared<Scene>(*baseScene_);mask_.apply(out->pixels);maskedBaseScene_=std::move(out);}return maskedBaseScene_;
+    if(!masked)return sceneextras::withRadarRanks(baseScene_,radarRanks);
+    if(!maskedBaseScene_){auto out=std::make_shared<Scene>(*baseScene_);mask_.apply(out->pixels);maskedBaseScene_=std::move(out);}return sceneextras::withRadarRanks(maskedBaseScene_,radarRanks);
    }
   }
   auto dot=[&](const Marker&m){return std::pair<int,int>{int(((double(m.x)-m.y)*30/256.+geo.offsetX*30-(region.active?region.x:0))*width/(region.active?region.width:spanX_)),int(((double(m.x)+m.y)*15/256.-geo.offsetY*15-(region.active?region.y:0))*height/(region.active?region.height:spanY_))};};
@@ -660,11 +661,11 @@ public:
   const bool reusableResolve=gpuMode_||cpuReusable;
   const auto*reusePlan=reusableResolve&&fallbacks.empty()&&effectPlanReady&&!guideEnabled_?
    detailed_.completeGpuPlan(masked?maskPixels_:nullptr,masked?gpuMaskPlan_:nullptr):nullptr;
-  if(reusePlan){if(auto previous=gpuFrameReuse_.get(*reusePlan)){if(!previous->gpu||gpupresent::available()){xbrzadapter::gpuState().used=bool(previous->gpu);stageStats_.reused=true;stage(stageStats_.resolveMs);return previous;}}}
+  if(reusePlan){if(auto previous=gpuFrameReuse_.get(*reusePlan)){if(!previous->gpu||gpupresent::available()){xbrzadapter::gpuState().used=bool(previous->gpu);stageStats_.reused=true;auto result=sceneextras::withRadarRanks(previous,radarRanks);if(result!=previous)gpuFrameReuse_.completed(*reusePlan,result);stage(stageStats_.resolveMs);return result;}}}
   else gpuFrameReuse_.reset();
   const bool directReady=directPresentation_&&gpuMode_&&effectPlanReady&&!guideEnabled_;
   auto*maskReadback=!directReady&&masked&&gpuMaskPlan_&&cpuMaskPlan_!=gpuMaskPlan_?&mask_.alpha:nullptr;
-  auto out=(gpuMode_||areaGpuMode)?outputPool_.acquire():std::make_shared<Scene>();out->width=width;out->height=height;out->guides.reset();out->gpu.reset();out->boltsRendered=false;bool areaUsed=false;
+  auto out=(gpuMode_||areaGpuMode)?outputPool_.acquire():std::make_shared<Scene>();out->width=width;out->height=height;out->guides.reset();out->gpu.reset();out->ranks=radarRanks;out->boltsRendered=false;bool areaUsed=false;
   const bool sameNative=!detail&&!region.active&&!areaGpuMode&&nativePresentation_.pixels&&nativePresentation_.pixels->size()==size_t(width)*height&&
     nativePresentation_.background==detailKey_&&nativePresentation_.objects==objectCanvas_.revision()&&nativePresentation_.gpu==areaGpuMode&&
     (!nativePresentation_.used||(nativePresentation_.mask==(masked?gpuMaskPlan_:nullptr)&&nativePresentation_.fog==(masked?maskPixels_:nullptr)));

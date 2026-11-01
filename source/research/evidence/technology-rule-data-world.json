@@ -1,0 +1,7 @@
+{
+  "exit_code": 0,
+  "production_functions_extracted": true,
+  "game_tested": false,
+  "multiplayer_tested": false,
+  "output": "technology data-world production checks=21 failures=0; synthetic reads/writes, no game/netplay\n"
+}

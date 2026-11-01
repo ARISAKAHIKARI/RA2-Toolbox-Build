@@ -75,6 +75,10 @@ static volatile LONG messageGameThread; // Thread confirmed by WH_GETMESSAGE for
 static bool playableHouse(uint32_t);static bool enemyBuildingSellAllowed(uint32_t);static bool playerContextChanged;static void playerMaintenance();static void restorePlayerContext();static void publishPlayers();
 enum class OrderAuthority { Local, PlayerTest, SellPlayerTest, DestructPlayerTest };
 static bool authorizePlayerOrder(const intent::EventOrder&,OrderAuthority);
+struct NativePlacementSubmission;
+static bool validateNativePlacement(const intent::EventOrder&,const NativePlacementSubmission*);
+static bool nativePlacementPacket(const vanilla::Packet&,const intent::EventOrder&);
+static void nativePlacementOffers(DWORD);
 static bool networkHousePreserveReady();static bool networkSenderHouse(int);static void networkSenderTick(bool);static bool restoreNetworkSender();
 static void crcMapShadowTick();static void crcMapShadowRewind(uint32_t);static bool restoreCrcMapShadow();static bool crcMapToolBegin(uint32_t);static void crcMapToolEnd();
 static bool controlCommandOwnerReady(uint32_t);
@@ -121,6 +125,7 @@ static repairdelivery::Pending<> pendingRepairs;
 static void resetPointerInput();static void restoreClickHooks();static void resetCooperativeState();static void clickHooksTick(uint32_t);static void cooperativeTick(uint32_t,int,DWORD);
 static void clearNativeOrders(bool retireHooks=true);static void restoreCSHook();static void restoreTech();static void clearFlashes();static void resetProduction();
 static bool restoreTechEnhancement();
+static bool techDataPending();
 static bool featureRestorationComplete();
 static void resetFeatureTypes();static void clearOreOrders();static void cancelOreJob(uint32_t p);static void restorePlacement();
 static uint32_t worldByID(uint32_t id);static bool rawOreCompatible(uint32_t unit,uint32_t refinery);
@@ -162,7 +167,7 @@ static void indexWorld(int frame){Vec all=vec(0xA8EC78);if(indexedFrame==frame&&
 #include "../../shared/source/key_gesture.h"
 static keygesture::Tracker runtimeKeys;
 static void reset(bool retireHooks=true){if(retireHooks){resetHookReadiness();restoreCrcMapShadow();restoreBuildTimeTooltip();restoreNativeSellCursor();restoreNativeMegaGateway();restoreControlObjectOwner();restoreControlCommandOwner();restoreNetworkSender();restoreTechEnhancement();enhancementChangedCatalogue=false;stickyTick(true);restoreViewZoom();}stickyCount=0;runtimeKeys.clear();resetLoadCalculation();resetRuntimePlanner();catalogueReady=false;catalogueHash=0;catalogueAt=0;catalogueDirty=true;resetFeatureTypes();resetPointerInput();if(sh&&sh->pointer.request!=sh->pointer.ack){sh->pointer.result=-7;sh->pointer.accepted=0;sh->pointer.rejected=sh->pointer.intent.count;MemoryBarrier();sh->pointer.ack=sh->pointer.request;}nativeMegaQueueCallDepth=nativeObjectQueueCallDepth=0;snap.lastSubmitError=0;missionObserver.clear();actorFrameArbiter.clear();actorLeaseArbiter.clear();snap.megaQueueStatus=0;snap.megaQueueAccepted=snap.megaQueueRejected=0;snap.objectQueueStatus=0;snap.objectQueueAccepted=snap.objectQueueRejected=0;
- snap.queueSent=snap.queueFull=snap.queueTimingFailure=snap.planDeferred=snap.queuedEvents=snap.observedEvents=snap.commandRejected=snap.receiptCancelled=snap.receiptExpired=snap.receiptDropped=0;snap.receiptWrite=snap.receiptCount=0;if(retireHooks)restoreClickHooks();resetCooperativeState();resetFormation();resetMissileControl();resetBurstControl();resetDodgeControl();if(retireHooks&&sh)sh->clickHookStatus=0;clearOreOrders();if(retireHooks)restorePlacement();indexedFrame=indexedCount=-1;outgoingFrame=-1;clearNativeOrders(retireHooks);snap.labels=snap.selected=snap.transports=snap.used=snap.capacity=snap.swCount=0;snap.unloadIssued=0;if(retireHooks){snap.nativeHookStatus=0;snap.techOpen=0;restoreTech();restoreCSHook();}clearFlashes();resetProduction();if(retireHooks)snap.inputPatchMask=0;repairCount=repairAt=repairDone=0;repairAckRequest=0;repairAckPending=false;repairCalculationPending=false;for(auto&v:lastIdle)v=0;productionBaseline=false;snap.typeCount=0;snap.threatCount=snap.crateCount=crateCount=0;cratesOn=false;autoWas=false;snap.autoRepair=0;snap.repairTotal=0;if(retireHooks)snap.techVisible=snap.techUnavailable=snap.techError=0;snap.crateHookStatus=snap.crateResultCount=0;snap.crateResultSerial=0;sceneResultSerial=0;if(retireHooks)snap.csHookStatus=0;snap.csConverted=0;loadLedger.clear();snap.loadUnits=snap.loadVehicles=snap.loadIssued=snap.loadWaiting=snap.loadUnassigned=0;if(retireHooks)memset(techAllowed,0,sizeof techAllowed);pendingRepairs.clear();}
+ snap.queueSent=snap.queueFull=snap.queueTimingFailure=snap.planDeferred=snap.queuedEvents=snap.observedEvents=snap.commandRejected=snap.receiptCancelled=snap.receiptExpired=snap.receiptDropped=0;snap.receiptWrite=snap.receiptCount=0;if(retireHooks)restoreClickHooks();resetCooperativeState();resetFormation();resetMissileControl();resetBurstControl();resetDodgeControl();if(retireHooks&&sh)sh->clickHookStatus=0;clearOreOrders();if(retireHooks)restorePlacement();indexedFrame=indexedCount=-1;outgoingFrame=-1;clearNativeOrders(retireHooks);snap.labels=snap.selected=snap.transports=snap.used=snap.capacity=snap.swCount=0;snap.unloadIssued=0;if(retireHooks){snap.nativeHookStatus=0;snap.techOpen=0;restoreTech();restoreCSHook();}clearFlashes();resetProduction();if(retireHooks)snap.inputPatchMask=0;repairCount=repairAt=repairDone=0;repairAckRequest=0;repairAckPending=false;repairCalculationPending=false;for(auto&v:lastIdle)v=0;productionBaseline=false;snap.typeCount=0;snap.threatCount=snap.crateCount=crateCount=0;cratesOn=false;autoWas=false;snap.autoRepair=0;snap.repairTotal=0;if(retireHooks){snap.techVisible=snap.techUnavailable=0;snap.techError=techDataPending()?-44:0;}snap.crateHookStatus=snap.crateResultCount=0;snap.crateResultSerial=0;sceneResultSerial=0;if(retireHooks)snap.csHookStatus=0;snap.csConverted=0;loadLedger.clear();snap.loadUnits=snap.loadVehicles=snap.loadIssued=snap.loadWaiting=snap.loadUnassigned=0;if(retireHooks)memset(techAllowed,0,sizeof techAllowed);pendingRepairs.clear();}
 static void mapName(wchar_t*out,DWORD p){mappingName(out,p);}
 static HANDLE controllerProcess;static DWORD controllerPID,controllerCheckAt;
 static void disconnect(){
@@ -201,6 +206,7 @@ static void notifyHost(){
 }
 static uint32_t micros(LARGE_INTEGER from,LARGE_INTEGER to,LARGE_INTEGER frequency){return frequency.QuadPart>0?uint32_t((to.QuadPart-from.QuadPart)*1000000/frequency.QuadPart):0;}
 static void publishSnapshot(DWORD now){
+ nativePlacementOffers(now);
  bool copyTypes=catalogueDirty||sh->seq==0||sh->data.match!=snap.match||sh->data.typeCount!=snap.typeCount;
  const auto entryState=gameentry::inspect();
  snap.hookConflicts=int(entryState.conflicts);snap.hookInstalled=int(entryState.installed);
@@ -279,8 +285,11 @@ static bool simulationReady(){
   memcpy(out,(const void*)(uintptr_t)at,size);return true;
  }).visible();
 }
-static bool enqueue(Event&e,const intent::EventOrder& order,OrderAuthority authority){
+static bool enqueue(Event&e,const intent::EventOrder& order,OrderAuthority authority,const NativePlacementSubmission* placement=nullptr){
  if(!simulationReady()||get<bool>(0xA8BC60+25)){++snap.commandRejected;return false;}
+ if(!validateNativePlacement(order,placement)||!nativePlacementPacket(e,order)){
+  snap.lastSubmitError=43;++snap.commandRejected;return false;
+ }
  if(!eventdelivery::mayQueue(get<int>(0xA8B238))){++snap.commandRejected;return false;}
  if(!outgoingRoom()){snap.lastSubmitError=6;++snap.queueFull;return false;}
  // Fail closed if the game callback cannot be resolved; never fabricate its
@@ -290,6 +299,9 @@ static bool enqueue(Event&e,const intent::EventOrder& order,OrderAuthority autho
  // The native timer is an external call boundary. Recheck identity/frame before
  // copying the packet; never route a constructed event into a changed session.
  if(!simulationReady()||get<bool>(0xA8BC60+25)){++snap.commandRejected;return false;}
+ if(!validateNativePlacement(order,placement)||!nativePlacementPacket(e,order)){
+  snap.lastSubmitError=43;++snap.commandRejected;return false;
+ }
  if(authority==OrderAuthority::PlayerTest&&!authorizePlayerOrder(order,authority)){
   // The original clock is an external boundary: the actor may have changed
   // Owner, or the explicit control/transport option may have been disabled.
@@ -347,8 +359,9 @@ static entrygate::Snapshot currentEntryBoundary(){
 // ENTRY: the only ordinary EventClass construction-and-submit channel.
 // Caller / planner supplies a semantic intent, never a raw address or packet.
 // This does not replace the two separately verified high-level append backends.
-static bool submitConstructed(const intent::EventOrder& order,OrderAuthority authority=OrderAuthority::Local){
+static bool submitConstructed(const intent::EventOrder& order,OrderAuthority authority=OrderAuthority::Local,const NativePlacementSubmission* placement=nullptr){
  if(!authorizePlayerOrder(order,authority)){++snap.commandRejected;return false;}
+ if(!validateNativePlacement(order,placement)){snap.lastSubmitError=43;++snap.commandRejected;return false;}
  const entrygate::Snapshot boundary=currentEntryBoundary();
  const auto gate=entrygate::admit(boundary);
  if(gate!=entrygate::Outcome::Pass){
@@ -365,7 +378,7 @@ static bool submitConstructed(const intent::EventOrder& order,OrderAuthority aut
  const auto state=constructors::fill(packet,order,
   [](uint32_t address,uint32_t self,auto... args){call<void>(address,self,args...);});
  if(state!=constructors::Verdict::Ready){snap.lastSubmitError=8;++snap.commandRejected;return false;}
- return enqueue(packet,order,authority); // SP DoList / MP OutList, timing and receipt centrally.
+ return enqueue(packet,order,authority,placement); // SP DoList / MP OutList, timing and receipt centrally.
 }
 // Original game QueueMegaMission verified in two user-provided 32-bit EXEs.
 // x86 __fastcall ABI (NOT the EventClass ctor):
@@ -682,6 +695,7 @@ static void scanTypes(){catalogueDirty=true;
 }
 #include "sidebar.h"
 #include "tech_enhancement_bridge.h"
+#include "tech_data_bridge.h"
 #include "type_select_bridge.h"
 static uint32_t rawObjectID(uint32_t pointer);
 #include "raw_combat.h"
@@ -725,7 +739,7 @@ static bool featureRestorationComplete(){
  // A released build-time claim may leave the shared tooltip slot owned by
  // Cursor. Runtime separately retires it after the last client detaches.
  return codeHookRegistry.installed()==runtimeOnly&&!crcMapInstalled&&!networkSenderInstalled&&
-  !shroudMaterials.active()&&!enhancementRestoring&&!controlHouseFlagsPending();
+  !shroudMaterials.active()&&!enhancementRestoring&&!techDataPending()&&!controlHouseFlagsPending();
 }
 // Reserve a share for other active task families, then let a lone family use
 // the remaining capacity. All sends still obey the shared 24-event frame cap.
@@ -845,6 +859,7 @@ static int namedSuper(uint32_t house,int command){const char* id=command==Select
  for(int i=0;i<v.count;++i){uint32_t p=item(v,i);if(!p)continue;uint32_t t=get<uint32_t>(p+0x28);if(t&&sameid((const char*)(t+0x24),id))return superSelect(house,i);}return -4;
 }
 #include "social_bridge.h"
+#include "native_placement_bridge.h"
 static void command(uint32_t house,DWORD now){uint32_t req=sh->request;if(req==sh->ack||(pendingAckReady&&req==pendingAck)||(repairAckPending&&req==repairAckRequest)||(loadAckPending&&req==loadAckRequest))return;MemoryBarrier();int c=sh->command,arg=sh->arg;int result=1,n=0;
  if(sh->requestMatch!=match||DWORD(now-sh->requestTick)>3500){result=-7;}
  else if((enhancementChangedCatalogue||sh->requestTypeHash)&&typeIndexedCommand(c,arg)&&sh->requestTypeHash!=typeListHash(snap.types,snap.typeCount)){result=-7;}
@@ -855,6 +870,7 @@ static void command(uint32_t house,DWORD now){uint32_t req=sh->request;if(req==s
  }
  else if(c==Cheer||c==Taunt){result=socialCommand(house,c,arg,now);n=result>0;}
  else if(c==DestructPlayer){result=destructPlayerCommand(uint32_t(arg),uint32_t(sh->arg2),sh->requestToken);n=result>0?1:0;}
+ else if(c==PlaceCompletedBuilding){result=nativePlacementCommand(house,now);n=result>0?1:0;}
  else if(c==SwitchPlayer||c==RestorePlayer){result=-4;n=0;} // unavailable in this release, including stale commands
  else if(c==SelectType){n=selectType(house,arg,sh->arg2!=0);if(n<0){result=n;n=0;}}
  else if(c==SelectVariant){n=selectVariant(house,sh->arg2!=0);if(n<0){result=n;n=0;}}
@@ -877,9 +893,11 @@ static void command(uint32_t house,DWORD now){uint32_t req=sh->request;if(req==s
   else {call<void>(0x577D90,0x87F7E8,(void*)house);crcMapToolEnd();n=1;}
  }
  else if(c==OpenTech){
-  // Enable paired sidebar eligibility gates before adding native cameos.
-  if(arg&&sh->arg2>2)result=-4;
-  else {techImplementation=arg?sh->arg2:0;snap.techOpen=arg?int(techImplementation)+1:0;memcpy(techAllowed,sh->techAllowed,sizeof techAllowed);snap.techError=0;if(snap.techOpen){requestTechRefresh();refreshTech(house,now);}else restoreTech();n=snap.techVisible;if(snap.techError<0)result=snap.techError;}}
+  if(arg&&!techmode::valid(sh->arg2))result=-4;
+  else if(arg&&sh->arg2!=techImplementation&&((techmode::data(sh->arg2)&&riskTechActive)||techmode::data(techImplementation))&&techTransitionProductionPending(house)){snap.techError=-43;result=-43;}
+  else {techImplementation=arg?sh->arg2:0;snap.techOpen=arg?int(techImplementation)+1:0;memcpy(techAllowed,sh->techAllowed,sizeof techAllowed);snap.techError=0;
+   if(techmode::data(techImplementation))for(auto&w:reservedSidebar)w={};
+   if(snap.techOpen){requestTechRefresh();refreshTech(house,now);}else restoreTech();n=snap.techVisible;if(snap.techError<0)result=snap.techError;}}
  else if(c==SelectSuper){result=superSelect(house,arg);n=result>0;}
  else if(c==SelectIron||c==SelectChrono){result=namedSuper(house,c);n=result>0;}
  else if(c==AirPathMove){uint32_t id=uint32_t(arg),p=worldByID(id),cell=uint32_t(sh->arg2);
@@ -911,10 +929,15 @@ static void command(uint32_t house,DWORD now){uint32_t req=sh->request;if(req==s
  }
  else if(c==Produce||c==CancelTechProduction){
   if(!(sh->flags&UnsafeTech)||!snap.techOpen||arg<0||arg>=snap.typeCount||!techAllowed[arg]||!typePointers[arg] )result=-4;
+  // Data mode is operated through the game's native sidebar. Do not retain
+  // the unpublished toolbox event-only route under a renamed mode.
+  else if(techmode::data(techImplementation))result=-4;
   else if(c==CancelTechProduction){auto&t=snap.types[arg];if(nativeProduceEvent(house,t,false,0x10))n=1;else result=-6;}
   else {const uint32_t type=typePointers[arg];uint32_t table=get<uint32_t>(type),method=table?get<uint32_t>(table+0x94):0;
    if(method<0x10000||call<int>(0x4F7870,house,(void*)(uintptr_t)type,true,true)<=0||!call<uint32_t>(method,type,techImplementation!=1,true,true,(void*)(uintptr_t)house))result=-9;
-   else{auto&t=snap.types[arg];if(!ensureTechCameo(arg,house))result=-9;else{result=nativeProduceEvent(house,t)?1:-6;n=result>0;if(n&&t.kind==7)watchReservedSidebar(house,t.index,typeTab(arg),0,now);}}
+   else{auto&t=snap.types[arg];
+    if(!ensureTechCameo(arg,house))result=-9;
+    else{result=nativeProduceEvent(house,t)?1:-6;n=result>0;if(n&&t.kind==7)watchReservedSidebar(house,t.index,typeTab(arg),0,now);}}
   }
  }
  else result=-4;
@@ -1081,7 +1104,8 @@ static void tick(){
   restoreNativeSellCursor();restoreNativeMegaGateway();restoreControlObjectOwner();restoreControlCommandOwner();
   restoreFrameDriver();disconnect();return;
  }
- if(snap.techOpen&&!(sh->flags&UnsafeTech))restoreTech();
+ if((snap.techOpen||techPending||techDataPending())&&!(sh->flags&UnsafeTech))restoreTech();
+ if(techDataRestoring&&techImplementation!=3)restoreTechData();
  const auto worldSample=worldlife::capture(read);const auto worldChange=hookWorld.observe(worldSample);
  if(worldCleanupPending){reset();worldCleanupPending=!featureRestorationComplete();if(worldCleanupPending){snap.commandStatus=activation::CleanupPending;publishSnapshot(now);return;}}
  if(worldChange==worldlife::Change::Unknown){snap.status=hookWorld.bound?1:0;snap.bridgeStatus=1;suspendedSnapshot(now,false,activation::WorldUnknown);return;}
@@ -1196,7 +1220,7 @@ static void tick(){
  bool force=newMatch||selectionPending||selectionChanged||flags!=sceneFlags||tactical!=sceneTactical||width!=sceneWidth||height!=sceneHeight||zoom!=sceneZoom||snap.crateResultSerial!=sceneResultSerial;
  bool full=force||(DWORD(now-sceneTick)>=16&&(frame!=sceneFrame||(cameraMoved&&DWORD(now-sceneTick)>=32)||DWORD(now-sceneTick)>=100));
  bool summaryChanged=scanSummary(house,frame,now,flags);
- if(snap.techOpen&&((techPending&&DWORD(now-techRefresh)>=16)||DWORD(now-techRefresh)>=1000))refreshTech(house,now);
+ if((snap.techOpen||techPending)&&((techPending&&DWORD(now-techRefresh)>=16)||DWORD(now-techRefresh)>=1000))refreshTech(house,now);
  if(full){if(!sh->externalDisplay)scan(house,frame,now);sceneFrame=frame;sceneTick=now;sceneFlags=flags;sceneTactical=tactical;sceneWidth=width;sceneHeight=height;sceneZoom=zoom;sceneResultSerial=snap.crateResultSerial;}
  else if(cameraMoved)shiftScene(cx-cameraX,cy-cameraY);
  else if(!externalInputFrame&&!cmd&&!summaryChanged&&!planningChanged&&!missileChanged&&!burstChanged&&!dodgeChanged&&DWORD(now-snap.sampledTick)<250)return;

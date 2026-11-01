@@ -32,6 +32,10 @@ static bool restoreTechEnhancement(){
 }
 static void techEnhancementTick(DWORD now){
  if(!sh)return;
+ if(techDataBlocksEnhancement()){
+  const bool restored=restoreTechEnhancement();
+  sh->techEnhanceStatus=restored?0:techenhancement::Incompatible;return;
+ }
  // Restoration owns the original world/values until it has really finished.
  if(enhancementRestoring&&!restoreTechEnhancement())return;
  if(!sh->techEnhance){if(enhancementRequested)restoreTechEnhancement();return;}

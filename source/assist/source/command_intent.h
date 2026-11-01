@@ -22,6 +22,10 @@ inline EventOrder produce(int player,int eventType,int abstractType,int index,in
 inline EventOrder superWeapon(int player,int eventType,int swIndex,vanilla::Cell cell){
  EventOrder r{};r.domain=vanilla::Domain::SuperWeaponPlace;r.player=player;r.eventKind=eventType;r.a=swIndex;r.cell=cell;return r;
 }
+inline EventOrder placeBuilding(int player,int typeIndex,int naval,vanilla::Cell cell){
+ EventOrder r{};r.domain=vanilla::Domain::Place;r.player=player;r.eventKind=vanilla::EventType::Place;
+ r.a=7;r.b=typeIndex;r.c=naval;r.cell=cell;return r;
+}
 inline EventOrder mega(int player,uint32_t actor,int mission,uint32_t target,uint8_t targetTag,
  uint32_t destination,uint8_t destinationTag,uint32_t nearest,uint8_t nearestTag){
  EventOrder r{};r.domain=vanilla::Domain::MegaMission;r.player=player;r.a=int32_t(actor);r.tagA=0x34;

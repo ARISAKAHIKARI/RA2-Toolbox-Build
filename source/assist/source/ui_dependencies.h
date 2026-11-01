@@ -24,6 +24,8 @@ static settingsdeps::State currentSettingDependencies(){
  s.set(Need::ManualRate,!infoAdaptive);s.set(Need::Capacity,check[0]&&SendMessageW(check[0],BM_GETCHECK,0,0)==BST_CHECKED);
  s.set(Need::Advanced,hookAdvanced);s.set(Need::C4,extra.c4Test);s.set(Need::Dodge,extra.dodgeEnabled);
  s.set(Need::Construction,extra.constructionQueue);s.set(Need::BuildAnywhere,buildAnywhereMode);
+ s.set(Need::EventPlacement,buildAnywhereMode&&extra.placementImplementation==buildingmodes::PlacementEvent);
+ s.set(Need::ToolTechnologyOrders,buildingmodes::toolOrders(techImplementation,snap.techOpen));
  s.set(Need::Repair,repairCheck&&SendMessageW(repairCheck,BM_GETCHECK,0,0)==BST_CHECKED);
  s.set(Need::ManualReveal,extra.manualReveal);
  s.set(Need::Aircraft,extra.air);s.set(Need::AircraftQuotas,extra.aircraftAllocationPolicy==0);

@@ -21,6 +21,12 @@ struct TileAssets:TileContext{
  bool palette(bool,std::array<uint32_t,256>&out){out.fill(0xffffffffu);return true;}
  bool tile(uint32_t,unsigned,const std::array<uint32_t,256>&,voxel::Image&out){out.width=60;out.height=30;out.x=-30;out.y=-15;out.pixels.assign(1800,0xff2266aau);out.nativeDepth.enabled=true;out.nativeDepth.gradient=nativesurface::Gradient::Flat;return true;}
 };
+struct RankAssets:TileAssets{
+ using TileAssets::TileAssets;
+ bool captureActor(uint32_t,uint32_t,uint32_t,ActorArt&,const visual::Pose*,int,uint32_t){return true;}
+ bool refreshActorPalette(ActorArt&,bool&changed){changed=false;return true;}
+ bool renderSharedActor(const ActorArt&,const visual::Pose&,std::shared_ptr<const voxel::Image>&out){static auto image=[](){auto p=std::make_shared<voxel::Image>();p->width=p->height=1;p->pixels={0xff334455};return p;}();out=image;return true;}
+};
 void insignia(){
  constexpr uint32_t shape=0x200000,convert=0x300000,row=0x310000;
  put(0xAC147C,shape);put(shape+2,uint16_t(8));put(shape+4,uint16_t(8));put(shape+6,uint16_t(20));
@@ -48,11 +54,25 @@ int main(){
  // Unlike setting region.active, outputSized preserves radar decoration.
  insignia();radar::Marker veteran;veteran.kind=1;veteran.u=.2;veteran.v=.3;veteran.rank=14;radar::Marker elite=veteran;elite.u=.6;elite.rank=15;frame.markers={veteran,elite};
  sceneextras::Layers layers;radar::Scene decorated;decorated.width=120;decorated.height=60;decorated.pixels.resize(7200);sceneextras::RadarCPU cpu(decorated);sceneextras::radarDecorations(frame,120,60,read,assets,layers,cpu);
- assert(std::count(decorated.pixels.begin(),decorated.pixels.end(),0xffffffffu)==4);assert(decorated.pixels[20*120+26]==0xffffffffu);assert(decorated.pixels[20*120+74]==0xffffffffu&&decorated.pixels[20*120+76]==0xffffffffu);
- // The GPU command path consumes the same cached PIPS frame and RGBA owner.
- worldfx::View view;view.width=240;view.height=120;view.pixelsW=120;view.pixelsH=60;gpueffects::Builder builder(view);sceneextras::radarDecorations(frame,120,60,read,assets,layers,builder);auto plan=builder.finish();assert(plan->valid&&plan->commands.size()==2);assert(plan->commands[0].indices&&plan->commands[1].indices);
- failAt=0xAC147C;layers.begin();std::fill(decorated.pixels.begin(),decorated.pixels.end(),0);sceneextras::radarDecorations(frame,120,60,read,assets,layers,cpu);assert(std::count(decorated.pixels.begin(),decorated.pixels.end(),0xffffffffu)==0);failAt=0;
+ assert(std::count(decorated.pixels.begin(),decorated.pixels.end(),0xffffffffu)==0);
+ auto ranks=sceneextras::radarRanks(frame,read,layers);assert(ranks&&ranks->glyphs.size()==2);
+ // Native PIPS never enter the shared scene raster/GPU effect plan. Both
+ // panels resolve the same immutable glyphs at their own physical size.
+ worldfx::View view;view.width=240;view.height=120;view.pixelsW=120;view.pixelsH=60;gpueffects::Builder builder(view);sceneextras::radarDecorations(frame,120,60,read,assets,layers,builder);auto plan=builder.finish();assert(plan->valid&&plan->commands.empty());
+ std::vector<uint32_t> small(62*32),large(242*122);panelglyphs::paint(small.data(),62,32,panelglyphs::place(ranks,62,32));panelglyphs::paint(large.data(),242,122,panelglyphs::place(ranks,242,122));assert(std::count(small.begin(),small.end(),0xffffffffu)==4&&std::count(large.begin(),large.end(),0xffffffffu)==4);
+ auto bound=sceneextras::withRadarRanks(first,ranks);assert(bound!=first&&bound->ranks==ranks&&bound->pixels==first->pixels);assert(sceneextras::withRadarRanks(bound,sceneextras::radarRanks(frame,read,layers))==bound);
+ auto removed=sceneextras::withRadarRanks(bound,{});assert(removed!=bound&&!removed->ranks&&bound->ranks==ranks); // old output still owns old positions
+ failAt=0xAC147C;layers.begin();assert(!sceneextras::radarRanks(frame,read,layers));failAt=0;
+ RankAssets rankAssets(read);radar::SceneRenderer<RankAssets> rankRenderer;rankRenderer.outputSized(true);
+ auto rankFrame=frame;rankFrame.markers.resize(1);rankFrame.markers[0].x=rankFrame.markers[0].y=5*256;rankFrame.markers[0].object=0x650000;rankFrame.markers[0].type=0x660000;rankFrame.markers[0].id=3;
+ auto renderRank=[&]{return rankRenderer.render(rankFrame,120,60,read,rankAssets,{},1,false,true,false,true);};
+ auto originalRank=renderRank();assert(originalRank&&originalRank->ranks&&originalRank->ranks->glyphs.size()==1);
+ auto sameRank=renderRank();assert(sameRank==originalRank&&rankRenderer.stageStats().reused);
+ rankFrame.markers[0].rank=15;auto eliteRank=renderRank();assert(eliteRank&&eliteRank!=originalRank&&rankRenderer.stageStats().reused&&eliteRank->pixels==originalRank->pixels&&eliteRank->ranks->glyphs[0].pixels!=originalRank->ranks->glyphs[0].pixels);assert(renderRank()==eliteRank);
+ failAt=0x822CF8;rankFrame.markers[0].u=.8;assert(!renderRank()&&eliteRank->ranks->glyphs[0].u==.2);failAt=0;
+ auto movedRank=renderRank();assert(movedRank&&movedRank->ranks->glyphs[0].u==.8&&movedRank!=eliteRank);
+ rankFrame.markers[0].rank=-1;auto noRank=renderRank();assert(noRank&&!noRank->ranks&&rankRenderer.stageStats().reused);
  // Preparation for multiple watch views also retains world inputs only.
  frame.markers.clear();renderer.prepareWorld(true);auto ready=renderer.render(frame,320,256,read,assets,{0,0,240,120,true},1,false,true,false,true);assert(ready&&renderer.preparedWorld()&&renderer.preparedWorld()->ground.retainedGround()&&renderer.nativeStats().pages==0);
- std::puts("PASS production SceneRenderer: output-sized radar retains colors/domain; static forceFrame=false executes TMP; fallback reuse rejects size/reveal/identity/rewind changes; one revision read and recovery; native PIPS 14/15 CPU/GPU plan; watch world zero native pages");
+ std::puts("PASS production SceneRenderer: output-sized radar retains colors/domain; static forceFrame=false executes TMP; fallback reuse rejects size/reveal/identity/rewind changes; one revision read and recovery; native PIPS 14/15 immutable metadata, final-panel size and scene ownership; watch world zero native pages");
 }

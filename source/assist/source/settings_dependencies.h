@@ -13,7 +13,7 @@ enum class Need : unsigned {
  Watch, WatchSecondary, Minimap, MinimapPrimary, MinimapSecondary, CustomMinimap,
  ShiftClick, AppendClicks, Ore, CustomMiners, CustomRefineries, Production,
  ManualRate, Capacity, Advanced, C4, Dodge, Construction, BuildAnywhere,
- Aircraft, AircraftQuotas, QuotaTarget, QuotaOverride, Repair, Quality, Reconstruction, Unavailable, ManualReveal, NativeControl, NetworkControlAllowed, TypeListFirst
+ Aircraft, AircraftQuotas, QuotaTarget, QuotaOverride, Repair, Quality, Reconstruction, Unavailable, ManualReveal, NativeControl, NetworkControlAllowed, EventPlacement, ToolTechnologyOrders, TypeListFirst
 };
 constexpr Need typeListNeed(int feature){return Need(unsigned(Need::TypeListFirst)+unsigned(feature));}
 static_assert(unsigned(Need::TypeListFirst)+featuretypes::Count<=64,"dependency state covers every type filter");
@@ -61,6 +61,8 @@ inline const wchar_t* reason(Need need){
  case Need::Dodge:return L"需先开启自动躲弹";
  case Need::Construction:return L"需先开启生产预定";
  case Need::BuildAnywhere:return L"需先开启随处建造";
+ case Need::EventPlacement:return L"需先开启建筑放置并选择原生事件模式";
+ case Need::ToolTechnologyOrders:return L"规则数据模式请使用游戏原生建造栏生产或取消";
  case Need::Aircraft:return L"需先开启飞机分配攻击";
  case Need::AircraftQuotas:return L"需先选择按数量配额";
  case Need::QuotaTarget:return L"需先输入有效目标类型";
@@ -106,7 +108,11 @@ inline Decision decision(int id,const State&s){
  case 812:case 9180:return require(s,{Need::C4});
  case 895:return require(s,{Need::Dodge});
  case 817:return require(s,{Need::Construction});
- case 9096:return require(s,{Need::BuildAnywhere});
+ // Implementation selection stays available while off: choosing the event
+ // route must not first activate the saved legacy instruction patches.
+ case 9096:return {};
+ case 9251:case 9252:return require(s,{Need::EventPlacement});
+ case 423:case 814:return require(s,{Need::ToolTechnologyOrders});
  case 312:return require(s,{Need::Repair});
  case 710:case 711:case 712:case 713:case 714:case 751:return require(s,{Need::Aircraft,Need::AircraftQuotas});
  case 715:return require(s,{Need::Aircraft,Need::AircraftQuotas,Need::QuotaTarget});
@@ -119,7 +125,7 @@ inline constexpr int BasicControls[]={
  9304,9305,9306,9307,9308,9309,9313,9314,9324,9040,9041,9181,881,9183,9193,9187,9056,
  9061,9164,9165,9065,831,850,851,852,9100,9101,9166,9167,9168,796,797,
  781,782,783,784,9070,9071,9072,9073,9074,9075,303,310,787,818,802,812,
- 9180,895,817,9096,710,711,712,713,714,751,715,716,717,718,312,445,446,447,448,466,810,811,108,208
+ 9180,895,817,9096,9251,9252,423,814,710,711,712,713,714,751,715,716,717,718,312,445,446,447,448,466,810,811,108,208
 };
 inline constexpr auto Controls=[](){
  std::array<int,sizeof(BasicControls)/sizeof(BasicControls[0])+featuretypes::Count-1> ids{};
