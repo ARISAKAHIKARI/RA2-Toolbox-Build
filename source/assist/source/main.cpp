@@ -80,7 +80,7 @@ static uint32_t computeRequested=compute::Default;
 static bool renderUpgradeEnabled=false,unifiedOverlayEnabled=false,renderPhysicalOutput=false,renderMaterialRefresh=true,renderHighRefresh=true,renderVulkanEnabled=true;static int renderUpgradeLayer=1,renderPaletteRange=1,renderPixelScale=3,renderSceneDetail=1,renderColorPrecision=1;
 static bool renderProcessing=false,renderXbrzEnabled=false;
 static bool renderParticleEffects=true,renderLaserEffects=true,renderVoxelLighting=true,renderSpriteLighting=true;
-static bool harvesterCounterEnabled=false,powerDeltaEnabled=false,buildTimeTooltipEnabled=true;
+static bool harvesterCounterEnabled=false,powerDeltaEnabled=false,buildTimeTooltipEnabled=false;
 static int effectiveRenderDetail(){return 0;} // recovery: native source geometry
 static int effectiveRenderPrecision(){return 0;}
 static int effectiveRenderPalette(){return 0;}
@@ -158,7 +158,7 @@ static bool techAllowed(const assist::Type& t){
 }
 static WORD hotkeys[12];static const int actions[]={Repair,CombatSelection,EmptyTransports,DamagedSelection,IdleHarvester,IdleEngineer,IdleTransport,ClearBeacons,RevealMap,SelectIron,SelectChrono,AutoBoard};
 static std::vector<int> registeredKeyIDs;
-static const wchar_t* labels[]={L"自动维修",L"选择作战单位",L"选择空载运输载具",L"选择受损单位",L"选择空闲矿车",L"选择空闲工程师",L"定位空闲运输载具",L"清除信标",L"地图全开（实验性）",L"铁幕目标选择",L"超时空目标选择",L"自动装车"};
+static const wchar_t* labels[]={L"自动维修",L"选择作战单位",L"选择空载运输载具",L"选择受损单位",L"选择空闲矿车",L"选择空闲工程师",L"定位空闲运输载具",L"清除信标",L"高危：地图全开",L"铁幕目标选择",L"超时空目标选择",L"自动装车"};
 static const char* iniKeys[]={"Repair","Combat","EmptyTransports","Damaged","IdleHarvester","IdleEngineer","IdleTransport","ClearBeacons","RevealMap","IronCurtain","ChronoSphere","AutoLoad"};
 struct Binding{std::string id;WORD key;};static std::vector<Binding> swBindings;
 static HWND typeList,typeKey,typeCS,csCheck,csKeyEdit,csStatus,tapEdit,typeIdEdit;
@@ -1577,18 +1577,18 @@ static void updateModeStatus(DWORD now){
  int phase=!enabled?1:!game?2:snap.status<0?3:(snap.status!=1||(shared&&commandMatch()&&snap.commandStatus!=1))?4:0;
  static int oldPhase=-1;static DWORD last; if(phase==oldPhase&&DWORD(now-last)<200)return;oldPhase=phase;last=now;publishSuiteDisplay();
  auto riskText=[&](bool wanted,int state)->std::wstring{if(state==-2)return L"启用或关闭失败，请查看日志";if(state==-1)return L"不支持此游戏版本";if(!wanted)return state==1?L"等待恢复":L"关闭";return phase?L"等待游戏就绪":state==1?L"已启用（实验性）":L"等待生效";};
- std::wstring enhancement=L"科技加强：";
+ std::wstring enhancement=L"高危 · 科技加强：";
  if(shared&&shared->techEnhanceStatus<0)enhancement+=shared->techEnhanceCount?L"仍有未还原字段（"+std::to_wstring(shared->techEnhanceCount)+L" 项），请查看日志":L"字段不兼容或已被修改，请查看日志";
  else if(!extra.techEnhance)enhancement+=L"关闭";
  else if(!shared||phase)enhancement+=L"等待游戏就绪";
  else if(shared->techEnhanceStatus==1)enhancement+=L"已启用（"+std::to_wstring(shared->techEnhanceCount)+L" 项）";
  else enhancement+=L"等待生效";
  SetWindowTextW(GetDlgItem(ui,9098),enhancement.c_str());
- std::wstring riskStatus=L"随处建造："+riskText(buildAnywhereMode,snap.placementStatus);
- std::wstring airStatus=L"飞机路径点：";airStatus+=!(extra.airWaypoints||extra.nativeAirWaypoints)?L"关闭":phase?L"等待游戏就绪":extra.airWaypoints||extra.airPathKey||!airway::native()?L"兼容模式":snap.nativeAirStatus==-2?L"启用或关闭失败，请查看日志":snap.nativeAirStatus==-1?L"不支持此游戏版本":snap.nativeAirStatus==3?L"原生下单联机实验":snap.nativeAirStatus==4?L"完整原生联机实验":snap.nativeAirStatus==1?L"原生模式":L"等待生效";
+ std::wstring riskStatus=L"高危 · 随处建造："+riskText(buildAnywhereMode,snap.placementStatus);
+ std::wstring airStatus=L"飞机路径点：";airStatus+=!(extra.airWaypoints||extra.nativeAirWaypoints)?L"关闭":phase?L"等待游戏就绪":extra.airWaypoints||extra.airPathKey||!airway::native()?L"兼容模式":snap.nativeAirStatus==-2?L"启用或关闭失败，请查看日志":snap.nativeAirStatus==-1?L"不支持此游戏版本":snap.nativeAirStatus==3?L"高危 · 原生下单":snap.nativeAirStatus==4?L"高危 · 完整原生":snap.nativeAirStatus==1?L"高危 · 原生模式":L"等待生效";
  SetWindowTextW(GetDlgItem(ui,866),airStatus.c_str());
  SetWindowTextW(GetDlgItem(ui,807),riskStatus.c_str());
- std::wstring renderText=extra.mapStrategy?L"地图显示（实验性）：":L"地图显示：";renderText+=extra.mapStrategy==3?(autoRevealDone&&autoRevealDone==commandMatch()?L"自动地图全开已执行":L"等待自动地图全开"):snap.renderRevealStatus==-2?L"启用或关闭失败，请查看日志":!extra.renderReveal?L"关闭":phase?L"等待游戏就绪":snap.renderRevealStatus==1?L"已启用":L"等待生效";
+ std::wstring renderText=(extra.mapStrategy==3||extra.mapStrategy==4||extra.mapStrategy>=7)?L"高危 · 地图显示：":L"地图显示：";renderText+=extra.mapStrategy==3?(autoRevealDone&&autoRevealDone==commandMatch()?L"自动地图全开已执行":L"等待自动地图全开"):snap.renderRevealStatus==-2?L"启用或关闭失败，请查看日志":!extra.renderReveal?L"关闭":phase?L"等待游戏就绪":snap.renderRevealStatus==1?L"已启用":L"等待生效";
  SetWindowTextW(GetDlgItem(ui,809),renderText.c_str());
  {int z=shared?shared->viewZoomStatus:viewzoom::Waiting;std::wstring text=L"视角缩放：";
   if(!shared)text+=extra.viewZoomEnabled?L"等待连接":L"关闭";
@@ -1603,26 +1603,26 @@ static void updateModeStatus(DWORD now){
  }
  SetWindowTextW(GetDlgItem(ui,888),!extra.scrollRefreshMode?L"高刷策略：仅光标（沿用光标页设置）":shared&&shared->scrollRefreshStatus<0?L"高刷策略：接口不兼容，保持原版画面刷新":shared&&shared->scrollRefreshStatus==1?(extra.scrollRefreshMode==3?L"高刷策略：强制高刷 · 实验性功能已启用":extra.scrollRefreshMode==2?L"高刷策略：全部 · 实验性功能已启用":L"高刷策略：光标＋拖屏 · 实验性功能已启用"):L"高刷策略：等待游戏前台就绪");
  if(shared&&shared->scrollRefreshStatus==1&&shared->scrollRefreshRateMilli){wchar_t label[160];swprintf(label,160,L"%s · 绘制调用 %.1f Hz（非屏幕 FPS） · 最长间隔 %.1f ms",extra.scrollRefreshMode==3?L"强制高刷":extra.scrollRefreshMode==2?L"全部（实验性）":L"光标＋拖屏（实验性）",shared->scrollRefreshRateMilli/1000.0,shared->scrollRefreshMaxGapUs/1000.0);SetWindowTextW(GetDlgItem(ui,888),label);}
- SetWindowTextW(GetDlgItem(ui,9184),!extra.lowDamageFilter?L"低伤害过滤：关闭":shared&&shared->lowDamageStatus==1?L"低伤害过滤：原生索敌及工具自动命令":shared&&shared->lowDamageStatus==2?L"低伤害过滤：联机仅工具自动命令":L"低伤害过滤：等待就绪或补丁冲突");
+ SetWindowTextW(GetDlgItem(ui,9184),!extra.lowDamageFilter?L"低伤害过滤：关闭":shared&&shared->lowDamageStatus==1?L"高危 · 低伤害过滤：原生索敌及工具自动命令":shared&&shared->lowDamageStatus==2?L"低伤害过滤：仅工具自动命令":L"低伤害过滤：等待就绪或补丁冲突");
  {
   const bool fresh=shared&&commandFresh(now);
   auto stateText=[&](bool requested,int state){return !fresh?(requested?L"等待对局及连接就绪":L"关闭"):
    state<0?L"不可用，请检查游戏版本或功能冲突":state==2?L"正在处理待发事件并恢复":
    state==1?(requested?L"已启用（实验性）":L"正在关闭"):requested?L"等待适配启用":L"关闭";};
-  std::wstring network=L"事件所属方保留：";network+=stateText(extra.networkHousePreserve,shared?shared->networkHouseStatus:0);
+  std::wstring network=L"高危 · 事件所属方保留：";network+=stateText(extra.networkHousePreserve,shared?shared->networkHouseStatus:0);
   SetWindowTextW(GetDlgItem(ui,9188),network.c_str());
-  std::wstring sell=L"原生变卖光标：";
+  std::wstring sell=L"高危 · 原生变卖光标：";
   if(fresh&&extra.nativeSellCursor&&eventdelivery::isMultiplayer(incoming.session)&&!networkHouseReady()&&shared->nativeSellCursorStatus==0)sell+=L"等待事件所属方保留已启用";
   else sell+=stateText(extra.nativeSellCursor,shared?shared->nativeSellCursorStatus:0);
   SetWindowTextW(GetDlgItem(ui,9190),sell.c_str());
-  std::wstring mega=L"原生命令仲裁：";mega+=stateText(extra.nativeMegaGateway,shared?shared->nativeMegaGatewayStatus:0);
+  std::wstring mega=L"高危 · 原生成功入口观察：";mega+=stateText(extra.nativeMegaGateway,shared?shared->nativeMegaGatewayStatus:0);
   SetWindowTextW(GetDlgItem(ui,9192),mega.c_str());
-  std::wstring owner=L"控制命令所属方：";
+  std::wstring owner=L"高危 · 控制命令所属方：";
   if(extra.controlCommandOwner&&!extra.controlAll)owner+=L"等待开启跨玩家操控";
   else if(fresh&&extra.controlCommandOwner&&eventdelivery::isMultiplayer(incoming.session)&&!networkHouseReady())owner+=L"等待事件所属方保留已启用";
   else owner+=stateText(extra.controlCommandOwner,shared?shared->controlCommandOwnerStatus:0);
   SetWindowTextW(GetDlgItem(ui,9194),owner.c_str());
-  const int cs=shared?shared->crcMapShadowStatus:0;std::wstring crc=L"全图 CRC 原值镜像：";
+  const int cs=shared?shared->crcMapShadowStatus:0;std::wstring crc=L"高危 · 全图 CRC 原值镜像：";
   if(!fresh)crc+=extra.crcMapShadow?L"等待新对局及连接":L"关闭";
   else if(cs==-4||cs==-3)crc+=L"原值不可信，请在新对局揭示前开启";
   else if(cs==-5)crc+=L"仅支持联机的自动地图全开";
@@ -2152,7 +2152,7 @@ if(id==991){wchar_t query[128]{};GetWindowTextW(featureSearch,query,128);std::ws
  else if(id==473){csHoldEnabled=SendMessageW(csHoldCheck,BM_GETCHECK,0,0)==BST_CHECKED;save();}
  else if(id==475){WORD next=WORD(SendMessageW(csHoldEdit,HKM_GETHOTKEY,0,0));WORD prior=csHoldKey;csHoldKey=0;bool conflict=keyConflict(next,"",false);csHoldKey=prior;if(conflict){notify(L"此按键与已有功能冲突。");return 0;}csHoldKey=next;save();notify(L"CS 按键已保存；留空直接按增强鼠标键，非空按住键配合点击。");}
  else if(id==476){buildAnywhereMode=SendMessageW(anywhereCheck,BM_GETCHECK,0,0)==BST_CHECKED;
-  notify(buildAnywhereMode?L"扩展建筑放置范围已开启，可能影响联机同步。":L"扩展建筑放置范围已关闭，等待游戏恢复默认限制。");
+  notify(buildAnywhereMode?L"高危：扩展建筑放置范围已开启，可能影响联机同步。":L"扩展建筑放置范围已关闭，等待游戏恢复默认限制。");
   save();}
  else if(id==431){enabled=!enabled;if(!enabled)pauseAssistControls();else{lastFind=0;registerKeys();setStatus(L"正在重新连接…");}
 #ifdef RA2_UNIFIED

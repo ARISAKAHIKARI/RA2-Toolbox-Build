@@ -480,7 +480,9 @@ static bool redrawRevealTest(){
 static void placementTick(){
  prepareRiskSites();
  riskLowDamageActive=false;
- bool lowRequested=sh->lowDamageFilter&&(eventdelivery::isSingleplayer(get<int>(0xA8B238))||sh->lowDamageNetwork);
+ // Tool-side target filtering does not need to alter the engine's automatic
+ // acquisition. The separately labelled native option is required in SP too.
+ bool lowRequested=sh->lowDamageFilter&&sh->lowDamageNetwork;
  bool lowOK=lowRequested?installRiskSite(riskSites[9]):restoreRiskSite(riskSites[9]);
  riskLowDamageActive=lowRequested&&lowOK;
  riskLowDamageAllHouses=riskLowDamageActive&&eventdelivery::isMultiplayer(get<int>(0xA8B238));

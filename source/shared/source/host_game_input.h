@@ -251,7 +251,9 @@ inline void CALLBACK pulse(void*,BOOLEAN){
   }
 #endif
   bool nativeFrames=false;
-  if((enabled&runtime::Tactical)&&t.frameSampling){if(!t.frameSignal)t.frameSignal=std::make_shared<framesignal::Client>();if(t.frameSignal->open(t.pid,framesignal::Compute|(t.diagnosticFrame?framesignal::ExplicitDiagnostic:0))){t.frameSignal->heartbeat();framesignal::Stamp stamp;if(t.frameSignal->current(stamp)&&stamp.state==framesignal::Native&&stamp.frequency>0&&stamp.serial>0){LARGE_INTEGER q{};QueryPerformanceCounter(&q);nativeFrames=double(q.QuadPart-stamp.qpc)*1000./stamp.frequency<100.;}}}
+  // Normal frame sampling keeps the 4 ms message pulse below. It reads the
+  // existing frame counter and does not request a game-code notification hook.
+  if((enabled&runtime::Tactical)&&t.frameSampling&&t.diagnosticFrame){if(!t.frameSignal)t.frameSignal=std::make_shared<framesignal::Client>();if(t.frameSignal->open(t.pid,framesignal::Compute|framesignal::ExplicitDiagnostic)){t.frameSignal->heartbeat();framesignal::Stamp stamp;if(t.frameSignal->current(stamp)&&stamp.state==framesignal::Native&&stamp.frequency>0&&stamp.serial>0){LARGE_INTEGER q{};QueryPerformanceCounter(&q);nativeFrames=double(q.QuadPart-stamp.qpc)*1000./stamp.frequency<100.;}}}
   else t.frameSignal.reset();
   t.control->heartbeat=now;
   if(enabled&runtime::Tactical)pollPointer(t,now);

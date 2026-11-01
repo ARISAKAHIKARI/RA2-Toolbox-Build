@@ -11,7 +11,7 @@ struct AdditionalSettings {
  bool controlCommandOwner=false;
  bool networkHousePreserve=false,nativeSellCursor=false;
  bool crcMapShadow=false;
- bool nativeMegaGateway=true;
+ bool nativeMegaGateway=false; // Optional native observer; ordinary input uses the message path.
  bool techEnhance=false;int placementImplementation=0;
  bool viewZoomEnabled=false;int viewZoomPercent=100;
  int scrollRefreshMode=0; // cursor / scrolling / scene / forced redraw

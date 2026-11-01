@@ -8,7 +8,7 @@ enum class VideoGroup {Render,Monitor};
 struct VideoEntry {DisplayOption option;VideoGroup group;const wchar_t*label;const wchar_t*choices;};
 inline constexpr VideoEntry videoEntries[]={
  {RenderUpgrade,VideoGroup::Render,L"渲染升级",L""},
- {RenderHighRefresh,VideoGroup::Render,L"高刷移动补帧",L""},
+ {RenderHighRefresh,VideoGroup::Render,L"高刷移动补帧（只读帧号取样）",L""},
  {RenderPhysical,VideoGroup::Render,L"按显示器物理像素绘制",L""},
  {RenderUnified,VideoGroup::Render,L"合并世界信息与监控覆盖层",L""},
  {RenderGPU,VideoGroup::Render,L"Vulkan GPU（主视图、副相机、小地图）",L""},
@@ -19,7 +19,7 @@ inline constexpr VideoEntry videoEntries[]={
  {WatchPrimary,VideoGroup::Monitor,L"在游戏内显示副相机",L""},
  {HarvesterCounter,VideoGroup::Monitor,L"矿车指示器（工作中 / 总数）",L""},
  {PowerDelta,VideoGroup::Monitor,L"电量指示器（发电 − 耗电）",L""},
- {BuildTimeTooltip,VideoGroup::Monitor,L"建造栏提示框显示建造时间",L""},
+ {BuildTimeTooltip,VideoGroup::Monitor,L"高危：原生建造栏提示框显示建造时间",L""},
  {WatchSecondary,VideoGroup::Monitor,L"在第二显示器显示副相机",L""},
  {WatchDanger,VideoGroup::Monitor,L"自动跟踪危险载员",L""},
  {WatchKey1,VideoGroup::Monitor,L"副相机 1 快捷键",L""},

@@ -21,6 +21,11 @@ static void smallMapCameraTick(){
  // A diagnostic zero-patch baseline must not silently install the automatic
  // small-map camera adapter. Geometry/signature/ownership checks still apply.
  if(!hookdiagnostic::camera(sh?sh->owner:0)){restoreSmallMapCamera();return;}
+#else
+ // Tool minimap navigation clamps its own requested point before calling the
+ // native camera API. Keep the platform's global clamp implementation intact.
+ // Replacing all native camera callers remains an explicit high-risk test.
+ restoreSmallMapCamera();return;
 #endif
  if(!smallcamera::needed(cameraGeometry())){restoreSmallMapCamera();return;}
  if(!cameraSite.after[0]){cameraSite.after[0]=0xE9;uint32_t offset=uint32_t(uintptr_t(&smallMapClamp))-cameraSite.address-5;memcpy(cameraSite.after+1,&offset,4);}

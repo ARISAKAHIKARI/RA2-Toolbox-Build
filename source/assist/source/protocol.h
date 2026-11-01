@@ -203,7 +203,7 @@ struct Shared {
  volatile uint32_t networkHousePreserve=0,nativeSellCursor=0; // explicit outgoing/native-cursor experiments
  volatile int networkHouseStatus=0,nativeSellCursorStatus=0; // 0 off, 1 ready, 2 draining; negative unavailable
  uint32_t networkHousePackets=0,networkHouseDropped=0,nativeSellCursorPasses=0,nativeSellOwnerAdjusted=0;
- volatile uint32_t nativeMegaGateway=1;volatile int nativeMegaGatewayStatus=0;
+ volatile uint32_t nativeMegaGateway=0;volatile int nativeMegaGatewayStatus=0;
  uint32_t nativeMegaGatewayAccepted=0,nativeMegaGatewaySkipped=0;
  volatile uint32_t controlCommandOwner=0;volatile int controlCommandOwnerStatus=0;
  uint32_t controlCommandOwnerAccepted=0,controlCommandOwnerRejected=0;

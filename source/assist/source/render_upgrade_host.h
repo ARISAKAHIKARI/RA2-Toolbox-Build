@@ -18,7 +18,7 @@
 #include <chrono>
 #include "render_presentation.h"
 #include "sidebar_indicator_host.h"
-// External read/render; the sampler leases the shared Runtime frame signal.
+// External read/render; the sampler observes native frame-number changes.
 // No engine drawing or feature command is dispatched by this pipeline.
 namespace renderupgrade {
 static double presentationNow(){return std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now().time_since_epoch()).count();}
@@ -82,7 +82,6 @@ static asyncwork::Recurring<Request,external::radar::Frame> terrainWorker([](con
  if(!external::radar::sameWorld(data,external::radar::publicationContext(fresh)))return {};
  return std::make_shared<const external::radar::Frame>(std::move(data));
 });
-static framesignal::Client sampleSignal;
 static asyncwork::Recurring<Request,Observation> samplingWorker([](const Request&r)->std::shared_ptr<const Observation>{
  static std::shared_ptr<const Observation> last;
  static uint64_t sampleGeneration=0;static uint32_t sampleProcess=0,sampleMatch=0,sampleReveal=~0u;
@@ -92,13 +91,12 @@ static asyncwork::Recurring<Request,Observation> samplingWorker([](const Request
   sampleProcess=r.pid;sampleMatch=r.match;sampleReveal=r.reveal;
  }
  if(!sampleReader.open(r.pid))return {};
- framesignal::Stamp signal;bool native=false;
- if(r.profile.motion&&sampleSignal.open(r.pid))native=sampleSignal.wait(signal);else sampleSignal.close();
+ // The recurring worker reads native frame numbers; interpolation and pose
+ // sampling do not need to replace the game's frame-commit instruction.
  const double captureStarted=presentationNow();
  auto fresh=[](uint32_t p,void*out,size_t n){return sampleReader.readFresh(p,out,n);};
  external::mainview::View before;
  if(!external::mainview::sample(fresh,before)||!renderpresentation::sameProjection(before,r.view)||before.frame<r.view.frame)return {};
- if(native&&before.frame!=signal.frame){LARGE_INTEGER q{};QueryPerformanceCounter(&q);if(double(q.QuadPart-signal.qpc)*1000./signal.frequency<100.)return {};native=false;}
  if(last&&last->current->frame==before.frame&&captureStarted-last->observedMs<50.)return {};
  // The fast actor path NEVER traverses terrain. The third worker publishes
  // immutable whole-map banks while this reader samples positions and poses.
@@ -112,10 +110,7 @@ static asyncwork::Recurring<Request,Observation> samplingWorker([](const Request
  if(!external::mainview::sample(fresh,captured)||!renderpresentation::sameProjection(before,captured)||
     captured.frame<raw.frame||presentationNow()-actorsStarted>50.||
     !external::radar::sameWorld(raw,external::radar::publicationContext(fresh)))return {};
- framesignal::Stamp finishedSignal;if(native&&sampleSignal.current(finishedSignal)&&finishedSignal.serial!=signal.serial)return {};
- if(native&&captured.frame!=before.frame)return {};
- auto out=std::make_shared<Observation>();out->request=r;out->view=captured;out->frameSignalState=native?1:std::min(0,int(signal.state));
- if(native&&signal.frequency>0){LARGE_INTEGER q{};QueryPerformanceCounter(&q);out->signalDelayMs=std::max(0.,double(q.QuadPart-signal.qpc)*1000./signal.frequency);}
+ auto out=std::make_shared<Observation>();out->request=r;out->view=captured;out->frameSignalState=0;
  raw.observedMs=captureStarted;
  out->tick=GetTickCount();out->observedMs=presentationNow();out->readMs=out->observedMs-captureStarted;
  out->intervalMs=last?out->observedMs-last->observedMs:0;
@@ -233,7 +228,7 @@ static asyncwork::Recurring<Request,Frame> worker([](const Request&r)->std::shar
 static void suspendScene(){groupLease.reset();if(active){active=false;++generation;worker.invalidate();samplingWorker.invalidate();terrainWorker.invalidate();}feedback::hide();imageToken=0;overlaycompositor::host().hide(overlaycompositor::RenderUpgrade);}
 static void suspend(){viewLease.reset();suspendScene();sidebarhud::stop();}
 static void stop(){suspend();overlaycompositor::host().suspend();}
-static void shutdown(){stop();worker.shutdown();samplingWorker.shutdown();sampleSignal.close();terrainWorker.shutdown();feedback::shutdown();sidebarhud::shutdown();overlaycompositor::host().shutdown();}
+static void shutdown(){stop();worker.shutdown();samplingWorker.shutdown();terrainWorker.shutdown();feedback::shutdown();sidebarhud::shutdown();overlaycompositor::host().shutdown();}
 static void update(POINT origin,const RECT&client,const external::display::State&displayState){
  const auto selected=external::presentation::settings().get();static uint64_t profileRevision=~uint64_t(0);
  if(profileRevision!=selected.revision){profileRevision=selected.revision;++generation;worker.invalidate();samplingWorker.invalidate();terrainWorker.invalidate();groupLease.reset();}
@@ -412,7 +407,7 @@ static void update(POINT origin,const RECT&client,const external::display::State
   timing+=L"\r\n场景细分：地形 "+ms(presentedFrame->terrainMs)+L" · 色盘 "+ms(presentedFrame->palettesMs)+L" · 解码 "+ms(presentedFrame->decodeStageMs)+L" · VXL "+ms(presentedFrame->voxelMs)+L" · 对象合成 "+ms(presentedFrame->objectsMs)+L" · 输出 "+ms(presentedFrame->resolveMs)+L" · 特效 "+ms(presentedFrame->effectsMs)+L" ms";
   timing+=L"\r\n场景读取 "+std::to_wstring(presentedFrame->renderReadCalls)+L" 次／缓存 "+std::to_wstring(presentedFrame->renderPageHits)+L" · 色盘采样 "+std::to_wstring(presentedFrame->paletteSamples)+L"／复用 "+std::to_wstring(presentedFrame->paletteHits);
   timing+=L"\r\n每次逻辑帧变化采样 · 逻辑帧变化间隔 "+ms(presentedFrame->stateIntervalMs)+L" ms";
-  timing+=L"\r\n采样触发："+std::wstring(presentedFrame->frameSignalState==1?L"原生帧完成通知":L"帧号变化检测")+L" · 通知→读完 "+ms(presentedFrame->signalDelayMs)+L" ms";
+  timing+=L"\r\n采样触发：帧号变化检测";
   timing+=L"\r\n链路：采样→开画 "+ms(presentedFrame->sampleToDrawMs)+L" · 完成→交付 "+ms(completionToHandoffMs)+L" · 当前画面数据年龄 "+ms(std::max(0.,presentationNow()-presentedFrame->sampledAtMs))+L" ms";
   if(presentedFrame->gpuUsed)timing+=presentedFrame->image&&presentedFrame->image->gpu?L" · 回读：0（GPU 直出）":presentedFrame->gpuReadbackCached?L" · 回读：CPU 缓存内存":L" · 回读：非缓存内存";
   if(request.gpu){auto wide=[](const std::string&s){return std::wstring(s.begin(),s.end());};

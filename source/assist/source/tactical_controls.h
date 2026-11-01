@@ -60,9 +60,9 @@ label(L"队形按住键",20,306);key(9051,extra.formationHold,345,280,true);mode
 {const wchar_t* names[]={L"矩形横队",L"分散横队",L"圆形聚集",L"扇形（60°）",L"正方形聚集",L"空心框聚集"};const int ids[]={9052,9053,9054,9055,9057,9058};for(int n=0;n<6;++n){label(names[n],20,306);key(ids[n],extra.formationKeys[n]);modernui::pressKey(GetDlgItem(ui,ids[n]));modernui::keyboardOnly(GetDlgItem(ui,ids[n]));next();}}
 note(L"按住队形键或双击 Alt 进入，点按提交当前预览；拖动方向决定朝向。形状可共用键，每敲一次切换，长按不重复。Esc 取消。提交后退出预览；成员不变时后续移动保持队形。",44);
 note(L"正方形默认 B，空心框默认 N。框形未拖动时边框面积与中空面积约 3∶1，拖到最大变成单层边框；其余形状拖到最大为一横排。",44);
-label(L"飞机路径点",20,260);choices(combo(803),{L"关闭",L"兼容路径点",L"原生优先",L"原生下单（联机实验）",L"完整原生（联机实验）"},airpathpolicy::mode(extra.airWaypoints,extra.nativeAirWaypoints,extra.nativeAirNetwork));next();
+label(L"飞机路径点",20,260);choices(combo(803),{L"关闭",L"兼容路径点",L"原生事件兼容（旧原生优先）",L"高危：原生下单补丁",L"高危：完整原生补丁"},airpathpolicy::mode(extra.airWaypoints,extra.nativeAirWaypoints,extra.nativeAirNetwork));next();
 label(L"路径点按住键",20,306);{auto h=key(894,extra.airPathKey);modernui::holdKey(h);}next();
-note(L"留空跟随游戏路径点键；自定义键使用兼容路径点。原生优先在联机使用兼容模式。原生下单只放宽入口，可能不续飞；完整原生另改本机到达任务，可能不同步。",60);
+note(L"留空跟随游戏路径点键；兼容选项在单机、联机均通过原生移动事件接续，不改写代码。高危选项会改写飞机入口；完整原生还改本机到达任务，可能不同步。",60);
 item(L"STATIC",L"飞机路径点：关闭",20,605,866);next();
 toggle(795,L"Shift 五连点",shiftClickEnabled,20,270);choices(combo(796),{L"自动兼容",L"始终追加四次点击",L"不追加点击"},shiftClickMode);next();
 number(797,L"连续点击间隔 / 毫秒",shiftClickGap,L"0–250");
@@ -95,8 +95,8 @@ toggle(9181,L"提前休眠留枪",extra.missileReserve);next();
 number(881,L"火控检测频率 / 次每秒",extra.missileScanHz,L"1–60 · 默认 10");
 note(L"智能分配以预计 120% 血量为覆盖线。提前休眠留枪：建筑、战车、步兵先 Sleep 等待已分配目标进入原生射程，冷却或多余火力继续等待；无候选时恢复 Guard。关闭留枪则沿用原版攻击接近。手动命令和队形优先。",60);
 toggle(9182,L"过滤低伤害自动目标",extra.lowDamageFilter);next();
-toggle(9183,L"联机也修改原生索敌（实验性）",extra.lowDamageNetwork);next();
-note(L"忽略实际所选武器对目标护甲伤害倍率不超过 2% 的自动索敌候选，保留手动点名。单机过滤己方原生索敌；联机默认仅过滤工具命令。联机原生实验影响全部阵营，所有端需一致启用，仍未实测。",60);
+toggle(9183,L"高危：修改原生索敌",extra.lowDamageNetwork);next();
+note(L"默认仅过滤工具箱自动命令，单机与联机均不修改原生索敌。另开高危选项会改写原生判断：单机影响己方，联机影响全部阵营，可能不同步。",60);
 item(L"STATIC",L"低伤害过滤：关闭",20,605,9184);next();
 
 // One visible Auto CS switch represents the previous two enable flags.
@@ -123,8 +123,8 @@ for(int f=0;f<featuretypes::Count;++f){
 
 heading(3,903,L"战场信息",L"调整游戏内信息显示、缩放与位置；有效设置立即生效。");
 
-label(L"黑幕绘制方式",20,260);choices(combo(808),{L"关闭",L"受控模式（半透明）",L"受控模式（透明）",L"原生揭示（实验性）",L"直接模式（全图）",L"素材替换（透明）",L"素材替换（半透明）"},extra.mapStrategy);next();
-note(L"素材替换保留原版绘制流程，关闭时恢复已备份的素材；仅改变显示，不改变探索状态。");
+label(L"黑幕绘制方式",20,260);choices(combo(808),{L"关闭",L"半透明（素材方式）",L"透明（素材方式）",L"高危：原生揭示",L"高危：直接全图",L"素材替换（透明）",L"素材替换（半透明）",L"高危：原生半透明绘制补丁",L"高危：原生透明绘制补丁"},extra.mapStrategy);next();
+note(L"透明、半透明优先修改显示素材，不改写代码或探索状态；关闭时恢复素材。高危选项保留原生补丁或真正揭示，可能影响联机同步。");
 item(L"STATIC",L"地图显示：关闭",20,605,809);next();
 const wchar_t* displayNames[]={L"载具载员与容量",L"铁幕 / 力场剩余时间",L"生产队列空闲提醒",L"显示未选中的载具",L"敌方索敌显示",L"箱子信息",L"战术文字提示"};
 const wchar_t* displayIni[]={L"Capacity",L"Iron",L"Production",L"AllTransports",L"Psychic",L"Crates",L"TextPanel"};
@@ -169,7 +169,7 @@ marginEdit=number(311,L"文字提示上边距 / 像素",topMargin,L"0–4096");
 toastEdit=number(471,L"战术提示时长 / 毫秒",toastMs,L"500–60000");
 toggle(9325,L"矿车指示器（工作中 / 总数）",harvesterCounterEnabled);next();
 toggle(9326,L"电量指示器（发电 − 耗电）",powerDeltaEnabled);next();
-toggle(9327,L"建造栏提示框显示建造时间",buildTimeTooltipEnabled);next();
+toggle(9327,L"高危：原生建造栏提示框显示建造时间",buildTimeTooltipEnabled);next();
 toggle(9300,L"渲染升级（全视口 · 实验性）",renderUpgradeEnabled);next();
 toggle(9313,L"额外画质处理（关闭：基础快速绘制）",renderProcessing);next();
 note(L"仅开启渲染升级时，跳过扩色、连续光照增强、精细 VXL与 xBRZ；仍执行基本素材解码和原生色盘映射。下方已保存的画质选项保留，需独立开启额外画质处理才生效。",64);
@@ -179,7 +179,7 @@ toggle(9301,L"统一覆盖层（世界信息＋主屏统计）",unifiedOverlayEn
 label(L"256 色素材输出",20,260);choices(combo(9304),{L"原始 DAC（6-bit ×4，对照）",L"完整 24-bit RGB（6-bit→8-bit）"},renderPaletteRange);next();
 label(L"颜色计算精度",20,260);choices(combo(9309),{L"兼容色阶（原有光照计算）",L"增强 RGB（连续光照＋匹配原色盘恢复）"},renderColorPrecision);next();
 note(L"增强档保留 RGB888／32 位输出，减少光照台阶；仅当原始色盘重新量化后与运行时 RGB565 全表一致，才补回原色盘中的精度。252 是旧式色盘展开后的通道上限，不是颜色数量；不能恢复没有来源的丢失颜色。非 HDR／10-bit 输出。",72);
-toggle(9324,L"高刷移动补帧（帧通知采样 · 实验性）",renderHighRefresh);next();
+toggle(9324,L"高刷移动补帧（只读帧号取样）",renderHighRefresh);next();
 note(L"游戏完成逻辑帧后通知独立采样；显示位置在最新两帧基础上最多推演一帧且不超过 25 ms，不缓存等待下一游戏帧。基础绘制也可使用。",64);
 label(L"场景精细度",20,260);choices(combo(9308),{L"原生像素合成（对照）",L"精细：VXL 自适应采样＋256 向转动＋物理像素合成"},renderSceneDetail);next();
 toggle(9314,L"启用 xBRZ 边缘重建（独立开启）",renderXbrzEnabled);next();
@@ -190,7 +190,7 @@ toggle(9322,L"VXL 实时光影重算",renderVoxelLighting);next();toggle(9323,L"
 note(L"基础与精细档均可由 GPU 合成场景、光照、深度、阴影与迷雾；精细档额外使用自适应 VXL，xBRZ 仍需独立开启。实景小地图缩小使用 GPU 分页面积采样，保留原尺寸遮挡。素材缓存复用；采样、姿态与材质准备仍在 CPU。设备或功能不可用时回退 CPU。",88);
 note(L"SHP/TMP 使用 xBRZ 1.9 原版算法处理当前光照后的颜色，VXL 按实际输出比例重新采样几何。GPU 为同规则移植并执行设备自检，失败时保留上游 CPU 路径。非整数倍率先用 2–4× xBRZ，再缩至目标像素；实时光照或色盘变化会更新结果。",88);
 note(L"4K 增强仅在游戏客户区覆盖整块物理显示器且 DPI/视口校验通过时生效。独占全屏若切换到 2560×1440，仍使用现有覆盖层按 2560×1440 正常绘制，只停用 4K 增强；不会因为独占就隐藏覆盖层。2K 窗口也不会假冒 4K。最终倍率按游戏视口与实际客户区计算，支持 1.5× 等分数比例；不固定放大 2×，不改变镜头与鼠标命中。",88);
-note(L"采样、场景准备与呈现独立运行。高刷移动使用最新观测的有界显示推演，逻辑速度与联网事件不变；主视图每次呈现只更新实例位置，不重复解码。帧通知不可用时检测原生帧号变化；游戏速度决定样本频率，目标显示率由屏幕/覆盖层设置决定。",88);
+note(L"采样、场景准备与呈现独立运行。高刷移动使用最新观测的有界显示推演；只读检测游戏帧号变化，不安装幀完成補丁。主视图每次呈现只更新实例位置，不重复解码。游戏速度决定样本频率，目标显示率由屏幕/覆盖层设置决定。",88);
 note(L"重绘场景位于信息与交互面板下方，只读呈现。支持框选、血条、光标、路径、卸载绘制顺序，以及生成物、驻军、吸收乘员、心控和范围提示。建筑红绿格沿用原生判定。素材或视口未就绪时保留短期完整帧或回退原画。完整原生 Z/A、位移隐形及部分特殊效果仍有差异；实机与联机验证未完成。",88);
 item(L"STATIC",L"渲染升级：实验性，默认关闭",20,605,9303,0,180);next(180);
 toggle(830,L"游戏内战术小地图",minimapEnabled);next();
@@ -208,7 +208,7 @@ label(L"自定义垂直对齐",20,260);choices(combo(9101),{L"靠上",L"居中",
 note(L"自定义坐标是布局框左上角，对齐决定地图在框内的位置。左上／左下预设按地图实际尺寸贴边；自动避开原雷达和飞机按钮。左击或拖动可移动主视角。",60);
 detailCheck=toggle(481,L"显示运行耗时",showDetails);next();
 
-heading(4,904,L"高级与实验性设置",L"实验性功能尚未完成联机验证，可能导致不同步或掉线。建议单独测试。");
+heading(4,904,L"高级与实验性设置",L"高危表示仍需改写游戏代码、函数入口或联机状态。未标记不代表已通过联机实测；普通指令优先使用原生事件。");
 toggle(885,L"自动躲弹（实验性）",extra.dodgeEnabled,20,280);choices(combo(895,310,305,180),{L"顺向移动 2 格",L"原版散开（Scatter）"},extra.dodgeMode);next();
 note(L"对己方可移动地面单位预判敌机攻击与逼近碾压，短距离躲避。支持类型清单，不保证躲过追踪弹或瞬时伤害。",60);
 button(9094,L"Sticky 驻守（实验性／支持联机进入）",20,306);key(9095,extra.stickyKey);next();note(L"所选地面单位进入 Sticky=6；默认 Ctrl+Alt+S，可改组合或双击。联机仅支持同步进入，重复键不重发，退出尚未实现。单机可再次按键或手动下令解除；实际进入后显示金色标记。");
@@ -234,17 +234,17 @@ note(L"当前仅保留光标高刷；拖屏、全部及强制高刷暂不可用�
 item(L"STATIC",L"高刷策略：仅光标",20,605,888);next();
 #endif
 
-anywhereCheck=toggle(476,L"随处建造（实验性）",buildAnywhereMode);next();
+anywhereCheck=toggle(476,L"高危：随处建造",buildAnywhereMode);next();
 label(L"建造方式",20,180);choices(combo(9096,220,405,180),{L"受控模式（默认）",L"直接模式"},extra.placementImplementation);next();
 item(L"STATIC",L"功能状态：等待连接",20,605,807,0,44);next(44);
 toggle(810,L"步兵强制进入建筑（实验性）",extra.c4Test,20,280);key(811,extra.c4Key,310,188,true);choices(combo(812,510,115,180),{L"停用",L"中键",L"侧键 1",L"侧键 2",L"右键",L"左键"},extra.c4Mouse==6?5:extra.c4Mouse);next();
 label(L"进入实现",20,260);choices(combo(9180),{L"占领任务＋建筑格",L"爆破任务＋建筑格"},extra.c4Mode);next();
 note(L"两种实现均向被点击的建筑占地格下令。默认占领任务；普通点击直接提交，按住游戏路径点键时追加。建筑被坦克覆盖时从同格查找。实际能否进入由原版判定。",60);
 item(L"STATIC",L"步兵强制进入建筑：关闭",20,605,813);next();
-toggle(9097,L"科技加强（实验性）",extra.techEnhance);next();
+toggle(9097,L"高危：科技加强（直接修改类型规则）",extra.techEnhance);next();
 note(L"开放奶牛、电影英雄等隐藏类型；关闭后恢复本功能修改的科技等级。可能影响联机同步。",44);
 item(L"STATIC",L"科技加强：关闭",20,605,9098);next();
-toggle(420,L"科技解锁（实验性）",techMode,20,305);techSearch=edit(421,L"",345,280);SendMessageW(techSearch,EM_SETCUEBANNER,TRUE,(LPARAM)L"搜索名称或单位 ID");next();
+toggle(420,L"高危：科技解锁",techMode,20,305);techSearch=edit(421,L"",345,280);SendMessageW(techSearch,EM_SETCUEBANNER,TRUE,(LPARAM)L"搜索名称或单位 ID");next();
 label(L"实现方式",20,180);choices(combo(896,220,405,180),{L"受控模式（默认）",L"经典兼容",L"直接模式"},techImplementation);next();
 note(L"直接模式显示 TechLevel 非 -1 的项目，并保留侧栏图标；此模式不使用下方许可筛选。经典兼容保留早期检查。实际生产与联机效果仍待实测。",44);
 techList=item(L"LISTBOX",L"",20,455,422,LBS_NOTIFY|WS_VSCROLL|WS_TABSTOP,152);
@@ -252,33 +252,33 @@ int listTop=rowY;button(423,L"生产所选",488,137);next();button(424,L"切换�
 button(428,L"查看许可清单",20,285);button(814,L"取消所选类型的生产",320,305);next();
 note(L"加入原生生产侧栏；仍需匹配阵营的生产设施、电力及可用建造数量。",44);
 item(L"STATIC",L"生产进度：等待游戏",20,605,815,0,65);next(65);
-toggle(9191,L"原生 MegaMission 统一仲裁",extra.nativeMegaGateway);next();
-note(L"默认开启。普通原生命令成功发送后，登记为手动操作并取消冲突的工具自动任务。原生命令不受工具发送预算截断；原生规划和其他事件路径仍按各自流程执行。",65);
+toggle(9191,L"高危：原生 MegaMission 成功入口观察",extra.nativeMegaGateway);next();
+note(L"默认关闭；普通手动输入由消息与任务观察处理。此附加入口会改写游戏代码，在原生命令成功发送后登记手动优先并取消冲突任务。发出原生事件不需要开启它。",65);
 item(L"STATIC",L"原生命令仲裁：等待对局",20,605,9192,0,44);next(44);
-toggle(860,L"操控其他玩家单位（实验性）",extra.controlAll);next();
+toggle(860,L"高危：操控其他玩家单位",extra.controlAll);next();
 
 item(L"STATIC",L"跨玩家操控：等待连接",20,605,865);next();
-toggle(9193,L"命令使用单位所属方（实验性）",extra.controlCommandOwner);next();
+toggle(9193,L"高危：命令使用单位所属方",extra.controlCommandOwner);next();
 note(L"默认关闭，配合上方跨玩家操控使用。联机还需事件所属方保留已启用；条件不满足时拒绝外方命令。他方单位规划命令暂不支持，请退出规划模式下令。实际联机效果待实测。",65);
 item(L"STATIC",L"控制命令所属方：关闭",20,605,9194,0,44);next(44);
-toggle(9196,L"全图 CRC 原值镜像（实验性）",extra.crcMapShadow);next();
+toggle(9196,L"高危：全图 CRC 原值镜像",extra.crcMapShadow);next();
 note(L"默认关闭。请在新对局揭示地图前开启，再使用“自动地图全开”。仅镜像原生揭示的 MapIsClear；不支持直接全图、MOD及局中加载。不会屏蔽位置或随机数变化，仍可能不同步。关闭仅恢复受控旗标，不撤销已探索区域。",85);
 item(L"STATIC",L"全图 CRC 原值镜像：关闭",20,605,9197,0,60);next(60);
-toggle(9187,L"保留事件所属方（实验性）",extra.networkHousePreserve);next();
+toggle(9187,L"高危：保留事件所属方",extra.networkHousePreserve);next();
 note(L"尝试在联机封包时保留每条事件原有的所属方。只有状态为已启用时才允许跨所属方请求；关闭后需完成待发事件处理再恢复。仍受原版调度及平台处理影响，不能保证联机可用。",65);
 item(L"STATIC",L"事件所属方保留：关闭",20,605,9188,0,44);next(44);
-EnableWindow(toggle(861,L"切换操控方（暂不可用）",false),FALSE);next();
+EnableWindow(toggle(861,L"高危：切换操控方（暂不可用）",false),FALSE);next();
 label(L"目标所属方（请明确选择）");next();
 EnableWindow(combo(862,20,305,240),FALSE);EnableWindow(button(863,L"切换至所选玩家",340,285),FALSE);next();
 EnableWindow(button(864,L"恢复原操控方",20,285),FALSE);next();
-EnableWindow(button(9185,L"自毁所选所属方（实验性）"),FALSE);next();
+EnableWindow(button(9185,L"自毁所选所属方（联机跨方高危）"),FALSE);next();
 note(L"点击一次提交整方自毁请求，影响该方全部单位和建筑。联机选择其他所属方需要“保留事件所属方”已启用；关闭或恢复中不允许提交。单机可选择其他有效所属方，但AI所属方仍可能受原版调度限制。已入队不代表已自毁。",65);
 item(L"STATIC",L"自毁：请明确选择所属方；联机跨方请求需所属方保留已启用。",20,605,9186,0,52);next(52);
 
-toggle(9189,L"原生变卖光标允许对手建筑（实验性）",extra.nativeSellCursor);next();
+toggle(9189,L"高危：原生变卖光标允许对手建筑",extra.nativeSellCursor);next();
 note(L"启用后请自行点击游戏原版 $ 变卖按钮，再指向对手建筑。只放宽所属方资格，仍检查建筑能否出售；由原版构造Sell事件并入队。联机需所属方保留已启用；与下面的特殊键鼠入口独立。",65);
 item(L"STATIC",L"原生变卖光标：关闭",20,605,9190,0,44);next(44);
-extraControls[SellEnemyEnabled]=toggle(722,L"变卖对手建筑（实验性）",extra.sellEnemy);next();
+extraControls[SellEnemyEnabled]=toggle(722,L"高危：变卖对手建筑（联机依赖所属方补丁）",extra.sellEnemy);next();
 note(L"默认关闭；默认 Ctrl＋鼠标侧键 2，沿用“出售被吸取目标”的键鼠配置。仅对手建筑，请求入队不代表已变卖；联机效果待实测。",65);
 
 toggle(788,L"优先执行增强指令",extra.overrideNative);next();

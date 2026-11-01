@@ -1,6 +1,9 @@
 #include "../../shared/source/key_gesture.h"
 static void loadAdditionalSettings(){
- buildTimeTooltipEnabled=value(L"Display",L"BuildTimeTooltip",1)!=0;harvesterCounterEnabled=value(L"Display",L"HarvesterCounter",0)!=0;powerDeltaEnabled=value(L"Display",L"PowerDelta",0)!=0;
+ // Older releases persisted these two implicit defaults as if the user had
+ // opted in. Migrate once; subsequent explicit high-risk choices are retained.
+ const bool explicitPatchPreferences=value(L"Compatibility",L"NoCodeWriteDefaultsVersion",0)>=1;
+ buildTimeTooltipEnabled=explicitPatchPreferences&&value(L"Display",L"BuildTimeTooltip",0)!=0;harvesterCounterEnabled=value(L"Display",L"HarvesterCounter",0)!=0;powerDeltaEnabled=value(L"Display",L"PowerDelta",0)!=0;
  renderProcessing=value(L"Display",L"RenderProcessing",value(L"Display",L"RenderExtraQuality",0))!=0;
  renderXbrzEnabled=value(L"Display",L"RenderXbrzEnabled",0)!=0;
  renderColorPrecision=std::clamp(value(L"Display",L"RenderColorPrecision",1),0,1);
@@ -22,7 +25,7 @@ static void loadAdditionalSettings(){
  extra.crcMapShadow=value(L"Experimental",L"CrcMapIsClearShadow",0)!=0;
  extra.networkHousePreserve=value(L"Experimental",L"NetworkHousePreserve",0)!=0;
  extra.nativeSellCursor=value(L"Experimental",L"NativeSellCursor",0)!=0;
- extra.nativeMegaGateway=value(L"Experimental",L"NativeMegaGateway",1)!=0;
+ extra.nativeMegaGateway=explicitPatchPreferences&&value(L"Experimental",L"NativeMegaGateway",0)!=0;
  extra.controlCommandOwner=value(L"Experimental",L"ControlCommandOwner",0)!=0;
  extra.placementImplementation=std::clamp(value(L"Experimental",L"PlacementImplementation",0),0,1);
  extra.stickyKey=value(L"Hotkeys",L"StickyGuard",extra.stickyKey)&65535;
@@ -98,6 +101,7 @@ static void loadAdditionalSettings(){
  }
 }
 static bool saveAdditionalSettings(){
+ write(L"Compatibility",L"NoCodeWriteDefaultsVersion",1);
  write(L"ViewZoom",L"Enabled",0);write(L"ViewZoom",L"Percent",100);
  write(L"Experimental",L"TechEnhance",extra.techEnhance);write(L"Experimental",L"PlacementImplementation",extra.placementImplementation);
  write(L"Experimental",L"CrcMapIsClearShadow",extra.crcMapShadow);

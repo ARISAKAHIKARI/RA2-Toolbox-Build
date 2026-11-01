@@ -46,7 +46,10 @@ static void maintain(DWORD requestedOwner){
  const bool playable=multiplayerpatch::mayInstall(read);
  int session=-1;read(0xA8B238,&session,4);
  bool permitted=playable&&framesignal::nativeAllowed(session,channel&&(channel->enabled&framesignal::ExplicitDiagnostic));
- if(!alive&&installed){
+ // Removing explicit diagnostic selection retires the code patch. A live
+ // selected diagnostic still retains ownership across focus/heartbeat pauses.
+ const bool deselected=channel&&!(channel->enabled&framesignal::ExplicitDiagnostic);
+ if((!alive||deselected)&&installed){
   const bool restored=gameentry::patch(gameentry::Client::Assist,framesignal::CommitSite,patchBytes,original,6);
   if(channel)channel->state=restored?framesignal::Waiting:framesignal::RestoreFailed;
   if(!restored)conflict=true;installed=!restored;

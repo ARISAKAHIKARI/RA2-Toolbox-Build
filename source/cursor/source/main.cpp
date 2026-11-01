@@ -81,7 +81,7 @@ static void rebuildDisplay();
 static bool superCenter=true;static HWND superCenterBox;static superhot::Centers superCenters;
 static void textIfChanged(HWND w,const std::wstring& text){if(!IsWindow(w))return;int n=GetWindowTextLengthW(w);std::wstring old(size_t(n)+1,L'\0');GetWindowTextW(w,&old[0],n+1);old.resize(n);if(old!=text)SetWindowTextW(w,text.c_str());}
 
-static std::wstring root,gameDir,cacheKey,mode=L"hide";
+static std::wstring root,gameDir,cacheKey,mode=L"keep";
 static external::ReadSession cursorReader;static DWORD pid=0,threadId=0;static HWND game=nullptr,mainw,overlay,statusw;
 static int cursorDialog(const wchar_t*text,const wchar_t*title,UINT flags){
 #ifdef RA2_UNIFIED
@@ -236,8 +236,8 @@ static void updatePrimaryAction(){
 #ifdef RA2_UNIFIED
  suite::reportEnabled(0,enabled);
 #endif
- textIfChanged(primaryAction,enabled?L"暂停":L"开启");
- textIfChanged(subTitleLabel,mode==L"hide"?(nativeGameRefresh?L"Hook · 游戏内刷新":L"光标、场景画质与特效 · 各项独立启用"):mode==L"sha"?L"透明 SHA · 外置光标":L"保留原光标 · 外置光标");
+ textIfChanged(primaryAction,mode==L"hide"?(enabled?L"暂停（高危模式）":L"开启（高危模式）"):(enabled?L"暂停":L"开启"));
+ textIfChanged(subTitleLabel,mode==L"hide"?L"高危：隐藏原光标需修改原生提示入口":mode==L"sha"?L"透明 SHA · 外置光标":L"保留原光标 · 外置光标");
  std::wstring state=manualCursorPause?L"光标已暂停（F9 恢复）":!autoStart?L"已关闭":autoPaused?L"需要检查 · 展开高级设置":running?L"运行中":L"等待游戏启动";
  textIfChanged(statusw,state);
  static int lastPaint=-1;int paint=running?2:enabled?1:0;
@@ -627,9 +627,10 @@ static void applyHideMode(){
  if(selected!=L"hide"&&nativeGameRefresh){nativeGameRefresh=false;SendMessageW(nativeBox,CB_SETCURSEL,0,0);WritePrivateProfileStringW(L"Display",L"GameThreadRefresh",L"0",ini().c_str());}
  noCursorMode=blank;
  mode=selected;WritePrivateProfileStringW(L"Startup",L"Mode",mode.c_str(),ini().c_str());
+ WritePrivateProfileStringW(L"Compatibility",L"CursorNoCodeWriteDefaultsVersion",L"1",ini().c_str());
  if(noCursorMode)status(L"已选择无光标诊断模式；Ctrl+Alt+F11 停止并恢复，F10 切换覆盖层。");
  else if(mode==L"sha")status(L"已选择替换 SHA：请退出游戏后点击“安装透明 SHA”，再重新启动游戏。安装前会备份现有文件。");
- else if(mode==L"hide")status(L"已选择 Hook 隐藏：不改游戏文件，但需游戏线程 Hook；联机平台可能不兼容。");
+ else if(mode==L"hide")status(L"高危：隐藏原光标会修改游戏内提示入口以保留名称和价格；联机平台可能不兼容。");
  else status(L"已选择不隐藏：不修改游戏文件，原始光标和外部光标可能同时出现。");
  if(shouldResume){try{start();}catch(const std::exception& e){autoPaused=true;status(L"切换后未能启动："+widen(e.what()));}}
 }
@@ -1394,6 +1395,7 @@ case WM_GETMINMAXINFO:{auto p=(MINMAXINFO*)b;p->ptMinTrackSize={uidpi::scale(adv
    cursorReader.close();
    nativeGameRefresh=selected;readRestricted=false;
    WritePrivateProfileStringW(L"Display",L"GameThreadRefresh",selected?L"1":L"0",ini().c_str());
+   WritePrivateProfileStringW(L"Compatibility",L"CursorNoCodeWriteDefaultsVersion",L"1",ini().c_str());
    if(resume)start();
   }
   updateRefresh(true);updatePrimaryAction();
@@ -1433,8 +1435,15 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR cmd,int){
  noCursorMode=blankPreset;
  /* DPI awareness is set by the embedded PerMonitorV2 manifest before any window exists. */ wchar_t path[32768];GetModuleFileNameW(NULL,path,32768);root=path;root=root.substr(0,root.find_last_of(L"\\"));if(wcsstr(cmd,L"sha"))mode=L"sha";else if(wcsstr(cmd,L"hide"))mode=L"hide";else if(wcsstr(cmd,L"keep"))mode=L"keep";else{wchar_t remembered[16]={};GetPrivateProfileStringW(L"Startup",L"Mode",L"",remembered,16,ini().c_str());if(!wcscmp(remembered,L"sha")||!wcscmp(remembered,L"hide")||!wcscmp(remembered,L"keep"))mode=remembered;else if(!*remembered){wchar_t previousDir[32768]={};GetPrivateProfileStringW(L"Target",L"Directory",L"",previousDir,32768,ini().c_str());if(*previousDir&&exists(std::wstring(previousDir)+L"\\mouse.sha.cursor-preview-state"))mode=L"sha";}}
  if(lanboPreset)mode=L"hide";
+ // Earlier versions saved the implicit "hide" default on every launch, so
+ // a stored value alone cannot establish a high-risk opt-in. Migrate once to
+ // keep; explicit command-line or newly selected labelled modes remain valid.
+ const bool explicitCursorSelection=lanboPreset||wcsstr(cmd,L"hide")||wcsstr(cmd,L"keep")||wcsstr(cmd,L"sha");
+ const bool reviewedCursorMode=GetPrivateProfileIntW(L"Compatibility",L"CursorNoCodeWriteDefaultsVersion",0,ini().c_str())>=1;
+ if(!reviewedCursorMode&&!explicitCursorSelection&&mode==L"hide")mode=L"keep";
  HANDLE mutex=CreateMutexW(NULL,FALSE,L"Local\\RA2ExternalCursor3Modes");if(GetLastError()==ERROR_ALREADY_EXISTS){MessageBoxW(NULL,L"程序已在运行。",L"提示",MB_OK);return 0;}
  if(!wcsstr(cmd,L"restore"))WritePrivateProfileStringW(L"Startup",L"Mode",mode.c_str(),ini().c_str());
+ if(!wcsstr(cmd,L"restore")&&explicitCursorSelection)WritePrivateProfileStringW(L"Compatibility",L"CursorNoCodeWriteDefaultsVersion",L"1",ini().c_str());
  WNDCLASSW wc={};wc.hInstance=inst;wc.lpfnWndProc=wndproc;wc.lpszClassName=L"RA2CursorControl3";wc.hCursor=LoadCursor(NULL,IDC_ARROW);panelBrush=CreateSolidBrush(modernui::Background);headerBrush=CreateSolidBrush(modernui::Field);statusBrush=CreateSolidBrush(modernui::Surface);wc.hbrBackground=panelBrush;RegisterClassW(&wc);wc.lpfnWndProc=overlayProc;wc.lpszClassName=L"RA2CursorOverlay3";wc.hbrBackground=NULL;wc.hCursor=NULL;RegisterClassW(&wc);
  wc.lpfnWndProc=hudProc;wc.lpszClassName=L"RA2CursorHUD9";RegisterClassW(&wc);
  std::wstring title=L"高刷光标 v" RA2_RELEASE_VERSION_W;
@@ -1446,7 +1455,7 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR cmd,int){
  statusw=CreateWindowW(L"STATIC",L"等待游戏",WS_CHILD|WS_VISIBLE,15,115,735,44,mainw,NULL,inst,NULL);SendMessageW(statusw,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);
  HWND labelMode=CreateWindowW(L"STATIC",L"原光标",WS_CHILD|WS_VISIBLE,15,172,90,22,mainw,NULL,inst,NULL);SendMessageW(labelMode,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);
  modeBox=CreateWindowW(L"COMBOBOX",L"",WS_CHILD|WS_VISIBLE|CBS_DROPDOWNLIST,105,168,380,110,mainw,NULL,inst,NULL);
- for(const wchar_t* text:{L"保留原光标",L"隐藏原光标",L"透明 SHA",L"无光标诊断"})SendMessageW(modeBox,CB_ADDSTRING,0,(LPARAM)text);
+ for(const wchar_t* text:{L"保留原光标",L"高危：隐藏原光标",L"透明 SHA",L"高危：无光标诊断"})SendMessageW(modeBox,CB_ADDSTRING,0,(LPARAM)text);
  SendMessageW(modeBox,CB_SETCURSEL,noCursorMode?3:mode==L"hide"?1:mode==L"sha"?2:0,0);SendMessageW(modeBox,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);
 
 
@@ -1482,10 +1491,10 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR cmd,int){
 #endif
  focusRefresh=GetPrivateProfileIntW(L"Startup",L"FocusRefresh",0,ini().c_str())!=0;
  autoStartBox=CreateWindowW(L"BUTTON",L"自动检测",WS_CHILD|WS_VISIBLE|BS_AUTOCHECKBOX,15,705,520,26,mainw,(HMENU)8,inst,NULL);SendMessageW(autoStartBox,BM_SETCHECK,autoStart?BST_CHECKED:BST_UNCHECKED,0);SendMessageW(autoStartBox,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);
- nativeGameRefresh=GetPrivateProfileIntW(L"Display",L"GameThreadRefresh",0,ini().c_str())!=0;
- if(wcsstr(cmd,L"--game-refresh"))nativeGameRefresh=true;
+ nativeGameRefresh=mode==L"hide"&&GetPrivateProfileIntW(L"Display",L"GameThreadRefresh",0,ini().c_str())!=0;
+ if(wcsstr(cmd,L"--game-refresh")&&mode==L"hide")nativeGameRefresh=true;
  nativeBox=CreateWindowW(L"COMBOBOX",L"",WS_CHILD|WS_VISIBLE|CBS_DROPDOWNLIST,114,174,226,130,mainw,(HMENU)12,inst,NULL);
- SendMessageW(nativeBox,CB_ADDSTRING,0,(LPARAM)L"外置光标");SendMessageW(nativeBox,CB_ADDSTRING,0,(LPARAM)L"游戏内光标");
+ SendMessageW(nativeBox,CB_ADDSTRING,0,(LPARAM)L"外置光标");SendMessageW(nativeBox,CB_ADDSTRING,0,(LPARAM)L"高危：游戏内光标（需隐藏模式）");
  SendMessageW(nativeBox,CB_SETCURSEL,nativeGameRefresh?1:0,0);
  hudEnabled=GetPrivateProfileIntW(L"Display",L"HUD",0,ini().c_str())!=0;hudBox=CreateWindowW(L"BUTTON",L"状态面板",WS_CHILD|WS_VISIBLE|BS_AUTOCHECKBOX,540,705,210,26,mainw,(HMENU)9,inst,NULL);SendMessageW(hudBox,BM_SETCHECK,hudEnabled?BST_CHECKED:BST_UNCHECKED,0);SendMessageW(hudBox,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);
  // Keep the existing settings intact, but move them into an initially hidden
@@ -1569,7 +1578,7 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR cmd,int){
   if(!_wcsicmp(cls,L"BUTTON")||!_wcsicmp(cls,L"EDIT")||!_wcsicmp(cls,L"COMBOBOX"))
    SetWindowLongPtrW(c.handle,GWL_STYLE,GetWindowLongPtrW(c.handle,GWL_STYLE)|WS_TABSTOP);
  }
- modernui::tip(primaryAction,L"开关高刷显示；快捷键 Ctrl+Alt+F11。设置修改后自动保存并生效。");
+ modernui::tip(primaryAction,L"开关高刷显示；快捷键 Ctrl+Alt+F11。保留原光标使用外部显示；高危隐藏模式修改原生提示入口，可能影响平台兼容。设置自动保存。");
  modernui::tip(styleBox,L"选择独立光标包；不会覆盖游戏目录。");
  modernui::tip(prepareButton,L"在本机生成光标动画补帧；可再次点击取消。已完成分段会保留。");
  modernui::tip(import,L"导入兼容红警或尤里布局的 SHA 文件与色盘。");
