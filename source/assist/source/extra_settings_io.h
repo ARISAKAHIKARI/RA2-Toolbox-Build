@@ -30,6 +30,7 @@ static void loadAdditionalSettings(){
  extra.controlCommandOwner=value(L"Experimental",L"ControlCommandOwner",0)!=0;
  extra.controlImplementation=value(L"Experimental",L"ControlImplementation",0)==1?1:0;
  extra.placementImplementation=std::clamp(value(L"Experimental",L"PlacementImplementation",0),0,1);
+ extra.overlayKey=value(L"Hotkeys",L"OverlayToggle",0xC0)&65535;
  extra.stickyKey=value(L"Hotkeys",L"StickyGuard",extra.stickyKey)&65535;
  for(int i=0;i<selectedmode::Count;++i)extra.missionModeKeys[i]=value(L"Hotkeys",selectedmode::setting(i),0)&65535;
  extra.watchSecondary=value(L"Watch",L"SecondaryEnabled",0)!=0;
@@ -113,6 +114,7 @@ static bool saveAdditionalSettings(){
  write(L"Experimental",L"NativeCombatQueries",extra.nativeCombatQueries);
  write(L"Experimental",L"ControlCommandOwner",extra.controlCommandOwner);
  write(L"Experimental",L"ControlImplementation",extra.controlImplementation);
+ write(L"Hotkeys",L"OverlayToggle",extra.overlayKey);
  write(L"Hotkeys",L"StickyGuard",extra.stickyKey);
  for(int i=0;i<selectedmode::Count;++i)write(L"Hotkeys",selectedmode::setting(i),extra.missionModeKeys[i]);
  write(L"Watch",L"SecondaryEnabled",extra.watchSecondary);

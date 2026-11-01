@@ -1,8 +1,7 @@
 #pragma once
 #include "../../shared/source/overlay_recovery.h"
 namespace worldpresentation {
-// Even fixed screen content belongs to a camera-bound World surface. A scroll
-// needs a newly tagged job when its pixels do not otherwise change. Observe
+// World content needs a newly tagged job when the camera changes. Observe
 // the source sample too: a job rejected while that sample lagged the committed
 // camera must be retried once the source catches up.
 class ContextRevision {
@@ -12,6 +11,15 @@ public:
   const bool changed=token!=token_||(token&&(cameraX!=cameraX_||cameraY!=cameraY_||sampleX!=sampleX_||sampleY!=sampleY_));
   token_=token;cameraX_=cameraX;cameraY_=cameraY;sampleX_=sampleX;sampleY_=sampleY;return changed;
  }
+};
+// Comparison caches describe the last submitted content, not whether those
+// pixels still exist. Invalidation must force an identical next frame to draw.
+class Submission {
+ bool active_=false;
+public:
+ bool required(bool changed)const{return !active_||changed;}
+ void submitted(){active_=true;}
+ bool invalidate(){bool prior=active_;active_=false;return prior;}
 };
 // A unified surface is kept alive by Host::publish/touch. Its deliberately
 // hidden legacy HWND must not trigger a new GDI+ rasterization every 250 ms.

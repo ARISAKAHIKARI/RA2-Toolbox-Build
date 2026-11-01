@@ -179,6 +179,8 @@ note(L"仅开启渲染升级时，跳过扩色、连续光照增强、精细 VXL
 toggle(9306,L"4K 物理像素增强（独占全屏保留原分辨率 · 实验性）",renderPhysicalOutput);next();
 label(L"渲染层级",20,260);{auto layer=combo(9302);choices(layer,{L"场景固定在信息层下方"},0);EnableWindow(layer,FALSE);}next();
 toggle(9301,L"统一覆盖层（世界信息＋主屏统计）",unifiedOverlayEnabled);next();
+label(L"所有覆盖层显隐（默认 · / `）",20,306);key(9420,extra.overlayKey);next();
+note(L"同时显示／隐藏信息、统计、小地图与副相机；不停止控制功能，也不卸载 Hook。聊天和切到其他窗口时不触发。",44);
 label(L"256 色素材输出",20,260);choices(combo(9304),{L"原始 DAC（6-bit ×4，对照）",L"完整 24-bit RGB（6-bit→8-bit）"},renderPaletteRange);next();
 label(L"颜色计算精度",20,260);choices(combo(9309),{L"兼容色阶（原有光照计算）",L"增强 RGB（连续光照＋匹配原色盘恢复）"},renderColorPrecision);next();
 note(L"增强档保留 RGB888／32 位输出，减少光照台阶；仅当原始色盘重新量化后与运行时 RGB565 全表一致，才补回原色盘中的精度。252 是旧式色盘展开后的通道上限，不是颜色数量；不能恢复没有来源的丢失颜色。非 HDR／10-bit 输出。",72);
@@ -211,7 +213,7 @@ label(L"自定义垂直对齐",20,260);choices(combo(9101),{L"靠上",L"居中",
 note(L"自定义坐标是布局框左上角，对齐决定地图在框内的位置。左上／左下预设按地图实际尺寸贴边；自动避开原雷达和飞机按钮。左击或拖动可移动主视角。",60);
 detailCheck=toggle(481,L"显示运行耗时",showDetails);next();
 
-heading(4,904,L"高级与实验性设置",L"高危：代码或同步状态改写，或副作用未验证的原生查询。未标记不代表已通过联机实测。");
+heading(4,904,L"高级与实验性设置",L"各项按实际实现单独标注。原生武器／射程查询与 CRC 原值镜像不标高危；平台兼容性仍需实测。");
 toggle(885,L"自动躲弹（实验性）",extra.dodgeEnabled,20,280);choices(combo(895,310,305,180),{L"顺向移动 2 格",L"原版散开（Scatter）"},extra.dodgeMode);next();
 note(L"对己方可移动地面单位预判敌机攻击与逼近碾压，短距离躲避。支持类型清单，不保证躲过追踪弹或瞬时伤害。",60);
 button(9094,L"Sticky 驻守（实验性／支持联机进入）",20,306);key(9095,extra.stickyKey);next();note(L"所选地面单位进入 Sticky=6；默认 Ctrl+Alt+S，可改组合或双击。联机仅支持同步进入，重复键不重发，退出尚未实现。单机可再次按键或手动下令解除；实际进入后显示金色标记。");
@@ -267,7 +269,7 @@ item(L"STATIC",L"跨玩家操控：等待连接",20,605,865);next();
 toggle(9193,L"高危：命令使用单位所属方",extra.controlCommandOwner);next();
 note(L"默认关闭，仅原生判定 Hook 模式可用。控制标记模式保留已保存值但不启用此 Hook。联机还需事件所属方保留已启用；条件不满足时拒绝外方命令。他方单位规划命令暂不支持。",65);
 item(L"STATIC",L"控制命令所属方：关闭",20,605,9194,0,44);next(44);
-toggle(9196,L"高危：全图 CRC 原值镜像",extra.crcMapShadow);next();
+toggle(9196,L"全图 CRC 原值镜像",extra.crcMapShadow);next();
 note(L"默认关闭。请在新对局揭示地图前开启，再使用“自动地图全开”。仅镜像原生揭示的 MapIsClear；不支持直接全图、MOD及局中加载。不会屏蔽位置或随机数变化，仍可能不同步。关闭仅恢复受控旗标，不撤销已探索区域。",85);
 item(L"STATIC",L"全图 CRC 原值镜像：关闭",20,605,9197,0,60);next(60);
 toggle(9187,L"高危：保留事件所属方",extra.networkHousePreserve);next();

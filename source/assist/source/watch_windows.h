@@ -37,8 +37,8 @@ static void cancelDrag(){
 static bool battlefield(){return pid&&snap.renderStatus==1&&external::display::inspect([](uint32_t p,void*out,size_t n){return externalReader.readFresh(p,out,n);}).visible();}
 static bool usable(){return enabled&&extra.watchEnabled&&foregroundGame()&&!snap.chat&&battlefield();}
 static bool secondaryUsable(){return extra.watchSecondary&&battlefield();}
-static void hidePrimary(){for(int i=0;i<3;++i){recovery[i].suspend();if(windows[i])ShowWindow(windows[i],SW_HIDE);}}
-static void hideSecondary(){cancelDrag();for(int i=0;i<3;++i){secondaryRecovery[i].suspend();if(secondaryWindows[i])ShowWindow(secondaryWindows[i],SW_HIDE);}}
+static void hidePrimary(){for(int i=0;i<3;++i){watchhost::demand(i,false,0,0);recovery[i].suspend();if(windows[i])ShowWindow(windows[i],SW_HIDE);}}
+static void hideSecondary(){cancelDrag();for(int i=0;i<3;++i){watchhost::demand(i,true,0,0);secondaryRecovery[i].suspend();if(secondaryWindows[i])ShowWindow(secondaryWindows[i],SW_HIDE);}}
 static void hide(){hidePrimary();hideSecondary();}
 static void invalidateDisplays(){cancelDrag();secondaryMonitor.invalidate();}
 static void destroy(){hide();for(int i=0;i<3;++i){gpuPanels[i].reset();gpuPanels[i+3].reset();if(windows[i])DestroyWindow(windows[i]);if(secondaryWindows[i])DestroyWindow(secondaryWindows[i]);windows[i]=secondaryWindows[i]=nullptr;buffers[i].clear();secondaryBuffers[i].clear();}watchhost::reset();}
@@ -146,6 +146,7 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
  }return DefWindowProcW(w,msg,wp,lp);
 }
 static void placePanel(int slot,bool second,int x,int y,int w,int h){
+ watchhost::demand(slot,second,w,h);
  auto&view=watchhost::views[slot];auto&window=second?secondaryWindows[slot]:windows[slot];auto&keep=second?secondaryRecovery[slot]:recovery[slot];auto&revision=second?secondaryRevisions[slot]:revisions[slot];
  if(!view.shown||w<1||h<1){keep.suspend();if(window)ShowWindow(window,SW_HIDE);return;}
  if(!window){WNDCLASSW cls{};cls.lpfnWndProc=proc;cls.hInstance=GetModuleHandleW(nullptr);cls.lpszClassName=L"RA2TrackingWindow137";RegisterClassW(&cls);

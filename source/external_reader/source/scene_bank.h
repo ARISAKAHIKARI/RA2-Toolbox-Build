@@ -9,7 +9,21 @@ class SceneBank {
 public:
  void publish(uint32_t pid,uint32_t match,bool world,std::shared_ptr<const Frame>frame){
   if(!frame||!frame->terrain||frame->terrain->art.empty()||!frame->markerScanValid)return;
-  std::lock_guard<std::mutex>lock(mutex_);pid_=pid;match_=match;world_=world;frame_=std::move(frame);
+  std::lock_guard<std::mutex>lock(mutex_);
+  if(frame_&&pid_==pid&&match_==match){
+   // Independent view workers finish at different times. Completion order
+   // cannot turn an earlier observation into the latest world source. Use
+   // the shared monotonic sample clock, with wrap-safe tick fallback for
+   // sources without it. Never use max(game frame): a newer observation of
+   // a real rewind/load must still retire the consumer's old presentation.
+   const bool precise=std::isfinite(frame->observedMs)&&frame->observedMs>0&&std::isfinite(frame_->observedMs)&&frame_->observedMs>0;
+   if(precise&&frame->observedMs<frame_->observedMs)return;
+   if(!precise||frame->observedMs==frame_->observedMs){
+    const int32_t order=int32_t(frame->tick-frame_->tick);
+    if(order<0||(order==0&&frame->frame<frame_->frame))return;
+   }
+  }
+  pid_=pid;match_=match;world_=world;frame_=std::move(frame);
  }
  std::shared_ptr<const Frame> get(uint32_t pid,uint32_t match,uint32_t reveal,uint32_t now,bool worldOnly=false){
   std::lock_guard<std::mutex>lock(mutex_);

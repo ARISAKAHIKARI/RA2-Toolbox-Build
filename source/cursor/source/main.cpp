@@ -692,13 +692,6 @@ static void draw(){
    lastRehideSeen=rehide;
   }
   if(shared->state==-1){LONG err=shared->error;if(nativeGameRefresh)autoPaused=true;stop();status(L"HideCursor 未执行，错误码 "+std::to_wstring(err)+L"；没有强制绕过校验。");return;}if(shared->state==1&&!hideConfirmed){hideConfirmed=true;log(L"Hide bridge running on game GUI thread; frame sampled="+std::to_wstring(shared->sampledFrame));}if(hideConfirmed&&shared->state==0&&shared->command==0&&!nativeMenuHold&&!shared->menuSuspend){stop();status(L"HideCursor 已恢复或看门狗超时，已停止外部显示。");return;}}
- if(nativeGameRefresh&&!noCursorMode&&mode==L"hide"&&shared&&!nativeMenuHold&&!shared->menuSuspend){
-  if(shared->nativeVisible)nativeInvisibleAt=0;
-  else if(!nativeInvisibleAt)nativeInvisibleAt=GetTickCount();
-  else if(uint32_t(GetTickCount()-nativeInvisibleAt)>2000){
-   autoPaused=true;stop();status(L"游戏线程光标未显示，已恢复原光标");return;
-  }
- }
  if(!live()){stop();status(L"游戏已退出。透明版可点击恢复 SHA。");return;}
  HWND fg=GetForegroundWindow();DWORD fp=0;GetWindowThreadProcessId(fg,&fp);
  bool compatibleForeground=(fp==pid)||platformHostMatches(fg,fp);
@@ -729,6 +722,16 @@ static void draw(){
   // First attach / explicit pause recovery still needs a subscription.
   if(mode==L"hide"&&!manualCursorPause&&!hook){try{hookStart();}catch(const std::exception& e){hookStop();log(L"Hook re-arm failed: "+widen(e.what()));stop();return;}}
   hudEpoch=inputNow();nativeMenuHold=false;nativeMenuCandidateAt=0;previousObservedFrame=-1;fallbackTracker.reset();hudUpdates=hudCommits=hudMotion=hudChanges=0;hudLastFrame=-1;hudPaintAt=0;wasInside=true;lastFrame=-2;lastPhase=size_t(-1);tween.reset();timing.resetObservation();activeMotion.reset();refreshTries=3;refreshAt=GetTickCount();if(!nativeGameRefresh)overlaystack::place(overlay,overlaystack::Layer::Cursor,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE);log(L"Game focus/client re-entered: redraw and cursor refresh, no simulated activation clicks");}
+ // A hidden native cursor is expected while the game loses its foreground
+ // or client area. Check only after those exits and the suspension resume,
+ // which resets the timeout before the bridge receives its first new frame.
+ if(nativeGameRefresh&&!noCursorMode&&mode==L"hide"&&shared&&!nativeMenuHold&&!shared->menuSuspend){
+  if(shared->nativeVisible)nativeInvisibleAt=0;
+  else if(!nativeInvisibleAt)nativeInvisibleAt=GetTickCount();
+  else if(uint32_t(GetTickCount()-nativeInvisibleAt)>2000){
+   autoPaused=true;stop();status(L"游戏线程光标未显示，已恢复原光标");return;
+  }
+ }
  if(noCursorMode){
   ShowWindow(overlay,SW_HIDE);diagAnimation=L"无光标诊断：不发布鼠标图像";
   if(!manualCursorPause&&shared&&shared->state!=1&&uint32_t(GetTickCount()-nativeStartAt)>2000){

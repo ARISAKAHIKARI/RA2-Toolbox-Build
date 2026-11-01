@@ -68,7 +68,7 @@ static void highScrollTick(uint64_t now){
  if(!sh->scrollRefreshMode||sh->scrollRefreshMode>3||!sh->scrollRefreshHz){
   if(scrollRefreshActive)restoreHighScroll();return;
  }
- if(!sh->foreground||snap.chat||!riskReady()||!simulationReady())return;
+ if(!sh->foreground||snap.chat||!riskRenderReady())return;
  if(!scrollMapSite.after[0]){scrollMapSite.after[0]=0xE9;uint32_t offset=uint32_t(uintptr_t(&highScrollMap))-scrollMapSite.address-5;memcpy(scrollMapSite.after+1,&offset,4);memset(scrollMapSite.after+5,0x90,3);}
  if(!highScrollInterfaces()||!installRiskSite(scrollMapSite)){restoreHighScroll();sh->scrollRefreshStatus=-2;return;}
  scrollRefreshActive=true;sh->scrollRefreshStatus=1;

@@ -26,6 +26,7 @@ public:
  std::array<View,3> views;external::watch::Track tracks[3];external::watch::Target automatic;
  bool autoSuppressed=false,revealMap=false,danger=false;int width=800,height=600;uint32_t process=0,epoch=0,sourceTick=0;
  bool sharedSource=false,gpuAttempted=false,gpuUsed=false;
+ std::array<std::array<int,2>,3> outputSizes{{{{320,256}},{{320,256}},{{320,256}}}};
  Renderer(Reader&r,Assets&a):reader_(r),assets_(a),read_([&r](uint32_t p,void*out,size_t n){return r.read(p,out,n);}),sampler_(read_){}
  void reset(){motion_.reset();preparer_.reset();sampler_.reset();sourceFrame_=-1;haveControls_=false;automatic={};autoSuppressed=false;for(auto&t:tracks)t={};for(auto&v:views)v={};for(auto&s:scenes_)s.reset();}
  void features(const external::presentation::Profile&p){if(p!=profile_){preparer_.reset();for(auto&s:scenes_)s.reset();for(auto&v:views)v.scene.reset();sourceFrame_=-1;profile_=p;}}
@@ -47,7 +48,8 @@ public:
   sourceFrame_=bank->frame;
   motion_.observe(*bank,clock());auto data=motion_.sampleLatest(clock(),profile_.motion,profile_.detail!=0);if(!data.terrain)return false;
   sourceTick=bank->tick;data.tick=now;assets_.identity(process,epoch);
-  external::xbrzadapter::gpuPresentation(profile_.gpu);external::presentation::apply(profile_,assets_,Width,Height,Width,Height);
+  int rasterW=1,rasterH=1;for(const auto&size:outputSizes){rasterW=std::max(rasterW,size[0]);rasterH=std::max(rasterH,size[1]);}
+  external::xbrzadapter::gpuPresentation(profile_.gpu);external::presentation::apply(profile_,assets_,Width,Height,rasterW,rasterH);
   const double zscale=external::projectionZScale(fresh);
   gpuAttempted=gpuUsed=false;std::shared_ptr<const external::worldscene::Snapshot> world;bool prepared=false;
   for(int i=0;i<3;++i){auto&v=views[i];auto target=tracks[i]?tracks[i].target:i==0?automatic:external::watch::Target{};
@@ -65,19 +67,21 @@ public:
    // Prepare the complete world once for all three cameras. Each camera
    // records the same pass sequence at its own current position; following a
    // fast target never translates pixels or invalidates native terrain pages.
-   if(!prepared){prepared=true;preparer_.features(profile_);preparer_.guideEnabled(false,controls_);preparer_.prepareWorld(true);
+   if(!prepared){prepared=true;preparer_.features(profile_);preparer_.guideEnabled(false,controls_);preparer_.prepareWorld(true);preparer_.outputSized(true);
     auto ready=preparer_.render(data,Width,Height,read_,assets_,{cx-Width/2+data.terrain->geo.offsetX*30.,cy-Height/2-data.terrain->geo.offsetY*15.,Width,Height,true},unsigned(profile_.scale),profile_.detail!=0,true,profile_.precision!=0,true,4.);
     if(ready)world=preparer_.preparedWorld();
    }
    external::mainview::View camera{0x10000,data.terrain->geo.house,0x10000,data.frame,int(cx)-Width/2,int(cy)-Height/2,Width,Height,0,0,Width,Height};
-   auto scene=world?scenes_[i].draw(world,camera,Width,Height,fresh):nullptr;
+   // Camera span stays 640x512 game pixels. Only its physical raster follows
+   // the largest visible host panel, shared by primary and secondary displays.
+   auto scene=world?scenes_[i].draw(world,camera,outputSizes[i][0],outputSizes[i][1],fresh):nullptr;
    gpuAttempted|=external::xbrzadapter::gpuAttempted();gpuUsed|=external::xbrzadapter::gpuUsed();
    if(scene){next.cameraX=camera.cameraX+Width/2;next.cameraY=camera.cameraY+Height/2;v.scene=std::move(scene);v.frame=std::move(next);}
   }
   bool visible[3]{};external::watch::Box boxes[3]{};for(int i=0;i<3;++i)visible[i]=views[i].shown;external::watch::arrange(visible,width,height,boxes);for(int i=0;i<3;++i)views[i].box=boxes[i];
   return true;
  }
- void drawView(Graphics&g,const View&v){if(!v.shown||!v.scene||v.scene->pixels.empty())return;Bitmap bm(Width,Height,Width*4,PixelFormat32bppPARGB,reinterpret_cast<BYTE*>(const_cast<uint32_t*>(v.scene->pixels.data())));g.DrawImage(&bm,RectF(0,0,float(Width),float(Height)),0.f,0.f,float(Width),float(Height),UnitPixel,nullptr);
+ void drawView(Graphics&g,const View&v){if(!v.shown||!v.scene||v.scene->pixels.empty())return;Bitmap bm(v.scene->width,v.scene->height,v.scene->width*4,PixelFormat32bppPARGB,reinterpret_cast<BYTE*>(const_cast<uint32_t*>(v.scene->pixels.data())));g.DrawImage(&bm,RectF(0,0,float(Width),float(Height)),0.f,0.f,float(v.scene->width),float(v.scene->height),UnitPixel,nullptr);
   Pen border(Color(255,v.frame.dangerous?255:105,v.frame.dangerous?167:195,v.frame.dangerous?62:225),6.f);g.DrawRectangle(&border,3.f,3.f,float(Width-6),float(Height-6));
  }
 };

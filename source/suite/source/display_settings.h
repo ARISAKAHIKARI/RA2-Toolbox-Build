@@ -2,7 +2,7 @@
 #include <array>
 #include <string>
 namespace suite {
-enum DisplayOption {RefreshMode,EnemyMarkers,Iron,Capacity,AllTransports,Frozen,Parasite,CrateBuffs,LabelScale,InfoFPS,ShroudStrategy,PassengerBubbles,DangerPassengers,InfoAdaptive,RenderUpgrade,RenderProcessing,RenderPhysical,RenderUnified,RenderPalette,RenderPrecision,RenderMaterial,RenderDetail,RenderXbrz,RenderScale,RenderGPU,RenderParticles,RenderLasers,RenderVoxelLighting,RenderSpriteLighting,WatchPrimary,WatchSecondary,WatchX,WatchY,WatchDanger,WatchKey1,WatchKey2,WatchKey3,MapPrimary,MapSecondary,MapMode,MapScale,MapPosition,MapX,MapY,MapAlignX,MapAlignY,MapSecondaryX,MapSecondaryY,MapSecondaryWidth,ProductionHints,PsychicHints,CrateHints,TextHints,IdleAircraft,ReminderBuilding,ReminderDefense,ReminderInfantry,ReminderVehicle,ReminderShip,ReminderAircraft,TextMargin,ToastDuration,RenderHighRefresh,HarvesterCounter,PowerDelta,BuildTimeTooltip,DisplayOptionCount};
+enum DisplayOption {RefreshMode,EnemyMarkers,Iron,Capacity,AllTransports,Frozen,Parasite,CrateBuffs,LabelScale,InfoFPS,ShroudStrategy,PassengerBubbles,DangerPassengers,InfoAdaptive,RenderUpgrade,RenderProcessing,RenderPhysical,RenderUnified,RenderPalette,RenderPrecision,RenderMaterial,RenderDetail,RenderXbrz,RenderScale,RenderGPU,RenderParticles,RenderLasers,RenderVoxelLighting,RenderSpriteLighting,WatchPrimary,WatchSecondary,WatchX,WatchY,WatchDanger,WatchKey1,WatchKey2,WatchKey3,MapPrimary,MapSecondary,MapMode,MapScale,MapPosition,MapX,MapY,MapAlignX,MapAlignY,MapSecondaryX,MapSecondaryY,MapSecondaryWidth,ProductionHints,PsychicHints,CrateHints,TextHints,IdleAircraft,ReminderBuilding,ReminderDefense,ReminderInfantry,ReminderVehicle,ReminderShip,ReminderAircraft,TextMargin,ToastDuration,RenderHighRefresh,HarvesterCounter,PowerDelta,BuildTimeTooltip,OverlayToggleKey,DisplayOptionCount};
 enum class DisplayControl {Check,Choice,Number,Hotkey};
 struct DisplaySpec {int id,min,max;DisplayControl control;};
 constexpr DisplaySpec displaySpecs[]={
@@ -62,7 +62,8 @@ constexpr DisplaySpec displaySpecs[]={
  {9075,0,1,DisplayControl::Check},
  {311,0,4096,DisplayControl::Number},
  {471,500,60000,DisplayControl::Number},
- {9324,0,1,DisplayControl::Check},{9325,0,1,DisplayControl::Check},{9326,0,1,DisplayControl::Check},{9327,0,1,DisplayControl::Check}
+ {9324,0,1,DisplayControl::Check},{9325,0,1,DisplayControl::Check},{9326,0,1,DisplayControl::Check},{9327,0,1,DisplayControl::Check},
+ {9420,0,65535,DisplayControl::Hotkey}
 };
 static_assert(sizeof(displaySpecs)/sizeof(displaySpecs[0])==DisplayOptionCount,"Every shared setting has one owner");
 inline bool validDisplayEdit(int option,int value){return option>=0&&option<DisplayOptionCount&&value>=displaySpecs[option].min&&value<=displaySpecs[option].max;}

@@ -84,14 +84,18 @@ public:
      !std::isfinite(x)||!std::isfinite(y)||!std::isfinite(spanX)||!std::isfinite(spanY)||
      std::abs(x)>1e7||std::abs(y)>1e7||spanX<=0||spanY<=0||spanX>32768||spanY>32768)return false;
   auto&gpu=xbrzadapter::gpuState();
-  nativeScene_=!background.terrainSources().empty();gpuRequested_=gpu.requested;bool requestGpu=gpu.requested||nativeScene_;
+  nativeScene_=background.retainedGround()||!background.terrainSources().empty();gpuRequested_=gpu.requested;bool requestGpu=gpu.requested||nativeScene_;
   if(gpu.resolve&&!gpu.resolve->diagnostics().available&&!gpu.resolve->diagnostics().reason.empty()){gpuRequested_=false;requestGpu=nativeScene_;}
   const std::vector<uint32_t>*base=&pixels;std::vector<uint32_t>generatedBase;
   if(!requestGpu&&base->size()!=size_t(w)*h){if(!cpuBaseFallback||!cpuBaseFallback(generatedBase)||generatedBase.size()!=size_t(w)*h)return false;base=&generatedBase;}
-  const bool depthChanged=!baseDepth_||wasTerrain||((depthPlan_.width>0)!=requestGpu)||key!=key_||terrainRevision!=terrainRevision_||width_!=w||height_!=h||x!=x_||y!=y_||sx_!=w/spanX||sy_!=h/spanY;
+  const bool depthChanged=!baseDepth_||wasTerrain||((depthPlan_.width>0)!=(requestGpu&&!background.retainedGround()))||key!=key_||terrainRevision!=terrainRevision_||width_!=w||height_!=h||x!=x_||y!=y_||sx_!=w/spanX||sy_!=h/spanY;
   if(depthChanged){
    int x0=int(std::floor(x)),y0=int(std::floor(y)),nw=int(std::ceil(x+spanX))-x0,nh=int(std::ceil(y+spanY))-y0;
-   if(requestGpu){
+   if(background.retainedGround()){
+    // Retained TMPs rebuild both Z planes at output pixels below. Copying a
+    // full-world native depth crop here was redundant and rejected big maps.
+    depthSource_={};depthPlan_={};baseDepth_=std::make_shared<const std::vector<float>>(size_t(w)*h,-std::numeric_limits<float>::infinity());
+   }else if(requestGpu){
     // Keep the native Z plane resident during nearby camera pans. Color crop
     // keys change on every pan, but immutable terrain Z does not. Only small
     // nearest-sample axes change until the crop leaves this bounded source.

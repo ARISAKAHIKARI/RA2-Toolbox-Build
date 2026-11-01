@@ -1,6 +1,6 @@
 #include "tech_enhancement.h"
 static techenhancement::Record enhancedTypes[techenhancement::Count];
-static uint32_t enhancementEpoch=0,enhancementHouse=0;
+static uint32_t enhancementEpoch=0,enhancementHouse=0,enhancementScenario=0;
 static int enhancementFrame=-1,enhancementSession=-1;
 static DWORD enhancementScan=0;
 static bool enhancementRequested=false,enhancementConflict=false,enhancementRestoring=false;
@@ -14,15 +14,18 @@ static bool enhancementWrite(uint32_t at,const void*p,size_t n){
 }
 static techenhancement::IdentityState enhancementWorld(){
  using State=techenhancement::IdentityState;
- if(!enhancementEpoch||enhancementEpoch!=sessionTracker.epoch)return State::Retired;
- uint32_t house=0;int session=-1,frame=-1;
- if(!read(0xA83D4C,&house,4)||!read(0xA8B238,&session,4)||!read(0xA8ED84,&frame,4))return State::Unavailable;
- return house==enhancementHouse&&session==enhancementSession&&frame>=enhancementFrame?State::Current:State::Retired;
+ if(!enhancementEpoch||!enhancementScenario)return State::Retired;
+ uint32_t scenario=0;int session=-1,frame=-1;
+ if(!read(0xA8B230,&scenario,4)||!read(0xA8B238,&session,4)||!read(0xA8ED84,&frame,4))return State::Unavailable;
+ // A command epoch/CurrentPlayer change can occur in the same live world,
+ // including after a temporary read failure. Restore verified Type records
+ // there; only an actual world/session change or rewind retires old data.
+ return scenario==enhancementScenario&&session==enhancementSession&&frame>=enhancementFrame?State::Current:State::Retired;
 }
 static bool restoreTechEnhancement(){
  const auto result=techenhancement::restoreRecords(enhancedTypes,enhancementWorld(),read,enhancementWrite);
  enhancementRequested=false;enhancementRestoring=!result.complete;enhancementConflict=!result.ok;
- if(result.complete){enhancementEpoch=enhancementHouse=0;enhancementFrame=-1;enhancementSession=-1;}
+ if(result.complete){enhancementEpoch=enhancementHouse=enhancementScenario=0;enhancementFrame=-1;enhancementSession=-1;}
  if(sh){sh->techEnhanceStatus=result.ok?techenhancement::Off:techenhancement::Incompatible;sh->techEnhanceCount=result.retained;}
  if(result.changed){enhancementChangedCatalogue=true;catalogueDirty=true;catalogueReady=false;catalogueAt=0;}
  return result.complete;
@@ -34,11 +37,22 @@ static void techEnhancementTick(DWORD now){
  if(!sh->techEnhance){if(enhancementRequested)restoreTechEnhancement();return;}
  // The explicit TechEnhance switch owns this opt-in in every supported
  // session. Keep field identity, original-value ownership and rollback.
- if(enhancementRequested&&enhancementWorld()!=techenhancement::IdentityState::Current&&!restoreTechEnhancement())return;
+ uint32_t scenario=0,house=0;int session=-1,frame=-1;
+ if(!sessionTracker.epoch||!read(0xA8B230,&scenario,4)||!read(0xA83D4C,&house,4)||
+    !read(0xA8B238,&session,4)||!read(0xA8ED84,&frame,4)||scenario<0x10000||house<0x10000||frame<0||frame>=INT32_MAX){
+  // Failed admission cannot abandon existing ownership or bind a partial
+  // world identity. The next tick/explicit cleanup retries the saved world.
+  sh->techEnhanceStatus=techenhancement::Incompatible;return;
+ }
+ if(enhancementRequested&&(enhancementEpoch!=sessionTracker.epoch||house!=enhancementHouse||
+    scenario!=enhancementScenario||session!=enhancementSession||frame<enhancementFrame)&&!restoreTechEnhancement())return;
  if(!enhancementRequested){
   enhancementRequested=true;enhancementConflict=false;enhancementEpoch=sessionTracker.epoch;
-  enhancementHouse=get<uint32_t>(0xA83D4C);enhancementFrame=get<int>(0xA8ED84);enhancementSession=get<int>(0xA8B238);enhancementScan=now-1000;
+  enhancementHouse=house;enhancementScenario=scenario;enhancementSession=session;enhancementScan=now-1000;
  }
+ // Advance even when the 500-ms type scan is not due. A later save/load
+ // rewind must be compared with the latest observed frame, not activation.
+ enhancementFrame=frame;
  if(DWORD(now-enhancementScan)<500)return;enhancementScan=now;
  unsigned count=0;bool changed=false;
  for(unsigned i=0;i<techenhancement::Count;++i){const auto&rule=techenhancement::Rules[i];auto&r=enhancedTypes[i];

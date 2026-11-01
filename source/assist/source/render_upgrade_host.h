@@ -230,6 +230,7 @@ static void suspend(){viewLease.reset();suspendScene();sidebarhud::stop();}
 static void stop(){suspend();overlaycompositor::host().suspend();}
 static void shutdown(){stop();worker.shutdown();samplingWorker.shutdown();terrainWorker.shutdown();feedback::shutdown();sidebarhud::shutdown();overlaycompositor::host().shutdown();}
 static void update(POINT origin,const RECT&client,const external::display::State&displayState){
+ if(!overlayvisibility::visible()){stop();return;}
  const auto selected=external::presentation::settings().get();static uint64_t profileRevision=~uint64_t(0);
  if(profileRevision!=selected.revision){profileRevision=selected.revision;++generation;worker.invalidate();samplingWorker.invalidate();terrainWorker.invalidate();groupLease.reset();}
 
@@ -419,6 +420,7 @@ static void update(POINT origin,const RECT&client,const external::display::State
  statusText(status);
 }
 static void presentCompleted(){
+ if(!overlayvisibility::visible()){stop();return;}
  if(!renderUpgradeEnabled||!enabled)return;
  // Completion needs only the current viewport/input feedback. Do not repeat
  // the entire tactical information scan before exposing an already drawn frame.

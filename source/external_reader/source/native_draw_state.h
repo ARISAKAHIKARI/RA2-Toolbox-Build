@@ -29,7 +29,9 @@ template<class Read>State capture(Read read,uint32_t p,uint32_t type,int kind,ui
  const bool cnc=cncCloakPolicy(read,kind==3?0x45455B:0x703A09);
  const bool observing=observer&&observer==g.template get<uint32_t>(0xAC1198);
  auto ownerAllied=[&]{return out.owner==observer||(house>=0&&house<32&&(g.template get<uint32_t>(out.owner+0x5788)&(1u<<house)));};
- auto shadowVisible=[&]{const bool allied=g.allied(out.owner,observer)&&ownerAllied();return !g.template get<uint8_t>(0xB73550)||owned||sensed(0x7C)||(cnc?(observing||ownerAllied()):(g.template get<int>(0xA8B238)!=0&&allied));};
+ // Native70396B / 454552 test the whole Game::hWnd DWORD. Reading its low
+ // byte made some perfectly valid HWNDs masquerade as a headless client.
+ auto shadowVisible=[&]{const bool allied=g.allied(out.owner,observer)&&ownerAllied();return !g.template get<uint32_t>(0xB73550,1)||owned||sensed(0x7C)||(cnc?(observing||ownerAllied()):(g.template get<int>(0xA8B238)!=0&&allied));};
  if(g.template get<uint8_t>(type+0xC9A)){if(!owned&&!editor)character=5;}
  else if(cloak&&!editor){
   if(cloak==2)character=shadowVisible()?3:5;

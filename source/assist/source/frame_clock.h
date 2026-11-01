@@ -34,7 +34,9 @@ static DWORD WINAPI frameClock(void*){
 }
 static void clockState(bool active,int rate){
  bool changed=InterlockedExchange(&clockActive,active)!=active;
- changed|=InterlockedExchange(&inputClockActive,active&&enabled&&foregroundGame()&&shiftClickEnabled&&shiftClickMode!=2)!=(active&&enabled&&foregroundGame()&&shiftClickEnabled&&shiftClickMode!=2);
+ // Presentation can be hidden while ordinary game input remains enabled.
+ const bool input=enabled&&foregroundGame()&&snap.renderStatus==1&&!snap.chat&&shiftClickEnabled&&shiftClickMode!=2;
+ changed|=InterlockedExchange(&inputClockActive,input)!=input;
  changed|=InterlockedExchange(&clockRate,rate)!=rate;
  if(changed&&clockChanged)SetEvent(clockChanged);
 }

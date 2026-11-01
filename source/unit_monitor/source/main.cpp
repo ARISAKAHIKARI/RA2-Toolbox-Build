@@ -3,6 +3,7 @@
 #include "../../shared/source/ui_message_queue.h"
 #include "../../shared/source/overlay_stack.h"
 #include "../../shared/source/overlay_compositor.h"
+#include "../../shared/source/overlay_visibility.h"
 #include "../../shared/source/release_version.h"
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
@@ -108,10 +109,21 @@ static int paintedAlpha=-1;static POINT paintedOrigin{LONG_MIN,LONG_MIN};
 static bool foregroundGame(){DWORD foreground=0;GetWindowThreadProcessId(GetForegroundWindow(),&foreground);return game&&IsWindow(game)&&!IsIconic(game)&&foreground==pid;}
 static bool tabEligible(){return tabEnabled&&enabled&&gameActive&&!demo&&snap->status==1&&!snap->chatActive&&DWORD(GetTickCount()-snap->tick)<2000&&foregroundGame();}
 static void pollTab(){
+#ifdef RA2_UNIFIED
+ suite::DisplayState state;const uint32_t binding=suite::readDisplaySettings(state)?uint32_t(state.values[suite::OverlayToggleKey]):0xC0;
+ const bool down=(GetAsyncKeyState(int(binding&255))&0x8000)!=0;
+ const unsigned modifiers=((GetAsyncKeyState(VK_SHIFT)&0x8000)?HOTKEYF_SHIFT:0)|((GetAsyncKeyState(VK_CONTROL)&0x8000)?HOTKEYF_CONTROL:0)|((GetAsyncKeyState(VK_MENU)&0x8000)?HOTKEYF_ALT:0);
+ uint8_t chat=1;bool eligible=foregroundGame()&&reader.valid()&&reader.readFresh(0xA8BC60+25,&chat,1)&&!chat&&
+  external::display::inspect([](uint32_t at,void*out,size_t n){return reader.readFresh(at,out,n);}).visible()&&
+  !(GetAsyncKeyState(VK_LWIN)&0x8000)&&!(GetAsyncKeyState(VK_RWIN)&0x8000);
+ if(overlayvisibility::sampleKey(2,{uintptr_t(game),pid},binding,down,eligible,modifiers==((binding>>8)&7),GetTickCount()))overlayvisibility::toggle();
+ return;
+#else
  static bool previous=false;bool down=(GetAsyncKeyState(VK_TAB)&0x8000)!=0;
  bool modified=((GetAsyncKeyState(VK_MENU)|GetAsyncKeyState(VK_CONTROL)|GetAsyncKeyState(VK_SHIFT)|GetAsyncKeyState(VK_LWIN)|GetAsyncKeyState(VK_RWIN))&0x8000)!=0;
  if(!tabEligible()||modified){tabs.loseFocus();previous=down;return;}
  if(down!=previous){previous=down;if(tabs.event(down,tabEligible(),modified,false,GetTickCount())){if(down){hidden=false;manualVisible=false;}renderDirty=secondaryDirty=true;}}
+#endif
 }
 static void log(const wchar_t* msg){if(logfile){fwprintf(logfile,L"[%lu] %ls\n",GetTickCount(),msg);fflush(logfile);}}
 static std::wstring path(const wchar_t* f){return root+L"\\"+f;}
@@ -133,7 +145,14 @@ static void visibilityStatus(const std::wstring& text){
  static std::wstring previous;if(previous==text)return;previous=text;
  if(visibilityLabel)SetWindowTextW(visibilityLabel,text.c_str());log(text.c_str());
 }
-static void toggleOverlay(){tabui::toggleDisplay(!tabEnabled,tabs.visible(),hidden,manualVisible);renderDirty=secondaryDirty=true;}
+static void toggleOverlay(){
+#ifdef RA2_UNIFIED
+ overlayvisibility::toggle();
+#else
+ tabui::toggleDisplay(!tabEnabled,tabs.visible(),hidden,manualVisible);
+#endif
+ renderDirty=secondaryDirty=true;
+}
 static void detach(){
  statsFrameClock.state(false,statsInformationFPS());
  overlayRecovery.suspend();
@@ -296,7 +315,7 @@ static void resetSecondary(){
 static bool updateSecondary(DWORD now,bool battlefield,bool displayFrame){
  // This display has its own user switch. Foreground, primary overlay pause,
  // Tab and Ctrl+Alt+H only govern the game's copy of the statistics.
- bool valid=secondaryEnabled&&game&&IsWindow(game)&&(demo||(battlefield&&reader.valid()&&snap->status==1&&lastGood&&DWORD(now-lastGood)<3000));
+ bool valid=overlayvisibility::visible()&&secondaryEnabled&&game&&IsWindow(game)&&(demo||(battlefield&&reader.valid()&&snap->status==1&&lastGood&&DWORD(now-lastGood)<3000));
  auto target=valid?secondaryMonitor.get(game,ui,now):secondarydisplay::Target{};
  if(!valid||!target.available()||!secondaryOverlay){if(secondaryActive||secondarySurface.dc)resetSecondary();return false;}
  // Leave the right-hand 40% available for the independent minimap/tracking windows.
@@ -399,6 +418,10 @@ static void consumeSample(DWORD now){
  }
 static void tick(bool displayFrame=false){
  DWORD now=GetTickCount();consumeSample(now);
+#ifdef RA2_UNIFIED
+ static uint32_t visibilityRevision=0;const uint32_t nextVisibility=overlayvisibility::revision.load();
+ if(nextVisibility!=visibilityRevision){visibilityRevision=nextVisibility;hidden=false;manualVisible=false;renderDirty=secondaryDirty=true;paintedAlpha=-1;if(!overlayvisibility::visible()){resetPrimaryRender();resetSecondary();}}
+#endif
  const bool controlStep=!displayFrame||!statsFrameClock.running();
  if(controlStep){pollTab();refreshInformationRate(now);}
  if(now-lastData>=250){lastData=now;
@@ -436,18 +459,26 @@ static void tick(bool displayFrame=false){
   displayState=external::display::inspect([&](uint32_t p,void*out,size_t n){return reader.readFresh(p,out,n);});battlefield=displayState.visible();
  }
  const bool secondaryShowing=updateSecondary(now,battlefield,displayFrame);
- bool active=enabled&&(demo||(battlefield&&foregroundGame()&&snap->status==1&&now-lastGood<3000));
+ bool active=overlayvisibility::visible()&&enabled&&(demo||(battlefield&&foregroundGame()&&snap->status==1&&now-lastGood<3000));
  if(!active){
   statsFrameClock.state(secondaryShowing,statsInformationFPS());
   overlayRecovery.suspend();
-  std::wstring reason=!enabled?L"覆盖层已暂停":!foregroundGame()?L"覆盖层隐藏：游戏未在前台":snap->status!=1||now-lastGood>=3000?L"覆盖层等待有效游戏数据":!displayState.readable?L"覆盖层隐藏：菜单状态读取失败":L"覆盖层隐藏：菜单/对话框/非战场 · tactical="+std::to_wstring(displayState.tactical)+L" dialog="+std::to_wstring(displayState.specialDialog)+L" windows="+std::to_wstring(displayState.dialogCount);
+  std::wstring reason=!overlayvisibility::visible()?L"所有覆盖层已隐藏：按设定显隐键（默认 · / `）或显示按钮恢复":!enabled?L"覆盖层已暂停":!foregroundGame()?L"覆盖层隐藏：游戏未在前台":snap->status!=1||now-lastGood>=3000?L"覆盖层等待有效游戏数据":!displayState.readable?L"覆盖层隐藏：菜单状态读取失败":L"覆盖层隐藏：菜单/对话框/非战场 · tactical="+std::to_wstring(displayState.tactical)+L" dialog="+std::to_wstring(displayState.specialDialog)+L" windows="+std::to_wstring(displayState.dialogCount);
   if(secondaryShowing)reason+=L" · 副屏仍在显示";
   visibilityStatus(reason);
   statsVisible(false);gameActive=false;tabs.loseFocus();fade.hide();paintedAlpha=-1;hidePrimaryStats();return;}
  if(!gameActive){renderDirty=secondaryDirty=true;paintedAlpha=-1;overlaystack::place(overlay,overlaystack::Layer::Statistics,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE);}
  gameActive=true;
- bool desired=tabui::displayRequested(hidden,demo||!tabEnabled,manualVisible,tabs.visible());fade.target(desired,now);
+ bool desired=tabui::displayRequested(hidden,demo||!tabEnabled,manualVisible,tabs.visible());
+#ifdef RA2_UNIFIED
+ desired=!hidden; // Already gated by the common visible state above.
+#endif
+ fade.target(desired,now);
+#ifdef RA2_UNIFIED
+ visibilityStatus(L"统计跟随统一显隐键（默认 · / `）；按键可在视频 → 光标与渲染中设置");
+#else
  visibilityStatus(desired?(manualVisible?L"覆盖层已请求显示：手动开启":!tabEnabled?L"覆盖层已请求显示：常驻模式":L"覆盖层已请求显示：Tab/演示"):hidden?L"覆盖层手动隐藏：按钮或 Ctrl+Alt+H 开启":L"覆盖层等待 Tab：也可用按钮或 Ctrl+Alt+H");
+#endif
  int alpha=fade.value(now);if(!desired)overlayRecovery.suspend();
  statsFrameClock.state(desired||alpha>0||secondaryShowing,statsInformationFPS());
  if(!desired&&alpha==0){statsVisible(false);hidePrimaryStats();paintedAlpha=0;return;}
@@ -564,7 +595,14 @@ static LRESULT CALLBACK proc(HWND w,UINT m,WPARAM a,LPARAM b){
 #ifdef RA2_UNIFIED
   createUnitSettings(ctl);
 #endif
-  EnableWindow(tabModeBox,tabEnabled);controlsReady=true;modernui::styleChildren(w);consoleScale(consoleDpi);
+  EnableWindow(tabModeBox,tabEnabled);
+#ifdef RA2_UNIFIED
+  SetWindowTextW(cTab,L"跟随统一覆盖层开关（默认 ·）");SendMessageW(cTab,BM_SETCHECK,BST_CHECKED,0);EnableWindow(cTab,FALSE);
+  SendMessageW(tabModeBox,CB_RESETCONTENT,0,0);SendMessageW(tabModeBox,CB_ADDSTRING,0,(LPARAM)L"在视频 → 光标与渲染中自定义按键");SendMessageW(tabModeBox,CB_SETCURSEL,0,0);EnableWindow(tabModeBox,FALSE);
+  modernui::tip(cTab,L"统计、小地图、副相机和战场信息统一使用可设置的显隐键；默认 · / `。不会卸载 Hook。");modernui::tip(tabModeBox,L"打开视频 → 光标与渲染，修改所有覆盖层显隐快捷键。");
+  SetWindowTextW(GetDlgItem(w,116),L"显示 / 隐藏所有覆盖层");modernui::tip(GetDlgItem(w,116),L"统一切换所有工具箱覆盖层，已排队的指令继续执行；默认显隐键 · / `，备用 Ctrl+Alt+H 只在游戏内有效。");
+#endif
+  controlsReady=true;modernui::styleChildren(w);consoleScale(consoleDpi);
   if(!RegisterHotKey(w,1,MOD_CONTROL|MOD_ALT|MOD_NOREPEAT,'H'))visibilityStatus(L"备用快捷键注册失败；请用显示按钮或常驻模式");RegisterHotKey(w,2,MOD_CONTROL|MOD_ALT|MOD_NOREPEAT,VK_RIGHT);RegisterHotKey(w,3,MOD_CONTROL|MOD_ALT|MOD_NOREPEAT,VK_LEFT);statsFrameClock.start(w,StatsFrameMessage);SetTimer(w,1,16,nullptr);return 0;}
  case WM_DPICHANGED:consoleScale(HIWORD(a));if(auto rect=(RECT*)b)if(!GetPropW(w,L"RA2.Suite.Managed"))SetWindowPos(w,nullptr,rect->left,rect->top,rect->right-rect->left,rect->bottom-rect->top,SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS);return 0;
  case WM_SIZE:layoutConsole();return 0;
@@ -601,7 +639,13 @@ static LRESULT CALLBACK proc(HWND w,UINT m,WPARAM a,LPARAM b){
   syncingSecondaryDragControls=true;SetDlgItemInt(w,id,value,FALSE);syncingSecondaryDragControls=false;
   return 0;
  }if(HIWORD(a)==BN_CLICKED){switch(LOWORD(a)){case 100:enabled=!enabled;if(!enabled&&!secondaryEnabled)detach();else if(enabled)lastSearch=0;break;case 101:demo=!demo;demoStart=GetTickCount();enabled=true;hidden=false;manualVisible=false;++samplingGeneration;samplingWorker.invalidate();appliedSample.reset();resetPrimaryRender();resetSecondary();snap=std::make_shared<const um::Snapshot>();break;case 102:detach();status.clear();lastSearch=0;break;case 103:buildings=SendMessageW(cBuildings,BM_GETCHECK,0,0)==BST_CHECKED;save();break;case 104:showOthers=SendMessageW(cOthers,BM_GETCHECK,0,0)==BST_CHECKED;save();break;case 113:tabEnabled=SendMessageW(cTab,BM_GETCHECK,0,0)!=BST_CHECKED;tabs.reset();hidden=false;manualVisible=false;EnableWindow(tabModeBox,tabEnabled);save();break;case 116:toggleOverlay();break;case 120:secondaryEnabled=SendMessageW(cSecondary,BM_GETCHECK,0,0)==BST_CHECKED;secondaryMonitor.invalidate();resetSecondary();if(!enabled&&!secondaryEnabled)detach();else lastSearch=0;save();break;}renderDirty=secondaryDirty=true;buttonLabel();tick();}return 0;
- case WM_HOTKEY:if(a==1){toggleOverlay();}else if(a==2)page++;else if(a==3)page=std::max(0,page-1);renderDirty=secondaryDirty=true;tick();return 0;
+ case WM_HOTKEY:if(a==1){
+#ifdef RA2_UNIFIED
+  uint8_t chat=1;if(foregroundGame()&&reader.readFresh(0xA8BC60+25,&chat,1)&&!chat)toggleOverlay();
+#else
+  toggleOverlay();
+#endif
+ }else if(a==2)page++;else if(a==3)page=std::max(0,page-1);renderDirty=secondaryDirty=true;tick();return 0;
  case WM_CTLCOLORSTATIC:case WM_CTLCOLORBTN:SetBkMode((HDC)a,OPAQUE);SetTextColor((HDC)a,modernui::Text);SetBkColor((HDC)a,modernui::Background);SetDCBrushColor((HDC)a,modernui::Background);return (LRESULT)GetStockObject(DC_BRUSH);
  case WM_DRAWITEM:{auto d=(DRAWITEMSTRUCT*)b;HBRUSH br=CreateSolidBrush((d->itemState&ODS_SELECTED)?RGB(47,76,99):RGB(31,48,68));FillRect(d->hDC,&d->rcItem,br);DeleteObject(br);SetBkMode(d->hDC,TRANSPARENT);SetTextColor(d->hDC,RGB(223,237,251));SelectObject(d->hDC,font);wchar_t t[50];GetWindowTextW(d->hwndItem,t,50);DrawTextW(d->hDC,t,-1,&d->rcItem,DT_CENTER|DT_VCENTER|DT_SINGLELINE);return TRUE;}
  case WM_PAINT:{PAINTSTRUCT ps;HDC dc=BeginPaint(w,&ps);RECT r;GetClientRect(w,&r);HBRUSH br=CreateSolidBrush(modernui::Background);FillRect(dc,&r,br);DeleteObject(br);SetBkMode(dc,TRANSPARENT);SetTextColor(dc,RGB(110,210,248));SelectObject(dc,font);TextOutW(dc,modernui::scale(14,consoleDpi)-consoleX,modernui::scale(12,consoleDpi)-consoleY,L"监控视图",lstrlenW(L"监控视图"));SetTextColor(dc,RGB(148,166,188));TextOutW(dc,modernui::scale(14,consoleDpi)-consoleX,modernui::scale(32,consoleDpi)-consoleY,L"监控面板、副相机与小地图",lstrlenW(L"监控面板、副相机与小地图"));EndPaint(w,&ps);return 0;}

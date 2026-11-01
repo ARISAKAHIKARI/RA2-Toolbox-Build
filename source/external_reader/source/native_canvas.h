@@ -10,13 +10,14 @@
 #include <unordered_map>
 #include "render_memory_budget.h"
 #include "../../shared/source/parallel_rows.h"
-// Native-pixel composition storage. Source sprites are never individually
-// minified: all depth/shadow/color operations run at one pixel per source pixel.
+// Native-pixel composition storage, or explicitly retained ground inputs for
+// small panels. The latter are replayed by ViewportCanvas at output pixels.
 namespace external { namespace camera {
 class NativeCanvas {
  friend class ObjectCanvas;
 public:
  struct TerrainDraw {std::shared_ptr<const voxel::Image>image;float x=0,y=0,base=0;lighting::State light;Material material;};
+ struct Underlay {int left,top,right,bottom;uint32_t color;};
  using AlphaPages=std::map<uint32_t,std::shared_ptr<const std::vector<uint8_t>>>;
  static constexpr int PageSize=128,MaximumDimension=32768;
  static constexpr size_t MaximumPages=rendermemory::NativePages,DynamicReserve=256;
@@ -62,6 +63,10 @@ private:
  std::shared_ptr<Budget> budget_;std::map<uint32_t,std::shared_ptr<Page>> pages_;std::set<uint32_t> dirty_;std::vector<std::array<int,4>> dirtyRects_;
  struct TerrainSources {std::vector<TerrainDraw>draws;std::unordered_map<size_t,size_t>indices;};
  std::shared_ptr<TerrainSources>terrainSources_;
+ // Retained ground stores world-space inputs, not a world-sized framebuffer.
+ // Small panels replay these inputs directly at their device-pixel size.
+ bool retained_=false;
+ std::shared_ptr<std::vector<Underlay>> underlays_;
  std::shared_ptr<const AlphaPages>nativeAlpha_;
  // Source discovery remains conservative. Local terrain banks only paint the
  // page-aligned output neighborhood; repaint jobs further restrict writes to
@@ -155,10 +160,13 @@ public:
  struct AreaCacheStats {size_t bytes;uint64_t builds;};
  static AreaCacheStats areaCacheStats(){return {AreaPrefix::retained.load(std::memory_order_relaxed),AreaPrefix::builds.load(std::memory_order_relaxed)};}
  bool reset(int width,int height,std::shared_ptr<Budget>budget={},uint32_t background=0xff080c08u){
+  retained_=false;underlays_.reset();
   regionCache_.reset();terrainSources_.reset();nativeAlpha_.reset();pages_.clear();dirty_.clear();dirtyRects_.clear();repaintPages_.clear();repainting_=false;failed_=dynamic_=false;width_=height_=0;paintLeft_=paintTop_=paintRight_=paintBottom_=0;background_=background;budget_=budget?std::move(budget):sharedBudget();
   if(width<1||height<1||width>MaximumDimension||height>MaximumDimension||!budget_->maximum)return false;width_=width;height_=height;paintRight_=width;paintBottom_=height;return true;
  }
  void precision(colorprecision::Mode mode){if(mode!=precision_)regionCache_.reset();precision_=mode;}
+ void retainGround(bool enabled){retained_=enabled;}
+ bool retainedGround()const{return retained_;}
  int width()const{return width_;}int height()const{return height_;}bool failed()const{return failed_;}void clearFailure(){failed_=false;}
  size_t pageCount()const{return pages_.size();}size_t dirtyPages()const{return dirty_.size();}size_t residentPages()const{return budget_?budget_->pages.load(std::memory_order_relaxed):0;}
  void clean(){dirty_.clear();dirtyRects_.clear();repainting_=false;repaintPages_.clear();}
@@ -218,6 +226,7 @@ public:
   y0=std::clamp(y0,0,height_);y1=std::clamp(y1,0,height_);
   if(x0>=x1||y0>=y1)return;
   rgb=0xff000000u|(rgb&0xffffffu);
+  if(retained_){if(!underlays_)underlays_=std::make_shared<std::vector<Underlay>>();else if(!underlays_.unique())underlays_=std::make_shared<std::vector<Underlay>>(*underlays_);underlays_->push_back({x0,y0,x1,y1,rgb});return;}
   paint(x0,y0,x1,y1,[&](Surface&s,int pageX,int pageY){
    for(int y=std::max(y0,pageY);y<std::min(y1,pageY+PageSize);++y)
     for(int x=std::max(x0,pageX);x<std::min(x1,pageX+PageSize);++x){
@@ -227,10 +236,12 @@ public:
   });
  }
  void diamond(float ax,float ay,float sx,float sy,float base,uint32_t color,const lighting::State&light){
+  if(retained_)return; // Missing TMP remains its admitted radar-color underlay.
   if(!std::isfinite(ax)||!std::isfinite(ay)||sx!=1||sy!=1)return;
   paint(int(std::floor(ax-30)),int(std::floor(ay-15)),int(std::ceil(ax+30)),int(std::ceil(ay+15)),[&](Surface&s,int x,int y){s.diamond(ax-x,ay-y,1,1,base,color,light);});
  }
  void blit(const voxel::Image&image,float ax,float ay,float sx,float sy,float base,const lighting::State&light,float lift=1,float shadowDrop=0,Material material={}){
+  if(retained_)return; // terrainSource owns the draw; ViewportCanvas replays it.
   if(!std::isfinite(ax)||!std::isfinite(ay)||sx!=1||sy!=1)return;
   float left=float(width_),top=float(height_),right=0,bottom=0;imageBounds(image,ax,ay,shadowDrop,left,top,right,bottom);
   if(!std::isfinite(left)||!std::isfinite(top)||!std::isfinite(right)||!std::isfinite(bottom))return;
@@ -254,6 +265,7 @@ public:
  // independent of the radar's whole-map downscale. Outside backing falls back
  // to the underlying game through transparent pixels instead of stretching.
  bool gpuRegion(int width,int height,double x,double y,double spanX,double spanY,unsigned mode,std::vector<vulkancompute::TileJob>&out)const{
+  if(retained_)return false; // No native framebuffer to reconstruct or upload.
   if(failed_||width_<1||height_<1||width<1||height<1||width>8192||height>8192||uint64_t(width)*height>16*1024*1024||
      !std::isfinite(x)||!std::isfinite(y)||!std::isfinite(spanX)||!std::isfinite(spanY)||spanX<=0||spanY<=0||std::abs(x)>1e7||std::abs(y)>1e7||spanX>32768||spanY>32768)return false;
   if(mode==1){out.clear();const double sx=spanX/width,sy=spanY/height;
@@ -284,6 +296,16 @@ public:
      std::abs(x)>1e7||std::abs(y)>1e7||spanX>32768||spanY>32768)return false;
   out.assign(size_t(width)*height,0);
   const double sx=spanX/width,sy=spanY/height;
+  if(retained_){
+   // Pixel centers preserve fractional crops and transparent backing edges.
+   auto edge=[](double v,int limit){return int(std::clamp(std::ceil(v-.5),0.,double(limit)));};
+   const int l=edge(-x/sx,width),r=edge((width_-x)/sx,width),t=edge(-y/sy,height),b=edge((height_-y)/sy,height);
+   for(int yy=t;yy<b;++yy)std::fill(out.begin()+size_t(yy)*width+l,out.begin()+size_t(yy)*width+r,background_);
+   if(underlays_)for(const auto&rect:*underlays_){
+    const int x0=edge((rect.left-x)/sx,width),x1=edge((rect.right-x)/sx,width),y0=edge((rect.top-y)/sy,height),y1=edge((rect.bottom-y)/sy,height);
+    for(int yy=y0;yy<y1;++yy)for(int xx=x0;xx<x1;++xx){auto&pixel=out[size_t(yy)*width+xx];if(pixel==background_)pixel=rect.color;}
+   }return true;
+  }
   if(pixelScaleMode==1&&sx<=1&&sy<=1&&(sx<1||sy<1)){
    // Fetch only source centers actually sampled. A fractional crop can span
    // 8193 cells while its 8192 output centers still touch at most 8192 cells.

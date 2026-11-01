@@ -11,8 +11,17 @@ static bool riskLowDamageActive=false;
 static bool riskLowDamageAllHouses=false;
 static const double lowDamageThreshold=0.02;
 static bool riskRenderRedrawPending=false;
+static bool riskRenderContextReady(bool captured=false){
+ if((!captured&&!gameentry::active(gameentry::Client::Assist))||fault||!hookWorld.bound||!get<bool>(0xA8E9A0))return false;
+ const auto&world=hookWorld.world;const int frame=get<int>(0xA8ED84);
+ // Capture callbacks are guarded. These hot visual leaves compare the
+ // confirmed world without interpreting observer/defeated as destruction.
+ return get<uint32_t>(0xA8B230)==world.scenario&&get<uint32_t>(0x87F924)==world.cells&&get<int>(0x87F928)==world.count&&
+  get<int>(0xA8B238)==world.session&&frame>=world.frame&&frame<INT32_MAX&&
+  external::display::inspect([](uint32_t at,void*out,size_t n){memcpy(out,(void*)(uintptr_t)at,n);return true;}).visible();
+}
 static bool riskContextReady(bool captured=false){
- if((!captured&&!gameentry::active(gameentry::Client::Assist))||fault||!lastHouse||!get<bool>(0xA8E9A0))return false;
+ if(!riskRenderContextReady(captured)||!lastHouse)return false;
  // Native callbacks see the current frame: equality with the last message
  // snapshot would make the behavior disappear between host samples.
  const uint32_t house=get<uint32_t>(0xA83D4C);const int frame=get<int>(0xA8ED84);
@@ -26,6 +35,7 @@ static bool riskReady(bool captured=false){
  const DWORD heartbeat=sh->heartbeat; // Capture before the clock; host writes concurrently.
  return DWORD(sampleClock(sh)-heartbeat)<3000&&riskContextReady(captured);
 }
+static bool riskRenderReady(bool captured=false){return sh&&!sh->stop&&DWORD(sampleClock(sh)-sh->heartbeat)<3000&&riskRenderContextReady(captured);}
 #include "shroud_render_bridge.h"
 static int smallMapCameraAction(uint32_t),highScrollAction(uint32_t);
 static int nativeSellCursorAction(unsigned,uint32_t,uint32_t);static int nativeMegaGatewayAction(unsigned,uint32_t,uint32_t);
@@ -35,17 +45,16 @@ extern "C" int __cdecl AssistRiskAction(unsigned op,unsigned object,unsigned hou
  // Keep live world checks, but don't re-enter Validate on every drawn cell.
  if(op==13)return controlCommandOwnerAction(op,object,house);
  if(op==14)return controlObjectOwnerAction(op,object,house);
- if(op==8)return riskReady(true)?highScrollAction(object):0;
- if(op==7)return riskReady(true)?smallMapCameraAction(object):0;
+ if(op==8)return riskRenderReady(true)?highScrollAction(object):0;
+ if(op==7)return riskRenderReady(true)?smallMapCameraAction(object):0;
  if(op==5)return techGate(object,house);
- if(op==3&&(!riskRenderActive||!sh||!sh->renderReveal))return 0;
- if(!riskReady(true)){if(op==3)riskRenderRedrawPending=true;return 0;}
+ if(op==3){if(!riskRenderActive||!sh||!sh->renderReveal)return 0;if(!riskRenderReady(true)){riskRenderRedrawPending=true;return 0;}return sh->renderReveal==2?halfShroud(object,house!=0):1;}
+ if(!riskReady(true))return 0;
  if(op==9||op==10)return nativeSellCursorAction(op,object,house);
  if(op==11)return nativeMegaGatewayAction(op,object,house);
  if(op==6)return riskControlActive&&controlmode::native(sh->controlAll)&&playableHouse(house)&&
   (!sh->controlCommandOwner||house==lastHouse||controlCommandOwnerReady(house));
  if(op==4)return 0; // retired: preserve native movement and C4 capability checks
- if(op==3)return sh->renderReveal==2?halfShroud(object,house!=0):1;
  if(op==0)return riskPlacementActive&&(sh->flags&BuildAnywhere)&&house==get<uint32_t>(lastHouse+0x30)&&object>=0x10000&&
    call<int>(get<uint32_t>(get<uint32_t>(object)+0x2C),object)==7;
  if(!riskAirActive||!airpathpolicy::native(get<int>(0xA8B238),(sh->flags&NativeAirWaypoints)!=0,sh->nativeAirNetwork))return 0;
@@ -476,30 +485,11 @@ static bool redrawRevealTest(){
  static const uint8_t signature[]={0x83,0xEC,0x58,0x8B,0x0D,0x88,0xCE,0xB0,0};uint8_t actual[sizeof signature]{};
  const uint32_t tactical=get<uint32_t>(0x887324);
  struct Area {int x,y,w,h;};Area area{};
- if(tactical<0x10000||!riskContextReady()||!read(0x6D2790,actual,sizeof actual)||memcmp(actual,signature,sizeof actual)||!read(0x886FA0,&area,sizeof area)||area.w<=0||area.h<=0||area.w>16384||area.h>16384)return false;
+ if(tactical<0x10000||!riskRenderContextReady()||!read(0x6D2790,actual,sizeof actual)||memcmp(actual,signature,sizeof actual)||!read(0x886FA0,&area,sizeof area)||area.w<=0||area.h<=0||area.w>16384||area.h>16384)return false;
  call<void>(0x6D2790,tactical,area,false);return true;
 }
-static void placementTick(){
- prepareRiskSites();
- riskLowDamageActive=false;
- // Tool-side target filtering does not need to alter the engine's automatic
- // acquisition. The separately labelled native option is required in SP too.
- bool lowRequested=sh->lowDamageFilter&&sh->lowDamageNetwork;
- bool lowOK=lowRequested?installRiskSite(riskSites[9]):restoreRiskSite(riskSites[9]);
- riskLowDamageActive=lowRequested&&lowOK;
- riskLowDamageAllHouses=riskLowDamageActive&&eventdelivery::isMultiplayer(get<int>(0xA8B238));
- sh->lowDamageStatus=!lowOK?-2:!sh->lowDamageFilter?0:riskLowDamageActive?1:2;
- static uint32_t priorStrategy=0;
- bool priorRender=riskRenderActive;
- const bool ownerGuardReady=!sh->controlCommandOwner||(controlCommandOwnerReady(lastHouse)&&
-  (!eventdelivery::isMultiplayer(get<int>(0xA8B238))||networkHousePreserveReady()));
- controlSitesTick(controlmode::native(sh->controlAll)&&ownerGuardReady);
- if(controlHouseFlagsPending()&&!controlmode::data(sh->controlAll))sh->playerControlStatus=-2;
- controlHouseFlagTick();
- // Infantry entry uses ordinary task/planning events. Never install either
- // capability override, including when an older configuration enables C4Test.
- riskC4Active=false;
- {bool a=restoreRiskSite(riskSites[5]),b=restoreRiskSite(riskSites[8]);snap.c4TestStatus=!a||!b?-2:featureavailability::InfantryForcedEntry&&sh->c4Test?1:0;}
+static void renderRevealTick(bool redraw=true){
+ prepareRiskSites();static uint32_t priorStrategy=0;const bool priorRender=riskRenderActive;
  const bool materialWanted=shroudpolicy::materialMode(sh->renderReveal);
  const bool materialOff=materialWanted||shroudMaterials.restore(read,writeShroudMaterial);
  if(!materialWanted&&shroudMaterials.changed())riskRenderRedrawPending=true;
@@ -524,7 +514,28 @@ static void placementTick(){
  }
  if(priorRender!=riskRenderActive||priorStrategy!=sh->renderReveal)riskRenderRedrawPending=true;
  priorStrategy=sh->renderReveal;
- if(riskRenderRedrawPending&&redrawRevealTest())riskRenderRedrawPending=false;
+ if(redraw&&riskRenderRedrawPending&&redrawRevealTest())riskRenderRedrawPending=false;
+}
+static void placementTick(){
+ prepareRiskSites();
+ riskLowDamageActive=false;
+ // Tool-side target filtering does not need to alter the engine's automatic
+ // acquisition. The separately labelled native option is required in SP too.
+ bool lowRequested=sh->lowDamageFilter&&sh->lowDamageNetwork;
+ bool lowOK=lowRequested?installRiskSite(riskSites[9]):restoreRiskSite(riskSites[9]);
+ riskLowDamageActive=lowRequested&&lowOK;
+ riskLowDamageAllHouses=riskLowDamageActive&&eventdelivery::isMultiplayer(get<int>(0xA8B238));
+ sh->lowDamageStatus=!lowOK?-2:!sh->lowDamageFilter?0:riskLowDamageActive?1:2;
+ const bool ownerGuardReady=!sh->controlCommandOwner||(controlCommandOwnerReady(lastHouse)&&
+  (!eventdelivery::isMultiplayer(get<int>(0xA8B238))||networkHousePreserveReady()));
+ controlSitesTick(controlmode::native(sh->controlAll)&&ownerGuardReady);
+ if(controlHouseFlagsPending()&&!controlmode::data(sh->controlAll))sh->playerControlStatus=-2;
+ controlHouseFlagTick();
+ // Infantry entry uses ordinary task/planning events. Never install either
+ // capability override, including when an older configuration enables C4Test.
+ riskC4Active=false;
+ {bool a=restoreRiskSite(riskSites[5]),b=restoreRiskSite(riskSites[8]);snap.c4TestStatus=!a||!b?-2:featureavailability::InfantryForcedEntry&&sh->c4Test?1:0;}
+ renderRevealTick();
  if((sh->flags&BuildAnywhere)&&sh->placementImplementation==1){
   riskPlacementActive=false;bool off=restoreRiskSite(riskSites[0]);
   bool ok=off&&directGroupEnable(directpatch::Group::Placement);

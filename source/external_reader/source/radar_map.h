@@ -1,4 +1,5 @@
 #pragma once
+#include "radar_rank.h"
 #include "game_view.h"
 #include "display_state.h"
 #include "visual_pose.h"
@@ -56,7 +57,7 @@ struct Geometry {
  }
  void project(double x,double y,double&u,double&v)const{u=(x-y+offsetX)/rawWidth;v=(x+y-offsetY)/rawHeight;}
 };
-struct Marker {double u=0,v=0;uint32_t color=0;bool building=false;uint32_t object=0,id=0,type=0,owner=0,parent=0,parentId=0;int x=0,y=0,z=0,kind=-1,drawZ=0,sort=0,layer=2;bool normalLight=false,onBridge=false,disguised=false,tetherHidden=false;std::vector<tetherdraw::Key>tetherRedraw;int16_t waterline=0;camera::Material material;visual::Pose pose;int displayOrder=-1;};
+struct Marker {double u=0,v=0;uint32_t color=0;bool building=false;uint32_t object=0,id=0,type=0,owner=0,parent=0,parentId=0;int x=0,y=0,z=0,kind=-1,drawZ=0,sort=0,layer=2;bool normalLight=false,onBridge=false,disguised=false,tetherHidden=false;std::vector<tetherdraw::Key>tetherRedraw;int16_t waterline=0;camera::Material material;visual::Pose pose;int displayOrder=-1,rank=-1;};
 struct CellArt {uint32_t cell=0,type=0,overlayType=0,overlaySourceType=0,smudgeType=0,rubbleType=0,flags=0,pixelFX=0;int land=0;uint8_t smudgeData=0;int16_t overlay=-1;uint8_t sub=0;int8_t level=0;uint8_t overlayFrame=0;bool sourceHidden=false;uint32_t sourceColor=0;};
 struct Scene {int width=0,height=0;std::vector<uint32_t> pixels;std::shared_ptr<const gpumotion::Guides> guides;std::shared_ptr<const gpupresent::Frame> gpu;bool boltsRendered=false;};
 // The game stores the selected shroud/fog SHP frame at each Cell. -1 selects
@@ -136,7 +137,14 @@ public:
   if(!g.same(geo_)||frame<lastFrame_||reveal_!=reveal){reset();geo_=g;reveal_=reveal;}lastFrame_=frame;
   if(!pending_){pointers_.resize(g.count);if(!read_(g.cells,pointers_.data(),pointers_.size()*4)||(!reveal&&!shroudselector::readLookup(read_,frameLookup_))){discardPending();return false;}
    if(!reveal)maskBits_.resize(512*512);
-   pending_=std::make_shared<Terrain>();pending_->geo=g;pending_->reveal=bool(reveal);pending_->colors.resize(512*512);pending_->shade.resize(512*512);if(real){pending_->baseColors.resize(512*512);pending_->art.resize(512*512);tileTypes_=view_.vec(0xA8ED28,65536);overlayTypes_=view_.vec(0xA83D80);smudgeTypes_=view_.vec(0xA8EC18,4096);resourcePools_=artvariants::pools(read_,overlayTypes_);}cursor_=0;}
+   pending_=std::make_shared<Terrain>();pending_->geo=g;pending_->reveal=bool(reveal);pending_->colors.resize(512*512);pending_->shade.resize(512*512);if(real){
+    // An unreadable catalogue is not an empty one. Otherwise live cells lose
+    // their materials in a supposedly complete published terrain bank.
+    if(!view_.vecChecked(0xA8ED28,tileTypes_,65536)||!view_.vecChecked(0xA83D80,overlayTypes_)||!view_.vecChecked(0xA8EC18,smudgeTypes_,4096)){discardPending();return false;}
+    pending_->baseColors.resize(512*512);pending_->art.resize(512*512);
+    auto checkedArt=[&](uint32_t at,void*out,size_t bytes){bool ok=read_(at,out,bytes);if(!ok)pendingIncomplete_=true;return ok;};resourcePools_=artvariants::pools(checkedArt,overlayTypes_);
+    if(pendingIncomplete_){discardPending();return false;}
+   }cursor_=0;}
   size_t end=std::min(pointers_.size(),cursor_+size_t(std::clamp(budget,1,16384)));
   // Retain the native RGB/diagram/actor admission separately from terrain
   // sources: an excluded cell's TMP can still intersect the current crop.
@@ -164,7 +172,15 @@ public:
    if(!sourceVisible&&!terrainSource)continue;
    uint32_t color=terrainColor(land,level,!real&&!reveal&&fog!=-1);
    if(admitted&&sourceVisible)pending_->colors[cursor_]=color;
-   if(terrainSource&&!pending_->art.empty()){auto&a=pending_->art[cursor_];a.cell=p;a.sourceColor=color;a.sourceHidden=!sourceVisible;a.sub=cell[0x11A];a.level=int8_t(cell[0x11B]);a.overlayFrame=cell[0x11E];a.smudgeData=cell[0x11F];a.land=land;std::memcpy(&a.pixelFX,cell.data()+0xFC,4);std::memcpy(&a.flags,cell.data()+0x140,4);std::memcpy(&a.rubbleType,cell.data()+0x40,4);int smudge=-1;std::memcpy(&smudge,cell.data()+0x48,4);if(admitted&&smudge>=0&&size_t(smudge)<smudgeTypes_.size())a.smudgeType=smudgeTypes_[smudge];int tile=-1,overlay=-1;uint32_t flags=0;memcpy(&flags,cell.data()+0x140,4);memcpy(&tile,cell.data()+0x38,4);memcpy(&overlay,cell.data()+0x44,4);if(tile==65535){tile=get<int>(0xAA10B0,-1);a.sub=0;}if(tile>=0&&size_t(tile)<tileTypes_.size())a.type=artvariants::tile(read_,tileTypes_[tile],a.sub,x,y,flags);if(admitted&&overlay>=0&&size_t(overlay)<overlayTypes_.size()){a.overlay=int16_t(overlay);a.overlaySourceType=overlayTypes_[overlay];int drawOverlay=artvariants::overlay(read_,overlayTypes_,resourcePools_,overlay,x,y,cell[0x11C]);a.overlayType=overlayTypes_[drawOverlay];}}
+   if(terrainSource&&!pending_->art.empty()){auto&a=pending_->art[cursor_];a.cell=p;a.sourceColor=color;a.sourceHidden=!sourceVisible;a.sub=cell[0x11A];a.level=int8_t(cell[0x11B]);a.overlayFrame=cell[0x11E];a.smudgeData=cell[0x11F];a.land=land;std::memcpy(&a.pixelFX,cell.data()+0xFC,4);std::memcpy(&a.flags,cell.data()+0x140,4);std::memcpy(&a.rubbleType,cell.data()+0x40,4);
+    int smudge=-1,tile=-1,overlay=-1;std::memcpy(&smudge,cell.data()+0x48,4);std::memcpy(&tile,cell.data()+0x38,4);std::memcpy(&overlay,cell.data()+0x44,4);
+    auto catalogueEntry=[&](const std::vector<uint32_t>&types,int index,uint32_t&out){if(index<0)return; if(size_t(index)>=types.size()||types[size_t(index)]<0x10000){pendingIncomplete_=true;return;}out=types[size_t(index)];};
+    if(admitted)catalogueEntry(smudgeTypes_,smudge,a.smudgeType);
+    if(tile==65535){if(!read_(0xAA10B0,&tile,sizeof tile))pendingIncomplete_=true;a.sub=0;}
+    auto checkedArt=[&](uint32_t at,void*out,size_t bytes){bool ok=read_(at,out,bytes);if(!ok)pendingIncomplete_=true;return ok;};
+    catalogueEntry(tileTypes_,tile,a.type);if(a.type)a.type=artvariants::tile(checkedArt,a.type,a.sub,x,y,a.flags);
+    if(admitted){catalogueEntry(overlayTypes_,overlay,a.overlaySourceType);if(a.overlaySourceType){a.overlay=int16_t(overlay);int drawOverlay=artvariants::overlay(checkedArt,overlayTypes_,resourcePools_,overlay,x,y,cell[0x11C]);catalogueEntry(overlayTypes_,drawOverlay,a.overlayType);}}
+   }
   }
   // Missing physical cells are valid holes. Failed reads of existing cells
   // are NOT opaque/absent visibility: reject the candidate and retain the
@@ -196,6 +212,9 @@ public:
    Marker m;geo_.project(double(x)/256,double(y)/256,m.u,m.v);if(m.u<0||m.u>=1||m.v<0||m.v>=1)continue;
    m.color=uint32_t(rgb[0])<<16|uint32_t(rgb[1])<<8|rgb[2];m.building=kind==3;m.object=p;m.id=get<uint32_t>(p+0x10);m.type=view_.type(p,kind);m.owner=owner;m.x=x;m.y=y;m.z=get<int>(p+0xA4);m.kind=kind;m.onBridge=get<uint8_t>(p+0x8C)!=0;m.pose=visual::pose(live,p,m.type,kind,out.frame);
    m.material=drawState.material;m.waterline=drawState.waterline;m.disguised=drawState.disguised;
+   // Native 70A990 uses raw Veterancy and hides the insignia of an enemy
+   // disguise. A failed optional read is unknown, never a fabricated rank.
+   m.rank=captureRank(read_,p,owner,geo_.house);
    if(drawState.disguised){m.type=drawState.type;m.owner=drawState.owner;m.kind=drawState.kind;m.pose={};if(m.kind<3){m.pose=visual::pose(live,p,m.type,kind,out.frame);if(m.kind!=kind){m.pose.frame=visual::previewFrame(live,m.type,m.kind,int(m.pose.body)-8);m.pose.variant=-1;m.pose.turretFrame=-1;}}}
    m.layer=std::clamp(get<int>(p+0x94,2),0,4);if(kind==3)m.sort=(get<uint8_t>(m.type+0x16C5)?32:0)-(get<uint8_t>(m.type+0x16B7)?16:0);out.markers.push_back(m);
   }

@@ -13,14 +13,24 @@ static DWORD testThread,tokenSerial,depth,tokens[16];
 static gameentry::Client clients[16];
 static bool tooltipOwned,frameOwned,failRestore,failInstallAfterWrite,failRestoreAfterWrite;
 static unsigned patchCalls,providerCalls,appendCalls,readyCalls,cursorRestoreCalls;
+static bool loseMouseReadAfterHide;
 extern "C" const uint8_t testArena[0x710000];
 __asm__(".section .text$fixture,\"xr\"\n.globl _testArena\n_testArena:\n.zero 0x710000\n.text\n");
 static unsigned lastId;static void* lastReceiver;
+static LONG CALLBACK fixtureException(PEXCEPTION_POINTERS p){
+ if(p->ExceptionRecord->ExceptionCode==EXCEPTION_ACCESS_VIOLATION)
+  fprintf(stderr,"Fixture access violation: instruction=%p address=%08lX\n",p->ExceptionRecord->ExceptionAddress,DWORD(p->ExceptionRecord->ExceptionInformation[1]));
+ return EXCEPTION_CONTINUE_SEARCH;
+}
 static wchar_t unitName[]=L"unit",price[]=L"power plant\n$800",withTime[]=L"power plant\n$800\n20 seconds";
 extern "C" void GuardedCursorResource(){}
 extern "C" void RuntimeFrameReady(){++readyCalls;}
 extern "C" unsigned GuardedBuildTimeTooltip(unsigned id,unsigned original){++appendCalls;return id==1000?unsigned(uintptr_t(withTime)):original;}
 extern "C" void __thiscall TestCursorRestore(void*self){++cursorRestoreCalls;++reinterpret_cast<LONG*>(self)[3];}
+extern "C" void __thiscall TestCursorHide(void*self){
+ --reinterpret_cast<LONG*>(self)[3];
+ if(loseMouseReadAfterHide){DWORD old=0;assert(VirtualProtect(self,4096,PAGE_NOACCESS,&old));}
+}
 extern "C" wchar_t* __thiscall TestSidebar(void*self,unsigned id){
  ++providerCalls;lastReceiver=self;lastId=id;
  return id==0?unitName:id==1000?price:nullptr;
@@ -57,7 +67,71 @@ static void jump(uint32_t address,void*fn){auto*p=(uint8_t*)(uintptr_t)address;p
 static bool buildTime(bool on){gameentry::Scope scope(gameentry::Client::Assist);assert(scope);return NativeTooltipBuildTime(on);}
 static wchar_t* tooltip(unsigned id){auto fn=*(uint32_t*)(uintptr_t)nativetooltip::Slot;return ((wchar_t*(__thiscall*)(void*,unsigned))fn)((void*)0x123456,id);}
 static Shared cursorState;static DWORD mouseVtable[11],mouseObject[17],otherMouse[17];
-static void cursor(bool enabled,LONG count=-1){s=enabled?&cursorState:nullptr;held=enabled?mouseObject:nullptr;cursorState.state=enabled?1:0;mouseObject[3]=DWORD(count);}
+static void cursor(bool enabled,LONG count=-1){s=enabled?&cursorState:nullptr;held=enabled?mouseObject:nullptr;heldVtable=enabled?mouseObject[0]:0;cursorState.state=enabled?1:0;mouseObject[3]=DWORD(count);}
+static void cursorReadRecovery(){
+ auto* object=reinterpret_cast<DWORD*>(0x890000);auto* table=reinterpret_cast<DWORD*>(0x8A0000);
+ memcpy(table,mouseVtable,sizeof mouseVtable);memcpy(object,mouseObject,sizeof mouseObject);object[0]=DWORD(uintptr_t(table));
+ // Real Runtime disconnect unmaps its view. Keep a second fixture view to
+ // inspect the final ACK; a static Shared would not be a valid mapping.
+ HANDLE testMapping=CreateFileMappingW(INVALID_HANDLE_VALUE,nullptr,PAGE_READWRITE,0,sizeof(Shared),nullptr);assert(testMapping);
+ auto* observed=(Shared*)MapViewOfFile(testMapping,FILE_MAP_ALL_ACCESS,0,0,sizeof(Shared));assert(observed);Shared&state=*observed;
+ auto bind=[&]{
+  if(s)UnmapViewOfFile(s);if(mapping)CloseHandle(mapping);
+  assert(DuplicateHandle(GetCurrentProcess(),testMapping,GetCurrentProcess(),&mapping,0,FALSE,DUPLICATE_SAME_ACCESS));
+  s=(Shared*)MapViewOfFile(mapping,FILE_MAP_ALL_ACCESS,0,0,sizeof(Shared));assert(s);memset(s,0,sizeof *s);
+  held=object;heldVtable=object[0];state.state=1;state.heartbeat=GetTickCount();state.owner=GetCurrentProcessId();
+  object[3]=DWORD(-1);hiddenRef=-1;*(void**)0x887640=object;
+ };
+ // Exercise checked reads at each identity level in the real implementation.
+ // A transient global/object/vtable read failure is not object retirement.
+ for(uint32_t address:{0x887000u,0x890000u,0x8A0000u}){
+  bind();unsigned calls=cursorRestoreCalls;DWORD protection=0;
+  assert(VirtualProtect((void*)address,4096,PAGE_NOACCESS,&protection));
+  {gameentry::Scope scope(gameentry::Client::Cursor);assert(scope);inspect(false);}
+  assert(held==object&&state.state==1&&state.command==0&&cursorRestoreCalls==calls);
+  state.command=2;
+  {gameentry::Scope scope(gameentry::Client::Cursor);assert(scope);tick();}
+  assert(held==object&&state.state==1&&state.command==2&&state.error==4&&!CursorRuntimeDetached());
+  CursorRuntimeWatchdog();
+  assert(held==object&&state.command==2&&!CursorRuntimeDetached()&&cursorRestoreCalls==calls);
+  DWORD unused=0;assert(VirtualProtect((void*)address,4096,protection,&unused));
+  CursorRuntimeWatchdog();
+  assert(!held&&CursorRuntimeDetached()&&state.state==0&&state.command==0&&state.error==0);
+  assert(cursorRestoreCalls==calls+1&&LONG(object[3])==0);
+ }
+ // A verified new object, cleared singleton, or changed identity retires
+ // our responsibility without calling Show on a stale or foreign object.
+ for(unsigned replacement=0;replacement<4;++replacement){
+  bind();unsigned calls=cursorRestoreCalls;const DWORD originalTable=object[0],originalSlot=table[1];
+  if(replacement==0)*(void**)0x887640=otherMouse;
+  else if(replacement==1)*(void**)0x887640=nullptr;
+  else if(replacement==2)object[0]=DWORD(uintptr_t(mouseVtable));
+  else table[1]=0x12345678;
+  {gameentry::Scope scope(gameentry::Client::Cursor);assert(scope);inspect(false);}
+  assert(!held&&state.state==-1&&cursorRestoreCalls==calls&&LONG(object[3])==-1);
+  object[0]=originalTable;table[1]=originalSlot;
+ }
+ // Hide can commit before its confirmation read becomes unavailable. It
+ // must remain pending rather than publishing a failure/detached ACK.
+ bind();held=nullptr;heldVtable=0;state.state=0;object[3]=0;
+ state.command=1;loseMouseReadAfterHide=true;unsigned calls=cursorRestoreCalls;
+ {gameentry::Scope scope(gameentry::Client::Cursor);assert(scope);tick();}
+ assert(held==object&&state.state==2&&state.command==2&&state.error==4&&cursorRestoreCalls==calls);
+ DWORD unused=0;assert(VirtualProtect(object,4096,PAGE_EXECUTE_READWRITE,&unused));loseMouseReadAfterHide=false;
+ CursorRuntimeWatchdog();
+ assert(!held&&CursorRuntimeDetached()&&state.state==0&&state.command==0&&LONG(object[3])==0&&cursorRestoreCalls==calls+1);
+ // Reusing an old mapping for a resource-only session still owes the prior
+ // Hide, even when the new host overwrote its shared state/command fields.
+ bind();state.command=3;calls=cursorRestoreCalls;
+ assert(VirtualProtect(object,4096,PAGE_NOACCESS,&unused));
+ {gameentry::Scope scope(gameentry::Client::Cursor);assert(scope);tick();}
+ assert(held==object&&state.state==2&&state.command==2&&state.error==4&&cursorRestoreCalls==calls);
+ assert(VirtualProtect(object,4096,PAGE_EXECUTE_READWRITE,&unused));CursorRuntimeWatchdog();
+ assert(!held&&CursorRuntimeDetached()&&state.state==0&&state.command==0&&LONG(object[3])==0&&cursorRestoreCalls==calls+1);
+ UnmapViewOfFile(observed);CloseHandle(testMapping);
+ *(void**)0x887640=mouseObject;
+ puts("PASS cursor restore: transient global/object/vtable reads retain ownership and retry; replacement avoids stale calls; post-Hide failure and resource-only restart retain pending restore");
+}
 static unsigned beforeFrame[9],afterFrame[9];static DWORD frameStack;
 static void __declspec(naked) frameReturn(){__asm {ret}}
 static void* frameThunk=(void*)&frameobserver::committedAdapter;
@@ -101,13 +175,16 @@ static void __declspec(naked) exerciseFrame(){
  }
 }
 int main(){
+ setvbuf(stdout,nullptr,_IONBF,0);
+ AddVectoredExceptionHandler(0,fixtureException);
  SetErrorMode(SEM_FAILCRITICALERRORS|SEM_NOGPFAULTERRORBOX);_set_abort_behavior(0,_WRITE_ABORT_MSG|_CALL_REPORTFAULT);
  testThread=GetCurrentThreadId();
- for(uint32_t address:{0x470000u,0x550000u,0x6D0000u,0x7B0000u,0x7F0000u,0x870000u,0x880000u,0xA80000u})page(address);
+ for(uint32_t address:{0x470000u,0x550000u,0x6D0000u,0x7B0000u,0x7F0000u,0x870000u,0x880000u,0x890000u,0x8A0000u,0xA80000u})page(address);
  memcpy((void*)nativetooltip::Original,nativetooltip::NativeBody,sizeof(nativetooltip::NativeBody));
  const uint8_t getter[]={0x8B,0x41,0x0C,0xC3};memcpy((void*)0x7B89F0,getter,4);
  jump(nativetooltip::Provider,(void*)&TestSidebar);
  jump(0x7B9750,(void*)&TestCursorRestore);
+ jump(0x7B9930,(void*)&TestCursorHide);
  *(uint32_t*)nativetooltip::Slot=nativetooltip::Original;
  mouseVtable[1]=0x7B8A00;mouseVtable[3]=0x7B9930;mouseVtable[4]=0x7B9750;mouseVtable[10]=0x7B89F0;
  mouseObject[0]=uint32_t(uintptr_t(mouseVtable));memcpy(otherMouse,mouseObject,sizeof(mouseObject));
@@ -170,6 +247,7 @@ int main(){
  cursor(false,0);NativeTooltipMaintain(false);assert(!NativeTooltipDetached()&&*(uint32_t*)nativetooltip::Slot==0x12345678);
  *(uint32_t*)nativetooltip::Slot=ours;NativeTooltipMaintain(false);assert(NativeTooltipDetached());
  puts("PASS native tooltip: original suppression reproduced; names/prices, shared owners, native extra hides, ABI and cleanup");
+ cursorReadRecovery();
 
  // Run the real compiled frame adapter with live registers, EFLAGS (DF=1),
  // native store, and a balanced return continuation. No game simulation.

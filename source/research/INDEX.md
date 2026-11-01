@@ -6,6 +6,8 @@
 
 | 主题 | 新笔记 | 关键词 |
 | --- | --- | --- |
+| 覆蓋層連續性、面板尺寸合成、星級與觀戰 Hook 保留 | [修正、原生 HWND 寬度與驗證邊界](2026-11-01-render-continuity-and-hook-lifetime.md) | camera-independent HUD checked materials output-sized renderer HWND DWORD scene-bank observer hook-ownership |
+| 科技純資料候選、同世界 epoch 改變後還原責任 | [尚未實作的候選與已修的還原錯誤](2026-11-01-tech-data-candidates-and-recovery.md) | CanBuild direct-E8 Type634 Prerequisite648 Scenario epoch restore |
 | 控制標記資料模式、跨epoch還原與普通事件功能分類更正 | [實作、互斥與驗證](2026-11-01-control-house-flag-mode.md) | Assist85 House1ED data-only mode2 native-query classification epoch ownership |
 | 控制／科技純資料方案核對，科技清單一次刷新 | [判定分支、舊版依據與驗證](2026-11-01-control-tech-data-only-review.md) | House1EC 1ED CurrentPlayer 50B6F0 TechLevel 634 full-pass no-frame-slicing |
 | 深入不同步審查：失敗恢復、TID 回收、過期指令與查詢副作用 | [六項修正、原生查詢高危選項與驗證](2026-11-01-deep-desync-followup.md) | Assist84 native-query opt-in frame-write-failure thread-identity stale-heartbeat shroud-read-retry AirPathMove |

@@ -28,6 +28,7 @@ class Worker {
  std::shared_ptr<const external::radar::Frame> latest;
  void run(){
   external::ReadSession reader;external::cameraassets::Context<external::ReadSession> assets(reader);external::radar::SceneRenderer<decltype(assets)> renderer;external::radar::DiagramRenderer diagram;external::sceneextras::Layers radarLayers;external::materialmotion::Timeline motion;external::radar::Sampler<external::SharedReadView> sampler(external::SharedReadView{&reader});uint64_t active=~uint64_t(0);int previousFrame=-1;unsigned previousRevision=0;Request activeRequest{};
+  DWORD diagnosticAt=0;
   for(;;){Request r;uint64_t token;{std::unique_lock<std::mutex> lock(mutex);cv.wait(lock,[&]{return stop||(!paused&&request.pid);});if(stop)return;r=request;token=generation;}
    const auto iterationStarted=std::chrono::steady_clock::now();
    if(token!=active){if(r.pid!=activeRequest.pid||r.match!=activeRequest.match){reader.close();sampler.reset();renderer.reset();diagram.reset();radarLayers.reset();motion.reset();}else {if(r.mode!=activeRequest.mode)sampler.reset();if(r.gpu!=activeRequest.gpu||r.selection.revision!=activeRequest.selection.revision)renderer.reset();}activeRequest=r;active=token;previousFrame=-1;previousRevision=0;}
@@ -39,7 +40,10 @@ class Worker {
     if(shared&&(!external::radar::recentMarkers(*shared,external::radar::publicationContext(fresh),GetTickCount())||!external::radar::supportsEffects(*shared,r.selection.profile.particles,r.selection.profile.lasers)))shared.reset();
     sampler.effects(r.selection.profile.particles,r.selection.profile.lasers);bool ok=shared||sampler.step(r.reveal,4096,r.mode==1);reader.begin();int frame=reader.get<int>(0xA8ED84,-1);
     if(ok&&(r.mode==1||frame!=previousFrame||sampler.revision()!=previousRevision)){
-     auto data=shared?*shared:sampler.snapshot(GetTickCount(),frame);if(!shared){data.observedMs=external::materialmotion::now();external::radar::preparePoses(data,external::SharedReadView{&reader});}assets.identity(r.pid,r.match);radarLayers.begin();data.map=external::sceneextras::decorateRadar(diagram.render(data.terrain,r.width,r.height),data,external::SharedReadView{&reader},assets,radarLayers);
+     auto data=shared?*shared:sampler.snapshot(GetTickCount(),frame);if(!shared){data.observedMs=external::materialmotion::now();external::radar::preparePoses(data,external::SharedReadView{&reader});}assets.identity(r.pid,r.match);
+     bool reusedDiagram=false;
+     if(r.mode==1){std::lock_guard<std::mutex> lock(mutex);if(token==generation&&latest&&external::radar::reusableRealScene(*latest,data,r.width,r.height)){data.map=latest->map;data.scene=latest->scene;reusedDiagram=true;}}
+     if(!reusedDiagram){radarLayers.begin();data.map=external::sceneextras::decorateRadar(diagram.render(data.terrain,r.width,r.height),data,external::SharedReadView{&reader},assets,radarLayers);}
      auto sampled=external::radar::publicationContext(fresh);
      const bool same=external::radar::sameWorld(data,sampled);
      // Sampling may span several game ticks. Keep the last complete image
@@ -49,11 +53,16 @@ class Worker {
       if(!shared&&r.mode==1)external::radar::sceneBank().publish(r.pid,r.match,true,std::make_shared<const external::radar::Frame>(data));
       // Publish terrain immediately; retain the last completed scene while the
       // next one loads. Initial MIX scans must not keep the whole window hidden.
-      {std::lock_guard<std::mutex> lock(mutex);if(token==generation){if(r.mode==1&&latest&&latest->scene&&latest->terrain->reveal==data.terrain->reveal&&latest->terrain->geo.same(data.terrain->geo)&&latest->scene->width==r.width&&latest->scene->height==r.height)data.scene=latest->scene;latest=std::make_shared<external::radar::Frame>(data);}}
+      {std::lock_guard<std::mutex> lock(mutex);if(token==generation){if(r.mode==1&&latest&&external::radar::reusableRealScene(*latest,data,r.width,r.height))data.scene=latest->scene;latest=std::make_shared<external::radar::Frame>(data);}}
       if(r.mode==1){
        const auto&profile=r.selection.profile;external::presentation::apply(profile,assets,data.terrain->geo.rawWidth*30,data.terrain->geo.rawHeight*15,r.width,r.height);assets.identity(r.pid,r.match);renderer.features(profile);renderer.directPresentation(true);
        motion.observe(data,external::materialmotion::now());auto animated=motion.sampleLatest(external::materialmotion::now(),profile.motion,profile.detail!=0);animated.tick=GetTickCount();
+       renderer.outputSized(true);
+       const auto renderStarted=std::chrono::steady_clock::now();
        auto scene=renderer.render(animated,r.width,r.height,external::SharedReadView{&reader},assets,{},unsigned(profile.scale),profile.detail!=0,true,profile.precision!=0,true);
+       const DWORD diagnosticNow=GetTickCount();if(!diagnosticAt||DWORD(diagnosticNow-diagnosticAt)>=5000){diagnosticAt=diagnosticNow;const auto&s=renderer.stageStats();const auto n=renderer.nativeStats();wchar_t line[768];
+        swprintf(line,768,L"minimap render ok=%d gpu=%d reused=%d diagram-reused=%d raster=%dx%d ground=%dx%d pages=%llu resident=%llu actors=%llu ms terrain=%.2f palette=%.2f decode=%.2f voxel=%.2f objects=%.2f resolve=%.2f effects=%.2f total=%.2f",bool(scene),external::xbrzadapter::gpuUsed(),s.reused,reusedDiagram,r.width,r.height,n.width,n.height,(unsigned long long)n.pages,(unsigned long long)n.resident,(unsigned long long)s.actors,s.terrainMs,s.palettesMs,s.decodeMs,s.voxelMs,s.objectsMs,s.resolveMs,s.effectsMs,std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-renderStarted).count());critical(line);
+       }
        if(scene&&!scene->gpu&&!scene->boltsRendered&&profile.lasers&&data.effects&&data.effects->boltsValid){const std::vector<uint8_t>*mask=nullptr;if(renderer.feedbackVisibility(mask)){
         const auto&geo=data.terrain->geo;external::nativefeedback::WorldView projection{-geo.offsetX*30,geo.offsetY*15,geo.rawWidth*30,geo.rawHeight*15,data.frame};
         auto decorated=std::make_shared<external::radar::Scene>(*scene);auto status=external::nativefeedback::effects(data.effects->bolts,*decorated,projection,mask,external::projectionZScale(fresh));if(status.complete)scene=std::move(decorated);

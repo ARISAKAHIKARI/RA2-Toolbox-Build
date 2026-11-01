@@ -4,11 +4,14 @@
 #include "object_canvas.h"
 #include "shape_depth.h"
 #include "watch_view.h"
+#include "live_shape_cache.h"
 #include <tuple>
 namespace external { namespace sceneextras {
 // GPL-3.0, Vera20K 3d42426: smudge.rs, instances/{bridges,fogged}.rs,
 // building_rubble.rs and beacon_art.rs. Cache art, never live object state.
 class Layers {
+ liveshape::Cache rankShapes_;
+ std::map<int,std::pair<std::shared_ptr<const voxel::Image>,std::shared_ptr<const std::vector<uint8_t>>>> ranks_;
  enum Mode {Overlay,OverlayShadow,Smudge,Rubble,RubbleShadow,FrozenBody,FrozenShadow,Bib,Animation,BeaconShape};
  using Key=std::tuple<uint32_t,uint32_t,int,uint32_t,int,int>;
  struct Cached {std::array<uint32_t,256>palette{};std::shared_ptr<const voxel::Image>image;std::shared_ptr<const std::vector<uint8_t>>rgba;};
@@ -52,11 +55,20 @@ class Layers {
   auto result=std::make_shared<const voxel::Image>(std::move(image));images_[key]={pal,result};bytes_+=cost;return result;
  }
 public:
+ template<class Read>std::shared_ptr<const voxel::Image> rankGlyph(Read read,int frame){
+  if(frame!=14&&frame!=15&&frame!=19)return {};uint32_t shape=0;if(!read(0xAC147C,&shape,4))return {};
+  auto image=rankShapes_.get(read,shape,frame,0x87F6C4);if(!image)return {};
+  auto&entry=ranks_[frame];if(entry.first!=image){auto rgba=std::make_shared<std::vector<uint8_t>>(image->pixels.size()*4);std::memcpy(rgba->data(),image->pixels.data(),rgba->size());entry={image,std::move(rgba)};}return image;
+ }
+ std::shared_ptr<const std::vector<uint8_t>> rankBytes(int frame)const{auto i=ranks_.find(frame);return i==ranks_.end()?nullptr:i->second.second;}
  std::shared_ptr<const std::vector<uint8_t>>imageBytes(const std::shared_ptr<const voxel::Image>&image){for(auto&item:images_)if(item.second.image==image){if(!item.second.rgba){auto bytes=std::make_shared<std::vector<uint8_t>>(image->pixels.size()*4);std::memcpy(bytes->data(),image->pixels.data(),bytes->size());item.second.rgba=bytes;}return item.second.rgba;}return {};}
- void begin(){palettes_.clear();frameCounts_.clear();}
- void reset(){images_.clear();palettes_.clear();frameCounts_.clear();terrain_.reset();cells_.clear();bytes_=0;}
- template<class Read,class Assets,class Draw>void ground(const radar::Frame&frame,Read read,Assets&assets,const lighting::State&scene,Draw draw){
-  if(!frame.terrain)return;const auto&t=*frame.terrain;const auto&geo=t.geo;GameView g(read);lighting::TintCache tints;
+ void begin(){palettes_.clear();frameCounts_.clear();rankShapes_.begin();}
+ void reset(){images_.clear();palettes_.clear();frameCounts_.clear();terrain_.reset();cells_.clear();bytes_=0;rankShapes_.reset();ranks_.clear();}
+ // Draws are a candidate: a caller must discard them when a required source
+ // is unavailable. A verified null optional resource is still an absence.
+ template<class Read,class Assets,class Draw>bool ground(const radar::Frame&frame,Read read,Assets&assets,const lighting::State&scene,Draw draw){
+  if(!frame.terrain)return false;const auto&t=*frame.terrain;const auto&geo=t.geo;bool complete=true;
+  auto checked=[&](uint32_t p,void*out,size_t n){bool ok=read(p,out,n);if(!ok)complete=false;return ok;};GameView g(checked);lighting::TintCache tints;
   if(terrain_!=frame.terrain){terrain_=frame.terrain;cells_.clear();for(size_t n=0;n<t.art.size();++n)if(t.art[n].cell&&!t.art[n].sourceHidden&&(t.art[n].smudgeType||t.art[n].overlayType))cells_.push_back(n);
   std::stable_sort(cells_.begin(),cells_.end(),[](size_t a,size_t b){auto da=a%512+a/512,db=b%512+b/512;return da!=db?da>db:a%512<b%512;});}
   const auto&cells=cells_;
@@ -64,7 +76,8 @@ public:
   // differently lit footprints must not collapse to a missing origin record.
   for(size_t n:cells){const auto&c=t.art[n];if(!c.smudgeType)continue;int w=g.template get<int>(c.smudgeType+0x298),h=g.template get<int>(c.smudgeType+0x29C);if(w<1||w>32||h<1||h>32||c.smudgeData>=w*h)continue;
    mapbounds::TileOrigin at;if(!geo.tileOrigin(int(n%512),int(n/512),c.level,at))continue;
-   auto image=sprite(read,assets,c.smudgeType,g.template get<uint32_t>(c.smudgeType+0xA4),0,0,Smudge,0,g.template get<uint32_t>(c.cell+0x34));if(!image)continue;
+   uint32_t shape=g.template get<uint32_t>(c.smudgeType+0xA4);if(!shape)continue;
+   auto image=sprite(read,assets,c.smudgeType,shape,0,0,Smudge,0,g.template get<uint32_t>(c.cell+0x34));if(!image){complete=false;continue;}
    int col=c.smudgeData%w,row=c.smudgeData/w;auto light=lighting::cell(read,c.cell,scene,lighting::Layer::Terrain,true,&tints);
    camera::Material material;material.nativeZ=true;draw(*image,float(at.x+30+30*(row-col)),float(at.y-15*(row+col)),1,1,0,light,0,0,image,vulkancompute::MotionIdentity{},material);
   }
@@ -74,13 +87,14 @@ public:
    uint32_t type=c.overlaySourceType?c.overlaySourceType:c.overlayType,shape=g.template get<uint32_t>(c.overlayType+0xA4);int index=c.overlayFrame;Mode mode=shadow?OverlayShadow:Overlay;
    bool bridge=(c.flags&0x80)!=0,crate=g.template get<uint8_t>(type+0x2AA)!=0,rubble=g.template get<uint8_t>(type+0x2B4)!=0;
    if(crate)index=0;
-   if(rubble&&!crate){if(!c.rubbleType||!g.template get<uint8_t>(c.rubbleType+0x1768))continue;type=c.rubbleType;uint32_t custom=g.template get<uint32_t>(type+0x14F4);if(custom){if(shadow)continue;shape=custom;index=0;}else{shape=g.template get<uint32_t>(type+0xA4);int count=frames(assets,type,shape);if(count/2<=3)continue;index=3;}
+   if(rubble&&!crate){if(!c.rubbleType||!g.template get<uint8_t>(c.rubbleType+0x1768))continue;type=c.rubbleType;uint32_t custom=g.template get<uint32_t>(type+0x14F4);if(custom){if(shadow)continue;shape=custom;index=0;}else{shape=g.template get<uint32_t>(type+0xA4);if(!shape)continue;int count=frames(assets,type,shape);if(count<=0)complete=false;if(count/2<=3)continue;index=3;}
     mode=shadow?RubbleShadow:Rubble;
    }else if(!shadow&&bridge&&(index==0||index==9)){static constexpr int latin[16]={0,1,2,3,3,2,1,0,2,3,0,1,1,0,3,2};index+=latin[((n/512)&3)*4+((n%512)&3)];}
-   if(shadow){int count=frames(assets,type,shape,mode==OverlayShadow);if(count<2||index>=count/2)continue;index+=count/2;}
+   if(!shape)continue;
+   if(shadow){int count=frames(assets,type,shape,mode==OverlayShadow);if(count<=0)complete=false;if(count<2||index>=count/2)continue;index+=count/2;}
    uint32_t sourceType=c.overlaySourceType?c.overlaySourceType:c.overlayType;bool resource=g.template get<uint8_t>(sourceType+0x2A9),wall=g.template get<uint8_t>(sourceType+0x2A8),drawFlat=g.template get<uint8_t>(sourceType+0x2B3),rock=g.template get<uint8_t>(sourceType+0x2B5),legacy=!resource&&!wall&&c.overlay==0x7E;
    int depthFlags=(resource||legacy||(!wall&&drawFlat)?1:0)|(!resource&&!legacy&&!wall&&!drawFlat&&!rock?2:0)|(legacy?16:0);if(!shadow&&(resource||legacy))depthFlags|=int(g.template get<uint8_t>(c.cell+0x11C))<<8;
-   auto image=sprite(read,assets,type,shape,index,0,mode,depthFlags);if(!image)continue;
+   auto image=sprite(read,assets,type,shape,index,0,mode,depthFlags);if(!image){complete=false;continue;}
    mapbounds::TileOrigin at;if(!geo.tileOrigin(int(n%512),int(n/512),c.level,at))continue;
    uint32_t source=c.overlaySourceType?c.overlaySourceType:c.overlayType;int offset=watch::overlayOffset(read,c.cell,source,c.overlay,c.overlayFrame);
    float px=float(at.x+30),py=float(at.y+15+offset),base=float((n%512+n/512)*15+offset);if(!shadow&&bridge)base+=60;
@@ -88,21 +102,22 @@ public:
    auto light=shadow?lighting::State{}:lighting::cell(read,c.cell,scene,bridge?lighting::Layer::Bridge:lighting::Layer::Terrain,true,&tints);
    if(!shadow&&g.template get<uint8_t>(source+0x2A9))light={};else if(!shadow&&g.template get<uint8_t>(source+0x2A8))light=lighting::cell(read,c.cell,scene,lighting::Layer::Object,false);
    camera::Material material;material.nativeZ=true;material.nativeZAdjust=-15*int(c.level)-2;draw(*image,px,py,1,1,base,light,2,0,image,vulkancompute::MotionIdentity{},material);
-  }
+  }return complete;
  }
- template<class Read,class Assets,class Draw>void frozen(const radar::Frame&frame,Read read,Assets&assets,const lighting::State&scene,double zscale,Draw draw){
-  if(!frame.extras||!frame.terrain||frame.terrain->reveal)return;GameView g(read);const auto&geo=frame.terrain->geo;
+ template<class Read,class Assets,class Draw>bool frozen(const radar::Frame&frame,Read read,Assets&assets,const lighting::State&scene,double zscale,Draw draw){
+  if(!frame.terrain)return false;if(frame.terrain->reveal)return true;if(!frame.extras||!frame.extras->frozenValid)return false;
+  bool complete=true;auto checked=[&](uint32_t p,void*out,size_t n){bool ok=read(p,out,n);if(!ok)complete=false;return ok;};GameView g(checked);const auto&geo=frame.terrain->geo;
   for(const auto&v:frame.extras->frozen){if(v.records.empty())continue;const auto&body=v.records[0];if(g.template get<uint8_t>(body.type+0x1701))continue;
    const float x=float((int64_t(v.point.x)-v.point.y)*30/256+geo.offsetX*30),y=float((int64_t(v.point.x)+v.point.y-256)*15/256-geo.offsetY*15-screenHeight(v.point.z,zscale));
    const float base=float((int64_t(v.point.x)+v.point.y-256)*15/256)-15;
    auto light=lighting::object(read,body.type,v.owner,3,v.point.x,v.point.y,v.point.z,scene);auto top=lighting::at(read,v.point.x,v.point.y,v.point.z,scene);light.intensity=(top.intensity>=0?top.intensity:top.ambient*10)+g.template get<int16_t>(body.type+0x1548);
    uint32_t shape=g.template get<uint32_t>(body.type+0xA4);
-   auto emit=[&](uint32_t type,uint32_t shape,int index,Mode mode,int flags,float z,const lighting::State&light){if(auto image=sprite(read,assets,type,shape,index,v.owner,mode,flags)){camera::Material material;material.nativeZ=true;material.nativeZAdjust=-screenHeight(v.point.z,zscale)-2+int(base-z);draw(*image,x,y,1,1,z,light,2,0,image,vulkancompute::MotionIdentity{},material);}};
+   auto emit=[&](uint32_t type,uint32_t shape,int index,Mode mode,int flags,float z,const lighting::State&light){if(!shape)return;if(auto image=sprite(read,assets,type,shape,index,v.owner,mode,flags)){camera::Material material;material.nativeZ=true;material.nativeZAdjust=-screenHeight(v.point.z,zscale)-2+int(base-z);draw(*image,x,y,1,1,z,light,2,0,image,vulkancompute::MotionIdentity{},material);}else complete=false;};
    emit(body.type,shape,body.frame,FrozenBody,body.noZShape&255,base,light);
-   int count=frames(assets,body.type,shape);if(body.frame<count/2)emit(body.type,shape,body.frame+count/2,FrozenShadow,0,base,{});
+   int count=shape?frames(assets,body.type,shape):0;if(shape&&count<=0)complete=false;if(body.frame<count/2)emit(body.type,shape,body.frame+count/2,FrozenShadow,0,base,{});
    emit(body.type,g.template get<uint32_t>(body.type+0x1518),body.frame,Bib,0,base+1,light);
    for(size_t n=1;n<v.records.size();++n){const auto&r=v.records[n];if(g.template get<int>(r.type+0x2D4)>g.template get<int>(0xA8EB78,2))continue;auto animLight=lighting::at(read,v.point.x,v.point.y,v.point.z,scene);if(g.template get<uint8_t>(r.type+0x35D))animLight={};emit(r.type,g.template get<uint32_t>(r.type+0xA4),r.frame,Animation,0,base-r.zAdjust,animLight);}
-  }
+  }return complete;
  }
  template<class Read,class Assets,class Draw>void beacons(const radar::Frame&frame,Read read,Assets&assets,double zscale,Draw draw){
   if(!frame.extras||!frame.terrain)return;const auto&e=*frame.extras;int half=e.beaconFrames/2;if(half<1||half>4096||frame.frame<0)return;const auto&geo=frame.terrain->geo;

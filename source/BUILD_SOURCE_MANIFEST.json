@@ -6,7 +6,7 @@
   "resources": "Update package reuses existing assets/profiles/preprocessing runtime/engine",
   "resources_legacy_reuse": true,
   "build_protocol": 85,
-  "validation": "This build: complete host/runtime/broker and diagnostic builds; 686 ABI entries; control model and real Windows data bridge; host/UI routes; technology full-pass and loader checks. Earlier audit evidence retained separately. No live game/RA2OL validation.",
+  "validation": "This build: complete x64 host/x86 Runtime/broker plus diagnostic build, production renderer/recovery/lifetime fixtures, real Win32 HWND rebind, ABI and PE/loader verification. Synthetic CPU timings are not live game FPS. No live game or RA2OL multiplayer validation.",
   "build_requirement": "Zig 0.13.0; x86 paired build or x64 host with x86 runtime and broker.",
   "settings": {
     "Orders.MegaMissionBackend": "0=constructor; 1=high-level MP; SP uses constructor/DoList centrally",
@@ -347,5 +347,26 @@
     "risk": "direct simulation data write; RA2OL multiplayer effect unverified",
     "note": "research/2026-11-01-control-house-flag-mode.md"
   },
-  "unload_escape_clarification": "ordinary native events and legality queries, no feature-owned code/vtable patches; neutral feature labels restored, no established query/OOS causality"
+  "unload_escape_clarification": "ordinary native events and legality queries, no feature-owned code/vtable patches; neutral feature labels restored, no established query/OOS causality",
+  "tech_enhancement_world_recovery": {
+    "baseline_commit": "09455e9e9929ed118689c1d5a82718ddb1b2789c",
+    "world_identity": "Scenario/session/observed-frame watermark plus retained per-Type identity; command epoch and local House changes restore before rebinding",
+    "pure_data_full_tech_mode_added": false,
+    "note": "research/2026-11-01-tech-data-candidates-and-recovery.md",
+    "game_tested": false,
+    "multiplayer_tested": false
+  },
+  "render_continuity_and_hook_lifetime": {
+    "baseline_commit": "09455e9e9929ed118689c1d5a82718ddb1b2789c",
+    "rendering": "Camera-independent sidebar HUD, checked passenger/material publication, monotonic shared scene bank, output-sized retained ground for minimap/watch, native rank pips",
+    "visibility": "Configurable unified overlay toggle, default VK_OEM_3; command/input clocks and Hook ownership remain independent",
+    "ownership": "World identity and command authority separate; same-thread HWND rebind retains subscription; observer/defeat/pause/temporary read failure do not imply process exit",
+    "native_fix": "Game::hWnd at B73550 read as DWORD, matching original 4D1890/70396B/454552, not an 8-bit FogOfWar flag",
+    "risk_labels": "Native weapon/range queries and original-map CRC shadow have no high-risk prefix; network House preservation remains high-risk",
+    "note": "research/2026-11-01-render-continuity-and-hook-lifetime.md",
+    "evidence": "research/evidence/render-continuity-build.json",
+    "game_tested": false,
+    "multiplayer_tested": false,
+    "gpu_live_tested": false
+  }
 }

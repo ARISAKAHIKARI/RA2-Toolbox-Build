@@ -1,5 +1,6 @@
 #include "construction_catalog.h"
 #include "native_cameos.h"
+#include "native_badge_display.h"
 #include "construction_buffer.h"
 #include "../../unit_monitor/source/icon_cache.h"
 #include "../../unit_monitor/source/cameo_reader.h"
@@ -10,6 +11,7 @@ static construction::Book books[4];static std::vector<Choice> choices;static HWN
 static uint32_t current[4],currentID[4],lastPID=0,house,refreshed=0,nextToken=0;
 static int activeTab=-1,selectedTab=-1,lastNativeTab=-1,scroll=0,hoverChoice=-1,hoverQueue=-1;static um::IconCache& icons=um::sharedIconCache();static construction::Layout layout;
 static construction::NativeFrame nativeFrame;static uint32_t nativeAt=0;
+static construction::NativeDisplay nativeDisplay;
 static HFONT panelFont;static int fontHeight=0;static bool geometryReady=false;
 static construction::PanelBuffer panelBuffer,panelSpare;
 static construction::Layout paintedLayout;static bool paintReady=false;
@@ -60,7 +62,7 @@ static bool factoryState(int tab,uint32_t&f,uint32_t&p){
 }
 static void queueLog(int tab,const wchar_t*reason){const auto&b=books[tab];critical(L"Construction queue: "+std::wstring(reason)+L" tab="+std::to_wstring(tab)+L" match="+std::to_wstring(b.match)+L" parent="+std::to_wstring(b.id)+L" stage="+std::to_wstring(b.stage)+L" head="+std::to_wstring(b.head())+L" count="+std::to_wstring(b.items.size()));}
 static bool placed(uint32_t p){return !get<uint8_t>(p+0x81,1)&&get<uint8_t>(p+0x90)&&get<uint8_t>(p+0x74);}
-static void hide(){publishReservationPolicy({});geometryReady=false;nativeFrame={};nativeAt=0;resetPaint();if(window)ShowWindow(window,SW_HIDE);}
+static void hide(){publishReservationPolicy({});geometryReady=false;nativeFrame={};nativeAt=0;nativeDisplay.clear();resetPaint();if(window)ShowWindow(window,SW_HIDE);}
 static void cancel(int tab){auto&b=books[tab];for(int i=0;i<commandQueue.size;)if((commandQueue.slots[i].command==ProduceReserved||commandQueue.slots[i].command==ProduceDeferred)&&commandQueue.slots[i].token==b.token)commandQueue.discard(i);else ++i;b={};}
 static void reset(){for(int tab=0;tab<4;++tab){cancel(tab);current[tab]=currentID[tab]=0;}resetUnitBudgets();choices.clear();activeTab=selectedTab=lastNativeTab=-1;refreshed=0;hide();}
 static int typeSlot(int index){for(int i=0;i<snap.typeCount;++i)if(snap.types[i].kind==absKind(index)&&snap.types[i].index==typeIndex(index))return i;return -1;}
@@ -174,11 +176,13 @@ static void consumeNativeClick(){
  int slot=typeSlot(c.index);uint32_t types=get<uint32_t>(0xA83C68+4);int count=get<int>(0xA83C68+16,-1);
  if(slot>=0&&types>=0x10000&&c.index>=0&&c.index<count&&count<=4096){uint32_t type=get<uint32_t>(types+c.index*4);if(type>=0x10000)reserveChoice({slot,c.index,c.tab,type,false},true,true);}
 }
+static int nativeBadgeTab(){return nativeDisplay.tab();}
 static std::vector<construction::NativeBadge> nativeBadges(){
- std::vector<construction::NativeBadge> out;if(!displayReady()||get<uint32_t>(0xA83D4C)!=house)return out;
- if(!nativeAt||uint32_t(GetTickCount()-nativeAt)>=16)readNative();
- int tab=nativeFrame.tab;if(tab<0||tab>1)return out;auto&b=books[tab];if(b.match!=commandMatch()||b.house!=house)return out;
- for(const auto&c:nativeFrame.cells){int mask=0;for(int i=0;i<int(b.items.size());++i)if(b.items[i]==c.index)mask|=1<<i;
+ std::vector<construction::NativeBadge> out;if(!displayReady()||get<uint32_t>(0xA83D4C)!=house){nativeDisplay.clear();return out;}
+ auto frame=nativeDisplay.sample([](uint32_t at,void*out,size_t n){return externalReader.readFresh(at,out,n);},
+  {pid,commandMatch(),house,snap.width,snap.height},GetTickCount());
+ if(!frame)return out;int tab=frame->tab;if(tab<0||tab>1)return out;auto&b=books[tab];if(b.match!=commandMatch()||b.house!=house)return out;
+ for(const auto&c:frame->cells){int mask=0;for(int i=0;i<int(b.items.size());++i)if(b.items[i]==c.index)mask|=1<<i;
   if(mask)out.push_back({c.x,c.y+c.h-16,c.w,16,mask});}
  return out;
 }
@@ -407,6 +411,9 @@ static void service(){
    if(!b.missing)b.missing=now;else if(uint32_t(now-b.missing)>=500){queueLog(tab,L"future-prerequisite-canceled");cancel(tab);notify(L"前置科技已取消或失效，对应预定已取消。");}
   }else b.missing=0;
  }
+ // A hidden overlay closes only its click surface. The production FIFO above
+ // continues to submit and acknowledge native orders while displays are off.
+ if(!overlayvisibility::visible()){hide();return;}
  int nativeTab=get<int>(0x87F7E8+0x539C,-1);if(nativeTab!=lastNativeTab){lastNativeTab=nativeTab;selectedTab=-1;}
  activeTab=selectedTab>=0?selectedTab:nativeTab;
  if(activeTab<0||activeTab>3){hide();return;}

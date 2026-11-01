@@ -32,6 +32,7 @@ namespace external { namespace cameraassets {
 // observation windows and real-scene minimap without sharing mutable readers.
 template<class Reader>class Context {
  Reader&reader_;uint32_t process_=0,match_=0;
+ uint64_t presentationRevision_=0;uint32_t presentationTheater_=0;bool presentationRevisionKnown_=false;
  bool lastPaletteLive_=false,terrainPaletteLive_=false,presentation_=false,presentationVplFresh_=false;
  bool colorPrecision_=false,gpuPresentation_=false,voxelRelight_=true,spriteRelight_=true;
  gpuvoxel::PacketCache gpuPackets_;
@@ -69,21 +70,27 @@ public:
  void presentationPalette(pixelupgrade::PaletteRange mode){paletteRange_=mode;}
  explicit Context(Reader&r):reader_(r),read{&r},artINI(read,external::assets::LiveINI::ArtObject),rulesINI(read,external::assets::LiveINI::RulesPointer,true),cameoCatalog(read){}
  void identity(uint32_t process,uint32_t match){
-  if(process_!=process||match_!=match){presentationPalettes_.clear();overlayPalettes_.clear();gpuPackets_.clear();gpuPalettes_.clear();gpuVplSnapshot_.reset();gpuVplSignature_=0;terrainPaletteLive_=presentation_=presentationVplFresh_=false;voxelLight={};voxelChecked=voxelNative=false;voxelRevision=~uint64_t(0);}
+  if(process_!=process||match_!=match){presentationRevision_=0;presentationRevisionKnown_=false;presentationPalettes_.clear();overlayPalettes_.clear();gpuPackets_.clear();gpuPalettes_.clear();gpuVplSnapshot_.reset();gpuVplSignature_=0;terrainPaletteLive_=presentation_=presentationVplFresh_=false;voxelLight={};voxelChecked=voxelNative=false;voxelRevision=~uint64_t(0);}
   process_=process;match_=match;update();
  }
 
 external::assets::Files files;
 std::string failure;
 void update(){files.update(reader_,process_,match_);vpl();}
-uint64_t revision(){return files.revision()^(uint64_t(word(0x822CF8)+1)*0x9e3779b97f4a7c15ull)^
-    (paletteRange_==pixelupgrade::PaletteRange::FullRGB?0x45e391acbbdb1891ull:0)^(detail_?0x312df964ba273d19ull:0)^(detail_?uint64_t(presentationRasterScale())*0xf7e71b69894eb76bull:0)^(colorPrecision_?0x5a730c99b194d6e3ull:0);}
+// An unavailable theatre is not theatre zero. A render may only replace its
+// complete front after this checked snapshot; legacy cache users retain the
+// last key on a transient read failure. identity() retires it across worlds.
+bool revisionChecked(uint64_t&out){uint32_t theater=0;if(!read(0x822CF8,&theater,sizeof theater)||theater>=6)return false;
+ out=files.revision()^(uint64_t(theater+1)*0x9e3779b97f4a7c15ull)^
+    (paletteRange_==pixelupgrade::PaletteRange::FullRGB?0x45e391acbbdb1891ull:0)^(detail_?0x312df964ba273d19ull:0)^(detail_?uint64_t(presentationRasterScale())*0xf7e71b69894eb76bull:0)^(colorPrecision_?0x5a730c99b194d6e3ull:0);
+ presentationRevision_=out;presentationTheater_=theater;presentationRevisionKnown_=true;return true;}
+uint64_t revision(){uint64_t value=0;return revisionChecked(value)?value:presentationRevision_;}
 uint64_t voxelLightingRevision()const{return voxelLight.signature();}
 bool voxelLightingAvailable()const{return !voxelRelight_||!presentation_||presentationVplFresh_;}
 bool cameo(const char*name,std::vector<uint8_t>&out){update();return files.load(name,out);}
 uint32_t word(uint32_t p){uint32_t v=0;read(p,&v,4);return v;}
 std::string text(uint32_t p,unsigned n){return external::assets::text(read,p,n);}
-std::string theater(int field,int size){unsigned n=word(0x822CF8);return n<6?text(0x7E1B78+n*112+field,size):std::string{};}
+std::string theater(int field,int size){uint32_t n=presentationTheater_;if(!presentationRevisionKnown_&&(!read(0x822CF8,&n,sizeof n)||n>=6))return {};return text(0x7E1B78+n*112+field,size);}
 external::assets::EffectiveINI<Read> artINI,rulesINI;uint64_t iniRevision=~uint64_t(0);
  std::shared_ptr<const external::voxel::Image> buildingMask;bool buildingMaskBiased=false;uint64_t maskRevision=~uint64_t(0);
  external::assets::RuntimeCameos<Read> cameoCatalog;external::voxel::Vpl voxelLight;uint64_t voxelRevision=~uint64_t(0);

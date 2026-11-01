@@ -5,6 +5,7 @@
 #include "control_mode_policy.h"
 namespace assist {
 struct AdditionalSettings {
+ uint32_t overlayKey=0xC0; // ` / · on the standard keyboard; presentation only.
  uint32_t stickyKey='S'|(6<<8);
  uint32_t missionModeKeys[3]{}; // Sleep, Guard, Harmless; empty by default
  bool formationEnabled=false;uint32_t formationHold=18,formationKeys[6]={'Z','X','C','V','B','N'},formationMouse=2;

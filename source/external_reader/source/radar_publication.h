@@ -1,6 +1,15 @@
 #pragma once
 #include "radar_map.h"
 namespace external { namespace radar {
+// Worker identity (pid/match/mode/profile) is checked by its generation. This
+// predicate permits skipping a hidden diagram only while a complete real
+// scene of the same world and requested size can remain on screen.
+inline bool reusableRealScene(const Frame&previous,const Frame&current,int width,int height){
+ return previous.terrain&&current.terrain&&previous.scene&&previous.frame<=current.frame&&
+  previous.terrain->reveal==current.terrain->reveal&&previous.terrain->geo.same(current.terrain->geo)&&
+  previous.scene->width==width&&previous.scene->height==height&&
+  (previous.scene->gpu||previous.scene->pixels.size()==size_t(width)*height);
+}
 struct PublicationContext {uint32_t house=0,cells=0;int frame=-1;bool active=false;mapbounds::Bounds bounds;bool readable=false;int rawWidth=0,rawHeight=0;};
 template<class Read>PublicationContext publicationContext(Read read){
  PublicationContext out;uint8_t battlefield=0;

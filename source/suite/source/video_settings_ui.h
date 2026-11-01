@@ -7,6 +7,7 @@ namespace suite {
 enum class VideoGroup {Render,Monitor};
 struct VideoEntry {DisplayOption option;VideoGroup group;const wchar_t*label;const wchar_t*choices;};
 inline constexpr VideoEntry videoEntries[]={
+ {OverlayToggleKey,VideoGroup::Render,L"所有覆盖层显隐键（默认 · / `）",L""},
  {RenderUpgrade,VideoGroup::Render,L"渲染升级",L""},
  {RenderHighRefresh,VideoGroup::Render,L"高刷移动补帧（只读帧号取样）",L""},
  {RenderPhysical,VideoGroup::Render,L"按显示器物理像素绘制",L""},
@@ -80,7 +81,7 @@ public:
     else if(type==DisplayControl::Hotkey){h=ctl(HOTKEY_CLASSW,L"",WS_TABSTOP,left,y,w,28,Base+e.option);modernui::pressKey(h);}
     else{h=ctl(L"EDIT",L"",WS_BORDER|ES_NUMBER|ES_AUTOHSCROLL|WS_TABSTOP,left,y,w,28,Base+e.option);SendMessageW(h,EM_SETLIMITTEXT,5,0);}
    }
-   controls_[e.option]=h;EnableWindow(h,FALSE);modernui::tip(h,e.label);y+=42;
+   controls_[e.option]=h;EnableWindow(h,FALSE);modernui::tip(h,e.option==OverlayToggleKey?L"统一显示或隐藏统计、小地图、副相机和战场信息。只在游戏前台且未聊天时生效；不暂停指令、不卸载 Hook。可在按键菜单中清除绑定。":e.label);y+=42;
   }
   if(group==VideoGroup::Render){status_=ctl(L"STATIC",L"正在同步渲染设置…",0,x,y,width,180,0);y+=194;modernui::tip(controls_[RenderGPU],L"GPU 不可用时回退 CPU；不同视角共用场景与绘制参数。状态显示设备、回退原因以及场景各阶段耗时。");}
   sync();return y;

@@ -10,12 +10,12 @@ struct Selection {
  double scaleX=1,scaleY=1;
  int rasterScale=1;
 };
-// Dimensions are the observed game viewport and the actual presentation
-// client, both in pixels. This chooses geometry samples, never a display mode.
+// Source dimensions describe world/view coordinates; no source framebuffer is
+// allocated here. Only the actual destination must obey pixel-allocation caps.
 inline Selection choose(double sourceWidth,double sourceHeight,double targetWidth,double targetHeight){
  Selection out;
  auto bounded=[](double width,double height){return std::isfinite(width)&&std::isfinite(height)&&width>=1&&height>=1&&width<=MaxDimension&&height<=MaxDimension&&width*height<=MaxPixels;};
- if(!bounded(sourceWidth,sourceHeight)||!bounded(targetWidth,targetHeight))return out;
+ if(!std::isfinite(sourceWidth)||!std::isfinite(sourceHeight)||sourceWidth<1||sourceHeight<1||sourceWidth>32768||sourceHeight>32768||!bounded(targetWidth,targetHeight))return out;
  out.scaleX=targetWidth/sourceWidth;out.scaleY=targetHeight/sourceHeight;
  double required=std::max(out.scaleX,out.scaleY);
  // Above the bounded renderer's limit the caller must retain its fallback;

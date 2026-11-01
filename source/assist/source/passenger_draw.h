@@ -1,6 +1,12 @@
 #include "passenger_motion.h"
+#include "display_sample_lease.h"
 static passengers::Motion passengerMotion;
-static void clearPassengerDisplay(){passengerMotion.clear();}
+struct PassengerDisplayKey {
+ uint32_t pid=0,match=0,house=0;int width=0,height=0,cameraX=0,cameraY=0;bool inspect=false,persistent=false;
+ bool operator==(const PassengerDisplayKey&o)const{return pid==o.pid&&match==o.match&&house==o.house&&width==o.width&&height==o.height&&cameraX==o.cameraX&&cameraY==o.cameraY&&inspect==o.inspect&&persistent==o.persistent;}
+};
+static displaylease::Sample<PassengerDisplayKey,std::vector<external::passengers::Bubble>> passengerSamples;
+static void clearPassengerDisplay(){passengerMotion.clear();passengerSamples.clear();}
 struct PassengerVisual {
  uint32_t id=0,color=0;float left=0,top=0,anchor=0;int width=0,height=0;bool danger=false;std::vector<std::wstring> lines;
  bool operator==(const PassengerVisual&o)const{return id==o.id&&color==o.color&&left==o.left&&top==o.top&&width==o.width&&height==o.height&&anchor==o.anchor&&danger==o.danger&&lines==o.lines;}
@@ -8,11 +14,15 @@ struct PassengerVisual {
 static std::vector<PassengerVisual> passengerView(uint32_t renderNow){
  // Called once per overlay paint, after the reader's per-paint page cache and
  // camera are refreshed. Position and contents share the overlay's cadence.
- std::vector<PassengerVisual> out;if(!enabled||!externalData||snap.chat||(!extra.passengerBubbles&&!extra.dangerPassengers)){passengerMotion.clear();return out;}
+ std::vector<PassengerVisual> out;if(!enabled||!externalData||snap.chat||(!extra.passengerBubbles&&!extra.dangerPassengers)){clearPassengerDisplay();return out;}
  external::Projection projection;projection.width=snap.width-160;projection.height=snap.height;projection.cameraX=snap.cameraX;projection.cameraY=snap.cameraY;
  projection.zScale=externalReader.get<double>(0xB0CD48,0.0866025403784);
  auto read=[](uint32_t at,void*p,size_t n){return externalReader.read(at,p,n);};
- auto bubbles=external::passengers::sample(read,externalReader.get<uint32_t>(0xA83D4C),projection,extra.passengerBubbles,extra.dangerPassengers);
+ uint32_t house=0;bool houseReady=read(0xA83D4C,&house,4)&&house>=0x10000;
+ PassengerDisplayKey key{pid,externalData->match,house,projection.width,projection.height,projection.cameraX,projection.cameraY,extra.passengerBubbles,extra.dangerPassengers};
+ auto sampled=external::passengers::sampleChecked(read,house,projection,extra.passengerBubbles,extra.dangerPassengers);
+ const auto*held=passengerSamples.observe(key,houseReady&&sampled.complete,std::move(sampled.bubbles),renderNow);
+ if(!held){passengerMotion.clear();return out;}const auto&bubbles=*held;
  const auto* anchors=passengerMotion.update(bubbles,externalData->match,externalData->frame,externalData->sampledTick,renderNow,projection.cameraX,projection.cameraY);
  for(size_t index=0;index<bubbles.size();++index){const auto&b=bubbles[index];const auto&anchor=anchors[index];
   PassengerVisual v;v.id=b.id;v.color=b.color;v.danger=b.dangerous;size_t longest=0;

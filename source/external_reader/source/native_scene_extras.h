@@ -20,8 +20,11 @@ template<class T>T field(const uint8_t*p){T out{};std::memcpy(&out,p,sizeof out)
 inline bool point(nativefeedback::Point3 p){return p.x>=0&&p.y>=0&&p.x<512*256&&p.y<512*256&&p.z>=-16384&&p.z<=65536;}
 template<class Read,class Visit>bool scan(Read read,uint32_t array,int max,Visit visit){GameView g(read);std::vector<uint32_t>values,after;if(!g.vecChecked(array,values,max))return false;std::set<uint32_t>seen;for(auto p:values)if(p<0x10000||!seen.insert(p).second||!visit(p))return false;return g.vecChecked(array,after,max)&&values==after;}
 template<class Read>Snapshot capture(Read read,uint32_t observer,int frame,bool fog,bool particles){
- Snapshot out;GameView g(read);
- if(fog&&g.template get<uint8_t>(0xB73550)){
+ Snapshot out;GameView g(read);uint32_t gameWindow=0;
+ // DrawAll4D1890 tests the full HWND, not a FogOfWar byte. A valid window
+ // with low byte zero still draws saved buildings. Unknown is not absence.
+ const bool windowKnown=!fog||read(0xB73550,&gameWindow,sizeof gameWindow);out.frozenValid=windowKnown&&(!fog||!gameWindow);
+ if(fog&&windowKnown&&gameWindow){
   out.frozenValid=scan(read,0x8B3D10,16384,[&](uint32_t p){std::array<uint8_t,0x78>d{},after{};if(!read(p,d.data(),d.size())||field<uint32_t>(d.data())!=0x7E8B38)return false;
    if(!d[0x74]||field<int>(d.data()+0x30)!=6)return true;Frozen v;v.object=p;v.id=field<uint32_t>(d.data()+0x10);v.owner=field<uint32_t>(d.data()+0x28);v.point=field<nativefeedback::Point3>(d.data()+0x34);v.level=field<int8_t>(d.data()+0x50);
    int n=field<int>(d.data()+0x6C),cap=field<int>(d.data()+0x64);uint32_t items=field<uint32_t>(d.data()+0x60);if(!point(v.point)||n<1||n>64||cap<n||cap>4096||items<0x10000)return false;

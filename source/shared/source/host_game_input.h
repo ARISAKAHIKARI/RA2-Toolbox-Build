@@ -282,6 +282,18 @@ inline HWND nativeWindow(DWORD pid,DWORD thread,NativeWindowProbe* detail=nullpt
  SetLastError(ERROR_SUCCESS);
  return window;
 }
+// Recreated HWND on the existing game thread is a delivery-address change,
+// not a reason to stop Runtime or release either thread Hook/subscriber.
+inline bool rebindWindow(Subscription id,HWND window){
+ auto&h=host();std::lock_guard<std::recursive_mutex>lock(h.mutex);
+ for(const auto&lease:h.leases)if(id&&lease.id==id){
+  auto&t=h.targets[lease.target];DWORD owner=0;
+  if(!window||GetWindowThreadProcessId(window,&owner)!=t.thread||owner!=t.pid||nativeWindow(t.pid,t.thread)!=window)return false;
+  if(t.window!=window){t.window=window;t.pointer={};if(t.control)InterlockedExchange(&t.control->wakePending,0);}
+  return true;
+ }
+ return false;
+}
 inline Subscription install(gameentry::Client client,DWORD thread,DWORD pid,HWND window){
  auto&h=host();std::lock_guard<std::recursive_mutex>lock(h.mutex);
  h.installStage=L"window-owner-check";

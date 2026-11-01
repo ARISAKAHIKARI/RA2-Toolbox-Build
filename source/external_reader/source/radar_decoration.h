@@ -1,11 +1,18 @@
 #pragma once
 #include "scene_extra_layers.h"
 namespace external { namespace sceneextras {
-inline bool hasRadar(const radar::Frame&frame){return frame.extras&&(!frame.extras->radar.empty()||!frame.extras->beacons.empty());}
+inline bool hasRadar(const radar::Frame&frame){return (frame.extras&&(!frame.extras->radar.empty()||!frame.extras->beacons.empty()))||std::any_of(frame.markers.begin(),frame.markers.end(),[](const auto&m){return m.rank>=0;});}
 // RadarClass660000 and BeaconManager431700 order. No event admission, EVA,
 // beacon placement, message editing or Spacebar-history writes occur here.
 template<class Read,class Assets,class Sink>void radarDecorations(const radar::Frame&frame,int width,int height,Read read,Assets&assets,Layers&layers,Sink&sink){
- if(!frame.extras||!frame.terrain)return;const auto&geo=frame.terrain->geo;const double sx=double(width)/geo.rw,sy=double(height)/geo.rh;
+ if(!frame.terrain)return;const auto&geo=frame.terrain->geo;const double sx=double(width)/geo.rw,sy=double(height)/geo.rh;
+ // Insignia is a screen annotation, like a radar beacon. Retain native PIPS
+ // frames (one star / elite stars), at a readable minimum of one device pixel.
+ const double zscale=projectionZScale(read),pixelX=double(width)/(geo.rawWidth*30),pixelY=double(height)/(geo.rawHeight*15);
+ for(const auto&m:frame.markers)if(m.rank>=0&&m.kind>=0&&m.kind<=3&&std::isfinite(m.u)&&std::isfinite(m.v)&&m.u>=0&&m.u<1&&m.v>=0&&m.v<1){
+  if(auto image=layers.rankGlyph(read,m.rank))sink.uiImage(image,layers.rankBytes(m.rank),m.u*width+2,m.v*height-screenHeight(m.z,zscale)*pixelY+2,std::max(1.,pixelX),std::max(1.,pixelY));
+ }
+ if(!frame.extras)return;
  for(const auto&e:frame.extras->radar){uint32_t bright=e.type==0||e.type==3||e.type==4?0xffffff:e.type==5?0x00ffff:e.type==1||e.type==2||e.type==11||e.type==12?0xffff00:0;if(!bright)continue;
   uint32_t color=0;for(int sh:{0,8,16})if((bright>>sh)&255)color|=unsigned(128+127*std::clamp(e.fade,0.f,1.f))<<sh;
   int dx=int(e.radius*std::cos(e.rotation)),dy=int(e.radius*std::sin(e.rotation));int points[4][2]={{e.x+dx,e.y+dy},{e.x-dy,e.y+dx},{e.x-dx,e.y-dy},{e.x+dy,e.y-dx}};
