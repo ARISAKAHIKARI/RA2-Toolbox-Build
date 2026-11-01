@@ -636,9 +636,10 @@ static void applyHideMode(){
 static void autoTick(){DWORD now=GetTickCount();if(uint32_t(now-lastAutoCheck)<1000)return;lastAutoCheck=now;if(autoPaused&&cursorReader.valid()&&!live())autoPaused=false;if(!autoStart||autoPaused||running||!playbackReady)return;try{attach(true);start();}catch(const std::exception& e){status(L"自动等待："+widen(e.what()));}}
 static void leaveGame(){
  bridgeFrame.clear();lanboStream.reset();usingHeldSample=false;
- // If the replacement is not visible, restore the original immediately.
- // Prevents blank cursor on platform foreground switches, menus, and Alt-Tab.
- if(mode==L"hide")hookStop(40);
+ // Leaving the client changes presentation, not the subscription lifetime.
+ // Keep our paired native hide and tooltip slot; Runtime releases only its
+ // Windows cursor presentation while the desktop/other app owns the pointer.
+ if(mode==L"hide"&&shared){shared->menuSuspend=2;gameinput::wake(hook);}nativeInvisibleAt=0;
  lastPhase=size_t(-1);nativeMenuHold=false;nativeMenuCandidateAt=0;previousObservedFrame=-1;fallbackTracker.reset();if(wasInside){lastFrame=-2;tween.reset();timing.resetObservation();activeMotion.reset();}wasInside=false;refreshTries=0;burst.cancel();SetRectEmpty(&clickRegion);ShowWindow(overlay,SW_HIDE);if(hud)ShowWindow(hud,SW_HIDE);}
 static void refreshGameCursor(){if(nativeGameRefresh&&mode==L"hide")return;/* Do not force Windows arrow while native cursor owns it. */if(!focusRefresh||refreshTries<=0||int32_t(GetTickCount()-refreshAt)<0)return;--refreshTries;refreshAt=GetTickCount()+150;gameinput::refreshCursor(game,pid);}
 static void bitmap(int w,int h){if(dib&&dibw==w&&dibh==h)return;if(dib){SelectObject(memdc,oldbm);DeleteObject(dib);dib=0;}if(!memdc)memdc=CreateCompatibleDC(NULL);BITMAPINFO bi={};bi.bmiHeader.biSize=sizeof(BITMAPINFOHEADER);bi.bmiHeader.biWidth=w;bi.bmiHeader.biHeight=-h;bi.bmiHeader.biPlanes=1;bi.bmiHeader.biBitCount=32;bi.bmiHeader.biCompression=BI_RGB;dib=CreateDIBSection(memdc,&bi,DIB_RGB_COLORS,&dibbits,NULL,0);if(!dib)fail("Overlay bitmap failed");oldbm=(HBITMAP)SelectObject(memdc,dib);dibw=w;dibh=h;}
@@ -706,7 +707,7 @@ static void draw(){
   exitNativeMenu();
   // A transient modal dialog may have set the bridge flag before the host
   // sees a visible dialog; do not remain stuck in the menu cursor state.
-  if(shared->menuSuspend&&!nativeMenuHold){shared->menuSuspend=0;shared->nativeEnabled=1;}
+  if(shared->menuSuspend==1&&!nativeMenuHold){shared->menuSuspend=0;shared->nativeEnabled=1;}
   shared->gameWindow=(DWORD)(uintptr_t)game;
  }
  if(!IsWindow(game)||fg!=observedForeground||!IsWindowVisible(game)){observedForeground=fg;lastWindowCheck=GetTickCount();DWORD oldThread=threadId;HWND oldWindow=game;selectGameWindow();if(game!=oldWindow){lastFrame=-2;lastPhase=size_t(-1);wasInside=false;log(L"Render window changed; reacquired without activation");}if(shared&&oldThread!=threadId){stop();status(L"游戏窗口线程变化，等待自动重新连接 HideCursor。");return;}}
@@ -722,7 +723,9 @@ static void draw(){
   leaveGame();visibilityDiagnostic(L"游戏前台窗口与渲染窗口不一致",fp);return;
  }
  if(!wasInside){
-  // Re-arm at game focus/client re-entry, BEFORE presenting the first overlay.
+  // Normally the subscription survived Alt-Tab; resume presentation in place.
+  if(shared&&shared->menuSuspend==2){shared->menuSuspend=0;nativeInvisibleAt=0;gameinput::wake(hook);}
+  // First attach / explicit pause recovery still needs a subscription.
   if(mode==L"hide"&&!manualCursorPause&&!hook){try{hookStart();}catch(const std::exception& e){hookStop();log(L"Hook re-arm failed: "+widen(e.what()));stop();return;}}
   hudEpoch=inputNow();nativeMenuHold=false;nativeMenuCandidateAt=0;previousObservedFrame=-1;fallbackTracker.reset();hudUpdates=hudCommits=hudMotion=hudChanges=0;hudLastFrame=-1;hudPaintAt=0;wasInside=true;lastFrame=-2;lastPhase=size_t(-1);tween.reset();timing.resetObservation();activeMotion.reset();refreshTries=3;refreshAt=GetTickCount();if(!nativeGameRefresh)overlaystack::place(overlay,overlaystack::Layer::Cursor,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE);log(L"Game focus/client re-entered: redraw and cursor refresh, no simulated activation clicks");}
  if(noCursorMode){

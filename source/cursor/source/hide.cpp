@@ -205,6 +205,7 @@ static HCURSOR nativeBuild(LONG* accepted){
 }
 static void nativeRefresh(){
  if(!s)return;
+ if(s->menuSuspend==2){nativeRelease();menuBalanceRelease();return;}
  if(s->nativeBlank&&held&&s->state==1){
   if(!blankActive){nativeRelease();blankOld=GetCursor();blankActive=true;}
   SetCursor(NULL);s->nativeVisible=0;return;
@@ -357,6 +358,7 @@ static void tick(){
  if(cmd==3){s->state=0;return;} // resource-only session; never hides a cursor
  if(cmd==1){if(held){s->state=1;}else{if(!initialHide()&&s->state!=-1)s->state=-1;}return;}
  if(!held)return;
+ if(s->menuSuspend==2){nativeRefresh();return;} // retain Hook/hide; suspend presentation and game sampling
  DWORD now=GetTickCount();
  bool pressed=(GetAsyncKeyState(VK_RBUTTON)&0x8000)!=0;
  bool released=rightReleased||(rightWasDown&&!pressed);
@@ -424,7 +426,7 @@ static bool isDialogMessage(HWND w){
 extern "C" void CursorRuntimePost(int code,WPARAM wp,LPARAM lp){
  __declspec(align(16)) BYTE fx[512];
  __asm {fxsave fx}
- if(code>=0&&s&&lp){
+ if(code>=0&&s&&lp&&s->menuSuspend!=2){
   gameentry::Scope entry(gameentry::Client::Cursor);
   if(entry){
   const CWPRETSTRUCT* ev=(const CWPRETSTRUCT*)lp;

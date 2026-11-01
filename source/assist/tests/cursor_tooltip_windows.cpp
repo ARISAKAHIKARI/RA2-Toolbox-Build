@@ -115,6 +115,14 @@ int main(){
  NativeTooltipMaintain(true);assert(tooltipOwned&&!NativeTooltipDetached());
  assert(tooltip(0)==unitName&&tooltip(1000)==price&&appendCalls==0);
  assert(providerCalls==2&&lastId==1000&&lastReceiver==(void*)nativetooltip::Sidebar&&LONG(mouseObject[3])==-1);
+ // Alt-Tab releases only Windows presentation. The native hide and shared
+ // tooltip slot remain owned; no ref-count or site writes on focus changes.
+ unsigned focusPatches=patchCalls;cursorState.menuSuspend=2;nativeRefresh();NativeTooltipMaintain(true);
+ assert(held==mouseObject&&LONG(mouseObject[3])==-1&&tooltipOwned&&patchCalls==focusPatches&&cursorState.nativeVisible==0);
+ CWPRETSTRUCT focusEvent{};focusEvent.message=WM_SETCURSOR;
+ CursorRuntimePost(0,0,(LPARAM)&focusEvent);
+ assert(held==mouseObject&&patchCalls==focusPatches&&cursorState.menuSuspend==2);
+ cursorState.menuSuspend=0;NativeTooltipMaintain(true);assert(tooltip(0)==unitName&&patchCalls==focusPatches);
  // Additional engine hide, no text, replaced object, foreign getter, and
  // unavailable capture all keep native null. No forced hidden-name flag.
  cursor(true,-2);assert(!tooltip(0));cursor(true);assert(!tooltip(99));
@@ -171,11 +179,16 @@ int main(){
  frameobserver::channel=&c;frameobserver::owner=GetCurrentProcessId();patches=patchCalls;
  frameobserver::maintain(GetCurrentProcessId());assert(!frameOwned&&c.state==framesignal::MessageFallback&&patchCalls==patches);
  c.enabled|=framesignal::ExplicitDiagnostic;frameobserver::maintain(GetCurrentProcessId());assert(frameOwned&&c.state==framesignal::Native);
+ patches=patchCalls;*(uint8_t*)0xA8E9A0=0;c.heartbeat=GetTickCount()-1000;
+ frameobserver::maintain(GetCurrentProcessId());assert(frameOwned&&c.state==framesignal::Native&&patchCalls==patches);
+ unsigned readyBeforePause=readyCalls;frameobserver::FrameSignalCommitted();assert(readyCalls==readyBeforePause);
+ *(uint8_t*)0xA8E9A0=1;c.heartbeat=GetTickCount();frameobserver::maintain(GetCurrentProcessId());assert(frameOwned&&patchCalls==patches);
  c.enabled=framesignal::Compute;frameobserver::maintain(GetCurrentProcessId());assert(!frameOwned&&c.state==framesignal::MessageFallback);
  for(int mode:{-1,0,1,2,3,4,5,6})assert(framesignal::nativeAllowed(mode,false)==(mode==0||mode==5));
  assert(framesignal::nativeAllowed(3,true)&&framesignal::nativeAllowed(4,true));
  frameobserver::channel=nullptr;assert(!depth);
  puts("PASS frame adapter: all GPR/ESP/EFLAGS/FXSAVE preserved; native store; live/stale/absent callbacks; MP fallback and explicit diagnostic opt-in");
+ puts("PASS focus lifecycle: cursor presentation suspension retains hide/tooltip ownership; temporary frame pause and stale samples retain installed diagnostic site");
  puts("Synthetic Win32 execution only: no RA2OL/game visual or multiplayer claim.");
  return 0;
 }

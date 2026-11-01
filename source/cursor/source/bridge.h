@@ -22,7 +22,8 @@ struct Shared {
  volatile DWORD resourceBytes;
  DWORD resourcePalette[256];
  BYTE resourcePixels[RESOURCE_MAX_BYTES];
- // nativeMode=0 normal cursor, 1 game animation, 2 OS-dialog menu.
+ // menuSuspend: 0 active, 1 OS dialog, 2 outside game/client. Suspension
+ // changes presentation only; the Runtime subscription and held hide remain.
  volatile LONG menuSuspend,postSetCursorRepairs;
  DWORD gameWindow;
  // Host produces complete color cursor frames. seq odd=writing, even=stable.

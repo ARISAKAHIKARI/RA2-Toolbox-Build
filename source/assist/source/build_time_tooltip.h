@@ -24,7 +24,8 @@ static bool buildTimeTooltipCompatible(){
 static void buildTimeTooltipTick(){
  if(!sh||!sh->buildTimeTooltip||buildTimeTooltipFailedMatch!=match)buildTimeTooltipFailed=false;
  if(buildTimeTooltipFailed){restoreBuildTimeTooltip();if(sh)sh->buildTimeTooltipStatus=-3;return;}
- const bool wanted=sh&&!sh->stop&&sh->buildTimeTooltip&&sh->foreground&&!fault&&snap.status==1;
+ // Focus controls callback work, never ownership of the installed slot.
+ const bool wanted=sh&&!sh->stop&&sh->buildTimeTooltip&&!fault&&snap.status==1;
  if(!wanted){restoreBuildTimeTooltip();return;}
  if(buildTimeTooltipActive)return;
  if(!buildTimeTooltipCompatible()){sh->buildTimeTooltipStatus=-2;return;}

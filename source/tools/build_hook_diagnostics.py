@@ -31,10 +31,10 @@ def main():
  run('diagnostic-host',['c++','-target','x86_64-windows-gnu','-std=c++17','-O2','-municode','-I'+str(obj),'hook_diagnostics/source/main.cpp',obj/'app.res','-o',out/'RA2HookTest.exe','-Wl,--subsystem,windows','-lkernel32','-luser32','-lwinmm','-lgdi32','-ladvapi32'])
  if os.name=='nt':
   subprocess.run([str(out/'RA2HookTest.exe'),'--ui-smoke'],cwd=out,check=True,timeout=20)
-  print('PASS Windows hidden UI, bundle identity and invalid PID refusal; no game attached',flush=True)
+  print('PASS Windows hidden UI, selection/exclusion controls, baseline opt-in, stopped-OOS skip, bundle identity and invalid PID refusal; no game attached',flush=True)
   subprocess.run([str(out/'RA2HookTest.exe'),'--broker-smoke'],cwd=out,check=True,timeout=20)
   print('PASS actual x64 host/x86 broker handshake and Runtime DLL loader; no game hooks installed',flush=True)
- (out/'BUILD_TARGET.json').write_text(json.dumps(dict(host='x64',runtime='x86',broker='x86',assist_protocol=83,runtime_protocol=4,diagnostic_camera_protocol=1,game_tested=False,multiplayer_tested=False,scope='isolated 30-second hook-group observations; automatic camera is explicit test-only opt-in'),indent=2),encoding='utf-8')
+ (out/'BUILD_TARGET.json').write_text(json.dumps(dict(host='x64',runtime='x86',broker='x86',assist_protocol=83,runtime_protocol=4,diagnostic_camera_protocol=1,game_tested=False,multiplayer_tested=False,scope='isolated groups; baselines optional/off; manual site exclusions; early verdict; focus retains hooks and pauses observation; automatic camera explicit test-only opt-in'),indent=2),encoding='utf-8')
  if (base/'BUILD_SOURCE_MANIFEST.json').exists():shutil.copy2(base/'BUILD_SOURCE_MANIFEST.json',out/'BUILD_SOURCE_MANIFEST.json')
  print('PASS diagnostic bundle built',flush=True)
 if __name__=='__main__':main()

@@ -39,12 +39,15 @@ static void releaseChannel(){if(channel)UnmapViewOfFile(channel);channel=nullptr
 static void maintain(DWORD requestedOwner){
  gameentry::Scope entry(gameentry::Client::Assist);if(!entry)return;
  const DWORD error=GetLastError();
- bool alive=channel&&owner==requestedOwner&&channel->enabled&&DWORD(GetTickCount()-channel->heartbeat)<=500;
+ // A live controller's temporary pause must not remove/reinstall the site.
+ // Heartbeat freshness gates callback work and NEW installation separately.
+ bool alive=channel&&requestedOwner&&owner==requestedOwner&&channel->enabled;
  auto read=[](uint32_t at,void*out,size_t n){SIZE_T got=0;return ReadProcessMemory(GetCurrentProcess(),(const void*)(uintptr_t)at,out,n,&got)&&got==n;};
  const bool playable=multiplayerpatch::mayInstall(read);
  int session=-1;read(0xA8B238,&session,4);
  bool permitted=playable&&framesignal::nativeAllowed(session,channel&&(channel->enabled&framesignal::ExplicitDiagnostic));
- if((!alive||!permitted)&&installed){
+ const bool mpRetire=(session==3||session==4)&&channel&&!(channel->enabled&framesignal::ExplicitDiagnostic);
+ if((!alive||mpRetire)&&installed){
   const bool restored=gameentry::patch(gameentry::Client::Assist,framesignal::CommitSite,patchBytes,original,6);
   if(channel)channel->state=restored?framesignal::Waiting:framesignal::RestoreFailed;
   if(!restored)conflict=true;installed=!restored;
@@ -64,6 +67,7 @@ static void maintain(DWORD requestedOwner){
   if(!permitted){
    SetLastError(error);return;
   }
+  if(DWORD(GetTickCount()-channel->heartbeat)>500){SetLastError(error);return;}
   patchBytes[0]=0xE9;const uint32_t delta=uint32_t(uintptr_t(&committedAdapter))-framesignal::CommitSite-5;memcpy(patchBytes+1,&delta,4);patchBytes[5]=0x90;
   installed=!conflict&&gameentry::patch(gameentry::Client::Assist,framesignal::CommitSite,original,patchBytes,6);
   channel->error=installed?0:GetLastError();channel->thread=GetCurrentThreadId();LARGE_INTEGER f{};QueryPerformanceFrequency(&f);channel->frequency=f.QuadPart;

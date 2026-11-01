@@ -1042,9 +1042,9 @@ static void tick(){
  }
  if(snap.techOpen&&!(sh->flags&UnsafeTech))restoreTech();
  DWORD period=sh->foreground?sh->scanMs:((sh->flags&(AdvancedInput|MagnetronInput|AutoOreReturn|AirWaypoints|AntiTheft))?64:500);if(period<2)period=2;if(period>1000)period=1000;
- // An active refresh adapter must also wake promptly to restore after its
- // setting is disabled or focus is lost, before returning to idle cadence.
- if(scrollRefreshActive||(sh->foreground&&(sh->burstEnabled||sh->burstHeld||burstCount||sh->scrollRefreshHz)))period=4;
+ // Focus changes execution cadence, not Hook ownership. Explicitly disabling
+ // the refresh option still wakes cleanup promptly.
+ if(sh->foreground&&(scrollRefreshActive||sh->burstEnabled||sh->burstHeld||burstCount||sh->scrollRefreshHz))period=4;
  bool selectionPending=sh->selectRequest!=sh->selectAck;bool planPending=sh->planRequest!=sh->planAck;bool cooperativePending=sh->cooperativePlan!=sh->cooperativeAck;bool cmd=sh->request!=sh->ack||selectionPending||planPending||cooperativePending||sh->pointer.request!=sh->pointer.ack;// A message wake observes the current simulation frame; pending work bypasses
  // display cadence. This is not a frame hook and does not advance the game.
  bool frameDue=get<int>(0xA8ED84)!=lastFrame&&
@@ -1055,7 +1055,7 @@ static void tick(){
  bool soundPending=sh->uiSoundRequest!=sh->uiSoundAck;
  const uint64_t preciseNow=preciseclock::micros();static uint64_t fastSampleAt=0;
  bool refreshDue=(featureavailability::SceneRefresh&&sh->foreground&&sh->scrollRefreshMode&&sh->scrollRefreshHz&&scrollCadence.ready(preciseNow,sh->scrollRefreshHz))||
-   (scrollRefreshActive&&(!sh->foreground||!sh->scrollRefreshMode||!sh->scrollRefreshHz));
+   (scrollRefreshActive&&(!sh->scrollRefreshMode||!sh->scrollRefreshHz));
  bool fastDue=sh->foreground&&(sh->dodgeEnabled||dodgeCount||sh->burstEnabled||sh->burstHeld||burstCount)&&preciseNow-fastSampleAt>=2000;
  if(!cmd&&!resultsDue&&!soundPending&&!frameDue&&!refreshDue&&!fastDue&&DWORD(now-last)<period)return;last=now;fastSampleAt=preciseNow;
  LARGE_INTEGER start,end,controlEnd,worldEnd;static LARGE_INTEGER frequency{};if(!frequency.QuadPart)QueryPerformanceFrequency(&frequency);QueryPerformanceCounter(&start);
@@ -1065,7 +1065,7 @@ static void tick(){
  // (e.g. save/load/modal processing), not proof that the round ended.
  if(controllink::transientPause(running,house==lastHouse,active,lastHouse!=0)){
   if(riskRenderActive)riskRenderRedrawPending=true;
-  restoreHighScroll();
+  scrollRendering=false;scrollCadence={};
   snap.status=1;snap.bridgeStatus=1;snap.commandStatus=0;snap.match=match;
   snap.frame=frame;pointerTick();publishSnapshot(now);return;
  }
@@ -1075,7 +1075,7 @@ static void tick(){
  if(active&&running&&(!eventdelivery::mayQueue(get<int>(0xA8B238))||frame<0||frame>=INT32_MAX||
     !external::display::inspect([](uint32_t at,void*out,size_t n){memcpy(out,(void*)(uintptr_t)at,n);return true;}).visible())){
   if(riskRenderActive)riskRenderRedrawPending=true;
-  restoreHighScroll();
+  scrollRendering=false;scrollCadence={};
   snap.status=1;snap.bridgeStatus=1;snap.commandStatus=0;snap.match=match;
   snap.frame=frame;snap.chat=get<bool>(0xA8BC60+25);if(!sh->foreground||snap.chat)runtimeKeys.clear();pointerTick();publishSnapshot(now);return;
  }
