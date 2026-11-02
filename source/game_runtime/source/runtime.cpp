@@ -181,7 +181,7 @@ extern "C" __declspec(dllexport) LRESULT CALLBACK GameRuntimeHook(int code,WPARA
       if(ready&runtime::Cursor)CursorRuntimeMessage(code,wp,lp);
       if(ready&runtime::Tactical)AssistRuntimeMessage(code,wp,lp);
       if(ready)NativeTooltipMaintain(true);
-      if((control->enabled&runtime::Tactical)&&(msg->message==WM_MOUSEMOVE||msg->message==WM_KEYDOWN||msg->message==WM_KEYUP||msg->message==WM_SYSKEYDOWN||msg->message==WM_SYSKEYUP||msg->message==WM_LBUTTONDOWN||msg->message==WM_LBUTTONDBLCLK||msg->message==WM_LBUTTONUP||msg->message==WM_RBUTTONDOWN||msg->message==WM_RBUTTONDBLCLK||msg->message==WM_RBUTTONUP))AssistRuntimeFilter((void*)lp);
+      if((control->enabled&runtime::Tactical)&&(msg->message==WM_MOUSEMOVE||msg->message==WM_KEYDOWN||msg->message==WM_KEYUP||msg->message==WM_SYSKEYDOWN||msg->message==WM_SYSKEYUP||msg->message==WM_LBUTTONDOWN||msg->message==WM_LBUTTONDBLCLK||msg->message==WM_LBUTTONUP||msg->message==WM_RBUTTONDOWN||msg->message==WM_RBUTTONDBLCLK||msg->message==WM_RBUTTONUP||msg->message==WM_MBUTTONDOWN||msg->message==WM_MBUTTONDBLCLK||msg->message==WM_MBUTTONUP||msg->message==WM_XBUTTONDOWN||msg->message==WM_XBUTTONDBLCLK||msg->message==WM_XBUTTONUP))AssistRuntimeFilter((void*)lp);
       frameobserver::maintain(controllerID);
       if(ready)InterlockedIncrement(&control->dispatches);
      }else cleanup();

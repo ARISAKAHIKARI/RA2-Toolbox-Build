@@ -1,9 +1,19 @@
 #include "../source/hook_registry.h"
+#include "../../shared/source/experimental_patch_policy.h"
 #include <cassert>
 #include <iostream>
 using namespace assist::hookregistry;
 int main(){
  Registry<> reg;
+ {
+  Registry<> cursor;const uint8_t layout[]={0xA0,0x8B,0x47,0},target[]={0x10,0x20,0x30,0x10},foreign[]={0x11,0x22,0x33,0x10};
+  assert(ownerAt(0x7F74C8)==Owner::Cursor&&experimentalpatch::size(0x7F74C8)==4&&experimentalpatch::destination(0x7F74C8,target,4)==0x10302010);
+  assert(cursor.proposal(0x7F74C8,layout,target,4)==Transition::Install);
+  assert(cursor.proposal(0x7F74C8,foreign,target,4)==Transition::Deny);
+  cursor.commit(0x7F74C8,layout,target,4,Transition::Install);assert(cursor.active(0x7F74C8));
+  assert(cursor.proposal(0x7F74C8,target,layout,4)==Transition::Restore);
+  cursor.commit(0x7F74C8,target,layout,4,Transition::Restore);assert(!cursor.installed());
+ }
  const uint8_t sidebar[]={0xE8,0x99,0xE0,0xE4,0xFF};
  const uint8_t refresh[]={0xE8,0xEA,0xD0,0xE4,0xFF};
  const uint8_t redirected[]={0xE8,1,2,3,4};

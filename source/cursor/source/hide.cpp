@@ -133,6 +133,7 @@ static HeldMouseState heldMouse(void*&p,LONG*ref=nullptr){
  return HeldMouseState::Current;
 }
 extern "C" bool CursorTooltipNeeded(){return held&&s&&s->state==1;}
+extern "C" void CursorTooltipStatus(int status){if(s)s->tooltipState=status;}
 extern "C" bool CursorTooltipOwnsHiddenMouse(){
  if(!CursorTooltipNeeded())return false;
  gameentry::Request lease{};if(!gameentry::capture(gameentry::Client::Cursor,lease))return false;

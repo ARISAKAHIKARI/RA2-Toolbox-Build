@@ -8,6 +8,7 @@
 #include "../../external_reader/source/material_motion.h"
 #include "watch_read_view.h"
 #include "watch_observation.h"
+#include "watch_current_anchor.h"
 #include <chrono>
 #include "watch_presentation.h"
 namespace watchscene {
@@ -54,19 +55,22 @@ public:
   if(reveal_!=revealMap||bank->frame<sourceFrame_){motion_.reset();preparer_.reset();sourceFrame_=-1;for(auto&s:scenes_)s.reset();for(auto&v:views)v.scene.reset();}reveal_=revealMap;
   sourceFrame_=bank->frame;
   motion_.observe(bank,clock());auto data=motion_.sampleLatest(clock(),profile_.motion,profile_.detail!=0);if(!data.terrain)return false;
+  std::array<external::watch::Anchor,3> centers;
+  for(int i=0;i<3;++i){auto target=tracks[i]?tracks[i].target:i==0?automatic:external::watch::Target{};if(!target)continue;
+   auto prior=views[i].frame.center;if(tracks[i]&&tracks[i].located)prior={tracks[i].spatial,tracks[i].x,tracks[i].y,tracks[i].z,true,tracks[i].spatialKind,tracks[i].discoveryFrame,tracks[i].searched,tracks[i].discoveryCursor};
+   bool readable=true;auto checked=[&](uint32_t p,void*out,size_t n){const bool ok=fresh(p,out,n);readable&=ok;return ok;};
+   centers[i]=external::watch::anchor(checked,target,prior);if(!readable)centers[i].located=false;
+  }
+  if(!currentAnchors(data,centers,fresh,profile_.detail!=0))return false;
   sourceTick=bank->tick;data.tick=now;assets_.identity(process,epoch);
   int rasterW=1,rasterH=1;for(const auto&size:outputSizes){rasterW=std::max(rasterW,size[0]);rasterH=std::max(rasterH,size[1]);}
   external::xbrzadapter::gpuPresentation(profile_.gpu);external::presentation::apply(profile_,assets_,Width,Height,rasterW,rasterH);
   const double zscale=external::projectionZScale(fresh);
   timings.sample=clock()-started;timings.sampled=true;
-  gpuAttempted=gpuUsed=false;std::shared_ptr<const external::worldscene::Snapshot> world;bool prepared=false;
+  gpuAttempted=gpuUsed=false;std::shared_ptr<const external::worldscene::Snapshot> world;std::unique_ptr<external::worldscene::InstanceOrder> ordered;bool prepared=false;
   for(int i=0;i<3;++i){auto&v=views[i];auto target=tracks[i]?tracks[i].target:i==0?automatic:external::watch::Target{};
    if(!(target==v.frame.focus))v={};v.shown=bool(target);if(!target)continue;
-   auto prior=v.frame.center;if(tracks[i]&&tracks[i].located)prior={tracks[i].spatial,tracks[i].x,tracks[i].y,tracks[i].z,true,tracks[i].spatialKind,tracks[i].discoveryFrame,tracks[i].searched,tracks[i].discoveryCursor};
-   auto center=external::watch::anchor(fresh,target,prior);if(!center.located)continue;
-   // Match the sampled spatial host (carrier/garrison), not newer live actor
-   // coordinates projected over an older world snapshot.
-   for(const auto&m:data.markers)if(m.object==center.target.pointer&&m.id==center.target.id){center.x=m.x;center.y=m.y;center.z=m.z;center.kind=m.kind;break;}
+   auto center=centers[i];if(!center.located)continue;
    auto next=v.frame;
    next.focus=target;next.center=center;next.bounds=data.terrain->geo.bounds;next.zScale=zscale;next.reveal=revealMap;
    double cx=(int64_t(center.x)-center.y)*30./256,cy=(int64_t(center.x)+center.y)*15./256-external::screenHeight(center.z,zscale)+external::camera::anchorY(center.kind);
@@ -77,12 +81,12 @@ public:
    // fast target never translates pixels or invalidates native terrain pages.
    if(!prepared){prepared=true;timings.prepared=true;const double prepareAt=clock();preparer_.features(profile_);preparer_.guideEnabled(false,controls_);preparer_.prepareWorld(true);preparer_.outputSized(true);
     auto ready=preparer_.render(data,Width,Height,read_,assets_,{cx-Width/2+data.terrain->geo.offsetX*30.,cy-Height/2-data.terrain->geo.offsetY*15.,Width,Height,true},unsigned(profile_.scale),profile_.detail!=0,true,profile_.precision!=0,true,4.);
-    if(ready)world=preparer_.preparedWorld();timings.prepare=clock()-prepareAt;
+    if(ready)world=preparer_.preparedWorld();if(world)ordered=std::make_unique<external::worldscene::InstanceOrder>(world);timings.prepare=clock()-prepareAt;
    }
    external::mainview::View camera{0x10000,data.terrain->geo.house,0x10000,data.frame,int(cx)-Width/2,int(cy)-Height/2,Width,Height,0,0,Width,Height};
    // Camera span stays 640x512 game pixels. Only its physical raster follows
    // the largest visible host panel, shared by primary and secondary displays.
-   const double drawAt=clock();timings.attempted[i]=bool(world);auto scene=world?scenes_[i].draw(world,camera,outputSizes[i][0],outputSizes[i][1],fresh):nullptr;timings.draw[i]=clock()-drawAt;timings.reused[i]=bool(scene)&&scenes_[i].reused();
+   const double drawAt=clock();timings.attempted[i]=bool(world);auto scene=world?scenes_[i].draw(world,camera,outputSizes[i][0],outputSizes[i][1],fresh,nullptr,0,ordered.get()):nullptr;timings.draw[i]=clock()-drawAt;timings.reused[i]=bool(scene)&&scenes_[i].reused();
    gpuAttempted|=external::xbrzadapter::gpuAttempted();gpuUsed|=external::xbrzadapter::gpuUsed();
    if(scene){next.cameraX=camera.cameraX+Width/2;next.cameraY=camera.cameraY+Height/2;v.scene=std::move(scene);v.frame=std::move(next);}
   }

@@ -6,6 +6,9 @@
 
 | 主题 | 新笔记 | 关键词 |
 | --- | --- | --- |
+| MOControls2 新操作合入，保留本分支 Hook 策略 | [配置、超武面板、原生閉環與合併邊界](2026-11-02-mo-controls-scoped-merge.md) | Assist88 configurable gestures fresh PlanToken PlanConnect loopStart PlanCommit scoped-merge |
+| 隱藏光標保留提示框與偏好 | [原生文字／佈局雙槽修復](2026-11-02-cursor-hide-tooltip-layout.md) | Cursor155 RefCount 7F74C8 478BA0 tooltip layout no-high-risk |
+| 功能收納、渲染耗時與副相機連續定位 | [本輪實作、對照與完整構建](2026-11-02-render-ui-followup.md) | settings-folds Timeline VXL HVA geometry prefetch InstanceOrder current-anchor |
 | 原生面板科技資料模式與還原責任 | [規則欄位、面板與模式切換](2026-11-01-native-sidebar-tech-data-mode.md) | CanBuild data-journal TechEnhance native-sidebar Assist87 |
 | 原生事件任意建造正式選項 | [完工產品、游標與入隊邊界](2026-11-01-native-placement-event-implementation.md) | Place factory-UID frozen-cursor no-code |
 | 觀察窗誤消失與讀取能力遺失 | [生命欄位、換代、批讀與輸入重用](2026-11-01-watch-lifetime-reader-performance.md) | IsAlive IsOnMap display-epoch typed-prefetch Timeline |

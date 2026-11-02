@@ -1,10 +1,11 @@
+#include "middle_input_host.h"
 // Host capture uses polling. Optional suppression lives only in the common Runtime message boundary.
 #include "control_mode_policy.h"
 static void servicePointer(){
  static pointerinput::Intent leftCapture{};static bool leftCaptured=false;
  const DWORD capturedNow=GetTickCount();
  auto visible=external::display::inspect([](uint32_t at,void*p,size_t n){return externalReader.readFresh(at,p,n);});
- const bool inputReady=!formationInputOwns()&&shared&&!shared->viewZoomBusy&&commandFresh(capturedNow)&&foregroundGame()&&!incoming.chat&&visible.visible();
+ const bool inputReady=!formationInputOwns()&&!runtimeMiddleOwnsNow()&&shared&&!shared->viewZoomBusy&&commandFresh(capturedNow)&&foregroundGame()&&!incoming.chat&&visible.visible();
  gameinput::setPointerContext(hook,commandMatch(),inputReady);
  if(pointerMatches.active()&&(!inputReady||!extra.allHotkeys||pointerMatches.revision!=settingsRevision||
     pointerMatches.capture.match!=commandMatch()||pointerMatches.capture.inputSerial!=gameinput::pointerCancelSerial(hook)))pointerMatches.clear();
@@ -55,6 +56,8 @@ static void servicePointer(){
  gameinput::PointerPress e{};DWORD dropped=0;
  if(!gameinput::takePointer(hook,e,dropped)){if(dropped)notify(L"输入过密，部分增强请求未接收。");return;}
  if(!inputReady||e.serial!=box.cancelSerial||e.match!=commandMatch())return;
+ // Resolve captured down-edge keys too: Runtime preview publication may follow this edge.
+ if(middleinput::ownsPointer(e.operation==7?6:e.operation,runtimeGesturePolicy(),runtimeGestureEnabled(),e.keys))return;
  // The explicit unload command owns this same chord. A polled native D/S/X
  // cancellation arriving afterwards must not erase its passenger follow-up.
  if(e.operation==5&&hookSmartUnload&&LOBYTE(unloadKey)&&

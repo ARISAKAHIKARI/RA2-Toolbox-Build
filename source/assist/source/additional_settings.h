@@ -1,5 +1,6 @@
 #pragma once
 #include "player_test_policy.h"
+#include "mo_orders.h"
 #include "cooperative_types.h"
 #include "pointer_intent.h"
 #include "control_mode_policy.h"
@@ -20,6 +21,9 @@ struct AdditionalSettings {
  bool techEnhance=false;int placementImplementation=0;
  uint32_t placementEventKey='G'|(6<<8); // Explicit one-shot completed-building placement.
  bool viewZoomEnabled=false;int viewZoomPercent=100;
+ uint32_t moFeatures=0;bool superweaponPanel=false;
+ moorders::GesturePolicy moGestures;
+ uint32_t viewZoomKeys[3]={0xBD|(6<<8),0xBB|(6<<8),0x08|(6<<8)},sidebarKey=0x7A,pauseKeys[2]={0x74,0x75};
  int scrollRefreshMode=0; // cursor / scrolling / scene / forced redraw
 #ifndef RA2_UNIFIED
  int scrollRefreshHz=120; // standalone assist only

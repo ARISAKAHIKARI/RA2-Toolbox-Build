@@ -236,9 +236,17 @@ static void updatePrimaryAction(){
 #ifdef RA2_UNIFIED
  suite::reportEnabled(0,enabled);
 #endif
- textIfChanged(primaryAction,mode==L"hide"?(enabled?L"暂停（高危模式）":L"开启（高危模式）"):(enabled?L"暂停":L"开启"));
- textIfChanged(subTitleLabel,mode==L"hide"?L"高危：隐藏原光标需修改原生提示入口":mode==L"sha"?L"透明 SHA · 外置光标":L"保留原光标 · 外置光标");
+ textIfChanged(primaryAction,enabled?L"暂停":L"开启");
+ textIfChanged(subTitleLabel,mode==L"hide"?L"隐藏原光标 · 保留名称和价格提示":mode==L"sha"?L"透明 SHA · 外置光标":L"保留原光标 · 外置光标");
  std::wstring state=manualCursorPause?L"光标已暂停（F9 恢复）":!autoStart?L"已关闭":autoPaused?L"需要检查 · 展开高级设置":running?L"运行中":L"等待游戏启动";
+ if(running&&enabled&&!manualCursorPause&&mode==L"hide"){
+  if(!shared||shared->state==0)state=L"等待游戏执行隐藏原光标";
+  else if(shared->state==2||shared->command==2)state=L"原光标恢复待完成";
+  else if(shared->state<0)state=L"隐藏原光标未成功 · 展开查看原因";
+  else if(shared->tooltipState<0)state=L"原光标已隐藏 · 名称和价格提示修复未成功";
+  else if(shared->tooltipState==0)state=L"原光标已隐藏 · 等待提示修复";
+  else state=L"运行中 · 原光标已隐藏";
+ }
  textIfChanged(statusw,state);
  static int lastPaint=-1;int paint=running?2:enabled?1:0;
  if(lastPaint!=paint){lastPaint=paint;InvalidateRect(primaryAction,NULL,FALSE);InvalidateRect(mainw,NULL,FALSE);}
@@ -630,7 +638,7 @@ static void applyHideMode(){
  WritePrivateProfileStringW(L"Compatibility",L"CursorNoCodeWriteDefaultsVersion",L"1",ini().c_str());
  if(noCursorMode)status(L"已选择无光标诊断模式；Ctrl+Alt+F11 停止并恢复，F10 切换覆盖层。");
  else if(mode==L"sha")status(L"已选择替换 SHA：请退出游戏后点击“安装透明 SHA”，再重新启动游戏。安装前会备份现有文件。");
- else if(mode==L"hide")status(L"高危：隐藏原光标会修改游戏内提示入口以保留名称和价格；联机平台可能不兼容。");
+ else if(mode==L"hide")status(L"已选择隐藏原光标；使用原生 HideCursor，并保留单位名称和建造价格提示。");
  else status(L"已选择不隐藏：不修改游戏文件，原始光标和外部光标可能同时出现。");
  if(shouldResume){try{start();}catch(const std::exception& e){autoPaused=true;status(L"切换后未能启动："+widen(e.what()));}}
 }
@@ -680,6 +688,14 @@ static void draw(){
 #endif
  cursorReader.begin(); // task-local diagnostics; immediate reads never cache old frames
  pollOriginalResource();if(!running)return;if(shared){shared->heartbeat=GetTickCount();
+  if(mode==L"hide"){
+   static LONG shownState=-99,shownCommand=-99,shownTooltip=-99;
+   const LONG state=shared->state,command=shared->command,tooltip=shared->tooltipState;
+   if(state!=shownState||command!=shownCommand||tooltip!=shownTooltip){
+    shownState=state;shownCommand=command;shownTooltip=tooltip;updatePrimaryAction();
+    log(L"Cursor activation: hide="+std::to_wstring(state)+L", command="+std::to_wstring(command)+L", tooltip="+std::to_wstring(tooltip));
+   }
+  }
   LONG repairs=shared->postSetCursorRepairs;
   DWORD stamp=GetTickCount();
   if(repairs!=lastPostRepairSeen && uint32_t(stamp-lastPostRepairLogAt)>=2000){
@@ -1326,7 +1342,6 @@ static bool cursorCloseAllowed(){
   return cursorDialog(L"游戏正在使用透明光标。退出工具箱后可能看不到指针。\n建议先退出游戏，再恢复 SHA。仍退出？",L"透明 SHA",MB_YESNO|MB_ICONWARNING)==IDYES;
  return true;
 }
-#include "ddraw_settings_ui.h"
 #include "refresh_settings_ui.h"
 static LRESULT CALLBACK wndproc(HWND w,UINT m,WPARAM a,LPARAM b){
 #ifdef RA2_UNIFIED
@@ -1375,8 +1390,6 @@ case WM_GETMINMAXINFO:{auto p=(MINMAXINFO*)b;p->ptMinTrackSize={uidpi::scale(adv
  case WM_COMMAND:if(!uiReady)return 0;
 #ifdef RA2_UNIFIED
  if(refreshSettingCommand(a,b))return 0;
- if(LOWORD(a)==157&&HIWORD(a)==BN_CLICKED){ddrawsettings::configure(false);return 0;}
- if(LOWORD(a)==158&&HIWORD(a)==BN_CLICKED){ddrawsettings::configure(true);return 0;}
 #endif
  if((HWND)b==targetBox&&(HIWORD(a)==CBN_SELCHANGE||HIWORD(a)==CBN_EDITCHANGE)){SetTimer(w,152,HIWORD(a)==CBN_SELCHANGE?1:300,NULL);return 0;}
  if((HWND)b==modeBox&&HIWORD(a)==CBN_SELCHANGE){try{applyHideMode();updateRefresh(true);updatePrimaryAction();}catch(const std::exception& e){SendMessageW(modeBox,CB_SETCURSEL,noCursorMode?3:mode==L"hide"?1:mode==L"sha"?2:0,0);error(e);}return 0;}
@@ -1438,12 +1451,9 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR cmd,int){
  noCursorMode=blankPreset;
  /* DPI awareness is set by the embedded PerMonitorV2 manifest before any window exists. */ wchar_t path[32768];GetModuleFileNameW(NULL,path,32768);root=path;root=root.substr(0,root.find_last_of(L"\\"));if(wcsstr(cmd,L"sha"))mode=L"sha";else if(wcsstr(cmd,L"hide"))mode=L"hide";else if(wcsstr(cmd,L"keep"))mode=L"keep";else{wchar_t remembered[16]={};GetPrivateProfileStringW(L"Startup",L"Mode",L"",remembered,16,ini().c_str());if(!wcscmp(remembered,L"sha")||!wcscmp(remembered,L"hide")||!wcscmp(remembered,L"keep"))mode=remembered;else if(!*remembered){wchar_t previousDir[32768]={};GetPrivateProfileStringW(L"Target",L"Directory",L"",previousDir,32768,ini().c_str());if(*previousDir&&exists(std::wstring(previousDir)+L"\\mouse.sha.cursor-preview-state"))mode=L"sha";}}
  if(lanboPreset)mode=L"hide";
- // Earlier versions saved the implicit "hide" default on every launch, so
- // a stored value alone cannot establish a high-risk opt-in. Migrate once to
- // keep; explicit command-line or newly selected labelled modes remain valid.
+ // Preserve the selected mode. A missing historical migration marker is
+ // not permission to replace an already saved hide preference with keep.
  const bool explicitCursorSelection=lanboPreset||wcsstr(cmd,L"hide")||wcsstr(cmd,L"keep")||wcsstr(cmd,L"sha");
- const bool reviewedCursorMode=GetPrivateProfileIntW(L"Compatibility",L"CursorNoCodeWriteDefaultsVersion",0,ini().c_str())>=1;
- if(!reviewedCursorMode&&!explicitCursorSelection&&mode==L"hide")mode=L"keep";
  HANDLE mutex=CreateMutexW(NULL,FALSE,L"Local\\RA2ExternalCursor3Modes");if(GetLastError()==ERROR_ALREADY_EXISTS){MessageBoxW(NULL,L"程序已在运行。",L"提示",MB_OK);return 0;}
  if(!wcsstr(cmd,L"restore"))WritePrivateProfileStringW(L"Startup",L"Mode",mode.c_str(),ini().c_str());
  if(!wcsstr(cmd,L"restore")&&explicitCursorSelection)WritePrivateProfileStringW(L"Compatibility",L"CursorNoCodeWriteDefaultsVersion",L"1",ini().c_str());
@@ -1458,7 +1468,7 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR cmd,int){
  statusw=CreateWindowW(L"STATIC",L"等待游戏",WS_CHILD|WS_VISIBLE,15,115,735,44,mainw,NULL,inst,NULL);SendMessageW(statusw,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);
  HWND labelMode=CreateWindowW(L"STATIC",L"原光标",WS_CHILD|WS_VISIBLE,15,172,90,22,mainw,NULL,inst,NULL);SendMessageW(labelMode,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);
  modeBox=CreateWindowW(L"COMBOBOX",L"",WS_CHILD|WS_VISIBLE|CBS_DROPDOWNLIST,105,168,380,110,mainw,NULL,inst,NULL);
- for(const wchar_t* text:{L"保留原光标",L"高危：隐藏原光标",L"透明 SHA",L"高危：无光标诊断"})SendMessageW(modeBox,CB_ADDSTRING,0,(LPARAM)text);
+ for(const wchar_t* text:{L"保留原光标",L"隐藏原光标",L"透明 SHA",L"高危：无光标诊断"})SendMessageW(modeBox,CB_ADDSTRING,0,(LPARAM)text);
  SendMessageW(modeBox,CB_SETCURSEL,noCursorMode?3:mode==L"hide"?1:mode==L"sha"?2:0,0);SendMessageW(modeBox,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);
 
 
@@ -1497,7 +1507,7 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR cmd,int){
  nativeGameRefresh=mode==L"hide"&&GetPrivateProfileIntW(L"Display",L"GameThreadRefresh",0,ini().c_str())!=0;
  if(wcsstr(cmd,L"--game-refresh")&&mode==L"hide")nativeGameRefresh=true;
  nativeBox=CreateWindowW(L"COMBOBOX",L"",WS_CHILD|WS_VISIBLE|CBS_DROPDOWNLIST,114,174,226,130,mainw,(HMENU)12,inst,NULL);
- SendMessageW(nativeBox,CB_ADDSTRING,0,(LPARAM)L"外置光标");SendMessageW(nativeBox,CB_ADDSTRING,0,(LPARAM)L"高危：游戏内光标（需隐藏模式）");
+ SendMessageW(nativeBox,CB_ADDSTRING,0,(LPARAM)L"外置光标");SendMessageW(nativeBox,CB_ADDSTRING,0,(LPARAM)L"游戏内光标（需隐藏模式）");
  SendMessageW(nativeBox,CB_SETCURSEL,nativeGameRefresh?1:0,0);
  hudEnabled=GetPrivateProfileIntW(L"Display",L"HUD",0,ini().c_str())!=0;hudBox=CreateWindowW(L"BUTTON",L"状态面板",WS_CHILD|WS_VISIBLE|BS_AUTOCHECKBOX,540,705,210,26,mainw,(HMENU)9,inst,NULL);SendMessageW(hudBox,BM_SETCHECK,hudEnabled?BST_CHECKED:BST_UNCHECKED,0);SendMessageW(hudBox,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);
  // Keep the existing settings intact, but move them into an initially hidden
@@ -1560,12 +1570,10 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR cmd,int){
  modernui::tip(refreshModeBox,L"当前仅保留光标高刷；拖屏、全部及强制高刷暂不可用。");
  modernui::tip(targetBox,L"自动跟随显示器；也可输入 30–500 FPS，当前用于光标刷新。");
  EnableWindow(refreshModeBox,FALSE);
- basic(L"BUTTON",L"配置 DDraw 高刷…",20,366,350,32,157,BS_PUSHBUTTON|WS_TABSTOP);
- basic(L"BUTTON",L"恢复 DDraw 配置…",390,366,350,32,158,BS_PUSHBUTTON|WS_TABSTOP);
 #endif
 #ifdef RA2_UNIFIED
  auto videoControl=[&](const wchar_t* cls,const wchar_t* text,DWORD style,int x,int y,int width,int height,int id){return basic(cls,text,x,y,width,height,id,style);};
- const int videoEnd=renderVideoSettings.create(videoControl,suite::VideoGroup::Render,468,20,720);
+ const int videoEnd=renderVideoSettings.create(videoControl,suite::VideoGroup::Render,416,20,720);
  const int shift=videoEnd-438;for(auto&c:controlOrigins)if(c.handle==advancedHeader||std::find(advancedControls.begin(),advancedControls.end(),c.handle)!=advancedControls.end())c.logical.y+=shift;
  compactContentH=videoEnd+20;advancedContentH+=shift;uiContentH=advancedOpen?advancedContentH:compactContentH;
 #endif
@@ -1573,7 +1581,7 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR cmd,int){
  for(auto& c:controlOrigins){
   if(c.handle==statusw)c.logical.w=690;
   if(c.handle==subTitleLabel||c.handle==quickInfo)c.logical.w=720;
-  if(c.handle==quickInfo)c.logical.y=418;
+  if(c.handle==quickInfo)c.logical.y=366;
   if(c.handle==primaryAction)c.logical={20,128,354,34};
   if(c.handle==advancedAction)c.logical={386,128,354,34};
   if(c.handle==nativeBox||c.handle==targetBox)c.logical.w=626;
@@ -1581,7 +1589,7 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR cmd,int){
   if(!_wcsicmp(cls,L"BUTTON")||!_wcsicmp(cls,L"EDIT")||!_wcsicmp(cls,L"COMBOBOX"))
    SetWindowLongPtrW(c.handle,GWL_STYLE,GetWindowLongPtrW(c.handle,GWL_STYLE)|WS_TABSTOP);
  }
- modernui::tip(primaryAction,L"开关高刷显示；快捷键 Ctrl+Alt+F11。保留原光标使用外部显示；高危隐藏模式修改原生提示入口，可能影响平台兼容。设置自动保存。");
+ modernui::tip(primaryAction,L"开关高刷显示；快捷键 Ctrl+Alt+F11。隐藏原光标使用原生 HideCursor，并保留单位名称和建造价格提示。设置自动保存。");
  modernui::tip(styleBox,L"选择独立光标包；不会覆盖游戏目录。");
  modernui::tip(prepareButton,L"在本机生成光标动画补帧；可再次点击取消。已完成分段会保留。");
  modernui::tip(import,L"导入兼容红警或尤里布局的 SHA 文件与色盘。");

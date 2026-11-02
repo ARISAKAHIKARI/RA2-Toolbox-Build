@@ -1,4 +1,5 @@
 #pragma once
+#include "mo_orders.h"
 #include "player_test_policy.h"
 #include "formation.h"
 #include "air_path_policy.h"
@@ -23,7 +24,7 @@
 #include "dodge_compute.h"
 #include "native_placement_policy.h"
 namespace assist {
-constexpr uint32_t Magic=0x41533130, Version=87;
+constexpr uint32_t Magic=0x41533130, Version=88;
 // Both binaries derive the namespace from the protocol version. Do not maintain
 // a separate literal in the host: a valid ABI with a different name never connects.
 struct MappingPrefixValue {
@@ -218,6 +219,12 @@ struct Shared {
  // Frozen by the Host until the normal command acknowledgement. This request
  // is never staged across a reconnect or replayed by the generic queue.
  nativeplacement::Request placementRequest{};
+ // Local gestures enter the existing Runtime intent/event path. Keep this
+ // tail append-only; older clients are rejected before reading these fields.
+ volatile uint32_t moFeatures=0; // 1 fuzzy, 2 area, 4 native patrol
+ uint32_t moOrderStatus=0,moOrderAccepted=0,moOrderRejected=0;
+ volatile long moOrdersPreviewSeq=0;moorders::Preview moOrdersPreview;
+ volatile long moGesturePolicySeq=0;moorders::GesturePolicy moGestures;
 
 };
 inline int remaining(int start,int duration,int frame){

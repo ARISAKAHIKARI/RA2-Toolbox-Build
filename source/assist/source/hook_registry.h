@@ -13,6 +13,7 @@ inline Owner ownerAt(uint32_t a){
  if(auto s=directpatch::find(a))return s->group==directpatch::Group::Map?Owner::RenderMask:Owner::Placement;
  switch(a){
  case 0x007F74D8:return Owner::Sidebar;
+ case 0x007F74C8:return Owner::Cursor;
  case 0x00646EF5:return Owner::ControlCommand;
  case 0x00646FD2:return Owner::ControlCommand;
  case 0x006FFC93:return Owner::ControlCommand;
@@ -92,6 +93,7 @@ inline bool knownOriginal(uint32_t at,const uint8_t* bytes,unsigned size){
  static const uint8_t masterEnum[]={0x6A,1,0x6A,0,0x8B},masterPrune[]={0x0F,0x85,0xDA,2,0,0};
  switch(at){
  case 0x007F74D8:{static const uint8_t original[]={0x50,0x90,0x47,0};return size==4&&!memcmp(bytes,original,4);}
+ case 0x007F74C8:{static const uint8_t original[]={0xA0,0x8B,0x47,0};return size==4&&!memcmp(bytes,original,4);}
  case 0x00646EF5:signature=pre6ControlMegaOwner;expected=sizeof pre6ControlMegaOwner;break;
  case 0x00646FD2:signature=pre6ControlMegaFOwner;expected=sizeof pre6ControlMegaFOwner;break;
  case 0x006FFC93:signature=pre6ControlPlanningOwner;expected=sizeof pre6ControlPlanningOwner;break;

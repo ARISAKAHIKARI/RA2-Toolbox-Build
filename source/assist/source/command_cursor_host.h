@@ -3,6 +3,7 @@
 static void serviceCommandCursorHint(){
  using namespace commandcursor;
  if(!enabled||!shared||!commandFresh(GetTickCount())||!foregroundGame()||incoming.chat){clear();return;}
+ if(formationInputOwns()||runtimeMiddleOwnsNow()){clear();return;}
  auto freshRead=[](uint32_t at,void*p,size_t n){return externalReader.readFresh(at,p,n);};
  if(!external::display::inspect(freshRead).visible()){clear();return;}
  uint8_t keys[256]{};gameinput::keySnapshot(hook,keys);

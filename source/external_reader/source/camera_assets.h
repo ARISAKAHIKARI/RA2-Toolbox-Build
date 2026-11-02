@@ -19,6 +19,7 @@
 #include "palette_recovery.h"
 #include "gpu_voxel.h"
 #include "gpu_voxel_cache.h"
+#include "voxel_geometry_cache.h"
 #include "native_image_bank.h"
 #include "camera_raster.h"
 #include <map>
@@ -37,6 +38,7 @@ template<class Reader>class Context {
  bool lastPaletteLive_=false,terrainPaletteLive_=false,presentation_=false,presentationVplFresh_=false;
  bool colorPrecision_=false,gpuPresentation_=false,voxelRelight_=true,spriteRelight_=true;
  gpuvoxel::PacketCache gpuPackets_;
+ voxelgeometry::Cache voxelGeometry_;
  std::map<std::array<uint32_t,256>,std::weak_ptr<const std::vector<uint32_t>>>gpuPalettes_;
  std::shared_ptr<const gpuvoxel::PacketCache::VplSnapshot>gpuVplSnapshot_;
  uint64_t gpuVplSignature_=0;
@@ -66,12 +68,17 @@ public:
  uint64_t gpuPreparedBuilds()const{return gpuPackets_.builds();}
  uint64_t gpuPreparedHits()const{return gpuPackets_.hits();}
  size_t gpuPreparedCacheBytes()const{return gpuPackets_.bytes();}
+ uint64_t voxelGeometryBuilds()const{return voxelGeometry_.builds();}
+ uint64_t voxelGeometryHits()const{return voxelGeometry_.hits();}
+ uint64_t voxelGeometryFaceChecks()const{return voxelGeometry_.faceChecks();}
+ uint64_t voxelGeometryEvictions()const{return voxelGeometry_.evictions();}
+ size_t voxelGeometryCacheBytes()const{return voxelGeometry_.bytes();}
  bool presentationResolution(int sourceWidth,int sourceHeight,int targetWidth,int targetHeight){resolution_=resolutionsampling::choose(sourceWidth,sourceHeight,targetWidth,targetHeight);return resolution_.valid;}
  int presentationRasterScale()const{return detail_?(resolution_.valid?resolution_.rasterScale:0):1;}
  void presentationPalette(pixelupgrade::PaletteRange mode){paletteRange_=mode;}
  explicit Context(Reader&r):reader_(r),read{&r},artINI(read,external::assets::LiveINI::ArtObject),rulesINI(read,external::assets::LiveINI::RulesPointer,true),cameoCatalog(read){}
  void identity(uint32_t process,uint32_t match){
-  if(process_!=process||match_!=match){presentationRevision_=0;presentationRevisionKnown_=false;presentationPalettes_.clear();overlayPalettes_.clear();gpuPackets_.clear();gpuPalettes_.clear();gpuVplSnapshot_.reset();gpuVplSignature_=0;terrainPaletteLive_=presentation_=presentationVplFresh_=false;voxelLight={};voxelChecked=voxelNative=false;voxelRevision=~uint64_t(0);}
+  if(process_!=process||match_!=match){presentationRevision_=0;presentationRevisionKnown_=false;presentationPalettes_.clear();overlayPalettes_.clear();gpuPackets_.clear();voxelGeometry_.clear();gpuPalettes_.clear();gpuVplSnapshot_.reset();gpuVplSignature_=0;terrainPaletteLive_=presentation_=presentationVplFresh_=false;voxelLight={};voxelChecked=voxelNative=false;voxelRevision=~uint64_t(0);}
   process_=process;match_=match;update();
  }
 
@@ -341,14 +348,16 @@ struct ActorArt {
 static bool liveVoxel(const ActorArt&a){return a.voxel||a.hasGuns();}
  bool gpuVoxel(const ActorArt&art,double angle,double turret,double pitch,bool projectile,int scale,const voxelposture::State*posture,bool shadow,voxel::Image&out,int bodyFrame=0,int turretFrame=0,double gunPitch=0,std::array<float,2>recoil={}){
   if(!shadow)gpuVplSnapshot();
-  const bool indexed=!shadow&&gpuVplSnapshot_&&std::all_of(art.geometry().faces.begin(),art.geometry().faces.end(),[](const auto&f){return f.hasNormal||f.normalIndex>=253;});
+  const bool indexed=!shadow&&gpuVplSnapshot_&&voxelGeometry_.indexed(art.geometry(),art.geometryIdentity);
   std::array<uint32_t,256> neutral{};neutral.fill(0xffffffffu);const auto&colors=(indexed||shadow)?neutral:art.colors;
   auto key=gpuvoxel::PacketCache::key(art.geometryIdentity,shadow?std::shared_ptr<const gpuvoxel::PacketCache::VplSnapshot>{}:gpuVplSnapshot_,colors,angle,turret,pitch,art.turretOffset,scale,projectile,shadow,posture,bodyFrame,turretFrame,gunPitch,recoil);
   auto packet=gpuPackets_.find(key);
   if(!packet){auto next=std::make_shared<gpuvoxel::Prepared>();
-   if(shadow){voxel::Model flattened;if(bodyFrame||turretFrame){if(!voxel::animated(art.geometry(),bodyFrame,turretFrame,flattened))return false;}else flattened=art.geometry();for(auto&face:flattened.faces)for(auto&p:face.p){if(art.kind==voxelanims::Kind&&posture)p=voxel::posturePoint(posture->ramp,p);p.z=0;}
+   std::shared_ptr<const voxel::Model> animated;const voxel::Model*model=&art.geometry();
+   if(bodyFrame||turretFrame){animated=voxelGeometry_.animated(*model,art.geometryIdentity,bodyFrame,turretFrame);if(!animated)return false;model=animated.get();}
+   if(shadow){voxel::Model flattened=*model;for(auto&face:flattened.faces)for(auto&p:face.p){if(art.kind==voxelanims::Kind&&posture)p=voxel::posturePoint(posture->ramp,p);p.z=0;}
     if(!gpuvoxel::prepare(flattened,angle,colors,*next,turret,art.turretOffset,nullptr,255,0,false,scale,art.kind==voxelanims::Kind?nullptr:posture))return false;
-   }else{voxel::Model animated;const voxel::Model*model=&art.geometry();if(bodyFrame||turretFrame){if(!voxel::animated(art.geometry(),bodyFrame,turretFrame,animated))return false;model=&animated;}if(!gpuvoxel::prepare(*model,angle,colors,*next,turret,art.turretOffset,&voxelLight,255,pitch,projectile,scale,posture,gunPitch,recoil))return false;}
+   }else if(!gpuvoxel::prepare(*model,angle,colors,*next,turret,art.turretOffset,&voxelLight,255,pitch,projectile,scale,posture,gunPitch,recoil))return false;
    packet=next;gpuPackets_.insert(std::move(key),packet);
   }
   out={};out.rasterScale=packet->rasterScale;out.width=packet->width;out.height=packet->height;out.x=packet->x;out.y=packet->y;out.depthBottom=packet->depthBottom;out.objectPalette=true;out.gpuRaster=std::move(packet);
@@ -591,7 +600,7 @@ bool renderActor(const ActorArt&art,const external::visual::Pose&pose,external::
   const int bodyFrame=pose.hvaBody,turretFrame=bodyFrame?bodyFrame:pose.hvaTurret;if(bodyFrame<0||turretFrame<0)return false;
   if(gpuPresentation_){
    if(!gpuVoxel(art,angle,projectile?std::numeric_limits<double>::quiet_NaN():turret,projectile?turret:0,projectile,rasterScale,&pose.posture,false,out,bodyFrame,turretFrame,projectile?0:gunPitch,pose.recoil))return false;
-  }else{voxel::Model animated;const voxel::Model*model=&art.geometry();if(bodyFrame||turretFrame){if(!voxel::animated(art.geometry(),bodyFrame,turretFrame,animated))return false;model=&animated;}if(!external::voxel::render(*model,angle,art.colors,out,projectile?std::numeric_limits<double>::quiet_NaN():turret,art.turretOffset,&voxelLight,255,projectile?turret:0,projectile,rasterScale,&pose.posture,projectile?0:gunPitch,pose.recoil))return false;}
+  }else{std::shared_ptr<const voxel::Model> animated;const voxel::Model*model=&art.geometry();if(bodyFrame||turretFrame){animated=voxelGeometry_.animated(*model,art.geometryIdentity,bodyFrame,turretFrame);if(!animated)return false;model=animated.get();}if(!external::voxel::render(*model,angle,art.colors,out,projectile?std::numeric_limits<double>::quiet_NaN():turret,art.turretOffset,&voxelLight,255,projectile?turret:0,projectile,rasterScale,&pose.posture,projectile?0:gunPitch,pose.recoil))return false;}
   // The model Z buffer resolves faces inside the cached voxel only. The game
   // submits that cached image through the same standing shape Z test as SHP.
   // Orthographic model depth is not in the terrain/BUILDNGZ buffer's units.
@@ -604,7 +613,7 @@ bool renderActor(const ActorArt&art,const external::visual::Pose&pose,external::
    auto shadowPosture=art.kind==voxelanims::Kind?pose.posture:external::voxelshadow::projection(pose.shadow);
    if(!shadowPosture.available){failure="voxel-current-shadow-unavailable";return false;}
    if(gpuPresentation_)drawn=gpuVoxel(art,angle,turret,0,false,rasterScale,&shadowPosture,true,shadow,bodyFrame,turretFrame);
-   else{voxel::Model ground;if(bodyFrame||turretFrame){if(!voxel::animated(art.geometry(),bodyFrame,turretFrame,ground))return false;}else ground=art.geometry();for(auto&face:ground.faces)for(auto&p:face.p){if(art.kind==voxelanims::Kind)p=voxel::posturePoint(pose.posture.ramp,p);p.z=0;}drawn=external::voxel::render(ground,angle,art.colors,shadow,turret,art.turretOffset,nullptr,255,0,false,rasterScale,art.kind==voxelanims::Kind?nullptr:&shadowPosture);}
+   else{voxel::Model ground;if(bodyFrame||turretFrame){auto animated=voxelGeometry_.animated(art.geometry(),art.geometryIdentity,bodyFrame,turretFrame);if(!animated)return false;ground=*animated;}else ground=art.geometry();for(auto&face:ground.faces)for(auto&p:face.p){if(art.kind==voxelanims::Kind)p=voxel::posturePoint(pose.posture.ramp,p);p.z=0;}drawn=external::voxel::render(ground,angle,art.colors,shadow,turret,art.turretOffset,nullptr,255,0,false,rasterScale,art.kind==voxelanims::Kind?nullptr:&shadowPosture);}
    if(drawn){shadow.x+=(art.kind==voxelanims::Kind?0:3)*shadow.rasterScale;shadow.shadow=true;shadow.flat=true;shadow.writeDepth=false;shadow.depthBias=art.kind==voxelanims::Kind?-2:2;shadow.nativeDepth.enabled=true;shadow.nativeDepth.gradient=nativesurface::Gradient::Flat;shadow.nativeDepth.adjust=-int(shadow.depthBias);std::vector<float>().swap(shadow.depth);out.attachments.push_back(std::move(shadow));}}
   return true;
  }
@@ -677,7 +686,7 @@ bool renderActor(const ActorArt&art,const external::visual::Pose&pose,external::
    ActorArt component;component.kind=3;component.type=art.type;component.colors=art.colors;component.voxel=true;component.sharedGeometry=gun.geometry;component.geometryIdentity=gun.identity;component.turretOffset=art.guns[0].geometry?art.gunOffset:0;
    const auto recoil=art.guns[0].geometry?pose.recoil:std::array<float,2>{};external::voxel::Image image;bool drawn=false;
    if(gpuPresentation_)drawn=gpuVoxel(component,yaw,yaw,0,false,scale,nullptr,false,image,0,hvaFrame,barrelPitch,recoil);
-   else{voxel::Model animated;const auto*model=gun.geometry.get();if(hvaFrame){if(!voxel::animated(*model,0,hvaFrame,animated))return false;model=&animated;}drawn=voxel::render(*model,yaw,art.colors,image,yaw,component.turretOffset,&voxelLight,255,0,false,scale,nullptr,barrelPitch,recoil);}
+   else{std::shared_ptr<const voxel::Model> animated;const auto*model=gun.geometry.get();if(hvaFrame){animated=voxelGeometry_.animated(*model,gun.identity,0,hvaFrame);if(!animated)return false;model=animated.get();}drawn=voxel::render(*model,yaw,art.colors,image,yaw,component.turretOffset,&voxelLight,255,0,false,scale,nullptr,barrelPitch,recoil);}
    if(!drawn){failure="building-gun/raster";return false;}
    image.x+=art.gunX*image.rasterScale;image.y+=(art.gunY+art.drawY)*image.rasterScale;image.objectPalette=true;image.writeDepth=false;image.nativeDepth.enabled=true;image.nativeDepth.voxel=true;image.nativeDepth.gradient=nativesurface::Gradient::Vertical;image.nativeDepth.adjust=art.gunZ+2;
    std::vector<float>().swap(image.depth);out.attachments.push_back(std::move(image));

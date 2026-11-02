@@ -9,7 +9,7 @@ from pathlib import Path
 import argparse, hashlib, json, struct, sys
 sys.path.insert(0,str(Path(__file__).resolve().parent))
 from pe32_image import Image
-from verify_windows_outputs import SYSTEM, HOOKS, verify_host_manifest, verify_worker_manifest
+from verify_windows_outputs import SYSTEM, HOOKS, CURSOR_MAPPING, verify_cursor_mapping, verify_host_manifest, verify_worker_manifest
 
 def main():
  p=argparse.ArgumentParser(description=__doc__);p.add_argument('--root',type=Path,required=True);a=p.parse_args();root=a.root.resolve()
@@ -31,16 +31,21 @@ def main():
   elif name=='GameRuntimeHost32.exe':assert not exports
   records[name]=dict(bytes=len(raw),sha256=hashlib.sha256(raw).hexdigest(),machine=pe.architecture,imports=imports,exports=list(exports))
  host=images['RA2HookTest.exe'];runtime=images['GameRuntime.dll']
+ # The Assist-only diagnostic host has no Cursor client/mapping. Its paired
+ # Runtime still contains the Cursor service and must be the current ABI.
+ cursor_protocol=verify_cursor_mapping(runtime,'GameRuntime.dll')
+ records['GameRuntime.dll']['cursor_protocol']=cursor_protocol
+ records['GameRuntime.dll']['cursor_mapping']=CURSOR_MAPPING
  records['RA2HookTest.exe']['common_controls_activation']=verify_host_manifest(host,'x64')
  records['RA2HookTest.exe']['process_manifest']=verify_worker_manifest(host,'amd64','diagnostic host')
  records['GameRuntimeHost32.exe']['process_manifest']=verify_worker_manifest(images['GameRuntimeHost32.exe'],'x86','broker')
  def exported(pe,name,n):return pe.at_rva(pe.exports()[name],n)
- assert exported(host,'AssistHostProtocolInfo',8)==exported(runtime,'AssistProtocolInfo',8)==struct.pack('<II',87,6580752)
+ assert exported(host,'AssistHostProtocolInfo',8)==exported(runtime,'AssistProtocolInfo',8)==struct.pack('<II',88,6584688)
  assert exported(runtime,'GameEntryManagerInfo',8)==struct.pack('<II',3,108)
  assert exported(runtime,'GameRuntimeInfo',8)==struct.pack('<II',4,176)
- prefix='Local\\RA2Assist_v087_\0'.encode('utf-16le')
+ prefix='Local\\RA2Assist_v088_\0'.encode('utf-16le')
  assert exported(host,'AssistHostMappingPrefix',len(prefix))==exported(runtime,'AssistMappingPrefix',len(prefix))==prefix
- report=dict(verified=records,host_architecture='x64',runtime_architecture='x86',assist_protocol=87,runtime_protocol=4,game_tested=False,multiplayer_tested=False)
+ report=dict(verified=records,host_architecture='x64',runtime_architecture='x86',assist_protocol=88,runtime_protocol=4,cursor_protocol=cursor_protocol,game_tested=False,multiplayer_tested=False)
  (root/'HOOK_TEST_VERIFIED.json').write_text(json.dumps(report,indent=2),encoding='utf-8')
- print('PASS standalone x64 test host + x86 Runtime/broker; PE/import/manifest/Assist87/Runtime4 verified')
+ print('PASS standalone x64 test host + x86 Runtime/broker; PE/import/manifest/Assist88/Runtime4/Cursor155 verified')
 if __name__=='__main__':main()

@@ -21,6 +21,20 @@ SYSTEM = {'kernel32.dll', 'user32.dll', 'gdi32.dll', 'winmm.dll', 'gdiplus.dll',
           'msvcrt.dll', 'ucrtbase.dll', 'ntdll.dll', 'version.dll', 'ws2_32.dll',
           'shlwapi.dll', 'oleaut32.dll', 'imm32.dll'}
 NEURAL_SYSTEM = SYSTEM | {'d3d12.dll', 'dxgi.dll', 'wintrust.dll', 'crypt32.dll'}
+CURSOR_PROTOCOL = 155
+CURSOR_MAPPING = 'Local\\RA2CursorBridge_v155_%lu'
+
+
+def verify_cursor_mapping(pe, label):
+    # Cursor has its own mapping ABI while Assist/Runtime versions remain
+    # unchanged. Verify both production components, not just Assist exports.
+    # Require the complete format string in mapped PE section data; appended
+    # evidence or arbitrary overlay bytes cannot satisfy the check.
+    marker = (CURSOR_MAPPING + '\0').encode('utf-16le')
+    if not any(marker in pe.take(raw, min(size, virtual or size))
+               for _, _, size, raw, virtual in pe.sections if size):
+        raise ValueError(label + ': Cursor155 mapping namespace missing or mismatched')
+    return CURSOR_PROTOCOL
 
 
 def verify_host_manifest(pe, host_arch='x86'):
@@ -127,6 +141,9 @@ def verify(root, host_arch='x86', neural_helper=False):
     if not errors:
         try:
             host, bridge = images['RA2Toolbox.exe'], images['GameRuntime.dll']
+            for name in NAMES:
+                recs[name]['cursor_protocol'] = verify_cursor_mapping(images[name], name)
+                recs[name]['cursor_mapping'] = CURSOR_MAPPING
             recs['RA2Toolbox.exe']['common_controls_activation'] = verify_host_manifest(host, host_arch)
             if host_arch == 'x64':
                 recs[BROKER]['process_manifest'] = verify_broker_manifest(images[BROKER])
@@ -135,9 +152,9 @@ def verify(root, host_arch='x86', neural_helper=False):
             a = host.at_rva(host.exports()['AssistHostProtocolInfo'], 8)
             b = bridge.at_rva(bridge.exports()['AssistProtocolInfo'], 8)
             protocol, shared_bytes = struct.unpack('<II', a)
-            if a != b or protocol != 87 or not shared_bytes:
+            if a != b or protocol != 88 or not shared_bytes:
                 raise ValueError('host/bridge protocol or Shared structure size mismatch')
-            marker = 'Local\\RA2Assist_v087_\0'.encode('utf-16le')
+            marker = 'Local\\RA2Assist_v088_\0'.encode('utf-16le')
             if 'AssistHostMappingPrefix' not in host.exports() or host.at_rva(host.exports()['AssistHostMappingPrefix'],len(marker)) != marker:
                 raise ValueError('host mapping namespace mismatch')
             if bridge.at_rva(bridge.exports()['AssistMappingPrefix'], len(marker)) != marker:
@@ -195,6 +212,7 @@ def main():
     (root / 'WINDOWS_BUILD_ARTIFACTS.json').write_text(json.dumps({
         'label': '1.0.39-pre.7 SingleRuntime', 'file_version': '1.0.39.7',
         'host_architecture': args.host_arch, 'runtime_architecture': 'x86',
+        'cursor_protocol': CURSOR_PROTOCOL,
         'neural_helper_verified': args.neural_helper, 'neural_runtime_tested': False,
         'verified': recs, 'runtime_tested': False, 'multiplayer_tested': False,
         'dependency_check': {2: 'two', 3: 'three', 4: 'four'}[len(recs)] + ' project binaries import Windows system DLLs only',

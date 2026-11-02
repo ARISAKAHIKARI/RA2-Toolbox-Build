@@ -7,7 +7,8 @@ enum class Verdict : uint8_t { Ready, ProbeOnly, InvalidPlayer, InvalidFields, U
 inline Verdict admit(const intent::EventOrder&r,bool diagnosticProbe=false){
  if(!vanilla::address(r.domain))return Verdict::UnknownAddress;
  if(r.player<0||r.player>=32)return Verdict::InvalidPlayer;
- if(vanilla::exposure(r.domain)==vanilla::Exposure::ProbeOnly&&!diagnosticProbe&&!(r.domain==vanilla::Domain::NoOptions&&(r.eventKind==vanilla::EventType::AllCheer||r.eventKind==vanilla::EventType::PlanCommit||r.eventKind==vanilla::EventType::Destruct)))return Verdict::ProbeOnly;
+ const bool planningConnect=r.domain==vanilla::Domain::Waypoints&&r.eventKind==vanilla::EventType::PlanConnect;
+ if(vanilla::exposure(r.domain)==vanilla::Exposure::ProbeOnly&&!diagnosticProbe&&!planningConnect&&!(r.domain==vanilla::Domain::NoOptions&&(r.eventKind==vanilla::EventType::AllCheer||r.eventKind==vanilla::EventType::PlanCommit||r.eventKind==vanilla::EventType::Destruct)))return Verdict::ProbeOnly;
  if(r.appendWaypoint&&r.domain!=vanilla::Domain::MegaMission)return Verdict::InvalidFields;
  switch(r.domain){
  case vanilla::Domain::Place:
@@ -40,6 +41,9 @@ inline Verdict admit(const intent::EventOrder&r,bool diagnosticProbe=false){
  case vanilla::Domain::SuperWeaponPlace:
   if(r.a<0||r.a>=256||r.eventKind!=vanilla::EventType::SpecialPlace||!vanilla::validCell(r.cell))
    return Verdict::InvalidFields;
+  break;
+ case vanilla::Domain::Waypoints:
+  if(!diagnosticProbe&&(r.eventKind!=vanilla::EventType::PlanConnect||r.a<=0||r.tagA!=vanilla::TargetTag::Techno||r.tagB!=vanilla::TargetTag::Cell||r.b<=0||r.b%1000<=0||r.b%1000>=512||r.b/1000<=0||r.b/1000>=512||r.c||r.d||r.tagC||r.nearestTag||r.mission||r.cell.x||r.cell.y))return Verdict::InvalidFields;
   break;
  default:
   if(r.eventKind<0||r.eventKind>255)return Verdict::InvalidFields;

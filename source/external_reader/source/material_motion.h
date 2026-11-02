@@ -1,7 +1,7 @@
 #pragma once
 #include "radar_map.h"
 #include <cmath>
-#include <map>
+#include <unordered_map>
 #include <chrono>
 // Read-only presentation timeline. Interpolate two OBSERVED states, with one
 // observation interval of visual latency. Never predict movement, advance an
@@ -42,7 +42,10 @@ inline radar::Frame latest(const radar::Frame&frame,bool fine=true){
 }
 class Timeline {
  radar::Frame previous_,current_;double observed_=0,interval_=0,motionInterval_=0;bool ready_=false;
- using Key=std::pair<uint32_t,uint32_t>;std::map<Key,radar::Marker> prior_;
+ // previous_ owns the immutable observation. Index it instead of allocating
+ // and copying a second complete Marker for every actor on every game frame.
+ static uint64_t key(const radar::Marker&m){return (uint64_t(m.object)<<32)|m.id;}
+ std::unordered_map<uint64_t,size_t> prior_;
 public:
  void reset(){previous_={};current_={};observed_=interval_=motionInterval_=0;ready_=false;prior_.clear();}
  bool observe(const radar::Frame&frame,double now){
@@ -53,7 +56,12 @@ public:
    now>observed_&&now-observed_<=250&&frame.terrain->geo.same(current_.terrain->geo)&&
    frame.terrain->reveal==current_.terrain->reveal;
   prior_.clear();motionInterval_=continuous?now-observed_:0;interval_=continuous?std::clamp(now-observed_,1.,100.):0;
-  if(continuous){previous_=std::move(current_);for(const auto&m:previous_.markers)prior_[{m.object,m.id}]=m;}
+  if(continuous){
+   // Rotate the two owned buffers; assigning the next observation can reuse
+   // the retired vector's capacity instead of reallocating the actor array.
+   std::swap(previous_,current_);prior_.reserve(previous_.markers.size());
+   for(size_t n=0;n<previous_.markers.size();++n)prior_[key(previous_.markers[n])]=n;
+  }
   else previous_={};
   current_=frame;observed_=now;ready_=true;return true;
  }
@@ -67,9 +75,13 @@ public:
   auto out=latest(current_,fine);
   const double age=at-observed_,horizon=std::min(motionInterval_,25.);
   const double phase=enabled&&motionInterval_>0&&age>=0&&age<=std::max(motionInterval_*2.,50.)?std::min(age,horizon)/motionInterval_:0.;
+  // latest() has already applied the fine facing and native-pose rules. With
+  // zero display motion the former loop could not change any output field.
+  if(phase==0)return out;
   const int ticks=previous_.frame>=0?std::max(1,current_.frame-previous_.frame):1;
-  for(auto&m:out.markers){auto it=prior_.find({m.object,m.id});if(it==prior_.end()||!identity(it->second,m))continue;
-   const auto&old=it->second;const int ox=m.x,oy=m.y,oz=m.z;const double dx=double(m.x)-old.x,dy=double(m.y)-old.y,dz=double(m.z)-old.z;
+  for(auto&m:out.markers){auto it=prior_.find(key(m));if(it==prior_.end())continue;
+   const auto&old=previous_.markers[it->second];if(!identity(old,m))continue;
+   const int ox=m.x,oy=m.y,oz=m.z;const double dx=double(m.x)-old.x,dy=double(m.y)-old.y,dz=double(m.z)-old.z;
    const double limit=(m.kind==projectiles::Kind?1536.:256.)*ticks;
    if(phase==0||m.kind==3||m.kind==4||m.kind>6||dx*dx+dy*dy>limit*limit||std::abs(dz)>256.*ticks)continue;
    m.x=int(std::lround(m.x+dx*phase));m.y=int(std::lround(m.y+dy*phase));m.z=int(std::lround(m.z+dz*phase));
@@ -86,7 +98,7 @@ public:
   auto out=current_;double phase=interpolate&&interval_>0?std::clamp((now-observed_)/interval_,0.,1.):1.;
   const int ticks=previous_.frame>=0?std::max(1,current_.frame-previous_.frame):1;
   for(auto&m:out.markers){
-   auto it=prior_.find({m.object,m.id});const auto*old=it==prior_.end()?nullptr:&it->second;
+   auto it=prior_.find(key(m));const auto*old=it==prior_.end()?nullptr:&previous_.markers[it->second];
    bool valid=interpolate&&old&&identity(*old,m);
    if(valid){
     double dx=double(m.x)-old->x,dy=double(m.y)-old->y,dz=double(m.z)-old->z;

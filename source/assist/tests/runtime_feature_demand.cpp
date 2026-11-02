@@ -25,6 +25,8 @@ static bool demand(uint32_t flags,const AdditionalSettings&extra,bool displayRea
 }
 int main(){
  AdditionalSettings off;check(!demand(0,off));
+ for(uint32_t feature:{1u,2u,4u,7u}){auto settings=off;settings.moFeatures=feature;check(demand(0,settings));settings.moFeatures=0;check(!demand(0,settings));}
+ {auto settings=off;settings.moFeatures=16;settings.superweaponPanel=true;check(!demand(0,settings));}
  const uint32_t bits[]={AutoRepair,AutoCS,NativeOrders,EjectAssist,UnsafeTech,AdvancedInput,
   SmartUnloadOrders,AutoOreReturn,BuildAnywhere,CustomCS,MagnetronInput,AdvancedEnter,
   AircraftSpread,DiskPrimary,SellDrained,SellVehicles,SellEnemy,ExperimentalReveal,

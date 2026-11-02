@@ -42,9 +42,21 @@ struct Snapshot {
   const auto&b=found->second;x=b[0];y=b[1];w=b[2];h=b[3];return w>0&&h>0;
  }
 };
+// Camera-independent actor ordering belongs to the immutable world. Keep its
+// owner, not a frame-number key: chrono can select a different retained world.
+class InstanceOrder {
+ std::shared_ptr<const Snapshot> owner_;
+ std::vector<camera::ObjectCanvas::Draw> draws_;
+public:
+ explicit InstanceOrder(std::shared_ptr<const Snapshot> world):owner_(std::move(world)){
+  if(owner_){draws_=owner_->instances;tetherdraw::replay(draws_,owner_->state.markers);}
+ }
+ const std::vector<camera::ObjectCanvas::Draw>*forWorld(const std::shared_ptr<const Snapshot>&world)const{return owner_==world?&draws_:nullptr;}
+};
 class Pipeline {
  materialmotion::Timeline motion_;
  radar::Frame presented_;
+ std::shared_ptr<const Snapshot> presentedWorld_;
  chronoscene::History<Snapshot> chrono_;
  camera::ViewportCanvas canvas_;
  radar::shroudmask::Live visibility_;
@@ -61,19 +73,20 @@ class Pipeline {
  asyncwork::FramePool<radar::Scene> outputs_;
  std::array<double,4>timings_{};bool reused_=false;
 public:
- const radar::Frame&presentedState()const{return presented_;}
+ const radar::Frame&presentedState()const{return presentedWorld_?presentedWorld_->state:presented_;}
  const std::array<double,4>&timings()const{return timings_;}bool reused()const{return reused_;}
- void reset(){motion_.reset();presented_={};chrono_.reset();canvas_.reset();visibility_.reset();masks_.reset();mask_.reset();tiles_.reset();base_.reset();world_.reset();visible_={};radialMath_.reset();view_={};width_=height_=0;reuse_.reset();outputs_.clear();}
- template<class Read>std::shared_ptr<const radar::Scene> draw(std::shared_ptr<const Snapshot>world,const mainview::View&inputView,int width,int height,Read read,const radar::Frame*latest=nullptr,uint32_t uiTick=0){
+ void reset(){motion_.reset();presented_={};presentedWorld_.reset();chrono_.reset();canvas_.reset();visibility_.reset();masks_.reset();mask_.reset();tiles_.reset();base_.reset();world_.reset();visible_={};radialMath_.reset();view_={};width_=height_=0;reuse_.reset();outputs_.clear();}
+ template<class Read>std::shared_ptr<const radar::Scene> draw(std::shared_ptr<const Snapshot>world,const mainview::View&inputView,int width,int height,Read read,const radar::Frame*latest=nullptr,uint32_t uiTick=0,const InstanceOrder*ordered=nullptr){
   timings_={};reused_=false;auto stageAt=std::chrono::steady_clock::now();auto stage=[&](unsigned n){auto now=std::chrono::steady_clock::now();timings_[n]=std::chrono::duration<double,std::milli>(now-stageAt).count();stageAt=now;};
   auto view=inputView;
   if(!world||!world->state.terrain||!view.valid()||width<1||height<1)return {};
   chrono_.select(world,view,width,height,read);
   const auto&geo=world->state.terrain->geo;
   if(geo.house!=view.house)return {};
-  presented_=world->state;
   const bool live=!chrono_.active()&&latest&&latest->terrain&&latest->markerScanValid&&latest->frame>=world->state.frame&&latest->terrain->geo.same(geo)&&latest->terrain->reveal==world->state.terrain->reveal;
-  if(live){motion_.observe(*latest,materialmotion::now());presented_=motion_.sampleLatest(materialmotion::now(),world->profile.motion,false);}
+  if(live){motion_.observe(*latest,materialmotion::now());presented_=motion_.sampleLatest(materialmotion::now(),world->profile.motion,false);presentedWorld_.reset();}
+  else presentedWorld_=world;
+  const auto&presented=presentedState();
   const auto crop=mainview::crop(view,geo.offsetX,geo.offsetY);
   const bool cameraChanged=!mainview::sameViewport(view_,view)||width_!=width||height_!=height;
   const bool groundChanged=!world_||world_->terrainRevision!=world->terrainRevision||!world_->state.terrain->geo.same(geo)||world_->profile!=world->profile||world_->samplingMode!=world->samplingMode||world_->precision!=world->precision;
@@ -103,9 +116,11 @@ public:
   stage(0);
   // This lane does no asset reads/decoding or VXL geometry reconstruction.
   using Key=std::pair<uint32_t,uint32_t>;std::map<Key,const radar::Marker*> old,current;
-  if(live){for(const auto&m:world->state.markers)old[{m.object,m.id}]=&m;for(const auto&m:presented_.markers)current[{m.object,m.id}]=&m;}
-  auto instances=world->instances;
-  if(live){instances.erase(std::remove_if(instances.begin(),instances.end(),[&](auto&item){
+  if(live){for(const auto&m:world->state.markers)old[{m.object,m.id}]=&m;for(const auto&m:presented.markers)current[{m.object,m.id}]=&m;}
+  const auto*sharedOrder=!live&&ordered?ordered->forWorld(world):nullptr;
+  std::vector<camera::ObjectCanvas::Draw> mutableInstances;
+  if(!sharedOrder)mutableInstances=world->instances;
+  if(live){mutableInstances.erase(std::remove_if(mutableInstances.begin(),mutableInstances.end(),[&](auto&item){
     if(!item.object)return false;const Key key{item.object,item.id};auto a=old.find(key),b=current.find(key);
     if(a==old.end()||b==current.end()||!materialmotion::identity(*a->second,*b->second))return true;
     const auto&p=*a->second;const auto&q=*b->second;
@@ -113,14 +128,17 @@ public:
     const float dx=float(((double(q.x)-q.y)-(double(p.x)-p.y))*30/256.),dy=float(sum*15/256.-height);
     item.x+=dx;item.y+=dy;item.base+=float(sum*15/256.);item.drop=std::max(0.f,item.drop+float(height));
     auto material=q.material;material.mixStrength=item.material.mixStrength;material.clipBottom=q.waterline>0?float(q.waterline-geo.offsetY*15)-item.y:1e7f;item.material=material;return false;
-   }),instances.end());
+   }),mutableInstances.end());
   }
-  tetherdraw::replay(instances,presented_.markers);
-  auto missing=world->missing;if(live){missing.erase(std::remove_if(missing.begin(),missing.end(),[&](auto&m){auto found=current.find({m.object,m.id});if(found==current.end()||!materialmotion::identity(m,*found->second))return true;m=*found->second;return false;}),missing.end());}
+  if(!sharedOrder)tetherdraw::replay(mutableInstances,presented.markers);
+  const auto&instances=sharedOrder?*sharedOrder:mutableInstances;
+  std::vector<radar::Marker> mutableMissing;
+  if(live){mutableMissing=world->missing;mutableMissing.erase(std::remove_if(mutableMissing.begin(),mutableMissing.end(),[&](auto&m){auto found=current.find({m.object,m.id});if(found==current.end()||!materialmotion::identity(m,*found->second))return true;m=*found->second;return false;}),mutableMissing.end());}
+  const auto&missing=live?mutableMissing:world->missing;
   for(const auto&item:instances)if(item.image&&canvas_.visible(*item.image,item.x,item.y,item.drop))canvas_.blit(*item.image,item.x,item.y,1,1,item.base,item.light,item.lift,item.drop,item.image,{},item.material);
   for(const auto&m:missing){const int x=int(((double(m.x)-m.y)*30/256.-view.cameraX)*width/view.width),y=int(((double(m.x)+m.y)*15/256.-view.cameraY)*height/view.height);canvas_.annotationDot(x,y,m.color);}
   worldfx::View effectView;effectView.x=crop.x;effectView.y=crop.y;effectView.width=crop.width;effectView.height=crop.height;effectView.pixelsW=width;effectView.pixelsH=height;effectView.offsetX=geo.offsetX;effectView.offsetY=geo.offsetY;effectView.zscale=world->zscale;
-  const auto effects=presented_.effects;const bool hasWorld=effects&&effects->world&&!effects->world->empty();
+  const auto effects=presented.effects;const bool hasWorld=effects&&effects->world&&!effects->world->empty();
   const bool bolts=world->profile.lasers&&effects&&effects->boltsValid&&!effects->bolts.empty();
   gpueffects::Builder builder(effectView);
   if(hasWorld){if(world->profile.particles)for(const auto&a:effects->world->alphas){auto image=world->alphas.find(a.image);if(image!=world->alphas.end())builder.alpha(a,image->second);}builder.paint(*effects->world,world->profile.particles,world->profile.lasers);}
@@ -131,7 +149,7 @@ public:
   if(chrono_.active())builder.chrono(chrono_.state(),chrono_.table(),view.width,view.height);
   // Main-camera local ranges share destination pixels with the world. A
   // rejected producer leaves the world transaction intact, never stale rays.
-  std::vector<nativefeedback::Object>radialObjects;for(const auto&m:presented_.markers)if(m.kind==3)radialObjects.push_back({m.object,m.id,m.type,m.owner,{},m.kind});
+  std::vector<nativefeedback::Object>radialObjects;for(const auto&m:presented.markers)if(m.kind==3)radialObjects.push_back({m.object,m.id,m.type,m.owner,{},m.kind});
   std::vector<radialindicators::Draw>radials;std::array<int,6>pixelFormat{};const bool radial555=read(0x8A0DD0,pixelFormat.data(),sizeof pixelFormat)&&pixelFormat==std::array<int,6>{{10,3,0,3,5,3}};
   if(chrono_.active()||!radialindicators::capture(read,view,radialObjects,uiTick,radials))radials.clear();
   if(!radials.empty()&&!radialMath_)radialMath_=nativefx::math(read);if(!radialMath_)radials.clear();

@@ -23,23 +23,36 @@ for(int i:{11,1,2,3,4,5,6,7,0}){
  if(i==0)repairCheck=h;keys[i]=key(200+i,hotkeys[i]);next();
 }
 hookChecks[1]=toggle(459,L"智能卸载",hookSmartUnload,20,270);unloadKeyEdit=key(451,unloadKey,305,180);button(453,L"立即卸载",500,125);next();
+label(L"喝彩与嘲讽快捷键",20,455);button(9604,L"展开设置",500,125);next();
+activeFoldGroup=9604;
 label(L"喝彩",20,306);key(870,socialKeys[0]);next();
 for(int i=1;i<9;++i){auto text=L"嘲讽 "+std::to_wstring(i);label(text.c_str(),20,306);key(870+i,socialKeys[i]);next();}
 note(L"绑定后由工具箱接管该组合；聊天和菜单中不接管。嘲讽仍遵循原版冷却与接收方设置。",44);
+activeFoldGroup=0;
 label(L"轮选空闲飞机",20,306);key(853,idleAircraftKey);next();
 label(L"按当前武器选择同类单位",20,306);extraControls[VariantKey]=key(724,extra.variantKey);next();
 button(454,L"停止所选单位的自动任务");next();
+label(L"组合选兵绑定",20,455);button(9608,L"展开设置",500,125);next();
 note(L"组合选兵：多个单位类型可使用同一快捷键；单按选屏幕内，双按选全图。",44);
+activeFoldGroup=9608;
 typeList=combo(440,20,315,300);typeKey=key(441,0,345,180);button(443,L"解除绑定",537,88);next();
 label(L"手动添加单位 ID",20,180);typeIdEdit=edit(467,L"",210,315);button(449,L"添加",537,88);next();
 tapEdit=number(444,L"选兵双按间隔 / 毫秒",doubleMs,L"20–5000");
 typeCS=toggle(445,L"此单位类型参与自动移动攻击（CS）",false);next();
+activeFoldGroup=0;
 toggle(786,L"快捷键冲突时执行所有匹配功能",extra.allHotkeys);next();
 note(L"同时执行多项功能时，同一单位后收到的命令可能替代前一条命令。",44);
 
 heading(1,901,L"键鼠组合操作",L"按住配置键并点击目标；配置键留空时仅用鼠标。每项鼠标键可独立设置。");
 label(L"功能开关",20,210);label(L"按住键 / 自定义组合",240,258);label(L"鼠标键",510,115);next();
-hookChecks[0]=toggle(458,L"高级移动攻击",hookAdvanced,20,210);advancedKeyEdit=key(450,advancedKey,240,258,true);mouse(pointerinput::MouseAdvanced);next();
+hookChecks[0]=toggle(458,L"高级移动攻击",hookAdvanced,20,455);button(9606,L"展开设置",500,125);next();
+activeFoldGroup=9606;
+label(L"按住键 / 鼠标键",20,210);advancedKeyEdit=key(450,advancedKey,240,258,true);mouse(pointerinput::MouseAdvanced);next();
+number(787,L"高级移动攻击检测频率 / 次每秒",advancedScanHz,L"1–60 · 默认 10");
+number(818,L"高级移动攻击额外索敌距离 / 格",advancedRangeCells,L"0–30 · 默认 2");
+label(L"高级移动攻击目标优先级",20,260);choices(combo(802),{L"单位价值优先",L"弹头伤害比例优先"},advancedTargetPriority);next();
+note(L"索敌范围为单位射程加额外距离；忽略伤害比例不超过 2% 的目标。",44);
+activeFoldGroup=0;
 magnetronCheck=toggle(477,L"磁电轮换攻击",magnetronMode,20,210);magnetronKeyEdit=key(478,magnetronKey,240,258,true);mouse(pointerinput::MouseMagnetron);next();
  toggle(9042,L"磁电全局无限吸",extra.magnetronGlobal);next();note(L"自动接管空闲磁电，沿用轮换和类型清单；手动移动或攻击优先。关闭后停止自动接续。");
 extraControls[EnterEnabled]=toggle(702,L"高级进驻",extra.enter,20,210);holdPresetControl(EnterPreset,EnterCustom,extra.enterKey);mouse(pointerinput::MouseEnter);next();
@@ -65,8 +78,16 @@ extraControls[SellVehiclesEnabled]=toggle(721,L"出售战车",extra.sellVehicles
 note(L"出售战车不支持兰博玩；两种出售操作共用按住键，鼠标键分别设置。",44);
 label(L"直接攻击移动",20,210);label(L"仅鼠标",240,258);mouse(pointerinput::MouseAttack);next();
 note(L"直接攻击移动只下达一次命令；高级移动攻击会持续重新选择目标。",44);
-toggle(9050,L"队形排列（地面单位）",extra.formationEnabled,20,455);button(9602,L"展开设置",500,125);next();
+toggle(9400,L"模糊下令",(extra.moFeatures&1)!=0,20,210);{auto h=key(9440,extra.moGestures.keys[0],240,258,true);modernui::keyboardOnly(h);}choices(combo(9441,510,115,180),{L"停用",L"中键",L"侧键 1",L"侧键 2",L"右键",L"左键"},extra.moGestures.buttons[0]==6?5:int(extra.moGestures.buttons[0]));next();
+toggle(9401,L"区域目标分配",(extra.moFeatures&2)!=0,20,210);{auto h=key(9442,extra.moGestures.keys[1],240,258,true);modernui::keyboardOnly(h);}choices(combo(9443,510,115,180),{L"停用",L"中键",L"侧键 1",L"侧键 2",L"右键",L"左键"},extra.moGestures.buttons[1]==6?5:int(extra.moGestures.buttons[1]));next();
+toggle(9402,L"自定义巡逻圈",(extra.moFeatures&4)!=0,20,210);{auto h=key(9444,extra.moGestures.keys[2],240,258,true);modernui::keyboardOnly(h);}choices(combo(9445,510,115,180),{L"停用",L"中键",L"侧键 1",L"侧键 2",L"右键",L"左键"},extra.moGestures.buttons[2]==6?5:int(extra.moGestures.buttons[2]));next();
+note(L"按住配置键并按下对应鼠标键预览，松开鼠标提交；留空仅用鼠标。模糊下令分组攻击，区域分配按轨迹收集目标，巡逻按轨迹闭环。Esc停止后续下令；已提交的原生计划节点不会撤销，手动命令优先。",60);
+item(L"STATIC",L"按键配置：无冲突",20,605,9460,0,40);next(40);
+item(L"STATIC",L"手势下令：等待操作",20,605,9461,0,44);next(44);
+toggle(9050,L"队形排列与快速占位",extra.formationEnabled,20,455);button(9602,L"展开设置",500,125);next();
 activeFoldGroup=9602;
+label(L"快速占位",20,210);{auto h=key(9446,extra.moGestures.keys[3],240,258,true);modernui::keyboardOnly(h);}choices(combo(9447,510,115,180),{L"停用",L"中键",L"侧键 1",L"侧键 2",L"右键",L"左键"},extra.moGestures.buttons[3]==6?5:int(extra.moGestures.buttons[3]));next();
+note(L"快速占位共用队形开关；点按螺旋占位，拖线按弧长排位。步兵每格最多3个，车辆和飞机各1个。按住键留空表示纯鼠标，鼠标键可停用。",60);
 label(L"队形拖拽鼠标键",20,260);choices(combo(9056),{L"右键",L"左键（覆盖原生下令）"},extra.formationMouse==1?1:0);next();
 label(L"队形按住键",20,306);key(9051,extra.formationHold,345,280,true);modernui::keyboardOnly(GetDlgItem(ui,9051));next();
 {const wchar_t* names[]={L"矩形横队",L"分散横队",L"圆形聚集",L"扇形（60°）",L"正方形聚集",L"空心框聚集"};const int ids[]={9052,9053,9054,9055,9057,9058};for(int n=0;n<6;++n){label(names[n],20,306);key(ids[n],extra.formationKeys[n]);modernui::pressKey(GetDlgItem(ui,ids[n]));modernui::keyboardOnly(GetDlgItem(ui,ids[n]));next();}}
@@ -93,16 +114,14 @@ note(L"建筑/防御各预定 5 项，步兵/载具各 30 项；可建造单位�
 number(817,L"建筑预定面板缩放 / %",constructionScalePercent,L"50–250 · 默认 100");
 repairEdit=number(312,L"自动维修间隔 / 毫秒",repairMs,L"500–30000");
 toggle(780,L"允许维修通常不可维修的建筑",repairUnrepairable);next();
-oreCheck=toggle(470,L"矿车自动卸矿",oreMode);next();
+oreCheck=toggle(470,L"矿车自动卸矿",oreMode,20,455);button(9605,L"展开设置",500,125);next();
 oreStatus=item(L"STATIC",L"等待对局",20,605,0,0,44);next(44);
+activeFoldGroup=9605;
 for(int i=0;i<2;++i){bool miner=i==0;toggle(781+i,miner?L"指定矿车类型":L"指定矿场类型",miner?oreTypes.customMiners:oreTypes.customRefineries);next();auto h=edit(783+i,miner?oreMiners:oreRefineries,20,605);SendMessageW(h,EM_SETLIMITTEXT,12287,0);next();}
 note(L"类型 ID 用逗号分隔；未启用清单时自动识别，启用后仅使用所列类型。",44);
+activeFoldGroup=0;
 label(L"自动装车分配方式",20,260);extraControls[LoadLogic]=combo(700);choices(extraControls[LoadLogic],{L"就近优先",L"兵种均衡"},extra.loadMode);next();
 extraControls[LoadRadius]=number(701,L"自动装车范围 / 格",extra.loadRadius,L"1–512");
-number(787,L"高级移动攻击检测频率 / 次每秒",advancedScanHz,L"1–60 · 默认 10");
-number(818,L"高级移动攻击额外索敌距离 / 格",advancedRangeCells,L"0–30 · 默认 2");
-label(L"高级移动攻击目标优先级",20,260);choices(combo(802),{L"单位价值优先",L"弹头伤害比例优先"},advancedTargetPriority);next();
-note(L"索敌范围为单位射程加额外距离；忽略伤害比例不超过 2% 的目标。",44);
 toggle(804,L"防御建筑优先攻击渗透单位",extra.antiTheft);next();
 toggle(885,L"自动躲弹",extra.dodgeEnabled,20,280);choices(combo(895,310,305,180),{L"顺向移动 2 格",L"原版散开（Scatter）"},extra.dodgeMode);next();
 note(L"对己方可移动地面单位预判敌机攻击与逼近碾压，短距离躲避。支持类型清单，不保证躲过追踪弹或瞬时伤害。",60);
@@ -236,6 +255,18 @@ EnableWindow(toggle(9090,L"视角缩放（暂不可用）",false),FALSE);next();
 label(L"视角倍率",20,260);choices(combo(9091),{L"50%",L"75%",L"100%",L"125%",L"150%"},viewzoom::index(extra.viewZoomPercent));EnableWindow(GetDlgItem(ui,9091),FALSE);next();
 EnableWindow(button(9092,L"恢复 100%",20,280),FALSE);next();
 note(L"视角缩放暂时停用；旧倍率设置和缩放快捷键均不生效。",56);
+{const wchar_t*names[]={L"缩小视野",L"放大视野",L"恢复100%"};for(int i=0;i<3;++i){label(names[i],20,306);auto h=key(9450+i,extra.viewZoomKeys[i]);modernui::pressKey(h);modernui::keyboardOnly(h);next();}}
+note(L"可预先保存快捷键；视角缩放当前不可用，不注册这些操作。",44);
+label(L"侧边栏显示（暂不可用）",20,260);choices(combo(9404),{L"完整侧栏",L"雷达与按钮",L"隐藏侧栏"},0);EnableWindow(GetDlgItem(ui,9404),FALSE);next();
+label(L"切换侧栏快捷键",20,306);{auto h=key(9453,extra.sidebarKey);modernui::pressKey(h);modernui::keyboardOnly(h);}next();
+note(L"可预先保存快捷键；原生侧栏布局当前不可用，不注册此操作。",44);item(L"STATIC",L"侧边栏：暂不可用",20,605,9407);next();
+toggle(9405,L"独立超级武器面板",extra.superweaponPanel);next();
+note(L"超武面板可拖动、折叠，点击超武后使用原生目标光标选择位置。",44);
+EnableWindow(toggle(9403,L"暂停与逐帧操作（暂不可用）",false),FALSE);next();
+label(L"暂停 / 恢复快捷键",20,306);{auto h=key(9454,extra.pauseKeys[0]);modernui::pressKey(h);modernui::keyboardOnly(h);}next();
+label(L"前进一帧快捷键",20,306);{auto h=key(9455,extra.pauseKeys[1]);modernui::pressKey(h);modernui::keyboardOnly(h);}next();
+note(L"可预先保存快捷键；暂停与逐帧操作当前不可用，不注册这些操作。",44);
+item(L"STATIC",L"逐帧操作：暂不可用",20,605,9406,0,44);next(44);
 item(L"STATIC",L"视角缩放：关闭",20,605,9093,0,48);next(48);
 #ifdef RA2_UNIFIED
 {auto h=placedControl({-3,{0,0,1,1}},L"COMBOBOX",L"",886,CBS_DROPDOWNLIST);choices(h,{L"仅光标",L"光标＋拖屏",L"全部",L"强制高刷（实验性 · 联机待验证）"},extra.scrollRefreshMode);}
@@ -260,13 +291,16 @@ item(L"STATIC",L"步兵强制进入建筑：关闭",20,605,813);next();
 toggle(9097,L"高危：科技加强（直接修改类型规则）",extra.techEnhance);next();
 note(L"开放奶牛、电影英雄等隐藏类型；关闭后恢复本功能修改的科技等级。可能影响联机同步。",44);
 item(L"STATIC",L"科技加强：关闭",20,605,9098);next();
-toggle(420,buildingmodes::technologyCaption(techImplementation),techMode,20,305);techSearch=edit(421,L"",345,280);SendMessageW(techSearch,EM_SETCUEBANNER,TRUE,(LPARAM)L"搜索名称或单位 ID");next();
+toggle(420,buildingmodes::technologyCaption(techImplementation),techMode,20,455);button(9607,L"展开设置",500,125);next();
 label(L"实现方式",20,180);choices(combo(896,220,405,180),{L"高危：受控模式（默认）",L"高危：经典兼容",L"高危：直接模式",L"高危：原生面板（规则数据）"},techImplementation);next();
 note(L"规则数据模式不修改游戏指令，通过放宽类型的建造条件供原生建造栏使用；这些规则同时影响所有玩家和 AI，联机高危。关闭还原规则后，游戏可能取消不再合法的未完成生产；切换旧模式会先等待相关生产完成或取消。旧三种改码模式保留；直接模式不使用下方许可筛选。",85);
+activeFoldGroup=9607;
+label(L"搜索科技许可",20,260);techSearch=edit(421,L"",290,335);SendMessageW(techSearch,EM_SETCUEBANNER,TRUE,(LPARAM)L"搜索名称或单位 ID");next();
 techList=item(L"LISTBOX",L"",20,455,422,LBS_NOTIFY|WS_VSCROLL|WS_TABSTOP,152);
 int listTop=rowY;button(423,L"生产所选",488,137);next();button(424,L"切换许可",488,137);next();button(425,L"全选",488,65);button(426,L"清空",560,65);next();button(427,L"兼容预设",488,137);rowY=listTop+164;
 button(428,L"查看许可清单",20,285);button(814,L"取消所选类型的生产",320,305);next();
 note(L"规则数据模式请在游戏原生建造栏生产或取消；此清单只设置许可，不从工具箱下单。旧三种模式保留工具箱生产。完成建筑也可使用上方独立的原生事件放置。",65);
+activeFoldGroup=0;
 item(L"STATIC",L"生产进度：等待游戏",20,605,815,0,65);next(65);
 toggle(9191,L"高危：原生 MegaMission 成功入口观察",extra.nativeMegaGateway);next();
 note(L"默认关闭；普通手动输入由消息与任务观察处理。此附加入口会改写游戏代码，在原生命令成功发送后登记手动优先并取消冲突任务。发出原生事件不需要开启它。",65);
@@ -302,9 +336,11 @@ note(L"默认关闭；默认 Ctrl＋鼠标侧键 2，沿用“出售被吸取目
 
 toggle(788,L"优先执行增强指令",extra.overrideNative);next();
 note(L"用于增强操作与普通地面命令冲突的情况；仅对支持的鼠标操作生效。",44);
-item(L"STATIC",L"计算模式",20,605,832,0,30);next(30);
+item(L"STATIC",L"计算模式",20,455,832,0,30);button(9609,L"展开设置",500,125);next(30);
 note(L"按功能选择工具箱计算或游戏内计算；修改后从下一局开始使用。",44);
+activeFoldGroup=9609;
 for(int i=0;i<compute::Count;++i){if(i==compute::BurstRefresh)continue;label(compute::label(i),20,260);choices(combo(9000+i),{L"工具箱计算",L"游戏内计算"},(computeRequested>>i)&1u);next();}
+activeFoldGroup=0;
 item(L"STATIC",L"当前计算模式：等待对局",20,605,833,0,192);next(192);
 label(L"移动指令兼容模式",20,260);megaQueueCombo=combo(761);choices(megaQueueCombo,{L"标准（推荐）",L"兼容模式（实验性）"},megaQueueMode);next();
 label(L"维修与出售兼容模式",20,260);objectQueueCombo=combo(762);choices(objectQueueCombo,{L"标准（推荐）",L"兼容模式（实验性）"},objectQueueMode);next();

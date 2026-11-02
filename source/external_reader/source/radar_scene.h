@@ -74,6 +74,22 @@ template<class Assets>class SceneRenderer {
  template<class A>static bool captureActor(A&a,const Marker&m,typename A::ActorArt&art,long){return a.captureActor(m.object,m.type,m.id,art);}
  template<class Read>static auto currentVisibility(Read read,int)->decltype(read.fresh(0,nullptr,0),bool()){return true;}
  template<class Read>static bool currentVisibility(Read,long){return false;}
+ struct CellReadPlan {std::vector<uint32_t> pages;size_t first=~size_t(0),end=~size_t(0);void clear(){pages.clear();first=end=~size_t(0);}};
+ template<class Read>static auto prefetchCells(Read read,const Terrain&terrain,const std::vector<size_t>&cells,size_t first,size_t end,CellReadPlan&plan,int)->decltype(read.prefetch(plan.pages,size_t(4096)),void()){
+  if(plan.first!=first||plan.end!=end){
+   auto&pages=plan.pages;pages.clear();pages.reserve((end-first)*2);
+   for(size_t n=first;n<end;++n){const auto p=terrain.art[cells[n]].cell;if(p<0x10000||uint64_t(p)+0x110>0x80000000ull)continue;
+    const auto firstPage=p&~4095u,lastPage=(p+0x10F)&~4095u;pages.push_back(firstPage);if(lastPage!=firstPage)pages.push_back(lastPage);
+   }
+   std::sort(pages.begin(),pages.end());pages.erase(std::unique(pages.begin(),pages.end()),pages.end());if(pages.size()>4096)pages.resize(4096);
+   plan.first=first;plan.end=end;
+  }
+  // Speculative page batching only: the same checked lighting::cell reads
+  // below still decide every value, including per-field failure fallback.
+  // Retain only addresses, never page bytes. Each reader.begin starts fresh.
+  read.prefetch(plan.pages,4096);
+ }
+ template<class Read>static void prefetchCells(Read,const Terrain&,const std::vector<size_t>&,size_t,size_t,CellReadPlan&,long){}
  template<class A>static auto alphaImage(A&a,uint32_t pointer,voxel::Image&out,int)->decltype(a.effectAlpha(pointer,out),bool()){return a.effectAlpha(pointer,out);}
  template<class A>static bool alphaImage(A&,uint32_t,voxel::Image&,long){return false;}
  std::map<uint32_t,std::shared_ptr<const voxel::Image>>effectAlphas_;
@@ -126,7 +142,7 @@ template<class Assets>class SceneRenderer {
  std::shared_ptr<const std::vector<uint8_t>> maskPixels_;
  shroudmask::Live liveMasks_;shroudmask::Snapshot liveMaskSnapshot_;bool liveMaskValid_=false;
  terraincoverage::Region coverage_;bool coverageLocal_=false;
- std::vector<size_t> cells_,baseCells_;std::vector<Paint> prepared_;std::vector<uint64_t> painted_;size_t cursor_=0,baseCursor_=0;
+ std::vector<size_t> cells_,baseCells_;CellReadPlan cellReadPlan_;std::vector<Paint> prepared_;std::vector<uint64_t> painted_;size_t cursor_=0,baseCursor_=0;
  uint64_t partialBanks_=0; // ABI-compatible diagnostics; overlays now use independent instances.
  bool bankSameSource_=false,probing_=false,probeChanged_=false,pendingIncomplete_=false,backgroundIncomplete_=false;uint32_t backgroundRetry_=0;int width_=0,height_=0;double spanX_=0,spanY_=0;uint64_t revision_=0;
  lighting::State backgroundLight_;uint64_t nativeCells_=0,basePresents_=0;SceneRegion region_{};unsigned pixelScaleMode_=0;bool detailedBase_=false;
@@ -147,7 +163,7 @@ template<class Assets>class SceneRenderer {
    if(!x.sourceColor&&n<a.colors.size()&&a.colors[n]!=b.colors[n])return false;
   }return true;
  }
- void clearBackground(){nativePageMasks_.reset();gpuFrameReuse_.reset();nativePresentation_={};objectCanvas_.clear();++motionTerrainRevision_;building_.reset();complete_.reset();blocked_.reset();dynamicFailure_=false;pending_={};background_={};baseScene_.reset();maskedBaseScene_.reset();gpuBaseTiles_.reset();cpuBaseFallback_={};maskSource_.reset();mask_={};gpuMaskPlan_.reset();cpuMaskPlan_.reset();maskPixels_.reset();liveMaskValid_=false;cells_.clear();baseCells_.clear();prepared_.clear();painted_.clear();cursor_=baseCursor_=0;probing_=probeChanged_=pendingIncomplete_=backgroundIncomplete_=false;backgroundRetry_=0;}
+ void clearBackground(){nativePageMasks_.reset();gpuFrameReuse_.reset();nativePresentation_={};objectCanvas_.clear();++motionTerrainRevision_;building_.reset();complete_.reset();blocked_.reset();dynamicFailure_=false;pending_={};background_={};baseScene_.reset();maskedBaseScene_.reset();gpuBaseTiles_.reset();cpuBaseFallback_={};maskSource_.reset();mask_={};gpuMaskPlan_.reset();cpuMaskPlan_.reset();maskPixels_.reset();liveMaskValid_=false;cells_.clear();baseCells_.clear();cellReadPlan_.clear();prepared_.clear();painted_.clear();cursor_=baseCursor_=0;probing_=probeChanged_=pendingIncomplete_=backgroundIncomplete_=false;backgroundRetry_=0;}
 
 public:
  explicit SceneRenderer(size_t pages=camera::NativeCanvas::MaximumPages):nativeBudget_(pages==camera::NativeCanvas::MaximumPages?camera::NativeCanvas::sharedBudget():std::make_shared<camera::NativeCanvas::Budget>()){if(pages!=camera::NativeCanvas::MaximumPages)nativeBudget_->maximum=std::clamp<size_t>(pages,1,camera::NativeCanvas::MaximumPages);}
@@ -224,7 +240,7 @@ public:
    if(coverageLocal_)pending_.restrictPaint(int(coverage_.left),int(coverage_.top),int(coverage_.right),int(coverage_.bottom));return true;};
   if(!building_){
    building_=frame.terrain;buildingLight_=scene;bankSameSource_=complete_&&(complete_==building_||sameSource(*complete_,*building_,region.active));cursor_=baseCursor_=0;prepared_.clear();probeChanged_=pendingIncomplete_=false;
-   if(!bankSameSource_){cells_.clear();baseCells_.clear();
+   if(!bankSameSource_){cells_.clear();baseCells_.clear();cellReadPlan_.clear();
    for(size_t n=0;n<building_->colors.size();++n)if(building_->colors[n]||(building_->art[n].sourceColor&&(region.active||!building_->art[n].sourceHidden))){
     int x=int(n%512),y=int(n/512);mapbounds::TileOrigin origin;
     if(!building_->geo.tileOrigin(x,y,building_->art[n].level,origin))continue;
@@ -243,6 +259,12 @@ public:
   }
   size_t staticPixels=0;for(const auto&i:tiles_)staticPixels+=camera::pixels(*i.second.image);
   const Terrain*evaluatedTerrain=building_.get();
+  if(!region.active){
+   // Stable whole-map verification visits every Cell. A partial first build
+   // only paints its current chunk; do not prefetch the entire map per chunk.
+   const size_t first=probing_?0:cursor_,end=probing_?cells_.size():std::min(cells_.size(),cursor_+size_t(4096));
+   prefetchCells(read,*evaluatedTerrain,cells_,first,end,cellReadPlan_,0);
+  }
   // Validation, incremental probing and painting all use this presentation's
   // read epoch. Do not reread/recalculate the same cell in each pass. The final
   // race check below deliberately bypasses the memo after a bank commit.

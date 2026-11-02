@@ -57,12 +57,12 @@ int main(){
  assert(gate.verify(true,605101)==Verification::Ready&&!gate.recovering);
  assert(!gate.focus(false)&&gate.focus(true));assert(gate.verify(false,700000)==Verification::Waiting);
  assert(gate.verify(true,700001)==Verification::Ready);
- auto all=allSites();assert(all.size()==51);unsigned active=0,dormantCount=0,denied=0;
- for(auto a:all){assert(covered(a)!=dormant(a));if(covered(a))++active;else ++dormantCount;}
+ auto all=allSites();assert(all.size()==52);unsigned active=0,dormantCount=0,cursorCount=0,denied=0;
+ for(auto a:all){assert(unsigned(covered(a))+unsigned(dormant(a))+unsigned(cursorOnly(a))==1);if(covered(a))++active;else if(cursorOnly(a))++cursorCount;else ++dormantCount;}
  for(const auto&stage:steps()){std::set<uint32_t>unique;for(auto a:stage.sites){assert(experimentalpatch::size(a)&&!dormant(a));assert(unique.insert(a).second);}}
  for(uint32_t a=0x400000;a<0x800000;++a)if(assist::hookregistry::ownerAt(a)!=assist::hookregistry::Owner::Unknown&&!experimentalpatch::size(a))++denied;
- assert(active==48&&dormantCount==3&&denied==14&&steps().size()==21);
- puts("PASS: all 51 native sites accounted for: 48 scheduled (camera conditional), 3 product-disabled; 14 denied sites never scheduled; 21 stages");
+ assert(active==48&&dormantCount==3&&cursorCount==1&&denied==14&&steps().size()==21);
+ puts("PASS: all 52 native sites accounted for: 48 scheduled (camera conditional), 3 product-disabled, 1 Cursor-only; 14 denied sites never scheduled; 21 stages");
  puts("PASS: timing starts after verified installation; answer required; failed restoration and OOS cannot advance; final stage and clock regression");
  puts("PASS: early normal, manual skip, no default baselines, shared-site exclusions, baseline opt-in, focus pause and bounded snapshot retry");
 }

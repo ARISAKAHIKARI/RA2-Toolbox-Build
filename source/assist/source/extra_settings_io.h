@@ -1,5 +1,8 @@
 #include "../../shared/source/key_gesture.h"
 static void loadAdditionalSettings(){
+ superweaponOptions.detached=value(L"Display",L"SuperweaponDetached",0)!=0;superweaponOptions.collapsed=value(L"Display",L"SuperweaponCollapsed",0)!=0;
+ superweaponOptions.x=std::clamp(value(L"Display",L"SuperweaponX",20),0,32768);superweaponOptions.y=std::clamp(value(L"Display",L"SuperweaponY",150),0,32768);
+ superweaponOptions.scale=std::clamp(value(L"Display",L"SuperweaponScale",100),75,200);superweaponOptions.rows=std::clamp(value(L"Display",L"SuperweaponRows",8),1,20);
  // Older releases persisted these two implicit defaults as if the user had
  // opted in. Migrate once; subsequent explicit high-risk choices are retained.
  const bool explicitPatchPreferences=value(L"Compatibility",L"NoCodeWriteDefaultsVersion",0)>=1;
@@ -21,6 +24,13 @@ static void loadAdditionalSettings(){
  renderParticleEffects=value(L"Display",L"RenderParticles",1)!=0;renderLaserEffects=value(L"Display",L"RenderLasers",1)!=0;
  renderVoxelLighting=value(L"Display",L"RenderVoxelLighting",1)!=0;renderSpriteLighting=value(L"Display",L"RenderSpriteLighting",1)!=0;
  extra.viewZoomEnabled=false;extra.viewZoomPercent=100; // temporarily unavailable, including saved settings
+ extra.moFeatures=uint32_t(value(L"MOControls",L"Features",0))&7u;extra.superweaponPanel=value(L"Display",L"SuperweaponPanel",0)!=0;
+ const wchar_t*gestureNames[]={L"FuzzyOrder",L"AreaOrder",L"PatrolCircle",L"FormationQuick"};
+ for(int i=0;i<moorders::GestureCount;++i){auto hold=std::wstring(gestureNames[i])+L"HoldKey",button=std::wstring(gestureNames[i])+L"MouseButton";
+  extra.moGestures.keys[i]=uint32_t(value(L"Mouse",hold.c_str(),extra.moGestures.keys[i]))&65535;
+  int physical=std::clamp(value(L"Mouse",button.c_str(),1),0,6);extra.moGestures.buttons[i]=physical==5?0:uint32_t(physical);}
+ const wchar_t*zoomKeys[]={L"ViewZoomOut",L"ViewZoomIn",L"ViewZoomReset"};for(int i=0;i<3;++i)extra.viewZoomKeys[i]=uint32_t(value(L"Hotkeys",zoomKeys[i],extra.viewZoomKeys[i]))&65535;
+ extra.sidebarKey=uint32_t(value(L"Hotkeys",L"ToggleSidebar",extra.sidebarKey))&65535;extra.pauseKeys[0]=uint32_t(value(L"Hotkeys",L"PauseToggle",extra.pauseKeys[0]))&65535;extra.pauseKeys[1]=uint32_t(value(L"Hotkeys",L"PauseStep",extra.pauseKeys[1]))&65535;
  extra.techEnhance=value(L"Experimental",L"TechEnhance",0)!=0;
  extra.crcMapShadow=value(L"Experimental",L"CrcMapIsClearShadow",0)!=0;
  extra.networkHousePreserve=value(L"Experimental",L"NetworkHousePreserve",0)!=0;
@@ -108,6 +118,12 @@ static void loadAdditionalSettings(){
  }
 }
 static bool saveAdditionalSettings(){
+ write(L"Display",L"SuperweaponDetached",superweaponOptions.detached);write(L"Display",L"SuperweaponCollapsed",superweaponOptions.collapsed);write(L"Display",L"SuperweaponX",superweaponOptions.x);write(L"Display",L"SuperweaponY",superweaponOptions.y);write(L"Display",L"SuperweaponScale",superweaponOptions.scale);write(L"Display",L"SuperweaponRows",superweaponOptions.rows);
+ const wchar_t*gestureNames[]={L"FuzzyOrder",L"AreaOrder",L"PatrolCircle",L"FormationQuick"};
+ for(int i=0;i<moorders::GestureCount;++i){auto hold=std::wstring(gestureNames[i])+L"HoldKey",button=std::wstring(gestureNames[i])+L"MouseButton";write(L"Mouse",hold.c_str(),extra.moGestures.keys[i]);write(L"Mouse",button.c_str(),extra.moGestures.buttons[i]);}
+ const wchar_t*zoomKeys[]={L"ViewZoomOut",L"ViewZoomIn",L"ViewZoomReset"};for(int i=0;i<3;++i)write(L"Hotkeys",zoomKeys[i],extra.viewZoomKeys[i]);
+ write(L"Hotkeys",L"ToggleSidebar",extra.sidebarKey);write(L"Hotkeys",L"PauseToggle",extra.pauseKeys[0]);write(L"Hotkeys",L"PauseStep",extra.pauseKeys[1]);
+ write(L"MOControls",L"Features",extra.moFeatures&7u);write(L"Display",L"SuperweaponPanel",extra.superweaponPanel);
  write(L"Compatibility",L"NoCodeWriteDefaultsVersion",1);
  write(L"ViewZoom",L"Enabled",0);write(L"ViewZoom",L"Percent",100);
  write(L"Experimental",L"TechEnhance",extra.techEnhance);write(L"Experimental",L"PlacementImplementation",extra.placementImplementation);
@@ -213,6 +229,8 @@ static void syncRefreshRate(){extra.scrollRefreshMode=0;if(!shared)return;
 static void syncAdditional(){
  if(!playertest::Available)extra.controlAll=false;if(!playertest::SellAvailable)extra.sellEnemy=false;if(!playertest::SwitchAvailable)extra.switchPlayerEnabled=false;if(!shared)return;
  extra.viewZoomEnabled=false;extra.viewZoomPercent=100;shared->viewZoomPercent=100;
+ shared->moFeatures=extra.moFeatures&7u;
+ InterlockedIncrement(&shared->moGesturePolicySeq);shared->moGestures=extra.moGestures;MemoryBarrier();InterlockedIncrement(&shared->moGesturePolicySeq);
  shared->buildTimeTooltip=buildTimeTooltipEnabled;shared->placementImplementation=extra.placementImplementation;shared->techEnhance=extra.techEnhance;
  shared->nativeAirNetwork=extra.nativeAirNetwork;
  shared->crcMapShadow=extra.crcMapShadow;

@@ -33,6 +33,8 @@ inline const std::vector<Step>&steps(){static const std::vector<Step>v={
  {DirectMap,L"高危：直接地图显示（5 处成组，最后测试）",{0x508E60,0x508EBA,0x508F8F,0x577B3A,0x6D88FC}}
  };return v;}
 inline bool dormant(uint32_t a){return a==0x51A4D8||a==0x51C32B||a==0x4A9840;}
+// This slot is owned by the Cursor service, not the Assist-only test session.
+inline bool cursorOnly(uint32_t a){return a==experimentalpatch::CursorTooltipLayout;}
 inline std::vector<uint32_t>allSites(){std::vector<uint32_t>out;for(uint32_t a=0x400000;a<0x800000;++a)if(experimentalpatch::size(a))out.push_back(a);return out;}
 inline bool covered(uint32_t a){for(const auto&s:steps())if(std::find(s.sites.begin(),s.sites.end(),a)!=s.sites.end())return true;return false;}
 }
