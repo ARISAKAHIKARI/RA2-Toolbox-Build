@@ -60,4 +60,6 @@
 - `sidebar_view_runtime.py`：真編譯管理器、七處常量及六處入口；檢查寄存器／棧／固定續接點、完整 Render 安全點、單個或整對外來表面、借用大表面、外來 tracking／幾何、暫停 Capture 嵌套、失敗清 busy 與不明幾何保留。DSurface、原生布局及 Render 中段是模型；模型失敗處理不冒充 Windows SEH 派送。
 - `sidebar_view_guard_seh_boundary.cpp`／`sidebar_view_guard_seh.cpp`：獨立 Windows x86 程序實際寫入 PAGE_NOACCESS 頁，透過產品原樣 `sidebar_view_guard.h` 觸發並捕捉存取例外。檢查 boundary19、故障地址、`__finally` 釋放 Capture、巢狀 LIFO、拒絕執行及 LastError 保留。Capture、原生調用和 failure callback 在此微測中是模型；真編譯 Runtime fixture 另行檢查實際 failure body。[來源及執行雜湊](evidence/sidebar-view-guard-windows-seh.json)。沒有載入遊戲。
 
+微測設定更正：最初只用 Zig `-O2` 的測試程式默認定義 NDEBUG，不能用來證明 assert 內的測試已執行。已使用 `-O2 -UNDEBUG` 重編並重新實際執行上述 Windows SEH 微測及 x86/x64 各 53 項暫停檢查，全部通過；兩份測試來源現在在 NDEBUG 時編譯失敗。公開 SEH 證據已替換為這次重跑的程式 SHA、明確編譯旗標及更正說明。Python Runtime fixture 的 assert 不受這個 C++ 編譯設定影響。
+
 最終編譯及來源綁定證據由本輪總構建記錄保存。沒有執行使用者遊戲進程、Windows 現場 DirectDraw 視覺驗收、硬體 GPU 或 RA2OL 雙機測試，不能用這些 fixture 宣稱聯機同步已獲保證。

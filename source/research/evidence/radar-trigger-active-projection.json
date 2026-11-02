@@ -1,0 +1,1419 @@
+{
+  "passed": true,
+  "baseline_commit": "8437c37",
+  "source_sha256": {
+    "external_reader/source/radar_map.h": "de2da28d3180daf362c273a00c280ac2b5b3a1498bee87c82d0730188e05baf5",
+    "external_reader/source/radar_publication.h": "1a27e38f2b29625d5bf7cbe816e20dfe08bc35b173bbcddac5c02ddbe112f93b",
+    "external_reader/source/radar_live_shroud.h": "a63d5b82fc62e1aa4e9cb8c0cb81b0f44ecf84cd6166b9e0406edea2a6365ece",
+    "assist/source/minimap_overlay.h": "8d26298da588b35ca7aafa1f33ab5bf8962c187787a94c65d62df62a02f3b056",
+    "assist/tests/radar_trigger_projection.cpp": "3454b4d9fe3c5a22755ea7b2075b83812dd6992263e2a0350408208be69f45fe",
+    "assist/tests/radar_visibility_publication.cpp": "bbc2a5cd90e98568c1aedb9de50f5035f16e0b0117d216035c7057c781825080",
+    "assist/tests/radar_boundary.cpp": "8199c7c163b6b969033185def2b435d7b7f7229e417ec341ca31b17f0174951d",
+    "assist/tests/radar_output_scene.cpp": "c1bf2b24ae6cc3879ee89ef562fc413fb8ba7f025450b6908e781cd4e949986e",
+    "assist/tests/radar_live_exploration.cpp": "9420c12d58870cd489c62d9e67eb062056b3c3a5bdf538854c3b528a82271a1a",
+    "assist/tests/radar_sampler_compact.cpp": "8f45c8e43841db5ccfd6ca237defcfd42965867ea885c1f3e7b7f3834a570465",
+    "assist/tests/radar_large_map.cpp": "f0c7540d25c6b48902d98158341fdcf36180ce5d46882b6b87be1b838cc472d3",
+    "assist/tests/scene_bank_publication.cpp": "fb87d6e7cd53d36a7f1e63f209207e82e4a686ad09501c1077d40651d3ed6744",
+    "assist/tests/radar_trigger_native.py": "1344cfe3f2e5ddee20f427caaa5d6049626942e422ec96cbd0ea8931fceab09e",
+    "tools/test_radar_trigger_windows.py": "bb2aa5bfcbe113e34ed48b0dcaf36a72c9de10553fabf70367f4bbc52e99635e"
+  },
+  "results": [
+    {
+      "name": "radar_trigger_projection",
+      "arch": "x64",
+      "command": [
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\toolchain\\zig-windows-x86_64-0.13.0\\zig.exe",
+        "c++",
+        "-target",
+        "x86_64-windows-gnu",
+        "-std=c++17",
+        "-O2",
+        "-UNDEBUG",
+        "-w",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\checkout\\source\\assist\\tests\\radar_trigger_projection.cpp",
+        "-DRA2_REFERENCE_SCENE=\"C:/Users/guich/Documents/Codex/2026-10-31/ji-yu/work/ra2-hook-audit/diagnostics/placement-view-hotfix/radar-trigger-final/scene_reference.h\"",
+        "-DRA2_REFERENCE_RECORD=\"C:/Users/guich/Documents/Codex/2026-10-31/ji-yu/work/ra2-hook-audit/diagnostics/placement-view-hotfix/radar-trigger-final/record_reference.h\"",
+        "-DRA2_REFERENCE_LIVE=\"C:/Users/guich/Documents/Codex/2026-10-31/ji-yu/work/ra2-hook-audit/diagnostics/placement-view-hotfix/radar-trigger-final/live_reference.h\"",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\checkout\\source\\third_party\\xbrz\\xbrz.cpp",
+        "-o",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\diagnostics\\placement-view-hotfix\\radar-trigger-final\\radar_trigger_projection-x64.exe",
+        "-lgdi32",
+        "-luser32"
+      ],
+      "build_exit_code": 0,
+      "seconds": 49.85999999999876,
+      "exit_code": 0,
+      "output": "PASS actual Sampler/Renderer/Live-mask/scene-publication/layout/navigation: same-frame trigger shrink, vertical-only change, expansion and restore with unchanged 120x114 allocation; old 8437 span counterexample reproduced; failed projection read retention/recovery; normal projection shares world source, adjusted projection remains private.\n",
+      "exe_sha256": "7e67265a547df72275c265e147082b9da2ee4d6b1579e3031de134d3ab74604c"
+    },
+    {
+      "name": "radar_trigger_projection",
+      "arch": "x86",
+      "command": [
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\toolchain\\zig-windows-x86_64-0.13.0\\zig.exe",
+        "c++",
+        "-target",
+        "x86-windows-gnu",
+        "-std=c++17",
+        "-O2",
+        "-UNDEBUG",
+        "-w",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\checkout\\source\\assist\\tests\\radar_trigger_projection.cpp",
+        "-DRA2_REFERENCE_SCENE=\"C:/Users/guich/Documents/Codex/2026-10-31/ji-yu/work/ra2-hook-audit/diagnostics/placement-view-hotfix/radar-trigger-final/scene_reference.h\"",
+        "-DRA2_REFERENCE_RECORD=\"C:/Users/guich/Documents/Codex/2026-10-31/ji-yu/work/ra2-hook-audit/diagnostics/placement-view-hotfix/radar-trigger-final/record_reference.h\"",
+        "-DRA2_REFERENCE_LIVE=\"C:/Users/guich/Documents/Codex/2026-10-31/ji-yu/work/ra2-hook-audit/diagnostics/placement-view-hotfix/radar-trigger-final/live_reference.h\"",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\checkout\\source\\third_party\\xbrz\\xbrz.cpp",
+        "-o",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\diagnostics\\placement-view-hotfix\\radar-trigger-final\\radar_trigger_projection-x86.exe",
+        "-lgdi32",
+        "-luser32"
+      ],
+      "build_exit_code": 0,
+      "seconds": 49.40699999999924,
+      "exit_code": 0,
+      "output": "PASS actual Sampler/Renderer/Live-mask/scene-publication/layout/navigation: same-frame trigger shrink, vertical-only change, expansion and restore with unchanged 120x114 allocation; old 8437 span counterexample reproduced; failed projection read retention/recovery; normal projection shares world source, adjusted projection remains private.\n",
+      "exe_sha256": "5f135f342e6a33a1d9c215df0fda1c5f8bcf45cbc78f3ff9c22c1322096890e1"
+    },
+    {
+      "name": "radar_visibility_publication",
+      "arch": "x64",
+      "command": [
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\toolchain\\zig-windows-x86_64-0.13.0\\zig.exe",
+        "c++",
+        "-target",
+        "x86_64-windows-gnu",
+        "-std=c++17",
+        "-O2",
+        "-UNDEBUG",
+        "-w",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\checkout\\source\\assist\\tests\\radar_visibility_publication.cpp",
+        "-DRA2_REFERENCE_SCENE=\"C:/Users/guich/Documents/Codex/2026-10-31/ji-yu/work/ra2-hook-audit/diagnostics/placement-view-hotfix/radar-trigger-final/scene_reference.h\"",
+        "-DRA2_REFERENCE_RECORD=\"C:/Users/guich/Documents/Codex/2026-10-31/ji-yu/work/ra2-hook-audit/diagnostics/placement-view-hotfix/radar-trigger-final/record_reference.h\"",
+        "-DRA2_REFERENCE_LIVE=\"C:/Users/guich/Documents/Codex/2026-10-31/ji-yu/work/ra2-hook-audit/diagnostics/placement-view-hotfix/radar-trigger-final/live_reference.h\"",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\checkout\\source\\third_party\\xbrz\\xbrz.cpp",
+        "-o",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\diagnostics\\placement-view-hotfix\\radar-trigger-final\\radar_visibility_publication-x64.exe",
+        "-lgdi32",
+        "-luser32"
+      ],
+      "build_exit_code": 0,
+      "seconds": 5.686999999999898,
+      "exit_code": 0,
+      "output": "PASS: 22 incomplete terrain batches rejected; front retained/recovered; live masks reject missing reads; null cells and page fallback remain valid; world changes invalidate\n",
+      "exe_sha256": "5f774a9bbc0674bd3c67aca9d1d2c6b8f5f96f22cfe3886a19d5e00cb35778a6"
+    },
+    {
+      "name": "radar_boundary",
+      "arch": "x64",
+      "command": [
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\toolchain\\zig-windows-x86_64-0.13.0\\zig.exe",
+        "c++",
+        "-target",
+        "x86_64-windows-gnu",
+        "-std=c++17",
+        "-O2",
+        "-UNDEBUG",
+        "-w",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\checkout\\source\\assist\\tests\\radar_boundary.cpp",
+        "-DRA2_REFERENCE_SCENE=\"C:/Users/guich/Documents/Codex/2026-10-31/ji-yu/work/ra2-hook-audit/diagnostics/placement-view-hotfix/radar-trigger-final/scene_reference.h\"",
+        "-DRA2_REFERENCE_RECORD=\"C:/Users/guich/Documents/Codex/2026-10-31/ji-yu/work/ra2-hook-audit/diagnostics/placement-view-hotfix/radar-trigger-final/record_reference.h\"",
+        "-DRA2_REFERENCE_LIVE=\"C:/Users/guich/Documents/Codex/2026-10-31/ji-yu/work/ra2-hook-audit/diagnostics/placement-view-hotfix/radar-trigger-final/live_reference.h\"",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\checkout\\source\\third_party\\xbrz\\xbrz.cpp",
+        "-o",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\diagnostics\\placement-view-hotfix\\radar-trigger-final\\radar_boundary-x64.exe",
+        "-lgdi32",
+        "-luser32"
+      ],
+      "build_exit_code": 0,
+      "seconds": 14.79700000000048,
+      "exit_code": 0,
+      "output": "PASS signed south-edge TMP, native raw 2x1 flat clip and exact backing dimensions, four-side playfield reveal, explored/shrouded border policy\n",
+      "exe_sha256": "3c08758fbba8e4b3b4ccdd4375305c6944cb7ce04a99ced31dfbcb95c1f82813"
+    },
+    {
+      "name": "radar_output_scene",
+      "arch": "x64",
+      "command": [
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\toolchain\\zig-windows-x86_64-0.13.0\\zig.exe",
+        "c++",
+        "-target",
+        "x86_64-windows-gnu",
+        "-std=c++17",
+        "-O2",
+        "-UNDEBUG",
+        "-w",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\checkout\\source\\assist\\tests\\radar_output_scene.cpp",
+        "-DRA2_REFERENCE_SCENE=\"C:/Users/guich/Documents/Codex/2026-10-31/ji-yu/work/ra2-hook-audit/diagnostics/placement-view-hotfix/radar-trigger-final/scene_reference.h\"",
+        "-DRA2_REFERENCE_RECORD=\"C:/Users/guich/Documents/Codex/2026-10-31/ji-yu/work/ra2-hook-audit/diagnostics/placement-view-hotfix/radar-trigger-final/record_reference.h\"",
+        "-DRA2_REFERENCE_LIVE=\"C:/Users/guich/Documents/Codex/2026-10-31/ji-yu/work/ra2-hook-audit/diagnostics/placement-view-hotfix/radar-trigger-final/live_reference.h\"",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\checkout\\source\\third_party\\xbrz\\xbrz.cpp",
+        "-o",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\diagnostics\\placement-view-hotfix\\radar-trigger-final\\radar_output_scene-x64.exe",
+        "-lgdi32",
+        "-luser32"
+      ],
+      "build_exit_code": 0,
+      "seconds": 54.04699999999866,
+      "exit_code": 0,
+      "output": "PASS production SceneRenderer: output-sized radar retains colors/domain; static forceFrame=false executes TMP; fallback reuse rejects size/reveal/identity/rewind changes; one revision read and recovery; native PIPS 14/15 immutable metadata, final-panel size and scene ownership; watch world zero native pages\n",
+      "exe_sha256": "72420b3c6eb0df381232e652634762ef9f4fc2d873762e4f85c500da9c8f8e52"
+    },
+    {
+      "name": "radar_live_exploration",
+      "arch": "x64",
+      "command": [
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\toolchain\\zig-windows-x86_64-0.13.0\\zig.exe",
+        "c++",
+        "-target",
+        "x86_64-windows-gnu",
+        "-std=c++17",
+        "-O2",
+        "-UNDEBUG",
+        "-w",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\checkout\\source\\assist\\tests\\radar_live_exploration.cpp",
+        "-DRA2_REFERENCE_SCENE=\"C:/Users/guich/Documents/Codex/2026-10-31/ji-yu/work/ra2-hook-audit/diagnostics/placement-view-hotfix/radar-trigger-final/scene_reference.h\"",
+        "-DRA2_REFERENCE_RECORD=\"C:/Users/guich/Documents/Codex/2026-10-31/ji-yu/work/ra2-hook-audit/diagnostics/placement-view-hotfix/radar-trigger-final/record_reference.h\"",
+        "-DRA2_REFERENCE_LIVE=\"C:/Users/guich/Documents/Codex/2026-10-31/ji-yu/work/ra2-hook-audit/diagnostics/placement-view-hotfix/radar-trigger-final/live_reference.h\"",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\checkout\\source\\third_party\\xbrz\\xbrz.cpp",
+        "-o",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\diagnostics\\placement-view-hotfix\\radar-trigger-final\\radar_live_exploration-x64.exe",
+        "-lgdi32",
+        "-luser32"
+      ],
+      "build_exit_code": 0,
+      "seconds": 47.25,
+      "exit_code": 0,
+      "output": "PASS actual SceneRenderer 16 fresh visibility epochs + moving actor: terrain-prefix hits=16/16; every frame equal to a cold renderer, alpha changes invalidate.\nPASS actual SceneRenderer: 2bb alternating stale terrain/shade banks reproduce flashing; current full-map visibility stays clear, unchanged terrain draws stay cached; 30Hz mask budget, read failure retention/recovery, valid darkening and frame rewind.\n",
+      "exe_sha256": "acf788581e65b5c16e4b71d6179095dea6c64d0854304b1eca18511f646873e7"
+    },
+    {
+      "name": "radar_sampler_compact",
+      "arch": "x64",
+      "command": [
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\toolchain\\zig-windows-x86_64-0.13.0\\zig.exe",
+        "c++",
+        "-target",
+        "x86_64-windows-gnu",
+        "-std=c++17",
+        "-O2",
+        "-UNDEBUG",
+        "-w",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\checkout\\source\\assist\\tests\\radar_sampler_compact.cpp",
+        "-DRA2_REFERENCE_SCENE=\"C:/Users/guich/Documents/Codex/2026-10-31/ji-yu/work/ra2-hook-audit/diagnostics/placement-view-hotfix/radar-trigger-final/scene_reference.h\"",
+        "-DRA2_REFERENCE_RECORD=\"C:/Users/guich/Documents/Codex/2026-10-31/ji-yu/work/ra2-hook-audit/diagnostics/placement-view-hotfix/radar-trigger-final/record_reference.h\"",
+        "-DRA2_REFERENCE_LIVE=\"C:/Users/guich/Documents/Codex/2026-10-31/ji-yu/work/ra2-hook-audit/diagnostics/placement-view-hotfix/radar-trigger-final/live_reference.h\"",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\checkout\\source\\third_party\\xbrz\\xbrz.cpp",
+        "-o",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\diagnostics\\placement-view-hotfix\\radar-trigger-final\\radar_sampler_compact-x64.exe",
+        "-lgdi32",
+        "-luser32"
+      ],
+      "build_exit_code": 0,
+      "seconds": 5.25,
+      "exit_code": 0,
+      "output": "PASS actual Sampler 128x128 (32640 physical Cells): complete publication 64 -> 8 bounded steps, unchanged colors/shade/material identities; maximum 4096 physical Cell reads/step <=4096; short read rejects/retries complete bank. CPU complete sweep 4.529700 -> 4.739600 ms (not frame rate).\n",
+      "exe_sha256": "fe4d3a22ba17000781a82047390abe7c58640e58074d9bebeaa28077b5952970"
+    },
+    {
+      "name": "radar_large_map",
+      "arch": "x64",
+      "command": [
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\toolchain\\zig-windows-x86_64-0.13.0\\zig.exe",
+        "c++",
+        "-target",
+        "x86_64-windows-gnu",
+        "-std=c++17",
+        "-O2",
+        "-UNDEBUG",
+        "-w",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\checkout\\source\\assist\\tests\\radar_large_map.cpp",
+        "-DRA2_REFERENCE_SCENE=\"C:/Users/guich/Documents/Codex/2026-10-31/ji-yu/work/ra2-hook-audit/diagnostics/placement-view-hotfix/radar-trigger-final/scene_reference.h\"",
+        "-DRA2_REFERENCE_RECORD=\"C:/Users/guich/Documents/Codex/2026-10-31/ji-yu/work/ra2-hook-audit/diagnostics/placement-view-hotfix/radar-trigger-final/record_reference.h\"",
+        "-DRA2_REFERENCE_LIVE=\"C:/Users/guich/Documents/Codex/2026-10-31/ji-yu/work/ra2-hook-audit/diagnostics/placement-view-hotfix/radar-trigger-final/live_reference.h\"",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\checkout\\source\\third_party\\xbrz\\xbrz.cpp",
+        "-o",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\diagnostics\\placement-view-hotfix\\radar-trigger-final\\radar_large_map-x64.exe",
+        "-lgdi32",
+        "-luser32"
+      ],
+      "build_exit_code": 0,
+      "seconds": 42.26499999999942,
+      "exit_code": 0,
+      "output": "PASS actual 256x256 map: 130816 physical Cells, 130561 visibility cells, 130816 terrain draws at 320x160 (15360x7680 source), page count=10731, capture=20.667900 ms, fresh calls=53893; shroud stamps=130561 metadata=14516748 bytes (<64MiB); complete CPU render and short-read recovery equal. DrawJob=440 bytes; bounded 262144-record DrawJob storage=115343360 bytes. GPU 16-bit index admission remains 65536, larger scenes use complete CPU replay.\nPASS visibility warm 256x256: 130561 captured cells, mean 23.656950 -> 9.535800 ms (8 paired captures); large comparison lifts ONLY original 65536-cell admission to reach its unchanged 8192-page/map algorithm; original admission separately rejected; unordered page bytes refresh every epoch, <=16384 retained pages (64MiB page payload maximum per Live instance; not process resident RAM).\nPASS visibility warm 128x128: 32513 captured cells, mean 2.822688 -> 2.151975 ms (8 paired captures); exact original 2bb Live baseline; unordered page bytes refresh every epoch, <=16384 retained pages (64MiB page payload maximum per Live instance; not process resident RAM).\n",
+      "exe_sha256": "1b41b7aa51b7e5dd8a963c69e0181d92a467ce7d1e245c4e75d99db3473841b2"
+    },
+    {
+      "name": "scene_bank_publication",
+      "arch": "x64",
+      "command": [
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\toolchain\\zig-windows-x86_64-0.13.0\\zig.exe",
+        "c++",
+        "-target",
+        "x86_64-windows-gnu",
+        "-std=c++17",
+        "-O2",
+        "-UNDEBUG",
+        "-w",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\checkout\\source\\assist\\tests\\scene_bank_publication.cpp",
+        "-DRA2_REFERENCE_SCENE=\"C:/Users/guich/Documents/Codex/2026-10-31/ji-yu/work/ra2-hook-audit/diagnostics/placement-view-hotfix/radar-trigger-final/scene_reference.h\"",
+        "-DRA2_REFERENCE_RECORD=\"C:/Users/guich/Documents/Codex/2026-10-31/ji-yu/work/ra2-hook-audit/diagnostics/placement-view-hotfix/radar-trigger-final/record_reference.h\"",
+        "-DRA2_REFERENCE_LIVE=\"C:/Users/guich/Documents/Codex/2026-10-31/ji-yu/work/ra2-hook-audit/diagnostics/placement-view-hotfix/radar-trigger-final/live_reference.h\"",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\checkout\\source\\third_party\\xbrz\\xbrz.cpp",
+        "-o",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\diagnostics\\placement-view-hotfix\\radar-trigger-final\\scene_bank_publication-x64.exe",
+        "-lgdi32",
+        "-luser32"
+      ],
+      "build_exit_code": 0,
+      "seconds": 5.203000000001339,
+      "exit_code": 0,
+      "output": "PASS: production SceneBank rejects late older observations, preserves newer rewinds, separates identities and reveal policy, handles tick wrap and rejects incomplete sources\nPASS: retired source destruction runs outside publication lock; consumer can read replacement during retirement\n",
+      "exe_sha256": "c814985246574f3693d735e513f8f44b343172152cdf5c444171a759798bdf56"
+    }
+  ],
+  "native": [
+    {
+      "passed": true,
+      "game_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+      "entry": "0x654490",
+      "native_dependencies": [
+        "0x567230",
+        "0x421B60",
+        "0x578350",
+        "0x578290",
+        "0x578460"
+      ],
+      "mocked_boundaries": [
+        "0x4F42F0 redraw notification; empty object vector"
+      ],
+      "game_process_touched": false,
+      "snapshots": [
+        {
+          "map": [
+            64,
+            64
+          ],
+          "raised": false,
+          "request": [
+            0,
+            0,
+            64,
+            64
+          ],
+          "visible_rect": [
+            2,
+            2,
+            60,
+            56
+          ],
+          "active_projection": [
+            59,
+            69,
+            120,
+            114
+          ],
+          "allocated_backing": [
+            120,
+            114
+          ],
+          "cpp_formula_candidate": [
+            59,
+            69,
+            120,
+            114
+          ],
+          "same_backing_different_active_span": false
+        },
+        {
+          "map": [
+            64,
+            64
+          ],
+          "raised": false,
+          "request": [
+            12,
+            18,
+            24,
+            20
+          ],
+          "visible_rect": [
+            12,
+            18,
+            24,
+            20
+          ],
+          "active_projection": [
+            39,
+            101,
+            48,
+            42
+          ],
+          "allocated_backing": [
+            120,
+            114
+          ],
+          "cpp_formula_candidate": [
+            39,
+            101,
+            48,
+            42
+          ],
+          "same_backing_different_active_span": true
+        },
+        {
+          "map": [
+            64,
+            64
+          ],
+          "raised": false,
+          "request": [
+            12,
+            24,
+            24,
+            14
+          ],
+          "visible_rect": [
+            12,
+            24,
+            24,
+            14
+          ],
+          "active_projection": [
+            39,
+            113,
+            48,
+            30
+          ],
+          "allocated_backing": [
+            120,
+            114
+          ],
+          "cpp_formula_candidate": [
+            39,
+            113,
+            48,
+            30
+          ],
+          "same_backing_different_active_span": true
+        },
+        {
+          "map": [
+            64,
+            64
+          ],
+          "raised": false,
+          "request": [
+            6,
+            8,
+            50,
+            46
+          ],
+          "visible_rect": [
+            6,
+            8,
+            50,
+            46
+          ],
+          "active_projection": [
+            51,
+            81,
+            100,
+            94
+          ],
+          "allocated_backing": [
+            120,
+            114
+          ],
+          "cpp_formula_candidate": [
+            51,
+            81,
+            100,
+            94
+          ],
+          "same_backing_different_active_span": true
+        },
+        {
+          "map": [
+            64,
+            64
+          ],
+          "raised": false,
+          "request": [
+            0,
+            0,
+            64,
+            64
+          ],
+          "visible_rect": [
+            2,
+            2,
+            60,
+            56
+          ],
+          "active_projection": [
+            59,
+            69,
+            120,
+            114
+          ],
+          "allocated_backing": [
+            120,
+            114
+          ],
+          "cpp_formula_candidate": [
+            59,
+            69,
+            120,
+            114
+          ],
+          "same_backing_different_active_span": false
+        },
+        {
+          "map": [
+            64,
+            72
+          ],
+          "raised": true,
+          "request": [
+            0,
+            0,
+            64,
+            72
+          ],
+          "visible_rect": [
+            2,
+            2,
+            60,
+            64
+          ],
+          "active_projection": [
+            59,
+            69,
+            120,
+            136
+          ],
+          "allocated_backing": [
+            120,
+            136
+          ],
+          "cpp_formula_candidate": [
+            59,
+            69,
+            120,
+            136
+          ],
+          "same_backing_different_active_span": false
+        },
+        {
+          "map": [
+            64,
+            72
+          ],
+          "raised": true,
+          "request": [
+            12,
+            18,
+            24,
+            20
+          ],
+          "visible_rect": [
+            12,
+            18,
+            24,
+            20
+          ],
+          "active_projection": [
+            39,
+            101,
+            48,
+            48
+          ],
+          "allocated_backing": [
+            120,
+            136
+          ],
+          "cpp_formula_candidate": [
+            39,
+            101,
+            48,
+            48
+          ],
+          "same_backing_different_active_span": true
+        },
+        {
+          "map": [
+            64,
+            72
+          ],
+          "raised": true,
+          "request": [
+            12,
+            24,
+            24,
+            14
+          ],
+          "visible_rect": [
+            12,
+            24,
+            24,
+            14
+          ],
+          "active_projection": [
+            39,
+            113,
+            48,
+            36
+          ],
+          "allocated_backing": [
+            120,
+            136
+          ],
+          "cpp_formula_candidate": [
+            39,
+            113,
+            48,
+            36
+          ],
+          "same_backing_different_active_span": true
+        },
+        {
+          "map": [
+            64,
+            72
+          ],
+          "raised": true,
+          "request": [
+            6,
+            8,
+            50,
+            54
+          ],
+          "visible_rect": [
+            6,
+            8,
+            50,
+            54
+          ],
+          "active_projection": [
+            51,
+            81,
+            100,
+            116
+          ],
+          "allocated_backing": [
+            120,
+            136
+          ],
+          "cpp_formula_candidate": [
+            51,
+            81,
+            100,
+            116
+          ],
+          "same_backing_different_active_span": true
+        },
+        {
+          "map": [
+            64,
+            72
+          ],
+          "raised": true,
+          "request": [
+            0,
+            0,
+            64,
+            72
+          ],
+          "visible_rect": [
+            2,
+            2,
+            60,
+            64
+          ],
+          "active_projection": [
+            59,
+            69,
+            120,
+            136
+          ],
+          "allocated_backing": [
+            120,
+            136
+          ],
+          "cpp_formula_candidate": [
+            59,
+            69,
+            120,
+            136
+          ],
+          "same_backing_different_active_span": false
+        },
+        {
+          "map": [
+            128,
+            96
+          ],
+          "raised": true,
+          "request": [
+            0,
+            0,
+            128,
+            96
+          ],
+          "visible_rect": [
+            2,
+            2,
+            124,
+            88
+          ],
+          "active_projection": [
+            123,
+            133,
+            248,
+            184
+          ],
+          "allocated_backing": [
+            248,
+            184
+          ],
+          "cpp_formula_candidate": [
+            123,
+            133,
+            248,
+            184
+          ],
+          "same_backing_different_active_span": false
+        },
+        {
+          "map": [
+            128,
+            96
+          ],
+          "raised": true,
+          "request": [
+            12,
+            18,
+            24,
+            20
+          ],
+          "visible_rect": [
+            12,
+            18,
+            24,
+            20
+          ],
+          "active_projection": [
+            103,
+            166,
+            48,
+            47
+          ],
+          "allocated_backing": [
+            248,
+            184
+          ],
+          "cpp_formula_candidate": [
+            103,
+            166,
+            48,
+            47
+          ],
+          "same_backing_different_active_span": true
+        },
+        {
+          "map": [
+            128,
+            96
+          ],
+          "raised": true,
+          "request": [
+            12,
+            24,
+            24,
+            14
+          ],
+          "visible_rect": [
+            12,
+            24,
+            24,
+            14
+          ],
+          "active_projection": [
+            103,
+            177,
+            48,
+            36
+          ],
+          "allocated_backing": [
+            248,
+            184
+          ],
+          "cpp_formula_candidate": [
+            103,
+            177,
+            48,
+            36
+          ],
+          "same_backing_different_active_span": true
+        },
+        {
+          "map": [
+            128,
+            96
+          ],
+          "raised": true,
+          "request": [
+            6,
+            8,
+            114,
+            78
+          ],
+          "visible_rect": [
+            6,
+            8,
+            114,
+            78
+          ],
+          "active_projection": [
+            115,
+            146,
+            228,
+            163
+          ],
+          "allocated_backing": [
+            248,
+            184
+          ],
+          "cpp_formula_candidate": [
+            115,
+            146,
+            228,
+            163
+          ],
+          "same_backing_different_active_span": true
+        },
+        {
+          "map": [
+            128,
+            96
+          ],
+          "raised": true,
+          "request": [
+            0,
+            0,
+            128,
+            96
+          ],
+          "visible_rect": [
+            2,
+            2,
+            124,
+            88
+          ],
+          "active_projection": [
+            123,
+            133,
+            248,
+            184
+          ],
+          "allocated_backing": [
+            248,
+            184
+          ],
+          "cpp_formula_candidate": [
+            123,
+            133,
+            248,
+            184
+          ],
+          "same_backing_different_active_span": false
+        }
+      ],
+      "cpp_comparison": {
+        "cases": 15,
+        "executable_sha256": "7e67265a547df72275c265e147082b9da2ee4d6b1579e3031de134d3ab74604c",
+        "output": "59 69 120 114\n39 101 48 42\n39 113 48 30\n51 81 100 94\n59 69 120 114\n59 69 120 136\n39 101 48 48\n39 113 48 36\n51 81 100 116\n59 69 120 136\n123 133 248 184\n103 166 48 47\n103 177 48 36\n115 146 228 163\n123 133 248 184\n"
+      },
+      "original_code_sha256": {
+        "0x654490": "e32e0d1237862d248a406d984986486d228a5166f9eb15db32577f651e77f400",
+        "0x567230": "871b26b8f444fc555b8bc6e556b0ae0701f03fe9702ea1826c15c16f2aef89e3",
+        "0x578460": "d43f8a282328570ce6391c8057baa2d9f48aafdf2c5114bbb286515cc28ac349"
+      }
+    },
+    {
+      "passed": true,
+      "game_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+      "entry": "0x654490",
+      "native_dependencies": [
+        "0x567230",
+        "0x421B60",
+        "0x578350",
+        "0x578290",
+        "0x578460"
+      ],
+      "mocked_boundaries": [
+        "0x4F42F0 redraw notification; empty object vector"
+      ],
+      "game_process_touched": false,
+      "snapshots": [
+        {
+          "map": [
+            64,
+            64
+          ],
+          "raised": false,
+          "request": [
+            0,
+            0,
+            64,
+            64
+          ],
+          "visible_rect": [
+            2,
+            2,
+            60,
+            56
+          ],
+          "active_projection": [
+            59,
+            69,
+            120,
+            114
+          ],
+          "allocated_backing": [
+            120,
+            114
+          ],
+          "cpp_formula_candidate": [
+            59,
+            69,
+            120,
+            114
+          ],
+          "same_backing_different_active_span": false
+        },
+        {
+          "map": [
+            64,
+            64
+          ],
+          "raised": false,
+          "request": [
+            12,
+            18,
+            24,
+            20
+          ],
+          "visible_rect": [
+            12,
+            18,
+            24,
+            20
+          ],
+          "active_projection": [
+            39,
+            101,
+            48,
+            42
+          ],
+          "allocated_backing": [
+            120,
+            114
+          ],
+          "cpp_formula_candidate": [
+            39,
+            101,
+            48,
+            42
+          ],
+          "same_backing_different_active_span": true
+        },
+        {
+          "map": [
+            64,
+            64
+          ],
+          "raised": false,
+          "request": [
+            12,
+            24,
+            24,
+            14
+          ],
+          "visible_rect": [
+            12,
+            24,
+            24,
+            14
+          ],
+          "active_projection": [
+            39,
+            113,
+            48,
+            30
+          ],
+          "allocated_backing": [
+            120,
+            114
+          ],
+          "cpp_formula_candidate": [
+            39,
+            113,
+            48,
+            30
+          ],
+          "same_backing_different_active_span": true
+        },
+        {
+          "map": [
+            64,
+            64
+          ],
+          "raised": false,
+          "request": [
+            6,
+            8,
+            50,
+            46
+          ],
+          "visible_rect": [
+            6,
+            8,
+            50,
+            46
+          ],
+          "active_projection": [
+            51,
+            81,
+            100,
+            94
+          ],
+          "allocated_backing": [
+            120,
+            114
+          ],
+          "cpp_formula_candidate": [
+            51,
+            81,
+            100,
+            94
+          ],
+          "same_backing_different_active_span": true
+        },
+        {
+          "map": [
+            64,
+            64
+          ],
+          "raised": false,
+          "request": [
+            0,
+            0,
+            64,
+            64
+          ],
+          "visible_rect": [
+            2,
+            2,
+            60,
+            56
+          ],
+          "active_projection": [
+            59,
+            69,
+            120,
+            114
+          ],
+          "allocated_backing": [
+            120,
+            114
+          ],
+          "cpp_formula_candidate": [
+            59,
+            69,
+            120,
+            114
+          ],
+          "same_backing_different_active_span": false
+        },
+        {
+          "map": [
+            64,
+            72
+          ],
+          "raised": true,
+          "request": [
+            0,
+            0,
+            64,
+            72
+          ],
+          "visible_rect": [
+            2,
+            2,
+            60,
+            64
+          ],
+          "active_projection": [
+            59,
+            69,
+            120,
+            136
+          ],
+          "allocated_backing": [
+            120,
+            136
+          ],
+          "cpp_formula_candidate": [
+            59,
+            69,
+            120,
+            136
+          ],
+          "same_backing_different_active_span": false
+        },
+        {
+          "map": [
+            64,
+            72
+          ],
+          "raised": true,
+          "request": [
+            12,
+            18,
+            24,
+            20
+          ],
+          "visible_rect": [
+            12,
+            18,
+            24,
+            20
+          ],
+          "active_projection": [
+            39,
+            101,
+            48,
+            48
+          ],
+          "allocated_backing": [
+            120,
+            136
+          ],
+          "cpp_formula_candidate": [
+            39,
+            101,
+            48,
+            48
+          ],
+          "same_backing_different_active_span": true
+        },
+        {
+          "map": [
+            64,
+            72
+          ],
+          "raised": true,
+          "request": [
+            12,
+            24,
+            24,
+            14
+          ],
+          "visible_rect": [
+            12,
+            24,
+            24,
+            14
+          ],
+          "active_projection": [
+            39,
+            113,
+            48,
+            36
+          ],
+          "allocated_backing": [
+            120,
+            136
+          ],
+          "cpp_formula_candidate": [
+            39,
+            113,
+            48,
+            36
+          ],
+          "same_backing_different_active_span": true
+        },
+        {
+          "map": [
+            64,
+            72
+          ],
+          "raised": true,
+          "request": [
+            6,
+            8,
+            50,
+            54
+          ],
+          "visible_rect": [
+            6,
+            8,
+            50,
+            54
+          ],
+          "active_projection": [
+            51,
+            81,
+            100,
+            116
+          ],
+          "allocated_backing": [
+            120,
+            136
+          ],
+          "cpp_formula_candidate": [
+            51,
+            81,
+            100,
+            116
+          ],
+          "same_backing_different_active_span": true
+        },
+        {
+          "map": [
+            64,
+            72
+          ],
+          "raised": true,
+          "request": [
+            0,
+            0,
+            64,
+            72
+          ],
+          "visible_rect": [
+            2,
+            2,
+            60,
+            64
+          ],
+          "active_projection": [
+            59,
+            69,
+            120,
+            136
+          ],
+          "allocated_backing": [
+            120,
+            136
+          ],
+          "cpp_formula_candidate": [
+            59,
+            69,
+            120,
+            136
+          ],
+          "same_backing_different_active_span": false
+        },
+        {
+          "map": [
+            128,
+            96
+          ],
+          "raised": true,
+          "request": [
+            0,
+            0,
+            128,
+            96
+          ],
+          "visible_rect": [
+            2,
+            2,
+            124,
+            88
+          ],
+          "active_projection": [
+            123,
+            133,
+            248,
+            184
+          ],
+          "allocated_backing": [
+            248,
+            184
+          ],
+          "cpp_formula_candidate": [
+            123,
+            133,
+            248,
+            184
+          ],
+          "same_backing_different_active_span": false
+        },
+        {
+          "map": [
+            128,
+            96
+          ],
+          "raised": true,
+          "request": [
+            12,
+            18,
+            24,
+            20
+          ],
+          "visible_rect": [
+            12,
+            18,
+            24,
+            20
+          ],
+          "active_projection": [
+            103,
+            166,
+            48,
+            47
+          ],
+          "allocated_backing": [
+            248,
+            184
+          ],
+          "cpp_formula_candidate": [
+            103,
+            166,
+            48,
+            47
+          ],
+          "same_backing_different_active_span": true
+        },
+        {
+          "map": [
+            128,
+            96
+          ],
+          "raised": true,
+          "request": [
+            12,
+            24,
+            24,
+            14
+          ],
+          "visible_rect": [
+            12,
+            24,
+            24,
+            14
+          ],
+          "active_projection": [
+            103,
+            177,
+            48,
+            36
+          ],
+          "allocated_backing": [
+            248,
+            184
+          ],
+          "cpp_formula_candidate": [
+            103,
+            177,
+            48,
+            36
+          ],
+          "same_backing_different_active_span": true
+        },
+        {
+          "map": [
+            128,
+            96
+          ],
+          "raised": true,
+          "request": [
+            6,
+            8,
+            114,
+            78
+          ],
+          "visible_rect": [
+            6,
+            8,
+            114,
+            78
+          ],
+          "active_projection": [
+            115,
+            146,
+            228,
+            163
+          ],
+          "allocated_backing": [
+            248,
+            184
+          ],
+          "cpp_formula_candidate": [
+            115,
+            146,
+            228,
+            163
+          ],
+          "same_backing_different_active_span": true
+        },
+        {
+          "map": [
+            128,
+            96
+          ],
+          "raised": true,
+          "request": [
+            0,
+            0,
+            128,
+            96
+          ],
+          "visible_rect": [
+            2,
+            2,
+            124,
+            88
+          ],
+          "active_projection": [
+            123,
+            133,
+            248,
+            184
+          ],
+          "allocated_backing": [
+            248,
+            184
+          ],
+          "cpp_formula_candidate": [
+            123,
+            133,
+            248,
+            184
+          ],
+          "same_backing_different_active_span": false
+        }
+      ],
+      "cpp_comparison": {
+        "cases": 15,
+        "executable_sha256": "5f135f342e6a33a1d9c215df0fda1c5f8bcf45cbc78f3ff9c22c1322096890e1",
+        "output": "59 69 120 114\n39 101 48 42\n39 113 48 30\n51 81 100 94\n59 69 120 114\n59 69 120 136\n39 101 48 48\n39 113 48 36\n51 81 100 116\n59 69 120 136\n123 133 248 184\n103 166 48 47\n103 177 48 36\n115 146 228 163\n123 133 248 184\n"
+      },
+      "original_code_sha256": {
+        "0x654490": "e32e0d1237862d248a406d984986486d228a5166f9eb15db32577f651e77f400",
+        "0x567230": "871b26b8f444fc555b8bc6e556b0ae0701f03fe9702ea1826c15c16f2aef89e3",
+        "0x578460": "d43f8a282328570ce6391c8057baa2d9f48aafdf2c5114bbb286515cc28ac349"
+      }
+    }
+  ],
+  "render_regression_baseline_sha256": {
+    "radar_scene.h": "797b88a0a1c008567dbcba0cac8e2947ab555e34539c94a7cea8a2fce9136bbe",
+    "gpu_scene_record.h": "2af1c7a9449942dc13adb2d311b7d29179b5485d9e3d764a5f8400272dacb877",
+    "radar_live_shroud.h": "7ad465923913900e1be103a769866b5742183e3b4dd97033eff6b8d5375a6e49"
+  },
+  "game_process_touched": false,
+  "hardware_gpu_tested": false
+}

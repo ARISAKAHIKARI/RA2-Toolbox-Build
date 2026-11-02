@@ -1,0 +1,110 @@
+{
+  "scope": "Build/run a standalone Windows x86 own-process DR/VEH verification.\n\nThe shared production Service core is used with a small test caller/classifier.\nNo game process is opened. QPC measurements are exception/call overhead in this\nfixture, not game FPS or the cost of the complete production classifier.\n",
+  "assertions_enabled": true,
+  "compiler_flags": [
+    "-target",
+    "x86-windows-gnu",
+    "-std=c++17",
+    "-O2",
+    "-UNDEBUG",
+    "-fms-extensions",
+    "-fasm-blocks"
+  ],
+  "target": "Windows x86 standalone fixture",
+  "production_core_sha256": "38cd1e44614ad3316b4cba178f5789c68ff04b2170d00869cee2236f2c209c96",
+  "test_source_sha256": "3ee4adfcb94db0e1838f8ac1caee0c489246f47b9453b6d9007027d2f0f00a37",
+  "fixture_exe_sha256": "064498999f1c073ddff7ea141ac21099372a139c5d16707aceb1b945f6796d15",
+  "game_process_opened": false,
+  "game_executable_required": false,
+  "platform_detection_tested": false,
+  "multiplayer_tested": false,
+  "results": [
+    {
+      "case": "true Windows own-thread hardware execution breakpoints at two original CALLs",
+      "status": "PASS"
+    },
+    {
+      "case": "native includeProduction preserved for both callers",
+      "status": "PASS"
+    },
+    {
+      "case": "only local House and selected Type classified",
+      "status": "PASS"
+    },
+    {
+      "case": "20000 exact hardware exceptions and stack argument changes per run",
+      "status": "PASS"
+    },
+    {
+      "case": "foreign single-step passes to another registered VEH",
+      "status": "PASS"
+    },
+    {
+      "case": "mixed own+foreign Dr6/TF CONTEXT remains byte-identical on CONTINUE_SEARCH",
+      "status": "PASS"
+    },
+    {
+      "case": "code bytes unchanged before/after DR installation and removal",
+      "status": "PASS"
+    },
+    {
+      "case": "enabled foreign DR slot retained while two other slots leased",
+      "status": "PASS"
+    },
+    {
+      "case": "four occupied foreign addresses cause refusal without context overwrite",
+      "status": "PASS"
+    },
+    {
+      "case": "foreign replacement survives restore; only still-owned slot removed",
+      "status": "PASS"
+    },
+    {
+      "case": "failed restore readback retains lease and VEH until later confirmation",
+      "status": "PASS"
+    },
+    {
+      "case": "successful Set return with still-owned readback retains lease and retries",
+      "status": "PASS"
+    },
+    {
+      "case": "fully confirmed retirement restores original debug-register slots",
+      "status": "PASS"
+    }
+  ],
+  "qpc_runs": [
+    {
+      "calls_per_caller": 10000,
+      "total_calls": 20000,
+      "baseline_us": 25.9,
+      "active_us": 178369.1,
+      "additional_us_per_exception": 8.91716,
+      "hits": 20000,
+      "changed_arguments": 20000
+    },
+    {
+      "calls_per_caller": 10000,
+      "total_calls": 20000,
+      "baseline_us": 24.7,
+      "active_us": 170531.6,
+      "additional_us_per_exception": 8.525345,
+      "hits": 20000,
+      "changed_arguments": 20000
+    },
+    {
+      "calls_per_caller": 10000,
+      "total_calls": 20000,
+      "baseline_us": 24.6,
+      "active_us": 168186.5,
+      "additional_us_per_exception": 8.408095,
+      "hits": 20000,
+      "changed_arguments": 20000
+    }
+  ],
+  "median_additional_us_per_exception": 8.525345,
+  "stdout": [
+    "install=1 error=0 mask=3\nQPC calls_per_caller=10000 total_calls=20000 baseline_us=25.900 active_us=178369.100 additional_us_per_exception=8.917160 hits=20000 changes=20000\nPASS: real Windows x86 two CALL execution breakpoints; 20000 quantified hits; own-thread context install/readback/restore; argument-only change; House/type gates; foreign exception pass-through; foreign slots preserved; insufficient slots refused; foreign replacement preserved on restore; unchanged code; no game\n",
+    "install=1 error=0 mask=3\nQPC calls_per_caller=10000 total_calls=20000 baseline_us=24.700 active_us=170531.600 additional_us_per_exception=8.525345 hits=20000 changes=20000\nPASS: real Windows x86 two CALL execution breakpoints; 20000 quantified hits; own-thread context install/readback/restore; argument-only change; House/type gates; foreign exception pass-through; foreign slots preserved; insufficient slots refused; foreign replacement preserved on restore; unchanged code; no game\n",
+    "install=1 error=0 mask=3\nQPC calls_per_caller=10000 total_calls=20000 baseline_us=24.600 active_us=168186.500 additional_us_per_exception=8.408095 hits=20000 changes=20000\nPASS: real Windows x86 two CALL execution breakpoints; 20000 quantified hits; own-thread context install/readback/restore; argument-only change; House/type gates; foreign exception pass-through; foreign slots preserved; insufficient slots refused; foreign replacement preserved on restore; unchanged code; no game\n"
+  ]
+}

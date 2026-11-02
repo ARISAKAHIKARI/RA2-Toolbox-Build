@@ -3,8 +3,9 @@
 #include <stddef.h>
 #include <string.h>
 namespace assist { namespace techmode {
-inline constexpr unsigned Data=3;
-inline bool valid(unsigned mode){return mode<=Data;}
+inline constexpr unsigned Data=3,Parameters=4;
+inline bool valid(unsigned mode){return mode<=Parameters;}
+inline bool parameters(unsigned mode){return mode==Parameters;}
 inline bool data(unsigned mode){return mode==Data;}
 // A false active bit is not restoration evidence. Reject owned, conflicted,
 // unreadable or changed sites before advertising a no-code-write mode.

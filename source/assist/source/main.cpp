@@ -590,7 +590,7 @@ static bool queueCommand(int c,int arg,int arg2,uint32_t match,int retries=0,DWO
 }
 static void send(int command,int arg=0,int arg2=0,int retries=0,bool fromQueue=false,uint32_t requestToken=0){
  if(command==PlaceCompletedBuilding){notify(L"建筑放置须使用原生事件放置快捷键重新提交。");return;}
- if((command==Produce||command==CancelTechProduction)&&!buildingmodes::toolOrders(techImplementation,snap.techOpen)){notify(L"规则数据模式请使用游戏原生建造栏生产或取消。");return;}
+ if((command==Produce||command==CancelTechProduction)&&!buildingmodes::toolOrders(techImplementation,snap.techOpen)){notify(L"原生面板模式请使用游戏建造栏生产或取消。");return;}
  if(!enabled){notify(L"战术控制已暂停，请先启用后再发送指令。");return;}
  // Whole-House destruction is an immediate explicit button action. Never
  // carry it across a reconnect, busy bridge or deferred command queue.
@@ -1527,7 +1527,8 @@ static void result(){if(!shared)return;uint32_t a=shared->ack;if(a==ack)return;M
   notify(r==2?(shared->placementPreview.active?L"已自动匹配当前栏的完成建筑：地基预览已开启，左键放置，右键或 Esc 取消。":L"已取消放置预览。"):r>0&&n==1?L"建筑放置事件已提交；是否落地以游戏结果为准。":L"预览未开启：请先退出原生建造／维修／出售／超武光标，确认当前建筑／防御栏有已完成产品。");
   updatePlacementEventUI();return;
  }
- if(c==OpenTech&&r==-43){notify(L"暂不能切换规则数据模式：旧高危模式仍有生产任务。请先完成并放置、或取消旧模式的科技生产；清理后会继续切换。");return;}
+ if(c==OpenTech&&r==-45){if(shared&&shared->techParameterStatus<0)notify(L"参数拦截未能启用；请查看下方参数拦截状态与错误。其他工具占用的硬件断点不会被覆盖。");else notify(L"正在等待硬件断点安装或还原，完成后自动继续；请查看下方参数拦截状态。");return;}
+ if(c==OpenTech&&r==-43){notify(L"暂不能切换科技模式：当前模式仍有依赖其权限的生产任务。请先完成并放置、或取消相应生产；清理后会继续切换。");return;}
  if(c==OpenTech&&r==-44){notify(L"科技规则数据尚未完成应用或恢复，请查看状态；原值恢复完成前不会切换实现。");return;}
  if(c==DestructPlayer){
   std::wstring message;
@@ -1579,7 +1580,7 @@ static void result(){if(!shared)return;uint32_t a=shared->ack;if(a==ack)return;M
  else if(c==Cheer)notify(L"喝彩已提交。");
  else if(c==Taunt)notify(L"嘲讽已交给原生发送命令。");
  else if(c==ClearBeacons)notify(L"已清理己方信标。");
- else if(c==OpenTech){techAcknowledgedHash=shared->requestTypeHash;techEnabled=shared->arg!=0;notify(!techEnabled?L"科技生产已关闭。":shared->arg2==buildingmodes::TechData?L"高危：规则数据模式已启用，请使用游戏原生建造栏；规则影响所有玩家和 AI。":L"科技生产已启用，允许 "+std::to_wstring(n)+L" 项。请从本面板选择单位生产。");}
+ else if(c==OpenTech){techAcknowledgedHash=shared->requestTypeHash;techEnabled=shared->arg!=0;notify(!techEnabled?L"科技生产已关闭。":shared->arg2==buildingmodes::TechParameters?L"实验性参数拦截已启用，请使用游戏原生建造栏；本模式不改游戏指令或规则。":shared->arg2==buildingmodes::TechData?L"高危：规则数据模式已启用，请使用游戏原生建造栏；规则影响所有玩家和 AI。":L"科技生产已启用，允许 "+std::to_wstring(n)+L" 项。请从本面板选择单位生产。");}
  else if(c==SwitchPlayer||c==RestorePlayer){pointerMatches.clear();commandQueue.clear();notify(c==RestorePlayer?L"已恢复原操控方。":L"已切换操控方；自动功能将按新操控方重新启动。");}
  else if(c==CancelTechProduction)notify(L"已请求取消生产。");
  else if(c==Produce)notify(L"生产请求已提交；是否接受以游戏生产队列为准。");
@@ -1645,6 +1646,7 @@ static void updateModeStatus(DWORD now){
  auto riskText=[&](bool wanted,int state)->std::wstring{if(state==-2)return L"启用或关闭失败，请查看日志";if(state==-1)return L"不支持此游戏版本";if(!wanted)return state==1?L"等待恢复":L"关闭";return phase?L"等待游戏就绪":state==1?L"已启用（实验性）":L"等待生效";};
  std::wstring enhancement=L"高危 · 科技加强：";
  if(shared&&shared->techEnhanceStatus<0)enhancement+=shared->techEnhanceCount?L"仍有未还原字段（"+std::to_wstring(shared->techEnhanceCount)+L" 项），请查看日志":L"字段不兼容或已被修改，请查看日志";
+ else if((techImplementation==buildingmodes::TechParameters&&techMode)||snap.techOpen==5)enhancement+=L"由原生面板参数拦截模式暂停；退出后恢复独立开关设置";
  else if((techImplementation==buildingmodes::TechData&&techMode)||snap.techOpen==4)enhancement+=L"由原生面板规则数据模式协调；退出并还原后恢复独立开关设置";
  else if(!extra.techEnhance)enhancement+=L"关闭";
  else if(!shared||phase)enhancement+=L"等待游戏就绪";
@@ -1678,6 +1680,7 @@ static void updateModeStatus(DWORD now){
  SetWindowTextW(GetDlgItem(ui,807),riskStatus.c_str());
  std::wstring renderText=(extra.mapStrategy!=0)?L"高危 · 地图显示：":L"地图显示：";renderText+=extra.mapStrategy==3?(autoRevealDone&&autoRevealDone==commandMatch()?L"自动地图全开已执行":L"等待自动地图全开"):snap.renderRevealStatus==-2?L"启用或关闭失败，请查看日志":!extra.renderReveal?L"关闭":phase?L"等待游戏就绪":snap.renderRevealStatus==1?L"已启用":L"等待生效";
  SetWindowTextW(GetDlgItem(ui,809),renderText.c_str());
+ {int c=shared?shared->smallMapClampStatus:0;const wchar_t*status=c==1?L"已安装单轴／双轴修正":c==2?L"当前地图无需修正":c==3?L"等待有效几何":c==-2?L"入口冲突或还原未完成":L"关闭";SetWindowTextW(GetDlgItem(ui,9464),(std::wstring(L"小图相机：")+status).c_str());}
  {int s=shared?shared->sidebarStatus:0;const wchar_t*status=s==1?L"已隐藏":s==2?L"等待绘制安全点":s==-1?L"不支持当前显示几何":s==-2?L"版本或 Hook 冲突":s==-3?L"原生布局切换失败":L"完整";SetWindowTextW(GetDlgItem(ui,9407),(std::wstring(L"侧边栏：")+status).c_str());}
  {int p=shared?shared->pauseViewStatus:0;const wchar_t*status=p==1?L"运行中":p==2?L"已暂停":p==3?L"等待前进一帧":p==-1?L"仅支持单机／战役":p==-2?L"版本或 Hook 冲突":p==-3?L"原生暂停调用失败":p==-4?L"跨过多帧，已暂停":L"关闭";
   std::wstring text=std::wstring(L"逐帧操作：")+status;SetWindowTextW(GetDlgItem(ui,9406),text.c_str());}
@@ -1725,8 +1728,13 @@ static void updateModeStatus(DWORD now){
   SetWindowTextW(GetDlgItem(ui,9197),crc.c_str());
  }
  SetWindowTextW(GetDlgItem(ui,813),(L"步兵强制进入建筑（暂不可用）："+(extra.c4Test&&snap.c4TestStatus==1&&!phase&&infantryEntryResultMatch==commandMatch()&&!infantryEntryResult.empty()?infantryEntryResult:riskText(extra.c4Test,snap.c4TestStatus))).c_str());
- std::wstring progress=snap.techError==-44?L"高危 · 科技规则数据尚未完成应用或恢复，不能视为已关闭；请查看日志。\n":snap.techError==-43?L"高危旧模式仍生效；请完成并放置或取消旧生产后等待切换。\n":
-  snap.techOpen==4?L"高危 · 原生面板规则数据模式：":snap.techOpen>0?L"高危旧模式 · 生产进度：":techMode&&techImplementation==buildingmodes::TechData?L"高危 · 等待规则数据模式就绪：":L"生产进度：";uint32_t owner=0;
+ std::wstring progress=snap.techError==-44?L"高危 · 科技规则数据尚未完成应用或恢复，不能视为已关闭；请查看日志。\n":snap.techError==-43?L"当前科技模式仍生效；请完成并放置或取消相应生产后等待切换。\n":
+  snap.techOpen==5?L"实验性 · 原生面板参数拦截（不改指令／规则）：":snap.techOpen==4?L"高危 · 原生面板规则数据模式：":snap.techOpen>0?L"高危旧模式 · 生产进度：":techMode&&techImplementation==buildingmodes::TechParameters?L"等待参数拦截模式就绪：":techMode&&techImplementation==buildingmodes::TechData?L"高危 · 等待规则数据模式就绪：":L"生产进度：";uint32_t owner=0;
+ if(shared&&(techImplementation==buildingmodes::TechParameters||snap.techOpen==5)){
+  const int state=shared->techParameterStatus;const wchar_t*label=state==1?L"已安装":state==2?L"等待安装／恢复":state==-1?L"原生查询不兼容":state==-2?L"没有两个空闲硬件断点":state==-3?L"Windows 线程操作失败":state==-4?L"断点状态已被其他工具改变":state==-5?L"线程归属不匹配":L"关闭";
+  progress+=std::wstring(L"\n参数拦截：")+label+L" · 命中 "+std::to_wstring(shared->techParameterExceptions)+L" 次";
+  if(state<0)progress+=L" · 错误 "+std::to_wstring(shared->techParameterError);progress+=L"\n";
+ }
  if(techMode&&commandFresh(now)&&externalReader.readFresh(0xA83D4C,&owner,4)&&owner>=0x10000){
   const int offsets[]={0x53BC,0x53CC,0x53B0,0x53B4,0x53B8,0x53AC};const wchar_t* names[]={L"建筑",L"防御",L"步兵",L"战车",L"舰船",L"飞机"};
   for(int j=0;j<6;++j){uint32_t f=0,p=0,own=0;int step=0;bool valid=externalReader.readFresh(owner+offsets[j],&f,4);
@@ -2223,7 +2231,7 @@ if(id==991){wchar_t query[128]{};GetWindowTextW(featureSearch,query,128);std::ws
   else notify(id==427?L"已选择 Ra2Tool 预设清单并保存。":L"已选择 Assist.ini [tech] 自定义清单并保存。");
  }
  else if(id==814){int i=int(SendMessageW(techList,LB_GETCURSEL,0,0));if(techEnabled&&i>=0&&i<int(techIndices.size())){int live=liveTypeIndex(savedTypes.types[techIndices[i]]);if(live>=0)send(CancelTechProduction,live);}}
- else if(id==423||(id==422&&HIWORD(wp)==LBN_DBLCLK)){if(!buildingmodes::toolOrders(techImplementation,snap.techOpen)){notify(L"规则数据模式请使用游戏原生建造栏生产或取消；此清单只配置允许的类型。");return 0;}int i=(int)SendMessageW(techList,LB_GETCURSEL,0,0);if(!techEnabled)notify(L"先开启自定义科技。");else if(i>=0&&i<(int)techIndices.size()){auto&t=savedTypes.types[techIndices[i]];int live=liveTypeIndex(t);if(!techAllowed(t))notify(L"此项目已从开启清单中排除。");else if(live<0)notify(L"此单位在当前对局不可用。");else send(Produce,live);}}
+ else if(id==423||(id==422&&HIWORD(wp)==LBN_DBLCLK)){if(!buildingmodes::toolOrders(techImplementation,snap.techOpen)){notify(L"原生面板模式请使用游戏建造栏生产或取消；此清单只配置允许的类型。");return 0;}int i=(int)SendMessageW(techList,LB_GETCURSEL,0,0);if(!techEnabled)notify(L"先开启自定义科技。");else if(i>=0&&i<(int)techIndices.size()){auto&t=savedTypes.types[techIndices[i]];int live=liveTypeIndex(t);if(!techAllowed(t))notify(L"此项目已从开启清单中排除。");else if(live<0)notify(L"此单位在当前对局不可用。");else send(Produce,live);}}
  else if(id==410&&HIWORD(wp)==CBN_SELCHANGE){ControlUpdate guard;auto type=selectedSuperID();SendMessageW(swHotkey,HKM_SETHOTKEY,type.empty()?0:binding(type.c_str()),0);}
  else if(id==449){
   wchar_t raw[64]{};GetWindowTextW(typeIdEdit,raw,64);std::string id;

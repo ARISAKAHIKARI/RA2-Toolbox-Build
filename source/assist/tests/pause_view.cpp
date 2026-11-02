@@ -5,6 +5,9 @@
 #include <cstdio>
 #include <cstring>
 #include <initializer_list>
+#ifdef NDEBUG
+#error This verification must execute all assertions; compile with -UNDEBUG.
+#endif
 int main(){
  using namespace assist;
  unsigned checks=0;auto expect=[&](bool value){++checks;assert(value);};

@@ -1,4 +1,5 @@
 #include "tech_data_policy.h"
+#include "technology_mode_policy.h"
 static techdata::Record techDataRecords[MaxTypes];
 static uint32_t techDataScenario=0,techDataHouse=0,techDataEpoch=0;
 static int techDataSession=-1,techDataFrame=-1;
@@ -29,6 +30,7 @@ static bool restoreTechData(){
  return ok&&!techDataRestoring;
 }
 static bool techDataBlocksEnhancement(){
+ if(techmode::parameters(techImplementation)&&sh&&(sh->flags&UnsafeTech))return true;
  if(techImplementation==3&&sh&&(sh->flags&UnsafeTech)){
   // High-water tracking is per game tick, not the once/second sidebar refresh.
   int frame=-1;const auto state=techDataWorld();

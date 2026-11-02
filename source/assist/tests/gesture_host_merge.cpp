@@ -70,7 +70,7 @@ int main(){
  ++matchId;wire.moGesturePolicySeq|=1;extra.moGestures.keys[0]='H';check(runtimeGesturePolicy().keys[0]=='H');wire.moGesturePolicySeq++;
  Drawing a,b;check(sameDrawing(a,b));a.active=b.active=true;a.preview.count=b.preview.count=1;a.preview.nodeCount=b.preview.nodeCount=1;check(sameDrawing(a,b));b.preview.tick=99;check(sameDrawing(a,b));b.preview.lines[0].to.x=1;check(!sameDrawing(a,b));b=a;b.projection.cameraX=1;check(!sameDrawing(a,b));b=a;b.hint=L"new key";check(!sameDrawing(a,b));b=a;b.preview.nodes[0].z=1;check(!sameDrawing(a,b));
  {int id=9405;check(suite::categories::row(4,&id,1)==suite::categories::Video);}
- for(int id:{9404,9407,9450,9451,9452,9453,9403,9406,9454,9455,9462})check(suite::categories::row(4,&id,1)==suite::categories::Experimental);
+ for(int id:{9404,9407,9450,9451,9452,9453,9403,9406,9454,9455,9462,9463,9464})check(suite::categories::row(4,&id,1)==suite::categories::Experimental);
  for(int id:{9400,9401,9402,9440,9446,9460})check(suite::categories::row(1,&id,1)==suite::categories::Control);
  std::printf("PASS %u actual Host config/dispatch/IPC/arbitration/focus/preview/category checks\n",checks);
 }

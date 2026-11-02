@@ -5,6 +5,9 @@
 #include <windows.h>
 #include <cassert>
 #include <cstdio>
+#ifdef NDEBUG
+#error This verification must execute all assertions; compile with -UNDEBUG.
+#endif
 extern "C" int __cdecl GuardedSidebarViewAction(unsigned,unsigned);
 static unsigned depth=0,beginCount=0,endCount=0,actionCount=0,failCount=0,filterCount=0,busy=0;
 static bool reject=false;

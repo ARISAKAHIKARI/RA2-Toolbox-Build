@@ -5,7 +5,9 @@ from unicorn import UC_HOOK_CODE
 from unicorn.x86_const import *
 p=argparse.ArgumentParser(description=__doc__);p.add_argument('game');p.add_argument('dll');p.add_argument('--output',required=True);p.add_argument('--cells',action='store_true');p.add_argument('--connect-index',type=int,choices=(0,1),default=0);a=p.parse_args()
 game_hash=hashlib.sha256(Path(a.game).read_bytes()).hexdigest()
-if game_hash!='247f72881e1a68c8fc305e3702dc0100a72d17601305999026393c340d5daeb0':raise RuntimeError('Unsupported private PE for this native planning probe')
+# Explicitly pin both inspected images; constructors and receiver below still
+# execute the original instructions and assert every stored plan/node field.
+if game_hash not in {'247f72881e1a68c8fc305e3702dc0100a72d17601305999026393c340d5daeb0','268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0'}:raise RuntimeError('Unsupported private PE for this native planning probe')
 spec=importlib.util.spec_from_file_location('helper',Path(__file__).with_name('no_interception_runtime.py'));n=importlib.util.module_from_spec(spec)
 saved=sys.argv;sys.argv=[str(spec.origin),a.game,a.dll,'--filter','__fixture__','--output',str(Path(a.output).with_suffix('.helper.json'))];spec.loader.exec_module(n);sys.argv=saved
 m=n.fixture(0)

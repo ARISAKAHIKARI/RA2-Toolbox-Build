@@ -21,7 +21,7 @@ template<class Read>PublicationContext publicationContext(Read read){
  out.active=out.readable&&battlefield==1&&display.visible();return out;
 }
 inline bool sameWorld(const Frame&sample,const PublicationContext&current){
- return sample.terrain&&current.active&&current.house==sample.terrain->geo.house&&current.cells==sample.terrain->geo.cells&&current.frame>=sample.frame&&current.bounds.valid()&&current.bounds==sample.terrain->geo.bounds&&current.rawWidth==sample.terrain->geo.rawWidth&&current.rawHeight==sample.terrain->geo.rawHeight;
+ return sample.terrain&&current.active&&current.house==sample.terrain->geo.house&&current.cells==sample.terrain->geo.cells&&current.frame>=sample.frame&&current.bounds.valid()&&current.bounds==sample.terrain->geo.bounds&&current.rawWidth==sample.terrain->geo.sourceWidth()&&current.rawHeight==sample.terrain->geo.sourceHeight();
 }
 // Check age when sampling ends, not after disk IO and CPU rasterization. A
 // render taking three game ticks is still a valid completed image of this map.

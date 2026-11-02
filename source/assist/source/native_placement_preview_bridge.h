@@ -1,14 +1,18 @@
 // An explicit toolbox modal cursor, entirely outside native cursor state.
 // Only this mode's matched down/up pair is consumed. Sidebar and native tools
 // keep their messages; an unrelated native cursor cancels this mode first.
+#include "native_placement_geometry.h"
+#include "native_placement_completion_bridge.h"
+#include "../../external_reader/source/projection.h"
 static nativeplacement::Preview placementView;
 static uint32_t placementPreviewSerial=0,placementCapturedButtons=0;
+static uint32_t placementScenario=0;
 static uint32_t placementCapturedSerial[2]{};
 static void nativePlacementPublish(){
  if(!sh)return;placementView.tick=sampleClock(sh);placementView.match=match;
  InterlockedIncrement(&sh->placementPreviewSeq);MemoryBarrier();sh->placementPreview=placementView;MemoryBarrier();InterlockedIncrement(&sh->placementPreviewSeq);notifyHost();
 }
-static void nativePlacementReset(){placementView={};++placementPreviewSerial;nativePlacementPublish();}
+static void nativePlacementReset(){placementView={};placementScenario=0;++placementPreviewSerial;nativePlacementPublish();}
 static bool nativePlacementCursorFree(){
  uint8_t tools[5]{};uint32_t state[4]{};int super=-1;
  // Map::CurrentBuilding/Type and their copy, the five native tool modes,
@@ -20,16 +24,18 @@ static bool nativePlacementCursorFree(){
   !sh->formationPreview.active&&!sh->moOrdersPreview.active&&!sh->viewZoomBusy;
 }
 static bool nativePlacementInputContext(bool preview=false){
- if(!nativePlacementAvailable()||DWORD(sampleClock(sh)-sh->heartbeat)>(preview?1000u:150u)||!nativePlacementCursorFree())return false;
+ if(!nativePlacementAvailable(preview)||DWORD(sampleClock(sh)-sh->heartbeat)>(preview?1000u:150u)||!nativePlacementCursorFree())return false;
  DWORD foreground=0;GetWindowThreadProcessId(GetForegroundWindow(),&foreground);return foreground==GetCurrentProcessId();
 }
 static int nativePlacementArm(uint32_t house,DWORD now){
  if(placementView.active){nativePlacementReset();return 2;}
  if(!nativePlacementInputContext())return -4;
  int tab=-1,after=-1;nativeplacement::Offer offer{};
- if(!read(0x87F7E8+0x539C,&tab,4)||tab<0||tab>1||!nativePlacementCapture(house,tab,now,offer)||
+ uint32_t scenario=0,verifyScenario=0;
+ if(!read(0xA8B230,&scenario,4)||scenario<0x10000||!read(0x87F7E8+0x539C,&tab,4)||tab<0||tab>1||!nativePlacementCapture(house,tab,now,offer)||
+    !read(0xA8B230,&verifyScenario,4)||scenario!=verifyScenario||
     !read(0x87F7E8+0x539C,&after,4)||after!=tab)return -7;
- placementView={};placementView.offer=offer;placementView.active=1;++placementPreviewSerial;
+ placementView={};placementView.offer=offer;placementView.active=1;placementScenario=scenario;++placementPreviewSerial;
  int foundation=-1;
  if(read(offer.type+0xEF0,&foundation,4)&&foundation>=0&&foundation<21){
   read(0x8192B8+uint32_t(foundation)*4,&placementView.width,4);read(0x819310+uint32_t(foundation)*4,&placementView.height,4);
@@ -39,6 +45,7 @@ static int nativePlacementArm(uint32_t house,DWORD now){
 }
 static bool nativePlacementRenew(DWORD now,bool preview=false){
  if(!placementView.active||!nativePlacementInputContext(preview))return false;
+ uint32_t scenario=0;if(!read(0xA8B230,&scenario,4)||scenario!=placementScenario)return false;
  int tab=-1;nativeplacement::Offer current{};
  if(!read(0x87F7E8+0x539C,&tab,4)||tab!=placementView.offer.tab||
     !nativePlacementCapture(lastHouse,tab,now,current)||!nativeplacement::sameIdentity(current,placementView.offer))return false;
@@ -48,7 +55,8 @@ static bool nativePlacementWindow(HWND window){
  if(!window||uintptr_t(window)!=get<uint32_t>(0xB73550))return false;
  DWORD owner=0;return GetWindowThreadProcessId(window,&owner)&&owner==GetCurrentProcessId();
 }
-static bool nativePlacementPoint(HWND window,POINT point,nativeplacement::Request&r,NativePlacementViewport&view){
+static bool nativePlacementPoint(HWND window,POINT point,nativeplacement::Request&r,NativePlacementViewport&view,bool*inside=nullptr){
+ if(inside)*inside=false;
  r={};r.offer=placementView.offer;RECT client{};uint32_t tactical=0;
  if(!nativePlacementWindow(window)||!GetClientRect(window,&client)||client.right<=0||client.bottom<=0||point.x<0||point.y<0||point.x>=client.right||point.y>=client.bottom||
     !read(0x887324,&tactical,4)||tactical<0x10000||!read(tactical+0xB0,&r.cameraX,4)||!read(tactical+0xB4,&r.cameraY,4)||
@@ -56,12 +64,24 @@ static bool nativePlacementPoint(HWND window,POINT point,nativeplacement::Reques
  r.screenX=int(int64_t(point.x)*r.width/client.right);r.screenY=int(int64_t(point.y)*r.height/client.bottom);
  static const uint8_t query[]={0x8B,0x44,0x24,0x10,0x83,0xEC,0x18,0x8B};
  if(!nativePlacementViewport(r,view)||!nativePlacementSignature(0x692300,query,sizeof query))return false;
+ if(inside)*inside=true;
  struct Point{int x,y;}p{r.screenX-view.x,r.screenY-view.y};vanilla::Cell cell{};struct Coord{int x,y,z;}coord{};uint32_t object=0;uint8_t a=0,b=0;
  call<void>(0x692300,0x87F7E8,&p,&cell,&coord,&object,&a,&b);
- NativePlacementViewport after{};if(!nativePlacementViewport(r,after)||!(after==view)||!nativeplacement::targetUsable([](uint32_t at,void*out,size_t n){return read(at,out,n);},cell.x,cell.y))return false;
- r.cellX=cell.x;r.cellY=cell.y;placementView.cellX=cell.x;placementView.cellY=cell.y;
- placementView.x=cell.x*256;placementView.y=cell.y*256;placementView.z=coord.z;
- double z=.25;if(read(0xB0CD48,&z,8)&&z>0&&z<=1)placementView.zScale=z;
+ NativePlacementViewport after{};if(!nativePlacementViewport(r,after)||!(after==view)||!nativeplacement::cell(cell.x,cell.y))return false;
+ auto readOnly=[](uint32_t at,void*out,size_t n){return read(at,out,n);};
+ const auto origin=nativeplacement::origin(cell.x,cell.y,placementView.width,placementView.height);
+ r.cellX=origin.x;r.cellY=origin.y;placementView.cellX=origin.x;placementView.cellY=origin.y;
+ // ClientToCoords returns Z=0. Resolve the same real ground height as normal
+ // native cursor projection, rather than drawing the footprint on that plane.
+ uint8_t bytes[12]{};uint32_t hash=2166136261u;
+ if(!read(0x578080,bytes,sizeof bytes))return false;for(auto b:bytes)hash=(hash^b)*16777619u;
+ if(hash!=0x8FFFDB45u)return false;
+ struct Ground{int x,y,z;}ground{int(cell.x)*256+128,int(cell.y)*256+128,0};
+ const int height=call<int>(0x578080,0x87F7E8,&ground);if(height < -1048576||height>1048576)return false;
+ placementView.x=origin.x*256;placementView.y=origin.y*256;placementView.z=height;
+ placementView.zScale=external::projectionZScale(readOnly);
+ placementView.cameraX=view.cameraX;placementView.cameraY=view.cameraY;placementView.viewportX=view.x;placementView.viewportY=view.y;
+ placementView.status=nativeplacement::targetUsable(readOnly,origin.x,origin.y)?1:2;
  return true;
 }
 static bool nativePlacementInteractiveValid(const NativePlacementSubmission&s){
@@ -69,11 +89,12 @@ static bool nativePlacementInteractiveValid(const NativePlacementSubmission&s){
   nativeplacement::sameIdentity(s.request.offer,placementView.offer);
 }
 static void nativePlacementTick(DWORD now){
+ nativePlacementCompletionTick(now);
  if(!placementView.active)return;
  if(!nativePlacementRenew(now,true)){nativePlacementReset();return;}
  HWND window=reinterpret_cast<HWND>(uintptr_t(get<uint32_t>(0xB73550)));POINT point{};
  nativeplacement::Request request{};NativePlacementViewport view{};
- placementView.status=GetCursorPos(&point)&&ScreenToClient(window,&point)&&nativePlacementPoint(window,point,request,view)?1:0;
+ if(!(GetCursorPos(&point)&&ScreenToClient(window,&point)&&nativePlacementPoint(window,point,request,view)))placementView.status=0;
  nativePlacementPublish();
 }
 static bool nativePlacementMessage(MSG*msg){
@@ -94,7 +115,7 @@ static bool nativePlacementMessage(MSG*msg){
    POINT point{short(LOWORD(msg->lParam)),short(HIWORD(msg->lParam))};
    if(nativePlacementPoint(msg->hwnd,point,submission.request,submission.view)){
     const auto&r=submission.request;const auto order=intent::placeBuilding(get<int>(lastHouse+0x30),r.offer.typeIndex,r.offer.naval,{short(r.cellX),short(r.cellY)});
-    if(validateNativePlacement(order,&submission)&&submitConstructed(order,OrderAuthority::Local,&submission))nativePlacementReset();
+    if(validateNativePlacement(order,&submission)&&submitConstructed(order,OrderAuthority::Local,&submission)){nativePlacementQueued(r.offer,sampleClock(sh));nativePlacementReset();}
    }
   }
   return consume();
@@ -103,7 +124,12 @@ static bool nativePlacementMessage(MSG*msg){
  if(!nativePlacementRenew(sampleClock(sh),true)){nativePlacementReset();return false;}
  if((msg->message==WM_KEYDOWN||msg->message==WM_SYSKEYDOWN)&&msg->wParam==VK_ESCAPE){nativePlacementReset();return consume();}
  if(!leftDown&&!rightDown)return false;
- nativeplacement::Request request{};NativePlacementViewport view{};POINT point{short(LOWORD(msg->lParam)),short(HIWORD(msg->lParam))};
- if(!nativePlacementPoint(msg->hwnd,point,request,view)){nativePlacementReset();return false;} // Sidebar click remains native.
+ nativeplacement::Request request{};NativePlacementViewport view{};POINT point{short(LOWORD(msg->lParam)),short(HIWORD(msg->lParam))};bool inside=false;
+ if(!nativePlacementPoint(msg->hwnd,point,request,view,&inside)){
+  if(!inside){nativePlacementReset();return false;} // Sidebar click remains native.
+  // Unreadable/invalid ground is a position failure, not the end of this modal
+  // gesture. Own its click pair so it cannot leak a native unit command.
+  placementView.status=0;nativePlacementPublish();
+ }
  placementCapturedButtons|=bit;placementCapturedSerial[button]=placementPreviewSerial;if(rightDown)nativePlacementReset();return consume();
 }

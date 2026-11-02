@@ -28,8 +28,16 @@ namespace external { namespace gpumotion {struct Guides;} namespace radar {
 constexpr uint32_t Map=0x87F7E8;
 struct Geometry {
  int width=0,height=0,offsetX=0,offsetY=0,rw=0,rh=0;float factor=0;uint32_t cells=0,house=0;int count=0;mapbounds::Bounds bounds;int rawWidth=0,rawHeight=0;
+ // SetVisibleRect changes the active radar span without necessarily
+ // reallocating its RGB backing. Keep that source identity for fresh reads;
+ // rawWidth/Height and offsetX/Y describe the private presentation instead.
+ bool projectionAdjusted=false;int backingWidth=0,backingHeight=0,backingOffsetX=0,backingOffsetY=0;
+ int sourceWidth()const{return projectionAdjusted?backingWidth:rawWidth;}
+ int sourceHeight()const{return projectionAdjusted?backingHeight:rawHeight;}
+ int sourceOffsetX()const{return projectionAdjusted?backingOffsetX:offsetX;}
+ int sourceOffsetY()const{return projectionAdjusted?backingOffsetY:offsetY;}
  bool valid()const{return bounds.valid()&&bounds.width==width&&bounds.height==height&&cells>=0x10000&&count>0&&count<=512*512&&rw>0&&rw<=4096&&rh>0&&rh<=4096&&rawWidth>0&&rawWidth<=4096&&rawHeight>0&&rawHeight<=4096&&std::isfinite(factor)&&factor>0.01f&&factor<32&&std::abs(int64_t(offsetX))<=1024&&std::abs(int64_t(offsetY))<=1024&&house>=0x10000;}
- bool same(const Geometry&o)const{return width==o.width&&height==o.height&&offsetX==o.offsetX&&offsetY==o.offsetY&&rw==o.rw&&rh==o.rh&&rawWidth==o.rawWidth&&rawHeight==o.rawHeight&&factor==o.factor&&cells==o.cells&&house==o.house&&count==o.count&&bounds==o.bounds;}
+ bool same(const Geometry&o)const{return width==o.width&&height==o.height&&offsetX==o.offsetX&&offsetY==o.offsetY&&rw==o.rw&&rh==o.rh&&rawWidth==o.rawWidth&&rawHeight==o.rawHeight&&factor==o.factor&&cells==o.cells&&house==o.house&&count==o.count&&bounds==o.bounds&&sourceWidth()==o.sourceWidth()&&sourceHeight()==o.sourceHeight()&&sourceOffsetX()==o.sourceOffsetX()&&sourceOffsetY()==o.sourceOffsetY();}
  bool legal(int x,int y)const{return bounds.legal(x,y);}
  // RadarClass::FillTerrainColors clips a flat 2x1 cell footprint against its
  // integer RGB backing. Level affects TMP pixels later, not cell admission.
@@ -58,6 +66,37 @@ struct Geometry {
  }
  void project(double x,double y,double&u,double&v)const{u=(x-y+offsetX)/rawWidth;v=(x+y-offsetY)/rawHeight;}
 };
+// Read-only replay of RadarClass::SetVisibleRect's geometric result. Its
+// original Cell iterator and mode-1 usable predicate were checked together,
+// including terrain Level and top-slope adjustment. This is radar projection,
+// not a Tactical pixel mask or a write to the native VisibleRect.
+class ActiveProjection {
+ Geometry source_,projected_;bool ready_=false;
+public:
+ void reset(){source_={};projected_={};ready_=false;}
+ template<class Read>bool resolve(Read read,const Geometry&source,Geometry&out){
+  Geometry input=source;input.rawWidth=source.sourceWidth();input.rawHeight=source.sourceHeight();input.offsetX=source.sourceOffsetX();input.offsetY=source.sourceOffsetY();input.projectionAdjusted=false;
+  if(!input.valid())return false;
+  if(ready_&&source_.same(input)){out=projected_;return true;}
+  std::vector<uint32_t>pointers(size_t(input.count),0);if(!read(input.cells,pointers.data(),pointers.size()*4))return false;
+  const int offsetX=input.width-2*input.bounds.left-1;
+  int left=10000,right=-10000,top=10000,bottom=-10000;
+  for(size_t n=0;n<pointers.size();++n){const int x=int(n%512),y=int(n/512);if(!input.legal(x,y)||!pointers[n])continue;
+   const auto p=pointers[n];if(p<0x10000||p>0x7ffffe00u)return false;std::array<uint8_t,0xF9>fields{};
+   if(!read(p+0x24,fields.data(),fields.size()))return false;int16_t coordinate[2]{};std::memcpy(coordinate,fields.data(),4);
+   if(coordinate[0]!=x||coordinate[1]!=y)return false;
+   if(!input.bounds.usable(x,y,int8_t(fields[0xF7]),fields[0xF8]!=0))continue;
+   int at=x-y+offsetX,width=2;if(at==-1){at=0;width=1;}else if(at==2*input.bounds.columns-1)width=1;
+   left=std::min(left,at);right=std::max(right,at+width);top=std::min(top,x+y);bottom=std::max(bottom,x+y+1);
+  }
+  if(left>right||top>=bottom||right-left<=0||right-left>4096||bottom-top>4096)return false;
+  out=input;out.offsetX=offsetX-left;out.offsetY=top;out.rawWidth=right-left;out.rawHeight=bottom-top;
+  if(out.offsetX!=input.offsetX||out.offsetY!=input.offsetY||out.rawWidth!=input.rawWidth||out.rawHeight!=input.rawHeight){
+   out.projectionAdjusted=true;out.backingWidth=input.rawWidth;out.backingHeight=input.rawHeight;out.backingOffsetX=input.offsetX;out.backingOffsetY=input.offsetY;
+  }
+  if(!out.valid())return false;source_=input;projected_=out;ready_=true;return true;
+ }
+};
 struct Marker {double u=0,v=0;uint32_t color=0;bool building=false;uint32_t object=0,id=0,type=0,owner=0,parent=0,parentId=0;int x=0,y=0,z=0,kind=-1,drawZ=0,sort=0,layer=2;bool normalLight=false,onBridge=false,disguised=false,tetherHidden=false;std::vector<tetherdraw::Key>tetherRedraw;int16_t waterline=0;camera::Material material;visual::Pose pose;int displayOrder=-1,rank=-1;};
 struct CellArt {uint32_t cell=0,type=0,overlayType=0,overlaySourceType=0,smudgeType=0,rubbleType=0,flags=0,pixelFX=0;int land=0;uint8_t smudgeData=0;int16_t overlay=-1;uint8_t sub=0;int8_t level=0;uint8_t overlayFrame=0;bool sourceHidden=false;uint32_t sourceColor=0;};
 struct Scene {int width=0,height=0;std::vector<uint32_t> pixels;std::shared_ptr<const gpumotion::Guides> guides;std::shared_ptr<const gpupresent::Frame> gpu;bool boltsRendered=false;std::shared_ptr<const panelglyphs::Annotations> ranks;};
@@ -79,6 +118,7 @@ inline uint32_t terrainColor(int land,int level,bool fog){
  int r=std::min(255,int(c>>16)+shade),g=std::min(255,int((c>>8)&255)+shade),b=std::min(255,int(c&255)+shade);if(fog){r=r*2/3;g=g*2/3;b=b*2/3;}return uint32_t(r<<16|g<<8|b);
 }
 template<class Read> class Sampler {
+ ActiveProjection projection_;
  bool particles_=true,lasers_=true;Read read_;GameView<Read> view_;Geometry geo_{};std::vector<uint32_t> pointers_;std::shared_ptr<Terrain> pending_;std::shared_ptr<const Terrain> terrain_;
  std::vector<uint32_t> tileTypes_,overlayTypes_,smudgeTypes_,prefetchCells_;std::vector<artvariants::Pool> resourcePools_;size_t cursor_=0;int lastFrame_=-1;uint32_t reveal_=0;unsigned revision_=0;
  struct MaskBits {uint8_t state=0,shroud=0,fog=0;}; // state: unknown, verified, unavailable
@@ -111,7 +151,8 @@ template<class Read> class Sampler {
 public:
  explicit Sampler(Read r):read_(r),view_(r){}
  void effects(bool particles,bool lasers){particles_=particles;lasers_=lasers;}
- void reset(){geo_={};discardPending();terrain_.reset();lastFrame_=-1;++revision_;}
+ void reset(bool keepProjection=false){if(!keepProjection)projection_.reset();geo_={};discardPending();terrain_.reset();lastFrame_=-1;++revision_;}
+ bool radarProjectionCompatible(const Frame&frame){Geometry projected;return frame.terrain&&projection_.resolve(read_,frame.terrain->geo,projected)&&projected.same(frame.terrain->geo);}
  unsigned revision()const{return revision_;}
  bool hasTerrain()const{return bool(terrain_);}
  Frame terrainFrame(uint32_t now)const{Frame out;out.terrain=terrain_;out.tick=now;out.frame=lastFrame_;return out;}
@@ -124,7 +165,7 @@ public:
   if(terrain_||!frame.terrain||frame.terrain->art.empty())return;
   reset();terrain_=frame.terrain;geo_=terrain_->geo;reveal_=terrain_->reveal;lastFrame_=frame.frame;++revision_;
  }
- bool step(uint32_t reveal,int budget=4096,bool real=false,bool compactTraversal=false){
+ bool step(uint32_t reveal,int budget=4096,bool real=false,bool compactTraversal=false,bool activeRadarProjection=false){
   // These are preview pixels, not the game's half-opacity shroud blitter.
   // Every display override exposes the unmasked minimap; native mode alone
   // follows the explored/fog cells. Keep this policy in the immutable bank.
@@ -135,7 +176,8 @@ public:
   if(!read_(Map+0x1490,&g.offsetX,sizeof g.offsetX)||!read_(Map+0x1498,&g.offsetY,sizeof g.offsetY)){discardPending();return false;}
   int frame=get<int>(0xA8ED84,-1);if(!g.valid()||frame<0||get<uint8_t>(0xA8E9A0)!=1 ){discardPending();return false;}
   if(!display::inspect(read_).visible())return false;
-  if(!g.same(geo_)||frame<lastFrame_||reveal_!=reveal){reset();geo_=g;reveal_=reveal;}lastFrame_=frame;
+  if(activeRadarProjection){Geometry active;if(!projection_.resolve(read_,g,active)){discardPending();return false;}g=active;}
+  if(!g.same(geo_)||frame<lastFrame_||reveal_!=reveal){reset(activeRadarProjection);geo_=g;reveal_=reveal;}lastFrame_=frame;
   if(!pending_){pointers_.resize(g.count);if(!read_(g.cells,pointers_.data(),pointers_.size()*4)||(!reveal&&!shroudselector::readLookup(read_,frameLookup_))){discardPending();return false;}
    if(!reveal)maskBits_.resize(512*512);
    pending_=std::make_shared<Terrain>();pending_->geo=g;pending_->reveal=bool(reveal);pending_->colors.resize(512*512);pending_->shade.resize(512*512);if(real){

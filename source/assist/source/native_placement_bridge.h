@@ -1,6 +1,7 @@
 // Explicit one-shot native Place. Reads factory/product state and appends the
 // ordinary event; never edits Type, factory, ownership or placement code.
 #include "native_placement_capture.h"
+#include "native_placement_completion_bridge.h"
 #include "activation_diagnostic.h"
 struct NativePlacementViewport {
  uint32_t tactical=0;int width=0,height=0,cameraX=0,cameraY=0,x=0,y=0,viewWidth=0,viewHeight=0;
@@ -31,9 +32,9 @@ static bool nativePlacementCapture(uint32_t house,int tab,DWORD now,nativeplacem
  return nativeplacement::capture([](uint32_t at,void*out,size_t n){return read(at,out,n);},nativePlacementLookup,
   house,tab,match,now,snap.frame,typeListHash(snap.types,snap.typeCount),offer);
 }
-static bool nativePlacementAvailable(){
+static bool nativePlacementAvailable(bool preview=false){
  return sh&&!sh->stop&&sh->foreground&&(sh->flags&BuildAnywhere)&&sh->placementImplementation==2&&
-  snap.status==1&&snap.commandStatus==1&&simulationReady()&&!get<bool>(0xA8BC60+25)&&nativePlacementRetired();
+  snap.status==1&&snap.commandStatus==1&&simulationReady(preview)&&!get<bool>(0xA8BC60+25)&&nativePlacementRetired();
 }
 static void nativePlacementOffers(DWORD now){
  snap.placementOfferCount=0;for(auto&o:snap.placementOffers)o={};
@@ -95,6 +96,6 @@ static int nativePlacementCommand(uint32_t house,DWORD now){
  if(!validateNativePlacement(order,&submission))return -7;
  // The ordinary event owns all effects. A positive receipt means QUEUED.
  if(!submitConstructed(order,OrderAuthority::Local,&submission))return snap.lastSubmitError==43?-7:-6;
- return 1;
+ nativePlacementQueued(r.offer,now);return 1;
 }
 #include "native_placement_preview_bridge.h"

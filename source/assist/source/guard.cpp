@@ -121,3 +121,4 @@ extern "C" unsigned __cdecl GuardedMapCrcShadow(unsigned op,unsigned house,unsig
 #include "pause_view_guard.h"
 
 #include "sidebar_view_guard.h"
+#include "tech_ui_breakpoint_guard.h"

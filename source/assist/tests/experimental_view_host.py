@@ -28,6 +28,7 @@ def generate():
     literal=[int(n) for n in re.findall(r'\b(?:toggle|button|number|edit|combo|key)\((94\d\d)\s*,',controls)]
     assert len(literal)==len(set(literal)),('duplicate new control IDs',literal)
     assert controls.count('toggle(9462,')==1 and controls.count('605,9460,')==1
+    assert controls.count('toggle(9463,')==1 and controls.count('605,9464,')==1
     assert 'toggle(9460,' not in controls
     return r'''
 #ifdef NDEBUG
@@ -68,7 +69,7 @@ static void changedSetting(){++changed;}
 static void notify(const std::wstring&){++notified;}
 static std::map<int,WORD> registered;
 static bool registerKey(int id,WORD key){if(LOBYTE(key))registered[id]=key;return true;}
-static struct Wire{uint32_t viewZoomPercent=100,sidebarMode=0,pauseViewKeys[2]{},moFeatures=0;volatile long moGesturePolicySeq=0;moorders::GesturePolicy moGestures;}wire,*shared=&wire;
+static struct Wire{uint32_t viewZoomPercent=100,sidebarMode=0,smallMapClamp=0,pauseViewKeys[2]{},moFeatures=0;volatile long moGesturePolicySeq=0;moorders::GesturePolicy moGestures;}wire,*shared=&wire;
 static void registerKeys(){registered.clear();int failures=0;
 ''' + register + r'''
  assert(!failures);}
@@ -92,7 +93,7 @@ static void check(bool good){++checks;assert(good);}
 static bool coldDemand(){return runtimeFeatureDemand(0,extra,false,false);}
 int main(){
  loadTargetedSettings();registerKeys();syncAdditional();
- check(!extra.sidebarEnabled&&extra.sidebarMode==0&&!extra.viewZoomEnabled&&extra.viewZoomPercent==100&&!extra.moFeatures&&!coldDemand());
+ check(!extra.smallMapClamp&&!wire.smallMapClamp&&!extra.sidebarEnabled&&extra.sidebarMode==0&&!extra.viewZoomEnabled&&extra.viewZoomPercent==100&&!extra.moFeatures&&!coldDemand());
  check(registered.empty()&&extra.sidebarKey==VK_F11&&extra.pauseKeys[0]==VK_F5&&extra.pauseKeys[1]==VK_F6);
  // Independent opt-in must connect even while its display mode is full.
  controlValues[9462]=BST_CHECKED;check(changeSetting(9462,BN_CLICKED));check(extra.sidebarEnabled&&extra.sidebarMode==0&&coldDemand()&&registered.count(1734)&&wire.sidebarMode==0);
@@ -101,6 +102,11 @@ int main(){
  controlValues[9462]=BST_UNCHECKED;check(changeSetting(9462,BN_CLICKED));check(!registered.count(1734)&&wire.sidebarMode==0&&!coldDemand());auto old=changed;executeExperimentalHotkey(1734);check(extra.sidebarMode==2&&changed==old&&wire.sidebarMode==0);
  // Unrelated MO status id must not be interpreted as a checkbox.
  check(!changeSetting(9460,BN_CLICKED));
+ // Small-map clamping is independent from zoom/sidebar and needs Runtime
+ // even with no external display sample or other active features.
+ controlValues[9463]=BST_CHECKED;check(changeSetting(9463,BN_CLICKED));check(extra.smallMapClamp&&wire.smallMapClamp&&coldDemand()&&!extra.sidebarEnabled&&!extra.viewZoomEnabled);
+ saveTargetedSettings();extra.smallMapClamp=false;loadTargetedSettings();syncAdditional();check(extra.smallMapClamp&&wire.smallMapClamp&&coldDemand());
+ controlValues[9463]=BST_UNCHECKED;check(changeSetting(9463,BN_CLICKED));check(!extra.smallMapClamp&&!wire.smallMapClamp&&!coldDemand());saveTargetedSettings();
  // Every ratio is routed from the real control and publishes the value.
  controlValues[9090]=BST_CHECKED;check(changeSetting(9090,BN_CLICKED));check(coldDemand()&&registered.count(1720)&&registered.count(1721)&&registered.count(1722));
  for(int i=0;i<5;++i){controlValues[9091]=i;check(changeSetting(9091,CBN_SELCHANGE));check(extra.viewZoomPercent==viewzoom::Levels[i]&&wire.viewZoomPercent==uint32_t(viewzoom::Levels[i]));}
@@ -121,7 +127,7 @@ int main(){
  ini[{L"Experimental",L"SidebarMode"}]=1;loadTargetedSettings();check(extra.sidebarMode==0);
  // All requested controls and their labels/status stay in Experimental;
  // external superweapon panel retains its separate Video classification.
- for(int id:{9090,9091,9092,9093,9403,9404,9406,9407,9450,9451,9452,9453,9454,9455,9462})check(suite::categories::row(4,&id,1)==suite::categories::Experimental);
+ for(int id:{9090,9091,9092,9093,9403,9404,9406,9407,9450,9451,9452,9453,9454,9455,9462,9463,9464})check(suite::categories::row(4,&id,1)==suite::categories::Experimental);
  int id=9405;check(suite::categories::row(4,&id,1)==suite::categories::Video);id=9460;check(suite::categories::row(1,&id,1)==suite::categories::Control);
  std::printf("{\"checks\":%u,\"assertions_active\":true,\"pass\":true}\n",checks);
 }

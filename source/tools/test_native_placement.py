@@ -18,7 +18,7 @@ def main():
     cmd=[str(a.zig.resolve()),'c++','-target','x86-windows-gnu','-std=c++17','-O2','-UNDEBUG','-Wl,--stack,1048576',str(source/'assist/tests/native_placement_bridge.cpp'),'-I'+str(out),'-o',str(exe),'-luser32']
     build=subprocess.run(cmd,capture_output=True,text=True);(out/'build.log').write_text(build.stdout+build.stderr,encoding='utf-8');print(build.stdout+build.stderr,end='');build.check_returncode()
     run=subprocess.run([str(exe)],capture_output=True,text=True);(out/'test.log').write_text(run.stdout+run.stderr,encoding='utf-8');print(run.stdout+run.stderr,end='');run.check_returncode()
-    names=['assist/source/bridge.cpp','assist/source/native_placement_bridge.h','assist/source/native_placement_preview_bridge.h','assist/source/native_placement_capture.h','assist/source/native_placement_policy.h','assist/source/constructor_adapter.h','assist/source/vanilla_constructor_catalog.h','assist/tests/native_placement_bridge.cpp']
+    names=['assist/source/bridge.cpp','assist/source/native_placement_bridge.h','assist/source/native_placement_preview_bridge.h','assist/source/native_placement_capture.h','assist/source/native_placement_policy.h','assist/source/native_placement_geometry.h','assist/source/native_placement_completion_bridge.h','external_reader/source/projection.h','assist/source/constructor_adapter.h','assist/source/vanilla_constructor_catalog.h','assist/tests/native_placement_bridge.cpp']
     (out/'sources.json').write_text(json.dumps({n:hashlib.sha256((source/n).read_bytes()).hexdigest() for n in names},indent=2)+'\n',encoding='utf-8')
 
 if __name__=='__main__':main()

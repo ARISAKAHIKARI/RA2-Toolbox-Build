@@ -406,13 +406,14 @@ static bool installRiskSite(RiskSite&s){
 }
 #include "master_tech_bridge.h"
 #include "direct_modes_bridge.h"
-static bool nativeTechRetired(){
+static bool nativeTextTechRetired(){
  if(riskTechActive)return false;
  auto reader=[](uint32_t at,void*out,size_t n){return read(at,out,n);};
  if(!techmode::retired(riskSites[6],codeHookRegistry,reader)||!techmode::retired(riskSites[7],codeHookRegistry,reader))return false;
  for(const auto&s:masterTechSites)if(!techmode::retired(s,codeHookRegistry,reader))return false;
  return true;
 }
+static bool nativeTechRetired(){return nativeTextTechRetired()&&techParametersRetired();}
 static bool nativePlacementRetired(){
  if(riskPlacementActive)return false;
  auto reader=[](uint32_t at,void*out,size_t n){return read(at,out,n);};
@@ -425,7 +426,7 @@ static bool setTechSites(bool enabled){
  prepareRiskSites();prepareMasterTech();riskTechActive=false;
  // Defense in depth: callers cannot accidentally install the default pair
  // when they request the rule-data implementation.
- if(enabled&&techmode::data(techImplementation))enabled=false;
+ if(enabled&&(techmode::data(techImplementation)||techmode::parameters(techImplementation)))enabled=false;
  if(enabled&&techImplementation==2){
   // The old call gates and master prune have adjacent ABI dependencies.
   // Restore the old pair before preflighting the complete new group.

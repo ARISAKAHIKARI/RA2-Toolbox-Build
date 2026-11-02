@@ -36,7 +36,7 @@ int main(){
   &AdditionalSettings::crcMapShadow,&AdditionalSettings::nativeSellCursor,&AdditionalSettings::nativeMegaGateway,
   &AdditionalSettings::techEnhance,&AdditionalSettings::lowDamageFilter,&AdditionalSettings::formationEnabled,
   &AdditionalSettings::dodgeEnabled,&AdditionalSettings::missileDefense,&AdditionalSettings::magnetronGlobal,
-  &AdditionalSettings::magnetronDrop,&AdditionalSettings::viewZoomEnabled,&AdditionalSettings::sidebarEnabled};
+  &AdditionalSettings::magnetronDrop,&AdditionalSettings::viewZoomEnabled,&AdditionalSettings::sidebarEnabled,&AdditionalSettings::smallMapClamp};
  for(auto field:features){auto settings=off;check(!demand(0,settings));settings.*field=true;check(demand(0,settings));settings.*field=false;check(!demand(0,settings));}
  for(unsigned mode=1;mode<=5;++mode){auto settings=off;settings.renderReveal=mode;check(demand(0,settings));}
  check(demand(0,off,false,true));check(demand(0,off,false,false,true));

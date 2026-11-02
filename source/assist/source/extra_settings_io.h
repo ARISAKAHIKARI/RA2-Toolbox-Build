@@ -30,6 +30,7 @@ static void loadAdditionalSettings(){
   extra.moGestures.keys[i]=uint32_t(value(L"Mouse",hold.c_str(),extra.moGestures.keys[i]))&65535;
   int physical=std::clamp(value(L"Mouse",button.c_str(),1),0,6);extra.moGestures.buttons[i]=physical==5?0:uint32_t(physical);}
  const wchar_t*zoomKeys[]={L"ViewZoomOut",L"ViewZoomIn",L"ViewZoomReset"};for(int i=0;i<3;++i)extra.viewZoomKeys[i]=uint32_t(value(L"Hotkeys",zoomKeys[i],extra.viewZoomKeys[i]))&65535;
+ extra.smallMapClamp=value(L"Experimental",L"SmallMapClamp",0)!=0;
  extra.sidebarEnabled=value(L"Experimental",L"SidebarEnabled",0)!=0;extra.sidebarMode=value(L"Experimental",L"SidebarMode",0)==2?2u:0u;
  extra.sidebarKey=uint32_t(value(L"Hotkeys",L"ToggleSidebar",extra.sidebarKey))&65535;extra.pauseKeys[0]=uint32_t(value(L"Hotkeys",L"PauseToggle",extra.pauseKeys[0]))&65535;extra.pauseKeys[1]=uint32_t(value(L"Hotkeys",L"PauseStep",extra.pauseKeys[1]))&65535;
  extra.techEnhance=value(L"Experimental",L"TechEnhance",0)!=0;
@@ -124,6 +125,7 @@ static bool saveAdditionalSettings(){
  for(int i=0;i<moorders::GestureCount;++i){auto hold=std::wstring(gestureNames[i])+L"HoldKey",button=std::wstring(gestureNames[i])+L"MouseButton";write(L"Mouse",hold.c_str(),extra.moGestures.keys[i]);write(L"Mouse",button.c_str(),extra.moGestures.buttons[i]);}
  const wchar_t*zoomKeys[]={L"ViewZoomOut",L"ViewZoomIn",L"ViewZoomReset"};for(int i=0;i<3;++i)write(L"Hotkeys",zoomKeys[i],extra.viewZoomKeys[i]);
  write(L"Hotkeys",L"ToggleSidebar",extra.sidebarKey);write(L"Hotkeys",L"PauseToggle",extra.pauseKeys[0]);write(L"Hotkeys",L"PauseStep",extra.pauseKeys[1]);
+ write(L"Experimental",L"SmallMapClamp",extra.smallMapClamp);
  write(L"Experimental",L"SidebarEnabled",extra.sidebarEnabled);write(L"Experimental",L"SidebarMode",extra.sidebarMode);
  write(L"MOControls",L"Features",extra.moFeatures&23u);write(L"Display",L"SuperweaponPanel",extra.superweaponPanel);
  write(L"Compatibility",L"NoCodeWriteDefaultsVersion",1);
@@ -231,6 +233,7 @@ static void syncRefreshRate(){extra.scrollRefreshMode=0;if(!shared)return;
 static void syncAdditional(){
  if(!playertest::Available)extra.controlAll=false;if(!playertest::SellAvailable)extra.sellEnemy=false;if(!playertest::SwitchAvailable)extra.switchPlayerEnabled=false;if(!shared)return;
  shared->viewZoomPercent=extra.viewZoomEnabled?uint32_t(extra.viewZoomPercent):100;
+ shared->smallMapClamp=extra.smallMapClamp;
  shared->sidebarMode=extra.sidebarEnabled&&extra.sidebarMode==2?2u:0u;
  shared->pauseViewKeys[0]=extra.pauseKeys[0];shared->pauseViewKeys[1]=extra.pauseKeys[1];
  shared->moFeatures=extra.moFeatures&23u;

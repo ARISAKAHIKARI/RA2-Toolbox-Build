@@ -5,9 +5,9 @@ static constexpr uint32_t Sidebar=0x87F7E8, Tabs=Sidebar+0x1544;
 #include "sidebar_policy.h"
 #include "technology_mode_policy.h"
 static int typeSlot(uint32_t);
-static bool techPending;static bool setTechSites(bool);static bool nativeTechRetired();static bool riskTechActive;
+static bool techPending;static bool setTechSites(bool);static bool nativeTechRetired();static bool nativeTextTechRetired();static bool requestTechParameters(uint32_t),restoreTechParameters(),techParametersRetired();static bool riskTechActive;
 static bool applyTechData(uint32_t),restoreTechData(),techDataPending(),techDataOwns(uint32_t),techDataBlocksEnhancement();
-// OpenTech arg2 selects the implementation; Snapshot::techOpen is 0/1/2/3/4.
+// OpenTech arg2 selects the implementation; Snapshot::techOpen is 0/1/2/3/4/5.
 // Keep the existing implementation as 0 and make the early-source path opt-in.
 static unsigned techImplementation=0;
 static int techScanAt,techScanVisible,techScanUnavailable,techScanFrame=INT32_MIN;
@@ -63,7 +63,7 @@ static bool ensureTechCameo(int i,uint32_t house,const sidebarpolicy::CameoSet*k
  if(i<0||i>=snap.typeCount||!techAllowed[i]||!typePointers[i])return false;
  if(techImplementation==2)return hasCameo(snap.types[i].kind,snap.types[i].index);
  uint32_t factory=0;
- if(techImplementation==1||techImplementation==3){
+ if(techImplementation==1||techImplementation==3||techmode::parameters(techImplementation)){
   // Classic keeps the original build-limit check. Data mode additionally
   // requires the full native rule check after its owned Type changes.
   uint32_t type=typePointers[i],table=0,method=0;
@@ -76,7 +76,7 @@ static bool ensureTechCameo(int i,uint32_t house,const sidebarpolicy::CameoSet*k
  int tab=typeTab(i);if(tab<0||tab>3||get<int>(Tabs+tab*3988+84)>=75)return false;
  if(!call<bool>(0x6A6300,Sidebar,t.kind,t.index))return false;sidebarRedraw(tab);return hasCameo(t.kind,t.index);
 }
-static void restoreTech(){techPending=false;techScanAt=techScanVisible=techScanUnavailable=0;techScanFrame=INT32_MIN;techScanImplementation=UINT32_MAX;snap.techOpen=0;techImplementation=0;setTechSites(false);if(!restoreTechData())snap.techError=-44;}
+static void restoreTech(){techPending=false;techScanAt=techScanVisible=techScanUnavailable=0;techScanFrame=INT32_MIN;techScanImplementation=UINT32_MAX;snap.techOpen=0;techImplementation=0;setTechSites(false);if(!restoreTechParameters())snap.techError=-45;if(!restoreTechData())snap.techError=-44;}
 static void observeMasterCameos(){
  // The master mode only owns its verified eligibility patches. Building
  // completion and other native triggers refresh the sidebar themselves;
@@ -91,13 +91,20 @@ static void refreshTech(uint32_t house,DWORD now){techRefresh=now;
  // transition. Once it clears, the host may retry its still-requested mode.
  if(snap.techError!=-43||!techTransitionProductionPending(house))snap.techError=0;
  if(!(sh->flags&UnsafeTech)){restoreTech();return;}
- if(techmode::data(techImplementation)){
+ if(techmode::parameters(techImplementation)){
+  if(!restoreTechData()){snap.techOpen=0;techPending=true;snap.techError=-44;return;}
+  const bool restored=setTechSites(false);
+  if(!restored||!nativeTextTechRetired()){snap.techOpen=0;techPending=true;snap.techError=-11;return;}
+  if(!requestTechParameters(house)){snap.techOpen=0;techPending=true;snap.techError=-45;return;}
+ }else if(techmode::data(techImplementation)){
+  if(!restoreTechParameters()){snap.techOpen=0;techPending=true;snap.techError=-45;return;}
   // Data mode first retires all instruction patches, then changes only the
   // explicitly selected Type rules. Native CanBuild still gates every icon.
   const bool restored=setTechSites(false);
   if(!restored||!nativeTechRetired()){snap.techOpen=0;techPending=true;snap.techError=-11;return;}
   if(!applyTechData(house)){snap.techOpen=0;techPending=true;snap.techError=-44;return;}
  }else{
+  if(!restoreTechParameters()){snap.techOpen=0;techPending=true;snap.techError=-45;return;}
   if(!restoreTechData()){snap.techOpen=0;techPending=true;snap.techError=-44;return;}
   if(!setTechSites(true)){snap.techOpen=0;techPending=false;snap.techError=-11;return;}
  }

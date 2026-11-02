@@ -5,7 +5,7 @@
   "source": "Current rendering branch: x64 external host with x86 GameRuntime and hook broker; Vulkan rendering is optional.",
   "resources": "Update package reuses existing assets/profiles/preprocessing runtime/engine",
   "resources_legacy_reuse": true,
-  "build_protocol": 89,
+  "build_protocol": 90,
   "validation": "This build: complete x64 host/x86 Runtime/broker plus diagnostic build, production renderer/recovery/lifetime fixtures, real Win32 HWND rebind, ABI and PE/loader verification. Synthetic CPU timings are not live game FPS. No live game or RA2OL multiplayer validation.",
   "build_requirement": "Zig 0.13.0; x86 paired build or x64 host with x86 runtime and broker.",
   "settings": {
@@ -583,5 +583,19 @@
     "automatic_diagnostic_sites": 48,
     "registry_capacity": 128,
     "hardware_gpu_tested": false
+  },
+  "parameter_mode_and_placement_followup": {
+    "baseline_commit": "8437c37b4c7d63cfca5aef4860cb366575721b2a",
+    "assist_protocol": 90,
+    "shared_bytes": 6584880,
+    "runtime_protocol": 4,
+    "entry_protocol": 3,
+    "cursor_protocol": 155,
+    "technology": "opt-in two UI-call hardware execution breakpoints; per-call stack argument only; no game text/vtable/rules write",
+    "placement": "forward-frame preview; strict event authority; native foundation/height/viewport projection and confirmed native UI cleanup",
+    "radar": "active projection independent from retained backing allocation after SetVisibleRect",
+    "small_map": "opt-in independent degenerate-axis native camera clamp",
+    "game_tested": false,
+    "multiplayer_tested": false
   }
 }

@@ -30,6 +30,7 @@ def source():
 #include <tuple>
 #include <vector>
 #include "sidebar_policy.h"
+#include "technology_mode_policy.h"
 using namespace assist;using DWORD=uint32_t;
 #define assert(value) ((value)?(void)0:(std::fprintf(stderr,"assert %s line %d\n",#value,__LINE__),std::_Exit(3)))
 static constexpr int MaxTypes=512;

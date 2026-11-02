@@ -38,10 +38,10 @@ public:
     w<=0||h<=0||w>32768||h>32768||std::abs(x)>1e7||std::abs(y)>1e7)return false;
   auto fresh=[&](uint32_t p,void*data,size_t n){++calls_;bytes_+=n;return immediate(read,p,data,n,0);};
   auto matches=[&](const PublicationContext&c){return c.active&&c.house==g.house&&c.cells==g.cells&&c.bounds==g.bounds&&
-    c.rawWidth==g.rawWidth&&c.rawHeight==g.rawHeight;};
+    c.rawWidth==g.sourceWidth()&&c.rawHeight==g.sourceHeight();};
   const auto before=publicationContext(fresh);if(!matches(before))return false;
   int offsets[2]{},count=0;if(!fresh(Map+0x1490,&offsets[0],4)||!fresh(Map+0x1498,&offsets[1],4)||
-    !fresh(Map+0x140,&count,4)||count!=g.count||offsets[0]!=g.offsetX||offsets[1]!=g.offsetY)return false;
+    !fresh(Map+0x140,&count,4)||count!=g.count||offsets[0]!=g.sourceOffsetX()||offsets[1]!=g.sourceOffsetY())return false;
   pointers_.resize(size_t(g.count));if(!fresh(g.cells,pointers_.data(),pointers_.size()*4))return false;
   std::array<int8_t,256>lookup;if(!shroudselector::readLookup(fresh,lookup))return false;
   if(bits_.empty()){bits_.resize(512*512);pages_.reserve(MaximumPages);}
@@ -99,7 +99,7 @@ public:
   const auto after=publicationContext(fresh);uint32_t afterScenario=0;
   if(!matches(after)||after.frame<before.frame||int64_t(after.frame)-before.frame>4||
     !fresh(0xA8B230,&afterScenario,4)||afterScenario!=scenario||!fresh(Map+0x140,&count,4)||count!=g.count||
-    !fresh(Map+0x1490,&offsets[0],4)||!fresh(Map+0x1498,&offsets[1],4)||offsets[0]!=g.offsetX||offsets[1]!=g.offsetY)return false;
+    !fresh(Map+0x1490,&offsets[0],4)||!fresh(Map+0x1498,&offsets[1],4)||offsets[0]!=g.sourceOffsetX()||offsets[1]!=g.sourceOffsetY())return false;
   candidate.frame=after.frame;out=std::move(candidate);return true;
  }
 };

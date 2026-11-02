@@ -6,6 +6,12 @@
 
 | 主题 | 新笔记 | 关键词 |
 | --- | --- | --- |
+| Place 成功後只清原產品的原生游標 | [有限監看、active/copy 原生 setter 與產品身分](2026-11-02-native-placement-completion-ui.md) | 4A8BF0 4A8D50 product UID OnMap completion no-fake-click |
+| 科技不改指令／規則的可選原生面板模式 | [硬體斷點、參數權限、衝突與恢復](2026-11-02-tech-ui-parameter-interception.md) | Assist90 buildLimitOnly HWBP VEH parameter native-sidebar no-text no-rules |
+| 放置預覽幀差、原生中心與落地後 UI 收尾 | [持續性、地形高度、viewport 與產品確認](2026-11-02-native-placement-persistence-and-projection.md) | Place foundation 4A8BF0 4A8D50 578080 forward-frame viewport completion |
+| 地圖觸發後 backing 不變的活動投影 | [原生 SetVisibleRect 與小地圖私人採樣](2026-11-02-trigger-radar-active-projection.md) | 654490 ActiveProjection backing bounds SceneBank trigger |
+| 小圖單一維度拖屏固定 | [MOEnhancement 分軸行為及獨立開關](2026-11-02-small-map-axis-clamp.md) | 6D8640 Clamp_Center one-axis viewport opt-in |
+| 科技不改程式碼／規則的 UI 參數攔截候選 | [兩處原生 CALL、棧參數與未驗證斷點方案](2026-11-02-tech-ui-only-breakpoint-feasibility.md) | CanBuild Classic buildLimitOnly 6A97D2 6AA781 DRx VEH no-text no-rule research-only |
 | MOControls2 新操作合入，保留本分支 Hook 策略 | [配置、超武面板、原生閉環與合併邊界](2026-11-02-mo-controls-scoped-merge.md) | Assist88 configurable gestures fresh PlanToken PlanConnect loopStart PlanCommit scoped-merge |
 | 隱藏光標保留提示框與偏好 | [原生文字／佈局雙槽修復](2026-11-02-cursor-hide-tooltip-layout.md) | Cursor155 RefCount 7F74C8 478BA0 tooltip layout no-high-risk |
 | 功能收納、渲染耗時與副相機連續定位 | [本輪實作、對照與完整構建](2026-11-02-render-ui-followup.md) | settings-folds Timeline VXL HVA geometry prefetch InstanceOrder current-anchor |

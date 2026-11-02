@@ -41,7 +41,11 @@ class Worker {
     auto fresh=[&](uint32_t p,void*out,size_t n){return reader.readFresh(p,out,n);};
     auto shared=external::radar::sceneBank().get(r.pid,r.match,r.reveal,GetTickCount(),true);
     if(shared&&(!external::radar::recentMarkers(*shared,external::radar::publicationContext(fresh),GetTickCount())||!external::radar::supportsEffects(*shared,r.selection.profile.particles,r.selection.profile.lasers)))shared.reset();
-    sampler.effects(r.selection.profile.particles,r.selection.profile.lasers);bool ok=shared||sampler.step(r.reveal,4096,r.mode==1,true);
+    // Shared world banks retain the engine's allocated RGB backing. A
+    // scenario trigger can change the radar span without reallocating it;
+    // such a bank cannot be used as this panel's current projection.
+    if(shared&&!sampler.radarProjectionCompatible(*shared))shared.reset();
+    sampler.effects(r.selection.profile.particles,r.selection.profile.lasers);bool ok=shared||sampler.step(r.reveal,4096,r.mode==1,true,true);
     const auto sampleReads=reader.reads,samplePages=reader.prefetchedPages;
     reader.begin();int frame=reader.get<int>(0xA8ED84,-1);sample.finish();
     if(ok&&(r.mode==1||frame!=previousFrame||sampler.revision()!=previousRevision)){
@@ -55,7 +59,7 @@ class Worker {
      // until this world's markers are fresh instead of publishing a frame in
      // which every unit vanishes for one paint.
      if(same&&data.markerScanValid&&external::radar::recentMarkers(data,sampled,GetTickCount())){
-      if(!shared&&r.mode==1)external::radar::sceneBank().publish(r.pid,r.match,true,std::make_shared<const external::radar::Frame>(data));
+      if(!shared&&r.mode==1&&!data.terrain->geo.projectionAdjusted)external::radar::sceneBank().publish(r.pid,r.match,true,std::make_shared<const external::radar::Frame>(data));
       // Publish terrain immediately; retain the last completed scene while the
       // next one loads. Initial MIX scans must not keep the whole window hidden.
       bool initial=false;{std::lock_guard<std::mutex> lock(mutex);if(token==generation){if(r.mode==1&&latest&&external::radar::reusableRealScene(*latest,data,r.width,r.height))data.scene=latest->scene;initial=r.mode==1&&(!latest||!latest->scene);}}

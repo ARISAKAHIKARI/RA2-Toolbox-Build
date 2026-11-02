@@ -11,7 +11,7 @@ inline bool rule(int id){
 // Historical page numbers describe control ownership, not navigation.
 inline int row(int section,const int*ids,unsigned count){
  for(unsigned i=0;i<count;++i)if(rule(ids[i]))return Rules;
- for(unsigned i=0;i<count;++i){int id=ids[i];if((id>=9090&&id<=9093)||id==9403||id==9404||id==9406||id==9407||id==9462||(id>=9450&&id<=9455))return Experimental;
+ for(unsigned i=0;i<count;++i){int id=ids[i];if((id>=9090&&id<=9093)||id==9403||id==9404||id==9406||id==9407||(id>=9462&&id<=9464)||(id>=9450&&id<=9455))return Experimental;
   if(id==9405)return Video;}
  for(unsigned i=0;i<count;++i)if(ids[i]==455||ids[i]==456||ids[i]==899)return Automatic;
  if(section==3)return Video;

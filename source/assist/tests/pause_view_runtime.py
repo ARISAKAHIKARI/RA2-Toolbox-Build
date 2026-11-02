@@ -13,7 +13,9 @@ from pdb_fixture_symbol import function_address
 p=argparse.ArgumentParser(description=__doc__)
 p.add_argument('game');p.add_argument('dll');p.add_argument('--output',required=True)
 a=p.parse_args();game_hash=hashlib.sha256(Path(a.game).read_bytes()).hexdigest()
-assert game_hash=='247f72881e1a68c8fc305e3702dc0100a72d17601305999026393c340d5daeb0'
+# Both supported private samples retain the checked native loop/input/render ABI.
+assert game_hash in {'247f72881e1a68c8fc305e3702dc0100a72d17601305999026393c340d5daeb0',
+ '268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0'}
 rows=[]
 def check(name,fn):
  try:fn();rows.append({'case':name,'status':'PASS'})

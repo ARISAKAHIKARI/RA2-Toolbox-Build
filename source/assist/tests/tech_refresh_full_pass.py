@@ -34,6 +34,8 @@ def main() -> None:
 #include <cstdio>
 #include <cstring>
 #include <initializer_list>
+#include "technology_mode_policy.h"
+using namespace assist;
 using DWORD=uint32_t;
 static constexpr uint32_t UnsafeTech=4096;
 struct Options{uint32_t flags=UnsafeTech;} options;
@@ -43,13 +45,20 @@ struct Snapshot{int typeCount=0,techOpen=0,techError=0,techVisible=0,techUnavail
 static uint8_t techAllowed[512]{};
 static bool present[512]{},rejected[512]{},techPending=false,sitesOK=true;
 static int calls[512]{},ensureCalls=0,additions=0,observations=0,siteCalls=0;
-static unsigned techImplementation=0;
+static unsigned techImplementation=0,techScanImplementation=UINT32_MAX;
 static int techScanAt=0,techScanVisible=0,techScanUnavailable=0,techScanFrame=INT32_MIN;
 static uint64_t techScanCatalogue=0,catalogueHash=1;
 static DWORD techRefresh=0;
 static int frame=100;
 template<class T>static T get(uint32_t){return T(frame);}
 static bool setTechSites(bool){++siteCalls;return sitesOK;}
+static bool restoreTechData(){return true;}
+static bool restoreTechParameters(){return true;}
+static bool requestTechParameters(uint32_t){return true;}
+static bool applyTechData(uint32_t){return true;}
+static bool nativeTextTechRetired(){return true;}
+static bool nativeTechRetired(){return true;}
+static bool techTransitionProductionPending(uint32_t){return false;}
 REQUEST
 RESTORE
 static bool hasCameo(int,int index){return present[index];}
@@ -64,13 +73,13 @@ static void reset(unsigned mode){
  std::memset(present,0,sizeof present);std::memset(rejected,0,sizeof rejected);std::memset(calls,0,sizeof calls);
  techPending=false;sitesOK=true;ensureCalls=additions=observations=siteCalls=0;
  techImplementation=mode;techScanAt=techScanVisible=techScanUnavailable=0;
- techScanFrame=INT32_MIN;techScanCatalogue=0;catalogueHash=1;techRefresh=0;frame=100;
+ techScanFrame=INT32_MIN;techScanImplementation=UINT32_MAX;techScanCatalogue=0;catalogueHash=1;techRefresh=0;frame=100;
  for(int i=0;i<512;++i)snap.types[i].index=i;
 }
 int main(){
  int checks=0,failures=0;
  auto check=[&](bool ok,const char*what){++checks;if(!ok){++failures;std::fprintf(stderr,"FAIL: %s\n",what);}};
- for(unsigned mode:{0u,1u}){
+ for(unsigned mode:{0u,1u,3u,4u}){
   reset(mode);snap.typeCount=80;int allowed=0,visible=0,unavailable=0;
   for(int i=0;i<snap.typeCount;++i){techAllowed[i]=(i%5)!=0;rejected[i]=(i%7)==0;
    if(techAllowed[i]){++allowed;if(rejected[i])++unavailable;else ++visible;}}
@@ -116,7 +125,7 @@ int main(){
     cpp = args.build_dir / "tech_refresh_full_pass.cpp"
     exe = args.build_dir / "tech_refresh_full_pass.exe"
     cpp.write_text(code, encoding="utf-8")
-    subprocess.run([str(args.zig.resolve()), "c++", "-std=c++20", "-O0", "-fno-exceptions", "-fno-rtti", str(cpp.resolve()), "-o", str(exe.resolve())], check=True)
+    subprocess.run([str(args.zig.resolve()), "c++", "-std=c++20", "-O0", "-fno-exceptions", "-fno-rtti", "-I"+str((Path(__file__).resolve().parents[1]/"source")), str(cpp.resolve()), "-o", str(exe.resolve())], check=True)
     subprocess.run([str(exe.resolve())], check=True)
 
 

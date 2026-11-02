@@ -57,6 +57,7 @@ static bool autoSettingChanged(int id,int notification){
  if(id>=9450&&id<=9455&&edit){uint32_t binding=uint32_t(SendMessageW(GetDlgItem(ui,id),HKM_GETHOTKEY,0,0));if(id<=9452)extra.viewZoomKeys[id-9450]=binding;else if(id==9453)extra.sidebarKey=binding;else extra.pauseKeys[id-9454]=binding;registerKeys();changedSetting();syncAdditional();return true;}
  if(id>=9400&&id<=9402&&notification==BN_CLICKED){uint32_t bit=1u<<(id-9400);if(SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED)extra.moFeatures|=bit;else extra.moFeatures&=~bit;pointerMatches.clear();changedSetting();syncAdditional();return true;}
  if(id==9403&&notification==BN_CLICKED){if(SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED)extra.moFeatures|=16u;else extra.moFeatures&=~16u;changedSetting();syncAdditional();return true;}
+ if(id==9463&&notification==BN_CLICKED){extra.smallMapClamp=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();syncAdditional();return true;}
  if(id==9462&&notification==BN_CLICKED){extra.sidebarEnabled=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;registerKeys();changedSetting();syncAdditional();return true;}
  if(id==9404&&select){extra.sidebarMode=SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0)==1?2u:0u;changedSetting();syncAdditional();return true;}
  if(id==9405&&notification==BN_CLICKED){extra.superweaponPanel=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();syncAdditional();return true;}

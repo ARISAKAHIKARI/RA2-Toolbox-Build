@@ -1,40 +1,58 @@
-"""Actual x86 Runtime camera patch, native normal-map clamp, rollback/conflict checks. Synthetic geometry; not renderer/netplay validation."""
+"""Compiled Runtime small-map opt-in and real camera-entry interception.
+
+The private native image, managed patch writer and new Runtime leaf execute
+in x86 emulation; Win32/world inputs are explicit fixtures. No running game
+is accessed, and this does not prove visual output or multiplayer behavior.
+"""
+import argparse,ctypes as C,hashlib,importlib.util,json,struct,traceback
 from pathlib import Path
-exec(compile(Path(__file__).with_name('no_interception_runtime.py').read_text().split('for mode in (0,5,3,4):',1)[0],str(Path(__file__).with_name('no_interception_runtime.py')),'exec'))
-rows=[];site=0x6d8640
 
+p=argparse.ArgumentParser(description=__doc__);p.add_argument('game');p.add_argument('dll');p.add_argument('--output',required=True);a=p.parse_args();rows=[]
+FIELDS=(0x87F8DC,0x87F8E4,0x87F8E8,0x87F8EC,0x87F8F0,0x886FA8,0x886FAC)
+
+def state(m):return m.Shared.from_buffer_copy(m.u.mem_read(m.SH,C.sizeof(m.Shared)))
+def save(m,s):m.u.mem_write(m.SH,bytes(s))
 def geometry(m,g):
- for at,value in zip((0x87f8dc,0x87f8e4,0x87f8e8,0x87f8ec,0x87f8f0,0x886fa8,0x886fac),g):m.w(at,value)
+ for at,v in zip(FIELDS,g):m.w(at,v)
+def tick(m):m.w(0xA8ED84,m.r(0xA8ED84)+1);return m.hook()
+def fixture():
+ spec=importlib.util.spec_from_file_location('camera_runtime_fixture',Path(__file__).with_name('entry_runtime_regression.py'));m=importlib.util.module_from_spec(spec);m.fixture_paths=[a.game,a.dll];spec.loader.exec_module(m)
+ m.w(0xA8B230,m.alloc());m.original=bytes(m.u.mem_read(0x6D8640,5));m.hook();m.hook();return m
+def invoke(m,point):
+ at=m.alloc(8);m.u.mem_write(at,struct.pack('<2i',*point));m.run(0x6D8640,(at,),0x12345678);return struct.unpack('<2i',m.u.mem_read(at,8))
+def check(name,fn):
+ try:rows.append({'case':name,'status':'PASS',**(fn()or{})});print('PASS',name,flush=True)
+ except Exception as ex:rows.append({'case':name,'status':'FAIL','error':repr(ex)});traceback.print_exc()
 
-def clamp(m,p):
- at=m.alloc();m.u.mem_write(at,struct.pack('<ii',*p));m.run(site,(at,),0x887324)
- return struct.unpack('<ii',m.u.mem_read(at,8)),m.u.reg_read(UC_X86_REG_EAX)&255
+def optin():
+ m=fixture();g=(200,2,3,20,40,1920,900);geometry(m,g);s=tick(m);assert s.smallMapClamp==0 and s.smallMapClampStatus==0 and bytes(m.u.mem_read(0x6D8640,5))==m.original
+ s.smallMapClamp=1;save(m,s);s=tick(m);assert s.smallMapClampStatus==1 and m.u.mem_read(0x6D8640,1)==b'\xe9',(s.smallMapClampStatus,s.data.status,s.data.commandStatus)
+ queued=(m.r(0xA802C8),m.r(0x8B41F8));centerx=30*(2*g[1]-g[0])+30*g[3]
+ for point in ((-100000,-100000),(100000,100000),(0,0),(centerx,3500)):
+  fixed=invoke(m,point);assert fixed[0]==centerx and fixed[1]==min(max(point[1],3465),3900),(point,fixed)
+ assert (m.r(0xA802C8),m.r(0x8B41F8))==queued
+ s=state(m);s.smallMapClamp=0;save(m,s);s=tick(m);assert s.smallMapClampStatus==0 and bytes(m.u.mem_read(0x6D8640,5))==m.original
+ return {'default_no_patch':True,'explicit_ordinary_product_patch':True,'horizontal_axis_centered':True,'other_axis_scrolls':True,'no_unit_events':True,'off_restores_owned_entry':True}
+check('ordinary-product-optin-horizontal-only-and-off',optin)
 
-def expected(g,p):
- mw,x,y,w,h,vw,vh=g;l=vw//2+30*(2*x-mw);t=vh//2+15*(2*y+mw-5);r=l+60*w-vw;b=t+30*h+135-vh
- def axis(v,a,b):return int((a+b)/2) if b<a else min(max(v,a),b)
- q=axis(p[0],l,r),axis(p[1],t,b);return q,int(q!=p)
+def dimensions():
+ m=fixture();s=state(m);s.smallMapClamp=1;save(m,s)
+ for g,expected in [((200,2,3,40,10,800,1080),1),((200,2,3,20,10,1921,1081),1),((200,2,3,20,40,1152,900),2),((200,2,3,20,40,1280,900),1),((200,2,3,90,80,1920,1080),2)]:
+  geometry(m,g);s=tick(m);assert s.smallMapClampStatus==expected,(g,s.smallMapClampStatus)
+  if expected==1:
+   fixed=invoke(m,(100000,100000));mw,mh=g[3]*60,g[4]*30+135
+   center=(30*(2*g[1]-g[0])+mw//2,15*(2*g[2]+g[0]-5)+mh//2)
+   if mw<g[5]:assert fixed[0]==center[0],(g,fixed,center)
+   if mh<g[6]:assert fixed[1]==center[1],(g,fixed,center)
+  else:assert bytes(m.u.mem_read(0x6D8640,5))==m.original
+ return {'vertical_only_and_both_axes':True,'odd_viewport_map_center':True,'sidebar_width_threshold_1152_to_1280':True,'zoom_geometry_changes_rechecked':True,'large_map_restores_native':True}
+check('axis-and-zoom-sidebar-live-geometry-transitions',dimensions)
 
-def record(name):rows.append({'case':name,'status':'PASS'});print('PASS',name,flush=True)
-for mode in (0,3):
- m=fixture(mode);original=bytes(m.u.mem_read(site,5))
- normal=(80,2,4,70,60,1280,720);geometry(m,normal)
- for p in ((0,0),(-99999,-99999),(99999,99999),(100,1500)):assert clamp(m,p)==expected(normal,p)
- tick(m);assert bytes(m.u.mem_read(site,5))==original and not m.codeWrites
- record(f'{mode}_normal_native_equivalence')
- for label,g in (('both',(20,2,4,8,8,1920,1080)),('horizontal',(20,2,4,8,60,1920,720)),('vertical',(80,2,4,70,8,1280,1080))):
-  geometry(m,g);tick(m);assert m.u.mem_read(site,1)==b'\xe9',(label,state(m).data.hookInstalled)
-  for p in ((0,0),(-99999,-99999),(99999,99999),(100,1500)):
-   actual=clamp(m,p);assert actual==expected(g,p),(label,p,actual,expected(g,p))
-   assert clamp(m,actual[0])==(actual[0],0),'must settle without alternating clamps'
-  record(f'{mode}_{label}_stable_clamp')
- geometry(m,normal);tick(m);assert bytes(m.u.mem_read(site,5))==original
- record(f'{mode}_restore_large_map')
- geometry(m,(20,2,4,8,8,1920,1080));tick(m);s=state(m);s.stop=1;save(m,s);m.hook();assert bytes(m.u.mem_read(site,5))==original
- assert all(site<=at<site+5 for at,size in m.codeWrites)
- record(f'{mode}_restore_stop')
- for offset in (0,35):
-  m=fixture(mode);original=bytes(m.u.mem_read(site,0xbe));changed=bytearray(original);changed[offset]^=1;m.u.mem_write(site,bytes(changed));geometry(m,(20,2,4,8,8,1920,1080));tick(m)
-  assert bytes(m.u.mem_read(site,0xbe))==bytes(changed) and not m.codeWrites
-  record(f'{mode}_foreign_{offset}_untouched')
-Path(a.output).write_text(json.dumps({'scope':__doc__,'dll_sha256':hashlib.sha256(Path(a.dll).read_bytes()).hexdigest(),'results':rows},indent=2)+'\n')
+def foreign():
+ m=fixture();geometry(m,(200,2,3,20,40,1920,900));foreign=b'\xe9\x01\x02\x03\x04';m.u.mem_write(0x6D8640,foreign);s=state(m);s.smallMapClamp=1;save(m,s);s=tick(m)
+ assert s.smallMapClampStatus==-2 and bytes(m.u.mem_read(0x6D8640,5))==foreign
+ return {'preexisting_platform_hook_preserved':True,'conflict_status':-2}
+check('preexisting-platform-camera-hook-not-overwritten',foreign)
+
+report={'scope':__doc__,'dll_sha256':hashlib.sha256(Path(a.dll).read_bytes()).hexdigest(),'game_sha256':hashlib.sha256(Path(a.game).read_bytes()).hexdigest(),'game_tested':False,'multiplayer_tested':False,'passed':all(r['status']=='PASS'for r in rows),'results':rows}
+Path(a.output).write_text(json.dumps(report,indent=2)+'\n',encoding='utf-8');raise SystemExit(not report['passed'])

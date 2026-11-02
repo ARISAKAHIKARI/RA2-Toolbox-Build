@@ -91,16 +91,22 @@ int main(){
  setup();incoming.commandStatus=2;updatePlacementEventUI();check(placementSelection.count==0);
  setup();hotkeyroute::Group group;group.actions={placementeventhost::Hotkey,1001};group.bindings={uint16_t(extra.placementEventKey),uint16_t('Q')};check(dispatchHotkeyGroup(group));check(wakes==1&&hotkeyPending.count==1&&hotkeyPending.items[0].id==1001);
  setup();commandQueue.size=1;group.actions={placementeventhost::Hotkey};group.bindings={uint16_t(extra.placementEventKey)};check(dispatchHotkeyGroup(group));check(wakes==0&&hotkeyPending.count==0);commandQueue.size=0;check(wakes==0); // no later cursor action
- setup();techMode=true;listSelections[896]=3;fixtureTechRoute(896,CBN_SELCHANGE);check(techImplementation==3&&sentCommand==OpenTech&&sentArgument==1&&sentImplementation==3);check(captions[420].find(L"高危")!=std::wstring::npos);check(captions[476].find(L"高危")==std::wstring::npos);
- for(int command:{Produce,CancelTechProduction}){techImplementation=3;snap.techOpen=0;sentCommand=0;send(command,1);check(sentCommand==0);techImplementation=0;snap.techOpen=4;send(command,1);check(sentCommand==0);snap.techOpen=0;send(command,1);check(sentCommand==command);}
+ for(int mode:{3,4}){setup();techMode=true;listSelections[896]=mode;fixtureTechRoute(896,CBN_SELCHANGE);check(techImplementation==mode&&sentCommand==OpenTech&&sentArgument==1&&sentImplementation==mode);check(captions[420].find(mode==3?L"规则数据":L"参数拦截")!=std::wstring::npos);check(captions[476].find(L"高危")==std::wstring::npos);}
+ // Requested mode 3 (rule data) and 4 (parameter interception) both use the
+ // game's native sidebar. The three retained legacy modes keep toolbox
+ // orders, unless an old native-sidebar mode is still actually applied.
+ for(int command:{Produce,CancelTechProduction})for(int requested=0;requested<5;++requested)for(int applied=0;applied<=5;++applied){techImplementation=requested;snap.techOpen=applied;sentCommand=0;send(command,1);check(sentCommand==((requested>=3||applied>=4)?0:command));}
  setup();extra.placementImplementation=0;listSelections[9096]=2;check(fixturePlacementRoute(9096,CBN_SELCHANGE));check(extra.placementImplementation==2&&registered>0&&synced>0&&placementSelection.count==2);
- for(int placement=0;placement<3;++placement)for(int tech=0;tech<4;++tech){extra.placementImplementation=placement;techImplementation=tech;extra.placementEventKey='J'|(2<<8);fixtureSave();extra.placementImplementation=0;techImplementation=0;extra.placementEventKey=0;fixtureLoad();check(extra.placementImplementation==placement&&techImplementation==tech&&extra.placementEventKey==('J'|(2<<8)));}
+ for(int placement=0;placement<3;++placement)for(int tech=0;tech<5;++tech){extra.placementImplementation=placement;techImplementation=tech;extra.placementEventKey='J'|(2<<8);fixtureSave();extra.placementImplementation=0;techImplementation=0;extra.placementEventKey=0;fixtureLoad();check(extra.placementImplementation==placement&&techImplementation==tech&&extra.placementEventKey==('J'|(2<<8)));}
  ini[L"Experimental/PlacementImplementation"]=99;ini[L"Tech/Implementation"]=-1;fixtureLoad();check(extra.placementImplementation==0&&techImplementation==0);
  settingsdeps::State state;check(settingsdeps::decision(9096,state).enabled());check(!settingsdeps::decision(9251,state).enabled());state.set(settingsdeps::Need::EventPlacement,true);check(settingsdeps::decision(9251,state).enabled()&&settingsdeps::decision(9252,state).enabled());
  check(!settingsdeps::decision(423,state).enabled()&&!settingsdeps::decision(814,state).enabled());state.set(settingsdeps::Need::ToolTechnologyOrders,true);check(settingsdeps::decision(423,state).enabled()&&settingsdeps::decision(814,state).enabled());
  for(int id:{476,807,9096,9251,9252,420,896})check(suite::categories::row(4,&id,1)==suite::categories::Rules);
  for(int id:{455,456,899})check(suite::categories::row(4,&id,1)==suite::categories::Automatic);
  check(std::wstring(buildingmodes::placementCaption(0)).find(L"高危")!=std::wstring::npos&&std::wstring(buildingmodes::technologyCaption(2)).find(L"高危")!=std::wstring::npos);
+ check(std::wstring(buildingmodes::technologyCaption(3)).find(L"高危")!=std::wstring::npos&&std::wstring(buildingmodes::technologyCaption(3)).find(L"规则数据")!=std::wstring::npos);
+ check(std::wstring(buildingmodes::technologyCaption(4)).find(L"参数拦截")!=std::wstring::npos&&std::wstring(buildingmodes::technologyCaption(4)).find(L"高危")==std::wstring::npos);
+ check(buildingmodes::technology(4)==4&&buildingmodes::technology(5)==0&&buildingmodes::technology(-1)==0);
  extra={};extra.placementImplementation=2;check(!runtimeFeatureDemand(0,extra,false,false));check(runtimeFeatureDemand(BuildAnywhere,extra,false,false));check(runtimeFeatureDemand(0,extra,true,false));
  printf("{\"checks\":%d,\"passed\":true,\"scope\":\"actual Host submission/UI/config/hotkey routes with simulated Win32 and read-only game memory\"}\n",checks);
 }
