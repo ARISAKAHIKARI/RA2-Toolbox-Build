@@ -21,6 +21,7 @@
 // External read/render; the sampler leases the shared Runtime frame signal.
 // No engine drawing or feature command is dispatched by this pipeline.
 namespace renderupgrade {
+template<class Read>static bool sampleView(Read read,external::mainview::View&out){return external::mainview::sample(read,out,nativeviewportprojection::sample(shared));}
 static double presentationNow(){return std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now().time_since_epoch()).count();}
 struct Request {uint64_t generation=0;bool materialRefresh=true;int detail=1,colorPrecision=1;uint32_t pid=0,match=0,tick=0;int width=0,height=0;uint32_t reveal=0;int paletteRange=1,pixelScaleMode=0;external::mainview::View view;overlaycompositor::Context context;bool gpu=false;double decodeBudgetMs=4.;int displayRate=60;external::presentation::Profile profile;};
 struct Frame {
@@ -97,7 +98,7 @@ static asyncwork::Recurring<Request,Observation> samplingWorker([](const Request
  const double captureStarted=presentationNow();
  auto fresh=[](uint32_t p,void*out,size_t n){return sampleReader.readFresh(p,out,n);};
  external::mainview::View before;
- if(!external::mainview::sample(fresh,before)||!renderpresentation::sameProjection(before,r.view)||before.frame<r.view.frame)return {};
+ if(!sampleView(fresh,before)||!renderpresentation::sameProjection(before,r.view)||before.frame<r.view.frame)return {};
  if(native&&before.frame!=signal.frame){LARGE_INTEGER q{};QueryPerformanceCounter(&q);if(double(q.QuadPart-signal.qpc)*1000./signal.frequency<100.)return {};native=false;}
  if(last&&last->current->frame==before.frame&&captureStarted-last->observedMs<50.)return {};
  // The fast actor path NEVER traverses terrain. The third worker publishes
@@ -109,7 +110,7 @@ static asyncwork::Recurring<Request,Observation> samplingWorker([](const Request
  external::SharedReadView cached{&sampleReader};external::GameView game(cached);
  external::radar::preparePoses(raw,cached);
  external::mainview::View captured;
- if(!external::mainview::sample(fresh,captured)||!renderpresentation::sameProjection(before,captured)||
+ if(!sampleView(fresh,captured)||!renderpresentation::sameProjection(before,captured)||
     captured.frame<raw.frame||presentationNow()-actorsStarted>50.||
     !external::radar::sameWorld(raw,external::radar::publicationContext(fresh)))return {};
  framesignal::Stamp finishedSignal;if(native&&sampleSignal.current(finishedSignal)&&finishedSignal.serial!=signal.serial)return {};
@@ -143,7 +144,7 @@ static asyncwork::Recurring<Request,Frame> worker([](const Request&r)->std::shar
  assets.identity(r.pid,r.match);
  auto fresh=[](uint32_t p,void*out,size_t n){return reader.readFresh(p,out,n);};
  external::mainview::View before;
- if(!external::mainview::sample(fresh,before)||!renderpresentation::sameProjection(before,r.view)||before.frame<r.view.frame){progress=-1;return unavailable();}
+ if(!sampleView(fresh,before)||!renderpresentation::sameProjection(before,r.view)||before.frame<r.view.frame){progress=-1;return unavailable();}
  // Requests can wait behind a CPU render. Sample the current camera rather
  // than discarding every queued job while the player continuously scrolls.
  Request sampledRequest=r;sampledRequest.view=before;
@@ -205,7 +206,7 @@ static asyncwork::Recurring<Request,Frame> worker([](const Request&r)->std::shar
  out->effects.complete=!r.profile.lasers;
  out->effects.independentLasers=r.profile.lasers&&data.effects&&data.effects->world&&data.effects->world->lasersValid;
  external::mainview::View after;
- if(!external::mainview::sample(fresh,after)||!renderpresentation::sameProjection(before,after)||after.frame<before.frame||
+ if(!sampleView(fresh,after)||!renderpresentation::sameProjection(before,after)||after.frame<before.frame||
    !external::radar::sameWorld(data,external::radar::publicationContext(fresh)))return unavailable();
  // One render owner prepares AND resolves the whole world. Restore the
  // original completed-frame handoff instead of passing GPU/material owners
@@ -214,7 +215,7 @@ static asyncwork::Recurring<Request,Frame> worker([](const Request&r)->std::shar
  auto image=worldPipeline.draw(out->world,after,r.width,r.height,external::SharedReadView{&reader},nullptr,GetTickCount());
  if(!image)return unavailable();
  external::mainview::View committed;
- if(!external::mainview::sample(fresh,committed)||!renderpresentation::sameProjection(after,committed)||committed.frame<after.frame||
+ if(!sampleView(fresh,committed)||!renderpresentation::sameProjection(after,committed)||committed.frame<after.frame||
     !external::radar::sameWorld(data,external::radar::publicationContext(fresh)))return unavailable();
  out->request.view=after;out->request.context.cameraX=after.cameraX;out->request.context.cameraY=after.cameraY;
  out->objects=external::nativefeedback::objectGeometry(*out->world,worldPipeline.presentedState(),after,r.width,r.height,out->world->zscale);
@@ -251,7 +252,7 @@ static void update(POINT origin,const RECT&client,const external::display::State
   suspend();progress=0;return;
  }
  external::mainview::View view;
- if(!displayState.readable||!external::mainview::sample([](uint32_t p,void*out,size_t n){return externalReader.readFresh(p,out,n);},view)){
+ if(!displayState.readable||!sampleView([](uint32_t p,void*out,size_t n){return externalReader.readFresh(p,out,n);},view)){
   // Unknown is not known-hidden. A short torn read must not toggle the HWND
   // or invalidate an in-flight job; known menus/focus/world changes do so above.
   if(viewLease.retain(uintptr_t(game),pid,match,client.right,client.bottom,viewNow)){
@@ -308,9 +309,9 @@ static void update(POINT origin,const RECT&client,const external::display::State
  sidebarhud::update(pid,displayMatch(),view,context,harvesterCounterEnabled,powerDeltaEnabled);
  if(!renderUpgradeEnabled){progress=0;return;}
  active=true;
- const int left=int((int64_t(view.x)*client.right)/view.screenW),top=int((int64_t(view.y)*client.bottom)/view.screenH);
- const int right=int((int64_t(view.x+view.width)*client.right+view.screenW-1)/view.screenW);
- const int bottom=int((int64_t(view.y+view.height)*client.bottom+view.screenH-1)/view.screenH);
+ const int left=int((int64_t(view.physicalX())*client.right)/view.screenW),top=int((int64_t(view.physicalY())*client.bottom)/view.screenH);
+ const int right=int((int64_t(view.physicalX()+view.physicalWidth())*client.right+view.screenW-1)/view.screenW);
+ const int bottom=int((int64_t(view.physicalY()+view.physicalHeight())*client.bottom+view.screenH-1)/view.screenH);
  // Scaling is explicit. Physical output never silently enables xBRZ.
  const int effectiveScale=effectiveRenderScale();
  verifiedScaleSetting=effectiveScale;verifiedPhysicalSetting=renderPhysicalOutput;

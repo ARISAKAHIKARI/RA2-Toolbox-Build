@@ -51,7 +51,7 @@ class Engine {
 public:
  void reset(){font_.reset();prior_.clear();pixels_.reset();bounds_={};}
  template<class Read>bool render(Read read,const mainview::View&view,const Sample&s,int width,int height,bool harvesters,bool power,nativefeedback::Rect&bounds,std::shared_ptr<const std::vector<uint32_t>>&pixels){
-  int left=view.x+view.width,right=view.screenW;if(view.x>=120){left=0;right=view.x;}if(right-left<120||right-left>512)return false;
+  int left=view.physicalX()+view.physicalWidth(),right=view.screenW;if(view.physicalX()>=120){left=0;right=view.physicalX();}if(right-left<120||right-left>512)return false;
   localui::Plan plan;localui::Painter painter(plan,view.screenW,view.screenH,width,height);if(!font_.begin(read))return false;
   auto icon=[&](int x,int y,uint32_t color,bool pickaxe){static constexpr uint8_t pick[9]={0x3C,0x7E,0x43,0x48,0x10,0x20,0x40,0x80,0},bolt[9]={0x0C,0x18,0x30,0x7C,0x18,0x30,0x60,0x40,0};auto rows=pickaxe?pick:bolt;for(int row=0;row<9;++row)for(int col=0;col<8;++col)if(rows[row]&(0x80>>col)){painter.fill({x+col+1,y+row+1,1,1},0xFF000000);painter.fill({x+col,y+row,1,1},color);}};
   const int y=2;if(power&&s.buildings){uint32_t color=powerColor(s);int delta=s.output-s.drain;auto text=s.blackout?std::u16string(u"OFF"):(delta>=0?u"+":u"")+localui::number(delta);icon(left+5,y+2,color,false);if(!painter.text(font_,read,text,left+16,y,color,0,false,0,0,(right-left)/2-18))return false;}

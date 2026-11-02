@@ -1,5 +1,8 @@
 #include "../../shared/source/key_gesture.h"
 static void loadAdditionalSettings(){
+ superweaponOptions.detached=value(L"Display",L"SuperweaponDetached",0)!=0;superweaponOptions.collapsed=value(L"Display",L"SuperweaponCollapsed",0)!=0;
+ superweaponOptions.x=std::clamp(value(L"Display",L"SuperweaponX",20),0,32768);superweaponOptions.y=std::clamp(value(L"Display",L"SuperweaponY",150),0,32768);
+ superweaponOptions.scale=std::clamp(value(L"Display",L"SuperweaponScale",100),75,200);superweaponOptions.rows=std::clamp(value(L"Display",L"SuperweaponRows",8),1,20);
  buildTimeTooltipEnabled=value(L"Display",L"BuildTimeTooltip",1)!=0;harvesterCounterEnabled=value(L"Display",L"HarvesterCounter",0)!=0;powerDeltaEnabled=value(L"Display",L"PowerDelta",0)!=0;
  renderProcessing=value(L"Display",L"RenderProcessing",value(L"Display",L"RenderExtraQuality",0))!=0;
  renderXbrzEnabled=value(L"Display",L"RenderXbrzEnabled",0)!=0;
@@ -17,7 +20,8 @@ static void loadAdditionalSettings(){
  renderVulkanEnabled=value(L"Display",L"RenderVulkan",1)!=0;
  renderParticleEffects=value(L"Display",L"RenderParticles",1)!=0;renderLaserEffects=value(L"Display",L"RenderLasers",1)!=0;
  renderVoxelLighting=value(L"Display",L"RenderVoxelLighting",1)!=0;renderSpriteLighting=value(L"Display",L"RenderSpriteLighting",1)!=0;
- extra.viewZoomEnabled=false;extra.viewZoomPercent=100; // temporarily unavailable, including saved settings
+ extra.viewZoomEnabled=value(L"Viewport",L"ZoomEnabled",0)!=0;extra.viewZoomPercent=value(L"Viewport",L"ZoomPercent",100);if(!viewzoom::valid(extra.viewZoomPercent))extra.viewZoomPercent=100;
+ extra.moFeatures=uint32_t(value(L"MOControls",L"Features",0))&23;extra.sidebarMode=uint32_t(std::clamp(value(L"Viewport",L"SidebarMode",0),0,2));extra.superweaponPanel=value(L"Display",L"SuperweaponPanel",0)!=0;
  extra.techEnhance=value(L"Experimental",L"TechEnhance",0)!=0;
  extra.crcMapShadow=value(L"Experimental",L"CrcMapIsClearShadow",0)!=0;
  extra.networkHousePreserve=value(L"Experimental",L"NetworkHousePreserve",0)!=0;
@@ -98,6 +102,8 @@ static void loadAdditionalSettings(){
  }
 }
 static bool saveAdditionalSettings(){
+ write(L"Display",L"SuperweaponDetached",superweaponOptions.detached);write(L"Display",L"SuperweaponCollapsed",superweaponOptions.collapsed);write(L"Display",L"SuperweaponX",superweaponOptions.x);write(L"Display",L"SuperweaponY",superweaponOptions.y);write(L"Display",L"SuperweaponScale",superweaponOptions.scale);write(L"Display",L"SuperweaponRows",superweaponOptions.rows);
+ write(L"Viewport",L"ZoomEnabled",extra.viewZoomEnabled);write(L"Viewport",L"ZoomPercent",extra.viewZoomPercent);write(L"Viewport",L"SidebarMode",extra.sidebarMode);write(L"MOControls",L"Features",extra.moFeatures);write(L"Display",L"SuperweaponPanel",extra.superweaponPanel);
  write(L"ViewZoom",L"Enabled",0);write(L"ViewZoom",L"Percent",100);
  write(L"Experimental",L"TechEnhance",extra.techEnhance);write(L"Experimental",L"PlacementImplementation",extra.placementImplementation);
  write(L"Experimental",L"CrcMapIsClearShadow",extra.crcMapShadow);
@@ -197,7 +203,7 @@ static void syncRefreshRate(){extra.scrollRefreshMode=0;if(!shared)return;
 }
 static void syncAdditional(){
  if(!playertest::Available)extra.controlAll=false;if(!playertest::SellAvailable)extra.sellEnemy=false;if(!playertest::SwitchAvailable)extra.switchPlayerEnabled=false;if(!shared)return;
- extra.viewZoomEnabled=false;extra.viewZoomPercent=100;shared->viewZoomPercent=100;
+ shared->viewZoomPercent=extra.viewZoomEnabled?uint32_t(extra.viewZoomPercent):100;shared->moFeatures=extra.moFeatures;shared->sidebarMode=extra.sidebarMode;
  shared->buildTimeTooltip=buildTimeTooltipEnabled;shared->placementImplementation=extra.placementImplementation;shared->techEnhance=extra.techEnhance;
  shared->nativeAirNetwork=extra.nativeAirNetwork;
  shared->crcMapShadow=extra.crcMapShadow;

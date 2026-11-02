@@ -24,6 +24,8 @@ extern "C" int AssistFilterMessage(void* raw){
  auto*msg=static_cast<MSG*>(raw);if(!msg)return 0;
  bool keyContext=sh&&!sh->stop&&!fault&&sh->foreground&&!get<bool>(0xA8BC60+25)&&DWORD(sampleClock(sh)-sh->heartbeat)<=150;
  recordRuntimeGesture(msg,keyContext,match,sampleClock(sh));
+ if(pauseViewMessage(msg))return 1;
+ if(moOrdersMessage(msg))return 1;
  if(formationMessage(msg))return 1;
  if(reservationMessage(msg))return 1;
  bool left=msg->message==WM_LBUTTONDOWN||msg->message==WM_LBUTTONUP||msg->message==WM_LBUTTONDBLCLK;

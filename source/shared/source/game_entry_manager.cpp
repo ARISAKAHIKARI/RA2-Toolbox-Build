@@ -46,12 +46,17 @@ static Result applyPatch(const Request&r){
       uintptr_t(p)+n>uintptr_t(info.BaseAddress)+info.RegionSize)return false;
    memcpy(out,p,n);return true;
   }))return Result::PatchDenied;
-  if(directpatch::find(r.address)){
+  if(nativesidebarpolicy::find(r.address)&&nativesidebarpolicy::find(r.address)->kind==nativesidebarpolicy::Kind::Bytes){
+   if(!nativesidebarpolicy::installed(r.address,r.after,r.length))return Result::PatchDenied;
+  }else if(directpatch::find(r.address)){
    if(!directpatch::installed(r.address,r.after,r.length))return Result::PatchDenied;
   }else{
   const uint32_t target=experimentalpatch::destination(r.address,r.after,r.length);MEMORY_BASIC_INFORMATION info{};
   if(!target||!VirtualQuery((void*)(uintptr_t)target,&info,sizeof info)||info.State!=MEM_COMMIT||
-     info.AllocationBase!=self||info.Type!=MEM_IMAGE||!(info.Protect&(PAGE_EXECUTE|PAGE_EXECUTE_READ|PAGE_EXECUTE_READWRITE|PAGE_EXECUTE_WRITECOPY)))return Result::PatchDenied;
+     info.AllocationBase!=self||info.Type!=MEM_IMAGE||(info.Protect&(PAGE_GUARD|PAGE_NOACCESS)))return Result::PatchDenied;
+  if(nativeviewportpolicy::dataOperand(r.address)){
+   if(!(info.Protect&(PAGE_READONLY|PAGE_READWRITE|PAGE_WRITECOPY|PAGE_EXECUTE_READ|PAGE_EXECUTE_READWRITE|PAGE_EXECUTE_WRITECOPY)))return Result::PatchDenied;
+  }else if(!(info.Protect&(PAGE_EXECUTE|PAGE_EXECUTE_READ|PAGE_EXECUTE_READWRITE|PAGE_EXECUTE_WRITECOPY)))return Result::PatchDenied;
   HMODULE pin=nullptr;if(!GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS|GET_MODULE_HANDLE_EX_FLAG_PIN,
     reinterpret_cast<LPCWSTR>(target),&pin))return Result::SystemFailure;
   }

@@ -10,6 +10,8 @@
 namespace patchcontext {
 struct Probe {uint32_t site,address;uint8_t size,bytes[16];};
 static constexpr Probe Probes[]={
+ {experimentalpatch::PauseLoop,0x55D365,2,{0x84,0xC0}},
+ {experimentalpatch::PauseLoop,0x55DEDB,1,{0xC3}},
  {experimentalpatch::BuildTimeTooltip,0x7F74C8,16,{0xA0,0x8B,0x47,0,0xB0,0x8D,0x47,0,0x10,0x8E,0x47,0,0x30,0x8E,0x47,0}},
  {experimentalpatch::BuildTimeTooltip,0x724AEB,8,{0x8B,0x16,0x50,0x8B,0xCE,0xFF,0x52,0x14}},
  {experimentalpatch::FrameCommitted,0x55DE73,14,{0x8B,0x15,0x84,0xED,0xA8,0,0xA1,0x84,0x77,0xB0,0,0x42,0x3B,0xC7}},
@@ -92,6 +94,8 @@ static constexpr Probe Probes[]={
 };
 template<class Read> bool compatible(uint32_t site,Read read){
  if(!experimentalpatch::size(site))return false;
+ if(nativeviewportpolicy::find(site))return nativeviewportpolicy::compatible(site,read);
+ if(nativesidebarpolicy::find(site))return nativesidebarpolicy::compatible(site,read);
  if(auto s=directpatch::find(site))return directpatch::compatible(*s,read);
  if(site==experimentalpatch::ControlHouse){
   // Native unpacked entry and the two supplied platform forwarders have the

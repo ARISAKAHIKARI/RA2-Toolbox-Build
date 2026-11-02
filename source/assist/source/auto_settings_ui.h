@@ -44,8 +44,14 @@ static bool autoSettingChanged(int id,int notification){
  if((id==9162||id==9163)&&notification==BN_CLICKED){(id==9162?minimapSecondary:extra.watchSecondary)=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;registerKeys();syncInformationRate(true);changedSetting();return true;}
  if(id==830&&notification==BN_CLICKED){minimapEnabled=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;if(!minimapEnabled)minimap::hidePrimary();changedSetting();return true;}
  if((id==9090&&notification==BN_CLICKED)||(id==9091&&select)||(id==9092&&notification==BN_CLICKED)){
-  extra.viewZoomEnabled=false;extra.viewZoomPercent=100;SendMessageW(GetDlgItem(ui,9090),BM_SETCHECK,BST_UNCHECKED,0);SendMessageW(GetDlgItem(ui,9091),CB_SETCURSEL,2,0);syncAdditional();return true;
+  if(id==9090)extra.viewZoomEnabled=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;
+  else if(id==9091){int index=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));if(index>=0&&index<int(sizeof(viewzoom::Levels)/sizeof(viewzoom::Levels[0])))extra.viewZoomPercent=viewzoom::Levels[index];}
+  else{extra.viewZoomPercent=100;SendMessageW(GetDlgItem(ui,9091),CB_SETCURSEL,viewzoom::index(100),0);}
+  changedSetting();registerKeys();syncAdditional();return true;
  }
+ if(id>=9400&&id<=9403&&notification==BN_CLICKED){const uint32_t bits[]={1,2,4,16};uint32_t bit=bits[id-9400];if(SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED)extra.moFeatures|=bit;else extra.moFeatures&=~bit;changedSetting();syncAdditional();return true;}
+ if(id==9404&&select){int mode=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));if(mode>=0&&mode<=2){extra.sidebarMode=uint32_t(mode);changedSetting();syncAdditional();}return true;}
+ if(id==9405&&notification==BN_CLICKED){extra.superweaponPanel=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();syncAdditional();return true;}
  if(id==886&&select){extra.scrollRefreshMode=0;SendMessageW(GetDlgItem(ui,id),CB_SETCURSEL,0,0);changedSetting();syncAdditional();return true;}
  if(id==9096&&select){int mode=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));if(mode>=0&&mode<=1){extra.placementImplementation=mode;changedSetting();syncAdditional();}return true;}
  if(id==9097&&notification==BN_CLICKED){extra.techEnhance=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();syncAdditional();return true;}

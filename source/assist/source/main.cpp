@@ -62,6 +62,9 @@
 #include "additional_settings.h"
 #include "../../external_reader/source/watch_slots.h"
 #include "view_zoom.h"
+#include "superweapon_sidebar_host.h"
+#include "../../shared/source/native_viewport_projection.h"
+static swsidebar::Panel superweaponPanel;static swsidebar::Options superweaponOptions;
 #include "../../external_reader/source/cooperative_reader.h"
 #include "../../external_reader/source/shared_reader.h"
 #include "../../external_reader/source/process_discovery.h"
@@ -436,6 +439,7 @@ static void registerKeys(){for(int id:registeredKeyIDs)UnregisterHotKey(ui,id);r
  if(hookSmartUnload&&LOBYTE(unloadKey)&&!registerKey(1698,unloadKey))++failures;
  if(hookAutoCS&&LOBYTE(csKey)&&!registerKey(1699,csKey))++failures;
  if(extra.viewZoomEnabled){for(int i=0;i<3;++i)if(!registerKey(1720+i,WORD((i==0?VK_OEM_MINUS:i==1?VK_OEM_PLUS:VK_BACK)|(6<<8))))++failures;}
+ if(!registerKey(1740,WORD(VK_F11)))++failures;
  if(LOBYTE(extra.stickyKey)&&!registerKey(1723,WORD(extra.stickyKey)))++failures;
  for(int i=0;i<selectedmode::Count;++i)if(LOBYTE(extra.missionModeKeys[i])&&!registerKey(1724+i,WORD(extra.missionModeKeys[i])))++failures;
  if(extra.watchEnabled||extra.watchSecondary)for(int i=0;i<3;++i)if(external::watch::firstBinding(extra.watchKeys,i)&&!registerKey(1730+i,WORD(extra.watchKeys[i])))++failures;
@@ -1120,6 +1124,7 @@ static void drawLabel(Graphics&g,const visual::LabelView&l,float sx,float sy,int
 }
 #include "game_assets_host.h"
 #include "formation_host.h"
+#include "mo_orders_host.h"
 #include "status_draw.h"
 #include "passenger_draw.h"
 #include "watch_host.h"
@@ -1196,10 +1201,16 @@ static bool constructionDisplayFresh(){
 #include "construction_host.h"
 #include "../../external_reader/source/sidebar_shapes.h"
 static external::sidebar::Cache sidebarShapes;
-static void serviceConstruction(){buildreserve::service();}
-static void hideConstruction(){buildreserve::hide();}
-static void resetConstruction(){buildreserve::reset();}
-static void destroyConstruction(){buildreserve::destroy();}
+static void serviceSuperweaponPanel(){
+ superweaponOptions.enabled=extra.superweaponPanel;const auto viewportTransform=nativeviewportprojection::sample(shared);
+ superweaponPanel.update(game,pid,commandMatch(),enabled&&foregroundGame()&&!snap.chat&&commandFresh(GetTickCount())&&constructionDisplayFresh(),superweaponOptions,
+  [](uint32_t at,void*out,size_t n){return externalReader.readFresh(at,out,n);},
+  [](int index){send(SelectSuper,index);},[](const swsidebar::Options&options){superweaponOptions=options;changedSetting();},viewportTransform.active?viewportTransform.physical.x+viewportTransform.physical.w:0);
+}
+static void serviceConstruction(){buildreserve::service();serviceSuperweaponPanel();}
+static void hideConstruction(){buildreserve::hide();superweaponPanel.hide();}
+static void resetConstruction(){buildreserve::reset();superweaponPanel.destroy();}
+static void destroyConstruction(){buildreserve::destroy();superweaponPanel.destroy();}
 static void constructionResult(int r,int n,uint32_t id,uint32_t token){buildreserve::result(r,n,id,token);}
 struct Surface{HDC dc{};HBITMAP bitmap{},old{};BYTE*bits{};int w{},h{};~Surface(){clear();}void clear(){if(dc){if(old&&old!=HGDI_ERROR)SelectObject(dc,old);DeleteDC(dc);}if(bitmap)DeleteObject(bitmap);dc=nullptr;bitmap=old=nullptr;bits=nullptr;w=h=0;}bool resize(int x,int y){if(x==w&&y==h&&dc)return true;clear();if(x<1||y<1||x>8192||y>8192)return false;BITMAPINFO bi{};bi.bmiHeader.biSize=sizeof(BITMAPINFOHEADER);bi.bmiHeader.biWidth=x;bi.bmiHeader.biHeight=-y;bi.bmiHeader.biPlanes=1;bi.bmiHeader.biBitCount=32;HDC screen=GetDC(nullptr);dc=CreateCompatibleDC(screen);bitmap=CreateDIBSection(screen,&bi,DIB_RGB_COLORS,(void**)&bits,nullptr,0);ReleaseDC(nullptr,screen);if(!bitmap||!dc){clear();return false;}old=(HBITMAP)SelectObject(dc,bitmap);if(!old||old==HGDI_ERROR){clear();return false;}w=x;h=y;return true;}};static Surface surface;
 #include "watch_windows.h"
@@ -1261,6 +1272,7 @@ static void paint(){
   if(!enabled||!foregroundGame()||snap.chat){worldrender::invalidate();overlayRecovery.suspend();hideWorldOverlay();hideAircraftButton();minimap::hidePrimary();watchwindows::hidePrimary();hideConstruction();clearPassengerDisplay();return;}
   overlaycompositor::host().touch(overlaycompositor::World,uintptr_t(game),pid);return;
  }
+ serviceSuperweaponPanel();
  const bool battlefield=displayState.visible();
  const DWORD renderNow=sampleRenderClock(shared);
  {static worldpresentation::ContextRevision prior;auto c=overlaycompositor::host().capture(uintptr_t(game),pid);
@@ -1276,6 +1288,9 @@ static void paint(){
  std::copy(clusteredEnemyViews,clusteredEnemyViews+enemyCount,enemyViews);
  const auto&enemyFrame=clusteredEnemies;
  updateAircraftButton(origin,r);formationhost::update();
+ const auto moDrawing=moordershost::drawing();const auto mapProjection=nativeviewportprojection::sample(shared);
+ const bool worldZoomed=mapProjection.active&&(mapProjection.physical.x!=mapProjection.logical.x||mapProjection.physical.y!=mapProjection.logical.y||mapProjection.physical.w!=mapProjection.logical.w||mapProjection.physical.h!=mapProjection.logical.h);
+ static long priorViewportSerial=0;if(shared&&priorViewportSerial!=shared->viewportSerial){priorViewportSerial=shared->viewportSerial;++paintRevision;}
  auto opaquePanels=overlaystack::opaqueBoxes(game,snap.width,snap.height);
  static std::vector<RECT> priorOpaquePanels;if(priorOpaquePanels.size()!=opaquePanels.size()||(!opaquePanels.empty()&&memcmp(priorOpaquePanels.data(),opaquePanels.data(),opaquePanels.size()*sizeof(RECT)))){priorOpaquePanels=opaquePanels;++paintRevision;}
  auto passengerBubbles=passengerView(renderNow);
@@ -1289,7 +1304,7 @@ static void paint(){
  bool panel=SendMessageW(check[6],BM_GETCHECK,0,0)==BST_CHECKED;
  bool hasToast=panel&&now<toastUntil;bool summary=panel&&snap.transports;
  worldrender::present();
- if(!formationhost::visible()&&!labelCount&&!hasToast&&!summary&&!snap.threatCount&&!snap.crateCount&&!enemyCount&&!statusCount&&!idleTabs&&passengerBubbles.empty()&&airLines.empty()&&nativeBadges.empty()){worldrender::invalidate();overlayRecovery.suspend();hideWorldOverlay();return;}
+ if(!moDrawing.active&&!formationhost::visible()&&!labelCount&&!hasToast&&!summary&&!snap.threatCount&&!snap.crateCount&&!enemyCount&&!statusCount&&!idleTabs&&passengerBubbles.empty()&&airLines.empty()&&nativeBadges.empty()){worldrender::invalidate();overlayRecovery.suspend();hideWorldOverlay();return;}
  viewport::Scale view;if(!view.set(snap.width,snap.height,r.right,r.bottom)){hideWorldOverlay();return;}
  const int physicalW=r.right,physicalH=r.bottom;r.right=view.gameWidth;r.bottom=view.gameHeight;
  const float sx=1,sy=1; // Positions, glyphs, icons and bounds share game-pixel space.
@@ -1298,7 +1313,7 @@ static void paint(){
  float panelX=(r.right-panelW)*.5f;
  int left=r.right,up=r.bottom,right=0,bottom=0;
  auto include=[&](float x,float y,float w,float h){int x0=std::clamp(int(std::floor(x)),0,int(r.right)),y0=std::clamp(int(std::floor(y)),0,int(r.bottom));int x1=std::clamp(int(std::ceil(x+w)),0,int(r.right)),y1=std::clamp(int(std::ceil(y+h)),0,int(r.bottom));if(x1>x0&&y1>y0){left=std::min(left,x0);up=std::min(up,y0);right=std::max(right,x1);bottom=std::max(bottom,y1);}};
- if(formationhost::visible())include(0,0,r.right,r.bottom);
+ if(formationhost::visible()||moDrawing.active||worldZoomed)include(0,0,r.right,r.bottom);
  for(const auto&b:passengerBubbles)include(b.left,b.top,b.width,b.height+6);
  for(const auto&b:nativeBadges)include(b.x*sx,b.y*sy,b.w*sx,b.h*sy);
  for(auto l:airLines)include(std::min(l.x,l.tx)*sx-6,std::min(l.y,l.ty)*sy-6,std::abs(l.x-l.tx)*sx+12,std::abs(l.y-l.ty)*sy+12);
@@ -1313,11 +1328,11 @@ static void paint(){
  static Snapshot drawn{};static visual::LabelView drawnViews[MaxLabels];static int drawnCount;static bool lastToast,lastPanel,lastSummary;static std::wstring oldToast;static int oldW,oldH,oldMargin;static uint32_t revision;
  static external::enemies::Marker drawnEnemies[external::enemies::Maximum];static visual::LabelView drawnEnemyViews[MaxLabels];static int drawnEnemyCount,drawnEnemyWidth,drawnEnemyHeight;
  static external::status::Marker drawnStatuses[external::status::Maximum];static visual::LabelView drawnStatusViews[MaxLabels];static int drawnStatusCount,drawnStatusWidth,drawnStatusHeight;
- static bool drawnSpiderPhase=false;
+ static bool drawnSpiderPhase=false,drawnMoActive=false;
  static uint32_t drawnIdleTabs=0,drawnShapeRevision=0;static bool drawnTabPhase=false;
  static std::vector<PassengerVisual> drawnPassengers;
  static std::vector<airway::Line> drawnAirLines;static std::vector<construction::NativeBadge> drawnBadges;
- bool changed=(statusCount&&drawnSpiderPhase!=spiderPhase)||drawnPassengers!=passengerBubbles||drawnBadges!=nativeBadges||drawnShapeRevision!=sidebarShapes.revision||drawn.width!=snap.width||drawn.height!=snap.height||drawnAirLines.size()!=airLines.size()||(!airLines.empty()&&memcmp(drawnAirLines.data(),airLines.data(),airLines.size()*sizeof(airway::Line)))||drawnIdleTabs!=idleTabs||(idleTabs&&drawnTabPhase!=tabPhase)||oldW!=physicalW||oldH!=physicalH||oldMargin!=topMargin||revision!=paintRevision||lastPanel!=panel||lastSummary!=summary||lastToast!=hasToast||(hasToast&&oldToast!=toast)||drawnCount!=labelCount||drawn.transports!=snap.transports||drawn.used!=snap.used||drawn.capacity!=snap.capacity||memcmp(drawnViews,labelViews,sizeof(visual::LabelView)*labelCount)||drawn.threatCount!=snap.threatCount||drawn.crateCount!=snap.crateCount||memcmp(drawn.threats,snap.threats,sizeof(Threat)*snap.threatCount)||memcmp(drawn.crates,snap.crates,sizeof(CrateMark)*snap.crateCount);
+ bool changed=moDrawing.active||drawnMoActive!=moDrawing.active||(statusCount&&drawnSpiderPhase!=spiderPhase)||drawnPassengers!=passengerBubbles||drawnBadges!=nativeBadges||drawnShapeRevision!=sidebarShapes.revision||drawn.width!=snap.width||drawn.height!=snap.height||drawnAirLines.size()!=airLines.size()||(!airLines.empty()&&memcmp(drawnAirLines.data(),airLines.data(),airLines.size()*sizeof(airway::Line)))||drawnIdleTabs!=idleTabs||(idleTabs&&drawnTabPhase!=tabPhase)||oldW!=physicalW||oldH!=physicalH||oldMargin!=topMargin||revision!=paintRevision||lastPanel!=panel||lastSummary!=summary||lastToast!=hasToast||(hasToast&&oldToast!=toast)||drawnCount!=labelCount||drawn.transports!=snap.transports||drawn.used!=snap.used||drawn.capacity!=snap.capacity||memcmp(drawnViews,labelViews,sizeof(visual::LabelView)*labelCount)||drawn.threatCount!=snap.threatCount||drawn.crateCount!=snap.crateCount||memcmp(drawn.threats,snap.threats,sizeof(Threat)*snap.threatCount)||memcmp(drawn.crates,snap.crates,sizeof(CrateMark)*snap.crateCount);
  changed=changed||drawnEnemyCount!=enemyCount||drawnEnemyWidth!=enemyFrame.width||drawnEnemyHeight!=enemyFrame.height||memcmp(drawnEnemyViews,enemyViews,sizeof(visual::LabelView)*enemyCount)||memcmp(drawnEnemies,enemyFrame.items,sizeof(external::enemies::Marker)*enemyCount);
  changed=changed||drawnStatusCount!=statusCount||drawnStatusWidth!=statusFrame.width||drawnStatusHeight!=statusFrame.height||memcmp(drawnStatusViews,statusViews,sizeof(visual::LabelView)*statusCount)||memcmp(drawnStatuses,statusFrame.items,sizeof(external::status::Marker)*statusCount);
  origin.x+=view.left(left);origin.y+=view.top(up);
@@ -1328,7 +1343,7 @@ static void paint(){
  drawn.transports=snap.transports;drawn.used=snap.used;drawn.capacity=snap.capacity;drawn.threatCount=snap.threatCount;drawn.crateCount=snap.crateCount;memcpy(drawn.threats,snap.threats,sizeof(Threat)*snap.threatCount);memcpy(drawn.crates,snap.crates,sizeof(CrateMark)*snap.crateCount);drawnCount=labelCount;memcpy(drawnViews,labelViews,sizeof(visual::LabelView)*labelCount);oldW=physicalW;oldH=physicalH;oldMargin=topMargin;revision=paintRevision;lastPanel=panel;lastSummary=summary;lastToast=hasToast;oldToast=toast;
  drawnEnemyCount=enemyCount;drawnEnemyWidth=enemyFrame.width;drawnEnemyHeight=enemyFrame.height;memcpy(drawnEnemies,enemyFrame.items,sizeof(external::enemies::Marker)*enemyCount);memcpy(drawnEnemyViews,enemyViews,sizeof(visual::LabelView)*enemyCount);
  drawnStatusCount=statusCount;drawnStatusWidth=statusFrame.width;drawnStatusHeight=statusFrame.height;memcpy(drawnStatuses,statusFrame.items,sizeof(external::status::Marker)*statusCount);memcpy(drawnStatusViews,statusViews,sizeof(visual::LabelView)*statusCount);
- drawnSpiderPhase=spiderPhase;drawnPassengers=passengerBubbles;drawn.width=snap.width;drawn.height=snap.height;drawnShapeRevision=sidebarShapes.revision;drawnAirLines=airLines;drawnBadges=nativeBadges;drawnIdleTabs=idleTabs;drawnTabPhase=tabPhase;
+ drawnMoActive=moDrawing.active;drawnSpiderPhase=spiderPhase;drawnPassengers=passengerBubbles;drawn.width=snap.width;drawn.height=snap.height;drawnShapeRevision=sidebarShapes.revision;drawnAirLines=airLines;drawnBadges=nativeBadges;drawnIdleTabs=idleTabs;drawnTabPhase=tabPhase;
  auto labels=std::vector<visual::LabelView>(labelViews,labelViews+labelCount),enemies=std::vector<visual::LabelView>(enemyViews,enemyViews+enemyCount),statuses=std::vector<visual::LabelView>(statusViews,statusViews+statusCount);
  auto threats=std::vector<Threat>(snap.threats,snap.threats+snap.threatCount);auto crates=std::vector<CrateMark>(snap.crates,snap.crates+snap.crateCount);
  std::array<external::sidebar::Frame,4> shapes; // immutable sidebar SHP pixels
@@ -1342,6 +1357,10 @@ static void paint(){
   for(const auto&b:nativeBadges){SolidBrush tag(Color(230,97,67,14));g.FillRectangle(&tag,b.x*sx,b.y*sy,b.w*sx,b.h*sy);
    std::wstring numbers;for(int i=0;i<construction::Capacity;++i)if(b.positions&(1<<i))numbers+=std::to_wstring(i+1);
    drawText(g,numbers,b.x*sx+2,b.y*sy,std::max(8.f,10.f*sy),Color(255,255,239,158));}
+  auto mapState=g.Save();
+  if(mapProjection.active){const auto&A=mapProjection.physical;const auto&R=mapProjection.logical;
+   g.SetClip(RectF(float(A.x),float(A.y),float(A.w),float(A.h)),CombineModeIntersect);
+   g.TranslateTransform(float(A.x),float(A.y));g.ScaleTransform(float(A.w)/R.w,float(A.h)/R.h);g.TranslateTransform(-float(R.x),-float(R.y));}
   auto enemyClip=g.Save();g.SetClip(RectF(0,0,enemyFrame.width*sx,enemyFrame.height*sy),CombineModeIntersect);
   for(int i=0;i<enemyCount;++i){const auto&v=enemyViews[i];if(external::enemies::onScreen(v.x,v.y,enemyFrame.width,enemyFrame.height))drawEnemyMarker(g,enemyFrame.items[i],v,sx,sy);}g.Restore(enemyClip);
   Pen flightPen(Color(210,130,235,160),1.5f);flightPen.SetEndCap(LineCapArrowAnchor);for(auto l:airLines){g.DrawLine(&flightPen,float(l.x)*sx,float(l.y)*sy,float(l.tx)*sx,float(l.ty)*sy);g.DrawEllipse(&flightPen,float(l.tx)*sx-3,float(l.ty)*sy-3,6.f,6.f);}
@@ -1353,7 +1372,7 @@ static void paint(){
   for(int i=0;i<statusCount;++i)drawUnitStatus(g,statusFrame.items[i],statusViews[i],spiderPhase);g.Restore(statusClip);
   for(int i=0;i<labelCount;++i)drawLabel(g,labelViews[i],sx,sy,labelScale);
   for(const auto&b:passengerBubbles)drawPassengerBubble(g,b);
-  formationhost::draw(g,formation);
+  formationhost::draw(g,formation);moordershost::draw(g,moDrawing);g.Restore(mapState);
   float y=top;
   if(summary){std::wstring text=L"载员 "+std::to_wstring(used)+L" / "+std::to_wstring(capacity)+L" · 剩余 "+std::to_wstring(std::max(0,capacity-used));SolidBrush bg(Color(150,13,21,31));g.FillRectangle(&bg,panelX,y,panelW,26.f);drawText(g,text,panelX+10,y+4,13,Color::White);y+=30;}
   if(hasToast){SolidBrush bg(Color(155,13,21,31));g.FillRectangle(&bg,panelX,y,panelW,27.f);drawText(g,toast,panelX+10,y+4,12,Color(255,220,233,247));y+=31;}
@@ -1453,6 +1472,7 @@ static void result(){if(!shared)return;uint32_t a=shared->ack;if(a==ack)return;M
   if(r==-6)critical(L"Destruct submission failed: "+submitDiagnostic());
   SetWindowTextW(GetDlgItem(ui,9186),message.c_str());notify(message);return;
  }
+ if(c==SelectSuper&&shared->arg==-1){if(r>0)notify(L"已取消超级武器目标选择。");return;}
  if(c==AirPathMove){airPathResult(r,n,uint32_t(shared->arg),shared->requestToken);return;}
  if(c==StickyGuard&&r==-40){notify(L"当前会话不支持 Sticky 指令。");return;}
  if(selectedmode::index(c)>=0&&r==-40){notify(L"当前会话不支持任务模式指令。");return;}
@@ -1563,14 +1583,18 @@ static void updateModeStatus(DWORD now){
  {int z=shared?shared->viewZoomStatus:viewzoom::Waiting;std::wstring text=L"视角缩放：";
   if(!shared)text+=extra.viewZoomEnabled?L"等待连接":L"关闭";
   else switch(z){case viewzoom::Off:text+=L"100%";break;case viewzoom::Applied:text+=std::to_wstring(shared->viewZoomApplied)+L"% · "+std::to_wstring(shared->viewZoomWidth)+L" × "+std::to_wstring(shared->viewZoomHeight);break;
-   case viewzoom::Renderer:text+=L"需要带 Zoom 接口的 CnC-DDraw";break;case viewzoom::Native:text+=L"游戏版本不兼容，或游戏使用原生窗口模式";break;
-   case viewzoom::Dimensions:text+=L"目标解析度超出范围（640×480 至 8192×8192）";break;
+   case viewzoom::Renderer:text+=L"原生画面缓冲区不可用";break;case viewzoom::Native:text+=L"游戏版本或绘制入口不兼容";break;
+   case viewzoom::Dimensions:text+=L"目标绘制尺寸超出范围";break;
    case viewzoom::ResizeFailed:text+=L"切换失败，已恢复上一次倍率";break;case viewzoom::RestoreFailed:text+=L"恢复失败，请重新启动游戏";break;
    case viewzoom::Fault:text+=L"原生切换异常，请重新启动游戏";break;
    case viewzoom::Presentation:text+=L"存在黑边或渲染器改变视窗大小；请用等比例普通窗口模式";break;
    default:text+=L"等待游戏前台就绪 / 松开鼠标";break;}
   SetWindowTextW(GetDlgItem(ui,9093),text.c_str());
  }
+ {std::wstring text=L"侧边栏：";const int state=shared?shared->sidebarStatus:0;text+=!shared?L"等待连接":state<0?L"入口不兼容或恢复失败":state==1?(extra.sidebarMode==2?L"已隐藏":extra.sidebarMode==1?L"仅雷达与按钮":L"完整显示"):L"等待对局就绪";SetWindowTextW(GetDlgItem(ui,9407),text.c_str());}
+ {const int status=shared?shared->pauseViewStatus:0;std::wstring text=L"逐帧操作：";
+  text+=!(extra.moFeatures&16)?L"关闭":!shared?L"等待连接":status==2?L"已暂停 · F6 前进一帧 / F5 恢复":status==3?L"正在前进一帧":status==1?L"运行中 · F5 暂停":status==-1?L"当前会话不支持（仅单机）":status==-4?L"检测到跨帧，已暂停":status<0?L"不可用，请检查游戏版本或功能冲突":L"等待对局就绪";
+  SetWindowTextW(GetDlgItem(ui,9406),text.c_str());}
  SetWindowTextW(GetDlgItem(ui,888),!extra.scrollRefreshMode?L"高刷策略：仅光标（沿用光标页设置）":shared&&shared->scrollRefreshStatus<0?L"高刷策略：接口不兼容，保持原版画面刷新":shared&&shared->scrollRefreshStatus==1?(extra.scrollRefreshMode==3?L"高刷策略：强制高刷 · 实验性功能已启用":extra.scrollRefreshMode==2?L"高刷策略：全部 · 实验性功能已启用":L"高刷策略：光标＋拖屏 · 实验性功能已启用"):L"高刷策略：等待游戏前台就绪");
  if(shared&&shared->scrollRefreshStatus==1&&shared->scrollRefreshRateMilli){wchar_t label[160];swprintf(label,160,L"%s · 绘制调用 %.1f Hz（非屏幕 FPS） · 最长间隔 %.1f ms",extra.scrollRefreshMode==3?L"强制高刷":extra.scrollRefreshMode==2?L"全部（实验性）":L"光标＋拖屏（实验性）",shared->scrollRefreshRateMilli/1000.0,shared->scrollRefreshMaxGapUs/1000.0);SetWindowTextW(GetDlgItem(ui,888),label);}
  SetWindowTextW(GetDlgItem(ui,9184),!extra.lowDamageFilter?L"低伤害过滤：关闭":shared&&shared->lowDamageStatus==1?L"低伤害过滤：原生索敌及工具自动命令":shared&&shared->lowDamageStatus==2?L"低伤害过滤：联机仅工具自动命令":L"低伤害过滤：等待就绪或补丁冲突");

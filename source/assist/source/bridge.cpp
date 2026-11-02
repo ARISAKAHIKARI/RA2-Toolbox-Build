@@ -81,6 +81,8 @@ static uint64_t catalogueHash;static DWORD catalogueAt;static bool catalogueRead
 static void restoreFrameDriver();
 static void restoreBuildTimeTooltip();
 static void restoreViewZoom();
+static void restorePauseView();
+static void resetMoOrders();static bool moOrdersPending();
 static uint32_t repairIDs[2048];static int repairCount,repairAt,repairDone;
 // Request serial zero is valid after wrap; pending state is explicit.
 static bool pendingAckReady,repairAckPending;
@@ -155,7 +157,7 @@ static void indexWorld(int frame){Vec all=vec(0xA8EC78);if(indexedFrame==frame&&
 }
 #include "../../shared/source/key_gesture.h"
 static keygesture::Tracker runtimeKeys;
-static void reset(){restoreCrcMapShadow();restoreBuildTimeTooltip();restoreNativeSellCursor();restoreNativeMegaGateway();restoreControlObjectOwner();restoreControlCommandOwner();restoreNetworkSender();restoreTechEnhancement();enhancementChangedCatalogue=false;stickyTick(true);stickyCount=0;restoreViewZoom();runtimeKeys.clear();resetLoadCalculation();resetRuntimePlanner();catalogueReady=false;catalogueHash=0;catalogueAt=0;catalogueDirty=true;resetFeatureTypes();resetPointerInput();if(sh&&sh->pointer.request!=sh->pointer.ack){sh->pointer.result=-7;sh->pointer.accepted=0;sh->pointer.rejected=sh->pointer.intent.count;MemoryBarrier();sh->pointer.ack=sh->pointer.request;}nativeMegaQueueCallDepth=nativeObjectQueueCallDepth=0;snap.lastSubmitError=0;missionObserver.clear();actorFrameArbiter.clear();actorLeaseArbiter.clear();snap.megaQueueStatus=0;snap.megaQueueAccepted=snap.megaQueueRejected=0;snap.objectQueueStatus=0;snap.objectQueueAccepted=snap.objectQueueRejected=0;
+static void reset(){restorePauseView();resetMoOrders();restoreCrcMapShadow();restoreBuildTimeTooltip();restoreNativeSellCursor();restoreNativeMegaGateway();restoreControlObjectOwner();restoreControlCommandOwner();restoreNetworkSender();restoreTechEnhancement();enhancementChangedCatalogue=false;stickyTick(true);stickyCount=0;restoreViewZoom();runtimeKeys.clear();resetLoadCalculation();resetRuntimePlanner();catalogueReady=false;catalogueHash=0;catalogueAt=0;catalogueDirty=true;resetFeatureTypes();resetPointerInput();if(sh&&sh->pointer.request!=sh->pointer.ack){sh->pointer.result=-7;sh->pointer.accepted=0;sh->pointer.rejected=sh->pointer.intent.count;MemoryBarrier();sh->pointer.ack=sh->pointer.request;}nativeMegaQueueCallDepth=nativeObjectQueueCallDepth=0;snap.lastSubmitError=0;missionObserver.clear();actorFrameArbiter.clear();actorLeaseArbiter.clear();snap.megaQueueStatus=0;snap.megaQueueAccepted=snap.megaQueueRejected=0;snap.objectQueueStatus=0;snap.objectQueueAccepted=snap.objectQueueRejected=0;
  snap.queueSent=snap.queueFull=snap.queueTimingFailure=snap.planDeferred=snap.queuedEvents=snap.observedEvents=snap.commandRejected=snap.receiptCancelled=snap.receiptExpired=snap.receiptDropped=0;snap.receiptWrite=snap.receiptCount=0;restoreClickHooks();resetCooperativeState();resetFormation();resetMissileControl();resetBurstControl();resetDodgeControl();if(sh)sh->clickHookStatus=0;clearOreOrders();restorePlacement();indexedFrame=indexedCount=-1;outgoingFrame=-1;clearNativeOrders();snap.labels=snap.selected=snap.transports=snap.used=snap.capacity=snap.swCount=0;snap.nativeHookStatus=snap.unloadIssued=0;snap.techOpen=0;restoreTech();restoreCSHook();clearFlashes();resetProduction();snap.inputPatchMask=0;repairCount=repairAt=repairDone=0;repairAckRequest=0;repairAckPending=false;repairCalculationPending=false;for(auto&v:lastIdle)v=0;productionBaseline=false;snap.typeCount=0;snap.threatCount=snap.crateCount=crateCount=0;cratesOn=false;autoWas=false;snap.autoRepair=0;snap.repairTotal=0;snap.techVisible=snap.techUnavailable=snap.techError=0;snap.crateHookStatus=snap.crateResultCount=0;snap.crateResultSerial=0;sceneResultSerial=0;snap.csHookStatus=snap.csConverted=0;loadLedger.clear();snap.loadUnits=snap.loadVehicles=snap.loadIssued=snap.loadWaiting=snap.loadUnassigned=0;memset(techAllowed,0,sizeof techAllowed);pendingRepairs.clear();}
 static void mapName(wchar_t*out,DWORD p){mappingName(out,p);}
 static HANDLE controllerProcess;static DWORD controllerPID,controllerCheckAt;
@@ -685,6 +687,8 @@ static bool nativeObjectUnhooked(){return nativeObjectSignature();}
 #include "external_orders_bridge.h"
 #include "player_test_bridge.h"
 #include "placement_bridge.h"
+#include "pause_view_bridge.h"
+#include "superweapon_sidebar_bridge.h"
 #include "network_sender_bridge.h"
 #include "crc_shadow_bridge.h"
 #include "native_sell_cursor_bridge.h"
@@ -702,7 +706,7 @@ static bool nativeObjectUnhooked(){return nativeObjectSignature();}
 // Reserve a share for other active task families, then let a lone family use
 // the remaining capacity. All sends still obey the shared 24-event frame cap.
 static int recurringBudget(EventLane lane){
- bool external=sh->formationPolicy.enabled||formationJobCount||stickyCount||sh->magnetronGlobal||sh->magnetronDrop||sh->dodgeEnabled||dodgeCount||sh->burstEnabled||sh->burstHoldEnabled||burstCount||sh->missileEnabled||missileHoldCount||nativeCount||runtimeCoopPending||sh->plannerTracking||sh->runtimeTracking||sh->planRequest!=sh->planAck||sh->cooperativePlan!=sh->cooperativeAck;
+ bool external=moOrdersPending()||sh->formationPolicy.enabled||formationJobCount||stickyCount||sh->magnetronGlobal||sh->magnetronDrop||sh->dodgeEnabled||dodgeCount||sh->burstEnabled||sh->burstHoldEnabled||burstCount||sh->missileEnabled||missileHoldCount||nativeCount||runtimeCoopPending||sh->plannerTracking||sh->runtimeTracking||sh->planRequest!=sh->planAck||sh->cooperativePlan!=sh->cooperativeAck;
  bool repairs=repairAt<repairCount,loading=loadLedger.count!=0,unloading=unloadCount!=0;
  if(lane==EventLane::Planning)return repairs||(sh->flags&AutoRepair)||loading||unloading?12:24;
  if(external)return 4;
@@ -726,6 +730,7 @@ static void consumePlanning(int channel){sharedPlanningBudget.consume(channel);}
 #include "burst_bridge.h"
 #include "dodge_bridge.h"
 #include "formation_bridge.h"
+#include "mo_orders_bridge.h"
 #include "../../external_reader/source/idle_aircraft.h"
 static int selectIdleAircraft(uint32_t house,uint32_t id){
  uint32_t p=worldByID(id);auto reader=[](uint32_t at,void*out,size_t n){return read(at,out,n);};external::aircraft::Inspect<decltype(reader)> planes{reader};
@@ -852,7 +857,7 @@ static void command(uint32_t house,DWORD now){uint32_t req=sh->request;if(req==s
   // Enable paired sidebar eligibility gates before adding native cameos.
   if(arg&&sh->arg2>2)result=-4;
   else {techImplementation=arg?sh->arg2:0;snap.techOpen=arg?int(techImplementation)+1:0;memcpy(techAllowed,sh->techAllowed,sizeof techAllowed);snap.techError=0;if(snap.techOpen){requestTechRefresh();refreshTech(house,now);}else restoreTech();n=snap.techVisible;if(snap.techError<0)result=snap.techError;}}
- else if(c==SelectSuper){result=superSelect(house,arg);n=result>0;}
+ else if(c==SelectSuper){result=arg==-1?cancelSuperSidebarSelection():superSelect(house,arg);n=result>0;}
  else if(c==SelectIron||c==SelectChrono){result=namedSuper(house,c);n=result>0;}
  else if(c==AirPathMove){uint32_t id=uint32_t(arg),p=worldByID(id),cell=uint32_t(sh->arg2);
   if(!airpathpolicy::events(get<int>(0xA8B238),(sh->flags&AirWaypoints)!=0,(sh->flags&NativeAirWaypoints)!=0)||!p||!own(p,house)||kind(p)!=0||manualVersions.get(id)!=sh->requestToken||get<bool>(p+0x81)||get<uint32_t>(p+0x11C)||!readMapCell(int(cell%1000),int(cell/1000)))result=-4;
@@ -1010,6 +1015,7 @@ static void tick(){
  // command connection on the next callback.
  if(!sh||sh->magic!=Magic||sh->version!=Version||sh->pid!=GetCurrentProcessId()){disconnect();return;}
  playerMaintenance();DWORD now=sampleClock(sh);if(sh->stop||(DWORD(now-sh->heartbeat)>3000&&controllerExited(now))){
+  if(!nativeViewRetireReady())return;
   stickyTick(true);
   // Release our automatic attack/hold orders before acknowledging detach. No game
   // field is changed locally, including when the controlling EXE has exited.
@@ -1033,7 +1039,7 @@ static void tick(){
  bool selectionPending=sh->selectRequest!=sh->selectAck;bool planPending=sh->planRequest!=sh->planAck;bool cooperativePending=sh->cooperativePlan!=sh->cooperativeAck;bool cmd=sh->request!=sh->ack||selectionPending||planPending||cooperativePending||sh->pointer.request!=sh->pointer.ack;// A message wake observes the current simulation frame; pending work bypasses
  // display cadence. This is not a frame hook and does not advance the game.
  bool frameDue=get<int>(0xA8ED84)!=lastFrame&&
-   (sh->computeApplied!=compute::All||sh->formationPolicy.enabled||formationJobCount||stickyCount||sh->magnetronGlobal||sh->magnetronDrop||sh->dodgeEnabled||dodgeCount||sh->burstEnabled||sh->burstHoldEnabled||burstCount||sh->missileEnabled||missileHoldCount||nativeCount||unloadCount||sh->runtimeTracking||runtimeCoopPending||loadCalculationPending||repairCalculationPending||(sh->flags&(EjectAssist|AntiTheft))||
+   (sh->computeApplied!=compute::All||(sh->moFeatures&7)||moOrdersPending()||sh->formationPolicy.enabled||formationJobCount||stickyCount||sh->magnetronGlobal||sh->magnetronDrop||sh->dodgeEnabled||dodgeCount||sh->burstEnabled||sh->burstHoldEnabled||burstCount||sh->missileEnabled||missileHoldCount||nativeCount||unloadCount||sh->runtimeTracking||runtimeCoopPending||loadCalculationPending||repairCalculationPending||(sh->flags&(EjectAssist|AntiTheft))||
     (sh->plannerTracking&&(sh->flags&(AdvancedInput|MagnetronInput|AutoOreReturn)))||
     sh->planRequest!=sh->planAck||sh->cooperativePlan!=sh->cooperativeAck);
  bool resultsDue=(loadCalculationPending&&compute::newer(sh->loadComputed,loadTaskSeen))||(repairCalculationPending&&compute::newer(sh->repairComputed,repairTaskSeen))||((sh->missileEnabled||missileHoldCount)&&compute::newer(sh->missileComputed,missileApplied))||((sh->dodgeEnabled||dodgeCount)&&compute::newer(sh->dodgeComputed,dodgeApplied))||(unloadCount&&compute::newer(sh->unloadComputed,unloadApplied));
@@ -1085,7 +1091,7 @@ static void tick(){
  // Control time belongs to the dispatcher, never to the optional display scan.
  rebuildPlayerSidebar(house);lastFrame=frame;snap.frame=frame;snap.match=match;snap.session=sessionMode;snap.status=1;snap.bridgeStatus=1;snap.commandStatus=1;buildTimeTooltipTick();
  snap.chat=get<bool>(0xA8BC60+25);if(!sh->foreground||snap.chat)runtimeKeys.clear();
- bool needsIndex=hookpolicy::needsWorldIndex(cmd,sh->formationPolicy.enabled||formationJobCount||stickyCount||sh->magnetronGlobal||sh->magnetronDrop||sh->planRequest!=sh->planAck||sh->dodgeEnabled||dodgeCount||sh->burstEnabled||sh->burstHoldEnabled||burstCount||sh->missileEnabled||missileHoldCount||missionObserver.pending()||pendingRepairs.count||actorLeaseArbiter.count||loadLedger.count||loadCalculationPending||repairCalculationPending||runtimeCoopPending||nativeCount||unloadCount||repairAt<repairCount||entryReservationCount||cooperativeEffectCount||sh->cooperativePlan!=sh->cooperativeAck,
+ bool needsIndex=hookpolicy::needsWorldIndex(cmd,(sh->moFeatures&7)||moOrdersPending()||sh->formationPolicy.enabled||formationJobCount||stickyCount||sh->magnetronGlobal||sh->magnetronDrop||sh->planRequest!=sh->planAck||sh->dodgeEnabled||dodgeCount||sh->burstEnabled||sh->burstHoldEnabled||burstCount||sh->missileEnabled||missileHoldCount||missionObserver.pending()||pendingRepairs.count||actorLeaseArbiter.count||loadLedger.count||loadCalculationPending||repairCalculationPending||runtimeCoopPending||nativeCount||unloadCount||repairAt<repairCount||entryReservationCount||cooperativeEffectCount||sh->cooperativePlan!=sh->cooperativeAck,
   sh->flags|sh->plannerTracking|((sh->cooperativePlan!=sh->cooperativeAck)?AutoOreReturn:0),(sh->flags&AutoRepair)&&(!autoWas||DWORD(now-lastAuto)>=clampedRepairInterval(sh->repairMs)));
  if(needsIndex)indexWorld(frame);
  // Release stale leases before any feature sends a new game order. No game
@@ -1096,7 +1102,7 @@ static void tick(){
  stickyTick(false);
  observePausedOre(house,frame);
  observeUnloadRoster(house,frame,now);
- viewZoomTick();smallMapCameraTick();radarNavigationTick(now);highScrollTick(preciseNow);
+ pauseViewTick();viewZoomTick();smallMapCameraTick();radarNavigationTick(now);highScrollTick(preciseNow);
  // Only tick consumes feature requests; neither Hook callback can bypass
  // the shared game-thread intent/validation/event pipeline.
  consumeSubmittedIntents(house,frame,now);
@@ -1105,7 +1111,7 @@ static void tick(){
  // Release receipts before any recurring work or overlay projection. In a busy
  // scene the next user command can now be staged while rendering catches up.
  if(cmd){snap.scanMicros=snap.controlMicros;publishSnapshot(now);}
- formationTick(house,frame,now);loadingCalculationTick(house,now);repairTick(house,now);autoLoadTick(house,frame);nativeOrdersTick(house,frame);
+ formationTick(house,frame,now);moOrdersTick(house,frame,now);loadingCalculationTick(house,now);repairTick(house,now);autoLoadTick(house,frame);nativeOrdersTick(house,frame);
  // Read-only observation, bounded to 32 outstanding orders per game frame.
  if(missionObserver.pending())snap.observedEvents+=missionObserver.pollWithReceipts(match,frame,now,[](uint32_t id){
   gateway::MissionState current{};uint32_t p=worldByID(id);
@@ -1185,7 +1191,7 @@ extern "C" void EndAssistCapture(unsigned token){
  gameentry::Request r{};r.module=gameentry::moduleIdentity();r.client=gameentry::Client::Assist;r.token=token;gameentry::leave(r);
 }
 extern "C" void AssistTick(){if(gameentry::active(gameentry::Client::Assist))tick();}
-extern "C" void AssistFault(){restoreCrcMapShadow();restoreBuildTimeTooltip();restoreNativeSellCursor();restoreNativeMegaGateway();restoreControlObjectOwner();restoreControlCommandOwner();restoreNetworkSender();restoreTechEnhancement();restorePlayerContext();faultContext={};nativeMegaQueueCallDepth=nativeObjectQueueCallDepth=0;fault=true;restoreClickHooks();resetCooperativeState();resetFormation();resetMissileControl();resetBurstControl();resetDodgeControl();clearNativeOrders();restorePlacement();restoreTech();restoreCSHook();if(sh){sh->result=-10;InterlockedIncrement(&sh->seq);sh->data.status=-2;sh->data.bridgeStatus=-2;sh->data.commandStatus=0;sh->data.labels=0;MemoryBarrier();InterlockedIncrement(&sh->seq);sh->ack=sh->request;sh->selectResult=sh->planResult=-10;sh->selectAck=sh->selectRequest;sh->planAccepted=0;sh->planAcceptedMask=sh->planRejectedMask=0;sh->planAck=sh->planRequest;notifyHost();}}
+extern "C" void AssistFault(){restoreViewZoom();restorePauseView();resetMoOrders();restoreCrcMapShadow();restoreBuildTimeTooltip();restoreNativeSellCursor();restoreNativeMegaGateway();restoreControlObjectOwner();restoreControlCommandOwner();restoreNetworkSender();restoreTechEnhancement();restorePlayerContext();faultContext={};nativeMegaQueueCallDepth=nativeObjectQueueCallDepth=0;fault=true;restoreClickHooks();resetCooperativeState();resetFormation();resetMissileControl();resetBurstControl();resetDodgeControl();clearNativeOrders();restorePlacement();restoreTech();restoreCSHook();if(sh){sh->result=-10;InterlockedIncrement(&sh->seq);sh->data.status=-2;sh->data.bridgeStatus=-2;sh->data.commandStatus=0;sh->data.labels=0;MemoryBarrier();InterlockedIncrement(&sh->seq);sh->ack=sh->request;sh->selectResult=sh->planResult=-10;sh->selectAck=sh->selectRequest;sh->planAccepted=0;sh->planAcceptedMask=sh->planRejectedMask=0;sh->planAck=sh->planRequest;notifyHost();}}
 extern "C" void GuardedAssistTick();
 #include "native_message_policy.h"
 extern "C" void AssistRuntimeMessage(int code,WPARAM wp,LPARAM lp){

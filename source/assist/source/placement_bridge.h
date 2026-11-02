@@ -26,6 +26,7 @@ static bool riskReady(bool captured=false){
 }
 #include "shroud_render_bridge.h"
 static int smallMapCameraAction(uint32_t),highScrollAction(uint32_t);
+static int nativeViewportAction(unsigned,uint32_t);
 static int nativeSellCursorAction(unsigned,uint32_t,uint32_t);static int nativeMegaGatewayAction(unsigned,uint32_t,uint32_t);
 static int controlCommandOwnerAction(unsigned,uint32_t,uint32_t);static int controlObjectOwnerAction(unsigned,uint32_t,uint32_t);
 extern "C" int __cdecl AssistRiskAction(unsigned op,unsigned object,unsigned house){
@@ -33,6 +34,7 @@ extern "C" int __cdecl AssistRiskAction(unsigned op,unsigned object,unsigned hou
  // Keep live world checks, but don't re-enter Validate on every drawn cell.
  if(op==13)return controlCommandOwnerAction(op,object,house);
  if(op==14)return controlObjectOwnerAction(op,object,house);
+ if(op==15)return nativeViewportAction(object,house);
  if(op==8)return riskReady(true)?highScrollAction(object):0;
  if(op==7)return riskReady(true)?smallMapCameraAction(object):0;
  if(op==5)return techGate(object,house);

@@ -174,3 +174,13 @@
 | 共享场景与缩放前结果、五类 UI、粒子与本地消息／倒计时保留 | [Hotfix13](2026-10-30-shared-scenes-local-ui-hotfix13.md) | SceneBank SceneRenderer NativeImageBank Particle MessageList BitFont DrawTimer PrimaryFactory ArchiveTarget |
 
 - [Hotfix16：基础路径与整图延迟调查及 CPU 修复](2026-10-30-render-latency-hotfix16.md)：原尺寸像素热点、128 项 xBRZ 缓存抖动、分页并行；CPU 积分跨帧缓存与不变对象页误标脏修复、定向检查和构建。
+
+
+## 2026-11-02：MO 操作与视野迁移
+
+- [可拆卸超武面板](2026-11-02-detached-superweapon-panel.md)
+- [MO command gestures: implementation reference and integration](2026-11-02-mo-command-gestures.md)
+- [MO 单机暂停逐帧与飞机原生路径点（2026-11-02）](2026-11-02-mo-pause-air-port.md)
+- [快速占位接入现有队形](2026-11-02-mo-quick-formation.md)
+- [MO native viewport and sidebar migration](2026-11-02-mo-native-viewport.md)
+- [MO 功能整合与协议84](2026-11-02-mo-integration.md)

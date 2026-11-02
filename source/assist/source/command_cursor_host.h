@@ -1,8 +1,10 @@
+#include "middle_input_host.h"
 // Enter is shown only for a compatible hovered destination with free capacity.
 // It uses the same key resolver, feature switches and type filters as clicks.
 static void serviceCommandCursorHint(){
  using namespace commandcursor;
  if(!enabled||!shared||!commandFresh(GetTickCount())||!foregroundGame()||incoming.chat){clear();return;}
+ if(formationInputOwns()||runtimeMiddleOwnsNow()){clear();return;}
  auto freshRead=[](uint32_t at,void*p,size_t n){return externalReader.readFresh(at,p,n);};
  if(!external::display::inspect(freshRead).visible()){clear();return;}
  uint8_t keys[256]{};gameinput::keySnapshot(hook,keys);

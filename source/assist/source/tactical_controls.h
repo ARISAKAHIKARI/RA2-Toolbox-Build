@@ -54,7 +54,12 @@ extraControls[SellVehiclesEnabled]=toggle(721,L"出售战车",extra.sellVehicles
 note(L"出售战车不支持兰博玩；两种出售操作共用按住键，鼠标键分别设置。",44);
 label(L"直接攻击移动",20,210);label(L"仅鼠标",240,258);mouse(pointerinput::MouseAttack);next();
 note(L"直接攻击移动只下达一次命令；高级移动攻击会持续重新选择目标。",44);
-toggle(9050,L"队形排列（地面单位）",extra.formationEnabled);next();
+toggle(9050,L"队形排列与快速占位",extra.formationEnabled);next();
+note(L"裸中键点按螺旋占位，按住中键拖线按轨迹均匀排位；步兵每格最多 3 个，车辆和飞机各占一格。Ctrl / Shift / Z + 中键交给下方对应功能。",60);
+toggle(9400,L"模糊下令（Ctrl + 中键）",(extra.moFeatures&1)!=0);next();
+toggle(9401,L"区域目标分配（Shift + 中键）",(extra.moFeatures&2)!=0);next();
+toggle(9402,L"自定义巡逻圈（Z + 中键）",(extra.moFeatures&4)!=0);next();
+note(L"按住对应组合预览，松开中键提交。模糊下令在落点附近分组攻击；区域分配按轨迹收集目标；巡逻圈按拖出的路径形成闭环。Esc 取消，后续手动命令优先。",60);
 label(L"队形拖拽鼠标键",20,260);choices(combo(9056),{L"右键",L"左键（覆盖原生下令）"},extra.formationMouse==1?1:0);next();
 label(L"队形按住键",20,306);key(9051,extra.formationHold,345,280,true);modernui::keyboardOnly(GetDlgItem(ui,9051));next();
 {const wchar_t* names[]={L"矩形横队",L"分散横队",L"圆形聚集",L"扇形（60°）",L"正方形聚集",L"空心框聚集"};const int ids[]={9052,9053,9054,9055,9057,9058};for(int n=0;n<6;++n){label(names[n],20,306);key(ids[n],extra.formationKeys[n]);modernui::pressKey(GetDlgItem(ui,ids[n]));modernui::keyboardOnly(GetDlgItem(ui,ids[n]));next();}}
@@ -62,7 +67,7 @@ note(L"按住队形键或双击 Alt 进入，点按提交当前预览；拖动�
 note(L"正方形默认 B，空心框默认 N。框形未拖动时边框面积与中空面积约 3∶1，拖到最大变成单层边框；其余形状拖到最大为一横排。",44);
 label(L"飞机路径点",20,260);choices(combo(803),{L"关闭",L"兼容路径点",L"原生优先",L"原生下单（联机实验）",L"完整原生（联机实验）"},airpathpolicy::mode(extra.airWaypoints,extra.nativeAirWaypoints,extra.nativeAirNetwork));next();
 label(L"路径点按住键",20,306);{auto h=key(894,extra.airPathKey);modernui::holdKey(h);}next();
-note(L"留空跟随游戏路径点键；自定义键使用兼容路径点。原生优先在联机使用兼容模式。原生下单只放宽入口，可能不续飞；完整原生另改本机到达任务，可能不同步。",60);
+note(L"留空跟随游戏路径点键；自定义键使用兼容路径点。原生优先和原生下单仅开放原生规划入口；完整原生模式另改本机到达处理。",60);
 item(L"STATIC",L"飞机路径点：关闭",20,605,866);next();
 toggle(795,L"Shift 五连点",shiftClickEnabled,20,270);choices(combo(796),{L"自动兼容",L"始终追加四次点击",L"不追加点击"},shiftClickMode);next();
 number(797,L"连续点击间隔 / 毫秒",shiftClickGap,L"0–250");
@@ -219,10 +224,17 @@ csHoldCheck=toggle(473,L"按键移动攻击（CS）",csHoldEnabled,20,210);csHol
 note(L"自动模式和按键模式均使用原版移动攻击命令；参与类型、快捷键和鼠标键设置保持不变。");
 toggle(899,L"磁电全局自动摔落（实验性）",extra.magnetronDrop);next();
 note(L"独立检查全图己方磁电已吸起的载具，包括己方、盟友和敌方，手动强制攻击也生效。检测建筑、地面坦克、树木、矿柱、悬崖及水陆不适配；两栖/悬浮不因普通水陆而摔，排除下方空中单位和桥面。默认关闭，实际摔落效果仍需测试。",76);
-EnableWindow(toggle(9090,L"视角缩放（暂不可用）",false),FALSE);next();
-label(L"视角倍率",20,260);choices(combo(9091),{L"50%",L"75%",L"100%",L"125%",L"150%"},viewzoom::index(extra.viewZoomPercent));EnableWindow(GetDlgItem(ui,9091),FALSE);next();
-EnableWindow(button(9092,L"恢复 100%",20,280),FALSE);next();
-note(L"视角缩放暂时停用；旧倍率设置和缩放快捷键均不生效。",56);
+toggle(9090,L"地图视野缩放",extra.viewZoomEnabled);next();
+label(L"视角倍率",20,260);choices(combo(9091),{L"25%",L"33%",L"50%",L"67%",L"100%",L"125%",L"150%",L"200%",L"全图"},viewzoom::index(extra.viewZoomPercent));next();
+button(9092,L"恢复 100%",20,280);next();
+note(L"Ctrl + Alt + 减号 / 加号缩小、放大；Ctrl + Alt + Backspace 恢复 100%。地图独立缩放，游戏界面保持原尺寸。",56);
+label(L"侧边栏显示",20,260);choices(combo(9404),{L"完整侧栏",L"雷达与按钮",L"隐藏侧栏"},int(extra.sidebarMode));next();
+note(L"F11 循环切换侧栏显示。",26);item(L"STATIC",L"侧边栏：等待对局就绪",20,605,9407);next();
+toggle(9405,L"独立超级武器面板",extra.superweaponPanel);next();
+note(L"超武面板可拖动、折叠，点击超武后使用原生目标光标选择位置。",44);
+toggle(9403,L"暂停与逐帧操作（单机）",(extra.moFeatures&16)!=0);next();
+note(L"F5 切换暂停，F6 前进一帧；暂停时可以观察和操作界面。联机不启用此功能。",44);
+item(L"STATIC",L"逐帧操作：关闭",20,605,9406,0,44);next(44);
 item(L"STATIC",L"视角缩放：关闭",20,605,9093,0,48);next(48);
 #ifdef RA2_UNIFIED
 {auto h=placedControl({-3,{0,0,1,1}},L"COMBOBOX",L"",886,CBS_DROPDOWNLIST);choices(h,{L"仅光标",L"光标＋拖屏",L"全部",L"强制高刷（实验性 · 联机待验证）"},extra.scrollRefreshMode);}

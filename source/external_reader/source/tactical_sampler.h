@@ -212,6 +212,9 @@ public:
   }
   state_.status=1;state_.renderStatus=display_.visible()?1:0;state_.frame=frame;state_.match=serial_;state_.session=get<int>(0xA8B238);state_.chat=get<uint8_t>(0xA8BC60+25);state_.credits=get<int>(house+0x30C);
   uint32_t tactical=get<uint32_t>(0x887324);Projection proj;proj.width=state_.width=get<int>(0x8A00A4);proj.height=state_.height=get<int>(0x8A00A8);
+  // Map-only zoom keeps physical screen dimensions unchanged. Culling uses
+  // the native raster viewport, which can be larger than that screen.
+  {int w=get<int>(0xB0CE30),h=get<int>(0xB0CE34);if(w>0&&w<=8192)proj.width=w;if(h>0&&h<=8192)proj.height=h;}
   int priorX=state_.cameraX,priorY=state_.cameraY;
   proj.cameraX=state_.cameraX=get<int>(tactical+0xB0);proj.cameraY=state_.cameraY=get<int>(tactical+0xB4);proj.zScale=get<double>(0xB0CD48,0.0866025403784);
   const bool showEnemies=enemyMarkers&&state_.renderStatus==1;Projection enemyProj=proj;

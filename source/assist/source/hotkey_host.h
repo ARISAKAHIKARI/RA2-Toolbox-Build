@@ -1,3 +1,4 @@
+#include "middle_input_host.h"
 // Each colliding action enters the existing request/selection channel in turn.
 static void executeHotkey(WPARAM wp,bool fanout){
  if(wp>=1720&&wp<=1722&&extra.viewZoomEnabled){
@@ -5,6 +6,7 @@ static void executeHotkey(WPARAM wp,bool fanout){
   {ControlUpdate guard;SendDlgItemMessageW(ui,9091,CB_SETCURSEL,viewzoom::index(extra.viewZoomPercent),0);}
   save();syncAdditional();notify(L"视角缩放请求："+std::to_wstring(extra.viewZoomPercent)+L"%");return;
  }
+ if(wp==1740){extra.sidebarMode=(extra.sidebarMode+1)%3;{ControlUpdate guard;SendDlgItemMessageW(ui,9404,CB_SETCURSEL,extra.sidebarMode,0);}save();syncAdditional();notify(extra.sidebarMode==2?L"已请求隐藏侧栏。":extra.sidebarMode==1?L"已请求仅显示雷达与按钮。":L"已请求完整侧栏。");return;}
  if(wp==1723){send(StickyGuard);return;}
  if(wp>=1724&&wp<1724+selectedmode::Count){send(selectedmode::command(int(wp-1724)));return;}
  if(wp>=1730&&wp<=1732){watchhost::pin(extra.watchKeys[wp-1730]);return;}
@@ -25,7 +27,7 @@ static void serviceHotkeyBatch(){
  // The OS-hotkey fallback shares the native tracker's context cancellation.
  // No first tap may survive a hidden preview, focus loss, chat or a pause.
  if(!context||!connected||!shared->formationPreview.active)formationTap.clear();
- if(formationInputOwns()||!context){typeTap.clear();variantTap.clear();hotkeyPending.clear();hotkeyRegistry.cancel();return;}
+ if(formationInputOwns()||runtimeMiddleOwnsNow()||!context){typeTap.clear();variantTap.clear();hotkeyPending.clear();hotkeyRegistry.cancel();return;}
  hotkeyPending.expire(GetTickCount(),commandMatch());
  if(!connected){formationTap.clear();typeTap.clear();variantTap.clear();hotkeyPending.clear();hotkeyRegistry.cancel();return;}
  uint8_t keys[256]{};for(unsigned i=0;i<256;++i)keys[i]=(GetAsyncKeyState(i)&0x8000)!=0;
@@ -46,6 +48,7 @@ static void handleHotkey(WPARAM id,LPARAM event){
   hotkeyPending.clear();hotkeyRegistry.cancel();static uint32_t notifiedAt=0;uint32_t now=GetTickCount();
   if(!notifiedAt||uint32_t(now-notifiedAt)>=2500){notifiedAt=now;notify(L"快捷键暂不可用：游戏命令连接尚未就绪，恢复后请重新按键。");}return;
  }
+ if(runtimeMiddleOwnsNow()){typeTap.clear();variantTap.clear();hotkeyPending.clear();hotkeyRegistry.cancel();return;}
  WORD key=MAKEWORD(HIWORD(event),((LOWORD(event)&MOD_SHIFT)?HOTKEYF_SHIFT:0)|((LOWORD(event)&MOD_CONTROL)?HOTKEYF_CONTROL:0)|((LOWORD(event)&MOD_ALT)?HOTKEYF_ALT:0));
  if(hotkeyroute::canonical(key)!=g->key)return; // queued notification from an old binding
  if(formationHotkey(key)){hotkeyPending.clear();return;}

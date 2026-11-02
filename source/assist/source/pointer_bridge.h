@@ -25,17 +25,17 @@ static bool pointerLocation(const pointerinput::Intent&i){
     i.cameraX!=get<int>(tactical+0xB0)||i.cameraY!=get<int>(tactical+0xB4))return false;
  int width=get<int>(0xB0CE30),height=get<int>(0xB0CE34);
  // ProcessClickCoords does not check upper bounds. Never query the sidebar.
- if(width<=0||height<=0||width>i.width||height>i.height)return false;
+ if(width<=0||height<=0||width>8192||height>8192)return false;
  // ProcessClickCoords adds the tactical surface origin itself. The host
  // supplies full-client pixels, just like WWMouse before native callers
  // subtract 886FA0/4 (4AE546..4AE553).
  int viewX=get<int>(0x886FA0),viewY=get<int>(0x886FA4);
- if(viewX<0||viewY<0||viewX>=i.width||viewY>=i.height||i.x<viewX||i.y<viewY||
-    i.x>=i.width||i.y>=i.height||i.x-viewX>=width||i.y-viewY>=height)return false;
- struct Point{int x,y;}point{i.x-viewX,i.y-viewY};struct Cell{short x,y;}cell{};
+ NativeViewPoint mapped{i.x,i.y};if(nativeViewActive){if(!nativeViewMapPoint(mapped))return false;}
+ else if(viewX<0||viewY<0||viewX>=i.width||viewY>=i.height||i.x<viewX||i.y<viewY||i.x>=i.width||i.y>=i.height||i.x-viewX>=width||i.y-viewY>=height)return false;
+ struct Point{int x,y;}point{mapped.x-viewX,mapped.y-viewY};struct Cell{short x,y;}cell{};
  struct Coord{int x,y,z;}coord{};uint32_t object=0;uint8_t a=0,b=0;
  // YRpp DisplayClass::ProcessClickCoords: thiscall, six pointer arguments.
- call<void>(0x692300,0x87F7E8,&point,&cell,&coord,&object,&a,&b);
+ {NativeViewQueryScope query;call<void>(0x692300,0x87F7E8,&point,&cell,&coord,&object,&a,&b);}
  if(cell.x<=0||cell.y<=0||cell.x>=512||cell.y>=512||!readMapCell(cell.x,cell.y))return false;
  if(object&&!worldObjects.contains(object))return false;
  // Forced entry may click a building footprint covered by another object.

@@ -14,6 +14,7 @@ struct AdditionalSettings {
  bool nativeMegaGateway=true;
  bool techEnhance=false;int placementImplementation=0;
  bool viewZoomEnabled=false;int viewZoomPercent=100;
+ uint32_t moFeatures=0,sidebarMode=0;bool superweaponPanel=false;
  int scrollRefreshMode=0; // cursor / scrolling / scene / forced redraw
 #ifndef RA2_UNIFIED
  int scrollRefreshHz=120; // standalone assist only
