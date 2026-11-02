@@ -20,7 +20,7 @@ int main(){
   assert(registry.proposal(sites[i],original[i],patch,n)==Transition::Deny);
  }
  // Neither old placement nor any retired input/simulation site is writable.
- for(uint32_t at:{0x464AC0u,0x646E90u,0x55D360u,0x6FFE00u,0x4D74E0u})assert(size(at)==0);
+ for(uint32_t at:{0x464AC0u,0x646E90u,0x6FFE00u,0x4D74E0u})assert(size(at)==0);
  uint8_t invalid[10]={0xE9};assert(destination(AirArrival,invalid,10)==0);
  puts("PASS: eight-site allowlist, shape/length checks, install/restore and sticky foreign conflict; retired sites denied");
 }

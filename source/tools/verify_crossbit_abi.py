@@ -24,6 +24,7 @@ DECLARATIONS = (
     ('assist/source/protocol.h', 'Snapshot', 'assist::Snapshot'),
     ('assist/source/native_placement_policy.h', 'Offer', 'assist::nativeplacement::Offer'),
     ('assist/source/native_placement_policy.h', 'Request', 'assist::nativeplacement::Request'),
+    ('assist/source/native_placement_policy.h', 'Preview', 'assist::nativeplacement::Preview'),
     ('cursor/source/bridge.h', 'Shared', '::Shared'),
     ('unit_monitor/source/core.h', 'Shared', 'um::Shared'),
     ('unit_monitor/source/core.h', 'Snapshot', 'um::Snapshot'),
@@ -215,8 +216,8 @@ def main():
     differences = {name: {'x86': records['x86'].get(name), 'x64': records['x64'].get(name)}
                    for name in sorted(set(records['x86']) | set(records['x64']))
                    if records['x86'].get(name) != records['x64'].get(name)}
-    baseline = {'assist::Version': 88, 'runtime::Version': 4, 'gameentry::Version': 3,
-                'runtimebroker::Version': 1, 'sizeof(assist::Shared)': 6584688,
+    baseline = {'assist::Version': 89, 'runtime::Version': 4, 'gameentry::Version': 3,
+                'runtimebroker::Version': 1, 'sizeof(assist::Shared)': 6584840,
                 'assist::Shared.aircraftAllocationPolicy': 6580640,
                 'assist::Shared.nativeCombatQueries': 6580644,
                 'sizeof(runtime::Control)': 176, 'sizeof(gameentry::Request)': 108,
@@ -237,10 +238,10 @@ def main():
     if differences:
         print(json.dumps(differences, indent=2))
         raise SystemExit('FAIL: Windows x86/x64 shared-memory layouts differ')
-    # Protocol88 appends configurable MO gestures/previews, retaining all Protocol87 fields.
+    # Protocol89 appends pause configuration and placement preview, retaining Protocol88 fields.
     # Lock the measured x86/x64 layout instead of accepting arbitrary growth.
     assert baseline_matches, 'Protocol/version or deployed x86 wire baseline changed'
-    print(f'PASS: {len(records["x86"])} Windows x86/x64 wire size/alignment/field offsets match; protocol88 Shared6584688, Runtime176, manager108')
+    print(f'PASS: {len(records["x86"])} Windows x86/x64 wire size/alignment/field offsets match; protocol89 Shared6584840, Runtime176, manager108')
     print('PASS: real PE32+/64-bit imports, ordinal bit, bounds and strict default x86 parser checks; no Windows image executed')
 
 

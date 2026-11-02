@@ -251,22 +251,23 @@ note(L"对所选己方步兵、战车下达一次原版任务。默认未绑定�
 csCheck=toggle(446,L"自动移动攻击（CS，暂不可用）",csMode,20,306);csKeyEdit=key(447,csKey);next();
 csHoldCheck=toggle(473,L"按键移动攻击（CS）",csHoldEnabled,20,210);csHoldEdit=key(474,csHoldKey,240,258,true);mouse(pointerinput::MouseCS);next();
 note(L"自动 CS 暂不可用，旧设置与开关快捷键不再执行。按键 CS 保留，使用原版移动攻击命令。");
-EnableWindow(toggle(9090,L"视角缩放（暂不可用）",false),FALSE);next();
-label(L"视角倍率",20,260);choices(combo(9091),{L"50%",L"75%",L"100%",L"125%",L"150%"},viewzoom::index(extra.viewZoomPercent));EnableWindow(GetDlgItem(ui,9091),FALSE);next();
-EnableWindow(button(9092,L"恢复 100%",20,280),FALSE);next();
-note(L"视角缩放暂时停用；旧倍率设置和缩放快捷键均不生效。",56);
+toggle(9090,L"视角缩放（实验性）",extra.viewZoomEnabled);next();
+label(L"视角倍率",20,260);choices(combo(9091),{L"50%",L"75%",L"100%",L"125%",L"150%"},viewzoom::index(extra.viewZoomPercent));next();
+button(9092,L"恢复 100%",20,280);next();
+note(L"实验性：通过支持 Zoom 接口的 CnC-DDraw 重建显示分辨率，地图和原生侧栏一起缩放。先松开鼠标；不支持的版本会拒绝切换。",56);
 {const wchar_t*names[]={L"缩小视野",L"放大视野",L"恢复100%"};for(int i=0;i<3;++i){label(names[i],20,306);auto h=key(9450+i,extra.viewZoomKeys[i]);modernui::pressKey(h);modernui::keyboardOnly(h);next();}}
-note(L"可预先保存快捷键；视角缩放当前不可用，不注册这些操作。",44);
-label(L"侧边栏显示（暂不可用）",20,260);choices(combo(9404),{L"完整侧栏",L"雷达与按钮",L"隐藏侧栏"},0);EnableWindow(GetDlgItem(ui,9404),FALSE);next();
+note(L"缩放快捷键仅在开启视角缩放后生效；默认 Ctrl＋Alt＋减号／加号／退格。",44);
+toggle(9462,L"高危：启用侧栏显示实验",extra.sidebarEnabled);next();
+label(L"右侧建造栏",20,260);choices(combo(9404),{L"完整侧栏",L"隐藏侧栏"},extra.sidebarMode==2?1:0);next();
 label(L"切换侧栏快捷键",20,306);{auto h=key(9453,extra.sidebarKey);modernui::pressKey(h);modernui::keyboardOnly(h);}next();
-note(L"可预先保存快捷键；原生侧栏布局当前不可用，不注册此操作。",44);item(L"STATIC",L"侧边栏：暂不可用",20,605,9407);next();
+note(L"实验性：开启实验后默认 F11 切换完整／隐藏。完整绘制一轮后，在安全点调整原生地图范围和显示表面。默认 F11 切换；遇到其他程序改写或不兼容版本会拒绝启用。",44);item(L"STATIC",L"侧边栏：完整",20,605,9407);next();
 toggle(9405,L"独立超级武器面板",extra.superweaponPanel);next();
 note(L"超武面板可拖动、折叠，点击超武后使用原生目标光标选择位置。",44);
-EnableWindow(toggle(9403,L"暂停与逐帧操作（暂不可用）",false),FALSE);next();
+toggle(9403,L"高危：暂停与逐帧（单机实验性）",(extra.moFeatures&16u)!=0);next();
 label(L"暂停 / 恢复快捷键",20,306);{auto h=key(9454,extra.pauseKeys[0]);modernui::pressKey(h);modernui::keyboardOnly(h);}next();
 label(L"前进一帧快捷键",20,306);{auto h=key(9455,extra.pauseKeys[1]);modernui::pressKey(h);modernui::keyboardOnly(h);}next();
-note(L"可预先保存快捷键；暂停与逐帧操作当前不可用，不注册这些操作。",44);
-item(L"STATIC",L"逐帧操作：暂不可用",20,605,9406,0,44);next(44);
+note(L"仅单机／战役：暂停后按一次前进一帧。此项修改原生主循环；联机拒绝启用。切出游戏会自动恢复运行并取消待执行步进。",44);
+item(L"STATIC",L"逐帧操作：关闭",20,605,9406,0,44);next(44);
 item(L"STATIC",L"视角缩放：关闭",20,605,9093,0,48);next(48);
 #ifdef RA2_UNIFIED
 {auto h=placedControl({-3,{0,0,1,1}},L"COMBOBOX",L"",886,CBS_DROPDOWNLIST);choices(h,{L"仅光标",L"光标＋拖屏",L"全部",L"强制高刷（实验性 · 联机待验证）"},extra.scrollRefreshMode);}
@@ -279,10 +280,10 @@ item(L"STATIC",L"高刷策略：仅光标",20,605,888);next();
 #endif
 
 anywhereCheck=toggle(476,buildingmodes::placementCaption(extra.placementImplementation),buildAnywhereMode);next();
-label(L"建造方式",20,180);choices(combo(9096,220,405,180),{L"高危：受控模式（默认）",L"高危：直接模式",L"原生事件（快捷键放置）"},extra.placementImplementation);next();
+label(L"建造方式",20,180);choices(combo(9096,220,405,180),{L"高危：受控模式（默认）",L"高危：直接模式",L"原生事件（预览后点击）"},extra.placementImplementation);next();
 label(L"已完成建筑",20,180);combo(9251,220,405,180);next();
-label(L"放置所选完成建筑",20,280);key(9252,extra.placementEventKey,345,280);next();
-note(L"原生事件模式不修改游戏指令，也不解除原版落地规则。建筑完成后在上方选择具体产品，将鼠标移到游戏地图，按此键提交一次；默认 Ctrl＋Alt＋G。不会替换选择或延后补放，原生红格左键不由此模式接管。",85);
+label(L"切换自动放置预览",20,280);key(9252,extra.placementEventKey,345,280);next();
+note(L"原生事件模式自动匹配当前建筑栏／防御栏的已完成产品。默认 Ctrl＋Alt＋G 开启地基预览，左键放置，右键／Esc／再次按键取消；切换栏目、产品或原生工具会取消。先退出原生建造光标再使用，双方不抢同一次点击；蓝框仅表示地基，落地合法性仍由游戏判定。",85);
 item(L"STATIC",L"功能状态：等待连接",20,605,807,0,44);next(44);
 toggle(810,L"步兵强制进入建筑（暂不可用）",extra.c4Test,20,280);key(811,extra.c4Key,310,188,true);choices(combo(812,510,115,180),{L"停用",L"中键",L"侧键 1",L"侧键 2",L"右键",L"左键"},extra.c4Mouse==6?5:extra.c4Mouse);next();
 label(L"进入实现",20,260);choices(combo(9180),{L"占领任务＋建筑格",L"爆破任务＋建筑格"},extra.c4Mode);next();

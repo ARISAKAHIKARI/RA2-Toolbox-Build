@@ -10,8 +10,10 @@ static MoActor moActors[moorders::Actors];static int moActorCount=0;
 static MoTarget moTargets[moorders::Targets];static int moTargetCount=0;
 static MoQueued moQueue[moorders::Actors];static int moQueueCount=0,moQueueAt=0;
 static moorders::Point moStroke[moorders::Nodes],moRoute[moorders::Waypoints];
+static moorders::Point moCurrent;
 static int moStrokeCount=0,moRouteCount=0,moMode=0,moStage=0,moNodeAt=0,moActorAt=0;
-static uint32_t moEpoch=0,moHouse=0,moStarted=0,moPreviewAt=0,moHover=0;
+static uint32_t moEpoch=0,moHouse=0,moStarted=0,moPreviewAt=0,moOutlineAt=0,moHover=0;
+static bool moOutlineDirty=false;
 static int moStageFrame=0,moStartFrame=0;static bool moHolding=false,moFeedback=false;
 static bool moWaypointSubmitted=false;static mopatrol::Path moPaths[moorders::Actors];
 static int moSubmitting=0,moSubmittingActor=-1;
@@ -27,10 +29,12 @@ static void moOrdersPublish(){
 }
 static void resetMoOrders(){
  if(moWaypointSubmitted&&sh)sh->moOrderStatus=uint32_t(-16);moWaypointSubmitted=false;
- moHolding=false;moStage=moQueueCount=moQueueAt=moActorCount=moStrokeCount=moTargetCount=moRouteCount=0;moPreview={};moMode=0;moFeedback=false;moGestureButton=0;if(moEpoch!=match||moHouse!=lastHouse)moSuppressedButton=0;moPlanningReset();moOrdersPublish();
+ moHolding=false;moStage=moQueueCount=moQueueAt=moActorCount=moStrokeCount=moTargetCount=moRouteCount=0;moPreview={};moCurrent={};moOutlineDirty=false;moMode=0;moFeedback=false;moGestureButton=0;if(moEpoch!=match||moHouse!=lastHouse)moSuppressedButton=0;moPlanningReset();moOrdersPublish();
 }
-static bool moOrdersContext(){
- if(!sh||fault||sh->stop||!nativeReady()||!sh->foreground||DWORD(sampleClock(sh)-sh->heartbeat)>150||get<bool>(0x87F7E8+0x11B1))return false;
+static bool moOrdersContext(bool preview=false){
+ // A brief host render stall must not destroy a read-only captured preview.
+ // Capture, release and every event submission retain the strict 150ms gate.
+ if(!sh||fault||sh->stop||!nativeReady()||!sh->foreground||DWORD(sampleClock(sh)-sh->heartbeat)>(preview?1000u:150u)||get<bool>(0x87F7E8+0x11B1))return false;
  DWORD foreground=0;GetWindowThreadProcessId(GetForegroundWindow(),&foreground);return foreground==GetCurrentProcessId();
 }
 static bool moActorValid(const MoActor&a){
@@ -52,14 +56,7 @@ static bool moSameSelection(){
  for(int i=0;i<moActorCount;++i){if(!moActorValid(moActors[i]))return false;bool found=false;for(int j=0;j<selected.count;++j)found|=item(selected,j)==moActors[i].pointer;if(!found)return false;}return true;
 }
 static bool moPoint(MSG*msg,moorders::Point&cell,uint32_t*hover=nullptr){
- int x=0,y=0,px=0,py=0;if(!formationPoint(msg,x,y,px,py))return false;cell={x/256,y/256,0};
- if(hover){
-  uint32_t tactical=get<uint32_t>(0x887324);RECT r{};if(!GetClientRect(msg->hwnd,&r)||r.right<=0||r.bottom<=0)return false;
-  pointerinput::Intent point{};point.operation=pointerinput::AirWaypoint;point.width=get<int>(0x8A00A4);point.height=get<int>(0x8A00A8);point.cameraX=get<int>(tactical+0xB0);point.cameraY=get<int>(tactical+0xB4);
-  point.x=int(int64_t(short(LOWORD(msg->lParam)))*point.width/r.right);point.y=int(int64_t(short(HIWORD(msg->lParam)))*point.height/r.bottom);
-  const uint32_t oldCell=pointerCell,oldTarget=pointerTarget,oldID=pointerTargetID;const int oldZ=pointerGroundZ;
-  bool ok=pointerLocation(point);*hover=ok?pointerTarget:0;pointerCell=oldCell;pointerTarget=oldTarget;pointerTargetID=oldID;pointerGroundZ=oldZ;
- }return true;
+ int x=0,y=0,px=0,py=0;if(!formationPoint(msg,x,y,px,py,nullptr,hover))return false;cell={x/256,y/256,0};return true;
 }
 static bool moNeutral(uint32_t p){uint32_t owner=get<uint32_t>(p+0x21C),country=owner>=0x10000?get<uint32_t>(owner+0x34):0;return !owner||(country>=0x10000&&get<bool>(country+0x1A6));}
 static bool moEngineer(uint32_t p){return kind(p)==1&&get<bool>(typeOf(p,1)+0xEC3);}
@@ -98,9 +95,10 @@ static void moFindTargets(){
  moTargetCount=0;moAddTarget(moHover);
  // Same cell-content chains used by native clicking. Walking the whole chain
  // keeps all three infantry subcells and multi-cell buildings discoverable.
- for(int node=moStrokeCount-1;node>=0&&moTargetCount<moorders::Targets;--node){
-  if(moMode==int(moorders::Fuzzy)&&node!=moStrokeCount-1)continue;
-  auto center=moStroke[node];
+ for(int node=moStrokeCount;node>=0&&moTargetCount<moorders::Targets;--node){
+  if(moMode==int(moorders::Fuzzy)&&node!=moStrokeCount)break;
+  if(node<moStrokeCount&&moStroke[node].x==moCurrent.x&&moStroke[node].y==moCurrent.y)continue;
+  auto center=node==moStrokeCount?moCurrent:moStroke[node];
   for(int radius=0;radius<=2;++radius)for(int y=-2;y<2;++y)for(int x=-2;x<2;++x){if(std::max(std::abs(x),std::abs(y))!=radius)continue;uint32_t cell=readMapCell(center.x+x,center.y+y);if(!cell)continue;
    uint32_t p=get<uint32_t>(cell+0xE4);for(int steps=0;p>=0x10000&&steps<256;++steps){
     uint32_t next=0;if(!read(p+0x30,&next,sizeof next))break;moAddTarget(p);if(next==p)break;p=next;
@@ -171,17 +169,32 @@ static bool validateMoSubmission(const intent::EventOrder&order){
  if(moSubmitting==1)return order.domain==vanilla::Domain::MegaMission&&order.appendWaypoint;
  return connect&&order.eventKind==vanilla::EventType::PlanConnect&&actorLeaseArbiter.canIssue(match,get<int>(0xA8ED84),a.id,a.pointer,a.token,taskarbiter::Owner::Generic)&&moGraphRoute(moSubmittingActor,false);
 }
-static void moBuildPreview(){
- moPreview={};moPreview.active=moHolding;moPreview.mode=moMode;
+// The upstream draws its current-cell outline every render while throttling
+// target assignment independently. A sparse route node is never the cursor.
+static void moUpdateOutline(){
  if(moMode==int(moorders::Patrol)){
-  moorders::Point route[moorders::Waypoints];int n=moorders::patrol(moStroke,moStrokeCount,route);bool valid=n>=4;
+  moorders::Point stroke[moorders::Nodes],route[moorders::Waypoints];int count=moStrokeCount;
+  std::copy(moStroke,moStroke+count,stroke);moorders::sample(stroke,count,moCurrent,true);
+  int n=moorders::patrol(stroke,count,route);bool valid=n>=4;moPreview.count=0;
   for(int i=0;i<n;++i)valid&=readMapCell(route[i].x,route[i].y)!=0;
   for(int i=0;i<n;++i){moPreview.nodes[i]=moGround(route[i]);if(valid)moLine(moPreview.nodes[i],moGround(route[(i+1)%n]));}moPreview.nodeCount=n;
  }else{
-  moAssignments(true);auto center=moStroke[moStrokeCount-1];moorders::Point corners[]={{center.x-2,center.y-2},{center.x+2,center.y-2},{center.x+2,center.y+2},{center.x-2,center.y+2}};
+  auto center=moCurrent;moorders::Point corners[]={{center.x-2,center.y-2},{center.x+2,center.y-2},{center.x+2,center.y+2},{center.x-2,center.y+2}};
   for(int i=0;i<4;++i)moPreview.nodes[i]=moGround(corners[i]);moPreview.nodeCount=4;
  }
- moPreviewAt=sampleClock(sh);moOrdersPublish();
+ moOutlineDirty=false;moOutlineAt=sampleClock(sh);
+}
+static void moBuildPreview(){
+ moPreview={};moPreview.active=moHolding;moPreview.mode=moMode;
+ if(moMode!=int(moorders::Patrol))moAssignments(true);
+ moUpdateOutline();moPreviewAt=sampleClock(sh);moOrdersPublish();
+}
+static void moSamplePreview(moorders::Point point){
+ moOutlineDirty|=moCurrent.x!=point.x||moCurrent.y!=point.y;moCurrent=point;moorders::sample(moStroke,moStrokeCount,point);
+ const DWORD now=sampleClock(sh);
+ // Target legality/assignment is bounded separately from visual tracking.
+ if(moMode!=int(moorders::Patrol)&&DWORD(now-moPreviewAt)>=80)moBuildPreview();
+ else if(moOutlineDirty&&DWORD(now-moOutlineAt)>=16){moUpdateOutline();moOrdersPublish();}
 }
 static void moCommit(){
  if(!moSameSelection()){resetMoOrders();return;}
@@ -215,11 +228,11 @@ static bool moOrdersMessage(MSG*msg){
  if(moStage&&keyDown&&msg->wParam==VK_ESCAPE){resetMoOrders();return swallow();}
  if(moHolding&&((keyDown&&msg->wParam==VK_ESCAPE)||(edge.down&&edge.button!=moGestureButton))){bool escape=keyDown&&msg->wParam==VK_ESCAPE;resetMoOrders();return escape?swallow():false;}
  if(edge.up&&edge.button==moGestureButton&&moHolding){
-  moSuppressedButton=0;moorders::Point p;if(moOrdersContext()&&moCapturedHold()&&moPoint(msg,p,&moHover)){moorders::sample(moStroke,moStrokeCount,p,true);moCommit();}else resetMoOrders();return swallow();
+  moSuppressedButton=0;moorders::Point p;if(moOrdersContext()&&moCapturedHold()&&moPoint(msg,p,&moHover)){moCurrent=p;moorders::sample(moStroke,moStrokeCount,p,true);moCommit();}else resetMoOrders();return swallow();
  }
- if(moHolding&&(!moOrdersContext()||!moCapturedHold())){resetMoOrders();return false;}
+ if(moHolding&&(!moOrdersContext(true)||!moCapturedHold())){resetMoOrders();return false;}
  if(msg->message==WM_MOUSEMOVE&&moHolding){
-  moorders::Point p;if(moPoint(msg,p,&moHover)){moorders::sample(moStroke,moStrokeCount,p);if(DWORD(sampleClock(sh)-moPreviewAt)>=80)moBuildPreview();}return swallow();
+  moorders::Point p;if(moPoint(msg,p,&moHover))moSamplePreview(p);return swallow();
  }
  if(!edge.down||!moOrdersContext()||moStage||!moReadGestures())return false;
  if(formationView.active&&(!formationHolding||formationModal||formationButton))return false;
@@ -236,13 +249,13 @@ static bool moOrdersMessage(MSG*msg){
  if(resolved.mode==moorders::Patrol&&!moGraphEmpty()){sh->moOrderStatus=uint32_t(-17);moSuppressedButton=edge.button;return swallow();}
  if(resolved.mode==moorders::Patrol&&!moPlanningCapture(msg)){sh->moOrderStatus=uint32_t(-15);moSuppressedButton=edge.button;return swallow();}
  moQueueCount=moQueueAt=moStage=0;moMode=int(resolved.mode);moHover=hover;moStrokeCount=0;moCapturedGestures=moRuntimeGestures;moGestureButton=moSuppressedButton=edge.button;
- moorders::sample(moStroke,moStrokeCount,point);moHolding=true;moBuildPreview();return swallow();
+ moCurrent=point;moorders::sample(moStroke,moStrokeCount,point);moHolding=true;moBuildPreview();return swallow();
 }
 static void moOrdersTick(uint32_t house,int frame,DWORD now){
  if(!moOrdersPending())return;
  if(moPlanningUI.draining){moPlanningReset();return;}
- if(moEpoch!=match||moHouse!=house||!sh||(sh->moFeatures&moMode)==0||!moOrdersContext()||!moCapturedPolicy()){resetMoOrders();return;}
- if(moHolding){if(!moCapturedHold()){resetMoOrders();return;}if(DWORD(now-moPreviewAt)>=400)moBuildPreview();return;}
+ if(moEpoch!=match||moHouse!=house||!sh||(sh->moFeatures&moMode)==0||!moOrdersContext(moHolding)||!moCapturedPolicy()){resetMoOrders();return;}
+ if(moHolding){if(!moCapturedHold()){resetMoOrders();return;}if(DWORD(now-moPreviewAt)>=400)moBuildPreview();else if(moOutlineDirty&&DWORD(now-moOutlineAt)>=16){moUpdateOutline();moOrdersPublish();}return;}
  if(frame<moStartFrame||frame-moStartFrame>1800||DWORD(now-moStarted)>30000){sh->moOrderStatus=uint32_t(-7);resetMoOrders();return;}
  // Standard-object commands each get one final native capability/identity
  // check immediately before submission. Accepted commands are never retried.

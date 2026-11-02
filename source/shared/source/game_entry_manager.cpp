@@ -51,7 +51,9 @@ static Result applyPatch(const Request&r){
       uintptr_t(p)+n>uintptr_t(info.BaseAddress)+info.RegionSize)return false;
    memcpy(out,p,n);return true;
   }))return Result::PatchDenied;
-  if(directpatch::find(r.address)){
+  if(auto site=nativesidebarpolicy::find(r.address);site&&site->kind==nativesidebarpolicy::Kind::Bytes){
+   if(!nativesidebarpolicy::installed(r.address,r.after,r.length))return Result::PatchDenied;
+  }else if(directpatch::find(r.address)){
    if(!directpatch::installed(r.address,r.after,r.length))return Result::PatchDenied;
   }else if(mastercontrol::installed(r.address,r.after,r.length)){
    // Do not expose the unconditional predicate until BOTH strict owner calls

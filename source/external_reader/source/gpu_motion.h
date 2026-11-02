@@ -61,7 +61,7 @@ class History {
 public:
  void clear(){previous_.clear();view_={};width_=height_=0;valid_=false;sequence_=0;}
  bool prepare(const vulkancompute::FrameJob&f,Plan&out)const{
-  out={};if(!validView(f)||f.draws.size()>65536)return false;
+  out={};if(!validView(f)||f.draws.size()>vulkancompute::MaximumSceneDraws)return false;
   out.draws.resize(f.draws.size(),{{0,0}});out.eligible.resize(f.draws.size());
   bool continuing=continuation(f);out.reset=!continuing;
   if(continuing){out.base={{float((f.motion.x-view_.x)*f.motion.scaleX),float((f.motion.y-view_.y)*f.motion.scaleY)}};}

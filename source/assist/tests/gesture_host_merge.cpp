@@ -21,6 +21,7 @@ static int value(const wchar_t*s,const wchar_t*k,int fallback){auto i=ini.find({
 static bool write(const wchar_t*s,const wchar_t*k,int v){ini[{s,k}]=v;return true;}
 static unsigned changed=0,synced=0;
 static void changedSetting(){++changed;}static void syncAdditional(){++synced;}
+static void registerKeys(){}
 struct MatchState {int clears=0;void clear(){++clears;}} pointerMatches;
 static HWND ui=nullptr;
 static std::map<int,LRESULT> controlValues;
@@ -51,14 +52,14 @@ int main(){
  for(int i=0;i<4;++i){controlValues[9440+2*i]='G'+i;check(changeNewSettings(9440+2*i,EN_CHANGE));controlValues[9441+2*i]=5;check(changeNewSettings(9441+2*i,CBN_SELCHANGE));check(extra.moGestures.keys[i]==uint32_t('G'+i)&&extra.moGestures.buttons[i]==6);}
  for(int id=9400;id<=9402;++id){controlValues[id]=BST_CHECKED;check(changeNewSettings(id,BN_CLICKED));check(runtimeFeatureDemand(0,extra,false,false));}
  check(extra.moFeatures==7&&pointerMatches.clears==11&&synced==11);
- const auto oldSync=synced,oldChange=changed;check(changeNewSettings(9403,BN_CLICKED)&&changeNewSettings(9404,CBN_SELCHANGE));check(synced==oldSync&&changed==oldChange&&extra.moFeatures==7);
- for(int id=9450;id<=9455;++id){controlValues[id]='R'+id-9450;check(changeNewSettings(id,EN_CHANGE));}check(synced==oldSync);
+ const auto oldSync=synced,oldChange=changed;check(changeNewSettings(9403,BN_CLICKED)&&changeNewSettings(9404,CBN_SELCHANGE));check(synced==oldSync+2&&changed==oldChange+2&&extra.moFeatures==7);
+ for(int id=9450;id<=9455;++id){controlValues[id]='R'+id-9450;check(changeNewSettings(id,EN_CHANGE));}check(synced==oldSync+8);
  controlValues[9405]=BST_CHECKED;check(changeNewSettings(9405,BN_CLICKED)&&extra.superweaponPanel);
  superweaponOptions={true,true,123,456,150,12};saveNewSettings();auto saved=extra;
  extra=AdditionalSettings{};superweaponOptions={};loadNewSettings();check(extra.moFeatures==7&&extra.superweaponPanel&&moorders::sameGestures(extra.moGestures,saved.moGestures));
  check(extra.viewZoomKeys[0]==saved.viewZoomKeys[0]&&extra.sidebarKey==saved.sidebarKey&&extra.pauseKeys[1]==saved.pauseKeys[1]);check(superweaponOptions.detached&&superweaponOptions.collapsed&&superweaponOptions.x==123&&superweaponOptions.rows==12);
- ini[{L"MOControls",L"Features"}]=31;ini[{L"Mouse",L"FuzzyOrderMouseButton"}]=5;ini[{L"Display",L"SuperweaponScale"}]=500;loadNewSettings();check(extra.moFeatures==7&&extra.moGestures.buttons[0]==0&&superweaponOptions.scale==200);
- publishNewSettings();check(wire.moFeatures==7&&wire.moGesturePolicySeq==2&&moorders::sameGestures(wire.moGestures,extra.moGestures));
+ ini[{L"MOControls",L"Features"}]=31;ini[{L"Mouse",L"FuzzyOrderMouseButton"}]=5;ini[{L"Display",L"SuperweaponScale"}]=500;loadNewSettings();check(extra.moFeatures==23&&extra.moGestures.buttons[0]==0&&superweaponOptions.scale==200);
+ publishNewSettings();check(wire.moFeatures==23&&wire.moGesturePolicySeq==2&&moorders::sameGestures(wire.moGestures,extra.moGestures));
  extra=AdditionalSettings{};extra.moFeatures=1;publishNewSettings();physical[4]=physical[17]=1;check(runtimeMiddleOwnsNow());
  foreground=false;++clockNow;check(!runtimeMiddleOwnsNow());foreground=true;fresh=false;++clockNow;check(!runtimeMiddleOwnsNow());fresh=true;snap.chat=true;++clockNow;check(!runtimeMiddleOwnsNow());snap.chat=false;
  physical={};++clockNow;wire.moOrdersPreview.active=1;wire.moOrdersPreview.match=matchId;check(runtimeMiddleOwnsNow());wire.moOrdersPreview.match=matchId-1;check(!runtimeMiddleOwnsNow());wire.moOrdersPreview.active=0;
@@ -68,7 +69,8 @@ int main(){
  // Policy seqlock fallback is seeded from this session's configuration.
  ++matchId;wire.moGesturePolicySeq|=1;extra.moGestures.keys[0]='H';check(runtimeGesturePolicy().keys[0]=='H');wire.moGesturePolicySeq++;
  Drawing a,b;check(sameDrawing(a,b));a.active=b.active=true;a.preview.count=b.preview.count=1;a.preview.nodeCount=b.preview.nodeCount=1;check(sameDrawing(a,b));b.preview.tick=99;check(sameDrawing(a,b));b.preview.lines[0].to.x=1;check(!sameDrawing(a,b));b=a;b.projection.cameraX=1;check(!sameDrawing(a,b));b=a;b.hint=L"new key";check(!sameDrawing(a,b));b=a;b.preview.nodes[0].z=1;check(!sameDrawing(a,b));
- for(int id:{9405,9404,9407,9450,9451,9452,9453})check(suite::categories::row(4,&id,1)==suite::categories::Video);
- for(int id:{9400,9401,9402,9440,9446,9460,9403,9406,9454,9455})check(suite::categories::row(id>=9403&&id<=9406||id>=9454&&id<=9455?4:1,&id,1)==suite::categories::Control);
+ {int id=9405;check(suite::categories::row(4,&id,1)==suite::categories::Video);}
+ for(int id:{9404,9407,9450,9451,9452,9453,9403,9406,9454,9455,9462})check(suite::categories::row(4,&id,1)==suite::categories::Experimental);
+ for(int id:{9400,9401,9402,9440,9446,9460})check(suite::categories::row(1,&id,1)==suite::categories::Control);
  std::printf("PASS %u actual Host config/dispatch/IPC/arbitration/focus/preview/category checks\n",checks);
 }

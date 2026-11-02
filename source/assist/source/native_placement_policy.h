@@ -17,6 +17,13 @@ struct alignas(8) Request {
  // once with native ProcessClickCoords, then preserves it through admission.
  int32_t cellX,cellY,screenX,screenY,width,height,cameraX,cameraY;
 };
+// Read-only overlay state. This is not a native placement cursor or a queued order.
+struct alignas(8) Preview {
+ Offer offer{};
+ uint32_t match=0,tick=0;
+ int32_t active=0,cellX=0,cellY=0,x=0,y=0,z=0,width=0,height=0,status=0;
+ double zScale=.25;
+};
 static_assert(std::is_standard_layout<Offer>::value&&std::is_trivial<Offer>::value,"placement offer IPC");
 static_assert(std::is_standard_layout<Request>::value&&std::is_trivial<Request>::value,"placement request IPC");
 static_assert(sizeof(Offer)==72&&alignof(Offer)==8&&sizeof(Request)==104&&alignof(Request)==8,"placement IPC layout");

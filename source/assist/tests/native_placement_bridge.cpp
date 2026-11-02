@@ -65,15 +65,35 @@ template<class R,class...Args>static R call(uint32_t address,uint32_t self,Args.
 struct NativePlacementSubmission;
 static bool validateNativePlacement(const intent::EventOrder&,const NativePlacementSubmission*);
 static bool nativePlacementPacket(const Event&,const intent::EventOrder&);
+// This fixture exercises Place, never MO Waypoints. The production MO guard
+// accepts every non-Waypoints order unless a MO submission is in progress.
+static bool validateMoSubmission(const intent::EventOrder&o){return o.domain==vanilla::Domain::Place;}
 #define memcpy queueCopy
 #include "native_placement_entry_extract.h"
 #undef memcpy
+static int notifications=0;static void notifyHost(){++notifications;}
+static HWND fixtureForeground(){return (HWND)0x1234;}
+static DWORD fixtureWindowPid(HWND,DWORD*out){*out=GetCurrentProcessId();return 1;}
+static BOOL fixtureRect(HWND,RECT*out){*out={0,0,800,600};return TRUE;}
+static BOOL fixtureCursor(POINT*out){*out={100,100};return TRUE;}
+static BOOL fixtureClient(HWND,POINT*){return TRUE;}
+#define GetForegroundWindow fixtureForeground
+#define GetWindowThreadProcessId fixtureWindowPid
+#define GetClientRect fixtureRect
+#define GetCursorPos fixtureCursor
+#define ScreenToClient fixtureClient
 #include "../source/native_placement_bridge.h"
+#undef GetForegroundWindow
+#undef GetWindowThreadProcessId
+#undef GetClientRect
+#undef GetCursorPos
+#undef ScreenToClient
 constexpr uint32_t House=0x20010000,BuildingType=0x20020000,Factory=0x20030000,Product=0x20040000,Tactical=0x20050000,Cell=0x20060000,TypeItems=0x20070000,Cells=0x20100000;
 static void reset(){
  memset(globals,0,sizeof globals);memset(objects,0,sizeof objects);memset(sh,0,sizeof *sh);memset(&snap,0,sizeof snap);
  memset(typePointers,0,sizeof typePointers);lastHouse=House;match=7;clockNow=1000;ready=retired=clockOkay=true;failRead=0;
  outgoingBudget=10;queryMutation=ctorMutation=clockMutation={};queries=constructorsCalled=clockCalls=reads=0;constructedPacket=nullptr;
+ placementView={};placementCapturedButtons=0;sh->heartbeat=clockNow;put<uint32_t>(0xB73550,0x1234);put<int>(0x8809A0,-1);put<int>(0x8192B8,2);put<int>(0x819310,3);
  sh->foreground=1;sh->flags=BuildAnywhere;sh->placementImplementation=2;sh->request=1;sh->command=PlaceCompletedBuilding;sh->requestMatch=match;sh->requestTick=clockNow;
  snap.status=snap.commandStatus=1;snap.frame=300;snap.match=match;snap.session=3;snap.typeCount=1;snap.types[0].kind=7;snap.types[0].index=0;
  memcpy(snap.types[0].id,"GAPOWR",7);typePointers[0]=BuildingType;
@@ -141,6 +161,49 @@ int main(){
  auto good=intent::placeBuilding(3,0,0,{70,70});assert(constructors::admit(good)==constructors::Verdict::Ready);++checks;
  for(int n=0;n<8;++n){auto bad=good;switch(n){case 0:bad.a=40;break;case 1:bad.eventKind=0x0E;break;case 2:bad.b=-1;break;case 3:bad.c=2;break;case 4:bad.cell.x=0;break;case 5:bad.cell.y=512;break;case 6:bad.appendWaypoint=true;break;case 7:bad.tagA=1;break;}assert(constructors::admit(bad)==constructors::Verdict::InvalidFields);++checks;}
  assert(vanilla::exposure(vanilla::Domain::SellCell)==vanilla::Exposure::ProbeOnly&&vanilla::exposure(vanilla::Domain::Waypoints)==vanilla::Exposure::ProbeOnly);++checks;
+
+ // Interactive mode chooses the native tab, previews without constructing,
+ // and consumes exactly its own click pair after the arm receipt is retired.
+ reset();sh->arg2=1;assert(nativePlacementCommand(House,clockNow)==2&&placementView.active&&queued()==0&&constructorsCalled==0);++checks;
+ sh->ack=sh->request;nativePlacementTick(clockNow);assert(placementView.status==1&&placementView.width==2&&placementView.height==3&&queued()==0);++checks;
+ auto mouse=[](UINT message,int x=100,int y=100){MSG m{};m.hwnd=(HWND)0x1234;m.message=message;m.lParam=MAKELPARAM(x,y);return m;};
+ auto down=mouse(WM_LBUTTONDOWN);assert(nativePlacementMessage(&down)&&down.message==WM_NULL&&queued()==0);++checks;
+ auto up=mouse(WM_LBUTTONUP);assert(nativePlacementMessage(&up)&&queued()==1&&!placementView.active);++checks;
+ auto again=mouse(WM_LBUTTONUP);assert(!nativePlacementMessage(&again)&&queued()==1);++checks;
+ reset();sh->arg2=1;assert(nativePlacementCommand(House,clockNow)==2);auto right=mouse(WM_RBUTTONDOWN);assert(nativePlacementMessage(&right)&&!placementView.active&&queued()==0);right=mouse(WM_RBUTTONUP);assert(nativePlacementMessage(&right)&&queued()==0);++checks;
+ reset();sh->arg2=1;assert(nativePlacementCommand(House,clockNow)==2);MSG esc{};esc.message=WM_KEYDOWN;esc.wParam=VK_ESCAPE;assert(nativePlacementMessage(&esc)&&!placementView.active&&queued()==0);++checks;
+ reset();sh->arg2=1;assert(nativePlacementCommand(House,clockNow)==2);down=mouse(WM_LBUTTONDOWN,700,100);assert(!nativePlacementMessage(&down)&&!placementView.active&&queued()==0);++checks;
+ reset();sh->arg2=1;put<uint32_t>(0x87F7E8+0x11A4,Product);assert(nativePlacementCommand(House,clockNow)<0&&!placementView.active);down=mouse(WM_LBUTTONDOWN);assert(!nativePlacementMessage(&down)&&queued()==0);++checks;
+ reset();sh->arg2=1;put<int>(0x8809A0,0);assert(nativePlacementCommand(House,clockNow)<0&&queued()==0);++checks;
+ reset();sh->arg2=1;assert(nativePlacementCommand(House,clockNow)==2);down=mouse(WM_LBUTTONDOWN);assert(nativePlacementMessage(&down));put<uint32_t>(Product+0x10,99);up=mouse(WM_LBUTTONUP);assert(nativePlacementMessage(&up)&&queued()==0);++checks;
+ reset();sh->arg2=1;assert(nativePlacementCommand(House,clockNow)==2);down=mouse(WM_LBUTTONDOWN);assert(nativePlacementMessage(&down));clockMutation=[](){put<uint32_t>(Product+0x10,99);};up=mouse(WM_LBUTTONUP);assert(nativePlacementMessage(&up)&&queued()==0);++checks;
+ reset();sh->arg2=1;assert(nativePlacementCommand(House,clockNow)==2);put<int>(0x87F7E8+0x539C,1);nativePlacementTick(clockNow);assert(!placementView.active&&queued()==0);++checks;
+ reset();sh->arg2=1;assert(nativePlacementCommand(House,clockNow)==2);sh->foreground=0;nativePlacementTick(clockNow);assert(!placementView.active&&queued()==0);++checks;
+ // Re-arming creates a new gesture; an old held button's release cannot
+ // submit it without a new matching down edge in this preview generation.
+ reset();sh->arg2=1;assert(nativePlacementCommand(House,clockNow)==2);down=mouse(WM_LBUTTONDOWN);assert(nativePlacementMessage(&down));assert(nativePlacementCommand(House,clockNow)==2&&!placementView.active);assert(nativePlacementCommand(House,clockNow)==2&&placementView.active);up=mouse(WM_LBUTTONUP);assert(nativePlacementMessage(&up)&&queued()==0&&placementView.active);++checks;
+ // If focus loss cancelled this preview and its up happened elsewhere, a
+ // later native click must retain BOTH of its own down/up edges.
+ reset();sh->arg2=1;assert(nativePlacementCommand(House,clockNow)==2);down=mouse(WM_LBUTTONDOWN);assert(nativePlacementMessage(&down));sh->foreground=0;nativePlacementTick(clockNow);sh->foreground=1;down=mouse(WM_LBUTTONDOWN);assert(!nativePlacementMessage(&down));up=mouse(WM_LBUTTONUP);assert(!nativePlacementMessage(&up)&&queued()==0);++checks;
+ // The matching old up remains consumed when no newer down supersedes it.
+ reset();sh->arg2=1;assert(nativePlacementCommand(House,clockNow)==2);down=mouse(WM_LBUTTONDOWN);assert(nativePlacementMessage(&down));sh->foreground=0;nativePlacementTick(clockNow);sh->foreground=1;up=mouse(WM_LBUTTONUP);assert(nativePlacementMessage(&up)&&queued()==0);++checks;
+ // Thread hooks can observe another same-process window; it never gets the
+ // main game window's placement authority, including a captured up edge.
+ reset();sh->arg2=1;assert(nativePlacementCommand(House,clockNow)==2);down=mouse(WM_LBUTTONDOWN);down.hwnd=(HWND)0x5678;assert(!nativePlacementMessage(&down)&&queued()==0);++checks;
+ reset();sh->arg2=1;assert(nativePlacementCommand(House,clockNow)==2);down=mouse(WM_LBUTTONDOWN);assert(nativePlacementMessage(&down));up=mouse(WM_LBUTTONUP);up.hwnd=(HWND)0x5678;assert(nativePlacementMessage(&up)&&queued()==0);++checks;
+ reset();sh->arg2=1;put<int>(0x87F7E8+0x539C,2);assert(nativePlacementCommand(House,clockNow)<0&&queued()==0);++checks;
+ reset();sh->arg2=1;
+ constexpr uint32_t Factory2=Factory+0x8000,Product2=Product+0x8000,Type2=BuildingType+0x8000;
+ memcpy(memory(Factory2,0x80),memory(Factory,0x80),0x80);memcpy(memory(Product2,0x600),memory(Product,0x600),0x600);memcpy(memory(Type2,0x1000),memory(BuildingType,0x1000),0x1000);
+ put<uint32_t>(House+0x53CC,Factory2);put<uint32_t>(Factory2+0x10,22);put<uint32_t>(Factory2+0x58,Product2);put<uint32_t>(Product2+0x10,32);put<uint32_t>(Product2+0x520,Type2);put<uint32_t>(Type2+0x10,42);put<int>(Type2+0xE08,5);
+ snap.typeCount=2;snap.types[1]=snap.types[0];snap.types[1].index=1;typePointers[1]=Type2;put<int>(0xA83C68+16,2);put<int>(0xA83C68+8,2);put<uint32_t>(TypeItems+4,Type2);
+ put<int>(0x87F7E8+0x539C,1);assert(nativePlacementCommand(House,clockNow)==2&&placementView.offer.tab==1&&placementView.offer.product==Product2);++checks;
+ nativePlacementReset();put<int>(0x87F7E8+0x539C,0);assert(nativePlacementCommand(House,clockNow)==2&&placementView.offer.tab==0&&placementView.offer.product==Product);++checks;
+
+ reset();sh->arg2=1;assert(nativePlacementCommand(House,clockNow)==2);clockNow+=300;nativePlacementTick(clockNow);assert(placementView.active&&queued()==0);
+ down=mouse(WM_LBUTTONDOWN);assert(nativePlacementMessage(&down));up=mouse(WM_LBUTTONUP);assert(nativePlacementMessage(&up)&&queued()==0);++checks;
+ sh->heartbeat=clockNow;down=mouse(WM_LBUTTONDOWN);assert(nativePlacementMessage(&down));up=mouse(WM_LBUTTONUP);assert(nativePlacementMessage(&up)&&queued()==1);++checks;
+ reset();sh->arg2=1;assert(nativePlacementCommand(House,clockNow)==2);clockNow+=1001;nativePlacementTick(clockNow);assert(!placementView.active&&queued()==0);++checks;
  printf("native placement production admission/queue PASS checks=%d\n",checks);
  delete sh;
 }

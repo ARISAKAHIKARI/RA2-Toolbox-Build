@@ -21,6 +21,10 @@ int main(int argc,char**){
  constexpr uint32_t cell=0x200000,cells=0x100000,house=0x300000;constexpr int x=5,y=5;
  put(radar::Map+0xF4,4);put(radar::Map+0xF8,4);put(radar::Map+0x104,4);put(radar::Map+0x108,4);put(radar::Map+0x13C,cells);put(radar::Map+0x140,4096);put(radar::Map+0x1488,1.f);put(radar::Map+0x1490,4);put(radar::Map+0x1498,4);put(radar::Map+0x14A4,8);put(radar::Map+0x14A8,8);put(radar::Map+0x1240,8);put(radar::Map+0x1244,8);
  put(0xA83D4C,house);put(0xA8ED84,1);put(0xA8E9A0,uint8_t(1));put(0xA8E378,uint8_t(1));put(cells+(y*512+x)*4,cell);put(cell+0x24,int16_t(x));put(cell+0x26,int16_t(y));put(cell+0x11B,int8_t(-1));put(cell+0x12C,uint8_t(0x10));put(cell+0x140,uint8_t(0x01));put(cell+0xEC,2);
+ // This geometry fixture has verified empty material catalogues. Native -1
+ // denotes absent art; default zero would name an invalid first entry and
+ // the production catalogue-completeness guard correctly rejects the bank.
+ put(cell+0x38,-1);put(cell+0x44,-1);put(cell+0x48,-1);
  radar::Sampler<decltype(&read)> sampler(&read);assert(sampler.step(1,4096,true));auto frame=sampler.snapshot(1);assert(frame.terrain&&frame.terrain->art[y*512+x].level==-1);
  assert(frame.terrain->colors[y*512+x]==radar::terrainColor(2,-1,false));const auto&g=frame.terrain->geo;auto viewport=g.nativeViewport();assert(viewport.width==240&&viewport.height==120);mapbounds::TileOrigin at;assert(g.tileOrigin(x,y,frame.terrain->art[y*512+x].level,at)&&at.x==90&&at.y==105);
  // Native TMP plane: 29 nonempty rows/900 pixels. Preserve its actual
@@ -67,6 +71,7 @@ int main(int argc,char**){
   assert(liveBounds.legal(q.x,q.y)&&liveBounds.usable(q.x,q.y,q.level)==q.playable);
   put(borderCells+(q.y*512+q.x)*4,p);put(p+0x24,int16_t(q.x));put(p+0x26,int16_t(q.y));
   put(p+0x11B,int8_t(q.level));put(p+0x12C,uint8_t(0x10));put(p+0x140,uint8_t(0x01));put(p+0xEC,2);
+  put(p+0x38,-1);put(p+0x44,-1);put(p+0x48,-1);
  }
  radar::Sampler<decltype(&read)> revealed(&read);for(int n=0;n<64;++n)assert(revealed.step(1,4096,true));
  auto clipped=revealed.snapshot(4);assert(clipped.terrain);

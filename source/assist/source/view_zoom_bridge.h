@@ -19,7 +19,7 @@ static bool zoomNativeCompatible(){
  // See research/2026-10-23-experimental-view-zoom.md for sample provenance.
  uint8_t bytes[0x58A];if(!read(0x560BF0,bytes,sizeof bytes))return false;
  uint32_t h=2166136261u;for(auto b:bytes)h=(h^b)*16777619u;
- return h==0x858162CFu||h==0xC0FFC84Eu;
+ return h==0x858162CFu||h==0xC0FFC84Eu||h==0xB5377C6Fu;
 }
 static bool zoomRenderer(ZoomEnable&enable,ZoomRect&rect){
  uint32_t dd=get<uint32_t>(0x8A0094),vt=0,entry=0;
@@ -48,6 +48,7 @@ static bool zoomClientPoint(HWND window,POINT&point){
 static void zoomPublish(int status){if(sh){sh->viewZoomStatus=status;sh->viewZoomApplied=zoomApplied;auto s=zoomCurrent();sh->viewZoomWidth=s.width;sh->viewZoomHeight=s.height;}}
 static int zoomResize(viewzoom::Size size,ZoomEnable enable){
  if(!gameentry::active(gameentry::Client::Assist)||zoomFaulted)return -1;
+ if(!restoreSidebarView())return 0;
  if(sh)InterlockedExchange(&sh->viewZoomBusy,1);
  restoreHighScroll();resetPointerInput();
  int result=GuardedViewResize(uint32_t(uintptr_t(enable)),size.width,size.height);
@@ -76,6 +77,7 @@ static void viewZoomTick(){
  if(!sh)return;
  const int desired=featureavailability::zoomPercent(int(sh->viewZoomPercent));
  if(zoomFaulted){zoomPublish(viewzoom::Fault);return;}
+ if(sidebarViewRendering()){zoomPublish(viewzoom::Waiting);return;}
  auto current=zoomCurrent();
  if(zoomBase.width&&current!=zoomOwned)forgetViewZoom();
  if(desired==100&&!zoomBase.width){zoomAttempt=0;zoomPublish(viewzoom::Off);return;}

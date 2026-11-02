@@ -30,6 +30,13 @@ class GpuSceneRecord {
  size_t litBytes_=0;uint64_t litBuilds_=0,litHits_=0;
  uint64_t serial_=0;bool valid_=false;
  size_t prefixDraws_=0,prefixReplay_=0;bool prefixReady_=false;
+ struct CpuPrefix {
+  std::shared_ptr<const std::vector<uint32_t>>base;std::shared_ptr<const std::vector<float>>depth;
+  std::shared_ptr<const std::vector<uint8_t>>fog,alpha;std::shared_ptr<const gpushroud::Plan>mask;std::vector<gpueffects::Command>alphas;
+  std::vector<uint32_t>color;std::vector<float>z;std::vector<uint16_t>nativeZ;
+  int width=0,height=0;float scaleX=1,scaleY=1;bool native=false;colorprecision::Mode precision=colorprecision::Mode::NativeSteps;
+ };
+ mutable CpuPrefix cpuPrefix_;mutable bool cpuPrefixReused_=false;
  colorprecision::Mode precision_=colorprecision::Mode::NativeSteps;
  static std::shared_ptr<const voxel::Image> retain(const voxel::Image&i,std::shared_ptr<const voxel::Image> owner){
   // A caller-provided owner must own THIS object, not an unrelated stack copy.
@@ -87,7 +94,7 @@ class GpuSceneRecord {
    }
    else if(smooth&&(!i.shadow||i.rasterScale>1)&&(pxScale!=1||pyScale!=1))draw.sampling=i.rasterScale>1&&pxScale<=1&&pyScale<=1?vulkancompute::Sampling::Bilinear:vulkancompute::Sampling::Adaptive;
    if(draw.sampling==vulkancompute::Sampling::Nearest&&!draw.smoothRGB&&i.nativeBlend>0&&i.nativeBlend<=3&&i.blendSource&&i.blendSource->size()==size_t(i.width)*i.height){draw.source.pixels=i.blendSource;draw.nativeBlend=i.nativeBlend;}
-   if(frame_.draws.size()>=65536)return false;frame_.draws.push_back(std::move(draw));
+   if(frame_.draws.size()>=vulkancompute::MaximumSceneDraws)return false;frame_.draws.push_back(std::move(draw));
   }
   for(size_t index=0;index<i.attachments.size();++index){const auto&part=i.attachments[index];if((!part.shadow||i.shadowsAfter)&&(!part.airborneShadow||shadowDrop>0)){
    auto key=motion;if(motion.known&&frame_.collectGuides)key.part.push_back(uint32_t(index));if(!flatten(attachment(part),ax,ay+(part.shadow?shadowDrop*sy:0),sx,sy,base,state,lift,0,smooth,key,material.shifted(part.shadow?shadowDrop:0),nesting+1))return false;}}
@@ -110,13 +117,14 @@ public:
   const bool keep=retainPrefix&&prefixReady_;
   auto draws=std::move(frame_.draws);draws.resize(keep?prefixDraws_:0);frame_={};frame_.draws=std::move(draws);
   fallbackBase_.reset();cpuBaseFallback_={};replay_.resize(keep?prefixReplay_:0);valid_=false;
-  if(!keep){prefixReady_=false;prefixDraws_=prefixReplay_=0;}
+  if(!keep){prefixReady_=false;prefixDraws_=prefixReplay_=0;cpuPrefix_={};}cpuPrefixReused_=false;
  }
  void clear(){reset();frame_={};replay_=std::vector<Replay>{};litSources_.clear();litIndex_.clear();litBytes_=serial_=litBuilds_=litHits_=0;}
  void beginObjects(int width,int height,colorprecision::Mode precision){reset();frame_.width=width;frame_.height=height;precision_=precision;valid_=width>0&&height>0&&width<=32768&&height<=32768;}
  void nativeView(float sx,float sy,bool enabled){frame_.nativeScene=enabled;frame_.nativeScaleX=sx;frame_.nativeScaleY=sy;}
  uint64_t litBuilds()const{return litBuilds_;}uint64_t litHits()const{return litHits_;}size_t litBytes()const{return litBytes_;}
  bool prefixAvailable()const{return prefixReady_;}
+ bool cpuPrefixReused()const{return cpuPrefixReused_;}
  void retainPrefix(){prefixReady_=valid_;prefixDraws_=frame_.draws.size();prefixReplay_=replay_.size();}
  void begin(int width,int height,std::shared_ptr<const std::vector<uint32_t>>base,std::shared_ptr<const std::vector<float>>depth,colorprecision::Mode precision,
             std::shared_ptr<const std::vector<vulkancompute::TileJob>>baseTiles={},std::function<bool(std::vector<uint32_t>&)>cpuBaseFallback={},GpuDepthPlan depthPlan={},bool retainTerrainPrefix=false){
@@ -131,7 +139,7 @@ public:
  }
  void annotationDot(int x,int y,uint32_t color){
   color=0xff000000u|(color&0xffffffu);Replay replay;replay.dotX=x;replay.dotY=y;replay.dot=color;replay_.push_back(replay);
-  if(!valid_)return;if(frame_.draws.size()>=65536){valid_=false;return;}vulkancompute::DrawJob draw;draw.source.width=draw.source.height=3;draw.source.pixels=std::make_shared<const std::vector<uint32_t>>(9,color);draw.left=float(x-1);draw.top=float(y-1);draw.skipZ=true;draw.writeDepth=false;frame_.draws.push_back(std::move(draw));
+  if(!valid_)return;if(frame_.draws.size()>=vulkancompute::MaximumSceneDraws){valid_=false;return;}vulkancompute::DrawJob draw;draw.source.width=draw.source.height=3;draw.source.pixels=std::make_shared<const std::vector<uint32_t>>(9,color);draw.left=float(x-1);draw.top=float(y-1);draw.skipZ=true;draw.writeDepth=false;frame_.draws.push_back(std::move(draw));
  }
  void clip(int left,int top,int right,int bottom){frame_.clipLeft=left;frame_.clipTop=top;frame_.clipRight=right;frame_.clipBottom=bottom;}
  void fog(std::shared_ptr<const std::vector<uint8_t>>alpha){frame_.fogAlpha=std::move(alpha);}
@@ -142,7 +150,7 @@ public:
  bool valid()const{return valid_;}
  const vulkancompute::FrameJob&frame()const{return frame_;}
  bool replay(Surface&surface,cpureplay::Stats*stats=nullptr)const{
-  if(stats)*stats={};
+  if(stats)*stats={};cpuPrefixReused_=false;
   // basePixels stays captured for fallback even when GPU base tiles are used.
   if(frame_.width<1||frame_.height<1||uint64_t(frame_.width)*frame_.height>16*1024*1024||!validDepth(frame_))return false;
   const std::vector<uint32_t>*base=fallbackBase_.get();std::vector<uint32_t>generated;
@@ -177,13 +185,35 @@ public:
     }catch(const std::bad_alloc&){rowFailed=true;}
    });
   };
+  // Cache only the verified immutable terrain prefix, at final panel size.
+  // Mask/alpha changes affect native palette conversion BEFORE composition,
+  // so all their owners must agree; multiplying a cached color afterwards
+  // would be wrong. Dynamic actors are never included in this prefix cache.
+  std::vector<gpueffects::Command>alphas;if(frame_.nativeScene&&frame_.effects)for(const auto&c:frame_.effects->commands)if(c.words[0]==gpueffects::Alpha&&c.indices)alphas.push_back(c);
+  auto sameAlphas=[&]{if(alphas.size()!=cpuPrefix_.alphas.size())return false;for(size_t n=0;n<alphas.size();++n)if(alphas[n].words!=cpuPrefix_.alphas[n].words||alphas[n].indices!=cpuPrefix_.alphas[n].indices)return false;return true;};
+  const bool cacheable=prefixReady_&&prefixReplay_&&prefixReplay_<=replay_.size()&&alphas.size()<=8192&&
+    uint64_t(frame_.width)*frame_.height<=2*1024*1024&&frame_.basePixels&&!frame_.baseDepthWidth;
+  const bool cached=cacheable&&cpuPrefix_.base==frame_.basePixels&&cpuPrefix_.depth==frame_.baseDepth&&
+    cpuPrefix_.fog==frame_.fogAlpha&&cpuPrefix_.mask==frame_.maskPlan&&sameAlphas()&&
+    cpuPrefix_.width==frame_.width&&cpuPrefix_.height==frame_.height&&cpuPrefix_.native==frame_.nativeScene&&
+    cpuPrefix_.scaleX==frame_.nativeScaleX&&cpuPrefix_.scaleY==frame_.nativeScaleY&&cpuPrefix_.precision==precision_&&
+    cpuPrefix_.color.size()==size_t(frame_.width)*frame_.height;
+  auto savePrefix=[&]{if(!cacheable)return;cpuPrefix_.base=frame_.basePixels;cpuPrefix_.depth=frame_.baseDepth;
+   cpuPrefix_.fog=frame_.fogAlpha;cpuPrefix_.mask=frame_.maskPlan;cpuPrefix_.alphas=alphas;
+   cpuPrefix_.width=frame_.width;cpuPrefix_.height=frame_.height;cpuPrefix_.native=frame_.nativeScene;
+   cpuPrefix_.scaleX=frame_.nativeScaleX;cpuPrefix_.scaleY=frame_.nativeScaleY;cpuPrefix_.precision=precision_;
+   cpuPrefix_.color=surface.color;cpuPrefix_.z=surface.depth;cpuPrefix_.nativeZ=surface.nativeZ;cpuPrefix_.alpha=surface.alphaPlane();};
   size_t first=0,work=0;
-  for(size_t n=0;n<replay_.size();++n){const auto&call=replay_[n];
+  if(cached){surface.color=cpuPrefix_.color;surface.depth=cpuPrefix_.z;surface.nativeZ=cpuPrefix_.nativeZ;surface.alpha(cpuPrefix_.alpha);first=prefixReplay_;cpuPrefixReused_=true;}
+  for(size_t n=first;n<replay_.size();++n){
+   if(!cached&&n==prefixReplay_&&cacheable){segment(first,n,work);if(rowFailed||surface.failed())return false;savePrefix();first=n;work=0;}
+   const auto&call=replay_[n];
    if(call.material.displace||(call.image&&!cpureplay::rowIndependent(*call.image,call.sx,call.sy,call.smooth))){
     segment(first,n,work);if(rowFailed)return false;if(stats){++stats->barriers;++stats->serialCalls;}paint(call,0,frame_.height,nullptr);first=n+1;work=0;
    }else work=std::min<size_t>(16777216,work+(call.image?cpureplay::work(*call.image,call.sx,call.sy):9));
   }
   segment(first,replay_.size(),work);
+  if(!cached&&cacheable&&prefixReplay_==replay_.size()&&!rowFailed&&!surface.failed())savePrefix();
   return !rowFailed&&!surface.failed();
  }
 };

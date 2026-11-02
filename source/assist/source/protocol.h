@@ -24,7 +24,7 @@
 #include "dodge_compute.h"
 #include "native_placement_policy.h"
 namespace assist {
-constexpr uint32_t Magic=0x41533130, Version=88;
+constexpr uint32_t Magic=0x41533130, Version=89;
 // Both binaries derive the namespace from the protocol version. Do not maintain
 // a separate literal in the host: a valid ABI with a different name never connects.
 struct MappingPrefixValue {
@@ -221,10 +221,13 @@ struct Shared {
  nativeplacement::Request placementRequest{};
  // Local gestures enter the existing Runtime intent/event path. Keep this
  // tail append-only; older clients are rejected before reading these fields.
- volatile uint32_t moFeatures=0; // 1 fuzzy, 2 area, 4 native patrol
+ volatile uint32_t moFeatures=0; // 1 fuzzy, 2 area, 4 native patrol, 16 single-player pause experiment
  uint32_t moOrderStatus=0,moOrderAccepted=0,moOrderRejected=0;
  volatile long moOrdersPreviewSeq=0;moorders::Preview moOrdersPreview;
  volatile long moGesturePolicySeq=0;moorders::GesturePolicy moGestures;
+ volatile int32_t pauseViewStatus=0;uint32_t pauseViewKeys[2]{};
+ volatile long placementPreviewSeq=0;nativeplacement::Preview placementPreview;
+ volatile uint32_t sidebarMode=0;volatile int32_t sidebarStatus=0; // 0 full / 2 hidden; experimental native layout
 
 };
 inline int remaining(int start,int duration,int frame){

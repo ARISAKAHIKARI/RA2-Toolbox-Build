@@ -464,7 +464,8 @@ static void registerKeys(){for(int id:registeredKeyIDs)UnregisterHotKey(ui,id);r
  if(LOBYTE(ejectKey)&&!registerKey(1696,ejectKey))++failures;
  if(hookSmartUnload&&LOBYTE(unloadKey)&&!registerKey(1698,unloadKey))++failures;
  if(featureavailability::AutoCS&&hookAutoCS&&LOBYTE(csKey)&&!registerKey(1699,csKey))++failures;
- if(extra.viewZoomEnabled){for(int i=0;i<3;++i)if(!registerKey(1720+i,WORD((i==0?VK_OEM_MINUS:i==1?VK_OEM_PLUS:VK_BACK)|(6<<8))))++failures;}
+ if(extra.sidebarEnabled&&LOBYTE(extra.sidebarKey)&&!registerKey(1734,WORD(extra.sidebarKey)))++failures;
+ if(extra.viewZoomEnabled){for(int i=0;i<3;++i)if(!registerKey(1720+i,WORD(extra.viewZoomKeys[i])))++failures;}
  if(LOBYTE(extra.stickyKey)&&!registerKey(1723,WORD(extra.stickyKey)))++failures;
  if(buildAnywhereMode&&extra.placementImplementation==buildingmodes::PlacementEvent&&LOBYTE(extra.placementEventKey)&&!registerKey(placementeventhost::Hotkey,WORD(extra.placementEventKey)))++failures;
  for(int i=0;i<selectedmode::Count;++i)if(LOBYTE(extra.missionModeKeys[i])&&!registerKey(1724+i,WORD(extra.missionModeKeys[i])))++failures;
@@ -1208,6 +1209,7 @@ static void drawEnemyMarker(Graphics&g,const external::enemies::Marker&m,const v
 }
 #include "native_hotkeys_host.h"
 #include "placement_event_host.h"
+#include "placement_event_drawing.h"
 #include "air_path_host.h"
 static void serviceAirPath(){airway::service();}
 static void resetAirPath(){airway::reset();}
@@ -1354,6 +1356,7 @@ static void paint(){
  const auto&enemyFrame=clusteredEnemies;
  updateAircraftButton(origin,r);formationhost::update();
  const auto moDrawing=moordershost::drawing();
+ const auto placementDrawing=placementdrawing::capture();
  auto opaquePanels=overlaystack::opaqueBoxes(game,snap.width,snap.height);
  static std::vector<RECT> priorOpaquePanels;if(priorOpaquePanels.size()!=opaquePanels.size()||(!opaquePanels.empty()&&memcmp(priorOpaquePanels.data(),opaquePanels.data(),opaquePanels.size()*sizeof(RECT)))){priorOpaquePanels=opaquePanels;++paintRevision;}
  auto passengerBubbles=passengerView(renderNow);
@@ -1368,7 +1371,7 @@ static void paint(){
  bool panel=SendMessageW(check[6],BM_GETCHECK,0,0)==BST_CHECKED;
  bool hasToast=panel&&now<toastUntil;bool summary=panel&&snap.transports;
  worldrender::present();
- if(!moDrawing.active&&!formationhost::visible()&&!labelCount&&!hasToast&&!summary&&!snap.threatCount&&!snap.crateCount&&!enemyCount&&!statusCount&&!idleTabs&&passengerBubbles.empty()&&airLines.empty()&&nativeBadges.empty()){worldrender::invalidate();overlayRecovery.suspend();hideWorldOverlay();return;}
+ if(!placementDrawing.active&&!moDrawing.active&&!formationhost::visible()&&!labelCount&&!hasToast&&!summary&&!snap.threatCount&&!snap.crateCount&&!enemyCount&&!statusCount&&!idleTabs&&passengerBubbles.empty()&&airLines.empty()&&nativeBadges.empty()){worldrender::invalidate();overlayRecovery.suspend();hideWorldOverlay();return;}
  viewport::Scale view;if(!view.set(snap.width,snap.height,r.right,r.bottom)){hideWorldOverlay();return;}
  const int physicalW=r.right,physicalH=r.bottom;r.right=view.gameWidth;r.bottom=view.gameHeight;
  const float sx=1,sy=1; // Positions, glyphs, icons and bounds share game-pixel space.
@@ -1377,7 +1380,7 @@ static void paint(){
  float panelX=(r.right-panelW)*.5f;
  int left=r.right,up=r.bottom,right=0,bottom=0;
  auto include=[&](float x,float y,float w,float h){int x0=std::clamp(int(std::floor(x)),0,int(r.right)),y0=std::clamp(int(std::floor(y)),0,int(r.bottom));int x1=std::clamp(int(std::ceil(x+w)),0,int(r.right)),y1=std::clamp(int(std::ceil(y+h)),0,int(r.bottom));if(x1>x0&&y1>y0){left=std::min(left,x0);up=std::min(up,y0);right=std::max(right,x1);bottom=std::max(bottom,y1);}};
- if(formationhost::visible()||moDrawing.active)include(0,0,r.right,r.bottom);
+ if(placementDrawing.active||formationhost::visible()||moDrawing.active)include(0,0,r.right,r.bottom);
  for(const auto&b:passengerBubbles)include(b.left,b.top,b.width,b.height+6);
  for(const auto&b:nativeBadges)include(b.x*sx,b.y*sy,b.w*sx,b.h*sy);
  for(auto l:airLines)include(std::min(l.x,l.tx)*sx-6,std::min(l.y,l.ty)*sy-6,std::abs(l.x-l.tx)*sx+12,std::abs(l.y-l.ty)*sy+12);
@@ -1392,11 +1395,11 @@ static void paint(){
  static Snapshot drawn{};static visual::LabelView drawnViews[MaxLabels];static int drawnCount;static bool lastToast,lastPanel,lastSummary;static std::wstring oldToast;static int oldW,oldH,oldMargin;static uint32_t revision;
  static external::enemies::Marker drawnEnemies[external::enemies::Maximum];static visual::LabelView drawnEnemyViews[MaxLabels];static int drawnEnemyCount,drawnEnemyWidth,drawnEnemyHeight;
  static external::status::Marker drawnStatuses[external::status::Maximum];static visual::LabelView drawnStatusViews[MaxLabels];static int drawnStatusCount,drawnStatusWidth,drawnStatusHeight;
- static bool drawnSpiderPhase=false;static moordershost::Drawing drawnMo;
+ static bool drawnSpiderPhase=false;static moordershost::Drawing drawnMo;static placementdrawing::Drawing drawnPlacement;
  static uint32_t drawnIdleTabs=0,drawnShapeRevision=0;static bool drawnTabPhase=false;
  static std::vector<PassengerVisual> drawnPassengers;
  static std::vector<airway::Line> drawnAirLines;static std::vector<construction::NativeBadge> drawnBadges;
- bool changed=!moordershost::sameDrawing(drawnMo,moDrawing)||(statusCount&&drawnSpiderPhase!=spiderPhase)||drawnPassengers!=passengerBubbles||drawnBadges!=nativeBadges||drawnShapeRevision!=sidebarShapes.revision||drawn.width!=snap.width||drawn.height!=snap.height||drawnAirLines.size()!=airLines.size()||(!airLines.empty()&&memcmp(drawnAirLines.data(),airLines.data(),airLines.size()*sizeof(airway::Line)))||drawnIdleTabs!=idleTabs||(idleTabs&&drawnTabPhase!=tabPhase)||oldW!=physicalW||oldH!=physicalH||oldMargin!=topMargin||revision!=paintRevision||lastPanel!=panel||lastSummary!=summary||lastToast!=hasToast||(hasToast&&oldToast!=toast)||drawnCount!=labelCount||drawn.transports!=snap.transports||drawn.used!=snap.used||drawn.capacity!=snap.capacity||memcmp(drawnViews,labelViews,sizeof(visual::LabelView)*labelCount)||drawn.threatCount!=snap.threatCount||drawn.crateCount!=snap.crateCount||memcmp(drawn.threats,snap.threats,sizeof(Threat)*snap.threatCount)||memcmp(drawn.crates,snap.crates,sizeof(CrateMark)*snap.crateCount);
+ bool changed=!placementdrawing::same(drawnPlacement,placementDrawing)||!moordershost::sameDrawing(drawnMo,moDrawing)||(statusCount&&drawnSpiderPhase!=spiderPhase)||drawnPassengers!=passengerBubbles||drawnBadges!=nativeBadges||drawnShapeRevision!=sidebarShapes.revision||drawn.width!=snap.width||drawn.height!=snap.height||drawnAirLines.size()!=airLines.size()||(!airLines.empty()&&memcmp(drawnAirLines.data(),airLines.data(),airLines.size()*sizeof(airway::Line)))||drawnIdleTabs!=idleTabs||(idleTabs&&drawnTabPhase!=tabPhase)||oldW!=physicalW||oldH!=physicalH||oldMargin!=topMargin||revision!=paintRevision||lastPanel!=panel||lastSummary!=summary||lastToast!=hasToast||(hasToast&&oldToast!=toast)||drawnCount!=labelCount||drawn.transports!=snap.transports||drawn.used!=snap.used||drawn.capacity!=snap.capacity||memcmp(drawnViews,labelViews,sizeof(visual::LabelView)*labelCount)||drawn.threatCount!=snap.threatCount||drawn.crateCount!=snap.crateCount||memcmp(drawn.threats,snap.threats,sizeof(Threat)*snap.threatCount)||memcmp(drawn.crates,snap.crates,sizeof(CrateMark)*snap.crateCount);
  changed=changed||drawnEnemyCount!=enemyCount||drawnEnemyWidth!=enemyFrame.width||drawnEnemyHeight!=enemyFrame.height||memcmp(drawnEnemyViews,enemyViews,sizeof(visual::LabelView)*enemyCount)||memcmp(drawnEnemies,enemyFrame.items,sizeof(external::enemies::Marker)*enemyCount);
  changed=changed||drawnStatusCount!=statusCount||drawnStatusWidth!=statusFrame.width||drawnStatusHeight!=statusFrame.height||memcmp(drawnStatusViews,statusViews,sizeof(visual::LabelView)*statusCount)||memcmp(drawnStatuses,statusFrame.items,sizeof(external::status::Marker)*statusCount);
  origin.x+=view.left(left);origin.y+=view.top(up);
@@ -1408,7 +1411,7 @@ static void paint(){
  drawn.transports=snap.transports;drawn.used=snap.used;drawn.capacity=snap.capacity;drawn.threatCount=snap.threatCount;drawn.crateCount=snap.crateCount;memcpy(drawn.threats,snap.threats,sizeof(Threat)*snap.threatCount);memcpy(drawn.crates,snap.crates,sizeof(CrateMark)*snap.crateCount);drawnCount=labelCount;memcpy(drawnViews,labelViews,sizeof(visual::LabelView)*labelCount);oldW=physicalW;oldH=physicalH;oldMargin=topMargin;revision=paintRevision;lastPanel=panel;lastSummary=summary;lastToast=hasToast;oldToast=toast;
  drawnEnemyCount=enemyCount;drawnEnemyWidth=enemyFrame.width;drawnEnemyHeight=enemyFrame.height;memcpy(drawnEnemies,enemyFrame.items,sizeof(external::enemies::Marker)*enemyCount);memcpy(drawnEnemyViews,enemyViews,sizeof(visual::LabelView)*enemyCount);
  drawnStatusCount=statusCount;drawnStatusWidth=statusFrame.width;drawnStatusHeight=statusFrame.height;memcpy(drawnStatuses,statusFrame.items,sizeof(external::status::Marker)*statusCount);memcpy(drawnStatusViews,statusViews,sizeof(visual::LabelView)*statusCount);
- drawnMo=moDrawing;drawnSpiderPhase=spiderPhase;drawnPassengers=passengerBubbles;drawn.width=snap.width;drawn.height=snap.height;drawnShapeRevision=sidebarShapes.revision;drawnAirLines=airLines;drawnBadges=nativeBadges;drawnIdleTabs=idleTabs;drawnTabPhase=tabPhase;
+ drawnPlacement=placementDrawing;drawnMo=moDrawing;drawnSpiderPhase=spiderPhase;drawnPassengers=passengerBubbles;drawn.width=snap.width;drawn.height=snap.height;drawnShapeRevision=sidebarShapes.revision;drawnAirLines=airLines;drawnBadges=nativeBadges;drawnIdleTabs=idleTabs;drawnTabPhase=tabPhase;
  auto labels=std::vector<visual::LabelView>(labelViews,labelViews+labelCount),enemies=std::vector<visual::LabelView>(enemyViews,enemyViews+enemyCount),statuses=std::vector<visual::LabelView>(statusViews,statusViews+statusCount);
  auto threats=std::vector<Threat>(snap.threats,snap.threats+snap.threatCount);auto crates=std::vector<CrateMark>(snap.crates,snap.crates+snap.crateCount);
  std::array<external::sidebar::Frame,4> shapes; // immutable sidebar SHP pixels
@@ -1433,7 +1436,7 @@ static void paint(){
   for(int i=0;i<statusCount;++i)drawUnitStatus(g,statusFrame.items[i],statusViews[i],spiderPhase);g.Restore(statusClip);
   for(int i=0;i<labelCount;++i)drawLabel(g,labelViews[i],sx,sy,labelScale);
   for(const auto&b:passengerBubbles)drawPassengerBubble(g,b);
-  formationhost::draw(g,formation);moordershost::draw(g,moDrawing);
+  formationhost::draw(g,formation);moordershost::draw(g,moDrawing);placementdrawing::draw(g,placementDrawing);
   float y=top;
   if(summary){std::wstring text=L"载员 "+std::to_wstring(used)+L" / "+std::to_wstring(capacity)+L" · 剩余 "+std::to_wstring(std::max(0,capacity-used));SolidBrush bg(Color(150,13,21,31));g.FillRectangle(&bg,panelX,y,panelW,26.f);drawText(g,text,panelX+10,y+4,13,Color::White);y+=30;}
   if(hasToast){SolidBrush bg(Color(155,13,21,31));g.FillRectangle(&bg,panelX,y,panelW,27.f);drawText(g,toast,panelX+10,y+4,12,Color(255,220,233,247));y+=31;}
@@ -1521,7 +1524,7 @@ static std::wstring submitDiagnostic(){
 static void result(){if(!shared)return;uint32_t a=shared->ack;if(a==ack)return;MemoryBarrier();ack=a;commandLatency=sentAt?DWORD(GetTickCount()-sentAt):0;int r=shared->result,n=shared->count,c=shared->command;
  diag(L"ack command="+std::to_wstring(c)+L" result="+std::to_wstring(r)+L" count="+std::to_wstring(n)+L" ack="+std::to_wstring(a));
  if(c==PlaceCompletedBuilding){
-  notify(r>0&&n==1?L"建筑放置事件已提交；是否落地以游戏结果为准。":L"建筑未放置：产品、位置或游戏状态不再可用，请重新选择并按键；不会自动重试。");
+  notify(r==2?(shared->placementPreview.active?L"已自动匹配当前栏的完成建筑：地基预览已开启，左键放置，右键或 Esc 取消。":L"已取消放置预览。"):r>0&&n==1?L"建筑放置事件已提交；是否落地以游戏结果为准。":L"预览未开启：请先退出原生建造／维修／出售／超武光标，确认当前建筑／防御栏有已完成产品。");
   updatePlacementEventUI();return;
  }
  if(c==OpenTech&&r==-43){notify(L"暂不能切换规则数据模式：旧高危模式仍有生产任务。请先完成并放置、或取消旧模式的科技生产；清理后会继续切换。");return;}
@@ -1650,7 +1653,7 @@ static void updateModeStatus(DWORD now){
  SetWindowTextW(GetDlgItem(ui,9098),enhancement.c_str());
  updatePlacementEventUI();
  std::wstring riskStatus=extra.placementImplementation==buildingmodes::PlacementEvent?
-  std::wstring(L"原生事件放置：")+(!buildAnywhereMode?L"关闭":phase?L"等待游戏就绪":snap.placementStatus==2?L"已就绪；选择已完成建筑后按配置键放置":snap.placementStatus<0?L"旧补丁未能还原或版本不兼容，未启用":L"等待旧补丁还原并启用"):
+  std::wstring(L"原生事件放置：")+(!buildAnywhereMode?L"关闭":phase?L"等待游戏就绪":snap.placementStatus==2?L"已就绪；自动匹配当前建筑／防御栏，按配置键预览，左键放置":snap.placementStatus<0?L"旧补丁未能还原或版本不兼容，未启用":L"等待旧补丁还原并启用"):
   L"高危 · 随处建造："+riskText(buildAnywhereMode,snap.placementStatus);
  std::wstring airStatus=L"飞机路径点：";airStatus+=!(extra.airWaypoints||extra.nativeAirWaypoints)?L"关闭":phase?L"等待游戏就绪":extra.airWaypoints||extra.airPathKey||!airway::native()?L"兼容模式":snap.nativeAirStatus==-2?L"启用或关闭失败，请查看日志":snap.nativeAirStatus==-1?L"不支持此游戏版本":snap.nativeAirStatus==3?L"高危 · 原生下单":snap.nativeAirStatus==4?L"高危 · 完整原生":snap.nativeAirStatus==1?L"高危 · 原生模式":L"等待生效";
  SetWindowTextW(GetDlgItem(ui,866),airStatus.c_str());
@@ -1675,6 +1678,9 @@ static void updateModeStatus(DWORD now){
  SetWindowTextW(GetDlgItem(ui,807),riskStatus.c_str());
  std::wstring renderText=(extra.mapStrategy!=0)?L"高危 · 地图显示：":L"地图显示：";renderText+=extra.mapStrategy==3?(autoRevealDone&&autoRevealDone==commandMatch()?L"自动地图全开已执行":L"等待自动地图全开"):snap.renderRevealStatus==-2?L"启用或关闭失败，请查看日志":!extra.renderReveal?L"关闭":phase?L"等待游戏就绪":snap.renderRevealStatus==1?L"已启用":L"等待生效";
  SetWindowTextW(GetDlgItem(ui,809),renderText.c_str());
+ {int s=shared?shared->sidebarStatus:0;const wchar_t*status=s==1?L"已隐藏":s==2?L"等待绘制安全点":s==-1?L"不支持当前显示几何":s==-2?L"版本或 Hook 冲突":s==-3?L"原生布局切换失败":L"完整";SetWindowTextW(GetDlgItem(ui,9407),(std::wstring(L"侧边栏：")+status).c_str());}
+ {int p=shared?shared->pauseViewStatus:0;const wchar_t*status=p==1?L"运行中":p==2?L"已暂停":p==3?L"等待前进一帧":p==-1?L"仅支持单机／战役":p==-2?L"版本或 Hook 冲突":p==-3?L"原生暂停调用失败":p==-4?L"跨过多帧，已暂停":L"关闭";
+  std::wstring text=std::wstring(L"逐帧操作：")+status;SetWindowTextW(GetDlgItem(ui,9406),text.c_str());}
  {int z=shared?shared->viewZoomStatus:viewzoom::Waiting;std::wstring text=L"视角缩放：";
   if(!shared)text+=extra.viewZoomEnabled?L"等待连接":L"关闭";
   else switch(z){case viewzoom::Off:text+=L"100%";break;case viewzoom::Applied:text+=std::to_wstring(shared->viewZoomApplied)+L"% · "+std::to_wstring(shared->viewZoomWidth)+L" × "+std::to_wstring(shared->viewZoomHeight);break;
@@ -2268,7 +2274,7 @@ if(id==991){wchar_t query[128]{};GetWindowTextW(featureSearch,query,128);std::ws
  else if(id==475){WORD next=WORD(SendMessageW(csHoldEdit,HKM_GETHOTKEY,0,0));WORD prior=csHoldKey;csHoldKey=0;bool conflict=keyConflict(next,"",false);csHoldKey=prior;if(conflict){notify(L"此按键与已有功能冲突。");return 0;}csHoldKey=next;save();notify(L"CS 按键已保存；留空直接按增强鼠标键，非空按住键配合点击。");}
  else if(id==476){buildAnywhereMode=SendMessageW(anywhereCheck,BM_GETCHECK,0,0)==BST_CHECKED;
   resetPlacementEvent();registerKeys();updatePlacementEventUI();
-  notify(extra.placementImplementation==buildingmodes::PlacementEvent?(buildAnywhereMode?L"原生事件放置已开启：选择已完成建筑，再在游戏地图按配置键放置；不会修改游戏指令。":L"原生事件放置已关闭。"):
+  notify(extra.placementImplementation==buildingmodes::PlacementEvent?(buildAnywhereMode?L"原生事件放置已开启：自动匹配当前建筑／防御栏；按配置键预览，左键放置、右键或 Esc 取消。":L"原生事件放置已关闭。"):
    buildAnywhereMode?L"高危：扩展建筑放置范围已开启，可能影响联机同步。":L"扩展建筑放置范围已关闭，等待游戏恢复默认限制。");
   save();}
  else if(id==431){enabled=!enabled;if(!enabled)pauseAssistControls();else{lastFind=0;registerKeys();setStatus(L"正在重新连接…");}

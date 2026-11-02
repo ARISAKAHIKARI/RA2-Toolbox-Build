@@ -4,11 +4,13 @@
 #include <string.h>
 #include "crc_shadow_policy.h"
 #include "../../shared/source/direct_patch_policy.h"
+#include "../../shared/source/native_sidebar_policy.h"
 // Game-thread-only ownership bookkeeping, NOT a stop-the-world x86 patcher.
 // A stale/foreign site is sticky: never overwrite it on retries or detach.
 namespace assist { namespace hookregistry {
 enum class Owner : uint8_t { Frame, CS, Cursor, NativeEvent, FootClick, Decide, MouseUp, Placement, Sidebar, NativeAir, RenderMask, C4Test, PlayerControl, Camera, Combat, NetworkTransport, NativeSell, NativeMega, ControlCommand, CrcShadow, Unknown };
 inline Owner ownerAt(uint32_t a){
+ if(nativesidebarpolicy::find(a))return Owner::Sidebar;
  if(crcshadow::findSite(a))return Owner::CrcShadow;
  if(auto s=directpatch::find(a))return s->group==directpatch::Group::Map?Owner::RenderMask:Owner::Placement;
  switch(a){
@@ -52,6 +54,7 @@ inline Owner ownerAt(uint32_t a){
 }
 inline bool knownOriginal(uint32_t at,const uint8_t* bytes,unsigned size){
  if(!bytes)return false;
+ if(nativesidebarpolicy::find(at))return nativesidebarpolicy::original(at,bytes,size);
  if(auto s=crcshadow::findSite(at))return size==s->size&&!memcmp(bytes,s->original,size);
  if(directpatch::find(at))return directpatch::original(at,bytes,size);
  const uint8_t*signature=nullptr;unsigned expected=0;
@@ -146,7 +149,7 @@ struct Slot {
  uint8_t size=0;bool active=false,conflict=false;
 };
 enum class Transition : uint8_t { Deny, Install, Restore };
-template<unsigned Capacity=64> struct Registry {
+template<unsigned Capacity=128> struct Registry {
  static constexpr unsigned CapacityLimit=Capacity;
  Slot slots[Capacity]{};unsigned used=0;
  int find(uint32_t a)const{for(unsigned i=0;i<used;++i)if(slots[i].address==a)return int(i);return -1;}

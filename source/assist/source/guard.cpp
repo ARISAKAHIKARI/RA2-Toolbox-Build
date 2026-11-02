@@ -117,3 +117,7 @@ extern "C" unsigned __cdecl GuardedMapCrcShadow(unsigned op,unsigned house,unsig
  __except(AssistExceptionFilter(_exception_info(),14)){AssistMapCrcAbort();}
  SetLastError(savedError);return result;
 }
+
+#include "pause_view_guard.h"
+
+#include "sidebar_view_guard.h"

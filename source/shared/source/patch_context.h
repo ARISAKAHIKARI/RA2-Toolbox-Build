@@ -10,6 +10,10 @@
 namespace patchcontext {
 struct Probe {uint32_t site,address;uint8_t size,bytes[16];};
 static constexpr Probe Probes[]={
+ // Entry resumes before the original stack allocation; the paused branch
+ // uses only the final RET, with no native stack frame to unwind.
+ {experimentalpatch::PauseLoop,0x55D365,12,{0x81,0xEC,0xB4,1,0,0,0x84,0xC0,0x53,0x55,0x56,0x57}},
+ {experimentalpatch::PauseLoop,0x55DECF,13,{0x5F,0x5E,0x5D,0xB0,1,0x5B,0x81,0xC4,0xB4,1,0,0,0xC3}},
  {experimentalpatch::BuildTimeTooltip,0x7F74CC,12,{0xB0,0x8D,0x47,0,0x10,0x8E,0x47,0,0x30,0x8E,0x47,0}},
  {experimentalpatch::BuildTimeTooltip,0x724AEB,8,{0x8B,0x16,0x50,0x8B,0xCE,0xFF,0x52,0x14}},
  {experimentalpatch::CursorTooltipLayout,0x7F74CC,12,{0xB0,0x8D,0x47,0,0x10,0x8E,0x47,0,0x30,0x8E,0x47,0}},
@@ -97,6 +101,7 @@ static constexpr Probe Probes[]={
 };
 template<class Read> bool compatible(uint32_t site,Read read){
  if(!experimentalpatch::size(site))return false;
+ if(nativesidebarpolicy::find(site))return nativesidebarpolicy::compatible(site,read);
  if(auto s=directpatch::find(site))return directpatch::compatible(*s,read);
  if(site==experimentalpatch::ControlHouse){
   // Native unpacked entry and the two supplied platform forwarders have the

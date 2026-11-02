@@ -1,4 +1,7 @@
 #include "../source/formation_quick.h"
+#ifdef NDEBUG
+#undef NDEBUG
+#endif
 #include <cassert>
 #include <map>
 #include <tuple>

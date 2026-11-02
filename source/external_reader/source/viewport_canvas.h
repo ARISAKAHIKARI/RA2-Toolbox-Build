@@ -151,6 +151,7 @@ public:
  bool terrainPlanReused()const{return terrainPlanReused_;}
  bool gpuMasked()const{return gpuMasked_;}
  bool gpuCompleted()const{return gpuCompleted_;}
+ bool cpuTerrainReused()const{return gpuRecord_.cpuPrefixReused();}
  const std::vector<uint16_t>&nativeDepth()const{return surface_.nativeZ;}
  const std::shared_ptr<const std::vector<uint8_t>>&nativeAlpha()const{return surface_.alphaPlane();}
  void motion(vulkancompute::MotionView view,bool enabled){if(gpuRecording_)gpuRecord_.motion(std::move(view),enabled);}

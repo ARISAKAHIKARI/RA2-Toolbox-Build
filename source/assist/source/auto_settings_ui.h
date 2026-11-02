@@ -45,15 +45,20 @@ static bool autoSettingChanged(int id,int notification){
  if((id==9162||id==9163)&&notification==BN_CLICKED){(id==9162?minimapSecondary:extra.watchSecondary)=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;registerKeys();syncInformationRate(true);changedSetting();return true;}
  if(id==830&&notification==BN_CLICKED){minimapEnabled=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;if(!minimapEnabled)minimap::hidePrimary();changedSetting();return true;}
  if((id==9090&&notification==BN_CLICKED)||(id==9091&&select)||(id==9092&&notification==BN_CLICKED)){
-  extra.viewZoomEnabled=false;extra.viewZoomPercent=100;SendMessageW(GetDlgItem(ui,9090),BM_SETCHECK,BST_UNCHECKED,0);SendMessageW(GetDlgItem(ui,9091),CB_SETCURSEL,2,0);syncAdditional();return true;
+  if(id==9090)extra.viewZoomEnabled=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;
+  if(id==9091){int index=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));extra.viewZoomPercent=viewzoom::Levels[std::clamp(index,0,4)];}
+  if(id==9092){extra.viewZoomPercent=100;SendMessageW(GetDlgItem(ui,9091),CB_SETCURSEL,2,0);}
+  registerKeys();changedSetting();syncAdditional();return true;
  }
  if(id>=9440&&id<=9447){int index=(id-9440)/2;
   if((id%2)==0&&edit){extra.moGestures.keys[index]=uint32_t(SendMessageW(GetDlgItem(ui,id),HKM_GETHOTKEY,0,0));pointerMatches.clear();changedSetting();syncAdditional();return true;}
   if((id%2)==1&&select){int physical=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));if(physical>=0&&physical<=5){extra.moGestures.buttons[index]=physical==5?6:physical;pointerMatches.clear();changedSetting();syncAdditional();}return true;}
  }
- if(id>=9450&&id<=9455&&edit){uint32_t binding=uint32_t(SendMessageW(GetDlgItem(ui,id),HKM_GETHOTKEY,0,0));if(id<=9452)extra.viewZoomKeys[id-9450]=binding;else if(id==9453)extra.sidebarKey=binding;else extra.pauseKeys[id-9454]=binding;changedSetting();return true;}
+ if(id>=9450&&id<=9455&&edit){uint32_t binding=uint32_t(SendMessageW(GetDlgItem(ui,id),HKM_GETHOTKEY,0,0));if(id<=9452)extra.viewZoomKeys[id-9450]=binding;else if(id==9453)extra.sidebarKey=binding;else extra.pauseKeys[id-9454]=binding;registerKeys();changedSetting();syncAdditional();return true;}
  if(id>=9400&&id<=9402&&notification==BN_CLICKED){uint32_t bit=1u<<(id-9400);if(SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED)extra.moFeatures|=bit;else extra.moFeatures&=~bit;pointerMatches.clear();changedSetting();syncAdditional();return true;}
- if(id==9403||id==9404)return true; // Unavailable native pause/sidebar entries never authorize Runtime changes.
+ if(id==9403&&notification==BN_CLICKED){if(SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED)extra.moFeatures|=16u;else extra.moFeatures&=~16u;changedSetting();syncAdditional();return true;}
+ if(id==9462&&notification==BN_CLICKED){extra.sidebarEnabled=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;registerKeys();changedSetting();syncAdditional();return true;}
+ if(id==9404&&select){extra.sidebarMode=SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0)==1?2u:0u;changedSetting();syncAdditional();return true;}
  if(id==9405&&notification==BN_CLICKED){extra.superweaponPanel=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();syncAdditional();return true;}
  if(id==886&&select){extra.scrollRefreshMode=0;SendMessageW(GetDlgItem(ui,id),CB_SETCURSEL,0,0);changedSetting();syncAdditional();return true;}
  if(id==9096&&select){int mode=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));if(mode>=0&&mode<=buildingmodes::PlacementEvent){extra.placementImplementation=mode;resetPlacementEvent();changedSetting();syncAdditional();registerKeys();updatePlacementEventUI();}return true;}

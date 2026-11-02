@@ -7,7 +7,9 @@ struct NativePlacementViewport {
  bool operator==(const NativePlacementViewport&o)const{return tactical==o.tactical&&width==o.width&&height==o.height&&
   cameraX==o.cameraX&&cameraY==o.cameraY&&x==o.x&&y==o.y&&viewWidth==o.viewWidth&&viewHeight==o.viewHeight;}
 };
-struct NativePlacementSubmission {nativeplacement::Request request{};NativePlacementViewport view{};uint32_t serial=0;};
+struct NativePlacementSubmission {nativeplacement::Request request{};NativePlacementViewport view{};uint32_t serial=0;bool interactive=false;};
+static int nativePlacementArm(uint32_t,DWORD);
+static bool nativePlacementInteractiveValid(const NativePlacementSubmission&);
 static bool nativePlacementViewport(const nativeplacement::Request&r,NativePlacementViewport&v){
  auto reader=[](uint32_t at,void*out,size_t n){return read(at,out,n);};
  using nativeplacement::field;
@@ -53,9 +55,10 @@ static bool validateNativePlacement(const intent::EventOrder&o,const NativePlace
  if(o.domain!=vanilla::Domain::Place)return !submission;
  if(!submission||!nativePlacementAvailable())return false;
  const auto&r=submission->request;const auto&expected=r.offer;const DWORD now=sampleClock(sh);
- if(sh->command!=PlaceCompletedBuilding||sh->request!=submission->serial||sh->ack==submission->serial||
+ if((submission->interactive?!nativePlacementInteractiveValid(*submission):
+    (sh->command!=PlaceCompletedBuilding||sh->request!=submission->serial||sh->ack==submission->serial||
     sh->requestMatch!=match||DWORD(now-sh->requestTick)>nativeplacement::FreshMs||sh->arg!=expected.slot||
-    sh->requestTypeHash!=expected.typeHash||!nativeplacement::fresh(expected,match,now,snap.frame)||expected.house!=lastHouse||
+    sh->requestTypeHash!=expected.typeHash))||!nativeplacement::fresh(expected,match,now,snap.frame)||expected.house!=lastHouse||
     expected.typeHash!=typeListHash(snap.types,snap.typeCount)||o.player!=get<int>(lastHouse+0x30)||
     o.eventKind!=vanilla::EventType::Place||o.a!=7||o.b!=expected.typeIndex||o.c!=expected.naval||
     o.cell.x!=r.cellX||o.cell.y!=r.cellY||!nativeplacement::cell(r.cellX,r.cellY))return false;
@@ -74,6 +77,7 @@ static bool nativePlacementPacket(const Event&e,const intent::EventOrder&o){
 }
 static int nativePlacementCommand(uint32_t house,DWORD now){
  if(!nativePlacementAvailable())return nativePlacementRetired()?-3:-2;
+ if(sh->arg2==1)return nativePlacementArm(house,now);
  NativePlacementSubmission submission{};submission.request=sh->placementRequest;submission.serial=sh->request;
  auto&r=submission.request;
  if(!nativeplacement::fresh(r.offer,match,now,snap.frame)||r.offer.house!=house||sh->arg!=r.offer.slot||
@@ -93,3 +97,4 @@ static int nativePlacementCommand(uint32_t house,DWORD now){
  if(!submitConstructed(order,OrderAuthority::Local,&submission))return snap.lastSubmitError==43?-7:-6;
  return 1;
 }
+#include "native_placement_preview_bridge.h"

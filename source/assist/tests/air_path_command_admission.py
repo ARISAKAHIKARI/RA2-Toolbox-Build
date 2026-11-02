@@ -20,6 +20,9 @@ def main():
     branch = bridge[begin:end].strip()
     assert branch.startswith("{") and branch.endswith("}")
     prelude = r'''
+#ifdef NDEBUG
+#undef NDEBUG
+#endif
 #include <cstdint>
 #include <cassert>
 #include <cstdio>

@@ -5,9 +5,16 @@
 namespace moordershost {
 struct Drawing {moorders::Preview preview;external::Projection projection;bool active=false;std::wstring hint;};
 static Drawing drawing(){
- Drawing out;if(!shared||snap.chat||!foregroundGame())return out;
- long sequence=shared->moOrdersPreviewSeq;if(sequence&1)return out;MemoryBarrier();out.preview=shared->moOrdersPreview;MemoryBarrier();
- if(sequence!=shared->moOrdersPreviewSeq||!out.preview.active||out.preview.match!=commandMatch()||DWORD(GetTickCount()-out.preview.tick)>500||out.preview.count<0||out.preview.count>moorders::Lines||out.preview.nodeCount<0||out.preview.nodeCount>moorders::Nodes)return out;
+ // A seqlock collision is an incomplete read, not a cancelled gesture. Keep
+ // the last complete snapshot in this exact process/match while it is fresh.
+ static moorders::Preview cached;static uint32_t owner=0,epoch=0;static const void*mapping=nullptr;
+ Drawing out;if(!shared||snap.chat||!foregroundGame()){cached={};mapping=nullptr;return out;}
+ const uint32_t current=commandMatch();if(owner!=pid||epoch!=current||mapping!=shared){cached={};owner=pid;epoch=current;mapping=shared;}
+ long sequence=shared->moOrdersPreviewSeq;
+ if(!(sequence&1)){MemoryBarrier();auto next=shared->moOrdersPreview;MemoryBarrier();
+  if(sequence==shared->moOrdersPreviewSeq){if(next.match==current&&next.count>=0&&next.count<=moorders::Lines&&next.nodeCount>=0&&next.nodeCount<=moorders::Nodes)cached=next;else cached={};}}
+ out.preview=cached;
+ if(!out.preview.active||out.preview.match!=current||!(shared->moFeatures&uint32_t(out.preview.mode))||DWORD(GetTickCount()-out.preview.tick)>500)return out;
  out.projection={snap.cameraX,snap.cameraY,snap.width,snap.height,out.preview.zScale};out.active=true;out.hint=runtimeGestureDescription(uint32_t(out.preview.mode));return out;
 }
 // Exclude the freshness timestamp from visual identity: the Runtime refreshes

@@ -1,5 +1,8 @@
 #include "../source/mo_patrol_graph.h"
 #include "../source/constructor_adapter.h"
+#ifdef NDEBUG
+#undef NDEBUG
+#endif
 #include <cassert>
 #include <iostream>
 using namespace assist;

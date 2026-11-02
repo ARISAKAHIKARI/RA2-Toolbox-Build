@@ -9,6 +9,9 @@ import argparse
 import os
 root=Path(__file__).resolve().parents[2]
 fixture=r'''
+#ifdef NDEBUG
+#undef NDEBUG
+#endif
 #include <algorithm>
 #include <array>
 #include <cassert>

@@ -1,7 +1,7 @@
 #pragma once
 #include "radar_shroud_mask.h"
 #include "radar_publication.h"
-#include <map>
+#include <unordered_map>
 
 namespace external { namespace radar { namespace shroudmask {
 struct Snapshot {
@@ -16,7 +16,16 @@ class Live {
  std::vector<Bits> bits_;
  std::vector<uint32_t> pointers_;uint32_t epoch_=0;
  struct Page {std::array<uint8_t,4096>bytes;uint32_t epoch=0;bool valid=false;};
- std::map<uint32_t,Page>pages_;
+ // A full 256x256 map has ~131k Cells and needs ~44MiB of packed Cell
+ // pages. The former 8192-page cache cleared in the middle of every capture,
+ // repeatedly allocating the same pages. Addresses remain bounded and bytes
+ // are still refreshed for every capture epoch.
+ static constexpr size_t MaximumPages=16384;
+ // libc++ uses power-of-two buckets for reserve(16384). Aligned addresses
+ // hash to only a few buckets unless the invariant low twelve bits are
+ // removed; identity hashing made the initial hash-table candidate slower.
+ struct PageHash {size_t operator()(uint32_t page)const noexcept{return size_t(page>>12);}};
+ std::unordered_map<uint32_t,Page,PageHash>pages_;
  size_t calls_=0,bytes_=0,touchedPages_=0;
  template<class Read>static auto immediate(Read read,uint32_t p,void*out,size_t n,int)->decltype(read.fresh(p,out,n)){return read.fresh(p,out,n);}
  template<class Read>static bool immediate(Read read,uint32_t p,void*out,size_t n,long){return read(p,out,n);}
@@ -35,14 +44,14 @@ public:
     !fresh(Map+0x140,&count,4)||count!=g.count||offsets[0]!=g.offsetX||offsets[1]!=g.offsetY)return false;
   pointers_.resize(size_t(g.count));if(!fresh(g.cells,pointers_.data(),pointers_.size()*4))return false;
   std::array<int8_t,256>lookup;if(!shroudselector::readLookup(fresh,lookup))return false;
-  if(bits_.empty())bits_.resize(512*512);
+  if(bits_.empty()){bits_.resize(512*512);pages_.reserve(MaximumPages);}
   if(++epoch_==0){for(auto&b:bits_)b.epoch=0;pages_.clear();++epoch_;}
   // This cache belongs to ONE visibility capture epoch. It never reuses a
   // page sampled earlier by the art/terrain renderer, and each next capture
   // refreshes every touched page. Adjacent Cell allocations share one RPM.
   auto fields=[&](uint32_t p,void*out,size_t n){
    size_t done=0;while(done<n){uint32_t address=p+uint32_t(done),page=address&~4095u;
-    if(pages_.size()>=8192&&!pages_.count(page))pages_.clear();
+    if(pages_.size()>=MaximumPages&&!pages_.count(page))pages_.clear();
     auto&cached=pages_[page];if(cached.epoch!=epoch_){++touchedPages_;cached.epoch=epoch_;cached.valid=fresh(page,cached.bytes.data(),cached.bytes.size());}
     size_t take=std::min(n-done,size_t(4096-(address&4095)));
     if(cached.valid)std::memcpy(static_cast<uint8_t*>(out)+done,cached.bytes.data()+(address&4095),take);
@@ -79,7 +88,7 @@ public:
    int hi=std::clamp(int(std::ceil(std::min(d1+cy,s1-cy)))-1,1,511);
    for(int cx=lo;cx<=hi;++cx){if(!g.legal(cx,cy))continue;
     mapbounds::TileOrigin at;if(!g.shroudOrigin(cx,cy,at)||at.x>=x+w||at.x+60<=x||at.y>=y+h||at.y+30<=y)continue;
-    if(candidate.cells.size()>=65536)return false;
+    if(candidate.cells.size()>=512*512)return false;
     ShroudFrames shade{shroudselector::frame(cx,cy,false,lookup,fetch),shroudselector::frame(cx,cy,true,lookup,fetch)};
     candidate.cells.push_back({uint32_t(cy*512+cx),shade});
    }

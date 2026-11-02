@@ -59,7 +59,7 @@ static bool techTransitionProductionPending(uint32_t house){
  }
  return false;
 }
-static bool ensureTechCameo(int i,uint32_t house){
+static bool ensureTechCameo(int i,uint32_t house,const sidebarpolicy::CameoSet*known=nullptr){
  if(i<0||i>=snap.typeCount||!techAllowed[i]||!typePointers[i])return false;
  if(techImplementation==2)return hasCameo(snap.types[i].kind,snap.types[i].index);
  uint32_t factory=0;
@@ -72,7 +72,7 @@ static bool ensureTechCameo(int i,uint32_t house){
   factory=call<uint32_t>(method,type,true,false,true,(void*)(uintptr_t)house);
  }else factory=techFactory(typePointers[i],house);
  if(!factory)return false;
- auto&t=snap.types[i];if(hasCameo(t.kind,t.index))return true;
+ auto&t=snap.types[i];if(known?known->contains(t.kind,t.index):hasCameo(t.kind,t.index))return true;
  int tab=typeTab(i);if(tab<0||tab>3||get<int>(Tabs+tab*3988+84)>=75)return false;
  if(!call<bool>(0x6A6300,Sidebar,t.kind,t.index))return false;sidebarRedraw(tab);return hasCameo(t.kind,t.index);
 }
@@ -117,6 +117,45 @@ static void refreshTech(uint32_t house,DWORD now){techRefresh=now;
  }
  techScanAt=snap.typeCount;techPending=false;
  snap.techVisible=techScanVisible;snap.techUnavailable=techScanUnavailable;
+}
+// Native sidebar rebuilds can remove a locally inserted icon between the
+// one-second catalogue passes. Inspect the four bounded strips once per game
+// frame and restore every missing legal entry, without re-querying existing
+// icons. AddCameo retains native sorting, deduplication and the 75-item limit.
+struct TechCameoRetry {uint32_t pointer=0,tick=0;int kind=0,index=0;};
+static TechCameoRetry techCameoRetry[MaxTypes];
+static uint32_t techCameoHouse=0,techCameoEpoch=0;
+static uint64_t techCameoCatalogue=0;
+static int techCameoFrame=INT32_MIN;static unsigned techCameoImplementation=UINT32_MAX;
+static bool techCameoInventory(sidebarpolicy::CameoSet&icons){
+ struct Entry {int index,kind;uint8_t remaining[44];};static_assert(sizeof(Entry)==52,"Native cameo stride");
+ icons.clear();Entry entries[75];
+ for(int tab=0;tab<4;++tab){const uint32_t strip=Tabs+tab*3988;int count=0,after=0;
+  if(!read(strip+84,&count,4)||count<0||count>75||
+     (count&&!read(strip+88,entries,size_t(count)*sizeof(Entry)))||!read(strip+84,&after,4)||after!=count)return false;
+  for(int n=0;n<count;++n)if(!icons.add(entries[n].kind,entries[n].index))return false;
+ }return true;
+}
+static void maintainTechCameos(uint32_t house,int frame,DWORD now){
+ if(!sh||sh->stop||!(sh->flags&UnsafeTech)||!snap.techOpen||techPending||techImplementation==2||
+    house!=lastHouse||get<uint32_t>(0xA83D4C)!=house||!get<bool>(0xA8E9A0)||frame<0||frame>=INT32_MAX||
+    !sessionTracker.epoch||!techSessionAllowed()||!eventdelivery::mayQueue(get<int>(0xA8B238))||house==get<uint32_t>(0xAC1198)||get<bool>(house+0x1F5)||get<bool>(house+0x1F6)||get<bool>(house+0x1F8))return;
+ if(techCameoHouse!=house||techCameoEpoch!=sessionTracker.epoch||techCameoCatalogue!=catalogueHash||
+    techCameoImplementation!=techImplementation||frame<techCameoFrame){
+  for(auto&r:techCameoRetry)r={};techCameoHouse=house;techCameoEpoch=sessionTracker.epoch;
+  techCameoCatalogue=catalogueHash;techCameoImplementation=techImplementation;techCameoFrame=INT32_MIN;
+ }
+ if(frame==techCameoFrame||(frame==techScanFrame&&techScanImplementation==techImplementation))return;
+ sidebarpolicy::CameoSet icons;if(!techCameoInventory(icons))return;techCameoFrame=frame;
+ int visible=0,unavailable=0;
+ for(int i=0;i<snap.typeCount&&i<MaxTypes;++i){auto&r=techCameoRetry[i];const auto&t=snap.types[i];
+  if(!techAllowed[i]||!typePointers[i]){r={};continue;}
+  if(icons.contains(t.kind,t.index)){r={};++visible;continue;}
+  if(r.pointer==typePointers[i]&&r.kind==t.kind&&r.index==t.index&&DWORD(now-r.tick)<250){++unavailable;continue;}
+  if(ensureTechCameo(i,house,&icons)){icons.add(t.kind,t.index);r={};++visible;}
+  else{r={typePointers[i],now,t.kind,t.index};++unavailable;}
+ }
+ snap.techVisible=visible;snap.techUnavailable=unavailable;
 }
 struct FlashRef {uint32_t address;int kind,index,until;};static FlashRef flashRefs[4*75];
 static void clearFlashes(){for(auto&f:flashRefs){if(f.address&&get<int>(f.address-48)==f.index&&get<int>(f.address-44)==f.kind&&get<int>(f.address)==f.until)put<int>(f.address,0);f={};}}

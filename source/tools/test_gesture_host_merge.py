@@ -57,13 +57,15 @@ assert 'if(runtimeMiddleOwnsNow()){typeTap.clear();variantTap.clear();hotkeyPend
 assert main.count('serviceSuperweaponPanel();') == 1
 assert 'send(SelectSuper,index,int(instance),0,false,type)' in main
 assert 'superweaponOptions.enabled=enabled&&extra.superweaponPanel&&overlayvisibility::visible();' in main
-for removed in ('nativeviewportprojection', 'viewportSerial', 'shared->sidebarMode', 'shared->pauseViewKeys'):
+for removed in ('nativeviewportprojection', 'viewportSerial'):
     assert removed not in main + io
+assert 'shared->sidebarMode=extra.sidebarEnabled&&extra.sidebarMode==2?2u:0u;' in io
+assert 'shared->pauseViewKeys[0]=extra.pauseKeys[0]' in io
 controls = read('tactical_controls.h')
 for id in (9400, 9401, 9402, 9405):
     assert controls.count('toggle(' + str(id) + ',') == 1
-for id in (9403, 9404):
-    assert ('EnableWindow(toggle(9403,' if id == 9403 else 'EnableWindow(GetDlgItem(ui,9404),FALSE)') in controls
+assert 'toggle(9403,' in controls and 'toggle(9462,' in controls
+assert 'EnableWindow(GetDlgItem(ui,9404),FALSE)' not in controls
 assert '严格无代码补丁核心' not in controls
 result = {'scope': 'extracted actual Host routes and headers, not live game', 'architectures': {}}
 for arch in ('x86_64', 'x86'):

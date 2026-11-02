@@ -102,6 +102,7 @@ template<class Assets>class SceneRenderer {
  lighting::State buildingLight_;uint64_t voxelLightRevision_=0;bool voxelLightKnown_=false;
  struct DecodeStats {unsigned attempts=0,hits=0;double milliseconds=0,budget=0;} decodeStats_;
  struct StageStats {double terrainMs=0,materialsMs=0,palettesMs=0,decodeMs=0,voxelMs=0,objectsMs=0,resolveMs=0,effectsMs=0;size_t overlayScanCells=0,actors=0,terrainLightCells=0,terrainGeometryChecks=0,terrainProbeCopies=0;bool reused=false;
+  double visibilityMs=0;size_t visibilityCalls=0,visibilityPages=0,visibilityCells=0;bool visibilityAttempted=false,cpuTerrainReused=false;
   RenderFailure failure=RenderFailure::None;uint32_t failureObject=0,failureType=0,failureID=0;int failureKind=-1,rasterScale=0,hvaBody=0,hvaTurret=0;
   bool voxelLightAvailable=false,voxelLightChanged=false,gunPoseValid=false,postureAvailable=false,shadowAvailable=false;
   size_t candidates=0,liveFaces=0,posePixels=0,replacementPixels=0,newPixels=0,geometryBytes=0;std::string assetFailure;
@@ -140,7 +141,7 @@ template<class Assets>class SceneRenderer {
  shroudmask::Raster mask_;std::shared_ptr<const Terrain> maskSource_;bool maskFog_=false;
  gpushroud::Builder gpuMaskBuilder_;std::shared_ptr<const gpushroud::Plan> gpuMaskPlan_,cpuMaskPlan_;
  std::shared_ptr<const std::vector<uint8_t>> maskPixels_;
- shroudmask::Live liveMasks_;shroudmask::Snapshot liveMaskSnapshot_;bool liveMaskValid_=false;
+ shroudmask::Live liveMasks_;shroudmask::Snapshot liveMaskSnapshot_;bool liveMaskValid_=false;uint32_t liveMaskTick_=0;
  terraincoverage::Region coverage_;bool coverageLocal_=false;
  std::vector<size_t> cells_,baseCells_;CellReadPlan cellReadPlan_;std::vector<Paint> prepared_;std::vector<uint64_t> painted_;size_t cursor_=0,baseCursor_=0;
  uint64_t partialBanks_=0; // ABI-compatible diagnostics; overlays now use independent instances.
@@ -159,7 +160,9 @@ template<class Assets>class SceneRenderer {
   // Exploration belongs to the destination mask and actor admission. It must
   // not rebuild static TMP pages/xBRZ caches when their source art is intact.
   for(size_t n=0;n<a.art.size();++n){const auto&x=a.art[n];const auto&y=b.art[n];if(x.cell!=y.cell||x.type!=y.type||x.sub!=y.sub||x.level!=y.level||x.sourceColor!=y.sourceColor)return false;
-   if(!local&&x.sourceHidden!=y.sourceHidden)return false;
+   // Terrain pixels exist independently of exploration. The destination's
+   // live mask is applied after drawing; old/new sampling banks must not
+   // rebuild or remove identical TMP sources when a cell becomes explored.
    if(!x.sourceColor&&n<a.colors.size()&&a.colors[n]!=b.colors[n])return false;
   }return true;
  }
@@ -241,7 +244,7 @@ public:
   if(!building_){
    building_=frame.terrain;buildingLight_=scene;bankSameSource_=complete_&&(complete_==building_||sameSource(*complete_,*building_,region.active));cursor_=baseCursor_=0;prepared_.clear();probeChanged_=pendingIncomplete_=false;
    if(!bankSameSource_){cells_.clear();baseCells_.clear();cellReadPlan_.clear();
-   for(size_t n=0;n<building_->colors.size();++n)if(building_->colors[n]||(building_->art[n].sourceColor&&(region.active||!building_->art[n].sourceHidden))){
+   for(size_t n=0;n<building_->colors.size();++n)if(building_->colors[n]||building_->art[n].sourceColor){
     int x=int(n%512),y=int(n/512);mapbounds::TileOrigin origin;
     if(!building_->geo.tileOrigin(x,y,building_->art[n].level,origin))continue;
     if(coverageLocal_&&!coverage_.tile(origin.x,origin.y)&&!coverage_.rgb((x-y+building_->geo.offsetX)*30,(x+y-building_->geo.offsetY)*15))continue;
@@ -409,20 +412,40 @@ public:
   uint32_t options=game.template get<uint32_t>(0xA8B230);
   bool fog=masked&&options>=0x10000&&(game.template get<uint8_t>(options+1)&0x10)&&
    game.template get<uint8_t>(complete_->geo.house+0x1F5)==0;
-  if(!prepareWorldOnly_&&masked&&region.active&&currentVisibility(read,0)){
+  if(!prepareWorldOnly_&&masked&&(region.active||outputSized_)&&currentVisibility(read,0)){
    shroudmask::Snapshot current;
-   if(!liveMasks_.capture(read,complete_->geo,region.x,region.y,region.width,region.height,current))return {};
-   fog=current.fog;
-   if(!liveMaskValid_||!maskSource_||mask_.width!=width||mask_.height!=height||!liveMaskSnapshot_.sameMask(current)){
+   // Full-map banks are collected over multiple bounded sampling passes.
+   // Their shade can be older than another worker's bank even when its actor
+   // timestamp is newer. Read current exploration for radar too, never replay
+   // those alternating masks. A whole-map visibility snapshot has a separate
+   // 30Hz budget; it does not throttle actors or resize the scene raster.
+   const bool capture=region.active||!liveMaskValid_||!liveMaskSnapshot_.geo.same(complete_->geo)||
+     frame.frame<liveMaskSnapshot_.frame||uint32_t(frame.tick-liveMaskTick_)>=33;
+   if(capture){const auto visibilityAt=std::chrono::steady_clock::now();stageStats_.visibilityAttempted=true;
+    const bool valid=liveMasks_.capture(read,complete_->geo,raster.x,raster.y,raster.width,raster.height,current);const auto stats=liveMasks_.stats();
+    stageStats_.visibilityMs=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-visibilityAt).count();
+    stageStats_.visibilityCalls=stats.calls;stageStats_.visibilityPages=stats.pages;stageStats_.visibilityCells=current.cells.size();if(!valid)return {};
+   }
+   const auto&visibility=capture?current:liveMaskSnapshot_;
+   fog=visibility.fog;
+   if(!liveMaskValid_||!maskSource_||mask_.width!=width||mask_.height!=height||!liveMaskSnapshot_.sameMask(visibility)){
+    bool planned=false;
     if(gpuMode_){
-     if(!gpuMaskBuilder_.build(current.geo,current.cells,width,height,region.width,region.height,fog,
-       [&](bool isFog,int index,voxel::Image&out){return assets.shroud(isFog,index,out);},gpuMaskPlan_,region.x,region.y))return {};
-     mask_.width=width;mask_.height=height;mask_.alpha.clear();cpuMaskPlan_.reset();
-    }else if(!mask_.build(current.geo,current.cells,width,height,region.width,region.height,fog,
-       [&](bool isFog,int index,voxel::Image&out){return assets.shroud(isFog,index,out);},region.x,region.y))return {};
+     planned=gpuMaskBuilder_.build(visibility.geo,visibility.cells,width,height,raster.width,raster.height,fog,
+       [&](bool isFog,int index,voxel::Image&out){return assets.shroud(isFog,index,out);},gpuMaskPlan_,raster.x,raster.y)&&gpushroud::withinGpuBudget(*gpuMaskPlan_);
+    }
+    if(planned){mask_.width=width;mask_.height=height;mask_.alpha.clear();cpuMaskPlan_.reset();}
+    else{
+     // A dense whole-map mask can exceed the GPU's existing per-bin work
+     // ceiling. Build the CPU stamp raster directly at target dimensions;
+     // replaying the rejected bin plan on CPU scans billions of candidates.
+     gpuMaskPlan_.reset();cpuMaskPlan_.reset();
+     if(!mask_.build(visibility.geo,visibility.cells,width,height,raster.width,raster.height,fog,
+       [&](bool isFog,int index,voxel::Image&out){return assets.shroud(isFog,index,out);},raster.x,raster.y))return {};
+    }
     maskedBaseScene_.reset();maskPixels_.reset();
    }
-   liveMaskSnapshot_=std::move(current);liveMaskValid_=true;maskSource_=complete_;maskFog_=fog;
+   if(capture){liveMaskSnapshot_=std::move(current);liveMaskTick_=frame.tick;}liveMaskValid_=true;maskSource_=complete_;maskFog_=fog;
   }else if(!prepareWorldOnly_&&masked&&(maskSource_!=complete_||maskFog_!=fog||mask_.width!=width||mask_.height!=height)){
    bool same=maskSource_&&maskFog_==fog&&mask_.width==width&&mask_.height==height&&
     maskSource_->geo.same(complete_->geo)&&maskSource_->shade==complete_->shade;
@@ -707,7 +730,7 @@ public:
    nativePresentation_.background=detailKey_;nativePresentation_.objects=objectCanvas_.revision();nativePresentation_.gpu=areaGpuMode;nativePresentation_.used=areaUsed;
    nativePresentation_.mask=areaUsed&&masked?gpuMaskPlan_:nullptr;nativePresentation_.fog=areaUsed&&masked?maskPixels_:nullptr;
   }
-  stage(stageStats_.resolveMs);
+  stageStats_.cpuTerrainReused=detail&&detailed_.cpuTerrainReused();stage(stageStats_.resolveMs);
   const bool gpuEffectsDone=effectPlanReady&&((gpuMode_&&detailed_.gpuCompleted())||(areaUsed&&areaEffects));out->boltsRendered=gpuEffectsDone&&features_.lasers&&frame.effects&&frame.effects->boltsValid;
   if(!out->gpu&&masked&&gpuMaskPlan_&&cpuMaskPlan_!=gpuMaskPlan_&&(!areaUsed||!fallbacks.empty()||worldEffects)){
    // CPU replay and missing-art dots need a native mask; a successful whole

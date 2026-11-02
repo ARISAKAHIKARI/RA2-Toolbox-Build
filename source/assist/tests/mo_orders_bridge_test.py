@@ -72,7 +72,7 @@ int main(){
 def run(directory,zig):
     cpp=directory/'mo_orders_bridge.cpp';exe=directory/('mo_orders_bridge.exe' if os.name=='nt' else 'mo_orders_bridge');cpp.write_text(source(),encoding='utf-8')
     compiler=[str(zig),'c++','-target','x86_64-windows-gnu'] if zig else ['g++']
-    subprocess.run(compiler+['-std=c++17','-O2','-I'+str(HERE.parent/'source'),str(cpp),'-o',str(exe)],check=True)
+    subprocess.run(compiler+['-std=c++17','-O2','-UNDEBUG','-I'+str(HERE.parent/'source'),str(cpp),'-o',str(exe)],check=True)
     subprocess.run([str(exe)],check=True,timeout=30)
 if __name__=='__main__':
     parser=argparse.ArgumentParser();parser.add_argument('--zig',type=Path);parser.add_argument('--build-dir',type=Path);args=parser.parse_args()

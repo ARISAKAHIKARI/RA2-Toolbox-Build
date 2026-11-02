@@ -5,6 +5,7 @@ static bool dispatchHotkeyGroup(hotkeyroute::Group group){
  return group.actions.empty()||hotkeyPending.add(group,GetTickCount(),commandMatch());
 }
 static void executeHotkey(WPARAM wp,bool fanout){
+ if(wp==1734&&extra.sidebarEnabled){extra.sidebarMode=extra.sidebarMode==2?0u:2u;{ControlUpdate guard;SendDlgItemMessageW(ui,9404,CB_SETCURSEL,extra.sidebarMode==2?1:0,0);}changedSetting();syncAdditional();return;}
  if(wp==placementeventhost::Hotkey){notify(L"放置按键已失效，请在游戏中重新按键。");return;}
  if(wp>=1720&&wp<=1722&&extra.viewZoomEnabled){
   extra.viewZoomPercent=wp==1722?100:viewzoom::step(extra.viewZoomPercent,wp==1720?-1:1);

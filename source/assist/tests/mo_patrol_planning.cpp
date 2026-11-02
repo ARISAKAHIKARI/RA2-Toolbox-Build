@@ -1,5 +1,8 @@
 // Production coordination header with controlled Win32, memory and gateway
 // boundaries. It does not execute a game receiver or Windows message queue.
+#ifdef NDEBUG
+#undef NDEBUG
+#endif
 #include <cassert>
 #include <cstdint>
 #include <cstring>

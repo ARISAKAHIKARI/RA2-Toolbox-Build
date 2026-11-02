@@ -1,7 +1,7 @@
 #pragma once
 namespace featureavailability {
 // v1.0.38-pre.1: retain the controls and implementation for later evaluation.
-inline constexpr bool SceneRefresh=false,ViewZoom=false;
+inline constexpr bool SceneRefresh=false,ViewZoom=true; // opt-in experimental native display resize
 // Temporarily unavailable at the user's request. Runtime admission must also
 // enforce these gates when old settings or stale mailboxes still request them.
 inline constexpr bool AutoCS=false,InfantryForcedEntry=false;

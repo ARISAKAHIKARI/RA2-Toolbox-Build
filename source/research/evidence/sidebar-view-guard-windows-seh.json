@@ -1,0 +1,39 @@
+{
+  "status": "PASS",
+  "scope": "Real standalone Windows x86 access-violation dispatch through the exact product sidebar_view_guard.h; test-model Capture, native action and failure callbacks. No game process, DirectDraw or multiplayer execution.",
+  "compiler": "Zig 0.13.0",
+  "guard_target": "x86-windows-msvc",
+  "harness_target": "x86-windows-gnu",
+  "guard_flags": [
+    "-nostdlib",
+    "-nostdinc",
+    "-O2",
+    "-fms-extensions",
+    "-fno-stack-protector"
+  ],
+  "program_sha256": "0b841f59f70376872cb0eacfc797ccea6468dafe6204369372a928c11ffbc421",
+  "object_sha256": "fb3a898a32b202ae2100c0c067d3be337e88f10b08be99dbddebc94477ba7fd1",
+  "source_sha256": {
+    "source/assist/tests/sidebar_view_guard_seh_boundary.cpp": "eeb1cb4eb93b1a6d79da4437f92778ee9672cf617c8c3d5304238434b935b8cc",
+    "source/assist/tests/sidebar_view_guard_seh.cpp": "6faf0208d895d86fbf7e2d8cee80855efdbfbbf0bfbe405b8809b8903909450d",
+    "source/assist/source/sidebar_view_guard.h": "5c619dc22911745c342bc69596a8df7549b5640f5c735c746be1c3f5e5f0d980"
+  },
+  "exit_code": 0,
+  "windows_test_process_executed": true,
+  "game_process_executed": false,
+  "modeled_callback_lifecycle": [
+    "busy cleared and status=-3 after the AV",
+    "uncertain geometry remains marked; both test-model wide-pair allocations remain MEM_COMMIT until explicit test teardown"
+  ],
+  "checks": [
+    "Normal result preserved",
+    "Real PAGE_NOACCESS write triggers Windows EXCEPTION_ACCESS_VIOLATION",
+    "Filter receives boundary19 and exact write/fault address",
+    "Failure callback runs and clears modeled busy flag",
+    "Capture ends in __finally after fault",
+    "Nested Capture tokens return in LIFO order",
+    "Rejected Capture never runs native action",
+    "Win32 LastError preserved on success/fault/rejection/nesting"
+  ],
+  "stdout": "PASS: real Windows x86 SEH AV dispatch, boundary19, Capture LIFO/finally, failure busy cleanup, nested capture and LastError preservation; modeled callbacks, no game"
+}

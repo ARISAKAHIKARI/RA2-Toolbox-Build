@@ -207,3 +207,15 @@
 | 共享场景与缩放前结果、五类 UI、粒子与本地消息／倒计时保留 | [Hotfix13](2026-10-30-shared-scenes-local-ui-hotfix13.md) | SceneBank SceneRenderer NativeImageBank Particle MessageList BitFont DrawTimer PrimaryFactory ArchiveTarget |
 
 - [Hotfix16：基础路径与整图延迟调查及 CPU 修复](2026-10-30-render-latency-hotfix16.md)：原尺寸像素热点、128 项 xBRZ 缓存抖动、分页并行；CPU 积分跨帧缓存与不变对象页误标脏修复、定向检查和构建。
+
+- [MO新操作預覽節奏、框消失與軌跡末端](2026-11-02-mo-operation-preview-followup.md)
+
+- [原生建造自動匹配、地基預覽與點擊配對](2026-11-02-native-placement-preview.md)
+
+- [科技圖示逐觀測幀補缺與早期版本身份](2026-11-02-tech-cameo-frame-maintenance.md)
+
+- [小地圖即時遮罩、完整發布與最終尺寸地形快取](2026-11-02-minimap-live-mask-and-target-prefix.md)
+
+- [逐幀、整畫面縮放、十三處側欄實驗與資源所有權](2026-11-02-experimental-view-controls.md)
+
+- [新操作、小地圖與實驗顯示：本輪整合、效能與構建證據](2026-11-02-mo-render-followup.md)

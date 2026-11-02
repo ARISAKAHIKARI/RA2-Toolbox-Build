@@ -56,7 +56,7 @@ public:
  bool prepare(std::shared_ptr<const Plan>plan,VkBuffer target,uint32_t targetOffsetWords,VkDeviceSize targetBytes){
   auto&o=owner_;uploads_=uploadedBytes_=dispatches_=copies_=0;pending_.reset();
   if(!plan||!target||plan->width<1||plan->height<1||plan->width>8192||plan->height>8192||uint64_t(plan->width)*plan->height>16*1024*1024||
-    (uint64_t(targetOffsetWords)+plan->outputWords())*4>targetBytes||uint64_t(plan->references.size())*1024*plan->samplesX*plan->samplesY>512ull*1024*1024)return o.fail("Invalid GPU native shroud budget");
+    (uint64_t(targetOffsetWords)+plan->outputWords())*4>targetBytes||!withinGpuBudget(*plan))return o.fail("Invalid GPU native shroud budget");
   if(!initialize())return false;
   target_=target;targetOffset_=VkDeviceSize(targetOffsetWords)*4;
   auto recorded=recorded_.lock();needsRaster_=recorded.get()!=plan.get()||!recorded||recorded.owner_before(plan)||plan.owner_before(recorded);

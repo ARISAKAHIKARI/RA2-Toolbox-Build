@@ -14,7 +14,8 @@ static UINT formationButtonUp=WM_RBUTTONUP;
 static bool formationQuick=false,formationQuickCaptured=false;static int formationSavedShape=0;
 static uint32_t formationQuickMouse=0;static moorders::GesturePolicy formationQuickPolicy;
 static formation::quick::Path formationQuickPath;
-static void formationEndQuick(){if(formationQuick){formationQuick=false;formationView.shape=formationSavedShape;}formationQuickPath=formation::quick::Path{};}
+static bool formationQuickPending=false;static int formationQuickX=0,formationQuickY=0,formationQuickPX=0,formationQuickPY=0;
+static void formationEndQuick(){if(formationQuick){formationQuick=false;formationView.shape=formationSavedShape;}formationQuickPath=formation::quick::Path{};formationQuickPending=false;}
 struct FormationMemory {int count=0,ax=0,ay=0;double facing=0;bool directed=false,quick=false;formation::Unit units[formation::Maximum]{};formation::Slot offsets[formation::Maximum]{};};
 static FormationMemory formationMemory;
 struct FormationFollow {uint32_t cell=0,tick=0;int frame=0;bool down=false,dragged=false;UINT up=0;int x=0,y=0;};
@@ -33,8 +34,8 @@ static void formationPublish(){if(!sh)return;formationView.tick=sampleClock(sh);
  InterlockedIncrement(&sh->formationSeq);MemoryBarrier();sh->formationPreview=formationView;MemoryBarrier();InterlockedIncrement(&sh->formationSeq);sh->formationJobs=formationJobCount;notifyHost();}
 static void formationCancel(){if(formationQuick)formationButton=false;formationEndQuick();formationView.active=formationView.dragging=0;formationView.count=0;formationModal=formationHolding=false;formationHoldingKey=0;formationPublish();}
 static void resetFormation(){formationForget();formationEndQuick();formationQuickCaptured=false;formationQuickMouse=0;formationFeedback=false;formationView={};formationModal=formationHolding=formationButton=false;formationHoldingKey=0;formationAltAt=0;formationHoldConsumed=false;formationJobCount=formationJobCursor=0;memset(formationSuppressed,0,sizeof formationSuppressed);if(sh){sh->formationJobs=0;formationPublish();}}
-static bool formationContext(){
- if(!sh||fault||sh->stop||!sh->foreground||!gameentry::active(gameentry::Client::Assist)||snap.status!=1||!match||!lastHouse||snap.commandStatus!=1||!get<bool>(0xA8E9A0)||get<uint32_t>(0xA83D4C)!=lastHouse||get<bool>(0xA8BC60+25)||DWORD(sampleClock(sh)-sh->heartbeat)>150)return false;
+static bool formationContext(bool preview=false){
+ if(!sh||fault||sh->stop||!sh->foreground||!gameentry::active(gameentry::Client::Assist)||snap.status!=1||!match||!lastHouse||snap.commandStatus!=1||!get<bool>(0xA8E9A0)||get<uint32_t>(0xA83D4C)!=lastHouse||get<bool>(0xA8BC60+25)||DWORD(sampleClock(sh)-sh->heartbeat)>(preview?1000u:150u))return false;
  int frame=get<int>(0xA8ED84);if(frame<snap.frame||int64_t(frame)-snap.frame>6||frame<0||frame>=INT32_MAX||get<int>(0xA8B238)!=snap.session||!eventdelivery::mayQueue(snap.session)||get<bool>(lastHouse+0x1F5)||get<bool>(lastHouse+0x1F6)||get<bool>(lastHouse+0x1F8))return false;
  DWORD foreground=0;GetWindowThreadProcessId(GetForegroundWindow(),&foreground);if(foreground!=GetCurrentProcessId())return false;
  if(!external::display::inspect([](uint32_t at,void*out,size_t n){return read(at,out,n);}).visible())return false;
@@ -60,11 +61,11 @@ static void formationSelect(){
   auto&u=formationView.units[formationView.count++];u={};u.pointer=p;u.id=get<uint32_t>(p+0x10);u.type=typeOf(p,kind(p));u.token=manualVersions.get(u.id);u.x=get<int>(p+0x9C);u.y=get<int>(p+0xA0);u.z=get<int>(p+0xA4);u.kind=kind(p);
  }
 }
-static bool formationPoint(MSG*msg,int&x,int&y,int&px,int&py,bool*ground=nullptr){
+static bool formationPoint(MSG*msg,int&x,int&y,int&px,int&py,bool*ground=nullptr,uint32_t*hover=nullptr){
  RECT r{};if(!GetClientRect(msg->hwnd,&r)||r.right<=0||r.bottom<=0)return false;uint32_t tactical=get<uint32_t>(0x887324);if(!tactical)return false;
  pointerinput::Intent point{};point.width=get<int>(0x8A00A4);point.height=get<int>(0x8A00A8);point.cameraX=get<int>(tactical+0xB0);point.cameraY=get<int>(tactical+0xB4);point.operation=pointerinput::AirWaypoint;
  px=point.x=int(int64_t(short(LOWORD(msg->lParam)))*point.width/r.right);py=point.y=int(int64_t(short(HIWORD(msg->lParam)))*point.height/r.bottom);
- uint32_t c=pointerCell,t=pointerTarget,id=pointerTargetID;int z=pointerGroundZ;bool ok=pointerLocation(point);if(ground)*ground=ok&&!pointerTarget&&!get<bool>(0x87F7E8+0x11B3);if(ok){x=int(pointerCell%1000)*256+128;y=int(pointerCell/1000)*256+128;}
+ uint32_t c=pointerCell,t=pointerTarget,id=pointerTargetID;int z=pointerGroundZ;bool ok=pointerLocation(point);if(ground)*ground=ok&&!pointerTarget&&!get<bool>(0x87F7E8+0x11B3);if(hover)*hover=ok?pointerTarget:0;if(ok){x=int(pointerCell%1000)*256+128;y=int(pointerCell/1000)*256+128;}
  pointerCell=c;pointerTarget=t;pointerTargetID=id;pointerGroundZ=z;return ok;
 }
 static bool formationCell(int x,int y){
@@ -79,6 +80,7 @@ static bool formationQuickCell(int x,int y,bool air){
  return air?readMapCell(x,y)!=0:formationCell(x,y);
 }
 static void formationQuickLayout(int x,int y,int px,int py){
+ formationQuickPending=false;
  bool air[formation::Maximum]{};for(int n=0;n<formationView.count;++n)air[n]=formationAerial(formationView.units[n]);
  formation::quick::layout(formationView.units,formationView.count,air,formationQuickPath,x/256,y/256,formationView.slots,formationQuickCell);
  for(int n=0;n<formationView.count;++n)if(formationView.slots[n].valid){auto&s=formationView.slots[n];struct Coord{int x,y,z;}c{s.x,s.y,0};s.z=call<int>(0x578080,0x87F7E8,&c);if(air[n])s.z=std::max(s.z,formationView.units[n].z);}
@@ -194,7 +196,7 @@ static bool formationMessage(MSG*msg){
  // Release commits the last published layout, never an unseen extra solve.
  if(gestureMouse.up&&gestureMouse.button==formationQuickMouse&&formationQuickCaptured&&!formationQuick){formationQuickCaptured=false;formationQuickMouse=0;return swallow();}
  if(msg->message==formationButtonUp&&formationButton&&(!formationQuick||(gestureMouse.up&&gestureMouse.button==formationQuickMouse))){bool authorized=!formationQuick||formationQuickAuthorized();formationButton=false;formationQuickCaptured=false;formationQuickMouse=0;if(authorized&&formationContext()&&formationView.active&&formationSelectionMatchesPreview()){int x,y,px,py;if(formationPoint(msg,x,y,px,py)){if(formationQuick){if(formationView.dragging)formationQuickPath.push(x/256,y/256,true);formationQuickLayout(x,y,px,py);}formationCommit();}else formationCancel();}else formationCancel();return swallow();}
- if(!formationContext()){if(formationView.active)formationCancel();formationFollow={};if(sh&&!sh->formationPolicy.enabled)formationForget();return false;}
+ if(!formationContext(formationQuick&&formationButton)){if(formationView.active)formationCancel();formationFollow={};if(sh&&!sh->formationPolicy.enabled)formationForget();return false;}
  formationRefreshHold();
  // All four gestures resolve through the same configured policy. The
  // captured button and keyboard hold remain authoritative until release.
@@ -222,6 +224,19 @@ static bool formationMessage(MSG*msg){
   }
  }
  if(!formationView.active){formationWatchNative(msg);return false;}
+ // Record every quick-placement stroke point before the expensive layout
+ // cadence. Previously an early return dropped corners within each 16ms
+ // window, so a fast curve became a chord although its endpoint was kept.
+ if(formationQuick&&msg->message==WM_MOUSEMOVE){
+  int x,y,px,py;if(formationPoint(msg,x,y,px,py)){
+   if(!formationView.dragging&&std::hypot(double(px-formationStartX),double(py-formationStartY))<8)return swallow();
+   formationView.dragging=1;const int count=formationQuickPath.count;const auto last=count?formationQuickPath.nodes[count-1]:formation::Point{};formationQuickPath.push(x/256,y/256);
+   const auto tail=formationQuickPath.nodes[formationQuickPath.count-1];
+   formationQuickPending|=count!=formationQuickPath.count||last.x!=tail.x||last.y!=tail.y||x!=formationLastX||y!=formationLastY;
+   formationQuickX=x;formationQuickY=y;formationQuickPX=px;formationQuickPY=py;
+   if(formationQuickPending&&DWORD(sampleClock(sh)-formationLayoutTick)>=16){if(!formationSelectionMatchesPreview()){formationCancel();return swallow();}formationQuickLayout(x,y,px,py);}
+  }return swallow();
+ }
  if(msg->message==(formationPolicy.mouse==1?WM_LBUTTONDOWN:WM_RBUTTONDOWN)){int x,y,px,py;if(!formationPoint(msg,x,y,px,py))return false;
   if(!formationSelectionMatchesPreview()){formationCancel();return swallow();}
   formationButton=true;formationButtonUp=formationPolicy.mouse==1?WM_LBUTTONUP:WM_RBUTTONUP;formationStartX=formationPixelX=px;formationStartY=formationPixelY=py;
@@ -240,8 +255,11 @@ static bool formationMessage(MSG*msg){
 }
 static void formationTick(uint32_t house,int frame,DWORD now){
  if(formationEpoch!=match){resetFormation();formationEpoch=match;}
- if(!formationContext()){if(formationView.active)formationCancel();formationFollow={};if(!sh->formationPolicy.enabled){formationJobCount=0;formationForget();}}
+ if(!formationContext(formationQuick&&formationButton)){if(formationView.active)formationCancel();formationFollow={};if(!sh->formationPolicy.enabled){formationJobCount=0;formationForget();}}
  formationRefreshHold();if(formationQuick&&!formationQuickAuthorized())formationCancel();
+ if(formationQuick&&formationQuickPending&&DWORD(now-formationLayoutTick)>=16){
+  if(formationSelectionMatchesPreview())formationQuickLayout(formationQuickX,formationQuickY,formationQuickPX,formationQuickPY);else formationCancel();
+ }
  if(sh->formationKey!=sh->formationKeyAck){if(formationView.active)formationSwitch(sh->formationKeyCode);sh->formationKeyAck=sh->formationKey;formationPublish();}
  if(!simulationReady()||snap.chat)return;
  if(formationFollow.down&&!formationFollow.dragged&&int32_t(sh->formationConsumedUntil-now)>0)sh->formationConsumedUntil=now+200;

@@ -1,4 +1,4 @@
-> 2026-11-02 更新：Assist88／Runtime4／Entry3／Cursor155 配套。52 個允許站點分為 48 個診斷排程站點、3 個產品禁用站點、1 個 Cursor 專用提示框佈局槽。Cursor 專用槽不由本 Assist-only 測試器安裝，詳見 [隱藏光標與提示框修復](../research/2026-11-02-cursor-hide-tooltip-layout.md)。
+> 2026-11-02 更新：Assist89／Runtime4／Entry3／Cursor155 配套。52 個允許站點分為 48 個診斷排程站點、3 個產品禁用站點、1 個 Cursor 專用提示框佈局槽。Cursor 專用槽不由本 Assist-only 測試器安裝，詳見 [隱藏光標與提示框修復](../research/2026-11-02-cursor-hide-tooltip-layout.md)。
 
 > 2026-11-01 歷史更新（Assist85 時點，控制標記後續已由修改大師模式取代）：素材顯示入口已移除，強行進建築及自動 CS 停用，Ctrl＋Alt＋O 手動揭示恢復獨立開關。科技一次刷新；普通合法性查詢不再誤標為程式碼補丁。詳見 [控制標記與分類校正](../research/2026-11-01-control-house-flag-mode.md)。
 
@@ -73,10 +73,12 @@ python source/tools/build_hook_diagnostics.py --zig C:/toolchain/zig.exe --base-
 python source/tools/verify_hook_diagnostics.py --root artifacts/hook-test
 ```
 
-建置器重用同份基礎建置中未變的 x86 Runtime／Entry／SEH 物件及 broker，以 `RA2_HOOK_DIAGNOSTICS` 重編 Assist bridge。此巨集只為相機入口增加獨立測試開關，正常產品編譯不帶它；原有幾何／簽名／所有權限制不變。本版為 Assist88、Runtime4、Entry3、Cursor155；獨立相機通道仍為 24 bytes、版本 1、PID＋owner＋兩秒心跳驗證。
+建置器重用同份基礎建置中未變的 x86 Runtime／Entry／SEH 物件及 broker，以 `RA2_HOOK_DIAGNOSTICS` 重編 Assist bridge。此巨集只為相機入口增加獨立測試開關，正常產品編譯不帶它；原有幾何／簽名／所有權限制不變。本版為 Assist89、Runtime4、Entry3、Cursor155；獨立相機通道仍為 24 bytes、版本 1、PID＋owner＋兩秒心跳驗證。
 
 Windows 下建置器會實際執行隱藏 UI 的略過清單、基線預設關閉、停止後選下一組與無效 PID 拒絕測試，及 x64 → x86 broker → DLL 載入／協議握手測試，均不連接遊戲。`tests/sequence.cpp` 測試提前正常、手動略過、可選基線、共用站點排除、切屏暫停／快照重試、OOS／還原失敗不前進與清單覆蓋；`tests/camera_gate.cpp` 測試相機開關身分／時效。PE 檢查分別驗證架構、匯入、匯出、manifest 及協議。
 
 **目前完成本機 Windows 編譯及上述檢查，沒有完成 RA2OL 雙機或實際遊戲 Hook 測試，正式工具箱已加入不完整陰影批次拒絕發布的修正；仍未做現場視覺驗證。**
 
 本輪另在獨立 Win32 fixture 驗證高刷光標與原生提示相容修正、幀 adapter ABI 和聯機輪詢政策；這不是新版 RA2OL 雙機驗證。測試器沒有高刷光標介面，高刷懸停名稱／價格須用配套正常工具箱複測。
+
+本輪登記66處：48處排程、3處產品禁用、1處Cursor專用、14處明確實驗專用（單機暫停1處＋原生側欄13處）。實驗站點不由通用聯機診斷器自動啟用，須在工具箱實驗分類單獨驗收；日誌明示SKIPPED_EXPLICIT_SP。登記容量128；Shared6584840，請成套更新。

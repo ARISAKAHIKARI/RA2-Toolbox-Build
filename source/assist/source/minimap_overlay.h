@@ -41,7 +41,7 @@ class Worker {
     auto fresh=[&](uint32_t p,void*out,size_t n){return reader.readFresh(p,out,n);};
     auto shared=external::radar::sceneBank().get(r.pid,r.match,r.reveal,GetTickCount(),true);
     if(shared&&(!external::radar::recentMarkers(*shared,external::radar::publicationContext(fresh),GetTickCount())||!external::radar::supportsEffects(*shared,r.selection.profile.particles,r.selection.profile.lasers)))shared.reset();
-    sampler.effects(r.selection.profile.particles,r.selection.profile.lasers);bool ok=shared||sampler.step(r.reveal,4096,r.mode==1);
+    sampler.effects(r.selection.profile.particles,r.selection.profile.lasers);bool ok=shared||sampler.step(r.reveal,4096,r.mode==1,true);
     const auto sampleReads=reader.reads,samplePages=reader.prefetchedPages;
     reader.begin();int frame=reader.get<int>(0xA8ED84,-1);sample.finish();
     if(ok&&(r.mode==1||frame!=previousFrame||sampler.revision()!=previousRevision)){
@@ -72,6 +72,7 @@ class Worker {
        const DWORD diagnosticNow=GetTickCount();if(!diagnosticAt||DWORD(diagnosticNow-diagnosticAt)>=5000){diagnosticAt=diagnosticNow;const auto&s=renderer.stageStats();const auto n=renderer.nativeStats();wchar_t line[768];
         swprintf(line,768,L"minimap render ok=%d gpu=%d reused=%d diagram-reused=%d raster=%dx%d ground=%dx%d pages=%llu resident=%llu actors=%llu ms terrain=%.2f palette=%.2f decode=%.2f voxel=%.2f objects=%.2f resolve=%.2f effects=%.2f total=%.2f",bool(scene),external::xbrzadapter::gpuUsed(),s.reused,reusedDiagram,r.width,r.height,n.width,n.height,(unsigned long long)n.pages,(unsigned long long)n.resident,(unsigned long long)s.actors,s.terrainMs,s.palettesMs,s.decodeMs,s.voxelMs,s.objectsMs,s.resolveMs,s.effectsMs,std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-renderStarted).count());critical(line);
         wchar_t io[256];swprintf(io,256,L"minimap reads shared=%d sample-rpm=%u sample-prefetched-pages=%u render-rpm=%u render-prefetched-pages=%u",bool(shared),sampleReads,samplePages,reader.reads-renderReadsAt,reader.prefetchedPages-renderPagesAt);critical(io);
+        wchar_t visibility[256];swprintf(visibility,256,L"minimap visibility sampled=%d ms=%.2f rpm=%llu pages=%llu cells=%llu cpu-terrain-reused=%d",s.visibilityAttempted,s.visibilityMs,(unsigned long long)s.visibilityCalls,(unsigned long long)s.visibilityPages,(unsigned long long)s.visibilityCells,s.cpuTerrainReused);critical(visibility);
         wchar_t cache[256];swprintf(cache,256,L"minimap vxl-geometry-cache cumulative builds=%llu hits=%llu face-checks=%llu evictions=%llu charged-bytes=%llu",(unsigned long long)assets.voxelGeometryBuilds(),(unsigned long long)assets.voxelGeometryHits(),(unsigned long long)assets.voxelGeometryFaceChecks(),(unsigned long long)assets.voxelGeometryEvictions(),(unsigned long long)assets.voxelGeometryCacheBytes());critical(cache);
         if(!scene){std::wstring reason;for(unsigned char c:s.assetFailure){if(reason.size()==160)break;reason.push_back(c>=32&&c<127?wchar_t(c):L'_');}
          wchar_t failed[1280];swprintf(failed,1280,L"minimap render-failure reason=%hs object=%08X type=%08X id=%u kind=%d candidates=%llu rasterScale=%d vpl=%d lightChanged=%d gunPose=%d posture=%d shadow=%d hva=%d/%d faces=%llu/%llu pixels=%llu old=%llu new=%llu limit=%llu geometry=%llu/%llu decodeAttempts=%u detail=%ls",

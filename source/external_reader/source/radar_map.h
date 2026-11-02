@@ -124,7 +124,7 @@ public:
   if(terrain_||!frame.terrain||frame.terrain->art.empty())return;
   reset();terrain_=frame.terrain;geo_=terrain_->geo;reveal_=terrain_->reveal;lastFrame_=frame.frame;++revision_;
  }
- bool step(uint32_t reveal,int budget=4096,bool real=false){
+ bool step(uint32_t reveal,int budget=4096,bool real=false,bool compactTraversal=false){
   // These are preview pixels, not the game's half-opacity shroud blitter.
   // Every display override exposes the unmasked minimap; native mode alone
   // follows the explored/fog cells. Keep this policy in the immutable bank.
@@ -146,11 +146,25 @@ public:
     auto checkedArt=[&](uint32_t at,void*out,size_t bytes){bool ok=read_(at,out,bytes);if(!ok)pendingIncomplete_=true;return ok;};resourcePools_=artvariants::pools(checkedArt,overlayTypes_);
     if(pendingIncomplete_){discardPending();return false;}
    }cursor_=0;}
-  size_t end=std::min(pointers_.size(),cursor_+size_t(std::clamp(budget,1,16384)));
+  const size_t limit=size_t(std::clamp(budget,1,16384));
+  size_t end=std::min(pointers_.size(),cursor_+limit);
+  if(compactTraversal){
+   // The Cell pointer array is a fixed 512x512 address grid, much larger
+   // than a normal map. Empty/illegal slots need no process read and must
+   // not consume an entire frame's sampling budget. Bound real Cell work
+   // exactly as before, while skipping those holes in the same local pass.
+   end=cursor_;size_t admitted=0;
+   while(end<pointers_.size()){
+    const int x=int(end%512),y=int(end/512);
+    if(pointers_[end]&&g.legal(x,y)&&(g.flatVisible(x,y)||(real&&g.terrainSourceCandidate(x,y)))){
+     if(admitted==limit)break;++admitted;
+    }++end;
+   }
+  }
   // The same bounded chunk and admission as the scalar pass below. Reading
   // adjacent Cell pages together changes neither scan frequency nor which
   // cells are required; failed batches retain the ordinary checked fallback.
-  prefetchCells_.clear();prefetchCells_.reserve(end-cursor_);
+  prefetchCells_.clear();prefetchCells_.reserve(std::min(end-cursor_,limit));
   for(size_t index=cursor_;index<end;++index){int x=int(index%512),y=int(index/512);
    if(pointers_[index]>=0x10000&&g.legal(x,y)&&(g.flatVisible(x,y)||(real&&g.terrainSourceCandidate(x,y))))prefetchCells_.push_back(pointers_[index]);
   }

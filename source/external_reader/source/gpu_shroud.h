@@ -8,7 +8,9 @@
 // Integer GPU kernels consume the exact double-coordinate decisions below.
 namespace external { namespace gpushroud {
 constexpr uint32_t BinSize=32,StampWords=12;
+constexpr size_t MaximumCells=512*512,MaximumStamps=2*MaximumCells,MaximumMetadataWords=16*1024*1024;
 constexpr size_t MaximumCoordinates=8*1024*1024,MaximumReferences=8*1024*1024;
+constexpr uint64_t MaximumRasterWork=512ull*1024*1024;
 struct Source {
  std::shared_ptr<const std::vector<uint8_t>> indices;
  int width=0,height=0;
@@ -29,6 +31,7 @@ struct Plan {
  size_t outputBytes()const{return size_t(width)*height;}
  size_t outputWords()const{return (outputBytes()+3)/4;}
 };
+inline bool withinGpuBudget(const Plan&plan){return uint64_t(plan.references.size())*1024*plan.samplesX*plan.samplesY<=MaximumRasterWork;}
 struct Params {
  uint32_t width=0,height=0,samplesX=1,samplesY=1;
  uint32_t stampOffset=0,coordinateOffset=0,rangeOffset=0,referenceOffset=0;
@@ -41,10 +44,11 @@ struct Packed {
 };
 inline bool pack(const Plan&plan,Packed&out,const std::vector<uint32_t>*sourceOffsets=nullptr){
  out={};if(plan.width<1||plan.height<1||plan.width>8192||plan.height>8192||uint64_t(plan.width)*plan.height>16*1024*1024||
-   plan.samplesX<1||plan.samplesX>4||plan.samplesY<1||plan.samplesY>4||plan.sources.size()>94||plan.stamps.size()>131072||
+   plan.samplesX<1||plan.samplesX>4||plan.samplesY<1||plan.samplesY>4||plan.sources.size()>94||plan.stamps.size()>MaximumStamps||
    plan.coordinates.size()>MaximumCoordinates||plan.references.size()>MaximumReferences||
    plan.binColumns!=uint32_t((plan.width+31)/32)||plan.ranges.size()!=size_t(plan.binColumns)*((plan.height+31)/32)+1||
    plan.ranges.empty()||plan.ranges.front()!=0||plan.ranges.back()!=plan.references.size()||
+   uint64_t(plan.stamps.size())*StampWords+plan.coordinates.size()+plan.ranges.size()+plan.references.size()>MaximumMetadataWords||
    (sourceOffsets&&sourceOffsets->size()!=plan.sources.size()))return false;
  std::vector<uint32_t> offsets;
  for(const auto&source:plan.sources){if(!source.indices||source.width<1||source.width>60||source.height<1||source.height>30||source.indices->size()!=size_t(source.width)*source.height)return false;
@@ -75,7 +79,7 @@ class Builder {
 public:
  void reset(){images_={};}
  template<class Load>bool build(const radar::Geometry&g,const std::vector<radar::shroudmask::Cell>&cells,int w,int h,double spanX,double spanY,bool fog,Load load,std::shared_ptr<const Plan>&out,double originX=0,double originY=0){
-  out.reset();if(!g.valid()||w<1||h<1||w>8192||h>8192||uint64_t(w)*h>16*1024*1024||cells.size()>65536||
+  out.reset();if(!g.valid()||w<1||h<1||w>8192||h>8192||uint64_t(w)*h>16*1024*1024||cells.size()>MaximumCells||
    !std::isfinite(originX)||!std::isfinite(originY)||std::abs(originX)>1e7||std::abs(originY)>1e7||!std::isfinite(spanX)||!std::isfinite(spanY)||spanX<=0||spanY<=0||spanX>32768||spanY>32768)return false;
   std::array<std::array<bool,47>,2> needed{};
   for(const auto&cell:cells){if(cell.index>=512*512||!g.legal(int(cell.index%512),int(cell.index/512)))return false;if(cell.shade.shroud==127)continue;
@@ -100,7 +104,7 @@ public:
    int x0=edge(left*w/spanX,w,false),x1=edge((left+image.width)*w/spanX,w,true),y0=edge(top*h/spanY,h,false),y1=edge((top+image.height)*h/spanY,h,true);
    if(x0>=x1||y0>=y1)continue;
    const size_t count=size_t(x1-x0)*plan->samplesX+size_t(y1-y0)*plan->samplesY;
-   if(plan->coordinates.size()+count>MaximumCoordinates||plan->stamps.size()>=131072)return false;
+   if(plan->coordinates.size()+count>MaximumCoordinates||plan->stamps.size()>=MaximumStamps)return false;
    Stamp stamp;stamp.rect={{uint32_t(x0),uint32_t(y0),uint32_t(x1),uint32_t(y1)}};stamp.source={{source[kind][f],uint32_t(image.width),uint32_t(image.height),uint32_t(kind)}};
    stamp.coordinates[0]=uint32_t(plan->coordinates.size());
    for(int px=x0;px<x1;++px)for(int sx=0;sx<plan->samplesX;++sx){double ix=std::floor((px+(sx+.5)/plan->samplesX)*spanX/w-left);plan->coordinates.push_back(ix<0||ix>=image.width?-1:int32_t(ix));}

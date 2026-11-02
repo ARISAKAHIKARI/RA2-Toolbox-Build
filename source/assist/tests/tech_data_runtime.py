@@ -99,6 +99,37 @@ def gates():
  return {'full_native_rule_and_factory_admission_required':True}
 check('native_icon_admission',gates)
 
+def frame_cameos():
+ m=fixture();s=state(m);s.computeRequested=(1<<15)-1;s.scanMs=1000;save(m,s);activate(m)
+ assert state(m).computeApplied==(1<<15)-1 and state(m).scanMs==1000
+ def step(delta=16,advance=True):
+  if advance:m.w(0xa8ed84,m.r(0xa8ed84)+1)
+  m.clock+=delta;m.w(m.SH+m.Shared.heartbeat.offset,m.clock);m.run(m.entry,(0,1,0));return state(m)
+ # The activation changes Type TechLevel/OwnerFlags, which are part of the
+ # catalogue stamp. Let its first 500ms re-observation finish before timing a
+ # per-candidate backoff; catalogue identity changes intentionally reset it.
+ step(420);m.canbuild_calls.clear();m.sidebar_add_calls.clear();epoch=state(m).data.match
+ for tab in range(4):m.w(0x87f7e8+0x1544+tab*3988+84,0)
+ s=step()
+ assert s.data.techVisible==3 and len(m.sidebar_add_calls)==3 and len(m.canbuild_calls)==3,(s.data.techVisible,m.sidebar_add_calls,m.canbuild_calls)
+ assert s.data.match==epoch and installed(m)==0 and codehash(m)==m.original_code
+ # A repeated wake in the SAME simulation frame does not reinsert cleared
+ # icons. The next frame still repairs all three despite scanMs=1000/All.
+ m.canbuild_calls.clear();m.sidebar_add_calls.clear()
+ for tab in range(4):m.w(0x87f7e8+0x1544+tab*3988+84,0)
+ step(advance=False);assert not m.canbuild_calls and not m.sidebar_add_calls
+ s=step();assert len(m.canbuild_calls)==3 and len(m.sidebar_add_calls)==3
+ m.canbuild_calls.clear();m.sidebar_add_calls.clear();s=step()
+ assert not m.canbuild_calls and not m.sidebar_add_calls,'existing icons reran eligibility or AddCameo'
+ # An invalid native rule must not be defeated by the per-frame repair.
+ m.full_override=0
+ for tab in range(4):m.w(0x87f7e8+0x1544+tab*3988+84,0)
+ s=step();assert len(m.canbuild_calls)==3 and not m.sidebar_add_calls and s.data.techVisible==0
+ count=len(m.canbuild_calls);step(249);assert len(m.canbuild_calls)==count,'negative result retried before 250ms'
+ m.full_override=None;s=step(1);assert len(m.sidebar_add_calls)==3 and s.data.techVisible==3 and codehash(m)==m.original_code
+ return {'native_rebuild_repaired_on_next_frame':True,'same_frame_wake_deduplicated':True,'existing_icons_skip_native_predicates':True,'failed_rules_back_off_249_then_retry_at_250ms':True,'catalogue_stabilized_before_backoff_measurement':True,'compute_applied_all':True,'scan_ms':1000,'feature_code_patches':0}
+check('per_frame_native_cameo_repair',frame_cameos)
+
 def factory(m,product):
  f=m.alloc();m.w(m.house+0x53B4,f);m.w(f+0x6C,m.house);m.w(f+0x58,product);return f
 
