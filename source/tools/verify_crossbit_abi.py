@@ -49,7 +49,7 @@ PAYLOADS = (
     'assist::burstcompute::Input', 'assist::burstcompute::Result',
     'assist::dodgecompute::Input', 'assist::dodgecompute::Result',
     'assist::formation::Policy', 'assist::formation::Preview',
-    'assist::moorders::Point', 'assist::moorders::Line', 'assist::moorders::Preview',
+    'assist::moorders::GesturePolicy', 'assist::moorders::Point', 'assist::moorders::Line', 'assist::moorders::Preview',
     'assist::loading::Infantry', 'assist::loading::Vehicle',
     'assist::loading::Composition', 'um::Type', 'um::Player', 'um::Cell',
     'neuralframe::Layout', 'assist::cooperative::Unit', 'assist::cooperative::Target',
@@ -212,8 +212,8 @@ def main():
     differences = {name: {'x86': records['x86'].get(name), 'x64': records['x64'].get(name)}
                    for name in sorted(set(records['x86']) | set(records['x64']))
                    if records['x86'].get(name) != records['x64'].get(name)}
-    baseline = {'assist::Version': 84, 'runtime::Version': 4, 'gameentry::Version': 3,
-                'runtimebroker::Version': 1, 'sizeof(assist::Shared)': 6584440,
+    baseline = {'assist::Version': 85, 'runtime::Version': 5, 'gameentry::Version': 4,
+                'runtimebroker::Version': 1, 'sizeof(assist::Shared)': 6584480,
                 'sizeof(runtime::Control)': 176, 'sizeof(gameentry::Request)': 108,
                 'sizeof(runtimebroker::Packet)': 148,
                 'neuralframe::Version': 1, 'sizeof(neuralframe::Header)': 256}
@@ -235,7 +235,7 @@ def main():
     # Protocol84 appends MO order previews, viewport transforms and SP pause status.
     # Lock the measured x86/x64 layout instead of accepting arbitrary growth.
     assert baseline_matches, 'Protocol/version or deployed x86 wire baseline changed'
-    print(f'PASS: {len(records["x86"])} Windows x86/x64 wire size/alignment/field offsets match; protocol84 Shared6584440, Runtime176, manager108')
+    print(f'PASS: {len(records["x86"])} Windows x86/x64 wire size/alignment/field offsets match; protocol85 Shared6584480, Runtime176, manager108')
     print('PASS: real PE32+/64-bit imports, ordinal bit, bounds and strict default x86 parser checks; no Windows image executed')
 
 

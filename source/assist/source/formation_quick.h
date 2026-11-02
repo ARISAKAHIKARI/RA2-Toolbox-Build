@@ -5,7 +5,7 @@ namespace assist { namespace formation { namespace quick {
 // The existing six configurable shapes retain their wire layout. This value
 // identifies a transient quick-placement preview, not an extra key binding.
 constexpr int Shape=6, NodeLimit=64;
-template<class Keys>inline bool claimsMiddle(bool enabled,const Keys&keys){return enabled&&!keys[16]&&!keys[17]&&!keys[18]&&!keys['Z'];}
+template<class Keys>inline bool claimsMiddle(bool enabled,const Keys&keys){if(!enabled)return false;for(unsigned vk=8;vk<256;++vk)if(keys[vk])return false;return true;}
 struct Path {
  Point nodes[NodeLimit]{};int count=0;
  void push(int x,int y,bool tail=false){

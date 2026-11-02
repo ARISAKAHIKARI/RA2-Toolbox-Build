@@ -62,7 +62,8 @@ inline HMODULE runtimeModule(){
  HMODULE m=LoadLibraryW(path);if(!m)return nullptr;
  auto info=(const uint32_t*)GetProcAddress(m,"GameRuntimeInfo");
  auto entry=(const uint32_t*)GetProcAddress(m,"GameEntryManagerInfo");
- if(!info||info[0]!=runtime::Version||info[1]!=sizeof(runtime::Control)||!entry||entry[0]!=gameentry::Version||entry[1]!=sizeof(gameentry::Request)||!GetProcAddress(m,"GameRuntimeHook")||!GetProcAddress(m,"GameRuntimePostHook")){FreeLibrary(m);SetLastError(ERROR_REVISION_MISMATCH);return nullptr;}
+ auto policy=(const uint32_t*)GetProcAddress(m,"GameCodeWritePolicyInfo");
+ if(!gameentry::strictCodeWritePolicy(policy)||!info||info[0]!=runtime::Version||info[1]!=sizeof(runtime::Control)||!entry||entry[0]!=gameentry::Version||entry[1]!=sizeof(gameentry::Request)||!GetProcAddress(m,"GameRuntimeHook")||!GetProcAddress(m,"GameRuntimePostHook")){FreeLibrary(m);SetLastError(ERROR_REVISION_MISMATCH);return nullptr;}
  h.module=m;return m;
 #endif
 }

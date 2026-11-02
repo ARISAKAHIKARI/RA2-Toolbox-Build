@@ -150,6 +150,8 @@ struct Slot {
  uint8_t size=0;bool active=false,conflict=false;
 };
 enum class Transition : uint8_t { Deny, Install, Restore };
+// Metadata classification is not permission to write game code or virtual tables.
+inline bool mayApplyPatch(Transition){return false;}
 template<unsigned Capacity=128> struct Registry {
  static constexpr unsigned CapacityLimit=Capacity;
  Slot slots[Capacity]{};unsigned used=0;

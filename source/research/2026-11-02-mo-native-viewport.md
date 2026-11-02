@@ -1,5 +1,80 @@
 # MO native viewport and sidebar migration
 
+**Current strict build: native zoom, native high-resolution camera fix and
+native sidebar hiding are not migrated and are unavailable.** The earlier
+native prototype described below depended on game-code/vtable patches. Managed
+ownership did not satisfy the no-code-write requirement. The strict Runtime
+refuses the entire patch operation; viewport/sidebar bridges return before
+native layout, surface, buffer, gadget or render-state mutations. Status
+`viewzoom::Unmigrated=-8` and sidebar status `-3` report this limitation.
+The strict x86 bridge compiled successfully with `CodeWritesAllowed=false`,
+Entry ABI 4 and Runtime ABI 5. Its optimized object has no viewport render/
+cursor/install/geometry/raster-preparation or sidebar blit/prepare entry
+symbols: the strict gates remove those native prototype paths from reachable
+code. This is a compile/object inspection, not a real-game execution claim.
+
+## Strict architecture review
+
+The 17 viewport sites include code entries, instruction operands and the
+WWMouse GetCoords vtable slot. The 11 sidebar sites include seven code or
+operand substitutions and four entry detours. All belong to the rejected
+native prototype; none is reclassified as a no-code-write implementation.
+The strict cleanup path clears only DLL/IPC state because this binary cannot
+acquire those native leases. It does not invoke Set_View_Dimensions or attempt
+to restore native patch bytes.
+
+A genuine replacement can reuse the existing external world renderer:
+
+1. Keep native ViewBounds, clippers, WWMouse, DSurface and Z/A state unchanged.
+   Keep a host virtual camera and physical output rectangle separately from
+   the sampled native camera used to verify a coherent game snapshot.
+2. Use `radar::SceneRenderer::render` and `worldscene::Pipeline::draw` with a
+   virtual crop. `NativeCanvas::presentRegion`/GPU region preparation and
+   `ViewportCanvas` already render arbitrary source extents into physical
+   output. `mapbounds::Bounds::clampCamera` already handles an inverted axis
+   by pinning its midpoint, and the canvas fills uncovered pixels with its
+   background. Thus host output can be stable for a viewport larger than the
+   map without patching the native Clamp_Center. This does not fix the hidden
+   native underlay or stop its CPU rendering.
+3. Enlarge host output over the original sidebar column; radar-only can keep
+   a cutout for the native radar/funds/buttons, while bare mode has no cutout.
+   Existing menu/focus/fault handling must restore the native picture when the
+   host cannot present a coherent scene.
+4. Complete interactive ownership before calling this usable zoom/hiding.
+   The current compositor is HTTRANSPARENT/WS_EX_TRANSPARENT, so merely
+   painting over the sidebar would still click hidden production buttons.
+   `host_game_input::pollPointer` also rejects a non-game WindowFromPoint PID.
+   A host input region and shared virtual projection must consume the relevant
+   gestures, including selection, orders, camera dragging, building placement,
+   repair/sell and superweapon targeting. It must use the existing Runtime
+   message/intent path rather than creating another injection or event queue.
+5. Validate world cells and object identities in Runtime before issuing
+   vanilla intents. `ground_geometry.h`, map bounds, terrain/ramp/bridge height,
+   world object snapshots and the existing MO/formation event gateways are
+   reusable, but a complete virtual-screen picker and native-click replacement
+   do not yet exist. Passing virtual pixels to native ProcessClickCoords or
+   changing only message lParam is insufficient: native per-frame WWMouse,
+   hover, drag selection and negative/out-of-view points keep another mapping.
+
+Ordinary native camera data updates through the existing camera mailbox may
+be useful for navigation, but periodic midpoint writes cannot guarantee that
+the original clamp will not overwrite them within a render frame. Likewise,
+calling Set_View_Dimensions or copying sidebar pixels from message callbacks
+does not replace precise render-phase ownership. No verified native data flag
+or public Sidebar Activate/Hide API was found that supplies the missing
+behavior. IAT/rdata/vtable redirection is not used as an alternative definition
+of strict operation.
+
+Read-only review also checked the persistent note
+`2026-10-29-native-render-suppression-feasibility`: there is no established
+independent data switch that suppresses native world drawing while preserving
+its UI. Existing external rendering remains available, but native zoom,
+sidebar hiding and native high-resolution clamp repair are explicitly kept
+unavailable until their full host input/presentation replacement is complete.
+
+The following sections preserve the prior prototype's evidence and are not a
+claim that the strict build exposes these native features.
+
 Question: add map-only zoom, fit-map, three-state sidebar hiding, and stable
 rendering when the viewport exceeds the map, without changing simulation rate
 or scaling the native sidebar and cursor.

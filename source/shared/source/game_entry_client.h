@@ -51,6 +51,7 @@ struct Scope {
  Scope(const Scope&)=delete;Scope&operator=(const Scope&)=delete;
 };
 inline bool patch(Client c,uint32_t at,const uint8_t*before,const uint8_t*after,unsigned n){
+ if constexpr(!CodeWritesAllowed)return false; // No probing, copying, manager or OS calls.
  if(!before||!after||n>16||!n)return false;
  Request r{};r.operation=Operation::Patch;r.client=c;r.module=moduleIdentity();r.address=at;r.length=n;r.token=uint32_t(InterlockedCompareExchange(&activeToken,0,0));
  for(unsigned i=0;i<n;++i){r.before[i]=before[i];r.after[i]=after[i];}return manage(r);

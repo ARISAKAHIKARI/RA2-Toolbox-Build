@@ -62,6 +62,7 @@
 #include "additional_settings.h"
 #include "../../external_reader/source/watch_slots.h"
 #include "view_zoom.h"
+#include "../../shared/source/feature_availability.h"
 #include "superweapon_sidebar_host.h"
 #include "../../shared/source/native_viewport_projection.h"
 static swsidebar::Panel superweaponPanel;static swsidebar::Options superweaponOptions;
@@ -438,8 +439,8 @@ static void registerKeys(){for(int id:registeredKeyIDs)UnregisterHotKey(ui,id);r
  if(LOBYTE(ejectKey)&&!registerKey(1696,ejectKey))++failures;
  if(hookSmartUnload&&LOBYTE(unloadKey)&&!registerKey(1698,unloadKey))++failures;
  if(hookAutoCS&&LOBYTE(csKey)&&!registerKey(1699,csKey))++failures;
- if(extra.viewZoomEnabled){for(int i=0;i<3;++i)if(!registerKey(1720+i,WORD((i==0?VK_OEM_MINUS:i==1?VK_OEM_PLUS:VK_BACK)|(6<<8))))++failures;}
- if(!registerKey(1740,WORD(VK_F11)))++failures;
+ if(extra.viewZoomEnabled){for(int i=0;i<3;++i)if(extra.viewZoomKeys[i]&&!registerKey(1720+i,WORD(extra.viewZoomKeys[i])))++failures;}
+ if(featureavailability::ViewZoom&&extra.sidebarKey&&!registerKey(1740,WORD(extra.sidebarKey)))++failures;
  if(LOBYTE(extra.stickyKey)&&!registerKey(1723,WORD(extra.stickyKey)))++failures;
  for(int i=0;i<selectedmode::Count;++i)if(LOBYTE(extra.missionModeKeys[i])&&!registerKey(1724+i,WORD(extra.missionModeKeys[i])))++failures;
  if(extra.watchEnabled||extra.watchSecondary)for(int i=0;i<3;++i)if(external::watch::firstBinding(extra.watchKeys,i)&&!registerKey(1730+i,WORD(extra.watchKeys[i])))++failures;
@@ -1577,12 +1578,17 @@ static void updateModeStatus(DWORD now){
  std::wstring riskStatus=L"随处建造："+riskText(buildAnywhereMode,snap.placementStatus);
  std::wstring airStatus=L"飞机路径点：";airStatus+=!(extra.airWaypoints||extra.nativeAirWaypoints)?L"关闭":phase?L"等待游戏就绪":extra.airWaypoints||extra.airPathKey||!airway::native()?L"兼容模式":snap.nativeAirStatus==-2?L"启用或关闭失败，请查看日志":snap.nativeAirStatus==-1?L"不支持此游戏版本":snap.nativeAirStatus==3?L"原生下单联机实验":snap.nativeAirStatus==4?L"完整原生联机实验":snap.nativeAirStatus==1?L"原生模式":L"等待生效";
  SetWindowTextW(GetDlgItem(ui,866),airStatus.c_str());
+ {const uint32_t enabled=moorders::gestureEnabled(extra.moFeatures,extra.formationEnabled);const auto invalid=moorders::gestureInvalid(extra.moGestures,enabled),conflict=moorders::gestureConflicts(extra.moGestures,enabled);
+  const wchar_t*names[]={L"模糊下令",L"区域目标分配",L"自定义巡逻圈",L"快速占位"};std::wstring text=invalid?L"无效按住键（请使用持续按住）：":conflict?L"重复配置，冲突项暂停接管：":L"按键配置：无冲突";
+  uint32_t mask=invalid?invalid:conflict;for(int i=0;i<4;++i)if(mask&(1u<<i)){text+=names[i];text+=L" ";}SetWindowTextW(GetDlgItem(ui,9460),text.c_str());}
+
  SetWindowTextW(GetDlgItem(ui,807),riskStatus.c_str());
  std::wstring renderText=extra.mapStrategy?L"地图显示（实验性）：":L"地图显示：";renderText+=extra.mapStrategy==3?(autoRevealDone&&autoRevealDone==commandMatch()?L"自动地图全开已执行":L"等待自动地图全开"):snap.renderRevealStatus==-2?L"启用或关闭失败，请查看日志":!extra.renderReveal?L"关闭":phase?L"等待游戏就绪":snap.renderRevealStatus==1?L"已启用":L"等待生效";
  SetWindowTextW(GetDlgItem(ui,809),renderText.c_str());
  {int z=shared?shared->viewZoomStatus:viewzoom::Waiting;std::wstring text=L"视角缩放：";
   if(!shared)text+=extra.viewZoomEnabled?L"等待连接":L"关闭";
   else switch(z){case viewzoom::Off:text+=L"100%";break;case viewzoom::Applied:text+=std::to_wstring(shared->viewZoomApplied)+L"% · "+std::to_wstring(shared->viewZoomWidth)+L" × "+std::to_wstring(shared->viewZoomHeight);break;
+   case viewzoom::Unmigrated:text+=L"严格模式尚未迁移，当前不可用";break;
    case viewzoom::Renderer:text+=L"原生画面缓冲区不可用";break;case viewzoom::Native:text+=L"游戏版本或绘制入口不兼容";break;
    case viewzoom::Dimensions:text+=L"目标绘制尺寸超出范围";break;
    case viewzoom::ResizeFailed:text+=L"切换失败，已恢复上一次倍率";break;case viewzoom::RestoreFailed:text+=L"恢复失败，请重新启动游戏";break;
@@ -1591,9 +1597,9 @@ static void updateModeStatus(DWORD now){
    default:text+=L"等待游戏前台就绪 / 松开鼠标";break;}
   SetWindowTextW(GetDlgItem(ui,9093),text.c_str());
  }
- {std::wstring text=L"侧边栏：";const int state=shared?shared->sidebarStatus:0;text+=!shared?L"等待连接":state<0?L"入口不兼容或恢复失败":state==1?(extra.sidebarMode==2?L"已隐藏":extra.sidebarMode==1?L"仅雷达与按钮":L"完整显示"):L"等待对局就绪";SetWindowTextW(GetDlgItem(ui,9407),text.c_str());}
+ {std::wstring text=L"侧边栏：";const int state=shared?shared->sidebarStatus:0;text+=!shared?L"等待连接":state==-3?L"严格模式尚未迁移，当前不可用":state<0?L"入口不兼容或恢复失败":state==1?(extra.sidebarMode==2?L"已隐藏":extra.sidebarMode==1?L"仅雷达与按钮":L"完整显示"):L"等待对局就绪";SetWindowTextW(GetDlgItem(ui,9407),text.c_str());}
  {const int status=shared?shared->pauseViewStatus:0;std::wstring text=L"逐帧操作：";
-  text+=!(extra.moFeatures&16)?L"关闭":!shared?L"等待连接":status==2?L"已暂停 · F6 前进一帧 / F5 恢复":status==3?L"正在前进一帧":status==1?L"运行中 · F5 暂停":status==-1?L"当前会话不支持（仅单机）":status==-4?L"检测到跨帧，已暂停":status<0?L"不可用，请检查游戏版本或功能冲突":L"等待对局就绪";
+  text+=!gameentry::CodeWritesAllowed?L"严格模式尚未迁移，当前不可用":!(extra.moFeatures&16)?L"关闭":!shared?L"等待连接":status==2?L"已暂停 · 使用逐帧键前进 / 暂停键恢复":status==3?L"正在前进一帧":status==1?L"运行中 · 使用暂停键暂停":status==-1?L"当前会话不支持（仅单机）":status==-4?L"检测到跨帧，已暂停":status==-5?L"严格模式尚未迁移，当前不可用":status<0?L"不可用，请检查游戏版本或功能冲突":L"等待对局就绪";
   SetWindowTextW(GetDlgItem(ui,9406),text.c_str());}
  SetWindowTextW(GetDlgItem(ui,888),!extra.scrollRefreshMode?L"高刷策略：仅光标（沿用光标页设置）":shared&&shared->scrollRefreshStatus<0?L"高刷策略：接口不兼容，保持原版画面刷新":shared&&shared->scrollRefreshStatus==1?(extra.scrollRefreshMode==3?L"高刷策略：强制高刷 · 实验性功能已启用":extra.scrollRefreshMode==2?L"高刷策略：全部 · 实验性功能已启用":L"高刷策略：光标＋拖屏 · 实验性功能已启用"):L"高刷策略：等待游戏前台就绪");
  if(shared&&shared->scrollRefreshStatus==1&&shared->scrollRefreshRateMilli){wchar_t label[160];swprintf(label,160,L"%s · 绘制调用 %.1f Hz（非屏幕 FPS） · 最长间隔 %.1f ms",extra.scrollRefreshMode==3?L"强制高刷":extra.scrollRefreshMode==2?L"全部（实验性）":L"光标＋拖屏（实验性）",shared->scrollRefreshRateMilli/1000.0,shared->scrollRefreshMaxGapUs/1000.0);SetWindowTextW(GetDlgItem(ui,888),label);}

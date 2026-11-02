@@ -15,7 +15,7 @@ ROOT = Path(__file__).resolve().parent.parent
 NAMES = ('RA2Toolbox.exe','GameRuntime.dll')
 BROKER = 'GameRuntimeHost32.exe'
 NEURAL = 'RA2NeuralRenderer.exe'
-HOOKS = {'GameRuntime.dll':('GameRuntimeHook','GameRuntimePostHook','GameRuntimeInfo','AssistProtocolInfo','AssistMappingPrefix','ManageGameEntry','GameEntryManagerInfo')}
+HOOKS = {'GameRuntime.dll':('GameRuntimeHook','GameRuntimePostHook','GameRuntimeInfo','AssistProtocolInfo','AssistMappingPrefix','ManageGameEntry','GameEntryManagerInfo','GameCodeWritePolicyInfo')}
 SYSTEM = {'kernel32.dll', 'user32.dll', 'gdi32.dll', 'winmm.dll', 'gdiplus.dll',
           'comctl32.dll', 'shell32.dll', 'ole32.dll', 'comdlg32.dll', 'advapi32.dll',
           'msvcrt.dll', 'ucrtbase.dll', 'ntdll.dll', 'version.dll', 'ws2_32.dll',
@@ -135,18 +135,22 @@ def verify(root, host_arch='x86', neural_helper=False):
             a = host.at_rva(host.exports()['AssistHostProtocolInfo'], 8)
             b = bridge.at_rva(bridge.exports()['AssistProtocolInfo'], 8)
             protocol, shared_bytes = struct.unpack('<II', a)
-            if a != b or protocol != 84 or not shared_bytes:
+            if a != b or protocol != 85 or not shared_bytes:
                 raise ValueError('host/bridge protocol or Shared structure size mismatch')
-            marker = 'Local\\RA2Assist_v084_\0'.encode('utf-16le')
+            marker = 'Local\\RA2Assist_v085_\0'.encode('utf-16le')
             if 'AssistHostMappingPrefix' not in host.exports() or host.at_rva(host.exports()['AssistHostMappingPrefix'],len(marker)) != marker:
                 raise ValueError('host mapping namespace mismatch')
             if bridge.at_rva(bridge.exports()['AssistMappingPrefix'], len(marker)) != marker:
                 raise ValueError('incorrect exported mapping namespace')
             manager = images['GameRuntime.dll']
-            if struct.unpack('<II',manager.at_rva(manager.exports()['GameEntryManagerInfo'],8)) != (3,108):
+            if struct.unpack('<II',manager.at_rva(manager.exports()['GameEntryManagerInfo'],8)) != (4,108):
                 raise ValueError('entry manager API mismatch')
-            if struct.unpack('<II', manager.at_rva(manager.exports()['GameRuntimeInfo'],8)) != (4,176):
+            if struct.unpack('<II', manager.at_rva(manager.exports()['GameRuntimeInfo'],8)) != (5,176):
                 raise ValueError('Runtime diagnostic transport ABI mismatch')
+            if struct.unpack('<III',manager.at_rva(manager.exports()['GameCodeWritePolicyInfo'],12)) != (1,0,0):
+                raise ValueError('strict no-code-write policy mismatch')
+            recs['GameRuntime.dll']['game_code_write_policy']=[1,0,0]
+            recs['GameRuntime.dll']['entry_manager_version']=4
             start=manager.optional+manager.u16(manager.nt+20)
             for symbol in ('GameRuntimeHook','GameRuntimePostHook'):
                 rva=manager.exports()[symbol]
@@ -156,7 +160,7 @@ def verify(root, host_arch='x86', neural_helper=False):
                 if manager.exports().get(symbol+'@12',rva)!=rva:
                     raise ValueError('stdcall hook alias mismatch: '+symbol)
                 recs['GameRuntime.dll'][symbol+'_rva']=hex(rva)
-            recs['GameRuntime.dll']['runtime_protocol']=4
+            recs['GameRuntime.dll']['runtime_protocol']=5
             recs['GameRuntime.dll']['runtime_control_bytes']=176
             resource = host.resource_bytes()
             if '1.0.39.7'.encode('utf-16le') not in resource:

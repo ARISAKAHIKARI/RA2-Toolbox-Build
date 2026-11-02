@@ -1,12 +1,14 @@
 // Single-player pause is a native loop gate, never another command scheduler.
 // The ordinary Runtime message entry continues to own all tool requests.
 #include "pause_view_policy.h"
+#include "hotkey_routes.h"
 extern "C" unsigned __cdecl GuardedPauseViewMainGate();
 extern "C" unsigned __cdecl GuardedPauseViewNative(unsigned,unsigned,unsigned,unsigned);
 static pauseview::State pauseViewState;
 static bool pauseViewInstalled=false,pauseViewNativeFailed=false;
 static RiskSite pauseViewSite{experimentalpatch::PauseLoop,5,{0xA0,0xA0,0xE9,0xA8,0},{}};
 static bool pauseViewAvailable(){
+ if constexpr(!gameentry::CodeWritesAllowed)return false;
  if(pauseViewNativeFailed||!pauseViewInstalled||!sh||sh->stop||fault||!(sh->moFeatures&pauseview::Feature))return false;
  return pauseview::singleplayer(get<int>(0xA8B238))&&get<bool>(0xA8E9A0)&&lastHouse&&
   lastHouse==get<uint32_t>(0xA83D4C)&&DWORD(sampleClock(sh)-sh->heartbeat)<3000;
@@ -16,21 +18,57 @@ static void pauseViewObserve(){
  if(sh)sh->pauseViewStatus=!(sh->moFeatures&pauseview::Feature)?0:pauseViewNativeFailed?-3:
   !pauseview::singleplayer(get<int>(0xA8B238))?-1:!pauseViewInstalled?-2:pauseViewState.overshot?-4:pauseViewState.step?3:pauseViewState.paused?2:1;
 }
-static void restorePauseView(){pauseViewState.reset();pauseViewInstalled=pauseViewNativeFailed=false;restoreRiskSite(pauseViewSite);if(sh)sh->pauseViewStatus=0;}
+static void restorePauseView(){pauseViewState.reset();pauseViewInstalled=pauseViewNativeFailed=false;if constexpr(gameentry::CodeWritesAllowed)restoreRiskSite(pauseViewSite);if(sh)sh->pauseViewStatus=0;}
+// Use the same Press/Release/Double policy as ordinary configured hotkeys.
+// This registry never registers another OS hook or a global key. Strict builds
+// return before polling/consuming keys, while retaining the saved bindings.
+static hotkeyroute::Registry pauseViewHotkeys;
+static uint32_t pauseViewKeyEpoch=0,pauseViewKeyValues[2]{};
+static bool pauseViewKeySuppressed[256]{};
+static bool pauseViewKeyService(MSG*msg=nullptr){
+ if constexpr(!gameentry::CodeWritesAllowed)return false;
+ const bool keyDown=msg&&(msg->message==WM_KEYDOWN||msg->message==WM_SYSKEYDOWN);
+ const bool keyUp=msg&&(msg->message==WM_KEYUP||msg->message==WM_SYSKEYUP);
+ const unsigned vk=msg?(unsigned(msg->wParam)&255):0;
+ bool consumed=keyUp&&pauseViewKeySuppressed[vk];if(keyUp)pauseViewKeySuppressed[vk]=false;
+ if(!pauseViewAvailable()||!sh->foreground||get<bool>(0xA8BC60+25)||get<int>(0xA8EDA0)){
+  pauseViewHotkeys.cancel();return consumed;
+ }
+ bool changed=pauseViewKeyEpoch!=match;
+ for(unsigned n=0;n<2;++n)changed|=pauseViewKeyValues[n]!=sh->pauseViewKeys[n];
+ if(changed){
+  pauseViewHotkeys.clear();pauseViewKeyEpoch=match;
+  for(unsigned n=0;n<2;++n){pauseViewKeyValues[n]=sh->pauseViewKeys[n];
+   pauseViewHotkeys.add(int(n+1),uint16_t(pauseViewKeyValues[n]),true,[](int,uint16_t){return true;});}
+  pauseViewHotkeys.synchronized=true;
+ }
+ const uint32_t now=sampleClock(sh);uint8_t keys[256]{};
+ for(unsigned n=0;n<256;++n)keys[n]=runtimeKeys.held[n];
+ auto execute=[](hotkeyroute::Group actions){
+  hotkeyroute::firstPerGesture(actions);
+  for(int action:actions.actions){if(action==1)pauseViewState.toggle();else if(action==2)pauseViewState.once();}
+  pauseViewObserve();
+ };
+ pauseViewHotkeys.sample(keys,now,match,execute,false);
+ if(keyDown&&!(msg->lParam&(1u<<30))){
+  const uint16_t code=keygesture::chord(vk,keys);
+  for(const auto&group:pauseViewHotkeys.groups)if(group.key==code){
+   consumed=pauseViewKeySuppressed[vk]=true;hotkeyroute::Group actions;
+   if(pauseViewHotkeys.press(group.id,now,match,actions))execute(actions);break;
+  }
+ }
+ hotkeyroute::Group delayed;
+ while(pauseViewHotkeys.expired(now,match,delayed))execute(delayed);
+ return consumed;
+}
 static bool pauseViewMessage(MSG*msg){
- if(!msg)return false;
- const bool down=msg->message==WM_KEYDOWN||msg->message==WM_SYSKEYDOWN;
- const bool up=msg->message==WM_KEYUP||msg->message==WM_SYSKEYUP;
- if((!down&&!up)||(msg->wParam!=VK_F5&&msg->wParam!=VK_F6)||!pauseViewAvailable()||
-  !sh->foreground||get<bool>(0xA8BC60+25)||get<int>(0xA8EDA0)||
-  (GetKeyState(VK_SHIFT)&0x8000)||(GetKeyState(VK_CONTROL)&0x8000)||(GetKeyState(VK_MENU)&0x8000))return false;
- pauseViewObserve();
- if(down&&!(msg->lParam&(1u<<30))){if(msg->wParam==VK_F5)pauseViewState.toggle();else pauseViewState.once();pauseViewObserve();}
+ if(!msg||!pauseViewKeyService(msg))return false;
  msg->message=WM_NULL;msg->wParam=msg->lParam=0;return true;
 }
 // Each non-pumping native draw/input operation owns a short Capture. The
 // outer SEH wrapper releases that lease even when a native function faults.
 extern "C" unsigned __cdecl AssistPauseViewNative(unsigned op,unsigned key,unsigned x,unsigned y){
+ if constexpr(!gameentry::CodeWritesAllowed)return 0;
  const uint32_t display=0x87F7E8;
  if(op==0){call<void>(0x4F42F0,display,2);return 1;}
  if(op==1)return call<int>(0x4F4320,display,(uint32_t*)uintptr_t(key),(int*)uintptr_t(x),(int*)uintptr_t(y));
@@ -44,6 +82,7 @@ extern "C" unsigned __cdecl AssistPauseViewNative(unsigned op,unsigned key,unsig
 // No managed lease spans CallBack's native Windows message pump. Its ordinary
 // Runtime message filters can therefore acquire the one existing manager.
 extern "C" unsigned __cdecl AssistPauseViewMainGate(){
+ if constexpr(!gameentry::CodeWritesAllowed)return 0;
  pauseViewObserve();if(!pauseViewAvailable()||!pauseViewState.hold())return 0;
  if(get<bool>(0xA8E9A0)){
   ((void(__stdcall*)())uintptr_t(0x48D080))();
@@ -98,9 +137,10 @@ original:
  ret
 }}
 static void pauseViewTick(){
+ if constexpr(!gameentry::CodeWritesAllowed){pauseViewState.reset();pauseViewInstalled=pauseViewNativeFailed=false;if(sh)sh->pauseViewStatus=(sh->moFeatures&pauseview::Feature)?-5:0;return;}
  if(!sh||sh->stop||fault||!(sh->moFeatures&pauseview::Feature)){restorePauseView();return;}
  if(!pauseview::singleplayer(get<int>(0xA8B238))){restorePauseView();sh->pauseViewStatus=-1;return;}
  if(pauseViewNativeFailed){pauseViewInstalled=false;restoreRiskSite(pauseViewSite);sh->pauseViewStatus=-3;return;}
  if(!pauseViewSite.after[0]){pauseViewSite.after[0]=0xE9;const uint32_t offset=uint32_t(uintptr_t(&pauseViewLoopEntry))-pauseViewSite.address-5;memcpy(pauseViewSite.after+1,&offset,4);}
- pauseViewInstalled=installRiskSite(pauseViewSite);pauseViewObserve();
+ pauseViewInstalled=installRiskSite(pauseViewSite);pauseViewObserve();pauseViewKeyService();
 }

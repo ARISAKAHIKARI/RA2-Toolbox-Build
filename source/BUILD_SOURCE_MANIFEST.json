@@ -5,8 +5,8 @@
   "source": "Current rendering branch: x64 external host with x86 GameRuntime and hook broker; Vulkan rendering is optional.",
   "resources": "Update package reuses existing assets/profiles/preprocessing runtime/engine",
   "resources_legacy_reuse": true,
-  "build_protocol": 84,
-  "validation": "Production x64 host/x86 runtime cross-compilation; 685 real Windows cross-bit ABI checks; PE/import/manifest checks; actual compiled DLL/native CRC 21-case, House grouping 36-case and lifecycle 5-case controlled fixtures. No Windows loader/game/GPU/live multiplayer execution.",
+  "build_protocol": 85,
+  "validation": "Strict manager controlled rejection checks, Windows x86/x64 ABI and production cross-build/static PE checks; no Windows game or multiplayer execution.",
   "build_requirement": "Zig 0.13.0; x86 paired build or x64 host with x86 runtime and broker.",
   "settings": {
     "Orders.MegaMissionBackend": "0=constructor; 1=high-level MP; SP uses constructor/DoList centrally",
@@ -208,22 +208,26 @@
     "validation": "Final actual DLL/native controlled results accompany package; production cross build,685 ABI entries and static PE/import/manifest checks. No Windows loader/live socket/multiplayer validation"
   },
   "mo_controls": {
-    "baseline": "17ee48810d33d47203d52893d3b0472d992f3a11",
+    "baseline": "5cd90d7dde2f8de4dd1d08e0665ae8be18d05bd6",
     "reference": "MagicShiba/MO_ExperienceEnhancements@33ed558bd38f36b5012eddcc9c0fb109cc68e38a",
-    "abi": "Assist84 Shared6584440; runtime4 entry3; matched host/runtime/broker update required",
-    "features": [
-      "map-only native viewport zoom",
-      "fuzzy and area orders",
-      "quick formation slots",
-      "native patrol graph",
-      "small-map camera and source-pixel recovery",
-      "aircraft UI planning gate",
-      "detached superweapon panel",
-      "SP frame control",
-      "three-state native sidebar"
+    "abi": "Assist85 Shared6584480, Runtime5 Entry4; exact strict export required",
+    "code_writes_allowed": false,
+    "install_restore_vtable_patches_allowed": false,
+    "available": [
+      "configurable fuzzy/area orders",
+      "configurable quick formation",
+      "configurable native patrol events",
+      "compatible aircraft waypoint queue",
+      "detached superweapon panel"
     ],
+    "unmigrated": [
+      "native map zoom",
+      "native high-resolution clamp/ghost hooks",
+      "native sidebar hiding",
+      "native pause/frame stepping"
+    ],
+    "controls": "existing control/video categories and Mouse/Hotkeys INI settings; same host/runtime gesture policy",
     "windows_game_executed": false,
-    "multiplayer_executed": false,
-    "notes": "docs/MO-CONTROLS.md; source/research/2026-11-02-*"
+    "multiplayer_executed": false
   }
 }

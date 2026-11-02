@@ -2,15 +2,70 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
+#include "../../shared/source/key_gesture.h"
 // Behaviour reference: MagicShiba/MO_ExperienceEnhancements, commit
 // 33ed558bd38f36b5012eddcc9c0fb109cc68e38a. Independent implementation;
 // this header is pure geometry and preview data, with no engine calls.
 namespace assist { namespace moorders {
 constexpr uint32_t Fuzzy=1,Area=2,Patrol=4,QuickFormation=8;
-template<class Keys>inline uint32_t claimsMiddle(uint32_t features,const Keys&keys){
- if(keys[18])return 0;const bool ctrl=keys[17]!=0,z=keys['Z']!=0,shift=keys[16]!=0;
- const uint32_t mode=ctrl&&!z?Fuzzy:!ctrl&&z?Patrol:!ctrl&&shift?Area:0;return features&mode?mode:0;
+constexpr int GestureCount=4;
+struct GesturePolicy {
+ uint32_t keys[GestureCount]={17,16,'Z',0};
+ // Match the existing pointer mouse setting IDs; zero explicitly disables.
+ uint32_t buttons[GestureCount]={1,1,1,1};
+};
+inline int gestureIndex(uint32_t mode){return mode==Fuzzy?0:mode==Area?1:mode==Patrol?2:mode==QuickFormation?3:-1;}
+inline uint32_t gestureMode(int index){return index>=0&&index<GestureCount?1u<<index:0;}
+inline uint32_t gestureEnabled(uint32_t features,bool formation){return (features&7u)|(formation?QuickFormation:0);}
+inline bool gestureButton(uint32_t button){return button==1||button==2||button==3||button==4||button==6;}
+inline uint32_t gestureVK(uint32_t button){return button==1?4:button==2?5:button==3?6:button==4?2:button==6?1:0;}
+inline bool gestureKey(uint32_t key){
+ if(!key)return true;unsigned vk=key&255;
+ return vk>=8&&vk<256&&keygesture::isHold(key)&&!(key&~uint32_t(keygesture::Stored));
 }
+inline uint16_t gestureKeyIdentity(uint32_t key){return keygesture::normalize(key,keygesture::Mode::Hold);}
+inline bool sameGestures(const GesturePolicy&a,const GesturePolicy&b){for(int i=0;i<GestureCount;++i)if(a.keys[i]!=b.keys[i]||a.buttons[i]!=b.buttons[i])return false;return true;}
+inline uint32_t gestureInvalid(const GesturePolicy&p,uint32_t enabled){
+ uint32_t out=0;for(int i=0;i<GestureCount;++i)if((enabled&gestureMode(i))&&p.buttons[i]&&(!gestureButton(p.buttons[i])||!gestureKey(p.keys[i])))out|=gestureMode(i);return out;
+}
+inline uint32_t gestureConflicts(const GesturePolicy&p,uint32_t enabled){
+ uint32_t out=0;for(int i=0;i<GestureCount;++i)if((enabled&gestureMode(i))&&gestureButton(p.buttons[i])&&gestureKey(p.keys[i]))for(int j=i+1;j<GestureCount;++j)
+  if((enabled&gestureMode(j))&&p.buttons[i]==p.buttons[j]&&gestureKey(p.keys[j])&&gestureKeyIdentity(p.keys[i])==gestureKeyIdentity(p.keys[j]))out|=gestureMode(i)|gestureMode(j);return out;
+}
+template<class Keys>inline bool gestureHeld(const Keys&keys,uint32_t binding){
+ if(!gestureKey(binding))return false;
+ if(binding)return keygesture::matchesHold(keys,binding);
+ // Empty means the mouse by itself. Do not special-case a literal native
+ // planning key: every keyboard key is excluded from this bare-mouse fallback.
+ for(unsigned vk=8;vk<256;++vk)if(keys[vk])return false;return true;
+}
+inline int gestureSpecificity(uint32_t key){
+ if(!key)return 0;unsigned vk=key&255,mods=(key>>8)&7;
+ int out=(vk>=16&&vk<=18)?4:8;for(unsigned bit=1;bit<=4;bit<<=1)if(mods&bit)out+=2;return out+((key&keygesture::Double)?1:0);
+}
+struct GestureResolution {uint32_t mode=0,matched=0,conflicts=0;};
+template<class Keys>inline GestureResolution resolveGesture(const GesturePolicy&p,uint32_t enabled,uint32_t button,const Keys&keys){
+ GestureResolution result;int best=-1;bool tied=false;
+ for(int i=0;i<GestureCount;++i)if((enabled&gestureMode(i))&&p.buttons[i]==button&&gestureButton(button)&&gestureHeld(keys,p.keys[i])){
+  const auto mode=gestureMode(i);result.matched|=mode;int score=gestureSpecificity(p.keys[i]);
+  if(score>best){best=score;result.mode=mode;tied=false;}else if(score==best)tied=true;
+ }
+ result.conflicts=gestureConflicts(p,enabled)&result.matched;
+ if(result.conflicts||tied){result.conflicts|=tied?result.matched:0;result.mode=0;}return result;
+}
+struct MouseEdge {uint32_t button=0;bool down=false,up=false;};
+inline MouseEdge gestureMouseEdge(uint32_t message,uintptr_t wParam){
+ switch(message){
+ case 0x201:case 0x203:return {6,true,false};case 0x202:return {6,false,true};
+ case 0x204:case 0x206:return {4,true,false};case 0x205:return {4,false,true};
+ case 0x207:case 0x209:return {1,true,false};case 0x208:return {1,false,true};
+ case 0x20B:case 0x20D:case 0x20C:{unsigned which=unsigned(wParam>>16)&65535;return {which==1?2u:which==2?3u:0u,message!=0x20C,message==0x20C};}
+ default:return {};
+ }
+}
+inline uint32_t gestureUpMessage(uint32_t button){return button==1?0x208:button==2||button==3?0x20C:button==4?0x205:button==6?0x202:0;}
+// Compatibility helper for old callers; production uses the shared policy.
+template<class Keys>inline uint32_t claimsMiddle(uint32_t features,const Keys&keys){return resolveGesture(GesturePolicy{},features&7u,1,keys).mode;}
 constexpr int Actors=256,Targets=256,Nodes=64,Waypoints=16,Lines=128;
 struct Point {int x=0,y=0,z=0;}; // World leptons in previews, map cells in geometry.
 struct Line {Point from,to;};

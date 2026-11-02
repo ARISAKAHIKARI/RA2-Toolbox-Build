@@ -7,3 +7,4 @@ EXPORTS
  AssistMappingPrefix DATA
  ManageGameEntry
  GameEntryManagerInfo DATA
+ GameCodeWritePolicyInfo DATA

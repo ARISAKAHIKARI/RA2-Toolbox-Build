@@ -9,6 +9,7 @@ inline bool rule(int id){
 // Classify a complete label/input row, keeping related controls together.
 // Historical page numbers describe control ownership, not navigation.
 inline int row(int section,const int*ids,unsigned count){
+ for(unsigned i=0;i<count;++i){int id=ids[i];if((id>=9090&&id<=9093)||id==9404||id==9405||id==9407||(id>=9450&&id<=9453))return Video;if(id==9403||id==9406||id==9454||id==9455)return Control;}
  for(unsigned i=0;i<count;++i)if(rule(ids[i]))return Rules;
  if(section==3)return Video;
  if(section==2||section==5)return Automatic;

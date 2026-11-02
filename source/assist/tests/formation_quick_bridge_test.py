@@ -18,6 +18,7 @@ fixture=r'''
 #include <set>
 #include <vector>
 #include @LAYOUT_HEADER@
+#include "mo_orders.h"
 using namespace assist;
 using UINT=unsigned;using DWORD=uint32_t;using HWND=uintptr_t;using WPARAM=uintptr_t;using LPARAM=intptr_t;
 constexpr UINT WM_NULL=0,WM_KEYDOWN=0x100,WM_KEYUP=0x101,WM_SYSKEYDOWN=0x104,WM_SYSKEYUP=0x105;
@@ -55,7 +56,8 @@ static struct{int status=1,commandStatus=1,frame=100,session=0,chat=0;}snap;
 static uint32_t clockValue=1000;static int notifications=0,formationJobCount=0;
 static struct Shared{
  bool stop=false,foreground=true;uint32_t heartbeat=1000;
- volatile long formationSeq=0,formationPolicySeq=0;
+ volatile long formationSeq=0,formationPolicySeq=0,moGesturePolicySeq=0;
+ uint32_t moFeatures=0;moorders::GesturePolicy moGestures;
  formation::Policy formationPolicy;formation::Preview formationPreview;
  int formationJobs=0,formationAccepted=0,formationRejected=0;
  uint32_t formationConsumedUntil=0,formationKey=0,formationKeyAck=0,formationKeyCode=0;
@@ -94,7 +96,7 @@ static void setup(int button=2){
 }
 static bool dispatch(UINT message,uint32_t key=0,bool repeat=false,int x=100,int y=100){
  MSG msg;msg.message=message;msg.wParam=key;
- msg.lParam=(message>=WM_MOUSEMOVE&&message<=WM_MBUTTONUP)?MAKELPARAM(short(x),short(y)):(repeat?LPARAM(1u<<30):0);
+ msg.lParam=(message>=WM_MOUSEMOVE&&message<=0x20D)?MAKELPARAM(short(x),short(y)):(repeat?LPARAM(1u<<30):0);
  if(message==WM_KEYDOWN||message==WM_SYSKEYDOWN||message==WM_KEYUP||message==WM_SYSKEYUP){
   const bool down=message==WM_KEYDOWN||message==WM_SYSKEYDOWN;held[key]=down;
   uint8_t keys[256]{};for(unsigned i=0;i<256;++i)keys[i]=held[i];
@@ -145,6 +147,16 @@ int main(){
  assert(formationMemory.quick&&formationJobCount==25);int same=0;
  for(int i=0;i<formationJobCount;++i)if(formationJobs[i].goal.x/256==31&&formationJobs[i].goal.y/256==31)++same;
  assert(same==3);
+ // Rebind both the held keyboard key and the mouse, including an X-button.
+ setup();sh->moGestures.keys[3]='G'|0x3000;sh->moGestures.buttons[3]=2;held['G']=true;
+ message(0x20B,1u<<16);assert(formationQuick&&formationQuickMouse==2);message(0x20C,1u<<16);
+ assert(formationMemory.quick&&formationJobCount==25);
+ setup();sh->moGestures.keys[3]='G';sh->moGestures.buttons[3]=4;held['G']=true;
+ message(WM_RBUTTONDOWN);assert(formationQuick);assert(!dispatch(WM_LBUTTONDOWN));assert(!formationQuick&&!sh->formationPreview.active);
+ message(WM_RBUTTONUP);assert(!formationJobCount);
+ // Rebinding the active policy cancels the pending click instead of sending
+ // the old destinations with a newly chosen mouse/keyboard authorization.
+ setup();message(WM_MBUTTONDOWN);sh->moGestures.buttons[3]=2;message(WM_MBUTTONUP);assert(!formationJobCount);
  std::cout<<"PASS production quick placement: quotas survive commit and remembered-formation translation; chord cancellation and click release destination\n";
 }
 '''

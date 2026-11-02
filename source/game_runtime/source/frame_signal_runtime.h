@@ -50,6 +50,11 @@ static void maintain(DWORD requestedOwner){
   else{owner=requestedOwner;framesignal::name(path,GetCurrentProcessId(),owner,true);event=OpenEventW(EVENT_MODIFY_STATE,FALSE,path);if(!event)releaseChannel();}
  }
  if(channel&&!installed&&channel->state==framesignal::Waiting){
+  if constexpr(!gameentry::CodeWritesAllowed){
+   channel->error=ERROR_NOT_SUPPORTED;channel->thread=GetCurrentThreadId();
+   MemoryBarrier();InterlockedExchange(&channel->state,framesignal::CodeWritesUnavailable);
+   SetLastError(error);return;
+  }
   patchBytes[0]=0xE9;const uint32_t delta=uint32_t(uintptr_t(&committedAdapter))-framesignal::CommitSite-5;memcpy(patchBytes+1,&delta,4);patchBytes[5]=0x90;
   installed=!conflict&&gameentry::patch(gameentry::Client::Assist,framesignal::CommitSite,original,patchBytes,6);
   channel->error=installed?0:GetLastError();channel->thread=GetCurrentThreadId();LARGE_INTEGER f{};QueryPerformanceFrequency(&f);channel->frequency=f.QuadPart;

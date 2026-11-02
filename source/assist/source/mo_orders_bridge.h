@@ -12,16 +12,16 @@ static moorders::Point moStroke[moorders::Nodes],moRoute[moorders::Waypoints];
 static int moStrokeCount=0,moRouteCount=0,moMode=0,moStage=0,moNodeAt=0,moActorAt=0;
 static uint32_t moEpoch=0,moHouse=0,moStarted=0,moPreviewAt=0,moHover=0;
 static int moStageFrame=0,moStartFrame=0;static bool moHolding=false,moFeedback=false;
-static MSG moDeferredZ{};static bool moHaveDeferredZ=false;
+static uint32_t moGestureButton=0,moSuppressedButton=0;static moorders::GesturePolicy moCapturedGestures;
+#include "mo_patrol_planning_bridge.h"
 static moorders::Preview moPreview;
 static bool moOrdersPending(){return moHolding||moStage||moQueueAt<moQueueCount;}
 static void moOrdersPublish(){
  if(!sh)return;moPreview.match=match;moPreview.tick=sampleClock(sh);double scale=0;if(read(0xB0CD48,&scale,8)&&std::isfinite(scale)&&scale>0&&scale<=1)moPreview.zScale=scale;
  InterlockedIncrement(&sh->moOrdersPreviewSeq);MemoryBarrier();sh->moOrdersPreview=moPreview;MemoryBarrier();InterlockedIncrement(&sh->moOrdersPreviewSeq);notifyHost();
 }
-static void moReplayZ(){if(moHaveDeferredZ){MSG m=moDeferredZ;moHaveDeferredZ=false;PostMessageW(m.hwnd,m.message,m.wParam,m.lParam);}}
 static void resetMoOrders(){
- moHolding=false;moStage=moQueueCount=moQueueAt=moActorCount=moStrokeCount=moTargetCount=moRouteCount=0;moPreview={};moMode=0;moFeedback=false;moReplayZ();moOrdersPublish();
+ moHolding=false;moStage=moQueueCount=moQueueAt=moActorCount=moStrokeCount=moTargetCount=moRouteCount=0;moPreview={};moMode=0;moFeedback=false;moGestureButton=0;if(moEpoch!=match||moHouse!=lastHouse)moSuppressedButton=0;moPlanningReset();moOrdersPublish();
 }
 static bool moOrdersContext(){
  if(!sh||fault||sh->stop||!nativeReady()||!sh->foreground||DWORD(sampleClock(sh)-sh->heartbeat)>150||get<bool>(0x87F7E8+0x11B1))return false;
@@ -174,35 +174,45 @@ static void moCommit(){
  }else moAssignments(false);
  moPreview.active=0;moOrdersPublish();sh->moOrderStatus=1;
 }
+static bool moCapturedPolicy(){return moReadGestures()&&moorders::sameGestures(moCapturedGestures,moRuntimeGestures)&&(moGestureEnabled()&uint32_t(moMode))&&!(moorders::gestureConflicts(moRuntimeGestures,moGestureEnabled())&uint32_t(moMode));}
+static bool moCapturedHold(){
+ if(!moCapturedPolicy())return false;const int index=moorders::gestureIndex(uint32_t(moMode));if(index<0)return false;
+ uint8_t keys[256]{};moGestureKeyboard(keys);return moorders::gestureHeld(keys,moCapturedGestures.keys[index]);
+}
 static bool moOrdersMessage(MSG*msg){
  auto swallow=[&](){msg->message=WM_NULL;msg->wParam=msg->lParam=0;return true;};
- if(moMode==int(moorders::Patrol)&&moStage&&(msg->message==WM_KEYUP||msg->message==WM_SYSKEYUP)&&msg->wParam=='Z'){
-  // Native Z release commits every token. Delay it until our standard graph
-  // events have executed, then replay the unchanged UI release once.
-  moDeferredZ=*msg;moHaveDeferredZ=true;return swallow();
+ if(moPlanningMessage(msg))return true;
+ const auto edge=moorders::gestureMouseEdge(msg->message,uintptr_t(msg->wParam));
+ if(edge.up&&edge.button==moSuppressedButton&&!moHolding){moSuppressedButton=0;return swallow();}
+ const bool keyDown=msg->message==WM_KEYDOWN||msg->message==WM_SYSKEYDOWN;
+ if(moHolding&&((keyDown&&msg->wParam==VK_ESCAPE)||(edge.down&&edge.button!=moGestureButton))){bool escape=keyDown&&msg->wParam==VK_ESCAPE;resetMoOrders();return escape?swallow():false;}
+ if(edge.up&&edge.button==moGestureButton&&moHolding){
+  moSuppressedButton=0;moorders::Point p;if(moOrdersContext()&&moCapturedHold()&&moPoint(msg,p,&moHover)){moorders::sample(moStroke,moStrokeCount,p,true);moCommit();}else resetMoOrders();return swallow();
  }
- if(moHolding&&((msg->message==WM_KEYDOWN&&msg->wParam==VK_ESCAPE)||msg->message==WM_RBUTTONDOWN||msg->message==WM_LBUTTONDOWN)){resetMoOrders();return msg->wParam==VK_ESCAPE?swallow():false;}
- if(msg->message==WM_MBUTTONUP&&moHolding){
-  moorders::Point p;if(moOrdersContext()&&moPoint(msg,p,&moHover)){moorders::sample(moStroke,moStrokeCount,p,true);moCommit();}else resetMoOrders();return swallow();
- }
+ if(moHolding&&(!moOrdersContext()||!moCapturedHold())){resetMoOrders();return false;}
  if(msg->message==WM_MOUSEMOVE&&moHolding){
-  if(!moOrdersContext()){resetMoOrders();return swallow();}moorders::Point p;
-  if(moPoint(msg,p,&moHover)){moorders::sample(moStroke,moStrokeCount,p);if(DWORD(sampleClock(sh)-moPreviewAt)>=80)moBuildPreview();}return swallow();
+  moorders::Point p;if(moPoint(msg,p,&moHover)){moorders::sample(moStroke,moStrokeCount,p);if(DWORD(sampleClock(sh)-moPreviewAt)>=80)moBuildPreview();}return swallow();
  }
- if(msg->message!=WM_MBUTTONDOWN||!moOrdersContext()||formationView.active||moStage)return false;
- uint8_t keys[256]{};for(unsigned key:{16u,17u,18u,unsigned('Z')})keys[key]=(GetKeyState(int(key))&0x8000)!=0;
- int mode=int(moorders::claimsMiddle(sh->moFeatures,keys));
- if(!mode||!(sh->moFeatures&mode))return false;
+ if(!edge.down||!moOrdersContext()||moStage||!moReadGestures())return false;
+ if(formationView.active&&(!formationHolding||formationModal||formationButton))return false;
+ uint8_t keys[256]{};moGestureKeyboard(keys);const auto resolved=moGestureResolve(edge.button,keys);
+ if(!resolved.matched)return false;
+ if(!resolved.mode){sh->moOrderStatus=uint32_t(-14);moSuppressedButton=edge.button;return swallow();}
+ if(resolved.mode==moorders::QuickFormation)return false;
+ if(formationView.active)formationCancel();
  moorders::Point point;uint32_t hover=0;if(!moPoint(msg,point,&hover))return false;
- indexWorld(get<int>(0xA8ED84));if(!moCapture())return false;
- // A new explicit gesture replaces our unsent tail, without cancelling any
- // already accepted vanilla event or unrelated native planning graph.
- moQueueCount=moQueueAt=moStage=0;moMode=mode;moHover=hover;moEpoch=match;moHouse=lastHouse;moStrokeCount=0;moorders::sample(moStroke,moStrokeCount,point);moHolding=true;moBuildPreview();return swallow();
+ indexWorld(get<int>(0xA8ED84));if(!moCapture()){sh->moOrderStatus=uint32_t(-4);moSuppressedButton=edge.button;return swallow();}
+ // The configured keyboard authorizes this capture, but never substitutes for
+ // the game's own PlanningMode binding or mutates its local editor state.
+ moPlanningReset();moEpoch=match;moHouse=lastHouse;
+ if(resolved.mode==moorders::Patrol&&!moPlanningCapture(msg)){sh->moOrderStatus=uint32_t(-15);moSuppressedButton=edge.button;return swallow();}
+ moQueueCount=moQueueAt=moStage=0;moMode=int(resolved.mode);moHover=hover;moStrokeCount=0;moCapturedGestures=moRuntimeGestures;moGestureButton=moSuppressedButton=edge.button;
+ moorders::sample(moStroke,moStrokeCount,point);moHolding=true;moBuildPreview();return swallow();
 }
 static void moOrdersTick(uint32_t house,int frame,DWORD now){
  if(!moOrdersPending())return;
- if(moEpoch!=match||moHouse!=house||!sh||(sh->moFeatures&moMode)==0||!moOrdersContext()){resetMoOrders();return;}
- if(moHolding){if(DWORD(now-moPreviewAt)>=400)moBuildPreview();return;}
+ if(moEpoch!=match||moHouse!=house||!sh||(sh->moFeatures&moMode)==0||!moOrdersContext()||!moCapturedPolicy()){resetMoOrders();return;}
+ if(moHolding){if(!moCapturedHold()){resetMoOrders();return;}if(DWORD(now-moPreviewAt)>=400)moBuildPreview();return;}
  if(frame<moStartFrame||frame-moStartFrame>1800||DWORD(now-moStarted)>30000){sh->moOrderStatus=uint32_t(-7);resetMoOrders();return;}
  // Standard-object commands each get one final native capability/identity
  // check immediately before submission. Accepted commands are never retried.
@@ -212,7 +222,7 @@ static void moOrdersTick(uint32_t house,int frame,DWORD now){
   bool attack=q.mission==1;bool queued=nativeMission(house,q.actor.id,q.mission,attack?q.target:0,attack?0:q.target,attack?0:0x34,0,0,taskarbiter::Owner::Generic);
   if(!queued)break;++sh->moOrderAccepted;++moQueueAt;if(moFeedback){moFeedback=false;inputFeedback(q.actor.pointer,q.targetPointer,!attack);}
  }
- if(!moStage){if(moQueueAt==moQueueCount){sh->moOrderStatus=2;moReplayZ();}return;}
+ if(!moStage){if(moQueueAt==moQueueCount){sh->moOrderStatus=2;}return;}
  // Native patrol graph: every point for every actor, wait for token material-
  // ization, Connect to the first new node, observe loop, then PlanCommit.
  if(moStage==1){
@@ -237,8 +247,8 @@ static void moOrdersTick(uint32_t house,int frame,DWORD now){
  }
  if(moStage==4&&frame>moStageFrame){bool closed=true,any=false;
   for(int i=0;i<moActorCount;++i){auto&a=moActors[i];if(!a.id||!moActorValid(a))continue;int loops=0;moTokenNodes(a.pointer,&loops);closed&=loops>0;any=true;}
-  if(!any){resetMoOrders();return;}if(closed&&outgoingRoom()>0){intent::EventOrder commit{};commit.domain=vanilla::Domain::NoOptions;commit.player=get<int>(house+0x30);commit.eventKind=vanilla::EventType::PlanCommit;
-   if(submitConstructed(commit)){for(int i=0;i<moActorCount;++i)if(moActorValid(moActors[i]))++sh->moOrderAccepted;moStage=0;sh->moOrderStatus=2;moReplayZ();}
+  if(!any){resetMoOrders();return;}if(closed&&outgoingRoom()>0&&moPlanningFinish(house)){
+   for(int i=0;i<moActorCount;++i)if(moActorValid(moActors[i]))++sh->moOrderAccepted;moStage=0;sh->moOrderStatus=2;
   }
  }
 }

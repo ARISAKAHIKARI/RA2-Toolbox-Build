@@ -21,5 +21,5 @@ inline bool sameAspect(Size a,Size b){
  int64_t d=int64_t(a.width)*b.height-int64_t(b.width)*a.height;if(d<0)d=-d;
  return d*500<=int64_t(a.width)*b.height; // <= 0.2%, including rounded dimensions
 }
-enum Status {Off=0,Applied=1,Waiting=2,Renderer=-1,Native=-2,Dimensions=-3,ResizeFailed=-4,RestoreFailed=-5,Presentation=-6,Fault=-7};
+enum Status {Off=0,Applied=1,Waiting=2,Renderer=-1,Native=-2,Dimensions=-3,ResizeFailed=-4,RestoreFailed=-5,Presentation=-6,Fault=-7,Unmigrated=-8};
 }}

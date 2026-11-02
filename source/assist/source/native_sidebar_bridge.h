@@ -101,6 +101,7 @@ static void nativeSidebarReleaseSurfaces(){
  nativeSidebarOwned[0]=nativeSidebarOwned[1]=nativeSidebarSaved[0]=nativeSidebarSaved[1]=nullptr;
 }
 static bool nativeSidebarExpandSurfaces(){
+ if constexpr(!gameentry::CodeWritesAllowed)return false;
  NativeSidebarRect w{};if(!nativeSidebarWindow(w))return false;
  void* c=get<void*>(0x88731C),*m=get<void*>(0x8872FC);if(!c||!m||c==m)return false;
  if(nativeSidebarOwned[0]&&!nativeSidebarOwnsPair(c,m)){
@@ -139,6 +140,7 @@ static void nativeSidebarTrimGadget(uint32_t object){
  if(a.w>16&&a.h>16){*r=a;put<uint8_t>(object+0x20,1);}
 }
 static int nativeSidebarAction(unsigned action,uint32_t argument){
+ if constexpr(!gameentry::CodeWritesAllowed)return 0;
  if(!nativeSidebarInstalled)return 0;
  if(action==1){nativeSidebarColumn(true);return 1;}
  if(action==2){put<uint8_t>(0xB0B519,nativeSidebarMode!=2);put<uint8_t>(0xB0B518,0);put<uint8_t>(0x884B90,0);nativeSidebarCopy(get<void*>(0x887308),true);return 1;}
@@ -281,6 +283,7 @@ static void nativeSidebarMakeSites(){static bool made=false;if(made)return;made=
  }
 }
 static bool nativeSidebarPrepare(){
+ if constexpr(!gameentry::CodeWritesAllowed)return false;
  nativeSidebarMakeSites();
  if(!nativeSidebarInstalled){
   // Width mode windows are installed only for radar/bare; the rest preserve
@@ -292,6 +295,7 @@ static bool nativeSidebarPrepare(){
  return nativeSidebarExpandSurfaces();
 }
 static void nativeSidebarTick(int requested){
+ if constexpr(!gameentry::CodeWritesAllowed){nativeSidebarMode=0;if(sh)sh->sidebarStatus=-3;return;}
  if(requested<0||requested>2)requested=0;
  const bool needed=requested!=0||(sh&&sh->viewZoomPercent!=100)||nativeSidebarInstalled;
  if(!needed)return;
@@ -305,6 +309,12 @@ static void nativeSidebarTick(int requested){
 }
 static bool nativeSidebarSurfaceChanged(){bool changed=nativeSidebarGeometryChanged;nativeSidebarGeometryChanged=false;return changed;}
 static void nativeSidebarRestore(){
+ if constexpr(!gameentry::CodeWritesAllowed){
+  // No native lease can originate in the strict binary. Cleanup therefore
+  // clears only our local/IPC state, without native layout or gadget writes.
+  nativeSidebarMode=0;nativeSidebarInstalled=false;nativeSidebarGeometryChanged=false;nativeSidebarViewGadget=nullptr;
+  nativeSidebarLastGadgetFrame=-1;if(sh)sh->sidebarStatus=-3;return;
+ }
  nativeSidebarMode=0;nativeSidebarLastGadgetFrame=-1;nativeSidebarGadgets();nativeSidebarColumn(true);
  nativeSidebarReleaseSurfaces();for(auto&s:nativeSidebarSites)restoreRiskSite(s);
  nativeSidebarInstalled=false;nativeSidebarViewGadget=nullptr;nativeSidebarGeometryChanged=true;

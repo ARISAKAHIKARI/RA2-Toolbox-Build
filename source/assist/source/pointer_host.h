@@ -57,7 +57,7 @@ static void servicePointer(){
  if(!inputReady||e.serial!=box.cancelSerial||e.match!=commandMatch())return;
  // A queued down-edge may predate publication of the Runtime preview. Resolve
  // against its original key snapshot too, before any old feature side effect.
- if(middleinput::ownsPointer(e.operation,extra.moFeatures,extra.formationEnabled,e.keys))return;
+ if(middleinput::ownsPointer(e.operation==7?6:e.operation,runtimeGesturePolicy(),runtimeGestureEnabled(),e.keys))return;
  // The explicit unload command owns this same chord. A polled native D/S/X
  // cancellation arriving afterwards must not erase its passenger follow-up.
  if(e.operation==5&&hookSmartUnload&&LOBYTE(unloadKey)&&

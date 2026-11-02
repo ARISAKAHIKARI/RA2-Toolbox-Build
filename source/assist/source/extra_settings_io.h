@@ -20,8 +20,8 @@ static void loadAdditionalSettings(){
  renderVulkanEnabled=value(L"Display",L"RenderVulkan",1)!=0;
  renderParticleEffects=value(L"Display",L"RenderParticles",1)!=0;renderLaserEffects=value(L"Display",L"RenderLasers",1)!=0;
  renderVoxelLighting=value(L"Display",L"RenderVoxelLighting",1)!=0;renderSpriteLighting=value(L"Display",L"RenderSpriteLighting",1)!=0;
- extra.viewZoomEnabled=value(L"Viewport",L"ZoomEnabled",0)!=0;extra.viewZoomPercent=value(L"Viewport",L"ZoomPercent",100);if(!viewzoom::valid(extra.viewZoomPercent))extra.viewZoomPercent=100;
- extra.moFeatures=uint32_t(value(L"MOControls",L"Features",0))&23;extra.sidebarMode=uint32_t(std::clamp(value(L"Viewport",L"SidebarMode",0),0,2));extra.superweaponPanel=value(L"Display",L"SuperweaponPanel",0)!=0;
+ extra.viewZoomEnabled=false;extra.viewZoomPercent=value(L"Viewport",L"ZoomPercent",100);if(!viewzoom::valid(extra.viewZoomPercent))extra.viewZoomPercent=100;
+ extra.moFeatures=uint32_t(value(L"MOControls",L"Features",0))&7;extra.sidebarMode=0;extra.superweaponPanel=value(L"Display",L"SuperweaponPanel",0)!=0;
  extra.techEnhance=value(L"Experimental",L"TechEnhance",0)!=0;
  extra.crcMapShadow=value(L"Experimental",L"CrcMapIsClearShadow",0)!=0;
  extra.networkHousePreserve=value(L"Experimental",L"NetworkHousePreserve",0)!=0;
@@ -34,6 +34,12 @@ static void loadAdditionalSettings(){
  extra.watchSecondary=value(L"Watch",L"SecondaryEnabled",0)!=0;
  extra.watchSecondaryX=std::clamp(value(L"Watch",L"SecondaryX",10000),0,10000);extra.watchSecondaryY=std::clamp(value(L"Watch",L"SecondaryY",0),0,10000);
  extra.watchEnabled=value(L"Watch",L"Enabled",0)!=0;extra.watchDanger=value(L"Watch",L"DangerCarriers",0)!=0;for(int n=0;n<3;++n){const wchar_t* keys[]={L"PinKey",L"PinKey2",L"PinKey3"};extra.watchKeys[n]=value(L"Watch",keys[n],n?extra.watchKeys[0]:extra.watchKeys[n])&65535;}
+ const wchar_t*gestureNames[]={L"FuzzyOrder",L"AreaOrder",L"PatrolCircle",L"FormationQuick"};
+ for(int i=0;i<4;++i){auto hold=std::wstring(gestureNames[i])+L"HoldKey",button=std::wstring(gestureNames[i])+L"MouseButton";
+  extra.moGestures.keys[i]=uint32_t(value(L"Mouse",hold.c_str(),extra.moGestures.keys[i]))&65535;
+  int physical=std::clamp(value(L"Mouse",button.c_str(),1),0,6);extra.moGestures.buttons[i]=physical==5?0:uint32_t(physical);}
+ const wchar_t*zoomKeys[]={L"ViewZoomOut",L"ViewZoomIn",L"ViewZoomReset"};for(int i=0;i<3;++i)extra.viewZoomKeys[i]=uint32_t(value(L"Hotkeys",zoomKeys[i],extra.viewZoomKeys[i]))&65535;
+ extra.sidebarKey=uint32_t(value(L"Hotkeys",L"ToggleSidebar",extra.sidebarKey))&65535;extra.pauseKeys[0]=uint32_t(value(L"Hotkeys",L"PauseToggle",extra.pauseKeys[0]))&65535;extra.pauseKeys[1]=uint32_t(value(L"Hotkeys",L"PauseStep",extra.pauseKeys[1]))&65535;
  extra.formationEnabled=value(L"Formation",L"Enabled",0)!=0;extra.formationHold=value(L"Formation",L"HoldKey",18)&65535;extra.formationMouse=value(L"Formation",L"MouseButton",2)==1?1:2;
  const wchar_t* shapeKeys[]={L"RectangleKey",L"DispersedKey",L"CircleKey",L"FanKey",L"SquareKey",L"FrameKey"};for(int n=0;n<6;++n)extra.formationKeys[n]=value(L"Formation",shapeKeys[n],extra.formationKeys[n])&65535;
  for(int i=0;i<compute::Count;++i){int fallback=compute::inside(compute::Default,compute::Feature(i));
@@ -102,6 +108,10 @@ static void loadAdditionalSettings(){
  }
 }
 static bool saveAdditionalSettings(){
+ const wchar_t*gestureNames[]={L"FuzzyOrder",L"AreaOrder",L"PatrolCircle",L"FormationQuick"};
+ for(int i=0;i<4;++i){auto hold=std::wstring(gestureNames[i])+L"HoldKey",button=std::wstring(gestureNames[i])+L"MouseButton";write(L"Mouse",hold.c_str(),extra.moGestures.keys[i]);write(L"Mouse",button.c_str(),extra.moGestures.buttons[i]);}
+ const wchar_t*zoomKeys[]={L"ViewZoomOut",L"ViewZoomIn",L"ViewZoomReset"};for(int i=0;i<3;++i)write(L"Hotkeys",zoomKeys[i],extra.viewZoomKeys[i]);
+ write(L"Hotkeys",L"ToggleSidebar",extra.sidebarKey);write(L"Hotkeys",L"PauseToggle",extra.pauseKeys[0]);write(L"Hotkeys",L"PauseStep",extra.pauseKeys[1]);
  write(L"Display",L"SuperweaponDetached",superweaponOptions.detached);write(L"Display",L"SuperweaponCollapsed",superweaponOptions.collapsed);write(L"Display",L"SuperweaponX",superweaponOptions.x);write(L"Display",L"SuperweaponY",superweaponOptions.y);write(L"Display",L"SuperweaponScale",superweaponOptions.scale);write(L"Display",L"SuperweaponRows",superweaponOptions.rows);
  write(L"Viewport",L"ZoomEnabled",extra.viewZoomEnabled);write(L"Viewport",L"ZoomPercent",extra.viewZoomPercent);write(L"Viewport",L"SidebarMode",extra.sidebarMode);write(L"MOControls",L"Features",extra.moFeatures);write(L"Display",L"SuperweaponPanel",extra.superweaponPanel);
  write(L"ViewZoom",L"Enabled",0);write(L"ViewZoom",L"Percent",100);
@@ -203,7 +213,9 @@ static void syncRefreshRate(){extra.scrollRefreshMode=0;if(!shared)return;
 }
 static void syncAdditional(){
  if(!playertest::Available)extra.controlAll=false;if(!playertest::SellAvailable)extra.sellEnemy=false;if(!playertest::SwitchAvailable)extra.switchPlayerEnabled=false;if(!shared)return;
- shared->viewZoomPercent=extra.viewZoomEnabled?uint32_t(extra.viewZoomPercent):100;shared->moFeatures=extra.moFeatures;shared->sidebarMode=extra.sidebarMode;
+ shared->viewZoomPercent=extra.viewZoomEnabled?uint32_t(extra.viewZoomPercent):100;shared->moFeatures=extra.moFeatures&7;shared->sidebarMode=0;
+ InterlockedIncrement(&shared->moGesturePolicySeq);shared->moGestures=extra.moGestures;MemoryBarrier();InterlockedIncrement(&shared->moGesturePolicySeq);
+ shared->pauseViewKeys[0]=extra.pauseKeys[0];shared->pauseViewKeys[1]=extra.pauseKeys[1];
  shared->buildTimeTooltip=buildTimeTooltipEnabled;shared->placementImplementation=extra.placementImplementation;shared->techEnhance=extra.techEnhance;
  shared->nativeAirNetwork=extra.nativeAirNetwork;
  shared->crcMapShadow=extra.crcMapShadow;

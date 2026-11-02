@@ -55,6 +55,7 @@ static void nativeViewDropRaster(){
  if(nativeViewInRender)return;nativeViewSwapOut();for(auto&p:nativeViewRaster){if(p)nativeViewFreeSurface(p);p=nullptr;}nativeViewRasterCurrent[0]=nativeViewRasterCurrent[1]=nullptr;nativeViewRasterW=nativeViewRasterH=0;
 }
 static bool nativeViewPrepareRaster(int w,int h){
+ if constexpr(!gameentry::CodeWritesAllowed)return false;
  if(nativeViewRaster[0]&&nativeViewRaster[1]&&nativeViewRasterW==w&&nativeViewRasterH==h)return true;
  void*c=nativeViewNewSurface(w,h);if(!c)return false;void*m=nativeViewNewSurface(w,h);if(!m){nativeViewFreeSurface(c);return false;}
  if(!nativeViewClearSurface(c)||!nativeViewClearSurface(m)){nativeViewFreeSurface(c);nativeViewFreeSurface(m);return false;}
@@ -67,6 +68,7 @@ static bool nativeViewBuffers(int w,int h){
  nativeViewFreeBuffer(false,nativeViewBuffersOwned[0]);nativeViewFreeBuffer(true,nativeViewBuffersOwned[1]);nativeViewBuffersOwned[0]=nz;nativeViewBuffersOwned[1]=na;nativeViewBufferW=w;nativeViewBufferH=h;return true;
 }
 static bool nativeViewGeometry(NativeViewRect a,NativeViewRect r,bool refresh){
+ if constexpr(!gameentry::CodeWritesAllowed)return false;
  uint32_t t=get<uint32_t>(0x887324);if(t<0x10000)return false;const auto old=get<NativeViewRect>(0x886FA0);
  auto nativeBuffersFit=[&](){for(uint32_t slot:{0x887644u,0x87E8A4u}){uint32_t p=get<uint32_t>(slot);int w=0,h=0;if(p<0x10000||!read(p+0x28,&w,4)||!read(p+0x2C,&h,4)||w<a.w||h<a.h)return false;}return true;};
  if(!nativeViewRectEqual(old,r)||!nativeViewRectEqual(nativeViewPreviousA,a)||refresh||!nativeBuffersFit()){
@@ -95,6 +97,7 @@ static bool nativeViewPresentRaster(void*source,void*target){
  nativeViewSurfaceUnlock(target);nativeViewSurfaceUnlock(source);return true;
 }
 static int nativeViewportAction(unsigned action,uint32_t argument){
+ if constexpr(!gameentry::CodeWritesAllowed)return 0;
  if(action>=32)return nativeSidebarAction(action-32,argument);if(!nativeViewHooks)return 0;
  // Teardown can detach the IPC mapping while this Render is still on the
  // stack. Surface restoration at its remaining phase callbacks must run.
@@ -320,11 +323,20 @@ static void nativeViewMakeSites(){
  }
 }
 static bool nativeViewInstall(){
+ if constexpr(!gameentry::CodeWritesAllowed)return false;
  nativeViewMakeSites();if(nativeViewHooks)return true;
  for(auto&s:nativeViewSites)if(!installRiskSite(s)){for(auto&t:nativeViewSites)restoreRiskSite(t);return false;}
  nativeViewHooks=true;return true;
 }
 static void restoreViewZoom(){
+ if constexpr(!gameentry::CodeWritesAllowed){
+  // A strict Runtime never acquired these native rendering leases. Do not
+  // run Set_View_Dimensions, touch surfaces/gadgets, or attempt patch restore.
+  nativeViewActive=nativeViewHooks=nativeViewInRender=nativeViewSwapped=nativeViewSuspended=nativeViewRestorePending=false;
+  nativeViewRenderDepth=nativeViewQueryDepth=0;nativeViewEpoch=nativeViewTactical=0;nativeViewLastRequest=-1;zoomApplied=100;
+  nativeViewA=nativeViewR=nativeViewPreviousA={};nativeSidebarRestore();
+  if(sh)InterlockedExchange(&sh->viewZoomBusy,0);nativeViewPublish(viewzoom::Unmigrated);return;
+ }
  if(nativeViewInRender){nativeViewRestorePending=true;return;}nativeViewRestorePending=false;nativeViewSwapOut();
  if(nativeViewActive&&get<uint32_t>(0x887324)==nativeViewTactical&&!nativeViewLoading()){
   NativeSidebarRect area{};nativeSidebarMode=0;if(nativeSidebarArea(area)){NativeViewRect a{area.x,area.y,area.w,area.h};nativeViewGeometry(a,a,true);nativeViewA=nativeViewR=a;nativeViewDirtyMap();}
@@ -336,6 +348,11 @@ static void restoreViewZoom(){
 }
 static bool nativeViewRetireReady(){restoreViewZoom();return !nativeViewInRender&&!nativeViewRestorePending&&!nativeViewSwapped;}
 static void viewZoomTick(){
+ if constexpr(!gameentry::CodeWritesAllowed){
+  // Fail before reading native view state or preparing any native layout,
+  // surface, buffer or input mutation. Host-only zoom is a separate migration.
+  restoreViewZoom();if(sh)sh->sidebarStatus=-3;return;
+ }
  if(!sh||nativeViewInRender)return;
  const int requested=featureavailability::zoomPercent(int(sh->viewZoomPercent));
  if(nativeViewLoading()||!get<uint32_t>(0x887640)||!get<uint32_t>(0x88731C)||!get<uint32_t>(0x887300)){nativeViewPublish(viewzoom::Waiting);return;}

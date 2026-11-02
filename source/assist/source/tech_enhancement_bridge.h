@@ -8,7 +8,7 @@ static bool enhancementWrite(uint32_t at,const void*p,size_t n){
  if(n!=4||!gameentry::active(gameentry::Client::Assist))return false;
  MEMORY_BASIC_INFORMATION info{};
  if(!VirtualQuery((void*)(uintptr_t)at,&info,sizeof info)||info.State!=MEM_COMMIT||
-    (info.Protect&(PAGE_GUARD|PAGE_NOACCESS))||!(info.Protect&(PAGE_READWRITE|PAGE_EXECUTE_READWRITE|PAGE_WRITECOPY|PAGE_EXECUTE_WRITECOPY))||
+    (info.Protect&(PAGE_GUARD|PAGE_NOACCESS|PAGE_EXECUTE|PAGE_EXECUTE_READ|PAGE_EXECUTE_READWRITE|PAGE_EXECUTE_WRITECOPY))||!(info.Protect&(PAGE_READWRITE|PAGE_WRITECOPY))||
     uintptr_t(at)+n>uintptr_t(info.BaseAddress)+info.RegionSize)return false;
  int value=0;memcpy(&value,p,4);put<int>(at,value);int after=0;return read(at,&after,4)&&after==value;
 }

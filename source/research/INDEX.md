@@ -184,3 +184,7 @@
 - [快速占位接入现有队形](2026-11-02-mo-quick-formation.md)
 - [MO native viewport and sidebar migration](2026-11-02-mo-native-viewport.md)
 - [MO 功能整合与协议84](2026-11-02-mo-integration.md)
+- [自定义巡逻键与原生规划提交的协调](2026-11-02-patrol-key-coordination.md)
+- [MO 功能与严格不改游戏代码架构（2026-11-02）](2026-11-02-strict-mo-core-and-pause-candidates.md)
+- [MO 手势键位与原生规划键解耦](2026-11-02-mo-configurable-gestures.md)
+- [MOControls2：统一配置与严格架构修正](2026-11-02-mo-controls2-structure-and-strict.md)

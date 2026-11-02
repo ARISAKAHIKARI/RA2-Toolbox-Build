@@ -2,7 +2,10 @@
 #include <stdint.h>
 // One ABI, one exported function, one instance in the target process.
 namespace gameentry {
-constexpr uint32_t Version=3;
+// v4 isolates the strict no-code-write manager from older pinned Runtimes.
+constexpr uint32_t Version=4;
+inline constexpr bool CodeWritesAllowed=false;
+inline bool strictCodeWritePolicy(const uint32_t* info){return info&&info[0]==1&&info[1]==0&&info[2]==0;}
 enum class Operation:uint32_t {Enter,Leave,Patch,Inspect,MarkConflict,Capture,Validate};
 enum class Client:uint32_t {Assist=1,Cursor=2,Monitor=3};
 enum class Result:int32_t {Ok=1,Busy=-1,WrongThread=-2,WrongOwner=-3,Invalid=-4,PatchDenied=-5,SystemFailure=-6};

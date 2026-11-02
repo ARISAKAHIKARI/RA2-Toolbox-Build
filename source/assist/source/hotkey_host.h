@@ -6,7 +6,7 @@ static void executeHotkey(WPARAM wp,bool fanout){
   {ControlUpdate guard;SendDlgItemMessageW(ui,9091,CB_SETCURSEL,viewzoom::index(extra.viewZoomPercent),0);}
   save();syncAdditional();notify(L"视角缩放请求："+std::to_wstring(extra.viewZoomPercent)+L"%");return;
  }
- if(wp==1740){extra.sidebarMode=(extra.sidebarMode+1)%3;{ControlUpdate guard;SendDlgItemMessageW(ui,9404,CB_SETCURSEL,extra.sidebarMode,0);}save();syncAdditional();notify(extra.sidebarMode==2?L"已请求隐藏侧栏。":extra.sidebarMode==1?L"已请求仅显示雷达与按钮。":L"已请求完整侧栏。");return;}
+ if(wp==1740){if(!featureavailability::ViewZoom)return;extra.sidebarMode=(extra.sidebarMode+1)%3;{ControlUpdate guard;SendDlgItemMessageW(ui,9404,CB_SETCURSEL,extra.sidebarMode,0);}save();syncAdditional();notify(extra.sidebarMode==2?L"已请求隐藏侧栏。":extra.sidebarMode==1?L"已请求仅显示雷达与按钮。":L"已请求完整侧栏。");return;}
  if(wp==1723){send(StickyGuard);return;}
  if(wp>=1724&&wp<1724+selectedmode::Count){send(selectedmode::command(int(wp-1724)));return;}
  if(wp>=1730&&wp<=1732){watchhost::pin(extra.watchKeys[wp-1730]);return;}

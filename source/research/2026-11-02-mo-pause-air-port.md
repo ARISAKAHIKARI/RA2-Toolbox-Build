@@ -1,5 +1,7 @@
 # MO 单机暂停逐帧与飞机原生路径点（2026-11-02）
 
+最终交付策略已改为严格不改游戏代码：下述原生暂停门及虚表方案保留作研究，生产路径拒绝安装；飞机使用兼容事件队列，暂停显示未完成。详见 [严格迁移说明](2026-11-02-strict-mo-core-and-pause-candidates.md)。
+
 本轮参考：`MagicShiba/MO_ExperienceEnhancements` 固定提交
 `33ed558bd38f36b5012eddcc9c0fb109cc68e38a` 的 `src/gui/PauseView.cpp`
 和 `src/order/AirWay.cpp`。保留行为和引擎 ABI，适配当前唯一 Runtime、托管补丁、

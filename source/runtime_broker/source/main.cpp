@@ -32,10 +32,11 @@ bool describe(runtimebroker::Packet&p){
  memcpy(path+n,name,sizeof name);module=LoadLibraryW(path);if(!module)return false;
  const auto*rt=(const uint32_t*)GetProcAddress(module,"GameRuntimeInfo");
  const auto*entry=(const uint32_t*)GetProcAddress(module,"GameEntryManagerInfo");
+ const auto*policy=(const uint32_t*)GetProcAddress(module,"GameCodeWritePolicyInfo");
  const auto*assistInfo=(const uint32_t*)GetProcAddress(module,"AssistProtocolInfo");
  const auto*prefix=(const wchar_t*)GetProcAddress(module,"AssistMappingPrefix");
  messageProc=(HOOKPROC)GetProcAddress(module,"GameRuntimeHook");postProc=(HOOKPROC)GetProcAddress(module,"GameRuntimePostHook");
- if(!rt||!entry||!assistInfo||!prefix||!messageProc||!postProc||rt[0]!=runtime::Version||rt[1]!=sizeof(runtime::Control)||
+ if(!gameentry::strictCodeWritePolicy(policy)||!rt||!entry||!assistInfo||!prefix||!messageProc||!postProc||rt[0]!=runtime::Version||rt[1]!=sizeof(runtime::Control)||
     entry[0]!=gameentry::Version||entry[1]!=sizeof(gameentry::Request)||assistInfo[0]!=assist::Version||assistInfo[1]!=sizeof(assist::Shared)||wcscmp(prefix,assist::MappingPrefix.text)){
   SetLastError(ERROR_REVISION_MISMATCH);return false;
  }

@@ -23,7 +23,7 @@
 #include "burst_compute.h"
 #include "dodge_compute.h"
 namespace assist {
-constexpr uint32_t Magic=0x41533130, Version=84;
+constexpr uint32_t Magic=0x41533130, Version=85;
 // Both binaries derive the namespace from the protocol version. Do not maintain
 // a separate literal in the host: a valid ABI with a different name never connects.
 struct MappingPrefixValue {
@@ -212,7 +212,7 @@ struct Shared {
  volatile uint32_t crcMapShadow=0;volatile int32_t crcMapShadowStatus=0;
  uint32_t crcMapShadowTracked=0,crcMapShadowSubstitutions=0,crcMapShadowFaults=0;
  volatile uint32_t aircraftAllocationPolicy=0; // 0 quotas, 1 five-cell damage, 2 single-target damage/deselect
- // Host policy for MO-style local controls. Appended, with protocol84 so an
+ // Host policy for MO-style local controls. Appended, with protocol85 so an
  // older DLL is rejected before either side touches the shared tail.
  volatile uint32_t moFeatures=0; // 1 fuzzy, 2 area, 4 patrol, 16 SP frame control
  uint32_t moOrderStatus=0,moOrderAccepted=0,moOrderRejected=0;
@@ -221,6 +221,8 @@ struct Shared {
  volatile long moOrdersPreviewSeq=0;moorders::Preview moOrdersPreview;
  int viewportPhysical[4]{},viewportLogical[4]{};volatile long viewportSerial=0,viewportActive=0;
  volatile int32_t pauseViewStatus=0;
+ volatile long moGesturePolicySeq=0;moorders::GesturePolicy moGestures;
+ uint32_t pauseViewKeys[2]{};
 
 };
 inline int remaining(int start,int duration,int frame){
