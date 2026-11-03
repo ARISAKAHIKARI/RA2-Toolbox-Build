@@ -1,0 +1,61 @@
+name: Prepare official WebView2 SDK
+on:
+  push:
+    branches: [codex/console-sdk-bootstrap-20261103]
+    paths: [.github/workflows/prepare-console-sdk.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  sdk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Download and verify the official Microsoft NuGet package
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import base64,gzip,hashlib,io,json,os,pathlib,urllib.request,zipfile
+          version='1.0.4314.35'
+          url=f'https://api.nuget.org/v3-flatcontainer/microsoft.web.webview2/{version}/microsoft.web.webview2.{version}.nupkg'
+          def get(url):
+              with urllib.request.urlopen(urllib.request.Request(url,headers={'User-Agent':'RA2-Toolbox-SDK-Preparation','Accept-Encoding':'identity'}),timeout=120) as r:
+                  data=r.read()
+                  return gzip.decompress(data) if r.headers.get('Content-Encoding')=='gzip' else data
+          reg=json.loads(get(f'https://api.nuget.org/v3/registration5-gz-semver2/microsoft.web.webview2/{version}.json'))
+          catalog=reg['catalogEntry']
+          if isinstance(catalog,str):catalog=json.loads(get(catalog))
+          assert catalog.get('version','').lower()==version, 'NuGet catalog version mismatch'
+          assert catalog.get('packageHashAlgorithm','').lower()=='sha512', 'Unexpected NuGet package hash algorithm'
+          data=get(url)
+          expected=catalog['packageHash']
+          actual=base64.b64encode(hashlib.sha512(data).digest()).decode()
+          assert actual==expected, 'NuGet SHA512 mismatch'
+          out=pathlib.Path(os.environ['RUNNER_TEMP'])/'webview2-sdk'
+          out.mkdir()
+          members={'build/native/include/WebView2.h':'include/WebView2.h',
+                   'runtimes/win-x64/native/WebView2Loader.dll':'bin/WebView2Loader.dll'}
+          with zipfile.ZipFile(io.BytesIO(data)) as z:
+              assert z.testzip() is None
+              if 'build/native/include/WebView2EnvironmentOptions.h' in z.namelist():
+                  members['build/native/include/WebView2EnvironmentOptions.h']='include/WebView2EnvironmentOptions.h'
+              for name in z.namelist():
+                  p=pathlib.PurePosixPath(name)
+                  if not name.endswith('/') and p.name.lower().startswith(('license','notice','third-party','third_party')):
+                      members[name]='licenses/'+p.name
+              assert any(v.startswith('licenses/') for v in members.values()), 'SDK license not found'
+              files={}
+              for original,target in members.items():
+                  b=z.read(original);p=out/target;p.parent.mkdir(parents=True,exist_ok=True);p.write_bytes(b)
+                  files[target]={'source':original,'bytes':len(b),'sha256':hashlib.sha256(b).hexdigest()}
+          info={'package':'Microsoft.Web.WebView2','version':version,'package_url':url,'package_sha512_base64':actual,'package_sha256':hashlib.sha256(data).hexdigest(),'package_bytes':len(data),'official_catalog':reg['catalogEntry'],'host_architecture':'x64','files':files}
+          (out/'sdk_manifest.json').write_text(json.dumps(info,indent=2)+'\n')
+          print(json.dumps(info))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: RA2-WebView2-SDK-1.0.4314.35-x64
+          retention-days: 14
+          if-no-files-found: error
+          path: ${{ runner.temp }}/webview2-sdk/
