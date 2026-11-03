@@ -60,6 +60,15 @@ struct Operation {
  bool barrier()const{return kind!=Kind::Set;}
 };
 struct Result {bool ok=true;unsigned error=0;};
+inline Result nativeResult(Kind kind,bool returnedSuccess,unsigned lastError){
+ // WritePrivateProfileStringW documents a zero return for a cache flush as
+ // well as a failure. The caller clears LastError before the native call;
+ // only an explicitly requested flush may therefore accept zero + no error.
+ // Ordinary writes/deletes still reject an unexplained zero return.
+ // https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-writeprivateprofilestringw
+ if(returnedSuccess||(kind==Kind::Flush&&lastError==0))return{true,0};
+ return{false,lastError?lastError:WriteFault};
+}
 struct Status {
  size_t pending=0;bool busy=false,failed=false,accepting=true,stopped=false;
  unsigned errorCode=0;std::wstring errorPath;
@@ -284,8 +293,8 @@ inline const auto nativeRead=&::GetPrivateProfileStringW;
 inline const auto nativeInt=&::GetPrivateProfileIntW;
 inline core::Store& store(){
  static auto* instance=new core::Store([](const core::Operation&o){
-  SetLastError(ERROR_SUCCESS);const auto ok=nativeWrite(o.section.pointer(),o.key.pointer(),o.value.pointer(),o.path.pointer())!=FALSE;
-  const auto code=ok?ERROR_SUCCESS:GetLastError();return core::Result{ok,ok?0u:code?unsigned(code):core::WriteFault};
+  SetLastError(ERROR_SUCCESS);const auto returned=nativeWrite(o.section.pointer(),o.key.pointer(),o.value.pointer(),o.path.pointer())!=FALSE;
+  const auto code=returned?ERROR_SUCCESS:GetLastError();return core::nativeResult(o.kind,returned,unsigned(code));
  });return *instance;
 }
 inline BOOL write(LPCWSTR section,LPCWSTR key,LPCWSTR value,LPCWSTR path){

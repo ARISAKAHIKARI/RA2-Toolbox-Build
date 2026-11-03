@@ -11,7 +11,7 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const script = fs.readFileSync(path.join(here, '../frontend/app.js'), 'utf8');
 const context = vm.createContext({ console, Date, Map, Set, Object, Number, String, Boolean, RangeError });
 vm.runInContext(script, context);
-const { ConsoleStore, groupControls, encodeHotkey, keyName, canonical, validText } = context.RA2ConsoleCore;
+const { ConsoleStore, groupControls, encodeHotkey, keyName, canonical, validText, placeAfter } = context.RA2ConsoleCore;
 const tests = [];
 function test(name, run) { tests.push({ name, run }); }
 function setup(controls = []) {
@@ -220,6 +220,28 @@ test('serialized JSON size is bounded separately from decoded text size',()=>{
   assert.equal(messages.length,0);assert.equal(store.pending.size,0);
   assert.equal(store.act(1,'range',2147483648),false);
 });
+test('keyed DOM placement attaches a detached first group and row, then preserves and reorders existing nodes',()=>{
+  class Node {
+    constructor(name){this.name=name;this.parentNode=null;this.children=[];this.insertions=0;}
+    get firstChild(){return this.children[0]||null;}
+    get previousSibling(){if(!this.parentNode)return null;const at=this.parentNode.children.indexOf(this);return this.parentNode.children[at-1]||null;}
+    get nextSibling(){if(!this.parentNode)return null;const at=this.parentNode.children.indexOf(this);return this.parentNode.children[at+1]||null;}
+    insertBefore(node,anchor){
+      if(node===anchor)return;
+      if(node.parentNode){const siblings=node.parentNode.children;siblings.splice(siblings.indexOf(node),1);}
+      const index=anchor?this.children.indexOf(anchor):this.children.length;
+      assert.ok(index>=0,'DOM anchor must belong to its container');this.children.splice(index,0,node);node.parentNode=this;this.insertions++;
+    }
+  }
+  const groups=new Node('settings'),first=new Node('first group'),second=new Node('second group');
+  assert.equal(first.previousSibling,null);placeAfter(groups,first,null);
+  assert.equal(groups.firstChild,first,'detached first node needs insertion even with previousSibling=null');
+  placeAfter(groups,second,first);assert.deepEqual(groups.children.map(node=>node.name),['first group','second group']);
+  const before=groups.insertions;placeAfter(groups,first,null);placeAfter(groups,second,first);assert.equal(groups.insertions,before,'unchanged order must not remount nodes');
+  placeAfter(groups,second,null);placeAfter(groups,first,second);assert.deepEqual(groups.children.map(node=>node.name),['second group','first group']);
+  const body=new Node('group body'),row=new Node('first row');placeAfter(body,row,null);assert.equal(row.parentNode,body);
+  placeAfter(first,row,null);assert.equal(row.parentNode,first);assert.equal(body.children.length,0,'a node from another parent must be moved');
+});
 
 let failed=0;
 for (const {name,run} of tests) { try { run(); console.log(`PASS ${name}`); } catch(error) { failed++; console.error(`FAIL ${name}\n${error.stack}`); } }
@@ -233,9 +255,13 @@ if (!failed && process.argv.includes('--browser')) {
   const html = path.join(temporary,'console.html');
   execFileSync('python3',[path.join(here,'../../tools/bundle_console.py'),'--output',html]);
   const browser = await chromium.launch({headless:true,args:['--no-sandbox']});
+  let page;const errors=[],consoleErrors=[];
+  const screenshotPath=process.env.CONSOLE_SCREENSHOT || path.join(temporary,'console-desktop.png');
+  const diagnosticsPrefix=screenshotPath.replace(/\.png$/i,'');
   try {
-    const page = await browser.newPage({viewport:{width:1240,height:880},deviceScaleFactor:1});
-    const errors=[]; page.on('pageerror',error=>errors.push(error.message));
+    page = await browser.newPage({viewport:{width:1240,height:880},deviceScaleFactor:1});
+    page.on('pageerror',error=>{errors.push(error.message);console.error('BROWSER_PAGE_ERROR',error.stack || error.message);});
+    page.on('console',message=>{if(['error','warning'].includes(message.type())){consoleErrors.push(message.text());console.error(`BROWSER_${message.type().toUpperCase()}`,message.text());}});
     await page.addInitScript(() => {
       const listeners=[];window.__sent=[];
       window.chrome={webview:{postMessage(message){window.__sent.push(message);},addEventListener(type,listener){if(type==='message')listeners.push(listener);}}};
@@ -263,9 +289,10 @@ if (!failed && process.argv.includes('--browser')) {
     const receive=async message=>page.evaluate(message=>window.__receive(message),message);
     await receive({kind:'shell',protocol:1,version:'1.0.41-pre.1',selectedCategory:0,videoSection:0,servicesReady:true,modules:[{module:0,ready:true,enabled:true},{module:1,ready:true,enabled:false}],config:{pending:0,busy:false,failed:false}});
     await receive(snapshot()); await page.getByLabel('渲染升级',{exact:true}).waitFor();
-    await page.screenshot({path:process.env.CONSOLE_SCREENSHOT || path.join(temporary,'console-desktop.png'),fullPage:false});
+    await page.screenshot({path:screenshotPath,fullPage:false});
     assert.equal(await page.getByRole('heading',{name:'视频',exact:true}).count(),1);
     assert.equal(await page.getByLabel('未连接时的功能',{exact:true}).isDisabled(),true);
+    const switchBox=await page.getByLabel('渲染升级',{exact:true}).boundingBox();assert.ok(switchBox.width>=24 && switchBox.height>=24,'accessible switch owns a full pointer target');
     await page.getByLabel('渲染升级',{exact:true}).click();
     assert.equal(await page.evaluate(()=>window.__sent.at(-1).action),'toggle');
     assert.equal(await page.evaluate(()=>window.__sent.at(-1).value),false);
@@ -321,5 +348,21 @@ if (!failed && process.argv.includes('--browser')) {
     assert.equal(await page.evaluate(()=>window.__bad),undefined);
     assert.deepEqual(errors,[],'browser must not emit uncaught JS errors');
     console.log('PASS browser fixture: all control types, drafts, gestures, module navigation, error/persistence status, 3000-row virtualization, responsive layout');
-  } finally { await browser.close(); }
+  } finally {
+    if(page) {
+      try {
+        fs.mkdirSync(path.dirname(screenshotPath),{recursive:true});
+        await page.screenshot({path:diagnosticsPrefix+'-final.png',fullPage:false});
+        fs.writeFileSync(diagnosticsPrefix+'-dom.html',await page.content());
+        const state=await page.evaluate(()=>{
+          const store=window.RA2Console?.store;
+          const rect=element=>{if(!element)return null;const box=element.getBoundingClientRect(),style=getComputedStyle(element);return{left:box.left,top:box.top,width:box.width,height:box.height,display:style.display,visibility:style.visibility,overflowY:style.overflowY,hidden:element.hidden};};
+          return {url:location.href,current:store?.current,generation:store?[...store.generation]:[],pages:store?[...store.pages].map(([key,value])=>({key,module:value.module,generation:value.generation,revision:value.revision,controls:value.controls.length,first:value.controls.slice(0,4)})):[],shell:store?.shell,notice:store?.notice,sent:window.__sent,body:rect(document.body),workspace:rect(document.querySelector('.workspace')),scroll:rect(document.getElementById('contentScroll')),settings:rect(document.getElementById('settings')),groups:[...document.querySelectorAll('.settings-group')].map(element=>({name:element.querySelector('.group-title')?.textContent,section:rect(element),body:rect(element.querySelector('.group-body')),controls:element._group?.controls.length,intersecting:element._group?.intersecting})),mountedRows:document.querySelectorAll('.setting-row').length};
+        });
+        fs.writeFileSync(diagnosticsPrefix+'-state.json',JSON.stringify({errors,consoleErrors,state},null,2));
+        console.log('BROWSER_DIAGNOSTICS',JSON.stringify({errors,consoleErrors,state}));
+      }catch(error){console.error('BROWSER_DIAGNOSTICS_ERROR',error.stack || error.message);}
+    }
+    await browser.close();
+  }
 }

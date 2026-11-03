@@ -3,3 +3,6 @@
 .global-notice{margin:0 36px 15px;padding:12px 16px;border:1px solid #725046;background:#30231f;border-radius:8px;color:#efb8a9;font-size:11px;line-height:1.7;white-space:pre-wrap}.choice-text{max-width:190px}.hotkey-editor>select:last-child{width:115px;max-width:140px;font-size:9px}@media(max-width:900px){.global-notice{margin-left:24px;margin-right:24px}}
 
 .group-title{font-size:13px}.setting-label{font-size:12px}.setting-description{font-size:11px}.field,.setting-editor select,.setting-editor textarea{font-size:12px}.setting-button,.subtle-button{font-size:11px}.readonly-text{font-size:12px}.group-count,.page-info{font-size:10px}.statusbar{font-size:10px}.hotkey-editor select{font-size:10px}.hotkey-capture{font-size:11px}.hotkey-editor>select:last-child{font-size:10px}
+
+/* The accessible input owns the complete pointer target; the track is decoration. */
+.toggle{min-height:24px;align-items:center}.toggle input{inset:0;width:100%;height:100%;margin:0;z-index:1;cursor:inherit}.switch-track{pointer-events:none}.module-toggle{position:relative}.module-toggle>input{right:0;left:auto;top:50%;transform:translateY(-50%);width:34px;height:24px;margin:0;z-index:1;cursor:inherit}

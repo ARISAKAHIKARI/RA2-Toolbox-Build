@@ -131,6 +131,11 @@ void decoding(){
  assert(readInteger(L"123",99)==123);assert(readInteger(L"010",99)==10);
  assert(readInteger(L"0xFF",99)==255);assert(readInteger(L"-1",99)==0xffffffffu);
  assert(readInteger(L"",99)==99);assert(readInteger(L"not-number",99)==0);
+ assert(nativeResult(Kind::Flush,false,0).ok);
+ assert(!nativeResult(Kind::Flush,false,5).ok&&nativeResult(Kind::Flush,false,5).error==5);
+ assert(!nativeResult(Kind::Set,false,0).ok&&nativeResult(Kind::Set,false,0).error==WriteFault);
+ assert(!nativeResult(Kind::DeleteKey,false,0).ok);
+ assert(nativeResult(Kind::Set,true,5).ok);
 }
 #ifdef _WIN32
 void native_win32_file_roundtrip(){
@@ -140,10 +145,15 @@ void native_win32_file_roundtrip(){
  assert(handle!=INVALID_HANDLE_VALUE);const unsigned char bom[]={0xff,0xfe};DWORD bytes=0;
  assert(WriteFile(handle,bom,2,&bytes,nullptr)&&bytes==2);CloseHandle(handle);
  assert(asyncini::nativeWrite(L"Other",L"Unknown",L"保留",file));
+ SetLastError(ERROR_SUCCESS);const BOOL flushReturn=asyncini::nativeWrite(nullptr,nullptr,nullptr,file);const DWORD flushError=GetLastError();
+ std::cout<<"native INI flush probe: return="<<flushReturn<<" lastError="<<flushError<<std::endl;
+ assert(asyncini::core::nativeResult(Kind::Flush,flushReturn!=FALSE,unsigned(flushError)).ok);
  assert(asyncini::write(L"Section",L"Value",L"\"quoted\"",file));
  wchar_t value[128]{};assert(asyncini::cachedReadString(L"section",L"value",L"",value,128,file)==6);assert(std::wstring(value)==L"quoted");
  assert(asyncini::write(L"Section",L"Number",L"010",file));assert(asyncini::cachedReadInt(L"SECTION",L"NUMBER",99,file)==10);
- assert(asyncini::requestFlush(file));eventually([]{return asyncini::idle();});assert(!asyncini::status().failed);
+ assert(asyncini::requestFlush(file));eventually([]{return asyncini::idle();});
+ if(asyncini::status().failed){const auto failed=asyncini::status();std::wcerr<<L"unexpected INI persistence failure: code="<<failed.errorCode<<L" revision="<<failed.errorRevision<<L" path="<<failed.errorPath<<std::endl;}
+ assert(!asyncini::status().failed);
  asyncini::nativeRead(L"Other",L"Unknown",L"",value,128,file);assert(std::wstring(value)==L"保留");
  asyncini::nativeRead(L"Section",L"Value",L"",value,128,file);assert(std::wstring(value)==L"quoted");
  assert(asyncini::nativeInt(L"Section",L"Number",99,file)==asyncini::cachedReadInt(L"Section",L"Number",99,file));
