@@ -125,6 +125,21 @@ void notification_edges_do_not_flood_ui(){
  store.setNotify({});
 }
 
+void cache_barrier_keeps_real_write_failure(){
+ std::atomic<bool>failWrite{true};std::atomic<unsigned>barriers{0};Disk disk;
+ Store store([&](const Operation&o){
+  if(o.kind==Kind::Flush){++barriers;return asyncini::core::nativeResult(o.kind,false,2);}
+  if(failWrite.load())return asyncini::core::nativeResult(o.kind,false,5);
+  disk.apply(o);return Result{};
+ });
+ assert(store.write(L"Section",L"Value",L"new",L"file.ini"));
+ assert(store.requestFlush(L"file.ini"));eventually([&]{return store.idle();});
+ assert(barriers==1);assert(store.status().failed&&store.status().errorCode==5);
+ assert(disk.get(L"Section",L"Value",L"file.ini")==L"<missing>");
+ failWrite=false;assert(store.retryFailed(L"file.ini"));eventually([&]{return store.idle();});
+ assert(!store.status().failed);assert(disk.get(L"Section",L"Value",L"file.ini")==L"new");
+}
+
 void decoding(){
  using namespace asyncini::core;
  assert(readValue(L"\"quoted\"")==L"quoted");assert(readValue(L"'single'")==L"single");
@@ -132,12 +147,28 @@ void decoding(){
  assert(readInteger(L"0xFF",99)==255);assert(readInteger(L"-1",99)==0xffffffffu);
  assert(readInteger(L"",99)==99);assert(readInteger(L"not-number",99)==0);
  assert(nativeResult(Kind::Flush,false,0).ok);
- assert(!nativeResult(Kind::Flush,false,5).ok&&nativeResult(Kind::Flush,false,5).error==5);
+ assert(nativeResult(Kind::Flush,false,2).ok);
+ assert(nativeResult(Kind::Flush,false,5).ok); // Management return has no write-result contract.
  assert(!nativeResult(Kind::Set,false,0).ok&&nativeResult(Kind::Set,false,0).error==WriteFault);
  assert(!nativeResult(Kind::DeleteKey,false,0).ok);
  assert(nativeResult(Kind::Set,true,5).ok);
 }
 #ifdef _WIN32
+std::wstring raw_file_text(const wchar_t*path,bool requireUtf16=false){
+ HANDLE handle=CreateFileW(path,GENERIC_READ,FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE,nullptr,OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL,nullptr);
+ assert(handle!=INVALID_HANDLE_VALUE);LARGE_INTEGER size{};assert(GetFileSizeEx(handle,&size)&&size.QuadPart>=2&&size.QuadPart<=1024*1024);
+ std::vector<unsigned char>data(size_t(size.QuadPart));DWORD read=0;
+ assert(ReadFile(handle,data.data(),DWORD(data.size()),&read,nullptr)&&read==data.size());CloseHandle(handle);
+ const bool utf16=data[0]==0xff&&data[1]==0xfe;assert(!requireUtf16||utf16);std::wstring text;
+ if(utf16){assert(data.size()%2==0);for(size_t i=2;i+1<data.size();i+=2)text.push_back(wchar_t(unsigned(data[i])|(unsigned(data[i+1])<<8)));}
+ else{
+  // A newly created profile is ANSI unless an existing UTF16 BOM selects
+  // Unicode. Read the actual bytes rather than the profile mapping cache.
+  const auto count=MultiByteToWideChar(CP_ACP,0,reinterpret_cast<const char*>(data.data()),int(data.size()),nullptr,0);assert(count>0);
+  text.resize(size_t(count));assert(MultiByteToWideChar(CP_ACP,0,reinterpret_cast<const char*>(data.data()),int(data.size()),text.data(),count)==count);
+ }
+ return text;
+}
 void native_win32_file_roundtrip(){
  wchar_t temporary[MAX_PATH+1]{},file[MAX_PATH+1]{};
  assert(GetTempPathW(MAX_PATH,temporary));assert(GetTempFileNameW(temporary,L"rai",0,file));
@@ -145,15 +176,20 @@ void native_win32_file_roundtrip(){
  assert(handle!=INVALID_HANDLE_VALUE);const unsigned char bom[]={0xff,0xfe};DWORD bytes=0;
  assert(WriteFile(handle,bom,2,&bytes,nullptr)&&bytes==2);CloseHandle(handle);
  assert(asyncini::nativeWrite(L"Other",L"Unknown",L"保留",file));
+ assert(asyncini::nativeWrite(L"Section",L"Value",L"before",file));
  SetLastError(ERROR_SUCCESS);const BOOL flushReturn=asyncini::nativeWrite(nullptr,nullptr,nullptr,file);const DWORD flushError=GetLastError();
- std::cout<<"native INI flush probe: return="<<flushReturn<<" lastError="<<flushError<<std::endl;
- assert(asyncini::core::nativeResult(Kind::Flush,flushReturn!=FALSE,unsigned(flushError)).ok);
+ std::cout<<"native profile-cache refresh probe: return="<<flushReturn<<" lastError="<<flushError<<" (management call; not a file write result)"<<std::endl;
  assert(asyncini::write(L"Section",L"Value",L"\"quoted\"",file));
  wchar_t value[128]{};assert(asyncini::cachedReadString(L"section",L"value",L"",value,128,file)==6);assert(std::wstring(value)==L"quoted");
  assert(asyncini::write(L"Section",L"Number",L"010",file));assert(asyncini::cachedReadInt(L"SECTION",L"NUMBER",99,file)==10);
  assert(asyncini::requestFlush(file));eventually([]{return asyncini::idle();});
  if(asyncini::status().failed){const auto failed=asyncini::status();std::wcerr<<L"unexpected INI persistence failure: code="<<failed.errorCode<<L" revision="<<failed.errorRevision<<L" path="<<failed.errorPath<<std::endl;}
  assert(!asyncini::status().failed);
+ const auto raw=raw_file_text(file,true);
+ assert(raw.find(L"Unknown=保留")!=std::wstring::npos);
+ assert(raw.find(L"Value=\"quoted\"")!=std::wstring::npos);
+ assert(raw.find(L"Number=010")!=std::wstring::npos);
+ assert(raw.find(L"Value=before")==std::wstring::npos);
  asyncini::nativeRead(L"Other",L"Unknown",L"",value,128,file);assert(std::wstring(value)==L"保留");
  asyncini::nativeRead(L"Section",L"Value",L"",value,128,file);assert(std::wstring(value)==L"quoted");
  assert(asyncini::nativeInt(L"Section",L"Number",99,file)==asyncini::cachedReadInt(L"Section",L"Number",99,file));
@@ -161,15 +197,18 @@ void native_win32_file_roundtrip(){
  const std::wstring directory=std::wstring(file)+L"-directory",badPath=directory+L"\\settings.ini";
  assert(asyncini::write(L"Section",L"Retry",L"saved",badPath.c_str()));eventually([]{return asyncini::idle();});
  assert(asyncini::status().failed&&asyncini::status().errorPath==badPath);
+ assert(asyncini::requestFlush(badPath.c_str()));eventually([]{return asyncini::idle();});
+ assert(asyncini::status().failed&&asyncini::status().errorPath==badPath);
  assert(CreateDirectoryW(directory.c_str(),nullptr));assert(asyncini::retryFailed(badPath.c_str()));
  eventually([]{return asyncini::idle();});assert(!asyncini::status().failed);
  asyncini::nativeRead(L"Section",L"Retry",L"",value,128,badPath.c_str());assert(std::wstring(value)==L"saved");
+ assert(raw_file_text(badPath.c_str()).find(L"Retry=saved")!=std::wstring::npos);
  assert(asyncini::requestFlush());asyncini::beginShutdown();eventually([]{return asyncini::idle();});
  asyncini::setNotify({});assert(DeleteFileW(file));assert(DeleteFileW(badPath.c_str()));assert(RemoveDirectoryW(directory.c_str()));
 }
 #endif
 int main(){
- coalescing_and_barriers();owned_values_and_bounded_admission();failure_and_ordered_retry();multiple_producers_and_notifications();notification_edges_do_not_flood_ui();decoding();
+ coalescing_and_barriers();owned_values_and_bounded_admission();failure_and_ordered_retry();multiple_producers_and_notifications();notification_edges_do_not_flood_ui();cache_barrier_keeps_real_write_failure();decoding();
 #ifdef _WIN32
  native_win32_file_roundtrip();
 #endif

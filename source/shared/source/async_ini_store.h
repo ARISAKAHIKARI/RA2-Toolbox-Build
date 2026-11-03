@@ -61,19 +61,23 @@ struct Operation {
 };
 struct Result {bool ok=true;unsigned error=0;};
 inline Result nativeResult(Kind kind,bool returnedSuccess,unsigned lastError){
- // WritePrivateProfileStringW documents a zero return for a cache flush as
- // well as a failure. The caller clears LastError before the native call;
- // only an explicitly requested flush may therefore accept zero + no error.
- // Ordinary writes/deletes still reject an unexplained zero return.
+ // Three NULL arguments refresh profile/registry-mapping cache state. This
+ // is an ordered management barrier, not a file durability operation. The
+ // API documents a zero return for a cache flush; even a pre-cleared
+ // LastError can report an internal missing mapping (observed on Windows).
+ // Neither value is a separate success predicate for this management call.
+ // Actual Set/Delete results remain authoritative and a barrier never clears
+ // their failures. Ordinary writes/deletes still reject zero + no error.
  // https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-writeprivateprofilestringw
- if(returnedSuccess||(kind==Kind::Flush&&lastError==0))return{true,0};
+ if(kind==Kind::Flush||returnedSuccess)return{true,0};
  return{false,lastError?lastError:WriteFault};
 }
 struct Status {
  size_t pending=0;bool busy=false,failed=false,accepting=true,stopped=false;
  unsigned errorCode=0;std::wstring errorPath;
  // completedRevision is the processed low-water mark, including superseded
- // or failed operations. Durable success additionally requires !failed.
+ // or failed operations. Successful writes additionally require !failed;
+ // these counters do not claim power-loss or FlushFileBuffers durability.
  uint64_t submittedRevision=0,completedRevision=0,errorRevision=0;
 };
 struct Lookup {bool known=false,present=false;std::wstring value;};
@@ -222,6 +226,8 @@ public:
  ~Store(){beginShutdown();setNotify({});if(worker_.joinable())worker_.join();}
  bool enqueue(Operation o){bool ok;{std::lock_guard<std::mutex>l(mutex_);ok=appendLocked(std::move(o));}notify();return ok;}
  bool write(const wchar_t*s,const wchar_t*k,const wchar_t*v,const wchar_t*p){return enqueue(Operation(s,k,v,p));}
+ // Queue an ordered profile-cache refresh after preceding API calls. This
+ // preserves the legacy NULL-argument behavior, not a file-buffer guarantee.
  bool requestFlush(const wchar_t*path=nullptr){return write(nullptr,nullptr,nullptr,path);}
  void setNotify(Notify fn){
   {std::lock_guard<std::mutex>l(notifyMutex_);notify_=std::move(fn);noticeValid_=false;}

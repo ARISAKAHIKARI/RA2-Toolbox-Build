@@ -13,7 +13,7 @@ files, render game scenes, or wait for module commands to finish.
 | `web_console.cpp` | WebView2 lifecycle and the asynchronous document/native message boundary |
 | `modern_console_main.h` | Startup, navigation, module lifecycle, state delivery, persistence status and bounded shutdown |
 | `console_adapter.h` | Each module's owning-thread compatibility port, setting values and dispatching existing module commands |
-| `async_ini_store.h` | One background INI writer, owned write snapshots, ordering barriers, write-after-read cache and visible failure state |
+| `async_ini_store.h` | One background INI writer, owned write snapshots, ordering barriers, read-after-write cache and visible failure state |
 
 The original module controls remain hidden compatibility adapters because their
 existing configuration and command handlers still use them. They are not
@@ -59,7 +59,11 @@ native reads so external edits are not permanently masked.
 An action acknowledgement means the module accepted the setting, not that a
 disk write or a game-side action completed. The console separately displays
 configuration saving and failure state. Closing first completes module final
-saves, then drains and flushes the writer within the existing shutdown policy.
+saves, then drains the writer within the existing shutdown policy. A flush
+operation is a FIFO barrier followed by native profile-mapping cache refresh;
+the profile API's ambiguous cache-refresh return is not a file-write result.
+Actual set/delete failures remain visible across this barrier. This does not
+promise a `FlushFileBuffers` or power-loss durability guarantee.
 
 ## Runtime and validation
 
