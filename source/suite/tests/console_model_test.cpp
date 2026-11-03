@@ -126,6 +126,18 @@ void parser() {
     CHECK(module.ok && module.message.kind == MessageKind::Module && !module.message.shell.enabled);
     CHECK(!parseMessage("{\"kind\":\"module\",\"protocol\":1,\"module\":1,\"enabled\":0}"));
     CHECK(parseMessage("{\"kind\":\"close\",\"protocol\":1}").message.kind == MessageKind::Close);
+    CHECK(parseMessage("{\"kind\":\"close\",\"protocol\":1}").message.shell.unsubmitted == 0);
+    const auto close = parseMessage("{\"kind\":\"close\",\"protocol\":1,\"seq\":7631,\"unsubmitted\":2}");
+    CHECK(close.ok && close.message.shell.seq == 7631 && close.message.shell.unsubmitted == 2);
+    CHECK(parseMessage("{\"kind\":\"close\",\"protocol\":1,\"seq\":9007199254740991,\"unsubmitted\":10000}").ok);
+    CHECK(parseMessage("{\"kind\":\"close\",\"protocol\":1,\"unsubmitted\":0}").ok);
+    for (const auto& value : {"-1", "10001", "1.5", "true", "\"2\"", "null", "[]", "{}"}) {
+        CHECK(!parseMessage(std::string("{\"kind\":\"close\",\"protocol\":1,\"unsubmitted\":") + value + "}"));
+    }
+    CHECK(!parseMessage("{\"kind\":\"close\",\"protocol\":1,\"seq\":0,\"unsubmitted\":1}"));
+    CHECK(!parseMessage("{\"kind\":\"close\",\"protocol\":1,\"seq\":9007199254740992,\"unsubmitted\":1}"));
+    CHECK(!parseMessage("{\"kind\":\"ready\",\"protocol\":1,\"unsubmitted\":0}"));
+    CHECK(!parseMessage("{\"kind\":\"ready\",\"protocol\":1,\"seq\":7631,\"unsubmitted\":2}"));
     CHECK(!parseMessage("{\"kind\":\"close\",\"protocol\":1,\"module\":0}"));
 }
 

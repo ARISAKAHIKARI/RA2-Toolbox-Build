@@ -58,8 +58,13 @@ native reads so external edits are not permanently masked.
 
 An action acknowledgement means the module accepted the setting, not that a
 disk write or a game-side action completed. The console separately displays
-configuration saving and failure state. Closing first completes module final
-saves, then drains the writer within the existing shutdown policy. A flush
+configuration saving and failure state. Before closing, the shell queries
+unsubmitted drafts and pending operations; discarding them requires an explicit
+choice. Closing then freezes settings on each
+module's owner thread, completes its final save and waits asynchronously for
+successful queue drain. Only then does the existing two-second restoration
+watchdog start. A slow or failed save keeps the window responsive; closing
+again offers an explicit choice to retry a failure or skip waiting. A flush
 operation is a FIFO barrier followed by native profile-mapping cache refresh;
 the profile API's ambiguous cache-refresh return is not a file-write result.
 Actual set/delete failures remain visible across this barrier. This does not

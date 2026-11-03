@@ -242,6 +242,30 @@ test('keyed DOM placement attaches a detached first group and row, then preserve
   const body=new Node('group body'),row=new Node('first row');placeAfter(body,row,null);assert.equal(row.parentNode,body);
   placeAfter(first,row,null);assert.equal(row.parentNode,first);assert.equal(body.children.length,0,'a node from another parent must be moved');
 });
+test('native close-check reports unsubmitted work without changing drafts, pending actions, or close state',()=>{
+  const {store,messages,changes}=setup([textControl,{id:2,type:'toggle',checked:false}]);
+  store.beginEdit(1);store.draft(1,'未提交的编辑');store.act(2,'toggle',true);
+  const draft=store.drafts.get('0:1'),pending=store.pending.get('0:2'),sequence=store.seq,state=store.state,changed=changes.length;
+  assert.equal(store.receive({kind:'close-check',protocol:1,seq:12345}),true);
+  assert.deepEqual({...messages.at(-1)},{kind:'close',seq:12345,unsubmitted:2,protocol:1});
+  assert.equal(store.drafts.get('0:1'),draft);assert.equal(store.pending.get('0:2'),pending);
+  assert.equal(store.value(store.getControl(1),'text'),'未提交的编辑');assert.equal(store.pending.size,1);
+  assert.equal(store.closed,false);assert.equal(store.seq,sequence);assert.equal(store.state,state);assert.equal(changes.length,changed);
+  assert.equal(messages.filter(message=>message.kind==='action').length,1,'close check must not submit or commit settings');
+  store.cancelEdit(1);store.receive({kind:'ack',protocol:1,module:0,generation:1,id:2,seq:pending.seq,ok:true});
+  store.receive({kind:'state',protocol:1,module:0,generation:1,revision:2,page:'cursor',controls:[textControl,{id:2,type:'toggle',checked:true}]});
+  assert.equal(store.receive({kind:'close-check',protocol:1,seq:12346}),true);
+  assert.equal(messages.at(-1).unsubmitted,0);assert.equal(store.closed,false);
+});
+test('close-check accepts only positive safe nonce values and bounds the count',()=>{
+  const {store,messages}=setup([textControl]);const count=messages.length;
+  for(const seq of [undefined,0,-1,1.25,NaN,Infinity,Number.MAX_SAFE_INTEGER+1,'123',true]) assert.equal(store.receive({kind:'close-check',protocol:1,seq}),false);
+  assert.equal(store.receive({kind:'close-check',protocol:2,seq:1}),false);assert.equal(messages.length,count);
+  for(let index=0;index<10001;index++)store.drafts.set(`0:${index}`,{value:'草稿',page:'0'});
+  assert.equal(store.receive({kind:'close-check',protocol:1,seq:Number.MAX_SAFE_INTEGER}),true);
+  assert.equal(messages.at(-1).seq,Number.MAX_SAFE_INTEGER);assert.equal(messages.at(-1).unsubmitted,10000);
+  assert.equal(store.drafts.size,10001);assert.equal(store.closed,false);
+});
 
 let failed=0;
 for (const {name,run} of tests) { try { run(); console.log(`PASS ${name}`); } catch(error) { failed++; console.error(`FAIL ${name}\n${error.stack}`); } }

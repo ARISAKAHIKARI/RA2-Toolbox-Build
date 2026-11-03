@@ -56,6 +56,11 @@
     getControl(id) { return this.state?.controls.find(control => control.id === id) || null; }
     receive(message) {
       if (!message || typeof message !== 'object' || message.protocol !== PROTOCOL) return false;
+      if(message.kind==='close-check') {
+        if(!safeInteger(message.seq) || !message.seq) return false;
+        this.emit({kind:'close',seq:message.seq,unsubmitted:Math.min(10000,this.drafts.size+this.pending.size)});
+        return true;
+      }
       if (message.kind === 'shell') {
         this.connected = true; this.shell = { ...this.shell, ...message, modules: Array.isArray(message.modules) ? message.modules : this.shell.modules }; this.closed = Boolean(message.closing); this.changed('shell'); return true;
       }

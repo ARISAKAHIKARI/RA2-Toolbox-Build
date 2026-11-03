@@ -94,6 +94,9 @@ namespace watchwindows {static void hide();}
 static uint32_t computeRequested=compute::Default;
 static bool renderUpgradeEnabled=false,unifiedOverlayEnabled=false,renderPhysicalOutput=false,renderMaterialRefresh=true,renderHighRefresh=true,renderVulkanEnabled=true;static int renderUpgradeLayer=1,renderPaletteRange=1,renderPixelScale=3,renderSceneDetail=1,renderColorPrecision=1;
 static bool renderProcessing=false,renderXbrzEnabled=false;
+#if defined(RA2_UNIFIED) && defined(RA2_CONSOLE_WEBVIEW2)
+static bool consoleClosePrepared=false;
+#endif
 static bool renderParticleEffects=true,renderLaserEffects=true,renderVoxelLighting=true,renderSpriteLighting=true;
 static bool harvesterCounterEnabled=false,powerDeltaEnabled=false,buildTimeTooltipEnabled=false;
 static int effectiveRenderDetail(){return 0;} // recovery: native source geometry
@@ -1848,7 +1851,11 @@ static bool serviceReadOnlyDisplays(DWORD now){
  if(snap.renderStatus!=1){minimap::hide();watchwindows::hide();}
  return true;
 }
-static void tick(){reapBridges();logBridgeHealth();DWORD now=GetTickCount();static DWORD lastControl;if(lastControl&&DWORD(now-lastControl)<8)return;static pipelineperf::Window timings(L"host-control",{L"total"});pipelineperf::Scope total(timings,0,critical);lastControl=now;pollOverlayVisibility();syncSettingDependencies();syncInformationRate();if(!displayFrameRequested()){minimap::hide();watchwindows::hide();watchhost::suspend();}else if(!secondaryDisplayAvailable()){minimap::hideSecondary();watchwindows::hideSecondary();}updateModeStatus(now);updatePlayerTestUI();if(registeredHotkeyMode!=desiredHotkeyMode())registerKeys();if(!enabled&&!secondaryDisplayRequested()){if(pid||shared)detach();clockState(false,informationFPS());return;}
+static void tick(){
+#if defined(RA2_UNIFIED) && defined(RA2_CONSOLE_WEBVIEW2)
+ if(consoleClosePrepared)return;
+#endif
+ reapBridges();logBridgeHealth();DWORD now=GetTickCount();static DWORD lastControl;if(lastControl&&DWORD(now-lastControl)<8)return;static pipelineperf::Window timings(L"host-control",{L"total"});pipelineperf::Scope total(timings,0,critical);lastControl=now;pollOverlayVisibility();syncSettingDependencies();syncInformationRate();if(!displayFrameRequested()){minimap::hide();watchwindows::hide();watchhost::suspend();}else if(!secondaryDisplayAvailable()){minimap::hideSecondary();watchwindows::hideSecondary();}updateModeStatus(now);updatePlayerTestUI();if(registeredHotkeyMode!=desiredHotkeyMode())registerKeys();if(!enabled&&!secondaryDisplayRequested()){if(pid||shared)detach();clockState(false,informationFPS());return;}
  if(pid&&DWORD(now-lastProcessCheck)>=250){lastProcessCheck=now;
   if(!externalReader.alive()){detach();lastFind=now-2000;}
   else {DWORD nextThread=0;bool authoritative=false;
@@ -2096,6 +2103,23 @@ static void bindSuper(){std::string id=selectedSuperID();if(id.empty()){notify(L
 #include "ui_dependencies.h"
 static_assert(BridgeCloseTimer!=AutoSaveTimer&&BridgeCloseTimer!=1&&BridgeCloseTimer!=2,"distinct close cleanup timer");
 static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
+#if defined(RA2_UNIFIED) && defined(RA2_CONSOLE_WEBVIEW2)
+ if(msg==suite::PrepareClose){
+  if(!consoleClosePrepared){
+   consoleClosePrepared=true;
+   stopClock();KillTimer(w,1);KillTimer(w,2);
+   for(int id:registeredKeyIDs)UnregisterHotKey(w,id);registeredKeyIDs.clear();
+   // Finish interaction-owned geometry before the single final snapshot.
+   // These owner-thread callbacks may mark auto-save pending; consume that
+   // marker below instead of queuing a second full save.
+   watchwindows::finishDrag();watchwindows::hide();minimap::hide();
+   if(GetCapture())ReleaseCapture();hideConstruction();
+   KillTimer(w,AutoSaveTimer);autoSavePending=false;
+   if(!save())notify(L"设置保存失败，请检查 Assist.ini 的写入权限。");
+  }
+  suite::closePrepared(2);return 0;
+ }
+#endif
  if(bridgeClosePending){
   if(msg==WM_TIMER&&wp==BridgeCloseTimer){
    reapBridges();
@@ -2111,6 +2135,17 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
      msg==suite::RefreshRateChanged||msg==suite::DisplaySettingsChanged)return 0;
 #endif
  }
+#if defined(RA2_UNIFIED) && defined(RA2_CONSOLE_WEBVIEW2)
+ if(consoleClosePrepared){
+  if(msg==FrameMessage){InterlockedExchange(&framePending,0);return 0;}
+  if(msg==InputMessage){InterlockedExchange(&inputPending,0);return 0;}
+  if(msg==ControlMessage){InterlockedExchange(&controlPending,0);return 0;}
+  if(msg==renderupgrade::ReadyMessage){renderupgrade::readyPending=false;return 0;}
+  if(msg==DataMessage){if(shared&&wp==pid)InterlockedExchange(&shared->hostNotifyPending,0);return 0;}
+  if(msg==WM_COMMAND||msg==WM_HOTKEY||msg==WM_TIMER||msg==WM_DISPLAYCHANGE||msg==WM_SETTINGCHANGE||
+     msg==suite::ModuleEnable||msg==suite::ApplyDisplaySetting||msg==suite::DisplaySettingsChanged||msg==suite::RefreshRateChanged)return 0;
+ }
+#endif
 #ifdef RA2_UNIFIED
  if(suite::layoutMessage(w,msg,lp))return 0;
  if(msg==suite::SelectCategory){int page=std::clamp(int(wp),0,int(suite::categories::Count)-1);if(activePage!=page)scrollY=scrollX=0;activePage=page;SetWindowTextW(GetDlgItem(w,989),suite::categories::name(page));layoutPanel();return 0;}
@@ -2334,7 +2369,15 @@ if(id==991){wchar_t query[128]{};GetWindowTextW(featureSearch,query,128);std::ws
  if(wp!=suite::CloseToken){suite::requestClose();return 0;}
 #endif
  if(!bridgeClosePending){
-  boundedshutdown::begin();bridgeClosePending=true;flushAutoSettings();stopClock();KillTimer(w,1);KillTimer(w,2);
+#if !defined(RA2_UNIFIED) || !defined(RA2_CONSOLE_WEBVIEW2)
+  boundedshutdown::begin();
+#endif
+  bridgeClosePending=true;
+#if defined(RA2_UNIFIED) && defined(RA2_CONSOLE_WEBVIEW2)
+  if(!consoleClosePrepared)
+#endif
+   flushAutoSettings();
+  stopClock();KillTimer(w,1);KillTimer(w,2);
   for(int id:registeredKeyIDs)UnregisterHotKey(w,id);registeredKeyIDs.clear();
   detach();
  }
@@ -2344,7 +2387,12 @@ if(id==991){wchar_t query[128]{};GetWindowTextW(featureSearch,query,128);std::ws
  setStatus(L"正在退出；恢复最多等待 2 秒，超时跳过。");
  SetWindowTextW(GetAncestor(w,GA_ROOT),L"红警工具箱 · 正在退出（恢复最多等待 2 秒）…");
  SetTimer(w,BridgeCloseTimer,100,nullptr);return 0;
- case WM_DESTROY:renderupgrade::shutdown();worldrender::worker.shutdown();sidebaroverlay::worker.shutdown();formationhost::shutdown();watchhost::shutdown();watchwindows::destroy();minimap::destroy();destroyAircraftButton();destroyConstruction();KillTimer(w,AutoSaveTimer);KillTimer(w,BridgeCloseTimer);save();stopClock();KillTimer(w,1);KillTimer(w,2);detach();for(int id:registeredKeyIDs)UnregisterHotKey(w,id);registeredKeyIDs.clear();PostQuitMessage(0);return 0;}return DefWindowProcW(w,msg,wp,lp);}
+ case WM_DESTROY:renderupgrade::shutdown();worldrender::worker.shutdown();sidebaroverlay::worker.shutdown();formationhost::shutdown();watchhost::shutdown();watchwindows::destroy();minimap::destroy();destroyAircraftButton();destroyConstruction();KillTimer(w,AutoSaveTimer);KillTimer(w,BridgeCloseTimer);
+#if defined(RA2_UNIFIED) && defined(RA2_CONSOLE_WEBVIEW2)
+ if(!consoleClosePrepared)
+#endif
+  save();
+ stopClock();KillTimer(w,1);KillTimer(w,2);detach();for(int id:registeredKeyIDs)UnregisterHotKey(w,id);registeredKeyIDs.clear();PostQuitMessage(0);return 0;}return DefWindowProcW(w,msg,wp,lp);}
 int WINAPI wWinMain(HINSTANCE h,HINSTANCE,LPWSTR,int show){SetProcessDPIAware();HANDLE single=CreateMutexW(nullptr,FALSE,L"Local\\RA2Assist_v013_Host");if(GetLastError()==ERROR_ALREADY_EXISTS){MessageBoxW(nullptr,L"战术助手已在运行。",L"尤里战术助手",MB_OK);return 0;}
  wchar_t p[2048];GetModuleFileNameW(nullptr,p,2048);root=p;root.resize(root.find_last_of(L"\\/"));autolog::initialize(root);autolog::write(L"host-start criticalLog=automatic rotation=2MiB+2 backups; verbose Debug.Diagnostics is independent");loadAdditionalSettings();
  megaQueueMode=value(L"Orders",L"MegaMissionBackend",0)==1?1u:0u;

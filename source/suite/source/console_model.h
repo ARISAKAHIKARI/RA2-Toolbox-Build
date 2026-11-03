@@ -55,6 +55,7 @@ struct ShellCommand {
     bool enabled = false;
     std::uint64_t seq = 0;
     unsigned width = 0, height = 0;
+    unsigned unsubmitted = 0;
 };
 struct Message {
     MessageKind kind = MessageKind::Ready;
@@ -312,8 +313,14 @@ public:
         } else {
             auto& s = parsed.shell;
             if (kind->text == "ready" || kind->text == "close") {
-                if (!allowed({"kind","protocol","seq"})) return false;
-                s.kind = parsed.kind = kind->text == "ready" ? MessageKind::Ready : MessageKind::Close;
+                const bool close = kind->text == "close";
+                if (close) {
+                    if (!allowed({"kind","protocol","seq","unsubmitted"})) return false;
+                    n = 0;
+                    if (!integer("unsubmitted", 0, 10000, n, false)) return false;
+                    s.unsubmitted = static_cast<unsigned>(n);
+                } else if (!allowed({"kind","protocol","seq"})) return false;
+                s.kind = parsed.kind = close ? MessageKind::Close : MessageKind::Ready;
             } else if (kind->text == "navigate") {
                 if (!allowed({"kind","protocol","module","category","seq","width","height"})) return false;
                 s.kind = parsed.kind = MessageKind::Navigate;

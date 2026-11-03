@@ -97,6 +97,36 @@ void failure_and_ordered_retry(){
  assert(!store.lookup(L"Section",L"New",L"file.ini").known);
 }
 
+void queue_full_retry_owns_new_intent_and_keeps_newer_success(){
+ {
+  Gate gate;Disk disk;std::atomic<unsigned>calls{0};
+  Store store([&](const Operation&o){if(calls++==0)gate.wait();disk.apply(o);return Result{};},1);
+  assert(store.write(L"Section",L"First",L"1",L"file.ini"));gate.await();
+  assert(store.write(L"Section",L"Second",L"2",L"file.ini"));
+  assert(!store.write(L"Section",L"Third",L"owned-retry",L"file.ini"));assert(store.status().pending==1);
+  const auto desired=store.lookup(L"Section",L"Third",L"file.ini");assert(desired.known&&desired.value==L"owned-retry");
+  gate.release();eventually([&]{return store.idle();});assert(store.status().failed);
+  assert(store.retryFailed(L"file.ini"));assert(store.status().pending<=1);eventually([&]{return store.idle();});
+  assert(!store.status().failed&&disk.get(L"Section",L"Third",L"file.ini")==L"owned-retry");
+ }
+ for(bool oldFails:{false,true})for(bool retryFirst:{false,true}){
+  Gate gate;Disk disk;std::atomic<unsigned>calls{0};
+  Store store([&](const Operation&o){if(calls++==0){gate.wait();if(oldFails)return Result{false,5};}disk.apply(o);return Result{};},1);
+  assert(store.write(L"Section",L"Same",L"old-in-flight",L"file.ini"));gate.await();
+  assert(store.write(L"Section",L"Other",L"queued",L"file.ini"));
+  assert(!store.write(L"Section",L"Same",L"newer-rejected",L"file.ini"));
+  gate.release();eventually([&]{return store.idle();});assert(store.status().failed);
+  assert(store.lookup(L"Section",L"Same",L"file.ini").value==L"newer-rejected");
+  if(retryFirst){
+   assert(store.retryFailed(L"file.ini"));eventually([&]{return store.idle();});
+   assert(!store.status().failed&&disk.get(L"Section",L"Same",L"file.ini")==L"newer-rejected");
+  }
+  assert(store.write(L"Section",L"Same",L"newest-success",L"file.ini"));eventually([&]{return store.idle();});
+  assert(!store.status().failed);assert(store.retryFailed(L"file.ini"));eventually([&]{return store.idle();});
+  assert(disk.get(L"Section",L"Same",L"file.ini")==L"newest-success");
+ }
+}
+
 void multiple_producers_and_notifications(){
  Disk disk;Store store([&](const Operation&o){disk.apply(o);return Result{};},4096);
  std::atomic<unsigned>notifications{0};store.setNotify([&]{++notifications;});
@@ -208,7 +238,7 @@ void native_win32_file_roundtrip(){
 }
 #endif
 int main(){
- coalescing_and_barriers();owned_values_and_bounded_admission();failure_and_ordered_retry();multiple_producers_and_notifications();notification_edges_do_not_flood_ui();cache_barrier_keeps_real_write_failure();decoding();
+ coalescing_and_barriers();owned_values_and_bounded_admission();failure_and_ordered_retry();queue_full_retry_owns_new_intent_and_keeps_newer_success();multiple_producers_and_notifications();notification_edges_do_not_flood_ui();cache_barrier_keeps_real_write_failure();decoding();
 #ifdef _WIN32
  native_win32_file_roundtrip();
 #endif

@@ -27,6 +27,7 @@ namespace consoleadapter {
 constexpr UINT ChangedMessage = WM_APP + 120;
 constexpr UINT ServiceMessage = WM_APP + 121;
 constexpr UINT CategoryMessage = WM_APP + 86;
+constexpr UINT PrepareCloseMessage = WM_APP + 87;
 constexpr UINT_PTR SampleTimer = 0x52414341;
 constexpr UINT_PTR PaneSubclass = 0x636f6e70, ControlSubclass = 0x636f6e63;
 constexpr DWORD SamplePeriod = 200;
@@ -82,7 +83,7 @@ class Host {
  struct Port {
   Host* host=nullptr;unsigned module=0;std::atomic<HWND> window{nullptr};DWORD owner=0;WNDPROC direct=nullptr;
   consolemodel::ActionMailbox actions{256};std::mutex submissionMutex;std::atomic<bool> wake{false},dirty{true};
-  bool applying=false,capturing=false,servicing=false;uint64_t navigation=0,generation=0,revision=0,lastSequence=0,lastCapture=0,lastPeriodic=0;
+  bool applying=false,capturing=false,servicing=false,deferredPrepare=false;WPARAM prepareWparam=0;LPARAM prepareLparam=0;uint64_t navigation=0,generation=0,revision=0,lastSequence=0,lastCapture=0,lastPeriodic=0;
   std::unordered_map<HWND,Entry> entries;std::string lastContent;
  };
  struct NativeControl {HWND window=nullptr;RECT rect{};consolemodel::Control control;std::string optionIdentity;};
@@ -111,6 +112,7 @@ class Host {
   if(m==WM_WINDOWPOSCHANGING&&b){auto* pos=reinterpret_cast<WINDOWPOS*>(b);pos->flags=(pos->flags&~SWP_SHOWWINDOW)|SWP_HIDEWINDOW;}
   if(m==ServiceMessage){p.wake=false;host.service(p);return 0;}
   if(m==WM_TIMER&&a==SampleTimer){host.service(p);return 0;}
+  if(m==PrepareCloseMessage&&p.servicing){if(!p.deferredPrepare){p.prepareWparam=a;p.prepareLparam=b;}p.deferredPrepare=true;return 0;}
   if(p.applying&&(m==WM_COMMAND||m==WM_NOTIFY||m==WM_HSCROLL||m==WM_VSCROLL))return 0;
   if(m==WM_NCDESTROY){KillTimer(w,SampleTimer);{std::lock_guard<std::mutex> admission(p.submissionMutex);p.window=nullptr;consolemodel::Action action;while(p.actions.tryPop(action))host.acknowledge(action,false,"后台模块已退出");}p.owner=0;RemovePropW(w,L"RA2.Console.Adapter");RemovePropW(w,L"RA2.Suite.Managed");RemoveWindowSubclass(w,paneProc,id);p.entries.clear();host.notify();return DefSubclassProc(w,m,a,b);}
   auto result=DefSubclassProc(w,m,a,b);
@@ -230,7 +232,7 @@ class Host {
  }
  void service(Port& p) {
   if(p.owner!=GetCurrentThreadId()||!p.window.load())return;if(p.servicing){p.dirty=true;return;}
-  struct ServiceGuard {Port& p;explicit ServiceGuard(Port& value):p(value){p.servicing=true;}~ServiceGuard(){p.servicing=false;}} guard(p);
+  struct ServiceGuard {Port& p;explicit ServiceGuard(Port& value):p(value){p.servicing=true;}~ServiceGuard(){p.servicing=false;if(p.deferredPrepare){auto pane=p.window.load();p.deferredPrepare=false;if(pane&&!PostMessageW(pane,PrepareCloseMessage,p.prepareWparam,p.prepareLparam))p.deferredPrepare=true;}}} guard(p);
   for(unsigned count=0;count<16;++count){consolemodel::Action action;if(!p.actions.tryPop(action))break;auto error=closing_.load()?std::string("工具箱正在退出"):apply(p,action);acknowledge(action,error.empty(),error,error.empty()?p.revision+1:0);}
   // A native modal loop may have processed WM_CLOSE before returning here.
   if(p.owner!=GetCurrentThreadId()||!p.window.load())return;

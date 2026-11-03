@@ -139,6 +139,10 @@ private:
  }
  void failLocked(const Operation&o,unsigned code){
   auto id=failureKey(o);
+  const auto prior=failures_.find(id);
+  // A writer already in flight can fail after a newer submission has been
+  // rejected. Preserve the newer desired operation, not that older result.
+  if(prior!=failures_.end()&&prior->second.op.revision>o.revision)return;
   if(failures_.size()>=cacheCapacity_&&!failures_.count(id))failures_.erase(failures_.begin());
   failures_[std::move(id)]={o,code?code:WriteFault};
  }
@@ -154,6 +158,9 @@ private:
   else values_[k]={o,false,true};
  }
  bool appendLocked(Operation o,bool allowCoalesce=true){
+  // Admission failures also own a revision. Otherwise completion of an older
+  // in-flight write could clear or overwrite the newer rejected intent.
+  o.revision=++submitted_;o.firstRevision=o.revision;
   if(!accepting_){failLocked(o,Stopped);return false;}
   if(!canCacheLocked(o)){failLocked(o,QueueFull);return false;}
   auto replace=queue_.end();
@@ -161,8 +168,11 @@ private:
    const auto k=keyOf(o);
    for(auto it=queue_.end();it!=queue_.begin();){--it;if(it->barrier())break;if(keyOf(*it)==k){replace=it;break;}}
   }
-  if(replace==queue_.end()&&queue_.size()>=capacity_){failLocked(o,QueueFull);return false;}
-  o.revision=++submitted_;o.firstRevision=o.revision;
+  if(replace==queue_.end()&&queue_.size()>=capacity_){
+   // Rejected is not acknowledged as queued, but the bounded desired-value
+   // cache must still own it so an explicit retry can persist the setting.
+   cacheLocked(o);completeCacheLocked(o,false);failLocked(o,QueueFull);return false;
+  }
   if(replace!=queue_.end())o.firstRevision=replace->firstRevision;
   cacheLocked(o);
   if(replace!=queue_.end())*replace=std::move(o);else queue_.push_back(std::move(o));
@@ -270,7 +280,17 @@ public:
    auto match=[&](const Operation&o){return !path||(!o.path.null&&folded(o.path.value,true)==wanted);};
    for(const auto&e:sections_)if(match(e.second.op))replay.push_back(e.second.op);
    for(const auto&e:values_){if(!match(e.second.op))continue;auto s=sections_.find(sectionKey(e.first));if(s==sections_.end()||e.second.op.revision>s->second.op.revision)replay.push_back(e.second.op);}
-   for(const auto&e:failures_)if(match(e.second.op)&&!cacheable(e.second.op))replay.push_back(e.second.op);
+   for(const auto&e:failures_){
+    const auto&o=e.second.op;if(!match(o))continue;
+    if(!cacheable(o)){replay.push_back(o);continue;}
+    const auto k=keyOf(o);const auto value=values_.find(k),section=sections_.find(sectionKey(k));
+    const bool owned=(o.kind==Kind::DeleteSection?section!=sections_.end():value!=values_.end())||
+      (section!=sections_.end()&&section->second.op.revision>=o.revision);
+    // Cache-capacity admission may retain the failure without a value slot.
+    // A later successful same-key operation removes this failure; otherwise
+    // a missing Set/DeleteKey remains safe to replay in revision order.
+    if(!owned&&(o.kind==Kind::Set||o.kind==Kind::DeleteKey))replay.push_back(o);
+   }
    std::stable_sort(replay.begin(),replay.end(),[](const Operation&a,const Operation&b){return a.revision<b.revision;});
    if(replay.size()>capacity_-std::min(capacity_,queue_.size()))return false;
    for(auto&o:replay)if(!appendLocked(std::move(o),false)){ok=false;break;}

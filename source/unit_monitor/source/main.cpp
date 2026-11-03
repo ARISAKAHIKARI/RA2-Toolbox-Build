@@ -45,6 +45,9 @@
 #include "../../external_reader/source/game_asset_files.h"
 using namespace Gdiplus;
 static HWND ui,overlay,secondaryOverlay,stats,bStart,bDemo,cBuildings,cOthers,eTop,eLeft,cTab,cSecondary,tabModeBox,visibilityLabel;static HFONT font;
+#if defined(RA2_UNIFIED) && defined(RA2_CONSOLE_WEBVIEW2)
+static bool consoleClosePrepared=false;
+#endif
 static void hidePrimaryStats(){overlaycompositor::host().hide(overlaycompositor::Statistics);if(overlay)ShowWindow(overlay,SW_HIDE);}
 static external::ReadSession reader;static um::IconCache& iconCache=um::sharedIconCache();
 static std::shared_ptr<const um::Snapshot> snap=std::make_shared<const um::Snapshot>();
@@ -423,6 +426,9 @@ static void consumeSample(DWORD now){
      }
  }
 static void tick(bool displayFrame=false){
+#if defined(RA2_UNIFIED) && defined(RA2_CONSOLE_WEBVIEW2)
+ if(consoleClosePrepared)return;
+#endif
  DWORD now=GetTickCount();consumeSample(now);
 #ifdef RA2_UNIFIED
  static uint32_t visibilityRevision=0;const uint32_t nextVisibility=overlayvisibility::revision.load();
@@ -511,6 +517,9 @@ static void buttonLabel(){
 #endif
  SetWindowTextW(bStart,enabled?L"暂停游戏内":L"继续游戏内");SetWindowTextW(bDemo,demo?L"退出演示":L"布局演示");}
 static void beginSecondaryDrag(){
+#if defined(RA2_UNIFIED) && defined(RA2_CONSOLE_WEBVIEW2)
+ if(consoleClosePrepared)return;
+#endif
  if(!secondaryEnabled||!secondaryActive||!secondarySurface.dc||!game)return;
  auto target=secondaryMonitor.get(game,ui,GetTickCount());if(!target.available())return;
  POINT cursor{};RECT bounds{};
@@ -542,6 +551,12 @@ static void finishSecondaryDrag(){
  }
 }
 static LRESULT CALLBACK overlayProc(HWND w,UINT m,WPARAM a,LPARAM b){
+#if defined(RA2_UNIFIED) && defined(RA2_CONSOLE_WEBVIEW2)
+ if(consoleClosePrepared){
+  if(m==WM_NCHITTEST)return HTTRANSPARENT;
+  if(m==WM_LBUTTONDOWN||m==WM_LBUTTONUP||m==WM_MOUSEMOVE||m==WM_CAPTURECHANGED||m==WM_CANCELMODE)return 0;
+ }
+#endif
  if(m==WM_NCHITTEST)return w==secondaryOverlay?HTCLIENT:HTTRANSPARENT;
  if(m==WM_MOUSEACTIVATE)return MA_NOACTIVATE;
  if(w==secondaryOverlay){
@@ -559,6 +574,23 @@ static LRESULT CALLBACK overlayProc(HWND w,UINT m,WPARAM a,LPARAM b){
 #include "display_settings_ui.h"
 #include "console_layout.h"
 static LRESULT CALLBACK proc(HWND w,UINT m,WPARAM a,LPARAM b){
+#if defined(RA2_UNIFIED) && defined(RA2_CONSOLE_WEBVIEW2)
+ if(m==suite::PrepareClose){
+  if(!consoleClosePrepared){
+   consoleClosePrepared=true;KillTimer(w,1);statsFrameClock.state(false,statsEffectiveFPS);
+   for(int id=1;id<=3;++id)UnregisterHotKey(w,id);
+   finishSecondaryDrag();
+   if(secondaryOverlay)ShowWindow(secondaryOverlay,SW_HIDE);
+   save();
+  }
+  suite::closePrepared(1);return 0;
+ }
+ if(consoleClosePrepared){
+  if(m==StatsFrameMessage){statsFrameClock.completed();return 0;}
+  if(m==WM_COMMAND||m==WM_HOTKEY||m==WM_TIMER||m==WM_APP+9||m==WM_DISPLAYCHANGE||m==WM_SETTINGCHANGE||
+     m==suite::ModuleEnable||m==suite::ApplyDisplaySetting||m==suite::DisplaySettingsChanged||m==suite::RefreshRateChanged)return 0;
+ }
+#endif
 #ifdef RA2_UNIFIED
  if(suite::layoutMessage(w,m,b))return 0;
  if(m==suite::DisplaySettingsChanged){refreshInformationRate(GetTickCount());syncUnitSettings();tick();return 0;}
@@ -655,7 +687,12 @@ static LRESULT CALLBACK proc(HWND w,UINT m,WPARAM a,LPARAM b){
  case WM_CTLCOLORSTATIC:case WM_CTLCOLORBTN:SetBkMode((HDC)a,OPAQUE);SetTextColor((HDC)a,modernui::Text);SetBkColor((HDC)a,modernui::Background);SetDCBrushColor((HDC)a,modernui::Background);return (LRESULT)GetStockObject(DC_BRUSH);
  case WM_DRAWITEM:{auto d=(DRAWITEMSTRUCT*)b;HBRUSH br=CreateSolidBrush((d->itemState&ODS_SELECTED)?RGB(47,76,99):RGB(31,48,68));FillRect(d->hDC,&d->rcItem,br);DeleteObject(br);SetBkMode(d->hDC,TRANSPARENT);SetTextColor(d->hDC,RGB(223,237,251));SelectObject(d->hDC,font);wchar_t t[50];GetWindowTextW(d->hwndItem,t,50);DrawTextW(d->hDC,t,-1,&d->rcItem,DT_CENTER|DT_VCENTER|DT_SINGLELINE);return TRUE;}
  case WM_PAINT:{PAINTSTRUCT ps;HDC dc=BeginPaint(w,&ps);RECT r;GetClientRect(w,&r);HBRUSH br=CreateSolidBrush(modernui::Background);FillRect(dc,&r,br);DeleteObject(br);SetBkMode(dc,TRANSPARENT);SetTextColor(dc,RGB(110,210,248));SelectObject(dc,font);TextOutW(dc,modernui::scale(14,consoleDpi)-consoleX,modernui::scale(12,consoleDpi)-consoleY,L"监控视图",lstrlenW(L"监控视图"));SetTextColor(dc,RGB(148,166,188));TextOutW(dc,modernui::scale(14,consoleDpi)-consoleX,modernui::scale(32,consoleDpi)-consoleY,L"监控面板、副相机与小地图",lstrlenW(L"监控面板、副相机与小地图"));EndPaint(w,&ps);return 0;}
- case WM_DESTROY:finishSecondaryDrag();statsFrameClock.shutdown();samplingWorker.shutdown();renderWorker.shutdown();secondaryRenderWorker.shutdown();surface.clear();secondarySurface.clear();KillTimer(w,1);UnregisterHotKey(w,1);UnregisterHotKey(w,2);UnregisterHotKey(w,3);detach();DeleteObject(font);PostQuitMessage(0);return 0;}
+ case WM_DESTROY:
+#if defined(RA2_UNIFIED) && defined(RA2_CONSOLE_WEBVIEW2)
+ if(!consoleClosePrepared)
+#endif
+  finishSecondaryDrag();
+ statsFrameClock.shutdown();samplingWorker.shutdown();renderWorker.shutdown();secondaryRenderWorker.shutdown();surface.clear();secondarySurface.clear();KillTimer(w,1);UnregisterHotKey(w,1);UnregisterHotKey(w,2);UnregisterHotKey(w,3);detach();DeleteObject(font);PostQuitMessage(0);return 0;}
  return DefWindowProcW(w,m,a,b);
 }
 int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR,int){

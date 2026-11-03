@@ -57,6 +57,9 @@
 #include "super_hotspot.h"
 #include "snapshot_latch.h"
 #include "stream_inference.h"
+#if defined(RA2_UNIFIED) && defined(RA2_CONSOLE_WEBVIEW2)
+static bool consoleClosePrepared=false;
+#endif
 static HWND hud,hudBox;static bool manualCursorPause=false,systemCursorGuard=true,nativeMenuHold=false;static DWORD nativeMenuCandidateAt=0,lastObservedFrameAt=0;static int previousObservedFrame=-1;static std::vector<CursorRange> fallbackDefs;static CursorRangeTracker fallbackTracker;static bool hudEnabled=false;static std::wstring hudText;static unsigned hudUpdates=0,hudCommits=0,hudMotion=0,hudChanges=0;static double updateFps=0,commitFps=0,motionFps=0,changeFps=0;static uint32_t hudEpoch=0,hudPaintAt=0;static int hudLastFrame=-1;static uint32_t diagIndex=0xffffffff,diagLegacy=0xffffffff;static int scrollX=0,scrollY=0;static bool uiReady=false;
 struct ControlBounds { HWND handle; uidpi::Rect logical; };
 static std::vector<ControlBounds> controlOrigins;
@@ -1350,6 +1353,19 @@ static bool cursorCloseAllowed(){
 }
 #include "refresh_settings_ui.h"
 static LRESULT CALLBACK wndproc(HWND w,UINT m,WPARAM a,LPARAM b){
+#if defined(RA2_UNIFIED) && defined(RA2_CONSOLE_WEBVIEW2)
+ if(m==suite::PrepareClose){
+  if(!consoleClosePrepared){
+   consoleClosePrepared=true;KillTimer(w,152);KillTimer(w,150);
+   for(int id=1;id<=4;++id)UnregisterHotKey(w,id);
+   if(uiReady)applyTargetRate();
+   if(uiReady&&!applyingSettings){applyingSettings=true;applyScale();applyingSettings=false;}
+  }
+  suite::closePrepared(0);return 0;
+ }
+ if(consoleClosePrepared&&(m==WM_COMMAND||m==WM_TIMER||m==WM_HOTKEY||m==WM_DISPLAYCHANGE||m==WM_SETTINGCHANGE||
+    m==suite::ModuleEnable||m==suite::ApplyDisplaySetting||m==suite::DisplaySettingsChanged||m==suite::RefreshRateChanged))return 0;
+#endif
 #ifdef RA2_UNIFIED
  if(suite::layoutMessage(w,m,b))return 0;
  if(m==suite::DisplaySettingsChanged){syncRefreshControls();return 0;}
@@ -1447,8 +1463,13 @@ case WM_GETMINMAXINFO:{auto p=(MINMAXINFO*)b;p->ptMinTrackSize={uidpi::scale(adv
 #ifndef RA2_UNIFIED
  if(!cursorCloseAllowed())return 0;
 #endif
+#if !defined(RA2_UNIFIED) || !defined(RA2_CONSOLE_WEBVIEW2)
  boundedshutdown::begin();
- KillTimer(w,152);if(uiReady)applyTargetRate();KillTimer(w,150);if(uiReady&&!applyingSettings){applyingSettings=true;applyScale();applyingSettings=false;}
+#endif
+#if defined(RA2_UNIFIED) && defined(RA2_CONSOLE_WEBVIEW2)
+ if(!consoleClosePrepared)
+#endif
+ {KillTimer(w,152);if(uiReady)applyTargetRate();KillTimer(w,150);if(uiReady&&!applyingSettings){applyingSettings=true;applyScale();applyingSettings=false;}}
  stop();DestroyWindow(w);return 0;
  case WM_DESTROY:if(playbackCancel)playbackCancel->store(true);if(prepareProcess){HANDLE cancel=CreateFileW(prepareCancel.c_str(),GENERIC_WRITE,FILE_SHARE_READ,NULL,CREATE_ALWAYS,FILE_ATTRIBUTE_NORMAL,NULL);if(cancel!=INVALID_HANDLE_VALUE)CloseHandle(cancel);CloseHandle(prepareProcess);prepareProcess=nullptr;}if(uiFont){DeleteObject(uiFont);uiFont=NULL;}if(titleFont){DeleteObject(titleFont);titleFont=NULL;}if(actionFont){DeleteObject(actionFont);actionFont=NULL;}if(panelBrush){DeleteObject(panelBrush);panelBrush=NULL;}if(headerBrush){DeleteObject(headerBrush);headerBrush=NULL;}if(statusBrush){DeleteObject(statusBrush);statusBrush=NULL;}PostQuitMessage(0);return 0;}return DefWindowProcW(w,m,a,b);}
 int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR cmd,int){
@@ -1656,6 +1677,15 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR cmd,int){
   unsigned dispatched=0;
   while(dispatched++<32&&messages.peek(msg)){if(msg.message==WM_QUIT){quit=true;break;}TranslateMessage(&msg);DispatchMessageW(&msg);}
   if(quit)break;
+#if defined(RA2_UNIFIED) && defined(RA2_CONSOLE_WEBVIEW2)
+  if(consoleClosePrepared){
+   // Keep only the owner message pump alive until the shell has drained the
+   // configuration service and requests actual restoration/close.
+   if(frameTimer&&armedDeadline){CancelWaitableTimer(frameTimer);armedDeadline=0;}
+   MsgWaitForMultipleObjectsEx(0,nullptr,INFINITE,QS_ALLINPUT,MWMO_INPUTAVAILABLE);
+   continue;
+  }
+#endif
   motionPoll();autoTick();updateRefresh();pollPrepare();
   LARGE_INTEGER now;QueryPerformanceCounter(&now);
   if(now.QuadPart>=next.QuadPart){

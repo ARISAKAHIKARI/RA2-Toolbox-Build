@@ -9,14 +9,16 @@
 
 namespace {
 using consoleadapter::Host;
-constexpr UINT MutateChoice=WM_APP+180,TryShow=WM_APP+181,ReplaceEdit=WM_APP+182,SetMetadata=WM_APP+183;
+constexpr UINT MutateChoice=WM_APP+180,TryShow=WM_APP+181,ReplaceEdit=WM_APP+182,SetMetadata=WM_APP+183,VerifyPrepared=WM_APP+184;
 struct Fixture {
- Host host;HANDLE ready=CreateEventW(nullptr,TRUE,FALSE,nullptr),mutated=CreateEventW(nullptr,FALSE,FALSE,nullptr),nestedEntered=CreateEventW(nullptr,TRUE,FALSE,nullptr),nestedRelease=CreateEventW(nullptr,TRUE,FALSE,nullptr);
+ Host host;HANDLE ready=CreateEventW(nullptr,TRUE,FALSE,nullptr),mutated=CreateEventW(nullptr,FALSE,FALSE,nullptr),nestedEntered=CreateEventW(nullptr,TRUE,FALSE,nullptr),nestedRelease=CreateEventW(nullptr,TRUE,FALSE,nullptr),prepareAck=CreateEventW(nullptr,TRUE,FALSE,nullptr),verifyAck=CreateEventW(nullptr,TRUE,FALSE,nullptr);
  HWND pane=nullptr,toggle=nullptr,edit=nullptr,choice=nullptr,list=nullptr,hotkey=nullptr,slider=nullptr,readonlyEdit=nullptr,tabs=nullptr,noIdEdit=nullptr,editableCombo=nullptr;
  std::atomic<DWORD> thread{0},actionThread{0};std::atomic<unsigned> toggles{0},edits{0},selections{0},activations{0},keys{0},scrolls{0},tabChanges{0},anonymousEdits{0},comboEdits{0};
  std::atomic<int> checked{0},key{0},position{0};std::atomic<bool> hidden{false},dialogRecognized{false},nested{false},reentered{false};
+ std::atomic<bool> closingScenario{false},prepareAfterActive{false},preparedUnchanged{false},prepareArgs{false};std::atomic<DWORD> prepareThread{0};std::atomic<unsigned> prepareCount{0};
+ int preparedChecked=0;std::wstring preparedText;unsigned preparedToggles=0,preparedEdits=0;
  consolemodel::Ack lastAck;
- ~Fixture(){CloseHandle(ready);CloseHandle(mutated);CloseHandle(nestedEntered);CloseHandle(nestedRelease);}
+ ~Fixture(){CloseHandle(ready);CloseHandle(mutated);CloseHandle(nestedEntered);CloseHandle(nestedRelease);CloseHandle(prepareAck);CloseHandle(verifyAck);}
 };
 Fixture* fixture=nullptr;
 int failures=0;
@@ -43,7 +45,7 @@ LRESULT CALLBACK paneProc(HWND w,UINT m,WPARAM a,LPARAM b){
  }
  if(m==WM_COMMAND){f.actionThread=GetCurrentThreadId();int id=LOWORD(a),notification=HIWORD(a);
   if(f.nested)f.reentered=true;
-  if(id==111&&notification==BN_CLICKED){f.nested=true;SetEvent(f.nestedEntered);DWORD started=GetTickCount();while(WaitForSingleObject(f.nestedRelease,0)!=WAIT_OBJECT_0&&DWORD(GetTickCount()-started)<4000){MSG message{};while(PeekMessageW(&message,nullptr,0,0,PM_REMOVE)){TranslateMessage(&message);DispatchMessageW(&message);}MsgWaitForMultipleObjectsEx(0,nullptr,10,QS_ALLINPUT,MWMO_INPUTAVAILABLE);}f.nested=false;return 0;}
+  if(id==111&&notification==BN_CLICKED){f.nested=true;SetEvent(f.nestedEntered);DWORD started=GetTickCount();while(WaitForSingleObject(f.nestedRelease,0)!=WAIT_OBJECT_0&&DWORD(GetTickCount()-started)<4000){MSG message{};while(PeekMessageW(&message,nullptr,0,0,PM_REMOVE)){TranslateMessage(&message);DispatchMessageW(&message);}MsgWaitForMultipleObjectsEx(0,nullptr,10,QS_ALLINPUT,MWMO_INPUTAVAILABLE);}f.nested=false;if(f.closingScenario)SetWindowTextW(f.noIdEdit,L"当前操作的最终值");return 0;}
   if(id==100&&notification==BN_CLICKED){++f.toggles;f.checked=int(SendMessageW(f.toggle,BM_GETCHECK,0,0));}
   if(id==101&&notification==EN_CHANGE)++f.edits;
   if(id==102&&notification==CBN_SELCHANGE)++f.selections;
@@ -59,6 +61,8 @@ LRESULT CALLBACK paneProc(HWND w,UINT m,WPARAM a,LPARAM b){
  if(m==ReplaceEdit){DestroyWindow(f.edit);f.edit=CreateWindowW(L"EDIT",L"替换",WS_CHILD|WS_VISIBLE,110,50,160,26,w,reinterpret_cast<HMENU>(INT_PTR(101)),GetModuleHandleW(nullptr),nullptr);SetEvent(f.mutated);return 0;}
  if(m==SetMetadata){SetPropW(f.toggle,L"RA2.Console.Group",const_cast<wchar_t*>(L"固定语义组"));SetPropW(f.toggle,L"RA2.Console.Row",reinterpret_cast<HANDLE>(INT_PTR(101)));SetPropW(f.toggle,L"RA2.Console.Column",reinterpret_cast<HANDLE>(INT_PTR(21)));SetPropW(f.edit,L"RA2.Console.Skip",reinterpret_cast<HANDLE>(1));f.host.dirty(0);SetEvent(f.mutated);return 0;}
  if(m==TryShow){ShowWindow(w,SW_SHOW);f.hidden=!IsWindowVisible(w);HWND dialog=CreateWindowW(L"STATIC",L"Native dialog",WS_POPUP,0,0,50,50,w,nullptr,GetModuleHandleW(nullptr),nullptr);f.dialogRecognized=f.host.contains(dialog);DestroyWindow(dialog);SetEvent(f.mutated);return 0;}
+ if(m==consoleadapter::PrepareCloseMessage){wchar_t text[128]{};GetWindowTextW(f.noIdEdit,text,128);f.preparedText=text;f.preparedChecked=int(SendMessageW(f.toggle,BM_GETCHECK,0,0));f.preparedToggles=f.toggles;f.preparedEdits=f.anonymousEdits;f.prepareThread=GetCurrentThreadId();++f.prepareCount;f.prepareArgs=a==0xcafe&&b==0xbeef;f.prepareAfterActive=!f.nested&&f.preparedText==L"当前操作的最终值";SetEvent(f.prepareAck);return 0;}
+ if(m==VerifyPrepared){wchar_t text[128]{};GetWindowTextW(f.noIdEdit,text,128);f.preparedUnchanged=f.preparedText==text&&f.preparedChecked==SendMessageW(f.toggle,BM_GETCHECK,0,0)&&f.preparedToggles==f.toggles&&f.preparedEdits==f.anonymousEdits;SetEvent(f.verifyAck);return 0;}
  if(m==WM_CLOSE){DestroyWindow(w);return 0;}if(m==WM_DESTROY){PostQuitMessage(0);return 0;}
  return DefWindowProcW(w,m,a,b);
 }
@@ -80,6 +84,38 @@ std::shared_ptr<const consolemodel::Snapshot> awaitSnapshot(Fixture& f,const std
 bool action(Fixture& f,const consolemodel::Snapshot& snapshot,uint32_t id,const char* verb,uint64_t seq,int value=0,const std::string& text={},bool checked=false,bool expected=true){
  consolemodel::Action a;a.module=snapshot.module;a.generation=snapshot.generation;a.id=id;a.seq=seq;a.action=verb;a.value=value;a.text=text;a.checked=checked;
  bool admitted=f.host.post(a);if(!admitted){check(!expected,"invalid action rejected at admission");return false;}consolemodel::Ack receipt;bool got=false;pumpUntil([&]{while(f.host.takeAck(receipt))if(receipt.seq==seq){got=true;return true;}return false;});check(got,"action receipt");if(got){f.lastAck=receipt;check(receipt.ok==expected,"action result");check(receipt.ok?receipt.revision>0:receipt.revision==0,"success receipt promises a future authoritative revision");}return got&&receipt.ok;
+}
+void closePreparationRegression(Fixture& f){
+ f.host.navigate(0,-1,"video/shutdown");
+ auto snapshot=awaitSnapshot(f,[](const consolemodel::Snapshot& s){return s.page=="video/shutdown";});
+ if(!snapshot)return;
+ const auto* native=find(*snapshot,"button","嵌套任务");const auto* toggle=find(*snapshot,"toggle");const auto* text=find(*snapshot,"text","无数字ID");
+ check(native&&toggle&&text,"shutdown regression controls available");if(!native||!toggle||!text)return;
+ ResetEvent(f.nestedEntered);ResetEvent(f.nestedRelease);ResetEvent(f.prepareAck);ResetEvent(f.verifyAck);f.reentered=false;f.closingScenario=true;
+ consolemodel::Action current;current.module=0;current.generation=snapshot->generation;current.id=native->id;current.seq=1;current.action="press";
+ check(f.host.post(current),"current native operation admitted before close");
+ check(pumpUntil([&]{return WaitForSingleObject(f.nestedEntered,0)==WAIT_OBJECT_0;}),"shutdown operation enters a nested native pump");
+ auto queuedToggle=current;queuedToggle.id=toggle->id;queuedToggle.seq=2;queuedToggle.action="toggle";queuedToggle.checked=!toggle->checked;
+ auto queuedText=current;queuedText.id=text->id;queuedText.seq=3;queuedText.action="text";queuedText.text="排队的迟到设置";
+ const unsigned togglesBefore=f.toggles,editsBefore=f.anonymousEdits;
+ check(f.host.post(queuedToggle)&&f.host.post(queuedText),"toggle and text admitted before closing barrier");
+ f.host.closing();
+ check(f.host.post(0,consoleadapter::PrepareCloseMessage,0xcafe,0xbeef),"internal owner prepare passes the closing barrier");
+ check(f.host.post(0,consoleadapter::PrepareCloseMessage,0xcafe,0xbeef),"repeated prepare may be coalesced while modal");
+ auto afterClose=queuedToggle;afterClose.seq=4;check(!f.host.post(afterClose),"new setting actions rejected after closing");
+ pumpUntil([&]{return WaitForSingleObject(f.prepareAck,0)==WAIT_OBJECT_0;},150);
+ check(WaitForSingleObject(f.prepareAck,0)==WAIT_TIMEOUT&&f.prepareCount==0,"prepare cannot save or acknowledge inside active native operation");
+ check(f.toggles==togglesBefore&&f.anonymousEdits==editsBefore,"queued edits do not run in modal closing pump");
+ SetEvent(f.nestedRelease);
+ check(pumpUntil([&]{return WaitForSingleObject(f.prepareAck,0)==WAIT_OBJECT_0;}),"owner acknowledges prepare after native operation returns");
+ check(f.prepareAfterActive&&f.prepareThread==f.thread&&f.prepareArgs,"owner saves final active-operation value with original prepare arguments");
+ check(f.prepareCount==1,"modal prepare requests coalesce to one owner message");
+ bool toggleRejected=false,textRejected=false;
+ check(pumpUntil([&]{consolemodel::Ack ack;while(f.host.takeAck(ack))if(ack.generation==snapshot->generation&&(ack.seq==2||ack.seq==3)){check(!ack.ok&&!ack.error.empty()&&ack.revision==0,"queued closing edit receives explicit rejection");if(ack.seq==2)toggleRejected=true;else textRejected=true;}return toggleRejected&&textRejected;}),"both admitted edits receive closing rejections");
+ check(f.toggles==togglesBefore&&f.anonymousEdits==editsBefore+1,"only the active operation completes its final edit");
+ check(f.host.post(0,VerifyPrepared),"owner can verify values after final save");
+ check(pumpUntil([&]{return WaitForSingleObject(f.verifyAck,0)==WAIT_OBJECT_0;}),"post-prepare verification acknowledged");
+ check(f.preparedUnchanged&&!f.reentered,"no queued setting mutation occurs after owner final save");
 }
 }
 int main(){
@@ -123,6 +159,7 @@ int main(){
  }
  PostMessageW(f.pane,TryShow,0,0);WaitForSingleObject(f.mutated,4000);check(f.hidden,"backend pane cannot become visible");check(f.dialogRecognized,"backend-owned native modal belongs to console focus");
  f.host.navigate(1,-1,"monitor");check(!f.host.latestSnapshot(),"navigation never reuses previous module snapshot");
+ closePreparationRegression(f);
  PostMessageW(f.pane,WM_CLOSE,0,0);check(WaitForSingleObject(thread,4000)==WAIT_OBJECT_0,"owner exits");CloseHandle(thread);DestroyWindow(shell);
  std::printf("console adapter Win32 fixture: %d failures\n",failures);return failures?1:0;
 }

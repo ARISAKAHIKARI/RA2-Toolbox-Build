@@ -34,6 +34,7 @@ extern "C" int WINAPI TacticalEntry(HINSTANCE,HINSTANCE,LPWSTR,int);
 namespace consolemain {
 constexpr UINT PaneReady=WM_APP+60,EnabledChanged=WM_APP+61,CloseDecision=WM_APP+62;
 constexpr UINT BootReady=WM_APP+121,BackendStopped=WM_APP+122,ConfigChanged=WM_APP+123;
+constexpr UINT ClosePrepared=WM_APP+124;
 constexpr UINT_PTR CloseTimer=0x4191;
 static HWND frame=nullptr,errorLabel=nullptr,retryButton=nullptr,installButton=nullptr;
 static std::atomic<HWND> notificationWindow{nullptr};
@@ -51,6 +52,12 @@ static std::wstring root,config,args;
 static std::string error,lastShell;
 static bool appReady=false,bootReady=false,servicesStarted=false,userNavigated=false,closeAsked=false,storeClosing=false;
 static int selectedCategory=0,videoSection=0,closePhase=0;
+static unsigned closePreparedMask=0,closeRequestedMask=0;
+static ULONGLONG closePreparingAt=0;
+static bool closePromptActive=false;
+static bool closeQueryPending=false;
+static uint64_t closeQuerySequence=0;
+static ULONGLONG closeQueryAt=0;
 static HFONT errorFont=nullptr;
 static void onError(const std::wstring& text);
 struct BootSettings {bool ok=false,cursor=false,monitor=false;int category=0,video=0;};
@@ -81,7 +88,7 @@ static void publishShell(){
   ",\"selectedCategory\":"+std::to_string(selectedCategory)+",\"videoSection\":"+std::to_string(videoSection)+",\"closing\":"+(closePhase?"true":"false")+",\"error\":"+quote(error)+",\"modules\":[";
  for(unsigned i=0;i<3;++i){if(i)json+=',';json+="{\"module\":"+std::to_string(i)+",\"ready\":"+(suite::frontend.window(i)?"true":"false")+",\"enabled\":"+(active[i]?"true":"false")+"}";}
  json+="],\"config\":{\"pending\":"+std::to_string(storage.pending)+",\"busy\":"+(storage.busy?"true":"false")+",\"failed\":"+(storage.failed?"true":"false")+",\"error\":"+
-  quote(storage.failed?utf8(L"设置保存失败，请检查文件夹写入权限。 "+storage.errorPath):std::string{})+"}}";
+  quote(storage.failed?utf8((closePhase==2?L"设置保存失败。检查文件夹权限后，再次关闭窗口可重试或继续退出。 ":L"设置保存失败，请检查文件夹写入权限。 ")+storage.errorPath):std::string{})+"}}";
  if(json!=lastShell&&send(json))lastShell=std::move(json);
 }
 static void publishModels(){
@@ -125,13 +132,56 @@ static DWORD WINAPI prepareSettings(void*){
  {std::lock_guard<std::mutex> lock(bootMutex);bootSettings=result;}
  if(auto w=notificationWindow.load())PostMessageW(w,BootReady,0,0);return 0;
 }
-static void beginShutdown(){
- if(closePhase==2)return;closePhase=2;suite::frontend.closing();boundedshutdown::begin();saveModuleState();publishShell();
+static void startCleanup(){
+ if(closePhase==3)return;closePhase=3;boundedshutdown::begin();publishShell();
  SetWindowTextW(frame,L"红警工具箱 · 正在退出…");
  for(unsigned i=0;i<3;++i)suite::frontend.post(i,WM_CLOSE,suite::CloseToken);
 }
-static void requestClose(){
- if(closePhase)return;closePhase=1;closeAsked=false;publishShell();
+static void prepareCloseSaves(){
+ for(unsigned i=0;i<3;++i){
+  const unsigned bit=1u<<i;
+  if(done(i)){closePreparedMask|=bit;continue;}
+  if(!(closeRequestedMask&bit)&&suite::frontend.post(i,suite::PrepareClose))closeRequestedMask|=bit;
+ }
+}
+static void beginShutdown(){
+ if(closePhase>=2)return;closePhase=2;closePreparingAt=GetTickCount64();
+ suite::frontend.closing();saveModuleState();publishShell();
+ SetWindowTextW(frame,L"红警工具箱 · 正在保存设置…");
+ prepareCloseSaves();
+}
+static void requestClose(bool checked=false){
+ if(closePromptActive)return;
+ if(closePhase){
+  // The save phase has no destructive deadline. A second explicit close
+  // remains available if a disk or a service is stuck before preparation.
+  if(closePhase==2&&!closePromptActive){
+   const bool failed=asyncini::status().failed;
+   if(failed||GetTickCount64()-closePreparingAt>=3000){
+    closePromptActive=true;
+    const int answer=MessageBoxW(frame,failed?
+     L"设置保存失败，请检查文件夹写入权限。是否跳过保存并继续退出？\n选择“否”会重试保存。":
+     L"设置仍在保存或等待功能服务。跳过等待可能丢失尚未保存的修改。\n是否继续退出？",L"红警工具箱",MB_YESNO|MB_ICONWARNING|MB_DEFBUTTON2);
+    closePromptActive=false;
+    if(answer==IDYES)startCleanup();else if(failed)asyncini::retryFailed();
+   }
+  }
+  return;
+ }
+ if(!checked&&appReady&&browser.ready()){
+  if(closeQueryPending){
+   if(GetTickCount64()-closeQueryAt>=3000){
+    closeQueryPending=false;closePromptActive=true;
+    const int answer=MessageBoxW(frame,L"界面尚未回应关闭请求。继续退出可能丢失未提交的输入。是否继续？",L"红警工具箱",MB_YESNO|MB_ICONWARNING|MB_DEFBUTTON2);
+    closePromptActive=false;if(answer==IDYES)requestClose(true);
+   }
+   return;
+  }
+  closeQueryPending=true;closeQueryAt=GetTickCount64();++closeQuerySequence;
+  if(send("{\"kind\":\"close-check\",\"protocol\":1,\"seq\":"+std::to_string(closeQuerySequence)+"}"))return;
+  closeQueryPending=false;
+ }
+ closePhase=1;closeAsked=false;publishShell();
  SetTimer(frame,CloseTimer,50,nullptr);
  if(!servicesStarted||done(0))beginShutdown();
  else closeAsked=suite::frontend.post(0,suite::CloseCheck);
@@ -144,7 +194,20 @@ static void onMessage(const std::string& json){
   if(newConnection&&servicesStarted&&!closePhase)suite::frontend.renewSession();
   startServices();publishShell();if(auto state=suite::frontend.latestSnapshot())send(consolemodel::encodeSnapshot(*state));publishModels();return;
  }
- if(message.kind==consolemodel::MessageKind::Close){requestClose();return;}
+ if(message.kind==consolemodel::MessageKind::Close){
+  if(closePromptActive)return;
+  if(closeQueryPending){
+   if(message.shell.seq!=closeQuerySequence)return;
+   closeQueryPending=false;
+   if(message.shell.unsubmitted){
+    closePromptActive=true;
+    const int answer=MessageBoxW(frame,L"仍有未提交的输入或未完成的操作。继续退出会放弃这些修改。\n可选择“否”，按 Enter 提交输入或等待操作完成后再退出。是否继续？",L"红警工具箱",MB_YESNO|MB_ICONWARNING|MB_DEFBUTTON2);
+    closePromptActive=false;if(answer!=IDYES)return;
+   }
+   requestClose(true);
+  }else if(!message.shell.seq)requestClose();
+  return;
+ }
  if(closePhase)return;
  if(message.kind==consolemodel::MessageKind::Navigate){
   userNavigated=true;selectedCategory=message.shell.module==2?message.shell.category:0;
@@ -161,12 +224,12 @@ static void onMessage(const std::string& json){
 }
 static void resizeError(){RECT r{};GetClientRect(frame,&r);MoveWindow(errorLabel,36,42,std::max(1,int(r.right)-72),160,FALSE);MoveWindow(retryButton,36,218,128,34,FALSE);MoveWindow(installButton,180,218,212,34,FALSE);}
 static void onError(const std::wstring& text){
- appReady=false;lastShell.clear();browser.close();SetWindowTextW(errorLabel,text.c_str());
+ appReady=false;closeQueryPending=false;lastShell.clear();browser.close();SetWindowTextW(errorLabel,text.c_str());
  ShowWindow(errorLabel,SW_SHOWNA);ShowWindow(retryButton,SW_SHOWNA);ShowWindow(installButton,SW_SHOWNA);resizeError();InvalidateRect(frame,nullptr,FALSE);
 }
 static void createBrowser(){
  ShowWindow(errorLabel,SW_HIDE);ShowWindow(retryButton,SW_HIDE);ShowWindow(installButton,SW_HIDE);
- appReady=false;lastShell.clear();browser.close();
+ appReady=false;closeQueryPending=false;lastShell.clear();browser.close();
  if(!browser.create(frame,onMessage,onError)&&!IsWindowVisible(errorLabel)){
   // Host has queued a specific error. Keep its dispatcher alive so that the
   // detailed installation/cache failure can replace this temporary message.
@@ -187,10 +250,11 @@ static LRESULT CALLBACK proc(HWND w,UINT m,WPARAM a,LPARAM b){
   asyncini::setNotify([]{configNotify(nullptr);});createBrowser();return 0;
  }
  case BootReady:bootReady=true;startServices();if(closePhase&&!servicesStarted)beginShutdown();return 0;
- case PaneReady:{const unsigned i=unsigned(a);if(i<3){suite::frontend.post(i,suite::ModuleEnable,active[i]);if(closePhase==2)suite::frontend.post(i,WM_CLOSE,suite::CloseToken);}publishModels();return 0;}
- case EnabledChanged:saveModuleState();publishShell();return 0;
+ case PaneReady:{const unsigned i=unsigned(a);if(i<3){if(closePhase<2)suite::frontend.post(i,suite::ModuleEnable,active[i]);if(closePhase==2)prepareCloseSaves();if(closePhase==3)suite::frontend.post(i,WM_CLOSE,suite::CloseToken);}publishModels();return 0;}
+ case EnabledChanged:if(closePhase<2)saveModuleState();publishShell();return 0;
  case consoleadapter::ChangedMessage:publishModels();return 0;
  case ConfigChanged:configNoticePending=false;publishShell();return 0;
+ case ClosePrepared:if(closePhase==2&&unsigned(a)<3)closePreparedMask|=1u<<unsigned(a);return 0;
  case BackendStopped:if(unsigned(a)<3){active[unsigned(a)]=false;if(!closePhase){error=utf8(L"部分功能服务已停止，请重新打开工具箱。");publishShell();}}return 0;
  case WM_COMMAND:if(HIWORD(a)==BN_CLICKED){if(LOWORD(a)==1){createBrowser();return 0;}if(LOWORD(a)==2){ShellExecuteW(w,L"open",L"https://developer.microsoft.com/microsoft-edge/webview2/#download-section",nullptr,nullptr,SW_SHOWNORMAL);return 0;}}break;
  case WM_DISPLAYCHANGE:for(unsigned i=0;i<3;++i)suite::frontend.post(i,m,a,b);return 0;
@@ -201,7 +265,11 @@ static LRESULT CALLBACK proc(HWND w,UINT m,WPARAM a,LPARAM b){
  case CloseDecision:if(closePhase==1){if(a)beginShutdown();else{closePhase=0;closeAsked=false;KillTimer(w,CloseTimer);SetWindowTextW(w,L"红警工具箱 v" RA2_RELEASE_VERSION_W);publishShell();}}return 0;
  case WM_TIMER:if(a==CloseTimer){
   if(closePhase==1){if(done(0))beginShutdown();else if(!closeAsked)closeAsked=suite::frontend.post(0,suite::CloseCheck);}
-  if(closePhase==2&&done(0)&&done(1)&&done(2)&&(!bootstrap||WaitForSingleObject(bootstrap,0)==WAIT_OBJECT_0)){
+  if(closePhase==2){
+   prepareCloseSaves();
+   if(!closePromptActive&&closePreparedMask==7&&(!bootstrap||WaitForSingleObject(bootstrap,0)==WAIT_OBJECT_0)&&asyncini::idle()&&!asyncini::status().failed)startCleanup();
+  }
+  if(closePhase==3&&done(0)&&done(1)&&done(2)&&(!bootstrap||WaitForSingleObject(bootstrap,0)==WAIT_OBJECT_0)){
    if(!storeClosing){asyncini::requestFlush();asyncini::beginShutdown();storeClosing=true;}
    if(asyncini::idle())DestroyWindow(w);
   }return 0;
@@ -228,6 +296,7 @@ namespace suite {
  void reportEnabled(int module,bool value){if(module>=0&&module<3&&consolemain::active[module].exchange(value)!=value)PostMessageW(consolemain::frame,consolemain::EnabledChanged,module,value);}
  void requestClose(){PostMessageW(consolemain::frame,WM_CLOSE,0,0);}
  void closeDecision(bool allow){PostMessageW(consolemain::frame,consolemain::CloseDecision,allow,0);}
+ void closePrepared(int module){if(module>=0&&module<3)if(auto w=consolemain::notificationWindow.load())PostMessageW(w,consolemain::ClosePrepared,module,0);}
  void setStatsVisible(bool value){consolemain::statsShown=value;}
  bool statsVisible(){return consolemain::statsShown.load();}
  void publishHardwareCursor(bool value){consolemain::hardwarePointer=value;}
