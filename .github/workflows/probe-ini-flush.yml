@@ -33,6 +33,17 @@ jobs:
             public static int[] Flush(string path) {
               return String.IsNullOrEmpty(path) ? Call(null,null,null,null) : Call(null,null,null,path);
             }
+            public static long[] MeasureWrites(string path,int count) {
+              if(!System.IO.File.Exists(path)) System.IO.File.WriteAllBytes(path,new byte[]{0xff,0xfe});
+              int failures=0,firstError=0;
+              var timer=System.Diagnostics.Stopwatch.StartNew();
+              for(int i=0;i<count;i++) {
+                bool ok=WritePrivateProfileStringW("Batch","Key"+i,"Value"+i,path);
+                if(!ok) { failures++; if(firstError==0) firstError=Marshal.GetLastWin32Error(); }
+              }
+              timer.Stop();
+              return new long[]{timer.ElapsedMilliseconds,failures,firstError,new System.IO.FileInfo(path).Length};
+            }
             public static string Read(string path) {
               var value=new StringBuilder(256);
               GetPrivateProfileStringW("Probe","Value","<missing>",value,256,path);
@@ -50,6 +61,7 @@ jobs:
           [IO.File]::WriteAllBytes($valid,[byte[]](0xff,0xfe))
           [IO.File]::WriteAllBytes($readonly,[byte[]](0xff,0xfe))
           $rows=[Collections.Generic.List[object]]::new()
+          $benchmarks=[Collections.Generic.List[object]]::new()
           function Observe($name,$section,$key,$value,$path) {
             $result=$(if($name.StartsWith('flush-')){[NativeProfileProbe]::Flush($path)}else{[NativeProfileProbe]::Call($section,$key,$value,$path)})
             $exists=$path -and [IO.File]::Exists($path)
@@ -71,6 +83,10 @@ jobs:
             [IO.File]::SetAttributes($readonly,[IO.FileAttributes]::Normal)
             Observe 'flush-directory-as-filename' $null $null $null $directory
             Observe 'flush-global-final' $null $null $null $null
+            foreach($sample in @(@('new-500','batch500.ini',500),@('repeat-same-500','batch500.ini',500),@('new-1000','batch1000.ini',1000))) {
+              $measurement=[NativeProfileProbe]::MeasureWrites((Join-Path $directory $sample[1]),[int]$sample[2])
+              $benchmarks.Add([pscustomobject]@{name=$sample[0];count=$sample[2];elapsedMs=$measurement[0];failures=$measurement[1];firstError=$measurement[2];bytes=$measurement[3]})
+            }
           } finally {
             [IO.File]::SetAttributes($readonly,[IO.FileAttributes]::Normal)
             [NativeProfileProbe]::Flush($null) | Out-Null
@@ -78,6 +94,8 @@ jobs:
           }
           New-Item -ItemType Directory results | Out-Null
           $rows | ConvertTo-Json -Depth 5 | Set-Content -Encoding utf8 results/native-ini-probe.json
+          $benchmarks | ConvertTo-Json -Depth 5 | Set-Content -Encoding utf8 results/native-ini-benchmark.json
+          $benchmarks | Format-Table name,count,elapsedMs,failures,firstError,bytes | Out-String | Tee-Object results/native-ini-benchmark.log
           $rows | Format-Table name,returned,lastError,fileExists,value | Out-String | Tee-Object results/native-ini-probe.log
       - uses: actions/upload-artifact@v4
         if: always()
