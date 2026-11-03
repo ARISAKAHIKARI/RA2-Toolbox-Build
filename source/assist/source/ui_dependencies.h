@@ -42,17 +42,22 @@ static std::wstring dependencyWindowText(HWND w){int n=GetWindowTextLengthW(w);s
 static DependencyCaption& dependencyCaption(HWND w){
  auto found=dependencyCaptions.find(w);if(found==dependencyCaptions.end()){auto text=dependencyWindowText(w);found=dependencyCaptions.emplace(w,DependencyCaption{text,text}).first;}return found->second;
 }
-static void syncSettingDependencies(bool force){
+static void syncSettingDependencies(bool force,bool immediate){
  if(!ready||!ui||updatingControls)return;
- static DWORD polled=0;const DWORD now=GetTickCount();if(!force&&polled&&DWORD(now-polled)<120)return;polled=now;
+ static DWORD polled=0;const DWORD now=GetTickCount();if(!force&&!immediate&&polled&&DWORD(now-polled)<120)return;polled=now;
  const auto state=currentSettingDependencies();static uint64_t previous=~uint64_t(0);
  if(!force&&state.available==previous)return;previous=state.available;
  ControlUpdate guard;std::map<HWND,std::wstring> captions;
+ // Build each index once per changed dependency state, instead of searching
+ // the complete settings tree separately for every dependent field.
+ std::map<HWND,const PageControl*> placements;
+ std::map<std::pair<int,int>,std::vector<const PageControl*>> labelRows;
+ for(const auto&c:pageControls){placements.emplace(c.hwnd,&c);if(!GetDlgCtrlID(c.hwnd))labelRows[{c.page,c.rect.y}].push_back(&c);}
  for(int id:settingsdeps::Controls){
   HWND control=GetDlgItem(ui,id);if(!control)continue;
   auto found=dependencyBindings.find(id);if(found==dependencyBindings.end())found=dependencyBindings.emplace(id,settingsdeps::ControlBinding(control)).first;
   const auto availability=settingsdeps::decision(id,state);found->second.refresh(availability);
-  const PageControl* placed=nullptr;for(const auto&c:pageControls)if(c.hwnd==control){placed=&c;break;}
+  auto placement=placements.find(control);const PageControl* placed=placement==placements.end()?nullptr:placement->second;
   std::wstring help=placed?placed->help:L"";
   if(help.empty())help=dependencyWindowText(control);
   if(!availability.enabled())help=std::wstring(L"当前不可用：")+settingsdeps::reason(availability.missing)+(availability.missing==settingsdeps::Need::Unavailable?L"。相关快捷键与旧启用设置不执行。\r\n":L"。已保存的子设置保留，开启父功能后恢复。\r\n")+help;
@@ -61,8 +66,8 @@ static void syncSettingDependencies(bool force){
   wchar_t cls[32]{};GetClassNameW(control,cls,32);if(!_wcsicmp(cls,L"BUTTON"))addCaption(control);
   // Combo/edit captions have ID zero. Keep the reason visible beside their
   // disabled field, rather than relying exclusively on hover tooltips.
-  else if(placed)for(const auto&c:pageControls)if(c.page==placed->page&&c.rect.y==placed->rect.y&&c.rect.x<placed->rect.x&&!GetDlgCtrlID(c.hwnd)){
-   GetClassNameW(c.hwnd,cls,32);if(!_wcsicmp(cls,L"STATIC"))addCaption(c.hwnd);
+  else if(placed)for(const auto*c:labelRows[{placed->page,placed->rect.y}])if(c->rect.x<placed->rect.x){
+   GetClassNameW(c->hwnd,cls,32);if(!_wcsicmp(cls,L"STATIC"))addCaption(c->hwnd);
   }
  }
  for(const auto&entry:captions){auto&caption=dependencyCaption(entry.first);if(caption.applied!=entry.second){caption.applied=entry.second;SetWindowTextW(entry.first,entry.second.c_str());}}
@@ -75,5 +80,5 @@ static bool rejectUnavailableSetting(int id,int notification){
 }
 struct DependencyCommandRefresh {
  bool refresh=ready&&!updatingControls;
- ~DependencyCommandRefresh(){if(refresh)syncSettingDependencies(true);}
+ ~DependencyCommandRefresh(){if(refresh)syncSettingDependencies(false,true);}
 };

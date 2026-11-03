@@ -1,3 +1,6 @@
+#if defined(RA2_CONSOLE_WEBVIEW2)
+#include "modern_console_main.h"
+#else
 #include "../../shared/source/release_version.h"
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
@@ -34,7 +37,7 @@ static const wchar_t* names[]={L"视频",L"控制",L"自动功能",L"游戏规�
 namespace suite {
  HWND parent(){return frame;}
  bool enabled(int module){return active[module].load();}
- void registerPane(int module,HWND pane){
+ void registerPane(int module,HWND pane,WNDPROC){
   PostMessageW(pane,DisplaySettingsChanged,0,0);
   if(module==2)PostMessageW(pane,RefreshRateChanged,0,0);
   modernui::styleChildren(pane);frontend.adopt(unsigned(module),pane,modernui::windowDpi(pane));
@@ -156,3 +159,4 @@ int WINAPI wWinMain(HINSTANCE h,HINSTANCE,LPWSTR cmd,int show){
  consoleDpi=modernui::windowDpi(frame);applyDpi(consoleDpi);SetWindowPos(frame,nullptr,0,0,std::min(modernui::scale(1120,consoleDpi),int(work.right-work.left)-20),std::min(modernui::scale(900,consoleDpi),int(work.bottom-work.top)-30),SWP_NOMOVE|SWP_NOZORDER|SWP_NOACTIVATE);layout();ShowWindow(frame,show);MSG msg;while(GetMessageW(&msg,nullptr,0,0)>0){TranslateMessage(&msg);DispatchMessageW(&msg);}
  for(auto worker:workers)if(worker)CloseHandle(worker);DeleteObject(font);DeleteObject(brush);CloseHandle(single);return 0;
 }
+#endif

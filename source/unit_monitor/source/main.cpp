@@ -31,6 +31,12 @@
 #ifdef RA2_UNIFIED
 #include "suite_host.h"
 #endif
+#ifdef RA2_CONSOLE_WEBVIEW2
+#include "../../shared/source/async_ini_store.h"
+#define WritePrivateProfileStringW asyncini::write
+#define GetPrivateProfileStringW asyncini::cachedReadString
+#define GetPrivateProfileIntW asyncini::cachedReadInt
+#endif
 #include "tab_control.h"
 #include "../../shared/source/overlay_recovery.h"
 #include "../../shared/source/monitor_refresh.h"
@@ -673,7 +679,7 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR,int){
  RECT r{0,0,700,440};AdjustWindowRect(&r,WS_OVERLAPPEDWINDOW|WS_CLIPCHILDREN|WS_VSCROLL|WS_HSCROLL,FALSE);
  ui=CreateWindowW(wc.lpszClassName,L"单位统计 v" RA2_RELEASE_VERSION_W,WS_OVERLAPPEDWINDOW|WS_CLIPCHILDREN|WS_VSCROLL|WS_HSCROLL,CW_USEDEFAULT,CW_USEDEFAULT,r.right-r.left,r.bottom-r.top,nullptr,nullptr,inst,nullptr);
 #ifdef RA2_UNIFIED
- suite::registerPane(1,ui);
+ suite::registerPane(1,ui,proc);
 #else
  ShowWindow(ui,SW_SHOW);
 #endif

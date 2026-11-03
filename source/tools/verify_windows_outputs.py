@@ -10,6 +10,7 @@ import xml.etree.ElementTree as ET
 # Windows embedded Python uses python312._pth and omits the script directory.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from pe32_image import Image
+from prepare_console_sdk import VERSION as WEBVIEW2_VERSION, validate_bytes as validate_sdk_bytes
 
 ROOT = Path(__file__).resolve().parent.parent
 NAMES = ('RA2Toolbox.exe','GameRuntime.dll')
@@ -93,11 +94,43 @@ def verify_broker_manifest(pe):
     return verify_worker_manifest(pe)
 
 
-def verify(root, host_arch='x86', neural_helper=False):
+def verify_webview2_loader(root, host):
+    name = 'WebView2Loader.dll'
+    data = (root / name).read_bytes()
+    validate_sdk_bytes('bin/' + name, data)
+    loader = Image(data, allow_x64=True)
+    if loader.machine != 0x8664 or not loader.characteristics & 0x2000:
+        raise ValueError('WebView2 loader must be the pinned x64 DLL')
+    required = {'CreateCoreWebView2EnvironmentWithOptions', 'GetAvailableCoreWebView2BrowserVersionString'}
+    if not required <= set(loader.exports()):
+        raise ValueError('WebView2 loader entry points missing')
+    if {name.lower() for name in loader.imports()} != {'kernel32.dll'}:
+        raise ValueError('Pinned WebView2 loader dependency set differs')
+    marker = 'WebView2Loader.dll'.encode('utf-16le')
+    if not any(marker in host.take(raw, min(size, virtual or size))
+               for _, _, size, raw, virtual in host.sections if size):
+        raise ValueError('Host was not compiled with the WebView2 console')
+    licenses = {}
+    for filename in ('LICENSE.txt', 'NOTICE.txt'):
+        path = root / 'licenses' / 'WebView2' / filename
+        content = path.read_bytes()
+        validate_sdk_bytes('licenses/' + filename, content)
+        licenses['licenses/WebView2/' + filename] = hashlib.sha256(content).hexdigest()
+    return {'name': name, 'sdk_version': WEBVIEW2_VERSION,
+            'bytes': len(data), 'sha256': hashlib.sha256(data).hexdigest(),
+            'machine': loader.architecture, 'imports': list(loader.imports()),
+            'licenses': licenses,
+            'runtime_requirement': 'Microsoft Edge WebView2 Evergreen Runtime',
+            'runtime_installed_or_executed': False}
+
+
+def verify(root, host_arch='x86', neural_helper=False, webview2=False):
     if host_arch not in ('x86', 'x64'):
         raise ValueError('host_arch must be x86 or x64')
     if neural_helper and host_arch != 'x64':
         raise ValueError('the optional neural helper requires the x64 host profile')
+    if webview2 and host_arch != 'x64':
+        raise ValueError('the WebView2 console requires the x64 host profile')
     legacy = json.loads((root / 'BUILD_SOURCE_MANIFEST.json').read_text('utf-8')).get('legacy_binary_sha256', {})
     recs, images, errors = {}, {}, []
     names = NAMES + ((BROKER,) if host_arch == 'x64' else ()) + ((NEURAL,) if neural_helper else ())
@@ -125,11 +158,12 @@ def verify(root, host_arch='x86', neural_helper=False):
                 raise ValueError('required export missing: ' + ', '.join(required))
             imports = pe.imports()
             system = NEURAL_SYSTEM if name == NEURAL else SYSTEM
-            unknown = [x for x in imports if x.lower() not in system
+            allowed_bundle = {'webview2loader.dll'} if webview2 and name == 'RA2Toolbox.exe' else set()
+            unknown = [x for x in imports if x.lower() not in system | allowed_bundle
                        and not x.lower().startswith(('api-ms-win-', 'ext-ms-win-'))]
             if unknown:
                 raise ValueError('unbundled non-system dependency: ' + ', '.join(unknown))
-            if "1.0.40.0".encode("utf-16le") not in pe.resource_bytes():
+            if "1.0.41.1".encode("utf-16le") not in pe.resource_bytes():
                 raise ValueError("file version resource mismatch")
             images[name] = pe
             recs[name] = {'bytes': len(buf), 'sha256': digest, 'machine': pe.architecture,
@@ -147,6 +181,11 @@ def verify(root, host_arch='x86', neural_helper=False):
             recs['RA2Toolbox.exe']['common_controls_activation'] = verify_host_manifest(host, host_arch)
             if host_arch == 'x64':
                 recs[BROKER]['process_manifest'] = verify_broker_manifest(images[BROKER])
+            if webview2:
+                recs['RA2Toolbox.exe']['webview2_loader'] = verify_webview2_loader(root, host)
+                for name in ('GameRuntime.dll', BROKER):
+                    if any('webview2' in item.lower() for item in recs[name]['import_dlls']):
+                        raise ValueError('WebView2 dependency leaked into the x86 game component: ' + name)
             if neural_helper:
                 recs[NEURAL]['process_manifest'] = verify_worker_manifest(images[NEURAL], 'amd64', 'x64 neural helper')
             a = host.at_rva(host.exports()['AssistHostProtocolInfo'], 8)
@@ -176,9 +215,9 @@ def verify(root, host_arch='x86', neural_helper=False):
             recs['GameRuntime.dll']['runtime_protocol']=4
             recs['GameRuntime.dll']['runtime_control_bytes']=176
             resource = host.resource_bytes()
-            if '1.0.40.0'.encode('utf-16le') not in resource:
+            if '1.0.41.1'.encode('utf-16le') not in resource:
                 raise ValueError('EXE version resource mismatch')
-            for text in (b'requireAdministrator', b'PerMonitorV2', b'1.0.40.0'):
+            for text in (b'requireAdministrator', b'PerMonitorV2', b'1.0.41.1'):
                 if text not in resource:
                     raise ValueError('EXE manifest missing: ' + text.decode())
             for name in NAMES:
@@ -195,34 +234,39 @@ def main():
     parser.add_argument('--root', type=Path, default=ROOT)
     parser.add_argument('--host-arch', choices=('x86', 'x64'), default='x86')
     parser.add_argument('--neural-helper', action='store_true', help='also require and verify the optional x64 RA2NeuralRenderer.exe; does not claim a DLSS-capable device/runtime')
+    parser.add_argument('--webview2', action='store_true', help='require the x64 modern console, pinned Microsoft loader and license notices')
     args = parser.parse_args()
     if args.neural_helper and args.host_arch != 'x64':
         parser.error('--neural-helper requires --host-arch x64')
+    if args.webview2 and args.host_arch != 'x64':
+        parser.error('--webview2 requires --host-arch x64')
     root = args.root.resolve()
     for name in ('BUILD-VERIFIED-v130.tag', 'WINDOWS_BUILD_ARTIFACTS.json'):
         (root / name).unlink(missing_ok=True)
-    recs, errors = verify(root, args.host_arch, args.neural_helper)
+    recs, errors = verify(root, args.host_arch, args.neural_helper, args.webview2)
     if errors:
         print('BUILD NOT VERIFIED:\n' + '\n'.join(errors))
         return 1
     architecture_label = 'PE32/ABI' if args.host_arch == 'x86' else 'x64 host/x86 runtime/broker ABI'
     (root / 'BUILD-VERIFIED-v130.tag').write_text(
-        f'v1.0.40 SingleRuntime: {architecture_label}/import/version checks passed\n'
+        f'v1.0.41-pre.1 SingleRuntime: {architecture_label}/import/version checks passed\n'
         'Game runtime and multiplayer not tested\n', encoding='utf-8')
     (root / 'WINDOWS_BUILD_ARTIFACTS.json').write_text(json.dumps({
-        'label': '1.0.40 SingleRuntime', 'file_version': '1.0.40.0',
+        'label': '1.0.41-pre.1 SingleRuntime', 'file_version': '1.0.41.1',
         'host_architecture': args.host_arch, 'runtime_architecture': 'x86',
-        'cursor_protocol': CURSOR_PROTOCOL,
+        'cursor_protocol': CURSOR_PROTOCOL, 'console_ui': 'webview2' if args.webview2 else 'native',
         'neural_helper_verified': args.neural_helper, 'neural_runtime_tested': False,
         'verified': recs, 'runtime_tested': False, 'multiplayer_tested': False,
-        'dependency_check': {2: 'two', 3: 'three', 4: 'four'}[len(recs)] + ' project binaries import Windows system DLLs only',
+        'dependency_check': {2: 'two', 3: 'three', 4: 'four'}[len(recs)] + ' project binaries use Windows system DLLs' + ('; pinned x64 Microsoft WebView2 loader bundled; Evergreen Runtime required' if args.webview2 else ' only'),
     }, ensure_ascii=False, indent=2), encoding='utf-8')
     if args.host_arch == 'x86':
-        print('PASS: 2 current PE32 x86 outputs; hooks exported; ABI/Shared size match; version 1.0.40.0')
+        print('PASS: 2 current PE32 x86 outputs; hooks exported; ABI/Shared size match; version 1.0.41.1')
     else:
-        print(f'PASS: {len(recs)} current outputs; x64 host/x86 runtime/broker; hooks exported; ABI/Shared size match; version 1.0.40.0')
+        print(f'PASS: {len(recs)} current outputs; x64 host/x86 runtime/broker; hooks exported; ABI/Shared size match; version 1.0.41.1')
     if args.neural_helper:
         print('PASS: optional x64 neural helper PE/manifest/system dependencies; DLSS hardware/runtime execution not tested')
+    if args.webview2:
+        print('PASS: pinned x64 WebView2 loader, license notices and host integration; no WebView2 dependency in the x86 game components')
     print('PASS: no unbundled third-party or compiler-runtime DLL dependencies')
     print(f'PASS: actual EXE RT_MANIFEST/1 enables {args.host_arch} Common Controls 6 for subclass helper imports')
     print('NOTE: static validation does not execute the Windows loader or the game')

@@ -29,6 +29,12 @@
 #ifdef RA2_UNIFIED
 #include "suite_host.h"
 #endif
+#ifdef RA2_CONSOLE_WEBVIEW2
+#include "../../shared/source/async_ini_store.h"
+#define WritePrivateProfileStringW asyncini::write
+#define GetPrivateProfileStringW asyncini::cachedReadString
+#define GetPrivateProfileIntW asyncini::cachedReadInt
+#endif
 #include "scale.h"
 #include "features.h"
 #include "motion.h"
@@ -1627,7 +1633,18 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR cmd,int){
  }
  #endif
 #ifdef RA2_UNIFIED
- suite::registerPane(0,mainw);
+#ifdef RA2_CONSOLE_WEBVIEW2
+ // The modern view owns collapsed sections. Keep the old advanced fields
+ // available to the typed settings adapter, including offscreen controls.
+ if(!advancedOpen)toggleAdvanced(mainw);
+ SetPropW(advancedAction,L"RA2.Console.Skip",reinterpret_cast<HANDLE>(1));ShowWindow(advancedAction,SW_HIDE);
+ for(const auto&c:controlOrigins){
+  SetPropW(c.handle,L"RA2.Console.Row",reinterpret_cast<HANDLE>(INT_PTR(c.logical.y)+1));
+  SetPropW(c.handle,L"RA2.Console.Column",reinterpret_cast<HANDLE>(INT_PTR(c.logical.x)+1));
+  if(std::find(advancedControls.begin(),advancedControls.end(),c.handle)!=advancedControls.end())SetPropW(c.handle,L"RA2.Console.Group",reinterpret_cast<HANDLE>(const_cast<wchar_t*>(L"高级光标设置")));
+ }
+#endif
+ suite::registerPane(0,mainw,wndproc);
 #else
  ShowWindow(mainw,SW_SHOW);
 #endif

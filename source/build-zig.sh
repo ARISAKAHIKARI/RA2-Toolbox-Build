@@ -6,6 +6,13 @@ case "${RA2_HOST_ARCH:-x86}" in
   x64|x86_64|amd64) exec bash ./build-zig-x64.sh "$@" ;;
   *) echo "RA2_HOST_ARCH must be x86 or x64" >&2; exit 2 ;;
 esac
+# The modern WebView2 console is an x64 host profile. Keep this x86 route
+# explicitly native for compatibility; it is not a modern-console release.
+if [ "${RA2_CONSOLE_UI:-native}" != native ]; then
+  echo "The WebView2 console requires RA2_HOST_ARCH=x64; x86 supports native only" >&2
+  exit 2
+fi
+echo "Building the legacy native x86 console (modern UI: RA2_HOST_ARCH=x64)" >&2
 : "${ZIG:=zig}"
 version=$("$ZIG" version)
 if [ "$version" != "0.13.0" ]; then

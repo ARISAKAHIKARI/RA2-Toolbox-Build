@@ -79,6 +79,12 @@ static swsidebar::Panel superweaponPanel;static swsidebar::Options superweaponOp
 #ifdef RA2_UNIFIED
 #include "suite_host.h"
 #endif
+#ifdef RA2_CONSOLE_WEBVIEW2
+#include "../../shared/source/async_ini_store.h"
+#define WritePrivateProfileStringW asyncini::write
+#define GetPrivateProfileStringW asyncini::cachedReadString
+#define GetPrivateProfileIntW asyncini::cachedReadInt
+#endif
 using namespace assist;using namespace Gdiplus;
 extern "C" __declspec(dllexport) const uint32_t AssistHostProtocolInfo[2]={Version,sizeof(Shared)};
 extern "C" __declspec(dllexport) const MappingPrefixValue AssistHostMappingPrefix{};
@@ -214,7 +220,7 @@ static std::vector<cooperative::Assignment> submittedCooperative,acceptedCoopera
 static bool retryCooperative=false;
 static bool saveAdditionalSettings();static uint32_t additionalFlags();static void syncAdditional();static void serviceCooperative();static void servicePointer();static void fillExtraTypes(bool force);
 static void changedSetting();static void syncSecondaryLayoutControls();
-static void syncSettingDependencies(bool force=false);
+static void syncSettingDependencies(bool force=false,bool immediate=false);
 static void readSnapshot();static void syncTypeConfig();static void fillTypeBindings(bool force=false);static void typeBindingFields();
 static std::wstring path(const wchar_t*s){return root+L"\\"+s;}static std::wstring wide(const char*s){std::wstring w;while(*s)w+=wchar_t((unsigned char)*s++);return w;}
 static std::wstring hoverHelp;
@@ -1984,6 +1990,12 @@ static unsigned panelDpi=96;static int scrollX=0;static bool arrangingPanel=fals
 static int logical(int n){return MulDiv(n,96,int(panelDpi));}
 static void layoutPanel(){
  if(!ui||arrangingPanel)return;arrangingPanel=true;
+#ifdef RA2_CONSOLE_WEBVIEW2
+ // The visible MVVM view owns scrolling, folds and responsive layout. These
+ // compatibility controls only retain values and original command semantics.
+ for(const auto&c:pageControls)if(c.page>=0)ShowWindow(c.hwnd,c.page==activePage?SW_SHOWNA:SW_HIDE);
+ arrangingPanel=false;return;
+#endif
  RECT client{};GetClientRect(ui,&client);int height=logical(client.bottom),width=logical(client.right),maximum=uilayout::maxScroll(pageBottom(),height);scrollY=std::clamp(scrollY,0,maximum);scrollX=std::clamp(scrollX,0,std::max(0,uilayout::Width-width));
  auto px=[](int n){return modernui::scale(n,panelDpi);};HDWP batch=BeginDeferWindowPos(int(pageControls.size()));
  for(const auto&c:pageControls){int cid=GetDlgCtrlID(c.hwnd);if(cid>=910&&cid<=915)ShowWindow(c.hwnd,activePage==0?SW_SHOWNA:SW_HIDE);auto r=uilayout::visible(c.rect,c.page,height,width,scrollY);r.x-=scrollX;
@@ -2043,6 +2055,30 @@ static void finalizeTacticalLayout(){
  for(auto&c:pageControls)c.fullRect=c.rect;applySettingsFolds();
  activePage=suite::categories::Control;scrollY=scrollX=0;layoutPanel();
 }
+
+#ifdef RA2_CONSOLE_WEBVIEW2
+static void prepareConsoleSettingsModel(){
+ struct Group {int fold;const wchar_t*name;};
+ static constexpr Group groups[]={{9601,L"飞机分配攻击"},{9602,L"队形排列与快速占位"},{9603,L"防空火控"},{9604,L"喝彩与嘲讽快捷键"},{9605,L"矿车自动卸矿"},{9606,L"高级移动攻击"},{9607,L"科技设置"},{9608,L"组合选兵绑定"},{9609,L"计算模式"}};
+ int groupPages[9],groupRows[9];std::fill(std::begin(groupPages),std::end(groupPages),-999);std::fill(std::begin(groupRows),std::end(groupRows),-999);
+ for(const auto&c:pageControls){const int id=GetDlgCtrlID(c.hwnd);if(id>=9601&&id<=9609){groupPages[id-9601]=c.page;groupRows[id-9601]=c.fullRect.y;}}
+ // Native folds are only a compatibility detail. Publish every field and let
+ // the new view own fold/search state without altering a saved feature value.
+ for(const auto&group:groups)openedSettingGroups.insert(group.fold);
+ applySettingsFolds();
+ for(const auto&c:pageControls){
+  const int id=GetDlgCtrlID(c.hwnd);
+  SetPropW(c.hwnd,L"RA2.Console.Row",reinterpret_cast<HANDLE>(INT_PTR(c.fullRect.y)+1));
+  SetPropW(c.hwnd,L"RA2.Console.Column",reinterpret_cast<HANDLE>(INT_PTR(c.fullRect.x)+1));
+  for(const auto&group:groups){
+   if(c.fold==group.fold||(groupPages[group.fold-9601]==c.page&&groupRows[group.fold-9601]==c.fullRect.y))
+    SetPropW(c.hwnd,L"RA2.Console.Group",reinterpret_cast<HANDLE>(const_cast<wchar_t*>(group.name)));
+  }
+  if((id>=9601&&id<=9609)||id==989||id==990||id==991){SetPropW(c.hwnd,L"RA2.Console.Skip",reinterpret_cast<HANDLE>(1));ShowWindow(c.hwnd,SW_HIDE);}
+ }
+ layoutPanel();
+}
+#endif
 
 static HWND placedControl(uilayout::Placement placement,const wchar_t*cls,const wchar_t*text,int id,DWORD style){
  if(!wcscmp(text,L"自动保存"))return HWND{};
@@ -2376,7 +2412,10 @@ int WINAPI wWinMain(HINSTANCE h,HINSTANCE,LPWSTR,int show){SetProcessDPIAware();
  WNDCLASSW wc{};wc.hInstance=h;wc.lpfnWndProc=DefWindowProcW;wc.lpszClassName=L"RA2AssistOverlay010";wc.hCursor=LoadCursorW(nullptr,IDC_ARROW);RegisterClassW(&wc);overlay=CreateWindowExW(WS_EX_LAYERED|WS_EX_TRANSPARENT|WS_EX_TOPMOST|WS_EX_TOOLWINDOW|WS_EX_NOACTIVATE,wc.lpszClassName,L"",WS_POPUP,0,0,1,1,nullptr,nullptr,h,nullptr);
  wc.lpfnWndProc=proc;wc.lpszClassName=L"RA2Assist010";wc.hbrBackground=bgBrush;wc.hIcon=LoadIconW(nullptr,IDI_APPLICATION);RegisterClassW(&wc);RECT work{};SystemParametersInfoW(SPI_GETWORKAREA,0,&work,0);ui=CreateWindowExW(0,wc.lpszClassName,L"战术助手 v" RA2_RELEASE_VERSION_W,WS_OVERLAPPED|WS_CAPTION|WS_SYSMENU|WS_MINIMIZEBOX|WS_THICKFRAME|WS_VSCROLL|WS_HSCROLL|WS_CLIPCHILDREN, CW_USEDEFAULT,CW_USEDEFAULT,685,std::min(1084,int(work.bottom-work.top)-20),nullptr,nullptr,h,nullptr);
 #ifdef RA2_UNIFIED
- enabled=suite::enabled(2);suite::registerPane(2,ui);publishSuiteDisplay();
+#ifdef RA2_CONSOLE_WEBVIEW2
+ prepareConsoleSettingsModel();
+#endif
+ enabled=suite::enabled(2);suite::registerPane(2,ui,proc);publishSuiteDisplay();
 #else
  ShowWindow(ui,show);
 #endif
