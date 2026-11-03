@@ -30,6 +30,9 @@ jobs:
               int error=Marshal.GetLastWin32Error();
               return new int[]{result?1:0,error};
             }
+            public static int[] Flush(string path) {
+              return String.IsNullOrEmpty(path) ? Call(null,null,null,null) : Call(null,null,null,path);
+            }
             public static string Read(string path) {
               var value=new StringBuilder(256);
               GetPrivateProfileStringW("Probe","Value","<missing>",value,256,path);
@@ -48,7 +51,7 @@ jobs:
           [IO.File]::WriteAllBytes($readonly,[byte[]](0xff,0xfe))
           $rows=[Collections.Generic.List[object]]::new()
           function Observe($name,$section,$key,$value,$path) {
-            $result=[NativeProfileProbe]::Call($section,$key,$value,$path)
+            $result=$(if($name.StartsWith('flush-')){[NativeProfileProbe]::Flush($path)}else{[NativeProfileProbe]::Call($section,$key,$value,$path)})
             $exists=$path -and [IO.File]::Exists($path)
             $rows.Add([pscustomobject]@{name=$name;returned=$result[0];lastError=$result[1];fileExists=[bool]$exists;value=$(if($path){[NativeProfileProbe]::Read($path)}else{'<global>'});disk=$(if($exists){[IO.File]::ReadAllText($path)}else{'<absent>'})})
           }
@@ -70,7 +73,7 @@ jobs:
             Observe 'flush-global-final' $null $null $null $null
           } finally {
             [IO.File]::SetAttributes($readonly,[IO.FileAttributes]::Normal)
-            [NativeProfileProbe]::Call($null,$null,$null,$null) | Out-Null
+            [NativeProfileProbe]::Flush($null) | Out-Null
             Remove-Item -Recurse -Force $directory
           }
           New-Item -ItemType Directory results | Out-Null
