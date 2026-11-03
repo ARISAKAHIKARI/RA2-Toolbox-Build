@@ -129,7 +129,7 @@ def verify(root, host_arch='x86', neural_helper=False):
                        and not x.lower().startswith(('api-ms-win-', 'ext-ms-win-'))]
             if unknown:
                 raise ValueError('unbundled non-system dependency: ' + ', '.join(unknown))
-            if "1.0.39.7".encode("utf-16le") not in pe.resource_bytes():
+            if "1.0.40.0".encode("utf-16le") not in pe.resource_bytes():
                 raise ValueError("file version resource mismatch")
             images[name] = pe
             recs[name] = {'bytes': len(buf), 'sha256': digest, 'machine': pe.architecture,
@@ -176,9 +176,9 @@ def verify(root, host_arch='x86', neural_helper=False):
             recs['GameRuntime.dll']['runtime_protocol']=4
             recs['GameRuntime.dll']['runtime_control_bytes']=176
             resource = host.resource_bytes()
-            if '1.0.39.7'.encode('utf-16le') not in resource:
+            if '1.0.40.0'.encode('utf-16le') not in resource:
                 raise ValueError('EXE version resource mismatch')
-            for text in (b'requireAdministrator', b'PerMonitorV2', b'1.0.39.7'):
+            for text in (b'requireAdministrator', b'PerMonitorV2', b'1.0.40.0'):
                 if text not in resource:
                     raise ValueError('EXE manifest missing: ' + text.decode())
             for name in NAMES:
@@ -207,10 +207,10 @@ def main():
         return 1
     architecture_label = 'PE32/ABI' if args.host_arch == 'x86' else 'x64 host/x86 runtime/broker ABI'
     (root / 'BUILD-VERIFIED-v130.tag').write_text(
-        f'v1.0.39-pre.7 SingleRuntime: {architecture_label}/import/version checks passed\n'
+        f'v1.0.40 SingleRuntime: {architecture_label}/import/version checks passed\n'
         'Game runtime and multiplayer not tested\n', encoding='utf-8')
     (root / 'WINDOWS_BUILD_ARTIFACTS.json').write_text(json.dumps({
-        'label': '1.0.39-pre.7 SingleRuntime', 'file_version': '1.0.39.7',
+        'label': '1.0.40 SingleRuntime', 'file_version': '1.0.40.0',
         'host_architecture': args.host_arch, 'runtime_architecture': 'x86',
         'cursor_protocol': CURSOR_PROTOCOL,
         'neural_helper_verified': args.neural_helper, 'neural_runtime_tested': False,
@@ -218,9 +218,9 @@ def main():
         'dependency_check': {2: 'two', 3: 'three', 4: 'four'}[len(recs)] + ' project binaries import Windows system DLLs only',
     }, ensure_ascii=False, indent=2), encoding='utf-8')
     if args.host_arch == 'x86':
-        print('PASS: 2 current PE32 x86 outputs; hooks exported; ABI/Shared size match; version 1.0.39.7')
+        print('PASS: 2 current PE32 x86 outputs; hooks exported; ABI/Shared size match; version 1.0.40.0')
     else:
-        print(f'PASS: {len(recs)} current outputs; x64 host/x86 runtime/broker; hooks exported; ABI/Shared size match; version 1.0.39.7')
+        print(f'PASS: {len(recs)} current outputs; x64 host/x86 runtime/broker; hooks exported; ABI/Shared size match; version 1.0.40.0')
     if args.neural_helper:
         print('PASS: optional x64 neural helper PE/manifest/system dependencies; DLSS hardware/runtime execution not tested')
     print('PASS: no unbundled third-party or compiler-runtime DLL dependencies')

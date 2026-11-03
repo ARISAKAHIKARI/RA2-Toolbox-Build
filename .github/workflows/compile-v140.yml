@@ -1,0 +1,75 @@
+name: Compile RA2 Toolbox 1.0.40
+on:
+  push:
+    branches: [codex/package-v1.0.40-20261103]
+    paths:
+      - source/**
+      - .github/workflows/compile-v140.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: package-v140-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  windows-x64:
+    runs-on: windows-2022
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Set up Zig 0.13.0
+        shell: pwsh
+        run: |
+          $ProgressPreference='SilentlyContinue'
+          Invoke-WebRequest 'https://ziglang.org/download/0.13.0/zig-windows-x86_64-0.13.0.zip' -OutFile zig.zip
+          Expand-Archive zig.zip zig
+          $zig=(Resolve-Path 'zig/zig-windows-x86_64-0.13.0/zig.exe').Path
+          if((& $zig version) -ne '0.13.0'){throw 'Unsupported Zig version'}
+          Add-Content $env:GITHUB_ENV "ZIG_EXE=$zig"
+          New-Item -ItemType Directory -Force diagnostics,artifacts/x64 | Out-Null
+      - name: Compile x64 toolbox and x86 runtime/broker only
+        shell: bash
+        run: |
+          set -euo pipefail
+          export ZIG="$(cygpath -u "$ZIG_EXE")"
+          export RA2_OUTPUT_DIR="$PWD/artifacts/x64"
+          bash source/build-zig-x64.sh > diagnostics/build-x64.log 2>&1 || { tail -90 diagnostics/build-x64.log; exit 1; }
+          tail -50 diagnostics/build-x64.log
+          for name in RA2Toolbox.exe GameRuntime.dll GameRuntimeHost32.exe BUILD_SOURCE_MANIFEST.json BUILD_TARGET.json; do
+            test -f "artifacts/x64/$name"
+          done
+          python source/tools/verify_windows_outputs.py --root artifacts/x64 --host-arch x64
+      - name: Record build identity
+        shell: pwsh
+        run: |
+          $files=@()
+          foreach($name in 'RA2Toolbox.exe','GameRuntime.dll','GameRuntimeHost32.exe'){
+            $path="artifacts/x64/$name"
+            $files+=@{name=$name;bytes=(Get-Item $path).Length;sha256=(Get-FileHash $path -Algorithm SHA256).Hash.ToLowerInvariant()}
+          }
+          @{commit=$env:GITHUB_SHA;branch=$env:GITHUB_REF_NAME;target='x64 host + x86 runtime/broker';compile_only=$true;regression_tests_run=$false;game_tested=$false;files=$files} | ConvertTo-Json -Depth 4 | Set-Content -Encoding utf8 artifacts/x64/FAST_RENDER_COMPILE.json
+      - name: Upload x64 compiled application and x86 runtime
+        uses: actions/upload-artifact@v4
+        with:
+          name: RA2Toolbox-1.0.40-x64-binaries
+          retention-days: 14
+          if-no-files-found: error
+          path: |
+            artifacts/x64/RA2Toolbox.exe
+            artifacts/x64/GameRuntime.dll
+            artifacts/x64/GameRuntimeHost32.exe
+            artifacts/x64/BUILD_SOURCE_MANIFEST.json
+            artifacts/x64/BUILD_TARGET.json
+            artifacts/x64/WINDOWS_BUILD_ARTIFACTS.json
+            artifacts/x64/FAST_RENDER_COMPILE.json
+      - name: Preserve x64 compiler log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: RA2Toolbox-1.0.40-build-log
+          retention-days: 14
+          if-no-files-found: warn
+          path: diagnostics/build-x64.log
