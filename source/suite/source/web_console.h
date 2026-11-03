@@ -35,6 +35,9 @@ public:
     void close();
 
 private:
+#ifdef RA2_CONSOLE_TESTING
+    friend struct NavigationProbe;
+#endif
     struct State;
     std::shared_ptr<State> state_;
 };

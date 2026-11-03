@@ -3,6 +3,7 @@
 #include "web_console_assets.h"
 #include <atomic>
 #include <cstdint>
+#include <cwchar>
 #include <deque>
 #include <utility>
 #include <vector>
@@ -83,6 +84,36 @@ std::string narrow(LPCWSTR text) {
 
 bool localDocument(LPCWSTR uri) { return uri && lstrcmpW(uri, L"about:blank") == 0; }
 
+// NavigateToString's requested URL can be a data URL while its completed
+// document and WebMessage source are about:blank. Authorize the exact bytes
+// issued by this Host; never accept an arbitrary data: navigation.
+std::wstring embeddedRequestUri(const char* data,size_t count) {
+    static constexpr wchar_t alphabet[]=L"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    if(!data||!count||count>OutgoingLimit)return {};
+    std::wstring result=L"data:text/html;charset=utf-8;base64,";result.reserve(result.size()+((count+2)/3)*4);
+    for(size_t at=0;at<count;at+=3){const unsigned a=static_cast<unsigned char>(data[at]),b=at+1<count?static_cast<unsigned char>(data[at+1]):0,c=at+2<count?static_cast<unsigned char>(data[at+2]):0;
+        result+=alphabet[a>>2];result+=alphabet[((a&3)<<4)|(b>>4)];result+=at+1<count?alphabet[((b&15)<<2)|(c>>6)]:L'=';result+=at+2<count?alphabet[c&63]:L'=';
+    }return result;
+}
+const wchar_t* sourceKind(LPCWSTR uri){return !uri?L"null":localDocument(uri)?L"about:blank":wcsncmp(uri,L"data:text/html;charset=utf-8;base64,",34)==0?L"embedded-data":L"other";}
+void navigationTrace(const wchar_t* stage, unsigned long long id, LPCWSTR uri,
+                     HRESULT successResult, BOOL success, HRESULT errorResult,
+                     COREWEBVIEW2_WEB_ERROR_STATUS webError, HRESULT sourceResult) {
+    wchar_t detail[512]{};
+    if(wcsncmp(stage,L"NavigationStarting",18)==0)
+        std::swprintf(detail,512,L"RA2.Console %ls id=%llu UriHR=0x%08lX admitted=%d NavigationIdHR=0x%08lX source-kind=%ls\n",stage,id,static_cast<unsigned long>(successResult),int(success),static_cast<unsigned long>(sourceResult),sourceKind(uri));
+    else std::swprintf(detail,512,L"RA2.Console %ls id=%llu IsSuccessHR=0x%08lX success=%d WebErrorHR=0x%08lX WebErrorStatus=%d SourceHR=0x%08lX source-kind=%ls\n",
+        stage,id,static_cast<unsigned long>(successResult),int(success),static_cast<unsigned long>(errorResult),int(webError),static_cast<unsigned long>(sourceResult),sourceKind(uri));
+#ifdef RA2_CONSOLE_NAVIGATION_TRACE
+    RA2_CONSOLE_NAVIGATION_TRACE(detail);
+#else
+    OutputDebugStringW(detail);
+#endif
+}
+std::wstring navigationFailure(UINT64 id,HRESULT successResult,BOOL success,HRESULT errorResult,COREWEBVIEW2_WEB_ERROR_STATUS webError,HRESULT sourceResult,LPCWSTR uri){
+    wchar_t detail[512]{};std::swprintf(detail,512,L"控制台页面加载失败。导航 %llu；IsSuccess HRESULT=0x%08lX，success=%d；WebErrorStatus=%d（HRESULT=0x%08lX）；来源=%ls（HRESULT=0x%08lX）。请重试；持续失败时保留这些错误信息。",static_cast<unsigned long long>(id),static_cast<unsigned long>(successResult),int(success),int(webError),static_cast<unsigned long>(errorResult),sourceKind(uri),static_cast<unsigned long>(sourceResult));return detail;
+}
+
 std::wstring moduleDirectory() {
     std::vector<wchar_t> path(32768);
     const DWORD length = GetModuleFileNameW(nullptr, path.data(), static_cast<DWORD>(path.size()));
@@ -118,6 +149,7 @@ struct Host::State : std::enable_shared_from_this<Host::State> {
     DWORD owner = GetCurrentThreadId();
     RECT bounds{};
     bool closed = false, pageReady = false, deliveryPosted = false, failed = false;
+    bool documentPending = false;UINT64 documentNavigationId = 0;std::wstring documentRequestUri;
     HMODULE loader = nullptr;
     ICoreWebView2Environment* environment = nullptr;
     ICoreWebView2Controller* controller = nullptr;
@@ -175,7 +207,7 @@ struct Host::State : std::enable_shared_from_this<Host::State> {
     void error(const wchar_t* text) {
         if (closed || failed) return;
         failed = true;
-        pageReady = false;
+        pageReady = false;documentPending=false;documentRequestUri.clear();
         earlyMessages.clear();
         if (deliveries.size() >= DeliveryLimit) deliveries.clear();
         deliveries.push_back({{}, text});
@@ -184,6 +216,7 @@ struct Host::State : std::enable_shared_from_this<Host::State> {
     void incoming(std::string json) {
         if (!usable() || failed || json.empty()) return;
         if (!pageReady) {
+            if(!documentPending||!documentNavigationId)return;
             if (earlyMessages.size() >= DeliveryLimit) { error(L"控制台初始化消息过多，请重新打开工具箱。"); return; }
             earlyMessages.push_back(std::move(json));
             return;
@@ -249,25 +282,39 @@ struct Host::State : std::enable_shared_from_this<Host::State> {
         auto self = shared_from_this();
         auto* navigationHandler = new Callback<ICoreWebView2NavigationStartingEventHandler, ICoreWebView2*, ICoreWebView2NavigationStartingEventArgs*>(
             [self](ICoreWebView2*, ICoreWebView2NavigationStartingEventArgs* event) {
-                LPWSTR uri = nullptr;
-                if (event) {
-                    const HRESULT result = event->get_Uri(&uri);
-                    if (!self->usable() || FAILED(result) || !localDocument(uri)) event->put_Cancel(TRUE);
-                }
-                CoTaskMemFree(uri);
-                return S_OK;
+                LPWSTR uri=nullptr;UINT64 id=0;
+                const HRESULT uriResult=event?event->get_Uri(&uri):E_POINTER;
+                const HRESULT idResult=event?event->get_NavigationId(&id):E_POINTER;
+                const bool admitted=self->usable()&&!self->failed&&self->documentPending&&SUCCEEDED(uriResult)&&SUCCEEDED(idResult)&&id&&uri&&
+                    uri==self->documentRequestUri&&(!self->documentNavigationId||id==self->documentNavigationId);
+                if(event)event->put_Cancel(admitted?FALSE:TRUE);
+                if(admitted)self->documentNavigationId=id;
+                navigationTrace(admitted?L"NavigationStarting-authorized":L"NavigationStarting-denied",id,uri,uriResult,admitted,S_OK,COREWEBVIEW2_WEB_ERROR_STATUS_UNKNOWN,idResult);
+                CoTaskMemFree(uri);return S_OK;
             });
         hasNavigation = SUCCEEDED(view->add_NavigationStarting(navigationHandler, &navigation));
-        hasFrameNavigation = SUCCEEDED(view->add_FrameNavigationStarting(navigationHandler, &frameNavigation));
         navigationHandler->Release();
+        auto* frameHandler = new Callback<ICoreWebView2NavigationStartingEventHandler, ICoreWebView2*, ICoreWebView2NavigationStartingEventArgs*>(
+            [](ICoreWebView2*, ICoreWebView2NavigationStartingEventArgs* event){if(event)event->put_Cancel(TRUE);return S_OK;});
+        hasFrameNavigation=SUCCEEDED(view->add_FrameNavigationStarting(frameHandler,&frameNavigation));frameHandler->Release();
         auto* completedHandler = new Callback<ICoreWebView2NavigationCompletedEventHandler, ICoreWebView2*, ICoreWebView2NavigationCompletedEventArgs*>(
             [self](ICoreWebView2* sender, ICoreWebView2NavigationCompletedEventArgs* event) {
-                if (!self->usable() || self->failed) return S_OK;
-                BOOL success = FALSE; LPWSTR uri = nullptr;
-                if (!event || FAILED(event->get_IsSuccess(&success)) || !success || !sender || FAILED(sender->get_Source(&uri)) || !localDocument(uri)) {
-                    CoTaskMemFree(uri); self->error(L"控制台页面加载失败，请重新打开工具箱。"); return S_OK;
+                if (!self->usable()) return S_OK;
+                BOOL success = FALSE; LPWSTR uri = nullptr;UINT64 id=0;
+                const HRESULT successResult=event?event->get_IsSuccess(&success):E_POINTER;
+                COREWEBVIEW2_WEB_ERROR_STATUS webError=COREWEBVIEW2_WEB_ERROR_STATUS_UNKNOWN;
+                const HRESULT errorResult=event?event->get_WebErrorStatus(&webError):E_POINTER;
+                if(event)event->get_NavigationId(&id);
+                const HRESULT sourceResult=sender?sender->get_Source(&uri):E_POINTER;
+                navigationTrace(L"NavigationCompleted",id,uri,successResult,success,errorResult,webError,sourceResult);
+                // Initial blank and denied/unrelated navigations can finish after
+                // our document starts. Their cancellation cannot poison this Host.
+                if(self->failed||!self->documentPending||!self->documentNavigationId||id!=self->documentNavigationId){CoTaskMemFree(uri);return S_OK;}
+                if (!event || FAILED(successResult) || !success || !sender || FAILED(sourceResult) || !localDocument(uri)) {
+                    const auto detail=navigationFailure(id,successResult,success,errorResult,webError,sourceResult,uri);
+                    CoTaskMemFree(uri); self->error(detail.c_str()); return S_OK;
                 }
-                CoTaskMemFree(uri);
+                CoTaskMemFree(uri);self->documentPending=false;self->documentRequestUri.clear();
                 self->pageReady = true;
                 auto waiting = std::move(self->earlyMessages);
                 self->earlyMessages.clear();
@@ -311,8 +358,10 @@ struct Host::State : std::enable_shared_from_this<Host::State> {
             error(L"WebView2 运行环境版本过旧或初始化失败，请更新后重试。"); return S_OK;
         }
         const auto html = widen(consoleassets::Html, consoleassets::HtmlSize);
-        if (html.empty() || FAILED(controller->put_Bounds(bounds)) || FAILED(controller->put_IsVisible(TRUE)) || FAILED(view->NavigateToString(html.c_str())))
+        documentRequestUri=embeddedRequestUri(consoleassets::Html,consoleassets::HtmlSize);documentNavigationId=0;
+        if (html.empty() || documentRequestUri.empty() || FAILED(controller->put_Bounds(bounds)) || FAILED(controller->put_IsVisible(TRUE)))
             error(L"控制台页面初始化失败，请重新打开工具箱。");
+        else {documentPending=true;const HRESULT navigated=view->NavigateToString(html.c_str());if(FAILED(navigated)){wchar_t detail[160]{};std::swprintf(detail,160,L"控制台页面初始化失败：NavigateToString HRESULT=0x%08lX。",static_cast<unsigned long>(navigated));error(detail);}}
         return S_OK;
     }
 };

@@ -6,7 +6,7 @@
   "resources": "Update package reuses existing assets/profiles/preprocessing runtime/engine",
   "resources_legacy_reuse": true,
   "build_protocol": 92,
-  "validation": "This build: complete x64 host/x86 Runtime/broker plus diagnostic build, production renderer/recovery/lifetime fixtures, real Win32 HWND rebind, ABI and PE/loader verification. Synthetic CPU timings are not live game FPS. No live game or RA2OL multiplayer validation.",
+  "validation": "Host-only console navigation hotfix: actual own-process WebView2 startup/messages, console regressions and paired PE validation. Runtime/broker/Loader are byte-identical to afc071d; its gameplay regressions are inherited, not newly executed. No live game or RA2OL multiplayer validation.",
   "build_requirement": "Zig 0.13.0; x86 paired build or x64 host with x86 runtime and broker.",
   "settings": {
     "Orders.MegaMissionBackend": "0=constructor; 1=high-level MP; SP uses constructor/DoList centrally",
@@ -595,6 +595,16 @@
     "placement": "forward-frame preview; strict event authority; native foundation/height/viewport projection and confirmed native UI cleanup",
     "radar": "active projection independent from retained backing allocation after SetVisibleRect",
     "small_map": "opt-in independent degenerate-axis native camera clamp",
+    "game_tested": false,
+    "multiplayer_tested": false
+  },
+  "pre1_console_navigation_hotfix": {
+    "baseline_commit": "afc071d00070d392cd1e4be9749ad833029b08d3",
+    "scope": "Host-only embedded WebView2 navigation correction; no gameplay or protocol change",
+    "root_cause": "NavigateToString starts with a data:text/html;charset=utf-8;base64 URI on tested WebView2 156; the old about:blank-only starting filter canceled the host's own document",
+    "validation": "Actual own-process WebView2 navigation and frontend message smoke, plus console regressions and exact paired PE validation",
+    "inherited_game_validation_sha256": "b348a49c6f4638981cbd03ec905b07e205d1f3f3009d7818cd649aab76cf7ba0",
+    "runtime_broker_loader_unchanged": true,
     "game_tested": false,
     "multiplayer_tested": false
   },

@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 """Exercise the production Host against controlled Win32/COM scheduling.
 
-This Linux fixture verifies host lifetime, origin gates and asynchronous
+This controlled fixture verifies host lifetime, origin gates and asynchronous
 delivery. It does not execute WebView2 or certify Windows visual behavior.
 Pass --zig/--sdk to additionally compile the same source against the real SDK.
 """
 from pathlib import Path
 import argparse
+import hashlib
+import json
 import os
 import re
 import subprocess
@@ -32,7 +34,7 @@ WINDOWS = r'''
 #define STDAPICALLTYPE
 #define CALLBACK
 #define WINAPI
-using HRESULT=int32_t; using ULONG=uint32_t; using DWORD=uint32_t; using UINT=unsigned;
+using UINT64=uint64_t; using HRESULT=int32_t; using ULONG=uint32_t; using DWORD=uint32_t; using UINT=unsigned;
 using BOOL=int; using LONG_PTR=intptr_t; using LPARAM=intptr_t; using WPARAM=uintptr_t; using LRESULT=intptr_t;
 using HINSTANCE=void*; using HMODULE=void*; using LPCWSTR=const wchar_t*; using PCWSTR=const wchar_t*; using LPWSTR=wchar_t*;
 struct GUID {uint32_t Data1;uint16_t Data2,Data3;uint8_t Data4[8];};
@@ -67,6 +69,7 @@ inline DWORD GetCurrentThreadId(){return fixture::thread;}
 inline BOOL IsWindow(HWND w){return w&&w!=HWND_MESSAGE&&w->valid;}
 inline DWORD GetWindowThreadProcessId(HWND w,DWORD*){return w->owner;}
 inline DWORD GetLastError(){return fixture::lastError;}
+inline void OutputDebugStringW(const wchar_t*){}
 inline HMODULE GetModuleHandleW(const wchar_t*){return reinterpret_cast<void*>(1);}
 inline DWORD RegisterClassW(const WNDCLASSW* c){fixture::registered=*c;return 1;}
 inline LONG_PTR GetWindowLongPtrW(HWND w,int){return w->user;}
@@ -102,9 +105,10 @@ struct IUnknown {virtual HRESULT QueryInterface(REFIID,void**){return E_NOINTERF
 struct ICoreWebView2;struct ICoreWebView2Environment;struct ICoreWebView2Controller;
 struct ICoreWebView2EnvironmentOptions: IUnknown {};
 struct EventRegistrationToken { int64_t value=0; };
+enum COREWEBVIEW2_WEB_ERROR_STATUS {COREWEBVIEW2_WEB_ERROR_STATUS_UNKNOWN=0,COREWEBVIEW2_WEB_ERROR_STATUS_OPERATION_CANCELED=14};
 enum COREWEBVIEW2_PERMISSION_STATE {COREWEBVIEW2_PERMISSION_STATE_DEFAULT,COREWEBVIEW2_PERMISSION_STATE_ALLOW,COREWEBVIEW2_PERMISSION_STATE_DENY};
-struct ICoreWebView2NavigationStartingEventArgs: IUnknown {std::wstring uri=L"about:blank";BOOL cancel=FALSE;virtual HRESULT get_Uri(LPWSTR* p){*p=duplicate(uri);return S_OK;}virtual HRESULT put_Cancel(BOOL x){cancel=x;return S_OK;}};
-struct ICoreWebView2NavigationCompletedEventArgs: IUnknown {BOOL success=TRUE;virtual HRESULT get_IsSuccess(BOOL* p){*p=success;return S_OK;}};
+struct ICoreWebView2NavigationStartingEventArgs: IUnknown {std::wstring uri=L"about:blank";BOOL cancel=FALSE;UINT64 id=2;HRESULT idResult=S_OK;virtual HRESULT get_Uri(LPWSTR* p){*p=duplicate(uri);return S_OK;}virtual HRESULT get_NavigationId(UINT64*p){*p=id;return idResult;}virtual HRESULT put_Cancel(BOOL x){cancel=x;return S_OK;}};
+struct ICoreWebView2NavigationCompletedEventArgs: IUnknown {BOOL success=TRUE;UINT64 id=2;COREWEBVIEW2_WEB_ERROR_STATUS error=COREWEBVIEW2_WEB_ERROR_STATUS_UNKNOWN;virtual HRESULT get_IsSuccess(BOOL* p){*p=success;return S_OK;}virtual HRESULT get_NavigationId(UINT64*p){*p=id;return S_OK;}virtual HRESULT get_WebErrorStatus(COREWEBVIEW2_WEB_ERROR_STATUS*p){*p=error;return S_OK;}};
 struct ICoreWebView2WebMessageReceivedEventArgs: IUnknown {std::wstring uri=L"about:blank",json=L"{}";virtual HRESULT get_Source(LPWSTR* p){*p=duplicate(uri);return S_OK;}virtual HRESULT get_WebMessageAsJson(LPWSTR* p){*p=duplicate(json);return S_OK;}};
 struct ICoreWebView2NewWindowRequestedEventArgs: IUnknown {BOOL handled=FALSE;virtual HRESULT put_Handled(BOOL x){handled=x;return S_OK;}};
 struct ICoreWebView2PermissionRequestedEventArgs: IUnknown {COREWEBVIEW2_PERMISSION_STATE state=COREWEBVIEW2_PERMISSION_STATE_DEFAULT;virtual HRESULT put_State(COREWEBVIEW2_PERMISSION_STATE x){state=x;return S_OK;}};
@@ -179,6 +183,9 @@ HARNESS = r'''
 #include "web_console.h"
 #include <cassert>
 #include <iostream>
+#ifdef NDEBUG
+#error Contract assertions must be enabled
+#endif
 
 int main(){
  Window parent; ICoreWebView2Environment environment;
@@ -196,9 +203,14 @@ int main(){
  assert(!host.ready());assert(!view.html.empty());assert(controller.visible);
  assert(!view.settings.values["AreHostObjectsAllowed"]&&!view.settings.values["AreDefaultScriptDialogsEnabled"]&&!view.settings.values["AreDevToolsEnabled"]);
  assert(view.settings.values.count("AreBrowserAcceleratorKeysEnabled")&&!view.settings.values["AreBrowserAcceleratorKeysEnabled"]);
+ const wchar_t* expectedUri=L"data:text/html;charset=utf-8;base64,PCFkb2N0eXBlIGh0bWw+PHRpdGxlPmNvbnNvbGU8L3RpdGxlPg==";
+ ICoreWebView2NavigationCompletedEventArgs initial;initial.id=1;initial.success=FALSE;initial.error=COREWEBVIEW2_WEB_ERROR_STATUS_OPERATION_CANCELED;fixture::event(view.NavigationCompleted,&view,initial);fixture::pump();assert(!host.ready()&&!errors);
+ ICoreWebView2NavigationStartingEventArgs frame;frame.uri=expectedUri;frame.id=7;fixture::event(view.FrameNavigationStarting,&view,frame);assert(frame.cancel);
+ ICoreWebView2NavigationStartingEventArgs wrong;wrong.uri=L"data:text/html;charset=utf-8;base64,Zm9yZWlnbg==";wrong.id=6;fixture::event(view.NavigationStarting,&view,wrong);assert(wrong.cancel);initial.id=6;fixture::event(view.NavigationCompleted,&view,initial);fixture::pump();assert(!errors);
+ ICoreWebView2NavigationStartingEventArgs own;own.uri=expectedUri;own.id=7;fixture::event(view.NavigationStarting,&view,own);assert(!own.cancel);
  ICoreWebView2WebMessageReceivedEventArgs early;early.json=L"{\"kind\":\"ready\"}";
  fixture::event(view.WebMessageReceived,&view,early);fixture::pump();assert(messages==0);
- ICoreWebView2NavigationCompletedEventArgs completed;
+ ICoreWebView2NavigationCompletedEventArgs completed;completed.id=7;initial.id=1;fixture::event(view.NavigationCompleted,&view,initial);assert(!host.ready());
  fixture::event(view.NavigationCompleted,&view,completed);assert(host.ready());assert(messages==0);
  fixture::pump();assert(messages==1);
  assert(host.post("{\"hello\":\"世界\"}"));assert(view.posted==L"{\"hello\":\"世界\"}");
@@ -206,6 +218,8 @@ int main(){
  fixture::thread=2;auto calls=controller.boundsCalls;host.resize({0,0,8,8});assert(controller.boundsCalls==calls);assert(!host.ready());assert(!host.post("{}"));host.close();assert(!controller.closeCalls);fixture::thread=1;assert(host.ready());
  ICoreWebView2NavigationStartingEventArgs navigation;navigation.uri=L"https://example.com/";
  fixture::event(view.NavigationStarting,&view,navigation);assert(navigation.cancel);
+ for(const wchar_t*uri:{expectedUri,L"about:blank",L"data:text/html,foreign"}){navigation.uri=uri;navigation.id=9;navigation.cancel=FALSE;fixture::event(view.NavigationStarting,&view,navigation);assert(navigation.cancel);initial.id=9;fixture::event(view.NavigationCompleted,&view,initial);fixture::pump();assert(host.ready()&&!errors);}
+ ICoreWebView2WebMessageReceivedEventArgs dataMessage;dataMessage.uri=expectedUri;dataMessage.json=early.json;fixture::event(view.WebMessageReceived,&view,dataMessage);fixture::pump();assert(messages==1);
  ICoreWebView2NewWindowRequestedEventArgs window;fixture::event(view.NewWindowRequested,&view,window);assert(window.handled);
  ICoreWebView2PermissionRequestedEventArgs permission;fixture::event(view.PermissionRequested,&view,permission);assert(permission.state==COREWEBVIEW2_PERMISSION_STATE_DENY);
  ICoreWebView2DownloadStartingEventArgs download;fixture::event(view.DownloadStarting,&view,download);assert(download.cancel&&download.handled);
@@ -223,8 +237,12 @@ int main(){
  consoleweb::Host selfClosing;
  assert(selfClosing.create(&parent,[&](const std::string&){selfClosing.close();},error));
  fixture::completeEnvironment(environment);ICoreWebView2Controller last;fixture::completeController(last);
- fixture::event(last.view.NavigationCompleted,&last.view,completed);fixture::event(last.view.WebMessageReceived,&last.view,early);fixture::pump();assert(last.closeCalls==1);
- std::cout<<"Web console async lifetime/origin/bounds contract passed\n";
+ fixture::event(last.view.NavigationStarting,&last.view,own);assert(!own.cancel);fixture::event(last.view.NavigationCompleted,&last.view,completed);fixture::event(last.view.WebMessageReceived,&last.view,early);fixture::pump();assert(last.closeCalls==1);
+ // An authorized document failure remains fatal and includes real status,
+ // unlike cancelled initial/foreign completions. Early JSON is discarded.
+ unsigned failedMessages=0,failedErrors=0;std::wstring failure;
+ consoleweb::Host fatal;assert(fatal.create(&parent,[&](const std::string&){++failedMessages;},[&](const std::wstring&t){++failedErrors;failure=t;}));fixture::completeEnvironment(environment);ICoreWebView2Controller broken;fixture::completeController(broken);own.cancel=FALSE;fixture::event(broken.view.NavigationStarting,&broken.view,own);assert(!own.cancel);fixture::event(broken.view.WebMessageReceived,&broken.view,early);completed.success=FALSE;completed.error=COREWEBVIEW2_WEB_ERROR_STATUS_OPERATION_CANCELED;fixture::event(broken.view.NavigationCompleted,&broken.view,completed);fixture::pump();assert(!fatal.ready()&&failedErrors==1&&!failedMessages);assert(failure.find(L"WebErrorStatus=14")!=std::wstring::npos);assert(failure.find(L"about:blank")!=std::wstring::npos);fatal.close();
+ std::cout<<"Web console async lifetime/origin/bounds/navigation-ID exact-payload cancellation contract passed\n";
 }
 '''
 
@@ -233,21 +251,22 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--zig")
     parser.add_argument("--sdk", type=Path)
+    parser.add_argument("--report", type=Path)
     args = parser.parse_args()
     with tempfile.TemporaryDirectory(prefix="ra2-web-console-") as temporary:
         directory = Path(temporary)
-        (directory / "windows.h").write_text(WINDOWS)
-        (directory / "WebView2.h").write_text(SDK)
+        (directory / "windows.h").write_text(WINDOWS, encoding="utf-8")
+        (directory / "WebView2.h").write_text(SDK, encoding="utf-8")
         (directory / "web_console_assets.h").write_text(
             '#pragma once\n#include <cstddef>\nnamespace consoleassets { inline constexpr char Html[]="<!doctype html><title>console</title>"; inline constexpr std::size_t HtmlSize=sizeof(Html)-1; }\n'
         )
-        (directory / "harness.cpp").write_text(HARNESS)
-        binary = directory / "contract"
-        subprocess.run([
-            os.environ.get("CXX", "g++"), "-std=c++17", "-O1", "-g", "-fsanitize=address,undefined",
-            "-fno-omit-frame-pointer", "-I", str(directory), "-I", str(SOURCE.parent),
-            str(SOURCE), str(directory / "harness.cpp"), "-o", str(binary)
-        ], check=True)
+        (directory / "harness.cpp").write_text(HARNESS, encoding="utf-8")
+        binary = directory / ("contract.exe" if os.name=="nt" else "contract")
+        if os.name=="nt":
+            if not args.zig:parser.error("Windows controlled contract requires --zig")
+            compiler=[args.zig,"c++","-target","x86_64-windows-gnu","-std=c++17","-O1","-UNDEBUG"]
+        else:compiler=[os.environ.get("CXX","g++"),"-std=c++17","-O1","-g","-UNDEBUG","-fsanitize=address,undefined","-fno-omit-frame-pointer"]
+        subprocess.run(compiler+["-I",str(directory),"-I",str(SOURCE.parent),str(SOURCE),str(directory/"harness.cpp"),"-o",str(binary)],check=True)
         environment = dict(os.environ, ASAN_OPTIONS="detect_leaks=0")
         # Fake windows deliberately outlive their queued messages; no process,
         # browser or game object is created by this controlled fixture.
@@ -255,8 +274,8 @@ def main():
         if args.zig or args.sdk:
             if not args.zig or not args.sdk:
                 parser.error("--zig and --sdk must be provided together")
-            sdk_text = (args.sdk / "include/WebView2.h").read_text()
-            identities = re.findall(r"CONSOLE_COM_ID\((\w+),\s*(0x[^)]+)\)", SOURCE.read_text())
+            sdk_text = (args.sdk / "include/WebView2.h").read_text(encoding="utf-8")
+            identities = re.findall(r"CONSOLE_COM_ID\((\w+),\s*(0x[^)]+)\)", SOURCE.read_text(encoding="utf-8"))
             assert len(identities) == 12
             for name, values in identities:
                 numbers = [int(value.strip(), 16) for value in values.split(",")]
@@ -282,6 +301,10 @@ def main():
                 "-o", str(directory / "web_console_link.exe")
             ], check=True)
             print("Production Host compiled and linked against Windows/WebView2 SDK (not executed).")
+        if args.report:
+            report={"schema":"ra2.webview-navigation-contract.v1","status":"PASS","platform":os.name,"fake_com_executed":True,"assertions_enabled":True,"assertions_in_harness":HARNESS.count("assert("),"sdk_interface_identities":12 if args.sdk else 0,"sdk_production_compile_link":bool(args.sdk),"webview_runtime_executed":False,"game_process_accessed":False,"source_sha256":{str(p.relative_to(ROOT)).replace("\\","/"):hashlib.sha256(p.read_bytes()).hexdigest() for p in [SOURCE,SOURCE.with_suffix(".h"),Path(__file__).resolve()]}}
+            args.report.parent.mkdir(parents=True,exist_ok=True)
+            args.report.write_text(json.dumps(report,indent=2)+"\n",encoding="utf-8")
 
 
 if __name__ == "__main__":
